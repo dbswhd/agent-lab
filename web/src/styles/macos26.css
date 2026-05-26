@@ -830,12 +830,33 @@ body.is-tauri .chat-list-header {
 
 .messages-scroll > .bubble-row,
 .messages-scroll > .chat-turn,
-.messages-scroll > .empty-chat {
+.messages-scroll > .empty-chat,
+.messages-scroll > .chat-round-divider {
   width: var(--composer-cluster-width);
   max-width: 100%;
   margin-left: auto;
   margin-right: auto;
   box-sizing: border-box;
+}
+
+.chat-round-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin: var(--space-md) 0 var(--space-sm);
+  color: var(--mac-label-tertiary);
+  font-size: var(--text-caption);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.chat-round-divider::before,
+.chat-round-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--mac-separator);
 }
 
 .messages-scroll--document > .plan-pre {
@@ -891,6 +912,57 @@ body.is-tauri .chat-list-header {
 
 .mac-bubble--typing {
   min-width: 48px;
+}
+
+.bubble-row--reply-wait {
+  justify-content: flex-start;
+  margin-top: 2px;
+}
+
+.bubble-row--reply-wait .mac-bubble--typing {
+  min-width: 52px;
+  padding: var(--bubble-pad-y) 14px;
+  border: 0.5px solid transparent;
+}
+
+.mac-bubble--received.mac-bubble--agent-cursor.mac-bubble--typing {
+  background: var(--agent-pill-tint-cursor);
+  border-color: color-mix(in srgb, var(--color-agent-cursor) 22%, transparent);
+}
+
+.mac-bubble--agent-cursor .typing-dots span {
+  background: var(--color-agent-cursor);
+}
+
+.mac-bubble--received.mac-bubble--agent-codex.mac-bubble--typing {
+  background: var(--agent-pill-tint-codex);
+  border-color: color-mix(in srgb, var(--color-agent-codex) 22%, transparent);
+}
+
+.mac-bubble--agent-codex .typing-dots span {
+  background: var(--color-agent-codex);
+}
+
+.mac-bubble--received.mac-bubble--agent-claude.mac-bubble--typing {
+  background: var(--agent-pill-tint-claude);
+  border-color: color-mix(in srgb, var(--color-agent-claude) 22%, transparent);
+}
+
+.mac-bubble--agent-claude .typing-dots span {
+  background: var(--color-agent-claude);
+}
+
+.mac-bubble--received.mac-bubble--agent-planner.mac-bubble--typing,
+.mac-bubble--received.mac-bubble--agent-critic.mac-bubble--typing,
+.mac-bubble--received.mac-bubble--agent-scribe.mac-bubble--typing {
+  background: var(--agent-pill-tint-neutral);
+  border-color: var(--mac-separator);
+}
+
+.mac-bubble--agent-planner .typing-dots span,
+.mac-bubble--agent-critic .typing-dots span,
+.mac-bubble--agent-scribe .typing-dots span {
+  background: var(--mac-label-tertiary);
 }
 
 .mac-bubble--sent .typing-dots span {
@@ -1180,7 +1252,10 @@ body.is-tauri .chat-list-header {
 }
 
 /* View tabs — flat underline tabs (single toolbar row) */
-.view-tabs-bar button:focus-visible {
+.view-tabs-bar__leading button:focus-visible,
+.room-rounds-btn:focus-visible,
+.room-mode-btn:focus-visible,
+.scroll-to-bottom-btn:focus-visible {
   outline: 2px solid var(--mac-focus-ring);
   outline-offset: -2px;
   border-radius: 2px;

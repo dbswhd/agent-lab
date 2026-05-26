@@ -16,6 +16,8 @@ export type ChatLine = {
   agent?: string | null;
   content: string;
   ts?: string;
+  /** Parallel wave within one human message (1 = first replies, 2+ = peer discussion). */
+  parallel_round?: number;
 };
 
 export type SessionDetail = {
@@ -126,11 +128,23 @@ export async function runGraph(
   await consumeSse(res, onEvent);
 }
 
+export type RoomMode = "discuss" | "plan";
+
 export type RunRoomOptions = {
   sessionId?: string;
   files?: File[];
+  /** discuss = no scribe; plan = scribe after round. Overrides synthesize when set. */
+  mode?: RoomMode;
   synthesize?: boolean;
+  /** Re-synthesize plan.md from existing chat without a new agent round. */
+  synthesizeOnly?: boolean;
+  /** Idempotency key for synthesize-only runs (retry / refresh safe). */
+  requestId?: string;
+  /** Parallel agent waves per human message (2 = first replies, then peer discussion). */
+  agentRounds?: number;
   permissions?: Record<string, unknown>;
+  /** Turn-level devil's advocate rotation (2nd round only). */
+  reviewMode?: boolean;
 };
 
 export function renameSession(id: string, topic: string) {
@@ -157,13 +171,20 @@ export async function runRoom(
   onEvent: (data: Record<string, unknown>) => void,
   opts?: RunRoomOptions,
 ): Promise<void> {
+  const mode = opts?.mode ?? (opts?.synthesize ? "plan" : "discuss");
+  const synthesize =
+    opts?.synthesize ?? (mode === "plan");
   const form = new FormData();
   form.append("topic", topic);
   form.append("agents", JSON.stringify(agents));
-  form.append(
-    "synthesize",
-    String(opts?.synthesize ?? !opts?.sessionId),
-  );
+  form.append("mode", mode);
+  form.append("synthesize", String(synthesize));
+  form.append("synthesize_only", String(opts?.synthesizeOnly ?? false));
+  form.append("agent_rounds", String(opts?.agentRounds ?? 2));
+  form.append("review_mode", String(opts?.reviewMode ?? false));
+  if (opts?.requestId) {
+    form.append("request_id", opts.requestId);
+  }
   if (opts?.sessionId) {
     form.append("session_id", opts.sessionId);
   }

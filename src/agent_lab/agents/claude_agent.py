@@ -1,26 +1,23 @@
-import os
+from typing import Any
 
-from langchain_core.messages import HumanMessage, SystemMessage
-
-from agent_lab.agents.prompts import CLAUDE_ROOM
+from agent_lab import claude_cli
+from agent_lab.agent_permissions import permission_preamble
+from agent_lab.agents.prompts import CLAUDE_API_HANDOFF, CLAUDE_ROOM
 
 
 def is_available() -> bool:
-    return bool(os.getenv("ANTHROPIC_API_KEY"))
+    return claude_cli.is_available()
 
 
-def respond(system: str, user: str) -> str:
-    from langchain_anthropic import ChatAnthropic
-
-    llm = ChatAnthropic(
-        model=os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6"),
-        temperature=0.4,
-        max_tokens=2048,
-    )
-    msg = llm.invoke(
-        [
-            SystemMessage(content=system or CLAUDE_ROOM),
-            HumanMessage(content=user),
-        ]
-    )
-    return (msg.content or "").strip()
+def respond(
+    system: str,
+    user: str,
+    *,
+    permissions: dict[str, Any] | None = None,
+) -> str:
+    parts = [system or CLAUDE_ROOM, CLAUDE_API_HANDOFF]
+    extra = permission_preamble(permissions, "claude")
+    if extra:
+        parts.append(extra)
+    system_block = "\n\n".join(parts)
+    return claude_cli.invoke(system_block, user, permissions=permissions)

@@ -9,7 +9,7 @@
 
 | | 클래식 | **3자 룸** (기본) |
 |---|--------|------------------|
-| 흐름 | Planner → Critic → Scribe (순차) | **Cursor + Codex + Claude 병렬** → plan 합성 |
+| 흐름 | Planner → Critic → Scribe (순차) | **Cursor + Codex + Claude** (기본 2라운드 병렬: 첫 답 → 서로 반응) → plan 합성 |
 | 백엔드 | codex / openai / anthropic 중 1개 | **에이전트 3명 각자** |
 | 저장 | transcript.md | **chat.jsonl** + run.json + plan.md |
 
@@ -24,14 +24,14 @@
 |----------|-----------|----------------------|
 | **Cursor** | `CURSOR_API_KEY` + `pip install -e ".[cursor]"` | 레포·파일·UI·빌드 — **실행·다음 편집** |
 | **Codex** | `codex login`, `CODEX_BIN` (앱은 PATH 보강) | 분해·순서·검증·완료 기준 — **끝까지 밀기** |
-| **Claude** | `ANTHROPIC_API_KEY` | 맹점·리스크·설명·요약 — **두 번째 의견·리뷰** |
+| **Claude** | `claude login`, `CLAUDE_BIN` (앱은 PATH 보강) | 맹점·리스크·설명·요약 — **두 번째 의견·리뷰** |
 
 `.env` 예:
 
 ```env
 AGENT_LAB_PROVIDER=codex
 CODEX_BIN=/Users/you/.nvm/versions/node/v24.13.1/bin/codex
-ANTHROPIC_API_KEY=sk-ant-...
+CLAUDE_BIN=/Users/you/.nvm/versions/node/v24.13.1/bin/claude
 CURSOR_API_KEY=...
 ```
 
@@ -42,8 +42,9 @@ CURSOR_API_KEY=...
 1. **새 대화** → 상단 **3자 룸** 선택  
 2. 참여 칩: Cursor / Codex / Claude (준비된 것만 켜기)  
 3. 주제 입력 → **↑** 전송  
-4. 세 에이전트가 **동시에** 말풍선 (입력 중 … → 본문)  
-5. 끝나면 **plan.md** 합성 + 왼쪽 목록에 세션 생성  
+4. **1라운드:** 세 에이전트가 동시에 첫 답 (입력 중 … → 본문)  
+5. **2라운드:** 위 대화를 본 뒤 서로에게 한 번 더 반응 (토론 구분선 표시)  
+6. 끝나면 **plan.md** 합성 + 왼쪽 목록에 세션 생성  
 6. 세션 열기 → **대화** / **plan.md** 탭
 
 CLI:
@@ -57,7 +58,8 @@ print(folder, len(msgs), len(plan))
 "
 ```
 
-API: `POST /api/room/runs` (SSE) — `agent_start`, `agent_done`+`content`, `scribe_*`, `complete`
+API: `POST /api/room/runs` (SSE) — `agent_round_start`, `agent_start`, `agent_done`+`content`, `scribe_*`, `complete`  
+Form: `agent_rounds` (기본 `2`) — 같은 턴 안에서 에이전트끼리 몇 번 말할지
 
 ---
 
@@ -69,7 +71,7 @@ API: `POST /api/room/runs` (SSE) — `agent_start`, `agent_done`+`content`, `scr
 | 최소 권한 | 텍스트만, 도구 없음 (`T0`) |
 | 산출물 중심 | plan.md + run.json |
 | 재현성 | chat.jsonl, transcript, meta |
-| 병렬 상한 | 최대 3 에이전트 / 1 라운드 |
+| 병렬 상한 | 최대 3 에이전트 × `agent_rounds`(기본 2, 최대 4) / 사용자 메시지 1회 |
 
 **다음 단계** (01 문서 Phase 2+): Clarifier gate, human approval, follow-up 메시지, YAML 워크플로 엔진.
 

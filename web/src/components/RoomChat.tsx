@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { AgentOption, SessionDetail } from "../api/client";
+import { useCallback, useEffect, useState } from "react";
+import type { AgentOption, RoomMode, SessionDetail } from "../api/client";
 import { fetchSession, runRoom } from "../api/client";
 import {
   agentLabel,
@@ -9,16 +9,28 @@ import {
   type ChatMessage,
 } from "../utils/transcript";
 import { AgentPicker } from "./AgentPicker";
-import { ChatBubble } from "./ChatBubble";
+import {
+  ChatBubble,
+  isReplyWaitRole,
+  ReplyWaitingBubble,
+} from "./ChatBubble";
 import { ChatComposer, type PendingFile } from "./ChatComposer";
 import { ChatPaneBody } from "./ChatPaneBody";
 import { ChatToolbar } from "./ChatToolbar";
+import { RoomRunControls } from "./RoomRunControls";
+import {
+  ScrollToBottomButton,
+  useMessagesScroll,
+} from "./ScrollToBottomButton";
 import { AgentPermissionAlert } from "./AgentPermissionAlert";
 import type { AgentPermissions } from "../utils/agentPermissions";
 import {
   hasSavedPermissionDefaults,
   loadDefaultPermissions,
 } from "../utils/agentPermissions";
+import { getAgentRounds, setAgentRounds } from "../utils/roomPrefs";
+import { buildPlanMetaView } from "../utils/planMeta";
+import { analyzePlanRefWarnings } from "../utils/planRefWarnings";
 
 type LiveMsg = ChatMessage & { typing?: boolean };
 
@@ -34,7 +46,23 @@ type Props = {
 
 function sessionToMessages(session: SessionDetail): LiveMsg[] {
   if (session.chat && session.chat.length > 0) {
-    return session.chat.map((line, i) => chatLineToMessage(line, i));
+    const out: LiveMsg[] = [];
+    let lastRound = 0;
+    for (let i = 0; i < session.chat.length; i++) {
+      const line = session.chat[i];
+      const pr = line.parallel_round ?? (line.role === "agent" ? 1 : 0);
+      if (line.role === "agent" && pr > 1 && pr > lastRound) {
+        out.push({
+          id: `round-divider-${pr}`,
+          role: "system",
+          label: "",
+          body: "__round_divider__",
+        });
+        lastRound = pr;
+      }
+      out.push(chatLineToMessage(line, i));
+    }
+    return out;
   }
   return [
     topicAsUserMessage(session.topic || session.id),
@@ -56,15 +84,31 @@ export function RoomChat({
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [messages, setMessages] = useState<LiveMsg[]>([]);
   const [running, setRunning] = useState(false);
+  const [synthesizing, setSynthesizing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<"chat" | "plan">("chat");
   const [planMd, setPlanMd] = useState("");
   const [permOpen, setPermOpen] = useState(false);
+  const [composeMode, setComposeMode] = useState<RoomMode>("discuss");
+  const [reviewMode, setReviewMode] = useState(false);
+  const [agentRounds, setAgentRoundsState] = useState(getAgentRounds);
   const [pendingSend, setPendingSend] = useState<{
     text: string;
     files: PendingFile[];
   } | null>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const chatActive = tab !== "plan" || !planMd;
+  const typingAgents = messages.filter(
+    (m) => m.typing && isReplyWaitRole(m.role),
+  );
+  const pendingReplyCount =
+    running && tab === "chat" && typingAgents.length === 0
+      ? selected.length
+      : 0;
+  const { scrollRef, showJumpButton, scrollToBottom } = useMessagesScroll(
+    [messages, running, pendingReplyCount, selected.join(",")],
+    chatActive,
+    sessionId,
+  );
 
   const isNew = !sessionId;
 
@@ -83,13 +127,6 @@ export function RoomChat({
     }
   }, [session, isNew, running]);
 
-  useEffect(() => {
-    scrollRef.current?.scrollTo({
-      top: scrollRef.current.scrollHeight,
-      behavior: "smooth",
-    });
-  }, [messages, running]);
-
   function toggleAgent(id: string) {
     setSelected((s) =>
       s.includes(id) ? s.filter((x) => x !== id) : [...s, id],
@@ -105,7 +142,13 @@ export function RoomChat({
   }
 
   const executeSend = useCallback(
-    async (msgText: string, filesToSend: PendingFile[], permissions: AgentPermissions) => {
+    async (
+      msgText: string,
+      filesToSend: PendingFile[],
+      permissions: AgentPermissions,
+      mode: RoomMode = composeMode,
+      useReviewMode: boolean = reviewMode,
+    ) => {
       setRunning(true);
       setError(null);
       const userMsg = topicAsUserMessage(msgText);
@@ -118,35 +161,52 @@ export function RoomChat({
           selected,
           (ev) => {
           const t = String(ev.type);
+          if (t === "agent_round_start" && Number(ev.round) > 1) {
+            const rid = `round-divider-${ev.round}`;
+            setMessages((m) => [
+              ...m.filter((x) => x.id !== rid),
+              {
+                id: rid,
+                role: "system",
+                label: "",
+                body: "__round_divider__",
+              },
+            ]);
+          }
           if (t === "agent_start" && ev.agent) {
             const aid = String(ev.agent);
+            const round = Number(ev.round ?? 1);
             setMessages((m) => [
-              ...m.filter((x) => x.id !== `typing-${aid}`),
+              ...m.filter((x) => x.id !== `typing-${aid}-r${round}`),
               {
-                id: `typing-${aid}`,
+                id: `typing-${aid}-r${round}`,
                 role: aid as LiveMsg["role"],
                 label: agentLabel(aid),
                 body: "",
                 typing: true,
+                parallelRound: round,
               },
             ]);
           }
           if (t === "agent_done" && ev.agent) {
             const aid = String(ev.agent);
+            const round = Number(ev.round ?? 1);
             setMessages((m) => [
-              ...m.filter((x) => x.id !== `typing-${aid}`),
+              ...m.filter((x) => x.id !== `typing-${aid}-r${round}`),
               {
-                id: `msg-${aid}-${Date.now()}`,
+                id: `msg-${aid}-r${round}-${Date.now()}`,
                 role: aid as LiveMsg["role"],
                 label: agentLabel(aid),
                 body: String(ev.content ?? "") || "(empty)",
+                parallelRound: round,
               },
             ]);
           }
           if (t === "agent_error" && ev.agent) {
             const aid = String(ev.agent);
+            const round = Number(ev.round ?? 1);
             setMessages((m) => [
-              ...m.filter((x) => x.id !== `typing-${aid}`),
+              ...m.filter((x) => x.id !== `typing-${aid}-r${round}`),
               {
                 id: `err-${aid}`,
                 role: "system",
@@ -165,8 +225,10 @@ export function RoomChat({
           {
             sessionId: sessionId ?? undefined,
             files: filesToSend.map((p) => p.file),
-            synthesize: true,
+            mode,
+            agentRounds,
             permissions,
+            reviewMode: useReviewMode,
           },
         );
         if (activeSessionId) {
@@ -175,20 +237,72 @@ export function RoomChat({
           setPlanMd(detail.plan_md || "");
           onSessionChange(activeSessionId);
         }
+        if (mode === "plan") {
+          setTab("plan");
+        }
       } catch (e) {
         setError(String(e));
       } finally {
         setMessages((m) => m.filter((x) => !x.typing));
         setRunning(false);
+        setComposeMode("discuss");
+        setReviewMode(false);
       }
     },
-    [selected, sessionId, onSessionChange],
+    [selected, sessionId, onSessionChange, composeMode, agentRounds, reviewMode],
   );
+
+  const executeSynthesizeOnly = useCallback(
+    async (permissions: AgentPermissions) => {
+      if (!sessionId || synthesizing) return;
+      const requestId = crypto.randomUUID();
+      setSynthesizing(true);
+      setRunning(true);
+      setError(null);
+      try {
+        await runRoom(
+          "(plan synthesis)",
+          selected,
+          (ev) => {
+            if (String(ev.type) === "error") {
+              setError(String(ev.message ?? "plan synthesis failed"));
+            }
+          },
+          {
+            sessionId,
+            mode: "plan",
+            agentRounds,
+            synthesizeOnly: true,
+            requestId,
+            permissions,
+          },
+        );
+        const detail = await fetchSession(sessionId);
+        setMessages(sessionToMessages(detail));
+        setPlanMd(detail.plan_md || "");
+        setTab("plan");
+        onSessionChange(sessionId);
+      } catch (e) {
+        setError(String(e));
+      } finally {
+        setSynthesizing(false);
+        setRunning(false);
+      }
+    },
+    [selected, sessionId, agentRounds, synthesizing, onSessionChange],
+  );
+
+  function handleSynthesizeNow() {
+    if (running || synthesizing || !sessionId || messages.length === 0) return;
+    void executeSynthesizeOnly(loadDefaultPermissions());
+  }
 
   function handleSend() {
     if (!text.trim() || running || selected.length === 0) return;
     const needsPerm =
-      (selected.includes("cursor") || selected.includes("codex")) &&
+      (selected.includes("cursor") ||
+        selected.includes("codex") ||
+        selected.includes("claude")) &&
       !hasSavedPermissionDefaults();
     if (needsPerm) {
       setPendingSend({ text: text.trim(), files: [...pendingFiles] });
@@ -205,6 +319,16 @@ export function RoomChat({
   const readyCount = agents.filter((a) => a.ready).length;
   const title = isNew ? "3자 룸" : session?.topic || sessionId || "대화";
   const attachments = session?.attachments ?? [];
+  const planMeta = buildPlanMetaView(session?.run);
+  const planRefWarnings = analyzePlanRefWarnings(planMd, session?.chat);
+  const pendingReplyAgents =
+    running && tab === "chat" && typingAgents.length === 0
+      ? selected.map((id) => ({
+          id: `pending-${id}`,
+          role: id as LiveMsg["role"],
+          label: agentLabel(id),
+        }))
+      : [];
 
   if (loading && !isNew) {
     return (
@@ -240,52 +364,127 @@ export function RoomChat({
         }
       />
 
-      {!isNew && (
-        <div className="view-tabs-bar" role="tablist">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "chat"}
-            className={tab === "chat" ? "active" : ""}
-            onClick={() => setTab("chat")}
-          >
-            대화
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={tab === "plan"}
-            className={tab === "plan" ? "active" : ""}
-            onClick={() => setTab("plan")}
-          >
-            plan.md
-          </button>
+      <div className="view-tabs-bar">
+        <div className="view-tabs-bar__leading" role="tablist">
+          {!isNew ? (
+            <>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === "chat"}
+                className={tab === "chat" ? "active" : ""}
+                onClick={() => setTab("chat")}
+              >
+                대화
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === "plan"}
+                className={tab === "plan" ? "active" : ""}
+                onClick={() => setTab("plan")}
+              >
+                plan.md
+              </button>
+            </>
+          ) : (
+            <span className="view-tabs-bar__static" aria-hidden>
+              대화
+            </span>
+          )}
         </div>
-      )}
+        <RoomRunControls
+          composeMode={composeMode}
+          onComposeModeChange={setComposeMode}
+          agentRounds={agentRounds}
+          onAgentRoundsChange={(n) => {
+            setAgentRounds(n);
+            setAgentRoundsState(n);
+          }}
+          running={running}
+          synthesizing={synthesizing}
+          showSynthesizeNow={!isNew && messages.length > 0}
+          onSynthesizeNow={handleSynthesizeNow}
+          reviewMode={reviewMode}
+          onReviewModeChange={setReviewMode}
+        />
+      </div>
 
       {tab === "plan" && planMd ? (
         <div className="messages-scroll messages-scroll--document">
+          <div
+            className={`plan-meta-bar plan-meta-bar--${planMeta.freshness}`}
+            role="status"
+          >
+            <span className="plan-meta-bar__line">
+              마지막 정리: {planMeta.timeLabel} · {planMeta.triggerLabel} ·
+              agents: {planMeta.agentsLabel}
+            </span>
+            <span className="plan-meta-bar__freshness">
+              {planMeta.freshnessLabel}
+            </span>
+          </div>
+          {planMeta.reviewTurnLabel ? (
+            <span className="plan-meta-bar__review">{planMeta.reviewTurnLabel}</span>
+          ) : null}
+          {planRefWarnings.bannerText ? (
+            <div className="plan-ref-warn" role="note">
+              {planRefWarnings.bannerText}
+            </div>
+          ) : null}
           <pre className="plan-pre">{planMd}</pre>
         </div>
       ) : (
         <div className="messages-scroll" ref={scrollRef}>
           {messages.length === 0 && !running && (
             <div className="empty-chat">
-              메시지를 내면 선택한 에이전트가 함께 답합니다.
+              메시지를 내면 선택한 에이전트가 함께 답하고, 이어서 서로의 말에
+              한 번 더 반응합니다.
               <span className="empty-chat-hint">
-                파일 첨부 가능 · plan.md는 대화 후 자동 갱신
+                기본은 토론만 · plan.md는 「지금 정리」로 생성
               </span>
             </div>
           )}
-          {messages.map((m) => (
-            <ChatBubble key={m.id} message={m} typing={m.typing} />
+          {messages.map((m) => {
+            if (m.body === "__round_divider__") {
+              return (
+                <div key={m.id} className="chat-round-divider" aria-hidden>
+                  토론
+                </div>
+              );
+            }
+            if (m.typing && isReplyWaitRole(m.role)) {
+              return (
+                <ReplyWaitingBubble
+                  key={m.id}
+                  agent={m.role}
+                  label={m.label}
+                />
+              );
+            }
+            return <ChatBubble key={m.id} message={m} typing={m.typing} />;
+          })}
+          {pendingReplyAgents.map((a) => (
+            <ReplyWaitingBubble
+              key={a.id}
+              agent={a.role}
+              label={a.label}
+            />
           ))}
         </div>
       )}
 
       {error && <div className="error-banner">{error}</div>}
 
+      {chatActive && (
+        <ScrollToBottomButton
+          visible={showJumpButton}
+          onClick={scrollToBottom}
+        />
+      )}
+
       <ChatComposer
+        className={reviewMode ? "composer--review" : undefined}
         value={text}
         onChange={setText}
         onSend={handleSend}

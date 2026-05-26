@@ -14,6 +14,7 @@ export type ChatMessage = {
   label: string;
   body: string;
   sent?: boolean;
+  parallelRound?: number;
 };
 
 const LABELS: Record<string, string> = {
@@ -31,11 +32,15 @@ export function agentLabel(id: string): string {
   return LABELS[id] ?? id;
 }
 
-export function chatLineToMessage(line: {
-  role: string;
-  agent?: string | null;
-  content: string;
-}, i: number): ChatMessage {
+export function chatLineToMessage(
+  line: {
+    role: string;
+    agent?: string | null;
+    content: string;
+    parallel_round?: number;
+  },
+  i: number,
+): ChatMessage {
   if (line.role === "user") {
     return {
       id: `u-${i}`,
@@ -47,12 +52,14 @@ export function chatLineToMessage(line: {
   }
   if (line.role === "agent" && line.agent) {
     const role = line.agent as AgentRole;
+    const r = line.parallel_round ?? 1;
     return {
-      id: `a-${i}-${line.agent}`,
+      id: `a-${i}-${line.agent}-r${r}`,
       role,
       label: agentLabel(line.agent),
       body: line.content,
       sent: false,
+      parallelRound: r,
     };
   }
   return {

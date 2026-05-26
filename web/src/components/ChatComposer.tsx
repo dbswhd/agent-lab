@@ -14,6 +14,7 @@ type Props = {
   sessionAttachments?: string[];
   showAttach?: boolean;
   toolbar?: ReactNode;
+  className?: string;
 };
 
 export function ChatComposer({
@@ -28,11 +29,12 @@ export function ChatComposer({
   sessionAttachments = [],
   showAttach = true,
   toolbar,
+  className,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div className="composer">
+    <div className={className ? `composer ${className}` : "composer"}>
       {(files.length > 0 || sessionAttachments.length > 0) && (
         <div className="attachment-bar">
           {sessionAttachments.map((name) => (

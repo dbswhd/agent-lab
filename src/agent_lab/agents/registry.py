@@ -43,7 +43,9 @@ def _is_ready(agent: AgentId) -> bool:
 
         return codex_cli.is_available()
     if agent == "claude":
-        return bool(os.getenv("ANTHROPIC_API_KEY"))
+        from agent_lab import claude_cli
+
+        return claude_cli.is_available()
     if agent == "cursor":
         return cursor_agent.is_available()
     return False
@@ -60,4 +62,8 @@ def call_agent(
         raise RuntimeError(f"{label(agent)} is not configured")
     if agent == "cursor":
         return cursor_agent.respond(system, user, permissions=permissions)
+    if agent == "codex":
+        return codex_agent.respond(system, user, permissions=permissions)
+    if agent == "claude":
+        return claude_agent.respond(system, user, permissions=permissions)
     return _CALLERS[agent](system, user)

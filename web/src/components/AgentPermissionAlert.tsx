@@ -24,6 +24,10 @@ export function AgentPermissionAlert({
   const [cursorAgentLab, setCursorAgentLab] = useState(false);
   const [cursorPipeline, setCursorPipeline] = useState(false);
   const [codexCli, setCodexCli] = useState(false);
+  const [claudeTools, setClaudeTools] = useState(false);
+  const [claudeWrite, setClaudeWrite] = useState(false);
+  const [claudeAgentLab, setClaudeAgentLab] = useState(false);
+  const [claudePipeline, setClaudePipeline] = useState(false);
   const [remember, setRemember] = useState(true);
 
   useEffect(() => {
@@ -33,10 +37,15 @@ export function AgentPermissionAlert({
     setCursorAgentLab(Boolean(d.cursor?.local_agent_lab));
     setCursorPipeline(Boolean(d.cursor?.local_pipeline));
     setCodexCli(Boolean(d.codex?.cli));
+    setClaudeTools(Boolean(d.claude?.tools));
+    setClaudeWrite(Boolean(d.claude?.write));
+    setClaudeAgentLab(Boolean(d.claude?.local_agent_lab));
+    setClaudePipeline(Boolean(d.claude?.local_pipeline));
   }, [open]);
 
   const showCursor = selectedAgents.includes("cursor");
   const showCodex = selectedAgents.includes("codex");
+  const showClaude = selectedAgents.includes("claude");
 
   function handleOk() {
     const p = buildPermissionsFromForm(selectedAgents, {
@@ -44,6 +53,10 @@ export function AgentPermissionAlert({
       cursorAgentLab,
       cursorPipeline,
       codexCli,
+      claudeTools,
+      claudeWrite,
+      claudeAgentLab,
+      claudePipeline,
     });
     if (remember) saveDefaultPermissions(p);
     onConfirm(p, remember);
@@ -107,8 +120,46 @@ export function AgentPermissionAlert({
             </label>
           </fieldset>
         )}
-        {selectedAgents.includes("claude") && (
-          <p className="perm-hint">Claude는 API 대화만 사용합니다 (추가 권한 없음).</p>
+        {showClaude && (
+          <fieldset className="perm-group">
+            <legend>Claude</legend>
+            <label className="perm-check">
+              <input
+                className="mac-checkbox"
+                type="checkbox"
+                checked={claudeTools}
+                onChange={(e) => setClaudeTools(e.target.checked)}
+              />
+              도구 사용 (Claude Code — 읽기·검색)
+            </label>
+            <label className="perm-check">
+              <input
+                className="mac-checkbox"
+                type="checkbox"
+                checked={claudeWrite}
+                onChange={(e) => setClaudeWrite(e.target.checked)}
+              />
+              파일 편집 (Claude Code acceptEdits)
+            </label>
+            <label className="perm-check">
+              <input
+                className="mac-checkbox"
+                type="checkbox"
+                checked={claudeAgentLab}
+                onChange={(e) => setClaudeAgentLab(e.target.checked)}
+              />
+              agent-lab 프로젝트 접근
+            </label>
+            <label className="perm-check">
+              <input
+                className="mac-checkbox"
+                type="checkbox"
+                checked={claudePipeline}
+                onChange={(e) => setClaudePipeline(e.target.checked)}
+              />
+              quant-pipeline 접근
+            </label>
+          </fieldset>
         )}
         <label className="perm-check perm-remember">
           <input

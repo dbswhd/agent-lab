@@ -6,5 +6,5 @@ def is_available() -> bool:
     return codex_cli.is_available()
 
 
-def respond(system: str, user: str) -> str:
-    return codex_cli.invoke(system or CODEX_ROOM, user)
+def respond(system: str, user: str, *, permissions: dict | None = None) -> str:
+    return codex_cli.invoke(system or CODEX_ROOM, user, permissions=permissions)

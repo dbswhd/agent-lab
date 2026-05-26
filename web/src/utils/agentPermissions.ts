@@ -7,6 +7,12 @@ export type AgentPermissions = {
   codex?: {
     cli?: boolean;
   };
+  claude?: {
+    tools?: boolean;
+    write?: boolean;
+    local_agent_lab?: boolean;
+    local_pipeline?: boolean;
+  };
 };
 
 const STORAGE_KEY = "agent-lab-permissions-default";
@@ -52,6 +58,13 @@ export function agentsNeedingPermissionPrompt(
       needs: ["Codex CLI 실행"],
     });
   }
+  if (selected.includes("claude")) {
+    out.push({
+      id: "claude",
+      label: "Claude",
+      needs: ["Claude Code 읽기", "Claude Code 편집", "agent-lab 폴더", "quant-pipeline 폴더"],
+    });
+  }
   return out;
 }
 
@@ -62,6 +75,10 @@ export function buildPermissionsFromForm(
     cursorAgentLab: boolean;
     cursorPipeline: boolean;
     codexCli: boolean;
+    claudeTools: boolean;
+    claudeWrite: boolean;
+    claudeAgentLab: boolean;
+    claudePipeline: boolean;
   },
 ): AgentPermissions {
   const p: AgentPermissions = {};
@@ -74,6 +91,14 @@ export function buildPermissionsFromForm(
   }
   if (selected.includes("codex") && form.codexCli) {
     p.codex = { cli: true };
+  }
+  if (selected.includes("claude")) {
+    p.claude = {
+      tools: form.claudeTools,
+      write: form.claudeWrite,
+      local_agent_lab: form.claudeAgentLab,
+      local_pipeline: form.claudePipeline,
+    };
   }
   return p;
 }

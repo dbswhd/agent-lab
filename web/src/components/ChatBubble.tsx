@@ -22,12 +22,49 @@ function TypingIndicator({ variant }: { variant: "bubble" | "stream" }) {
   return (
     <span
       className={`typing-dots${variant === "stream" ? " typing-dots--stream" : ""}`}
-      aria-label="입력 중"
+      aria-hidden
     >
       <span />
       <span />
       <span />
     </span>
+  );
+}
+
+const REPLY_WAIT_ROLES = new Set<AgentRole>([
+  "cursor",
+  "codex",
+  "claude",
+  "planner",
+  "critic",
+  "scribe",
+]);
+
+export function isReplyWaitRole(role: AgentRole): boolean {
+  return REPLY_WAIT_ROLES.has(role);
+}
+
+type ReplyWaitingProps = {
+  agent: AgentRole;
+  label?: string;
+};
+
+/** Compact typing bubble tinted like the agent's chat-turn card */
+export function ReplyWaitingBubble({ agent, label }: ReplyWaitingProps) {
+  const who = label?.trim() || agent;
+  return (
+    <div
+      className="bubble-row bubble-row--received bubble-row--reply-wait"
+      role="status"
+      aria-live="polite"
+      aria-label={`${who} 답장 중`}
+    >
+      <div
+        className={`mac-bubble mac-bubble--received mac-bubble--typing mac-bubble--agent-${agent}`}
+      >
+        <TypingIndicator variant="bubble" />
+      </div>
+    </div>
   );
 }
 
@@ -72,17 +109,14 @@ export function ChatBubble({ message, typing }: Props) {
   }
 
   if (STREAM_ROLES.has(role)) {
+    if (typing) return null;
     return (
       <article className={`chat-turn chat-turn--${role}`}>
         <header className="chat-turn__head">
           <span className="chat-turn__name">{message.label}</span>
         </header>
         <div className="chat-turn__body">
-          {typing ? (
-            <TypingIndicator variant="stream" />
-          ) : (
-            <MessageMarkdown text={message.body} />
-          )}
+          <MessageMarkdown text={message.body} />
         </div>
       </article>
     );

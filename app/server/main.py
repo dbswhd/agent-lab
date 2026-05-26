@@ -28,7 +28,8 @@ for _env_file in (
     if _env_file.is_file():
         load_dotenv(_env_file)
 
-from agent_lab import codex_cli  # noqa: E402
+from agent_lab import codex_cli
+from agent_lab import claude_cli  # noqa: E402
 from agent_lab.invoke import ensure_ready, model_name, provider  # noqa: E402
 from agent_lab.agents.registry import available_agents, label as agent_label  # noqa: E402
 from agent_lab.attachments import (  # noqa: E402
@@ -37,7 +38,13 @@ from agent_lab.attachments import (  # noqa: E402
     attachments_dir,
     list_attachment_names,
 )
-from agent_lab.room import continue_room_round, run_room  # noqa: E402
+from agent_lab.room import (  # noqa: E402
+    DEFAULT_AGENT_PARALLEL_ROUNDS,
+    MAX_AGENT_PARALLEL_ROUNDS,
+    continue_room_round,
+    run_room,
+    synthesize_session_plan,
+)
 from agent_lab.session import session_dir  # noqa: E402
 from agent_lab.runner import provider_override, run_topic_with_progress  # noqa: E402
 from agent_lab.session import SESSIONS_DIR  # noqa: E402
@@ -199,7 +206,12 @@ def health() -> dict[str, Any]:
         "provider": provider() or None,
         "model": model_name() if provider() else None,
         "codex_cli": codex_cli.is_available(),
+        "claude_cli": claude_cli.is_available(),
         "sessions_dir": str(SESSIONS_DIR),
+        "room": {
+            "default_agent_parallel_rounds": DEFAULT_AGENT_PARALLEL_ROUNDS,
+            "max_agent_parallel_rounds": MAX_AGENT_PARALLEL_ROUNDS,
+        },
     }
 
 
@@ -227,6 +239,14 @@ def backends() -> dict[str, Any]:
             {
                 "id": "codex",
                 "label": "Codex (ChatGPT Plus)",
+                "ready": True,
+            }
+        )
+    if claude_cli.is_available():
+        options.append(
+            {
+                "id": "claude_code",
+                "label": "Claude Code (subscription)",
                 "ready": True,
             }
         )
@@ -365,13 +385,27 @@ def create_run(body: RunRequest) -> dict[str, Any]:
 async def create_room_run(
     topic: str = Form(...),
     agents: str = Form("[]"),
-    synthesize: bool = Form(True),
+    synthesize: bool | None = Form(None),
+    mode: str = Form("discuss"),
+    synthesize_only: bool = Form(False),
+    agent_rounds: int = Form(DEFAULT_AGENT_PARALLEL_ROUNDS),
     session_id: str | None = Form(None),
+    request_id: str | None = Form(None),
     permissions: str = Form("{}"),
+    review_mode: bool = Form(False),
     files: list[UploadFile] = File(default=[]),
 ) -> StreamingResponse:
     topic = topic.strip()
-    if not topic:
+    mode_norm = (mode or "discuss").strip().lower()
+    if mode_norm not in ("discuss", "plan"):
+        raise HTTPException(status_code=400, detail="mode must be discuss or plan")
+    if synthesize is None:
+        synthesize = mode_norm == "plan"
+    if synthesize_only and not session_id:
+        raise HTTPException(
+            status_code=400, detail="synthesize_only requires session_id"
+        )
+    if not synthesize_only and not topic:
         raise HTTPException(status_code=400, detail="topic required")
 
     try:
@@ -395,6 +429,7 @@ async def create_room_run(
         (folder / "topic.txt").write_text(topic + "\n", encoding="utf-8")
 
     saved_files = await _save_uploads(folder, files)
+    parallel_rounds = max(1, min(agent_rounds, MAX_AGENT_PARALLEL_ROUNDS))
 
     def generate():
         if not _run_lock.acquire(blocking=False):
@@ -409,14 +444,25 @@ async def create_room_run(
 
         def worker() -> None:
             try:
-                if session_id:
+                if synthesize_only and session_id:
+                    plan_md = synthesize_session_plan(
+                        folder,  # type: ignore[arg-type]
+                        on_event=on_event,
+                        permissions=perm_obj,
+                        request_id=(request_id or "").strip() or None,
+                    )
+                    result["folder"] = folder
+                    result["plan_md"] = plan_md
+                elif session_id:
                     _messages, plan_md = continue_room_round(
                         folder,  # type: ignore[arg-type]
                         topic,
                         agents=agent_list,  # type: ignore[arg-type]
                         synthesize=synthesize,
+                        parallel_rounds=parallel_rounds,
                         on_event=on_event,
                         permissions=perm_obj,
+                        review_mode=review_mode,
                     )
                     result["folder"] = folder
                     result["plan_md"] = plan_md
@@ -425,9 +471,11 @@ async def create_room_run(
                         topic,
                         agents=agent_list,  # type: ignore[arg-type]
                         synthesize=synthesize,
+                        parallel_rounds=parallel_rounds,
                         on_event=on_event,
                         session_folder=folder,
                         permissions=perm_obj,
+                        review_mode=review_mode,
                     )
                     result["folder"] = f
                     result["plan_md"] = plan_md
@@ -442,6 +490,12 @@ async def create_room_run(
                     "type": "start",
                     "topic": topic,
                     "workflow": "room.parallel",
+                    "mode": mode_norm,
+                    "synthesize": synthesize,
+                    "synthesize_only": synthesize_only,
+                    "request_id": (request_id or "").strip() or None,
+                    "agent_rounds": parallel_rounds,
+                    "review_mode": review_mode,
                     "attachments": saved_files,
                 }
             )

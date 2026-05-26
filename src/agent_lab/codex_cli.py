@@ -61,7 +61,9 @@ def _codex_env() -> dict[str, str]:
     return env
 
 
-def invoke(system: str, user: str) -> str:
+def invoke(system: str, user: str, *, permissions: dict | None = None) -> str:
+    from agent_lab.agent_permissions import codex_cli_allowed
+
     codex = resolve_codex_bin()
     if not codex:
         raise RuntimeError(
@@ -70,13 +72,16 @@ def invoke(system: str, user: str) -> str:
             "(e.g. ~/.nvm/versions/node/v24.13.1/bin/codex)"
         )
 
+    allow_tools = codex_cli_allowed(permissions)
     cwd = os.getenv("CODEX_CWD", str(PROJECT_ROOT))
     out_path = tempfile.mktemp(prefix="agent-lab-codex-", suffix=".txt")
 
-    prompt = (
-        f"{system.strip()}\n\n---\n\n{user.strip()}\n\n"
-        "Do not use tools, MCP, or shell commands. Respond with text only."
-    )
+    prompt = f"{system.strip()}\n\n---\n\n{user.strip()}"
+    if not allow_tools:
+        prompt = (
+            f"{prompt}\n\n"
+            "Do not use tools, MCP, or shell commands. Respond with text only."
+        )
 
     cmd: list[str] = [
         codex,
@@ -85,7 +90,7 @@ def invoke(system: str, user: str) -> str:
         "-C",
         cwd,
         "--sandbox",
-        "read-only",
+        "workspace-write" if allow_tools else "read-only",
         "--dangerously-bypass-approvals-and-sandbox",
         "-o",
         out_path,

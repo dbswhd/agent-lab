@@ -15,6 +15,24 @@ fn port_in_use(port: u16) -> bool {
     TcpStream::connect(("127.0.0.1", port)).is_ok()
 }
 
+fn api_health_has_peer_rounds() -> bool {
+    use std::io::{Read, Write};
+    let Ok(mut stream) = TcpStream::connect(("127.0.0.1", API_PORT)) else {
+        return false;
+    };
+    let _ = stream.set_read_timeout(Some(Duration::from_secs(2)));
+    let req = b"GET /api/health HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n";
+    if stream.write_all(req).is_err() {
+        return false;
+    }
+    let mut buf = [0u8; 4096];
+    let Ok(n) = stream.read(&mut buf) else {
+        return false;
+    };
+    let body = String::from_utf8_lossy(&buf[..n]);
+    body.contains("default_agent_parallel_rounds")
+}
+
 fn wait_for_api(max_wait_ms: u64) -> bool {
     let steps = max_wait_ms / 200;
     for _ in 0..steps {
@@ -103,6 +121,13 @@ fn sessions_dir(app: &tauri::AppHandle, root: &Path) -> PathBuf {
 
 fn start_api(app: &tauri::AppHandle, state: &ApiServer) -> Result<(), String> {
     if port_in_use(API_PORT) {
+        if cfg!(debug_assertions) && !api_health_has_peer_rounds() {
+            eprintln!(
+                "Agent Lab: port {} is in use by an older API (no 2-round room). \
+                 Stop it (e.g. quit Tauri / kill $(lsof -ti:{}) ) and run `make tauri-dev` again.",
+                API_PORT, API_PORT
+            );
+        }
         return Ok(());
     }
 

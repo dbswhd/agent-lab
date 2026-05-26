@@ -7,11 +7,17 @@ type Props = {
   selected: string[];
   disabled?: boolean;
   onToggle: (id: string) => void;
+  /** Render in chat toolbar row (compact). */
+  inline?: boolean;
 };
 
-export function AgentPicker({ agents, selected, disabled, onToggle }: Props) {
+export function AgentPicker({ agents, selected, disabled, onToggle, inline }: Props) {
   return (
-    <div className="agent-picker" role="group" aria-label="에이전트 선택">
+    <div
+      className={`agent-picker${inline ? " agent-picker--inline" : ""}`}
+      role="group"
+      aria-label="에이전트 선택"
+    >
       <div className="agent-picker-row">
         {agents
           .filter((a) => AGENTS.includes(a.id as (typeof AGENTS)[number]))
@@ -31,8 +37,8 @@ export function AgentPicker({ agents, selected, disabled, onToggle }: Props) {
                   className="agent-pill-icon"
                   src={`/icons/${a.id}.png`}
                   alt=""
-                  width={18}
-                  height={18}
+                  width={inline ? 14 : 18}
+                  height={inline ? 14 : 18}
                 />
                 <span className="agent-pill-name">{a.label}</span>
               </button>

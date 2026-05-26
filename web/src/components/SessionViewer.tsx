@@ -2,15 +2,22 @@ import { useState } from "react";
 import type { SessionDetail } from "../api/client";
 import { chatLineToMessage, parseTranscript, topicAsUserMessage } from "../utils/transcript";
 import { ChatBubble } from "./ChatBubble";
-import { Avatar } from "./Avatar";
 import { ChatPaneBody } from "./ChatPaneBody";
+import { ChatToolbar } from "./ChatToolbar";
 
 type Props = {
   session: SessionDetail | null;
   loading: boolean;
+  sidebarOpen: boolean;
+  onToggleSidebar: () => void;
 };
 
-export function SessionViewer({ session, loading }: Props) {
+export function SessionViewer({
+  session,
+  loading,
+  sidebarOpen,
+  onToggleSidebar,
+}: Props) {
   const [tab, setTab] = useState<"chat" | "plan">("chat");
 
   if (loading) {
@@ -46,15 +53,14 @@ export function SessionViewer({ session, loading }: Props) {
 
   return (
     <ChatPaneBody>
-      <header className="chat-header">
-        <Avatar role="scribe" />
-        <div className="chat-header-text">
-          <h2>{session.topic || session.id}</h2>
-          <div className="chat-header-meta">{workflow}</div>
-        </div>
-      </header>
+      <ChatToolbar
+        sidebarOpen={sidebarOpen}
+        onToggleSidebar={onToggleSidebar}
+        title={session.topic || session.id}
+        meta={workflow}
+      />
 
-      <div className="view-tabs mac-segmented" role="tablist">
+      <div className="view-tabs-bar" role="tablist">
         <button
           type="button"
           role="tab"
@@ -75,13 +81,6 @@ export function SessionViewer({ session, loading }: Props) {
         </button>
       </div>
 
-      {tab === "plan" && session.plan_md && (
-        <div className="pinned-plan">
-          <div className="pinned-plan-label">고정 — 합성 plan</div>
-          <div className="pinned-plan-body">{session.plan_md}</div>
-        </div>
-      )}
-
       {tab === "chat" ? (
         <div className="messages-scroll">
           {messages.map((m) => (
@@ -89,10 +88,8 @@ export function SessionViewer({ session, loading }: Props) {
           ))}
         </div>
       ) : (
-        <div className="messages-scroll">
-          <pre className="pinned-plan-body plan-pre">
-            {session.plan_md || "(empty)"}
-          </pre>
+        <div className="messages-scroll messages-scroll--document">
+          <pre className="plan-pre">{session.plan_md || "(empty)"}</pre>
         </div>
       )}
     </ChatPaneBody>

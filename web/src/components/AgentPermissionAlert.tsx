@@ -66,6 +66,7 @@ export function AgentPermissionAlert({
             <legend>Cursor</legend>
             <label className="perm-check">
               <input
+                className="mac-checkbox"
                 type="checkbox"
                 checked={cursorTools}
                 onChange={(e) => setCursorTools(e.target.checked)}
@@ -74,6 +75,7 @@ export function AgentPermissionAlert({
             </label>
             <label className="perm-check">
               <input
+                className="mac-checkbox"
                 type="checkbox"
                 checked={cursorAgentLab}
                 onChange={(e) => setCursorAgentLab(e.target.checked)}
@@ -82,6 +84,7 @@ export function AgentPermissionAlert({
             </label>
             <label className="perm-check">
               <input
+                className="mac-checkbox"
                 type="checkbox"
                 checked={cursorPipeline}
                 onChange={(e) => setCursorPipeline(e.target.checked)}
@@ -95,6 +98,7 @@ export function AgentPermissionAlert({
             <legend>Codex</legend>
             <label className="perm-check">
               <input
+                className="mac-checkbox"
                 type="checkbox"
                 checked={codexCli}
                 onChange={(e) => setCodexCli(e.target.checked)}
@@ -108,6 +112,7 @@ export function AgentPermissionAlert({
         )}
         <label className="perm-check perm-remember">
           <input
+            className="mac-checkbox"
             type="checkbox"
             checked={remember}
             onChange={(e) => setRemember(e.target.checked)}

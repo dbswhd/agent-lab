@@ -9,12 +9,12 @@ export type AlertButton = {
 
 function alertButtonClass(variant: AlertButton["variant"] = "default"): string {
   const classes = ["mac-alert-btn"];
-  if (variant === "default") {
-    classes.push("mac-btn-primary");
-  } else if (variant === "destructive") {
-    classes.push("mac-btn-secondary", "mac-alert-btn--destructive");
+  if (variant === "destructive") {
+    classes.push("mac-alert-btn--destructive");
+  } else if (variant === "cancel") {
+    classes.push("mac-alert-btn--cancel");
   } else {
-    classes.push("mac-btn-secondary");
+    classes.push("mac-alert-btn--default");
   }
   return classes.join(" ");
 }

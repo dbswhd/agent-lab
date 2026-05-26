@@ -133,7 +133,7 @@ export function SessionList({
         ]}
       >
         <input
-          className="mac-alert-input"
+          className="mac-alert-input mac-textfield"
           value={renameValue}
           onChange={(e) => setRenameValue(e.target.value)}
           autoFocus

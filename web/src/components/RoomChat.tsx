@@ -9,10 +9,10 @@ import {
   type ChatMessage,
 } from "../utils/transcript";
 import { AgentPicker } from "./AgentPicker";
-import { Avatar } from "./Avatar";
 import { ChatBubble } from "./ChatBubble";
 import { ChatComposer, type PendingFile } from "./ChatComposer";
 import { ChatPaneBody } from "./ChatPaneBody";
+import { ChatToolbar } from "./ChatToolbar";
 import { AgentPermissionAlert } from "./AgentPermissionAlert";
 import type { AgentPermissions } from "../utils/agentPermissions";
 import {
@@ -28,6 +28,8 @@ type Props = {
   session: SessionDetail | null;
   loading?: boolean;
   onSessionChange: (sessionId: string) => void;
+  sidebarOpen: boolean;
+  onToggleSidebar: () => void;
 };
 
 function sessionToMessages(session: SessionDetail): LiveMsg[] {
@@ -46,6 +48,8 @@ export function RoomChat({
   session,
   loading,
   onSessionChange,
+  sidebarOpen,
+  onToggleSidebar,
 }: Props) {
   const [selected, setSelected] = useState<string[]>([]);
   const [text, setText] = useState("");
@@ -212,31 +216,32 @@ export function RoomChat({
 
   return (
     <ChatPaneBody>
-      <header className="chat-header">
-        <Avatar role="you" />
-        <div className="chat-header-text">
-          <h2>{title}</h2>
-          <div className="chat-header-meta">
-            {isNew
-              ? `Cursor · Codex · Claude (${readyCount}/3 준비됨)`
-              : String(
-                  session?.run?.workflow_id ??
-                    session?.meta?.workflow ??
-                    "room.parallel",
-                )}
-          </div>
-        </div>
-      </header>
-
-      <AgentPicker
-        agents={agents}
-        selected={selected}
-        disabled={running}
-        onToggle={toggleAgent}
+      <ChatToolbar
+        sidebarOpen={sidebarOpen}
+        onToggleSidebar={onToggleSidebar}
+        title={title}
+        meta={
+          isNew
+            ? `Cursor · Codex · Claude (${readyCount}/3 준비됨)`
+            : String(
+                session?.run?.workflow_id ??
+                  session?.meta?.workflow ??
+                  "room.parallel",
+              )
+        }
+        trailing={
+          <AgentPicker
+            agents={agents}
+            selected={selected}
+            disabled={running}
+            onToggle={toggleAgent}
+            inline
+          />
+        }
       />
 
       {!isNew && (
-        <div className="view-tabs mac-segmented" role="tablist">
+        <div className="view-tabs-bar" role="tablist">
           <button
             type="button"
             role="tab"
@@ -259,8 +264,8 @@ export function RoomChat({
       )}
 
       {tab === "plan" && planMd ? (
-        <div className="messages-scroll">
-          <pre className="pinned-plan-body plan-pre">{planMd}</pre>
+        <div className="messages-scroll messages-scroll--document">
+          <pre className="plan-pre">{planMd}</pre>
         </div>
       ) : (
         <div className="messages-scroll" ref={scrollRef}>

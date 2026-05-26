@@ -4,13 +4,13 @@
 [data-theme="light"] {
   color-scheme: light;
 
-  /* Window & chrome */
-  --mac-window-bg: #ebebeb;
+  /* Window & chrome — light neutral (avoid muddy dark gray) */
+  --mac-window-bg: #f5f5f7;
   --mac-content-bg: #ffffff;
-  --mac-sidebar-bg: rgba(246, 246, 246, 0.92);
-  --mac-toolbar-bg: rgba(251, 251, 251, 0.88);
-  --mac-composer-bg: rgba(251, 251, 251, 0.94);
-  --mac-titlebar-bg: rgba(246, 246, 246, 0.96);
+  --mac-sidebar-bg: #f2f2f7;
+  --mac-toolbar-bg: #ffffff;
+  --composer-capsule-bg: #fafafa;
+  --mac-titlebar-bg: #f2f2f7;
   --mac-glass-blur: 24px;
 
   /* Fills (HIG) */
@@ -36,21 +36,75 @@
   --mac-separator-strong: rgba(0, 0, 0, 0.12);
   --mac-focus-ring: rgba(0, 122, 255, 0.45);
 
-  /* Alert (macOS 26 kit) */
-  --mac-alert-bg: rgba(246, 246, 246, 0.72);
-  --mac-alert-width: 260px;
-  --mac-alert-height: 218px;
+  /* Alert — light frosted sheet (not LG Medium dark stack) */
+  --mac-alert-bg: rgba(255, 255, 255, 0.88);
+  --mac-alert-width: 280px;
+  --mac-alert-min-height: 0;
+  --mac-alert-radius: 14px;
+  --mac-menu-surface: rgba(255, 255, 255, 0.94);
   --mac-segmented-bg: rgba(0, 0, 0, 0.02);
   --mac-control-height: 24px;
+  --mac-radius-menu: 13px;
   --mac-radius-menu-item: 5px;
+  --mac-push-button-bg: rgba(0, 0, 0, 0.05);
+  --mac-push-button-hover: rgba(0, 0, 0, 0.08);
+
+  /* Liquid Glass — Medium UI (Alert, Menu, Sidebar, Sheet, Notification) */
+  --lg-medium-tint: rgba(245, 245, 245, 0.67);
+  --lg-medium-base: #262626;
+  --lg-medium-blend: normal, color-dodge;
+  --lg-medium-shadow: 0 8px 40px rgba(0, 0, 0, 0.12);
+
+  /* Liquid Glass — Small (toolbar pills / floating chrome) */
+  --lg-small-tint-1: #f7f7f7;
+  --lg-small-tint-2: rgba(255, 255, 255, 0.5);
+  --lg-small-base: #333333;
+  --lg-small-blend: plus-darker, normal, color-dodge;
+
+  /* Glass Effect overlay (over Liquid Glass surfaces) */
+  --lg-overlay: rgba(0, 0, 0, 0.2);
+  --lg-menu-overlay: rgba(0, 0, 0, 0.004);
+
+  /* Traffic Lights (Standard) */
+  --mac-tl-size: 14px;
+  --mac-tl-close: #ff736a;
+  --mac-tl-min: #febc2e;
+  --mac-tl-zoom: #19c332;
+  --mac-tl-border: 0.5px solid rgba(0, 0, 0, 0.1);
+
+  /* Focus ring (2-layer per kit) */
+  --mac-focus-thick: 0 0 0 3.5px rgba(0, 122, 255, 0.25);
+  --mac-focus-thin: 0 0 0 1px rgba(0, 122, 255, 0.15);
+
+  /* Destructive (tinted bg per kit) */
+  --mac-destructive-bg: rgba(255, 56, 60, 0.23);
+  --mac-destructive-fg: #ff383c;
+
+  /* Sheet / Dialog trailing-default primary (Figma: Trailing Default Button) */
+  --mac-button-trailing-tint: #0d6fff;
+  --mac-button-trailing-tint-hover: #0a5fe0;
+
+  --shadow-menu: 0 0 2px rgba(0, 0, 0, 0.1), 0 0 25px rgba(0, 0, 0, 0.16);
+
+  /* Notification */
+  --mac-notification-radius: 16px;
+  --mac-notification-width: 344px;
 
   /* Messages */
-  --color-bubble-sent: var(--mac-accent);
+  /* Chat bubble — Apple Messages palette */
+  --color-bubble-sent: #007aff;
   --color-bubble-sent-text: #ffffff;
-  --color-bubble-received: #e9e9eb;
-  --color-bubble-received-text: var(--mac-label-primary);
+  --color-bubble-sender: #8e8e93;
+  --color-bubble-received: #e5e5ea;
+  --color-bubble-received-text: #000000;
+  --color-agent-bubble-cursor: #3196d2;
+  --color-agent-bubble-codex: #6e54c8;
+  --color-agent-bubble-claude: #dc6438;
+  --color-agent-bubble-cursor-text: rgba(255, 255, 255, 0.97);
+  --color-agent-bubble-codex-text: rgba(255, 255, 255, 0.97);
+  --color-agent-bubble-claude-text: rgba(255, 255, 255, 0.97);
 
-  --mac-app-bg: #c8c8cc;
+  --mac-app-bg: #e5e5ea;
   --shadow-window: 0 0 0 1px rgba(0, 0, 0, 0.23), 0 16px 48px rgba(0, 0, 0, 0.35);
   --shadow-elevated: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
@@ -60,10 +114,10 @@
 
   --mac-window-bg: #1c1c1e;
   --mac-content-bg: #141414;
-  --mac-sidebar-bg: rgba(40, 40, 42, 0.94);
-  --mac-toolbar-bg: rgba(44, 44, 46, 0.9);
-  --mac-composer-bg: rgba(44, 44, 46, 0.94);
-  --mac-titlebar-bg: rgba(40, 40, 42, 0.96);
+  --mac-sidebar-bg: #2c2c2e;
+  --mac-toolbar-bg: #323234;
+  --composer-capsule-bg: #323234;
+  --mac-titlebar-bg: #2c2c2e;
 
   --mac-fill-primary: rgba(255, 255, 255, 0.11);
   --mac-fill-secondary: rgba(255, 255, 255, 0.08);
@@ -82,11 +136,53 @@
   --mac-separator-strong: rgba(255, 255, 255, 0.14);
   --mac-focus-ring: rgba(10, 132, 255, 0.5);
 
-  --mac-alert-bg: rgba(40, 40, 42, 0.88);
+  --mac-alert-bg: rgba(44, 44, 46, 0.94);
+  --mac-menu-surface: rgba(44, 44, 46, 0.96);
   --mac-segmented-bg: rgba(255, 255, 255, 0.06);
 
-  --color-bubble-received: var(--mac-fill-primary);
-  --color-bubble-received-text: var(--mac-label-primary);
+  /* Liquid Glass — dark variants (kit doesn't ship dark; sensible defaults) */
+  --lg-medium-tint: rgba(58, 58, 60, 0.72);
+  --lg-medium-base: #0b0b0d;
+  --lg-medium-blend: normal, normal;
+  --lg-medium-shadow: 0 8px 40px rgba(0, 0, 0, 0.55);
+
+  --lg-small-tint-1: #2a2a2c;
+  --lg-small-tint-2: rgba(255, 255, 255, 0.08);
+  --lg-small-base: #0b0b0d;
+  --lg-small-blend: normal, normal, normal;
+
+  --lg-overlay: rgba(255, 255, 255, 0.04);
+  --lg-menu-overlay: rgba(255, 255, 255, 0.004);
+
+  --mac-push-button-bg: rgba(255, 255, 255, 0.05);
+  --mac-push-button-hover: rgba(255, 255, 255, 0.08);
+
+  --mac-button-trailing-tint-hover: #409cff;
+
+  --shadow-menu: 0 0 2px rgba(0, 0, 0, 0.35), 0 0 25px rgba(0, 0, 0, 0.45);
+
+  --mac-tl-border: 0.5px solid rgba(255, 255, 255, 0.15);
+
+  --mac-focus-thick: 0 0 0 3.5px rgba(10, 132, 255, 0.3);
+  --mac-focus-thin: 0 0 0 1px rgba(10, 132, 255, 0.18);
+
+  --mac-destructive-bg: rgba(255, 69, 58, 0.28);
+  --mac-destructive-fg: #ff6961;
+
+  --color-bubble-received: #3a3a3c;
+  --color-bubble-received-text: rgba(255, 255, 255, 0.92);
+  --color-bubble-sender: rgba(255, 255, 255, 0.45);
+  --color-agent-bubble-cursor: #3196d2;
+  --color-agent-bubble-codex: #6e54c8;
+  --color-agent-bubble-claude: #dc6438;
+  --color-agent-bubble-cursor-text: rgba(255, 255, 255, 0.97);
+  --color-agent-bubble-codex-text: rgba(255, 255, 255, 0.97);
+  --color-agent-bubble-claude-text: rgba(255, 255, 255, 0.97);
+
+  --agent-pill-tint-cursor: color-mix(in srgb, var(--color-agent-cursor) 26%, transparent);
+  --agent-pill-tint-codex: color-mix(in srgb, var(--color-agent-codex) 24%, transparent);
+  --agent-pill-tint-claude: color-mix(in srgb, var(--color-agent-claude) 24%, transparent);
+  --agent-pill-tint-neutral: var(--mac-fill-secondary);
 
   --mac-app-bg: #000000;
   --shadow-window: 0 0 0 1px rgba(255, 255, 255, 0.12), 0 16px 48px rgba(0, 0, 0, 0.6);
@@ -94,9 +190,9 @@
 }
 
 :root {
-  --color-agent-cursor: #7c5cff;
-  --color-agent-codex: #10a37f;
-  --color-agent-claude: #d97757;
+  --color-agent-cursor: #3196d2;
+  --color-agent-codex: #6e54c8;
+  --color-agent-claude: #dc6438;
 
   --color-bg: var(--mac-content-bg);
   --color-bg-elevated: var(--mac-toolbar-bg);
@@ -114,8 +210,14 @@
   --color-bubble-system: var(--mac-fill-tertiary);
   --color-bubble-system-text: var(--mac-label-secondary);
 
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue",
     system-ui, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+    system-ui, sans-serif;
+  /* Chat body — Claude/Cursor-style readability + SF Pro on macOS */
+  --font-message: "SF Pro Text", ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-compact: var(--font-message);
   --font-mono: "SF Mono", ui-monospace, Menlo, monospace;
 
   --text-large-title: 22px;
@@ -136,9 +238,53 @@
   --radius-large: 8px;
   --radius-bubble: 18px;
   --radius-bubble-tail: 4px;
+  --radius-bubble-cap: 20px;
   --radius-pill: 999px;
+  --composer-capsule-radius: 22px;
+  --composer-attach-size: 28px;
+  --composer-bar-height: 36px;
+  --composer-float-offset: 32px;
+  --composer-content-gap: 8px;
+  --composer-pad-x: var(--chat-thread-pad-x);
+  --composer-send-gap: 8px;
+  --composer-capsule-width-ratio: 0.667;
+  /* Capsule + gap + send — shared by composer row and chat thread */
+  --composer-cluster-width: calc(
+    (100% - var(--composer-send-gap) - var(--composer-bar-height)) *
+      var(--composer-capsule-width-ratio) + var(--composer-send-gap) +
+      var(--composer-bar-height)
+  );
 
-  --chat-list-width: 260px;
-  --bubble-max-width: min(68%, 440px);
+  --mac-titlebar-height: 40px;
+  --mac-titlebar-inset: 78px;
+
+  --text-bubble-user: 14px;
+  --text-bubble-agent: 12px;
+  --bubble-line-height: 1.6;
+  /* Legacy aliases */
+  --text-bubble: var(--text-bubble-user);
+  --leading-bubble-user: var(--bubble-line-height);
+  --leading-bubble-agent: var(--bubble-line-height);
+  --leading-bubble: var(--bubble-line-height);
+  --bubble-tracking: -0.011em;
+  --bubble-pad-y: 9px;
+  --bubble-pad-x: 13px;
+  --bubble-name-indent: 28px;
+  --bubble-radius: 20px;
+  --bubble-tail-radius: 8px;
+  --chat-thread-pad-x: 16px;
+  --chat-thread-pad-y: 10px;
+  --chat-turn-radius: 16px;
+
+  --chat-list-width: 218px;
+  --sidebar-title-size: 17px;
+  --sidebar-control-height: 22px;
+  --bubble-max-width: min(72%, 380px);
+
+  /* Matches agent-picker pill (.is-on) tints */
+  --agent-pill-tint-cursor: color-mix(in srgb, var(--color-agent-cursor) 18%, transparent);
+  --agent-pill-tint-codex: color-mix(in srgb, var(--color-agent-codex) 16%, transparent);
+  --agent-pill-tint-claude: color-mix(in srgb, var(--color-agent-claude) 16%, transparent);
+  --agent-pill-tint-neutral: var(--mac-fill-tertiary);
   --shadow-header: inset 0 -1px 0 var(--mac-separator);
 }

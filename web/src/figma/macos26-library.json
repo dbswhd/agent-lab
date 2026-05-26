@@ -20,7 +20,14 @@
       "preview": "Arrow Buttons",
       "type": "component_set",
       "key": "e5f3d8584c7b44d519765220f108c5ace4e0b157",
-      "react": ["mac-btn-primary", "mac-btn-secondary", "btn-send", "btn-attach"]
+      "react": [
+        "mac-btn-primary",
+        "mac-btn-secondary",
+        "mac-sidebar-btn",
+        "btn-send",
+        "btn-attach"
+      ],
+      "css": ["mac-push-button-bg", "mac-button-trailing-tint"]
     },
     "Color Wells": {
       "type": "component_set",
@@ -43,7 +50,8 @@
       "preview": "Leading Accessories",
       "type": "component_set",
       "key": "aa35c9b7616b8c1de187514b56952cb12eefe413",
-      "react": ["perm-form", "ChatComposer", "RunPanel"]
+      "react": ["perm-form", "ChatComposer", "RunPanel"],
+      "css": ["mac-textfield", "mac-textfield--multiline", "mac-popup", "mac-checkbox"]
     },
     "Image Wells": {
       "type": "component_set",
@@ -74,6 +82,20 @@
   "agentLabComponents": {
     "shell": ["App", "TauriTitlebar", "ThemeToggle"],
     "chat": ["RoomChat", "RunPanel", "SessionViewer", "ChatBubble", "AgentPicker"],
+    "chatBubble": {
+      "figma": "Chat bubble / Bubble right",
+      "react": "ChatBubble",
+      "css": [
+        "bubble-stack",
+        "bubble-sender",
+        "bubble",
+        "bubble-row--sent",
+        "bubble-row--received",
+        "--color-bubble-sent",
+        "--color-bubble-sent-tail",
+        "--text-bubble"
+      ]
+    },
     "cssSourceOfTruth": "web/src/styles/macos26.css",
     "layoutOnly": "web/src/styles/app.css"
   },

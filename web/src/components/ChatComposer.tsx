@@ -32,7 +32,7 @@ export function ChatComposer({
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <footer className="composer">
+    <div className="composer">
       {(files.length > 0 || sessionAttachments.length > 0) && (
         <div className="attachment-bar">
           {sessionAttachments.map((name) => (
@@ -62,49 +62,52 @@ export function ChatComposer({
         </div>
       )}
       <div className="composer-row">
-        {showAttach && (
-          <>
-            <button
-              type="button"
-              className="btn-attach"
+        <div className="composer-capsule">
+          {showAttach && (
+            <>
+              <button
+                type="button"
+                className="btn-attach"
+                disabled={disabled}
+                onClick={() => inputRef.current?.click()}
+                aria-label="파일 첨부"
+                title="파일 첨부"
+              >
+                <PlusIcon />
+              </button>
+              <input
+                ref={inputRef}
+                type="file"
+                multiple
+                className="composer-file-input"
+                onChange={(e) => {
+                  if (e.target.files?.length) onFilesAdd(e.target.files);
+                  e.target.value = "";
+                }}
+              />
+            </>
+          )}
+          <div className="composer-field">
+            <textarea
+              className="mac-textfield mac-textfield--multiline composer-input"
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder={placeholder}
               disabled={disabled}
-              onClick={() => inputRef.current?.click()}
-              aria-label="파일 첨부"
-              title="파일 첨부"
-            >
-              <PaperclipIcon />
-            </button>
-            <input
-              ref={inputRef}
-              type="file"
-              multiple
-              className="composer-file-input"
-              onChange={(e) => {
-                if (e.target.files?.length) onFilesAdd(e.target.files);
-                e.target.value = "";
+              rows={1}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  onSend();
+                }
               }}
             />
-          </>
-        )}
-        <div className="composer-field">
-          <textarea
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={placeholder}
-            disabled={disabled}
-            rows={1}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                onSend();
-              }
-            }}
-          />
-          {toolbar && <div className="composer-toolbar">{toolbar}</div>}
+            {toolbar && <div className="composer-toolbar">{toolbar}</div>}
+          </div>
         </div>
         <button
           type="button"
-          className="btn-send"
+          className="btn-send btn-send--composer"
           disabled={disabled || !value.trim()}
           onClick={onSend}
           aria-label="전송"
@@ -112,7 +115,24 @@ export function ChatComposer({
           ↑
         </button>
       </div>
-    </footer>
+    </div>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg
+      className="icon-plus"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      aria-hidden
+    >
+      <line x1="8" y1="4" x2="8" y2="12" />
+      <line x1="4" y1="8" x2="12" y2="8" />
+    </svg>
   );
 }
 

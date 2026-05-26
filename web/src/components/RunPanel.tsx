@@ -3,14 +3,16 @@ import type { BackendOption } from "../api/client";
 import { runGraph } from "../api/client";
 import { topicAsUserMessage, type ChatMessage } from "../utils/transcript";
 import { ChatBubble } from "./ChatBubble";
-import { Avatar } from "./Avatar";
 import { ChatComposer } from "./ChatComposer";
 import { ChatPaneBody } from "./ChatPaneBody";
+import { ChatToolbar } from "./ChatToolbar";
 
 type Props = {
   backends: BackendOption[];
   defaultBackend: string;
   onComplete: (sessionId: string) => void;
+  sidebarOpen: boolean;
+  onToggleSidebar: () => void;
 };
 
 const AGENT_ORDER = ["planner", "critic", "scribe"] as const;
@@ -25,7 +27,13 @@ const AGENT_META: Record<
 
 type StepState = Record<string, string>;
 
-export function RunPanel({ backends, defaultBackend, onComplete }: Props) {
+export function RunPanel({
+  backends,
+  defaultBackend,
+  onComplete,
+  sidebarOpen,
+  onToggleSidebar,
+}: Props) {
   const [topic, setTopic] = useState("");
   const [backend, setBackend] = useState(defaultBackend);
   const [running, setRunning] = useState(false);
@@ -128,13 +136,12 @@ export function RunPanel({ backends, defaultBackend, onComplete }: Props) {
 
   return (
     <ChatPaneBody>
-      <header className="chat-header">
-        <Avatar role="you" />
-        <div>
-          <h2>새 대화</h2>
-          <div className="chat-header-meta">Planner → Critic → Scribe</div>
-        </div>
-      </header>
+      <ChatToolbar
+        sidebarOpen={sidebarOpen}
+        onToggleSidebar={onToggleSidebar}
+        title="새 대화"
+        meta="Planner → Critic → Scribe"
+      />
 
       <div className="messages-scroll" ref={scrollRef}>
         {!showThread && !topic.trim() && (
@@ -177,6 +184,7 @@ export function RunPanel({ backends, defaultBackend, onComplete }: Props) {
         toolbar={
           <>
             <select
+              className="mac-popup"
               value={backend}
               onChange={(e) => setBackend(e.target.value)}
               disabled={running || backends.length === 0}

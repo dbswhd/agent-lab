@@ -18,8 +18,8 @@ import { RoomChat } from "./components/RoomChat";
 import { RunPanel } from "./components/RunPanel";
 import { SessionList } from "./components/SessionList";
 import { SessionViewer } from "./components/SessionViewer";
-import { ThemeToggle } from "./components/ThemeToggle";
-import { TauriTitlebar } from "./components/TauriTitlebar";
+import { MacTitlebar } from "./components/MacTitlebar";
+import { getSidebarOpen, setSidebarOpen } from "./utils/sidebarPrefs";
 import { isTauri } from "./theme";
 
 type Mode = "room" | "classic";
@@ -37,6 +37,13 @@ export default function App() {
   const [detail, setDetail] = useState<SessionDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [composerNew, setComposerNew] = useState(true);
+  const [sidebarOpen, setSidebarOpenState] = useState(getSidebarOpen);
+
+  function toggleSidebar() {
+    const next = !sidebarOpen;
+    setSidebarOpenState(next);
+    setSidebarOpen(next);
+  }
 
   const reloadSessions = useCallback(async () => {
     const { sessions: list } = await fetchSessions(listTab === "archived");
@@ -140,38 +147,29 @@ export default function App() {
   return (
     <div className="mac-app">
       <div className="mac-window">
-        {inTauri && <TauriTitlebar />}
+        <MacTitlebar
+          leading={
+            !inTauri ? (
+              <div className="traffic-lights" aria-hidden>
+                <span className="close" />
+                <span className="minimize" />
+                <span className="zoom" />
+              </div>
+            ) : undefined
+          }
+        />
 
-        {!inTauri && (
-          <header className="mac-titlebar">
-            <div className="traffic-lights" aria-hidden>
-              <span className="close" />
-              <span className="minimize" />
-              <span className="zoom" />
-            </div>
-            <div className="mac-titlebar-center">
-              <img
-                className="app-brand-icon"
-                src="/app-icon.png"
-                alt=""
-                width={16}
-                height={16}
-              />
-              <span className="mac-titlebar-title">Agent Lab</span>
-            </div>
-            <ThemeToggle />
-          </header>
-        )}
-
-        <div className="messenger">
-          <aside className="chat-list-pane">
+        <div
+          className={`messenger${sidebarOpen ? "" : " messenger--sidebar-collapsed"}`}
+        >
+          <aside className="chat-list-pane" aria-hidden={!sidebarOpen}>
             <div className="chat-list-header">
               <div className="sidebar-title-row">
                 <h1>{listTab === "archived" ? "보관함" : "대화"}</h1>
               </div>
               <button
                 type="button"
-                className="mac-btn-primary"
+                className="mac-btn-primary mac-sidebar-btn"
                 onClick={startNew}
               >
                 새 대화
@@ -240,15 +238,24 @@ export default function App() {
                 session={composerNew ? null : detail}
                 loading={!composerNew && loadingDetail}
                 onSessionChange={onRoomSessionChange}
+                sidebarOpen={sidebarOpen}
+                onToggleSidebar={toggleSidebar}
               />
             ) : composerNew ? (
               <RunPanel
                 backends={backends}
                 defaultBackend={defaultBackend}
                 onComplete={onRunComplete}
+                sidebarOpen={sidebarOpen}
+                onToggleSidebar={toggleSidebar}
               />
             ) : (
-              <SessionViewer session={detail} loading={loadingDetail} />
+              <SessionViewer
+                session={detail}
+                loading={loadingDetail}
+                sidebarOpen={sidebarOpen}
+                onToggleSidebar={toggleSidebar}
+              />
             )}
           </section>
         </div>

@@ -51,7 +51,7 @@
   --color-bubble-received-text: var(--mac-label-primary);
 
   --mac-app-bg: #c8c8cc;
-  --shadow-window: 0 0 0 0.5px rgba(0, 0, 0, 0.12), 0 12px 40px rgba(0, 0, 0, 0.16);
+  --shadow-window: 0 0 0 1px rgba(0, 0, 0, 0.23), 0 16px 48px rgba(0, 0, 0, 0.35);
   --shadow-elevated: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
@@ -89,7 +89,7 @@
   --color-bubble-received-text: var(--mac-label-primary);
 
   --mac-app-bg: #000000;
-  --shadow-window: 0 0 0 0.5px rgba(255, 255, 255, 0.08), 0 20px 60px rgba(0, 0, 0, 0.55);
+  --shadow-window: 0 0 0 1px rgba(255, 255, 255, 0.12), 0 16px 48px rgba(0, 0, 0, 0.6);
   --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.35);
 }
 
@@ -131,7 +131,7 @@
   --space-lg: 16px;
   --space-xl: 20px;
 
-  --radius-window: 10px;
+  --radius-window: 26px;
   --radius-control: 6px;
   --radius-large: 8px;
   --radius-bubble: 18px;

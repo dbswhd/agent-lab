@@ -32,24 +32,9 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  background: var(--color-bg-elevated);
-  border-right: 1px solid var(--color-border);
 }
 
-.chat-list-header {
-  padding: var(--space-lg);
-  border-bottom: 1px solid var(--color-border);
-  box-shadow: var(--shadow-header);
-}
-
-.chat-list-header h1 {
-  margin: 0 0 var(--space-md);
-  font-size: 1.35rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-
-/* .btn-new-chat → .mac-btn-primary in macos26.css */
+/* Sidebar header, session rows, composer visuals → macos26.css */
 
 .mode-switch {
   display: flex;
@@ -362,17 +347,7 @@ body {
 .session-list li {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-md);
   cursor: pointer;
-}
-
-.session-list li:hover {
-  background: var(--color-surface-hover);
-}
-
-.session-list li.selected {
-  background: var(--color-accent-muted);
 }
 
 .session-preview {
@@ -450,14 +425,10 @@ body {
   flex-shrink: 0;
 }
 
-/* Composer (iMessage input bar) */
+/* Composer layout — mac visuals in macos26.css */
 .composer {
   display: flex;
   align-items: flex-end;
-  gap: var(--space-md);
-  padding: var(--space-md) var(--space-xl);
-  border-top: 1px solid var(--color-border);
-  background: var(--color-bg-elevated);
 }
 
 .composer-field {
@@ -469,13 +440,7 @@ body {
 
 .composer textarea {
   width: 100%;
-  min-height: 36px;
   max-height: 120px;
-  padding: var(--space-md) var(--space-lg);
-  border: 1px solid var(--color-border);
-  border-radius: 20px;
-  background: var(--color-surface);
-  color: var(--color-text);
   font: inherit;
   resize: none;
   line-height: 1.35;
@@ -483,7 +448,6 @@ body {
 
 .composer textarea:focus {
   outline: none;
-  border-color: var(--color-accent);
 }
 
 .composer-toolbar {
@@ -494,22 +458,11 @@ body {
 }
 
 .composer select {
-  padding: var(--space-xs) var(--space-sm);
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-  font-size: 0.75rem;
+  font: inherit;
 }
 
 .btn-send {
-  width: 36px;
-  height: 36px;
   border: none;
-  border-radius: 50%;
-  background: var(--color-accent);
-  color: #fff;
-  font-size: 1.1rem;
   cursor: pointer;
   flex-shrink: 0;
 }

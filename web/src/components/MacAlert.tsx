@@ -6,6 +6,18 @@ export type AlertButton = {
   onClick: () => void;
 };
 
+function alertButtonClass(variant: AlertButton["variant"] = "default"): string {
+  const classes = ["mac-alert-btn"];
+  if (variant === "default") {
+    classes.push("mac-btn-primary");
+  } else if (variant === "destructive") {
+    classes.push("mac-btn-secondary", "mac-alert-btn--destructive");
+  } else {
+    classes.push("mac-btn-secondary");
+  }
+  return classes.join(" ");
+}
+
 type Props = {
   open: boolean;
   title: string;
@@ -60,7 +72,7 @@ export function MacAlert({
             <button
               key={b.label}
               type="button"
-              className={`mac-alert-btn mac-alert-btn--${b.variant ?? "default"}`}
+              className={alertButtonClass(b.variant)}
               onClick={b.onClick}
             >
               {b.label}

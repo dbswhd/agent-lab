@@ -1,0 +1,82 @@
+{
+  "library": "macOS 26",
+  "hostFileKey": "qItC49QfAY1jfSIcDAsNK1",
+  "communitySource": "https://www.figma.com/community/file/1543337041090580818",
+  "componentCount": 71,
+  "folders": {
+    "_Kit": { "preview": "Header", "type": "component", "key": "3cee6655ae1b19f60e536a1ec9182c5d72e03d31" },
+    "Alerts": {
+      "preview": "Alert",
+      "type": "component_set",
+      "key": "461d349170ba2ab5476ecdd1d64538f01fb3a80b",
+      "react": "MacAlert"
+    },
+    "Boxes": {
+      "preview": "Group Box",
+      "type": "component",
+      "key": "ca15aaeefb342228e566f19f34fbd635d02916fa"
+    },
+    "Buttons": {
+      "preview": "Arrow Buttons",
+      "type": "component_set",
+      "key": "e5f3d8584c7b44d519765220f108c5ace4e0b157",
+      "react": ["mac-btn-primary", "btn-send", "btn-attach"]
+    },
+    "Color Wells": {
+      "type": "component_set",
+      "key": "c679e3e9eeffc04d9f62ac469f1be35b1dee6db0"
+    },
+    "Combo Boxes": {
+      "type": "component_set",
+      "key": "df4dd412660eab8e1526f2624e32cbce1614d2e5"
+    },
+    "Dialogs": {
+      "preview": "Large",
+      "type": "component",
+      "key": "93db76c27bb2b00bacbc8c74b8e563f8f17a1563"
+    },
+    "Disclosure Controls": {
+      "type": "component_set",
+      "key": "5a18b43936f37731c081e402dab02963cb4949fa"
+    },
+    "Forms": {
+      "preview": "Leading Accessories",
+      "type": "component_set",
+      "key": "aa35c9b7616b8c1de187514b56952cb12eefe413",
+      "react": ["perm-form", "ChatComposer"]
+    },
+    "Image Wells": {
+      "type": "component_set",
+      "key": "f3c9133e563effe2d5ac25bb043be8e60dc60094"
+    },
+    "Lists and Tables": {
+      "type": "component_set",
+      "key": "8babc5e5c984da6d3d3ea8156076d3ad3afc5531",
+      "react": ["SessionList", "messages-scroll"]
+    },
+    "Materials": {
+      "preview": "Liquid Glass - Large",
+      "type": "component_set",
+      "key": "a927a75e15b8c6aa0c8ff0562bfb2cdcc3f620ff",
+      "css": ["--mac-glass-blur", "backdrop-filter"]
+    },
+    "Menu Bar and Dock": {
+      "type": "component_set",
+      "key": "785997e0ee38a8845aa3b025222edad63111cfac"
+    },
+    "Menus": {
+      "preview": "Header",
+      "type": "component",
+      "key": "62b36c5c9ff607fe15a409b71eb8adb985e2731c",
+      "react": "mac-context-menu"
+    }
+  },
+  "agentLabPriority": [
+    "Alerts",
+    "Buttons",
+    "Menus",
+    "Forms",
+    "Lists and Tables",
+    "Materials"
+  ]
+}

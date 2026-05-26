@@ -1,0 +1,13 @@
+{
+  "topic": "Agent Lab Codex 연동 스모크 테스트",
+  "created_at": "2026-05-26T10:42:25.363129+00:00",
+  "model": "codex/chatgpt (gpt-5.5 default)",
+  "nodes": [
+    "planner",
+    "critic",
+    "scribe"
+  ],
+  "max_llm_calls": 3,
+  "archived": true,
+  "archived_at": "2026-05-26T11:49:52.969692+00:00"
+}

@@ -1,0 +1,21 @@
+id: room.parallel
+version: 1
+description: Cursor, Codex, Claude respond in parallel; Scribe synthesizes plan.md
+inputs:
+  required: [topic]
+steps:
+  - id: user_message
+    role: human
+    output: chat.jsonl
+  - id: parallel_round
+    role: cursor,codex,claude
+    parallel: true
+    output: chat.jsonl
+  - id: synthesize
+    role: scribe
+    input: [chat.jsonl]
+    output: plan.md
+policies:
+  tools: none
+  max_llm_calls: 4
+  tier: T0_TEXT_ONLY

@@ -1,0 +1,12 @@
+{
+  "workflow_id": "room.parallel",
+  "topic": "피그마에 있는 mac os 26 컴포넌트를 내보내는 법",
+  "created_at": "2026-05-26T16:02:09.343550+00:00",
+  "agents": [
+    "cursor",
+    "codex",
+    "claude"
+  ],
+  "status": "completed",
+  "message_count": 4
+}

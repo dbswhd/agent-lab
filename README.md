@@ -230,6 +230,9 @@ A. 학습 초반은 가능. **본격 실험은 분리 repo** 권장 (위 2절).
 | `docs/01-roles-and-prompts.md` | Planner/Critic/Scribe system prompt |
 | `docs/02-langgraph-tutorial.md` | 노드·edge·checkpoint 예제 |
 | `docs/03-session-format.md` | `meta.json` 스키마 |
+| `docs/02-ui-ux-handoff.md` | UI/UX · Figma Mac/iOS Kit |
+| `docs/04-multi-agent-room.md` | **Cursor·Codex·Claude** 3자 룸 |
+| `docs/01-CONTROLLED-WORKFLOW-SYSTEM.md` | 통제 워크플로 설계 |
 | `docs/04-export-to-pipeline.md` | plan → TASK md 변환 규칙 |
 
 ---
@@ -239,3 +242,54 @@ A. 학습 초반은 가능. **본격 실험은 분리 repo** 권장 (위 2절).
 **Agent Lab** = 새 repo + 세션 폴더 + 3역할 그래프 + `plan.md` 산출.  
 **pipeline** = 그 plan을 Human/Conductor가 검토한 뒤 **실행**하는 곳.  
 지금 단계에선 **톡방 전체 자동화**보다 **“주제 → plan.md” 한 줄기**만 완성하면 교육 목표 달성입니다.
+
+---
+
+## Quick start (구현됨)
+
+### 데스크톱 앱 (quant-control 스타일)
+
+```bash
+cd ~/Projects/agent-lab
+make install
+cp .env.example .env
+npm i -g @openai/codex && codex login   # Plus → AGENT_LAB_PROVIDER=codex
+make tauri-dev
+```
+
+설치 파일 빌드: `make tauri-build` → `web/src-tauri/target/release/bundle/macos/Agent Lab.app`
+
+### CLI / 브라우저
+
+```bash
+make dev                    # 브라우저 http://127.0.0.1:5173
+python -m agent_lab run "주제"
+```
+
+| `AGENT_LAB_PROVIDER` | 인증 | 비고 |
+|----------------------|------|------|
+| `codex` | `codex login` (ChatGPT/Plus) | Plus ≠ `OPENAI_API_KEY` 과금 |
+| `openai` | Platform API 키 | Billing 별도 |
+| `anthropic` | Anthropic API 키 | |
+
+**산출물** (`sessions/<date>-<slug>/`):
+
+| 파일 | 내용 |
+|------|------|
+| `topic.txt` | 입력 주제 |
+| `transcript.md` | Planner / Critic / Scribe 전체 로그 |
+| `plan.md` | Scribe 최종 기획안 |
+| `meta.json` | 모델·타임스탬프 메타 |
+
+**Week-1 단일 호출 테스트:** `python hello.py "주제"`
+
+---
+
+## Desktop-style app (quant-control-like shell)
+
+```bash
+make install   # first time
+make dev       # API :8765 + UI http://127.0.0.1:5173
+```
+
+See [docs/APP.md](docs/APP.md) for API, design handoff (Figma/Stitch), and comparison to `quant-control-app`.

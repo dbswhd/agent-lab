@@ -1,0 +1,93 @@
+# Room transcript
+
+**Topic:** 피그마에 있는 mac os 26 컴포넌트를 내보내는 법
+
+
+## Human
+
+피그마에 있는 mac os 26 컴포넌트를 내보내는 법
+
+## Claude
+
+몇 가지 확인이 필요한 부분이 있어요.
+
+**"mac os 26 컴포넌트"가 정확히 뭔지부터 짚고 싶어요.**
+
+- Apple이 공식 배포한 Figma 커뮤니티 파일인가요?
+- 아니면 서드파티가 만든 macOS UI 키트인가요?
+- 혹시 macOS 26 = **macOS Tahoe** (2025 베타) 관련 리소스를 말하는 건가요?
+
+이게 중요한 이유는, **커뮤니티 파일은 라이선스에 따라 내보내기가 제한**될 수 있거든요. 특히 Apple 공식 파일은 편집/복사 잠금이 걸려 있는 경우가 많아요.
+
+---
+
+**일반적인 내보내기 흐름은 이렇습니다:**
+
+컴포넌트 선택 → 우측 패널 하단 `Export` 섹션 → 포맷(PNG/SVG/PDF 등) 선택 → Export 버튼
+
+근데 막히는 지점이 어디예요?
+- 파일 자체가 View-only라 선택이 안 되는 건지
+- Export 옵션이 아예 안 보이는 건지
+- 내보내기는 되는데 품질/포맷 문제인지
+
+상황을 알면 더 정확하게 도울 수 있어요.
+
+## Codex
+
+먼저 확인할 건 “컴포넌트 자체를 내보내려는지” 아니면 “아이콘/이미지 자산만 내보내려는지”예요. Figma 컴포넌트는 그대로 macOS 컴포넌트 코드로 export 되지는 않고, 보통은 디자인 자산 + 스펙을 내보냅니다.
+
+자산 export라면:
+
+1. Figma에서 macOS 26 컴포넌트 인스턴스 선택
+2. 오른쪽 패널 아래 `Export` 섹션 열기
+3. `+` 클릭
+4. 포맷 선택: `SVG`, `PDF`, `PNG`
+   - 아이콘/벡터: `SVG` 또는 macOS용이면 `PDF`
+   - 스크린샷/래스터 이미지: `PNG`
+5. `Export [이름]` 클릭
+
+컴포넌트가 여러 variant로 되어 있으면, 각 variant를 따로 선택해서 export하거나, export할 프레임을 하나 만들어 variant들을 정리한 뒤 프레임 단위로 내보내는 게 깔끔합니다.
+
+개발용으로 넘기는 목적이면 `Export`보다 먼저 확인할 것:
+
+- 색상 토큰이 실제 macOS 시스템 컬러인지
+- Auto Layout 값이 명확한지
+- radius, blur, opacity, stroke 값이 Dev Mode에서 읽히는지
+- 아이콘은 SVG/PDF로 따로 export 가능한지
+
+SwiftUI/AppKit으로 옮길 거면 Figma의 컴포넌트를 “코드로 변환”한다기보다, Dev Mode에서 padding, spacing, color, typography 값을 보고 SwiftUI 컴포넌트로 재구현하는 흐름이 맞습니다. 이미지 자산만 `Assets.xcassets`에 넣고, 버튼/셀/패널 같은 건 코드로 만드는 쪽이 유지보수하기 좋습니다.
+
+## Cursor
+
+“내보내기”가 **PNG/SVG로 뽑기**인지, **코드·토큰으로 이식**인지에 따라 방법이 완전히 달라요. Agent Lab 쪽은 이미 [공식 macOS 26 키트](https://www.figma.com/community/file/1543337041090580818/macos-26)를 기준으로 `tokens.css` / `macos26.css`를 맞춰둔 상태라, 후자(개발 이식) 기준으로 설명할게요.
+
+**1. 키트부터 내 파일로 가져오기**
+
+Community 파일 열기 → **Duplicate** → 내 Drafts/팀 프로젝트에 복사.  
+또는 내 디자인 파일에서 **Assets → Libraries → macOS 26** 켜서 컴포넌트를 인스턴스로 끌어다 쓰기.  
+SF Symbols 최신 버전 없으면 아이콘이 깨져 보일 수 있어요.
+
+**2. 에셋(PNG/SVG)로 내보내기**
+
+컴포넌트(또는 프레임) 선택 → 우측 **Export** → `+` → PNG/SVG/PDF → **Export**.  
+`component set`(Alerts, Buttons 등)은 variant 하나씩 골라서 내보내야 함.  
+Liquid Glass·blur·vibrancy는 **래스터/SVG로는 거의 안 살아남음** — 이건 에셋 export보다 CSS/Dev Mode 쪽이 맞아요.
+
+**3. 개발용으로 “내보내기” (Agent Lab에 맞는 쪽)**
+
+Figma **Dev Mode** 켜고 컴포넌트 선택 → spacing, radius, color, CSS snippet 복사.  
+Variables 탭에서 **Colors / Materials** 컬렉션 확인 → `tokens.css` 변수명과 맞추기 (`docs/02-ui-ux-handoff.md`에도 같은 흐름 적혀 있음).  
+`web/src/figma/macos26-library.json`은 폴더→코드 매핑표라, 예를 들어 `Alerts` → `MacAlert`, `Materials` → `--mac-glass-blur` 식으로 우선순위 잡으면 됨.
+
+**4. 한 번에 많이 뽑고 싶을 때**
+
+Figma **REST API** / **Export kit** 플러그인 / **Variables export** 플러그인.  
+다만 Apple 키트는 **Apple Design Resources 라이선스** 범위 안에서만 쓸 수 있고, 컴포넌트를 잘라서 재배포하는 용도는 보통 금지에 가깝습니다. 우리처럼 앱 UI에 **스타일·레이아웃 참고**하는 건 OK, **에셋 팩으로 재판매**는 아님.
+
+**5. 현실적인 추천 (이 레포 기준)**
+
+macOS 26 전체를 코드로 자동 변환하려 하지 말고,  
+**Materials + Buttons + Lists + Forms + Alerts**만 Dev Mode로 뽑아서 `macos26.css`에 붙이는 게 제일 빠릅니다.  
+이미 Alert·glass 쪽은 CSS에 반영돼 있어서, 나머지도 같은 패턴으로 가면 됩니다.
+
+원하시는 게 **디자이너용 PNG export**인지, **Cursor/Codex가 코드에 넣을 CSS·토큰 export**인지 알려주시면 그 경로만 짧게 단계별로 적어줄게요.

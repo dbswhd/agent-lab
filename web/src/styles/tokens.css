@@ -1,0 +1,144 @@
+/* macOS Kit — semantic colors (light default, dark via data-theme) */
+
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* Window & chrome */
+  --mac-window-bg: #ebebeb;
+  --mac-content-bg: #ffffff;
+  --mac-sidebar-bg: rgba(246, 246, 246, 0.92);
+  --mac-toolbar-bg: rgba(251, 251, 251, 0.88);
+  --mac-composer-bg: rgba(251, 251, 251, 0.94);
+  --mac-titlebar-bg: rgba(246, 246, 246, 0.96);
+  --mac-glass-blur: 24px;
+
+  /* Fills (HIG) */
+  --mac-fill-primary: rgba(0, 0, 0, 0.07);
+  --mac-fill-secondary: rgba(0, 0, 0, 0.05);
+  --mac-fill-tertiary: rgba(0, 0, 0, 0.03);
+  --mac-fill-quaternary: rgba(0, 0, 0, 0.02);
+
+  /* Labels */
+  --mac-label-primary: rgba(0, 0, 0, 0.88);
+  --mac-label-secondary: rgba(0, 0, 0, 0.5);
+  --mac-label-tertiary: rgba(0, 0, 0, 0.32);
+
+  /* System */
+  --mac-accent: #007aff;
+  --mac-accent-hover: #0066d6;
+  --mac-accent-muted: rgba(0, 122, 255, 0.14);
+  --mac-destructive: #ff3b30;
+  --mac-success: #34c759;
+  --mac-warning: #ff9500;
+
+  --mac-separator: rgba(0, 0, 0, 0.09);
+  --mac-separator-strong: rgba(0, 0, 0, 0.12);
+  --mac-focus-ring: rgba(0, 122, 255, 0.45);
+
+  /* Alert (macOS 26 kit) */
+  --mac-alert-bg: rgba(246, 246, 246, 0.72);
+  --mac-alert-width: 260px;
+  --mac-alert-height: 218px;
+  --mac-segmented-bg: rgba(0, 0, 0, 0.02);
+  --mac-control-height: 24px;
+  --mac-radius-menu-item: 5px;
+
+  /* Messages */
+  --color-bubble-sent: var(--mac-accent);
+  --color-bubble-sent-text: #ffffff;
+  --color-bubble-received: #e9e9eb;
+  --color-bubble-received-text: var(--mac-label-primary);
+
+  --mac-app-bg: #c8c8cc;
+  --shadow-window: 0 0 0 0.5px rgba(0, 0, 0, 0.12), 0 12px 40px rgba(0, 0, 0, 0.16);
+  --shadow-elevated: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --mac-window-bg: #1c1c1e;
+  --mac-content-bg: #141414;
+  --mac-sidebar-bg: rgba(40, 40, 42, 0.94);
+  --mac-toolbar-bg: rgba(44, 44, 46, 0.9);
+  --mac-composer-bg: rgba(44, 44, 46, 0.94);
+  --mac-titlebar-bg: rgba(40, 40, 42, 0.96);
+
+  --mac-fill-primary: rgba(255, 255, 255, 0.11);
+  --mac-fill-secondary: rgba(255, 255, 255, 0.08);
+  --mac-fill-tertiary: rgba(255, 255, 255, 0.05);
+  --mac-fill-quaternary: rgba(255, 255, 255, 0.03);
+
+  --mac-label-primary: rgba(255, 255, 255, 0.92);
+  --mac-label-secondary: rgba(255, 255, 255, 0.52);
+  --mac-label-tertiary: rgba(255, 255, 255, 0.34);
+
+  --mac-accent: #0a84ff;
+  --mac-accent-hover: #409cff;
+  --mac-accent-muted: rgba(10, 132, 255, 0.2);
+
+  --mac-separator: rgba(255, 255, 255, 0.09);
+  --mac-separator-strong: rgba(255, 255, 255, 0.14);
+  --mac-focus-ring: rgba(10, 132, 255, 0.5);
+
+  --mac-alert-bg: rgba(40, 40, 42, 0.88);
+  --mac-segmented-bg: rgba(255, 255, 255, 0.06);
+
+  --color-bubble-received: var(--mac-fill-primary);
+  --color-bubble-received-text: var(--mac-label-primary);
+
+  --mac-app-bg: #000000;
+  --shadow-window: 0 0 0 0.5px rgba(255, 255, 255, 0.08), 0 20px 60px rgba(0, 0, 0, 0.55);
+  --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+:root {
+  --color-agent-cursor: #7c5cff;
+  --color-agent-codex: #10a37f;
+  --color-agent-claude: #d97757;
+
+  --color-bg: var(--mac-content-bg);
+  --color-bg-elevated: var(--mac-toolbar-bg);
+  --color-surface: var(--mac-fill-secondary);
+  --color-surface-hover: var(--mac-fill-primary);
+  --color-border: var(--mac-separator);
+  --color-text: var(--mac-label-primary);
+  --color-text-muted: var(--mac-label-secondary);
+  --color-text-secondary: var(--mac-label-tertiary);
+  --color-accent: var(--mac-accent);
+  --color-accent-muted: var(--mac-accent-muted);
+  --color-success: var(--mac-success);
+  --color-error: var(--mac-destructive);
+  --color-typing: var(--mac-label-tertiary);
+  --color-bubble-system: var(--mac-fill-tertiary);
+  --color-bubble-system-text: var(--mac-label-secondary);
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+    system-ui, sans-serif;
+  --font-mono: "SF Mono", ui-monospace, Menlo, monospace;
+
+  --text-large-title: 22px;
+  --text-title2: 15px;
+  --text-headline: 13px;
+  --text-body: 13px;
+  --text-caption: 11px;
+  --text-footnote: 10px;
+
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 20px;
+
+  --radius-window: 10px;
+  --radius-control: 6px;
+  --radius-large: 8px;
+  --radius-bubble: 18px;
+  --radius-bubble-tail: 4px;
+  --radius-pill: 999px;
+
+  --chat-list-width: 260px;
+  --bubble-max-width: min(68%, 440px);
+  --shadow-header: inset 0 -1px 0 var(--mac-separator);
+}

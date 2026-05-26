@@ -1,0 +1,81 @@
+/**
+ * macOS 26 — Figma CSS export (reference only, not imported by app)
+ * Paste from Figma layer Copy CSS · qItC49QfAY1jfSIcDAsNK1
+ */
+
+/* Alert */
+/* 오토레이아웃 */
+display: flex;
+flex-direction: column;
+align-items: center;
+padding: 20px 16px 16px;
+gap: 16px;
+isolation: isolate;
+position: relative;
+width: 260px;
+height: 218px;
+filter: drop-shadow(0px 0px 1px rgba(0, 0, 0, 0.2)) drop-shadow(0px 17px 45px rgba(0, 0, 0, 0.5));
+border-radius: 10px;
+
+/* Push Button */
+display: flex;
+flex-direction: column;
+justify-content: center;
+align-items: center;
+padding: 0px 16px;
+width: 67px;
+height: 24px;
+border-radius: 6px;
+
+/* Segmented Control */
+display: flex;
+flex-direction: row;
+justify-content: center;
+align-items: center;
+padding: 0px;
+width: 108px;
+height: 24px;
+background: rgba(0, 0, 0, 0.02);
+border-radius: 6px;
+
+/* Menu */
+display: flex;
+flex-direction: column;
+align-items: flex-start;
+padding: 5px 12px;
+width: 250px;
+
+/* Item (menu row) */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 0px 10px;
+height: 24px;
+border-radius: 5px;
+
+/* Text Field */
+display: flex;
+flex-direction: row;
+align-items: center;
+padding: 0px 4px 0px 8px;
+height: 24px;
+
+/* Checkboxes */
+display: flex;
+flex-direction: row;
+align-items: center;
+gap: 3px;
+height: 16px;
+
+/* Tooltip / Materials/Thick */
+background: rgba(246, 246, 246, 0.72);
+box-shadow: 0px 1px 3px rgba(0, 0, 0, 0.2);
+backdrop-filter: blur(10px);
+border-radius: 1px;
+
+/* Window */
+background: #FFFFFF;
+box-shadow: 0px 0px 0px 1px rgba(0, 0, 0, 0.23), 0px 16px 48px rgba(0, 0, 0, 0.35);
+border-radius: 26px;
+
+/* See macos26.css for app mappings */

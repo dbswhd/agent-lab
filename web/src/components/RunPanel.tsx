@@ -4,6 +4,7 @@ import { runGraph } from "../api/client";
 import { topicAsUserMessage, type ChatMessage } from "../utils/transcript";
 import { ChatBubble } from "./ChatBubble";
 import { Avatar } from "./Avatar";
+import { ChatComposer } from "./ChatComposer";
 import { ChatPaneBody } from "./ChatPaneBody";
 
 type Props = {
@@ -140,8 +141,8 @@ export function RunPanel({ backends, defaultBackend, onComplete }: Props) {
           <div className="empty-chat">
             주제를 입력하고 보내세요.
             <br />
-            <span style={{ fontSize: "0.85rem", opacity: 0.8 }}>
-              iMessage · Instagram DM · Telegram 스타일
+            <span className="empty-chat-hint">
+              Planner → Critic → Scribe 순서로 실행됩니다
             </span>
           </div>
         )}
@@ -163,23 +164,18 @@ export function RunPanel({ backends, defaultBackend, onComplete }: Props) {
 
       {error && <div className="error-banner">{error}</div>}
 
-      <footer className="composer">
-        <div className="composer-field">
-          <textarea
-            id="topic"
-            value={topic}
-            onChange={(e) => setTopic(e.target.value)}
-            placeholder="메시지"
-            disabled={running}
-            rows={1}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleRun();
-              }
-            }}
-          />
-          <div className="composer-toolbar">
+      <ChatComposer
+        value={topic}
+        onChange={setTopic}
+        onSend={handleRun}
+        disabled={running}
+        placeholder="메시지"
+        files={[]}
+        onFilesAdd={() => {}}
+        onFileRemove={() => {}}
+        showAttach={false}
+        toolbar={
+          <>
             <select
               value={backend}
               onChange={(e) => setBackend(e.target.value)}
@@ -195,21 +191,10 @@ export function RunPanel({ backends, defaultBackend, onComplete }: Props) {
                 </option>
               ))}
             </select>
-            <span style={{ color: "var(--color-text-muted)" }}>
-              ⏎ 전송 · ⇧⏎ 줄바꿈
-            </span>
-          </div>
-        </div>
-        <button
-          type="button"
-          className="btn-send"
-          disabled={running || !topic.trim()}
-          onClick={handleRun}
-          aria-label="전송"
-        >
-          ↑
-        </button>
-      </footer>
+            <span className="composer-hint">⏎ 전송 · ⇧⏎ 줄바꿈</span>
+          </>
+        }
+      />
     </ChatPaneBody>
   );
 }

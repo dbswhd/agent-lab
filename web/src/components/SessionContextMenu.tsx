@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 
 export type MenuAction = "archive" | "unarchive" | "rename" | "delete";
 
@@ -34,7 +35,7 @@ export function SessionContextMenu({
     };
   }, [onClose]);
 
-  return (
+  return createPortal(
     <div
       ref={ref}
       className="mac-context-menu"
@@ -63,6 +64,7 @@ export function SessionContextMenu({
       >
         삭제…
       </button>
-    </div>
+    </div>,
+    document.body,
   );
 }

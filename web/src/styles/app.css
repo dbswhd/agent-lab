@@ -17,7 +17,8 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Telegram-style: list | conversation */
+/* Layout only — macOS 26 kit visuals live in macos26.css */
+
 .messenger {
   display: flex;
   flex: 1;
@@ -34,86 +35,8 @@ body {
   min-height: 0;
 }
 
-/* Sidebar header, session rows, composer visuals → macos26.css */
-
 .mode-switch {
   display: flex;
-  margin-top: var(--space-sm);
-}
-
-.agent-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-xl);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.agent-chips-label {
-  font-size: var(--text-caption);
-  font-weight: 600;
-  color: var(--color-text-muted);
-  align-self: center;
-  margin-right: var(--space-xs);
-}
-
-.agent-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: var(--space-xs) var(--space-md);
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--color-border);
-  background: var(--mac-fill-secondary, var(--color-surface));
-  color: var(--color-text);
-  font-size: 0.8rem;
-  cursor: pointer;
-}
-
-.agent-chip-state {
-  font-size: 0.65rem;
-  font-weight: 600;
-  opacity: 0.75;
-  padding: 1px 5px;
-  border-radius: 4px;
-  background: var(--mac-fill-tertiary, rgba(0, 0, 0, 0.06));
-}
-
-.agent-chip.on {
-  color: #fff;
-  border-color: transparent;
-}
-
-.agent-chip.on .agent-chip-state {
-  background: rgba(255, 255, 255, 0.22);
-  opacity: 1;
-}
-
-.agent-chip:not(.on):not(.off) .agent-chip-state {
-  color: var(--color-text-muted);
-}
-
-.agent-chip--cursor.on {
-  background: var(--color-agent-cursor);
-}
-.agent-chip--codex.on {
-  background: var(--color-agent-codex);
-}
-.agent-chip--claude.on {
-  background: var(--color-agent-claude);
-}
-
-.agent-chip.off {
-  opacity: 0.5;
-  cursor: not-allowed;
-  color: var(--color-text-muted);
-}
-
-.chat-list-status {
-  padding: var(--space-sm) var(--space-lg);
-  font-size: 0.72rem;
-  color: var(--color-text-muted);
-  border-bottom: 1px solid var(--color-border);
 }
 
 .chat-pane {
@@ -122,7 +45,6 @@ body {
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  background: var(--color-bg);
   overflow: hidden;
 }
 
@@ -134,53 +56,39 @@ body {
   overflow: hidden;
 }
 
+.chat-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
 .chat-header-text {
   flex: 1;
   min-width: 0;
 }
 
-.chat-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-md);
-  padding: var(--space-md) var(--space-xl);
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-bg-elevated);
-  box-shadow: var(--shadow-header);
-}
-
 .chat-header h2 {
   margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
   flex: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.chat-header-meta {
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-}
-
 .messages-scroll {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: var(--space-md) var(--space-lg);
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
 }
 
-/* Bubbles */
 .bubble-row {
   display: flex;
   align-items: flex-end;
   gap: 6px;
   max-width: 100%;
-  margin-bottom: 0;
 }
 
 .bubble-row .avatar--icon-wrap,
@@ -209,48 +117,12 @@ body {
   gap: 2px;
 }
 
-.bubble-sender {
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: var(--color-text-secondary);
-  margin-left: var(--space-md);
-}
-
-.bubble {
-  padding: var(--space-md) var(--space-lg);
-  border-radius: var(--radius-bubble);
-  font-size: 0.95rem;
-  line-height: 1.45;
-  word-break: break-word;
-}
-
-.bubble-row--sent .bubble {
-  background: var(--color-bubble-sent);
-  color: var(--color-bubble-sent-text);
-  border-bottom-right-radius: var(--radius-bubble-tail);
-}
-
-.bubble-row--received .bubble {
-  background: var(--color-bubble-received);
-  color: var(--color-bubble-received-text);
-  border-bottom-left-radius: var(--radius-bubble-tail);
-}
-
-.bubble--system {
-  background: var(--color-bubble-system);
-  color: var(--color-bubble-system-text);
-  font-size: 0.75rem;
-  padding: var(--space-xs) var(--space-md);
-  border-radius: var(--radius-pill);
-}
-
 .bubble-body {
   white-space: pre-wrap;
 }
 
 .bubble--typing {
   min-width: 56px;
-  padding: var(--space-md) var(--space-lg);
 }
 
 .typing-dots {
@@ -264,13 +136,13 @@ body {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--color-typing);
   animation: typing 1.2s infinite ease-in-out;
 }
 
 .typing-dots span:nth-child(2) {
   animation-delay: 0.15s;
 }
+
 .typing-dots span:nth-child(3) {
   animation-delay: 0.3s;
 }
@@ -288,54 +160,6 @@ body {
   }
 }
 
-.avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.65rem;
-  font-weight: 700;
-  flex-shrink: 0;
-  color: #fff;
-}
-
-.avatar--you {
-  background: var(--color-accent);
-}
-
-.avatar--cursor {
-  background: var(--color-agent-cursor);
-}
-.avatar--codex {
-  background: var(--color-agent-codex);
-}
-.avatar--claude {
-  background: var(--color-agent-claude);
-}
-.avatar--planner,
-.avatar--critic,
-.avatar--scribe {
-  background: var(--gradient-avatar);
-}
-
-.bubble--cursor.bubble--received {
-  background: color-mix(in srgb, var(--color-agent-cursor) 28%, var(--color-bubble-received));
-}
-.bubble--codex.bubble--received {
-  background: color-mix(in srgb, var(--color-agent-codex) 28%, var(--color-bubble-received));
-}
-.bubble--claude.bubble--received {
-  background: color-mix(in srgb, var(--color-agent-claude) 28%, var(--color-bubble-received));
-}
-
-.avatar--system {
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-}
-
-/* DM list (Instagram / Telegram) */
 .session-list {
   list-style: none;
   margin: 0;
@@ -356,79 +180,20 @@ body {
 }
 
 .session-preview-title {
-  font-size: 0.95rem;
-  font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .session-preview-sub {
-  font-size: 0.8rem;
-  color: var(--color-text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   margin-top: 2px;
 }
 
-.session-action {
-  flex-shrink: 0;
-  padding: 2px 8px;
-  font-size: 0.65rem;
-  font-weight: 600;
-  border-radius: var(--radius-control);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-
-.session-list li:hover .session-action,
-.session-list li.selected .session-action {
-  opacity: 1;
-}
-
-.session-action:hover {
-  background: var(--color-surface-hover);
-  color: var(--color-text);
-}
-
-.chat-list-empty {
-  padding: var(--space-lg);
-  font-size: 0.85rem;
-  color: var(--color-text-muted);
-}
-
-.list-tabs {
-  margin-top: var(--space-sm);
-}
-
-.empty-chat-hint {
-  font-size: 0.85rem;
-  opacity: 0.8;
-}
-
-.plan-pre {
-  max-height: none;
-  margin: 0;
-  white-space: pre-wrap;
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-}
-
 .session-time {
-  font-size: 0.7rem;
-  color: var(--color-text-muted);
   flex-shrink: 0;
-}
-
-/* Composer layout — mac visuals in macos26.css */
-.composer {
-  display: flex;
-  align-items: flex-end;
 }
 
 .composer-field {
@@ -454,7 +219,6 @@ body {
   display: flex;
   gap: var(--space-md);
   align-items: center;
-  font-size: 0.75rem;
 }
 
 .composer select {
@@ -472,69 +236,23 @@ body {
   cursor: not-allowed;
 }
 
-/* Pinned plan (Telegram pinned message) */
-.pinned-plan {
-  margin: 0 var(--space-xl) var(--space-md);
-  padding: var(--space-md) var(--space-lg);
-  border-left: 3px solid var(--color-accent);
-  background: var(--color-surface);
-  border-radius: var(--radius-sm);
-}
-
-.pinned-plan-label {
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: var(--color-accent);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: var(--space-xs);
+.view-tabs {
+  display: flex;
 }
 
 .pinned-plan-body {
-  font-size: 0.85rem;
-  line-height: 1.5;
   white-space: pre-wrap;
   max-height: 160px;
   overflow: auto;
 }
 
-.view-tabs {
-  display: flex;
-  gap: var(--space-sm);
-  padding: 0 var(--space-xl) var(--space-sm);
-}
-
-.view-tabs button {
-  padding: var(--space-xs) var(--space-md);
-  border: none;
-  border-radius: var(--radius-pill);
-  background: transparent;
-  color: var(--color-text-muted);
-  font-size: 0.8rem;
-  cursor: pointer;
-}
-
-.view-tabs button.active {
-  background: var(--color-surface);
-  color: var(--color-text);
-}
-
 .empty-chat {
   flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: var(--color-text-muted);
-  font-size: 0.95rem;
+  gap: var(--space-xs);
   padding: var(--space-xl);
   text-align: center;
-}
-
-.error-banner {
-  margin: var(--space-sm) var(--space-xl);
-  padding: var(--space-md);
-  border-radius: var(--radius-sm);
-  background: rgba(255, 69, 58, 0.15);
-  color: var(--color-error);
-  font-size: 0.85rem;
 }

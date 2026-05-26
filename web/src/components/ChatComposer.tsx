@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, type ReactNode } from "react";
 
 export type PendingFile = { id: string; file: File };
 
@@ -12,6 +12,8 @@ type Props = {
   onFilesAdd: (files: FileList | File[]) => void;
   onFileRemove: (id: string) => void;
   sessionAttachments?: string[];
+  showAttach?: boolean;
+  toolbar?: ReactNode;
 };
 
 export function ChatComposer({
@@ -24,6 +26,8 @@ export function ChatComposer({
   onFilesAdd,
   onFileRemove,
   sessionAttachments = [],
+  showAttach = true,
+  toolbar,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -58,26 +62,30 @@ export function ChatComposer({
         </div>
       )}
       <div className="composer-row">
-        <button
-          type="button"
-          className="btn-attach"
-          disabled={disabled}
-          onClick={() => inputRef.current?.click()}
-          aria-label="파일 첨부"
-          title="파일 첨부"
-        >
-          <PaperclipIcon />
-        </button>
-        <input
-          ref={inputRef}
-          type="file"
-          multiple
-          className="composer-file-input"
-          onChange={(e) => {
-            if (e.target.files?.length) onFilesAdd(e.target.files);
-            e.target.value = "";
-          }}
-        />
+        {showAttach && (
+          <>
+            <button
+              type="button"
+              className="btn-attach"
+              disabled={disabled}
+              onClick={() => inputRef.current?.click()}
+              aria-label="파일 첨부"
+              title="파일 첨부"
+            >
+              <PaperclipIcon />
+            </button>
+            <input
+              ref={inputRef}
+              type="file"
+              multiple
+              className="composer-file-input"
+              onChange={(e) => {
+                if (e.target.files?.length) onFilesAdd(e.target.files);
+                e.target.value = "";
+              }}
+            />
+          </>
+        )}
         <div className="composer-field">
           <textarea
             value={value}
@@ -92,6 +100,7 @@ export function ChatComposer({
               }
             }}
           />
+          {toolbar && <div className="composer-toolbar">{toolbar}</div>}
         </div>
         <button
           type="button"

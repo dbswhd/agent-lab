@@ -20,7 +20,7 @@
       "preview": "Arrow Buttons",
       "type": "component_set",
       "key": "e5f3d8584c7b44d519765220f108c5ace4e0b157",
-      "react": ["mac-btn-primary", "btn-send", "btn-attach"]
+      "react": ["mac-btn-primary", "mac-btn-secondary", "btn-send", "btn-attach"]
     },
     "Color Wells": {
       "type": "component_set",
@@ -43,7 +43,7 @@
       "preview": "Leading Accessories",
       "type": "component_set",
       "key": "aa35c9b7616b8c1de187514b56952cb12eefe413",
-      "react": ["perm-form", "ChatComposer"]
+      "react": ["perm-form", "ChatComposer", "RunPanel"]
     },
     "Image Wells": {
       "type": "component_set",
@@ -68,8 +68,14 @@
       "preview": "Header",
       "type": "component",
       "key": "62b36c5c9ff607fe15a409b71eb8adb985e2731c",
-      "react": "mac-context-menu"
+      "react": "SessionContextMenu"
     }
+  },
+  "agentLabComponents": {
+    "shell": ["App", "TauriTitlebar", "ThemeToggle"],
+    "chat": ["RoomChat", "RunPanel", "SessionViewer", "ChatBubble", "AgentPicker"],
+    "cssSourceOfTruth": "web/src/styles/macos26.css",
+    "layoutOnly": "web/src/styles/app.css"
   },
   "agentLabPriority": [
     "Alerts",

@@ -17,11 +17,14 @@
 
 ## 2. 에이전트 설정
 
-| 에이전트 | 필요 조건 | 역할 |
-|----------|-----------|------|
-| **Codex** | `codex login`, `CODEX_BIN` (앱은 PATH 보강) | 분해·가설·실행 순서 |
-| **Claude** | `ANTHROPIC_API_KEY` | 맹점·검증·범위 |
-| **Cursor** | `CURSOR_API_KEY` + `pip install -e ".[cursor]"` | 구현·IDE·다음 편집 |
+**역할 분담 (상세):** [05-room-agent-roles.md](./05-room-agent-roles.md) — 자기소개·경계·누구에게 무엇을 물을지.  
+클래식 모드의 Planner/Critic/Scribe와는 **별개**이다.
+
+| 에이전트 | 필요 조건 | 룸에서의 역할 (요약) |
+|----------|-----------|----------------------|
+| **Cursor** | `CURSOR_API_KEY` + `pip install -e ".[cursor]"` | 레포·파일·UI·빌드 — **실행·다음 편집** |
+| **Codex** | `codex login`, `CODEX_BIN` (앱은 PATH 보강) | 분해·순서·검증·완료 기준 — **끝까지 밀기** |
+| **Claude** | `ANTHROPIC_API_KEY` | 맹점·리스크·설명·요약 — **두 번째 의견·리뷰** |
 
 `.env` 예:
 
@@ -89,7 +92,9 @@ Community에서 **Apple iOS 18 UI Kit** 또는 **macOS Sonoma** Duplicate → `t
 
 | 경로 | 내용 |
 |------|------|
+| `docs/05-room-agent-roles.md` | 3자 룸 역할·경계·체크리스트 |
 | `src/agent_lab/room.py` | 병렬 오케스트레이션 |
+| `src/agent_lab/agents/prompts.py` | 룸 런타임 system prompt (요약) |
 | `src/agent_lab/agents/` | cursor / codex / claude |
 | `workflows/room.parallel.yaml` | 워크플로 계약 (설정) |
 | `sessions/.../chat.jsonl` | 메시지 로그 |

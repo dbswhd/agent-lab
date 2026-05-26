@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 export type AlertButton = {
   label: string;
@@ -46,7 +47,7 @@ export function MacAlert({
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div
       className="mac-alert-backdrop"
       role="presentation"
@@ -80,6 +81,7 @@ export function MacAlert({
           ))}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -62,7 +62,7 @@ from agent_lab.room_consensus import (  # noqa: E402
     max_consensus_calls,
     max_consensus_rounds,
 )
-from agent_lab.session import session_dir  # noqa: E402
+from agent_lab.session import SESSIONS_DIR, session_dir  # noqa: E402
 from agent_lab.runner import provider_override, run_topic_with_progress  # noqa: E402
 from agent_lab.turn_profile_bandit import (  # noqa: E402
     TURN_PROFILES,

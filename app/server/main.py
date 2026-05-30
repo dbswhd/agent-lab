@@ -64,7 +64,12 @@ from agent_lab.room_consensus import (  # noqa: E402
 )
 from agent_lab.session import session_dir  # noqa: E402
 from agent_lab.runner import provider_override, run_topic_with_progress  # noqa: E402
-from agent_lab.session import SESSIONS_DIR  # noqa: E402
+from agent_lab.turn_profile_bandit import (  # noqa: E402
+    TURN_PROFILES,
+    patch_session_turn_feedback,
+    recommend_profile,
+    record_turn_feedback,
+)
 
 app = FastAPI(title="Agent Lab API", version="0.1.0")
 app.add_middleware(
@@ -244,6 +249,7 @@ def health() -> dict[str, Any]:
             "max_consensus_calls": max_consensus_calls(),
         },
         "context": all_limits_for_api(),
+        "turn_profile_bandit": recommend_profile(),
     }
 
 
@@ -452,6 +458,49 @@ def create_run(body: RunRequest) -> dict[str, Any]:
     )
 
 
+class TurnFeedbackRequest(BaseModel):
+    session_id: str
+    vote: str
+    turn_index: int = Field(default=-1, ge=-1)
+    profile: str | None = None
+
+
+@app.get("/api/room/turn-profile-recommendation")
+def turn_profile_recommendation() -> dict[str, Any]:
+    return recommend_profile()
+
+
+@app.post("/api/room/turn-feedback")
+def submit_turn_feedback(body: TurnFeedbackRequest) -> dict[str, Any]:
+    folder = SESSIONS_DIR / body.session_id.strip()
+    if not folder.is_dir():
+        raise HTTPException(status_code=404, detail="session not found")
+    try:
+        fb = patch_session_turn_feedback(
+            folder,
+            turn_index=body.turn_index,
+            vote=body.vote,
+            profile=body.profile,
+        )
+        profile = str(fb.get("profile") or body.profile or "discuss")
+        result = record_turn_feedback(
+            profile=profile,
+            vote=body.vote,
+            session_id=body.session_id,
+            turn_index=body.turn_index,
+            meta={"status": "recorded"},
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    return {
+        "ok": True,
+        "feedback": fb,
+        "recommendation": result.get("recommendation"),
+    }
+
+
 @app.post("/api/room/runs")
 async def create_room_run(
     topic: str = Form(...),
@@ -466,6 +515,7 @@ async def create_room_run(
     review_mode: bool = Form(False),
     consensus_mode: bool = Form(False),
     efficiency_mode: bool = Form(False),
+    turn_profile: str = Form("discuss"),
     files: list[UploadFile] = File(default=[]),
 ) -> StreamingResponse:
     topic = topic.strip()
@@ -507,6 +557,9 @@ async def create_room_run(
     if review_mode and not consensus_mode and parallel_rounds < 2:
         parallel_rounds = 2
     use_efficiency = efficiency_mode or efficiency_mode_default()
+    profile_norm = (turn_profile or "discuss").strip().lower()
+    if profile_norm not in TURN_PROFILES:
+        profile_norm = "discuss"
 
     def generate():
         event_q: queue.SimpleQueue[dict[str, Any] | None] = queue.SimpleQueue()
@@ -549,6 +602,7 @@ async def create_room_run(
                         review_mode=review_mode,
                         consensus_mode=consensus_mode,
                         efficiency_mode=use_efficiency,
+                        turn_profile=profile_norm,
                     )
                     result["folder"] = folder
                     result["plan_md"] = plan_md
@@ -564,6 +618,7 @@ async def create_room_run(
                         review_mode=review_mode,
                         consensus_mode=consensus_mode,
                         efficiency_mode=use_efficiency,
+                        turn_profile=profile_norm,
                     )
                     result["folder"] = f
                     result["plan_md"] = plan_md
@@ -588,6 +643,7 @@ async def create_room_run(
                     "review_mode": review_mode,
                     "consensus_mode": consensus_mode,
                     "efficiency_mode": use_efficiency,
+                    "turn_profile": profile_norm,
                     "attachments": saved_files,
                 }
             )

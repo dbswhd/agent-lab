@@ -936,6 +936,7 @@ def _turn_snapshot(
     consensus: dict[str, Any] | None = None,
     efficiency_mode: bool = False,
     turn_state: dict[str, Any] | None = None,
+    turn_profile: str | None = None,
 ) -> dict[str, Any]:
     from agent_lab.invoke import model_name
 
@@ -983,6 +984,8 @@ def _turn_snapshot(
         snap["efficiency_mode"] = True
     if turn_state:
         snap["turn_state"] = turn_state
+    if turn_profile and turn_profile in ("quick", "discuss", "review", "free"):
+        snap["turn_profile"] = turn_profile
     return snap
 
 
@@ -1063,6 +1066,7 @@ def continue_room_round(
     review_mode: bool = False,
     consensus_mode: bool = False,
     efficiency_mode: bool = False,
+    turn_profile: str | None = None,
 ) -> tuple[list[ChatMessage], str]:
     """Append a user turn + parallel agent replies to an existing session."""
     if not folder.is_dir():
@@ -1174,6 +1178,7 @@ def continue_room_round(
                 consensus_meta=consensus_meta,
                 plan_md=plan_md,
             ),
+            turn_profile=turn_profile,
         ),
     )
     if on_event:
@@ -1183,6 +1188,10 @@ def continue_room_round(
                 "session_id": folder.name,
                 "path": str(folder),
                 "cancelled": cancelled,
+                "turn_index": max(
+                    0,
+                    len((_read_run_meta(folder).get("turns") or [])) - 1,
+                ),
             },
         )
     return messages, plan_md
@@ -1201,6 +1210,7 @@ def run_room(
     review_mode: bool = False,
     consensus_mode: bool = False,
     efficiency_mode: bool = False,
+    turn_profile: str | None = None,
 ) -> tuple[Path, list[ChatMessage], str]:
     """Full room flow: user message → parallel agents → optional plan synthesis."""
     body = topic.strip()
@@ -1305,6 +1315,7 @@ def run_room(
             consensus_meta=consensus_meta,
             plan_md=plan_md,
         ),
+        turn_profile=turn_profile,
     )
 
     if folder is None:
@@ -1341,6 +1352,10 @@ def run_room(
                 "session_id": folder.name,
                 "path": str(folder),
                 "cancelled": cancelled,
+                "turn_index": max(
+                    0,
+                    len((_read_run_meta(folder).get("turns") or [])) - 1,
+                ),
             },
         )
     return folder, messages, plan_md

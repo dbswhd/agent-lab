@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AgentOption, RoomMode, SessionDetail } from "../api/client";
-import { cancelRoomRun, fetchSession, runRoom } from "../api/client";
+import { cancelRoomRun, fetchSession, fetchTurnProfileRecommendation, runRoom, submitTurnFeedback } from "../api/client";
 import {
   agentLabel,
   chatLineToMessage,
@@ -50,7 +50,9 @@ import {
 } from "../utils/turnProfile";
 import { formatRoomModelLine } from "../utils/roomModels";
 import { TurnProgressStrip } from "./TurnProgressStrip";
+import { TurnFeedbackBar } from "./TurnFeedbackBar";
 import { CollapsibleGlassPanel } from "./CollapsibleGlassPanel";
+import type { PendingTurnFeedback } from "../utils/turnProfileBandit";
 import {
   getContextSidebarOpen,
   setContextSidebarOpen,
@@ -121,6 +123,11 @@ export function RoomChat({
   const [composeMode, setComposeMode] = useState<RoomMode>("discuss");
   const [turnProfile, setTurnProfileState] = useState(getTurnProfile);
   const [efficiencyOn, setEfficiencyOnState] = useState(getEfficiencyMode);
+  const [recommendedProfile, setRecommendedProfile] =
+    useState<ComposerTurnProfile | null>(null);
+  const [pendingFeedback, setPendingFeedback] =
+    useState<PendingTurnFeedback | null>(null);
+  const [feedbackBusy, setFeedbackBusy] = useState(false);
   const [pendingSend, setPendingSend] = useState<{
     text: string;
     files: PendingFile[];
@@ -143,6 +150,43 @@ export function RoomChat({
   const [sendReceipt, setSendReceipt] = useState<string | null>(null);
   const sendReceiptTimerRef = useRef<number | null>(null);
   const runWatchdogRef = useRef<number | null>(null);
+
+  const refreshRecommendation = useCallback(() => {
+    void fetchTurnProfileRecommendation()
+      .then((r) => {
+        const id = r.recommended;
+        if (id === "quick" || id === "discuss" || id === "review" || id === "free") {
+          setRecommendedProfile(id);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    refreshRecommendation();
+  }, [refreshRecommendation]);
+
+  const handleTurnFeedback = useCallback(
+    async (vote: "up" | "down") => {
+      if (!pendingFeedback || feedbackBusy) return;
+      setFeedbackBusy(true);
+      try {
+        await submitTurnFeedback({
+          sessionId: pendingFeedback.sessionId,
+          vote,
+          turnIndex: pendingFeedback.turnIndex,
+          profile: pendingFeedback.profile,
+        });
+        setPendingFeedback(null);
+        refreshRecommendation();
+      } catch (e) {
+        setError(String(e));
+      } finally {
+        setFeedbackBusy(false);
+      }
+    },
+    [pendingFeedback, feedbackBusy, refreshRecommendation],
+  );
 
   function clearRunWatchdog() {
     if (runWatchdogRef.current != null) {
@@ -324,6 +368,7 @@ export function RoomChat({
       setMessages((m) => [...m, userMsg]);
       let userStopped = false;
       let activeSessionId = sessionId;
+      let completedTurnIndex = -1;
 
       try {
         let runFailed = false;
@@ -455,6 +500,9 @@ export function RoomChat({
           }
           if (t === "complete" && ev.session_id) {
             activeSessionId = String(ev.session_id);
+            if (typeof ev.turn_index === "number") {
+              completedTurnIndex = ev.turn_index;
+            }
           }
           if (t === "error") {
             runFailed = true;
@@ -478,12 +526,19 @@ export function RoomChat({
             reviewMode: useReviewMode,
             consensusMode: useConsensusMode,
             efficiencyMode: useEfficiencyMode,
+            turnProfile: profile,
           },
         );
         if (runFailed) {
           throw new Error("run failed");
         }
         if (activeSessionId) {
+          setPendingFeedback({
+            sessionId: activeSessionId,
+            turnIndex: completedTurnIndex,
+            profile,
+            partial: userStopped,
+          });
           void onSessionChange(activeSessionId);
           if (mode === "plan") {
             setTab("plan");
@@ -872,6 +927,22 @@ export function RoomChat({
           setTurnProfileState(p);
           setTurnProfile(p);
         }}
+        recommendedTurnProfile={recommendedProfile}
+        onApplyRecommendedTurn={() => {
+          if (!recommendedProfile) return;
+          setTurnProfileState(recommendedProfile);
+          setTurnProfile(recommendedProfile);
+        }}
+        turnFeedback={
+          pendingFeedback ? (
+            <TurnFeedbackBar
+              profile={pendingFeedback.profile}
+              partial={pendingFeedback.partial}
+              disabled={feedbackBusy}
+              onVote={(vote) => void handleTurnFeedback(vote)}
+            />
+          ) : null
+        }
         efficiencyOn={efficiencyOn}
         onEfficiencyChange={(on) => {
           setEfficiencyOnState(on);

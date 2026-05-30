@@ -161,6 +161,8 @@ export type RunRoomOptions = {
   consensusMode?: boolean;
   /** Pin cap, shorter replies, slimmer consensus payloads (subscription-friendly). */
   efficiencyMode?: boolean;
+  /** Composer turn profile id (quick/discuss/review/free). */
+  turnProfile?: string;
   /** Abort in-flight SSE (UI stop). */
   signal?: AbortSignal;
 };
@@ -239,6 +241,7 @@ export async function runRoom(
   form.append("review_mode", String(opts?.reviewMode ?? false));
   form.append("consensus_mode", String(opts?.consensusMode ?? false));
   form.append("efficiency_mode", String(opts?.efficiencyMode ?? false));
+  form.append("turn_profile", opts?.turnProfile ?? "discuss");
   if (opts?.requestId) {
     form.append("request_id", opts.requestId);
   }
@@ -261,4 +264,36 @@ export async function runRoom(
 export async function cancelRoomRun(): Promise<void> {
   const res = await fetch(apiUrl("/api/room/runs/cancel"), { method: "POST" });
   if (!res.ok) throw new Error(await res.text());
+}
+
+export function fetchTurnProfileRecommendation() {
+  return json<{
+    recommended: string;
+    default: string;
+    scores: Record<string, number>;
+    stats: Record<string, { up: number; down: number; total: number }>;
+    total_feedback: number;
+  }>("/api/room/turn-profile-recommendation");
+}
+
+export function submitTurnFeedback(opts: {
+  sessionId: string;
+  vote: "up" | "down";
+  turnIndex?: number;
+  profile?: string;
+}) {
+  return json<{
+    ok: boolean;
+    feedback: { vote: string; profile: string; ts: string };
+    recommendation: Awaited<ReturnType<typeof fetchTurnProfileRecommendation>>;
+  }>("/api/room/turn-feedback", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      session_id: opts.sessionId,
+      vote: opts.vote,
+      turn_index: opts.turnIndex ?? -1,
+      profile: opts.profile,
+    }),
+  });
 }

@@ -9,6 +9,7 @@ web/node_modules/
 web/dist/
 web/src-tauri/target/
 sessions/**/raw/
+data/turn_profile_bandit.json
 *.log
 .DS_Store
 .claude/

@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from typing import Any
 
+from agent_lab.agent_models import DEFAULT_CURSOR_MODEL
 from agent_lab.agent_permissions import permission_preamble
 
 
@@ -19,7 +20,7 @@ def is_available() -> bool:
 
 
 def model_label() -> str:
-    return os.getenv("CURSOR_MODEL", "composer-2.5")
+    return os.getenv("CURSOR_MODEL", DEFAULT_CURSOR_MODEL)
 
 
 def _resolve_cwd(permissions: dict[str, Any] | None) -> str:
@@ -63,7 +64,7 @@ def respond(
     cwd = _resolve_cwd(permissions)
     agent_opts = AgentOptions(
         api_key=api_key,
-        model=os.getenv("CURSOR_MODEL", "composer-2.5"),
+        model=os.getenv("CURSOR_MODEL", DEFAULT_CURSOR_MODEL),
         local=LocalAgentOptions(cwd=cwd),
     )
 

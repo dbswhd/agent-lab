@@ -23,9 +23,6 @@ type Props = {
   className?: string;
   turnProfile?: ComposerTurnProfile;
   onTurnProfileChange?: (profile: ComposerTurnProfile) => void;
-  recommendedTurnProfile?: ComposerTurnProfile | null;
-  onApplyRecommendedTurn?: () => void;
-  turnFeedback?: ReactNode;
   efficiencyOn?: boolean;
   onEfficiencyChange?: (on: boolean) => void;
   /** plan이 토론보다 뒤처짐 — composer 위 안내 */
@@ -50,9 +47,6 @@ export function ChatComposer({
   className,
   turnProfile,
   onTurnProfileChange,
-  recommendedTurnProfile,
-  onApplyRecommendedTurn,
-  turnFeedback,
   efficiencyOn = false,
   onEfficiencyChange,
   planStaleNotice,
@@ -102,8 +96,6 @@ export function ChatComposer({
               value={turnProfile}
               onChange={onTurnProfileChange}
               disabled={inputLocked}
-              recommendedProfile={recommendedTurnProfile}
-              onApplyRecommendation={onApplyRecommendedTurn}
               trailing={
                 onEfficiencyChange ? (
                   <ComposerEfficiencyToggle
@@ -116,7 +108,6 @@ export function ChatComposer({
             />
           </div>
         ) : null}
-        {turnFeedback}
         {planStaleNotice ? (
           <CollapsibleGlassPanel
             className="composer-alert-panel"

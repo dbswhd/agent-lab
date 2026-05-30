@@ -1,0 +1,8 @@
+{
+  "topic": "Quant",
+  "created_at": "2026-05-27T15:11:13.891147+00:00",
+  "workflow": "room.parallel",
+  "agents": [
+    "cursor"
+  ]
+}

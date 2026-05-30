@@ -15,7 +15,8 @@ dev:
 	./scripts/dev.sh
 
 api:
-	.venv/bin/uvicorn app.server.main:app --reload --host 127.0.0.1 --port 8765
+	.venv/bin/uvicorn app.server.main:app --reload --host 127.0.0.1 --port 8765 \
+		--reload-dir app --reload-dir src --reload-dir tests
 
 web:
 	cd web && npm run dev

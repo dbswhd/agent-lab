@@ -9,7 +9,10 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+from agent_lab.agent_models import (  # noqa: E402
+    DEFAULT_CODEX_MODEL,
+    DEFAULT_CODEX_REASONING_EFFORT,
+)
 
 
 def resolve_codex_bin() -> str | None:
@@ -128,10 +131,10 @@ def invoke(system: str, user: str, *, permissions: dict | None = None) -> str:
         out_path,
     ]
 
-    if effort := os.getenv("CODEX_REASONING_EFFORT", "low"):
+    if effort := os.getenv("CODEX_REASONING_EFFORT", DEFAULT_CODEX_REASONING_EFFORT):
         cmd.extend(["-c", f'model_reasoning_effort="{effort}"'])
-    if model := os.getenv("CODEX_MODEL"):
-        cmd.extend(["-m", model])
+    model = os.getenv("CODEX_MODEL", DEFAULT_CODEX_MODEL)
+    cmd.extend(["-m", model])
 
     # Prompt on stdin (`-`). CLI arg + closed stdin makes Codex print
     # "Reading additional input from stdin..." and exit 1; long threads also risk ARG_MAX.
@@ -161,4 +164,6 @@ def invoke(system: str, user: str, *, permissions: dict | None = None) -> str:
 
 
 def model_label() -> str:
-    return os.getenv("CODEX_MODEL") or "codex/chatgpt (gpt-5.5 default)"
+    model = os.getenv("CODEX_MODEL", DEFAULT_CODEX_MODEL)
+    effort = os.getenv("CODEX_REASONING_EFFORT", DEFAULT_CODEX_REASONING_EFFORT)
+    return f"{model} ({effort})"

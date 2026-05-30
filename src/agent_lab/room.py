@@ -37,7 +37,7 @@ MAX_AGENTS_PER_ROUND = 3
 MAX_AGENT_PARALLEL_ROUNDS = 4  # per human message
 DEFAULT_AGENT_PARALLEL_ROUNDS = 1  # discuss default; use 2+ for review / peer debate
 RUN_SCHEMA_VERSION = 1
-PLAN_FORMAT_VERSION = 0  # bump to 1 when scribe action atomization lands
+PLAN_FORMAT_VERSION = 1  # 지금 실행 + 실행 순서 sections
 # Review round 2+: sequential pipeline (matches web ROOM_MODEL_AGENT_ORDER).
 REVIEW_ROUND2_ORDER: tuple[AgentId, ...] = ("claude", "codex", "cursor")
 
@@ -820,9 +820,9 @@ def _write_session_files(
         "message_count": len(messages),
         "agent_parallel_rounds": agent_parallel_rounds,
         "turns": turns,
-        "actions": [],
-        "approvals": [],
-        "executions": [],
+        "actions": list(prev_run.get("actions") or []),
+        "approvals": list(prev_run.get("approvals") or []),
+        "executions": list(prev_run.get("executions") or []),
     }
     if turn_meta:
         run_meta["last_turn"] = turns[-1]
@@ -841,7 +841,7 @@ def _write_session_files(
     if prev_run.get("last_plan_update"):
         run_meta["last_plan_update"] = prev_run["last_plan_update"]
     if plan_changed and turn_meta and turn_meta.get("mode") == "plan":
-        trigger = (
+        trigger = turn_meta.get("plan_trigger") or (
             "synthesize_only"
             if turn_meta.get("synthesize_only")
             else "plan_turn"
@@ -850,7 +850,9 @@ def _write_session_files(
             "ts": turn_meta.get("completed_at") or turn_meta.get("ts") or _now(),
             "trigger": trigger,
             "mode": "plan",
-            "synthesize_only": bool(turn_meta.get("synthesize_only")),
+            "synthesize_only": bool(
+                turn_meta.get("synthesize_only") and trigger == "synthesize_only"
+            ),
             "request_id": turn_meta.get("request_id"),
             "started_at": turn_meta.get("started_at"),
             "completed_at": turn_meta.get("completed_at"),
@@ -926,6 +928,7 @@ def _turn_snapshot(
     latency_ms: int,
     status: str = "completed",
     synthesize_only: bool = False,
+    plan_trigger: str | None = None,
     request_id: str | None = None,
     started_at: str | None = None,
     completed_at: str | None = None,
@@ -966,6 +969,8 @@ def _turn_snapshot(
         }
     if synthesize_only:
         snap["synthesize_only"] = True
+    if plan_trigger:
+        snap["plan_trigger"] = plan_trigger
     if request_id:
         snap["request_id"] = request_id
     if started_at:
@@ -989,12 +994,18 @@ def _turn_snapshot(
     return snap
 
 
+def consensus_reached(consensus_meta: dict[str, Any] | None) -> bool:
+    """True when free-discuss consensus loop finished with full agreement."""
+    return bool(consensus_meta and consensus_meta.get("status") == "reached")
+
+
 def synthesize_session_plan(
     folder: Path,
     *,
     on_event: OnAgentEvent | None = None,
     permissions: dict | None = None,
     request_id: str | None = None,
+    trigger: str = "synthesize_only",
 ) -> str:
     """Re-synthesize plan.md from existing chat without a new agent round."""
     if not folder.is_dir():
@@ -1046,12 +1057,38 @@ def synthesize_session_plan(
             permissions=permissions,
             latency_ms=latency_ms,
             synthesize_only=True,
+            plan_trigger=trigger,
             request_id=request_id,
             started_at=started_at,
             completed_at=completed_at,
         ),
     )
     return plan_md
+
+
+def maybe_auto_scribe_after_consensus(
+    folder: Path,
+    *,
+    consensus_meta: dict[str, Any] | None,
+    synthesize: bool,
+    cancelled: bool,
+    on_event: OnAgentEvent | None = None,
+    permissions: dict | None = None,
+) -> str | None:
+    """After discuss+consensus, run synthesize-only scribe once (no new agent round)."""
+    if cancelled or synthesize or not consensus_reached(consensus_meta):
+        return None
+    try:
+        return synthesize_session_plan(
+            folder,
+            on_event=on_event,
+            permissions=permissions,
+            trigger="consensus_reached",
+        )
+    except Exception as e:
+        if on_event:
+            on_event("scribe_error", {"message": str(e), "auto": True})
+        return None
 
 
 def continue_room_round(
@@ -1181,6 +1218,16 @@ def continue_room_round(
             turn_profile=turn_profile,
         ),
     )
+    auto_plan = maybe_auto_scribe_after_consensus(
+        folder,
+        consensus_meta=consensus_meta,
+        synthesize=synthesize,
+        cancelled=cancelled,
+        on_event=on_event,
+        permissions=permissions,
+    )
+    if auto_plan is not None:
+        plan_md = auto_plan
     if on_event:
         on_event(
             "complete",
@@ -1345,6 +1392,16 @@ def run_room(
             merge_meta=existing_meta,
             turn_meta=turn_meta,
         )
+    auto_plan = maybe_auto_scribe_after_consensus(
+        folder,
+        consensus_meta=consensus_meta,
+        synthesize=synthesize,
+        cancelled=cancelled,
+        on_event=on_event,
+        permissions=permissions,
+    )
+    if auto_plan is not None:
+        plan_md = auto_plan
     if on_event:
         on_event(
             "complete",

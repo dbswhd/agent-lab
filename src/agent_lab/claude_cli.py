@@ -10,6 +10,11 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from agent_lab.agent_models import (  # noqa: E402
+    DEFAULT_CLAUDE_MODEL,
+    DEFAULT_CLAUDE_REASONING_EFFORT,
+)
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -180,15 +185,17 @@ def invoke(
     for root in resolve_claude_roots(perms):
         cmd.extend(["--add-dir", str(root)])
 
-    model = (
-        os.getenv("CLAUDE_SCRIBE_MODEL") if scribe else os.getenv("CLAUDE_MODEL")
-    )
-    if model:
-        cmd.extend(["--model", model])
+    if scribe:
+        model = os.getenv("CLAUDE_SCRIBE_MODEL") or os.getenv(
+            "CLAUDE_MODEL", DEFAULT_CLAUDE_MODEL
+        )
+    else:
+        model = os.getenv("CLAUDE_MODEL", DEFAULT_CLAUDE_MODEL)
+    cmd.extend(["--model", model])
 
     effort = os.getenv("CLAUDE_SCRIBE_REASONING_EFFORT") if scribe else None
     if not effort:
-        effort = os.getenv("CLAUDE_REASONING_EFFORT", "low")
+        effort = os.getenv("CLAUDE_REASONING_EFFORT", DEFAULT_CLAUDE_REASONING_EFFORT)
     if effort:
         cmd.extend(["--effort", effort])
 
@@ -229,4 +236,6 @@ def invoke(
 
 
 def model_label() -> str:
-    return os.getenv("CLAUDE_MODEL") or "claude-code (subscription default)"
+    model = os.getenv("CLAUDE_MODEL", DEFAULT_CLAUDE_MODEL)
+    effort = os.getenv("CLAUDE_REASONING_EFFORT", DEFAULT_CLAUDE_REASONING_EFFORT)
+    return f"{model} ({effort})"

@@ -94,6 +94,15 @@ export default function App() {
     else if (composerNew) setDetail(null);
   }, [selectedId, composerNew, loadDetail]);
 
+  const refreshSessionRun = useCallback(async (id: string) => {
+    try {
+      const next = await fetchSession(id);
+      setDetail((prev) => (prev?.id === id ? next : prev));
+    } catch {
+      /* ignore transient API errors during reload */
+    }
+  }, []);
+
   async function onRoomSessionChange(sessionId: string) {
     setSelectedId(sessionId);
     setComposerNew(false);
@@ -245,8 +254,9 @@ export default function App() {
                 agents={agents}
                 sessionId={composerNew ? null : selectedId}
                 session={composerNew ? null : detail}
-                loading={!composerNew && loadingDetail}
+                loading={!composerNew && loadingDetail && detail == null}
                 onSessionChange={onRoomSessionChange}
+                onSessionMetaRefresh={refreshSessionRun}
                 sidebarOpen={sidebarOpen}
                 onToggleSidebar={toggleSidebar}
               />

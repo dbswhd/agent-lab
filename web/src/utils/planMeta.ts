@@ -33,6 +33,7 @@ export type PlanMetaView = {
 
 function triggerLabel(trigger?: string, synthesizeOnly?: boolean): string {
   if (synthesizeOnly || trigger === "synthesize_only") return "지금 정리";
+  if (trigger === "consensus_reached") return "합의 후 자동 정리";
   if (trigger === "plan_turn") return "정리 후 전송";
   return trigger || "알 수 없음";
 }

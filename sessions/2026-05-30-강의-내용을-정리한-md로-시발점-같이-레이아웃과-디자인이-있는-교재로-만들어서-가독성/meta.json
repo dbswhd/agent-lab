@@ -1,0 +1,10 @@
+{
+  "topic": "공수 교재",
+  "created_at": "2026-05-30T11:45:32.334985+00:00",
+  "workflow": "room.parallel",
+  "agents": [
+    "cursor",
+    "codex",
+    "claude"
+  ]
+}

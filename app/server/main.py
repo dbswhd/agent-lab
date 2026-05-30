@@ -64,12 +64,13 @@ from agent_lab.room_consensus import (  # noqa: E402
 )
 from agent_lab.session import SESSIONS_DIR, session_dir  # noqa: E402
 from agent_lab.runner import provider_override, run_topic_with_progress  # noqa: E402
-from agent_lab.turn_profile_bandit import (  # noqa: E402
-    TURN_PROFILES,
-    patch_session_turn_feedback,
-    recommend_profile,
-    record_turn_feedback,
+from agent_lab.plan_execute import (  # noqa: E402
+    list_plan_actions,
+    resolve_execution,
+    run_dry_run,
 )
+
+TURN_PROFILES = frozenset({"quick", "discuss", "review", "free"})
 
 app = FastAPI(title="Agent Lab API", version="0.1.0")
 app.add_middleware(
@@ -112,6 +113,17 @@ class RoomRunRequest(BaseModel):
 
 class RenameSessionRequest(BaseModel):
     topic: str = Field(..., min_length=1, max_length=200)
+
+
+class PlanExecuteDryRunRequest(BaseModel):
+    action_index: int = Field(..., ge=1)
+    permissions: dict[str, Any] = Field(default_factory=dict)
+
+
+class PlanExecuteResolveRequest(BaseModel):
+    execution_id: str = Field(..., min_length=1)
+    vote: str = Field(..., min_length=1)
+    permissions: dict[str, Any] = Field(default_factory=dict)
 
 
 class ContextPreviewRequest(BaseModel):
@@ -249,7 +261,6 @@ def health() -> dict[str, Any]:
             "max_consensus_calls": max_consensus_calls(),
         },
         "context": all_limits_for_api(),
-        "turn_profile_bandit": recommend_profile(),
     }
 
 
@@ -348,6 +359,57 @@ def rename_session(session_id: str, body: RenameSessionRequest) -> dict[str, Any
     meta["topic"] = topic
     _write_meta(folder, meta)
     return {"ok": True, "id": session_id, "topic": topic}
+
+
+@app.get("/api/sessions/{session_id}/plan-actions")
+def session_plan_actions(session_id: str) -> dict[str, Any]:
+    folder = SESSIONS_DIR / session_id
+    if not folder.is_dir():
+        raise HTTPException(status_code=404, detail="session not found")
+    return list_plan_actions(folder)
+
+
+@app.post("/api/sessions/{session_id}/execute/dry-run")
+def session_execute_dry_run(
+    session_id: str,
+    body: PlanExecuteDryRunRequest,
+) -> dict[str, Any]:
+    folder = SESSIONS_DIR / session_id
+    if not folder.is_dir():
+        raise HTTPException(status_code=404, detail="session not found")
+    try:
+        execution = run_dry_run(
+            folder,
+            action_index=body.action_index,
+            permissions=body.permissions,
+        )
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
+    return {"ok": True, "execution": execution}
+
+
+@app.post("/api/sessions/{session_id}/execute/resolve")
+def session_execute_resolve(
+    session_id: str,
+    body: PlanExecuteResolveRequest,
+) -> dict[str, Any]:
+    folder = SESSIONS_DIR / session_id
+    if not folder.is_dir():
+        raise HTTPException(status_code=404, detail="session not found")
+    try:
+        result = resolve_execution(
+            folder,
+            execution_id=body.execution_id.strip(),
+            vote=body.vote,
+            permissions=body.permissions,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return {"ok": True, **result}
 
 
 @app.delete("/api/sessions/{session_id}")
@@ -456,49 +518,6 @@ def create_run(body: RunRequest) -> dict[str, Any]:
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
-
-
-class TurnFeedbackRequest(BaseModel):
-    session_id: str
-    vote: str
-    turn_index: int = Field(default=-1, ge=-1)
-    profile: str | None = None
-
-
-@app.get("/api/room/turn-profile-recommendation")
-def turn_profile_recommendation() -> dict[str, Any]:
-    return recommend_profile()
-
-
-@app.post("/api/room/turn-feedback")
-def submit_turn_feedback(body: TurnFeedbackRequest) -> dict[str, Any]:
-    folder = SESSIONS_DIR / body.session_id.strip()
-    if not folder.is_dir():
-        raise HTTPException(status_code=404, detail="session not found")
-    try:
-        fb = patch_session_turn_feedback(
-            folder,
-            turn_index=body.turn_index,
-            vote=body.vote,
-            profile=body.profile,
-        )
-        profile = str(fb.get("profile") or body.profile or "discuss")
-        result = record_turn_feedback(
-            profile=profile,
-            vote=body.vote,
-            session_id=body.session_id,
-            turn_index=body.turn_index,
-            meta={"status": "recorded"},
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e)) from e
-    return {
-        "ok": True,
-        "feedback": fb,
-        "recommendation": result.get("recommendation"),
-    }
 
 
 @app.post("/api/room/runs")

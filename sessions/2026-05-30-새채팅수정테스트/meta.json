@@ -1,0 +1,8 @@
+{
+  "topic": "새채팅수정테스트",
+  "created_at": "2026-05-30T11:37:53.656951+00:00",
+  "workflow": "room.parallel",
+  "agents": [
+    "cursor"
+  ]
+}

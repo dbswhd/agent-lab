@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AgentOption, RoomMode, SessionDetail } from "../api/client";
-import { cancelRoomRun, fetchSession, fetchTurnProfileRecommendation, runRoom, submitTurnFeedback } from "../api/client";
+import { cancelRoomRun, runRoom } from "../api/client";
 import {
   agentLabel,
   chatLineToMessage,
@@ -20,6 +20,7 @@ import { ChatPaneBody } from "./ChatPaneBody";
 import { ChatToolbar } from "./ChatToolbar";
 import { ContextPreviewPanel } from "./ContextPreviewPanel";
 import { PlanDocument } from "./PlanDocument";
+import { PlanExecutePanel } from "./PlanExecutePanel";
 import { RoomRunControls } from "./RoomRunControls";
 import {
   ScrollToBottomButton,
@@ -50,9 +51,7 @@ import {
 } from "../utils/turnProfile";
 import { formatRoomModelLine } from "../utils/roomModels";
 import { TurnProgressStrip } from "./TurnProgressStrip";
-import { TurnFeedbackBar } from "./TurnFeedbackBar";
 import { CollapsibleGlassPanel } from "./CollapsibleGlassPanel";
-import type { PendingTurnFeedback } from "../utils/turnProfileBandit";
 import {
   getContextSidebarOpen,
   setContextSidebarOpen,
@@ -66,9 +65,20 @@ type Props = {
   session: SessionDetail | null;
   loading?: boolean;
   onSessionChange: (sessionId: string) => void | Promise<void>;
+  /** run.json / plan.md only — must not reset chat messages */
+  onSessionMetaRefresh?: (sessionId: string) => void | Promise<void>;
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
 };
+
+function chatFingerprint(session: SessionDetail): string {
+  const chat = session.chat;
+  if (!chat?.length) {
+    return `${session.id}:t:${session.transcript_md?.length ?? 0}:${session.topic}`;
+  }
+  const last = chat[chat.length - 1];
+  return `${session.id}:${chat.length}:${last.ts ?? ""}:${last.content.length}`;
+}
 
 function sessionToMessages(
   session: SessionDetail,
@@ -106,6 +116,7 @@ export function RoomChat({
   session,
   loading,
   onSessionChange,
+  onSessionMetaRefresh,
   sidebarOpen,
   onToggleSidebar,
 }: Props) {
@@ -123,11 +134,6 @@ export function RoomChat({
   const [composeMode, setComposeMode] = useState<RoomMode>("discuss");
   const [turnProfile, setTurnProfileState] = useState(getTurnProfile);
   const [efficiencyOn, setEfficiencyOnState] = useState(getEfficiencyMode);
-  const [recommendedProfile, setRecommendedProfile] =
-    useState<ComposerTurnProfile | null>(null);
-  const [pendingFeedback, setPendingFeedback] =
-    useState<PendingTurnFeedback | null>(null);
-  const [feedbackBusy, setFeedbackBusy] = useState(false);
   const [pendingSend, setPendingSend] = useState<{
     text: string;
     files: PendingFile[];
@@ -150,43 +156,7 @@ export function RoomChat({
   const [sendReceipt, setSendReceipt] = useState<string | null>(null);
   const sendReceiptTimerRef = useRef<number | null>(null);
   const runWatchdogRef = useRef<number | null>(null);
-
-  const refreshRecommendation = useCallback(() => {
-    void fetchTurnProfileRecommendation()
-      .then((r) => {
-        const id = r.recommended;
-        if (id === "quick" || id === "discuss" || id === "review" || id === "free") {
-          setRecommendedProfile(id);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    refreshRecommendation();
-  }, [refreshRecommendation]);
-
-  const handleTurnFeedback = useCallback(
-    async (vote: "up" | "down") => {
-      if (!pendingFeedback || feedbackBusy) return;
-      setFeedbackBusy(true);
-      try {
-        await submitTurnFeedback({
-          sessionId: pendingFeedback.sessionId,
-          vote,
-          turnIndex: pendingFeedback.turnIndex,
-          profile: pendingFeedback.profile,
-        });
-        setPendingFeedback(null);
-        refreshRecommendation();
-      } catch (e) {
-        setError(String(e));
-      } finally {
-        setFeedbackBusy(false);
-      }
-    },
-    [pendingFeedback, feedbackBusy, refreshRecommendation],
-  );
+  const syncedChatRef = useRef("");
 
   function clearRunWatchdog() {
     if (runWatchdogRef.current != null) {
@@ -271,19 +241,28 @@ export function RoomChat({
   }, [sessionId]);
 
   useEffect(() => {
-    if (running || runBusy || loading) return;
+    syncedChatRef.current = "";
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (running || runBusy) return;
 
     if (session) {
-      setMessages(sessionToMessages(session, sessionReviewMode));
+      const fp = chatFingerprint(session);
+      if (fp !== syncedChatRef.current) {
+        syncedChatRef.current = fp;
+        setMessages(sessionToMessages(session, sessionReviewMode));
+      }
       setPlanMd(session.plan_md || "");
       return;
     }
 
     if (!sessionId) {
+      syncedChatRef.current = "";
       setMessages([]);
       setPlanMd("");
     }
-  }, [session, sessionId, running, runBusy, sessionReviewMode, loading]);
+  }, [session, sessionId, running, runBusy, sessionReviewMode]);
 
   function toggleAgent(id: string) {
     setSelected((s) =>
@@ -368,7 +347,6 @@ export function RoomChat({
       setMessages((m) => [...m, userMsg]);
       let userStopped = false;
       let activeSessionId = sessionId;
-      let completedTurnIndex = -1;
 
       try {
         let runFailed = false;
@@ -500,9 +478,6 @@ export function RoomChat({
           }
           if (t === "complete" && ev.session_id) {
             activeSessionId = String(ev.session_id);
-            if (typeof ev.turn_index === "number") {
-              completedTurnIndex = ev.turn_index;
-            }
           }
           if (t === "error") {
             runFailed = true;
@@ -533,12 +508,6 @@ export function RoomChat({
           throw new Error("run failed");
         }
         if (activeSessionId) {
-          setPendingFeedback({
-            sessionId: activeSessionId,
-            turnIndex: completedTurnIndex,
-            profile,
-            partial: userStopped,
-          });
           void onSessionChange(activeSessionId);
           if (mode === "plan") {
             setTab("plan");
@@ -603,15 +572,8 @@ export function RoomChat({
             permissions,
           },
         );
-        const detail = await fetchSession(sessionId);
-        const reviewHint = Boolean(
-          (detail.run?.last_turn as { review_mode?: boolean } | undefined)
-            ?.review_mode,
-        );
-        setMessages(sessionToMessages(detail, reviewHint));
-        setPlanMd(detail.plan_md || "");
         setTab("plan");
-        onSessionChange(sessionId);
+        await onSessionChange(sessionId);
       } catch (e) {
         setError(String(e));
       } finally {
@@ -814,6 +776,20 @@ export function RoomChat({
               </p>
             </CollapsibleGlassPanel>
           ) : null}
+          <PlanExecutePanel
+            sessionId={sessionId!}
+            run={session?.run}
+            cursorReady={agents.some((a) => a.id === "cursor" && a.ready)}
+            disabled={running || synthesizing || runBusy}
+            onUpdated={() => {
+              if (!sessionId) return;
+              if (onSessionMetaRefresh) {
+                void onSessionMetaRefresh(sessionId);
+              } else {
+                void onSessionChange(sessionId);
+              }
+            }}
+          />
           <PlanDocument planMd={planMd} onRefClick={handlePlanRefClick} />
         </div>
       ) : (
@@ -927,22 +903,6 @@ export function RoomChat({
           setTurnProfileState(p);
           setTurnProfile(p);
         }}
-        recommendedTurnProfile={recommendedProfile}
-        onApplyRecommendedTurn={() => {
-          if (!recommendedProfile) return;
-          setTurnProfileState(recommendedProfile);
-          setTurnProfile(recommendedProfile);
-        }}
-        turnFeedback={
-          pendingFeedback ? (
-            <TurnFeedbackBar
-              profile={pendingFeedback.profile}
-              partial={pendingFeedback.partial}
-              disabled={feedbackBusy}
-              onVote={(vote) => void handleTurnFeedback(vote)}
-            />
-          ) : null
-        }
         efficiencyOn={efficiencyOn}
         onEfficiencyChange={(on) => {
           setEfficiencyOnState(on);

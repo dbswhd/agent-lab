@@ -269,34 +269,85 @@ export async function cancelRoomRun(): Promise<void> {
   if (!res.ok) throw new Error(await res.text());
 }
 
-export function fetchTurnProfileRecommendation() {
-  return json<{
-    recommended: string;
-    default: string;
-    scores: Record<string, number>;
-    stats: Record<string, { up: number; down: number; total: number }>;
-    total_feedback: number;
-  }>("/api/room/turn-profile-recommendation");
+export type PlanActionItem = {
+  index: number;
+  what: string;
+  where: string;
+  verify: string;
+  refs: string[];
+  expected_paths: string[];
+  recommended?: boolean;
+  kind?: "now" | "roadmap" | "legacy";
+  executable?: boolean;
+  summary?: string;
+};
+
+export type PlanActionsResponse = {
+  recommended: PlanActionItem | null;
+  roadmap: PlanActionItem[];
+  actions: PlanActionItem[];
+};
+
+export type PlanExecutionRecord = {
+  id: string;
+  action_id?: string;
+  action_index?: number;
+  executor?: string;
+  status?: string;
+  snapshot_id?: string;
+  snapshotted_paths?: string[];
+  expected_paths?: string[];
+  touched_paths?: string[];
+  paths_outside_expected?: string[];
+  draft_summary?: string;
+  diff_stat?: string;
+  diff?: string;
+  started_at?: string;
+  completed_at?: string | null;
+};
+
+export function fetchPlanActions(sessionId: string) {
+  return json<PlanActionsResponse>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/plan-actions`,
+  );
 }
 
-export function submitTurnFeedback(opts: {
-  sessionId: string;
-  vote: "up" | "down";
-  turnIndex?: number;
-  profile?: string;
-}) {
+export function runPlanDryRun(
+  sessionId: string,
+  opts: { actionIndex: number; permissions?: Record<string, unknown> },
+) {
+  return json<{ ok: boolean; execution: PlanExecutionRecord }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/execute/dry-run`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action_index: opts.actionIndex,
+        permissions: opts.permissions ?? {},
+      }),
+    },
+  );
+}
+
+export function resolvePlanExecution(
+  sessionId: string,
+  opts: {
+    executionId: string;
+    vote: "approve" | "reject";
+    permissions?: Record<string, unknown>;
+  },
+) {
   return json<{
     ok: boolean;
-    feedback: { vote: string; profile: string; ts: string };
-    recommendation: Awaited<ReturnType<typeof fetchTurnProfileRecommendation>>;
-  }>("/api/room/turn-feedback", {
+    execution: PlanExecutionRecord;
+    approval: Record<string, unknown>;
+  }>(`/api/sessions/${encodeURIComponent(sessionId)}/execute/resolve`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      session_id: opts.sessionId,
+      execution_id: opts.executionId,
       vote: opts.vote,
-      turn_index: opts.turnIndex ?? -1,
-      profile: opts.profile,
+      permissions: opts.permissions ?? {},
     }),
   });
 }

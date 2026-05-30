@@ -95,22 +95,34 @@ Required sections (skip if truly empty):
 ## 합의된 점
 ## 쟁점 / 미결정
 ## 에이전트별 핵심 (Cursor / Codex / Claude — one line each if they spoke)
-## 다음에 할 일
-- 확인 대상(파일·모듈·명령·UI·생성 결과물)에서 수행할 작업과 검증 방법을 함께 쓸 수 있는 항목 → 번호 + 3필드:
+## 지금 실행
+- 지금 dry-run으로 실행할 **하나**의 3필드 액션만 (번호 1개):
   - 무엇을: (구체 작업)
   - 어디서: (파일/모듈/명령/확인 대상)
   - 검증: (통과 기준; 없으면 "검증 기준 없음")
-- Human 승인·보류·미결 유지·착수 선언·범위 확정 토론 → 번호+설명 한 줄 (괄호·ref 속 경로는 3필드 트리거로 쓰지 않음)
+## 실행 순서 (이후)
+- 이후 우선순위대로 번호 매긴 로드맵. 완전한 3필드 또는 gate/조율 한 줄:
+  - 3필드 가능 항목 → 번호 + 무엇을/어디서/검증
+  - Human 승인·보류·미결 유지·착수 선언 → 번호+설명 한 줄 (괄호·ref 속 경로는 3필드 트리거로 쓰지 않음)
 
-Example (A) code/command action:
+Example (now — single executable action):
 1.
    - 무엇을: ROOM_SCRIBE 다음 액션 포맷을 3필드로 고정한다.
    - 어디서: `prompts.py` `ROOM_SCRIBE`
-   - 검증: 정리 1회 후 `plan.md` 다음 액션에 3필드 포함 수동 확인.
+   - 검증: 정리 1회 후 `plan.md` 지금 실행 섹션에 3필드 포함 수동 확인.
    (ref: chat.jsonl#L42)
 
-Example (B) gate/coordination:
+Example (roadmap — gate/coordination one-liner):
 2. Human `#3 코드 OK` 전까지 `prompts.py` 수정 보류. (ref: chat.jsonl#L55)
+
+Example (roadmap — future 3-field):
+3.
+   - 무엇을: discuss turn 이후 execute 기록을 보존한다.
+   - 어디서: `room.py`
+   - 검증: discuss 1턴 후 `executions[]`가 유지된다.
+   (ref: chat.jsonl#L60)
+
+Gate/coordination one-liners MUST NOT appear under ## 지금 실행 — only under ## 실행 순서 (이후) or as bullets outside execute sections.
 
 Each bullet or numbered item MUST end with source refs from the numbered thread below.
 Format: (ref: chat.jsonl#L{line_number})

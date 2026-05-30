@@ -16,7 +16,17 @@ const STREAM_ROLES = new Set<AgentRole>([
 type Props = {
   message: ChatMessage;
   typing?: boolean;
+  highlighted?: boolean;
 };
+
+function RoundBadge({ round }: { round: number }) {
+  const r = Math.max(1, round);
+  return (
+    <span className="chat-round-badge" title={`라운드 ${r}`}>
+      R{r}
+    </span>
+  );
+}
 
 function TypingIndicator({ variant }: { variant: "bubble" | "stream" }) {
   return (
@@ -47,28 +57,38 @@ export function isReplyWaitRole(role: AgentRole): boolean {
 type ReplyWaitingProps = {
   agent: AgentRole;
   label?: string;
+  activities?: string[];
 };
 
-/** Compact typing bubble tinted like the agent's chat-turn card */
-export function ReplyWaitingBubble({ agent, label }: ReplyWaitingProps) {
+/** Agent reply in progress — same full-width card as the final response */
+export function ReplyWaitingBubble({ agent, label, activities }: ReplyWaitingProps) {
   const who = label?.trim() || agent;
+  const lines = activities?.filter(Boolean) ?? [];
   return (
-    <div
-      className="bubble-row bubble-row--received bubble-row--reply-wait"
+    <article
+      className={`chat-turn chat-turn--${agent} chat-turn--waiting`}
       role="status"
       aria-live="polite"
       aria-label={`${who} 답장 중`}
     >
-      <div
-        className={`mac-bubble mac-bubble--received mac-bubble--typing mac-bubble--agent-${agent}`}
-      >
-        <TypingIndicator variant="bubble" />
+      <header className="chat-turn__head">
+        <span className="chat-turn__name">{who}</span>
+      </header>
+      <div className="chat-turn__body">
+        {lines.length > 0 ? (
+          <ul className="agent-activity-log" aria-label="진행 중">
+            {lines.map((line, i) => (
+              <li key={`${line}-${i}`}>{line}</li>
+            ))}
+          </ul>
+        ) : null}
+        <TypingIndicator variant="stream" />
       </div>
-    </div>
+    </article>
   );
 }
 
-export function ChatBubble({ message, typing }: Props) {
+export function ChatBubble({ message, typing, highlighted }: Props) {
   const sent = message.sent ?? message.role === "you";
   const role = message.role;
 
@@ -111,9 +131,14 @@ export function ChatBubble({ message, typing }: Props) {
   if (STREAM_ROLES.has(role)) {
     if (typing) return null;
     return (
-      <article className={`chat-turn chat-turn--${role}`}>
+      <article
+        className={`chat-turn chat-turn--${role}${highlighted ? " chat-turn--highlight" : ""}`}
+      >
         <header className="chat-turn__head">
           <span className="chat-turn__name">{message.label}</span>
+          {(message.parallelRound ?? 1) > 1 ? (
+            <RoundBadge round={message.parallelRound ?? 1} />
+          ) : null}
         </header>
         <div className="chat-turn__body">
           <MessageMarkdown text={message.body} />

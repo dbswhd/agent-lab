@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { AgentPermissions } from "../utils/agentPermissions";
 import {
   buildPermissionsFromForm,
+  CLAUDE_PERMISSION_DEFAULTS,
   loadDefaultPermissions,
   saveDefaultPermissions,
 } from "../utils/agentPermissions";
@@ -37,10 +38,18 @@ export function AgentPermissionAlert({
     setCursorAgentLab(Boolean(d.cursor?.local_agent_lab));
     setCursorPipeline(Boolean(d.cursor?.local_pipeline));
     setCodexCli(Boolean(d.codex?.cli));
-    setClaudeTools(Boolean(d.claude?.tools));
-    setClaudeWrite(Boolean(d.claude?.write));
-    setClaudeAgentLab(Boolean(d.claude?.local_agent_lab));
-    setClaudePipeline(Boolean(d.claude?.local_pipeline));
+    setClaudeTools(d.claude?.tools ?? CLAUDE_PERMISSION_DEFAULTS.tools ?? true);
+    setClaudeWrite(d.claude?.write ?? CLAUDE_PERMISSION_DEFAULTS.write ?? true);
+    setClaudeAgentLab(
+      d.claude?.local_agent_lab ??
+        CLAUDE_PERMISSION_DEFAULTS.local_agent_lab ??
+        true,
+    );
+    setClaudePipeline(
+      d.claude?.local_pipeline ??
+        CLAUDE_PERMISSION_DEFAULTS.local_pipeline ??
+        false,
+    );
   }, [open]);
 
   const showCursor = selectedAgents.includes("cursor");

@@ -31,7 +31,11 @@ for _env_file in (
 from agent_lab import codex_cli
 from agent_lab import claude_cli  # noqa: E402
 from agent_lab.invoke import ensure_ready, model_name, provider  # noqa: E402
-from agent_lab.agents.registry import available_agents, label as agent_label  # noqa: E402
+from agent_lab.agents.registry import (  # noqa: E402
+    available_agents,
+    label as agent_label,
+    model_label as agent_model_label,
+)
 from agent_lab.attachments import (  # noqa: E402
     MAX_FILE_BYTES,
     MAX_FILES,
@@ -42,8 +46,21 @@ from agent_lab.room import (  # noqa: E402
     DEFAULT_AGENT_PARALLEL_ROUNDS,
     MAX_AGENT_PARALLEL_ROUNDS,
     continue_room_round,
+    preview_agent_payload,
     run_room,
     synthesize_session_plan,
+)
+from agent_lab.context_limits import all_limits_for_api, efficiency_mode_default  # noqa: E402
+from agent_lab.run_control import (  # noqa: E402
+    end_run,
+    maybe_release_orphaned_run_lock,
+    request_cancel,
+    run_lock_status,
+    try_begin_run,
+)
+from agent_lab.room_consensus import (  # noqa: E402
+    max_consensus_calls,
+    max_consensus_rounds,
 )
 from agent_lab.session import session_dir  # noqa: E402
 from agent_lab.runner import provider_override, run_topic_with_progress  # noqa: E402
@@ -67,6 +84,7 @@ app.add_middleware(
 
 _run_lock = threading.Lock()
 _active_run = False
+# Room/classic worker runs use agent_lab.run_control.try_begin_run / end_run.
 
 
 class RunRequest(BaseModel):
@@ -89,6 +107,17 @@ class RoomRunRequest(BaseModel):
 
 class RenameSessionRequest(BaseModel):
     topic: str = Field(..., min_length=1, max_length=200)
+
+
+class ContextPreviewRequest(BaseModel):
+    session_id: str = Field(..., min_length=1)
+    agent: str = Field(..., min_length=1)
+    parallel_round: int = Field(default=1, ge=1, le=MAX_AGENT_PARALLEL_ROUNDS)
+    review_mode: bool = False
+    efficiency_mode: bool = False
+    slim_context: bool = False
+    permissions: dict[str, Any] = Field(default_factory=dict)
+    agents: list[str] | None = None
 
 
 async def _save_uploads(folder: Path, files: list[UploadFile]) -> list[str]:
@@ -211,7 +240,10 @@ def health() -> dict[str, Any]:
         "room": {
             "default_agent_parallel_rounds": DEFAULT_AGENT_PARALLEL_ROUNDS,
             "max_agent_parallel_rounds": MAX_AGENT_PARALLEL_ROUNDS,
+            "max_consensus_rounds": max_consensus_rounds(),
+            "max_consensus_calls": max_consensus_calls(),
         },
+        "context": all_limits_for_api(),
     }
 
 
@@ -224,6 +256,7 @@ def agents() -> dict[str, Any]:
                 "id": aid,
                 "label": agent_label(aid),
                 "ready": aid in ready,
+                "model": agent_model_label(aid),
             }
             for aid in ("cursor", "codex", "claude")
         ],
@@ -320,6 +353,42 @@ def delete_session(session_id: str) -> dict[str, Any]:
     return {"ok": True, "id": session_id}
 
 
+@app.post("/api/room/context-preview")
+def room_context_preview(body: ContextPreviewRequest) -> dict[str, Any]:
+    folder = SESSIONS_DIR / body.session_id
+    if not folder.is_dir():
+        raise HTTPException(status_code=404, detail="session not found")
+    agent = body.agent.strip().lower()
+    if agent not in ("cursor", "codex", "claude"):
+        raise HTTPException(status_code=400, detail="agent must be cursor, codex, or claude")
+    agent_list: list[str] | None = None
+    if body.agents:
+        agent_list = [a.strip().lower() for a in body.agents if str(a).strip()]
+    try:
+        payload, bundle = preview_agent_payload(
+            folder,
+            agent,  # type: ignore[arg-type]
+            agents=agent_list,  # type: ignore[arg-type]
+            parallel_round=body.parallel_round,
+            permissions=body.permissions,
+            review_mode=body.review_mode,
+            efficiency_mode=body.efficiency_mode,
+            slim_context=body.slim_context,
+        )
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="session not found") from None
+    return {
+        "session_id": body.session_id,
+        "agent": agent,
+        "parallel_round": body.parallel_round,
+        "review_mode": body.review_mode,
+        "payload": payload,
+        "chars": len(payload),
+        "meta": bundle.meta.to_dict(),
+        "limits": all_limits_for_api(),
+    }
+
+
 @app.post("/api/runs")
 def create_run(body: RunRequest) -> dict[str, Any]:
     global _active_run
@@ -329,9 +398,11 @@ def create_run(body: RunRequest) -> dict[str, Any]:
 
     def generate():
         global _active_run
-        if not _run_lock.acquire(blocking=False):
-            yield _sse({"type": "error", "message": "a run is already in progress"})
-            return
+        if not try_begin_run():
+            maybe_release_orphaned_run_lock()
+            if not try_begin_run():
+                yield _sse({"type": "error", "message": "a run is already in progress"})
+                return
 
         _active_run = True
         events: list[dict[str, Any]] = []
@@ -372,7 +443,7 @@ def create_run(body: RunRequest) -> dict[str, Any]:
             yield _sse({"type": "error", "message": str(e), "events": events})
         finally:
             _active_run = False
-            _run_lock.release()
+            end_run()
 
     return StreamingResponse(
         generate(),
@@ -393,6 +464,8 @@ async def create_room_run(
     request_id: str | None = Form(None),
     permissions: str = Form("{}"),
     review_mode: bool = Form(False),
+    consensus_mode: bool = Form(False),
+    efficiency_mode: bool = Form(False),
     files: list[UploadFile] = File(default=[]),
 ) -> StreamingResponse:
     topic = topic.strip()
@@ -430,12 +503,12 @@ async def create_room_run(
 
     saved_files = await _save_uploads(folder, files)
     parallel_rounds = max(1, min(agent_rounds, MAX_AGENT_PARALLEL_ROUNDS))
+    # Align with UI turn profiles: discuss=1, review>=2 (non-UI callers may omit agent_rounds).
+    if review_mode and not consensus_mode and parallel_rounds < 2:
+        parallel_rounds = 2
+    use_efficiency = efficiency_mode or efficiency_mode_default()
 
     def generate():
-        if not _run_lock.acquire(blocking=False):
-            yield _sse({"type": "error", "message": "a run is already in progress"})
-            return
-
         event_q: queue.SimpleQueue[dict[str, Any] | None] = queue.SimpleQueue()
         result: dict[str, Any] = {}
 
@@ -443,6 +516,17 @@ async def create_room_run(
             event_q.put({"type": typ, **payload})
 
         def worker() -> None:
+            if not try_begin_run():
+                maybe_release_orphaned_run_lock()
+                if not try_begin_run():
+                    event_q.put(
+                        {
+                            "type": "error",
+                            "message": "a run is already in progress",
+                        }
+                    )
+                    event_q.put(None)
+                    return
             try:
                 if synthesize_only and session_id:
                     plan_md = synthesize_session_plan(
@@ -463,6 +547,8 @@ async def create_room_run(
                         on_event=on_event,
                         permissions=perm_obj,
                         review_mode=review_mode,
+                        consensus_mode=consensus_mode,
+                        efficiency_mode=use_efficiency,
                     )
                     result["folder"] = folder
                     result["plan_md"] = plan_md
@@ -476,12 +562,15 @@ async def create_room_run(
                         session_folder=folder,
                         permissions=perm_obj,
                         review_mode=review_mode,
+                        consensus_mode=consensus_mode,
+                        efficiency_mode=use_efficiency,
                     )
                     result["folder"] = f
                     result["plan_md"] = plan_md
             except Exception as e:
                 result["error"] = e
             finally:
+                end_run()
                 event_q.put(None)
 
         try:
@@ -489,6 +578,7 @@ async def create_room_run(
                 {
                     "type": "start",
                     "topic": topic,
+                    "session_id": folder.name if folder else None,
                     "workflow": "room.parallel",
                     "mode": mode_norm,
                     "synthesize": synthesize,
@@ -496,6 +586,8 @@ async def create_room_run(
                     "request_id": (request_id or "").strip() or None,
                     "agent_rounds": parallel_rounds,
                     "review_mode": review_mode,
+                    "consensus_mode": consensus_mode,
+                    "efficiency_mode": use_efficiency,
                     "attachments": saved_files,
                 }
             )
@@ -522,14 +614,19 @@ async def create_room_run(
             )
         except Exception as e:
             yield _sse({"type": "error", "message": str(e)})
-        finally:
-            _run_lock.release()
 
     return StreamingResponse(
         generate(),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@app.post("/api/room/runs/cancel")
+def cancel_room_run() -> dict[str, Any]:
+    request_cancel()
+    released = maybe_release_orphaned_run_lock()
+    return {"ok": True, "released_stale_lock": released, **run_lock_status()}
 
 
 @app.post("/api/sessions/{session_id}/attachments")

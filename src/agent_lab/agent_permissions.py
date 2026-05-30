@@ -26,8 +26,47 @@ def claude_write_allowed(permissions: dict[str, Any] | None) -> bool:
     return _perm(permissions, "claude", "write")
 
 
+def normalize_claude_permissions(
+    permissions: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Room defaults: Claude Code read + edit + agent-lab root unless opted out."""
+    out = dict(permissions or {})
+    claude = dict(out.get("claude") or {})
+    claude.setdefault("tools", True)
+    claude.setdefault("write", True)
+    claude.setdefault("local_agent_lab", True)
+    claude.setdefault("local_pipeline", False)
+    out["claude"] = claude
+    return out
+
+
+def claude_runtime_block(permissions: dict[str, Any] | None) -> str:
+    """Explicit Claude Code CLI runtime for [고정 constraints] — matches claude_cli.invoke."""
+    from agent_lab.claude_cli import resolve_claude_roots
+
+    perms = normalize_claude_permissions(permissions)
+    block = perms.get("claude") or {}
+    if not block.get("tools", True):
+        return (
+            "Claude Code runtime: text-only this turn (tools disabled by human)."
+        )
+    roots = resolve_claude_roots(perms)
+    root_lines = "\n".join(f"  - {p}" for p in roots) or "  - (project root)"
+    edit = "acceptEdits (file edits allowed)" if block.get("write", True) else "read-only"
+    return (
+        "Claude Code runtime (Agent Lab — `claude -p`, NOT claude.ai / NOT MCP-only):\n"
+        "- NOT Claude Desktop chat; NOT limited to Figma MCP; do not suggest adding server-filesystem MCP.\n"
+        f"- Built-in tools: Read, Edit, Bash, Glob, Grep, … (--tools default)\n"
+        f"- --add-dir roots:\n{root_lines}\n"
+        f"- Permission mode: {edit}; verify files with Read/Grep in this turn."
+    )
+
+
 def permission_preamble(permissions: dict[str, Any] | None, agent: str) -> str:
     """Extra instructions appended when user granted capabilities."""
+    if agent == "claude":
+        return claude_runtime_block(permissions)
+
     if not permissions:
         return ""
     lines: list[str] = []
@@ -49,21 +88,6 @@ def permission_preamble(permissions: dict[str, Any] | None, agent: str) -> str:
             "The human allowed Codex CLI for this turn — you may read/search/edit "
             "files and run shell commands in the project when needed."
         )
-    if agent == "claude":
-        if _perm(permissions, "claude", "tools"):
-            lines.append(
-                "The human allowed Claude Code read/search for this turn under granted "
-                "project roots (--add-dir)."
-            )
-        if _perm(permissions, "claude", "write"):
-            lines.append(
-                "The human allowed Claude Code to edit files (acceptEdits) under granted "
-                "roots only."
-            )
-        if _perm(permissions, "claude", "local_agent_lab"):
-            lines.append("You may access files under the agent-lab project.")
-        if _perm(permissions, "claude", "local_pipeline"):
-            lines.append("You may access files under quant-pipeline when relevant.")
     if not lines:
         return ""
     return "Human-granted permissions this turn:\n" + "\n".join(f"- {x}" for x in lines)

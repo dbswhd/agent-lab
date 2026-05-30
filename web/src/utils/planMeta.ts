@@ -1,3 +1,5 @@
+import { agentLabel } from "./transcript";
+
 export type PlanUpdateMeta = {
   ts?: string;
   trigger?: string;
@@ -8,6 +10,8 @@ export type PlanUpdateMeta = {
   completed_at?: string;
   agents?: string[];
   message_count?: number;
+  chat_from_line?: number;
+  chat_to_line?: number;
   status?: string;
 };
 
@@ -21,6 +25,10 @@ export type PlanMetaView = {
   agentsLabel: string;
   freshnessLabel: string;
   reviewTurnLabel: string | null;
+  /** Chat lines added after last plan update (run.message_count − last_plan_update.message_count). */
+  messagesSincePlan: number | null;
+  /** chat.jsonl line range covered by last plan update (1-based). */
+  chatLineLabel: string | null;
 };
 
 function triggerLabel(trigger?: string, synthesizeOnly?: boolean): string {
@@ -59,7 +67,7 @@ function reviewTurnLabel(run: Record<string, unknown> | undefined): string | nul
   const last = reviewTurns[reviewTurns.length - 1];
   const advocate = last.review_advocate as string | undefined;
   return advocate
-    ? `쟁점 검토 턴 포함 (마지막 반박 담당: ${advocate})`
+    ? `쟁점 검토 · 반박 ${agentLabel(advocate)}`
     : "쟁점 검토 턴 포함";
 }
 
@@ -68,6 +76,8 @@ export function buildPlanMetaView(
 ): PlanMetaView {
   const lastUpdate =
     (run?.last_plan_update as PlanUpdateMeta | undefined) ?? null;
+  const runMessageCount =
+    typeof run?.message_count === "number" ? run.message_count : null;
   const trigger = triggerLabel(
     lastUpdate?.trigger,
     lastUpdate?.synthesize_only,
@@ -79,8 +89,17 @@ export function buildPlanMetaView(
   const agentsLabel =
     agents.length > 0 ? agents.join(", ") : "—";
 
+  let chatLineLabel: string | null = null;
+  if (
+    typeof lastUpdate?.chat_from_line === "number" &&
+    typeof lastUpdate?.chat_to_line === "number"
+  ) {
+    chatLineLabel = `L${lastUpdate.chat_from_line}–L${lastUpdate.chat_to_line}`;
+  }
+
   let freshness: PlanFreshness = "unknown";
   let freshnessLabel = "갱신 이력 없음";
+  let messagesSincePlan: number | null = null;
   if (lastUpdate?.completed_at || lastUpdate?.ts) {
     const planTs = new Date(
       (lastUpdate.completed_at || lastUpdate.ts) as string,
@@ -94,6 +113,13 @@ export function buildPlanMetaView(
       if (discussTs > planTs) {
         freshness = "stale";
         freshnessLabel = "마지막 토론 이후 plan 미갱신";
+        const planMc =
+          typeof lastUpdate.message_count === "number"
+            ? lastUpdate.message_count
+            : null;
+        if (runMessageCount != null && planMc != null) {
+          messagesSincePlan = Math.max(0, runMessageCount - planMc);
+        }
       } else {
         freshness = "current";
         freshnessLabel = "최신 plan";
@@ -109,5 +135,7 @@ export function buildPlanMetaView(
     agentsLabel,
     freshnessLabel,
     reviewTurnLabel: reviewTurnLabel(run),
+    messagesSincePlan,
+    chatLineLabel,
   };
 }

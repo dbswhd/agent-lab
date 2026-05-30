@@ -1,8 +1,7 @@
 from typing import Any
 
 from agent_lab import claude_cli
-from agent_lab.agent_permissions import permission_preamble
-from agent_lab.agents.prompts import CLAUDE_API_HANDOFF, CLAUDE_ROOM
+from agent_lab.agents.prompts import CLAUDE_ROOM, claude_handoff_block
 
 
 def is_available() -> bool:
@@ -14,10 +13,17 @@ def respond(
     user: str,
     *,
     permissions: dict[str, Any] | None = None,
+    scribe: bool = False,
 ) -> str:
-    parts = [system or CLAUDE_ROOM, CLAUDE_API_HANDOFF]
-    extra = permission_preamble(permissions, "claude")
-    if extra:
-        parts.append(extra)
+    parts = [system or CLAUDE_ROOM]
+    handoff = claude_handoff_block()
+    if handoff:
+        parts.append(handoff)
+    # Permissions live in room user payload [고정 constraints] — avoid duplicating in system.
     system_block = "\n\n".join(parts)
-    return claude_cli.invoke(system_block, user, permissions=permissions)
+    return claude_cli.invoke(
+        system_block,
+        user,
+        permissions=permissions,
+        scribe=scribe,
+    )

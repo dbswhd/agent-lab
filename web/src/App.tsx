@@ -20,6 +20,7 @@ import { SessionList } from "./components/SessionList";
 import { SessionViewer } from "./components/SessionViewer";
 import { MacTitlebar } from "./components/MacTitlebar";
 import { getSidebarOpen, setSidebarOpen } from "./utils/sidebarPrefs";
+import { formatRoomModelLine } from "./utils/roomModels";
 import { isTauri } from "./theme";
 
 type Mode = "room" | "classic";
@@ -50,8 +51,11 @@ export default function App() {
     setSessions(list);
   }, [listTab]);
 
-  const loadDetail = useCallback(async (id: string) => {
+  const loadDetail = useCallback(async (id: string, keepPrevious = false) => {
     setLoadingDetail(true);
+    if (!keepPrevious) {
+      setDetail(null);
+    }
     try {
       setDetail(await fetchSession(id));
     } finally {
@@ -61,15 +65,13 @@ export default function App() {
 
   useEffect(() => {
     (async () => {
-      const [h, a, b] = await Promise.all([
+      const [, a, b] = await Promise.all([
         fetchHealth(),
         fetchAgents(),
         fetchBackends(),
       ]);
-      setHealth(
-        [h.provider, h.model].filter(Boolean).join(" · ") || "backend",
-      );
       setAgents(a.agents);
+      setHealth(formatRoomModelLine(a.agents) || "backend");
       setBackends(b.options);
       if (b.default) setDefaultBackend(b.default);
       await reloadSessions();
@@ -90,7 +92,7 @@ export default function App() {
     setComposerNew(false);
     setListTab("active");
     await reloadSessions();
-    await loadDetail(sessionId);
+    await loadDetail(sessionId, true);
   }
 
   async function onRunComplete(sessionId: string) {
@@ -212,7 +214,7 @@ export default function App() {
                     className={mode === "classic" ? "active" : ""}
                     onClick={() => setMode("classic")}
                   >
-                    클래식
+                    클래식 (레거시)
                   </button>
                 </div>
               )}

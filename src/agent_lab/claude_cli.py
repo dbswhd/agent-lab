@@ -55,26 +55,15 @@ def _project_root() -> Path:
 
 def resolve_claude_roots(permissions: dict[str, Any] | None) -> list[Path]:
     """Directories Claude Code may access via --add-dir."""
-    home = Path.home()
-    roots: list[Path] = []
-    block = (permissions or {}).get("claude") or {}
-    if block.get("local_agent_lab"):
-        roots.append(_project_root())
-    if block.get("local_pipeline"):
-        pipeline = Path(
-            os.getenv("QUANT_PIPELINE_ROOT", str(home / "Projects" / "quant-pipeline"))
-        ).expanduser()
-        if pipeline.is_dir():
-            roots.append(pipeline.resolve())
-    if (block.get("tools") or block.get("write")) and not roots:
-        roots.append(_project_root())
-    return roots
+    from agent_lab.agent_permissions import normalize_claude_permissions
+    from agent_lab.workspace_roots import resolve_workspace_roots
+
+    return resolve_workspace_roots(normalize_claude_permissions(permissions))
 
 
 def _claude_env() -> dict[str, str]:
     env = os.environ.copy()
     # Claude Code `-p` prefers ANTHROPIC_API_KEY over OAuth subscription.
-    # Agent Lab loads .env for classic graph (langchain API); room Claude uses CLI subscription.
     for key in (
         "ANTHROPIC_API_KEY",
         "ANTHROPIC_AUTH_TOKEN",
@@ -93,8 +82,60 @@ def _claude_env() -> dict[str, str]:
     return env
 
 
-def invoke(system: str, user: str, *, permissions: dict | None = None) -> str:
-    from agent_lab.agent_permissions import claude_tools_allowed, claude_write_allowed
+def _format_exec_error(stderr: str, stdout: str) -> str:
+    combined = f"{stderr or ''}\n{stdout or ''}"
+    errors = [
+        ln.strip()
+        for ln in combined.splitlines()
+        if ln.strip().startswith("ERROR:")
+    ]
+    if errors:
+        seen: set[str] = set()
+        unique: list[str] = []
+        for e in errors:
+            if e not in seen:
+                seen.add(e)
+                unique.append(e)
+        return " ".join(unique)
+    detail = combined.strip()
+    if "usage limit" in detail.lower() or "credit balance" in detail.lower():
+        return detail[:600]
+    if "Reading additional input from stdin" in detail:
+        return "Claude CLI stdin/prompt handling failed."
+    return detail[:800] if detail else "unknown error"
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in ("1", "true", "yes", "on")
+
+
+def _permission_mode() -> str:
+    """Headless room turns need bypassPermissions when skip-permissions is on."""
+    if _env_bool("CLAUDE_SKIP_PERMISSIONS", default=True):
+        return "bypassPermissions"
+    mode = (os.getenv("CLAUDE_PERMISSION_MODE") or "acceptEdits").strip()
+    allowed = {
+        "acceptEdits",
+        "auto",
+        "bypassPermissions",
+        "default",
+        "dontAsk",
+        "plan",
+    }
+    return mode if mode in allowed else "acceptEdits"
+
+
+def invoke(
+    system: str,
+    user: str,
+    *,
+    permissions: dict | None = None,
+    scribe: bool = False,
+) -> str:
+    from agent_lab.agent_permissions import normalize_claude_permissions
 
     claude = resolve_claude_bin()
     if not claude:
@@ -105,57 +146,70 @@ def invoke(system: str, user: str, *, permissions: dict | None = None) -> str:
             "(e.g. ~/.nvm/versions/node/v24.13.1/bin/claude)"
         )
 
-    allow_read = claude_tools_allowed(permissions)
-    allow_write = claude_write_allowed(permissions)
+    perms = normalize_claude_permissions(permissions)
     cwd = os.getenv("CLAUDE_CWD", str(_project_root()))
+    permission_mode = _permission_mode()
+    skip_permissions = _env_bool("CLAUDE_SKIP_PERMISSIONS", default=True)
 
     system_path = tempfile.mktemp(prefix="agent-lab-claude-sys-", suffix=".txt")
+    # `-p` is required for headless tool loops (Read/Grep/Bash) from a subprocess.
     cmd: list[str] = [
         claude,
         "-p",
-        "--no-session-persistence",
         "--output-format",
         "text",
-        "--exclude-dynamic-system-prompt-sections",
-        "--system-prompt-file",
+        "--no-session-persistence",
+        "--append-system-prompt-file",
         system_path,
+        "--permission-mode",
+        permission_mode,
     ]
 
-    if allow_write:
-        cmd.extend(["--permission-mode", "acceptEdits"])
-    else:
-        cmd.extend(["--permission-mode", "plan"])
+    if skip_permissions:
+        cmd.append("--dangerously-skip-permissions")
 
-    for root in resolve_claude_roots(permissions):
+    # --bare skips OAuth/keychain (needs API key) — default off; set CLAUDE_BARE=1 only if you use API key auth.
+    if _env_bool("CLAUDE_BARE", default=False):
+        cmd.append("--bare")
+
+    if _env_bool("CLAUDE_DISABLE_TOOLS", default=False):
+        cmd.extend(["--tools", ""])
+    else:
+        cmd.extend(["--tools", "default"])
+
+    for root in resolve_claude_roots(perms):
         cmd.extend(["--add-dir", str(root)])
 
-    if model := os.getenv("CLAUDE_MODEL"):
+    model = (
+        os.getenv("CLAUDE_SCRIBE_MODEL") if scribe else os.getenv("CLAUDE_MODEL")
+    )
+    if model:
         cmd.extend(["--model", model])
-    if effort := os.getenv("CLAUDE_REASONING_EFFORT"):
+
+    effort = os.getenv("CLAUDE_SCRIBE_REASONING_EFFORT") if scribe else None
+    if not effort:
+        effort = os.getenv("CLAUDE_REASONING_EFFORT", "low")
+    if effort:
         cmd.extend(["--effort", effort])
 
-    prompt = user.strip()
-    if not allow_read and not allow_write:
-        prompt = (
-            f"{prompt}\n\n"
-            "Do not use tools, MCP, or shell commands. Respond with text only."
-        )
+    if budget := os.getenv("CLAUDE_MAX_BUDGET_USD"):
+        cmd.extend(["--max-budget-usd", budget.strip()])
 
-    cmd.append(prompt)
+    cmd.append(user.strip())
 
     Path(system_path).write_text(system.strip() + "\n", encoding="utf-8")
     try:
         result = subprocess.run(
             cmd,
-            cwd=cwd,
             stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
             timeout=int(os.getenv("CLAUDE_TIMEOUT_SEC", "300")),
             env=_claude_env(),
+            cwd=cwd,
         )
         if result.returncode != 0:
-            detail = (result.stderr or result.stdout or "").strip()
+            detail = _format_exec_error(result.stderr or "", result.stdout or "")
             if "credit balance is too low" in detail.lower():
                 detail = (
                     f"{detail} "
@@ -164,7 +218,7 @@ def invoke(system: str, user: str, *, permissions: dict | None = None) -> str:
                 )
             raise RuntimeError(
                 f"claude -p failed (exit {result.returncode})"
-                + (f": {detail[:500]}" if detail else "")
+                + (f": {detail}" if detail else "")
             )
         text = (result.stdout or "").strip()
         if not text:

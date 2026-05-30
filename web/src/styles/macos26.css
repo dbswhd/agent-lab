@@ -522,6 +522,15 @@ body.is-tauri .chat-list-header {
   flex-shrink: 0;
   display: flex;
   align-items: center;
+  gap: 8px;
+}
+
+.sidebar-toggle.context-sidebar-toggle.is-active {
+  color: var(--mac-accent);
+  background: color-mix(in srgb, var(--mac-accent) 12%, var(--mac-push-button-bg));
+  box-shadow:
+    0 0 0 0.5px color-mix(in srgb, var(--mac-accent) 40%, var(--mac-separator)),
+    0 0 0 2px color-mix(in srgb, var(--mac-accent) 14%, transparent);
 }
 
 .sidebar-toggle {
@@ -646,6 +655,7 @@ body.is-tauri .chat-list-header {
   background: transparent;
   border: none;
   box-shadow: none;
+  overflow: visible;
 }
 
 .composer-row {
@@ -657,9 +667,19 @@ body.is-tauri .chat-list-header {
   box-sizing: border-box;
   padding-left: var(--composer-pad-x);
   padding-right: var(--composer-pad-x);
+  margin-bottom: var(--composer-capsule-fade-bleed);
+  background: transparent;
+  overflow: visible;
 }
 
 .composer-capsule {
+  --composer-capsule-ring: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--mac-separator) 90%, transparent),
+    color-mix(in srgb, var(--mac-accent) 22%, transparent),
+    color-mix(in srgb, var(--mac-separator) 75%, transparent)
+  );
+  position: relative;
   flex: 0 1 auto;
   width: calc(
     (100% - var(--composer-send-gap) - var(--composer-bar-height)) *
@@ -676,26 +696,123 @@ body.is-tauri .chat-list-header {
   min-height: var(--composer-bar-height);
   padding: 4px 10px 4px 6px;
   border-radius: var(--composer-capsule-radius);
-  background: var(--composer-capsule-bg);
-  border: 0.5px solid var(--mac-separator);
+  border: none;
+  background: transparent;
   box-shadow: none;
-  transition: box-shadow 0.12s ease, border-color 0.12s ease;
+  overflow: visible;
+  transition: box-shadow 0.12s ease;
+}
+
+/* Glass + bottom fade (extends below pill so blur shows through) */
+.composer-capsule::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: calc(-1 * var(--composer-capsule-fade-bleed));
+  border-radius: inherit;
+  border-bottom-left-radius: var(--composer-capsule-radius);
+  border-bottom-right-radius: var(--composer-capsule-radius);
+  pointer-events: none;
+  z-index: 0;
+  background-image: linear-gradient(
+    180deg,
+    var(--composer-capsule-fill-top) 0%,
+    var(--composer-capsule-fill-top) 36%,
+    var(--composer-capsule-fill-mid) 58%,
+    color-mix(in srgb, var(--composer-capsule-fill-mid) 35%, transparent) 78%,
+    transparent 100%
+  );
+  backdrop-filter: blur(22px) saturate(1.55);
+  -webkit-backdrop-filter: blur(22px) saturate(1.55);
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    #000 0%,
+    #000 52%,
+    rgba(0, 0, 0, 0.88) 72%,
+    rgba(0, 0, 0, 0.45) 88%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    180deg,
+    #000 0%,
+    #000 52%,
+    rgba(0, 0, 0, 0.88) 72%,
+    rgba(0, 0, 0, 0.45) 88%,
+    transparent 100%
+  );
+}
+
+.composer-capsule::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  z-index: 2;
+  background: var(--composer-capsule-ring);
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .composer-capsule {
+    background-color: var(--composer-capsule-bg);
+    background-image: linear-gradient(
+      180deg,
+      var(--composer-capsule-bg) 0%,
+      var(--composer-capsule-bg) 55%,
+      color-mix(in srgb, var(--composer-capsule-bg) 55%, transparent) 100%
+    );
+  }
+}
+
+.composer-capsule:focus-within::before {
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.08);
 }
 
 .composer-capsule:focus-within {
-  border-color: color-mix(in srgb, var(--mac-accent) 35%, var(--mac-separator));
-  box-shadow:
-    0 0 0 3px color-mix(in srgb, var(--mac-accent) 22%, transparent),
-    0 0.5px 0 rgba(0, 0, 0, 0.04);
+  box-shadow: none;
 }
 
-[data-theme="dark"] .composer-capsule {
-  border-color: var(--mac-separator);
+.composer-capsule:focus-within::after {
+  --composer-capsule-ring: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--mac-accent) 65%, transparent),
+    color-mix(in srgb, var(--mac-accent) 25%, transparent),
+    color-mix(in srgb, var(--mac-accent) 55%, transparent)
+  );
 }
 
-[data-theme="dark"] .composer-capsule:focus-within {
-  border-color: color-mix(in srgb, var(--mac-accent) 45%, var(--mac-separator));
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--mac-accent) 28%, transparent);
+[data-theme="dark"] .composer-capsule::before {
+  background-image: linear-gradient(
+      180deg,
+      color-mix(in srgb, #fff 14%, transparent) 0%,
+      transparent 28%
+    ),
+    linear-gradient(
+      180deg,
+      var(--composer-capsule-fill-top) 0%,
+      var(--composer-capsule-fill-top) 36%,
+      var(--composer-capsule-fill-mid) 58%,
+      color-mix(in srgb, var(--composer-capsule-fill-mid) 35%, transparent) 78%,
+      transparent 100%
+    );
+}
+
+.composer-capsule .composer-field,
+.composer-capsule .btn-attach,
+.composer-capsule .btn-stop-reply {
+  position: relative;
+  z-index: 1;
 }
 
 .composer-capsule .composer-field {
@@ -831,12 +948,24 @@ body.is-tauri .chat-list-header {
 .messages-scroll > .bubble-row,
 .messages-scroll > .chat-turn,
 .messages-scroll > .empty-chat,
-.messages-scroll > .chat-round-divider {
+.messages-scroll > .chat-round-divider,
+.messages-scroll > .chat-line,
+.messages-scroll > [data-chat-line] {
   width: var(--composer-cluster-width);
   max-width: 100%;
   margin-left: auto;
   margin-right: auto;
   box-sizing: border-box;
+  min-width: 0;
+}
+
+.messages-scroll > .chat-line > .bubble-row,
+.messages-scroll > .chat-line > .chat-turn,
+.messages-scroll > [data-chat-line] > .bubble-row,
+.messages-scroll > [data-chat-line] > .chat-turn {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .chat-round-divider {
@@ -894,20 +1023,42 @@ body.is-tauri .chat-list-header {
   line-height: var(--bubble-line-height);
   letter-spacing: var(--bubble-tracking);
   word-break: break-word;
+  border: 0.5px solid transparent;
+  backdrop-filter: blur(var(--bubble-glass-blur)) saturate(var(--bubble-glass-saturate));
+  -webkit-backdrop-filter: blur(var(--bubble-glass-blur)) saturate(var(--bubble-glass-saturate));
 }
 
 .mac-bubble--sent {
+  /* Human: solid iMessage blue — glass would pick up composer fade behind scroll */
   background: var(--color-bubble-sent);
+  border-color: transparent;
   color: var(--color-bubble-sent-text);
+  box-shadow: 0 1px 8px color-mix(in srgb, var(--color-bubble-sent) 22%, transparent);
   border-radius: var(--bubble-radius) var(--bubble-radius) var(--bubble-tail-radius)
     var(--bubble-radius);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .mac-bubble--received {
-  background: var(--color-bubble-received);
+  background: var(--bubble-received-glass);
+  border-color: var(--bubble-received-glass-border);
   color: var(--color-bubble-received-text);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
   border-radius: var(--bubble-radius) var(--bubble-radius) var(--bubble-radius)
     var(--bubble-tail-radius);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .mac-bubble--sent {
+    background: var(--color-bubble-sent);
+    border-color: transparent;
+  }
+
+  .mac-bubble--received {
+    background: var(--color-bubble-received);
+    border-color: transparent;
+  }
 }
 
 .mac-bubble--typing {
@@ -923,6 +1074,35 @@ body.is-tauri .chat-list-header {
   min-width: 52px;
   padding: var(--bubble-pad-y) 14px;
   border: 0.5px solid transparent;
+}
+
+.reply-wait-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  max-width: 100%;
+}
+
+.agent-activity-log {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: var(--composer-cluster-width);
+}
+
+.agent-activity-log li {
+  font-size: var(--text-footnote);
+  line-height: 1.35;
+  color: var(--mac-label-tertiary);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .mac-bubble--received.mac-bubble--agent-cursor.mac-bubble--typing {
@@ -997,12 +1177,22 @@ body.is-tauri .chat-list-header {
 }
 
 .bubble--system {
-  background: var(--color-bubble-system);
+  background: var(--bubble-system-glass);
+  border: 0.5px solid color-mix(in srgb, var(--mac-separator) 50%, transparent);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
   color: var(--color-bubble-system-text);
   font-family: var(--font-message);
   font-size: var(--text-caption);
   padding: var(--space-sm) var(--space-md);
   border-radius: var(--radius-pill);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .bubble--system {
+    background: var(--color-bubble-system);
+    border-color: transparent;
+  }
 }
 
 .bubble-md {
@@ -1090,7 +1280,8 @@ body.is-tauri .chat-list-header {
   line-height: 1.45;
   padding: 1px 5px;
   border-radius: 5px;
-  background: rgba(0, 0, 0, 0.1);
+  background: color-mix(in srgb, var(--mac-label-primary) 9%, transparent);
+  border: 0.5px solid color-mix(in srgb, var(--mac-separator) 35%, transparent);
 }
 
 .mac-bubble--sent .bubble-inline-code,
@@ -1099,18 +1290,63 @@ body.is-tauri .chat-list-header {
 }
 
 .chat-turn {
+  --chat-turn-fill: color-mix(
+    in srgb,
+    var(--mac-fill-tertiary) var(--chat-turn-glass-fill-mix),
+    transparent
+  );
+  --chat-turn-glass-surface: color-mix(
+    in srgb,
+    var(--chat-turn-fill) 88%,
+    var(--mac-alert-bg)
+  );
+  --chat-turn-tint: var(--chat-turn-fill);
+  position: relative;
   box-sizing: border-box;
   margin: var(--space-xs) 0;
   padding: var(--space-md) var(--space-lg);
   border-radius: var(--chat-turn-radius);
-  border-bottom: none;
+  border: 0.5px solid var(--chat-turn-glass-border);
+  outline: none;
+  background:
+    linear-gradient(180deg, var(--chat-turn-glass-sheen) 0%, transparent 24%),
+    var(--chat-turn-glass-surface);
+  backdrop-filter: blur(var(--chat-turn-glass-blur)) saturate(var(--chat-turn-glass-saturate));
+  -webkit-backdrop-filter: blur(var(--chat-turn-glass-blur))
+    saturate(var(--chat-turn-glass-saturate));
+  box-shadow: var(--chat-turn-glass-shadow);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .chat-turn {
+    background: color-mix(
+      in srgb,
+      var(--mac-fill-tertiary) var(--chat-turn-glass-fill-mix),
+      var(--mac-content-bg)
+    );
+    border-color: transparent;
+  }
+}
+
+.chat-turn::after {
+  display: none;
+}
+
+.chat-turn > * {
+  position: relative;
 }
 
 .chat-turn__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   margin: 0 0 6px;
 }
 
 .chat-turn__name {
+  flex: 1;
+  min-width: 0;
   font-size: var(--text-headline);
   font-weight: 600;
   letter-spacing: -0.012em;
@@ -1119,13 +1355,37 @@ body.is-tauri .chat-list-header {
 .chat-turn__body {
   color: var(--mac-label-primary);
   max-width: none;
+  min-width: 0;
   font-size: var(--text-bubble-agent);
   line-height: var(--bubble-line-height);
   letter-spacing: var(--bubble-tracking);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.chat-turn__body .bubble-md__pre {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  box-sizing: border-box;
+  background: color-mix(in srgb, var(--mac-label-primary) 7%, transparent);
+  border: 0.5px solid color-mix(in srgb, var(--mac-separator) 40%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .chat-turn--cursor {
-  background: var(--agent-pill-tint-cursor);
+  --chat-turn-fill: color-mix(
+    in srgb,
+    var(--color-agent-cursor) var(--chat-turn-agent-mix),
+    transparent
+  );
+  --chat-turn-glass-surface: color-mix(
+    in srgb,
+    var(--chat-turn-fill) 90%,
+    var(--mac-alert-bg)
+  );
+  --chat-turn-tint: var(--chat-turn-fill);
 }
 
 .chat-turn--cursor .chat-turn__name {
@@ -1133,7 +1393,17 @@ body.is-tauri .chat-list-header {
 }
 
 .chat-turn--codex {
-  background: var(--agent-pill-tint-codex);
+  --chat-turn-fill: color-mix(
+    in srgb,
+    var(--color-agent-codex) var(--chat-turn-agent-mix),
+    transparent
+  );
+  --chat-turn-glass-surface: color-mix(
+    in srgb,
+    var(--chat-turn-fill) 90%,
+    var(--mac-alert-bg)
+  );
+  --chat-turn-tint: var(--chat-turn-fill);
 }
 
 .chat-turn--codex .chat-turn__name {
@@ -1141,7 +1411,17 @@ body.is-tauri .chat-list-header {
 }
 
 .chat-turn--claude {
-  background: var(--agent-pill-tint-claude);
+  --chat-turn-fill: color-mix(
+    in srgb,
+    var(--color-agent-claude) var(--chat-turn-agent-mix),
+    transparent
+  );
+  --chat-turn-glass-surface: color-mix(
+    in srgb,
+    var(--chat-turn-fill) 90%,
+    var(--mac-alert-bg)
+  );
+  --chat-turn-tint: var(--chat-turn-fill);
 }
 
 .chat-turn--claude .chat-turn__name {
@@ -1151,13 +1431,45 @@ body.is-tauri .chat-list-header {
 .chat-turn--planner,
 .chat-turn--critic,
 .chat-turn--scribe {
-  background: var(--agent-pill-tint-neutral);
+  --chat-turn-fill: color-mix(
+    in srgb,
+    var(--mac-fill-secondary) var(--chat-turn-glass-fill-mix),
+    transparent
+  );
+  --chat-turn-glass-surface: color-mix(
+    in srgb,
+    var(--chat-turn-fill) 88%,
+    var(--mac-alert-bg)
+  );
+  --chat-turn-tint: var(--chat-turn-fill);
 }
 
 .chat-turn--planner .chat-turn__name,
 .chat-turn--critic .chat-turn__name,
 .chat-turn--scribe .chat-turn__name {
   color: var(--mac-label-secondary);
+}
+
+.chat-turn--waiting .chat-turn__body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.chat-turn--waiting .agent-activity-log {
+  width: 100%;
+  max-width: none;
+}
+
+.chat-turn--waiting .agent-activity-log li {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+}
+
+.chat-turn--waiting .typing-dots--stream {
+  min-height: 1.6em;
 }
 
 .chat-turn__body .bubble-md {
@@ -1216,6 +1528,302 @@ body.is-tauri .chat-list-header {
   font-size: var(--text-caption);
 }
 
+/* Composer — HCI transparency (turn contract, topology strip, receipts) */
+.composer-turn-contract {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+  width: 100%;
+  max-width: var(--composer-cluster-width);
+  margin: 0 auto;
+  padding: 6px 10px 2px;
+  box-sizing: border-box;
+  border-radius: var(--radius-control, 10px);
+  background: var(--mac-fill-secondary);
+  border: 0.5px solid var(--mac-separator);
+  font-size: var(--text-caption);
+  line-height: 1.35;
+  color: var(--mac-label-secondary);
+}
+
+.composer-turn-contract__label {
+  flex-shrink: 0;
+  font-weight: 600;
+  font-size: var(--text-footnote);
+  color: var(--mac-label-tertiary);
+  letter-spacing: -0.01em;
+}
+
+.composer-turn-contract__text {
+  flex: 1 1 200px;
+  min-width: 0;
+  color: var(--mac-label-primary);
+  font-weight: 510;
+}
+
+.composer-progress-slot {
+  width: 100%;
+  max-width: var(--composer-cluster-width);
+  margin: 4px auto 0;
+  padding: 0 var(--composer-pad-x);
+  box-sizing: border-box;
+}
+
+/* ── Collapsible alert sheet (mac-alert frost — no dark LG base) ── */
+.lg-panel {
+  position: relative;
+  border-radius: var(--mac-alert-radius);
+  border: none;
+  outline: none;
+  background: var(--lg-panel-surface);
+  backdrop-filter: blur(var(--lg-panel-blur)) saturate(var(--lg-panel-saturate));
+  -webkit-backdrop-filter: blur(var(--lg-panel-blur)) saturate(var(--lg-panel-saturate));
+  box-shadow: var(--lg-panel-float-shadow);
+  animation: lg-panel-in 0.22s ease-out;
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .lg-panel {
+    background: var(--lg-panel-surface);
+  }
+
+  .lg-panel--warn {
+    background: var(--lg-panel-warn-surface);
+  }
+}
+
+@keyframes lg-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px) scale(0.988);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.lg-panel::before,
+.lg-panel::after {
+  display: none;
+}
+
+.lg-panel__head,
+.lg-panel__body {
+  position: relative;
+}
+
+.lg-panel__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: var(--mac-label-primary);
+}
+
+.lg-panel--collapsed .lg-panel__head {
+  padding-bottom: 8px;
+}
+
+.lg-panel__head:hover {
+  color: var(--mac-label-primary);
+}
+
+.lg-panel__title {
+  flex-shrink: 0;
+  font-size: var(--text-footnote);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--mac-label-secondary);
+}
+
+.lg-panel__summary {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-footnote);
+  font-weight: 500;
+  color: var(--mac-label-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lg-panel__chev {
+  flex-shrink: 0;
+  margin-left: auto;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--mac-label-tertiary);
+}
+
+.lg-panel__body {
+  padding: 0 12px 10px;
+}
+
+.lg-panel--warn {
+  background: var(--lg-panel-warn-surface);
+}
+
+.lg-panel--warn .lg-panel__title {
+  color: color-mix(in srgb, var(--mac-orange, #c93400) 78%, var(--mac-label-secondary));
+}
+
+.composer-alert-panel,
+.turn-progress-panel {
+  width: 100%;
+  max-width: var(--composer-cluster-width);
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+}
+
+.composer-alert-panel {
+  margin-top: 6px;
+}
+
+.plan-ref-warn-panel {
+  width: var(--composer-cluster-width);
+  max-width: calc(100% - 2 * var(--space-lg));
+  margin: var(--space-sm) auto;
+}
+
+.composer-alert-panel__text,
+.plan-ref-warn-panel__text {
+  margin: 0;
+  font-size: var(--text-footnote);
+  line-height: 1.4;
+  color: var(--mac-label-secondary);
+}
+
+.lg-panel--warn .composer-alert-panel__text,
+.lg-panel--warn .plan-ref-warn-panel__text {
+  color: color-mix(in srgb, var(--mac-orange, #c93400) 55%, var(--mac-label-primary));
+}
+
+.turn-progress-strip {
+  padding: 0;
+  border: none;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+
+.turn-progress-strip::after {
+  display: none;
+}
+
+.turn-progress-strip__row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.turn-progress-strip__row + .turn-progress-strip__row {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: none;
+}
+
+.turn-progress-strip__title {
+  font-size: var(--text-footnote);
+  font-weight: 600;
+  color: var(--mac-label-tertiary);
+  letter-spacing: -0.01em;
+}
+
+.turn-progress-strip__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.turn-progress-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill, 999px);
+  font-size: var(--text-footnote);
+  font-weight: 600;
+  border: none;
+  outline: none;
+  background: color-mix(in srgb, var(--mac-fill-secondary) 72%, var(--mac-content-bg));
+  color: var(--mac-label-secondary);
+  box-shadow: none;
+}
+
+.turn-progress-chip--done {
+  background: color-mix(in srgb, var(--mac-green, #248a3d) 12%, var(--mac-content-bg));
+  color: var(--mac-label-primary);
+}
+
+.turn-progress-chip--active {
+  background: color-mix(in srgb, var(--mac-accent) 14%, var(--mac-content-bg));
+  box-shadow: none;
+  color: var(--mac-label-primary);
+}
+
+.turn-progress-chip__r {
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.75;
+}
+
+.turn-progress-chip__ord {
+  display: inline-grid;
+  place-items: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #fff;
+  background: var(--mac-accent);
+}
+
+.turn-progress-chip--pending {
+  opacity: 0.78;
+}
+
+.composer-stale-notice {
+  margin: 4px var(--space-lg) 0;
+  max-width: var(--composer-cluster-width);
+  margin-left: auto;
+  margin-right: auto;
+  padding: 6px 10px;
+  border-radius: var(--radius-control, 10px);
+  font-size: var(--text-footnote);
+  line-height: 1.35;
+  color: var(--mac-orange, #c93400);
+  background: color-mix(
+    in srgb,
+    var(--mac-orange, #c93400) 10%,
+    var(--mac-fill-secondary)
+  );
+  border: 0.5px solid color-mix(in srgb, var(--mac-orange, #c93400) 28%, var(--mac-separator));
+}
+
+.composer-send-receipt {
+  margin: 4px var(--space-lg) 0;
+  max-width: var(--composer-cluster-width);
+  margin-left: auto;
+  margin-right: auto;
+  padding: 4px 10px 2px;
+  font-size: var(--text-footnote);
+  line-height: 1.35;
+  color: var(--mac-label-secondary);
+}
+
 .btn-send {
   background: var(--mac-button-trailing-tint);
   color: #fff;
@@ -1251,10 +1859,45 @@ body.is-tauri .chat-list-header {
   transform: scale(0.96);
 }
 
+.btn-stop-reply {
+  flex-shrink: 0;
+  align-self: center;
+  width: 28px;
+  height: 28px;
+  margin-right: 6px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--color-bubble-sent);
+  color: var(--color-bubble-sent-text);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 1px 6px color-mix(in srgb, var(--color-bubble-sent) 28%, transparent);
+  transition: transform 0.12s ease, opacity 0.12s ease;
+}
+
+.btn-stop-reply:hover {
+  opacity: 0.92;
+}
+
+.btn-stop-reply:active {
+  transform: scale(0.94);
+}
+
+.btn-stop-reply__square {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
 /* View tabs — flat underline tabs (single toolbar row) */
 .view-tabs-bar__leading button:focus-visible,
 .room-rounds-btn:focus-visible,
-.room-mode-btn:focus-visible,
+.composer-turn-seg button:focus-visible,
+.room-plan-btn:focus-visible,
+.lg-panel__head:focus-visible,
 .scroll-to-bottom-btn:focus-visible {
   outline: 2px solid var(--mac-focus-ring);
   outline-offset: -2px;

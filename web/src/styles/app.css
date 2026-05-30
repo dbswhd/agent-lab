@@ -68,6 +68,30 @@ body {
   overflow: hidden;
 }
 
+.room-chat-split {
+  flex: 1;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.room-chat-split > .chat-pane-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.context-sidebar {
+  width: var(--context-sidebar-width);
+  min-width: var(--context-sidebar-width);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-left: 0.5px solid var(--mac-separator);
+  background: var(--mac-fill-tertiary);
+}
+
 .chat-pane-body {
   position: relative;
   flex: 1;
@@ -79,25 +103,27 @@ body {
 }
 
 /* Scroll area extends behind floating composer */
-.chat-pane-body:has(> .composer) > .messages-scroll {
-  padding-bottom: calc(
-    var(--composer-bar-height) + var(--composer-float-offset) + var(--composer-content-gap) +
-      var(--space-md)
-  );
+.chat-pane-body:has(> .composer) > .messages-scroll,
+.chat-pane-body:has(> .composer) > .messages-scroll--document {
+  padding-bottom: var(--composer-scroll-pad);
 }
 
-.chat-pane-body:has(> .composer) > .messages-scroll--document {
-  padding-bottom: calc(
-    var(--composer-bar-height) + var(--composer-float-offset) + var(--composer-content-gap) +
-      var(--space-md)
-  );
+.chat-pane-body:has(> .composer .composer-turn-row) > .messages-scroll,
+.chat-pane-body:has(> .composer .composer-turn-row) > .messages-scroll--document {
+  padding-bottom: var(--composer-scroll-pad);
 }
 
 .chat-pane-body:has(> .composer .attachment-bar) > .messages-scroll,
 .chat-pane-body:has(> .composer .attachment-bar) > .messages-scroll--document {
+  padding-bottom: calc(var(--composer-scroll-pad) + var(--composer-attachment-stack));
+}
+
+.chat-pane-body:has(> .composer .composer-turn-row):has(> .composer .attachment-bar)
+  > .messages-scroll,
+.chat-pane-body:has(> .composer .composer-turn-row):has(> .composer .attachment-bar)
+  > .messages-scroll--document {
   padding-bottom: calc(
-    var(--composer-bar-height) + var(--composer-float-offset) + var(--composer-content-gap) +
-      var(--space-md) + 36px
+    var(--composer-scroll-pad) + var(--composer-turn-stack) + var(--composer-attachment-stack)
   );
 }
 
@@ -112,24 +138,91 @@ body {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: var(--composer-float-offset);
+  bottom: 0;
   z-index: 3;
+  padding-bottom: var(--composer-float-offset);
+  box-sizing: border-box;
   pointer-events: none;
 }
 
+/* Backing gradient: below capsule → strategy bar (+ 5px); gradual fade upward */
+.chat-pane-body:has(> .composer) > .composer::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--composer-chrome-gradient-lift);
+  height: var(--composer-chrome-gradient-height-compact);
+  pointer-events: none;
+  z-index: 0;
+  background: linear-gradient(
+    to top,
+    var(--mac-content-bg) 0%,
+    var(--mac-content-bg) 50%,
+    color-mix(in srgb, var(--mac-content-bg) 99%, transparent) 62%,
+    color-mix(in srgb, var(--mac-content-bg) 96%, transparent) 72%,
+    color-mix(in srgb, var(--mac-content-bg) 88%, transparent) 80%,
+    color-mix(in srgb, var(--mac-content-bg) 78%, transparent) 87%,
+    color-mix(in srgb, var(--mac-content-bg) 52%, transparent) 93%,
+    color-mix(in srgb, var(--mac-content-bg) 8%, transparent) 97%,
+    transparent 100%
+  );
+}
+
+.chat-pane-body:has(> .composer .composer-turn-row) > .composer::before {
+  height: var(--composer-chrome-gradient-height);
+}
+
+/* Fill gap below capsule from gradient lift */
+.chat-pane-body:has(> .composer) > .composer::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--composer-chrome-gradient-lift);
+  pointer-events: none;
+  z-index: 0;
+  background: var(--mac-content-bg);
+}
+
 .chat-pane-body > .composer > * {
+  position: relative;
+  z-index: 1;
   pointer-events: auto;
+}
+
+.chat-pane-body:has(> .composer) .scroll-to-bottom-btn {
+  bottom: calc(
+    var(--composer-float-offset) + var(--space-xs) + var(--composer-bar-height) +
+      var(--scroll-jump-gap)
+  );
+}
+
+.chat-pane-body:has(> .composer .composer-turn-row) .scroll-to-bottom-btn {
+  bottom: var(--composer-scroll-btn-bottom);
+}
+
+.chat-pane-body:has(> .composer .attachment-bar) .scroll-to-bottom-btn {
+  bottom: calc(
+    var(--composer-float-offset) + var(--space-xs) + var(--composer-bar-height) +
+      var(--composer-attachment-stack) + var(--scroll-jump-gap)
+  );
+}
+
+.chat-pane-body:has(> .composer .composer-turn-row):has(> .composer .attachment-bar)
+  .scroll-to-bottom-btn {
+  bottom: calc(
+    var(--composer-scroll-btn-bottom) + var(--composer-attachment-stack)
+  );
 }
 
 .scroll-to-bottom-btn {
   position: absolute;
   left: 50%;
-  z-index: 4;
-  transform: translateX(-50%) translateY(8px);
-  bottom: calc(
-    var(--composer-float-offset) + var(--composer-bar-height) +
-      var(--composer-content-gap) + 6px
-  );
+  z-index: 2;
+  transform: translateX(-50%) translateY(0);
+  bottom: calc(var(--composer-scroll-pad) + var(--scroll-jump-gap));
   width: 32px;
   height: 32px;
   padding: 0;
@@ -217,8 +310,10 @@ body {
   display: flex;
   align-items: flex-end;
   gap: 6px;
+  width: 100%;
   max-width: 100%;
   margin: var(--space-xs) 0;
+  box-sizing: border-box;
 }
 
 .bubble-row .avatar--icon-wrap,
@@ -241,7 +336,7 @@ body {
 }
 
 .bubble-stack {
-  max-width: var(--bubble-max-width);
+  max-width: calc(100% - 30px);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -433,77 +528,37 @@ body {
 .room-run-controls {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   margin-left: auto;
   flex-shrink: 0;
   padding: 4px 0;
 }
 
-.room-rounds-stepper {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: 2px 4px;
-  border-radius: var(--radius-pill, 999px);
-  background: var(--mac-fill-tertiary);
-  border: 0.5px solid var(--mac-separator);
+.room-run-controls--plan {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  max-width: min(420px, 48vw);
 }
 
-.room-rounds-label {
+.room-run-controls__hint {
   font-size: var(--text-footnote);
-  font-weight: 510;
   color: var(--mac-label-tertiary);
-  padding: 0 4px 0 6px;
-  white-space: nowrap;
+  text-align: right;
+  line-height: 1.3;
 }
 
-.room-rounds-value {
-  min-width: 1.1em;
-  text-align: center;
-  font-size: var(--text-caption);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--mac-label-primary);
-}
-
-.room-rounds-btn {
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border: none;
-  border-radius: 50%;
-  background: transparent;
-  color: var(--mac-label-secondary);
-  font-family: inherit;
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  transition: background 0.12s ease, color 0.12s ease;
-}
-
-.room-rounds-btn:hover:not(:disabled) {
-  background: var(--mac-fill-secondary);
-  color: var(--mac-label-primary);
-}
-
-.room-rounds-btn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.room-mode-bar {
+.room-run-controls__actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
   align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
   justify-content: flex-end;
 }
 
-.room-mode-btn {
+.room-plan-btn {
   border: 0.5px solid var(--mac-separator);
-  background: var(--mac-fill-tertiary);
+  background: transparent;
   color: var(--mac-label-secondary);
   font-family: inherit;
   font-size: var(--text-caption);
@@ -515,36 +570,159 @@ body {
   transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
 
-.room-mode-btn:hover:not(:disabled):not(.active) {
+.room-plan-btn:hover:not(:disabled):not(.is-armed) {
   color: var(--mac-label-primary);
-  background: var(--mac-fill-secondary);
+  background: var(--mac-fill-tertiary);
 }
 
-.room-mode-btn.active {
+.room-plan-btn.is-armed {
   color: var(--mac-label-primary);
   background: var(--mac-fill-secondary);
   border-color: var(--mac-accent);
 }
 
-.room-mode-btn--accent {
+.room-plan-btn--accent {
   color: var(--mac-accent);
-  border-color: color-mix(in srgb, var(--mac-accent) 40%, var(--mac-separator));
+  border-color: color-mix(in srgb, var(--mac-accent) 35%, var(--mac-separator));
 }
 
-.room-mode-btn:disabled {
+.room-plan-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
 
+.composer-dock {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding-top: 0;
+  padding-bottom: var(--space-xs);
+  background: transparent;
+  overflow: visible;
+}
+
+.composer-dock > * {
+  position: relative;
+}
+
+.composer-turn-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0 var(--composer-pad-x);
+  margin-bottom: calc(var(--composer-turn-capsule-gap) - var(--space-xs));
+}
+
+.composer-turn-picker {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  width: 100%;
+  max-width: var(--composer-cluster-width);
+}
+
+.composer-turn-picker__head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.composer-turn-picker__head .composer-turn-seg {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.composer-turn-picker__head .composer-efficiency-toggle {
+  flex-shrink: 0;
+}
+
+.composer-turn-seg {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--mac-fill-tertiary);
+  border: 0.5px solid var(--mac-separator);
+}
+
+.composer-turn-seg button {
+  border: none;
+  background: transparent;
+  color: var(--mac-label-secondary);
+  font-family: inherit;
+  font-size: var(--text-caption);
+  font-weight: 510;
+  padding: 4px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.composer-turn-seg button:hover:not(:disabled):not(.is-active) {
+  color: var(--mac-label-primary);
+}
+
+.composer-turn-seg button.is-active {
+  color: var(--mac-label-primary);
+  background: var(--mac-fill-secondary);
+  box-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.06);
+}
+
+.composer-turn-seg button[data-profile="review"].is-active {
+  color: var(--mac-review);
+}
+
+.composer-turn-seg button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.composer-turn-seg button.composer-turn-seg__infinity {
+  padding-left: 12px;
+  padding-right: 12px;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.composer-turn-hint {
+  margin: 0;
+  width: 100%;
+  text-align: center;
+  font-size: var(--text-footnote);
+  line-height: 1.35;
+  color: var(--mac-label-tertiary);
+  letter-spacing: -0.01em;
+}
+
 .messages-scroll--document {
-  padding: 0;
+  /* Match chat thread padding so plan text aligns with chat bubbles */
+  padding-top: var(--chat-thread-pad-y);
+  padding-left: var(--chat-thread-pad-x);
+  padding-right: var(--chat-thread-pad-x);
+  /* Plan tab content is still overlapped by floating composer.
+     Force a conservative bottom inset to avoid any overlap. */
+  padding-bottom: calc(
+    var(--composer-scroll-pad) + var(--composer-turn-stack) + var(--composer-attachment-stack)
+  ) !important;
 }
 
 .plan-pre {
-  flex: 1;
+  /* Let plan content size naturally so bottom padding/scroll inset can work. */
+  flex: 0 0 auto;
   min-height: 0;
   margin: 0;
-  padding: var(--space-md) var(--space-lg);
+  padding: var(--space-md) var(--space-lg) calc(var(--space-md) + var(--composer-bar-height));
   white-space: pre-wrap;
   word-break: break-word;
   overflow-wrap: anywhere;
@@ -559,20 +737,38 @@ body {
 .plan-meta-bar {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 6px;
   padding: var(--space-sm) var(--space-lg);
-  border-bottom: 1px solid var(--mac-separator, rgba(0, 0, 0, 0.08));
-  background: var(--mac-fill-tertiary, rgba(0, 0, 0, 0.03));
-  font-size: var(--text-caption, 12px);
+  border-bottom: 0.5px solid var(--mac-separator);
+  background: var(--mac-fill-tertiary);
+  font-size: var(--text-caption);
   color: var(--mac-label-secondary);
+}
+
+.plan-meta-bar--stale {
+  background: color-mix(
+    in srgb,
+    var(--mac-orange, #c93400) 6%,
+    var(--mac-fill-tertiary)
+  );
+}
+
+.plan-meta-bar__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-md);
+  flex-wrap: wrap;
 }
 
 .plan-meta-bar__line {
   font-family: var(--font-mono);
+  min-width: 0;
 }
 
 .plan-meta-bar__freshness {
   font-weight: 500;
+  flex-shrink: 0;
 }
 
 .plan-meta-bar--stale .plan-meta-bar__freshness {
@@ -583,39 +779,176 @@ body {
   color: var(--mac-green, #248a3d);
 }
 
-.plan-meta-bar__review {
-  font-weight: 500;
-  color: var(--mac-purple, #8944ab);
+.plan-meta-bar__review-badge {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill, 999px);
+  font-size: var(--text-footnote);
+  font-weight: 600;
+  color: var(--mac-review, #8944ab);
+  background: color-mix(in srgb, var(--mac-review, #8944ab) 10%, transparent);
+  border: 0.5px solid color-mix(in srgb, var(--mac-review, #8944ab) 28%, transparent);
 }
 
-.room-review-toggle {
+.plan-meta-bar--stale {
+  background: color-mix(
+    in srgb,
+    var(--mac-orange, #c93400) 6%,
+    var(--mac-fill-tertiary)
+  );
+}
+
+.plan-meta-bar__stale-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-sm);
+  padding-top: 4px;
+  color: var(--mac-orange, #c93400);
+  font-weight: 500;
+}
+
+.plan-meta-bar__stale-copy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.plan-meta-bar__text-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-size: var(--text-caption);
+  font-weight: 600;
+  color: var(--mac-accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.plan-meta-bar__text-btn:hover {
+  color: var(--mac-label-primary);
+}
+
+.plan-meta-bar__stale-cta > .room-plan-btn {
+  align-self: flex-start;
+}
+
+.composer.composer--review .composer-capsule {
+  --composer-capsule-ring: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--mac-review, #8944ab) 72%, transparent),
+    color-mix(in srgb, var(--mac-review, #8944ab) 28%, transparent),
+    color-mix(in srgb, var(--mac-review, #8944ab) 58%, transparent)
+  );
+}
+
+.composer.composer--review .composer-capsule:focus-within::after {
+  --composer-capsule-ring: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--mac-review, #8944ab) 88%, transparent),
+    color-mix(in srgb, var(--mac-review, #8944ab) 38%, transparent),
+    color-mix(in srgb, var(--mac-review, #8944ab) 72%, transparent)
+  );
+}
+
+.composer.composer--free .composer-capsule {
+  --composer-capsule-ring: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--mac-green, #248a3d) 62%, transparent),
+    color-mix(in srgb, var(--mac-green, #248a3d) 22%, transparent),
+    color-mix(in srgb, var(--mac-green, #248a3d) 52%, transparent)
+  );
+}
+
+.composer.composer--free .composer-capsule:focus-within::after {
+  --composer-capsule-ring: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--mac-green, #248a3d) 78%, transparent),
+    color-mix(in srgb, var(--mac-green, #248a3d) 32%, transparent),
+    color-mix(in srgb, var(--mac-green, #248a3d) 65%, transparent)
+  );
+}
+
+.composer.composer--efficient .composer-capsule {
+  --composer-capsule-ring: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--mac-blue, #007aff) 55%, transparent),
+    color-mix(in srgb, var(--mac-blue, #007aff) 18%, transparent),
+    color-mix(in srgb, var(--mac-blue, #007aff) 48%, transparent)
+  );
+}
+
+.composer.composer--efficient .composer-capsule:focus-within::after {
+  --composer-capsule-ring: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--mac-blue, #007aff) 72%, transparent),
+    color-mix(in srgb, var(--mac-blue, #007aff) 28%, transparent),
+    color-mix(in srgb, var(--mac-blue, #007aff) 62%, transparent)
+  );
+}
+
+.composer-efficiency-toggle {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
-  font-size: var(--text-caption, 12px);
-  color: var(--mac-label-secondary);
+  flex-shrink: 0;
   cursor: pointer;
   user-select: none;
-  border-radius: var(--radius-sm, 6px);
-  border: 1px solid transparent;
 }
 
-.room-review-toggle--on {
-  color: var(--mac-purple, #8944ab);
-  border-color: color-mix(in srgb, var(--mac-purple, #8944ab) 35%, transparent);
-  background: color-mix(in srgb, var(--mac-purple, #8944ab) 8%, transparent);
+.composer-efficiency-toggle__label {
+  font-size: var(--text-caption);
+  font-weight: 510;
+  color: var(--mac-label-secondary);
 }
 
-.room-review-toggle input {
-  margin: 0;
-  accent-color: var(--mac-purple, #8944ab);
+.composer-efficiency-toggle.is-on .composer-efficiency-toggle__label {
+  color: var(--mac-blue, #007aff);
 }
 
-.composer.composer--review {
-  outline: 2px solid color-mix(in srgb, var(--mac-purple, #8944ab) 45%, transparent);
-  outline-offset: -2px;
-  border-radius: var(--radius-md, 10px);
+.composer-efficiency-switch {
+  position: relative;
+  width: 36px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 11px;
+  background: var(--mac-fill-tertiary, rgba(0, 0, 0, 0.12));
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.composer-efficiency-toggle.is-on .composer-efficiency-switch {
+  background: var(--mac-blue, #007aff);
+}
+
+.composer-efficiency-switch:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.composer-efficiency-switch__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease;
+}
+
+.composer-efficiency-toggle.is-on .composer-efficiency-switch__thumb {
+  transform: translateX(14px);
 }
 
 .plan-ref-warn {
@@ -647,4 +980,317 @@ body {
   gap: var(--space-xs);
   padding: var(--space-xl);
   text-align: center;
+}
+
+.plan-ref-warn__suffix {
+  font-weight: 600;
+  color: var(--mac-label-primary);
+}
+
+.plan-ref-link {
+  display: inline;
+  margin: 0;
+  padding: 0 2px;
+  font: inherit;
+  font-family: var(--font-mono);
+  color: var(--mac-accent);
+  background: color-mix(in srgb, var(--mac-accent) 10%, transparent);
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.plan-ref-link:hover {
+  color: var(--mac-label-primary);
+}
+
+.context-sidebar-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: var(--space-sm);
+  gap: var(--space-sm);
+}
+
+.context-sidebar-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  flex-shrink: 0;
+}
+
+.context-sidebar-panel__title {
+  margin: 0;
+  font-size: var(--text-caption);
+  font-weight: 600;
+  color: var(--mac-label-primary);
+}
+
+.context-sidebar-panel__close {
+  border: none;
+  background: transparent;
+  color: var(--mac-label-secondary);
+  font-size: 18px;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.context-sidebar-panel__close:hover {
+  background: var(--mac-fill-secondary);
+  color: var(--mac-label-primary);
+}
+
+.context-sidebar-panel__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-sm);
+  flex-shrink: 0;
+}
+
+.context-sidebar-panel__payload {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  margin: 0;
+  padding: var(--space-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-footnote);
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border-radius: 8px;
+  border: 0.5px solid var(--mac-separator);
+  background: var(--mac-fill-secondary);
+  color: var(--mac-label-secondary);
+}
+
+.context-preview__field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--text-footnote);
+  color: var(--mac-label-secondary);
+}
+
+.context-preview__field select {
+  font: inherit;
+  font-size: var(--text-caption);
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 0.5px solid var(--mac-separator);
+  background: var(--mac-fill-secondary);
+}
+
+.context-preview__refresh {
+  margin-left: auto;
+  border: 0.5px solid var(--mac-separator);
+  background: var(--mac-fill-secondary);
+  border-radius: var(--radius-pill, 999px);
+  padding: 4px 10px;
+  font: inherit;
+  font-size: var(--text-caption);
+  cursor: pointer;
+}
+
+.context-preview__error {
+  color: var(--mac-orange, #c93400);
+  font-size: var(--text-caption);
+  flex-shrink: 0;
+}
+
+.context-preview__meta {
+  margin: 0;
+  padding: 4px 12px 0;
+  font-size: var(--text-footnote);
+  color: var(--mac-label-tertiary);
+  flex-shrink: 0;
+}
+
+.context-sidebar-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 12px 8px;
+  flex-shrink: 0;
+}
+
+.context-sidebar-tabs button {
+  flex: 1;
+  font: inherit;
+  font-size: var(--text-caption);
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 0.5px solid transparent;
+  background: transparent;
+  color: var(--mac-label-secondary);
+  cursor: pointer;
+}
+
+.context-sidebar-tabs button.is-active {
+  background: var(--mac-fill-secondary);
+  border-color: var(--mac-separator);
+  color: var(--mac-label);
+}
+
+.context-sidebar-tabs button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.context-preview__viz {
+  flex-shrink: 0;
+  padding: 0 12px 8px;
+}
+
+.context-preview__stats {
+  margin: 0 0 6px;
+  font-size: var(--text-caption);
+  color: var(--mac-label-tertiary);
+}
+
+.context-preview__empty {
+  margin: 0;
+  padding: 12px;
+  font-size: var(--text-footnote);
+  color: var(--mac-label-secondary);
+  line-height: 1.45;
+}
+
+.context-trim-badge {
+  font-weight: 600;
+}
+
+.context-trim-badge--ok {
+  color: var(--mac-green, #248a3d);
+}
+
+.context-trim-badge--warn {
+  color: var(--mac-orange, #c93400);
+}
+
+.context-trim-badge--critical {
+  color: var(--mac-red, #d70015);
+}
+
+.context-layers__budget {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--mac-fill-tertiary);
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.context-layers__budget-fill {
+  height: 100%;
+  background: var(--mac-accent);
+  border-radius: 2px;
+  transition: width 0.2s ease;
+}
+
+.context-layers--warn .context-layers__budget-fill {
+  background: var(--mac-orange, #c93400);
+}
+
+.context-layers--critical .context-layers__budget-fill {
+  background: var(--mac-red, #d70015);
+}
+
+.context-layers__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.context-layers__row {
+  display: grid;
+  grid-template-columns: 72px 1fr 44px;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-caption);
+}
+
+.context-layers__name {
+  color: var(--mac-label-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.context-layers__bar-wrap {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--mac-fill-tertiary);
+  overflow: hidden;
+}
+
+.context-layers__bar {
+  display: block;
+  height: 100%;
+  background: color-mix(in srgb, var(--mac-accent) 70%, transparent);
+  border-radius: 3px;
+}
+
+.context-layers__n {
+  text-align: right;
+  color: var(--mac-label-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.run-progress-slot {
+  flex-shrink: 0;
+  padding: 8px var(--chat-thread-pad-x) 4px;
+  background: transparent;
+  border: none;
+  pointer-events: none;
+}
+
+.run-progress-slot .turn-progress-panel {
+  max-width: var(--composer-cluster-width);
+  margin: 0 auto;
+  pointer-events: auto;
+}
+
+.composer-mode-hint {
+  margin: 0 var(--space-lg) var(--space-xs);
+  font-size: var(--text-footnote);
+  color: var(--mac-label-tertiary);
+  line-height: 1.35;
+}
+
+.chat-line--highlight {
+  animation: chat-line-flash 2.4s ease-out;
+}
+
+@keyframes chat-line-flash {
+  0%,
+  35% {
+    background: color-mix(in srgb, var(--mac-accent) 18%, transparent);
+    border-radius: 10px;
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+.chat-turn--highlight {
+  outline: 2px solid color-mix(in srgb, var(--mac-accent) 45%, transparent);
+  outline-offset: 4px;
+  border-radius: 12px;
+}
+
+.chat-round-badge {
+  flex-shrink: 0;
+  font-size: var(--text-footnote);
+  font-weight: 600;
+  color: var(--mac-label-tertiary);
+  letter-spacing: 0.02em;
 }

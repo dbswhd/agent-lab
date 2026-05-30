@@ -15,6 +15,12 @@ export type ChatMessage = {
   body: string;
   sent?: boolean;
   parallelRound?: number;
+  /** 0-based index in chat.jsonl */
+  chatLineIndex?: number;
+  /** When set, renders a round topology divider before this message */
+  roundDivider?: number;
+  /** Live Cursor-style activity lines while the agent is running */
+  activities?: string[];
 };
 
 const LABELS: Record<string, string> = {
@@ -48,6 +54,7 @@ export function chatLineToMessage(
       label: "나",
       body: line.content,
       sent: true,
+      chatLineIndex: i,
     };
   }
   if (line.role === "agent" && line.agent) {
@@ -60,6 +67,7 @@ export function chatLineToMessage(
       body: line.content,
       sent: false,
       parallelRound: r,
+      chatLineIndex: i,
     };
   }
   return {
@@ -68,6 +76,7 @@ export function chatLineToMessage(
     label: "시스템",
     body: line.content,
     sent: false,
+    chatLineIndex: i,
   };
 }
 

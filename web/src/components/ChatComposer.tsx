@@ -1,4 +1,8 @@
 import { useRef, type ReactNode } from "react";
+import { CollapsibleGlassPanel } from "./CollapsibleGlassPanel";
+import { ComposerEfficiencyToggle } from "./ComposerEfficiencyToggle";
+import { ComposerTurnPicker } from "./ComposerTurnPicker";
+import type { ComposerTurnProfile } from "../utils/turnProfile";
 
 export type PendingFile = { id: string; file: File };
 
@@ -7,6 +11,8 @@ type Props = {
   onChange: (v: string) => void;
   onSend: () => void;
   disabled?: boolean;
+  /** Blocks send only (input may stay enabled while a run is winding down). */
+  sendDisabled?: boolean;
   placeholder?: string;
   files: PendingFile[];
   onFilesAdd: (files: FileList | File[]) => void;
@@ -15,6 +21,14 @@ type Props = {
   showAttach?: boolean;
   toolbar?: ReactNode;
   className?: string;
+  turnProfile?: ComposerTurnProfile;
+  onTurnProfileChange?: (profile: ComposerTurnProfile) => void;
+  efficiencyOn?: boolean;
+  onEfficiencyChange?: (on: boolean) => void;
+  /** plan이 토론보다 뒤처짐 — composer 위 안내 */
+  planStaleNotice?: string | null;
+  running?: boolean;
+  onStop?: () => void;
 };
 
 export function ChatComposer({
@@ -22,6 +36,7 @@ export function ChatComposer({
   onChange,
   onSend,
   disabled,
+  sendDisabled,
   placeholder = "메시지",
   files,
   onFilesAdd,
@@ -30,11 +45,22 @@ export function ChatComposer({
   showAttach = true,
   toolbar,
   className,
+  turnProfile,
+  onTurnProfileChange,
+  efficiencyOn = false,
+  onEfficiencyChange,
+  planStaleNotice,
+  running = false,
+  onStop,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const rootClass = ["composer", className].filter(Boolean).join(" ");
+  const inputLocked = disabled;
+  const sendLocked = sendDisabled ?? disabled;
+
   return (
-    <div className={className ? `composer ${className}` : "composer"}>
+    <div className={rootClass}>
       {(files.length > 0 || sessionAttachments.length > 0) && (
         <div className="attachment-bar">
           {sessionAttachments.map((name) => (
@@ -63,59 +89,101 @@ export function ChatComposer({
           ))}
         </div>
       )}
-      <div className="composer-row">
-        <div className="composer-capsule">
-          {showAttach && (
-            <>
-              <button
-                type="button"
-                className="btn-attach"
-                disabled={disabled}
-                onClick={() => inputRef.current?.click()}
-                aria-label="파일 첨부"
-                title="파일 첨부"
-              >
-                <PlusIcon />
-              </button>
-              <input
-                ref={inputRef}
-                type="file"
-                multiple
-                className="composer-file-input"
-                onChange={(e) => {
-                  if (e.target.files?.length) onFilesAdd(e.target.files);
-                  e.target.value = "";
+      <div className="composer-dock">
+        {turnProfile && onTurnProfileChange ? (
+          <div className="composer-turn-row">
+            <ComposerTurnPicker
+              value={turnProfile}
+              onChange={onTurnProfileChange}
+              disabled={inputLocked}
+              trailing={
+                onEfficiencyChange ? (
+                  <ComposerEfficiencyToggle
+                    checked={efficiencyOn}
+                    onChange={onEfficiencyChange}
+                    disabled={inputLocked}
+                  />
+                ) : null
+              }
+            />
+          </div>
+        ) : null}
+        {planStaleNotice ? (
+          <CollapsibleGlassPanel
+            className="composer-alert-panel"
+            title="plan 알림"
+            summary={planStaleNotice}
+            variant="warn"
+            defaultOpen={false}
+          >
+            <p className="composer-alert-panel__text">{planStaleNotice}</p>
+          </CollapsibleGlassPanel>
+        ) : null}
+        <div className="composer-row">
+          <div className="composer-capsule">
+            {showAttach && (
+              <>
+                <button
+                  type="button"
+                  className="btn-attach"
+                  disabled={inputLocked}
+                  onClick={() => inputRef.current?.click()}
+                  aria-label="파일 첨부"
+                  title="파일 첨부"
+                >
+                  <PlusIcon />
+                </button>
+                <input
+                  ref={inputRef}
+                  type="file"
+                  multiple
+                  className="composer-file-input"
+                  onChange={(e) => {
+                    if (e.target.files?.length) onFilesAdd(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+              </>
+            )}
+            <div className="composer-field">
+              <textarea
+                className="mac-textfield mac-textfield--multiline composer-input"
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                placeholder={placeholder}
+                disabled={inputLocked}
+                rows={1}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    onSend();
+                  }
                 }}
               />
-            </>
-          )}
-          <div className="composer-field">
-            <textarea
-              className="mac-textfield mac-textfield--multiline composer-input"
-              value={value}
-              onChange={(e) => onChange(e.target.value)}
-              placeholder={placeholder}
-              disabled={disabled}
-              rows={1}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  onSend();
-                }
-              }}
-            />
-            {toolbar && <div className="composer-toolbar">{toolbar}</div>}
+              {toolbar && <div className="composer-toolbar">{toolbar}</div>}
+            </div>
+            {running && onStop ? (
+              <button
+                type="button"
+                className="btn-stop-reply"
+                onClick={onStop}
+                aria-label="답변 중지"
+                title="답변 중지"
+              >
+                <span className="btn-stop-reply__square" aria-hidden />
+              </button>
+            ) : null}
           </div>
+          <button
+            type="button"
+            className="btn-send btn-send--composer"
+            disabled={sendLocked || !value.trim()}
+            onClick={onSend}
+            aria-label="전송"
+          >
+            ↑
+          </button>
         </div>
-        <button
-          type="button"
-          className="btn-send btn-send--composer"
-          disabled={disabled || !value.trim()}
-          onClick={onSend}
-          aria-label="전송"
-        >
-          ↑
-        </button>
       </div>
     </div>
   );

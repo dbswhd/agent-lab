@@ -1,6 +1,11 @@
 export type BackendOption = { id: string; label: string; ready: boolean };
 
-export type AgentOption = { id: string; label: string; ready: boolean };
+export type AgentOption = {
+  id: string;
+  label: string;
+  ready: boolean;
+  model?: string;
+};
 
 export type SessionSummary = {
   id: string;
@@ -36,6 +41,13 @@ export function apiBase(): string {
   if (fromEnv) return fromEnv.replace(/\/$/, "");
   const w = window as Window & { __TAURI_INTERNALS__?: unknown };
   if (w.__TAURI_INTERNALS__) return "http://127.0.0.1:8765";
+  // Vite dev (browser on :1420 tauri dev or :5173 web dev)
+  if (import.meta.env.DEV && typeof window !== "undefined") {
+    const port = window.location.port;
+    if (port === "1420" || port === "5173") {
+      return "http://127.0.0.1:8765";
+    }
+  }
   return "";
 }
 
@@ -145,6 +157,12 @@ export type RunRoomOptions = {
   permissions?: Record<string, unknown>;
   /** Turn-level devil's advocate rotation (2nd round only). */
   reviewMode?: boolean;
+  /** Free discuss: loop until all peers reply 「이의 없습니다」 to anchor proposal. */
+  consensusMode?: boolean;
+  /** Pin cap, shorter replies, slimmer consensus payloads (subscription-friendly). */
+  efficiencyMode?: boolean;
+  /** Abort in-flight SSE (UI stop). */
+  signal?: AbortSignal;
 };
 
 export function renameSession(id: string, topic: string) {
@@ -165,6 +183,43 @@ export function deleteSession(id: string) {
   );
 }
 
+export type ContextPreviewOptions = {
+  sessionId: string;
+  agent: string;
+  parallelRound?: number;
+  reviewMode?: boolean;
+  efficiencyMode?: boolean;
+  slimContext?: boolean;
+  permissions?: Record<string, unknown>;
+  agents?: string[];
+};
+
+export function fetchContextPreview(opts: ContextPreviewOptions) {
+  return json<{
+    session_id: string;
+    agent: string;
+    parallel_round: number;
+    review_mode: boolean;
+    payload: string;
+    chars: number;
+    meta?: import("../utils/contextMeta").AgentContextMeta;
+    limits?: Record<string, unknown>;
+  }>("/api/room/context-preview", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      session_id: opts.sessionId,
+      agent: opts.agent,
+      parallel_round: opts.parallelRound ?? 1,
+      review_mode: opts.reviewMode ?? false,
+      efficiency_mode: opts.efficiencyMode ?? false,
+      slim_context: opts.slimContext ?? false,
+      permissions: opts.permissions ?? {},
+      agents: opts.agents,
+    }),
+  });
+}
+
 export async function runRoom(
   topic: string,
   agents: string[],
@@ -180,8 +235,10 @@ export async function runRoom(
   form.append("mode", mode);
   form.append("synthesize", String(synthesize));
   form.append("synthesize_only", String(opts?.synthesizeOnly ?? false));
-  form.append("agent_rounds", String(opts?.agentRounds ?? 2));
+  form.append("agent_rounds", String(opts?.agentRounds ?? 1));
   form.append("review_mode", String(opts?.reviewMode ?? false));
+  form.append("consensus_mode", String(opts?.consensusMode ?? false));
+  form.append("efficiency_mode", String(opts?.efficiencyMode ?? false));
   if (opts?.requestId) {
     form.append("request_id", opts.requestId);
   }
@@ -195,7 +252,13 @@ export async function runRoom(
   const res = await fetch(apiUrl("/api/room/runs"), {
     method: "POST",
     body: form,
+    signal: opts?.signal,
   });
   if (!res.ok) throw new Error(await res.text());
   await consumeSse(res, onEvent);
+}
+
+export async function cancelRoomRun(): Promise<void> {
+  const res = await fetch(apiUrl("/api/room/runs/cancel"), { method: "POST" });
+  if (!res.ok) throw new Error(await res.text());
 }

@@ -26,6 +26,20 @@ def label(agent: AgentId) -> str:
     return _LABELS[agent]
 
 
+def model_label(agent: AgentId) -> str:
+    if agent == "codex":
+        from agent_lab import codex_cli
+
+        return codex_cli.model_label()
+    if agent == "claude":
+        from agent_lab import claude_cli
+
+        return claude_cli.model_label()
+    if agent == "cursor":
+        return cursor_agent.model_label()
+    return ""
+
+
 def available_agents() -> list[AgentId]:
     out: list[AgentId] = []
     for aid in AGENT_IDS:
@@ -57,13 +71,17 @@ def call_agent(
     user: str,
     *,
     permissions: dict[str, Any] | None = None,
+    scribe: bool = False,
+    on_activity: Callable[[str], None] | None = None,
 ) -> str:
     if not _is_ready(agent):
         raise RuntimeError(f"{label(agent)} is not configured")
     if agent == "cursor":
-        return cursor_agent.respond(system, user, permissions=permissions)
+        return cursor_agent.respond(
+            system, user, permissions=permissions, on_activity=on_activity
+        )
     if agent == "codex":
         return codex_agent.respond(system, user, permissions=permissions)
     if agent == "claude":
-        return claude_agent.respond(system, user, permissions=permissions)
+        return claude_agent.respond(system, user, permissions=permissions, scribe=scribe)
     return _CALLERS[agent](system, user)

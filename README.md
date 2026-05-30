@@ -19,6 +19,8 @@
 
 **목표**: “에이전트끼리 말하게” 만드는 법을 배우고, 나중에 pipeline의 `TASK-*.md` 초안만 **가져오기**.
 
+신규 기능은 **3자 룸(room)** 경로를 기준으로 추가합니다. 기존 Planner/Critic/Scribe 순차 경로는 **클래식(레거시)** 으로 유지합니다.
+
 ---
 
 ## 2. 왜 repo를 나누나요?
@@ -36,13 +38,14 @@
 
 | 용어 | 의미 | 예 |
 |------|------|-----|
-| **Chat session** | 한 번의 “주제”에 대한 대화 기록 | `sessions/2026-05-26-c45-overlay/plan.md` |
+| **Chat session** | 한 번의 “주제”에 대한 대화 기록 | `sessions/2026-05-26-c45-overlay/run.json` |
 | **IDE session** | Cursor / Claude Code 창 하나 | Lab repo만 연 채로 작업 |
 | **Graph run** | LangGraph 등이 돌린 **상태 체크포인트** | `thread_id=abc`, 재개 가능 |
 
 **규칙 (교육용)**  
 - 주제 1개 = 폴더 1개 (`sessions/<date>-<slug>/`)  
-- 그 안에: `topic.txt`, `transcript.md`, `plan.md`, `meta.json`  
+- 3자 룸(기본): `chat.jsonl`에 원문 대화, `run.json`에 `run_schema_version`과 `turns[]` 실행 메타, `plan.md`에 `chat.jsonl#L<n>` provenance가 포함된 정리를 저장
+- 클래식(레거시): `topic.txt`, `transcript.md`, `plan.md`, `meta.json` 산출물을 유지
 - 끝나면 세션 폴더를 **닫고** 새 주제는 새 폴더
 
 ---
@@ -272,7 +275,7 @@ python -m agent_lab run "주제"
 | `openai` | Platform API 키 | Billing 별도 |
 | `anthropic` | Anthropic API 키 | |
 
-**산출물** (`sessions/<date>-<slug>/`):
+**클래식(레거시) 산출물** (`sessions/<date>-<slug>/`):
 
 | 파일 | 내용 |
 |------|------|
@@ -280,6 +283,8 @@ python -m agent_lab run "주제"
 | `transcript.md` | Planner / Critic / Scribe 전체 로그 |
 | `plan.md` | Scribe 최종 기획안 |
 | `meta.json` | 모델·타임스탬프 메타 |
+
+3자 룸의 정식 산출물은 [`docs/04-multi-agent-room.md`](docs/04-multi-agent-room.md)의 `chat.jsonl`, `run.json`, `plan.md` 정의를 따릅니다.
 
 **Week-1 단일 호출 테스트:** `python hello.py "주제"`
 

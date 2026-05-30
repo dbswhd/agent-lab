@@ -1,6 +1,6 @@
 export const MIN_AGENT_ROUNDS = 1;
 export const MAX_AGENT_ROUNDS = 4;
-export const DEFAULT_AGENT_ROUNDS = 2;
+export const DEFAULT_AGENT_ROUNDS = 1;
 
 const STORAGE_KEY = "agent-lab-agent-rounds";
 

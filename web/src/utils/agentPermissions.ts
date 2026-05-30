@@ -17,14 +17,30 @@ export type AgentPermissions = {
 
 const STORAGE_KEY = "agent-lab-permissions-default";
 
+/** Default Claude Code access for room turns (read + edit + agent-lab). */
+export const CLAUDE_PERMISSION_DEFAULTS: NonNullable<
+  AgentPermissions["claude"]
+> = {
+  tools: true,
+  write: true,
+  local_agent_lab: true,
+  local_pipeline: false,
+};
+
 export function loadDefaultPermissions(): AgentPermissions {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as AgentPermissions;
+    if (raw) {
+      const saved = JSON.parse(raw) as AgentPermissions;
+      return {
+        ...saved,
+        claude: { ...CLAUDE_PERMISSION_DEFAULTS, ...saved.claude },
+      };
+    }
   } catch {
     /* ignore */
   }
-  return {};
+  return { claude: { ...CLAUDE_PERMISSION_DEFAULTS } };
 }
 
 export function saveDefaultPermissions(p: AgentPermissions): void {
@@ -94,6 +110,7 @@ export function buildPermissionsFromForm(
   }
   if (selected.includes("claude")) {
     p.claude = {
+      ...CLAUDE_PERMISSION_DEFAULTS,
       tools: form.claudeTools,
       write: form.claudeWrite,
       local_agent_lab: form.claudeAgentLab,

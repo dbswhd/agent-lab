@@ -28,6 +28,7 @@ from agent_lab.room_context import (
     prepare_recent_messages,
 )
 from agent_lab.workspace_roots import workspace_roots_block
+from agent_lab.room_turn_state import render_turn_state_block
 
 
 @dataclass
@@ -89,10 +90,13 @@ class ContextBundle:
     connect_hint: str
     claude_tools: str = ""
     follow_up: str = ""
+    turn_state: str = ""
     meta: ContextBundleMeta = field(default_factory=lambda: ContextBundleMeta("", 1))
 
     def render(self) -> str:
         parts = [self.constraints, self.plan_open]
+        if self.turn_state.strip():
+            parts.append(self.turn_state)
         if self.bridge.strip():
             parts.append(self.bridge)
         parts.extend([self.recent])
@@ -154,6 +158,9 @@ def build_slim_consensus_bundle(
         open_bullets=open_bullets,
         stale_line=plan_stale_banner(run_meta),
     )
+    turn_state_block = render_turn_state_block(
+        (run_meta or {}).get("turn_state")
+    )
     guidance_block = (
         "---\n"
         f"{CONVERSATION_GUIDANCE}\n"
@@ -181,11 +188,13 @@ def build_slim_consensus_bundle(
         connect_hint=connect_hint,
         claude_tools=claude_tools,
         follow_up="",
+        turn_state=turn_state_block,
         meta=meta,
     )
     meta.layer_chars = {
         "constraints": len(constraints),
         "plan_open": len(plan_open),
+        "turn_state": len(turn_state_block),
         "bridge": 0,
         "recent": len(recent_block),
         "peer": 0,
@@ -273,6 +282,9 @@ def build_context_bundle(
         open_bullets=open_bullets,
         stale_line=plan_stale_banner(run_meta),
     )
+    turn_state_block = render_turn_state_block(
+        (run_meta or {}).get("turn_state")
+    )
     bridge_block = build_turn_bridge_block(
         messages, parallel_round=parallel_round
     )
@@ -344,11 +356,13 @@ def build_context_bundle(
         connect_hint=connect_hint,
         claude_tools=claude_tools,
         follow_up=follow_up,
+        turn_state=turn_state_block,
         meta=meta,
     )
     meta.layer_chars = {
         "constraints": len(constraints),
         "plan_open": len(plan_open),
+        "turn_state": len(turn_state_block),
         "bridge": len(bridge_block),
         "recent": len(recent_block),
         "peer": len(peer_block),

@@ -8,6 +8,13 @@ export type AgentRole =
   | "scribe"
   | "system";
 
+export type AgentEnvelope = {
+  act: string;
+  refs?: string[];
+  confidence?: number;
+  anchor_id?: string;
+};
+
 export type ChatMessage = {
   id: string;
   role: AgentRole;
@@ -15,6 +22,7 @@ export type ChatMessage = {
   body: string;
   sent?: boolean;
   parallelRound?: number;
+  envelope?: AgentEnvelope;
   /** 0-based index in chat.jsonl */
   chatLineIndex?: number;
   /** When set, renders a round topology divider before this message */
@@ -44,6 +52,7 @@ export function chatLineToMessage(
     agent?: string | null;
     content: string;
     parallel_round?: number;
+    envelope?: AgentEnvelope;
   },
   i: number,
 ): ChatMessage {
@@ -68,6 +77,7 @@ export function chatLineToMessage(
       sent: false,
       parallelRound: r,
       chatLineIndex: i,
+      envelope: line.envelope,
     };
   }
   return {

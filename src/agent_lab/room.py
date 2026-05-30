@@ -16,13 +16,20 @@ from agent_lab.agents.registry import AGENT_IDS, AgentId, available_agents, call
 from agent_lab.attachments import describe_attachments
 from agent_lab.context_bundle import build_context_bundle
 from agent_lab.context_meta import summarize_turn_context
-from agent_lab.room_context import is_no_objection_response, is_pass_response
+from agent_lab.agent_envelope import (
+    envelope_protocol_block,
+    is_endorse_reply,
+    is_pass_reply,
+    parse_agent_response,
+)
 from agent_lab.room_consensus import (
     consensus_caps,
     consensus_follow_up,
+    consensus_reply_verdict,
     is_substantive_reply,
     pick_anchor,
 )
+from agent_lab.room_turn_state import sync_run_meta_turn_state
 from agent_lab.run_control import RoomRunCancelled, check_cancelled, is_cancelled
 from agent_lab.session import SESSIONS_DIR, session_dir
 
@@ -42,6 +49,7 @@ class ChatMessage:
     content: str
     ts: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     parallel_round: int | None = None  # 1..N within one human turn
+    envelope: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {
@@ -52,6 +60,8 @@ class ChatMessage:
         }
         if self.parallel_round is not None:
             d["parallel_round"] = self.parallel_round
+        if self.envelope:
+            d["envelope"] = self.envelope
         return d
 
 
@@ -227,21 +237,26 @@ def _call_one_agent(
             permissions=permissions,
             on_activity=_activity if aid == "cursor" else None,
         )
+        parsed = parse_agent_response(text)
+        envelope_dict = parsed.envelope.to_dict() if parsed.envelope else None
+        body = parsed.body or text
         msg = ChatMessage(
             role="agent",
             agent=aid,
-            content=text,
+            content=body,
             parallel_round=parallel_round,
+            envelope=envelope_dict,
         )
         _emit(
             "agent_done",
             {
                 "agent": aid,
-                "chars": len(text),
-                "content": text,
+                "chars": len(body),
+                "content": body,
                 "round": parallel_round,
-                "pass": is_pass_response(text),
-                "no_objection": is_no_objection_response(text),
+                "pass": is_pass_reply(body, envelope_dict),
+                "no_objection": is_endorse_reply(body, envelope_dict),
+                "envelope": envelope_dict,
                 "context_meta": context_meta,
             },
         )
@@ -301,6 +316,14 @@ def run_consensus_agent_rounds(
         all_replies.extend(batch)
         calls += len(batch)
 
+        working = messages + all_replies
+        sync_run_meta_turn_state(
+            run_meta,
+            working,
+            active_agents=active,
+            plan_md=plan_md,
+        )
+
         if len(active) < 2:
             return all_replies, None
 
@@ -320,6 +343,18 @@ def run_consensus_agent_rounds(
         pending: set[AgentId] = {a for a in active if a != anchor.agent}
         consented: list[str] = []
         parallel_round = 2
+        sync_run_meta_turn_state(
+            run_meta,
+            working,
+            active_agents=active,
+            consensus={
+                "status": "open",
+                "anchor": anchor.to_dict(),
+                "pending_agents": sorted(pending),
+            },
+            plan_md=plan_md,
+            pending_agents=sorted(pending),
+        )
 
         while pending and parallel_round <= cap_rounds and calls < cap_calls:
             check_cancelled()
@@ -358,10 +393,11 @@ def run_consensus_agent_rounds(
                 thread.append(msg)
                 calls += 1
                 text = msg.content or ""
-                if is_no_objection_response(text) or is_pass_response(text):
+                verdict = consensus_reply_verdict(text, msg.envelope)
+                if verdict in ("endorse", "pass"):
                     pending.discard(aid)
                     consented.append(aid)
-                elif is_substantive_reply(text):
+                elif verdict == "substantive" or is_substantive_reply(text):
                     new_anchor = pick_anchor(_current_turn_messages(thread), active)
                     if new_anchor:
                         anchor = new_anchor
@@ -369,6 +405,20 @@ def run_consensus_agent_rounds(
                         consented = []
                     else:
                         pending.discard(aid)
+
+                sync_run_meta_turn_state(
+                    run_meta,
+                    thread,
+                    active_agents=active,
+                    consensus={
+                        "status": "open",
+                        "anchor": anchor.to_dict(),
+                        "pending_agents": sorted(pending),
+                        "agents_consented": consented,
+                    },
+                    plan_md=plan_md,
+                    pending_agents=sorted(pending),
+                )
 
             if not pending:
                 max_r = max((m.parallel_round or 1) for m in all_replies)
@@ -379,6 +429,13 @@ def run_consensus_agent_rounds(
                     "agents_consented": consented,
                     "calls": calls,
                 }
+                sync_run_meta_turn_state(
+                    run_meta,
+                    list(messages) + list(all_replies),
+                    active_agents=active,
+                    consensus=meta,
+                    plan_md=plan_md,
+                )
                 if on_event:
                     on_event("consensus_reached", meta)
                 return all_replies, meta
@@ -394,6 +451,14 @@ def run_consensus_agent_rounds(
             "calls": calls,
             "reason": "cap",
         }
+        sync_run_meta_turn_state(
+            run_meta,
+            list(messages) + list(all_replies),
+            active_agents=active,
+            consensus=meta,
+            plan_md=plan_md,
+            pending_agents=sorted(pending),
+        )
         if on_event:
             on_event(
                 "consensus_incomplete",
@@ -445,6 +510,9 @@ def run_parallel_round(
 
     if sequential:
         thread = list(messages)
+        review_follow = ""
+        if review_mode and parallel_round >= 2:
+            review_follow = envelope_protocol_block(context="review")
         try:
             for aid in ordered:
                 check_cancelled()
@@ -460,6 +528,7 @@ def run_parallel_round(
                     run_meta=run_meta,
                     on_event=on_event,
                     context_log=context_log,
+                    extra_follow_up=review_follow,
                     efficiency_mode=efficiency_mode,
                 )
                 replies.append(msg)
@@ -530,6 +599,12 @@ def run_agent_rounds(
                 efficiency_mode=efficiency_mode,
             )
             all_replies.extend(batch)
+            sync_run_meta_turn_state(
+                run_meta,
+                messages + all_replies,
+                active_agents=list(agents or available_agents())[:MAX_AGENTS_PER_ROUND],
+                plan_md=plan_md,
+            )
     except RoomRunCancelled:
         pass
     return all_replies
@@ -633,6 +708,7 @@ def load_session_messages(folder: Path) -> list[ChatMessage]:
                 content=data.get("content", ""),
                 ts=data.get("ts", _now()),
                 parallel_round=int(pr) if pr is not None else None,
+                envelope=data.get("envelope"),
             )
         )
     return messages
@@ -818,6 +894,28 @@ def save_room_session(
     return folder
 
 
+def _final_turn_state_dict(
+    messages: list[ChatMessage],
+    *,
+    run_meta: dict[str, Any] | None,
+    active_agents: list[str],
+    consensus_meta: dict[str, Any] | None,
+    plan_md: str,
+) -> dict[str, Any]:
+    if run_meta and run_meta.get("turn_state"):
+        return run_meta["turn_state"]  # type: ignore[return-value]
+    from agent_lab.room_turn_state import current_turn_slice, derive_turn_state
+
+    turn_msgs, line_base = current_turn_slice(messages)
+    return derive_turn_state(
+        turn_msgs,
+        line_base=line_base,
+        active_agents=active_agents,
+        consensus=consensus_meta,
+        plan_md=plan_md,
+    ).to_dict()
+
+
 def _turn_snapshot(
     *,
     mode: str,
@@ -837,6 +935,7 @@ def _turn_snapshot(
     consensus_mode: bool = False,
     consensus: dict[str, Any] | None = None,
     efficiency_mode: bool = False,
+    turn_state: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     from agent_lab.invoke import model_name
 
@@ -882,6 +981,8 @@ def _turn_snapshot(
             snap["consensus"] = consensus
     if efficiency_mode:
         snap["efficiency_mode"] = True
+    if turn_state:
+        snap["turn_state"] = turn_state
     return snap
 
 
@@ -1066,6 +1167,13 @@ def continue_room_round(
             consensus_mode=consensus_mode,
             consensus=consensus_meta,
             efficiency_mode=efficiency_mode,
+            turn_state=_final_turn_state_dict(
+                messages,
+                run_meta=run_meta,
+                active_agents=active_agents,
+                consensus_meta=consensus_meta,
+                plan_md=plan_md,
+            ),
         ),
     )
     if on_event:
@@ -1190,6 +1298,13 @@ def run_room(
         consensus_mode=consensus_mode,
         consensus=consensus_meta,
         efficiency_mode=efficiency_mode,
+        turn_state=_final_turn_state_dict(
+            messages,
+            run_meta=run_meta,
+            active_agents=active_agents,
+            consensus_meta=consensus_meta,
+            plan_md=plan_md,
+        ),
     )
 
     if folder is None:

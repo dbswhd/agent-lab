@@ -7,6 +7,10 @@ from dataclasses import dataclass
 from typing import Any
 
 from agent_lab.agents.registry import AgentId, label
+from agent_lab.agent_envelope import (
+    classify_consensus_reply,
+    envelope_protocol_block,
+)
 from agent_lab.room_context import (
     is_no_objection_response,
     is_pass_response,
@@ -102,11 +106,19 @@ def pick_anchor(
 
 def consensus_follow_up(anchor: ConsensusAnchor) -> str:
     return (
+        f"{envelope_protocol_block(context='consensus')}\n\n"
         f"[자유 토론 · 합의 확인]\n"
         f"현재 제안 — **{label(anchor.agent)}**:\n"
         f"「{anchor.excerpt}」\n\n"
-        f"이 제안에 **추가 제안·수정·리스크가 전혀 없고** 그대로 받아들일 때만, "
-        f"응답 **첫 줄에만** 정확히 `{NO_OBJECTION_LINE}` 를 쓰세요. "
-        f"동의하면서 보완·`[PROPOSED: …]`·단계를 덧붙이려면 `{NO_OBJECTION_LINE}` 를 쓰지 말고 "
-        "수정안을 구체적으로 쓰세요 (새 앵커 라운드로 이어집니다)."
+        f"완전 동의(`act: ENDORSE`)는 추가 제안·리스크·`[PROPOSED:]` 없을 때만. "
+        f"보완이 있으면 `act: AMEND` 로 수정안을 쓰세요 (새 앵커 라운드). "
+        f"레거시: envelope 없이면 첫 줄만 `{NO_OBJECTION_LINE}` 도 허용."
     )
+
+
+def consensus_reply_verdict(
+    text: str,
+    envelope: dict | None = None,
+) -> str:
+    """Return endorse | pass | substantive | neutral for consensus loop."""
+    return classify_consensus_reply(text, envelope)

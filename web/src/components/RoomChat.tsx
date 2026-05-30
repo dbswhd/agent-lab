@@ -436,6 +436,7 @@ export function RoomChat({
                 label: agentLabel(aid),
                 body: String(ev.content ?? "") || "(empty)",
                 parallelRound: round,
+                envelope: ev.envelope as LiveMsg["envelope"],
               },
             ]);
           }

@@ -28,6 +28,24 @@ function RoundBadge({ round }: { round: number }) {
   );
 }
 
+const ACT_LABELS: Record<string, string> = {
+  PROPOSE: "제안",
+  AMEND: "수정",
+  ENDORSE: "동의",
+  CHALLENGE: "이의",
+  PASS: "PASS",
+  BLOCK: "BLOCK",
+};
+
+function ActBadge({ act }: { act: string }) {
+  const key = act.toUpperCase();
+  return (
+    <span className={`chat-act-badge chat-act-badge--${key.toLowerCase()}`} title={`act: ${key}`}>
+      {ACT_LABELS[key] ?? key}
+    </span>
+  );
+}
+
 function TypingIndicator({ variant }: { variant: "bubble" | "stream" }) {
   return (
     <span
@@ -136,6 +154,7 @@ export function ChatBubble({ message, typing, highlighted }: Props) {
       >
         <header className="chat-turn__head">
           <span className="chat-turn__name">{message.label}</span>
+          {message.envelope?.act ? <ActBadge act={message.envelope.act} /> : null}
           {(message.parallelRound ?? 1) > 1 ? (
             <RoundBadge round={message.parallelRound ?? 1} />
           ) : null}

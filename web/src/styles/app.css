@@ -1294,3 +1294,29 @@ body {
   color: var(--mac-label-tertiary);
   letter-spacing: 0.02em;
 }
+
+.chat-act-badge {
+  flex-shrink: 0;
+  font-size: var(--text-caption2);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--mac-fill-secondary) 80%, transparent);
+  color: var(--mac-label-secondary);
+}
+
+.chat-act-badge--endorse {
+  color: var(--mac-green, #248a3d);
+}
+
+.chat-act-badge--amend,
+.chat-act-badge--propose {
+  color: var(--mac-accent);
+}
+
+.chat-act-badge--challenge,
+.chat-act-badge--block {
+  color: var(--mac-red, #d70015);
+}

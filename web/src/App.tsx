@@ -21,7 +21,7 @@ import { SessionViewer } from "./components/SessionViewer";
 import { MacTitlebar } from "./components/MacTitlebar";
 import { getSidebarOpen, setSidebarOpen } from "./utils/sidebarPrefs";
 import { formatRoomModelLine } from "./utils/roomModels";
-import { isTauri } from "./theme";
+import { isTauriApp } from "./theme";
 
 type Mode = "room" | "classic";
 type ListTab = "active" | "archived";
@@ -75,7 +75,14 @@ export default function App() {
       setBackends(b.options);
       if (b.default) setDefaultBackend(b.default);
       await reloadSessions();
-    })().catch((e) => setHealth(String(e)));
+    })().catch((e) => {
+      const msg = String(e);
+      setHealth(
+        msg.includes("Load failed") || msg.includes("Failed to fetch")
+          ? "API(8765) 연결 실패 — 앱을 완전히 종료 후 make tauri-dev 로 재시작"
+          : msg,
+      );
+    });
   }, [reloadSessions]);
 
   useEffect(() => {
@@ -144,7 +151,7 @@ export default function App() {
     await reloadSessions();
   }
 
-  const inTauri = isTauri();
+  const inTauri = isTauriApp();
 
   return (
     <div className="mac-app">

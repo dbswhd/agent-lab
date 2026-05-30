@@ -1,3 +1,5 @@
+import { isTauri as tauriRuntime } from "@tauri-apps/api/core";
+
 export type Theme = "light" | "dark";
 
 const STORAGE_KEY = "agent-lab-theme";
@@ -23,8 +25,10 @@ export function toggleTheme(): Theme {
   return next;
 }
 
+export function isTauriApp(): boolean {
+  return tauriRuntime();
+}
+
 export function isTauri(): boolean {
-  return Boolean(
-    (window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__,
-  );
+  return tauriRuntime();
 }

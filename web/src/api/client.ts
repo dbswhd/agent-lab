@@ -1,3 +1,5 @@
+import { isTauri } from "@tauri-apps/api/core";
+
 export type BackendOption = { id: string; label: string; ready: boolean };
 
 export type AgentOption = {
@@ -36,18 +38,19 @@ export type SessionDetail = {
   attachments?: string[];
 };
 
+const API_ORIGIN = "http://127.0.0.1:8765";
+
 export function apiBase(): string {
   const fromEnv = import.meta.env.VITE_API_BASE as string | undefined;
   if (fromEnv) return fromEnv.replace(/\/$/, "");
-  const w = window as Window & { __TAURI_INTERNALS__?: unknown };
-  if (w.__TAURI_INTERNALS__) return "http://127.0.0.1:8765";
-  // Vite dev (browser on :1420 tauri dev or :5173 web dev)
+  // Vite dev (5173 web / 1420 tauri): same-origin /api proxy → uvicorn
   if (import.meta.env.DEV && typeof window !== "undefined") {
     const port = window.location.port;
     if (port === "1420" || port === "5173") {
-      return "http://127.0.0.1:8765";
+      return "";
     }
   }
+  if (isTauri()) return API_ORIGIN;
   return "";
 }
 

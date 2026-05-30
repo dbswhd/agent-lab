@@ -15,7 +15,7 @@ fn port_in_use(port: u16) -> bool {
     TcpStream::connect(("127.0.0.1", port)).is_ok()
 }
 
-fn api_health_has_peer_rounds() -> bool {
+fn api_health_ok() -> bool {
     use std::io::{Read, Write};
     let Ok(mut stream) = TcpStream::connect(("127.0.0.1", API_PORT)) else {
         return false;
@@ -30,6 +30,9 @@ fn api_health_has_peer_rounds() -> bool {
         return false;
     };
     let body = String::from_utf8_lossy(&buf[..n]);
+    if !(body.contains("\"ok\":true") || body.contains("\"ok\": true")) {
+        return false;
+    }
     body.contains("default_agent_parallel_rounds")
 }
 
@@ -121,10 +124,10 @@ fn sessions_dir(app: &tauri::AppHandle, root: &Path) -> PathBuf {
 
 fn start_api(app: &tauri::AppHandle, state: &ApiServer) -> Result<(), String> {
     if port_in_use(API_PORT) {
-        if cfg!(debug_assertions) && !api_health_has_peer_rounds() {
+        if cfg!(debug_assertions) && !api_health_ok() {
             eprintln!(
-                "Agent Lab: port {} is in use by an older API (no 2-round room). \
-                 Stop it (e.g. quit Tauri / kill $(lsof -ti:{}) ) and run `make tauri-dev` again.",
+                "Agent Lab: port {} is in use but /api/health is not OK. \
+                 Stop the stale process (kill $(lsof -ti:{})) and run `make tauri-dev` again.",
                 API_PORT, API_PORT
             );
         }

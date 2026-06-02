@@ -13,6 +13,13 @@ Baseline scenarios (minimal `run.json` fixtures):
 | `challenge_revises_metric/` | CHALLENGE → task blocked | open CHALLENGE + task `status: blocked` |
 | `specialist_asymmetric_cwd/` | 분업 preset | `agent_capabilities` + `turn_profile: specialist` |
 | `mailbox_handoff/` | MESSAGE handoff | `mailbox[]` with unread for target agent |
+| `worktree_merge_ok/` | worktree merge success | `status: merged` + worktree metadata + `merge.commit_sha` |
+| `worktree_reject/` | worktree rejected | `status: rejected` on worktree execution |
+| `worktree_unavailable/` | worktree isolation blocked | `blocked_isolation` + `isolation_effective: block` |
+| `merge_conflict/` | merge conflict state | `status: merge_conflict`, `merge.status: conflict`, conflict files |
+| `worktree_apply/` | non-git apply path | `isolation_effective: apply`, no merge metadata required |
+| `snapshot_override_pending/` | Human snapshot override | `snapshot_override` pending approval by Human |
+| `pre_execute_blocked/` | pre-execute gate blocked | `pre_verify.blocked: true` on blocked execution |
 
 Compare live sessions against baselines:
 

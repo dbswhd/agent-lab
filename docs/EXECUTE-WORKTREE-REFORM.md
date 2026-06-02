@@ -519,9 +519,9 @@ execute worktree가 **main 오염**을 막아도, specialist R2 discuss는 **별
 
 ### M4 — Hardening (지속)
 
-- [ ] orphan worktree CI guard
-- [ ] `score_session` + merge success rate KPI
-- [ ] regression fixtures: `worktree_merge_ok`, `worktree_blocked`, `merge_conflict`
+- [x] orphan worktree CI guard
+- [x] `score_session` + merge success rate KPI
+- [x] regression fixtures: `worktree_merge_ok`, `worktree_unavailable`, `merge_conflict`
 - [ ] retry/partial turn (room layer — 별 문서)
 
 ---
@@ -537,6 +537,9 @@ execute worktree가 **main 오염**을 막아도, specialist R2 discuss는 **별
 | `worktree_unavailable/` | 409 blocked_isolation |
 | `objection_blocks_worktree/` | open BLOCK → dry-run 409 |
 | `merge_conflict/` | scripted conflict → conflict UI state |
+| `worktree_apply/` | non-git apply path shape |
+| `snapshot_override_pending/` | Human override pending shape |
+| `pre_execute_blocked/` | pre_execute blocked execution shape |
 
 ### 13.2 Room 벤치 (사전 피드백 — Phase I 외)
 
@@ -597,6 +600,9 @@ execute worktree가 **main 오염**을 막아도, specialist R2 discuss는 **별
 | merge conflict rate | < 20% |
 | main dirty incident (pre-merge) | 0 (worktree path) |
 | objection → execute block | regression green |
+
+`score_session` keys: `worktree_usage_rate`, `snapshot_override_rate`,
+`merge_first_success_rate`, `merge_conflict_rate`.
 
 ---
 

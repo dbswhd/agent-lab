@@ -1,0 +1,40 @@
+{
+  "workflow_id": "room.parallel",
+  "run_schema_version": 1,
+  "plan_format_version": 1,
+  "topic": "regression baseline: worktree reject",
+  "created_at": "2026-06-01T00:00:00+00:00",
+  "agents": ["cursor", "codex", "claude"],
+  "status": "completed",
+  "message_count": 1,
+  "agent_parallel_rounds": 1,
+  "turns": [
+    {
+      "mode": "plan",
+      "synthesize": true,
+      "status": "completed"
+    }
+  ],
+  "actions": [],
+  "approvals": [],
+  "executions": [
+    {
+      "id": "exec-reject",
+      "action_index": 1,
+      "action_kind": "now",
+      "status": "rejected",
+      "isolation_effective": "worktree",
+      "git_root": "/tmp/agent-lab-fixture/repo",
+      "base_branch": "main",
+      "base_sha": "1111111111111111111111111111111111111111",
+      "exec_branch": "agent-lab/fixture-reject",
+      "worktree_path": "/tmp/agent-lab-fixture/session/worktrees/exec-reject",
+      "merge": {
+        "status": "pending",
+        "strategy": "merge",
+        "commit_sha": null,
+        "conflict_files": []
+      }
+    }
+  ]
+}

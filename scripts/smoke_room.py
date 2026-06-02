@@ -14,24 +14,127 @@ ROOT = Path(__file__).resolve().parents[1]
 REGRESSION = ROOT / "sessions" / "_regression"
 API = "http://127.0.0.1:8765"
 
+
+def _execs(run: dict[str, Any]) -> list[dict[str, Any]]:
+    return [row for row in run.get("executions") or [] if isinstance(row, dict)]
+
+
+def _has_worktree_meta(row: dict[str, Any]) -> bool:
+    return all(row.get(k) for k in ("git_root", "base_branch", "exec_branch", "worktree_path"))
+
+
+def _check_worktree_merge_ok(run: dict[str, Any]) -> bool:
+    rows = _execs(run)
+    return any(
+        row.get("status") == "merged"
+        and row.get("isolation_effective") == "worktree"
+        and _has_worktree_meta(row)
+        and isinstance(row.get("merge"), dict)
+        and row["merge"].get("commit_sha")
+        for row in rows
+    )
+
+
+def _check_worktree_reject(run: dict[str, Any]) -> bool:
+    return any(
+        row.get("status") == "rejected"
+        and row.get("isolation_effective") == "worktree"
+        for row in _execs(run)
+    )
+
+
+def _check_worktree_unavailable(run: dict[str, Any]) -> bool:
+    return any(
+        row.get("status") == "blocked_isolation"
+        and row.get("isolation_effective") == "block"
+        and row.get("blocked_reason")
+        for row in _execs(run)
+    )
+
+
+def _check_merge_conflict(run: dict[str, Any]) -> bool:
+    return any(
+        row.get("status") == "merge_conflict"
+        and isinstance(row.get("merge"), dict)
+        and row["merge"].get("status") == "conflict"
+        and bool(row["merge"].get("conflict_files"))
+        for row in _execs(run)
+    )
+
+
+def _check_apply(run: dict[str, Any]) -> bool:
+    return any(
+        row.get("isolation_effective") == "apply"
+        and row.get("status") in {"completed", "review_required"}
+        for row in _execs(run)
+    )
+
+
+def _check_snapshot_override(run: dict[str, Any]) -> bool:
+    return any(
+        row.get("isolation_effective") == "snapshot_override"
+        and row.get("status") == "pending_approval"
+        and row.get("isolation_override_by") == "human"
+        for row in _execs(run)
+    )
+
+
+def _check_pre_execute_blocked(run: dict[str, Any]) -> bool:
+    return any(
+        row.get("status") == "blocked_isolation"
+        and isinstance(row.get("pre_verify"), dict)
+        and row["pre_verify"].get("blocked") is True
+        for row in _execs(run)
+    )
+
+
 SCENARIOS: dict[str, dict[str, Any]] = {
     "discuss": {
         "label": "일반 discuss",
-        "check": lambda turns: any(t.get("mode") == "discuss" for t in turns)
-        and not any(t.get("review_mode") for t in turns),
+        "check": lambda run: any(t.get("mode") == "discuss" for t in run.get("turns") or [])
+        and not any(t.get("review_mode") for t in run.get("turns") or []),
     },
     "review-on": {
         "label": "쟁점 검토 ON",
-        "check": lambda turns: any(
+        "check": lambda run: any(
             t.get("mode") == "discuss" and t.get("review_mode") is True
-            for t in turns
+            for t in run.get("turns") or []
         ),
     },
     "plan": {
         "label": "지금 정리",
-        "check": lambda turns: any(
-            t.get("mode") == "plan" and t.get("synthesize") is True for t in turns
+        "check": lambda run: any(
+            t.get("mode") == "plan" and t.get("synthesize") is True
+            for t in run.get("turns") or []
         ),
+    },
+    "worktree_merge_ok": {
+        "label": "worktree merge ok",
+        "check": _check_worktree_merge_ok,
+    },
+    "worktree_reject": {
+        "label": "worktree reject",
+        "check": _check_worktree_reject,
+    },
+    "worktree_unavailable": {
+        "label": "worktree unavailable",
+        "check": _check_worktree_unavailable,
+    },
+    "merge_conflict": {
+        "label": "merge conflict",
+        "check": _check_merge_conflict,
+    },
+    "worktree_apply": {
+        "label": "non-git apply",
+        "check": _check_apply,
+    },
+    "snapshot_override_pending": {
+        "label": "snapshot override pending",
+        "check": _check_snapshot_override,
+    },
+    "pre_execute_blocked": {
+        "label": "pre_execute blocked",
+        "check": _check_pre_execute_blocked,
     },
 }
 
@@ -82,7 +185,7 @@ def validate_baseline(name: str, folder: Path) -> list[str]:
     turns = run.get("turns") or []
     if not isinstance(turns, list) or not turns:
         errors.append(f"{name}: turns[] must be a non-empty list")
-    elif not spec["check"](turns):
+    elif not spec["check"](run):
         errors.append(f"{name}: scenario check failed ({spec['label']})")
 
     return errors

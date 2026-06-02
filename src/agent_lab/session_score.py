@@ -13,7 +13,10 @@ from agent_lab.run_meta import read_run_meta
 
 _TOKEN_RE = re.compile(r"[a-zA-Z0-9가-힣]{2,}")
 _DUP_JACCARD_THRESHOLD = 0.65
-_TERMINAL_EXEC_STATUSES = frozenset({"rejected", "completed", "review_required"})
+_TERMINAL_EXEC_STATUSES = frozenset(
+    {"rejected", "completed", "review_required", "merged", "merge_conflict"}
+)
+_WORKTREE_TERMINAL_STATUSES = frozenset({"merged", "rejected", "merge_conflict"})
 
 
 def _load_chat_messages(folder: Path) -> list[dict[str, Any]]:
@@ -111,6 +114,73 @@ def _execute_first_try_rate(
     }
 
 
+def _execute_merge_kpis(
+    run_meta: dict[str, Any],
+) -> tuple[dict[str, float | None], dict[str, int]]:
+    executions = [
+        e for e in (run_meta.get("executions") or []) if isinstance(e, dict)
+    ]
+    total = len(executions)
+    gitish = [
+        e
+        for e in executions
+        if e.get("git_root")
+        or e.get("isolation_effective") in {"worktree", "snapshot_override", "block"}
+    ]
+    worktree = [e for e in executions if e.get("isolation_effective") == "worktree"]
+    snapshot_override = [
+        e for e in executions if e.get("isolation_effective") == "snapshot_override"
+    ]
+    conflicts = [
+        e
+        for e in worktree
+        if e.get("status") == "merge_conflict"
+        or (
+            isinstance(e.get("merge"), dict)
+            and e["merge"].get("status") == "conflict"
+        )
+    ]
+
+    prior_failed: dict[str, bool] = {}
+    first_success = 0
+    worktree_terminal = 0
+    for row in worktree:
+        status = str(row.get("status") or "")
+        if status not in _WORKTREE_TERMINAL_STATUSES:
+            continue
+        worktree_terminal += 1
+        key = _action_key(row)
+        if status == "merged" and not prior_failed.get(key):
+            first_success += 1
+        if status in {"rejected", "merge_conflict"}:
+            prior_failed[key] = True
+
+    scores = {
+        "worktree_usage_rate": (
+            len(worktree) / len(gitish) if gitish else None
+        ),
+        "snapshot_override_rate": (
+            len(snapshot_override) / total if total else None
+        ),
+        "merge_first_success_rate": (
+            first_success / worktree_terminal if worktree_terminal else None
+        ),
+        "merge_conflict_rate": (
+            len(conflicts) / len(worktree) if worktree else None
+        ),
+    }
+    counts = {
+        "total": total,
+        "gitish": len(gitish),
+        "worktree": len(worktree),
+        "snapshot_override": len(snapshot_override),
+        "worktree_terminal": worktree_terminal,
+        "merge_first_success": first_success,
+        "merge_conflict": len(conflicts),
+    }
+    return scores, counts
+
+
 def _ref_validity_rate(folder: Path) -> tuple[float | None, dict[str, int]]:
     result = validate_plan_refs(folder)
     total = len(result.refs)
@@ -171,6 +241,7 @@ def score_session(folder: Path) -> dict[str, Any]:
 
     obj_rate, obj_counts = _objection_resolution_rate(run_meta)
     exec_rate, exec_counts = _execute_first_try_rate(run_meta)
+    merge_scores, merge_counts = _execute_merge_kpis(run_meta)
     ref_rate, ref_counts = _ref_validity_rate(folder)
     dup_rate, dup_counts = _duplicate_speech_rate(messages)
 
@@ -179,12 +250,14 @@ def score_session(folder: Path) -> dict[str, Any]:
         "execute_first_try_rate": exec_rate,
         "ref_validity_rate": ref_rate,
         "duplicate_speech_rate": dup_rate,
+        **merge_scores,
     }
     summary_lines = _format_summary_lines(
         folder.name,
         scores,
         obj_counts,
         exec_counts,
+        merge_counts,
         ref_counts,
         dup_counts,
     )
@@ -195,6 +268,7 @@ def score_session(folder: Path) -> dict[str, Any]:
         "counts": {
             "objections": obj_counts,
             "executions": exec_counts,
+            "execute_merge": merge_counts,
             "plan_refs": ref_counts,
             "duplicate_speech": dup_counts,
         },
@@ -213,6 +287,7 @@ def _format_summary_lines(
     scores: dict[str, float | None],
     obj_counts: dict[str, int],
     exec_counts: dict[str, int],
+    merge_counts: dict[str, int],
     ref_counts: dict[str, int],
     dup_counts: dict[str, int],
 ) -> list[str]:
@@ -224,6 +299,23 @@ def _format_summary_lines(
     lines.append(
         f"  execute first-try: {_pct(scores['execute_first_try_rate'])} "
         f"({exec_counts.get('first_try', 0)}/{exec_counts.get('terminal', 0)} terminal)"
+    )
+    lines.append(
+        f"  worktree usage: {_pct(scores['worktree_usage_rate'])} "
+        f"({merge_counts.get('worktree', 0)}/{merge_counts.get('gitish', 0)} git-ish)"
+    )
+    lines.append(
+        f"  snapshot override: {_pct(scores['snapshot_override_rate'])} "
+        f"({merge_counts.get('snapshot_override', 0)}/{merge_counts.get('total', 0)} executions)"
+    )
+    lines.append(
+        f"  merge first-success: {_pct(scores['merge_first_success_rate'])} "
+        f"({merge_counts.get('merge_first_success', 0)}/"
+        f"{merge_counts.get('worktree_terminal', 0)} worktree terminal)"
+    )
+    lines.append(
+        f"  merge conflict: {_pct(scores['merge_conflict_rate'])} "
+        f"({merge_counts.get('merge_conflict', 0)}/{merge_counts.get('worktree', 0)} worktree)"
     )
     lines.append(
         f"  plan ref validity: {_pct(scores['ref_validity_rate'])} "

@@ -283,7 +283,9 @@ export function PlanExecutePanel({
         setPlanSnapshot(e.pendingPlan);
         setError(null);
       } else {
-        setError(String(e));
+        const err = e as Error & { preVerify?: { feedback?: string } };
+        const fb = err.preVerify?.feedback;
+        setError(fb ? `pre_execute: ${fb}` : String(e));
       }
     } finally {
       setBusy(false);
@@ -561,6 +563,22 @@ export function PlanExecutePanel({
       {activePending ? (
         <div className="plan-execute-pending" role="region" aria-label="승인 대기">
           <PlanLinkedTaskLine task={linkedForPending} onFocusTask={onFocusTask} />
+          {activePending.pre_verify?.blocked ||
+          (activePending.pre_verify?.feedback &&
+            !activePending.pre_verify?.blocked) ? (
+            <p
+              className={
+                activePending.pre_verify?.blocked
+                  ? "plan-execute-pending__pre-verify plan-execute-pending__pre-verify--blocked"
+                  : "plan-execute-pending__pre-verify"
+              }
+              role={activePending.pre_verify?.blocked ? "alert" : "status"}
+            >
+              {activePending.pre_verify?.blocked
+                ? `실행 전 검증 차단: ${activePending.pre_verify.feedback || "pre_execute hook"}`
+                : `실행 전 검증: ${activePending.pre_verify?.feedback}`}
+            </p>
+          ) : null}
           <div className="plan-execute-pending__head">
             <div className="plan-execute-history__title-row">
               <span className="plan-execute-history__badge">

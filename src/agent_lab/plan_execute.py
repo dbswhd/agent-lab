@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import uuid
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from agent_lab.plan_actions import PlanAction, find_dry_run_action, parse_plan_action_sections
+from agent_lab.plan_execute_git import resolve_action_git_context
+from agent_lab.plan_execute_merge import MergeConflict, merge_exec_branch
 from agent_lab.plan_execute_paths import paths_relative_to_workspace, paths_under_workspace
 from agent_lab.plan_execute_snapshot import (
     build_diff,
@@ -24,6 +27,12 @@ from agent_lab.workspace_roots import (
     resolve_execute_workspace,
     workspace_label,
     workspace_path_info,
+)
+from agent_lab.plan_execute_worktree import (
+    ExecWorktree,
+    WorktreeUnavailable,
+    create_exec_worktree,
+    discard_exec_worktree,
 )
 from agent_lab.session_guidance import verify_execution_artifacts
 
@@ -160,6 +169,87 @@ def _preflight_execute_workspace(
     return cwd, effective_permissions, info
 
 
+def _worktree_paths(
+    paths: list[str],
+    *,
+    git_root: Path,
+) -> list[str]:
+    root = git_root.resolve()
+    out: list[str] = []
+    for raw in paths:
+        path = Path(raw).expanduser()
+        if path.is_absolute():
+            out.append(path.resolve().relative_to(root).as_posix())
+        else:
+            out.append(raw)
+    return out
+
+
+def _workspace_info_for(cwd: Path, raw_paths: list[str]) -> dict[str, Any]:
+    return workspace_path_info(cwd, raw_paths)
+
+
+def _exec_worktree_from_execution(target: dict[str, Any]) -> ExecWorktree:
+    missing = [
+        key
+        for key in ("git_root", "worktree_path", "exec_branch", "base_branch", "base_sha")
+        if not target.get(key)
+    ]
+    if missing:
+        raise ValueError(f"execution missing worktree metadata: {', '.join(missing)}")
+    return ExecWorktree(
+        git_root=Path(str(target["git_root"])),
+        worktree_path=Path(str(target["worktree_path"])),
+        branch=str(target["exec_branch"]),
+        base_branch=str(target["base_branch"]),
+        base_sha=str(target["base_sha"]),
+    )
+
+
+def _run_git(cwd: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", "-C", str(cwd), *args],
+        capture_output=True,
+        text=True,
+        check=check,
+    )
+
+
+def _commit_exec_worktree(
+    *,
+    worktree_path: Path,
+    action: PlanAction,
+    exec_id: str,
+) -> str | None:
+    _run_git(worktree_path, "add", "-A")
+    has_changes = _run_git(worktree_path, "diff", "--cached", "--quiet", check=False)
+    if has_changes.returncode == 0:
+        return None
+    message = f"agent-lab: dry-run {action.kind}:{action.index} ({exec_id})"
+    _run_git(worktree_path, "commit", "-m", message)
+    return _run_git(worktree_path, "rev-parse", "HEAD").stdout.strip()
+
+
+def _merge_commit_message(target: dict[str, Any], *, session_id: str) -> str:
+    action = str(target.get("action_what") or target.get("action_key") or "plan action")
+    action_key = str(target.get("action_key") or "unknown")
+    exec_id = str(target.get("id") or "")
+    refs = target.get("provenance_refs") or []
+    if not refs:
+        refs = [f"plan_action:{target.get('action_index')}"]
+    refs_text = "; ".join(str(ref) for ref in refs if ref)
+    lines = [
+        f"agent-lab: {action} ({action_key})",
+        "",
+        f"Session: {session_id}",
+        f"Execution: {exec_id}",
+    ]
+    if refs_text:
+        lines.append(f"Refs: {refs_text}")
+    lines.append("Approved-by: human")
+    return "\n".join(lines)
+
+
 def _pending_execution(run: dict[str, Any]) -> dict[str, Any] | None:
     for row in reversed(run.get("executions") or []):
         if row.get("status") == PENDING_STATUS:
@@ -195,8 +285,12 @@ def list_plan_actions(
     }
 
 
-def _cursor_execute_prompt(action: PlanAction) -> str:
-    expected = ", ".join(action.expected_paths()) or action.where
+def _cursor_execute_prompt(
+    action: PlanAction,
+    *,
+    expected_paths: list[str] | None = None,
+) -> str:
+    expected = ", ".join(expected_paths or action.expected_paths()) or action.where
     return f"""Agent Lab thin execute — implement exactly one plan action.
 
 Phase 1 — implement (tools expected):
@@ -208,7 +302,7 @@ Phase 1 — implement (tools expected):
 
 Plan action:
 - 무엇을: {action.what}
-- 어디서: {action.where}
+- 어디서: {expected}
 - 검증: {action.verify}
 
 When phase 1 edits are done, stop and wait — a phase 2 verification message follows in this same session."""
@@ -283,19 +377,126 @@ def run_dry_run(
     ensure_plan_snapshot_approved(folder, action, plan_md)
 
     run = read_run_meta(folder)
+    from agent_lab.room_objections import assert_execute_allowed
+
+    assert_execute_allowed(run, action.index, action.kind)
+
     if _pending_execution(run):
         raise ValueError("finish or reject the pending execution first")
 
-    cwd, effective_permissions, workspace_info = _preflight_execute_workspace(
+    base_cwd, effective_permissions, base_workspace_info = _preflight_execute_workspace(
         action, permissions
     )
     exec_id = _exec_id()
+    action_key = f"{action.kind}:{action.index}"
     raw_source_paths = action.expected_paths()
     raw_verification_paths = action.verification_paths()
     raw_monitored_paths = action.monitored_paths()
-    source_snapshot = paths_relative_to_workspace(cwd, raw_source_paths)
-    artifact_snapshot = paths_relative_to_workspace(cwd, raw_verification_paths)
-    snapshot_paths = paths_relative_to_workspace(cwd, raw_monitored_paths)
+    git_context = resolve_action_git_context(
+        action_key=action_key,
+        monitored_paths=raw_monitored_paths,
+        cwd_hint=base_cwd,
+    )
+    exec_worktree: ExecWorktree | None = None
+    worktree_commit_sha: str | None = None
+    isolation_effective = git_context.isolation
+
+    def _record_blocked(reason: str, message: str) -> None:
+        blocked = {
+            "schema_version": 2,
+            "id": exec_id,
+            "action_id": action.action_id,
+            "action_index": action.index,
+            "action_kind": action.kind,
+            "action_key": action_key,
+            "action_what": action.what,
+            "action_where": action.where,
+            "action_verify": action.verify,
+            "executor": EXECUTOR_ID,
+            "executor_label": "Cursor",
+            "status": "blocked_isolation",
+            "isolation_requested": git_context.isolation_source,
+            "isolation_effective": git_context.isolation,
+            "isolation_override": None,
+            "action_git_context": git_context.to_dict(),
+            "git_root": str(git_context.git_root) if git_context.git_root else None,
+            "base_branch": git_context.base_branch,
+            "workspace_root": str(base_cwd),
+            "workspace_label": workspace_label(base_cwd),
+            "execute_workspace_info": base_workspace_info,
+            "blocked_reason": reason,
+            "blocked_message": message,
+            "completed_at": _now(),
+        }
+
+        def _append_blocked(run: dict[str, Any]) -> dict[str, Any]:
+            executions = list(run.get("executions") or [])
+            executions.append(blocked)
+            run["executions"] = executions
+            return run
+
+        patch_run_meta(folder, _append_blocked)
+
+    if git_context.isolation == "block":
+        reason = git_context.block_reason or "isolation_blocked"
+        message = f"execute isolation blocked: {reason}"
+        _record_blocked(reason, message)
+        raise WorktreeUnavailable(message, reason=reason)
+
+    cwd = base_cwd
+    workspace_info = base_workspace_info
+    source_path_inputs = raw_source_paths
+    verification_path_inputs = raw_verification_paths
+    monitored_path_inputs = raw_monitored_paths
+    if git_context.isolation == "worktree":
+        if git_context.git_root is None:
+            reason = "git_root_missing"
+            message = "execute isolation blocked: git root missing"
+            _record_blocked(reason, message)
+            raise WorktreeUnavailable(message, reason=reason)
+        try:
+            exec_worktree = create_exec_worktree(
+                folder,
+                exec_id=exec_id,
+                git_root=git_context.git_root,
+                action_key=action_key,
+                session_id=folder.name,
+                base_branch=git_context.base_branch,
+            )
+        except WorktreeUnavailable as e:
+            _record_blocked(e.reason, str(e))
+            raise
+        cwd = exec_worktree.worktree_path
+        source_path_inputs = _worktree_paths(raw_source_paths, git_root=exec_worktree.git_root)
+        verification_path_inputs = _worktree_paths(
+            raw_verification_paths,
+            git_root=exec_worktree.git_root,
+        )
+        monitored_path_inputs = _worktree_paths(
+            raw_monitored_paths,
+            git_root=exec_worktree.git_root,
+        )
+        workspace_info = _workspace_info_for(cwd, monitored_path_inputs)
+
+    from agent_lab.room_hooks import PreExecuteBlocked, run_pre_execute_hooks
+
+    pre_verify = run_pre_execute_hooks(
+        run,
+        action.to_dict(),
+        session_folder=folder,
+        session_id=folder.name,
+    )
+    if pre_verify.get("blocked"):
+        if exec_worktree is not None:
+            discard_exec_worktree(exec_worktree, folder, exec_id)
+        raise PreExecuteBlocked(
+            str(pre_verify.get("feedback") or "pre_execute hook blocked"),
+            pre_verify=pre_verify,
+        )
+
+    source_snapshot = paths_relative_to_workspace(cwd, source_path_inputs)
+    artifact_snapshot = paths_relative_to_workspace(cwd, verification_path_inputs)
+    snapshot_paths = paths_relative_to_workspace(cwd, monitored_path_inputs)
     manifest = create_snapshot(
         folder,
         exec_id=exec_id,
@@ -324,7 +525,7 @@ def run_dry_run(
     try:
         agent_response = respond(
             system="You implement approved plan actions with minimal scope.",
-            user=_cursor_execute_prompt(action),
+            user=_cursor_execute_prompt(action, expected_paths=source_path_inputs),
             permissions=effective_permissions,
             cwd=cwd,
             on_activity=_on_activity,
@@ -333,6 +534,8 @@ def run_dry_run(
     except Exception as e:
         restore_snapshot(folder, exec_id=exec_id, cwd=cwd, manifest=manifest)
         delete_snapshot(folder, exec_id)
+        if exec_worktree is not None:
+            discard_exec_worktree(exec_worktree, folder, exec_id)
         raise RuntimeError(f"Cursor execute failed: {e}") from e
 
     touched = compute_touched_paths(
@@ -364,24 +567,58 @@ def run_dry_run(
         verification_paths=raw_verification_paths,
         draft_summary=_extract_draft_summary(agent_response),
     )
-    verification_artifacts = verify_execution_artifacts(cwd, raw_verification_paths)
+    verification_artifacts = verify_execution_artifacts(cwd, verification_path_inputs)
+
+    if exec_worktree is not None:
+        try:
+            worktree_commit_sha = _commit_exec_worktree(
+                worktree_path=exec_worktree.worktree_path,
+                action=action,
+                exec_id=exec_id,
+            )
+        except Exception as e:
+            restore_snapshot(folder, exec_id=exec_id, cwd=cwd, manifest=manifest)
+            delete_snapshot(folder, exec_id)
+            discard_exec_worktree(exec_worktree, folder, exec_id)
+            raise RuntimeError(f"Cursor execute git commit failed: {e}") from e
 
     execution = {
+        "schema_version": 2,
         "id": exec_id,
         "action_id": action.action_id,
         "action_index": action.index,
         "action_kind": action.kind,
-        "action_key": f"{action.kind}:{action.index}",
+        "action_key": action_key,
         "action_what": action.what,
         "action_where": action.where,
         "action_verify": action.verify,
         "executor": EXECUTOR_ID,
         "executor_label": "Cursor",
         "status": PENDING_STATUS,
+        "isolation_requested": git_context.isolation_source,
+        "isolation_effective": isolation_effective,
+        "isolation_override": None,
+        "action_git_context": git_context.to_dict(),
+        "git_root": str(exec_worktree.git_root) if exec_worktree else (
+            str(git_context.git_root) if git_context.git_root else None
+        ),
+        "base_branch": exec_worktree.base_branch if exec_worktree else git_context.base_branch,
+        "base_sha": exec_worktree.base_sha if exec_worktree else None,
+        "exec_branch": exec_worktree.branch if exec_worktree else None,
+        "exec_commit_sha": worktree_commit_sha,
+        "worktree_path": str(exec_worktree.worktree_path) if exec_worktree else None,
         "snapshot_id": exec_id,
         "workspace_root": str(cwd),
         "workspace_label": workspace_label(cwd),
         "execute_workspace_info": workspace_info,
+        "merge": {
+            "status": "pending" if exec_worktree else None,
+            "strategy": "merge" if exec_worktree else None,
+            "commit_sha": None,
+            "conflict_files": [],
+            "attempted_at": None,
+            "completed_at": None,
+        },
         "verification_artifacts": verification_artifacts,
         "snapshotted_paths": raw_monitored_paths,
         "expected_paths": raw_source_paths,
@@ -404,6 +641,7 @@ def run_dry_run(
         "diff": diff,
         "started_at": started,
         "completed_at": None,
+        "pre_verify": pre_verify,
     }
 
     def _append(run: dict[str, Any]) -> dict[str, Any]:
@@ -502,6 +740,8 @@ def resolve_execution(
         if manifest is not None:
             restore_snapshot(folder, exec_id=snapshot_id, cwd=cwd, manifest=manifest)
             delete_snapshot(folder, snapshot_id)
+        if target.get("isolation_effective") == "worktree":
+            discard_exec_worktree(_exec_worktree_from_execution(target), folder, execution_id)
         target["status"] = "rejected"
         target["completed_at"] = completed
 
@@ -544,9 +784,36 @@ def resolve_execution(
                 verification_paths=list(target.get("verification_paths") or []),
                 draft_summary=str(target.get("draft_summary") or ""),
             )
-            delete_snapshot(folder, snapshot_id)
-        target["status"] = _approve_status(target)
-        target["completed_at"] = completed
+        if target.get("isolation_effective") == "worktree":
+            merge = dict(target.get("merge") or {})
+            merge["attempted_at"] = completed
+            try:
+                merge_result = merge_exec_branch(
+                    _exec_worktree_from_execution(target),
+                    session_folder=folder,
+                    exec_id=execution_id,
+                    message=_merge_commit_message(target, session_id=folder.name),
+                )
+            except MergeConflict as e:
+                merge["status"] = "conflict"
+                merge["conflict_files"] = e.conflict_files
+                merge["completed_at"] = _now()
+                target["merge"] = merge
+                target["status"] = "merge_conflict"
+                target["completed_at"] = merge["completed_at"]
+            else:
+                merge.update(merge_result.to_dict())
+                merge["completed_at"] = _now()
+                target["merge"] = merge
+                target["status"] = "merged"
+                target["completed_at"] = merge["completed_at"]
+                if snapshot_id:
+                    delete_snapshot(folder, snapshot_id)
+        else:
+            if snapshot_id:
+                delete_snapshot(folder, snapshot_id)
+            target["status"] = _approve_status(target)
+            target["completed_at"] = completed
 
     approval = {
         "id": f"appr-{uuid.uuid4().hex[:12]}",
@@ -588,7 +855,10 @@ def resolve_execution(
         patch_run_meta(folder, _complete_linked_tasks)
 
     plan_advance: dict[str, Any] = {"advanced": False}
-    if vote_norm == "approve" and target.get("status") in {"completed", "review_required"}:
+    if vote_norm == "approve" and (
+        target.get("status") in {"completed", "review_required"}
+        or (target.get("status") == "merged" and execution_allows_task_complete(target))
+    ):
         from agent_lab.plan_advance import advance_plan_after_approval
 
         plan_advance = advance_plan_after_approval(folder, target)

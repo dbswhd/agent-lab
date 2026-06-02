@@ -9,11 +9,11 @@ from typing import Any, Literal
 
 from agent_lab.room_context import is_pass_response, is_pure_no_objection
 
-ActType = Literal["PROPOSE", "AMEND", "ENDORSE", "CHALLENGE", "PASS", "BLOCK"]
+ActType = Literal["PROPOSE", "AMEND", "ENDORSE", "CHALLENGE", "PASS", "BLOCK", "MESSAGE"]
 ConsensusVerdict = Literal["endorse", "pass", "substantive", "neutral"]
 
 VALID_ACTS: frozenset[str] = frozenset(
-    {"PROPOSE", "AMEND", "ENDORSE", "CHALLENGE", "PASS", "BLOCK"}
+    {"PROPOSE", "AMEND", "ENDORSE", "CHALLENGE", "PASS", "BLOCK", "MESSAGE"}
 )
 
 # Acts where the human-readable body should stay very short (token efficiency).
@@ -38,6 +38,8 @@ class AgentEnvelope:
     refs: list[str]
     confidence: float | None = None
     anchor_id: str | None = None
+    to: str | None = None
+    message: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {"act": self.act, "refs": list(self.refs)}
@@ -45,6 +47,10 @@ class AgentEnvelope:
             d["confidence"] = self.confidence
         if self.anchor_id:
             d["anchor_id"] = self.anchor_id
+        if self.to:
+            d["to"] = self.to
+        if self.message:
+            d["message"] = self.message
         return d
 
     @classmethod
@@ -62,11 +68,15 @@ class AgentEnvelope:
             except (TypeError, ValueError):
                 confidence = None
         anchor_id = data.get("anchor_id")
+        to_raw = data.get("to")
+        msg_raw = data.get("message")
         return cls(
             act=act,  # type: ignore[arg-type]
             refs=refs,
             confidence=confidence,
             anchor_id=str(anchor_id).strip() if anchor_id else None,
+            to=str(to_raw).strip().lower() if to_raw else None,
+            message=str(msg_raw).strip() if msg_raw else None,
         )
 
 
@@ -136,7 +146,7 @@ def classify_consensus_reply(
         return "endorse"
     if act == "PASS":
         return "pass"
-    if act in ("AMEND", "PROPOSE", "CHALLENGE", "BLOCK"):
+    if act in ("AMEND", "PROPOSE", "CHALLENGE", "BLOCK", "MESSAGE"):
         return "substantive"
     if is_pure_no_objection(text):
         return "endorse"
@@ -191,8 +201,9 @@ Acts (pick one):
 - `CHALLENGE` — disagree with reasoning
 - `PASS` — nothing new vs peers (peer review)
 - `BLOCK` — hard objection; must explain in body
+- `MESSAGE` — direct note to one teammate (`"to":"codex"`, optional `"message"`; body can repeat). Not for Human.
 
-`refs`: optional chat.jsonl line refs (e.g. `"L42"`). `confidence`: 0–1 optional.
+`refs`: optional chat.jsonl line refs (e.g. `"L42"`) or task ids (`t-…`). `to`: cursor|codex|claude when `act` is MESSAGE. `confidence`: 0–1 optional.
 The fence inner content must parse as **one JSON object** with an `"act"` field.
 After the fence, write the normal readable reply for the Human.
 

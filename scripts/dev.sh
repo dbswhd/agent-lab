@@ -23,7 +23,7 @@ uvicorn app.server.main:app --reload --host 127.0.0.1 --port 8765 \
 API_PID=$!
 trap 'kill $API_PID 2>/dev/null || true' EXIT
 
-(cd web && npm run dev) &
+(cd web && VITE_SKIP_API=1 npm run dev) &
 WEB_PID=$!
 trap 'kill $API_PID $WEB_PID 2>/dev/null || true' EXIT
 

@@ -10,6 +10,7 @@ from agent_lab.room_team_orchestration import (
     resolve_send_receipt,
     resolve_turn_lead,
     should_assign_tasks_on_turn,
+    should_emit_human_turn_synthesis,
     team_r1_split,
     turn_leads_map,
 )
@@ -115,13 +116,43 @@ def test_build_human_turn_synthesis_skips_peer():
     assert "Human-visible answer" in body
 
 
+def test_should_emit_human_turn_synthesis_profiles():
+    msgs = [
+        ChatMessage(role="user", agent=None, content="q"),
+        ChatMessage(role="agent", agent="codex", content="a"),
+        ChatMessage(role="agent", agent="claude", content="b"),
+    ]
+    assert not should_emit_human_turn_synthesis("analyze", msgs, agents_used=["codex", "claude"])
+    assert should_emit_human_turn_synthesis(
+        "analyze",
+        msgs + [ChatMessage(role="agent", agent="cursor", content="c")],
+        agents_used=["codex", "claude", "cursor"],
+    )
+    assert should_emit_human_turn_synthesis("free", msgs, agents_used=["codex"])
+    assert not should_emit_human_turn_synthesis("quick", msgs, agents_used=["codex", "claude", "cursor"])
+
+
 def test_append_human_turn_synthesis_once():
     msgs = [
         ChatMessage(role="user", agent=None, content="hello"),
         ChatMessage(role="agent", agent="codex", content="reply"),
     ]
-    out = _append_human_turn_synthesis(msgs, {"team_lead": "cursor"})
+    meta = {"team_lead": "cursor", "turn_profile": "free"}
+    out = _append_human_turn_synthesis(msgs, meta, turn_meta={"turn_profile": "free", "agents": ["codex"]})
     assert len(out) == len(msgs) + 1
     assert "[human synthesis" in out[-1].content
-    again = _append_human_turn_synthesis(out, {"team_lead": "cursor"})
+    again = _append_human_turn_synthesis(out, meta, turn_meta={"turn_profile": "free", "agents": ["codex"]})
     assert len(again) == len(out)
+
+
+def test_append_human_turn_synthesis_skipped_for_small_analyze():
+    msgs = [
+        ChatMessage(role="user", agent=None, content="hello"),
+        ChatMessage(role="agent", agent="codex", content="reply"),
+    ]
+    out = _append_human_turn_synthesis(
+        msgs,
+        {"team_lead": "cursor", "turn_profile": "analyze"},
+        turn_meta={"turn_profile": "analyze", "agents": ["codex"]},
+    )
+    assert len(out) == len(msgs)

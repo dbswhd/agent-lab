@@ -71,39 +71,42 @@ export function ApiDiagnosticsBar({
           <code>docs/STABILITY.md</code> 참고.
         </p>
       ) : null}
-      <div className="api-diagnostics-bar__actions">
-        <button
-          type="button"
-          className="mac-btn-secondary mac-btn-secondary--compact"
-          disabled={loading}
-          onClick={() => void load()}
-        >
-          {loading ? "…" : "진단 새로고침"}
-        </button>
-        <button
-          type="button"
-          className="mac-btn-secondary mac-btn-secondary--compact"
-          disabled={!diag}
-          onClick={() => void copyJson()}
-        >
-          {copied ? "복사됨" : "진단 JSON 복사"}
-        </button>
-      </div>
-      {diag?.boot_log_tail?.length ? (
-        <details className="api-diagnostics-bar__boot">
-          <summary>부트 로그 (최근 {diag.boot_log_tail.length}줄)</summary>
+      <details className="api-diagnostics-bar__detail">
+        <summary>진단 도구</summary>
+        <div className="api-diagnostics-bar__actions">
+          <button
+            type="button"
+            className="mac-btn-secondary mac-btn-secondary--compact"
+            disabled={loading}
+            onClick={() => void load()}
+          >
+            {loading ? "…" : "진단 새로고침"}
+          </button>
+          <button
+            type="button"
+            className="mac-btn-secondary mac-btn-secondary--compact"
+            disabled={!diag}
+            onClick={() => void copyJson()}
+          >
+            {copied ? "복사됨" : "진단 JSON 복사"}
+          </button>
+        </div>
+        {diag?.boot_log_tail?.length ? (
+          <details className="api-diagnostics-bar__boot">
+            <summary>부트 로그 (최근 {diag.boot_log_tail.length}줄)</summary>
+            <p className="api-diagnostics-bar__path" title={bootPath}>
+              {bootPath}
+            </p>
+            <pre className="api-diagnostics-bar__log">
+              {diag.boot_log_tail.join("\n")}
+            </pre>
+          </details>
+        ) : (
           <p className="api-diagnostics-bar__path" title={bootPath}>
-            {bootPath}
+            로그: {bootPath}
           </p>
-          <pre className="api-diagnostics-bar__log">
-            {diag.boot_log_tail.join("\n")}
-          </pre>
-        </details>
-      ) : (
-        <p className="api-diagnostics-bar__path" title={bootPath}>
-          로그: {bootPath}
-        </p>
-      )}
+        )}
+      </details>
     </div>
   );
 }

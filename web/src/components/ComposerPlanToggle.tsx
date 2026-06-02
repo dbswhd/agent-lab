@@ -13,7 +13,7 @@ export function ComposerPlanToggle({ checked, onChange, disabled }: Props) {
       ]
         .filter(Boolean)
         .join(" ")}
-      title="전송 후 plan.md 갱신"
+      title="켜면 메시지 전송 후 plan 문서를 갱신합니다 (plan 탭)"
     >
       <input
         type="checkbox"
@@ -22,7 +22,7 @@ export function ComposerPlanToggle({ checked, onChange, disabled }: Props) {
         disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
       />
-      <span className="composer-plan-toggle__label">정리</span>
+      <span className="composer-plan-toggle__label">전송 시 plan 갱신</span>
     </label>
   );
 }

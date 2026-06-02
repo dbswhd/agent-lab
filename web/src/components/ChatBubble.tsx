@@ -1,4 +1,5 @@
 import { Avatar } from "./Avatar";
+import { HumanSynthesisBubble } from "./HumanSynthesisBubble";
 import type { ChatMessage, AgentRole } from "../utils/transcript";
 import { MessageMarkdown } from "../utils/messageMarkdown";
 import {
@@ -125,6 +126,10 @@ export function ReplyWaitingBubble({ agent, label, activities }: ReplyWaitingPro
 export function ChatBubble({ message, typing, highlighted }: Props) {
   const sent = message.sent ?? message.role === "you";
   const role = message.role;
+
+  if (message.humanSynthesis && !typing) {
+    return <HumanSynthesisBubble message={message} highlighted={highlighted} />;
+  }
 
   if (role === "system") {
     return (

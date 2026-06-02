@@ -73,7 +73,28 @@ def reconnect_cursor_bridge(*, workspace: str | None = None) -> dict[str, Any]:
     }
 
 
-def agent_health_row(agent_id: str, *, probe_bridge: bool = False) -> dict[str, Any]:
+def _capability_fields(
+    agent_id: str, run_meta: dict[str, Any] | None
+) -> dict[str, Any]:
+    from agent_lab.room_agent_capabilities import get_agent_capabilities
+
+    cap = get_agent_capabilities(run_meta).get(agent_id.strip().lower()) or {}
+    tools = cap.get("tools") or []
+    label_text = str(cap.get("label") or "").strip()
+    out: dict[str, Any] = {}
+    if tools:
+        out["capabilities"] = tools
+    if label_text:
+        out["capability_label"] = label_text
+    return out
+
+
+def agent_health_row(
+    agent_id: str,
+    *,
+    probe_bridge: bool = False,
+    run_meta: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     aid = agent_id.strip().lower()
     row: dict[str, Any] = {
         "id": aid,
@@ -83,6 +104,7 @@ def agent_health_row(agent_id: str, *, probe_bridge: bool = False) -> dict[str, 
         "ready": False,
         "bridge": "n/a",
         "hint": None,
+        **_capability_fields(aid, run_meta),
     }
 
     if aid == "cursor":
@@ -138,18 +160,26 @@ def build_agent_health(
     *,
     probe_bridge: bool = False,
     probe_preflight: bool = False,
+    run_meta: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     if probe_preflight:
         from agent_lab.agent_preflight import build_agent_preflight
 
-        return build_agent_preflight(probe_bridge=probe_bridge, probe_cli=True)
-    return [agent_health_row(aid, probe_bridge=probe_bridge) for aid in AGENT_IDS]
+        rows = build_agent_preflight(probe_bridge=probe_bridge, probe_cli=True)
+        for row in rows:
+            row.update(_capability_fields(str(row.get("id") or ""), run_meta))
+        return rows
+    return [
+        agent_health_row(aid, probe_bridge=probe_bridge, run_meta=run_meta)
+        for aid in AGENT_IDS
+    ]
 
 
 def build_health_payload(
     *,
     probe_bridge: bool = False,
     probe_preflight: bool = False,
+    run_meta: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     from agent_lab import claude_cli, codex_cli
     from agent_lab.context_limits import all_limits_for_api, efficiency_mode_default
@@ -161,6 +191,7 @@ def build_health_payload(
     agents = build_agent_health(
         probe_bridge=probe_bridge,
         probe_preflight=probe_preflight,
+        run_meta=run_meta,
     )
     ready_ids = [a["id"] for a in agents if a.get("ready")]
 

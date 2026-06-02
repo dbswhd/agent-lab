@@ -4,10 +4,24 @@
 .mac-app {
   min-height: 100vh;
   padding: var(--space-xl);
-  background: var(--mac-app-bg);
+  background:
+    radial-gradient(ellipse 72% 55% at 18% 8%, rgba(0, 122, 255, 0.13) 0%, transparent 62%),
+    radial-gradient(ellipse 58% 48% at 88% 18%, rgba(88, 50, 220, 0.10) 0%, transparent 55%),
+    radial-gradient(ellipse 65% 65% at 78% 88%, rgba(255, 95, 45, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 52% 55% at 8% 82%, rgba(40, 195, 95, 0.07) 0%, transparent 58%),
+    var(--mac-app-bg);
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+[data-theme="dark"] .mac-app {
+  background:
+    radial-gradient(ellipse 72% 55% at 18% 8%, rgba(10, 132, 255, 0.20) 0%, transparent 62%),
+    radial-gradient(ellipse 58% 48% at 88% 18%, rgba(120, 80, 255, 0.15) 0%, transparent 55%),
+    radial-gradient(ellipse 65% 65% at 78% 88%, rgba(255, 115, 60, 0.11) 0%, transparent 60%),
+    radial-gradient(ellipse 52% 55% at 8% 82%, rgba(50, 210, 100, 0.09) 0%, transparent 58%),
+    var(--mac-app-bg);
 }
 
 body.is-tauri .mac-app {
@@ -23,6 +37,8 @@ body.is-tauri .mac-app {
   display: flex;
   flex-direction: column;
   background: var(--mac-window-bg);
+  backdrop-filter: blur(38px) saturate(1.15);
+  -webkit-backdrop-filter: blur(38px) saturate(1.15);
   border-radius: var(--radius-window);
   box-shadow: var(--shadow-window);
   border: 0.5px solid var(--mac-separator-strong);
@@ -48,6 +64,8 @@ body.is-tauri .mac-window {
   column-gap: var(--space-sm);
   padding: env(safe-area-inset-top, 0px) var(--space-md) 0;
   background: var(--mac-titlebar-bg);
+  backdrop-filter: blur(20px) saturate(1.28);
+  -webkit-backdrop-filter: blur(20px) saturate(1.28);
   border-bottom: 0.5px solid var(--mac-separator);
 }
 
@@ -169,8 +187,12 @@ body.is-tauri .chat-list-header {
   height: var(--mac-control-height);
   border-radius: var(--radius-control);
   cursor: pointer;
-  transition: background 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
+  transition: background 0.15s ease, color 0.12s ease, box-shadow 0.15s ease, transform 0.08s ease;
   white-space: nowrap;
+}
+
+.mac-segmented button:active:not(:disabled) {
+  transform: scale(0.95);
 }
 
 .mac-segmented button:hover:not(:disabled):not(.active) {
@@ -221,8 +243,10 @@ body.is-tauri .chat-list-header {
   font-weight: 510;
   letter-spacing: -0.01em;
   cursor: pointer;
-  transition: background 0.12s ease, opacity 0.12s ease;
-  box-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.08);
+  transition: background 0.12s ease, opacity 0.12s ease, transform 0.08s ease;
+  box-shadow:
+    0 0.5px 1px rgba(0, 0, 0, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
 .mac-btn-primary:hover:not(:disabled) {
@@ -231,6 +255,7 @@ body.is-tauri .chat-list-header {
 
 .mac-btn-primary:active:not(:disabled) {
   opacity: 0.88;
+  transform: scale(0.97);
 }
 
 .mac-btn-primary:disabled {
@@ -254,15 +279,26 @@ body.is-tauri .chat-list-header {
   font-size: var(--text-headline);
   font-weight: 510;
   cursor: pointer;
-  transition: background 0.12s ease;
+  transition: background 0.12s ease, box-shadow 0.12s ease, transform 0.08s ease;
+  box-shadow:
+    0 0 0 0.5px var(--mac-separator),
+    inset 0 1px 0 rgba(255, 255, 255, 0.62);
 }
 
 [data-theme="dark"] .mac-btn-secondary {
   color: var(--mac-label-primary);
+  box-shadow:
+    0 0 0 0.5px var(--mac-separator),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10);
 }
 
 .mac-btn-secondary:hover {
   background: var(--mac-push-button-hover);
+}
+
+.mac-btn-secondary:active {
+  transform: scale(0.97);
+  opacity: 0.88;
 }
 
 /* Full-width primary in sidebar header (Figma: Push Button stretch) */
@@ -460,11 +496,12 @@ body.is-tauri .chat-list-header {
 
 /* Grouped list (Sidebar) */
 .session-list li {
-  border-radius: var(--mac-radius-menu-item);
+  border-radius: 8px;
   margin-bottom: 1px;
   border: none;
   padding: 5px 8px;
   gap: 6px;
+  transition: background 0.14s ease, box-shadow 0.14s ease;
 }
 
 .chat-list-pane .session-list li.selected {
@@ -474,6 +511,19 @@ body.is-tauri .chat-list-header {
   box-shadow:
     var(--lg-sidebar-edge),
     inset 0 0 0 0.5px var(--lg-sidebar-border);
+  animation: session-select-in 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes session-select-in {
+  from {
+    opacity: 0.6;
+    transform: scaleY(0.94);
+    box-shadow: none;
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
 }
 
 [data-theme="dark"] .chat-list-pane .session-list li.selected {
@@ -506,7 +556,7 @@ body.is-tauri .chat-list-header {
 .chat-list-pane .session-list-scroll .session-list {
   margin: 0;
   padding: 4px;
-  border-radius: var(--radius-large);
+  border-radius: 12px;
   background: var(--lg-sidebar-surface-muted);
   backdrop-filter: blur(var(--lg-sidebar-blur)) saturate(var(--lg-sidebar-saturate));
   -webkit-backdrop-filter: blur(var(--lg-sidebar-blur)) saturate(var(--lg-sidebar-saturate));
@@ -533,6 +583,8 @@ body.is-tauri .chat-list-header {
   padding: 10px var(--space-md);
   border-bottom: 0.5px solid var(--mac-separator);
   background: var(--mac-toolbar-bg);
+  backdrop-filter: blur(18px) saturate(1.22);
+  -webkit-backdrop-filter: blur(18px) saturate(1.22);
 }
 
 .session-setup-bar--compact {
@@ -638,6 +690,136 @@ body.is-tauri .chat-list-header {
   color: var(--mac-label-tertiary);
 }
 
+.session-setup-bar__research {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: var(--text-footnote);
+  color: var(--mac-label-secondary);
+  cursor: pointer;
+}
+
+/* ── Per-agent session settings ─────────────────────── */
+.agent-session-settings {
+  flex-shrink: 0;
+  padding: 6px var(--space-md) 8px;
+  border-bottom: 0.5px solid var(--mac-separator);
+  background: color-mix(in srgb, var(--mac-toolbar-bg) 92%, transparent);
+}
+
+.agent-session-settings--compact {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.agent-session-settings__body {
+  margin-top: 8px;
+}
+
+.agent-session-settings__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.agent-session-settings__save {
+  margin-left: auto;
+}
+
+.agent-session-settings__save-hint {
+  margin: 0 0 8px;
+  font-size: var(--text-footnote);
+  color: var(--mac-label-tertiary);
+}
+
+.agent-session-settings__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.agent-session-settings__card {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 0.5px solid color-mix(in srgb, var(--mac-separator) 70%, transparent);
+  background: var(--mac-content-bg);
+  min-width: 0;
+}
+
+.agent-session-settings__card--dim {
+  opacity: 0.55;
+}
+
+.agent-session-settings__card legend {
+  font-size: var(--text-subhead);
+  font-weight: 600;
+  padding: 0 4px;
+}
+
+.agent-session-settings__role {
+  margin: 0 0 8px;
+  font-size: var(--text-footnote);
+  color: var(--mac-label-secondary);
+}
+
+.agent-session-settings__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+  font-size: var(--text-footnote);
+  color: var(--mac-label-secondary);
+}
+
+.agent-session-settings__field select {
+  width: 100%;
+}
+
+.agent-session-settings__path-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.agent-session-settings__path {
+  flex: 1 1 120px;
+  min-width: 0;
+  font-size: var(--text-footnote);
+}
+
+.agent-session-settings__resolved {
+  margin: 0 0 8px;
+  font-size: 11px;
+  color: var(--mac-label-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-session-settings__tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.agent-session-settings__tools-label {
+  font-size: var(--text-footnote);
+  color: var(--mac-label-secondary);
+}
+
+.agent-session-settings__tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-footnote);
+  cursor: pointer;
+}
+
 /* ── View tabs (segmented) ──────────────────────────── */
 .view-tabs-bar {
   flex-shrink: 0;
@@ -648,6 +830,8 @@ body.is-tauri .chat-list-header {
   padding: 6px var(--space-md);
   min-height: 36px;
   background: var(--mac-toolbar-bg);
+  backdrop-filter: blur(18px) saturate(1.22);
+  -webkit-backdrop-filter: blur(18px) saturate(1.22);
   border-bottom: 0.5px solid var(--mac-separator);
 }
 
@@ -907,6 +1091,8 @@ body.is-tauri .chat-list-header {
   min-height: 40px;
   padding: 5px var(--space-md);
   background: var(--mac-toolbar-bg);
+  backdrop-filter: blur(18px) saturate(1.22);
+  -webkit-backdrop-filter: blur(18px) saturate(1.22);
   border-bottom: 0.5px solid var(--mac-separator);
 }
 
@@ -970,9 +1156,22 @@ body.is-tauri .chat-list-header {
   border-radius: var(--radius-pill);
   background: var(--mac-push-button-bg);
   color: var(--mac-label-primary);
-  box-shadow: 0 0 0 0.5px var(--mac-separator);
+  box-shadow:
+    0 0 0 0.5px var(--mac-separator),
+    inset 0 1px 0 rgba(255, 255, 255, 0.62);
   cursor: pointer;
   transition: background 0.12s ease;
+}
+
+[data-theme="dark"] .sidebar-toggle {
+  box-shadow:
+    0 0 0 0.5px var(--mac-separator),
+    inset 0 1px 0 rgba(255, 255, 255, 0.09);
+}
+
+.sidebar-toggle:active {
+  transform: scale(0.91);
+  opacity: 0.85;
 }
 
 .sidebar-toggle:hover {
@@ -984,6 +1183,8 @@ body.is-tauri .chat-list-header {
   padding: 3px var(--space-md);
   border-bottom: 0.5px solid var(--mac-separator);
   background: var(--mac-toolbar-bg);
+  backdrop-filter: blur(18px) saturate(1.22);
+  -webkit-backdrop-filter: blur(18px) saturate(1.22);
 }
 
 .agent-picker--inline {
@@ -1009,7 +1210,11 @@ body.is-tauri .chat-list-header {
   border: 1px solid var(--mac-separator);
   background: var(--mac-fill-quaternary);
   cursor: pointer;
-  transition: background 0.12s, border-color 0.12s, opacity 0.12s;
+  transition: background 0.12s, border-color 0.12s, opacity 0.12s, transform 0.08s ease;
+}
+
+.agent-pill:active:not(:disabled) {
+  transform: scale(0.95);
 }
 
 .agent-pill:hover:not(:disabled) {
@@ -2391,7 +2596,11 @@ body.is-tauri .chat-list-header {
   color: var(--mac-label-primary);
   cursor: pointer;
   flex-shrink: 0;
-  transition: opacity 0.12s ease;
+  transition: opacity 0.12s ease, transform 0.08s ease;
+}
+
+.theme-toggle:active {
+  transform: scale(0.90);
 }
 
 .theme-toggle::before {
@@ -2625,6 +2834,15 @@ body.is-tauri .chat-list-header {
 .mac-alert-btn--cancel {
   background: var(--mac-push-button-bg);
   color: var(--mac-label-primary);
+  box-shadow:
+    0 0 0 0.5px var(--mac-separator),
+    inset 0 1px 0 rgba(255, 255, 255, 0.62);
+}
+
+[data-theme="dark"] .mac-alert-btn--cancel {
+  box-shadow:
+    0 0 0 0.5px var(--mac-separator),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10);
 }
 
 .mac-alert-btn--cancel:hover {
@@ -2990,4 +3208,162 @@ body.is-tauri .chat-list-header {
   color: var(--mac-label-tertiary);
   line-height: 14px;
   text-align: right;
+}
+
+/* ── AgentHealthPanel collapsible ───────────────────────── */
+.agent-health-panel__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 4px 0;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  color: var(--mac-label-tertiary);
+  font-size: var(--text-caption);
+  gap: 4px;
+}
+.agent-health-panel__toggle:hover {
+  color: var(--mac-label-secondary);
+}
+.agent-health-panel__chev {
+  font-size: 9px;
+  transition: transform 0.15s ease;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.agent-health-panel--open .agent-health-panel__chev {
+  transform: rotate(90deg);
+}
+
+/* ── ApiDiagnosticsBar minimal ──────────────────────────── */
+.api-diagnostics-bar details summary {
+  cursor: pointer;
+  font-size: var(--text-footnote);
+  color: var(--mac-label-tertiary);
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
+}
+.api-diagnostics-bar details summary::-webkit-details-marker {
+  display: none;
+}
+.api-diagnostics-bar details summary::before {
+  content: "›";
+  font-size: 9px;
+  transition: transform 0.15s ease;
+  display: inline-block;
+}
+.api-diagnostics-bar details[open] summary::before {
+  transform: rotate(90deg);
+}
+
+/* ── AgentSessionSettings toggle styling ───────────────── */
+.agent-session-settings__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 6px var(--space-sm);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--text-caption);
+  color: var(--mac-label-tertiary);
+  border-radius: var(--radius-control);
+  transition: background 0.12s;
+  gap: 6px;
+}
+.agent-session-settings__toggle:hover {
+  background: var(--mac-fill-secondary);
+}
+.agent-session-settings__toggle-label {
+  font-weight: 510;
+  color: var(--mac-label-secondary);
+}
+.agent-session-settings__toggle-hint {
+  font-size: var(--text-footnote);
+}
+.agent-session-settings__toggle-chev {
+  font-size: 9px;
+  transition: transform 0.15s;
+  margin-left: auto;
+}
+[aria-expanded="true"] .agent-session-settings__toggle-chev {
+  transform: rotate(90deg);
+}
+
+/* ── View tabs bar options popover ─────────────────────── */
+.view-tabs-bar__trailing {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+  margin-left: auto;
+}
+.view-options-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--mac-label-tertiary);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  transition: background 0.12s, color 0.12s;
+}
+.view-options-btn:hover {
+  background: var(--mac-fill-secondary);
+  color: var(--mac-label-primary);
+}
+.view-options-btn.is-active {
+  background: var(--mac-fill-secondary);
+  color: var(--mac-label-primary);
+}
+.view-options-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 200;
+  min-width: 160px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--mac-menu-surface, var(--mac-window-bg));
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border: 0.5px solid var(--mac-separator-strong);
+  border-radius: var(--mac-radius-menu, var(--radius-control));
+  box-shadow: var(--shadow-menu, var(--shadow-panel));
+  animation: lg-panel-in 0.18s ease-out;
+}
+.view-options-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-body);
+  color: var(--mac-label-primary);
+  cursor: pointer;
+  user-select: none;
+}
+.view-options-row input[type="checkbox"] {
+  margin: 0;
+  accent-color: var(--mac-accent, #007aff);
+}
+
+/* ── Composer turn hint — subtle ───────────────────────── */
+.composer-turn-hint {
+  opacity: 0.7;
+  font-size: 10px;
 }

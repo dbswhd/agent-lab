@@ -1,6 +1,11 @@
 import { setEfficiencyMode } from "./efficiencyPrefs";
 
-export type ComposerTurnProfile = "quick" | "analyze" | "review" | "free";
+export type ComposerTurnProfile =
+  | "quick"
+  | "analyze"
+  | "review"
+  | "free"
+  | "specialist";
 
 export type TurnProfileConfig = {
   agentRounds: number;
@@ -26,6 +31,11 @@ export const TURN_STRATEGY_OPTIONS: {
     id: "analyze",
     label: "분석",
     description: "R1 병렬 · 현황·사실·근거만 · plan 유지",
+  },
+  {
+    id: "specialist",
+    label: "분업",
+    description: "R1 Codex+Claude → R2 Cursor · 비대칭 cwd/툴",
   },
   {
     id: "free",
@@ -56,7 +66,8 @@ export function normalizeTurnProfile(
   if (
     profile === "quick" ||
     profile === "analyze" ||
-    profile === "free"
+    profile === "free" ||
+    profile === "specialist"
   ) {
     return profile;
   }
@@ -82,6 +93,12 @@ export const TURN_PROFILE_CONFIG: Record<ComposerTurnProfile, TurnProfileConfig>
     },
     analyze: {
       agentRounds: 1,
+      reviewMode: false,
+      singleAgent: false,
+      consensusMode: false,
+    },
+    specialist: {
+      agentRounds: 2,
       reviewMode: false,
       singleAgent: false,
       consensusMode: false,
@@ -148,6 +165,11 @@ export function turnProfileHint(
   let hint: string | null = null;
   if (normalized === "quick" && selectedAgents.length > 1) {
     hint = `빠른 · ${selectedAgents[0]}만 · R1`;
+  } else if (normalized === "specialist") {
+    hint =
+      selectedAgents.length > 1
+        ? `분업 · R1 Codex+Claude → R2 Cursor`
+        : "분업 · 2R · Cursor R2";
   } else if (normalized === "free") {
     hint =
       selectedAgents.length > 1

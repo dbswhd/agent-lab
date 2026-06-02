@@ -131,6 +131,58 @@ See **[SPRINT-D-CHECKLIST.md](./SPRINT-D-CHECKLIST.md)** for the full checkbox l
 
 **Verify:** discuss turn → tasks unlinked to plan; plan turn → refs in plan.md clickable; complete blocked until execute verified; `turn_leads` visible in task bar.
 
+### Mailbox + server hooks (A/B/C)
+
+| Piece | Behavior |
+|-------|----------|
+| **mailbox[]** | `run.json` → direct agent messages (`MESSAGE` envelope + `to`). **받은함** in **작업** bar; unread delivered in next agent payload. |
+| **Hooks** | `~/.agent-lab/hooks.toml` or `.agent-lab/hooks.toml` — `task_completed`, `teammate_idle` shell commands (JSON stdin, exit 2 = block). |
+| **Teammate idle** | After each agent in a round, optional peer `[idle gate · agent]` when in_progress tasks or hook feedback. |
+
+Example: `.agent-lab/hooks.example.toml`, `scripts/hooks/verify-task.sh`.
+
+### Phase E — objections (ROOM-REINFORCEMENT P0)
+
+| Piece | Behavior |
+|-------|----------|
+| **objections[]** | plan 턴 harvest: envelope `BLOCK` / `CHALLENGE` + refs → `run.json`. |
+| **Execute gate** | open BLOCK on `plan_action_index` → dry-run **409** `open_objection`. |
+| **CHALLENGE** | open CHALLENGE + `task_id` → task `status: blocked`. |
+| **♾️** | open objection → `consensus_incomplete` reason `open_objections`. |
+| **API** | `POST …/objections/{id}/resolve` `{ verdict: accepted\|wontfix }`. |
+| **UI** | 작업 바 미해결 이의 · 수용/기각. |
+
+**Verify:** plan 턴 BLOCK → dry-run 409 → resolve → retry. **분업** profile → R1 Codex+Claude, R2 Cursor; context meta `capability_cwd` differs per agent.
+
+### Phase F — asymmetric agents (P1)
+
+| Piece | Behavior |
+|-------|----------|
+| **agent_capabilities** | `run.json` per-agent `tools`, `cwd_role`, `restrictions`. |
+| **Specialist profile** | Composer **분업** · R1 codex+claude · R2 cursor · 2 rounds. |
+| **Context** | `agent_workspace_lines` + `capability_preamble_block`; meta `capability_cwd`. |
+| **F2 research** | `research_mode` or specialist → `harvest_artifacts_from_turn`; Cursor R2 sees `build_artifacts_block`. |
+| **F4 health** | `/api/health?session_id=` adds `capability_label` / `capabilities` per agent row. |
+
+### Phase G — artifacts & execute chain (P2)
+
+| Piece | Behavior |
+|-------|----------|
+| **G1 artifacts[]** | plan/specialist/research turns harvest agent output → `run.json` + optional `artifacts/` files. |
+| **G2 pre_execute** | `run_pre_execute_hooks` before dry-run snapshot; exit 2 → **409** `pre_execute_blocked`; `execution.pre_verify`. |
+| **G3 delegate** | `DELEGATE agent: "…"` skips full parallel round; one agent + artifact + peer summary. |
+| **UI** | Task bar artifacts list; plan panel pre_verify banner; session setup research toggle. |
+
+**Verify:** specialist turn → `artifacts` in tasks API; delegate line → single agent reply; blocking `pre_execute` hook → dry-run 409.
+
+### Phase E scribe (P1)
+
+| Piece | Behavior |
+|-------|----------|
+| **E2 plan** | Scribe prompt includes objections, blocked indices, agent contributions. |
+| **E2b discuss** | open objection + synthesize + discuss mode → scribe skip, patch `## 미해결 이의` only. |
+| **E3 owner** | `[CHALLENGE · 반드시 응답]` block for task owner in payload. |
+
 ### Sprint C (human synthesis + per-turn lead + R1 order)
 
 | Piece | Behavior |
@@ -220,6 +272,18 @@ Skip live API when the app is not running:
 
 ```bash
 VERIFY_RELEASE_SKIP_API=1 make verify-release
+```
+
+## Phase H — Scribe summaries & session score
+
+| Piece | Behavior |
+|-------|----------|
+| **H1 Scribe input** | `synthesize_plan()` feeds per-agent diff summaries (`room_scribe_enrichment.py`), not full verbatim re-debate; fallback to trimmed numbered thread when no agent replies. Plan enrichment still adds `## 에이전트별 기여 (자동)` / `## 미해결 이의`. |
+| **H4 KPI** | `python scripts/score_session.py <session-folder>` — objection resolution, execute first-try, plan ref validity, duplicate speech (offline; exit 1 only on bad args). `--json` for machine output. |
+
+```bash
+python scripts/score_session.py sessions/<session-id>
+# or: make score-session SESSION=...
 ```
 
 ## Manual verification

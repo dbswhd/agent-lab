@@ -1,0 +1,346 @@
+# Room 실효성 보강 계획
+
+> 상태: P3 완료 (2026-06-03) — H1 Scribe agent-summary input, H4 `scripts/score_session.py`. P2: G1–G3, F2/F4.  
+> **Phase I (진행):** Execute worktree — M0 spike green (`plan_execute_git/worktree/merge`), M1 wiring 대기.  
+> 상세: [`docs/EXECUTE-WORKTREE-REFORM.md`](EXECUTE-WORKTREE-REFORM.md)  
+> 목표: "3명이 같은 문서 보고 말만 더 하는 구조"에서 → 분업·게이트·검증 가능한 산출로 이동,
+> 단일 에이전트+subagent / CC Agent Team 대비 이득이 재현 가능하게 된다.
+
+---
+
+## 성공 기준 (6개월 관점)
+
+| 지표 | 현재 | 목표 |
+|------|------|------|
+| 교차 검증 턴 비율 | 세션마다 편차 큼 | 회귀 fixture에서 ≥1건 CHALLENGE→수정 자동 검출 |
+| BLOCK/CHALLENGE가 다음 행동 변경 | 거의 없음 | execute·consensus·task claim 중 ≥1 경로 hard 연동 |
+| 에이전트 비대칭 컨텍스트 | 동일 bundle | ≥2 에이전트 서로 다른 cwd/툴 블록 |
+| 비용 대비 | ~3× 호출 | quick/analyze는 1× 옵션 유지, "풀 팀"은 명시 opt-in |
+| Human 신뢰 | plan = Scribe 1패스 | plan에 에이전트별 기여·미해결 BLOCK 섹션 |
+
+---
+
+## Baseline (이미 있음 — 보강의 토대)
+
+Phase 1–3 + Sprint A–D에서 구축된 것:
+tasks, execute gate, consensus task ENDORSE, turn lead, discuss/plan 분리, provenance, mailbox, server hooks.
+
+`docs/STABILITY.md` Verify 항목을 회귀 세트로 고정한다.
+
+**원칙: 보강은 새 축을 얹는 것이지, plan/execute/task를 다시 짜는 것이 아니다.**
+
+---
+
+## 전략 축 (4트랙)
+
+| 트랙 | 한 줄 | "team 넘어섬"에 기여 |
+|------|-------|---------------------|
+| E — 대화 Hard Gate | 말 → 상태 기계에 binding | BLOCK이 진행·실행을 막음 |
+| F — 비대칭 에이전트 | 에이전트별 다른 입력·권한 | 진짜 multi-source |
+| G — 산출물 파이프 | 도구 결과가 다음 에이전트 입력 | subagent형 깊이 + room 검토 |
+| H — 측정·회귀 | 재현·벤치 | 주장을 숫자로 증명 |
+| **I — Execute worktree** | action마다 git 격리 · approve=merge | Conductor급 실행 신뢰 (Room과 별 층) |
+
+---
+
+## 사전 피드백 레지스트리 (Conductor 개혁 이후에도 유효)
+
+Conductor/worktree 계획 수립 **전** 코드 리뷰·벤치 논의에서 확정된 항목.  
+**Phase I가 해결하는 것**과 **여전히 Room/H 트랙인 것**을 분리해 둔다 (중복 작업 방지).
+
+### 개혁(Phase I)으로 흡수·확정된 것
+
+| 피드백 | 확정 내용 | 문서 |
+|--------|-----------|------|
+| execute 시 main tree 오염 | git worktree 기본; approve = **제품 내 merge** | EXECUTE-WORKTREE-REFORM §7 |
+| approve ≠ merge (구 snapshot) | worktree 경로만 「Merge 승인」; non-git/override는 별 FSM | §4–5 |
+| worktree 실패 시 자동 snapshot degrade | **금지** — fail closed + Human override(예외) | §4.3 |
+| plan action마다 repo 다름 | action별 `git_root` 탐지; multi-root → block | §4.5 |
+| Conductor 격리 vs Room 합의 | **합의=Room · 격리=worktree** — 토론 구조는 유지 | §0, §1.2 |
+
+### 여전히 유효 — Room / Discuss 트랙 (Phase I가 대체하지 않음)
+
+| 피드백 | 현재 상태 | 우선순위 | 담당 모듈 |
+|--------|-----------|----------|-----------|
+| **CLI retry 없음** (429/timeout → 턴 실패) | 미구현 | **P0** | `claude_cli.py`, `codex_cli.py`, room round |
+| **Partial turn** (1 agent fail ≠ 전체 fail) | 미구현 | P0–P1 | `room.py` |
+| **F2 R2 비대칭** — full `recent`/`peer` + artifacts 힌트만 | **미구현(강제 없음)** | **P1** | `context_bundle.py` |
+| Cursor bridge 끊김 시 fallback 약함 | 미변 | P1 | `cursor_bridge.py`, health |
+| **E4 discoverability** — resolve API·TaskBar **있음**; Composer/plan 노출 약함 | 부분 | P2 UX | `RoomTaskBar`, `PlanExecutePanel` |
+| vs CC/subagent — **실행·복구**는 여전히 약함 (합의·게이트는 우위) | Phase I 후 재평가 | — | — |
+
+**F2 정확한 진단 (유지):** `build_artifacts_block()`은 `context_bundle`에 연결되어 있으나, `research_mode`/`specialist` R2에서 **`recent_block`·`peer_block` 축소 없음**. Cursor R2는 **full chat + “artifacts만 보세요” 문구**를 동시에 받아 LLM 재량에 맡김 — 프롬프트 힌트가 아니라 **입력 모순**에 가깝다. → Phase I와 **병행** 필수 (EXECUTE-WORKTREE-REFORM §11).
+
+### 여전히 유효 — 측정·운영 트랙 (H + 플랫폼)
+
+| 피드백 | 현재 상태 | 우선순위 | 담당 |
+|--------|-----------|----------|------|
+| `score_session.py` CI·KPI 미연결 | 도구만 있음 | P1–P2 | H4, Makefile/CI |
+| 10 시나리오 벤치 | execute E1–E8는 개혁안에; room #1–5 별도 | P2 | `sessions/_benchmark/`, H3 |
+| DELEGATE **LLM 호출 수** ≤2N 검증 | **mock replay 없으면 측정 불가** | P2 | H3 + recorded JSONL |
+| `@app.on_event` deprecation | 경고 | P0 ops | `app/server/main.py` |
+| `main.py` ~1.1k줄 라우터 분리 | 미변 | P2 ops | server |
+
+### 피드백으로 **폐기·수정**된 주장 (문서에 남기지 않음)
+
+| 과거 주장 | 실제 |
+|-----------|------|
+| artifact가 context에 **미연결** | P2에서 `context_bundle` 연결됨 (`tests/test_room_artifacts.py`) |
+| E4 resolve **UI 없음** | `RoomTaskBar` 수용/기각 + API 존재 |
+| `sessions/*` gitignore **미처리** | `.gitignore` + `_regression/` only |
+
+---
+
+## Phase I — Execute worktree (Conductor 레퍼런스)
+
+**문제:** P0–P3까지 Room **합의·게이트**는 올랐으나, execute는 snapshot in-place라 Conductor/CC 대비 **통합 전 main 오염·approve 의미 불일치**.
+
+**한 줄:** plan action 1건 ≈ worktree 1개 → dry-run → Human diff → **제품 내 merge** → GC.
+
+| M단계 | 내용 | 상태 |
+|-------|------|------|
+| M0 | `plan_execute_git/worktree/merge` + pytest | ✅ (Cursor cwd 수동만 남음) |
+| M1 | `run_dry_run` / `resolve_execution` 연동 | 대기 |
+| M2 | PlanExecutePanel Merge·conflict | 대기 |
+| M3 | isolation override · apply(non-git) | 대기 |
+| M4 | merge KPI · orphan GC · room retry | 대기 |
+
+전체 설계·FSM·API: **[EXECUTE-WORKTREE-REFORM.md](EXECUTE-WORKTREE-REFORM.md)**
+
+**CC/Conductor 비교 (확정 포지션):**
+
+- **Agent Lab 우위:** plan 자동 분해, objection→execute 409, provenance, pre_execute, cross-action BLOCK.
+- **Conductor/단일 에이전트 우위(개혁 전):** 실행 격리·retry·tool loop 깊이 → **Phase I가 격리만 닫음**; retry·F2는 Room 트랙.
+
+---
+
+## Phase E — 대화·합의 Hard Gate
+
+**문제:** ENDORSE/BLOCK이 채팅 장식에 가깝고, BLOCK은 앵커 리셋만 함.
+
+> **범위 주의:** E2는 `plan` 모드 하나에서만 먼저 검증. 4개 모드 동시 적용 시 엣지 케이스 폭증.
+
+### E1. run.json objection 레지스트리
+
+envelope BLOCK / CHALLENGE(refs 포함)를 harvest → `objections[]`
+
+```json
+{
+  "id": "obj-1",
+  "from": "claude",
+  "target_ref": "plan_action:1",
+  "act": "BLOCK",
+  "body": "근거 없는 수치",
+  "status": "open",
+  "turn": 3
+}
+```
+
+UI: 작업 바에 미해결 이의 배너 (consensus blocker와 동일 패턴).
+
+완료 조건: BLOCK 1건 → Human이 resolve 전까지 linked plan_action execute **409**.
+
+### E2. 턴 정책 (plan 모드 우선)
+
+| 모드 | BLOCK 효과 |
+|------|-----------|
+| **plan** | scribe가 objection 섹션 반영; BLOCK된 action을 지금 실행에서 금지 |
+| analyze/discuss | open objection 있으면 plan scribe 생략 또는 `## 미해결 이의` 강제 (E2b, 후순위) |
+| ♾️ | 기존 substantive→앵커 리셋 유지 + open objection 시 `consensus_incomplete` reason `open_objections` |
+
+### E3. CHALLENGE → follow-up 강제 (soft→semi-hard)
+
+CHALLENGE + ref가 task/plan action이면:
+- 해당 task `status = blocked` (새 상태) 또는 `needs_revision`
+- owner에게만 다음 턴 payload에 "반드시 AMEND 또는 근거" 블록 주입
+
+완료 조건: 회귀 `sessions/_regression/challenge_blocks_execute/` — CHALLENGE 후 dry-run 거부.
+
+### E4. Human override
+
+```
+POST /api/objections/{id}/resolve
+{ "verdict": "wontfix" | "accepted", "note": "..." }
+```
+
+audit: `resolved_by: human`, timestamp.
+
+**필수 선행:** Composer/ChatToolbar에 resolve UI 버튼 (E4 UI 없으면 E1+E2가 막힌 채로 끝).
+
+---
+
+## Phase F — 비대칭 에이전트
+
+**문제:** 동일 context_bundle → "셋이 같은 방".
+
+> **선행 확인:** `session_setup.py`와 `app_config.py` 두 레이어의 merge 순서를 확인한 뒤 F1 작업. 확인 없이 진행 시 per-session cwd 설정이 조용히 override됨.
+
+### F1. Agent capability profile
+
+run.json 또는 session meta에 추가:
+
+```yaml
+agents:
+  cursor: { tools: [sdk_edit], cwd: pipeline }
+  codex:  { tools: [codex_sandbox], cwd: repo }
+  claude: { tools: [read_only_dirs], external: [] }
+```
+
+`build_agent_context_bundle`이 agent별로 다른 workspace_lines, tool preamble, 금지 목록을 주입.
+
+### F2. 정보 비대칭 (선택 턴)
+
+Research turn preset:
+- Claude/Codex만 외부·sandbox 결과를 `artifacts[]`에 JSON 저장
+- Cursor R2는 artifacts만 보고 패치 제안 (전체 chat 재주입 최소화)
+
+### F3. 기본 room preset "분업 토론" (turnProfile: specialist)
+
+| 단계 | 호출 | 역할 |
+|------|------|------|
+| R1 | Codex | 분해·검증 계획 (텍스트 or sandbox) |
+| R1 | Claude | 리스크·반증 |
+| R2 | Cursor | R1 artifact + challenge 반영 (권한 on일 때만 SDK) |
+
+Composer에 「분업」 프로필 추가.
+
+완료 조건: 동일 주제에서 F off vs on — 회귀 diff가 서로 다른 cwd 경로를 payload meta에 기록.
+
+### F4. 권한 UX
+
+- 세션 시작 시 "이번 세션 분업" 토글 → permissions 템플릿 일괄 적용
+- health에 "cursor: sdk / codex: cli / claude: read-only" 표시
+
+---
+
+## Phase G — 산출물 파이프
+
+**문제:** R1 병렬 = independent 3 calls; 상호 참조는 말뿐.
+
+> **G2 선행 조건:** Human이 approve UI에서 pre_verify 중간 단계를 인지할 수 있도록 UI 스케치를 먼저 확정. 확정 없이 hooks.toml 확장 시 클릭 흐름 파손 위험.
+
+### G1. artifacts[] 1급 시민
+
+```json
+{
+  "id": "art-1",
+  "producer": "codex",
+  "kind": "log | diff | table | file_ref",
+  "path": "sessions/.../artifacts/result.json",
+  "turn": 2,
+  "refs": ["plan_action:1"]
+}
+```
+
+harvest: Codex/Cursor CLI stdout 요약, Human 업로드 연동.
+
+### G2. Execute 전 검증 체인 (semi-automated)
+
+```
+plan ## 지금 실행
+  → (optional) Codex: verify script in sandbox → artifact
+  → Cursor: dry-run patch
+  → Human approve
+```
+
+`plan_execute.py`에 `pre_verify_hook` 이벤트 (기존 hooks.toml 확장: `pre_execute`).
+
+### G3. Scoped delegate (room 내부)
+
+Human 또는 턴 리드가 `DELEGATE codex: "백테스트만"` 한 줄
+→ 단일 에이전트 1회 호출, 결과만 artifacts + peer 요약.
+
+전체 3N 라운드 대신 비용 통제.
+
+완료 조건: quant 회귀 시나리오 — artifact에 수정 로그 + plan ref 일치.
+
+**M3 성공 기준 명세:** delegate가 해당 라운드를 완전히 대체할 때만 "LLM 호출 수 ≤ 2N" 카운트. delegate 이후 room discuss가 붙으면 별도 라운드로 집계.
+
+---
+
+## Phase H — Scribe·비용·측정
+
+**문제:** 3N 비용, Scribe가 에이전트 기여를 흡수.
+
+### H1. Scribe 입력 분리
+
+- Scribe에 에이전트별 diff 요약만 전달 (전문 재토론 X)
+- plan 섹션 추가: `## 에이전트별 기여 (자동)` / `## 미해결 이의`
+
+### H2. "풀 팀" opt-in + 비용 힌트
+
+- 전송 전: 예상 호출 N명×R라운드 composer hint
+- 기본 프로필은 analyze=1R 유지 (현행 존중)
+
+### H3. 회귀·벤치 패키지
+
+`sessions/_regression/` 확장:
+
+| fixture | 검증 |
+|---------|------|
+| `objection_blocks_execute` | BLOCK → execute 409 |
+| `challenge_revises_metric` | CHALLENGE → task blocked → resolve |
+| `specialist_asymmetric_cwd` | payload meta cwd differs |
+| `mailbox_handoff` | MESSAGE → next agent block |
+
+CI: `pytest tests/ -q` + `AGENT_LAB_REGRESSION=1` (LLM mock 또는 recorded transcripts).
+
+### H4. 세션 품질 스코어 (offline)
+
+`scripts/score_session.py`:
+- objection 해결률
+- execute 1회 성공률
+- ref 유효률
+- 중복 발화률
+
+주간 리포트용 KPI.
+
+---
+
+## 우선순위·순서
+
+**완료:** P0-a~d, P1 E/F/G(대부분), P2, P3 — 아래 표는 **이후** 우선순위 (사전 피드백 + Phase I 반영).
+
+| 순위 | 항목 | 이유 | 기간 |
+|------|------|------|------|
+| **I-M0** | worktree spike + Cursor cwd Go/No-Go | execute 격리 가능 여부 | 며칠 |
+| **I-M1–M2** | dry-run/approve merge wiring + UI | Conductor급 execute | 2–4주 |
+| **R-P0** | CLI retry + partial turn | room 신뢰성 (피드백 최우선) | 1–2주 |
+| **R-P1** | F2 R2 context slimming (`recent`/`peer` truncate) | discuss 비대칭 **강제** | 1–2주 |
+| **H-P1** | `score_session` CI + merge/objection KPI | M4 측정 | 1주 |
+| **H-P2** | 벤치 10 시나리오 (room + execute); mock replay for delegate | 재현 가능 주장 | 2–3주 |
+| **ops-P0** | FastAPI lifespan | deprecation | 며칠 |
+| **UX-P2** | E4 resolve Composer/plan 노출 | discoverability | 1주 |
+| ~~P0-b/c/d~~ | objections, execute 409, TaskBar resolve | ✅ 완료 | — |
+
+---
+
+## 마일스톤
+
+**M1 (E 완료):** BLOCK 1건으로 execute 차단 + UI에서 resolve → 재시도 성공 (회귀 green)
+
+**M2 (F 완료):** 분업 preset 세션에서 payload meta상 서로 다른 cwd/툴 + artifact 1건 이상 교환
+
+**M3 (G 완료):** delegate 1회 + execute approve까지 Human 클릭 ≤ 기존 대비 동일, LLM 호출 수 ≤ 2N (delegate가 라운드 대체 시 한정)
+
+**M4 (H 완료):** 4주 연속 실사용 세션 스코어 — objection 해결률 >80%, execute 재시도율 <30%
+
+---
+
+## 하지 말 것 (범위 통제)
+
+- CC Agent Team 프로세스 클론 (별도 `.claude` 팀 프로세스) — in-process 오케스트레이션 유지
+- 매 턴 무조건 3인 풀라운드 — 비용 폭주, analyze 기본값 유지
+- `plan.md` 제거 — Human 계약·Telegram 고정 메시지 역할 유지 (Scribe 입력·이의 섹션은 개선)
+- YAML 워크플로 엔진 전면 도입 — 01-CONTROLLED-WORKFLOW Phase 3와 충돌; Room 보강 후 재평가
+
+---
+
+## 다음 액션 (통합 로드맵)
+
+1. **Phase I** — M0 Cursor cwd 확인 → M1 `plan_execute.py` worktree + merge (`EXECUTE-WORKTREE-REFORM.md` §12)
+2. **Room P0** — CLI retry · partial turn (Phase I와 병행)
+3. **F2** — specialist R2 `context_bundle` trimming (Phase I와 병행, §11)
+4. **H** — `score_session` CI · 벤치 fixture · delegate mock replay
+5. H2 — 풀 팀 opt-in + 전송 전 비용 힌트
+6. ops — lifespan · `main.py` 라우터 분리

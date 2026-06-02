@@ -1,0 +1,11 @@
+{
+  "workflow_id": "room",
+  "run_schema_version": 1,
+  "turn_profile": "specialist",
+  "agent_capabilities": {
+    "cursor": { "tools": ["sdk_edit"], "cwd_role": "execute" },
+    "codex": { "tools": ["codex_cli"], "cwd_role": "repo" },
+    "claude": { "tools": ["read_only"], "cwd_role": "review" }
+  },
+  "turns": [{ "mode": "discuss", "turn_profile": "specialist" }]
+}

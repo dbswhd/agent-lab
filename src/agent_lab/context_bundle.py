@@ -31,7 +31,15 @@ from agent_lab.room_context import (
     prepare_recent_messages,
 )
 from agent_lab.workspace_roots import workspace_roots_block
+from agent_lab.room_agent_capabilities import (
+    agent_capability_cwd,
+    agent_workspace_lines,
+    capability_preamble_block,
+)
+from agent_lab.room_objections import build_challenge_owner_block, build_objection_block
 from agent_lab.room_turn_state import render_turn_state_block
+from agent_lab.room_artifacts import build_artifacts_block
+from agent_lab.room_mailbox import build_mailbox_block
 from agent_lab.room_tasks import build_team_task_block
 from agent_lab.session_guidance import (
     build_session_guidance_block,
@@ -61,9 +69,10 @@ class ContextBundleMeta:
     efficiency_mode: bool = False
     slim_context: bool = False
     pin_capped: bool = False
+    capability_cwd: str = ""
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        row = {
             "agent": self.agent,
             "parallel_round": self.parallel_round,
             "review_mode": self.review_mode,
@@ -85,6 +94,19 @@ class ContextBundleMeta:
             "slim_context": self.slim_context,
             "pin_capped": self.pin_capped,
         }
+        if self.capability_cwd:
+            row["capability_cwd"] = self.capability_cwd
+        return row
+
+
+def _workspace_lines_for_agent(
+    agent: str,
+    permissions: dict[str, Any] | None,
+    run_meta: dict[str, Any] | None,
+) -> str:
+    if run_meta and isinstance(run_meta.get("agent_capabilities"), dict):
+        return agent_workspace_lines(agent, permissions, run_meta)
+    return workspace_roots_block(permissions)
 
 
 @dataclass
@@ -169,13 +191,30 @@ def build_slim_consensus_bundle(
         status_tags=extract_status_tags(messages)[
             : limits.max_status_tags
         ],
-        workspace_lines=workspace_roots_block(permissions),
+        workspace_lines=_workspace_lines_for_agent(agent, permissions, run_meta),
     )
     if session_guidance.strip():
         constraints = f"{constraints}\n\n{session_guidance.strip()}"
+    cap_block = capability_preamble_block(agent, run_meta, parallel_round=2)
+    if cap_block.strip():
+        constraints = f"{constraints}\n\n{cap_block.strip()}"
     team_block = build_team_task_block(run_meta, agent)
     if team_block.strip():
         constraints = f"{constraints}\n\n{team_block.strip()}"
+    mailbox_block = build_mailbox_block(run_meta, agent)
+    if mailbox_block.strip():
+        constraints = f"{constraints}\n\n{mailbox_block.strip()}"
+    artifacts_block = build_artifacts_block(
+        run_meta, agent, parallel_round=2
+    )
+    if artifacts_block.strip():
+        constraints = f"{constraints}\n\n{artifacts_block.strip()}"
+    objection_block = build_objection_block(run_meta, agent)
+    if objection_block.strip():
+        constraints = f"{constraints}\n\n{objection_block.strip()}"
+    challenge_block = build_challenge_owner_block(run_meta, agent)
+    if challenge_block.strip():
+        constraints = f"{constraints}\n\n{challenge_block.strip()}"
     plan_open = build_plan_open_block(
         open_bullets=open_bullets,
         stale_line=plan_stale_banner(run_meta),
@@ -201,6 +240,7 @@ def build_slim_consensus_bundle(
         efficiency_mode=True,
         slim_context=True,
         pin_capped=True,
+        capability_cwd=agent_capability_cwd(agent, permissions, run_meta),
     )
     bundle = ContextBundle(
         constraints=constraints,
@@ -309,13 +349,32 @@ def build_context_bundle(
         human_gates=extract_human_gates(messages, topic),
         agreed_bullets=agreed,
         status_tags=extract_status_tags(trimmed),
-        workspace_lines=workspace_roots_block(permissions),
+        workspace_lines=_workspace_lines_for_agent(agent, permissions, run_meta),
     )
     if session_guidance.strip():
         constraints = f"{constraints}\n\n{session_guidance.strip()}"
+    cap_block = capability_preamble_block(
+        agent, run_meta, parallel_round=parallel_round
+    )
+    if cap_block.strip():
+        constraints = f"{constraints}\n\n{cap_block.strip()}"
     team_block = build_team_task_block(run_meta, agent)
     if team_block.strip():
         constraints = f"{constraints}\n\n{team_block.strip()}"
+    mailbox_block = build_mailbox_block(run_meta, agent)
+    if mailbox_block.strip():
+        constraints = f"{constraints}\n\n{mailbox_block.strip()}"
+    artifacts_block = build_artifacts_block(
+        run_meta, agent, parallel_round=parallel_round
+    )
+    if artifacts_block.strip():
+        constraints = f"{constraints}\n\n{artifacts_block.strip()}"
+    objection_block = build_objection_block(run_meta, agent)
+    if objection_block.strip():
+        constraints = f"{constraints}\n\n{objection_block.strip()}"
+    challenge_block = build_challenge_owner_block(run_meta, agent)
+    if challenge_block.strip():
+        constraints = f"{constraints}\n\n{challenge_block.strip()}"
     plan_open = build_plan_open_block(
         open_bullets=open_bullets,
         stale_line=plan_stale_banner(run_meta),
@@ -343,6 +402,12 @@ def build_context_bundle(
     profile = str((run_meta or {}).get("turn_profile") or "").strip().lower()
     if profile in ("analyze", "discuss"):
         guidance_parts.insert(0, ANALYSIS_TURN_GUIDANCE.strip())
+    if profile == "specialist":
+        guidance_parts.insert(
+            0,
+            "[Specialist turn · R1 Codex+Claude → R2 Cursor patch. "
+            "Stay in your capability lane.]",
+        )
     if efficiency_mode:
         guidance_parts.append(EFFICIENCY_RESPONSE_GUIDANCE)
     guidance_block = (
@@ -389,6 +454,7 @@ def build_context_bundle(
         efficiency_mode=efficiency_mode,
         slim_context=False,
         pin_capped=pin_capped,
+        capability_cwd=agent_capability_cwd(agent, permissions, run_meta),
     )
     bundle = ContextBundle(
         constraints=constraints,

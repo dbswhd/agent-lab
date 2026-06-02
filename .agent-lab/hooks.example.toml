@@ -1,0 +1,9 @@
+# Copy to ~/.agent-lab/hooks.toml or repo .agent-lab/hooks.toml
+# Hooks receive JSON on stdin; exit 2 blocks with stderr/stdout as feedback.
+
+timeout_s = 30
+
+[hooks]
+# task_completed = ["./scripts/hooks/verify-task.sh"]
+# teammate_idle = ["./scripts/hooks/teammate-idle.sh"]
+# pre_execute = ["./scripts/hooks/pre-execute.sh"]

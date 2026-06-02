@@ -5,12 +5,13 @@ from __future__ import annotations
 import re
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Literal
 
-TaskStatus = Literal["pending", "in_progress", "completed", "cancelled"]
+TaskStatus = Literal["pending", "in_progress", "completed", "cancelled", "blocked"]
 
 _TASK_STATUSES: frozenset[str] = frozenset(
-    {"pending", "in_progress", "completed", "cancelled"}
+    {"pending", "in_progress", "completed", "cancelled", "blocked"}
 )
 
 _PROPOSED_RE = re.compile(r"\[PROPOSED:\s*([^\]]+)\]", re.I)
@@ -244,9 +245,27 @@ def complete_task(
     task = _task_by_id(tasks, task_id)
     if task is None:
         raise ValueError(f"task not found: {task_id}")
+    if task.get("status") == "blocked":
+        raise ValueError(
+            "CHALLENGE로 차단된 작업입니다 — 이의를 해소하거나 AMEND 후 다시 진행하세요."
+        )
     block = task_complete_block_reason(run_meta, task)
     if block:
         raise ValueError(block)
+    from agent_lab.room_hooks import run_task_completed_hooks
+
+    folder_raw = run_meta.get("_session_folder")
+    session_folder = (
+        Path(str(folder_raw)) if folder_raw and str(folder_raw).strip() else None
+    )
+    hook_block = run_task_completed_hooks(
+        run_meta,
+        task,
+        session_folder=session_folder,
+        session_id=str(run_meta.get("_session_id") or ""),
+    )
+    if hook_block:
+        raise ValueError(hook_block)
     task["status"] = "completed"
     task["updated_at"] = _now()
     if artifact_refs:
@@ -555,6 +574,34 @@ def open_tasks_for_consensus(run_meta: dict[str, Any] | None) -> list[dict[str, 
     ]
 
 
+def build_consensus_gate(
+    run_meta: dict[str, Any] | None,
+    agent_pool: list[str],
+) -> dict[str, Any]:
+    """Structured consensus gate for UI (Phase B task bar)."""
+    active = [str(a).strip().lower() for a in agent_pool if str(a).strip()]
+    required = max(1, len(active) - 1) if active else 1
+    blocked: list[dict[str, Any]] = []
+    for task in open_tasks_for_consensus(run_meta):
+        end = task.get("endorsements")
+        if not isinstance(end, dict):
+            end = {}
+        count = len(end)
+        if count < required:
+            blocked.append(
+                {
+                    "id": str(task.get("id") or ""),
+                    "title": str(task.get("title") or task.get("id") or "?"),
+                    "endorsements": count,
+                }
+            )
+    return {
+        "required_endorsements": required,
+        "active_agent_count": len(active) if active else 3,
+        "blocked_tasks": blocked,
+    }
+
+
 def consensus_tasks_ready(
     run_meta: dict[str, Any] | None,
     active_agents: list[str],
@@ -663,13 +710,21 @@ def tasks_public_payload(run_meta: dict[str, Any] | None) -> dict[str, Any]:
         else ["cursor", "codex", "claude"]
     )
     ready, blockers = consensus_tasks_ready(run_meta, agent_pool)
+    consensus_gate = build_consensus_gate(run_meta, agent_pool)
     from agent_lab.plan_pending import max_tasks_per_turn
 
     from agent_lab.room_team_orchestration import turn_leads_map
+    from agent_lab.room_mailbox import mailbox_public_payload
+    from agent_lab.room_artifacts import artifacts_public_payload
+    from agent_lab.room_objections import objections_public_payload
 
     return {
         "team_lead": team_lead(run_meta),
         "turn_leads": turn_leads_map(run_meta),
+        "agents": agent_pool,
+        **mailbox_public_payload(run_meta),
+        **objections_public_payload(run_meta),
+        **artifacts_public_payload(run_meta),
         "tasks": tasks,
         "claimable": claimable_tasks(tasks),
         "max_tasks_per_turn": max_tasks_per_turn(),
@@ -680,6 +735,7 @@ def tasks_public_payload(run_meta: dict[str, Any] | None) -> dict[str, Any]:
         },
         "consensus_tasks_ready": ready,
         "consensus_task_blockers": blockers,
+        "consensus_gate": consensus_gate,
         "open_task_count": len(open_tasks),
     }
 
@@ -768,6 +824,9 @@ def build_team_task_block(
 
     lines.append(
         "discuss 턴: 작업 제안·분해만 — plan execute는 Human 승인 후 별도."
+    )
+    lines.append(
+        "동료에게 직접 메시지: envelope `MESSAGE` + `\"to\":\"codex\"` (+ optional `message`)."
     )
     return "\n".join(lines)
 

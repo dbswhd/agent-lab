@@ -66,6 +66,12 @@ SESSION_META_KEYS = (
     "team_lead",
     "turn_leads",
     "tasks",
+    "mailbox",
+    "objections",
+    "agent_capabilities",
+    "agent_capabilities_custom",
+    "artifacts",
+    "research_mode",
     "last_verification_artifacts",
 )
 

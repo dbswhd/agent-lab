@@ -34,6 +34,10 @@ type Props = {
   planStaleNotice?: string | null;
   /** Hide textarea/send (mode picker stays visible). */
   inputHidden?: boolean;
+  /** Show 「정리」 toggle beside turn picker (default: plan tab only). */
+  showPlanToggle?: boolean;
+  /** Secondary line under mode chip (off = less plan noise on chat). */
+  showModeChipHint?: boolean;
   running?: boolean;
   onStop?: () => void;
   /** Current room turn mode (토론 / 정리 / 합의). */
@@ -67,6 +71,8 @@ export function ChatComposer({
   onEfficiencyChange,
   planStaleNotice,
   inputHidden = false,
+  showPlanToggle = false,
+  showModeChipHint = false,
   running = false,
   onStop,
   modeChip,
@@ -123,19 +129,15 @@ export function ChatComposer({
             role="status"
           >
             <span className="composer-mode-chip__label">{modeChip}</span>
-            {isNewSession ? (
+            {showModeChipHint && isNewSession ? (
               <span className="composer-mode-chip__hint">
-                첫 전송은 토론만 · plan은 「정리 후 전송」 또는 plan 탭에서 갱신
+                첫 전송은 토론만 · plan 갱신은 plan 탭
               </span>
-            ) : planAfterSend ? (
+            ) : showModeChipHint && planAfterSend ? (
               <span className="composer-mode-chip__hint">
-                전송 시 plan.md 재정리(Scribe)
+                전송 시 plan.md 갱신 (plan 탭에서 끌 수 있음)
               </span>
-            ) : (
-              <span className="composer-mode-chip__hint">
-                전송 시 plan 미변경(토론만)
-              </span>
-            )}
+            ) : null}
           </p>
         ) : null}
         {turnProfile && onTurnProfileChange ? (
@@ -146,7 +148,7 @@ export function ChatComposer({
               disabled={inputLocked}
               trailing={
                 <>
-                  {onPlanAfterSendChange ? (
+                  {showPlanToggle && onPlanAfterSendChange ? (
                     <ComposerPlanToggle
                       checked={planAfterSend}
                       onChange={onPlanAfterSendChange}

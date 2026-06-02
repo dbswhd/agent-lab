@@ -17,9 +17,25 @@ def read_run_meta(folder: Path) -> dict[str, Any]:
         return {}
 
 
+_EPHEMERAL_RUN_KEYS = frozenset(
+    {
+        "_session_folder",
+        "_session_id",
+        "_active_turn_mode",
+        "_active_synthesize",
+        "_active_consensus",
+    }
+)
+
+
+def persist_run_meta(run: dict[str, Any]) -> dict[str, Any]:
+    """Drop in-memory-only keys before writing run.json."""
+    return {k: v for k, v in run.items() if k not in _EPHEMERAL_RUN_KEYS}
+
+
 def write_run_meta(folder: Path, run: dict[str, Any]) -> None:
     (folder / "run.json").write_text(
-        json.dumps(run, indent=2, ensure_ascii=False) + "\n",
+        json.dumps(persist_run_meta(run), indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
 

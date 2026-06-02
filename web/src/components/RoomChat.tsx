@@ -26,7 +26,6 @@ import { ChatToolbar } from "./ChatToolbar";
 import { ContextPreviewPanel } from "./ContextPreviewPanel";
 import { PlanDocument } from "./PlanDocument";
 import { PlanExecutePanel } from "./PlanExecutePanel";
-import { RoomRunControls } from "./RoomRunControls";
 import {
   ScrollToBottomButton,
   useMessagesScroll,
@@ -56,6 +55,7 @@ import {
   setEfficiencyMode,
 } from "../utils/efficiencyPrefs";
 import {
+  normalizeTurnProfile,
   resolveTurnSend,
   setTurnProfile,
   type ComposerTurnProfile,
@@ -82,13 +82,29 @@ import {
   type StoredPlanAction,
 } from "../utils/planExecuteHistory";
 import { SessionSetupBar } from "./SessionSetupBar";
+import { AgentSessionSettings } from "./AgentSessionSettings";
 import {
+  fetchSessionAgentCapabilities,
   fetchSessionSetupOptions,
   fetchSessionTasks,
+  patchSessionAgentCapabilities,
   type PlanExecutionRecord,
   type RoomTasksPayload,
 } from "../api/client";
+import {
+  capabilitiesForApi,
+  cloneCapabilities,
+  DEFAULT_AGENT_CAPABILITIES,
+  parseAgentCapabilities,
+  type AgentCapabilitiesMap,
+} from "../utils/agentCapabilities";
 import { RoomTaskBar } from "./RoomTaskBar";
+import {
+  findChatLineIndexForTask,
+  focusComposerInput,
+  lastTurnHadConsensusMode,
+  messageMentionsTask,
+} from "../utils/taskBarCopy";
 import type { WorkspacePreset } from "../utils/sessionSetup";
 import {
   CUSTOM_WORKSPACE_ID,
@@ -99,7 +115,11 @@ import {
   setStoredWorkspacePath,
 } from "../utils/sessionSetup";
 import { pickWorkspaceFolder } from "../utils/pickWorkspaceFolder";
-import { sendReceiptLabel } from "../utils/sendReceipt";
+import {
+  sendReceiptLabel,
+  shouldShowSendReceiptOnChatTab,
+} from "../utils/sendReceipt";
+import { PlanTabToolbar } from "./PlanTabToolbar";
 import { ComposerPreflightBar } from "./ComposerPreflightBar";
 import { RoomRunStatusBar } from "./RoomRunStatusBar";
 
@@ -192,6 +212,7 @@ export function RoomChat({
   >(null);
   const [showPeerChannel, setShowPeerChannel] = useState(false);
   const [showHumanSynthesis, setShowHumanSynthesis] = useState(true);
+  const [viewOptionsOpen, setViewOptionsOpen] = useState(false);
   const [roomTasks, setRoomTasks] = useState<RoomTasksPayload | null>(null);
   const [tasksLoading, setTasksLoading] = useState(false);
   const [planMd, setPlanMd] = useState("");
@@ -202,12 +223,13 @@ export function RoomChat({
   const [planAfterSend, setPlanAfterSendState] = useState(getPlanAfterSend);
   const composeMode: ComposeMode = planAfterSend ? "plan" : "discuss";
   const [efficiencyOn, setEfficiencyOnState] = useState(getEfficiencyMode);
-  const composerModeChip = useMemo(() => {
-    const profile = resolveTurnSend(turnProfile, selected, efficiencyOn);
-    if (profile.consensusMode) return "합의";
-    if (planAfterSend) return "정리 · plan";
-    return "토론";
-  }, [turnProfile, selected, efficiencyOn, planAfterSend]);
+  const [researchMode, setResearchModeState] = useState(() => {
+    try {
+      return localStorage.getItem("agent-lab-research-mode") === "1";
+    } catch {
+      return false;
+    }
+  });
   const composerModeVariant = useMemo((): "discuss" | "plan" | "consensus" => {
     const profile = resolveTurnSend(turnProfile, selected, efficiencyOn);
     if (profile.consensusMode) return "consensus";
@@ -252,6 +274,14 @@ export function RoomChat({
   const [runLockStuck, setRunLockStuck] = useState(false);
   const [releasingLock, setReleasingLock] = useState(false);
   const longRunHintRef = useRef<number | null>(null);
+  const [agentCapabilities, setAgentCapabilities] = useState<AgentCapabilitiesMap>(
+    () => cloneCapabilities(DEFAULT_AGENT_CAPABILITIES),
+  );
+  const [resolvedAgentCwd, setResolvedAgentCwd] = useState<
+    Record<string, string>
+  >({});
+  const [agentCapsBusy, setAgentCapsBusy] = useState(false);
+  const [agentCapsHint, setAgentCapsHint] = useState<string | null>(null);
 
   function setWorkspaceId(id: string, path?: string | null) {
     setWorkspaceIdState(id);
@@ -284,6 +314,29 @@ export function RoomChat({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate once; stored ids validated against API
   }, []);
 
+  useEffect(() => {
+    const raw = session?.run?.agent_capabilities;
+    if (raw && typeof raw === "object") {
+      setAgentCapabilities(parseAgentCapabilities(raw));
+    }
+  }, [sessionId, session?.run?.agent_capabilities]);
+
+  useEffect(() => {
+    if (!sessionId) {
+      setResolvedAgentCwd({});
+      return;
+    }
+    const perms = roomPermissions(selected);
+    void fetchSessionAgentCapabilities(sessionId, perms as Record<string, unknown>)
+      .then((r) => {
+        if (r.agent_capabilities) {
+          setAgentCapabilities(parseAgentCapabilities(r.agent_capabilities));
+        }
+        setResolvedAgentCwd(r.resolved_cwd ?? {});
+      })
+      .catch(() => {});
+  }, [sessionId, selected]);
+
   function changeTurnProfile(profile: ComposerTurnProfile) {
     setTurnProfileState(profile);
     setTurnStrategy(profile);
@@ -307,7 +360,7 @@ export function RoomChat({
       .finally(() => setTasksLoading(false));
   }, [sessionId]);
 
-  const refreshSessionMeta = useCallback(() => {
+  function refreshSessionMeta() {
     if (!sessionId) return;
     if (onSessionMetaRefresh) {
       void onSessionMetaRefresh(sessionId);
@@ -315,7 +368,26 @@ export function RoomChat({
       void onSessionChange(sessionId);
     }
     refreshTasks();
-  }, [sessionId, onSessionMetaRefresh, onSessionChange, refreshTasks]);
+  }
+
+  const saveAgentCapabilities = useCallback(async () => {
+    if (!sessionId) return;
+    setAgentCapsBusy(true);
+    setAgentCapsHint(null);
+    try {
+      const res = await patchSessionAgentCapabilities(
+        sessionId,
+        capabilitiesForApi(agentCapabilities),
+      );
+      setResolvedAgentCwd(res.resolved_cwd ?? {});
+      setAgentCapsHint("저장됨");
+      refreshSessionMeta();
+    } catch (e) {
+      setAgentCapsHint(e instanceof Error ? e.message : "저장 실패");
+    } finally {
+      setAgentCapsBusy(false);
+    }
+  }, [sessionId, agentCapabilities]);
 
   useEffect(() => {
     refreshTasks();
@@ -885,11 +957,14 @@ export function RoomChat({
             consensusMode: useConsensusMode,
             efficiencyMode: useEfficiencyMode,
             turnProfile: profile,
+            researchMode:
+              researchMode || normalizeTurnProfile(profile) === "specialist",
             workspaceId: sessionId ? undefined : workspaceId,
             workspacePath:
               sessionId || workspaceId !== CUSTOM_WORKSPACE_ID
                 ? undefined
                 : workspacePath ?? undefined,
+            agentCapabilities: capabilitiesForApi(agentCapabilities),
           },
         );
         if (runFailed) {
@@ -936,8 +1011,10 @@ export function RoomChat({
       composeMode,
       turnProfile,
       efficiencyOn,
+      researchMode,
       workspaceId,
       workspacePath,
+      agentCapabilities,
       refreshSessionMeta,
     ],
   );
@@ -1008,14 +1085,44 @@ export function RoomChat({
     setPlanActionFocusIndex(actionIndex);
     setTab("plan");
   };
-  const focusTask = (taskId: string) => {
+  const focusTask = useCallback(
+    (taskId: string) => {
+      setTab("chat");
+      const task =
+        roomTasks?.tasks?.find((t) => t.id === taskId) ??
+        roomTasks?.claimable?.find((t) => t.id === taskId);
+      const chatLines = session?.chat ?? [];
+      let lineIdx: number | null = null;
+      if (task) {
+        lineIdx = findChatLineIndexForTask(chatLines, task);
+      }
+      if (lineIdx == null && task) {
+        for (let i = messages.length - 1; i >= 0; i -= 1) {
+          const m = messages[i];
+          if (m.chatLineIndex == null) continue;
+          if (messageMentionsTask(m.body ?? "", task)) {
+            lineIdx = m.chatLineIndex;
+            break;
+          }
+        }
+      }
+      if (lineIdx != null) {
+        setHighlightChatLine(lineIdx);
+      }
+      window.setTimeout(() => {
+        document
+          .querySelector(`[data-task-id="${taskId}"]`)
+          ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }, 60);
+    },
+    [roomTasks, session?.chat, messages],
+  );
+
+  const requestComposerPrefill = useCallback((prefill: string) => {
     setTab("chat");
-    window.setTimeout(() => {
-      document
-        .querySelector(`[data-task-id="${taskId}"]`)
-        ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }, 60);
-  };
+    setText(prefill);
+    focusComposerInput();
+  }, []);
   const executeBusy = planExecute.busy;
   const combinedError = error || planExecute.error;
   const pendingExecuteCount = planExecute.activePending ? 1 : 0;
@@ -1029,6 +1136,20 @@ export function RoomChat({
   const planMeta = buildPlanMetaView(session?.run);
   const planRefWarnings = analyzePlanRefWarnings(planMd, session?.chat);
   const turnResolved = resolveTurnSend(turnProfile, selected, efficiencyOn);
+  const taskBarContext = useMemo(
+    () => ({
+      composerVariant: composerModeVariant,
+      turnProfile,
+      lastTurnHadConsensus: lastTurnHadConsensusMode(session?.run),
+      selectedAgentCount: turnResolved.agents.length,
+    }),
+    [
+      composerModeVariant,
+      turnProfile,
+      session?.run,
+      turnResolved.agents.length,
+    ],
+  );
   const showProgressStrip = !isNew && tab === "chat" && running;
   const pendingReplyAgents =
     running && tab === "chat" && typingAgents.length === 0
@@ -1079,9 +1200,34 @@ export function RoomChat({
           workspacePath={workspacePath}
           onWorkspaceChange={setWorkspaceId}
           onBrowseFolder={() => void browseWorkspaceFolder()}
+          researchMode={researchMode}
+          onResearchModeChange={(on) => {
+            setResearchModeState(on);
+            try {
+              localStorage.setItem("agent-lab-research-mode", on ? "1" : "0");
+            } catch {
+              /* ignore */
+            }
+          }}
           disabled={running || runBusy}
         />
       ) : null}
+
+      <AgentSessionSettings
+        capabilities={agentCapabilities}
+        onChange={setAgentCapabilities}
+        resolvedCwd={resolvedAgentCwd}
+        selectedAgents={selected}
+        disabled={running || runBusy}
+        compact={!isNew}
+        onSave={sessionId ? () => saveAgentCapabilities() : undefined}
+        saveBusy={agentCapsBusy}
+        saveHint={
+          sessionId
+            ? agentCapsHint
+            : "첫 메시지 전송 시 세션에 함께 저장됩니다"
+        }
+      />
 
       <div className="view-tabs-bar">
         {!isNew ? (
@@ -1105,7 +1251,7 @@ export function RoomChat({
               className={tab === "plan" ? "active" : ""}
               onClick={() => setTab("plan")}
             >
-              plan.md
+              plan
               {pendingExecuteCount > 0 ? (
                 <span className="view-tabs-bar__pending" aria-hidden>
                   {" "}
@@ -1121,51 +1267,65 @@ export function RoomChat({
             </span>
           </div>
         )}
-        <RoomRunControls
-          running={running}
-          synthesizing={synthesizing}
-          showSynthesizeNow={!isNew && messages.length > 0}
-          onSynthesizeNow={handleSynthesizeNow}
-        />
         {!isNew && tab === "chat" ? (
-          <>
-            <label className="room-peer-toggle">
-              <input
-                type="checkbox"
-                checked={showHumanSynthesis}
-                onChange={(e) => setShowHumanSynthesis(e.target.checked)}
-              />
-              Human 요약
-              {hiddenAgentCount > 0 && showHumanSynthesis ? (
-                <span className="room-peer-toggle__count">
-                  {" "}
-                  (+{hiddenAgentCount})
-                </span>
-              ) : null}
-            </label>
-            <label
-              className="room-peer-toggle"
-              title={
-                showHumanSynthesis
-                  ? "Human 요약 모드에서는 동료 채널을 켤 수 없습니다"
-                  : "에이전트 동료 발화(peer) 표시"
+          <div
+            className="view-tabs-bar__trailing"
+            onBlur={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                setViewOptionsOpen(false);
               }
+            }}
+          >
+            <button
+              type="button"
+              className={`view-options-btn${viewOptionsOpen ? " is-active" : ""}`}
+              aria-label="보기 옵션"
+              title="보기 옵션"
+              onClick={() => setViewOptionsOpen((v) => !v)}
             >
-              <input
-                type="checkbox"
-                checked={showPeerChannel}
-                onChange={(e) => setShowPeerChannel(e.target.checked)}
-                disabled={showHumanSynthesis}
-              />
-              동료 채널
-              {hiddenPeerCount > 0 && !showPeerChannel && !showHumanSynthesis ? (
-                <span className="room-peer-toggle__count">
-                  {" "}
-                  ({hiddenPeerCount})
-                </span>
-              ) : null}
-            </label>
-          </>
+              ⋯
+            </button>
+            {viewOptionsOpen ? (
+              <div className="view-options-popover" role="menu">
+                <label className="view-options-row">
+                  <input
+                    type="checkbox"
+                    checked={showHumanSynthesis}
+                    onChange={(e) => setShowHumanSynthesis(e.target.checked)}
+                  />
+                  Human 요약
+                  {hiddenAgentCount > 0 && showHumanSynthesis ? (
+                    <span className="room-peer-toggle__count">
+                      {" "}
+                      (+{hiddenAgentCount})
+                    </span>
+                  ) : null}
+                </label>
+                <label
+                  className="view-options-row"
+                  title={
+                    showHumanSynthesis
+                      ? "Human 요약 모드에서는 동료 채널을 켤 수 없습니다"
+                      : "에이전트 동료 발화(peer) 표시"
+                  }
+                >
+                  <input
+                    type="checkbox"
+                    checked={showPeerChannel}
+                    onChange={(e) => setShowPeerChannel(e.target.checked)}
+                    disabled={showHumanSynthesis}
+                  />
+                  동료 채널
+                  {hiddenPeerCount > 0 && !showPeerChannel && !showHumanSynthesis ? (
+                    <span className="room-peer-toggle__count">
+                      {" "}
+                      ({hiddenPeerCount})
+                    </span>
+                  ) : null}
+                </label>
+              </div>
+            ) : null}
+          </div>
         ) : null}
       </div>
 
@@ -1173,11 +1333,13 @@ export function RoomChat({
         <RoomTaskBar
           sessionId={sessionId ?? ""}
           payload={roomTasks}
+          context={taskBarContext}
           loading={tasksLoading}
           executions={planExecutions}
           onRefresh={refreshTasks}
           onFocusPlanAction={focusPlanAction}
           onFocusTask={focusTask}
+          onRequestComposerPrefill={requestComposerPrefill}
         />
       ) : null}
 
@@ -1199,46 +1361,52 @@ export function RoomChat({
           ref={planScrollRef}
         >
           <div className="plan-tab-cluster">
-          <div
-            className={`plan-meta-bar plan-meta-bar--${planMeta.freshness}`}
-            role="status"
-          >
-            <div className="plan-meta-bar__row">
-              <span className="plan-meta-bar__line">
-                {planMeta.freshnessLabel !== "갱신 이력 없음" ? (
-                  planMeta.freshnessLabel
-                ) : (
-                  <>
-                    마지막 정리: {planMeta.timeLabel} · {planMeta.triggerLabel}
-                    {planMeta.chatLineLabel
-                      ? ` · ${planMeta.chatLineLabel}`
-                      : ""}
-                  </>
-                )}
-              </span>
+          <PlanTabToolbar
+            planAfterSend={planAfterSend}
+            onPlanAfterSendChange={changePlanAfterSend}
+            synthesizing={synthesizing}
+            running={running}
+            disabled={runBusy}
+            onSynthesizeNow={handleSynthesizeNow}
+            planMeta={planMeta}
+          />
+          {planMeta.pendingAgreement || planMeta.reviewTurnLabel ? (
+            <CollapsibleGlassPanel
+              className="plan-detail-panel"
+              title="plan 알림"
+              summary={
+                planMeta.pendingAgreement
+                  ? "합의 반영 재시도 필요"
+                  : planMeta.reviewTurnLabel ?? "plan 상세"
+              }
+              variant={planMeta.pendingAgreement ? "warn" : "default"}
+              defaultOpen={Boolean(planMeta.pendingAgreement)}
+            >
               {planMeta.pendingAgreement ? (
-                <button
-                  type="button"
-                  className="room-plan-btn room-plan-btn--accent"
-                  disabled={running || synthesizing}
-                  onClick={handleSynthesizeNow}
-                >
-                  {synthesizing ? "정리 중…" : "다시 정리"}
-                </button>
-              ) : (
-                <span className="plan-meta-bar__freshness">
-                  {planMeta.timeLabel !== "—"
-                    ? planMeta.timeLabel
-                    : planMeta.triggerLabel}
+                <div className="plan-meta-bar plan-meta-bar--sync_failed">
+                  <p className="plan-meta-bar__line">{planMeta.freshnessLabel}</p>
+                  <button
+                    type="button"
+                    className="room-plan-btn room-plan-btn--accent"
+                    disabled={running || synthesizing}
+                    onClick={handleSynthesizeNow}
+                  >
+                    {synthesizing ? "정리 중…" : "다시 정리"}
+                  </button>
+                </div>
+              ) : null}
+              {planMeta.reviewTurnLabel ? (
+                <span className="plan-meta-bar__review-badge">
+                  {planMeta.reviewTurnLabel}
                 </span>
-              )}
-            </div>
-            {planMeta.reviewTurnLabel ? (
-              <span className="plan-meta-bar__review-badge">
-                {planMeta.reviewTurnLabel}
-              </span>
-            ) : null}
-          </div>
+              ) : null}
+              {planMeta.chatLineLabel ? (
+                <p className="plan-detail-panel__lines">
+                  출처 {planMeta.chatLineLabel} · {planMeta.agentsLabel}
+                </p>
+              ) : null}
+            </CollapsibleGlassPanel>
+          ) : null}
           {planRefWarnings.bannerText ? (
             <CollapsibleGlassPanel
               className="plan-ref-warn-panel"
@@ -1400,7 +1568,7 @@ export function RoomChat({
         />
       )}
 
-      {sendReceipt ? (
+      {sendReceipt && shouldShowSendReceiptOnChatTab(sendReceipt) ? (
         <div className="composer-send-receipt" role="status">
           {sendReceipt}
         </div>
@@ -1421,22 +1589,17 @@ export function RoomChat({
           turnProfile === "review" ? "composer--review" : undefined,
           turnProfile === "free" ? "composer--free" : undefined,
           efficiencyOn ? "composer--efficiency" : undefined,
-          planAfterSend ? "composer--plan-after-send" : undefined,
           composerModeVariant === "consensus" ? "composer--consensus-mode" : undefined,
         ]
           .filter(Boolean)
           .join(" ") || undefined}
-        modeChip={composerModeChip}
-        modeChipVariant={composerModeVariant}
-        isNewSession={isNew}
         value={text}
         onChange={setText}
         onSend={handleSend}
         disabled={composerInputLocked}
         sendDisabled={composerSendLocked}
-        placeholder={
-          planAfterSend ? "메시지 — 전송 시 plan.md 갱신" : undefined
-        }
+        showPlanToggle={false}
+        showModeChipHint={false}
         running={running}
         onStop={handleStop}
         files={pendingFiles}
@@ -1448,7 +1611,6 @@ export function RoomChat({
         turnProfile={turnProfile}
         onTurnProfileChange={changeTurnProfile}
         planAfterSend={!isNew ? planAfterSend : undefined}
-        onPlanAfterSendChange={!isNew ? changePlanAfterSend : undefined}
         efficiencyOn={efficiencyOn}
         onEfficiencyChange={(on) => {
           setEfficiencyOnState(on);

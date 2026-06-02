@@ -1,3 +1,8 @@
+import {
+  isHumanSynthesisLine,
+  stripHumanSynthesisMarker,
+} from "./humanSynthesis";
+
 export type AgentRole =
   | "you"
   | "cursor"
@@ -70,17 +75,6 @@ function isPeerLine(line: {
   return false;
 }
 
-function isHumanSynthesisLine(line: {
-  role: string;
-  content: string;
-  visibility?: string;
-}): boolean {
-  return (
-    line.role === "system" &&
-    (line.content || "").trimStart().startsWith("[human synthesis")
-  );
-}
-
 export function chatLineToMessage(
   line: {
     role: string;
@@ -126,7 +120,9 @@ export function chatLineToMessage(
     id: `s-${i}`,
     role: "system",
     label: humanSynthesis ? "턴 요약" : peerChannel ? "동료 채널" : "시스템",
-    body: line.content,
+    body: humanSynthesis
+      ? stripHumanSynthesisMarker(line.content)
+      : line.content,
     sent: false,
     chatLineIndex: i,
     peerChannel,

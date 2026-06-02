@@ -1,0 +1,24 @@
+{
+  "workflow_id": "room",
+  "run_schema_version": 1,
+  "objections": [
+    {
+      "id": "obj-ch-1",
+      "from": "claude",
+      "act": "CHALLENGE",
+      "body": "ratio needs source",
+      "status": "open",
+      "turn": 1,
+      "task_id": "t-challenge01",
+      "target_ref": "task:t-challenge01"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t-challenge01",
+      "title": "Fix ratio",
+      "status": "blocked",
+      "owner_agent": "codex"
+    }
+  ]
+}

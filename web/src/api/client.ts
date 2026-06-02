@@ -32,10 +32,23 @@ export type ChatLine = {
   visibility?: "human" | "peer";
 };
 
+export type RoomObjection = {
+  id: string;
+  from: string;
+  act: "BLOCK" | "CHALLENGE";
+  body: string;
+  status: "open" | "resolved_accepted" | "resolved_wontfix";
+  turn?: number;
+  target_ref?: string;
+  task_id?: string;
+  plan_action_index?: number;
+  ts?: string;
+};
+
 export type RoomTask = {
   id: string;
   title: string;
-  status: "pending" | "in_progress" | "completed" | "cancelled";
+  status: "pending" | "in_progress" | "completed" | "cancelled" | "blocked";
   owner_agent?: string | null;
   depends_on?: string[];
   source?: string;
@@ -44,15 +57,69 @@ export type RoomTask = {
   endorsements?: Record<string, string>;
 };
 
+export type RoomArtifact = {
+  id: string;
+  producer: string;
+  kind: "log" | "diff" | "table" | "file_ref" | "delegate";
+  summary?: string;
+  path?: string;
+  turn?: number;
+  parallel_round?: number;
+  refs?: string[];
+  ts?: string;
+};
+
+export type PreVerifyRecord = {
+  event?: string;
+  blocked?: boolean;
+  feedback?: string;
+  exit_code?: number;
+  command?: string;
+};
+
+export type MailboxMessage = {
+  id: string;
+  from: string;
+  to: string;
+  body: string;
+  task_id?: string;
+  human_turn?: number;
+  parallel_round?: number;
+  ts: string;
+  read?: boolean;
+};
+
+export type ConsensusGateBlockedTask = {
+  id: string;
+  title: string;
+  endorsements: number;
+};
+
+export type ConsensusGatePayload = {
+  required_endorsements: number;
+  active_agent_count: number;
+  blocked_tasks: ConsensusGateBlockedTask[];
+};
+
 export type RoomTasksPayload = {
   team_lead: string;
   turn_leads?: Record<string, string>;
+  /** Active room agents — used for team-agreement denominator in the task bar. */
+  agents?: string[];
   tasks: RoomTask[];
   claimable: RoomTask[];
   counts: { pending: number; in_progress: number; completed: number };
   consensus_tasks_ready?: boolean;
   consensus_task_blockers?: string[];
+  consensus_gate?: ConsensusGatePayload;
   open_task_count?: number;
+  mailbox?: MailboxMessage[];
+  mailbox_unread?: Record<string, number>;
+  objections?: RoomObjection[];
+  open_objections?: RoomObjection[];
+  open_objection_count?: number;
+  artifacts?: RoomArtifact[];
+  artifact_count?: number;
 };
 
 export type SessionDetail = {
@@ -108,6 +175,8 @@ export type AgentHealthRow = {
   detail?: string;
   hint?: string | null;
   reason?: string | null;
+  capabilities?: string[];
+  capability_label?: string;
 };
 
 export type HealthResponse = {
@@ -200,6 +269,48 @@ export function fetchSessionTasks(sessionId: string) {
   );
 }
 
+export type AgentCapabilityRow = {
+  tools: string[];
+  cwd_role: string;
+  label?: string;
+  restrictions?: string[];
+  cwd_path?: string;
+};
+
+export type AgentCapabilitiesResponse = {
+  ok: boolean;
+  agent_capabilities: Record<string, AgentCapabilityRow>;
+  agent_capabilities_custom?: boolean;
+  resolved_cwd?: Record<string, string>;
+};
+
+export function fetchSessionAgentCapabilities(
+  sessionId: string,
+  permissions?: Record<string, unknown>,
+) {
+  const q =
+    permissions && Object.keys(permissions).length
+      ? `?permissions=${encodeURIComponent(JSON.stringify(permissions))}`
+      : "";
+  return json<AgentCapabilitiesResponse>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/agent-capabilities${q}`,
+  );
+}
+
+export function patchSessionAgentCapabilities(
+  sessionId: string,
+  capabilities: Record<string, AgentCapabilityRow>,
+) {
+  return json<AgentCapabilitiesResponse>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/agent-capabilities`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ capabilities }),
+    },
+  );
+}
+
 export function completeSessionTask(
   sessionId: string,
   taskId: string,
@@ -222,6 +333,22 @@ export function patchSessionTeamLead(sessionId: string, agent: string) {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ agent }),
+    },
+  );
+}
+
+export function resolveSessionObjection(
+  sessionId: string,
+  objectionId: string,
+  verdict: "accepted" | "wontfix",
+  note = "",
+) {
+  return json<RoomTasksPayload>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/objections/${encodeURIComponent(objectionId)}/resolve`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ verdict, note }),
     },
   );
 }
@@ -310,10 +437,14 @@ export type RunRoomOptions = {
   efficiencyMode?: boolean;
   /** Composer turn profile id (quick/analyze/free). */
   turnProfile?: string;
+  /** Collect agent outputs into artifacts[] (research / specialist). */
+  researchMode?: boolean;
   /** Session start workspace preset (new sessions only). */
   workspaceId?: string;
   /** User-picked folder when workspaceId is custom (new sessions only). */
   workspacePath?: string;
+  /** Per-agent cwd/tools profile (run.json agent_capabilities). */
+  agentCapabilities?: Record<string, AgentCapabilityRow>;
   /** Always general for now; workflow templates deferred. */
   sessionTemplate?: string;
   /** Abort in-flight SSE (UI stop). */
@@ -395,9 +526,16 @@ export async function runRoom(
   form.append("consensus_mode", String(opts?.consensusMode ?? false));
   form.append("efficiency_mode", String(opts?.efficiencyMode ?? false));
   form.append("turn_profile", opts?.turnProfile ?? "analyze");
+  form.append("research_mode", String(opts?.researchMode ?? false));
   form.append("workspace_id", opts?.workspaceId ?? "agent-lab");
   if (opts?.workspacePath?.trim()) {
     form.append("workspace_path", opts.workspacePath.trim());
+  }
+  if (opts?.agentCapabilities && Object.keys(opts.agentCapabilities).length) {
+    form.append(
+      "agent_capabilities",
+      JSON.stringify(opts.agentCapabilities),
+    );
   }
   form.append("session_template", opts?.sessionTemplate ?? "general");
   if (opts?.requestId) {
@@ -526,6 +664,7 @@ export type PlanExecutionRecord = {
   diff?: string;
   started_at?: string;
   completed_at?: string | null;
+  pre_verify?: PreVerifyRecord;
 };
 
 export function fetchPlanActions(
@@ -617,6 +756,13 @@ export async function runPlanDryRun(
       throw new PlanSnapshotRequiredError(
         detail.pending_plan as PendingPlanRecord,
       );
+    }
+    if (detail.code === "pre_execute_blocked") {
+      const err = new Error(
+        String(detail.message || "pre_execute hook blocked dry-run"),
+      ) as Error & { preVerify?: PreVerifyRecord };
+      err.preVerify = detail.pre_verify as PreVerifyRecord | undefined;
+      throw err;
     }
   }
   if (!res.ok) {

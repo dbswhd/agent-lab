@@ -1,0 +1,28 @@
+{
+  "workflow_id": "room",
+  "run_schema_version": 1,
+  "plan_format_version": 1,
+  "topic": "objection regression",
+  "status": "active",
+  "objections": [
+    {
+      "id": "obj-regression-1",
+      "from": "claude",
+      "act": "BLOCK",
+      "body": "regression: block plan action 1",
+      "status": "open",
+      "turn": 1,
+      "target_ref": "plan_action:1",
+      "plan_action_index": 1,
+      "plan_action_kind": "now"
+    }
+  ],
+  "tasks": [],
+  "turns": [
+    {
+      "mode": "plan",
+      "synthesize": true,
+      "status": "completed"
+    }
+  ]
+}

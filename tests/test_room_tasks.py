@@ -216,6 +216,21 @@ def test_harvest_task_endorsements_and_consensus_gate():
     assert ready2
 
 
+def test_tasks_public_payload_includes_consensus_gate():
+    from agent_lab.room_tasks import add_task, tasks_public_payload
+
+    run_meta: dict = {"tasks": [], "agents": ["cursor", "codex", "claude"]}
+    add_task(run_meta, "Next check", source="test")
+    payload = tasks_public_payload(run_meta)
+    gate = payload.get("consensus_gate") or {}
+    assert gate.get("required_endorsements") == 2
+    assert gate.get("active_agent_count") == 3
+    blocked = gate.get("blocked_tasks") or []
+    assert len(blocked) == 1
+    assert blocked[0].get("title") == "Next check"
+    assert blocked[0].get("endorsements") == 0
+
+
 def test_complete_tasks_for_execution():
     run_meta: dict = {"tasks": []}
     t = add_task(run_meta, "Edit file", source="test")

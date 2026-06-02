@@ -7,6 +7,8 @@ type Props = {
   workspacePath: string | null;
   onWorkspaceChange: (id: string, path?: string | null) => void;
   onBrowseFolder: () => void;
+  researchMode?: boolean;
+  onResearchModeChange?: (on: boolean) => void;
   disabled?: boolean;
   compact?: boolean;
 };
@@ -46,6 +48,8 @@ export function SessionSetupBar({
   workspacePath,
   onWorkspaceChange,
   onBrowseFolder,
+  researchMode = false,
+  onResearchModeChange,
   disabled,
   compact = false,
 }: Props) {
@@ -127,6 +131,22 @@ export function SessionSetupBar({
           <p className="session-setup-bar__hint">
             에이전트가 읽고 수정할 프로젝트 루트 폴더를 선택하세요.
           </p>
+        ) : null}
+
+        {onResearchModeChange ? (
+          <label
+            className="session-setup-bar__research"
+            title="Codex/Claude 산출을 artifacts[]에 저장 · 분업 턴과 함께 사용"
+          >
+            <input
+              type="checkbox"
+              className="session-setup-bar__research-input"
+              checked={researchMode}
+              disabled={disabled}
+              onChange={(e) => onResearchModeChange(e.target.checked)}
+            />
+            <span>연구·분업 (artifacts 수집)</span>
+          </label>
         ) : null}
       </div>
     </div>

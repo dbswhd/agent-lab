@@ -13,10 +13,15 @@ export function sendReceiptLabel(
   stopped: boolean,
 ): string {
   if (stopped) return "답변 중지됨 · 부분 저장";
-  if (receipt === "plan_updated") return "정리 완료 · plan 갱신";
-  if (receipt === "consensus_done") return "합의 완료 · plan 동기화 가능";
-  if (receipt === "discuss_saved") return "토론 저장 · plan 미변경";
-  return fallbackMode === "plan"
-    ? "정리 완료 · plan 갱신"
-    : "토론 저장 · plan 미변경";
+  if (receipt === "plan_updated") return "plan 갱신됨";
+  if (receipt === "consensus_done") return "합의 완료";
+  if (receipt === "discuss_saved") return "토론 저장됨";
+  return fallbackMode === "plan" ? "plan 갱신됨" : "토론 저장됨";
+}
+
+/** Hide plan-centric toasts on the chat tab (plan tab has its own toolbar). */
+export function shouldShowSendReceiptOnChatTab(label: string | null): boolean {
+  if (!label) return false;
+  if (label.includes("plan")) return false;
+  return true;
 }

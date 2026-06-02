@@ -9,7 +9,7 @@ import shutil
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
@@ -81,18 +81,21 @@ from agent_lab.plan_execute import (  # noqa: E402
     resolve_execution,
     run_dry_run,
 )
+from agent_lab.plan_execute_worktree import WorktreeUnavailable  # noqa: E402
 from agent_lab.plan_pending import (  # noqa: E402
     PlanSnapshotRequired,
     approve_pending_plan,
     pending_plans_public_payload,
     reject_pending_plan,
 )
+from agent_lab.room_hooks import PreExecuteBlocked  # noqa: E402
+from agent_lab.room_objections import ObjectionBlocksExecute  # noqa: E402
 from agent_lab.session_setup import (  # noqa: E402
     merge_setup_permissions,
     seed_session_setup,
     session_setup_options,
 )
-TURN_PROFILES = frozenset({"quick", "analyze", "discuss", "review", "free"})
+TURN_PROFILES = frozenset({"quick", "analyze", "discuss", "review", "free", "specialist"})
 
 setup_app_logging()
 
@@ -159,6 +162,10 @@ class TaskClaimRequest(BaseModel):
 
 class TeamLeadRequest(BaseModel):
     agent: str = Field(..., min_length=1)
+
+
+class AgentCapabilitiesPatchRequest(BaseModel):
+    capabilities: dict[str, Any] = Field(default_factory=dict)
 
 
 class TaskCompleteRequest(BaseModel):
@@ -311,10 +318,17 @@ def get_session_setup_options() -> dict[str, Any]:
 def health(
     probe_bridge: bool = False,
     probe_preflight: bool = False,
+    session_id: str | None = None,
 ) -> dict[str, Any]:
+    run_meta: dict[str, Any] | None = None
+    if session_id:
+        folder = SESSIONS_DIR / session_id
+        if folder.is_dir():
+            _plan_md, run_meta = room_session_context(folder)
     return build_health_payload(
         probe_bridge=probe_bridge,
         probe_preflight=probe_preflight,
+        run_meta=run_meta,
     )
 
 
@@ -480,6 +494,8 @@ def complete_session_task(
     from agent_lab.room_tasks import complete_task, tasks_public_payload
 
     _plan_md, run_meta = room_session_context(folder)
+    run_meta["_session_folder"] = str(folder.resolve())
+    run_meta["_session_id"] = session_id
     refs = list((body.artifact_refs if body else None) or [])
     try:
         task = complete_task(run_meta, task_id, artifact_refs=refs or None)
@@ -487,11 +503,93 @@ def complete_session_task(
         msg = str(e)
         status = 409 if "승인" in msg or "검증" in msg or "실행" in msg else 400
         raise HTTPException(status_code=status, detail=msg) from e
+    from agent_lab.run_meta import persist_run_meta
+
     (folder / "run.json").write_text(
-        json.dumps(run_meta, indent=2, ensure_ascii=False) + "\n",
+        json.dumps(persist_run_meta(run_meta), indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
     return {"ok": True, "task": task, **tasks_public_payload(run_meta)}
+
+
+class ObjectionResolveRequest(BaseModel):
+    verdict: Literal["accepted", "wontfix"]
+    note: str = ""
+
+
+@app.post("/api/sessions/{session_id}/objections/{objection_id}/resolve")
+def resolve_session_objection(
+    session_id: str,
+    objection_id: str,
+    body: ObjectionResolveRequest,
+) -> dict[str, Any]:
+    folder = SESSIONS_DIR / session_id
+    if not folder.is_dir():
+        raise HTTPException(status_code=404, detail="session not found")
+    from agent_lab.room_objections import resolve_objection
+    from agent_lab.room_tasks import tasks_public_payload
+
+    _plan_md, run_meta = room_session_context(folder)
+    try:
+        row = resolve_objection(
+            run_meta,
+            objection_id,
+            verdict=body.verdict,
+            note=body.note,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    from agent_lab.run_meta import persist_run_meta
+
+    (folder / "run.json").write_text(
+        json.dumps(persist_run_meta(run_meta), indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    return {"ok": True, "objection": row, **tasks_public_payload(run_meta)}
+
+
+@app.get("/api/sessions/{session_id}/agent-capabilities")
+def get_session_agent_capabilities(
+    session_id: str,
+    permissions: str | None = None,
+) -> dict[str, Any]:
+    folder = SESSIONS_DIR / session_id
+    if not folder.is_dir():
+        raise HTTPException(status_code=404, detail="session not found")
+    _plan_md, run_meta = room_session_context(folder)
+    perm_obj: dict[str, Any] = {}
+    if permissions:
+        try:
+            perm_obj = json.loads(permissions)
+        except json.JSONDecodeError:
+            perm_obj = {}
+    from agent_lab.room_agent_capabilities import capabilities_public_payload
+
+    return {"ok": True, **capabilities_public_payload(run_meta, perm_obj)}
+
+
+@app.patch("/api/sessions/{session_id}/agent-capabilities")
+def patch_session_agent_capabilities(
+    session_id: str,
+    body: AgentCapabilitiesPatchRequest,
+) -> dict[str, Any]:
+    folder = SESSIONS_DIR / session_id
+    if not folder.is_dir():
+        raise HTTPException(status_code=404, detail="session not found")
+    from agent_lab.room_agent_capabilities import (
+        capabilities_public_payload,
+        write_agent_capabilities,
+    )
+    from agent_lab.run_meta import persist_run_meta
+
+    _plan_md, run_meta = room_session_context(folder)
+    caps_in = body.capabilities if isinstance(body.capabilities, dict) else {}
+    write_agent_capabilities(run_meta, caps_in, mark_custom=True)
+    (folder / "run.json").write_text(
+        json.dumps(persist_run_meta(run_meta), indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    return {"ok": True, **capabilities_public_payload(run_meta)}
 
 
 @app.patch("/api/sessions/{session_id}/team-lead")
@@ -603,12 +701,39 @@ def session_execute_dry_run(
                 "pending_plan": e.pending_plan,
             },
         ) from e
+    except WorktreeUnavailable as e:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": e.reason,
+                "message": str(e),
+                "remediation": ["fix_git_worktree_and_retry"],
+            },
+        ) from e
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e)) from e
+    except ObjectionBlocksExecute as e:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "open_objection",
+                "message": str(e),
+                "objections": e.objections,
+            },
+        ) from e
+    except PreExecuteBlocked as e:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "pre_execute_blocked",
+                "message": str(e),
+                "pre_verify": e.pre_verify,
+            },
+        ) from e
     return {"ok": True, "execution": execution}
 
 
@@ -755,9 +880,11 @@ async def create_room_run(
     consensus_mode: bool = Form(False),
     efficiency_mode: bool = Form(False),
     turn_profile: str = Form("discuss"),
+    research_mode: bool = Form(False),
     workspace_id: str = Form("agent-lab"),
     workspace_path: str | None = Form(None),
     session_template: str = Form("general"),
+    agent_capabilities: str = Form("{}"),
     files: list[UploadFile] = File(default=[]),
 ) -> StreamingResponse:
     topic = topic.strip()
@@ -804,6 +931,14 @@ async def create_room_run(
         workspace_path_norm,
     )
 
+    caps_obj: dict[str, Any] = {}
+    try:
+        parsed_caps = json.loads(agent_capabilities) if agent_capabilities else {}
+        if isinstance(parsed_caps, dict):
+            caps_obj = parsed_caps
+    except json.JSONDecodeError:
+        caps_obj = {}
+
     folder: Path | None = None
     if session_id:
         folder = SESSIONS_DIR / session_id
@@ -822,6 +957,18 @@ async def create_room_run(
             )
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
+
+    if caps_obj:
+        from agent_lab.room_agent_capabilities import write_agent_capabilities
+
+        _plan_md, run_meta = room_session_context(folder)
+        write_agent_capabilities(run_meta, caps_obj, mark_custom=True)
+        from agent_lab.run_meta import persist_run_meta
+
+        (folder / "run.json").write_text(
+            json.dumps(persist_run_meta(run_meta), indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
 
     saved_files = await _save_uploads(folder, files)
     parallel_rounds = max(1, min(agent_rounds, MAX_AGENT_PARALLEL_ROUNDS))
@@ -877,6 +1024,7 @@ async def create_room_run(
                         consensus_mode=consensus_mode,
                         efficiency_mode=use_efficiency,
                         turn_profile=profile_norm,
+                        research_mode=research_mode,
                     )
                     result["folder"] = folder
                     result["plan_md"] = plan_md
@@ -893,6 +1041,7 @@ async def create_room_run(
                         consensus_mode=consensus_mode,
                         efficiency_mode=use_efficiency,
                         turn_profile=profile_norm,
+                        research_mode=research_mode,
                     )
                     result["folder"] = f
                     result["plan_md"] = plan_md

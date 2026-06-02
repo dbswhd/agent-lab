@@ -137,6 +137,54 @@ def team_r1_split(
     return pool, []
 
 
+def normalize_turn_profile(profile: str | None) -> str:
+    p = (profile or "analyze").strip().lower()
+    if p == "discuss":
+        return "analyze"
+    if p == "review":
+        return "free"
+    if p in ("quick", "analyze", "free", "specialist"):
+        return p
+    return "analyze"
+
+
+def count_parallel_r1_agents(turn_messages: list[Any]) -> int:
+    from agent_lab.room_chat_channels import is_peer_visibility
+
+    agents: set[str] = set()
+    for m in turn_messages:
+        if getattr(m, "role", None) != "agent":
+            continue
+        if is_peer_visibility(getattr(m, "visibility", None)):
+            continue
+        pr = getattr(m, "parallel_round", None) or 1
+        if pr != 1:
+            continue
+        agent = getattr(m, "agent", None)
+        if agent:
+            agents.add(str(agent).strip().lower())
+    return len(agents)
+
+
+def should_emit_human_turn_synthesis(
+    turn_profile: str | None,
+    turn_messages: list[Any],
+    *,
+    agents_used: list[str] | None = None,
+) -> bool:
+    """Emit turn summary only for ♾️ (free) or analyze with 3+ parallel R1 agents."""
+    profile = normalize_turn_profile(turn_profile)
+    if profile == "free":
+        return True
+    if profile != "analyze":
+        return False
+    parallel = count_parallel_r1_agents(turn_messages)
+    scheduled = len(
+        {str(a).strip().lower() for a in (agents_used or []) if str(a).strip()}
+    )
+    return max(parallel, scheduled) >= 3
+
+
 def build_human_turn_synthesis(
     turn_messages: list[Any],
     *,

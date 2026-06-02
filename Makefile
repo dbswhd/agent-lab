@@ -1,4 +1,4 @@
-.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test smoke smoke-e2e validate-quant verify-release
+.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test smoke smoke-e2e validate-quant verify-release score-session
 
 install:
 	python3 -m venv .venv
@@ -41,6 +41,10 @@ tauri-build: prepare-bundled-runtime
 
 test:
 	.venv/bin/pytest tests/ -q
+
+score-session:
+	@test -n "$(SESSION)" || (echo "Usage: make score-session SESSION=sessions/<id>" && exit 1)
+	.venv/bin/python scripts/score_session.py "$(SESSION)"
 
 smoke:
 	.venv/bin/python scripts/smoke_room.py

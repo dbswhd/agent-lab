@@ -150,7 +150,7 @@ def advance_plan_md(
 def advance_plan_after_approval(folder: Path, execution: dict[str, Any]) -> dict[str, Any]:
     """Update plan.md after Human approves a pending execution."""
     status = str(execution.get("status") or "")
-    if status not in {"completed", "review_required"}:
+    if status not in {"completed", "review_required", "merged"}:
         return {"advanced": False, "reason": "not_saved"}
 
     kind_raw = execution.get("action_kind") or "now"

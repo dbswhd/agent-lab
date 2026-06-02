@@ -42,6 +42,7 @@ from agent_lab.session_guidance import (
     resolve_session_workspace_binding,
 )
 from agent_lab.agent_permissions import apply_discuss_executor_policy
+from agent_lab.cli_retry import is_retryable, retry_attempts, retryable_failure
 from agent_lab.run_control import RoomRunCancelled, check_cancelled, is_cancelled
 from agent_lab.session import SESSIONS_DIR, session_dir
 
@@ -241,6 +242,69 @@ def _is_agent_error_message(msg: ChatMessage) -> bool:
     return msg.role == "system" and bool(msg.agent)
 
 
+def _agent_turn_summary(replies: list[ChatMessage]) -> dict[str, list[str]]:
+    failed = sorted(
+        {
+            str(m.agent)
+            for m in replies
+            if m.role == "system" and m.agent
+        }
+    )
+    succeeded = sorted(
+        {
+            str(m.agent)
+            for m in replies
+            if m.role == "agent" and m.agent
+        }
+    )
+    return {"failed_agents": failed, "succeeded_agents": succeeded}
+
+
+def _turn_status_from_replies(
+    replies: list[ChatMessage],
+    *,
+    cancelled: bool,
+    consensus_meta: dict[str, Any] | None = None,
+    consensus_mode: bool = False,
+) -> str:
+    if cancelled:
+        return "cancelled"
+    summary = _agent_turn_summary(replies)
+    failed = summary["failed_agents"]
+    succeeded = summary["succeeded_agents"]
+    if consensus_meta is not None and consensus_meta.get("status") == "failed":
+        return "failed"
+    if consensus_mode and failed:
+        return "failed"
+    if failed and succeeded:
+        return "partial"
+    if failed:
+        return "failed"
+    return "completed"
+
+
+def _emit_turn_terminal_status(
+    *,
+    status: str,
+    replies: list[ChatMessage],
+    on_event: OnAgentEvent | None,
+    consensus_mode: bool,
+) -> None:
+    if not on_event or status not in {"partial", "failed"}:
+        return
+    summary = _agent_turn_summary(replies)
+    payload = {
+        "status": status,
+        **summary,
+        "reason": "agent_error",
+        "consensus": consensus_mode,
+    }
+    if status == "partial":
+        on_event("turn_partial", payload)
+    else:
+        on_event("turn_failed", payload)
+
+
 def _bind_session_to_run_meta(
     run_meta: dict[str, Any] | None,
     folder: Path | None,
@@ -409,6 +473,8 @@ def _call_one_agent(
         )
         return msg
     except Exception as e:
+        retryable = retryable_failure(e) or is_retryable(str(e))
+        attempts = retry_attempts(e)
         _emit(
             "agent_error",
             {
@@ -416,15 +482,8 @@ def _call_one_agent(
                 "message": str(e),
                 "round": parallel_round,
                 "failed": True,
-            },
-        )
-        _emit(
-            "turn_failed",
-            {
-                "agent": aid,
-                "message": str(e),
-                "round": parallel_round,
-                "reason": "bridge_or_timeout",
+                "retryable": retryable,
+                "attempts": attempts,
             },
         )
         return ChatMessage(
@@ -483,10 +542,6 @@ def run_consensus_agent_rounds(
 
         if _agent_turn_failed(batch):
             if on_event:
-                on_event(
-                    "turn_failed",
-                    {"reason": "agent_error", "round": 1, "consensus": True},
-                )
                 on_event(
                     "consensus_incomplete",
                     {
@@ -555,10 +610,6 @@ def run_consensus_agent_rounds(
             )
             if _agent_turn_failed(batch):
                 if on_event:
-                    on_event(
-                        "turn_failed",
-                        {"reason": "agent_error", "round": r, "consensus": True},
-                    )
                     on_event(
                         "consensus_incomplete",
                         {
@@ -647,15 +698,6 @@ def run_consensus_agent_rounds(
                 calls += 1
                 if _is_agent_error_message(msg):
                     if on_event:
-                        on_event(
-                            "turn_failed",
-                            {
-                                "agent": aid,
-                                "reason": "agent_error",
-                                "round": parallel_round,
-                                "consensus": True,
-                            },
-                        )
                         on_event(
                             "consensus_incomplete",
                             {
@@ -1799,6 +1841,8 @@ def _turn_snapshot(
     send_receipt: str | None = None,
     peer_message_count: int | None = None,
     agents_with_r2_reply: list[str] | None = None,
+    failed_agents: list[str] | None = None,
+    succeeded_agents: list[str] | None = None,
 ) -> dict[str, Any]:
     from agent_lab.invoke import model_name
 
@@ -1871,6 +1915,10 @@ def _turn_snapshot(
         snap["peer_message_count"] = peer_message_count
     if agents_with_r2_reply:
         snap["agents_with_r2_reply"] = list(agents_with_r2_reply)
+    if failed_agents:
+        snap["failed_agents"] = list(failed_agents)
+    if succeeded_agents:
+        snap["succeeded_agents"] = list(succeeded_agents)
     return snap
 
 
@@ -2224,13 +2272,18 @@ def continue_room_round(
             on_event=on_event,
         )
     latency_ms = int((time.perf_counter() - t0) * 1000)
-    turn_failed = _agent_turn_failed(replies) or (
-        consensus_meta is not None and consensus_meta.get("status") == "failed"
+    turn_summary = _agent_turn_summary(replies)
+    turn_status = _turn_status_from_replies(
+        replies,
+        cancelled=cancelled,
+        consensus_meta=consensus_meta,
+        consensus_mode=consensus_mode,
     )
-    turn_status = (
-        "cancelled"
-        if cancelled
-        else ("failed" if turn_failed else "completed")
+    _emit_turn_terminal_status(
+        status=turn_status,
+        replies=replies,
+        on_event=on_event,
+        consensus_mode=consensus_mode,
     )
     existing_meta: dict[str, Any] = {}
     meta_path = folder / "meta.json"
@@ -2288,6 +2341,8 @@ def continue_room_round(
             send_receipt=send_receipt_val,
             peer_message_count=int(peer.get("peer_message_count") or 0),
             agents_with_r2_reply=list(peer.get("agents_with_r2_reply") or []),
+            failed_agents=turn_summary["failed_agents"],
+            succeeded_agents=turn_summary["succeeded_agents"],
         ),
     )
     auto_plan = maybe_auto_scribe_after_consensus(
@@ -2307,6 +2362,9 @@ def continue_room_round(
                 "session_id": folder.name,
                 "path": str(folder),
                 "cancelled": cancelled,
+                "status": turn_status,
+                "failed_agents": turn_summary["failed_agents"],
+                "succeeded_agents": turn_summary["succeeded_agents"],
                 "send_receipt": send_receipt_val,
                 "turn_index": max(
                     0,
@@ -2483,13 +2541,18 @@ def run_room(
             plan_md = f"## Plan synthesis failed\n\nunknown error"
 
     latency_ms = int((time.perf_counter() - t0) * 1000)
-    turn_failed = _agent_turn_failed(replies) or (
-        consensus_meta is not None and consensus_meta.get("status") == "failed"
+    turn_summary = _agent_turn_summary(replies)
+    turn_status = _turn_status_from_replies(
+        replies,
+        cancelled=cancelled,
+        consensus_meta=consensus_meta,
+        consensus_mode=consensus_mode,
     )
-    turn_status = (
-        "cancelled"
-        if cancelled
-        else ("failed" if turn_failed else "completed")
+    _emit_turn_terminal_status(
+        status=turn_status,
+        replies=replies,
+        on_event=on_event,
+        consensus_mode=consensus_mode,
     )
     from agent_lab.room_tasks import team_lead
     from agent_lab.room_team_orchestration import resolve_send_receipt, turn_leads_map
@@ -2530,6 +2593,8 @@ def run_room(
         send_receipt=send_receipt_val,
         peer_message_count=int(peer.get("peer_message_count") or 0),
         agents_with_r2_reply=list(peer.get("agents_with_r2_reply") or []),
+        failed_agents=turn_summary["failed_agents"],
+        succeeded_agents=turn_summary["succeeded_agents"],
     )
 
     if folder is None:
@@ -2576,6 +2641,9 @@ def run_room(
                 "session_id": folder.name,
                 "path": str(folder),
                 "cancelled": cancelled,
+                "status": turn_status,
+                "failed_agents": turn_summary["failed_agents"],
+                "succeeded_agents": turn_summary["succeeded_agents"],
                 "send_receipt": send_receipt_val,
                 "turn_index": max(
                     0,

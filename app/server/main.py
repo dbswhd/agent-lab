@@ -1183,6 +1183,11 @@ async def create_room_run(
                     "type": "complete",
                     "session_id": complete.get("session_id") or out_folder.name,
                     "plan_preview": plan_md[:500] if plan_md else "",
+                    "status": complete.get("status") or "completed",
+                    "failed_agents": complete.get("failed_agents") or [],
+                    "succeeded_agents": complete.get("succeeded_agents") or [],
+                    "send_receipt": complete.get("send_receipt"),
+                    "turn_index": complete.get("turn_index"),
                 }
             )
         except Exception as e:

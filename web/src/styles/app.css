@@ -3436,6 +3436,28 @@ body {
   padding-left: 1.1em;
 }
 
+.room-partial-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin: 0 var(--space-md) var(--space-xs);
+  padding: var(--space-xs) var(--space-md);
+  border: 1px solid color-mix(in srgb, var(--mac-warning) 45%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--mac-warning) 14%, var(--mac-fill-secondary));
+  color: var(--mac-label-primary);
+  font-size: var(--text-caption1);
+}
+
+.room-partial-banner strong {
+  font-weight: 700;
+}
+
+.room-partial-banner__agents {
+  color: var(--mac-label-secondary);
+}
+
 .room-run-status {
   display: flex;
   flex-wrap: wrap;

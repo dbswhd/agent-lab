@@ -511,9 +511,11 @@ execute worktree가 **main 오염**을 막아도, specialist R2 discuss는 **별
 
 ### M3 — Policy & override (1주)
 
-- [ ] Human override modal + `isolation/override` API
-- [ ] apply path for non-git (label separation)
-- [ ] scribe hint: single git_root validation
+- [x] `plan_execute_isolation.py` policy engine
+- [x] plan action optional `isolation: auto|worktree|apply|block` parse
+- [x] Human override modal + `isolation/override` API
+- [x] apply path for non-git (label separation)
+- [x] scribe hint: single git_root validation
 
 ### M4 — Hardening (지속)
 
@@ -552,9 +554,9 @@ execute worktree가 **main 오염**을 막아도, specialist R2 discuss는 **별
 |---|----------|------|
 | E1 | pipeline action worktree | main clean until merge |
 | E2 | agent-lab action 다른 root | 별 worktree |
-| E3 | non-git lecture apply | merge UI 없음 |
+| E3 | non-git lecture apply | `파일 반영`, merge UI 없음 |
 | E4 | worktree fail → retry |修復 후 성공 |
-| E5 | override snapshot | applied_in_place, no merge |
+| E5 | override snapshot | `snapshot_override`, no merge |
 | E6 | approve merge | commit message provenance |
 | E7 | merge conflict | abort restores |
 | E8 | pre_execute block | worktree created then block before cursor |
@@ -656,7 +658,7 @@ agent-lab/{session_slug}-{action_key}-{exec_id_short}
 | 상태 | Primary CTA |
 |------|-------------|
 | pending_approval (worktree) | Merge 승인 |
-| pending_approval (override) | cwd에 반영 (비격리) |
-| pending_apply (non-git) | 파일 반영 |
+| pending_approval (override) | 승인 (변경 유지) |
+| pending_approval (apply) | 파일 반영 |
 | merge_conflict | Conflict 해결 완료 |
 | blocked_isolation | 조건修復 후 재시도 |

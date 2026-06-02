@@ -610,6 +610,7 @@ export type PlanActionItem = {
   kind?: "now" | "roadmap" | "legacy";
   executable?: boolean;
   summary?: string;
+  isolation?: "auto" | "worktree" | "apply" | "block" | string;
   execute_workspace?: ExecuteWorkspace;
 };
 
@@ -728,6 +729,7 @@ export class PlanSnapshotRequiredError extends Error {
 export class PlanExecuteDryRunError extends Error {
   code: string;
   remediation?: string[];
+  executionId?: string;
 
   constructor(detail: Record<string, unknown>) {
     const message = String(
@@ -739,6 +741,8 @@ export class PlanExecuteDryRunError extends Error {
     this.remediation = Array.isArray(detail.remediation)
       ? (detail.remediation as string[])
       : undefined;
+    this.executionId =
+      typeof detail.execution_id === "string" ? detail.execution_id : undefined;
   }
 }
 
@@ -853,21 +857,15 @@ export function resolvePlanExecution(
   });
 }
 
-async function postPlanMergeAction(
-  sessionId: string,
-  action: "abort" | "confirm",
-  executionId: string,
+async function postJsonPlanExecute(
+  path: string,
+  payload: Record<string, unknown>,
 ) {
-  const res = await fetch(
-    apiUrl(
-      `/api/sessions/${encodeURIComponent(sessionId)}/execute/merge/${action}`,
-    ),
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ execution_id: executionId }),
-    },
-  );
+  const res = await fetch(apiUrl(path), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
   const text = await res.text();
   let body: Record<string, unknown> = {};
   try {
@@ -877,12 +875,23 @@ async function postPlanMergeAction(
   }
   if (!res.ok) {
     const detail =
-      (body.detail && typeof body.detail === "object"
+      body.detail && typeof body.detail === "object"
         ? (body.detail as Record<string, unknown>)
-        : { code: `merge_${action}_failed`, message: body.detail || text }) ??
-      {};
+        : { code: "plan_execute_failed", message: body.detail || text };
     throw new PlanExecuteDryRunError(detail);
   }
+  return body;
+}
+
+async function postPlanMergeAction(
+  sessionId: string,
+  action: "abort" | "confirm",
+  executionId: string,
+) {
+  const body = await postJsonPlanExecute(
+    `/api/sessions/${encodeURIComponent(sessionId)}/execute/merge/${action}`,
+    { execution_id: executionId },
+  );
   return body as {
     ok: boolean;
     execution: PlanExecutionRecord;
@@ -896,4 +905,24 @@ export function abortPlanExecutionMerge(sessionId: string, executionId: string) 
 
 export function confirmPlanExecutionMerge(sessionId: string, executionId: string) {
   return postPlanMergeAction(sessionId, "confirm", executionId);
+}
+
+export function overridePlanExecutionIsolation(
+  sessionId: string,
+  opts: {
+    executionId: string;
+    mode: "snapshot_override";
+    confirmation: string;
+    permissions?: Record<string, unknown>;
+  },
+) {
+  return postJsonPlanExecute(
+    `/api/sessions/${encodeURIComponent(sessionId)}/execute/isolation/override`,
+    {
+      execution_id: opts.executionId,
+      mode: opts.mode,
+      confirmation: opts.confirmation,
+      permissions: opts.permissions ?? {},
+    },
+  ) as Promise<{ ok: boolean; execution: PlanExecutionRecord }>;
 }

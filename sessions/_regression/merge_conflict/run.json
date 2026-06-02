@@ -1,0 +1,42 @@
+{
+  "workflow_id": "room.parallel",
+  "run_schema_version": 1,
+  "plan_format_version": 1,
+  "topic": "regression baseline: merge conflict",
+  "created_at": "2026-06-01T00:00:00+00:00",
+  "agents": ["cursor", "codex", "claude"],
+  "status": "active",
+  "message_count": 1,
+  "agent_parallel_rounds": 1,
+  "turns": [
+    {
+      "mode": "plan",
+      "synthesize": true,
+      "status": "completed"
+    }
+  ],
+  "actions": [],
+  "approvals": [],
+  "executions": [
+    {
+      "id": "exec-conflict",
+      "action_index": 1,
+      "action_kind": "now",
+      "status": "merge_conflict",
+      "isolation_effective": "worktree",
+      "git_root": "/tmp/agent-lab-fixture/repo",
+      "base_branch": "main",
+      "base_sha": "1111111111111111111111111111111111111111",
+      "exec_branch": "agent-lab/fixture-conflict",
+      "worktree_path": "/tmp/agent-lab-fixture/session/worktrees/exec-conflict",
+      "merge": {
+        "status": "conflict",
+        "strategy": "merge",
+        "commit_sha": null,
+        "conflict_files": ["src/app.py"],
+        "attempted_at": "2026-06-01T00:00:01+00:00",
+        "completed_at": "2026-06-01T00:00:02+00:00"
+      }
+    }
+  ]
+}

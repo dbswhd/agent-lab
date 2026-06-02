@@ -1,4 +1,4 @@
-.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test smoke smoke-e2e validate-quant verify-release score-session
+.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test check-worktrees smoke smoke-e2e validate-quant verify-release score-session
 
 install:
 	python3 -m venv .venv
@@ -39,8 +39,11 @@ prepare-bundled-runtime:
 tauri-build: prepare-bundled-runtime
 	cd web && npm run tauri build
 
-test:
+test: check-worktrees
 	.venv/bin/pytest tests/ -q
+
+check-worktrees:
+	.venv/bin/python scripts/check_worktree_orphans.py
 
 score-session:
 	@test -n "$(SESSION)" || (echo "Usage: make score-session SESSION=sessions/<id>" && exit 1)

@@ -279,7 +279,8 @@ VERIFY_RELEASE_SKIP_API=1 make verify-release
 | Piece | Behavior |
 |-------|----------|
 | **H1 Scribe input** | `synthesize_plan()` feeds per-agent diff summaries (`room_scribe_enrichment.py`), not full verbatim re-debate; fallback to trimmed numbered thread when no agent replies. Plan enrichment still adds `## 에이전트별 기여 (자동)` / `## 미해결 이의`. |
-| **H4 KPI** | `python scripts/score_session.py <session-folder>` — objection resolution, execute first-try, plan ref validity, duplicate speech (offline; exit 1 only on bad args). `--json` for machine output. |
+| **H4 KPI** | `python scripts/score_session.py <session-folder>` — objection resolution, execute first-try, merge/worktree KPIs, plan ref validity, duplicate speech (offline; exit 1 only on bad args). `--json` for machine output. |
+| **Execute worktree guard** | `python scripts/check_worktree_orphans.py` — fails CI on orphan or terminal execute worktree dirs; pending approval worktrees are allowed. |
 
 ```bash
 python scripts/score_session.py sessions/<session-id>

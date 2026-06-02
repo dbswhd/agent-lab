@@ -129,6 +129,11 @@ const LONG_RUN_HINT_MS = Number(
 
 type LiveMsg = ChatMessage & { typing?: boolean };
 
+type PartialTurnNotice = {
+  failedAgents: string[];
+  succeededAgents: string[];
+};
+
 type Props = {
   agents: AgentOption[];
   healthAgents?: AgentHealthRow[];
@@ -282,6 +287,19 @@ export function RoomChat({
   >({});
   const [agentCapsBusy, setAgentCapsBusy] = useState(false);
   const [agentCapsHint, setAgentCapsHint] = useState<string | null>(null);
+  const [partialTurnNotice, setPartialTurnNotice] =
+    useState<PartialTurnNotice | null>(null);
+
+  function parseAgentList(value: unknown): string[] {
+    return Array.isArray(value)
+      ? value.map((x) => String(x)).filter(Boolean)
+      : [];
+  }
+
+  function showPartialTurnNotice(failedAgents: string[], succeededAgents: string[]) {
+    if (failedAgents.length === 0) return;
+    setPartialTurnNotice({ failedAgents, succeededAgents });
+  }
 
   function setWorkspaceId(id: string, path?: string | null) {
     setWorkspaceIdState(id);
@@ -529,6 +547,7 @@ export function RoomChat({
     clearRunWatchdog();
     setTopologyDone(new Set());
     setTopologyActive(null);
+    setPartialTurnNotice(null);
 
     if (prev === sessionId) return;
 
@@ -569,7 +588,26 @@ export function RoomChat({
 
   useEffect(() => {
     setConsensusProposal(null);
+    setPartialTurnNotice(null);
   }, [sessionId]);
+
+  useEffect(() => {
+    const lastTurn = session?.run?.last_turn as
+      | {
+          status?: string;
+          failed_agents?: unknown;
+          succeeded_agents?: unknown;
+        }
+      | undefined;
+    if (lastTurn?.status === "partial") {
+      showPartialTurnNotice(
+        parseAgentList(lastTurn.failed_agents),
+        parseAgentList(lastTurn.succeeded_agents),
+      );
+    } else if (!running && !runBusy) {
+      setPartialTurnNotice(null);
+    }
+  }, [session?.run?.last_turn, running, runBusy]);
 
   useEffect(() => {
     if (running || runBusy) return;
@@ -725,6 +763,7 @@ export function RoomChat({
       scheduleLongRunHint();
       setRunLockStuck(false);
       setError(null);
+      setPartialTurnNotice(null);
       setClarifierQuestions(null);
       const userMsg = topicAsUserMessage(sendText);
       setMessages((m) => [...m, userMsg]);
@@ -921,10 +960,21 @@ export function RoomChat({
               },
             ]);
           }
+          if (t === "turn_partial") {
+            const failedAgents = parseAgentList(ev.failed_agents);
+            const succeededAgents = parseAgentList(ev.succeeded_agents);
+            showPartialTurnNotice(failedAgents, succeededAgents);
+          }
           if (t === "complete" && ev.session_id) {
             activeSessionId = String(ev.session_id);
             if (typeof ev.send_receipt === "string") {
               lastSendReceipt = ev.send_receipt;
+            }
+            if (ev.status === "partial") {
+              showPartialTurnNotice(
+                parseAgentList(ev.failed_agents),
+                parseAgentList(ev.succeeded_agents),
+              );
             }
           }
           if (t === "run_failed") {
@@ -1468,6 +1518,15 @@ export function RoomChat({
               onOpenPlan={openPlanTab}
               onDismiss={dismissConsensusProposal}
             />
+          ) : null}
+          {partialTurnNotice ? (
+            <div className="room-partial-banner" role="status">
+              <strong>일부 에이전트 실패</strong>
+              <span>나머지 응답은 저장됨</span>
+              <span className="room-partial-banner__agents">
+                실패: {partialTurnNotice.failedAgents.map(agentLabel).join(", ")}
+              </span>
+            </div>
           ) : null}
         <div className="messages-scroll" ref={scrollRef}>
           {loading && !isNew ? (

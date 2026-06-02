@@ -223,6 +223,20 @@ Room turns use Codex CLI in a **read-only** workspace sandbox by default (debate
 
 **os error 2** (missing file/path) is mapped to a Korean hint in API/UI responses; check workspace binding and sandbox before enabling writes.
 
+## Room CLI retry and partial turns
+
+Claude/Codex subscription CLI calls share the same transient retry policy for Room use.
+
+| Variable | Effect |
+|----------|--------|
+| `AGENT_LAB_CLI_RETRY_MAX` | Max attempts for retryable CLI failures (default `3`). |
+| `AGENT_LAB_CLI_RETRY_BASE_SEC` | Exponential backoff base delay in seconds (default `2`). |
+| `AGENT_LAB_CLI_RETRY_ROOM_ONLY=1` | Apply CLI retry only to room turns; non-room calls attempt once. |
+
+Retryable: `429`, rate limit, timeout/timed out, connection refused, temporarily unavailable, overloaded, exit 52. Non-retryable: auth/credit balance, invalid API key, permission denied, empty output.
+
+General discuss/plan turns now store `status: partial` when at least one agent succeeds and at least one agent fails. Successful replies remain in chat and can feed the scribe. If all agents fail the turn is `failed`; cancelled runs remain `cancelled`. Consensus ENDORSE loops stay strict: an agent failure stops consensus instead of counting as partial agreement.
+
 ## Phase 3 — CI, regression pyramid, release
 
 ### Regression test pyramid (mock-only in CI)

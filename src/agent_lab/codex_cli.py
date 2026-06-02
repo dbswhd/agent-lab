@@ -21,6 +21,7 @@ from agent_lab.agent_models import (  # noqa: E402
     DEFAULT_CODEX_ROOM_MAX_COMMANDS,
     DEFAULT_CODEX_ROOM_REASONING_EFFORT,
 )
+from agent_lab.cli_retry import retry_base_delay_sec, retry_call, retry_max_attempts
 
 _ROOM_TURN_SUFFIX = """\
 [Room turn — latency + peer debate]
@@ -465,7 +466,8 @@ def invoke(
     timeout = _timeout_sec(room_turn=room_turn)
     max_commands = _room_max_commands() if room_turn else 0
 
-    try:
+    def _run_once() -> str:
+        Path(out_path).unlink(missing_ok=True)
         outcome = _run_codex(
             cmd,
             prompt,
@@ -484,6 +486,18 @@ def invoke(
                 "no final message; narrow scope or retry.]"
             )
         raise RuntimeError("codex exec returned empty output")
+
+    def _on_retry(attempt: int, max_attempts: int, _reason: str) -> None:
+        if on_activity:
+            on_activity(f"재시도 {attempt}/{max_attempts} — Codex CLI 일시 오류")
+
+    try:
+        return retry_call(
+            _run_once,
+            max_attempts=retry_max_attempts(room_turn=room_turn),
+            base_delay_sec=retry_base_delay_sec(),
+            on_retry_label=_on_retry,
+        )
     finally:
         Path(out_path).unlink(missing_ok=True)
 

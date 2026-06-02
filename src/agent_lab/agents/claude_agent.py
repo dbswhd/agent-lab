@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from typing import Any
 
 from agent_lab import claude_cli
@@ -14,6 +15,7 @@ def respond(
     *,
     permissions: dict[str, Any] | None = None,
     scribe: bool = False,
+    on_activity: Callable[[str], None] | None = None,
 ) -> str:
     parts = [system or CLAUDE_ROOM]
     handoff = claude_handoff_block()
@@ -26,4 +28,5 @@ def respond(
         user,
         permissions=permissions,
         scribe=scribe,
+        on_activity=on_activity,
     )

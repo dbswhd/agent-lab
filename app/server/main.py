@@ -77,11 +77,13 @@ from agent_lab.context_limits import efficiency_mode_default  # noqa: E402
 from agent_lab.session import SESSIONS_DIR, session_dir  # noqa: E402
 from agent_lab.runner import provider_override, run_topic_with_progress  # noqa: E402
 from agent_lab.plan_execute import (  # noqa: E402
+    abort_merge_execution,
+    confirm_merge_execution,
     list_plan_actions,
     resolve_execution,
     run_dry_run,
 )
-from agent_lab.plan_execute_worktree import WorktreeUnavailable  # noqa: E402
+from agent_lab.plan_execute_worktree import WorktreeUnavailable, gc_stale_worktrees  # noqa: E402
 from agent_lab.plan_pending import (  # noqa: E402
     PlanSnapshotRequired,
     approve_pending_plan,
@@ -185,6 +187,10 @@ class PlanExecuteResolveRequest(BaseModel):
     execution_id: str = Field(..., min_length=1)
     vote: str = Field(..., min_length=1)
     permissions: dict[str, Any] = Field(default_factory=dict)
+
+
+class PlanExecuteMergeRequest(BaseModel):
+    execution_id: str = Field(..., min_length=1)
 
 
 class ContextPreviewRequest(BaseModel):
@@ -296,6 +302,7 @@ def _session_detail(session_id: str) -> dict[str, Any]:
     run_json: dict[str, Any] = {}
     if (folder / "run.json").is_file():
         run_json = json.loads((folder / "run.json").read_text(encoding="utf-8"))
+        gc_stale_worktrees(folder, run_json)
 
     return {
         "id": session_id,
@@ -754,6 +761,42 @@ def session_execute_resolve(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
+    return {"ok": True, **result}
+
+
+@app.post("/api/sessions/{session_id}/execute/merge/abort")
+def session_execute_merge_abort(
+    session_id: str,
+    body: PlanExecuteMergeRequest,
+) -> dict[str, Any]:
+    folder = SESSIONS_DIR / session_id
+    if not folder.is_dir():
+        raise HTTPException(status_code=404, detail="session not found")
+    try:
+        result = abort_merge_execution(
+            folder,
+            execution_id=body.execution_id.strip(),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    return {"ok": True, **result}
+
+
+@app.post("/api/sessions/{session_id}/execute/merge/confirm")
+def session_execute_merge_confirm(
+    session_id: str,
+    body: PlanExecuteMergeRequest,
+) -> dict[str, Any]:
+    folder = SESSIONS_DIR / session_id
+    if not folder.is_dir():
+        raise HTTPException(status_code=404, detail="session not found")
+    try:
+        result = confirm_merge_execution(
+            folder,
+            execution_id=body.execution_id.strip(),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
     return {"ok": True, **result}
 
 

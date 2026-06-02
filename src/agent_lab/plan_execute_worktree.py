@@ -122,3 +122,102 @@ def discard_exec_worktree(ew: ExecWorktree, session_folder: Path, exec_id: str) 
         branch=ew.branch,
         worktree_path=ew.worktree_path,
     )
+
+
+def _execution_worktree(row: dict[str, Any]) -> ExecWorktree | None:
+    required = ("git_root", "worktree_path", "exec_branch", "base_branch", "base_sha")
+    if not all(row.get(key) for key in required):
+        return None
+    return ExecWorktree(
+        git_root=Path(str(row["git_root"])),
+        worktree_path=Path(str(row["worktree_path"])),
+        branch=str(row["exec_branch"]),
+        base_branch=str(row["base_branch"]),
+        base_sha=str(row["base_sha"]),
+    )
+
+
+def _git_root_from_worktree_path(path: Path) -> Path | None:
+    if not path.is_dir():
+        return None
+    try:
+        common = _run_git(path, "rev-parse", "--git-common-dir").stdout.strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+    if not common:
+        return None
+    p = Path(common)
+    if not p.is_absolute():
+        p = (path / p).resolve()
+    if p.name == ".git":
+        return p.parent.resolve()
+    return None
+
+
+def _remove_unknown_worktree(path: Path, *, prune_roots: set[Path]) -> None:
+    root = _git_root_from_worktree_path(path)
+    if root is not None:
+        prune_roots.add(root)
+        _run_git(root, "worktree", "remove", "--force", str(path.resolve()), check=False)
+    if path.exists():
+        shutil.rmtree(path, ignore_errors=True)
+
+
+def list_orphan_worktrees(
+    session_folder: Path,
+    run_meta: dict[str, Any],
+) -> list[Path]:
+    """Return session worktree dirs no longer referenced by run.json executions."""
+    root = session_folder / "worktrees"
+    if not root.is_dir():
+        return []
+    known = {
+        str(row.get("id"))
+        for row in run_meta.get("executions") or []
+        if isinstance(row, dict) and row.get("id")
+    }
+    return sorted(path for path in root.iterdir() if path.is_dir() and path.name not in known)
+
+
+def gc_stale_worktrees(session_folder: Path, run_meta: dict[str, Any]) -> list[str]:
+    """Remove terminal and orphan session worktrees; keep pending approval worktrees."""
+    removed: list[str] = []
+    prune_roots: set[Path] = set()
+    terminal = {"merged", "rejected"}
+
+    for row in run_meta.get("executions") or []:
+        if not isinstance(row, dict):
+            continue
+        if row.get("status") not in terminal:
+            continue
+        exec_id = str(row.get("id") or "")
+        if not exec_id:
+            continue
+        wt = Path(str(row.get("worktree_path") or worktree_dir(session_folder, exec_id)))
+        if not wt.exists():
+            continue
+        ew = _execution_worktree(row)
+        if ew is not None:
+            remove_exec_worktree(
+                session_folder,
+                exec_id=exec_id,
+                git_root=ew.git_root,
+                branch=ew.branch,
+                worktree_path=wt,
+            )
+            prune_roots.add(ew.git_root.resolve())
+        else:
+            _remove_unknown_worktree(wt, prune_roots=prune_roots)
+        removed.append(str(wt))
+
+    for wt in list_orphan_worktrees(session_folder, run_meta):
+        _remove_unknown_worktree(wt, prune_roots=prune_roots)
+        removed.append(str(wt))
+
+    for root in prune_roots:
+        _run_git(root, "worktree", "prune", check=False)
+
+    worktrees_root = session_folder / "worktrees"
+    if worktrees_root.is_dir() and not any(worktrees_root.iterdir()):
+        worktrees_root.rmdir()
+    return removed

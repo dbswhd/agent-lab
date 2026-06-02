@@ -64,7 +64,6 @@ def merge_exec_branch(
             _run_git(root, "merge", "--no-ff", ew.branch, "-m", msg)
         except subprocess.CalledProcessError:
             conflict_files = _list_conflicts(root)
-            _run_git(root, "merge", "--abort", check=False)
             raise MergeConflict("merge conflict", conflict_files=conflict_files)
 
     sha = _run_git(root, "rev-parse", "HEAD").stdout.strip()
@@ -81,3 +80,50 @@ def merge_exec_branch(
 def _list_conflicts(git_root: Path) -> list[str]:
     r = _run_git(git_root, "diff", "--name-only", "--diff-filter=U", check=False)
     return [ln.strip() for ln in (r.stdout or "").splitlines() if ln.strip()]
+
+
+def abort_exec_merge(
+    ew: ExecWorktree,
+    *,
+    session_folder: Path,
+    exec_id: str,
+) -> MergeResult:
+    """Abort an in-progress merge and discard the exec worktree."""
+    root = ew.git_root.resolve()
+    _run_git(root, "merge", "--abort", check=False)
+    remove_exec_worktree(
+        session_folder,
+        exec_id=exec_id,
+        git_root=ew.git_root,
+        branch=ew.branch,
+        worktree_path=ew.worktree_path,
+    )
+    return MergeResult(status="conflict", commit_sha=None, conflict_files=[])
+
+
+def confirm_exec_merge(
+    ew: ExecWorktree,
+    *,
+    session_folder: Path,
+    exec_id: str,
+) -> MergeResult:
+    """Confirm Human-resolved merge; base must be clean and no conflicts remain."""
+    root = ew.git_root.resolve()
+    conflicts = _list_conflicts(root)
+    if conflicts:
+        raise ValueError(f"merge conflicts remain: {', '.join(conflicts)}")
+    diff_check = _run_git(root, "diff", "--check", check=False)
+    if diff_check.returncode != 0:
+        detail = (diff_check.stdout or diff_check.stderr or "git diff --check failed").strip()
+        raise ValueError(detail)
+    if not is_working_tree_clean(root):
+        raise ValueError("base branch must be clean after conflict resolution commit")
+    sha = _run_git(root, "rev-parse", "HEAD").stdout.strip()
+    remove_exec_worktree(
+        session_folder,
+        exec_id=exec_id,
+        git_root=ew.git_root,
+        branch=ew.branch,
+        worktree_path=ew.worktree_path,
+    )
+    return MergeResult(status="merged", commit_sha=sha, conflict_files=[])

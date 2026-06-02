@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  abortPlanExecutionMerge,
   approvePendingPlan,
+  confirmPlanExecutionMerge,
   fetchPlanActions,
   PlanSnapshotRequiredError,
   rejectPendingPlan,
@@ -389,6 +391,40 @@ export function PlanExecutePanel({
     }
   }
 
+  async function handleMergeAbort() {
+    if (!activePending?.id) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await abortPlanExecutionMerge(sessionId, activePending.id);
+      setPending(null);
+      setSelectedKey(null);
+      onUpdated();
+      await refreshActions();
+    } catch (e) {
+      setError(formatPlanExecuteError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleMergeConfirm() {
+    if (!activePending?.id) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await confirmPlanExecutionMerge(sessionId, activePending.id);
+      setPending(null);
+      setSelectedKey(null);
+      onUpdated();
+      await refreshActions();
+    } catch (e) {
+      setError(formatPlanExecuteError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const executableItems = useMemo(() => {
     const items = [
       ...(recommended ? [recommended] : []),
@@ -739,25 +775,46 @@ export function PlanExecutePanel({
             </details>
           ) : null}
           <div className="plan-execute-pending__actions">
-            <button
-              type="button"
-              className="room-plan-btn room-plan-btn--accent"
-              disabled={disabled || busy || approvalGate.blocked}
-              title={approvalGate.reason ?? undefined}
-              onClick={() => void handleResolve("approve")}
-            >
-              {activePending.status === "merge_conflict"
-                ? "다시 Merge 시도"
-                : executionApproveLabel(activePending)}
-            </button>
-            <button
-              type="button"
-              className="room-plan-btn"
-              disabled={disabled || busy}
-              onClick={() => void handleResolve("reject")}
-            >
-              {executionRejectLabel(activePending)}
-            </button>
+            {activePending.status === "merge_conflict" ? (
+              <>
+                <button
+                  type="button"
+                  className="room-plan-btn room-plan-btn--accent"
+                  disabled={disabled || busy}
+                  onClick={() => void handleMergeConfirm()}
+                >
+                  Conflict 해결 완료
+                </button>
+                <button
+                  type="button"
+                  className="room-plan-btn"
+                  disabled={disabled || busy}
+                  onClick={() => void handleMergeAbort()}
+                >
+                  Merge 취소
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="room-plan-btn room-plan-btn--accent"
+                  disabled={disabled || busy || approvalGate.blocked}
+                  title={approvalGate.reason ?? undefined}
+                  onClick={() => void handleResolve("approve")}
+                >
+                  {executionApproveLabel(activePending)}
+                </button>
+                <button
+                  type="button"
+                  className="room-plan-btn"
+                  disabled={disabled || busy}
+                  onClick={() => void handleResolve("reject")}
+                >
+                  {executionRejectLabel(activePending)}
+                </button>
+              </>
+            )}
           </div>
         </div>
       ) : null}

@@ -852,3 +852,48 @@ export function resolvePlanExecution(
     }),
   });
 }
+
+async function postPlanMergeAction(
+  sessionId: string,
+  action: "abort" | "confirm",
+  executionId: string,
+) {
+  const res = await fetch(
+    apiUrl(
+      `/api/sessions/${encodeURIComponent(sessionId)}/execute/merge/${action}`,
+    ),
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ execution_id: executionId }),
+    },
+  );
+  const text = await res.text();
+  let body: Record<string, unknown> = {};
+  try {
+    body = text ? (JSON.parse(text) as Record<string, unknown>) : {};
+  } catch {
+    /* plain */
+  }
+  if (!res.ok) {
+    const detail =
+      (body.detail && typeof body.detail === "object"
+        ? (body.detail as Record<string, unknown>)
+        : { code: `merge_${action}_failed`, message: body.detail || text }) ??
+      {};
+    throw new PlanExecuteDryRunError(detail);
+  }
+  return body as {
+    ok: boolean;
+    execution: PlanExecutionRecord;
+    plan_advance?: Record<string, unknown>;
+  };
+}
+
+export function abortPlanExecutionMerge(sessionId: string, executionId: string) {
+  return postPlanMergeAction(sessionId, "abort", executionId);
+}
+
+export function confirmPlanExecutionMerge(sessionId: string, executionId: string) {
+  return postPlanMergeAction(sessionId, "confirm", executionId);
+}

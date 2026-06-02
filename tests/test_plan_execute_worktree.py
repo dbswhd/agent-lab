@@ -9,7 +9,12 @@ from pathlib import Path
 import pytest
 
 from agent_lab.plan_actions import find_dry_run_action
-from agent_lab.plan_execute import resolve_execution, run_dry_run
+from agent_lab.plan_execute import (
+    abort_merge_execution,
+    confirm_merge_execution,
+    resolve_execution,
+    run_dry_run,
+)
 from agent_lab.plan_pending import (
     PlanSnapshotRequired,
     approve_pending_plan,
@@ -21,10 +26,12 @@ from agent_lab.plan_execute_git import (
     resolve_action_git_context,
 )
 from agent_lab.plan_execute_merge import MergeConflict, merge_exec_branch
+from agent_lab.plan_execute_snapshot import snapshot_dir_for
 from agent_lab.plan_execute_worktree import (
     WorktreeUnavailable,
     create_exec_worktree,
     discard_exec_worktree,
+    gc_stale_worktrees,
 )
 
 
@@ -142,6 +149,93 @@ def test_worktree_merge_ok(git_repo: Path, session_folder: Path):
     assert _git(git_repo, "branch", "--list", "agent-lab/*", check=False) == ""
 
 
+def _make_conflicted_execution(git_repo: Path, session_folder: Path):
+    exec_id = "exec-conflict1"
+    ew = create_exec_worktree(
+        session_folder,
+        exec_id=exec_id,
+        git_root=git_repo,
+        action_key="now:1",
+        session_id="sess-test",
+    )
+    (ew.worktree_path / "src" / "app.py").write_text("branch\n", encoding="utf-8")
+    _commit_all(ew.worktree_path, "branch edit")
+
+    (git_repo / "src" / "app.py").write_text("main\n", encoding="utf-8")
+    _commit_all(git_repo, "main edit")
+
+    with pytest.raises(MergeConflict) as exc:
+        merge_exec_branch(
+            ew,
+            session_folder=session_folder,
+            exec_id=exec_id,
+            message="agent-lab: conflict test",
+        )
+    assert exc.value.conflict_files == ["src/app.py"]
+
+    snapshot_dir_for(session_folder, exec_id).mkdir(parents=True)
+    target = {
+        "id": exec_id,
+        "status": "merge_conflict",
+        "isolation_effective": "worktree",
+        "snapshot_id": exec_id,
+        "action_index": 1,
+        "action_kind": "now",
+        "action_id": "plan-action-now-1",
+        "paths_outside_expected": [],
+        "merge": {
+            "status": "conflict",
+            "conflict_files": ["src/app.py"],
+            "commit_sha": None,
+        },
+        **ew.to_dict(),
+    }
+    (session_folder / "run.json").write_text(
+        json.dumps({"executions": [target]}, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    return ew, target
+
+
+def test_merge_abort_discards_worktree_and_rejects(
+    git_repo: Path,
+    session_folder: Path,
+):
+    ew, target = _make_conflicted_execution(git_repo, session_folder)
+
+    result = abort_merge_execution(session_folder, execution_id=target["id"])
+
+    assert result["execution"]["status"] == "rejected"
+    assert result["execution"]["merge"]["status"] == "aborted"
+    assert _git(git_repo, "status", "--porcelain") == ""
+    assert (git_repo / "src" / "app.py").read_text(encoding="utf-8") == "main\n"
+    assert not ew.worktree_path.exists()
+    assert _git(git_repo, "branch", "--list", ew.branch, check=False) == ""
+    assert not snapshot_dir_for(session_folder, target["id"]).exists()
+
+
+def test_merge_confirm_after_human_resolution_cleans_worktree(
+    git_repo: Path,
+    session_folder: Path,
+):
+    ew, target = _make_conflicted_execution(git_repo, session_folder)
+    (git_repo / "src" / "app.py").write_text("resolved\n", encoding="utf-8")
+    _git(git_repo, "add", "src/app.py")
+    _git(git_repo, "commit", "-m", "resolve conflict")
+    head = _git(git_repo, "rev-parse", "HEAD")
+
+    result = confirm_merge_execution(session_folder, execution_id=target["id"])
+
+    assert result["execution"]["status"] == "merged"
+    assert result["execution"]["merge"]["status"] == "merged"
+    assert result["execution"]["merge"]["commit_sha"] == head
+    assert _git(git_repo, "status", "--porcelain") == ""
+    assert (git_repo / "src" / "app.py").read_text(encoding="utf-8") == "resolved\n"
+    assert not ew.worktree_path.exists()
+    assert _git(git_repo, "branch", "--list", ew.branch, check=False) == ""
+    assert not snapshot_dir_for(session_folder, target["id"]).exists()
+
+
 def test_worktree_reject_main_unchanged(git_repo: Path, session_folder: Path):
     exec_id = "exec-reject1"
     before = (git_repo / "src" / "app.py").read_text(encoding="utf-8")
@@ -159,6 +253,36 @@ def test_worktree_reject_main_unchanged(git_repo: Path, session_folder: Path):
 
     assert (git_repo / "src" / "app.py").read_text(encoding="utf-8") == before
     assert not ew.worktree_path.exists()
+
+
+def test_gc_stale_worktrees_removes_terminal_and_orphans(session_folder: Path):
+    root = session_folder / "worktrees"
+    pending = root / "exec-pending"
+    merged = root / "exec-merged"
+    rejected = root / "exec-rejected"
+    orphan = root / "exec-orphan"
+    for path in (pending, merged, rejected, orphan):
+        path.mkdir(parents=True)
+        (path / "marker.txt").write_text("x\n", encoding="utf-8")
+
+    removed = gc_stale_worktrees(
+        session_folder,
+        {
+            "executions": [
+                {"id": "exec-pending", "status": "pending_approval"},
+                {"id": "exec-merged", "status": "merged"},
+                {"id": "exec-rejected", "status": "rejected"},
+            ]
+        },
+    )
+
+    assert pending.is_dir()
+    assert not merged.exists()
+    assert not rejected.exists()
+    assert not orphan.exists()
+    assert str(merged) in removed
+    assert str(rejected) in removed
+    assert str(orphan) in removed
 
 
 def test_worktree_blocked_dirty_main(git_repo: Path, session_folder: Path):

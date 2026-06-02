@@ -7,6 +7,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +15,7 @@ from agent_lab.agent_models import (  # noqa: E402
     DEFAULT_CLAUDE_MODEL,
     DEFAULT_CLAUDE_REASONING_EFFORT,
 )
+from agent_lab.cli_retry import retry_base_delay_sec, retry_call, retry_max_attempts
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -154,6 +156,7 @@ def invoke(
     permissions: dict | None = None,
     scribe: bool = False,
     room_turn: bool = True,
+    on_activity: Callable[[str], None] | None = None,
 ) -> str:
     from agent_lab.agent_permissions import normalize_claude_permissions
 
@@ -222,7 +225,7 @@ def invoke(
     cmd.append(user.strip())
 
     Path(system_path).write_text(system.strip() + "\n", encoding="utf-8")
-    try:
+    def _run_once() -> str:
         result = subprocess.run(
             cmd,
             stdin=subprocess.DEVNULL,
@@ -248,6 +251,18 @@ def invoke(
         if not text:
             raise RuntimeError("claude -p returned empty output")
         return text
+
+    def _on_retry(attempt: int, max_attempts: int, _reason: str) -> None:
+        if on_activity:
+            on_activity(f"재시도 {attempt}/{max_attempts} — Claude CLI 일시 오류")
+
+    try:
+        return retry_call(
+            _run_once,
+            max_attempts=retry_max_attempts(room_turn=room_turn),
+            base_delay_sec=retry_base_delay_sec(),
+            on_retry_label=_on_retry,
+        )
     finally:
         Path(system_path).unlink(missing_ok=True)
 

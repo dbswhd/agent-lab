@@ -110,5 +110,11 @@ def call_agent(
             system, user, permissions=permissions, on_activity=on_activity
         )
     if agent == "claude":
-        return claude_agent.respond(system, user, permissions=permissions, scribe=scribe)
+        return claude_agent.respond(
+            system,
+            user,
+            permissions=permissions,
+            scribe=scribe,
+            on_activity=on_activity,
+        )
     return _CALLERS[agent](system, user)

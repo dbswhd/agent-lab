@@ -1,1 +1,0 @@
-Agent Lab Codex 연동 스모크 테스트

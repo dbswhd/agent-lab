@@ -1,1 +1,0 @@
-envelope 스모크: TypeScript vs JavaScript 중 하나만 고르고 한 줄 근거만. 120자 이내. consensus R2+에는 agent-envelope fence 사용.

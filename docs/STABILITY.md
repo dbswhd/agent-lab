@@ -37,6 +37,8 @@ Applied in this order (explicit `os.environ` values win and are not overwritten)
 
 **Sessions directory intent:** one shared folder for Tauri dev, Tauri release, and CLI. Set explicitly with `AGENT_LAB_SESSIONS_DIR` or `paths.sessions` in config.toml; otherwise derived from `paths.agent_lab` or repo defaults.
 
+**Git:** Live runs under `sessions/*` are gitignored; only `sessions/_regression/` fixtures are tracked. Turn-state envelope sample lives in `tests/fixtures/`.
+
 Template: see `.env.example` (absolute path section).
 
 ## Plan / execute after scribe

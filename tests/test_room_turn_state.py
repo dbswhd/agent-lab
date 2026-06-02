@@ -30,10 +30,7 @@ def test_envelope_guidance_warns_invalid_fence():
 
 
 def test_derive_turn_state_from_smoke_session():
-    chat = (
-        Path(__file__).resolve().parents[1]
-        / "sessions/2026-05-30-envelope-스모크-typescript-vs-javascript-중-하나만-고르고/chat.jsonl"
-    )
+    chat = Path(__file__).resolve().parent / "fixtures" / "envelope_turn_state_chat.jsonl"
     if not chat.is_file():
         return
     rows = [json.loads(ln) for ln in chat.read_text(encoding="utf-8").splitlines() if ln.strip()]

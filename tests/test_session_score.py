@@ -77,6 +77,56 @@ def test_execute_first_try_rate(tmp_path: Path):
     assert report["counts"]["executions"]["retried"] == 1
 
 
+def test_execute_merge_kpis(tmp_path: Path):
+    folder = tmp_path / "sess-merge"
+    _write_session(
+        folder,
+        run={
+            "executions": [
+                {
+                    "id": "e1",
+                    "action_index": 1,
+                    "status": "merged",
+                    "isolation_effective": "worktree",
+                    "git_root": "/repo",
+                    "merge": {"status": "merged", "commit_sha": "abc"},
+                },
+                {
+                    "id": "e2",
+                    "action_index": 2,
+                    "status": "merge_conflict",
+                    "isolation_effective": "worktree",
+                    "git_root": "/repo",
+                    "merge": {"status": "conflict", "conflict_files": ["x.py"]},
+                },
+                {
+                    "id": "e3",
+                    "action_index": 3,
+                    "status": "pending_approval",
+                    "isolation_effective": "snapshot_override",
+                    "git_root": "/repo",
+                },
+                {
+                    "id": "e4",
+                    "action_index": 4,
+                    "status": "completed",
+                    "isolation_effective": "apply",
+                },
+            ]
+        },
+        chat_lines=[{"role": "user", "content": "go"}],
+        plan_md="## 합의\n",
+    )
+    report = score_session(folder)
+
+    assert report["scores"]["worktree_usage_rate"] == 2 / 3
+    assert report["scores"]["snapshot_override_rate"] == 1 / 4
+    assert report["scores"]["merge_first_success_rate"] == 1 / 2
+    assert report["scores"]["merge_conflict_rate"] == 1 / 2
+    assert report["counts"]["execute_merge"]["worktree"] == 2
+    assert any("merge first-success" in line for line in report["summary_lines"])
+
+
 def test_ref_validity_and_duplicate_speech(tmp_path: Path):
     folder = tmp_path / "sess-mix"
     _write_session(

@@ -5,6 +5,8 @@ import {
   confirmPlanExecutionMerge,
   fetchPlanActions,
   PlanSnapshotRequiredError,
+  PlanExecuteDryRunError,
+  overridePlanExecutionIsolation,
   rejectPendingPlan,
   resolvePlanExecution,
   runPlanDryRun,
@@ -189,6 +191,22 @@ function WorktreePendingBanner({ row }: { row: PlanExecutionRecord }) {
   );
 }
 
+function ApplyIsolationBanner({ row }: { row: PlanExecutionRecord }) {
+  if (row.isolation_effective !== "apply" && row.isolation_effective !== "snapshot_override") {
+    return null;
+  }
+  return (
+    <div className="plan-execute-apply-banner" role="status">
+      <strong>
+        {row.isolation_effective === "snapshot_override"
+          ? "비격리 snapshot override"
+          : "Apply 실행"}
+      </strong>
+      <span>git merge 없음 · 승인 시 현재 작업 폴더 변경을 유지합니다.</span>
+    </div>
+  );
+}
+
 function actionKey(item: Pick<PlanActionItem, "kind" | "index" | "recommended">): string {
   const kind = item.kind ?? (item.recommended ? "now" : "roadmap");
   return `${kind}:${item.index}`;
@@ -224,6 +242,9 @@ export function PlanExecutePanel({
   );
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [pending, setPending] = useState<PlanExecutionRecord | null>(null);
+  const [isolationBlock, setIsolationBlock] = useState<PlanExecuteDryRunError | null>(
+    null,
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -310,6 +331,7 @@ export function PlanExecutePanel({
   useEffect(() => {
     setPending(null);
     setPlanSnapshot(null);
+    setIsolationBlock(null);
   }, [sessionId]);
 
   async function handleDryRun() {
@@ -318,6 +340,7 @@ export function PlanExecutePanel({
     if (!parsed) return;
     setBusy(true);
     setError(null);
+    setIsolationBlock(null);
     const permissions = executePermissions();
     try {
       const res = await runPlanDryRun(sessionId, {
@@ -331,6 +354,12 @@ export function PlanExecutePanel({
     } catch (e) {
       if (e instanceof PlanSnapshotRequiredError) {
         setPlanSnapshot(e.pendingPlan);
+        setError(null);
+      } else if (
+        e instanceof PlanExecuteDryRunError &&
+        ["worktree_unavailable", "base_branch_dirty", "paths_span_repos"].includes(e.code)
+      ) {
+        setIsolationBlock(e);
         setError(null);
       } else {
         setError(formatPlanExecuteError(e));
@@ -418,6 +447,30 @@ export function PlanExecutePanel({
       setSelectedKey(null);
       onUpdated();
       await refreshActions();
+    } catch (e) {
+      setError(formatPlanExecuteError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleIsolationOverride() {
+    if (!isolationBlock?.executionId) {
+      setError("blocked execution id가 없어 override를 실행할 수 없습니다.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await overridePlanExecutionIsolation(sessionId, {
+        executionId: isolationBlock.executionId,
+        mode: "snapshot_override",
+        confirmation: "snapshot_override 비격리 실행",
+        permissions: executePermissions(),
+      });
+      setPending(res.execution);
+      setIsolationBlock(null);
+      onUpdated();
     } catch (e) {
       setError(formatPlanExecuteError(e));
     } finally {
@@ -624,6 +677,51 @@ export function PlanExecutePanel({
         </div>
       ) : null}
 
+      {isolationBlock ? (
+        <div className="plan-execute-isolation-modal" role="alertdialog">
+          <p className="plan-execute-isolation-modal__title">
+            격리 worktree를 만들 수 없습니다
+          </p>
+          <p className="plan-execute-isolation-modal__reason">
+            {isolationBlock.code}: {isolationBlock.message}
+          </p>
+          {isolationBlock.remediation?.length ? (
+            <p className="plan-execute-isolation-modal__hint">
+              {isolationBlock.remediation.join(" · ")}
+            </p>
+          ) : null}
+          <div className="plan-execute-isolation-modal__actions">
+            <button
+              type="button"
+              className="room-plan-btn room-plan-btn--accent"
+              disabled={disabled || busy}
+              onClick={() => {
+                setIsolationBlock(null);
+                void handleDryRun();
+              }}
+            >
+              修復 후 재시도
+            </button>
+            <button
+              type="button"
+              className="room-plan-btn"
+              disabled={disabled || busy || !isolationBlock.executionId}
+              onClick={() => void handleIsolationOverride()}
+            >
+              이번만 비격리 실행…
+            </button>
+            <button
+              type="button"
+              className="room-plan-btn"
+              disabled={busy}
+              onClick={() => setIsolationBlock(null)}
+            >
+              취소
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {!activePending && hasDryRun && !planSnapshot ? (
         <div className="plan-execute-panel__run-row">
           {executeWorkspace?.label ? (
@@ -645,6 +743,7 @@ export function PlanExecutePanel({
       {activePending ? (
         <div className="plan-execute-pending" role="region" aria-label="승인 대기">
           <WorktreePendingBanner row={activePending} />
+          <ApplyIsolationBanner row={activePending} />
           <PlanLinkedTaskLine task={linkedForPending} onFocusTask={onFocusTask} />
           {activePending.pre_verify?.blocked ||
           (activePending.pre_verify?.feedback &&

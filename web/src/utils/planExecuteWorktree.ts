@@ -28,6 +28,7 @@ export function executionApproveLabel(
   row: PlanExecutionRecord | null | undefined,
 ): string {
   if (isWorktreeExecution(row)) return "Merge 승인";
+  if (row?.isolation_effective === "apply") return "파일 반영";
   return "승인 (변경 유지)";
 }
 
@@ -35,6 +36,7 @@ export function executionRejectLabel(
   row: PlanExecutionRecord | null | undefined,
 ): string {
   if (isWorktreeExecution(row)) return "Merge 거부 (worktree 폐기)";
+  if (row?.isolation_effective === "apply") return "거부 (되돌리기)";
   return "거부 (되돌리기)";
 }
 

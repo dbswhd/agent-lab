@@ -82,6 +82,7 @@ from agent_lab.plan_execute import (  # noqa: E402
     list_plan_actions,
     resolve_execution,
     run_dry_run,
+    run_isolation_override,
 )
 from agent_lab.plan_execute_worktree import WorktreeUnavailable, gc_stale_worktrees  # noqa: E402
 from agent_lab.plan_pending import (  # noqa: E402
@@ -191,6 +192,13 @@ class PlanExecuteResolveRequest(BaseModel):
 
 class PlanExecuteMergeRequest(BaseModel):
     execution_id: str = Field(..., min_length=1)
+
+
+class PlanExecuteIsolationOverrideRequest(BaseModel):
+    execution_id: str = Field(..., min_length=1)
+    mode: str = Field(..., min_length=1)
+    confirmation: str = Field(..., min_length=1)
+    permissions: dict[str, Any] = Field(default_factory=dict)
 
 
 class ContextPreviewRequest(BaseModel):
@@ -714,6 +722,7 @@ def session_execute_dry_run(
             detail={
                 "code": e.reason,
                 "message": str(e),
+                "execution_id": e.execution_id,
                 "remediation": ["fix_git_worktree_and_retry"],
             },
         ) from e
@@ -741,6 +750,29 @@ def session_execute_dry_run(
                 "pre_verify": e.pre_verify,
             },
         ) from e
+    return {"ok": True, "execution": execution}
+
+
+@app.post("/api/sessions/{session_id}/execute/isolation/override")
+def session_execute_isolation_override(
+    session_id: str,
+    body: PlanExecuteIsolationOverrideRequest,
+) -> dict[str, Any]:
+    folder = SESSIONS_DIR / session_id
+    if not folder.is_dir():
+        raise HTTPException(status_code=404, detail="session not found")
+    try:
+        execution = run_isolation_override(
+            folder,
+            execution_id=body.execution_id.strip(),
+            mode=body.mode,
+            confirmation=body.confirmation,
+            permissions=body.permissions,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
     return {"ok": True, "execution": execution}
 
 

@@ -237,6 +237,12 @@ def build_scribe_enrichment(
     messages: list[Any],
 ) -> str:
     parts: list[str] = []
+    parts.append(
+        "[Scribe · isolation hint]\n"
+        "For each executable 3-field action, keep `where` paths under one git root. "
+        "If paths span repos, mark it gated or add `- isolation: block`; "
+        "for non-git file work, add `- isolation: apply`."
+    )
     blocked = blocked_plan_action_indices(run_meta)
     if blocked:
         nums = ", ".join(str(n) for n in blocked)

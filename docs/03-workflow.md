@@ -32,7 +32,7 @@ make dev
 # 브라우저 http://127.0.0.1:5173
 ```
 
-왼쪽 상단에 **백엔드 상태** (예: `codex · gpt-5.5`)가 보이면 API 연결 OK.
+왼쪽 상단에 **백엔드 상태** (예: `Claude opus (high) · Codex gpt-5.5 (medium) · Cursor default`)가 보이면 API 연결 OK.
 
 | 백엔드 | 언제 쓰나 |
 |--------|-----------|

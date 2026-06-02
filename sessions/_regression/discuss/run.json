@@ -1,0 +1,27 @@
+{
+  "workflow_id": "room.parallel",
+  "run_schema_version": 1,
+  "plan_format_version": 0,
+  "topic": "regression baseline: discuss",
+  "created_at": "2026-05-27T00:00:00+00:00",
+  "agents": ["cursor", "codex", "claude"],
+  "status": "completed",
+  "message_count": 4,
+  "agent_parallel_rounds": 1,
+  "turns": [
+    {
+      "mode": "discuss",
+      "synthesize": false,
+      "agent_parallel_rounds": 1,
+      "agents": ["cursor", "codex", "claude"],
+      "permissions": {},
+      "model": "baseline",
+      "latency_ms": 0,
+      "status": "completed",
+      "ts": "2026-05-27T00:00:00+00:00"
+    }
+  ],
+  "actions": [],
+  "approvals": [],
+  "executions": []
+}

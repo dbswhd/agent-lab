@@ -2,7 +2,13 @@ import os
 from pathlib import Path
 from typing import Any
 
-from agent_lab.agent_permissions import permission_preamble
+from agent_lab.agent_models import DEFAULT_CURSOR_MODEL
+from agent_lab.agent_permissions import normalize_agent_permissions, permission_preamble
+from agent_lab.cursor_bridge import (
+    cursor_sdk_client,
+    format_cursor_connect_error,
+    invalidate_workspace,
+)
 
 
 def _sdk_installed() -> bool:
@@ -18,26 +24,58 @@ def is_available() -> bool:
     return bool(os.getenv("CURSOR_API_KEY", "").strip()) and _sdk_installed()
 
 
+def model_label() -> str:
+    return os.getenv("CURSOR_MODEL", DEFAULT_CURSOR_MODEL)
+
+
 def _resolve_cwd(permissions: dict[str, Any] | None) -> str:
-    home = Path.home()
-    if permissions:
-        p = permissions.get("cursor") or {}
-        if p.get("local_pipeline"):
-            pipeline = os.getenv(
-                "QUANT_PIPELINE_ROOT",
-                str(home / "Projects" / "quant-pipeline"),
-            )
-            if Path(pipeline).is_dir():
-                return pipeline
-        if p.get("local_agent_lab"):
-            root = os.getenv("AGENT_LAB_ROOT")
-            if root and Path(root).is_dir():
-                return root
-    return (
-        os.getenv("CODEX_CWD")
-        or os.getenv("AGENT_LAB_ROOT")
-        or str(Path(__file__).resolve().parents[3])
-    )
+    from agent_lab.workspace_roots import discuss_primary_workspace
+
+    return str(discuss_primary_workspace(permissions))
+
+
+def _connection_refused(exc: BaseException) -> bool:
+    text = str(exc).lower()
+    return "connection refused" in text or "errno 61" in text or "connecterror" in text
+
+
+def _run_cursor_session(
+    *,
+    cwd_str: str,
+    agent_opts: Any,
+    prompts: list[str],
+    send_opts: Any | None,
+) -> str:
+    from cursor_sdk import Agent, CursorAgentError
+
+    last_err: BaseException | None = None
+    for attempt in range(2):
+        try:
+            with cursor_sdk_client(cwd_str) as client:
+                agent = Agent.create(agent_opts, client=client)
+                try:
+                    last_text = ""
+                    for prompt in prompts:
+                        run = agent.send(prompt, send_opts)
+                        run.wait()
+                        last_text = run.text().strip()
+                    return last_text
+                finally:
+                    agent.close()
+        except CursorAgentError as e:
+            last_err = e
+            if attempt == 0 and _connection_refused(e):
+                invalidate_workspace(cwd_str)
+                continue
+            raise RuntimeError(format_cursor_connect_error(e)) from e
+        except Exception as e:
+            last_err = e
+            if attempt == 0 and _connection_refused(e):
+                invalidate_workspace(cwd_str)
+                continue
+            raise RuntimeError(format_cursor_connect_error(e)) from e
+
+    raise RuntimeError(format_cursor_connect_error(last_err or RuntimeError("Cursor bridge failed")))
 
 
 def respond(
@@ -45,6 +83,9 @@ def respond(
     user: str,
     *,
     permissions: dict[str, Any] | None = None,
+    cwd: str | Path | None = None,
+    on_activity: Any | None = None,
+    follow_ups: list[str] | None = None,
 ) -> str:
     from agent_lab.agents.prompts import CURSOR_ROOM
 
@@ -53,29 +94,51 @@ def respond(
         raise RuntimeError("CURSOR_API_KEY not set")
 
     try:
-        from cursor_sdk import Agent, AgentOptions, LocalAgentOptions
+        from cursor_sdk import AgentOptions, LocalAgentOptions, SendOptions
     except ImportError as e:
         raise RuntimeError(
             "Install cursor-sdk: pip install cursor-sdk"
         ) from e
 
-    extra = permission_preamble(permissions, "cursor")
-    prompt_parts = [system or CURSOR_ROOM]
-    if extra:
-        prompt_parts.append(extra)
-    prompt_parts.append(f"\n---\n\n{user}")
-    prompt = "\n\n".join(prompt_parts)
-
-    cwd = _resolve_cwd(permissions)
-    result = Agent.prompt(
-        prompt,
-        AgentOptions(
-            api_key=api_key,
-            model=os.getenv("CURSOR_MODEL", "composer-2.5"),
-            local=LocalAgentOptions(cwd=cwd),
-        ),
+    from agent_lab.cursor_activity import (
+        format_conversation_step,
+        format_interaction_update,
     )
-    text = getattr(result, "result", None) or getattr(result, "output", None)
-    if text:
-        return str(text).strip()
-    return str(result).strip()
+
+    perms = normalize_agent_permissions(permissions)
+    extra = permission_preamble(perms, "cursor")
+    system_block = system or CURSOR_ROOM
+    if extra and "[고정 constraints]" not in user:
+        system_block = f"{system_block}\n\n{extra}"
+    prompt = f"{system_block}\n\n---\n\n{user}" if user.strip() else system_block
+
+    cwd_str = str(cwd) if cwd is not None else _resolve_cwd(perms)
+    agent_opts = AgentOptions(
+        api_key=api_key,
+        model=os.getenv("CURSOR_MODEL", DEFAULT_CURSOR_MODEL),
+        local=LocalAgentOptions(cwd=cwd_str),
+    )
+
+    def _emit(label: str | None) -> None:
+        if label and on_activity:
+            on_activity(label)
+
+    send_opts = None
+    if on_activity:
+        send_opts = SendOptions(
+            on_delta=lambda u: _emit(format_interaction_update(u)),
+            on_step=lambda s: _emit(format_conversation_step(s)),
+        )
+
+    prompts = [prompt]
+    for follow in follow_ups or []:
+        text = follow.strip()
+        if text:
+            prompts.append(text)
+
+    return _run_cursor_session(
+        cwd_str=cwd_str,
+        agent_opts=agent_opts,
+        prompts=prompts,
+        send_opts=send_opts,
+    )

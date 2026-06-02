@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 export type AlertButton = {
   label: string;
@@ -8,12 +9,12 @@ export type AlertButton = {
 
 function alertButtonClass(variant: AlertButton["variant"] = "default"): string {
   const classes = ["mac-alert-btn"];
-  if (variant === "default") {
-    classes.push("mac-btn-primary");
-  } else if (variant === "destructive") {
-    classes.push("mac-btn-secondary", "mac-alert-btn--destructive");
+  if (variant === "destructive") {
+    classes.push("mac-alert-btn--destructive");
+  } else if (variant === "cancel") {
+    classes.push("mac-alert-btn--cancel");
   } else {
-    classes.push("mac-btn-secondary");
+    classes.push("mac-alert-btn--default");
   }
   return classes.join(" ");
 }
@@ -46,7 +47,7 @@ export function MacAlert({
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div
       className="mac-alert-backdrop"
       role="presentation"
@@ -80,6 +81,7 @@ export function MacAlert({
           ))}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

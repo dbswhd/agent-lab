@@ -18,11 +18,12 @@ fi
 
 echo "API  → http://127.0.0.1:8765"
 echo "Web  → http://127.0.0.1:5173"
-uvicorn app.server.main:app --reload --host 127.0.0.1 --port 8765 &
+uvicorn app.server.main:app --reload --host 127.0.0.1 --port 8765 \
+  --reload-dir app --reload-dir src --reload-dir tests &
 API_PID=$!
 trap 'kill $API_PID 2>/dev/null || true' EXIT
 
-(cd web && npm run dev) &
+(cd web && VITE_SKIP_API=1 npm run dev) &
 WEB_PID=$!
 trap 'kill $API_PID $WEB_PID 2>/dev/null || true' EXIT
 

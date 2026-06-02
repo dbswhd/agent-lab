@@ -1,4 +1,9 @@
-import { useRef } from "react";
+import { useRef, type ReactNode } from "react";
+import { CollapsibleGlassPanel } from "./CollapsibleGlassPanel";
+import { ComposerPlanToggle } from "./ComposerPlanToggle";
+import { ComposerEfficiencyToggle } from "./ComposerEfficiencyToggle";
+import { ComposerTurnPicker } from "./ComposerTurnPicker";
+import type { ComposerTurnProfile } from "../utils/turnProfile";
 
 export type PendingFile = { id: string; file: File };
 
@@ -7,11 +12,39 @@ type Props = {
   onChange: (v: string) => void;
   onSend: () => void;
   disabled?: boolean;
+  /** Blocks send only (input may stay enabled while a run is winding down). */
+  sendDisabled?: boolean;
   placeholder?: string;
   files: PendingFile[];
   onFilesAdd: (files: FileList | File[]) => void;
   onFileRemove: (id: string) => void;
   sessionAttachments?: string[];
+  showAttach?: boolean;
+  toolbar?: ReactNode;
+  className?: string;
+  turnProfile?: ComposerTurnProfile;
+  onTurnProfileChange?: (profile: ComposerTurnProfile) => void;
+  planAfterSend?: boolean;
+  onPlanAfterSendChange?: (on: boolean) => void;
+  executeDisabled?: boolean;
+  pendingExecuteCount?: number;
+  efficiencyOn?: boolean;
+  onEfficiencyChange?: (on: boolean) => void;
+  /** plan이 토론보다 뒤처짐 — composer 위 안내 */
+  planStaleNotice?: string | null;
+  /** Hide textarea/send (mode picker stays visible). */
+  inputHidden?: boolean;
+  /** Show 「정리」 toggle beside turn picker (default: plan tab only). */
+  showPlanToggle?: boolean;
+  /** Secondary line under mode chip (off = less plan noise on chat). */
+  showModeChipHint?: boolean;
+  running?: boolean;
+  onStop?: () => void;
+  /** Current room turn mode (토론 / 정리 / 합의). */
+  modeChip?: string | null;
+  modeChipVariant?: "discuss" | "plan" | "consensus";
+  /** New session — plan scribe timing hint. */
+  isNewSession?: boolean;
 };
 
 export function ChatComposer({
@@ -19,16 +52,41 @@ export function ChatComposer({
   onChange,
   onSend,
   disabled,
+  sendDisabled,
   placeholder = "메시지",
   files,
   onFilesAdd,
   onFileRemove,
   sessionAttachments = [],
+  showAttach = true,
+  toolbar,
+  className,
+  turnProfile,
+  onTurnProfileChange,
+  planAfterSend = false,
+  onPlanAfterSendChange,
+  executeDisabled: _executeDisabled,
+  pendingExecuteCount: _pendingExecuteCount,
+  efficiencyOn = false,
+  onEfficiencyChange,
+  planStaleNotice,
+  inputHidden = false,
+  showPlanToggle = false,
+  showModeChipHint = false,
+  running = false,
+  onStop,
+  modeChip,
+  modeChipVariant,
+  isNewSession = false,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const rootClass = ["composer", className].filter(Boolean).join(" ");
+  const inputLocked = disabled;
+  const sendLocked = sendDisabled ?? disabled;
+
   return (
-    <footer className="composer">
+    <div className={rootClass}>
       {(files.length > 0 || sessionAttachments.length > 0) && (
         <div className="attachment-bar">
           {sessionAttachments.map((name) => (
@@ -57,53 +115,155 @@ export function ChatComposer({
           ))}
         </div>
       )}
-      <div className="composer-row">
-        <button
-          type="button"
-          className="btn-attach"
-          disabled={disabled}
-          onClick={() => inputRef.current?.click()}
-          aria-label="파일 첨부"
-          title="파일 첨부"
-        >
-          <PaperclipIcon />
-        </button>
-        <input
-          ref={inputRef}
-          type="file"
-          multiple
-          className="composer-file-input"
-          onChange={(e) => {
-            if (e.target.files?.length) onFilesAdd(e.target.files);
-            e.target.value = "";
-          }}
-        />
-        <div className="composer-field">
-          <textarea
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={placeholder}
-            disabled={disabled}
-            rows={1}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                onSend();
+      <div className="composer-dock">
+        {modeChip ? (
+          <p
+            className={[
+              "composer-mode-chip",
+              modeChipVariant
+                ? `composer-mode-chip--${modeChipVariant}`
+                : undefined,
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            role="status"
+          >
+            <span className="composer-mode-chip__label">{modeChip}</span>
+            {showModeChipHint && isNewSession ? (
+              <span className="composer-mode-chip__hint">
+                첫 전송은 토론만 · plan 갱신은 plan 탭
+              </span>
+            ) : showModeChipHint && planAfterSend ? (
+              <span className="composer-mode-chip__hint">
+                전송 시 plan.md 갱신 (plan 탭에서 끌 수 있음)
+              </span>
+            ) : null}
+          </p>
+        ) : null}
+        {turnProfile && onTurnProfileChange ? (
+          <div className="composer-turn-row">
+            <ComposerTurnPicker
+              value={turnProfile}
+              onChange={onTurnProfileChange}
+              disabled={inputLocked}
+              trailing={
+                <>
+                  {showPlanToggle && onPlanAfterSendChange ? (
+                    <ComposerPlanToggle
+                      checked={planAfterSend}
+                      onChange={onPlanAfterSendChange}
+                      disabled={inputLocked}
+                    />
+                  ) : null}
+                  {onEfficiencyChange ? (
+                    <ComposerEfficiencyToggle
+                      checked={efficiencyOn}
+                      onChange={onEfficiencyChange}
+                      disabled={inputLocked}
+                    />
+                  ) : null}
+                </>
               }
-            }}
-          />
+            />
+          </div>
+        ) : null}
+        {planStaleNotice ? (
+          <CollapsibleGlassPanel
+            className="composer-alert-panel"
+            title="plan 알림"
+            summary={planStaleNotice}
+            variant="warn"
+            defaultOpen={false}
+          >
+            <p className="composer-alert-panel__text">{planStaleNotice}</p>
+          </CollapsibleGlassPanel>
+        ) : null}
+        {!inputHidden ? (
+        <div className="composer-row">
+          <div className="composer-capsule">
+            {showAttach && (
+              <>
+                <button
+                  type="button"
+                  className="btn-attach"
+                  disabled={inputLocked}
+                  onClick={() => inputRef.current?.click()}
+                  aria-label="파일 첨부"
+                  title="파일 첨부"
+                >
+                  <PlusIcon />
+                </button>
+                <input
+                  ref={inputRef}
+                  type="file"
+                  multiple
+                  className="composer-file-input"
+                  onChange={(e) => {
+                    if (e.target.files?.length) onFilesAdd(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+              </>
+            )}
+            <div className="composer-field">
+              <textarea
+                className="mac-textfield mac-textfield--multiline composer-input"
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                placeholder={placeholder}
+                disabled={inputLocked}
+                rows={1}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    onSend();
+                  }
+                }}
+              />
+              {toolbar && <div className="composer-toolbar">{toolbar}</div>}
+            </div>
+            {running && onStop ? (
+              <button
+                type="button"
+                className="btn-stop-reply"
+                onClick={onStop}
+                aria-label="답변 중지"
+                title="답변 중지"
+              >
+                <span className="btn-stop-reply__square" aria-hidden />
+              </button>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            className="btn-send btn-send--composer"
+            disabled={sendLocked || !value.trim()}
+            onClick={onSend}
+            aria-label="전송"
+          >
+            ↑
+          </button>
         </div>
-        <button
-          type="button"
-          className="btn-send"
-          disabled={disabled || !value.trim()}
-          onClick={onSend}
-          aria-label="전송"
-        >
-          ↑
-        </button>
+        ) : null}
       </div>
-    </footer>
+    </div>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg
+      className="icon-plus"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      aria-hidden
+    >
+      <line x1="8" y1="4" x2="8" y2="12" />
+      <line x1="4" y1="8" x2="12" y2="8" />
+    </svg>
   );
 }
 

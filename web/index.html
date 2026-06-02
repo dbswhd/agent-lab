@@ -4,13 +4,27 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" content="#ebebeb" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#1c1c1e" media="(prefers-color-scheme: dark)" />
-    <link rel="icon" type="image/png" href="/app-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/app-icon.png" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/app-icon@2x.png" />
     <title>Agent Lab</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <p class="boot-loading" id="boot-loading">Agent Lab 불러오는 중…</p>
+    </div>
+    <script>
+      window.addEventListener("error", function (ev) {
+        var el = document.getElementById("root");
+        if (!el || el.querySelector(".boot-fallback")) return;
+        var msg = (ev.error && ev.error.message) || ev.message || "unknown error";
+        el.innerHTML =
+          '<div class="boot-fallback" role="alert"><h1>Agent Lab</h1><p>UI 로드 실패</p><pre></pre></div>';
+        var pre = el.querySelector("pre");
+        if (pre) pre.textContent = msg;
+      });
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -8,7 +8,18 @@ build/
 web/node_modules/
 web/dist/
 web/src-tauri/target/
+web/src-tauri/bundled-runtime/
+# Local room runs (regression fixtures stay in repo)
+sessions/*
+!sessions/.gitkeep
+!sessions/_regression/
+!sessions/_regression/**
+
 sessions/**/raw/
+
+# UI dev screenshots
+web/preview*.png
+data/turn_profile_bandit.json
 *.log
 .DS_Store
 .claude/

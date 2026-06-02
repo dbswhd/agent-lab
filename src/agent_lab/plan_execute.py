@@ -185,6 +185,22 @@ def _worktree_paths(
     return out
 
 
+def _rewrite_git_paths_in_text(text: str, *, git_root: Path) -> str:
+    """Strip absolute git-root prefixes so Cursor edits the worktree cwd, not main."""
+    if not text.strip():
+        return text
+    root = git_root.resolve()
+    variants = {root.as_posix(), str(root)}
+    out = text
+    for prefix in variants:
+        if not prefix:
+            continue
+        out = out.replace(prefix + "/", "")
+        if out.endswith(prefix):
+            out = out[: -len(prefix)] + "."
+    return out
+
+
 def _workspace_info_for(cwd: Path, raw_paths: list[str]) -> dict[str, Any]:
     return workspace_path_info(cwd, raw_paths)
 
@@ -289,8 +305,10 @@ def _cursor_execute_prompt(
     action: PlanAction,
     *,
     expected_paths: list[str] | None = None,
+    verify: str | None = None,
 ) -> str:
     expected = ", ".join(expected_paths or action.expected_paths()) or action.where
+    verify_line = verify if verify is not None else action.verify
     return f"""Agent Lab thin execute — implement exactly one plan action.
 
 Phase 1 — implement (tools expected):
@@ -303,7 +321,7 @@ Phase 1 — implement (tools expected):
 Plan action:
 - 무엇을: {action.what}
 - 어디서: {expected}
-- 검증: {action.verify}
+- 검증: {verify_line}
 
 When phase 1 edits are done, stop and wait — a phase 2 verification message follows in this same session."""
 
@@ -517,6 +535,12 @@ def run_dry_run(
     started = _now()
     activity_log: list[str] = []
     agent_response = ""
+    verify_for_agent = action.verify
+    if exec_worktree is not None:
+        verify_for_agent = _rewrite_git_paths_in_text(
+            action.verify,
+            git_root=exec_worktree.git_root,
+        )
 
     def _on_activity(label: str | None) -> None:
         if label and (not activity_log or activity_log[-1] != label):
@@ -525,11 +549,15 @@ def run_dry_run(
     try:
         agent_response = respond(
             system="You implement approved plan actions with minimal scope.",
-            user=_cursor_execute_prompt(action, expected_paths=source_path_inputs),
+            user=_cursor_execute_prompt(
+                action,
+                expected_paths=source_path_inputs,
+                verify=verify_for_agent,
+            ),
             permissions=effective_permissions,
             cwd=cwd,
             on_activity=_on_activity,
-            follow_ups=_verify_follow_ups(action.verify),
+            follow_ups=_verify_follow_ups(verify_for_agent),
         )
     except Exception as e:
         restore_snapshot(folder, exec_id=exec_id, cwd=cwd, manifest=manifest)

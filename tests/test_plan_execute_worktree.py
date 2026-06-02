@@ -78,6 +78,16 @@ def test_detect_git_root(git_repo: Path):
     assert detect_git_root(git_repo / "src" / "app.py") == git_repo.resolve()
 
 
+def test_rewrite_git_paths_in_text(git_repo: Path):
+    from agent_lab.plan_execute import _rewrite_git_paths_in_text
+
+    app = git_repo / "src" / "app.py"
+    raw = f"edit `{app}` and check {app.resolve()}"
+    out = _rewrite_git_paths_in_text(raw, git_root=git_repo)
+    assert str(git_repo) not in out
+    assert "src/app.py" in out
+
+
 def test_resolve_action_worktree(git_repo: Path):
     ctx = resolve_action_git_context(
         action_key="now:1",

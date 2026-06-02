@@ -484,9 +484,10 @@ execute worktree가 **main 오염**을 막아도, specialist R2 discuss는 **별
 - [x] simulate patch in worktree (file touch + commit)
 - [x] approve → merge → main clean assert (`test_worktree_merge_ok`)
 - [x] reject → main unchanged assert (`test_worktree_reject_main_unchanged`)
-- [ ] Cursor SDK `cwd=worktree` manual check (Go/No-Go remainder)
+- [x] Cursor SDK `cwd=worktree` — **code-path Go** (`respond(cwd=worktree)` + `test_run_dry_run_worktree_cwd_and_record`)
+- [x] Cursor SDK **live** dry-run 1회 (`CURSOR_API_KEY`, main clean until merge)
 
-**Exit:** `pytest tests/test_plan_execute_worktree.py` green + Cursor cwd manual
+**Exit:** pytest green + (선택) live SDK 1회
 
 ### M1 — Core backend (1–2주)
 
@@ -501,8 +502,8 @@ execute worktree가 **main 오염**을 막아도, specialist R2 discuss는 **별
 ### M2 — Product merge (1–2주)
 
 - [x] `plan_execute_merge.py` (M0, pytest)
-- [ ] `resolve_execution` approve → `merge_exec_branch` 연동
-- [ ] conflict detect + abort/confirm API
+- [x] `resolve_execution` approve → `merge_exec_branch` (M1)
+- [ ] conflict UI + (선택) merge/abort·confirm API
 - [ ] PlanExecutePanel: Merge 승인 / conflict UI
 - [ ] worktree GC on session load / startup
 

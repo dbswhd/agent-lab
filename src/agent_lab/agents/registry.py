@@ -41,6 +41,8 @@ def model_label(agent: AgentId) -> str:
 
 
 def available_agents() -> list[AgentId]:
+    if _mock_agents_enabled():
+        return list(AGENT_IDS)
     out: list[AgentId] = []
     for aid in AGENT_IDS:
         try:
@@ -65,6 +67,27 @@ def _is_ready(agent: AgentId) -> bool:
     return False
 
 
+def _mock_agents_enabled() -> bool:
+    return os.getenv("AGENT_LAB_MOCK_AGENTS", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+def _mock_agent_response(
+    agent: AgentId,
+    user: str,
+    *,
+    scribe: bool = False,
+) -> str:
+    if scribe:
+        return "## Mock plan\n\n- mock scribe turn\n"
+    snippet = " ".join(user.strip().split())[:100]
+    return f"[mock:{label(agent)}] ACK — {snippet or '(empty)'}"
+
+
 def call_agent(
     agent: AgentId,
     system: str,
@@ -74,6 +97,8 @@ def call_agent(
     scribe: bool = False,
     on_activity: Callable[[str], None] | None = None,
 ) -> str:
+    if _mock_agents_enabled():
+        return _mock_agent_response(agent, user, scribe=scribe)
     if not _is_ready(agent):
         raise RuntimeError(f"{label(agent)} is not configured")
     if agent == "cursor":
@@ -81,7 +106,9 @@ def call_agent(
             system, user, permissions=permissions, on_activity=on_activity
         )
     if agent == "codex":
-        return codex_agent.respond(system, user, permissions=permissions)
+        return codex_agent.respond(
+            system, user, permissions=permissions, on_activity=on_activity
+        )
     if agent == "claude":
         return claude_agent.respond(system, user, permissions=permissions, scribe=scribe)
     return _CALLERS[agent](system, user)

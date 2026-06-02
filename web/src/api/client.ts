@@ -16,6 +16,9 @@ export type SessionSummary = {
   model?: string;
   archived?: boolean;
   workflow?: string;
+  workspace_preset?: string;
+  session_template?: string;
+  workspace_label?: string;
 };
 
 export type ChatLine = {
@@ -25,6 +28,31 @@ export type ChatLine = {
   ts?: string;
   /** Parallel wave within one human message (1 = first replies, 2+ = peer discussion). */
   parallel_round?: number;
+  /** human = default UI; peer = coordination channel (digest / echoed headers). */
+  visibility?: "human" | "peer";
+};
+
+export type RoomTask = {
+  id: string;
+  title: string;
+  status: "pending" | "in_progress" | "completed" | "cancelled";
+  owner_agent?: string | null;
+  depends_on?: string[];
+  source?: string;
+  plan_action_index?: number;
+  plan_action_id?: string;
+  endorsements?: Record<string, string>;
+};
+
+export type RoomTasksPayload = {
+  team_lead: string;
+  turn_leads?: Record<string, string>;
+  tasks: RoomTask[];
+  claimable: RoomTask[];
+  counts: { pending: number; in_progress: number; completed: number };
+  consensus_tasks_ready?: boolean;
+  consensus_task_blockers?: string[];
+  open_task_count?: number;
 };
 
 export type SessionDetail = {
@@ -43,13 +71,14 @@ const API_ORIGIN = "http://127.0.0.1:8765";
 export function apiBase(): string {
   const fromEnv = import.meta.env.VITE_API_BASE as string | undefined;
   if (fromEnv) return fromEnv.replace(/\/$/, "");
-  // Vite dev (5173 web / 1420 tauri): same-origin /api proxy → uvicorn
-  if (import.meta.env.DEV && typeof window !== "undefined") {
+  // Same-origin: Vite dev proxy (1420/5173) or release app served by uvicorn (8765).
+  if (typeof window !== "undefined") {
     const port = window.location.port;
-    if (port === "1420" || port === "5173") {
+    if (port === "1420" || port === "5173" || port === "8765") {
       return "";
     }
   }
+  // Fallback: embedded https://tauri.localhost cannot fetch http API (WebKit mixed content).
   if (isTauri()) return API_ORIGIN;
   return "";
 }
@@ -68,8 +97,62 @@ async function json<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export function fetchHealth() {
-  return json<{ ok: boolean; provider?: string; model?: string }>("/api/health");
+export type AgentHealthRow = {
+  id: string;
+  label: string;
+  ready: boolean;
+  configured: boolean;
+  bridge: "ok" | "error" | "unknown" | "n/a";
+  bridge_mode?: "external" | "auto" | "n/a";
+  model?: string;
+  detail?: string;
+  hint?: string | null;
+  reason?: string | null;
+};
+
+export type HealthResponse = {
+  ok: boolean;
+  api?: { ok: boolean; port?: number };
+  provider?: string;
+  model?: string;
+  agents: AgentHealthRow[];
+  agents_ready?: string[];
+  sessions_dir?: string;
+};
+
+export function fetchHealth(probeBridge = false, probePreflight = false) {
+  const params = new URLSearchParams();
+  if (probeBridge) params.set("probe_bridge", "true");
+  if (probePreflight) params.set("probe_preflight", "true");
+  const q = params.toString() ? `?${params.toString()}` : "";
+  return json<HealthResponse>(`/api/health${q}`);
+}
+
+export type DiagnosticsResponse = {
+  ok: boolean;
+  pid: number;
+  uptime_seconds: number;
+  port: number;
+  port_status: { listening: boolean; host?: string; port?: number; error?: string };
+  sessions_dir: string;
+  paths: Record<string, string | null>;
+  agent_tools: Record<string, string | null>;
+  boot_log_tail: string[];
+  boot_log_path: string;
+  api_log_path: string;
+};
+
+export function fetchDiagnostics() {
+  return json<DiagnosticsResponse>("/api/diagnostics");
+}
+
+export function reconnectCursorBridge() {
+  return json<{
+    ok: boolean;
+    bridge: AgentHealthRow["bridge"];
+    hint?: string | null;
+    agent: AgentHealthRow;
+  }>("/api/health/reconnect-cursor", { method: "POST" });
 }
 
 export function fetchAgents() {
@@ -79,6 +162,12 @@ export function fetchAgents() {
 export function fetchBackends() {
   return json<{ default: string | null; options: BackendOption[] }>(
     "/api/backends",
+  );
+}
+
+export function fetchSessionSetupOptions() {
+  return json<import("../utils/sessionSetup").SessionSetupOptions>(
+    "/api/session-setup/options",
   );
 }
 
@@ -105,14 +194,63 @@ export function fetchSession(id: string) {
   return json<SessionDetail>(`/api/sessions/${encodeURIComponent(id)}`);
 }
 
+export function fetchSessionTasks(sessionId: string) {
+  return json<RoomTasksPayload>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/tasks`,
+  );
+}
+
+export function completeSessionTask(
+  sessionId: string,
+  taskId: string,
+  artifactRefs?: string[],
+) {
+  return json<RoomTasksPayload>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/tasks/${encodeURIComponent(taskId)}/complete`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ artifact_refs: artifactRefs ?? [] }),
+    },
+  );
+}
+
+export function patchSessionTeamLead(sessionId: string, agent: string) {
+  return json<RoomTasksPayload>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/team-lead`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ agent }),
+    },
+  );
+}
+
+function parseRoomRunHttpError(text: string): string {
+  try {
+    const body = JSON.parse(text) as {
+      detail?: string | { message?: string; agents?: { id: string; reason: string }[] };
+    };
+    const detail = body.detail;
+    if (detail && typeof detail === "object" && Array.isArray(detail.agents)) {
+      return detail.agents.map((a) => `${a.id}: ${a.reason}`).join("; ");
+    }
+    if (typeof detail === "string") return detail;
+  } catch {
+    /* plain text */
+  }
+  return text;
+}
+
 async function consumeSse(
   res: Response,
   onEvent: (data: Record<string, unknown>) => void,
-): Promise<void> {
+): Promise<boolean> {
   const reader = res.body?.getReader();
   if (!reader) throw new Error("no response body");
   const dec = new TextDecoder();
   let buf = "";
+  let sawTerminal = false;
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -122,11 +260,17 @@ async function consumeSse(
     for (const part of parts) {
       for (const line of part.split("\n")) {
         if (line.startsWith("data: ")) {
-          onEvent(JSON.parse(line.slice(6)) as Record<string, unknown>);
+          const data = JSON.parse(line.slice(6)) as Record<string, unknown>;
+          const t = String(data.type ?? "");
+          if (t === "complete" || t === "error" || t === "run_failed") {
+            sawTerminal = true;
+          }
+          onEvent(data);
         }
       }
     }
   }
+  return sawTerminal;
 }
 
 export async function runGraph(
@@ -164,8 +308,14 @@ export type RunRoomOptions = {
   consensusMode?: boolean;
   /** Pin cap, shorter replies, slimmer consensus payloads (subscription-friendly). */
   efficiencyMode?: boolean;
-  /** Composer turn profile id (quick/discuss/review/free). */
+  /** Composer turn profile id (quick/analyze/free). */
   turnProfile?: string;
+  /** Session start workspace preset (new sessions only). */
+  workspaceId?: string;
+  /** User-picked folder when workspaceId is custom (new sessions only). */
+  workspacePath?: string;
+  /** Always general for now; workflow templates deferred. */
+  sessionTemplate?: string;
   /** Abort in-flight SSE (UI stop). */
   signal?: AbortSignal;
 };
@@ -244,7 +394,12 @@ export async function runRoom(
   form.append("review_mode", String(opts?.reviewMode ?? false));
   form.append("consensus_mode", String(opts?.consensusMode ?? false));
   form.append("efficiency_mode", String(opts?.efficiencyMode ?? false));
-  form.append("turn_profile", opts?.turnProfile ?? "discuss");
+  form.append("turn_profile", opts?.turnProfile ?? "analyze");
+  form.append("workspace_id", opts?.workspaceId ?? "agent-lab");
+  if (opts?.workspacePath?.trim()) {
+    form.append("workspace_path", opts.workspacePath.trim());
+  }
+  form.append("session_template", opts?.sessionTemplate ?? "general");
   if (opts?.requestId) {
     form.append("request_id", opts.requestId);
   }
@@ -260,14 +415,48 @@ export async function runRoom(
     body: form,
     signal: opts?.signal,
   });
-  if (!res.ok) throw new Error(await res.text());
-  await consumeSse(res, onEvent);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(parseRoomRunHttpError(text));
+  }
+  const sawTerminal = await consumeSse(res, onEvent);
+  if (!sawTerminal) {
+    onEvent({
+      type: "run_failed",
+      message:
+        "SSE 연결이 끊어졌습니다. 서버 실행 상태를 확인하거나 실행 잠금 해제를 시도하세요.",
+    });
+  }
 }
 
 export async function cancelRoomRun(): Promise<void> {
   const res = await fetch(apiUrl("/api/room/runs/cancel"), { method: "POST" });
   if (!res.ok) throw new Error(await res.text());
 }
+
+export function releaseRoomRunLock() {
+  return json<{
+    ok: boolean;
+    released?: boolean;
+    locked?: boolean;
+    age_sec?: number | null;
+  }>("/api/room/runs/release-lock", { method: "POST" });
+}
+
+export function fetchRoomRunLock() {
+  return json<{
+    ok: boolean;
+    locked: boolean;
+    age_sec?: number | null;
+  }>("/api/room/run-lock");
+}
+
+export type ExecuteWorkspace = {
+  path: string;
+  label: string;
+  paths_found: string[];
+  paths_missing: string[];
+};
 
 export type PlanActionItem = {
   index: number;
@@ -276,14 +465,19 @@ export type PlanActionItem = {
   verify: string;
   refs: string[];
   expected_paths: string[];
+  verification_paths?: string[];
+  monitored_paths?: string[];
+  action_key?: string;
   recommended?: boolean;
   kind?: "now" | "roadmap" | "legacy";
   executable?: boolean;
   summary?: string;
+  execute_workspace?: ExecuteWorkspace;
 };
 
 export type PlanActionsResponse = {
   recommended: PlanActionItem | null;
+  now?: PlanActionItem[];
   roadmap: PlanActionItem[];
   actions: PlanActionItem[];
 };
@@ -292,40 +486,163 @@ export type PlanExecutionRecord = {
   id: string;
   action_id?: string;
   action_index?: number;
+  action_kind?: "now" | "roadmap" | "legacy";
+  action_key?: string;
+  action_what?: string;
+  action_where?: string;
+  action_verify?: string;
   executor?: string;
+  executor_label?: string;
   status?: string;
   snapshot_id?: string;
+  workspace_root?: string;
+  workspace_label?: string;
   snapshotted_paths?: string[];
   expected_paths?: string[];
+  verification_paths?: string[];
+  monitored_paths?: string[];
+  verification_artifacts?: {
+    ok?: boolean;
+    pdf_path?: string | null;
+    pdf_page_count?: number | null;
+    break_report?: Record<string, unknown> | null;
+  };
+  execute_workspace_info?: {
+    label?: string;
+    path?: string;
+    paths_found?: string[];
+    paths_missing?: string[];
+  };
+  source_touched_paths?: string[];
+  artifact_touched_paths?: string[];
+  empty_source_diff?: boolean;
+  needs_artifact_review?: boolean;
   touched_paths?: string[];
   paths_outside_expected?: string[];
   draft_summary?: string;
+  agent_response?: string;
+  agent_log?: string[];
   diff_stat?: string;
   diff?: string;
   started_at?: string;
   completed_at?: string | null;
 };
 
-export function fetchPlanActions(sessionId: string) {
+export function fetchPlanActions(
+  sessionId: string,
+  permissions?: Record<string, unknown>,
+) {
+  const qs =
+    permissions && Object.keys(permissions).length
+      ? `?permissions=${encodeURIComponent(JSON.stringify(permissions))}`
+      : "";
   return json<PlanActionsResponse>(
-    `/api/sessions/${encodeURIComponent(sessionId)}/plan-actions`,
+    `/api/sessions/${encodeURIComponent(sessionId)}/plan-actions${qs}`,
   );
 }
 
-export function runPlanDryRun(
+export type PendingPlanRecord = {
+  id: string;
+  status: string;
+  action_key?: string;
+  action_index?: number;
+  action_kind?: string;
+  action_what?: string;
+  action_where?: string;
+  action_verify?: string;
+  snapshot_text?: string;
+  plan_hash?: string;
+  created_at?: string;
+  approved_at?: string | null;
+};
+
+export class PlanSnapshotRequiredError extends Error {
+  pendingPlan: PendingPlanRecord;
+
+  constructor(pendingPlan: PendingPlanRecord) {
+    super("plan_snapshot_required");
+    this.name = "PlanSnapshotRequiredError";
+    this.pendingPlan = pendingPlan;
+  }
+}
+
+function parseApiErrorBody(text: string): Record<string, unknown> | null {
+  try {
+    const outer = JSON.parse(text) as { detail?: unknown };
+    const detail = outer.detail;
+    if (detail && typeof detail === "object") {
+      return detail as Record<string, unknown>;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export async function runPlanDryRun(
   sessionId: string,
-  opts: { actionIndex: number; permissions?: Record<string, unknown> },
+  opts: {
+    actionIndex: number;
+    actionKind?: string;
+    permissions?: Record<string, unknown>;
+  },
 ) {
-  return json<{ ok: boolean; execution: PlanExecutionRecord }>(
-    `/api/sessions/${encodeURIComponent(sessionId)}/execute/dry-run`,
+  const res = await fetch(
+    apiUrl(
+      `/api/sessions/${encodeURIComponent(sessionId)}/execute/dry-run`,
+    ),
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action_index: opts.actionIndex,
+        action_kind: opts.actionKind ?? null,
         permissions: opts.permissions ?? {},
       }),
     },
+  );
+  const text = await res.text();
+  let body: Record<string, unknown> = {};
+  try {
+    body = text ? (JSON.parse(text) as Record<string, unknown>) : {};
+  } catch {
+    /* plain */
+  }
+  if (res.status === 409) {
+    const detail =
+      (body.detail as Record<string, unknown> | undefined) ??
+      parseApiErrorBody(text) ??
+      {};
+    if (detail.code === "plan_snapshot_required" && detail.pending_plan) {
+      throw new PlanSnapshotRequiredError(
+        detail.pending_plan as PendingPlanRecord,
+      );
+    }
+  }
+  if (!res.ok) {
+    throw new Error(text || res.statusText);
+  }
+  return body as { ok: boolean; execution: PlanExecutionRecord };
+}
+
+export function approvePendingPlan(sessionId: string, pendingId: string) {
+  return json<{
+    ok: boolean;
+    pending_plan: PendingPlanRecord;
+    awaiting_approval: PendingPlanRecord[];
+  }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/execute/pending-plans/${encodeURIComponent(pendingId)}/approve`,
+    { method: "POST" },
+  );
+}
+
+export function rejectPendingPlan(sessionId: string, pendingId: string) {
+  return json<{
+    ok: boolean;
+    pending_plan: PendingPlanRecord;
+  }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/execute/pending-plans/${encodeURIComponent(pendingId)}/reject`,
+    { method: "POST" },
   );
 }
 

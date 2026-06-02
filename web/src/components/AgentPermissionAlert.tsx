@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { AgentPermissions } from "../utils/agentPermissions";
 import {
   buildPermissionsFromForm,
-  CLAUDE_PERMISSION_DEFAULTS,
+  FULL_AGENT_PERMISSIONS,
   loadDefaultPermissions,
   saveDefaultPermissions,
 } from "../utils/agentPermissions";
@@ -34,21 +34,17 @@ export function AgentPermissionAlert({
   useEffect(() => {
     if (!open) return;
     const d = loadDefaultPermissions();
-    setCursorTools(Boolean(d.cursor?.tools));
-    setCursorAgentLab(Boolean(d.cursor?.local_agent_lab));
-    setCursorPipeline(Boolean(d.cursor?.local_pipeline));
-    setCodexCli(Boolean(d.codex?.cli));
-    setClaudeTools(d.claude?.tools ?? CLAUDE_PERMISSION_DEFAULTS.tools ?? true);
-    setClaudeWrite(d.claude?.write ?? CLAUDE_PERMISSION_DEFAULTS.write ?? true);
+    setCursorTools(Boolean(d.cursor?.tools ?? true));
+    setCursorAgentLab(Boolean(d.cursor?.local_agent_lab ?? true));
+    setCursorPipeline(Boolean(d.cursor?.local_pipeline ?? true));
+    setCodexCli(Boolean(d.codex?.cli ?? true));
+    setClaudeTools(Boolean(d.claude?.tools ?? FULL_AGENT_PERMISSIONS.claude.tools));
+    setClaudeWrite(Boolean(d.claude?.write ?? FULL_AGENT_PERMISSIONS.claude.write));
     setClaudeAgentLab(
-      d.claude?.local_agent_lab ??
-        CLAUDE_PERMISSION_DEFAULTS.local_agent_lab ??
-        true,
+      Boolean(d.claude?.local_agent_lab ?? FULL_AGENT_PERMISSIONS.claude.local_agent_lab),
     );
     setClaudePipeline(
-      d.claude?.local_pipeline ??
-        CLAUDE_PERMISSION_DEFAULTS.local_pipeline ??
-        false,
+      Boolean(d.claude?.local_pipeline ?? FULL_AGENT_PERMISSIONS.claude.local_pipeline),
     );
   }, [open]);
 

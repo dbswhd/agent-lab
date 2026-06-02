@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import {
-  TURN_PROFILE_OPTIONS,
+  TURN_STRATEGY_OPTIONS,
   turnProfileDescription,
   type ComposerTurnProfile,
 } from "../utils/turnProfile";
@@ -9,7 +9,7 @@ type Props = {
   value: ComposerTurnProfile;
   onChange: (profile: ComposerTurnProfile) => void;
   disabled?: boolean;
-  /** Segmented control 오른쪽 (효율 토글 등) */
+  /** Segmented control 오른쪽 (정리 토글 · 효율 토글 등) */
   trailing?: ReactNode;
 };
 
@@ -25,12 +25,12 @@ export function ComposerTurnPicker({
     <div
       className="composer-turn-picker"
       role="radiogroup"
-      aria-label="응답 방식"
+      aria-label="토론 방식"
       aria-describedby="composer-turn-desc"
     >
       <div className="composer-turn-picker__head">
         <div className="composer-turn-seg">
-          {TURN_PROFILE_OPTIONS.map((opt) => (
+          {TURN_STRATEGY_OPTIONS.map((opt) => (
             <button
               key={opt.id}
               type="button"
@@ -44,6 +44,7 @@ export function ComposerTurnPicker({
                 .join(" ")}
               data-profile={opt.id}
               disabled={disabled}
+              title={opt.description}
               onClick={() => onChange(opt.id)}
             >
               {opt.label}

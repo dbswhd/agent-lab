@@ -6,8 +6,16 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
-from agent_lab.plan_actions import parse_plan_action_sections, parse_plan_actions
-from agent_lab.plan_execute import resolve_execution, run_dry_run
+import pytest
+
+from agent_lab.plan_actions import (
+    find_dry_run_action,
+    parse_plan_action_sections,
+    parse_plan_actions,
+)
+from agent_lab.plan_execute import list_plan_actions, resolve_execution, run_dry_run
+from agent_lab.plan_pending import PlanSnapshotRequired, approve_pending_plan, ensure_plan_snapshot_approved
+from agent_lab.plan_execute_paths import paths_relative_to_workspace
 from agent_lab.plan_execute_snapshot import (
     build_diff,
     compute_touched_paths,
@@ -36,6 +44,21 @@ SAMPLE_PLAN = """## 다음에 할 일
    - 검증: discuss 1턴 후 `executions[]`가 유지된다.
 """
 
+def _seed_approved_plan_snapshot(
+    folder: Path,
+    plan_md: str,
+    *,
+    action_index: int = 1,
+    kind: str = "now",
+) -> None:
+    action = find_dry_run_action(plan_md, action_index, kind=kind)
+    assert action is not None
+    try:
+        ensure_plan_snapshot_approved(folder, action, plan_md)
+    except PlanSnapshotRequired as exc:
+        approve_pending_plan(folder, exc.pending_plan["id"])
+
+
 NEW_FORMAT_PLAN = """## 지금 실행
 1.
    - 무엇을: plan parser에 지금 실행 섹션을 추가한다.
@@ -54,7 +77,294 @@ NEW_FORMAT_PLAN = """## 지금 실행
 """
 
 
-def test_parse_three_field_actions_only():
+def test_duplicate_index_resolves_by_kind():
+    plan = """## 지금 실행
+1.
+   - 무엇을: now action
+   - 어디서: `now.txt`
+   - 검증: now ok
+
+## 실행 순서 (이후)
+1.
+   - 무엇을: roadmap action
+   - 어디서: `roadmap.txt`
+   - 검증: roadmap ok
+"""
+    now = find_dry_run_action(plan, 1, kind="now")
+    roadmap = find_dry_run_action(plan, 1, kind="roadmap")
+    assert now is not None and now.what == "now action"
+    assert roadmap is not None and roadmap.what == "roadmap action"
+    assert now.action_id == "plan-action-now-1"
+    assert roadmap.action_id == "plan-action-roadmap-1"
+
+
+def test_expected_paths_filter_backtick_false_positives():
+    plan = """## 지금 실행
+1.
+   - 무엇을: dry-run 감사 추가
+   - 어디서: `build.mjs` `page.evaluate` `9.2→9.3` `10.6→10.7`
+   - 검증: diff 확인
+"""
+    actions = parse_plan_actions(plan)
+    assert actions[0].expected_paths() == ["build.mjs"]
+
+
+def test_snapshot_absolute_path_normalized_to_cwd_relative(tmp_path: Path):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    session = tmp_path / "sess"
+    session.mkdir()
+    target = workspace / "build.mjs"
+    target.write_text("before\n", encoding="utf-8")
+
+    snapshot_paths = paths_relative_to_workspace(workspace, [str(target.resolve())])
+    assert snapshot_paths == ["build.mjs"]
+
+    exec_id = "exec-abs-path"
+    manifest = create_snapshot(
+        session,
+        exec_id=exec_id,
+        cwd=workspace,
+        expected_paths=snapshot_paths,
+    )
+    assert manifest["files"]["build.mjs"]["existed"] is True
+
+    target.write_text("after\n", encoding="utf-8")
+    touched = compute_touched_paths(
+        session,
+        exec_id=exec_id,
+        cwd=workspace,
+        manifest=manifest,
+        expected_paths=snapshot_paths,
+    )
+    assert touched == ["build.mjs"]
+    diff, diff_stat = build_diff(
+        session,
+        exec_id=exec_id,
+        cwd=workspace,
+        manifest=manifest,
+        touched_paths=touched,
+    )
+    assert "after" in diff
+    assert diff_stat
+
+
+def test_verification_paths_from_verify_field():
+    plan = """## 지금 실행
+1.
+   - 무엇을: dry-run 감사 실행
+   - 어디서: `build.mjs`
+   - 검증: 레이아웃 변경 없이 `break-report.json` 로그 출력
+"""
+    actions = parse_plan_actions(plan)
+    assert actions[0].expected_paths() == ["build.mjs"]
+    assert actions[0].verification_paths() == ["break-report.json"]
+    assert actions[0].monitored_paths() == ["build.mjs", "break-report.json"]
+
+
+def test_root_dir_listing_detects_new_sibling_file(tmp_path: Path):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    session = tmp_path / "sess"
+    session.mkdir()
+    target = workspace / "build.mjs"
+    target.write_text("before\n", encoding="utf-8")
+
+    exec_id = "exec-root-sibling"
+    manifest = create_snapshot(
+        session,
+        exec_id=exec_id,
+        cwd=workspace,
+        expected_paths=["build.mjs"],
+    )
+    assert manifest["dir_listings"]["."]
+
+    artifact = workspace / "break-report.json"
+    artifact.write_text("{}\n", encoding="utf-8")
+
+    touched = compute_touched_paths(
+        session,
+        exec_id=exec_id,
+        cwd=workspace,
+        manifest=manifest,
+        expected_paths=["build.mjs"],
+    )
+    assert "break-report.json" in touched
+
+
+def test_approve_empty_source_diff_with_verification_paths_is_review_required(
+    tmp_path: Path, monkeypatch
+):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    session = tmp_path / "sess"
+    session.mkdir()
+    exec_id = "exec-artifact-review"
+    target = workspace / "build.mjs"
+    target.write_text("same\n", encoding="utf-8")
+    manifest = create_snapshot(
+        session,
+        exec_id=exec_id,
+        cwd=workspace,
+        expected_paths=["build.mjs", "break-report.json"],
+    )
+
+    (session / "run.json").write_text(
+        json.dumps(
+            {
+                "executions": [
+                    {
+                        "id": exec_id,
+                        "status": "pending_approval",
+                        "snapshot_id": exec_id,
+                        "workspace_root": str(workspace),
+                        "expected_paths": ["build.mjs"],
+                        "verification_paths": ["break-report.json"],
+                        "snapshot_paths": ["build.mjs", "break-report.json"],
+                        "source_snapshot_paths": ["build.mjs"],
+                        "artifact_snapshot_paths": ["break-report.json"],
+                        "paths_outside_expected": [],
+                        "draft_summary": "break-report.json generated",
+                        "empty_source_diff": True,
+                        "needs_artifact_review": True,
+                        "verification_artifacts": {
+                            "ok": True,
+                            "pdf_path": str(workspace / "book.pdf"),
+                            "pdf_page_count": 26,
+                            "break_report": {
+                                "path": str(workspace / "break-report.json"),
+                                "baselinePdfPageCount": 26,
+                            },
+                        },
+                    }
+                ]
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "agent_lab.plan_execute.resolve_execute_workspace",
+        lambda _permissions=None, _expected=None: (workspace, {}),
+    )
+
+    result = resolve_execution(
+        session,
+        execution_id=exec_id,
+        vote="approve",
+        permissions={},
+    )
+    assert result["execution"]["status"] == "review_required"
+
+
+def test_approve_blocks_without_verification_artifacts(tmp_path: Path, monkeypatch):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    session = tmp_path / "sess"
+    session.mkdir()
+    exec_id = "exec-gate-block"
+    (session / "run.json").write_text(
+        json.dumps(
+            {
+                "executions": [
+                    {
+                        "id": exec_id,
+                        "status": "pending_approval",
+                        "needs_artifact_review": True,
+                        "verification_paths": ["break-report.json"],
+                        "verification_artifacts": {"ok": False},
+                    }
+                ]
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "agent_lab.plan_execute.resolve_execute_workspace",
+        lambda _permissions=None, _expected=None: (workspace, {}),
+    )
+    with pytest.raises(ValueError, match="PDF"):
+        resolve_execution(
+            session,
+            execution_id=exec_id,
+            vote="approve",
+            permissions={},
+        )
+
+
+def test_dry_run_rejects_when_expected_paths_missing(tmp_path: Path, monkeypatch):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    session = tmp_path / "sess"
+    session.mkdir()
+    (session / "plan.md").write_text(
+        """## 지금 실행
+1.
+   - 무엇을: 테스트 액션
+       - 어디서: `deep/nested/missing.txt`
+   - 검증: 파일 변경 확인
+""",
+        encoding="utf-8",
+    )
+    (session / "run.json").write_text("{}\n", encoding="utf-8")
+
+    monkeypatch.setattr("agent_lab.agents.cursor_agent.is_available", lambda: True)
+    monkeypatch.setattr(
+        "agent_lab.plan_execute.resolve_execute_workspace",
+        lambda _permissions=None, _expected=None: (workspace, {}),
+    )
+    monkeypatch.setattr(
+        "agent_lab.plan_execute.workspace_path_info",
+        lambda cwd, _expected: {
+            "path": str(cwd),
+            "label": "workspace",
+            "paths_found": [],
+            "paths_missing": ["deep/nested/missing.txt"],
+        },
+    )
+
+    plan_md = (session / "plan.md").read_text(encoding="utf-8")
+    _seed_approved_plan_snapshot(session, plan_md)
+    with pytest.raises(ValueError, match="none of the expected plan paths exist"):
+        run_dry_run(session, action_index=1, permissions={})
+
+
+def test_dry_run_allows_new_file_under_workspace(tmp_path: Path, monkeypatch):
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    session = tmp_path / "sess"
+    session.mkdir()
+    target = workspace / "RECIPE.md"
+    (session / "plan.md").write_text(
+        f"""## 지금 실행
+1.
+   - 무엇을: 레시피 작성
+   - 어디서: `{target}`
+   - 검증: RECIPE.md 생성
+""",
+        encoding="utf-8",
+    )
+    (session / "run.json").write_text("{}\n", encoding="utf-8")
+
+    monkeypatch.setattr("agent_lab.agents.cursor_agent.is_available", lambda: True)
+    monkeypatch.setattr(
+        "agent_lab.plan_execute.resolve_execute_workspace",
+        lambda _permissions=None, _expected=None: (workspace, {}),
+    )
+    monkeypatch.setattr(
+        "agent_lab.agents.cursor_agent.respond",
+        lambda **_kwargs: "created RECIPE.md",
+    )
+
+    plan_md = (session / "plan.md").read_text(encoding="utf-8")
+    _seed_approved_plan_snapshot(session, plan_md)
+    execution = run_dry_run(session, action_index=1, permissions={})
+    assert execution["status"] == "pending_approval"
+    assert execution["workspace_label"] or execution.get("workspace_root")
+
     actions = parse_plan_actions(SAMPLE_PLAN)
     assert len(actions) == 2
     assert actions[0].index == 1
@@ -189,7 +499,7 @@ def test_maybe_auto_scribe_on_consensus_reached(tmp_path: Path):
     folder.mkdir()
     with patch(
         "agent_lab.room.synthesize_session_plan",
-        return_value=SAMPLE_PLAN,
+        return_value=(SAMPLE_PLAN, "합의된 점 반영"),
     ) as mock_synth:
         result = maybe_auto_scribe_after_consensus(
             folder,
@@ -203,7 +513,73 @@ def test_maybe_auto_scribe_on_consensus_reached(tmp_path: Path):
         on_event=None,
         permissions=None,
         trigger="consensus_reached",
+        previous_plan_md="",
     )
+
+
+def test_maybe_auto_scribe_emits_dry_run_proposal(tmp_path: Path):
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    events: list[tuple[str, dict]] = []
+
+    def on_event(event_type: str, payload: dict) -> None:
+        events.append((event_type, payload))
+
+    def _fake_synth(session_folder, **kwargs):
+        (session_folder / "plan.md").write_text(NEW_FORMAT_PLAN, encoding="utf-8")
+        return NEW_FORMAT_PLAN, "합의 반영"
+
+    with patch(
+        "agent_lab.room.synthesize_session_plan",
+        side_effect=_fake_synth,
+    ):
+        result = maybe_auto_scribe_after_consensus(
+            folder,
+            consensus_meta={"status": "reached", "excerpt": "parser 섹션"},
+            synthesize=False,
+            cancelled=False,
+            on_event=on_event,
+        )
+
+    assert result == NEW_FORMAT_PLAN
+    event_types = [name for name, _ in events]
+    assert "consensus_plan_synced" in event_types
+    assert "consensus_dry_run_proposal" in event_types
+
+    _, proposal = next(
+        (item for item in events if item[0] == "consensus_dry_run_proposal"),
+    )
+    assert proposal["has_executable"] is True
+    assert proposal["action_key"] == "now:1"
+    assert proposal["recommended"]["what"].startswith("plan parser")
+
+
+def test_maybe_auto_scribe_materializes_returned_plan_for_proposal(tmp_path: Path):
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    events: list[tuple[str, dict]] = []
+
+    def on_event(event_type: str, payload: dict) -> None:
+        events.append((event_type, payload))
+
+    with patch(
+        "agent_lab.room.synthesize_session_plan",
+        return_value=(NEW_FORMAT_PLAN, "합의 반영"),
+    ):
+        maybe_auto_scribe_after_consensus(
+            folder,
+            consensus_meta={"status": "reached", "excerpt": "parser 섹션"},
+            synthesize=False,
+            cancelled=False,
+            on_event=on_event,
+        )
+
+    assert (folder / "plan.md").read_text(encoding="utf-8") == NEW_FORMAT_PLAN
+    _, proposal = next(
+        (item for item in events if item[0] == "consensus_dry_run_proposal"),
+    )
+    assert proposal["has_executable"] is True
+    assert proposal["action_key"] == "now:1"
 
 
 def test_snapshot_restore_on_reject(tmp_path: Path):
@@ -257,6 +633,34 @@ def test_snapshot_restore_on_reject(tmp_path: Path):
     assert not created.exists()
 
 
+def test_list_plan_actions_includes_execute_workspace(tmp_path: Path, monkeypatch):
+    agent_lab = tmp_path / "agent-lab"
+    agent_lab.mkdir()
+    lecture = tmp_path / "lecture-book"
+    lecture.mkdir()
+    (lecture / "extract_lecturenote.py").write_text("# x\n", encoding="utf-8")
+
+    monkeypatch.setenv("AGENT_LAB_ROOT", str(agent_lab))
+    monkeypatch.setenv("LECTURE_SCRIPT_ROOT", str(lecture))
+
+    session = tmp_path / "sess"
+    session.mkdir()
+    (session / "plan.md").write_text(
+        """## 지금 실행
+1.
+   - 무엇을: lecturenote 추출
+   - 어디서: `extract_lecturenote.py`
+   - 검증: 스크립트 실행
+""",
+        encoding="utf-8",
+    )
+
+    result = list_plan_actions(session)
+    ws = result["recommended"]["execute_workspace"]
+    assert ws["label"] == "lecture-script"
+    assert "extract_lecturenote.py" in ws["paths_found"]
+
+
 def test_dry_run_failure_restores_snapshot(tmp_path: Path, monkeypatch):
     workspace = tmp_path / "workspace"
     workspace.mkdir()
@@ -282,10 +686,12 @@ def test_dry_run_failure_restores_snapshot(tmp_path: Path, monkeypatch):
     monkeypatch.setattr("agent_lab.agents.cursor_agent.is_available", lambda: True)
     monkeypatch.setattr("agent_lab.agents.cursor_agent.respond", _fail)
     monkeypatch.setattr(
-        "agent_lab.plan_execute.primary_workspace",
-        lambda _permissions=None: workspace,
+        "agent_lab.plan_execute.resolve_execute_workspace",
+        lambda _permissions=None, _expected=None: (workspace, {}),
     )
 
+    plan_md = (session / "plan.md").read_text(encoding="utf-8")
+    _seed_approved_plan_snapshot(session, plan_md)
     try:
         run_dry_run(session, action_index=1, permissions={})
         assert False, "expected failure"
@@ -320,7 +726,9 @@ def test_resolve_reject_restores_files(tmp_path: Path, monkeypatch):
                         "id": exec_id,
                         "status": "pending_approval",
                         "snapshot_id": exec_id,
+                        "workspace_root": str(workspace),
                         "expected_paths": ["target.txt"],
+                        "snapshot_paths": ["target.txt"],
                         "paths_outside_expected": [],
                     }
                 ]
@@ -331,8 +739,8 @@ def test_resolve_reject_restores_files(tmp_path: Path, monkeypatch):
         encoding="utf-8",
     )
     monkeypatch.setattr(
-        "agent_lab.plan_execute.primary_workspace",
-        lambda _permissions=None: workspace,
+        "agent_lab.plan_execute.resolve_execute_workspace",
+        lambda _permissions=None, _expected=None: (workspace, {}),
     )
 
     result = resolve_execution(

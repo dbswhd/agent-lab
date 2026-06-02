@@ -133,12 +133,27 @@ def _permission_mode() -> str:
     return mode if mode in allowed else "acceptEdits"
 
 
+def _optional_timeout_sec(*env_keys: str) -> int | None:
+    for key in env_keys:
+        raw = (os.getenv(key) or "").strip()
+        if raw:
+            return int(raw)
+    return None
+
+
+def _timeout_sec(*, room_turn: bool) -> int | None:
+    if room_turn:
+        return _optional_timeout_sec("CLAUDE_ROOM_TIMEOUT_SEC", "CLAUDE_TIMEOUT_SEC")
+    return _optional_timeout_sec("CLAUDE_TIMEOUT_SEC")
+
+
 def invoke(
     system: str,
     user: str,
     *,
     permissions: dict | None = None,
     scribe: bool = False,
+    room_turn: bool = True,
 ) -> str:
     from agent_lab.agent_permissions import normalize_claude_permissions
 
@@ -152,7 +167,9 @@ def invoke(
         )
 
     perms = normalize_claude_permissions(permissions)
-    cwd = os.getenv("CLAUDE_CWD", str(_project_root()))
+    from agent_lab.workspace_roots import discuss_primary_workspace
+
+    cwd = os.getenv("CLAUDE_CWD") or str(discuss_primary_workspace(perms))
     permission_mode = _permission_mode()
     skip_permissions = _env_bool("CLAUDE_SKIP_PERMISSIONS", default=True)
 
@@ -211,7 +228,7 @@ def invoke(
             stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
-            timeout=int(os.getenv("CLAUDE_TIMEOUT_SEC", "300")),
+            timeout=_timeout_sec(room_turn=room_turn),
             env=_claude_env(),
             cwd=cwd,
         )

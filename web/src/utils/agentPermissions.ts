@@ -3,6 +3,7 @@ export type AgentPermissions = {
     tools?: boolean;
     local_agent_lab?: boolean;
     local_pipeline?: boolean;
+    local_lecture_script?: boolean;
   };
   codex?: {
     cli?: boolean;
@@ -12,35 +13,57 @@ export type AgentPermissions = {
     write?: boolean;
     local_agent_lab?: boolean;
     local_pipeline?: boolean;
+    local_lecture_script?: boolean;
   };
 };
 
 const STORAGE_KEY = "agent-lab-permissions-default";
 
-/** Default Claude Code access for room turns (read + edit + agent-lab). */
-export const CLAUDE_PERMISSION_DEFAULTS: NonNullable<
-  AgentPermissions["claude"]
+/** Maximum access for room debate + execute (all roots, all tools). */
+export const FULL_AGENT_PERMISSIONS: Required<
+  Pick<AgentPermissions, "cursor" | "codex" | "claude">
 > = {
-  tools: true,
-  write: true,
-  local_agent_lab: true,
-  local_pipeline: false,
+  cursor: {
+    tools: true,
+    local_agent_lab: true,
+    local_pipeline: true,
+    local_lecture_script: true,
+  },
+  codex: { cli: true },
+  claude: {
+    tools: true,
+    write: true,
+    local_agent_lab: true,
+    local_pipeline: true,
+    local_lecture_script: true,
+  },
 };
 
+/** @deprecated alias — use FULL_AGENT_PERMISSIONS */
+export const CURSOR_PERMISSION_DEFAULTS = FULL_AGENT_PERMISSIONS.cursor;
+export const CLAUDE_PERMISSION_DEFAULTS = FULL_AGENT_PERMISSIONS.claude;
+export const CODEX_PERMISSION_DEFAULTS = FULL_AGENT_PERMISSIONS.codex;
+
+export function fullAgentPermissions(): AgentPermissions {
+  return {
+    cursor: { ...FULL_AGENT_PERMISSIONS.cursor },
+    codex: { ...FULL_AGENT_PERMISSIONS.codex },
+    claude: { ...FULL_AGENT_PERMISSIONS.claude },
+  };
+}
+
+/** Full permissions for agents selected this turn (room default). */
+export function roomPermissions(selected: string[]): AgentPermissions {
+  const full = fullAgentPermissions();
+  const p: AgentPermissions = {};
+  if (selected.includes("cursor")) p.cursor = { ...full.cursor };
+  if (selected.includes("codex")) p.codex = { ...full.codex };
+  if (selected.includes("claude")) p.claude = { ...full.claude };
+  return p;
+}
+
 export function loadDefaultPermissions(): AgentPermissions {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const saved = JSON.parse(raw) as AgentPermissions;
-      return {
-        ...saved,
-        claude: { ...CLAUDE_PERMISSION_DEFAULTS, ...saved.claude },
-      };
-    }
-  } catch {
-    /* ignore */
-  }
-  return { claude: { ...CLAUDE_PERMISSION_DEFAULTS } };
+  return fullAgentPermissions();
 }
 
 export function saveDefaultPermissions(p: AgentPermissions): void {
@@ -100,13 +123,14 @@ export function buildPermissionsFromForm(
   const p: AgentPermissions = {};
   if (selected.includes("cursor")) {
     p.cursor = {
+      ...FULL_AGENT_PERMISSIONS.cursor,
       tools: form.cursorTools,
       local_agent_lab: form.cursorAgentLab,
       local_pipeline: form.cursorPipeline,
     };
   }
-  if (selected.includes("codex") && form.codexCli) {
-    p.codex = { cli: true };
+  if (selected.includes("codex")) {
+    p.codex = { cli: form.codexCli };
   }
   if (selected.includes("claude")) {
     p.claude = {

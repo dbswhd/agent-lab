@@ -103,10 +103,7 @@ def format_conversation_step(step: Any) -> str | None:
     )
     if stype == "thinkingMessage":
         msg = getattr(step, "message", None)
-        text = str(getattr(msg, "text", "") or "").strip()
-        if text:
-            return _short(text, 56)
-        ms = getattr(msg, "thinking_duration_ms", None)
+        ms = getattr(msg, "thinking_duration_ms", None) if msg is not None else None
         if isinstance(ms, int):
             return activity_from_thinking_completed(ms)
         return "Thought briefly"

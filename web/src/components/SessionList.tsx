@@ -82,8 +82,9 @@ export function SessionList({
 
   return (
     <>
-      <ul className="session-list">
-        {sessions.map((s) => (
+      <div className="session-list-scroll">
+        <ul className="session-list">
+          {sessions.map((s) => (
           <li
             key={s.id}
             className={selectedId === s.id ? "selected" : ""}
@@ -99,8 +100,9 @@ export function SessionList({
             </div>
             <span className="session-time">{formatTime(s.created_at)}</span>
           </li>
-        ))}
-      </ul>
+          ))}
+        </ul>
+      </div>
 
       {menu && (
         <SessionContextMenu

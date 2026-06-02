@@ -8,6 +8,11 @@ from datetime import datetime
 from typing import Any, Protocol
 
 from agent_lab.context_limits import agent_context_limits, scribe_context_limits
+from agent_lab.consensus_agreements import (
+    agreement_sync_failed_notice,
+    agreement_pending_notice,
+    pending_consensus_agreements,
+)
 
 # Backward-compatible module-level defaults (prefer agent_context_limits() at runtime).
 RECENT_TURNS = agent_context_limits().recent_turns
@@ -41,6 +46,14 @@ _GATE_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"scribe.*(생략|안)|정리.*(안|말고)", re.I), "no-scribe"),
 ]
 
+ANALYSIS_TURN_GUIDANCE = """\
+[분석 턴 — 현황 파악만]
+- **관찰·사실·파일/로그 근거**만 보고하세요. plan.md는 건드리지 않습니다.
+- `[PROPOSED:]` / 구현·수정 제안 / 반박 / 「이의 없습니다」는 **이 턴에서 쓰지 마세요**.
+- 동료와 겹치면 짧게 — 같은 파일을 반복 탐색하지 말고, 각자 다른 각도(구조·리스크·데이터)를 보세요.
+- Human에게 질문하지 말고, 모르면 「확인 필요: …」 한 줄로 남기세요.
+"""
+
 EFFICIENCY_RESPONSE_GUIDANCE = """\
 [효율 모드 — 구독 호출·payload 절약]
 - 답변은 **800자 이내**를 목표로 하세요(Human이 길게 요청한 경우만 예외).
@@ -49,23 +62,43 @@ EFFICIENCY_RESPONSE_GUIDANCE = """\
 """
 
 CONVERSATION_GUIDANCE = """\
-[Conversation guidance — light process, not a rigid template]
-- Write for a Human reader: clear stance, concrete reasoning, and what you would do next.
-- When other assistants spoke this turn, use [이번 턴 · 동료 발화] — name them and add only what is new.
-- Prefer short paragraphs; do not repeat the whole thread or re-introduce yourself.
+[Conversation guidance — debate evolves through action + feedback, not monologue]
+- This room is **not text-only**: read the repo, run checks, sketch fixes when that advances the thread.
+- React to peers with **evidence** (what you read/ran/changed) and build on their findings — mutual feedback, not three parallel essays.
+- Write for a Human reader: clear stance, concrete reasoning, and what you did or would do next.
+- Peer lines are already in your context ([이번 턴 · 동료 발화] / peer digest) — **do not** echo that header; name peers only when citing something new.
+- Prefer short paragraphs after tool work; do not repeat the whole thread or re-introduce yourself.
 - If you truly add nothing new, say so briefly (e.g. PASS or "앞선 의견과 동일").
-- In **자유 토론** consensus rounds: if you have **no** objection and **nothing new** to add, put only `이의 없습니다` on the first line (optional: one short `(부연)` on line 2).
-- If you agree **but** want to add risks, steps, or `[PROPOSED: …]`, do **not** lead with `이의 없습니다` — write the amendment directly; that starts a new anchor round.
+- In **자유 토론** consensus rounds: if you have **no** objection and **nothing new** to add, use `act: ENDORSE` in the envelope (body: `이의 없습니다` one line) or legacy first-line `이의 없습니다` only.
+- If you agree **but** want to add risks, steps, or new work items, use `act: AMEND` / `PROPOSE` — do **not** lead with `이의 없습니다`.
 - New risks or open questions belong in plan 미결, not buried in debate filler.
-- Optional status tags (scope / adoption only; one line each):
-  - `[PROPOSED: …]` — tentative; not final until Human approves.
-  - `[CONFIRMED-BY-HUMAN: …]` — only after explicit Human approval; never promote `[PROPOSED:]` yourself.
+- `[PROPOSED: …]` — only when proposing **new actionable work** for the shared task board (not every reply).
+- `[CONFIRMED-BY-HUMAN: …]` — only after explicit Human approval; never promote `[PROPOSED:]` yourself.
+"""
+
+MULTI_AGENT_COORDINATION = """\
+[Multi-agent coordination — Cursor · Codex · Claude, one workspace]
+- You **may** read/run/edit in this turn when it helps the debate move forward (Human granted full access).
+- **Avoid collisions:** before editing a file a peer likely touched this turn, **Read** it first.
+- **R1 (parallel):** prefer disjoint paths (analysis vs test vs patch in different files). If the same file is hot, **one editor per wave** — others review, verify, or `[PROPOSED:]` without overwriting.
+- **R2+ (sequential):** you see peer outputs — **extend or fix**, do not blindly revert; state what you changed and why.
+- Never silent-merge conflicting edits; flag conflict in `[PROPOSED:]` and let peers AMEND/ENDORSE — not a Human questionnaire.
+- Codex/Cursor/Claude: complementary roles still apply, but **all may use tools** when useful.
+"""
+
+PEER_DECISION_GUIDANCE = """\
+[Peer decision — do not punt to Human]
+- **Do not** ask the Human clarifying questions that Cursor/Codex/Claude can resolve among yourselves (scope, approach, file choice, verify order).
+- If uncertain: state a **working assumption**, tag `[PROPOSED: …]`, and let peers ENDORSE / AMEND in the next round.
+- Only escalate to Human for: explicit approval gates (`GO`, budget, destructive prod), missing secrets/paths outside repo, or unresolvable peer conflict after one amend round.
+- Prefer **deciding together** over "Human에게 한 줄 확인".
 """
 
 # One-line complementarity hint per agent (connect without format forcing).
 AGENT_CONNECT_HINT: dict[str, str] = {
     "cursor": (
         "이번 턴 각도: 레포·파일·구체적 다음 수정. "
+        "경로·코드 질문이면 도구로 읽은 뒤 답할 것. "
         "동료의 범위·순서는 받아 이어가고, 같은 체크리스트만 반복하지 말 것."
     ),
     "codex": (
@@ -83,6 +116,31 @@ CLAUDE_TOOL_RULES = """\
 - If the human asks to read, verify, quote, or check a file/path: call **Read** or **Grep** first, then answer from the result.
 - Runtime and --add-dir roots are in [고정 constraints]; do not claim claude.ai-only or missing filesystem access.
 """
+
+CURSOR_TOOL_RULES = """\
+[Cursor SDK tools — this turn]
+- File/code/UI/build questions: **read or search the repo in `cwd` first**, then answer or edit. Do not guess from chat context alone.
+- After edits: **re-read or run the verification** the human or plan asked for when you can in this turn.
+- Workspace roots are in [고정 constraints]; coordinate with Codex/Claude per [Multi-agent coordination].
+"""
+
+CODEX_TOOL_RULES = """\
+[Codex CLI tools — this turn]
+- You may read/search/run shell in granted project roots — use them to **verify** peer claims and advance the debate.
+- **Cap exploration:** 1–3 short reads/greps, then **answer in this turn**. Do not chain many ls/find/cat loops.
+- Prefer execution order + test runs; after Codex edits, say what you ran and what passed/failed.
+- Coordinate with Cursor/Claude: see [Multi-agent coordination]; do not overwrite a peer's edit without reading first.
+"""
+
+
+def agent_tool_rules(agent: str) -> str:
+    if agent == "claude":
+        return CLAUDE_TOOL_RULES
+    if agent == "cursor":
+        return CURSOR_TOOL_RULES
+    if agent == "codex":
+        return CODEX_TOOL_RULES
+    return ""
 
 # Backward-compatible alias for imports/tests.
 REPLY_FORMAT_RULES = CONVERSATION_GUIDANCE
@@ -316,31 +374,14 @@ def extract_status_tags(
 
 
 def plan_stale_banner(run_meta: dict[str, Any] | None) -> str | None:
-    """Mirror web planMeta freshness: discuss after last plan update → stale."""
+    """Prompt plan sync when a consensus topic is agreed but not yet in plan.md."""
     if not run_meta:
         return None
-    last_update = run_meta.get("last_plan_update") or {}
-    plan_ts_raw = last_update.get("completed_at") or last_update.get("ts")
-    if not plan_ts_raw:
+    pending = pending_consensus_agreements(run_meta.get("consensus_agreements"))
+    if not pending:
         return None
-    plan_ts = _parse_iso(str(plan_ts_raw))
-    if not plan_ts:
-        return None
-
-    discuss_ts_raw: str | None = None
-    for turn in reversed(run_meta.get("turns") or []):
-        if turn.get("mode") == "discuss":
-            discuss_ts_raw = turn.get("ts") or turn.get("completed_at")
-            break
-    if not discuss_ts_raw:
-        return None
-    discuss_ts = _parse_iso(str(discuss_ts_raw))
-    if discuss_ts and discuss_ts > plan_ts:
-        return (
-            "[plan stale] 마지막 토론(discuss) 이후 plan.md가 갱신되지 않았습니다. "
-            "정리(plan)가 필요할 수 있습니다."
-        )
-    return None
+    excerpt = str(pending[-1].get("excerpt") or "")
+    return agreement_sync_failed_notice(excerpt, "plan.md 자동 정리 후 수동 확인 필요")
 
 
 def _split_human_turns(messages: list[_MessageLike]) -> list[list[_MessageLike]]:

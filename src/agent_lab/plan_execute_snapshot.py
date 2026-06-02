@@ -9,12 +9,21 @@ from pathlib import Path
 from typing import Any
 
 
-def normalize_path(path: str) -> str:
-    return path.strip().lstrip("./")
+from agent_lab.plan_execute_paths import normalize_snapshot_path
+
+
+def normalize_path(path: str, *, cwd: Path | None = None) -> str:
+    """Normalize path for snapshot ops; pass cwd when paths may be absolute."""
+    if cwd is None:
+        raw = path.strip().replace("\\", "/")
+        if raw.startswith("./"):
+            raw = raw[2:]
+        return raw
+    return normalize_snapshot_path(path, cwd=cwd)
 
 
 def _resolve_under(cwd: Path, rel: str) -> Path:
-    norm = normalize_path(rel)
+    norm = normalize_path(rel, cwd=cwd)
     target = (cwd / norm).resolve()
     cwd_resolved = cwd.resolve()
     if target != cwd_resolved and cwd_resolved not in target.parents:
@@ -22,12 +31,14 @@ def _resolve_under(cwd: Path, rel: str) -> Path:
     return target
 
 
-def parent_dirs(expected_paths: list[str]) -> list[str]:
+def parent_dirs(expected_paths: list[str], *, cwd: Path) -> list[str]:
     dirs: set[str] = set()
     for path in expected_paths:
-        norm = normalize_path(path)
+        norm = normalize_path(path, cwd=cwd)
         parent = str(Path(norm).parent)
-        if parent and parent != ".":
+        if not parent or parent == ".":
+            dirs.add(".")
+        else:
             dirs.add(parent)
     return sorted(dirs)
 
@@ -49,7 +60,7 @@ def create_snapshot(
 
     files_meta: dict[str, dict[str, Any]] = {}
     for rel in expected_paths:
-        norm = normalize_path(rel)
+        norm = normalize_path(rel, cwd=cwd)
         target = _resolve_under(cwd, norm)
         if target.is_file():
             dest = files_root / norm
@@ -63,7 +74,7 @@ def create_snapshot(
             files_meta[norm] = {"existed": False}
 
     dir_listings: dict[str, list[str]] = {}
-    for parent in parent_dirs(expected_paths):
+    for parent in parent_dirs(expected_paths, cwd=cwd):
         parent_path = _resolve_under(cwd, parent)
         if parent_path.is_dir():
             dir_listings[parent] = sorted(
@@ -121,7 +132,7 @@ def compute_touched_paths(
     files_meta: dict[str, dict[str, Any]] = manifest.get("files") or {}
 
     for rel in expected_paths:
-        norm = normalize_path(rel)
+        norm = normalize_path(rel, cwd=cwd)
         entry = files_meta.get(norm, {"existed": False})
         before = _read_snapshot_bytes(folder, exec_id, entry)
         after = _read_current_bytes(cwd, norm)
@@ -138,7 +149,7 @@ def compute_touched_paths(
         }
         before_set = set(before_names)
         for name in sorted(after_names - before_set):
-            rel = normalize_path(str(Path(parent) / name))
+            rel = normalize_path(str(Path(parent) / name), cwd=cwd)
             if rel not in touched:
                 touched.append(rel)
 
@@ -195,7 +206,7 @@ def build_diff(
     stat_rows: list[tuple[str, int, int]] = []
 
     for rel in touched_paths:
-        norm = normalize_path(rel)
+        norm = normalize_path(rel, cwd=cwd)
         entry = files_meta.get(norm, {"existed": False})
         chunk = unified_diff_for_path(
             folder,
@@ -218,7 +229,7 @@ def build_diff(
     if not stat_rows:
         return diff, ""
     width = max(len(row[0]) for row in stat_rows)
-    lines = [f" {row[0].ljust(width)} | {row[1]:>3} +{row[2]:>3} -" for row in stat_rows]
+    lines = [f" {row[0].ljust(width)} | +{row[1]} -{row[2]}" for row in stat_rows]
     total_adds = sum(row[1] for row in stat_rows)
     total_dels = sum(row[2] for row in stat_rows)
     summary = f" {len(stat_rows)} file(s) changed, {total_adds} insertion(s)(+), {total_dels} deletion(s)(-)"
@@ -236,7 +247,7 @@ def restore_snapshot(
     snap_root = snapshot_dir_for(folder, exec_id)
 
     for rel, entry in files_meta.items():
-        norm = normalize_path(rel)
+        norm = normalize_path(rel, cwd=cwd)
         target = _resolve_under(cwd, norm)
         if entry.get("existed"):
             snap_file = entry.get("snapshot_file")
@@ -252,7 +263,7 @@ def restore_snapshot(
             target.unlink()
 
     dir_listings: dict[str, list[str]] = manifest.get("dir_listings") or {}
-    expected_norm = {normalize_path(p) for p in files_meta}
+    expected_norm = {normalize_path(p, cwd=cwd) for p in files_meta}
     for parent, before_names in dir_listings.items():
         parent_path = _resolve_under(cwd, parent)
         if not parent_path.is_dir():
@@ -261,7 +272,7 @@ def restore_snapshot(
         for entry in parent_path.iterdir():
             if not entry.is_file():
                 continue
-            rel = normalize_path(str(entry.relative_to(cwd.resolve())))
+            rel = normalize_path(str(entry.relative_to(cwd.resolve())), cwd=cwd)
             if rel in expected_norm:
                 continue
             if entry.name not in before_set:

@@ -11,7 +11,20 @@
     <title>Agent Lab</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <p class="boot-loading" id="boot-loading">Agent Lab 불러오는 중…</p>
+    </div>
+    <script>
+      window.addEventListener("error", function (ev) {
+        var el = document.getElementById("root");
+        if (!el || el.querySelector(".boot-fallback")) return;
+        var msg = (ev.error && ev.error.message) || ev.message || "unknown error";
+        el.innerHTML =
+          '<div class="boot-fallback" role="alert"><h1>Agent Lab</h1><p>UI 로드 실패</p><pre></pre></div>';
+        var pre = el.querySelector("pre");
+        if (pre) pre.textContent = msg;
+      });
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

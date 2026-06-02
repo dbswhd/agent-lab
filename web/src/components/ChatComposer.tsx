@@ -1,5 +1,6 @@
 import { useRef, type ReactNode } from "react";
 import { CollapsibleGlassPanel } from "./CollapsibleGlassPanel";
+import { ComposerPlanToggle } from "./ComposerPlanToggle";
 import { ComposerEfficiencyToggle } from "./ComposerEfficiencyToggle";
 import { ComposerTurnPicker } from "./ComposerTurnPicker";
 import type { ComposerTurnProfile } from "../utils/turnProfile";
@@ -23,12 +24,23 @@ type Props = {
   className?: string;
   turnProfile?: ComposerTurnProfile;
   onTurnProfileChange?: (profile: ComposerTurnProfile) => void;
+  planAfterSend?: boolean;
+  onPlanAfterSendChange?: (on: boolean) => void;
+  executeDisabled?: boolean;
+  pendingExecuteCount?: number;
   efficiencyOn?: boolean;
   onEfficiencyChange?: (on: boolean) => void;
   /** plan이 토론보다 뒤처짐 — composer 위 안내 */
   planStaleNotice?: string | null;
+  /** Hide textarea/send (mode picker stays visible). */
+  inputHidden?: boolean;
   running?: boolean;
   onStop?: () => void;
+  /** Current room turn mode (토론 / 정리 / 합의). */
+  modeChip?: string | null;
+  modeChipVariant?: "discuss" | "plan" | "consensus";
+  /** New session — plan scribe timing hint. */
+  isNewSession?: boolean;
 };
 
 export function ChatComposer({
@@ -47,11 +59,19 @@ export function ChatComposer({
   className,
   turnProfile,
   onTurnProfileChange,
+  planAfterSend = false,
+  onPlanAfterSendChange,
+  executeDisabled: _executeDisabled,
+  pendingExecuteCount: _pendingExecuteCount,
   efficiencyOn = false,
   onEfficiencyChange,
   planStaleNotice,
+  inputHidden = false,
   running = false,
   onStop,
+  modeChip,
+  modeChipVariant,
+  isNewSession = false,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -90,6 +110,34 @@ export function ChatComposer({
         </div>
       )}
       <div className="composer-dock">
+        {modeChip ? (
+          <p
+            className={[
+              "composer-mode-chip",
+              modeChipVariant
+                ? `composer-mode-chip--${modeChipVariant}`
+                : undefined,
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            role="status"
+          >
+            <span className="composer-mode-chip__label">{modeChip}</span>
+            {isNewSession ? (
+              <span className="composer-mode-chip__hint">
+                첫 전송은 토론만 · plan은 「정리 후 전송」 또는 plan 탭에서 갱신
+              </span>
+            ) : planAfterSend ? (
+              <span className="composer-mode-chip__hint">
+                전송 시 plan.md 재정리(Scribe)
+              </span>
+            ) : (
+              <span className="composer-mode-chip__hint">
+                전송 시 plan 미변경(토론만)
+              </span>
+            )}
+          </p>
+        ) : null}
         {turnProfile && onTurnProfileChange ? (
           <div className="composer-turn-row">
             <ComposerTurnPicker
@@ -97,13 +145,22 @@ export function ChatComposer({
               onChange={onTurnProfileChange}
               disabled={inputLocked}
               trailing={
-                onEfficiencyChange ? (
-                  <ComposerEfficiencyToggle
-                    checked={efficiencyOn}
-                    onChange={onEfficiencyChange}
-                    disabled={inputLocked}
-                  />
-                ) : null
+                <>
+                  {onPlanAfterSendChange ? (
+                    <ComposerPlanToggle
+                      checked={planAfterSend}
+                      onChange={onPlanAfterSendChange}
+                      disabled={inputLocked}
+                    />
+                  ) : null}
+                  {onEfficiencyChange ? (
+                    <ComposerEfficiencyToggle
+                      checked={efficiencyOn}
+                      onChange={onEfficiencyChange}
+                      disabled={inputLocked}
+                    />
+                  ) : null}
+                </>
               }
             />
           </div>
@@ -119,6 +176,7 @@ export function ChatComposer({
             <p className="composer-alert-panel__text">{planStaleNotice}</p>
           </CollapsibleGlassPanel>
         ) : null}
+        {!inputHidden ? (
         <div className="composer-row">
           <div className="composer-capsule">
             {showAttach && (
@@ -184,6 +242,7 @@ export function ChatComposer({
             ↑
           </button>
         </div>
+        ) : null}
       </div>
     </div>
   );

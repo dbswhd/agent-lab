@@ -2,11 +2,17 @@ export function roundDividerLabel(
   round: number,
   reviewMode = false,
   consensusMode = false,
+  debatePhase = false,
 ): string {
   if (round <= 1) {
     return consensusMode
-      ? `── ${round}라운드 · 병렬 · 자유 토론 ──`
-      : `── ${round}라운드 · 병렬 · 동시 응답 ──`;
+      ? `── ${round}라운드 · 병렬 · 주장 ──`
+      : `── ${round}라운드 · 병렬 · 분석 ──`;
+  }
+  if (consensusMode && debatePhase) {
+    return reviewMode
+      ? `── ${round}라운드 · 순차 · 반박·재검증 ──`
+      : `── ${round}라운드 · 순차 · 이어가기·확장 ──`;
   }
   if (consensusMode) {
     return `── ${round}라운드 · 순차 · 합의 확인 ──`;
@@ -14,14 +20,7 @@ export function roundDividerLabel(
   if (reviewMode) {
     return `── ${round}라운드 · 순차 · 검토(claude→codex→cursor) ──`;
   }
-  return `── ${round}라운드 · 순차 · 이전 답변 반영 ──`;
-}
-
-export function consensusEndLabel(
-  anchorAgent: string,
-  agentLabel: (id: string) => string,
-): string {
-  return `── 합의 종료 · 이의 없음 · 앵커 ${agentLabel(anchorAgent)} ──`;
+  return `── ${round}라운드 · 순차 · 토론 이어가기 ──`;
 }
 
 export function consensusIncompleteLabel(message?: string): string {

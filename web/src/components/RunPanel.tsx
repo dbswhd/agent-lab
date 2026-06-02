@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { BackendOption } from "../api/client";
 import { runGraph } from "../api/client";
 import { topicAsUserMessage, type ChatMessage } from "../utils/transcript";
@@ -6,6 +6,10 @@ import { ChatBubble } from "./ChatBubble";
 import { ChatComposer } from "./ChatComposer";
 import { ChatPaneBody } from "./ChatPaneBody";
 import { ChatToolbar } from "./ChatToolbar";
+import {
+  ScrollToBottomButton,
+  useMessagesScroll,
+} from "./ScrollToBottomButton";
 
 type Props = {
   backends: BackendOption[];
@@ -39,18 +43,63 @@ export function RunPanel({
   const [running, setRunning] = useState(false);
   const [steps, setSteps] = useState<StepState>({});
   const [error, setError] = useState<string | null>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setBackend(defaultBackend);
   }, [defaultBackend]);
 
-  useEffect(() => {
-    scrollRef.current?.scrollTo({
-      top: scrollRef.current.scrollHeight,
-      behavior: "smooth",
-    });
-  }, [steps, running, topic]);
+  const threadMessages = useMemo(() => {
+    const out: ChatMessage[] = [];
+    if (topic.trim()) {
+      out.push(topicAsUserMessage(topic.trim()));
+    }
+    for (const node of AGENT_ORDER) {
+      const status = steps[node];
+      const meta = AGENT_META[node];
+      const prevDone = AGENT_ORDER.slice(0, AGENT_ORDER.indexOf(node)).every(
+        (n) => steps[n] === "done",
+      );
+      const isTyping =
+        status === "running" ||
+        (running && prevDone && status !== "done" && !status);
+
+      if (status === "done") {
+        const chars = steps[`${node}_chars`];
+        out.push({
+          id: node,
+          role: meta.role,
+          label: meta.label,
+          body: chars
+            ? `(${chars}자) — 완료 후 대화 탭에서 전문을 볼 수 있습니다.`
+            : "완료",
+          sent: false,
+        });
+      } else if (isTyping) {
+        out.push({
+          id: `${node}-typing`,
+          role: meta.role,
+          label: meta.label,
+          body: "",
+          sent: false,
+        });
+      }
+    }
+    if (steps.save === "done") {
+      out.push({
+        id: "save",
+        role: "system",
+        label: "",
+        body: "세션 저장됨",
+      });
+    }
+    return out;
+  }, [topic, steps, running]);
+
+  const { scrollRef, showJumpButton, scrollToBottom } = useMessagesScroll(
+    [threadMessages, running],
+    true,
+    "classic-run",
+  );
 
   async function handleRun() {
     if (!topic.trim() || running) return;
@@ -85,57 +134,10 @@ export function RunPanel({
     }
   }
 
-  function renderAgentBubbles() {
-    return AGENT_ORDER.map((node, index) => {
-      const status = steps[node];
-      const meta = AGENT_META[node];
-      const prevDone = AGENT_ORDER.slice(0, index).every(
-        (n) => steps[n] === "done",
-      );
-      const isTyping =
-        status === "running" ||
-        (running && prevDone && status !== "done" && !status);
-
-      if (status === "done") {
-        const chars = steps[`${node}_chars`];
-        return (
-          <ChatBubble
-            key={node}
-            message={{
-              id: node,
-              role: meta.role,
-              label: meta.label,
-              body: chars
-                ? `(${chars}자) — 대화 탭에서 전문을 볼 수 있어요.`
-                : "완료",
-              sent: false,
-            }}
-          />
-        );
-      }
-      if (isTyping) {
-        return (
-          <ChatBubble
-            key={node}
-            message={{
-              id: `${node}-typing`,
-              role: meta.role,
-              label: meta.label,
-              body: "",
-              sent: false,
-            }}
-            typing
-          />
-        );
-      }
-      return null;
-    });
-  }
-
   const showThread = running || Object.keys(steps).length > 0;
 
   return (
-    <ChatPaneBody>
+    <ChatPaneBody className="chat-pane-body--classic-run">
       <ChatToolbar
         sidebarOpen={sidebarOpen}
         onToggleSidebar={onToggleSidebar}
@@ -143,33 +145,40 @@ export function RunPanel({
         meta="Planner → Critic → Scribe"
       />
 
+      <div className="view-tabs-bar">
+        <div className="view-tabs-bar__leading">
+          <span className="view-tabs-bar__static" aria-hidden>
+            대화
+          </span>
+        </div>
+      </div>
+
       <div className="messages-scroll" ref={scrollRef}>
-        {!showThread && !topic.trim() && (
+        {!showThread && !topic.trim() ? (
           <div className="empty-chat">
             주제를 입력하고 보내세요.
-            <br />
             <span className="empty-chat-hint">
               Planner → Critic → Scribe 순서로 실행됩니다
             </span>
           </div>
-        )}
-        {topic.trim() && (
-          <ChatBubble message={topicAsUserMessage(topic.trim())} />
-        )}
-        {showThread && renderAgentBubbles()}
-        {steps.save === "done" && (
-          <ChatBubble
-            message={{
-              id: "save",
-              role: "system",
-              label: "",
-              body: "세션 저장됨",
-            }}
-          />
+        ) : (
+          threadMessages.map((m) => (
+            <div key={m.id} className="chat-line">
+              <ChatBubble
+                message={m}
+                typing={m.id.endsWith("-typing")}
+              />
+            </div>
+          ))
         )}
       </div>
 
-      {error && <div className="error-banner">{error}</div>}
+      {error ? <div className="error-banner">{error}</div> : null}
+
+      <ScrollToBottomButton
+        visible={showJumpButton}
+        onClick={scrollToBottom}
+      />
 
       <ChatComposer
         value={topic}
@@ -184,7 +193,7 @@ export function RunPanel({
         toolbar={
           <>
             <select
-              className="mac-popup"
+              className="mac-popup execute-composer__select"
               value={backend}
               onChange={(e) => setBackend(e.target.value)}
               disabled={running || backends.length === 0}

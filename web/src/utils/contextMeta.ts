@@ -52,7 +52,7 @@ const LAYER_LABELS: Record<string, string> = {
   peer: "동료 발화",
   guidance: "guidance",
   connect_hint: "connect",
-  claude_tools: "Claude tools",
+  claude_tools: "tool rules",
   follow_up: "follow-up",
 };
 

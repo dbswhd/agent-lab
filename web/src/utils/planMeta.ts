@@ -1,4 +1,9 @@
 import { agentLabel } from "./transcript";
+import {
+  agreementPlanSyncedLabel,
+  latestPendingConsensusAgreement,
+  type ConsensusAgreementRow,
+} from "./consensusAgreement";
 
 export type PlanUpdateMeta = {
   ts?: string;
@@ -13,9 +18,11 @@ export type PlanUpdateMeta = {
   chat_from_line?: number;
   chat_to_line?: number;
   status?: string;
+  consensus_excerpt?: string;
+  plan_sync_summary?: string;
 };
 
-export type PlanFreshness = "current" | "stale" | "unknown";
+export type PlanFreshness = "current" | "sync_failed" | "unknown";
 
 export type PlanMetaView = {
   lastUpdate: PlanUpdateMeta | null;
@@ -25,15 +32,14 @@ export type PlanMetaView = {
   agentsLabel: string;
   freshnessLabel: string;
   reviewTurnLabel: string | null;
-  /** Chat lines added after last plan update (run.message_count − last_plan_update.message_count). */
-  messagesSincePlan: number | null;
-  /** chat.jsonl line range covered by last plan update (1-based). */
+  pendingAgreement: ConsensusAgreementRow | null;
   chatLineLabel: string | null;
 };
 
 function triggerLabel(trigger?: string, synthesizeOnly?: boolean): string {
   if (synthesizeOnly || trigger === "synthesize_only") return "지금 정리";
   if (trigger === "consensus_reached") return "합의 후 자동 정리";
+  if (trigger === "execute_advance") return "실행 후 plan 갱신";
   if (trigger === "plan_turn") return "정리 후 전송";
   return trigger || "알 수 없음";
 }
@@ -48,17 +54,6 @@ function formatTime(iso?: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-function lastDiscussTs(run: Record<string, unknown> | undefined): string | null {
-  const turns = (run?.turns as Record<string, unknown>[] | undefined) ?? [];
-  for (let i = turns.length - 1; i >= 0; i -= 1) {
-    const t = turns[i];
-    if (t.mode === "discuss") {
-      return (t.ts as string) || (t.completed_at as string) || null;
-    }
-  }
-  return null;
 }
 
 function reviewTurnLabel(run: Record<string, unknown> | undefined): string | null {
@@ -77,8 +72,7 @@ export function buildPlanMetaView(
 ): PlanMetaView {
   const lastUpdate =
     (run?.last_plan_update as PlanUpdateMeta | undefined) ?? null;
-  const runMessageCount =
-    typeof run?.message_count === "number" ? run.message_count : null;
+  const pendingAgreement = latestPendingConsensusAgreement(run);
   const trigger = triggerLabel(
     lastUpdate?.trigger,
     lastUpdate?.synthesize_only,
@@ -87,8 +81,7 @@ export function buildPlanMetaView(
     lastUpdate?.completed_at || lastUpdate?.ts || lastUpdate?.started_at,
   );
   const agents = lastUpdate?.agents ?? [];
-  const agentsLabel =
-    agents.length > 0 ? agents.join(", ") : "—";
+  const agentsLabel = agents.length > 0 ? agents.join(", ") : "—";
 
   let chatLineLabel: string | null = null;
   if (
@@ -100,32 +93,18 @@ export function buildPlanMetaView(
 
   let freshness: PlanFreshness = "unknown";
   let freshnessLabel = "갱신 이력 없음";
-  let messagesSincePlan: number | null = null;
-  if (lastUpdate?.completed_at || lastUpdate?.ts) {
-    const planTs = new Date(
-      (lastUpdate.completed_at || lastUpdate.ts) as string,
-    ).getTime();
-    const discussTsRaw = lastDiscussTs(run);
-    if (!discussTsRaw) {
-      freshness = "current";
-      freshnessLabel = "토론 이후 미갱신 없음";
-    } else {
-      const discussTs = new Date(discussTsRaw).getTime();
-      if (discussTs > planTs) {
-        freshness = "stale";
-        freshnessLabel = "마지막 토론 이후 plan 미갱신";
-        const planMc =
-          typeof lastUpdate.message_count === "number"
-            ? lastUpdate.message_count
-            : null;
-        if (runMessageCount != null && planMc != null) {
-          messagesSincePlan = Math.max(0, runMessageCount - planMc);
-        }
-      } else {
-        freshness = "current";
-        freshnessLabel = "최신 plan";
-      }
-    }
+  if (pendingAgreement?.excerpt) {
+    freshness = "sync_failed";
+    freshnessLabel = `[${pendingAgreement.excerpt.slice(0, 40)}…] plan 자동 정리 실패`;
+  } else if (lastUpdate?.consensus_excerpt && lastUpdate?.plan_sync_summary) {
+    freshness = "current";
+    freshnessLabel = agreementPlanSyncedLabel(
+      lastUpdate.consensus_excerpt,
+      lastUpdate.plan_sync_summary,
+    );
+  } else if (lastUpdate?.completed_at || lastUpdate?.ts) {
+    freshness = "current";
+    freshnessLabel = lastUpdate.plan_sync_summary || "plan 반영 완료";
   }
 
   return {
@@ -136,7 +115,9 @@ export function buildPlanMetaView(
     agentsLabel,
     freshnessLabel,
     reviewTurnLabel: reviewTurnLabel(run),
-    messagesSincePlan,
+    pendingAgreement,
     chatLineLabel,
   };
 }
+
+export { agreementPlanSyncedLabel };

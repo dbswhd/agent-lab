@@ -42,6 +42,21 @@ def test_substantive_vs_pass_and_no_objection():
     )
 
 
+def test_debate_round_phases():
+    from agent_lab.room_consensus import (
+        debate_review_round,
+        debate_round_last,
+        max_debate_round_count,
+    )
+
+    assert debate_review_round(2) is True
+    assert debate_review_round(3) is False
+    assert debate_review_round(4) is True
+    assert debate_review_round(5) is False
+    assert max_debate_round_count() >= 2
+    assert debate_round_last() >= 3
+
+
 def test_pick_anchor_latest_substantive():
     msgs = [
         _Msg("user", None, "q"),
@@ -53,3 +68,36 @@ def test_pick_anchor_latest_substantive():
     assert anchor is not None
     assert anchor.agent == "cursor"
     assert "제안 B" in anchor.excerpt
+
+
+@dataclass
+class _MsgEnv(_Msg):
+    envelope: dict | None = None
+
+
+def test_substantive_reply_prefers_envelope_over_no_objection_text():
+    assert not is_substantive_reply(
+        "이의 없습니다",
+        {"act": "ENDORSE", "refs": []},
+    )
+    assert is_substantive_reply(
+        "이의 없습니다",
+        {"act": "AMEND", "refs": []},
+    )
+
+
+def test_pick_anchor_skips_endorse_envelope():
+    msgs = [
+        _MsgEnv("user", None, "q", envelope=None),
+        _MsgEnv(
+            "agent",
+            "claude",
+            "이의 없습니다",
+            1,
+            envelope={"act": "ENDORSE", "refs": []},
+        ),
+        _MsgEnv("agent", "cursor", "실질 제안", 1, envelope=None),
+    ]
+    anchor = pick_anchor(msgs, ["claude", "cursor"])
+    assert anchor is not None
+    assert anchor.agent == "cursor"

@@ -22,7 +22,13 @@ export type ChatMessage = {
   body: string;
   sent?: boolean;
   parallelRound?: number;
+  /** Peer coordination channel — hidden unless “동료 채널” is on. */
+  peerChannel?: boolean;
+  /** Human-facing turn summary (Sprint C). */
+  humanSynthesis?: boolean;
   envelope?: AgentEnvelope;
+  /** R2+ reply had ```agent-envelope``` fence but JSON failed to parse */
+  envelopeParseError?: boolean;
   /** 0-based index in chat.jsonl */
   chatLineIndex?: number;
   /** When set, renders a round topology divider before this message */
@@ -46,16 +52,48 @@ export function agentLabel(id: string): string {
   return LABELS[id] ?? id;
 }
 
+function isPeerLine(line: {
+  role: string;
+  content: string;
+  visibility?: string;
+}): boolean {
+  if (line.visibility === "peer") return true;
+  if (line.role === "agent" && /^\[이번 턴\s*·\s*동료 발화\]/i.test(line.content.trim())) {
+    return true;
+  }
+  if (
+    line.role === "system" &&
+    /peer digest/i.test(line.content)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function isHumanSynthesisLine(line: {
+  role: string;
+  content: string;
+  visibility?: string;
+}): boolean {
+  return (
+    line.role === "system" &&
+    (line.content || "").trimStart().startsWith("[human synthesis")
+  );
+}
+
 export function chatLineToMessage(
   line: {
     role: string;
     agent?: string | null;
     content: string;
     parallel_round?: number;
+    visibility?: string;
     envelope?: AgentEnvelope;
   },
   i: number,
 ): ChatMessage {
+  const peerChannel = isPeerLine(line);
+  const humanSynthesis = isHumanSynthesisLine(line);
   if (line.role === "user") {
     return {
       id: `u-${i}`,
@@ -64,6 +102,8 @@ export function chatLineToMessage(
       body: line.content,
       sent: true,
       chatLineIndex: i,
+      peerChannel: false,
+      humanSynthesis: false,
     };
   }
   if (line.role === "agent" && line.agent) {
@@ -77,16 +117,20 @@ export function chatLineToMessage(
       sent: false,
       parallelRound: r,
       chatLineIndex: i,
+      peerChannel,
+      humanSynthesis: false,
       envelope: line.envelope,
     };
   }
   return {
     id: `s-${i}`,
     role: "system",
-    label: "시스템",
+    label: humanSynthesis ? "턴 요약" : peerChannel ? "동료 채널" : "시스템",
     body: line.content,
     sent: false,
     chatLineIndex: i,
+    peerChannel,
+    humanSynthesis,
   };
 }
 

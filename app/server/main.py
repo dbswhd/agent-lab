@@ -19,6 +19,12 @@ from pydantic import BaseModel, Field
 
 _ROOT = Path(os.getenv("AGENT_LAB_ROOT", Path(__file__).resolve().parents[2]))
 _home = Path.home()
+
+from agent_lab.app_config import apply_config_env  # noqa: E402
+from agent_lab.app_logging import setup_app_logging  # noqa: E402
+
+apply_config_env()
+
 for _env_file in (
     Path(os.getenv("DOTENV_PATH", "")),
     _ROOT / ".env",
@@ -49,10 +55,15 @@ from agent_lab.room import (  # noqa: E402
     preview_agent_payload,
     run_room,
     synthesize_session_plan,
+    load_session_messages,
+    _session_context as room_session_context,
 )
-from agent_lab.context_limits import all_limits_for_api, efficiency_mode_default  # noqa: E402
+from agent_lab.agent_health import build_health_payload, reconnect_cursor_bridge  # noqa: E402
+from agent_lab.api_diagnostics import build_diagnostics_payload  # noqa: E402
+from agent_lab.agent_preflight import agents_not_ready, build_agent_preflight  # noqa: E402
 from agent_lab.run_control import (  # noqa: E402
     end_run,
+    force_reset_run_lock,
     maybe_release_orphaned_run_lock,
     request_cancel,
     run_lock_status,
@@ -62,6 +73,7 @@ from agent_lab.room_consensus import (  # noqa: E402
     max_consensus_calls,
     max_consensus_rounds,
 )
+from agent_lab.context_limits import efficiency_mode_default  # noqa: E402
 from agent_lab.session import SESSIONS_DIR, session_dir  # noqa: E402
 from agent_lab.runner import provider_override, run_topic_with_progress  # noqa: E402
 from agent_lab.plan_execute import (  # noqa: E402
@@ -69,8 +81,20 @@ from agent_lab.plan_execute import (  # noqa: E402
     resolve_execution,
     run_dry_run,
 )
+from agent_lab.plan_pending import (  # noqa: E402
+    PlanSnapshotRequired,
+    approve_pending_plan,
+    pending_plans_public_payload,
+    reject_pending_plan,
+)
+from agent_lab.session_setup import (  # noqa: E402
+    merge_setup_permissions,
+    seed_session_setup,
+    session_setup_options,
+)
+TURN_PROFILES = frozenset({"quick", "analyze", "discuss", "review", "free"})
 
-TURN_PROFILES = frozenset({"quick", "discuss", "review", "free"})
+setup_app_logging()
 
 app = FastAPI(title="Agent Lab API", version="0.1.0")
 app.add_middleware(
@@ -91,6 +115,20 @@ app.add_middleware(
 _run_lock = threading.Lock()
 _active_run = False
 # Room/classic worker runs use agent_lab.run_control.try_begin_run / end_run.
+
+
+@app.on_event("startup")
+def _api_startup() -> None:
+    from agent_lab.app_logging import write_boot_line
+
+    try:
+        payload = build_diagnostics_payload()
+        write_boot_line(
+            "uvicorn startup pid=%s port=%s sessions=%s"
+            % (payload["pid"], payload["port"], payload["sessions_dir"])
+        )
+    except Exception as exc:
+        write_boot_line(f"uvicorn startup diagnostics failed: {exc}")
 
 
 class RunRequest(BaseModel):
@@ -115,8 +153,24 @@ class RenameSessionRequest(BaseModel):
     topic: str = Field(..., min_length=1, max_length=200)
 
 
+class TaskClaimRequest(BaseModel):
+    agent: str = Field(..., min_length=1)
+
+
+class TeamLeadRequest(BaseModel):
+    agent: str = Field(..., min_length=1)
+
+
+class TaskCompleteRequest(BaseModel):
+    artifact_refs: list[str] = Field(default_factory=list)
+
+
 class PlanExecuteDryRunRequest(BaseModel):
     action_index: int = Field(..., ge=1)
+    action_kind: str | None = Field(
+        default=None,
+        description="now | roadmap | legacy, or composite key now:1",
+    )
     permissions: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -204,6 +258,9 @@ def _list_sessions(*, archived: bool = False) -> list[dict[str, Any]]:
                 "model": meta.get("model"),
                 "archived": is_archived,
                 "workflow": meta.get("workflow"),
+                "workspace_preset": meta.get("workspace_preset"),
+                "session_template": meta.get("session_template"),
+                "workspace_label": meta.get("workspace_label"),
                 "path": str(path),
             }
         )
@@ -245,23 +302,39 @@ def _session_detail(session_id: str) -> dict[str, Any]:
     }
 
 
+@app.get("/api/session-setup/options")
+def get_session_setup_options() -> dict[str, Any]:
+    return session_setup_options()
+
+
 @app.get("/api/health")
-def health() -> dict[str, Any]:
+def health(
+    probe_bridge: bool = False,
+    probe_preflight: bool = False,
+) -> dict[str, Any]:
+    return build_health_payload(
+        probe_bridge=probe_bridge,
+        probe_preflight=probe_preflight,
+    )
+
+
+@app.get("/api/agents/preflight")
+def agents_preflight() -> dict[str, Any]:
+    agents = build_agent_preflight(probe_bridge=True, probe_cli=True)
     return {
-        "ok": True,
-        "provider": provider() or None,
-        "model": model_name() if provider() else None,
-        "codex_cli": codex_cli.is_available(),
-        "claude_cli": claude_cli.is_available(),
-        "sessions_dir": str(SESSIONS_DIR),
-        "room": {
-            "default_agent_parallel_rounds": DEFAULT_AGENT_PARALLEL_ROUNDS,
-            "max_agent_parallel_rounds": MAX_AGENT_PARALLEL_ROUNDS,
-            "max_consensus_rounds": max_consensus_rounds(),
-            "max_consensus_calls": max_consensus_calls(),
-        },
-        "context": all_limits_for_api(),
+        "ok": all(a.get("ready") for a in agents),
+        "agents": agents,
     }
+
+
+@app.get("/api/diagnostics")
+def diagnostics() -> dict[str, Any]:
+    return build_diagnostics_payload()
+
+
+@app.post("/api/health/reconnect-cursor")
+def health_reconnect_cursor() -> dict[str, Any]:
+    return reconnect_cursor_bridge()
 
 
 @app.get("/api/agents")
@@ -361,12 +434,149 @@ def rename_session(session_id: str, body: RenameSessionRequest) -> dict[str, Any
     return {"ok": True, "id": session_id, "topic": topic}
 
 
-@app.get("/api/sessions/{session_id}/plan-actions")
-def session_plan_actions(session_id: str) -> dict[str, Any]:
+@app.get("/api/sessions/{session_id}/tasks")
+def session_tasks(session_id: str) -> dict[str, Any]:
     folder = SESSIONS_DIR / session_id
     if not folder.is_dir():
         raise HTTPException(status_code=404, detail="session not found")
-    return list_plan_actions(folder)
+    _plan_md, run_meta = room_session_context(folder)
+    from agent_lab.room_tasks import tasks_public_payload
+
+    return tasks_public_payload(run_meta)
+
+
+@app.post("/api/sessions/{session_id}/tasks/{task_id}/claim")
+def claim_session_task(
+    session_id: str,
+    task_id: str,
+    body: TaskClaimRequest,
+) -> dict[str, Any]:
+    folder = SESSIONS_DIR / session_id
+    if not folder.is_dir():
+        raise HTTPException(status_code=404, detail="session not found")
+    from agent_lab.room_tasks import claim_task, tasks_public_payload
+
+    _plan_md, run_meta = room_session_context(folder)
+    try:
+        task = claim_task(run_meta, task_id, body.agent.strip().lower())
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    (folder / "run.json").write_text(
+        json.dumps(run_meta, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    return {"ok": True, "task": task, **tasks_public_payload(run_meta)}
+
+
+@app.post("/api/sessions/{session_id}/tasks/{task_id}/complete")
+def complete_session_task(
+    session_id: str,
+    task_id: str,
+    body: TaskCompleteRequest | None = None,
+) -> dict[str, Any]:
+    folder = SESSIONS_DIR / session_id
+    if not folder.is_dir():
+        raise HTTPException(status_code=404, detail="session not found")
+    from agent_lab.room_tasks import complete_task, tasks_public_payload
+
+    _plan_md, run_meta = room_session_context(folder)
+    refs = list((body.artifact_refs if body else None) or [])
+    try:
+        task = complete_task(run_meta, task_id, artifact_refs=refs or None)
+    except ValueError as e:
+        msg = str(e)
+        status = 409 if "승인" in msg or "검증" in msg or "실행" in msg else 400
+        raise HTTPException(status_code=status, detail=msg) from e
+    (folder / "run.json").write_text(
+        json.dumps(run_meta, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    return {"ok": True, "task": task, **tasks_public_payload(run_meta)}
+
+
+@app.patch("/api/sessions/{session_id}/team-lead")
+def set_session_team_lead(
+    session_id: str,
+    body: TeamLeadRequest,
+) -> dict[str, Any]:
+    folder = SESSIONS_DIR / session_id
+    if not folder.is_dir():
+        raise HTTPException(status_code=404, detail="session not found")
+    from agent_lab.room_tasks import set_team_lead_agent, tasks_public_payload
+
+    _plan_md, run_meta = room_session_context(folder)
+    lead = set_team_lead_agent(run_meta, body.agent.strip().lower())
+    (folder / "run.json").write_text(
+        json.dumps(run_meta, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    return {"ok": True, "team_lead": lead, **tasks_public_payload(run_meta)}
+
+
+@app.get("/api/sessions/{session_id}/plan-actions")
+def session_plan_actions(
+    session_id: str,
+    permissions: str | None = None,
+) -> dict[str, Any]:
+    folder = SESSIONS_DIR / session_id
+    if not folder.is_dir():
+        raise HTTPException(status_code=404, detail="session not found")
+    perms: dict[str, Any] = {}
+    if permissions:
+        try:
+            perms = json.loads(permissions)
+        except json.JSONDecodeError as e:
+            raise HTTPException(status_code=400, detail="invalid permissions JSON") from e
+    return list_plan_actions(folder, permissions=perms)
+
+
+@app.get("/api/sessions/{session_id}/execute/pending-plans")
+def session_pending_plans(session_id: str) -> dict[str, Any]:
+    folder = SESSIONS_DIR / session_id
+    if not folder.is_dir():
+        raise HTTPException(status_code=404, detail="session not found")
+    _plan_md, run_meta = room_session_context(folder)
+    return {"ok": True, **pending_plans_public_payload(run_meta)}
+
+
+@app.post("/api/sessions/{session_id}/execute/pending-plans/{pending_id}/approve")
+def session_approve_pending_plan(
+    session_id: str,
+    pending_id: str,
+) -> dict[str, Any]:
+    folder = SESSIONS_DIR / session_id
+    if not folder.is_dir():
+        raise HTTPException(status_code=404, detail="session not found")
+    try:
+        row = approve_pending_plan(folder, pending_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    _plan_md, run_meta = room_session_context(folder)
+    return {
+        "ok": True,
+        "pending_plan": row,
+        **pending_plans_public_payload(run_meta),
+    }
+
+
+@app.post("/api/sessions/{session_id}/execute/pending-plans/{pending_id}/reject")
+def session_reject_pending_plan(
+    session_id: str,
+    pending_id: str,
+) -> dict[str, Any]:
+    folder = SESSIONS_DIR / session_id
+    if not folder.is_dir():
+        raise HTTPException(status_code=404, detail="session not found")
+    try:
+        row = reject_pending_plan(folder, pending_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    _plan_md, run_meta = room_session_context(folder)
+    return {
+        "ok": True,
+        "pending_plan": row,
+        **pending_plans_public_payload(run_meta),
+    }
 
 
 @app.post("/api/sessions/{session_id}/execute/dry-run")
@@ -381,8 +591,18 @@ def session_execute_dry_run(
         execution = run_dry_run(
             folder,
             action_index=body.action_index,
+            action_kind=body.action_kind,
             permissions=body.permissions,
         )
+    except PlanSnapshotRequired as e:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "plan_snapshot_required",
+                "message": "plan 스냅샷 승인 후 dry-run 할 수 있습니다.",
+                "pending_plan": e.pending_plan,
+            },
+        ) from e
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
     except ValueError as e:
@@ -535,6 +755,9 @@ async def create_room_run(
     consensus_mode: bool = Form(False),
     efficiency_mode: bool = Form(False),
     turn_profile: str = Form("discuss"),
+    workspace_id: str = Form("agent-lab"),
+    workspace_path: str | None = Form(None),
+    session_template: str = Form("general"),
     files: list[UploadFile] = File(default=[]),
 ) -> StreamingResponse:
     topic = topic.strip()
@@ -556,10 +779,30 @@ async def create_room_run(
         agent_ids = []
     agent_list = [a.strip().lower() for a in agent_ids if str(a).strip()] or None
 
+    if not synthesize_only and agent_list:
+        bad = agents_not_ready(agent_list)
+        if bad:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "message": "agents not ready",
+                    "agents": bad,
+                },
+            )
+
     try:
         perm_obj = json.loads(permissions) if permissions else {}
     except json.JSONDecodeError:
         perm_obj = {}
+
+    workspace_norm = (workspace_id or "agent-lab").strip().lower()
+    workspace_path_norm = (workspace_path or "").strip() or None
+    template_norm = (session_template or "general").strip().lower()
+    perm_obj = merge_setup_permissions(
+        perm_obj,
+        workspace_norm,
+        workspace_path_norm,
+    )
 
     folder: Path | None = None
     if session_id:
@@ -569,6 +812,16 @@ async def create_room_run(
     else:
         folder = session_dir(topic, base=SESSIONS_DIR)
         (folder / "topic.txt").write_text(topic + "\n", encoding="utf-8")
+        try:
+            seed_session_setup(
+                folder,
+                workspace_id=workspace_norm,
+                session_template=template_norm,
+                workspace_path=workspace_path_norm,
+                topic=topic,
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
 
     saved_files = await _save_uploads(folder, files)
     parallel_rounds = max(1, min(agent_rounds, MAX_AGENT_PARALLEL_ROUNDS))
@@ -576,9 +829,11 @@ async def create_room_run(
     if review_mode and not consensus_mode and parallel_rounds < 2:
         parallel_rounds = 2
     use_efficiency = efficiency_mode or efficiency_mode_default()
-    profile_norm = (turn_profile or "discuss").strip().lower()
+    profile_norm = (turn_profile or "analyze").strip().lower()
+    if profile_norm == "discuss":
+        profile_norm = "analyze"
     if profile_norm not in TURN_PROFILES:
-        profile_norm = "discuss"
+        profile_norm = "analyze"
 
     def generate():
         event_q: queue.SimpleQueue[dict[str, Any] | None] = queue.SimpleQueue()
@@ -601,7 +856,7 @@ async def create_room_run(
                     return
             try:
                 if synthesize_only and session_id:
-                    plan_md = synthesize_session_plan(
+                    plan_md, _summary = synthesize_session_plan(
                         folder,  # type: ignore[arg-type]
                         on_event=on_event,
                         permissions=perm_obj,
@@ -663,6 +918,8 @@ async def create_room_run(
                     "consensus_mode": consensus_mode,
                     "efficiency_mode": use_efficiency,
                     "turn_profile": profile_norm,
+                    "workspace_id": workspace_norm,
+                    "session_template": template_norm,
                     "attachments": saved_files,
                 }
             )
@@ -676,7 +933,24 @@ async def create_room_run(
                     continue
                 yield _sse(ev)
             if "error" in result:
-                raise result["error"]
+                err = result["error"]
+                yield _sse({"type": "run_failed", "message": str(err)})
+                yield _sse({"type": "error", "message": str(err)})
+                return
+            if "folder" not in result:
+                yield _sse(
+                    {
+                        "type": "run_failed",
+                        "message": "room run ended without result",
+                    }
+                )
+                yield _sse(
+                    {
+                        "type": "error",
+                        "message": "room run ended without result",
+                    }
+                )
+                return
             out_folder = result["folder"]
             plan_md = result.get("plan_md", "")
             complete = result.get("complete_event") or {}
@@ -697,11 +971,27 @@ async def create_room_run(
     )
 
 
+@app.get("/api/room/run-lock")
+def room_run_lock() -> dict[str, Any]:
+    return {"ok": True, **run_lock_status()}
+
+
 @app.post("/api/room/runs/cancel")
 def cancel_room_run() -> dict[str, Any]:
     request_cancel()
     released = maybe_release_orphaned_run_lock()
     return {"ok": True, "released_stale_lock": released, **run_lock_status()}
+
+
+@app.post("/api/room/runs/release-lock")
+def release_room_run_lock() -> dict[str, Any]:
+    released = maybe_release_orphaned_run_lock()
+    status = run_lock_status()
+    if status.get("locked"):
+        force_reset_run_lock()
+        released = True
+        status = run_lock_status()
+    return {"ok": True, "released": released, **status}
 
 
 @app.post("/api/sessions/{session_id}/attachments")
@@ -718,3 +1008,10 @@ async def upload_attachments(
 
 def _sse(payload: dict[str, Any]) -> str:
     return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+
+_WEB_DIST = _ROOT / "web" / "dist"
+if _WEB_DIST.is_dir():
+    from fastapi.staticfiles import StaticFiles
+
+    app.mount("/", StaticFiles(directory=str(_WEB_DIST), html=True), name="web")

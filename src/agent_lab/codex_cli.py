@@ -3,16 +3,49 @@
 from __future__ import annotations
 
 import glob
+import json
 import os
+import select
 import shutil
 import subprocess
 import tempfile
+import time
+from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from agent_lab.agent_models import (  # noqa: E402
     DEFAULT_CODEX_MODEL,
     DEFAULT_CODEX_REASONING_EFFORT,
+    DEFAULT_CODEX_ROOM_MAX_COMMANDS,
+    DEFAULT_CODEX_ROOM_REASONING_EFFORT,
 )
+
+_ROOM_TURN_SUFFIX = """\
+[Room turn — latency + peer debate]
+- This is a **group debate turn**, not a full implementation session: **1–3 short read/grep commands max**, then **you must reply in this turn**.
+- After your last command, **write your answer immediately** — do not start another shell command.
+- Do **not** ask the Human clarifying questions — decide with Cursor/Claude via working assumptions and `[PROPOSED:]` / ENDORSE / AMEND.
+- Long explore loops belong in plan execute (Cursor), not here.
+- If sandbox is read-only: verify and propose edits as text/`[PROPOSED:]`; do not attempt file writes.
+"""
+
+DEFAULT_CODEX_ROOM_LIMIT_GRACE_SEC = 25
+
+
+@dataclass
+class CodexRunOutcome:
+    limit_hit: bool = False
+    commands_done: int = 0
+    streamed_message: str | None = None
+
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def resolve_codex_bin() -> str | None:
@@ -51,6 +84,8 @@ def is_available() -> bool:
 
 def _format_exec_error(stderr: str, stdout: str) -> str:
     """Surface Codex ERROR lines; stderr often includes a long session banner first."""
+    from agent_lab.agent_preflight import format_codex_exec_error
+
     combined = f"{stderr or ''}\n{stdout or ''}"
     errors = [
         ln.strip()
@@ -58,7 +93,6 @@ def _format_exec_error(stderr: str, stdout: str) -> str:
         if ln.strip().startswith("ERROR:")
     ]
     if errors:
-        # Deduplicate while preserving order
         seen: set[str] = set()
         unique: list[str] = []
         for e in errors:
@@ -77,7 +111,9 @@ def _format_exec_error(stderr: str, stdout: str) -> str:
             "Codex CLI stdin/prompt handling failed. "
             "Update Agent Lab (prompt is passed on stdin, not as a CLI arg)."
         )
-    return detail[:800] if detail else "unknown error"
+    if detail:
+        return format_codex_exec_error(detail[:800])
+    return "unknown error"
 
 
 def _codex_env() -> dict[str, str]:
@@ -95,9 +131,303 @@ def _codex_env() -> dict[str, str]:
     return env
 
 
-def invoke(system: str, user: str, *, permissions: dict | None = None) -> str:
+def _reasoning_effort(*, room_turn: bool) -> str:
+    if room_turn:
+        return os.getenv(
+            "CODEX_ROOM_REASONING_EFFORT", DEFAULT_CODEX_ROOM_REASONING_EFFORT
+        )
+    return os.getenv("CODEX_REASONING_EFFORT", DEFAULT_CODEX_REASONING_EFFORT)
+
+
+def _optional_timeout_sec(*env_keys: str) -> int | None:
+    for key in env_keys:
+        raw = (os.getenv(key) or "").strip()
+        if raw:
+            return int(raw)
+    return None
+
+
+def _timeout_sec(*, room_turn: bool) -> int | None:
+    if room_turn:
+        return _optional_timeout_sec("CODEX_ROOM_TIMEOUT_SEC", "CODEX_TIMEOUT_SEC")
+    return _optional_timeout_sec("CODEX_TIMEOUT_SEC")
+
+
+def _room_max_commands() -> int:
+    return int(os.getenv("CODEX_ROOM_MAX_COMMANDS", str(DEFAULT_CODEX_ROOM_MAX_COMMANDS)))
+
+
+def _room_limit_grace_sec() -> int:
+    return int(
+        os.getenv(
+            "CODEX_ROOM_LIMIT_GRACE_SEC",
+            str(DEFAULT_CODEX_ROOM_LIMIT_GRACE_SEC),
+        )
+    )
+
+
+def _sandbox_mode(*, allow_tools: bool, room_turn: bool) -> str:
+    if not allow_tools:
+        return "read-only"
+    if room_turn and not _env_bool("CODEX_ROOM_WORKSPACE_WRITE", False):
+        return "read-only"
+    return "workspace-write"
+
+
+def codex_event_label(event: dict[str, Any]) -> str | None:
+    """Map Codex `--json` JSONL events to short UI activity lines."""
+    typ = event.get("type")
+    item = event.get("item") if isinstance(event.get("item"), dict) else {}
+    item_type = item.get("type")
+
+    if typ == "turn.started":
+        return "Codex turn 시작"
+    if typ == "item.started" and item_type == "command_execution":
+        cmd = str(item.get("command") or "").strip()
+        if len(cmd) > 96:
+            cmd = cmd[:93] + "…"
+        return f"실행: {cmd}" if cmd else "shell 실행 중"
+    if typ == "item.completed" and item_type == "command_execution":
+        code = item.get("exit_code")
+        if code == 0:
+            return "명령 완료"
+        return f"명령 exit {code}"
+    if typ == "item.completed" and item_type == "agent_message":
+        return "답변 정리"
+    return None
+
+
+def _extract_agent_message(item: dict[str, Any]) -> str | None:
+    if item.get("type") != "agent_message":
+        return None
+    for key in ("text", "content", "message"):
+        raw = item.get(key)
+        if isinstance(raw, str) and raw.strip():
+            return raw.strip()
+    return None
+
+
+def _process_codex_event(
+    event: dict[str, Any],
+    *,
+    on_activity: Callable[[str], None] | None,
+    max_commands: int,
+    outcome: CodexRunOutcome,
+    limit_hit_at: float | None,
+) -> float | None:
+    """Update outcome from one Codex `--json` event. Returns new limit_hit_at."""
+    label = codex_event_label(event)
+    if label and on_activity:
+        on_activity(label)
+
+    typ = event.get("type")
+    item = event.get("item") if isinstance(event.get("item"), dict) else {}
+    item_type = item.get("type")
+
+    if typ == "item.completed" and item_type == "agent_message":
+        msg = _extract_agent_message(item)
+        if msg:
+            outcome.streamed_message = msg
+
+    if (
+        max_commands
+        and typ == "item.completed"
+        and item_type == "command_execution"
+    ):
+        outcome.commands_done += 1
+        if outcome.commands_done >= max_commands and not outcome.limit_hit:
+            outcome.limit_hit = True
+            if on_activity:
+                on_activity(
+                    f"룸 턴 shell 상한 ({max_commands}회) — 답변 정리 대기"
+                )
+            return time.monotonic()
+    return limit_hit_at
+
+
+def _should_stop_after_limit(
+    outcome: CodexRunOutcome,
+    limit_hit_at: float | None,
+    *,
+    grace_sec: int,
+) -> bool:
+    if not outcome.limit_hit:
+        return False
+    if outcome.streamed_message:
+        return True
+    if limit_hit_at is None:
+        return False
+    return time.monotonic() - limit_hit_at >= grace_sec
+
+
+def _build_cmd(
+    *,
+    codex: str,
+    cwd: str,
+    out_path: str,
+    allow_tools: bool,
+    room_turn: bool,
+    stream_json: bool,
+) -> list[str]:
+    cmd: list[str] = [
+        codex,
+        "exec",
+        "--skip-git-repo-check",
+        "-C",
+        cwd,
+        "--sandbox",
+        _sandbox_mode(allow_tools=allow_tools, room_turn=room_turn),
+        "--dangerously-bypass-approvals-and-sandbox",
+        "-o",
+        out_path,
+    ]
+    effort = _reasoning_effort(room_turn=room_turn)
+    if effort:
+        cmd.extend(["-c", f'model_reasoning_effort="{effort}"'])
+    model = os.getenv("CODEX_MODEL", DEFAULT_CODEX_MODEL)
+    cmd.extend(["-m", model])
+    if stream_json:
+        cmd.append("--json")
+    cmd.append("-")
+    return cmd
+
+
+def _terminate_proc(proc: subprocess.Popen[str]) -> None:
+    if proc.poll() is not None:
+        return
+    proc.kill()
+    try:
+        proc.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        pass
+
+
+def _run_codex(
+    cmd: list[str],
+    prompt: str,
+    *,
+    on_activity: Callable[[str], None] | None,
+    timeout: int | None,
+    room_turn: bool,
+) -> CodexRunOutcome:
+    env = _codex_env()
+    max_commands = _room_max_commands() if room_turn else 0
+    grace_sec = _room_limit_grace_sec() if room_turn else 0
+    outcome = CodexRunOutcome()
+
+    if not room_turn and on_activity is None:
+        result = subprocess.run(
+            cmd,
+            input=prompt,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            env=env,
+        )
+        if result.returncode != 0:
+            detail = _format_exec_error(result.stderr or "", result.stdout or "")
+            raise RuntimeError(
+                f"codex exec failed (exit {result.returncode})"
+                + (f": {detail}" if detail else "")
+            )
+        return outcome
+
+    proc = subprocess.Popen(
+        cmd,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=env,
+    )
+    assert proc.stdin is not None
+    proc.stdin.write(prompt)
+    proc.stdin.close()
+
+    limit_hit_at: float | None = None
+    stdout = proc.stdout
+    assert stdout is not None
+
+    while True:
+        if _should_stop_after_limit(outcome, limit_hit_at, grace_sec=grace_sec):
+            if outcome.streamed_message:
+                break
+            _terminate_proc(proc)
+            break
+
+        ready, _, _ = select.select([stdout], [], [], 0.25)
+        if not ready:
+            if proc.poll() is not None:
+                break
+            continue
+
+        line = stdout.readline()
+        if not line:
+            break
+        stripped = line.strip()
+        if not stripped:
+            continue
+        try:
+            event = json.loads(stripped)
+        except json.JSONDecodeError:
+            continue
+
+        typ = event.get("type")
+        item = event.get("item") if isinstance(event.get("item"), dict) else {}
+        if (
+            outcome.limit_hit
+            and typ == "item.started"
+            and item.get("type") == "command_execution"
+        ):
+            if on_activity:
+                on_activity("shell 상한 초과 — 추가 명령 중단")
+            _terminate_proc(proc)
+            break
+
+        limit_hit_at = _process_codex_event(
+            event,
+            on_activity=on_activity,
+            max_commands=max_commands,
+            outcome=outcome,
+            limit_hit_at=limit_hit_at,
+        )
+
+    stderr = proc.stderr.read() if proc.stderr is not None else ""
+    try:
+        if timeout is None:
+            proc.wait()
+        else:
+            proc.wait(timeout=timeout)
+    except subprocess.TimeoutExpired as exc:
+        _terminate_proc(proc)
+        effort = _reasoning_effort(room_turn=room_turn)
+        raise RuntimeError(
+            "Codex exec timed out "
+            f"after {timeout}s (room_turn={room_turn}, effort={effort}, "
+            f"commands={outcome.commands_done}). "
+            "Room turns use read-only sandbox + command cap; "
+            "set CODEX_ROOM_WORKSPACE_WRITE=1 only if edits are required."
+        ) from exc
+
+    if proc.returncode not in (0, None) and not outcome.limit_hit:
+        detail = _format_exec_error(stderr, "")
+        raise RuntimeError(
+            f"codex exec failed (exit {proc.returncode})"
+            + (f": {detail}" if detail else "")
+        )
+    return outcome
+
+
+def invoke(
+    system: str,
+    user: str,
+    *,
+    permissions: dict | None = None,
+    on_activity: Callable[[str], None] | None = None,
+    room_turn: bool = False,
+) -> str:
     from agent_lab.agent_permissions import codex_cli_allowed
-    from agent_lab.workspace_roots import primary_workspace
+    from agent_lab.workspace_roots import discuss_primary_workspace
 
     codex = resolve_codex_bin()
     if not codex:
@@ -108,57 +438,52 @@ def invoke(system: str, user: str, *, permissions: dict | None = None) -> str:
         )
 
     allow_tools = codex_cli_allowed(permissions)
-    cwd = str(primary_workspace(permissions))
+    discuss = room_turn or bool((permissions or {}).get("_discuss_mode"))
+    if discuss and not _env_bool("CODEX_ROOM_WORKSPACE_WRITE", False):
+        allow_tools = True  # read-only tools still allowed
+    cwd = str(discuss_primary_workspace(permissions))
     out_path = tempfile.mktemp(prefix="agent-lab-codex-", suffix=".txt")
 
     prompt = f"{system.strip()}\n\n---\n\n{user.strip()}"
+    if room_turn:
+        prompt = f"{prompt}\n\n{_ROOM_TURN_SUFFIX}"
     if not allow_tools:
         prompt = (
             f"{prompt}\n\n"
             "Do not use tools, MCP, or shell commands. Respond with text only."
         )
 
-    cmd: list[str] = [
-        codex,
-        "exec",
-        "--skip-git-repo-check",
-        "-C",
-        cwd,
-        "--sandbox",
-        "workspace-write" if allow_tools else "read-only",
-        "--dangerously-bypass-approvals-and-sandbox",
-        "-o",
-        out_path,
-    ]
-
-    if effort := os.getenv("CODEX_REASONING_EFFORT", DEFAULT_CODEX_REASONING_EFFORT):
-        cmd.extend(["-c", f'model_reasoning_effort="{effort}"'])
-    model = os.getenv("CODEX_MODEL", DEFAULT_CODEX_MODEL)
-    cmd.extend(["-m", model])
-
-    # Prompt on stdin (`-`). CLI arg + closed stdin makes Codex print
-    # "Reading additional input from stdin..." and exit 1; long threads also risk ARG_MAX.
-    cmd.append("-")
+    stream_json = room_turn or on_activity is not None
+    cmd = _build_cmd(
+        codex=codex,
+        cwd=cwd,
+        out_path=out_path,
+        allow_tools=allow_tools,
+        room_turn=room_turn,
+        stream_json=stream_json,
+    )
+    timeout = _timeout_sec(room_turn=room_turn)
+    max_commands = _room_max_commands() if room_turn else 0
 
     try:
-        result = subprocess.run(
+        outcome = _run_codex(
             cmd,
-            input=prompt,
-            capture_output=True,
-            text=True,
-            timeout=int(os.getenv("CODEX_TIMEOUT_SEC", "300")),
-            env=_codex_env(),
+            prompt,
+            on_activity=on_activity,
+            timeout=timeout,
+            room_turn=room_turn,
         )
-        if result.returncode != 0:
-            detail = _format_exec_error(result.stderr or "", result.stdout or "")
-            raise RuntimeError(
-                f"codex exec failed (exit {result.returncode})"
-                + (f": {detail}" if detail else "")
-            )
         text = Path(out_path).read_text(encoding="utf-8").strip()
-        if not text:
-            raise RuntimeError("codex exec returned empty output")
-        return text
+        if text:
+            return text
+        if outcome.streamed_message:
+            return outcome.streamed_message
+        if outcome.limit_hit:
+            return (
+                f"[Codex room turn stopped after {max_commands} shell command(s) — "
+                "no final message; narrow scope or retry.]"
+            )
+        raise RuntimeError("codex exec returned empty output")
     finally:
         Path(out_path).unlink(missing_ok=True)
 
@@ -166,4 +491,5 @@ def invoke(system: str, user: str, *, permissions: dict | None = None) -> str:
 def model_label() -> str:
     model = os.getenv("CODEX_MODEL", DEFAULT_CODEX_MODEL)
     effort = os.getenv("CODEX_REASONING_EFFORT", DEFAULT_CODEX_REASONING_EFFORT)
-    return f"{model} ({effort})"
+    room = os.getenv("CODEX_ROOM_REASONING_EFFORT", DEFAULT_CODEX_ROOM_REASONING_EFFORT)
+    return f"{model} (room:{room}, default:{effort})"

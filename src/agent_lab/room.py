@@ -26,10 +26,22 @@ from agent_lab.room_consensus import (
     consensus_caps,
     consensus_follow_up,
     consensus_reply_verdict,
+    debate_review_round,
+    debate_round_last,
     is_substantive_reply,
     pick_anchor,
 )
+from agent_lab.consensus_agreements import (
+    mark_agreements_plan_synced,
+    record_consensus_agreement,
+)
 from agent_lab.room_turn_state import sync_run_meta_turn_state
+from agent_lab.session_guidance import (
+    apply_discuss_workspace,
+    preserve_session_meta_from_prev,
+    resolve_session_workspace_binding,
+)
+from agent_lab.agent_permissions import apply_discuss_executor_policy
 from agent_lab.run_control import RoomRunCancelled, check_cancelled, is_cancelled
 from agent_lab.session import SESSIONS_DIR, session_dir
 
@@ -50,8 +62,11 @@ class ChatMessage:
     ts: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     parallel_round: int | None = None  # 1..N within one human turn
     envelope: dict[str, Any] | None = None
+    visibility: str = "human"  # human | peer (peer = coordination channel)
 
     def to_dict(self) -> dict[str, Any]:
+        from agent_lab.room_chat_channels import normalize_visibility
+
         d: dict[str, Any] = {
             "role": self.role,
             "agent": self.agent,
@@ -62,6 +77,9 @@ class ChatMessage:
             d["parallel_round"] = self.parallel_round
         if self.envelope:
             d["envelope"] = self.envelope
+        vis = normalize_visibility(self.visibility)
+        if vis != "human":
+            d["visibility"] = vis
         return d
 
 
@@ -106,9 +124,18 @@ def _round_agent_order(
     *,
     review_mode: bool,
     parallel_round: int,
+    run_meta: dict[str, Any] | None = None,
 ) -> list[AgentId]:
     if review_mode and parallel_round >= 2:
         return [a for a in REVIEW_ROUND2_ORDER if a in agents]
+    if parallel_round == 1 and run_meta and not review_mode:
+        from agent_lab.room_team_orchestration import team_r1_split
+
+        teammates, lead_tail = team_r1_split([str(a) for a in agents], run_meta)
+        if lead_tail and teammates:
+            order = teammates + lead_tail
+            pool = {str(a).lower(): a for a in agents}
+            return [pool[k] for k in order if k in pool]
     return agents
 
 
@@ -177,7 +204,32 @@ def build_agent_context_bundle(
 
 
 OnAgentEvent = Callable[[str, dict[str, Any]], None]
-# event types: agent_start, agent_activity, agent_done, agent_error
+# event types: agent_start, agent_activity, agent_done, agent_error, turn_failed
+
+
+def _effective_discuss_permissions(
+    permissions: dict | None,
+    *,
+    topic: str,
+    plan_md: str,
+    run_meta: dict[str, Any] | None,
+) -> dict:
+    binding = resolve_session_workspace_binding(
+        permissions,
+        topic=topic,
+        plan_md=plan_md,
+        run_meta=run_meta,
+    )
+    perms = apply_discuss_executor_policy(permissions, discuss=True)
+    return apply_discuss_workspace(perms, binding)
+
+
+def _agent_turn_failed(replies: list[ChatMessage]) -> bool:
+    return any(m.role == "system" and m.agent for m in replies)
+
+
+def _is_agent_error_message(msg: ChatMessage) -> bool:
+    return msg.role == "system" and bool(msg.agent)
 
 
 def _call_one_agent(
@@ -209,6 +261,26 @@ def _call_one_agent(
             {"agent": aid, "round": parallel_round, "text": line},
         )
 
+    effective_permissions = _effective_discuss_permissions(
+        permissions,
+        topic=topic,
+        plan_md=plan_md,
+        run_meta=run_meta,
+    )
+
+    from agent_lab.room_team_orchestration import is_discuss_only_turn, lead_discuss_role_block
+
+    lead_block = ""
+    if run_meta and is_discuss_only_turn(
+        mode=str(run_meta.get("_active_turn_mode") or "discuss"),
+        synthesize=bool(run_meta.get("_active_synthesize")),
+        consensus_mode=bool(run_meta.get("_active_consensus")),
+    ):
+        lead_block = lead_discuss_role_block(aid, run_meta)
+    combined_follow = "\n\n".join(
+        x for x in (lead_block, extra_follow_up) if x and x.strip()
+    )
+
     try:
         bundle = build_agent_context_bundle(
             topic,
@@ -224,8 +296,8 @@ def _call_one_agent(
             slim_context=slim_context,
         )
         payload = bundle.render()
-        if extra_follow_up.strip():
-            payload = f"{payload}\n\n{extra_follow_up.strip()}"
+        if combined_follow.strip():
+            payload = f"{payload}\n\n{combined_follow.strip()}"
         context_meta = bundle.meta.to_dict()
         context_meta["model"] = model_label(aid)
         if context_log is not None:
@@ -234,18 +306,21 @@ def _call_one_agent(
             aid,
             "",
             payload,
-            permissions=permissions,
-            on_activity=_activity if aid == "cursor" else None,
+            permissions=effective_permissions,
+            on_activity=_activity if aid in ("cursor", "codex") else None,
         )
         parsed = parse_agent_response(text)
         envelope_dict = parsed.envelope.to_dict() if parsed.envelope else None
         body = parsed.body or text
+        from agent_lab.room_chat_channels import message_visibility
+
         msg = ChatMessage(
             role="agent",
             agent=aid,
             content=body,
             parallel_round=parallel_round,
             envelope=envelope_dict,
+            visibility=message_visibility(role="agent", content=body),
         )
         _emit(
             "agent_done",
@@ -257,16 +332,36 @@ def _call_one_agent(
                 "pass": is_pass_reply(body, envelope_dict),
                 "no_objection": is_endorse_reply(body, envelope_dict),
                 "envelope": envelope_dict,
+                "envelope_valid": parsed.envelope is not None,
+                "envelope_parse_error": parsed.envelope_parse_error,
                 "context_meta": context_meta,
             },
         )
         return msg
     except Exception as e:
-        _emit("agent_error", {"agent": aid, "message": str(e)})
+        _emit(
+            "agent_error",
+            {
+                "agent": aid,
+                "message": str(e),
+                "round": parallel_round,
+                "failed": True,
+            },
+        )
+        _emit(
+            "turn_failed",
+            {
+                "agent": aid,
+                "message": str(e),
+                "round": parallel_round,
+                "reason": "bridge_or_timeout",
+            },
+        )
         return ChatMessage(
             role="system",
             agent=aid,
             content=f"[{label(aid)} error] {e}",
+            parallel_round=parallel_round,
         )
 
 
@@ -316,6 +411,26 @@ def run_consensus_agent_rounds(
         all_replies.extend(batch)
         calls += len(batch)
 
+        if _agent_turn_failed(batch):
+            if on_event:
+                on_event(
+                    "turn_failed",
+                    {"reason": "agent_error", "round": 1, "consensus": True},
+                )
+                on_event(
+                    "consensus_incomplete",
+                    {
+                        "reason": "agent_error",
+                        "message": "에이전트 호출 실패 — 합의를 기록하지 않습니다.",
+                    },
+                )
+            return all_replies, {
+                "status": "failed",
+                "reason": "agent_error",
+                "rounds": 1,
+                "calls": calls,
+            }
+
         working = messages + all_replies
         sync_run_meta_turn_state(
             run_meta,
@@ -328,6 +443,66 @@ def run_consensus_agent_rounds(
             return all_replies, None
 
         working = messages + all_replies
+        last_debate = debate_round_last(efficiency_mode=efficiency_mode)
+        for r in range(2, last_debate + 1):
+            if calls >= cap_calls:
+                break
+            check_cancelled()
+            review = debate_review_round(r)
+            if on_event:
+                on_event(
+                    "agent_round_start",
+                    {
+                        "round": r,
+                        "total": cap_rounds,
+                        "consensus": True,
+                        "debate": True,
+                        "review_mode": review,
+                    },
+                )
+            batch = run_parallel_round(
+                topic,
+                working,
+                agents=active,
+                parallel_round=r,
+                on_event=on_event,
+                permissions=permissions,
+                review_mode=review,
+                human_turn_index=human_turn_index,
+                plan_md=plan_md,
+                run_meta=run_meta,
+                context_log=context_log,
+                efficiency_mode=efficiency_mode,
+            )
+            all_replies.extend(batch)
+            calls += len(batch)
+            working = messages + all_replies
+            sync_run_meta_turn_state(
+                run_meta,
+                working,
+                active_agents=active,
+                plan_md=plan_md,
+            )
+            if _agent_turn_failed(batch):
+                if on_event:
+                    on_event(
+                        "turn_failed",
+                        {"reason": "agent_error", "round": r, "consensus": True},
+                    )
+                    on_event(
+                        "consensus_incomplete",
+                        {
+                            "reason": "agent_error",
+                            "message": "토론 루프 중 에이전트 실패 — 합의를 기록하지 않습니다.",
+                        },
+                    )
+                return all_replies, {
+                    "status": "failed",
+                    "reason": "agent_error",
+                    "rounds": r,
+                    "calls": calls,
+                }
+
         anchor = pick_anchor(_current_turn_messages(working), active)
         if not anchor:
             if on_event:
@@ -342,7 +517,7 @@ def run_consensus_agent_rounds(
 
         pending: set[AgentId] = {a for a in active if a != anchor.agent}
         consented: list[str] = []
-        parallel_round = 2
+        parallel_round = last_debate + 1
         sync_run_meta_turn_state(
             run_meta,
             working,
@@ -368,7 +543,15 @@ def run_consensus_agent_rounds(
                     },
                 )
             thread = list(messages) + list(all_replies)
-            follow = consensus_follow_up(anchor)
+            from agent_lab.room_tasks import open_tasks_for_consensus
+
+            open_tasks = open_tasks_for_consensus(run_meta)
+            task_refs = [
+                str(t.get("id") or "")
+                for t in open_tasks
+                if t.get("id")
+            ]
+            follow = consensus_follow_up(anchor, open_task_refs=task_refs or None)
             for aid in [a for a in active if a in pending]:
                 if calls >= cap_calls:
                     break
@@ -392,12 +575,49 @@ def run_consensus_agent_rounds(
                 all_replies.append(msg)
                 thread.append(msg)
                 calls += 1
+                if _is_agent_error_message(msg):
+                    if on_event:
+                        on_event(
+                            "turn_failed",
+                            {
+                                "agent": aid,
+                                "reason": "agent_error",
+                                "round": parallel_round,
+                                "consensus": True,
+                            },
+                        )
+                        on_event(
+                            "consensus_incomplete",
+                            {
+                                "reason": "agent_error",
+                                "agent": aid,
+                                "message": "에이전트 호출 실패 — ENDORSE 합의를 중단합니다.",
+                            },
+                        )
+                    meta = {
+                        "status": "failed",
+                        "reason": "agent_error",
+                        "agent": aid,
+                        "anchor": anchor.to_dict(),
+                        "rounds": parallel_round,
+                        "calls": calls,
+                    }
+                    sync_run_meta_turn_state(
+                        run_meta,
+                        thread,
+                        active_agents=active,
+                        consensus=meta,
+                        plan_md=plan_md,
+                    )
+                    return all_replies, meta
                 text = msg.content or ""
                 verdict = consensus_reply_verdict(text, msg.envelope)
                 if verdict in ("endorse", "pass"):
                     pending.discard(aid)
                     consented.append(aid)
-                elif verdict == "substantive" or is_substantive_reply(text):
+                elif verdict == "substantive" or is_substantive_reply(
+                    text, msg.envelope
+                ):
                     new_anchor = pick_anchor(_current_turn_messages(thread), active)
                     if new_anchor:
                         anchor = new_anchor
@@ -421,7 +641,51 @@ def run_consensus_agent_rounds(
                 )
 
             if not pending:
+                from agent_lab.room_tasks import (
+                    consensus_tasks_ready,
+                    harvest_task_endorsements,
+                )
+
+                thread_all = list(messages) + list(all_replies)
+                harvest_task_endorsements(
+                    run_meta,
+                    thread_all,
+                    [str(a) for a in active],
+                )
+                tasks_ready, task_blockers = consensus_tasks_ready(
+                    run_meta, [str(a) for a in active]
+                )
                 max_r = max((m.parallel_round or 1) for m in all_replies)
+                if not tasks_ready:
+                    meta = {
+                        "status": "incomplete",
+                        "reason": "open_tasks",
+                        "anchor": anchor.to_dict(),
+                        "rounds": max_r,
+                        "agents_consented": consented,
+                        "calls": calls,
+                        "open_tasks": task_blockers[:12],
+                    }
+                    sync_run_meta_turn_state(
+                        run_meta,
+                        thread_all,
+                        active_agents=active,
+                        consensus=meta,
+                        plan_md=plan_md,
+                    )
+                    if on_event:
+                        on_event(
+                            "consensus_incomplete",
+                            {
+                                "reason": "open_tasks",
+                                "message": (
+                                    "앵커 합의는 됐지만 열린 작업에 팀 ENDORSE가 부족합니다. "
+                                    "envelope refs에 task id/제목을 넣거나 작업을 완료하세요."
+                                ),
+                                "open_tasks": task_blockers[:8],
+                            },
+                        )
+                    return all_replies, meta
                 meta = {
                     "status": "reached",
                     "anchor": anchor.to_dict(),
@@ -431,7 +695,7 @@ def run_consensus_agent_rounds(
                 }
                 sync_run_meta_turn_state(
                     run_meta,
-                    list(messages) + list(all_replies),
+                    thread_all,
                     active_agents=active,
                     consensus=meta,
                     plan_md=plan_md,
@@ -498,7 +762,10 @@ def run_parallel_round(
         )
     active = active[:MAX_AGENTS_PER_ROUND]
     ordered = _round_agent_order(
-        active, review_mode=review_mode, parallel_round=parallel_round
+        active,
+        review_mode=review_mode,
+        parallel_round=parallel_round,
+        run_meta=run_meta,
     )
     review_advocate = (
         _review_advocate(active, human_turn_index) if review_mode else None
@@ -507,12 +774,79 @@ def run_parallel_round(
     check_cancelled()
     replies: list[ChatMessage] = []
     sequential = parallel_round >= 2
+    from agent_lab.room_team_orchestration import team_r1_split
+
+    parallel_batch, lead_tail = (
+        team_r1_split([str(a) for a in ordered], run_meta)
+        if parallel_round == 1 and not review_mode and run_meta
+        else ([str(a) for a in ordered], [])
+    )
+    use_lead_last_r1 = (
+        parallel_round == 1
+        and not review_mode
+        and lead_tail
+        and len(parallel_batch) < len(ordered)
+    )
+
+    if use_lead_last_r1:
+        check_cancelled()
+        thread = list(messages)
+        if parallel_batch:
+            with ThreadPoolExecutor(max_workers=len(parallel_batch)) as pool:
+                futures = {
+                    pool.submit(
+                        _call_one_agent,
+                        aid,
+                        topic=topic,
+                        thread=messages,
+                        parallel_round=parallel_round,
+                        permissions=permissions,
+                        review_mode=review_mode,
+                        review_advocate=review_advocate,
+                        plan_md=plan_md,
+                        run_meta=run_meta,
+                        on_event=on_event,
+                        context_log=context_log,
+                        efficiency_mode=efficiency_mode,
+                    ): aid
+                    for aid in parallel_batch
+                }
+                try:
+                    for fut in as_completed(futures):
+                        check_cancelled()
+                        replies.append(fut.result())
+                except RoomRunCancelled:
+                    pass
+            thread = list(messages) + replies
+        for aid in lead_tail:
+            check_cancelled()
+            try:
+                msg = _call_one_agent(
+                    str(aid),
+                    topic=topic,
+                    thread=thread,
+                    parallel_round=parallel_round,
+                    permissions=permissions,
+                    review_mode=review_mode,
+                    review_advocate=review_advocate,
+                    plan_md=plan_md,
+                    run_meta=run_meta,
+                    on_event=on_event,
+                    context_log=context_log,
+                    efficiency_mode=efficiency_mode,
+                )
+                replies.append(msg)
+                thread.append(msg)
+            except RoomRunCancelled:
+                break
+        return replies
 
     if sequential:
         thread = list(messages)
-        review_follow = ""
-        if review_mode and parallel_round >= 2:
-            review_follow = envelope_protocol_block(context="review")
+        round_follow = ""
+        if parallel_round >= 2:
+            ctx = "review" if review_mode else "discuss"
+            round_follow = envelope_protocol_block(context=ctx)
         try:
             for aid in ordered:
                 check_cancelled()
@@ -528,7 +862,7 @@ def run_parallel_round(
                     run_meta=run_meta,
                     on_event=on_event,
                     context_log=context_log,
-                    extra_follow_up=review_follow,
+                    extra_follow_up=round_follow,
                     efficiency_mode=efficiency_mode,
                 )
                 replies.append(msg)
@@ -557,6 +891,7 @@ def run_parallel_round(
             for aid in ordered
         }
         for fut in as_completed(futures):
+            check_cancelled()
             replies.append(fut.result())
     return replies
 
@@ -690,7 +1025,28 @@ def _default_scribe_agent() -> AgentId:
     return "claude"
 
 
+def _emit_plan_actions_validation(
+    plan_md: str,
+    on_event: Callable[[str, dict[str, Any]], None] | None,
+) -> dict[str, Any]:
+    import logging
+
+    from agent_lab.plan_actions import validate_plan_actions_format
+
+    result = validate_plan_actions_format(plan_md)
+    if on_event:
+        on_event("plan_actions_validation", result)
+    if not result.get("ok"):
+        logging.getLogger("agent_lab.plan_actions").warning(
+            "plan_actions_validation issues=%s",
+            result.get("issues"),
+        )
+    return result
+
+
 def load_session_messages(folder: Path) -> list[ChatMessage]:
+    from agent_lab.room_chat_channels import message_visibility
+
     chat_path = folder / "chat.jsonl"
     if not chat_path.is_file():
         return []
@@ -701,17 +1057,116 @@ def load_session_messages(folder: Path) -> list[ChatMessage]:
             continue
         data = json.loads(line)
         pr = data.get("parallel_round")
+        role = data.get("role", "system")
+        content = data.get("content", "")
         messages.append(
             ChatMessage(
-                role=data.get("role", "system"),
+                role=role,
                 agent=data.get("agent"),
-                content=data.get("content", ""),
+                content=content,
                 ts=data.get("ts", _now()),
                 parallel_round=int(pr) if pr is not None else None,
                 envelope=data.get("envelope"),
+                visibility=message_visibility(
+                    role=role,
+                    content=content,
+                    explicit=data.get("visibility"),
+                ),
             )
         )
     return messages
+
+
+def _append_peer_turn_digest(messages: list[ChatMessage]) -> list[ChatMessage]:
+    """One peer-channel snapshot per human turn when R2+ agent replies exist."""
+    from agent_lab.room_chat_channels import is_peer_visibility
+
+    turn = _current_turn_messages(messages)
+    for m in reversed(turn):
+        if (
+            m.role == "system"
+            and is_peer_visibility(m.visibility)
+            and "peer digest" in (m.content or "").lower()
+        ):
+            return messages
+    agent_lines: list[str] = []
+    max_pr = 1
+    for m in turn:
+        if m.role != "agent":
+            continue
+        pr = m.parallel_round or 1
+        max_pr = max(max_pr, pr)
+        if pr < 2:
+            continue
+        if is_peer_visibility(m.visibility):
+            continue
+        agent = m.agent or "agent"
+        body = (m.content or "").strip()
+        if not body:
+            continue
+        from agent_lab.agents.registry import label
+
+        agent_lines.append(f"**{label(agent)}** (R{pr}):\n{body[:4000]}\n")
+    if not agent_lines:
+        return messages
+    digest = (
+        "[peer digest — internal coordination snapshot]\n\n"
+        + "\n---\n".join(agent_lines)
+    )
+    return messages + [
+        ChatMessage(
+            role="system",
+            agent=None,
+            content=digest,
+            visibility="peer",
+            parallel_round=max_pr,
+        )
+    ]
+
+
+def _append_human_turn_synthesis(
+    messages: list[ChatMessage],
+    run_meta: dict[str, Any] | None,
+) -> list[ChatMessage]:
+    """Human-channel turn summary (Sprint C) — one per completed human turn."""
+    from agent_lab.room_team_orchestration import (
+        build_human_turn_synthesis,
+        is_human_synthesis_message,
+    )
+    from agent_lab.room_tasks import team_lead
+
+    if not messages:
+        return messages
+    last_user = -1
+    for i, m in enumerate(messages):
+        if m.role == "user":
+            last_user = i
+    if last_user < 0:
+        return messages
+    for m in messages[last_user + 1 :]:
+        if is_human_synthesis_message(m.content, m.visibility):
+            return messages
+    turn_slice = messages[last_user:]
+    human_excerpt = messages[last_user].content or ""
+    lead = team_lead(run_meta)
+    body = build_human_turn_synthesis(
+        turn_slice,
+        lead=lead,
+        human_excerpt=human_excerpt,
+    )
+    max_pr = max(
+        (m.parallel_round or 1 for m in turn_slice if m.role == "agent"),
+        default=1,
+    )
+    return messages + [
+        ChatMessage(
+            role="system",
+            agent=None,
+            content=body,
+            visibility="human",
+            parallel_round=max_pr,
+        )
+    ]
 
 
 def _read_run_meta(folder: Path) -> dict[str, Any]:
@@ -733,6 +1188,33 @@ def _session_context(folder: Path | None) -> tuple[str, dict[str, Any]]:
     if plan_path.is_file():
         plan_md = plan_path.read_text(encoding="utf-8")
     return plan_md, _read_run_meta(folder)
+
+
+def _prepare_team_coordination_before_round(
+    folder: Path | None,
+    run_meta: dict[str, Any],
+    active_agents: list[AgentId],
+    *,
+    mode: str = "discuss",
+    synthesize: bool = False,
+    consensus_mode: bool = False,
+) -> list[dict[str, Any]]:
+    """Round-robin assign claimable tasks; persist run.json when session exists."""
+    from agent_lab.room_tasks import assign_tasks_to_agents, ensure_team_lead
+    from agent_lab.room_team_orchestration import should_assign_tasks_on_turn
+    from agent_lab.run_meta import write_run_meta
+
+    ensure_team_lead(run_meta)
+    assigned: list[dict[str, Any]] = []
+    if should_assign_tasks_on_turn(
+        mode=mode, synthesize=synthesize, consensus_mode=consensus_mode
+    ):
+        assigned = assign_tasks_to_agents(
+            run_meta, [str(a) for a in active_agents]
+        )
+    if folder and folder.is_dir():
+        write_run_meta(folder, run_meta)
+    return assigned
 
 
 def _plan_content_normalized(plan_md: str) -> str:
@@ -781,8 +1263,12 @@ def _write_session_files(
     (folder / "topic.txt").write_text(topic.strip() + "\n", encoding="utf-8")
     plan_changed = _write_plan_if_changed(folder, plan_md)
 
+    from agent_lab.room_chat_channels import is_peer_visibility
+
     transcript_lines = [f"# Room transcript\n\n**Topic:** {topic}\n"]
     for m in messages:
+        if is_peer_visibility(m.visibility):
+            continue
         if m.role == "user":
             transcript_lines.append(f"## Human\n\n{m.content}")
         elif m.role == "agent" and m.agent:
@@ -793,9 +1279,12 @@ def _write_session_files(
         "\n\n".join(transcript_lines) + "\n", encoding="utf-8"
     )
 
+    prev_run = _read_run_meta(folder)
+    messages_to_store = _append_peer_turn_digest(list(messages))
+    messages_to_store = _append_human_turn_synthesis(messages_to_store, prev_run)
     chat_path = folder / "chat.jsonl"
     with chat_path.open("w", encoding="utf-8") as f:
-        for m in messages:
+        for m in messages_to_store:
             f.write(json.dumps(m.to_dict(), ensure_ascii=False) + "\n")
 
     created_at = (merge_meta or {}).get("created_at") or _now()
@@ -805,8 +1294,16 @@ def _write_session_files(
         if m.role == "agent" and m.parallel_round is not None
     ]
     agent_parallel_rounds = max(round_nums) if round_nums else 1
-    prev_run = _read_run_meta(folder)
     turns: list[dict[str, Any]] = list(prev_run.get("turns") or [])
+    agreements: list[dict[str, Any]] = list(prev_run.get("consensus_agreements") or [])
+    if turn_meta:
+        turn_ts = str(turn_meta.get("completed_at") or turn_meta.get("ts") or _now())
+        agreements = record_consensus_agreement(
+            agreements,
+            consensus=turn_meta.get("consensus"),
+            message_count=len(messages_to_store),
+            ts=turn_ts,
+        )
     if turn_meta:
         turns.append({**turn_meta, "ts": turn_meta.get("ts") or _now()})
     run_meta: dict[str, Any] = {
@@ -817,13 +1314,56 @@ def _write_session_files(
         "created_at": created_at,
         "agents": agents_used or [a for a in AGENT_IDS],
         "status": turn_meta.get("status", "completed") if turn_meta else "completed",
-        "message_count": len(messages),
+        "message_count": len(messages_to_store),
         "agent_parallel_rounds": agent_parallel_rounds,
         "turns": turns,
         "actions": list(prev_run.get("actions") or []),
         "approvals": list(prev_run.get("approvals") or []),
         "executions": list(prev_run.get("executions") or []),
+        "consensus_agreements": agreements,
     }
+    preserve_session_meta_from_prev(run_meta, prev_run)
+    if turn_meta:
+        if turn_meta.get("turn_lead"):
+            run_meta["team_lead"] = turn_meta["turn_lead"]
+        if turn_meta.get("turn_leads"):
+            run_meta["turn_leads"] = turn_meta["turn_leads"]
+    from agent_lab.session_guidance import sync_session_meta
+
+    sync_session_meta(
+        run_meta,
+        topic=topic,
+        messages=messages_to_store,
+        plan_md=plan_md,
+        permissions=(turn_meta or {}).get("permissions"),
+    )
+    from agent_lab.room_tasks import (
+        auto_claim_tasks_from_turn,
+        sync_tasks_after_turn,
+        team_lead,
+    )
+
+    tm = turn_meta or {}
+    sync_tasks_after_turn(
+        run_meta,
+        messages_to_store,
+        human_turn=_human_turn_count(messages_to_store),
+        plan_md=plan_md,
+        mode=str(tm.get("mode") or "discuss"),
+        synthesize=bool(tm.get("synthesize")),
+        consensus_mode=bool(tm.get("consensus_mode")),
+    )
+    auto_claim_tasks_from_turn(
+        run_meta,
+        messages_to_store,
+        lead_agent=team_lead(run_meta),
+    )
+    if plan_changed and plan_md.strip():
+        from agent_lab.plan_provenance import extract_plan_provenance
+
+        from agent_lab.room_tasks import RUN_PLAN_PROVENANCE_KEY
+
+        run_meta[RUN_PLAN_PROVENANCE_KEY] = extract_plan_provenance(plan_md)
     if turn_meta:
         run_meta["last_turn"] = turns[-1]
         for key in (
@@ -840,7 +1380,15 @@ def _write_session_files(
                 run_meta[key] = turn_meta[key]
     if prev_run.get("last_plan_update"):
         run_meta["last_plan_update"] = prev_run["last_plan_update"]
-    if plan_changed and turn_meta and turn_meta.get("mode") == "plan":
+    record_plan_update = bool(
+        turn_meta
+        and turn_meta.get("mode") == "plan"
+        and (
+            plan_changed
+            or turn_meta.get("plan_trigger") == "consensus_reached"
+        )
+    )
+    if record_plan_update:
         trigger = turn_meta.get("plan_trigger") or (
             "synthesize_only"
             if turn_meta.get("synthesize_only")
@@ -862,6 +1410,23 @@ def _write_session_files(
             "chat_to_line": len(messages),
             "status": turn_meta.get("status", "completed"),
         }
+        summary = turn_meta.get("plan_sync_summary")
+        if isinstance(summary, str) and summary.strip():
+            run_meta["last_plan_update"]["plan_sync_summary"] = summary.strip()
+        if trigger == "consensus_reached":
+            for row in reversed(agreements):
+                if row.get("excerpt") and not row.get("plan_synced"):
+                    run_meta["last_plan_update"]["consensus_excerpt"] = row["excerpt"]
+                    break
+        synced_at = str(
+            turn_meta.get("completed_at") or turn_meta.get("ts") or _now()
+        )
+        agreements = mark_agreements_plan_synced(
+            agreements,
+            message_count=len(messages),
+            synced_at=synced_at,
+        )
+        run_meta["consensus_agreements"] = agreements
     (folder / "run.json").write_text(
         json.dumps(run_meta, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
@@ -872,6 +1437,17 @@ def _write_session_files(
         "workflow": "room.parallel",
         "agents": run_meta["agents"],
     }
+    if run_meta.get("session_phase"):
+        meta["session_phase"] = run_meta["session_phase"]
+    if run_meta.get("layout_frozen"):
+        meta["layout_frozen"] = True
+    if run_meta.get("workspace_preset"):
+        meta["workspace_preset"] = run_meta["workspace_preset"]
+    if run_meta.get("session_template"):
+        meta["session_template"] = run_meta["session_template"]
+    binding = run_meta.get("workspace_binding")
+    if isinstance(binding, dict) and binding.get("label"):
+        meta["workspace_label"] = binding["label"]
     if merge_meta:
         meta = {**merge_meta, **meta, "topic": topic, "agents": run_meta["agents"]}
     (folder / "meta.json").write_text(
@@ -894,6 +1470,13 @@ def save_room_session(
         folder, topic, messages, plan_md, agents_used=agents_used, turn_meta=turn_meta
     )
     return folder
+
+
+def _peer_metrics_for_messages(messages: list[ChatMessage]) -> dict[str, Any]:
+    from agent_lab.room_turn_state import current_turn_slice, peer_turn_metrics
+
+    turn_msgs, _ = current_turn_slice(messages)
+    return peer_turn_metrics(turn_msgs)
 
 
 def _final_turn_state_dict(
@@ -940,6 +1523,12 @@ def _turn_snapshot(
     efficiency_mode: bool = False,
     turn_state: dict[str, Any] | None = None,
     turn_profile: str | None = None,
+    plan_sync_summary: str | None = None,
+    turn_lead: str | None = None,
+    turn_leads: dict[str, str] | None = None,
+    send_receipt: str | None = None,
+    peer_message_count: int | None = None,
+    agents_with_r2_reply: list[str] | None = None,
 ) -> dict[str, Any]:
     from agent_lab.invoke import model_name
 
@@ -989,8 +1578,22 @@ def _turn_snapshot(
         snap["efficiency_mode"] = True
     if turn_state:
         snap["turn_state"] = turn_state
-    if turn_profile and turn_profile in ("quick", "discuss", "review", "free"):
-        snap["turn_profile"] = turn_profile
+    if turn_profile and turn_profile in ("quick", "analyze", "discuss", "review", "free"):
+        snap["turn_profile"] = (
+            "analyze" if turn_profile == "discuss" else turn_profile
+        )
+    if plan_sync_summary:
+        snap["plan_sync_summary"] = plan_sync_summary
+    if turn_lead:
+        snap["turn_lead"] = turn_lead
+    if turn_leads:
+        snap["turn_leads"] = turn_leads
+    if send_receipt:
+        snap["send_receipt"] = send_receipt
+    if peer_message_count is not None:
+        snap["peer_message_count"] = peer_message_count
+    if agents_with_r2_reply:
+        snap["agents_with_r2_reply"] = list(agents_with_r2_reply)
     return snap
 
 
@@ -1006,16 +1609,24 @@ def synthesize_session_plan(
     permissions: dict | None = None,
     request_id: str | None = None,
     trigger: str = "synthesize_only",
-) -> str:
+    previous_plan_md: str | None = None,
+) -> tuple[str, str]:
     """Re-synthesize plan.md from existing chat without a new agent round."""
+    from agent_lab.plan_sync_summary import summarize_plan_changes
+
     if not folder.is_dir():
         raise FileNotFoundError(f"session not found: {folder}")
+    plan_path = folder / "plan.md"
+    old_plan = previous_plan_md
+    if old_plan is None and plan_path.is_file():
+        old_plan = plan_path.read_text(encoding="utf-8")
     if request_id and _find_completed_synthesize(folder, request_id):
-        plan_path = folder / "plan.md"
         if plan_path.is_file():
             if on_event:
                 on_event("scribe_skipped", {"reason": "duplicate_request_id"})
-            return plan_path.read_text(encoding="utf-8")
+            current = plan_path.read_text(encoding="utf-8")
+            return current, summarize_plan_changes(old_plan or "", current)
+        raise FileNotFoundError("plan.md not found")
     topic = (folder / "topic.txt").read_text(encoding="utf-8").strip()
     messages = load_session_messages(folder)
     if not messages:
@@ -1026,12 +1637,14 @@ def synthesize_session_plan(
         on_event("scribe_start", {})
     try:
         plan_md = synthesize_plan(topic, messages)
+        _emit_plan_actions_validation(plan_md, on_event)
         if on_event:
             on_event("scribe_done", {"chars": len(plan_md)})
     except Exception as e:
         if on_event:
             on_event("scribe_error", {"message": str(e)})
         raise
+    plan_sync_summary = summarize_plan_changes(old_plan or "", plan_md)
     latency_ms = int((time.perf_counter() - t0) * 1000)
     completed_at = _now()
     existing_meta: dict[str, Any] = {}
@@ -1061,9 +1674,11 @@ def synthesize_session_plan(
             request_id=request_id,
             started_at=started_at,
             completed_at=completed_at,
+            plan_sync_summary=plan_sync_summary,
+            send_receipt="plan_updated",
         ),
     )
-    return plan_md
+    return plan_md, plan_sync_summary
 
 
 def maybe_auto_scribe_after_consensus(
@@ -1075,20 +1690,74 @@ def maybe_auto_scribe_after_consensus(
     on_event: OnAgentEvent | None = None,
     permissions: dict | None = None,
 ) -> str | None:
-    """After discuss+consensus, run synthesize-only scribe once (no new agent round)."""
+    """After discuss+consensus, auto-scribe plan.md and notify what was reflected."""
+    from agent_lab.consensus_agreements import (
+        agreement_plan_synced_notice,
+        consensus_topic_excerpt,
+    )
+
     if cancelled or synthesize or not consensus_reached(consensus_meta):
         return None
+
+    excerpt = consensus_topic_excerpt(consensus_meta)
+    plan_path = folder / "plan.md"
+    old_plan = plan_path.read_text(encoding="utf-8") if plan_path.is_file() else ""
+
+    if on_event:
+        on_event("consensus_plan_sync_start", {"excerpt": excerpt})
+
     try:
-        return synthesize_session_plan(
+        plan_md, summary = synthesize_session_plan(
             folder,
             on_event=on_event,
             permissions=permissions,
             trigger="consensus_reached",
+            previous_plan_md=old_plan,
         )
+        current_plan = plan_path.read_text(encoding="utf-8") if plan_path.is_file() else ""
+        if current_plan != plan_md:
+            plan_path.write_text(plan_md, encoding="utf-8")
     except Exception as e:
         if on_event:
-            on_event("scribe_error", {"message": str(e), "auto": True})
+            on_event(
+                "consensus_plan_sync_failed",
+                {"excerpt": excerpt, "message": str(e)},
+            )
+            on_event(
+                "scribe_error",
+                {"message": str(e), "auto": True, "excerpt": excerpt},
+            )
         return None
+
+    notice = agreement_plan_synced_notice(excerpt, summary)
+    if on_event:
+        on_event(
+            "consensus_plan_synced",
+            {
+                "excerpt": excerpt,
+                "summary": summary,
+                "notice": notice,
+                "trigger": "consensus_reached",
+            },
+        )
+        from agent_lab.plan_execute import list_plan_actions
+
+        actions_info = list_plan_actions(folder, permissions=permissions)
+        recommended = actions_info.get("recommended")
+        has_executable = recommended is not None
+        action_key = recommended.get("action_key") if recommended else None
+        on_event(
+            "consensus_dry_run_proposal",
+            {
+                "excerpt": excerpt,
+                "summary": summary,
+                "notice": notice,
+                "recommended": recommended,
+                "has_executable": has_executable,
+                "action_key": action_key,
+            },
+        )
+    return plan_md
 
 
 def continue_room_round(
@@ -1116,6 +1785,7 @@ def continue_room_round(
         body = f"{body}\n\n---\n\n{att}"
     human_turn_index = _human_turn_count(messages)
     messages.append(ChatMessage(role="user", agent=None, content=body))
+    human_turn_num = _human_turn_count(messages)
     active_agents = [a for a in (agents or available_agents())]
     mode = "plan" if synthesize else "discuss"
     review_advocate = (
@@ -1124,13 +1794,51 @@ def continue_room_round(
         else None
     )
     plan_md, run_meta = _session_context(folder)
+    from agent_lab.room_team_orchestration import resolve_turn_lead
+
+    resolve_turn_lead(
+        run_meta,
+        human_turn_num,
+        [str(a) for a in active_agents],
+        user_message=body,
+    )
+    run_meta["_active_turn_mode"] = mode
+    run_meta["_active_synthesize"] = synthesize
+    run_meta["_active_consensus"] = consensus_mode
+    if turn_profile:
+        tp = (turn_profile or "analyze").strip().lower()
+        run_meta["turn_profile"] = "analyze" if tp == "discuss" else tp
+    from agent_lab.session_clarifier import build_clarifier_questions
+
+    clarifier_questions = build_clarifier_questions(
+        body,
+        is_new_session=False,
+        human_message_count=human_turn_num,
+    )
+    if clarifier_questions and on_event:
+        on_event("clarifier_prompt", {"questions": clarifier_questions})
     t0 = time.perf_counter()
     context_log: list[dict[str, Any]] = []
+    _prepare_team_coordination_before_round(
+        folder,
+        run_meta,
+        active_agents,
+        mode=mode,
+        synthesize=synthesize,
+        consensus_mode=consensus_mode,
+    )
     consensus_meta: dict[str, Any] | None = None
     replies: list[ChatMessage] = []
     cancelled = False
+    plan_before = (
+        (folder / "plan.md").read_text(encoding="utf-8")
+        if (folder / "plan.md").is_file()
+        else ""
+    )
     try:
-        if consensus_mode:
+        if clarifier_questions:
+            replies = []
+        elif consensus_mode:
             replies, consensus_meta = run_consensus_agent_rounds(
                 topic,
                 messages,
@@ -1166,20 +1874,27 @@ def continue_room_round(
         if on_event:
             on_event("run_cancelled", {"message": "답변 중지됨"})
     messages.extend(replies)
-    plan_md = ""
-    if (folder / "plan.md").is_file():
-        plan_md = (folder / "plan.md").read_text(encoding="utf-8")
+    plan_md = plan_before
     if synthesize and not cancelled:
         if on_event:
             on_event("scribe_start", {})
         try:
             plan_md = synthesize_plan(topic, messages)
+            _emit_plan_actions_validation(plan_md, on_event)
             if on_event:
                 on_event("scribe_done", {"chars": len(plan_md)})
         except Exception as e:
             if on_event:
                 on_event("scribe_error", {"message": str(e)})
     latency_ms = int((time.perf_counter() - t0) * 1000)
+    turn_failed = _agent_turn_failed(replies) or (
+        consensus_meta is not None and consensus_meta.get("status") == "failed"
+    )
+    turn_status = (
+        "cancelled"
+        if cancelled
+        else ("failed" if turn_failed else "completed")
+    )
     existing_meta: dict[str, Any] = {}
     meta_path = folder / "meta.json"
     if meta_path.is_file():
@@ -1187,6 +1902,21 @@ def continue_room_round(
             existing_meta = json.loads(meta_path.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
             pass
+    from agent_lab.room_tasks import team_lead
+    from agent_lab.room_team_orchestration import resolve_send_receipt, turn_leads_map
+
+    plan_updated = bool(
+        synthesize and not cancelled and plan_md and plan_md != plan_before
+    )
+    peer = _peer_metrics_for_messages(messages)
+    send_receipt_val = resolve_send_receipt(
+        mode=mode,
+        synthesize=synthesize,
+        consensus_mode=consensus_mode,
+        consensus=consensus_meta,
+        plan_updated=plan_updated,
+        status=turn_status,
+    )
     _write_session_files(
         folder,
         topic,
@@ -1201,7 +1931,7 @@ def continue_room_round(
             parallel_rounds=parallel_rounds,
             permissions=permissions,
             latency_ms=latency_ms,
-            status="cancelled" if cancelled else "completed",
+            status=turn_status,
             review_mode=review_mode,
             review_advocate=review_advocate,
             context_log=context_log,
@@ -1216,6 +1946,11 @@ def continue_room_round(
                 plan_md=plan_md,
             ),
             turn_profile=turn_profile,
+            turn_lead=team_lead(run_meta),
+            turn_leads=turn_leads_map(run_meta),
+            send_receipt=send_receipt_val,
+            peer_message_count=int(peer.get("peer_message_count") or 0),
+            agents_with_r2_reply=list(peer.get("agents_with_r2_reply") or []),
         ),
     )
     auto_plan = maybe_auto_scribe_after_consensus(
@@ -1235,6 +1970,7 @@ def continue_room_round(
                 "session_id": folder.name,
                 "path": str(folder),
                 "cancelled": cancelled,
+                "send_receipt": send_receipt_val,
                 "turn_index": max(
                     0,
                     len((_read_run_meta(folder).get("turns") or [])) - 1,
@@ -1260,6 +1996,9 @@ def run_room(
     turn_profile: str | None = None,
 ) -> tuple[Path, list[ChatMessage], str]:
     """Full room flow: user message → parallel agents → optional plan synthesis."""
+    from agent_lab.agent_permissions import normalize_agent_permissions
+
+    permissions = normalize_agent_permissions(permissions)
     body = topic.strip()
     if session_folder and session_folder.is_dir():
         att = describe_attachments(session_folder)
@@ -1284,13 +2023,48 @@ def run_room(
         else None
     )
     plan_md, run_meta = _session_context(folder)
+    human_turn_num = max(1, _human_turn_count(messages))
+    from agent_lab.room_team_orchestration import resolve_turn_lead
+
+    resolve_turn_lead(
+        run_meta,
+        human_turn_num,
+        [str(a) for a in active_agents],
+        user_message=topic,
+    )
+    run_meta["_active_turn_mode"] = mode
+    run_meta["_active_synthesize"] = synthesize
+    run_meta["_active_consensus"] = consensus_mode
+    if turn_profile:
+        tp = (turn_profile or "analyze").strip().lower()
+        run_meta["turn_profile"] = "analyze" if tp == "discuss" else tp
+    from agent_lab.session_clarifier import build_clarifier_questions
+
+    is_new = folder is None or not (folder / "chat.jsonl").is_file()
+    clarifier_questions = build_clarifier_questions(
+        body,
+        is_new_session=is_new,
+        human_message_count=human_turn_num,
+    )
+    if clarifier_questions and on_event:
+        on_event("clarifier_prompt", {"questions": clarifier_questions})
     t0 = time.perf_counter()
     context_log: list[dict[str, Any]] = []
+    _prepare_team_coordination_before_round(
+        folder,
+        run_meta,
+        active_agents,
+        mode=mode,
+        synthesize=synthesize,
+        consensus_mode=consensus_mode,
+    )
     consensus_meta: dict[str, Any] | None = None
     replies: list[ChatMessage] = []
     cancelled = False
     try:
-        if consensus_mode:
+        if clarifier_questions:
+            replies = []
+        elif consensus_mode:
             replies, consensus_meta = run_consensus_agent_rounds(
                 topic,
                 messages,
@@ -1333,6 +2107,7 @@ def run_room(
             on_event("scribe_start", {})
         try:
             plan_md = synthesize_plan(topic, messages)
+            _emit_plan_actions_validation(plan_md, on_event)
             if on_event:
                 on_event("scribe_done", {"chars": len(plan_md)})
         except Exception as e:
@@ -1341,6 +2116,26 @@ def run_room(
                 on_event("scribe_error", {"message": str(e)})
 
     latency_ms = int((time.perf_counter() - t0) * 1000)
+    turn_failed = _agent_turn_failed(replies) or (
+        consensus_meta is not None and consensus_meta.get("status") == "failed"
+    )
+    turn_status = (
+        "cancelled"
+        if cancelled
+        else ("failed" if turn_failed else "completed")
+    )
+    from agent_lab.room_tasks import team_lead
+    from agent_lab.room_team_orchestration import resolve_send_receipt, turn_leads_map
+
+    peer = _peer_metrics_for_messages(messages)
+    send_receipt_val = resolve_send_receipt(
+        mode=mode,
+        synthesize=synthesize,
+        consensus_mode=consensus_mode,
+        consensus=consensus_meta,
+        plan_updated=bool(synthesize and not cancelled and plan_md),
+        status=turn_status,
+    )
     turn_meta = _turn_snapshot(
         mode=mode,
         synthesize=synthesize,
@@ -1348,7 +2143,7 @@ def run_room(
         parallel_rounds=parallel_rounds,
         permissions=permissions,
         latency_ms=latency_ms,
-        status="cancelled" if cancelled else "completed",
+        status=turn_status,
         review_mode=review_mode,
         review_advocate=review_advocate,
         context_log=context_log,
@@ -1363,6 +2158,11 @@ def run_room(
             plan_md=plan_md,
         ),
         turn_profile=turn_profile,
+        turn_lead=team_lead(run_meta),
+        turn_leads=turn_leads_map(run_meta),
+        send_receipt=send_receipt_val,
+        peer_message_count=int(peer.get("peer_message_count") or 0),
+        agents_with_r2_reply=list(peer.get("agents_with_r2_reply") or []),
     )
 
     if folder is None:
@@ -1409,6 +2209,7 @@ def run_room(
                 "session_id": folder.name,
                 "path": str(folder),
                 "cancelled": cancelled,
+                "send_receipt": send_receipt_val,
                 "turn_index": max(
                     0,
                     len((_read_run_meta(folder).get("turns") or [])) - 1,

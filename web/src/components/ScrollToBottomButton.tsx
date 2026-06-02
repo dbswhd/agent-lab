@@ -37,6 +37,13 @@ export function useMessagesScroll(
   }, [resetKey]);
 
   useEffect(() => {
+    if (!enabled || !scrollTarget) return;
+    stickToBottomRef.current = true;
+    setShowJumpButton(false);
+    scrollTarget.scrollTo({ top: scrollTarget.scrollHeight, behavior: "auto" });
+  }, [scrollTarget, enabled, resetKey]);
+
+  useEffect(() => {
     if (!enabled || !scrollTarget) {
       setShowJumpButton(false);
       return;
@@ -92,6 +99,28 @@ export function useMessagesScroll(
   }, []);
 
   return { scrollRef, scrollElRef, showJumpButton, scrollToBottom };
+}
+
+export function useScrollToTop(
+  enabled: boolean,
+  resetKey: unknown,
+) {
+  const scrollElRef = useRef<HTMLDivElement | null>(null);
+  const [scrollTarget, setScrollTarget] = useState<HTMLDivElement | null>(null);
+
+  const scrollRef = useCallback((node: HTMLDivElement | null) => {
+    scrollElRef.current = node;
+    setScrollTarget(node);
+  }, []);
+
+  useEffect(() => {
+    if (!enabled) return;
+    const el = scrollElRef.current;
+    if (!el) return;
+    el.scrollTo({ top: 0, behavior: "auto" });
+  }, [enabled, resetKey, scrollTarget]);
+
+  return { scrollRef, scrollElRef };
 }
 
 type ButtonProps = {

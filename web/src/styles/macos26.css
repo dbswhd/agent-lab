@@ -359,10 +359,38 @@ body.is-tauri .chat-list-header {
   cursor: pointer;
 }
 
-/* ── Sidebar ─────────────────────────────────────────── */
+/* ── Sidebar (subtle Liquid Glass — sidebar only) ───── */
 .chat-list-pane {
-  background: var(--mac-sidebar-bg);
-  border-right: 0.5px solid var(--mac-separator);
+  position: relative;
+  isolation: isolate;
+  border-right: 0.5px solid var(--lg-sidebar-border);
+  background: transparent;
+}
+
+.chat-list-pane::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: var(--lg-sidebar-tint);
+  pointer-events: none;
+}
+
+.chat-list-pane::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: var(--lg-sidebar-surface);
+  backdrop-filter: blur(var(--lg-sidebar-blur)) saturate(var(--lg-sidebar-saturate));
+  -webkit-backdrop-filter: blur(var(--lg-sidebar-blur)) saturate(var(--lg-sidebar-saturate));
+  box-shadow: var(--lg-sidebar-edge);
+  pointer-events: none;
+}
+
+.chat-list-pane > * {
+  position: relative;
+  z-index: 1;
 }
 
 .chat-list-header {
@@ -439,18 +467,21 @@ body.is-tauri .chat-list-header {
   gap: 6px;
 }
 
-.session-list li.selected {
-  background: rgba(0, 0, 0, 0.11);
-  background-blend-mode: multiply;
+.chat-list-pane .session-list li.selected {
+  background: color-mix(in srgb, var(--lg-sidebar-surface-elevated) 88%, var(--mac-accent) 5%);
+  backdrop-filter: blur(10px) saturate(1.35);
+  -webkit-backdrop-filter: blur(10px) saturate(1.35);
+  box-shadow:
+    var(--lg-sidebar-edge),
+    inset 0 0 0 0.5px var(--lg-sidebar-border);
 }
 
-[data-theme="dark"] .session-list li.selected {
-  background: var(--mac-accent-muted);
-  background-blend-mode: normal;
+[data-theme="dark"] .chat-list-pane .session-list li.selected {
+  background: color-mix(in srgb, var(--lg-sidebar-surface-elevated) 82%, var(--mac-accent) 8%);
 }
 
-.session-list li:hover:not(.selected) {
-  background: var(--mac-fill-quaternary);
+.chat-list-pane .session-list li:hover:not(.selected) {
+  background: color-mix(in srgb, var(--lg-sidebar-surface-elevated) 45%, transparent);
 }
 
 .session-preview-title {
@@ -463,6 +494,403 @@ body.is-tauri .chat-list-header {
 .session-time {
   font-size: var(--text-footnote);
   color: var(--mac-label-tertiary);
+}
+
+.session-list-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 var(--space-sm) var(--space-xs);
+}
+
+.chat-list-pane .session-list-scroll .session-list {
+  margin: 0;
+  padding: 4px;
+  border-radius: var(--radius-large);
+  background: var(--lg-sidebar-surface-muted);
+  backdrop-filter: blur(var(--lg-sidebar-blur)) saturate(var(--lg-sidebar-saturate));
+  -webkit-backdrop-filter: blur(var(--lg-sidebar-blur)) saturate(var(--lg-sidebar-saturate));
+  box-shadow:
+    var(--lg-sidebar-edge),
+    inset 0 0 0 0.5px var(--lg-sidebar-border);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .chat-list-pane::after {
+    background: var(--mac-sidebar-bg);
+    backdrop-filter: none;
+  }
+
+  .chat-list-pane .session-list-scroll .session-list {
+    background: var(--mac-fill-tertiary);
+    backdrop-filter: none;
+  }
+}
+
+/* ── Session setup (workspace / template) ───────────── */
+.session-setup-bar {
+  flex-shrink: 0;
+  padding: 10px var(--space-md);
+  border-bottom: 0.5px solid var(--mac-separator);
+  background: var(--mac-toolbar-bg);
+}
+
+.session-setup-bar--compact {
+  padding: 8px var(--space-md);
+}
+
+.session-setup-bar__card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: var(--composer-cluster-width);
+  margin: 0 auto;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--mac-fill-tertiary);
+  border: 0.5px solid color-mix(in srgb, var(--mac-separator) 65%, transparent);
+}
+
+.session-setup-bar--needs-path .session-setup-bar__card {
+  border-color: color-mix(in srgb, var(--mac-accent) 28%, var(--mac-separator));
+  background: color-mix(in srgb, var(--mac-accent) 4%, var(--mac-fill-tertiary));
+}
+
+.session-setup-bar__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.session-setup-bar__icon-wrap {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  color: var(--mac-accent);
+  background: color-mix(in srgb, var(--mac-accent) 10%, transparent);
+}
+
+.session-setup-bar__folder-icon {
+  display: block;
+}
+
+.session-setup-bar__intro {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.session-setup-bar__label {
+  font-size: var(--text-caption);
+  font-weight: 600;
+  color: var(--mac-label-tertiary);
+  letter-spacing: 0.01em;
+}
+
+.session-setup-bar__active {
+  font-size: var(--text-body);
+  font-weight: 650;
+  color: var(--mac-label-primary);
+  line-height: 1.3;
+}
+
+.session-setup-bar__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+}
+
+.session-setup-bar__select {
+  flex: 1;
+  min-width: 0;
+}
+
+.session-setup-bar__browse {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.session-setup-bar__path {
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--text-footnote);
+  line-height: 1.35;
+  color: var(--mac-label-secondary);
+  background: color-mix(in srgb, var(--mac-content-bg) 88%, transparent);
+  border: 0.5px solid color-mix(in srgb, var(--mac-separator) 55%, transparent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.session-setup-bar__hint {
+  margin: 0;
+  font-size: var(--text-footnote);
+  line-height: 1.4;
+  color: var(--mac-label-tertiary);
+}
+
+/* ── View tabs (segmented) ──────────────────────────── */
+.view-tabs-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: 6px var(--space-md);
+  min-height: 36px;
+  background: var(--mac-toolbar-bg);
+  border-bottom: 0.5px solid var(--mac-separator);
+}
+
+.view-tabs-bar__leading {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+.view-tabs-seg {
+  width: auto;
+  flex: 0 0 auto;
+}
+
+.view-tabs-seg button {
+  flex: 0 1 auto;
+  min-width: 4.25rem;
+  padding: 0 12px;
+}
+
+.view-tabs-bar__static {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--mac-control-height);
+  padding: 0 10px;
+  font-size: var(--text-caption);
+  font-weight: 510;
+  color: var(--mac-label-primary);
+}
+
+.view-tabs-bar__pending {
+  color: var(--mac-accent);
+  font-weight: 600;
+}
+
+/* ── Agent health (sidebar) ─────────────────────────── */
+.chat-list-pane .agent-health-panel {
+  flex-shrink: 0;
+  margin: 0 var(--space-sm) var(--space-xs);
+  padding: 6px 8px;
+  border-radius: var(--radius-large);
+  background: var(--lg-sidebar-surface-muted);
+  backdrop-filter: blur(var(--lg-sidebar-blur)) saturate(var(--lg-sidebar-saturate));
+  -webkit-backdrop-filter: blur(var(--lg-sidebar-blur)) saturate(var(--lg-sidebar-saturate));
+  box-shadow:
+    var(--lg-sidebar-edge),
+    inset 0 0 0 0.5px var(--lg-sidebar-border);
+}
+
+.agent-health-panel__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-footnote);
+  color: var(--mac-label-tertiary);
+  margin-bottom: 4px;
+}
+
+.agent-health-panel__api {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.agent-health-panel__summary {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.agent-health-panel__refresh {
+  flex-shrink: 0;
+  margin-left: 2px;
+}
+
+.agent-health-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.agent-health-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 5px;
+  row-gap: 0;
+  align-items: baseline;
+  font-size: var(--text-footnote);
+  line-height: 1.25;
+}
+
+.agent-health-row__label {
+  color: var(--mac-label-secondary);
+  font-weight: 500;
+}
+
+.agent-health-row__meta {
+  grid-column: 2;
+  color: var(--mac-label-tertiary);
+  font-size: var(--text-caption2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agent-health-row__hint {
+  grid-column: 2;
+  color: var(--mac-orange, #c93400);
+  font-size: var(--text-caption2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agent-health-row__reconnect {
+  grid-column: 2;
+  justify-self: start;
+  margin-top: 3px;
+}
+
+.agent-health-row--bad .agent-health-row__label {
+  color: var(--mac-label-primary);
+}
+
+.agent-health-dot {
+  grid-row: 1 / span 2;
+  align-self: center;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--mac-label-tertiary);
+}
+
+.agent-health-dot--ok {
+  background: var(--mac-green, #248a3d);
+}
+
+.agent-health-dot--bad {
+  background: var(--mac-orange, #c93400);
+}
+
+.agent-health-panel__setup-guide {
+  margin: 6px 0 0;
+  font-size: var(--text-caption2);
+  color: var(--mac-orange, #c93400);
+  line-height: 1.35;
+}
+
+.chat-list-pane .api-diagnostics-bar {
+  flex-shrink: 0;
+  margin: 0 var(--space-sm) var(--space-xs);
+  padding: 6px 8px;
+  border-radius: var(--radius-large);
+  background: var(--lg-sidebar-surface-muted);
+  font-size: var(--text-caption2);
+  color: var(--mac-label-secondary);
+}
+
+.api-diagnostics-bar__sessions {
+  margin: 0 0 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.api-diagnostics-bar__offline {
+  margin: 0 0 4px;
+  color: var(--mac-orange, #c93400);
+}
+
+.api-diagnostics-bar__hint {
+  margin: 0 0 4px;
+  color: var(--mac-label-tertiary);
+}
+
+.api-diagnostics-bar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.api-diagnostics-bar__path {
+  margin: 0;
+  word-break: break-all;
+  color: var(--mac-label-tertiary);
+}
+
+.api-diagnostics-bar__boot summary {
+  cursor: pointer;
+  color: var(--mac-label-secondary);
+}
+
+.api-diagnostics-bar__log {
+  margin: 4px 0 0;
+  max-height: 8rem;
+  overflow: auto;
+  font-size: 10px;
+  line-height: 1.3;
+  white-space: pre-wrap;
+}
+
+/* ── Sidebar footer ─────────────────────────────────── */
+.sidebar-footer {
+  flex-shrink: 0;
+  margin-top: auto;
+  padding: var(--space-xs) var(--space-sm) var(--space-sm);
+}
+
+.sidebar-mode-btn {
+  width: 100%;
+  justify-content: flex-start;
+  font-size: var(--text-caption);
+  font-weight: 510;
+}
+
+.sidebar-mode-btn.is-active {
+  box-shadow:
+    0 0.5px 2px rgba(0, 0, 0, 0.12),
+    0 0 0 0.5px var(--mac-separator),
+    inset 0 0 0 1px color-mix(in srgb, var(--mac-accent) 18%, transparent);
+}
+
+/* ── Compact / icon push buttons ────────────────────── */
+.mac-btn-secondary--compact {
+  min-height: 20px;
+  height: 20px;
+  padding: 0 8px;
+  font-size: var(--text-caption);
+  border-radius: 5px;
+}
+
+.mac-btn-icon {
+  width: var(--mac-control-height);
+  min-width: var(--mac-control-height);
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
 }
 
 /* ── Chat pane ───────────────────────────────────────── */
@@ -988,12 +1416,19 @@ body.is-tauri .chat-list-header {
   background: var(--mac-separator);
 }
 
-.messages-scroll--document > .plan-pre {
+.messages-scroll--document > .plan-doc-wrap {
   width: var(--composer-cluster-width);
-  max-width: 100%;
+  max-width: calc(100% - 2 * var(--chat-thread-pad-x));
   margin-left: auto;
   margin-right: auto;
   box-sizing: border-box;
+}
+
+.messages-scroll--document > .plan-execute-panel {
+  width: var(--composer-cluster-width);
+  max-width: calc(100% - 2 * var(--chat-thread-pad-x));
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .bubble-sender {
@@ -2134,6 +2569,10 @@ body.is-tauri .chat-list-header {
   text-align: center;
 }
 
+.mac-alert--form .perm-form {
+  text-align: left;
+}
+
 .mac-alert-title {
   margin: 0;
   font-family: var(--font-display);
@@ -2343,6 +2782,8 @@ body.is-tauri .chat-list-header {
     linear-gradient(0deg, var(--lg-medium-tint), var(--lg-medium-tint)),
     var(--lg-medium-base);
   background-blend-mode: var(--lg-medium-blend);
+  backdrop-filter: blur(var(--mac-glass-blur)) saturate(var(--lg-sidebar-saturate));
+  -webkit-backdrop-filter: blur(var(--mac-glass-blur)) saturate(var(--lg-sidebar-saturate));
   box-shadow: var(--lg-medium-shadow);
 }
 
@@ -2352,6 +2793,8 @@ body.is-tauri .chat-list-header {
     linear-gradient(0deg, var(--lg-small-tint-2), var(--lg-small-tint-2)),
     var(--lg-small-base);
   background-blend-mode: var(--lg-small-blend);
+  backdrop-filter: blur(var(--lg-sidebar-blur)) saturate(var(--lg-sidebar-saturate));
+  -webkit-backdrop-filter: blur(var(--lg-sidebar-blur)) saturate(var(--lg-sidebar-saturate));
   box-shadow: var(--lg-medium-shadow);
 }
 
@@ -2423,6 +2866,34 @@ body.is-tauri .chat-list-header {
 }
 
 /* ── Notification (Figma: Notification 344×72) ───────── */
+.mac-notification-stack {
+  position: fixed;
+  top: calc(var(--mac-titlebar-height) + 10px);
+  right: 14px;
+  z-index: 950;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.mac-notification-stack .mac-notification {
+  pointer-events: auto;
+  animation: mac-notification-in 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes mac-notification-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .mac-notification {
   position: relative;
   isolation: isolate;
@@ -2430,41 +2901,64 @@ body.is-tauri .chat-list-header {
   flex-direction: row;
   align-items: flex-start;
   width: var(--mac-notification-width);
-  padding: 12px 9px 12px 13px;
-  gap: 13px;
-  /* Liquid Glass — Medium UI */
-  background:
-    linear-gradient(0deg, var(--lg-medium-tint), var(--lg-medium-tint)),
-    var(--lg-medium-base);
-  background-blend-mode: var(--lg-medium-blend);
-  backdrop-filter: blur(var(--mac-glass-blur));
-  -webkit-backdrop-filter: blur(var(--mac-glass-blur));
-  box-shadow: var(--lg-medium-shadow);
+  max-width: min(var(--mac-notification-width), calc(100vw - 28px));
+  padding: 12px 34px 12px 13px;
+  gap: 12px;
+  background: var(--mac-alert-bg);
+  backdrop-filter: blur(var(--mac-glass-blur)) saturate(1.65);
+  -webkit-backdrop-filter: blur(var(--mac-glass-blur)) saturate(1.65);
+  border: 0.5px solid var(--mac-separator);
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.03),
+    0 8px 28px rgba(0, 0, 0, 0.12);
   border-radius: var(--mac-notification-radius);
 }
 
 .mac-notification::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: var(--lg-overlay);
-  mix-blend-mode: screen;
-  border-radius: inherit;
-  pointer-events: none;
-  z-index: 0;
+  display: none;
 }
 
-.mac-notification > * {
-  position: relative;
-  z-index: 1;
+.mac-notification--banner {
+  width: var(--composer-cluster-width);
+  max-width: calc(100% - 2 * var(--chat-thread-pad-x));
+  margin: 8px auto 0;
+  padding: 12px 13px;
+  align-items: flex-start;
+}
+
+.mac-notification--banner .mac-notification-body {
+  gap: 6px;
+}
+
+.mac-notification-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--mac-label-tertiary);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.mac-notification-close:hover {
+  background: var(--mac-fill-secondary);
+  color: var(--mac-label-primary);
 }
 
 .mac-notification-icon {
   width: 32px;
   height: 32px;
   flex-shrink: 0;
-  border-radius: 6px;
+  border-radius: 7px;
   object-fit: cover;
+  box-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.1);
 }
 
 .mac-notification-body {
@@ -2483,11 +2977,11 @@ body.is-tauri .chat-list-header {
 }
 
 .mac-notification-desc {
-  font-size: var(--text-body);
+  font-size: var(--text-caption);
   font-weight: 400;
   letter-spacing: -0.008em;
-  color: var(--mac-label-primary);
-  line-height: 16px;
+  color: var(--mac-label-secondary);
+  line-height: 1.35;
 }
 
 .mac-notification-time {

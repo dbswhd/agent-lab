@@ -42,7 +42,7 @@
   --mac-alert-min-height: 0;
   --mac-alert-radius: 14px;
   --mac-menu-surface: rgba(255, 255, 255, 0.94);
-  --mac-segmented-bg: rgba(0, 0, 0, 0.02);
+  --mac-segmented-bg: rgba(0, 0, 0, 0.04);
   --mac-control-height: 24px;
   --mac-radius-menu: 13px;
   --mac-radius-menu-item: 5px;
@@ -60,6 +60,21 @@
   --lg-small-tint-2: rgba(255, 255, 255, 0.5);
   --lg-small-base: #333333;
   --lg-small-blend: plus-darker, normal, color-dodge;
+
+  /* Liquid Glass — sidebar only (subtle frosted panel) */
+  --lg-sidebar-blur: 22px;
+  --lg-sidebar-saturate: 1.42;
+  --lg-sidebar-surface: rgba(255, 255, 255, 0.58);
+  --lg-sidebar-surface-muted: rgba(255, 255, 255, 0.42);
+  --lg-sidebar-surface-elevated: rgba(255, 255, 255, 0.68);
+  --lg-sidebar-border: rgba(0, 0, 0, 0.06);
+  --lg-sidebar-edge: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  --lg-sidebar-tint: radial-gradient(
+      ellipse 100% 75% at 0% -8%,
+      rgba(0, 122, 255, 0.055),
+      transparent 58%
+    ),
+    var(--mac-sidebar-bg);
 
   /* Glass Effect overlay (over Liquid Glass surfaces) */
   --lg-overlay: rgba(0, 0, 0, 0.2);
@@ -154,7 +169,7 @@
 
   --mac-alert-bg: rgba(44, 44, 46, 0.94);
   --mac-menu-surface: rgba(44, 44, 46, 0.96);
-  --mac-segmented-bg: rgba(255, 255, 255, 0.06);
+  --mac-segmented-bg: rgba(255, 255, 255, 0.08);
 
   --chat-turn-glass-blur: 16px;
   --chat-turn-glass-saturate: 1.06;
@@ -186,6 +201,18 @@
   --lg-small-tint-2: rgba(255, 255, 255, 0.08);
   --lg-small-base: #0b0b0d;
   --lg-small-blend: normal, normal, normal;
+
+  --lg-sidebar-surface: rgba(44, 44, 46, 0.58);
+  --lg-sidebar-surface-muted: rgba(44, 44, 46, 0.38);
+  --lg-sidebar-surface-elevated: rgba(62, 62, 66, 0.68);
+  --lg-sidebar-border: rgba(255, 255, 255, 0.08);
+  --lg-sidebar-edge: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  --lg-sidebar-tint: radial-gradient(
+      ellipse 100% 70% at 0% -6%,
+      rgba(10, 132, 255, 0.07),
+      transparent 56%
+    ),
+    var(--mac-sidebar-bg);
 
   --lg-overlay: rgba(255, 255, 255, 0.04);
   --lg-menu-overlay: rgba(255, 255, 255, 0.004);
@@ -272,6 +299,8 @@
   --text-headline: 13px;
   --text-body: 13px;
   --text-caption: 11px;
+  --text-caption1: 11px;
+  --text-caption2: 10px;
   --text-footnote: 10px;
 
   --space-xs: 4px;

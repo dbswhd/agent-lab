@@ -16,10 +16,20 @@ VALID_ACTS: frozenset[str] = frozenset(
     {"PROPOSE", "AMEND", "ENDORSE", "CHALLENGE", "PASS", "BLOCK"}
 )
 
+# Acts where the human-readable body should stay very short (token efficiency).
+COMPACT_ACTS: frozenset[str] = frozenset({"ENDORSE", "PASS"})
+
 _ENVELOPE_FENCE = re.compile(
     r"^\s*```agent-envelope\s*\n(.*?)\n```\s*\n?",
     re.DOTALL | re.IGNORECASE,
 )
+
+# Mirror room_tasks._PROPOSED_RE — keep local to avoid import cycles.
+_PROPOSED_RE = re.compile(r"\[PROPOSED:\s*([^\]]+)\]", re.I)
+
+
+def body_has_proposed(text: str) -> bool:
+    return bool(_PROPOSED_RE.search(text or ""))
 
 
 @dataclass
@@ -65,6 +75,7 @@ class ParsedAgentResponse:
     body: str
     envelope: AgentEnvelope | None
     raw: str
+    envelope_parse_error: bool = False
 
 
 def parse_envelope_dict(data: dict[str, Any] | None) -> AgentEnvelope | None:
@@ -82,7 +93,15 @@ def parse_agent_response(text: str) -> ParsedAgentResponse:
     try:
         payload = json.loads(m.group(1).strip())
     except json.JSONDecodeError:
-        return ParsedAgentResponse(body=raw.strip(), envelope=None, raw=raw)
+        body = raw[m.end() :].strip()
+        if not body:
+            body = raw.strip()
+        return ParsedAgentResponse(
+            body=body,
+            envelope=None,
+            raw=raw,
+            envelope_parse_error=True,
+        )
     envelope = (
         AgentEnvelope.from_dict(payload)
         if isinstance(payload, dict)
@@ -110,6 +129,8 @@ def classify_consensus_reply(
     envelope: dict[str, Any] | AgentEnvelope | None = None,
 ) -> ConsensusVerdict:
     """Prefer envelope act; fall back to phrase heuristics."""
+    if body_has_proposed(text):
+        return "substantive"
     act = envelope_act(envelope)
     if act == "ENDORSE":
         return "endorse"
@@ -174,9 +195,19 @@ Acts (pick one):
 `refs`: optional chat.jsonl line refs (e.g. `"L42"`). `confidence`: 0–1 optional.
 The fence inner content must parse as **one JSON object** with an `"act"` field.
 After the fence, write the normal readable reply for the Human.
+
+**Efficiency (R2+):**
+- `ENDORSE` / `PASS` → body **one line max** (e.g. `이의 없습니다` or `PASS`). Put reasoning in prior R1 if needed.
+- `AMEND` / `PROPOSE` / `CHALLENGE` → lead with the delta; skip re-summarizing R1 peers.
+- Always use the fence JSON so peers and turn_state can skip re-reading long prose.
 """
 
 
 def envelope_protocol_block(*, context: str = "consensus") -> str:
-    label = "자유 토론 합의" if context == "consensus" else "리뷰 R2+"
+    labels = {
+        "consensus": "자유 토론 · 합의 확인 R2+",
+        "review": "리뷰 · R2+ 순차",
+        "discuss": "회의 · R2+ 순차 (동료 답변 반영)",
+    }
+    label = labels.get(context, context)
     return f"{ENVELOPE_FORMAT_GUIDANCE}\n(Context: {label})"

@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from agent_lab.plan_actions import PlanAction, find_dry_run_action, parse_plan_action_sections
+from agent_lab.plan_execute_paths import paths_relative_to_workspace, paths_under_workspace
 from agent_lab.plan_execute_snapshot import (
     build_diff,
     compute_touched_paths,
@@ -18,7 +19,13 @@ from agent_lab.plan_execute_snapshot import (
     restore_snapshot,
 )
 from agent_lab.run_meta import patch_run_meta, read_run_meta
-from agent_lab.workspace_roots import primary_workspace
+from agent_lab.workspace_roots import (
+    execute_workspace_info,
+    resolve_execute_workspace,
+    workspace_label,
+    workspace_path_info,
+)
+from agent_lab.session_guidance import verify_execution_artifacts
 
 EXECUTOR_ID = "cursor"
 MAX_DIFF_CHARS = 120_000
@@ -33,16 +40,104 @@ def _exec_id() -> str:
     return f"exec-{uuid.uuid4().hex[:12]}"
 
 
+def _count_existed_files(manifest: dict[str, Any]) -> int:
+    files = manifest.get("files") or {}
+    return sum(1 for entry in files.values() if entry.get("existed"))
+
+
+def _count_existed_in_paths(manifest: dict[str, Any], paths: list[str]) -> int:
+    files: dict[str, dict[str, Any]] = manifest.get("files") or {}
+    count = 0
+    for path in paths:
+        if files.get(path, {}).get("existed"):
+            count += 1
+    return count
+
+
+def _split_touched_paths(
+    touched: list[str],
+    *,
+    source_snapshot: list[str],
+    artifact_snapshot: list[str],
+) -> tuple[list[str], list[str], bool]:
+    source_set = set(source_snapshot)
+    artifact_set = set(artifact_snapshot)
+    source_touched = [path for path in touched if path in source_set]
+    artifact_touched = [path for path in touched if path in artifact_set]
+    return source_touched, artifact_touched, len(source_touched) == 0
+
+
+def _needs_artifact_review(
+    *,
+    empty_source_diff: bool,
+    artifact_touched: list[str],
+    verification_paths: list[str],
+    draft_summary: str,
+) -> bool:
+    if not empty_source_diff:
+        return False
+    if artifact_touched:
+        return True
+    return bool(verification_paths and draft_summary.strip())
+
+
+def _approve_status(target: dict[str, Any]) -> str:
+    if target.get("paths_outside_expected"):
+        return "review_required"
+    if _needs_artifact_review(
+        empty_source_diff=bool(target.get("empty_source_diff")),
+        artifact_touched=list(target.get("artifact_touched_paths") or []),
+        verification_paths=list(target.get("verification_paths") or []),
+        draft_summary=str(target.get("draft_summary") or ""),
+    ):
+        return "review_required"
+    return "completed"
+
+
+def execution_allows_task_complete(execution: dict[str, Any]) -> bool:
+    """True when linked room tasks may be marked completed (mirrors _approve_status)."""
+    status = str(execution.get("status") or "")
+    if status in ("review_required", "pending_approval", "rejected", "failed"):
+        return False
+    if status == "completed":
+        return True
+    return _approve_status(execution) == "completed"
+
+
+def _artifact_approve_block_reason(target: dict[str, Any]) -> str | None:
+    """Block Human approve until PDF path + page count + artifacts are verified."""
+    if not target.get("needs_artifact_review"):
+        return None
+    arts = target.get("verification_artifacts")
+    if not isinstance(arts, dict):
+        return "검증 산출물(PDF·break-report) 확인 후 승인하세요."
+    pdf_path = arts.get("pdf_path")
+    page_count = arts.get("pdf_page_count")
+    break_report = arts.get("break_report")
+    baseline_pages = None
+    if isinstance(break_report, dict):
+        baseline_pages = break_report.get("baselinePdfPageCount")
+    if not pdf_path and not break_report:
+        return "PDF 경로 또는 break-report.json 확인 후 승인하세요."
+    if page_count is None and baseline_pages is None:
+        return "PDF 페이지 수 확인 후 승인하세요."
+    if not arts.get("ok"):
+        return "검증 산출물이 불완전합니다 — PDF·break-report 확인 후 승인하세요."
+    return None
+
+
 def _paths_outside_expected(
     touched: list[str],
     expected: list[str],
+    *,
+    cwd: Path,
 ) -> list[str]:
     if not expected:
         return list(touched)
-    expected_norm = {normalize_path(p) for p in expected}
+    expected_norm = {normalize_path(p, cwd=cwd) for p in expected}
     extras: list[str] = []
     for path in touched:
-        norm = normalize_path(path)
+        norm = normalize_path(path, cwd=cwd)
         if any(
             norm == exp or norm.endswith(f"/{exp}") or exp.endswith(f"/{norm}")
             for exp in expected_norm
@@ -52,6 +147,17 @@ def _paths_outside_expected(
             continue
         extras.append(path)
     return extras
+
+
+def _preflight_execute_workspace(
+    action: PlanAction,
+    permissions: dict[str, Any] | None,
+) -> tuple[Path, dict[str, Any], dict[str, Any]]:
+    """Validate expected paths resolve under the chosen execute workspace."""
+    monitored = action.monitored_paths()
+    cwd, effective_permissions = resolve_execute_workspace(permissions, monitored)
+    info = workspace_path_info(cwd, monitored)
+    return cwd, effective_permissions, info
 
 
 def _pending_execution(run: dict[str, Any]) -> dict[str, Any] | None:
@@ -70,13 +176,20 @@ def list_plan_actions(
     if not plan_path.is_file():
         return {
             "recommended": None,
+            "now": [],
             "roadmap": [],
             "actions": [],
         }
     plan_md = plan_path.read_text(encoding="utf-8")
     sections = parse_plan_action_sections(plan_md)
+    recommended = sections["recommended"]
+    if recommended is not None:
+        monitored = recommended.get("monitored_paths") or recommended.get("expected_paths") or []
+        recommended = dict(recommended)
+        recommended["execute_workspace"] = execute_workspace_info(permissions, monitored)
     return {
-        "recommended": sections["recommended"],
+        "recommended": recommended,
+        "now": sections.get("now") or [],
         "roadmap": sections["roadmap"],
         "actions": sections["actions"],
     }
@@ -86,18 +199,35 @@ def _cursor_execute_prompt(action: PlanAction) -> str:
     expected = ", ".join(action.expected_paths()) or action.where
     return f"""Agent Lab thin execute — implement exactly one plan action.
 
-Rules:
+Phase 1 — implement (tools expected):
 - Change only what is needed for this action.
 - Prefer paths listed in "어디서": {expected}
 - Do not refactor unrelated code.
 - Do not commit; leave changes in the working tree.
+- Read before edit; use tools like the IDE agent.
 
 Plan action:
 - 무엇을: {action.what}
 - 어디서: {action.where}
 - 검증: {action.verify}
 
-When finished, reply with 3–5 lines summarizing what you changed and which files you touched."""
+When phase 1 edits are done, stop and wait — a phase 2 verification message follows in this same session."""
+
+
+def _cursor_verify_follow_up(verify: str) -> str:
+    return f"""Phase 2 — verify and fix (same Cursor session, keep using tools):
+- Verification criterion from plan: {verify}
+- Re-read changed files; run tests/commands/build steps named in the criterion.
+- If anything fails, fix and re-check before you finish.
+- End with a line: VERIFICATION: PASS — … or VERIFICATION: FAIL — …
+- Then 3–5 lines summarizing files touched and what you verified."""
+
+
+def _verify_follow_ups(verify: str) -> list[str]:
+    text = (verify or "").strip()
+    if not text or text in {"검증 기준 없음", "-", "—", "none", "N/A"}:
+        return []
+    return [_cursor_verify_follow_up(text)]
 
 
 def _extract_draft_summary(text: str) -> str:
@@ -112,9 +242,11 @@ def run_dry_run(
     folder: Path,
     *,
     action_index: int,
+    action_kind: str | None = None,
     permissions: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     from agent_lab.agents.cursor_agent import is_available, respond
+    from agent_lab.plan_actions import PlanActionKind, parse_action_key
 
     if not is_available():
         raise RuntimeError("Cursor executor unavailable (CURSOR_API_KEY / cursor-sdk)")
@@ -124,36 +256,79 @@ def run_dry_run(
         raise FileNotFoundError("plan.md not found")
 
     plan_md = plan_path.read_text(encoding="utf-8")
+    from agent_lab.plan_pending import ensure_plan_snapshot_approved
+
     sections = parse_plan_action_sections(plan_md)
     recommended = sections.get("recommended")
-    action = find_dry_run_action(plan_md, action_index)
+    kind: PlanActionKind | None = None
+    if action_kind:
+        parsed = parse_action_key(action_kind)
+        if parsed is None:
+            if action_kind in ("now", "roadmap", "legacy"):
+                kind = action_kind  # type: ignore[assignment]
+            else:
+                raise ValueError(f"invalid action_kind: {action_kind}")
+        else:
+            kind, action_index = parsed
+    action = find_dry_run_action(plan_md, action_index, kind=kind)
     if action is None:
+        kind_hint = f" ({kind})" if kind else ""
         if recommended and recommended.get("index") != action_index:
             raise ValueError(
-                f"action {action_index} is not executable; dry-run only supports "
+                f"action {action_index}{kind_hint} is not executable; dry-run only supports "
                 "recommended or full 3-field roadmap items"
             )
-        raise ValueError(f"no 3-field plan action with index {action_index}")
+        raise ValueError(f"no 3-field plan action with index {action_index}{kind_hint}")
+
+    ensure_plan_snapshot_approved(folder, action, plan_md)
 
     run = read_run_meta(folder)
     if _pending_execution(run):
         raise ValueError("finish or reject the pending execution first")
 
-    cwd = primary_workspace(permissions)
+    cwd, effective_permissions, workspace_info = _preflight_execute_workspace(
+        action, permissions
+    )
     exec_id = _exec_id()
-    expected_paths = action.expected_paths()
+    raw_source_paths = action.expected_paths()
+    raw_verification_paths = action.verification_paths()
+    raw_monitored_paths = action.monitored_paths()
+    source_snapshot = paths_relative_to_workspace(cwd, raw_source_paths)
+    artifact_snapshot = paths_relative_to_workspace(cwd, raw_verification_paths)
+    snapshot_paths = paths_relative_to_workspace(cwd, raw_monitored_paths)
     manifest = create_snapshot(
         folder,
         exec_id=exec_id,
         cwd=cwd,
-        expected_paths=expected_paths,
+        expected_paths=snapshot_paths,
     )
+    existed_before = _count_existed_files(manifest)
+    source_existed = _count_existed_in_paths(manifest, source_snapshot)
+    if raw_source_paths and source_existed == 0:
+        if not paths_under_workspace(cwd, source_snapshot):
+            delete_snapshot(folder, exec_id)
+            raise ValueError(
+                "none of the expected plan paths exist under the execute workspace; "
+                f"checked {len(source_snapshot)} source path(s) in {cwd}"
+            )
+    if not raw_source_paths and snapshot_paths and existed_before == 0:
+        pass
     started = _now()
+    activity_log: list[str] = []
+    agent_response = ""
+
+    def _on_activity(label: str | None) -> None:
+        if label and (not activity_log or activity_log[-1] != label):
+            activity_log.append(label)
+
     try:
-        summary = respond(
+        agent_response = respond(
             system="You implement approved plan actions with minimal scope.",
             user=_cursor_execute_prompt(action),
-            permissions=permissions,
+            permissions=effective_permissions,
+            cwd=cwd,
+            on_activity=_on_activity,
+            follow_ups=_verify_follow_ups(action.verify),
         )
     except Exception as e:
         restore_snapshot(folder, exec_id=exec_id, cwd=cwd, manifest=manifest)
@@ -165,9 +340,14 @@ def run_dry_run(
         exec_id=exec_id,
         cwd=cwd,
         manifest=manifest,
-        expected_paths=expected_paths,
+        expected_paths=snapshot_paths,
     )
-    outside = _paths_outside_expected(touched, expected_paths)
+    source_touched, artifact_touched, empty_source_diff = _split_touched_paths(
+        touched,
+        source_snapshot=source_snapshot,
+        artifact_snapshot=artifact_snapshot,
+    )
+    outside = _paths_outside_expected(touched, snapshot_paths, cwd=cwd)
     diff, diff_stat = build_diff(
         folder,
         exec_id=exec_id,
@@ -178,18 +358,48 @@ def run_dry_run(
     if len(diff) > MAX_DIFF_CHARS:
         diff = diff[: MAX_DIFF_CHARS - 20] + "\n… (truncated)"
 
+    needs_artifact_review = _needs_artifact_review(
+        empty_source_diff=empty_source_diff,
+        artifact_touched=artifact_touched,
+        verification_paths=raw_verification_paths,
+        draft_summary=_extract_draft_summary(agent_response),
+    )
+    verification_artifacts = verify_execution_artifacts(cwd, raw_verification_paths)
+
     execution = {
         "id": exec_id,
         "action_id": action.action_id,
         "action_index": action.index,
+        "action_kind": action.kind,
+        "action_key": f"{action.kind}:{action.index}",
+        "action_what": action.what,
+        "action_where": action.where,
+        "action_verify": action.verify,
         "executor": EXECUTOR_ID,
+        "executor_label": "Cursor",
         "status": PENDING_STATUS,
         "snapshot_id": exec_id,
-        "snapshotted_paths": expected_paths,
-        "expected_paths": expected_paths,
+        "workspace_root": str(cwd),
+        "workspace_label": workspace_label(cwd),
+        "execute_workspace_info": workspace_info,
+        "verification_artifacts": verification_artifacts,
+        "snapshotted_paths": raw_monitored_paths,
+        "expected_paths": raw_source_paths,
+        "verification_paths": raw_verification_paths,
+        "monitored_paths": raw_monitored_paths,
+        "snapshot_paths": snapshot_paths,
+        "source_snapshot_paths": source_snapshot,
+        "artifact_snapshot_paths": artifact_snapshot,
+        "existed_before": existed_before,
+        "source_touched_paths": source_touched,
+        "artifact_touched_paths": artifact_touched,
+        "empty_source_diff": empty_source_diff,
+        "needs_artifact_review": needs_artifact_review,
         "touched_paths": touched,
         "paths_outside_expected": outside,
-        "draft_summary": _extract_draft_summary(summary),
+        "draft_summary": _extract_draft_summary(agent_response),
+        "agent_response": (agent_response or "").strip(),
+        "agent_log": activity_log,
         "diff_stat": diff_stat,
         "diff": diff,
         "started_at": started,
@@ -203,6 +413,7 @@ def run_dry_run(
                 {
                     "action_id": action.action_id,
                     "index": action.index,
+                    "kind": action.kind,
                     "what": action.what,
                     "where": action.where,
                     "verify": action.verify,
@@ -216,6 +427,19 @@ def run_dry_run(
         return run
 
     patch_run_meta(folder, _append)
+
+    def _mark_tasks(run: dict[str, Any]) -> dict[str, Any]:
+        from agent_lab.room_tasks import mark_tasks_in_progress_for_execution
+
+        mark_tasks_in_progress_for_execution(
+            run,
+            action_index=action.index,
+            action_id=action.action_id,
+            execution_id=exec_id,
+        )
+        return run
+
+    patch_run_meta(folder, _mark_tasks)
     return execution
 
 
@@ -238,9 +462,32 @@ def resolve_execution(
     if target.get("status") != PENDING_STATUS:
         raise ValueError("execution is not pending approval")
 
-    cwd = primary_workspace(permissions)
+    stored_root = target.get("workspace_root")
+    raw_expected_paths = list(
+        target.get("expected_paths") or target.get("snapshotted_paths") or []
+    )
+    if stored_root:
+        cwd = Path(stored_root)
+    else:
+        cwd, _ = resolve_execute_workspace(permissions, raw_expected_paths)
+    snapshot_paths = list(target.get("snapshot_paths") or [])
+    if not snapshot_paths:
+        raw_monitored = list(
+            target.get("monitored_paths")
+            or target.get("snapshotted_paths")
+            or target.get("expected_paths")
+            or []
+        )
+        snapshot_paths = paths_relative_to_workspace(cwd, raw_monitored)
+    source_snapshot = list(target.get("source_snapshot_paths") or [])
+    if not source_snapshot:
+        raw_source = list(target.get("expected_paths") or [])
+        source_snapshot = paths_relative_to_workspace(cwd, raw_source)
+    artifact_snapshot = list(target.get("artifact_snapshot_paths") or [])
+    if not artifact_snapshot:
+        raw_verify = list(target.get("verification_paths") or [])
+        artifact_snapshot = paths_relative_to_workspace(cwd, raw_verify)
     snapshot_id = str(target.get("snapshot_id") or target.get("id") or "")
-    expected_paths = list(target.get("expected_paths") or target.get("snapshotted_paths") or [])
     completed = _now()
 
     if snapshot_id:
@@ -257,18 +504,48 @@ def resolve_execution(
             delete_snapshot(folder, snapshot_id)
         target["status"] = "rejected"
         target["completed_at"] = completed
+
+        def _revert_tasks(run: dict[str, Any]) -> dict[str, Any]:
+            from agent_lab.room_tasks import revert_tasks_for_rejected_execution
+
+            revert_tasks_for_rejected_execution(
+                run,
+                action_index=target.get("action_index"),
+                action_id=target.get("action_id"),
+                execution_id=execution_id,
+            )
+            return run
+
+        patch_run_meta(folder, _revert_tasks)
     else:
+        block = _artifact_approve_block_reason(target)
+        if block:
+            raise ValueError(block)
         if manifest is not None:
-            target["touched_paths"] = compute_touched_paths(
+            touched = compute_touched_paths(
                 folder,
                 exec_id=snapshot_id,
                 cwd=cwd,
                 manifest=manifest,
-                expected_paths=expected_paths,
+                expected_paths=snapshot_paths,
+            )
+            source_touched, artifact_touched, empty_source_diff = _split_touched_paths(
+                touched,
+                source_snapshot=source_snapshot,
+                artifact_snapshot=artifact_snapshot,
+            )
+            target["touched_paths"] = touched
+            target["source_touched_paths"] = source_touched
+            target["artifact_touched_paths"] = artifact_touched
+            target["empty_source_diff"] = empty_source_diff
+            target["needs_artifact_review"] = _needs_artifact_review(
+                empty_source_diff=empty_source_diff,
+                artifact_touched=artifact_touched,
+                verification_paths=list(target.get("verification_paths") or []),
+                draft_summary=str(target.get("draft_summary") or ""),
             )
             delete_snapshot(folder, snapshot_id)
-        outside = list(target.get("paths_outside_expected") or [])
-        target["status"] = "review_required" if outside else "completed"
+        target["status"] = _approve_status(target)
         target["completed_at"] = completed
 
     approval = {
@@ -293,4 +570,43 @@ def resolve_execution(
         return run
 
     patch_run_meta(folder, _update)
-    return {"execution": target, "approval": approval}
+
+    if vote_norm == "approve" and execution_allows_task_complete(target):
+
+        def _complete_linked_tasks(run: dict[str, Any]) -> dict[str, Any]:
+            from agent_lab.room_tasks import complete_tasks_for_execution
+
+            complete_tasks_for_execution(
+                run,
+                action_index=target.get("action_index"),
+                action_id=target.get("action_id"),
+                execution_id=execution_id,
+                execution=target,
+            )
+            return run
+
+        patch_run_meta(folder, _complete_linked_tasks)
+
+    plan_advance: dict[str, Any] = {"advanced": False}
+    if vote_norm == "approve" and target.get("status") in {"completed", "review_required"}:
+        from agent_lab.plan_advance import advance_plan_after_approval
+
+        plan_advance = advance_plan_after_approval(folder, target)
+        if plan_advance.get("advanced"):
+            completed_ts = target.get("completed_at") or completed
+
+            def _mark_plan(run: dict[str, Any]) -> dict[str, Any]:
+                run["last_plan_update"] = {
+                    "trigger": "execute_advance",
+                    "ts": completed_ts,
+                    "completed_at": completed_ts,
+                    "status": "completed",
+                    "execution_id": execution_id,
+                    "action_key": target.get("action_key"),
+                    "promoted_action_key": plan_advance.get("promoted_action_key"),
+                }
+                return run
+
+            patch_run_meta(folder, _mark_plan)
+
+    return {"execution": target, "approval": approval, "plan_advance": plan_advance}

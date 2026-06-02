@@ -1,6 +1,12 @@
 import { Avatar } from "./Avatar";
 import type { ChatMessage, AgentRole } from "../utils/transcript";
 import { MessageMarkdown } from "../utils/messageMarkdown";
+import {
+  actLabel,
+  formatEnvelopeMeta,
+  normalizeAct,
+  shouldWarnMissingEnvelope,
+} from "../utils/agentEnvelope";
 
 const AVATAR_SIZE = 24;
 
@@ -28,20 +34,30 @@ function RoundBadge({ round }: { round: number }) {
   );
 }
 
-const ACT_LABELS: Record<string, string> = {
-  PROPOSE: "제안",
-  AMEND: "수정",
-  ENDORSE: "동의",
-  CHALLENGE: "이의",
-  PASS: "PASS",
-  BLOCK: "BLOCK",
-};
-
 function ActBadge({ act }: { act: string }) {
-  const key = act.toUpperCase();
+  const key = normalizeAct(act);
+  const cssKey = (key ?? act).toLowerCase();
   return (
-    <span className={`chat-act-badge chat-act-badge--${key.toLowerCase()}`} title={`act: ${key}`}>
-      {ACT_LABELS[key] ?? key}
+    <span className={`chat-act-badge chat-act-badge--${cssKey}`} title={`act: ${act.toUpperCase()}`}>
+      {actLabel(act)}
+    </span>
+  );
+}
+
+function EnvelopeMeta({ envelope }: { envelope: NonNullable<ChatMessage["envelope"]> }) {
+  const meta = formatEnvelopeMeta(envelope);
+  if (!meta) return null;
+  return (
+    <span className="chat-envelope-meta" title="envelope refs / confidence">
+      {meta}
+    </span>
+  );
+}
+
+function EnvelopeWarning() {
+  return (
+    <span className="chat-envelope-warn" title="R2+에서는 ```agent-envelope``` JSON fence가 필요합니다">
+      envelope 없음
     </span>
   );
 }
@@ -155,6 +171,14 @@ export function ChatBubble({ message, typing, highlighted }: Props) {
         <header className="chat-turn__head">
           <span className="chat-turn__name">{message.label}</span>
           {message.envelope?.act ? <ActBadge act={message.envelope.act} /> : null}
+          {message.envelope?.act ? <EnvelopeMeta envelope={message.envelope} /> : null}
+          {shouldWarnMissingEnvelope(
+            message.parallelRound,
+            message.envelope,
+            message.envelopeParseError,
+          ) ? (
+            <EnvelopeWarning />
+          ) : null}
           {(message.parallelRound ?? 1) > 1 ? (
             <RoundBadge round={message.parallelRound ?? 1} />
           ) : null}

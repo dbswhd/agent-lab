@@ -7,7 +7,11 @@ from pathlib import Path
 from agent_lab.graph import GraphState
 from agent_lab.invoke import model_name
 
-_DEFAULT_SESSIONS = Path(__file__).resolve().parents[2] / "sessions"
+from agent_lab.app_config import apply_config_env, resolve_sessions_dir  # noqa: E402
+
+apply_config_env()
+
+_DEFAULT_SESSIONS = resolve_sessions_dir()
 SESSIONS_DIR = Path(os.getenv("AGENT_LAB_SESSIONS_DIR", _DEFAULT_SESSIONS))
 
 

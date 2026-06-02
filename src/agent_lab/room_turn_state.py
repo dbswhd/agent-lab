@@ -253,6 +253,25 @@ def current_turn_slice(
     return all_messages[last_user:], last_user + 1
 
 
+def peer_turn_metrics(turn_messages: list[_MsgLike]) -> dict[str, Any]:
+    """R2 peer channel stats for turn diagnostics (D10)."""
+    peer_count = 0
+    agents_r2: set[str] = set()
+    for m in turn_messages:
+        if m.role != "agent":
+            continue
+        pr = m.parallel_round or 1
+        if pr < 2:
+            continue
+        peer_count += 1
+        if m.agent:
+            agents_r2.add(str(m.agent).strip().lower())
+    return {
+        "peer_message_count": peer_count,
+        "agents_with_r2_reply": sorted(agents_r2),
+    }
+
+
 def sync_run_meta_turn_state(
     run_meta: dict[str, Any] | None,
     all_messages: list[_MsgLike],

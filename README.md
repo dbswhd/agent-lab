@@ -267,6 +267,10 @@ make tauri-dev
 ```bash
 make dev                    # 브라우저 http://127.0.0.1:5173
 python -m agent_lab run "주제"
+make test                    # pytest
+make smoke                   # sessions/_regression fixture check
+make smoke-e2e               # mock discuss 1-turn (no live LLM)
+make prod                    # web build + uvicorn :8765 (serves web/dist)
 ```
 
 | `AGENT_LAB_PROVIDER` | 인증 | 비고 |

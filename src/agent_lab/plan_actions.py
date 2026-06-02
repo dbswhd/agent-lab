@@ -6,7 +6,30 @@ import re
 from dataclasses import dataclass, replace
 from typing import Any, Literal
 
+from agent_lab.plan_execute_paths import filter_file_paths
+
 PlanActionKind = Literal["now", "roadmap", "legacy"]
+
+
+def action_key(kind: PlanActionKind, index: int) -> str:
+    return f"{kind}:{index}"
+
+
+def parse_action_key(raw: str) -> tuple[PlanActionKind, int] | None:
+    text = (raw or "").strip()
+    if ":" not in text:
+        return None
+    kind_str, index_str = text.split(":", 1)
+    if kind_str not in ("now", "roadmap", "legacy"):
+        return None
+    try:
+        index = int(index_str)
+    except ValueError:
+        return None
+    if index < 1:
+        return None
+    return kind_str, index  # type: ignore[return-value]
+
 
 NEXT_ACTIONS_HEADER = re.compile(r"^##\s+다음에\s+할\s+일\s*$", re.MULTILINE)
 NOW_HEADER = re.compile(r"^##\s+지금\s+실행\s*$", re.MULTILINE)
@@ -40,6 +63,9 @@ class PlanAction:
             "verify": self.verify,
             "refs": list(self.refs),
             "expected_paths": self.expected_paths(),
+            "verification_paths": self.verification_paths(),
+            "monitored_paths": self.monitored_paths(),
+            "action_key": action_key(self.kind, self.index),
             "raw": self.raw,
             "recommended": self.recommended,
             "kind": self.kind,
@@ -52,18 +78,34 @@ class PlanAction:
     def expected_paths(self) -> list[str]:
         if not self.executable:
             return []
-        paths: list[str] = []
-        for match in PATH_IN_BACKTICKS.finditer(self.where):
-            path = match.group(1).strip()
-            if not path or path in paths:
+        tokens = [
+            match.group(1).strip()
+            for match in PATH_IN_BACKTICKS.finditer(self.where)
+        ]
+        return filter_file_paths(tokens)
+
+    def verification_paths(self) -> list[str]:
+        if not self.executable:
+            return []
+        tokens = [
+            match.group(1).strip()
+            for match in PATH_IN_BACKTICKS.finditer(self.verify)
+        ]
+        return filter_file_paths(tokens)
+
+    def monitored_paths(self) -> list[str]:
+        seen: set[str] = set()
+        out: list[str] = []
+        for path in self.expected_paths() + self.verification_paths():
+            if path in seen:
                 continue
-            if "/" in path or re.search(r"\.\w+$", path):
-                paths.append(path)
-        return paths
+            seen.add(path)
+            out.append(path)
+        return out
 
     @property
     def action_id(self) -> str:
-        return f"plan-action-{self.index}"
+        return f"plan-action-{self.kind}-{self.index}"
 
 
 def _section_body(plan_md: str, header: re.Pattern[str]) -> str:
@@ -204,8 +246,10 @@ def parse_plan_action_sections(plan_md: str) -> dict[str, Any]:
                     all_executable.append(item)
 
     executable_rows = [action.to_dict() for action in all_executable]
+    now_rows = [item.to_dict() for item in (now_items if now_body else [])]
     return {
         "recommended": recommended.to_dict() if recommended else None,
+        "now": now_rows,
         "roadmap": [item.to_dict() for item in roadmap],
         "all_executable": executable_rows,
         "actions": executable_rows,
@@ -246,13 +290,65 @@ def find_plan_action(plan_md: str, index: int) -> PlanAction | None:
     return None
 
 
-def find_dry_run_action(plan_md: str, index: int) -> PlanAction | None:
-    """Resolve an action for dry-run: recommended first, then roadmap 3-field."""
+def find_dry_run_action(
+    plan_md: str,
+    index: int,
+    *,
+    kind: PlanActionKind | None = None,
+) -> PlanAction | None:
+    """Resolve an action for dry-run by section kind + index."""
     sections = parse_plan_action_sections(plan_md)
     recommended = sections.get("recommended")
-    if recommended and recommended.get("index") == index:
+
+    if kind in (None, "now") and recommended and recommended.get("index") == index:
         return PlanAction(**_action_from_dict(recommended))
-    for row in sections.get("roadmap") or []:
-        if row.get("index") == index and row.get("executable"):
-            return PlanAction(**_action_from_dict(row))
+
+    if kind in (None, "roadmap"):
+        for row in sections.get("roadmap") or []:
+            if row.get("index") != index or not row.get("executable"):
+                continue
+            if kind == "roadmap" or row.get("kind") == "roadmap":
+                return PlanAction(**_action_from_dict(row))
+
+    if kind == "legacy":
+        for row in sections.get("actions") or []:
+            if row.get("index") == index and row.get("executable"):
+                return PlanAction(**_action_from_dict(row))
+
     return None
+
+
+def validate_plan_actions_format(plan_md: str) -> dict[str, Any]:
+    """Check plan.md execute sections after scribe; non-fatal warnings for room SSE."""
+    text = plan_md or ""
+    sections = parse_plan_action_sections(text)
+    has_now = bool(NOW_HEADER.search(text))
+    has_roadmap = bool(ROADMAP_HEADER.search(text))
+    has_legacy = bool(NEXT_ACTIONS_HEADER.search(text))
+    recommended = sections.get("recommended")
+    executable_count = len(sections.get("all_executable") or [])
+    now_rows = sections.get("now") or []
+
+    issues: list[str] = []
+    if not has_now and not has_legacy:
+        issues.append("missing_execute_section")
+    elif has_now:
+        if not now_rows:
+            issues.append("empty_now_section")
+        elif not recommended:
+            issues.append("no_executable_now_action")
+    elif has_legacy and not recommended:
+        issues.append("no_executable_legacy_action")
+
+    if has_now and not has_roadmap and executable_count > 1:
+        issues.append("missing_roadmap_section")
+
+    return {
+        "ok": len(issues) == 0,
+        "issues": issues,
+        "has_now_section": has_now,
+        "has_roadmap_section": has_roadmap,
+        "has_legacy_section": has_legacy,
+        "executable_count": executable_count,
+        "recommended_action_key": (recommended or {}).get("action_key"),
+    }

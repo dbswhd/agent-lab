@@ -15,7 +15,9 @@ quant-control reference: `~/Desktop/pipeline/apps/quant-control-app`
 
 ## Desktop app (installable)
 
-**Prerequisites:** Rust (`rustc`), Node 18+, Python 3.11+, `make install` once.
+**Prerequisites (dev):** Rust (`rustc`), Node 18+, Python 3.11+, `make install` once.
+
+**Prerequisites (`.app` only):** Rust + Node for building once; end users need only the built `.app`.
 
 ```bash
 cd ~/Projects/agent-lab
@@ -31,13 +33,28 @@ make tauri-build
 # Output: web/src-tauri/target/release/bundle/macos/Agent Lab.app
 ```
 
+`make tauri-build` runs `scripts/prepare_bundled_runtime.sh` first and embeds a Python venv in the `.app` (no repo `make install` required on the target Mac).
+
 The packaged app:
 
 - Starts **uvicorn** on launch (port 8765)
-- Stores sessions under `~/Library/Application Support/com.yoonjong.agentlab/sessions`
-- Reads `.env` from repo `~/Projects/agent-lab/.env` if present, else `~/.agent-lab/.env`
+- Stores sessions under `{repo}/sessions` (same for dev and packaged `.app`)
+- Reads `.env` from `~/.agent-lab/.env`, else repo `~/Projects/agent-lab/.env`, else bundled `.env`
+- Reads user paths from `~/.agent-lab/config.toml` (created on first API start if missing)
+- Writes API logs to `~/Library/Logs/Agent Lab/agent-lab-api.log`
 
-**Note:** The `.app` still needs Python deps (`make install` in the repo) or a working `python3` with `agent-lab` installed until we add a bundled runtime.
+**Example `~/.agent-lab/config.toml`:**
+
+```toml
+[paths]
+quant_pipeline = "/Users/you/Desktop/pipeline"
+
+[api]
+port = 8765
+
+[logging]
+dir = "/Users/you/Library/Logs/Agent Lab"
+```
 
 ## Browser dev (optional)
 

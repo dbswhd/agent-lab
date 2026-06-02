@@ -8,9 +8,12 @@ from typing import Any, Callable
 from agent_lab.agents.registry import label
 from agent_lab.room_context import (
     AGENT_CONNECT_HINT,
-    CLAUDE_TOOL_RULES,
+    ANALYSIS_TURN_GUIDANCE,
     CONVERSATION_GUIDANCE,
     EFFICIENCY_RESPONSE_GUIDANCE,
+    MULTI_AGENT_COORDINATION,
+    PEER_DECISION_GUIDANCE,
+    agent_tool_rules,
     _MessageLike,
     build_constraints_block,
     build_turn_bridge_block,
@@ -29,6 +32,11 @@ from agent_lab.room_context import (
 )
 from agent_lab.workspace_roots import workspace_roots_block
 from agent_lab.room_turn_state import render_turn_state_block
+from agent_lab.room_tasks import build_team_task_block
+from agent_lab.session_guidance import (
+    build_session_guidance_block,
+    sync_session_meta,
+)
 
 
 @dataclass
@@ -145,6 +153,15 @@ def build_slim_consensus_bundle(
     )
     agreed = extract_agreed_bullets(plan_md)[: eff.max_agreed_items]
     open_bullets = extract_open_bullets(plan_md)[: eff.max_open_items]
+    if run_meta is not None:
+        sync_session_meta(
+            run_meta,
+            topic=topic,
+            messages=messages,
+            plan_md=plan_md,
+            permissions=permissions,
+        )
+    session_guidance = build_session_guidance_block(run_meta)
     constraints = build_constraints_block(
         permission_lines=permission_lines,
         human_gates=extract_human_gates(messages, topic),
@@ -154,6 +171,11 @@ def build_slim_consensus_bundle(
         ],
         workspace_lines=workspace_roots_block(permissions),
     )
+    if session_guidance.strip():
+        constraints = f"{constraints}\n\n{session_guidance.strip()}"
+    team_block = build_team_task_block(run_meta, agent)
+    if team_block.strip():
+        constraints = f"{constraints}\n\n{team_block.strip()}"
     plan_open = build_plan_open_block(
         open_bullets=open_bullets,
         stale_line=plan_stale_banner(run_meta),
@@ -164,12 +186,14 @@ def build_slim_consensus_bundle(
     guidance_block = (
         "---\n"
         f"{CONVERSATION_GUIDANCE}\n"
+        f"{MULTI_AGENT_COORDINATION}\n"
+        f"{PEER_DECISION_GUIDANCE}\n"
         f"{EFFICIENCY_RESPONSE_GUIDANCE}\n"
         "---\n"
         f"Respond as {label(agent)} only."
     )
     connect_hint = AGENT_CONNECT_HINT.get(agent, "").strip()
-    claude_tools = CLAUDE_TOOL_RULES if agent == "claude" else ""
+    tool_rules = agent_tool_rules(agent)
     meta = ContextBundleMeta(
         agent=agent,
         parallel_round=2,
@@ -186,7 +210,7 @@ def build_slim_consensus_bundle(
         peer="",
         guidance_block=guidance_block,
         connect_hint=connect_hint,
-        claude_tools=claude_tools,
+        claude_tools=tool_rules,
         follow_up="",
         turn_state=turn_state_block,
         meta=meta,
@@ -200,7 +224,7 @@ def build_slim_consensus_bundle(
         "peer": 0,
         "guidance": len(guidance_block),
         "connect_hint": len(connect_hint),
-        "claude_tools": len(claude_tools),
+        "claude_tools": len(tool_rules),
         "follow_up": 0,
         "total": len(bundle.render()),
     }
@@ -271,6 +295,15 @@ def build_context_bundle(
     if eff:
         agreed = agreed[: eff.max_agreed_items]
         open_bullets = open_bullets[: eff.max_open_items]
+    if run_meta is not None:
+        sync_session_meta(
+            run_meta,
+            topic=topic,
+            messages=full,
+            plan_md=plan_md,
+            permissions=permissions,
+        )
+    session_guidance = build_session_guidance_block(run_meta)
     constraints = build_constraints_block(
         permission_lines=permission_lines,
         human_gates=extract_human_gates(messages, topic),
@@ -278,6 +311,11 @@ def build_context_bundle(
         status_tags=extract_status_tags(trimmed),
         workspace_lines=workspace_roots_block(permissions),
     )
+    if session_guidance.strip():
+        constraints = f"{constraints}\n\n{session_guidance.strip()}"
+    team_block = build_team_task_block(run_meta, agent)
+    if team_block.strip():
+        constraints = f"{constraints}\n\n{team_block.strip()}"
     plan_open = build_plan_open_block(
         open_bullets=open_bullets,
         stale_line=plan_stale_banner(run_meta),
@@ -301,7 +339,10 @@ def build_context_bundle(
     peer_block = format_peer_block(peer_msgs)
 
     connect_hint = AGENT_CONNECT_HINT.get(agent, "").strip()
-    guidance_parts = [CONVERSATION_GUIDANCE]
+    guidance_parts = [CONVERSATION_GUIDANCE, MULTI_AGENT_COORDINATION, PEER_DECISION_GUIDANCE]
+    profile = str((run_meta or {}).get("turn_profile") or "").strip().lower()
+    if profile in ("analyze", "discuss"):
+        guidance_parts.insert(0, ANALYSIS_TURN_GUIDANCE.strip())
     if efficiency_mode:
         guidance_parts.append(EFFICIENCY_RESPONSE_GUIDANCE)
     guidance_block = (
@@ -329,9 +370,12 @@ def build_context_bundle(
                     f"{label(review_advocate)}의 반박에 답하세요(인정 또는 반론)."
                 )
         elif parallel_round >= 2:
-            follow_up += "\n2라운드(순차): 1라운드 동료 발화에 이어서 답하세요."
+            follow_up += (
+                "\n2라운드(순차 · 토론): 동료 의견을 **이어가거나 보완**하세요. "
+                "새 쟁점을 열기보다 합치거나 확장하는 쪽을 우선하세요."
+            )
 
-    claude_tools = CLAUDE_TOOL_RULES if agent == "claude" else ""
+    tool_rules = agent_tool_rules(agent)
 
     meta = ContextBundleMeta(
         agent=agent,
@@ -354,7 +398,7 @@ def build_context_bundle(
         peer=peer_block,
         guidance_block=guidance_block,
         connect_hint=connect_hint,
-        claude_tools=claude_tools,
+        claude_tools=tool_rules,
         follow_up=follow_up,
         turn_state=turn_state_block,
         meta=meta,
@@ -368,7 +412,7 @@ def build_context_bundle(
         "peer": len(peer_block),
         "guidance": len(guidance_block),
         "connect_hint": len(connect_hint),
-        "claude_tools": len(claude_tools),
+        "claude_tools": len(tool_rules),
         "follow_up": len(follow_up),
         "total": len(bundle.render()),
     }

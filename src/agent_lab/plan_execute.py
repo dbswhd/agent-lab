@@ -10,7 +10,12 @@ from typing import Any
 
 from agent_lab.plan_actions import PlanAction, find_dry_run_action, parse_plan_action_sections
 from agent_lab.plan_execute_git import resolve_action_git_context
-from agent_lab.plan_execute_merge import MergeConflict, merge_exec_branch
+from agent_lab.plan_execute_merge import (
+    MergeConflict,
+    abort_exec_merge,
+    confirm_exec_merge,
+    merge_exec_branch,
+)
 from agent_lab.plan_execute_paths import paths_relative_to_workspace, paths_under_workspace
 from agent_lab.plan_execute_snapshot import (
     build_diff,
@@ -271,6 +276,92 @@ def _pending_execution(run: dict[str, Any]) -> dict[str, Any] | None:
         if row.get("status") == PENDING_STATUS:
             return row
     return None
+
+
+def _update_execution_row(
+    folder: Path,
+    *,
+    execution_id: str,
+    target: dict[str, Any],
+) -> None:
+    def _update(run: dict[str, Any]) -> dict[str, Any]:
+        rows = list(run.get("executions") or [])
+        for i, row in enumerate(rows):
+            if row.get("id") == execution_id:
+                rows[i] = target
+                break
+        run["executions"] = rows
+        return run
+
+    patch_run_meta(folder, _update)
+
+
+def _mark_rejected_tasks(
+    folder: Path,
+    *,
+    execution_id: str,
+    target: dict[str, Any],
+) -> None:
+    def _revert_tasks(run: dict[str, Any]) -> dict[str, Any]:
+        from agent_lab.room_tasks import revert_tasks_for_rejected_execution
+
+        revert_tasks_for_rejected_execution(
+            run,
+            action_index=target.get("action_index"),
+            action_id=target.get("action_id"),
+            execution_id=execution_id,
+        )
+        return run
+
+    patch_run_meta(folder, _revert_tasks)
+
+
+def _mark_approved_effects(
+    folder: Path,
+    *,
+    execution_id: str,
+    target: dict[str, Any],
+) -> dict[str, Any]:
+    if execution_allows_task_complete(target):
+
+        def _complete_linked_tasks(run: dict[str, Any]) -> dict[str, Any]:
+            from agent_lab.room_tasks import complete_tasks_for_execution
+
+            complete_tasks_for_execution(
+                run,
+                action_index=target.get("action_index"),
+                action_id=target.get("action_id"),
+                execution_id=execution_id,
+                execution=target,
+            )
+            return run
+
+        patch_run_meta(folder, _complete_linked_tasks)
+
+    plan_advance: dict[str, Any] = {"advanced": False}
+    if target.get("status") in {"completed", "review_required"} or (
+        target.get("status") == "merged" and execution_allows_task_complete(target)
+    ):
+        from agent_lab.plan_advance import advance_plan_after_approval
+
+        plan_advance = advance_plan_after_approval(folder, target)
+        if plan_advance.get("advanced"):
+            completed_ts = target.get("completed_at") or _now()
+
+            def _mark_plan(run: dict[str, Any]) -> dict[str, Any]:
+                run["last_plan_update"] = {
+                    "trigger": "execute_advance",
+                    "ts": completed_ts,
+                    "completed_at": completed_ts,
+                    "status": "completed",
+                    "execution_id": execution_id,
+                    "action_key": target.get("action_key"),
+                    "promoted_action_key": plan_advance.get("promoted_action_key"),
+                }
+                return run
+
+            patch_run_meta(folder, _mark_plan)
+    return plan_advance
 
 
 def list_plan_actions(
@@ -965,3 +1056,72 @@ def resolve_execution(
             patch_run_meta(folder, _mark_plan)
 
     return {"execution": target, "approval": approval, "plan_advance": plan_advance}
+
+
+def _merge_conflict_execution(
+    folder: Path,
+    execution_id: str,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    run = read_run_meta(folder)
+    executions = list(run.get("executions") or [])
+    target = next((row for row in executions if row.get("id") == execution_id), None)
+    if target is None:
+        raise ValueError("execution not found")
+    merge = target.get("merge") if isinstance(target.get("merge"), dict) else {}
+    if target.get("status") != "merge_conflict" and merge.get("status") != "conflict":
+        raise ValueError("execution is not in merge_conflict")
+    if target.get("isolation_effective") != "worktree":
+        raise ValueError("execution is not a worktree merge")
+    return run, target
+
+
+def abort_merge_execution(
+    folder: Path,
+    *,
+    execution_id: str,
+) -> dict[str, Any]:
+    _run, target = _merge_conflict_execution(folder, execution_id)
+    completed = _now()
+    ew = _exec_worktree_from_execution(target)
+    abort_exec_merge(ew, session_folder=folder, exec_id=execution_id)
+    snapshot_id = str(target.get("snapshot_id") or target.get("id") or "")
+    if snapshot_id:
+        delete_snapshot(folder, snapshot_id)
+
+    merge = dict(target.get("merge") or {})
+    merge["status"] = "aborted"
+    merge["completed_at"] = completed
+    target["merge"] = merge
+    target["status"] = "rejected"
+    target["completed_at"] = completed
+    _update_execution_row(folder, execution_id=execution_id, target=target)
+    _mark_rejected_tasks(folder, execution_id=execution_id, target=target)
+    return {"execution": target}
+
+
+def confirm_merge_execution(
+    folder: Path,
+    *,
+    execution_id: str,
+) -> dict[str, Any]:
+    _run, target = _merge_conflict_execution(folder, execution_id)
+    completed = _now()
+    ew = _exec_worktree_from_execution(target)
+    result = confirm_exec_merge(ew, session_folder=folder, exec_id=execution_id)
+    snapshot_id = str(target.get("snapshot_id") or target.get("id") or "")
+    if snapshot_id:
+        delete_snapshot(folder, snapshot_id)
+
+    merge = dict(target.get("merge") or {})
+    merge.update(result.to_dict())
+    merge["completed_at"] = completed
+    target["merge"] = merge
+    target["status"] = "merged"
+    target["completed_at"] = completed
+    _update_execution_row(folder, execution_id=execution_id, target=target)
+    plan_advance = _mark_approved_effects(
+        folder,
+        execution_id=execution_id,
+        target=target,
+    )
+    return {"execution": target, "plan_advance": plan_advance}

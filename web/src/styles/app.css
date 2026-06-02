@@ -2093,6 +2093,68 @@ body {
   border: 0.5px solid color-mix(in srgb, var(--mac-separator) 45%, transparent);
 }
 
+.plan-execute-worktree-banner {
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--mac-accent) 8%, transparent);
+  border: 0.5px solid color-mix(in srgb, var(--mac-accent) 25%, transparent);
+}
+
+.plan-execute-worktree-banner__title {
+  margin: 0 0 6px;
+  font-size: var(--text-caption);
+  font-weight: 600;
+  color: var(--mac-accent);
+}
+
+.plan-execute-worktree-banner__line {
+  margin: 0 0 4px;
+  font-size: var(--text-caption1);
+  color: var(--mac-label-secondary);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.plan-execute-worktree-banner__label {
+  font-weight: 600;
+  color: var(--mac-label-tertiary);
+  min-width: 4.5rem;
+}
+
+.plan-execute-worktree-banner__path {
+  word-break: break-all;
+}
+
+.plan-execute-merge-conflict {
+  margin: 8px 0 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--mac-destructive, #ff3b30) 10%, transparent);
+  border: 0.5px solid color-mix(in srgb, var(--mac-destructive, #ff3b30) 35%, transparent);
+}
+
+.plan-execute-merge-conflict__lead {
+  margin: 0 0 6px;
+  font-size: var(--text-caption);
+  color: var(--mac-label);
+}
+
+.plan-execute-merge-conflict__files {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: var(--text-caption1);
+  color: var(--mac-label-secondary);
+}
+
+.plan-execute-history__merge-sha {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--text-caption1);
+  color: var(--mac-label-tertiary);
+}
+
 .plan-execute-pending__head {
   display: flex;
   flex-wrap: wrap;

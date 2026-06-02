@@ -51,9 +51,30 @@ export function resolveExecutionAction(
   return null;
 }
 
+function executionStatusSuffix(status: string | undefined): string | null {
+  switch (status) {
+    case "merged":
+      return "merged";
+    case "merge_conflict":
+      return "conflict";
+    case "rejected":
+      return "rejected";
+    case "completed":
+      return "done";
+    case "review_required":
+      return "review";
+    case "failed":
+      return "failed";
+    default:
+      return null;
+  }
+}
+
 export function executionHistoryBadge(row: PlanExecutionRecord): string {
   const section = actionSectionLabel(row.action_kind);
-  return `${section} #${row.action_index ?? "?"}`;
+  const base = `${section} #${row.action_index ?? "?"}`;
+  const suffix = executionStatusSuffix(row.status);
+  return suffix ? `${base} · ${suffix}` : base;
 }
 
 export function executionHistoryTitle(

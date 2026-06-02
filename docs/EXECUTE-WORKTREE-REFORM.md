@@ -503,8 +503,10 @@ execute worktree가 **main 오염**을 막아도, specialist R2 discuss는 **별
 
 - [x] `plan_execute_merge.py` (M0, pytest)
 - [x] `resolve_execution` approve → `merge_exec_branch` (M1)
-- [ ] conflict UI + (선택) merge/abort·confirm API
-- [ ] PlanExecutePanel: Merge 승인 / conflict UI
+- [x] PlanExecutePanel: worktree 배너, Merge 승인, `merge_conflict` alert, 재시도 CTA
+- [x] `PlanExecutionRecord` / dry-run 409 types (`client.ts`)
+- [x] `merge_conflict` 재시도 — `resolve_execution` approve (worktree)
+- [ ] conflict 해결용 merge/abort·confirm API (선택)
 - [ ] worktree GC on session load / startup
 
 ### M3 — Policy & override (1주)

@@ -26,6 +26,16 @@ import {
   type StoredPlanAction,
 } from "../utils/planExecuteHistory";
 import { executionApprovalGate } from "../utils/executeApprovalGate";
+import { formatPlanExecuteError } from "../utils/planExecuteErrors";
+import {
+  executionApproveLabel,
+  executionRejectLabel,
+  findActiveExecution,
+  isWorktreeExecution,
+  mergeConflictFiles,
+  mergedCommitSha,
+  worktreeBannerLines,
+} from "../utils/planExecuteWorktree";
 
 type Props = {
   sessionId: string;
@@ -132,11 +142,49 @@ function statusLabel(
       return reviewRequiredLabel(row);
     case "rejected":
       return "거부됨";
+    case "merged":
+      return "main에 병합됨";
+    case "merge_conflict":
+      return "merge 충돌";
     case "failed":
       return "실패";
     default:
       return status || "—";
   }
+}
+
+function WorktreePendingBanner({ row }: { row: PlanExecutionRecord }) {
+  const lines = worktreeBannerLines(row);
+  if (!isWorktreeExecution(row)) return null;
+  return (
+    <div className="plan-execute-worktree-banner" role="status">
+      <p className="plan-execute-worktree-banner__title">Git worktree 격리</p>
+      {lines.branch ? (
+        <p className="plan-execute-worktree-banner__line">
+          <span className="plan-execute-worktree-banner__label">branch</span>
+          <code>{lines.branch}</code>
+        </p>
+      ) : null}
+      {lines.base ? (
+        <p className="plan-execute-worktree-banner__line">
+          <span className="plan-execute-worktree-banner__label">base</span>
+          <code>{lines.base}</code>
+        </p>
+      ) : null}
+      {lines.worktree ? (
+        <p className="plan-execute-worktree-banner__line">
+          <span className="plan-execute-worktree-banner__label">worktree</span>
+          <code className="plan-execute-worktree-banner__path">{lines.worktree}</code>
+        </p>
+      ) : null}
+      {lines.commit ? (
+        <p className="plan-execute-worktree-banner__line">
+          <span className="plan-execute-worktree-banner__label">commit</span>
+          <code>{lines.commit.slice(0, 12)}</code>
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 function actionKey(item: Pick<PlanActionItem, "kind" | "index" | "recommended">): string {
@@ -190,7 +238,10 @@ export function PlanExecutePanel({
   const historyRows = useMemo(
     () =>
       [...executions]
-        .filter((row) => row.status !== "pending_approval")
+        .filter(
+          (row) =>
+            row.status !== "pending_approval" && row.status !== "merge_conflict",
+        )
         .reverse(),
     [executions],
   );
@@ -199,10 +250,7 @@ export function PlanExecutePanel({
   const historyHiddenCount = Math.max(0, historyRows.length - historyVisible.length);
 
   const pendingFromRun = useMemo(
-    () =>
-      [...executions]
-        .reverse()
-        .find((row) => row.status === "pending_approval") ?? null,
+    () => findActiveExecution(executions),
     [executions],
   );
 
@@ -283,9 +331,7 @@ export function PlanExecutePanel({
         setPlanSnapshot(e.pendingPlan);
         setError(null);
       } else {
-        const err = e as Error & { preVerify?: { feedback?: string } };
-        const fb = err.preVerify?.feedback;
-        setError(fb ? `pre_execute: ${fb}` : String(e));
+        setError(formatPlanExecuteError(e));
       }
     } finally {
       setBusy(false);
@@ -315,7 +361,7 @@ export function PlanExecutePanel({
       await rejectPendingPlan(sessionId, planSnapshot.id);
       setPlanSnapshot(null);
     } catch (e) {
-      setError(String(e));
+      setError(formatPlanExecuteError(e));
     } finally {
       setBusy(false);
     }
@@ -337,7 +383,7 @@ export function PlanExecutePanel({
       onUpdated();
       await refreshActions();
     } catch (e) {
-      setError(String(e));
+      setError(formatPlanExecuteError(e));
     } finally {
       setBusy(false);
     }
@@ -562,6 +608,7 @@ export function PlanExecutePanel({
 
       {activePending ? (
         <div className="plan-execute-pending" role="region" aria-label="승인 대기">
+          <WorktreePendingBanner row={activePending} />
           <PlanLinkedTaskLine task={linkedForPending} onFocusTask={onFocusTask} />
           {activePending.pre_verify?.blocked ||
           (activePending.pre_verify?.feedback &&
@@ -661,6 +708,27 @@ export function PlanExecutePanel({
               예상 범위 밖: {formatPathList(activePending.paths_outside_expected)}
             </p>
           ) : null}
+          {activePending.status === "merge_conflict" ? (
+            <div
+              className="plan-execute-merge-conflict"
+              role="alert"
+              aria-label="merge 충돌"
+            >
+              <p className="plan-execute-merge-conflict__lead">
+                main 병합 중 충돌이 발생했습니다. 저장소에서 충돌을 해결한 뒤 다시
+                시도하세요.
+              </p>
+              {mergeConflictFiles(activePending).length ? (
+                <ul className="plan-execute-merge-conflict__files">
+                  {mergeConflictFiles(activePending).map((path) => (
+                    <li key={path}>
+                      <code>{path}</code>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          ) : null}
           {activePending.diff_stat ? (
             <PlanDiffStat text={activePending.diff_stat} />
           ) : null}
@@ -678,7 +746,9 @@ export function PlanExecutePanel({
               title={approvalGate.reason ?? undefined}
               onClick={() => void handleResolve("approve")}
             >
-              승인 (변경 유지)
+              {activePending.status === "merge_conflict"
+                ? "다시 Merge 시도"
+                : executionApproveLabel(activePending)}
             </button>
             <button
               type="button"
@@ -686,7 +756,7 @@ export function PlanExecutePanel({
               disabled={disabled || busy}
               onClick={() => void handleResolve("reject")}
             >
-              거부 (되돌리기)
+              {executionRejectLabel(activePending)}
             </button>
           </div>
         </div>
@@ -726,6 +796,14 @@ export function PlanExecutePanel({
                     ) : null}
                     {completedAt ? (
                       <span className="plan-execute-history__time">{completedAt}</span>
+                    ) : null}
+                    {mergedCommitSha(row) ? (
+                      <span
+                        className="plan-execute-history__merge-sha"
+                        title={mergedCommitSha(row) ?? undefined}
+                      >
+                        merge {(mergedCommitSha(row) ?? "").slice(0, 7)}
+                      </span>
                     ) : null}
                   </div>
                   <PlanActionContext

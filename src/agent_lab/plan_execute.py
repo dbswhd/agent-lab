@@ -725,8 +725,10 @@ def resolve_execution(
     target = next((row for row in executions if row.get("id") == execution_id), None)
     if target is None:
         raise ValueError("execution not found")
-    if target.get("status") != PENDING_STATUS:
+    status = target.get("status")
+    if status not in (PENDING_STATUS, "merge_conflict"):
         raise ValueError("execution is not pending approval")
+    retry_merge = status == "merge_conflict"
 
     stored_root = target.get("workspace_root")
     raw_expected_paths = list(
@@ -789,6 +791,61 @@ def resolve_execution(
         block = _artifact_approve_block_reason(target)
         if block:
             raise ValueError(block)
+        if retry_merge and target.get("isolation_effective") == "worktree":
+            merge = dict(target.get("merge") or {})
+            merge["attempted_at"] = completed
+            try:
+                merge_result = merge_exec_branch(
+                    _exec_worktree_from_execution(target),
+                    session_folder=folder,
+                    exec_id=execution_id,
+                    message=_merge_commit_message(target, session_id=folder.name),
+                )
+            except MergeConflict as e:
+                merge["status"] = "conflict"
+                merge["conflict_files"] = e.conflict_files
+                merge["completed_at"] = _now()
+                target["merge"] = merge
+                target["status"] = "merge_conflict"
+                target["completed_at"] = merge["completed_at"]
+            else:
+                merge.update(merge_result.to_dict())
+                merge["completed_at"] = _now()
+                target["merge"] = merge
+                target["status"] = "merged"
+                target["completed_at"] = merge["completed_at"]
+                snapshot_id = str(target.get("snapshot_id") or target.get("id") or "")
+                if snapshot_id:
+                    delete_snapshot(folder, snapshot_id)
+
+            approval = {
+                "id": f"appr-{uuid.uuid4().hex[:12]}",
+                "execution_id": execution_id,
+                "action_id": target.get("action_id"),
+                "vote": vote_norm,
+                "ts": completed,
+                "by": "human",
+            }
+
+            def _update_retry(run: dict[str, Any]) -> dict[str, Any]:
+                rows = list(run.get("executions") or [])
+                for i, row in enumerate(rows):
+                    if row.get("id") == execution_id:
+                        rows[i] = target
+                        break
+                run["executions"] = rows
+                approvals = list(run.get("execution_approvals") or [])
+                approvals.append(approval)
+                run["execution_approvals"] = approvals
+                return run
+
+            patch_run_meta(folder, _update_retry)
+            return {
+                "ok": True,
+                "execution": target,
+                "approval": approval,
+            }
+
         if manifest is not None:
             touched = compute_touched_paths(
                 folder,

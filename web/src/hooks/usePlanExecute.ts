@@ -8,6 +8,7 @@ import {
 } from "../api/client";
 import { fullAgentPermissions } from "../utils/agentPermissions";
 import { executionApprovalGate } from "../utils/executeApprovalGate";
+import { formatPlanExecuteError } from "../utils/planExecuteErrors";
 import {
   executionContextFields,
   executionHistoryBadge,
@@ -15,6 +16,11 @@ import {
   resolveExecutionAction,
   type StoredPlanAction,
 } from "../utils/planExecuteHistory";
+import {
+  executionApproveLabel,
+  findActiveExecution,
+  isActiveExecution,
+} from "../utils/planExecuteWorktree";
 
 function actionKey(item: Pick<PlanActionItem, "kind" | "index" | "recommended">): string {
   const kind = item.kind ?? (item.recommended ? "now" : "roadmap");
@@ -63,6 +69,10 @@ export function executionStatusLabel(
       return reviewRequiredLabel(row);
     case "rejected":
       return "거부됨";
+    case "merged":
+      return "main에 병합됨";
+    case "merge_conflict":
+      return "merge 충돌";
     case "failed":
       return "실패";
     default:
@@ -73,11 +83,10 @@ export function executionStatusLabel(
 export function findPendingExecution(
   executions: PlanExecutionRecord[] | undefined,
 ): PlanExecutionRecord | null {
-  if (!executions?.length) return null;
-  return (
-    [...executions].reverse().find((row) => row.status === "pending_approval") ?? null
-  );
+  return findActiveExecution(executions);
 }
+
+export { findActiveExecution, isActiveExecution };
 
 type Options = {
   sessionId: string | null;
@@ -206,7 +215,7 @@ export function usePlanExecute({ sessionId, run, onUpdated }: Options) {
       onUpdated?.();
       return true;
     } catch (e) {
-      setError(String(e));
+      setError(formatPlanExecuteError(e));
       return false;
     } finally {
       setBusy(false);
@@ -237,7 +246,7 @@ export function usePlanExecute({ sessionId, run, onUpdated }: Options) {
         await refreshActions();
         return true;
       } catch (e) {
-        setError(String(e));
+        setError(formatPlanExecuteError(e));
         return false;
       } finally {
         setBusy(false);
@@ -272,6 +281,7 @@ export function usePlanExecute({ sessionId, run, onUpdated }: Options) {
       : null,
     approvalGate,
     canApprove: !approvalGate.blocked,
+    approveLabel: executionApproveLabel(activePending),
     loadingActions,
     busy,
     error,

@@ -620,8 +620,18 @@ export type PlanActionsResponse = {
   actions: PlanActionItem[];
 };
 
+export type PlanExecutionMergeRecord = {
+  status?: "pending" | "merged" | "conflict" | null;
+  strategy?: string | null;
+  commit_sha?: string | null;
+  conflict_files?: string[];
+  attempted_at?: string | null;
+  completed_at?: string | null;
+};
+
 export type PlanExecutionRecord = {
   id: string;
+  schema_version?: number;
   action_id?: string;
   action_index?: number;
   action_kind?: "now" | "roadmap" | "legacy";
@@ -632,6 +642,16 @@ export type PlanExecutionRecord = {
   executor?: string;
   executor_label?: string;
   status?: string;
+  isolation_requested?: string;
+  isolation_effective?: string;
+  isolation_override?: string | null;
+  git_root?: string;
+  base_branch?: string;
+  base_sha?: string;
+  exec_branch?: string;
+  exec_commit_sha?: string | null;
+  worktree_path?: string | null;
+  merge?: PlanExecutionMergeRecord;
   snapshot_id?: string;
   workspace_root?: string;
   workspace_label?: string;
@@ -705,6 +725,23 @@ export class PlanSnapshotRequiredError extends Error {
   }
 }
 
+export class PlanExecuteDryRunError extends Error {
+  code: string;
+  remediation?: string[];
+
+  constructor(detail: Record<string, unknown>) {
+    const message = String(
+      detail.message ?? detail.code ?? "execute dry-run blocked",
+    );
+    super(message);
+    this.name = "PlanExecuteDryRunError";
+    this.code = String(detail.code ?? "execute_blocked");
+    this.remediation = Array.isArray(detail.remediation)
+      ? (detail.remediation as string[])
+      : undefined;
+  }
+}
+
 function parseApiErrorBody(text: string): Record<string, unknown> | null {
   try {
     const outer = JSON.parse(text) as { detail?: unknown };
@@ -764,6 +801,7 @@ export async function runPlanDryRun(
       err.preVerify = detail.pre_verify as PreVerifyRecord | undefined;
       throw err;
     }
+    throw new PlanExecuteDryRunError(detail);
   }
   if (!res.ok) {
     throw new Error(text || res.statusText);

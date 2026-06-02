@@ -14,6 +14,7 @@ from agent_lab.plan_execute import (
     confirm_merge_execution,
     resolve_execution,
     run_dry_run,
+    run_isolation_override,
 )
 from agent_lab.plan_pending import (
     PlanSnapshotRequired,
@@ -472,3 +473,51 @@ def test_dry_run_worktree_failure_records_blocked_no_snapshot_degrade(
     assert run["executions"][-1]["isolation_effective"] == "worktree"
     assert not (session_folder / ".execute-snapshots").exists()
     assert not (session_folder / "worktrees").exists()
+
+
+def test_isolation_override_runs_in_place_after_blocked_worktree(
+    git_repo: Path,
+    session_folder: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    plan_md = """## 지금 실행
+1.
+   - 무엇을: dirty main에서 override 실행
+   - 어디서: `src/app.py`
+   - 검증: 파일 확인
+"""
+    (session_folder / "plan.md").write_text(plan_md, encoding="utf-8")
+    (session_folder / "run.json").write_text("{}\n", encoding="utf-8")
+    _seed_approved_plan_snapshot(session_folder, plan_md)
+    (git_repo / "src" / "app.py").write_text("dirty\n", encoding="utf-8")
+
+    monkeypatch.setattr("agent_lab.agents.cursor_agent.is_available", lambda: True)
+    monkeypatch.setattr(
+        "agent_lab.plan_execute.resolve_execute_workspace",
+        lambda _permissions=None, _expected=None: (git_repo, {}),
+    )
+    with pytest.raises(WorktreeUnavailable) as exc:
+        run_dry_run(session_folder, action_index=1, permissions={})
+    assert exc.value.execution_id
+
+    def _respond_override(**kwargs):
+        cwd = Path(kwargs["cwd"])
+        assert cwd == git_repo
+        (cwd / "src" / "app.py").write_text("override\n", encoding="utf-8")
+        return "VERIFICATION: PASS"
+
+    monkeypatch.setattr("agent_lab.agents.cursor_agent.respond", _respond_override)
+    execution = run_isolation_override(
+        session_folder,
+        execution_id=exc.value.execution_id,
+        mode="snapshot_override",
+        confirmation="snapshot_override 비격리 실행",
+        permissions={},
+    )
+
+    assert execution["id"] == exc.value.execution_id
+    assert execution["status"] == "pending_approval"
+    assert execution["isolation_effective"] == "snapshot_override"
+    assert execution["isolation_override_by"] == "human"
+    assert execution["workspace_root"] == str(git_repo)
+    assert (git_repo / "src" / "app.py").read_text(encoding="utf-8") == "override\n"

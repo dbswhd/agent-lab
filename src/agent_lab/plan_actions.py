@@ -38,6 +38,7 @@ ITEM_START = re.compile(r"(?m)^(\d+)\.\s*(.*)$")
 FIELD_WHAT = re.compile(r"^\s*-\s*무엇을:\s*(.+?)\s*$")
 FIELD_WHERE = re.compile(r"^\s*-\s*어디서:\s*(.+?)\s*$")
 FIELD_VERIFY = re.compile(r"^\s*-\s*검증:\s*(.+?)\s*$")
+FIELD_ISOLATION = re.compile(r"^\s*-\s*isolation:\s*(auto|worktree|apply|block)\s*$", re.I)
 REF_PATTERN = re.compile(r"\(ref:\s*([^)]+)\)")
 PATH_IN_BACKTICKS = re.compile(r"`([^`]+)`")
 
@@ -54,6 +55,7 @@ class PlanAction:
     kind: PlanActionKind = "legacy"
     executable: bool = True
     summary: str = ""
+    isolation: str = "auto"
 
     def to_dict(self) -> dict[str, Any]:
         row: dict[str, Any] = {
@@ -70,6 +72,7 @@ class PlanAction:
             "recommended": self.recommended,
             "kind": self.kind,
             "executable": self.executable,
+            "isolation": self.isolation,
         }
         if not self.executable and self.summary:
             row["summary"] = self.summary
@@ -139,6 +142,7 @@ def _parse_item_block(
     recommended: bool = False,
 ) -> PlanAction | None:
     what = where = verify = ""
+    isolation = "auto"
     for line in block.splitlines():
         if m := FIELD_WHAT.match(line):
             what = m.group(1).strip()
@@ -146,6 +150,8 @@ def _parse_item_block(
             where = m.group(1).strip()
         elif m := FIELD_VERIFY.match(line):
             verify = m.group(1).strip()
+        elif m := FIELD_ISOLATION.match(line):
+            isolation = m.group(1).strip().lower()
 
     if what and where and verify:
         return PlanAction(
@@ -158,6 +164,7 @@ def _parse_item_block(
             recommended=recommended,
             kind=kind,
             executable=True,
+            isolation=isolation,
         )
 
     lines = [ln.strip() for ln in block.splitlines() if ln.strip()]
@@ -178,6 +185,7 @@ def _parse_item_block(
         kind=kind,
         executable=False,
         summary=summary,
+        isolation=isolation,
     )
 
 
@@ -273,6 +281,7 @@ def _action_from_dict(row: dict[str, Any]) -> dict[str, Any]:
         "kind": row.get("kind") or "legacy",
         "executable": bool(row.get("executable", True)),
         "summary": row.get("summary") or "",
+        "isolation": row.get("isolation") or "auto",
     }
 
 

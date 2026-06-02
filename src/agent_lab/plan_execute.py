@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from agent_lab.plan_actions import PlanAction, find_dry_run_action, parse_plan_action_sections
-from agent_lab.plan_execute_git import resolve_action_git_context
+from agent_lab.plan_execute_isolation import IsolationDecision, resolve_action_isolation
 from agent_lab.plan_execute_merge import (
     MergeConflict,
     abort_exec_merge,
@@ -447,6 +447,8 @@ def run_dry_run(
     action_index: int,
     action_kind: str | None = None,
     permissions: dict[str, Any] | None = None,
+    isolation_override: dict[str, Any] | None = None,
+    execution_id: str | None = None,
 ) -> dict[str, Any]:
     from agent_lab.agents.cursor_agent import is_available, respond
     from agent_lab.plan_actions import PlanActionKind, parse_action_key
@@ -490,25 +492,27 @@ def run_dry_run(
 
     assert_execute_allowed(run, action.index, action.kind)
 
-    if _pending_execution(run):
+    pending = _pending_execution(run)
+    if pending and pending.get("id") != execution_id:
         raise ValueError("finish or reject the pending execution first")
 
     base_cwd, effective_permissions, base_workspace_info = _preflight_execute_workspace(
         action, permissions
     )
-    exec_id = _exec_id()
+    exec_id = execution_id or _exec_id()
     action_key = f"{action.kind}:{action.index}"
     raw_source_paths = action.expected_paths()
     raw_verification_paths = action.verification_paths()
     raw_monitored_paths = action.monitored_paths()
-    git_context = resolve_action_git_context(
-        action_key=action_key,
-        monitored_paths=raw_monitored_paths,
-        cwd_hint=base_cwd,
+    isolation_decision = resolve_action_isolation(
+        action,
+        permissions,
+        base_cwd,
+        override=isolation_override,
     )
     exec_worktree: ExecWorktree | None = None
     worktree_commit_sha: str | None = None
-    isolation_effective = git_context.isolation
+    isolation_effective = isolation_decision.isolation
 
     def _record_blocked(reason: str, message: str) -> None:
         blocked = {
@@ -524,12 +528,14 @@ def run_dry_run(
             "executor": EXECUTOR_ID,
             "executor_label": "Cursor",
             "status": "blocked_isolation",
-            "isolation_requested": git_context.isolation_source,
-            "isolation_effective": git_context.isolation,
+            "isolation_requested": isolation_decision.isolation_source,
+            "isolation_source": isolation_decision.isolation_source,
+            "isolation_effective": isolation_decision.isolation,
             "isolation_override": None,
-            "action_git_context": git_context.to_dict(),
-            "git_root": str(git_context.git_root) if git_context.git_root else None,
-            "base_branch": git_context.base_branch,
+            "action_git_context": isolation_decision.to_dict(),
+            "isolation_decision": isolation_decision.to_dict(),
+            "git_root": str(isolation_decision.git_root) if isolation_decision.git_root else None,
+            "base_branch": isolation_decision.base_branch,
             "workspace_root": str(base_cwd),
             "workspace_label": workspace_label(base_cwd),
             "execute_workspace_info": base_workspace_info,
@@ -546,34 +552,35 @@ def run_dry_run(
 
         patch_run_meta(folder, _append_blocked)
 
-    if git_context.isolation == "block":
-        reason = git_context.block_reason or "isolation_blocked"
+    if isolation_decision.isolation == "block":
+        reason = isolation_decision.block_reason or "isolation_blocked"
         message = f"execute isolation blocked: {reason}"
         _record_blocked(reason, message)
-        raise WorktreeUnavailable(message, reason=reason)
+        raise WorktreeUnavailable(message, reason=reason, execution_id=exec_id)
 
     cwd = base_cwd
     workspace_info = base_workspace_info
     source_path_inputs = raw_source_paths
     verification_path_inputs = raw_verification_paths
     monitored_path_inputs = raw_monitored_paths
-    if git_context.isolation == "worktree":
-        if git_context.git_root is None:
+    if isolation_decision.isolation == "worktree":
+        if isolation_decision.git_root is None:
             reason = "git_root_missing"
             message = "execute isolation blocked: git root missing"
             _record_blocked(reason, message)
-            raise WorktreeUnavailable(message, reason=reason)
+            raise WorktreeUnavailable(message, reason=reason, execution_id=exec_id)
         try:
             exec_worktree = create_exec_worktree(
                 folder,
                 exec_id=exec_id,
-                git_root=git_context.git_root,
+                git_root=isolation_decision.git_root,
                 action_key=action_key,
                 session_id=folder.name,
-                base_branch=git_context.base_branch,
+                base_branch=isolation_decision.base_branch,
             )
         except WorktreeUnavailable as e:
             _record_blocked(e.reason, str(e))
+            e.execution_id = exec_id
             raise
         cwd = exec_worktree.worktree_path
         source_path_inputs = _worktree_paths(raw_source_paths, git_root=exec_worktree.git_root)
@@ -714,14 +721,17 @@ def run_dry_run(
         "executor": EXECUTOR_ID,
         "executor_label": "Cursor",
         "status": PENDING_STATUS,
-        "isolation_requested": git_context.isolation_source,
+        "isolation_requested": isolation_decision.isolation_source,
+        "isolation_source": isolation_decision.isolation_source,
         "isolation_effective": isolation_effective,
-        "isolation_override": None,
-        "action_git_context": git_context.to_dict(),
+        "isolation_override": isolation_override,
+        "isolation_override_by": "human" if isolation_override else None,
+        "action_git_context": isolation_decision.to_dict(),
+        "isolation_decision": isolation_decision.to_dict(),
         "git_root": str(exec_worktree.git_root) if exec_worktree else (
-            str(git_context.git_root) if git_context.git_root else None
+            str(isolation_decision.git_root) if isolation_decision.git_root else None
         ),
-        "base_branch": exec_worktree.base_branch if exec_worktree else git_context.base_branch,
+        "base_branch": exec_worktree.base_branch if exec_worktree else isolation_decision.base_branch,
         "base_sha": exec_worktree.base_sha if exec_worktree else None,
         "exec_branch": exec_worktree.branch if exec_worktree else None,
         "exec_commit_sha": worktree_commit_sha,
@@ -778,7 +788,14 @@ def run_dry_run(
                 }
             )
         executions = list(run.get("executions") or [])
-        executions.append(execution)
+        replaced = False
+        for i, row in enumerate(executions):
+            if row.get("id") == exec_id:
+                executions[i] = execution
+                replaced = True
+                break
+        if not replaced:
+            executions.append(execution)
         run["actions"] = actions
         run["executions"] = executions
         return run
@@ -798,6 +815,52 @@ def run_dry_run(
 
     patch_run_meta(folder, _mark_tasks)
     return execution
+
+
+def run_isolation_override(
+    folder: Path,
+    *,
+    execution_id: str,
+    mode: str,
+    confirmation: str,
+    permissions: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    mode_norm = mode.strip().lower()
+    if mode_norm != "snapshot_override":
+        raise ValueError("mode must be snapshot_override")
+    confirm = confirmation.strip().lower()
+    if "snapshot_override" not in confirm and "비격리" not in confirm:
+        raise ValueError("confirmation must include snapshot_override or 비격리")
+
+    run = read_run_meta(folder)
+    target = next(
+        (row for row in run.get("executions") or [] if row.get("id") == execution_id),
+        None,
+    )
+    if target is None:
+        raise ValueError("execution not found")
+    if target.get("status") != "blocked_isolation":
+        raise ValueError("execution is not blocked_isolation")
+    action_index = target.get("action_index")
+    action_kind = target.get("action_kind")
+    if not isinstance(action_index, int):
+        raise ValueError("blocked execution missing action_index")
+
+    override = {
+        "mode": "snapshot_override",
+        "by": "human",
+        "confirmation": confirmation,
+        "requested_at": _now(),
+        "blocked_reason": target.get("blocked_reason"),
+    }
+    return run_dry_run(
+        folder,
+        action_index=action_index,
+        action_kind=str(action_kind or "now"),
+        permissions=permissions,
+        isolation_override=override,
+        execution_id=execution_id,
+    )
 
 
 def resolve_execution(

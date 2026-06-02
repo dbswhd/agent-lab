@@ -18,9 +18,16 @@ from agent_lab.plan_execute_git import (
 class WorktreeUnavailable(Exception):
     """Cannot create isolated worktree."""
 
-    def __init__(self, message: str, *, reason: str = "worktree_unavailable"):
+    def __init__(
+        self,
+        message: str,
+        *,
+        reason: str = "worktree_unavailable",
+        execution_id: str | None = None,
+    ):
         super().__init__(message)
         self.reason = reason
+        self.execution_id = execution_id
 
 
 @dataclass

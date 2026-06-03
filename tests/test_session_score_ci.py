@@ -12,6 +12,7 @@ REGRESSION = ROOT / "sessions" / "_regression"
 REQUIRED_SCORE_KEYS = {
     "objection_resolution_rate",
     "execute_first_try_rate",
+    "execute_retry_rate",
     "ref_validity_rate",
     "duplicate_speech_rate",
     "partial_turn_rate",

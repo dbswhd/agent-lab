@@ -1,4 +1,4 @@
-.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test ci check-worktrees smoke smoke-e2e validate-quant verify-release score-session score-regression-fixtures
+.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test ci check-worktrees smoke smoke-e2e validate-quant verify-release score-session score-weekly score-regression-fixtures
 
 install:
 	python3 -m venv .venv
@@ -50,6 +50,9 @@ check-worktrees:
 score-session:
 	@test -n "$(SESSION)" || (echo "Usage: make score-session SESSION=sessions/<id>" && exit 1)
 	.venv/bin/python scripts/score_session.py "$(SESSION)"
+
+score-weekly:
+	.venv/bin/python scripts/score_sessions_weekly.py --days $${DAYS:-7} $(if $(INCLUDE_FIXTURES),--include-fixtures,)
 
 score-regression-fixtures:
 	.venv/bin/python scripts/score_session.py --json sessions/_regression/worktree_merge_ok

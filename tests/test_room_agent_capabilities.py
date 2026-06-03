@@ -65,3 +65,40 @@ def test_context_meta_records_capability_cwd():
     )
     d = bundle.meta.to_dict()
     assert d.get("capability_cwd")
+
+
+def test_context_meta_records_asymmetric_capability_cwd(tmp_path, monkeypatch):
+    repo = tmp_path / "repo"
+    review = tmp_path / "review"
+    execute = tmp_path / "execute"
+    for path in (repo, review, execute):
+        path.mkdir()
+
+    monkeypatch.setattr("agent_lab.workspace_roots.pipeline_root", lambda: repo)
+    monkeypatch.setattr("agent_lab.workspace_roots.project_root", lambda: review)
+
+    meta: dict = {
+        "turn_profile": "specialist",
+        "workspace_binding": {"path": str(execute)},
+    }
+    ensure_specialist_capabilities(meta)
+
+    def cwd_for(agent: str, parallel_round: int) -> str:
+        bundle = build_context_bundle(
+            "topic",
+            [ChatMessage(role="user", agent=None, content="hi")],
+            agent,
+            run_meta=meta,
+            permissions={},
+            parallel_round=parallel_round,
+        )
+        return str(bundle.meta.to_dict().get("capability_cwd") or "")
+
+    codex_cwd = cwd_for("codex", 1)
+    claude_cwd = cwd_for("claude", 1)
+    cursor_cwd = cwd_for("cursor", 2)
+
+    assert codex_cwd == str(repo.resolve())
+    assert claude_cwd == str(review.resolve())
+    assert cursor_cwd == str(execute.resolve())
+    assert len({codex_cwd, claude_cwd, cursor_cwd}) == 3

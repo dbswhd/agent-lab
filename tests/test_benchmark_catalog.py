@@ -59,11 +59,25 @@ def test_r2_plan_now_actions_parser_shape():
 def test_r3_specialist_asymmetric_cwd_meta():
     run = _run("specialist_asymmetric_cwd")
     caps = run["agent_capabilities"]
+    context_agents = run["last_turn"]["context"]["agents"]
+    cwd_by_agent = {
+        row["agent"]: row["capability_cwd"]
+        for row in context_agents
+    }
+    round_by_agent = {
+        row["agent"]: row["parallel_round"]
+        for row in context_agents
+    }
 
     assert run["turn_profile"] == "specialist"
     assert caps["cursor"]["cwd_role"] == "execute"
     assert caps["codex"]["cwd_role"] == "repo"
     assert caps["claude"]["cwd_role"] == "review"
+    assert round_by_agent == {"codex": 1, "claude": 1, "cursor": 2}
+    assert len(set(cwd_by_agent.values())) == 3
+    assert cwd_by_agent["codex"].endswith("/repo")
+    assert cwd_by_agent["claude"].endswith("/review")
+    assert cwd_by_agent["cursor"].endswith("/execute")
 
 
 def test_r4_delegate_codex_fixture_shape():

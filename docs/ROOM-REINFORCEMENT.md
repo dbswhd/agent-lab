@@ -14,7 +14,7 @@
 |------|------|------|
 | 교차 검증 턴 비율 | ✅ E-smoke: `challenge_revises_metric` CI smoke 고정 | 회귀 fixture에서 ≥1건 CHALLENGE→수정 자동 검출 |
 | BLOCK/CHALLENGE가 다음 행동 변경 | ✅ E-smoke: `objection_blocks_execute` + challenge task block CI smoke 고정 | execute·consensus·task claim 중 ≥1 경로 hard 연동 |
-| 에이전트 비대칭 컨텍스트 | 동일 bundle | ≥2 에이전트 서로 다른 cwd/툴 블록 |
+| 에이전트 비대칭 컨텍스트 | ✅ F-R3: specialist fixture/smoke가 `capability_cwd` meta 비대칭 고정 | ≥2 에이전트 서로 다른 cwd/툴 블록 |
 | 비용 대비 | ~3× 호출 | ✅ H2: quick/analyze는 낮은 호출 유지, "풀 팀"은 명시 opt-in |
 | Human 신뢰 | plan = Scribe 1패스 | plan에 에이전트별 기여·미해결 BLOCK 섹션 |
 
@@ -285,7 +285,7 @@ Human 또는 턴 리드가 `DELEGATE codex: "백테스트만"` 한 줄
 |---------|------|
 | `objection_blocks_execute` | ✅ smoke/CI: BLOCK → plan action execute gate |
 | `challenge_revises_metric` | ✅ smoke/CI: CHALLENGE → task blocked |
-| `specialist_asymmetric_cwd` | ✅ smoke/CI: specialist + asymmetric `cwd_role` |
+| `specialist_asymmetric_cwd` | ✅ smoke/CI: specialist + asymmetric `cwd_role` + `capability_cwd` meta |
 | `mailbox_handoff` | ✅ smoke/CI: unread mailbox handoff |
 | `sessions/_benchmark/analyze_1r_three_views` | R1 duplicate speech KPI |
 | `sessions/_benchmark/plan_now_actions` | R2 `## 지금 실행` parser shape |
@@ -362,6 +362,6 @@ CI: `pytest tests/ -q` + `scripts/smoke_room.py` (16 baselines) + `check_worktre
 1. ~~**H-P4**~~ — `mailbox_handoff`, `specialist_asymmetric_cwd` smoke ✅
 2. ~~**실사용 KPI**~~ — `score_sessions_weekly.py` + `make score-weekly` + M4 gates ✅
 3. ~~**Live execute**~~ — `scripts/live_cursor_worktree_dry_run.py` + `docs/LIVE-CURSOR-WORKTREE-DRY-RUN.md` ✅
-4. **F 비대칭** — payload meta `capability_cwd` 실세션 벤치 (R3) — smoke 또는 benchmark 확장
+4. ~~**F 비대칭**~~ — payload meta `capability_cwd` 실세션 벤치 (R3) — smoke/benchmark 확장 ✅
 
 ~~**Room P0**~~ · ~~**F2 R-P1**~~ · ~~**H-P1/H-P2/H-P3**~~ · ~~**H2**~~ · ~~**E-smoke**~~ · ~~**ops lifespan/router**~~ · ~~**UX-P2**~~ · ~~**Phase I M1–M4**~~ — 완료.

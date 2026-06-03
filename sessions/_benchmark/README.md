@@ -6,7 +6,7 @@ Recorded/mock-only fixtures for H-P2. These are offline benchmark baselines; the
 |----|--------|----------|
 | R1 | `analyze_1r_three_views/` | One round with three agent replies; `duplicate_speech_rate` remains below threshold. |
 | R2 | `plan_now_actions/` | `plan.md` has `## 지금 실행`; plan action parser returns the expected API shape. |
-| R3 | `specialist_asymmetric_cwd/` | Specialist metadata mirrors `_regression/specialist_asymmetric_cwd`. |
+| R3 | `specialist_asymmetric_cwd/` | Specialist `cwd_role` plus `last_turn.context.agents[].capability_cwd` are asymmetric across R1/R2 agents. |
 | R4 | `delegate_codex/` | Delegate metadata/artifact fixture; live call count is asserted by `tests/test_room_delegate_replay.py`. |
 | R5 | `ten_turn_kpi_stub/` | Synthetic 10-turn session; `score_session` keys are present. |
 

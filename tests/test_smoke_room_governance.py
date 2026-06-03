@@ -82,5 +82,40 @@ def test_h_p4_validators_reject_invalid_shapes():
                 "codex": {"cwd_role": "execute"},
             },
             "turns": [{"mode": "discuss", "turn_profile": "specialist"}],
+            "last_turn": {
+                "context": {
+                    "agents": [
+                        {
+                            "agent": "cursor",
+                            "parallel_round": 2,
+                            "capability_cwd": "/tmp/same",
+                        },
+                        {
+                            "agent": "codex",
+                            "parallel_round": 1,
+                            "capability_cwd": "/tmp/same",
+                        },
+                    ]
+                }
+            },
         }
     )
+
+
+def test_specialist_asymmetric_cwd_requires_capability_cwd_meta():
+    smoke = _load_smoke_room()
+
+    run = smoke._load_run(smoke.REGRESSION / "specialist_asymmetric_cwd")
+    assert smoke._check_specialist_asymmetric_cwd(run)
+
+    broken = dict(run)
+    broken["last_turn"] = {
+        "context": {
+            "agents": [
+                {"agent": "codex", "parallel_round": 1, "capability_cwd": "/tmp/same"},
+                {"agent": "claude", "parallel_round": 1, "capability_cwd": "/tmp/same"},
+                {"agent": "cursor", "parallel_round": 2, "capability_cwd": "/tmp/same"},
+            ]
+        }
+    }
+    assert not smoke._check_specialist_asymmetric_cwd(broken)

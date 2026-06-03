@@ -644,7 +644,8 @@ H-P1 CI runs regression smoke, orphan worktree guard, and score JSON smoke on re
 | Bridge degraded CI | ROOM H-P3 | ✅ |
 | Governance smoke | ROOM E-smoke | ✅ |
 | **Execute 격리·merge M0–M4** | **본 문서 §11** | ✅ shipped |
-| **다음** | ROOM §다음 액션 | live SDK spot-check, 주간 KPI 운영 |
+| **Live M0** | `LIVE-CURSOR-WORKTREE-DRY-RUN.md` | ✅ manual Go/No-Go script (not CI) |
+| **다음** | ROOM §다음 액션 | 주간 KPI 운영, 실사용 품질 개선 |
 
 ---
 

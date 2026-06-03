@@ -27,3 +27,8 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+markers = [
+    "live: real Cursor SDK / bridge (requires AGENT_LAB_RUN_LIVE=1 and secrets)",
+]

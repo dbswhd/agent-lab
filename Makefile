@@ -1,4 +1,4 @@
-.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test ci check-worktrees smoke smoke-e2e validate-quant verify-release score-session score-weekly score-regression-fixtures
+.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test ci check-worktrees smoke smoke-e2e validate-quant verify-release score-session score-weekly score-regression-fixtures live-worktree-dry-run
 
 install:
 	python3 -m venv .venv
@@ -53,6 +53,10 @@ score-session:
 
 score-weekly:
 	.venv/bin/python scripts/score_sessions_weekly.py --days $${DAYS:-7} $(if $(INCLUDE_FIXTURES),--include-fixtures,)
+
+live-worktree-dry-run:
+	@test "$$AGENT_LAB_RUN_LIVE" = "1" || (echo "Set AGENT_LAB_RUN_LIVE=1 before live Cursor spike" && exit 1)
+	.venv/bin/python scripts/live_cursor_worktree_dry_run.py
 
 score-regression-fixtures:
 	.venv/bin/python scripts/score_session.py --json sessions/_regression/worktree_merge_ok

@@ -730,6 +730,7 @@ export class PlanExecuteDryRunError extends Error {
   code: string;
   remediation?: string[];
   executionId?: string;
+  objections?: RoomObjection[];
 
   constructor(detail: Record<string, unknown>) {
     const message = String(
@@ -743,6 +744,9 @@ export class PlanExecuteDryRunError extends Error {
       : undefined;
     this.executionId =
       typeof detail.execution_id === "string" ? detail.execution_id : undefined;
+    this.objections = Array.isArray(detail.objections)
+      ? (detail.objections as RoomObjection[])
+      : undefined;
   }
 }
 

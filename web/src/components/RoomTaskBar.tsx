@@ -50,6 +50,7 @@ type Props = {
   context: TaskBarContext;
   loading?: boolean;
   executions?: PlanExecutionRecord[];
+  focusObjection?: { id: string; nonce: number } | null;
   onRefresh?: () => void;
   onFocusPlanAction?: (actionIndex: number) => void;
   onFocusTask?: (taskId: string) => void;
@@ -279,6 +280,7 @@ export function RoomTaskBar({
   context,
   loading,
   executions,
+  focusObjection,
   onRefresh,
   onFocusPlanAction,
   onFocusTask,
@@ -296,6 +298,19 @@ export function RoomTaskBar({
   useEffect(() => {
     setTaskBarCollapsed(collapsed);
   }, [collapsed]);
+
+  useEffect(() => {
+    if (!focusObjection?.id) return;
+    setCollapsed(false);
+    setTaskBarCollapsed(false);
+    window.setTimeout(() => {
+      const node = document.querySelector<HTMLElement>(
+        `[data-objection-id="${focusObjection.id}"]`,
+      );
+      node?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      node?.focus({ preventScroll: true });
+    }, 80);
+  }, [focusObjection]);
 
   const tasks = payload?.tasks ?? [];
   const claimableCount = (payload?.claimable ?? []).length;
@@ -601,11 +616,22 @@ export function RoomTaskBar({
           </p>
           <ul className="room-task-bar__objection-list">
             {openObjections.slice(0, 5).map((o) => (
-              <li key={o.id} className="room-task-bar__objection-item">
+              <li
+                key={o.id}
+                className="room-task-bar__objection-item"
+                data-objection-id={o.id}
+                tabIndex={-1}
+              >
                 <span>
                   <strong>
                     {o.from} · {o.act}
                   </strong>
+                  {o.plan_action_index != null ? (
+                    <span className="room-task-bar__objection-ref">
+                      {" "}
+                      → plan #{o.plan_action_index}
+                    </span>
+                  ) : null}
                   {o.target_ref || o.task_id ? (
                     <span className="room-task-bar__objection-ref">
                       {" "}
@@ -615,6 +641,15 @@ export function RoomTaskBar({
                 </span>
                 <span className="room-task-bar__objection-body">{o.body}</span>
                 <span className="room-task-bar__objection-actions">
+                  {o.plan_action_index != null && onFocusPlanAction ? (
+                    <button
+                      type="button"
+                      className="room-task-bar__cta"
+                      onClick={() => onFocusPlanAction(o.plan_action_index!)}
+                    >
+                      plan 보기
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     className="room-task-bar__cta"

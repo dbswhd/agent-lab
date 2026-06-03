@@ -89,6 +89,7 @@ import {
   fetchSessionTasks,
   patchSessionAgentCapabilities,
   type PlanExecutionRecord,
+  type RoomObjection,
   type RoomTasksPayload,
 } from "../api/client";
 import {
@@ -251,6 +252,10 @@ export function RoomChat({
   const [highlightChatLine, setHighlightChatLine] = useState<number | null>(
     null,
   );
+  const [taskBarFocusObjection, setTaskBarFocusObjection] = useState<{
+    id: string;
+    nonce: number;
+  } | null>(null);
   const highlightTimerRef = useRef<number | null>(null);
   const [topologyDone, setTopologyDone] = useState<Set<string>>(
     () => new Set(),
@@ -1135,6 +1140,10 @@ export function RoomChat({
     setPlanActionFocusIndex(actionIndex);
     setTab("plan");
   };
+  const focusObjection = useCallback((objectionId: string) => {
+    setTab("chat");
+    setTaskBarFocusObjection({ id: objectionId, nonce: Date.now() });
+  }, []);
   const focusTask = useCallback(
     (taskId: string) => {
       setTab("chat");
@@ -1176,6 +1185,21 @@ export function RoomChat({
   const executeBusy = planExecute.busy;
   const combinedError = error || planExecute.error;
   const pendingExecuteCount = planExecute.activePending ? 1 : 0;
+  const firstOpenBlock = useMemo<RoomObjection | null>(() => {
+    const rows = roomTasks?.open_objections ?? [];
+    return rows.find((o) => o.act === "BLOCK") ?? null;
+  }, [roomTasks?.open_objections]);
+  const planExecuteObjection = planExecute.openObjectionBlock?.objections[0];
+  const composerObjectionNotice = planExecuteObjection
+    ? {
+        message: planExecute.openObjectionBlock?.message ?? "미해결 이의가 있습니다.",
+        objectionId: planExecuteObjection.id,
+        actionIndex: planExecuteObjection.plan_action_index,
+      }
+    : null;
+  const composerPlaceholder = firstOpenBlock?.plan_action_index
+    ? `plan #${firstOpenBlock.plan_action_index} BLOCK 해결 후 execute`
+    : "메시지";
 
   const readyCount = agents.filter((a) => a.ready).length;
   const agentsBlocked =
@@ -1386,6 +1410,7 @@ export function RoomChat({
           context={taskBarContext}
           loading={tasksLoading}
           executions={planExecutions}
+          focusObjection={taskBarFocusObjection}
           onRefresh={refreshTasks}
           onFocusPlanAction={focusPlanAction}
           onFocusTask={focusTask}
@@ -1478,6 +1503,7 @@ export function RoomChat({
             disabled={running || synthesizing || runBusy}
             onChatRefClick={handlePlanRefClick}
             onFocusTask={focusTask}
+            onFocusObjection={focusObjection}
             onUpdated={() => {
               if (!sessionId) return;
               if (onSessionMetaRefresh) {
@@ -1657,6 +1683,7 @@ export function RoomChat({
         onSend={handleSend}
         disabled={composerInputLocked}
         sendDisabled={composerSendLocked}
+        placeholder={composerPlaceholder}
         showPlanToggle={false}
         showModeChipHint={false}
         running={running}
@@ -1676,6 +1703,8 @@ export function RoomChat({
           setEfficiencyMode(on);
         }}
         planStaleNotice={null}
+        objectionNotice={composerObjectionNotice}
+        onFocusObjection={focusObjection}
       />
 
       <AgentPermissionAlert

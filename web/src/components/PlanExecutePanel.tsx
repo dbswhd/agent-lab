@@ -13,6 +13,7 @@ import {
   type PendingPlanRecord,
   type PlanActionItem,
   type PlanExecutionRecord,
+  type RoomObjection,
   type RoomTask,
 } from "../api/client";
 import type { AgentPermissions } from "../utils/agentPermissions";
@@ -50,6 +51,7 @@ type Props = {
   onUpdated: () => void;
   onChatRefClick?: (lineNumber: number) => void;
   onFocusTask?: (taskId: string) => void;
+  onFocusObjection?: (objectionId: string, actionIndex?: number) => void;
 };
 
 function linkedTaskForAction(
@@ -223,6 +225,61 @@ function parseActionKey(key: string): { kind: string; index: number } | null {
 
 const EXECUTION_HISTORY_LIMIT = 5;
 
+function openBlockObjectionsForAction(
+  run: Record<string, unknown> | undefined,
+  actionIndex: number | undefined,
+): RoomObjection[] {
+  if (actionIndex == null) return [];
+  const rows = run?.objections;
+  if (!Array.isArray(rows)) return [];
+  return (rows as RoomObjection[]).filter(
+    (o) =>
+      o.status === "open" &&
+      o.act === "BLOCK" &&
+      o.plan_action_index === actionIndex,
+  );
+}
+
+function PlanObjectionAlert({
+  title,
+  message,
+  objections,
+  onFocusObjection,
+}: {
+  title: string;
+  message?: string;
+  objections: RoomObjection[];
+  onFocusObjection?: (objectionId: string, actionIndex?: number) => void;
+}) {
+  if (!objections.length) return null;
+  return (
+    <div className="plan-execute-objection-alert" role="alert">
+      <strong>{title}</strong>
+      {message ? <p>{message}</p> : null}
+      <ul>
+        {objections.slice(0, 4).map((o) => (
+          <li key={o.id}>
+            <span>
+              {o.from} · {o.act}
+              {o.plan_action_index != null ? ` · plan #${o.plan_action_index}` : ""}
+            </span>
+            <span>{o.body}</span>
+            {onFocusObjection ? (
+              <button
+                type="button"
+                className="room-plan-btn"
+                onClick={() => onFocusObjection(o.id, o.plan_action_index)}
+              >
+                이의 해결
+              </button>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function PlanExecutePanel({
   sessionId,
   run,
@@ -232,6 +289,7 @@ export function PlanExecutePanel({
   onUpdated,
   onChatRefClick,
   onFocusTask,
+  onFocusObjection,
 }: Props) {
   const [recommended, setRecommended] = useState<PlanActionItem | null>(null);
   const [nowItems, setNowItems] = useState<PlanActionItem[]>([]);
@@ -245,6 +303,8 @@ export function PlanExecutePanel({
   const [isolationBlock, setIsolationBlock] = useState<PlanExecuteDryRunError | null>(
     null,
   );
+  const [objectionBlock, setObjectionBlock] =
+    useState<PlanExecuteDryRunError | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -332,6 +392,7 @@ export function PlanExecutePanel({
     setPending(null);
     setPlanSnapshot(null);
     setIsolationBlock(null);
+    setObjectionBlock(null);
   }, [sessionId]);
 
   async function handleDryRun() {
@@ -341,6 +402,7 @@ export function PlanExecutePanel({
     setBusy(true);
     setError(null);
     setIsolationBlock(null);
+    setObjectionBlock(null);
     const permissions = executePermissions();
     try {
       const res = await runPlanDryRun(sessionId, {
@@ -360,6 +422,12 @@ export function PlanExecutePanel({
         ["worktree_unavailable", "base_branch_dirty", "paths_span_repos"].includes(e.code)
       ) {
         setIsolationBlock(e);
+        setError(null);
+      } else if (
+        e instanceof PlanExecuteDryRunError &&
+        e.code === "open_objection"
+      ) {
+        setObjectionBlock(e);
         setError(null);
       } else {
         setError(formatPlanExecuteError(e));
@@ -506,6 +574,11 @@ export function PlanExecutePanel({
     );
   }, [executableItems, selectedKey]);
 
+  const selectedOpenBlocks = useMemo(
+    () => openBlockObjectionsForAction(run, selectedAction?.index),
+    [run, selectedAction?.index],
+  );
+
   const linkedForSelected = linkedTaskForAction(
     linkedTasks,
     selectedAction?.index ?? recommended?.index,
@@ -642,6 +715,24 @@ export function PlanExecutePanel({
       )}
 
       <PlanLinkedTaskLine task={linkedForSelected} onFocusTask={onFocusTask} />
+
+      {selectedOpenBlocks.length ? (
+        <PlanObjectionAlert
+          title="이 action은 미해결 BLOCK으로 execute가 차단됩니다"
+          message="TaskBar에서 이의를 수용하거나 기각한 뒤 dry-run 하세요."
+          objections={selectedOpenBlocks}
+          onFocusObjection={onFocusObjection}
+        />
+      ) : null}
+
+      {objectionBlock?.objections?.length ? (
+        <PlanObjectionAlert
+          title="dry-run이 미해결 이의로 차단됐습니다"
+          message={objectionBlock.message}
+          objections={objectionBlock.objections}
+          onFocusObjection={onFocusObjection}
+        />
+      ) : null}
 
       {planSnapshot ? (
         <div

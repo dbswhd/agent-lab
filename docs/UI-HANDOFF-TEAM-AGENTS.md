@@ -201,6 +201,8 @@ UI 담당은 아래를 **수동 스모크** 체크리스트로 사용.
 
 ### P0 — 혼동 제거
 
+- [x] **objection resolve discoverability**: dry-run 409 `open_objection`을 Composer/plan 인라인 알림으로 표시하고 **이의 해결** CTA가 TaskBar 항목으로 이동
+- [x] **plan BLOCK visibility**: selected plan action에 open BLOCK이 있으면 PlanExecutePanel에서 execute 차단 배너 표시
 - [ ] **세션 리드 vs 이번 턴 리드**: `RoomTaskBar`에 짧은 설명 또는 `?` 툴팁 (“세션 리드 select는 기본값; 이번 턴은 메시지 `GO codex` 또는 자동 회전”)
 - [ ] **409 complete**: `markComplete` catch 시 서버 `detail` 문자열을 toast/인라인으로 표시 (현재 silent ignore 가능)
 - [ ] **Human 요약 + 동료 채널**: disabled 상태 시 왜 꺼졌는지 `title` 속성
@@ -247,6 +249,7 @@ UI 담당은 아래를 **수동 스모크** 체크리스트로 사용.
 | `payload: RoomTasksPayload` | GET tasks 후 |
 | `executions` | cross-link · complete gate |
 | `onFocusPlanAction(index)` | plan 탭 전환 + scroll |
+| `focusObjection` | objection resolve CTA에서 TaskBar 항목 scroll/focus |
 
 ### `PlanExecutePanel`
 
@@ -254,6 +257,7 @@ UI 담당은 아래를 **수동 스모크** 체크리스트로 사용.
 |------|------|
 | `linkedTasks` | 연결 작업 버튼 |
 | `onFocusTask(taskId)` | → chat `data-task-id` scroll |
+| `onFocusObjection(objectionId)` | → TaskBar objection resolve 위치 |
 | `onChatRefClick(line)` | provenance |
 
 ---

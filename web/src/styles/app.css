@@ -864,6 +864,11 @@ body {
   border-left: 2px solid var(--mac-system-orange, #ff9f0a);
 }
 
+.room-task-bar__objection-item:focus {
+  outline: 2px solid color-mix(in srgb, var(--mac-system-orange, #ff9f0a) 65%, transparent);
+  outline-offset: 2px;
+}
+
 .room-task-bar__objection-ref {
   opacity: 0.85;
   font-size: 0.72rem;
@@ -2491,6 +2496,58 @@ body {
   margin: 8px 0 0;
   font-size: var(--text-caption1);
   color: var(--mac-system-red, #ff453a);
+}
+
+.plan-execute-objection-alert,
+.composer-objection-alert {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 0.5px solid color-mix(in srgb, var(--mac-system-orange, #ff9f0a) 45%, transparent);
+  background: color-mix(in srgb, var(--mac-system-orange, #ff9f0a) 10%, transparent);
+  color: var(--mac-label-primary);
+  font-size: var(--text-caption1);
+}
+
+.plan-execute-objection-alert p {
+  margin: 4px 0 0;
+  color: var(--mac-label-secondary);
+}
+
+.plan-execute-objection-alert ul {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+
+.plan-execute-objection-alert li {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.2fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  border-top: 0.5px solid color-mix(in srgb, var(--mac-separator) 45%, transparent);
+}
+
+.plan-execute-objection-alert li:first-child {
+  border-top: 0;
+}
+
+.plan-execute-objection-alert li span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.composer-objection-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.composer-objection-alert span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .messages-scroll--document {

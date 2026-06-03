@@ -23,11 +23,17 @@ SHIPPED_ROWS: list[tuple[str, list[str]]] = [
     ("H4-ops-live", ["tests/test_weekly_live_ops_summary.py"]),
     ("ops-P2", ["app/server/routers/health.py"]),
     ("ops-verify", ["Makefile", "docs/OPS-RUNBOOK.md"]),
+    (
+        "LC-L4",
+        [
+            "src/agent_lab/adversarial_gate.py",
+            "sessions/_regression/adversarial_gate_lgtm",
+        ],
+    ),
 ]
 
 FUTURE_TICKETS = (
     "execute_verify_loop",
-    "adversarial_gate_lgtm",
     "durable_completed_steps",
 )
 
@@ -87,3 +93,10 @@ def test_traceability_future_tickets_not_in_regression_yet():
     regression = ROOT / "sessions" / "_regression"
     for ticket in FUTURE_TICKETS:
         assert not (regression / ticket).is_dir(), f"{ticket} should not exist yet"
+
+
+def test_adversarial_gate_lgtm_fixture_exists():
+    fixture = ROOT / "sessions" / "_regression" / "adversarial_gate_lgtm"
+    assert fixture.is_dir()
+    assert (fixture / "run.json").is_file()
+    assert (fixture / "expected_badges.json").is_file()

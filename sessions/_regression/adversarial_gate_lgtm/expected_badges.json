@@ -1,0 +1,13 @@
+{
+  "blocking": false,
+  "cases": [
+    {
+      "adversarial_note": "LGTM",
+      "badge_tone": "lgtm"
+    },
+    {
+      "adversarial_note": "Diff contains TODO/FIXME markers that may ship incomplete work.",
+      "badge_tone": "warning"
+    }
+  ]
+}

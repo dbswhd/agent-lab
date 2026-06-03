@@ -602,7 +602,8 @@ execute worktree가 **main 오염**을 막아도, specialist R2 discuss는 **별
 | objection → execute block | regression green |
 
 `score_session` keys: `worktree_usage_rate`, `snapshot_override_rate`,
-`merge_first_success_rate`, `merge_conflict_rate`.
+`merge_first_success_rate`, `merge_conflict_rate`, `partial_turn_rate`.
+H-P1 CI runs regression smoke, orphan worktree guard, and score JSON smoke on representative fixtures.
 
 ---
 

@@ -246,6 +246,7 @@ General discuss/plan turns now store `status: partial` when at least one agent s
 | Unit / API | `tests/test_*.py` | `pytest tests/ -q` — no live LLM, no secrets |
 | Tauri paths | `tests/test_tauri_config.py` | `frontendDist` → `web/dist`; bundle `resources` → `runtime/web/dist`, `runtime/venv` |
 | Room fixtures | `sessions/_regression/{discuss,review-on,plan}/` | `tests/test_regression_baselines.py`, `scripts/smoke_room.py` |
+| Score / guards | regression fixtures + execute worktrees | `scripts/score_session.py --json`, `scripts/check_worktree_orphans.py` |
 | Mock E2E | `scripts/smoke_room_e2e.py` | `tests/test_smoke_room_e2e.py`, `AGENT_LAB_MOCK_AGENTS=1` |
 
 `scripts/smoke_room.py` is also runnable locally; use **`--api`** only when uvicorn is already on `:8765`. Treat full room scripts as **nightly / manual** when they need a live API or real CLIs — CI uses pytest wrappers only.
@@ -255,6 +256,7 @@ General discuss/plan turns now store `status: partial` when at least one agent s
 **Every PR / push (`test` job, ubuntu):**
 
 - `pip install -e ".[cursor]"` → `pytest tests/ -q`
+- `scripts/smoke_room.py`, `scripts/check_worktree_orphans.py`, `scripts/score_session.py --json` on regression fixtures
 - `cd web && npm ci && npm run build`
 - `cd web/src-tauri && cargo check`
 
@@ -293,7 +295,7 @@ VERIFY_RELEASE_SKIP_API=1 make verify-release
 | Piece | Behavior |
 |-------|----------|
 | **H1 Scribe input** | `synthesize_plan()` feeds per-agent diff summaries (`room_scribe_enrichment.py`), not full verbatim re-debate; fallback to trimmed numbered thread when no agent replies. Plan enrichment still adds `## 에이전트별 기여 (자동)` / `## 미해결 이의`. |
-| **H4 KPI** | `python scripts/score_session.py <session-folder>` — objection resolution, execute first-try, merge/worktree KPIs, plan ref validity, duplicate speech (offline; exit 1 only on bad args). `--json` for machine output. |
+| **H4 KPI** | `python scripts/score_session.py <session-folder>` — objection resolution, execute first-try, merge/worktree KPIs, partial turn rate, plan ref validity, duplicate speech (offline; exit 1 only on bad args). `--json` for machine output. |
 | **Execute worktree guard** | `python scripts/check_worktree_orphans.py` — fails CI on orphan or terminal execute worktree dirs; pending approval worktrees are allowed. |
 
 ```bash

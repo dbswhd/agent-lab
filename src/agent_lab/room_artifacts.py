@@ -187,9 +187,48 @@ def recent_artifacts_for_agent(
 ) -> list[dict[str, Any]]:
     profile = (turn_profile or str((run_meta or {}).get("turn_profile") or "")).lower()
     rows = list_artifacts(run_meta)
-    if profile == "specialist" and agent == "cursor" and parallel_round >= 2:
+    research = profile == "specialist" or bool((run_meta or {}).get("research_mode"))
+    if research and agent == "cursor" and parallel_round >= 2:
         return [a for a in rows if a.get("producer") in ("codex", "claude")][-6:]
     return rows[-8:]
+
+
+def _session_folder(run_meta: dict[str, Any] | None) -> Path | None:
+    raw = (run_meta or {}).get("_session_folder")
+    if not raw:
+        return None
+    try:
+        folder = Path(str(raw)).expanduser().resolve()
+    except OSError:
+        return None
+    return folder if folder.is_dir() else None
+
+
+def _read_artifact_body(
+    run_meta: dict[str, Any] | None,
+    path_raw: Any,
+    *,
+    cap_chars: int,
+) -> str:
+    if not path_raw:
+        return ""
+    try:
+        path = Path(str(path_raw)).expanduser()
+    except (TypeError, ValueError):
+        return ""
+    if not path.is_absolute():
+        folder = _session_folder(run_meta)
+        if folder is None:
+            return ""
+        path = folder / path
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return ""
+    text = text.strip()
+    if len(text) > cap_chars:
+        return text[: cap_chars - 1] + "…"
+    return text
 
 
 def build_artifacts_block(
@@ -197,20 +236,46 @@ def build_artifacts_block(
     agent: str,
     *,
     parallel_round: int = 1,
+    artifact_only: bool = False,
+    body_cap_chars: int = 2000,
 ) -> str:
     rows = recent_artifacts_for_agent(
         run_meta, agent, parallel_round=parallel_round
     )
     if not rows:
         return ""
-    lines = ["[최근 artifacts — 동료 산출물]", ""]
+    if artifact_only:
+        lines = [
+            "[artifact-only R2 — 아래 artifacts만 근거로 패치 제안]",
+            "",
+        ]
+    else:
+        lines = ["[최근 artifacts — 동료 산출물]", ""]
     for a in rows:
         prod = a.get("producer") or "?"
         lines.append(f"- {prod} ({a.get('kind')}): {(a.get('summary') or '')[:160]}")
         if a.get("path"):
             lines.append(f"  path: {a['path']}")
+            body = (
+                _read_artifact_body(
+                    run_meta,
+                    a.get("path"),
+                    cap_chars=body_cap_chars,
+                )
+                if artifact_only
+                else ""
+            )
+            if body:
+                lines.append("  body:")
+                for line in body.splitlines():
+                    lines.append(f"    {line}")
     lines.append("")
-    lines.append("Cursor R2: artifacts만 근거로 패치 제안 가능.")
+    if artifact_only:
+        lines.append(
+            "Cursor R2: full chat 없음. artifacts와 이번 Human 질문만 근거로 패치 제안."
+        )
+    else:
+        lines.append("Cursor R2: artifacts만 근거로 패치 제안 가능.")
     return "\n".join(lines)
 
 

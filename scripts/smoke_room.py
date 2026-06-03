@@ -88,6 +88,24 @@ def _check_pre_execute_blocked(run: dict[str, Any]) -> bool:
     )
 
 
+def _check_specialist_artifact_only(run: dict[str, Any]) -> bool:
+    last_turn = run.get("last_turn") or {}
+    context = last_turn.get("context") or {}
+    agents = context.get("agents") or []
+    if not isinstance(agents, list):
+        return False
+    return any(
+        row.get("agent") == "cursor"
+        and row.get("parallel_round") == 2
+        and row.get("context_mode") == "artifact_only"
+        and row.get("recent_max_chars") == 1200
+        and row.get("peer_suppressed") is True
+        and (row.get("layer_chars") or {}).get("recent", 99999) <= 1300
+        for row in agents
+        if isinstance(row, dict)
+    )
+
+
 SCENARIOS: dict[str, dict[str, Any]] = {
     "discuss": {
         "label": "일반 discuss",
@@ -135,6 +153,10 @@ SCENARIOS: dict[str, dict[str, Any]] = {
     "pre_execute_blocked": {
         "label": "pre_execute blocked",
         "check": _check_pre_execute_blocked,
+    },
+    "specialist_r2_artifact_only": {
+        "label": "specialist Cursor R2 artifact-only",
+        "check": _check_specialist_artifact_only,
     },
 }
 

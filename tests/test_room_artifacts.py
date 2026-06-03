@@ -73,3 +73,36 @@ def test_build_artifacts_block_for_cursor_r2():
     block = build_artifacts_block(meta, "cursor", parallel_round=2)
     assert "artifacts" in block
     assert "codex" in block
+
+
+def test_build_artifacts_block_artifact_only_inlines_body(tmp_path: Path):
+    artifact_dir = tmp_path / "artifacts"
+    artifact_dir.mkdir()
+    body_path = artifact_dir / "codex.txt"
+    body_path.write_text("inline body\n" + ("x" * 2200), encoding="utf-8")
+    meta: dict = {
+        "_session_folder": str(tmp_path),
+        "turn_profile": "specialist",
+        "artifacts": [
+            {
+                "producer": "codex",
+                "kind": "log",
+                "summary": "R1 finding",
+                "path": "artifacts/codex.txt",
+                "parallel_round": 1,
+            }
+        ],
+    }
+
+    block = build_artifacts_block(
+        meta,
+        "cursor",
+        parallel_round=2,
+        artifact_only=True,
+        body_cap_chars=200,
+    )
+
+    assert "[artifact-only R2" in block
+    assert "path: artifacts/codex.txt" in block
+    assert "inline body" in block
+    assert len(block) < 700

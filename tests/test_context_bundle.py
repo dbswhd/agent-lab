@@ -95,3 +95,129 @@ def test_r15_bridge_on_round2(monkeypatch):
     assert "[R1 요약 · bridge]" in bundle.render()
     assert bundle.meta.layer_chars.get("bridge", 0) > 0
 
+
+def test_specialist_cursor_r2_uses_artifact_only_context():
+    long_secret = "claude r1 long secret " * 500
+    messages = [
+        _Msg("user", None, "Please make a patch from teammate findings."),
+        _Msg("agent", "claude", long_secret, 1),
+        _Msg("agent", "codex", "codex r1 long secret " * 500, 1),
+    ]
+    run_meta = {
+        "turn_profile": "specialist",
+        "research_mode": True,
+        "artifacts": [
+            {
+                "id": "art-1",
+                "producer": "claude",
+                "kind": "log",
+                "summary": "Claude finding summary",
+                "path": "artifacts/claude.txt",
+                "parallel_round": 1,
+            },
+            {
+                "id": "art-2",
+                "producer": "codex",
+                "kind": "log",
+                "summary": "Codex finding summary",
+                "parallel_round": 1,
+            },
+        ],
+        "turn_state": {
+            "anchor": {
+                "agent": "claude",
+                "excerpt": "claude r1 long secret from turn state",
+                "parallel_round": 1,
+            }
+        },
+    }
+
+    bundle = build_context_bundle(
+        "topic",
+        messages,
+        "cursor",
+        parallel_round=2,
+        format_thread=_format_thread,
+        run_meta=run_meta,
+    )
+    rendered = bundle.render()
+
+    assert bundle.meta.context_mode == "artifact_only"
+    assert bundle.meta.recent_max_chars == 1200
+    assert bundle.meta.peer_suppressed is True
+    assert bundle.meta.messages_in_payload == 1
+    assert len(bundle.recent) <= 1300
+    assert bundle.peer == ""
+    assert bundle.bridge == ""
+    assert bundle.turn_state == ""
+    assert "claude r1 long secret" not in bundle.recent
+    assert "claude r1 long secret" not in rendered
+    assert "codex r1 long secret" not in rendered
+    assert "Claude finding summary" in bundle.constraints
+    assert "artifacts/claude.txt" in bundle.constraints
+    assert "full chat 없음" in bundle.follow_up
+    assert bundle.meta.to_dict()["context_mode"] == "artifact_only"
+
+
+def test_specialist_cursor_r1_keeps_full_context():
+    messages = [
+        _Msg("user", None, "q"),
+        _Msg("agent", "claude", "claude r1 still visible", 1),
+    ]
+    bundle = build_context_bundle(
+        "topic",
+        messages,
+        "cursor",
+        parallel_round=1,
+        format_thread=_format_thread,
+        run_meta={"turn_profile": "specialist"},
+    )
+    assert bundle.meta.context_mode == "full"
+    assert "claude r1 still visible" in bundle.render()
+
+
+def test_research_mode_cursor_r2_uses_artifact_only_context():
+    messages = [
+        _Msg("user", None, "research this"),
+        _Msg("agent", "claude", "research r1 full body must disappear", 1),
+    ]
+    bundle = build_context_bundle(
+        "topic",
+        messages,
+        "cursor",
+        parallel_round=2,
+        format_thread=_format_thread,
+        run_meta={
+            "turn_profile": "analyze",
+            "research_mode": True,
+            "artifacts": [
+                {
+                    "producer": "claude",
+                    "kind": "log",
+                    "summary": "research artifact",
+                    "parallel_round": 1,
+                }
+            ],
+        },
+    )
+    assert bundle.meta.context_mode == "artifact_only"
+    assert "research r1 full body must disappear" not in bundle.render()
+    assert "research artifact" in bundle.render()
+
+
+def test_codex_r2_keeps_full_peer_context():
+    messages = [
+        _Msg("user", None, "q"),
+        _Msg("agent", "claude", "claude r1 full body visible to codex", 1),
+        _Msg("agent", "cursor", "cursor r1 body visible to codex", 1),
+    ]
+    bundle = build_context_bundle(
+        "topic",
+        messages,
+        "codex",
+        parallel_round=2,
+        format_thread=_format_thread,
+        run_meta={"turn_profile": "specialist", "research_mode": True},
+    )
+    assert bundle.meta.context_mode == "full"
+    assert "claude r1 full body visible to codex" in bundle.render()

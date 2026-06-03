@@ -12,6 +12,7 @@ Baseline scenarios (minimal `run.json` fixtures):
 | `objection_blocks_execute/` | open BLOCK on plan #1 | `objections[]` open BLOCK → dry-run **409** |
 | `challenge_revises_metric/` | CHALLENGE → task blocked | open CHALLENGE + task `status: blocked` |
 | `specialist_asymmetric_cwd/` | 분업 preset | `agent_capabilities` + `turn_profile: specialist` |
+| `specialist_r2_artifact_only/` | 분업 Cursor R2 payload | `last_turn.context.agents[]` has Cursor R2 `context_mode: artifact_only` |
 | `mailbox_handoff/` | MESSAGE handoff | `mailbox[]` with unread for target agent |
 | `worktree_merge_ok/` | worktree merge success | `status: merged` + worktree metadata + `merge.commit_sha` |
 | `worktree_reject/` | worktree rejected | `status: rejected` on worktree execution |

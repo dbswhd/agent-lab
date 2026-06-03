@@ -204,6 +204,58 @@ def _partial_turn_rate(run_meta: dict[str, Any]) -> tuple[float | None, dict[str
     }
 
 
+def _capability_cwd_kpis(
+    run_meta: dict[str, Any],
+) -> tuple[dict[str, float | None], dict[str, int]]:
+    last_turn = run_meta.get("last_turn") or {}
+    if not isinstance(last_turn, dict):
+        last_turn = {}
+    is_specialist = (
+        run_meta.get("turn_profile") == "specialist"
+        or last_turn.get("turn_profile") == "specialist"
+    )
+    if not is_specialist:
+        return {
+            "specialist_context_recorded": None,
+            "asymmetric_capability_cwd": None,
+            "capability_cwd_agent_count": None,
+        }, {
+            "specialist_contexts": 0,
+            "recorded": 0,
+            "agent_count": 0,
+            "distinct_cwd": 0,
+            "asymmetric": 0,
+        }
+
+    agents = ((last_turn.get("context") or {}).get("agents") or [])
+    if not isinstance(agents, list):
+        agents = []
+    cwd_by_agent: dict[str, str] = {}
+    for row in agents:
+        if not isinstance(row, dict):
+            continue
+        agent = str(row.get("agent") or "").strip().lower()
+        cwd = str(row.get("capability_cwd") or "").strip()
+        if agent and cwd:
+            cwd_by_agent[agent] = cwd
+
+    agent_count = len(cwd_by_agent)
+    distinct_cwd = len(set(cwd_by_agent.values()))
+    recorded = agent_count > 0
+    asymmetric = distinct_cwd >= 2
+    return {
+        "specialist_context_recorded": 1.0 if recorded else 0.0,
+        "asymmetric_capability_cwd": 1.0 if asymmetric else 0.0,
+        "capability_cwd_agent_count": float(agent_count),
+    }, {
+        "specialist_contexts": 1,
+        "recorded": 1 if recorded else 0,
+        "agent_count": agent_count,
+        "distinct_cwd": distinct_cwd,
+        "asymmetric": 1 if asymmetric else 0,
+    }
+
+
 def _ref_validity_rate(folder: Path) -> tuple[float | None, dict[str, int]]:
     result = validate_plan_refs(folder)
     total = len(result.refs)
@@ -266,6 +318,7 @@ def score_session(folder: Path) -> dict[str, Any]:
     exec_rate, exec_counts = _execute_first_try_rate(run_meta)
     merge_scores, merge_counts = _execute_merge_kpis(run_meta)
     partial_rate, turn_counts = _partial_turn_rate(run_meta)
+    capability_scores, capability_counts = _capability_cwd_kpis(run_meta)
     ref_rate, ref_counts = _ref_validity_rate(folder)
     dup_rate, dup_counts = _duplicate_speech_rate(messages)
 
@@ -277,6 +330,7 @@ def score_session(folder: Path) -> dict[str, Any]:
         "duplicate_speech_rate": dup_rate,
         "partial_turn_rate": partial_rate,
         **merge_scores,
+        **capability_scores,
     }
     summary_lines = _format_summary_lines(
         folder.name,
@@ -285,6 +339,7 @@ def score_session(folder: Path) -> dict[str, Any]:
         exec_counts,
         merge_counts,
         turn_counts,
+        capability_counts,
         ref_counts,
         dup_counts,
     )
@@ -297,6 +352,7 @@ def score_session(folder: Path) -> dict[str, Any]:
             "executions": exec_counts,
             "execute_merge": merge_counts,
             "turns": turn_counts,
+            "capability_cwd": capability_counts,
             "plan_refs": ref_counts,
             "duplicate_speech": dup_counts,
         },
@@ -317,6 +373,7 @@ def _format_summary_lines(
     exec_counts: dict[str, int],
     merge_counts: dict[str, int],
     turn_counts: dict[str, int],
+    capability_counts: dict[str, int],
     ref_counts: dict[str, int],
     dup_counts: dict[str, int],
 ) -> list[str]:
@@ -354,6 +411,14 @@ def _format_summary_lines(
         f"  partial turns: {_pct(scores['partial_turn_rate'])} "
         f"({turn_counts.get('partial', 0)}/{turn_counts.get('total', 0)} turns)"
     )
+    if scores["asymmetric_capability_cwd"] is None:
+        lines.append("  specialist context cwd: n/a (no specialist context)")
+    else:
+        lines.append(
+            f"  specialist context cwd: {_pct(scores['asymmetric_capability_cwd'])} asymmetric "
+            f"({capability_counts.get('distinct_cwd', 0)} distinct cwd / "
+            f"{capability_counts.get('agent_count', 0)} agents)"
+        )
     lines.append(
         f"  plan ref validity: {_pct(scores['ref_validity_rate'])} "
         f"({ref_counts.get('plan_refs', 0)} refs, {ref_counts.get('invalid_refs', 0)} invalid)"

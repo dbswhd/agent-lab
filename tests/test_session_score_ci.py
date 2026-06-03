@@ -20,6 +20,9 @@ REQUIRED_SCORE_KEYS = {
     "snapshot_override_rate",
     "merge_first_success_rate",
     "merge_conflict_rate",
+    "specialist_context_recorded",
+    "asymmetric_capability_cwd",
+    "capability_cwd_agent_count",
 }
 
 REQUIRED_COUNT_KEYS = {
@@ -27,6 +30,7 @@ REQUIRED_COUNT_KEYS = {
     "executions",
     "execute_merge",
     "turns",
+    "capability_cwd",
     "plan_refs",
     "duplicate_speech",
 }

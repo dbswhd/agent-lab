@@ -74,6 +74,24 @@ def test_build_weekly_report_includes_summary():
     assert report["aggregate"]["scores"]["execute_retry_rate"] is not None
 
 
+def test_weekly_report_rolls_up_capability_cwd_asymmetry():
+    report = build_weekly_report(
+        REGRESSION.parent,
+        days=30,
+        include_fixtures=True,
+        as_of=date(2026, 6, 3),
+    )
+    scores = report["aggregate"]["scores"]
+    counts = report["aggregate"]["counts"]["capability_cwd"]
+
+    assert "asymmetric_capability_cwd_rate" in scores
+    assert "specialist_context_recorded_rate" in scores
+    assert counts["specialist_contexts"] >= 1
+    assert counts["asymmetric"] >= 1
+    assert scores["asymmetric_capability_cwd_rate"] is not None
+    assert any("specialist cwd asymmetry" in line for line in report["summary_lines"])
+
+
 def test_execute_retry_rate_on_single_session():
     report = score_session(REGRESSION / "worktree_merge_ok")
     assert report["scores"]["execute_retry_rate"] == 0.0

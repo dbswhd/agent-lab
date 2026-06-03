@@ -180,6 +180,24 @@ def _pool_turn_counts(reports: list[dict[str, Any]]) -> dict[str, int]:
     }
 
 
+def _pool_capability_cwd_counts(reports: list[dict[str, Any]]) -> dict[str, int]:
+    specialist_contexts = recorded = asymmetric = agent_count = distinct_cwd = 0
+    for report in reports:
+        counts = (report.get("counts") or {}).get("capability_cwd") or {}
+        specialist_contexts += int(counts.get("specialist_contexts") or 0)
+        recorded += int(counts.get("recorded") or 0)
+        asymmetric += int(counts.get("asymmetric") or 0)
+        agent_count += int(counts.get("agent_count") or 0)
+        distinct_cwd += int(counts.get("distinct_cwd") or 0)
+    return {
+        "specialist_contexts": specialist_contexts,
+        "recorded": recorded,
+        "asymmetric": asymmetric,
+        "agent_count": agent_count,
+        "distinct_cwd": distinct_cwd,
+    }
+
+
 def aggregate_rates(
     reports: list[dict[str, Any]],
 ) -> tuple[dict[str, float | None], dict[str, dict[str, int]]]:
@@ -188,6 +206,7 @@ def aggregate_rates(
     exe = _pool_execute_counts(reports)
     merge = _pool_merge_counts(reports)
     turns = _pool_turn_counts(reports)
+    capability_cwd = _pool_capability_cwd_counts(reports)
 
     objection_rate = (
         obj["resolved"] / obj["total"] if obj["total"] else None
@@ -215,12 +234,23 @@ def aggregate_rates(
         "merge_conflict_rate": (
             merge["merge_conflict"] / merge["worktree"] if merge["worktree"] else None
         ),
+        "asymmetric_capability_cwd_rate": (
+            capability_cwd["asymmetric"] / capability_cwd["specialist_contexts"]
+            if capability_cwd["specialist_contexts"]
+            else None
+        ),
+        "specialist_context_recorded_rate": (
+            capability_cwd["recorded"] / capability_cwd["specialist_contexts"]
+            if capability_cwd["specialist_contexts"]
+            else None
+        ),
     }
     counts = {
         "objections": obj,
         "executions": exe,
         "execute_merge": merge,
         "turns": turns,
+        "capability_cwd": capability_cwd,
     }
     return scores, counts
 
@@ -327,6 +357,9 @@ def build_weekly_report(
         f"  aggregate merge first-success: {_pct(aggregate_scores['merge_first_success_rate'])} "
         f"({aggregate_counts['execute_merge']['merge_first_success']}/"
         f"{aggregate_counts['execute_merge']['worktree_terminal']} worktree terminal)",
+        f"  aggregate specialist cwd asymmetry: {_pct(aggregate_scores['asymmetric_capability_cwd_rate'])} "
+        f"({aggregate_counts['capability_cwd']['asymmetric']}/"
+        f"{aggregate_counts['capability_cwd']['specialist_contexts']} specialist contexts)",
         "M4 milestones:",
         _milestone_line("objection resolution", m4["objection_resolution"]),
         _milestone_line("execute retry", m4["execute_retry"]),

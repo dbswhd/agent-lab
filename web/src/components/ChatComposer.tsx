@@ -40,6 +40,15 @@ type Props = {
   planStaleNotice?: string | null;
   objectionNotice?: ObjectionNotice | null;
   onFocusObjection?: (objectionId: string, actionIndex?: number) => void;
+  turnCostHint?: string | null;
+  fullTeamConfirm?: {
+    required: boolean;
+    checked: boolean;
+    label: string;
+    detail: string;
+    disabled?: boolean;
+    onChange: (checked: boolean) => void;
+  } | null;
   /** Hide textarea/send (mode picker stays visible). */
   inputHidden?: boolean;
   /** Show 「정리」 toggle beside turn picker (default: plan tab only). */
@@ -80,6 +89,8 @@ export function ChatComposer({
   planStaleNotice,
   objectionNotice,
   onFocusObjection,
+  turnCostHint,
+  fullTeamConfirm,
   inputHidden = false,
   showPlanToggle = false,
   showModeChipHint = false,
@@ -175,6 +186,37 @@ export function ChatComposer({
                 </>
               }
             />
+          </div>
+        ) : null}
+        {turnCostHint || fullTeamConfirm?.required ? (
+          <div
+            className={[
+              "composer-cost-hint",
+              fullTeamConfirm?.required ? "composer-cost-hint--confirm" : undefined,
+              fullTeamConfirm?.checked ? "is-confirmed" : undefined,
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            role={fullTeamConfirm?.required ? "alert" : "status"}
+          >
+            {turnCostHint ? <span>{turnCostHint}</span> : null}
+            {fullTeamConfirm?.required ? (
+              <label className="composer-cost-hint__confirm">
+                <input
+                  className="mac-checkbox"
+                  type="checkbox"
+                  checked={fullTeamConfirm.checked}
+                  disabled={fullTeamConfirm.disabled}
+                  onChange={(e) => fullTeamConfirm.onChange(e.target.checked)}
+                />
+                <span>{fullTeamConfirm.label}</span>
+              </label>
+            ) : null}
+            {fullTeamConfirm?.required ? (
+              <span className="composer-cost-hint__detail">
+                {fullTeamConfirm.detail}
+              </span>
+            ) : null}
           </div>
         ) : null}
         {planStaleNotice ? (

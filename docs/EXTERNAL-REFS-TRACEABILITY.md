@@ -38,7 +38,7 @@ This document is the hub for “plan vs reality”; it does not authorize new fe
 |----|--------|------|--------|----------|-----|
 | CC-CLAUDE | Claude Code | CLAUDE.md dev guide | ⬜ | — | Not in repo; see PLAN Part 4.1 |
 | CC-hooks | Claude Code | `.claude/settings.json` hooks | ⬜ | — | Dev-tool layer; not Agent Lab runtime |
-| CENT-env | Centaur | Subprocess env allowlist | ⬜ | `claude_cli.py`, `codex_cli.py`, `cursor_bridge.py` | Full parent env still inherited |
+| CENT-env | Centaur | Subprocess env allowlist | ✅ | `subprocess_env.py`, `claude_cli.py`, `codex_cli.py`, `cursor_bridge.py`, `tests/test_subprocess_env.py` | P0 shipped |
 | CON-diff | Conductor | Diff inline revise | ⬜ | `PlanExecutePanel.tsx` | Approve/reject only |
 | LC-PROJECT | LazyCodex | PROJECT.md memory | ⬜ | — | Not injected in `context_bundle` |
 

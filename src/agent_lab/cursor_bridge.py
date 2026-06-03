@@ -107,7 +107,10 @@ def _ping_client(client: object) -> None:
 def _launch_client(workspace: str) -> object:
     from cursor_sdk import CursorClient
 
-    return CursorClient.launch_bridge(workspace=workspace)
+    from agent_lab.subprocess_env import isolated_process_env
+
+    with isolated_process_env():
+        return CursorClient.launch_bridge(workspace=workspace)
 
 
 def _external_client() -> object | None:

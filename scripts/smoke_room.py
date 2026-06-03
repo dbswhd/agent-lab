@@ -88,6 +88,44 @@ def _check_pre_execute_blocked(run: dict[str, Any]) -> bool:
     )
 
 
+def _check_adversarial_gate_lgtm(run: dict[str, Any]) -> bool:
+    return any(
+        row.get("status") == "review_required"
+        and isinstance(row.get("adversarial_note"), str)
+        and bool(row["adversarial_note"].strip())
+        and row.get("adversarial_source") == "mock"
+        for row in _execs(run)
+    )
+
+
+def _check_adversarial_badge_payload(payload: dict[str, Any]) -> list[str]:
+    from agent_lab.adversarial_gate import badge_tone
+
+    errors: list[str] = []
+    if payload.get("blocking") is not False:
+        errors.append("expected blocking=false (non-blocking badge)")
+    cases = payload.get("cases") or []
+    if not isinstance(cases, list) or not cases:
+        return errors + ["expected non-empty cases[]"]
+    for idx, case in enumerate(cases):
+        if not isinstance(case, dict):
+            errors.append(f"cases[{idx}] must be an object")
+            continue
+        note = case.get("adversarial_note")
+        expected = case.get("badge_tone")
+        if not isinstance(note, str) or not note.strip():
+            errors.append(f"cases[{idx}] missing adversarial_note")
+            continue
+        if expected not in {"lgtm", "warning"}:
+            errors.append(f"cases[{idx}] badge_tone must be lgtm|warning")
+            continue
+        if badge_tone(note) != expected:
+            errors.append(
+                f"cases[{idx}] badge_tone expected {expected!r}, got {badge_tone(note)!r}"
+            )
+    return errors
+
+
 def _check_specialist_artifact_only(run: dict[str, Any]) -> bool:
     last_turn = run.get("last_turn") or {}
     context = last_turn.get("context") or {}
@@ -353,6 +391,11 @@ SCENARIOS: dict[str, dict[str, Any]] = {
         "check": _check_bridge_degraded_run,
         "expected_health": "expected_health.json",
     },
+    "adversarial_gate_lgtm": {
+        "label": "adversarial gate mock LGTM badge",
+        "check": _check_adversarial_gate_lgtm,
+        "expected_badges": "expected_badges.json",
+    },
 }
 
 REQUIRED_RUN_KEYS = (
@@ -417,6 +460,16 @@ def validate_baseline(name: str, folder: Path) -> list[str]:
             errors.append(f"{name}: {expected_health}: {exc}")
         else:
             errors.extend(f"{name}: {err}" for err in _check_bridge_degraded_payload(payload))
+
+    expected_badges = spec.get("expected_badges")
+    if expected_badges:
+        path = folder / str(expected_badges)
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            errors.append(f"{name}: {expected_badges}: {exc}")
+        else:
+            errors.extend(f"{name}: {err}" for err in _check_adversarial_badge_payload(payload))
 
     return errors
 

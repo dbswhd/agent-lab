@@ -272,7 +272,7 @@ General discuss/plan turns now store `status: partial` when at least one agent s
 **Every PR / push (`test` job, ubuntu):**
 
 - `pip install -e ".[cursor]"` → `pytest tests/ -q`
-- `scripts/smoke_room.py` (16 regression baselines), `scripts/check_worktree_orphans.py`, `scripts/score_session.py --json` on regression fixtures
+- `scripts/smoke_room.py` (17 regression baselines), `scripts/check_worktree_orphans.py`, `scripts/score_session.py --json` on regression fixtures
 - `cd web && npm ci && npm run build`
 - `cd web/src-tauri && cargo check`
 

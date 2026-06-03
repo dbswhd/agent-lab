@@ -16,7 +16,7 @@ This document is the hub for “plan vs reality”; it does not authorize new fe
 | PI | Conductor | Git worktree execute + merge | ✅ | `src/agent_lab/plan_execute_*.py`, `sessions/_regression/worktree_*`, `tests/test_plan_execute_worktree.py` | Phase I M0–M4 |
 | PI-ops | Conductor | Live worktree Go/No-Go | ✅ | `docs/LIVE-CURSOR-WORKTREE-DRY-RUN.md`, `scripts/live_cursor_worktree_dry_run.py`, Tier B in `docs/OPS-RUNBOOK.md` | Manual, not CI |
 | PI-ops-C | Conductor | Live merge operator | ✅ | `docs/LIVE-MERGE-OPERATOR.md`, `scripts/live_cursor_worktree_merge_run.py`, `make verify-ops-live-merge` | Disposable repo only |
-| E-smoke | Room | BLOCK/CHALLENGE governance | ✅ | `sessions/_regression/objection_blocks_execute/`, `challenge_revises_metric/`, `scripts/smoke_room.py` | 16 baselines |
+| E-smoke | Room | BLOCK/CHALLENGE governance | ✅ | `sessions/_regression/objection_blocks_execute/`, `challenge_revises_metric/`, `scripts/smoke_room.py` | 17 baselines |
 | F-R3 | Room | Asymmetric `capability_cwd` | ✅ | `sessions/_benchmark/specialist_asymmetric_cwd/`, `tests/test_benchmark_catalog.py` | Payload meta |
 | H-P1 | H4 | score_session CI | ✅ | `scripts/score_session.py`, `tests/test_session_score_ci.py`, `.github/workflows/ci.yml` | |
 | H4-weekly | H4 | Weekly KPI + M4 gates | ✅ | `scripts/score_sessions_weekly.py`, `src/agent_lab/session_score_weekly.py` | |
@@ -40,7 +40,7 @@ This document is the hub for “plan vs reality”; it does not authorize new fe
 | CC-hooks | Claude Code | `.claude/settings.json` hooks | ⬜ | — | Dev-tool layer; not Agent Lab runtime |
 | CENT-env | Centaur | Subprocess env allowlist | ✅ | `subprocess_env.py`, `claude_cli.py`, `codex_cli.py`, `cursor_bridge.py`, `tests/test_subprocess_env.py` | P0 shipped |
 | CON-diff | Conductor | Diff inline revise | ⬜ | `PlanExecutePanel.tsx` | Approve/reject only |
-| LC-PROJECT | LazyCodex | PROJECT.md memory | ⬜ | — | Not injected in `context_bundle` |
+| LC-L4 | LazyCodex | Adversarial gate (mock fixture) | 🔶 | `src/agent_lab/adversarial_gate.py`, `sessions/_regression/adversarial_gate_lgtm/`, `tests/test_adversarial_gate_fixture.py` | Mock-only skeleton; no live Claude, no UI wiring |
 
 ---
 
@@ -55,15 +55,7 @@ These are **acceptance criteria only**. Do not add live LLM fixtures until Layer
 - **Evidence keys:** `execution.verify_after_merge.status`, `execution.verify_retries`
 - **Tests (future):** mock `verify_after_merge`, pytest only
 
-### Ticket: `adversarial_gate_lgtm`
-
-- **Folder (future):** `sessions/_regression/adversarial_gate_lgtm/`
-- **Spec:** dry-run execution record includes `adversarial_note` (string); UI shows non-blocking badge; `"LGTM"` vs warning text.
-- **Tests (future):** mock Claude adversarial call, no live LLM
-
 ### Ticket: `durable_completed_steps`
-
-- **Folder (future):** `sessions/_regression/durable_completed_steps/`
 - **Spec:** `run.json` `completed_steps[]` survives round boundary; restart resume skips completed agents (Centaur P1).
 
 ---
@@ -73,7 +65,6 @@ These are **acceptance criteria only**. Do not add live LLM fixtures until Layer
 | Priority | ID | Suggested next PR |
 |----------|-----|-------------------|
 | P0 | CENT-env | Subprocess env allowlist (XS, 3 files) |
-| P1 | LC-L4 | Adversarial gate fixture skeleton + mock |
 | P1 | LC-L3 | Execute verify loop fixture skeleton + mock |
 | P1 | CENT-durable | `completed_steps` in run_meta |
 

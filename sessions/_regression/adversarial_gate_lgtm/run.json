@@ -1,0 +1,45 @@
+{
+  "workflow_id": "room.parallel",
+  "run_schema_version": 1,
+  "plan_format_version": 1,
+  "topic": "regression baseline: adversarial gate LGTM (mock)",
+  "created_at": "2026-06-04T00:00:00+00:00",
+  "agents": ["cursor", "codex", "claude"],
+  "status": "active",
+  "message_count": 1,
+  "agent_parallel_rounds": 1,
+  "turns": [
+    {
+      "mode": "plan",
+      "synthesize": true,
+      "status": "completed"
+    }
+  ],
+  "actions": [
+    {
+      "action_id": "plan-action-now-1",
+      "index": 1,
+      "kind": "now",
+      "what": "adversarial gate fixture dry-run",
+      "where": "`src/app.py`",
+      "verify": "pytest"
+    }
+  ],
+  "approvals": [],
+  "executions": [
+    {
+      "id": "exec-adversarial-lgtm",
+      "action_id": "plan-action-now-1",
+      "action_index": 1,
+      "action_kind": "now",
+      "status": "review_required",
+      "isolation_effective": "worktree",
+      "git_root": "/tmp/agent-lab-fixture/repo",
+      "base_branch": "main",
+      "exec_branch": "agent-lab/fixture-adversarial-1",
+      "worktree_path": "/tmp/agent-lab-fixture/session/worktrees/exec-adversarial-lgtm",
+      "adversarial_note": "LGTM",
+      "adversarial_source": "mock"
+    }
+  ]
+}

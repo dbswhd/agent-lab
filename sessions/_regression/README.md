@@ -22,10 +22,11 @@ Baseline scenarios (minimal `run.json` fixtures):
 | `worktree_apply/` | non-git apply path | `isolation_effective: apply`, no merge metadata required |
 | `snapshot_override_pending/` | Human snapshot override | `snapshot_override` pending approval by Human |
 | `pre_execute_blocked/` | pre-execute gate blocked | `pre_verify.blocked: true` on blocked execution |
+| `adversarial_gate_lgtm/` | adversarial gate mock LGTM | dry-run `review_required` + `adversarial_note` + `expected_badges.json` |
 
 Compare live sessions against baselines:
 
-Future fixture tickets (Layer 3/4 — not created yet): see `docs/EXTERNAL-REFS-TRACEABILITY.md` (`execute_verify_loop`, `adversarial_gate_lgtm`, `durable_completed_steps`).
+Future fixture tickets (Layer 3 — not created yet): see `docs/EXTERNAL-REFS-TRACEABILITY.md` (`execute_verify_loop`, `durable_completed_steps`).
 
 ```bash
 python scripts/run_diff.py sessions/_regression/discuss sessions/<your-session>

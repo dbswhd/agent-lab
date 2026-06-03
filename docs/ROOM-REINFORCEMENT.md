@@ -372,6 +372,6 @@ CI: `pytest tests/ -q` + `scripts/smoke_room.py` (16 baselines) + `check_worktre
 10. ~~**H4-ops last-live**~~ — weekly ops summary에 Tier B/C 최신 live GO/NO_GO 표시 ✅
 11. ~~**external-refs traceability**~~ — `EXTERNAL-REFS-TRACEABILITY.md` plan ↔ fixture/smoke 매트릭스 ✅
 
-**다음 후보 (구현):** PLAN P0 `CENT-env` subprocess allowlist, 또는 Layer 3/4 **fixture skeleton** (mock-only) — see `docs/EXTERNAL-REFS-TRACEABILITY.md`
+**다음 후보 (구현):** Layer 4 **adversarial_gate_lgtm** fixture skeleton (mock-only) — see `docs/EXTERNAL-REFS-TRACEABILITY.md`
 
 ~~**Room P0**~~ · ~~**F2 R-P1**~~ · ~~**H-P1/H-P2/H-P3**~~ · ~~**H2**~~ · ~~**E-smoke**~~ · ~~**ops lifespan/router**~~ · ~~**UX-P2**~~ · ~~**Phase I M1–M4**~~ — 완료.

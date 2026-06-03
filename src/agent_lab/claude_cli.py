@@ -69,12 +69,10 @@ def resolve_claude_roots(permissions: dict[str, Any] | None) -> list[Path]:
 
 
 def _claude_env() -> dict[str, str]:
-    env = os.environ.copy()
-    # Claude Code `-p` prefers ANTHROPIC_API_KEY over OAuth subscription.
-    for key in (
-        "ANTHROPIC_API_KEY",
-        "ANTHROPIC_AUTH_TOKEN",
-    ):
+    from agent_lab.subprocess_env import subprocess_env
+
+    env = subprocess_env()
+    for key in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"):
         env.pop(key, None)
     claude = resolve_claude_bin()
     if claude:

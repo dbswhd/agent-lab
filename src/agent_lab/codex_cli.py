@@ -118,7 +118,9 @@ def _format_exec_error(stderr: str, stdout: str) -> str:
 
 
 def _codex_env() -> dict[str, str]:
-    env = os.environ.copy()
+    from agent_lab.subprocess_env import subprocess_env
+
+    env = subprocess_env()
     codex = resolve_codex_bin()
     if codex:
         bin_dir = str(Path(codex).parent)

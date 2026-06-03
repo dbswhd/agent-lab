@@ -33,6 +33,13 @@ jobs:
       - name: Pytest (mock-only, no secrets)
         run: pytest tests/ -q
 
+      - name: Regression smoke and score fixtures
+        run: |
+          python scripts/smoke_room.py
+          python scripts/check_worktree_orphans.py
+          python scripts/score_session.py --json sessions/_regression/worktree_merge_ok
+          python scripts/score_session.py --json sessions/_regression/objection_blocks_execute
+
       - uses: actions/setup-node@v4
         with:
           node-version: "20"

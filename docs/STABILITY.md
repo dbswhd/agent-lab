@@ -73,6 +73,8 @@ Cursor bridge failures must include degraded fallback shape: `degraded`, `failur
 
 **Phase I execute (worktree):** design and checklist in [`docs/EXECUTE-WORKTREE-REFORM.md`](EXECUTE-WORKTREE-REFORM.md) §11 — M0–M4 shipped; CI uses regression fixtures only (no live merge in Actions).
 
+**External refs traceability:** [`docs/EXTERNAL-REFS-TRACEABILITY.md`](EXTERNAL-REFS-TRACEABILITY.md) maps LazyCodex/Conductor/Centaur/CC plan items to shipped tests/fixtures and future fixture tickets.
+
 **Live M0 spot-check:** `AGENT_LAB_RUN_LIVE=1 make live-worktree-dry-run` — see [`docs/LIVE-CURSOR-WORKTREE-DRY-RUN.md`](LIVE-CURSOR-WORKTREE-DRY-RUN.md). Requires `CURSOR_API_KEY` and bridge; never run in CI.
 
 **Run lock:** `GET /api/room/run-lock`, `POST /api/room/runs/release-lock` (orphan/stale lock), `POST /api/room/runs/cancel` (cooperative stop). UI: **실행 잠금 해제** when a run appears stuck.

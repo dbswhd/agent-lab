@@ -545,24 +545,24 @@ execute worktree가 **main 오염**을 막아도, specialist R2 discuss는 **별
 
 | # | 시나리오 | 기준 | 전제 |
 |---|----------|------|------|
-| R1 | analyze 1R 3관점 | duplicate_speech_rate | `score_session` |
-| R2 | plan → ## 지금 실행 | plan_actions validation | — |
-| R3 | specialist asymmetric cwd | capability_cwd meta | fixture |
-| R4 | DELEGATE codex | 라운드 대체 | **mock replay** 없으면 호출 수 미측정 |
-| R5 | 10-turn session KPI | objection 해결률, ref validity | H4 |
+| R1 | analyze 1R 3관점 | duplicate_speech_rate | `sessions/_benchmark/analyze_1r_three_views/` |
+| R2 | plan → ## 지금 실행 | plan_actions validation | `sessions/_benchmark/plan_now_actions/` |
+| R3 | specialist asymmetric cwd | capability_cwd meta | `sessions/_benchmark/specialist_asymmetric_cwd/` |
+| R4 | DELEGATE codex | 라운드 대체 | `tests/test_room_delegate_replay.py`, `sessions/_benchmark/delegate_codex/` |
+| R5 | 10-turn session KPI | objection 해결률, ref validity | `sessions/_benchmark/ten_turn_kpi_stub/` |
 
 ### 13.3 Execute 벤치 (본 개혁)
 
 | # | 시나리오 | 기준 |
 |---|----------|------|
-| E1 | pipeline action worktree | main clean until merge |
+| E1 | pipeline action worktree | `sessions/_regression/worktree_merge_ok/` |
 | E2 | agent-lab action 다른 root | 별 worktree |
-| E3 | non-git lecture apply | `파일 반영`, merge UI 없음 |
+| E3 | non-git lecture apply | `sessions/_regression/worktree_apply/` |
 | E4 | worktree fail → retry |修復 후 성공 |
-| E5 | override snapshot | `snapshot_override`, no merge |
-| E6 | approve merge | commit message provenance |
-| E7 | merge conflict | abort restores |
-| E8 | pre_execute block | worktree created then block before cursor |
+| E5 | override snapshot | `sessions/_regression/snapshot_override_pending/` |
+| E6 | approve merge | `sessions/_regression/worktree_merge_ok/` |
+| E7 | merge conflict | `sessions/_regression/merge_conflict/` |
+| E8 | pre_execute block | `sessions/_regression/pre_execute_blocked/` |
 
 ---
 

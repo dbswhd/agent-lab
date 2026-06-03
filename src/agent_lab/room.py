@@ -1536,6 +1536,7 @@ def _write_session_files(
     agents_used: list[str] | None = None,
     merge_meta: dict[str, Any] | None = None,
     turn_meta: dict[str, Any] | None = None,
+    run_meta_patch: dict[str, Any] | None = None,
 ) -> None:
     (folder / "topic.txt").write_text(topic.strip() + "\n", encoding="utf-8")
     plan_changed = _write_plan_if_changed(folder, plan_md)
@@ -1602,6 +1603,8 @@ def _write_session_files(
         "consensus_agreements": agreements,
     }
     preserve_session_meta_from_prev(run_meta, prev_run)
+    if run_meta_patch:
+        run_meta.update(run_meta_patch)
     if turn_meta:
         if turn_meta.get("turn_lead"):
             run_meta["team_lead"] = turn_meta["turn_lead"]
@@ -1685,6 +1688,7 @@ def _write_session_files(
             "request_id",
             "started_at",
             "completed_at",
+            "last_delegate",
         ):
             if key in turn_meta:
                 run_meta[key] = turn_meta[key]
@@ -1843,6 +1847,7 @@ def _turn_snapshot(
     agents_with_r2_reply: list[str] | None = None,
     failed_agents: list[str] | None = None,
     succeeded_agents: list[str] | None = None,
+    last_delegate: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     from agent_lab.invoke import model_name
 
@@ -1919,6 +1924,8 @@ def _turn_snapshot(
         snap["failed_agents"] = list(failed_agents)
     if succeeded_agents:
         snap["succeeded_agents"] = list(succeeded_agents)
+    if last_delegate:
+        snap["last_delegate"] = dict(last_delegate)
     return snap
 
 
@@ -2116,6 +2123,15 @@ def _try_delegate_turn(
         human_turn=human_turn_num,
     )
     return replies
+
+
+def _delegate_run_meta_patch(run_meta: dict[str, Any]) -> dict[str, Any] | None:
+    if not run_meta.get("last_delegate"):
+        return None
+    patch: dict[str, Any] = {"last_delegate": run_meta["last_delegate"]}
+    if run_meta.get("artifacts"):
+        patch["artifacts"] = list(run_meta.get("artifacts") or [])
+    return patch
 
 
 def continue_room_round(
@@ -2343,7 +2359,9 @@ def continue_room_round(
             agents_with_r2_reply=list(peer.get("agents_with_r2_reply") or []),
             failed_agents=turn_summary["failed_agents"],
             succeeded_agents=turn_summary["succeeded_agents"],
+            last_delegate=run_meta.get("last_delegate"),
         ),
+        run_meta_patch=_delegate_run_meta_patch(run_meta),
     )
     auto_plan = maybe_auto_scribe_after_consensus(
         folder,
@@ -2595,6 +2613,7 @@ def run_room(
         agents_with_r2_reply=list(peer.get("agents_with_r2_reply") or []),
         failed_agents=turn_summary["failed_agents"],
         succeeded_agents=turn_summary["succeeded_agents"],
+        last_delegate=run_meta.get("last_delegate"),
     )
 
     if folder is None:
@@ -2623,6 +2642,7 @@ def run_room(
             agents_used=active_agents,
             merge_meta=existing_meta,
             turn_meta=turn_meta,
+            run_meta_patch=_delegate_run_meta_patch(run_meta),
         )
     auto_plan = maybe_auto_scribe_after_consensus(
         folder,

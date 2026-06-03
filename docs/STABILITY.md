@@ -253,7 +253,7 @@ General discuss/plan turns now store `status: partial` when at least one agent s
 |-------|------|-----|
 | Unit / API | `tests/test_*.py` | `pytest tests/ -q` — no live LLM, no secrets |
 | Tauri paths | `tests/test_tauri_config.py` | `frontendDist` → `web/dist`; bundle `resources` → `runtime/web/dist`, `runtime/venv` |
-| Room fixtures | `sessions/_regression/{discuss,review-on,plan}/` | `tests/test_regression_baselines.py`, `scripts/smoke_room.py` |
+| Room fixtures | `sessions/_regression/{discuss,review-on,plan,objection_blocks_execute,challenge_revises_metric}/` | `tests/test_regression_baselines.py`, `scripts/smoke_room.py` |
 | Score / guards | regression fixtures + execute worktrees | `scripts/score_session.py --json`, `scripts/check_worktree_orphans.py` |
 | Mock E2E | `scripts/smoke_room_e2e.py` | `tests/test_smoke_room_e2e.py`, `AGENT_LAB_MOCK_AGENTS=1` |
 

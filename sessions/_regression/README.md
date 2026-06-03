@@ -9,8 +9,8 @@ Baseline scenarios (minimal `run.json` fixtures):
 | `discuss/` | 일반 discuss | `turns[]` has `mode: discuss`, no `review_mode` |
 | `review-on/` | 쟁점 검토 ON | `turns[]` has `mode: discuss` + `review_mode: true` |
 | `plan/` | 지금 정리 | `turns[]` has `mode: plan`, `synthesize: true` |
-| `objection_blocks_execute/` | open BLOCK on plan #1 | `objections[]` open BLOCK → dry-run **409** |
-| `challenge_revises_metric/` | CHALLENGE → task blocked | open CHALLENGE + task `status: blocked` |
+| `objection_blocks_execute/` | open BLOCK on plan #1 | smoke validates open BLOCK linked to `plan_action` execute gate |
+| `challenge_revises_metric/` | CHALLENGE → task blocked | smoke validates open CHALLENGE linked to blocked task |
 | `specialist_asymmetric_cwd/` | 분업 preset | `agent_capabilities` + `turn_profile: specialist` |
 | `specialist_r2_artifact_only/` | 분업 Cursor R2 payload | `last_turn.context.agents[]` has Cursor R2 `context_mode: artifact_only` |
 | `bridge_degraded_health/` | Cursor bridge degraded health | `expected_health.json` has cursor `degraded`, `failure_code`, `fallback`, `remediation` |

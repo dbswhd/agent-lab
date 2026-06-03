@@ -12,8 +12,8 @@
 
 | 지표 | 현재 | 목표 |
 |------|------|------|
-| 교차 검증 턴 비율 | 세션마다 편차 큼 | 회귀 fixture에서 ≥1건 CHALLENGE→수정 자동 검출 |
-| BLOCK/CHALLENGE가 다음 행동 변경 | 거의 없음 | execute·consensus·task claim 중 ≥1 경로 hard 연동 |
+| 교차 검증 턴 비율 | ✅ E-smoke: `challenge_revises_metric` CI smoke 고정 | 회귀 fixture에서 ≥1건 CHALLENGE→수정 자동 검출 |
+| BLOCK/CHALLENGE가 다음 행동 변경 | ✅ E-smoke: `objection_blocks_execute` + challenge task block CI smoke 고정 | execute·consensus·task claim 중 ≥1 경로 hard 연동 |
 | 에이전트 비대칭 컨텍스트 | 동일 bundle | ≥2 에이전트 서로 다른 cwd/툴 블록 |
 | 비용 대비 | ~3× 호출 | ✅ H2: quick/analyze는 낮은 호출 유지, "풀 팀"은 명시 opt-in |
 | Human 신뢰 | plan = Scribe 1패스 | plan에 에이전트별 기여·미해결 BLOCK 섹션 |
@@ -280,8 +280,8 @@ Human 또는 턴 리드가 `DELEGATE codex: "백테스트만"` 한 줄
 
 | fixture | 검증 |
 |---------|------|
-| `objection_blocks_execute` | BLOCK → execute 409 |
-| `challenge_revises_metric` | CHALLENGE → task blocked → resolve |
+| `objection_blocks_execute` | ✅ smoke/CI: BLOCK → plan action execute gate |
+| `challenge_revises_metric` | ✅ smoke/CI: CHALLENGE → task blocked |
 | `specialist_asymmetric_cwd` | payload meta cwd differs |
 | `mailbox_handoff` | MESSAGE → next agent block |
 | `sessions/_benchmark/analyze_1r_three_views` | R1 duplicate speech KPI |

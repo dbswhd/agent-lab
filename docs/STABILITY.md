@@ -152,7 +152,7 @@ Example: `.agent-lab/hooks.example.toml`, `scripts/hooks/verify-task.sh`.
 | **API** | `POST …/objections/{id}/resolve` `{ verdict: accepted\|wontfix }`. |
 | **UI** | 작업 바 미해결 이의 · 수용/기각. |
 
-**Verify:** plan 턴 BLOCK → dry-run 409 → resolve → retry. **분업** profile → R1 Codex+Claude, R2 Cursor; context meta `capability_cwd` differs per agent.
+**Verify:** plan 턴 BLOCK → dry-run 409 → resolve → retry. **분업** profile → R1 Codex+Claude, R2 Cursor; context meta `capability_cwd` differs per agent. specialist/research Cursor R2 preview → `context_mode: artifact_only`, `peer_suppressed: true`, no R1 full agent body in `recent`. Rollback: `AGENT_LAB_F2_ARTIFACT_ONLY=0`.
 
 ### Phase F — asymmetric agents (P1)
 
@@ -161,7 +161,7 @@ Example: `.agent-lab/hooks.example.toml`, `scripts/hooks/verify-task.sh`.
 | **agent_capabilities** | `run.json` per-agent `tools`, `cwd_role`, `restrictions`. |
 | **Specialist profile** | Composer **분업** · R1 codex+claude · R2 cursor · 2 rounds. |
 | **Context** | `agent_workspace_lines` + `capability_preamble_block`; meta `capability_cwd`. |
-| **F2 research** | `research_mode` or specialist → `harvest_artifacts_from_turn`; Cursor R2 sees `build_artifacts_block`. |
+| **F2 research** | `research_mode` or specialist → `harvest_artifacts_from_turn`; Cursor R2 uses `context_mode: artifact_only` (Human question + artifacts only). |
 | **F4 health** | `/api/health?session_id=` adds `capability_label` / `capabilities` per agent row. |
 
 ### Phase G — artifacts & execute chain (P2)

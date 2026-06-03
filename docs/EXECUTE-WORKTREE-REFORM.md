@@ -451,7 +451,7 @@ gates → create worktree → pre_execute(cwd=worktree) → cursor dry-run
 
 execute worktree가 **main 오염**을 막아도, specialist R2 discuss는 **별 문제**로 남는다 (사전 피드백 확정).
 
-### 11.1 현재 (코드 기준)
+### 11.1 이전 문제 (코드 기준)
 
 - `build_artifacts_block()` → `context_bundle` **constraints에 추가됨** (P2 ✅).
 - `context_bundle.py`에 **`research_mode`로 `recent`/`peer`를 줄이는 분기 없음**.
@@ -459,14 +459,14 @@ execute worktree가 **main 오염**을 막아도, specialist R2 discuss는 **별
   `"Cursor R2: artifacts만 근거로 패치 제안 가능."` (`room_artifacts.py`).
 - 즉 **강제 비대칭이 아니라 입력 모순** — LLM이 chat을 따를지 artifacts를 따를지 보장 불가.
 
-### 11.2 목표 (Room R-P1 — 본 개혁과 독립)
+### 11.2 완료 (Room R-P1 — 본 개혁과 독립)
 
 | 조건 | context 변경 |
 |------|----------------|
-| `turn_profile == specialist` && `parallel_round >= 2` && `agent == cursor` | `recent`/`peer` → Human turn 요약 + artifacts 본문(또는 path) **만** |
+| (`turn_profile == specialist` OR `research_mode == true`) && `parallel_round >= 2` && `agent == cursor` | `recent`/`peer` → Human turn 요약 + artifacts 본문(또는 path) **만** |
 | 그 외 | 현행 유지 |
 
-완료 조건: 회귀에서 R2 payload meta에 `context_mode: artifact_only` + `recent` 길이 상한 이하.
+완료 조건: 회귀에서 R2 payload meta에 `context_mode: artifact_only` + `recent` 길이 상한 이하. Rollback은 `AGENT_LAB_F2_ARTIFACT_ONLY=0`.
 
 | 트랙 | 목표 | 우선순위 |
 |------|------|----------|

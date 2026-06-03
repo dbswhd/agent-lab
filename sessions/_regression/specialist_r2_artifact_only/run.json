@@ -1,0 +1,60 @@
+{
+  "workflow_id": "room.parallel",
+  "run_schema_version": 1,
+  "plan_format_version": 1,
+  "topic": "Specialist R2 artifact-only context",
+  "created_at": "2026-06-03T00:00:00+00:00",
+  "agents": ["codex", "claude", "cursor"],
+  "status": "completed",
+  "message_count": 4,
+  "agent_parallel_rounds": 2,
+  "turn_profile": "specialist",
+  "research_mode": true,
+  "turns": [
+    {
+      "mode": "discuss",
+      "synthesize": false,
+      "status": "completed",
+      "turn_profile": "specialist",
+      "agent_parallel_rounds": 2
+    }
+  ],
+  "last_turn": {
+    "mode": "discuss",
+    "synthesize": false,
+    "status": "completed",
+    "turn_profile": "specialist",
+    "context": {
+      "agents": [
+        {
+          "agent": "cursor",
+          "parallel_round": 2,
+          "review_mode": false,
+          "context_mode": "artifact_only",
+          "recent_max_chars": 1200,
+          "peer_suppressed": true,
+          "messages_in_payload": 1,
+          "layer_chars": {
+            "recent": 240,
+            "peer": 0,
+            "bridge": 0,
+            "total": 1800
+          }
+        }
+      ]
+    }
+  },
+  "actions": [],
+  "approvals": [],
+  "executions": [],
+  "artifacts": [
+    {
+      "id": "art-regression-1",
+      "producer": "codex",
+      "kind": "log",
+      "summary": "Codex R1 artifact summary",
+      "path": "artifacts/codex.txt",
+      "parallel_round": 1
+    }
+  ]
+}

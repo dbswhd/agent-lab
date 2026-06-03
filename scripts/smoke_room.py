@@ -144,6 +144,51 @@ def _check_bridge_degraded_payload(payload: dict[str, Any]) -> list[str]:
     return errors
 
 
+def _open_objections(run: dict[str, Any], act: str) -> list[dict[str, Any]]:
+    rows = run.get("objections") or []
+    if not isinstance(rows, list):
+        return []
+    return [
+        row
+        for row in rows
+        if isinstance(row, dict)
+        and row.get("act") == act
+        and row.get("status") == "open"
+    ]
+
+
+def _check_objection_blocks_execute(run: dict[str, Any]) -> bool:
+    blocks = _open_objections(run, "BLOCK")
+    if not any(
+        row.get("plan_action_index")
+        or str(row.get("target_ref") or "").startswith("plan_action:")
+        for row in blocks
+    ):
+        return False
+    executions = _execs(run)
+    if not executions:
+        return True
+    return any(
+        row.get("status") in {"blocked", "blocked_objection", "blocked_isolation"}
+        or row.get("error_code") == "open_objection"
+        or row.get("blocked_reason") == "open_objection"
+        for row in executions
+    )
+
+
+def _check_challenge_revises_metric(run: dict[str, Any]) -> bool:
+    challenges = _open_objections(run, "CHALLENGE")
+    tasks = run.get("tasks") or []
+    if not isinstance(tasks, list):
+        return False
+    blocked_task_ids = {
+        str(row.get("id"))
+        for row in tasks
+        if isinstance(row, dict) and row.get("status") == "blocked" and row.get("id")
+    }
+    return any(str(row.get("task_id") or "") in blocked_task_ids for row in challenges)
+
+
 SCENARIOS: dict[str, dict[str, Any]] = {
     "discuss": {
         "label": "일반 discuss",
@@ -163,6 +208,19 @@ SCENARIOS: dict[str, dict[str, Any]] = {
             t.get("mode") == "plan" and t.get("synthesize") is True
             for t in run.get("turns") or []
         ),
+    },
+    "objection_blocks_execute": {
+        "label": "BLOCK objection gates execute",
+        "check": _check_objection_blocks_execute,
+        "workflow_ids": {"room", "room.parallel"},
+        "required_keys": ("workflow_id", "run_schema_version", "objections", "turns"),
+    },
+    "challenge_revises_metric": {
+        "label": "CHALLENGE blocks linked task",
+        "check": _check_challenge_revises_metric,
+        "workflow_ids": {"room", "room.parallel"},
+        "required_keys": ("workflow_id", "run_schema_version", "objections", "tasks"),
+        "requires_turns": False,
     },
     "worktree_merge_ok": {
         "label": "worktree merge ok",
@@ -234,7 +292,8 @@ def validate_baseline(name: str, folder: Path) -> list[str]:
     except (OSError, json.JSONDecodeError) as exc:
         return [f"{name}: {exc}"]
 
-    for key in REQUIRED_RUN_KEYS:
+    required_keys = tuple(spec.get("required_keys") or REQUIRED_RUN_KEYS)
+    for key in required_keys:
         if key not in run:
             errors.append(f"{name}: run.json missing key {key!r}")
 
@@ -242,13 +301,15 @@ def validate_baseline(name: str, folder: Path) -> list[str]:
         errors.append(
             f"{name}: run_schema_version expected 1, got {run.get('run_schema_version')!r}"
         )
-    if run.get("workflow_id") != "room.parallel":
+    workflow_ids = set(spec.get("workflow_ids") or {"room.parallel"})
+    if run.get("workflow_id") not in workflow_ids:
         errors.append(
-            f"{name}: workflow_id expected 'room.parallel', got {run.get('workflow_id')!r}"
+            f"{name}: workflow_id expected {sorted(workflow_ids)!r}, got {run.get('workflow_id')!r}"
         )
 
     turns = run.get("turns") or []
-    if not isinstance(turns, list) or not turns:
+    requires_turns = bool(spec.get("requires_turns", True))
+    if requires_turns and (not isinstance(turns, list) or not turns):
         errors.append(f"{name}: turns[] must be a non-empty list")
     elif not spec["check"](run):
         errors.append(f"{name}: scenario check failed ({spec['label']})")

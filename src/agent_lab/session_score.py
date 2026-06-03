@@ -181,6 +181,22 @@ def _execute_merge_kpis(
     return scores, counts
 
 
+def _partial_turn_rate(run_meta: dict[str, Any]) -> tuple[float | None, dict[str, int]]:
+    turns = [t for t in (run_meta.get("turns") or []) if isinstance(t, dict)]
+    total = len(turns)
+    if total == 0:
+        return None, {"total": 0, "partial": 0, "failed": 0, "completed": 0}
+    partial = sum(1 for t in turns if t.get("status") == "partial")
+    failed = sum(1 for t in turns if t.get("status") == "failed")
+    completed = sum(1 for t in turns if t.get("status") == "completed")
+    return partial / total, {
+        "total": total,
+        "partial": partial,
+        "failed": failed,
+        "completed": completed,
+    }
+
+
 def _ref_validity_rate(folder: Path) -> tuple[float | None, dict[str, int]]:
     result = validate_plan_refs(folder)
     total = len(result.refs)
@@ -242,6 +258,7 @@ def score_session(folder: Path) -> dict[str, Any]:
     obj_rate, obj_counts = _objection_resolution_rate(run_meta)
     exec_rate, exec_counts = _execute_first_try_rate(run_meta)
     merge_scores, merge_counts = _execute_merge_kpis(run_meta)
+    partial_rate, turn_counts = _partial_turn_rate(run_meta)
     ref_rate, ref_counts = _ref_validity_rate(folder)
     dup_rate, dup_counts = _duplicate_speech_rate(messages)
 
@@ -250,6 +267,7 @@ def score_session(folder: Path) -> dict[str, Any]:
         "execute_first_try_rate": exec_rate,
         "ref_validity_rate": ref_rate,
         "duplicate_speech_rate": dup_rate,
+        "partial_turn_rate": partial_rate,
         **merge_scores,
     }
     summary_lines = _format_summary_lines(
@@ -258,6 +276,7 @@ def score_session(folder: Path) -> dict[str, Any]:
         obj_counts,
         exec_counts,
         merge_counts,
+        turn_counts,
         ref_counts,
         dup_counts,
     )
@@ -269,6 +288,7 @@ def score_session(folder: Path) -> dict[str, Any]:
             "objections": obj_counts,
             "executions": exec_counts,
             "execute_merge": merge_counts,
+            "turns": turn_counts,
             "plan_refs": ref_counts,
             "duplicate_speech": dup_counts,
         },
@@ -288,6 +308,7 @@ def _format_summary_lines(
     obj_counts: dict[str, int],
     exec_counts: dict[str, int],
     merge_counts: dict[str, int],
+    turn_counts: dict[str, int],
     ref_counts: dict[str, int],
     dup_counts: dict[str, int],
 ) -> list[str]:
@@ -316,6 +337,10 @@ def _format_summary_lines(
     lines.append(
         f"  merge conflict: {_pct(scores['merge_conflict_rate'])} "
         f"({merge_counts.get('merge_conflict', 0)}/{merge_counts.get('worktree', 0)} worktree)"
+    )
+    lines.append(
+        f"  partial turns: {_pct(scores['partial_turn_rate'])} "
+        f"({turn_counts.get('partial', 0)}/{turn_counts.get('total', 0)} turns)"
     )
     lines.append(
         f"  plan ref validity: {_pct(scores['ref_validity_rate'])} "

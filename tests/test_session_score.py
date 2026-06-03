@@ -127,6 +127,31 @@ def test_execute_merge_kpis(tmp_path: Path):
     assert any("merge first-success" in line for line in report["summary_lines"])
 
 
+def test_partial_turn_rate(tmp_path: Path):
+    folder = tmp_path / "sess-partial"
+    _write_session(
+        folder,
+        run={
+            "turns": [
+                {"mode": "discuss", "status": "completed"},
+                {
+                    "mode": "discuss",
+                    "status": "partial",
+                    "failed_agents": ["claude"],
+                    "succeeded_agents": ["cursor"],
+                },
+            ]
+        },
+        chat_lines=[{"role": "user", "content": "go"}],
+        plan_md="## 합의\n",
+    )
+    report = score_session(folder)
+
+    assert report["scores"]["partial_turn_rate"] == 0.5
+    assert report["counts"]["turns"]["partial"] == 1
+    assert any("partial turns" in line for line in report["summary_lines"])
+
+
 def test_ref_validity_and_duplicate_speech(tmp_path: Path):
     folder = tmp_path / "sess-mix"
     _write_session(

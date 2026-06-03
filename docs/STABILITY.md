@@ -320,6 +320,19 @@ make score-weekly DAYS=30 INCLUDE_FIXTURES=1
 REPORT=0 make score-weekly
 ```
 
+### Manual ops routine
+
+`make verify-ops` is the one-command local operations check: regression CI, orphan worktree guard, weekly KPI scoring, and a final `Ops report: sessions/_reports/weekly-YYYY-MM-DD.md` line.
+
+```bash
+make verify-ops
+make verify-ops INCLUDE_FIXTURES=1 DAYS=30
+STRICT=1 make verify-ops INCLUDE_FIXTURES=1
+REPORT=0 make verify-ops
+```
+
+`STRICT=1` passes through to weekly scoring and exits 2 when M4 milestones fail. `INCLUDE_FIXTURES=1` is for offline demos. `REPORT=0` skips artifact writing after CI + orphan checks. Weekly JSON/Markdown artifacts live under gitignored `sessions/_reports/`.
+
 ## Manual verification
 
 ```bash

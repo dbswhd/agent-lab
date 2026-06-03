@@ -1,4 +1,4 @@
-.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test ci check-worktrees smoke smoke-e2e validate-quant verify-release score-session score-weekly score-regression-fixtures live-worktree-dry-run
+.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test ci check-worktrees smoke smoke-e2e validate-quant verify-release verify-ops verify-ops-quick score-session score-weekly score-regression-fixtures live-worktree-dry-run
 
 install:
 	python3 -m venv .venv
@@ -53,11 +53,30 @@ score-session:
 
 score-weekly:
 	@if [ "$${REPORT:-1}" = "0" ]; then \
-		.venv/bin/python scripts/score_sessions_weekly.py --days $${DAYS:-7} $(if $(INCLUDE_FIXTURES),--include-fixtures,); \
+		.venv/bin/python scripts/score_sessions_weekly.py --days $${DAYS:-7} $(if $(INCLUDE_FIXTURES),--include-fixtures,) $(if $(STRICT),--strict,); \
 	else \
 		REPORT_DIR="$${AGENT_LAB_WEEKLY_REPORT_DIR:-sessions/_reports}"; \
-		.venv/bin/python scripts/score_sessions_weekly.py --days $${DAYS:-7} $(if $(INCLUDE_FIXTURES),--include-fixtures,) --write-artifacts "$$REPORT_DIR"; \
+		.venv/bin/python scripts/score_sessions_weekly.py --days $${DAYS:-7} $(if $(INCLUDE_FIXTURES),--include-fixtures,) $(if $(STRICT),--strict,) --write-artifacts "$$REPORT_DIR"; \
 	fi
+
+verify-ops:
+	$(MAKE) ci
+	.venv/bin/python scripts/check_worktree_orphans.py
+	@if [ "$${REPORT:-1}" = "0" ]; then \
+		echo "Ops report: skipped (REPORT=0)"; \
+	else \
+		REPORT_DIR="$${AGENT_LAB_WEEKLY_REPORT_DIR:-sessions/_reports}"; \
+		AGENT_LAB_WEEKLY_REPORT_DIR="$$REPORT_DIR" $(MAKE) score-weekly DAYS=$${DAYS:-7} REPORT=1 $(if $(INCLUDE_FIXTURES),INCLUDE_FIXTURES=1,) $(if $(STRICT),STRICT=1,); \
+		status="$$?"; \
+		END_DATE="$$(date -u +%F)"; \
+		echo "Ops report: $$REPORT_DIR/weekly-$$END_DATE.md"; \
+		exit "$$status"; \
+	fi
+
+verify-ops-quick:
+	$(MAKE) smoke
+	.venv/bin/python scripts/check_worktree_orphans.py
+	REPORT=0 $(MAKE) score-weekly DAYS=$${DAYS:-7} INCLUDE_FIXTURES=1
 
 live-worktree-dry-run:
 	@test "$$AGENT_LAB_RUN_LIVE" = "1" || (echo "Set AGENT_LAB_RUN_LIVE=1 before live Cursor spike" && exit 1)

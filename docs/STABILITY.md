@@ -69,7 +69,9 @@ Before `POST /api/room/runs` (non–synthesize-only), the API runs lightweight p
 
 If any agent is not ready, the API returns **400** with `detail.agents[]` (`id`, `reason`). The composer shows the same reasons inline.
 
-Cursor bridge failures must include degraded fallback shape: `degraded`, `failure_code`, `fallback`, and `remediation`. CI fixture: `sessions/_regression/bridge_degraded_health/`.
+Cursor bridge failures must include degraded fallback shape: `degraded`, `failure_code`, `fallback`, and `remediation`. CI fixture: `sessions/_regression/bridge_degraded_health/`. Governance fixtures: `objection_blocks_execute/`, `challenge_revises_metric/` (E-smoke).
+
+**Phase I execute (worktree):** design and checklist in [`docs/EXECUTE-WORKTREE-REFORM.md`](EXECUTE-WORKTREE-REFORM.md) §11 — M0–M4 shipped; CI uses regression fixtures only (no live merge in Actions).
 
 **Run lock:** `GET /api/room/run-lock`, `POST /api/room/runs/release-lock` (orphan/stale lock), `POST /api/room/runs/cancel` (cooperative stop). UI: **실행 잠금 해제** when a run appears stuck.
 
@@ -253,7 +255,7 @@ General discuss/plan turns now store `status: partial` when at least one agent s
 |-------|------|-----|
 | Unit / API | `tests/test_*.py` | `pytest tests/ -q` — no live LLM, no secrets |
 | Tauri paths | `tests/test_tauri_config.py` | `frontendDist` → `web/dist`; bundle `resources` → `runtime/web/dist`, `runtime/venv` |
-| Room fixtures | `sessions/_regression/{discuss,review-on,plan,objection_blocks_execute,challenge_revises_metric}/` | `tests/test_regression_baselines.py`, `scripts/smoke_room.py` |
+| Room fixtures | `sessions/_regression/*` (14 smoke baselines via `scripts/smoke_room.py`) | `tests/test_regression_baselines.py`, `tests/test_smoke_room_governance.py`, `scripts/smoke_room.py` |
 | Score / guards | regression fixtures + execute worktrees | `scripts/score_session.py --json`, `scripts/check_worktree_orphans.py` |
 | Mock E2E | `scripts/smoke_room_e2e.py` | `tests/test_smoke_room_e2e.py`, `AGENT_LAB_MOCK_AGENTS=1` |
 
@@ -264,7 +266,7 @@ General discuss/plan turns now store `status: partial` when at least one agent s
 **Every PR / push (`test` job, ubuntu):**
 
 - `pip install -e ".[cursor]"` → `pytest tests/ -q`
-- `scripts/smoke_room.py`, `scripts/check_worktree_orphans.py`, `scripts/score_session.py --json` on regression fixtures
+- `scripts/smoke_room.py` (14 regression baselines), `scripts/check_worktree_orphans.py`, `scripts/score_session.py --json` on regression fixtures
 - `cd web && npm ci && npm run build`
 - `cd web/src-tauri && cargo check`
 

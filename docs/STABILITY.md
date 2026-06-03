@@ -73,6 +73,8 @@ If any agent is not ready, the API returns **400** with `detail.agents[]` (`id`,
 
 **Long runs:** No default client timeout. Optional UI hint after `VITE_ROOM_LONG_RUN_HINT_MS` (default 180000 ms); cancel via **답변 중지** → `cancelRoomRun`.
 
+**Full-team cost gate:** Composer shows estimated agent call count before send. Verify: analyze with 3 agents shows about 3 calls and sends without confirmation; `♾️` or `분업` with 3 agents disables send until the **~N회 호출 이해함** checkbox is checked.
+
 **Cursor reconnect:** `POST /api/health/reconnect-cursor` — health panel **재연결** button.
 
 ## Phase 1 — Team coordination (tasks + channels)

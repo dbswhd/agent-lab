@@ -15,7 +15,7 @@
 | 교차 검증 턴 비율 | 세션마다 편차 큼 | 회귀 fixture에서 ≥1건 CHALLENGE→수정 자동 검출 |
 | BLOCK/CHALLENGE가 다음 행동 변경 | 거의 없음 | execute·consensus·task claim 중 ≥1 경로 hard 연동 |
 | 에이전트 비대칭 컨텍스트 | 동일 bundle | ≥2 에이전트 서로 다른 cwd/툴 블록 |
-| 비용 대비 | ~3× 호출 | quick/analyze는 1× 옵션 유지, "풀 팀"은 명시 opt-in |
+| 비용 대비 | ~3× 호출 | ✅ H2: quick/analyze는 낮은 호출 유지, "풀 팀"은 명시 opt-in |
 | Human 신뢰 | plan = Scribe 1패스 | plan에 에이전트별 기여·미해결 BLOCK 섹션 |
 
 ---
@@ -269,8 +269,9 @@ Human 또는 턴 리드가 `DELEGATE codex: "백테스트만"` 한 줄
 
 ### H2. "풀 팀" opt-in + 비용 힌트
 
-- 전송 전: 예상 호출 N명×R라운드 composer hint
-- 기본 프로필은 analyze=1R 유지 (현행 존중)
+- [x] 전송 전: 예상 에이전트 호출 수 composer hint
+- [x] 3-agent `분업` / `♾️` 풀 팀 실행은 체크박스 opt-in 전 Send 비활성
+- [x] 기본 프로필은 analyze=1R 유지 (현행 존중)
 
 ### H3. 회귀·벤치 패키지
 
@@ -314,6 +315,7 @@ CI: `pytest tests/ -q` + `scripts/smoke_room.py` + `check_worktree_orphans.py` +
 | ~~**R-P1**~~ | F2 R2 context slimming (`recent`/`peer` truncate) | ✅ 완료 — Cursor R2 artifact-only | — |
 | ~~**H-P1**~~ | `score_session` CI + merge/objection KPI | ✅ 완료 — regression smoke/score/orphan guard in CI | — |
 | ~~**H-P2**~~ | 벤치 10 시나리오 (room + execute); mock replay for delegate | ✅ 완료 — room catalog + execute cross-ref + delegate replay | — |
+| ~~**H2**~~ | 풀 팀 opt-in + 전송 전 비용 힌트 | ✅ 완료 — Composer 호출 수 추정 + full-team 확인 | — |
 | ~~**ops-P0**~~ | FastAPI lifespan | ✅ 완료 — startup hook lifespan 이관 | — |
 | ~~**UX-P2**~~ | E4 resolve Composer/plan 노출 | ✅ 완료 — dry-run 409 + plan BLOCK에서 이의 해결 CTA | — |
 | ~~P0-b/c/d~~ | objections, execute 409, TaskBar resolve | ✅ 완료 | — |
@@ -347,5 +349,5 @@ CI: `pytest tests/ -q` + `scripts/smoke_room.py` + `check_worktree_orphans.py` +
 2. ~~**Room P0** — CLI retry · partial turn~~ ✅ 완료; consensus 실패는 합의 미완료/failed 유지
 3. ~~**F2** — specialist R2 `context_bundle` trimming~~ ✅ 완료 (`context_mode: artifact_only`)
 4. ~~**H-P1/H-P2** — `score_session` CI · 벤치 fixture · delegate mock replay~~ ✅ 완료
-5. H2 — 풀 팀 opt-in + 전송 전 비용 힌트
+5. ~~H2 — 풀 팀 opt-in + 전송 전 비용 힌트~~ ✅ 완료
 6. ops — ~~lifespan~~ ✅ · `main.py` 라우터 분리

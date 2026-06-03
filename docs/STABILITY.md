@@ -69,6 +69,8 @@ Before `POST /api/room/runs` (non–synthesize-only), the API runs lightweight p
 
 If any agent is not ready, the API returns **400** with `detail.agents[]` (`id`, `reason`). The composer shows the same reasons inline.
 
+Cursor bridge failures must include degraded fallback shape: `degraded`, `failure_code`, `fallback`, and `remediation`. CI fixture: `sessions/_regression/bridge_degraded_health/`.
+
 **Run lock:** `GET /api/room/run-lock`, `POST /api/room/runs/release-lock` (orphan/stale lock), `POST /api/room/runs/cancel` (cooperative stop). UI: **실행 잠금 해제** when a run appears stuck.
 
 **SSE:** Worker failures emit `run_failed` then `error`. If the proxy disconnects without a terminal event, the client synthesizes `run_failed`.

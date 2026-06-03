@@ -25,6 +25,14 @@ def _bridge_bin_path() -> Path | None:
     return p if p.is_file() else None
 
 
+def _mark_cursor_bridge_degraded(row: dict[str, Any], reason: str) -> None:
+    from agent_lab.cursor_bridge import cursor_bridge_failure_payload
+
+    row.update(cursor_bridge_failure_payload(reason=reason))
+    row["hint"] = reason
+    row["reason"] = reason
+
+
 def _probe_cli_version(
     bin_path: str,
     *,
@@ -122,7 +130,10 @@ def agent_preflight_row(
                 if err:
                     row["hint"] = err
                 if bridge != "ok":
-                    row["reason"] = err or "external bridge 연결 실패"
+                    _mark_cursor_bridge_degraded(
+                        row,
+                        err or "external bridge 연결 실패",
+                    )
                     return row
             row["ready"] = True
             row["reason"] = "external bridge"
@@ -132,6 +143,16 @@ def agent_preflight_row(
             row["reason"] = (
                 "CURSOR_SDK_BRIDGE_BIN 없음 — ~/.agent-lab/.env 절대경로 설정"
             )
+            row["fallback"] = (
+                "Cursor 제외 후 Codex/Claude 로컬 CLI로 전송하거나 bridge 설정 후 재시도"
+            )
+            row["remediation"] = [
+                "CURSOR_SDK_BRIDGE_BIN 절대경로 설정",
+                "Cursor 앱 실행",
+                "상태 패널에서 재연결",
+            ]
+            row["failure_code"] = "cursor_bridge_bin_missing"
+            row["degraded"] = True
             return row
         if probe_bridge:
             from agent_lab.agent_health import _check_cursor_bridge
@@ -142,7 +163,7 @@ def agent_preflight_row(
             if err:
                 row["hint"] = err
             if bridge != "ok":
-                row["reason"] = err or "bridge ping 실패"
+                _mark_cursor_bridge_degraded(row, err or "bridge ping 실패")
                 return row
         row["ready"] = True
         row["reason"] = None
@@ -228,6 +249,11 @@ def agents_not_ready(
                     "id": row["id"],
                     "ready": False,
                     "reason": row.get("reason") or row.get("hint") or "not ready",
+                    "hint": row.get("hint"),
+                    "failure_code": row.get("failure_code"),
+                    "fallback": row.get("fallback"),
+                    "remediation": row.get("remediation"),
+                    "degraded": row.get("degraded", False),
                 }
             )
     return bad

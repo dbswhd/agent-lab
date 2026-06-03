@@ -55,7 +55,7 @@ def _check_cursor_bridge(
 
 def reconnect_cursor_bridge(*, workspace: str | None = None) -> dict[str, Any]:
     """Invalidate cached bridge and probe with retries (health panel reconnect)."""
-    from agent_lab.cursor_bridge import invalidate_workspace
+    from agent_lab.cursor_bridge import cursor_bridge_failure_payload, invalidate_workspace
 
     ws = str(workspace or project_root())
     invalidate_workspace(ws)
@@ -64,6 +64,7 @@ def reconnect_cursor_bridge(*, workspace: str | None = None) -> dict[str, Any]:
     row["bridge"] = bridge
     if err:
         row["hint"] = err
+        row.update(cursor_bridge_failure_payload(reason=err))
     row["ready"] = bool(row["configured"] and bridge == "ok")
     return {
         "ok": bridge == "ok",
@@ -108,6 +109,8 @@ def agent_health_row(
     }
 
     if aid == "cursor":
+        from agent_lab.cursor_bridge import cursor_bridge_failure_payload
+
         has_key = bool(os.getenv("CURSOR_API_KEY", "").strip())
         sdk = _cursor_sdk_installed()
         row["configured"] = has_key and sdk
@@ -120,6 +123,7 @@ def agent_health_row(
             row["bridge"] = bridge
             if err:
                 row["hint"] = err
+                row.update(cursor_bridge_failure_payload(reason=err))
             row["ready"] = row["configured"] and bridge == "ok"
         else:
             row["bridge"] = "unknown"

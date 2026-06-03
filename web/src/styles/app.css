@@ -3533,6 +3533,17 @@ body {
   padding-left: 1.1em;
 }
 
+.composer-preflight__fallback {
+  color: var(--mac-label-secondary);
+}
+
+.agent-health-row__fallback {
+  display: block;
+  grid-column: 2 / -1;
+  color: var(--mac-label-secondary);
+  font-size: var(--text-caption2);
+}
+
 .room-partial-banner {
   display: flex;
   flex-wrap: wrap;

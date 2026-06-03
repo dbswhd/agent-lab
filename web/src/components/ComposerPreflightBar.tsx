@@ -19,6 +19,12 @@ export function ComposerPreflightBar({ agents, selected }: Props) {
         {blocked.map((row) => (
           <li key={row.id}>
             <strong>{row.label}</strong>: {row.reason ?? row.hint ?? "not ready"}
+            {row.fallback ? (
+              <span className="composer-preflight__fallback">
+                {" "}
+                fallback: {row.fallback}
+              </span>
+            ) : null}
           </li>
         ))}
       </ul>

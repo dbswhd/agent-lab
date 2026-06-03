@@ -175,6 +175,10 @@ export type AgentHealthRow = {
   detail?: string;
   hint?: string | null;
   reason?: string | null;
+  degraded?: boolean;
+  failure_code?: string | null;
+  fallback?: string | null;
+  remediation?: string[];
   capabilities?: string[];
   capability_label?: string;
 };

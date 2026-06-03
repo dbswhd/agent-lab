@@ -1,4 +1,4 @@
-.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test ci check-worktrees smoke smoke-e2e validate-quant verify-release verify-ops verify-ops-quick score-session score-weekly score-regression-fixtures live-worktree-dry-run
+.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test ci check-worktrees smoke smoke-e2e validate-quant verify-release verify-ops verify-ops-quick verify-ops-live score-session score-weekly score-regression-fixtures live-worktree-dry-run
 
 install:
 	python3 -m venv .venv
@@ -77,6 +77,20 @@ verify-ops-quick:
 	$(MAKE) smoke
 	.venv/bin/python scripts/check_worktree_orphans.py
 	REPORT=0 $(MAKE) score-weekly DAYS=$${DAYS:-7} INCLUDE_FIXTURES=1
+
+verify-ops-live:
+	@if [ "$${SKIP_PREFLIGHT:-0}" != "1" ]; then \
+		$(MAKE) verify-ops REPORT=0; \
+	fi
+	@test "$$AGENT_LAB_RUN_LIVE" = "1" || (echo "Set AGENT_LAB_RUN_LIVE=1 before verify-ops-live" && exit 1)
+	@REPORT_DIR="$${AGENT_LAB_WEEKLY_REPORT_DIR:-sessions/_reports}"; \
+	REPORT_PATH="$$REPORT_DIR/live-worktree-$$(date -u +%F).json"; \
+	AGENT_LAB_RUN_LIVE=1 .venv/bin/python scripts/live_cursor_worktree_dry_run.py --write "$$REPORT_PATH"; \
+	status="$$?"; \
+	verdict="NO_GO"; \
+	if [ "$$status" = "0" ]; then verdict="GO"; elif [ "$$status" = "3" ]; then verdict="SKIPPED"; fi; \
+	echo "Live ops report: $$REPORT_PATH ($$verdict)"; \
+	exit "$$status"
 
 live-worktree-dry-run:
 	@test "$$AGENT_LAB_RUN_LIVE" = "1" || (echo "Set AGENT_LAB_RUN_LIVE=1 before live Cursor spike" && exit 1)

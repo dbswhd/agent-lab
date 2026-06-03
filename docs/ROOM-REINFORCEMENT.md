@@ -367,5 +367,6 @@ CI: `pytest tests/ -q` + `scripts/smoke_room.py` (16 baselines) + `check_worktre
 5. ~~**F-R3-ops**~~ — `capability_cwd` 비대칭을 `score_session`/weekly KPI에 누적 ✅
 6. ~~**H4-ops**~~ — weekly M4 + F-R3 Markdown/JSON 운영 artifact export ✅
 7. ~~**ops-verify**~~ — `make verify-ops` 수동 운영 점검 타깃 + report path 출력 ✅
+8. ~~**ops-runbook-live**~~ — Tier B live worktree runbook + `make verify-ops-live` ✅
 
 ~~**Room P0**~~ · ~~**F2 R-P1**~~ · ~~**H-P1/H-P2/H-P3**~~ · ~~**H2**~~ · ~~**E-smoke**~~ · ~~**ops lifespan/router**~~ · ~~**UX-P2**~~ · ~~**Phase I M1–M4**~~ — 완료.

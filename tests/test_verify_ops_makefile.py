@@ -50,3 +50,21 @@ def test_verify_ops_strict_and_fixture_flags_reach_score_weekly():
     assert "STRICT=1" in out
     assert "--include-fixtures" in out
     assert "--strict" in out
+
+
+def test_verify_ops_live_dry_run_wires_preflight_guard_and_report():
+    out = _make_dry_run("verify-ops-live")
+
+    assert "make verify-ops REPORT=0" in out
+    assert "AGENT_LAB_RUN_LIVE=1" in out
+    assert "scripts/live_cursor_worktree_dry_run.py --write" in out
+    assert "live-worktree-$(date -u +%F).json" in out
+    assert "Live ops report:" in out
+
+
+def test_verify_ops_live_can_skip_regression_preflight():
+    out = _make_dry_run("verify-ops-live", "SKIP_PREFLIGHT=1")
+
+    assert "make verify-ops REPORT=0" in out
+    assert "make ci" not in out
+    assert "scripts/live_cursor_worktree_dry_run.py --write" in out

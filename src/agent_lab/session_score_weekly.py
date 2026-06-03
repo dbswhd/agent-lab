@@ -13,6 +13,7 @@ from agent_lab.app_config import resolve_sessions_dir
 from agent_lab.session_score import score_session
 
 _FOLDER_DATE_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})")
+_LIVE_REPORT_RE = re.compile(r"^live-(worktree|merge)-(\d{4}-\d{2}-\d{2})\.json$")
 
 # ROOM-REINFORCEMENT.md M4 (H track)
 M4_OBJECTION_RESOLUTION_MIN = 0.80
@@ -66,6 +67,21 @@ def session_anchor_date(folder: Path) -> date | None:
         except (OSError, json.JSONDecodeError):
             pass
     return None
+
+
+def _parse_iso_datetime(value: str) -> datetime | None:
+    raw = (value or "").strip()
+    if not raw:
+        return None
+    try:
+        if raw.endswith("Z"):
+            raw = raw[:-1] + "+00:00"
+        parsed = datetime.fromisoformat(raw)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed
+    except ValueError:
+        return None
 
 
 def is_scorable_session_folder(folder: Path, *, include_fixtures: bool) -> bool:
@@ -334,6 +350,130 @@ def weekly_report_artifact_paths(end_date: str, base_dir: Path) -> dict[str, Pat
     }
 
 
+def _live_report_kind(path: Path, data: dict[str, Any]) -> str | None:
+    match = _LIVE_REPORT_RE.match(path.name)
+    if match:
+        return match.group(1)
+    kind = str(data.get("kind") or "")
+    if kind == "live_cursor_worktree_dry_run":
+        return "worktree"
+    if kind == "live_cursor_worktree_merge":
+        return "merge"
+    return None
+
+
+def _live_report_date(path: Path, data: dict[str, Any]) -> str | None:
+    for key in ("finished_at", "started_at"):
+        parsed = _parse_iso_datetime(str(data.get(key) or ""))
+        if parsed:
+            return parsed.date().isoformat()
+    match = _LIVE_REPORT_RE.match(path.name)
+    if match:
+        return match.group(2)
+    return None
+
+
+def _live_report_sort_key(path: Path, data: dict[str, Any]) -> tuple[datetime, str]:
+    for key in ("finished_at", "started_at"):
+        parsed = _parse_iso_datetime(str(data.get(key) or ""))
+        if parsed:
+            return parsed, path.name
+    match = _LIVE_REPORT_RE.match(path.name)
+    if match:
+        try:
+            parsed_date = date.fromisoformat(match.group(2))
+            return (
+                datetime(
+                    parsed_date.year,
+                    parsed_date.month,
+                    parsed_date.day,
+                    tzinfo=timezone.utc,
+                ),
+                path.name,
+            )
+        except ValueError:
+            pass
+    return datetime.fromtimestamp(path.stat().st_mtime, timezone.utc), path.name
+
+
+def discover_live_ops_reports(report_dir: Path) -> dict[str, dict[str, Any] | None]:
+    """Return latest Tier B/C live report summaries from a report directory."""
+    base = report_dir.expanduser()
+    latest: dict[str, tuple[tuple[datetime, str], dict[str, Any]]] = {}
+    if not base.is_dir():
+        return {"worktree": None, "merge": None}
+
+    candidates = sorted(
+        list(base.glob("live-worktree-*.json")) + list(base.glob("live-merge-*.json"))
+    )
+    for path in candidates:
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(data, dict):
+            continue
+        kind = _live_report_kind(path, data)
+        if kind not in {"worktree", "merge"}:
+            continue
+        row = {
+            "kind": kind,
+            "path": str(path),
+            "file": path.name,
+            "date": _live_report_date(path, data),
+            "status": data.get("status"),
+            "finished_at": data.get("finished_at"),
+            "started_at": data.get("started_at"),
+            "preflight": data.get("preflight") if isinstance(data.get("preflight"), dict) else {},
+        }
+        sort_key = _live_report_sort_key(path, data)
+        previous = latest.get(kind)
+        if previous is None or sort_key > previous[0]:
+            latest[kind] = (sort_key, row)
+
+    return {
+        "worktree": latest.get("worktree", (None, None))[1],
+        "merge": latest.get("merge", (None, None))[1],
+    }
+
+
+def _live_status(row: dict[str, Any] | None) -> str:
+    if not row:
+        return "n/a"
+    status = str(row.get("status") or "").strip()
+    if not status:
+        return "n/a"
+    return status.upper()
+
+
+def _live_table_status(row: dict[str, Any] | None) -> str:
+    if not row:
+        return "—"
+    return _live_status(row)
+
+
+def _live_date(row: dict[str, Any] | None) -> str:
+    if not row:
+        return "n/a"
+    return str(row.get("date") or "n/a")
+
+
+def _live_file(row: dict[str, Any] | None) -> str:
+    if not row:
+        return "—"
+    return str(row.get("file") or "—")
+
+
+def _last_live_summary(live: dict[str, Any]) -> str:
+    worktree = live.get("worktree")
+    merge = live.get("merge")
+    return (
+        "Last live: "
+        f"worktree {_live_status(worktree)} ({_live_date(worktree)}), "
+        f"merge {_live_status(merge)} ({_live_date(merge)})"
+    )
+
+
 def format_weekly_report_markdown(report: dict[str, Any]) -> str:
     """Render a compact operations report for weekly KPI review."""
     period = report.get("period") or {}
@@ -387,6 +527,24 @@ def format_weekly_report_markdown(report: dict[str, Any]) -> str:
                 f"{capability.get('asymmetric', 0)}/{capability.get('specialist_contexts', 0)} contexts |"
             ),
             "",
+            "## Last live checks",
+            "",
+            "| Check | Date | Status | Report |",
+            "|-------|------|--------|--------|",
+        ]
+    )
+    live_ops = report.get("live_ops_summary") or {}
+    for label, key in (("Tier B worktree", "worktree"), ("Tier C merge", "merge")):
+        row = live_ops.get(key)
+        report_file = _live_file(row)
+        if report_file != "—":
+            report_file = f"`{report_file}`"
+        lines.append(
+            f"| {label} | {_live_date(row)} | {_live_table_status(row)} | {report_file} |"
+        )
+    lines.extend(
+        [
+            "",
             "## Per Session",
             "",
             "| Session | Objection | Retry | cwd asymmetric | cwd recorded |",
@@ -417,6 +575,7 @@ def build_weekly_report(
     days: int = 7,
     include_fixtures: bool = False,
     as_of: date | None = None,
+    report_dir: Path | None = None,
 ) -> dict[str, Any]:
     end = as_of or datetime.now(timezone.utc).date()
     start = end - timedelta(days=max(days - 1, 0))
@@ -436,6 +595,8 @@ def build_weekly_report(
 
     aggregate_scores, aggregate_counts = aggregate_rates(session_reports)
     m4 = evaluate_m4_milestones(aggregate_scores, aggregate_counts)
+    live_report_dir = report_dir or (root / "_reports")
+    live_ops_summary = discover_live_ops_reports(live_report_dir)
 
     summary_lines = [
         f"Weekly KPI ({start.isoformat()} .. {end.isoformat()})",
@@ -455,6 +616,7 @@ def build_weekly_report(
         f"  aggregate specialist cwd asymmetry: {_pct(aggregate_scores['asymmetric_capability_cwd_rate'])} "
         f"({aggregate_counts['capability_cwd']['asymmetric']}/"
         f"{aggregate_counts['capability_cwd']['specialist_contexts']} specialist contexts)",
+        f"  {_last_live_summary(live_ops_summary)}",
         "M4 milestones:",
         _milestone_line("objection resolution", m4["objection_resolution"]),
         _milestone_line("execute retry", m4["execute_retry"]),
@@ -482,6 +644,7 @@ def build_weekly_report(
             for r in session_reports
         ],
         "aggregate": {"scores": aggregate_scores, "counts": aggregate_counts},
+        "live_ops_summary": live_ops_summary,
         "m4_milestones": m4,
         "errors": errors,
         "summary_lines": summary_lines,

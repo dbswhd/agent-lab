@@ -27,6 +27,7 @@ def main() -> int:
     write_path: Path | None = None
     write_md_path: Path | None = None
     write_artifacts_dir: Path | None = None
+    report_dir: Path | None = None
     days = 7
     root = default_sessions_root()
 
@@ -56,6 +57,10 @@ def main() -> int:
             write_artifacts_dir = Path(argv[i + 1]).expanduser()
             i += 2
             continue
+        if arg == "--report-dir" and i + 1 < len(argv):
+            report_dir = Path(argv[i + 1]).expanduser()
+            i += 2
+            continue
         if arg in ("-h", "--help"):
             print(_USAGE, file=sys.stderr)
             return 0
@@ -71,6 +76,7 @@ def main() -> int:
         root,
         days=days,
         include_fixtures=include_fixtures,
+        report_dir=report_dir or write_artifacts_dir or (root / "_reports"),
     )
     artifact_paths: dict[str, Path] = {}
     if write_artifacts_dir is not None:
@@ -133,14 +139,24 @@ def _ops_line(report: dict, md_path: Path) -> str:
     m4 = report.get("m4_milestones") or {}
     scores = ((report.get("aggregate") or {}).get("scores") or {})
     counts = (((report.get("aggregate") or {}).get("counts") or {}).get("capability_cwd") or {})
+    live = report.get("live_ops_summary") or {}
+    worktree = live.get("worktree") or {}
+    merge = live.get("merge") or {}
     status = "PASS" if m4.get("overall_pass") is True else "FAIL" if m4.get("overall_pass") is False else "n/a"
     return (
         "Ops: "
         f"M4={status} | "
         f"cwd asymmetry={_fmt(scores.get('asymmetric_capability_cwd_rate'))} "
         f"({counts.get('asymmetric', 0)}/{counts.get('specialist_contexts', 0)}) | "
+        f"live worktree={_live_status(worktree)} | "
+        f"live merge={_live_status(merge)} | "
         f"report: {md_path}"
     )
+
+
+def _live_status(row: dict) -> str:
+    status = str(row.get("status") or "").strip()
+    return status.upper() if status else "n/a"
 
 
 _USAGE = """Usage: score_sessions_weekly.py [options]
@@ -153,6 +169,7 @@ Options:
   --write PATH          Also write JSON report to PATH
   --write-md PATH       Also write Markdown ops report to PATH
   --write-artifacts DIR Write weekly-YYYY-MM-DD.json and .md to DIR
+  --report-dir DIR      Scan live-worktree/live-merge JSON from DIR
   --strict              Exit 2 when applicable M4 milestones fail
   -h, --help
 

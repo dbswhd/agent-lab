@@ -25,6 +25,8 @@ Baseline scenarios (minimal `run.json` fixtures):
 
 Compare live sessions against baselines:
 
+Future fixture tickets (Layer 3/4 — not created yet): see `docs/EXTERNAL-REFS-TRACEABILITY.md` (`execute_verify_loop`, `adversarial_gate_lgtm`, `durable_completed_steps`).
+
 ```bash
 python scripts/run_diff.py sessions/_regression/discuss sessions/<your-session>
 ```

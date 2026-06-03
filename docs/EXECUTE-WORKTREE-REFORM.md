@@ -493,7 +493,7 @@ execute worktree가 **main 오염**을 막아도, specialist R2 discuss는 **별
 
 - [x] `plan_execute_git.py` (M0)
 - [x] `plan_execute_worktree.py`, `plan_execute_merge.py` (M0)
-- [ ] `plan_execute_isolation.py` (policy engine + override API)
+- [x] `plan_execute_isolation.py` (policy engine + override API; M3)
 - [x] `run_dry_run` worktree path (git only)
 - [x] execution schema v2 + migration tolerant read
 - [x] fail closed + 409 codes
@@ -522,7 +522,7 @@ execute worktree가 **main 오염**을 막아도, specialist R2 discuss는 **별
 - [x] orphan worktree CI guard
 - [x] `score_session` + merge success rate KPI
 - [x] regression fixtures: `worktree_merge_ok`, `worktree_unavailable`, `merge_conflict`
-- [ ] retry/partial turn (room layer — 별 문서)
+- [x] retry/partial turn (room layer — [`ROOM-REINFORCEMENT.md`](ROOM-REINFORCEMENT.md) R-P0 ✅)
 
 ---
 
@@ -540,6 +540,8 @@ execute worktree가 **main 오염**을 막아도, specialist R2 discuss는 **별
 | `worktree_apply/` | non-git apply path shape |
 | `snapshot_override_pending/` | Human override pending shape |
 | `pre_execute_blocked/` | pre_execute blocked execution shape |
+| `objection_blocks_execute/` | open BLOCK → execute gate (E-smoke) |
+| `bridge_degraded_health/` | Cursor health degraded shape (H-P3) |
 
 ### 13.2 Room 벤치 (사전 피드백 — Phase I 외)
 
@@ -630,15 +632,19 @@ H-P1 CI runs regression smoke, orphan worktree guard, and score JSON smoke on re
 
 ## 19. 사전 피드백 ↔ 로드맵 매핑 (요약)
 
-| 여전히 유효 | 문서 | 다음 작업 |
-|-------------|------|-----------|
-| CLI retry, partial turn | ROOM §사전 피드백 | R-P0 |
-| F2 R2 입력 강제 | 본 문서 §11 | R-P1 |
-| score_session CI, 10 시나리오 | ROOM §다음 액션 | H-P1/P2 |
-| DELEGATE call count | ROOM §사전 피드백 | mock replay |
-| E4 Composer 노출 | ROOM | UX-P2 |
-| FastAPI lifespan | ROOM | ops-P0 |
-| **Execute 격리·merge** | **본 문서** | **I-M1~M2** |
+| 항목 | 문서 | 상태 |
+|------|------|------|
+| CLI retry, partial turn | ROOM §사전 피드백 | ✅ R-P0 |
+| F2 R2 입력 강제 | ROOM R-P1 | ✅ |
+| score_session CI, 10 시나리오 | ROOM H-P1/P2 | ✅ |
+| DELEGATE call count | `test_room_delegate_replay.py` | ✅ H-P2 |
+| E4 Composer 노출 | ROOM UX-P2 | ✅ |
+| FastAPI lifespan | ROOM ops-P0 | ✅ |
+| Router split | ROOM ops-P2 | ✅ |
+| Bridge degraded CI | ROOM H-P3 | ✅ |
+| Governance smoke | ROOM E-smoke | ✅ |
+| **Execute 격리·merge M0–M4** | **본 문서 §11** | ✅ shipped |
+| **다음** | ROOM §다음 액션 | H-P4 smoke, live SDK spot-check, 실사용 KPI |
 
 ---
 

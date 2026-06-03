@@ -7,6 +7,12 @@ import type { ComposerTurnProfile } from "../utils/turnProfile";
 
 export type PendingFile = { id: string; file: File };
 
+type ObjectionNotice = {
+  message: string;
+  objectionId: string;
+  actionIndex?: number;
+};
+
 type Props = {
   value: string;
   onChange: (v: string) => void;
@@ -32,6 +38,8 @@ type Props = {
   onEfficiencyChange?: (on: boolean) => void;
   /** plan이 토론보다 뒤처짐 — composer 위 안내 */
   planStaleNotice?: string | null;
+  objectionNotice?: ObjectionNotice | null;
+  onFocusObjection?: (objectionId: string, actionIndex?: number) => void;
   /** Hide textarea/send (mode picker stays visible). */
   inputHidden?: boolean;
   /** Show 「정리」 toggle beside turn picker (default: plan tab only). */
@@ -70,6 +78,8 @@ export function ChatComposer({
   efficiencyOn = false,
   onEfficiencyChange,
   planStaleNotice,
+  objectionNotice,
+  onFocusObjection,
   inputHidden = false,
   showPlanToggle = false,
   showModeChipHint = false,
@@ -177,6 +187,25 @@ export function ChatComposer({
           >
             <p className="composer-alert-panel__text">{planStaleNotice}</p>
           </CollapsibleGlassPanel>
+        ) : null}
+        {objectionNotice ? (
+          <div className="composer-objection-alert" role="alert">
+            <span>{objectionNotice.message}</span>
+            {onFocusObjection ? (
+              <button
+                type="button"
+                className="room-plan-btn"
+                onClick={() =>
+                  onFocusObjection(
+                    objectionNotice.objectionId,
+                    objectionNotice.actionIndex,
+                  )
+                }
+              >
+                이의 해결
+              </button>
+            ) : null}
+          </div>
         ) : null}
         {!inputHidden ? (
         <div className="composer-row">

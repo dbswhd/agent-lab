@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   fetchPlanActions,
+  PlanExecuteDryRunError,
   resolvePlanExecution,
   runPlanDryRun,
   type PlanActionItem,
   type PlanExecutionRecord,
+  type RoomObjection,
 } from "../api/client";
 import { fullAgentPermissions } from "../utils/agentPermissions";
 import { executionApprovalGate } from "../utils/executeApprovalGate";
@@ -103,6 +105,10 @@ export function usePlanExecute({ sessionId, run, onUpdated }: Options) {
   const [localPending, setLocalPending] = useState<PlanExecutionRecord | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [openObjectionBlock, setOpenObjectionBlock] = useState<{
+    message: string;
+    objections: RoomObjection[];
+  } | null>(null);
 
   const executions = useMemo(
     () => (run?.executions as PlanExecutionRecord[] | undefined) ?? [],
@@ -172,6 +178,7 @@ export function usePlanExecute({ sessionId, run, onUpdated }: Options) {
 
   useEffect(() => {
     setLocalPending(null);
+    setOpenObjectionBlock(null);
   }, [sessionId]);
 
   const executableItems = useMemo(() => {
@@ -205,6 +212,7 @@ export function usePlanExecute({ sessionId, run, onUpdated }: Options) {
     if (!parsed) return false;
     setBusy(true);
     setError(null);
+    setOpenObjectionBlock(null);
     try {
       const res = await runPlanDryRun(sessionId, {
         actionIndex: parsed.index,
@@ -215,7 +223,19 @@ export function usePlanExecute({ sessionId, run, onUpdated }: Options) {
       onUpdated?.();
       return true;
     } catch (e) {
-      setError(formatPlanExecuteError(e));
+      if (
+        e instanceof PlanExecuteDryRunError &&
+        e.code === "open_objection" &&
+        e.objections?.length
+      ) {
+        setOpenObjectionBlock({
+          message: e.message,
+          objections: e.objections,
+        });
+        setError(null);
+      } else {
+        setError(formatPlanExecuteError(e));
+      }
       return false;
     } finally {
       setBusy(false);
@@ -285,6 +305,7 @@ export function usePlanExecute({ sessionId, run, onUpdated }: Options) {
     loadingActions,
     busy,
     error,
+    openObjectionBlock,
     canDryRun,
     hasExecutableActions: executableItems.length > 0,
     dryRun,

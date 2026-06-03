@@ -66,7 +66,19 @@ Exit codes:
 
 ## Tier C — live merge
 
-Future: one live merge-confirm path check. Do not add this until the approve/merge path has a separate operator prompt and rollback notes.
+Use Tier C after Tier B returns GO, after execute/merge code changes, or once per branch cut. It runs one live dry-run in the same kind of disposable git repo, approves the pending execution, and verifies the merge commit on the disposable base branch.
+
+```bash
+AGENT_LAB_RUN_LIVE=1 make verify-ops-live-merge
+```
+
+The target runs Tier A preflight with `REPORT=0` unless `SKIP_PREFLIGHT=1` is set, then writes:
+
+```text
+Live merge ops report: sessions/_reports/live-merge-YYYY-MM-DD.json (GO)
+```
+
+Rollback instructions and the operator prompt are in [LIVE-MERGE-OPERATOR.md](LIVE-MERGE-OPERATOR.md).
 
 ## Troubleshooting
 
@@ -77,9 +89,11 @@ Future: one live merge-confirm path check. Do not add this until the approve/mer
 | Exit 2 | Treat as NO_GO; inspect `sessions/_reports/live-worktree-YYYY-MM-DD.json`. |
 | Exit 3 | Check `CURSOR_API_KEY`, bridge setup, or `AGENT_LAB_SKIP_LIVE`. |
 | Weekly artifact missing | `REPORT=0` skips Tier A artifact writes by design. |
+| Live merge artifact missing | Check `sessions/_reports/live-merge-YYYY-MM-DD.json`; Tier C writes only when the live script starts. |
 
 ## Related docs
 
 - [Live Cursor worktree dry-run](LIVE-CURSOR-WORKTREE-DRY-RUN.md)
+- [Live worktree merge operator](LIVE-MERGE-OPERATOR.md)
 - [Stability notes](STABILITY.md)
 - [Execute worktree reform](EXECUTE-WORKTREE-REFORM.md)

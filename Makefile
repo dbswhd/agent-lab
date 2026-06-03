@@ -1,4 +1,4 @@
-.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test ci check-worktrees smoke smoke-e2e validate-quant verify-release verify-ops verify-ops-quick verify-ops-live score-session score-weekly score-regression-fixtures live-worktree-dry-run
+.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test ci check-worktrees smoke smoke-e2e validate-quant verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run
 
 install:
 	python3 -m venv .venv
@@ -90,6 +90,20 @@ verify-ops-live:
 	verdict="NO_GO"; \
 	if [ "$$status" = "0" ]; then verdict="GO"; elif [ "$$status" = "3" ]; then verdict="SKIPPED"; fi; \
 	echo "Live ops report: $$REPORT_PATH ($$verdict)"; \
+	exit "$$status"
+
+verify-ops-live-merge:
+	@if [ "$${SKIP_PREFLIGHT:-0}" != "1" ]; then \
+		$(MAKE) verify-ops REPORT=0; \
+	fi
+	@test "$$AGENT_LAB_RUN_LIVE" = "1" || (echo "Set AGENT_LAB_RUN_LIVE=1 before verify-ops-live-merge" && exit 1)
+	@REPORT_DIR="$${AGENT_LAB_WEEKLY_REPORT_DIR:-sessions/_reports}"; \
+	REPORT_PATH="$$REPORT_DIR/live-merge-$$(date -u +%F).json"; \
+	AGENT_LAB_RUN_LIVE=1 .venv/bin/python scripts/live_cursor_worktree_merge_run.py --write "$$REPORT_PATH"; \
+	status="$$?"; \
+	verdict="NO_GO"; \
+	if [ "$$status" = "0" ]; then verdict="GO"; elif [ "$$status" = "3" ]; then verdict="SKIPPED"; fi; \
+	echo "Live merge ops report: $$REPORT_PATH ($$verdict)"; \
 	exit "$$status"
 
 live-worktree-dry-run:

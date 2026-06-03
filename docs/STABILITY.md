@@ -341,6 +341,12 @@ Tier B live worktree verification is opt-in and never runs in CI:
 AGENT_LAB_RUN_LIVE=1 make verify-ops-live
 ```
 
+Tier C live merge verification is also opt-in and disposable-repo only:
+
+```bash
+AGENT_LAB_RUN_LIVE=1 make verify-ops-live-merge
+```
+
 ## Manual verification
 
 ```bash

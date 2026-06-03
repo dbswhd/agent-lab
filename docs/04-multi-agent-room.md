@@ -77,6 +77,8 @@ Form: `agent_rounds` (토론 프로필 기본 `2`, 빠른 `1`, 검토 시 최소
 
 **자유 토론** (`consensus_mode`): R1 병렬 후 앵커(마지막 실질 제안)에 대해 나머지 에이전트가 순차로 응답. 이의 없으면 첫 줄에만 `이의 없습니다` → 전원 동의 시 `consensus_reached`. 상한: `AGENT_LAB_MAX_CONSENSUS_ROUNDS` (12), `AGENT_LAB_MAX_CONSENSUS_CALLS` (30).
 
+Composer는 전송 전 예상 에이전트 호출 수를 표시한다. 3-agent `분업` / `♾️` 풀 팀 실행은 체크박스 확인 전까지 전송 버튼이 비활성화된다.
+
 **효율 모드** (`efficiency_mode` / Composer **효율 토글** · 모든 응답 방식에 적용 / `AGENT_LAB_EFFICIENCY=1`):
 
 | 항목 | 동작 |

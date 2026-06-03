@@ -1801,6 +1801,46 @@ body {
   opacity: 0.7;
 }
 
+.composer-cost-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 10px;
+  width: var(--composer-cluster-width);
+  max-width: calc(100% - 2 * var(--composer-pad-x));
+  margin: 0 auto;
+  padding: 4px 8px;
+  border-radius: 8px;
+  color: var(--mac-label-secondary);
+  font-size: var(--text-caption);
+  line-height: 1.35;
+  text-align: center;
+}
+
+.composer-cost-hint--confirm {
+  border: 0.5px solid color-mix(in srgb, var(--mac-system-orange, #ff9f0a) 36%, transparent);
+  background: color-mix(in srgb, var(--mac-system-orange, #ff9f0a) 9%, transparent);
+}
+
+.composer-cost-hint--confirm.is-confirmed {
+  border-color: color-mix(in srgb, var(--mac-accent) 28%, transparent);
+  background: color-mix(in srgb, var(--mac-accent) 7%, transparent);
+}
+
+.composer-cost-hint__confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--mac-label-primary);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.composer-cost-hint__detail {
+  color: var(--mac-label-tertiary);
+}
+
 .plan-execute-panel {
   width: 100%;
   margin: 0 0 0.85rem;

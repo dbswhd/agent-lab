@@ -60,6 +60,7 @@ import {
   setTurnProfile,
   type ComposerTurnProfile,
 } from "../utils/turnProfile";
+import { estimateTurnCost } from "../utils/turnCostEstimate";
 import { formatRoomModelLine } from "../utils/roomModels";
 import { TurnProgressStrip } from "./TurnProgressStrip";
 import { CollapsibleGlassPanel } from "./CollapsibleGlassPanel";
@@ -229,6 +230,7 @@ export function RoomChat({
   const [planAfterSend, setPlanAfterSendState] = useState(getPlanAfterSend);
   const composeMode: ComposeMode = planAfterSend ? "plan" : "discuss";
   const [efficiencyOn, setEfficiencyOnState] = useState(getEfficiencyMode);
+  const [fullTeamConfirmed, setFullTeamConfirmed] = useState(false);
   const [researchMode, setResearchModeState] = useState(() => {
     try {
       return localStorage.getItem("agent-lab-research-mode") === "1";
@@ -242,6 +244,10 @@ export function RoomChat({
     if (planAfterSend) return "plan";
     return "discuss";
   }, [turnProfile, selected, efficiencyOn, planAfterSend]);
+  const turnCost = useMemo(
+    () => estimateTurnCost(turnProfile, selected, { efficiencyOn }),
+    [turnProfile, selected, efficiencyOn],
+  );
   const [pendingSend, setPendingSend] = useState<{
     text: string;
     files: PendingFile[];
@@ -532,6 +538,7 @@ export function RoomChat({
     (loading && waitingForSession) ||
     selected.length === 0 ||
     preflightBlocked ||
+    (turnCost.requiresConfirm && !fullTeamConfirmed) ||
     (!text.trim() && pendingFiles.length === 0);
   const sessionReviewMode = Boolean(
     (session?.run?.last_turn as { review_mode?: boolean } | undefined)
@@ -586,6 +593,10 @@ export function RoomChat({
     setPendingFiles([]);
     setTab("chat");
   }, [sessionId]);
+
+  useEffect(() => {
+    setFullTeamConfirmed(false);
+  }, [turnProfile, selected, efficiencyOn, sessionId]);
 
   useEffect(() => {
     syncedChatRef.current = "";
@@ -1131,8 +1142,10 @@ export function RoomChat({
     ) {
       return;
     }
+    if (turnCost.requiresConfirm && !fullTeamConfirmed) return;
     void executeSend(msg, pendingFiles, roomPermissions(selected));
     setText("");
+    setFullTeamConfirmed(false);
   }
 
   const openPlanTab = () => setTab("plan");
@@ -1705,6 +1718,19 @@ export function RoomChat({
         planStaleNotice={null}
         objectionNotice={composerObjectionNotice}
         onFocusObjection={focusObjection}
+        turnCostHint={turnCost.label}
+        fullTeamConfirm={
+          turnCost.requiresConfirm
+            ? {
+                required: true,
+                checked: fullTeamConfirmed,
+                label: `${turnCost.estimatedAgentCalls}회 호출 이해함`,
+                detail: "풀 팀 실행은 이번 턴에만 확인합니다.",
+                disabled: composerInputLocked || running || runBusy || synthesizing,
+                onChange: setFullTeamConfirmed,
+              }
+            : null
+        }
       />
 
       <AgentPermissionAlert

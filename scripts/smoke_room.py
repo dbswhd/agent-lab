@@ -222,6 +222,32 @@ def _check_specialist_asymmetric_cwd(run: dict[str, Any]) -> bool:
             roles.add(role)
     if len(roles) < 2:
         return False
+    agents = ((run.get("last_turn") or {}).get("context") or {}).get("agents") or []
+    if not isinstance(agents, list):
+        return False
+    cwd_by_agent: dict[str, str] = {}
+    rounds_by_agent: dict[str, int] = {}
+    for row in agents:
+        if not isinstance(row, dict):
+            continue
+        agent = str(row.get("agent") or "").strip().lower()
+        cwd = str(row.get("capability_cwd") or "").strip()
+        if not agent or not cwd:
+            continue
+        cwd_by_agent[agent] = cwd
+        try:
+            rounds_by_agent[agent] = int(row.get("parallel_round") or 0)
+        except (TypeError, ValueError):
+            rounds_by_agent[agent] = 0
+    expected_agents = {"codex", "claude", "cursor"}
+    if set(cwd_by_agent) != expected_agents or len(set(cwd_by_agent.values())) != 3:
+        return False
+    if not (
+        rounds_by_agent.get("codex") == 1
+        and rounds_by_agent.get("claude") == 1
+        and rounds_by_agent.get("cursor") == 2
+    ):
+        return False
     turns = run.get("turns") or []
     if not isinstance(turns, list) or not turns:
         return True

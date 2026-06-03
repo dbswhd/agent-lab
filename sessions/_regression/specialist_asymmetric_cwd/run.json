@@ -7,5 +7,29 @@
     "codex": { "tools": ["codex_cli"], "cwd_role": "repo" },
     "claude": { "tools": ["read_only"], "cwd_role": "review" }
   },
-  "turns": [{ "mode": "discuss", "turn_profile": "specialist" }]
+  "turns": [{ "mode": "discuss", "turn_profile": "specialist" }],
+  "last_turn": {
+    "mode": "discuss",
+    "turn_profile": "specialist",
+    "status": "completed",
+    "context": {
+      "agents": [
+        {
+          "agent": "codex",
+          "parallel_round": 1,
+          "capability_cwd": "/tmp/agent-lab-fixture/repo"
+        },
+        {
+          "agent": "claude",
+          "parallel_round": 1,
+          "capability_cwd": "/tmp/agent-lab-fixture/review"
+        },
+        {
+          "agent": "cursor",
+          "parallel_round": 2,
+          "capability_cwd": "/tmp/agent-lab-fixture/execute"
+        }
+      ]
+    }
+  }
 }

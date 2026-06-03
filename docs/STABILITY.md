@@ -126,6 +126,8 @@ Lead orchestration and pre-round assignment on top of Phase 1:
 
 **Verify:** `[PROPOSED:]` → plan scribe aligns title → dry-run/approve execute → task shows **완료**. ♾️ consensus: agents ENDORSE with `refs: ["t-…"]` until blocker banner clears.
 
+**Verify F-R3:** specialist fixture `sessions/_regression/specialist_asymmetric_cwd/` records R1 Codex/Claude and R2 Cursor `last_turn.context.agents[].capability_cwd` with distinct cwd values; `scripts/smoke_room.py` fails if this meta collapses.
+
 ### Sprint D (turn lead UI, discuss task scope, provenance, receipts)
 
 See **[SPRINT-D-CHECKLIST.md](./SPRINT-D-CHECKLIST.md)** for the full checkbox list.

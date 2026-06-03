@@ -322,7 +322,9 @@ REPORT=0 make score-weekly
 
 ### Manual ops routine
 
-`make verify-ops` is the one-command local operations check: regression CI, orphan worktree guard, weekly KPI scoring, and a final `Ops report: sessions/_reports/weekly-YYYY-MM-DD.md` line.
+See [OPS-RUNBOOK.md](OPS-RUNBOOK.md) for the Tier A/B/C operator flow.
+
+`make verify-ops` is the Tier A local operations check: regression CI, orphan worktree guard, weekly KPI scoring, and a final `Ops report: sessions/_reports/weekly-YYYY-MM-DD.md` line.
 
 ```bash
 make verify-ops
@@ -332,6 +334,12 @@ REPORT=0 make verify-ops
 ```
 
 `STRICT=1` passes through to weekly scoring and exits 2 when M4 milestones fail. `INCLUDE_FIXTURES=1` is for offline demos. `REPORT=0` skips artifact writing after CI + orphan checks. Weekly JSON/Markdown artifacts live under gitignored `sessions/_reports/`.
+
+Tier B live worktree verification is opt-in and never runs in CI:
+
+```bash
+AGENT_LAB_RUN_LIVE=1 make verify-ops-live
+```
 
 ## Manual verification
 

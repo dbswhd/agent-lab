@@ -1,5 +1,7 @@
 # Live Cursor worktree dry-run (M0 Go/No-Go)
 
+See [OPS-RUNBOOK.md](OPS-RUNBOOK.md) Tier B for when to run this check and how it fits with `make verify-ops`.
+
 Offline pytest proves worktree wiring with a mocked `cursor_agent.respond`. This runbook performs **one real** Cursor SDK call in an **isolated disposable git repo** so `main` in that repo stays clean until merge (here we **reject** after dry-run, so no merge).
 
 ## Prerequisites
@@ -16,6 +18,8 @@ Offline pytest proves worktree wiring with a mocked `cursor_agent.respond`. This
 ```bash
 cd /path/to/agent-lab
 export AGENT_LAB_RUN_LIVE=1
+make verify-ops-live
+# lower-level command:
 make live-worktree-dry-run
 # or
 python scripts/live_cursor_worktree_dry_run.py --write /tmp/live-m0-report.json

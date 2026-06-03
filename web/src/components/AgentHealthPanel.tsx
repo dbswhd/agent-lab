@@ -113,6 +113,11 @@ export function AgentHealthPanel({
                   {row.hint && !row.ready ? (
                     <span className="agent-health-row__hint">{row.hint}</span>
                   ) : null}
+                  {row.fallback && !row.ready ? (
+                    <span className="agent-health-row__fallback">
+                      fallback: {row.fallback}
+                    </span>
+                  ) : null}
                 </li>
               );
             })}

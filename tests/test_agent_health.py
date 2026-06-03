@@ -55,3 +55,41 @@ def test_reconnect_cursor_bridge_invalidates(monkeypatch):
     assert out["ok"] is True
     assert out["bridge"] == "ok"
     assert calls == ["/tmp/ws"]
+
+
+def test_agent_health_cursor_bridge_failure_has_fallback(monkeypatch):
+    monkeypatch.setenv("CURSOR_API_KEY", "test-key")
+    monkeypatch.setattr(
+        "agent_lab.agent_health._cursor_sdk_installed",
+        lambda: True,
+    )
+    monkeypatch.setattr(
+        "agent_lab.agent_health._check_cursor_bridge",
+        lambda _ws, retries=3: ("error", "Cursor bridge 연결 실패 (external): dead"),
+    )
+
+    row = agent_health_row("cursor", probe_bridge=True)
+
+    assert row["ready"] is False
+    assert row["degraded"] is True
+    assert row["failure_code"] == "cursor_bridge_unavailable"
+    assert "Codex/Claude" in row["fallback"]
+
+
+def test_reconnect_cursor_bridge_failure_has_fallback(monkeypatch):
+    monkeypatch.setenv("CURSOR_API_KEY", "test-key")
+    monkeypatch.setattr(
+        "agent_lab.agent_health._cursor_sdk_installed",
+        lambda: True,
+    )
+    monkeypatch.setattr("agent_lab.cursor_bridge.invalidate_workspace", lambda _ws: None)
+    monkeypatch.setattr(
+        "agent_lab.agent_health._check_cursor_bridge",
+        lambda _ws, retries=3: ("error", "bridge ping 실패"),
+    )
+
+    out = reconnect_cursor_bridge(workspace="/tmp/ws")
+
+    assert out["ok"] is False
+    assert out["agent"]["degraded"] is True
+    assert "Codex/Claude" in out["agent"]["fallback"]

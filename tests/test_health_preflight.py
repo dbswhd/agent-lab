@@ -114,3 +114,28 @@ def test_health_probe_preflight_flag(monkeypatch):
 def test_agents_not_ready_subset():
     bad = agents_not_ready(["unknown-agent"], probe_cli=False)
     assert bad  # unknown agent not ready
+
+
+def test_cursor_bridge_preflight_keeps_fallback(monkeypatch):
+    monkeypatch.setenv("CURSOR_API_KEY", "test-key")
+    monkeypatch.setattr(
+        "agent_lab.agent_health._cursor_sdk_installed",
+        lambda: True,
+    )
+    monkeypatch.setattr(
+        "agent_lab.agent_preflight._bridge_bin_path",
+        lambda: object(),
+    )
+    monkeypatch.setattr(
+        "agent_lab.agent_health._check_cursor_bridge",
+        lambda _ws: ("error", "Cursor bridge 연결 실패 (auto): dead"),
+    )
+
+    row = agent_preflight_row("cursor", probe_bridge=True, probe_cli=True)
+    bad = agents_not_ready(["cursor"], probe_bridge=True, probe_cli=True)
+
+    assert row["ready"] is False
+    assert row["degraded"] is True
+    assert "Codex/Claude" in row["fallback"]
+    assert bad[0]["degraded"] is True
+    assert "Codex/Claude" in bad[0]["fallback"]

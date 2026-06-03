@@ -1,0 +1,21 @@
+{
+  "agents": [
+    {
+      "id": "cursor",
+      "ready": false,
+      "configured": true,
+      "bridge": "error",
+      "bridge_mode": "auto",
+      "degraded": true,
+      "failure_code": "cursor_bridge_unavailable",
+      "reason": "Cursor bridge 연결 실패 (auto): dead",
+      "fallback": "Cursor 제외 후 Codex/Claude 로컬 CLI로 전송하거나 Cursor bridge 재연결 후 재시도",
+      "remediation": [
+        "Cursor 앱 실행",
+        "상태 패널의 재연결 버튼으로 bridge ping 재시도",
+        "CURSOR_SDK_BRIDGE_URL 이 죽은 IDE bridge 를 가리키면 unset",
+        "GUI 앱에서는 ~/.agent-lab/.env 의 CURSOR_SDK_BRIDGE_BIN 절대경로 확인"
+      ]
+    }
+  ]
+}

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -139,3 +140,43 @@ def test_cursor_bridge_preflight_keeps_fallback(monkeypatch):
     assert "Codex/Claude" in row["fallback"]
     assert bad[0]["degraded"] is True
     assert "Codex/Claude" in bad[0]["fallback"]
+
+
+def test_health_api_cursor_bridge_degraded_matches_fixture(monkeypatch):
+    from app.server.main import app
+
+    expected_path = (
+        Path(__file__).resolve().parents[1]
+        / "sessions"
+        / "_regression"
+        / "bridge_degraded_health"
+        / "expected_health.json"
+    )
+    expected = json.loads(expected_path.read_text(encoding="utf-8"))
+    expected_cursor = next(row for row in expected["agents"] if row["id"] == "cursor")
+
+    monkeypatch.setenv("CURSOR_API_KEY", "test-key")
+    monkeypatch.setattr(
+        "agent_lab.agent_health._cursor_sdk_installed",
+        lambda: True,
+    )
+    monkeypatch.setattr(
+        "agent_lab.agent_preflight._bridge_bin_path",
+        lambda: object(),
+    )
+
+    def fake_bridge_check(*_args, **_kwargs):
+        return "error", expected_cursor["reason"]
+
+    monkeypatch.setattr("agent_lab.agent_health._check_cursor_bridge", fake_bridge_check)
+
+    client = TestClient(app)
+    res = client.get("/api/health?probe_bridge=true&probe_preflight=true")
+    assert res.status_code == 200
+    cursor = next(row for row in res.json()["agents"] if row["id"] == "cursor")
+
+    assert cursor["ready"] is False
+    assert cursor["degraded"] is True
+    assert cursor["failure_code"] == expected_cursor["failure_code"]
+    assert cursor["fallback"] == expected_cursor["fallback"]
+    assert cursor["remediation"] == expected_cursor["remediation"]

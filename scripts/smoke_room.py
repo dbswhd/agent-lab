@@ -106,6 +106,44 @@ def _check_specialist_artifact_only(run: dict[str, Any]) -> bool:
     )
 
 
+def _check_bridge_degraded_run(run: dict[str, Any]) -> bool:
+    return any(
+        t.get("mode") == "discuss" and t.get("status") == "completed"
+        for t in run.get("turns") or []
+        if isinstance(t, dict)
+    )
+
+
+def _cursor_row(payload: dict[str, Any]) -> dict[str, Any] | None:
+    agents = payload.get("agents") or []
+    if not isinstance(agents, list):
+        return None
+    for row in agents:
+        if isinstance(row, dict) and row.get("id") == "cursor":
+            return row
+    return None
+
+
+def _check_bridge_degraded_payload(payload: dict[str, Any]) -> list[str]:
+    row = _cursor_row(payload)
+    if row is None:
+        return ["cursor health row missing"]
+    errors: list[str] = []
+    if row.get("ready") is not False:
+        errors.append("cursor.ready expected false")
+    if row.get("degraded") is not True:
+        errors.append("cursor.degraded expected true")
+    if not row.get("failure_code"):
+        errors.append("cursor.failure_code missing")
+    fallback = str(row.get("fallback") or "")
+    if "Codex/Claude" not in fallback:
+        errors.append("cursor.fallback missing Codex/Claude fallback")
+    remediation = row.get("remediation")
+    if not isinstance(remediation, list) or not remediation:
+        errors.append("cursor.remediation expected non-empty list")
+    return errors
+
+
 SCENARIOS: dict[str, dict[str, Any]] = {
     "discuss": {
         "label": "일반 discuss",
@@ -157,6 +195,11 @@ SCENARIOS: dict[str, dict[str, Any]] = {
     "specialist_r2_artifact_only": {
         "label": "specialist Cursor R2 artifact-only",
         "check": _check_specialist_artifact_only,
+    },
+    "bridge_degraded_health": {
+        "label": "Cursor bridge degraded health shape",
+        "check": _check_bridge_degraded_run,
+        "expected_health": "expected_health.json",
     },
 }
 
@@ -210,6 +253,16 @@ def validate_baseline(name: str, folder: Path) -> list[str]:
     elif not spec["check"](run):
         errors.append(f"{name}: scenario check failed ({spec['label']})")
 
+    expected_health = spec.get("expected_health")
+    if expected_health:
+        path = folder / str(expected_health)
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            errors.append(f"{name}: {expected_health}: {exc}")
+        else:
+            errors.extend(f"{name}: {err}" for err in _check_bridge_degraded_payload(payload))
+
     return errors
 
 
@@ -245,7 +298,21 @@ def probe_api_health() -> tuple[int, list[str]]:
     agents = payload.get("agents") or []
     if len(agents) < 3:
         return 1, [f"API health agents expected 3+, got {len(agents)}"]
-    return 0, []
+
+    probe_url = f"{API}/api/health?probe_bridge=true&probe_preflight=true"
+    try:
+        with urllib.request.urlopen(probe_url, timeout=8) as resp:
+            probe_payload = json.loads(resp.read().decode("utf-8"))
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+        return 0, [f"API bridge degraded check skipped (probe unavailable): {exc}"]
+
+    cursor = _cursor_row(probe_payload)
+    if not cursor or (cursor.get("bridge") != "error" and cursor.get("degraded") is not True):
+        return 0, ["API bridge degraded check skipped (cursor bridge not degraded)"]
+    shape_errors = _check_bridge_degraded_payload(probe_payload)
+    if shape_errors:
+        return 1, [f"API bridge degraded shape: {err}" for err in shape_errors]
+    return 0, ["API bridge degraded shape OK"]
 
 
 def main() -> int:

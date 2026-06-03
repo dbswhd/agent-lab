@@ -114,6 +114,13 @@ def _execute_first_try_rate(
     }
 
 
+def _execute_retry_rate(exec_counts: dict[str, int]) -> float | None:
+    terminal = int(exec_counts.get("terminal") or 0)
+    if terminal == 0:
+        return None
+    return int(exec_counts.get("retried") or 0) / terminal
+
+
 def _execute_merge_kpis(
     run_meta: dict[str, Any],
 ) -> tuple[dict[str, float | None], dict[str, int]]:
@@ -265,6 +272,7 @@ def score_session(folder: Path) -> dict[str, Any]:
     scores: dict[str, float | None] = {
         "objection_resolution_rate": obj_rate,
         "execute_first_try_rate": exec_rate,
+        "execute_retry_rate": _execute_retry_rate(exec_counts),
         "ref_validity_rate": ref_rate,
         "duplicate_speech_rate": dup_rate,
         "partial_turn_rate": partial_rate,
@@ -320,6 +328,10 @@ def _format_summary_lines(
     lines.append(
         f"  execute first-try: {_pct(scores['execute_first_try_rate'])} "
         f"({exec_counts.get('first_try', 0)}/{exec_counts.get('terminal', 0)} terminal)"
+    )
+    lines.append(
+        f"  execute retry: {_pct(scores.get('execute_retry_rate'))} "
+        f"({exec_counts.get('retried', 0)}/{exec_counts.get('terminal', 0)} terminal)"
     )
     lines.append(
         f"  worktree usage: {_pct(scores['worktree_usage_rate'])} "

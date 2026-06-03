@@ -1,0 +1,27 @@
+{
+  "workflow_id": "room.parallel",
+  "run_schema_version": 1,
+  "plan_format_version": 1,
+  "topic": "R3 specialist asymmetric cwd",
+  "created_at": "2026-06-03T00:00:00+00:00",
+  "agents": ["cursor", "codex", "claude"],
+  "status": "completed",
+  "message_count": 1,
+  "agent_parallel_rounds": 2,
+  "turn_profile": "specialist",
+  "agent_capabilities": {
+    "cursor": { "tools": ["sdk_edit"], "cwd_role": "execute" },
+    "codex": { "tools": ["codex_cli"], "cwd_role": "repo" },
+    "claude": { "tools": ["read_only"], "cwd_role": "review" }
+  },
+  "turns": [
+    {
+      "mode": "discuss",
+      "turn_profile": "specialist",
+      "status": "completed"
+    }
+  ],
+  "actions": [],
+  "approvals": [],
+  "executions": []
+}

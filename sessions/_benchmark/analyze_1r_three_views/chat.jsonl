@@ -1,0 +1,4 @@
+{"role":"user","content":"Compare three implementation risks for an offline score CI change.","ts":"2026-06-03T00:00:00+00:00"}
+{"role":"agent","agent":"cursor","content":"Cursor view: wire CI first and keep changes scoped to fixture-only commands.","parallel_round":1,"ts":"2026-06-03T00:00:01+00:00"}
+{"role":"agent","agent":"codex","content":"Codex view: add parser-level assertions so score JSON shape cannot regress.","parallel_round":1,"ts":"2026-06-03T00:00:02+00:00"}
+{"role":"agent","agent":"claude","content":"Claude view: document the benchmark boundary and avoid live provider dependencies.","parallel_round":1,"ts":"2026-06-03T00:00:03+00:00"}

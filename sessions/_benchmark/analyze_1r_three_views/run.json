@@ -1,0 +1,23 @@
+{
+  "workflow_id": "room.parallel",
+  "run_schema_version": 1,
+  "plan_format_version": 1,
+  "topic": "R1 analyze one round with three views",
+  "created_at": "2026-06-03T00:00:00+00:00",
+  "agents": ["cursor", "codex", "claude"],
+  "status": "completed",
+  "message_count": 4,
+  "agent_parallel_rounds": 1,
+  "turns": [
+    {
+      "mode": "discuss",
+      "synthesize": false,
+      "status": "completed",
+      "turn_profile": "analyze",
+      "agent_parallel_rounds": 1
+    }
+  ],
+  "actions": [],
+  "approvals": [],
+  "executions": []
+}

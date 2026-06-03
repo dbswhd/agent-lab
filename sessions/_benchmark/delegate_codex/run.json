@@ -1,0 +1,37 @@
+{
+  "workflow_id": "room.parallel",
+  "run_schema_version": 1,
+  "plan_format_version": 1,
+  "topic": "R4 delegate codex",
+  "created_at": "2026-06-03T00:00:00+00:00",
+  "agents": ["cursor", "codex", "claude"],
+  "status": "completed",
+  "message_count": 3,
+  "agent_parallel_rounds": 1,
+  "turns": [
+    {
+      "mode": "discuss",
+      "synthesize": false,
+      "status": "completed"
+    }
+  ],
+  "last_delegate": {
+    "agent": "codex",
+    "prompt": "run benchmark parser smoke",
+    "artifact_id": "art-delegate-codex",
+    "replaced_full_round": true
+  },
+  "actions": [],
+  "approvals": [],
+  "executions": [],
+  "artifacts": [
+    {
+      "id": "art-delegate-codex",
+      "producer": "codex",
+      "kind": "delegate",
+      "summary": "DELEGATE: run benchmark parser smoke",
+      "refs": ["delegate"],
+      "parallel_round": 1
+    }
+  ]
+}

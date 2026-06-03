@@ -1,0 +1,3 @@
+{"role":"user","content":"DELEGATE codex: \"run benchmark parser smoke\"","ts":"2026-06-03T00:00:00+00:00"}
+{"role":"agent","agent":"codex","content":"Delegate result: parser smoke passed.","parallel_round":1,"ts":"2026-06-03T00:00:01+00:00"}
+{"role":"system","content":"[delegate · codex]\ntask: run benchmark parser smoke\nartifact: art-delegate-codex — DELEGATE: run benchmark parser smoke","visibility":"peer","parallel_round":1,"ts":"2026-06-03T00:00:02+00:00"}

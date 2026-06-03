@@ -1,0 +1,20 @@
+{"role":"user","content":"turn 1","ts":"2026-06-03T00:00:01+00:00"}
+{"role":"agent","agent":"cursor","content":"turn 1 response","parallel_round":1,"ts":"2026-06-03T00:00:01+00:00"}
+{"role":"user","content":"turn 2","ts":"2026-06-03T00:00:02+00:00"}
+{"role":"agent","agent":"codex","content":"turn 2 response","parallel_round":1,"ts":"2026-06-03T00:00:02+00:00"}
+{"role":"user","content":"turn 3","ts":"2026-06-03T00:00:03+00:00"}
+{"role":"agent","agent":"claude","content":"turn 3 response","parallel_round":1,"ts":"2026-06-03T00:00:03+00:00"}
+{"role":"user","content":"turn 4","ts":"2026-06-03T00:00:04+00:00"}
+{"role":"agent","agent":"cursor","content":"turn 4 response","parallel_round":1,"ts":"2026-06-03T00:00:04+00:00"}
+{"role":"user","content":"turn 5","ts":"2026-06-03T00:00:05+00:00"}
+{"role":"agent","agent":"codex","content":"turn 5 response","parallel_round":1,"ts":"2026-06-03T00:00:05+00:00"}
+{"role":"user","content":"turn 6","ts":"2026-06-03T00:00:06+00:00"}
+{"role":"agent","agent":"claude","content":"turn 6 response","parallel_round":1,"ts":"2026-06-03T00:00:06+00:00"}
+{"role":"user","content":"turn 7","ts":"2026-06-03T00:00:07+00:00"}
+{"role":"agent","agent":"cursor","content":"turn 7 response","parallel_round":1,"ts":"2026-06-03T00:00:07+00:00"}
+{"role":"user","content":"turn 8","ts":"2026-06-03T00:00:08+00:00"}
+{"role":"agent","agent":"codex","content":"turn 8 response","parallel_round":1,"ts":"2026-06-03T00:00:08+00:00"}
+{"role":"user","content":"turn 9","ts":"2026-06-03T00:00:09+00:00"}
+{"role":"agent","agent":"claude","content":"turn 9 response","parallel_round":1,"ts":"2026-06-03T00:00:09+00:00"}
+{"role":"user","content":"turn 10","ts":"2026-06-03T00:00:10+00:00"}
+{"role":"agent","agent":"cursor","content":"turn 10 response","parallel_round":1,"ts":"2026-06-03T00:00:10+00:00"}

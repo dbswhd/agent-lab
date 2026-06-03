@@ -7,6 +7,9 @@ from pathlib import Path
 
 from agent_lab.session_score import score_session
 
+ROOT = Path(__file__).resolve().parents[1]
+REGRESSION = ROOT / "sessions" / "_regression"
+
 
 def _write_session(
     folder: Path,
@@ -150,6 +153,40 @@ def test_partial_turn_rate(tmp_path: Path):
     assert report["scores"]["partial_turn_rate"] == 0.5
     assert report["counts"]["turns"]["partial"] == 1
     assert any("partial turns" in line for line in report["summary_lines"])
+
+
+def test_specialist_capability_cwd_kpis_from_fixture():
+    report = score_session(REGRESSION / "specialist_asymmetric_cwd")
+
+    assert report["scores"]["specialist_context_recorded"] == 1.0
+    assert report["scores"]["asymmetric_capability_cwd"] == 1.0
+    assert report["scores"]["capability_cwd_agent_count"] == 3.0
+    assert report["counts"]["capability_cwd"]["agent_count"] == 3
+    assert report["counts"]["capability_cwd"]["distinct_cwd"] == 3
+    assert any("specialist context cwd" in line for line in report["summary_lines"])
+
+
+def test_specialist_capability_cwd_missing_is_recorded_false(tmp_path: Path):
+    folder = tmp_path / "sess-specialist-missing-cwd"
+    _write_session(
+        folder,
+        run={
+            "turn_profile": "specialist",
+            "last_turn": {
+                "turn_profile": "specialist",
+                "context": {"agents": [{"agent": "codex", "parallel_round": 1}]},
+            },
+        },
+        chat_lines=[{"role": "user", "content": "go"}],
+        plan_md="## 합의\n",
+    )
+
+    report = score_session(folder)
+
+    assert report["scores"]["specialist_context_recorded"] == 0.0
+    assert report["scores"]["asymmetric_capability_cwd"] == 0.0
+    assert report["scores"]["capability_cwd_agent_count"] == 0.0
+    assert report["counts"]["capability_cwd"]["specialist_contexts"] == 1
 
 
 def test_ref_validity_and_duplicate_speech(tmp_path: Path):

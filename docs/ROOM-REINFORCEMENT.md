@@ -14,7 +14,7 @@
 |------|------|------|
 | 교차 검증 턴 비율 | ✅ E-smoke: `challenge_revises_metric` CI smoke 고정 | 회귀 fixture에서 ≥1건 CHALLENGE→수정 자동 검출 |
 | BLOCK/CHALLENGE가 다음 행동 변경 | ✅ E-smoke: `objection_blocks_execute` + challenge task block CI smoke 고정 | execute·consensus·task claim 중 ≥1 경로 hard 연동 |
-| 에이전트 비대칭 컨텍스트 | ✅ F-R3: specialist fixture/smoke가 `capability_cwd` meta 비대칭 고정 | ≥2 에이전트 서로 다른 cwd/툴 블록 |
+| 에이전트 비대칭 컨텍스트 | ✅ F-R3/F-R3-ops: `capability_cwd` meta 비대칭을 fixture/smoke + 실사용 KPI로 누적 | ≥2 에이전트 서로 다른 cwd/툴 블록 |
 | 비용 대비 | ~3× 호출 | ✅ H2: quick/analyze는 낮은 호출 유지, "풀 팀"은 명시 opt-in |
 | Human 신뢰 | plan = Scribe 1패스 | plan에 에이전트별 기여·미해결 BLOCK 섹션 |
 
@@ -300,10 +300,11 @@ CI: `pytest tests/ -q` + `scripts/smoke_room.py` (16 baselines) + `check_worktre
 - objection 해결률
 - execute 1회 성공률
 - partial turn 비율
+- specialist `capability_cwd` 비대칭률
 - ref 유효률
 - 중복 발화률
 
-주간 리포트: `python scripts/score_sessions_weekly.py` 또는 `make score-weekly` — 실사용 `sessions/*` 롤업 + M4 마일스톤(objection ≥80%, execute retry <30%). `--include-fixtures`로 회귀 샘플 검증. H-P1에서 단건 `score_session` CI smoke 연결됨.
+주간 리포트: `python scripts/score_sessions_weekly.py` 또는 `make score-weekly` — 실사용 `sessions/*` 롤업 + M4 마일스톤(objection ≥80%, execute retry <30%) + specialist cwd 비대칭률. `--include-fixtures`로 회귀 샘플 검증. H-P1에서 단건 `score_session` CI smoke 연결됨.
 
 ---
 
@@ -363,5 +364,6 @@ CI: `pytest tests/ -q` + `scripts/smoke_room.py` (16 baselines) + `check_worktre
 2. ~~**실사용 KPI**~~ — `score_sessions_weekly.py` + `make score-weekly` + M4 gates ✅
 3. ~~**Live execute**~~ — `scripts/live_cursor_worktree_dry_run.py` + `docs/LIVE-CURSOR-WORKTREE-DRY-RUN.md` ✅
 4. ~~**F 비대칭**~~ — payload meta `capability_cwd` 실세션 벤치 (R3) — smoke/benchmark 확장 ✅
+5. ~~**F-R3-ops**~~ — `capability_cwd` 비대칭을 `score_session`/weekly KPI에 누적 ✅
 
 ~~**Room P0**~~ · ~~**F2 R-P1**~~ · ~~**H-P1/H-P2/H-P3**~~ · ~~**H2**~~ · ~~**E-smoke**~~ · ~~**ops lifespan/router**~~ · ~~**UX-P2**~~ · ~~**Phase I M1–M4**~~ — 완료.

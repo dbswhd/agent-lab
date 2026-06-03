@@ -14,6 +14,8 @@ if str(_ROOT / "src") not in sys.path:
 from agent_lab.session_score_weekly import (  # noqa: E402
     build_weekly_report,
     default_sessions_root,
+    format_weekly_report_markdown,
+    weekly_report_artifact_paths,
 )
 
 
@@ -23,6 +25,8 @@ def main() -> int:
     strict = "--strict" in argv
     include_fixtures = "--include-fixtures" in argv
     write_path: Path | None = None
+    write_md_path: Path | None = None
+    write_artifacts_dir: Path | None = None
     days = 7
     root = default_sessions_root()
 
@@ -44,6 +48,14 @@ def main() -> int:
             write_path = Path(argv[i + 1]).expanduser()
             i += 2
             continue
+        if arg == "--write-md" and i + 1 < len(argv):
+            write_md_path = Path(argv[i + 1]).expanduser()
+            i += 2
+            continue
+        if arg == "--write-artifacts" and i + 1 < len(argv):
+            write_artifacts_dir = Path(argv[i + 1]).expanduser()
+            i += 2
+            continue
         if arg in ("-h", "--help"):
             print(_USAGE, file=sys.stderr)
             return 0
@@ -60,10 +72,23 @@ def main() -> int:
         days=days,
         include_fixtures=include_fixtures,
     )
+    artifact_paths: dict[str, Path] = {}
+    if write_artifacts_dir is not None:
+        end = str((report.get("period") or {}).get("end") or "latest")
+        artifact_paths = weekly_report_artifact_paths(end, write_artifacts_dir)
+        write_path = artifact_paths["json"]
+        write_md_path = artifact_paths["md"]
+
     if write_path:
         write_path.parent.mkdir(parents=True, exist_ok=True)
         write_path.write_text(
             json.dumps(report, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+    if write_md_path:
+        write_md_path.parent.mkdir(parents=True, exist_ok=True)
+        write_md_path.write_text(
+            format_weekly_report_markdown(report),
             encoding="utf-8",
         )
 
@@ -87,6 +112,9 @@ def main() -> int:
             print("Errors:", file=sys.stderr)
             for err in report["errors"]:
                 print(f"  {err}", file=sys.stderr)
+        if write_md_path:
+            print("")
+            print(_ops_line(report, write_md_path))
 
     if strict:
         m4 = report.get("m4_milestones") or {}
@@ -101,6 +129,20 @@ def _fmt(value: float | None) -> str:
     return f"{value * 100:.0f}%"
 
 
+def _ops_line(report: dict, md_path: Path) -> str:
+    m4 = report.get("m4_milestones") or {}
+    scores = ((report.get("aggregate") or {}).get("scores") or {})
+    counts = (((report.get("aggregate") or {}).get("counts") or {}).get("capability_cwd") or {})
+    status = "PASS" if m4.get("overall_pass") is True else "FAIL" if m4.get("overall_pass") is False else "n/a"
+    return (
+        "Ops: "
+        f"M4={status} | "
+        f"cwd asymmetry={_fmt(scores.get('asymmetric_capability_cwd_rate'))} "
+        f"({counts.get('asymmetric', 0)}/{counts.get('specialist_contexts', 0)}) | "
+        f"report: {md_path}"
+    )
+
+
 _USAGE = """Usage: score_sessions_weekly.py [options]
 
 Options:
@@ -109,6 +151,8 @@ Options:
   --include-fixtures    Include sessions/_regression and _benchmark
   --json                Machine-readable report on stdout
   --write PATH          Also write JSON report to PATH
+  --write-md PATH       Also write Markdown ops report to PATH
+  --write-artifacts DIR Write weekly-YYYY-MM-DD.json and .md to DIR
   --strict              Exit 2 when applicable M4 milestones fail
   -h, --help
 

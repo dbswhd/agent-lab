@@ -365,5 +365,6 @@ CI: `pytest tests/ -q` + `scripts/smoke_room.py` (16 baselines) + `check_worktre
 3. ~~**Live execute**~~ — `scripts/live_cursor_worktree_dry_run.py` + `docs/LIVE-CURSOR-WORKTREE-DRY-RUN.md` ✅
 4. ~~**F 비대칭**~~ — payload meta `capability_cwd` 실세션 벤치 (R3) — smoke/benchmark 확장 ✅
 5. ~~**F-R3-ops**~~ — `capability_cwd` 비대칭을 `score_session`/weekly KPI에 누적 ✅
+6. ~~**H4-ops**~~ — weekly M4 + F-R3 Markdown/JSON 운영 artifact export ✅
 
 ~~**Room P0**~~ · ~~**F2 R-P1**~~ · ~~**H-P1/H-P2/H-P3**~~ · ~~**H2**~~ · ~~**E-smoke**~~ · ~~**ops lifespan/router**~~ · ~~**UX-P2**~~ · ~~**Phase I M1–M4**~~ — 완료.

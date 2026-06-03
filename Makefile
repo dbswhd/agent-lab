@@ -52,7 +52,12 @@ score-session:
 	.venv/bin/python scripts/score_session.py "$(SESSION)"
 
 score-weekly:
-	.venv/bin/python scripts/score_sessions_weekly.py --days $${DAYS:-7} $(if $(INCLUDE_FIXTURES),--include-fixtures,)
+	@if [ "$${REPORT:-1}" = "0" ]; then \
+		.venv/bin/python scripts/score_sessions_weekly.py --days $${DAYS:-7} $(if $(INCLUDE_FIXTURES),--include-fixtures,); \
+	else \
+		REPORT_DIR="$${AGENT_LAB_WEEKLY_REPORT_DIR:-sessions/_reports}"; \
+		.venv/bin/python scripts/score_sessions_weekly.py --days $${DAYS:-7} $(if $(INCLUDE_FIXTURES),--include-fixtures,) --write-artifacts "$$REPORT_DIR"; \
+	fi
 
 live-worktree-dry-run:
 	@test "$$AGENT_LAB_RUN_LIVE" = "1" || (echo "Set AGENT_LAB_RUN_LIVE=1 before live Cursor spike" && exit 1)

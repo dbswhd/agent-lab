@@ -309,11 +309,106 @@ def _pct(value: float | None) -> str:
     return f"{value * 100:.0f}%"
 
 
+def _status(value: bool | None) -> str:
+    if value is True:
+        return "PASS"
+    if value is False:
+        return "FAIL"
+    return "n/a"
+
+
 def _milestone_line(name: str, row: dict[str, Any]) -> str:
     if not row.get("applicable"):
         return f"  {name}: n/a (no data this window)"
     status = "PASS" if row.get("pass") else "FAIL"
     return f"  {name}: {_pct(row.get('value'))} — M4 {status} ({row.get('target')})"
+
+
+def weekly_report_artifact_paths(end_date: str, base_dir: Path) -> dict[str, Path]:
+    """Default JSON/Markdown artifact paths for a weekly report end date."""
+    base = base_dir.expanduser()
+    stem = f"weekly-{end_date}"
+    return {
+        "json": base / f"{stem}.json",
+        "md": base / f"{stem}.md",
+    }
+
+
+def format_weekly_report_markdown(report: dict[str, Any]) -> str:
+    """Render a compact operations report for weekly KPI review."""
+    period = report.get("period") or {}
+    aggregate = report.get("aggregate") or {}
+    scores = aggregate.get("scores") or {}
+    counts = aggregate.get("counts") or {}
+    m4 = report.get("m4_milestones") or {}
+    capability = counts.get("capability_cwd") or {}
+    sessions = report.get("sessions") or []
+    errors = report.get("errors") or []
+
+    lines = [
+        "# Agent Lab Weekly Ops Report",
+        "",
+        "## Period",
+        "",
+        f"- Window: {period.get('start', 'n/a')} .. {period.get('end', 'n/a')} ({period.get('days', 'n/a')} days)",
+        f"- Sessions dir: `{report.get('sessions_dir', 'n/a')}`",
+        f"- Sessions scored: {len(sessions)}",
+        f"- Include fixtures: {bool(report.get('include_fixtures'))}",
+        "",
+        "## M4 Milestones",
+        "",
+        "| Gate | Value | Target | Status |",
+        "|------|-------|--------|--------|",
+    ]
+    for label, key in (
+        ("Objection resolution", "objection_resolution"),
+        ("Execute retry", "execute_retry"),
+    ):
+        row = m4.get(key) or {}
+        lines.append(
+            f"| {label} | {_pct(row.get('value'))} | {row.get('target', 'n/a')} | {_status(row.get('pass'))} |"
+        )
+    lines.extend(
+        [
+            f"| Overall | - | applicable gates: {m4.get('applicable_count', 0)} | {_status(m4.get('overall_pass'))} |",
+            "",
+            "## F-R3 Ops",
+            "",
+            "| Metric | Value | Count |",
+            "|--------|-------|-------|",
+            (
+                "| Specialist context recorded | "
+                f"{_pct(scores.get('specialist_context_recorded_rate'))} | "
+                f"{capability.get('recorded', 0)}/{capability.get('specialist_contexts', 0)} contexts |"
+            ),
+            (
+                "| Capability cwd asymmetry | "
+                f"{_pct(scores.get('asymmetric_capability_cwd_rate'))} | "
+                f"{capability.get('asymmetric', 0)}/{capability.get('specialist_contexts', 0)} contexts |"
+            ),
+            "",
+            "## Per Session",
+            "",
+            "| Session | Objection | Retry | cwd asymmetric | cwd recorded |",
+            "|---------|-----------|-------|----------------|--------------|",
+        ]
+    )
+    for row in sessions:
+        score_row = row.get("scores") or {}
+        lines.append(
+            "| "
+            f"`{row.get('session_id', '')}` | "
+            f"{_pct(score_row.get('objection_resolution_rate'))} | "
+            f"{_pct(score_row.get('execute_retry_rate'))} | "
+            f"{_pct(score_row.get('asymmetric_capability_cwd'))} | "
+            f"{_pct(score_row.get('specialist_context_recorded'))} |"
+        )
+    if errors:
+        lines.extend(["", "## Errors", ""])
+        for err in errors:
+            lines.append(f"- {err}")
+    lines.append("")
+    return "\n".join(lines)
 
 
 def build_weekly_report(

@@ -189,6 +189,50 @@ def _check_challenge_revises_metric(run: dict[str, Any]) -> bool:
     return any(str(row.get("task_id") or "") in blocked_task_ids for row in challenges)
 
 
+def _check_mailbox_handoff(run: dict[str, Any]) -> bool:
+    mailbox = run.get("mailbox") or []
+    if not isinstance(mailbox, list) or not mailbox:
+        return False
+    unread = run.get("mailbox_unread") or {}
+    if not isinstance(unread, dict):
+        return False
+    for row in mailbox:
+        if not isinstance(row, dict):
+            continue
+        target = str(row.get("to") or "").strip()
+        if not target or row.get("read") is not False:
+            continue
+        if int(unread.get(target) or 0) >= 1:
+            return bool(str(row.get("from") or "").strip() and str(row.get("body") or "").strip())
+    return False
+
+
+def _check_specialist_asymmetric_cwd(run: dict[str, Any]) -> bool:
+    if run.get("turn_profile") != "specialist":
+        return False
+    caps = run.get("agent_capabilities") or {}
+    if not isinstance(caps, dict) or len(caps) < 2:
+        return False
+    roles: set[str] = set()
+    for row in caps.values():
+        if not isinstance(row, dict):
+            continue
+        role = str(row.get("cwd_role") or "").strip()
+        if role:
+            roles.add(role)
+    if len(roles) < 2:
+        return False
+    turns = run.get("turns") or []
+    if not isinstance(turns, list) or not turns:
+        return True
+    return any(
+        isinstance(t, dict)
+        and t.get("mode") == "discuss"
+        and t.get("turn_profile") == "specialist"
+        for t in turns
+    )
+
+
 SCENARIOS: dict[str, dict[str, Any]] = {
     "discuss": {
         "label": "일반 discuss",
@@ -221,6 +265,30 @@ SCENARIOS: dict[str, dict[str, Any]] = {
         "workflow_ids": {"room", "room.parallel"},
         "required_keys": ("workflow_id", "run_schema_version", "objections", "tasks"),
         "requires_turns": False,
+    },
+    "mailbox_handoff": {
+        "label": "mailbox unread handoff",
+        "check": _check_mailbox_handoff,
+        "workflow_ids": {"room.parallel"},
+        "required_keys": (
+            "workflow_id",
+            "run_schema_version",
+            "turns",
+            "mailbox",
+            "mailbox_unread",
+        ),
+    },
+    "specialist_asymmetric_cwd": {
+        "label": "specialist asymmetric cwd roles",
+        "check": _check_specialist_asymmetric_cwd,
+        "workflow_ids": {"room", "room.parallel"},
+        "required_keys": (
+            "workflow_id",
+            "run_schema_version",
+            "turn_profile",
+            "agent_capabilities",
+            "turns",
+        ),
     },
     "worktree_merge_ok": {
         "label": "worktree merge ok",

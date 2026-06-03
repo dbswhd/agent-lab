@@ -1,6 +1,6 @@
 # Live Cursor worktree dry-run (M0 Go/No-Go)
 
-See [OPS-RUNBOOK.md](OPS-RUNBOOK.md) Tier B for when to run this check and how it fits with `make verify-ops`.
+See [OPS-RUNBOOK.md](OPS-RUNBOOK.md) Tier B for when to run this check and how it fits with `make verify-ops`. Tier C approve/merge coverage is in [LIVE-MERGE-OPERATOR.md](LIVE-MERGE-OPERATOR.md).
 
 Offline pytest proves worktree wiring with a mocked `cursor_agent.respond`. This runbook performs **one real** Cursor SDK call in an **isolated disposable git repo** so `main` in that repo stays clean until merge (here we **reject** after dry-run, so no merge).
 
@@ -76,3 +76,4 @@ Agent may or may not edit `src/spike.txt`; Go/No-Go is **mechanical isolation**,
 
 - Design: `docs/EXECUTE-WORKTREE-REFORM.md` §11 M0
 - Code: `src/agent_lab/live_execute_spike.py`, `scripts/live_cursor_worktree_dry_run.py`
+- Tier C merge: `docs/LIVE-MERGE-OPERATOR.md`, `scripts/live_cursor_worktree_merge_run.py`

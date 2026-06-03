@@ -68,3 +68,21 @@ def test_verify_ops_live_can_skip_regression_preflight():
     assert "make verify-ops REPORT=0" in out
     assert "make ci" not in out
     assert "scripts/live_cursor_worktree_dry_run.py --write" in out
+
+
+def test_verify_ops_live_merge_dry_run_wires_preflight_guard_and_report():
+    out = _make_dry_run("verify-ops-live-merge")
+
+    assert "make verify-ops REPORT=0" in out
+    assert "AGENT_LAB_RUN_LIVE=1" in out
+    assert "scripts/live_cursor_worktree_merge_run.py --write" in out
+    assert "live-merge-$(date -u +%F).json" in out
+    assert "Live merge ops report:" in out
+
+
+def test_verify_ops_live_merge_can_skip_regression_preflight():
+    out = _make_dry_run("verify-ops-live-merge", "SKIP_PREFLIGHT=1")
+
+    assert "make verify-ops REPORT=0" in out
+    assert "make ci" not in out
+    assert "scripts/live_cursor_worktree_merge_run.py --write" in out

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
@@ -46,6 +47,8 @@ from agent_lab.session_guidance import (
     sync_session_meta,
 )
 
+ARTIFACT_ONLY_RECENT_MAX_CHARS = 1200
+
 
 @dataclass
 class ContextBundleMeta:
@@ -70,6 +73,9 @@ class ContextBundleMeta:
     slim_context: bool = False
     pin_capped: bool = False
     capability_cwd: str = ""
+    context_mode: str = "full"
+    recent_max_chars: int | None = None
+    peer_suppressed: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         row = {
@@ -93,9 +99,14 @@ class ContextBundleMeta:
             "efficiency_mode": self.efficiency_mode,
             "slim_context": self.slim_context,
             "pin_capped": self.pin_capped,
+            "context_mode": self.context_mode,
         }
         if self.capability_cwd:
             row["capability_cwd"] = self.capability_cwd
+        if self.recent_max_chars is not None:
+            row["recent_max_chars"] = self.recent_max_chars
+        if self.peer_suppressed:
+            row["peer_suppressed"] = True
         return row
 
 
@@ -143,6 +154,51 @@ class ContextBundle:
         return block
 
 
+def _latest_human_text(topic: str, messages: list[_MessageLike]) -> tuple[str, bool]:
+    last_user: _MessageLike | None = None
+    for m in reversed(messages):
+        if m.role == "user":
+            last_user = m
+            break
+    human_text = (last_user.content if last_user else topic).strip()
+    if len(human_text) > ARTIFACT_ONLY_RECENT_MAX_CHARS:
+        human_text = human_text[: ARTIFACT_ONLY_RECENT_MAX_CHARS - 1] + "…"
+    return human_text, last_user is not None
+
+
+def _build_human_only_recent_block(
+    topic: str,
+    messages: list[_MessageLike],
+) -> tuple[str, bool]:
+    human_text, has_user = _latest_human_text(topic, messages)
+    return (
+        "[이번 Human 질문 · 요약만]\n"
+        f"{human_text}\n\n"
+        "[이전 턴 대화는 생략 — follow_up의 앵커 제안과 constraints만 따르세요.]",
+        has_user,
+    )
+
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _artifact_only_context(
+    run_meta: dict[str, Any] | None,
+    agent: str,
+    parallel_round: int,
+) -> bool:
+    if not _env_bool("AGENT_LAB_F2_ARTIFACT_ONLY", True):
+        return False
+    if str(agent).strip().lower() != "cursor" or parallel_round < 2:
+        return False
+    profile = str((run_meta or {}).get("turn_profile") or "").strip().lower()
+    return profile == "specialist" or bool((run_meta or {}).get("research_mode"))
+
+
 def build_slim_consensus_bundle(
     topic: str,
     messages: list[_MessageLike],
@@ -160,19 +216,7 @@ def build_slim_consensus_bundle(
 
     limits = agent_context_limits()
     eff = efficiency_limits()
-    last_user: _MessageLike | None = None
-    for m in reversed(messages):
-        if m.role == "user":
-            last_user = m
-            break
-    human_text = (last_user.content if last_user else topic).strip()
-    if len(human_text) > 1200:
-        human_text = human_text[:1199] + "…"
-    recent_block = (
-        "[이번 Human 질문 · 요약만]\n"
-        f"{human_text}\n\n"
-        "[이전 턴 대화는 생략 — follow_up의 앵커 제안과 constraints만 따르세요.]"
-    )
+    recent_block, has_user = _build_human_only_recent_block(topic, messages)
     agreed = extract_agreed_bullets(plan_md)[: eff.max_agreed_items]
     open_bullets = extract_open_bullets(plan_md)[: eff.max_open_items]
     if run_meta is not None:
@@ -272,7 +316,7 @@ def build_slim_consensus_bundle(
     enrich_bundle_meta(
         meta,
         bundle,
-        messages_in_payload=1 if last_user else 0,
+        messages_in_payload=1 if has_user else 0,
         messages_in_turn=current_turn_message_count(messages),
         messages_in_session=count_messages(messages),
     )
@@ -318,7 +362,11 @@ def build_context_bundle(
 
     full = all_messages if all_messages is not None else messages
     limits = agent_context_limits()
-    thread_fmt = format_thread or agent_thread_formatter(full, numbered=limits.numbered_context)
+    thread_fmt = format_thread or agent_thread_formatter(
+        full,
+        numbered=limits.numbered_context,
+    )
+    artifact_only = _artifact_only_context(run_meta, agent, parallel_round)
 
     eff = efficiency_limits() if efficiency_mode else None
     pin_before = len(pinned_current_turn_messages(messages)) if efficiency_mode else 0
@@ -328,7 +376,10 @@ def build_context_bundle(
     pin_capped = efficiency_mode and pinned_count < pin_before
 
     peer_msgs = collect_peer_messages(messages, agent, parallel_round)
-    recent_msgs, peer_deduped = dedupe_peer_from_recent(trimmed, peer_msgs)
+    if artifact_only:
+        recent_msgs, peer_deduped = [], 0
+    else:
+        recent_msgs, peer_deduped = dedupe_peer_from_recent(trimmed, peer_msgs)
 
     agreed = extract_agreed_bullets(plan_md)
     open_bullets = extract_open_bullets(plan_md)
@@ -365,7 +416,10 @@ def build_context_bundle(
     if mailbox_block.strip():
         constraints = f"{constraints}\n\n{mailbox_block.strip()}"
     artifacts_block = build_artifacts_block(
-        run_meta, agent, parallel_round=parallel_round
+        run_meta,
+        agent,
+        parallel_round=parallel_round,
+        artifact_only=artifact_only,
     )
     if artifacts_block.strip():
         constraints = f"{constraints}\n\n{artifacts_block.strip()}"
@@ -379,23 +433,34 @@ def build_context_bundle(
         open_bullets=open_bullets,
         stale_line=plan_stale_banner(run_meta),
     )
-    turn_state_block = render_turn_state_block(
-        (run_meta or {}).get("turn_state")
+    turn_state_block = (
+        ""
+        if artifact_only
+        else render_turn_state_block((run_meta or {}).get("turn_state"))
     )
-    bridge_block = build_turn_bridge_block(
-        messages, parallel_round=parallel_round
-    )
-    recent_block, line_range = build_recent_turns_block(
-        topic=topic,
-        messages=recent_msgs,
-        format_thread=thread_fmt,
-        all_messages=full,
-        turns_omitted=turns_omitted,
-        chars_omitted=chars_omitted,
-        peer_deduped=peer_deduped,
-        numbered=limits.numbered_context,
-    )
-    peer_block = format_peer_block(peer_msgs)
+    if artifact_only:
+        bridge_block = ""
+        recent_block, has_user_in_recent = _build_human_only_recent_block(
+            topic, messages
+        )
+        line_range = ""
+        peer_block = ""
+    else:
+        has_user_in_recent = any(m.role == "user" for m in recent_msgs)
+        bridge_block = build_turn_bridge_block(
+            messages, parallel_round=parallel_round
+        )
+        recent_block, line_range = build_recent_turns_block(
+            topic=topic,
+            messages=recent_msgs,
+            format_thread=thread_fmt,
+            all_messages=full,
+            turns_omitted=turns_omitted,
+            chars_omitted=chars_omitted,
+            peer_deduped=peer_deduped,
+            numbered=limits.numbered_context,
+        )
+        peer_block = format_peer_block(peer_msgs)
 
     connect_hint = AGENT_CONNECT_HINT.get(agent, "").strip()
     guidance_parts = [CONVERSATION_GUIDANCE, MULTI_AGENT_COORDINATION, PEER_DECISION_GUIDANCE]
@@ -418,7 +483,13 @@ def build_context_bundle(
     )
 
     follow_up = ""
-    if peer_block:
+    if artifact_only:
+        follow_up = (
+            "[artifact-only R2]\n"
+            "full chat 없음 — artifacts와 이번 Human 질문만 근거로 답하세요. "
+            "R1 동료 발화 본문은 payload에 없으며 artifacts가 R1 산출물을 대체합니다."
+        )
+    elif peer_block:
         follow_up = (
             "같은 Human 턴 안에서 동료가 이미 말했습니다. "
             "[이번 턴 · 동료 발화]를 기준으로 이어서 답하고, 겹치는 내용은 짧게 넘기세요."
@@ -455,6 +526,11 @@ def build_context_bundle(
         slim_context=False,
         pin_capped=pin_capped,
         capability_cwd=agent_capability_cwd(agent, permissions, run_meta),
+        context_mode="artifact_only" if artifact_only else "full",
+        recent_max_chars=(
+            ARTIFACT_ONLY_RECENT_MAX_CHARS if artifact_only else None
+        ),
+        peer_suppressed=artifact_only,
     )
     bundle = ContextBundle(
         constraints=constraints,
@@ -486,7 +562,9 @@ def build_context_bundle(
     enrich_bundle_meta(
         meta,
         bundle,
-        messages_in_payload=len(recent_msgs),
+        messages_in_payload=(
+            1 if artifact_only and has_user_in_recent else len(recent_msgs)
+        ),
         messages_in_turn=current_turn_message_count(full),
         messages_in_session=count_messages(full),
     )

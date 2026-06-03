@@ -7,6 +7,8 @@ import os
 import queue
 import shutil
 import threading
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
@@ -102,7 +104,27 @@ TURN_PROFILES = frozenset({"quick", "analyze", "discuss", "review", "free", "spe
 
 setup_app_logging()
 
-app = FastAPI(title="Agent Lab API", version="0.1.0")
+
+def _api_startup() -> None:
+    from agent_lab.app_logging import write_boot_line
+
+    try:
+        payload = build_diagnostics_payload()
+        write_boot_line(
+            "uvicorn startup pid=%s port=%s sessions=%s"
+            % (payload["pid"], payload["port"], payload["sessions_dir"])
+        )
+    except Exception as exc:
+        write_boot_line(f"uvicorn startup diagnostics failed: {exc}")
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    _api_startup()
+    yield
+
+
+app = FastAPI(title="Agent Lab API", version="0.1.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -121,20 +143,6 @@ app.add_middleware(
 _run_lock = threading.Lock()
 _active_run = False
 # Room/classic worker runs use agent_lab.run_control.try_begin_run / end_run.
-
-
-@app.on_event("startup")
-def _api_startup() -> None:
-    from agent_lab.app_logging import write_boot_line
-
-    try:
-        payload = build_diagnostics_payload()
-        write_boot_line(
-            "uvicorn startup pid=%s port=%s sessions=%s"
-            % (payload["pid"], payload["port"], payload["sessions_dir"])
-        )
-    except Exception as exc:
-        write_boot_line(f"uvicorn startup diagnostics failed: {exc}")
 
 
 class RunRequest(BaseModel):

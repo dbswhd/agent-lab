@@ -14,6 +14,8 @@ Boot log path (macOS, matches Tauri `web/src-tauri/src/lib.rs`):
 
 API log: same directory, `agent-lab-api.log`.
 
+API startup uses FastAPI lifespan hooks. Startup diagnostics keep the same boot log behavior; shutdown is currently a no-op. Session detail loads still run stale worktree GC after reading `run.json`.
+
 When the UI shows **API offline**, open diagnostics (sidebar) or call `/api/diagnostics` from curl. Retry: `make dev`, `make tauri-dev`, or restart the packaged app so Tauri spawns uvicorn again.
 
 ## Port 8765 policy (stale listener)

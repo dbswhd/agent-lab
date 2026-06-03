@@ -39,6 +39,15 @@ def test_format_weekly_report_markdown_surfaces_m4_and_f_r3():
                 }
             },
         },
+        "live_ops_summary": {
+            "worktree": {
+                "kind": "worktree",
+                "file": "live-worktree-2026-06-03.json",
+                "date": "2026-06-03",
+                "status": "go",
+            },
+            "merge": None,
+        },
         "m4_milestones": {
             "objection_resolution": {
                 "value": 0.25,
@@ -66,6 +75,9 @@ def test_format_weekly_report_markdown_surfaces_m4_and_f_r3():
     assert "| Execute retry | 10% | <30% | PASS |" in md
     assert "## F-R3 Ops" in md
     assert "| Capability cwd asymmetry | 50% | 1/2 contexts |" in md
+    assert "## Last live checks" in md
+    assert "| Tier B worktree | 2026-06-03 | GO | `live-worktree-2026-06-03.json` |" in md
+    assert "| Tier C merge | n/a | — | — |" in md
     assert "`specialist_asymmetric_cwd`" in md
     assert "bad-session: run.json missing" in md
 

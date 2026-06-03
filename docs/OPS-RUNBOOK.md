@@ -16,6 +16,8 @@ This runs regression CI, checks execute worktree orphans, writes weekly JSON/Mar
 Ops report: sessions/_reports/weekly-YYYY-MM-DD.md
 ```
 
+The weekly Markdown includes **Last live checks** from the newest `live-worktree-*.json` and `live-merge-*.json` files in `sessions/_reports/`.
+
 Useful variants:
 
 | Command | Use |

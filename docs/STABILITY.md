@@ -310,7 +310,7 @@ VERIFY_RELEASE_SKIP_API=1 make verify-release
 |-------|----------|
 | **H1 Scribe input** | `synthesize_plan()` feeds per-agent diff summaries (`room_scribe_enrichment.py`), not full verbatim re-debate; fallback to trimmed numbered thread when no agent replies. Plan enrichment still adds `## 에이전트별 기여 (자동)` / `## 미해결 이의`. |
 | **H4 KPI** | `python scripts/score_session.py <session-folder>` — per-session metrics including `execute_retry_rate` and specialist `capability_cwd` asymmetry. `--json` for machine output. |
-| **Weekly KPI** | `make score-weekly` writes JSON+Markdown artifacts under `sessions/_reports/` by default. `python scripts/score_sessions_weekly.py [--days 7] [--write-artifacts sessions/_reports]` — pooled rollup + M4 milestone PASS/FAIL + specialist cwd asymmetry rate. `--strict` exits 2 on M4 fail. `--include-fixtures` for offline demo. |
+| **Weekly KPI** | `make score-weekly` writes JSON+Markdown artifacts under `sessions/_reports/` by default. `python scripts/score_sessions_weekly.py [--days 7] [--write-artifacts sessions/_reports]` — pooled rollup + M4 milestone PASS/FAIL + specialist cwd asymmetry rate + Last live checks from Tier B/C JSON. `--strict` exits 2 on M4 fail. `--include-fixtures` for offline demo. |
 | **Execute worktree guard** | `python scripts/check_worktree_orphans.py` — fails CI on orphan or terminal execute worktree dirs; pending approval worktrees are allowed. |
 
 ```bash
@@ -334,6 +334,7 @@ REPORT=0 make verify-ops
 ```
 
 `STRICT=1` passes through to weekly scoring and exits 2 when M4 milestones fail. `INCLUDE_FIXTURES=1` is for offline demos. `REPORT=0` skips artifact writing after CI + orphan checks. Weekly JSON/Markdown artifacts live under gitignored `sessions/_reports/`.
+The weekly Markdown has a **Last live checks** section showing the latest Tier B `live-worktree-*.json` and Tier C `live-merge-*.json` status when present.
 
 Tier B live worktree verification is opt-in and never runs in CI:
 

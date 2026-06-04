@@ -2,6 +2,36 @@
 
 Manual operations checks are split into tiers so CI-safe regression checks and live Cursor SDK checks stay separate.
 
+## P0 UI baseline — browser and Tauri are separate
+
+The automated browser smoke owns DOM assertions and baseline screenshots. It starts an
+isolated API/Vite pair against `sessions/_regression/ui_pending_diff`, then checks the
+session → plan → pending dry-run diff path.
+
+```bash
+make smoke-web-ui
+```
+
+Artifacts are written to `/tmp/agent-lab-ui-smoke/web/` by default. Override that with
+`AGENT_LAB_UI_ARTIFACT_DIR=/path/to/output`.
+
+The Tauri smoke is a separate, interactive real-window scenario. It validates the same
+read-only fixture and API contract, launches the actual macOS Tauri window, and asks the
+operator to confirm session selection → `plan · 승인` → open `로컬 diff` containing
+`P0_UI_DIFF_MARKER`.
+
+```bash
+make smoke-tauri-ui
+```
+
+This target intentionally stays out of `make ci`: macOS WebKit does not provide the DOM
+automation path used by the browser smoke, and the real-window check requires operator
+confirmation. Use `AGENT_LAB_TAURI_UI_SMOKE_LAUNCH_ONLY=1 make smoke-tauri-ui` only to
+verify launch/window/API wiring; it does not count as visual confirmation.
+
+Both targets require ports `8765` and their frontend port (`5173` or `1420`) to be free.
+Neither target performs a real dry-run or mutates a user session.
+
 ## Tier A — PR and weekly baseline
 
 Use Tier A for every PR before merge and for weekly local checks.

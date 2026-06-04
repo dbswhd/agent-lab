@@ -1,4 +1,4 @@
-.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test ci check-worktrees smoke smoke-e2e validate-quant verify-quant-workspace verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run init-project-memory
+.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test ci check-worktrees smoke smoke-e2e smoke-web-ui smoke-tauri-ui validate-quant verify-quant-workspace verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run init-project-memory
 
 install:
 	python3 -m venv .venv
@@ -127,6 +127,14 @@ smoke:
 
 smoke-e2e:
 	AGENT_LAB_MOCK_AGENTS=1 .venv/bin/python scripts/smoke_room_e2e.py
+
+smoke-web-ui:
+	chmod +x scripts/smoke_web_ui.sh
+	./scripts/smoke_web_ui.sh
+
+smoke-tauri-ui:
+	chmod +x scripts/smoke_tauri_ui.sh
+	./scripts/smoke_tauri_ui.sh
 
 validate-quant:
 	.venv/bin/python scripts/validate_quant_utility.py

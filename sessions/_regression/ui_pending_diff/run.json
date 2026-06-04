@@ -1,0 +1,57 @@
+{
+  "workflow_id": "room.parallel",
+  "run_schema_version": 1,
+  "plan_format_version": 1,
+  "topic": "P0 UI smoke · pending dry-run diff",
+  "created_at": "2026-06-05T00:00:00+00:00",
+  "agents": [
+    "cursor",
+    "codex",
+    "claude"
+  ],
+  "status": "active",
+  "message_count": 0,
+  "agent_parallel_rounds": 0,
+  "turns": [],
+  "actions": [
+    {
+      "action_id": "plan-action-now-1",
+      "index": 1,
+      "kind": "now",
+      "what": "pending dry-run diff를 UI에 노출",
+      "where": "`ui-smoke.txt`",
+      "verify": "plan 탭의 `로컬 diff`에서 `P0_UI_DIFF_MARKER` 확인"
+    }
+  ],
+  "approvals": [],
+  "executions": [
+    {
+      "id": "exec-ui-pending-diff",
+      "action_id": "plan-action-now-1",
+      "action_index": 1,
+      "action_kind": "now",
+      "action_what": "pending dry-run diff를 UI에 노출",
+      "action_where": "`ui-smoke.txt`",
+      "action_verify": "plan 탭의 `로컬 diff`에서 `P0_UI_DIFF_MARKER` 확인",
+      "status": "pending_approval",
+      "isolation_effective": "snapshot_override",
+      "workspace_root": "/tmp/agent-lab-ui-smoke",
+      "workspace_label": "P0 UI fixture",
+      "expected_paths": [
+        "ui-smoke.txt"
+      ],
+      "source_touched_paths": [
+        "ui-smoke.txt"
+      ],
+      "touched_paths": [
+        "ui-smoke.txt"
+      ],
+      "empty_source_diff": false,
+      "draft_summary": "P0 UI smoke fixture: dry-run diff가 승인 대기 상태입니다.",
+      "diff_stat": " ui-smoke.txt | 1 +\n 1 file changed, 1 insertion(+)",
+      "diff": "diff --git a/ui-smoke.txt b/ui-smoke.txt\nnew file mode 100644\nindex 0000000..86f877a\n--- /dev/null\n+++ b/ui-smoke.txt\n@@ -0,0 +1 @@\n+P0_UI_DIFF_MARKER\n",
+      "started_at": "2026-06-05T00:00:00+00:00",
+      "completed_at": "2026-06-05T00:00:01+00:00"
+    }
+  ]
+}

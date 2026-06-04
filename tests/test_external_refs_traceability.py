@@ -36,6 +36,8 @@ SHIPPED_ROWS: list[tuple[str, list[str]]] = [
     ),
     ("PI", ["src/agent_lab/plan_execute_worktree.py", "sessions/_regression/worktree_merge_ok"]),
     ("CON-diff", ["tests/test_plan_execute_revise_api.py", "web/src/components/PlanExecutePanel.tsx"]),
+    ("PI-executed", ["src/agent_lab/plan_execute_merge.py", "tests/test_executed_archive.py"]),
+    ("MD-P3", ["src/agent_lab/workspace_md.py", "tests/test_workspace_md.py"]),
     ("PI-ops", ["scripts/live_cursor_worktree_dry_run.py", "docs/OPS-RUNBOOK.md"]),
     ("PI-ops-C", ["scripts/live_cursor_worktree_merge_run.py", "docs/LIVE-MERGE-OPERATOR.md"]),
     ("E-smoke", ["scripts/smoke_room.py", "sessions/_regression/objection_blocks_execute"]),
@@ -63,6 +65,8 @@ DEV_TOOL_IDS = (
     "CON-diff",
     "MD-PLATFORM",
     "MD-PROJECT",
+    "MD-P3",
+    "PI-executed",
 )
 
 

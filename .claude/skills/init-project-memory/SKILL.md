@@ -12,6 +12,8 @@ Agent Lab 런타임은 `{workspace}/.agent-lab/PROJECT.md`를 `session_guidance`
 
 ## 1. Bootstrap (스크립트)
 
+Creates `.agent-lab/PROJECT.md`, workspace-root `AGENTS.md`, and `SHARED_CONTEXT.md`.
+
 ```bash
 TARGET="${1:-.}"
 .venv/bin/python scripts/init_project_memory.py "$TARGET"
@@ -22,7 +24,7 @@ TARGET="${1:-.}"
 .venv/bin/python scripts/init_project_memory.py "$TARGET" --overwrite
 ```
 
-미리보기만:
+미리보기 (PROJECT만):
 ```bash
 .venv/bin/python scripts/init_project_memory.py "$TARGET" --dry-run | head -40
 ```

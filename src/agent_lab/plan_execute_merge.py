@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
@@ -210,6 +212,42 @@ def _verify_literals(verify: str) -> list[str]:
         if text not in literals:
             literals.append(text)
     return literals
+
+
+def archive_executed_diff(
+    session_folder: Path,
+    *,
+    execution_id: str,
+    execution: dict[str, Any],
+) -> Path | None:
+    """Persist merged execution diff under ``sessions/<id>/executed/`` (PI-executed)."""
+    diff = str(execution.get("diff") or "").strip()
+    if not diff:
+        return None
+    out_dir = session_folder / "executed"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    dest = out_dir / f"{execution_id}.json"
+    if dest.is_file():
+        return dest
+    merge = execution.get("merge") if isinstance(execution.get("merge"), dict) else {}
+    payload = {
+        "execution_id": execution_id,
+        "action_id": execution.get("action_id"),
+        "action_index": execution.get("action_index"),
+        "commit_sha": merge.get("commit_sha"),
+        "merged_at": merge.get("completed_at") or _utc_now(),
+        "diff_stat": execution.get("diff_stat"),
+        "diff": diff[:500_000],
+    }
+    dest.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return dest
+
+
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
 def merge_exec_branch(

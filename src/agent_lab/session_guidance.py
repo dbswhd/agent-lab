@@ -336,9 +336,20 @@ def build_session_guidance_block(run_meta: dict[str, Any] | None) -> str:
             f"- Bound cwd: `{binding['path']}` ({label}). "
             "Codex `--add-dir`, Cursor bridge cwd, and plan execute must match this root."
         )
+        from agent_lab.workspace_md import (
+            read_agents_md_for_injection,
+            read_shared_context_for_injection,
+        )
+
+        shared = read_shared_context_for_injection(run_meta)
+        if shared:
+            parts.append(f"[SHARED_CONTEXT.md — workspace common]\n{shared}")
         project_md = _read_project_md(run_meta)
         if project_md:
             parts.append(f"[PROJECT.md — workspace memory]\n{project_md}")
+        agents_md = read_agents_md_for_injection(run_meta)
+        if agents_md:
+            parts.append(f"[AGENTS.md — Codex workspace guide]\n{agents_md}")
     if run_meta.get("layout_frozen"):
         parts.append(LAYOUT_FROZEN_GUIDANCE.strip())
     phase = run_meta.get("session_phase")

@@ -1,7 +1,7 @@
 # Agent Lab — UI/UX 방향 & 외주 가이드
 
-> **현재 구현:** [Figma macOS 26 UI Kit](https://www.figma.com/community/file/1543337041090580818/macos-26) 기준 — Liquid Glass 사이드바·타이틀바·세그먼트·인셋 리스트.  
-> 코드: `web/src/styles/tokens.css` + `macos26.css`
+> **현재 구현:** [Figma macOS 26 UI Kit](https://www.figma.com/community/file/1543337041090580818/macos-26) 기준. Liquid Glass는 타이틀바·사이드바·컨텍스트 인스펙터·popover에만 사용하고, 목록·문서·일반 패널은 solid 표면을 유지합니다.
+> 코드: `web/src/styles/tokens.css` + `macos26.css` + `chrome.css` + `content-surfaces.css`
 
 ---
 

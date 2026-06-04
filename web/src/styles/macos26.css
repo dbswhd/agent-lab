@@ -37,8 +37,6 @@ body.is-tauri .mac-app {
   display: flex;
   flex-direction: column;
   background: var(--mac-window-bg);
-  backdrop-filter: blur(38px) saturate(1.15);
-  -webkit-backdrop-filter: blur(38px) saturate(1.15);
   border-radius: var(--radius-window);
   box-shadow: var(--shadow-window);
   border: 0.5px solid var(--mac-separator-strong);
@@ -64,8 +62,6 @@ body.is-tauri .mac-window {
   column-gap: var(--space-sm);
   padding: env(safe-area-inset-top, 0px) var(--space-md) 0;
   background: var(--mac-titlebar-bg);
-  backdrop-filter: blur(20px) saturate(1.28);
-  -webkit-backdrop-filter: blur(20px) saturate(1.28);
   border-bottom: 0.5px solid var(--mac-separator);
 }
 
@@ -418,8 +414,6 @@ body.is-tauri .chat-list-header {
   inset: 0;
   z-index: 0;
   background: var(--lg-sidebar-surface);
-  backdrop-filter: blur(var(--lg-sidebar-blur)) saturate(var(--lg-sidebar-saturate));
-  -webkit-backdrop-filter: blur(var(--lg-sidebar-blur)) saturate(var(--lg-sidebar-saturate));
   box-shadow: var(--lg-sidebar-edge);
   pointer-events: none;
 }
@@ -539,8 +533,6 @@ body.is-tauri .chat-list-header {
 
 .chat-list-pane .session-row.selected {
   background: color-mix(in srgb, var(--lg-sidebar-surface-elevated) 88%, var(--mac-accent) 5%);
-  backdrop-filter: blur(10px) saturate(1.35);
-  -webkit-backdrop-filter: blur(10px) saturate(1.35);
   box-shadow:
     var(--lg-sidebar-edge),
     inset 0 0 0 0.5px var(--lg-sidebar-border);
@@ -596,23 +588,9 @@ body.is-tauri .chat-list-header {
   padding: 4px;
   border-radius: 12px;
   background: var(--lg-sidebar-surface-muted);
-  backdrop-filter: blur(var(--lg-sidebar-blur)) saturate(var(--lg-sidebar-saturate));
-  -webkit-backdrop-filter: blur(var(--lg-sidebar-blur)) saturate(var(--lg-sidebar-saturate));
   box-shadow:
     var(--lg-sidebar-edge),
     inset 0 0 0 0.5px var(--lg-sidebar-border);
-}
-
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .chat-list-pane::after {
-    background: var(--mac-sidebar-bg);
-    backdrop-filter: none;
-  }
-
-  .chat-list-pane .session-list-scroll .session-list {
-    background: var(--mac-fill-tertiary);
-    backdrop-filter: none;
-  }
 }
 
 /* ── Session setup (workspace / template) ───────────── */
@@ -621,8 +599,6 @@ body.is-tauri .chat-list-header {
   padding: 10px var(--space-md);
   border-bottom: 0.5px solid var(--mac-separator);
   background: var(--mac-toolbar-bg);
-  backdrop-filter: blur(18px) saturate(1.22);
-  -webkit-backdrop-filter: blur(18px) saturate(1.22);
 }
 
 .session-setup-bar--compact {
@@ -868,8 +844,6 @@ body.is-tauri .chat-list-header {
   padding: 6px var(--space-md);
   min-height: 36px;
   background: var(--mac-toolbar-bg);
-  backdrop-filter: blur(18px) saturate(1.22);
-  -webkit-backdrop-filter: blur(18px) saturate(1.22);
   border-bottom: 0.5px solid var(--mac-separator);
 }
 
@@ -913,8 +887,6 @@ body.is-tauri .chat-list-header {
   padding: 6px 8px;
   border-radius: var(--radius-large);
   background: var(--lg-sidebar-surface-muted);
-  backdrop-filter: blur(var(--lg-sidebar-blur)) saturate(var(--lg-sidebar-saturate));
-  -webkit-backdrop-filter: blur(var(--lg-sidebar-blur)) saturate(var(--lg-sidebar-saturate));
   box-shadow:
     var(--lg-sidebar-edge),
     inset 0 0 0 0.5px var(--lg-sidebar-border);
@@ -1129,8 +1101,6 @@ body.is-tauri .chat-list-header {
   min-height: 40px;
   padding: 5px var(--space-md);
   background: var(--mac-toolbar-bg);
-  backdrop-filter: blur(18px) saturate(1.22);
-  -webkit-backdrop-filter: blur(18px) saturate(1.22);
   border-bottom: 0.5px solid var(--mac-separator);
 }
 
@@ -1221,8 +1191,6 @@ body.is-tauri .chat-list-header {
   padding: 3px var(--space-md);
   border-bottom: 0.5px solid var(--mac-separator);
   background: var(--mac-toolbar-bg);
-  backdrop-filter: blur(18px) saturate(1.22);
-  -webkit-backdrop-filter: blur(18px) saturate(1.22);
 }
 
 .agent-picker--inline {
@@ -1395,8 +1363,6 @@ body.is-tauri .chat-list-header {
     color-mix(in srgb, var(--composer-capsule-fill-mid) 35%, transparent) 78%,
     transparent 100%
   );
-  backdrop-filter: blur(22px) saturate(1.55);
-  -webkit-backdrop-filter: blur(22px) saturate(1.55);
   -webkit-mask-image: linear-gradient(
     180deg,
     #000 0%,
@@ -1432,18 +1398,6 @@ body.is-tauri .chat-list-header {
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);
   mask-composite: exclude;
-}
-
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .composer-capsule {
-    background-color: var(--composer-capsule-bg);
-    background-image: linear-gradient(
-      180deg,
-      var(--composer-capsule-bg) 0%,
-      var(--composer-capsule-bg) 55%,
-      color-mix(in srgb, var(--composer-capsule-bg) 55%, transparent) 100%
-    );
-  }
 }
 
 .composer-capsule:focus-within::before {
@@ -1702,8 +1656,6 @@ body.is-tauri .chat-list-header {
   letter-spacing: var(--bubble-tracking);
   word-break: break-word;
   border: 0.5px solid transparent;
-  backdrop-filter: blur(var(--bubble-glass-blur)) saturate(var(--bubble-glass-saturate));
-  -webkit-backdrop-filter: blur(var(--bubble-glass-blur)) saturate(var(--bubble-glass-saturate));
 }
 
 .mac-bubble--sent {
@@ -1714,8 +1666,6 @@ body.is-tauri .chat-list-header {
   box-shadow: 0 1px 8px color-mix(in srgb, var(--color-bubble-sent) 22%, transparent);
   border-radius: var(--bubble-radius) var(--bubble-radius) var(--bubble-tail-radius)
     var(--bubble-radius);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
 }
 
 .mac-bubble--received {
@@ -1725,18 +1675,6 @@ body.is-tauri .chat-list-header {
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
   border-radius: var(--bubble-radius) var(--bubble-radius) var(--bubble-radius)
     var(--bubble-tail-radius);
-}
-
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .mac-bubble--sent {
-    background: var(--color-bubble-sent);
-    border-color: transparent;
-  }
-
-  .mac-bubble--received {
-    background: var(--color-bubble-received);
-    border-color: transparent;
-  }
 }
 
 .mac-bubble--typing {
@@ -1857,20 +1795,11 @@ body.is-tauri .chat-list-header {
 .bubble--system {
   background: var(--bubble-system-glass);
   border: 0.5px solid color-mix(in srgb, var(--mac-separator) 50%, transparent);
-  backdrop-filter: blur(14px) saturate(1.4);
-  -webkit-backdrop-filter: blur(14px) saturate(1.4);
   color: var(--color-bubble-system-text);
   font-family: var(--font-message);
   font-size: var(--text-caption);
   padding: var(--space-sm) var(--space-md);
   border-radius: var(--radius-pill);
-}
-
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .bubble--system {
-    background: var(--color-bubble-system);
-    border-color: transparent;
-  }
 }
 
 .bubble-md {
@@ -1989,21 +1918,7 @@ body.is-tauri .chat-list-header {
   background:
     linear-gradient(180deg, var(--chat-turn-glass-sheen) 0%, transparent 24%),
     var(--chat-turn-glass-surface);
-  backdrop-filter: blur(var(--chat-turn-glass-blur)) saturate(var(--chat-turn-glass-saturate));
-  -webkit-backdrop-filter: blur(var(--chat-turn-glass-blur))
-    saturate(var(--chat-turn-glass-saturate));
   box-shadow: var(--chat-turn-glass-shadow);
-}
-
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .chat-turn {
-    background: color-mix(
-      in srgb,
-      var(--mac-fill-tertiary) var(--chat-turn-glass-fill-mix),
-      var(--mac-content-bg)
-    );
-    border-color: transparent;
-  }
 }
 
 .chat-turn::after {
@@ -2048,8 +1963,6 @@ body.is-tauri .chat-list-header {
   box-sizing: border-box;
   background: color-mix(in srgb, var(--mac-label-primary) 7%, transparent);
   border: 0.5px solid color-mix(in srgb, var(--mac-separator) 40%, transparent);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
 }
 
 .chat-turn--cursor {
@@ -2255,20 +2168,8 @@ body.is-tauri .chat-list-header {
   border: none;
   outline: none;
   background: var(--lg-panel-surface);
-  backdrop-filter: blur(var(--lg-panel-blur)) saturate(var(--lg-panel-saturate));
-  -webkit-backdrop-filter: blur(var(--lg-panel-blur)) saturate(var(--lg-panel-saturate));
   box-shadow: var(--lg-panel-float-shadow);
   animation: lg-panel-in 0.22s ease-out;
-}
-
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .lg-panel {
-    background: var(--lg-panel-surface);
-  }
-
-  .lg-panel--warn {
-    background: var(--lg-panel-warn-surface);
-  }
 }
 
 @keyframes lg-panel-in {
@@ -2390,8 +2291,6 @@ body.is-tauri .chat-list-header {
   padding: 0;
   border: none;
   background: transparent;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
   box-shadow: none;
 }
 
@@ -2766,8 +2665,6 @@ body.is-tauri .chat-list-header {
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.25);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
 }
 
 .mac-alert {
@@ -2782,8 +2679,6 @@ body.is-tauri .chat-list-header {
   max-width: calc(100vw - 48px);
   max-height: calc(100vh - 48px);
   background: var(--mac-alert-bg);
-  backdrop-filter: blur(40px) saturate(1.8);
-  -webkit-backdrop-filter: blur(40px) saturate(1.8);
   border: 0.5px solid var(--mac-separator);
   border-radius: var(--mac-alert-radius);
   box-shadow:
@@ -2973,8 +2868,6 @@ body.is-tauri .chat-list-header {
   min-width: 194px;
   padding: 5px 12px;
   background: var(--mac-menu-surface);
-  backdrop-filter: blur(20px) saturate(1.4);
-  -webkit-backdrop-filter: blur(20px) saturate(1.4);
   border: 0.5px solid var(--mac-separator-strong);
   border-radius: var(--mac-radius-menu);
   box-shadow: var(--shadow-menu);
@@ -3038,8 +2931,6 @@ body.is-tauri .chat-list-header {
     linear-gradient(0deg, var(--lg-medium-tint), var(--lg-medium-tint)),
     var(--lg-medium-base);
   background-blend-mode: var(--lg-medium-blend);
-  backdrop-filter: blur(var(--mac-glass-blur)) saturate(var(--lg-sidebar-saturate));
-  -webkit-backdrop-filter: blur(var(--mac-glass-blur)) saturate(var(--lg-sidebar-saturate));
   box-shadow: var(--lg-medium-shadow);
 }
 
@@ -3049,8 +2940,6 @@ body.is-tauri .chat-list-header {
     linear-gradient(0deg, var(--lg-small-tint-2), var(--lg-small-tint-2)),
     var(--lg-small-base);
   background-blend-mode: var(--lg-small-blend);
-  backdrop-filter: blur(var(--lg-sidebar-blur)) saturate(var(--lg-sidebar-saturate));
-  -webkit-backdrop-filter: blur(var(--lg-sidebar-blur)) saturate(var(--lg-sidebar-saturate));
   box-shadow: var(--lg-medium-shadow);
 }
 
@@ -3161,8 +3050,6 @@ body.is-tauri .chat-list-header {
   padding: 12px 34px 12px 13px;
   gap: 12px;
   background: var(--mac-alert-bg);
-  backdrop-filter: blur(var(--mac-glass-blur)) saturate(1.65);
-  -webkit-backdrop-filter: blur(var(--mac-glass-blur)) saturate(1.65);
   border: 0.5px solid var(--mac-separator);
   box-shadow:
     0 0 0 0.5px rgba(0, 0, 0, 0.03),
@@ -3379,8 +3266,6 @@ body.is-tauri .chat-list-header {
   flex-direction: column;
   gap: 8px;
   background: var(--mac-menu-surface, var(--mac-window-bg));
-  backdrop-filter: blur(20px) saturate(1.4);
-  -webkit-backdrop-filter: blur(20px) saturate(1.4);
   border: 0.5px solid var(--mac-separator-strong);
   border-radius: var(--mac-radius-menu, var(--radius-control));
   box-shadow: var(--shadow-menu, var(--shadow-panel));

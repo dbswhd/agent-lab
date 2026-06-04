@@ -37,6 +37,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | CENT-durable | Centaur | Durable completed_steps resume | ✅ | `run_meta.py`, `room.py`, `sessions/_regression/durable_completed_steps/` | |
 | MD-PROJECT | Prompt | PROJECT.md workspace injection | ✅ | `session_guidance.py:_read_project_md()` | cap 1500 chars |
 | MD-PLATFORM | Prompt | PLATFORM.md protocol injection | ✅ | `.agent-lab/PLATFORM.md`, `platform_md.py`, `tests/test_platform_md.py` | inject cap 500 chars |
+| LC-clarifier | LazyCodex | session_clarifier Socratic gate | ✅ | `session_clarifier.py`, `room.py`, `tests/test_session_clarifier.py` | `AGENT_LAB_CLARIFIER=1`; discuss + plan mode |
 
 ---
 
@@ -44,7 +45,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 
 | ID | Source | Item | Status | Evidence | Gap | PLAN ref |
 |----|--------|------|--------|----------|-----|----------|
-| LC-clarifier | LazyCodex | session_clarifier Socratic gate | 🔶 | `session_clarifier.py` | Feature-flag off; plan mode not wired | Part 5 Phase 2 |
+| _(none)_ | — | — | — | — | — | — |
 
 ---
 
@@ -77,7 +78,6 @@ They are tracked here but do not belong in the runtime feature roadmap.
 
 | Priority | ID | Suggested next action |
 |----------|-----|-----------------------|
-| P2 | LC-clarifier | Wire `session_clarifier` to plan mode (flag on path) |
 | P2 | CC-hooks | `.claude/settings.json` PostEdit ruff + Stop pytest |
 
 ---

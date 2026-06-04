@@ -331,6 +331,9 @@ def build_session_guidance_block(run_meta: dict[str, Any] | None) -> str:
             f"- Bound cwd: `{binding['path']}` ({label}). "
             "Codex `--add-dir`, Cursor bridge cwd, and plan execute must match this root."
         )
+        project_md = _read_project_md(run_meta)
+        if project_md:
+            parts.append(f"[PROJECT.md — workspace memory]\n{project_md}")
     if run_meta.get("layout_frozen"):
         parts.append(LAYOUT_FROZEN_GUIDANCE.strip())
     phase = run_meta.get("session_phase")
@@ -341,6 +344,23 @@ def build_session_guidance_block(run_meta: dict[str, Any] | None) -> str:
     if phase == "layout" or run_meta.get("layout_frozen"):
         parts.append(RECIPE_GOLDEN_GUIDANCE.strip())
     return "\n\n".join(parts)
+
+
+def _read_project_md(run_meta: dict[str, Any]) -> str:
+    binding = run_meta.get("workspace_binding")
+    if not isinstance(binding, dict):
+        return ""
+    raw = binding.get("path")
+    if not raw:
+        return ""
+    project = Path(str(raw)) / ".agent-lab" / "PROJECT.md"
+    if not project.is_file():
+        return ""
+    try:
+        text = project.read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+    return text[:1500]
 
 
 def _file_sha256(path: Path, *, max_bytes: int = 65536) -> str:

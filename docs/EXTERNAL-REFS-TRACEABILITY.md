@@ -33,7 +33,9 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | UX-P2 | Room | Objection resolve UX | ✅ | `PlanExecutePanel.tsx`, `RoomTaskBar.tsx` | |
 | Bridge | Room | Cursor bridge degraded | ✅ | `sessions/_regression/bridge_degraded_health/`, H-P3 tests | |
 | CENT-env | Centaur | Subprocess env allowlist | ✅ | `src/agent_lab/subprocess_env.py`, `claude_cli.py`, `codex_cli.py`, `cursor_bridge.py`, `tests/test_subprocess_env.py` | [PLAN §3.2](EXTERNAL-REFS-PLAN.md#32-subprocess-credential-분리) |
-| CENT-durable | Centaur | Durable completed_steps resume | ✅ | `src/agent_lab/run_meta.py`, `room.py`, `sessions/_regression/durable_completed_steps/`, `tests/test_durable_completed_steps.py` | `_call_one_agent()` records step; resume skips via `completed_steps[]` |
+| LC-L4 | LazyCodex | Adversarial gate (mock + UI) | ✅ | `adversarial_gate.py`, `plan_execute.py`, `PlanExecutePanel.tsx`, `sessions/_regression/adversarial_gate_lgtm/` | Mock default; `AGENT_LAB_ADVERSARIAL_LIVE=1` for live Claude |
+| CENT-durable | Centaur | Durable completed_steps resume | ✅ | `run_meta.py`, `room.py`, `sessions/_regression/durable_completed_steps/` | |
+| MD-PROJECT | Prompt | PROJECT.md workspace injection | ✅ | `session_guidance.py:_read_project_md()` | cap 1500 chars |
 
 ---
 
@@ -41,18 +43,13 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 
 | ID | Source | Item | Status | Evidence | Gap | PLAN ref |
 |----|--------|------|--------|----------|-----|----------|
-| LC-L4 | LazyCodex | Adversarial gate (mock fixture) | 🔶 | `src/agent_lab/adversarial_gate.py`, `sessions/_regression/adversarial_gate_lgtm/`, `tests/test_adversarial_gate_fixture.py` | Mock-only skeleton; no live Claude, no UI wiring | [§1.5](EXTERNAL-REFS-PLAN.md#15-adversarial-gate-설계-layer-4-상세) |
-| LC-clarifier | LazyCodex | session_clarifier Socratic gate | 🔶 | `src/agent_lab/session_clarifier.py` | Feature-flag off (`AGENT_LAB_CLARIFIER`); plan mode not wired | [Part 5 Phase 2](EXTERNAL-REFS-PLAN.md#part-5--통합-우선순위-및-구현-계획) · [§1.3](EXTERNAL-REFS-PLAN.md#13-agent-lab에-도입할-loop-계층) |
+| LC-clarifier | LazyCodex | session_clarifier Socratic gate | 🔶 | `session_clarifier.py` | Feature-flag off; plan mode not wired | Part 5 Phase 2 |
 
 ---
 
 ## Future — fixture / smoke tickets (no code yet)
 
 These are **acceptance criteria only**. Do not add live LLM fixtures until the remaining layer design is ticketed.
-
-### Ticket: `project_md_injection` (MD-PROJECT)
-
-- **Spec:** `session_guidance.py:build_session_guidance_block()` reads `{workspace_root}/.agent-lab/PROJECT.md` (cap 1500 chars) and injects into agent payload. Per [PLAN §1.7](EXTERNAL-REFS-PLAN.md#17-agentsmd-계층--프로젝트-영속-메모리).
 
 ### Ticket: `platform_md_externalization` (MD-PLATFORM)
 
@@ -67,13 +64,13 @@ They are tracked here but do not belong in the runtime feature roadmap.
 
 | ID | Source | Item | Status | Evidence | Notes |
 |----|--------|------|--------|----------|-------|
-| CC-CLAUDE | Claude Code | `CLAUDE.md` dev guide | ⬜ | — | File not in repo yet; see [MD-WRITING-PLAN §파일1](MD-WRITING-PLAN.md) |
+| CC-CLAUDE | Claude Code | `CLAUDE.md` dev guide | ✅ | `CLAUDE.md` | Root dev guide; see MD-WRITING-PLAN |
 | CC-hooks | Claude Code | `.claude/settings.json` hooks | ⬜ | — | Dev-tool only; PostEdit ruff + Stop pytest |
 | CC-rules | Claude Code | `.claude/rules/*.md` path rules | ⬜ | — | python-backend, react-frontend; see [MD-WRITING-PLAN §파일2](MD-WRITING-PLAN.md) |
 | CC-skills | Claude Code | `.claude/skills/` subagent skills | ⬜ | — | smoke-and-score, regression-check, init-project-memory |
 | CON-diff | Conductor | Diff inline revise UI | ⬜ | `PlanExecutePanel.tsx` (approve/reject only) | UI-only; no `sessions/_regression/` fixture |
+| MD-PROJECT | Prompt | PROJECT.md workspace injection | ✅ | `session_guidance.py` | Shipped |
 | MD-PLATFORM | Prompt | PLATFORM.md externalization | ⬜ | — | Replaces hardcoded `prompts.py` constants |
-| MD-PROJECT | Prompt | PROJECT.md workspace injection | ⬜ | — | `session_guidance.py` hook needed |
 
 ---
 
@@ -81,9 +78,9 @@ They are tracked here but do not belong in the runtime feature roadmap.
 
 | Priority | ID | Suggested next action |
 |----------|-----|-----------------------|
-| P1 | LC-L4-runtime | Wire adversarial gate to live opt-in review + UI evidence |
-| P2 | MD-PROJECT | `_read_project_md()` in `session_guidance.py` |
-| P2 | CC-CLAUDE | `CLAUDE.md` in repo root (30 min, high dev-velocity impact) |
+| P2 | MD-PLATFORM | Externalize `prompts.py` to `.agent-lab/PLATFORM.md` |
+| P2 | LC-clarifier | Wire `session_clarifier` to plan mode (flag on path) |
+| P2 | CC-hooks | `.claude/settings.json` PostEdit ruff + Stop pytest |
 
 ---
 

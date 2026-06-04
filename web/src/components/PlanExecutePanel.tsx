@@ -183,6 +183,30 @@ function oracleStatusLabel(status: string | null): string {
   }
 }
 
+function AdversarialBadge({ row }: { row: PlanExecutionRecord }) {
+  const note = row.adversarial_note?.trim();
+  if (!note) return null;
+  const tone = note.toUpperCase() === "LGTM" ? "lgtm" : "warning";
+  return (
+    <div
+      className={`plan-execute-adversarial plan-execute-adversarial--${tone}`}
+      role="status"
+    >
+      <span className="plan-execute-adversarial__badge">
+        {tone === "lgtm" ? "Adversarial LGTM" : "Adversarial review"}
+      </span>
+      {row.adversarial_source ? (
+        <span className="plan-execute-adversarial__meta">{row.adversarial_source}</span>
+      ) : null}
+      {tone !== "lgtm" ? (
+        <span className="plan-execute-adversarial__detail" title={note}>
+          {note}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 function OracleBadge({
   row,
   busy,
@@ -948,6 +972,7 @@ export function PlanExecutePanel({
                 : `실행 전 검증: ${activePending.pre_verify?.feedback}`}
             </p>
           ) : null}
+          <AdversarialBadge row={activePending} />
           <div className="plan-execute-pending__head">
             <div className="plan-execute-history__title-row">
               <span className="plan-execute-history__badge">
@@ -1154,6 +1179,7 @@ export function PlanExecutePanel({
                     onRefClick={onChatRefClick}
                     compact
                   />
+                  <AdversarialBadge row={row} />
                   <OracleBadge
                     row={row}
                     busy={busy}

@@ -1,0 +1,98 @@
+{
+  "workflow_id": "room.parallel",
+  "run_schema_version": 1,
+  "plan_format_version": 1,
+  "topic": "regression baseline: execute verify loop (mock oracle)",
+  "created_at": "2026-06-04T00:00:00+00:00",
+  "agents": ["cursor", "codex", "claude"],
+  "status": "completed",
+  "message_count": 1,
+  "agent_parallel_rounds": 1,
+  "turns": [
+    {
+      "mode": "plan",
+      "synthesize": true,
+      "status": "completed"
+    }
+  ],
+  "actions": [
+    {
+      "action_id": "plan-action-now-1",
+      "index": 1,
+      "kind": "now",
+      "what": "add verified marker after oracle retry",
+      "where": "`src/app.py`",
+      "verify": "`src/app.py` contains `VERIFIED_OK`"
+    }
+  ],
+  "approvals": [
+    {
+      "id": "appr-execute-verify-loop",
+      "execution_id": "exec-verify-loop",
+      "action_id": "plan-action-now-1",
+      "vote": "approve",
+      "ts": "2026-06-04T00:00:05+00:00",
+      "by": "human"
+    }
+  ],
+  "executions": [
+    {
+      "id": "exec-verify-loop",
+      "action_id": "plan-action-now-1",
+      "action_index": 1,
+      "action_kind": "now",
+      "status": "merged",
+      "isolation_effective": "worktree",
+      "git_root": "/tmp/agent-lab-fixture/repo",
+      "base_branch": "main",
+      "base_sha": "1111111111111111111111111111111111111111",
+      "exec_branch": "agent-lab/fixture-verify-loop-1",
+      "worktree_path": "/tmp/agent-lab-fixture/session/worktrees/exec-verify-loop",
+      "merge": {
+        "status": "merged",
+        "strategy": "merge",
+        "commit_sha": "3333333333333333333333333333333333333333",
+        "conflict_files": [],
+        "attempted_at": "2026-06-04T00:00:02+00:00",
+        "completed_at": "2026-06-04T00:00:03+00:00"
+      },
+      "verify_retries": 1,
+      "verify_after_merge": {
+        "status": "passed",
+        "verify_retries": 1,
+        "oracle": {
+          "verdict": "pass",
+          "detail": "PASS: found expected literal(s): VERIFIED_OK",
+          "verify_criterion": "`src/app.py` contains `VERIFIED_OK`",
+          "checked_paths": ["src/app.py"]
+        }
+      },
+      "oracle": {
+        "verdict": "pass",
+        "detail": "PASS: found expected literal(s): VERIFIED_OK",
+        "verify_criterion": "`src/app.py` contains `VERIFIED_OK`",
+        "checked_paths": ["src/app.py"]
+      },
+      "verify_history": [
+        {
+          "attempt": 0,
+          "status": "failed",
+          "oracle": {
+            "verdict": "fail",
+            "detail": "FAIL: missing expected literal(s): VERIFIED_OK",
+            "checked_paths": ["src/app.py"]
+          }
+        },
+        {
+          "attempt": 1,
+          "status": "passed",
+          "oracle": {
+            "verdict": "pass",
+            "detail": "PASS: found expected literal(s): VERIFIED_OK",
+            "checked_paths": ["src/app.py"]
+          }
+        }
+      ]
+    }
+  ]
+}

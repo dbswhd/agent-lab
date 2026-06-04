@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from agent_lab.plan_actions import PlanAction
-from agent_lab.plan_execute_merge import oracle_verify
+from agent_lab.plan_execute_merge import oracle_verify, verify_after_merge
 
 
 def _action(verify: str) -> PlanAction:
@@ -104,3 +104,55 @@ def test_oracle_verify_session_folder_defaults_to_parent_workspace(tmp_path: Pat
 
     assert result["verdict"] == "pass"
     assert result["checked_paths"] == ["src/app.py"]
+
+
+def test_verify_after_merge_wraps_oracle_pass(tmp_path: Path):
+    target = tmp_path / "src" / "app.py"
+    target.parent.mkdir()
+    target.write_text("DONE\n", encoding="utf-8")
+
+    result = verify_after_merge(
+        _action("`src/app.py` contains `DONE`"),
+        ["src/app.py"],
+        workspace_root=tmp_path,
+        verify_retries=1,
+    )
+
+    assert result["status"] == "passed"
+    assert result["verify_retries"] == 1
+    assert result["oracle"]["verdict"] == "pass"
+
+
+def test_verify_after_merge_wraps_oracle_fail(tmp_path: Path):
+    target = tmp_path / "src" / "app.py"
+    target.parent.mkdir()
+    target.write_text("not done\n", encoding="utf-8")
+
+    result = verify_after_merge(
+        _action("`src/app.py` contains `DONE`"),
+        ["src/app.py"],
+        workspace_root=tmp_path,
+    )
+
+    assert result["status"] == "failed"
+    assert result["verify_retries"] == 0
+    assert result["oracle"]["verdict"] == "fail"
+
+
+def test_verify_after_merge_passes_oracle_call_to_oracle_verify(tmp_path: Path):
+    target = tmp_path / "src" / "app.py"
+    target.parent.mkdir()
+    target.write_text("DONE\n", encoding="utf-8")
+    seen: list[str] = []
+
+    result = verify_after_merge(
+        _action("`src/app.py` contains `DONE`"),
+        ["src/app.py"],
+        workspace_root=tmp_path,
+        oracle_call=lambda prompt: seen.append(prompt) or "PASS: injected",
+    )
+
+    assert result["status"] == "passed"
+    assert result["oracle"]["verdict"] == "pass"
+    assert len(seen) == 1
+    assert "DONE" in seen[0]

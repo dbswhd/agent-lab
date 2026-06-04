@@ -2348,6 +2348,7 @@ def continue_room_round(
         body,
         is_new_session=False,
         human_message_count=human_turn_num,
+        plan_mode=synthesize,
     )
     if clarifier_questions and on_event:
         on_event("clarifier_prompt", {"questions": clarifier_questions})
@@ -2619,6 +2620,7 @@ def run_room(
         body,
         is_new_session=is_new,
         human_message_count=human_turn_num,
+        plan_mode=synthesize,
     )
     if clarifier_questions and on_event:
         on_event("clarifier_prompt", {"questions": clarifier_questions})

@@ -144,7 +144,7 @@ See **[SPRINT-D-CHECKLIST.md](./SPRINT-D-CHECKLIST.md)** for the full checkbox l
 | **Plan provenance** | Scribe `(ref: chat.jsonl#Ln)`; `plan_provenance` in run.json when plan changes. |
 | **Task complete gate** | Manual **완료** returns `409` when linked execution is `review_required` / `pending_approval` or `artifact_refs` execution unverified. |
 | **Mode chip** | Composer shows 토론 / 정리·plan / 합의 + scribe timing hint. |
-| **Clarifier** | `AGENT_LAB_CLARIFIER=1` — short topic / first message → `clarifier_prompt` SSE, agents skipped until Human elaborates. |
+| **Clarifier** | `AGENT_LAB_CLARIFIER=1` — short topic / first message → `clarifier_prompt` SSE, agents skipped until Human elaborates; plan mode uses plan.md-focused Socratic questions on first synthesize turn. |
 | **Turn receipt** | `send_receipt`: `discuss_saved` \| `plan_updated` \| `consensus_done` on `run.json` turns + SSE `complete`. |
 
 **Verify:** discuss turn → tasks unlinked to plan; plan turn → refs in plan.md clickable; complete blocked until execute verified; `turn_leads` visible in task bar.

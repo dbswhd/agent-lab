@@ -1594,13 +1594,9 @@ def _append_human_turn_synthesis(
 
 
 def _read_run_meta(folder: Path) -> dict[str, Any]:
-    run_path = folder / "run.json"
-    if not run_path.is_file():
-        return {}
-    try:
-        return json.loads(run_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return {}
+    from agent_lab.run_meta import read_run_meta
+
+    return read_run_meta(folder)
 
 
 def _session_context(folder: Path | None) -> tuple[str, dict[str, Any]]:

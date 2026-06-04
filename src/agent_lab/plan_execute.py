@@ -44,6 +44,7 @@ from agent_lab.plan_execute_worktree import (
 from agent_lab.session_guidance import verify_execution_artifacts
 
 EXECUTOR_ID = "cursor"
+EXECUTE_AGENT_IDS = {"cursor", "codex"}
 MAX_DIFF_CHARS = 120_000
 MAX_VERIFY_RETRIES = 2
 PENDING_STATUS = "pending_approval"
@@ -573,10 +574,11 @@ def _cursor_execute_prompt(
     *,
     expected_paths: list[str] | None = None,
     verify: str | None = None,
+    revise_request: dict[str, Any] | None = None,
 ) -> str:
     expected = ", ".join(expected_paths or action.expected_paths()) or action.where
     verify_line = verify if verify is not None else action.verify
-    return f"""Agent Lab thin execute — implement exactly one plan action.
+    prompt = f"""Agent Lab thin execute — implement exactly one plan action.
 
 Phase 1 — implement (tools expected):
 - Change only what is needed for this action.
@@ -591,6 +593,25 @@ Plan action:
 - 검증: {verify_line}
 
 When phase 1 edits are done, stop and wait — a phase 2 verification message follows in this same session."""
+    if revise_request:
+        chunk_ref = str(revise_request.get("chunk_ref") or "전체 diff")
+        comment = str(revise_request.get("comment") or "").strip()
+        selected_diff = str(revise_request.get("selected_diff") or "").strip()
+        prompt += f"""
+
+Human inline revise request:
+- 선택 범위: {chunk_ref}
+- 요청: {comment}
+
+Revise the selected part without undoing correct parts of the plan action."""
+        if selected_diff:
+            prompt += f"""
+
+Previous selected diff:
+```diff
+{selected_diff}
+```"""
+    return prompt
 
 
 def _cursor_verify_follow_up(verify: str) -> str:
@@ -617,6 +638,93 @@ def _extract_draft_summary(text: str) -> str:
     return "\n".join(lines[:8])
 
 
+def _normalize_execute_agent(executor: str | None) -> str:
+    agent_id = str(executor or EXECUTOR_ID).strip().lower()
+    if agent_id not in EXECUTE_AGENT_IDS:
+        raise ValueError("execute agent must be cursor or codex")
+    return agent_id
+
+
+def _execute_agent_available(agent_id: str) -> bool:
+    if agent_id == "cursor":
+        from agent_lab.agents.cursor_agent import is_available
+
+        return is_available()
+    from agent_lab.agents.codex_agent import is_available
+
+    return is_available()
+
+
+def _call_execute_agent(
+    agent_id: str,
+    *,
+    user: str,
+    permissions: dict[str, Any],
+    cwd: Path,
+    on_activity: Any,
+    verify: str,
+) -> str:
+    system = "You implement approved plan actions with minimal scope."
+    if agent_id == "cursor":
+        from agent_lab.agents.cursor_agent import respond
+
+        return respond(
+            system=system,
+            user=user,
+            permissions=permissions,
+            cwd=cwd,
+            on_activity=on_activity,
+            follow_ups=_verify_follow_ups(verify),
+        )
+
+    from agent_lab.agents.codex_agent import respond
+
+    codex_permissions = dict(permissions)
+    codex_permissions["_discuss_cwd"] = str(cwd.resolve())
+    follow_up = (
+        _cursor_verify_follow_up(verify).replace("same Cursor session", "same execution")
+        if _verify_follow_ups(verify)
+        else ""
+    )
+    codex_user = f"{user}\n\n{follow_up}" if follow_up else user
+    return respond(
+        system=system,
+        user=codex_user,
+        permissions=codex_permissions,
+        on_activity=on_activity,
+        room_turn=False,
+    )
+
+
+def _selected_revision_diff(
+    diff: str,
+    *,
+    chunk_ref: str | None,
+    line_start: int | None,
+    line_end: int | None,
+    max_chars: int = 6000,
+) -> str:
+    lines = (diff or "").splitlines()
+    selected: list[str] = []
+    if line_start is not None:
+        start = max(0, line_start - 1)
+        end = max(start + 1, line_end or line_start)
+        selected = lines[start:end]
+    elif chunk_ref:
+        for index, line in enumerate(lines):
+            if line.strip() != chunk_ref.strip():
+                continue
+            selected.append(line)
+            for following in lines[index + 1 :]:
+                if following.startswith("@@") or following.startswith("diff --git "):
+                    break
+                selected.append(following)
+            break
+    else:
+        selected = lines
+    return "\n".join(selected)[:max_chars]
+
+
 def run_dry_run(
     folder: Path,
     *,
@@ -625,12 +733,16 @@ def run_dry_run(
     permissions: dict[str, Any] | None = None,
     isolation_override: dict[str, Any] | None = None,
     execution_id: str | None = None,
+    executor: str | None = None,
+    supersedes_execution_id: str | None = None,
+    revise_request: dict[str, Any] | None = None,
+    seed_commit_sha: str | None = None,
 ) -> dict[str, Any]:
-    from agent_lab.agents.cursor_agent import is_available, respond
     from agent_lab.plan_actions import PlanActionKind, parse_action_key
 
-    if not is_available():
-        raise RuntimeError("Cursor executor unavailable (CURSOR_API_KEY / cursor-sdk)")
+    executor_id = _normalize_execute_agent(executor)
+    if not _execute_agent_available(executor_id):
+        raise RuntimeError(f"{executor_id.title()} executor unavailable")
 
     plan_path = folder / "plan.md"
     if not plan_path.is_file():
@@ -669,7 +781,11 @@ def run_dry_run(
     assert_execute_allowed(run, action.index, action.kind)
 
     pending = _pending_execution(run)
-    if pending and pending.get("id") != execution_id:
+    if (
+        pending
+        and pending.get("id") != execution_id
+        and pending.get("id") != supersedes_execution_id
+    ):
         raise ValueError("finish or reject the pending execution first")
 
     base_cwd, effective_permissions, base_workspace_info = _preflight_execute_workspace(
@@ -701,8 +817,8 @@ def run_dry_run(
             "action_what": action.what,
             "action_where": action.where,
             "action_verify": action.verify,
-            "executor": EXECUTOR_ID,
-            "executor_label": "Cursor",
+            "executor": executor_id,
+            "executor_label": executor_id.title(),
             "status": "blocked_isolation",
             "isolation_requested": isolation_decision.isolation_source,
             "isolation_source": isolation_decision.isolation_source,
@@ -806,6 +922,21 @@ def run_dry_run(
             )
     if not raw_source_paths and snapshot_paths and existed_before == 0:
         pass
+    if seed_commit_sha:
+        if exec_worktree is None:
+            delete_snapshot(folder, exec_id)
+            raise ValueError("revision seed requires a worktree execution")
+        try:
+            _run_git(cwd, "cherry-pick", seed_commit_sha)
+        except subprocess.CalledProcessError as e:
+            _run_git(cwd, "cherry-pick", "--abort", check=False)
+            delete_snapshot(folder, exec_id)
+            discard_exec_worktree(exec_worktree, folder, exec_id)
+            raise WorktreeUnavailable(
+                "could not seed revision worktree from pending execution",
+                reason="revision_seed_conflict",
+                execution_id=exec_id,
+            ) from e
     started = _now()
     activity_log: list[str] = []
     agent_response = ""
@@ -821,17 +952,18 @@ def run_dry_run(
             activity_log.append(label)
 
     try:
-        agent_response = respond(
-            system="You implement approved plan actions with minimal scope.",
+        agent_response = _call_execute_agent(
+            executor_id,
             user=_cursor_execute_prompt(
                 action,
                 expected_paths=source_path_inputs,
                 verify=verify_for_agent,
+                revise_request=revise_request,
             ),
             permissions=effective_permissions,
             cwd=cwd,
             on_activity=_on_activity,
-            follow_ups=_verify_follow_ups(verify_for_agent),
+            verify=verify_for_agent,
         )
     except Exception as e:
         restore_snapshot(folder, exec_id=exec_id, cwd=cwd, manifest=manifest)
@@ -878,6 +1010,12 @@ def run_dry_run(
                 action=action,
                 exec_id=exec_id,
             )
+            if worktree_commit_sha is None and seed_commit_sha:
+                worktree_commit_sha = _run_git(
+                    exec_worktree.worktree_path,
+                    "rev-parse",
+                    "HEAD",
+                ).stdout.strip()
         except Exception as e:
             restore_snapshot(folder, exec_id=exec_id, cwd=cwd, manifest=manifest)
             delete_snapshot(folder, exec_id)
@@ -894,8 +1032,8 @@ def run_dry_run(
         "action_what": action.what,
         "action_where": action.where,
         "action_verify": action.verify,
-        "executor": EXECUTOR_ID,
-        "executor_label": "Cursor",
+        "executor": executor_id,
+        "executor_label": executor_id.title(),
         "status": PENDING_STATUS,
         "isolation_requested": isolation_decision.isolation_source,
         "isolation_source": isolation_decision.isolation_source,
@@ -948,6 +1086,12 @@ def run_dry_run(
         "completed_at": None,
         "pre_verify": pre_verify,
     }
+    if supersedes_execution_id:
+        execution["revision_of"] = supersedes_execution_id
+    if revise_request:
+        execution["revise_requested"] = True
+        execution["revise_note"] = str(revise_request.get("comment") or "")
+        execution["revise_chunk_ref"] = revise_request.get("chunk_ref")
     adv = adversarial_review(
         action_what=action.what,
         action_verify=action.verify,
@@ -1044,6 +1188,117 @@ def run_isolation_override(
         isolation_override=override,
         execution_id=execution_id,
     )
+
+
+def revise_pending_execution(
+    folder: Path,
+    *,
+    execution_id: str,
+    comment: str,
+    chunk_ref: str | None = None,
+    line_start: int | None = None,
+    line_end: int | None = None,
+    permissions: dict[str, Any] | None = None,
+    executor: str | None = None,
+) -> dict[str, Any]:
+    note = comment.strip()
+    if not note:
+        raise ValueError("revise comment is required")
+    if line_start is not None and line_start < 1:
+        raise ValueError("line_start must be at least 1")
+    if line_end is not None and line_end < 1:
+        raise ValueError("line_end must be at least 1")
+    if line_start is not None and line_end is not None and line_end < line_start:
+        raise ValueError("line_end must be greater than or equal to line_start")
+
+    run = read_run_meta(folder)
+    executions = list(run.get("executions") or [])
+    target = next((row for row in executions if row.get("id") == execution_id), None)
+    if target is None:
+        raise ValueError("pending execution not found")
+    if target.get("status") != PENDING_STATUS:
+        raise ValueError("execution is not pending approval")
+    if target.get("isolation_effective") != "worktree":
+        raise ValueError("inline revise requires a worktree execution")
+    seed_commit_sha = str(target.get("exec_commit_sha") or "").strip()
+    if not seed_commit_sha:
+        raise ValueError("pending execution missing exec_commit_sha")
+    action_index = target.get("action_index")
+    if not isinstance(action_index, int):
+        raise ValueError("pending execution missing action_index")
+
+    requested_at = _now()
+    revision_history = list(target.get("revision_history") or [])
+    revision_entry: dict[str, Any] = {
+        "attempt": len(revision_history) + 1,
+        "requested_at": requested_at,
+        "comment": note,
+        "chunk_ref": chunk_ref,
+        "line_start": line_start,
+        "line_end": line_end,
+        "previous_execution_id": execution_id,
+        "previous_exec_commit_sha": target.get("exec_commit_sha"),
+    }
+    revise_request = {
+        **revision_entry,
+        "selected_diff": _selected_revision_diff(
+            str(target.get("diff") or ""),
+            chunk_ref=chunk_ref,
+            line_start=line_start,
+            line_end=line_end,
+        ),
+    }
+    replacement = run_dry_run(
+        folder,
+        action_index=action_index,
+        action_kind=str(target.get("action_kind") or "now"),
+        permissions=permissions,
+        execution_id=_exec_id(),
+        executor=executor or str(target.get("executor") or EXECUTOR_ID),
+        supersedes_execution_id=execution_id,
+        revise_request=revise_request,
+        seed_commit_sha=seed_commit_sha,
+    )
+
+    completed_at = _now()
+    revision_entry["completed_at"] = completed_at
+    revision_entry["replacement_execution_id"] = replacement["id"]
+    revision_entry["status"] = "completed"
+    replacement["revision_attempt"] = revision_entry["attempt"]
+    replacement["revision_history"] = revision_history + [revision_entry]
+    replacement["last_revision"] = revision_entry
+
+    old_worktree = _exec_worktree_from_execution(target)
+    discard_exec_worktree(old_worktree, folder, execution_id)
+    snapshot_id = str(target.get("snapshot_id") or execution_id)
+    if snapshot_id:
+        delete_snapshot(folder, snapshot_id)
+
+    target["status"] = "superseded"
+    target["completed_at"] = completed_at
+    target["revise_requested"] = True
+    target["revise_note"] = note
+    target["revise_chunk_ref"] = chunk_ref
+    target["superseded_by"] = replacement["id"]
+    target["revision_history"] = replacement["revision_history"]
+    target["last_revision"] = revision_entry
+
+    def _replace(run: dict[str, Any]) -> dict[str, Any]:
+        rows = list(run.get("executions") or [])
+        for index, row in enumerate(rows):
+            if row.get("id") == execution_id:
+                rows[index] = target
+            elif row.get("id") == replacement["id"]:
+                rows[index] = replacement
+        run["executions"] = rows
+        return run
+
+    patch_run_meta(folder, _replace)
+    return {
+        "execution": replacement,
+        "superseded_execution": target,
+        "revision": revision_entry,
+    }
 
 
 def resolve_execution(

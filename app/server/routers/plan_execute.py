@@ -10,6 +10,7 @@ from agent_lab.plan_execute import (
     confirm_merge_execution,
     list_plan_actions,
     reverify_merged_execution,
+    revise_pending_execution,
     resolve_execution,
     run_dry_run,
     run_isolation_override,
@@ -29,6 +30,7 @@ from app.server.deps import (
     PlanExecuteIsolationOverrideRequest,
     PlanExecuteMergeRequest,
     PlanExecuteReverifyRequest,
+    PlanExecuteReviseRequest,
     PlanExecuteResolveRequest,
     room_session_context,
     session_folder_or_404,
@@ -93,6 +95,41 @@ def session_reject_pending_plan(
         "pending_plan": row,
         **pending_plans_public_payload(run_meta),
     }
+
+
+@router.post("/sessions/{session_id}/execute/pending-plans/{pending_id}/revise")
+def session_revise_pending_execution(
+    session_id: str,
+    pending_id: str,
+    body: PlanExecuteReviseRequest,
+) -> dict[str, Any]:
+    folder = session_folder_or_404(session_id)
+    try:
+        result = revise_pending_execution(
+            folder,
+            execution_id=pending_id,
+            comment=body.comment,
+            chunk_ref=body.chunk_ref,
+            line_start=body.line_start,
+            line_end=body.line_end,
+            permissions=body.permissions,
+            executor=body.executor,
+        )
+    except WorktreeUnavailable as e:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": e.reason,
+                "message": str(e),
+                "execution_id": e.execution_id,
+                "remediation": ["fix_git_worktree_and_retry"],
+            },
+        ) from e
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
+    return {"ok": True, **result}
 
 
 @router.post("/sessions/{session_id}/execute/dry-run")

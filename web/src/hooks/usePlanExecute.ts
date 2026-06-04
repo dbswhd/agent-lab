@@ -71,6 +71,8 @@ export function executionStatusLabel(
       return reviewRequiredLabel(row);
     case "rejected":
       return "거부됨";
+    case "superseded":
+      return "재작업으로 대체됨";
     case "merged":
       return "main에 병합됨";
     case "merge_conflict":

@@ -9,6 +9,7 @@ import {
   overridePlanExecutionIsolation,
   reverifyPlanExecution,
   rejectPendingPlan,
+  revisePendingPlan,
   resolvePlanExecution,
   runPlanDryRun,
   type PendingPlanRecord,
@@ -149,6 +150,8 @@ function statusLabel(
       return reviewRequiredLabel(row);
     case "rejected":
       return "거부됨";
+    case "superseded":
+      return "재작업으로 대체됨";
     case "merged":
       return "main에 병합됨";
     case "merge_conflict":
@@ -324,6 +327,36 @@ function parseActionKey(key: string): { kind: string; index: number } | null {
   return { kind, index };
 }
 
+type DiffHunk = {
+  id: string;
+  ref: string;
+  lineStart: number;
+  lineEnd: number;
+};
+
+function diffHunks(diff: string | undefined): DiffHunk[] {
+  const lines = (diff ?? "").split("\n");
+  const hunks: DiffHunk[] = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const ref = lines[index];
+    if (!ref.startsWith("@@")) continue;
+    let end = lines.length;
+    for (let next = index + 1; next < lines.length; next += 1) {
+      if (lines[next].startsWith("@@") || lines[next].startsWith("diff --git ")) {
+        end = next;
+        break;
+      }
+    }
+    hunks.push({
+      id: `${index + 1}:${ref}`,
+      ref,
+      lineStart: index + 1,
+      lineEnd: end,
+    });
+  }
+  return hunks;
+}
+
 const EXECUTION_HISTORY_LIMIT = 5;
 const MAX_VERIFY_RETRIES = 2;
 
@@ -409,6 +442,10 @@ export function PlanExecutePanel({
     useState<PlanExecuteDryRunError | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reviseComment, setReviseComment] = useState("");
+  const [reviseHunkId, setReviseHunkId] = useState("");
+  const [reviseError, setReviseError] = useState<string | null>(null);
+  const [revising, setRevising] = useState(false);
 
   const executions = useMemo(
     () => (run?.executions as PlanExecutionRecord[] | undefined) ?? [],
@@ -444,6 +481,10 @@ export function PlanExecutePanel({
     ? resolveExecutionAction(activePending, storedActions)
     : null;
   const approvalGate = executionApprovalGate(activePending);
+  const pendingDiffHunks = useMemo(
+    () => diffHunks(activePending?.diff),
+    [activePending?.diff],
+  );
 
   const refreshActions = useCallback(async () => {
     setLoadingActions(true);
@@ -496,6 +537,12 @@ export function PlanExecutePanel({
     setIsolationBlock(null);
     setObjectionBlock(null);
   }, [sessionId]);
+
+  useEffect(() => {
+    setReviseComment("");
+    setReviseHunkId("");
+    setReviseError(null);
+  }, [activePending?.id]);
 
   async function handleDryRun() {
     if (selectedKey == null || activePending) return;
@@ -586,6 +633,32 @@ export function PlanExecutePanel({
     } catch (e) {
       setError(formatPlanExecuteError(e));
     } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleRevisePending() {
+    if (!activePending?.id || !reviseComment.trim()) return;
+    const selectedHunk = pendingDiffHunks.find((hunk) => hunk.id === reviseHunkId);
+    setBusy(true);
+    setRevising(true);
+    setError(null);
+    setReviseError(null);
+    try {
+      const result = await revisePendingPlan(sessionId, activePending.id, {
+        comment: reviseComment.trim(),
+        chunkRef: selectedHunk?.ref,
+        lineStart: selectedHunk?.lineStart,
+        lineEnd: selectedHunk?.lineEnd,
+        permissions: executePermissions(),
+      });
+      setPending(result.execution);
+      onUpdated();
+      await refreshActions();
+    } catch (e) {
+      setReviseError(formatPlanExecuteError(e));
+    } finally {
+      setRevising(false);
       setBusy(false);
     }
   }
@@ -1080,8 +1153,50 @@ export function PlanExecutePanel({
             <PlanDiffStat text={activePending.diff_stat} />
           ) : null}
           {activePending.diff ? (
-            <details className="plan-execute-pending__diff">
+            <details className="plan-execute-pending__diff" open>
               <summary>로컬 diff</summary>
+              {activePending.status === "pending_approval" &&
+              isWorktreeExecution(activePending) ? (
+                <div className="plan-execute-revise">
+                  <div className="plan-execute-revise__controls">
+                    <select
+                      aria-label="재작업할 diff hunk"
+                      value={reviseHunkId}
+                      disabled={busy}
+                      onChange={(event) => setReviseHunkId(event.target.value)}
+                    >
+                      <option value="">전체 diff</option>
+                      {pendingDiffHunks.map((hunk, index) => (
+                        <option key={hunk.id} value={hunk.id}>
+                          hunk {index + 1} · {hunk.ref}
+                        </option>
+                      ))}
+                    </select>
+                    <textarea
+                      aria-label="diff 재작업 요청"
+                      value={reviseComment}
+                      disabled={busy}
+                      rows={2}
+                      maxLength={2000}
+                      placeholder="수정 요청"
+                      onChange={(event) => setReviseComment(event.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="room-plan-btn"
+                      disabled={disabled || busy || !reviseComment.trim()}
+                      onClick={() => void handleRevisePending()}
+                    >
+                      {revising ? "재작업 중…" : "이 부분만 다시"}
+                    </button>
+                  </div>
+                  {reviseError ? (
+                    <p className="plan-execute-revise__error" role="alert">
+                      {reviseError}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
               <pre>{activePending.diff}</pre>
             </details>
           ) : null}

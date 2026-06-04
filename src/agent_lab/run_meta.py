@@ -13,7 +13,11 @@ def read_run_meta(folder: Path) -> dict[str, Any]:
     if not run_path.is_file():
         return {}
     try:
-        return json.loads(run_path.read_text(encoding="utf-8"))
+        raw = run_path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        raw = run_path.read_text(encoding="utf-8", errors="replace")
+    try:
+        return json.loads(raw)
     except json.JSONDecodeError:
         return {}
 

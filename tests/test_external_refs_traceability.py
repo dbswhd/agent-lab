@@ -44,6 +44,14 @@ SHIPPED_ROWS: list[tuple[str, list[str]]] = [
     ("E-smoke", ["scripts/smoke_room.py", "sessions/_regression/objection_blocks_execute"]),
     ("F-R3", ["sessions/_benchmark/specialist_asymmetric_cwd"]),
     ("H-P1", ["tests/test_session_score_ci.py"]),
+    (
+        "H-P2",
+        [
+            "sessions/_benchmark/README.md",
+            "tests/test_benchmark_catalog.py",
+            "tests/test_room_delegate_replay.py",
+        ],
+    ),
     ("H4-weekly", ["scripts/score_sessions_weekly.py"]),
     ("H4-ops-live", ["tests/test_weekly_live_ops_summary.py"]),
     ("ops-P2", ["app/server/routers/health.py"]),
@@ -157,6 +165,23 @@ def test_plan_phase_three_ops_marked_shipped_in_traceability():
     assert "ops-P2" in text
     assert "ops-P0" in text
     assert "H-P1" in text
+    assert "H-P2" in text
+
+
+def test_traceability_cc_claude_cross_ref_not_duplicated_in_shipped_table():
+    text = _read(TRACEABILITY)
+    assert "CC-CLAUDE" in text
+    assert "Dev-tool cross-ref" in text or "§Dev-tool" in text
+    shipped_section = text.split("## Dev-tool")[0]
+    assert shipped_section.count("| CC-CLAUDE |") == 0
+
+
+def test_traceability_goal_loop_and_oracle_evidence_documented():
+    text = _read(TRACEABILITY)
+    assert "GOAL-LOOP.md" in text
+    assert "adversarial_gate_lgtm" in text
+    assert "AGENT_LAB_ORACLE_LIVE" in text
+    assert "per-dir AGENTS hierarchy not implemented" in text or "hierarchical AGENTS" in text
 
 
 def test_traceability_future_regression_folders_not_present_yet():

@@ -142,6 +142,8 @@ Human이 approve 화면에서 diff + adversarial 결과를 같이 봅니다. "LG
 
 ### 1.6 Oracle Verified Completion (Layer 3 심화)
 
+> **✅ Shipped:** [LC-oracle](EXTERNAL-REFS-TRACEABILITY.md) + [LC-L3](EXTERNAL-REFS-TRACEABILITY.md) — `oracle_verify()` in `plan_execute_merge.py`; mock-first; live `AGENT_LAB_ORACLE_LIVE=1` in `.env.example`. Below is design context (pre-ship problem → now addressed).
+
 #### 왜 별도 섹션인가
 
 Layer 3 Execute Verify Loop (1.4)는 **흐름**을 정의합니다.  
@@ -282,11 +284,13 @@ merge 완료 화면:
 | `app/server/routers/execute.py` | oracle 결과 API 응답에 포함 | +5줄 |
 | `PlanExecutePanel.tsx` | Oracle badge + 재작업 버튼 | +40줄 |
 
-**우선순위: P1** — Adversarial Gate(Layer 4)와 함께, execute 완료 신뢰성의 핵심.
+**Status: ✅ shipped** — TRACEABILITY `LC-oracle`, `LC-L3`; UI badges in `PlanExecutePanel.tsx`.
 
 ---
 
 ### 1.7 AGENTS.md 계층 — 프로젝트 영속 메모리
+
+> **Agent Lab scope:** LazyCodex **per-directory** `AGENTS.md` tree is **not implemented**. ✅ **MD-PROJECT** (`.agent-lab/PROJECT.md`) + **MD-P3** (workspace-root `AGENTS.md` + `SHARED_CONTEXT.md`).
 
 #### LazyCodex의 `/init-deep` 패턴
 
@@ -410,7 +414,7 @@ EOF
 
 **방법 2 — `init-project-memory` subagent skill (Claude Code 패턴)**
 
-`.claude/agents/init-project-memory/SKILL.md`:
+`.claude/skills/init-project-memory/SKILL.md`:
 
 ```markdown
 ---
@@ -436,10 +440,9 @@ tools: Read, Bash, Edit
 |------|-----------|------|
 | `session_guidance.py` | `_read_project_md()` + `build_session_guidance_block()` 통합 | +25줄 |
 | `.agent-lab/PROJECT.md` | 신규 파일 (workspace마다) | 파일 생성 |
-| `.claude/agents/init-project-memory/SKILL.md` | 신규 skill | 파일 생성 |
+| `.claude/skills/init-project-memory/SKILL.md` | ✅ skill (CC-skills) | shipped |
 
-**우선순위: P2** — 세션 품질에 직접 영향은 작지만 Human 마찰을 지속 줄임.  
-**가장 빠른 효과:** 자주 쓰는 workspace에 `PROJECT.md` 손으로 작성 → 즉시 적용.
+**Status: ✅ shipped** — TRACEABILITY `MD-PROJECT`, `MD-P3`, `CC-skills` (`init-project-memory`).
 
 ---
 
@@ -505,9 +508,9 @@ result = subprocess.run([...], env=env)
 
 ## Part 4 — Claude Code: 개발 도구 생태계
 
-### 4.1 CLAUDE.md (즉시 적용)
+### 4.1 CLAUDE.md (✅ shipped — CC-CLAUDE)
 
-`.claude/CLAUDE.md` 또는 루트 `CLAUDE.md`:
+`.claude/CLAUDE.md` 또는 루트 `CLAUDE.md` (see TRACEABILITY §Dev-tool):
 
 ```markdown
 # Agent Lab 개발 가이드
@@ -515,7 +518,7 @@ result = subprocess.run([...], env=env)
 ## 빌드 & 실행
 - make dev         — API(8765) + web(5173) 동시 시작
 - make api         — API만 (hot-reload)
-- make test        — pytest (214 tests, 2.5s)
+- make test        — pytest (see `make ci`)
 - make smoke       — mock 스모크
 - make smoke-e2e   — E2E 스모크 (MOCK_AGENTS=1)
 - make score-session SESSION=sessions/<id>  — 세션 KPI
@@ -525,12 +528,13 @@ result = subprocess.run([...], env=env)
 - src/agent_lab/plan_execute*.py — execute gate + worktree + merge
 - src/agent_lab/room_objections.py — BLOCK/CHALLENGE → execute 409
 - src/agent_lab/cli_retry.py     — CLI 공통 retry (429/timeout)
-- app/server/main.py             — FastAPI (~1156줄, routers/ 분리 예정)
-- web/src/components/            — React 컴포넌트 40+
+- app/server/main.py             — FastAPI lifespan + router mount
+- app/server/routers/*           — ✅ ops-P2 router split
+- web/src/components/            — React UI
 
 ## 코드 규칙
 - Python: from __future__ import annotations 필수
-- 새 라우터는 app/server/main.py에 직접 추가 금지 → routers/ 분리 예정
+- 새 HTTP 라우트는 `app/server/routers/`에 추가 (main.py는 mount만)
 - 테스트는 mock-only (AGENT_LAB_MOCK_AGENTS=1)
 - sessions/* 커밋 금지 (gitignore 처리됨, _regression/만 예외)
 
@@ -578,7 +582,7 @@ result = subprocess.run([...], env=env)
 
 ### 4.3 Subagent Skills
 
-`.claude/agents/smoke-and-score/SKILL.md`:
+`.claude/skills/smoke-and-score/SKILL.md`:
 
 ```markdown
 ---
@@ -593,7 +597,7 @@ tools: Bash
 결과 요약 리포트.
 ```
 
-`.claude/agents/regression-check/SKILL.md`:
+`.claude/skills/regression-check/SKILL.md`:
 
 ```markdown
 ---
@@ -637,9 +641,8 @@ workspace_root/
 - 멀티에이전트 Room: Cursor(execute) + Codex(verify) + Claude(risk review)
 
 ## 현재 진행 중인 작업
-- Phase I (완료): git worktree execute 격리
-- Layer 3 (진행): execute verify loop
-- R-P0 (진행): CLI retry + partial turn
+- (Human이 채움 — 예시는 2026-06 shipped 스냅샷)
+- Phase I ✅ · Layer 3–5 ✅ · R-P0 ✅ · H-P2 benchmark catalog ✅
 
 ## 중요한 결정
 - BLOCK → execute 409는 plan 모드 한정 (discuss는 soft)

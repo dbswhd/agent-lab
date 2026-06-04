@@ -1,9 +1,10 @@
 # External refs plan — traceability matrix
 
 Maps items in [`EXTERNAL-REFS-PLAN.md`](EXTERNAL-REFS-PLAN.md) to **shipped code**, **regression/smoke evidence**, or **future fixture tickets**.  
-This document is the hub for “plan vs reality”; it does not authorize new feature work by itself.
+This document is the hub for **plan vs reality**. It does not explain *why* an item was adopted — see PLAN §anchor for that context.
 
-**Status legend:** ✅ shipped · 🔶 partial · ⬜ future · ❌ dropped
+**Status legend:** ✅ shipped · 🔶 partial · ⬜ future · ❌ dropped  
+**Related:** [EXTERNAL-REFS-PLAN.md](EXTERNAL-REFS-PLAN.md) (why/what) · [MD-WRITING-PLAN.md](MD-WRITING-PLAN.md) (MD authoring guide)
 
 ---
 
@@ -29,18 +30,16 @@ This document is the hub for “plan vs reality”; it does not authorize new fe
 | R-P1 | Room | F2 artifact-only R2 | ✅ | `sessions/_regression/specialist_r2_artifact_only/`, `context_bundle.py` | |
 | UX-P2 | Room | Objection resolve UX | ✅ | `PlanExecutePanel.tsx`, `RoomTaskBar.tsx` | |
 | Bridge | Room | Cursor bridge degraded | ✅ | `sessions/_regression/bridge_degraded_health/`, H-P3 tests | |
+| CENT-env | Centaur | Subprocess env allowlist | ✅ | `src/agent_lab/subprocess_env.py`, `claude_cli.py`, `codex_cli.py`, `cursor_bridge.py`, `tests/test_subprocess_env.py` | [PLAN §3.2](EXTERNAL-REFS-PLAN.md#32-subprocess-credential-분리) |
 
 ---
 
 ## Partial
 
-| ID | Source | Item | Status | Evidence | Gap |
-|----|--------|------|--------|----------|-----|
-| CC-CLAUDE | Claude Code | CLAUDE.md dev guide | ⬜ | — | Not in repo; see PLAN Part 4.1 |
-| CC-hooks | Claude Code | `.claude/settings.json` hooks | ⬜ | — | Dev-tool layer; not Agent Lab runtime |
-| CENT-env | Centaur | Subprocess env allowlist | ✅ | `subprocess_env.py`, `claude_cli.py`, `codex_cli.py`, `cursor_bridge.py`, `tests/test_subprocess_env.py` | P0 shipped |
-| CON-diff | Conductor | Diff inline revise | ⬜ | `PlanExecutePanel.tsx` | Approve/reject only |
-| LC-L4 | LazyCodex | Adversarial gate (mock fixture) | 🔶 | `src/agent_lab/adversarial_gate.py`, `sessions/_regression/adversarial_gate_lgtm/`, `tests/test_adversarial_gate_fixture.py` | Mock-only skeleton; no live Claude, no UI wiring |
+| ID | Source | Item | Status | Evidence | Gap | PLAN ref |
+|----|--------|------|--------|----------|-----|----------|
+| LC-L4 | LazyCodex | Adversarial gate (mock fixture) | 🔶 | `src/agent_lab/adversarial_gate.py`, `sessions/_regression/adversarial_gate_lgtm/`, `tests/test_adversarial_gate_fixture.py` | Mock-only skeleton; no live Claude, no UI wiring | [§1.5](EXTERNAL-REFS-PLAN.md#15-adversarial-gate-설계-layer-4-상세) |
+| LC-clarifier | LazyCodex | session_clarifier Socratic gate | 🔶 | `src/agent_lab/session_clarifier.py` | Feature-flag off (`AGENT_LAB_CLARIFIER`); plan mode not wired | [Part 5 Phase 2](EXTERNAL-REFS-PLAN.md#part-5--통합-우선순위-및-구현-계획) · [§1.3](EXTERNAL-REFS-PLAN.md#13-agent-lab에-도입할-loop-계층) |
 
 ---
 
@@ -48,25 +47,61 @@ This document is the hub for “plan vs reality”; it does not authorize new fe
 
 These are **acceptance criteria only**. Do not add live LLM fixtures until Layer 3/4 design is ticketed.
 
-### Ticket: `execute_verify_loop`
+### Ticket: `execute_verify_loop` (LC-L3)
 
+- **Depends on:** LC-oracle mock `oracle_verify()` (function PR first, or same PR)
 - **Folder (future):** `sessions/_regression/execute_verify_loop/`
-- **Spec:** After worktree merge, post-merge verify FAIL → Human “reverify” → second worktree dry-run (max 2 retries per PLAN Layer 3).
-- **Evidence keys:** `execution.verify_after_merge.status`, `execution.verify_retries`
-- **Tests (future):** mock `verify_after_merge`, pytest only
+- **Spec:** After worktree merge, `oracle_verify()` checks `action.verify` field against merged files. FAIL → Human “reverify” button → second worktree dry-run (max 2 retries per [PLAN §1.4](EXTERNAL-REFS-PLAN.md#14-execute-verify-loop-설계-layer-3-상세)).
+- **Evidence keys:** `execution.verify_after_merge.status`, `execution.verify_retries`, `oracle.verdict`
+- **Tests (future):** mock `verify_after_merge`, mock `oracle_verify`, pytest only
+- **UI (future):** `PlanExecutePanel.tsx` — Oracle badge + “에이전트에게 수정 요청” button
 
-### Ticket: `durable_completed_steps`
-- **Spec:** `run.json` `completed_steps[]` survives round boundary; restart resume skips completed agents (Centaur P1).
+### Ticket: `oracle_verified_completion` (LC-oracle)
+
+- **Blocks:** LC-L3 regression fixture (`execute_verify_loop` needs mock `oracle_verify()`)
+- **Spec:** Standalone `oracle_verify(action, merged_paths)` in `plan_execute_merge.py`; Claude subprocess (scribe=True) checks `action.verify` against real files. Returns `{verdict, detail, checked_paths}`. Per [PLAN §1.6](EXTERNAL-REFS-PLAN.md#16-oracle-verified-completion-layer-3-심화).
+- **Tests (future):** mock oracle call, verify PASS/FAIL routing
+
+### Ticket: `durable_completed_steps` (CENT-durable)
+
+- **Spec:** `run.json` `completed_steps[]` written by `_call_one_agent()` via `patch_run_meta()`. On restart, completed agents skipped. Per [PLAN §3.3](EXTERNAL-REFS-PLAN.md#33-durable-step-centaur-경량판).
+
+### Ticket: `project_md_injection` (MD-PROJECT)
+
+- **Spec:** `session_guidance.py:build_session_guidance_block()` reads `{workspace_root}/.agent-lab/PROJECT.md` (cap 1500 chars) and injects into agent payload. Per [PLAN §1.7](EXTERNAL-REFS-PLAN.md#17-agentsmd-계층--프로젝트-영속-메모리).
+
+### Ticket: `platform_md_externalization` (MD-PLATFORM)
+
+- **Spec:** `src/agent_lab/agents/prompts.py` protocol constants externalized to `.agent-lab/PLATFORM.md` (500 char cap). Per [MD-WRITING-PLAN §파일4](MD-WRITING-PLAN.md).
 
 ---
 
-## Next implementation candidates (from PLAN priority matrix)
+## Dev-tool & prompt layer (MD-WRITING-PLAN items)
 
-| Priority | ID | Suggested next PR |
-|----------|-----|-------------------|
-| P0 | CENT-env | Subprocess env allowlist (XS, 3 files) |
-| P1 | LC-L3 | Execute verify loop fixture skeleton + mock |
-| P1 | CENT-durable | `completed_steps` in run_meta |
+These items affect **Agent Lab development workflow** or **agent prompt quality**, not Room runtime features.  
+They are tracked here but do not belong in the runtime feature roadmap.
+
+| ID | Source | Item | Status | Evidence | Notes |
+|----|--------|------|--------|----------|-------|
+| CC-CLAUDE | Claude Code | `CLAUDE.md` dev guide | ⬜ | — | File not in repo yet; see [MD-WRITING-PLAN §파일1](MD-WRITING-PLAN.md) |
+| CC-hooks | Claude Code | `.claude/settings.json` hooks | ⬜ | — | Dev-tool only; PostEdit ruff + Stop pytest |
+| CC-rules | Claude Code | `.claude/rules/*.md` path rules | ⬜ | — | python-backend, react-frontend; see [MD-WRITING-PLAN §파일2](MD-WRITING-PLAN.md) |
+| CC-skills | Claude Code | `.claude/skills/` subagent skills | ⬜ | — | smoke-and-score, regression-check, init-project-memory |
+| CON-diff | Conductor | Diff inline revise UI | ⬜ | `PlanExecutePanel.tsx` (approve/reject only) | UI-only; no `sessions/_regression/` fixture |
+| MD-PLATFORM | Prompt | PLATFORM.md externalization | ⬜ | — | Replaces hardcoded `prompts.py` constants |
+| MD-PROJECT | Prompt | PROJECT.md workspace injection | ⬜ | — | `session_guidance.py` hook needed |
+
+---
+
+## Next implementation candidates
+
+| Priority | ID | Suggested next action |
+|----------|-----|-----------------------|
+| P1 | LC-oracle | `oracle_verify()` in `plan_execute_merge.py` (mock mode first) |
+| P1 | LC-L3 | `execute_verify_loop` fixture skeleton + mock `verify_after_merge` (after LC-oracle) |
+| P1 | CENT-durable | `completed_steps[]` in `run_meta.py` + `room.py` |
+| P2 | MD-PROJECT | `_read_project_md()` in `session_guidance.py` |
+| P2 | CC-CLAUDE | `CLAUDE.md` in repo root (30 min, high dev-velocity impact) |
 
 ---
 

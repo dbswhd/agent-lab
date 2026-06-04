@@ -127,17 +127,27 @@ def test_dev_tool_ids_documented():
         assert dev_id in text, f"missing dev-tool id {dev_id}"
 
 
+def test_md_writing_plan_execution_table_shipped():
+    from pathlib import Path
+
+    md_plan = Path(__file__).resolve().parents[1] / "docs" / "MD-WRITING-PLAN.md"
+    text = md_plan.read_text(encoding="utf-8")
+    assert "⬜ 미작성" not in text
+    assert "CC-CLAUDE" in text and "✅" in text
+
+
 def test_plan_has_stale_banner_and_traceability_link():
     text = _read(PLAN)
     assert "EXTERNAL-REFS-TRACEABILITY.md" in text
-    assert "Stale notice" in text or "shipped" in text.lower()
+    assert "Status" in text or "shipped" in text.lower()
+    assert "queue is empty" in text.lower() or "empty" in text.lower()
     assert "CENT-env" in text
 
 
 def test_plan_loop_layers_match_traceability():
     text = _read(PLAN)
     assert "Layer 3: Execute Verify Loop | ✅" in text
-    assert "Layer 4: Adversarial Gate | 🔶" in text or "Layer 4: Adversarial Gate | ✅" in text
+    assert "Layer 4: Adversarial Gate | ✅" in text
     assert "Layer 5: Goal-Driven Loop | ✅" in text
     assert "subprocess credential 분리 **✅ shipped**" in text or "✅ shipped" in text
 

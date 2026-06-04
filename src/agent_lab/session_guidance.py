@@ -313,9 +313,14 @@ def sync_session_meta(
 
 def build_session_guidance_block(run_meta: dict[str, Any] | None) -> str:
     """Inject into agent context based on session meta."""
-    if not run_meta:
-        return ""
     parts: list[str] = []
+    from agent_lab.platform_md import read_platform_md_for_injection
+
+    platform_md = read_platform_md_for_injection()
+    if platform_md:
+        parts.append(f"[PLATFORM.md — agent protocol]\n{platform_md}")
+    if not run_meta:
+        return "\n\n".join(parts)
     template_id = run_meta.get("session_template")
     if template_id:
         from agent_lab.session_setup import template_guidance_block

@@ -36,6 +36,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | LC-L4 | LazyCodex | Adversarial gate (mock + UI) | ✅ | `adversarial_gate.py`, `plan_execute.py`, `PlanExecutePanel.tsx`, `sessions/_regression/adversarial_gate_lgtm/` | Mock default; `AGENT_LAB_ADVERSARIAL_LIVE=1` for live Claude |
 | CENT-durable | Centaur | Durable completed_steps resume | ✅ | `run_meta.py`, `room.py`, `sessions/_regression/durable_completed_steps/` | |
 | MD-PROJECT | Prompt | PROJECT.md workspace injection | ✅ | `session_guidance.py:_read_project_md()` | cap 1500 chars |
+| MD-PLATFORM | Prompt | PLATFORM.md protocol injection | ✅ | `.agent-lab/PLATFORM.md`, `platform_md.py`, `tests/test_platform_md.py` | inject cap 500 chars |
 
 ---
 
@@ -49,11 +50,9 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 
 ## Future — fixture / smoke tickets (no code yet)
 
-These are **acceptance criteria only**. Do not add live LLM fixtures until the remaining layer design is ticketed.
+These are **acceptance criteria only**.
 
-### Ticket: `platform_md_externalization` (MD-PLATFORM)
-
-- **Spec:** `src/agent_lab/agents/prompts.py` protocol constants externalized to `.agent-lab/PLATFORM.md` (500 char cap). Per [MD-WRITING-PLAN §파일4](MD-WRITING-PLAN.md).
+_(none — see Dev-tool section for remaining MD/dev-tool items.)_
 
 ---
 
@@ -70,7 +69,7 @@ They are tracked here but do not belong in the runtime feature roadmap.
 | CC-skills | Claude Code | `.claude/skills/` subagent skills | ⬜ | — | smoke-and-score, regression-check, init-project-memory |
 | CON-diff | Conductor | Diff inline revise UI | ⬜ | `PlanExecutePanel.tsx` (approve/reject only) | UI-only; no `sessions/_regression/` fixture |
 | MD-PROJECT | Prompt | PROJECT.md workspace injection | ✅ | `session_guidance.py` | Shipped |
-| MD-PLATFORM | Prompt | PLATFORM.md externalization | ⬜ | — | Replaces hardcoded `prompts.py` constants |
+| MD-PLATFORM | Prompt | PLATFORM.md externalization | ✅ | `.agent-lab/PLATFORM.md`, `platform_md.py` | inject via session_guidance |
 
 ---
 
@@ -78,7 +77,6 @@ They are tracked here but do not belong in the runtime feature roadmap.
 
 | Priority | ID | Suggested next action |
 |----------|-----|-----------------------|
-| P2 | MD-PLATFORM | Externalize `prompts.py` to `.agent-lab/PLATFORM.md` |
 | P2 | LC-clarifier | Wire `session_clarifier` to plan mode (flag on path) |
 | P2 | CC-hooks | `.claude/settings.json` PostEdit ruff + Stop pytest |
 

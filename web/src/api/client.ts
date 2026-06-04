@@ -679,6 +679,14 @@ export type PlanExecutionRecord = {
   verify_retries?: number;
   repair_history?: Record<string, unknown>[];
   last_repair?: Record<string, unknown>;
+  revise_requested?: boolean;
+  revise_note?: string;
+  revise_chunk_ref?: string | null;
+  revision_of?: string;
+  revision_attempt?: number;
+  revision_history?: Record<string, unknown>[];
+  last_revision?: Record<string, unknown>;
+  superseded_by?: string;
   adversarial_note?: string;
   adversarial_source?: string;
   snapshot_id?: string;
@@ -864,6 +872,37 @@ export function rejectPendingPlan(sessionId: string, pendingId: string) {
     `/api/sessions/${encodeURIComponent(sessionId)}/execute/pending-plans/${encodeURIComponent(pendingId)}/reject`,
     { method: "POST" },
   );
+}
+
+export async function revisePendingPlan(
+  sessionId: string,
+  pendingId: string,
+  opts: {
+    comment: string;
+    chunkRef?: string;
+    lineStart?: number;
+    lineEnd?: number;
+    executor?: "cursor" | "codex";
+    permissions?: Record<string, unknown>;
+  },
+) {
+  const body = await postJsonPlanExecute(
+    `/api/sessions/${encodeURIComponent(sessionId)}/execute/pending-plans/${encodeURIComponent(pendingId)}/revise`,
+    {
+      comment: opts.comment,
+      chunk_ref: opts.chunkRef ?? null,
+      line_start: opts.lineStart ?? null,
+      line_end: opts.lineEnd ?? null,
+      executor: opts.executor ?? null,
+      permissions: opts.permissions ?? {},
+    },
+  );
+  return body as {
+    ok: boolean;
+    execution: PlanExecutionRecord;
+    superseded_execution: PlanExecutionRecord;
+    revision: Record<string, unknown>;
+  };
 }
 
 export function resolvePlanExecution(

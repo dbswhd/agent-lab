@@ -453,18 +453,20 @@ tools: Read, Bash, Edit
 Phase I (M0–M4) 완료 → `plan_execute_worktree.py`, `plan_execute_merge.py` 구현됨.  
 git worktree 격리 + approve = merge 구조 확립.
 
-### 2.2 남은 것: Diff Viewer 인라인 재작업
+### 2.2 Diff Viewer 인라인 재작업 (✅ shipped — CON-diff)
 
-**Conductor에 있고 Agent Lab에 없는 것:**
+**Conductor 패턴을 Agent Lab에 적용:**
 ```
-현재: diff 전체 표시 → approve / reject 2택
-목표: diff의 특정 chunk에 인라인 코멘트 → "이 부분만 다시 짜줘"
+diff 전체 표시 → approve / reject
+      또는 diff의 특정 hunk에 인라인 코멘트 → "이 부분만 다시 짜줘"
       → 에이전트가 해당 chunk만 수정 → re-diff → re-approve
 ```
 
-구현 파일: `PlanExecutePanel.tsx` + `/api/sessions/{id}/execute/{exec_id}/revise`
+구현 파일: `PlanExecutePanel.tsx` + `plan_execute.py:revise_pending_execution()` +
+`POST /api/sessions/{id}/execute/pending-plans/{exec_id}/revise`
 
-**우선순위: P2** (Layer 3 verify loop이 먼저)
+기존 pending worktree는 새 diff 생성 성공 전까지 보존하고, 성공 후에만
+`superseded`로 전환한다.
 
 ### 2.3 Worktree 실행 이력 보존
 
@@ -698,7 +700,7 @@ Phase 3 (지속)
 | **P1** | LazyCodex | Oracle Verified Completion (§1.6) | M (50줄 Python + 40줄 TSX) | 높음 — 에이전트 자기 보고 신뢰 불가 해결 |
 | **P1** | Centaur | Durable Step (completed_steps) | S | ✅ CENT-durable |
 | **P2** | LazyCodex | PROJECT.md 영속 메모리 (§1.7) | S (25줄 + 파일 생성) | 중간 — 세션 간 기억, Human 마찰 감소 |
-| **P2** | Conductor | Diff viewer 인라인 재작업 | L (UI 비중) | 높음 — UX |
+| **P2** | Conductor | Diff viewer 인라인 재작업 | L (UI 비중) | ✅ CON-diff |
 | **P2** | LazyCodex | session_clarifier 강화 | S (20줄) | 중간 — 계획 품질 |
 | **P2** | Claude Code | Subagent skills | XS (파일 작성) | 중간 — 반복 자동화 |
 | **P3** | 운영 | main.py 라우터 분리 | L | ✅ ops-P2 |

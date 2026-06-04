@@ -91,6 +91,15 @@ class PlanExecuteReverifyRequest(BaseModel):
     permissions: dict[str, Any] = Field(default_factory=dict)
 
 
+class PlanExecuteReviseRequest(BaseModel):
+    comment: str = Field(..., min_length=1, max_length=2000)
+    chunk_ref: str | None = Field(default=None, max_length=500)
+    line_start: int | None = Field(default=None, ge=1)
+    line_end: int | None = Field(default=None, ge=1)
+    executor: Literal["cursor", "codex"] | None = None
+    permissions: dict[str, Any] = Field(default_factory=dict)
+
+
 class PlanExecuteIsolationOverrideRequest(BaseModel):
     execution_id: str = Field(..., min_length=1)
     mode: str = Field(..., min_length=1)

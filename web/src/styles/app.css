@@ -2359,6 +2359,54 @@ body {
   margin: 8px 0 0;
 }
 
+.plan-execute-revise {
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--mac-fill-secondary) 58%, transparent);
+  border: 0.5px solid color-mix(in srgb, var(--mac-separator) 50%, transparent);
+}
+
+.plan-execute-revise__controls {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.8fr) minmax(220px, 1.5fr) auto;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.plan-execute-revise select,
+.plan-execute-revise textarea {
+  width: 100%;
+  min-width: 0;
+  border: 0.5px solid var(--mac-separator);
+  border-radius: 6px;
+  background: var(--mac-control-background, var(--mac-fill-tertiary));
+  color: var(--mac-label-primary);
+  font: inherit;
+}
+
+.plan-execute-revise select {
+  padding: 0 7px;
+}
+
+.plan-execute-revise textarea {
+  min-height: 34px;
+  padding: 6px 8px;
+  resize: vertical;
+}
+
+.plan-execute-revise__error {
+  margin: 6px 0 0;
+  font-size: var(--text-caption1);
+  color: var(--mac-destructive, #ff3b30);
+}
+
+@media (max-width: 760px) {
+  .plan-execute-revise__controls {
+    grid-template-columns: 1fr;
+  }
+}
+
 .plan-execute-pending__actions {
   display: flex;
   gap: 8px;

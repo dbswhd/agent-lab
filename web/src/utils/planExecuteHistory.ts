@@ -59,6 +59,8 @@ function executionStatusSuffix(status: string | undefined): string | null {
       return "conflict";
     case "rejected":
       return "rejected";
+    case "superseded":
+      return "revised";
     case "completed":
       return "done";
     case "review_required":

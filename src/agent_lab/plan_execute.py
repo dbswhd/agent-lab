@@ -44,6 +44,7 @@ from agent_lab.session_guidance import verify_execution_artifacts
 
 EXECUTOR_ID = "cursor"
 MAX_DIFF_CHARS = 120_000
+MAX_VERIFY_RETRIES = 2
 PENDING_STATUS = "pending_approval"
 
 
@@ -113,6 +114,9 @@ def execution_allows_task_complete(execution: dict[str, Any]) -> bool:
     """True when linked room tasks may be marked completed (mirrors _approve_status)."""
     status = str(execution.get("status") or "")
     if status in ("review_required", "pending_approval", "rejected", "failed"):
+        return False
+    oracle = execution.get("oracle")
+    if isinstance(oracle, dict) and oracle.get("verdict") == "fail":
         return False
     if status == "completed":
         return True
@@ -363,6 +367,108 @@ def _record_verify_after_merge(
     )
     target["verify_history"] = history
     return evidence
+
+
+def _repair_agent_id(
+    target: dict[str, Any],
+    requested: str | None,
+) -> str:
+    from agent_lab.agents.registry import available_agents
+
+    allowed = {"cursor", "codex"}
+    if requested and requested not in allowed:
+        raise ValueError("repair executor must be cursor or codex")
+    ready = set(available_agents())
+    candidates = [
+        requested,
+        str(target.get("executor") or ""),
+        "cursor",
+        "codex",
+    ]
+    for candidate in candidates:
+        if candidate in allowed and candidate in ready:
+            return candidate
+    raise RuntimeError("Cursor/Codex repair executor unavailable")
+
+
+def _repair_prompt(target: dict[str, Any], *, attempt: int) -> str:
+    oracle = target.get("oracle") if isinstance(target.get("oracle"), dict) else {}
+    reason = str(oracle.get("detail") or "Oracle verification failed")
+    paths = ", ".join(_merged_verify_paths(target)) or "(plan paths unavailable)"
+    return f"""Layer 3 repair attempt {attempt}/{MAX_VERIFY_RETRIES}.
+
+The previous merge completed, but the independent Oracle returned FAIL:
+{reason}
+
+Repair only the current plan action in this isolated worktree.
+- 무엇을: {target.get("action_what") or target.get("action_key") or "plan action"}
+- 어디서: {target.get("action_where") or paths}
+- 검증: {target.get("action_verify") or "verify field missing"}
+- 관련 경로: {paths}
+
+Re-read the files, make the smallest required fix, and run the named verification.
+End with `VERIFICATION: PASS — ...` or `VERIFICATION: FAIL — ...`."""
+
+
+def _call_repair_agent(
+    agent_id: str,
+    *,
+    target: dict[str, Any],
+    worktree_path: Path,
+    permissions: dict[str, Any] | None,
+    attempt: int,
+) -> str:
+    prompt = _repair_prompt(target, attempt=attempt)
+    effective = dict(permissions or {})
+    effective["_discuss_cwd"] = str(worktree_path.resolve())
+    if agent_id == "cursor":
+        from agent_lab.agents import cursor_agent
+
+        return cursor_agent.respond(
+            system="You repair a merged plan action after independent verification failed.",
+            user=prompt,
+            permissions=effective,
+            cwd=worktree_path,
+            follow_ups=_verify_follow_ups(str(target.get("action_verify") or "")),
+        )
+    from agent_lab.agents import codex_agent
+
+    return codex_agent.respond(
+        system="You repair a merged plan action after independent verification failed.",
+        user=prompt,
+        permissions=effective,
+        room_turn=False,
+    )
+
+
+def _commit_repair_worktree(
+    worktree_path: Path,
+    *,
+    target: dict[str, Any],
+    attempt: int,
+) -> str | None:
+    _run_git(worktree_path, "add", "-A")
+    has_changes = _run_git(worktree_path, "diff", "--cached", "--quiet", check=False)
+    if has_changes.returncode == 0:
+        return None
+    action_key = str(target.get("action_key") or "plan-action")
+    _run_git(
+        worktree_path,
+        "commit",
+        "-m",
+        f"agent-lab: repair {action_key} attempt {attempt}",
+    )
+    return _run_git(worktree_path, "rev-parse", "HEAD").stdout.strip()
+
+
+def _append_repair_history(
+    target: dict[str, Any],
+    repair: dict[str, Any],
+) -> None:
+    history = list(target.get("repair_history") or [])
+    history.append(repair)
+    target["repair_history"] = history
+    target["last_repair"] = repair
 
 
 def _mark_rejected_tasks(
@@ -1266,6 +1372,8 @@ def reverify_merged_execution(
     folder: Path,
     *,
     execution_id: str,
+    permissions: dict[str, Any] | None = None,
+    executor: str | None = None,
 ) -> dict[str, Any]:
     run = read_run_meta(folder)
     executions = list(run.get("executions") or [])
@@ -1274,7 +1382,144 @@ def reverify_merged_execution(
         raise ValueError("execution not found")
     if target.get("status") != "merged":
         raise ValueError("execution is not merged")
-    retries = int(target.get("verify_retries") or 0) + 1
-    evidence = _record_verify_after_merge(folder, target, verify_retries=retries)
+    oracle = target.get("oracle") if isinstance(target.get("oracle"), dict) else {}
+    if oracle.get("verdict") != "fail":
+        retries = int(target.get("verify_retries") or 0) + 1
+        evidence = _record_verify_after_merge(folder, target, verify_retries=retries)
+        _update_execution_row(folder, execution_id=execution_id, target=target)
+        return {"execution": target, "verify_after_merge": evidence, "repair": None}
+
+    retries = int(target.get("verify_retries") or 0)
+    if retries >= MAX_VERIFY_RETRIES:
+        raise ValueError(f"verify retry limit reached ({MAX_VERIFY_RETRIES})")
+    if target.get("isolation_effective") != "worktree":
+        raise ValueError("agent repair requires a worktree execution")
+    git_root_raw = target.get("git_root")
+    if not git_root_raw:
+        raise ValueError("execution missing git_root")
+
+    attempt = retries + 1
+    started_at = _now()
+    agent_id = _repair_agent_id(target, executor)
+    repair_id = f"repair-{uuid.uuid4().hex[:12]}"
+    action_key = str(
+        target.get("action_key")
+        or f"{target.get('action_kind')}:{target.get('action_index')}"
+    )
+    ew = create_exec_worktree(
+        folder,
+        exec_id=execution_id,
+        git_root=Path(str(git_root_raw)),
+        action_key=f"{action_key}-repair-{attempt}",
+        session_id=folder.name,
+        base_branch=str(target.get("base_branch") or "") or None,
+    )
+    repair: dict[str, Any] = {
+        "id": repair_id,
+        "attempt": attempt,
+        "agent": agent_id,
+        "status": "running",
+        "started_at": started_at,
+        "oracle_before": dict(oracle),
+        **ew.to_dict(),
+    }
+    try:
+        response = _call_repair_agent(
+            agent_id,
+            target=target,
+            worktree_path=ew.worktree_path,
+            permissions=permissions,
+            attempt=attempt,
+        )
+        repair_commit = _commit_repair_worktree(
+            ew.worktree_path,
+            target=target,
+            attempt=attempt,
+        )
+        repair["agent_response"] = _extract_draft_summary(response)
+        repair["exec_commit_sha"] = repair_commit
+        if repair_commit is None:
+            discard_exec_worktree(ew, folder, execution_id)
+            evidence = _record_verify_after_merge(folder, target, verify_retries=attempt)
+            repair["status"] = "no_changes"
+            repair["completed_at"] = _now()
+            repair["oracle_after"] = dict(evidence.get("oracle") or {})
+            _append_repair_history(target, repair)
+            _update_execution_row(folder, execution_id=execution_id, target=target)
+            plan_advance = _mark_approved_effects(
+                folder,
+                execution_id=execution_id,
+                target=target,
+            )
+            return {
+                "execution": target,
+                "verify_after_merge": evidence,
+                "repair": repair,
+                "plan_advance": plan_advance,
+            }
+
+        merge = {
+            "status": "pending",
+            "strategy": "merge",
+            "commit_sha": None,
+            "conflict_files": [],
+            "attempted_at": _now(),
+            "completed_at": None,
+        }
+        try:
+            merge_result = merge_exec_branch(
+                ew,
+                session_folder=folder,
+                exec_id=execution_id,
+                message=f"agent-lab: repair {action_key} attempt {attempt}",
+            )
+        except MergeConflict as exc:
+            merge["status"] = "conflict"
+            merge["conflict_files"] = exc.conflict_files
+            merge["completed_at"] = _now()
+            target.update(ew.to_dict())
+            target["exec_commit_sha"] = repair_commit
+            target["merge"] = merge
+            target["status"] = "merge_conflict"
+            target["verify_retries"] = attempt
+            repair["status"] = "merge_conflict"
+            repair["merge"] = merge
+            repair["completed_at"] = merge["completed_at"]
+            _append_repair_history(target, repair)
+            _update_execution_row(folder, execution_id=execution_id, target=target)
+            return {
+                "execution": target,
+                "verify_after_merge": target.get("verify_after_merge"),
+                "repair": repair,
+            }
+
+        merge.update(merge_result.to_dict())
+        merge["completed_at"] = _now()
+        target.update(ew.to_dict())
+        target["exec_commit_sha"] = repair_commit
+        target["merge"] = merge
+        target["status"] = "merged"
+        target["completed_at"] = merge["completed_at"]
+        evidence = _record_verify_after_merge(folder, target, verify_retries=attempt)
+        repair["status"] = "merged"
+        repair["merge"] = merge
+        repair["completed_at"] = merge["completed_at"]
+        repair["oracle_after"] = dict(evidence.get("oracle") or {})
+        _append_repair_history(target, repair)
+    except Exception:
+        if ew.worktree_path.exists():
+            discard_exec_worktree(ew, folder, execution_id)
+        raise
+
     _update_execution_row(folder, execution_id=execution_id, target=target)
-    return {"execution": target, "verify_after_merge": evidence}
+    plan_advance = _mark_approved_effects(
+        folder,
+        execution_id=execution_id,
+        target=target,
+    )
+    return {
+        "execution": target,
+        "verify_after_merge": evidence,
+        "repair": repair,
+        "plan_advance": plan_advance,
+    }

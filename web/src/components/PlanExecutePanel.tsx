@@ -198,6 +198,7 @@ function OracleBadge({
   const failed = status === "failed" || status === "fail";
   const checked = row.verify_after_merge?.checked_at ?? oracle?.checked_at;
   const retryCount = row.verify_retries ?? row.verify_after_merge?.verify_retries ?? 0;
+  const retryLimitReached = retryCount >= MAX_VERIFY_RETRIES;
   const detail = oracle?.detail?.trim();
   return (
     <div
@@ -224,10 +225,11 @@ function OracleBadge({
         <button
           type="button"
           className="room-plan-btn plan-execute-oracle__action"
-          disabled={busy}
+          disabled={busy || retryLimitReached}
+          title={retryLimitReached ? "Oracle 수정 재시도 상한(2회)에 도달했습니다." : undefined}
           onClick={() => onReverify(row.id)}
         >
-          에이전트에게 수정 요청
+          {retryLimitReached ? "수정 재시도 상한 도달" : "에이전트에게 수정 요청"}
         </button>
       ) : null}
     </div>
@@ -299,6 +301,7 @@ function parseActionKey(key: string): { kind: string; index: number } | null {
 }
 
 const EXECUTION_HISTORY_LIMIT = 5;
+const MAX_VERIFY_RETRIES = 2;
 
 function openBlockObjectionsForAction(
   run: Record<string, unknown> | undefined,
@@ -601,7 +604,11 @@ export function PlanExecutePanel({
     setBusy(true);
     setError(null);
     try {
-      await reverifyPlanExecution(sessionId, executionId);
+      await reverifyPlanExecution(
+        sessionId,
+        executionId,
+        executePermissions(),
+      );
       onUpdated();
       await refreshActions();
     } catch (e) {

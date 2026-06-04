@@ -54,7 +54,7 @@ jobs:
       - name: Pytest (mock-only, no secrets)
         env:
           AGENT_LAB_ROOT: ${{ github.workspace }}
-        run: pytest tests/ -q
+        run: pytest tests/ -q -m "not live"
 
       - name: Regression smoke and score fixtures
         run: |

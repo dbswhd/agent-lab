@@ -40,7 +40,11 @@ tauri-build: prepare-bundled-runtime
 	cd web && npm run tauri build
 
 test: check-worktrees
-	.venv/bin/pytest tests/ -q
+	.venv/bin/pytest tests/ -q -m "not live"
+
+test-live:
+	@test "$$AGENT_LAB_RUN_LIVE" = "1" || (echo "Set AGENT_LAB_RUN_LIVE=1 for live Cursor spike tests" && exit 1)
+	.venv/bin/pytest tests/ -q -m live
 
 ci: test smoke score-regression-fixtures
 

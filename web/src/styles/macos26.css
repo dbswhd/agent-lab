@@ -494,8 +494,41 @@ body.is-tauri .chat-list-header {
   padding: 0 6px;
 }
 
+.session-search {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: var(--sidebar-control-height);
+  padding: 0 7px;
+  color: var(--mac-label-tertiary);
+  background: var(--mac-fill-secondary);
+  border: 0.5px solid var(--mac-separator);
+  border-radius: var(--radius-control);
+}
+
+.session-search:focus-within {
+  border-color: var(--mac-accent);
+  box-shadow: var(--mac-focus-thin);
+}
+
+.session-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--mac-label-primary);
+  font: inherit;
+  font-size: var(--text-caption);
+}
+
+.session-search input::placeholder {
+  color: var(--mac-label-tertiary);
+}
+
 /* Grouped list (Sidebar) */
-.session-list li {
+.session-row {
   border-radius: 8px;
   margin-bottom: 1px;
   border: none;
@@ -504,7 +537,7 @@ body.is-tauri .chat-list-header {
   transition: background 0.14s ease, box-shadow 0.14s ease;
 }
 
-.chat-list-pane .session-list li.selected {
+.chat-list-pane .session-row.selected {
   background: color-mix(in srgb, var(--lg-sidebar-surface-elevated) 88%, var(--mac-accent) 5%);
   backdrop-filter: blur(10px) saturate(1.35);
   -webkit-backdrop-filter: blur(10px) saturate(1.35);
@@ -526,12 +559,17 @@ body.is-tauri .chat-list-header {
   }
 }
 
-[data-theme="dark"] .chat-list-pane .session-list li.selected {
+[data-theme="dark"] .chat-list-pane .session-row.selected {
   background: color-mix(in srgb, var(--lg-sidebar-surface-elevated) 82%, var(--mac-accent) 8%);
 }
 
-.chat-list-pane .session-list li:hover:not(.selected) {
+.chat-list-pane .session-row:hover:not(.selected) {
   background: color-mix(in srgb, var(--lg-sidebar-surface-elevated) 45%, transparent);
+}
+
+.chat-list-pane .session-row:focus-visible {
+  outline: 2px solid var(--mac-focus-ring);
+  outline-offset: 1px;
 }
 
 .session-preview-title {

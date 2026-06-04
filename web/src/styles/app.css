@@ -476,9 +476,18 @@ body {
   flex: none;
 }
 
-.session-list li {
+.session-list li,
+.session-row {
   display: flex;
   align-items: center;
+  width: 100%;
+}
+
+.session-row {
+  appearance: none;
+  font: inherit;
+  text-align: left;
+  color: inherit;
   cursor: pointer;
 }
 

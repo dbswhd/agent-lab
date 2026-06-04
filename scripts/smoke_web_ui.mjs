@@ -24,6 +24,23 @@ function fail(msg) {
   console.error(`FAIL: ${msg}`);
 }
 
+async function dispatchShortcut(page, key, { ctrlKey = false } = {}) {
+  await page.evaluate(
+    ({ shortcutKey, withControl }) => {
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: shortcutKey,
+          metaKey: true,
+          ctrlKey: withControl,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    },
+    { shortcutKey: key, withControl: ctrlKey },
+  );
+}
+
 async function main() {
   fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
   const browser = await chromium.launch({ headless: true });
@@ -110,7 +127,12 @@ async function main() {
   await page.getByRole("button", { name: "알림 닫기" }).click();
 
   try {
-    const fixture = page.getByText(FIXTURE_TOPIC, { exact: true });
+    const sessionSearch = page.getByRole("searchbox", { name: "세션 검색" });
+    await sessionSearch.waitFor({ state: "visible", timeout: 5000 });
+    await sessionSearch.fill("pending dry-run diff");
+    pass("session search filters the sidebar");
+
+    const fixture = page.getByRole("button", { name: new RegExp(FIXTURE_TOPIC) });
     await fixture.waitFor({ state: "visible", timeout: 10_000 });
     await Promise.all([
       page.waitForResponse(
@@ -119,11 +141,14 @@ async function main() {
           resp.status() === 200,
         { timeout: 10_000 },
       ),
-      fixture.click(),
+      fixture.press("Enter"),
     ]);
-    await page.getByRole("tab", { name: /^plan/ }).click();
+    pass("session row is keyboard-selectable after search");
+
+    await dispatchShortcut(page, "2");
     const pendingRegion = page.getByRole("region", { name: "승인 대기" });
     await pendingRegion.waitFor({ state: "visible", timeout: 10_000 });
+    pass("Cmd+2 opens plan");
     await pendingRegion.locator("summary", { hasText: "로컬 diff" }).waitFor({
       state: "visible",
       timeout: 10_000,
@@ -137,6 +162,50 @@ async function main() {
     pass("session → plan → pending dry-run diff DOM path");
   } catch (e) {
     fail(`pending dry-run diff DOM path failed (${e})`);
+  }
+
+  try {
+    await dispatchShortcut(page, "1");
+    const conversationTab = page
+      .locator(".view-tabs-bar")
+      .getByRole("tab", { name: "대화", exact: true });
+    await conversationTab.waitFor({ state: "visible", timeout: 5000 });
+    if ((await conversationTab.getAttribute("aria-selected")) !== "true") {
+      throw new Error("content conversation tab was not selected");
+    }
+    pass("Cmd+1 opens conversation");
+
+    const messenger = page.locator(".messenger");
+    const before = await messenger.getAttribute("class");
+    await dispatchShortcut(page, "s", { ctrlKey: true });
+    const after = await messenger.getAttribute("class");
+    if (before !== after) {
+      pass("Ctrl+Cmd+S toggles sidebar");
+    } else {
+      fail("Ctrl+Cmd+S did not toggle sidebar");
+    }
+
+    await dispatchShortcut(page, "n");
+    await page.getByRole("button", { name: "폴더 선택" }).first().waitFor({
+      state: "visible",
+      timeout: 5000,
+    });
+    pass("Cmd+N opens new conversation");
+
+    await dispatchShortcut(page, "s", { ctrlKey: true });
+    await page.getByRole("searchbox", { name: "세션 검색" }).fill(
+      "pending dry-run diff",
+    );
+    await page
+      .getByRole("button", { name: new RegExp(FIXTURE_TOPIC) })
+      .press("Enter");
+    await dispatchShortcut(page, "2");
+    await page.getByRole("region", { name: "승인 대기" }).waitFor({
+      state: "visible",
+      timeout: 5000,
+    });
+  } catch (e) {
+    fail(`desktop keyboard shortcuts failed (${e})`);
   }
 
   for (const theme of ["light", "dark"]) {

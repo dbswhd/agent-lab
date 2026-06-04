@@ -71,6 +71,43 @@ done
 .venv/bin/python scripts/verify_ui_smoke_fixture.py --api-base http://127.0.0.1:8765
 osascript -e 'tell application "System Events" to tell process "agent-lab-app" to set frontmost to true'
 
+WINDOW_BEFORE="$(
+  osascript -e 'tell application "System Events" to tell process "agent-lab-app" to tell front window to return (position as text) & "|" & (size as text)'
+)"
+DRAG_INJECTED=1
+if ! /usr/bin/swift "$ROOT/scripts/drag_tauri_titlebar.swift" agent-lab-app; then
+  DRAG_INJECTED=0
+  osascript -e 'tell application "System Events" to tell process "agent-lab-app" to tell front window to set position to {180, 140}'
+fi
+WINDOW_AFTER_DRAG="$(
+  osascript -e 'tell application "System Events" to tell process "agent-lab-app" to tell front window to return (position as text) & "|" & (size as text)'
+)"
+if [[ "$WINDOW_BEFORE" == "$WINDOW_AFTER_DRAG" ]]; then
+  echo "FAIL: Tauri titlebar drag did not move the real window." >&2
+  exit 1
+fi
+if [[ "$DRAG_INJECTED" == "1" ]]; then
+  echo "OK: Tauri titlebar drag moved the real window"
+else
+  echo "OK: Tauri real window is movable; synthetic titlebar drag skipped without Input Monitoring"
+fi
+
+osascript \
+  -e 'tell application "System Events" to tell process "agent-lab-app" to tell front window to set size to {700, 400}' \
+  -e 'delay 0.3'
+WINDOW_MIN_SIZE="$(
+  osascript \
+    -e 'tell application "System Events" to tell process "agent-lab-app" to set windowSize to size of front window' \
+    -e 'return (item 1 of windowSize as text) & " " & (item 2 of windowSize as text)'
+)"
+read -r WINDOW_MIN_WIDTH WINDOW_MIN_HEIGHT <<<"$WINDOW_MIN_SIZE"
+if (( WINDOW_MIN_WIDTH < 900 || WINDOW_MIN_HEIGHT < 600 )); then
+  echo "FAIL: Tauri minimum window size contract failed (${WINDOW_MIN_WIDTH}x${WINDOW_MIN_HEIGHT})." >&2
+  exit 1
+fi
+echo "OK: Tauri real window enforces minimum size (${WINDOW_MIN_WIDTH}x${WINDOW_MIN_HEIGHT})"
+osascript -e 'tell application "System Events" to tell process "agent-lab-app" to tell front window to set size to {1280, 860}'
+
 cat <<'STEPS'
 
 Tauri real-window scenario:

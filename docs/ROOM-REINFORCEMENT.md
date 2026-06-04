@@ -292,7 +292,7 @@ Human 또는 턴 리드가 `DELEGATE codex: "백테스트만"` 한 줄
 | `sessions/_benchmark/delegate_codex` | R4 delegate metadata/artifact fixture |
 | `sessions/_benchmark/ten_turn_kpi_stub` | R5 score_session key shape |
 
-CI: `pytest tests/ -q` + `scripts/smoke_room.py` (18 baselines) + `check_worktree_orphans.py` + `score_session.py --json` fixture smoke (LLM/secrets 없음).
+CI: `pytest tests/ -q` + `scripts/smoke_room.py` (20 baselines) + `check_worktree_orphans.py` + `score_session.py --json` fixture smoke (LLM/secrets 없음).
 
 ### H4. 세션 품질 스코어 (offline)
 
@@ -356,9 +356,9 @@ CI: `pytest tests/ -q` + `scripts/smoke_room.py` (18 baselines) + `check_worktre
 
 ## 다음 액션 (통합 로드맵)
 
-**Shipped (2026-06):** Phase I M0–M4, Room P0/P1, F2 R-P1, H-P1/H-P2/H-P3, H2, E-smoke, UX-P2, ops-P0/P2.
+**Shipped (2026-06):** Phase I M0–M4, Room P0/P1, F2 R-P1, H-P1/H-P2/H-P3, H2, E-smoke (20 smoke baselines), UX-P2, ops-P0/P2, EXTERNAL-REFS (Layers 1–5, CON-diff, CENT/MD/CC).
 
-**다음 후보 (코드 작업):**
+**다음 후보 (코드 작업 — 완료, 이력):**
 
 1. ~~**H-P4**~~ — `mailbox_handoff`, `specialist_asymmetric_cwd` smoke ✅
 2. ~~**실사용 KPI**~~ — `score_sessions_weekly.py` + `make score-weekly` + M4 gates ✅
@@ -374,13 +374,13 @@ CI: `pytest tests/ -q` + `scripts/smoke_room.py` (18 baselines) + `check_worktre
 12. ~~**LC-L3 execute_verify_loop**~~ — mock `verify_after_merge` + oracle regression fixture smoke ✅
 13. ~~**LC-L3-runtime**~~ — merge response `verify_after_merge` evidence + reverify API/UI badge ✅
 14. ~~**LC-L3-agent-repair**~~ — Oracle FAIL → Cursor/Codex repair worktree → re-merge → Oracle 재검증, 최대 2회 ✅
+15. ~~**CENT-durable**~~ — `completed_steps[]` resume skip ✅
+16. ~~**MD-PLATFORM / MD-PROJECT / MD-P3**~~ — PLATFORM + PROJECT + AGENTS/SHARED injection ✅
+17. ~~**CC-dev-tool**~~ — hooks, rules, skills ✅
+18. ~~**CON-diff**~~ — hunk inline revise ✅
+19. ~~**PI-executed**~~ — merged diff → `sessions/<id>/executed/` ✅
+20. ~~**LC-L5**~~ — goal-driven session loop (`docs/GOAL-LOOP.md`) ✅
 
-14. ~~**CENT-durable**~~ — `completed_steps[]` resume skip ✅
-15. ~~**MD-PLATFORM / MD-PROJECT / MD-P3**~~ — PLATFORM + PROJECT + AGENTS/SHARED injection ✅
-16. ~~**CC-dev-tool**~~ — hooks, rules, skills ✅
-17. ~~**CON-diff**~~ — hunk inline revise ✅
-18. ~~**PI-executed**~~ — merged diff → `sessions/<id>/executed/` ✅
-
-**다음 후보 (선택):** Layer 5 goal-driven loop; live ops Tier B/C; doc-only polish.
+**다음 후보 (선택, 코드 티켓 없음):** 주기적 `make verify-ops-live` / Tier C; opt-in live env 스모크(CLARIFIER, adversarial, goal oracle); 제품·UX 신규 기능은 TRACEABILITY 외 로드맵.
 
 ~~**Room P0**~~ · ~~**F2 R-P1**~~ · ~~**H-P1/H-P2/H-P3**~~ · ~~**H2**~~ · ~~**E-smoke**~~ · ~~**ops lifespan/router**~~ · ~~**UX-P2**~~ · ~~**Phase I M1–M4**~~ — 완료.

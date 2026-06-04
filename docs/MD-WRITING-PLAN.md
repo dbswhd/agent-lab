@@ -8,8 +8,8 @@
 > 이 문서는 **how to write** 가이드이며, **what is shipped**는 TRACEABILITY를 참조.  
 > MD-SYSTEM-DESIGN.md(파일 맵)와 겹치는 내용은 이 문서가 canonical; 양쪽이 충돌하면 이 문서 기준.
 
-> **현재 구현 상태 (2026-06-03):** CLAUDE.md 미작성, `.claude/rules/` 없음, PLATFORM.md/PROJECT.md 주입 미구현.  
-> 아래 "전체 실행 계획" 섹션에서 shipped vs planned 구분 확인.
+> **구현 상태 (2026-06):** Dev-tool(CC-*)·런타임 MD(MD-PLATFORM, MD-PROJECT, MD-P3) **전부 shipped** — [EXTERNAL-REFS-TRACEABILITY.md §Dev-tool](EXTERNAL-REFS-TRACEABILITY.md).  
+> 아래 실행 계획 표는 **이력용**; 신규 티켓은 TRACEABILITY만 본다.
 
 ---
 
@@ -731,22 +731,22 @@ CLAUDE.md와 AGENTS.md가 공통 내용을 공유할 때:
 
 | 순위 | 항목 | 상태 | TRACEABILITY ID |
 |------|------|------|-----------------|
-| **P0** | `CLAUDE.md` 작성 (60–80줄) | ⬜ 미작성 | CC-CLAUDE |
-| **P0** | `.claude/settings.json` hooks | ⬜ 미작성 | CC-hooks |
-| P1 | `.claude/rules/python-backend.md` | ⬜ | CC-rules |
-| P1 | `.claude/rules/react-frontend.md` | ⬜ | CC-rules |
-| P1 | `.claude/skills/smoke-and-score/` | ⬜ | CC-skills |
-| P1 | `.claude/skills/regression-check/` | ⬜ | CC-skills |
-| P2 | `.claude/skills/init-project-memory/` | ⬜ | CC-skills |
+| **P0** | `CLAUDE.md` 작성 (60–80줄) | ✅ | CC-CLAUDE |
+| **P0** | `.claude/settings.json` hooks | ✅ | CC-hooks |
+| P1 | `.claude/rules/python-backend.md` | ✅ | CC-rules |
+| P1 | `.claude/rules/react-frontend.md` | ✅ | CC-rules |
+| P1 | `.claude/skills/smoke-and-score/` | ✅ | CC-skills |
+| P1 | `.claude/skills/regression-check/` | ✅ | CC-skills |
+| P2 | `.claude/skills/init-project-memory/` | ✅ | CC-skills |
 
 ### 런타임 레이어 (Room/에이전트 품질 향상)
 
 | 순위 | 항목 | 상태 | TRACEABILITY ID |
 |------|------|------|-----------------|
-| P1 | `.agent-lab/PLATFORM.md` + `session_guidance.py` 주입 | ⬜ | MD-PLATFORM |
-| P2 | 워크스페이스 `.agent-lab/PROJECT.md` + 주입 | ⬜ | MD-PROJECT |
-| P3 | 워크스페이스 `AGENTS.md` (Codex 전용) | ⬜ | — |
-| P3 | `SHARED_CONTEXT.md` 패턴 | ⬜ | — |
+| P1 | `.agent-lab/PLATFORM.md` + `session_guidance.py` 주입 | ✅ | MD-PLATFORM |
+| P2 | 워크스페이스 `.agent-lab/PROJECT.md` + 주입 | ✅ | MD-PROJECT |
+| P3 | 워크스페이스 `AGENTS.md` (Codex 전용) | ✅ | MD-P3 |
+| P3 | `SHARED_CONTEXT.md` 패턴 | ✅ | MD-P3 |
 
 ### 우선순위 원칙
 

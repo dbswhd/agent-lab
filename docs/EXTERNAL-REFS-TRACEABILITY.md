@@ -56,7 +56,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 
 These are **acceptance criteria only**.
 
-_(none — see Dev-tool section for remaining MD/dev-tool items.)_
+_(none — dev-tool MD items in §Dev-tool are also shipped.)_
 
 ---
 

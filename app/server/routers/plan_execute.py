@@ -9,6 +9,7 @@ from agent_lab.plan_execute import (
     abort_merge_execution,
     confirm_merge_execution,
     list_plan_actions,
+    reverify_merged_execution,
     resolve_execution,
     run_dry_run,
     run_isolation_override,
@@ -27,6 +28,7 @@ from app.server.deps import (
     PlanExecuteDryRunRequest,
     PlanExecuteIsolationOverrideRequest,
     PlanExecuteMergeRequest,
+    PlanExecuteReverifyRequest,
     PlanExecuteResolveRequest,
     room_session_context,
     session_folder_or_404,
@@ -215,6 +217,22 @@ def session_execute_merge_confirm(
     folder = session_folder_or_404(session_id)
     try:
         result = confirm_merge_execution(
+            folder,
+            execution_id=body.execution_id.strip(),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    return {"ok": True, **result}
+
+
+@router.post("/sessions/{session_id}/execute/reverify")
+def session_execute_reverify(
+    session_id: str,
+    body: PlanExecuteReverifyRequest,
+) -> dict[str, Any]:
+    folder = session_folder_or_404(session_id)
+    try:
+        result = reverify_merged_execution(
             folder,
             execution_id=body.execution_id.strip(),
         )

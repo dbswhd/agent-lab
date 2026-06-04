@@ -634,6 +634,22 @@ export type PlanExecutionMergeRecord = {
   completed_at?: string | null;
 };
 
+export type PlanExecutionOracleRecord = {
+  verdict?: "pass" | "fail" | "skipped" | string;
+  detail?: string;
+  verify_criterion?: string;
+  checked_paths?: string[];
+  checked_at?: string;
+};
+
+export type PlanExecutionVerifyAfterMergeRecord = {
+  status?: "passed" | "failed" | "skipped" | string;
+  verify_retries?: number;
+  source?: string;
+  checked_at?: string;
+  oracle?: PlanExecutionOracleRecord;
+};
+
 export type PlanExecutionRecord = {
   id: string;
   schema_version?: number;
@@ -657,6 +673,10 @@ export type PlanExecutionRecord = {
   exec_commit_sha?: string | null;
   worktree_path?: string | null;
   merge?: PlanExecutionMergeRecord;
+  oracle?: PlanExecutionOracleRecord;
+  verify_after_merge?: PlanExecutionVerifyAfterMergeRecord;
+  verify_history?: Record<string, unknown>[];
+  verify_retries?: number;
   snapshot_id?: string;
   workspace_root?: string;
   workspace_label?: string;
@@ -913,6 +933,18 @@ export function abortPlanExecutionMerge(sessionId: string, executionId: string) 
 
 export function confirmPlanExecutionMerge(sessionId: string, executionId: string) {
   return postPlanMergeAction(sessionId, "confirm", executionId);
+}
+
+export async function reverifyPlanExecution(sessionId: string, executionId: string) {
+  const body = await postJsonPlanExecute(
+    `/api/sessions/${encodeURIComponent(sessionId)}/execute/reverify`,
+    { execution_id: executionId },
+  );
+  return body as {
+    ok: boolean;
+    execution: PlanExecutionRecord;
+    verify_after_merge?: PlanExecutionVerifyAfterMergeRecord;
+  };
 }
 
 export function overridePlanExecutionIsolation(

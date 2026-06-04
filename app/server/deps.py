@@ -85,6 +85,10 @@ class PlanExecuteMergeRequest(BaseModel):
     execution_id: str = Field(..., min_length=1)
 
 
+class PlanExecuteReverifyRequest(BaseModel):
+    execution_id: str = Field(..., min_length=1)
+
+
 class PlanExecuteIsolationOverrideRequest(BaseModel):
     execution_id: str = Field(..., min_length=1)
     mode: str = Field(..., min_length=1)

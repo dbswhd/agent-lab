@@ -57,39 +57,48 @@
         "completed_at": "2026-06-04T00:00:03+00:00"
       },
       "verify_retries": 1,
+      "reverify_endpoint": "/api/sessions/{session_id}/execute/reverify",
       "verify_after_merge": {
         "status": "passed",
         "verify_retries": 1,
+        "source": "mock_oracle",
+        "checked_at": "2026-06-04T00:00:08+00:00",
         "oracle": {
           "verdict": "pass",
           "detail": "PASS: found expected literal(s): VERIFIED_OK",
           "verify_criterion": "`src/app.py` contains `VERIFIED_OK`",
-          "checked_paths": ["src/app.py"]
+          "checked_paths": ["src/app.py"],
+          "checked_at": "2026-06-04T00:00:08+00:00"
         }
       },
       "oracle": {
         "verdict": "pass",
         "detail": "PASS: found expected literal(s): VERIFIED_OK",
         "verify_criterion": "`src/app.py` contains `VERIFIED_OK`",
-        "checked_paths": ["src/app.py"]
+        "checked_paths": ["src/app.py"],
+        "checked_at": "2026-06-04T00:00:08+00:00"
       },
       "verify_history": [
         {
           "attempt": 0,
+          "checked_at": "2026-06-04T00:00:04+00:00",
           "status": "failed",
           "oracle": {
             "verdict": "fail",
             "detail": "FAIL: missing expected literal(s): VERIFIED_OK",
-            "checked_paths": ["src/app.py"]
+            "checked_paths": ["src/app.py"],
+            "checked_at": "2026-06-04T00:00:04+00:00"
           }
         },
         {
           "attempt": 1,
+          "checked_at": "2026-06-04T00:00:08+00:00",
           "status": "passed",
           "oracle": {
             "verdict": "pass",
             "detail": "PASS: found expected literal(s): VERIFIED_OK",
-            "checked_paths": ["src/app.py"]
+            "checked_paths": ["src/app.py"],
+            "checked_at": "2026-06-04T00:00:08+00:00"
           }
         }
       ]

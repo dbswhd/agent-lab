@@ -31,6 +31,7 @@ PARTIAL_ROWS: list[tuple[str, list[str]]] = [
         [
             "sessions/_regression/execute_verify_loop",
             "tests/test_execute_verify_loop_fixture.py",
+            "tests/test_plan_execute_reverify_api.py",
         ],
     ),
     (
@@ -104,6 +105,8 @@ def test_lc_l3_oracle_dependency_documented():
     text = _read(TRACEABILITY)
     assert "LC-L3" in text and "verify_after_merge()" in text
     assert "oracle_verify()" in text
+    assert "/api/sessions/{id}/execute/reverify" in text
+    assert "LC-L3-agent-repair" in text
 
 
 def test_dev_tool_ids_documented():

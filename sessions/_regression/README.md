@@ -23,7 +23,7 @@ Baseline scenarios (minimal `run.json` fixtures):
 | `snapshot_override_pending/` | Human snapshot override | `snapshot_override` pending approval by Human |
 | `pre_execute_blocked/` | pre-execute gate blocked | `pre_verify.blocked: true` on blocked execution |
 | `adversarial_gate_lgtm/` | adversarial gate mock LGTM | dry-run `review_required` + `adversarial_note` + `expected_badges.json` |
-| `execute_verify_loop/` | LC-L3 mock verify loop | merged worktree execution has `verify_after_merge.status: passed`, `verify_retries ≥ 1`, and `oracle.verdict: pass` |
+| `execute_verify_loop/` | LC-L3 runtime verify loop | merged worktree execution has `verify_after_merge.status: passed`, `source: mock_oracle`, `reverify_endpoint`, `verify_history`, and `oracle.verdict: pass` |
 
 Compare live sessions against baselines:
 

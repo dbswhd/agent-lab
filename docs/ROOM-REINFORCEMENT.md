@@ -372,7 +372,8 @@ CI: `pytest tests/ -q` + `scripts/smoke_room.py` (18 baselines) + `check_worktre
 10. ~~**H4-ops last-live**~~ — weekly ops summary에 Tier B/C 최신 live GO/NO_GO 표시 ✅
 11. ~~**external-refs traceability**~~ — `EXTERNAL-REFS-TRACEABILITY.md` plan ↔ fixture/smoke 매트릭스 ✅
 12. ~~**LC-L3 execute_verify_loop**~~ — mock `verify_after_merge` + oracle regression fixture smoke ✅
+13. ~~**LC-L3-runtime**~~ — merge response `verify_after_merge` evidence + reverify API/UI badge ✅
 
-**다음 후보 (구현):** Layer 3 runtime wiring — merge response에 `verify_after_merge` 기록 + reverify API/UI.
+**다음 후보 (구현):** Layer 3 agent repair — Oracle FAIL 시 live agent 수정 요청 + 두 번째 merge loop.
 
 ~~**Room P0**~~ · ~~**F2 R-P1**~~ · ~~**H-P1/H-P2/H-P3**~~ · ~~**H2**~~ · ~~**E-smoke**~~ · ~~**ops lifespan/router**~~ · ~~**UX-P2**~~ · ~~**Phase I M1–M4**~~ — 완료.

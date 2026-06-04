@@ -73,6 +73,8 @@ Cursor bridge failures must include degraded fallback shape: `degraded`, `failur
 
 **Phase I execute (worktree):** design and checklist in [`docs/EXECUTE-WORKTREE-REFORM.md`](EXECUTE-WORKTREE-REFORM.md) §11 — M0–M4 shipped; CI uses regression fixtures only (no live merge in Actions).
 
+**LC-L3 execute verify loop:** worktree merge responses record `verify_after_merge` + `oracle` evidence, and `POST /api/sessions/{id}/execute/reverify` refreshes the mock oracle evidence. UI shows an Oracle badge in plan execute history; live agent repair remains future.
+
 **External refs traceability:** [`docs/EXTERNAL-REFS-TRACEABILITY.md`](EXTERNAL-REFS-TRACEABILITY.md) maps LazyCodex/Conductor/Centaur/CC plan items to shipped tests/fixtures and future fixture tickets.
 
 **Live M0 spot-check:** `AGENT_LAB_RUN_LIVE=1 make live-worktree-dry-run` — see [`docs/LIVE-CURSOR-WORKTREE-DRY-RUN.md`](LIVE-CURSOR-WORKTREE-DRY-RUN.md). Requires `CURSOR_API_KEY` and bridge; never run in CI.

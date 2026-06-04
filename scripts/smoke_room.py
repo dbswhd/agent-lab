@@ -143,6 +143,26 @@ def _check_execute_verify_loop(run: dict[str, Any]) -> bool:
     return False
 
 
+def _check_durable_completed_steps(run: dict[str, Any]) -> bool:
+    steps = run.get("completed_steps")
+    if not isinstance(steps, list) or not steps:
+        return False
+    row = steps[0]
+    if not isinstance(row, dict):
+        return False
+    step_id = str(row.get("step") or "")
+    if not step_id.startswith("turn_") or "_round_" not in step_id:
+        return False
+    if not str(row.get("content") or "").strip():
+        return False
+    if row.get("agent") not in {"cursor", "codex", "claude"}:
+        return False
+    turns = run.get("turns") or []
+    if not turns:
+        return False
+    last = turns[-1]
+    return last.get("status") == "partial" and bool(last.get("succeeded_agents"))
+
 def _check_adversarial_badge_payload(payload: dict[str, Any]) -> list[str]:
     from agent_lab.adversarial_gate import badge_tone
 
@@ -444,6 +464,10 @@ SCENARIOS: dict[str, dict[str, Any]] = {
     "execute_verify_loop": {
         "label": "execute verify loop mock oracle pass after retry",
         "check": _check_execute_verify_loop,
+    },
+    "durable_completed_steps": {
+        "label": "durable completed_steps partial resume snapshot",
+        "check": _check_durable_completed_steps,
     },
 }
 

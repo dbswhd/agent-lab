@@ -20,6 +20,7 @@ SHIPPED_ROWS: list[tuple[str, list[str]]] = [
             "tests/test_plan_execute_reverify_api.py",
         ],
     ),
+    ("CENT-durable", ["tests/test_durable_completed_steps.py", "sessions/_regression/durable_completed_steps"]),
     ("PI", ["src/agent_lab/plan_execute_worktree.py", "sessions/_regression/worktree_merge_ok"]),
     ("PI-ops", ["scripts/live_cursor_worktree_dry_run.py", "docs/OPS-RUNBOOK.md"]),
     ("PI-ops-C", ["scripts/live_cursor_worktree_merge_run.py", "docs/LIVE-MERGE-OPERATOR.md"]),
@@ -45,15 +46,11 @@ PARTIAL_ROWS: list[tuple[str, list[str]]] = [
 ]
 
 FUTURE_TICKETS = (
-    "durable_completed_steps",
     "project_md_injection",
     "platform_md_externalization",
 )
 
-# Only these expect a sessions/_regression/ folder when implemented.
-FUTURE_REGRESSION_FOLDERS = (
-    "durable_completed_steps",
-)
+FUTURE_REGRESSION_FOLDERS: tuple[str, ...] = ()
 
 DEV_TOOL_IDS = (
     "CC-CLAUDE",
@@ -110,6 +107,12 @@ def test_lc_l3_oracle_dependency_documented():
     assert "Cursor/Codex" in text
 
 
+def test_cent_durable_shipped_not_future_ticket():
+    text = _read(TRACEABILITY)
+    assert "CENT-durable" in text
+    assert "### Ticket: `durable_completed_steps`" not in text
+
+
 def test_dev_tool_ids_documented():
     text = _read(TRACEABILITY)
     for dev_id in DEV_TOOL_IDS:
@@ -141,6 +144,12 @@ def test_traceability_future_regression_folders_not_present_yet():
     regression = ROOT / "sessions" / "_regression"
     for ticket in FUTURE_REGRESSION_FOLDERS:
         assert not (regression / ticket).is_dir(), f"{ticket} should not exist yet"
+
+
+def test_durable_completed_steps_fixture_exists():
+    fixture = ROOT / "sessions" / "_regression" / "durable_completed_steps"
+    assert fixture.is_dir()
+    assert (fixture / "run.json").is_file()
 
 
 def test_adversarial_gate_lgtm_fixture_exists():

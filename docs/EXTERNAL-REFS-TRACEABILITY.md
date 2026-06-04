@@ -19,7 +19,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | PI | Conductor | Git worktree execute + merge | ✅ | `src/agent_lab/plan_execute_*.py`, `sessions/_regression/worktree_*`, `tests/test_plan_execute_worktree.py` | Phase I M0–M4 |
 | PI-ops | Conductor | Live worktree Go/No-Go | ✅ | `docs/LIVE-CURSOR-WORKTREE-DRY-RUN.md`, `scripts/live_cursor_worktree_dry_run.py`, Tier B in `docs/OPS-RUNBOOK.md` | Manual, not CI |
 | PI-ops-C | Conductor | Live merge operator | ✅ | `docs/LIVE-MERGE-OPERATOR.md`, `scripts/live_cursor_worktree_merge_run.py`, `make verify-ops-live-merge` | Disposable repo only |
-| E-smoke | Room | BLOCK/CHALLENGE governance | ✅ | `sessions/_regression/objection_blocks_execute/`, `challenge_revises_metric/`, `scripts/smoke_room.py` | 18 baselines |
+| E-smoke | Room | BLOCK/CHALLENGE governance | ✅ | `sessions/_regression/objection_blocks_execute/`, `challenge_revises_metric/`, `scripts/smoke_room.py` | 19 baselines |
 | F-R3 | Room | Asymmetric `capability_cwd` | ✅ | `sessions/_benchmark/specialist_asymmetric_cwd/`, `tests/test_benchmark_catalog.py` | Payload meta |
 | H-P1 | H4 | score_session CI | ✅ | `scripts/score_session.py`, `tests/test_session_score_ci.py`, `.github/workflows/ci.yml` | |
 | H4-weekly | H4 | Weekly KPI + M4 gates | ✅ | `scripts/score_sessions_weekly.py`, `src/agent_lab/session_score_weekly.py` | |
@@ -33,6 +33,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | UX-P2 | Room | Objection resolve UX | ✅ | `PlanExecutePanel.tsx`, `RoomTaskBar.tsx` | |
 | Bridge | Room | Cursor bridge degraded | ✅ | `sessions/_regression/bridge_degraded_health/`, H-P3 tests | |
 | CENT-env | Centaur | Subprocess env allowlist | ✅ | `src/agent_lab/subprocess_env.py`, `claude_cli.py`, `codex_cli.py`, `cursor_bridge.py`, `tests/test_subprocess_env.py` | [PLAN §3.2](EXTERNAL-REFS-PLAN.md#32-subprocess-credential-분리) |
+| CENT-durable | Centaur | Durable completed_steps resume | ✅ | `src/agent_lab/run_meta.py`, `room.py`, `sessions/_regression/durable_completed_steps/`, `tests/test_durable_completed_steps.py` | `_call_one_agent()` records step; resume skips via `completed_steps[]` |
 
 ---
 
@@ -48,10 +49,6 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 ## Future — fixture / smoke tickets (no code yet)
 
 These are **acceptance criteria only**. Do not add live LLM fixtures until the remaining layer design is ticketed.
-
-### Ticket: `durable_completed_steps` (CENT-durable)
-
-- **Spec:** `run.json` `completed_steps[]` written by `_call_one_agent()` via `patch_run_meta()`. On restart, completed agents skipped. Per [PLAN §3.3](EXTERNAL-REFS-PLAN.md#33-durable-step-centaur-경량판).
 
 ### Ticket: `project_md_injection` (MD-PROJECT)
 
@@ -84,7 +81,6 @@ They are tracked here but do not belong in the runtime feature roadmap.
 
 | Priority | ID | Suggested next action |
 |----------|-----|-----------------------|
-| P1 | CENT-durable | `completed_steps[]` in `run_meta.py` + `room.py` |
 | P1 | LC-L4-runtime | Wire adversarial gate to live opt-in review + UI evidence |
 | P2 | MD-PROJECT | `_read_project_md()` in `session_guidance.py` |
 | P2 | CC-CLAUDE | `CLAUDE.md` in repo root (30 min, high dev-velocity impact) |

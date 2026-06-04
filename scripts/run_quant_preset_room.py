@@ -13,6 +13,25 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+
+def _bootstrap_env() -> None:
+    """Match API startup: ~/.agent-lab + repo .env so CURSOR_API_KEY is visible."""
+    from dotenv import load_dotenv
+
+    from agent_lab.app_config import apply_config_env
+
+    apply_config_env()
+    home = Path.home()
+    for env_file in (
+        Path(os.getenv("DOTENV_PATH", "")),
+        ROOT / ".env",
+        home / "Projects/agent-lab/.env",
+        home / ".agent-lab/.env",
+    ):
+        if env_file.is_file():
+            load_dotenv(env_file)
+
+
 TOPIC = (
     "[quant-pipeline preset 검증] research/kr/results 아래 backtest verdict를 읽고, "
     "quant-control 앱에 wire-up할 만한 PASS 후보가 있으면 1개만 골라 "
@@ -21,7 +40,10 @@ TOPIC = (
 
 
 def main() -> int:
-    from agent_lab.agents.registry import available_agents
+    _bootstrap_env()
+
+    from agent_lab.agent_health import reconnect_cursor_bridge
+    from agent_lab.agents.registry import AGENT_IDS, available_agents
     from agent_lab.quant_utility_validation import detect_pipeline_root
     from agent_lab.room import run_room
     from agent_lab.session import session_dir, SESSIONS_DIR
@@ -33,9 +55,17 @@ def main() -> int:
         return 1
     os.environ["QUANT_PIPELINE_ROOT"] = str(pipeline)
 
-    agents = available_agents()
-    if not agents:
-        print("FAIL: no agents ready (codex/claude/cursor)", file=sys.stderr)
+    bridge = reconnect_cursor_bridge(workspace=str(pipeline))
+    print(
+        f"cursor bridge: ok={bridge.get('ok')} bridge={bridge.get('bridge')} "
+        f"hint={bridge.get('hint') or '(none)'}",
+        flush=True,
+    )
+
+    agents = [a for a in AGENT_IDS if a in available_agents()]
+    if len(agents) < 3:
+        print(f"FAIL: need cursor+codex+claude, got {agents}", file=sys.stderr)
+        print("Set CURSOR_API_KEY in .env and: pip install -e '.[cursor]'", file=sys.stderr)
         return 1
 
     folder = session_dir(TOPIC[:80], base=SESSIONS_DIR)

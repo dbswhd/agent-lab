@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 TRACEABILITY = ROOT / "docs" / "EXTERNAL-REFS-TRACEABILITY.md"
 PLAN = ROOT / "docs" / "EXTERNAL-REFS-PLAN.md"
 
-# Minimum shipped rows: ID substring in traceability doc + at least one evidence path exists.
 SHIPPED_ROWS: list[tuple[str, list[str]]] = [
     ("L1", ["src/agent_lab/cli_retry.py"]),
     ("L2", ["src/agent_lab/room_consensus.py"]),
@@ -23,6 +21,10 @@ SHIPPED_ROWS: list[tuple[str, list[str]]] = [
     ("H4-ops-live", ["tests/test_weekly_live_ops_summary.py"]),
     ("ops-P2", ["app/server/routers/health.py"]),
     ("ops-verify", ["Makefile", "docs/OPS-RUNBOOK.md"]),
+    ("CENT-env", ["src/agent_lab/subprocess_env.py", "tests/test_subprocess_env.py"]),
+]
+
+PARTIAL_ROWS: list[tuple[str, list[str]]] = [
     (
         "LC-L4",
         [
@@ -30,16 +32,31 @@ SHIPPED_ROWS: list[tuple[str, list[str]]] = [
             "sessions/_regression/adversarial_gate_lgtm",
         ],
     ),
+    ("LC-clarifier", ["src/agent_lab/session_clarifier.py"]),
 ]
 
 FUTURE_TICKETS = (
     "execute_verify_loop",
+    "oracle_verified_completion",
+    "durable_completed_steps",
+    "project_md_injection",
+    "platform_md_externalization",
+)
+
+# Only these expect a sessions/_regression/ folder when implemented.
+FUTURE_REGRESSION_FOLDERS = (
+    "execute_verify_loop",
     "durable_completed_steps",
 )
 
-LAYER_FUTURE_MARKERS = (
-    "Layer 3: Execute Verify Loop",
-    "Layer 4: Adversarial Gate",
+DEV_TOOL_IDS = (
+    "CC-CLAUDE",
+    "CC-hooks",
+    "CC-rules",
+    "CC-skills",
+    "CON-diff",
+    "MD-PLATFORM",
+    "MD-PROJECT",
 )
 
 
@@ -51,7 +68,9 @@ def _read(path: Path) -> str:
 def test_traceability_doc_exists_and_links_plan():
     text = _read(TRACEABILITY)
     assert "EXTERNAL-REFS-PLAN.md" in text
+    assert "MD-WRITING-PLAN.md" in text
     assert "Status legend" in text or "✅ shipped" in text
+    assert "Dev-tool & prompt layer" in text
 
 
 def test_shipped_rows_have_existing_evidence():
@@ -62,24 +81,44 @@ def test_shipped_rows_have_existing_evidence():
         assert found, f"{row_id}: none of {paths} exist"
 
 
+def test_partial_rows_have_existing_evidence():
+    text = _read(TRACEABILITY)
+    for row_id, paths in PARTIAL_ROWS:
+        assert row_id in text, f"traceability missing partial row id {row_id}"
+        found = any((ROOT / p).exists() for p in paths)
+        assert found, f"{row_id}: none of {paths} exist"
+
+
 def test_future_fixture_tickets_documented():
     text = _read(TRACEABILITY)
     for ticket in FUTURE_TICKETS:
-        assert ticket in text
+        assert ticket in text, f"missing future ticket {ticket}"
+
+
+def test_lc_l3_oracle_dependency_documented():
+    text = _read(TRACEABILITY)
+    assert "Depends on:" in text and "LC-oracle" in text
+    assert "Blocks:" in text and "LC-L3" in text
+
+
+def test_dev_tool_ids_documented():
+    text = _read(TRACEABILITY)
+    for dev_id in DEV_TOOL_IDS:
+        assert dev_id in text, f"missing dev-tool id {dev_id}"
 
 
 def test_plan_has_stale_banner_and_traceability_link():
     text = _read(PLAN)
     assert "EXTERNAL-REFS-TRACEABILITY.md" in text
     assert "Stale notice" in text or "shipped" in text.lower()
+    assert "CENT-env" in text
 
 
-def test_plan_layer_three_four_still_marked_unimplemented():
+def test_plan_loop_layers_match_traceability():
     text = _read(PLAN)
-    for marker in LAYER_FUTURE_MARKERS:
-        assert marker in text
-    # End table should still show Layer 3/4 as not implemented
-    assert "Layer 3: Execute Verify Loop | ❌" in text or "❌ 미구현" in text
+    assert "Layer 3: Execute Verify Loop | ❌" in text
+    assert "Layer 4: Adversarial Gate | 🔶" in text
+    assert "subprocess credential 분리 **✅ shipped**" in text or "✅ shipped" in text
 
 
 def test_plan_phase_three_ops_marked_shipped_in_traceability():
@@ -89,9 +128,9 @@ def test_plan_phase_three_ops_marked_shipped_in_traceability():
     assert "H-P1" in text
 
 
-def test_traceability_future_tickets_not_in_regression_yet():
+def test_traceability_future_regression_folders_not_present_yet():
     regression = ROOT / "sessions" / "_regression"
-    for ticket in FUTURE_TICKETS:
+    for ticket in FUTURE_REGRESSION_FOLDERS:
         assert not (regression / ticket).is_dir(), f"{ticket} should not exist yet"
 
 

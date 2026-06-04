@@ -120,8 +120,6 @@ body {
   min-height: 0;
   border-left: 0.5px solid var(--lg-sidebar-border);
   background: var(--lg-sidebar-surface-muted);
-  backdrop-filter: blur(var(--lg-sidebar-blur)) saturate(var(--lg-sidebar-saturate));
-  -webkit-backdrop-filter: blur(var(--lg-sidebar-blur)) saturate(var(--lg-sidebar-saturate));
   box-shadow: var(--lg-sidebar-edge);
 }
 
@@ -300,8 +298,6 @@ body {
   border: 0.5px solid var(--mac-separator);
   border-radius: 50%;
   background: var(--mac-alert-bg);
-  backdrop-filter: blur(14px) saturate(1.3);
-  -webkit-backdrop-filter: blur(14px) saturate(1.3);
   color: var(--mac-label-primary);
   box-shadow:
     0 2px 10px rgba(0, 0, 0, 0.12),
@@ -644,8 +640,6 @@ body {
   padding: 8px 12px;
   border-radius: 12px;
   background: var(--lg-panel-surface);
-  backdrop-filter: blur(var(--lg-panel-blur)) saturate(var(--lg-panel-saturate));
-  -webkit-backdrop-filter: blur(var(--lg-panel-blur)) saturate(var(--lg-panel-saturate));
   border: 0.5px solid var(--mac-separator);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.55);
 }
@@ -1044,8 +1038,6 @@ body {
   padding: 10px 12px;
   border-radius: 12px;
   background: color-mix(in srgb, var(--mac-system-orange, #ff9f0a) 10%, var(--lg-panel-surface));
-  backdrop-filter: blur(var(--lg-panel-blur)) saturate(var(--lg-panel-saturate));
-  -webkit-backdrop-filter: blur(var(--lg-panel-blur)) saturate(var(--lg-panel-saturate));
   border: 0.5px solid color-mix(in srgb, var(--mac-system-orange, #ff9f0a) 28%, var(--mac-separator));
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.45);
   font-size: var(--text-caption);
@@ -1353,8 +1345,6 @@ body {
   padding: 12px 14px;
   border-radius: 14px;
   background: color-mix(in srgb, var(--mac-accent) 6%, var(--lg-panel-surface));
-  backdrop-filter: blur(var(--lg-panel-blur)) saturate(var(--lg-panel-saturate));
-  -webkit-backdrop-filter: blur(var(--lg-panel-blur)) saturate(var(--lg-panel-saturate));
   border: 0.5px solid color-mix(in srgb, var(--mac-accent) 22%, var(--mac-separator));
   box-shadow:
     0 2px 12px rgba(0, 0, 0, 0.06),
@@ -1507,8 +1497,6 @@ body {
   padding: 10px 12px;
   border-radius: 12px;
   background: color-mix(in srgb, var(--mac-accent) 7%, var(--lg-panel-surface));
-  backdrop-filter: blur(var(--lg-panel-blur)) saturate(var(--lg-panel-saturate));
-  -webkit-backdrop-filter: blur(var(--lg-panel-blur)) saturate(var(--lg-panel-saturate));
   border: 0.5px solid color-mix(in srgb, var(--mac-accent) 20%, var(--mac-separator));
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.45);
 }

@@ -4,6 +4,8 @@ import App from "./App";
 import { BootstrapErrorBoundary } from "./components/BootstrapErrorBoundary";
 import { initTheme, isTauri } from "./theme";
 import "./styles/app.css";
+import "./styles/chrome.css";
+import "./styles/content-surfaces.css";
 
 initTheme();
 if (isTauri()) {

@@ -40,6 +40,14 @@ SHIPPED_ROWS: list[tuple[str, list[str]]] = [
 ]
 
 PARTIAL_ROWS: list[tuple[str, list[str]]] = [
+    (
+        "CC-skills",
+        [
+            ".claude/skills/smoke-and-score/SKILL.md",
+            ".claude/skills/regression-check/SKILL.md",
+            "tests/test_claude_skills.py",
+        ],
+    ),
 ]
 
 FUTURE_TICKETS: tuple[str, ...] = ()

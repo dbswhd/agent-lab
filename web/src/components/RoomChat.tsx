@@ -1687,7 +1687,11 @@ export function RoomChat({
             />
           ) : null}
           {partialTurnNotice ? (
-            <div className="room-partial-banner" role="status">
+            <div
+              className="room-partial-banner"
+              role="status"
+              aria-label="일부 에이전트 실패"
+            >
               <strong>일부 에이전트 실패</strong>
               <span>나머지 응답은 저장됨</span>
               <span className="room-partial-banner__agents">
@@ -1777,10 +1781,14 @@ export function RoomChat({
         </div>
       ) : null}
 
-      {combinedError ? <div className="error-banner">{combinedError}</div> : null}
+      {combinedError ? (
+        <div className="error-banner" role="alert" aria-label="룸 오류">
+          {combinedError}
+        </div>
+      ) : null}
 
       {agentsBlocked && !combinedError ? (
-        <div className="error-banner" role="status">
+        <div className="error-banner" role="status" aria-label="에이전트 준비 상태">
           {agents.length === 0
             ? "API(8765)에 연결할 수 없습니다. Tauri 앱을 완전히 종료한 뒤 make tauri-dev로 다시 시작하세요."
             : `준비된 에이전트가 없습니다 (${readyCount}/3). cursor/codex/claude 로그인을 확인하세요.`}

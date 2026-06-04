@@ -217,9 +217,9 @@ UI 담당은 아래를 **수동 스모크** 체크리스트로 사용.
 
 ### P2 — 시각·a11y·Figma
 
-- [ ] `docs/04-multi-agent-room.md` §5 Figma 토큰과 `.room-task-bar`, `.chat-line--synthesis`, `.clarifier-banner` 대조
-- [ ] `role="region"` / `aria-label` on 작업 바·배너 점검
-- [ ] narrow width(Tauri)에서 작업 바 head 줄바꿈
+- [x] `docs/04-multi-agent-room.md` §5 Figma 토큰과 `.room-task-bar`, `.chat-line--synthesis`, `.clarifier-banner` 대조
+- [x] `role="region"` / `aria-label` on 작업 바·배너 점검
+- [x] narrow width(Tauri)에서 작업 바 head 줄바꿈
 
 ### 하지 말 것 (UI)
 

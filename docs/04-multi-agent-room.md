@@ -108,14 +108,20 @@ Composer는 전송 전 예상 에이전트 호출 수를 표시한다. 3-agent `
 
 ## 5. Figma (Mac / iOS Kit)
 
-| 화면 | Kit 참고 |
-|------|----------|
-| 말풍선 | iOS **Messages** — sent blue `#0A84FF`, received gray |
-| 목록 | **Messages** sidebar / IG DM row height |
-| 칩 | iOS **segmented** / capsule buttons |
-| 에이전트 색 | Cursor `#7C5CFF`, Codex `#10A37F`, Claude `#D97757` (tokens.css) |
+| 화면 | Kit 참고 | 코드 토큰 / 스타일 훅 |
+|------|----------|-----------------------|
+| 말풍선 | iOS **Messages** — sent blue, received gray | `--color-bubble-sent`, `--color-bubble-received`, `--radius-bubble` |
+| 목록 | **Messages** sidebar / IG DM row height | `--chat-list-width`, `.session-list` |
+| 칩 | iOS **segmented** / capsule buttons | `--mac-segmented-bg`, `--radius-pill`, `.mac-segmented` |
+| 에이전트 색 | Cursor blue, Codex purple, Claude orange | `--color-agent-cursor`, `--color-agent-codex`, `--color-agent-claude` |
+| 작업 바 | macOS inset panel, readable body | `--lg-panel-surface`, `--mac-separator`, `.room-task-bar` |
+| 턴 요약 | compact document summary | `--space-sm`, `--text-caption`, `.chat-line--synthesis` |
+| 확인 질문 | warning banner | `--mac-system-orange`, `.clarifier-banner` |
 
 Community에서 **Apple iOS 18 UI Kit** 또는 **macOS Sonoma** Duplicate → `tokens.css` Variables 동기화.
+
+색상 값은 `tokens.css`를 단일 기준으로 사용한다. Figma 파일에 hex를 별도로
+복제하지 말고 위 변수 이름으로 연결한다.
 
 ---
 

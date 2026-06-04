@@ -673,7 +673,11 @@ export function RoomTaskBar({
         </div>
       ) : null}
       {showConsensusBlocker ? (
-        <div className="room-task-bar__blocker" role="status">
+        <div
+          className="room-task-bar__blocker"
+          role="status"
+          aria-label="합의 차단"
+        >
           <p className="room-task-bar__blocker-headline">{blockerCopy.headline}</p>
           <p className="room-task-bar__blocker-detail">{blockerCopy.detail}</p>
           <p className="room-task-bar__blocker-tasks">

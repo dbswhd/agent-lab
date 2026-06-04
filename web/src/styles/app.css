@@ -654,6 +654,31 @@ body {
   font-weight: 650;
 }
 
+/* Tauri minimum window: keep controls readable instead of wrapping mid-label. */
+@media (max-width: 1000px) {
+  .room-task-bar__head {
+    gap: 6px 8px;
+  }
+
+  .room-task-bar__title {
+    margin-right: auto;
+  }
+
+  .room-task-bar__lead-select,
+  .room-task-bar__meta {
+    flex: 1 0 100%;
+  }
+
+  .room-task-bar__lead-select select {
+    min-width: 7rem;
+  }
+
+  .room-task-bar__auto-hint {
+    display: block;
+    margin-top: 2px;
+  }
+}
+
 .room-task-bar__meta {
   font-size: var(--text-caption);
   color: var(--mac-label-tertiary);

@@ -1,4 +1,4 @@
-.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test ci check-worktrees smoke smoke-e2e validate-quant verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run init-project-memory
+.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test ci check-worktrees smoke smoke-e2e validate-quant verify-quant-workspace verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run init-project-memory
 
 install:
 	python3 -m venv .venv
@@ -47,6 +47,10 @@ ci: test smoke score-regression-fixtures
 init-project-memory:
 	@test -n "$(WORKSPACE)" || WORKSPACE=.; \
 	.venv/bin/python scripts/init_project_memory.py "$(WORKSPACE)" $(if $(OVERWRITE),--overwrite,)
+
+verify-quant-workspace:
+	@test -n "$(QUANT_PIPELINE_ROOT)" || true; \
+	.venv/bin/python scripts/verify_quant_workspace_setup.py
 
 check-worktrees:
 	.venv/bin/python scripts/check_worktree_orphans.py

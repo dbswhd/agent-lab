@@ -41,3 +41,7 @@
 ## Claude Code rules (CC-rules)
 - `.claude/rules/python-backend.md` — `src/agent_lab/`, `app/`, `tests/`
 - `.claude/rules/react-frontend.md` — `web/src/`
+
+## Claude Code skills (CC-skills)
+- `/smoke-and-score` — E2E smoke + `make score-session`
+- `/regression-check` — pytest + failure analysis

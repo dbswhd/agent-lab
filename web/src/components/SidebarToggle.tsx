@@ -10,7 +10,7 @@ export function SidebarToggle({ open, onToggle }: Props) {
       className="sidebar-toggle"
       aria-expanded={open}
       aria-label={open ? "사이드바 접기" : "사이드바 펼치기"}
-      title={open ? "사이드바 접기" : "사이드바 펼치기"}
+      title={`${open ? "사이드바 접기" : "사이드바 펼치기"} (⌃⌘S)`}
       onClick={onToggle}
     >
       <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>

@@ -10,6 +10,7 @@ type Props = {
   sessions: SessionSummary[];
   selectedId: string | null;
   archived?: boolean;
+  query?: string;
   onSelect: (id: string) => void;
   onArchive?: (id: string) => void;
   onUnarchive?: (id: string) => void;
@@ -45,6 +46,7 @@ export function SessionList({
   sessions,
   selectedId,
   archived = false,
+  query = "",
   onSelect,
   onArchive,
   onUnarchive,
@@ -60,10 +62,31 @@ export function SessionList({
   const [renameValue, setRenameValue] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  if (sessions.length === 0) {
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  const visibleSessions = normalizedQuery
+    ? sessions.filter((session) =>
+        [
+          session.topic,
+          session.id,
+          session.model,
+          session.workflow,
+          sessionSubtitle(session),
+        ]
+          .filter(Boolean)
+          .some((value) =>
+            String(value).toLocaleLowerCase().includes(normalizedQuery),
+          ),
+      )
+    : sessions;
+
+  if (visibleSessions.length === 0) {
     return (
       <p className="chat-list-empty">
-        {archived ? "보관된 대화가 없습니다" : "대화 없음 · 새 대화를 시작하세요"}
+        {normalizedQuery
+          ? "검색 결과가 없습니다"
+          : archived
+            ? "보관된 대화가 없습니다"
+            : "대화 없음 · 새 대화를 시작하세요"}
       </p>
     );
   }
@@ -84,22 +107,25 @@ export function SessionList({
     <>
       <div className="session-list-scroll">
         <ul className="session-list">
-          {sessions.map((s) => (
-          <li
-            key={s.id}
-            className={selectedId === s.id ? "selected" : ""}
-            onClick={() => onSelect(s.id)}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              setMenu({ id: s.id, x: e.clientX, y: e.clientY });
-            }}
-          >
-            <div className="session-preview">
-              <div className="session-preview-title">{s.topic || s.id}</div>
-              <div className="session-preview-sub">{sessionSubtitle(s)}</div>
-            </div>
-            <span className="session-time">{formatTime(s.created_at)}</span>
-          </li>
+          {visibleSessions.map((s) => (
+            <li key={s.id}>
+              <button
+                type="button"
+                className={`session-row${selectedId === s.id ? " selected" : ""}`}
+                aria-current={selectedId === s.id ? "true" : undefined}
+                onClick={() => onSelect(s.id)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setMenu({ id: s.id, x: e.clientX, y: e.clientY });
+                }}
+              >
+                <span className="session-preview">
+                  <span className="session-preview-title">{s.topic || s.id}</span>
+                  <span className="session-preview-sub">{sessionSubtitle(s)}</span>
+                </span>
+                <span className="session-time">{formatTime(s.created_at)}</span>
+              </button>
+            </li>
           ))}
         </ul>
       </div>

@@ -49,6 +49,10 @@ import {
 } from "../utils/consensusAgreement";
 import { notifyDesktop } from "../utils/desktopNotify";
 import { buildPlanMetaView } from "../utils/planMeta";
+import {
+  CONTENT_TAB_SHORTCUT_EVENT,
+  type ContentTab,
+} from "../utils/desktopShortcuts";
 import { analyzePlanRefWarnings } from "../utils/planRefWarnings";
 import {
   consensusIncompleteLabel,
@@ -1306,6 +1310,18 @@ export function RoomChat({
         }))
       : [];
 
+  useEffect(() => {
+    function onContentTabShortcut(event: Event) {
+      if (isNew) return;
+      const nextTab = (event as CustomEvent<ContentTab>).detail;
+      if (nextTab === "chat" || nextTab === "plan") setTab(nextTab);
+    }
+
+    window.addEventListener(CONTENT_TAB_SHORTCUT_EVENT, onContentTabShortcut);
+    return () =>
+      window.removeEventListener(CONTENT_TAB_SHORTCUT_EVENT, onContentTabShortcut);
+  }, [isNew]);
+
   return (
     <div
       className={`room-chat-split${contextOpen && !isNew ? " room-chat-split--context-open" : ""}`}
@@ -1387,6 +1403,7 @@ export function RoomChat({
               aria-selected={tab === "chat"}
               className={tab === "chat" ? "active" : ""}
               onClick={() => setTab("chat")}
+              title="대화 (⌘1)"
             >
               대화
             </button>
@@ -1396,6 +1413,7 @@ export function RoomChat({
               aria-selected={tab === "plan"}
               className={tab === "plan" ? "active" : ""}
               onClick={() => setTab("plan")}
+              title="plan (⌘2)"
             >
               plan
               {pendingExecuteCount > 0 ? (

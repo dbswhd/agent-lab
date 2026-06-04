@@ -8,6 +8,10 @@ import {
 } from "../utils/transcript";
 import { buildPlanMetaView } from "../utils/planMeta";
 import { analyzePlanRefWarnings } from "../utils/planRefWarnings";
+import {
+  CONTENT_TAB_SHORTCUT_EVENT,
+  type ContentTab,
+} from "../utils/desktopShortcuts";
 import { roundDividerLabel } from "../utils/roundTopology";
 import { ChatBubble } from "./ChatBubble";
 import { ChatPaneBody } from "./ChatPaneBody";
@@ -128,6 +132,17 @@ export function SessionViewer({
   }, [session?.id]);
 
   useEffect(() => {
+    function onContentTabShortcut(event: Event) {
+      const nextTab = (event as CustomEvent<ContentTab>).detail;
+      if (nextTab === "chat" || nextTab === "plan") setTab(nextTab);
+    }
+
+    window.addEventListener(CONTENT_TAB_SHORTCUT_EVENT, onContentTabShortcut);
+    return () =>
+      window.removeEventListener(CONTENT_TAB_SHORTCUT_EVENT, onContentTabShortcut);
+  }, []);
+
+  useEffect(() => {
     if (highlightChatLine == null || tab !== "chat") return;
     const el = scrollElRef.current?.querySelector(
       `[data-chat-line="${highlightChatLine}"]`,
@@ -189,6 +204,7 @@ export function SessionViewer({
             aria-selected={tab === "chat"}
             className={tab === "chat" ? "active" : ""}
             onClick={() => setTab("chat")}
+            title="대화 (⌘1)"
           >
             대화
           </button>
@@ -198,6 +214,7 @@ export function SessionViewer({
             aria-selected={tab === "plan"}
             className={tab === "plan" ? "active" : ""}
             onClick={() => setTab("plan")}
+            title="plan.md (⌘2)"
           >
             plan.md
           </button>

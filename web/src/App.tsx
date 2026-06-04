@@ -30,6 +30,7 @@ import { getSidebarOpen, setSidebarOpen } from "./utils/sidebarPrefs";
 import { formatRoomModelLine } from "./utils/roomModels";
 import { isTauriApp } from "./theme";
 import { ensureDesktopNotifyPermission } from "./utils/desktopNotify";
+import { requestContentTab } from "./utils/desktopShortcuts";
 
 type Mode = "room" | "classic";
 type ListTab = "active" | "archived";
@@ -54,12 +55,15 @@ export default function App() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [composerNew, setComposerNew] = useState(true);
   const [sidebarOpen, setSidebarOpenState] = useState(getSidebarOpen);
+  const [sessionQuery, setSessionQuery] = useState("");
 
-  function toggleSidebar() {
-    const next = !sidebarOpen;
-    setSidebarOpenState(next);
-    setSidebarOpen(next);
-  }
+  const toggleSidebar = useCallback(() => {
+    setSidebarOpenState((current) => {
+      const next = !current;
+      setSidebarOpen(next);
+      return next;
+    });
+  }, []);
 
   const apiOkRef = useRef(true);
 
@@ -211,12 +215,37 @@ export default function App() {
     await onRoomSessionChange(sessionId);
   }
 
-  function startNew() {
+  const startNew = useCallback(() => {
     setComposerNew(true);
     setSelectedId(null);
     setDetail(null);
     setListTab("active");
-  }
+  }, []);
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (!event.metaKey || event.altKey) return;
+      const key = event.key.toLowerCase();
+
+      if (key === "n") {
+        event.preventDefault();
+        startNew();
+        return;
+      }
+      if (event.ctrlKey && key === "s") {
+        event.preventDefault();
+        toggleSidebar();
+        return;
+      }
+      if (!event.ctrlKey && (key === "1" || key === "2")) {
+        event.preventDefault();
+        requestContentTab(key === "1" ? "chat" : "plan");
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown, { capture: true });
+    return () => window.removeEventListener("keydown", onKeyDown, { capture: true });
+  }, [startNew, toggleSidebar]);
 
   function selectSession(id: string) {
     setSelectedId(id);
@@ -286,9 +315,22 @@ export default function App() {
                 type="button"
                 className="mac-btn-primary mac-sidebar-btn"
                 onClick={startNew}
+                title="새 대화 (⌘N)"
               >
                 새 대화
               </button>
+              <label className="session-search">
+                <span className="session-search__icon" aria-hidden>
+                  ⌕
+                </span>
+                <input
+                  type="search"
+                  value={sessionQuery}
+                  onChange={(event) => setSessionQuery(event.target.value)}
+                  placeholder="세션 검색"
+                  aria-label="세션 검색"
+                />
+              </label>
               <div className="list-tabs mac-segmented" role="tablist">
                 <button
                   type="button"
@@ -339,6 +381,7 @@ export default function App() {
               sessions={sessions}
               selectedId={!composerNew ? selectedId : null}
               archived={listTab === "archived"}
+              query={sessionQuery}
               onSelect={selectSession}
               onArchive={listTab === "active" ? handleArchive : undefined}
               onUnarchive={listTab === "archived" ? handleUnarchive : undefined}

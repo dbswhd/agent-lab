@@ -11,6 +11,7 @@ PLAN = ROOT / "docs" / "EXTERNAL-REFS-PLAN.md"
 SHIPPED_ROWS: list[tuple[str, list[str]]] = [
     ("L1", ["src/agent_lab/cli_retry.py"]),
     ("L2", ["src/agent_lab/room_consensus.py"]),
+    ("LC-oracle", ["tests/test_oracle_verify.py", "src/agent_lab/plan_execute_merge.py"]),
     ("PI", ["src/agent_lab/plan_execute_worktree.py", "sessions/_regression/worktree_merge_ok"]),
     ("PI-ops", ["scripts/live_cursor_worktree_dry_run.py", "docs/OPS-RUNBOOK.md"]),
     ("PI-ops-C", ["scripts/live_cursor_worktree_merge_run.py", "docs/LIVE-MERGE-OPERATOR.md"]),
@@ -37,7 +38,6 @@ PARTIAL_ROWS: list[tuple[str, list[str]]] = [
 
 FUTURE_TICKETS = (
     "execute_verify_loop",
-    "oracle_verified_completion",
     "durable_completed_steps",
     "project_md_injection",
     "platform_md_externalization",
@@ -97,8 +97,8 @@ def test_future_fixture_tickets_documented():
 
 def test_lc_l3_oracle_dependency_documented():
     text = _read(TRACEABILITY)
-    assert "Depends on:" in text and "LC-oracle" in text
-    assert "Blocks:" in text and "LC-L3" in text
+    assert "Depends on:" in text and "LC-oracle standalone mock" in text
+    assert "oracle_verify()" in text
 
 
 def test_dev_tool_ids_documented():

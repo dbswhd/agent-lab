@@ -552,14 +552,14 @@ result = subprocess.run([...], env=env)
         "matcher": "*.py",
         "hooks": [{
           "type": "command",
-          "command": ".venv/bin/python -m ruff check --fix $CLAUDE_EDITED_FILE 2>/dev/null || true"
+          "command": ".claude/hooks/post-edit-ruff.sh"
         }]
       },
       {
         "matcher": "*.tsx",
         "hooks": [{
           "type": "command",
-          "command": "cd web && npx prettier --write $CLAUDE_EDITED_FILE 2>/dev/null || true"
+          "command": ".claude/hooks/post-edit-prettier.sh"
         }]
       }
     ],
@@ -567,7 +567,7 @@ result = subprocess.run([...], env=env)
       {
         "hooks": [{
           "type": "command",
-          "command": "cd /Users/yoonjong/Projects/agent-lab && .venv/bin/pytest tests/ -q --tb=short -x 2>&1 | tail -5",
+          "command": ".claude/hooks/stop-pytest.sh",
           "statusMessage": "pytest 실행 중..."
         }]
       }
@@ -576,7 +576,7 @@ result = subprocess.run([...], env=env)
 }
 ```
 
-주의: 이 hooks는 **Claude Code 개발 도구용**이고, `room_hooks.py`(AgentLab 런타임 서버사이드 훅)와 다른 레이어입니다.
+주의: 이 hooks는 **Claude Code 개발 도구용**이고, `room_hooks.py`(AgentLab 런타임 서버사이드 훅)와 다른 레이어입니다. 경로는 repo-root 상대(`.claude/hooks/*.sh`).
 
 ### 4.3 Subagent Skills
 

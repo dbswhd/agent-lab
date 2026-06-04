@@ -375,6 +375,12 @@ CI: `pytest tests/ -q` + `scripts/smoke_room.py` (18 baselines) + `check_worktre
 13. ~~**LC-L3-runtime**~~ — merge response `verify_after_merge` evidence + reverify API/UI badge ✅
 14. ~~**LC-L3-agent-repair**~~ — Oracle FAIL → Cursor/Codex repair worktree → re-merge → Oracle 재검증, 최대 2회 ✅
 
-**다음 후보 (구현):** CENT-durable — 프로세스 재시작 후 완료 step을 건너뛰는 durable loop.
+14. ~~**CENT-durable**~~ — `completed_steps[]` resume skip ✅
+15. ~~**MD-PLATFORM / MD-PROJECT / MD-P3**~~ — PLATFORM + PROJECT + AGENTS/SHARED injection ✅
+16. ~~**CC-dev-tool**~~ — hooks, rules, skills ✅
+17. ~~**CON-diff**~~ — hunk inline revise ✅
+18. ~~**PI-executed**~~ — merged diff → `sessions/<id>/executed/` ✅
+
+**다음 후보 (선택):** Layer 5 goal-driven loop; live ops Tier B/C; doc-only polish.
 
 ~~**Room P0**~~ · ~~**F2 R-P1**~~ · ~~**H-P1/H-P2/H-P3**~~ · ~~**H2**~~ · ~~**E-smoke**~~ · ~~**ops lifespan/router**~~ · ~~**UX-P2**~~ · ~~**Phase I M1–M4**~~ — 완료.

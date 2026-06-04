@@ -368,6 +368,12 @@ def _record_verify_after_merge(
         }
     )
     target["verify_history"] = history
+    if str(target.get("status") or "") == "merged":
+        from agent_lab.plan_execute_merge import archive_executed_diff
+
+        exec_id = str(target.get("id") or "")
+        if exec_id:
+            archive_executed_diff(folder, execution_id=exec_id, execution=target)
     return evidence
 
 

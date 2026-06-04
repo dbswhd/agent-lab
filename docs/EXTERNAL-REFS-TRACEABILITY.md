@@ -18,6 +18,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | LC-L3 | LazyCodex | Execute verify + agent repair loop | ✅ | `verify_after_merge()`, `oracle_verify()`, `src/agent_lab/plan_execute.py`, `/api/sessions/{id}/execute/reverify`, `PlanExecutePanel.tsx`, `sessions/_regression/execute_verify_loop/`, `tests/test_plan_execute_agent_repair.py` | Oracle FAIL opens a fresh Cursor/Codex worktree repair, re-merges, and re-verifies; `MAX_VERIFY_RETRIES=2` |
 | PI | Conductor | Git worktree execute + merge | ✅ | `src/agent_lab/plan_execute_*.py`, `sessions/_regression/worktree_*`, `tests/test_plan_execute_worktree.py` | Phase I M0–M4 |
 | CON-diff | Conductor | Diff hunk inline revise | ✅ | `PlanExecutePanel.tsx`, `revise_pending_execution()`, `tests/test_plan_execute_revise_api.py` | Human hunk comment → fresh worktree re-diff → re-approve |
+| PI-executed | Conductor | Merged diff archive | ✅ | `plan_execute_merge.py:archive_executed_diff()`, `tests/test_executed_archive.py` | `sessions/<id>/executed/{exec_id}.json` |
 | PI-ops | Conductor | Live worktree Go/No-Go | ✅ | `docs/LIVE-CURSOR-WORKTREE-DRY-RUN.md`, `scripts/live_cursor_worktree_dry_run.py`, Tier B in `docs/OPS-RUNBOOK.md` | Manual, not CI |
 | PI-ops-C | Conductor | Live merge operator | ✅ | `docs/LIVE-MERGE-OPERATOR.md`, `scripts/live_cursor_worktree_merge_run.py`, `make verify-ops-live-merge` | Disposable repo only |
 | E-smoke | Room | BLOCK/CHALLENGE governance | ✅ | `sessions/_regression/objection_blocks_execute/`, `challenge_revises_metric/`, `scripts/smoke_room.py` | 19 baselines |
@@ -34,7 +35,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | UX-P2 | Room | Objection resolve UX | ✅ | `PlanExecutePanel.tsx`, `RoomTaskBar.tsx` | |
 | Bridge | Room | Cursor bridge degraded | ✅ | `sessions/_regression/bridge_degraded_health/`, H-P3 tests | |
 | CENT-env | Centaur | Subprocess env allowlist | ✅ | `src/agent_lab/subprocess_env.py`, `claude_cli.py`, `codex_cli.py`, `cursor_bridge.py`, `tests/test_subprocess_env.py` | [PLAN §3.2](EXTERNAL-REFS-PLAN.md#32-subprocess-credential-분리) |
-| LC-L4 | LazyCodex | Adversarial gate (mock + UI) | ✅ | `adversarial_gate.py`, `plan_execute.py`, `PlanExecutePanel.tsx`, `sessions/_regression/adversarial_gate_lgtm/` | Mock default; `AGENT_LAB_ADVERSARIAL_LIVE=1` for live Claude |
+| LC-L4 | LazyCodex | Adversarial gate (mock + UI) | ✅ | `adversarial_gate.py`, `PlanExecutePanel.tsx`, `docs/LC-L4-ADVERSARIAL-LIVE.md` | Mock default; live opt-in documented |
 | CENT-durable | Centaur | Durable completed_steps resume | ✅ | `run_meta.py`, `room.py`, `sessions/_regression/durable_completed_steps/` | |
 | MD-PROJECT | Prompt | PROJECT.md workspace injection | ✅ | `session_guidance.py:_read_project_md()` | cap 1500 chars |
 | MD-PLATFORM | Prompt | PLATFORM.md protocol injection | ✅ | `.agent-lab/PLATFORM.md`, `platform_md.py`, `tests/test_platform_md.py` | inject cap 500 chars |
@@ -71,6 +72,7 @@ They are tracked here but do not belong in the runtime feature roadmap.
 | CC-skills | Claude Code | `.claude/skills/` subagent skills | ✅ | `.claude/skills/*`, `project_memory.py`, `scripts/init_project_memory.py` | smoke-and-score, regression-check, init-project-memory |
 | MD-PROJECT | Prompt | PROJECT.md workspace injection | ✅ | `session_guidance.py` | Shipped |
 | MD-PLATFORM | Prompt | PLATFORM.md externalization | ✅ | `.agent-lab/PLATFORM.md`, `platform_md.py` | inject via session_guidance |
+| MD-P3 | Prompt | AGENTS.md + SHARED_CONTEXT injection | ✅ | `workspace_md.py`, `tests/test_workspace_md.py` | workspace-root; Codex + common context |
 
 ---
 

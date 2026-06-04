@@ -188,3 +188,94 @@ def _agent_notes(root: Path) -> list[str]:
     if (root / ".env.example").is_file():
         notes.append("- secrets는 `.env`만; child subprocess에 env 전체 상속 금지.")
     return notes
+
+
+def agents_md_path(workspace: Path) -> Path:
+    return workspace.resolve() / "AGENTS.md"
+
+
+def shared_context_path(workspace: Path) -> Path:
+    return workspace.resolve() / "SHARED_CONTEXT.md"
+
+
+def _write_optional_md(
+    path: Path,
+    text: str,
+    *,
+    overwrite: bool,
+    dry_run: bool,
+) -> str:
+    if path.is_file() and not overwrite:
+        return path.read_text(encoding="utf-8")
+    if dry_run:
+        return text
+    path.write_text(text, encoding="utf-8")
+    return text
+
+
+def bootstrap_agents_md(
+    workspace: Path,
+    *,
+    overwrite: bool = False,
+    dry_run: bool = False,
+) -> str:
+    root = workspace.resolve()
+    name = _project_name(root)
+    build = _build_lines(root)
+    cmd = build[0].replace("- `", "").replace("`", "") if build else "make test"
+    text = (
+        f"# {name} — Codex 가이드\n\n"
+        "## 환경\n"
+        f"- 테스트: `{cmd}`\n\n"
+        "## 작업 전 확인\n"
+        "1. `.agent-lab/PROJECT.md` 최신 여부\n"
+        "2. plan action `검증:` 기준 확인\n\n"
+        "## 금지\n"
+        "- execute gate 우회\n"
+        "- subprocess env 전체 상속\n"
+    )
+    return _write_optional_md(
+        agents_md_path(root),
+        text,
+        overwrite=overwrite,
+        dry_run=dry_run,
+    )
+
+
+def bootstrap_shared_context_md(
+    workspace: Path,
+    *,
+    overwrite: bool = False,
+    dry_run: bool = False,
+) -> str:
+    root = workspace.resolve()
+    name = _project_name(root)
+    blurb = _architecture_blurb(root) or f"{name} workspace"
+    text = (
+        f"# {name} — 공통 컨텍스트\n\n"
+        "## 아키텍처\n"
+        f"{blurb}\n\n"
+        "## 공통 규칙\n"
+        "- Human gate 유지 (자율 merge 금지)\n"
+        "- 완료는 Oracle/verify 기준으로만 주장\n"
+    )
+    return _write_optional_md(
+        shared_context_path(root),
+        text,
+        overwrite=overwrite,
+        dry_run=dry_run,
+    )
+
+
+def bootstrap_workspace_memory(
+    workspace: Path,
+    *,
+    overwrite: bool = False,
+    dry_run: bool = False,
+) -> dict[str, str]:
+    """Bootstrap PROJECT.md, AGENTS.md, SHARED_CONTEXT.md."""
+    return {
+        "project": bootstrap_project_md(workspace, overwrite=overwrite, dry_run=dry_run),
+        "agents": bootstrap_agents_md(workspace, overwrite=overwrite, dry_run=dry_run),
+        "shared": bootstrap_shared_context_md(workspace, overwrite=overwrite, dry_run=dry_run),
+    }

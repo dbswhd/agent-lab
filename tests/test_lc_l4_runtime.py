@@ -41,3 +41,23 @@ def test_read_project_md_in_guidance(tmp_path):
     )
     assert "PROJECT.md" in block
     assert "typed errors" in block
+
+
+def test_adversarial_review_live_env_uses_invoke(monkeypatch):
+    from agent_lab.adversarial_gate import adversarial_review
+
+    monkeypatch.setenv("AGENT_LAB_ADVERSARIAL_LIVE", "1")
+    calls: list[str] = []
+
+    def _fake_invoke(role: str, prompt: str, **kwargs: object) -> str:
+        calls.append(role)
+        return "LGTM"
+
+    monkeypatch.setattr("agent_lab.claude_cli.invoke", _fake_invoke)
+    out = adversarial_review(
+        action_what="change",
+        action_verify="pytest",
+        diff="+ok",
+    )
+    assert out["source"] == "live"
+    assert calls == ["adversarial-reviewer"]

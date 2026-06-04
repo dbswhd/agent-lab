@@ -45,4 +45,4 @@
 ## Claude Code skills (CC-skills)
 - `/smoke-and-score` — E2E smoke + `make score-session`
 - `/regression-check` — pytest + failure analysis
-- `/init-project-memory` — `scripts/init_project_memory.py` → `.agent-lab/PROJECT.md`
+- `/init-project-memory` — PROJECT.md + AGENTS.md + SHARED_CONTEXT.md bootstrap

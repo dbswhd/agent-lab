@@ -679,6 +679,8 @@ export type PlanExecutionRecord = {
   verify_retries?: number;
   repair_history?: Record<string, unknown>[];
   last_repair?: Record<string, unknown>;
+  adversarial_note?: string;
+  adversarial_source?: string;
   snapshot_id?: string;
   workspace_root?: string;
   workspace_label?: string;

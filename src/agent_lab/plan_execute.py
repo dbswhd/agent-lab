@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.adversarial_gate import adversarial_review
 from agent_lab.plan_actions import PlanAction, find_dry_run_action, parse_plan_action_sections
 from agent_lab.plan_execute_isolation import IsolationDecision, resolve_action_isolation
 from agent_lab.plan_execute_merge import (
@@ -947,6 +948,13 @@ def run_dry_run(
         "completed_at": None,
         "pre_verify": pre_verify,
     }
+    adv = adversarial_review(
+        action_what=action.what,
+        action_verify=action.verify,
+        diff=diff,
+    )
+    execution["adversarial_note"] = adv.get("note")
+    execution["adversarial_source"] = adv.get("source")
 
     def _append(run: dict[str, Any]) -> dict[str, Any]:
         actions = list(run.get("actions") or [])

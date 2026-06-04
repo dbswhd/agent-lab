@@ -21,6 +21,8 @@ SHIPPED_ROWS: list[tuple[str, list[str]]] = [
         ],
     ),
     ("CENT-durable", ["tests/test_durable_completed_steps.py", "sessions/_regression/durable_completed_steps"]),
+    ("LC-L4", ["src/agent_lab/adversarial_gate.py", "sessions/_regression/adversarial_gate_lgtm", "tests/test_lc_l4_runtime.py"]),
+    ("MD-PROJECT", ["src/agent_lab/session_guidance.py", "tests/test_lc_l4_runtime.py"]),
     ("PI", ["src/agent_lab/plan_execute_worktree.py", "sessions/_regression/worktree_merge_ok"]),
     ("PI-ops", ["scripts/live_cursor_worktree_dry_run.py", "docs/OPS-RUNBOOK.md"]),
     ("PI-ops-C", ["scripts/live_cursor_worktree_merge_run.py", "docs/LIVE-MERGE-OPERATOR.md"]),
@@ -35,18 +37,10 @@ SHIPPED_ROWS: list[tuple[str, list[str]]] = [
 ]
 
 PARTIAL_ROWS: list[tuple[str, list[str]]] = [
-    (
-        "LC-L4",
-        [
-            "src/agent_lab/adversarial_gate.py",
-            "sessions/_regression/adversarial_gate_lgtm",
-        ],
-    ),
     ("LC-clarifier", ["src/agent_lab/session_clarifier.py"]),
 ]
 
 FUTURE_TICKETS = (
-    "project_md_injection",
     "platform_md_externalization",
 )
 
@@ -129,7 +123,7 @@ def test_plan_has_stale_banner_and_traceability_link():
 def test_plan_loop_layers_match_traceability():
     text = _read(PLAN)
     assert "Layer 3: Execute Verify Loop | ✅" in text
-    assert "Layer 4: Adversarial Gate | 🔶" in text
+    assert "Layer 4: Adversarial Gate | 🔶" in text or "Layer 4: Adversarial Gate | ✅" in text
     assert "subprocess credential 분리 **✅ shipped**" in text or "✅ shipped" in text
 
 

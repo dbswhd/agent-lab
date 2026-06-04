@@ -305,6 +305,134 @@ def _emit_turn_terminal_status(
         on_event("turn_failed", payload)
 
 
+def _human_turn_number(human_turn_index: int) -> int:
+    return max(1, human_turn_index + 1)
+
+
+def _session_folder_from_run_meta(run_meta: dict[str, Any] | None) -> Path | None:
+    if not run_meta:
+        return None
+    folder_raw = run_meta.get("_session_folder")
+    if not folder_raw:
+        return None
+    folder = Path(str(folder_raw))
+    return folder if folder.is_dir() else None
+
+
+def _try_replay_completed_agent(
+    aid: AgentId,
+    *,
+    human_turn_index: int,
+    parallel_round: int,
+    run_meta: dict[str, Any] | None,
+    on_event: OnAgentEvent | None,
+) -> ChatMessage | None:
+    folder = _session_folder_from_run_meta(run_meta)
+    if not folder:
+        return None
+    from agent_lab.run_meta import get_completed_step, read_run_meta
+
+    human_turn = _human_turn_number(human_turn_index)
+    run = run_meta or read_run_meta(folder)
+    step = get_completed_step(
+        run,
+        human_turn=human_turn,
+        parallel_round=parallel_round,
+        agent=str(aid),
+    )
+    if not step:
+        return None
+    content = str(step.get("content") or "")
+    envelope = step.get("envelope")
+    if on_event:
+        on_event(
+            "agent_start",
+            {"agent": aid, "round": parallel_round, "resumed": True},
+        )
+        on_event(
+            "agent_done",
+            {
+                "agent": aid,
+                "round": parallel_round,
+                "chars": len(content),
+                "content": content,
+                "pass": is_pass_reply(content, envelope if isinstance(envelope, dict) else None),
+                "no_objection": is_endorse_reply(
+                    content, envelope if isinstance(envelope, dict) else None
+                ),
+                "envelope": envelope,
+                "envelope_valid": isinstance(envelope, dict),
+                "resumed": True,
+                "skipped_call": True,
+                "completed_step": step.get("step"),
+            },
+        )
+    from agent_lab.room_chat_channels import message_visibility
+
+    return ChatMessage(
+        role="agent",
+        agent=aid,
+        content=content,
+        parallel_round=parallel_round,
+        envelope=envelope if isinstance(envelope, dict) else None,
+        visibility=message_visibility(role="agent", content=content),
+    )
+
+
+def _invoke_agent_for_round(
+    aid: AgentId,
+    *,
+    topic: str,
+    thread: list[ChatMessage],
+    parallel_round: int,
+    permissions: dict | None,
+    review_mode: bool,
+    review_advocate: AgentId | None,
+    plan_md: str,
+    run_meta: dict[str, Any] | None,
+    on_event: OnAgentEvent | None,
+    context_log: list[dict[str, Any]] | None = None,
+    extra_follow_up: str = "",
+    efficiency_mode: bool = False,
+    slim_context: bool = False,
+    human_turn_index: int = 0,
+) -> ChatMessage:
+    replay = _try_replay_completed_agent(
+        aid,
+        human_turn_index=human_turn_index,
+        parallel_round=parallel_round,
+        run_meta=run_meta,
+        on_event=on_event,
+    )
+    if replay is not None:
+        return replay
+    return _call_one_agent(
+        aid,
+        topic=topic,
+        thread=thread,
+        parallel_round=parallel_round,
+        permissions=permissions,
+        review_mode=review_mode,
+        review_advocate=review_advocate,
+        plan_md=plan_md,
+        run_meta=run_meta,
+        on_event=on_event,
+        context_log=context_log,
+        extra_follow_up=extra_follow_up,
+        efficiency_mode=efficiency_mode,
+        slim_context=slim_context,
+        human_turn_index=human_turn_index,
+    )
+
+
+def _finalize_durable_turn(folder: Path, human_turn_num: int, turn_status: str) -> None:
+    if turn_status != "completed":
+        return
+    from agent_lab.run_meta import clear_completed_steps_for_human_turn
+
+    clear_completed_steps_for_human_turn(folder, human_turn_num)
+
+
 def _bind_session_to_run_meta(
     run_meta: dict[str, Any] | None,
     folder: Path | None,
@@ -382,6 +510,7 @@ def _call_one_agent(
     extra_follow_up: str = "",
     efficiency_mode: bool = False,
     slim_context: bool = False,
+    human_turn_index: int = 0,
 ) -> ChatMessage:
     def _emit(typ: str, payload: dict[str, Any]) -> None:
         if on_event:
@@ -471,6 +600,19 @@ def _call_one_agent(
                 "context_meta": context_meta,
             },
         )
+        folder = _session_folder_from_run_meta(run_meta)
+        if folder and msg.role == "agent":
+            from agent_lab.run_meta import record_completed_step
+
+            record_completed_step(
+                folder,
+                human_turn=_human_turn_number(human_turn_index),
+                parallel_round=parallel_round,
+                agent=str(aid),
+                content=body,
+                envelope=envelope_dict,
+                run_meta=run_meta,
+            )
         return msg
     except Exception as e:
         retryable = retryable_failure(e) or is_retryable(str(e))
@@ -677,7 +819,7 @@ def run_consensus_agent_rounds(
                 if calls >= cap_calls:
                     break
                 check_cancelled()
-                msg = _call_one_agent(
+                msg = _invoke_agent_for_round(
                     aid,
                     topic=topic,
                     thread=thread,
@@ -692,6 +834,7 @@ def run_consensus_agent_rounds(
                     extra_follow_up=follow,
                     efficiency_mode=efficiency_mode,
                     slim_context=efficiency_mode,
+                    human_turn_index=human_turn_index,
                 )
                 all_replies.append(msg)
                 thread.append(msg)
@@ -944,7 +1087,7 @@ def run_parallel_round(
             with ThreadPoolExecutor(max_workers=len(parallel_batch)) as pool:
                 futures = {
                     pool.submit(
-                        _call_one_agent,
+                        _invoke_agent_for_round,
                         aid,
                         topic=topic,
                         thread=messages,
@@ -957,6 +1100,7 @@ def run_parallel_round(
                         on_event=on_event,
                         context_log=context_log,
                         efficiency_mode=efficiency_mode,
+                        human_turn_index=human_turn_index,
                     ): aid
                     for aid in parallel_batch
                 }
@@ -970,7 +1114,7 @@ def run_parallel_round(
         for aid in lead_tail:
             check_cancelled()
             try:
-                msg = _call_one_agent(
+                msg = _invoke_agent_for_round(
                     str(aid),
                     topic=topic,
                     thread=thread,
@@ -983,6 +1127,7 @@ def run_parallel_round(
                     on_event=on_event,
                     context_log=context_log,
                     efficiency_mode=efficiency_mode,
+                    human_turn_index=human_turn_index,
                 )
                 replies.append(msg)
                 thread.append(msg)
@@ -1011,7 +1156,7 @@ def run_parallel_round(
         try:
             for aid in ordered:
                 check_cancelled()
-                msg = _call_one_agent(
+                msg = _invoke_agent_for_round(
                     aid,
                     topic=topic,
                     thread=thread,
@@ -1025,6 +1170,7 @@ def run_parallel_round(
                     context_log=context_log,
                     extra_follow_up=round_follow,
                     efficiency_mode=efficiency_mode,
+                    human_turn_index=human_turn_index,
                 )
                 replies.append(msg)
                 thread.append(msg)
@@ -1041,7 +1187,7 @@ def run_parallel_round(
     with ThreadPoolExecutor(max_workers=len(ordered)) as pool:
         futures = {
             pool.submit(
-                _call_one_agent,
+                _invoke_agent_for_round,
                 aid,
                 topic=topic,
                 thread=messages,
@@ -1054,6 +1200,7 @@ def run_parallel_round(
                 on_event=on_event,
                 context_log=context_log,
                 efficiency_mode=efficiency_mode,
+                human_turn_index=human_turn_index,
             ): aid
             for aid in ordered
         }
@@ -2301,6 +2448,7 @@ def continue_room_round(
         on_event=on_event,
         consensus_mode=consensus_mode,
     )
+    _finalize_durable_turn(folder, human_turn_num, turn_status)
     existing_meta: dict[str, Any] = {}
     meta_path = folder / "meta.json"
     if meta_path.is_file():
@@ -2644,6 +2792,7 @@ def run_room(
             turn_meta=turn_meta,
             run_meta_patch=_delegate_run_meta_patch(run_meta),
         )
+    _finalize_durable_turn(folder, 1, turn_status)
     auto_plan = maybe_auto_scribe_after_consensus(
         folder,
         consensus_meta=consensus_meta,

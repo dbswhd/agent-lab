@@ -1,0 +1,40 @@
+{
+  "workflow_id": "room.parallel",
+  "run_schema_version": 1,
+  "plan_format_version": 0,
+  "topic": "regression baseline: durable completed_steps resume",
+  "created_at": "2026-06-04T00:00:00+00:00",
+  "agents": ["cursor", "codex", "claude"],
+  "status": "partial",
+  "message_count": 2,
+  "agent_parallel_rounds": 1,
+  "completed_steps": [
+    {
+      "step": "turn_1_round_1_cursor",
+      "human_turn": 1,
+      "parallel_round": 1,
+      "agent": "cursor",
+      "ts": "2026-06-04T00:00:01+00:00",
+      "content": "cursor reply persisted before restart",
+      "msg_idx": 1
+    }
+  ],
+  "turns": [
+    {
+      "mode": "discuss",
+      "synthesize": false,
+      "agent_parallel_rounds": 1,
+      "agents": ["cursor", "codex", "claude"],
+      "permissions": {},
+      "model": "baseline",
+      "latency_ms": 0,
+      "status": "partial",
+      "failed_agents": ["claude"],
+      "succeeded_agents": ["cursor"],
+      "ts": "2026-06-04T00:00:02+00:00"
+    }
+  ],
+  "actions": [],
+  "approvals": [],
+  "executions": []
+}

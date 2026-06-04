@@ -24,10 +24,11 @@ Baseline scenarios (minimal `run.json` fixtures):
 | `pre_execute_blocked/` | pre-execute gate blocked | `pre_verify.blocked: true` on blocked execution |
 | `adversarial_gate_lgtm/` | adversarial gate mock LGTM | dry-run `review_required` + `adversarial_note` + `expected_badges.json` |
 | `execute_verify_loop/` | LC-L3 agent repair loop | Oracle FAIL triggers a Cursor/Codex repair worktree and re-merge; final execution has `repair_history`, `verify_retries` within 2, `verify_after_merge.status: passed`, and `oracle.verdict: pass` |
+| `durable_completed_steps/` | CENT-durable resume snapshot | `completed_steps[]` with turn/round/agent key; partial turn with `succeeded_agents` |
 
 Compare live sessions against baselines:
 
-Future fixture tickets: see `docs/EXTERNAL-REFS-TRACEABILITY.md` (`durable_completed_steps`).
+Future fixture tickets: see `docs/EXTERNAL-REFS-TRACEABILITY.md` (MD-PROJECT, MD-PLATFORM).
 
 ```bash
 python scripts/run_diff.py sessions/_regression/discuss sessions/<your-session>

@@ -24,4 +24,11 @@ web/preview*.png
 data/turn_profile_bandit.json
 *.log
 .DS_Store
-.claude/
+.claude/*
+!.claude/settings.json
+!.claude/hooks/
+!.claude/hooks/**
+!.claude/rules/
+!.claude/rules/**
+!.claude/skills/
+!.claude/skills/**

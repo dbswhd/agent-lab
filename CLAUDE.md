@@ -33,3 +33,7 @@
 ## 추적 문서
 - shipped status: `docs/EXTERNAL-REFS-TRACEABILITY.md`
 - MD 작성: `docs/MD-WRITING-PLAN.md`
+
+## Claude Code hooks (CC-hooks)
+- `.claude/settings.json` — PostEdit: ruff (`.py`), prettier (`.tsx`); Stop: pytest tail
+- `room_hooks.py`와 별개 (서버 런타임 훅)

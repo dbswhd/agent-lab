@@ -1,0 +1,35 @@
+{
+  "hooks": {
+    "PostEdit": [
+      {
+        "matcher": "*.py",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/post-edit-ruff.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "*.tsx",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/post-edit-prettier.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/stop-pytest.sh",
+            "statusMessage": "pytest 실행 중..."
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -24,7 +24,15 @@ def test_regression_check_skill():
 
 
 def test_skill_frontmatter_has_description():
-    for sub in ("smoke-and-score", "regression-check"):
+    for sub in ("smoke-and-score", "regression-check", "init-project-memory"):
         text = (SKILLS / sub / "SKILL.md").read_text(encoding="utf-8")
         assert text.startswith("---\n")
         assert "description:" in text.split("---", 2)[1]
+
+
+def test_init_project_memory_skill():
+    path = SKILLS / "init-project-memory" / "SKILL.md"
+    text = path.read_text(encoding="utf-8")
+    assert "name: init-project-memory" in text
+    assert "init_project_memory.py" in text
+    assert "2000" in text

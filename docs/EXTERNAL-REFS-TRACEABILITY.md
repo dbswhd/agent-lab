@@ -45,7 +45,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 
 | ID | Source | Item | Status | Evidence | Gap | PLAN ref |
 |----|--------|------|--------|----------|-----|----------|
-| CC-skills | Claude Code | Subagent skills | 🔶 | `.claude/skills/smoke-and-score/`, `regression-check/` | `init-project-memory` skill pending | Part 4 §4.3 |
+| _(none)_ | — | — | — | — | — | — |
 
 ---
 
@@ -67,7 +67,7 @@ They are tracked here but do not belong in the runtime feature roadmap.
 | CC-CLAUDE | Claude Code | `CLAUDE.md` dev guide | ✅ | `CLAUDE.md` | Root dev guide; see MD-WRITING-PLAN |
 | CC-hooks | Claude Code | `.claude/settings.json` hooks | ✅ | `.claude/settings.json`, `.claude/hooks/`, `tests/test_claude_hooks.py` | PostEdit ruff/prettier; Stop pytest tail |
 | CC-rules | Claude Code | `.claude/rules/*.md` path rules | ✅ | `.claude/rules/python-backend.md`, `.claude/rules/react-frontend.md`, `tests/test_claude_rules.py` | path-scoped; see MD-WRITING-PLAN §파일2 |
-| CC-skills | Claude Code | `.claude/skills/` subagent skills | 🔶 | `.claude/skills/smoke-and-score/`, `.claude/skills/regression-check/`, `tests/test_claude_skills.py` | `init-project-memory` pending |
+| CC-skills | Claude Code | `.claude/skills/` subagent skills | ✅ | `.claude/skills/*`, `project_memory.py`, `scripts/init_project_memory.py` | smoke-and-score, regression-check, init-project-memory |
 | CON-diff | Conductor | Diff inline revise UI | ⬜ | `PlanExecutePanel.tsx` (approve/reject only) | UI-only; no `sessions/_regression/` fixture |
 | MD-PROJECT | Prompt | PROJECT.md workspace injection | ✅ | `session_guidance.py` | Shipped |
 | MD-PLATFORM | Prompt | PLATFORM.md externalization | ✅ | `.agent-lab/PLATFORM.md`, `platform_md.py` | inject via session_guidance |
@@ -78,7 +78,6 @@ They are tracked here but do not belong in the runtime feature roadmap.
 
 | Priority | ID | Suggested next action |
 |----------|-----|-----------------------|
-| P2 | CC-skills | `.claude/skills/init-project-memory/` (PROJECT.md bootstrap) |
 | P3 | CON-diff | PlanExecutePanel diff inline revise UI |
 
 ---

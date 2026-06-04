@@ -133,6 +133,31 @@ export type SessionDetail = {
   attachments?: string[];
 };
 
+export type SessionGoalRecord = {
+  text?: string;
+  set_at?: string;
+  updated_at?: string;
+  set_by?: "human" | string;
+};
+
+export type GoalOracleCheckRecord = {
+  at?: string;
+  verdict?: "pass" | "fail" | string;
+  detail?: string;
+  source?: "mock" | "live" | string;
+};
+
+export type GoalLoopRecord = {
+  enabled?: boolean;
+  max_checks?: number;
+  checks?: GoalOracleCheckRecord[];
+  last_check?: GoalOracleCheckRecord;
+  status?: "open" | "achieved" | "abandoned" | string;
+  achieved_at?: string;
+  auto_continue_pending?: boolean;
+  continue_prompt?: string;
+};
+
 const API_ORIGIN = "http://127.0.0.1:8765";
 
 export function apiBase(): string {
@@ -265,6 +290,34 @@ export function unarchiveSession(id: string) {
 
 export function fetchSession(id: string) {
   return json<SessionDetail>(`/api/sessions/${encodeURIComponent(id)}`);
+}
+
+export function setSessionGoal(
+  id: string,
+  body: { text: string; max_checks?: number },
+) {
+  return json<{
+    ok: boolean;
+    session_goal: SessionGoalRecord;
+    goal_loop: GoalLoopRecord;
+  }>(`/api/sessions/${encodeURIComponent(id)}/goal`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export function checkSessionGoal(id: string) {
+  return json<{
+    ok: boolean;
+    checked: boolean;
+    reason?: string;
+    check?: GoalOracleCheckRecord;
+    session_goal?: SessionGoalRecord;
+    goal_loop?: GoalLoopRecord;
+  }>(`/api/sessions/${encodeURIComponent(id)}/goal/check`, {
+    method: "POST",
+  });
 }
 
 export function fetchSessionTasks(sessionId: string) {

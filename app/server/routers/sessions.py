@@ -3,12 +3,14 @@ from __future__ import annotations
 import shutil
 from typing import Any
 
-from fastapi import APIRouter, File, UploadFile
+from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from agent_lab.attachments import list_attachment_names
+from agent_lab.goal_loop import check_session_goal, goal_loop_enabled, set_session_goal
 
 from app.server.deps import (
     RenameSessionRequest,
+    SessionGoalPatchRequest,
     archive_meta,
     list_sessions,
     read_meta,
@@ -57,6 +59,33 @@ def rename_session(session_id: str, body: RenameSessionRequest) -> dict[str, Any
     meta["topic"] = topic
     write_meta(folder, meta)
     return {"ok": True, "id": session_id, "topic": topic}
+
+
+@router.patch("/sessions/{session_id}/goal")
+def patch_session_goal(
+    session_id: str,
+    body: SessionGoalPatchRequest,
+) -> dict[str, Any]:
+    folder = session_folder_or_404(session_id)
+    try:
+        result = set_session_goal(folder, body.text, max_checks=body.max_checks)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"ok": True, **result}
+
+
+@router.post("/sessions/{session_id}/goal/check")
+def post_session_goal_check(session_id: str) -> dict[str, Any]:
+    folder = session_folder_or_404(session_id)
+    if not goal_loop_enabled():
+        raise HTTPException(status_code=409, detail="goal loop is disabled")
+    result = check_session_goal(folder)
+    if not result.get("checked") and result.get("reason") in {
+        "goal_missing",
+        "goal_loop_disabled",
+    }:
+        raise HTTPException(status_code=409, detail=result["reason"])
+    return {"ok": True, **result}
 
 
 @router.delete("/sessions/{session_id}")

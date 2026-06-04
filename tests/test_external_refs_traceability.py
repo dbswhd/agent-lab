@@ -22,6 +22,7 @@ SHIPPED_ROWS: list[tuple[str, list[str]]] = [
     ),
     ("CENT-durable", ["tests/test_durable_completed_steps.py", "sessions/_regression/durable_completed_steps"]),
     ("LC-L4", ["src/agent_lab/adversarial_gate.py", "sessions/_regression/adversarial_gate_lgtm", "tests/test_lc_l4_runtime.py"]),
+    ("LC-L5", ["src/agent_lab/goal_loop.py", "sessions/_regression/goal_loop_achieved", "tests/test_goal_loop.py"]),
     ("MD-PLATFORM", [".agent-lab/PLATFORM.md", "src/agent_lab/platform_md.py", "tests/test_platform_md.py"]),
     ("LC-clarifier", ["src/agent_lab/session_clarifier.py", "tests/test_session_clarifier.py"]),
     ("CC-hooks", [".claude/settings.json", ".claude/hooks/stop-pytest.sh", "tests/test_claude_hooks.py"]),
@@ -137,6 +138,7 @@ def test_plan_loop_layers_match_traceability():
     text = _read(PLAN)
     assert "Layer 3: Execute Verify Loop | ✅" in text
     assert "Layer 4: Adversarial Gate | 🔶" in text or "Layer 4: Adversarial Gate | ✅" in text
+    assert "Layer 5: Goal-Driven Loop | ✅" in text
     assert "subprocess credential 분리 **✅ shipped**" in text or "✅ shipped" in text
 
 

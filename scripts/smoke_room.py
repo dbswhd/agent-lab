@@ -362,6 +362,23 @@ def _check_specialist_asymmetric_cwd(run: dict[str, Any]) -> bool:
     )
 
 
+def _check_goal_loop_achieved(run: dict[str, Any]) -> bool:
+    goal = run.get("session_goal") or {}
+    loop = run.get("goal_loop") or {}
+    if not isinstance(goal, dict) or not str(goal.get("text") or "").strip():
+        return False
+    if not isinstance(loop, dict) or loop.get("status") != "achieved":
+        return False
+    checks = loop.get("checks") or []
+    return bool(
+        isinstance(checks, list)
+        and checks
+        and isinstance(checks[-1], dict)
+        and checks[-1].get("verdict") == "pass"
+        and checks[-1].get("source") in {"mock", "live"}
+    )
+
+
 SCENARIOS: dict[str, dict[str, Any]] = {
     "discuss": {
         "label": "일반 discuss",
@@ -468,6 +485,10 @@ SCENARIOS: dict[str, dict[str, Any]] = {
     "durable_completed_steps": {
         "label": "durable completed_steps partial resume snapshot",
         "check": _check_durable_completed_steps,
+    },
+    "goal_loop_achieved": {
+        "label": "LC-L5 mock goal Oracle achieved",
+        "check": _check_goal_loop_achieved,
     },
 }
 

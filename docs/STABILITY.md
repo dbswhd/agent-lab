@@ -132,6 +132,8 @@ Lead orchestration and pre-round assignment on top of Phase 1:
 
 **Verify F-R3:** specialist fixture `sessions/_regression/specialist_asymmetric_cwd/` records R1 Codex/Claude and R2 Cursor `last_turn.context.agents[].capability_cwd` with distinct cwd values; `scripts/smoke_room.py` fails if this meta collapses.
 
+**Verify LC-L5:** with `AGENT_LAB_GOAL_LOOP=1`, set a session goal containing a backtick literal, complete one discuss turn, and confirm the Room goal banner shows mock Oracle PASS/FAIL. By default, FAIL keeps the next discuss turn behind the Human send gate. Regression fixture: `sessions/_regression/goal_loop_achieved/`.
+
 ### Sprint D (turn lead UI, discuss task scope, provenance, receipts)
 
 See **[SPRINT-D-CHECKLIST.md](./SPRINT-D-CHECKLIST.md)** for the full checkbox list.

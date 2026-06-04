@@ -74,6 +74,8 @@ SESSION_META_KEYS = (
     "research_mode",
     "last_verification_artifacts",
     "last_delegate",
+    "session_goal",
+    "goal_loop",
 )
 
 LAYOUT_FROZEN_GUIDANCE = """\

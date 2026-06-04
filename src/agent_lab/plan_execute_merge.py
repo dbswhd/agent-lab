@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
@@ -38,6 +40,149 @@ def _run_git(cwd: Path, *args: str, check: bool = True) -> subprocess.CompletedP
         text=True,
         check=check,
     )
+
+
+def oracle_verify(
+    action: Any,
+    merged_paths: list[str | Path],
+    *,
+    session_folder: Path | None = None,
+    workspace_root: Path | None = None,
+    oracle_call: Callable[[str], str] | None = None,
+    max_paths: int = 5,
+    max_chars_per_file: int = 600,
+) -> dict[str, Any]:
+    """Mock-first independent verifier for merged plan actions.
+
+    By default this is deterministic and offline: it checks backtick literals in
+    ``action.verify`` against snippets from ``merged_paths``. Supplying
+    ``oracle_call`` lets tests or future wiring route to a real oracle. Live
+    Claude invocation is opt-in via ``AGENT_LAB_ORACLE_LIVE=1``.
+    """
+    verify = _action_verify(action)
+    if _missing_verify(verify):
+        return {
+            "verdict": "skipped",
+            "detail": "verify field missing",
+            "verify_criterion": verify,
+            "checked_paths": [],
+        }
+
+    base = _oracle_workspace_root(
+        session_folder=session_folder,
+        workspace_root=workspace_root,
+    )
+    snippets, checked_paths = _oracle_file_snippets(
+        merged_paths,
+        workspace_root=base,
+        max_paths=max_paths,
+        max_chars_per_file=max_chars_per_file,
+    )
+    prompt = _oracle_prompt(verify, snippets)
+
+    if oracle_call is not None:
+        raw = oracle_call(prompt)
+    elif os.getenv("AGENT_LAB_ORACLE_LIVE", "").strip().lower() in {"1", "true", "yes"}:
+        from agent_lab import claude_cli
+
+        raw = claude_cli.invoke("oracle", prompt, scribe=True)
+    else:
+        raw = _mock_oracle_response(verify, snippets)
+
+    detail = str(raw or "").strip()
+    verdict = "pass" if detail.upper().startswith("PASS") else "fail"
+    return {
+        "verdict": verdict,
+        "detail": detail[:400],
+        "verify_criterion": verify,
+        "checked_paths": checked_paths,
+    }
+
+
+def _action_verify(action: Any) -> str:
+    if isinstance(action, dict):
+        return str(action.get("verify") or action.get("action_verify") or "")
+    return str(getattr(action, "verify", "") or "")
+
+
+def _missing_verify(verify: str) -> bool:
+    text = (verify or "").strip()
+    return text in {"", "검증 기준 없음", "-", "—", "N/A", "n/a", "none", "None"}
+
+
+def _oracle_workspace_root(
+    *,
+    session_folder: Path | None,
+    workspace_root: Path | None,
+) -> Path:
+    if workspace_root is not None:
+        return workspace_root.expanduser().resolve()
+    if session_folder is not None:
+        return session_folder.expanduser().resolve().parent
+    return Path.cwd().resolve()
+
+
+def _oracle_file_snippets(
+    paths: list[str | Path],
+    *,
+    workspace_root: Path,
+    max_paths: int,
+    max_chars_per_file: int,
+) -> tuple[list[str], list[str]]:
+    snippets: list[str] = []
+    checked: list[str] = []
+    for raw in paths[: max(max_paths, 0)]:
+        display = str(raw)
+        path = Path(raw).expanduser()
+        full = path if path.is_absolute() else workspace_root / path
+        if not full.is_file():
+            continue
+        try:
+            text = full.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        checked.append(display)
+        snippets.append(f"--- {display} ---\n{text[:max_chars_per_file]}")
+    return snippets, checked
+
+
+def _oracle_prompt(verify: str, snippets: list[str]) -> str:
+    files_block = "\n\n".join(snippets) or "(changed files unavailable)"
+    return (
+        "Independently verify whether this plan action is complete.\n\n"
+        f"Verification criterion:\n{verify}\n\n"
+        f"Merged file snippets:\n{files_block}\n\n"
+        "Respond with exactly one leading verdict: PASS or FAIL. "
+        "If FAIL, give the concrete reason in 1-2 lines."
+    )
+
+
+def _mock_oracle_response(verify: str, snippets: list[str]) -> str:
+    if not snippets:
+        return "FAIL: no readable merged files to check"
+    body = "\n\n".join(snippets)
+    literals = _verify_literals(verify)
+    missing = [literal for literal in literals if literal not in body]
+    if missing:
+        return f"FAIL: missing expected literal(s): {', '.join(missing[:5])}"
+    if literals:
+        return f"PASS: found expected literal(s): {', '.join(literals[:5])}"
+    return "PASS: mock oracle checked merged files; no explicit literal criterion found"
+
+
+def _verify_literals(verify: str) -> list[str]:
+    import re
+
+    literals: list[str] = []
+    for token in re.findall(r"`([^`]+)`", verify or ""):
+        text = token.strip()
+        if not text:
+            continue
+        if "/" in text or "\\" in text or Path(text).suffix:
+            continue
+        if text not in literals:
+            literals.append(text)
+    return literals
 
 
 def merge_exec_branch(

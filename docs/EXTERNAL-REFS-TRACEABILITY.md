@@ -14,6 +14,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 |----|--------|------|--------|----------|-------|
 | L1 | LazyCodex | CLI retry loop | ✅ | `src/agent_lab/cli_retry.py`, `tests/test_cli_retry.py`, R-P0 | Layer 1 |
 | L2 | LazyCodex | Consensus loop | ✅ | `src/agent_lab/room_consensus.py`, `room.py` | Layer 2, cap_rounds/calls |
+| LC-oracle | LazyCodex | Oracle verified completion (mock-first) | ✅ | `src/agent_lab/plan_execute_merge.py`, `tests/test_oracle_verify.py` | Standalone `oracle_verify()`; live Claude opt-in, not wired to merge loop yet |
 | PI | Conductor | Git worktree execute + merge | ✅ | `src/agent_lab/plan_execute_*.py`, `sessions/_regression/worktree_*`, `tests/test_plan_execute_worktree.py` | Phase I M0–M4 |
 | PI-ops | Conductor | Live worktree Go/No-Go | ✅ | `docs/LIVE-CURSOR-WORKTREE-DRY-RUN.md`, `scripts/live_cursor_worktree_dry_run.py`, Tier B in `docs/OPS-RUNBOOK.md` | Manual, not CI |
 | PI-ops-C | Conductor | Live merge operator | ✅ | `docs/LIVE-MERGE-OPERATOR.md`, `scripts/live_cursor_worktree_merge_run.py`, `make verify-ops-live-merge` | Disposable repo only |
@@ -49,18 +50,12 @@ These are **acceptance criteria only**. Do not add live LLM fixtures until Layer
 
 ### Ticket: `execute_verify_loop` (LC-L3)
 
-- **Depends on:** LC-oracle mock `oracle_verify()` (function PR first, or same PR)
+- **Depends on:** LC-oracle standalone mock `oracle_verify()` ✅ shipped
 - **Folder (future):** `sessions/_regression/execute_verify_loop/`
 - **Spec:** After worktree merge, `oracle_verify()` checks `action.verify` field against merged files. FAIL → Human “reverify” button → second worktree dry-run (max 2 retries per [PLAN §1.4](EXTERNAL-REFS-PLAN.md#14-execute-verify-loop-설계-layer-3-상세)).
 - **Evidence keys:** `execution.verify_after_merge.status`, `execution.verify_retries`, `oracle.verdict`
-- **Tests (future):** mock `verify_after_merge`, mock `oracle_verify`, pytest only
+- **Tests (future):** mock `verify_after_merge`, call shipped `oracle_verify`, pytest only
 - **UI (future):** `PlanExecutePanel.tsx` — Oracle badge + “에이전트에게 수정 요청” button
-
-### Ticket: `oracle_verified_completion` (LC-oracle)
-
-- **Blocks:** LC-L3 regression fixture (`execute_verify_loop` needs mock `oracle_verify()`)
-- **Spec:** Standalone `oracle_verify(action, merged_paths)` in `plan_execute_merge.py`; Claude subprocess (scribe=True) checks `action.verify` against real files. Returns `{verdict, detail, checked_paths}`. Per [PLAN §1.6](EXTERNAL-REFS-PLAN.md#16-oracle-verified-completion-layer-3-심화).
-- **Tests (future):** mock oracle call, verify PASS/FAIL routing
 
 ### Ticket: `durable_completed_steps` (CENT-durable)
 
@@ -97,7 +92,6 @@ They are tracked here but do not belong in the runtime feature roadmap.
 
 | Priority | ID | Suggested next action |
 |----------|-----|-----------------------|
-| P1 | LC-oracle | `oracle_verify()` in `plan_execute_merge.py` (mock mode first) |
 | P1 | LC-L3 | `execute_verify_loop` fixture skeleton + mock `verify_after_merge` (after LC-oracle) |
 | P1 | CENT-durable | `completed_steps[]` in `run_meta.py` + `room.py` |
 | P2 | MD-PROJECT | `_read_project_md()` in `session_guidance.py` |

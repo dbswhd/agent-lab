@@ -12,6 +12,14 @@ SHIPPED_ROWS: list[tuple[str, list[str]]] = [
     ("L1", ["src/agent_lab/cli_retry.py"]),
     ("L2", ["src/agent_lab/room_consensus.py"]),
     ("LC-oracle", ["tests/test_oracle_verify.py", "src/agent_lab/plan_execute_merge.py"]),
+    (
+        "LC-L3",
+        [
+            "sessions/_regression/execute_verify_loop",
+            "tests/test_plan_execute_agent_repair.py",
+            "tests/test_plan_execute_reverify_api.py",
+        ],
+    ),
     ("PI", ["src/agent_lab/plan_execute_worktree.py", "sessions/_regression/worktree_merge_ok"]),
     ("PI-ops", ["scripts/live_cursor_worktree_dry_run.py", "docs/OPS-RUNBOOK.md"]),
     ("PI-ops-C", ["scripts/live_cursor_worktree_merge_run.py", "docs/LIVE-MERGE-OPERATOR.md"]),
@@ -26,14 +34,6 @@ SHIPPED_ROWS: list[tuple[str, list[str]]] = [
 ]
 
 PARTIAL_ROWS: list[tuple[str, list[str]]] = [
-    (
-        "LC-L3",
-        [
-            "sessions/_regression/execute_verify_loop",
-            "tests/test_execute_verify_loop_fixture.py",
-            "tests/test_plan_execute_reverify_api.py",
-        ],
-    ),
     (
         "LC-L4",
         [
@@ -106,7 +106,8 @@ def test_lc_l3_oracle_dependency_documented():
     assert "LC-L3" in text and "verify_after_merge()" in text
     assert "oracle_verify()" in text
     assert "/api/sessions/{id}/execute/reverify" in text
-    assert "LC-L3-agent-repair" in text
+    assert "MAX_VERIFY_RETRIES" in text
+    assert "Cursor/Codex" in text
 
 
 def test_dev_tool_ids_documented():
@@ -124,7 +125,7 @@ def test_plan_has_stale_banner_and_traceability_link():
 
 def test_plan_loop_layers_match_traceability():
     text = _read(PLAN)
-    assert "Layer 3: Execute Verify Loop | ❌" in text
+    assert "Layer 3: Execute Verify Loop | ✅" in text
     assert "Layer 4: Adversarial Gate | 🔶" in text
     assert "subprocess credential 분리 **✅ shipped**" in text or "✅ shipped" in text
 

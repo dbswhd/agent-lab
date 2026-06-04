@@ -120,11 +120,24 @@ def _check_execute_verify_loop(run: dict[str, Any]) -> bool:
             continue
         history = row.get("verify_history") or []
         checked = oracle.get("checked_paths") or []
-        if retries < 1 or not isinstance(history, list) or len(history) < 2:
+        if retries < 1 or retries > 2 or not isinstance(history, list) or len(history) < 2:
             continue
         if not isinstance(checked, list) or not checked:
             continue
         if row.get("reverify_endpoint") != "/api/sessions/{session_id}/execute/reverify":
+            continue
+        repair_history = row.get("repair_history") or []
+        if not isinstance(repair_history, list) or not repair_history:
+            continue
+        last_repair = repair_history[-1]
+        if not isinstance(last_repair, dict):
+            continue
+        if last_repair.get("agent") not in {"cursor", "codex"}:
+            continue
+        if last_repair.get("status") != "merged":
+            continue
+        oracle_after = last_repair.get("oracle_after")
+        if not isinstance(oracle_after, dict) or oracle_after.get("verdict") != "pass":
             continue
         return True
     return False

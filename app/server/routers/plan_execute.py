@@ -235,7 +235,11 @@ def session_execute_reverify(
         result = reverify_merged_execution(
             folder,
             execution_id=body.execution_id.strip(),
+            permissions=body.permissions,
+            executor=body.executor,
         )
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e)) from e
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
     return {"ok": True, **result}

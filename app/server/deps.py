@@ -87,6 +87,8 @@ class PlanExecuteMergeRequest(BaseModel):
 
 class PlanExecuteReverifyRequest(BaseModel):
     execution_id: str = Field(..., min_length=1)
+    executor: Literal["cursor", "codex"] | None = None
+    permissions: dict[str, Any] = Field(default_factory=dict)
 
 
 class PlanExecuteIsolationOverrideRequest(BaseModel):

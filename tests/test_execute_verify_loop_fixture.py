@@ -49,6 +49,14 @@ def test_execute_verify_loop_validator_requires_passed_oracle_after_retry():
                     {"attempt": 0, "status": "failed"},
                     {"attempt": 1, "status": "passed"},
                 ],
+                "repair_history": [
+                    {
+                        "attempt": 1,
+                        "agent": "cursor",
+                        "status": "merged",
+                        "oracle_after": {"verdict": "pass"},
+                    }
+                ],
             }
         ]
     }
@@ -71,6 +79,14 @@ def test_execute_verify_loop_validator_requires_passed_oracle_after_retry():
                 "verify_history": [
                     {"attempt": 0, "status": "passed"},
                     {"attempt": 1, "status": "passed"},
+                ],
+                "repair_history": [
+                    {
+                        "attempt": 1,
+                        "agent": "cursor",
+                        "status": "merged",
+                        "oracle_after": {"verdict": "pass"},
+                    }
                 ],
             }
         ]
@@ -95,7 +111,25 @@ def test_execute_verify_loop_validator_requires_passed_oracle_after_retry():
                     {"attempt": 0, "status": "failed"},
                     {"attempt": 1, "status": "failed"},
                 ],
+                "repair_history": [
+                    {
+                        "attempt": 1,
+                        "agent": "cursor",
+                        "status": "merged",
+                        "oracle_after": {"verdict": "fail"},
+                    }
+                ],
             }
         ]
     }
     assert not smoke._check_execute_verify_loop(failed)
+
+    too_many_retries = {
+        "executions": [
+            {
+                **valid["executions"][0],
+                "verify_retries": 3,
+            }
+        ]
+    }
+    assert not smoke._check_execute_verify_loop(too_many_retries)

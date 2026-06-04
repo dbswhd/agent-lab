@@ -373,7 +373,8 @@ CI: `pytest tests/ -q` + `scripts/smoke_room.py` (18 baselines) + `check_worktre
 11. ~~**external-refs traceability**~~ — `EXTERNAL-REFS-TRACEABILITY.md` plan ↔ fixture/smoke 매트릭스 ✅
 12. ~~**LC-L3 execute_verify_loop**~~ — mock `verify_after_merge` + oracle regression fixture smoke ✅
 13. ~~**LC-L3-runtime**~~ — merge response `verify_after_merge` evidence + reverify API/UI badge ✅
+14. ~~**LC-L3-agent-repair**~~ — Oracle FAIL → Cursor/Codex repair worktree → re-merge → Oracle 재검증, 최대 2회 ✅
 
-**다음 후보 (구현):** Layer 3 agent repair — Oracle FAIL 시 live agent 수정 요청 + 두 번째 merge loop.
+**다음 후보 (구현):** CENT-durable — 프로세스 재시작 후 완료 step을 건너뛰는 durable loop.
 
 ~~**Room P0**~~ · ~~**F2 R-P1**~~ · ~~**H-P1/H-P2/H-P3**~~ · ~~**H2**~~ · ~~**E-smoke**~~ · ~~**ops lifespan/router**~~ · ~~**UX-P2**~~ · ~~**Phase I M1–M4**~~ — 완료.

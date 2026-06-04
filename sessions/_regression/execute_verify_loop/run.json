@@ -78,6 +78,54 @@
         "checked_paths": ["src/app.py"],
         "checked_at": "2026-06-04T00:00:08+00:00"
       },
+      "last_repair": {
+        "id": "repair-execute-verify-loop",
+        "attempt": 1,
+        "agent": "cursor",
+        "status": "merged",
+        "exec_branch": "agent-lab/fixture-now-1-repair-1",
+        "exec_commit_sha": "2222222222222222222222222222222222222222",
+        "merge": {
+          "status": "merged",
+          "commit_sha": "3333333333333333333333333333333333333333",
+          "conflict_files": []
+        },
+        "oracle_before": {
+          "verdict": "fail",
+          "detail": "FAIL: missing expected literal(s): VERIFIED_OK"
+        },
+        "oracle_after": {
+          "verdict": "pass",
+          "detail": "PASS: found expected literal(s): VERIFIED_OK"
+        },
+        "started_at": "2026-06-04T00:00:05+00:00",
+        "completed_at": "2026-06-04T00:00:08+00:00"
+      },
+      "repair_history": [
+        {
+          "id": "repair-execute-verify-loop",
+          "attempt": 1,
+          "agent": "cursor",
+          "status": "merged",
+          "exec_branch": "agent-lab/fixture-now-1-repair-1",
+          "exec_commit_sha": "2222222222222222222222222222222222222222",
+          "merge": {
+            "status": "merged",
+            "commit_sha": "3333333333333333333333333333333333333333",
+            "conflict_files": []
+          },
+          "oracle_before": {
+            "verdict": "fail",
+            "detail": "FAIL: missing expected literal(s): VERIFIED_OK"
+          },
+          "oracle_after": {
+            "verdict": "pass",
+            "detail": "PASS: found expected literal(s): VERIFIED_OK"
+          },
+          "started_at": "2026-06-04T00:00:05+00:00",
+          "completed_at": "2026-06-04T00:00:08+00:00"
+        }
+      ],
       "verify_history": [
         {
           "attempt": 0,

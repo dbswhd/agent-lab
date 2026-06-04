@@ -73,7 +73,7 @@ Cursor bridge failures must include degraded fallback shape: `degraded`, `failur
 
 **Phase I execute (worktree):** design and checklist in [`docs/EXECUTE-WORKTREE-REFORM.md`](EXECUTE-WORKTREE-REFORM.md) §11 — M0–M4 shipped; CI uses regression fixtures only (no live merge in Actions).
 
-**LC-L3 execute verify loop:** worktree merge responses record `verify_after_merge` + `oracle` evidence, and `POST /api/sessions/{id}/execute/reverify` refreshes the mock oracle evidence. UI shows an Oracle badge in plan execute history; live agent repair remains future.
+**LC-L3 execute verify loop:** worktree merge responses record `verify_after_merge` + `oracle` evidence. On Oracle FAIL, `POST /api/sessions/{id}/execute/reverify` opens a fresh Cursor/Codex repair worktree, re-merges, and re-verifies with a hard `MAX_VERIFY_RETRIES=2`; `repair_history[]`, `verify_retries`, and the Oracle badge expose the result.
 
 **External refs traceability:** [`docs/EXTERNAL-REFS-TRACEABILITY.md`](EXTERNAL-REFS-TRACEABILITY.md) maps LazyCodex/Conductor/Centaur/CC plan items to shipped tests/fixtures and future fixture tickets.
 

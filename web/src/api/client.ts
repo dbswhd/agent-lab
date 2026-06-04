@@ -677,6 +677,8 @@ export type PlanExecutionRecord = {
   verify_after_merge?: PlanExecutionVerifyAfterMergeRecord;
   verify_history?: Record<string, unknown>[];
   verify_retries?: number;
+  repair_history?: Record<string, unknown>[];
+  last_repair?: Record<string, unknown>;
   snapshot_id?: string;
   workspace_root?: string;
   workspace_label?: string;
@@ -935,15 +937,23 @@ export function confirmPlanExecutionMerge(sessionId: string, executionId: string
   return postPlanMergeAction(sessionId, "confirm", executionId);
 }
 
-export async function reverifyPlanExecution(sessionId: string, executionId: string) {
+export async function reverifyPlanExecution(
+  sessionId: string,
+  executionId: string,
+  permissions?: Record<string, unknown>,
+) {
   const body = await postJsonPlanExecute(
     `/api/sessions/${encodeURIComponent(sessionId)}/execute/reverify`,
-    { execution_id: executionId },
+    {
+      execution_id: executionId,
+      permissions: permissions ?? {},
+    },
   );
   return body as {
     ok: boolean;
     execution: PlanExecutionRecord;
     verify_after_merge?: PlanExecutionVerifyAfterMergeRecord;
+    repair?: Record<string, unknown> | null;
   };
 }
 

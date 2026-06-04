@@ -2,9 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AgentOption, PlanActionItem, SessionDetail } from "../api/client";
 import {
   cancelRoomRun,
+  checkSessionGoal,
   releaseRoomRunLock,
   runRoom,
+  setSessionGoal,
   type AgentHealthRow,
+  type GoalLoopRecord,
+  type SessionGoalRecord,
 } from "../api/client";
 import {
   agentLabel,
@@ -135,6 +139,23 @@ type PartialTurnNotice = {
   failedAgents: string[];
   succeededAgents: string[];
 };
+
+type GoalLoopView = {
+  goal: SessionGoalRecord;
+  loop: GoalLoopRecord;
+};
+
+function goalLoopView(run: Record<string, unknown> | undefined): GoalLoopView {
+  const goal =
+    run?.session_goal && typeof run.session_goal === "object"
+      ? (run.session_goal as SessionGoalRecord)
+      : {};
+  const loop =
+    run?.goal_loop && typeof run.goal_loop === "object"
+      ? (run.goal_loop as GoalLoopRecord)
+      : {};
+  return { goal, loop };
+}
 
 type Props = {
   agents: AgentOption[];
@@ -276,6 +297,9 @@ export function RoomChat({
   const [clarifierQuestions, setClarifierQuestions] = useState<string[] | null>(
     null,
   );
+  const [goalText, setGoalText] = useState("");
+  const [goalBusy, setGoalBusy] = useState(false);
+  const [goalError, setGoalError] = useState<string | null>(null);
   const runWatchdogRef = useRef<number | null>(null);
   const syncedChatRef = useRef("");
   const [setupWorkspaces, setSetupWorkspaces] = useState<WorkspacePreset[]>([]);
@@ -350,6 +374,12 @@ export function RoomChat({
     }
   }, [sessionId, session?.run?.agent_capabilities]);
 
+  const goalView = useMemo(() => goalLoopView(session?.run), [session?.run]);
+  useEffect(() => {
+    setGoalText(goalView.goal.text ?? "");
+    setGoalError(null);
+  }, [sessionId, goalView.goal.text]);
+
   useEffect(() => {
     if (!sessionId) {
       setResolvedAgentCwd({});
@@ -398,6 +428,35 @@ export function RoomChat({
     }
     refreshTasks();
   }
+
+  const saveSessionGoal = useCallback(async () => {
+    const text = goalText.trim();
+    if (!sessionId || !text) return;
+    setGoalBusy(true);
+    setGoalError(null);
+    try {
+      await setSessionGoal(sessionId, { text });
+      refreshSessionMeta();
+    } catch (e) {
+      setGoalError(e instanceof Error ? e.message : "목표 저장 실패");
+    } finally {
+      setGoalBusy(false);
+    }
+  }, [sessionId, goalText]);
+
+  const runGoalCheck = useCallback(async () => {
+    if (!sessionId) return;
+    setGoalBusy(true);
+    setGoalError(null);
+    try {
+      await checkSessionGoal(sessionId);
+      refreshSessionMeta();
+    } catch (e) {
+      setGoalError(e instanceof Error ? e.message : "목표 확인 실패");
+    } finally {
+      setGoalBusy(false);
+    }
+  }, [sessionId]);
 
   const saveAgentCapabilities = useCallback(async () => {
     if (!sessionId) return;
@@ -1415,6 +1474,75 @@ export function RoomChat({
           </div>
         ) : null}
       </div>
+
+      {!isNew && tab === "chat" ? (
+        <section
+          className={`goal-loop-banner goal-loop-banner--${goalView.loop.status ?? "unset"}`}
+          aria-label="세션 목표"
+        >
+          <div className="goal-loop-banner__head">
+            <strong>세션 목표</strong>
+            {goalView.loop.status ? (
+              <span
+                className={`goal-oracle-badge goal-oracle-badge--${goalView.loop.status}`}
+              >
+                {goalView.loop.status === "achieved"
+                  ? "목표 달성"
+                  : goalView.loop.last_check?.verdict === "fail"
+                    ? "Oracle FAIL"
+                    : "진행 중"}
+              </span>
+            ) : null}
+          </div>
+          <div className="goal-loop-banner__controls">
+            <input
+              type="text"
+              value={goalText}
+              onChange={(e) => setGoalText(e.target.value)}
+              placeholder="Human이 판단할 세션 목표"
+              disabled={goalBusy}
+            />
+            <button
+              type="button"
+              className="room-task-bar__cta"
+              disabled={goalBusy || !goalText.trim()}
+              onClick={() => void saveSessionGoal()}
+            >
+              목표 설정
+            </button>
+            {goalView.goal.text ? (
+              <button
+                type="button"
+                className="room-task-bar__cta"
+                disabled={goalBusy || goalView.loop.status === "achieved"}
+                onClick={() => void runGoalCheck()}
+              >
+                Oracle 재검
+              </button>
+            ) : null}
+          </div>
+          {goalView.loop.last_check?.detail ? (
+            <p className="goal-loop-banner__detail">
+              {goalView.loop.last_check.detail}
+            </p>
+          ) : null}
+          {goalView.loop.last_check?.verdict === "fail" ? (
+            <button
+              type="button"
+              className="room-task-bar__cta room-task-bar__cta--primary"
+              onClick={() =>
+                requestComposerPrefill(
+                  goalView.loop.continue_prompt ??
+                    `세션 목표를 달성하기 위해 한 턴 더 토론해 주세요: ${goalView.loop.last_check?.detail ?? ""}`,
+                )
+              }
+            >
+              한 턴 더 토론
+            </button>
+          ) : null}
+          {goalError ? <p className="goal-loop-banner__error">{goalError}</p> : null}
+        </section>
+      ) : null}
 
       {!isNew && tab === "chat" ? (
         <RoomTaskBar

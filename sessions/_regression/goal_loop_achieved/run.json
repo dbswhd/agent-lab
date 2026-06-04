@@ -1,0 +1,47 @@
+{
+  "workflow_id": "room.parallel",
+  "run_schema_version": 1,
+  "plan_format_version": 0,
+  "topic": "regression baseline: goal loop achieved",
+  "created_at": "2026-06-04T00:00:00+00:00",
+  "agents": [
+    "codex"
+  ],
+  "status": "completed",
+  "message_count": 2,
+  "agent_parallel_rounds": 1,
+  "turns": [
+    {
+      "mode": "discuss",
+      "synthesize": false,
+      "agent_parallel_rounds": 1,
+      "agents": [
+        "codex"
+      ],
+      "status": "completed",
+      "ts": "2026-06-04T00:00:01+00:00"
+    }
+  ],
+  "actions": [],
+  "approvals": [],
+  "executions": [],
+  "session_goal": {
+    "text": "결론에 `GOAL_LOOP_OK`를 기록한다",
+    "set_at": "2026-06-04T00:00:00+00:00",
+    "set_by": "human"
+  },
+  "goal_loop": {
+    "enabled": true,
+    "max_checks": 5,
+    "status": "achieved",
+    "achieved_at": "2026-06-04T00:00:02+00:00",
+    "checks": [
+      {
+        "at": "2026-06-04T00:00:02+00:00",
+        "verdict": "pass",
+        "detail": "PASS: all goal literals appear in the session transcript",
+        "source": "mock"
+      }
+    ]
+  }
+}

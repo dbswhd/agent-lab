@@ -2281,6 +2281,15 @@ def _delegate_run_meta_patch(run_meta: dict[str, Any]) -> dict[str, Any] | None:
     return patch
 
 
+def _goal_auto_continue_message(result: dict[str, Any] | None) -> str | None:
+    if not result or (result.get("check") or {}).get("verdict") != "fail":
+        return None
+    loop = result.get("goal_loop") or {}
+    if len(loop.get("checks") or []) >= int(loop.get("max_checks") or 0):
+        return None
+    return str(loop.get("continue_prompt") or "").strip() or None
+
+
 def continue_room_round(
     folder: Path,
     user_message: str,
@@ -2295,6 +2304,7 @@ def continue_room_round(
     efficiency_mode: bool = False,
     turn_profile: str | None = None,
     research_mode: bool = False,
+    _goal_auto_continue_depth: int = 0,
 ) -> tuple[list[ChatMessage], str]:
     """Append a user turn + parallel agent replies to an existing session."""
     if not folder.is_dir():
@@ -2512,6 +2522,29 @@ def continue_room_round(
         ),
         run_meta_patch=_delegate_run_meta_patch(run_meta),
     )
+    from agent_lab.goal_loop import (
+        goal_auto_continue_enabled,
+        maybe_check_session_goal_after_turn,
+    )
+
+    goal_result = maybe_check_session_goal_after_turn(folder, messages)
+    goal_continue = _goal_auto_continue_message(goal_result)
+    if goal_auto_continue_enabled() and goal_continue and _goal_auto_continue_depth < 1:
+        return continue_room_round(
+            folder,
+            goal_continue,
+            agents=active_agents,
+            synthesize=False,
+            parallel_rounds=1,
+            on_event=on_event,
+            permissions=permissions,
+            review_mode=False,
+            consensus_mode=False,
+            efficiency_mode=efficiency_mode,
+            turn_profile="analyze",
+            research_mode=research_mode,
+            _goal_auto_continue_depth=1,
+        )
     auto_plan = maybe_auto_scribe_after_consensus(
         folder,
         consensus_meta=consensus_meta,
@@ -2795,6 +2828,30 @@ def run_room(
             run_meta_patch=_delegate_run_meta_patch(run_meta),
         )
     _finalize_durable_turn(folder, 1, turn_status)
+    from agent_lab.goal_loop import (
+        goal_auto_continue_enabled,
+        maybe_check_session_goal_after_turn,
+    )
+
+    goal_result = maybe_check_session_goal_after_turn(folder, messages)
+    goal_continue = _goal_auto_continue_message(goal_result)
+    if goal_auto_continue_enabled() and goal_continue:
+        auto_messages, auto_plan_md = continue_room_round(
+            folder,
+            goal_continue,
+            agents=active_agents,
+            synthesize=False,
+            parallel_rounds=1,
+            on_event=on_event,
+            permissions=permissions,
+            review_mode=False,
+            consensus_mode=False,
+            efficiency_mode=efficiency_mode,
+            turn_profile="analyze",
+            research_mode=research_mode,
+            _goal_auto_continue_depth=1,
+        )
+        return folder, auto_messages, auto_plan_md
     auto_plan = maybe_auto_scribe_after_consensus(
         folder,
         consensus_meta=consensus_meta,

@@ -98,6 +98,31 @@ def _check_adversarial_gate_lgtm(run: dict[str, Any]) -> bool:
     )
 
 
+def _check_execute_verify_loop(run: dict[str, Any]) -> bool:
+    for row in _execs(run):
+        if row.get("status") != "merged":
+            continue
+        verify_after_merge = row.get("verify_after_merge")
+        if not isinstance(verify_after_merge, dict):
+            continue
+        oracle = verify_after_merge.get("oracle") or row.get("oracle")
+        if not isinstance(oracle, dict):
+            continue
+        if verify_after_merge.get("status") != "passed":
+            continue
+        if oracle.get("verdict") != "pass":
+            continue
+        try:
+            retries = int(row.get("verify_retries", verify_after_merge.get("verify_retries", 0)) or 0)
+        except (TypeError, ValueError):
+            continue
+        checked = oracle.get("checked_paths") or []
+        if retries < 1 or not isinstance(checked, list) or not checked:
+            continue
+        return True
+    return False
+
+
 def _check_adversarial_badge_payload(payload: dict[str, Any]) -> list[str]:
     from agent_lab.adversarial_gate import badge_tone
 
@@ -395,6 +420,10 @@ SCENARIOS: dict[str, dict[str, Any]] = {
         "label": "adversarial gate mock LGTM badge",
         "check": _check_adversarial_gate_lgtm,
         "expected_badges": "expected_badges.json",
+    },
+    "execute_verify_loop": {
+        "label": "execute verify loop mock oracle pass after retry",
+        "check": _check_execute_verify_loop,
     },
 }
 

@@ -99,6 +99,33 @@ def oracle_verify(
     }
 
 
+def verify_after_merge(
+    action: Any,
+    merged_paths: list[str | Path],
+    *,
+    session_folder: Path | None = None,
+    workspace_root: Path | None = None,
+    verify_retries: int = 0,
+    oracle_call: Callable[[str], str] | None = None,
+) -> dict[str, Any]:
+    """Mock Layer-3 post-merge verifier that delegates to ``oracle_verify``."""
+    oracle = oracle_verify(
+        action,
+        merged_paths,
+        session_folder=session_folder,
+        workspace_root=workspace_root,
+        oracle_call=oracle_call,
+    )
+    status = "passed" if oracle.get("verdict") == "pass" else "failed"
+    if oracle.get("verdict") == "skipped":
+        status = "skipped"
+    return {
+        "status": status,
+        "verify_retries": verify_retries,
+        "oracle": oracle,
+    }
+
+
 def _action_verify(action: Any) -> str:
     if isinstance(action, dict):
         return str(action.get("verify") or action.get("action_verify") or "")

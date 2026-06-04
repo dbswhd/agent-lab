@@ -18,7 +18,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | PI | Conductor | Git worktree execute + merge | ✅ | `src/agent_lab/plan_execute_*.py`, `sessions/_regression/worktree_*`, `tests/test_plan_execute_worktree.py` | Phase I M0–M4 |
 | PI-ops | Conductor | Live worktree Go/No-Go | ✅ | `docs/LIVE-CURSOR-WORKTREE-DRY-RUN.md`, `scripts/live_cursor_worktree_dry_run.py`, Tier B in `docs/OPS-RUNBOOK.md` | Manual, not CI |
 | PI-ops-C | Conductor | Live merge operator | ✅ | `docs/LIVE-MERGE-OPERATOR.md`, `scripts/live_cursor_worktree_merge_run.py`, `make verify-ops-live-merge` | Disposable repo only |
-| E-smoke | Room | BLOCK/CHALLENGE governance | ✅ | `sessions/_regression/objection_blocks_execute/`, `challenge_revises_metric/`, `scripts/smoke_room.py` | 17 baselines |
+| E-smoke | Room | BLOCK/CHALLENGE governance | ✅ | `sessions/_regression/objection_blocks_execute/`, `challenge_revises_metric/`, `scripts/smoke_room.py` | 18 baselines |
 | F-R3 | Room | Asymmetric `capability_cwd` | ✅ | `sessions/_benchmark/specialist_asymmetric_cwd/`, `tests/test_benchmark_catalog.py` | Payload meta |
 | H-P1 | H4 | score_session CI | ✅ | `scripts/score_session.py`, `tests/test_session_score_ci.py`, `.github/workflows/ci.yml` | |
 | H4-weekly | H4 | Weekly KPI + M4 gates | ✅ | `scripts/score_sessions_weekly.py`, `src/agent_lab/session_score_weekly.py` | |
@@ -39,6 +39,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 
 | ID | Source | Item | Status | Evidence | Gap | PLAN ref |
 |----|--------|------|--------|----------|-----|----------|
+| LC-L3 | LazyCodex | Execute verify loop (mock fixture) | 🔶 | `sessions/_regression/execute_verify_loop/`, `tests/test_execute_verify_loop_fixture.py`, `verify_after_merge()` | Mock-only skeleton; no runtime reverify API/UI wiring | [§1.4](EXTERNAL-REFS-PLAN.md#14-execute-verify-loop-설계-layer-3-상세) |
 | LC-L4 | LazyCodex | Adversarial gate (mock fixture) | 🔶 | `src/agent_lab/adversarial_gate.py`, `sessions/_regression/adversarial_gate_lgtm/`, `tests/test_adversarial_gate_fixture.py` | Mock-only skeleton; no live Claude, no UI wiring | [§1.5](EXTERNAL-REFS-PLAN.md#15-adversarial-gate-설계-layer-4-상세) |
 | LC-clarifier | LazyCodex | session_clarifier Socratic gate | 🔶 | `src/agent_lab/session_clarifier.py` | Feature-flag off (`AGENT_LAB_CLARIFIER`); plan mode not wired | [Part 5 Phase 2](EXTERNAL-REFS-PLAN.md#part-5--통합-우선순위-및-구현-계획) · [§1.3](EXTERNAL-REFS-PLAN.md#13-agent-lab에-도입할-loop-계층) |
 
@@ -47,15 +48,6 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 ## Future — fixture / smoke tickets (no code yet)
 
 These are **acceptance criteria only**. Do not add live LLM fixtures until Layer 3/4 design is ticketed.
-
-### Ticket: `execute_verify_loop` (LC-L3)
-
-- **Depends on:** LC-oracle standalone mock `oracle_verify()` ✅ shipped
-- **Folder (future):** `sessions/_regression/execute_verify_loop/`
-- **Spec:** After worktree merge, `oracle_verify()` checks `action.verify` field against merged files. FAIL → Human “reverify” button → second worktree dry-run (max 2 retries per [PLAN §1.4](EXTERNAL-REFS-PLAN.md#14-execute-verify-loop-설계-layer-3-상세)).
-- **Evidence keys:** `execution.verify_after_merge.status`, `execution.verify_retries`, `oracle.verdict`
-- **Tests (future):** mock `verify_after_merge`, call shipped `oracle_verify`, pytest only
-- **UI (future):** `PlanExecutePanel.tsx` — Oracle badge + “에이전트에게 수정 요청” button
 
 ### Ticket: `durable_completed_steps` (CENT-durable)
 
@@ -92,7 +84,7 @@ They are tracked here but do not belong in the runtime feature roadmap.
 
 | Priority | ID | Suggested next action |
 |----------|-----|-----------------------|
-| P1 | LC-L3 | `execute_verify_loop` fixture skeleton + mock `verify_after_merge` (after LC-oracle) |
+| P1 | LC-L3-runtime | Wire `verify_after_merge` into merge response + reverify API/UI |
 | P1 | CENT-durable | `completed_steps[]` in `run_meta.py` + `room.py` |
 | P2 | MD-PROJECT | `_read_project_md()` in `session_guidance.py` |
 | P2 | CC-CLAUDE | `CLAUDE.md` in repo root (30 min, high dev-velocity impact) |

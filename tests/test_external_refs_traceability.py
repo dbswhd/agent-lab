@@ -27,6 +27,13 @@ SHIPPED_ROWS: list[tuple[str, list[str]]] = [
 
 PARTIAL_ROWS: list[tuple[str, list[str]]] = [
     (
+        "LC-L3",
+        [
+            "sessions/_regression/execute_verify_loop",
+            "tests/test_execute_verify_loop_fixture.py",
+        ],
+    ),
+    (
         "LC-L4",
         [
             "src/agent_lab/adversarial_gate.py",
@@ -37,7 +44,6 @@ PARTIAL_ROWS: list[tuple[str, list[str]]] = [
 ]
 
 FUTURE_TICKETS = (
-    "execute_verify_loop",
     "durable_completed_steps",
     "project_md_injection",
     "platform_md_externalization",
@@ -45,7 +51,6 @@ FUTURE_TICKETS = (
 
 # Only these expect a sessions/_regression/ folder when implemented.
 FUTURE_REGRESSION_FOLDERS = (
-    "execute_verify_loop",
     "durable_completed_steps",
 )
 
@@ -97,7 +102,7 @@ def test_future_fixture_tickets_documented():
 
 def test_lc_l3_oracle_dependency_documented():
     text = _read(TRACEABILITY)
-    assert "Depends on:" in text and "LC-oracle standalone mock" in text
+    assert "LC-L3" in text and "verify_after_merge()" in text
     assert "oracle_verify()" in text
 
 

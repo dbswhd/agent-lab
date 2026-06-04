@@ -292,7 +292,7 @@ Human 또는 턴 리드가 `DELEGATE codex: "백테스트만"` 한 줄
 | `sessions/_benchmark/delegate_codex` | R4 delegate metadata/artifact fixture |
 | `sessions/_benchmark/ten_turn_kpi_stub` | R5 score_session key shape |
 
-CI: `pytest tests/ -q` + `scripts/smoke_room.py` (17 baselines) + `check_worktree_orphans.py` + `score_session.py --json` fixture smoke (LLM/secrets 없음).
+CI: `pytest tests/ -q` + `scripts/smoke_room.py` (18 baselines) + `check_worktree_orphans.py` + `score_session.py --json` fixture smoke (LLM/secrets 없음).
 
 ### H4. 세션 품질 스코어 (offline)
 
@@ -371,7 +371,8 @@ CI: `pytest tests/ -q` + `scripts/smoke_room.py` (17 baselines) + `check_worktre
 9. ~~**Tier C live merge**~~ — disposable repo approve→merge operator runbook + `make verify-ops-live-merge` ✅
 10. ~~**H4-ops last-live**~~ — weekly ops summary에 Tier B/C 최신 live GO/NO_GO 표시 ✅
 11. ~~**external-refs traceability**~~ — `EXTERNAL-REFS-TRACEABILITY.md` plan ↔ fixture/smoke 매트릭스 ✅
+12. ~~**LC-L3 execute_verify_loop**~~ — mock `verify_after_merge` + oracle regression fixture smoke ✅
 
-**다음 후보 (구현):** Layer 3 **execute_verify_loop** fixture skeleton (mock-only) — see `docs/EXTERNAL-REFS-TRACEABILITY.md`
+**다음 후보 (구현):** Layer 3 runtime wiring — merge response에 `verify_after_merge` 기록 + reverify API/UI.
 
 ~~**Room P0**~~ · ~~**F2 R-P1**~~ · ~~**H-P1/H-P2/H-P3**~~ · ~~**H2**~~ · ~~**E-smoke**~~ · ~~**ops lifespan/router**~~ · ~~**UX-P2**~~ · ~~**Phase I M1–M4**~~ — 완료.

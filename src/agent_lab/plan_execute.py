@@ -15,6 +15,7 @@ from agent_lab.plan_execute_merge import (
     abort_exec_merge,
     confirm_exec_merge,
     merge_exec_branch,
+    verify_after_merge,
 )
 from agent_lab.plan_execute_paths import paths_relative_to_workspace, paths_under_workspace
 from agent_lab.plan_execute_snapshot import (
@@ -294,6 +295,74 @@ def _update_execution_row(
         return run
 
     patch_run_meta(folder, _update)
+
+
+def _execution_verify_action(target: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "what": target.get("action_what"),
+        "where": target.get("action_where"),
+        "verify": target.get("action_verify"),
+    }
+
+
+def _merged_verify_paths(target: dict[str, Any]) -> list[str]:
+    paths: list[str] = []
+    for key in (
+        "source_touched_paths",
+        "touched_paths",
+        "expected_paths",
+        "verification_paths",
+        "monitored_paths",
+    ):
+        for raw in target.get(key) or []:
+            path = str(raw)
+            if path and path not in paths:
+                paths.append(path)
+    return paths
+
+
+def _verify_workspace_root(target: dict[str, Any]) -> Path | None:
+    raw = target.get("git_root") or target.get("workspace_root")
+    return Path(str(raw)) if raw else None
+
+
+def _record_verify_after_merge(
+    folder: Path,
+    target: dict[str, Any],
+    *,
+    verify_retries: int | None = None,
+) -> dict[str, Any]:
+    retries = int(
+        verify_retries if verify_retries is not None else target.get("verify_retries") or 0
+    )
+    checked_at = _now()
+    evidence = verify_after_merge(
+        _execution_verify_action(target),
+        _merged_verify_paths(target),
+        session_folder=folder,
+        workspace_root=_verify_workspace_root(target),
+        verify_retries=retries,
+    )
+    evidence["checked_at"] = checked_at
+    evidence["source"] = "mock_oracle"
+    oracle = dict(evidence.get("oracle") or {})
+    oracle["checked_at"] = checked_at
+    evidence["oracle"] = oracle
+    target["verify_after_merge"] = evidence
+    target["oracle"] = oracle
+    target["verify_retries"] = retries
+    target["reverify_endpoint"] = "/api/sessions/{session_id}/execute/reverify"
+    history = list(target.get("verify_history") or [])
+    history.append(
+        {
+            "attempt": retries,
+            "checked_at": checked_at,
+            "status": evidence.get("status"),
+            "oracle": oracle,
+        }
+    )
+    target["verify_history"] = history
+    return evidence
 
 
 def _mark_rejected_tasks(
@@ -968,6 +1037,7 @@ def resolve_execution(
                 target["merge"] = merge
                 target["status"] = "merged"
                 target["completed_at"] = merge["completed_at"]
+                _record_verify_after_merge(folder, target)
                 snapshot_id = str(target.get("snapshot_id") or target.get("id") or "")
                 if snapshot_id:
                     delete_snapshot(folder, snapshot_id)
@@ -1046,6 +1116,7 @@ def resolve_execution(
                 target["merge"] = merge
                 target["status"] = "merged"
                 target["completed_at"] = merge["completed_at"]
+                _record_verify_after_merge(folder, target)
                 if snapshot_id:
                     delete_snapshot(folder, snapshot_id)
         else:
@@ -1181,6 +1252,7 @@ def confirm_merge_execution(
     target["merge"] = merge
     target["status"] = "merged"
     target["completed_at"] = completed
+    _record_verify_after_merge(folder, target)
     _update_execution_row(folder, execution_id=execution_id, target=target)
     plan_advance = _mark_approved_effects(
         folder,
@@ -1188,3 +1260,21 @@ def confirm_merge_execution(
         target=target,
     )
     return {"execution": target, "plan_advance": plan_advance}
+
+
+def reverify_merged_execution(
+    folder: Path,
+    *,
+    execution_id: str,
+) -> dict[str, Any]:
+    run = read_run_meta(folder)
+    executions = list(run.get("executions") or [])
+    target = next((row for row in executions if row.get("id") == execution_id), None)
+    if target is None:
+        raise ValueError("execution not found")
+    if target.get("status") != "merged":
+        raise ValueError("execution is not merged")
+    retries = int(target.get("verify_retries") or 0) + 1
+    evidence = _record_verify_after_merge(folder, target, verify_retries=retries)
+    _update_execution_row(folder, execution_id=execution_id, target=target)
+    return {"execution": target, "verify_after_merge": evidence}

@@ -14,7 +14,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 |----|--------|------|--------|----------|-------|
 | L1 | LazyCodex | CLI retry loop | ✅ | `src/agent_lab/cli_retry.py`, `tests/test_cli_retry.py`, R-P0 | Layer 1 |
 | L2 | LazyCodex | Consensus loop | ✅ | `src/agent_lab/room_consensus.py`, `room.py` | Layer 2, cap_rounds/calls |
-| LC-oracle | LazyCodex | Oracle verified completion (mock-first) | ✅ | `src/agent_lab/plan_execute_merge.py`, `tests/test_oracle_verify.py` | Standalone `oracle_verify()`; live Claude opt-in, not wired to merge loop yet |
+| LC-oracle | LazyCodex | Oracle verified completion (mock-first) | ✅ | `src/agent_lab/plan_execute_merge.py`, `tests/test_oracle_verify.py` | `oracle_verify()` runs offline by default; live Claude opt-in remains explicit |
 | PI | Conductor | Git worktree execute + merge | ✅ | `src/agent_lab/plan_execute_*.py`, `sessions/_regression/worktree_*`, `tests/test_plan_execute_worktree.py` | Phase I M0–M4 |
 | PI-ops | Conductor | Live worktree Go/No-Go | ✅ | `docs/LIVE-CURSOR-WORKTREE-DRY-RUN.md`, `scripts/live_cursor_worktree_dry_run.py`, Tier B in `docs/OPS-RUNBOOK.md` | Manual, not CI |
 | PI-ops-C | Conductor | Live merge operator | ✅ | `docs/LIVE-MERGE-OPERATOR.md`, `scripts/live_cursor_worktree_merge_run.py`, `make verify-ops-live-merge` | Disposable repo only |
@@ -39,7 +39,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 
 | ID | Source | Item | Status | Evidence | Gap | PLAN ref |
 |----|--------|------|--------|----------|-----|----------|
-| LC-L3 | LazyCodex | Execute verify loop (mock fixture) | 🔶 | `sessions/_regression/execute_verify_loop/`, `tests/test_execute_verify_loop_fixture.py`, `verify_after_merge()` | Mock-only skeleton; no runtime reverify API/UI wiring | [§1.4](EXTERNAL-REFS-PLAN.md#14-execute-verify-loop-설계-layer-3-상세) |
+| LC-L3 | LazyCodex | Execute verify loop (mock-first runtime) | 🔶 | `verify_after_merge()`, `/api/sessions/{id}/execute/reverify`, `PlanExecutePanel.tsx`, `sessions/_regression/execute_verify_loop/`, `tests/test_plan_execute_worktree.py`, `tests/test_plan_execute_reverify_api.py` | Runtime evidence + reverify stub/UI shipped; live agent repair loop remains future | [§1.4](EXTERNAL-REFS-PLAN.md#14-execute-verify-loop-설계-layer-3-상세) |
 | LC-L4 | LazyCodex | Adversarial gate (mock fixture) | 🔶 | `src/agent_lab/adversarial_gate.py`, `sessions/_regression/adversarial_gate_lgtm/`, `tests/test_adversarial_gate_fixture.py` | Mock-only skeleton; no live Claude, no UI wiring | [§1.5](EXTERNAL-REFS-PLAN.md#15-adversarial-gate-설계-layer-4-상세) |
 | LC-clarifier | LazyCodex | session_clarifier Socratic gate | 🔶 | `src/agent_lab/session_clarifier.py` | Feature-flag off (`AGENT_LAB_CLARIFIER`); plan mode not wired | [Part 5 Phase 2](EXTERNAL-REFS-PLAN.md#part-5--통합-우선순위-및-구현-계획) · [§1.3](EXTERNAL-REFS-PLAN.md#13-agent-lab에-도입할-loop-계층) |
 
@@ -84,7 +84,7 @@ They are tracked here but do not belong in the runtime feature roadmap.
 
 | Priority | ID | Suggested next action |
 |----------|-----|-----------------------|
-| P1 | LC-L3-runtime | Wire `verify_after_merge` into merge response + reverify API/UI |
+| P1 | LC-L3-agent-repair | Convert Oracle FAIL into live agent repair + second merge loop |
 | P1 | CENT-durable | `completed_steps[]` in `run_meta.py` + `room.py` |
 | P2 | MD-PROJECT | `_read_project_md()` in `session_guidance.py` |
 | P2 | CC-CLAUDE | `CLAUDE.md` in repo root (30 min, high dev-velocity impact) |

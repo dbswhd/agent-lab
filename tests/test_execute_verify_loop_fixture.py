@@ -36,13 +36,19 @@ def test_execute_verify_loop_validator_requires_passed_oracle_after_retry():
             {
                 "status": "merged",
                 "verify_retries": 1,
+                "reverify_endpoint": "/api/sessions/{session_id}/execute/reverify",
                 "verify_after_merge": {
                     "status": "passed",
+                    "source": "mock_oracle",
                     "oracle": {
                         "verdict": "pass",
                         "checked_paths": ["src/app.py"],
                     },
                 },
+                "verify_history": [
+                    {"attempt": 0, "status": "failed"},
+                    {"attempt": 1, "status": "passed"},
+                ],
             }
         ]
     }
@@ -53,13 +59,19 @@ def test_execute_verify_loop_validator_requires_passed_oracle_after_retry():
             {
                 "status": "merged",
                 "verify_retries": 0,
+                "reverify_endpoint": "/api/sessions/{session_id}/execute/reverify",
                 "verify_after_merge": {
                     "status": "passed",
+                    "source": "mock_oracle",
                     "oracle": {
                         "verdict": "pass",
                         "checked_paths": ["src/app.py"],
                     },
                 },
+                "verify_history": [
+                    {"attempt": 0, "status": "passed"},
+                    {"attempt": 1, "status": "passed"},
+                ],
             }
         ]
     }
@@ -70,13 +82,19 @@ def test_execute_verify_loop_validator_requires_passed_oracle_after_retry():
             {
                 "status": "merged",
                 "verify_retries": 1,
+                "reverify_endpoint": "/api/sessions/{session_id}/execute/reverify",
                 "verify_after_merge": {
                     "status": "failed",
+                    "source": "mock_oracle",
                     "oracle": {
                         "verdict": "fail",
                         "checked_paths": ["src/app.py"],
                     },
                 },
+                "verify_history": [
+                    {"attempt": 0, "status": "failed"},
+                    {"attempt": 1, "status": "failed"},
+                ],
             }
         ]
     }

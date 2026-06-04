@@ -7,6 +7,7 @@ import {
   PlanSnapshotRequiredError,
   PlanExecuteDryRunError,
   overridePlanExecutionIsolation,
+  reverifyPlanExecution,
   rejectPendingPlan,
   resolvePlanExecution,
   runPlanDryRun,
@@ -157,6 +158,80 @@ function statusLabel(
     default:
       return status || "—";
   }
+}
+
+function oracleEvidence(row: PlanExecutionRecord) {
+  return row.verify_after_merge?.oracle ?? row.oracle ?? null;
+}
+
+function oracleStatus(row: PlanExecutionRecord): string | null {
+  return row.verify_after_merge?.status ?? oracleEvidence(row)?.verdict ?? null;
+}
+
+function oracleStatusLabel(status: string | null): string {
+  switch (status) {
+    case "passed":
+    case "pass":
+      return "Oracle PASS";
+    case "failed":
+    case "fail":
+      return "Oracle FAIL";
+    case "skipped":
+      return "Oracle SKIP";
+    default:
+      return "Oracle —";
+  }
+}
+
+function OracleBadge({
+  row,
+  busy,
+  onReverify,
+}: {
+  row: PlanExecutionRecord;
+  busy: boolean;
+  onReverify: (executionId: string) => void;
+}) {
+  const status = oracleStatus(row);
+  const oracle = oracleEvidence(row);
+  if (!status && !oracle) return null;
+  const failed = status === "failed" || status === "fail";
+  const checked = row.verify_after_merge?.checked_at ?? oracle?.checked_at;
+  const retryCount = row.verify_retries ?? row.verify_after_merge?.verify_retries ?? 0;
+  const detail = oracle?.detail?.trim();
+  return (
+    <div
+      className={`plan-execute-oracle plan-execute-oracle--${failed ? "fail" : "ok"}`}
+      role="status"
+    >
+      <span className="plan-execute-oracle__badge">
+        {oracleStatusLabel(status)}
+      </span>
+      {retryCount ? (
+        <span className="plan-execute-oracle__meta">retry {retryCount}</span>
+      ) : null}
+      {checked ? (
+        <span className="plan-execute-oracle__meta">
+          {formatExecutionTime(checked)}
+        </span>
+      ) : null}
+      {detail ? (
+        <span className="plan-execute-oracle__detail" title={detail}>
+          {detail}
+        </span>
+      ) : null}
+      {failed ? (
+        <button
+          type="button"
+          className="room-plan-btn plan-execute-oracle__action"
+          disabled={busy}
+          onClick={() => onReverify(row.id)}
+        >
+          에이전트에게 수정 요청
+        </button>
+      ) : null}
+    </div>
+  );
 }
 
 function WorktreePendingBanner({ row }: { row: PlanExecutionRecord }) {
@@ -513,6 +588,20 @@ export function PlanExecutePanel({
       await confirmPlanExecutionMerge(sessionId, activePending.id);
       setPending(null);
       setSelectedKey(null);
+      onUpdated();
+      await refreshActions();
+    } catch (e) {
+      setError(formatPlanExecuteError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleReverify(executionId: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      await reverifyPlanExecution(sessionId, executionId);
       onUpdated();
       await refreshActions();
     } catch (e) {
@@ -1057,6 +1146,11 @@ export function PlanExecutePanel({
                     {...context}
                     onRefClick={onChatRefClick}
                     compact
+                  />
+                  <OracleBadge
+                    row={row}
+                    busy={busy}
+                    onReverify={(executionId) => void handleReverify(executionId)}
                   />
                   {row.touched_paths?.length ? (
                     <p className="plan-execute-history__paths">

@@ -110,14 +110,21 @@ def _check_execute_verify_loop(run: dict[str, Any]) -> bool:
             continue
         if verify_after_merge.get("status") != "passed":
             continue
+        if verify_after_merge.get("source") != "mock_oracle":
+            continue
         if oracle.get("verdict") != "pass":
             continue
         try:
             retries = int(row.get("verify_retries", verify_after_merge.get("verify_retries", 0)) or 0)
         except (TypeError, ValueError):
             continue
+        history = row.get("verify_history") or []
         checked = oracle.get("checked_paths") or []
-        if retries < 1 or not isinstance(checked, list) or not checked:
+        if retries < 1 or not isinstance(history, list) or len(history) < 2:
+            continue
+        if not isinstance(checked, list) or not checked:
+            continue
+        if row.get("reverify_endpoint") != "/api/sessions/{session_id}/execute/reverify":
             continue
         return True
     return False

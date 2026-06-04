@@ -2452,6 +2452,49 @@ body {
   color: var(--mac-label-tertiary);
 }
 
+.plan-execute-oracle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  margin-top: 6px;
+  font-size: 10px;
+  color: var(--mac-label-secondary);
+}
+
+.plan-execute-oracle__badge {
+  border: 1px solid rgba(52, 199, 89, 0.35);
+  border-radius: 6px;
+  padding: 2px 6px;
+  color: #1f7a3a;
+  background: rgba(52, 199, 89, 0.1);
+  font-weight: 600;
+}
+
+.plan-execute-oracle--fail .plan-execute-oracle__badge {
+  border-color: rgba(255, 59, 48, 0.35);
+  color: #b42318;
+  background: rgba(255, 59, 48, 0.09);
+}
+
+.plan-execute-oracle__meta {
+  color: var(--mac-label-tertiary);
+}
+
+.plan-execute-oracle__detail {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-execute-oracle__action {
+  min-height: 22px;
+  padding: 3px 8px;
+  font-size: 10px;
+}
+
 .plan-execute-history .plan-action-context {
   gap: 3px;
   margin-top: 4px;

@@ -12,6 +12,7 @@ from agent_lab.plan_actions import find_dry_run_action
 from agent_lab.plan_execute import (
     abort_merge_execution,
     confirm_merge_execution,
+    reverify_merged_execution,
     resolve_execution,
     run_dry_run,
     run_isolation_override,
@@ -394,9 +395,25 @@ def test_resolve_approve_merges_worktree_execution(
     assert result["execution"]["status"] == "merged"
     assert result["execution"]["merge"]["status"] == "merged"
     assert result["execution"]["merge"]["commit_sha"]
+    assert result["execution"]["verify_after_merge"]["status"] == "passed"
+    assert result["execution"]["oracle"]["verdict"] == "pass"
+    assert result["execution"]["reverify_endpoint"] == (
+        "/api/sessions/{session_id}/execute/reverify"
+    )
+    assert result["execution"]["verify_after_merge"]["oracle"]["checked_paths"] == [
+        "src/app.py"
+    ]
     assert (git_repo / "src" / "app.py").read_text(encoding="utf-8") == "v2\n"
     assert not worktree_path.exists()
     assert _git(git_repo, "branch", "--list", "agent-lab/*", check=False) == ""
+
+    retry = reverify_merged_execution(
+        session_folder,
+        execution_id=execution["id"],
+    )
+    assert retry["verify_after_merge"]["status"] == "passed"
+    assert retry["execution"]["verify_retries"] == 1
+    assert len(retry["execution"]["verify_history"]) == 2
 
 
 def test_resolve_reject_discards_worktree_execution(

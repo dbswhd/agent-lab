@@ -66,7 +66,7 @@ They are tracked here but do not belong in the runtime feature roadmap.
 |----|--------|------|--------|----------|-------|
 | CC-CLAUDE | Claude Code | `CLAUDE.md` dev guide | ✅ | `CLAUDE.md` | Root dev guide; see MD-WRITING-PLAN |
 | CC-hooks | Claude Code | `.claude/settings.json` hooks | ✅ | `.claude/settings.json`, `.claude/hooks/`, `tests/test_claude_hooks.py` | PostEdit ruff/prettier; Stop pytest tail |
-| CC-rules | Claude Code | `.claude/rules/*.md` path rules | ⬜ | — | python-backend, react-frontend; see [MD-WRITING-PLAN §파일2](MD-WRITING-PLAN.md) |
+| CC-rules | Claude Code | `.claude/rules/*.md` path rules | ✅ | `.claude/rules/python-backend.md`, `.claude/rules/react-frontend.md`, `tests/test_claude_rules.py` | path-scoped; see MD-WRITING-PLAN §파일2 |
 | CC-skills | Claude Code | `.claude/skills/` subagent skills | ⬜ | — | smoke-and-score, regression-check, init-project-memory |
 | CON-diff | Conductor | Diff inline revise UI | ⬜ | `PlanExecutePanel.tsx` (approve/reject only) | UI-only; no `sessions/_regression/` fixture |
 | MD-PROJECT | Prompt | PROJECT.md workspace injection | ✅ | `session_guidance.py` | Shipped |
@@ -78,7 +78,7 @@ They are tracked here but do not belong in the runtime feature roadmap.
 
 | Priority | ID | Suggested next action |
 |----------|-----|-----------------------|
-| P2 | CC-rules | `.claude/rules/python-backend.md` + `react-frontend.md` |
+| P2 | CC-skills | `.claude/skills/smoke-and-score/` + `regression-check/` |
 
 ---
 

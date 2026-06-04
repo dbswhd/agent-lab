@@ -25,6 +25,7 @@ SHIPPED_ROWS: list[tuple[str, list[str]]] = [
     ("MD-PLATFORM", [".agent-lab/PLATFORM.md", "src/agent_lab/platform_md.py", "tests/test_platform_md.py"]),
     ("LC-clarifier", ["src/agent_lab/session_clarifier.py", "tests/test_session_clarifier.py"]),
     ("CC-hooks", [".claude/settings.json", ".claude/hooks/stop-pytest.sh", "tests/test_claude_hooks.py"]),
+    ("CC-rules", [".claude/rules/python-backend.md", ".claude/rules/react-frontend.md", "tests/test_claude_rules.py"]),
     ("PI", ["src/agent_lab/plan_execute_worktree.py", "sessions/_regression/worktree_merge_ok"]),
     ("PI-ops", ["scripts/live_cursor_worktree_dry_run.py", "docs/OPS-RUNBOOK.md"]),
     ("PI-ops-C", ["scripts/live_cursor_worktree_merge_run.py", "docs/LIVE-MERGE-OPERATOR.md"]),

@@ -37,3 +37,7 @@
 ## Claude Code hooks (CC-hooks)
 - `.claude/settings.json` — PostEdit: ruff (`.py`), prettier (`.tsx`); Stop: pytest tail
 - `room_hooks.py`와 별개 (서버 런타임 훅)
+
+## Claude Code rules (CC-rules)
+- `.claude/rules/python-backend.md` — `src/agent_lab/`, `app/`, `tests/`
+- `.claude/rules/react-frontend.md` — `web/src/`

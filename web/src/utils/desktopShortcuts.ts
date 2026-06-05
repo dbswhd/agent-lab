@@ -1,4 +1,5 @@
 import type { WorkspaceTab } from "./workspaceTabs";
+import { normalizeWorkspaceTab } from "./workspaceTabs";
 
 /** @deprecated Use WorkspaceTab */
 export type ContentTab = "chat" | "plan";
@@ -9,15 +10,14 @@ export const COMMAND_PALETTE_EVENT = "agent-lab:command-palette";
 
 const LEGACY_TO_WORKSPACE: Record<ContentTab, WorkspaceTab> = {
   chat: "transcript",
-  plan: "plan",
+  plan: "work",
 };
 
 const SHORTCUT_INDEX: Record<string, WorkspaceTab> = {
   "1": "transcript",
-  "2": "plan",
-  "3": "review",
-  "4": "run",
-  "5": "artifacts",
+  "2": "work",
+  "3": "run",
+  "4": "artifacts",
 };
 
 export function requestWorkspaceTab(tab: WorkspaceTab): void {
@@ -39,3 +39,5 @@ export function requestWorkspaceTabByIndex(index: string): void {
 export function openCommandPalette(): void {
   window.dispatchEvent(new CustomEvent(COMMAND_PALETTE_EVENT));
 }
+
+export { normalizeWorkspaceTab };

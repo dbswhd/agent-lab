@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   resolveDefaultInspectorTab,
   resolveDefaultWorkspaceTab,
+  normalizeWorkspaceTab,
   type InspectorTab,
   type TabAutoContext,
   type WorkspaceTab,
@@ -21,7 +22,7 @@ type Options = {
 
 export function useWorkspaceTabs({ sessionKey, isNew, autoContext }: Options) {
   const [workspaceTab, setWorkspaceTabState] = useState<WorkspaceTab>("transcript");
-  const [inspectorTab, setInspectorTabState] = useState<InspectorTab>("context");
+  const [inspectorTab, setInspectorTabState] = useState<InspectorTab>("tasks");
   const workspacePinnedRef = useRef(false);
   const inspectorPinnedRef = useRef(false);
   const prevRunningRef = useRef(false);
@@ -46,7 +47,7 @@ export function useWorkspaceTabs({ sessionKey, isNew, autoContext }: Options) {
     prevBlockerRef.current = false;
     if (isNew) {
       setWorkspaceTabState("transcript");
-      setInspectorTabState("context");
+      setInspectorTabState("tasks");
       return;
     }
     setWorkspaceTabState(resolveDefaultWorkspaceTab(autoContext));
@@ -58,9 +59,6 @@ export function useWorkspaceTabs({ sessionKey, isNew, autoContext }: Options) {
 
     const runStarted = autoContext.running && !prevRunningRef.current;
     const runEnded = !autoContext.running && prevRunningRef.current;
-    const pendingAppeared =
-      (autoContext.hasPendingExecution || autoContext.hasDryRunDiff) &&
-      !prevPendingRef.current;
     const blockerAppeared = autoContext.hasBlocker && !prevBlockerRef.current;
 
     prevRunningRef.current = autoContext.running;
@@ -68,11 +66,6 @@ export function useWorkspaceTabs({ sessionKey, isNew, autoContext }: Options) {
       autoContext.hasPendingExecution || autoContext.hasDryRunDiff;
     prevBlockerRef.current = autoContext.hasBlocker;
 
-    if (!workspacePinnedRef.current) {
-      if (runStarted || runEnded || pendingAppeared) {
-        setWorkspaceTabState(resolveDefaultWorkspaceTab(autoContext));
-      }
-    }
     if (!inspectorPinnedRef.current) {
       if (runStarted || runEnded || blockerAppeared) {
         setInspectorTabState(resolveDefaultInspectorTab(autoContext));
@@ -80,10 +73,16 @@ export function useWorkspaceTabs({ sessionKey, isNew, autoContext }: Options) {
     }
   }, [autoContext, isNew]);
 
+  const suggestedWorkspaceTab = isNew
+    ? null
+    : resolveDefaultWorkspaceTab(autoContext);
+
   useEffect(() => {
     function onWorkspaceShortcut(event: Event) {
       if (isNew) return;
-      const tab = (event as CustomEvent<WorkspaceTab>).detail;
+      const tab = normalizeWorkspaceTab(
+        (event as CustomEvent<WorkspaceTab>).detail,
+      );
       setWorkspaceTab(tab);
     }
     function onLegacyShortcut(event: Event) {
@@ -103,10 +102,12 @@ export function useWorkspaceTabs({ sessionKey, isNew, autoContext }: Options) {
   return {
     workspaceTab,
     inspectorTab,
+    suggestedWorkspaceTab,
     setWorkspaceTab,
     setInspectorTab,
-    openReviewTab: () => setWorkspaceTab("review"),
-    openPlanTab: () => setWorkspaceTab("plan"),
+    openWorkTab: () => setWorkspaceTab("work"),
+    openPlanTab: () => setWorkspaceTab("work"),
+    openReviewTab: () => setWorkspaceTab("work"),
     openTranscriptTab: () => setWorkspaceTab("transcript"),
   };
 }

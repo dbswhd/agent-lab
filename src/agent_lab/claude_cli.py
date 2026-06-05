@@ -7,6 +7,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -87,6 +88,28 @@ def _claude_env() -> dict[str, str]:
     return env
 
 
+def auth_failure_remediation(detail: str) -> list[str]:
+    """Actionable steps when Claude headless auth fails."""
+    low = detail.lower()
+    steps = [
+        "터미널에서 `claude logout` 후 `claude login` (Claude Pro 구독 OAuth)",
+        "수동 테스트: `env -u ANTHROPIC_API_KEY claude -p ping --output-format text --no-session-persistence`",
+        "~/.agent-lab/.env 의 ANTHROPIC_API_KEY 는 Room에서 무시됨 — 잘못된 키는 주석 처리",
+        "GUI/Tauri: CLAUDE_BIN 절대경로 설정 후 앱 재시작",
+    ]
+    if "credit balance" in low:
+        steps.insert(
+            0,
+            "ANTHROPIC_API_KEY 잔액 부족 — 구독 OAuth(`claude login`) 사용 또는 Console 크레딧 충전",
+        )
+    if "401" in detail or "authenticate" in low:
+        steps.insert(
+            0,
+            "OAuth 토큰 만료/손상 — `claude logout && claude login` 으로 headless(`-p`) 인증 갱신",
+        )
+    return steps
+
+
 def _format_exec_error(stderr: str, stdout: str) -> str:
     combined = f"{stderr or ''}\n{stdout or ''}"
     errors = [
@@ -101,13 +124,96 @@ def _format_exec_error(stderr: str, stdout: str) -> str:
             if e not in seen:
                 seen.add(e)
                 unique.append(e)
-        return " ".join(unique)
-    detail = combined.strip()
+        detail = " ".join(unique)
+    else:
+        detail = combined.strip()
     if "usage limit" in detail.lower() or "credit balance" in detail.lower():
-        return detail[:600]
-    if "Reading additional input from stdin" in detail:
-        return "Claude CLI stdin/prompt handling failed."
-    return detail[:800] if detail else "unknown error"
+        detail = detail[:600]
+    elif "Reading additional input from stdin" in detail:
+        detail = "Claude CLI stdin/prompt handling failed."
+    else:
+        detail = detail[:800] if detail else "unknown error"
+    low = detail.lower()
+    if "401" in detail or "authenticate" in low or "credit balance" in low:
+        hint = auth_failure_remediation(detail)[0]
+        return f"{detail} — {hint}"
+    return detail
+
+
+_AUTH_PROBE_CACHE: tuple[float, bool, str | None] | None = None
+_AUTH_PROBE_TTL_SEC = 120.0
+
+
+def probe_auth(*, timeout_sec: float = 15.0, use_cache: bool = True) -> tuple[bool, str | None]:
+    """Headless auth ping using the same stripped env as Room invoke."""
+    if _env_bool("CLAUDE_SKIP_AUTH_PROBE", default=False):
+        return True, None
+    if os.getenv("AGENT_LAB_MOCK_AGENTS", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }:
+        return True, None
+
+    global _AUTH_PROBE_CACHE
+    now = time.time()
+    if use_cache and _AUTH_PROBE_CACHE is not None:
+        cached_at, ok, detail = _AUTH_PROBE_CACHE
+        if now - cached_at < _AUTH_PROBE_TTL_SEC:
+            return ok, detail
+
+    claude = resolve_claude_bin()
+    if not claude:
+        detail = "claude CLI not found"
+        _AUTH_PROBE_CACHE = (now, False, detail)
+        return False, detail
+
+    cmd = [
+        claude,
+        "-p",
+        "Reply with exactly: AUTH_OK",
+        "--output-format",
+        "text",
+        "--no-session-persistence",
+        "--permission-mode",
+        "bypassPermissions",
+        "--dangerously-skip-permissions",
+        "--tools",
+        "",
+    ]
+    try:
+        result = subprocess.run(
+            cmd,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=timeout_sec,
+            env=_claude_env(),
+            cwd=str(Path.home()),
+        )
+    except subprocess.TimeoutExpired:
+        detail = f"claude auth probe timed out ({int(timeout_sec)}s)"
+        _AUTH_PROBE_CACHE = (now, False, detail)
+        return False, detail
+    except OSError as exc:
+        detail = str(exc)[:200]
+        _AUTH_PROBE_CACHE = (now, False, detail)
+        return False, detail
+
+    if result.returncode != 0:
+        detail = _format_exec_error(result.stderr or "", result.stdout or "")
+        _AUTH_PROBE_CACHE = (now, False, detail)
+        return False, detail
+
+    text = (result.stdout or "").strip()
+    if not text:
+        detail = "claude auth probe returned empty output"
+        _AUTH_PROBE_CACHE = (now, False, detail)
+        return False, detail
+
+    _AUTH_PROBE_CACHE = (now, True, None)
+    return True, None
 
 
 def _env_bool(name: str, default: bool) -> bool:

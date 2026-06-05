@@ -9,6 +9,7 @@ import { MacAlert } from "./MacAlert";
 type Props = {
   sessions: SessionSummary[];
   selectedId: string | null;
+  runningSessionIds?: string[];
   archived?: boolean;
   query?: string;
   onSelect: (id: string) => void;
@@ -45,6 +46,7 @@ function sessionSubtitle(s: SessionSummary): string {
 export function SessionList({
   sessions,
   selectedId,
+  runningSessionIds = [],
   archived = false,
   query = "",
   onSelect,
@@ -111,7 +113,7 @@ export function SessionList({
             <li key={s.id}>
               <button
                 type="button"
-                className={`session-row${selectedId === s.id ? " selected" : ""}`}
+                className={`session-row${selectedId === s.id ? " selected" : ""}${runningSessionIds.includes(s.id) ? " session-row--running" : ""}`}
                 aria-current={selectedId === s.id ? "true" : undefined}
                 onClick={() => onSelect(s.id)}
                 onContextMenu={(e) => {
@@ -120,7 +122,16 @@ export function SessionList({
                 }}
               >
                 <span className="session-preview">
-                  <span className="session-preview-title">{s.topic || s.id}</span>
+                  <span className="session-preview-title">
+                    {runningSessionIds.includes(s.id) ? (
+                      <span
+                        className="session-row__run-dot"
+                        aria-label="실행 중"
+                        title="에이전트 턴 실행 중"
+                      />
+                    ) : null}
+                    {s.topic || s.id}
+                  </span>
                   <span className="session-preview-sub">{sessionSubtitle(s)}</span>
                 </span>
                 <span className="session-time">{formatTime(s.created_at)}</span>

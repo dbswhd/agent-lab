@@ -1,11 +1,13 @@
 export type WorkspaceTab =
   | "transcript"
-  | "plan"
-  | "review"
+  | "work"
   | "run"
   | "artifacts";
 
-export type InspectorTab = "context" | "tasks" | "run" | "settings";
+/** @deprecated Use `work` */
+export type LegacyWorkspaceTab = "plan" | "review";
+
+export type InspectorTab = "tasks" | "activity" | "quick";
 
 export const WORKSPACE_TABS: {
   id: WorkspaceTab;
@@ -13,20 +15,18 @@ export const WORKSPACE_TABS: {
   shortcut: string;
 }[] = [
   { id: "transcript", label: "Transcript", shortcut: "⌘1" },
-  { id: "plan", label: "Plan", shortcut: "⌘2" },
-  { id: "review", label: "Review", shortcut: "⌘3" },
-  { id: "run", label: "Run", shortcut: "⌘4" },
-  { id: "artifacts", label: "Artifacts", shortcut: "⌘5" },
+  { id: "work", label: "Work", shortcut: "⌘2" },
+  { id: "run", label: "Run", shortcut: "⌘3" },
+  { id: "artifacts", label: "Artifacts", shortcut: "⌘4" },
 ];
 
 export const INSPECTOR_TABS: {
   id: InspectorTab;
   label: string;
 }[] = [
-  { id: "context", label: "Context" },
   { id: "tasks", label: "Tasks" },
-  { id: "run", label: "Run" },
-  { id: "settings", label: "Settings" },
+  { id: "activity", label: "Activity" },
+  { id: "quick", label: "Quick" },
 ];
 
 export type TabAutoContext = {
@@ -37,19 +37,25 @@ export type TabAutoContext = {
   hasBlocker: boolean;
 };
 
+export function normalizeWorkspaceTab(
+  tab: WorkspaceTab | LegacyWorkspaceTab,
+): WorkspaceTab {
+  if (tab === "plan" || tab === "review") return "work";
+  return tab;
+}
+
 export function resolveDefaultWorkspaceTab(ctx: TabAutoContext): WorkspaceTab {
   if (ctx.running) return "run";
-  if (ctx.hasPendingExecution || ctx.hasDryRunDiff) return "review";
-  if (ctx.planMd.trim()) return "plan";
+  if (ctx.hasPendingExecution || ctx.hasDryRunDiff) return "work";
+  if (ctx.planMd.trim()) return "work";
   return "transcript";
 }
 
 export function resolveDefaultInspectorTab(ctx: TabAutoContext): InspectorTab {
   if (ctx.hasBlocker) return "tasks";
-  if (ctx.running) return "run";
-  return "context";
+  return "tasks";
 }
 
 export function workspaceTabFromLegacy(tab: "chat" | "plan"): WorkspaceTab {
-  return tab === "plan" ? "plan" : "transcript";
+  return tab === "plan" ? "work" : "transcript";
 }

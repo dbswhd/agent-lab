@@ -23,6 +23,29 @@ def test_format_codex_os_error_2():
     assert "CODEX_ROOM_WORKSPACE_WRITE" in msg
 
 
+def test_agent_preflight_claude_auth_failure(monkeypatch):
+    monkeypatch.setenv("CLAUDE_SKIP_AUTH_PROBE", "0")
+    monkeypatch.setattr(
+        "agent_lab.claude_cli.resolve_claude_bin",
+        lambda: "/tmp/claude",
+    )
+    monkeypatch.setattr(
+        "agent_lab.claude_cli.probe_auth",
+        lambda **kw: (False, "401 Invalid authentication credentials"),
+    )
+
+    def fake_run(cmd, **kwargs):
+        assert cmd[1] == "--version"
+        return MagicMock(returncode=0, stdout="2.1.147\n", stderr="")
+
+    monkeypatch.setattr("agent_lab.agent_preflight.subprocess.run", fake_run)
+    row = agent_preflight_row("claude", probe_bridge=False, probe_cli=True)
+    assert row["ready"] is False
+    assert row["failure_code"] == "claude_auth_failed"
+    assert row["remediation"]
+    assert "claude login" in " ".join(row["remediation"]).lower()
+
+
 def test_agent_preflight_codex_cli_probe(monkeypatch):
     monkeypatch.setattr(
         "agent_lab.codex_cli.resolve_codex_bin",

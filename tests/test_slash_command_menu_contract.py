@@ -22,9 +22,10 @@ def test_chat_composer_wires_slash_command_menu():
 
 def test_room_chat_fetches_commands_and_plugin_panel():
     room = _read("web/src/components/RoomChat.tsx")
+    settings = _read("web/src/components/SettingsPage.tsx")
     assert "fetchCommands" in room
     assert "matchSlashCommand" in room
-    assert "PluginPanel" in room
+    assert "PluginPanel" in settings
     assert "runSessionCommand" in room
 
 

@@ -47,7 +47,7 @@ type Props = {
     required: boolean;
     checked: boolean;
     label: string;
-    detail: string;
+    detail?: string;
     disabled?: boolean;
     onChange: (checked: boolean) => void;
   } | null;
@@ -230,9 +230,11 @@ export function ChatComposer({
               />
               <span>{fullTeamConfirm.label}</span>
             </label>
-            <span className="composer-cost-hint__detail">
-              {fullTeamConfirm.detail}
-            </span>
+            {fullTeamConfirm.detail ? (
+              <span className="composer-cost-hint__detail">
+                {fullTeamConfirm.detail}
+              </span>
+            ) : null}
           </div>
         ) : null}
         {planStaleNotice ? (

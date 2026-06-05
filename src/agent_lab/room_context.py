@@ -51,7 +51,7 @@ ANALYSIS_TURN_GUIDANCE = """\
 - **관찰·사실·파일/로그 근거**만 보고하세요. plan.md는 건드리지 않습니다.
 - `[PROPOSED:]` / 구현·수정 제안 / 반박 / 「이의 없습니다」는 **이 턴에서 쓰지 마세요**.
 - 동료와 겹치면 짧게 — 같은 파일을 반복 탐색하지 말고, 각자 다른 각도(구조·리스크·데이터)를 보세요.
-- Human에게 질문하지 말고, 모르면 「확인 필요: …」 한 줄로 남기세요.
+- 모르면 「확인 필요: …」 한 줄로 남기세요.
 """
 
 EFFICIENCY_RESPONSE_GUIDANCE = """\
@@ -87,11 +87,10 @@ MULTI_AGENT_COORDINATION = """\
 """
 
 PEER_DECISION_GUIDANCE = """\
-[Peer decision — do not punt to Human]
-- **Do not** ask the Human clarifying questions that Cursor/Codex/Claude can resolve among yourselves (scope, approach, file choice, verify order).
-- If uncertain: state a **working assumption**, tag `[PROPOSED: …]`, and let peers ENDORSE / AMEND in the next round.
-- Only escalate to Human for: explicit approval gates (`GO`, budget, destructive prod), missing secrets/paths outside repo, or unresolvable peer conflict after one amend round.
-- Prefer **deciding together** over "Human에게 한 줄 확인".
+[Peer decision — settle resolvable choices together]
+- Resolve scope, approach, file choice, and verify order among Cursor/Codex/Claude — state a **working assumption**, tag `[PROPOSED: …]`, and let peers ENDORSE / AMEND in the next round.
+- Escalate to Human for: explicit approval gates (`GO`, budget, destructive prod), missing secrets/paths outside repo, a genuine fork, or unresolvable peer conflict after one amend round.
+- Prefer **deciding together** on resolvable details over a low-value "Human에게 한 줄 확인".
 """
 
 # One-line complementarity hint per agent (connect without format forcing).

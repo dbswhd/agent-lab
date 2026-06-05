@@ -3,11 +3,11 @@ import { HumanSynthesisBubble } from "./HumanSynthesisBubble";
 import type { ChatMessage, AgentRole } from "../utils/transcript";
 import { MessageMarkdown } from "../utils/messageMarkdown";
 import {
-  actLabel,
-  formatEnvelopeMeta,
-  normalizeAct,
-  shouldWarnMissingEnvelope,
-} from "../utils/agentEnvelope";
+  getTranscriptMarkers,
+  TranscriptAuthorLine,
+  TranscriptIdentity,
+  TranscriptMarkerStrip,
+} from "./TranscriptMessageChrome";
 
 const AVATAR_SIZE = 24;
 
@@ -27,76 +27,6 @@ type Props = {
   /** console = flat transcript log; messenger = legacy iMessage bubbles */
   presentation?: "console" | "messenger";
 };
-
-function RoundBadge({ round }: { round: number }) {
-  const r = Math.max(1, round);
-  return (
-    <span className="chat-round-badge" title={`라운드 ${r}`}>
-      R{r}
-    </span>
-  );
-}
-
-function ActBadge({ act }: { act: string }) {
-  const key = normalizeAct(act);
-  const cssKey = (key ?? act).toLowerCase();
-  return (
-    <span className={`chat-act-badge chat-act-badge--${cssKey}`} title={`act: ${act.toUpperCase()}`}>
-      {actLabel(act)}
-    </span>
-  );
-}
-
-function EnvelopeMeta({ envelope }: { envelope: NonNullable<ChatMessage["envelope"]> }) {
-  const meta = formatEnvelopeMeta(envelope);
-  if (!meta) return null;
-  return (
-    <span className="chat-envelope-meta" title="envelope refs / confidence">
-      {meta}
-    </span>
-  );
-}
-
-function EnvelopeWarning() {
-  return (
-    <span className="chat-envelope-warn" title="R2+에서는 ```agent-envelope``` JSON fence가 필요합니다">
-      envelope 없음
-    </span>
-  );
-}
-
-function getTranscriptMarkers(message: ChatMessage): readonly string[] {
-  const act = normalizeAct(message.envelope?.act);
-  const refs = message.envelope?.refs ?? [];
-  const markers: string[] = [];
-
-  if (act === "BLOCK") {
-    markers.push("Review blocker");
-  } else if (act === "CHALLENGE") {
-    markers.push("Review needed");
-  } else if (act === "AMEND" || act === "PROPOSE") {
-    markers.push("Plan update");
-  }
-
-  if (refs.length > 0) {
-    markers.push("Plan ref");
-  }
-
-  return markers;
-}
-
-function TranscriptMarkerStrip({ markers }: { markers: readonly string[] }) {
-  if (markers.length === 0) return null;
-  return (
-    <div className="transcript-marker-strip" aria-label="Transcript markers">
-      {markers.map((marker) => (
-        <span key={marker} className="transcript-marker">
-          {marker}
-        </span>
-      ))}
-    </div>
-  );
-}
 
 function TypingIndicator({ variant }: { variant: "bubble" | "stream" }) {
   return (
@@ -142,9 +72,17 @@ export function ReplyWaitingBubble({ agent, label, activities }: ReplyWaitingPro
       aria-label={`${who} 답장 중`}
     >
       <header className="chat-turn__head">
-        <span className="chat-turn__name">{who}</span>
+        <TranscriptIdentity label={who} role={agent} />
       </header>
       <div className="chat-turn__body">
+        <TranscriptAuthorLine
+          message={{
+            id: `waiting-${agent}`,
+            role: agent,
+            label: who,
+            body: "",
+          }}
+        />
         {lines.length > 0 ? (
           <ul className="agent-activity-log" aria-label="진행 중">
             {lines.map((line, i) => (
@@ -199,9 +137,6 @@ export function ChatBubble({
             .filter(Boolean)
             .join(" ")}
         >
-          <header className="chat-turn__head">
-            <span className="chat-turn__name">{message.label ?? "Human"}</span>
-          </header>
           <div className="chat-turn__body">
             {typing ? (
               <TypingIndicator variant="stream" />
@@ -248,21 +183,10 @@ export function ChatBubble({
         className={`chat-turn chat-turn--${role}${highlighted ? " chat-turn--highlight" : ""}`}
       >
         <header className="chat-turn__head">
-          <span className="chat-turn__name">{message.label}</span>
-          {message.envelope?.act ? <ActBadge act={message.envelope.act} /> : null}
-          {message.envelope?.act ? <EnvelopeMeta envelope={message.envelope} /> : null}
-          {shouldWarnMissingEnvelope(
-            message.parallelRound,
-            message.envelope,
-            message.envelopeParseError,
-          ) ? (
-            <EnvelopeWarning />
-          ) : null}
-          {(message.parallelRound ?? 1) > 1 ? (
-            <RoundBadge round={message.parallelRound ?? 1} />
-          ) : null}
+          <TranscriptIdentity label={message.label} role={role} />
         </header>
         <div className="chat-turn__body">
+          <TranscriptAuthorLine message={message} />
           <TranscriptMarkerStrip markers={transcriptMarkers} />
           <MessageMarkdown text={message.body} />
         </div>

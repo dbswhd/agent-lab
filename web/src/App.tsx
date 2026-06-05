@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRunningSessionIds } from "./hooks/useRunningSessionIds";
 import {
   archiveSession,
   deleteSession,
@@ -17,9 +18,13 @@ import {
 } from "./api/client";
 import { healthToAgentOptions } from "./components/AgentHealthPanel";
 import { RoomChat } from "./components/RoomChat";
+import { SettingsPage } from "./components/SettingsPage";
+import { getTurnStrategy } from "./utils/composeMode";
+import { getEfficiencyMode } from "./utils/efficiencyPrefs";
 import { SessionRailStatusChip } from "./components/SessionRailStatusChip";
 import { RunPanel } from "./components/RunPanel";
 import { SessionList } from "./components/SessionList";
+import { SessionRail } from "./components/SessionRail";
 import { SessionViewer } from "./components/SessionViewer";
 import { MacTitlebar } from "./components/MacTitlebar";
 import { MacNotificationProvider } from "./components/MacNotificationHost";
@@ -31,9 +36,19 @@ import {
   openCommandPalette,
   requestWorkspaceTabByIndex,
 } from "./utils/desktopShortcuts";
+import {
+  clearLastSessionId,
+  getLastSessionId,
+  setLastSessionId,
+} from "./utils/sessionSelectionPrefs";
+import {
+  getSessionRailWidth,
+  setSessionRailWidth,
+} from "./utils/sessionRailPrefs";
 
 type Mode = "room" | "classic";
 type ListTab = "active" | "archived";
+type ShellView = "workspace" | "settings";
 
 export default function App() {
   const [mode, setMode] = useState<Mode>("room");
@@ -50,12 +65,18 @@ export default function App() {
   const [sessionsError, setSessionsError] = useState<string | null>(null);
   const [sessionsDir, setSessionsDir] = useState<string | null>(null);
   const [bridgeProbeFailed, setBridgeProbeFailed] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(() =>
+    getLastSessionId(),
+  );
   const [detail, setDetail] = useState<SessionDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
-  const [composerNew, setComposerNew] = useState(true);
+  const [composerNew, setComposerNew] = useState(() => getLastSessionId() == null);
   const [sidebarOpen, setSidebarOpenState] = useState(getSidebarOpen);
+  const [sessionRailWidth, setSessionRailWidthState] = useState(getSessionRailWidth);
   const [sessionQuery, setSessionQuery] = useState("");
+  const [shellView, setShellView] = useState<ShellView>("workspace");
+
+  const runningSessionIds = useRunningSessionIds();
 
   const toggleSidebar = useCallback(() => {
     setSidebarOpenState((current) => {
@@ -63,6 +84,11 @@ export default function App() {
       setSidebarOpen(next);
       return next;
     });
+  }, []);
+
+  const commitSessionRailWidth = useCallback((width: number) => {
+    setSessionRailWidthState(width);
+    setSessionRailWidth(width);
   }, []);
 
   const apiOkRef = useRef(true);
@@ -82,15 +108,28 @@ export default function App() {
     }
   }, [listTab]);
 
+  const loadDetailRequestRef = useRef(0);
+  const skipNextDetailLoadRef = useRef(false);
+
   const loadDetail = useCallback(async (id: string, keepPrevious = false) => {
+    const req = ++loadDetailRequestRef.current;
     setLoadingDetail(true);
-    if (!keepPrevious) {
-      setDetail(null);
-    }
+    setDetail((prev) => {
+      if (keepPrevious && prev?.id === id) return prev;
+      return null;
+    });
     try {
-      setDetail(await fetchSession(id));
+      const next = await fetchSession(id);
+      if (req !== loadDetailRequestRef.current) return;
+      setDetail(next);
+    } catch {
+      if (req === loadDetailRequestRef.current) {
+        setDetail(null);
+      }
     } finally {
-      setLoadingDetail(false);
+      if (req === loadDetailRequestRef.current) {
+        setLoadingDetail(false);
+      }
     }
   }, []);
 
@@ -190,7 +229,21 @@ export default function App() {
   }, [listTab, reloadSessions]);
 
   useEffect(() => {
-    if (selectedId && !composerNew) loadDetail(selectedId);
+    if (sessions.length === 0) return;
+    if (selectedId && !sessions.some((s) => s.id === selectedId)) {
+      clearLastSessionId();
+      setSelectedId(null);
+      setComposerNew(true);
+      setDetail(null);
+    }
+  }, [sessions, selectedId]);
+
+  useEffect(() => {
+    if (skipNextDetailLoadRef.current) {
+      skipNextDetailLoadRef.current = false;
+      return;
+    }
+    if (selectedId && !composerNew) loadDetail(selectedId, true);
     else if (composerNew) setDetail(null);
   }, [selectedId, composerNew, loadDetail]);
 
@@ -204,8 +257,10 @@ export default function App() {
   }, []);
 
   async function onRoomSessionChange(sessionId: string) {
+    skipNextDetailLoadRef.current = true;
     setSelectedId(sessionId);
     setComposerNew(false);
+    setLastSessionId(sessionId);
     setListTab("active");
     await reloadSessions();
     await loadDetail(sessionId, true);
@@ -220,6 +275,7 @@ export default function App() {
     setSelectedId(null);
     setDetail(null);
     setListTab("active");
+    clearLastSessionId();
   }, []);
 
   useEffect(() => {
@@ -253,8 +309,12 @@ export default function App() {
   }, [startNew, toggleSidebar]);
 
   function selectSession(id: string) {
+    if (id === selectedId && !composerNew) return;
+    skipNextDetailLoadRef.current = true;
     setSelectedId(id);
     setComposerNew(false);
+    setLastSessionId(id);
+    void loadDetail(id, false);
   }
 
   async function handleArchive(id: string) {
@@ -263,6 +323,7 @@ export default function App() {
       setSelectedId(null);
       setDetail(null);
       setComposerNew(true);
+      clearLastSessionId();
     }
     await reloadSessions();
   }
@@ -286,11 +347,19 @@ export default function App() {
       setSelectedId(null);
       setDetail(null);
       setComposerNew(true);
+      clearLastSessionId();
     }
     await reloadSessions();
   }
 
   const inTauri = isTauriApp();
+  const roomSessionId = composerNew ? null : selectedId;
+  const roomSessionDetail =
+    roomSessionId && detail?.id === roomSessionId ? detail : null;
+  const roomSessionLoading = Boolean(
+    roomSessionId &&
+      (loadingDetail || (detail != null && detail.id !== roomSessionId)),
+  );
 
   return (
     <div className="mac-app mac-app--developer-console">
@@ -311,10 +380,11 @@ export default function App() {
         <div
           className={`workspace-shell${sidebarOpen ? "" : " workspace-shell--rail-collapsed"}`}
         >
-          <aside
-            className="session-rail"
-            aria-label="Sessions"
-            aria-hidden={!sidebarOpen}
+          <SessionRail
+            open={sidebarOpen}
+            width={sessionRailWidth}
+            onWidthChange={setSessionRailWidthState}
+            onWidthCommit={commitSessionRailWidth}
           >
             <div className="chat-list-header">
               <div className="sidebar-title-row">
@@ -385,6 +455,7 @@ export default function App() {
             <SessionList
               sessions={sessions}
               selectedId={!composerNew ? selectedId : null}
+              runningSessionIds={runningSessionIds}
               archived={listTab === "archived"}
               query={sessionQuery}
               onSelect={selectSession}
@@ -395,6 +466,13 @@ export default function App() {
             />
             {listTab === "active" ? (
               <div className="sidebar-footer">
+                <button
+                  type="button"
+                  className="mac-btn-secondary sidebar-settings-btn"
+                  onClick={() => setShellView("settings")}
+                >
+                  Settings…
+                </button>
                 <button
                   type="button"
                   className={[
@@ -417,7 +495,7 @@ export default function App() {
                 </button>
               </div>
             ) : null}
-          </aside>
+          </SessionRail>
 
           <section
             className={[
@@ -428,17 +506,27 @@ export default function App() {
               .join(" ")}
             aria-label="Workspace"
           >
-            {mode === "room" ? (
+            {shellView === "settings" ? (
+              <SettingsPage
+                sessionId={roomSessionId}
+                session={roomSessionDetail}
+                selectedAgents={agents.filter((a) => a.ready).map((a) => a.id)}
+                turnProfile={getTurnStrategy()}
+                efficiencyOn={getEfficiencyMode()}
+                onBack={() => setShellView("workspace")}
+              />
+            ) : mode === "room" ? (
               <RoomChat
                 agents={agents}
                 healthAgents={healthAgents}
-                sessionId={composerNew ? null : selectedId}
-                session={composerNew ? null : detail}
-                loading={!composerNew && loadingDetail && detail == null}
+                sessionId={roomSessionId}
+                session={roomSessionDetail}
+                loading={roomSessionLoading}
                 onSessionChange={onRoomSessionChange}
                 onSessionMetaRefresh={refreshSessionRun}
                 sidebarOpen={sidebarOpen}
                 onToggleSidebar={toggleSidebar}
+                onOpenSettings={() => setShellView("settings")}
               />
             ) : composerNew ? (
               <RunPanel

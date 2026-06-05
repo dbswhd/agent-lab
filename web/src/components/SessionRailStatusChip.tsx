@@ -50,6 +50,7 @@ export function SessionRailStatusChip({
       </button>
       {open ? (
         <div id="session-rail-status-detail" className="session-rail-status__detail">
+          <p className="session-rail-status__detail-heading">에이전트 · API 상태</p>
           <AgentHealthPanel
             apiOk={apiOk}
             agents={agents}

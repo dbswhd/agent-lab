@@ -212,6 +212,19 @@ def agent_preflight_row(
                 return row
             if ver:
                 row["detail"] = ver
+            auth_ok, auth_detail = claude_cli.probe_auth()
+            if not auth_ok:
+                row["reason"] = auth_detail or "claude headless auth failed"
+                row["hint"] = row["reason"]
+                row["failure_code"] = "claude_auth_failed"
+                row["remediation"] = claude_cli.auth_failure_remediation(
+                    auth_detail or ""
+                )
+                row["fallback"] = (
+                    "Claude 칩을 끄고 Cursor·Codex만 전송하거나 "
+                    "터미널에서 claude login 후 재시도"
+                )
+                return row
         row["ready"] = True
         return row
 

@@ -119,10 +119,10 @@ body {
   --chat-list-width: 268px;
   /* Softer composer fade — taller overshoot, less bottom opacity */
   --composer-chrome-fade-overshoot: 26px;
-  --composer-turn-block-height: 50px;
-  --composer-turn-capsule-gap: 6px;
-  /* Taller gradient — covers more content above the composer */
-  --composer-chrome-gradient-bottom-extra: 60px;
+  /* Scroll past floating composer (picker + capsule + float offset) */
+  --console-composer-clearance: calc(
+    var(--composer-scroll-pad) + var(--composer-turn-stack) + 96px
+  );
 }
 
 .mac-app.mac-app--developer-console .mac-window {
@@ -233,7 +233,7 @@ body {
   max-width: calc(100% - 2 * var(--composer-pad-x));
   margin-left: auto;
   margin-right: auto;
-  margin-bottom: var(--composer-turn-capsule-gap);
+  margin-bottom: calc(var(--composer-turn-capsule-gap) + 4px);
   padding: 0;
   background: transparent;
   border: none;
@@ -244,9 +244,9 @@ body {
 .mac-app.mac-app--developer-console .composer-turn-picker {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 6px;
   width: 100%;
-  padding: 6px 10px 2px;
+  padding: 8px 10px 6px;
   border: none;
   border-radius: 0;
   background: transparent;
@@ -260,14 +260,16 @@ body {
   width: 100%;
   padding: 3px;
   border-radius: 9px;
-  background: color-mix(in srgb, var(--console-panel) 78%, transparent);
-  border: 0.5px solid color-mix(in srgb, var(--console-border) 50%, transparent);
+  background: color-mix(in srgb, var(--console-panel) 62%, transparent);
+  border: 0.5px solid color-mix(in srgb, var(--console-border) 45%, transparent);
+  backdrop-filter: blur(12px) saturate(1.1);
+  -webkit-backdrop-filter: blur(12px) saturate(1.1);
 }
 
 .mac-app.mac-app--developer-console .composer-turn-picker__head .composer-turn-seg {
   flex: 1 1 auto;
   min-width: 0;
-  padding: 0;
+  padding: 0 2px 0 0;
   border: none;
   background: transparent;
   border-radius: 0;
@@ -276,8 +278,9 @@ body {
 .mac-app.mac-app--developer-console .composer-turn-picker__head .composer-efficiency-toggle,
 .mac-app.mac-app--developer-console .composer-turn-picker__head .composer-plan-toggle {
   flex-shrink: 0;
+  align-self: center;
   margin: 0;
-  padding: 4px 8px 4px 10px;
+  padding: 2px 8px 2px 10px;
   border-left: 0.5px solid var(--console-border-subtle);
 }
 
@@ -357,6 +360,18 @@ body {
   border-color: transparent;
 }
 
+.mac-app.mac-app--developer-console .composer-efficiency-switch__thumb {
+  top: 1.5px;
+  left: 1.5px;
+  width: 16px;
+  height: 16px;
+  box-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.12);
+}
+
+.mac-app.mac-app--developer-console .composer-efficiency-toggle.is-on .composer-efficiency-switch__thumb {
+  transform: translateX(14px);
+}
+
 .mac-app.mac-app--developer-console .composer-plan-toggle {
   align-items: center;
 }
@@ -394,6 +409,23 @@ body {
   box-shadow: none;
 }
 
+/* ── Scroll bottom inset (developer console) ───────────────────────── */
+
+.mac-app.mac-app--developer-console .messages-scroll.messages-scroll--document {
+  padding-bottom: calc(
+    var(--console-composer-clearance) + var(--composer-attachment-stack)
+  ) !important;
+}
+
+.mac-app.mac-app--developer-console
+  .chat-pane-body:has(> .composer)
+  > .messages-scroll:not(.messages-scroll--document),
+.mac-app.mac-app--developer-console
+  .workspace-main:has(> .composer)
+  > .messages-scroll:not(.messages-scroll--document) {
+  padding-bottom: var(--console-composer-clearance);
+}
+
 /* ── Transcript log stream (no iMessage bubbles) ─────────────────── */
 
 .messages-scroll.workspace-panel--transcript {
@@ -418,7 +450,7 @@ body {
   box-sizing: border-box;
 }
 
-.workspace-panel--transcript .workspace-transcript-panel > .chat-line > .chat-turn,
+.workspace-panel--transcript .workspace-transcript-panel > .chat-line > .chat-turn:not(.chat-turn--you),
 .workspace-panel--transcript .workspace-transcript-panel > .chat-line > .human-synthesis-bubble,
 .workspace-panel--transcript .workspace-transcript-panel > .chat-line > .transcript-log-line {
   width: 100%;
@@ -460,7 +492,7 @@ body {
 
 .workspace-transcript-panel .chat-turn {
   display: grid;
-  grid-template-columns: minmax(92px, 112px) minmax(0, 1fr);
+  grid-template-columns: 54px minmax(0, 1fr);
   column-gap: 0;
   align-items: start;
   overflow: hidden;
@@ -476,6 +508,54 @@ body {
 .workspace-transcript-panel .chat-turn--you {
   --transcript-role-color: var(--console-human);
   --transcript-role-tint: color-mix(in srgb, var(--console-human) 13%, var(--console-panel));
+}
+
+/* Human (sent) — right-aligned bubble */
+.workspace-transcript-panel .chat-line--you {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.workspace-panel--transcript .workspace-transcript-panel > .chat-line--you > .chat-turn {
+  width: fit-content;
+  max-width: 80%;
+  margin-left: auto;
+  margin-right: 0;
+  display: block;
+  border: 0.5px solid color-mix(in srgb, var(--console-human) 84%, black);
+  border-right: none;
+  background: var(--console-human);
+  color: #fff;
+}
+
+.workspace-transcript-panel .chat-turn--you .chat-turn__body {
+  max-width: none;
+  padding: 12px 16px 13px;
+  color: #fff;
+}
+
+.workspace-transcript-panel .chat-turn--you .chat-turn__head {
+  display: none;
+}
+
+.workspace-transcript-panel .chat-turn--you .transcript-author-line {
+  display: none;
+}
+
+.workspace-transcript-panel .chat-turn--you .bubble-md__p {
+  color: #fff;
+}
+
+.workspace-transcript-panel .chat-turn--you .bubble-inline-code,
+.workspace-transcript-panel .chat-turn--you code {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.workspace-transcript-panel .chat-turn--you .bubble-md__pre {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #fff;
 }
 
 .workspace-transcript-panel .chat-turn--cursor {
@@ -509,12 +589,12 @@ body {
 .workspace-transcript-panel .chat-turn__head {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: 4px;
   margin: 0;
   min-width: 0;
   align-self: stretch;
-  padding: 10px 8px 10px 10px;
+  padding: 12px 8px;
   background: var(--transcript-role-tint);
   border-right: 0.5px solid color-mix(
     in srgb,
@@ -523,54 +603,80 @@ body {
   );
 }
 
-.workspace-transcript-panel .chat-turn__name {
+.workspace-transcript-panel .transcript-identity {
   display: inline-flex;
   align-items: center;
-  max-width: 100%;
-  padding: 1px 5px;
-  border: 0.5px solid color-mix(in srgb, var(--transcript-role-color, var(--console-text-muted)) 30%, transparent);
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid color-mix(in srgb, var(--transcript-role-color, var(--console-text-muted)) 44%, transparent);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--transcript-role-color, var(--console-text-muted)) 13%, var(--console-panel));
+  background: color-mix(in srgb, var(--transcript-role-color, var(--console-text-muted)) 16%, var(--console-panel));
   color: var(--transcript-role-color, var(--console-text-muted));
   font-family: var(--font-mono);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  line-height: 1.3;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1;
   text-transform: uppercase;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.workspace-transcript-panel .chat-turn__head .chat-act-badge {
-  font-size: 8.5px;
-  padding: 1px 4px;
+.workspace-transcript-panel .transcript-author-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 8px;
+  color: var(--console-text-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.workspace-transcript-panel .transcript-author-name {
+  color: var(--transcript-role-color);
+  font-size: 12.5px;
+  font-weight: 750;
+  letter-spacing: 0.01em;
+}
+
+.workspace-transcript-panel .transcript-author-meta {
+  color: var(--console-text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.workspace-transcript-panel .transcript-author-meta::before {
+  content: "·";
+  margin-right: 6px;
+  color: var(--console-text-muted);
+}
+
+.workspace-transcript-panel .transcript-author-warning {
+  padding: 1px 5px;
   border-radius: 999px;
-  letter-spacing: 0.03em;
-  line-height: 1.25;
+  background: color-mix(in srgb, var(--console-review) 12%, transparent);
+  color: var(--console-review);
+  font-size: 10px;
+  font-weight: 650;
 }
 
-.workspace-transcript-panel .chat-turn__head .chat-round-badge,
-.workspace-transcript-panel .chat-turn__head .chat-envelope-meta,
-.workspace-transcript-panel .chat-turn__head .chat-envelope-warn {
-  font-size: 8.5px;
-  line-height: 1.25;
-}
-
-.workspace-transcript-panel .chat-turn--cursor .chat-turn__name {
+.workspace-transcript-panel .chat-turn--cursor .transcript-identity,
+.workspace-transcript-panel .chat-turn--cursor .transcript-author-name {
   color: var(--transcript-role-color);
 }
 
-.workspace-transcript-panel .chat-turn--codex .chat-turn__name {
+.workspace-transcript-panel .chat-turn--codex .transcript-identity,
+.workspace-transcript-panel .chat-turn--codex .transcript-author-name {
   color: var(--transcript-role-color);
 }
 
-.workspace-transcript-panel .chat-turn--claude .chat-turn__name {
+.workspace-transcript-panel .chat-turn--claude .transcript-identity,
+.workspace-transcript-panel .chat-turn--claude .transcript-author-name {
   color: var(--transcript-role-color);
 }
 
-.workspace-transcript-panel .chat-turn--you .chat-turn__name {
+.workspace-transcript-panel .chat-turn--you .transcript-identity,
+.workspace-transcript-panel .chat-turn--you .transcript-author-name {
   color: var(--transcript-role-color);
 }
 
@@ -608,6 +714,56 @@ body {
 
 .workspace-transcript-panel .chat-turn__body .bubble-md__list li + li {
   margin-top: 0.25em;
+}
+
+.workspace-transcript-panel .chat-turn--waiting {
+  border-style: dashed;
+  background: color-mix(in srgb, var(--console-panel) 90%, var(--transcript-role-color) 10%);
+}
+
+.workspace-transcript-panel .chat-turn--waiting .transcript-author-line {
+  margin-bottom: 6px;
+}
+
+.workspace-transcript-panel .agent-activity-log {
+  width: 100%;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+  color: var(--console-text-secondary);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.workspace-transcript-panel .agent-activity-log li {
+  position: relative;
+  padding-left: 18px;
+}
+
+.workspace-transcript-panel .agent-activity-log li::before {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 0.72em;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--transcript-role-color);
+  opacity: 0.75;
+}
+
+.workspace-transcript-panel .typing-dots--stream {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 18px;
+}
+
+.workspace-transcript-panel .typing-dots--stream span {
+  width: 5px;
+  height: 5px;
+  background: var(--transcript-role-color);
+  opacity: 0.7;
 }
 
 .transcript-marker-strip {
@@ -719,6 +875,10 @@ body {
     overflow: visible;
   }
 
+  .workspace-panel--transcript .workspace-transcript-panel > .chat-line--you > .chat-turn {
+    max-width: 80%;
+  }
+
   .workspace-transcript-panel .chat-turn__head {
     margin-bottom: 8px;
     border-right: none;
@@ -754,6 +914,18 @@ body {
   box-shadow: var(--console-shadow-soft);
 }
 
+.workspace-document-panel--flat {
+  padding: var(--space-md) 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.workspace-panel--work {
+  background: var(--console-canvas);
+}
+
 .messages-scroll--document > .workspace-document-panel,
 .messages-scroll--document > .plan-tab-cluster.workspace-document-panel {
   width: var(--composer-cluster-width);
@@ -766,20 +938,38 @@ body {
   padding-left: var(--space-lg);
   padding-right: var(--space-lg);
   padding-top: var(--space-md);
-  padding-bottom: var(--space-md);
+  padding-bottom: calc(var(--space-md) + var(--space-xl));
 }
 
-/* Artifacts + Run: flat, full-width (override workspace-document-panel chrome) */
+/* Transcript: cluster width, flat (no card chrome) */
+.mac-app.mac-app--developer-console .messages-scroll.workspace-panel--transcript > .workspace-transcript-panel {
+  width: var(--composer-cluster-width);
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: var(--space-md);
+  margin-bottom: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Artifacts + Run: flat, full-width */
 .mac-app.mac-app--developer-console .messages-scroll.workspace-panel--artifacts > .workspace-document-panel,
 .mac-app.mac-app--developer-console .messages-scroll.workspace-panel--run > .workspace-document-panel {
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: var(--space-lg);
   border: none;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
+}
+
+.mac-app.mac-app--developer-console .messages-scroll.workspace-panel--artifacts > .workspace-document-panel,
+.mac-app.mac-app--developer-console .messages-scroll.workspace-panel--run > .workspace-document-panel {
+  padding: var(--space-lg);
 }
 
 .chat-pane-body.workspace-main > .messages-scroll.workspace-panel--run,
@@ -793,12 +983,23 @@ body {
   overflow: auto;
 }
 
-/* Transcript, Artifacts, Run: full-width, no margins (override workspace-shell.css) */
+/* Transcript, Artifacts, Run: full-width — never zero bottom (composer clearance) */
 .mac-app.mac-app--developer-console .messages-scroll.workspace-panel--transcript,
 .mac-app.mac-app--developer-console .messages-scroll.workspace-panel--artifacts,
 .mac-app.mac-app--developer-console .messages-scroll.workspace-panel--run {
-  padding: 0;
+  padding-top: 0;
+  padding-left: 0;
+  padding-right: 0;
   margin: 0;
+}
+
+.mac-app.mac-app--developer-console
+  .messages-scroll.workspace-panel--transcript
+  .workspace-document-panel,
+.mac-app.mac-app--developer-console
+  .messages-scroll.workspace-panel--transcript
+  .workspace-transcript-panel {
+  min-height: auto;
 }
 
 .messages-scroll--document .workspace-document-panel {
@@ -852,6 +1053,46 @@ body {
   border-color: color-mix(in srgb, var(--console-run) 28%, var(--console-border));
 }
 
+.turn-run-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  min-height: 0;
+}
+
+.turn-run-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.turn-run-panel__header strong {
+  display: block;
+  color: var(--console-run);
+  font-size: var(--text-subhead);
+}
+
+.turn-run-panel__header span {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--text-caption);
+  color: var(--console-text-muted);
+}
+
+.turn-run-panel__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.turn-run-panel__stream {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
 .workspace-empty-state {
   color: var(--console-text-muted);
 }
@@ -888,6 +1129,183 @@ body {
   -webkit-backdrop-filter: none !important;
   box-shadow: none !important;
   border: 0.5px solid var(--console-border-subtle);
+}
+
+.work-status-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.work-status-bar__steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.work-status-bar__step {
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 650;
+  color: var(--console-text-muted);
+  background: color-mix(in srgb, var(--console-text) 6%, transparent);
+}
+
+.work-status-bar__step.is-active {
+  color: var(--console-active);
+  background: color-mix(in srgb, var(--console-accent) 14%, transparent);
+}
+
+.work-status-bar__step.is-done {
+  color: var(--console-text-secondary);
+}
+
+.work-status-bar__meta {
+  margin: 0;
+  font-size: var(--text-caption);
+  color: var(--console-text-secondary);
+}
+
+.settings-page {
+  flex: 1;
+  overflow: auto;
+  padding: var(--space-lg);
+  background: var(--console-canvas);
+}
+
+.settings-page__header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.settings-page__title {
+  margin: 0;
+  font-size: 20px;
+}
+
+.settings-page__subtitle {
+  margin: 4px 0 0;
+  color: var(--console-text-muted);
+  font-size: var(--text-caption);
+}
+
+.settings-page__grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  max-width: 960px;
+}
+
+.settings-page__section h2 {
+  margin: 0 0 10px;
+  font-size: var(--text-subhead);
+}
+
+.notification-center__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.notification-center__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.notification-center__item {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 0.5px solid var(--console-border-subtle);
+  background: var(--console-panel-elevated);
+}
+
+.notification-center__item.is-read {
+  opacity: 0.72;
+}
+
+.notification-center__title {
+  display: block;
+  font-size: var(--text-caption);
+  font-weight: 600;
+}
+
+.notification-center__body {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--console-text-secondary);
+}
+
+.notification-center__time {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--console-text-muted);
+}
+
+.quick-settings-panel__lead {
+  margin: 0 0 12px;
+  font-size: var(--text-caption);
+  color: var(--console-text-secondary);
+}
+
+.quick-settings-panel__block {
+  margin-bottom: 12px;
+}
+
+.quick-settings-panel__block strong {
+  display: block;
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+
+.quick-settings-panel__cwd {
+  margin: 0;
+  font-size: 10px;
+  white-space: pre-wrap;
+  color: var(--console-text-secondary);
+}
+
+.quick-settings-panel__open {
+  margin-top: 8px;
+}
+
+.context-sidebar-toggle {
+  position: relative;
+}
+
+.context-sidebar-toggle__badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: var(--console-run, var(--mac-blue));
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 14px;
+  text-align: center;
+}
+
+.sidebar-settings-btn {
+  width: 100%;
+  margin-bottom: 6px;
 }
 
 /* ── Classic / messenger surfaces unchanged below this scope ────── */

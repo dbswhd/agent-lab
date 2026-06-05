@@ -27,7 +27,7 @@ _ROOM_TURN_SUFFIX = """\
 [Room turn — latency + peer debate]
 - This is a **group debate turn**, not a full implementation session: **1–3 short read/grep commands max**, then **you must reply in this turn**.
 - After your last command, **write your answer immediately** — do not start another shell command.
-- Do **not** ask the Human clarifying questions — decide with Cursor/Claude via working assumptions and `[PROPOSED:]` / ENDORSE / AMEND.
+- Decide with Cursor/Claude via working assumptions and `[PROPOSED:]` / ENDORSE / AMEND.
 - Long explore loops belong in plan execute (Cursor), not here.
 - If sandbox is read-only: verify and propose edits as text/`[PROPOSED:]`; do not attempt file writes.
 """

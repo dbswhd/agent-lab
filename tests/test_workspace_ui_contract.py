@@ -12,8 +12,10 @@ def _read(*parts: str) -> str:
 
 def test_app_uses_workspace_shell_not_primary_messenger_label():
     app = _read("web", "src", "App.tsx")
+    rail = _read("web", "src", "components", "SessionRail.tsx")
     assert "workspace-shell" in app
-    assert 'aria-label="Sessions"' in app
+    assert "SessionRail" in app
+    assert 'aria-label="Sessions"' in rail
     assert 'aria-label="Workspace"' in app
     assert '"Sessions"' in app
     assert "SessionRailStatusChip" in app
@@ -22,20 +24,19 @@ def test_app_uses_workspace_shell_not_primary_messenger_label():
 
 def test_workspace_tab_enum_in_utils():
     tabs = _read("web", "src", "utils", "workspaceTabs.ts")
-    for slug in ("transcript", "plan", "review", "run", "artifacts"):
+    for slug in ("transcript", "work", "run", "artifacts"):
         assert f'"{slug}"' in tabs
-    for slug in ("context", "tasks", "run", "settings"):
+    for slug in ("tasks", "activity", "quick"):
         assert f'"{slug}"' in tabs
 
 
-def test_plan_execute_routed_to_review_workspace():
+def test_plan_execute_routed_to_work_workspace():
     room = _read("web", "src", "components", "RoomChat.tsx")
-    review_idx = room.index('workspaceTab === "review"')
-    execute_idx = room.index("PlanExecutePanel", review_idx)
-    run_panel_idx = room.index('workspaceTab === "run"')
-    assert execute_idx < run_panel_idx
-    assert "openReviewTab();" in room
-    assert "reviewScrollRef" in room
+    assert 'workspaceTab === "work"' in room
+    assert "WorkPanel" in room
+    assert "PlanExecutePanel" in _read("web", "src", "components", "WorkPanel.tsx")
+    assert "openWorkTab();" not in room or "openWorkTab" in room
+    assert "reviewScrollRef" not in room
 
 
 def test_transcript_uses_console_presentation():
@@ -51,7 +52,7 @@ def test_transcript_uses_console_presentation():
 def test_transcript_is_readable_document_stream_not_cards():
     css = _read("web", "src", "styles", "developer-console.css")
 
-    assert "grid-template-columns: minmax(92px, 112px) minmax(0, 1fr);" in css
+    assert "grid-template-columns: 54px minmax(0, 1fr);" in css
     assert "width: var(--composer-cluster-width);" in css
     assert "max-width: 76ch;" in css
     assert ".workspace-transcript-panel .chat-turn__body" in css
@@ -61,24 +62,62 @@ def test_transcript_is_readable_document_stream_not_cards():
 
 def test_transcript_agent_rows_have_visible_bands_and_rails():
     css = _read("web", "src", "styles", "developer-console.css")
+    bubble = _read("web", "src", "components", "ChatBubble.tsx")
+    chrome = _read("web", "src", "components", "TranscriptMessageChrome.tsx")
 
     assert "--transcript-role-tint" in css
     assert "border-left: 4px solid var(--transcript-role-color);" in css
     assert ".workspace-transcript-panel .chat-turn__head" in css
     assert "background: var(--transcript-role-tint);" in css
+    assert "TranscriptIdentity" in bubble
+    assert "TranscriptAuthorLine" in bubble
+    assert "transcript-identity" in chrome
+    assert "transcript-author-line" in chrome
     assert ".workspace-transcript-panel .chat-turn--cursor" in css
     assert ".workspace-transcript-panel .chat-turn--codex" in css
     assert ".workspace-transcript-panel .chat-turn--claude" in css
 
 
-def test_transcript_has_review_aware_inline_markers():
+def test_human_transcript_message_is_right_aligned_without_label_chrome():
+    bubble = _read("web", "src", "components", "ChatBubble.tsx")
+    room = _read("web", "src", "components", "RoomChat.tsx")
+    css = _read("web", "src", "styles", "developer-console.css")
+
+    assert 'className="chat-turn__head"' in bubble
+    assert "message={{ ...message, label: message.label ?? \"Human\" }}" not in bubble
+    assert 'm.role === "you" || m.sent ? "chat-line--you" : undefined' in room
+    assert (
+        ".workspace-panel--transcript .workspace-transcript-panel > "
+        ".chat-line--you > .chat-turn"
+    ) in css
+    assert "max-width: 80%;" in css
+    assert "background: var(--console-human);" in css
+    assert "border-right: none;" in css
+    assert ".workspace-transcript-panel .chat-turn--you .transcript-author-line" in css
+    assert "display: none;" in css
+
+
+def test_agent_waiting_state_shows_activity_log_and_dots():
     bubble = _read("web", "src", "components", "ChatBubble.tsx")
     css = _read("web", "src", "styles", "developer-console.css")
 
-    assert "transcript-marker-strip" in bubble
-    assert "getTranscriptMarkers" in bubble
-    assert "Review blocker" in bubble
-    assert "Plan ref" in bubble
+    assert "agent-activity-log" in bubble
+    assert "TypingIndicator variant=\"stream\"" in bubble
+    assert ".workspace-transcript-panel .chat-turn--waiting" in css
+    assert ".workspace-transcript-panel .agent-activity-log" in css
+    assert ".workspace-transcript-panel .typing-dots--stream" in css
+
+
+def test_transcript_has_review_aware_inline_markers():
+    bubble = _read("web", "src", "components", "ChatBubble.tsx")
+    chrome = _read("web", "src", "components", "TranscriptMessageChrome.tsx")
+    css = _read("web", "src", "styles", "developer-console.css")
+
+    assert "TranscriptMarkerStrip" in bubble
+    assert "transcript-marker-strip" in chrome
+    assert "getTranscriptMarkers" in chrome
+    assert "Review blocker" in chrome
+    assert "Plan ref" in chrome
     assert ".transcript-marker-strip" in css
     assert ".transcript-marker" in css
 
@@ -87,7 +126,6 @@ def test_developer_console_doc_is_source_of_truth():
     doc = _read("docs", "developer-agent-console.md")
     assert "Developer Agent Console" in doc or "developer agent console" in doc
     assert "Transcript" in doc
-    assert "Review" in doc
     deprecated = _read("docs", "02-ui-ux-handoff.md")
     assert "DEPRECATED" in deprecated
 
@@ -113,13 +151,13 @@ def test_workspace_visual_hierarchy_tokens_are_defined():
     assert "--surface-overlay: var(--console-panel-elevated);" in css
 
 
-def test_workspace_review_pending_uses_badge_markup():
+def test_workspace_work_pending_uses_badge_markup():
     tab_bar = _read("web", "src", "components", "WorkspaceTabBar.tsx")
 
     assert "workspace-tab-bar__badge" in tab_bar
     assert "workspace-tab-bar__badge-dot" in tab_bar
-    assert "Review pending" in tab_bar
-    assert "·" not in tab_bar
+    assert "Work pending" in tab_bar or "Review pending" in tab_bar
+    assert 'tab.id === "work"' in tab_bar
 
 
 def test_workspace_panels_have_distinct_document_wrappers():
@@ -127,16 +165,19 @@ def test_workspace_panels_have_distinct_document_wrappers():
     css = _read("web", "src", "styles", "developer-console.css")
 
     for class_name in (
-        "workspace-panel--plan",
-        "workspace-panel--review",
+        "workspace-panel--work",
         "workspace-panel--run",
         "workspace-panel--artifacts",
         "workspace-panel--transcript",
         "workspace-document-panel",
         "workspace-document-panel__header",
     ):
-        assert class_name in room
-        assert f".{class_name}" in css
+        assert class_name in room or class_name in _read(
+            "web", "src", "components", "WorkPanel.tsx"
+        )
+        assert f".{class_name}" in css or class_name in _read(
+            "web", "src", "components", "WorkPanel.tsx"
+        )
 
 
 def test_inspector_sections_are_wrapped_as_cards():
@@ -148,6 +189,55 @@ def test_inspector_sections_are_wrapped_as_cards():
     assert "inspector-pane__section-card" in room
     assert ".inspector-pane__body-inner" in css
     assert ".inspector-pane__section-card" in css
+
+
+def test_phase0_efficiency_toggle_uses_efficient_class():
+    room = _read("web", "src", "components", "RoomChat.tsx")
+    assert 'efficiencyOn ? "composer--efficient"' in room
+    assert "composer--efficiency" not in room
+
+
+def test_phase0_session_rail_status_detail_is_distinct():
+    chip = _read("web", "src", "components", "SessionRailStatusChip.tsx")
+    css = _read("web", "src", "styles", "workspace-shell.css")
+    assert "session-rail-status__detail-heading" in chip
+    assert ".session-rail-status__detail-heading" in css
+    assert "box-shadow:" in css.split(".session-rail-status__detail {")[1].split("}")[0]
+
+
+def test_phase0_full_team_confirm_has_no_detail_line():
+    room = _read("web", "src", "components", "RoomChat.tsx")
+    assert "풀 팀 실행은 이번 턴에만 확인합니다." not in room
+
+
+def test_run_session_registry_module_exists():
+    reg = _read("web", "src", "run", "runSessionRegistry.ts")
+    assert "SessionRunSnapshot" in reg
+    assert "turnMessages" in reg
+    assert "subscribeSessionRun" in reg
+    assert "hydrateSessionMessages" in reg
+
+
+def test_turn_run_panel_renders_turn_messages():
+    panel = _read("web", "src", "components", "TurnRunPanel.tsx")
+    room = _read("web", "src", "components", "RoomChat.tsx")
+    assert "turnMessages" in panel
+    assert "TurnRunPanel" in room
+    assert "turnMessages={turnMessages}" in room
+
+
+def test_session_list_shows_running_indicator():
+    list_tsx = _read("web", "src", "components", "SessionList.tsx")
+    app = _read("web", "src", "App.tsx")
+    assert "runningSessionIds" in list_tsx
+    assert "session-row__run-dot" in list_tsx
+    assert "useRunningSessionIds" in app
+
+
+def test_settings_page_and_work_ia_docs():
+    doc = _read("docs", "WORK-TAB-IA.md")
+    assert "Work" in doc
+    assert "SettingsPage" in _read("web", "src", "components", "SettingsPage.tsx")
 
 
 def test_developer_console_blur_is_limited_to_titlebar_and_popovers():

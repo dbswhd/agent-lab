@@ -9,7 +9,21 @@
   background: var(--console-canvas, var(--surface-base, var(--mac-content-bg)));
 }
 
-.session-rail,
+.session-rail {
+  position: relative;
+  width: var(--session-rail-width, var(--chat-list-width));
+  min-width: var(--session-rail-width, var(--chat-list-width));
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  transition:
+    width 0.22s ease,
+    min-width 0.22s ease,
+    opacity 0.18s ease;
+}
+
 .chat-list-pane {
   width: var(--chat-list-width);
   min-width: var(--chat-list-width);
@@ -33,6 +47,28 @@
   opacity: 0;
   pointer-events: none;
   border-right-width: 0;
+}
+
+.session-rail--resizing {
+  transition: none;
+  user-select: none;
+}
+
+.session-rail__resize-handle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  transform: translateX(50%);
+  cursor: col-resize;
+  z-index: 3;
+  touch-action: none;
+}
+
+.session-rail__resize-handle:hover,
+.session-rail--resizing .session-rail__resize-handle {
+  background: color-mix(in srgb, var(--mac-accent) 28%, transparent);
 }
 
 .workspace-pane,
@@ -85,7 +121,77 @@
 }
 
 .session-rail-status__detail {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 0.5px solid var(--console-border-strong, var(--mac-separator));
+  border-radius: 10px;
+  background: var(--console-panel-elevated, var(--surface-overlay, var(--mac-fill-secondary)));
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.session-rail-status__detail-heading {
+  margin: 0 0 8px;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--console-text-muted, var(--text-tertiary, var(--mac-label-tertiary)));
+}
+
+/* Flatten the nested panels into one clean card — no competing fills/corners,
+   sections divided by a single hairline instead of stacked boxes. */
+.session-rail .session-rail-status__detail .agent-health-panel,
+.session-rail .session-rail-status__detail .api-diagnostics-bar {
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.session-rail .session-rail-status__detail .api-diagnostics-bar {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 0.5px solid var(--console-border-subtle, var(--mac-separator));
+}
+
+/* One body size (11px) for all readable text — hierarchy by colour, not size.
+   Only the eyebrow heading keeps the smaller 10px label role. */
+.session-rail .session-rail-status__detail .api-diagnostics-bar__sessions,
+.session-rail .session-rail-status__detail .api-diagnostics-bar__detail summary,
+.session-rail .session-rail-status__detail .agent-health-panel__toggle,
+.session-rail .session-rail-status__detail .agent-health-row__label,
+.session-rail .session-rail-status__detail .agent-health-row__meta {
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.session-rail .session-rail-status__detail .api-diagnostics-bar__sessions {
+  color: var(--console-text-muted, var(--mac-label-tertiary));
+  margin-bottom: 8px;
+}
+
+/* Looser vertical rhythm — the rows were packed at 2px. */
+.session-rail .session-rail-status__detail .agent-health-list {
+  gap: 6px;
   margin-top: 6px;
+}
+
+.session-rail .session-rail-status__detail .agent-health-row {
+  row-gap: 1px;
+}
+
+.session-rail .session-rail-status__detail .agent-health-panel__toggle {
+  padding: 2px 0 6px;
+}
+
+.session-rail .session-rail-status__detail .api-diagnostics-bar__actions {
+  gap: 6px;
+  margin-top: 6px;
+  margin-bottom: 8px;
 }
 
 .room-workspace-shell {
@@ -196,6 +302,35 @@
   height: 6px;
   border-radius: 999px;
   background: currentColor;
+}
+
+.workspace-tab-bar__badge--suggest {
+  padding: 1px 4px;
+  border-color: color-mix(in srgb, var(--console-run, #007aff) 45%, transparent);
+  background: color-mix(in srgb, var(--console-run, #007aff) 12%, transparent);
+  color: var(--console-run, var(--mac-blue, #007aff));
+  text-transform: none;
+}
+
+.session-row__run-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 999px;
+  background: var(--console-run, var(--mac-blue, #007aff));
+  vertical-align: middle;
+  animation: session-run-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes session-run-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
 }
 
 .workspace-event-strip {

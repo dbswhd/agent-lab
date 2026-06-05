@@ -6,6 +6,7 @@ type Props = {
   onChange: (tab: WorkspaceTab) => void;
   disabled?: boolean;
   reviewPending?: boolean;
+  suggestedTab?: WorkspaceTab | null;
   isNew?: boolean;
   trailing?: React.ReactNode;
 };
@@ -15,6 +16,7 @@ export function WorkspaceTabBar({
   onChange,
   disabled,
   reviewPending,
+  suggestedTab,
   isNew,
   trailing,
 }: Props) {
@@ -45,13 +47,21 @@ export function WorkspaceTabBar({
             onClick={() => onChange(tab.id)}
           >
             {tab.label}
-            {tab.id === "review" && reviewPending ? (
+            {tab.id === "work" && reviewPending ? (
               <span
                 className="workspace-tab-bar__badge"
-                aria-label="Review pending"
+                aria-label="Work pending"
               >
                 <span className="workspace-tab-bar__badge-dot" aria-hidden />
                 Pending
+              </span>
+            ) : null}
+            {suggestedTab === tab.id && active !== tab.id ? (
+              <span
+                className="workspace-tab-bar__badge workspace-tab-bar__badge--suggest"
+                aria-label={`Suggested: ${tab.label}`}
+              >
+                <span className="workspace-tab-bar__badge-dot" aria-hidden />
               </span>
             ) : null}
           </button>

@@ -167,4 +167,5 @@ LazyCodex **patterns** (L1–L5) already shipped in Agent Lab code; **external r
 - [x] Cursor gap documented (implicit IDE only)
 - [x] Pass-through flags identified per agent
 - [x] cwd/skill discovery pitfall recorded
+- [x] Runnable spike: `python scripts/discover_agent_plugins.py` (JSON stdout)
 - [ ] Live Room turn log sample with MCP activity (optional manual follow-up)

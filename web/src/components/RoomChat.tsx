@@ -18,7 +18,23 @@ import {
   type ChatMessage,
 } from "../utils/transcript";
 import { AgentPicker } from "./AgentPicker";
-import { ContextSidebarToggle } from "./ContextSidebarToggle";
+import { WorkspaceTabBar } from "./WorkspaceTabBar";
+import { InspectorPane } from "./InspectorPane";
+import {
+  CommandPalette,
+  workspacePaletteActions,
+} from "./CommandPalette";
+import { useWorkspaceTabs } from "../hooks/useWorkspaceTabs";
+import {
+  getInspectorOpen,
+  getInspectorWidth,
+  setInspectorOpen,
+  setInspectorWidth,
+} from "../utils/inspectorPanePrefs";
+import {
+  getShowHumanSynthesis,
+  setShowHumanSynthesis,
+} from "../utils/transcriptViewPrefs";
 import {
   ChatBubble,
   isReplyWaitRole,
@@ -27,6 +43,7 @@ import {
 import { ChatComposer, type PendingFile } from "./ChatComposer";
 import { ChatPaneBody } from "./ChatPaneBody";
 import { ChatToolbar } from "./ChatToolbar";
+import { ContextSidebarToggle } from "./ContextSidebarToggle";
 import { ContextPreviewPanel } from "./ContextPreviewPanel";
 import { PlanDocument } from "./PlanDocument";
 import { PlanExecutePanel } from "./PlanExecutePanel";
@@ -49,10 +66,6 @@ import {
 } from "../utils/consensusAgreement";
 import { notifyDesktop } from "../utils/desktopNotify";
 import { buildPlanMetaView } from "../utils/planMeta";
-import {
-  CONTENT_TAB_SHORTCUT_EVENT,
-  type ContentTab,
-} from "../utils/desktopShortcuts";
 import { analyzePlanRefWarnings } from "../utils/planRefWarnings";
 import {
   consensusIncompleteLabel,
@@ -72,10 +85,6 @@ import { estimateTurnCost } from "../utils/turnCostEstimate";
 import { formatRoomModelLine } from "../utils/roomModels";
 import { TurnProgressStrip } from "./TurnProgressStrip";
 import { CollapsibleGlassPanel } from "./CollapsibleGlassPanel";
-import {
-  getContextSidebarOpen,
-  setContextSidebarOpen,
-} from "../utils/contextSidebarPrefs";
 import { ExecuteQueueBar } from "./ExecuteQueueBar";
 import { ConsensusDryRunGateBar } from "./ConsensusDryRunGateBar";
 import type { ConsensusDryRunProposal } from "./ConsensusDryRunGateBar";
@@ -238,13 +247,16 @@ export function RoomChat({
   const [runBusy, setRunBusy] = useState(false);
   const [synthesizing, setSynthesizing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<"chat" | "plan">("chat");
   const [planActionFocusIndex, setPlanActionFocusIndex] = useState<
     number | null
   >(null);
   const [showPeerChannel, setShowPeerChannel] = useState(false);
-  const [showHumanSynthesis, setShowHumanSynthesis] = useState(true);
+  const [showHumanSynthesis, setShowHumanSynthesisState] = useState(
+    getShowHumanSynthesis,
+  );
   const [viewOptionsOpen, setViewOptionsOpen] = useState(false);
+  const [inspectorOpen, setInspectorOpenState] = useState(getInspectorOpen);
+  const [inspectorWidth, setInspectorWidthState] = useState(getInspectorWidth);
   const [roomTasks, setRoomTasks] = useState<RoomTasksPayload | null>(null);
   const [tasksLoading, setTasksLoading] = useState(false);
   const [planMd, setPlanMd] = useState("");
@@ -295,7 +307,6 @@ export function RoomChat({
     agent: string;
     round: number;
   } | null>(null);
-  const [contextOpen, setContextOpenState] = useState(getContextSidebarOpen);
   const [sendReceipt, setSendReceipt] = useState<string | null>(null);
   const sendReceiptTimerRef = useRef<number | null>(null);
   const [clarifierQuestions, setClarifierQuestions] = useState<string[] | null>(
@@ -491,14 +502,44 @@ export function RoomChat({
     onUpdated: refreshSessionMeta,
   });
 
-  const showExecuteQueue =
+  const hasPendingExecution = Boolean(planExecute.activePending);
+  const hasDryRunDiff =
+    consensusProposal != null || Boolean(planExecute.activePending?.diff);
+  const hasBlocker = Boolean(
+    roomTasks &&
+      ((roomTasks.consensus_task_blockers ?? []).length > 0 ||
+        roomTasks.consensus_tasks_ready === false ||
+        (roomTasks.open_objection_count ?? 0) > 0),
+  );
+
+  const {
+    workspaceTab,
+    inspectorTab,
+    setWorkspaceTab,
+    setInspectorTab,
+    openReviewTab,
+    openPlanTab,
+    openTranscriptTab,
+  } = useWorkspaceTabs({
+    sessionKey: sessionId ?? "new",
+    isNew: !sessionId,
+    autoContext: {
+      running,
+      hasPendingExecution,
+      hasDryRunDiff,
+      planMd,
+      hasBlocker,
+    },
+  });
+
+  const showExecuteQueueStrip =
     Boolean(sessionId) &&
-    tab === "chat" &&
-    Boolean(planExecute.activePending);
+    workspaceTab !== "review" &&
+    hasPendingExecution;
   const showConsensusDryRunGate =
     Boolean(sessionId) &&
-    tab === "chat" &&
-    !showExecuteQueue &&
+    workspaceTab !== "review" &&
+    !showExecuteQueueStrip &&
     consensusProposal != null;
 
   const visibleMessages = useMemo(() => {
@@ -552,21 +593,30 @@ export function RoomChat({
       setReleasingLock(false);
     }
   }, []);
-  const chatActive = tab === "chat" || (tab === "plan" && !planMd);
+  const transcriptActive =
+    workspaceTab === "transcript" || (workspaceTab === "plan" && !planMd);
   const typingAgents = messages.filter(
     (m) => m.typing && isReplyWaitRole(m.role),
   );
   const pendingReplyCount =
-    running && tab === "chat" && typingAgents.length === 0
+    running && workspaceTab === "transcript" && typingAgents.length === 0
       ? resolveTurnSend(turnProfile, selected, efficiencyOn).agents.length
       : 0;
   const { scrollRef, scrollElRef, showJumpButton, scrollToBottom } = useMessagesScroll(
     [messages, running, pendingReplyCount, selected.join(",")],
-    chatActive,
+    transcriptActive,
     `${sessionId ?? "new"}:chat`,
   );
   const { scrollRef: planScrollRef, scrollElRef: planScrollElRef } =
-    useScrollToTop(tab === "plan" && Boolean(planMd), `${sessionId ?? "new"}:plan`);
+    useScrollToTop(
+      workspaceTab === "plan" && Boolean(planMd),
+      `${sessionId ?? "new"}:plan`,
+    );
+  const { scrollRef: reviewScrollRef, scrollElRef: reviewScrollElRef } =
+    useScrollToTop(
+      workspaceTab === "review" && Boolean(sessionId),
+      `${sessionId ?? "new"}:review`,
+    );
 
   const planExecutions = useMemo(
     () =>
@@ -575,19 +625,55 @@ export function RoomChat({
   );
 
   useEffect(() => {
-    if (tab !== "plan" || planActionFocusIndex == null) return;
+    if (
+      (workspaceTab !== "plan" && workspaceTab !== "review") ||
+      planActionFocusIndex == null
+    ) {
+      return;
+    }
     const index = planActionFocusIndex;
     const timer = window.setTimeout(() => {
-      const el = planScrollElRef.current?.querySelector(
+      const root =
+        workspaceTab === "review"
+          ? reviewScrollElRef.current
+          : planScrollElRef.current;
+      const el = root?.querySelector(
         `[data-plan-action-index="${index}"]`,
       );
       el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
       setPlanActionFocusIndex(null);
     }, 80);
     return () => window.clearTimeout(timer);
-  }, [tab, planActionFocusIndex, planScrollElRef]);
+  }, [workspaceTab, planActionFocusIndex, planScrollElRef, reviewScrollElRef]);
 
   const isNew = !sessionId;
+
+  const toggleInspector = useCallback(() => {
+    setInspectorOpenState((current) => {
+      const next = !current;
+      setInspectorOpen(next);
+      return next;
+    });
+  }, []);
+
+  const commitInspectorWidth = useCallback((width: number) => {
+    setInspectorWidthState(width);
+    setInspectorWidth(width);
+  }, []);
+
+  useEffect(() => {
+    if (isNew) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (!event.metaKey || event.altKey) return;
+      if (event.ctrlKey && event.key.toLowerCase() === "i") {
+        event.preventDefault();
+        toggleInspector();
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isNew, toggleInspector]);
+
   const waitingForSession = Boolean(sessionId && !session && loading);
   const composerInputLocked = waitingForSession;
   const preflightBlocked = selected.some((id) => {
@@ -640,12 +726,6 @@ export function RoomChat({
     }
   }, [sessionId]);
 
-  function toggleContextSidebar() {
-    const next = !contextOpen;
-    setContextOpenState(next);
-    setContextSidebarOpen(next);
-  }
-
   useEffect(() => {
     if (sessionId !== null) return;
     setRunning(false);
@@ -654,7 +734,6 @@ export function RoomChat({
     setText("");
     setError(null);
     setPendingFiles([]);
-    setTab("chat");
   }, [sessionId]);
 
   useEffect(() => {
@@ -722,13 +801,16 @@ export function RoomChat({
     setPendingFiles((prev) => [...prev, ...next]);
   }
 
-  const handlePlanRefClick = useCallback((lineNumber: number) => {
-    setTab("chat");
-    setHighlightChatLine(lineNumber - 1);
-  }, []);
+  const handlePlanRefClick = useCallback(
+    (lineNumber: number) => {
+      openTranscriptTab();
+      setHighlightChatLine(lineNumber - 1);
+    },
+    [openTranscriptTab],
+  );
 
   useEffect(() => {
-    if (highlightChatLine == null || tab !== "chat") return;
+    if (highlightChatLine == null || workspaceTab !== "transcript") return;
     const root = scrollElRef.current;
     const el = root?.querySelector(
       `[data-chat-line="${highlightChatLine}"]`,
@@ -746,7 +828,7 @@ export function RoomChat({
         window.clearTimeout(highlightTimerRef.current);
       }
     };
-  }, [highlightChatLine, tab, messages, scrollElRef]);
+  }, [highlightChatLine, workspaceTab, messages, scrollElRef]);
 
   const handleStop = useCallback(() => {
     void cancelRoomRun().catch(() => {});
@@ -1102,10 +1184,10 @@ export function RoomChat({
         if (activeSessionId) {
           await onSessionChange(activeSessionId);
           if (mode === "plan") {
-            setTab("plan");
+            openPlanTab();
           }
         } else if (mode === "plan") {
-          setTab("plan");
+          openPlanTab();
         }
         setPendingFiles([]);
         setSendReceipt(sendReceiptLabel(lastSendReceipt, mode, userStopped));
@@ -1174,7 +1256,7 @@ export function RoomChat({
             permissions,
           },
         );
-        setTab("plan");
+        openPlanTab();
         await onSessionChange(sessionId);
       } catch (e) {
         setError(String(e));
@@ -1211,18 +1293,21 @@ export function RoomChat({
     setFullTeamConfirmed(false);
   }
 
-  const openPlanTab = () => setTab("plan");
   const focusPlanAction = (actionIndex: number) => {
     setPlanActionFocusIndex(actionIndex);
-    setTab("plan");
+    openReviewTab();
   };
-  const focusObjection = useCallback((objectionId: string) => {
-    setTab("chat");
-    setTaskBarFocusObjection({ id: objectionId, nonce: Date.now() });
-  }, []);
+  const focusObjection = useCallback(
+    (objectionId: string) => {
+      setInspectorTab("tasks");
+      setTaskBarFocusObjection({ id: objectionId, nonce: Date.now() });
+    },
+    [setInspectorTab],
+  );
   const focusTask = useCallback(
     (taskId: string) => {
-      setTab("chat");
+      openTranscriptTab();
+      setInspectorTab("tasks");
       const task =
         roomTasks?.tasks?.find((t) => t.id === taskId) ??
         roomTasks?.claimable?.find((t) => t.id === taskId);
@@ -1250,14 +1335,17 @@ export function RoomChat({
           ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
       }, 60);
     },
-    [roomTasks, session?.chat, messages],
+    [roomTasks, session?.chat, messages, openTranscriptTab, setInspectorTab],
   );
 
-  const requestComposerPrefill = useCallback((prefill: string) => {
-    setTab("chat");
-    setText(prefill);
-    focusComposerInput();
-  }, []);
+  const requestComposerPrefill = useCallback(
+    (prefill: string) => {
+      openTranscriptTab();
+      setText(prefill);
+      focusComposerInput();
+    },
+    [openTranscriptTab],
+  );
   const executeBusy = planExecute.busy;
   const combinedError = error || planExecute.error;
   const pendingExecuteCount = planExecute.activePending ? 1 : 0;
@@ -1280,7 +1368,7 @@ export function RoomChat({
   const readyCount = agents.filter((a) => a.ready).length;
   const agentsBlocked =
     !running && !loading && selected.length === 0 && agents.length >= 0;
-  const title = isNew ? "3자 룸" : session?.topic || sessionId || "대화";
+  const title = isNew ? "Session" : session?.topic || sessionId || "Session";
   const setupMeta = sessionSetupSummary(session?.meta, session?.run);
   const attachments = session?.attachments ?? [];
   const planMeta = buildPlanMetaView(session?.run);
@@ -1300,9 +1388,8 @@ export function RoomChat({
       turnResolved.agents.length,
     ],
   );
-  const showProgressStrip = !isNew && tab === "chat" && running;
   const pendingReplyAgents =
-    running && tab === "chat" && typingAgents.length === 0
+    running && workspaceTab === "transcript" && typingAgents.length === 0
       ? turnResolved.agents.map((id) => ({
           id: `pending-${id}`,
           role: id as LiveMsg["role"],
@@ -1310,23 +1397,41 @@ export function RoomChat({
         }))
       : [];
 
-  useEffect(() => {
-    function onContentTabShortcut(event: Event) {
-      if (isNew) return;
-      const nextTab = (event as CustomEvent<ContentTab>).detail;
-      if (nextTab === "chat" || nextTab === "plan") setTab(nextTab);
-    }
+  const paletteActions = useMemo(
+    () =>
+      workspacePaletteActions(setWorkspaceTab, [
+        {
+          id: "stop-run",
+          label: running ? "Stop run" : "Stop run",
+          hint: running ? "⌘." : undefined,
+          run: () => {
+            if (running) handleStop();
+          },
+        },
+        {
+          id: "release-lock",
+          label: "Release run lock",
+          run: () => void handleReleaseRunLock(),
+        },
+        {
+          id: "focus-composer",
+          label: "Focus composer",
+          run: () => focusComposerInput(),
+        },
+      ]),
+    [setWorkspaceTab, running, handleStop, handleReleaseRunLock],
+  );
 
-    window.addEventListener(CONTENT_TAB_SHORTCUT_EVENT, onContentTabShortcut);
-    return () =>
-      window.removeEventListener(CONTENT_TAB_SHORTCUT_EVENT, onContentTabShortcut);
-  }, [isNew]);
+  const sessionArtifacts = roomTasks?.artifacts ?? [];
 
   return (
     <div
-      className={`room-chat-split${contextOpen && !isNew ? " room-chat-split--context-open" : ""}`}
+      className={`room-workspace-shell${
+        !isNew && !inspectorOpen ? " room-workspace-shell--inspector-collapsed" : ""
+      }`}
     >
-      <ChatPaneBody>
+      <CommandPalette actions={paletteActions} />
+      <ChatPaneBody className="workspace-main">
       <ChatToolbar
         sidebarOpen={sidebarOpen}
         onToggleSidebar={onToggleSidebar}
@@ -1347,8 +1452,8 @@ export function RoomChat({
             />
             {!isNew ? (
               <ContextSidebarToggle
-                open={contextOpen}
-                onToggle={toggleContextSidebar}
+                open={inspectorOpen}
+                onToggle={toggleInspector}
               />
             ) : null}
           </>
@@ -1375,226 +1480,132 @@ export function RoomChat({
         />
       ) : null}
 
-      <AgentSessionSettings
-        capabilities={agentCapabilities}
-        onChange={setAgentCapabilities}
-        resolvedCwd={resolvedAgentCwd}
-        selectedAgents={selected}
-        disabled={running || runBusy}
-        compact={!isNew}
-        onSave={sessionId ? () => saveAgentCapabilities() : undefined}
-        saveBusy={agentCapsBusy}
-        saveHint={
-          sessionId
-            ? agentCapsHint
-            : "첫 메시지 전송 시 세션에 함께 저장됩니다"
-        }
-      />
-
-      <div className="view-tabs-bar">
-        {!isNew ? (
-          <div
-            className="mac-segmented view-tabs-seg view-tabs-bar__leading"
-            role="tablist"
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === "chat"}
-              className={tab === "chat" ? "active" : ""}
-              onClick={() => setTab("chat")}
-              title="대화 (⌘1)"
-            >
-              대화
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === "plan"}
-              className={tab === "plan" ? "active" : ""}
-              onClick={() => setTab("plan")}
-              title="plan (⌘2)"
-            >
-              plan
-              {pendingExecuteCount > 0 ? (
-                <span className="view-tabs-bar__pending" aria-hidden>
-                  {" "}
-                  · 승인
-                </span>
-              ) : null}
-            </button>
-          </div>
-        ) : (
-          <div className="view-tabs-bar__leading">
-            <span className="view-tabs-bar__static" aria-hidden>
-              대화
-            </span>
-          </div>
-        )}
-        {!isNew && tab === "chat" ? (
-          <div
-            className="view-tabs-bar__trailing"
-            onBlur={(e) => {
-              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                setViewOptionsOpen(false);
-              }
-            }}
-          >
-            <button
-              type="button"
-              className={`view-options-btn${viewOptionsOpen ? " is-active" : ""}`}
-              aria-label="보기 옵션"
-              title="보기 옵션"
-              onClick={() => setViewOptionsOpen((v) => !v)}
-            >
-              ⋯
-            </button>
-            {viewOptionsOpen ? (
-              <div className="view-options-popover" role="menu">
-                <label className="view-options-row">
-                  <input
-                    type="checkbox"
-                    checked={showHumanSynthesis}
-                    onChange={(e) => setShowHumanSynthesis(e.target.checked)}
-                  />
-                  Human 요약
-                  {hiddenAgentCount > 0 && showHumanSynthesis ? (
-                    <span className="room-peer-toggle__count">
-                      {" "}
-                      (+{hiddenAgentCount})
-                    </span>
-                  ) : null}
-                </label>
-                <label
-                  className="view-options-row"
-                  title={
-                    showHumanSynthesis
-                      ? "Human 요약 모드에서는 동료 채널을 켤 수 없습니다"
-                      : "에이전트 동료 발화(peer) 표시"
-                  }
-                >
-                  <input
-                    type="checkbox"
-                    checked={showPeerChannel}
-                    onChange={(e) => setShowPeerChannel(e.target.checked)}
-                    disabled={showHumanSynthesis}
-                  />
-                  동료 채널
-                  {hiddenPeerCount > 0 && !showPeerChannel && !showHumanSynthesis ? (
-                    <span className="room-peer-toggle__count">
-                      {" "}
-                      ({hiddenPeerCount})
-                    </span>
-                  ) : null}
-                </label>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
-
-      {!isNew && tab === "chat" ? (
-        <section
-          className={`goal-loop-banner goal-loop-banner--${goalView.loop.status ?? "unset"}`}
-          aria-label="세션 목표"
-        >
-          <div className="goal-loop-banner__head">
-            <strong>세션 목표</strong>
-            {goalView.loop.status ? (
-              <span
-                className={`goal-oracle-badge goal-oracle-badge--${goalView.loop.status}`}
-              >
-                {goalView.loop.status === "achieved"
-                  ? "목표 달성"
-                  : goalView.loop.last_check?.verdict === "fail"
-                    ? "Oracle FAIL"
-                    : "진행 중"}
-              </span>
-            ) : null}
-          </div>
-          <div className="goal-loop-banner__controls">
-            <input
-              type="text"
-              value={goalText}
-              onChange={(e) => setGoalText(e.target.value)}
-              placeholder="Human이 판단할 세션 목표"
-              disabled={goalBusy}
-            />
-            <button
-              type="button"
-              className="room-task-bar__cta"
-              disabled={goalBusy || !goalText.trim()}
-              onClick={() => void saveSessionGoal()}
-            >
-              목표 설정
-            </button>
-            {goalView.goal.text ? (
-              <button
-                type="button"
-                className="room-task-bar__cta"
-                disabled={goalBusy || goalView.loop.status === "achieved"}
-                onClick={() => void runGoalCheck()}
-              >
-                Oracle 재검
-              </button>
-            ) : null}
-          </div>
-          {goalView.loop.last_check?.detail ? (
-            <p className="goal-loop-banner__detail">
-              {goalView.loop.last_check.detail}
-            </p>
-          ) : null}
-          {goalView.loop.last_check?.verdict === "fail" ? (
-            <button
-              type="button"
-              className="room-task-bar__cta room-task-bar__cta--primary"
-              onClick={() =>
-                requestComposerPrefill(
-                  goalView.loop.continue_prompt ??
-                    `세션 목표를 달성하기 위해 한 턴 더 토론해 주세요: ${goalView.loop.last_check?.detail ?? ""}`,
-                )
-              }
-            >
-              한 턴 더 토론
-            </button>
-          ) : null}
-          {goalError ? <p className="goal-loop-banner__error">{goalError}</p> : null}
-        </section>
-      ) : null}
-
-      {!isNew && tab === "chat" ? (
-        <RoomTaskBar
-          sessionId={sessionId ?? ""}
-          payload={roomTasks}
-          context={taskBarContext}
-          loading={tasksLoading}
-          executions={planExecutions}
-          focusObjection={taskBarFocusObjection}
-          onRefresh={refreshTasks}
-          onFocusPlanAction={focusPlanAction}
-          onFocusTask={focusTask}
-          onRequestComposerPrefill={requestComposerPrefill}
+      {isNew ? (
+        <AgentSessionSettings
+          capabilities={agentCapabilities}
+          onChange={setAgentCapabilities}
+          resolvedCwd={resolvedAgentCwd}
+          selectedAgents={selected}
+          disabled={running || runBusy}
+          compact={false}
+          onSave={sessionId ? () => saveAgentCapabilities() : undefined}
+          saveBusy={agentCapsBusy}
+          saveHint="첫 메시지 전송 시 세션에 함께 저장됩니다"
         />
       ) : null}
 
-      {showProgressStrip ? (
-        <div className="run-progress-slot" aria-live="polite">
-          <TurnProgressStrip
-            totalRounds={turnResolved.agentRounds}
-            reviewMode={turnResolved.reviewMode}
-            agents={turnResolved.agents}
-            doneKeys={topologyDone}
-            active={topologyActive}
+      <WorkspaceTabBar
+        active={workspaceTab}
+        onChange={setWorkspaceTab}
+        disabled={running && runBusy}
+        reviewPending={pendingExecuteCount > 0 || consensusProposal != null}
+        isNew={isNew}
+        trailing={
+          !isNew ? (
+            <div
+              className="view-tabs-bar__trailing"
+              onBlur={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                  setViewOptionsOpen(false);
+                }
+              }}
+            >
+              <button
+                type="button"
+                className={`view-options-btn${viewOptionsOpen ? " is-active" : ""}`}
+                aria-label="보기 옵션"
+                title="보기 옵션"
+                onClick={() => setViewOptionsOpen((v) => !v)}
+              >
+                ⋯
+              </button>
+              {viewOptionsOpen && workspaceTab === "transcript" ? (
+                <div className="view-options-popover" role="menu">
+                  <label className="view-options-row">
+                    <input
+                      type="checkbox"
+                      checked={showHumanSynthesis}
+                      onChange={(e) => {
+                        const on = e.target.checked;
+                        setShowHumanSynthesisState(on);
+                        setShowHumanSynthesis(on);
+                      }}
+                    />
+                    Human 요약
+                    {hiddenAgentCount > 0 && showHumanSynthesis ? (
+                      <span className="room-peer-toggle__count">
+                        {" "}
+                        (+{hiddenAgentCount})
+                      </span>
+                    ) : null}
+                  </label>
+                  <label
+                    className="view-options-row"
+                    title={
+                      showHumanSynthesis
+                        ? "Human 요약 모드에서는 동료 채널을 켤 수 없습니다"
+                        : "에이전트 동료 발화(peer) 표시"
+                    }
+                  >
+                    <input
+                      type="checkbox"
+                      checked={showPeerChannel}
+                      onChange={(e) => setShowPeerChannel(e.target.checked)}
+                      disabled={showHumanSynthesis}
+                    />
+                    동료 채널
+                    {hiddenPeerCount > 0 && !showPeerChannel && !showHumanSynthesis ? (
+                      <span className="room-peer-toggle__count">
+                        {" "}
+                        ({hiddenPeerCount})
+                      </span>
+                    ) : null}
+                  </label>
+                </div>
+              ) : null}
+            </div>
+          ) : null
+        }
+      />
+
+      {showExecuteQueueStrip && planExecute.activePending ? (
+        <div className="workspace-event-strip workspace-event-strip--review">
+          <ExecuteQueueBar
+            pending={planExecute.activePending}
+            storedActions={(session?.run?.actions as StoredPlanAction[]) ?? []}
+            busy={executeBusy}
+            disabled={running || synthesizing || runBusy}
+            compact
+            onApprove={() => void planExecute.approve()}
+            onReject={() => void planExecute.reject()}
+            onOpenPlan={openReviewTab}
           />
         </div>
       ) : null}
 
-      {tab === "plan" && planMd ? (
+      {showConsensusDryRunGate && consensusProposal ? (
+        <div className="workspace-event-strip workspace-event-strip--review">
+          <ConsensusDryRunGateBar
+            proposal={consensusProposal}
+            busy={consensusGateBusy || executeBusy}
+            disabled={running || synthesizing || runBusy}
+            onDryRun={handleConsensusDryRun}
+            onOpenPlan={openReviewTab}
+            onDismiss={dismissConsensusProposal}
+          />
+        </div>
+      ) : null}
+
+      {workspaceTab === "plan" && planMd ? (
         <div
-          className="messages-scroll messages-scroll--document"
+          className="messages-scroll messages-scroll--document workspace-panel--plan"
           ref={planScrollRef}
         >
-          <div className="plan-tab-cluster">
+          <div className="plan-tab-cluster workspace-document-panel">
+          <div className="workspace-document-panel__header">
+            <strong>Plan</strong>
+            <span>Readable plan document</span>
+          </div>
           <PlanTabToolbar
             planAfterSend={planAfterSend}
             onPlanAfterSendChange={changePlanAfterSend}
@@ -1654,24 +1665,6 @@ export function RoomChat({
               </p>
             </CollapsibleGlassPanel>
           ) : null}
-          <PlanExecutePanel
-            sessionId={sessionId!}
-            run={session?.run}
-            linkedTasks={roomTasks?.tasks}
-            cursorReady={agents.some((a) => a.id === "cursor" && a.ready)}
-            disabled={running || synthesizing || runBusy}
-            onChatRefClick={handlePlanRefClick}
-            onFocusTask={focusTask}
-            onFocusObjection={focusObjection}
-            onUpdated={() => {
-              if (!sessionId) return;
-              if (onSessionMetaRefresh) {
-                void onSessionMetaRefresh(sessionId);
-              } else {
-                void onSessionChange(sessionId);
-              }
-            }}
-          />
           <PlanDocument
             planMd={planMd}
             skipExecuteSections
@@ -1679,31 +1672,124 @@ export function RoomChat({
           />
           </div>
         </div>
-      ) : (
+      ) : workspaceTab === "plan" ? (
+        <div className="workspace-empty-state">plan.md가 아직 없습니다.</div>
+      ) : null}
+
+      {workspaceTab === "review" && sessionId ? (
+        <div
+          className="messages-scroll messages-scroll--document workspace-panel--review"
+          ref={reviewScrollRef}
+        >
+          <div className="plan-tab-cluster workspace-document-panel">
+            <div className="workspace-document-panel__header workspace-document-panel__header--review">
+              <strong>Review</strong>
+              <span>Dry-run diff and approval queue</span>
+            </div>
+            {planExecute.activePending ? (
+              <ExecuteQueueBar
+                pending={planExecute.activePending}
+                storedActions={
+                  (session?.run?.actions as StoredPlanAction[]) ?? []
+                }
+                busy={executeBusy}
+                disabled={running || synthesizing || runBusy}
+                onApprove={() => void planExecute.approve()}
+                onReject={() => void planExecute.reject()}
+                onOpenPlan={openPlanTab}
+              />
+            ) : null}
+            {consensusProposal ? (
+              <ConsensusDryRunGateBar
+                proposal={consensusProposal}
+                busy={consensusGateBusy || executeBusy}
+                disabled={running || synthesizing || runBusy}
+                onDryRun={handleConsensusDryRun}
+                onOpenPlan={openPlanTab}
+                onDismiss={dismissConsensusProposal}
+              />
+            ) : null}
+            <PlanExecutePanel
+              sessionId={sessionId}
+              run={session?.run}
+              linkedTasks={roomTasks?.tasks}
+              cursorReady={agents.some((a) => a.id === "cursor" && a.ready)}
+              disabled={running || synthesizing || runBusy}
+              onChatRefClick={handlePlanRefClick}
+              onFocusTask={focusTask}
+              onFocusObjection={focusObjection}
+              onUpdated={() => {
+                if (!sessionId) return;
+                if (onSessionMetaRefresh) {
+                  void onSessionMetaRefresh(sessionId);
+                } else {
+                  void onSessionChange(sessionId);
+                }
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
+
+      {workspaceTab === "run" && !isNew ? (
+        <div className="messages-scroll messages-scroll--document workspace-panel--run">
+          <div className="workspace-document-panel">
+            <div className="workspace-document-panel__header workspace-document-panel__header--run">
+              <strong>Run</strong>
+              <span>Current orchestration progress</span>
+            </div>
+            <div className="run-progress-slot" aria-live="polite">
+              <TurnProgressStrip
+                totalRounds={turnResolved.agentRounds}
+                reviewMode={turnResolved.reviewMode}
+                agents={turnResolved.agents}
+                doneKeys={topologyDone}
+                active={topologyActive}
+              />
+            </div>
+            {running ? (
+              <p className="workspace-empty-state" role="status">
+                에이전트 턴 실행 중…
+              </p>
+            ) : (
+              <p className="workspace-empty-state">
+                실행 중이 아닙니다. 새 메시지를 내면 Run 탭에서 topology가 표시됩니다.
+              </p>
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      {workspaceTab === "artifacts" && !isNew ? (
+        <div className="messages-scroll messages-scroll--document workspace-panel--artifacts">
+          <div className="workspace-document-panel">
+            <div className="workspace-document-panel__header">
+              <strong>Artifacts</strong>
+              <span>Outputs saved during this session</span>
+            </div>
+            {sessionArtifacts.length > 0 ? (
+              <ul className="workspace-artifacts-list">
+                {[...sessionArtifacts].reverse().map((art) => (
+                  <li key={art.id ?? art.path ?? `${art.producer}-${art.kind}`}>
+                    <strong>
+                      {art.producer} · {art.kind}
+                    </strong>
+                    {art.summary ? <span>{art.summary}</span> : null}
+                    {art.path ? (
+                      <span className="workspace-artifacts-list__path">{art.path}</span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="workspace-empty-state">저장된 산출물이 없습니다.</p>
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      {workspaceTab === "transcript" || isNew ? (
         <>
-          {showExecuteQueue && planExecute.activePending ? (
-            <ExecuteQueueBar
-              pending={planExecute.activePending}
-              storedActions={
-                (session?.run?.actions as StoredPlanAction[]) ?? []
-              }
-              busy={executeBusy}
-              disabled={running || synthesizing || runBusy}
-              onApprove={() => void planExecute.approve()}
-              onReject={() => void planExecute.reject()}
-              onOpenPlan={openPlanTab}
-            />
-          ) : null}
-          {showConsensusDryRunGate && consensusProposal ? (
-            <ConsensusDryRunGateBar
-              proposal={consensusProposal}
-              busy={consensusGateBusy || executeBusy}
-              disabled={running || synthesizing || runBusy}
-              onDryRun={handleConsensusDryRun}
-              onOpenPlan={openPlanTab}
-              onDismiss={dismissConsensusProposal}
-            />
-          ) : null}
           {partialTurnNotice ? (
             <div
               className="room-partial-banner"
@@ -1717,69 +1803,75 @@ export function RoomChat({
               </span>
             </div>
           ) : null}
-        <div className="messages-scroll" ref={scrollRef}>
-          {loading && !isNew ? (
-            <div className="empty-chat">대화 불러오는 중…</div>
-          ) : visibleMessages.length === 0 && !running ? (
-            <div className="empty-chat">메시지를 입력하세요</div>
-          ) : null}
-          {visibleMessages.map((m) => {
-            if (m.roundDivider) {
+          <div
+            className="messages-scroll messages-scroll--document workspace-panel--transcript"
+            ref={scrollRef}
+          >
+            <div className="workspace-document-panel workspace-transcript-panel">
+            {loading && !isNew ? (
+              <div className="empty-chat">Transcript 불러오는 중…</div>
+            ) : visibleMessages.length === 0 && !running ? (
+              <div className="empty-chat">메시지를 입력하세요</div>
+            ) : null}
+            {visibleMessages.map((m) => {
+              if (m.roundDivider) {
+                return (
+                  <div
+                    key={m.id}
+                    className="chat-round-divider"
+                    aria-label={m.body}
+                  >
+                    {m.body}
+                  </div>
+                );
+              }
+              if (m.typing && isReplyWaitRole(m.role)) {
+                return (
+                  <ReplyWaitingBubble
+                    key={m.id}
+                    agent={m.role}
+                    label={m.label}
+                    activities={m.activities}
+                  />
+                );
+              }
+              const highlighted = highlightChatLine === m.chatLineIndex;
               return (
                 <div
                   key={m.id}
-                  className="chat-round-divider"
-                  aria-label={m.body}
+                  className={[
+                    "chat-line",
+                    m.peerChannel ? "chat-line--peer" : undefined,
+                    m.humanSynthesis ? "chat-line--synthesis" : undefined,
+                    highlighted ? "chat-line--highlight" : undefined,
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  {...(m.chatLineIndex != null
+                    ? { "data-chat-line": m.chatLineIndex }
+                    : {})}
                 >
-                  {m.body}
-                </div>
-              );
-            }
-            if (m.typing && isReplyWaitRole(m.role)) {
-              return (
-                <ReplyWaitingBubble
-                  key={m.id}
-                  agent={m.role}
-                  label={m.label}
-                  activities={m.activities}
-                />
-              );
-            }
-            const highlighted = highlightChatLine === m.chatLineIndex;
-            return (
-              <div
-                key={m.id}
-                className={[
-                  "chat-line",
-                  m.peerChannel ? "chat-line--peer" : undefined,
-                  m.humanSynthesis ? "chat-line--synthesis" : undefined,
-                  highlighted ? "chat-line--highlight" : undefined,
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-                {...(m.chatLineIndex != null
-                  ? { "data-chat-line": m.chatLineIndex }
-                  : {})}
-              >
                 <ChatBubble
                   message={m}
                   typing={m.typing}
                   highlighted={highlighted}
+                  presentation="console"
                 />
-              </div>
-            );
-          })}
-          {pendingReplyAgents.map((a) => (
-            <ReplyWaitingBubble
-              key={a.id}
-              agent={a.role}
-              label={a.label}
-              activities={[]}
-            />
-          ))}
-        </div>
+                </div>
+              );
+            })}
+            {pendingReplyAgents.map((a) => (
+              <ReplyWaitingBubble
+                key={a.id}
+                agent={a.role}
+                label={a.label}
+                activities={[]}
+              />
+            ))}
+            </div>
+          </div>
         </>
-      )}
+      ) : null}
 
       {clarifierQuestions && clarifierQuestions.length > 0 ? (
         <div
@@ -1813,7 +1905,7 @@ export function RoomChat({
         </div>
       ) : null}
 
-      {chatActive && (
+      {transcriptActive && (
         <ScrollToBottomButton
           visible={showJumpButton}
           onClick={scrollToBottom}
@@ -1825,14 +1917,6 @@ export function RoomChat({
           {sendReceipt}
         </div>
       ) : null}
-
-      <RoomRunStatusBar
-        longRunning={longRunning && running}
-        runLockStuck={runLockStuck && !running}
-        onCancel={handleStop}
-        onReleaseLock={() => void handleReleaseRunLock()}
-        releasing={releasingLock}
-      />
 
       <ComposerPreflightBar agents={healthAgents} selected={selected} />
 
@@ -1872,7 +1956,7 @@ export function RoomChat({
         planStaleNotice={null}
         objectionNotice={composerObjectionNotice}
         onFocusObjection={focusObjection}
-        turnCostHint={turnCost.label}
+        turnCostHint={turnCost.compactLabel}
         fullTeamConfirm={
           turnCost.requiresConfirm
             ? {
@@ -1915,18 +1999,144 @@ export function RoomChat({
       />
       </ChatPaneBody>
 
-      {!isNew && contextOpen ? (
-        <aside className="context-sidebar" aria-label="에이전트 컨텍스트">
-          <ContextPreviewPanel
-            sessionId={sessionId}
-            session={session}
-            selectedAgents={selected}
-            turnProfile={turnProfile}
-            efficiencyOn={efficiencyOn}
-            disabled={running}
-            onClose={toggleContextSidebar}
-          />
-        </aside>
+      {!isNew ? (
+        <InspectorPane
+          active={inspectorTab}
+          onChange={setInspectorTab}
+          disabled={runBusy && running}
+          open={inspectorOpen}
+          width={inspectorWidth}
+          onWidthChange={setInspectorWidthState}
+          onWidthCommit={commitInspectorWidth}
+        >
+          {inspectorTab === "context" ? (
+            <ContextPreviewPanel
+              sessionId={sessionId}
+              session={session}
+              selectedAgents={selected}
+              turnProfile={turnProfile}
+              efficiencyOn={efficiencyOn}
+              disabled={running}
+            />
+          ) : null}
+          {inspectorTab === "tasks" ? (
+            <div className="inspector-pane__section inspector-pane__section-card">
+              <section
+                className={`goal-loop-banner goal-loop-banner--${goalView.loop.status ?? "unset"}`}
+                aria-label="세션 목표"
+              >
+                <div className="goal-loop-banner__head">
+                  <strong>세션 목표</strong>
+                  {goalView.loop.status ? (
+                    <span
+                      className={`goal-oracle-badge goal-oracle-badge--${goalView.loop.status}`}
+                    >
+                      {goalView.loop.status === "achieved"
+                        ? "목표 달성"
+                        : goalView.loop.last_check?.verdict === "fail"
+                          ? "Oracle FAIL"
+                          : "진행 중"}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="goal-loop-banner__controls">
+                  <input
+                    type="text"
+                    value={goalText}
+                    onChange={(e) => setGoalText(e.target.value)}
+                    placeholder="Human이 판단할 세션 목표"
+                    disabled={goalBusy}
+                  />
+                  <button
+                    type="button"
+                    className="room-task-bar__cta"
+                    disabled={goalBusy || !goalText.trim()}
+                    onClick={() => void saveSessionGoal()}
+                  >
+                    목표 설정
+                  </button>
+                  {goalView.goal.text ? (
+                    <button
+                      type="button"
+                      className="room-task-bar__cta"
+                      disabled={goalBusy || goalView.loop.status === "achieved"}
+                      onClick={() => void runGoalCheck()}
+                    >
+                      Oracle 재검
+                    </button>
+                  ) : null}
+                </div>
+                {goalView.loop.last_check?.detail ? (
+                  <p className="goal-loop-banner__detail">
+                    {goalView.loop.last_check.detail}
+                  </p>
+                ) : null}
+                {goalView.loop.last_check?.verdict === "fail" ? (
+                  <button
+                    type="button"
+                    className="room-task-bar__cta room-task-bar__cta--primary"
+                    onClick={() =>
+                      requestComposerPrefill(
+                        goalView.loop.continue_prompt ??
+                          `세션 목표를 달성하기 위해 한 턴 더 토론해 주세요: ${goalView.loop.last_check?.detail ?? ""}`,
+                      )
+                    }
+                  >
+                    한 턴 더 토론
+                  </button>
+                ) : null}
+                {goalError ? (
+                  <p className="goal-loop-banner__error">{goalError}</p>
+                ) : null}
+              </section>
+              <RoomTaskBar
+                sessionId={sessionId ?? ""}
+                payload={roomTasks}
+                context={taskBarContext}
+                loading={tasksLoading}
+                executions={planExecutions}
+                focusObjection={taskBarFocusObjection}
+                onRefresh={refreshTasks}
+                onFocusPlanAction={focusPlanAction}
+                onFocusTask={focusTask}
+                onRequestComposerPrefill={requestComposerPrefill}
+              />
+            </div>
+          ) : null}
+          {inspectorTab === "run" ? (
+            <div className="inspector-pane__section inspector-pane__section-card">
+              <RoomRunStatusBar
+                longRunning={longRunning && running}
+                runLockStuck={runLockStuck && !running}
+                onCancel={handleStop}
+                onReleaseLock={() => void handleReleaseRunLock()}
+                releasing={releasingLock}
+              />
+              <p className="inspector-pane__empty" role="status">
+                {running
+                  ? "실행 중 · Workspace Run 탭에서 topology를 확인하세요."
+                  : runLockStuck
+                    ? "실행 잠금이 남아 있습니다. 해제하거나 새 턴을 시작하세요."
+                    : "대기 중"}
+              </p>
+            </div>
+          ) : null}
+          {inspectorTab === "settings" ? (
+            <div className="inspector-pane__section inspector-pane__section-card">
+              <AgentSessionSettings
+                capabilities={agentCapabilities}
+                onChange={setAgentCapabilities}
+                resolvedCwd={resolvedAgentCwd}
+                selectedAgents={selected}
+                disabled={running || runBusy}
+                compact={false}
+                onSave={sessionId ? () => saveAgentCapabilities() : undefined}
+                saveBusy={agentCapsBusy}
+                saveHint={agentCapsHint}
+              />
+            </div>
+          ) : null}
+        </InspectorPane>
       ) : null}
     </div>
   );

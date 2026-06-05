@@ -26,14 +26,17 @@ def test_session_rows_are_keyboard_controls_and_searchable():
 def test_macos_shortcuts_cover_new_sidebar_and_content_tabs():
     app = _read("web/src/App.tsx")
     shortcut = _read("web/src/utils/desktopShortcuts.ts")
-    room_chat = _read("web/src/components/RoomChat.tsx")
+    workspace_tabs = _read("web/src/hooks/useWorkspaceTabs.ts")
     viewer = _read("web/src/components/SessionViewer.tsx")
 
     assert 'key === "n"' in app
     assert 'event.ctrlKey && key === "s"' in app
-    assert 'key === "1" || key === "2"' in app
+    assert '"1", "2", "3", "4", "5"' in app
+    assert "requestWorkspaceTabByIndex" in app
+    assert "WORKSPACE_TAB_SHORTCUT_EVENT" in shortcut
+    assert "WORKSPACE_TAB_SHORTCUT_EVENT" in workspace_tabs
     assert "CONTENT_TAB_SHORTCUT_EVENT" in shortcut
-    assert "CONTENT_TAB_SHORTCUT_EVENT" in room_chat
+    assert "CONTENT_TAB_SHORTCUT_EVENT" in workspace_tabs
     assert "CONTENT_TAB_SHORTCUT_EVENT" in viewer
 
 

@@ -15,12 +15,9 @@ import {
   type SessionDetail,
   type SessionSummary,
 } from "./api/client";
-import {
-  AgentHealthPanel,
-  healthToAgentOptions,
-} from "./components/AgentHealthPanel";
-import { ApiDiagnosticsBar } from "./components/ApiDiagnosticsBar";
+import { healthToAgentOptions } from "./components/AgentHealthPanel";
 import { RoomChat } from "./components/RoomChat";
+import { SessionRailStatusChip } from "./components/SessionRailStatusChip";
 import { RunPanel } from "./components/RunPanel";
 import { SessionList } from "./components/SessionList";
 import { SessionViewer } from "./components/SessionViewer";
@@ -30,7 +27,10 @@ import { getSidebarOpen, setSidebarOpen } from "./utils/sidebarPrefs";
 import { formatRoomModelLine } from "./utils/roomModels";
 import { isTauriApp } from "./theme";
 import { ensureDesktopNotifyPermission } from "./utils/desktopNotify";
-import { requestContentTab } from "./utils/desktopShortcuts";
+import {
+  openCommandPalette,
+  requestWorkspaceTabByIndex,
+} from "./utils/desktopShortcuts";
 
 type Mode = "room" | "classic";
 type ListTab = "active" | "archived";
@@ -76,7 +76,7 @@ export default function App() {
       const msg = String(e);
       setSessionsError(
         msg.includes("Failed to fetch") || msg.includes("Load failed")
-          ? "대화 목록 불러오기 실패 — API(8765) 확인"
+          ? "세션 목록 불러오기 실패 — API(8765) 확인"
           : msg,
       );
     }
@@ -237,9 +237,14 @@ export default function App() {
         toggleSidebar();
         return;
       }
-      if (!event.ctrlKey && (key === "1" || key === "2")) {
+      if (key === "k") {
         event.preventDefault();
-        requestContentTab(key === "1" ? "chat" : "plan");
+        openCommandPalette();
+        return;
+      }
+      if (!event.ctrlKey && ["1", "2", "3", "4", "5"].includes(key)) {
+        event.preventDefault();
+        requestWorkspaceTabByIndex(key);
       }
     }
 
@@ -288,7 +293,7 @@ export default function App() {
   const inTauri = isTauriApp();
 
   return (
-    <div className="mac-app">
+    <div className="mac-app mac-app--developer-console">
       <MacNotificationProvider>
       <div className="mac-window">
         <MacTitlebar
@@ -304,20 +309,24 @@ export default function App() {
         />
 
         <div
-          className={`messenger${sidebarOpen ? "" : " messenger--sidebar-collapsed"}`}
+          className={`workspace-shell${sidebarOpen ? "" : " workspace-shell--rail-collapsed"}`}
         >
-          <aside className="chat-list-pane" aria-hidden={!sidebarOpen}>
+          <aside
+            className="session-rail"
+            aria-label="Sessions"
+            aria-hidden={!sidebarOpen}
+          >
             <div className="chat-list-header">
               <div className="sidebar-title-row">
-                <h1>{listTab === "archived" ? "보관함" : "대화"}</h1>
+                <h1>{listTab === "archived" ? "Archive" : "Sessions"}</h1>
               </div>
               <button
                 type="button"
                 className="mac-btn-primary mac-sidebar-btn"
                 onClick={startNew}
-                title="새 대화 (⌘N)"
+                title="새 Session (⌘N)"
               >
-                새 대화
+                새 Session
               </button>
               <label className="session-search">
                 <span className="session-search__icon" aria-hidden>
@@ -339,7 +348,7 @@ export default function App() {
                   className={listTab === "active" ? "active" : ""}
                   onClick={() => setListTab("active")}
                 >
-                  대화
+                  Sessions
                 </button>
                 <button
                   type="button"
@@ -348,23 +357,19 @@ export default function App() {
                   className={listTab === "archived" ? "active" : ""}
                   onClick={() => setListTab("archived")}
                 >
-                  보관함
+                  Archive
                 </button>
               </div>
             </div>
-            <AgentHealthPanel
+            <SessionRailStatusChip
               apiOk={apiOk}
               agents={healthAgents}
               loading={healthLoading}
               reconnecting={reconnecting}
-              showBridgeSetupGuide={bridgeProbeFailed}
-              onRefresh={() => void reloadHealth(true)}
-              onReconnectCursor={() => void handleReconnectCursor()}
-            />
-            <ApiDiagnosticsBar
-              apiOk={apiOk}
               sessionsDir={sessionsDir}
               probeBridgeFailed={bridgeProbeFailed}
+              onRefresh={() => void reloadHealth(true)}
+              onReconnectCursor={() => void handleReconnectCursor()}
             />
             {!apiOk && health ? (
               <p className="chat-list-status chat-list-status--error">{health}</p>
@@ -403,12 +408,12 @@ export default function App() {
                   title={
                     mode === "room"
                       ? "Planner · Critic · Scribe 순차 모드"
-                      : "3자 룸으로 돌아가기"
+                      : "Session 모드로 돌아가기"
                   }
                 >
                   {mode === "room"
                     ? "클래식 (레거시)…"
-                    : "← 3자 룸으로 돌아가기"}
+                    : "← Session으로 돌아가기"}
                 </button>
               </div>
             ) : null}
@@ -416,11 +421,12 @@ export default function App() {
 
           <section
             className={[
-              "chat-pane",
-              mode === "classic" ? "chat-pane--classic" : "",
+              "workspace-pane",
+              mode === "classic" ? "workspace-pane--classic chat-pane--classic" : "",
             ]
               .filter(Boolean)
               .join(" ")}
+            aria-label="Workspace"
           >
             {mode === "room" ? (
               <RoomChat

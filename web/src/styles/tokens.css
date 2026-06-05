@@ -331,7 +331,7 @@
   --composer-chrome-fade-overshoot: 7px;
   --composer-chrome-gradient-lift: 9px;
   --composer-chrome-gradient-trim: 14px;
-  --composer-chrome-gradient-bottom-extra: 10px;
+  --composer-chrome-gradient-bottom-extra: 22px;
   --composer-chrome-gradient-height: calc(
     var(--composer-float-offset) + var(--space-xs) + var(--composer-bar-height) +
       var(--composer-capsule-fade-bleed) + var(--composer-turn-capsule-gap) +
@@ -345,6 +345,8 @@
   );
   /* Gap between turn picker and message capsule */
   --composer-turn-capsule-gap: 10px;
+  /* Extra vertical space for cost hint + dock gap adjustments */
+  --composer-turn-block-extra: 14px;
   /* Floating composer stacks (picker + capsule row) */
   /* Strategy bar: seg + hint + gaps */
   --composer-turn-block-height: 72px;

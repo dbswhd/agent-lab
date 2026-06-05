@@ -30,13 +30,16 @@ def test_backdrop_filter_is_owned_only_by_chrome_policy():
     assert "backdrop-filter" not in macos
     for selector in (
         ".mac-titlebar",
-        ".chat-list-pane::after",
-        ".context-sidebar",
         ".mac-context-menu",
+        ".command-palette",
         ".view-options-popover",
     ):
         assert selector in chrome
     for forbidden in (
+        ".session-rail::after",
+        ".chat-list-pane::after",
+        ".inspector-pane",
+        ".context-sidebar",
         ".session-row",
         ".session-list",
         ".room-task-bar",

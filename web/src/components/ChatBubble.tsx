@@ -24,6 +24,8 @@ type Props = {
   message: ChatMessage;
   typing?: boolean;
   highlighted?: boolean;
+  /** console = flat transcript log; messenger = legacy iMessage bubbles */
+  presentation?: "console" | "messenger";
 };
 
 function RoundBadge({ round }: { round: number }) {
@@ -60,6 +62,39 @@ function EnvelopeWarning() {
     <span className="chat-envelope-warn" title="R2+에서는 ```agent-envelope``` JSON fence가 필요합니다">
       envelope 없음
     </span>
+  );
+}
+
+function getTranscriptMarkers(message: ChatMessage): readonly string[] {
+  const act = normalizeAct(message.envelope?.act);
+  const refs = message.envelope?.refs ?? [];
+  const markers: string[] = [];
+
+  if (act === "BLOCK") {
+    markers.push("Review blocker");
+  } else if (act === "CHALLENGE") {
+    markers.push("Review needed");
+  } else if (act === "AMEND" || act === "PROPOSE") {
+    markers.push("Plan update");
+  }
+
+  if (refs.length > 0) {
+    markers.push("Plan ref");
+  }
+
+  return markers;
+}
+
+function TranscriptMarkerStrip({ markers }: { markers: readonly string[] }) {
+  if (markers.length === 0) return null;
+  return (
+    <div className="transcript-marker-strip" aria-label="Transcript markers">
+      {markers.map((marker) => (
+        <span key={marker} className="transcript-marker">
+          {marker}
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -123,15 +158,28 @@ export function ReplyWaitingBubble({ agent, label, activities }: ReplyWaitingPro
   );
 }
 
-export function ChatBubble({ message, typing, highlighted }: Props) {
+export function ChatBubble({
+  message,
+  typing,
+  highlighted,
+  presentation = "messenger",
+}: Props) {
   const sent = message.sent ?? message.role === "you";
   const role = message.role;
+  const consoleMode = presentation === "console";
 
   if (message.humanSynthesis && !typing) {
     return <HumanSynthesisBubble message={message} highlighted={highlighted} />;
   }
 
   if (role === "system") {
+    if (consoleMode) {
+      return (
+        <p className="transcript-log-line transcript-log-line--system" role="status">
+          {message.body}
+        </p>
+      );
+    }
     return (
       <div className="bubble-row bubble-row--system">
         <span className="bubble bubble--system">{message.body}</span>
@@ -140,6 +188,31 @@ export function ChatBubble({ message, typing, highlighted }: Props) {
   }
 
   if (sent) {
+    if (consoleMode) {
+      return (
+        <article
+          className={[
+            "chat-turn",
+            "chat-turn--you",
+            highlighted ? "chat-turn--highlight" : undefined,
+          ]
+            .filter(Boolean)
+            .join(" ")}
+        >
+          <header className="chat-turn__head">
+            <span className="chat-turn__name">{message.label ?? "Human"}</span>
+          </header>
+          <div className="chat-turn__body">
+            {typing ? (
+              <TypingIndicator variant="stream" />
+            ) : (
+              <MessageMarkdown text={message.body} />
+            )}
+          </div>
+        </article>
+      );
+    }
+
     const bubbleClass = [
       "mac-bubble",
       "mac-bubble--sent",
@@ -169,6 +242,7 @@ export function ChatBubble({ message, typing, highlighted }: Props) {
 
   if (STREAM_ROLES.has(role)) {
     if (typing) return null;
+    const transcriptMarkers = consoleMode ? getTranscriptMarkers(message) : [];
     return (
       <article
         className={`chat-turn chat-turn--${role}${highlighted ? " chat-turn--highlight" : ""}`}
@@ -189,6 +263,7 @@ export function ChatBubble({ message, typing, highlighted }: Props) {
           ) : null}
         </header>
         <div className="chat-turn__body">
+          <TranscriptMarkerStrip markers={transcriptMarkers} />
           <MessageMarkdown text={message.body} />
         </div>
       </article>

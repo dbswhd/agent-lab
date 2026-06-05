@@ -11,6 +11,8 @@ type Props = {
   disabled?: boolean;
   /** Segmented control 오른쪽 (정리 토글 · 효율 토글 등) */
   trailing?: ReactNode;
+  /** Inline with mode description (single hint line). */
+  costHint?: string | null;
 };
 
 export function ComposerTurnPicker({
@@ -18,8 +20,10 @@ export function ComposerTurnPicker({
   onChange,
   disabled,
   trailing,
+  costHint,
 }: Props) {
   const description = turnProfileDescription(value);
+  const hintText = [description, costHint?.trim()].filter(Boolean).join(" · ");
 
   return (
     <div
@@ -53,9 +57,9 @@ export function ComposerTurnPicker({
         </div>
         {trailing}
       </div>
-      {description ? (
+      {hintText ? (
         <p id="composer-turn-desc" className="composer-turn-hint">
-          {description}
+          {hintText}
         </p>
       ) : null}
     </div>

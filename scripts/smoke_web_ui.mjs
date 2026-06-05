@@ -63,7 +63,7 @@ async function main() {
   }
 
   // Ensure new-chat composer (not an existing session)
-  const newChatBtn = page.getByRole("button", { name: "새 대화" });
+  const newChatBtn = page.getByRole("button", { name: /새 (대화|Session)/ });
   if ((await newChatBtn.count()) > 0) {
     await newChatBtn.click();
   }
@@ -145,10 +145,13 @@ async function main() {
     ]);
     pass("session row is keyboard-selectable after search");
 
-    await dispatchShortcut(page, "2");
-    const pendingRegion = page.getByRole("region", { name: "승인 대기" });
+    await dispatchShortcut(page, "3");
+    const pendingRegion = page.getByRole("region", {
+      name: "승인 대기",
+      exact: true,
+    });
     await pendingRegion.waitFor({ state: "visible", timeout: 10_000 });
-    pass("Cmd+2 opens plan");
+    pass("Cmd+3 opens review");
     await pendingRegion.locator("summary", { hasText: "로컬 diff" }).waitFor({
       state: "visible",
       timeout: 10_000,
@@ -159,26 +162,26 @@ async function main() {
       .first();
     await diffMarker.waitFor({ state: "visible", timeout: 10_000 });
     await diffMarker.scrollIntoViewIfNeeded();
-    pass("session → plan → pending dry-run diff DOM path");
+    pass("session → review → pending dry-run diff DOM path");
   } catch (e) {
     fail(`pending dry-run diff DOM path failed (${e})`);
   }
 
   try {
     await dispatchShortcut(page, "1");
-    const conversationTab = page
-      .locator(".view-tabs-bar")
-      .getByRole("tab", { name: "대화", exact: true });
-    await conversationTab.waitFor({ state: "visible", timeout: 5000 });
-    if ((await conversationTab.getAttribute("aria-selected")) !== "true") {
-      throw new Error("content conversation tab was not selected");
+    const transcriptTab = page
+      .locator(".workspace-tab-bar")
+      .getByRole("tab", { name: "Transcript", exact: true });
+    await transcriptTab.waitFor({ state: "visible", timeout: 5000 });
+    if ((await transcriptTab.getAttribute("aria-selected")) !== "true") {
+      throw new Error("workspace transcript tab was not selected");
     }
-    pass("Cmd+1 opens conversation");
+    pass("Cmd+1 opens transcript");
 
-    const messenger = page.locator(".messenger");
-    const before = await messenger.getAttribute("class");
+    const shell = page.locator(".workspace-shell");
+    const before = await shell.getAttribute("class");
     await dispatchShortcut(page, "s", { ctrlKey: true });
-    const after = await messenger.getAttribute("class");
+    const after = await shell.getAttribute("class");
     if (before !== after) {
       pass("Ctrl+Cmd+S toggles sidebar");
     } else {
@@ -190,7 +193,7 @@ async function main() {
       state: "visible",
       timeout: 5000,
     });
-    pass("Cmd+N opens new conversation");
+    pass("Cmd+N opens new session");
 
     await dispatchShortcut(page, "s", { ctrlKey: true });
     await page.getByRole("searchbox", { name: "세션 검색" }).fill(
@@ -199,11 +202,13 @@ async function main() {
     await page
       .getByRole("button", { name: new RegExp(FIXTURE_TOPIC) })
       .press("Enter");
-    await dispatchShortcut(page, "2");
-    await page.getByRole("region", { name: "승인 대기" }).waitFor({
-      state: "visible",
-      timeout: 5000,
-    });
+    await dispatchShortcut(page, "3");
+    await page
+      .getByRole("region", { name: "승인 대기", exact: true })
+      .waitFor({
+        state: "visible",
+        timeout: 5000,
+      });
   } catch (e) {
     fail(`desktop keyboard shortcuts failed (${e})`);
   }

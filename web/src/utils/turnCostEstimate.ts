@@ -9,6 +9,8 @@ export type TurnCostEstimate = {
   parallelRounds: number;
   estimatedAgentCalls: number;
   label: string;
+  /** Short suffix for inline composer hint (one line with mode description). */
+  compactLabel: string;
   isFullTeam: boolean;
   requiresConfirm: boolean;
 };
@@ -91,12 +93,14 @@ export function estimateTurnCost(
     estimatedAgentCalls,
     maxLabel,
   )} (${modeLabel} · ${agentCount}명 · ${roundLabel})`;
+  const compactLabel = `예상 ${callSuffix(estimatedAgentCalls, maxLabel)}`;
 
   return {
     agentCount,
     parallelRounds,
     estimatedAgentCalls,
     label,
+    compactLabel,
     isFullTeam,
     requiresConfirm,
   };

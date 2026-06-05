@@ -526,8 +526,8 @@ body.is-tauri .chat-list-header {
   border-radius: 8px;
   margin-bottom: 1px;
   border: none;
-  padding: 5px 8px;
-  gap: 6px;
+  padding: 7px 10px;
+  gap: 8px;
   transition: background 0.14s ease, box-shadow 0.14s ease;
 }
 
@@ -1145,14 +1145,6 @@ body.is-tauri .chat-list-header {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.sidebar-toggle.context-sidebar-toggle.is-active {
-  color: var(--mac-accent);
-  background: color-mix(in srgb, var(--mac-accent) 12%, var(--mac-push-button-bg));
-  box-shadow:
-    0 0 0 0.5px color-mix(in srgb, var(--mac-accent) 40%, var(--mac-separator)),
-    0 0 0 2px color-mix(in srgb, var(--mac-accent) 14%, transparent);
 }
 
 .sidebar-toggle {

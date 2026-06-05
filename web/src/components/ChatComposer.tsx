@@ -167,6 +167,7 @@ export function ChatComposer({
               value={turnProfile}
               onChange={onTurnProfileChange}
               disabled={inputLocked}
+              costHint={turnCostHint}
               trailing={
                 <>
                   {showPlanToggle && onPlanAfterSendChange ? (
@@ -188,35 +189,30 @@ export function ChatComposer({
             />
           </div>
         ) : null}
-        {turnCostHint || fullTeamConfirm?.required ? (
+        {fullTeamConfirm?.required ? (
           <div
             className={[
               "composer-cost-hint",
-              fullTeamConfirm?.required ? "composer-cost-hint--confirm" : undefined,
+              "composer-cost-hint--confirm",
               fullTeamConfirm?.checked ? "is-confirmed" : undefined,
             ]
               .filter(Boolean)
               .join(" ")}
-            role={fullTeamConfirm?.required ? "alert" : "status"}
+            role="alert"
           >
-            {turnCostHint ? <span>{turnCostHint}</span> : null}
-            {fullTeamConfirm?.required ? (
-              <label className="composer-cost-hint__confirm">
-                <input
-                  className="mac-checkbox"
-                  type="checkbox"
-                  checked={fullTeamConfirm.checked}
-                  disabled={fullTeamConfirm.disabled}
-                  onChange={(e) => fullTeamConfirm.onChange(e.target.checked)}
-                />
-                <span>{fullTeamConfirm.label}</span>
-              </label>
-            ) : null}
-            {fullTeamConfirm?.required ? (
-              <span className="composer-cost-hint__detail">
-                {fullTeamConfirm.detail}
-              </span>
-            ) : null}
+            <label className="composer-cost-hint__confirm">
+              <input
+                className="mac-checkbox"
+                type="checkbox"
+                checked={fullTeamConfirm.checked}
+                disabled={fullTeamConfirm.disabled}
+                onChange={(e) => fullTeamConfirm.onChange(e.target.checked)}
+              />
+              <span>{fullTeamConfirm.label}</span>
+            </label>
+            <span className="composer-cost-hint__detail">
+              {fullTeamConfirm.detail}
+            </span>
           </div>
         ) : null}
         {planStaleNotice ? (

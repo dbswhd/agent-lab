@@ -1,7 +1,10 @@
 # Agent Lab — UI/UX 방향 & 외주 가이드
 
-> **현재 구현:** [Figma macOS 26 UI Kit](https://www.figma.com/community/file/1543337041090580818/macos-26) 기준. Liquid Glass는 타이틀바·사이드바·컨텍스트 인스펙터·popover에만 사용하고, 목록·문서·일반 패널은 solid 표면을 유지합니다.
-> 코드: `web/src/styles/tokens.css` + `macos26.css` + `chrome.css` + `content-surfaces.css`
+> **DEPRECATED — messenger/iMessage RFP.**
+> 현재 UI 기준은 **[developer-agent-console.md](./developer-agent-console.md)** 를 따릅니다.
+> 아래 iMessage/Instagram DM/Telegram 매핑은 역사 참고용입니다.
+
+> **레거시 구현 메모:** [Figma macOS 26 UI Kit](https://www.figma.com/community/file/1543337041090580818/macos-26). Glass는 chrome만.
 
 ---
 

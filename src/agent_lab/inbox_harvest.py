@@ -248,6 +248,90 @@ def harvest_discuss_questions(
     return created
 
 
+# --- Build proposal harvest (M5) — T-B gates → execute GO 예고 -----------------
+
+_PENDING_EXEC_STATUS = "pending_approval"  # mirrors plan_execute.PENDING_STATUS
+
+
+def _has_pending_execution(run: dict[str, Any]) -> bool:
+    for row in run.get("executions") or []:
+        if isinstance(row, dict) and row.get("status") == _PENDING_EXEC_STATUS:
+            return True
+    return False
+
+
+def _build_summary(action: dict[str, Any]) -> str:
+    what = str(action.get("what") or "").strip() or "실행 대기 action"
+    bits: list[str] = []
+    where = str(action.get("where") or "").strip()
+    verify = str(action.get("verify") or "").strip()
+    if where:
+        bits.append(f"위치: {where}")
+    if verify:
+        bits.append(f"검증: {verify}")
+    summary = what if not bits else f"{what} — " + " · ".join(bits)
+    return summary[:300]
+
+
+def harvest_build_proposal(
+    run_meta: dict[str, Any],
+    *,
+    plan_md: str = "",
+    human_turn: int | None = None,
+    mode: str = "discuss",
+) -> dict[str, Any] | None:
+    """T-B gates → one Inbox build item ("실행할까?"). In-memory; caller persists.
+
+    Gates (RFC §5.4 / §3.2):
+    - ordering: no pending question (question precedes build)
+    - **T-B1**: a recommended executable ``## 지금 실행`` action exists
+    - **T-B2**: no open BLOCK objection on that action
+    - **T-B3**: no pending execution + no existing build item for the action (dedupe)
+
+    The dry-run endpoint re-checks the full gates (objection, pre_execute,
+    snapshot), so this surfaces optimistically; GO is the authoritative gate.
+    """
+    if mode != "discuss":
+        return None
+    if has_pending_question(run_meta):  # §3.2 ordering — question precedes build
+        return None
+
+    from agent_lab.plan_actions import parse_plan_action_sections
+
+    recommended = parse_plan_action_sections(plan_md).get("recommended")
+    if not recommended:  # T-B1
+        return None
+
+    action_index = int(recommended.get("index") or 0)
+    action_kind = str(recommended.get("kind") or "now")
+    action_ref = str(recommended.get("action_key") or f"{action_kind}:{action_index}")
+
+    from agent_lab.room_objections import execute_block_reason_for_action
+
+    if execute_block_reason_for_action(run_meta, action_index, action_kind):  # T-B2
+        return None
+    if _has_pending_execution(run_meta):  # T-B3
+        return None
+
+    harvest_key = f"build-{action_ref}"
+    if harvest_key in _existing_harvest_keys(run_meta):  # T-B3 dedupe
+        return None
+
+    summary = _build_summary(recommended)
+    item = new_inbox_item(
+        kind="build",
+        source="orchestrator",
+        prompt=summary,
+        summary=summary,
+        action_ref=action_ref,
+        trigger="T-B1",
+        harvest_key=harvest_key,
+        human_turn_id=human_turn,
+    )
+    append_inbox_item(run_meta, item)
+    return item
+
+
 # --- sync pause (M4) — pending question pauses further auto discuss rounds ------
 
 

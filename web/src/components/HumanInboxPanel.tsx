@@ -2,12 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   fetchSessionInbox,
   resolveInboxItem,
+  runPlanDryRun,
   type HumanInboxItem,
 } from "../api/client";
 
 type Props = {
   sessionId: string | null;
   onResolved?: () => void;
+  onBuildStarted?: () => void;
   disabled?: boolean;
 };
 
@@ -15,11 +17,26 @@ function pendingItems(items: HumanInboxItem[]): HumanInboxItem[] {
   return items.filter((item) => item.status === "pending");
 }
 
+function parseActionRef(
+  ref: string | null | undefined,
+): { kind: string; index: number } | null {
+  if (!ref) return null;
+  const [kind, idx] = ref.split(":");
+  const index = Number.parseInt(idx ?? "", 10);
+  if (!kind || Number.isNaN(index) || index < 1) return null;
+  return { kind, index };
+}
+
 function hasQuestionOptions(item: HumanInboxItem): boolean {
   return (item.options?.length ?? 0) > 0;
 }
 
-export function HumanInboxPanel({ sessionId, onResolved, disabled }: Props) {
+export function HumanInboxPanel({
+  sessionId,
+  onResolved,
+  onBuildStarted,
+  disabled,
+}: Props) {
   const [items, setItems] = useState<HumanInboxItem[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -100,16 +117,29 @@ export function HumanInboxPanel({ sessionId, onResolved, disabled }: Props) {
       if (!sessionId || disabled) return;
       setBusyId(item.id);
       try {
+        // GO → trigger dry-run first; only resolve the item if it starts.
+        // The dry-run endpoint re-checks gates (objection/snapshot/pre_execute)
+        // and throws on 409, leaving the item pending for retry/defer.
+        if (decision === "go") {
+          const action = parseActionRef(item.action_ref);
+          if (action) {
+            await runPlanDryRun(sessionId, {
+              actionIndex: action.index,
+              actionKind: action.kind,
+            });
+          }
+        }
         await resolveInboxItem(sessionId, item.id, { decision });
         await reload();
         onResolved?.();
+        if (decision === "go") onBuildStarted?.();
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       } finally {
         setBusyId(null);
       }
     },
-    [sessionId, disabled, reload, onResolved],
+    [sessionId, disabled, reload, onResolved, onBuildStarted],
   );
 
   const handleDefer = useCallback(

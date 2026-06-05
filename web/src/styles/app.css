@@ -3824,3 +3824,148 @@ body {
 .room-run-status__unlock {
   margin-left: auto;
 }
+
+/* Slash command menu (composer) */
+.composer-field--slash {
+  position: relative;
+}
+
+.slash-command-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: 12;
+  max-height: 240px;
+  overflow: auto;
+  border-radius: 10px;
+  border: 1px solid var(--mac-separator, rgba(0, 0, 0, 0.12));
+  background: var(--mac-content-bg, #fff);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.slash-command-menu__list {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+}
+
+.slash-command-menu__item {
+  width: 100%;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+
+.slash-command-menu__item.is-active,
+.slash-command-menu__item:hover {
+  background: var(--mac-fill-primary, rgba(0, 0, 0, 0.06));
+}
+
+.slash-command-menu__slash {
+  font-weight: 700;
+  min-width: 7rem;
+}
+
+.slash-command-menu__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.slash-command-menu__desc {
+  color: var(--mac-label-secondary);
+  font-size: 12px;
+}
+
+.slash-command-menu__agent {
+  font-size: 11px;
+  color: var(--mac-label-tertiary);
+  text-transform: uppercase;
+}
+
+.slash-command-menu__empty {
+  padding: 8px;
+  color: var(--mac-label-secondary);
+}
+
+.composer-command-hint {
+  margin: 4px 12px 0;
+  font-size: 12px;
+  color: var(--mac-label-secondary);
+}
+
+/* Plugin panel (inspector settings) */
+.plugin-panel {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.plugin-panel__tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.plugin-panel__tabs button {
+  border: 1px solid var(--mac-separator);
+  background: var(--mac-fill-primary);
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.plugin-panel__tabs button.is-active {
+  background: var(--mac-accent, #007aff);
+  color: #fff;
+  border-color: transparent;
+}
+
+.plugin-panel__agent h4 {
+  margin: 8px 0 4px;
+  text-transform: capitalize;
+}
+
+.plugin-panel__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.plugin-panel__row {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--mac-separator);
+}
+
+.plugin-panel__desc,
+.plugin-panel__native-hint,
+.plugin-panel__hint,
+.plugin-panel__empty {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--mac-label-secondary);
+}
+
+.plugin-panel__cmd {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 6px 0;
+  cursor: pointer;
+  font: inherit;
+  display: grid;
+  grid-template-columns: 8rem 1fr;
+  gap: 8px;
+}

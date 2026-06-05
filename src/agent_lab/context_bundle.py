@@ -46,6 +46,7 @@ from agent_lab.session_guidance import (
     build_session_guidance_block,
     sync_session_meta,
 )
+from agent_lab.plugin_discovery import build_plugin_allowlist_block
 
 ARTIFACT_ONLY_RECENT_MAX_CHARS = 1200
 
@@ -239,6 +240,9 @@ def build_slim_consensus_bundle(
     )
     if session_guidance.strip():
         constraints = f"{constraints}\n\n{session_guidance.strip()}"
+    plugin_block = build_plugin_allowlist_block(agent, run_meta)
+    if plugin_block.strip():
+        constraints = f"{constraints}\n\n{plugin_block.strip()}"
     cap_block = capability_preamble_block(agent, run_meta, parallel_round=2)
     if cap_block.strip():
         constraints = f"{constraints}\n\n{cap_block.strip()}"
@@ -404,6 +408,9 @@ def build_context_bundle(
     )
     if session_guidance.strip():
         constraints = f"{constraints}\n\n{session_guidance.strip()}"
+    plugin_block = build_plugin_allowlist_block(agent, run_meta)
+    if plugin_block.strip():
+        constraints = f"{constraints}\n\n{plugin_block.strip()}"
     cap_block = capability_preamble_block(
         agent, run_meta, parallel_round=parallel_round
     )

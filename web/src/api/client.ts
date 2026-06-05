@@ -320,6 +320,115 @@ export function checkSessionGoal(id: string) {
   });
 }
 
+export type SlashCommandRecord = {
+  id: string;
+  slash: string;
+  label: string;
+  description?: string;
+  scope?: string;
+  kind: string;
+  agent?: string | null;
+  source?: string;
+  enabled?: boolean;
+  disabled_reason?: string | null;
+  native_add_hint?: string;
+};
+
+export type AgentPluginRecord = {
+  id: string;
+  name: string;
+  agent: string;
+  kind: string;
+  description?: string;
+  status?: string;
+  enabled_default?: boolean;
+  native_add_hint?: string;
+  slash?: string;
+};
+
+export function fetchCommands(sessionId?: string | null) {
+  const q = sessionId
+    ? `?session_id=${encodeURIComponent(sessionId)}`
+    : "";
+  return json<{
+    ok: boolean;
+    commands: SlashCommandRecord[];
+    allowlist?: Record<string, string[]>;
+    discovery_mock?: boolean;
+  }>(`/api/commands${q}`);
+}
+
+export function fetchAgentPlugins(sessionId?: string | null) {
+  const q = sessionId
+    ? `?session_id=${encodeURIComponent(sessionId)}`
+    : "";
+  return json<{
+    ok: boolean;
+    plugins: AgentPluginRecord[];
+    allowlist: Record<string, string[]>;
+    agents: Record<string, AgentPluginRecord[]>;
+    mock?: boolean;
+  }>(`/api/agents/plugins${q}`);
+}
+
+export function patchSessionAgentPlugins(
+  sessionId: string,
+  body: { agent: string; enabled: string[] },
+) {
+  return json<{ ok: boolean; enabled: string[]; allowlist: Record<string, string[]> }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/agent-plugins`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export function runSessionCommand(
+  sessionId: string,
+  body: { command_id: string; args?: string },
+) {
+  return json<{
+    ok: boolean;
+    kind: string;
+    handler?: string;
+    text?: string;
+    detail?: string;
+    result?: unknown;
+    command?: SlashCommandRecord;
+  }>(`/api/sessions/${encodeURIComponent(sessionId)}/commands/run`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export function parseSlashInput(text: string): { name: string; args: string } | null {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith("/")) return null;
+  const match = /^\/([a-zA-Z0-9_-]+)(?:\s+(.*))?$/s.exec(trimmed);
+  if (!match) return null;
+  return { name: match[1], args: (match[2] ?? "").trim() };
+}
+
+export function matchSlashCommand(
+  text: string,
+  commands: SlashCommandRecord[],
+): SlashCommandRecord | null {
+  const parsed = parseSlashInput(text);
+  if (!parsed) return null;
+  const needle = parsed.name.toLowerCase();
+  return (
+    commands.find(
+      (c) =>
+        c.slash.replace(/^\//, "").toLowerCase() === needle ||
+        c.id.toLowerCase() === needle ||
+        c.id.toLowerCase().endsWith(`:${needle}`),
+    ) ?? null
+  );
+}
+
 export function fetchSessionTasks(sessionId: string) {
   return json<RoomTasksPayload>(
     `/api/sessions/${encodeURIComponent(sessionId)}/tasks`,

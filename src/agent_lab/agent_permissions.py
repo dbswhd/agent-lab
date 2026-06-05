@@ -74,7 +74,11 @@ def normalize_claude_permissions(
     return out
 
 
-def claude_runtime_block(permissions: dict[str, Any] | None) -> str:
+def claude_runtime_block(
+    permissions: dict[str, Any] | None,
+    *,
+    mcp_allowed: bool = False,
+) -> str:
     """Explicit Claude Code CLI runtime for [고정 constraints] — matches claude_cli.invoke."""
     from agent_lab.claude_cli import resolve_claude_roots
 
@@ -87,9 +91,14 @@ def claude_runtime_block(permissions: dict[str, Any] | None) -> str:
     roots = resolve_claude_roots(perms)
     root_lines = "\n".join(f"  - {p}" for p in roots) or "  - (project root)"
     edit = "acceptEdits (file edits allowed)" if block.get("write", True) else "read-only"
+    mcp_line = (
+        "- Session allowlist includes MCP servers — you may call enabled MCP tools when needed.\n"
+        if mcp_allowed
+        else "- Do not tell the human to add MCP servers unless a required integration is missing from the allowlist.\n"
+    )
     return (
-        "Claude Code runtime (Agent Lab — `claude -p`, NOT claude.ai / NOT MCP-only):\n"
-        "- NOT Claude Desktop chat; NOT limited to Figma MCP; do not suggest adding server-filesystem MCP.\n"
+        "Claude Code runtime (Agent Lab — `claude -p`):\n"
+        f"{mcp_line}"
         f"- Built-in tools: Read, Edit, Bash, Glob, Grep, … (--tools default)\n"
         f"- --add-dir roots:\n{root_lines}\n"
         f"- Permission mode: {edit}; verify files with Read/Grep in this turn."
@@ -150,12 +159,21 @@ def apply_discuss_executor_policy(
     return out
 
 
-def permission_preamble(permissions: dict[str, Any] | None, agent: str) -> str:
+def permission_preamble(
+    permissions: dict[str, Any] | None,
+    agent: str,
+    run_meta: dict[str, Any] | None = None,
+) -> str:
     """Extra instructions appended when user granted capabilities."""
     perms = normalize_agent_permissions(permissions)
     discuss = bool((permissions or {}).get("_discuss_mode"))
     if agent == "claude":
-        block = claude_runtime_block(perms)
+        mcp_allowed = False
+        if run_meta is not None:
+            from agent_lab.command_registry import mcp_allowed_for_agent
+
+            mcp_allowed = mcp_allowed_for_agent("claude", run_meta)
+        block = claude_runtime_block(perms, mcp_allowed=mcp_allowed)
         if discuss:
             block += (
                 "\n- **Discuss mode:** read-only — use Read/Grep to verify; "

@@ -16,6 +16,6 @@ steps:
     input: [chat.jsonl]
     output: plan.md
 policies:
-  tools: none
+  tools: permissions_default
   max_llm_calls: 4
-  tier: T0_TEXT_ONLY
+  tier: T1_TOOLS_DEFAULT

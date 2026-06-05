@@ -47,6 +47,7 @@ from app.server.deps import (  # noqa: E402
 )
 from app.server.routers import (  # noqa: E402
     agents,
+    commands,
     health,
     plan_execute,
     room,
@@ -96,6 +97,7 @@ app.add_middleware(
 for router in (
     health.router,
     agents.router,
+    commands.router,
     sessions.router,
     session_tasks.router,
     session_governance.router,

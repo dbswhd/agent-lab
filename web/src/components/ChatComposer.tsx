@@ -1,8 +1,10 @@
-import { useRef, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { CollapsibleGlassPanel } from "./CollapsibleGlassPanel";
 import { ComposerPlanToggle } from "./ComposerPlanToggle";
 import { ComposerEfficiencyToggle } from "./ComposerEfficiencyToggle";
 import { ComposerTurnPicker } from "./ComposerTurnPicker";
+import { SlashCommandMenu } from "./SlashCommandMenu";
+import type { SlashCommandRecord } from "../api/client";
 import type { ComposerTurnProfile } from "../utils/turnProfile";
 
 export type PendingFile = { id: string; file: File };
@@ -62,6 +64,8 @@ type Props = {
   modeChipVariant?: "discuss" | "plan" | "consensus";
   /** New session — plan scribe timing hint. */
   isNewSession?: boolean;
+  slashCommands?: SlashCommandRecord[];
+  onSlashExecute?: (command: SlashCommandRecord) => void;
 };
 
 export function ChatComposer({
@@ -99,8 +103,24 @@ export function ChatComposer({
   modeChip,
   modeChipVariant,
   isNewSession = false,
+  slashCommands = [],
+  onSlashExecute,
 }: Props) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [slashHighlight, setSlashHighlight] = useState(0);
+
+  const slashFiltered = useMemo(() => {
+    if (!value.startsWith("/")) return [];
+    const query = value.slice(1).split(/\s/)[0]?.toLowerCase() ?? "";
+    const rows = slashCommands.filter((c) => c.enabled !== false);
+    if (!query) return rows;
+    return rows.filter(
+      (c) =>
+        c.slash.toLowerCase().includes(query) ||
+        c.label.toLowerCase().includes(query),
+    );
+  }, [slashCommands, value]);
 
   const rootClass = ["composer", className].filter(Boolean).join(" ");
   const inputLocked = disabled;
@@ -254,14 +274,14 @@ export function ChatComposer({
                   type="button"
                   className="btn-attach"
                   disabled={inputLocked}
-                  onClick={() => inputRef.current?.click()}
+                  onClick={() => fileInputRef.current?.click()}
                   aria-label="파일 첨부"
                   title="파일 첨부"
                 >
                   <PlusIcon />
                 </button>
                 <input
-                  ref={inputRef}
+                  ref={fileInputRef}
                   type="file"
                   multiple
                   className="composer-file-input"
@@ -272,8 +292,16 @@ export function ChatComposer({
                 />
               </>
             )}
-            <div className="composer-field">
+            <div className="composer-field composer-field--slash">
+              <SlashCommandMenu
+                value={value}
+                commands={slashCommands}
+                disabled={inputLocked}
+                onSelect={(slash) => onChange(slash)}
+                onExecute={(cmd) => onSlashExecute?.(cmd)}
+              />
               <textarea
+                ref={inputRef}
                 className="mac-textfield mac-textfield--multiline composer-input"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
@@ -281,6 +309,25 @@ export function ChatComposer({
                 disabled={inputLocked}
                 rows={1}
                 onKeyDown={(e) => {
+                  if (value.startsWith("/") && slashFiltered.length > 0) {
+                    if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      setSlashHighlight((slashHighlight + 1) % slashFiltered.length);
+                      return;
+                    }
+                    if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      setSlashHighlight(
+                        (slashHighlight - 1 + slashFiltered.length) % slashFiltered.length,
+                      );
+                      return;
+                    }
+                    if (e.key === "Tab" && slashFiltered[slashHighlight]) {
+                      e.preventDefault();
+                      onChange(slashFiltered[slashHighlight].slash);
+                      return;
+                    }
+                  }
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
                     onSend();

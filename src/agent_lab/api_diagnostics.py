@@ -109,6 +109,11 @@ def build_diagnostics_payload() -> dict[str, Any]:
     paths = resolved_config_paths()
     boot_tail = read_boot_log_tail()
 
+    from agent_lab.goal_loop import goal_loop_enabled
+    from agent_lab.plugin_discovery import discover_plugins
+
+    root = Path(os.getenv("AGENT_LAB_ROOT", Path(__file__).resolve().parents[2]))
+    discovery = discover_plugins(root, mock=False)
     return {
         "ok": True,
         "pid": _PROCESS_ID,
@@ -118,6 +123,9 @@ def build_diagnostics_payload() -> dict[str, Any]:
         "sessions_dir": str(SESSIONS_DIR),
         "paths": paths,
         "agent_tools": agent_tool_paths(),
+        "goal_loop_enabled": goal_loop_enabled(),
+        "plugins_discovered": len(discovery.get("plugins") or []),
+        "plugins_mock": discovery.get("mock", False),
         "boot_log_tail": boot_tail,
         "boot_log_path": str(boot_log_path()),
         "api_log_path": str(log_dir() / "agent-lab-api.log"),

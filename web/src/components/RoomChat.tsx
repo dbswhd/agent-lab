@@ -3,12 +3,16 @@ import type { AgentOption, PlanActionItem, SessionDetail } from "../api/client";
 import {
   cancelRoomRun,
   checkSessionGoal,
+  fetchCommands,
+  matchSlashCommand,
   releaseRoomRunLock,
   runRoom,
+  runSessionCommand,
   setSessionGoal,
   type AgentHealthRow,
   type GoalLoopRecord,
   type SessionGoalRecord,
+  type SlashCommandRecord,
 } from "../api/client";
 import {
   agentLabel,
@@ -101,6 +105,7 @@ import {
 } from "../utils/planExecuteHistory";
 import { SessionSetupBar } from "./SessionSetupBar";
 import { AgentSessionSettings } from "./AgentSessionSettings";
+import { PluginPanel } from "./PluginPanel";
 import {
   fetchSessionAgentCapabilities,
   fetchSessionSetupOptions,
@@ -315,6 +320,8 @@ export function RoomChat({
   const [goalText, setGoalText] = useState("");
   const [goalBusy, setGoalBusy] = useState(false);
   const [goalError, setGoalError] = useState<string | null>(null);
+  const [slashCommands, setSlashCommands] = useState<SlashCommandRecord[]>([]);
+  const [commandHint, setCommandHint] = useState<string | null>(null);
   const runWatchdogRef = useRef<number | null>(null);
   const syncedChatRef = useRef("");
   const [setupWorkspaces, setSetupWorkspaces] = useState<WorkspacePreset[]>([]);
@@ -434,6 +441,16 @@ export function RoomChat({
       .finally(() => setTasksLoading(false));
   }, [sessionId]);
 
+  const refreshCommands = useCallback(() => {
+    void fetchCommands(sessionId)
+      .then((res) => setSlashCommands(res.commands ?? []))
+      .catch(() => setSlashCommands([]));
+  }, [sessionId]);
+
+  useEffect(() => {
+    refreshCommands();
+  }, [refreshCommands]);
+
   function refreshSessionMeta() {
     if (!sessionId) return;
     if (onSessionMetaRefresh) {
@@ -442,6 +459,7 @@ export function RoomChat({
       void onSessionChange(sessionId);
     }
     refreshTasks();
+    refreshCommands();
   }
 
   const saveSessionGoal = useCallback(async () => {
@@ -1275,8 +1293,52 @@ export function RoomChat({
     void executeSynthesizeOnly(roomPermissions(selected));
   }
 
+  const runSlashCommand = useCallback(
+    async (command: SlashCommandRecord, rawText?: string) => {
+      setCommandHint(null);
+      if (command.kind === "client") {
+        if (command.id === "stop") handleStop();
+        if (command.id === "focus-composer") focusComposerInput();
+        setText("");
+        return;
+      }
+      if (!sessionId) return;
+      const parsed = rawText ? matchSlashCommand(rawText, slashCommands) : command;
+      const args =
+        rawText?.replace(/^\/[^\s]+\s*/, "").trim() ??
+        command.slash.replace(/^\//, "");
+      try {
+        const res = await runSessionCommand(sessionId, {
+          command_id: (parsed ?? command).id,
+          args,
+        });
+        if (res.kind === "server") {
+          refreshSessionMeta();
+          setCommandHint("명령 실행 완료");
+        } else if (res.text) {
+          setCommandHint(res.text.slice(0, 240));
+        } else if (res.detail) {
+          setCommandHint(res.detail);
+        } else {
+          setCommandHint("명령 실행됨");
+        }
+        setText("");
+      } catch (e) {
+        setCommandHint(e instanceof Error ? e.message : "명령 실패");
+      }
+    },
+    [sessionId, slashCommands, refreshSessionMeta, handleStop],
+  );
+
   function handleSend() {
     const msg = text.trim();
+    if (msg.startsWith("/") && sessionId) {
+      const cmd = matchSlashCommand(msg, slashCommands);
+      if (cmd) {
+        void runSlashCommand(cmd, msg);
+        return;
+      }
+    }
     if (
       (!msg && pendingFiles.length === 0) ||
       runBusy ||
@@ -1412,6 +1474,16 @@ export function RoomChat({
           id: "release-lock",
           label: "Release run lock",
           run: () => void handleReleaseRunLock(),
+        },
+        {
+          id: "open-plugins",
+          label: "Open plugin panel",
+          hint: "Inspector settings",
+          run: () => {
+            setInspectorTab("settings");
+            setInspectorOpenState(true);
+            setInspectorOpen(true);
+          },
         },
         {
           id: "focus-composer",
@@ -1932,6 +2004,8 @@ export function RoomChat({
         value={text}
         onChange={setText}
         onSend={handleSend}
+        slashCommands={slashCommands}
+        onSlashExecute={(cmd) => void runSlashCommand(cmd, cmd.slash)}
         disabled={composerInputLocked}
         sendDisabled={composerSendLocked}
         placeholder={composerPlaceholder}
@@ -1970,6 +2044,12 @@ export function RoomChat({
             : null
         }
       />
+
+      {commandHint ? (
+        <p className="composer-command-hint" role="status">
+          {commandHint}
+        </p>
+      ) : null}
 
       <AgentPermissionAlert
         open={permOpen}
@@ -2133,6 +2213,12 @@ export function RoomChat({
                 onSave={sessionId ? () => saveAgentCapabilities() : undefined}
                 saveBusy={agentCapsBusy}
                 saveHint={agentCapsHint}
+              />
+              <PluginPanel
+                sessionId={sessionId}
+                commands={slashCommands}
+                onPrefillSlash={requestComposerPrefill}
+                disabled={running || runBusy}
               />
             </div>
           ) : null}

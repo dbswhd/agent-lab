@@ -8,6 +8,8 @@ import {
 
 type Props = {
   sessionId: string | null;
+  reloadKey?: number;
+  planRevision?: string | null;
   onResolved?: () => void;
   onBuildStarted?: () => void;
   disabled?: boolean;
@@ -33,6 +35,8 @@ function hasQuestionOptions(item: HumanInboxItem): boolean {
 
 export function HumanInboxPanel({
   sessionId,
+  reloadKey = 0,
+  planRevision = null,
   onResolved,
   onBuildStarted,
   disabled,
@@ -58,7 +62,7 @@ export function HumanInboxPanel({
 
   useEffect(() => {
     void reload();
-  }, [reload]);
+  }, [reload, reloadKey]);
 
   const pending = useMemo(() => pendingItems(items), [items]);
   const hasPending = pending.length > 0;
@@ -191,6 +195,14 @@ export function HumanInboxPanel({
             </div>
             {item.action_ref ? (
               <div className="human-inbox__meta">{item.action_ref}</div>
+            ) : null}
+            {item.kind === "build" &&
+            item.plan_revision &&
+            planRevision &&
+            item.plan_revision !== planRevision ? (
+              <div className="human-inbox__meta human-inbox__plan-stale">
+                plan 갱신됨 — 확인
+              </div>
             ) : null}
             {item.refs && item.refs.length > 0 ? (
               <div className="human-inbox__meta human-inbox__refs">

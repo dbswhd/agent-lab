@@ -48,6 +48,16 @@ def test_build_proposal_happy_path():
     assert "rebal_freq_sweep.py" in item["summary"]
     assert item["human_turn_id"] == 2
     assert run_meta.get("inbox_pending") is True
+    assert item.get("plan_revision", "").startswith("plan-")
+
+
+def test_build_plan_revision_uses_last_plan_update_ts():
+    run_meta: dict[str, Any] = {
+        "last_plan_update": {"ts": "2026-06-06T12:00:00+00:00"},
+    }
+    item = harvest_build_proposal(run_meta, plan_md=_PLAN_WITH_ACTION, human_turn=1)
+    assert item is not None
+    assert item["plan_revision"] == "2026-06-06T12:00:00+00:00"
 
 
 def test_ordering_pending_question_blocks_build():

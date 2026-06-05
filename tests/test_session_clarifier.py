@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
+from agent_lab.inbox_harvest import harvest_clarifier_questions
 from agent_lab.session_clarifier import build_clarifier_questions, clarifier_min_topic_chars
 
 
@@ -82,3 +85,17 @@ def test_plan_mode_second_turn_returns_none_unless_short() -> None:
     )
     assert short_qs is not None
     assert any("plan.md" in q for q in short_qs)
+
+
+def test_clarifier_questions_surface_to_inbox() -> None:
+    qs = build_clarifier_questions(
+        "short topic",
+        is_new_session=True,
+        human_message_count=1,
+    )
+    assert qs is not None
+    run_meta: dict[str, Any] = {}
+    created = harvest_clarifier_questions(run_meta, qs, human_turn=1)
+    assert len(created) == len(qs)
+    assert run_meta["human_inbox"][0]["kind"] == "question"
+    assert run_meta["human_inbox"][0]["trigger"] == "T-Q0"

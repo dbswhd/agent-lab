@@ -323,6 +323,8 @@ export function RoomChat({
   } | null>(null);
   const highlightTimerRef = useRef<number | null>(null);
   const [sendReceipt, setSendReceipt] = useState<string | null>(null);
+  const [inboxPendingChip, setInboxPendingChip] = useState(false);
+  const [inboxReloadKey, setInboxReloadKey] = useState(0);
   const sendReceiptTimerRef = useRef<number | null>(null);
   const [clarifierQuestions, setClarifierQuestions] = useState<string[] | null>(
     null,
@@ -608,6 +610,11 @@ export function RoomChat({
     openReviewTab();
     refreshSessionMeta();
   }, [openReviewTab, refreshSessionMeta]);
+
+  const handleInboxResolved = useCallback(() => {
+    setInboxPendingChip(false);
+    refreshSessionMeta();
+  }, [refreshSessionMeta]);
 
   const showExecuteQueueStrip =
     Boolean(sessionId) &&
@@ -1230,6 +1237,10 @@ export function RoomChat({
             if (typeof ev.send_receipt === "string") {
               lastSendReceipt = ev.send_receipt;
             }
+            if (ev.inbox_pending === true) {
+              setInboxReloadKey((k) => k + 1);
+              setInboxPendingChip(true);
+            }
             dispatchNotification(
               {
                 tier: "P2",
@@ -1528,6 +1539,8 @@ export function RoomChat({
   const setupMeta = sessionSetupSummary(session?.meta, session?.run);
   const attachments = session?.attachments ?? [];
   const planMeta = buildPlanMetaView(session?.run);
+  const currentPlanRevision =
+    planMeta.lastUpdate?.completed_at || planMeta.lastUpdate?.ts || null;
   const planRefWarnings = analyzePlanRefWarnings(planMd, session?.chat);
   const turnResolved = resolveTurnSend(turnProfile, selected, efficiencyOn);
   const taskBarContext = useMemo(
@@ -1980,11 +1993,19 @@ export function RoomChat({
         </div>
       ) : null}
 
+      {inboxPendingChip ? (
+        <div className="composer-inbox-pending" role="status">
+          Human Inbox 대기
+        </div>
+      ) : null}
+
       <ComposerPreflightBar agents={healthAgents} selected={selected} />
 
       <HumanInboxPanel
         sessionId={sessionId}
-        onResolved={refreshSessionMeta}
+        reloadKey={inboxReloadKey}
+        planRevision={currentPlanRevision}
+        onResolved={handleInboxResolved}
         onBuildStarted={handleInboxBuildStarted}
         disabled={running || synthesizing || runBusy}
       />

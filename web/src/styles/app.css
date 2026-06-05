@@ -4134,3 +4134,7 @@ body {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 10px;
 }
+
+.human-inbox__plan-stale {
+  color: var(--mac-orange, #c93400);
+}

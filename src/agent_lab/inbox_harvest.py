@@ -203,6 +203,52 @@ def _existing_harvest_keys(run: dict[str, Any]) -> set[str]:
     }
 
 
+def clarifier_harvest_key(question: str) -> str:
+    return _fingerprint("clarifier", question[:120])
+
+
+def harvest_clarifier_questions(
+    run_meta: dict[str, Any],
+    questions: list[str],
+    *,
+    human_turn: int | None = None,
+) -> list[dict[str, Any]]:
+    """M2b: clarifier gate → Inbox question items (T-Q0, freeform)."""
+    if not questions:
+        return []
+    existing = _existing_harvest_keys(run_meta)
+    created: list[dict[str, Any]] = []
+    for q in questions:
+        text = (q or "").strip()
+        if not text:
+            continue
+        key = clarifier_harvest_key(text)
+        if key in existing:
+            continue
+        item = new_inbox_item(
+            kind="question",
+            source="orchestrator",
+            prompt=text,
+            options=[],
+            trigger="T-Q0",
+            harvest_key=key,
+            human_turn_id=human_turn,
+        )
+        append_inbox_item(run_meta, item)
+        existing.add(key)
+        created.append(item)
+    return created
+
+
+def _current_plan_revision(run_meta: dict[str, Any], plan_md: str) -> str:
+    lpu = run_meta.get("last_plan_update") or {}
+    ts = lpu.get("completed_at") or lpu.get("ts")
+    if ts:
+        return str(ts)
+    excerpt = (plan_md or "").strip()[:500]
+    return "plan-" + sha1(excerpt.encode("utf-8")).hexdigest()[:12]
+
+
 def harvest_discuss_questions(
     run_meta: dict[str, Any],
     messages: list[Any],
@@ -327,6 +373,7 @@ def harvest_build_proposal(
         trigger="T-B1",
         harvest_key=harvest_key,
         human_turn_id=human_turn,
+        plan_revision=_current_plan_revision(run_meta, plan_md),
     )
     append_inbox_item(run_meta, item)
     return item

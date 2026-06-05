@@ -5,10 +5,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+import pytest
+
 from agent_lab.inbox_harvest import (
+    clarifier_harvest_key,
+    harvest_clarifier_questions,
     harvest_discuss_questions,
     harvest_question_candidates,
 )
+from agent_lab.session_clarifier import build_clarifier_questions
 
 
 @dataclass
@@ -140,3 +145,46 @@ def test_harvest_empty_turn_noop():
     ]
     assert harvest_discuss_questions(run_meta, messages) == []
     assert run_meta == {}
+
+
+def test_clarifier_harvest_creates_t_q0_items(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("AGENT_LAB_CLARIFIER", "1")
+    questions = build_clarifier_questions(
+        "short topic",
+        is_new_session=True,
+        human_message_count=1,
+    )
+    assert questions is not None
+    run_meta: dict[str, Any] = {}
+    created = harvest_clarifier_questions(run_meta, questions, human_turn=1)
+    assert len(created) == len(questions)
+    assert all(item["trigger"] == "T-Q0" for item in created)
+    assert all(item["options"] == [] for item in created)
+    assert all(item["source"] == "orchestrator" for item in created)
+    assert run_meta.get("inbox_pending") is True
+
+
+def test_clarifier_harvest_idempotent(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("AGENT_LAB_CLARIFIER", "1")
+    questions = build_clarifier_questions(
+        "short topic",
+        is_new_session=True,
+        human_message_count=1,
+    )
+    assert questions is not None
+    run_meta: dict[str, Any] = {}
+    first = harvest_clarifier_questions(run_meta, questions, human_turn=1)
+    second = harvest_clarifier_questions(run_meta, questions, human_turn=1)
+    assert len(first) == len(questions)
+    assert second == []
+    assert len(run_meta["human_inbox"]) == len(questions)
+
+
+def test_clarifier_dedupe_matches_harvest_key():
+    question = "이번 세션에서 가장 먼저 달성하려는 결과물은 무엇인가요? (파일·검증 기준 포함)"
+    run_meta: dict[str, Any] = {}
+    harvest_clarifier_questions(run_meta, [question], human_turn=1)
+    key = clarifier_harvest_key(question)
+    assert run_meta["human_inbox"][0]["harvest_key"] == key
+    again = harvest_clarifier_questions(run_meta, [question], human_turn=1)
+    assert again == []

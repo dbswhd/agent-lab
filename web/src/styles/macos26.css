@@ -2393,6 +2393,17 @@ body.is-tauri .chat-list-header {
   color: var(--mac-label-secondary);
 }
 
+.composer-inbox-pending {
+  margin: 4px var(--space-lg) 0;
+  max-width: var(--composer-cluster-width);
+  margin-left: auto;
+  margin-right: auto;
+  padding: 4px 10px 2px;
+  font-size: var(--text-footnote);
+  line-height: 1.35;
+  color: var(--mac-orange, #c93400);
+}
+
 .btn-send {
   background: var(--mac-button-trailing-tint);
   color: #fff;

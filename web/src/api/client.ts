@@ -1199,6 +1199,7 @@ export type HumanInboxItem = {
   risks?: string[];
   refs?: string[];
   trigger?: string | null;
+  plan_revision?: string | null;
   created_at?: string;
   resolved_at?: string | null;
 };

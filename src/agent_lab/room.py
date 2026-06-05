@@ -1623,6 +1623,12 @@ def _read_run_meta(folder: Path) -> dict[str, Any]:
     return read_run_meta(folder)
 
 
+def _sse_inbox_pending(folder: Path) -> bool:
+    from agent_lab.human_inbox import compute_inbox_pending
+
+    return compute_inbox_pending(_read_run_meta(folder))
+
+
 def _session_context(folder: Path | None) -> tuple[str, dict[str, Any]]:
     """plan.md + run.json for trimmed agent payloads."""
     if not folder or not folder.is_dir():
@@ -1704,6 +1710,7 @@ def _write_session_files(
     merge_meta: dict[str, Any] | None = None,
     turn_meta: dict[str, Any] | None = None,
     run_meta_patch: dict[str, Any] | None = None,
+    clarifier_questions: list[str] | None = None,
 ) -> None:
     (folder / "topic.txt").write_text(topic.strip() + "\n", encoding="utf-8")
     plan_changed = _write_plan_if_changed(folder, plan_md)
@@ -1770,6 +1777,11 @@ def _write_session_files(
         "consensus_agreements": agreements,
     }
     preserve_session_meta_from_prev(run_meta, prev_run)
+    if prev_run.get("human_inbox"):
+        from agent_lab.human_inbox import compute_inbox_pending
+
+        run_meta["human_inbox"] = list(prev_run["human_inbox"])
+        run_meta["inbox_pending"] = compute_inbox_pending(run_meta)
     if run_meta_patch:
         run_meta.update(run_meta_patch)
     if turn_meta:
@@ -1828,11 +1840,18 @@ def _write_session_files(
     apply_challenge_task_blocks(run_meta)
     from agent_lab.inbox_harvest import (
         harvest_build_proposal,
+        harvest_clarifier_questions,
         harvest_discuss_questions,
     )
 
     _inbox_human_turn = _human_turn_count(messages_to_store)
     _inbox_mode = str(tm.get("mode") or "discuss")
+    if clarifier_questions:
+        harvest_clarifier_questions(
+            run_meta,
+            clarifier_questions,
+            human_turn=_inbox_human_turn,
+        )
     harvest_discuss_questions(
         run_meta,
         messages_to_store,
@@ -1968,10 +1987,17 @@ def save_room_session(
     base: Path | None = None,
     agents_used: list[str] | None = None,
     turn_meta: dict[str, Any] | None = None,
+    clarifier_questions: list[str] | None = None,
 ) -> Path:
     folder = session_dir(topic, base=base or SESSIONS_DIR)
     _write_session_files(
-        folder, topic, messages, plan_md, agents_used=agents_used, turn_meta=turn_meta
+        folder,
+        topic,
+        messages,
+        plan_md,
+        agents_used=agents_used,
+        turn_meta=turn_meta,
+        clarifier_questions=clarifier_questions,
     )
     return folder
 
@@ -2565,6 +2591,7 @@ def continue_room_round(
             last_delegate=run_meta.get("last_delegate"),
         ),
         run_meta_patch=_delegate_run_meta_patch(run_meta),
+        clarifier_questions=clarifier_questions,
     )
     from agent_lab.goal_loop import (
         goal_auto_continue_enabled,
@@ -2610,6 +2637,7 @@ def continue_room_round(
                 "failed_agents": turn_summary["failed_agents"],
                 "succeeded_agents": turn_summary["succeeded_agents"],
                 "send_receipt": send_receipt_val,
+                "inbox_pending": _sse_inbox_pending(folder),
                 "turn_index": max(
                     0,
                     len((_read_run_meta(folder).get("turns") or [])) - 1,
@@ -2851,6 +2879,7 @@ def run_room(
             base=sessions_base,
             agents_used=active_agents,
             turn_meta=turn_meta,
+            clarifier_questions=clarifier_questions,
         )
     else:
         existing_meta: dict[str, Any] = {}
@@ -2870,6 +2899,7 @@ def run_room(
             merge_meta=existing_meta,
             turn_meta=turn_meta,
             run_meta_patch=_delegate_run_meta_patch(run_meta),
+            clarifier_questions=clarifier_questions,
         )
     _finalize_durable_turn(folder, 1, turn_status)
     from agent_lab.goal_loop import (
@@ -2917,6 +2947,7 @@ def run_room(
                 "failed_agents": turn_summary["failed_agents"],
                 "succeeded_agents": turn_summary["succeeded_agents"],
                 "send_receipt": send_receipt_val,
+                "inbox_pending": _sse_inbox_pending(folder),
                 "turn_index": max(
                     0,
                     len((_read_run_meta(folder).get("turns") or [])) - 1,

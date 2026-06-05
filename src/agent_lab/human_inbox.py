@@ -104,6 +104,7 @@ def new_inbox_item(
     trigger: str | None = None,
     refs: list[str] | None = None,
     harvest_key: str | None = None,
+    plan_revision: str | None = None,
 ) -> dict[str, Any]:
     """Build a pending inbox item dict (no I/O).
 
@@ -124,6 +125,7 @@ def new_inbox_item(
         "refs": refs or [],
         "trigger": trigger,
         "harvest_key": harvest_key,
+        "plan_revision": plan_revision,
         "context_ref": context_ref,
         "mcp_call_id": mcp_call_id,
         "session_id": session_id,

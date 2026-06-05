@@ -239,3 +239,29 @@ def test_resolve_question_freeform_note(session_folder: Path):
     line = format_human_decision(resolved)
     assert "choice=freeform" in line.replace(" ", "")
     assert "Prefer VU-only scope" in line
+
+
+def test_complete_sse_inbox_pending_on_clarifier(monkeypatch, tmp_path):
+    from agent_lab import room
+
+    monkeypatch.setenv("AGENT_LAB_CLARIFIER", "1")
+    events: list[tuple[str, dict]] = []
+
+    folder, _messages, _plan_md = room.run_room(
+        "short topic",
+        agents=["cursor"],
+        synthesize=False,
+        parallel_rounds=1,
+        sessions_base=tmp_path,
+        on_event=lambda typ, payload: events.append((typ, payload)),
+    )
+
+    complete = [payload for typ, payload in events if typ == "complete"][-1]
+    assert complete.get("inbox_pending") is True
+
+    run = read_run_meta(folder)
+    assert run.get("inbox_pending") is True
+    assert any(
+        item.get("trigger") == "T-Q0" and item.get("status") == "pending"
+        for item in run.get("human_inbox") or []
+    )

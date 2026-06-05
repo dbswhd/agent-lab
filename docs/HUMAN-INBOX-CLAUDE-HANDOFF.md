@@ -81,9 +81,9 @@ Execute E2E: PlanExecute dry-run (Cursor) → agent `ask_human` / `propose_build
 
 ---
 
-### M4 — FORK + Facilitator + sync pause ✅ shipped (sync pause follow-up)
+### M4 — FORK + Facilitator ✅ shipped · sync pause ✅ shipped
 
-**목표:** `DECISION-FORK` envelope ref-anchored options; Facilitator = Claude **read-only 1-call** synthesizer.
+**목표:** `DECISION-FORK` envelope ref-anchored options; Facilitator merge; `AGENT_LAB_INBOX_MODE=sync` pauses consensus debate when pending question.
 
 | 파일 | 작업 |
 |------|------|

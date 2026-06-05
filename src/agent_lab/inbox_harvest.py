@@ -16,12 +16,14 @@ CHALLENGE/AMEND/plan-OPEN sources stay option-less.
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from hashlib import sha1
 from typing import Any
 
 from agent_lab.human_inbox import (
     append_inbox_item,
+    has_pending_question,
     inbox_items,
     new_inbox_item,
 )
@@ -244,3 +246,38 @@ def harvest_discuss_questions(
         existing.add(c.harvest_key)
         created.append(item)
     return created
+
+
+# --- sync pause (M4) — pending question pauses further auto discuss rounds ------
+
+
+def inbox_mode() -> str:
+    """``AGENT_LAB_INBOX_MODE`` — ``sync`` (default) pauses discuss; ``soft`` surfaces only."""
+    mode = os.getenv("AGENT_LAB_INBOX_MODE", "sync").strip().lower()
+    return mode if mode in ("sync", "soft") else "sync"
+
+
+def should_pause_discuss(run_meta: dict[str, Any]) -> bool:
+    """Sync checkpoint: in ``sync`` mode a pending question halts further auto rounds."""
+    if inbox_mode() != "sync":
+        return False
+    return has_pending_question(run_meta)
+
+
+def harvest_and_check_pause(
+    run_meta: dict[str, Any],
+    messages: list[Any],
+    *,
+    human_turn: int | None = None,
+    plan_md: str = "",
+    mode: str = "discuss",
+) -> bool:
+    """Harvest this round's questions into ``run_meta`` then report sync-pause.
+
+    Idempotent with the post-turn harvest (``harvest_key`` dedupe), so it is safe
+    to call after each discuss round as well as once at turn end.
+    """
+    harvest_discuss_questions(
+        run_meta, messages, human_turn=human_turn, plan_md=plan_md, mode=mode
+    )
+    return should_pause_discuss(run_meta)

@@ -765,6 +765,30 @@ def run_consensus_agent_rounds(
                     "rounds": r,
                     "calls": calls,
                 }
+            if run_meta is not None:
+                from agent_lab.inbox_harvest import harvest_and_check_pause
+
+                if harvest_and_check_pause(
+                    run_meta,
+                    working,
+                    human_turn=_human_turn_number(human_turn_index),
+                    plan_md=plan_md,
+                    mode="discuss",
+                ):
+                    if on_event:
+                        on_event(
+                            "inbox_pause",
+                            {
+                                "round": r,
+                                "message": "Human Inbox 질문 대기 — 토론 라운드를 일시 중단합니다.",
+                            },
+                        )
+                    return all_replies, {
+                        "status": "paused",
+                        "reason": "inbox_pending",
+                        "rounds": r,
+                        "calls": calls,
+                    }
 
         anchor = pick_anchor(_current_turn_messages(working), active)
         if not anchor:
@@ -2747,7 +2771,7 @@ def run_room(
             on_event=on_event,
         )
         if not plan_md:
-            plan_md = f"## Plan synthesis failed\n\nunknown error"
+            plan_md = "## Plan synthesis failed\n\nunknown error"
 
     latency_ms = int((time.perf_counter() - t0) * 1000)
     turn_summary = _agent_turn_summary(replies)

@@ -97,7 +97,9 @@ Execute E2E: PlanExecute dry-run (Cursor) → agent `ask_human` / `propose_build
 
 ### M5 — Discuss Build ↔ execute 연동
 
-**목표:** T-B4 discuss Build GO → execute lane; execute 내부 `propose_build`와 **게이트 2개** 유지 (§3.4.4). plan.md 충분하면 fast-path.
+**트리거 위치 (확정):** `room.py` turn-harvest 블록 **(a)** — question/objection harvest와 동일. 별도 orchestrator (b) 없음.
+
+**목표:** T-B1–B4 gates → `append_inbox_item(kind="build", source="orchestrator")` → Human GO → execute dry-run. execute `propose_build`와 **게이트 2개** 유지 (§3.4.4).
 
 | 파일 | 작업 |
 |------|------|

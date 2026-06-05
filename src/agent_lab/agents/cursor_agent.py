@@ -116,10 +116,14 @@ def respond(
 
     cwd_str = str(cwd) if cwd is not None else _resolve_cwd(perms)
     mcp_servers = None
-    if inbox_mcp and session_folder is not None and _execute_inbox_mcp_enabled():
-        from agent_lab.cursor_inbox_mcp import build_inbox_mcp_servers
+    if inbox_mcp and session_folder is not None:
+        from agent_lab.cursor_inbox_mcp import (
+            build_inbox_mcp_servers,
+            execute_inbox_mcp_enabled,
+        )
 
-        mcp_servers = build_inbox_mcp_servers(Path(session_folder))
+        if execute_inbox_mcp_enabled():
+            mcp_servers = build_inbox_mcp_servers(Path(session_folder))
 
     agent_opts = AgentOptions(
         api_key=api_key,

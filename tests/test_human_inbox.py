@@ -166,6 +166,59 @@ def test_build_inbox_mcp_servers(session_folder: Path):
     assert cfg.env.get("AGENT_LAB_SESSION_FOLDER") == str(session_folder.resolve())
 
 
+def test_build_codex_inbox_mcp_config_args(session_folder: Path):
+    import sys
+
+    from agent_lab.cursor_inbox_mcp import (
+        INBOX_MCP_SERVER_NAME,
+        build_codex_inbox_mcp_config_args,
+    )
+
+    args = build_codex_inbox_mcp_config_args(session_folder)
+    assert args.count("-c") >= 4
+    joined = " ".join(args)
+    assert INBOX_MCP_SERVER_NAME in joined
+    assert "agent_lab.inbox_mcp_server" in joined
+    assert sys.executable in joined
+    assert str(session_folder.resolve()) in joined
+
+
+def test_execute_inbox_mcp_enabled_env(monkeypatch: pytest.MonkeyPatch):
+    from agent_lab.cursor_inbox_mcp import execute_inbox_mcp_enabled
+
+    monkeypatch.delenv("AGENT_LAB_EXECUTE_INBOX", raising=False)
+    assert execute_inbox_mcp_enabled() is True
+    monkeypatch.setenv("AGENT_LAB_EXECUTE_INBOX", "0")
+    assert execute_inbox_mcp_enabled() is False
+
+
+def test_call_execute_agent_passes_inbox_mcp_to_codex(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    from agent_lab.plan_execute import _call_execute_agent
+
+    captured: dict[str, object] = {}
+
+    def _respond(**kwargs):
+        captured.update(kwargs)
+        return "ok"
+
+    monkeypatch.setattr("agent_lab.agents.codex_agent.respond", _respond)
+    out = _call_execute_agent(
+        "codex",
+        user="do work",
+        permissions={},
+        cwd=tmp_path,
+        on_activity=None,
+        verify="none",
+        session_folder=tmp_path / "sess",
+        inbox_mcp=True,
+    )
+    assert out == "ok"
+    assert captured.get("inbox_mcp") is True
+    assert captured.get("session_folder") == tmp_path / "sess"
+
+
 def test_resolve_question_freeform_note(session_folder: Path):
     item = create_inbox_item(
         session_folder,

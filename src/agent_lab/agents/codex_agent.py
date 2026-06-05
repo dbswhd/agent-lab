@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Any
 
 from agent_lab import codex_cli
@@ -15,6 +16,8 @@ def respond(
     permissions: dict | None = None,
     on_activity: Any | None = None,
     room_turn: bool = True,
+    session_folder: str | Path | None = None,
+    inbox_mcp: bool = False,
 ) -> str:
     return codex_cli.invoke(
         system or CODEX_ROOM,
@@ -22,4 +25,6 @@ def respond(
         permissions=permissions,
         on_activity=on_activity,
         room_turn=room_turn,
+        session_folder=session_folder,
+        inbox_mcp=inbox_mcp,
     )

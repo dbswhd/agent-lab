@@ -177,14 +177,48 @@ def _sandbox_mode(*, allow_tools: bool, room_turn: bool) -> str:
     return "workspace-write"
 
 
+def _codex_item_type(item: dict[str, Any]) -> str:
+    raw = item.get("type") or item.get("item_type") or ""
+    return str(raw).strip()
+
+
+def _codex_mcp_tool_label(item: dict[str, Any], *, started: bool) -> str | None:
+    tool = str(item.get("tool") or "").strip()
+    server = str(item.get("server") or "").strip()
+    if started:
+        if tool == "ask_human":
+            return "Human Inbox: question"
+        if tool == "propose_build":
+            return "Human Inbox: build proposal"
+        if tool:
+            return f"MCP: {server}/{tool}" if server else f"MCP: {tool}"
+        return "MCP tool"
+    status = str(item.get("status") or "").strip().lower()
+    if status == "failed":
+        err = item.get("error")
+        msg = ""
+        if isinstance(err, dict):
+            msg = str(err.get("message") or "").strip()
+        return f"MCP failed: {msg}" if msg else "MCP tool failed"
+    if tool == "ask_human":
+        return "Human Inbox: answered"
+    if tool == "propose_build":
+        return "Human Inbox: GO decision"
+    if tool:
+        return f"MCP done: {tool}"
+    return "MCP tool done"
+
+
 def codex_event_label(event: dict[str, Any]) -> str | None:
     """Map Codex `--json` JSONL events to short UI activity lines."""
     typ = event.get("type")
     item = event.get("item") if isinstance(event.get("item"), dict) else {}
-    item_type = item.get("type")
+    item_type = _codex_item_type(item)
 
     if typ == "turn.started":
         return "Codex turn 시작"
+    if typ in ("item.started", "item.completed") and item_type == "mcp_tool_call":
+        return _codex_mcp_tool_label(item, started=typ == "item.started")
     if typ == "item.started" and item_type == "command_execution":
         cmd = str(item.get("command") or "").strip()
         if len(cmd) > 96:
@@ -271,6 +305,7 @@ def _build_cmd(
     allow_tools: bool,
     room_turn: bool,
     stream_json: bool,
+    config_overrides: list[str] | None = None,
 ) -> list[str]:
     cmd: list[str] = [
         codex,
@@ -287,6 +322,8 @@ def _build_cmd(
     effort = _reasoning_effort(room_turn=room_turn)
     if effort:
         cmd.extend(["-c", f'model_reasoning_effort="{effort}"'])
+    if config_overrides:
+        cmd.extend(config_overrides)
     model = os.getenv("CODEX_MODEL", DEFAULT_CODEX_MODEL)
     cmd.extend(["-m", model])
     if stream_json:
@@ -428,6 +465,8 @@ def invoke(
     permissions: dict | None = None,
     on_activity: Callable[[str], None] | None = None,
     room_turn: bool = False,
+    session_folder: str | Path | None = None,
+    inbox_mcp: bool = False,
 ) -> str:
     from agent_lab.agent_permissions import codex_cli_allowed
     from agent_lab.workspace_roots import discuss_primary_workspace
@@ -440,7 +479,19 @@ def invoke(
             "(e.g. ~/.nvm/versions/node/v24.13.1/bin/codex)"
         )
 
-    allow_tools = codex_cli_allowed(permissions)
+    use_inbox_mcp = False
+    config_overrides: list[str] | None = None
+    if inbox_mcp and session_folder is not None:
+        from agent_lab.cursor_inbox_mcp import (
+            build_codex_inbox_mcp_config_args,
+            execute_inbox_mcp_enabled,
+        )
+
+        if execute_inbox_mcp_enabled():
+            use_inbox_mcp = True
+            config_overrides = build_codex_inbox_mcp_config_args(Path(session_folder))
+
+    allow_tools = codex_cli_allowed(permissions) or use_inbox_mcp
     discuss = room_turn or bool((permissions or {}).get("_discuss_mode"))
     if discuss and not _env_bool("CODEX_ROOM_WORKSPACE_WRITE", False):
         allow_tools = True  # read-only tools still allowed
@@ -456,7 +507,7 @@ def invoke(
             "Do not use tools, MCP, or shell commands. Respond with text only."
         )
 
-    stream_json = room_turn or on_activity is not None
+    stream_json = room_turn or on_activity is not None or use_inbox_mcp
     cmd = _build_cmd(
         codex=codex,
         cwd=cwd,
@@ -464,6 +515,7 @@ def invoke(
         allow_tools=allow_tools,
         room_turn=room_turn,
         stream_json=stream_json,
+        config_overrides=config_overrides,
     )
     timeout = _timeout_sec(room_turn=room_turn)
     max_commands = _room_max_commands() if room_turn else 0

@@ -718,6 +718,8 @@ def _call_execute_agent(
         permissions=codex_permissions,
         on_activity=on_activity,
         room_turn=False,
+        session_folder=session_folder,
+        inbox_mcp=inbox_mcp,
     )
 
 
@@ -976,7 +978,9 @@ def run_dry_run(
         if label and (not activity_log or activity_log[-1] != label):
             activity_log.append(label)
 
-    use_inbox_mcp = executor_id == "cursor"
+    from agent_lab.cursor_inbox_mcp import execute_inbox_mcp_enabled
+
+    use_inbox_mcp = executor_id in EXECUTE_AGENT_IDS and execute_inbox_mcp_enabled()
 
     try:
         agent_response = _call_execute_agent(

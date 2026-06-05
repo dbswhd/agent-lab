@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from agent_lab.codex_cli import codex_event_label
 
 
@@ -89,3 +91,65 @@ def test_extract_agent_message_from_stream_event():
         limit_hit_at=limit_at,
     )
     assert outcome.streamed_message == "final answer"
+
+
+def test_codex_mcp_tool_call_event_labels():
+    started = codex_event_label(
+        {
+            "type": "item.started",
+            "item": {
+                "type": "mcp_tool_call",
+                "server": "agent-lab-inbox",
+                "tool": "ask_human",
+                "status": "in_progress",
+            },
+        }
+    )
+    assert started == "Human Inbox: question"
+
+    completed = codex_event_label(
+        {
+            "type": "item.completed",
+            "item": {
+                "type": "mcp_tool_call",
+                "server": "agent-lab-inbox",
+                "tool": "propose_build",
+                "status": "completed",
+            },
+        }
+    )
+    assert completed == "Human Inbox: GO decision"
+
+    failed = codex_event_label(
+        {
+            "type": "item.completed",
+            "item": {
+                "type": "mcp_tool_call",
+                "tool": "search",
+                "server": "docs",
+                "status": "failed",
+                "error": {"message": "tool timeout"},
+            },
+        }
+    )
+    assert failed == "MCP failed: tool timeout"
+
+
+def test_build_cmd_includes_inbox_mcp_overrides(tmp_path: Path):
+    from agent_lab.codex_cli import _build_cmd
+    from agent_lab.cursor_inbox_mcp import build_codex_inbox_mcp_config_args
+
+    session_folder = tmp_path / "sess"
+    session_folder.mkdir()
+    overrides = build_codex_inbox_mcp_config_args(session_folder)
+    cmd = _build_cmd(
+        codex="/usr/bin/codex",
+        cwd="/tmp/ws",
+        out_path="/tmp/out.txt",
+        allow_tools=True,
+        room_turn=False,
+        stream_json=True,
+        config_overrides=overrides,
+    )
+    assert "--json" in cmd
+    assert "agent_lab.inbox_mcp_server" in " ".join(cmd)

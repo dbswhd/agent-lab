@@ -44,15 +44,15 @@ Execute E2E: PlanExecute dry-run (Cursor) → agent `ask_human` / `propose_build
 
 ## 당신(Claude)이 할 일 — 로드맵 순
 
-### M2b — Clarifier → Inbox (Discuss, 작음)
+### M2b — Clarifier → Inbox (Discuss, 작음) ✅ shipped (`8f927e8`)
 
 **목표:** `session_clarifier.py` 첫 턴 질문을 chat prose가 아니라 Inbox question item으로.
 
 | 파일 | 작업 |
 |------|------|
-| `src/agent_lab/session_clarifier.py` | clarifier outcome → `create_inbox_item(..., source="orchestrator", trigger="T-Q0")` |
-| `src/agent_lab/room.py` | clarifier path에서 discuss pause + Inbox pending 인지 |
-| `web/` | (선택) clarifier item UI는 기존 `HumanInboxPanel` 재사용 |
+| `inbox_harvest.py` | `harvest_clarifier_questions()` — T-Q0 + `harvest_key` dedupe |
+| `src/agent_lab/room.py` | clarifier path → inbox items; `complete` SSE `inbox_pending` |
+| `web/` | `HumanInboxPanel` + composer **Human Inbox 대기** chip |
 
 **AC:** 주제 짧은 첫 턴 → Inbox에 question 1건 → resolve → `[HUMAN-DECISION:]` → R1 진행.
 
@@ -124,14 +124,16 @@ Execute E2E: PlanExecute dry-run (Cursor) → agent `ask_human` / `propose_build
 
 ---
 
-## 아직 없는 것 (M1/M2 gap — 선택 개선)
+## 아직 없는 것 (선택 개선)
 
-| Gap | 제안 |
+| Gap | 상태 |
 |-----|------|
-| Room SSE `inbox_pending: true` on `complete` | `room.py` SSE payload + `RoomChat` badge (polling 대체) |
-| `respond_session()` 별도 API | 현재 `cursor_agent.respond(..., inbox_mcp=True)`로 충분; rename only if needed |
-| Plan phase 별도 `send()` | today single prompt + MCP; split plan/implement sends if agent skips `propose_build` |
-| `human_inbox` dedupe key (§6.5 ②) | M3 harvest 시 clarifier 중복 방지 |
+| Room SSE `inbox_pending` + Composer 배지 | ✅ `8f927e8` |
+| Build card plan drift (`plan_revision`) | ✅ `8f927e8` |
+| clarifier + harvest dedupe (§6.5 ②) | ✅ M2b `8f927e8` |
+| `respond_session()` 별도 API | rename only — 현재 wiring 충분 |
+| Plan phase 별도 `send()` | agent가 `propose_build` skip 시에만 검토 |
+| Live Codex/Cursor execute E2E | real CLI + auth 필요 |
 
 ---
 

@@ -1802,6 +1802,15 @@ def _write_session_files(
         mode=str(tm.get("mode") or "discuss"),
     )
     apply_challenge_task_blocks(run_meta)
+    from agent_lab.inbox_harvest import harvest_discuss_questions
+
+    harvest_discuss_questions(
+        run_meta,
+        messages_to_store,
+        human_turn=_human_turn_count(messages_to_store),
+        plan_md=plan_md,
+        mode=str(tm.get("mode") or "discuss"),
+    )
     from agent_lab.room_artifacts import harvest_artifacts_from_turn
 
     harvest_artifacts_from_turn(

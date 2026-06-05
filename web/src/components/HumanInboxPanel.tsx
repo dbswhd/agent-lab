@@ -15,10 +15,15 @@ function pendingItems(items: HumanInboxItem[]): HumanInboxItem[] {
   return items.filter((item) => item.status === "pending");
 }
 
+function hasQuestionOptions(item: HumanInboxItem): boolean {
+  return (item.options?.length ?? 0) > 0;
+}
+
 export function HumanInboxPanel({ sessionId, onResolved, disabled }: Props) {
   const [items, setItems] = useState<HumanInboxItem[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [freeformDraft, setFreeformDraft] = useState<Record<string, string>>({});
 
   const reload = useCallback(async () => {
     if (!sessionId) {
@@ -64,6 +69,30 @@ export function HumanInboxPanel({ sessionId, onResolved, disabled }: Props) {
       }
     },
     [sessionId, disabled, reload, onResolved],
+  );
+
+  const handleFreeform = useCallback(
+    async (item: HumanInboxItem) => {
+      if (!sessionId || disabled) return;
+      const note = (freeformDraft[item.id] ?? "").trim();
+      if (!note) return;
+      setBusyId(item.id);
+      try {
+        await resolveInboxItem(sessionId, item.id, { note });
+        setFreeformDraft((prev) => {
+          const next = { ...prev };
+          delete next[item.id];
+          return next;
+        });
+        await reload();
+        onResolved?.();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [sessionId, disabled, freeformDraft, reload, onResolved],
   );
 
   const handleBuild = useCallback(
@@ -133,6 +162,11 @@ export function HumanInboxPanel({ sessionId, onResolved, disabled }: Props) {
             {item.action_ref ? (
               <div className="human-inbox__meta">{item.action_ref}</div>
             ) : null}
+            {item.refs && item.refs.length > 0 ? (
+              <div className="human-inbox__meta human-inbox__refs">
+                {item.refs.join(" · ")}
+              </div>
+            ) : null}
             {item.kind === "question" ? (
               <div className="human-inbox__options">
                 {(item.options ?? []).map((opt) => (
@@ -149,6 +183,35 @@ export function HumanInboxPanel({ sessionId, onResolved, disabled }: Props) {
                     ) : null}
                   </button>
                 ))}
+                {!hasQuestionOptions(item) ? (
+                  <div className="human-inbox__freeform">
+                    <textarea
+                      className="human-inbox__freeform-input"
+                      rows={2}
+                      placeholder="방향을 입력…"
+                      value={freeformDraft[item.id] ?? ""}
+                      disabled={disabled || busyId === item.id}
+                      onChange={(e) =>
+                        setFreeformDraft((prev) => ({
+                          ...prev,
+                          [item.id]: e.target.value,
+                        }))
+                      }
+                    />
+                    <button
+                      type="button"
+                      className="human-inbox__freeform-submit"
+                      disabled={
+                        disabled ||
+                        busyId === item.id ||
+                        !(freeformDraft[item.id] ?? "").trim()
+                      }
+                      onClick={() => void handleFreeform(item)}
+                    >
+                      답하기
+                    </button>
+                  </div>
+                ) : null}
                 <button
                   type="button"
                   className="human-inbox__skip"

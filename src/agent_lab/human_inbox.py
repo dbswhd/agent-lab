@@ -87,6 +87,64 @@ def _sync_inbox_flag(run: dict[str, Any]) -> dict[str, Any]:
     return run
 
 
+def new_inbox_item(
+    *,
+    kind: InboxKind,
+    source: str,
+    prompt: str,
+    options: list[dict[str, Any]] | None = None,
+    multi_select: bool = False,
+    action_ref: str | None = None,
+    summary: str | None = None,
+    risks: list[str] | None = None,
+    mcp_call_id: str | None = None,
+    session_id: str | None = None,
+    human_turn_id: int | None = None,
+    context_ref: str | None = None,
+    trigger: str | None = None,
+    refs: list[str] | None = None,
+    harvest_key: str | None = None,
+) -> dict[str, Any]:
+    """Build a pending inbox item dict (no I/O).
+
+    Shared by ``create_inbox_item`` (folder patch) and discuss harvest
+    (in-memory ``run_meta`` mutation, see ``inbox_harvest``).
+    """
+    return {
+        "id": _new_id(),
+        "kind": kind,
+        "source": source,
+        "status": "pending",
+        "prompt": prompt,
+        "summary": summary,
+        "options": options or [],
+        "multi_select": bool(multi_select),
+        "action_ref": action_ref,
+        "risks": risks or [],
+        "refs": refs or [],
+        "trigger": trigger,
+        "harvest_key": harvest_key,
+        "context_ref": context_ref,
+        "mcp_call_id": mcp_call_id,
+        "session_id": session_id,
+        "human_turn_id": human_turn_id,
+        "created_at": _now_iso(),
+        "resolved_at": None,
+        "resolved_choice": None,
+        "resolved_selected": None,
+        "resolved_decision": None,
+        "resolved_note": None,
+    }
+
+
+def append_inbox_item(run: dict[str, Any], item: dict[str, Any]) -> dict[str, Any]:
+    """Append a built item to an in-memory run dict (caller persists)."""
+    items = inbox_items(run)
+    items.append(item)
+    run["human_inbox"] = items
+    return _sync_inbox_flag(run)
+
+
 def create_inbox_item(
     folder: Path,
     *,
@@ -102,42 +160,31 @@ def create_inbox_item(
     session_id: str | None = None,
     human_turn_id: int | None = None,
     context_ref: str | None = None,
+    trigger: str | None = None,
+    refs: list[str] | None = None,
+    harvest_key: str | None = None,
 ) -> dict[str, Any]:
     if kind == "build" and has_pending_question(read_run_meta(folder)):
         raise ValueError("pending question blocks build item creation")
 
-    item_id = _new_id()
-    created_at = _now_iso()
-    item: dict[str, Any] = {
-        "id": item_id,
-        "kind": kind,
-        "source": source,
-        "status": "pending",
-        "prompt": prompt,
-        "summary": summary,
-        "options": options or [],
-        "multi_select": bool(multi_select),
-        "action_ref": action_ref,
-        "risks": risks or [],
-        "context_ref": context_ref,
-        "mcp_call_id": mcp_call_id,
-        "session_id": session_id,
-        "human_turn_id": human_turn_id,
-        "created_at": created_at,
-        "resolved_at": None,
-        "resolved_choice": None,
-        "resolved_selected": None,
-        "resolved_decision": None,
-        "resolved_note": None,
-    }
-
-    def _add(run: dict[str, Any]) -> dict[str, Any]:
-        items = inbox_items(run)
-        items.append(item)
-        run["human_inbox"] = items
-        return _sync_inbox_flag(run)
-
-    patch_run_meta(folder, _add)
+    item = new_inbox_item(
+        kind=kind,
+        source=source,
+        prompt=prompt,
+        options=options,
+        multi_select=multi_select,
+        action_ref=action_ref,
+        summary=summary,
+        risks=risks,
+        mcp_call_id=mcp_call_id,
+        session_id=session_id,
+        human_turn_id=human_turn_id,
+        context_ref=context_ref,
+        trigger=trigger,
+        refs=refs,
+        harvest_key=harvest_key,
+    )
+    patch_run_meta(folder, lambda run: append_inbox_item(run, item))
     return item
 
 
@@ -193,6 +240,15 @@ def resolve_inbox_item(
             item["resolved_choice"] = decision
         if note is not None:
             item["resolved_note"] = note
+        if (
+            note
+            and not selected
+            and decision is None
+            and item.get("kind") == "question"
+            and not item.get("resolved_choice")
+        ):
+            item["resolved_choice"] = "freeform"
+            item["resolved_selected"] = ["freeform"]
 
         run["human_inbox"] = inbox_items(run)
         updated = dict(item)

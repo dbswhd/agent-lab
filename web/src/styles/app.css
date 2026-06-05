@@ -4092,3 +4092,45 @@ body {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.human-inbox__freeform {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  width: 100%;
+  flex-basis: 100%;
+}
+
+.human-inbox__freeform-input {
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.35;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--mac-separator);
+  background: var(--mac-bg-secondary);
+  padding: 8px 10px;
+  resize: vertical;
+  min-height: 52px;
+}
+
+.human-inbox__freeform-submit {
+  align-self: flex-start;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--mac-accent) 45%, var(--mac-separator));
+  background: color-mix(in srgb, var(--mac-accent) 12%, var(--mac-bg-secondary));
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.human-inbox__freeform-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.human-inbox__refs {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+}

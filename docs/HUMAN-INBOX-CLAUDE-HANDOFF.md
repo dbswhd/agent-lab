@@ -58,7 +58,7 @@ Execute E2E: PlanExecute dry-run (Cursor) → agent `ask_human` / `propose_build
 
 ---
 
-### M3 — Deterministic harvest → Inbox (Discuss 핵심)
+### M3 — Deterministic harvest → Inbox (Discuss 핵심) ✅ shipped
 
 **목표:** R1+R2 후 open issues / envelope CHALLENGE·AMEND → **options 없이** refs·excerpt만 Inbox question.
 

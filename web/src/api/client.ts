@@ -1197,6 +1197,8 @@ export type HumanInboxItem = {
   multi_select?: boolean;
   action_ref?: string | null;
   risks?: string[];
+  refs?: string[];
+  trigger?: string | null;
   created_at?: string;
   resolved_at?: string | null;
 };

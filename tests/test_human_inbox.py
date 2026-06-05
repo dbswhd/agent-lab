@@ -164,3 +164,25 @@ def test_build_inbox_mcp_servers(session_folder: Path):
     assert "-m" in cfg.args
     assert "agent_lab.inbox_mcp_server" in cfg.args
     assert cfg.env.get("AGENT_LAB_SESSION_FOLDER") == str(session_folder.resolve())
+
+
+def test_resolve_question_freeform_note(session_folder: Path):
+    item = create_inbox_item(
+        session_folder,
+        kind="question",
+        source="orchestrator",
+        prompt="Harvested direction?",
+        options=[],
+        trigger="T-Q1",
+    )
+    resolved = resolve_inbox_item(
+        session_folder,
+        item["id"],
+        note="Prefer VU-only scope",
+        append_chat=False,
+    )
+    assert resolved["resolved_choice"] == "freeform"
+    assert resolved["resolved_note"] == "Prefer VU-only scope"
+    line = format_human_decision(resolved)
+    assert "choice=freeform" in line.replace(" ", "")
+    assert "Prefer VU-only scope" in line

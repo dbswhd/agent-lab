@@ -1,0 +1,194 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  fetchSessionInbox,
+  resolveInboxItem,
+  type HumanInboxItem,
+} from "../api/client";
+
+type Props = {
+  sessionId: string | null;
+  onResolved?: () => void;
+  disabled?: boolean;
+};
+
+function pendingItems(items: HumanInboxItem[]): HumanInboxItem[] {
+  return items.filter((item) => item.status === "pending");
+}
+
+export function HumanInboxPanel({ sessionId, onResolved, disabled }: Props) {
+  const [items, setItems] = useState<HumanInboxItem[]>([]);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const reload = useCallback(async () => {
+    if (!sessionId) {
+      setItems([]);
+      return;
+    }
+    try {
+      const payload = await fetchSessionInbox(sessionId);
+      setItems(payload.human_inbox ?? []);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }, [sessionId]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  const pending = useMemo(() => pendingItems(items), [items]);
+  const hasPending = pending.length > 0;
+
+  useEffect(() => {
+    if (!sessionId || !hasPending) return;
+    const timer = window.setInterval(() => {
+      void reload();
+    }, 2500);
+    return () => window.clearInterval(timer);
+  }, [sessionId, hasPending, reload]);
+
+  const handleQuestion = useCallback(
+    async (item: HumanInboxItem, optionId: string) => {
+      if (!sessionId || disabled) return;
+      setBusyId(item.id);
+      try {
+        await resolveInboxItem(sessionId, item.id, { selected: [optionId] });
+        await reload();
+        onResolved?.();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [sessionId, disabled, reload, onResolved],
+  );
+
+  const handleBuild = useCallback(
+    async (item: HumanInboxItem, decision: "go" | "defer" | "reject") => {
+      if (!sessionId || disabled) return;
+      setBusyId(item.id);
+      try {
+        await resolveInboxItem(sessionId, item.id, { decision });
+        await reload();
+        onResolved?.();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [sessionId, disabled, reload, onResolved],
+  );
+
+  const handleDefer = useCallback(
+    async (item: HumanInboxItem) => {
+      if (!sessionId || disabled) return;
+      setBusyId(item.id);
+      try {
+        await resolveInboxItem(sessionId, item.id, {
+          status: "deferred",
+          decision: "defer",
+        });
+        await reload();
+        onResolved?.();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [sessionId, disabled, reload, onResolved],
+  );
+
+  if (!sessionId || pending.length === 0) {
+    return null;
+  }
+
+  const questionCount = pending.filter((item) => item.kind === "question").length;
+  const buildCount = pending.filter((item) => item.kind === "build").length;
+
+  return (
+    <div className="human-inbox" role="region" aria-label="Human Inbox">
+      <div className="human-inbox__header">
+        <span className="human-inbox__title">Human Inbox</span>
+        <span className="human-inbox__counts">
+          {questionCount > 0 ? `방향 ${questionCount}` : null}
+          {questionCount > 0 && buildCount > 0 ? " · " : null}
+          {buildCount > 0 ? `실행 ${buildCount}` : null}
+        </span>
+      </div>
+      {error ? <div className="human-inbox__error">{error}</div> : null}
+      <div className="human-inbox__items">
+        {pending.map((item) => (
+          <div
+            key={item.id}
+            className={`human-inbox__item human-inbox__item--${item.kind}`}
+          >
+            <div className="human-inbox__prompt">
+              {item.kind === "build" ? item.summary ?? item.prompt : item.prompt}
+            </div>
+            {item.action_ref ? (
+              <div className="human-inbox__meta">{item.action_ref}</div>
+            ) : null}
+            {item.kind === "question" ? (
+              <div className="human-inbox__options">
+                {(item.options ?? []).map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    className="human-inbox__option"
+                    disabled={disabled || busyId === item.id}
+                    onClick={() => void handleQuestion(item, opt.id)}
+                  >
+                    <span className="human-inbox__option-label">{opt.label}</span>
+                    {opt.description ? (
+                      <span className="human-inbox__option-desc">{opt.description}</span>
+                    ) : null}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="human-inbox__skip"
+                  disabled={disabled || busyId === item.id}
+                  onClick={() => void handleDefer(item)}
+                >
+                  건너뛰기
+                </button>
+              </div>
+            ) : (
+              <div className="human-inbox__build-actions">
+                <button
+                  type="button"
+                  className="human-inbox__go"
+                  disabled={disabled || busyId === item.id}
+                  onClick={() => void handleBuild(item, "go")}
+                >
+                  GO
+                </button>
+                <button
+                  type="button"
+                  className="human-inbox__defer"
+                  disabled={disabled || busyId === item.id}
+                  onClick={() => void handleBuild(item, "defer")}
+                >
+                  보류
+                </button>
+                <button
+                  type="button"
+                  className="human-inbox__reject"
+                  disabled={disabled || busyId === item.id}
+                  onClick={() => void handleBuild(item, "reject")}
+                >
+                  거부
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

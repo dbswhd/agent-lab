@@ -49,6 +49,7 @@ from app.server.routers import (  # noqa: E402
     agents,
     commands,
     health,
+    human_inbox,
     plan_execute,
     room,
     session_governance,
@@ -101,6 +102,7 @@ for router in (
     sessions.router,
     session_tasks.router,
     session_governance.router,
+    human_inbox.router,
     plan_execute.router,
     room.router,
 ):

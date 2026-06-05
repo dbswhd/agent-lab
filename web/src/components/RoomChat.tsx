@@ -19,7 +19,6 @@ import {
   chatLineToMessage,
   parseTranscript,
   topicAsUserMessage,
-  type ChatMessage,
 } from "../utils/transcript";
 import { AgentPicker } from "./AgentPicker";
 import { WorkspaceTabBar } from "./WorkspaceTabBar";
@@ -29,6 +28,20 @@ import {
   workspacePaletteActions,
 } from "./CommandPalette";
 import { useWorkspaceTabs } from "../hooks/useWorkspaceTabs";
+import { useSessionRunState } from "../hooks/useSessionRunState";
+import {
+  PENDING_KEY,
+  finishSessionRun,
+  getRunningSessionIds,
+  hydrateSessionMessages,
+  isSessionRunActive,
+  migratePendingSessionRun,
+  resetTurnRun,
+  resolveRunSessionKey,
+  updateSessionRun,
+  type LiveMsg,
+} from "../run/runSessionRegistry";
+import { patchTurnMessages } from "../run/runSessionSsePatch";
 import {
   getInspectorOpen,
   getInspectorWidth,
@@ -44,18 +57,14 @@ import {
   isReplyWaitRole,
   ReplyWaitingBubble,
 } from "./ChatBubble";
+import { HumanInboxPanel } from "./HumanInboxPanel";
 import { ChatComposer, type PendingFile } from "./ChatComposer";
 import { ChatPaneBody } from "./ChatPaneBody";
 import { ChatToolbar } from "./ChatToolbar";
 import { ContextSidebarToggle } from "./ContextSidebarToggle";
-import { ContextPreviewPanel } from "./ContextPreviewPanel";
-import { PlanDocument } from "./PlanDocument";
-import { PlanExecutePanel } from "./PlanExecutePanel";
-import {
-  ScrollToBottomButton,
-  useMessagesScroll,
-  useScrollToTop,
-} from "./ScrollToBottomButton";
+import { NotificationCenter, useNotificationUnread } from "./NotificationCenter";
+import { QuickSettingsPanel } from "./QuickSettingsPanel";
+import { WorkPanel } from "./WorkPanel";
 import { AgentPermissionAlert } from "./AgentPermissionAlert";
 import { useMacNotifications } from "./MacNotificationHost";
 import type { AgentPermissions } from "../utils/agentPermissions";
@@ -68,6 +77,7 @@ import {
   consensusDryRunNotifyBody,
   consensusDryRunNotifyTitle,
 } from "../utils/consensusAgreement";
+import { dispatchNotification } from "../utils/pushNotification";
 import { notifyDesktop } from "../utils/desktopNotify";
 import { buildPlanMetaView } from "../utils/planMeta";
 import { analyzePlanRefWarnings } from "../utils/planRefWarnings";
@@ -87,8 +97,7 @@ import {
 } from "../utils/turnProfile";
 import { estimateTurnCost } from "../utils/turnCostEstimate";
 import { formatRoomModelLine } from "../utils/roomModels";
-import { TurnProgressStrip } from "./TurnProgressStrip";
-import { CollapsibleGlassPanel } from "./CollapsibleGlassPanel";
+import { TurnRunPanel } from "./TurnRunPanel";
 import { ExecuteQueueBar } from "./ExecuteQueueBar";
 import { ConsensusDryRunGateBar } from "./ConsensusDryRunGateBar";
 import type { ConsensusDryRunProposal } from "./ConsensusDryRunGateBar";
@@ -105,7 +114,6 @@ import {
 } from "../utils/planExecuteHistory";
 import { SessionSetupBar } from "./SessionSetupBar";
 import { AgentSessionSettings } from "./AgentSessionSettings";
-import { PluginPanel } from "./PluginPanel";
 import {
   fetchSessionAgentCapabilities,
   fetchSessionSetupOptions,
@@ -143,15 +151,16 @@ import {
   sendReceiptLabel,
   shouldShowSendReceiptOnChatTab,
 } from "../utils/sendReceipt";
-import { PlanTabToolbar } from "./PlanTabToolbar";
 import { ComposerPreflightBar } from "./ComposerPreflightBar";
-import { RoomRunStatusBar } from "./RoomRunStatusBar";
+import {
+  ScrollToBottomButton,
+  useMessagesScroll,
+  useScrollToTop,
+} from "./ScrollToBottomButton";
 
 const LONG_RUN_HINT_MS = Number(
   import.meta.env.VITE_ROOM_LONG_RUN_HINT_MS || "180000",
 );
-
-type LiveMsg = ChatMessage & { typing?: boolean };
 
 type PartialTurnNotice = {
   failedAgents: string[];
@@ -186,6 +195,7 @@ type Props = {
   onSessionMetaRefresh?: (sessionId: string) => void | Promise<void>;
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
+  onOpenSettings?: () => void;
 };
 
 function chatFingerprint(session: SessionDetail): string {
@@ -242,15 +252,23 @@ export function RoomChat({
   onSessionMetaRefresh,
   sidebarOpen,
   onToggleSidebar,
+  onOpenSettings,
 }: Props) {
   const { push: pushMacNotification } = useMacNotifications();
   const [selected, setSelected] = useState<string[]>([]);
   const [text, setText] = useState("");
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
-  const [messages, setMessages] = useState<LiveMsg[]>([]);
-  const [running, setRunning] = useState(false);
-  const [runBusy, setRunBusy] = useState(false);
-  const [synthesizing, setSynthesizing] = useState(false);
+  const runSessionKey = sessionId ?? PENDING_KEY;
+  const {
+    messages,
+    turnMessages,
+    running,
+    runBusy,
+    synthesizing,
+    topologyDone,
+    topologyActive,
+    setSynthesizing,
+  } = useSessionRunState(runSessionKey);
   const [error, setError] = useState<string | null>(null);
   const [planActionFocusIndex, setPlanActionFocusIndex] = useState<
     number | null
@@ -272,7 +290,6 @@ export function RoomChat({
   const [planAfterSend, setPlanAfterSendState] = useState(getPlanAfterSend);
   const composeMode: ComposeMode = planAfterSend ? "plan" : "discuss";
   const [efficiencyOn, setEfficiencyOnState] = useState(getEfficiencyMode);
-  const [fullTeamConfirmed, setFullTeamConfirmed] = useState(false);
   const [researchMode, setResearchModeState] = useState(() => {
     try {
       return localStorage.getItem("agent-lab-research-mode") === "1";
@@ -305,13 +322,6 @@ export function RoomChat({
     nonce: number;
   } | null>(null);
   const highlightTimerRef = useRef<number | null>(null);
-  const [topologyDone, setTopologyDone] = useState<Set<string>>(
-    () => new Set(),
-  );
-  const [topologyActive, setTopologyActive] = useState<{
-    agent: string;
-    round: number;
-  } | null>(null);
   const [sendReceipt, setSendReceipt] = useState<string | null>(null);
   const sendReceiptTimerRef = useRef<number | null>(null);
   const [clarifierQuestions, setClarifierQuestions] = useState<string[] | null>(
@@ -346,6 +356,9 @@ export function RoomChat({
   const [agentCapsHint, setAgentCapsHint] = useState<string | null>(null);
   const [partialTurnNotice, setPartialTurnNotice] =
     useState<PartialTurnNotice | null>(null);
+  const activeSessionIdRef = useRef<string | null>(sessionId);
+  const agentCapsDirtyRef = useRef(false);
+  const agentsPickerInitRef = useRef(false);
 
   function parseAgentList(value: unknown): string[] {
     return Array.isArray(value)
@@ -390,11 +403,46 @@ export function RoomChat({
   }, []);
 
   useEffect(() => {
+    activeSessionIdRef.current = sessionId;
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (sessionId !== null) return;
+    setAgentCapabilities(cloneCapabilities(DEFAULT_AGENT_CAPABILITIES));
+    setResolvedAgentCwd({});
+    agentCapsDirtyRef.current = false;
+    agentsPickerInitRef.current = false;
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (!sessionId) {
+      setResolvedAgentCwd({});
+      return;
+    }
+    if (agentCapsDirtyRef.current) {
+      const perms = roomPermissions(selected);
+      void fetchSessionAgentCapabilities(
+        sessionId,
+        perms as Record<string, unknown>,
+      )
+        .then((r) => setResolvedAgentCwd(r.resolved_cwd ?? {}))
+        .catch(() => {});
+      return;
+    }
     const raw = session?.run?.agent_capabilities;
     if (raw && typeof raw === "object") {
       setAgentCapabilities(parseAgentCapabilities(raw));
     }
-  }, [sessionId, session?.run?.agent_capabilities]);
+    const perms = roomPermissions(selected);
+    void fetchSessionAgentCapabilities(sessionId, perms as Record<string, unknown>)
+      .then((r) => {
+        if (!raw && r.agent_capabilities) {
+          setAgentCapabilities(parseAgentCapabilities(r.agent_capabilities));
+        }
+        setResolvedAgentCwd(r.resolved_cwd ?? {});
+      })
+      .catch(() => {});
+  }, [sessionId, selected, session?.run?.agent_capabilities]);
 
   const goalView = useMemo(() => goalLoopView(session?.run), [session?.run]);
   useEffect(() => {
@@ -402,21 +450,15 @@ export function RoomChat({
     setGoalError(null);
   }, [sessionId, goalView.goal.text]);
 
-  useEffect(() => {
-    if (!sessionId) {
-      setResolvedAgentCwd({});
-      return;
-    }
-    const perms = roomPermissions(selected);
-    void fetchSessionAgentCapabilities(sessionId, perms as Record<string, unknown>)
-      .then((r) => {
-        if (r.agent_capabilities) {
-          setAgentCapabilities(parseAgentCapabilities(r.agent_capabilities));
-        }
-        setResolvedAgentCwd(r.resolved_cwd ?? {});
-      })
-      .catch(() => {});
-  }, [sessionId, selected]);
+  function effectiveSessionId(): string | null {
+    return sessionId ?? activeSessionIdRef.current;
+  }
+
+  function handleAgentCapabilitiesChange(caps: AgentCapabilitiesMap) {
+    agentCapsDirtyRef.current = true;
+    setAgentCapabilities(caps);
+    setAgentCapsHint(null);
+  }
 
   function changeTurnProfile(profile: ComposerTurnProfile) {
     setTurnProfileState(profile);
@@ -429,38 +471,47 @@ export function RoomChat({
     setPlanAfterSend(on);
   }
 
-  const refreshTasks = useCallback(() => {
-    if (!sessionId) {
-      setRoomTasks(null);
-      return;
-    }
-    setTasksLoading(true);
-    void fetchSessionTasks(sessionId)
-      .then(setRoomTasks)
-      .catch(() => setRoomTasks(null))
-      .finally(() => setTasksLoading(false));
-  }, [sessionId]);
+  const refreshTasks = useCallback(
+    (overrideId?: string | null) => {
+      const sid = overrideId ?? sessionId ?? activeSessionIdRef.current;
+      if (!sid) {
+        setRoomTasks(null);
+        return;
+      }
+      setTasksLoading(true);
+      void fetchSessionTasks(sid)
+        .then(setRoomTasks)
+        .catch(() => setRoomTasks(null))
+        .finally(() => setTasksLoading(false));
+    },
+    [sessionId],
+  );
 
-  const refreshCommands = useCallback(() => {
-    void fetchCommands(sessionId)
-      .then((res) => setSlashCommands(res.commands ?? []))
-      .catch(() => setSlashCommands([]));
-  }, [sessionId]);
+  const refreshCommands = useCallback(
+    (overrideId?: string | null) => {
+      const sid = overrideId ?? sessionId ?? activeSessionIdRef.current;
+      void fetchCommands(sid)
+        .then((res) => setSlashCommands(res.commands ?? []))
+        .catch(() => setSlashCommands([]));
+    },
+    [sessionId],
+  );
 
   useEffect(() => {
     refreshCommands();
   }, [refreshCommands]);
 
-  function refreshSessionMeta() {
-    if (!sessionId) return;
+  const refreshSessionMeta = useCallback(() => {
+    const sid = effectiveSessionId();
+    if (!sid) return;
     if (onSessionMetaRefresh) {
-      void onSessionMetaRefresh(sessionId);
+      void onSessionMetaRefresh(sid);
     } else {
-      void onSessionChange(sessionId);
+      void onSessionChange(sid);
     }
-    refreshTasks();
-    refreshCommands();
-  }
+    refreshTasks(sid);
+    refreshCommands(sid);
+  }, [onSessionMetaRefresh, onSessionChange, refreshTasks, refreshCommands]);
 
   const saveSessionGoal = useCallback(async () => {
     const text = goalText.trim();
@@ -502,13 +553,14 @@ export function RoomChat({
       );
       setResolvedAgentCwd(res.resolved_cwd ?? {});
       setAgentCapsHint("저장됨");
+      agentCapsDirtyRef.current = false;
       refreshSessionMeta();
     } catch (e) {
       setAgentCapsHint(e instanceof Error ? e.message : "저장 실패");
     } finally {
       setAgentCapsBusy(false);
     }
-  }, [sessionId, agentCapabilities]);
+  }, [sessionId, agentCapabilities, refreshSessionMeta]);
 
   useEffect(() => {
     refreshTasks();
@@ -533,8 +585,10 @@ export function RoomChat({
   const {
     workspaceTab,
     inspectorTab,
+    suggestedWorkspaceTab,
     setWorkspaceTab,
     setInspectorTab,
+    openWorkTab,
     openReviewTab,
     openPlanTab,
     openTranscriptTab,
@@ -552,11 +606,11 @@ export function RoomChat({
 
   const showExecuteQueueStrip =
     Boolean(sessionId) &&
-    workspaceTab !== "review" &&
+    workspaceTab !== "work" &&
     hasPendingExecution;
   const showConsensusDryRunGate =
     Boolean(sessionId) &&
-    workspaceTab !== "review" &&
+    workspaceTab !== "work" &&
     !showExecuteQueueStrip &&
     consensusProposal != null;
 
@@ -612,7 +666,7 @@ export function RoomChat({
     }
   }, []);
   const transcriptActive =
-    workspaceTab === "transcript" || (workspaceTab === "plan" && !planMd);
+    workspaceTab === "transcript" || (workspaceTab === "work" && !planMd);
   const typingAgents = messages.filter(
     (m) => m.typing && isReplyWaitRole(m.role),
   );
@@ -625,15 +679,10 @@ export function RoomChat({
     transcriptActive,
     `${sessionId ?? "new"}:chat`,
   );
-  const { scrollRef: planScrollRef, scrollElRef: planScrollElRef } =
+  const { scrollRef: workScrollRef, scrollElRef: workScrollElRef } =
     useScrollToTop(
-      workspaceTab === "plan" && Boolean(planMd),
-      `${sessionId ?? "new"}:plan`,
-    );
-  const { scrollRef: reviewScrollRef, scrollElRef: reviewScrollElRef } =
-    useScrollToTop(
-      workspaceTab === "review" && Boolean(sessionId),
-      `${sessionId ?? "new"}:review`,
+      workspaceTab === "work" && Boolean(sessionId),
+      `${sessionId ?? "new"}:work`,
     );
 
   const planExecutions = useMemo(
@@ -643,18 +692,12 @@ export function RoomChat({
   );
 
   useEffect(() => {
-    if (
-      (workspaceTab !== "plan" && workspaceTab !== "review") ||
-      planActionFocusIndex == null
-    ) {
+    if (workspaceTab !== "work" || planActionFocusIndex == null) {
       return;
     }
     const index = planActionFocusIndex;
     const timer = window.setTimeout(() => {
-      const root =
-        workspaceTab === "review"
-          ? reviewScrollElRef.current
-          : planScrollElRef.current;
+      const root = workScrollElRef.current;
       const el = root?.querySelector(
         `[data-plan-action-index="${index}"]`,
       );
@@ -662,9 +705,10 @@ export function RoomChat({
       setPlanActionFocusIndex(null);
     }, 80);
     return () => window.clearTimeout(timer);
-  }, [workspaceTab, planActionFocusIndex, planScrollElRef, reviewScrollElRef]);
+  }, [workspaceTab, planActionFocusIndex, workScrollElRef]);
 
   const isNew = !sessionId;
+  const notificationUnread = useNotificationUnread();
 
   const toggleInspector = useCallback(() => {
     setInspectorOpenState((current) => {
@@ -698,6 +742,10 @@ export function RoomChat({
     const row = healthAgents.find((a) => a.id === id);
     return Boolean(row && !row.ready);
   });
+  const customWorkspaceBlocked =
+    isNew &&
+    workspaceId === CUSTOM_WORKSPACE_ID &&
+    !workspacePath?.trim();
   const composerSendLocked =
     runBusy ||
     running ||
@@ -705,7 +753,7 @@ export function RoomChat({
     (loading && waitingForSession) ||
     selected.length === 0 ||
     preflightBlocked ||
-    (turnCost.requiresConfirm && !fullTeamConfirmed) ||
+    customWorkspaceBlocked ||
     (!text.trim() && pendingFiles.length === 0);
   const sessionReviewMode = Boolean(
     (session?.run?.last_turn as { review_mode?: boolean } | undefined)
@@ -714,7 +762,15 @@ export function RoomChat({
 
   useEffect(() => {
     const ready = agents.filter((a) => a.ready).map((a) => a.id);
-    setSelected(ready);
+    if (ready.length === 0) return;
+    setSelected((prev) => {
+      if (!agentsPickerInitRef.current || prev.length === 0) {
+        agentsPickerInitRef.current = true;
+        return ready;
+      }
+      const kept = prev.filter((id) => ready.includes(id));
+      return kept.length > 0 ? kept : ready;
+    });
   }, [agents]);
 
   const prevSessionIdRef = useRef<string | null>(sessionId);
@@ -724,39 +780,30 @@ export function RoomChat({
     prevSessionIdRef.current = sessionId;
 
     clearRunWatchdog();
-    setTopologyDone(new Set());
-    setTopologyActive(null);
     setPartialTurnNotice(null);
 
     if (prev === sessionId) return;
 
     if (sessionId === null) {
-      setRunBusy(false);
-      setRunning(false);
       setSynthesizing(false);
       return;
     }
 
     if (prev !== null && prev !== sessionId) {
-      setRunBusy(false);
-      setRunning(false);
-      setSynthesizing(false);
+      agentCapsDirtyRef.current = false;
+      syncedChatRef.current = "";
+      setPlanMd("");
     }
-  }, [sessionId]);
+  }, [sessionId, setSynthesizing]);
 
   useEffect(() => {
     if (sessionId !== null) return;
-    setRunning(false);
-    setRunBusy(false);
     setSynthesizing(false);
     setText("");
     setError(null);
     setPendingFiles([]);
-  }, [sessionId]);
+  }, [sessionId, setSynthesizing]);
 
-  useEffect(() => {
-    setFullTeamConfirmed(false);
-  }, [turnProfile, selected, efficiencyOn, sessionId]);
 
   useEffect(() => {
     syncedChatRef.current = "";
@@ -786,24 +833,26 @@ export function RoomChat({
   }, [session?.run?.last_turn, running, runBusy]);
 
   useEffect(() => {
-    if (running || runBusy) return;
+    if (!sessionId || !session) return;
+    if (isSessionRunActive(sessionId)) return;
 
-    if (session) {
-      const fp = chatFingerprint(session);
-      if (fp !== syncedChatRef.current) {
-        syncedChatRef.current = fp;
-        setMessages(sessionToMessages(session, sessionReviewMode));
-      }
-      setPlanMd(session.plan_md || "");
+    const fp = chatFingerprint(session);
+    if (fp !== syncedChatRef.current) {
+      syncedChatRef.current = fp;
+      hydrateSessionMessages(
+        sessionId,
+        sessionToMessages(session, sessionReviewMode),
+      );
     }
-  }, [session, running, runBusy, sessionReviewMode]);
+    setPlanMd(session.plan_md || "");
+  }, [session, sessionId, sessionReviewMode]);
 
   useEffect(() => {
-    if (sessionId !== null || running || runBusy) return;
+    if (sessionId !== null) return;
     syncedChatRef.current = "";
-    setMessages([]);
+    hydrateSessionMessages(PENDING_KEY, []);
     setPlanMd("");
-  }, [sessionId, running, runBusy]);
+  }, [sessionId]);
 
   function toggleAgent(id: string) {
     setSelected((s) =>
@@ -850,10 +899,14 @@ export function RoomChat({
 
   const handleStop = useCallback(() => {
     void cancelRoomRun().catch(() => {});
-    setRunning(false);
+    for (const id of getRunningSessionIds()) {
+      updateSessionRun(id, { running: false });
+    }
     clearRunWatchdog();
     runWatchdogRef.current = window.setTimeout(() => {
-      setRunBusy(false);
+      for (const id of getRunningSessionIds()) {
+        updateSessionRun(id, { runBusy: false });
+      }
       runWatchdogRef.current = null;
     }, 45_000);
   }, []);
@@ -881,14 +934,33 @@ export function RoomChat({
       proposal.summary,
       proposal.recommended?.what,
     );
-    pushMacNotification({ title, body });
-    notifyDesktop(title, body);
+    dispatchNotification(
+      {
+        tier: "P1",
+        title,
+        body,
+        sessionId: sessionId ?? undefined,
+        kind: proposal.recommended ? "dry_run" : "plan_sync",
+        entityId: proposal.action_key ?? proposal.excerpt,
+      },
+      pushMacNotification,
+      notifyDesktop,
+    );
   }
 
   function notifyConsensusFailure(excerpt?: string, message?: string) {
     const title = agreementPlanSyncFailedLabel(excerpt, message);
-    pushMacNotification({ title });
-    notifyDesktop(title);
+    dispatchNotification(
+      {
+        tier: "P0",
+        title,
+        sessionId: sessionId ?? undefined,
+        kind: "plan_sync_fail",
+        entityId: excerpt,
+      },
+      pushMacNotification,
+      notifyDesktop,
+    );
   }
 
   const handleConsensusDryRun = useCallback(async () => {
@@ -934,18 +1006,15 @@ export function RoomChat({
         (filesToSend.length ? attachmentSendTopic(filesToSend) : "");
       if (!sendText) return;
 
-      setTopologyDone(new Set());
-      setTopologyActive(null);
-      setRunBusy(true);
-      setRunning(true);
+      let runKey = resolveRunSessionKey(sessionId, activeSessionIdRef.current);
+      const userMsg = topicAsUserMessage(sendText);
+      resetTurnRun(runKey, userMsg);
       clearRunWatchdog();
       scheduleLongRunHint();
       setRunLockStuck(false);
       setError(null);
       setPartialTurnNotice(null);
       setClarifierQuestions(null);
-      const userMsg = topicAsUserMessage(sendText);
-      setMessages((m) => [...m, userMsg]);
       let userStopped = false;
       let activeSessionId = sessionId;
       let lastSendReceipt: string | undefined;
@@ -958,17 +1027,25 @@ export function RoomChat({
           (ev) => {
           const t = String(ev.type);
           if (t === "start" && ev.session_id) {
-            activeSessionId = String(ev.session_id);
+            activeSessionIdRef.current = String(ev.session_id);
+            activeSessionId = activeSessionIdRef.current;
+            if (runKey === PENDING_KEY || runKey !== activeSessionId) {
+              migratePendingSessionRun(activeSessionId);
+              runKey = activeSessionId;
+            }
+            if (!sessionId && onSessionMetaRefresh) {
+              void onSessionMetaRefresh(activeSessionIdRef.current);
+            }
           }
           if (t === "run_cancelled") {
             userStopped = true;
           }
           if (t === "agent_round_start" && Number(ev.round) > 1) {
             const round = Number(ev.round);
-            setTopologyActive(null);
+            updateSessionRun(runKey, { topologyActive: null });
             const rid = `round-divider-${round}`;
             const resolved = resolveTurnSend(profile, selected, efficiency);
-            setMessages((m) => [
+            patchTurnMessages(runKey, (m) => [
               ...m.filter((x) => x.id !== rid),
               {
                 id: rid,
@@ -993,7 +1070,7 @@ export function RoomChat({
               typeof ev.notice === "string"
                 ? ev.notice
                 : agreementPlanSyncedLabel(excerpt, summary);
-            setMessages((m) => [
+            patchTurnMessages(runKey, (m) => [
               ...m,
               {
                 id: `consensus-sync-${Date.now()}`,
@@ -1027,7 +1104,7 @@ export function RoomChat({
               typeof ev.excerpt === "string" ? ev.excerpt : undefined;
             const message =
               typeof ev.message === "string" ? ev.message : undefined;
-            setMessages((m) => [
+            patchTurnMessages(runKey, (m) => [
               ...m,
               {
                 id: `consensus-sync-fail-${Date.now()}`,
@@ -1044,7 +1121,7 @@ export function RoomChat({
             );
           }
           if (t === "consensus_incomplete") {
-            setMessages((m) => [
+            patchTurnMessages(runKey, (m) => [
               ...m,
               {
                 id: `consensus-inc-${Date.now()}`,
@@ -1059,8 +1136,8 @@ export function RoomChat({
           if (t === "agent_start" && ev.agent) {
             const aid = String(ev.agent);
             const round = Number(ev.round ?? 1);
-            setTopologyActive({ agent: aid, round });
-            setMessages((m) => [
+            updateSessionRun(runKey, { topologyActive: { agent: aid, round } });
+            patchTurnMessages(runKey, (m) => [
               ...m.filter((x) => x.id !== `typing-${aid}-r${round}`),
               {
                 id: `typing-${aid}-r${round}`,
@@ -1078,7 +1155,7 @@ export function RoomChat({
             const round = Number(ev.round ?? 1);
             const line = String(ev.text);
             const tid = `typing-${aid}-r${round}`;
-            setMessages((m) =>
+            patchTurnMessages(runKey, (m) =>
               m.map((msg) => {
                 if (msg.id !== tid) return msg;
                 const prev = msg.activities ?? [];
@@ -1093,13 +1170,12 @@ export function RoomChat({
           if (t === "agent_done" && ev.agent) {
             const aid = String(ev.agent);
             const round = Number(ev.round ?? 1);
-            setTopologyActive(null);
-            setTopologyDone((prev) => {
-              const n = new Set(prev);
+            updateSessionRun(runKey, (snap) => {
+              const n = new Set(snap.topologyDone);
               n.add(`${aid}:${round}`);
-              return n;
+              return { topologyActive: null, topologyDone: n };
             });
-            setMessages((m) => [
+            patchTurnMessages(runKey, (m) => [
               ...m.filter((x) => x.id !== `typing-${aid}-r${round}`),
               {
                 id: `msg-${aid}-r${round}-${Date.now()}`,
@@ -1115,7 +1191,7 @@ export function RoomChat({
           if (t === "agent_error" && ev.agent) {
             const aid = String(ev.agent);
             const round = Number(ev.round ?? 1);
-            setMessages((m) => [
+            patchTurnMessages(runKey, (m) => [
               ...m.filter((x) => x.id !== `typing-${aid}-r${round}`),
               {
                 id: `err-${aid}-r${round}-${Date.now()}`,
@@ -1129,7 +1205,7 @@ export function RoomChat({
             const aid = ev.agent ? String(ev.agent) : "";
             const reason = String(ev.reason ?? "agent_error");
             const detail = ev.message ? `: ${ev.message}` : "";
-            setMessages((m) => [
+            patchTurnMessages(runKey, (m) => [
               ...m,
               {
                 id: `turn-failed-${Date.now()}`,
@@ -1149,6 +1225,17 @@ export function RoomChat({
             if (typeof ev.send_receipt === "string") {
               lastSendReceipt = ev.send_receipt;
             }
+            dispatchNotification(
+              {
+                tier: "P2",
+                title: userStopped ? "턴 중지됨" : "턴 완료",
+                body: lastSendReceipt,
+                sessionId: activeSessionId,
+                kind: "turn_complete",
+              },
+              pushMacNotification,
+              notifyDesktop,
+            );
             if (ev.status === "partial") {
               showPartialTurnNotice(
                 parseAgentList(ev.failed_agents),
@@ -1200,6 +1287,7 @@ export function RoomChat({
           throw new Error("run failed");
         }
         if (activeSessionId) {
+          activeSessionIdRef.current = activeSessionId;
           await onSessionChange(activeSessionId);
           if (mode === "plan") {
             openPlanTab();
@@ -1225,10 +1313,8 @@ export function RoomChat({
       } finally {
         clearRunWatchdog();
         clearLongRunHint();
-        setMessages((m) => m.filter((x) => !x.typing));
-        setRunBusy(false);
-        setRunning(false);
-        if (sessionId) {
+        finishSessionRun(runKey, activeSessionId ?? undefined);
+        if (activeSessionId ?? sessionId) {
           changePlanAfterSend(false);
         }
       }
@@ -1237,6 +1323,7 @@ export function RoomChat({
       selected,
       sessionId,
       onSessionChange,
+      onSessionMetaRefresh,
       composeMode,
       turnProfile,
       efficiencyOn,
@@ -1252,9 +1339,11 @@ export function RoomChat({
     async (permissions: AgentPermissions) => {
       if (!sessionId || synthesizing) return;
       const requestId = crypto.randomUUID();
-      setSynthesizing(true);
-      setRunBusy(true);
-      setRunning(true);
+      updateSessionRun(sessionId, {
+        synthesizing: true,
+        runBusy: true,
+        running: true,
+      });
       setError(null);
       try {
         await runRoom(
@@ -1280,12 +1369,14 @@ export function RoomChat({
         setError(String(e));
       } finally {
         clearRunWatchdog();
-        setSynthesizing(false);
-        setRunBusy(false);
-        setRunning(false);
+        updateSessionRun(sessionId, {
+          synthesizing: false,
+          runBusy: false,
+          running: false,
+        });
       }
     },
-    [selected, sessionId, synthesizing, onSessionChange],
+    [selected, sessionId, synthesizing, onSessionChange, openPlanTab],
   );
 
   function handleSynthesizeNow() {
@@ -1349,10 +1440,8 @@ export function RoomChat({
     ) {
       return;
     }
-    if (turnCost.requiresConfirm && !fullTeamConfirmed) return;
     void executeSend(msg, pendingFiles, roomPermissions(selected));
     setText("");
-    setFullTeamConfirmed(false);
   }
 
   const focusPlanAction = (actionIndex: number) => {
@@ -1477,12 +1566,10 @@ export function RoomChat({
         },
         {
           id: "open-plugins",
-          label: "Open plugin panel",
-          hint: "Inspector settings",
+          label: "Open settings",
+          hint: "Agent · Context · Plugins",
           run: () => {
-            setInspectorTab("settings");
-            setInspectorOpenState(true);
-            setInspectorOpen(true);
+            onOpenSettings?.();
           },
         },
         {
@@ -1491,7 +1578,7 @@ export function RoomChat({
           run: () => focusComposerInput(),
         },
       ]),
-    [setWorkspaceTab, running, handleStop, handleReleaseRunLock],
+    [setWorkspaceTab, running, handleStop, handleReleaseRunLock, onOpenSettings],
   );
 
   const sessionArtifacts = roomTasks?.artifacts ?? [];
@@ -1526,6 +1613,7 @@ export function RoomChat({
               <ContextSidebarToggle
                 open={inspectorOpen}
                 onToggle={toggleInspector}
+                badgeCount={notificationUnread}
               />
             ) : null}
           </>
@@ -1555,21 +1643,21 @@ export function RoomChat({
       {isNew ? (
         <AgentSessionSettings
           capabilities={agentCapabilities}
-          onChange={setAgentCapabilities}
+          onChange={handleAgentCapabilitiesChange}
           resolvedCwd={resolvedAgentCwd}
           selectedAgents={selected}
           disabled={running || runBusy}
           compact={false}
           onSave={sessionId ? () => saveAgentCapabilities() : undefined}
           saveBusy={agentCapsBusy}
-          saveHint="첫 메시지 전송 시 세션에 함께 저장됩니다"
+          saveHint={agentCapsHint ?? "첫 메시지 전송 시 세션에 함께 저장됩니다"}
         />
       ) : null}
 
       <WorkspaceTabBar
         active={workspaceTab}
         onChange={setWorkspaceTab}
-        disabled={running && runBusy}
+        suggestedTab={suggestedWorkspaceTab}
         reviewPending={pendingExecuteCount > 0 || consensusProposal != null}
         isNew={isNew}
         trailing={
@@ -1650,7 +1738,7 @@ export function RoomChat({
             compact
             onApprove={() => void planExecute.approve()}
             onReject={() => void planExecute.reject()}
-            onOpenPlan={openReviewTab}
+            onOpenPlan={openWorkTab}
           />
         </div>
       ) : null}
@@ -1662,172 +1750,67 @@ export function RoomChat({
             busy={consensusGateBusy || executeBusy}
             disabled={running || synthesizing || runBusy}
             onDryRun={handleConsensusDryRun}
-            onOpenPlan={openReviewTab}
+            onOpenPlan={openWorkTab}
             onDismiss={dismissConsensusProposal}
           />
         </div>
       ) : null}
 
-      {workspaceTab === "plan" && planMd ? (
+      {workspaceTab === "work" && sessionId ? (
         <div
-          className="messages-scroll messages-scroll--document workspace-panel--plan"
-          ref={planScrollRef}
+          className="messages-scroll messages-scroll--document workspace-panel--work"
+          ref={workScrollRef}
         >
-          <div className="plan-tab-cluster workspace-document-panel">
-          <div className="workspace-document-panel__header">
-            <strong>Plan</strong>
-            <span>Readable plan document</span>
-          </div>
-          <PlanTabToolbar
-            planAfterSend={planAfterSend}
-            onPlanAfterSendChange={changePlanAfterSend}
-            synthesizing={synthesizing}
-            running={running}
-            disabled={runBusy}
-            onSynthesizeNow={handleSynthesizeNow}
-            planMeta={planMeta}
-          />
-          {planMeta.pendingAgreement || planMeta.reviewTurnLabel ? (
-            <CollapsibleGlassPanel
-              className="plan-detail-panel"
-              title="plan 알림"
-              summary={
-                planMeta.pendingAgreement
-                  ? "합의 반영 재시도 필요"
-                  : planMeta.reviewTurnLabel ?? "plan 상세"
-              }
-              variant={planMeta.pendingAgreement ? "warn" : "default"}
-              defaultOpen={Boolean(planMeta.pendingAgreement)}
-            >
-              {planMeta.pendingAgreement ? (
-                <div className="plan-meta-bar plan-meta-bar--sync_failed">
-                  <p className="plan-meta-bar__line">{planMeta.freshnessLabel}</p>
-                  <button
-                    type="button"
-                    className="room-plan-btn room-plan-btn--accent"
-                    disabled={running || synthesizing}
-                    onClick={handleSynthesizeNow}
-                  >
-                    {synthesizing ? "정리 중…" : "다시 정리"}
-                  </button>
-                </div>
-              ) : null}
-              {planMeta.reviewTurnLabel ? (
-                <span className="plan-meta-bar__review-badge">
-                  {planMeta.reviewTurnLabel}
-                </span>
-              ) : null}
-              {planMeta.chatLineLabel ? (
-                <p className="plan-detail-panel__lines">
-                  출처 {planMeta.chatLineLabel} · {planMeta.agentsLabel}
-                </p>
-              ) : null}
-            </CollapsibleGlassPanel>
-          ) : null}
-          {planRefWarnings.bannerText ? (
-            <CollapsibleGlassPanel
-              className="plan-ref-warn-panel"
-              title="ref 경고"
-              summary={planRefWarnings.bannerText}
-              variant="warn"
-              defaultOpen={false}
-            >
-              <p className="plan-ref-warn-panel__text">
-                {planRefWarnings.bannerText}
-              </p>
-            </CollapsibleGlassPanel>
-          ) : null}
-          <PlanDocument
-            planMd={planMd}
-            skipExecuteSections
-            onRefClick={handlePlanRefClick}
-          />
-          </div>
-        </div>
-      ) : workspaceTab === "plan" ? (
-        <div className="workspace-empty-state">plan.md가 아직 없습니다.</div>
-      ) : null}
-
-      {workspaceTab === "review" && sessionId ? (
-        <div
-          className="messages-scroll messages-scroll--document workspace-panel--review"
-          ref={reviewScrollRef}
-        >
-          <div className="plan-tab-cluster workspace-document-panel">
-            <div className="workspace-document-panel__header workspace-document-panel__header--review">
-              <strong>Review</strong>
-              <span>Dry-run diff and approval queue</span>
-            </div>
-            {planExecute.activePending ? (
-              <ExecuteQueueBar
-                pending={planExecute.activePending}
-                storedActions={
-                  (session?.run?.actions as StoredPlanAction[]) ?? []
-                }
-                busy={executeBusy}
-                disabled={running || synthesizing || runBusy}
-                onApprove={() => void planExecute.approve()}
-                onReject={() => void planExecute.reject()}
-                onOpenPlan={openPlanTab}
-              />
-            ) : null}
-            {consensusProposal ? (
-              <ConsensusDryRunGateBar
-                proposal={consensusProposal}
-                busy={consensusGateBusy || executeBusy}
-                disabled={running || synthesizing || runBusy}
-                onDryRun={handleConsensusDryRun}
-                onOpenPlan={openPlanTab}
-                onDismiss={dismissConsensusProposal}
-              />
-            ) : null}
-            <PlanExecutePanel
-              sessionId={sessionId}
-              run={session?.run}
-              linkedTasks={roomTasks?.tasks}
-              cursorReady={agents.some((a) => a.id === "cursor" && a.ready)}
-              disabled={running || synthesizing || runBusy}
-              onChatRefClick={handlePlanRefClick}
-              onFocusTask={focusTask}
-              onFocusObjection={focusObjection}
-              onUpdated={() => {
-                if (!sessionId) return;
-                if (onSessionMetaRefresh) {
-                  void onSessionMetaRefresh(sessionId);
-                } else {
-                  void onSessionChange(sessionId);
-                }
-              }}
-            />
-          </div>
+          <WorkPanel
+          sessionId={sessionId}
+          session={session}
+          planMd={planMd}
+          planMeta={planMeta}
+          planRefWarnings={planRefWarnings}
+          planAfterSend={planAfterSend}
+          onPlanAfterSendChange={changePlanAfterSend}
+          synthesizing={synthesizing}
+          running={running}
+          runBusy={runBusy}
+          onSynthesizeNow={handleSynthesizeNow}
+          hasPendingExecution={hasPendingExecution}
+          consensusProposal={consensusProposal}
+          consensusGateBusy={consensusGateBusy}
+          executeBusy={executeBusy}
+          onConsensusDryRun={() => void handleConsensusDryRun()}
+          onDismissConsensus={dismissConsensusProposal}
+          onApproveExecute={() => void planExecute.approve()}
+          onRejectExecute={() => void planExecute.reject()}
+          onPlanRefClick={handlePlanRefClick}
+          onFocusTask={focusTask}
+          onFocusObjection={focusObjection}
+          onSessionUpdated={refreshSessionMeta}
+          roomTasks={roomTasks}
+          cursorReady={agents.some((a) => a.id === "cursor" && a.ready)}
+          storedActions={(session?.run?.actions as StoredPlanAction[]) ?? []}
+          activePending={planExecute.activePending}
+        />
         </div>
       ) : null}
 
       {workspaceTab === "run" && !isNew ? (
         <div className="messages-scroll messages-scroll--document workspace-panel--run">
-          <div className="workspace-document-panel">
-            <div className="workspace-document-panel__header workspace-document-panel__header--run">
-              <strong>Run</strong>
-              <span>Current orchestration progress</span>
-            </div>
-            <div className="run-progress-slot" aria-live="polite">
-              <TurnProgressStrip
-                totalRounds={turnResolved.agentRounds}
-                reviewMode={turnResolved.reviewMode}
-                agents={turnResolved.agents}
-                doneKeys={topologyDone}
-                active={topologyActive}
-              />
-            </div>
-            {running ? (
-              <p className="workspace-empty-state" role="status">
-                에이전트 턴 실행 중…
-              </p>
-            ) : (
-              <p className="workspace-empty-state">
-                실행 중이 아닙니다. 새 메시지를 내면 Run 탭에서 topology가 표시됩니다.
-              </p>
-            )}
+          <div className="workspace-document-panel workspace-document-panel--run-turn">
+            <TurnRunPanel
+              totalRounds={turnResolved.agentRounds}
+              reviewMode={turnResolved.reviewMode}
+              agents={turnResolved.agents}
+              doneKeys={topologyDone}
+              active={topologyActive}
+              turnMessages={turnMessages}
+              running={running}
+              runBusy={runBusy}
+              longRunning={longRunning}
+              runLockStuck={runLockStuck}
+              releasingLock={releasingLock}
+              onStop={handleStop}
+              onReleaseLock={() => void handleReleaseRunLock()}
+            />
           </div>
         </div>
       ) : null}
@@ -1913,6 +1896,7 @@ export function RoomChat({
                   key={m.id}
                   className={[
                     "chat-line",
+                    m.role === "you" || m.sent ? "chat-line--you" : undefined,
                     m.peerChannel ? "chat-line--peer" : undefined,
                     m.humanSynthesis ? "chat-line--synthesis" : undefined,
                     highlighted ? "chat-line--highlight" : undefined,
@@ -1933,12 +1917,13 @@ export function RoomChat({
               );
             })}
             {pendingReplyAgents.map((a) => (
-              <ReplyWaitingBubble
-                key={a.id}
-                agent={a.role}
-                label={a.label}
-                activities={[]}
-              />
+              <div key={a.id} className="chat-line">
+                <ReplyWaitingBubble
+                  agent={a.role}
+                  label={a.label}
+                  activities={[]}
+                />
+              </div>
             ))}
             </div>
           </div>
@@ -1992,11 +1977,17 @@ export function RoomChat({
 
       <ComposerPreflightBar agents={healthAgents} selected={selected} />
 
+      <HumanInboxPanel
+        sessionId={sessionId}
+        onResolved={refreshSessionMeta}
+        disabled={running || synthesizing || runBusy}
+      />
+
       <ChatComposer
         className={[
           turnProfile === "review" ? "composer--review" : undefined,
           turnProfile === "free" ? "composer--free" : undefined,
-          efficiencyOn ? "composer--efficiency" : undefined,
+          efficiencyOn ? "composer--efficient" : undefined,
           composerModeVariant === "consensus" ? "composer--consensus-mode" : undefined,
         ]
           .filter(Boolean)
@@ -2031,18 +2022,7 @@ export function RoomChat({
         objectionNotice={composerObjectionNotice}
         onFocusObjection={focusObjection}
         turnCostHint={turnCost.compactLabel}
-        fullTeamConfirm={
-          turnCost.requiresConfirm
-            ? {
-                required: true,
-                checked: fullTeamConfirmed,
-                label: `${turnCost.estimatedAgentCalls}회 호출 이해함`,
-                detail: "풀 팀 실행은 이번 턴에만 확인합니다.",
-                disabled: composerInputLocked || running || runBusy || synthesizing,
-                onChange: setFullTeamConfirmed,
-              }
-            : null
-        }
+        fullTeamConfirm={null}
       />
 
       {commandHint ? (
@@ -2083,21 +2063,15 @@ export function RoomChat({
         <InspectorPane
           active={inspectorTab}
           onChange={setInspectorTab}
-          disabled={runBusy && running}
           open={inspectorOpen}
           width={inspectorWidth}
           onWidthChange={setInspectorWidthState}
           onWidthCommit={commitInspectorWidth}
         >
-          {inspectorTab === "context" ? (
-            <ContextPreviewPanel
-              sessionId={sessionId}
-              session={session}
-              selectedAgents={selected}
-              turnProfile={turnProfile}
-              efficiencyOn={efficiencyOn}
-              disabled={running}
-            />
+          {inspectorTab === "activity" ? (
+            <div className="inspector-pane__section inspector-pane__section-card">
+              <NotificationCenter />
+            </div>
           ) : null}
           {inspectorTab === "tasks" ? (
             <div className="inspector-pane__section inspector-pane__section-card">
@@ -2183,42 +2157,13 @@ export function RoomChat({
               />
             </div>
           ) : null}
-          {inspectorTab === "run" ? (
+          {inspectorTab === "quick" ? (
             <div className="inspector-pane__section inspector-pane__section-card">
-              <RoomRunStatusBar
-                longRunning={longRunning && running}
-                runLockStuck={runLockStuck && !running}
-                onCancel={handleStop}
-                onReleaseLock={() => void handleReleaseRunLock()}
-                releasing={releasingLock}
-              />
-              <p className="inspector-pane__empty" role="status">
-                {running
-                  ? "실행 중 · Workspace Run 탭에서 topology를 확인하세요."
-                  : runLockStuck
-                    ? "실행 잠금이 남아 있습니다. 해제하거나 새 턴을 시작하세요."
-                    : "대기 중"}
-              </p>
-            </div>
-          ) : null}
-          {inspectorTab === "settings" ? (
-            <div className="inspector-pane__section inspector-pane__section-card">
-              <AgentSessionSettings
+              <QuickSettingsPanel
                 capabilities={agentCapabilities}
-                onChange={setAgentCapabilities}
                 resolvedCwd={resolvedAgentCwd}
                 selectedAgents={selected}
-                disabled={running || runBusy}
-                compact={false}
-                onSave={sessionId ? () => saveAgentCapabilities() : undefined}
-                saveBusy={agentCapsBusy}
-                saveHint={agentCapsHint}
-              />
-              <PluginPanel
-                sessionId={sessionId}
-                commands={slashCommands}
-                onPrefillSlash={requestComposerPrefill}
-                disabled={running || runBusy}
+                onOpenFullSettings={onOpenSettings}
               />
             </div>
           ) : null}

@@ -105,6 +105,27 @@ class PlanExecuteReviseRequest(BaseModel):
     permissions: dict[str, Any] = Field(default_factory=dict)
 
 
+class HumanInboxCreateRequest(BaseModel):
+    kind: Literal["question", "build"]
+    prompt: str = Field(..., min_length=1, max_length=4000)
+    source: str | None = Field(default="manual")
+    options: list[dict[str, Any]] = Field(default_factory=list)
+    multi_select: bool = False
+    action_ref: str | None = None
+    summary: str | None = None
+    risks: list[str] = Field(default_factory=list)
+    human_turn_id: int | None = None
+    context_ref: str | None = None
+
+
+class HumanInboxResolveRequest(BaseModel):
+    selected: list[str] | None = None
+    decision: Literal["go", "defer", "reject"] | None = None
+    note: str | None = None
+    status: Literal["resolved", "deferred", "rejected"] | None = None
+    append_chat: bool = True
+
+
 class PlanExecuteIsolationOverrideRequest(BaseModel):
     execution_id: str = Field(..., min_length=1)
     mode: str = Field(..., min_length=1)

@@ -2314,6 +2314,9 @@ def continue_room_round(
     human_turn_index = _human_turn_count(messages)
     messages.append(ChatMessage(role="user", agent=None, content=body))
     human_turn_num = _human_turn_count(messages)
+    from agent_lab.human_inbox import supersede_pending_inbox
+
+    supersede_pending_inbox(folder, human_turn_id=human_turn_num)
     active_agents = [a for a in (agents or available_agents())]
     mode = "plan" if synthesize else "discuss"
     review_advocate = (

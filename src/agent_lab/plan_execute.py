@@ -575,17 +575,32 @@ def list_plan_actions(
     }
 
 
+def _inbox_mcp_instructions(action: PlanAction) -> str:
+    action_key = f"{action.kind}:{action.index}"
+    return f"""
+Human Inbox MCP (agent-lab-inbox) — mandatory for direction and GO:
+- Before ANY file edits: plan-first phase. Draft a short execution plan from the approved plan.md.
+- If blocked on direction, call `ask_human` with question + at least 2 options (never ask in prose).
+- When the execution plan is ready, call `propose_build` with summary + action_ref="{action_key}" and wait for Human GO.
+- Only after `propose_build` returns decision=go may you edit files (implement phase).
+- If decision is defer or reject, stop without editing files.
+- During implement, if blocked again, use `ask_human` only.
+"""
+
+
 def _cursor_execute_prompt(
     action: PlanAction,
     *,
     expected_paths: list[str] | None = None,
     verify: str | None = None,
     revise_request: dict[str, Any] | None = None,
+    inbox_mcp: bool = False,
 ) -> str:
     expected = ", ".join(expected_paths or action.expected_paths()) or action.where
     verify_line = verify if verify is not None else action.verify
+    inbox_block = _inbox_mcp_instructions(action) if inbox_mcp else ""
     prompt = f"""Agent Lab thin execute — implement exactly one plan action.
-
+{inbox_block}
 Phase 1 — implement (tools expected):
 - Change only what is needed for this action.
 - Prefer paths listed in "어디서": {expected}
@@ -669,6 +684,8 @@ def _call_execute_agent(
     cwd: Path,
     on_activity: Any,
     verify: str,
+    session_folder: Path | None = None,
+    inbox_mcp: bool = False,
 ) -> str:
     system = "You implement approved plan actions with minimal scope."
     if agent_id == "cursor":
@@ -681,6 +698,8 @@ def _call_execute_agent(
             cwd=cwd,
             on_activity=on_activity,
             follow_ups=_verify_follow_ups(verify),
+            session_folder=session_folder,
+            inbox_mcp=inbox_mcp,
         )
 
     from agent_lab.agents.codex_agent import respond
@@ -957,6 +976,8 @@ def run_dry_run(
         if label and (not activity_log or activity_log[-1] != label):
             activity_log.append(label)
 
+    use_inbox_mcp = executor_id == "cursor"
+
     try:
         agent_response = _call_execute_agent(
             executor_id,
@@ -965,11 +986,14 @@ def run_dry_run(
                 expected_paths=source_path_inputs,
                 verify=verify_for_agent,
                 revise_request=revise_request,
+                inbox_mcp=use_inbox_mcp,
             ),
             permissions=effective_permissions,
             cwd=cwd,
             on_activity=_on_activity,
             verify=verify_for_agent,
+            session_folder=folder,
+            inbox_mcp=use_inbox_mcp,
         )
     except Exception as e:
         restore_snapshot(folder, exec_id=exec_id, cwd=cwd, manifest=manifest)

@@ -1179,3 +1179,58 @@ export function overridePlanExecutionIsolation(
     },
   ) as Promise<{ ok: boolean; execution: PlanExecutionRecord }>;
 }
+
+export type HumanInboxOption = {
+  id: string;
+  label: string;
+  description?: string;
+};
+
+export type HumanInboxItem = {
+  id: string;
+  kind: "question" | "build";
+  source?: string;
+  status: "pending" | "resolved" | "deferred" | "superseded" | "rejected" | "timeout";
+  prompt: string;
+  summary?: string | null;
+  options?: HumanInboxOption[];
+  multi_select?: boolean;
+  action_ref?: string | null;
+  risks?: string[];
+  created_at?: string;
+  resolved_at?: string | null;
+};
+
+export type HumanInboxPayload = {
+  ok: boolean;
+  session_id: string;
+  human_inbox: HumanInboxItem[];
+  inbox_pending: boolean;
+  pending_count: number;
+  pending_questions: number;
+  pending_builds: number;
+};
+
+export async function fetchSessionInbox(sessionId: string): Promise<HumanInboxPayload> {
+  return json<HumanInboxPayload>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/inbox`,
+  );
+}
+
+export async function resolveInboxItem(
+  sessionId: string,
+  itemId: string,
+  body: {
+    selected?: string[];
+    decision?: "go" | "defer" | "reject";
+    note?: string;
+    status?: "resolved" | "deferred" | "rejected";
+    append_chat?: boolean;
+  },
+): Promise<HumanInboxPayload & { human_decision?: string; item: HumanInboxItem }> {
+  return json(`/api/sessions/${encodeURIComponent(sessionId)}/inbox/${encodeURIComponent(itemId)}/resolve`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}

@@ -87,3 +87,5 @@ def test_envelope_protocol_block_includes_efficiency_and_discuss():
     assert "회의 · R2+ 순차" in block
     assert "ENDORSE" in block
     assert "PASS" in block
+    assert "decision-fork" in block
+    assert "refs" in block

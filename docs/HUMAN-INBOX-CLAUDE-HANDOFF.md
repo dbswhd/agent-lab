@@ -81,7 +81,7 @@ Execute E2E: PlanExecute dry-run (Cursor) → agent `ask_human` / `propose_build
 
 ---
 
-### M4 — FORK + Facilitator + sync pause
+### M4 — FORK + Facilitator + sync pause ✅ shipped (sync pause follow-up)
 
 **목표:** `DECISION-FORK` envelope ref-anchored options; Facilitator = Claude **read-only 1-call** synthesizer.
 

@@ -134,6 +134,65 @@ def envelope_act(envelope: dict[str, Any] | AgentEnvelope | None) -> ActType | N
     return None
 
 
+# --- DECISION-FORK (M4) — ref-anchored options for Human Inbox ----------------
+
+_FORK_FENCE = re.compile(
+    r"```decision-fork\s*\n(.*?)\n```",
+    re.DOTALL | re.IGNORECASE,
+)
+
+
+@dataclass(frozen=True)
+class ForkOption:
+    label: str
+    refs: tuple[str, ...] = ()
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"label": self.label, "refs": list(self.refs)}
+
+
+@dataclass(frozen=True)
+class DecisionFork:
+    """A structured Human-direction fork an agent raises (parallel to envelope acts)."""
+
+    topic: str
+    options: tuple[ForkOption, ...]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"topic": self.topic, "options": [o.to_dict() for o in self.options]}
+
+
+def parse_decision_forks(text: str) -> list[DecisionFork]:
+    """Parse ```decision-fork fenced JSON blocks. Pure, lenient, no LLM.
+
+    Each block: ``{"topic": str, "options": [{"label": str, "refs": [str, ...]}]}``.
+    Malformed JSON, missing topic, or empty options are skipped.
+    """
+    out: list[DecisionFork] = []
+    for m in _FORK_FENCE.finditer(text or ""):
+        try:
+            data = json.loads(m.group(1).strip())
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(data, dict):
+            continue
+        topic = str(data.get("topic") or data.get("question") or "").strip()
+        options: list[ForkOption] = []
+        for raw in data.get("options") or []:
+            if not isinstance(raw, dict):
+                continue
+            label = str(raw.get("label") or "").strip()
+            if not label:
+                continue
+            refs = tuple(
+                str(r).strip() for r in (raw.get("refs") or []) if str(r).strip()
+            )
+            options.append(ForkOption(label=label[:120], refs=refs))
+        if topic and options:
+            out.append(DecisionFork(topic=topic[:200], options=tuple(options)))
+    return out
+
+
 def classify_consensus_reply(
     text: str,
     envelope: dict[str, Any] | AgentEnvelope | None = None,
@@ -213,6 +272,20 @@ After the fence, write the normal readable reply for the Human.
 - Always use the fence JSON so peers and turn_state can skip re-reading long prose.
 """
 
+DECISION_FORK_GUIDANCE = """\
+[DECISION-FORK — Human direction (optional, end of reply)]
+When the **Human** must pick between concrete directions (not peer-only debate), add **one** fenced block **after** your readable body:
+
+```decision-fork
+{"topic":"short question for Human","options":[{"label":"Option A","refs":["L42"]},{"label":"Option B","refs":["L55"]}]}
+```
+
+Rules:
+- **≥2 options**, each with **≥1 ref** (`chat.jsonl#Ln` as `L42`, or task id). Options without refs are **dropped** — do not invent.
+- Use for real forks the Human must resolve; do not duplicate a plain `CHALLENGE` with no choices.
+- Topic = one line question shown in Human Inbox.
+"""
+
 
 def envelope_protocol_block(*, context: str = "consensus") -> str:
     labels = {
@@ -221,4 +294,6 @@ def envelope_protocol_block(*, context: str = "consensus") -> str:
         "discuss": "회의 · R2+ 순차 (동료 답변 반영)",
     }
     label = labels.get(context, context)
-    return f"{ENVELOPE_FORMAT_GUIDANCE}\n(Context: {label})"
+    return (
+        f"{ENVELOPE_FORMAT_GUIDANCE}\n\n{DECISION_FORK_GUIDANCE}\n(Context: {label})"
+    )

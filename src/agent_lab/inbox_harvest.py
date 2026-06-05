@@ -5,11 +5,13 @@ No LLM Facilitator, no options — refs + excerpt only. Mirrors
 ``run_meta`` dict (the caller persists it), so it never races the wholesale
 run.json write that follows the turn-harvest block in ``room.py``.
 
-Sources (RFC §5.4 / §5.5, 1단 deterministic harvest):
-- envelope ``CHALLENGE`` / ``AMEND`` in the current turn  → ``T-Q1``
-- ``plan.md`` OPEN bullets                               → ``T-Q2``
+Sources (RFC §5.4 / §5.5):
+- ``DECISION-FORK`` blocks → ref-anchored option questions (M4, ``inbox_facilitator``)  → ``T-Q1``
+- envelope ``CHALLENGE`` / ``AMEND`` in the current turn → option-less question (M3)     → ``T-Q1``
+- ``plan.md`` OPEN bullets → option-less question (M3)                                    → ``T-Q2``
 
-Options synthesis (FORK + Facilitator) is **M4** — not here.
+FORK candidates carry options from the deterministic Facilitator merge; the M3
+CHALLENGE/AMEND/plan-OPEN sources stay option-less.
 """
 
 from __future__ import annotations
@@ -33,13 +35,18 @@ _PROMPT_CHARS = 160
 
 @dataclass(frozen=True)
 class InboxQuestionCandidate:
-    """A deterministic harvest hit — prompt + supporting refs/excerpt, no options."""
+    """A deterministic harvest hit — prompt + refs/excerpt.
+
+    ``options`` is empty for M3 sources (CHALLENGE/AMEND, plan OPEN). M4 FORK
+    candidates carry ref-anchored options from the Facilitator.
+    """
 
     prompt: str
     excerpt: str
     refs: tuple[str, ...]
     trigger: str
     harvest_key: str
+    options: tuple[dict[str, Any], ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -48,6 +55,7 @@ class InboxQuestionCandidate:
             "refs": list(self.refs),
             "trigger": self.trigger,
             "harvest_key": self.harvest_key,
+            "options": [dict(o) for o in self.options],
         }
 
 
@@ -131,13 +139,50 @@ def _plan_open_candidates(plan_md: str) -> list[InboxQuestionCandidate]:
     return out
 
 
+def _fork_candidates(messages: list[Any]) -> list[InboxQuestionCandidate]:
+    """M4: DECISION-FORK blocks → ref-anchored option questions (Facilitator)."""
+    from agent_lab.agent_envelope import parse_decision_forks
+    from agent_lab.inbox_facilitator import facilitate
+
+    forks = []
+    for m in _turn_messages(messages):
+        if getattr(m, "role", None) != "agent":
+            continue
+        agent = str(getattr(m, "agent", "") or "").strip().lower()
+        if agent not in _AGENT_IDS:
+            continue
+        forks.extend(parse_decision_forks(getattr(m, "content", "") or ""))
+
+    out: list[InboxQuestionCandidate] = []
+    for q in facilitate(forks):
+        out.append(
+            InboxQuestionCandidate(
+                prompt=q.prompt[:_PROMPT_CHARS],
+                excerpt="",
+                refs=q.refs,
+                trigger="T-Q1",
+                harvest_key=q.harvest_key,
+                options=q.options,
+            )
+        )
+    return out
+
+
 def harvest_question_candidates(
     messages: list[Any],
     *,
     plan_md: str = "",
 ) -> list[InboxQuestionCandidate]:
-    """Pure deterministic harvest — no I/O, no LLM, no options. Deduped + capped."""
-    raw = _challenge_amend_candidates(messages) + _plan_open_candidates(plan_md)
+    """Pure deterministic harvest — no I/O, no LLM synthesis. Deduped + capped.
+
+    FORK candidates (with ref-anchored options) take priority over option-less
+    CHALLENGE/AMEND and plan OPEN candidates.
+    """
+    raw = (
+        _fork_candidates(messages)
+        + _challenge_amend_candidates(messages)
+        + _plan_open_candidates(plan_md)
+    )
     seen: set[str] = set()
     out: list[InboxQuestionCandidate] = []
     for c in raw:
@@ -187,8 +232,8 @@ def harvest_discuss_questions(
             kind="question",
             source="orchestrator",
             prompt=c.prompt,
-            options=[],
-            summary=c.excerpt,
+            options=[dict(o) for o in c.options],
+            summary=c.excerpt or None,
             context_ref=(c.refs[0] if c.refs else None),
             trigger=c.trigger,
             refs=list(c.refs),

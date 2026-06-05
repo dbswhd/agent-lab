@@ -109,17 +109,18 @@ Execute E2E: PlanExecute dry-run (Cursor) → agent `ask_human` / `propose_build
 
 ---
 
-### M6 — Codex executor MCP bridge
+### M6 — Codex executor MCP bridge ✅ shipped (`046c1e4`)
 
 **목표:** Cursor와 **동일 Inbox contract**; Codex JSONL tool events → Inbox.
 
 | 파일 | 작업 |
 |------|------|
-| `src/agent_lab/codex_cli.py` | MCP/tool event parsing |
-| `src/agent_lab/agents/codex_agent.py` | `--mcp-config` or equivalent + session folder env |
-| `plan_execute.py` | `inbox_mcp` for codex executor |
+| `cursor_inbox_mcp.py` | `inbox_mcp_stdio_spec()`, `build_codex_inbox_mcp_config_args()`, `execute_inbox_mcp_enabled()` |
+| `src/agent_lab/codex_cli.py` | MCP attach via `-c`, `mcp_tool_call` JSONL labels |
+| `src/agent_lab/agents/codex_agent.py` | `session_folder` / `inbox_mcp` params |
+| `plan_execute.py` | `inbox_mcp` for codex executor (dry-run) |
 
-**주의:** Cursor MCP “미지원”은 **사실 오류** — Codex 쪽만 진짜 갭.
+**주의:** Cursor MCP “미지원”은 **사실 오류** — Codex 쪽 갭은 M6에서 닫힘. Live E2E는 Codex CLI + auth 필요.
 
 ---
 

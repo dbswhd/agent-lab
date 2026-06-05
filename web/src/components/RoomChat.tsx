@@ -604,6 +604,11 @@ export function RoomChat({
     },
   });
 
+  const handleInboxBuildStarted = useCallback(() => {
+    openReviewTab();
+    refreshSessionMeta();
+  }, [openReviewTab, refreshSessionMeta]);
+
   const showExecuteQueueStrip =
     Boolean(sessionId) &&
     workspaceTab !== "work" &&
@@ -1980,6 +1985,7 @@ export function RoomChat({
       <HumanInboxPanel
         sessionId={sessionId}
         onResolved={refreshSessionMeta}
+        onBuildStarted={handleInboxBuildStarted}
         disabled={running || synthesizing || runBusy}
       />
 

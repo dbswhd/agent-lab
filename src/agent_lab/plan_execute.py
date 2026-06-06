@@ -588,6 +588,74 @@ Human Inbox MCP (agent-lab-inbox) — mandatory for direction and GO:
 """
 
 
+def _cursor_plan_phase_prompt(
+    action: PlanAction,
+    *,
+    expected_paths: list[str] | None = None,
+    verify: str | None = None,
+) -> str:
+    expected = ", ".join(expected_paths or action.expected_paths()) or action.where
+    verify_line = verify if verify is not None else action.verify
+    inbox_block = _inbox_mcp_instructions(action)
+    return f"""Agent Lab execute — plan-first phase ONLY (no file edits yet).
+{inbox_block}
+Plan action (from approved plan.md):
+- 무엇을: {action.what}
+- 어디서: {expected}
+- 검증: {verify_line}
+
+Phase 0 — plan-first:
+- Read the repo as needed; draft a short execution plan for this action.
+- If blocked on direction, call `ask_human` with at least 2 options (never ask in prose).
+- When ready, call `propose_build` with summary + action_ref and STOP — do not edit files until Human GO."""
+
+
+def _cursor_implement_phase_prompt(
+    action: PlanAction,
+    *,
+    expected_paths: list[str] | None = None,
+    verify: str | None = None,
+    revise_request: dict[str, Any] | None = None,
+) -> str:
+    expected = ", ".join(expected_paths or action.expected_paths()) or action.where
+    verify_line = verify if verify is not None else action.verify
+    prompt = f"""Agent Lab execute — implement phase (Human GO received).
+
+Phase 1 — implement (tools expected):
+- Change only what is needed for this action.
+- Prefer paths listed in "어디서": {expected}
+- Do not refactor unrelated code.
+- Do not commit; leave changes in the working tree.
+- Read before edit; use tools like the IDE agent.
+- During implement, if blocked again, use `ask_human` only.
+
+Plan action:
+- 무엇을: {action.what}
+- 어디서: {expected}
+- 검증: {verify_line}
+
+When phase 1 edits are done, stop and wait — a phase 2 verification message follows in this same session."""
+    if revise_request:
+        chunk_ref = str(revise_request.get("chunk_ref") or "전체 diff")
+        comment = str(revise_request.get("comment") or "").strip()
+        selected_diff = str(revise_request.get("selected_diff") or "").strip()
+        prompt += f"""
+
+Human inline revise request:
+- 선택 범위: {chunk_ref}
+- 요청: {comment}
+
+Revise the selected part without undoing correct parts of the plan action."""
+        if selected_diff:
+            prompt += f"""
+
+Previous selected diff:
+```diff
+{selected_diff}
+```"""
+    return prompt
+
+
 def _cursor_execute_prompt(
     action: PlanAction,
     *,
@@ -596,11 +664,16 @@ def _cursor_execute_prompt(
     revise_request: dict[str, Any] | None = None,
     inbox_mcp: bool = False,
 ) -> str:
+    if inbox_mcp:
+        return _cursor_plan_phase_prompt(
+            action,
+            expected_paths=expected_paths,
+            verify=verify,
+        )
     expected = ", ".join(expected_paths or action.expected_paths()) or action.where
     verify_line = verify if verify is not None else action.verify
-    inbox_block = _inbox_mcp_instructions(action) if inbox_mcp else ""
     prompt = f"""Agent Lab thin execute — implement exactly one plan action.
-{inbox_block}
+
 Phase 1 — implement (tools expected):
 - Change only what is needed for this action.
 - Prefer paths listed in "어디서": {expected}
@@ -686,8 +759,63 @@ def _call_execute_agent(
     verify: str,
     session_folder: Path | None = None,
     inbox_mcp: bool = False,
+    action: Any | None = None,
+    expected_paths: list[str] | None = None,
+    revise_request: dict[str, Any] | None = None,
 ) -> str:
     system = "You implement approved plan actions with minimal scope."
+    verify_ups = _verify_follow_ups(verify)
+
+    if inbox_mcp and session_folder is not None and action is not None:
+        from agent_lab.human_inbox import execute_inbox_build_go
+
+        plan_user = _cursor_plan_phase_prompt(
+            action,
+            expected_paths=expected_paths,
+            verify=verify,
+        )
+        implement_user = _cursor_implement_phase_prompt(
+            action,
+            expected_paths=expected_paths,
+            verify=verify,
+            revise_request=revise_request,
+        )
+        extra = [implement_user, *verify_ups]
+        gate = lambda: execute_inbox_build_go(session_folder)
+
+        if agent_id == "cursor":
+            from agent_lab.agents.cursor_agent import respond_session
+
+            return respond_session(
+                system,
+                [plan_user],
+                permissions=permissions,
+                cwd=cwd,
+                on_activity=on_activity,
+                session_folder=session_folder,
+                inbox_mcp=True,
+                gate_after=0,
+                gate=gate,
+                extra_prompts_if_gate=extra,
+            )
+
+        from agent_lab.agents.codex_agent import respond_session
+
+        codex_permissions = dict(permissions)
+        codex_permissions["_discuss_cwd"] = str(cwd.resolve())
+        return respond_session(
+            system,
+            [plan_user],
+            permissions=codex_permissions,
+            on_activity=on_activity,
+            room_turn=False,
+            session_folder=session_folder,
+            inbox_mcp=True,
+            gate_after=0,
+            gate=gate,
+            extra_prompts_if_gate=extra,
+        )
+
     if agent_id == "cursor":
         from agent_lab.agents.cursor_agent import respond
 
@@ -697,7 +825,7 @@ def _call_execute_agent(
             permissions=permissions,
             cwd=cwd,
             on_activity=on_activity,
-            follow_ups=_verify_follow_ups(verify),
+            follow_ups=verify_ups,
             session_folder=session_folder,
             inbox_mcp=inbox_mcp,
         )
@@ -708,7 +836,7 @@ def _call_execute_agent(
     codex_permissions["_discuss_cwd"] = str(cwd.resolve())
     follow_up = (
         _cursor_verify_follow_up(verify).replace("same Cursor session", "same execution")
-        if _verify_follow_ups(verify)
+        if verify_ups
         else ""
     )
     codex_user = f"{user}\n\n{follow_up}" if follow_up else user
@@ -998,6 +1126,9 @@ def run_dry_run(
             verify=verify_for_agent,
             session_folder=folder,
             inbox_mcp=use_inbox_mcp,
+            action=action,
+            expected_paths=source_path_inputs,
+            revise_request=revise_request,
         )
     except Exception as e:
         restore_snapshot(folder, exec_id=exec_id, cwd=cwd, manifest=manifest)

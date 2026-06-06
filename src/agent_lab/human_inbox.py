@@ -48,6 +48,23 @@ def find_inbox_item(run: dict[str, Any], item_id: str) -> dict[str, Any] | None:
     return None
 
 
+def latest_mcp_build_item(run: dict[str, Any]) -> dict[str, Any] | None:
+    """Most recent execute-lane ``propose_build`` inbox item, if any."""
+    found: dict[str, Any] | None = None
+    for item in inbox_items(run):
+        if item.get("source") == "mcp_propose_build":
+            found = item
+    return found
+
+
+def execute_inbox_build_go(folder: Path) -> bool:
+    """True when Human GO was received for the latest MCP ``propose_build`` item."""
+    item = latest_mcp_build_item(read_run_meta(folder))
+    if not item or item.get("status") == "pending":
+        return False
+    return build_propose_build_tool_result(item).get("decision") == "go"
+
+
 def has_pending_question(run: dict[str, Any]) -> bool:
     return any(
         item.get("status") == "pending" and item.get("kind") == "question"

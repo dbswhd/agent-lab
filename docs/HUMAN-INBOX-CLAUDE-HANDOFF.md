@@ -131,9 +131,10 @@ Execute E2E: PlanExecute dry-run (Cursor) → agent `ask_human` / `propose_build
 | Room SSE `inbox_pending` + Composer 배지 | ✅ `8f927e8` |
 | Build card plan drift (`plan_revision`) | ✅ `8f927e8` |
 | clarifier + harvest dedupe (§6.5 ②) | ✅ M2b `8f927e8` |
-| `respond_session()` 별도 API | rename only — 현재 wiring 충분 |
-| Plan phase 별도 `send()` | agent가 `propose_build` skip 시에만 검토 |
-| Live Codex/Cursor execute E2E | real CLI + auth 필요 |
+| `respond_session()` 별도 API | ✅ `cursor_agent` / `codex_agent` — gated multi-prompt (§4.6 E1) |
+| Plan phase 별도 `send()` | ✅ `plan_execute` plan-first → GO gate → implement (`8f927e8`+) |
+| Live execute E2E (mocked) | ✅ `tests/test_inbox_execute_e2e.py` |
+| Live Codex/Cursor CLI E2E | real CLI + auth 필요 |
 
 ---
 

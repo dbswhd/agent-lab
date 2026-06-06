@@ -15,6 +15,23 @@ import {
 } from "./WorkStatusBar";
 import type { PlanRefWarningsView } from "../utils/planRefWarnings";
 
+function statusLabel(activePending: PlanExecutionRecord | null | undefined): string {
+  if (!activePending) return "Plan ready";
+  if (activePending.status === "merge_conflict") return "Merge conflict";
+  if (activePending.status === "merged") return "Verified";
+  if (activePending.status === "blocked_isolation") return "Blocked";
+  return "Review pending";
+}
+
+function executionHistory(
+  run: SessionDetail["run"] | null | undefined,
+): PlanExecutionRecord[] {
+  const rows = Array.isArray(run?.executions)
+    ? (run.executions as PlanExecutionRecord[])
+    : [];
+  return rows.slice(-5).reverse();
+}
+
 type Props = {
   sessionId: string;
   session: SessionDetail | null;
@@ -81,6 +98,8 @@ export function WorkPanel({
     hasDryRunDiff: consensusProposal != null || Boolean(activePending?.diff),
     pendingAgreement: Boolean(planMeta.pendingAgreement),
   });
+  const history = executionHistory(session?.run);
+  const selectedStatus = statusLabel(activePending);
 
   if (!hasPlan) {
     return (
@@ -92,10 +111,25 @@ export function WorkPanel({
   }
 
   return (
-    <div className="plan-tab-cluster workspace-document-panel workspace-document-panel--flat">
-        <div className="workspace-document-panel__header workspace-document-panel__header--work">
-          <strong>Work</strong>
-          <span>Plan · review · execute</span>
+    <div className="work-panel plan-tab-cluster workspace-document-panel workspace-document-panel--flat">
+        <div className="work-panel__header workspace-document-panel__header workspace-document-panel__header--work">
+          <div>
+            <strong>Work</strong>
+            <span>실행 판단 · diff review · merge verify</span>
+          </div>
+          <div className="work-panel__badges" aria-label="Work 상태">
+            <span className="work-panel__phase-badge">{selectedStatus}</span>
+            {planMeta.pendingAgreement ? (
+              <span className="work-panel__phase-badge work-panel__phase-badge--warn">
+                stale plan
+              </span>
+            ) : null}
+            {hasPendingExecution ? (
+              <span className="work-panel__phase-badge work-panel__phase-badge--action">
+                approval
+              </span>
+            ) : null}
+          </div>
         </div>
 
         <WorkStatusBar phase={phase} planMeta={planMeta} hasPlan={hasPlan} />
@@ -160,23 +194,53 @@ export function WorkPanel({
           </CollapsibleGlassPanel>
         ) : null}
 
-        <PlanDocument
-          planMd={planMd}
-          skipExecuteSections
-          onRefClick={onPlanRefClick}
-        />
+        <section className="work-panel__lane work-panel__lane--review" aria-label="Review lane">
+          <div className="work-panel__lane-head">
+            <div>
+              <h2>Action & Review</h2>
+              <p>지금 실행할 action을 고르고 dry-run diff를 승인·거부·재작업합니다.</p>
+            </div>
+          </div>
+          <PlanExecutePanel
+            sessionId={sessionId}
+            run={session?.run}
+            linkedTasks={roomTasks?.tasks}
+            cursorReady={cursorReady}
+            disabled={running || synthesizing || runBusy}
+            onChatRefClick={onPlanRefClick}
+            onFocusTask={onFocusTask}
+            onFocusObjection={onFocusObjection}
+            onUpdated={onSessionUpdated}
+          />
+        </section>
 
-        <PlanExecutePanel
-          sessionId={sessionId}
-          run={session?.run}
-          linkedTasks={roomTasks?.tasks}
-          cursorReady={cursorReady}
-          disabled={running || synthesizing || runBusy}
-          onChatRefClick={onPlanRefClick}
-          onFocusTask={onFocusTask}
-          onFocusObjection={onFocusObjection}
-          onUpdated={onSessionUpdated}
-        />
+        {history.length > 0 ? (
+          <section className="work-panel__history" aria-label="Execution history">
+            <div className="work-panel__lane-head">
+              <h2>Execution History</h2>
+            </div>
+            <ul>
+              {history.map((execution) => (
+                <li key={execution.id ?? `${execution.action_index}-${execution.status}`}>
+                  <span className="work-panel__history-status">{execution.status}</span>
+                  <span>{execution.exec_branch ?? execution.action_key ?? `#${execution.action_index ?? "?"}`}</span>
+                  {execution.merge?.commit_sha ? (
+                    <code>{execution.merge.commit_sha.slice(0, 7)}</code>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+        <details className="work-panel__evidence" open={false}>
+          <summary>Plan Evidence</summary>
+          <PlanDocument
+            planMd={planMd}
+            skipExecuteSections
+            onRefClick={onPlanRefClick}
+          />
+        </details>
     </div>
   );
 }

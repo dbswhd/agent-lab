@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>Multi-AI Connector — iOS 26 Icon Concepts</title>
+<style>
+  :root {
+    --bg: #0b0b0f;
+    --panel: #16161d;
+    --text: #f4f4f5;
+    --muted: #9a9aa3;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 48px 32px 96px;
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
+    background: radial-gradient(120% 80% at 50% 0%, #1b1b25 0%, #0b0b0f 60%);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  header { max-width: 1180px; margin: 0 auto 40px; }
+  h1 { font-size: 28px; margin: 0 0 8px; letter-spacing: -0.02em; }
+  p.lead { color: var(--muted); margin: 0; }
+  .grid {
+    max-width: 1180px; margin: 0 auto;
+    display: grid; gap: 28px;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  }
+  figure {
+    margin: 0; padding: 18px 18px 22px;
+    background: var(--panel);
+    border-radius: 22px;
+    border: 1px solid rgba(255,255,255,0.06);
+    box-shadow: 0 30px 60px -30px rgba(0,0,0,0.6);
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+  }
+  .icon-box {
+    width: 100%; aspect-ratio: 1 / 1;
+    border-radius: 22%;
+    overflow: hidden;
+    box-shadow:
+      0 16px 32px -16px rgba(0,0,0,0.55),
+      0 2px 6px rgba(0,0,0,0.35),
+      inset 0 1px 0 rgba(255,255,255,0.08);
+  }
+  .icon-box svg { display: block; width: 100%; height: 100%; }
+  figcaption { text-align: center; }
+  .name { font-weight: 600; font-size: 14px; letter-spacing: -0.01em; }
+  .desc { color: var(--muted); font-size: 12.5px; margin-top: 3px; }
+  .num { color: var(--muted); font-variant-numeric: tabular-nums; }
+  /* iOS home screen mockup row */
+  .springboard {
+    max-width: 1180px; margin: 64px auto 0;
+    background: linear-gradient(180deg, #1d2942 0%, #0d1424 100%);
+    border-radius: 28px;
+    padding: 36px;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 28px 36px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .springboard .cell { text-align: center; }
+  .springboard .icon-box { width: 100%; }
+  .springboard .label {
+    margin-top: 10px; font-size: 12px; color: rgba(255,255,255,0.85);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  }
+  .section-title { max-width: 1180px; margin: 56px auto 16px; font-size: 18px; color: var(--muted); letter-spacing: -0.01em; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Multi-AI Connector — iOS 26 Icon Concepts</h1>
+  <p class="lead">Claude · Codex · Cursor 를 한 환경에 연결하는 앱. C 자를 키 모티프로 10개 시안. Liquid Glass / Safari / Messages / Music / Photos 톤 참고.</p>
+</header>
+
+<div class="grid" id="grid">
+  <!-- Cards injected by script below -->
+</div>
+
+<div class="section-title">홈 화면 모킹 — 다른 Apple 아이콘과 함께</div>
+<div class="springboard" id="springboard"></div>
+
+<!-- ====== ICON DEFINITIONS ====== -->
+<script>
+const ICONS = [
+  {
+    id: 1,
+    name: "Safari Compass C",
+    desc: "사파리의 나침반 링을 C 자로 재구성. 해양 블루 그라디언트.",
+    svg: safariCompass(),
+  },
+  {
+    id: 2,
+    name: "Messages Bubble C",
+    desc: "메시지 톤의 그린 그라디언트. 말풍선 안에 흰 C 컷아웃.",
+    svg: messagesBubble(),
+  },
+  {
+    id: 3,
+    name: "Music Wave C",
+    desc: "음악 앱의 핑크→레드. C 모양 사운드웨이브 바.",
+    svg: musicWave(),
+  },
+  {
+    id: 4,
+    name: "Photos Aperture C",
+    desc: "사진 앱 무지개 셔터를 C 형태 회전으로 변형.",
+    svg: photosAperture(),
+  },
+  {
+    id: 5,
+    name: "Liquid Glass C",
+    desc: "iOS 26 시그니처. 굴절하는 유리 C 가 떠 있음.",
+    svg: liquidGlass(),
+  },
+  {
+    id: 6,
+    name: "Tri-Arc Connect",
+    desc: "Claude · Cursor · Codex 세 컬러 아크가 동심으로 C 를 이룸.",
+    svg: triArc(),
+  },
+  {
+    id: 7,
+    name: "Neon Cyber C",
+    desc: "딥 네이비 위 시안 네온. AI 코딩 툴 무드.",
+    svg: neonCyber(),
+  },
+  {
+    id: 8,
+    name: "Aurora Stream C",
+    desc: "오로라 그라디언트가 C 모양으로 흐름. 파스텔.",
+    svg: aurora(),
+  },
+  {
+    id: 9,
+    name: "Node Network C",
+    desc: "세 노드가 라인으로 연결되어 C 실루엣을 형성.",
+    svg: nodeNetwork(),
+  },
+  {
+    id: 10,
+    name: "Monolith Emboss C",
+    desc: "딥 그라디언트에 음각된 글래스 C. 가장 Apple-like.",
+    svg: monolith(),
+  },
+];
+
+// ====== SVG BUILDERS ======
+// Common: 1024×1024 viewBox. iOS squircle handled by CSS border-radius on container.
+
+function wrap(inner, bg) {
+  return `<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+    ${bg}
+    ${inner}
+  </svg>`;
+}
+
+// Thick "C" path centered at (512, 512), outer radius R, stroke S, opening angle ±a°
+function cPath(R, a = 32) {
+  const rad = (deg) => (deg * Math.PI) / 180;
+  const cx = 512, cy = 512;
+  const x1 = cx + R * Math.cos(rad(-a));
+  const y1 = cy + R * Math.sin(rad(-a));
+  const x2 = cx + R * Math.cos(rad(a));
+  const y2 = cy + R * Math.sin(rad(a));
+  // large-arc=1, sweep=0 (counter-clockwise) to go around the left side
+  return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${R} ${R} 0 1 0 ${x2.toFixed(2)} ${y2.toFixed(2)}`;
+}
+
+// ---- 1. Safari Compass ----
+function safariCompass() {
+  const bg = `
+    <defs>
+      <radialGradient id="g1" cx="50%" cy="38%" r="75%">
+        <stop offset="0%" stop-color="#7ad7ff"/>
+        <stop offset="55%" stop-color="#1287e0"/>
+        <stop offset="100%" stop-color="#0a3f8a"/>
+      </radialGradient>
+      <linearGradient id="g1gloss" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0%" stop-color="white" stop-opacity="0.35"/>
+        <stop offset="50%" stop-color="white" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <rect width="1024" height="1024" fill="url(#g1)"/>
+    <rect width="1024" height="1024" fill="url(#g1gloss)"/>
+  `;
+  // Tick marks around a ring
+  let ticks = "";
+  for (let i = 0; i < 60; i++) {
+    const a = (i / 60) * Math.PI * 2;
+    const r1 = 405, r2 = i % 5 === 0 ? 365 : 380;
+    const x1 = 512 + r1 * Math.cos(a), y1 = 512 + r1 * Math.sin(a);
+    const x2 = 512 + r2 * Math.cos(a), y2 = 512 + r2 * Math.sin(a);
+    ticks += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="white" stroke-opacity="${i%5===0?0.85:0.4}" stroke-width="${i%5===0?6:3}" stroke-linecap="round"/>`;
+  }
+  const c = `
+    <g>
+      ${ticks}
+      <path d="${cPath(310, 30)}" stroke="white" stroke-width="100" fill="none" stroke-linecap="round"/>
+      <!-- compass needle pointing right through the gap -->
+      <polygon points="512,512 760,490 760,534" fill="#ff3b30"/>
+      <polygon points="512,512 264,490 264,534" fill="#f4f4f5"/>
+      <circle cx="512" cy="512" r="22" fill="#0b0b0f"/>
+    </g>
+  `;
+  return wrap(c, bg);
+}
+
+// ---- 2. Messages Bubble ----
+function messagesBubble() {
+  const bg = `
+    <defs>
+      <linearGradient id="g2" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0%" stop-color="#5bf07e"/>
+        <stop offset="100%" stop-color="#0aa84e"/>
+      </linearGradient>
+    </defs>
+    <rect width="1024" height="1024" fill="url(#g2)"/>
+    <rect width="1024" height="1024" fill="white" fill-opacity="0.08"/>
+  `;
+  // White bubble silhouette with tail
+  const bubble = `
+    <g>
+      <path d="M 200 220 Q 200 140 280 140 L 744 140 Q 824 140 824 220 L 824 620 Q 824 700 744 700 L 420 700 L 300 820 L 320 700 Q 200 700 200 620 Z"
+        fill="white"/>
+      <path d="${cPath(190, 32)}" stroke="#0aa84e" stroke-width="92" fill="none" stroke-linecap="round" transform="translate(0,-90)"/>
+    </g>
+  `;
+  return wrap(bubble, bg);
+}
+
+// ---- 3. Music Wave ----
+function musicWave() {
+  const bg = `
+    <defs>
+      <linearGradient id="g3" x1="0" x2="1" y1="0" y2="1">
+        <stop offset="0%" stop-color="#ff8fb1"/>
+        <stop offset="55%" stop-color="#ff2d6b"/>
+        <stop offset="100%" stop-color="#a3104a"/>
+      </linearGradient>
+    </defs>
+    <rect width="1024" height="1024" fill="url(#g3)"/>
+  `;
+  // C drawn as a series of bars whose length follows a wave
+  let bars = "";
+  const cx = 512, cy = 512, R = 320;
+  for (let i = 0; i < 28; i++) {
+    const t = i / 27;
+    const ang = (-150 + t * 300) * Math.PI / 180; // C arc from ~210° around to ~150°
+    const wave = 18 + 22 * Math.sin(t * Math.PI * 3);
+    const len = 70 + wave;
+    const w = 28;
+    const x = cx + R * Math.cos(ang);
+    const y = cy + R * Math.sin(ang);
+    bars += `<rect x="${(x - w/2).toFixed(1)}" y="${(y - len/2).toFixed(1)}" width="${w}" height="${len.toFixed(1)}" rx="14"
+      fill="white" transform="rotate(${(ang*180/Math.PI + 90).toFixed(2)} ${x.toFixed(1)} ${y.toFixed(1)})"/>`;
+  }
+  return wrap(bars, bg);
+}
+
+// ---- 4. Photos Aperture ----
+function photosAperture() {
+  const colors = ["#ff3b30","#ff9500","#ffcc00","#34c759","#5ac8fa","#5856d6","#af52de"];
+  const bg = `<rect width="1024" height="1024" fill="white"/>`;
+  let petals = "";
+  const cx = 512, cy = 512;
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 7) * 360;
+    // Skip one petal to form the C opening (the rightward petal)
+    if (i === 0) continue;
+    petals += `<g transform="rotate(${a} ${cx} ${cy})">
+      <path d="M 512 512 Q 660 320 760 512 Q 660 520 512 512 Z" fill="${colors[i]}" opacity="0.92"/>
+    </g>`;
+  }
+  // Center C
+  const c = `<circle cx="512" cy="512" r="120" fill="white"/>
+    <path d="${cPath(150, 40)}" stroke="#1a1a22" stroke-width="48" fill="none" stroke-linecap="round"/>`;
+  return wrap(petals + c, bg);
+}
+
+// ---- 5. Liquid Glass ----
+function liquidGlass() {
+  const bg = `
+    <defs>
+      <linearGradient id="g5" x1="0" x2="1" y1="0" y2="1">
+        <stop offset="0%" stop-color="#8a5cff"/>
+        <stop offset="50%" stop-color="#ff6fd8"/>
+        <stop offset="100%" stop-color="#ffb86b"/>
+      </linearGradient>
+      <radialGradient id="g5bloom" cx="30%" cy="25%" r="60%">
+        <stop offset="0%" stop-color="white" stop-opacity="0.55"/>
+        <stop offset="100%" stop-color="white" stop-opacity="0"/>
+      </radialGradient>
+      <linearGradient id="glassFill" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0%" stop-color="white" stop-opacity="0.55"/>
+        <stop offset="100%" stop-color="white" stop-opacity="0.18"/>
+      </linearGradient>
+    </defs>
+    <rect width="1024" height="1024" fill="url(#g5)"/>
+    <rect width="1024" height="1024" fill="url(#g5bloom)"/>
+  `;
+  // Glassy C — thick stroke with gradient fill + highlight
+  const c = `
+    <g>
+      <path d="${cPath(300, 32)}" stroke="url(#glassFill)" stroke-width="150" fill="none" stroke-linecap="round"/>
+      <path d="${cPath(300, 32)}" stroke="white" stroke-opacity="0.9" stroke-width="6" fill="none" stroke-linecap="round"/>
+      <!-- inner refraction line -->
+      <path d="${cPath(300, 32)}" stroke="white" stroke-opacity="0.35" stroke-width="40" fill="none" stroke-linecap="round" transform="translate(-12,-18)"/>
+    </g>
+  `;
+  return wrap(c, bg);
+}
+
+// ---- 6. Tri-Arc Connect ----
+function triArc() {
+  const bg = `
+    <defs>
+      <linearGradient id="g6" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0%" stop-color="#1a1a22"/>
+        <stop offset="100%" stop-color="#000"/>
+      </linearGradient>
+    </defs>
+    <rect width="1024" height="1024" fill="url(#g6)"/>
+  `;
+  // Three concentric arcs
+  const a1 = `<path d="${cPath(360, 34)}" stroke="#D97757" stroke-width="58" fill="none" stroke-linecap="round"/>`; // Claude coral
+  const a2 = `<path d="${cPath(280, 34)}" stroke="#5ac8fa" stroke-width="58" fill="none" stroke-linecap="round"/>`; // Cursor cyan
+  const a3 = `<path d="${cPath(200, 34)}" stroke="#a78bfa" stroke-width="58" fill="none" stroke-linecap="round"/>`; // Codex violet
+  // Center dot
+  const dot = `<circle cx="512" cy="512" r="38" fill="white"/>`;
+  return wrap(a1 + a2 + a3 + dot, bg);
+}
+
+// ---- 7. Neon Cyber ----
+function neonCyber() {
+  const bg = `
+    <defs>
+      <radialGradient id="g7" cx="50%" cy="50%" r="65%">
+        <stop offset="0%" stop-color="#0e2540"/>
+        <stop offset="100%" stop-color="#04060d"/>
+      </radialGradient>
+    </defs>
+    <rect width="1024" height="1024" fill="url(#g7)"/>
+    <!-- grid lines -->
+    ${Array.from({length:11}).map((_,i)=>`<line x1="0" y1="${i*102.4}" x2="1024" y2="${i*102.4}" stroke="white" stroke-opacity="0.05"/>`).join("")}
+    ${Array.from({length:11}).map((_,i)=>`<line y1="0" x1="${i*102.4}" y2="1024" x2="${i*102.4}" stroke="white" stroke-opacity="0.05"/>`).join("")}
+  `;
+  const c = `
+    <g>
+      <path d="${cPath(300, 30)}" stroke="#00e5ff" stroke-opacity="0.18" stroke-width="180" fill="none" stroke-linecap="round"/>
+      <path d="${cPath(300, 30)}" stroke="#00e5ff" stroke-opacity="0.45" stroke-width="110" fill="none" stroke-linecap="round"/>
+      <path d="${cPath(300, 30)}" stroke="#9bf6ff" stroke-width="42" fill="none" stroke-linecap="round"/>
+      <path d="${cPath(300, 30)}" stroke="white" stroke-width="12" fill="none" stroke-linecap="round"/>
+    </g>
+  `;
+  return wrap(c, bg);
+}
+
+// ---- 8. Aurora Stream ----
+function aurora() {
+  const bg = `
+    <defs>
+      <linearGradient id="g8" x1="0" x2="1" y1="0" y2="1">
+        <stop offset="0%" stop-color="#0a1530"/>
+        <stop offset="100%" stop-color="#1c0a30"/>
+      </linearGradient>
+      <linearGradient id="g8arc" x1="0" x2="1" y1="0" y2="1">
+        <stop offset="0%" stop-color="#7afcff"/>
+        <stop offset="35%" stop-color="#a18cd1"/>
+        <stop offset="70%" stop-color="#fbc2eb"/>
+        <stop offset="100%" stop-color="#ffd86b"/>
+      </linearGradient>
+    </defs>
+    <rect width="1024" height="1024" fill="url(#g8)"/>
+  `;
+  const c = `
+    <g>
+      <path d="${cPath(300, 30)}" stroke="url(#g8arc)" stroke-opacity="0.35" stroke-width="200" fill="none" stroke-linecap="round"/>
+      <path d="${cPath(300, 30)}" stroke="url(#g8arc)" stroke-width="120" fill="none" stroke-linecap="round"/>
+      <path d="${cPath(300, 30)}" stroke="white" stroke-opacity="0.6" stroke-width="8" fill="none" stroke-linecap="round"/>
+    </g>
+  `;
+  return wrap(c, bg);
+}
+
+// ---- 9. Node Network ----
+function nodeNetwork() {
+  const bg = `
+    <defs>
+      <radialGradient id="g9" cx="50%" cy="50%" r="65%">
+        <stop offset="0%" stop-color="#1b2540"/>
+        <stop offset="100%" stop-color="#06091a"/>
+      </radialGradient>
+    </defs>
+    <rect width="1024" height="1024" fill="url(#g9)"/>
+  `;
+  // Three nodes in a C arrangement
+  const nodes = [
+    {x: 320, y: 280, c: "#D97757", label: "C"}, // Claude top
+    {x: 240, y: 512, c: "#5ac8fa", label: "C"}, // Cursor middle-left
+    {x: 320, y: 744, c: "#a78bfa", label: "C"}, // Codex bottom
+  ];
+  // Faint full-C guide
+  const guide = `<path d="${cPath(280, 32)}" stroke="white" stroke-opacity="0.08" stroke-width="80" fill="none" stroke-linecap="round"/>`;
+  // Connector lines
+  const lines = `
+    <line x1="320" y1="280" x2="240" y2="512" stroke="white" stroke-opacity="0.55" stroke-width="8" stroke-linecap="round"/>
+    <line x1="240" y1="512" x2="320" y2="744" stroke="white" stroke-opacity="0.55" stroke-width="8" stroke-linecap="round"/>
+    <line x1="320" y1="280" x2="320" y2="744" stroke="white" stroke-opacity="0.18" stroke-width="6" stroke-linecap="round" stroke-dasharray="4 14"/>
+  `;
+  // Nodes with glow
+  const dots = nodes.map(n => `
+    <circle cx="${n.x}" cy="${n.y}" r="110" fill="${n.c}" fill-opacity="0.18"/>
+    <circle cx="${n.x}" cy="${n.y}" r="74" fill="${n.c}"/>
+    <text x="${n.x}" y="${n.y+24}" font-family="-apple-system, SF Pro Display, Inter, sans-serif" font-size="74" font-weight="700" text-anchor="middle" fill="white">C</text>
+  `).join("");
+  return wrap(guide + lines + dots, bg);
+}
+
+// ---- 10. Monolith Emboss ----
+function monolith() {
+  const bg = `
+    <defs>
+      <linearGradient id="g10" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0%" stop-color="#3a3a44"/>
+        <stop offset="100%" stop-color="#0d0d12"/>
+      </linearGradient>
+      <linearGradient id="g10c" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/>
+        <stop offset="100%" stop-color="#bcbcc4" stop-opacity="0.6"/>
+      </linearGradient>
+    </defs>
+    <rect width="1024" height="1024" fill="url(#g10)"/>
+    <rect width="1024" height="1024" fill="white" fill-opacity="0.04"/>
+  `;
+  const c = `
+    <g>
+      <!-- shadow below -->
+      <path d="${cPath(300, 32)}" stroke="black" stroke-opacity="0.55" stroke-width="140" fill="none" stroke-linecap="round" transform="translate(8,14)"/>
+      <!-- highlight above -->
+      <path d="${cPath(300, 32)}" stroke="white" stroke-opacity="0.35" stroke-width="140" fill="none" stroke-linecap="round" transform="translate(-6,-8)"/>
+      <!-- main C -->
+      <path d="${cPath(300, 32)}" stroke="url(#g10c)" stroke-width="130" fill="none" stroke-linecap="round"/>
+      <!-- thin specular line -->
+      <path d="${cPath(300, 32)}" stroke="white" stroke-width="4" fill="none" stroke-linecap="round" transform="translate(-2,-32)"/>
+    </g>
+  `;
+  return wrap(c, bg);
+}
+
+// ====== RENDER ======
+const grid = document.getElementById("grid");
+ICONS.forEach(({id, name, desc, svg}) => {
+  const card = document.createElement("figure");
+  card.innerHTML = `
+    <div class="icon-box">${svg}</div>
+    <figcaption>
+      <div class="name"><span class="num">${String(id).padStart(2,"0")}.</span> ${name}</div>
+      <div class="desc">${desc}</div>
+    </figcaption>
+  `;
+  grid.appendChild(card);
+});
+
+// Springboard mock — first 5 + 5 placeholder Apple icons (simple swatches w/ labels)
+const sb = document.getElementById("springboard");
+const homeRow = [
+  ...ICONS.slice(0, 5).map(i => ({name: "Connect", svg: i.svg})),
+  {name: "Safari", swatch: "linear-gradient(180deg,#7ad7ff,#0a3f8a)"},
+  {name: "Messages", swatch: "linear-gradient(180deg,#5bf07e,#0aa84e)"},
+  {name: "Music", swatch: "linear-gradient(135deg,#ff8fb1,#a3104a)"},
+  {name: "Photos", swatch: "conic-gradient(from 0deg, #ff3b30,#ff9500,#ffcc00,#34c759,#5ac8fa,#5856d6,#af52de,#ff3b30)"},
+  {name: "Settings", swatch: "radial-gradient(circle at 30% 30%,#d4d4dc,#6c6c74)"},
+];
+homeRow.forEach(cell => {
+  const div = document.createElement("div");
+  div.className = "cell";
+  const inner = cell.svg
+    ? `<div class="icon-box">${cell.svg}</div>`
+    : `<div class="icon-box" style="background:${cell.swatch}"></div>`;
+  div.innerHTML = `${inner}<div class="label">${cell.name}</div>`;
+  sb.appendChild(div);
+});
+</script>
+</body>
+</html>

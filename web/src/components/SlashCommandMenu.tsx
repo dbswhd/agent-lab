@@ -23,7 +23,7 @@ export function SlashCommandMenu({
 
   const filtered = useMemo(() => {
     if (!open) return [];
-    const rows = commands.filter((c) => c.enabled !== false);
+    const rows = commands;
     if (!query) return rows;
     return rows.filter(
       (c) =>
@@ -55,8 +55,10 @@ export function SlashCommandMenu({
                 .join(" ")}
               role="option"
               aria-selected={index === highlight}
+              disabled={cmd.enabled === false}
               onMouseEnter={() => setHighlight(index)}
               onClick={() => {
+                if (cmd.enabled === false) return;
                 onSelect(cmd.slash);
                 onExecute(cmd);
               }}
@@ -66,6 +68,11 @@ export function SlashCommandMenu({
                 <span className="slash-command-menu__label">{cmd.label}</span>
                 {cmd.description ? (
                   <span className="slash-command-menu__desc">{cmd.description}</span>
+                ) : null}
+                {cmd.enabled === false ? (
+                  <span className="slash-command-menu__disabled">
+                    {cmd.disabled_reason ?? "현재 세션에서 사용할 수 없음"}
+                  </span>
                 ) : null}
               </span>
               {cmd.agent ? (

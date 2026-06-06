@@ -32,3 +32,6 @@ data/turn_profile_bandit.json
 !.claude/rules/**
 !.claude/skills/
 !.claude/skills/**
+
+# 디자인 핸드오프용 임시 사본 (커밋 금지)
+design-handoff/

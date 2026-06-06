@@ -198,32 +198,24 @@ body {
 .mac-app.mac-app--developer-console .chat-pane-body > .composer::before,
 .mac-app.mac-app--developer-console .workspace-main > .composer::before {
   display: block;
-  /* Solid base → sharper fade: clearly separates from transcript */
+  /* Blend the floating input into the workspace surface without glass. */
   background: linear-gradient(
     to top,
-    var(--console-canvas) 0%,
-    var(--console-canvas) 55%,
-    color-mix(in srgb, var(--console-canvas) 90%, transparent) 65%,
-    color-mix(in srgb, var(--console-canvas) 72%, transparent) 74%,
-    color-mix(in srgb, var(--console-canvas) 45%, transparent) 84%,
-    color-mix(in srgb, var(--console-canvas) 16%, transparent) 93%,
+    var(--console-bg-inset) 0%,
+    color-mix(in srgb, var(--console-bg-inset) 92%, transparent) 50%,
+    color-mix(in srgb, var(--console-bg-inset) 56%, transparent) 76%,
     transparent 100%
   );
-  /* Frosted glass blur over messages in the fade zone */
-  backdrop-filter: blur(18px) saturate(1.08);
-  -webkit-backdrop-filter: blur(18px) saturate(1.08);
-  -webkit-mask-image: linear-gradient(
-    to top, black 48%, rgba(0,0,0,0.8) 66%, rgba(0,0,0,0.3) 84%, transparent 100%
-  );
-  mask-image: linear-gradient(
-    to top, black 48%, rgba(0,0,0,0.8) 66%, rgba(0,0,0,0.3) 84%, transparent 100%
-  );
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  -webkit-mask-image: none;
+  mask-image: none;
 }
 
 .mac-app.mac-app--developer-console .chat-pane-body > .composer::after,
 .mac-app.mac-app--developer-console .workspace-main > .composer::after {
   display: block;
-  background: var(--console-canvas);
+  background: var(--console-bg-inset);
 }
 
 .mac-app.mac-app--developer-console .composer-turn-row {
@@ -393,9 +385,14 @@ body {
 }
 
 .mac-app.mac-app--developer-console .composer-capsule {
-  background: var(--console-panel);
-  border: 0.5px solid color-mix(in srgb, var(--console-border) 72%, transparent);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  background: var(--console-bg-raised);
+  border: 1px solid color-mix(in srgb, var(--console-border) 86%, transparent);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+}
+
+.mac-app.mac-app--developer-console .chat-pane-body > .composer,
+.mac-app.mac-app--developer-console .workspace-main > .composer {
+  padding-bottom: max(14px, calc(var(--composer-float-offset) * 0.42));
 }
 
 .mac-app.mac-app--developer-console .composer-cost-hint {
@@ -443,11 +440,12 @@ body {
 .workspace-panel--transcript .workspace-transcript-panel > .empty-chat,
 .workspace-panel--transcript .workspace-transcript-panel > .chat-turn,
 .workspace-panel--transcript .workspace-transcript-panel > .transcript-log-line {
-  width: 100%;
-  max-width: none;
-  margin-left: 0;
-  margin-right: 0;
+  width: var(--composer-cluster-width);
+  max-width: calc(100% - 2 * var(--composer-pad-x));
+  margin-left: auto;
+  margin-right: auto;
   box-sizing: border-box;
+  min-width: 0;
 }
 
 .workspace-panel--transcript .workspace-transcript-panel > .chat-line > .chat-turn:not(.chat-turn--you),
@@ -933,6 +931,55 @@ body {
   margin: var(--space-md) auto;
 }
 
+/* Workspace tab rail — flat console navigation */
+.mac-app.mac-app--developer-console .workspace-tab-bar {
+  min-height: 42px;
+  padding: 0 var(--space-md);
+  background: var(--console-panel);
+  border-bottom: 0.5px solid var(--console-border-strong);
+  box-shadow: none;
+}
+
+.mac-app.mac-app--developer-console .workspace-tab-bar__seg.mac-segmented {
+  gap: 0;
+  min-height: 42px;
+  height: 42px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.mac-app.mac-app--developer-console .workspace-tab-bar__seg button {
+  min-height: 42px;
+  height: 42px;
+  border-radius: 0;
+  color: var(--console-text-muted);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  box-shadow: none;
+}
+
+.mac-app.mac-app--developer-console .workspace-tab-bar__seg button:hover:not(:disabled):not(.active) {
+  background: color-mix(in srgb, var(--console-text) 5%, transparent);
+  color: var(--console-text-secondary);
+}
+
+.mac-app.mac-app--developer-console .workspace-tab-bar__seg button.active,
+.mac-app.mac-app--developer-console .workspace-tab-bar__seg .active {
+  color: var(--console-text);
+  background: color-mix(in srgb, var(--console-active) 8%, transparent);
+  box-shadow:
+    inset 0 -2px 0 var(--console-active),
+    inset 0 0 0 0.5px color-mix(in srgb, var(--console-active) 12%, transparent);
+}
+
+.mac-app.mac-app--developer-console .workspace-tab-bar__static {
+  color: var(--console-text-secondary);
+}
+
 /* Panel interior — full-width, no side margins */
 .messages-scroll.workspace-panel--transcript > .workspace-transcript-panel {
   padding-left: var(--space-lg);
@@ -941,56 +988,67 @@ body {
   padding-bottom: calc(var(--space-md) + var(--space-xl));
 }
 
-/* Transcript: cluster width, flat (no card chrome) */
-.mac-app.mac-app--developer-console .messages-scroll.workspace-panel--transcript > .workspace-transcript-panel {
-  width: var(--composer-cluster-width);
-  max-width: 100%;
-  margin-left: auto;
-  margin-right: auto;
-  margin-top: var(--space-md);
-  margin-bottom: 0;
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
+/* Workspace content surfaces — inspector-like, not floating cards */
+.mac-app.mac-app--developer-console .messages-scroll.workspace-panel--transcript,
+.mac-app.mac-app--developer-console .messages-scroll.workspace-panel--work,
+.mac-app.mac-app--developer-console .messages-scroll.workspace-panel--run,
+.mac-app.mac-app--developer-console .messages-scroll.workspace-panel--artifacts {
+  padding: 0;
+  margin: 0;
+  background: var(--console-bg-inset);
 }
 
-/* Artifacts + Run: flat, full-width */
-.mac-app.mac-app--developer-console .messages-scroll.workspace-panel--artifacts > .workspace-document-panel,
-.mac-app.mac-app--developer-console .messages-scroll.workspace-panel--run > .workspace-document-panel {
+.mac-app.mac-app--developer-console
+  .messages-scroll.workspace-panel--transcript
+  > .workspace-transcript-panel,
+.mac-app.mac-app--developer-console
+  .messages-scroll.workspace-panel--run
+  > .workspace-document-panel {
   width: 100%;
   max-width: none;
+  min-height: 100%;
   margin: 0;
+  padding: var(--space-lg);
   border: none;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
 }
 
-.mac-app.mac-app--developer-console .messages-scroll.workspace-panel--artifacts > .workspace-document-panel,
-.mac-app.mac-app--developer-console .messages-scroll.workspace-panel--run > .workspace-document-panel {
-  padding: var(--space-lg);
+/* Work / Artifacts — composer-aligned column on full-width inset surface */
+.mac-app.mac-app--developer-console
+  .messages-scroll.workspace-panel--work
+  > .work-panel,
+.mac-app.mac-app--developer-console
+  .messages-scroll.workspace-panel--work
+  > .workspace-empty-state,
+.mac-app.mac-app--developer-console
+  .messages-scroll.workspace-panel--artifacts
+  > .workspace-document-panel {
+  width: var(--composer-cluster-width);
+  max-width: calc(100% - 2 * var(--composer-pad-x));
+  min-height: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding: var(--space-lg) 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .chat-pane-body.workspace-main > .messages-scroll.workspace-panel--run,
 .chat-pane-body.workspace-main > .messages-scroll.workspace-panel--artifacts,
 .chat-pane-body.workspace-main > .messages-scroll.workspace-panel--transcript,
+.chat-pane-body.workspace-main > .messages-scroll.workspace-panel--work,
 .chat-pane-body.workspace-main > .messages-scroll.workspace-panel--plan,
 .chat-pane-body.workspace-main > .messages-scroll.workspace-panel--review,
 .chat-pane-body.workspace-main > .workspace-empty-state {
   flex: 1;
   min-height: 0;
   overflow: auto;
-}
-
-/* Transcript, Artifacts, Run: full-width — never zero bottom (composer clearance) */
-.mac-app.mac-app--developer-console .messages-scroll.workspace-panel--transcript,
-.mac-app.mac-app--developer-console .messages-scroll.workspace-panel--artifacts,
-.mac-app.mac-app--developer-console .messages-scroll.workspace-panel--run {
-  padding-top: 0;
-  padding-left: 0;
-  padding-right: 0;
-  margin: 0;
 }
 
 .mac-app.mac-app--developer-console
@@ -1006,6 +1064,7 @@ body {
   min-height: calc(100% - (var(--space-md) * 2));
 }
 
+/* Workspace content inner cards */
 .workspace-document-panel__header {
   display: flex;
   align-items: baseline;
@@ -1100,8 +1159,7 @@ body {
 .room-task-bar,
 .execute-queue-bar,
 .composer-preflight,
-.clarifier-banner,
-.room-partial-banner {
+.clarifier-banner {
   background: var(--console-panel-elevated);
   border-color: var(--console-border-subtle);
 }

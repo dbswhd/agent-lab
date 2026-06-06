@@ -162,11 +162,6 @@ const LONG_RUN_HINT_MS = Number(
   import.meta.env.VITE_ROOM_LONG_RUN_HINT_MS || "180000",
 );
 
-type PartialTurnNotice = {
-  failedAgents: string[];
-  succeededAgents: string[];
-};
-
 type GoalLoopView = {
   goal: SessionGoalRecord;
   loop: GoalLoopRecord;
@@ -325,6 +320,7 @@ export function RoomChat({
   const [sendReceipt, setSendReceipt] = useState<string | null>(null);
   const [inboxPendingChip, setInboxPendingChip] = useState(false);
   const [inboxReloadKey, setInboxReloadKey] = useState(0);
+  const [inboxPopupDismissed, setInboxPopupDismissed] = useState(false);
   const sendReceiptTimerRef = useRef<number | null>(null);
   const [clarifierQuestions, setClarifierQuestions] = useState<string[] | null>(
     null,
@@ -356,22 +352,9 @@ export function RoomChat({
   >({});
   const [agentCapsBusy, setAgentCapsBusy] = useState(false);
   const [agentCapsHint, setAgentCapsHint] = useState<string | null>(null);
-  const [partialTurnNotice, setPartialTurnNotice] =
-    useState<PartialTurnNotice | null>(null);
   const activeSessionIdRef = useRef<string | null>(sessionId);
   const agentCapsDirtyRef = useRef(false);
   const agentsPickerInitRef = useRef(false);
-
-  function parseAgentList(value: unknown): string[] {
-    return Array.isArray(value)
-      ? value.map((x) => String(x)).filter(Boolean)
-      : [];
-  }
-
-  function showPartialTurnNotice(failedAgents: string[], succeededAgents: string[]) {
-    if (failedAgents.length === 0) return;
-    setPartialTurnNotice({ failedAgents, succeededAgents });
-  }
 
   function setWorkspaceId(id: string, path?: string | null) {
     setWorkspaceIdState(id);
@@ -587,7 +570,6 @@ export function RoomChat({
   const {
     workspaceTab,
     inspectorTab,
-    suggestedWorkspaceTab,
     setWorkspaceTab,
     setInspectorTab,
     openWorkTab,
@@ -613,8 +595,38 @@ export function RoomChat({
 
   const handleInboxResolved = useCallback(() => {
     setInboxPendingChip(false);
+    setInboxPopupDismissed(false);
     refreshSessionMeta();
   }, [refreshSessionMeta]);
+
+  const openHumanInbox = useCallback(() => {
+    setInspectorOpenState(true);
+    setInspectorOpen(true);
+    setInspectorTab("tasks");
+  }, [setInspectorTab]);
+
+  const openNotificationTarget = useCallback(
+    (notification: { kind: string }) => {
+      if (notification.kind === "human_inbox") {
+        openHumanInbox();
+        return;
+      }
+      if (
+        notification.kind === "dry_run" ||
+        notification.kind === "plan_sync" ||
+        notification.kind === "plan_sync_fail"
+      ) {
+        openWorkTab();
+        return;
+      }
+      if (notification.kind === "bridge" || notification.kind === "diagnostics") {
+        onOpenSettings?.();
+        return;
+      }
+      setInspectorTab("activity");
+    },
+    [openHumanInbox, openWorkTab, onOpenSettings, setInspectorTab],
+  );
 
   const showExecuteQueueStrip =
     Boolean(sessionId) &&
@@ -792,7 +804,6 @@ export function RoomChat({
     prevSessionIdRef.current = sessionId;
 
     clearRunWatchdog();
-    setPartialTurnNotice(null);
 
     if (prev === sessionId) return;
 
@@ -823,26 +834,7 @@ export function RoomChat({
 
   useEffect(() => {
     setConsensusProposal(null);
-    setPartialTurnNotice(null);
   }, [sessionId]);
-
-  useEffect(() => {
-    const lastTurn = session?.run?.last_turn as
-      | {
-          status?: string;
-          failed_agents?: unknown;
-          succeeded_agents?: unknown;
-        }
-      | undefined;
-    if (lastTurn?.status === "partial") {
-      showPartialTurnNotice(
-        parseAgentList(lastTurn.failed_agents),
-        parseAgentList(lastTurn.succeeded_agents),
-      );
-    } else if (!running && !runBusy) {
-      setPartialTurnNotice(null);
-    }
-  }, [session?.run?.last_turn, running, runBusy]);
 
   useEffect(() => {
     if (!sessionId || !session) return;
@@ -1025,7 +1017,6 @@ export function RoomChat({
       scheduleLongRunHint();
       setRunLockStuck(false);
       setError(null);
-      setPartialTurnNotice(null);
       setClarifierQuestions(null);
       let userStopped = false;
       let activeSessionId = sessionId;
@@ -1227,11 +1218,6 @@ export function RoomChat({
               },
             ]);
           }
-          if (t === "turn_partial") {
-            const failedAgents = parseAgentList(ev.failed_agents);
-            const succeededAgents = parseAgentList(ev.succeeded_agents);
-            showPartialTurnNotice(failedAgents, succeededAgents);
-          }
           if (t === "complete" && ev.session_id) {
             activeSessionId = String(ev.session_id);
             if (typeof ev.send_receipt === "string") {
@@ -1240,6 +1226,18 @@ export function RoomChat({
             if (ev.inbox_pending === true) {
               setInboxReloadKey((k) => k + 1);
               setInboxPendingChip(true);
+              setInboxPopupDismissed(false);
+              dispatchNotification(
+                {
+                  tier: "P1",
+                  title: "Human decision pending",
+                  body: "Transcript popup 또는 Inspector Inbox에서 처리하세요.",
+                  sessionId: activeSessionId,
+                  kind: "human_inbox",
+                },
+                pushMacNotification,
+                notifyDesktop,
+              );
             }
             dispatchNotification(
               {
@@ -1252,18 +1250,23 @@ export function RoomChat({
               pushMacNotification,
               notifyDesktop,
             );
-            if (ev.status === "partial") {
-              showPartialTurnNotice(
-                parseAgentList(ev.failed_agents),
-                parseAgentList(ev.succeeded_agents),
-              );
-            }
           }
           if (t === "run_failed") {
             runFailed = true;
             const msg = String(ev.message ?? "run failed");
             setError(msg);
             setRunLockStuck(true);
+            dispatchNotification(
+              {
+                tier: "P0",
+                title: "Agent run failed",
+                body: msg,
+                sessionId: sessionId ?? undefined,
+                kind: "run_failed",
+              },
+              pushMacNotification,
+              notifyDesktop,
+            );
           }
           if (t === "error") {
             runFailed = true;
@@ -1277,6 +1280,17 @@ export function RoomChat({
               setRunLockStuck(true);
               void cancelRoomRun().catch(() => {});
             }
+            dispatchNotification(
+              {
+                tier: "P0",
+                title: "Room error",
+                body: msg,
+                sessionId: sessionId ?? undefined,
+                kind: "run_failed",
+              },
+              pushMacNotification,
+              notifyDesktop,
+            );
           }
           },
           {
@@ -1515,7 +1529,6 @@ export function RoomChat({
   );
   const executeBusy = planExecute.busy;
   const combinedError = error || planExecute.error;
-  const pendingExecuteCount = planExecute.activePending ? 1 : 0;
   const firstOpenBlock = useMemo<RoomObjection | null>(() => {
     const rows = roomTasks?.open_objections ?? [];
     return rows.find((o) => o.act === "BLOCK") ?? null;
@@ -1567,8 +1580,22 @@ export function RoomChat({
       : [];
 
   const paletteActions = useMemo(
-    () =>
-      workspacePaletteActions(setWorkspaceTab, [
+    () => {
+      const commandActions = slashCommands
+        .filter((cmd) => cmd.enabled !== false)
+        .map((cmd) => ({
+          id: `slash-${cmd.id}`,
+          label: `Insert ${cmd.slash}`,
+          hint: `${cmd.agent ?? cmd.kind}${
+            cmd.description ? ` · ${cmd.description}` : ""
+          }`,
+          run: () => {
+            openTranscriptTab();
+            setText(`${cmd.slash} `);
+            window.setTimeout(() => focusComposerInput(), 0);
+          },
+        }));
+      return workspacePaletteActions(setWorkspaceTab, [
         {
           id: "stop-run",
           label: running ? "Stop run" : "Stop run",
@@ -1585,7 +1612,7 @@ export function RoomChat({
         {
           id: "open-plugins",
           label: "Open settings",
-          hint: "Agent · Context · Plugins",
+          hint: "Agents · Workspace · Commands",
           run: () => {
             onOpenSettings?.();
           },
@@ -1595,8 +1622,19 @@ export function RoomChat({
           label: "Focus composer",
           run: () => focusComposerInput(),
         },
-      ]),
-    [setWorkspaceTab, running, handleStop, handleReleaseRunLock, onOpenSettings],
+        ...commandActions,
+      ]);
+    },
+    [
+      setWorkspaceTab,
+      running,
+      handleStop,
+      handleReleaseRunLock,
+      onOpenSettings,
+      slashCommands,
+      openTranscriptTab,
+      focusComposerInput,
+    ],
   );
 
   const sessionArtifacts = roomTasks?.artifacts ?? [];
@@ -1675,8 +1713,6 @@ export function RoomChat({
       <WorkspaceTabBar
         active={workspaceTab}
         onChange={setWorkspaceTab}
-        suggestedTab={suggestedWorkspaceTab}
-        reviewPending={pendingExecuteCount > 0 || consensusProposal != null}
         isNew={isNew}
         trailing={
           !isNew ? (
@@ -1863,19 +1899,6 @@ export function RoomChat({
 
       {workspaceTab === "transcript" || isNew ? (
         <>
-          {partialTurnNotice ? (
-            <div
-              className="room-partial-banner"
-              role="status"
-              aria-label="일부 에이전트 실패"
-            >
-              <strong>일부 에이전트 실패</strong>
-              <span>나머지 응답은 저장됨</span>
-              <span className="room-partial-banner__agents">
-                실패: {partialTurnNotice.failedAgents.map(agentLabel).join(", ")}
-              </span>
-            </div>
-          ) : null}
           <div
             className="messages-scroll messages-scroll--document workspace-panel--transcript"
             ref={scrollRef}
@@ -1994,21 +2017,33 @@ export function RoomChat({
       ) : null}
 
       {inboxPendingChip ? (
-        <div className="composer-inbox-pending" role="status">
+        <button
+          type="button"
+          className="composer-inbox-pending"
+          onClick={openHumanInbox}
+        >
           Human Inbox 대기
-        </div>
+        </button>
       ) : null}
 
       <ComposerPreflightBar agents={healthAgents} selected={selected} />
 
-      <HumanInboxPanel
-        sessionId={sessionId}
-        reloadKey={inboxReloadKey}
-        planRevision={currentPlanRevision}
-        onResolved={handleInboxResolved}
-        onBuildStarted={handleInboxBuildStarted}
-        disabled={running || synthesizing || runBusy}
-      />
+      {transcriptActive && !inboxPopupDismissed ? (
+        <HumanInboxPanel
+          sessionId={sessionId}
+          reloadKey={inboxReloadKey}
+          planRevision={currentPlanRevision}
+          onResolved={handleInboxResolved}
+          onBuildStarted={handleInboxBuildStarted}
+          onDismiss={() => {
+            setInboxPopupDismissed(true);
+            setInboxPendingChip(true);
+          }}
+          onOpenInbox={openHumanInbox}
+          disabled={running || synthesizing || runBusy}
+          presentation="popup"
+        />
+      ) : null}
 
       <ChatComposer
         className={[
@@ -2094,10 +2129,14 @@ export function RoomChat({
           width={inspectorWidth}
           onWidthChange={setInspectorWidthState}
           onWidthCommit={commitInspectorWidth}
+          badges={{
+            activity: notificationUnread,
+            tasks: inboxPendingChip ? 1 : undefined,
+          }}
         >
           {inspectorTab === "activity" ? (
             <div className="inspector-pane__section inspector-pane__section-card">
-              <NotificationCenter />
+              <NotificationCenter onOpen={openNotificationTarget} />
             </div>
           ) : null}
           {inspectorTab === "tasks" ? (
@@ -2181,6 +2220,15 @@ export function RoomChat({
                 onFocusPlanAction={focusPlanAction}
                 onFocusTask={focusTask}
                 onRequestComposerPrefill={requestComposerPrefill}
+              />
+              <HumanInboxPanel
+                sessionId={sessionId}
+                reloadKey={inboxReloadKey}
+                planRevision={currentPlanRevision}
+                onResolved={handleInboxResolved}
+                onBuildStarted={handleInboxBuildStarted}
+                disabled={running || synthesizing || runBusy}
+                presentation="inspector"
               />
             </div>
           ) : null}

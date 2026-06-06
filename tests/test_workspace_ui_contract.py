@@ -52,15 +52,18 @@ def test_transcript_uses_console_presentation():
 def test_transcript_is_readable_document_stream_not_cards():
     css = _read("web", "src", "styles", "developer-console.css")
 
-    assert "grid-template-columns: 54px minmax(0, 1fr);" in css
     assert "width: var(--composer-cluster-width);" in css
+    assert "max-width: calc(100% - 2 * var(--composer-pad-x));" in css
+    assert "margin-left: auto;" in css
+    assert "margin-right: auto;" in css
+    assert "/* Workspace content surfaces — inspector-like, not floating cards */" in css
     assert "max-width: 76ch;" in css
     assert ".workspace-transcript-panel .chat-turn__body" in css
     assert "font-size: 14px;" in css
     assert "line-height: 1.7;" in css
 
 
-def test_transcript_agent_rows_have_visible_bands_and_rails():
+def test_transcript_agent_rows_use_role_cards_with_initial_avatars():
     css = _read("web", "src", "styles", "developer-console.css")
     bubble = _read("web", "src", "components", "ChatBubble.tsx")
     chrome = _read("web", "src", "components", "TranscriptMessageChrome.tsx")
@@ -72,7 +75,9 @@ def test_transcript_agent_rows_have_visible_bands_and_rails():
     assert "TranscriptIdentity" in bubble
     assert "TranscriptAuthorLine" in bubble
     assert "transcript-identity" in chrome
+    assert "transcriptInitial" in chrome
     assert "transcript-author-line" in chrome
+    assert "grid-template-columns:" in css
     assert ".workspace-transcript-panel .chat-turn--cursor" in css
     assert ".workspace-transcript-panel .chat-turn--codex" in css
     assert ".workspace-transcript-panel .chat-turn--claude" in css
@@ -151,13 +156,16 @@ def test_workspace_visual_hierarchy_tokens_are_defined():
     assert "--surface-overlay: var(--console-panel-elevated);" in css
 
 
-def test_workspace_work_pending_uses_badge_markup():
+def test_workspace_tabs_do_not_render_inline_status_badges():
     tab_bar = _read("web", "src", "components", "WorkspaceTabBar.tsx")
+    room = _read("web", "src", "components", "RoomChat.tsx")
 
-    assert "workspace-tab-bar__badge" in tab_bar
-    assert "workspace-tab-bar__badge-dot" in tab_bar
-    assert "Work pending" in tab_bar or "Review pending" in tab_bar
-    assert 'tab.id === "work"' in tab_bar
+    assert "workspace-tab-bar__badge" not in tab_bar
+    assert "workspace-tab-bar__badge-dot" not in tab_bar
+    assert "Work pending" not in tab_bar
+    assert "Review pending" not in tab_bar
+    assert "suggestedTab=" not in room
+    assert "reviewPending=" not in room
 
 
 def test_workspace_panels_have_distinct_document_wrappers():
@@ -178,6 +186,89 @@ def test_workspace_panels_have_distinct_document_wrappers():
         assert f".{class_name}" in css or class_name in _read(
             "web", "src", "components", "WorkPanel.tsx"
         )
+
+
+def test_workspace_content_panels_use_full_inset_surface_not_small_cards():
+    css = _read("web", "src", "styles", "developer-console.css")
+    normalized_css = " ".join(css.split())
+
+    for selector in (
+        ".messages-scroll.workspace-panel--transcript > .workspace-transcript-panel",
+        ".messages-scroll.workspace-panel--work > .work-panel",
+        ".messages-scroll.workspace-panel--run > .workspace-document-panel",
+        ".messages-scroll.workspace-panel--artifacts > .workspace-document-panel",
+    ):
+        assert selector in normalized_css
+
+    full_surface_block = css.split(
+        "/* Workspace content surfaces — inspector-like, not floating cards */"
+    )[1].split("/* Work / Artifacts — composer-aligned column on full-width inset surface */")[0]
+    assert (
+        ".messages-scroll.workspace-panel--transcript\n  > .workspace-transcript-panel"
+        in css
+    )
+    assert (
+        ".messages-scroll.workspace-panel--run\n  > .workspace-document-panel"
+        in css
+    )
+    for declaration in (
+        "width: 100%;",
+        "max-width: none;",
+        "margin: 0;",
+        "border: none;",
+        "border-radius: 0;",
+        "background: transparent;",
+        "box-shadow: none;",
+    ):
+        assert declaration in full_surface_block
+
+    cluster_block = css.split(
+        "/* Work / Artifacts — composer-aligned column on full-width inset surface */"
+    )[1].split("/* Workspace content inner cards */")[0]
+    normalized_cluster = " ".join(cluster_block.split())
+    for selector in (
+        ".messages-scroll.workspace-panel--work > .work-panel",
+        ".messages-scroll.workspace-panel--work > .workspace-empty-state",
+        ".messages-scroll.workspace-panel--artifacts > .workspace-document-panel",
+    ):
+        assert selector in normalized_cluster
+    for declaration in (
+        "width: var(--composer-cluster-width);",
+        "max-width: calc(100% - 2 * var(--composer-pad-x));",
+        "margin-left: auto;",
+        "margin-right: auto;",
+        "background: transparent;",
+        "box-shadow: none;",
+    ):
+        assert declaration in cluster_block
+
+    composer_fade_block = css.split(
+        ".mac-app.mac-app--developer-console .chat-pane-body > .composer::before"
+    )[1].split("}")[0]
+    assert "backdrop-filter: none;" in composer_fade_block
+    assert "var(--console-bg-inset)" in composer_fade_block
+
+
+def test_workspace_tab_bar_blends_with_console_surface_not_segmented_card():
+    css = _read("web", "src", "styles", "developer-console.css")
+
+    assert "/* Workspace tab rail — flat console navigation */" in css
+
+    tab_bar_block = css.split(
+        "/* Workspace tab rail — flat console navigation */"
+    )[1].split("/* Workspace content surfaces — inspector-like, not floating cards */")[0]
+    for declaration in (
+        "background: var(--console-panel);",
+        "border-bottom: 0.5px solid var(--console-border-strong);",
+        "box-shadow: none;",
+    ):
+        assert declaration in tab_bar_block
+
+    assert ".workspace-tab-bar__seg.mac-segmented" in tab_bar_block
+    assert "background: transparent;" in tab_bar_block
+    assert "border: none;" in tab_bar_block
+    assert ".workspace-tab-bar__seg button.active" in tab_bar_block
+    assert "var(--mac-content-bg)" not in tab_bar_block
 
 
 def test_inspector_sections_are_wrapped_as_cards():

@@ -12,7 +12,10 @@ type Props = {
   planRevision?: string | null;
   onResolved?: () => void;
   onBuildStarted?: () => void;
+  onDismiss?: () => void;
+  onOpenInbox?: () => void;
   disabled?: boolean;
+  presentation?: "inline" | "popup" | "inspector";
 };
 
 function pendingItems(items: HumanInboxItem[]): HumanInboxItem[] {
@@ -39,7 +42,10 @@ export function HumanInboxPanel({
   planRevision = null,
   onResolved,
   onBuildStarted,
+  onDismiss,
+  onOpenInbox,
   disabled,
+  presentation = "inline",
 }: Props) {
   const [items, setItems] = useState<HumanInboxItem[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -173,15 +179,53 @@ export function HumanInboxPanel({
   const questionCount = pending.filter((item) => item.kind === "question").length;
   const buildCount = pending.filter((item) => item.kind === "build").length;
 
+  const title =
+    presentation === "popup"
+      ? pending[0]?.kind === "build"
+        ? "Build 승인 필요"
+        : "질문에 답해야 합니다"
+      : "Human Inbox";
+
   return (
-    <div className="human-inbox" role="region" aria-label="Human Inbox">
+    <div
+      className={[
+        "human-inbox",
+        `human-inbox--${presentation}`,
+      ].join(" ")}
+      role={presentation === "popup" ? "dialog" : "region"}
+      aria-label="Human Inbox"
+      aria-modal={presentation === "popup" ? true : undefined}
+    >
       <div className="human-inbox__header">
-        <span className="human-inbox__title">Human Inbox</span>
+        <span className="human-inbox__title">{title}</span>
         <span className="human-inbox__counts">
           {questionCount > 0 ? `방향 ${questionCount}` : null}
           {questionCount > 0 && buildCount > 0 ? " · " : null}
           {buildCount > 0 ? `실행 ${buildCount}` : null}
         </span>
+        {presentation === "popup" ? (
+          <span className="human-inbox__header-actions">
+            {onOpenInbox ? (
+              <button
+                type="button"
+                className="human-inbox__header-btn"
+                onClick={onOpenInbox}
+              >
+                Inbox
+              </button>
+            ) : null}
+            {onDismiss ? (
+              <button
+                type="button"
+                className="human-inbox__header-btn"
+                onClick={onDismiss}
+                aria-label="Human Inbox popup 닫기"
+              >
+                닫기
+              </button>
+            ) : null}
+          </span>
+        ) : null}
       </div>
       {error ? <div className="human-inbox__error">{error}</div> : null}
       <div className="human-inbox__items">

@@ -3719,28 +3719,6 @@ body {
   font-size: var(--text-caption2);
 }
 
-.room-partial-banner {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 10px;
-  margin: 0 var(--space-md) var(--space-xs);
-  padding: var(--space-xs) var(--space-md);
-  border: 1px solid color-mix(in srgb, var(--mac-warning) 45%, transparent);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--mac-warning) 14%, var(--mac-fill-secondary));
-  color: var(--mac-label-primary);
-  font-size: var(--text-caption1);
-}
-
-.room-partial-banner strong {
-  font-weight: 700;
-}
-
-.room-partial-banner__agents {
-  color: var(--mac-label-secondary);
-}
-
 .goal-loop-banner {
   display: grid;
   gap: var(--space-xs);
@@ -4137,4 +4115,262 @@ body {
 
 .human-inbox__plan-stale {
   color: var(--mac-orange, #c93400);
+}
+
+.human-inbox--popup {
+  position: fixed;
+  right: calc(var(--space-lg) + var(--inspector-pane-width, 360px));
+  bottom: calc(var(--composer-scroll-pad) + 20px);
+  z-index: 35;
+  width: min(520px, calc(100vw - 48px));
+  margin: 0;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.2);
+}
+
+.human-inbox--inspector {
+  margin: var(--space-sm) 0 0;
+  background: var(--mac-bg-secondary);
+}
+
+.human-inbox__header-actions {
+  display: inline-flex;
+  gap: var(--space-xs);
+  margin-left: auto;
+}
+
+.human-inbox__header-btn {
+  border: 1px solid var(--mac-separator);
+  background: var(--mac-bg-secondary);
+  color: var(--mac-label-secondary);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 12px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+
+.inspector-pane__tab {
+  position: relative;
+}
+
+.inspector-pane__tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--mac-system-red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.slash-command-menu__item.is-disabled,
+.slash-command-menu__item:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.slash-command-menu__item.is-disabled:hover,
+.slash-command-menu__item.is-disabled.is-active {
+  background: transparent;
+}
+
+.slash-command-menu__disabled {
+  color: var(--mac-system-orange, #c93400);
+  font-size: 11px;
+}
+
+.work-panel {
+  gap: var(--space-md);
+}
+
+.work-panel__header {
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.work-panel__header > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.work-panel__badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-xs);
+}
+
+.work-panel__phase-badge {
+  border: 1px solid var(--mac-separator);
+  background: var(--mac-bg-secondary);
+  color: var(--mac-label-secondary);
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.work-panel__phase-badge--warn {
+  color: var(--mac-system-orange, #c93400);
+  border-color: color-mix(in srgb, var(--mac-system-orange, #c93400) 38%, var(--mac-separator));
+}
+
+.work-panel__phase-badge--action {
+  color: var(--mac-accent);
+  border-color: color-mix(in srgb, var(--mac-accent) 40%, var(--mac-separator));
+}
+
+.work-panel__lane,
+.work-panel__history,
+.work-panel__evidence {
+  border: 1px solid var(--mac-separator);
+  border-radius: var(--radius-md);
+  background: var(--mac-bg-primary);
+  padding: var(--space-md);
+}
+
+.work-panel__lane-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-sm);
+}
+
+.work-panel__lane-head h2 {
+  margin: 0;
+  font-size: var(--text-subhead);
+}
+
+.work-panel__lane-head p {
+  margin: 3px 0 0;
+  color: var(--mac-label-secondary);
+  font-size: 12px;
+}
+
+.work-panel__history ul {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.work-panel__history li {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
+  gap: var(--space-sm);
+  align-items: center;
+  font-size: 12px;
+  color: var(--mac-label-secondary);
+}
+
+.work-panel__history-status {
+  color: var(--mac-label-primary);
+  font-weight: 650;
+}
+
+.work-panel__evidence summary {
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.settings-page__section {
+  border: 1px solid var(--mac-separator);
+  border-radius: var(--radius-md);
+  background: var(--mac-bg-primary);
+  padding: var(--space-md);
+}
+
+.settings-page__section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-sm);
+}
+
+.settings-page__section-head h2 {
+  margin: 0;
+}
+
+.settings-page__section-head span {
+  color: var(--mac-label-secondary);
+  font-size: 12px;
+  text-align: right;
+}
+
+.settings-page__section--split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.55fr);
+  gap: var(--space-lg);
+}
+
+.settings-page__workspace {
+  display: grid;
+  gap: var(--space-xs);
+  margin: 0 0 var(--space-md);
+}
+
+.settings-page__workspace div {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: var(--space-sm);
+}
+
+.settings-page__workspace dt {
+  color: var(--mac-label-secondary);
+  font-size: 12px;
+}
+
+.settings-page__workspace dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--mac-label-primary);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.settings-page__hint--success {
+  color: var(--mac-system-green);
+}
+
+.notification-center__item {
+  position: relative;
+}
+
+.notification-center__open {
+  justify-self: flex-start;
+  margin-top: 4px;
+  border: 1px solid var(--mac-separator);
+  background: var(--mac-bg-secondary);
+  color: var(--mac-label-secondary);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 11px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+
+@media (max-width: 900px) {
+  .human-inbox--popup {
+    right: var(--space-md);
+    left: var(--space-md);
+    width: auto;
+  }
+
+  .settings-page__section--split {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-page__workspace div {
+    grid-template-columns: 1fr;
+  }
 }

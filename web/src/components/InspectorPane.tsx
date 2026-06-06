@@ -15,6 +15,7 @@ type Props = {
   width: number;
   onWidthChange: (width: number) => void;
   onWidthCommit: (width: number) => void;
+  badges?: Partial<Record<InspectorTab, number>>;
 };
 
 export function InspectorPane({
@@ -26,6 +27,7 @@ export function InspectorPane({
   width,
   onWidthChange,
   onWidthCommit,
+  badges,
 }: Props) {
   const [isResizing, setIsResizing] = useState(false);
   const dragRef = useRef({ startX: 0, startWidth: INSPECTOR_MIN_WIDTH });
@@ -110,6 +112,11 @@ export function InspectorPane({
             onClick={() => onChange(tab.id)}
           >
             {tab.label}
+            {badges?.[tab.id] ? (
+              <span className="inspector-pane__tab-badge">
+                {badges[tab.id]}
+              </span>
+            ) : null}
           </button>
         ))}
       </div>

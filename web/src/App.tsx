@@ -513,7 +513,19 @@ export default function App() {
                 selectedAgents={agents.filter((a) => a.ready).map((a) => a.id)}
                 turnProfile={getTurnStrategy()}
                 efficiencyOn={getEfficiencyMode()}
+                apiOk={apiOk}
+                healthAgents={healthAgents}
+                healthLoading={healthLoading}
+                reconnecting={reconnecting}
+                sessionsDir={sessionsDir}
+                probeBridgeFailed={bridgeProbeFailed}
+                onRefreshDiagnostics={() => void reloadHealth(true)}
+                onReconnectCursor={() => void handleReconnectCursor()}
                 onBack={() => setShellView("workspace")}
+                onOpenLegacy={() => {
+                  setMode("classic");
+                  setShellView("workspace");
+                }}
               />
             ) : mode === "room" ? (
               <RoomChat

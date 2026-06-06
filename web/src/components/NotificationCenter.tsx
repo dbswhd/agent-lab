@@ -29,7 +29,11 @@ function tierClass(tier: AppNotification["tier"]): string {
   return `notification-center__item--${tier.toLowerCase()}`;
 }
 
-export function NotificationCenter() {
+type Props = {
+  onOpen?: (notification: AppNotification) => void;
+};
+
+export function NotificationCenter({ onOpen }: Props = {}) {
   const { items, unread, markAllRead } = useNotificationStore();
 
   if (items.length === 0) {
@@ -76,6 +80,15 @@ export function NotificationCenter() {
                 minute: "2-digit",
               })}
             </time>
+            {onOpen ? (
+              <button
+                type="button"
+                className="notification-center__open"
+                onClick={() => onOpen(n)}
+              >
+                Open
+              </button>
+            ) : null}
           </li>
         ))}
       </ul>

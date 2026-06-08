@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Callable, Literal
 
 from agent_lab.agents import claude_agent, codex_agent, cursor_agent
+from agent_lab.structured_envelope_adapter import merge_structured_reply
 
 AgentId = Literal["cursor", "codex", "claude"]
 
 AGENT_IDS: tuple[AgentId, ...] = ("cursor", "codex", "claude")
 
-_CALLERS: dict[AgentId, Callable[[str, str], str]] = {
+_CALLERS: dict[AgentId, Callable[..., str]] = {
     "cursor": cursor_agent.respond,
     "codex": codex_agent.respond,
     "claude": claude_agent.respond,
@@ -20,6 +23,12 @@ _LABELS: dict[AgentId, str] = {
     "codex": "Codex",
     "claude": "Claude",
 }
+
+
+@dataclass(frozen=True)
+class AgentReply:
+    text: str
+    structured_envelope: dict[str, Any] | None = None
 
 
 def label(agent: AgentId) -> str:
@@ -85,6 +94,16 @@ def _mock_agent_response(
     if scribe:
         return "## Mock plan\n\n- mock scribe turn\n"
     snippet = " ".join(user.strip().split())[:100]
+    if os.getenv("AGENT_LAB_MOCK_STRUCTURED_ENVELOPE", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }:
+        import json
+
+        env = json.dumps({"act": "ENDORSE", "refs": [], "confidence": 0.9})
+        return f"{env}\n[mock:{label(agent)}] ACK — {snippet or '(empty)'}"
     return f"[mock:{label(agent)}] ACK — {snippet or '(empty)'}"
 
 
@@ -96,25 +115,63 @@ def call_agent(
     permissions: dict[str, Any] | None = None,
     scribe: bool = False,
     on_activity: Callable[[str], None] | None = None,
+    session_folder: str | Path | None = None,
 ) -> str:
+    return call_agent_reply(
+        agent,
+        system,
+        user,
+        permissions=permissions,
+        scribe=scribe,
+        on_activity=on_activity,
+        session_folder=session_folder,
+    ).text
+
+
+def call_agent_reply(
+    agent: AgentId,
+    system: str,
+    user: str,
+    *,
+    permissions: dict[str, Any] | None = None,
+    scribe: bool = False,
+    on_activity: Callable[[str], None] | None = None,
+    session_folder: str | Path | None = None,
+    request_structured_envelope: bool = False,
+) -> AgentReply:
     if _mock_agents_enabled():
-        return _mock_agent_response(agent, user, scribe=scribe)
-    if not _is_ready(agent):
+        text = _mock_agent_response(agent, user, scribe=scribe)
+    elif not _is_ready(agent):
         raise RuntimeError(f"{label(agent)} is not configured")
-    if agent == "cursor":
-        return cursor_agent.respond(
-            system, user, permissions=permissions, on_activity=on_activity
+    elif agent == "cursor":
+        text = cursor_agent.respond(
+            system,
+            user,
+            permissions=permissions,
+            on_activity=on_activity,
+            session_folder=session_folder,
+            request_structured_envelope=request_structured_envelope,
         )
-    if agent == "codex":
-        return codex_agent.respond(
-            system, user, permissions=permissions, on_activity=on_activity
+    elif agent == "codex":
+        text = codex_agent.respond(
+            system,
+            user,
+            permissions=permissions,
+            on_activity=on_activity,
+            session_folder=session_folder,
+            request_structured_envelope=request_structured_envelope,
         )
-    if agent == "claude":
-        return claude_agent.respond(
+    elif agent == "claude":
+        text = claude_agent.respond(
             system,
             user,
             permissions=permissions,
             scribe=scribe,
             on_activity=on_activity,
+            session_folder=session_folder,
+            request_structured_envelope=request_structured_envelope,
         )
-    return _CALLERS[agent](system, user)
+    else:
+        text = _CALLERS[agent](system, user)
+    prose, structured = merge_structured_reply(text)
+    return AgentReply(text=prose, structured_envelope=structured)

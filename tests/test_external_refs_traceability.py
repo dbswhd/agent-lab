@@ -57,6 +57,15 @@ SHIPPED_ROWS: list[tuple[str, list[str]]] = [
     ("ops-P2", ["app/server/routers/health.py"]),
     ("ops-verify", ["Makefile", "docs/OPS-RUNBOOK.md"]),
     ("CENT-env", ["src/agent_lab/subprocess_env.py", "tests/test_subprocess_env.py"]),
+    (
+        "HOOK-COMM",
+        [
+            "src/agent_lab/reply_policy.py",
+            "src/agent_lab/room_hooks.py",
+            "docs/HOOK-COMMUNICATE-REFORM.md",
+            "Makefile",
+        ],
+    ),
 ]
 
 PARTIAL_ROWS: list[tuple[str, list[str]]] = [

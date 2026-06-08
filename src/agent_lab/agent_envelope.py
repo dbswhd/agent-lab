@@ -123,6 +123,50 @@ def parse_agent_response(text: str) -> ParsedAgentResponse:
     return ParsedAgentResponse(body=body, envelope=envelope, raw=raw)
 
 
+def parse_agent_response_v2(
+    text: str,
+    *,
+    structured: dict[str, Any] | None = None,
+) -> ParsedAgentResponse:
+    """Prefer provider structured envelope JSON; fall back to fence-in-prose."""
+    if structured and isinstance(structured, dict):
+        envelope = AgentEnvelope.from_dict(structured)
+        if envelope is not None:
+            body = (text or "").strip()
+            raw = text or json.dumps(structured, ensure_ascii=False)
+            return ParsedAgentResponse(body=body, envelope=envelope, raw=raw)
+    return parse_agent_response(text)
+
+
+def split_structured_envelope_prefix(
+    text: str,
+) -> tuple[dict[str, Any] | None, str]:
+    """Detect a leading JSON object with ``act`` (provider structured output)."""
+    raw = text or ""
+    if raw.lstrip().startswith("```"):
+        return None, raw
+    idx = raw.find("{")
+    if idx < 0 or idx > 120:
+        return None, raw
+    chunk = raw[idx:]
+    depth = 0
+    for i, ch in enumerate(chunk):
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                try:
+                    obj = json.loads(chunk[: i + 1])
+                except json.JSONDecodeError:
+                    return None, raw
+                if isinstance(obj, dict) and str(obj.get("act") or "").strip():
+                    rest = raw[idx + i + 1 :].lstrip()
+                    return obj, rest
+                return None, raw
+    return None, raw
+
+
 def envelope_act(envelope: dict[str, Any] | AgentEnvelope | None) -> ActType | None:
     if envelope is None:
         return None
@@ -197,7 +241,7 @@ def classify_consensus_reply(
     text: str,
     envelope: dict[str, Any] | AgentEnvelope | None = None,
 ) -> ConsensusVerdict:
-    """Prefer envelope act; fall back to phrase heuristics."""
+    """Prefer envelope act; fall back to phrase heuristics when legacy enabled."""
     if body_has_proposed(text):
         return "substantive"
     act = envelope_act(envelope)
@@ -207,6 +251,13 @@ def classify_consensus_reply(
         return "pass"
     if act in ("AMEND", "PROPOSE", "CHALLENGE", "BLOCK", "MESSAGE"):
         return "substantive"
+    from agent_lab.reply_policy import legacy_endorse_enabled
+
+    if not legacy_endorse_enabled():
+        if is_pure_no_objection(text) or is_pass_response(text):
+            return "neutral"
+        body = (text or "").strip()
+        return "neutral" if not body else "substantive"
     if is_pure_no_objection(text):
         return "endorse"
     if is_pass_response(text):
@@ -272,6 +323,26 @@ After the fence, write the normal readable reply for the Human.
 - Always use the fence JSON so peers and turn_state can skip re-reading long prose.
 """
 
+ENVELOPE_FORMAT_GUIDANCE_SHORT = """\
+[Speech-act envelope — R2+]
+Start with fenced JSON, then your readable body:
+
+```agent-envelope
+{"act":"ENDORSE","refs":[],"confidence":0.9}
+```
+
+Acts: PROPOSE | AMEND | ENDORSE | CHALLENGE | PASS | BLOCK | MESSAGE
+ENDORSE/PASS → one-line body. Full rules: docs/HOOK-COMMUNICATE-REFORM.md
+"""
+
+DECISION_FORK_GUIDANCE_SHORT = """\
+[DECISION-FORK — optional, after body]
+```decision-fork
+{"topic":"…","options":[{"label":"…","refs":["L42"]}]}
+```
+≥2 options, each with ≥1 ref.
+"""
+
 DECISION_FORK_GUIDANCE = """\
 [DECISION-FORK — Human direction (optional, end of reply)]
 When the **Human** must pick between concrete directions (not peer-only debate), add **one** fenced block **after** your readable body:
@@ -287,13 +358,18 @@ Rules:
 """
 
 
-def envelope_protocol_block(*, context: str = "consensus") -> str:
+def envelope_protocol_block(*, context: str = "consensus", compact: bool = False) -> str:
     labels = {
         "consensus": "자유 토론 · 합의 확인 R2+",
         "review": "리뷰 · R2+ 순차",
         "discuss": "회의 · R2+ 순차 (동료 답변 반영)",
     }
     label = labels.get(context, context)
+    if compact:
+        return (
+            f"{ENVELOPE_FORMAT_GUIDANCE_SHORT}\n\n"
+            f"{DECISION_FORK_GUIDANCE_SHORT}\n(Context: {label})"
+        )
     return (
         f"{ENVELOPE_FORMAT_GUIDANCE}\n\n{DECISION_FORK_GUIDANCE}\n(Context: {label})"
     )

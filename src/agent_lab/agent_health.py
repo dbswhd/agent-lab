@@ -109,9 +109,10 @@ def agent_health_row(
     }
 
     if aid == "cursor":
+        from agent_lab.credential_store import provider_has_credentials
         from agent_lab.cursor_bridge import cursor_bridge_failure_payload
 
-        has_key = bool(os.getenv("CURSOR_API_KEY", "").strip())
+        has_key = provider_has_credentials("cursor")
         sdk = _cursor_sdk_installed()
         row["configured"] = has_key and sdk
         if not has_key:

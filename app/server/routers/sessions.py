@@ -47,7 +47,21 @@ def unarchive_session(session_id: str) -> dict[str, Any]:
 
 @router.get("/sessions/{session_id}")
 def session(session_id: str) -> dict[str, Any]:
+    folder = session_folder_or_404(session_id)
+    from agent_lab.room import ensure_session_plan_pipeline
+
+    ensure_session_plan_pipeline(folder)
     return session_detail(session_id)
+
+
+@router.post("/sessions/{session_id}/plan/auto-sync")
+def auto_sync_session_plan(session_id: str) -> dict[str, Any]:
+    folder = session_folder_or_404(session_id)
+    from agent_lab.room import ensure_session_plan_pipeline
+
+    synced = ensure_session_plan_pipeline(folder)
+    detail = session_detail(session_id)
+    return {"ok": True, "synced": synced, **detail}
 
 
 @router.patch("/sessions/{session_id}")

@@ -7,13 +7,14 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.room_hooks import PreExecuteBlocked, run_pre_execute_hooks
+from agent_lab.room_hooks import PreExecuteBlocked, clear_hooks_config_cache, run_pre_execute_hooks
 
 
 def test_pre_execute_hook_passes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     cfg = tmp_path / "hooks.toml"
     cfg.write_text("[hooks]\n", encoding="utf-8")
     monkeypatch.setenv("AGENT_LAB_HOOKS_PATH", str(cfg))
+    clear_hooks_config_cache()
     result = run_pre_execute_hooks(
         {"team_lead": "cursor"},
         {"what": "edit file", "index": 1},
@@ -29,6 +30,7 @@ def test_pre_execute_hook_blocks(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     cfg = tmp_path / "hooks.toml"
     cfg.write_text(f'[hooks]\npre_execute = ["{script}"]\n', encoding="utf-8")
     monkeypatch.setenv("AGENT_LAB_HOOKS_PATH", str(cfg))
+    clear_hooks_config_cache()
     result = run_pre_execute_hooks(
         {},
         {"what": "x", "index": 1},

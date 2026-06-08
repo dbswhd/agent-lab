@@ -379,6 +379,61 @@ def harvest_build_proposal(
     return item
 
 
+def harvest_post_plan_inbox(
+    run_meta: dict[str, Any],
+    messages: list[Any],
+    *,
+    plan_md: str,
+    human_turn: int | None = None,
+) -> dict[str, Any]:
+    """After plan scribe (consensus or verified): T-Q2 OPEN + T-B1 build."""
+    harvest_discuss_questions(
+        run_meta,
+        messages,
+        human_turn=human_turn,
+        plan_md=plan_md,
+        mode="discuss",
+    )
+    build_item = harvest_build_proposal(
+        run_meta,
+        plan_md=plan_md,
+        human_turn=human_turn,
+        mode="discuss",
+    )
+    return {
+        "questions": sum(
+            1 for i in inbox_items(run_meta) if i.get("kind") == "question"
+        ),
+        "build_created": build_item is not None,
+    }
+
+
+def _supersede_legacy_verified_build_items(run_meta: dict[str, Any]) -> None:
+    """Drop direct verified-loop build shortcuts superseded by plan pipeline."""
+    items = inbox_items(run_meta)
+    changed = False
+    for item in items:
+        if (
+            item.get("kind") == "build"
+            and item.get("source") == "verified_loop"
+            and item.get("status") == "pending"
+        ):
+            item["status"] = "superseded"
+            item["resolved_at"] = _now_iso_verified_supersede()
+            changed = True
+    if changed:
+        run_meta["human_inbox"] = items
+        from agent_lab.human_inbox import compute_inbox_pending
+
+        run_meta["inbox_pending"] = compute_inbox_pending(run_meta)
+
+
+def _now_iso_verified_supersede() -> str:
+    from datetime import datetime, timezone
+
+    return datetime.now(timezone.utc).isoformat()
+
+
 # --- sync pause (M4) — pending question pauses further auto discuss rounds ------
 
 

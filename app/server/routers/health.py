@@ -3,16 +3,36 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter
+from pydantic import BaseModel, Field
 
 from agent_lab.agent_health import build_health_payload, reconnect_cursor_bridge
 from agent_lab.agent_preflight import build_agent_preflight
 from agent_lab.api_diagnostics import build_diagnostics_payload
+from agent_lab.native_folder_picker import pick_folder_native
 from agent_lab.session import SESSIONS_DIR
 from agent_lab.session_setup import session_setup_options
 
 from app.server.deps import room_session_context
 
 router = APIRouter(prefix="/api")
+
+
+class PickFolderBody(BaseModel):
+    default_path: str | None = Field(default=None, max_length=4096)
+    title: str = Field(default="작업 폴더 선택", max_length=120)
+
+
+@router.post("/desktop/pick-folder")
+def desktop_pick_folder(body: PickFolderBody | None = None) -> dict[str, Any]:
+    """Native folder picker for browser dev (macOS Finder via osascript)."""
+    payload = body or PickFolderBody()
+    available, path = pick_folder_native(
+        default_path=payload.default_path,
+        title=payload.title,
+    )
+    if not available:
+        return {"available": False, "path": None, "cancelled": False}
+    return {"available": True, "path": path, "cancelled": path is None}
 
 
 @router.get("/session-setup/options")

@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 from agent_lab import claude_cli
@@ -16,6 +17,8 @@ def respond(
     permissions: dict[str, Any] | None = None,
     scribe: bool = False,
     on_activity: Callable[[str], None] | None = None,
+    session_folder: str | Path | None = None,
+    request_structured_envelope: bool = False,
 ) -> str:
     parts = [system or CLAUDE_ROOM]
     handoff = claude_handoff_block()
@@ -29,4 +32,6 @@ def respond(
         permissions=permissions,
         scribe=scribe,
         on_activity=on_activity,
+        session_folder=session_folder,
+        request_structured_envelope=request_structured_envelope,
     )

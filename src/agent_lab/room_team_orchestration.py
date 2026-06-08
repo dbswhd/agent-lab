@@ -143,7 +143,7 @@ def normalize_turn_profile(profile: str | None) -> str:
         return "analyze"
     if p == "review":
         return "free"
-    if p in ("quick", "analyze", "free", "specialist"):
+    if p in ("quick", "analyze", "free", "specialist", "verified"):
         return p
     return "analyze"
 

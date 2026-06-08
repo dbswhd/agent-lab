@@ -7,11 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from agent_lab.agents.registry import AgentId, label
-from agent_lab.agent_envelope import (
-    classify_consensus_reply,
-    envelope_act,
-    envelope_protocol_block,
-)
+from agent_lab.agent_envelope import classify_consensus_reply, envelope_act
 from agent_lab.room_context import (
     is_no_objection_response,
     is_pass_response,
@@ -159,7 +155,6 @@ def consensus_follow_up(
             f"(예: {joined}).\n"
         )
     return (
-        f"{envelope_protocol_block(context='consensus')}\n\n"
         f"[자유 토론 · 합의 확인]\n"
         f"현재 제안 — **{label(anchor.agent)}**:\n"
         f"「{anchor.excerpt}」\n\n"

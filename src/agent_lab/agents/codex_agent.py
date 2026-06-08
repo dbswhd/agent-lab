@@ -22,6 +22,7 @@ def respond_session(
     gate_after: int | None = None,
     gate: Callable[[], bool] | None = None,
     extra_prompts_if_gate: list[str] | None = None,
+    request_structured_envelope: bool = False,
 ) -> str:
     """Persistent Codex execution — plan-first gate matches ``cursor_agent.respond_session``."""
     bodies = [p.strip() for p in prompts if p and p.strip()]
@@ -35,6 +36,7 @@ def respond_session(
         room_turn=room_turn,
         session_folder=session_folder,
         inbox_mcp=inbox_mcp,
+        request_structured_envelope=request_structured_envelope,
     )
     if (
         gate_after is not None
@@ -53,6 +55,7 @@ def respond_session(
                 room_turn=False,
                 session_folder=session_folder,
                 inbox_mcp=inbox_mcp,
+                request_structured_envelope=request_structured_envelope,
             )
     return last
 
@@ -66,6 +69,7 @@ def respond(
     room_turn: bool = True,
     session_folder: str | Path | None = None,
     inbox_mcp: bool = False,
+    request_structured_envelope: bool = False,
 ) -> str:
     return respond_session(
         system or CODEX_ROOM,
@@ -75,4 +79,5 @@ def respond(
         room_turn=room_turn,
         session_folder=session_folder,
         inbox_mcp=inbox_mcp,
+        request_structured_envelope=request_structured_envelope,
     )

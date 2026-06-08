@@ -15,6 +15,7 @@ from agent_lab.session_guidance import (
     VERIFICATION_ARTIFACT_GUIDANCE,
     apply_discuss_workspace,
 )
+from agent_lab.agent_thread_catalog import list_agent_threads
 from agent_lab.workspace_roots import (
     lecture_script_root,
     pipeline_root,
@@ -104,8 +105,11 @@ def resolve_workspace_selection(
         custom = resolve_custom_workspace(workspace_path)
         if custom is not None:
             return custom
-        if wid == CUSTOM_WORKSPACE_ID:
+    if wid == CUSTOM_WORKSPACE_ID:
+        raw = (workspace_path or "").strip()
+        if not raw:
             raise ValueError("custom workspace path required")
+        raise ValueError(f"custom workspace path not found: {raw}")
     return resolve_workspace_preset(workspace_id)
 
 
@@ -201,6 +205,7 @@ def build_setup_run_meta(
     workspace_id: str | None,
     session_template: str | None,
     workspace_path: str | None = None,
+    agent_thread_bindings: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     preset = resolve_workspace_selection(workspace_id, workspace_path)
     tpl = resolve_session_template(session_template)
@@ -220,6 +225,8 @@ def build_setup_run_meta(
     if tpl["id"] == "book-content":
         meta["layout_frozen"] = True
         meta["layout_frozen_at"] = datetime.now(timezone.utc).isoformat()
+    if agent_thread_bindings:
+        meta["agent_thread_bindings"] = agent_thread_bindings
     return meta
 
 
@@ -230,12 +237,14 @@ def seed_session_setup(
     session_template: str | None,
     workspace_path: str | None = None,
     topic: str = "",
+    agent_thread_bindings: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """Write initial run.json + meta.json fields for a new session folder."""
     setup = build_setup_run_meta(
         workspace_id=workspace_id,
         session_template=session_template,
         workspace_path=workspace_path,
+        agent_thread_bindings=agent_thread_bindings,
     )
     now = datetime.now(timezone.utc).isoformat()
     run_meta: dict[str, Any] = {
@@ -287,6 +296,7 @@ def session_setup_options() -> dict[str, Any]:
         default_ws = str(workspaces[0]["id"])
     return {
         "workspaces": workspaces,
+        "agent_threads": list_agent_threads(),
         "defaults": {
             "workspace_id": default_ws,
             "session_template": DEFAULT_TEMPLATE_ID,

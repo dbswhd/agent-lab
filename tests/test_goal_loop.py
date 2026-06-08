@@ -14,12 +14,6 @@ from agent_lab.goal_loop import (
 from agent_lab.run_meta import read_run_meta
 
 
-@pytest.fixture(autouse=True)
-def _mock_oracle_only(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Tests expect mock oracle unless they opt into live explicitly."""
-    monkeypatch.delenv("AGENT_LAB_GOAL_ORACLE_LIVE", raising=False)
-
-
 def _session(tmp_path: Path) -> Path:
     folder = tmp_path / "session"
     folder.mkdir()

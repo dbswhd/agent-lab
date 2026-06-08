@@ -76,6 +76,10 @@ SESSION_META_KEYS = (
     "last_delegate",
     "session_goal",
     "goal_loop",
+    "verified_loop",
+    "verified_plan_sync",
+    "hook_runs",
+    "agent_hooks_manifest",
 )
 
 LAYOUT_FROZEN_GUIDANCE = """\

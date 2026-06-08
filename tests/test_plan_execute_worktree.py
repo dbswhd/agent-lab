@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pytest
 
+from agent_mocks import disable_execute_inbox_mcp
+
 from agent_lab.plan_actions import find_dry_run_action
 from agent_lab.plan_execute import (
     abort_merge_execution,
@@ -317,6 +319,7 @@ def test_run_dry_run_worktree_cwd_and_record(
     session_folder: Path,
     monkeypatch: pytest.MonkeyPatch,
 ):
+    disable_execute_inbox_mcp(monkeypatch)
     plan_md = """## 지금 실행
 1.
    - 무엇을: app.py를 v2로 수정한다.
@@ -362,6 +365,7 @@ def test_resolve_approve_merges_worktree_execution(
     session_folder: Path,
     monkeypatch: pytest.MonkeyPatch,
 ):
+    disable_execute_inbox_mcp(monkeypatch)
     plan_md = """## 지금 실행
 1.
    - 무엇을: app.py를 merge한다.
@@ -421,6 +425,7 @@ def test_resolve_reject_discards_worktree_execution(
     session_folder: Path,
     monkeypatch: pytest.MonkeyPatch,
 ):
+    disable_execute_inbox_mcp(monkeypatch)
     plan_md = """## 지금 실행
 1.
    - 무엇을: app.py를 discard한다.
@@ -497,6 +502,7 @@ def test_isolation_override_runs_in_place_after_blocked_worktree(
     session_folder: Path,
     monkeypatch: pytest.MonkeyPatch,
 ):
+    disable_execute_inbox_mcp(monkeypatch)
     plan_md = """## 지금 실행
 1.
    - 무엇을: dirty main에서 override 실행

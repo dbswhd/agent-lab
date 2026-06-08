@@ -30,6 +30,7 @@ from agent_lab.run_control import (
 from agent_lab.runner import provider_override, run_topic_with_progress
 from agent_lab.session import SESSIONS_DIR, session_dir
 from agent_lab.session_setup import merge_setup_permissions, seed_session_setup
+from agent_lab.agent_thread_catalog import normalize_agent_thread_bindings
 
 from app.server.deps import (
     ContextPreviewRequest,
@@ -169,6 +170,7 @@ async def create_room_run(
     workspace_path: str | None = Form(None),
     session_template: str = Form("general"),
     agent_capabilities: str = Form("{}"),
+    agent_thread_bindings: str = Form("{}"),
     files: list[UploadFile] = File(default=[]),
 ) -> StreamingResponse:
     topic = topic.strip()
@@ -209,11 +211,14 @@ async def create_room_run(
     workspace_norm = (workspace_id or "agent-lab").strip().lower()
     workspace_path_norm = (workspace_path or "").strip() or None
     template_norm = (session_template or "general").strip().lower()
-    perm_obj = merge_setup_permissions(
-        perm_obj,
-        workspace_norm,
-        workspace_path_norm,
-    )
+    try:
+        perm_obj = merge_setup_permissions(
+            perm_obj,
+            workspace_norm,
+            workspace_path_norm,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     caps_obj: dict[str, Any] = {}
     try:
@@ -222,6 +227,13 @@ async def create_room_run(
             caps_obj = parsed_caps
     except json.JSONDecodeError:
         caps_obj = {}
+
+    thread_bindings_obj: dict[str, str] = {}
+    try:
+        parsed_threads = json.loads(agent_thread_bindings) if agent_thread_bindings else {}
+        thread_bindings_obj = normalize_agent_thread_bindings(parsed_threads)
+    except json.JSONDecodeError:
+        thread_bindings_obj = {}
 
     folder: Path | None = None
     if session_id:
@@ -238,6 +250,7 @@ async def create_room_run(
                 session_template=template_norm,
                 workspace_path=workspace_path_norm,
                 topic=topic,
+                agent_thread_bindings=thread_bindings_obj or None,
             )
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
@@ -277,10 +290,12 @@ async def create_room_run(
             if not try_begin_run():
                 maybe_release_orphaned_run_lock()
                 if not try_begin_run():
+                    lock_msg = "a run is already in progress"
+                    result["error"] = lock_msg
                     event_q.put(
                         {
                             "type": "error",
-                            "message": "a run is already in progress",
+                            "message": lock_msg,
                         }
                     )
                     event_q.put(None)

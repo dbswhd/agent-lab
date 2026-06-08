@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import pytest
+
 from agent_lab.agent_envelope import (
     classify_consensus_reply,
     envelope_act,
     envelope_protocol_block,
     is_endorse_reply,
     parse_agent_response,
+    parse_agent_response_v2,
 )
 
 
@@ -80,6 +83,19 @@ def test_invalid_fence_with_trailing_body():
     assert parsed.envelope is None
     assert parsed.envelope_parse_error
     assert parsed.body == "짧은 동의"
+
+
+def test_parse_agent_response_v2_structured_preferred():
+    structured = {"act": "ENDORSE", "refs": ["L1"]}
+    parsed = parse_agent_response_v2("본문", structured=structured)
+    assert parsed.envelope is not None
+    assert parsed.envelope.act == "ENDORSE"
+    assert parsed.body == "본문"
+
+
+def test_legacy_endorse_off_neutral_without_envelope(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("AGENT_LAB_LEGACY_ENDORSE", "0")
+    assert classify_consensus_reply("이의 없습니다") == "neutral"
 
 
 def test_envelope_protocol_block_includes_efficiency_and_discuss():

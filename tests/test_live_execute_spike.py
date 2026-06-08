@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pytest
 
+from agent_mocks import disable_execute_inbox_mcp
+
 from agent_lab.live_execute_spike import (
     SPIKE_MARKER,
     SPIKE_REL_PATH,
@@ -27,6 +29,7 @@ def _mock_respond(**kwargs):
 
 @pytest.fixture
 def mock_cursor(monkeypatch: pytest.MonkeyPatch):
+    disable_execute_inbox_mcp(monkeypatch)
     monkeypatch.setenv("CURSOR_API_KEY", "test-key-for-mock")
     monkeypatch.setattr("agent_lab.agents.cursor_agent.is_available", lambda: True)
     monkeypatch.setattr("agent_lab.agents.cursor_agent.respond", _mock_respond)

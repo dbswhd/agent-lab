@@ -10,6 +10,7 @@ from agent_lab.human_inbox import (
     resolve_inbox_item,
     supersede_pending_inbox,
 )
+from agent_lab.room import ensure_session_plan_pipeline
 from agent_lab.run_meta import read_run_meta
 
 from app.server.deps import (
@@ -24,6 +25,7 @@ router = APIRouter(prefix="/api")
 @router.get("/sessions/{session_id}/inbox")
 def get_session_inbox(session_id: str) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
+    ensure_session_plan_pipeline(folder)
     run = read_run_meta(folder)
     return {"ok": True, "session_id": session_id, **public_inbox_payload(run)}
 

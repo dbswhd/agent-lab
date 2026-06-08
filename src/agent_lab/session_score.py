@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from agent_lab.plan_refs import validate_plan_refs
+from agent_lab.communicate_kpis import communicate_counts, communicate_scores
 from agent_lab.room_objections import list_objections
 from agent_lab.run_meta import read_run_meta
 
@@ -321,6 +322,8 @@ def score_session(folder: Path) -> dict[str, Any]:
     capability_scores, capability_counts = _capability_cwd_kpis(run_meta)
     ref_rate, ref_counts = _ref_validity_rate(folder)
     dup_rate, dup_counts = _duplicate_speech_rate(messages)
+    comm_counts = communicate_counts(run_meta)
+    comm_scores = communicate_scores(comm_counts)
 
     scores: dict[str, float | None] = {
         "objection_resolution_rate": obj_rate,
@@ -331,6 +334,7 @@ def score_session(folder: Path) -> dict[str, Any]:
         "partial_turn_rate": partial_rate,
         **merge_scores,
         **capability_scores,
+        **comm_scores,
     }
     summary_lines = _format_summary_lines(
         folder.name,
@@ -355,6 +359,7 @@ def score_session(folder: Path) -> dict[str, Any]:
             "capability_cwd": capability_counts,
             "plan_refs": ref_counts,
             "duplicate_speech": dup_counts,
+            "communicate": comm_counts,
         },
         "summary_lines": summary_lines,
     }

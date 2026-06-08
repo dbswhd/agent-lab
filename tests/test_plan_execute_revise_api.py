@@ -6,6 +6,8 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from agent_mocks import disable_execute_inbox_mcp
+
 from agent_lab.plan_actions import find_dry_run_action
 from agent_lab.plan_execute import run_dry_run
 from agent_lab.plan_pending import (
@@ -56,6 +58,7 @@ def test_revise_pending_execution_replaces_diff_and_remains_approvable(
     tmp_path: Path,
     monkeypatch,
 ):
+    disable_execute_inbox_mcp(monkeypatch)
     sessions_dir = tmp_path / "sessions"
     folder = sessions_dir / "sess-revise"
     folder.mkdir(parents=True)

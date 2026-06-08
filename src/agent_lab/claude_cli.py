@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import glob
+import json
 import os
 import shutil
 import subprocess
@@ -69,12 +70,15 @@ def resolve_claude_roots(permissions: dict[str, Any] | None) -> list[Path]:
     return resolve_workspace_roots(normalize_claude_permissions(permissions))
 
 
-def _claude_env() -> dict[str, str]:
+def _claude_env(*, api_key: str | None = None) -> dict[str, str]:
     from agent_lab.subprocess_env import subprocess_env
 
     env = subprocess_env()
-    for key in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"):
-        env.pop(key, None)
+    if api_key and api_key.strip():
+        env["ANTHROPIC_API_KEY"] = api_key.strip()
+    else:
+        for key in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"):
+            env.pop(key, None)
     claude = resolve_claude_bin()
     if claude:
         bin_dir = str(Path(claude).parent)
@@ -261,6 +265,8 @@ def invoke(
     scribe: bool = False,
     room_turn: bool = True,
     on_activity: Callable[[str], None] | None = None,
+    session_folder: str | Path | None = None,
+    request_structured_envelope: bool = False,
 ) -> str:
     from agent_lab.agent_permissions import normalize_claude_permissions
 
@@ -281,12 +287,18 @@ def invoke(
     skip_permissions = _env_bool("CLAUDE_SKIP_PERMISSIONS", default=True)
 
     system_path = tempfile.mktemp(prefix="agent-lab-claude-sys-", suffix=".txt")
+    system_text = system.strip()
+    if request_structured_envelope:
+        from agent_lab.structured_envelope_adapter import structured_envelope_system_addon
+
+        system_text = f"{system_text}\n\n{structured_envelope_system_addon(compact=True)}"
     # `-p` is required for headless tool loops (Read/Grep/Bash) from a subprocess.
+    output_format = "json" if request_structured_envelope else "text"
     cmd: list[str] = [
         claude,
         "-p",
         "--output-format",
-        "text",
+        output_format,
         "--no-session-persistence",
         "--append-system-prompt-file",
         system_path,
@@ -328,15 +340,16 @@ def invoke(
 
     cmd.append(user.strip())
 
-    Path(system_path).write_text(system.strip() + "\n", encoding="utf-8")
-    def _run_once() -> str:
+    Path(system_path).write_text(system_text + "\n", encoding="utf-8")
+
+    def _run_once(api_key: str | None) -> str:
         result = subprocess.run(
             cmd,
             stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
             timeout=_timeout_sec(room_turn=room_turn),
-            env=_claude_env(),
+            env=_claude_env(api_key=api_key),
             cwd=cwd,
         )
         if result.returncode != 0:
@@ -351,21 +364,42 @@ def invoke(
                 f"claude -p failed (exit {result.returncode})"
                 + (f": {detail}" if detail else "")
             )
-        text = (result.stdout or "").strip()
-        if not text:
+        raw = (result.stdout or "").strip()
+        if not raw:
             raise RuntimeError("claude -p returned empty output")
-        return text
+        if request_structured_envelope:
+            from agent_lab.structured_envelope_adapter import parse_claude_json_stdout
+
+            structured, body = parse_claude_json_stdout(raw)
+            if structured is not None:
+                return json.dumps(structured, ensure_ascii=False) + "\n" + (body or "")
+            return body or raw
+        return raw
 
     def _on_retry(attempt: int, max_attempts: int, _reason: str) -> None:
         if on_activity:
             on_activity(f"재시도 {attempt}/{max_attempts} — Claude CLI 일시 오류")
 
     try:
-        return retry_call(
-            _run_once,
-            max_attempts=retry_max_attempts(room_turn=room_turn),
-            base_delay_sec=retry_base_delay_sec(),
-            on_retry_label=_on_retry,
+        from agent_lab.agent_hooks_materializer import native_claude_hooks_overlay
+        from agent_lab.credential_store import call_with_credential_fallback
+
+        def _run_for_key(api_key: str | None) -> str:
+            def _run_with_hooks() -> str:
+                with native_claude_hooks_overlay(session_folder, cwd):
+                    return _run_once(api_key)
+
+            return retry_call(
+                _run_with_hooks,
+                max_attempts=retry_max_attempts(room_turn=room_turn),
+                base_delay_sec=retry_base_delay_sec(),
+                on_retry_label=_on_retry,
+            )
+
+        return call_with_credential_fallback(
+            "claude",
+            _run_for_key,
+            allow_oauth_without_key=True,
         )
     finally:
         Path(system_path).unlink(missing_ok=True)

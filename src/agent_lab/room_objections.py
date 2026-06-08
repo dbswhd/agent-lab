@@ -234,8 +234,11 @@ def harvest_objections_from_turn(
         if agent not in _AGENT_IDS:
             continue
         env = getattr(m, "envelope", None)
+        if env is not None and hasattr(env, "to_dict"):
+            env = env.to_dict()
         if not isinstance(env, dict):
-            _, env = parse_agent_response(getattr(m, "content", "") or "")
+            parsed = parse_agent_response(getattr(m, "content", "") or "")
+            env = parsed.envelope.to_dict() if parsed.envelope else None
         if not env:
             continue
         act = envelope_act(env)

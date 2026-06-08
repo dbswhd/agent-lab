@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 
+from agent_mocks import patch_call_agent_reply
+
 
 def test_room_turn_partial_preserves_success_and_runs_scribe(monkeypatch, tmp_path):
     from agent_lab import room
@@ -24,7 +26,7 @@ def test_room_turn_partial_preserves_success_and_runs_scribe(monkeypatch, tmp_pa
             raise RuntimeError("429 rate limit")
         raise AssertionError(f"unexpected agent: {agent}")
 
-    monkeypatch.setattr(room, "call_agent", fake_call_agent)
+    patch_call_agent_reply(monkeypatch, fake_call_agent)
     monkeypatch.setattr(room, "model_label", lambda agent: f"{agent}-model")
 
     folder, messages, plan_md = room.run_room(
@@ -68,7 +70,7 @@ def test_room_turn_all_failed_is_failed_once(monkeypatch, tmp_path):
     def fake_call_agent(agent, _system, _user, **_kwargs):
         raise RuntimeError(f"{agent} timed out")
 
-    monkeypatch.setattr(room, "call_agent", fake_call_agent)
+    patch_call_agent_reply(monkeypatch, fake_call_agent)
     monkeypatch.setattr(room, "model_label", lambda agent: f"{agent}-model")
 
     folder, _messages, _plan_md = room.run_room(

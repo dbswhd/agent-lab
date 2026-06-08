@@ -22,7 +22,9 @@ def _sdk_installed() -> bool:
 
 
 def is_available() -> bool:
-    return bool(os.getenv("CURSOR_API_KEY", "").strip()) and _sdk_installed()
+    from agent_lab.credential_store import provider_has_credentials
+
+    return provider_has_credentials("cursor") and _sdk_installed()
 
 
 def model_label() -> str:
@@ -102,11 +104,12 @@ def _build_agent_options(
     cwd: str | Path | None,
     session_folder: str | Path | None,
     inbox_mcp: bool,
+    api_key: str | None = None,
 ) -> tuple[str, Any]:
     from cursor_sdk import AgentOptions, LocalAgentOptions
 
-    api_key = os.getenv("CURSOR_API_KEY", "").strip()
-    if not api_key:
+    key = (api_key or os.getenv("CURSOR_API_KEY", "")).strip()
+    if not key:
         raise RuntimeError("CURSOR_API_KEY not set")
 
     perms = normalize_agent_permissions(permissions)
@@ -122,7 +125,7 @@ def _build_agent_options(
             mcp_servers = build_inbox_mcp_servers(Path(session_folder))
 
     agent_opts = AgentOptions(
-        api_key=api_key,
+        api_key=key,
         model=os.getenv("CURSOR_MODEL", DEFAULT_CURSOR_MODEL),
         local=LocalAgentOptions(cwd=cwd_str),
         mcp_servers=mcp_servers,
@@ -177,6 +180,7 @@ def respond_session(
     gate_after: int | None = None,
     gate: Callable[[], bool] | None = None,
     extra_prompts_if_gate: list[str] | None = None,
+    request_structured_envelope: bool = False,
 ) -> str:
     """Persistent Cursor session — RFC §4.6 E1.
 
@@ -191,22 +195,36 @@ def respond_session(
             "Install cursor-sdk: pip install cursor-sdk"
         ) from e
 
-    cwd_str, agent_opts = _build_agent_options(
-        permissions=permissions,
-        cwd=cwd,
-        session_folder=session_folder,
-        inbox_mcp=inbox_mcp,
-    )
     prepared = _prepare_prompts(system, prompts)
-    return _run_cursor_session(
-        cwd_str=cwd_str,
-        agent_opts=agent_opts,
-        prompts=prepared,
-        send_opts=_build_send_options(on_activity),
-        gate_after=gate_after,
-        gate=gate,
-        extra_prompts_if_gate=extra_prompts_if_gate,
-    )
+    if request_structured_envelope:
+        from agent_lab.structured_envelope_adapter import structured_envelope_system_addon
+
+        addon = structured_envelope_system_addon(compact=True)
+        if prepared:
+            prepared[0] = f"{prepared[0]}\n\n{addon}"
+    from agent_lab.agent_hooks_materializer import native_cursor_hooks_overlay
+    from agent_lab.credential_store import call_with_credential_fallback
+
+    def _run(api_key: str | None) -> str:
+        cwd_local, opts = _build_agent_options(
+            permissions=permissions,
+            cwd=cwd,
+            session_folder=session_folder,
+            inbox_mcp=inbox_mcp,
+            api_key=api_key,
+        )
+        with native_cursor_hooks_overlay(session_folder, cwd_local):
+            return _run_cursor_session(
+                cwd_str=cwd_local,
+                agent_opts=opts,
+                prompts=prepared,
+                send_opts=_build_send_options(on_activity),
+                gate_after=gate_after,
+                gate=gate,
+                extra_prompts_if_gate=extra_prompts_if_gate,
+            )
+
+    return call_with_credential_fallback("cursor", _run)
 
 
 def respond(
@@ -219,6 +237,7 @@ def respond(
     follow_ups: list[str] | None = None,
     session_folder: str | Path | None = None,
     inbox_mcp: bool = False,
+    request_structured_envelope: bool = False,
 ) -> str:
     from agent_lab.agents.prompts import CURSOR_ROOM
 
@@ -242,4 +261,5 @@ def respond(
         on_activity=on_activity,
         session_folder=session_folder,
         inbox_mcp=inbox_mcp,
+        request_structured_envelope=request_structured_envelope,
     )

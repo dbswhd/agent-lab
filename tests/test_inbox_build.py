@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from agent_lab.inbox_harvest import harvest_build_proposal
+from agent_lab.inbox_harvest import (
+    _supersede_legacy_verified_build_items,
+    harvest_build_proposal,
+    harvest_post_plan_inbox,
+)
 from agent_lab.room_objections import append_objection
 
 _PLAN_WITH_ACTION = """\
@@ -102,3 +106,49 @@ def test_plan_mode_noop():
     run_meta: dict[str, Any] = {}
     assert harvest_build_proposal(run_meta, plan_md=_PLAN_WITH_ACTION, mode="plan") is None
     assert "human_inbox" not in run_meta
+
+
+def test_post_plan_inbox_creates_build_from_plan():
+    run_meta: dict[str, Any] = {}
+    result = harvest_post_plan_inbox(
+        run_meta,
+        [],
+        plan_md=_PLAN_WITH_ACTION,
+        human_turn=3,
+    )
+    assert result["build_created"] is True
+    builds = [i for i in run_meta["human_inbox"] if i["kind"] == "build"]
+    assert len(builds) == 1
+    assert builds[0]["trigger"] == "T-B1"
+    assert builds[0]["action_ref"] == "now:1"
+
+
+def test_post_plan_open_questions_block_build():
+    run_meta: dict[str, Any] = {}
+    plan = _PLAN_NO_ACTION
+    result = harvest_post_plan_inbox(run_meta, [], plan_md=plan, human_turn=1)
+    assert result["build_created"] is False
+    assert any(i["kind"] == "question" for i in run_meta.get("human_inbox", []))
+
+
+def test_supersede_legacy_verified_build_items():
+    run_meta: dict[str, Any] = {
+        "human_inbox": [
+            {
+                "id": "legacy",
+                "kind": "build",
+                "source": "verified_loop",
+                "status": "pending",
+            },
+            {
+                "id": "plan",
+                "kind": "build",
+                "source": "orchestrator",
+                "status": "pending",
+            },
+        ],
+    }
+    _supersede_legacy_verified_build_items(run_meta)
+    by_id = {i["id"]: i for i in run_meta["human_inbox"]}
+    assert by_id["legacy"]["status"] == "superseded"
+    assert by_id["plan"]["status"] == "pending"

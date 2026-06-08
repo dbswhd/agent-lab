@@ -17,10 +17,10 @@ from agent_lab.attachments import describe_attachments
 from agent_lab.context_bundle import build_context_bundle
 from agent_lab.context_meta import summarize_turn_context
 from agent_lab.agent_envelope import (
-    envelope_protocol_block,
     is_endorse_reply,
     is_pass_reply,
     parse_agent_response,
+    parse_agent_response_v2,
 )
 from agent_lab.room_consensus import (
     consensus_caps,
@@ -64,6 +64,7 @@ class ChatMessage:
     parallel_round: int | None = None  # 1..N within one human turn
     envelope: dict[str, Any] | None = None
     visibility: str = "human"  # human | peer (peer = coordination channel)
+    envelope_parse_error: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         from agent_lab.room_chat_channels import normalize_visibility
@@ -78,6 +79,8 @@ class ChatMessage:
             d["parallel_round"] = self.parallel_round
         if self.envelope:
             d["envelope"] = self.envelope
+        if self.envelope_parse_error:
+            d["envelope_parse_error"] = True
         vis = normalize_visibility(self.visibility)
         if vis != "human":
             d["visibility"] = vis
@@ -192,6 +195,7 @@ def build_agent_context_bundle(
     run_meta: dict[str, Any] | None = None,
     efficiency_mode: bool = False,
     slim_context: bool = False,
+    consensus_mode: bool = False,
 ):
     """ContextBundle for preview / debugging (payload + layer metadata)."""
     from agent_lab.agent_permissions import permission_preamble
@@ -210,6 +214,7 @@ def build_agent_context_bundle(
         all_messages=messages,
         efficiency_mode=efficiency_mode,
         slim_context=slim_context,
+        consensus_mode=consensus_mode,
     )
 
 
@@ -441,6 +446,11 @@ def _bind_session_to_run_meta(
         return
     run_meta["_session_folder"] = str(folder.resolve())
     run_meta["_session_id"] = folder.name
+    from agent_lab.agent_hooks_materializer import ensure_session_agent_hooks_from_config
+
+    manifest = ensure_session_agent_hooks_from_config(folder)
+    if manifest:
+        run_meta["agent_hooks_manifest"] = manifest
 
 
 def _set_active_turn_flags(
@@ -533,16 +543,138 @@ def _call_one_agent(
 
     from agent_lab.room_team_orchestration import is_discuss_only_turn, lead_discuss_role_block
 
+    consensus_mode = bool(run_meta and run_meta.get("_active_consensus"))
+    review_mode_active = review_mode
+    turn_profile = str((run_meta or {}).get("turn_profile") or "").strip()
+    folder = _session_folder_from_run_meta(run_meta)
+    session_id = str((run_meta or {}).get("_session_id") or "")
+    human_turn = _human_turn_number(human_turn_index)
+
+    from agent_lab.gate_snapshot import compute_gate_snapshot
+    from agent_lab.room_hooks import (
+        _hook_run_record,
+        run_post_agent_reply_hooks,
+        run_pre_agent_reply_hooks,
+    )
+    from agent_lab.run_meta import append_hook_run
+
+    gate_snap = compute_gate_snapshot(run_meta)
+    from agent_lab.reply_policy import resolve_reply_policy
+    from agent_lab.structured_envelope_adapter import should_request_structured_envelope
+
+    reply_policy = resolve_reply_policy(
+        parallel_round=parallel_round,
+        review_mode=review_mode_active,
+        consensus_mode=consensus_mode,
+        turn_profile=turn_profile,
+        efficiency_mode=efficiency_mode,
+    )
+    request_structured = should_request_structured_envelope(reply_policy)
+
+    def _emit_hook_event(hook_result: Any, event_name: str) -> None:
+        if not (hook_result.feedback.strip() or hook_result.blocked):
+            return
+        feedback = hook_result.feedback[:500]
+        _emit(
+            "hook_event",
+            {
+                "agent": aid,
+                "event": event_name,
+                "round": parallel_round,
+                "blocked": hook_result.blocked,
+                "feedback": feedback,
+                "sub_reason": hook_result.sub_reason,
+                "retryable": getattr(hook_result, "retryable", False),
+            },
+        )
+        tag = "blocked" if hook_result.blocked else "warn"
+        detail = (feedback or hook_result.sub_reason or event_name).strip()[:120]
+        _activity(f"[hook · {event_name} · {tag}] {detail}")
+
+    pre_hook = run_pre_agent_reply_hooks(
+        run_meta or {},
+        str(aid),
+        session_folder=folder,
+        session_id=session_id,
+        parallel_round=parallel_round,
+        consensus_mode=consensus_mode,
+        review_mode=review_mode_active,
+        turn_profile=turn_profile,
+        gate_snapshot=gate_snap,
+        human_turn=human_turn,
+    )
+    _emit_hook_event(pre_hook, "pre_agent_reply")
+    append_hook_run(
+        folder,
+        _hook_run_record(
+            pre_hook,
+            agent=str(aid),
+            session_id=session_id,
+            human_turn=human_turn,
+            parallel_round=parallel_round,
+        ),
+        run_meta=run_meta,
+    )
+
     lead_block = ""
     if run_meta and is_discuss_only_turn(
         mode=str(run_meta.get("_active_turn_mode") or "discuss"),
         synthesize=bool(run_meta.get("_active_synthesize")),
-        consensus_mode=bool(run_meta.get("_active_consensus")),
+        consensus_mode=consensus_mode,
     ):
         lead_block = lead_discuss_role_block(aid, run_meta)
+    hook_prepend = pre_hook.feedback.strip()
     combined_follow = "\n\n".join(
-        x for x in (lead_block, extra_follow_up) if x and x.strip()
+        x for x in (lead_block, hook_prepend, extra_follow_up) if x and x.strip()
     )
+
+    def _invoke_agent(payload: str):
+        from agent_lab.agents.registry import call_agent_reply
+
+        agent_reply = call_agent_reply(
+            aid,
+            "",
+            payload,
+            permissions=effective_permissions,
+            on_activity=_activity if aid in ("cursor", "codex", "claude") else None,
+            session_folder=folder,
+            request_structured_envelope=request_structured,
+        )
+        text = agent_reply.text
+        parsed = parse_agent_response_v2(
+            text,
+            structured=agent_reply.structured_envelope,
+        )
+        envelope_dict = parsed.envelope.to_dict() if parsed.envelope else None
+        body = parsed.body or text
+        post_hook = run_post_agent_reply_hooks(
+            run_meta or {},
+            str(aid),
+            content=body,
+            envelope=envelope_dict,
+            envelope_parse_error=parsed.envelope_parse_error,
+            session_folder=folder,
+            session_id=session_id,
+            parallel_round=parallel_round,
+            consensus_mode=consensus_mode,
+            review_mode=review_mode_active,
+            turn_profile=turn_profile,
+            gate_snapshot=gate_snap,
+            human_turn=human_turn,
+        )
+        append_hook_run(
+            folder,
+            _hook_run_record(
+                post_hook,
+                agent=str(aid),
+                session_id=session_id,
+                human_turn=human_turn,
+                parallel_round=parallel_round,
+            ),
+            run_meta=run_meta,
+        )
+        _emit_hook_event(post_hook, "post_agent_reply")
+        return text, parsed, envelope_dict, body, post_hook
 
     try:
         bundle = build_agent_context_bundle(
@@ -557,6 +689,7 @@ def _call_one_agent(
             run_meta=run_meta,
             efficiency_mode=efficiency_mode,
             slim_context=slim_context,
+            consensus_mode=consensus_mode,
         )
         payload = bundle.render()
         if combined_follow.strip():
@@ -565,16 +698,27 @@ def _call_one_agent(
         context_meta["model"] = model_label(aid)
         if context_log is not None:
             context_log.append(context_meta)
-        text = call_agent(
-            aid,
-            "",
-            payload,
-            permissions=effective_permissions,
-            on_activity=_activity if aid in ("cursor", "codex") else None,
+
+        text, parsed, envelope_dict, body, post_hook = _invoke_agent(payload)
+        needs_envelope_fix = reply_policy.envelope_strict and (
+            parsed.envelope_parse_error or parsed.envelope is None
         )
-        parsed = parse_agent_response(text)
-        envelope_dict = parsed.envelope.to_dict() if parsed.envelope else None
-        body = parsed.body or text
+        if consensus_mode and (
+            (post_hook.blocked and post_hook.retryable) or needs_envelope_fix
+        ):
+            if post_hook.blocked and post_hook.feedback.strip():
+                retry_follow = (
+                    f"[Hook — envelope/format fix required]\n{post_hook.feedback.strip()}"
+                )
+            else:
+                retry_follow = (
+                    "[Envelope required — consensus R2+]\n"
+                    "Reply must start with ```agent-envelope fenced JSON "
+                    '({"act":"ENDORSE",...}) then your body.'
+                )
+            retry_payload = f"{payload}\n\n{retry_follow}"
+            text, parsed, envelope_dict, body, post_hook = _invoke_agent(retry_payload)
+
         from agent_lab.room_chat_channels import message_visibility
 
         msg = ChatMessage(
@@ -584,7 +728,13 @@ def _call_one_agent(
             parallel_round=parallel_round,
             envelope=envelope_dict,
             visibility=message_visibility(role="agent", content=body),
+            envelope_parse_error=parsed.envelope_parse_error,
         )
+        if parallel_round >= 2 and (consensus_mode or review_mode_active):
+            if parsed.envelope_parse_error:
+                _activity("[envelope · parse_error] R2+ fence/JSON invalid")
+            elif not (envelope_dict or {}).get("act"):
+                _activity("[envelope · missing] R2+ act required")
         _emit(
             "agent_done",
             {
@@ -598,15 +748,15 @@ def _call_one_agent(
                 "envelope_valid": parsed.envelope is not None,
                 "envelope_parse_error": parsed.envelope_parse_error,
                 "context_meta": context_meta,
+                "hook_blocked": post_hook.blocked,
             },
         )
-        folder = _session_folder_from_run_meta(run_meta)
         if folder and msg.role == "agent":
             from agent_lab.run_meta import record_completed_step
 
             record_completed_step(
                 folder,
-                human_turn=_human_turn_number(human_turn_index),
+                human_turn=human_turn,
                 parallel_round=parallel_round,
                 agent=str(aid),
                 content=body,
@@ -1175,8 +1325,20 @@ def run_parallel_round(
         thread = list(messages)
         round_follow = ""
         if parallel_round >= 2:
+            from agent_lab.reply_policy import (
+                envelope_follow_up_block,
+                resolve_reply_policy,
+            )
+
+            policy = resolve_reply_policy(
+                parallel_round=parallel_round,
+                review_mode=review_mode,
+                consensus_mode=bool(run_meta and run_meta.get("_active_consensus")),
+                turn_profile=str((run_meta or {}).get("turn_profile") or ""),
+                efficiency_mode=efficiency_mode,
+            )
             ctx = "review" if review_mode else "discuss"
-            round_follow = envelope_protocol_block(context=ctx)
+            round_follow = envelope_follow_up_block(policy, context=ctx)
         try:
             for aid in ordered:
                 check_cancelled()
@@ -1393,6 +1555,24 @@ def synthesize_plan(
     return call_agent(agent, ROOM_SCRIBE, user, scribe=True)
 
 
+def auto_plan_scribe_enabled() -> bool:
+    """Every completed turn re-synthesizes plan.md (disable via AGENT_LAB_AUTO_PLAN_SCRIBE=0)."""
+    raw = os.getenv("AGENT_LAB_AUTO_PLAN_SCRIBE", "1").strip().lower()
+    return raw not in ("0", "false", "no", "off")
+
+
+def _should_scribe_plan_after_turn(*, synthesize: bool, cancelled: bool) -> bool:
+    if cancelled:
+        return False
+    return synthesize or auto_plan_scribe_enabled()
+
+
+def _plan_trigger_for_turn(*, synthesize: bool, scribe_applied: bool) -> str | None:
+    if not scribe_applied:
+        return None
+    return "plan_turn" if synthesize else "auto_turn"
+
+
 def _apply_scribe_after_turn(
     *,
     topic: str,
@@ -1400,12 +1580,17 @@ def _apply_scribe_after_turn(
     run_meta: dict[str, Any] | None,
     plan_before: str,
     mode: str,
-    synthesize: bool,
+    scribe: bool,
+    user_plan_send: bool,
     cancelled: bool,
     on_event: OnAgentEvent | None,
+    session_folder: Path | None = None,
+    plan_trigger: str | None = None,
 ) -> str:
     """Run scribe, patch objections only (E2b), or leave plan unchanged."""
-    if not synthesize or cancelled:
+    if not scribe or cancelled:
+        return plan_before
+    if not messages:
         return plan_before
     from agent_lab.room_scribe_enrichment import (
         patch_plan_objections_only,
@@ -1413,11 +1598,38 @@ def _apply_scribe_after_turn(
     )
 
     if should_skip_scribe_for_open_objections(
-        run_meta, mode=mode, synthesize=synthesize
+        run_meta, mode=mode, synthesize=user_plan_send
     ):
         if on_event:
             on_event("scribe_skipped", {"reason": "open_objections_discuss"})
         return patch_plan_objections_only(plan_before, run_meta)
+    if session_folder and run_meta is not None:
+        from agent_lab.room_hooks import _hook_run_record, run_pre_scribe_hooks
+        from agent_lab.run_meta import append_hook_run
+
+        pre = run_pre_scribe_hooks(
+            run_meta,
+            session_folder=session_folder,
+            session_id=str(run_meta.get("_session_id") or session_folder.name),
+            trigger=plan_trigger or ("plan_turn" if user_plan_send else "auto_turn"),
+            message_count=len(messages),
+        )
+        append_hook_run(
+            session_folder,
+            _hook_run_record(
+                pre,
+                session_id=str(run_meta.get("_session_id") or session_folder.name),
+                human_turn=_human_turn_count(messages),
+            ),
+            run_meta=run_meta,
+        )
+        if pre.blocked:
+            msg = pre.feedback.strip() or "pre_scribe hook blocked plan synthesis"
+            if on_event:
+                on_event("scribe_error", {"message": msg, "hook": "pre_scribe"})
+            if not (plan_before or "").strip():
+                return f"## Plan synthesis blocked\n\n{msg}"
+            return plan_before
     if on_event:
         on_event("scribe_start", {})
     try:
@@ -1878,6 +2090,25 @@ def _write_session_files(
         ),
         mode=str(tm.get("mode") or "discuss"),
     )
+    from agent_lab.room_hooks import _hook_run_record, run_post_harvest_hooks
+    from agent_lab.run_meta import append_hook_run
+
+    harvest_hook = run_post_harvest_hooks(
+        run_meta,
+        session_folder=folder,
+        session_id=str(run_meta.get("_session_id") or folder.name if folder else ""),
+        human_turn=_human_turn_count(messages_to_store),
+        mode=str(tm.get("mode") or "discuss"),
+    )
+    append_hook_run(
+        folder,
+        _hook_run_record(
+            harvest_hook,
+            session_id=str(run_meta.get("_session_id") or ""),
+            human_turn=_human_turn_count(messages_to_store),
+        ),
+        run_meta=run_meta,
+    )
     if plan_changed and plan_md.strip():
         from agent_lab.plan_provenance import extract_plan_provenance
 
@@ -1903,10 +2134,21 @@ def _write_session_files(
         run_meta["last_plan_update"] = prev_run["last_plan_update"]
     record_plan_update = bool(
         turn_meta
-        and turn_meta.get("mode") == "plan"
         and (
             plan_changed
-            or turn_meta.get("plan_trigger") == "consensus_reached"
+            or turn_meta.get("plan_trigger")
+            in ("consensus_reached", "verified_loop_done")
+        )
+        and (
+            turn_meta.get("mode") == "plan"
+            or turn_meta.get("plan_trigger")
+            in (
+                "auto_turn",
+                "plan_turn",
+                "consensus_reached",
+                "verified_loop_done",
+                "synthesize_only",
+            )
         )
     )
     if record_plan_update:
@@ -1939,6 +2181,12 @@ def _write_session_files(
                 if row.get("excerpt") and not row.get("plan_synced"):
                     run_meta["last_plan_update"]["consensus_excerpt"] = row["excerpt"]
                     break
+        if trigger == "verified_loop_done":
+            loop = run_meta.get("verified_loop") or {}
+            loop_goal = loop.get("loop_goal") or {}
+            goal_excerpt = str(loop_goal.get("text") or "").strip()
+            if goal_excerpt:
+                run_meta["last_plan_update"]["consensus_excerpt"] = goal_excerpt[:200]
         synced_at = str(
             turn_meta.get("completed_at") or turn_meta.get("ts") or _now()
         )
@@ -2062,6 +2310,7 @@ def _turn_snapshot(
     failed_agents: list[str] | None = None,
     succeeded_agents: list[str] | None = None,
     last_delegate: dict[str, Any] | None = None,
+    communicate_meta: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     from agent_lab.invoke import model_name
 
@@ -2118,6 +2367,7 @@ def _turn_snapshot(
         "review",
         "free",
         "specialist",
+        "verified",
     ):
         snap["turn_profile"] = (
             "analyze" if turn_profile == "discuss" else turn_profile
@@ -2140,12 +2390,103 @@ def _turn_snapshot(
         snap["succeeded_agents"] = list(succeeded_agents)
     if last_delegate:
         snap["last_delegate"] = dict(last_delegate)
+    if communicate_meta:
+        snap["communicate_meta"] = communicate_meta
     return snap
 
 
 def consensus_reached(consensus_meta: dict[str, Any] | None) -> bool:
     """True when free-discuss consensus loop finished with full agreement."""
     return bool(consensus_meta and consensus_meta.get("status") == "reached")
+
+
+def _post_plan_scribe_inbox_harvest(
+    folder: Path,
+    *,
+    plan_md: str,
+    trigger: str,
+    verified_at: str | None = None,
+    verified_excerpt: str | None = None,
+    verified_summary: str | None = None,
+) -> None:
+    """After auto plan scribe: T-Q2 + T-B1 inbox harvest (discuss-mode gates)."""
+    from agent_lab.inbox_harvest import (
+        _supersede_legacy_verified_build_items,
+        harvest_post_plan_inbox,
+    )
+    from agent_lab.run_meta import patch_run_meta
+
+    messages = load_session_messages(folder)
+    human_turn = _human_turn_count(messages)
+
+    def _patch(run_meta: dict[str, Any]) -> dict[str, Any]:
+        if trigger == "verified_loop_done":
+            _supersede_legacy_verified_build_items(run_meta)
+        harvest_post_plan_inbox(
+            run_meta,
+            messages,
+            plan_md=plan_md,
+            human_turn=human_turn,
+        )
+        if trigger == "verified_loop_done" and verified_at:
+            run_meta["verified_plan_sync"] = {
+                "verified_at": verified_at,
+                "summary": verified_summary or "",
+                "excerpt": verified_excerpt or "",
+                "ts": _now(),
+            }
+        from agent_lab.human_inbox import compute_inbox_pending
+
+        run_meta["inbox_pending"] = compute_inbox_pending(run_meta)
+        return run_meta
+
+    patch_run_meta(folder, _patch)
+
+
+def _emit_plan_pipeline_proposal(
+    folder: Path,
+    *,
+    excerpt: str,
+    summary: str,
+    notice: str,
+    permissions: dict | None,
+    on_event: OnAgentEvent | None,
+    trigger: str,
+) -> None:
+    if not on_event:
+        return
+    synced_event = (
+        "verified_plan_synced"
+        if trigger == "verified_loop_done"
+        else "consensus_plan_synced"
+    )
+    on_event(
+        synced_event,
+        {
+            "excerpt": excerpt,
+            "summary": summary,
+            "notice": notice,
+            "trigger": trigger,
+        },
+    )
+    from agent_lab.plan_execute import list_plan_actions
+
+    actions_info = list_plan_actions(folder, permissions=permissions)
+    recommended = actions_info.get("recommended")
+    has_executable = recommended is not None
+    action_key = recommended.get("action_key") if recommended else None
+    on_event(
+        "consensus_dry_run_proposal",
+        {
+            "excerpt": excerpt,
+            "summary": summary,
+            "notice": notice,
+            "recommended": recommended,
+            "has_executable": has_executable,
+            "action_key": action_key,
+            "trigger": trigger,
+        },
+    )
 
 
 def synthesize_session_plan(
@@ -2179,6 +2520,27 @@ def synthesize_session_plan(
         raise ValueError("no messages to synthesize")
     started_at = _now()
     t0 = time.perf_counter()
+    run_meta_snapshot = _read_run_meta(folder)
+    from agent_lab.room_hooks import _hook_run_record, run_pre_scribe_hooks
+    from agent_lab.run_meta import append_hook_run
+
+    pre = run_pre_scribe_hooks(
+        run_meta_snapshot,
+        session_folder=folder,
+        session_id=folder.name,
+        trigger=trigger,
+        message_count=len(messages),
+    )
+    append_hook_run(
+        folder,
+        _hook_run_record(pre, session_id=folder.name),
+        run_meta=run_meta_snapshot,
+    )
+    if pre.blocked:
+        msg = pre.feedback.strip() or "pre_scribe hook blocked plan synthesis"
+        if on_event:
+            on_event("scribe_error", {"message": msg, "hook": "pre_scribe"})
+        raise RuntimeError(msg)
     if on_event:
         on_event("scribe_start", {})
     try:
@@ -2242,16 +2604,27 @@ def maybe_auto_scribe_after_consensus(
         consensus_topic_excerpt,
     )
 
-    if cancelled or synthesize or not consensus_reached(consensus_meta):
+    if cancelled or not consensus_reached(consensus_meta):
         return None
 
     excerpt = consensus_topic_excerpt(consensus_meta)
     plan_path = folder / "plan.md"
-    old_plan = plan_path.read_text(encoding="utf-8") if plan_path.is_file() else ""
+    plan_md = plan_path.read_text(encoding="utf-8") if plan_path.is_file() else ""
+
+    from agent_lab.consensus_agreements import pending_consensus_agreements
+    from agent_lab.run_meta import read_run_meta
+
+    run = read_run_meta(folder)
+    pending = pending_consensus_agreements(run.get("consensus_agreements"))
+    if not pending:
+        if plan_md.strip():
+            return plan_md
+        return None
 
     if on_event:
         on_event("consensus_plan_sync_start", {"excerpt": excerpt})
 
+    old_plan = plan_md
     try:
         plan_md, summary = synthesize_session_plan(
             folder,
@@ -2260,7 +2633,9 @@ def maybe_auto_scribe_after_consensus(
             trigger="consensus_reached",
             previous_plan_md=old_plan,
         )
-        current_plan = plan_path.read_text(encoding="utf-8") if plan_path.is_file() else ""
+        current_plan = (
+            plan_path.read_text(encoding="utf-8") if plan_path.is_file() else ""
+        )
         if current_plan != plan_md:
             plan_path.write_text(plan_md, encoding="utf-8")
     except Exception as e:
@@ -2275,35 +2650,174 @@ def maybe_auto_scribe_after_consensus(
             )
         return None
 
-    notice = agreement_plan_synced_notice(excerpt, summary)
-    if on_event:
-        on_event(
-            "consensus_plan_synced",
-            {
-                "excerpt": excerpt,
-                "summary": summary,
-                "notice": notice,
-                "trigger": "consensus_reached",
-            },
-        )
-        from agent_lab.plan_execute import list_plan_actions
+    _post_plan_scribe_inbox_harvest(
+        folder,
+        plan_md=plan_md,
+        trigger="consensus_reached",
+    )
 
-        actions_info = list_plan_actions(folder, permissions=permissions)
-        recommended = actions_info.get("recommended")
-        has_executable = recommended is not None
-        action_key = recommended.get("action_key") if recommended else None
-        on_event(
-            "consensus_dry_run_proposal",
-            {
-                "excerpt": excerpt,
-                "summary": summary,
-                "notice": notice,
-                "recommended": recommended,
-                "has_executable": has_executable,
-                "action_key": action_key,
-            },
+    from agent_lab.consensus_agreements import mark_agreements_plan_synced
+    from agent_lab.run_meta import patch_run_meta
+
+    messages = load_session_messages(folder)
+
+    def _mark_agreements_synced(run_meta: dict[str, Any]) -> dict[str, Any]:
+        run_meta["consensus_agreements"] = mark_agreements_plan_synced(
+            run_meta.get("consensus_agreements"),
+            message_count=len(messages),
+            synced_at=_now(),
         )
+        return run_meta
+
+    patch_run_meta(folder, _mark_agreements_synced)
+
+    notice = agreement_plan_synced_notice(excerpt, summary)
+    _emit_plan_pipeline_proposal(
+        folder,
+        excerpt=excerpt,
+        summary=summary,
+        notice=notice,
+        permissions=permissions,
+        on_event=on_event,
+        trigger="consensus_reached",
+    )
     return plan_md
+
+
+def maybe_auto_scribe_after_verified_loop(
+    folder: Path,
+    *,
+    verified_result: dict[str, Any] | None,
+    cancelled: bool,
+    on_event: OnAgentEvent | None = None,
+    permissions: dict | None = None,
+) -> str | None:
+    """After Oracle VERIFIED, auto-scribe plan.md then harvest Question + Build."""
+    from agent_lab.consensus_agreements import agreement_plan_synced_notice
+    from agent_lab.run_meta import read_run_meta
+
+    if cancelled or not verified_result:
+        return None
+    loop = dict(verified_result.get("verified_loop") or {})
+    if str(loop.get("status") or "") != "done":
+        return None
+
+    verified_at = str(loop.get("verified_at") or "").strip()
+    run = read_run_meta(folder)
+    sync = dict(run.get("verified_plan_sync") or {})
+    if sync.get("verified_at") == verified_at:
+        return None
+
+    loop_goal = dict(loop.get("loop_goal") or {})
+    excerpt = str(loop_goal.get("text") or "").strip()[:200] or "Verified loop"
+
+    plan_path = folder / "plan.md"
+    old_plan = plan_path.read_text(encoding="utf-8") if plan_path.is_file() else ""
+
+    if on_event:
+        on_event("verified_plan_sync_start", {"excerpt": excerpt})
+
+    try:
+        plan_md, summary = synthesize_session_plan(
+            folder,
+            on_event=on_event,
+            permissions=permissions,
+            trigger="verified_loop_done",
+            previous_plan_md=old_plan,
+        )
+        current_plan = plan_path.read_text(encoding="utf-8") if plan_path.is_file() else ""
+        if current_plan != plan_md:
+            plan_path.write_text(plan_md, encoding="utf-8")
+    except Exception as e:
+        if on_event:
+            on_event(
+                "verified_plan_sync_failed",
+                {"excerpt": excerpt, "message": str(e)},
+            )
+            on_event(
+                "scribe_error",
+                {
+                    "message": str(e),
+                    "auto": True,
+                    "excerpt": excerpt,
+                    "trigger": "verified_loop_done",
+                },
+            )
+        return None
+
+    _post_plan_scribe_inbox_harvest(
+        folder,
+        plan_md=plan_md,
+        trigger="verified_loop_done",
+        verified_at=verified_at,
+        verified_excerpt=excerpt,
+        verified_summary=summary,
+    )
+
+    notice = agreement_plan_synced_notice(excerpt, summary)
+    _emit_plan_pipeline_proposal(
+        folder,
+        excerpt=excerpt,
+        summary=summary,
+        notice=notice,
+        permissions=permissions,
+        on_event=on_event,
+        trigger="verified_loop_done",
+    )
+    return plan_md
+
+
+def ensure_consensus_plan_sync(folder: Path) -> bool:
+    """Backfill plan → question → build for unreconciled consensus agreements."""
+    from agent_lab.consensus_agreements import pending_consensus_agreements
+    from agent_lab.run_meta import read_run_meta
+
+    run = read_run_meta(folder)
+    pending = pending_consensus_agreements(run.get("consensus_agreements"))
+    if not pending:
+        return False
+    latest = pending[-1]
+    excerpt = str(latest.get("excerpt") or "").strip()
+    if not excerpt:
+        return False
+    result = maybe_auto_scribe_after_consensus(
+        folder,
+        consensus_meta={"status": "reached", "anchor": {"excerpt": excerpt}},
+        synthesize=False,
+        cancelled=False,
+        on_event=None,
+        permissions=None,
+    )
+    return result is not None
+
+
+def ensure_verified_plan_sync(folder: Path) -> bool:
+    """Backfill plan → question → build after Oracle VERIFIED (idempotent)."""
+    from agent_lab.run_meta import read_run_meta
+
+    run = read_run_meta(folder)
+    loop = dict(run.get("verified_loop") or {})
+    if str(loop.get("status") or "") != "done":
+        return False
+    sync = dict(run.get("verified_plan_sync") or {})
+    if sync.get("verified_at") == loop.get("verified_at"):
+        return False
+    result = maybe_auto_scribe_after_verified_loop(
+        folder,
+        verified_result={"verified_loop": loop},
+        cancelled=False,
+        on_event=None,
+        permissions=None,
+    )
+    return result is not None
+
+
+def ensure_session_plan_pipeline(folder: Path) -> bool:
+    """Run pending consensus or verified plan auto-sync (best-effort)."""
+    changed = ensure_consensus_plan_sync(folder)
+    if ensure_verified_plan_sync(folder):
+        changed = True
+    return changed
 
 
 def _try_delegate_turn(
@@ -2340,12 +2854,38 @@ def _try_delegate_turn(
 
 
 def _delegate_run_meta_patch(run_meta: dict[str, Any]) -> dict[str, Any] | None:
-    if not run_meta.get("last_delegate"):
-        return None
-    patch: dict[str, Any] = {"last_delegate": run_meta["last_delegate"]}
+    patch: dict[str, Any] = {}
+    if run_meta.get("last_delegate"):
+        patch["last_delegate"] = run_meta["last_delegate"]
     if run_meta.get("artifacts"):
         patch["artifacts"] = list(run_meta.get("artifacts") or [])
-    return patch
+    if run_meta.get("hook_runs"):
+        patch["hook_runs"] = list(run_meta.get("hook_runs") or [])
+    if run_meta.get("agent_hooks_manifest"):
+        patch["agent_hooks_manifest"] = dict(run_meta["agent_hooks_manifest"])
+    return patch or None
+
+
+def _communicate_meta_for_turn(
+    replies: list[ChatMessage],
+    context_log: list[dict[str, Any]] | None,
+    *,
+    parallel_rounds: int,
+    review_mode: bool,
+    consensus_mode: bool,
+    turn_profile: str | None,
+    efficiency_mode: bool,
+) -> dict[str, Any]:
+    from agent_lab.reply_policy import resolve_reply_policy, summarize_turn_communicate_meta
+
+    policy = resolve_reply_policy(
+        parallel_round=parallel_rounds,
+        review_mode=review_mode,
+        consensus_mode=consensus_mode,
+        turn_profile=turn_profile or "",
+        efficiency_mode=efficiency_mode,
+    )
+    return summarize_turn_communicate_meta(replies, context_log, policy=policy)
 
 
 def _goal_auto_continue_message(result: dict[str, Any] | None) -> str | None:
@@ -2355,6 +2895,46 @@ def _goal_auto_continue_message(result: dict[str, Any] | None) -> str | None:
     if len(loop.get("checks") or []) >= int(loop.get("max_checks") or 0):
         return None
     return str(loop.get("continue_prompt") or "").strip() or None
+
+
+def _verified_loop_continue_message(result: dict[str, Any] | None) -> str | None:
+    if not result or not result.get("handled"):
+        return None
+    loop = result.get("verified_loop") or {}
+    if loop.get("status") in {"done", "failed", "cancelled", "pending_approval"}:
+        return None
+    if result.get("circuit_breaker"):
+        return None
+    return str(result.get("continue_prompt") or "").strip() or None
+
+
+def _verified_loop_complete_payload(result: dict[str, Any] | None) -> dict[str, Any]:
+    if not result:
+        return {}
+    loop = result.get("verified_loop") or {}
+    return {
+        "verified_loop": loop,
+        "verified_loop_pending": bool(result.get("verified_loop_pending")),
+        "verified_loop_status": loop.get("status"),
+        "verified_loop_circuit_breaker": bool(result.get("circuit_breaker")),
+    }
+
+
+def _maybe_verified_loop_after_turn(
+    folder: Path,
+    messages: list[ChatMessage],
+    turn_profile: str | None,
+    *,
+    cancelled: bool = False,
+) -> dict[str, Any] | None:
+    from agent_lab.verified_loop import maybe_handle_verified_loop_after_turn
+
+    return maybe_handle_verified_loop_after_turn(
+        folder,
+        messages,
+        turn_profile,
+        cancelled=cancelled,
+    )
 
 
 def continue_room_round(
@@ -2372,6 +2952,7 @@ def continue_room_round(
     turn_profile: str | None = None,
     research_mode: bool = False,
     _goal_auto_continue_depth: int = 0,
+    _verified_loop_depth: int = 0,
 ) -> tuple[list[ChatMessage], str]:
     """Append a user turn + parallel agent replies to an existing session."""
     if not folder.is_dir():
@@ -2420,6 +3001,10 @@ def continue_room_round(
             if not run_meta.get("agent_capabilities_custom"):
                 ensure_specialist_capabilities(run_meta)
             parallel_rounds = max(parallel_rounds, 2)
+        if run_meta["turn_profile"] == "verified":
+            from agent_lab.verified_loop import init_verified_loop
+
+            init_verified_loop(folder)
     if research_mode or run_meta.get("turn_profile") == "specialist":
         run_meta["research_mode"] = True
     from agent_lab.session_clarifier import build_clarifier_questions
@@ -2504,17 +3089,26 @@ def continue_room_round(
             on_event("run_cancelled", {"message": "답변 중지됨"})
     messages.extend(replies)
     plan_md = plan_before
-    if synthesize and not cancelled:
+    scribe_applied = _should_scribe_plan_after_turn(
+        synthesize=synthesize, cancelled=cancelled
+    )
+    if scribe_applied:
         plan_md = _apply_scribe_after_turn(
             topic=topic,
             messages=messages,
             run_meta=run_meta,
             plan_before=plan_before,
             mode=mode,
-            synthesize=synthesize,
+            scribe=True,
+            user_plan_send=synthesize,
             cancelled=cancelled,
             on_event=on_event,
+            session_folder=folder,
+            plan_trigger="plan_turn" if synthesize else "auto_turn",
         )
+    plan_trigger = _plan_trigger_for_turn(
+        synthesize=synthesize, scribe_applied=scribe_applied
+    )
     latency_ms = int((time.perf_counter() - t0) * 1000)
     turn_summary = _agent_turn_summary(replies)
     turn_status = _turn_status_from_replies(
@@ -2541,7 +3135,7 @@ def continue_room_round(
     from agent_lab.room_team_orchestration import resolve_send_receipt, turn_leads_map
 
     plan_updated = bool(
-        synthesize and not cancelled and plan_md and plan_md != plan_before
+        not cancelled and scribe_applied and plan_md and plan_md != plan_before
     )
     peer = _peer_metrics_for_messages(messages)
     send_receipt_val = resolve_send_receipt(
@@ -2551,6 +3145,31 @@ def continue_room_round(
         consensus=consensus_meta,
         plan_updated=plan_updated,
         status=turn_status,
+    )
+    communicate_meta = _communicate_meta_for_turn(
+        replies,
+        context_log,
+        parallel_rounds=parallel_rounds,
+        review_mode=review_mode,
+        consensus_mode=consensus_mode,
+        turn_profile=turn_profile or str(run_meta.get("turn_profile") or ""),
+        efficiency_mode=efficiency_mode,
+    )
+    from agent_lab.goal_loop import (
+        goal_auto_continue_enabled,
+        maybe_check_session_goal_after_turn,
+    )
+    from agent_lab.verified_loop import normalize_verified_profile
+
+    active_profile = turn_profile or run_meta.get("turn_profile")
+    verified_result = _maybe_verified_loop_after_turn(
+        folder,
+        messages,
+        active_profile,
+        cancelled=cancelled,
+    )
+    verified_continue = (
+        None if cancelled else _verified_loop_continue_message(verified_result)
     )
     _write_session_files(
         folder,
@@ -2589,16 +3208,33 @@ def continue_room_round(
             failed_agents=turn_summary["failed_agents"],
             succeeded_agents=turn_summary["succeeded_agents"],
             last_delegate=run_meta.get("last_delegate"),
+            plan_trigger=plan_trigger,
+            communicate_meta=communicate_meta,
         ),
         run_meta_patch=_delegate_run_meta_patch(run_meta),
         clarifier_questions=clarifier_questions,
     )
-    from agent_lab.goal_loop import (
-        goal_auto_continue_enabled,
-        maybe_check_session_goal_after_turn,
-    )
+    if verified_continue and _verified_loop_depth < 3:
+        return continue_room_round(
+            folder,
+            verified_continue,
+            agents=active_agents,
+            synthesize=False,
+            parallel_rounds=1,
+            on_event=on_event,
+            permissions=permissions,
+            review_mode=False,
+            consensus_mode=False,
+            efficiency_mode=efficiency_mode,
+            turn_profile=active_profile or "verified",
+            research_mode=research_mode,
+            _goal_auto_continue_depth=_goal_auto_continue_depth,
+            _verified_loop_depth=_verified_loop_depth + 1,
+        )
 
-    goal_result = maybe_check_session_goal_after_turn(folder, messages)
+    goal_result = None
+    if not normalize_verified_profile(active_profile):
+        goal_result = maybe_check_session_goal_after_turn(folder, messages)
     goal_continue = _goal_auto_continue_message(goal_result)
     if goal_auto_continue_enabled() and goal_continue and _goal_auto_continue_depth < 1:
         return continue_room_round(
@@ -2615,17 +3251,28 @@ def continue_room_round(
             turn_profile="analyze",
             research_mode=research_mode,
             _goal_auto_continue_depth=1,
+            _verified_loop_depth=_verified_loop_depth,
         )
-    auto_plan = maybe_auto_scribe_after_consensus(
+    auto_plan = maybe_auto_scribe_after_verified_loop(
         folder,
-        consensus_meta=consensus_meta,
-        synthesize=synthesize,
+        verified_result=verified_result,
         cancelled=cancelled,
         on_event=on_event,
         permissions=permissions,
     )
     if auto_plan is not None:
         plan_md = auto_plan
+    elif not normalize_verified_profile(active_profile):
+        auto_plan = maybe_auto_scribe_after_consensus(
+            folder,
+            consensus_meta=consensus_meta,
+            synthesize=synthesize,
+            cancelled=cancelled,
+            on_event=on_event,
+            permissions=permissions,
+        )
+        if auto_plan is not None:
+            plan_md = auto_plan
     if on_event:
         on_event(
             "complete",
@@ -2642,6 +3289,7 @@ def continue_room_round(
                     0,
                     len((_read_run_meta(folder).get("turns") or [])) - 1,
                 ),
+                **_verified_loop_complete_payload(verified_result),
             },
         )
     return messages, plan_md
@@ -2716,6 +3364,10 @@ def run_room(
             if not run_meta.get("agent_capabilities_custom"):
                 ensure_specialist_capabilities(run_meta)
             parallel_rounds = max(parallel_rounds, 2)
+        if run_meta["turn_profile"] == "verified":
+            from agent_lab.verified_loop import init_verified_loop
+
+            init_verified_loop(folder)
     if research_mode or run_meta.get("turn_profile") == "specialist":
         run_meta["research_mode"] = True
     from agent_lab.session_clarifier import build_clarifier_questions
@@ -2798,20 +3450,30 @@ def run_room(
             on_event("run_cancelled", {"message": "답변 중지됨"})
     messages.extend(replies)
 
-    plan_md = ""
-    if synthesize and not cancelled:
+    plan_before = ""
+    plan_md = plan_before
+    scribe_applied = _should_scribe_plan_after_turn(
+        synthesize=synthesize, cancelled=cancelled
+    )
+    if scribe_applied:
         plan_md = _apply_scribe_after_turn(
             topic=topic,
             messages=messages,
             run_meta=run_meta,
-            plan_before="",
+            plan_before=plan_before,
             mode=mode,
-            synthesize=synthesize,
+            scribe=True,
+            user_plan_send=synthesize,
             cancelled=cancelled,
             on_event=on_event,
+            session_folder=folder,
+            plan_trigger="plan_turn" if synthesize else "auto_turn",
         )
-        if not plan_md:
+        if synthesize and not plan_md:
             plan_md = "## Plan synthesis failed\n\nunknown error"
+    plan_trigger = _plan_trigger_for_turn(
+        synthesize=synthesize, scribe_applied=scribe_applied
+    )
 
     latency_ms = int((time.perf_counter() - t0) * 1000)
     turn_summary = _agent_turn_summary(replies)
@@ -2836,8 +3498,19 @@ def run_room(
         synthesize=synthesize,
         consensus_mode=consensus_mode,
         consensus=consensus_meta,
-        plan_updated=bool(synthesize and not cancelled and plan_md),
+        plan_updated=bool(
+            scribe_applied and not cancelled and plan_md and plan_md != plan_before
+        ),
         status=turn_status,
+    )
+    communicate_meta = _communicate_meta_for_turn(
+        replies,
+        context_log,
+        parallel_rounds=parallel_rounds,
+        review_mode=review_mode,
+        consensus_mode=consensus_mode,
+        turn_profile=turn_profile or str(run_meta.get("turn_profile") or ""),
+        efficiency_mode=efficiency_mode,
     )
     turn_meta = _turn_snapshot(
         mode=mode,
@@ -2869,6 +3542,25 @@ def run_room(
         failed_agents=turn_summary["failed_agents"],
         succeeded_agents=turn_summary["succeeded_agents"],
         last_delegate=run_meta.get("last_delegate"),
+        plan_trigger=plan_trigger,
+        communicate_meta=communicate_meta,
+    )
+
+    from agent_lab.goal_loop import (
+        goal_auto_continue_enabled,
+        maybe_check_session_goal_after_turn,
+    )
+    from agent_lab.verified_loop import normalize_verified_profile
+
+    active_profile = turn_profile or run_meta.get("turn_profile")
+    verified_result = _maybe_verified_loop_after_turn(
+        folder,
+        messages,
+        active_profile,
+        cancelled=cancelled,
+    )
+    verified_continue = (
+        None if cancelled else _verified_loop_continue_message(verified_result)
     )
 
     if folder is None:
@@ -2902,12 +3594,27 @@ def run_room(
             clarifier_questions=clarifier_questions,
         )
     _finalize_durable_turn(folder, 1, turn_status)
-    from agent_lab.goal_loop import (
-        goal_auto_continue_enabled,
-        maybe_check_session_goal_after_turn,
-    )
+    if verified_continue:
+        auto_messages, auto_plan_md = continue_room_round(
+            folder,
+            verified_continue,
+            agents=active_agents,
+            synthesize=False,
+            parallel_rounds=1,
+            on_event=on_event,
+            permissions=permissions,
+            review_mode=False,
+            consensus_mode=False,
+            efficiency_mode=efficiency_mode,
+            turn_profile=active_profile or "verified",
+            research_mode=research_mode,
+            _verified_loop_depth=1,
+        )
+        return folder, auto_messages, auto_plan_md
 
-    goal_result = maybe_check_session_goal_after_turn(folder, messages)
+    goal_result = None
+    if not normalize_verified_profile(active_profile):
+        goal_result = maybe_check_session_goal_after_turn(folder, messages)
     goal_continue = _goal_auto_continue_message(goal_result)
     if goal_auto_continue_enabled() and goal_continue:
         auto_messages, auto_plan_md = continue_room_round(
@@ -2926,16 +3633,26 @@ def run_room(
             _goal_auto_continue_depth=1,
         )
         return folder, auto_messages, auto_plan_md
-    auto_plan = maybe_auto_scribe_after_consensus(
+    auto_plan = maybe_auto_scribe_after_verified_loop(
         folder,
-        consensus_meta=consensus_meta,
-        synthesize=synthesize,
+        verified_result=verified_result,
         cancelled=cancelled,
         on_event=on_event,
         permissions=permissions,
     )
     if auto_plan is not None:
         plan_md = auto_plan
+    elif not normalize_verified_profile(active_profile):
+        auto_plan = maybe_auto_scribe_after_consensus(
+            folder,
+            consensus_meta=consensus_meta,
+            synthesize=synthesize,
+            cancelled=cancelled,
+            on_event=on_event,
+            permissions=permissions,
+        )
+        if auto_plan is not None:
+            plan_md = auto_plan
     if on_event:
         on_event(
             "complete",
@@ -2952,6 +3669,7 @@ def run_room(
                     0,
                     len((_read_run_meta(folder).get("turns") or [])) - 1,
                 ),
+                **_verified_loop_complete_payload(verified_result),
             },
         )
     return folder, messages, plan_md

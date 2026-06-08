@@ -1,0 +1,49 @@
+{
+  "ts": "2026-06-07T07:38:59.430155+00:00",
+  "session_count": 5,
+  "avg_agent_chars": 32.553333333333335,
+  "total_legacy_endorse": 0,
+  "total_parse_errors": 0,
+  "sessions": [
+    {
+      "session": "analyze_1r_three_views",
+      "turn_count": 1,
+      "avg_agent_chars": 77.66666666666667,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "delegate_codex",
+      "turn_count": 1,
+      "avg_agent_chars": 37.0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "plan_now_actions",
+      "turn_count": 1,
+      "avg_agent_chars": 33.0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "specialist_asymmetric_cwd",
+      "turn_count": 1,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "ten_turn_kpi_stub",
+      "turn_count": 10,
+      "avg_agent_chars": 15.1,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    }
+  ]
+}

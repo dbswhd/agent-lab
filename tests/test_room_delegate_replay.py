@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from agent_mocks import patch_call_agent_reply
+
 
 def _seed_session(folder: Path) -> None:
     folder.mkdir(parents=True)
@@ -58,7 +60,8 @@ def test_delegate_codex_replay_invokes_one_agent_and_writes_artifact(
         calls.append(str(agent))
         return "Delegate result body with enough detail to persist as an artifact."
 
-    monkeypatch.setattr(room, "call_agent", fake_call_agent)
+    patch_call_agent_reply(monkeypatch, fake_call_agent)
+    monkeypatch.setenv("AGENT_LAB_AUTO_PLAN_SCRIBE", "0")
     monkeypatch.setattr(room, "model_label", lambda agent: f"{agent}-model")
 
     messages, _plan = room.continue_room_round(

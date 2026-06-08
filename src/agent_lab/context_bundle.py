@@ -6,14 +6,9 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
-from agent_lab.agents.registry import label
+from agent_lab.agent_thread_resume import build_agent_thread_resume_block
 from agent_lab.room_context import (
     AGENT_CONNECT_HINT,
-    ANALYSIS_TURN_GUIDANCE,
-    CONVERSATION_GUIDANCE,
-    EFFICIENCY_RESPONSE_GUIDANCE,
-    MULTI_AGENT_COORDINATION,
-    PEER_DECISION_GUIDANCE,
     agent_tool_rules,
     _MessageLike,
     build_constraints_block,
@@ -47,6 +42,12 @@ from agent_lab.session_guidance import (
     sync_session_meta,
 )
 from agent_lab.plugin_discovery import build_plugin_allowlist_block
+from agent_lab.reply_policy import (
+    build_guidance_parts,
+    envelope_follow_up_block,
+    resolve_reply_policy,
+)
+from agent_lab.gate_snapshot import compute_gate_snapshot, format_gate_snapshot_block
 
 ARTIFACT_ONLY_RECENT_MAX_CHARS = 1200
 
@@ -209,10 +210,13 @@ def build_slim_consensus_bundle(
     plan_md: str = "",
     run_meta: dict[str, Any] | None = None,
     permissions: dict[str, Any] | None = None,
+    consensus_mode: bool = True,
+    efficiency_mode: bool = True,
 ) -> ContextBundle:
     """Minimal payload for 자유 토론 consensus follow-up (anchor + gates only)."""
     from agent_lab.context_limits import agent_context_limits, efficiency_limits
     from agent_lab.context_meta import enrich_bundle_meta
+    from agent_lab.agents.registry import label
     from agent_lab.room_context import count_messages, current_turn_message_count
 
     limits = agent_context_limits()
@@ -240,6 +244,9 @@ def build_slim_consensus_bundle(
     )
     if session_guidance.strip():
         constraints = f"{constraints}\n\n{session_guidance.strip()}"
+    resume_block = build_agent_thread_resume_block(agent, run_meta)
+    if resume_block.strip():
+        constraints = f"{constraints}\n\n{resume_block.strip()}"
     plugin_block = build_plugin_allowlist_block(agent, run_meta)
     if plugin_block.strip():
         constraints = f"{constraints}\n\n{plugin_block.strip()}"
@@ -263,6 +270,9 @@ def build_slim_consensus_bundle(
     challenge_block = build_challenge_owner_block(run_meta, agent)
     if challenge_block.strip():
         constraints = f"{constraints}\n\n{challenge_block.strip()}"
+    gate_block = format_gate_snapshot_block(compute_gate_snapshot(run_meta))
+    if gate_block.strip():
+        constraints = f"{constraints}\n\n{gate_block.strip()}"
     plan_open = build_plan_open_block(
         open_bullets=open_bullets,
         stale_line=plan_stale_banner(run_meta),
@@ -270,15 +280,20 @@ def build_slim_consensus_bundle(
     turn_state_block = render_turn_state_block(
         (run_meta or {}).get("turn_state")
     )
+    reply_policy = resolve_reply_policy(
+        parallel_round=2,
+        consensus_mode=consensus_mode,
+        turn_profile=str((run_meta or {}).get("turn_profile") or ""),
+        efficiency_mode=efficiency_mode,
+    )
+    guidance_parts = build_guidance_parts(reply_policy)
     guidance_block = (
         "---\n"
-        f"{CONVERSATION_GUIDANCE}\n"
-        f"{MULTI_AGENT_COORDINATION}\n"
-        f"{PEER_DECISION_GUIDANCE}\n"
-        f"{EFFICIENCY_RESPONSE_GUIDANCE}\n"
-        "---\n"
+        + "\n".join(guidance_parts)
+        + "\n---\n"
         f"Respond as {label(agent)} only."
     )
+    follow_up = envelope_follow_up_block(reply_policy, context="consensus")
     connect_hint = AGENT_CONNECT_HINT.get(agent, "").strip()
     tool_rules = agent_tool_rules(agent)
     meta = ContextBundleMeta(
@@ -299,7 +314,7 @@ def build_slim_consensus_bundle(
         guidance_block=guidance_block,
         connect_hint=connect_hint,
         claude_tools=tool_rules,
-        follow_up="",
+        follow_up=follow_up,
         turn_state=turn_state_block,
         meta=meta,
     )
@@ -313,7 +328,7 @@ def build_slim_consensus_bundle(
         "guidance": len(guidance_block),
         "connect_hint": len(connect_hint),
         "claude_tools": len(tool_rules),
-        "follow_up": 0,
+        "follow_up": len(follow_up),
         "total": len(bundle.render()),
     }
     meta.line_range = ""
@@ -343,6 +358,7 @@ def build_context_bundle(
     all_messages: list[_MessageLike] | None = None,
     efficiency_mode: bool = False,
     slim_context: bool = False,
+    consensus_mode: bool = False,
 ) -> ContextBundle:
     """Build layered context for one agent call (discuss / plan agent rounds)."""
     if slim_context and efficiency_mode:
@@ -354,10 +370,13 @@ def build_context_bundle(
             plan_md=plan_md,
             run_meta=run_meta,
             permissions=permissions,
+            consensus_mode=consensus_mode,
+            efficiency_mode=efficiency_mode,
         )
 
     from agent_lab.context_limits import agent_context_limits, efficiency_limits
     from agent_lab.context_meta import enrich_bundle_meta
+    from agent_lab.agents.registry import label
     from agent_lab.room_context import (
         agent_thread_formatter,
         count_messages,
@@ -408,6 +427,9 @@ def build_context_bundle(
     )
     if session_guidance.strip():
         constraints = f"{constraints}\n\n{session_guidance.strip()}"
+    resume_block = build_agent_thread_resume_block(agent, run_meta)
+    if resume_block.strip():
+        constraints = f"{constraints}\n\n{resume_block.strip()}"
     plugin_block = build_plugin_allowlist_block(agent, run_meta)
     if plugin_block.strip():
         constraints = f"{constraints}\n\n{plugin_block.strip()}"
@@ -436,6 +458,9 @@ def build_context_bundle(
     challenge_block = build_challenge_owner_block(run_meta, agent)
     if challenge_block.strip():
         constraints = f"{constraints}\n\n{challenge_block.strip()}"
+    gate_block = format_gate_snapshot_block(compute_gate_snapshot(run_meta))
+    if gate_block.strip():
+        constraints = f"{constraints}\n\n{gate_block.strip()}"
     plan_open = build_plan_open_block(
         open_bullets=open_bullets,
         stale_line=plan_stale_banner(run_meta),
@@ -470,18 +495,21 @@ def build_context_bundle(
         peer_block = format_peer_block(peer_msgs)
 
     connect_hint = AGENT_CONNECT_HINT.get(agent, "").strip()
-    guidance_parts = [CONVERSATION_GUIDANCE, MULTI_AGENT_COORDINATION, PEER_DECISION_GUIDANCE]
     profile = str((run_meta or {}).get("turn_profile") or "").strip().lower()
-    if profile in ("analyze", "discuss"):
-        guidance_parts.insert(0, ANALYSIS_TURN_GUIDANCE.strip())
-    if profile == "specialist":
+    reply_policy = resolve_reply_policy(
+        parallel_round=parallel_round,
+        review_mode=review_mode,
+        consensus_mode=consensus_mode,
+        turn_profile=profile,
+        efficiency_mode=efficiency_mode,
+    )
+    guidance_parts = build_guidance_parts(reply_policy)
+    if profile == "analyze":
         guidance_parts.insert(
             0,
-            "[Specialist turn · R1 Codex+Claude → R2 Cursor patch. "
-            "Stay in your capability lane.]",
+            "[Analyze turn] Observe and report risks only. "
+            "Do not use PROPOSE/ENDORSE/BLOCK envelope acts.",
         )
-    if efficiency_mode:
-        guidance_parts.append(EFFICIENCY_RESPONSE_GUIDANCE)
     guidance_block = (
         "---\n"
         + "\n".join(guidance_parts)
@@ -490,6 +518,10 @@ def build_context_bundle(
     )
 
     follow_up = ""
+    env_ctx = "consensus" if consensus_mode else ("review" if review_mode else "discuss")
+    envelope_block = envelope_follow_up_block(reply_policy, context=env_ctx)
+    if envelope_block.strip():
+        follow_up = envelope_block.strip()
     if artifact_only:
         follow_up = (
             "[artifact-only R2]\n"
@@ -497,10 +529,11 @@ def build_context_bundle(
             "R1 동료 발화 본문은 payload에 없으며 artifacts가 R1 산출물을 대체합니다."
         )
     elif peer_block:
-        follow_up = (
+        peer_follow = (
             "같은 Human 턴 안에서 동료가 이미 말했습니다. "
             "[이번 턴 · 동료 발화]를 기준으로 이어서 답하고, 겹치는 내용은 짧게 넘기세요."
         )
+        follow_up = "\n\n".join(x for x in (follow_up, peer_follow) if x.strip())
         if review_mode and parallel_round >= 2 and review_advocate:
             if agent == review_advocate:
                 follow_up += (

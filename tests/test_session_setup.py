@@ -128,6 +128,14 @@ def test_resolve_workspace_selection_requires_path_for_custom():
         assert "custom workspace path required" in str(e)
 
 
+def test_resolve_workspace_selection_invalid_custom_path():
+    try:
+        resolve_workspace_selection(CUSTOM_WORKSPACE_ID, "/no/such/workspace")
+        assert False, "expected ValueError"
+    except ValueError as e:
+        assert "not found" in str(e)
+
+
 def test_pipeline_root_falls_back_to_desktop_pipeline(tmp_path, monkeypatch):
     monkeypatch.delenv("QUANT_PIPELINE_ROOT", raising=False)
     cfg_dir = tmp_path / "cfg"

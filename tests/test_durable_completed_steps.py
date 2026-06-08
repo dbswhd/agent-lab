@@ -6,6 +6,8 @@ import json
 
 import pytest
 
+from agent_mocks import patch_call_agent_reply
+
 
 def test_completed_step_key_and_record(tmp_path):
     from agent_lab.run_meta import (
@@ -89,7 +91,7 @@ def test_run_parallel_round_skips_completed_agent(monkeypatch, tmp_path):
         calls.append(agent)
         return f"{agent} live ok"
 
-    monkeypatch.setattr(room, "call_agent", fake_call_agent)
+    patch_call_agent_reply(monkeypatch, fake_call_agent)
     monkeypatch.setattr(room, "model_label", lambda agent: f"{agent}-model")
 
     run_meta = {
@@ -122,9 +124,8 @@ def test_call_one_agent_records_completed_step(monkeypatch, tmp_path):
     folder.mkdir()
     write_run_meta(folder, {})
 
-    monkeypatch.setattr(
-        room,
-        "call_agent",
+    patch_call_agent_reply(
+        monkeypatch,
         lambda *_a, **_k: '```agent-envelope\n{"act":"PROPOSE"}\n```\ncursor ok',
     )
     monkeypatch.setattr(room, "model_label", lambda agent: agent)

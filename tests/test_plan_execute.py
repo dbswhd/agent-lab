@@ -8,6 +8,8 @@ from unittest.mock import patch
 
 import pytest
 
+from agent_mocks import disable_execute_inbox_mcp
+
 from agent_lab.plan_actions import (
     find_dry_run_action,
     parse_plan_action_sections,
@@ -75,6 +77,30 @@ NEW_FORMAT_PLAN = """## 지금 실행
    - 검증: roadmap index로 dry-run 가능.
    (ref: chat.jsonl#L12)
 """
+
+
+def _write_pending_consensus(
+    folder: Path,
+    *,
+    excerpt: str = "topic",
+    message_count: int = 1,
+) -> None:
+    from agent_lab.run_meta import write_run_meta
+
+    write_run_meta(
+        folder,
+        {
+            "consensus_agreements": [
+                {
+                    "id": "agr-test",
+                    "excerpt": excerpt,
+                    "status": "reached",
+                    "plan_synced": False,
+                    "message_count": message_count,
+                }
+            ],
+        },
+    )
 
 
 def test_duplicate_index_resolves_by_kind():
@@ -333,6 +359,7 @@ def test_dry_run_rejects_when_expected_paths_missing(tmp_path: Path, monkeypatch
 
 
 def test_dry_run_allows_new_file_under_workspace(tmp_path: Path, monkeypatch):
+    disable_execute_inbox_mcp(monkeypatch)
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     session = tmp_path / "sess"
@@ -480,23 +507,68 @@ def test_maybe_auto_scribe_skips_when_not_reached(tmp_path: Path):
     mock_synth.assert_not_called()
 
 
-def test_maybe_auto_scribe_skips_plan_mode(tmp_path: Path):
+def test_maybe_auto_scribe_rescribes_when_plan_exists(tmp_path: Path):
     folder = tmp_path / "sess"
     folder.mkdir()
-    with patch("agent_lab.room.synthesize_session_plan") as mock_synth:
+    (folder / "topic.txt").write_text("topic\n", encoding="utf-8")
+    (folder / "chat.jsonl").write_text('{"role":"user","content":"hi"}\n', encoding="utf-8")
+    (folder / "plan.md").write_text("## existing plan\n", encoding="utf-8")
+    _write_pending_consensus(folder, excerpt="topic")
+    with patch(
+        "agent_lab.room.synthesize_session_plan",
+        return_value=(SAMPLE_PLAN, "합의 반영"),
+    ) as mock_synth:
         result = maybe_auto_scribe_after_consensus(
             folder,
-            consensus_meta={"status": "reached"},
+            consensus_meta={"status": "reached", "anchor": {"excerpt": "topic"}},
             synthesize=True,
             cancelled=False,
         )
-    assert result is None
+    mock_synth.assert_called_once_with(
+        folder,
+        on_event=None,
+        permissions=None,
+        trigger="consensus_reached",
+        previous_plan_md="## existing plan\n",
+    )
+    assert result == SAMPLE_PLAN
+
+
+def test_maybe_auto_scribe_idempotent_when_already_synced(tmp_path: Path):
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    (folder / "plan.md").write_text("## synced plan\n", encoding="utf-8")
+    from agent_lab.run_meta import write_run_meta
+
+    write_run_meta(
+        folder,
+        {
+            "consensus_agreements": [
+                {
+                    "id": "agr-1",
+                    "excerpt": "topic",
+                    "status": "reached",
+                    "plan_synced": True,
+                    "message_count": 1,
+                }
+            ],
+        },
+    )
+    with patch("agent_lab.room.synthesize_session_plan") as mock_synth:
+        result = maybe_auto_scribe_after_consensus(
+            folder,
+            consensus_meta={"status": "reached", "anchor": {"excerpt": "topic"}},
+            synthesize=True,
+            cancelled=False,
+        )
     mock_synth.assert_not_called()
+    assert result == "## synced plan\n"
 
 
 def test_maybe_auto_scribe_on_consensus_reached(tmp_path: Path):
     folder = tmp_path / "sess"
     folder.mkdir()
+    _write_pending_consensus(folder)
     with patch(
         "agent_lab.room.synthesize_session_plan",
         return_value=(SAMPLE_PLAN, "합의된 점 반영"),
@@ -520,6 +592,7 @@ def test_maybe_auto_scribe_on_consensus_reached(tmp_path: Path):
 def test_maybe_auto_scribe_emits_dry_run_proposal(tmp_path: Path):
     folder = tmp_path / "sess"
     folder.mkdir()
+    _write_pending_consensus(folder, excerpt="parser 섹션")
     events: list[tuple[str, dict]] = []
 
     def on_event(event_type: str, payload: dict) -> None:
@@ -554,9 +627,73 @@ def test_maybe_auto_scribe_emits_dry_run_proposal(tmp_path: Path):
     assert proposal["recommended"]["what"].startswith("plan parser")
 
 
+def test_consensus_auto_scribe_harvests_inbox(tmp_path: Path, monkeypatch) -> None:
+    from agent_lab.run_meta import read_run_meta
+
+    folder = tmp_path / "sess-consensus-harvest"
+    folder.mkdir()
+    (folder / "run.json").write_text("{}\n", encoding="utf-8")
+    (folder / "topic.txt").write_text("Build parser\n", encoding="utf-8")
+    _write_pending_consensus(folder, excerpt="parser")
+    monkeypatch.setattr(
+        "agent_lab.room.synthesize_session_plan",
+        lambda *_a, **_k: (NEW_FORMAT_PLAN, "합의 반영"),
+    )
+    result = maybe_auto_scribe_after_consensus(
+        folder,
+        consensus_meta={"status": "reached", "anchor": {"excerpt": "parser"}},
+        synthesize=False,
+        cancelled=False,
+    )
+    assert result == NEW_FORMAT_PLAN
+    run = read_run_meta(folder)
+    builds = [i for i in run.get("human_inbox", []) if i.get("kind") == "build"]
+    assert len(builds) == 1
+    assert builds[0]["action_ref"] == "now:1"
+
+
+def test_ensure_consensus_plan_sync_backfill(tmp_path: Path, monkeypatch) -> None:
+    from agent_lab.room import ensure_consensus_plan_sync
+    from agent_lab.run_meta import read_run_meta, write_run_meta
+
+    folder = tmp_path / "sess-backfill"
+    folder.mkdir()
+    (folder / "topic.txt").write_text("topic\n", encoding="utf-8")
+    (folder / "chat.jsonl").write_text(
+        "\n".join(
+            f'{{"role":"user","content":"m{i}"}}' for i in range(3)
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    write_run_meta(
+        folder,
+        {
+            "consensus_agreements": [
+                {
+                    "id": "agr-1",
+                    "excerpt": "스윕 추가",
+                    "status": "reached",
+                    "plan_synced": False,
+                    "message_count": 3,
+                }
+            ],
+        },
+    )
+    monkeypatch.setattr(
+        "agent_lab.room.synthesize_session_plan",
+        lambda *_a, **_k: (NEW_FORMAT_PLAN, "합의 반영"),
+    )
+    assert ensure_consensus_plan_sync(folder) is True
+    run = read_run_meta(folder)
+    assert run["consensus_agreements"][0]["plan_synced"] is True
+    assert ensure_consensus_plan_sync(folder) is False
+
+
 def test_maybe_auto_scribe_materializes_returned_plan_for_proposal(tmp_path: Path):
     folder = tmp_path / "sess"
     folder.mkdir()
+    _write_pending_consensus(folder, excerpt="parser 섹션")
     events: list[tuple[str, dict]] = []
 
     def on_event(event_type: str, payload: dict) -> None:
@@ -662,6 +799,7 @@ def test_list_plan_actions_includes_execute_workspace(tmp_path: Path, monkeypatc
 
 
 def test_dry_run_failure_restores_snapshot(tmp_path: Path, monkeypatch):
+    disable_execute_inbox_mcp(monkeypatch)
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     session = tmp_path / "sess"

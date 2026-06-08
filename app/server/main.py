@@ -28,6 +28,10 @@ for _env_file in (
     if _env_file.is_file():
         load_dotenv(_env_file)
 
+from agent_lab.credential_store import apply_credentials_to_env  # noqa: E402
+
+apply_credentials_to_env()
+
 from agent_lab.api_diagnostics import build_diagnostics_payload  # noqa: E402
 from agent_lab.agent_preflight import agents_not_ready  # noqa: E402
 from app.server.deps import (  # noqa: E402
@@ -55,6 +59,8 @@ from app.server.routers import (  # noqa: E402
     session_governance,
     session_tasks,
     sessions,
+    settings,
+    verified_loop,
 )
 
 setup_app_logging()
@@ -105,6 +111,8 @@ for router in (
     human_inbox.router,
     plan_execute.router,
     room.router,
+    settings.router,
+    verified_loop.router,
 ):
     app.include_router(router)
 

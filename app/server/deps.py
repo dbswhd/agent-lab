@@ -18,9 +18,12 @@ from agent_lab.attachments import (
 )
 from agent_lab.plan_execute_worktree import gc_stale_worktrees
 from agent_lab.room import MAX_AGENT_PARALLEL_ROUNDS, _session_context as room_session_context
+from agent_lab.run_observability import observability_snapshot
 from agent_lab.session import SESSIONS_DIR
 
-TURN_PROFILES = frozenset({"quick", "analyze", "discuss", "review", "free", "specialist"})
+TURN_PROFILES = frozenset(
+    {"quick", "analyze", "discuss", "review", "free", "specialist", "verified"}
+)
 
 
 class RunRequest(BaseModel):
@@ -210,6 +213,26 @@ def list_sessions(*, archived: bool = False) -> list[dict[str, Any]]:
             if topic_file.is_file()
             else meta.get("topic", path.name)
         )
+        agents: list[str] = []
+        workspace_path: str | None = None
+        run_path = path / "run.json"
+        if run_path.is_file():
+            try:
+                run_json = json.loads(run_path.read_text(encoding="utf-8"))
+                raw_agents = run_json.get("agents")
+                if isinstance(raw_agents, list):
+                    agents = [str(a) for a in raw_agents if a]
+                elif run_json.get("turns"):
+                    last_turn = run_json["turns"][-1]
+                    if isinstance(last_turn, dict) and isinstance(
+                        last_turn.get("agents"), list
+                    ):
+                        agents = [str(a) for a in last_turn["agents"] if a]
+                binding = run_json.get("workspace_binding")
+                if isinstance(binding, dict) and binding.get("path"):
+                    workspace_path = str(binding["path"])
+            except (json.JSONDecodeError, OSError, IndexError, KeyError):
+                pass
         items.append(
             {
                 "id": path.name,
@@ -221,6 +244,8 @@ def list_sessions(*, archived: bool = False) -> list[dict[str, Any]]:
                 "workspace_preset": meta.get("workspace_preset"),
                 "session_template": meta.get("session_template"),
                 "workspace_label": meta.get("workspace_label"),
+                "agents": agents,
+                "workspace_path": workspace_path,
                 "path": str(path),
             }
         )
@@ -258,6 +283,7 @@ def session_detail(session_id: str) -> dict[str, Any]:
         "chat": chat,
         "run": run_json,
         "attachments": list_attachment_names(folder),
+        "observability": observability_snapshot(run_json),
     }
 
 

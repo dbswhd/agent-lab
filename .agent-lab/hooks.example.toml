@@ -1,9 +1,33 @@
 # Copy to ~/.agent-lab/hooks.toml or repo .agent-lab/hooks.toml
-# Hooks receive JSON on stdin; exit 2 blocks with stderr/stdout as feedback.
+# Hooks receive JSON on stdin; policy per event — see docs/HOOK-COMMUNICATE-REFORM.md §5.
 
 timeout_s = 30
 
 [hooks]
+# pre_execute = ["./scripts/hooks/pre-execute.sh"]
 # task_completed = ["./scripts/hooks/verify-task.sh"]
 # teammate_idle = ["./scripts/hooks/teammate-idle.sh"]
-# pre_execute = ["./scripts/hooks/pre-execute.sh"]
+
+[hooks.global]
+# post_harvest = ["./scripts/hooks/post-harvest.sh"]
+# pre_scribe = ["./scripts/hooks/pre-scribe.sh"]
+
+[hooks.cursor]
+# pre_agent_reply = []
+# post_agent_reply = ["./scripts/hooks/cursor-post-reply.sh"]
+
+[hooks.codex]
+# post_agent_reply = ["./scripts/hooks/codex-post-reply.sh"]
+
+[hooks.claude]
+# post_agent_reply = ["./scripts/hooks/claude-post-reply.sh"]
+
+# Native hook passthrough (Phase 4) — sessions/<id>/.agent-lab/agent-hooks/
+# Runtime overlay: AGENT_LAB_NATIVE_HOOKS=1
+# [agent_hooks]
+# enabled = true
+# codex = ".agent-lab/agent-hooks-template/codex/hooks.json"
+
+# Optional policy overrides (see docs/HOOK-COMMUNICATE-REFORM.md §5.2)
+# [policy.post_agent_reply]
+# fail_on = ["exit_2"]

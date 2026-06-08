@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from agent_lab.agent_permissions import codex_cli_allowed
 from agent_lab.agent_models import (  # noqa: E402
     DEFAULT_CODEX_MODEL,
     DEFAULT_CODEX_REASONING_EFFORT,
@@ -117,10 +118,14 @@ def _format_exec_error(stderr: str, stdout: str) -> str:
     return "unknown error"
 
 
-def _codex_env() -> dict[str, str]:
+def _codex_env(*, api_key: str | None = None) -> dict[str, str]:
     from agent_lab.subprocess_env import subprocess_env
 
     env = subprocess_env()
+    if api_key and api_key.strip():
+        env["OPENAI_API_KEY"] = api_key.strip()
+    else:
+        env.pop("OPENAI_API_KEY", None)
     codex = resolve_codex_bin()
     if codex:
         bin_dir = str(Path(codex).parent)
@@ -349,8 +354,9 @@ def _run_codex(
     on_activity: Callable[[str], None] | None,
     timeout: int | None,
     room_turn: bool,
+    api_key: str | None = None,
 ) -> CodexRunOutcome:
-    env = _codex_env()
+    env = _codex_env(api_key=api_key)
     max_commands = _room_max_commands() if room_turn else 0
     grace_sec = _room_limit_grace_sec() if room_turn else 0
     outcome = CodexRunOutcome()
@@ -467,8 +473,8 @@ def invoke(
     room_turn: bool = False,
     session_folder: str | Path | None = None,
     inbox_mcp: bool = False,
+    request_structured_envelope: bool = False,
 ) -> str:
-    from agent_lab.agent_permissions import codex_cli_allowed
     from agent_lab.workspace_roots import discuss_primary_workspace
 
     codex = resolve_codex_bin()
@@ -499,6 +505,10 @@ def invoke(
     out_path = tempfile.mktemp(prefix="agent-lab-codex-", suffix=".txt")
 
     prompt = f"{system.strip()}\n\n---\n\n{user.strip()}"
+    if request_structured_envelope:
+        from agent_lab.structured_envelope_adapter import structured_envelope_system_addon
+
+        prompt = f"{prompt}\n\n{structured_envelope_system_addon(compact=True)}"
     if room_turn:
         prompt = f"{prompt}\n\n{_ROOM_TURN_SUFFIX}"
     if not allow_tools:
@@ -520,7 +530,7 @@ def invoke(
     timeout = _timeout_sec(room_turn=room_turn)
     max_commands = _room_max_commands() if room_turn else 0
 
-    def _run_once() -> str:
+    def _run_once(api_key: str | None) -> str:
         Path(out_path).unlink(missing_ok=True)
         outcome = _run_codex(
             cmd,
@@ -528,6 +538,7 @@ def invoke(
             on_activity=on_activity,
             timeout=timeout,
             room_turn=room_turn,
+            api_key=api_key,
         )
         text = Path(out_path).read_text(encoding="utf-8").strip()
         if text:
@@ -546,11 +557,25 @@ def invoke(
             on_activity(f"재시도 {attempt}/{max_attempts} — Codex CLI 일시 오류")
 
     try:
-        return retry_call(
-            _run_once,
-            max_attempts=retry_max_attempts(room_turn=room_turn),
-            base_delay_sec=retry_base_delay_sec(),
-            on_retry_label=_on_retry,
+        from agent_lab.agent_hooks_materializer import native_agent_hooks_overlay
+        from agent_lab.credential_store import call_with_credential_fallback
+
+        def _run_for_key(api_key: str | None) -> str:
+            def _run_with_hooks() -> str:
+                with native_agent_hooks_overlay("codex", session_folder, cwd):
+                    return _run_once(api_key)
+
+            return retry_call(
+                _run_with_hooks,
+                max_attempts=retry_max_attempts(room_turn=room_turn),
+                base_delay_sec=retry_base_delay_sec(),
+                on_retry_label=_on_retry,
+            )
+
+        return call_with_credential_fallback(
+            "codex",
+            _run_for_key,
+            allow_oauth_without_key=True,
         )
     finally:
         Path(out_path).unlink(missing_ok=True)

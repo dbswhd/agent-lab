@@ -214,6 +214,26 @@ def _pool_capability_cwd_counts(reports: list[dict[str, Any]]) -> dict[str, int]
     }
 
 
+def _pool_communicate_counts(reports: list[dict[str, Any]]) -> dict[str, int]:
+    keys = (
+        "agent_replies",
+        "envelope_parse_errors",
+        "legacy_endorse_count",
+        "guidance_chars_total",
+        "communicate_turns",
+        "envelope_strict_turns",
+        "hook_runs",
+        "hook_blocked",
+        "hook_envelope_invalid",
+    )
+    pooled = {k: 0 for k in keys}
+    for report in reports:
+        counts = (report.get("counts") or {}).get("communicate") or {}
+        for key in keys:
+            pooled[key] += int(counts.get(key) or 0)
+    return pooled
+
+
 def aggregate_rates(
     reports: list[dict[str, Any]],
 ) -> tuple[dict[str, float | None], dict[str, dict[str, int]]]:
@@ -223,6 +243,7 @@ def aggregate_rates(
     merge = _pool_merge_counts(reports)
     turns = _pool_turn_counts(reports)
     capability_cwd = _pool_capability_cwd_counts(reports)
+    communicate = _pool_communicate_counts(reports)
 
     objection_rate = (
         obj["resolved"] / obj["total"] if obj["total"] else None
@@ -260,6 +281,22 @@ def aggregate_rates(
             if capability_cwd["specialist_contexts"]
             else None
         ),
+        "envelope_parse_success_rate": (
+            (communicate["agent_replies"] - communicate["envelope_parse_errors"])
+            / communicate["agent_replies"]
+            if communicate["agent_replies"]
+            else None
+        ),
+        "legacy_endorse_rate": (
+            communicate["legacy_endorse_count"] / communicate["agent_replies"]
+            if communicate["agent_replies"]
+            else None
+        ),
+        "hook_block_rate": (
+            communicate["hook_blocked"] / communicate["hook_runs"]
+            if communicate["hook_runs"]
+            else None
+        ),
     }
     counts = {
         "objections": obj,
@@ -267,6 +304,7 @@ def aggregate_rates(
         "execute_merge": merge,
         "turns": turns,
         "capability_cwd": capability_cwd,
+        "communicate": communicate,
     }
     return scores, counts
 
@@ -527,6 +565,37 @@ def format_weekly_report_markdown(report: dict[str, Any]) -> str:
                 f"{capability.get('asymmetric', 0)}/{capability.get('specialist_contexts', 0)} contexts |"
             ),
             "",
+            "## Hook · Communicate",
+            "",
+            "| Metric | Value | Count |",
+            "|--------|-------|-------|",
+        ]
+    )
+    comm = counts.get("communicate") or {}
+    lines.extend(
+        [
+            (
+                "| Envelope parse success | "
+                f"{_pct(scores.get('envelope_parse_success_rate'))} | "
+                f"{comm.get('agent_replies', 0) - comm.get('envelope_parse_errors', 0)}"
+                f"/{comm.get('agent_replies', 0)} replies |"
+            ),
+            (
+                "| Legacy phrase endorse | "
+                f"{_pct(scores.get('legacy_endorse_rate'))} | "
+                f"{comm.get('legacy_endorse_count', 0)} hits |"
+            ),
+            (
+                "| Hook block rate | "
+                f"{_pct(scores.get('hook_block_rate'))} | "
+                f"{comm.get('hook_blocked', 0)}/{comm.get('hook_runs', 0)} runs |"
+            ),
+            (
+                "| Guidance chars (total) | — | "
+                f"{comm.get('guidance_chars_total', 0)} across "
+                f"{comm.get('communicate_turns', 0)} turns |"
+            ),
+            "",
             "## Last live checks",
             "",
             "| Check | Date | Status | Report |",
@@ -616,6 +685,9 @@ def build_weekly_report(
         f"  aggregate specialist cwd asymmetry: {_pct(aggregate_scores['asymmetric_capability_cwd_rate'])} "
         f"({aggregate_counts['capability_cwd']['asymmetric']}/"
         f"{aggregate_counts['capability_cwd']['specialist_contexts']} specialist contexts)",
+        f"  communicate envelope parse: {_pct(aggregate_scores.get('envelope_parse_success_rate'))} "
+        f"({aggregate_counts['communicate']['agent_replies'] - aggregate_counts['communicate']['envelope_parse_errors']}/"
+        f"{aggregate_counts['communicate']['agent_replies']} replies)",
         f"  {_last_live_summary(live_ops_summary)}",
         "M4 milestones:",
         _milestone_line("objection resolution", m4["objection_resolution"]),

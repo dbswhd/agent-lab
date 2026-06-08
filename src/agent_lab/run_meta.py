@@ -133,3 +133,28 @@ def clear_completed_steps_for_human_turn(folder: Path, human_turn: int) -> None:
         return run
 
     patch_run_meta(folder, _clear)
+
+
+def append_hook_run(
+    folder: Path | None,
+    record: dict[str, Any],
+    *,
+    run_meta: dict[str, Any] | None = None,
+) -> None:
+    """Append one hook run record to run.json (and optional in-memory run_meta)."""
+    if folder is None:
+        if run_meta is not None:
+            runs = list(run_meta.get("hook_runs") or [])
+            runs.append(record)
+            run_meta["hook_runs"] = runs[-200:]
+        return
+
+    def _append(run: dict[str, Any]) -> dict[str, Any]:
+        runs = list(run.get("hook_runs") or [])
+        runs.append(record)
+        run["hook_runs"] = runs[-200:]
+        return run
+
+    updated = patch_run_meta(folder, _append)
+    if run_meta is not None:
+        run_meta["hook_runs"] = updated.get("hook_runs")

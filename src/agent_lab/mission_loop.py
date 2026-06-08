@@ -774,6 +774,7 @@ def on_verify_result(
     action_index: int,
     verdict: str,
     reason: str = "",
+    oracle: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Phase 3/4: update mission state after merge verify."""
     run = read_run_meta(folder)
@@ -799,15 +800,17 @@ def on_verify_result(
     ml = get_mission_loop(read_run_meta(folder))
 
     if verdict_norm == "pass":
-        return _on_verify_pass(folder, action_index, ml)
+        return _on_verify_pass(folder, action_index, ml, oracle=oracle)
 
-    return _on_verify_fail(folder, action_index, ml, reason=reason)
+    return _on_verify_fail(folder, action_index, ml, reason=reason, oracle=oracle)
 
 
 def _on_verify_pass(
     folder: Path,
     action_index: int,
     ml: dict[str, Any],
+    *,
+    oracle: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     pending = [i for i in (ml.get("pending_action_indices") or []) if i != action_index]
     repairs = dict(ml.get("action_repair_counts") or {})
@@ -824,12 +827,24 @@ def _on_verify_pass(
 
     patch_run_meta(folder, _advance)
     out = get_mission_loop(read_run_meta(folder))
+    verify_line = f"verify PASS action #{action_index}"
+    if oracle and str(oracle.get("detail") or "").strip():
+        verify_line += f" — {str(oracle.get('detail') or '')[:220]}"
     append_wisdom_note(
         folder,
-        line=f"verify PASS action #{action_index}",
+        line=verify_line,
         filename="verification.md",
         action_index=action_index,
     )
+    if isinstance(oracle, dict):
+        for row in (oracle.get("evidence") or [])[:5]:
+            if str(row or "").strip():
+                append_wisdom_note(
+                    folder,
+                    line=f"evidence: {str(row).strip()[:240]}",
+                    filename="verification.md",
+                    action_index=action_index,
+                )
     if pending:
         append_wisdom_note(
             folder,
@@ -863,6 +878,7 @@ def _on_verify_fail(
     ml: dict[str, Any],
     *,
     reason: str,
+    oracle: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     repairs = dict(ml.get("action_repair_counts") or {})
     key = str(action_index)

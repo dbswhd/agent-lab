@@ -65,18 +65,24 @@
         "checked_at": "2026-06-04T00:00:08+00:00",
         "oracle": {
           "verdict": "pass",
-          "detail": "PASS: found expected literal(s): VERIFIED_OK",
+          "detail": "found expected literal(s): VERIFIED_OK",
           "verify_criterion": "`src/app.py` contains `VERIFIED_OK`",
           "checked_paths": ["src/app.py"],
-          "checked_at": "2026-06-04T00:00:08+00:00"
+          "checked_at": "2026-06-04T00:00:08+00:00",
+          "source": "mock",
+          "evidence": ["found literal(s): VERIFIED_OK"],
+          "prompt_version": "2026-06-08"
         }
       },
       "oracle": {
         "verdict": "pass",
-        "detail": "PASS: found expected literal(s): VERIFIED_OK",
+        "detail": "found expected literal(s): VERIFIED_OK",
         "verify_criterion": "`src/app.py` contains `VERIFIED_OK`",
         "checked_paths": ["src/app.py"],
-        "checked_at": "2026-06-04T00:00:08+00:00"
+        "checked_at": "2026-06-04T00:00:08+00:00",
+        "source": "mock",
+        "evidence": ["found literal(s): VERIFIED_OK"],
+        "prompt_version": "2026-06-08"
       },
       "last_repair": {
         "id": "repair-execute-verify-loop",

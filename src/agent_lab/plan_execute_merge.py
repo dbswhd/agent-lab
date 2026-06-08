@@ -58,9 +58,17 @@ def oracle_verify(
 
     By default this is deterministic and offline: it checks backtick literals in
     ``action.verify`` against snippets from ``merged_paths``. Supplying
-    ``oracle_call`` lets tests or future wiring route to a real oracle. Live
-    Claude invocation is opt-in via ``AGENT_LAB_ORACLE_LIVE=1``.
+    ``oracle_call`` lets tests route to a real oracle. Live Claude invocation is
+    opt-in via ``AGENT_LAB_ORACLE_LIVE=1`` (see ``oracle_core``).
     """
+    from agent_lab.oracle_core import (
+        build_execute_oracle_prompt,
+        build_oracle_result,
+        invoke_oracle,
+        mock_execute_oracle_response,
+        session_oracle_context,
+    )
+
     verify = _action_verify(action)
     if _missing_verify(verify):
         return {
@@ -68,6 +76,8 @@ def oracle_verify(
             "detail": "verify field missing",
             "verify_criterion": verify,
             "checked_paths": [],
+            "evidence": [],
+            "source": "mock",
         }
 
     base = _oracle_workspace_root(
@@ -80,25 +90,27 @@ def oracle_verify(
         max_paths=max_paths,
         max_chars_per_file=max_chars_per_file,
     )
-    prompt = _oracle_prompt(verify, snippets)
+    prompt = build_execute_oracle_prompt(
+        verify,
+        snippets,
+        extra_evidence=session_oracle_context(session_folder),
+    )
 
     if oracle_call is not None:
-        raw = oracle_call(prompt)
+        raw, source = invoke_oracle("execute", prompt, oracle_call=oracle_call)
     elif os.getenv("AGENT_LAB_ORACLE_LIVE", "").strip().lower() in {"1", "true", "yes"}:
-        from agent_lab import claude_cli
-
-        raw = claude_cli.invoke("oracle", prompt, scribe=True)
+        raw, source = invoke_oracle("execute", prompt)
     else:
-        raw = _mock_oracle_response(verify, snippets)
+        raw = mock_execute_oracle_response(verify, snippets)
+        source = "mock"
 
-    detail = str(raw or "").strip()
-    verdict = "pass" if detail.upper().startswith("PASS") else "fail"
-    return {
-        "verdict": verdict,
-        "detail": detail[:400],
-        "verify_criterion": verify,
-        "checked_paths": checked_paths,
-    }
+    return build_oracle_result(
+        raw=raw,
+        source=source,
+        kind="execute",
+        verify_criterion=verify,
+        checked_paths=checked_paths,
+    )
 
 
 def verify_after_merge(
@@ -173,45 +185,6 @@ def _oracle_file_snippets(
         checked.append(display)
         snippets.append(f"--- {display} ---\n{text[:max_chars_per_file]}")
     return snippets, checked
-
-
-def _oracle_prompt(verify: str, snippets: list[str]) -> str:
-    files_block = "\n\n".join(snippets) or "(changed files unavailable)"
-    return (
-        "Independently verify whether this plan action is complete.\n\n"
-        f"Verification criterion:\n{verify}\n\n"
-        f"Merged file snippets:\n{files_block}\n\n"
-        "Respond with exactly one leading verdict: PASS or FAIL. "
-        "If FAIL, give the concrete reason in 1-2 lines."
-    )
-
-
-def _mock_oracle_response(verify: str, snippets: list[str]) -> str:
-    if not snippets:
-        return "FAIL: no readable merged files to check"
-    body = "\n\n".join(snippets)
-    literals = _verify_literals(verify)
-    missing = [literal for literal in literals if literal not in body]
-    if missing:
-        return f"FAIL: missing expected literal(s): {', '.join(missing[:5])}"
-    if literals:
-        return f"PASS: found expected literal(s): {', '.join(literals[:5])}"
-    return "PASS: mock oracle checked merged files; no explicit literal criterion found"
-
-
-def _verify_literals(verify: str) -> list[str]:
-    import re
-
-    literals: list[str] = []
-    for token in re.findall(r"`([^`]+)`", verify or ""):
-        text = token.strip()
-        if not text:
-            continue
-        if "/" in text or "\\" in text or Path(text).suffix:
-            continue
-        if text not in literals:
-            literals.append(text)
-    return literals
 
 
 def archive_executed_diff(

@@ -35,11 +35,30 @@ def _notepad_report(folder: Path) -> tuple[int, list[str]]:
     return total, lines
 
 
+def _latest_oracle_evidence(folder: Path) -> list[str]:
+    import json
+
+    run_path = folder / "run.json"
+    try:
+        run = json.loads(run_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    for row in reversed(run.get("executions") or []):
+        if not isinstance(row, dict):
+            continue
+        oracle = row.get("oracle") if isinstance(row.get("oracle"), dict) else {}
+        evidence = oracle.get("evidence") or []
+        if isinstance(evidence, list) and evidence:
+            return [str(x) for x in evidence[:5] if str(x).strip()]
+    return []
+
+
 def evaluate(folder: Path) -> dict:
     folder = folder.expanduser().resolve()
     if not (folder / "run.json").is_file():
         raise FileNotFoundError(f"run.json missing: {folder}")
     report = score_session(folder)
+    oracle_evidence = _latest_oracle_evidence(folder)
     ml = report.get("counts", {}).get("mission_loop") or {}
     scores = report.get("scores") or {}
     notepad_chars, notepad_lines = _notepad_report(folder)
@@ -87,6 +106,14 @@ def evaluate(folder: Path) -> dict:
             }
         )
 
+    if oracle_evidence:
+        checks.append(
+            {
+                "name": "oracle_evidence",
+                "ok": True,
+                "detail": f"{len(oracle_evidence)} bullet(s) on latest execution",
+            }
+        )
     ok = all(bool(c["ok"]) for c in checks)
     return {
         "session_id": folder.name,
@@ -94,6 +121,7 @@ def evaluate(folder: Path) -> dict:
         "ok": ok,
         "checks": checks,
         "notepad_lines": notepad_lines,
+        "oracle_evidence": oracle_evidence,
         "score_summary": report.get("summary_lines") or [],
     }
 
@@ -122,6 +150,8 @@ def main() -> int:
             print(f"  {mark} {row['name']}: {row['detail']}")
         for line in payload["notepad_lines"]:
             print(f"  notepad · {line}")
+        for row in payload.get("oracle_evidence") or []:
+            print(f"  oracle · {row}")
         for line in payload["score_summary"]:
             if "mission" in line.lower():
                 print(f"  {line.strip()}")

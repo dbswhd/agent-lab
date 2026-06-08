@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 from collections.abc import Callable, Iterable
 from datetime import datetime, timezone
 from pathlib import Path
@@ -16,26 +15,6 @@ DEFAULT_MAX_CHECKS = 5
 MAX_MAX_CHECKS = 20
 
 _TRUE = {"1", "true", "yes", "on"}
-_BACKTICK_LITERAL = re.compile(r"`([^`\n]+)`")
-_WORD = re.compile(r"[A-Za-z0-9_가-힣-]{2,}")
-_STOPWORDS = {
-    "goal",
-    "session",
-    "human",
-    "the",
-    "and",
-    "for",
-    "with",
-    "that",
-    "this",
-    "목표",
-    "세션",
-    "달성",
-    "완료",
-    "하도록",
-    "한다",
-    "하기",
-}
 
 
 def goal_loop_enabled() -> bool:
@@ -100,28 +79,37 @@ def goal_oracle_check(
     oracle_call: Callable[[str], str] | None = None,
 ) -> dict[str, Any]:
     """Evaluate a session goal independently from execute verification."""
+    from agent_lab.oracle_core import (
+        build_goal_oracle_prompt,
+        build_oracle_result,
+        invoke_oracle,
+        mock_goal_oracle_response,
+        oracle_live_enabled,
+        session_oracle_context,
+    )
+
     transcript = _messages_text(messages_snapshot)
-    prompt = _oracle_prompt(goal_text, transcript)
-    source = "mock"
+    prompt = build_goal_oracle_prompt(
+        goal_text,
+        transcript,
+        extra_evidence=session_oracle_context(session_folder),
+    )
     if oracle_call is not None:
-        raw = oracle_call(prompt)
-        source = "live"
-    elif os.getenv("AGENT_LAB_GOAL_ORACLE_LIVE", "").strip().lower() in _TRUE:
-        from agent_lab import claude_cli
-
-        raw = claude_cli.invoke("oracle", prompt, scribe=True)
-        source = "live"
+        raw, source = invoke_oracle("goal", prompt, oracle_call=oracle_call)
+    elif oracle_live_enabled(goal=True):
+        raw, source = invoke_oracle("goal", prompt)
     else:
-        raw = _mock_oracle_response(goal_text, transcript)
+        raw = mock_goal_oracle_response(goal_text, transcript)
+        source = "mock"
 
-    detail = str(raw or "").strip()
-    verdict = "pass" if detail.upper().startswith("PASS") else "fail"
-    return {
-        "at": _now(),
-        "verdict": verdict,
-        "detail": detail[:500],
-        "source": source,
-    }
+    result = build_oracle_result(
+        raw=raw,
+        source=source,
+        kind="goal",
+        goal_text=goal_text,
+    )
+    result["at"] = _now()
+    return result
 
 
 def check_session_goal(
@@ -204,30 +192,6 @@ def maybe_check_session_goal_after_turn(
     return result if result.get("checked") else None
 
 
-def _mock_oracle_response(goal_text: str, transcript: str) -> str:
-    haystack = transcript.casefold()
-    literals = [m.strip() for m in _BACKTICK_LITERAL.findall(goal_text) if m.strip()]
-    if literals:
-        missing = [literal for literal in literals if literal.casefold() not in haystack]
-        if missing:
-            return "FAIL: missing goal literal(s): " + ", ".join(missing)
-        return "PASS: all goal literals appear in the session transcript"
-
-    keywords = [
-        word
-        for word in dict.fromkeys(_WORD.findall(goal_text.casefold()))
-        if word not in _STOPWORDS
-    ][:8]
-    if not keywords:
-        return "FAIL: goal needs a backtick literal or concrete keywords"
-    matched = [word for word in keywords if word in haystack]
-    required = max(1, (len(keywords) + 1) // 2)
-    if len(matched) >= required:
-        return f"PASS: matched {len(matched)}/{len(keywords)} goal keywords"
-    missing = [word for word in keywords if word not in matched]
-    return "FAIL: missing goal keyword(s): " + ", ".join(missing[:5])
-
-
 def _messages_text(messages: Iterable[Any]) -> str:
     rows: list[str] = []
     for message in messages:
@@ -258,15 +222,6 @@ def _read_chat(session_folder: Path) -> list[dict[str, Any]]:
         if isinstance(row, dict):
             rows.append(row)
     return rows
-
-
-def _oracle_prompt(goal_text: str, transcript: str) -> str:
-    return (
-        "You are the independent session-goal Oracle. Decide whether the transcript "
-        "demonstrates that the Human-defined goal is achieved. Reply with PASS or FAIL "
-        "followed by one concise reason.\n\n"
-        f"Goal:\n{goal_text}\n\nTranscript:\n{transcript[-12000:] or '(empty)'}"
-    )
 
 
 def _now() -> str:

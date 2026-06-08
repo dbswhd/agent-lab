@@ -367,10 +367,11 @@ def _record_verify_after_merge(
         verify_retries=retries,
     )
     evidence["checked_at"] = checked_at
-    evidence["source"] = "mock_oracle"
     oracle = dict(evidence.get("oracle") or {})
     oracle["checked_at"] = checked_at
     evidence["oracle"] = oracle
+    src = str(oracle.get("source") or "mock")
+    evidence["source"] = "live_oracle" if src == "live" else "mock_oracle"
     target["verify_after_merge"] = evidence
     target["oracle"] = oracle
     target["verify_retries"] = retries
@@ -395,8 +396,19 @@ def _record_verify_after_merge(
 
     idx = int(target.get("action_index") or 0)
     verdict = str((oracle.get("verdict") or evidence.get("status") or "")).lower()
-    reason = str(oracle.get("feedback") or oracle.get("reason") or "")
-    on_verify_result(folder, action_index=idx, verdict=verdict, reason=reason)
+    reason = str(
+        oracle.get("detail")
+        or oracle.get("feedback")
+        or oracle.get("reason")
+        or ""
+    )
+    on_verify_result(
+        folder,
+        action_index=idx,
+        verdict=verdict,
+        reason=reason,
+        oracle=oracle,
+    )
     return evidence
 
 

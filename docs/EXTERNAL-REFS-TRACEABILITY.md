@@ -15,7 +15,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 |----|--------|------|--------|----------|-------|
 | L1 | LazyCodex | CLI retry loop | ✅ | `src/agent_lab/cli_retry.py`, `tests/test_cli_retry.py`, R-P0 | Layer 1 |
 | L2 | LazyCodex | Consensus loop | ✅ | `src/agent_lab/room_consensus.py`, `room.py` | Layer 2, cap_rounds/calls |
-| LC-oracle | LazyCodex | Oracle verified completion (mock-first) | ✅ | `plan_execute_merge.py:oracle_verify()`, `tests/test_oracle_verify.py`, `.env.example` `AGENT_LAB_ORACLE_LIVE` | Mock default; live Claude via `AGENT_LAB_ORACLE_LIVE=1` (no separate runbook — LC-L3 reverify covers repair loop) |
+| LC-oracle | LazyCodex | Oracle verified completion (mock-first) | ✅ | `oracle_core.py`, `plan_execute_merge.py:oracle_verify()`, `goal_loop.py`, `tests/test_oracle_core.py`, [LIVE-ORACLE.md](LIVE-ORACLE.md) | Structured VERDICT/EVIDENCE; live via `AGENT_LAB_ORACLE_LIVE=1` |
 | LC-L3 | LazyCodex | Execute verify + agent repair loop | ✅ | `verify_after_merge()`, `oracle_verify()`, `src/agent_lab/plan_execute.py`, `/api/sessions/{id}/execute/reverify`, `PlanExecutePanel.tsx`, `sessions/_regression/execute_verify_loop/`, `tests/test_plan_execute_agent_repair.py` | Oracle FAIL opens a fresh Cursor/Codex worktree repair, re-merges, and re-verifies; `MAX_VERIFY_RETRIES=2` |
 | PI | Conductor | Git worktree execute + merge | ✅ | `src/agent_lab/plan_execute_*.py`, `sessions/_regression/worktree_*`, `tests/test_plan_execute_worktree.py` | Phase I M0–M4 |
 | CON-diff | Conductor | Diff hunk inline revise | ✅ | `PlanExecutePanel.tsx`, `revise_pending_execution()`, `tests/test_plan_execute_revise_api.py` | Human hunk comment → fresh worktree re-diff → re-approve |

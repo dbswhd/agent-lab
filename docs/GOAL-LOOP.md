@@ -10,7 +10,7 @@ AGENT_LAB_GOAL_LOOP=1
 
 The default Oracle is deterministic and offline. Put concrete completion literals in backticks, for example: `결론에 \`GOAL_OK\`를 기록한다`. A goal check passes when the transcript contains every literal. Without backticks, the mock Oracle uses a bounded keyword heuristic.
 
-Set `AGENT_LAB_GOAL_ORACLE_LIVE=1` to opt into the existing Claude `oracle` role. CI and regression fixtures never require it.
+Set `AGENT_LAB_GOAL_ORACLE_LIVE=1` or `AGENT_LAB_ORACLE_LIVE=1` to opt into the Claude `oracle` role. Responses use structured `VERDICT` / `EVIDENCE` (see [LIVE-ORACLE.md](./LIVE-ORACLE.md)). CI and regression fixtures never require it.
 
 ## Human Gate
 

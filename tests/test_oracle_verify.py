@@ -83,7 +83,8 @@ def test_oracle_verify_uses_injected_oracle_call(tmp_path: Path):
     )
 
     assert result["verdict"] == "fail"
-    assert result["detail"] == "FAIL: injected oracle found a policy issue"
+    assert "injected oracle" in result["detail"]
+    assert result.get("source") == "live"
     assert len(prompts) == 1
     assert "Verification criterion:" in prompts[0]
     assert "READY = True" in prompts[0]

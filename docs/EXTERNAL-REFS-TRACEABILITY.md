@@ -22,7 +22,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | PI-executed | Conductor | Merged diff archive | ✅ | `plan_execute_merge.py:archive_executed_diff()`, `tests/test_executed_archive.py` | `sessions/<id>/executed/{exec_id}.json` |
 | PI-ops | Conductor | Live worktree Go/No-Go | ✅ | `docs/LIVE-CURSOR-WORKTREE-DRY-RUN.md`, `scripts/live_cursor_worktree_dry_run.py`, Tier B in `docs/OPS-RUNBOOK.md` | Manual, not CI |
 | PI-ops-C | Conductor | Live merge operator | ✅ | `docs/LIVE-MERGE-OPERATOR.md`, `scripts/live_cursor_worktree_merge_run.py`, `make verify-ops-live-merge` | Disposable repo only |
-| E-smoke | Room | BLOCK/CHALLENGE governance | ✅ | `sessions/_regression/objection_blocks_execute/`, `challenge_revises_metric/`, `scripts/smoke_room.py` | 20 baselines |
+| E-smoke | Room | BLOCK/CHALLENGE governance | ✅ | `sessions/_regression/objection_blocks_execute/`, `challenge_revises_metric/`, `scripts/smoke_room.py` | 23 baselines |
 | F-R3 | Room | Asymmetric `capability_cwd` | ✅ | `sessions/_benchmark/specialist_asymmetric_cwd/`, `tests/test_benchmark_catalog.py` | Payload meta |
 | H-P1 | H4 | score_session CI | ✅ | `scripts/score_session.py`, `tests/test_session_score_ci.py`, `.github/workflows/ci.yml` | |
 | H-P2 | Room | Benchmark catalog + delegate replay | ✅ | `sessions/_benchmark/`, `tests/test_benchmark_catalog.py`, `tests/test_room_delegate_replay.py` | Offline R1–R5 catalog; PLAN Phase 3; see [ROOM-REINFORCEMENT.md](ROOM-REINFORCEMENT.md) |
@@ -44,7 +44,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | MD-PROJECT | Prompt | PROJECT.md workspace injection | ✅ | `session_guidance.py:_read_project_md()` | cap 1500 chars; LazyCodex §1.7 **per-dir AGENTS hierarchy not implemented** (see MD-P3) |
 | MD-PLATFORM | Prompt | PLATFORM.md protocol injection | ✅ | `.agent-lab/PLATFORM.md`, `platform_md.py`, `tests/test_platform_md.py` | inject cap 500 chars |
 | LC-clarifier | LazyCodex | session_clarifier Socratic gate | ✅ | `session_clarifier.py`, `room.py`, `tests/test_session_clarifier.py` | `AGENT_LAB_CLARIFIER=1`; discuss + plan mode |
-| ML-C-omo | omo | Mission Loop Layer 6 FSM (C안) | ✅ | `mission_loop.py`, `routers/mission_loop.py`, `tests/test_mission_loop.py`, [MISSION-LOOP-C-OMO.md](MISSION-LOOP-C-OMO.md) | Discuss ↔ Execute ↔ Verify; Momus-lite gate |
+| ML-C-omo | omo | Mission Loop Layer 6 FSM (C안) | ✅ | `mission_loop.py`, `routers/mission_loop.py`, `tests/test_mission_loop.py`, `sessions/_regression/mission_loop_*`, [MISSION-LOOP-C-OMO.md](MISSION-LOOP-C-OMO.md) | Discuss ↔ Execute ↔ Verify; Momus-lite gate; 3 smoke baselines |
 | ML-P0 | omo | MISSION_DEFINE / verified_loop bridge | ✅ | `verified_loop.py` hooks in `mission_loop.py`, `test_verified_approve_enables_mission` | |
 | ML-P2 | omo | Plan gate Momus-lite | ✅ | `evaluate_plan_gate()`, `run_plan_gate()`, `mcp_warnings` | |
 | ML-P3 | omo | Execute queue + autorun dry-run | ✅ | `maybe_advance_mission()`, merge/dry-run hooks, `test_maybe_advance_dry_run_mock` | |
@@ -60,7 +60,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 
 | ID | Source | Item | Status | Evidence | Gap | PLAN ref |
 |----|--------|------|--------|----------|-----|----------|
-| ML-P1 | omo | Mission Conductor UI polish | 🔶 | `WorkStatusBar`, `WorkPanel` | Full Work stepper animation / USER-GUIDE §27 wording lag | [MISSION-LOOP-C-OMO.md](MISSION-LOOP-C-OMO.md) §9 |
+| ML-P1 | omo | Mission Conductor UI polish | 🔶 | `WorkStatusBar`, `WorkPanel`, `MissionOverviewSection` | Work chrome shipped; USER-GUIDE §28 + pause copy | [MISSION-LOOP-C-OMO.md](MISSION-LOOP-C-OMO.md) §9 |
 
 ---
 

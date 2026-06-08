@@ -1245,14 +1245,48 @@ Tauri log: `~/Library/Logs/Agent Lab/agent-lab-api.log`
 
 | 항목 | 명세/의도 | 현재 코드 |
 |------|-----------|-----------|
-| **Permission modal** | 첫 전송 전 확인 | `AgentPermissionAlert` **bypass** — full defaults send |
+| **Permission modal** | 첫 전송 전 확인 | discuss 기본 bypass · **Mission autonomous 구간** 재진입 시 `RoomChat`에서 재확인 |
 | **Composer plan toggle** | — | **제거됨** — Work only (의도적, WORK-TAB-IA) |
 | **Inspector Context tab** | — | **Settings로 이동** · `contextSidebarPrefs` orphan |
 | **⌘5** | Artifacts? | App 등록 · **shortcut map 없음** |
-| **⌘. Stop** | palette hint | **global handler 없음** |
+| **⌘. Stop** | mission pause | `run_control` cancel + `mission_loop` pause · Work 탭 **미션 재개** 버튼 |
 | **Plan/Review 탭 이름** | legacy docs | 코드는 **Work** 단일 탭 |
-| **Work stepper Verify/Done** | WORK-TAB-IA 5단계 | `resolveWorkPhase()`는 **3상태만** 반환 (plan_draft / review_needed / execute_pending) |
+| **Work stepper** | WORK-TAB-IA | `resolveWorkPhaseFromMission()` — 미션 phase가 있으면 stepper 우선 |
 | **Human Inbox execute MCP** | reference-fidelity | discuss harvest **부분 구현** ([HUMAN-INBOX.md](./HUMAN-INBOX.md)) |
+
+---
+
+## 28. Mission Loop (Work 탭)
+
+`AGENT_LAB_MISSION_LOOP=1` 또는 세션에서 미션 활성화 시 FSM이 plan gate → execute queue → verify/repair를 자동 진행합니다. SSOT: [MISSION-LOOP-C-OMO.md](./MISSION-LOOP-C-OMO.md).
+
+### Work 탭 구성
+
+| 영역 | 설명 |
+|------|------|
+| **Stepper** | plan_draft / review_needed / execute_pending (+ 미션 phase 오버레이) |
+| **Pause alert** | `MISSION_PAUSED` 시 사유·재개 phase 안내 + **미션 재개** |
+| **Mission strip** | 목표 · phase · 다음 action · circuit breaker · autonomous 배지 |
+| **Setup (접기)** | 세션 plugin allowlist — execute/repair MCP merge |
+
+### 운영 단축키·동작
+
+- **⌘.** — 진행 중 run cancel; 미션은 `MISSION_PAUSED` + `last_partial` 기록
+- **Autonomous** — plan gate 통과 후 execute 구간; 구간 재진입 시 permission 재확인
+- **Circuit breaker** — Momus cap·구조 실패 시 discuss recovery; Work strip에 사유 표시
+
+### Inspector · Context
+
+Context 사이드바 **Overview**에도 동일 mission 메타(phase, BLOCK, next action). Layer 토글로 repo tree · per-dir `AGENTS.md` · mission wisdom notepad 포함.
+
+### 회귀·dogfood
+
+```bash
+python scripts/smoke_room.py   # 23 baselines — mission_loop_execute_queue | paused | circuit_breaker
+make score-session SESSION=sessions/<id>   # mission_loop.* KPI
+```
+
+Live 품질 체크: [MISSION-DOGFOOD.md](./MISSION-DOGFOOD.md).
 
 ---
 
@@ -1291,6 +1325,8 @@ Tauri log: `~/Library/Logs/Agent Lab/agent-lab-api.log`
 | [05-room-agent-roles.md](./05-room-agent-roles.md) | 에이전트 역할 |
 | [HUMAN-INBOX.md](./HUMAN-INBOX.md) | Inbox RFC |
 | [GOAL-LOOP.md](./GOAL-LOOP.md) | Goal Oracle |
+| [MISSION-LOOP-C-OMO.md](./MISSION-LOOP-C-OMO.md) | Mission Loop FSM |
+| [MISSION-DOGFOOD.md](./MISSION-DOGFOOD.md) | Live mission KPI checklist |
 | [EXECUTE-WORKTREE-REFORM.md](./EXECUTE-WORKTREE-REFORM.md) | execute/worktree |
 | [PLUGIN-DISCOVERY.md](./PLUGIN-DISCOVERY.md) | plugins |
 | [STABILITY.md](./STABILITY.md) | 운영·포트·CI |

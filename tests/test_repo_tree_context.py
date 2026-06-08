@@ -50,6 +50,23 @@ def test_per_dir_agents_collects_ancestor_chain(tmp_path: Path) -> None:
     assert "src/auth/AGENTS.md" in rels
 
 
+def test_per_dir_agents_from_structured_plan_actions(tmp_path: Path) -> None:
+    ws = tmp_path / "repo"
+    web = ws / "web" / "src"
+    web.mkdir(parents=True)
+    (web / "AGENTS.md").write_text("React components only.", encoding="utf-8")
+    plan = (
+        "## 지금 실행\n"
+        "1. Fix button\n"
+        "   - 무엇을: restyle\n"
+        "   - 어디서: `web/src/Button.tsx`\n"
+        "   - 검증: `make test-web`\n"
+    )
+    files = _collect_per_dir_agents_files(ws, plan)
+    rels = {str(p.relative_to(ws)) for p in files}
+    assert "web/src/AGENTS.md" in rels
+
+
 def test_build_per_dir_agents_block_from_plan(tmp_path: Path) -> None:
     ws = tmp_path / "repo"
     src = ws / "src" / "auth"

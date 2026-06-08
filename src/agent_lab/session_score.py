@@ -10,7 +10,10 @@ from typing import Any
 from agent_lab.plan_refs import validate_plan_refs
 from agent_lab.communicate_kpis import communicate_counts, communicate_scores
 from agent_lab.room_objections import list_objections
+from agent_lab.mission_loop import get_mission_loop
 from agent_lab.run_meta import read_run_meta
+
+_MISSION_NOTEPAD_FILES = ("learnings.md", "verification.md", "decisions.md")
 
 _TOKEN_RE = re.compile(r"[a-zA-Z0-9가-힣]{2,}")
 _DUP_JACCARD_THRESHOLD = 0.65
@@ -309,6 +312,54 @@ def _duplicate_speech_rate(
     return rate, {"pairs": pairs, "near_duplicates": near, "agents": len(agents)}
 
 
+def _mission_notepad_chars(folder: Path) -> int:
+    total = 0
+    for name in _MISSION_NOTEPAD_FILES:
+        path = folder / name
+        if not path.is_file():
+            continue
+        try:
+            total += len(path.read_text(encoding="utf-8").strip())
+        except OSError:
+            continue
+    return total
+
+
+def _mission_loop_kpis(
+    folder: Path,
+    run_meta: dict[str, Any],
+) -> tuple[dict[str, float | None], dict[str, int]]:
+    ml = get_mission_loop(run_meta)
+    if not ml.get("enabled"):
+        return {}, {}
+    phase = str(ml.get("phase") or "")
+    repairs = ml.get("action_repair_counts") or {}
+    repair_total = 0
+    if isinstance(repairs, dict):
+        for val in repairs.values():
+            try:
+                repair_total += int(val or 0)
+            except (TypeError, ValueError):
+                continue
+    notepad_chars = _mission_notepad_chars(folder)
+    completed = 1.0 if phase == "MISSION_DONE" else 0.0
+    breaker = 1.0 if ml.get("circuit_breaker") else 0.0
+    paused = 1.0 if phase == "MISSION_PAUSED" else 0.0
+    return {
+        "mission_completed": completed if phase == "MISSION_DONE" else None,
+        "mission_circuit_breaker": breaker,
+        "mission_paused": paused if phase == "MISSION_PAUSED" else None,
+    }, {
+        "enabled": 1,
+        "phase_terminal_done": 1 if phase == "MISSION_DONE" else 0,
+        "circuit_breaker": 1 if ml.get("circuit_breaker") else 0,
+        "paused": 1 if phase == "MISSION_PAUSED" else 0,
+        "repair_events": repair_total,
+        "notepad_chars": notepad_chars,
+        "iteration": int(ml.get("iteration") or 0),
+    }
+
+
 def score_session(folder: Path) -> dict[str, Any]:
     """Compute offline KPIs for a session folder."""
     folder = folder.expanduser().resolve()
@@ -324,6 +375,7 @@ def score_session(folder: Path) -> dict[str, Any]:
     dup_rate, dup_counts = _duplicate_speech_rate(messages)
     comm_counts = communicate_counts(run_meta)
     comm_scores = communicate_scores(comm_counts)
+    mission_scores, mission_counts = _mission_loop_kpis(folder, run_meta)
 
     scores: dict[str, float | None] = {
         "objection_resolution_rate": obj_rate,
@@ -335,6 +387,7 @@ def score_session(folder: Path) -> dict[str, Any]:
         **merge_scores,
         **capability_scores,
         **comm_scores,
+        **mission_scores,
     }
     summary_lines = _format_summary_lines(
         folder.name,
@@ -346,6 +399,7 @@ def score_session(folder: Path) -> dict[str, Any]:
         capability_counts,
         ref_counts,
         dup_counts,
+        mission_counts,
     )
     return {
         "session_id": folder.name,
@@ -360,6 +414,7 @@ def score_session(folder: Path) -> dict[str, Any]:
             "plan_refs": ref_counts,
             "duplicate_speech": dup_counts,
             "communicate": comm_counts,
+            "mission_loop": mission_counts,
         },
         "summary_lines": summary_lines,
     }
@@ -381,6 +436,7 @@ def _format_summary_lines(
     capability_counts: dict[str, int],
     ref_counts: dict[str, int],
     dup_counts: dict[str, int],
+    mission_counts: dict[str, int],
 ) -> list[str]:
     lines = [f"Session: {session_id}"]
     lines.append(
@@ -432,4 +488,16 @@ def _format_summary_lines(
         f"  duplicate speech: {_pct(scores['duplicate_speech_rate'])} "
         f"({dup_counts.get('near_duplicates', 0)}/{dup_counts.get('pairs', 0)} near-dup pairs)"
     )
+    if mission_counts.get("enabled"):
+        lines.append(
+            f"  mission loop: iteration {mission_counts.get('iteration', 0)} · "
+            f"repairs {mission_counts.get('repair_events', 0)} · "
+            f"notepad {mission_counts.get('notepad_chars', 0)} chars"
+        )
+        if scores.get("mission_completed") is not None:
+            lines.append(f"  mission completed: {_pct(scores['mission_completed'])}")
+        if mission_counts.get("circuit_breaker"):
+            lines.append("  mission circuit breaker: triggered")
+        if mission_counts.get("paused"):
+            lines.append("  mission paused: yes (check last_partial in run.json)")
     return lines

@@ -362,6 +362,51 @@ def _check_specialist_asymmetric_cwd(run: dict[str, Any]) -> bool:
     )
 
 
+def _check_mission_loop_execute_queue(run: dict[str, Any]) -> bool:
+    ml = run.get("mission_loop")
+    if not isinstance(ml, dict) or not ml.get("enabled"):
+        return False
+    if ml.get("phase") != "EXECUTE_QUEUE":
+        return False
+    gate = ml.get("plan_gate") or {}
+    if not isinstance(gate, dict) or gate.get("status") != "ok":
+        return False
+    pending = ml.get("pending_action_indices") or []
+    if not isinstance(pending, list) or not pending:
+        return False
+    if ml.get("current_action_index") is None:
+        return False
+    verified = run.get("verified_loop") or {}
+    goal = verified.get("loop_goal") or {}
+    return bool(str(goal.get("text") or "").strip())
+
+
+def _check_mission_loop_paused(run: dict[str, Any]) -> bool:
+    ml = run.get("mission_loop")
+    if not isinstance(ml, dict) or not ml.get("enabled"):
+        return False
+    if ml.get("phase") != "MISSION_PAUSED":
+        return False
+    if not str(ml.get("pause_reason") or "").strip():
+        return False
+    partial = ml.get("last_partial")
+    return isinstance(partial, dict) and bool(partial.get("resume_phase"))
+
+
+def _check_mission_loop_circuit_breaker(run: dict[str, Any]) -> bool:
+    ml = run.get("mission_loop")
+    if not isinstance(ml, dict) or not ml.get("enabled"):
+        return False
+    if not ml.get("circuit_breaker"):
+        return False
+    if not str(ml.get("circuit_breaker_reason") or "").strip():
+        return False
+    if ml.get("phase") not in {"MISSION_PAUSED", "PLAN_REJECT", "DISCUSS"}:
+        return False
+    recovery = ml.get("discuss_recovery") or {}
+    return isinstance(recovery, dict) and recovery.get("pending") is True
+
+
 def _check_goal_loop_achieved(run: dict[str, Any]) -> bool:
     goal = run.get("session_goal") or {}
     loop = run.get("goal_loop") or {}
@@ -489,6 +534,46 @@ SCENARIOS: dict[str, dict[str, Any]] = {
     "goal_loop_achieved": {
         "label": "LC-L5 mock goal Oracle achieved",
         "check": _check_goal_loop_achieved,
+    },
+    "mission_loop_execute_queue": {
+        "label": "mission loop plan gate ok → EXECUTE_QUEUE",
+        "check": _check_mission_loop_execute_queue,
+        "required_keys": (
+            "workflow_id",
+            "run_schema_version",
+            "turns",
+            "verified_loop",
+            "mission_loop",
+            "actions",
+            "approvals",
+            "executions",
+        ),
+    },
+    "mission_loop_paused": {
+        "label": "mission loop paused with last_partial resume",
+        "check": _check_mission_loop_paused,
+        "required_keys": (
+            "workflow_id",
+            "run_schema_version",
+            "turns",
+            "mission_loop",
+            "actions",
+            "approvals",
+            "executions",
+        ),
+    },
+    "mission_loop_circuit_breaker": {
+        "label": "mission loop circuit breaker + discuss recovery",
+        "check": _check_mission_loop_circuit_breaker,
+        "required_keys": (
+            "workflow_id",
+            "run_schema_version",
+            "turns",
+            "mission_loop",
+            "actions",
+            "approvals",
+            "executions",
+        ),
     },
 }
 

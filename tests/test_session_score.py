@@ -30,6 +30,30 @@ def _write_session(
     (folder / "plan.md").write_text(plan_md, encoding="utf-8")
 
 
+def test_mission_loop_kpis_when_enabled(tmp_path: Path) -> None:
+    folder = tmp_path / "sess-mission"
+    _write_session(
+        folder,
+        run={
+            "mission_loop": {
+                "enabled": True,
+                "phase": "MISSION_PAUSED",
+                "iteration": 2,
+                "circuit_breaker": True,
+                "action_repair_counts": {"1": 1},
+            }
+        },
+        chat_lines=[{"role": "user", "content": "mission"}],
+        plan_md="## 합의\n",
+    )
+    (folder / "learnings.md").write_text("x" * 250, encoding="utf-8")
+    report = score_session(folder)
+    assert report["counts"]["mission_loop"]["enabled"] == 1
+    assert report["counts"]["mission_loop"]["repair_events"] == 1
+    assert report["counts"]["mission_loop"]["notepad_chars"] == 250
+    assert report["scores"]["mission_circuit_breaker"] == 1.0
+
+
 def test_objection_resolution_rate(tmp_path: Path):
     folder = tmp_path / "sess-obj"
     _write_session(

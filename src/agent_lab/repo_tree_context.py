@@ -87,10 +87,29 @@ def _agents_md_chain(root: Path, hint: Path) -> list[Path]:
     return chain
 
 
+def _plan_action_path_hints(plan_md: str) -> list[Path]:
+    """Structured paths from parsed plan actions (stage-2 per-dir memory)."""
+    try:
+        from agent_lab.plan_actions import parse_plan_actions
+    except ImportError:
+        return []
+    hints: list[Path] = []
+    seen: set[str] = set()
+    for action in parse_plan_actions(plan_md):
+        for raw in action.expected_paths():
+            text = str(raw or "").strip()
+            if not text or text in seen:
+                continue
+            seen.add(text)
+            hints.append(Path(text))
+    return hints
+
+
 def _collect_per_dir_agents_files(root: Path, plan_md: str) -> list[Path]:
     ordered: list[Path] = []
     seen: set[str] = set()
-    for hint in _plan_path_hints(plan_md):
+    hints = _plan_path_hints(plan_md) + _plan_action_path_hints(plan_md)
+    for hint in hints:
         for agents in reversed(_agents_md_chain(root, hint)):
             key = str(agents.resolve())
             if key in seen:

@@ -1,0 +1,53 @@
+{
+  "workflow_id": "room.parallel",
+  "run_schema_version": 1,
+  "plan_format_version": 1,
+  "topic": "regression baseline: mission loop execute queue",
+  "created_at": "2026-06-07T00:00:00+00:00",
+  "agents": ["cursor"],
+  "status": "active",
+  "message_count": 4,
+  "agent_parallel_rounds": 1,
+  "turns": [
+    {
+      "mode": "plan",
+      "synthesize": true,
+      "status": "completed",
+      "ts": "2026-06-07T00:00:01+00:00"
+    }
+  ],
+  "actions": [],
+  "approvals": [],
+  "executions": [],
+  "verified_loop": {
+    "status": "running",
+    "loop_goal": {
+      "text": "Fix auth regression in login flow",
+      "set_at": "2026-06-07T00:00:00+00:00"
+    }
+  },
+  "mission_loop": {
+    "enabled": true,
+    "phase": "EXECUTE_QUEUE",
+    "iteration": 1,
+    "pending_action_indices": [1, 2],
+    "current_action_index": 1,
+    "plan_gate": {
+      "status": "ok",
+      "momus_round": 1,
+      "max_momus_rounds": 3,
+      "last_reject_reason": null,
+      "failures": []
+    },
+    "wisdom_refs": ["learnings.md"],
+    "autonomous_segment": {
+      "active": true,
+      "started_at": "2026-06-07T00:00:02+00:00",
+      "ends_on": ["MISSION_DONE", "MISSION_PAUSED", "circuit_breaker"]
+    },
+    "circuit_breaker": false,
+    "circuit_breaker_reason": null,
+    "pause_reason": null,
+    "last_partial": null
+  }
+}

@@ -11,6 +11,8 @@ export type MissionOverviewView = {
   circuitBreaker: boolean;
   circuitBreakerReason: string | null;
   pauseReason: string | null;
+  resumePhase: string | null;
+  autonomousActive: boolean;
   openBlocks: RoomObjection[];
 };
 
@@ -85,6 +87,15 @@ export function buildMissionOverviewView(input: {
     circuitBreaker: Boolean(ml.circuit_breaker),
     circuitBreakerReason: ml.circuit_breaker_reason ?? null,
     pauseReason: (ml as { pause_reason?: string }).pause_reason ?? null,
+    resumePhase:
+      (
+        (ml as { last_partial?: { resume_phase?: string } }).last_partial
+          ?.resume_phase ?? ""
+      ).trim() || null,
+    autonomousActive: Boolean(
+      (ml as { autonomous_segment?: { active?: boolean } }).autonomous_segment
+        ?.active,
+    ),
     openBlocks,
   };
 }

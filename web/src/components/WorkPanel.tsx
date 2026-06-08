@@ -13,6 +13,7 @@ import { PlanExecutePanel } from "./PlanExecutePanel";
 import { PluginPanel } from "./PluginPanel";
 import { MissionOverviewSection } from "./MissionOverviewSection";
 import { buildMissionOverviewView } from "../utils/missionOverviewView";
+import { missionPauseAlertText } from "../utils/missionPauseCopy";
 import { useLocale } from "../i18n/useLocale";
 import type { PlanExecutionRecord } from "../api/client";
 
@@ -39,7 +40,7 @@ type Props = {
   hasDryRunDiff?: boolean;
 };
 
-/** Work tab — prototype `work-surface` + PlanExecutePanel only. */
+/** Work tab — stepper chrome, mission strip, plan/execute body. */
 export function WorkPanel({
   sessionId,
   session,
@@ -68,6 +69,8 @@ export function WorkPanel({
     run: session?.run,
     planMd,
   });
+  const showMissionStrip =
+    missionOverview.enabled || Boolean(missionOverview.goalText);
   const hasPlan = Boolean(planMd.trim());
   const disabled = running || synthesizing || runBusy;
   const showPlanStalePanel = Boolean(planStaleNotice);
@@ -77,10 +80,9 @@ export function WorkPanel({
     | {
         enabled?: boolean;
         phase?: string;
-        current_action_index?: number | null;
-        circuit_breaker?: boolean;
-        wisdom_refs?: string[];
         pause_reason?: string | null;
+        circuit_breaker?: boolean;
+        circuit_breaker_reason?: string | null;
         last_partial?: { resume_phase?: string } | null;
       }
     | undefined;
@@ -113,23 +115,7 @@ export function WorkPanel({
       pendingAgreement: Boolean(planMeta.pendingAgreement),
       latestExecution,
     });
-  const wisdomFileCount = missionLoop?.wisdom_refs?.length ?? 0;
-  const missionMeta =
-    missionLoop?.enabled && missionLoop.phase
-      ? [
-          `Mission ${missionLoop.phase}`,
-          missionLoop.current_action_index != null
-            ? `action #${missionLoop.current_action_index}`
-            : null,
-          missionLoop.circuit_breaker ? "circuit breaker" : null,
-          missionPaused ? "paused" : null,
-          missionLoop.pause_reason ? String(missionLoop.pause_reason) : null,
-          wisdomFileCount > 0 ? `notepad ×${wisdomFileCount}` : null,
-        ]
-          .filter(Boolean)
-          .join(" · ")
-      : null;
-  const metaLine = missionMeta ?? workPlanMetaLine(planMeta);
+  const metaLine = workPlanMetaLine(planMeta);
 
   useEffect(() => {
     if (!workFocus) return;
@@ -173,35 +159,60 @@ export function WorkPanel({
 
   return (
     <div className="work-stack">
-      <div className="work-surface work-surface--chrome">
+      <div className="work-surface work-surface--chrome work-chrome">
         <WorkStatusBar
           phase={workPhase}
-          metaLine={metaLine}
+          metaLine={metaLine || null}
           hasPlan={hasPlan}
         />
+
         {missionPaused ? (
-          <div className="plan-meta-bar plan-meta-bar--sync_failed">
-            <p className="plan-meta-bar__line">
-              Mission paused — open execution cleaned up when possible.
+          <div className="work-alert work-alert--pause" role="status">
+            <p className="work-alert__text">
+              {missionPauseAlertText({
+                ko,
+                pauseReason: missionLoop?.pause_reason,
+                circuitBreaker: missionLoop?.circuit_breaker,
+                circuitBreakerReason: missionLoop?.circuit_breaker_reason,
+                resumePhase: missionLoop?.last_partial?.resume_phase,
+              })}
             </p>
             <button
               type="button"
-              className="plan-btn plan-btn--primary"
+              className="plan-btn plan-btn--primary plan-btn--compact"
               disabled={disabled || resumeBusy}
               onClick={() => void handleMissionResume()}
             >
-              {resumeBusy ? "재개 중…" : "Mission 재개"}
+              {resumeBusy
+                ? ko
+                  ? "재개 중…"
+                  : "Resuming…"
+                : ko
+                  ? "미션 재개"
+                  : "Resume mission"}
             </button>
           </div>
         ) : null}
-        {missionOverview.enabled ? (
+
+        {showMissionStrip ? (
           <MissionOverviewSection
+            variant="work"
             view={missionOverview}
             ko={ko}
             onFocusBlock={onFocusObjection}
           />
         ) : null}
+
+        <CollapsibleGlassPanel
+          className="work-setup"
+          title={ko ? "실행 설정" : "Execute setup"}
+          summary={ko ? "Plugins · MCP allowlist" : "Plugins · MCP allowlist"}
+          defaultOpen={false}
+        >
+          <PluginPanel sessionId={sessionId} compact disabled={disabled} />
+        </CollapsibleGlassPanel>
       </div>
+
       {showPlanStalePanel ? (
         <div className="work-surface work-surface--alert work-plan-stale">
           <CollapsibleGlassPanel
@@ -214,6 +225,7 @@ export function WorkPanel({
           </CollapsibleGlassPanel>
         </div>
       ) : null}
+
       {showSyncFailedBar ? (
         <div className="work-surface work-surface--alert">
           <div className="plan-meta-bar plan-meta-bar--sync_failed">
@@ -229,15 +241,7 @@ export function WorkPanel({
           </div>
         </div>
       ) : null}
-      <div className="work-surface">
-        <CollapsibleGlassPanel
-          title="Execute plugins"
-          summary="Session MCP / plugin allowlist for execute & repair"
-          defaultOpen={false}
-        >
-          <PluginPanel sessionId={sessionId} compact disabled={disabled} />
-        </CollapsibleGlassPanel>
-      </div>
+
       <PlanExecutePanel
         sessionId={sessionId}
         run={session?.run}

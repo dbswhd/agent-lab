@@ -1,10 +1,22 @@
 import type { MissionOverviewView } from "../utils/missionOverviewView";
+import { missionCircuitBreakerHint } from "../utils/missionPauseCopy";
 
 type Props = {
   view: MissionOverviewView;
   ko: boolean;
   onFocusBlock?: (objectionId: string, actionIndex?: number) => void;
+  /** Inspector sidebar (default) or compact Work tab strip */
+  variant?: "inspector" | "work";
 };
+
+function phaseBadgeClassWork(phase: string | null): string {
+  if (!phase) return "work-mission__phase";
+  if (phase === "MISSION_DONE") return "work-mission__phase work-mission__phase--done";
+  if (phase === "MISSION_PAUSED" || phase === "PLAN_REJECT") {
+    return "work-mission__phase work-mission__phase--warn";
+  }
+  return "work-mission__phase work-mission__phase--active";
+}
 
 function phaseBadgeClass(phase: string | null): string {
   if (!phase) return "ctx-mission__phase";
@@ -18,9 +30,97 @@ function phaseBadgeClass(phase: string | null): string {
   return "ctx-mission__phase ctx-mission__phase--active";
 }
 
+function WorkMissionOverview({
+  view,
+  ko,
+  onFocusBlock,
+}: Omit<Props, "variant">) {
+  return (
+    <section className="work-mission" data-testid="work-mission-overview">
+      <div className="work-mission__head">
+        <span className="work-mission__title">{ko ? "미션" : "Mission"}</span>
+        {view.autonomousActive ? (
+          <span className="work-mission__auto">
+            {ko ? "자율 구간" : "Autonomous"}
+          </span>
+        ) : null}
+        {view.phase ? (
+          <span className={phaseBadgeClassWork(view.phase)}>{view.phase}</span>
+        ) : null}
+      </div>
+      {view.goalText ? (
+        <p className="work-mission__goal">{view.goalText}</p>
+      ) : null}
+      <dl className="work-mission__facts">
+        {view.nextActionIndex != null ? (
+          <>
+            <dt>{ko ? "다음" : "Next"}</dt>
+            <dd>
+              #{view.nextActionIndex}
+              {view.nextActionWhat ? ` · ${view.nextActionWhat}` : ""}
+            </dd>
+          </>
+        ) : null}
+        {view.circuitBreaker ? (
+          <>
+            <dt>{ko ? "차단" : "Breaker"}</dt>
+            <dd className="work-mission__danger">
+              {missionCircuitBreakerHint(view.circuitBreakerReason, ko)}
+            </dd>
+          </>
+        ) : null}
+        {view.phase === "MISSION_PAUSED" && view.resumePhase ? (
+          <>
+            <dt>{ko ? "재개" : "Resume"}</dt>
+            <dd>{view.resumePhase}</dd>
+          </>
+        ) : null}
+        {view.pendingCount > 0 ? (
+          <>
+            <dt>{ko ? "대기" : "Queue"}</dt>
+            <dd>{view.pendingCount}</dd>
+          </>
+        ) : null}
+        {view.openBlocks.length > 0 ? (
+          <>
+            <dt>BLOCK</dt>
+            <dd>{view.openBlocks.length}</dd>
+          </>
+        ) : null}
+      </dl>
+      {view.openBlocks.length > 0 ? (
+        <ul className="work-mission__blocks">
+          {view.openBlocks.slice(0, 3).map((block) => (
+            <li key={block.id}>
+              <button
+                type="button"
+                className="work-mission__block-btn"
+                onClick={() =>
+                  onFocusBlock?.(block.id, block.plan_action_index)
+                }
+              >
+                {block.body.trim() || block.id}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
+  );
+}
+
 /** Inspector Overview — mission goal · phase · next action · BLOCK. */
-export function MissionOverviewSection({ view, ko, onFocusBlock }: Props) {
+export function MissionOverviewSection({
+  view,
+  ko,
+  onFocusBlock,
+  variant = "inspector",
+}: Props) {
   if (!view.enabled && !view.goalText) return null;
+
+  if (variant === "work") {
+    return <WorkMissionOverview view={view} ko={ko} onFocusBlock={onFocusBlock} />;
+  }
 
   return (
     <section className="ctx-section ctx-mission">

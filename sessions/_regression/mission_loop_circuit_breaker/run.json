@@ -1,0 +1,61 @@
+{
+  "workflow_id": "room.parallel",
+  "run_schema_version": 1,
+  "plan_format_version": 1,
+  "topic": "regression baseline: mission loop circuit breaker",
+  "created_at": "2026-06-07T00:00:00+00:00",
+  "agents": ["cursor", "claude"],
+  "status": "active",
+  "message_count": 8,
+  "agent_parallel_rounds": 1,
+  "turns": [
+    {
+      "mode": "discuss",
+      "status": "completed",
+      "ts": "2026-06-07T00:00:03+00:00"
+    }
+  ],
+  "actions": [],
+  "approvals": [],
+  "executions": [],
+  "verified_loop": {
+    "status": "running",
+    "loop_goal": {
+      "text": "Recover plan gate after Momus cap",
+      "set_at": "2026-06-07T00:00:00+00:00"
+    }
+  },
+  "mission_loop": {
+    "enabled": true,
+    "phase": "MISSION_PAUSED",
+    "iteration": 2,
+    "pending_action_indices": [1],
+    "current_action_index": 1,
+    "plan_gate": {
+      "status": "reject",
+      "momus_round": 3,
+      "max_momus_rounds": 3,
+      "last_reject_reason": "plan not executable",
+      "failures": ["missing verify field on action #1"]
+    },
+    "discuss_recovery": {
+      "pending": true,
+      "reason": "momus_round_cap",
+      "action_index": 1,
+      "started_at": "2026-06-07T00:00:04+00:00",
+      "completed_at": null
+    },
+    "autonomous_segment": {
+      "active": false
+    },
+    "circuit_breaker": true,
+    "circuit_breaker_reason": "momus_round_cap",
+    "pause_reason": "circuit_breaker",
+    "last_partial": {
+      "phase": "PLAN_GATE",
+      "resume_phase": "DISCUSS",
+      "action_index": 1,
+      "reason": "momus_round_cap"
+    }
+  }
+}

@@ -172,6 +172,11 @@ def test_workspace_panels_have_distinct_document_wrappers():
         "PluginPanel" in work and "compact" in work
     )
     assert "MissionOverviewSection" in work
+    assert 'variant="work"' in work or "variant=\"work\"" in work
+    assert "work-chrome" in work
+    assert "work-mission-overview" in _read(
+        "web", "src", "components", "MissionOverviewSection.tsx"
+    )
     plugin = _read("web", "src", "components", "PluginPanel.tsx")
     assert "cursor-ide-mcp-hint" in plugin
     plan_exec = _read("web", "src", "components", "PlanExecutePanel.tsx")

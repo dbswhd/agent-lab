@@ -26,6 +26,9 @@ Baseline scenarios (minimal `run.json` fixtures):
 | `execute_verify_loop/` | LC-L3 agent repair loop | Oracle FAIL triggers a Cursor/Codex repair worktree and re-merge; final execution has `repair_history`, `verify_retries` within 2, `verify_after_merge.status: passed`, and `oracle.verdict: pass` |
 | `durable_completed_steps/` | CENT-durable resume snapshot | `completed_steps[]` with turn/round/agent key; partial turn with `succeeded_agents` |
 | `goal_loop_achieved/` | LC-L5 session goal achieved | mock Oracle PASS + `goal_loop.status: achieved` |
+| `mission_loop_execute_queue/` | Mission Loop execute queue | `mission_loop.enabled` + `phase: EXECUTE_QUEUE` + `plan_gate.status: ok` + `verified_loop.loop_goal` |
+| `mission_loop_paused/` | Mission Loop pause/resume | `phase: MISSION_PAUSED` + `pause_reason` + `last_partial.resume_phase` |
+| `mission_loop_circuit_breaker/` | Mission Loop circuit breaker | `circuit_breaker: true` + `discuss_recovery.pending` |
 
 Compare live sessions against baselines:
 

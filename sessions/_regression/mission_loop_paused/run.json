@@ -1,0 +1,62 @@
+{
+  "workflow_id": "room.parallel",
+  "run_schema_version": 1,
+  "plan_format_version": 1,
+  "topic": "regression baseline: mission loop paused",
+  "created_at": "2026-06-07T00:00:00+00:00",
+  "agents": ["cursor"],
+  "status": "active",
+  "message_count": 6,
+  "agent_parallel_rounds": 1,
+  "turns": [
+    {
+      "mode": "plan",
+      "synthesize": true,
+      "status": "completed",
+      "ts": "2026-06-07T00:00:01+00:00"
+    }
+  ],
+  "actions": [],
+  "approvals": [],
+  "executions": [
+    {
+      "id": "exec-paused-1",
+      "action_index": 1,
+      "status": "review_required",
+      "isolation_effective": "worktree"
+    }
+  ],
+  "verified_loop": {
+    "status": "running",
+    "loop_goal": {
+      "text": "Ship mission pause/resume regression",
+      "set_at": "2026-06-07T00:00:00+00:00"
+    }
+  },
+  "mission_loop": {
+    "enabled": true,
+    "phase": "MISSION_PAUSED",
+    "iteration": 1,
+    "pending_action_indices": [1],
+    "current_action_index": 1,
+    "last_execution_id": "exec-paused-1",
+    "plan_gate": {
+      "status": "ok",
+      "momus_round": 1,
+      "max_momus_rounds": 3
+    },
+    "autonomous_segment": {
+      "active": false,
+      "started_at": "2026-06-07T00:00:02+00:00",
+      "ends_on": ["MISSION_DONE", "MISSION_PAUSED", "circuit_breaker"]
+    },
+    "circuit_breaker": false,
+    "pause_reason": "global_cancel",
+    "last_partial": {
+      "phase": "MERGE_REVIEW",
+      "resume_phase": "EXECUTE_QUEUE",
+      "action_index": 1,
+      "reason": "global_cancel"
+    }
+  }
+}

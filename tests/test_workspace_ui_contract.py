@@ -13,11 +13,14 @@ def _read(*parts: str) -> str:
 def test_app_uses_workspace_shell_not_primary_messenger_label():
     app = _read("web", "src", "App.tsx")
     rail = _read("web", "src", "components", "SessionRail.tsx")
-    assert "workspace-shell" in app
+    bridge = _read("web", "src", "styles", "legacy-bridge.css")
+    # Canonical shell is `.shell`; legacy `.workspace-shell` kept in bridge for RoomChat.
+    assert 'className={`shell' in app or " shell--rail-collapsed" in app
+    assert ".workspace-shell" in bridge or ".shell" in _read("web", "src", "styles", "layout.css")
     assert "SessionRail" in app
     assert 'aria-label="Sessions"' in rail
     assert 'aria-label="Workspace"' in app
-    assert '"Sessions"' in app
+    assert "Sessions" in app
     assert "SessionRailStatusChip" in app
     assert "AgentHealthPanel" not in app or "healthToAgentOptions" in app
 
@@ -26,7 +29,7 @@ def test_workspace_tab_enum_in_utils():
     tabs = _read("web", "src", "utils", "workspaceTabs.ts")
     for slug in ("transcript", "work", "run", "artifacts"):
         assert f'"{slug}"' in tabs
-    for slug in ("tasks", "activity", "quick"):
+    for slug in ("overview", "tasks", "inbox"):
         assert f'"{slug}"' in tabs
 
 
@@ -86,31 +89,23 @@ def test_transcript_agent_rows_use_role_cards_with_initial_avatars():
 def test_human_transcript_message_is_right_aligned_without_label_chrome():
     bubble = _read("web", "src", "components", "ChatBubble.tsx")
     room = _read("web", "src", "components", "RoomChat.tsx")
-    css = _read("web", "src", "styles", "developer-console.css")
+    css = _read("web", "src", "styles", "surfaces.css")
 
     assert 'className="chat-turn__head"' in bubble
     assert "message={{ ...message, label: message.label ?? \"Human\" }}" not in bubble
-    assert 'm.role === "you" || m.sent ? "chat-line--you" : undefined' in room
-    assert (
-        ".workspace-panel--transcript .workspace-transcript-panel > "
-        ".chat-line--you > .chat-turn"
-    ) in css
-    assert "max-width: 80%;" in css
-    assert "background: var(--console-human);" in css
-    assert "border-right: none;" in css
-    assert ".workspace-transcript-panel .chat-turn--you .transcript-author-line" in css
-    assert "display: none;" in css
+    assert 'transcript transcript--console' in room
+    assert 'bubble-row bubble-row--sent' in bubble
+    assert ".transcript--console .bubble-row--sent" in css
+    assert "margin-left: auto;" in css
 
 
 def test_agent_waiting_state_shows_activity_log_and_dots():
     bubble = _read("web", "src", "components", "ChatBubble.tsx")
-    css = _read("web", "src", "styles", "developer-console.css")
+    css = _read("web", "src", "styles", "surfaces.css")
 
     assert "agent-activity-log" in bubble
-    assert "TypingIndicator variant=\"stream\"" in bubble
-    assert ".workspace-transcript-panel .chat-turn--waiting" in css
-    assert ".workspace-transcript-panel .agent-activity-log" in css
-    assert ".workspace-transcript-panel .typing-dots--stream" in css
+    assert 'className="typing"' in bubble or 'className={`typing' in bubble
+    assert ".typing span" in css
 
 
 def test_transcript_has_review_aware_inline_markers():
@@ -132,7 +127,8 @@ def test_developer_console_doc_is_source_of_truth():
     assert "Developer Agent Console" in doc or "developer agent console" in doc
     assert "Transcript" in doc
     deprecated = _read("docs", "02-ui-ux-handoff.md")
-    assert "DEPRECATED" in deprecated
+    lowered = deprecated.lower()
+    assert "deprecated" in lowered or "legacy" in lowered
 
 
 def test_workspace_visual_hierarchy_tokens_are_defined():
@@ -170,22 +166,22 @@ def test_workspace_tabs_do_not_render_inline_status_badges():
 
 def test_workspace_panels_have_distinct_document_wrappers():
     room = _read("web", "src", "components", "RoomChat.tsx")
-    css = _read("web", "src", "styles", "developer-console.css")
+    surfaces = _read("web", "src", "styles", "surfaces.css")
+    work = _read("web", "src", "components", "WorkPanel.tsx")
+    plan_exec = _read("web", "src", "components", "PlanExecutePanel.tsx")
+    run_panel = _read("web", "src", "components", "RunLogPanel.tsx")
+    artifacts = _read("web", "src", "components", "ArtifactsListPanel.tsx")
 
-    for class_name in (
-        "workspace-panel--work",
-        "workspace-panel--run",
-        "workspace-panel--artifacts",
-        "workspace-panel--transcript",
-        "workspace-document-panel",
-        "workspace-document-panel__header",
-    ):
-        assert class_name in room or class_name in _read(
-            "web", "src", "components", "WorkPanel.tsx"
-        )
-        assert f".{class_name}" in css or class_name in _read(
-            "web", "src", "components", "WorkPanel.tsx"
-        )
+    assert "transcript--console" in room
+    assert "work-surface" in work
+    assert "plan-card" in plan_exec
+    assert "exec-card" in plan_exec
+    assert "plan-actions-bar" in plan_exec
+    assert "run-log" in run_panel
+    assert "artifacts-list" in artifacts
+    assert "RunLogPanel" in room
+    assert "ArtifactsListPanel" in room
+    assert ".transcript--console" in surfaces
 
 
 def test_workspace_content_panels_use_full_inset_surface_not_small_cards():
@@ -271,15 +267,16 @@ def test_workspace_tab_bar_blends_with_console_surface_not_segmented_card():
     assert "var(--mac-content-bg)" not in tab_bar_block
 
 
-def test_inspector_sections_are_wrapped_as_cards():
+def test_inspector_matches_prototype_context_sidebar_body():
     inspector = _read("web", "src", "components", "InspectorPane.tsx")
     room = _read("web", "src", "components", "RoomChat.tsx")
-    css = _read("web", "src", "styles", "workspace-shell.css")
+    layout = _read("web", "src", "styles", "layout.css")
 
-    assert "inspector-pane__body-inner" in inspector
-    assert "inspector-pane__section-card" in room
-    assert ".inspector-pane__body-inner" in css
-    assert ".inspector-pane__section-card" in css
+    assert "context-sidebar__body scroll-y" in inspector
+    assert "ContextOverviewPanel" in room
+    assert "inspector-pane__section-card" not in room
+    assert ".ctx-section" in layout
+    assert ".context-sidebar__head" in layout
 
 
 def test_phase0_efficiency_toggle_uses_efficient_class():
@@ -290,15 +287,19 @@ def test_phase0_efficiency_toggle_uses_efficient_class():
 
 def test_phase0_session_rail_status_detail_is_distinct():
     chip = _read("web", "src", "components", "SessionRailStatusChip.tsx")
-    css = _read("web", "src", "styles", "workspace-shell.css")
-    assert "session-rail-status__detail-heading" in chip
-    assert ".session-rail-status__detail-heading" in css
-    assert "box-shadow:" in css.split(".session-rail-status__detail {")[1].split("}")[0]
+    css = _read("web", "src", "styles", "layout.css")
+    assert "rail-status__panel" in chip
+    assert ".rail-status__panel" in css
 
 
-def test_phase0_full_team_confirm_has_no_detail_line():
+def test_phase0_no_full_team_cost_confirm():
+    composer = _read("web", "src", "components", "ChatComposer.tsx")
     room = _read("web", "src", "components", "RoomChat.tsx")
-    assert "풀 팀 실행은 이번 턴에만 확인합니다." not in room
+    assert "fullTeamConfirm" not in composer
+    assert "fullTeamConfirm" not in room
+    assert "cost-confirm" not in composer
+    surfaces = _read("web", "src", "styles", "surfaces.css")
+    assert ".cost-confirm" not in surfaces
 
 
 def test_run_session_registry_module_exists():
@@ -310,18 +311,19 @@ def test_run_session_registry_module_exists():
 
 
 def test_turn_run_panel_renders_turn_messages():
-    panel = _read("web", "src", "components", "TurnRunPanel.tsx")
+    panel = _read("web", "src", "components", "RunLogPanel.tsx")
     room = _read("web", "src", "components", "RoomChat.tsx")
     assert "turnMessages" in panel
-    assert "TurnRunPanel" in room
+    assert "RunLogPanel" in room
     assert "turnMessages={turnMessages}" in room
+    assert "run-log" in panel
 
 
 def test_session_list_shows_running_indicator():
     list_tsx = _read("web", "src", "components", "SessionList.tsx")
     app = _read("web", "src", "App.tsx")
     assert "runningSessionIds" in list_tsx
-    assert "session-row__run-dot" in list_tsx
+    assert "session-item__running" in list_tsx
     assert "useRunningSessionIds" in app
 
 

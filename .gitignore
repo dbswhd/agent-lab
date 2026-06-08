@@ -9,6 +9,8 @@ web/node_modules/
 web/dist/
 web/src-tauri/target/
 web/src-tauri/bundled-runtime/
+# Local design dry-run artifact (not session plan.md)
+/plan.md
 # Local room runs (regression fixtures stay in repo)
 sessions/*
 !sessions/.gitkeep
@@ -35,3 +37,4 @@ data/turn_profile_bandit.json
 
 # 디자인 핸드오프용 임시 사본 (커밋 금지)
 design-handoff/
+*.zip

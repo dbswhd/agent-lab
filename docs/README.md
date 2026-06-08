@@ -25,7 +25,7 @@ Use this page to pick the **one canonical doc** for your question. Older numbere
 
 | Doc | Status (2026-06-07) |
 |-----|---------------------|
-| [HOOK-COMMUNICATE-REFORM.md](./HOOK-COMMUNICATE-REFORM.md) | Phase 0–5 **shipped**; optional `LEGACY_ENDORSE=0` migration only |
+| [HOOK-COMMUNICATE-REFORM.md](./HOOK-COMMUNICATE-REFORM.md) | Phase 0–5 **shipped** incl. `LEGACY_ENDORSE` default off |
 | [EXECUTE-WORKTREE-REFORM.md](./EXECUTE-WORKTREE-REFORM.md) | Worktree execute/merge **shipped** |
 | [HUMAN-INBOX.md](./HUMAN-INBOX.md) | Execute MCP + API **shipped**; full Inbox UI / discuss harvest **partial** |
 | [GOAL-LOOP.md](./GOAL-LOOP.md) | Mock-first goal Oracle **shipped**; live Oracle opt-in |

@@ -27,8 +27,9 @@ def envelope_strict_env() -> str:
 
 
 def legacy_endorse_enabled() -> bool:
-    raw = (os.getenv("AGENT_LAB_LEGACY_ENDORSE") or "1").strip().lower()
-    return raw not in ("0", "false", "no", "off")
+    """Phrase-only 「이의 없습니다」 endorse fallback (opt-in; default off)."""
+    raw = (os.getenv("AGENT_LAB_LEGACY_ENDORSE") or "0").strip().lower()
+    return raw in ("1", "true", "yes", "on")
 
 
 def guidance_tier_env() -> str:

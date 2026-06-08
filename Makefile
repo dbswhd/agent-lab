@@ -1,4 +1,4 @@
-.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test ci check-worktrees smoke smoke-e2e smoke-web-ui smoke-tauri-ui validate-quant verify-quant-workspace verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run init-project-memory verify-hooks measure-communicate-baseline
+.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test ci check-worktrees smoke smoke-e2e smoke-web-ui smoke-tauri-ui validate-quant verify-quant-workspace verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report
 
 install:
 	python3 -m venv .venv
@@ -48,6 +48,10 @@ verify-hooks:
 measure-communicate-baseline:
 	.venv/bin/python scripts/measure_communicate_baseline.py --sessions sessions/_benchmark --out tests/fixtures/communicate-baseline-benchmark.json
 	.venv/bin/python scripts/measure_communicate_baseline.py --sessions sessions/_regression --out sessions/_regression/_reports/communicate-baseline-$$(date -u +%Y%m%d).json
+
+mission-dogfood-report:
+	@test -n "$(SESSION)" || SESSION=sessions/_regression/mission_loop_dogfood_ok; \
+	.venv/bin/python scripts/mission_dogfood_report.py $$SESSION
 
 test-live:
 	@test "$$AGENT_LAB_RUN_LIVE" = "1" || (echo "Set AGENT_LAB_RUN_LIVE=1 for live Cursor spike tests" && exit 1)

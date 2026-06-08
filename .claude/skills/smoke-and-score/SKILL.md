@@ -24,7 +24,7 @@ Repo root에서 실행. 실 LLM 호출 금지 — mock-only.
    LATEST=$(ls -t sessions 2>/dev/null | grep -v '^_' | grep -v '^\.' | head -1)
    echo "대상 세션: sessions/$LATEST"
    ```
-   세션이 없으면 `make smoke` (23 regression baselines) 결과만 요약.
+   세션이 없으면 `make smoke` (25 regression baselines) 결과만 요약.
 
 3. **품질 스코어** (세션이 있을 때)
    ```bash

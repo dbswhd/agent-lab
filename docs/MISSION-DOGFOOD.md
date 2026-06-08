@@ -18,12 +18,15 @@ export AGENT_LAB_MISSION_LOOP=1
 4. ⌘. 또는 circuit breaker로 **pause** 한 번 재현 (선택)
 5. Resume로 `last_partial.resume_phase` 복귀 확인
 
-## KPI (`make score-session`)
+## KPI (`make score-session` / dogfood report)
 
 ```bash
 LATEST=$(ls -t sessions | grep -v '^_' | head -1)
 make score-session SESSION=sessions/$LATEST
+python scripts/mission_dogfood_report.py sessions/$LATEST
 ```
+
+회귀 golden: `python scripts/mission_dogfood_report.py sessions/_regression/mission_loop_dogfood_ok`
 
 | 항목 | 기대 |
 |------|------|

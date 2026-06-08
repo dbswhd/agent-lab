@@ -41,7 +41,10 @@ def test_envelope_amend_overrides_no_objection_text():
     assert not is_endorse_reply(parsed.body, parsed.envelope.to_dict())
 
 
-def test_fallback_text_heuristics_without_envelope():
+def test_fallback_text_heuristics_without_envelope(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setenv("AGENT_LAB_LEGACY_ENDORSE", "1")
     assert classify_consensus_reply("이의 없습니다") == "endorse"
     assert classify_consensus_reply("PASS") == "pass"
     assert (
@@ -93,9 +96,22 @@ def test_parse_agent_response_v2_structured_preferred():
     assert parsed.body == "본문"
 
 
-def test_legacy_endorse_off_neutral_without_envelope(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("AGENT_LAB_LEGACY_ENDORSE", "0")
+def test_legacy_endorse_off_neutral_without_envelope(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.delenv("AGENT_LAB_LEGACY_ENDORSE", raising=False)
     assert classify_consensus_reply("이의 없습니다") == "neutral"
+
+
+def test_legacy_endorse_default_off():
+    assert classify_consensus_reply("이의 없습니다") == "neutral"
+    assert (
+        classify_consensus_reply(
+            "이의 없습니다",
+            {"act": "ENDORSE", "refs": []},
+        )
+        == "endorse"
+    )
 
 
 def test_envelope_protocol_block_includes_efficiency_and_discuss():

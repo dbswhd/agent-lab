@@ -29,6 +29,8 @@ Baseline scenarios (minimal `run.json` fixtures):
 | `mission_loop_execute_queue/` | Mission Loop execute queue | `mission_loop.enabled` + `phase: EXECUTE_QUEUE` + `plan_gate.status: ok` + `verified_loop.loop_goal` |
 | `mission_loop_paused/` | Mission Loop pause/resume | `phase: MISSION_PAUSED` + `pause_reason` + `last_partial.resume_phase` |
 | `mission_loop_circuit_breaker/` | Mission Loop circuit breaker | `circuit_breaker: true` + `discuss_recovery.pending` |
+| `envelope_consensus_endorse/` | Envelope consensus (no legacy phrase) | `consensus.status: reached` + `communicate_meta.legacy_endorse_count: 0` |
+| `mission_loop_dogfood_ok/` | Mission dogfood KPI golden | `MISSION_DONE` + merged execution + notepad chars ≥200 |
 
 Compare live sessions against baselines:
 

@@ -1,0 +1,45 @@
+{
+  "workflow_id": "room.parallel",
+  "run_schema_version": 1,
+  "plan_format_version": 1,
+  "topic": "regression baseline: mission dogfood KPI ok",
+  "created_at": "2026-06-08T00:00:00+00:00",
+  "agents": ["cursor"],
+  "status": "completed",
+  "message_count": 10,
+  "agent_parallel_rounds": 1,
+  "turns": [
+    {
+      "mode": "plan",
+      "synthesize": true,
+      "status": "completed",
+      "ts": "2026-06-08T00:00:01+00:00"
+    }
+  ],
+  "actions": [],
+  "approvals": [],
+  "executions": [
+    {
+      "id": "exec-dogfood-1",
+      "action_index": 1,
+      "status": "merged",
+      "isolation_effective": "worktree",
+      "oracle": {"verdict": "pass", "source": "mock_oracle"}
+    }
+  ],
+  "verified_loop": {
+    "status": "running",
+    "loop_goal": {"text": "Dogfood mission regression baseline"}
+  },
+  "mission_loop": {
+    "enabled": true,
+    "phase": "MISSION_DONE",
+    "iteration": 1,
+    "pending_action_indices": [],
+    "current_action_index": null,
+    "action_repair_counts": {},
+    "plan_gate": {"status": "ok", "momus_round": 1},
+    "circuit_breaker": false,
+    "wisdom_refs": ["learnings.md", "verification.md"]
+  }
+}

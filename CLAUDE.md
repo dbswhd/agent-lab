@@ -4,7 +4,7 @@
 - `make dev` → API(8765) + web(5173)
 - `make test` → pytest 574+ tests (mock-first, `-m "not live"`)
 - `make ci` → pytest + smoke + web build
-- `python scripts/smoke_room.py` → 23 regression baselines
+- `python scripts/smoke_room.py` → 25 regression baselines
 
 ## 핵심 모듈
 - `src/agent_lab/room.py` — 멀티에이전트 Room

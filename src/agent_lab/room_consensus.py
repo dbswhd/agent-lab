@@ -154,16 +154,20 @@ def consensus_follow_up(
             f"\n열린 **작업**에도 동의하면 envelope `refs`에 task id를 넣으세요 "
             f"(예: {joined}).\n"
         )
-    return (
+    from agent_lab.reply_policy import legacy_endorse_enabled
+
+    body = (
         f"[자유 토론 · 합의 확인]\n"
         f"현재 제안 — **{label(anchor.agent)}**:\n"
         f"「{anchor.excerpt}」\n\n"
         f"완전 동의(`act: ENDORSE`)는 추가 제안·리스크·`[PROPOSED:]` 없을 때만. "
         f"보완이 있으면 `act: AMEND` 로 수정안을 쓰세요 (새 앵커 라운드). "
         f"`ENDORSE`/`PASS` 본문은 1줄로 짧게 (fence JSON 필수). "
-        f"레거시: envelope 없이면 첫 줄만 `{NO_OBJECTION_LINE}` 도 허용."
-        f"{task_line}"
     )
+    if legacy_endorse_enabled():
+        body += f"레거시: envelope 없이면 첫 줄만 `{NO_OBJECTION_LINE}` 도 허용."
+    body += task_line
+    return body
 
 
 def consensus_reply_verdict(

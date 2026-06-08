@@ -22,7 +22,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | PI-executed | Conductor | Merged diff archive | ✅ | `plan_execute_merge.py:archive_executed_diff()`, `tests/test_executed_archive.py` | `sessions/<id>/executed/{exec_id}.json` |
 | PI-ops | Conductor | Live worktree Go/No-Go | ✅ | `docs/LIVE-CURSOR-WORKTREE-DRY-RUN.md`, `scripts/live_cursor_worktree_dry_run.py`, Tier B in `docs/OPS-RUNBOOK.md` | Manual, not CI |
 | PI-ops-C | Conductor | Live merge operator | ✅ | `docs/LIVE-MERGE-OPERATOR.md`, `scripts/live_cursor_worktree_merge_run.py`, `make verify-ops-live-merge` | Disposable repo only |
-| E-smoke | Room | BLOCK/CHALLENGE governance | ✅ | `sessions/_regression/objection_blocks_execute/`, `challenge_revises_metric/`, `scripts/smoke_room.py` | 23 baselines |
+| E-smoke | Room | BLOCK/CHALLENGE governance | ✅ | `sessions/_regression/objection_blocks_execute/`, `envelope_consensus_endorse/`, `scripts/smoke_room.py` | 25 baselines |
 | F-R3 | Room | Asymmetric `capability_cwd` | ✅ | `sessions/_benchmark/specialist_asymmetric_cwd/`, `tests/test_benchmark_catalog.py` | Payload meta |
 | H-P1 | H4 | score_session CI | ✅ | `scripts/score_session.py`, `tests/test_session_score_ci.py`, `.github/workflows/ci.yml` | |
 | H-P2 | Room | Benchmark catalog + delegate replay | ✅ | `sessions/_benchmark/`, `tests/test_benchmark_catalog.py`, `tests/test_room_delegate_replay.py` | Offline R1–R5 catalog; PLAN Phase 3; see [ROOM-REINFORCEMENT.md](ROOM-REINFORCEMENT.md) |
@@ -34,7 +34,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | ops-verify | Platform | Manual ops routine | ✅ | `make verify-ops`, `tests/test_verify_ops_makefile.py`, `docs/OPS-RUNBOOK.md` | Tier A |
 | R-P0 | Room | Partial turn | ✅ | `src/agent_lab/room.py`, `docs/STABILITY.md` | |
 | R-P1 | Room | F2 artifact-only R2 | ✅ | `sessions/_regression/specialist_r2_artifact_only/`, `context_bundle.py` | |
-| HOOK-COMM | Hook · Communicate reform | ✅ | `reply_policy.py`, `room_hooks.py`, `gate_snapshot.py`, `communicate_kpis.py`, `structured_envelope_adapter.py`, `agent_hooks_materializer.py`, `run_observability.py`, `make verify-hooks`, `make measure-communicate-baseline`, USER-GUIDE §9.8 | Phase 5 complete except optional `LEGACY_ENDORSE=0` migration — [HOOK-COMMUNICATE-REFORM.md](./HOOK-COMMUNICATE-REFORM.md) |
+| HOOK-COMM | Hook · Communicate reform | ✅ | `reply_policy.py`, `room_hooks.py`, `gate_snapshot.py`, `communicate_kpis.py`, `sessions/_regression/envelope_consensus_endorse/`, `make verify-hooks`, USER-GUIDE §9.8 | `LEGACY_ENDORSE` default **off** (2026-06-08) — [HOOK-COMMUNICATE-REFORM.md](./HOOK-COMMUNICATE-REFORM.md) |
 | UX-P2 | Room | Objection resolve UX | ✅ | `PlanExecutePanel.tsx`, `RoomTaskBar.tsx` | |
 | Bridge | Room | Cursor bridge degraded | ✅ | `sessions/_regression/bridge_degraded_health/`, H-P3 tests | |
 | CENT-env | Centaur | Subprocess env allowlist | ✅ | `src/agent_lab/subprocess_env.py`, `claude_cli.py`, `codex_cli.py`, `cursor_bridge.py`, `tests/test_subprocess_env.py` | [PLAN §3.2](EXTERNAL-REFS-PLAN.md#32-subprocess-credential-분리) |
@@ -96,7 +96,6 @@ They are tracked here but do not belong in the runtime feature roadmap.
 
 | Priority | ID | Suggested next action |
 |----------|-----|-----------------------|
-| P3 | HOOK-COMM-migrate | `AGENT_LAB_LEGACY_ENDORSE=0` + regression fixtures; live envelope KPI re-baseline |
 
 ---
 

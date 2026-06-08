@@ -713,7 +713,7 @@ plan ## 지금 실행
 | Variable | Default | Meaning |
 |----------|---------|---------|
 | `AGENT_LAB_ENVELOPE_STRICT` | `consensus_only` | R2+ envelope required (consensus) |
-| `AGENT_LAB_LEGACY_ENDORSE` | `1` | Phrase fallback `이의 없습니다` |
+| `AGENT_LAB_LEGACY_ENDORSE` | `0` | `1` = phrase fallback `이의 없습니다` (legacy); default requires envelope `act: ENDORSE` |
 | `AGENT_LAB_GUIDANCE_TIER` | `standard` | `debug` only → full envelope prompt block |
 | `AGENT_LAB_STRUCTURED_ENVELOPE` | `1` | Structured adapter on agents |
 | `AGENT_LAB_NATIVE_HOOKS` | off | Session hook bundle → workspace cwd |

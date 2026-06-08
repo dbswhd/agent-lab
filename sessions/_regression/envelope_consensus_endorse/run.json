@@ -1,0 +1,38 @@
+{
+  "workflow_id": "room.parallel",
+  "run_schema_version": 1,
+  "plan_format_version": 0,
+  "topic": "regression baseline: envelope consensus endorse",
+  "created_at": "2026-06-08T00:00:00+00:00",
+  "agents": ["cursor", "codex", "claude"],
+  "status": "completed",
+  "message_count": 7,
+  "agent_parallel_rounds": 3,
+  "turns": [
+    {
+      "mode": "discuss",
+      "consensus_mode": true,
+      "status": "completed",
+      "ts": "2026-06-08T00:00:05+00:00",
+      "communicate_meta": {
+        "legacy_endorse_count": 0,
+        "envelope_parse_error_count": 0,
+        "guidance_chars": 420
+      },
+      "consensus": {
+        "status": "reached",
+        "anchor": {
+          "agent": "cursor",
+          "excerpt": "TypeScript for envelope smoke — web/src/utils/transcript.ts",
+          "parallel_round": 1
+        },
+        "rounds": 3,
+        "agents_consented": ["codex", "claude"],
+        "calls": 5
+      }
+    }
+  ],
+  "actions": [],
+  "approvals": [],
+  "executions": []
+}

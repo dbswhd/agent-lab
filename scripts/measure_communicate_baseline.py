@@ -52,7 +52,13 @@ def measure_session(folder: Path) -> dict:
                 continue
             body = str(msg.get("content") or "")
             agent_chars.append(len(body))
-            if "이의 없습니다" in body[:40] and not msg.get("envelope"):
+            from agent_lab.reply_policy import legacy_endorse_enabled
+
+            if (
+                legacy_endorse_enabled()
+                and "이의 없습니다" in body[:40]
+                and not msg.get("envelope")
+            ):
                 legacy_endorse += 1
     return {
         "session": folder.name,

@@ -362,6 +362,43 @@ def _check_specialist_asymmetric_cwd(run: dict[str, Any]) -> bool:
     )
 
 
+def _check_envelope_consensus_endorse(run: dict[str, Any]) -> bool:
+    for turn in run.get("turns") or []:
+        if not isinstance(turn, dict):
+            continue
+        consensus = turn.get("consensus") or {}
+        if not isinstance(consensus, dict):
+            continue
+        if consensus.get("status") != "reached":
+            continue
+        anchor = consensus.get("anchor") or {}
+        if not isinstance(anchor, dict) or not str(anchor.get("excerpt") or "").strip():
+            continue
+        consented = consensus.get("agents_consented") or []
+        if not isinstance(consented, list) or not consented:
+            continue
+        meta = turn.get("communicate_meta") or {}
+        if isinstance(meta, dict) and int(meta.get("legacy_endorse_count") or 0) > 0:
+            continue
+        return True
+    return False
+
+
+def _check_mission_loop_dogfood_ok(run: dict[str, Any]) -> bool:
+    ml = run.get("mission_loop")
+    if not isinstance(ml, dict) or not ml.get("enabled"):
+        return False
+    if ml.get("phase") != "MISSION_DONE":
+        return False
+    if ml.get("circuit_breaker"):
+        return False
+    repairs = ml.get("action_repair_counts") or {}
+    if isinstance(repairs, dict) and sum(int(v or 0) for v in repairs.values()) > 0:
+        return False
+    executions = _execs(run)
+    return any(row.get("status") == "merged" for row in executions)
+
+
 def _check_mission_loop_execute_queue(run: dict[str, Any]) -> bool:
     ml = run.get("mission_loop")
     if not isinstance(ml, dict) or not ml.get("enabled"):
@@ -573,6 +610,31 @@ SCENARIOS: dict[str, dict[str, Any]] = {
             "actions",
             "approvals",
             "executions",
+        ),
+    },
+    "envelope_consensus_endorse": {
+        "label": "envelope ENDORSE consensus (LEGACY_ENDORSE=0 safe)",
+        "check": _check_envelope_consensus_endorse,
+        "required_keys": (
+            "workflow_id",
+            "run_schema_version",
+            "turns",
+            "actions",
+            "approvals",
+            "executions",
+        ),
+    },
+    "mission_loop_dogfood_ok": {
+        "label": "mission dogfood KPI golden path",
+        "check": _check_mission_loop_dogfood_ok,
+        "required_keys": (
+            "workflow_id",
+            "run_schema_version",
+            "turns",
+            "mission_loop",
+            "executions",
+            "actions",
+            "approvals",
         ),
     },
 }

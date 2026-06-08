@@ -13,7 +13,7 @@
 | 축 | Shipped (2026-06-07) | Remaining |
 |----|----------------------|-----------|
 | **Hook** | Room Hook Router + native overlay + `pre_scribe` | — |
-| **Communicate** | Full stack shipped | Optional: `AGENT_LAB_LEGACY_ENDORSE=0` migration |
+| **Communicate** | Full stack shipped | `LEGACY_ENDORSE` default **off** (envelope required for phrase endorse) |
 
 **불변 원칙 (transcript 합의):**
 
@@ -355,7 +355,7 @@ sessions/<id>/.agent-lab/agent-hooks/
 | Variable | Default | Meaning |
 |----------|---------|---------|
 | `AGENT_LAB_ENVELOPE_STRICT` | `consensus_only` | `off` \| `consensus_only` \| `always` |
-| `AGENT_LAB_LEGACY_ENDORSE` | `1` | `이의 없습니다` phrase fallback |
+| `AGENT_LAB_LEGACY_ENDORSE` | `0` | `1` = `이의 없습니다` phrase fallback (legacy opt-in) |
 | `AGENT_LAB_EFFICIENCY` | `0` | 800자 guidance |
 | `AGENT_LAB_GUIDANCE_TIER` | `standard` | `minimal` \| `standard` \| `debug` (inject 크기) |
 
@@ -648,7 +648,7 @@ class HookResult:
 - [x] `pre_scribe` hook wired · builtin envelope schema validate on `post_agent_reply`
 - [x] Envelope guidance compact unless `AGENT_LAB_GUIDANCE_TIER=debug`
 - [x] Activity envelope warn (SSE `agent_activity` + P2 toast)
-- [ ] phrase fallback removal (`AGENT_LAB_LEGACY_ENDORSE=0` + fixture gate — opt-in migration)
+- [x] phrase fallback removal (`AGENT_LAB_LEGACY_ENDORSE` default `0` + `envelope_consensus_endorse` regression)
 
 ---
 

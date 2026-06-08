@@ -16,7 +16,7 @@ def test_session_rows_are_keyboard_controls_and_searchable():
     session_list = _read("web/src/components/SessionList.tsx")
     app = _read("web/src/App.tsx")
 
-    assert 'className={`session-row' in session_list
+    assert 'className={`session-item' in session_list
     assert 'type="button"' in session_list
     assert 'aria-current=' in session_list
     assert 'type="search"' in app

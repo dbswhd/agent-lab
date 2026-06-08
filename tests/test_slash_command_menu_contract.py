@@ -33,3 +33,6 @@ def test_plugin_panel_contract():
     text = _read("web/src/components/PluginPanel.tsx")
     assert 'data-testid="plugin-panel"' in text
     assert "patchSessionAgentPlugins" in text
+    assert "res.agents" in text
+    assert "accordionInitRef" in text
+    assert "useEffect(() => {\n    setOpenAgents" not in text

@@ -2,7 +2,7 @@
 
 ## 빠른 시작
 - `make dev` → API(8765) + web(5173)
-- `make test` → pytest 343+ tests
+- `make test` → pytest 574+ tests (mock-first, `-m "not live"`)
 - `make ci` → pytest + smoke + web build
 - `python scripts/smoke_room.py` → 19 regression baselines
 
@@ -31,7 +31,7 @@
 - Human gate 유지
 
 ## 추적 문서
-- shipped status: `docs/EXTERNAL-REFS-TRACEABILITY.md`
+- shipped status: `docs/EXTERNAL-REFS-TRACEABILITY.md` · index: `docs/README.md`
 - MD 작성: `docs/MD-WRITING-PLAN.md`
 
 ## Claude Code hooks (CC-hooks)

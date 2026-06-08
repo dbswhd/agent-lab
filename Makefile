@@ -1,4 +1,4 @@
-.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test ci check-worktrees smoke smoke-e2e smoke-web-ui smoke-tauri-ui validate-quant verify-quant-workspace verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run init-project-memory
+.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test ci check-worktrees smoke smoke-e2e smoke-web-ui smoke-tauri-ui validate-quant verify-quant-workspace verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run init-project-memory verify-hooks measure-communicate-baseline
 
 install:
 	python3 -m venv .venv
@@ -41,6 +41,13 @@ tauri-build: prepare-bundled-runtime
 
 test: check-worktrees
 	.venv/bin/pytest tests/ -q -m "not live"
+
+verify-hooks:
+	.venv/bin/pytest tests/test_room_hooks.py tests/test_pre_execute_hooks.py tests/test_hook_router.py tests/test_reply_policy.py tests/test_gate_snapshot.py tests/test_hook_communicate_patches.py tests/test_hook_communicate_remaining.py tests/test_communicate_kpis.py tests/test_measure_communicate_baseline.py -q
+
+measure-communicate-baseline:
+	.venv/bin/python scripts/measure_communicate_baseline.py --sessions sessions/_benchmark --out tests/fixtures/communicate-baseline-benchmark.json
+	.venv/bin/python scripts/measure_communicate_baseline.py --sessions sessions/_regression --out sessions/_regression/_reports/communicate-baseline-$$(date -u +%Y%m%d).json
 
 test-live:
 	@test "$$AGENT_LAB_RUN_LIVE" = "1" || (echo "Set AGENT_LAB_RUN_LIVE=1 for live Cursor spike tests" && exit 1)

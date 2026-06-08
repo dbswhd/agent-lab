@@ -294,6 +294,42 @@ make prod                    # web build + uvicorn :8765 (serves web/dist)
 
 ---
 
+## Verified loop (검증 모드)
+
+Composer **turn profile**을 `verified`(검증)로 두면, 3자 룸 턴이 **LazyCodex-style verified loop**로 동작합니다. 에이전트가 목표를 제안하고 Human이 승인한 뒤, 독립 **Oracle**(Claude `scribe` 역할)이 transcript만 보고 완료 여부를 판정합니다.
+
+| 단계 | 누가 | 무엇을 |
+|------|------|--------|
+| **1. Propose** | 에이전트 1명 | 첫 라운드에서 `<ulw_proposal>` 블록 1개만 emit. 나머지는 ENDORSE/AMEND(plain text). 턴 종료 시 `run.json` → `verified_loop.status=pending_approval` |
+| **2. Human 승인** | Human | UI **VerifiedLoopBanner**에서 goal/criteria 검토 후 Approve (`POST /api/sessions/{id}/verified-loop/approve`) → `status=running`, `verified_loop.loop_goal.approved_at` 기록 |
+| **3. Execute** | 에이전트 팀 | 승인된 goal·criteria에 맞게 작업. criteria에 적힌 **파일·테스트·transcript 증거**를 발화에 명시 |
+| **4. DONE** | 에이전트 1명 | 완료 시 `<promise>DONE</promise>` **1회만** (또는 proposal의 `completion_promise`). **에이전트는 `<promise>VERIFIED</promise>` 금지** |
+| **5. Oracle VERIFIED** | Oracle (`claude_cli`) | 턴 종료 후 `run_verified_oracle()` — transcript tail + criteria 대조. 합격 시 `<promise>VERIFIED</promise>` → `verified_loop.status=done`, `goal_loop.status=achieved` |
+
+**proposal 블록 형식**
+
+```text
+<ulw_proposal>
+goal: (한 줄 목표)
+completion_promise: DONE
+criteria: (Oracle이 transcript에서 찾을 완료 조건 — 아래 예시 참고)
+</ulw_proposal>
+```
+
+**criteria 작성 예시** (파일 · 테스트 · transcript 증거를 한 블록에)
+
+```text
+<ulw_proposal>
+goal: health 라우터 스모크 — GET /api/health가 200을 반환한다
+completion_promise: DONE
+criteria: (1) `app/server/routers/health.py`에 `/api/health` 라우트가 존재 (2) `tests/test_health_preflight.py`가 `pytest tests/test_health_preflight.py -q`로 PASS (3) 승인 후 라운드에서 에이전트가 위 경로·테스트 명령·PASS 한 줄을 transcript에 정리하고 <promise>DONE</promise> 1회 (4) Oracle이 criteria 충족을 확인하면 VERIFIED — 픽셀/OCR 등 범위 밖 증거는 제외
+</ulw_proposal>
+```
+
+실행 중 상태는 `run.json`의 `verified_loop`(배너·SSE `verified_loop_pending`)와 `tests/test_verified_loop.py`로 확인할 수 있습니다. Goal loop(`AGENT_LAB_GOAL_LOOP`)와는 별 레이어입니다 — [`docs/GOAL-LOOP.md`](docs/GOAL-LOOP.md) 참고.
+
+---
+
 ## Desktop-style app (quant-control-like shell)
 
 ```bash

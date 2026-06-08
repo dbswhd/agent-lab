@@ -1,5 +1,7 @@
 # Agent Lab 기능·동작 명세 (USER-GUIDE)
 
+> **Canonical product spec (Tier 1).** Doc index: [docs/README.md](./README.md) · Shipped matrix: [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md)
+
 > **목적:** UI/UX를 전면 재설계할 때 참고하는 **기능·로직·상태** 문서  
 > **대상:** 제품·디자인·프론트·백엔드 개발자  
 > **기준 코드:** `main` 브랜치 — `web/src/`, `src/agent_lab/`  
@@ -360,7 +362,7 @@ sessions/2026-06-02-my-topic/
 | **응답 방식** | quick / analyze / specialist / ♾️ |
 | **효율** 토글 | context·consensus cap 축소 |
 | **에이전트 칩** | 참여 agent pool |
-| **예상 호출** hint | `turnCostEstimate` — 모드·인원·라운드 |
+| **모드 힌트** | `composerTurnHint` — 모드·인원·라운드 한 줄 |
 | **📎 첨부** | FormData upload |
 | **↑ 전송** | Enter (Shift+Enter 줄바꿈) |
 | **■ 중지** | `cancelRoomRun` |
@@ -406,7 +408,6 @@ sessions/2026-06-02-my-topic/
 - preflight 실패 agent 포함
 - custom workspace 경로 미선택
 - 본문·첨부 모두 비어 있음
-- (구현됨·미연결) full-team cost confirm 미체크 — [§27](#27-ui-재설계-시-알려진-gap)
 - 미해결 BLOCK objection 시 placeholder만 (execute 쪽)
 
 ### 6.6 권한 (permissions)
@@ -680,6 +681,39 @@ plan ## 지금 실행
 
 - SSE `consensus_plan_sync_*`
 - optional `consensus_dry_run_proposal` — Work에서 dry-run CTA
+
+### 9.8 Hook · Communicate (Room Router)
+
+> 설계: [HOOK-COMMUNICATE-REFORM.md](./HOOK-COMMUNICATE-REFORM.md) · 회귀: `make verify-hooks`
+
+**Hook layers**
+
+| Layer | Scope | Config |
+|-------|--------|--------|
+| Room Router | Turn boundary — `pre/post_agent_reply`, `post_harvest`, `pre_scribe` | `.agent-lab/hooks.toml` |
+| Native overlay | Tool loop — codex/cursor/claude cwd hooks | `AGENT_LAB_NATIVE_HOOKS=1` + session `.agent-lab/agent-hooks/` |
+| CC-hooks | Dev only — PostEdit/Stop | `.claude/settings.json` (≠ Room runtime) |
+
+**SSE / UI**
+
+| Event | UI |
+|-------|-----|
+| `hook_event` | Notification (P0/P1) + typing `activities[]` |
+| `agent_activity` | Tool stream (cursor/codex/claude) |
+| envelope R2+ issue | `agent_activity` line + P2 `envelope_warn` toast |
+
+**Communicate env**
+
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| `AGENT_LAB_ENVELOPE_STRICT` | `consensus_only` | R2+ envelope required (consensus) |
+| `AGENT_LAB_LEGACY_ENDORSE` | `1` | Phrase fallback `이의 없습니다` |
+| `AGENT_LAB_GUIDANCE_TIER` | `standard` | `debug` only → full envelope prompt block |
+| `AGENT_LAB_STRUCTURED_ENVELOPE` | `1` | Structured adapter on agents |
+| `AGENT_LAB_NATIVE_HOOKS` | off | Session hook bundle → workspace cwd |
+
+**Observability:** `GET /api/sessions/{id}` → `observability.hook_runs`, `observability.last_communicate_meta`  
+**KPI:** `make measure-communicate-baseline` · weekly report §Hook · Communicate
 
 ---
 
@@ -1211,7 +1245,6 @@ Tauri log: `~/Library/Logs/Agent Lab/agent-lab-api.log`
 
 | 항목 | 명세/의도 | 현재 코드 |
 |------|-----------|-----------|
-| **Full-team cost confirm** | 3명+♾️/분업 시 「N회 호출 이해함」 | `ChatComposer` UI 있음 · `RoomChat` `fullTeamConfirm={null}` **미연결** |
 | **Permission modal** | 첫 전송 전 확인 | `AgentPermissionAlert` **bypass** — full defaults send |
 | **Composer plan toggle** | — | **제거됨** — Work only (의도적, WORK-TAB-IA) |
 | **Inspector Context tab** | — | **Settings로 이동** · `contextSidebarPrefs` orphan |

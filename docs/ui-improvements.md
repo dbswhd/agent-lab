@@ -1,5 +1,7 @@
 # UI Progressive Disclosure Improvements
 
+> **Legacy / superseded (Tier 4)** — see [UI-MIGRATION-GAPS.md](./UI-MIGRATION-GAPS.md) · [README.md](./README.md)
+
 ## 배경
 
 기능 추가가 누적되면서 사이드바와 뷰 탭바에 개발자용 정보가 항상 노출되어 macOS 네이티브 앱 수준의 깔끔함이 저하됨. 이를 **progressive disclosure** 패턴으로 개선 — 기능은 모두 유지하되 기본 상태를 최소화.

@@ -1,6 +1,8 @@
 # Agent Lab - 통제 가능한 범용 워크플로 시스템 설계
 
-> 상태: 설계 초안  
+> **Legacy doc (Tier 4)** — early architecture sketch. **Canonical:** [USER-GUIDE.md](./USER-GUIDE.md) · [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md) · [README.md](./README.md)
+
+> 상태: 설계 초안 (historical)  
 > 대상: 현재 `Planner -> Critic -> Scribe` 프로토타입을 범용 에이전트 환경으로 확장하는 단계  
 > 원칙: 자유로운 다중 에이전트 대화보다, 입력ㆍ권한ㆍ승인ㆍ산출물이 추적 가능한 실행을 우선한다.
 

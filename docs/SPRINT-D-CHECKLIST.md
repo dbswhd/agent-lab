@@ -1,5 +1,7 @@
 # Sprint D checklist
 
+> **Closed sprint (historical).** Current regression: [STABILITY.md](./STABILITY.md) · [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md)
+
 Track implementation of room coordination, provenance, and UI exposure items.
 
 ## HIGH priority

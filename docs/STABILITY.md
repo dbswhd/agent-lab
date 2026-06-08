@@ -85,8 +85,6 @@ Cursor bridge failures must include degraded fallback shape: `degraded`, `failur
 
 **Long runs:** No default client timeout. Optional UI hint after `VITE_ROOM_LONG_RUN_HINT_MS` (default 180000 ms); cancel via **답변 중지** → `cancelRoomRun`.
 
-**Full-team cost gate:** Composer shows estimated agent call count before send. Verify: analyze with 3 agents shows about 3 calls and sends without confirmation; `♾️` or `분업` with 3 agents disables send until the **~N회 호출 이해함** checkbox is checked.
-
 **Cursor reconnect:** `POST /api/health/reconnect-cursor` — health panel **재연결** button.
 
 ## Phase 1 — Team coordination (tasks + channels)
@@ -156,7 +154,7 @@ See **[SPRINT-D-CHECKLIST.md](./SPRINT-D-CHECKLIST.md)** for the full checkbox l
 | Piece | Behavior |
 |-------|----------|
 | **mailbox[]** | `run.json` → direct agent messages (`MESSAGE` envelope + `to`). **받은함** in **작업** bar; unread delivered in next agent payload. |
-| **Hooks** | `~/.agent-lab/hooks.toml` or `.agent-lab/hooks.toml` — `task_completed`, `teammate_idle` shell commands (JSON stdin, exit 2 = block). |
+| **Hooks** | `~/.agent-lab/hooks.toml` or `.agent-lab/hooks.toml` — `task_completed`, `teammate_idle`, `pre_execute` (JSON stdin). Event policy: `HookEventPolicy` in `room_hooks.py`; `teammate_idle` non-zero exit does **not** block (feedback only). Config cached per mtime. |
 | **Teammate idle** | After each agent in a round, optional peer `[idle gate · agent]` when in_progress tasks or hook feedback. |
 
 Example: `.agent-lab/hooks.example.toml`, `scripts/hooks/verify-task.sh`.

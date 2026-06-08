@@ -1,7 +1,6 @@
 # Agent Lab — UI/UX 방향 & 외주 가이드
 
-> **DEPRECATED — messenger/iMessage RFP.**
-> 현재 UI 기준은 **[developer-agent-console.md](./developer-agent-console.md)** 를 따릅니다.
+> **Legacy / deprecated (Tier 4)** — messenger RFP. **Current UI:** [developer-agent-console.md](./developer-agent-console.md) · [README.md](./README.md)
 > 아래 iMessage/Instagram DM/Telegram 매핑은 역사 참고용입니다.
 
 > **레거시 구현 메모:** [Figma macOS 26 UI Kit](https://www.figma.com/community/file/1543337041090580818/macos-26). Glass는 chrome만.

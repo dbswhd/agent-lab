@@ -1,5 +1,7 @@
 # Agent Lab — 기초 교육 가이드
 
+> **Legacy doc (Tier 4)** — early sandbox tutorial. **Canonical:** [USER-GUIDE.md](./USER-GUIDE.md) · [README.md](./README.md)
+
 > **이 문서는 독립 프로젝트용입니다.**  
 > `quant-pipeline` repo와 **별도 GitHub repo·별도 작업 폴더**에서 시작하세요.  
 > pipeline은 “실행·검증·거래”, Agent Lab은 “주제 던지고 에이전트가 같이 생각하기” 연습장입니다.

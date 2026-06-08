@@ -34,6 +34,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | ops-verify | Platform | Manual ops routine | ✅ | `make verify-ops`, `tests/test_verify_ops_makefile.py`, `docs/OPS-RUNBOOK.md` | Tier A |
 | R-P0 | Room | Partial turn | ✅ | `src/agent_lab/room.py`, `docs/STABILITY.md` | |
 | R-P1 | Room | F2 artifact-only R2 | ✅ | `sessions/_regression/specialist_r2_artifact_only/`, `context_bundle.py` | |
+| HOOK-COMM | Hook · Communicate reform | ✅ | `reply_policy.py`, `room_hooks.py`, `gate_snapshot.py`, `communicate_kpis.py`, `structured_envelope_adapter.py`, `agent_hooks_materializer.py`, `run_observability.py`, `make verify-hooks`, `make measure-communicate-baseline`, USER-GUIDE §9.8 | Phase 5 complete except optional `LEGACY_ENDORSE=0` migration — [HOOK-COMMUNICATE-REFORM.md](./HOOK-COMMUNICATE-REFORM.md) |
 | UX-P2 | Room | Objection resolve UX | ✅ | `PlanExecutePanel.tsx`, `RoomTaskBar.tsx` | |
 | Bridge | Room | Cursor bridge degraded | ✅ | `sessions/_regression/bridge_degraded_health/`, H-P3 tests | |
 | CENT-env | Centaur | Subprocess env allowlist | ✅ | `src/agent_lab/subprocess_env.py`, `claude_cli.py`, `codex_cli.py`, `cursor_bridge.py`, `tests/test_subprocess_env.py` | [PLAN §3.2](EXTERNAL-REFS-PLAN.md#32-subprocess-credential-분리) |
@@ -58,7 +59,11 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 
 These are **acceptance criteria only**.
 
-_(none — dev-tool MD items in §Dev-tool are also shipped.)_
+| ID | Item | Design doc |
+|----|------|------------|
+| _(none — HOOK-COMM core shipped 2026-06-07)_ | | |
+
+_(Dev-tool MD items in §Dev-tool are shipped.)_
 
 ---
 
@@ -83,13 +88,15 @@ They are tracked here but do not belong in the runtime feature roadmap.
 
 | Priority | ID | Suggested next action |
 |----------|-----|-----------------------|
-| — | — | LC-L5 shipped; no queued external-ref implementation ticket |
+| P3 | HOOK-COMM-migrate | `AGENT_LAB_LEGACY_ENDORSE=0` + regression fixtures; live envelope KPI re-baseline |
 
 ---
 
 ## Related docs
 
+- [Documentation index (README)](README.md)
 - [External refs plan (ideas)](EXTERNAL-REFS-PLAN.md)
+- [Hook · Communicate reform](HOOK-COMMUNICATE-REFORM.md)
 - [Room reinforcement](ROOM-REINFORCEMENT.md)
 - [Ops runbook](OPS-RUNBOOK.md)
 - [Execute worktree reform](EXECUTE-WORKTREE-REFORM.md)

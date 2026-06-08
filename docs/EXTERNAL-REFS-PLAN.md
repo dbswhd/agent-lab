@@ -4,7 +4,8 @@
 > 분석 대상: Conductor · Centaur · LazyCodex · Claude Code  
 > 목적: 각 시스템의 강점을 Agent Lab에 이식하되, 합의·게이트·provenance 핵심 구조는 유지한다.
 
-> **Status (2026-06):** External-ref **implementation queue is empty**. Layers 1–5, CON-diff, PI-executed, CENT-env/durable, MD-PROJECT/PLATFORM/P3, CC-* **shipped**. Live opt-in: [LC-L4-ADVERSARIAL-LIVE.md](LC-L4-ADVERSARIAL-LIVE.md), [GOAL-LOOP.md](GOAL-LOOP.md). **Plan vs code:** [EXTERNAL-REFS-TRACEABILITY.md](EXTERNAL-REFS-TRACEABILITY.md).
+> **Status (2026-06):** External-ref **implementation queue is empty**. Layers 1–5, CON-diff, PI-executed, CENT-env/durable, MD-PROJECT/PLATFORM/P3, CC-*, **HOOK-COMM** **shipped**. Live opt-in: [LC-L4-ADVERSARIAL-LIVE.md](LC-L4-ADVERSARIAL-LIVE.md), [GOAL-LOOP.md](GOAL-LOOP.md).  
+> **Plan vs code:** [EXTERNAL-REFS-TRACEABILITY.md](EXTERNAL-REFS-TRACEABILITY.md) · **Doc index:** [README.md](README.md)
 
 ---
 

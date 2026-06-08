@@ -1,7 +1,19 @@
 # Human Inbox — 설계 RFC
 
-> **상태:** 확정 설계 (부분 구현 중)  
-> **관련:** [USER-GUIDE.md](./USER-GUIDE.md) · [04-multi-agent-room.md](./04-multi-agent-room.md) · [05-room-agent-roles.md](./05-room-agent-roles.md) · [NOTIFICATION-TAXONOMY.md](./NOTIFICATION-TAXONOMY.md)
+> **Status (2026-06-07):** Execute lane **M2 shipped** (MCP + `respond_session` + API). Discuss harvest / dedicated resolve UI **partial**.  
+> **Canonical index:** [docs/README.md](./README.md) · **Shipped evidence:** [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md)  
+> **관련:** [USER-GUIDE.md](./USER-GUIDE.md) · [NOTIFICATION-TAXONOMY.md](./NOTIFICATION-TAXONOMY.md)
+
+| Area | Shipped | Gap |
+|------|---------|-----|
+| `human_inbox.py` + `run.json` `human_inbox[]` | ✅ | — |
+| REST `/api/sessions/{id}/inbox/*` | ✅ | — |
+| MCP `agent-lab-inbox` (stdio) + execute blocking | ✅ | Codex executor parity (M6) |
+| Plan-first → Build GO gate (`execute_inbox_build_go`) | ✅ | — |
+| Taskbar **peer mailbox** UI | ✅ | Peer channel, not Human decision resolve |
+| Dedicated Human Inbox resolve panel | 🔶 | API exists; full UI polish in [UI-MIGRATION-GAPS.md](./UI-MIGRATION-GAPS.md) |
+| Discuss deterministic harvest → Inbox | 🔶 | Partial via `inbox_harvest.py` |
+| FORK / Facilitator / sync pause | ⬜ | M4 backlog |
 
 Claude Code(`AskUserQuestion`, `ExitPlanMode`)와 Cursor(`ask-follow-up`, plan→build)가 수렴하는 **레퍼런스 메커니즘**을 execute 경로에 맞추고, discuss Room은 Agent Lab 고유 오케스트레이션으로 분리한다. **확정 흐름:** discuss에서 합의 → execute **plan phase** → **Build GO** → implement (§3.4). Human Inbox는 두 경로 모두에서 Human이 답하는 **단일 UI surface**다.
 
@@ -386,33 +398,29 @@ Execute lane에서 Inbox는 **thin adapter**:
 
 Inbox는 에이전트가 직접 호출하지 않는다. **MCP server가 bridge**다.
 
-### 4.6 현재 코드 갭 · 마이그레이션
+### 4.6 Shipped execute path (2026-06-07)
 
-**오늘 (`plan_execute.py`):**
+**Current (`plan_execute.py` + `cursor_agent.py`):**
 
 ```text
 run_dry_run()
-  → _call_execute_agent(executor_id, ...)
-    → cursor_agent.respond()  # Agent.create → prompts[] → close
-    → codex_agent.respond()   # one-shot CLI
+  → _call_execute_agent(..., inbox_mcp=AGENT_LAB_EXECUTE_INBOX default 1)
+    → cursor_agent.respond_session()  # plan phase → Build GO gate → implement
+    → AgentOptions.mcp_servers = agent-lab-inbox (stdio)
+    → codex_agent.respond_session() when executor=codex
 ```
 
-- 단일 prompt + verify follow_up 후 **세션 종료** — blocking MCP resolve loop 없음
-- `AgentOptions.mcp_servers` **미설정** — SDK capability는 있으나 `cursor_agent`가 넘기지 않음
-- `on_activity`로 activity 한 줄 스트리밍만 — `ToolCall*` 이벤트 → Inbox 미연결
-- `human_inbox[]` / resolve API **미구현**
+| Capability | Status |
+|------------|--------|
+| `human_inbox[]` + resolve/supersede API | ✅ `app/server/routers/human_inbox.py` |
+| MCP `ask_human` / `propose_build` | ✅ `inbox_mcp_server.py`, `cursor_inbox_mcp.py` |
+| Execute plan-first + GO gate | ✅ `execute_inbox_build_go`, `tests/test_inbox_execute_e2e.py` |
+| Activity / tool → Inbox notifications | 🔶 partial — see NOTIFICATION-TAXONOMY |
+| Codex JSONL tool bridge (E4) | ⬜ M6 |
 
-**마이그레이션 경로:**
+**Historical note:** §4.6 previously described pre-M2 one-shot `respond()` — **obsolete**; kept only in git history.
 
-| 단계 | 작업 |
-|------|------|
-| E0 | execute **plan-first** phase — discuss `plan.md` 기반 실행 plan, 쓰기 잠금 (§3.4.3) |
-| E1 | `cursor_agent`에 `respond_session()` — `agent.close()` 전까지 MCP tool pending 대기 |
-| E2 | `agent-lab-inbox` MCP server (stdio) + resolve HTTP endpoint + **`cursor_agent`: `AgentOptions(mcp_servers=[StdioMcpServerConfig(...)])`** |
-| E3 | `plan_execute._call_execute_agent` → session API; plan phase → `propose_build` → implement |
-| E4 | Codex executor: JSONL에서 MCP/tool 이벤트 파싱 → 동일 Inbox bridge |
-
-**관련 파일:** `src/agent_lab/plan_execute.py`, `src/agent_lab/agents/cursor_agent.py`, `src/agent_lab/agents/codex_agent.py`
+**관련 파일:** `plan_execute.py`, `agents/cursor_agent.py`, `agents/codex_agent.py`, `human_inbox.py`
 
 ---
 
@@ -671,9 +679,8 @@ flowchart LR
 
 | 상황 | 1차 | Fallback |
 |------|-----|----------|
-| Execute dry-run, **Cursor SDK (M2 wiring 완료)** | `ask_human` / `propose_build` blocking loop via `mcp_servers` | — |
-| Execute dry-run, **M2 전 (오늘)** | PlanExecutePanel 수동 GO + activity only | Inbox UI shell (M1) — MCP 미연결 |
-| Execute, Codex JSONL tool 이벤트 | MCP bridge (E4) | `decision_request` in agent text → server parse |
+| Execute dry-run, Cursor/Codex + MCP enabled | `ask_human` / `propose_build` via `mcp_servers` | PlanExecutePanel manual GO if `AGENT_LAB_EXECUTE_INBOX=0` |
+| Execute, Codex JSONL tool events | MCP bridge (E4) | `decision_request` in agent text → server parse |
 | Discuss 방향 결정 | orchestrator T-Q* + harvest | envelope ASK, `decision_request` JSON block |
 | Discuss Build 제안 | T-B* + gates → Inbox card | PlanExecutePanel 직접 (기존) |
 | MCP 전혀 불가 | — | `decision_request` / FORK / manual Inbox item |
@@ -702,34 +709,34 @@ flowchart LR
 | **M5** | Discuss Build item ↔ execute `propose_build` / PlanExecute | 연동 | end-to-end GO |
 | **M6** | Codex executor MCP bridge (E4) — Cursor와 동일 Inbox contract | Execute | executor parity |
 
-### Acceptance criteria
+### Acceptance criteria (2026-06-07)
 
-**M1**
+**M1 — API + data model**
 
-- [ ] Human Inbox 패널 — pending 건수·kind 표시
-- [ ] Resolve → `[HUMAN-DECISION:]` + `human_inbox[]` 갱신
-- [ ] 새 Human send 시 stale item supersede
+- [x] `human_inbox[]` in `run.json` + resolve/supersede API
+- [x] 새 Human send 시 stale item supersede (`supersede_pending_inbox`)
+- [ ] Dedicated Inbox panel — pending kind + one-click resolve (Taskbar shows **peer mailbox** today)
 
-**M2**
+**M2 — Execute MCP**
 
-- [ ] `AgentOptions.mcp_servers`에 `agent-lab-inbox` (stdio) 등록 — `cursor_agent.py`
-- [ ] `ask_human` MCP call → Inbox render → tool result inline → executor resume
-- [ ] Dry-run 세션이 Human 대기 중에도 단일 session 유지
-- [ ] MCP tool Human timeout / defer → SDK timeout 전 tool result 반환 (§4.3)
+- [x] `AgentOptions.mcp_servers` — `agent-lab-inbox` stdio (`cursor_agent.py`)
+- [x] `ask_human` / `propose_build` → blocking `respond_session` loop
+- [x] Dry-run single session through plan → GO → implement (`tests/test_inbox_execute_e2e.py`)
+- [ ] MCP Human timeout / defer → tool result before SDK hard timeout (edge cases)
 
-**M3**
+**M3 — Discuss harvest**
 
-- [ ] harvest → excerpt + refs Inbox (options 없음)
-- [ ] Facilitator / LLM 합성 없음
+- [ ] harvest → excerpt + refs Inbox (options 없음) — partial in `inbox_harvest.py`
+- [x] Facilitator / LLM option invent 금지 (policy)
 
-**M4**
+**M4 — Discuss advanced**
 
 - [ ] FORK / ref-anchored options
 - [ ] sync pause + skip/defer
 
-**M5**
+**M5 — End-to-end Build**
 
-- [ ] Build item → execute dry-run → 기존 Review diff
+- [x] Build GO gate → execute dry-run → Review diff (default inbox MCP path)
 
 ---
 

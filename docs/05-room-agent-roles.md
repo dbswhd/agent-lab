@@ -1,5 +1,7 @@
 # 3자 룸 — 에이전트 역할 분담
 
+> **Legacy doc (Tier 4)** — planning detail. **Runtime prompts (canonical):** [`agents/prompts.py`](../src/agent_lab/agents/prompts.py) · [USER-GUIDE.md](./USER-GUIDE.md)
+
 > **적용 범위:** `room.parallel` (Cursor · Codex · Claude 병렬)  
 > **다른 모드:** 클래식 워크플로의 Planner / Critic / Scribe는 [`roles.py`](../src/agent_lab/roles.py)에 정의된 **별도 역할**이다. 이름이 비슷해도 3자 룸 에이전트와 1:1로 대응하지 않는다.  
 > **런타임 프롬프트:** 요약본은 [`agents/prompts.py`](../src/agent_lab/agents/prompts.py). 이 문서는 사람·기획용 상세 계약이며, 코드와 충돌하면 **프롬프트 파일이 실행 시 기준**이다.

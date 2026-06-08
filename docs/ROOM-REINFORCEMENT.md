@@ -16,7 +16,7 @@
 | 교차 검증 턴 비율 | ✅ E-smoke: `challenge_revises_metric` CI smoke 고정 | 회귀 fixture에서 ≥1건 CHALLENGE→수정 자동 검출 |
 | BLOCK/CHALLENGE가 다음 행동 변경 | ✅ E-smoke: `objection_blocks_execute` + challenge task block CI smoke 고정 | execute·consensus·task claim 중 ≥1 경로 hard 연동 |
 | 에이전트 비대칭 컨텍스트 | ✅ F-R3/F-R3-ops: `capability_cwd` meta 비대칭을 fixture/smoke + 실사용 KPI로 누적 | ≥2 에이전트 서로 다른 cwd/툴 블록 |
-| 비용 대비 | ~3× 호출 | ✅ H2: quick/analyze는 낮은 호출 유지, "풀 팀"은 명시 opt-in |
+| 비용 대비 | ~3× 호출 | ✅ H2: quick/analyze는 낮은 호출 유지, composer turn hint |
 | Human 신뢰 | ✅ H1: `## 에이전트별 기여` / `## 미해결 이의` (scribe enrichment) | plan에 에이전트별 기여·미해결 BLOCK 섹션 유지 |
 
 ---
@@ -272,7 +272,7 @@ Human 또는 턴 리드가 `DELEGATE codex: "백테스트만"` 한 줄
 
 ## Phase H — Scribe·비용·측정
 
-> **✅ Shipped:** H1 scribe enrichment, H2 full-team gate, H3 smoke 20 baselines + benchmark catalog (H-P2), H4 `score_session` + weekly (H-P1/H4-weekly).
+> **✅ Shipped:** H1 scribe enrichment, H2 composer turn hint, H3 smoke 20 baselines + benchmark catalog (H-P2), H4 `score_session` + weekly (H-P1/H4-weekly).
 
 **문제 (배경):** 3N 비용, Scribe가 에이전트 기여를 흡수.
 
@@ -281,11 +281,11 @@ Human 또는 턴 리드가 `DELEGATE codex: "백테스트만"` 한 줄
 - Scribe에 에이전트별 diff 요약만 전달 (전문 재토론 X)
 - plan 섹션 추가: `## 에이전트별 기여 (자동)` / `## 미해결 이의`
 
-### H2. "풀 팀" opt-in + 비용 힌트
+### H2. Composer turn hint (비용 안내)
 
-- [x] 전송 전: 예상 에이전트 호출 수 composer hint
-- [x] 3-agent `분업` / `♾️` 풀 팀 실행은 체크박스 opt-in 전 Send 비활성
+- [x] 전송 전: 모드·인원·라운드 한 줄 hint (`composerTurnHint`)
 - [x] 기본 프로필은 analyze=1R 유지 (현행 존중)
+- ~~체크박스 opt-in 전 Send 비활성~~ — **제거됨** (2026-06)
 
 ### H3. 회귀·벤치 패키지
 
@@ -335,7 +335,7 @@ CI: `pytest tests/ -q` + `scripts/smoke_room.py` (20 baselines) + `check_worktre
 | ~~**R-P1**~~ | F2 R2 context slimming (`recent`/`peer` truncate) | ✅ 완료 — Cursor R2 artifact-only | — |
 | ~~**H-P1**~~ | `score_session` CI + merge/objection KPI | ✅ 완료 — regression smoke/score/orphan guard in CI | — |
 | ~~**H-P2**~~ | 벤치 10 시나리오 (room + execute); mock replay for delegate | ✅ 완료 — room catalog + execute cross-ref + delegate replay | — |
-| ~~**H2**~~ | 풀 팀 opt-in + 전송 전 비용 힌트 | ✅ 완료 — Composer 호출 수 추정 + full-team 확인 | — |
+| ~~**H2**~~ | Composer turn hint | ✅ 완료 — `composerTurnHint` 한 줄 | — |
 | ~~**ops-P0**~~ | FastAPI lifespan | ✅ 완료 — startup hook lifespan 이관 | — |
 | ~~**ops-P2**~~ | `main.py` 라우터 분리 | ✅ 완료 — FastAPI app 조립만 유지 | — |
 | ~~**UX-P2**~~ | E4 resolve Composer/plan 노출 | ✅ 완료 — dry-run 409 + plan BLOCK에서 이의 해결 CTA | — |

@@ -1,5 +1,7 @@
 # 3자 룸 — Cursor · Codex · Claude
 
+> **Legacy doc (Tier 4)** — Room overview. **Canonical:** [USER-GUIDE.md](./USER-GUIDE.md) §9 · [ROOM-REINFORCEMENT.md](./ROOM-REINFORCEMENT.md)
+
 > 통제 워크플로: [01-CONTROLLED-WORKFLOW-SYSTEM.md](./01-CONTROLLED-WORKFLOW-SYSTEM.md)  
 > UI: Figma **Mac & iOS UI Kit** (Messages / system colors)
 

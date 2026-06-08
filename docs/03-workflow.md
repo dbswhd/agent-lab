@@ -1,5 +1,7 @@
 # Agent Lab — 사용 워크플로 (메신저 UI)
 
+> **Legacy doc (Tier 4)** — early messenger metaphor. **Canonical:** [USER-GUIDE.md](./USER-GUIDE.md) · [README.md](./README.md)
+
 > UI 레퍼런스: **iMessage** (말풍선·전송), **Instagram DM** (대화 목록·프리뷰), **Telegram** (그룹 발신자 라벨·고정 메시지)
 
 ---

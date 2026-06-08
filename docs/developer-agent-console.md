@@ -1,6 +1,8 @@
 # Agent Lab — Developer Agent Console
 
-> **현재 UI 기준 문서.** 이전 messenger/iMessage RFP는 [`02-ui-ux-handoff.md`](./02-ui-ux-handoff.md) (deprecated)를 참고만 하세요.
+> **Document tier:** Tier 3 — current console UI. Index: [README.md](./README.md)
+
+> **현재 UI 기준 문서.** 이전 messenger/iMessage RFP는 [`02-ui-ux-handoff.md`](./02-ui-ux-handoff.md) (legacy)를 참고만 하세요.
 
 ## 제품 정의
 

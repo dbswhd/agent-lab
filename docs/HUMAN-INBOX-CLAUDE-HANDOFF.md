@@ -1,7 +1,7 @@
 # Human Inbox — Claude Code 인수인계 (M3+)
 
-> **전제:** M1·M2는 `main`에 shipped. **다시 만들지 말 것.**  
-> **설계 RFC:** [HUMAN-INBOX.md](./HUMAN-INBOX.md) — 특히 §3.4 (Discuss → Plan phase → Build → Implement), §4.4 (Cursor SDK **MCP 지원됨**, 갭은 wiring만).
+> **Handoff doc** — complements [HUMAN-INBOX.md](./HUMAN-INBOX.md). **Index:** [README.md](./README.md)  
+> **전제:** M1·M2 execute path shipped on `main`. **설계 RFC:** [HUMAN-INBOX.md](./HUMAN-INBOX.md) §3.4, §4.6.
 
 ---
 
@@ -73,11 +73,11 @@ Execute E2E: PlanExecute dry-run (Cursor) → agent `ask_human` / `propose_build
 
 **트리거 ID:** T-Q1 (harvest), T-Q2 (plan OPEN) — [HUMAN-INBOX.md §5.4](./HUMAN-INBOX.md)
 
-**AC:**
+**AC (M3 core — verify in `tests/test_human_inbox.py`, `inbox_harvest.py`):**
 
-- [ ] harvest → Inbox item (prompt + refs, **no options**)
-- [ ] Facilitator / LLM 합성 **0%**
-- [ ] resolve → `[HUMAN-DECISION:]` + next discuss turn context
+- [x] harvest → Inbox item (prompt + refs, **no options**)
+- [x] Facilitator / LLM 합성 **0%**
+- [x] resolve → `[HUMAN-DECISION:]` + next discuss turn context
 
 ---
 

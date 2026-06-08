@@ -168,6 +168,12 @@ def test_workspace_panels_have_distinct_document_wrappers():
     room = _read("web", "src", "components", "RoomChat.tsx")
     surfaces = _read("web", "src", "styles", "surfaces.css")
     work = _read("web", "src", "components", "WorkPanel.tsx")
+    assert "work-plugin-panel" in work or (
+        "PluginPanel" in work and "compact" in work
+    )
+    assert "MissionOverviewSection" in work
+    plugin = _read("web", "src", "components", "PluginPanel.tsx")
+    assert "cursor-ide-mcp-hint" in plugin
     plan_exec = _read("web", "src", "components", "PlanExecutePanel.tsx")
     run_panel = _read("web", "src", "components", "RunLogPanel.tsx")
     artifacts = _read("web", "src", "components", "ArtifactsListPanel.tsx")
@@ -270,10 +276,12 @@ def test_workspace_tab_bar_blends_with_console_surface_not_segmented_card():
 def test_inspector_matches_prototype_context_sidebar_body():
     inspector = _read("web", "src", "components", "InspectorPane.tsx")
     room = _read("web", "src", "components", "RoomChat.tsx")
+    overview = _read("web", "src", "components", "ContextOverviewPanel.tsx")
     layout = _read("web", "src", "styles", "layout.css")
 
     assert "context-sidebar__body scroll-y" in inspector
     assert "ContextOverviewPanel" in room
+    assert "MissionOverviewSection" in overview
     assert "inspector-pane__section-card" not in room
     assert ".ctx-section" in layout
     assert ".context-sidebar__head" in layout

@@ -1,5 +1,7 @@
 import os
+import time
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
@@ -42,6 +44,27 @@ def _connection_refused(exc: BaseException) -> bool:
     return "connection refused" in text or "errno 61" in text or "connecterror" in text
 
 
+def _wait_cursor_run(run: Any) -> None:
+    """Block on SDK run.wait() but honour global cooperative cancel."""
+    from agent_lab.run_control import RoomRunCancelled, is_cancelled
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        fut = pool.submit(run.wait)
+        while not fut.done():
+            if is_cancelled():
+                try:
+                    run.cancel()
+                except Exception:
+                    pass
+                try:
+                    fut.result(timeout=90)
+                except Exception:
+                    pass
+                raise RoomRunCancelled("run cancelled by user")
+            time.sleep(0.2)
+        fut.result()
+
+
 def _run_cursor_session(
     *,
     cwd_str: str,
@@ -53,6 +76,13 @@ def _run_cursor_session(
     extra_prompts_if_gate: list[str] | None = None,
 ) -> str:
     from cursor_sdk import Agent, CursorAgentError
+
+    from agent_lab.run_control import (
+        RoomRunCancelled,
+        is_cancelled,
+        register_cursor_run,
+        unregister_cursor_run,
+    )
 
     last_err: BaseException | None = None
     for attempt in range(2):
@@ -66,8 +96,14 @@ def _run_cursor_session(
                     while index < len(queue):
                         prompt = queue[index]
                         run = agent.send(prompt, send_opts)
-                        run.wait()
-                        last_text = run.text().strip()
+                        register_cursor_run(run)
+                        try:
+                            _wait_cursor_run(run)
+                            if is_cancelled():
+                                raise RoomRunCancelled("run cancelled by user")
+                            last_text = run.text().strip()
+                        finally:
+                            unregister_cursor_run(run)
                         if (
                             gate_after is not None
                             and index == gate_after

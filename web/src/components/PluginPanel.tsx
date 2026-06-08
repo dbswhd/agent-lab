@@ -10,9 +10,11 @@ import type { AgentRole } from "../utils/transcript";
 
 type Props = {
   sessionId: string | null;
-  commands: SlashCommandRecord[];
-  onPrefillSlash: (slash: string) => void;
+  commands?: SlashCommandRecord[];
+  onPrefillSlash?: (slash: string) => void;
   disabled?: boolean;
+  /** Work tab: plugins only, no Commands tab */
+  compact?: boolean;
 };
 
 const AGENTS = ["cursor", "codex", "claude"] as const;
@@ -122,15 +124,22 @@ function AgentPluginGroup({
           </ul>
         )
       ) : null}
+      {agent === "cursor" && open ? (
+        <p className="plugin-panel__cursor-ide-hint" data-testid="cursor-ide-mcp-hint">
+          Cursor MCP/plugins are inherited from Cursor IDE (Settings → Features → MCP).
+          The bridge has no list API — activity stream may show MCP tool names during runs.
+        </p>
+      ) : null}
     </section>
   );
 }
 
 export function PluginPanel({
   sessionId,
-  commands,
+  commands = [],
   onPrefillSlash,
   disabled,
+  compact = false,
 }: Props) {
   const [tab, setTab] = useState<"plugins" | "commands">("plugins");
   const [grouped, setGrouped] =
@@ -211,6 +220,40 @@ export function PluginPanel({
     return <p className="plugin-panel__hint">세션을 선택하면 plugin을 관리할 수 있습니다.</p>;
   }
 
+  const pluginBody = (
+    <div className="plugin-panel__body">
+      {AGENTS.map((agent) => (
+        <AgentPluginGroup
+          key={agent}
+          agent={agent}
+          plugins={grouped[agent]}
+          allowlist={allowlist[agent] ?? []}
+          open={Boolean(openAgents[agent])}
+          onToggle={() =>
+            setOpenAgents((prev) => ({ ...prev, [agent]: !prev[agent] }))
+          }
+          busy={busy}
+          disabled={disabled}
+          onTogglePlugin={(pluginId, on) =>
+            void togglePlugin(agent, pluginId, on)
+          }
+        />
+      ))}
+    </div>
+  );
+
+  if (compact) {
+    return (
+      <div
+        className="plugin-panel plugin-panel--compact"
+        data-testid="work-plugin-panel"
+      >
+        {hint ? <p className="plugin-panel__hint">{hint}</p> : null}
+        {pluginBody}
+      </div>
+    );
+  }
+
   return (
     <div className="plugin-panel" data-testid="plugin-panel">
       <div className="plugin-panel__tabs turn-seg" role="tablist">
@@ -235,25 +278,7 @@ export function PluginPanel({
       </div>
       {hint ? <p className="plugin-panel__hint">{hint}</p> : null}
       {tab === "plugins" ? (
-        <div className="plugin-panel__body">
-          {AGENTS.map((agent) => (
-            <AgentPluginGroup
-              key={agent}
-              agent={agent}
-              plugins={grouped[agent]}
-              allowlist={allowlist[agent] ?? []}
-              open={Boolean(openAgents[agent])}
-              onToggle={() =>
-                setOpenAgents((prev) => ({ ...prev, [agent]: !prev[agent] }))
-              }
-              busy={busy}
-              disabled={disabled}
-              onTogglePlugin={(pluginId, on) =>
-                void togglePlugin(agent, pluginId, on)
-              }
-            />
-          ))}
-        </div>
+        pluginBody
       ) : (
         <div className="plugin-panel__body">
           {(
@@ -278,7 +303,7 @@ export function PluginPanel({
                         type="button"
                         className="plugin-panel__cmd"
                         disabled={cmd.enabled === false}
-                        onClick={() => onPrefillSlash(cmd.slash)}
+                        onClick={() => onPrefillSlash?.(cmd.slash)}
                       >
                         <code>{cmd.slash}</code>
                         <span>{cmd.description ?? cmd.label}</span>

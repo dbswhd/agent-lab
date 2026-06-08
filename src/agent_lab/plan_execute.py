@@ -332,6 +332,23 @@ def _verify_workspace_root(target: dict[str, Any]) -> Path | None:
     return Path(str(raw)) if raw else None
 
 
+def _notify_merge_conflict_mission(
+    folder: Path,
+    target: dict[str, Any],
+) -> None:
+    from agent_lab.mission_loop import on_structural_execution_failure
+
+    merge = target.get("merge") if isinstance(target.get("merge"), dict) else {}
+    files = [str(f) for f in (merge.get("conflict_files") or []) if f]
+    detail = ", ".join(files) if files else "unknown files"
+    idx = target.get("action_index")
+    on_structural_execution_failure(
+        folder,
+        reason=f"merge conflict: {detail}",
+        action_index=int(idx) if idx is not None else None,
+    )
+
+
 def _record_verify_after_merge(
     folder: Path,
     target: dict[str, Any],
@@ -374,6 +391,12 @@ def _record_verify_after_merge(
         exec_id = str(target.get("id") or "")
         if exec_id:
             archive_executed_diff(folder, execution_id=exec_id, execution=target)
+    from agent_lab.mission_loop import on_verify_result
+
+    idx = int(target.get("action_index") or 0)
+    verdict = str((oracle.get("verdict") or evidence.get("status") or "")).lower()
+    reason = str(oracle.get("feedback") or oracle.get("reason") or "")
+    on_verify_result(folder, action_index=idx, verdict=verdict, reason=reason)
     return evidence
 
 
@@ -425,8 +448,20 @@ def _call_repair_agent(
     worktree_path: Path,
     permissions: dict[str, Any] | None,
     attempt: int,
+    session_folder: Path | None = None,
 ) -> str:
     prompt = _repair_prompt(target, attempt=attempt)
+    if session_folder is not None:
+        from agent_lab.mission_loop import inject_wisdom_into_prompt
+        from agent_lab.run_meta import read_run_meta
+        from agent_lab.session_plugin_runtime import (
+            enrich_execute_permissions,
+            execute_plugin_prompt_addon,
+        )
+
+        permissions = enrich_execute_permissions(permissions, session_folder)
+        prompt = execute_plugin_prompt_addon(prompt, session_folder, agent_id)
+        prompt = inject_wisdom_into_prompt(prompt, read_run_meta(session_folder))
     effective = dict(permissions or {})
     effective["_discuss_cwd"] = str(worktree_path.resolve())
     if agent_id == "cursor":
@@ -765,6 +800,17 @@ def _call_execute_agent(
 ) -> str:
     system = "You implement approved plan actions with minimal scope."
     verify_ups = _verify_follow_ups(verify)
+    if session_folder is not None:
+        from agent_lab.mission_loop import inject_wisdom_into_prompt
+        from agent_lab.run_meta import read_run_meta
+        from agent_lab.session_plugin_runtime import (
+            enrich_execute_permissions,
+            execute_plugin_prompt_addon,
+        )
+
+        permissions = enrich_execute_permissions(permissions, session_folder)
+        user = execute_plugin_prompt_addon(user, session_folder, agent_id)
+        user = inject_wisdom_into_prompt(user, read_run_meta(session_folder))
 
     if inbox_mcp and session_folder is not None and action is not None:
         from agent_lab.human_inbox import execute_inbox_build_go
@@ -919,6 +965,13 @@ def run_dry_run(
         else:
             kind, action_index = parsed
     action = find_dry_run_action(plan_md, action_index, kind=kind)
+    from agent_lab.mission_loop import set_execution_phase
+
+    set_execution_phase(
+        folder,
+        phase="DRY_RUN",
+        current_action_index=action_index,
+    )
     if action is None:
         kind_hint = f" ({kind})" if kind else ""
         if recommended and recommended.get("index") != action_index:
@@ -1110,7 +1163,10 @@ def run_dry_run(
 
     use_inbox_mcp = executor_id in EXECUTE_AGENT_IDS and execute_inbox_mcp_enabled()
 
+    from agent_lab.run_control import RoomRunCancelled, check_cancelled
+
     try:
+        check_cancelled()
         agent_response = _call_execute_agent(
             executor_id,
             user=_cursor_execute_prompt(
@@ -1130,6 +1186,15 @@ def run_dry_run(
             expected_paths=source_path_inputs,
             revise_request=revise_request,
         )
+    except RoomRunCancelled as e:
+        restore_snapshot(folder, exec_id=exec_id, cwd=cwd, manifest=manifest)
+        delete_snapshot(folder, exec_id)
+        if exec_worktree is not None:
+            discard_exec_worktree(exec_worktree, folder, exec_id)
+        from agent_lab.mission_loop import pause_mission_loop
+
+        pause_mission_loop(folder, reason="dry_run_cancelled", cleanup_executions=False)
+        raise
     except Exception as e:
         restore_snapshot(folder, exec_id=exec_id, cwd=cwd, manifest=manifest)
         delete_snapshot(folder, exec_id)
@@ -1306,6 +1371,10 @@ def run_dry_run(
         return run
 
     patch_run_meta(folder, _mark_tasks)
+
+    from agent_lab.mission_loop import on_dry_run_complete
+
+    on_dry_run_complete(folder, execution)
     return execution
 
 
@@ -1466,6 +1535,46 @@ def revise_pending_execution(
     }
 
 
+_CANCELLABLE_EXECUTION_STATUSES = frozenset(
+    {PENDING_STATUS, "merge_conflict", "review_required", "pending"}
+)
+
+
+def cancel_open_execution(
+    folder: Path,
+    *,
+    execution_id: str | None = None,
+    reason: str = "user_cancel",
+) -> dict[str, Any]:
+    """Track D: reject open dry-run / merge-review execution and discard worktree."""
+    run = read_run_meta(folder)
+    executions = list(run.get("executions") or [])
+    target: dict[str, Any] | None = None
+    if execution_id:
+        target = next((row for row in executions if row.get("id") == execution_id), None)
+    else:
+        for row in reversed(executions):
+            if str(row.get("status") or "") in _CANCELLABLE_EXECUTION_STATUSES:
+                target = row
+                break
+    if target is None:
+        return {"skipped": True, "reason": "no_open_execution"}
+    exec_id = str(target.get("id") or "")
+    status = str(target.get("status") or "")
+    if status not in _CANCELLABLE_EXECUTION_STATUSES:
+        return {"skipped": True, "reason": "not_cancellable", "status": status}
+    try:
+        result = resolve_execution(folder, execution_id=exec_id, vote="reject")
+    except ValueError as exc:
+        return {"skipped": True, "reason": str(exc), "execution_id": exec_id}
+    return {
+        "status": "cancelled",
+        "reason": reason,
+        "execution_id": exec_id,
+        "execution": result.get("execution"),
+    }
+
+
 def resolve_execution(
     folder: Path,
     *,
@@ -1483,7 +1592,10 @@ def resolve_execution(
     if target is None:
         raise ValueError("execution not found")
     status = target.get("status")
-    if status not in (PENDING_STATUS, "merge_conflict"):
+    allowed = {PENDING_STATUS, "merge_conflict"}
+    if vote_norm == "reject":
+        allowed = allowed | {"review_required"}
+    if status not in allowed:
         raise ValueError("execution is not pending approval")
     retry_merge = status == "merge_conflict"
 
@@ -1565,6 +1677,7 @@ def resolve_execution(
                 target["merge"] = merge
                 target["status"] = "merge_conflict"
                 target["completed_at"] = merge["completed_at"]
+                _notify_merge_conflict_mission(folder, target)
             else:
                 merge.update(merge_result.to_dict())
                 merge["completed_at"] = _now()
@@ -1644,6 +1757,7 @@ def resolve_execution(
                 target["merge"] = merge
                 target["status"] = "merge_conflict"
                 target["completed_at"] = merge["completed_at"]
+                _notify_merge_conflict_mission(folder, target)
             else:
                 merge.update(merge_result.to_dict())
                 merge["completed_at"] = _now()
@@ -1748,6 +1862,8 @@ def abort_merge_execution(
     *,
     execution_id: str,
 ) -> dict[str, Any]:
+    from agent_lab.mission_loop import on_merge_abort
+
     _run, target = _merge_conflict_execution(folder, execution_id)
     completed = _now()
     ew = _exec_worktree_from_execution(target)
@@ -1764,6 +1880,7 @@ def abort_merge_execution(
     target["completed_at"] = completed
     _update_execution_row(folder, execution_id=execution_id, target=target)
     _mark_rejected_tasks(folder, execution_id=execution_id, target=target)
+    on_merge_abort(folder, execution_id=execution_id)
     return {"execution": target}
 
 
@@ -1772,7 +1889,10 @@ def confirm_merge_execution(
     *,
     execution_id: str,
 ) -> dict[str, Any]:
+    from agent_lab.mission_loop import on_merge_confirm
+
     _run, target = _merge_conflict_execution(folder, execution_id)
+    on_merge_confirm(folder, execution_id=execution_id)
     completed = _now()
     ew = _exec_worktree_from_execution(target)
     result = confirm_exec_merge(ew, session_folder=folder, exec_id=execution_id)
@@ -1858,6 +1978,7 @@ def reverify_merged_execution(
             worktree_path=ew.worktree_path,
             permissions=permissions,
             attempt=attempt,
+            session_folder=folder,
         )
         repair_commit = _commit_repair_worktree(
             ew.worktree_path,
@@ -1915,6 +2036,7 @@ def reverify_merged_execution(
             repair["completed_at"] = merge["completed_at"]
             _append_repair_history(target, repair)
             _update_execution_row(folder, execution_id=execution_id, target=target)
+            _notify_merge_conflict_mission(folder, target)
             return {
                 "execution": target,
                 "verify_after_merge": target.get("verify_after_merge"),

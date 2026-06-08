@@ -321,6 +321,11 @@ def invoke(
     for root in resolve_claude_roots(perms):
         cmd.extend(["--add-dir", str(root)])
 
+    if perms.get("_execute_plugins"):
+        from agent_lab.session_plugin_runtime import claude_execute_extra_args
+
+        cmd.extend(claude_execute_extra_args(perms))
+
     if scribe:
         model = os.getenv("CLAUDE_SCRIBE_MODEL") or os.getenv(
             "CLAUDE_MODEL", DEFAULT_CLAUDE_MODEL
@@ -343,17 +348,43 @@ def invoke(
     Path(system_path).write_text(system_text + "\n", encoding="utf-8")
 
     def _run_once(api_key: str | None) -> str:
-        result = subprocess.run(
+        import time
+
+        from agent_lab.run_control import (
+            RoomRunCancelled,
+            is_cancelled,
+            register_child_process,
+            unregister_child_process,
+        )
+
+        proc = subprocess.Popen(
             cmd,
             stdin=subprocess.DEVNULL,
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
-            timeout=_timeout_sec(room_turn=room_turn),
             env=_claude_env(api_key=api_key),
             cwd=cwd,
         )
-        if result.returncode != 0:
-            detail = _format_exec_error(result.stderr or "", result.stdout or "")
+        register_child_process(proc)
+        deadline = _timeout_sec(room_turn=room_turn)
+        started = time.monotonic()
+        try:
+            while proc.poll() is None:
+                if is_cancelled():
+                    proc.kill()
+                    proc.wait(timeout=5)
+                    raise RoomRunCancelled("run cancelled by user")
+                if deadline is not None and time.monotonic() - started >= deadline:
+                    proc.kill()
+                    proc.wait(timeout=5)
+                    raise subprocess.TimeoutExpired(cmd, deadline)
+                time.sleep(0.2)
+            stdout, stderr = proc.communicate()
+        finally:
+            unregister_child_process(proc)
+        if proc.returncode != 0:
+            detail = _format_exec_error(stderr or "", stdout or "")
             if "credit balance is too low" in detail.lower():
                 detail = (
                     f"{detail} "
@@ -361,10 +392,10 @@ def invoke(
                     "if this persists run: claude logout && claude login)"
                 )
             raise RuntimeError(
-                f"claude -p failed (exit {result.returncode})"
+                f"claude -p failed (exit {proc.returncode})"
                 + (f": {detail}" if detail else "")
             )
-        raw = (result.stdout or "").strip()
+        raw = (stdout or "").strip()
         if not raw:
             raise RuntimeError("claude -p returned empty output")
         if request_structured_envelope:

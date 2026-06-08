@@ -1,6 +1,6 @@
 # Agent Lab documentation index
 
-> **Updated:** 2026-06-07 · **Tests:** `574 passed` (`pytest -m "not live"`) · **Hook/communicate:** `make verify-hooks`
+> **Updated:** 2026-06-07 · **Tests:** `639 passed` (`pytest -m "not live"`) · **Hook/communicate:** `make verify-hooks`
 
 Use this page to pick the **one canonical doc** for your question. Older numbered guides (`00`–`05`) and early RFCs are kept for history but **must not** be used as shipped-status sources.
 
@@ -29,7 +29,7 @@ Use this page to pick the **one canonical doc** for your question. Older numbere
 | [EXECUTE-WORKTREE-REFORM.md](./EXECUTE-WORKTREE-REFORM.md) | Worktree execute/merge **shipped** |
 | [HUMAN-INBOX.md](./HUMAN-INBOX.md) | Execute MCP + API **shipped**; full Inbox UI / discuss harvest **partial** |
 | [GOAL-LOOP.md](./GOAL-LOOP.md) | Mock-first goal Oracle **shipped**; live Oracle opt-in |
-| [MISSION-LOOP-C-OMO.md](./MISSION-LOOP-C-OMO.md) | **Backlog** — C안 Discuss↔Execute Mission FSM + omo 레퍼런스 |
+| [MISSION-LOOP-C-OMO.md](./MISSION-LOOP-C-OMO.md) | **Shipped** — Layer 6 FSM + Track B/C/D ([TRACEABILITY](./EXTERNAL-REFS-TRACEABILITY.md) §ML-*) |
 | [ROOM-REINFORCEMENT.md](./ROOM-REINFORCEMENT.md) | Benchmark / delegate / score **shipped** |
 | [PLUGIN-DISCOVERY.md](./PLUGIN-DISCOVERY.md) | Slash commands + plugins **shipped** |
 | [NOTIFICATION-TAXONOMY.md](./NOTIFICATION-TAXONOMY.md) | Toast / Activity kinds |

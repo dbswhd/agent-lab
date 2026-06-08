@@ -44,6 +44,15 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | MD-PROJECT | Prompt | PROJECT.md workspace injection | ✅ | `session_guidance.py:_read_project_md()` | cap 1500 chars; LazyCodex §1.7 **per-dir AGENTS hierarchy not implemented** (see MD-P3) |
 | MD-PLATFORM | Prompt | PLATFORM.md protocol injection | ✅ | `.agent-lab/PLATFORM.md`, `platform_md.py`, `tests/test_platform_md.py` | inject cap 500 chars |
 | LC-clarifier | LazyCodex | session_clarifier Socratic gate | ✅ | `session_clarifier.py`, `room.py`, `tests/test_session_clarifier.py` | `AGENT_LAB_CLARIFIER=1`; discuss + plan mode |
+| ML-C-omo | omo | Mission Loop Layer 6 FSM (C안) | ✅ | `mission_loop.py`, `routers/mission_loop.py`, `tests/test_mission_loop.py`, [MISSION-LOOP-C-OMO.md](MISSION-LOOP-C-OMO.md) | Discuss ↔ Execute ↔ Verify; Momus-lite gate |
+| ML-P0 | omo | MISSION_DEFINE / verified_loop bridge | ✅ | `verified_loop.py` hooks in `mission_loop.py`, `test_verified_approve_enables_mission` | |
+| ML-P2 | omo | Plan gate Momus-lite | ✅ | `evaluate_plan_gate()`, `run_plan_gate()`, `mcp_warnings` | |
+| ML-P3 | omo | Execute queue + autorun dry-run | ✅ | `maybe_advance_mission()`, merge/dry-run hooks, `test_maybe_advance_dry_run_mock` | |
+| ML-P4 | omo | Verify → Discuss recovery | ✅ | `run_mission_discuss_recovery()`, repair cap tests | |
+| ML-P5 | omo | Wisdom notepad | ✅ | `ensure_mission_notepads()`, `append_wisdom_note()`, `build_mission_wisdom_block` | `.agent-lab/missions/<id>/` |
+| ML-TB | PLUGIN | Session MCP allowlist pass-through | ✅ | `session_plugin_runtime.py`, `mcp_spec_export.py`, `tests/test_session_plugin_runtime.py` | Claude overlay + Codex transport |
+| ML-TC | UI | Mission Overview + context layers | ✅ | `MissionOverviewSection.tsx`, `context_layers.py`, `repo_tree_context.py` | Work + Inspector |
+| ML-TD | UX | Stop / pause / permission | ✅ | `run_control.py`, `pause_mission_loop`, `cursor_agent._wait_cursor_run`, `PluginPanel` cursor hint | `children_terminated` on cancel API |
 
 ---
 
@@ -51,7 +60,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 
 | ID | Source | Item | Status | Evidence | Gap | PLAN ref |
 |----|--------|------|--------|----------|-----|----------|
-| _(none)_ | — | — | — | — | — | — |
+| ML-P1 | omo | Mission Conductor UI polish | 🔶 | `WorkStatusBar`, `WorkPanel` | Full Work stepper animation / USER-GUIDE §27 wording lag | [MISSION-LOOP-C-OMO.md](MISSION-LOOP-C-OMO.md) §9 |
 
 ---
 
@@ -89,6 +98,7 @@ They are tracked here but do not belong in the runtime feature roadmap.
 | Priority | ID | Suggested next action |
 |----------|-----|-----------------------|
 | P3 | HOOK-COMM-migrate | `AGENT_LAB_LEGACY_ENDORSE=0` + regression fixtures; live envelope KPI re-baseline |
+| P4 | ML-P1 | USER-GUIDE §27 Mission stepper copy sync with `resolveWorkPhaseFromMission` |
 
 ---
 

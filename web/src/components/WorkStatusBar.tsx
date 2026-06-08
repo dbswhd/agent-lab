@@ -21,6 +21,29 @@ type Props = {
   hasPlan: boolean;
 };
 
+/** Map mission_loop.phase (Layer 6) to Work tab stepper when mission is enabled. */
+export function resolveWorkPhaseFromMission(
+  missionPhase?: string | null,
+): WorkPhase | null {
+  if (!missionPhase?.trim()) return null;
+  const phase = missionPhase.trim().toUpperCase();
+  if (phase === "MISSION_DONE") return "done";
+  if (phase === "MERGE_REVIEW" || phase === "PLAN_REJECT") return "review_needed";
+  if (phase === "VERIFY") return "merge_verify";
+  if (phase === "EXECUTE_QUEUE" || phase === "DRY_RUN" || phase === "REPAIR") {
+    return "execute_pending";
+  }
+  if (
+    phase === "DISCUSS" ||
+    phase === "PLAN_GATE" ||
+    phase === "MISSION_DEFINE" ||
+    phase === "MISSION_PAUSED"
+  ) {
+    return "plan_draft";
+  }
+  return null;
+}
+
 export function resolveWorkPhase(input: {
   hasPlan: boolean;
   hasPendingExecution: boolean;

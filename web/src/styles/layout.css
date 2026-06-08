@@ -716,6 +716,92 @@
 .ctx-layers__meta { color: var(--label-tertiary); font-size: var(--text-micro); }
 .ctx-layers__state { font-size: var(--text-micro); font-weight: var(--weight-semibold); color: var(--label-tertiary); }
 .ctx-layers__state.is-on { color: var(--ok); }
+.ctx-layers__toggle {
+  font-size: var(--text-micro);
+  font-weight: var(--weight-semibold);
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-hair);
+  background: var(--surface-card);
+  color: var(--label-tertiary);
+  cursor: pointer;
+}
+.ctx-layers__toggle.is-on {
+  color: var(--ok);
+  border-color: color-mix(in srgb, var(--ok) 35%, transparent);
+  background: var(--ok-soft);
+}
+.ctx-layers__toggle:disabled { opacity: 0.5; cursor: default; }
+
+.ctx-mission__phase {
+  margin-left: var(--space-6);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-medium);
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-card);
+  color: var(--label-secondary);
+}
+.ctx-mission__phase--active {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+}
+.ctx-mission__phase--warn {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.ctx-mission__phase--done {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+.ctx-mission__facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px var(--space-10);
+  margin: var(--space-8) 0 0;
+  font-size: var(--text-caption);
+}
+.ctx-mission__facts dt {
+  margin: 0;
+  color: var(--label-tertiary);
+}
+.ctx-mission__facts dd {
+  margin: 0;
+  color: var(--label-primary);
+  line-height: var(--leading-snug);
+}
+.ctx-mission__danger { color: var(--danger); }
+.ctx-mission__blocks {
+  list-style: none;
+  margin: var(--space-8) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+.ctx-mission__block-btn {
+  display: flex;
+  gap: var(--space-8);
+  align-items: flex-start;
+  width: 100%;
+  text-align: left;
+  padding: var(--space-8);
+  border-radius: var(--radius-md);
+  border: 1px solid color-mix(in srgb, var(--danger) 25%, transparent);
+  background: var(--danger-soft);
+  cursor: pointer;
+}
+.ctx-mission__block-tag {
+  flex: 0 0 auto;
+  font-size: var(--text-micro);
+  font-weight: var(--weight-bold);
+  color: var(--danger);
+}
+.ctx-mission__block-body {
+  font-size: var(--text-caption);
+  color: var(--label-primary);
+  line-height: var(--leading-snug);
+}
 
 .ctx-plan {
   display: flex;

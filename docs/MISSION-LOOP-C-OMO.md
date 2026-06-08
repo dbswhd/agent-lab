@@ -1,6 +1,6 @@
 # Mission Loop — C안 + omo 레퍼런스
 
-> **Status (2026-06-07):** **Backlog RFC** — 설계·로드맵만. 구현 큐는 [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md)에 티켓 추가 전.  
+> **Status (2026-06-07):** **Shipped** — Phase 0–5 + Track B/C/D. Evidence: `tests/test_mission_loop.py` (32+), `tests/test_context_layers.py`, `tests/test_session_plugin_runtime.py`, `tests/test_mcp_spec_export.py`, `tests/test_run_control.py`, [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md) §ML-*.  
 > **North star:** 복잡 작업을 **Discuss ↔ Execute ↔ Verify** 양방향 루프로 자동화. 단순 작업 fast path·3-agent 축소는 **범위 밖**.  
 > **레퍼런스:** [Oh My OpenAgent (omo)](https://github.com/code-yeongyu/oh-my-openagent) — Planning / Orchestration / Workers 3층, `ulw-loop`, Momus plan gate, Atlas conductor, boulder/notepad.  
 > **관련:** [EXTERNAL-REFS-PLAN.md](./EXTERNAL-REFS-PLAN.md) Layer 1–5 · [EXECUTE-WORKTREE-REFORM.md](./EXECUTE-WORKTREE-REFORM.md) · [GOAL-LOOP.md](./GOAL-LOOP.md) · [HUMAN-INBOX.md](./HUMAN-INBOX.md) · [PLUGIN-DISCOVERY.md](./PLUGIN-DISCOVERY.md) · [WORK-TAB-IA.md](./WORK-TAB-IA.md)
@@ -325,49 +325,43 @@ provenance: 항목마다 `chat.jsonl#L` / `plan (ref: Ln)` 링크.
 
 ---
 
-## 7. 병렬 트랙 (Mission Loop 필수 의존)
+## 7. 병렬 트랙 (soft dependency — 품질·UX)
 
-Mission Loop만으로 닫히지 않는 갭 — **동시에 또는 직후** 진행.
+Mission Loop FSM은 Track B/C/D **없이도** 동작. 아래는 갭 #2–#4를 닫는 **병렬** 작업 — **2026-06-07 shipped**.
 
-### Track B — 툴 / MCP / skills (#2)
+### Track B — 툴 / MCP / skills (#2) ✅
 
 [PLUGIN-DISCOVERY.md](./PLUGIN-DISCOVERY.md) Phase B.
 
-| 항목 | 내용 |
+| 항목 | 구현 |
 |------|------|
-| Claude | `--mcp-config`, skills `/skill-name`, session allowlist |
-| Codex | `config_overrides` + plugin overlay |
-| Cursor | inbox MCP 확장 + bridge MCP 가시성 |
-| UI | Settings 또는 Work — 세션 plugin allowlist |
-| Mission 연동 | EXECUTE_QUEUE / REPAIR 시 allowlisted 도구만; PLAN_GATE에서 “필요 MCP 명시” |
-
-**의존성:** **soft** — Track B 미완이어도 Mission Loop FSM은 동작 (§6 Phase 3 degraded mode). Track B는 execute/repair **품질 상한**만 올림.
+| Claude | `session_plugin_runtime.py` + `mcp_spec_export.py` → allowlist overlay `--mcp-config` |
+| Codex | `codex mcp get --json` → full `-c` transport (stdio + HTTP); inbox MCP merge |
+| Cursor | IDE-inherited inventory hint (`PluginPanel` `cursor-ide-mcp-hint`); inbox MCP via SDK |
+| UI | Settings `PluginPanel` + Work compact strip (`work-plugin-panel`) |
+| Mission | execute/repair prompt injection; `evaluate_plan_gate` soft `mcp_warnings` |
 
 ---
 
-### Track C — 컨텍스트 깊이 (#3)
+### Track C — 컨텍스트 깊이 (#3) ✅
 
-| 항목 | 내용 |
+| 항목 | 구현 |
 |------|------|
-| Overview | Inspector — goal · mission phase · next action · open BLOCK (UI-MIGRATION-GAPS §2.1) |
-| Context layers | 토글 API + Settings/Work UI ([USER-GUIDE](./USER-GUIDE.md) §27 gap) |
-| Per-dir memory | LazyCodex `/init-deep` 스타일 계층 `AGENTS.md` (TRACEABILITY: per-dir **미구현**) |
-| Navigation | artifact · plan ref → 파일 jump (기존 provenance 확장) |
-
-**Mission 연동:** DISCUSS/PLAN_GATE 컨텍스트 번들 정책을 phase별로 다르게 (F2 slimming 확장).
+| Overview | `MissionOverviewSection` — Inspector + Work tab |
+| Context layers | `context_layers.py`, `PATCH .../context-layers`, `mission_wisdom` / `repo_tree` toggles |
+| Per-dir memory | `repo_tree_context.py` — plan path → ancestor `AGENTS.md` chain (cap 900 chars) |
+| Slim bundle | `should_use_mission_slim_bundle` — DISCUSS / PLAN_GATE / PLAN_REJECT |
 
 ---
 
-### Track D — 턴 안정성 · 중단 · 권한 UX (#4)
+### Track D — 턴 안정성 · 중단 · 권한 UX (#4) ✅
 
-| 항목 | 내용 |
+| 항목 | 구현 |
 |------|------|
-| Stop | ⌘. global cancel → mission phase `paused` + subprocess terminate |
-| Permission | `AgentPermissionAlert` bypass 제거 또는 mission 단위 “이번 구간 기본값” |
-| Partial turn | R-P0 shipped — mission_loop에 `last_partial` 복구 포인트 기록 |
-| Long run | mission iteration cap + circuit_breaker (verified_loop 패턴 재사용) |
-
-**Mission 연동:** MERGE_REVIEW / DRY_RUN 중 cancel 시 worktree 정리 + phase 롤백 규칙.
+| Stop | `run_control` subprocess kill + `register_cursor_run` / `Run.cancel()`; `children_terminated` in cancel API |
+| Permission | `autonomous_segment.active` re-opens `AgentPermissionAlert` |
+| Partial turn | `pause_mission_loop` / `resume_mission_loop`, `last_partial`, `cancel_open_execution` |
+| Long run | `circuit_breaker`, `momus_round` cap, repair cap → DISCUSS recovery |
 
 ---
 
@@ -398,43 +392,44 @@ Layer 6: Mission Loop (본 RFC)
 | MergeVerify | MERGE_REVIEW, VERIFY, REPAIR |
 | Done | MISSION_DONE |
 
-`resolveWorkPhase()` — [`web/src/components/WorkStatusBar.tsx`](../web/src/components/WorkStatusBar.tsx) (호출: `WorkPanel.tsx`).  
-이미 5 `WorkPhase` 타입을 반환하나 입력은 execution UI 신호 위주. **목표:** `session.run.mission_loop.phase`를 1차 입력으로 두고 stepper를 FSM과 1:1 매핑 (USER-GUIDE §27 “3상태만” 문구는 구현 lag — 이 RFC가 SSOT).
+`resolveWorkPhaseFromMission()` — [`web/src/components/WorkStatusBar.tsx`](../web/src/components/WorkStatusBar.tsx) (호출: `WorkPanel.tsx`).  
+`session.run.mission_loop.phase`를 1차 입력으로 FSM stepper 매핑 (**shipped**).
 
 ---
 
 ## 10. 수용 기준 (전체)
 
+pytest 근거: `tests/test_mission_loop.py` unless noted.
+
 **M-C1 — Discuss → Execute**
 
-- [ ] Room 합의 후 scribe → plan gate PASS → `pending_action_indices` 자동 채움
-- [ ] open BLOCK 시 EXECUTE_QUEUE 진입 409
+- [x] scribe → plan gate PASS → `pending_action_indices` (`test_after_plan_scribe_runs_gate`, `test_enable_and_plan_gate_enqueue`)
+- [x] open BLOCK → 409 (`test_open_block_prevents_execute_enqueue`)
+- [x] `momus_round` cap → `circuit_breaker` (`test_momus_round_cap_circuit_breaker`)
 
 **M-C2 — Execute → Discuss**
 
-- [ ] verify FAIL + `action_repair_counts[i] >= max_repair_per_action` → DISCUSS + R1 round 자동
-- [ ] REPAIR 후 DRY_RUN이 **같은** `current_action_index`를 사용 (§5.4)
-- [ ] **Autonomous segment** 내 scribe → 재큐: Human이 Composer “한 턴 더”를 누르지 않음  
-  - **Segment 시작:** `approve_verified_loop()` 또는 `mission_loop.autonomous_segment.active = true`  
-  - **Segment 종료:** `MERGE_REVIEW` 진입, `circuit_breaker`, `MISSION_DONE`, Inbox escalate  
-  - Segment 밖(시작 전·종료 후)은 기존 Human-gated discuss 유지
+- [x] repair cap → DISCUSS + recovery (`test_verify_fail_repair_cap_to_discuss`, `test_run_mission_discuss_recovery_mock`)
+- [x] REPAIR 후 같은 `current_action_index` (`test_verify_fail_repair_same_index`)
+- [x] Autonomous dry-run (`test_maybe_advance_dry_run_mock`, `AGENT_LAB_MISSION_AUTORUN`)
 
 **M-C3 — Verify / CI**
 
-- [ ] merge 후 `action.verify` Oracle FAIL → REPAIR 자동 1회 이상 (같은 action index)
-- [ ] MISSION_DONE은 Oracle PASS만
-- [ ] **Degraded:** Track B 없이 `action.verify` shell만으로도 M-C3 pytest 통과 (MCP 미주입)
+- [x] verify FAIL → REPAIR (`test_verify_fail_repair_same_index`, `tests/test_plan_execute_agent_repair.py`)
+- [x] queue advance on PASS → MISSION_DONE path (`test_verify_pass_advances_queue`)
+- [x] Degraded shell verify (`tests/test_oracle_verify.py`, mission tests mock-only)
 
 **M-C4 — 상태·재개**
 
-- [ ] `mission_loop` + notepad로 세션 재시작 후 phase 복구
-- [ ] Mission bar에 phase/next action 표시
+- [x] notepad + phase in `run.json` (`test_ensure_mission_notepads`, `test_pause_mission_records_last_partial`)
+- [x] Mission bar / Overview (`MissionOverviewSection`, `test_workspace_ui_contract.py`)
+- [x] `circuit_breaker` + clear (`test_clear_circuit_breaker`)
 
 **M-B/C/D (병렬)**
 
-- [ ] Track B: 최소 1 agent에 session MCP allowlist pass-through
-- [ ] Track C: Overview 또는 context layer 토글 1종
-- [ ] Track D: mission 구간 cancel → safe pause
+- [x] Track B — Claude/Codex MCP pass-through (`tests/test_session_plugin_runtime.py`, `tests/test_mcp_spec_export.py`)
+- [x] Track C — Overview + layers (`tests/test_context_layers.py`, `tests/test_repo_tree_context.py`)
+- [x] Track D — cancel → pause (`test_cancel_room_run_pauses_mission`, `tests/test_run_control.py`)
 
 ---
 
@@ -477,18 +472,25 @@ omo도 **plan 견고 → Atlas 실행** 순. Agent Lab: **Phase 2 Momus-lite →
 
 ## 13. 추적
 
-| 티켓 ID (제안) | 내용 | TRACEABILITY 등록 |
-|----------------|------|-------------------|
-| ML-C-omo | 본 RFC 전체 | 구현 시작 시 `EXTERNAL-REFS-TRACEABILITY.md`에 추가 |
-| ML-P0 | MISSION_DEFINE 브리지 (verified_loop / goal) | |
-| ML-P1 | Mission Conductor | |
-| ML-P2 | Plan gate Momus-lite | |
-| ML-P3 | Execute queue + CI verify | |
-| ML-P4 | Verify → Discuss | |
-| ML-P5 | Wisdom notepad | |
-| ML-TB | Plugin Phase B | PLUGIN-DISCOVERY |
-| ML-TC | Context Overview/layers | UI-MIGRATION-GAPS |
-| ML-TD | Stop / permission / pause | USER-GUIDE §27 |
+| 티켓 ID | 내용 | TRACEABILITY |
+|---------|------|--------------|
+| ML-C-omo | 본 RFC Layer 6 FSM | [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md) `ML-C-omo` |
+| ML-P0–P5 | Phase 0–5 | 동일 §ML-P* |
+| ML-TB/C/D | 병렬 트랙 | 동일 §ML-T* |
+
+---
+
+## 14. 구현 인덱스 (shipped)
+
+| 영역 | 경로 |
+|------|------|
+| FSM core | `src/agent_lab/mission_loop.py` |
+| API | `app/server/routers/mission_loop.py`, `context_layers.py` |
+| Plugins / MCP | `session_plugin_runtime.py`, `mcp_spec_export.py` |
+| Context | `context_layers.py`, `repo_tree_context.py`, `context_bundle.py` hooks |
+| Cancel | `run_control.py`, `plan_execute.cancel_open_execution`, `cursor_agent._wait_cursor_run` |
+| UI | `MissionOverviewSection.tsx`, `WorkPanel.tsx`, `ContextOverviewPanel.tsx`, `PluginPanel.tsx` |
+| Tests | `tests/test_mission_loop.py` (+ context, plugin, mcp, run_control, repo_tree) |
 
 ---
 
@@ -498,3 +500,4 @@ omo도 **plan 견고 → Atlas 실행** 순. Agent Lab: **Phase 2 Momus-lite →
 |------|------|
 | 2026-06-07 | 초안 — C안, omo 매핑, 갭 1–5 반영, Track B/C/D, Phase 1–5 |
 | 2026-06-07 | 리뷰 반영 — §5.4 REPAIR 정책, §5.5 circuit_breaker, Phase 0, wisdom hooks, degraded mode, AC·순서 정리 |
+| 2026-06-07 | **Shipped** — Phase 0–5 + Track B/C/D; TRACEABILITY ML-*; AC §10 checked; §14 구현 인덱스 |

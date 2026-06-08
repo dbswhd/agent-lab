@@ -1,4 +1,10 @@
-import type { AgentHealthRow, SessionDetail } from "../api/client";
+import { useCallback, useEffect, useState } from "react";
+import {
+  fetchContextLayers,
+  patchContextLayers,
+  type AgentHealthRow,
+  type SessionDetail,
+} from "../api/client";
 import { Avatar } from "./Avatar";
 import { useLocale } from "../i18n/useLocale";
 import type { AgentRole } from "../utils/transcript";
@@ -11,12 +17,16 @@ import {
 import { ContextLayerBars } from "./ContextLayerBars";
 import type { PlanMetaView } from "../utils/planMeta";
 import type { GoalLoopView } from "../utils/goalLoopView";
+import { buildMissionOverviewView } from "../utils/missionOverviewView";
+import { MissionOverviewSection } from "./MissionOverviewSection";
 
 type Props = {
   session: SessionDetail | null;
+  sessionId: string | null;
   healthAgents: AgentHealthRow[];
   goalView: GoalLoopView;
   planMeta: PlanMetaView;
+  onFocusObjection?: (id: string, actionIndex?: number) => void;
 };
 
 function OracleStatusBadge({ loop }: { loop: GoalLoopView["loop"] }) {
@@ -33,12 +43,72 @@ function OracleStatusBadge({ loop }: { loop: GoalLoopView["loop"] }) {
 /** Context sidebar — Overview tab (prototype `ContextSidebar`). */
 export function ContextOverviewPanel({
   session,
+  sessionId,
   healthAgents,
   goalView,
   planMeta,
+  onFocusObjection,
 }: Props) {
   const { locale } = useLocale();
   const ko = locale === "ko";
+  const missionView = buildMissionOverviewView({
+    run: session?.run,
+    planMd: session?.plan_md,
+  });
+  const [layerToggles, setLayerToggles] = useState({
+    mission_wisdom: true,
+    repo_tree: true,
+  });
+  const [layerBusy, setLayerBusy] = useState(false);
+
+  useEffect(() => {
+    const runLayers = (
+      session?.run as { context_layers?: Record<string, boolean> } | undefined
+    )?.context_layers;
+    if (runLayers) {
+      setLayerToggles((prev) => ({
+        mission_wisdom:
+          runLayers.mission_wisdom ?? prev.mission_wisdom,
+        repo_tree: runLayers.repo_tree ?? prev.repo_tree,
+      }));
+      return;
+    }
+    if (!sessionId) return;
+    void fetchContextLayers(sessionId)
+      .then((res) => {
+        if (res.context_layers) {
+          setLayerToggles({
+            mission_wisdom: res.context_layers.mission_wisdom ?? true,
+            repo_tree: res.context_layers.repo_tree ?? true,
+          });
+        }
+      })
+      .catch(() => {});
+  }, [session?.run, sessionId]);
+
+  const toggleLayer = useCallback(
+    async (key: "mission_wisdom" | "repo_tree") => {
+      if (!sessionId || layerBusy) return;
+      const next = !layerToggles[key];
+      setLayerToggles((prev) => ({ ...prev, [key]: next }));
+      setLayerBusy(true);
+      try {
+        const res = await patchContextLayers(sessionId, { [key]: next });
+        if (res.context_layers) {
+          setLayerToggles({
+            mission_wisdom: res.context_layers.mission_wisdom ?? true,
+            repo_tree: res.context_layers.repo_tree ?? true,
+          });
+        }
+      } catch {
+        setLayerToggles((prev) => ({ ...prev, [key]: !next }));
+      } finally {
+        setLayerBusy(false);
+      }
+    },
+    [layerBusy, layerToggles, sessionId],
+  );
+
   const lastTurnCtx = parseLastTurnContext(session?.run);
   const topAgent = lastTurnCtx?.agents?.[0] ?? null;
   const hasGoal = Boolean(goalView.goal.text);
@@ -47,6 +117,20 @@ export function ContextOverviewPanel({
     .join(" · ");
 
   const LAYERS = [
+    {
+      id: "mission_wisdom",
+      label: ko ? "미션 메모" : "Mission wisdom",
+      meta: ko ? "notepad" : "notepad",
+      on: layerToggles.mission_wisdom,
+      toggle: true as const,
+    },
+    {
+      id: "repo_tree",
+      label: ko ? "저장소 트리" : "Repo tree",
+      meta: ko ? "workspace" : "workspace",
+      on: layerToggles.repo_tree,
+      toggle: true as const,
+    },
     { id: "plan", label: "plan.md", meta: ko ? "plan" : "plan", on: Boolean(session?.plan_md?.trim()) },
     {
       id: "chat",
@@ -62,18 +146,16 @@ export function ContextOverviewPanel({
       meta: String(session?.attachments?.length ?? 0),
       on: (session?.attachments?.length ?? 0) > 0,
     },
-    {
-      id: "repo",
-      label: ko ? "저장소 트리" : "Repo tree",
-      meta: ko ? "요약" : "summary",
-      on: Boolean(
-        (session?.run?.workspace_binding as { path?: string } | undefined)?.path,
-      ),
-    },
   ];
 
   return (
     <div className="ctx-overview">
+      <MissionOverviewSection
+        view={missionView}
+        ko={ko}
+        onFocusBlock={onFocusObjection}
+      />
+
       <section className="ctx-section">
         <div className="ctx-section__label">{ko ? "세션 목표" : "Session goal"}</div>
         <div className="ctx-overview__goal-row">
@@ -112,12 +194,26 @@ export function ContextOverviewPanel({
             <li key={layer.id} className="ctx-layers__row">
               <span className="ctx-layers__name">{layer.label}</span>
               <span className="ctx-layers__meta">{layer.meta}</span>
-              <span
-                className={`ctx-layers__state${layer.on ? " is-on" : ""}`}
-                aria-label={layer.on ? "included" : "empty"}
-              >
-                {layer.on ? "ON" : "—"}
-              </span>
+              {"toggle" in layer && layer.toggle && sessionId ? (
+                <button
+                  type="button"
+                  className={`ctx-layers__toggle${layer.on ? " is-on" : ""}`}
+                  disabled={layerBusy}
+                  aria-pressed={layer.on}
+                  onClick={() =>
+                    void toggleLayer(layer.id as "mission_wisdom" | "repo_tree")
+                  }
+                >
+                  {layer.on ? "ON" : "OFF"}
+                </button>
+              ) : (
+                <span
+                  className={`ctx-layers__state${layer.on ? " is-on" : ""}`}
+                  aria-label={layer.on ? "included" : "empty"}
+                >
+                  {layer.on ? "ON" : "—"}
+                </span>
+              )}
             </li>
           ))}
         </ul>

@@ -2,10 +2,17 @@
 
 from __future__ import annotations
 
+import subprocess
 import threading
 import time
+import weakref
+from typing import Any
 
 _cancel = threading.Event()
+_children_lock = threading.Lock()
+_active_children: list[weakref.ReferenceType[Any]] = []
+_cursor_runs_lock = threading.Lock()
+_active_cursor_runs: list[weakref.ReferenceType[Any]] = []
 _run_lock = threading.Lock()
 _run_active = 0
 _run_started_at: float | None = None
@@ -20,8 +27,83 @@ def clear_cancel() -> None:
     _cancel.clear()
 
 
-def request_cancel() -> None:
+def register_child_process(proc: subprocess.Popen[Any]) -> None:
+    with _children_lock:
+        _active_children.append(weakref.ref(proc))
+
+
+def unregister_child_process(proc: subprocess.Popen[Any]) -> None:
+    with _children_lock:
+        _active_children[:] = [
+            ref
+            for ref in _active_children
+            if ref() is not None and ref() is not proc
+        ]
+
+
+def register_cursor_run(run: Any) -> None:
+    """Register an in-flight Cursor SDK Run for cancel_run on stop."""
+    with _cursor_runs_lock:
+        _active_cursor_runs.append(weakref.ref(run))
+
+
+def unregister_cursor_run(run: Any) -> None:
+    with _cursor_runs_lock:
+        _active_cursor_runs[:] = [
+            ref
+            for ref in _active_cursor_runs
+            if ref() is not None and ref() is not run
+        ]
+
+
+def _terminate_subprocess_children() -> int:
+    killed = 0
+    with _children_lock:
+        refs = list(_active_children)
+    for ref in refs:
+        proc = ref()
+        if proc is None or proc.poll() is not None:
+            continue
+        try:
+            proc.kill()
+            proc.wait(timeout=5)
+            killed += 1
+        except (OSError, subprocess.TimeoutExpired):
+            try:
+                proc.kill()
+            except OSError:
+                pass
+    with _children_lock:
+        _active_children.clear()
+    return killed
+
+
+def _cancel_cursor_runs() -> int:
+    cancelled = 0
+    with _cursor_runs_lock:
+        refs = list(_active_cursor_runs)
+    for ref in refs:
+        run = ref()
+        if run is None:
+            continue
+        try:
+            run.cancel()
+            cancelled += 1
+        except Exception:
+            pass
+    with _cursor_runs_lock:
+        _active_cursor_runs.clear()
+    return cancelled
+
+
+def terminate_active_children() -> int:
+    """Kill CLI subprocesses + cancel Cursor SDK runs (Track D — ⌘. stop)."""
+    return _cancel_cursor_runs() + _terminate_subprocess_children()
+
+
+def request_cancel() -> int:
     _cancel.set()
+    return terminate_active_children()
 
 
 def is_cancelled() -> bool:

@@ -8,6 +8,7 @@ from typing import Any
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
 
 from agent_lab.context_limits import all_limits_for_api, efficiency_mode_default
 from agent_lab.invoke import ensure_ready
@@ -429,11 +430,29 @@ def room_run_lock() -> dict[str, Any]:
     return {"ok": True, **run_lock_status()}
 
 
+class RoomRunCancelRequest(BaseModel):
+    session_id: str | None = Field(default=None, max_length=120)
+
+
 @router.post("/room/runs/cancel")
-def cancel_room_run() -> dict[str, Any]:
-    request_cancel()
+def cancel_room_run(body: RoomRunCancelRequest | None = None) -> dict[str, Any]:
+    children_terminated = request_cancel()
     released = maybe_release_orphaned_run_lock()
-    return {"ok": True, "released_stale_lock": released, **run_lock_status()}
+    mission_pause: dict[str, Any] | None = None
+    session_id = (body.session_id if body else None) or None
+    if session_id:
+        from app.server.deps import session_folder_or_404
+        from agent_lab.mission_loop import on_global_run_cancel
+
+        folder = session_folder_or_404(session_id)
+        mission_pause = on_global_run_cancel(folder)
+    return {
+        "ok": True,
+        "released_stale_lock": released,
+        "children_terminated": children_terminated,
+        "mission_pause": mission_pause,
+        **run_lock_status(),
+    }
 
 
 @router.post("/room/runs/release-lock")

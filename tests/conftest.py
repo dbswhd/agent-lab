@@ -19,3 +19,15 @@ if str(_TESTS) not in sys.path:
 def _mock_goal_oracle_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
     """Keep goal Oracle mock-first even when .env sets AGENT_LAB_GOAL_ORACLE_LIVE=1."""
     monkeypatch.delenv("AGENT_LAB_GOAL_ORACLE_LIVE", raising=False)
+
+
+@pytest.fixture(autouse=True)
+def _reset_run_control_cancel() -> None:
+    """Prevent cancel flag / child registry leaking across tests."""
+    from agent_lab.run_control import clear_cancel, terminate_active_children
+
+    clear_cancel()
+    terminate_active_children()
+    yield
+    clear_cancel()
+    terminate_active_children()

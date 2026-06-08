@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AgentOption, PlanActionItem, SessionDetail } from "../api/client";
 import {
   cancelRoomRun,
+  pauseMissionLoop,
   checkSessionGoal,
   fetchCommands,
   fetchSessionInbox,
@@ -1019,9 +1020,15 @@ export function RoomChat({
   }, [highlightChatLine, workspaceTab, messages, scrollElRef]);
 
   const handleStop = useCallback(() => {
-    void cancelRoomRun().catch(() => {});
-    for (const id of getRunningSessionIds()) {
+    const runningIds = getRunningSessionIds();
+    const primaryId = sessionId ?? runningIds[0] ?? null;
+    void cancelRoomRun(primaryId ?? undefined).catch(() => {});
+    for (const id of runningIds) {
       updateSessionRun(id, { running: false });
+      void pauseMissionLoop(id, { reason: "global_cancel" }).catch(() => {});
+    }
+    if (primaryId && !runningIds.includes(primaryId)) {
+      void pauseMissionLoop(primaryId, { reason: "global_cancel" }).catch(() => {});
     }
     clearRunWatchdog();
     runWatchdogRef.current = window.setTimeout(() => {
@@ -1030,7 +1037,7 @@ export function RoomChat({
       }
       runWatchdogRef.current = null;
     }, 45_000);
-  }, []);
+  }, [sessionId]);
 
   useEffect(() => {
     if (isNew) return;
@@ -1867,9 +1874,16 @@ export function RoomChat({
     ) {
       return;
     }
+    const missionAutonomous = Boolean(
+      (
+        session?.run?.mission_loop as
+          | { autonomous_segment?: { active?: boolean } }
+          | undefined
+      )?.autonomous_segment?.active,
+    );
     const needsPermissionPrompt =
-      !hasSavedPermissionDefaults() &&
-      agentsNeedingPermissionPrompt(selected).length > 0;
+      agentsNeedingPermissionPrompt(selected).length > 0 &&
+      (!hasSavedPermissionDefaults() || missionAutonomous);
     if (needsPermissionPrompt) {
       setPendingSend({
         text: msg,
@@ -2541,9 +2555,11 @@ export function RoomChat({
           {inspectorTab === "overview" && session ? (
             <ContextOverviewPanel
               session={session}
+              sessionId={sessionId}
               healthAgents={healthAgents}
               goalView={goalView}
               planMeta={planMeta}
+              onFocusObjection={focusObjection}
             />
           ) : null}
           {inspectorTab === "tasks" ? (

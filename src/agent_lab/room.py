@@ -2442,6 +2442,10 @@ def _post_plan_scribe_inbox_harvest(
 
     patch_run_meta(folder, _patch)
 
+    from agent_lab.mission_loop import after_plan_scribe
+
+    after_plan_scribe(folder, plan_md)
+
 
 def _emit_plan_pipeline_proposal(
     folder: Path,

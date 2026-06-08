@@ -244,6 +244,9 @@ def build_slim_consensus_bundle(
     )
     if session_guidance.strip():
         constraints = f"{constraints}\n\n{session_guidance.strip()}"
+    constraints = _append_mission_track_c_blocks(
+        constraints, run_meta=run_meta, plan_md=plan_md
+    )
     resume_block = build_agent_thread_resume_block(agent, run_meta)
     if resume_block.strip():
         constraints = f"{constraints}\n\n{resume_block.strip()}"
@@ -342,6 +345,31 @@ def build_slim_consensus_bundle(
     return bundle
 
 
+def _append_mission_track_c_blocks(
+    constraints: str,
+    *,
+    run_meta: dict[str, Any] | None,
+    plan_md: str,
+) -> str:
+    from agent_lab.mission_loop import build_mission_wisdom_block
+    from agent_lab.repo_tree_context import (
+        build_per_dir_agents_block,
+        build_repo_tree_block,
+    )
+
+    out = constraints
+    mission_wisdom = build_mission_wisdom_block(run_meta)
+    if mission_wisdom.strip():
+        out = f"{out}\n\n{mission_wisdom.strip()}"
+    repo_block = build_repo_tree_block(run_meta)
+    if repo_block.strip():
+        out = f"{out}\n\n{repo_block.strip()}"
+    per_dir = build_per_dir_agents_block(run_meta, plan_md)
+    if per_dir.strip():
+        out = f"{out}\n\n{per_dir.strip()}"
+    return out
+
+
 def build_context_bundle(
     topic: str,
     messages: list[_MessageLike],
@@ -361,6 +389,13 @@ def build_context_bundle(
     consensus_mode: bool = False,
 ) -> ContextBundle:
     """Build layered context for one agent call (discuss / plan agent rounds)."""
+    from agent_lab.context_layers import should_use_mission_slim_bundle
+
+    if should_use_mission_slim_bundle(run_meta) and not (
+        slim_context and efficiency_mode
+    ):
+        slim_context = True
+        efficiency_mode = True
     if slim_context and efficiency_mode:
         return build_slim_consensus_bundle(
             topic,
@@ -427,6 +462,9 @@ def build_context_bundle(
     )
     if session_guidance.strip():
         constraints = f"{constraints}\n\n{session_guidance.strip()}"
+    constraints = _append_mission_track_c_blocks(
+        constraints, run_meta=run_meta, plan_md=plan_md
+    )
     resume_block = build_agent_thread_resume_block(agent, run_meta)
     if resume_block.strip():
         constraints = f"{constraints}\n\n{resume_block.strip()}"

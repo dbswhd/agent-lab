@@ -378,6 +378,13 @@ def _run_codex(
             )
         return outcome
 
+    from agent_lab.run_control import (
+        RoomRunCancelled,
+        is_cancelled,
+        register_child_process,
+        unregister_child_process,
+    )
+
     proc = subprocess.Popen(
         cmd,
         stdin=subprocess.PIPE,
@@ -386,6 +393,7 @@ def _run_codex(
         text=True,
         env=env,
     )
+    register_child_process(proc)
     assert proc.stdin is not None
     proc.stdin.write(prompt)
     proc.stdin.close()
@@ -394,49 +402,55 @@ def _run_codex(
     stdout = proc.stdout
     assert stdout is not None
 
-    while True:
-        if _should_stop_after_limit(outcome, limit_hit_at, grace_sec=grace_sec):
-            if outcome.streamed_message:
+    try:
+        while True:
+            if is_cancelled():
+                _terminate_proc(proc)
+                raise RoomRunCancelled("run cancelled by user")
+            if _should_stop_after_limit(outcome, limit_hit_at, grace_sec=grace_sec):
+                if outcome.streamed_message:
+                    break
+                _terminate_proc(proc)
                 break
-            _terminate_proc(proc)
-            break
 
-        ready, _, _ = select.select([stdout], [], [], 0.25)
-        if not ready:
-            if proc.poll() is not None:
+            ready, _, _ = select.select([stdout], [], [], 0.25)
+            if not ready:
+                if proc.poll() is not None:
+                    break
+                continue
+
+            line = stdout.readline()
+            if not line:
                 break
-            continue
+            stripped = line.strip()
+            if not stripped:
+                continue
+            try:
+                event = json.loads(stripped)
+            except json.JSONDecodeError:
+                continue
 
-        line = stdout.readline()
-        if not line:
-            break
-        stripped = line.strip()
-        if not stripped:
-            continue
-        try:
-            event = json.loads(stripped)
-        except json.JSONDecodeError:
-            continue
+            typ = event.get("type")
+            item = event.get("item") if isinstance(event.get("item"), dict) else {}
+            if (
+                outcome.limit_hit
+                and typ == "item.started"
+                and item.get("type") == "command_execution"
+            ):
+                if on_activity:
+                    on_activity("shell 상한 초과 — 추가 명령 중단")
+                _terminate_proc(proc)
+                break
 
-        typ = event.get("type")
-        item = event.get("item") if isinstance(event.get("item"), dict) else {}
-        if (
-            outcome.limit_hit
-            and typ == "item.started"
-            and item.get("type") == "command_execution"
-        ):
-            if on_activity:
-                on_activity("shell 상한 초과 — 추가 명령 중단")
-            _terminate_proc(proc)
-            break
-
-        limit_hit_at = _process_codex_event(
-            event,
-            on_activity=on_activity,
-            max_commands=max_commands,
-            outcome=outcome,
-            limit_hit_at=limit_hit_at,
-        )
+            limit_hit_at = _process_codex_event(
+                event,
+                on_activity=on_activity,
+                max_commands=max_commands,
+                outcome=outcome,
+                limit_hit_at=limit_hit_at,
+            )
+    finally:
+        unregister_child_process(proc)
 
     stderr = proc.stderr.read() if proc.stderr is not None else ""
     try:
@@ -497,7 +511,16 @@ def invoke(
             use_inbox_mcp = True
             config_overrides = build_codex_inbox_mcp_config_args(Path(session_folder))
 
-    allow_tools = codex_cli_allowed(permissions) or use_inbox_mcp
+    execute_plugins = bool((permissions or {}).get("_execute_plugins"))
+    if execute_plugins and session_folder is not None:
+        from agent_lab.session_plugin_runtime import merge_codex_execute_config_overrides
+
+        config_overrides = merge_codex_execute_config_overrides(
+            Path(session_folder),
+            config_overrides,
+        )
+
+    allow_tools = codex_cli_allowed(permissions) or use_inbox_mcp or execute_plugins
     discuss = room_turn or bool((permissions or {}).get("_discuss_mode"))
     if discuss and not _env_bool("CODEX_ROOM_WORKSPACE_WRITE", False):
         allow_tools = True  # read-only tools still allowed

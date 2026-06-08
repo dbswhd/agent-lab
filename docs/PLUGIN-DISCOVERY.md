@@ -1,14 +1,14 @@
-# Plugin & command discovery (Phase A)
+# Plugin & command discovery (Phase A + B)
 
-> **Status:** Phase A spike (2026-06-05). Documents what each agent runtime can **list**, **pass through**, and **invoke** from Agent Lab. Phase B implements `CommandRegistry`, Plugin panel, and slash menu.
+> **Status (2026-06-07):** Phase A discovery + **Phase B shipped** — `PluginPanel`, session allowlist API, execute/repair pass-through (`session_plugin_runtime.py`, `mcp_spec_export.py`). See [MISSION-LOOP-C-OMO.md](./MISSION-LOOP-C-OMO.md) Track B.
 
 ## Summary
 
 | Agent | List installed plugins/MCP | Pass config into Room turn | Agent Lab today |
 |-------|---------------------------|----------------------------|-----------------|
-| **Claude** | `claude mcp list`, `claude plugin list`; skills via `.claude/skills/*/SKILL.md` | `--mcp-config`, `--plugin-dir`, `--add-dir`; `/skill-name` in prompt | `claude -p --tools default` only; **no MCP/skills pass-through** |
-| **Codex** | `codex plugin list`, `codex mcp list` | `codex exec` inherits `~/.codex/config.toml` + env | subprocess only; **no explicit plugin overlay** |
-| **Cursor** | **No CLI list API** in Agent Lab integration | Cursor SDK `AgentOptions(local=cwd)` only | bridge may expose IDE MCP **implicitly** in activity stream |
+| **Claude** | `claude mcp list`, `claude plugin list`; skills via `.claude/skills/*/SKILL.md` | `--mcp-config` allowlist overlay; discuss `build_plugin_allowlist_block` | Room + **execute/repair** MCP overlay |
+| **Codex** | `codex plugin list`, `codex mcp list` | `-c mcp_servers.*` from `codex mcp get --json`; inbox MCP | Room + **execute/repair** transport export |
+| **Cursor** | IDE-inherited (no list API) — `cursor-ide-mcp-hint` in UI | SDK `mcp_servers` for inbox; IDE MCP implicit | `PluginPanel` documents inheritance |
 
 **Dual use (Phase B target):**
 

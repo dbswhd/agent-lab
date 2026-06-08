@@ -328,6 +328,161 @@ export function putCredentials(patch: CredentialsPatch) {
   });
 }
 
+export type MissionPhase =
+  | "MISSION_DEFINE"
+  | "MISSION_PAUSED"
+  | "DISCUSS"
+  | "PLAN_GATE"
+  | "PLAN_REJECT"
+  | "EXECUTE_QUEUE"
+  | "DRY_RUN"
+  | "MERGE_REVIEW"
+  | "VERIFY"
+  | "REPAIR"
+  | "MISSION_DONE";
+
+export type MissionLoopState = {
+  enabled: boolean;
+  phase: MissionPhase;
+  iteration?: number;
+  pending_action_indices?: number[];
+  current_action_index?: number | null;
+  circuit_breaker?: boolean;
+  circuit_breaker_reason?: string | null;
+  plan_gate?: {
+    status?: string;
+    momus_round?: number;
+    max_momus_rounds?: number;
+  };
+  autonomous_segment?: { active?: boolean };
+};
+
+export type ContextLayersState = {
+  mission_wisdom: boolean;
+  repo_tree: boolean;
+};
+
+export type ContextLayersResponse = {
+  ok: boolean;
+  session_id?: string;
+  context_layers: ContextLayersState;
+};
+
+export function fetchContextLayers(sessionId: string) {
+  return json<ContextLayersResponse>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/context-layers`,
+  );
+}
+
+export function patchContextLayers(
+  sessionId: string,
+  patch: Partial<ContextLayersState>,
+) {
+  return json<ContextLayersResponse>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/context-layers`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    },
+  );
+}
+
+export type MissionNotepadSummary = {
+  file: string;
+  lines: number;
+  preview: string;
+  path?: string;
+};
+
+export type MissionLoopResponse = {
+  ok: boolean;
+  enabled: boolean;
+  mission_loop: MissionLoopState;
+  has_loop_goal?: boolean;
+  verified_loop_status?: string | null;
+  notepads?: MissionNotepadSummary[];
+};
+
+export function fetchMissionLoop(sessionId: string) {
+  return json<MissionLoopResponse>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/mission-loop`,
+  );
+}
+
+export function enableMissionLoop(
+  sessionId: string,
+  startAutonomous = true,
+) {
+  return json<MissionLoopResponse>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/mission-loop/enable`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ start_autonomous: startAutonomous }),
+    },
+  );
+}
+
+export function advanceMissionLoop(
+  sessionId: string,
+  opts?: { permissions?: Record<string, unknown>; executor?: string },
+) {
+  return json<MissionLoopResponse & { advance?: Record<string, unknown> }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/mission-loop/advance`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        permissions: opts?.permissions,
+        executor: opts?.executor,
+      }),
+    },
+  );
+}
+
+export function pauseMissionLoop(
+  sessionId: string,
+  opts?: { reason?: string; cleanupExecutions?: boolean },
+) {
+  return json<MissionLoopResponse & { pause?: Record<string, unknown> }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/mission-loop/pause`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        reason: opts?.reason ?? "user_cancel",
+        cleanup_executions: opts?.cleanupExecutions ?? true,
+      }),
+    },
+  );
+}
+
+export function resumeMissionLoop(sessionId: string, resumePhase = "EXECUTE_QUEUE") {
+  return json<MissionLoopResponse & { resume?: Record<string, unknown> }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/mission-loop/resume`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resume_phase: resumePhase }),
+    },
+  );
+}
+
+export function clearMissionCircuitBreaker(
+  sessionId: string,
+  resumePhase = "DISCUSS",
+) {
+  return json<MissionLoopResponse>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/mission-loop/clear-circuit-breaker`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resume_phase: resumePhase }),
+    },
+  );
+}
+
 export type DiagnosticsResponse = {
   ok: boolean;
   pid: number;
@@ -893,8 +1048,14 @@ export async function runRoom(
   }
 }
 
-export async function cancelRoomRun(): Promise<void> {
-  const res = await fetch(apiUrl("/api/room/runs/cancel"), { method: "POST" });
+export async function cancelRoomRun(sessionId?: string): Promise<void> {
+  const res = await fetch(apiUrl("/api/room/runs/cancel"), {
+    method: "POST",
+    headers: sessionId ? { "Content-Type": "application/json" } : undefined,
+    body: sessionId
+      ? JSON.stringify({ session_id: sessionId })
+      : undefined,
+  });
   if (!res.ok) throw new Error(await res.text());
 }
 

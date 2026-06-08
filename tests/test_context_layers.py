@@ -86,6 +86,24 @@ def test_mission_slim_forces_efficiency_bundle(session_folder: Path) -> None:
     assert bundle.meta.efficiency_mode is True
 
 
+def test_session_guidance_hierarchy_dedupes_track_c_per_dir(tmp_path: Path) -> None:
+    ws = tmp_path / "ws"
+    src = ws / "src" / "mod"
+    src.mkdir(parents=True)
+    (src / "AGENTS.md").write_text("module rules here", encoding="utf-8")
+    plan = "1. Fix\n   - 어디서: `src/mod/file.py`\n   - 검증: test\n"
+    run = {
+        "workspace_binding": {"path": str(ws)},
+        "mission_loop": {"enabled": True, "phase": "DISCUSS"},
+        "context_layers": {"repo_tree": False, "mission_wisdom": False},
+    }
+    bundle = build_context_bundle("t", [], "claude", plan_md=plan, run_meta=run)
+    rendered = bundle.render()
+    assert "per-dir hierarchy" in rendered
+    assert "module rules" in rendered
+    assert rendered.count("[Per-dir AGENTS.md]") == 0
+
+
 def test_repo_tree_layer_toggle(session_folder: Path) -> None:
     patch_context_layers(session_folder, {"repo_tree": False})
     run = read_run_meta(session_folder)

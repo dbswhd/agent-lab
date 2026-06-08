@@ -232,7 +232,7 @@ def build_slim_consensus_bundle(
             plan_md=plan_md,
             permissions=permissions,
         )
-    session_guidance = build_session_guidance_block(run_meta)
+    session_guidance = build_session_guidance_block(run_meta, plan_md=plan_md)
     constraints = build_constraints_block(
         permission_lines=permission_lines,
         human_gates=extract_human_gates(messages, topic),
@@ -356,6 +356,7 @@ def _append_mission_track_c_blocks(
         build_per_dir_agents_block,
         build_repo_tree_block,
     )
+    from agent_lab.workspace_md import PER_DIR_AGENTS_GUIDANCE_HEADER
 
     out = constraints
     mission_wisdom = build_mission_wisdom_block(run_meta)
@@ -364,9 +365,10 @@ def _append_mission_track_c_blocks(
     repo_block = build_repo_tree_block(run_meta)
     if repo_block.strip():
         out = f"{out}\n\n{repo_block.strip()}"
-    per_dir = build_per_dir_agents_block(run_meta, plan_md)
-    if per_dir.strip():
-        out = f"{out}\n\n{per_dir.strip()}"
+    if PER_DIR_AGENTS_GUIDANCE_HEADER not in out:
+        per_dir = build_per_dir_agents_block(run_meta, plan_md)
+        if per_dir.strip():
+            out = f"{out}\n\n{per_dir.strip()}"
     return out
 
 
@@ -452,7 +454,7 @@ def build_context_bundle(
             plan_md=plan_md,
             permissions=permissions,
         )
-    session_guidance = build_session_guidance_block(run_meta)
+    session_guidance = build_session_guidance_block(run_meta, plan_md=plan_md)
     constraints = build_constraints_block(
         permission_lines=permission_lines,
         human_gates=extract_human_gates(messages, topic),

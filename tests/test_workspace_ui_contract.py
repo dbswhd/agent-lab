@@ -174,6 +174,11 @@ def test_workspace_panels_have_distinct_document_wrappers():
     assert "MissionOverviewSection" in work
     assert 'variant="work"' in work or "variant=\"work\"" in work
     assert "work-chrome" in work
+    status = _read("web", "src", "components", "WorkStatusBar.tsx")
+    assert "resolveWorkPhaseFromMission" in status
+    assert "missionPaused" in status
+    assert "work-status-bar__pause-badge" in status
+    assert "last_partial?.resume_phase" in work
     assert "work-mission-overview" in _read(
         "web", "src", "components", "MissionOverviewSection.tsx"
     )

@@ -220,20 +220,26 @@ AGENT_LAB_GOAL_LOOP=1
 
 ### 4.3 Work 내부 단계 (stepper)
 
-`WorkStatusBar` — `resolveWorkPhase()`:
+`WorkStatusBar` — 5단계 stepper:
 
 ```text
-Plan → Review → Execute → (Verify → Done)*
+Plan → Review → Execute → Verify → Done
 ```
 
-\* Verify/Done 단계는 stepper UI에 정의되어 있으나, `resolveWorkPhase()`는 아직 **execute_pending**까지만 구분한다. merge 완료·Oracle 결과는 `PlanExecutePanel` 배지·execution history로 표시.
+| Resolver | 우선순위 | 역할 |
+|----------|----------|------|
+| `resolveWorkPhaseFromMission()` | 미션 loop `phase` 있으면 **먼저** | Layer 6 FSM → stepper 매핑 |
+| `resolveWorkPhase()` | 미션 없을 때 | plan · execution · Oracle 상태에서 파생 |
 
 | Phase | 조건 (파생) | 강조 UI |
 |-------|-------------|---------|
-| `plan_draft` | plan 있음, execute/review 신호 없음 | Plan 문서 · 「지금 정리」 |
-| `review_needed` | consensus proposal / pending agreement / dry-run diff | ConsensusDryRunGateBar |
-| `execute_pending` | `pending_approval` execution | ExecuteQueueBar + PlanExecutePanel |
-| `merge_verify` / `done` | *(stepper 라벨만 — phase resolver 미연결)* | PlanExecutePanel 상태·history 배지 |
+| `plan_draft` | plan만 / `MISSION_DEFINE`·`PLAN_GATE`·`DISCUSS` | Plan 문서 · 「지금 정리」 |
+| `review_needed` | consensus / dry-run / `MERGE_REVIEW`·`PLAN_REJECT` | ConsensusDryRunGateBar |
+| `execute_pending` | pending execution / `EXECUTE_QUEUE`·`DRY_RUN`·`REPAIR` | ExecuteQueueBar + PlanExecutePanel |
+| `merge_verify` | merged·review_required·oracle pending / `VERIFY` | PlanExecutePanel · Oracle 배지 |
+| `done` | Oracle pass + completed / `MISSION_DONE` | 완료 표시 |
+
+**미션 일시정지:** `MISSION_PAUSED`이면 stepper는 `last_partial.resume_phase` 기준으로 강조하고 **Paused** 배지를 표시합니다. 재개는 Work alert의 「미션 재개」.
 
 ### 4.4 Inspector 탭
 

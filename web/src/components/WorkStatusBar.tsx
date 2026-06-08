@@ -19,26 +19,31 @@ type Props = {
   phase: WorkPhase;
   metaLine: string | null;
   hasPlan: boolean;
+  /** Mission loop paused — show badge; stepper uses resume phase when set. */
+  missionPaused?: boolean;
 };
 
 /** Map mission_loop.phase (Layer 6) to Work tab stepper when mission is enabled. */
 export function resolveWorkPhaseFromMission(
   missionPhase?: string | null,
+  resumePhase?: string | null,
 ): WorkPhase | null {
   if (!missionPhase?.trim()) return null;
   const phase = missionPhase.trim().toUpperCase();
+  if (phase === "MISSION_PAUSED") {
+    const resume = resumePhase?.trim();
+    if (resume) {
+      return resolveWorkPhaseFromMission(resume, null);
+    }
+    return "plan_draft";
+  }
   if (phase === "MISSION_DONE") return "done";
   if (phase === "MERGE_REVIEW" || phase === "PLAN_REJECT") return "review_needed";
   if (phase === "VERIFY") return "merge_verify";
   if (phase === "EXECUTE_QUEUE" || phase === "DRY_RUN" || phase === "REPAIR") {
     return "execute_pending";
   }
-  if (
-    phase === "DISCUSS" ||
-    phase === "PLAN_GATE" ||
-    phase === "MISSION_DEFINE" ||
-    phase === "MISSION_PAUSED"
-  ) {
+  if (phase === "DISCUSS" || phase === "PLAN_GATE" || phase === "MISSION_DEFINE") {
     return "plan_draft";
   }
   return null;
@@ -70,11 +75,29 @@ export function resolveWorkPhase(input: {
   return "plan_draft";
 }
 
-export function WorkStatusBar({ phase, metaLine, hasPlan }: Props) {
+export function WorkStatusBar({
+  phase,
+  metaLine,
+  hasPlan,
+  missionPaused = false,
+}: Props) {
   const phaseIndex = STEPS.findIndex((s) => s.id === phase);
 
   return (
-    <div className="work-status-bar" role="status">
+    <div
+      className={[
+        "work-status-bar",
+        missionPaused ? "work-status-bar--paused" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      role="status"
+    >
+      {missionPaused ? (
+        <span className="work-status-bar__pause-badge" aria-label="Mission paused">
+          Paused
+        </span>
+      ) : null}
       <ol className="work-status-bar__steps" aria-label="Work progress">
         {STEPS.map((step, i) => (
           <li

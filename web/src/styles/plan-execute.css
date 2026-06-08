@@ -192,6 +192,21 @@
   gap: var(--space-8);
 }
 
+.work-status-bar--paused .work-status-bar__step.is-active {
+  color: var(--warn);
+  background: var(--warn-soft);
+}
+
+.work-status-bar__pause-badge {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-semibold);
+  color: var(--warn);
+  background: var(--warn-soft);
+}
+
 .work-status-bar__steps {
   display: flex;
   flex-wrap: wrap;

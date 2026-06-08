@@ -107,7 +107,10 @@ export function WorkPanel({
     sessionId,
   ]);
   const workPhase =
-    resolveWorkPhaseFromMission(missionLoop?.phase) ??
+    resolveWorkPhaseFromMission(
+      missionLoop?.phase,
+      missionLoop?.last_partial?.resume_phase,
+    ) ??
     resolveWorkPhase({
       hasPlan,
       hasPendingExecution,
@@ -164,6 +167,7 @@ export function WorkPanel({
           phase={workPhase}
           metaLine={metaLine || null}
           hasPlan={hasPlan}
+          missionPaused={missionPaused}
         />
 
         {missionPaused ? (

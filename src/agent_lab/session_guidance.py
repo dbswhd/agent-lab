@@ -317,7 +317,11 @@ def sync_session_meta(
     return meta
 
 
-def build_session_guidance_block(run_meta: dict[str, Any] | None) -> str:
+def build_session_guidance_block(
+    run_meta: dict[str, Any] | None,
+    *,
+    plan_md: str = "",
+) -> str:
     """Inject into agent context based on session meta."""
     parts: list[str] = []
     from agent_lab.platform_md import read_platform_md_for_injection
@@ -343,8 +347,8 @@ def build_session_guidance_block(run_meta: dict[str, Any] | None) -> str:
             "Codex `--add-dir`, Cursor bridge cwd, and plan execute must match this root."
         )
         from agent_lab.workspace_md import (
-            read_agents_md_for_injection,
             read_shared_context_for_injection,
+            resolve_agents_md_for_guidance,
         )
 
         shared = read_shared_context_for_injection(run_meta)
@@ -353,9 +357,9 @@ def build_session_guidance_block(run_meta: dict[str, Any] | None) -> str:
         project_md = _read_project_md(run_meta)
         if project_md:
             parts.append(f"[PROJECT.md — workspace memory]\n{project_md}")
-        agents_md = read_agents_md_for_injection(run_meta)
-        if agents_md:
-            parts.append(f"[AGENTS.md — Codex workspace guide]\n{agents_md}")
+        agents_header, agents_body = resolve_agents_md_for_guidance(run_meta, plan_md)
+        if agents_body:
+            parts.append(f"{agents_header}\n{agents_body}")
     if run_meta.get("layout_frozen"):
         parts.append(LAYOUT_FROZEN_GUIDANCE.strip())
     phase = run_meta.get("session_phase")

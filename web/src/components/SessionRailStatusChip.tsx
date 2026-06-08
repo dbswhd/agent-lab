@@ -14,6 +14,10 @@ type Props = {
   reconnecting?: boolean;
 };
 
+/**
+ * Rebuilt rail status chip. Behavior preserved: expandable health/diagnostics,
+ * ready count, api-offline state. New class system: `.rail-status`.
+ */
 export function SessionRailStatusChip({
   apiOk,
   agents,
@@ -28,29 +32,29 @@ export function SessionRailStatusChip({
   const readyCount = agents.filter((a) => a.ready).length;
 
   return (
-    <div className="session-rail-status">
+    <div className="rail-status">
       <button
         type="button"
-        className="session-rail-status__chip"
+        className={`rail-status__chip${open ? " is-open" : ""}`}
         aria-expanded={open}
-        aria-controls="session-rail-status-detail"
+        aria-controls="rail-status-detail"
         onClick={() => setOpen((v) => !v)}
         title="에이전트·API 상태"
       >
-        <span
-          className={`agent-health-dot${apiOk ? " agent-health-dot--ok" : " agent-health-dot--bad"}`}
-          aria-hidden
-        />
-        <span className="session-rail-status__label">
-          {apiOk ? `${readyCount}/3 ready` : "API offline"}
+        <span className={`dot dot--${apiOk ? "ok" : "danger"}${apiOk ? " dot--live" : ""}`} aria-hidden />
+        <span>
+          팀 상태 · <strong>{apiOk ? `${readyCount}/3 ready` : "API offline"}</strong>
         </span>
-        <span className="session-rail-status__chev" aria-hidden>
-          ›
+        <span className="rail-status__caret" aria-hidden>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
+            strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+            <path d="m6 9 6 6 6-6" />
+          </svg>
         </span>
       </button>
       {open ? (
-        <div id="session-rail-status-detail" className="session-rail-status__detail">
-          <p className="session-rail-status__detail-heading">에이전트 · API 상태</p>
+        <div id="rail-status-detail" className="rail-status__panel">
+          <p className="rail-status__panel-heading">에이전트 · API 상태</p>
           <AgentHealthPanel
             apiOk={apiOk}
             agents={agents}

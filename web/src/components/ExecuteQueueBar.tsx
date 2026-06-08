@@ -19,6 +19,16 @@ type Props = {
   onOpenPlan?: () => void;
 };
 
+/** ExecuteQueueBar — inline approval bar for pending plan executions.
+ *
+ *  Uses .exec-queue-bar / .exec-queue-bar--blocked / .exec-queue-bar--compact
+ *  classes (overlays.css).
+ *  Drop-in for old component that used .execute-queue-bar (legacy-bridge.css).
+ *
+ *  Shows: badge · title · status · artifact path/page-count ·
+ *         gate block reason (if blocked) · approve/reject/diff buttons.
+ *  Approve button is disabled when gate.blocked === true.
+ */
 export function ExecuteQueueBar({
   pending,
   storedActions,
@@ -29,54 +39,55 @@ export function ExecuteQueueBar({
   onReject,
   onOpenPlan,
 }: Props) {
-  const action = resolveExecutionAction(pending, storedActions);
-  const title = executionHistoryTitle(pending, action);
-  const badge = executionHistoryBadge(pending);
-  const status = executionStatusLabel(pending.status, pending);
-  const gate = executionApprovalGate(pending);
-  const pdfPath = gate.pdfPath;
+  const action  = resolveExecutionAction(pending, storedActions);
+  const title   = executionHistoryTitle(pending, action);
+  const badge   = executionHistoryBadge(pending);
+  const status  = executionStatusLabel(pending.status, pending);
+  const gate    = executionApprovalGate(pending);
+  const pdfPath   = gate.pdfPath;
   const pageCount = gate.pageCount;
 
   return (
     <div
       className={[
-        "execute-queue-bar",
-        compact ? "execute-queue-bar--compact" : undefined,
-        gate.blocked ? "execute-queue-bar--blocked" : undefined,
-      ]
-        .filter(Boolean)
-        .join(" ")}
+        "exec-queue-bar",
+        compact          ? "exec-queue-bar--compact"  : undefined,
+        gate.blocked     ? "exec-queue-bar--blocked"  : undefined,
+      ].filter(Boolean).join(" ")}
       role="region"
       aria-label="실행 승인 대기"
     >
-      <div className="execute-queue-bar__main">
-        <span className="execute-queue-bar__badge">{badge}</span>
-        <div className="execute-queue-bar__text">
-          <strong className="execute-queue-bar__title">{title}</strong>
-          <span className="execute-queue-bar__status">{status}</span>
+      <div className="exec-queue-bar__main">
+        <span className="exec-queue-bar__badge">{badge}</span>
+        <div className="exec-queue-bar__text">
+          <strong className="exec-queue-bar__title">{title}</strong>
+          <span className="exec-queue-bar__status">{status}</span>
+
           {pending.needs_artifact_review ? (
-            <span className="execute-queue-bar__artifact">
-              {pdfPath ? `PDF: ${pdfPath}` : "PDF: —"}
+            <span className="exec-queue-bar__artifact">
+              {pdfPath   ? `PDF: ${pdfPath}` : "PDF: —"}
               {pageCount != null ? ` · ${pageCount}p` : " · 페이지 수 —"}
               {gate.artifactsOk ? " · 검증 OK" : " · 검증 대기"}
             </span>
-          ) : pdfPath || pageCount != null ? (
-            <span className="execute-queue-bar__artifact">
-              {pdfPath ? pdfPath : ""}
+          ) : (pdfPath || pageCount != null) ? (
+            <span className="exec-queue-bar__artifact">
+              {pdfPath ?? ""}
               {pageCount != null ? ` · ${pageCount}p` : ""}
             </span>
           ) : null}
+
           {gate.blocked && gate.reason ? (
-            <span className="execute-queue-bar__gate" role="note">
+            <span className="exec-queue-bar__gate" role="note">
               {gate.reason}
             </span>
           ) : null}
         </div>
       </div>
-      <div className="execute-queue-bar__actions">
+
+      <div className="exec-queue-bar__actions">
         <button
           type="button"
-          className="room-plan-btn room-plan-btn--accent"
+          className="btn btn--primary btn--sm"
           disabled={disabled || busy || gate.blocked}
           title={gate.reason ?? undefined}
           onClick={onApprove}
@@ -85,7 +96,7 @@ export function ExecuteQueueBar({
         </button>
         <button
           type="button"
-          className="room-plan-btn"
+          className="btn btn--sm"
           disabled={disabled || busy}
           onClick={onReject}
         >
@@ -94,7 +105,7 @@ export function ExecuteQueueBar({
         {onOpenPlan ? (
           <button
             type="button"
-            className="room-plan-btn execute-queue-bar__detail"
+            className="btn btn--ghost btn--sm"
             disabled={disabled}
             onClick={onOpenPlan}
           >

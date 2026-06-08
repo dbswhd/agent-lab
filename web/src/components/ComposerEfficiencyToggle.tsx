@@ -2,25 +2,26 @@ type Props = {
   checked: boolean;
   onChange: (on: boolean) => void;
   disabled?: boolean;
+  label?: string;
 };
 
-export function ComposerEfficiencyToggle({ checked, onChange, disabled }: Props) {
+/** Efficiency toggle — prototype `.switch` + checkbox track. */
+export function ComposerEfficiencyToggle({
+  checked,
+  onChange,
+  disabled,
+  label = "Efficiency",
+}: Props) {
   return (
-    <label
-      className={`composer-efficiency-toggle${checked ? " is-on" : ""}`}
-      title="구독 절약 · pin cap · 최근 4턴 · 짧은 응답 · 합의 모드 slim payload"
-    >
-      <span className="composer-efficiency-toggle__label">효율</span>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        className="composer-efficiency-switch"
+    <label className="switch" title="구독 절약 · pin cap · 최근 4턴 · 짧은 응답">
+      <input
+        type="checkbox"
+        checked={checked}
         disabled={disabled}
-        onClick={() => onChange(!checked)}
-      >
-        <span className="composer-efficiency-switch__thumb" aria-hidden />
-      </button>
+        onChange={(e) => onChange(e.target.checked)}
+      />
+      <span className="switch__track" aria-hidden />
+      {label}
     </label>
   );
 }

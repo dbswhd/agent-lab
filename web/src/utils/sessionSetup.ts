@@ -5,6 +5,13 @@ export type WorkspacePreset = {
   available: boolean;
 };
 
+export type AgentThreadOption = {
+  id: string;
+  label: string;
+  msgs: number;
+  last: string;
+};
+
 export type SessionSetupDefaults = {
   workspace_id: string;
   session_template: string;
@@ -12,6 +19,7 @@ export type SessionSetupDefaults = {
 
 export type SessionSetupOptions = {
   workspaces: WorkspacePreset[];
+  agent_threads?: Partial<Record<"cursor" | "codex" | "claude", AgentThreadOption[]>>;
   defaults: SessionSetupDefaults;
 };
 

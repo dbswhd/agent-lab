@@ -1,0 +1,121 @@
+import type { Locale } from "./locale";
+
+const EN = {
+  transcript: "Transcript",
+  work: "Work",
+  run: "Run",
+  artifacts: "Artifacts",
+  pinned: "pinned",
+  running: "running",
+  roomTasks: "Room tasks",
+  open: "open",
+  done: "done",
+  blocked: "blocked",
+  modeDiscuss: "Discuss",
+  modeDiscussHint: "Agents debate · plan.md auto-updates each turn",
+  modePlan: "Plan",
+  modePlanHint: "Draft or refresh plan.md after send",
+  modeConsensus: "Consensus",
+  modeConsensusHint: "Agents must endorse before execute",
+  composerPlaceholder: "Message the team…  /plan to draft a plan",
+  efficiency: "Efficiency",
+  turnQuick: "Quick",
+  turnAnalyze: "Analyze",
+  turnSplit: "Split",
+  turnFree: "♾️",
+  turnQuickHint: (lead: string, multi: boolean) =>
+    multi ? `Quick · ${lead} only · R1` : "Quick · R1",
+  turnAnalyzeHint: (n: number, r: number) =>
+    `Analyze · ${n} agents · facts only · R${r}`,
+  turnSplitHint: "Split · R1 Codex+Claude → R2 Cursor",
+  turnFreeHint: (n: number) => `♾️ · ${n} agents · R2↔R3 loop → consensus`,
+  settingsLanguage: "Language",
+  settingsLanguageSub: "UI copy · composer · workspace tabs",
+  appearance: "Appearance · Notifications",
+  theme: "Theme",
+  light: "Light",
+  dark: "Dark",
+  transcriptLoading: "Loading transcript…",
+  transcriptEmpty: "Send a message to start",
+  transcriptEmptyHint: "Use the composer below to kick off agent discussion.",
+  humanInbox: "Human Inbox",
+  inboxEmpty: "Inbox is empty",
+  ctxTitle: "Context",
+  ctxOverview: "Overview",
+  ctxTasks: "Tasks",
+  ctxInbox: "Inbox",
+  ctxGoal: "Goal",
+  ctxNextStep: "Next step",
+  ctxContextLayers: "Context layers",
+  ctxTeam: "Team",
+  ctxObjections: "Objections",
+  ctxTasksEmpty: "No tasks yet",
+  turnSummary: "Turn summary",
+  resolveObjection: "Resolve",
+} as const;
+
+const KO = {
+  transcript: "대화",
+  work: "작업",
+  run: "실행",
+  artifacts: "산출물",
+  pinned: "고정됨",
+  running: "실행 중",
+  roomTasks: "Room tasks",
+  open: "open",
+  done: "done",
+  blocked: "blocked",
+  modeDiscuss: "토론",
+  modeDiscussHint: "에이전트 토론 · 턴마다 plan.md 자동 갱신",
+  modePlan: "Plan",
+  modePlanHint: "전송 후 plan.md 갱신",
+  modeConsensus: "합의",
+  modeConsensusHint: "execute 전 에이전트 endorse 필요",
+  composerPlaceholder: "팀에게 메시지…  /plan 으로 계획 작성",
+  efficiency: "효율",
+  turnQuick: "빠른",
+  turnAnalyze: "분석",
+  turnSplit: "분업",
+  turnFree: "♾️",
+  turnQuickHint: (lead: string, multi: boolean) =>
+    multi ? `빠른 · ${lead}만 · R1` : "빠른 · R1",
+  turnAnalyzeHint: (n: number, r: number) =>
+    `분석 · ${n}명 · 현황·사실만 · R${r}`,
+  turnSplitHint: "분업 · R1 Codex+Claude → R2 Cursor",
+  turnFreeHint: (n: number) => `♾️ · ${n}명 · R2↔R3 루프 → 합의`,
+  settingsLanguage: "언어",
+  settingsLanguageSub: "UI · composer · workspace 탭",
+  appearance: "외관 · 알림",
+  theme: "테마",
+  light: "라이트",
+  dark: "다크",
+  transcriptLoading: "Transcript 불러오는 중…",
+  transcriptEmpty: "메시지를 입력하세요",
+  transcriptEmptyHint: "Composer에서 메시지를 보내면 에이전트 토론이 시작됩니다.",
+  humanInbox: "수신함",
+  inboxEmpty: "수신함이 비어 있습니다",
+  ctxTitle: "컨텍스트",
+  ctxOverview: "개요",
+  ctxTasks: "작업",
+  ctxInbox: "수신함",
+  ctxGoal: "목표",
+  ctxNextStep: "다음 단계",
+  ctxContextLayers: "컨텍스트 레이어",
+  ctxTeam: "팀",
+  ctxObjections: "이의",
+  ctxTasksEmpty: "작업 없음",
+  turnSummary: "턴 요약",
+  resolveObjection: "이의 해결",
+} as const;
+
+export type MessageKey = keyof typeof EN;
+
+export function messages(locale: Locale) {
+  return locale === "ko" ? KO : EN;
+}
+
+export function t(locale: Locale, key: MessageKey): string {
+  const row = messages(locale);
+  const val = row[key];
+  return typeof val === "string" ? val : String(val);
+}

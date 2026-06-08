@@ -2,7 +2,7 @@ type Props = {
   className?: string;
 };
 
-/** Titlebar / in-app brand mark — 16pt with 32/64px assets for crisp rendering. */
+/** Brand mark. Asset path preserved; styled via `.titlebar__logo` wrapper in parent. */
 export function AppBrandIcon({ className = "app-brand-icon" }: Props) {
   return (
     <img

@@ -34,6 +34,7 @@ import {
 } from "../utils/planExecuteHistory";
 import { executionApprovalGate } from "../utils/executeApprovalGate";
 import { formatPlanExecuteError } from "../utils/planExecuteErrors";
+import { WorkPlanIcon } from "./WorkPlanIcon";
 import {
   executionApproveLabel,
   executionRejectLabel,
@@ -263,35 +264,42 @@ function OracleBadge({
   );
 }
 
+function execStatusKey(status: string | undefined): string {
+  if (!status) return "review";
+  if (status === "review_required" || status === "pending_approval") return "review";
+  if (status === "merge_conflict") return "rejected";
+  return status.replace("_required", "");
+}
+
+function diffLineKind(line: string): "add" | "del" | "meta" | "" {
+  if (line.startsWith("+++") || line.startsWith("---") || line.startsWith("@@")) {
+    return "meta";
+  }
+  if (line.startsWith("+")) return "add";
+  if (line.startsWith("-")) return "del";
+  return "";
+}
+
 function WorktreePendingBanner({ row }: { row: PlanExecutionRecord }) {
   const lines = worktreeBannerLines(row);
   if (!isWorktreeExecution(row)) return null;
   return (
-    <div className="plan-execute-worktree-banner" role="status">
-      <p className="plan-execute-worktree-banner__title">Git worktree 격리</p>
+    <div className="exec-meta" role="status">
       {lines.branch ? (
-        <p className="plan-execute-worktree-banner__line">
-          <span className="plan-execute-worktree-banner__label">branch</span>
+        <span className="exec-meta__item">
+          <WorkPlanIcon name="gitMerge" size={13} />
           <code>{lines.branch}</code>
-        </p>
+        </span>
       ) : null}
       {lines.base ? (
-        <p className="plan-execute-worktree-banner__line">
-          <span className="plan-execute-worktree-banner__label">base</span>
-          <code>{lines.base}</code>
-        </p>
-      ) : null}
-      {lines.worktree ? (
-        <p className="plan-execute-worktree-banner__line">
-          <span className="plan-execute-worktree-banner__label">worktree</span>
-          <code className="plan-execute-worktree-banner__path">{lines.worktree}</code>
-        </p>
+        <span className="exec-meta__item">
+          기준 <code>{lines.base}</code>
+        </span>
       ) : null}
       {lines.commit ? (
-        <p className="plan-execute-worktree-banner__line">
-          <span className="plan-execute-worktree-banner__label">commit</span>
-          <code>{lines.commit.slice(0, 12)}</code>
-        </p>
+        <span className="exec-meta__item exec-meta__commit">
+          <code>{lines.commit.slice(0, 7)}</code>
+        </span>
       ) : null}
     </div>
   );
@@ -302,13 +310,15 @@ function ApplyIsolationBanner({ row }: { row: PlanExecutionRecord }) {
     return null;
   }
   return (
-    <div className="plan-execute-apply-banner" role="status">
-      <strong>
+    <div className="exec-banner" role="status">
+      <span className="exec-banner__title">
         {row.isolation_effective === "snapshot_override"
           ? "비격리 snapshot override"
           : "Apply 실행"}
-      </strong>
-      <span>git merge 없음 · 승인 시 현재 작업 폴더 변경을 유지합니다.</span>
+      </span>
+      <span className="exec-banner__line">
+        git merge 없음 · 승인 시 현재 작업 폴더 변경을 유지합니다.
+      </span>
     </div>
   );
 }
@@ -402,8 +412,8 @@ function PlanObjectionAlert({
             {onFocusObjection ? (
               <button
                 type="button"
-                className="room-plan-btn"
-                onClick={() => onFocusObjection(o.id, o.plan_action_index)}
+        className="plan-btn"
+        onClick={() => onFocusObjection(o.id, o.plan_action_index)}
               >
                 이의 해결
               </button>
@@ -446,6 +456,7 @@ export function PlanExecutePanel({
   const [reviseHunkId, setReviseHunkId] = useState("");
   const [reviseError, setReviseError] = useState<string | null>(null);
   const [revising, setRevising] = useState(false);
+  const [artifactsReviewConfirmed, setArtifactsReviewConfirmed] = useState(false);
 
   const executions = useMemo(
     () => (run?.executions as PlanExecutionRecord[] | undefined) ?? [],
@@ -481,6 +492,9 @@ export function PlanExecutePanel({
     ? resolveExecutionAction(activePending, storedActions)
     : null;
   const approvalGate = executionApprovalGate(activePending);
+  const approveBlocked =
+    approvalGate.blocked ||
+    Boolean(activePending?.needs_artifact_review && !artifactsReviewConfirmed);
   const pendingDiffHunks = useMemo(
     () => diffHunks(activePending?.diff),
     [activePending?.diff],
@@ -542,6 +556,7 @@ export function PlanExecutePanel({
     setReviseComment("");
     setReviseHunkId("");
     setReviseError(null);
+    setArtifactsReviewConfirmed(false);
   }, [activePending?.id]);
 
   async function handleDryRun() {
@@ -715,8 +730,9 @@ export function PlanExecutePanel({
     }
   }
 
-  async function handleIsolationOverride() {
-    if (!isolationBlock?.executionId) {
+  async function handleIsolationOverride(executionId?: string) {
+    const targetId = executionId ?? isolationBlock?.executionId;
+    if (!targetId) {
       setError("blocked execution id가 없어 override를 실행할 수 없습니다.");
       return;
     }
@@ -724,7 +740,7 @@ export function PlanExecutePanel({
     setError(null);
     try {
       const res = await overridePlanExecutionIsolation(sessionId, {
-        executionId: isolationBlock.executionId,
+        executionId: targetId,
         mode: "snapshot_override",
         confirmation: "snapshot_override 비격리 실행",
         permissions: executePermissions(),
@@ -783,286 +799,281 @@ export function PlanExecutePanel({
 
   const executeWorkspace = selectedAction?.execute_workspace ?? recommended?.execute_workspace;
 
+  const nowWithoutRecommended = useMemo(() => {
+    if (!recommended) return nowItems;
+    return nowItems.filter((item) => item.index !== recommended.index);
+  }, [nowItems, recommended]);
+
+  const actionDisabled = Boolean(disabled || busy || activePending);
+
+  const renderPlanListItem = (
+    item: PlanActionItem,
+    opts?: { recommended?: boolean; variant?: "now" | "default" },
+  ) => {
+    const key = actionKey(item);
+    if (item.executable !== false) {
+      return (
+        <PlanActionCard
+          key={key}
+          n={item.index}
+          what={item.what}
+          where={item.where}
+          verify={item.verify}
+          onRefClick={onChatRefClick}
+          variant={opts?.variant ?? "default"}
+          recommended={opts?.recommended ?? item.recommended}
+          selectable
+          radioName="plan-action"
+          checked={selectedKey === key}
+          selected={selectedKey === key}
+          disabled={actionDisabled}
+          onSelect={() => setSelectedKey(key)}
+        />
+      );
+    }
+    return (
+      <PlanGateLine
+        key={key}
+        n={item.index}
+        text={
+          opts?.variant === "now" ? item.summary || item.what : roadmapLabel(item)
+        }
+        onRefClick={onChatRefClick}
+        variant={opts?.variant}
+      />
+    );
+  };
+
   if (!cursorReady) {
     return (
-      <div className="plan-execute-panel plan-execute-panel--muted" role="note">
-        plan 실행은 Cursor 에이전트(CURSOR_API_KEY + cursor-sdk)가 필요합니다.
+      <div className="work-surface" role="note">
+        <div className="plan-card plan-card--muted">
+          plan 실행은 Cursor 에이전트(CURSOR_API_KEY + cursor-sdk)가 필요합니다.
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="plan-execute-panel plan-doc" aria-label="plan 실행">
-      {(hasDryRun || hasNowSection) && !loadingActions ? (
-        <p className="plan-execute-panel__lead">
-          <span>
-            {hasDryRun
-              ? `Cursor dry-run ${executableItems.length}건`
-              : "Human 확인 항목"}
-            {roadmap.length > 0 ? ` · 이후 ${roadmap.length}건` : ""}
+    <div className="work-surface" aria-label="plan 실행">
+      <div className="plan-card" id="work-plan-review">
+        <div className="plan-card__head">
+          <span className="plan-card__title">
+            <WorkPlanIcon name="list" size={16} />
+            실행 계획
           </span>
-          {hasDryRun ? (
-            <span className="plan-execute-panel__lead-hint">선택 → dry-run → 승인</span>
-          ) : null}
-        </p>
-      ) : null}
-
-      {loadingActions ? (
-        <p className="plan-execute-panel__muted">액션 불러오는 중…</p>
-      ) : !hasNowSection && !hasDryRun ? (
-        <p className="plan-execute-panel__muted">
-          `## 지금 실행` 또는 `## 다음에 할 일` 섹션이 없습니다.
-        </p>
-      ) : (
-        <>
-          {hasNowSection ? (
+          <span className="plan-card__sub">토론에서 정리됨 · plan.md</span>
+        </div>
+        <div className="plan-card__body">
+          {loadingActions ? (
+            <p className="plan-execute-panel__muted">액션 불러오는 중…</p>
+          ) : !hasNowSection && !hasDryRun && !recommended ? (
+            <p className="plan-execute-panel__muted">
+              plan.md에 실행 액션이 없습니다. 토론·분석만 있으면{" "}
+              <code>## 지금 실행</code> 섹션이 비어 있을 수 있습니다. Transcript에서
+              구현 항목을 합의한 뒤 다음 턴 plan 갱신을 확인하세요.
+            </p>
+          ) : (
             <>
-              <h2 className="plan-doc__h2 plan-execute-panel__section">지금 실행</h2>
-              {nowHasOnlyGates ? (
-                <p className="plan-execute-panel__muted plan-execute-panel__gate-note">
-                  Human 확인 항목만 있습니다. Cursor dry-run은{" "}
-                  <strong>무엇을 / 어디서 / 검증</strong> 3필드 액션 필요.
+              {(recommended || hasNowSection) && (
+                <>
+                  <div className="plan-roadmap-label">추천 다음 단계</div>
+                  <div className="plan-actions">
+                    {recommended ? renderPlanListItem(recommended, { recommended: true, variant: "now" }) : null}
+                    {hasNowSection
+                      ? nowWithoutRecommended.map((item) =>
+                          renderPlanListItem(item, { variant: "now" }),
+                        )
+                      : null}
+                  </div>
+                  {nowHasOnlyGates ? (
+                    <p className="plan-execute-panel__muted plan-execute-panel__gate-note">
+                      Human 확인 항목만 있습니다. Cursor dry-run은{" "}
+                      <strong>무엇을 / 어디서 / 검증</strong> 3필드 액션 필요.
+                    </p>
+                  ) : null}
+                </>
+              )}
+
+              {roadmap.length > 0 ? (
+                <>
+                  <div className="plan-roadmap-label">실행 순서 (이후)</div>
+                  <div className="plan-actions">
+                    {roadmap.map((item) => renderPlanListItem(item))}
+                  </div>
+                </>
+              ) : null}
+            </>
+          )}
+
+          <PlanLinkedTaskLine task={linkedForSelected} onFocusTask={onFocusTask} />
+
+          {selectedOpenBlocks.length ? (
+            <PlanObjectionAlert
+              title="이 action은 미해결 BLOCK으로 execute가 차단됩니다"
+              message="TaskBar에서 이의를 수용하거나 기각한 뒤 dry-run 하세요."
+              objections={selectedOpenBlocks}
+              onFocusObjection={onFocusObjection}
+            />
+          ) : null}
+
+          {objectionBlock?.objections?.length ? (
+            <PlanObjectionAlert
+              title="dry-run이 미해결 이의로 차단됐습니다"
+              message={objectionBlock.message}
+              objections={objectionBlock.objections}
+              onFocusObjection={onFocusObjection}
+            />
+          ) : null}
+
+          {planSnapshot ? (
+            <div
+              className="plan-execute-plan-snapshot"
+              role="region"
+              aria-label="plan 스냅샷 승인"
+            >
+              <p className="plan-execute-plan-snapshot__lead">
+                dry-run 전에 아래 plan 실행 항목을 확인·승인하세요 (스냅샷).
+              </p>
+              <pre className="plan-execute-plan-snapshot__body">
+                {planSnapshot.snapshot_text ||
+                  `${planSnapshot.action_what}\n${planSnapshot.action_where}\n${planSnapshot.action_verify}`}
+              </pre>
+              <div className="plan-execute-plan-snapshot__actions">
+                <button
+                  type="button"
+                  className="plan-btn plan-btn--primary"
+                  disabled={disabled || busy}
+                  onClick={() => void handleApprovePlanSnapshot()}
+                >
+                  {busy ? "처리 중…" : "스냅샷 승인 → dry-run"}
+                </button>
+                <button
+                  type="button"
+                  className="plan-btn"
+                  disabled={busy}
+                  onClick={() => void handleRejectPlanSnapshot()}
+                >
+                  거부
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {isolationBlock ? (
+            <div className="plan-execute-isolation-modal" role="alertdialog">
+              <p className="plan-execute-isolation-modal__title">
+                격리 worktree를 만들 수 없습니다
+              </p>
+              <p className="plan-execute-isolation-modal__reason">
+                {isolationBlock.code}: {isolationBlock.message}
+              </p>
+              {isolationBlock.remediation?.length ? (
+                <p className="plan-execute-isolation-modal__hint">
+                  {isolationBlock.remediation.join(" · ")}
                 </p>
               ) : null}
-              {nowItems.map((item) =>
-                item.executable !== false ? (
-                  <PlanActionCard
-                    key={actionKey(item)}
-                    n={item.index}
-                    what={item.what}
-                    where={item.where}
-                    verify={item.verify}
-                    onRefClick={onChatRefClick}
-                    variant="now"
-                    selectable
-                    radioName="plan-action"
-                    checked={selectedKey === actionKey(item)}
-                    selected={selectedKey === actionKey(item)}
-                    disabled={Boolean(disabled || busy || activePending)}
-                    onSelect={() => setSelectedKey(actionKey(item))}
-                  />
-                ) : (
-                  <PlanGateLine
-                    key={actionKey(item)}
-                    n={item.index}
-                    text={item.summary || item.what}
-                    onRefClick={onChatRefClick}
-                    variant="now"
-                  />
-                ),
-              )}
-            </>
-          ) : recommended ? (
-            <>
-              <h2 className="plan-doc__h2 plan-execute-panel__section">지금 실행</h2>
-              <PlanActionCard
-                n={recommended.index}
-                what={recommended.what}
-                where={recommended.where}
-                verify={recommended.verify}
-                onRefClick={onChatRefClick}
-                variant="now"
-                selectable
-                radioName="plan-action"
-                checked={selectedKey === actionKey(recommended)}
-                selected={selectedKey === actionKey(recommended)}
-                disabled={Boolean(disabled || busy || activePending)}
-                onSelect={() => setSelectedKey(actionKey(recommended))}
-              />
-            </>
-          ) : null}
-
-          {roadmap.length > 0 ? (
-            <>
-              <h2 className="plan-doc__h2 plan-execute-panel__section">실행 순서 (이후)</h2>
-              <div className="plan-execute-roadmap">
-                {roadmap.map((item) =>
-                  item.executable !== false ? (
-                    <PlanActionCard
-                      key={actionKey(item)}
-                      n={item.index}
-                      what={item.what}
-                      where={item.where}
-                      verify={item.verify}
-                      onRefClick={onChatRefClick}
-                      selectable
-                      radioName="plan-action"
-                      checked={selectedKey === actionKey(item)}
-                      selected={selectedKey === actionKey(item)}
-                      disabled={Boolean(disabled || busy || activePending)}
-                      onSelect={() => setSelectedKey(actionKey(item))}
-                    />
-                  ) : (
-                    <PlanGateLine
-                      key={actionKey(item)}
-                      n={item.index}
-                      text={roadmapLabel(item)}
-                      onRefClick={onChatRefClick}
-                    />
-                  ),
-                )}
+              <div className="plan-execute-isolation-modal__actions">
+                <button
+                  type="button"
+                  className="plan-btn plan-btn--primary"
+                  disabled={disabled || busy}
+                  onClick={() => {
+                    setIsolationBlock(null);
+                    void handleDryRun();
+                  }}
+                >
+                  修復 후 재시도
+                </button>
+                <button
+                  type="button"
+                  className="plan-btn"
+                  disabled={disabled || busy || !isolationBlock.executionId}
+                  onClick={() => void handleIsolationOverride()}
+                >
+                  이번만 비격리 실행…
+                </button>
+                <button
+                  type="button"
+                  className="plan-btn"
+                  disabled={busy}
+                  onClick={() => setIsolationBlock(null)}
+                >
+                  취소
+                </button>
               </div>
-            </>
-          ) : null}
-        </>
-      )}
-
-      <PlanLinkedTaskLine task={linkedForSelected} onFocusTask={onFocusTask} />
-
-      {selectedOpenBlocks.length ? (
-        <PlanObjectionAlert
-          title="이 action은 미해결 BLOCK으로 execute가 차단됩니다"
-          message="TaskBar에서 이의를 수용하거나 기각한 뒤 dry-run 하세요."
-          objections={selectedOpenBlocks}
-          onFocusObjection={onFocusObjection}
-        />
-      ) : null}
-
-      {objectionBlock?.objections?.length ? (
-        <PlanObjectionAlert
-          title="dry-run이 미해결 이의로 차단됐습니다"
-          message={objectionBlock.message}
-          objections={objectionBlock.objections}
-          onFocusObjection={onFocusObjection}
-        />
-      ) : null}
-
-      {planSnapshot ? (
-        <div
-          className="plan-execute-plan-snapshot"
-          role="region"
-          aria-label="plan 스냅샷 승인"
-        >
-          <p className="plan-execute-plan-snapshot__lead">
-            dry-run 전에 아래 plan 실행 항목을 확인·승인하세요 (스냅샷).
-          </p>
-          <pre className="plan-execute-plan-snapshot__body">
-            {planSnapshot.snapshot_text ||
-              `${planSnapshot.action_what}\n${planSnapshot.action_where}\n${planSnapshot.action_verify}`}
-          </pre>
-          <div className="plan-execute-plan-snapshot__actions">
-            <button
-              type="button"
-              className="room-plan-btn room-plan-btn--accent"
-              disabled={disabled || busy}
-              onClick={() => void handleApprovePlanSnapshot()}
-            >
-              {busy ? "처리 중…" : "스냅샷 승인 → dry-run"}
-            </button>
-            <button
-              type="button"
-              className="room-plan-btn"
-              disabled={busy}
-              onClick={() => void handleRejectPlanSnapshot()}
-            >
-              거부
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      {isolationBlock ? (
-        <div className="plan-execute-isolation-modal" role="alertdialog">
-          <p className="plan-execute-isolation-modal__title">
-            격리 worktree를 만들 수 없습니다
-          </p>
-          <p className="plan-execute-isolation-modal__reason">
-            {isolationBlock.code}: {isolationBlock.message}
-          </p>
-          {isolationBlock.remediation?.length ? (
-            <p className="plan-execute-isolation-modal__hint">
-              {isolationBlock.remediation.join(" · ")}
-            </p>
-          ) : null}
-          <div className="plan-execute-isolation-modal__actions">
-            <button
-              type="button"
-              className="room-plan-btn room-plan-btn--accent"
-              disabled={disabled || busy}
-              onClick={() => {
-                setIsolationBlock(null);
-                void handleDryRun();
-              }}
-            >
-              修復 후 재시도
-            </button>
-            <button
-              type="button"
-              className="room-plan-btn"
-              disabled={disabled || busy || !isolationBlock.executionId}
-              onClick={() => void handleIsolationOverride()}
-            >
-              이번만 비격리 실행…
-            </button>
-            <button
-              type="button"
-              className="room-plan-btn"
-              disabled={busy}
-              onClick={() => setIsolationBlock(null)}
-            >
-              취소
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      {!activePending && hasDryRun && !planSnapshot ? (
-        <div className="plan-execute-panel__run-row">
-          {executeWorkspace?.label ? (
-            <span className="plan-execute-panel__workspace">
-              {executeWorkspace.label}
-            </span>
-          ) : null}
-          <button
-            type="button"
-            className="room-plan-btn room-plan-btn--accent plan-execute-panel__run"
-            disabled={disabled || busy || selectedKey == null}
-            onClick={() => void handleDryRun()}
-          >
-            {busy ? "Cursor 실행 중…" : "dry-run"}
-          </button>
-        </div>
-      ) : null}
-
-      {activePending ? (
-        <div className="plan-execute-pending" role="region" aria-label="승인 대기">
-          <WorktreePendingBanner row={activePending} />
-          <ApplyIsolationBanner row={activePending} />
-          <PlanLinkedTaskLine task={linkedForPending} onFocusTask={onFocusTask} />
-          {activePending.pre_verify?.blocked ||
-          (activePending.pre_verify?.feedback &&
-            !activePending.pre_verify?.blocked) ? (
-            <p
-              className={
-                activePending.pre_verify?.blocked
-                  ? "plan-execute-pending__pre-verify plan-execute-pending__pre-verify--blocked"
-                  : "plan-execute-pending__pre-verify"
-              }
-              role={activePending.pre_verify?.blocked ? "alert" : "status"}
-            >
-              {activePending.pre_verify?.blocked
-                ? `실행 전 검증 차단: ${activePending.pre_verify.feedback || "pre_execute hook"}`
-                : `실행 전 검증: ${activePending.pre_verify?.feedback}`}
-            </p>
-          ) : null}
-          <AdversarialBadge row={activePending} />
-          <div className="plan-execute-pending__head">
-            <div className="plan-execute-history__title-row">
-              <span className="plan-execute-history__badge">
-                {executionHistoryBadge(activePending)}
-              </span>
-              <strong className="plan-execute-history__title">
-                {executionHistoryTitle(activePending, pendingAction)}
-              </strong>
             </div>
-            <span className="plan-execute-pending__status">
+          ) : null}
+
+          {!activePending && hasDryRun && !planSnapshot ? (
+            <div className="plan-actions-bar">
+              {executeWorkspace?.label ? (
+                <span className="plan-execute-panel__workspace">
+                  {executeWorkspace.label}
+                </span>
+              ) : null}
+              <button
+                type="button"
+                className="plan-btn"
+                disabled={disabled || busy || selectedKey == null}
+                onClick={() => void handleDryRun()}
+              >
+                <WorkPlanIcon name="flask" size={15} />
+                {busy ? "Cursor 실행 중…" : "Dry-run"}
+              </button>
+              <span className="plan-actions-bar__spacer" />
+              <button
+                type="button"
+                className="plan-btn plan-btn--primary"
+                disabled={disabled || busy || selectedKey == null}
+                onClick={() => void handleDryRun()}
+              >
+                <WorkPlanIcon name="play" size={14} />
+                Execute
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </div>
+      {activePending ? (
+        <div className="exec-card" id="work-execute-queue" role="region" aria-label="승인 대기">
+          <div className="exec-card__head">
+            <span className="exec-card__title">
+              <WorkPlanIcon name="bolt" size={16} />
+              {executionHistoryTitle(activePending, pendingAction)}
+            </span>
+            <span
+              className={`exec-status exec-status--${execStatusKey(activePending.status)}`}
+            >
+              <span className="dot dot--warn" aria-hidden />
               {statusLabel(activePending.status, activePending)}
             </span>
           </div>
-          <PlanActionContext
-            {...executionContextFields(activePending, pendingAction)}
-            onRefClick={onChatRefClick}
-          />
+          <div className="exec-card__body">
+            <ApplyIsolationBanner row={activePending} />
+            <WorktreePendingBanner row={activePending} />
+            <PlanLinkedTaskLine task={linkedForPending} onFocusTask={onFocusTask} />
+            {activePending.pre_verify?.blocked ||
+            (activePending.pre_verify?.feedback &&
+              !activePending.pre_verify?.blocked) ? (
+              <p
+                className={
+                  activePending.pre_verify?.blocked
+                    ? "plan-execute-pending__pre-verify plan-execute-pending__pre-verify--blocked"
+                    : "plan-execute-pending__pre-verify"
+                }
+                role={activePending.pre_verify?.blocked ? "alert" : "status"}
+              >
+                {activePending.pre_verify?.blocked
+                  ? `실행 전 검증 차단: ${activePending.pre_verify.feedback || "pre_execute hook"}`
+                  : `실행 전 검증: ${activePending.pre_verify?.feedback}`}
+              </p>
+            ) : null}
+            <AdversarialBadge row={activePending} />
+            <PlanActionContext
+              {...executionContextFields(activePending, pendingAction)}
+              onRefClick={onChatRefClick}
+            />
           {activePending.draft_summary ? (
             <PlanAgentResponse
               text={activePending.draft_summary}
@@ -1105,24 +1116,51 @@ export function PlanExecutePanel({
                 : ""}
             </p>
           ) : null}
-          {approvalGate.blocked && approvalGate.reason ? (
-            <p className="plan-execute-pending__gate" role="alert">
-              {approvalGate.reason}
-            </p>
-          ) : null}
-          {activePending.needs_artifact_review ? (
-            <div className="plan-execute-pending__verify" role="status">
-              <span>
-                PDF: {approvalGate.pdfPath ?? "—"}
-                {approvalGate.pageCount != null
-                  ? ` · ${approvalGate.pageCount}p`
-                  : " · 페이지 수 —"}
-              </span>
-              <span>
-                {approvalGate.artifactsOk ? "검증 OK" : "검증 대기"}
-              </span>
-            </div>
-          ) : null}
+            {approvalGate.blocked && approvalGate.reason ? (
+              <p className="exec-gate-hint" role="alert">
+                <WorkPlanIcon name="alert" size={13} />
+                {approvalGate.reason}
+              </p>
+            ) : null}
+            {activePending.needs_artifact_review ? (
+              <div
+                className={`exec-verify${artifactsReviewConfirmed ? " is-confirmed" : ""}`}
+              >
+                <div className="exec-verify__line">
+                  <WorkPlanIcon name="doc" size={14} />
+                  <code className="exec-verify__path">
+                    {approvalGate.pdfPath ?? "—"}
+                  </code>
+                  {approvalGate.pageCount != null ? (
+                    <span className="badge">{approvalGate.pageCount}p</span>
+                  ) : null}
+                  {oracleStatus(activePending) ? (
+                    <span
+                      className={`exec-verify__oracle exec-verify__oracle--${
+                        oracleStatus(activePending) === "passed" ||
+                        oracleStatus(activePending) === "pass"
+                          ? "ok"
+                          : "fail"
+                      }`}
+                    >
+                      <span className="dot dot--ok" aria-hidden />
+                      {oracleStatusLabel(oracleStatus(activePending))}
+                    </span>
+                  ) : null}
+                </div>
+                <label className="exec-verify__confirm">
+                  <input
+                    type="checkbox"
+                    className="checkbox"
+                    checked={artifactsReviewConfirmed}
+                    onChange={(event) =>
+                      setArtifactsReviewConfirmed(event.target.checked)
+                    }
+                  />
+                  PDF·페이지 수·산출물을 확인했습니다
+                </label>
+              </div>
+            ) : null}
           {activePending.paths_outside_expected?.length ? (
             <p className="plan-execute-pending__warn">
               예상 범위 밖: {formatPathList(activePending.paths_outside_expected)}
@@ -1152,100 +1190,172 @@ export function PlanExecutePanel({
           {activePending.diff_stat ? (
             <PlanDiffStat text={activePending.diff_stat} />
           ) : null}
-          {activePending.diff ? (
-            <details className="plan-execute-pending__diff" open>
-              <summary>로컬 diff</summary>
-              {activePending.status === "pending_approval" &&
-              isWorktreeExecution(activePending) ? (
-                <div className="plan-execute-revise">
-                  <div className="plan-execute-revise__controls">
-                    <select
-                      aria-label="재작업할 diff hunk"
-                      value={reviseHunkId}
-                      disabled={busy}
-                      onChange={(event) => setReviseHunkId(event.target.value)}
-                    >
-                      <option value="">전체 diff</option>
-                      {pendingDiffHunks.map((hunk, index) => (
-                        <option key={hunk.id} value={hunk.id}>
-                          hunk {index + 1} · {hunk.ref}
-                        </option>
-                      ))}
-                    </select>
-                    <textarea
-                      aria-label="diff 재작업 요청"
-                      value={reviseComment}
-                      disabled={busy}
-                      rows={2}
-                      maxLength={2000}
-                      placeholder="수정 요청"
-                      onChange={(event) => setReviseComment(event.target.value)}
-                    />
-                    <button
-                      type="button"
-                      className="room-plan-btn"
-                      disabled={disabled || busy || !reviseComment.trim()}
-                      onClick={() => void handleRevisePending()}
-                    >
-                      {revising ? "재작업 중…" : "이 부분만 다시"}
-                    </button>
-                  </div>
-                  {reviseError ? (
-                    <p className="plan-execute-revise__error" role="alert">
-                      {reviseError}
-                    </p>
-                  ) : null}
+            {activePending.diff ? (
+              <div className="exec-diff">
+                <div className="exec-diff__head">
+                  <WorkPlanIcon name="gitMerge" size={14} />
+                  Diff preview
                 </div>
+                <div className="exec-diff__body">
+                  {activePending.diff.split("\n").map((line, index) => {
+                    const kind = diffLineKind(line);
+                    return (
+                      <div
+                        key={`${activePending.id}-diff-${index}`}
+                        className={`diff-line${kind ? ` diff-line--${kind}` : ""}`}
+                      >
+                        {line}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+            {activePending.status === "pending_approval" &&
+            isWorktreeExecution(activePending) &&
+            activePending.diff ? (
+              <div className="plan-execute-revise">
+                <div className="plan-execute-revise__controls">
+                  <select
+                    aria-label="재작업할 diff hunk"
+                    value={reviseHunkId}
+                    disabled={busy}
+                    onChange={(event) => setReviseHunkId(event.target.value)}
+                  >
+                    <option value="">전체 diff</option>
+                    {pendingDiffHunks.map((hunk, index) => (
+                      <option key={hunk.id} value={hunk.id}>
+                        hunk {index + 1} · {hunk.ref}
+                      </option>
+                    ))}
+                  </select>
+                  <textarea
+                    aria-label="diff 재작업 요청"
+                    value={reviseComment}
+                    disabled={busy}
+                    rows={2}
+                    maxLength={2000}
+                    placeholder="수정 요청"
+                    onChange={(event) => setReviseComment(event.target.value)}
+                  />
+                </div>
+                {reviseError ? (
+                  <p className="plan-execute-revise__error" role="alert">
+                    {reviseError}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+            <div className="exec-actions">
+              {activePending.status === "merge_conflict" ? (
+                <>
+                  <button
+                    type="button"
+                    className="plan-btn plan-btn--ok"
+                    disabled={disabled || busy}
+                    onClick={() => void handleMergeConfirm()}
+                  >
+                    Conflict 해결 완료
+                  </button>
+                  <button
+                    type="button"
+                    className="plan-btn plan-btn--danger"
+                    disabled={disabled || busy}
+                    onClick={() => void handleMergeAbort()}
+                  >
+                    Merge 취소
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="plan-btn plan-btn--danger"
+                    disabled={disabled || busy}
+                    onClick={() => void handleResolve("reject")}
+                  >
+                    <WorkPlanIcon name="x" size={14} />
+                    {executionRejectLabel(activePending)}
+                  </button>
+                  <button
+                    type="button"
+                    className="plan-btn"
+                    disabled={
+                      disabled ||
+                      busy ||
+                      !reviseComment.trim() ||
+                      !activePending.diff
+                    }
+                    onClick={() => void handleRevisePending()}
+                  >
+                    <WorkPlanIcon name="refresh" size={14} />
+                    {revising ? "재작업 중…" : "Revise"}
+                  </button>
+                  <button
+                    type="button"
+                    className="plan-btn plan-btn--ok"
+                    disabled={disabled || busy || approveBlocked}
+                    title={approvalGate.reason ?? undefined}
+                    onClick={() => void handleResolve("approve")}
+                  >
+                    <WorkPlanIcon name="gitMerge" size={14} />
+                    {executionApproveLabel(activePending)}
+                  </button>
+                </>
+              )}
+            </div>
+            {historyVisible.length ? (
+              <details className="exec-history-details">
+                <summary>실행 기록</summary>
+                <div className="exec-history">
+                  {historyVisible.map((row) => {
+                    const action = resolveExecutionAction(row, storedActions);
+                    const completedAt = formatExecutionTime(
+                      row.completed_at || row.started_at,
+                    );
+                    return (
+                      <div key={row.id} className="exec-history__row">
+                        <WorkPlanIcon name="activity" size={13} />
+                        {executionHistoryTitle(row, action)}
+                        {completedAt ? (
+                          <span className="exec-history__time">{completedAt}</span>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              </details>
+            ) : null}
+            <div className="exec-extra-actions">
+              {oracleStatus(activePending) === "failed" ||
+              oracleStatus(activePending) === "fail" ? (
+                <button
+                  type="button"
+                  className="plan-btn"
+                  disabled={busy}
+                  onClick={() => void handleReverify(activePending.id)}
+                >
+                  <WorkPlanIcon name="eyeCheck" size={14} />
+                  Oracle 재검증
+                </button>
               ) : null}
-              <pre>{activePending.diff}</pre>
-            </details>
-          ) : null}
-          <div className="plan-execute-pending__actions">
-            {activePending.status === "merge_conflict" ? (
-              <>
+              {isWorktreeExecution(activePending) ? (
                 <button
                   type="button"
-                  className="room-plan-btn room-plan-btn--accent"
-                  disabled={disabled || busy}
-                  onClick={() => void handleMergeConfirm()}
+                  className="plan-btn"
+                  disabled={disabled || busy || !activePending.id}
+                  onClick={() => void handleIsolationOverride(activePending.id)}
                 >
-                  Conflict 해결 완료
+                  <WorkPlanIcon name="unlock" size={14} />
+                  격리 오버라이드
                 </button>
-                <button
-                  type="button"
-                  className="room-plan-btn"
-                  disabled={disabled || busy}
-                  onClick={() => void handleMergeAbort()}
-                >
-                  Merge 취소
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  className="room-plan-btn room-plan-btn--accent"
-                  disabled={disabled || busy || approvalGate.blocked}
-                  title={approvalGate.reason ?? undefined}
-                  onClick={() => void handleResolve("approve")}
-                >
-                  {executionApproveLabel(activePending)}
-                </button>
-                <button
-                  type="button"
-                  className="room-plan-btn"
-                  disabled={disabled || busy}
-                  onClick={() => void handleResolve("reject")}
-                >
-                  {executionRejectLabel(activePending)}
-                </button>
-              </>
-            )}
+              ) : null}
+            </div>
           </div>
         </div>
       ) : null}
 
-      {historyRows.length ? (
+      {!activePending && historyRows.length ? (
         <details className="plan-execute-history">
           <summary>
             실행 기록

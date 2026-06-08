@@ -16,19 +16,13 @@ import {
   endorsementCount,
   findTaskByBlockerRef,
   formatConsensusBlockerCopy,
-  formatTaskBarCollapsedSummary,
   formatTaskBarEmptyState,
   formatTaskBarModeHint,
   formatTeamAgreementLabel,
-  formatTurnLeadLabel,
-  isUnassignedOpenTask,
-  LEAD_HELP_DETAIL,
   LEAD_HELP_SUMMARY,
-  LEAD_HELP_TOGGLE_LABEL,
   resolveRequiredAgreements,
   resolveTaskBarMode,
   shouldShowConsensusBlocker,
-  shouldShowTurnLeadDetails,
   type TaskBarComposerVariant,
   TASK_BAR_AUTO_REFRESH_HINT,
   UNASSIGNED_OWNER_LABEL,
@@ -36,6 +30,8 @@ import {
 } from "../utils/taskBarCopy";
 import { getTaskBarCollapsed, setTaskBarCollapsed } from "../utils/taskBarPrefs";
 import type { ComposerTurnProfile } from "../utils/turnProfile";
+import type { AgentRole } from "../utils/transcript";
+import { Avatar } from "./Avatar";
 
 export type TaskBarContext = {
   composerVariant: TaskBarComposerVariant;
@@ -57,7 +53,17 @@ type Props = {
   onRequestComposerPrefill?: (text: string) => void;
 };
 
-type TaskTab = "all" | "unassigned";
+type TaskSection = "tasks" | "objections" | "inbox" | "artifacts";
+
+const LEAD_OPTIONS = ["cursor", "codex", "claude"] as const;
+
+const STATUS_BADGE: Record<string, string> = {
+  pending: "대기",
+  in_progress: "진행",
+  completed: "완료",
+  cancelled: "취소",
+  blocked: "차단",
+};
 
 function taskCompleteGate(
   task: RoomTask,
@@ -85,192 +91,75 @@ function taskCompleteGate(
   return { blocked: false, hint: null };
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  pending: "대기",
-  in_progress: "진행",
-  completed: "완료",
-  cancelled: "취소",
-};
-
-const LEAD_OPTIONS = ["cursor", "codex", "claude"] as const;
-
-function formatTurnLeads(
-  turnLeads: Record<string, string> | undefined,
-  currentLead: string,
-): { currentTurnLead: string; history: { turn: string; agent: string }[] } {
-  const map = turnLeads ?? {};
-  const keys = Object.keys(map)
-    .map((k) => Number(k))
-    .filter((n) => Number.isFinite(n))
-    .sort((a, b) => b - a);
-  const latestTurn = keys[0];
-  const currentTurnLead =
-    latestTurn != null ? map[String(latestTurn)] ?? currentLead : currentLead;
-  const history = keys.map((t) => ({
-    turn: String(t),
-    agent: map[String(t)] ?? "?",
-  }));
-  return { currentTurnLead, history };
+function agentRole(id: string | undefined): AgentRole {
+  if (id === "cursor" || id === "codex" || id === "claude") return id;
+  return "system";
 }
 
-function linkedExecutionRow(
-  task: RoomTask,
-  executions: PlanExecutionRecord[] | undefined,
-): { planIndex: number | null; status: string | null; executionId: string | null } {
-  const rows = executions ?? [];
-  for (let i = rows.length - 1; i >= 0; i -= 1) {
-    const ex = rows[i];
-    const match =
-      (task.plan_action_index != null &&
-        ex.action_index === task.plan_action_index) ||
-      (task.plan_action_id != null && ex.action_id === task.plan_action_id);
-    if (match) {
-      return {
-        planIndex: ex.action_index ?? task.plan_action_index ?? null,
-        status: ex.status ?? null,
-        executionId: ex.id ?? null,
-      };
-    }
+function artifactTypeClass(kind: string): string {
+  const lower = kind.toLowerCase();
+  if (lower.includes("pdf")) return "artifact-row__type--pdf";
+  if (lower.includes("json")) return "artifact-row__type--json";
+  if (lower.includes("ts") || lower.includes("typescript")) {
+    return "artifact-row__type--ts";
   }
-  return {
-    planIndex: task.plan_action_index ?? null,
-    status: null,
-    executionId: null,
-  };
+  return "";
 }
 
-function TaskRows({
-  tasks,
-  showOwner = true,
-  sessionId,
-  executions,
-  requiredAgreements,
-  onRefresh,
-  onFocusPlanAction,
-  onFocusTask,
-}: {
-  tasks: RoomTask[];
-  showOwner?: boolean;
-  sessionId: string;
-  executions?: PlanExecutionRecord[];
-  requiredAgreements: number;
-  onRefresh?: () => void;
-  onFocusPlanAction?: (actionIndex: number) => void;
-  onFocusTask?: (taskId: string) => void;
-}) {
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [completeErrors, setCompleteErrors] = useState<Record<string, string>>(
-    {},
-  );
-
-  async function markComplete(taskId: string) {
-    setBusyId(taskId);
-    setCompleteErrors((prev) => {
-      const next = { ...prev };
-      delete next[taskId];
-      return next;
-    });
-    try {
-      await completeSessionTask(sessionId, taskId);
-      onRefresh?.();
-    } catch (e) {
-      const msg =
-        e instanceof Error ? parseApiErrorDetail(e.message) : "완료 처리 실패";
-      setCompleteErrors((prev) => ({ ...prev, [taskId]: msg }));
-    } finally {
-      setBusyId(null);
-    }
-  }
-
-  if (tasks.length === 0) {
-    return (
-      <p className="room-task-bar__tab-empty">이 목록에 표시할 할 일이 없습니다.</p>
-    );
-  }
-
+function TaskbarListIcon() {
   return (
-    <ul className="room-task-bar__list">
-      {tasks.map((t) => {
-        const completeGate = taskCompleteGate(t, executions);
-        const rowError = completeErrors[t.id];
-        const agreeCount = endorsementCount(t);
-        return (
-          <li
-            key={t.id}
-            data-task-id={t.id}
-            className={`room-task-bar__item room-task-bar__item--${t.status}`}
-          >
-            <span className="room-task-bar__status">
-              {STATUS_LABEL[t.status] ?? t.status}
-            </span>
-            {onFocusTask ? (
-              <button
-                type="button"
-                className="room-task-bar__title-link"
-                onClick={() => onFocusTask(t.id)}
-                title="채팅에서 이 할 일 언급으로 이동"
-              >
-                {t.title}
-              </button>
-            ) : (
-              <span className="room-task-bar__title-text">{t.title}</span>
-            )}
-            {showOwner && t.owner_agent ? (
-              <span className="room-task-bar__owner">@{t.owner_agent}</span>
-            ) : null}
-            {showOwner && !t.owner_agent ? (
-              <span
-                className="room-task-bar__owner room-task-bar__owner--open"
-                title={UNASSIGNED_OWNER_TOOLTIP}
-              >
-                {UNASSIGNED_OWNER_LABEL}
-              </span>
-            ) : null}
-            {t.status !== "completed" && t.status !== "cancelled" ? (
-              <span
-                className="room-task-bar__endorse"
-                title="이 할 일에 동의한 에이전트 수"
-              >
-                {formatTeamAgreementLabel(agreeCount, requiredAgreements)}
-              </span>
-            ) : null}
-            {t.plan_action_index != null && onFocusPlanAction ? (
-              <button
-                type="button"
-                className="room-task-bar__plan-link"
-                onClick={() => onFocusPlanAction(t.plan_action_index!)}
-                title={`plan 지금 실행 #${t.plan_action_index}`}
-              >
-                plan #{t.plan_action_index}
-              </button>
-            ) : null}
-            {t.status === "pending" || t.status === "in_progress" ? (
-              <span className="room-task-bar__complete-wrap">
-                <button
-                  type="button"
-                  className="room-task-bar__complete"
-                  disabled={busyId === t.id || completeGate.blocked}
-                  title={completeGate.hint ?? undefined}
-                  onClick={() => void markComplete(t.id)}
-                >
-                  완료
-                </button>
-                {completeGate.blocked && completeGate.hint ? (
-                  <span className="room-task-bar__complete-hint">
-                    {completeGate.hint}
-                  </span>
-                ) : null}
-                {rowError ? (
-                  <span className="room-task-bar__complete-error" role="alert">
-                    {rowError}
-                  </span>
-                ) : null}
-              </span>
-            ) : null}
-          </li>
-        );
-      })}
-    </ul>
+    <svg
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.7}
+      strokeLinecap="round"
+      aria-hidden
+    >
+      <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+    </svg>
+  );
+}
+
+function TaskbarChevronIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="15"
+      height="15"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      aria-hidden
+    >
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  );
+}
+
+function TabIcon({ name }: { name: "list" | "alert" | "mail" | "doc" }) {
+  const paths = {
+    list: "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01",
+    alert: "M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z",
+    mail: "M4 4h16v16H4V4zM4 8l8 5 8-5",
+    doc: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM14 2v6h6",
+  };
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="13"
+      height="13"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      aria-hidden
+    >
+      <path d={paths[name]} />
+    </svg>
   );
 }
 
@@ -288,12 +177,14 @@ export function RoomTaskBar({
 }: Props) {
   const [leadBusy, setLeadBusy] = useState(false);
   const [leadError, setLeadError] = useState<string | null>(null);
-  const [leadHelpOpen, setLeadHelpOpen] = useState(false);
-  const [turnHistoryExpanded, setTurnHistoryExpanded] = useState(false);
-  const [taskTab, setTaskTab] = useState<TaskTab>("all");
+  const [section, setSection] = useState<TaskSection>("tasks");
   const [collapsed, setCollapsed] = useState(() => getTaskBarCollapsed());
   const [blockerCompleteBusy, setBlockerCompleteBusy] = useState(false);
   const [objectionBusyId, setObjectionBusyId] = useState<string | null>(null);
+  const [busyTaskId, setBusyTaskId] = useState<string | null>(null);
+  const [completeErrors, setCompleteErrors] = useState<Record<string, string>>(
+    {},
+  );
 
   useEffect(() => {
     setTaskBarCollapsed(collapsed);
@@ -303,6 +194,7 @@ export function RoomTaskBar({
     if (!focusObjection?.id) return;
     setCollapsed(false);
     setTaskBarCollapsed(false);
+    setSection("objections");
     window.setTimeout(() => {
       const node = document.querySelector<HTMLElement>(
         `[data-objection-id="${focusObjection.id}"]`,
@@ -319,7 +211,6 @@ export function RoomTaskBar({
     context.composerVariant,
     context.turnProfile,
   );
-  const showTurnLead = shouldShowTurnLeadDetails(taskBarMode);
   const openTaskCount = payload?.open_task_count ?? 0;
   const modeHint = formatTaskBarModeHint(taskBarMode, {
     taskCount: tasks.length,
@@ -327,16 +218,6 @@ export function RoomTaskBar({
     selectedAgentCount: context.selectedAgentCount,
   });
   const emptyCopy = formatTaskBarEmptyState(taskBarMode);
-
-  const unassignedTasks = useMemo(
-    () => tasks.filter(isUnassignedOpenTask),
-    [tasks],
-  );
-
-  const visibleTasks = useMemo(() => {
-    if (taskTab === "unassigned") return unassignedTasks;
-    return tasks;
-  }, [taskTab, tasks, unassignedTasks]);
 
   const blockers = payload?.consensus_task_blockers ?? [];
   const showConsensusBlocker = payload
@@ -365,7 +246,9 @@ export function RoomTaskBar({
   }, [payload, blockers, tasks]);
 
   if (!payload) return null;
-  const openObjectionCount = payload.open_objection_count ?? 0;
+  const openObjections = payload.open_objections ?? [];
+  const allObjections = payload.objections ?? openObjections;
+  const openObjectionCount = payload.open_objection_count ?? openObjections.length;
   if (
     tasks.length === 0 &&
     claimableCount === 0 &&
@@ -399,31 +282,55 @@ export function RoomTaskBar({
         payload.consensus_gate,
       )
     : { headline: "", detail: "" };
-  const { currentTurnLead, history: turnLeadHistory } = formatTurnLeads(
-    payload.turn_leads,
-    payload.team_lead ?? "cursor",
-  );
-  const turnHistoryVisible = turnHistoryExpanded
-    ? turnLeadHistory
-    : turnLeadHistory.slice(0, 3);
-  const turnHistoryHidden = turnLeadHistory.length - turnHistoryVisible.length;
-
-  const collapsedSummary = formatTaskBarCollapsedSummary({
-    pending: payload.counts?.pending ?? 0,
-    inProgress: payload.counts?.in_progress ?? 0,
-    blockedCount: showConsensusBlocker ? blockers.length : 0,
-    taskCount: tasks.length,
-    currentTurnLead: showTurnLead ? currentTurnLead : undefined,
-  });
 
   const mailbox = payload.mailbox ?? [];
   const mailboxUnread = payload.mailbox_unread ?? {};
   const unreadTotal = Object.values(mailboxUnread).reduce((a, b) => a + b, 0);
-  const recentMailbox = [...mailbox].reverse().slice(0, 8);
-  const artifacts = payload?.artifacts ?? [];
-  const recentArtifacts = [...artifacts].reverse().slice(0, 8);
-  const openObjections = payload.open_objections ?? [];
-  const showObjectionBlocker = openObjections.length > 0;
+  const artifacts = payload.artifacts ?? [];
+
+  const taskOpenCount =
+    (payload.counts?.pending ?? 0) + (payload.counts?.in_progress ?? 0);
+  const taskDoneCount = payload.counts?.completed ?? 0;
+  const taskBlockedCount = showConsensusBlocker ? blockers.length : 0;
+  const hasTaskbarAlert = openObjections.length > 0 || taskBlockedCount > 0;
+  const isOpen = !collapsed;
+
+  const sections: {
+    id: TaskSection;
+    icon: "list" | "alert" | "mail" | "doc";
+    label: string;
+    count: number;
+    danger?: boolean;
+    accent?: boolean;
+  }[] = [
+    {
+      id: "tasks",
+      icon: "list",
+      label: "Room tasks",
+      count: taskOpenCount,
+      danger: taskBlockedCount > 0,
+    },
+    {
+      id: "objections",
+      icon: "alert",
+      label: "이의",
+      count: openObjections.length,
+      danger: openObjections.length > 0,
+    },
+    {
+      id: "inbox",
+      icon: "mail",
+      label: "받은함",
+      count: unreadTotal,
+      accent: unreadTotal > 0,
+    },
+    {
+      id: "artifacts",
+      icon: "doc",
+      label: "산출물",
+      count: artifacts.length,
+    },
+  ];
 
   async function resolveObjection(
     obj: RoomObjection,
@@ -440,16 +347,23 @@ export function RoomTaskBar({
     }
   }
 
-  const linkedRows = tasks
-    .filter((t) => t.plan_action_index != null || t.plan_action_id)
-    .map((t) => ({ task: t, link: linkedExecutionRow(t, executions) }))
-    .filter((r) => r.link.planIndex != null || r.link.status);
-  const linkedVisible = linkedRows.slice(0, 5);
-  const linkedOverflow = linkedRows.length - linkedVisible.length;
-
-  function focusBlockerRef(ref: string) {
-    const task = findTaskByBlockerRef(tasks, ref);
-    onFocusTask?.(task?.id ?? ref);
+  async function markComplete(taskId: string) {
+    setBusyTaskId(taskId);
+    setCompleteErrors((prev) => {
+      const next = { ...prev };
+      delete next[taskId];
+      return next;
+    });
+    try {
+      await completeSessionTask(sessionId, taskId);
+      onRefresh?.();
+    } catch (e) {
+      const msg =
+        e instanceof Error ? parseApiErrorDetail(e.message) : "완료 처리 실패";
+      setCompleteErrors((prev) => ({ ...prev, [taskId]: msg }));
+    } finally {
+      setBusyTaskId(null);
+    }
   }
 
   async function completePrimaryBlockedTask() {
@@ -470,409 +384,390 @@ export function RoomTaskBar({
     onRequestComposerPrefill(buildEndorsementRequestPrefill(primaryBlockedTask));
   }
 
-  if (collapsed) {
-    return (
-      <div
-        className={`room-task-bar room-task-bar--collapsed room-task-bar--${taskBarMode}`}
-        role="region"
-        aria-label="팀 할 일 목록"
-      >
-        <button
-          type="button"
-          className="room-task-bar__collapse-trigger"
-          aria-expanded={false}
-          onClick={() => setCollapsed(false)}
-        >
-          <strong className="room-task-bar__title">팀 할 일</strong>
-          <span className="room-task-bar__collapse-summary">{collapsedSummary}</span>
-          <span className="room-task-bar__collapse-action">펼치기</span>
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div
-      className={`room-task-bar room-task-bar--${taskBarMode}`}
+      className={[
+        "taskbar",
+        isOpen ? "is-open" : "",
+        hasTaskbarAlert ? "taskbar--alert" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
       role="region"
       aria-label="팀 할 일 목록"
     >
-      <div className="room-task-bar__head">
-        <strong className="room-task-bar__title">팀 할 일</strong>
-        {showTurnLead ? (
-          <span className="room-task-bar__turn-lead" title={LEAD_HELP_SUMMARY}>
-            이번 턴 · <strong>{currentTurnLead}</strong>
-          </span>
-        ) : null}
-        <label className="room-task-bar__lead-select" title={LEAD_HELP_SUMMARY}>
-          세션 리드
-          <select
-            value={payload.team_lead ?? "cursor"}
-            disabled={leadBusy || loading}
-            aria-describedby="room-task-bar-lead-help"
-            onChange={(e) => void changeLead(e.target.value)}
-          >
-            {LEAD_OPTIONS.map((id) => (
-              <option key={id} value={id}>
-                {id}
-              </option>
-            ))}
-          </select>
-        </label>
-        <span className="room-task-bar__meta">
-          대기 {payload.counts?.pending ?? 0} · 진행{" "}
-          {payload.counts?.in_progress ?? 0} · 완료{" "}
-          {payload.counts?.completed ?? 0}
-          <span className="room-task-bar__auto-hint" title={TASK_BAR_AUTO_REFRESH_HINT}>
-            {" "}
-            · {TASK_BAR_AUTO_REFRESH_HINT}
+      <button
+        type="button"
+        className="taskbar__summary"
+        aria-expanded={isOpen}
+        onClick={() => setCollapsed((v) => !v)}
+      >
+        <span className="taskbar__title">
+          <TaskbarListIcon />
+          Room tasks
+        </span>
+        <span className="taskbar__counts">
+          {taskOpenCount > 0 ? (
+            <span className="badge badge--accent">{taskOpenCount} open</span>
+          ) : null}
+          {taskDoneCount > 0 ? (
+            <span className="badge badge--ok">{taskDoneCount} done</span>
+          ) : null}
+          {taskBlockedCount > 0 ? (
+            <span className="badge badge--danger">
+              {taskBlockedCount} blocked
+            </span>
+          ) : null}
+          {openObjections.length > 0 ? (
+            <span className="badge badge--danger">
+              <TabIcon name="alert" /> {openObjections.length}
+            </span>
+          ) : null}
+          {unreadTotal > 0 ? (
+            <span className="badge badge--accent">
+              <TabIcon name="mail" /> {unreadTotal}
+            </span>
+          ) : null}
+          {artifacts.length > 0 ? (
+            <span className="badge">
+              <TabIcon name="doc" /> {artifacts.length}
+            </span>
+          ) : null}
+          <span className="taskbar__caret" aria-hidden>
+            <TaskbarChevronIcon />
           </span>
         </span>
-        <button
-          type="button"
-          className="room-task-bar__collapse-btn"
-          aria-expanded
-          title="할 일 바 접기"
-          onClick={() => setCollapsed(true)}
-        >
-          접기
-        </button>
-        {onRefresh ? (
-          <button
-            type="button"
-            className="room-task-bar__refresh"
-            onClick={onRefresh}
-            disabled={loading}
-            title="수동으로 목록 다시 불러오기"
-            aria-label="할 일 목록 새로고침"
-          >
-            {loading ? "…" : "↻"}
-          </button>
-        ) : null}
-      </div>
-      <p className="room-task-bar__mode-hint" role="status">
-        {modeHint}
-      </p>
-      <div className="room-task-bar__lead-help-row">
-        <p id="room-task-bar-lead-help" className="room-task-bar__lead-summary">
-          {LEAD_HELP_SUMMARY}
-        </p>
-        <button
-          type="button"
-          className="room-task-bar__lead-help-toggle"
-          aria-expanded={leadHelpOpen}
-          aria-controls="room-task-bar-lead-detail"
-          onClick={() => setLeadHelpOpen((v) => !v)}
-        >
-          {LEAD_HELP_TOGGLE_LABEL}
-        </button>
-      </div>
-      {leadHelpOpen ? (
-        <p id="room-task-bar-lead-detail" className="room-task-bar__lead-help">
-          {LEAD_HELP_DETAIL}
-        </p>
-      ) : null}
-      {leadError ? (
-        <p className="room-task-bar__lead-error" role="alert">
-          {leadError}
-        </p>
-      ) : null}
-      {showTurnLead && turnLeadHistory.length > 0 ? (
-        <div className="room-task-bar__turn-leads-history">
-          <span className="room-task-bar__turn-leads-label">최근 턴 리드</span>
-          {turnHistoryVisible.map(({ turn, agent }) => (
-            <span key={turn} className="room-task-bar__turn-lead-chip">
-              {formatTurnLeadLabel(turn, agent)}
-            </span>
-          ))}
-          {turnHistoryHidden > 0 && !turnHistoryExpanded ? (
-            <button
-              type="button"
-              className="room-task-bar__turn-leads-more"
-              onClick={() => setTurnHistoryExpanded(true)}
-            >
-              +{turnHistoryHidden}개 더 보기
-            </button>
-          ) : null}
-          {turnHistoryExpanded && turnLeadHistory.length > 3 ? (
-            <button
-              type="button"
-              className="room-task-bar__turn-leads-more"
-              onClick={() => setTurnHistoryExpanded(false)}
-            >
-              접기
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-      {showObjectionBlocker ? (
-        <div
-          className="room-task-bar__blocker room-task-bar__blocker--objection"
-          role="status"
-          aria-label="미해결 이의"
-        >
-          <p className="room-task-bar__blocker-headline">
-            미해결 이의 {openObjections.length}건 — plan 실행이 차단될 수 있습니다
-          </p>
-          <ul className="room-task-bar__objection-list">
-            {openObjections.slice(0, 5).map((o) => (
-              <li
-                key={o.id}
-                className="room-task-bar__objection-item"
-                data-objection-id={o.id}
-                tabIndex={-1}
+      </button>
+
+      {isOpen ? (
+        <div className="taskbar__body">
+          <div className="taskbar__tabs" role="tablist" aria-label="Room tasks">
+            {sections.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                role="tab"
+                aria-selected={section === s.id}
+                className={[
+                  "taskbar__tab",
+                  section === s.id ? "is-active" : "",
+                  s.danger ? "taskbar__tab--danger" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                onClick={() => setSection(s.id)}
               >
-                <span>
-                  <strong>
-                    {o.from} · {o.act}
-                  </strong>
-                  {o.plan_action_index != null ? (
-                    <span className="room-task-bar__objection-ref">
-                      {" "}
-                      → plan #{o.plan_action_index}
-                    </span>
-                  ) : null}
-                  {o.target_ref || o.task_id ? (
-                    <span className="room-task-bar__objection-ref">
-                      {" "}
-                      → {o.target_ref ?? o.task_id}
-                    </span>
-                  ) : null}
-                </span>
-                <span className="room-task-bar__objection-body">{o.body}</span>
-                <span className="room-task-bar__objection-actions">
-                  {o.plan_action_index != null && onFocusPlanAction ? (
+                <TabIcon name={s.icon} />
+                <span>{s.label}</span>
+                {s.count > 0 ? (
+                  <span
+                    className={[
+                      "taskbar__tab-badge",
+                      s.danger ? "taskbar__tab-badge--danger" : "",
+                      s.accent ? "taskbar__tab-badge--accent" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                  >
+                    {s.count}
+                  </span>
+                ) : null}
+              </button>
+            ))}
+          </div>
+
+          <div className="taskbar__section">
+            {section === "tasks" ? (
+              <>
+                <div className="taskbar-section-label taskbar-section-label--inline">
+                  <label className="taskbar-lead-select" title={LEAD_HELP_SUMMARY}>
+                    세션 리드
+                    <select
+                      value={payload.team_lead ?? "cursor"}
+                      disabled={leadBusy || loading}
+                      onChange={(e) => void changeLead(e.target.value)}
+                    >
+                      {LEAD_OPTIONS.map((id) => (
+                        <option key={id} value={id}>
+                          {id}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {onRefresh ? (
                     <button
                       type="button"
-                      className="room-task-bar__cta"
-                      onClick={() => onFocusPlanAction(o.plan_action_index!)}
+                      className="btn btn--sm"
+                      onClick={onRefresh}
+                      disabled={loading}
+                      title={TASK_BAR_AUTO_REFRESH_HINT}
                     >
-                      plan 보기
+                      {loading ? "…" : "↻"}
                     </button>
                   ) : null}
-                  <button
-                    type="button"
-                    className="room-task-bar__cta"
-                    disabled={objectionBusyId === o.id}
-                    onClick={() => void resolveObjection(o, "accepted")}
-                  >
-                    수용
-                  </button>
-                  <button
-                    type="button"
-                    className="room-task-bar__cta room-task-bar__cta--muted"
-                    disabled={objectionBusyId === o.id}
-                    onClick={() => void resolveObjection(o, "wontfix")}
-                  >
-                    기각
-                  </button>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-      {showConsensusBlocker ? (
-        <div
-          className="room-task-bar__blocker"
-          role="status"
-          aria-label="합의 차단"
-        >
-          <p className="room-task-bar__blocker-headline">{blockerCopy.headline}</p>
-          <p className="room-task-bar__blocker-detail">{blockerCopy.detail}</p>
-          <p className="room-task-bar__blocker-tasks">
-            {blockers.slice(0, 3).map((ref, i) => (
-              <span key={ref}>
-                {i > 0 ? ", " : null}
-                {onFocusTask ? (
-                  <button
-                    type="button"
-                    className="room-task-bar__blocker-link"
-                    onClick={() => focusBlockerRef(ref)}
-                  >
-                    {findTaskByBlockerRef(tasks, ref)?.title ?? ref}
-                  </button>
+                </div>
+                {leadError ? (
+                  <p className="taskbar-inline-error" role="alert">
+                    {leadError}
+                  </p>
+                ) : null}
+                {showConsensusBlocker ? (
+                  <div className="taskbar__consensus-gate" aria-label="합의 차단">
+                    <TabIcon name="alert" />
+                    <div className="taskbar__gate-body">
+                      <strong>{blockerCopy.headline}</strong>
+                      <span className="taskbar__gate-meta">{blockerCopy.detail}</span>
+                      <span className="taskbar__gate-actions">
+                        {onRequestComposerPrefill && primaryBlockedTask ? (
+                          <button
+                            type="button"
+                            className="btn btn--sm btn--ok"
+                            onClick={requestEndorsementPrefill}
+                          >
+                            동의 요청
+                          </button>
+                        ) : null}
+                        {primaryBlockedTask ? (
+                          <button
+                            type="button"
+                            className="btn btn--sm"
+                            disabled={blockerCompleteBusy}
+                            onClick={() => void completePrimaryBlockedTask()}
+                          >
+                            완료로 닫기
+                          </button>
+                        ) : null}
+                      </span>
+                    </div>
+                  </div>
+                ) : null}
+                {tasks.length === 0 ? (
+                  <div className="taskbar__empty">
+                    <p>{emptyCopy.message}</p>
+                    <p>{modeHint}</p>
+                  </div>
                 ) : (
-                  findTaskByBlockerRef(tasks, ref)?.title ?? ref
+                  tasks.map((task) => {
+                    const completeGate = taskCompleteGate(task, executions);
+                    const agreeCount = endorsementCount(task);
+                    const rowError = completeErrors[task.id];
+                    const statusKey =
+                      task.status === "cancelled" ? "blocked" : task.status;
+                    return (
+                      <div
+                        key={task.id}
+                        className={`task-row${statusKey === "blocked" ? " task-row--blocked" : ""}`}
+                        data-task-id={task.id}
+                      >
+                        <span className={`task-row__dot task-row__dot--${statusKey}`} />
+                        {onFocusTask ? (
+                          <button
+                            type="button"
+                            className="task-row__title task-row__title--link"
+                            onClick={() => onFocusTask(task.id)}
+                            title="채팅에서 이 할 일로 이동"
+                          >
+                            {task.title}
+                          </button>
+                        ) : (
+                          <span className="task-row__title">{task.title}</span>
+                        )}
+                        {task.owner_agent ? (
+                          <span className="task-row__owner">
+                            <Avatar role={agentRole(task.owner_agent)} size={18} />
+                          </span>
+                        ) : (
+                          <span
+                            className="task-row__owner task-row__owner--open"
+                            title={UNASSIGNED_OWNER_TOOLTIP}
+                          >
+                            {UNASSIGNED_OWNER_LABEL}
+                          </span>
+                        )}
+                        <span
+                          className={`task-row__status-badge task-row__status-badge--${statusKey}`}
+                        >
+                          {STATUS_BADGE[task.status] ?? task.status}
+                        </span>
+                        {task.status !== "completed" &&
+                        task.status !== "cancelled" ? (
+                          <span className="task-row__actions">
+                            <span
+                              className="task-row__agree"
+                              title="팀 동의"
+                            >
+                              {formatTeamAgreementLabel(
+                                agreeCount,
+                                requiredAgreements,
+                              )}
+                            </span>
+                            {task.plan_action_index != null &&
+                            onFocusPlanAction ? (
+                              <button
+                                type="button"
+                                className="btn btn--sm"
+                                onClick={() =>
+                                  onFocusPlanAction(task.plan_action_index!)
+                                }
+                              >
+                                plan #{task.plan_action_index}
+                              </button>
+                            ) : null}
+                            <button
+                              type="button"
+                              className="btn btn--sm btn--ok"
+                              disabled={
+                                busyTaskId === task.id || completeGate.blocked
+                              }
+                              title={completeGate.hint ?? undefined}
+                              onClick={() => void markComplete(task.id)}
+                            >
+                              완료
+                            </button>
+                          </span>
+                        ) : null}
+                        {rowError ? (
+                          <span className="task-row__error" role="alert">
+                            {rowError}
+                          </span>
+                        ) : null}
+                      </div>
+                    );
+                  })
                 )}
-              </span>
-            ))}
-            {blockers.length > 3 ? ` 외 ${blockers.length - 3}건` : ""}
-          </p>
-          <div className="room-task-bar__blocker-actions">
-            {onRequestComposerPrefill && primaryBlockedTask ? (
-              <button
-                type="button"
-                className="room-task-bar__cta room-task-bar__cta--primary"
-                onClick={requestEndorsementPrefill}
-              >
-                채팅에 동의 요청 넣기
-              </button>
+              </>
             ) : null}
-            {primaryBlockedTask ? (
-              <button
-                type="button"
-                className="room-task-bar__cta"
-                disabled={blockerCompleteBusy}
-                onClick={() => void completePrimaryBlockedTask()}
-              >
-                이 할 일 완료로 닫기
-              </button>
+
+            {section === "objections" ? (
+              <>
+                {allObjections.length === 0 ? (
+                  <div className="taskbar__empty">미해결 이의 없음</div>
+                ) : (
+                  allObjections.map((obj) => {
+                    const isOpenObj = obj.status === "open";
+                    return (
+                      <div
+                        key={obj.id}
+                        className={`objection-row${!isOpenObj ? " objection-row--resolved" : ""}`}
+                        data-objection-id={obj.id}
+                        tabIndex={-1}
+                      >
+                        <div className="objection-row__head">
+                          <Avatar role={agentRole(obj.from)} size={18} />
+                          <span
+                            className={`objection-row__act${
+                              obj.act === "CHALLENGE"
+                                ? " objection-row__act--challenge"
+                                : ""
+                            }`}
+                          >
+                            {obj.act}
+                          </span>
+                          {obj.plan_action_index != null ? (
+                            <span className="objection-row__ref">
+                              plan #{obj.plan_action_index}
+                            </span>
+                          ) : null}
+                          {!isOpenObj ? (
+                            <span className="badge badge--ok">해결됨</span>
+                          ) : null}
+                        </div>
+                        <p className="objection-row__body">{obj.body}</p>
+                        {isOpenObj ? (
+                          <div className="objection-row__actions">
+                            {obj.plan_action_index != null &&
+                            onFocusPlanAction ? (
+                              <button
+                                type="button"
+                                className="btn btn--sm"
+                                onClick={() =>
+                                  onFocusPlanAction(obj.plan_action_index!)
+                                }
+                              >
+                                plan 보기
+                              </button>
+                            ) : null}
+                            <button
+                              type="button"
+                              className="btn btn--sm btn--ok"
+                              disabled={objectionBusyId === obj.id}
+                              onClick={() =>
+                                void resolveObjection(obj, "accepted")
+                              }
+                            >
+                              수용
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn--sm"
+                              disabled={objectionBusyId === obj.id}
+                              onClick={() =>
+                                void resolveObjection(obj, "wontfix")
+                              }
+                            >
+                              기각
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })
+                )}
+              </>
+            ) : null}
+
+            {section === "inbox" ? (
+              <>
+                {mailbox.length === 0 ? (
+                  <div className="taskbar__empty">받은함이 비어 있습니다</div>
+                ) : (
+                  mailbox.map((m: MailboxMessage) => (
+                    <div
+                      key={m.id}
+                      className={`inbox-row${m.read ? " inbox-row--resolved" : ""}`}
+                    >
+                      <div className="inbox-row__head">
+                        <Avatar role={agentRole(m.from)} size={18} />
+                        <span className="inbox-row__subject">
+                          {m.from} → {m.to}
+                        </span>
+                        <span className="inbox-row__time">{m.ts}</span>
+                      </div>
+                      <p className="inbox-row__body">{m.body}</p>
+                    </div>
+                  ))
+                )}
+              </>
+            ) : null}
+
+            {section === "artifacts" ? (
+              <>
+                {artifacts.length === 0 ? (
+                  <div className="taskbar__empty">산출물 없음</div>
+                ) : (
+                  artifacts.map((a: RoomArtifact) => (
+                    <div key={a.id} className="artifact-row">
+                      <span
+                        className={`artifact-row__type ${artifactTypeClass(a.kind)}`.trim()}
+                      >
+                        {a.kind}
+                      </span>
+                      <div className="artifact-row__main">
+                        <span className="artifact-row__name">
+                          {a.path ?? a.summary ?? a.id}
+                        </span>
+                        <span className="artifact-row__meta">
+                          {a.producer}
+                          {a.ts ? ` · ${a.ts}` : ""}
+                        </span>
+                      </div>
+                      <Avatar role={agentRole(a.producer)} size={18} />
+                    </div>
+                  ))
+                )}
+              </>
             ) : null}
           </div>
-        </div>
-      ) : null}
-      {tasks.length > 0 ? (
-        <div
-          className="room-task-bar__tabs"
-          role="tablist"
-          aria-label="할 일 목록 필터"
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={taskTab === "all"}
-            className={
-              taskTab === "all"
-                ? "room-task-bar__tab room-task-bar__tab--active"
-                : "room-task-bar__tab"
-            }
-            onClick={() => setTaskTab("all")}
-          >
-            전체 {tasks.length}
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={taskTab === "unassigned"}
-            className={
-              taskTab === "unassigned"
-                ? "room-task-bar__tab room-task-bar__tab--active"
-                : "room-task-bar__tab"
-            }
-            onClick={() => setTaskTab("unassigned")}
-            title={UNASSIGNED_OWNER_TOOLTIP}
-          >
-            담당 없음 {unassignedTasks.length}
-          </button>
-        </div>
-      ) : null}
-      {tasks.length === 0 ? (
-        <div className="room-task-bar__empty">
-          <p>{emptyCopy.message}</p>
-          <p className="room-task-bar__empty-example">{emptyCopy.example}</p>
-        </div>
-      ) : (
-        <TaskRows
-          tasks={visibleTasks}
-          sessionId={sessionId}
-          executions={executions}
-          requiredAgreements={requiredAgreements}
-          onRefresh={onRefresh}
-          onFocusPlanAction={onFocusPlanAction}
-          onFocusTask={onFocusTask}
-        />
-      )}
-      {artifacts.length > 0 ? (
-        <div className="room-task-bar__artifacts" role="region" aria-label="산출물">
-          <span className="room-task-bar__mailbox-label">
-            artifacts
-            {payload?.artifact_count != null ? (
-              <span className="room-task-bar__mailbox-unread">
-                {" "}
-                ({payload.artifact_count})
-              </span>
-            ) : null}
-          </span>
-          <ul className="room-task-bar__mailbox-list">
-            {recentArtifacts.map((a: RoomArtifact) => (
-              <li key={a.id} className="room-task-bar__mailbox-item">
-                <strong>
-                  {a.producer} · {a.kind}
-                </strong>
-                <span className="room-task-bar__mailbox-body">
-                  {(a.summary || "").slice(0, 160)}
-                  {a.path ? ` · ${a.path}` : ""}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-      {mailbox.length > 0 ? (
-        <div className="room-task-bar__mailbox" role="region" aria-label="받은함">
-          <span className="room-task-bar__mailbox-label">
-            받은함
-            {unreadTotal > 0 ? (
-              <span className="room-task-bar__mailbox-unread">
-                {" "}
-                (미전달 {unreadTotal})
-              </span>
-            ) : null}
-          </span>
-          <ul className="room-task-bar__mailbox-list">
-            {recentMailbox.map((m: MailboxMessage) => (
-              <li
-                key={m.id}
-                className={
-                  m.read
-                    ? "room-task-bar__mailbox-item"
-                    : "room-task-bar__mailbox-item room-task-bar__mailbox-item--unread"
-                }
-              >
-                <strong>
-                  {m.from} → {m.to}
-                </strong>
-                <span className="room-task-bar__mailbox-body">{m.body}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-      {linkedRows.length > 0 ? (
-        <div className="room-task-bar__cross-links" role="status">
-          <span className="room-task-bar__cross-links-label">
-            plan ↔ 작업 ↔ 실행
-          </span>
-          <ul className="room-task-bar__cross-links-list">
-            {linkedVisible.map(({ task, link }) => (
-              <li key={task.id} className="room-task-bar__cross-link-row">
-                {link.planIndex != null && onFocusPlanAction ? (
-                  <button
-                    type="button"
-                    className="room-task-bar__plan-link"
-                    onClick={() => onFocusPlanAction(link.planIndex!)}
-                  >
-                    plan #{link.planIndex}
-                  </button>
-                ) : (
-                  <span>plan —</span>
-                )}
-                <span className="room-task-bar__cross-sep">↔</span>
-                {onFocusTask ? (
-                  <button
-                    type="button"
-                    className="room-task-bar__task-link"
-                    onClick={() => onFocusTask(task.id)}
-                  >
-                    {task.id}
-                  </button>
-                ) : (
-                  <span>{task.id}</span>
-                )}
-                <span className="room-task-bar__cross-sep">↔</span>
-                <span>
-                  {link.status ?? "미실행"}
-                  {link.executionId ? ` (${link.executionId.slice(0, 8)}…)` : ""}
-                </span>
-              </li>
-            ))}
-            {linkedOverflow > 0 ? (
-              <li className="room-task-bar__cross-link-more">
-                +{linkedOverflow}건 더 있음 (작업 행의 plan # 링크 참고)
-              </li>
-            ) : null}
-          </ul>
         </div>
       ) : null}
     </div>

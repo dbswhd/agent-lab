@@ -1,0 +1,464 @@
+/* ============================================================
+   Agent Lab — Base layer
+   Reset · window chrome · shared primitives
+   ============================================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  color: var(--label-primary);
+  background: var(--surface-app);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+input,
+textarea {
+  font-family: inherit;
+  color: inherit;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+/* ---- Scrollbars ------------------------------------------- */
+.scroll-y {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+.scroll-y::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.scroll-y::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: var(--radius-pill);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+.scroll-y::-webkit-scrollbar-thumb:hover {
+  background: var(--label-quaternary);
+  background-clip: padding-box;
+  border: 3px solid transparent;
+}
+
+/* ============================================================
+   App window
+   ============================================================ */
+.app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-app);
+}
+
+/* ---- Titlebar -------------------------------------------- */
+.titlebar {
+  height: var(--titlebar-h);
+  flex: 0 0 var(--titlebar-h);
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: 0 var(--space-16);
+  border-bottom: 1px solid var(--border-hair);
+  background: var(--surface-rail);
+  user-select: none;
+}
+
+.traffic-lights {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.traffic-lights span {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: block;
+}
+.traffic-lights .close {
+  background: #ec6a5e;
+}
+.traffic-lights .minimize {
+  background: #f4bf4f;
+}
+.traffic-lights .zoom {
+  background: #61c554;
+}
+
+.titlebar__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-footnote);
+  letter-spacing: 0.01em;
+}
+.titlebar__logo {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: linear-gradient(150deg, var(--accent), #7aa2ff);
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 12px;
+  font-weight: var(--weight-bold);
+  box-shadow: var(--shadow-1);
+}
+.titlebar__spacer {
+  flex: 1;
+}
+.titlebar__meta {
+  font-size: var(--text-caption);
+  color: var(--label-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+.titlebar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/* ============================================================
+   Shared button primitives
+   ============================================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-6);
+  height: 30px;
+  padding: 0 var(--space-12);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-footnote);
+  font-weight: var(--weight-medium);
+  color: var(--label-primary);
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-1);
+  transition: background var(--transition), border-color var(--transition),
+    transform var(--transition);
+  white-space: nowrap;
+}
+.btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+.btn:active:not(:disabled) {
+  transform: translateY(0.5px);
+}
+.btn:disabled {
+  opacity: 0.45;
+}
+
+.btn--primary {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: transparent;
+  box-shadow: 0 1px 2px var(--accent-ring);
+}
+.btn--primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: transparent;
+}
+.btn--accent {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: transparent;
+}
+.btn--accent:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+.btn--ghost {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--label-secondary);
+}
+.btn--ghost:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: transparent;
+}
+.btn--danger {
+  color: var(--danger);
+  border-color: var(--danger-soft);
+}
+.btn--danger:hover:not(:disabled) {
+  background: var(--danger-soft);
+}
+.btn--sm {
+  height: 26px;
+  padding: 0 var(--space-10);
+  font-size: var(--text-caption);
+}
+.btn--block {
+  width: 100%;
+}
+
+.icon-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  color: var(--label-secondary);
+  transition: background var(--transition), color var(--transition);
+}
+.icon-btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--label-primary);
+}
+.icon-btn.is-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.icon-btn svg {
+  width: 17px;
+  height: 17px;
+}
+
+/* ---- Segmented control ----------------------------------- */
+.segmented {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  background: var(--surface-sunken);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-hair);
+}
+.segmented button {
+  height: 26px;
+  padding: 0 var(--space-12);
+  border-radius: var(--radius-xs);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  color: var(--label-secondary);
+  transition: background var(--transition), color var(--transition),
+    box-shadow var(--transition);
+  white-space: nowrap;
+}
+.segmented button:hover:not(:disabled):not(.active) {
+  color: var(--label-primary);
+}
+.segmented button.active {
+  background: var(--surface-card);
+  color: var(--label-primary);
+  box-shadow: var(--shadow-1);
+}
+
+/* ---- Inputs ---------------------------------------------- */
+.field {
+  width: 100%;
+  height: 32px;
+  padding: 0 var(--space-12);
+  border-radius: var(--radius-sm);
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+  font-size: var(--text-footnote);
+  color: var(--label-primary);
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.field::placeholder {
+  color: var(--label-quaternary);
+}
+.field:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* ---- Checkbox -------------------------------------------- */
+.checkbox {
+  appearance: none;
+  width: 17px;
+  height: 17px;
+  flex: 0 0 17px;
+  border-radius: 5px;
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface-card);
+  display: inline-grid;
+  place-items: center;
+  transition: background var(--transition), border-color var(--transition);
+  cursor: pointer;
+}
+.checkbox:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.checkbox:checked::after {
+  content: "";
+  width: 9px;
+  height: 9px;
+  background: var(--on-accent);
+  clip-path: polygon(14% 48%, 0 62%, 38% 100%, 100% 22%, 86% 8%, 38% 70%);
+}
+
+/* ---- Toggle switch --------------------------------------- */
+.switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  cursor: pointer;
+  font-size: var(--text-caption);
+  color: var(--label-secondary);
+  user-select: none;
+}
+.switch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.switch__track {
+  width: 34px;
+  height: 20px;
+  border-radius: var(--radius-pill);
+  background: var(--border-strong);
+  transition: background var(--transition);
+  flex: 0 0 auto;
+}
+.switch__track::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: var(--shadow-1);
+  transition: transform var(--transition);
+}
+.switch input:checked + .switch__track {
+  background: var(--accent);
+}
+.switch input:checked + .switch__track::after {
+  transform: translate(14px, -50%);
+}
+
+/* button variant: role="switch" (aria-checked) */
+.switch__btn {
+  padding: 0;
+  background: none;
+  border: none;
+  display: inline-flex;
+}
+.switch__btn .switch__track {
+  position: relative;
+}
+.switch__btn[aria-checked="true"] .switch__track {
+  background: var(--accent);
+}
+.switch__btn[aria-checked="true"] .switch__track::after {
+  transform: translate(14px, -50%);
+}
+
+/* ---- Badge / chip ---------------------------------------- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  height: 20px;
+  padding: 0 var(--space-8);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.02em;
+  background: var(--surface-sunken);
+  color: var(--label-secondary);
+}
+.badge--ok {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+.badge--warn {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.badge--danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.badge--accent {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 5px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-hair);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--label-tertiary);
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+.dot--ok { background: var(--ok); }
+.dot--warn { background: var(--warn); }
+.dot--danger { background: var(--danger); }
+.dot--idle { background: var(--label-quaternary); }
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.dot--live {
+  animation: pulse-dot 1.4s ease-in-out infinite;
+}
+
+/* visually hidden */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

@@ -12,13 +12,12 @@ type Props = {
   children: React.ReactNode;
 };
 
-export function SessionRail({
-  open,
-  width,
-  onWidthChange,
-  onWidthCommit,
-  children,
-}: Props) {
+/**
+ * Rebuilt resizable session-rail shell. ALL behavior preserved:
+ * pointer-driven resize, width clamp/commit, aria-hidden when closed.
+ * New class system: `.rail` (+ `--resizing`) with `--rail-width` custom prop.
+ */
+export function SessionRail({ open, width, onWidthChange, onWidthCommit, children }: Props) {
   const [isResizing, setIsResizing] = useState(false);
   const dragRef = useRef({ startX: 0, startWidth: SESSION_RAIL_MIN_WIDTH });
 
@@ -37,9 +36,7 @@ export function SessionRail({
     (event: React.PointerEvent<HTMLDivElement>) => {
       if (!isResizing) return;
       const delta = event.clientX - dragRef.current.startX;
-      onWidthChange(
-        clampSessionRailWidth(dragRef.current.startWidth + delta),
-      );
+      onWidthChange(clampSessionRailWidth(dragRef.current.startWidth + delta));
     },
     [isResizing, onWidthChange],
   );
@@ -58,23 +55,14 @@ export function SessionRail({
 
   return (
     <aside
-      className={[
-        "session-rail",
-        isResizing ? "session-rail--resizing" : "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
+      className={["rail", isResizing ? "rail--resizing" : ""].filter(Boolean).join(" ")}
       aria-label="Sessions"
       aria-hidden={!open}
-      style={
-        {
-          "--session-rail-width": `${width}px`,
-        } as React.CSSProperties
-      }
+      style={{ "--rail-width": `${width}px` } as React.CSSProperties}
     >
       {open ? (
         <div
-          className="session-rail__resize-handle"
+          className="rail__resize-handle"
           role="separator"
           aria-orientation="vertical"
           aria-label="세션 목록 너비 조절"

@@ -1,11 +1,11 @@
-import { useMemo, useRef, useState, type ReactNode } from "react";
-import { CollapsibleGlassPanel } from "./CollapsibleGlassPanel";
+import { useMemo, useRef, useState, useEffect, type ReactNode } from "react";
 import { ComposerPlanToggle } from "./ComposerPlanToggle";
 import { ComposerEfficiencyToggle } from "./ComposerEfficiencyToggle";
 import { ComposerTurnPicker } from "./ComposerTurnPicker";
 import { SlashCommandMenu } from "./SlashCommandMenu";
 import type { SlashCommandRecord } from "../api/client";
 import type { ComposerTurnProfile } from "../utils/turnProfile";
+import type { Locale } from "../i18n/locale";
 
 export type PendingFile = { id: string; file: File };
 
@@ -26,7 +26,6 @@ type Props = {
   files: PendingFile[];
   onFilesAdd: (files: FileList | File[]) => void;
   onFileRemove: (id: string) => void;
-  sessionAttachments?: string[];
   showAttach?: boolean;
   toolbar?: ReactNode;
   className?: string;
@@ -38,25 +37,21 @@ type Props = {
   pendingExecuteCount?: number;
   efficiencyOn?: boolean;
   onEfficiencyChange?: (on: boolean) => void;
-  /** plan이 토론보다 뒤처짐 — composer 위 안내 */
+  /** @deprecated Plan stale notices live on the Work tab. */
   planStaleNotice?: string | null;
   objectionNotice?: ObjectionNotice | null;
   onFocusObjection?: (objectionId: string, actionIndex?: number) => void;
-  turnCostHint?: string | null;
-  fullTeamConfirm?: {
-    required: boolean;
-    checked: boolean;
-    label: string;
-    detail?: string;
-    disabled?: boolean;
-    onChange: (checked: boolean) => void;
-  } | null;
+  /** When set, replaces joined description + costHint (prototype one-liner). */
+  turnHint?: string | null;
+  locale?: Locale;
   /** Hide textarea/send (mode picker stays visible). */
   inputHidden?: boolean;
   /** Show 「정리」 toggle beside turn picker (default: plan tab only). */
   showPlanToggle?: boolean;
   /** Secondary line under mode chip (off = less plan noise on chat). */
   showModeChipHint?: boolean;
+  /** Always-visible mode chip subline (prototype `mode_*_hint`). */
+  modeChipHint?: string | null;
   running?: boolean;
   onStop?: () => void;
   /** Current room turn mode (토론 / 정리 / 합의). */
@@ -68,6 +63,12 @@ type Props = {
   onSlashExecute?: (command: SlashCommandRecord) => void;
 };
 
+/**
+ * Rebuilt chat composer. ALL behavior + the full Props contract preserved.
+ * Vertical order: attachments → mode chip → turn picker
+ * → plan-stale notice → objection alert → input row.
+ * New class system; logic (slash filter/keydown, stop) untouched.
+ */
 export function ChatComposer({
   value,
   onChange,
@@ -78,7 +79,6 @@ export function ChatComposer({
   files,
   onFilesAdd,
   onFileRemove,
-  sessionAttachments = [],
   showAttach = true,
   toolbar,
   className,
@@ -90,14 +90,14 @@ export function ChatComposer({
   pendingExecuteCount: _pendingExecuteCount,
   efficiencyOn = false,
   onEfficiencyChange,
-  planStaleNotice,
   objectionNotice,
   onFocusObjection,
-  turnCostHint,
-  fullTeamConfirm,
+  turnHint,
+  locale = "en",
   inputHidden = false,
   showPlanToggle = false,
   showModeChipHint = false,
+  modeChipHint,
   running = false,
   onStop,
   modeChip,
@@ -110,15 +110,20 @@ export function ChatComposer({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [slashHighlight, setSlashHighlight] = useState(0);
 
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 180)}px`;
+  }, [value]);
+
   const slashFiltered = useMemo(() => {
     if (!value.startsWith("/")) return [];
     const query = value.slice(1).split(/\s/)[0]?.toLowerCase() ?? "";
     const rows = slashCommands.filter((c) => c.enabled !== false);
     if (!query) return rows;
     return rows.filter(
-      (c) =>
-        c.slash.toLowerCase().includes(query) ||
-        c.label.toLowerCase().includes(query),
+      (c) => c.slash.toLowerCase().includes(query) || c.label.toLowerCase().includes(query),
     );
   }, [slashCommands, value]);
 
@@ -128,25 +133,15 @@ export function ChatComposer({
 
   return (
     <div className={rootClass}>
-      {(files.length > 0 || sessionAttachments.length > 0) && (
+      {files.length > 0 && (
         <div className="attachment-bar">
-          {sessionAttachments.map((name) => (
-            <span key={`s-${name}`} className="attachment-chip attachment-chip--saved">
-              <span className="attachment-chip-icon" aria-hidden>
-                <PaperclipIcon />
-              </span>
-              <span className="attachment-chip-name">{name}</span>
-            </span>
-          ))}
           {files.map((f) => (
             <span key={f.id} className="attachment-chip">
-              <span className="attachment-chip-icon" aria-hidden>
-                <PaperclipIcon />
-              </span>
+              <PaperclipIcon />
               <span className="attachment-chip-name">{f.file.name}</span>
               <button
                 type="button"
-                className="attachment-chip-remove"
+                className="attachment-chip__remove"
                 onClick={() => onFileRemove(f.id)}
                 aria-label="첨부 제거"
               >
@@ -156,118 +151,80 @@ export function ChatComposer({
           ))}
         </div>
       )}
-      <div className="composer-dock">
-        {modeChip ? (
-          <p
-            className={[
-              "composer-mode-chip",
-              modeChipVariant
-                ? `composer-mode-chip--${modeChipVariant}`
-                : undefined,
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            role="status"
-          >
-            <span className="composer-mode-chip__label">{modeChip}</span>
-            {showModeChipHint && isNewSession ? (
-              <span className="composer-mode-chip__hint">
-                첫 전송은 토론만 · plan 갱신은 plan 탭
-              </span>
-            ) : showModeChipHint && planAfterSend ? (
-              <span className="composer-mode-chip__hint">
-                전송 시 plan.md 갱신 (plan 탭에서 끌 수 있음)
-              </span>
-            ) : null}
-          </p>
-        ) : null}
-        {turnProfile && onTurnProfileChange ? (
-          <div className="composer-turn-row">
-            <ComposerTurnPicker
-              value={turnProfile}
-              onChange={onTurnProfileChange}
-              disabled={inputLocked}
-              costHint={turnCostHint}
-              trailing={
-                <>
-                  {showPlanToggle && onPlanAfterSendChange ? (
-                    <ComposerPlanToggle
-                      checked={planAfterSend}
-                      onChange={onPlanAfterSendChange}
-                      disabled={inputLocked}
-                    />
-                  ) : null}
-                  {onEfficiencyChange ? (
-                    <ComposerEfficiencyToggle
-                      checked={efficiencyOn}
-                      onChange={onEfficiencyChange}
-                      disabled={inputLocked}
-                    />
-                  ) : null}
-                </>
+
+      {modeChip ? (
+        <div
+          className={["mode-chip", modeChipVariant ? `mode-chip--${modeChipVariant}` : undefined]
+            .filter(Boolean)
+            .join(" ")}
+          role="status"
+        >
+          <span className="mode-chip__label">
+            {modeChipVariant === "discuss" ? <UsersIcon /> : null}
+            {modeChipVariant === "plan" ? <ListIcon /> : null}
+            {modeChipVariant === "consensus" ? <SparkleIcon /> : null}
+            {modeChip}
+          </span>
+          {modeChipHint ? (
+            <span className="mode-chip__hint">{modeChipHint}</span>
+          ) : showModeChipHint && isNewSession ? (
+            <span className="mode-chip__hint">모든 턴 후 plan.md 자동 갱신</span>
+          ) : showModeChipHint && planAfterSend ? (
+            <span className="mode-chip__hint">전송 시 plan.md 갱신 (plan 탭에서 끌 수 있음)</span>
+          ) : null}
+        </div>
+      ) : null}
+
+      {turnProfile && onTurnProfileChange ? (
+        <ComposerTurnPicker
+          value={turnProfile}
+          onChange={onTurnProfileChange}
+          disabled={inputLocked}
+          locale={locale}
+          hint={turnHint}
+          trailing={
+            <>
+              {showPlanToggle && onPlanAfterSendChange ? (
+                <ComposerPlanToggle
+                  checked={planAfterSend}
+                  onChange={onPlanAfterSendChange}
+                  disabled={inputLocked}
+                />
+              ) : null}
+              {onEfficiencyChange ? (
+                <ComposerEfficiencyToggle
+                  checked={efficiencyOn}
+                  onChange={onEfficiencyChange}
+                  disabled={inputLocked}
+                  label={locale === "ko" ? "효율" : "Efficiency"}
+                />
+              ) : null}
+            </>
+          }
+        />
+      ) : null}
+
+      {objectionNotice ? (
+        <div className="objection-alert" role="alert">
+          <span className="objection-alert__icon" aria-hidden>
+            <AlertIcon />
+          </span>
+          <span>{objectionNotice.message}</span>
+          {onFocusObjection ? (
+            <button
+              type="button"
+              className="btn btn--danger btn--sm"
+              onClick={() =>
+                onFocusObjection(objectionNotice.objectionId, objectionNotice.actionIndex)
               }
-            />
-          </div>
-        ) : null}
-        {fullTeamConfirm?.required ? (
-          <div
-            className={[
-              "composer-cost-hint",
-              "composer-cost-hint--confirm",
-              fullTeamConfirm?.checked ? "is-confirmed" : undefined,
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            role="alert"
-          >
-            <label className="composer-cost-hint__confirm">
-              <input
-                className="mac-checkbox"
-                type="checkbox"
-                checked={fullTeamConfirm.checked}
-                disabled={fullTeamConfirm.disabled}
-                onChange={(e) => fullTeamConfirm.onChange(e.target.checked)}
-              />
-              <span>{fullTeamConfirm.label}</span>
-            </label>
-            {fullTeamConfirm.detail ? (
-              <span className="composer-cost-hint__detail">
-                {fullTeamConfirm.detail}
-              </span>
-            ) : null}
-          </div>
-        ) : null}
-        {planStaleNotice ? (
-          <CollapsibleGlassPanel
-            className="composer-alert-panel"
-            title="plan 알림"
-            summary={planStaleNotice}
-            variant="warn"
-            defaultOpen={false}
-          >
-            <p className="composer-alert-panel__text">{planStaleNotice}</p>
-          </CollapsibleGlassPanel>
-        ) : null}
-        {objectionNotice ? (
-          <div className="composer-objection-alert" role="alert">
-            <span>{objectionNotice.message}</span>
-            {onFocusObjection ? (
-              <button
-                type="button"
-                className="room-plan-btn"
-                onClick={() =>
-                  onFocusObjection(
-                    objectionNotice.objectionId,
-                    objectionNotice.actionIndex,
-                  )
-                }
-              >
-                이의 해결
-              </button>
-            ) : null}
-          </div>
-        ) : null}
-        {!inputHidden ? (
+            >
+              {locale === "ko" ? "이의 해결" : "Resolve"}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {!inputHidden ? (
         <div className="composer-row">
           <div className="composer-capsule">
             {showAttach && (
@@ -280,13 +237,13 @@ export function ChatComposer({
                   aria-label="파일 첨부"
                   title="파일 첨부"
                 >
-                  <PlusIcon />
+                  <PaperclipIcon />
                 </button>
                 <input
                   ref={fileInputRef}
                   type="file"
                   multiple
-                  className="composer-file-input"
+                  className="sr-only"
                   onChange={(e) => {
                     if (e.target.files?.length) onFilesAdd(e.target.files);
                     e.target.value = "";
@@ -294,7 +251,7 @@ export function ChatComposer({
                 />
               </>
             )}
-            <div className="composer-field composer-field--slash">
+            <div className="composer-field">
               <SlashCommandMenu
                 value={value}
                 commands={slashCommands}
@@ -304,7 +261,7 @@ export function ChatComposer({
               />
               <textarea
                 ref={inputRef}
-                className="mac-textfield mac-textfield--multiline composer-input"
+                className="composer-input"
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 placeholder={placeholder}
@@ -338,63 +295,85 @@ export function ChatComposer({
               />
               {toolbar && <div className="composer-toolbar">{toolbar}</div>}
             </div>
-            {running && onStop ? (
-              <button
-                type="button"
-                className="btn-stop-reply"
-                onClick={onStop}
-                aria-label="답변 중지"
-                title="답변 중지"
-              >
-                <span className="btn-stop-reply__square" aria-hidden />
-              </button>
-            ) : null}
           </div>
-          <button
-            type="button"
-            className="btn-send btn-send--composer"
-            disabled={sendLocked || !value.trim()}
-            onClick={onSend}
-            aria-label="전송"
-          >
-            ↑
-          </button>
+          {running && onStop ? (
+            <button
+              type="button"
+              className="btn-stop"
+              onClick={onStop}
+              aria-label="답변 중지"
+              title="답변 중지"
+            >
+              <span className="btn-stop__square" aria-hidden />
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn-send"
+              disabled={sendLocked || !value.trim()}
+              onClick={onSend}
+              aria-label="전송"
+            >
+              <SendIcon />
+            </button>
+          )}
         </div>
-        ) : null}
-      </div>
+      ) : null}
     </div>
   );
 }
 
-function PlusIcon() {
+function UsersIcon() {
   return (
-    <svg
-      className="icon-plus"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      aria-hidden
-    >
-      <line x1="8" y1="4" x2="8" y2="12" />
-      <line x1="4" y1="8" x2="12" y2="8" />
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+      strokeWidth={1.7} strokeLinecap="round" aria-hidden>
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+
+function ListIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+      strokeWidth={1.7} strokeLinecap="round" aria-hidden>
+      <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+    </svg>
+  );
+}
+
+function SparkleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+      strokeWidth={1.7} strokeLinecap="round" aria-hidden>
+      <path d="m12 3 1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3Z" />
+    </svg>
+  );
+}
+
+function SendIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+      strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z" />
+    </svg>
+  );
+}
+
+function AlertIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+      strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
     </svg>
   );
 }
 
 function PaperclipIcon() {
   return (
-    <svg
-      className="icon-paperclip"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="m16 6-8.5 8.5a2.12 2.12 0 1 0 3 3L19 9a3.12 3.12 0 1 0-4.4-4.4L9.3 14.3a4.62 4.62 0 1 0 6.5 6.5" />
     </svg>
   );

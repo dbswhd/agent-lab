@@ -20,30 +20,28 @@ const SHORT: Partial<Record<AgentRole, string>> = {
   system: "·",
 };
 
+/**
+ * Rebuilt presentation. Prop signature preserved (role/label/size).
+ * New class system: `.avatar` + `.avatar--<role>` (+ `--sm` under 22px).
+ */
 export function Avatar({ role, label, size = 28 }: Props) {
+  const sm = size <= 22 ? " avatar--sm" : "";
   const icon = ICON_ROLES[role];
   if (icon) {
     return (
       <span
-        className={`avatar avatar--icon-wrap avatar--${role}`}
+        className={`avatar avatar--${role}${sm}`}
         style={{ width: size, height: size }}
       >
-        <img
-          className="avatar avatar--img"
-          src={icon}
-          alt={label ?? role}
-          width={size}
-          height={size}
-          aria-hidden
-        />
+        <img src={icon} alt={label ?? role} width={size} height={size} aria-hidden />
       </span>
     );
   }
   const text = label?.slice(0, 2) ?? SHORT[role] ?? "?";
   return (
     <span
-      className={`avatar avatar--${role}`}
-      style={{ width: size, height: size, fontSize: size * 0.38 }}
+      className={`avatar avatar--${role}${sm}`}
+      style={{ width: size, height: size, fontSize: size * 0.4 }}
       aria-hidden
     >
       {text}

@@ -9,6 +9,7 @@ type Props = {
   refs?: number[];
   onRefClick?: (line: number) => void;
   variant?: "now" | "default";
+  recommended?: boolean;
   selected?: boolean;
   disabled?: boolean;
   selectable?: boolean;
@@ -22,6 +23,10 @@ function fieldBody(value: string | undefined | null): { text: string; refs: numb
   return { text: parsed?.body ?? "", refs: parsed?.refs ?? [] };
 }
 
+/**
+ * Rebuilt plan action card. ALL behavior preserved: ref aggregation,
+ * selectable radio wrapper, now/gate variants. New `.plan-action` classes.
+ */
 export function PlanActionCard({
   n,
   what,
@@ -30,6 +35,7 @@ export function PlanActionCard({
   refs: refsProp,
   onRefClick,
   variant = "default",
+  recommended,
   selected,
   disabled,
   selectable,
@@ -41,19 +47,15 @@ export function PlanActionCard({
   const wherePart = fieldBody(where);
   const verifyPart = fieldBody(verify);
   const refs = [
-    ...new Set([
-      ...(refsProp ?? []),
-      ...whatPart.refs,
-      ...wherePart.refs,
-      ...verifyPart.refs,
-    ]),
+    ...new Set([...(refsProp ?? []), ...whatPart.refs, ...wherePart.refs, ...verifyPart.refs]),
   ].sort((a, b) => a - b);
 
   const card = (
     <div
       className={[
-        "plan-doc__action",
-        variant === "now" ? "plan-doc__action--now" : "",
+        "plan-action",
+        variant === "now" ? "plan-action--now" : "",
+        recommended ? "plan-action--recommended" : "",
         selected ? "is-selected" : "",
         disabled ? "is-disabled" : "",
         selectable ? "is-selectable" : "",
@@ -62,41 +64,39 @@ export function PlanActionCard({
         .join(" ")}
       {...(n != null ? { "data-plan-action-index": String(n) } : {})}
     >
-      {(n != null || whatPart.text) && (
-        <div className="plan-doc__action-head">
-          {n != null ? <span className="plan-doc__action-n">{n}</span> : null}
-          {whatPart.text ? (
-            <span className="plan-doc__action-what">{renderPlanInline(whatPart.text)}</span>
-          ) : null}
-        </div>
-      )}
-      {(wherePart.text || verifyPart.text) && (
-        <dl className="plan-doc__action-fields">
-          {wherePart.text ? (
-            <>
-              <dt>어디</dt>
-              <dd>{renderPlanInline(wherePart.text)}</dd>
-            </>
-          ) : null}
-          {verifyPart.text ? (
-            <>
-              <dt>검증</dt>
-              <dd>{renderPlanInline(verifyPart.text)}</dd>
-            </>
-          ) : null}
-        </dl>
-      )}
-      <PlanDocRefs refs={refs} onRefClick={onRefClick} />
+      {n != null ? <span className="plan-action__index">{n}</span> : null}
+      <div className="plan-action__main">
+        {whatPart.text ? (
+          <span className="plan-action__what">{renderPlanInline(whatPart.text)}</span>
+        ) : null}
+        {(wherePart.text || verifyPart.text) && (
+          <dl className="plan-action__fields">
+            {wherePart.text ? (
+              <>
+                <dt>어디</dt>
+                <dd>{renderPlanInline(wherePart.text)}</dd>
+              </>
+            ) : null}
+            {verifyPart.text ? (
+              <>
+                <dt>검증</dt>
+                <dd>{renderPlanInline(verifyPart.text)}</dd>
+              </>
+            ) : null}
+          </dl>
+        )}
+        <PlanDocRefs refs={refs} onRefClick={onRefClick} />
+      </div>
     </div>
   );
 
   if (!selectable) return card;
 
   return (
-    <label className="plan-doc__action-label">
+    <label className="plan-action-label">
       <input
         type="radio"
-        className="plan-doc__action-radio"
+        className="plan-action-radio"
         name={radioName}
         checked={checked}
         disabled={disabled}
@@ -122,20 +122,18 @@ export function PlanGateLine({
   return (
     <div
       className={[
-        "plan-doc__action",
-        "plan-doc__action--gate",
-        variant === "now" ? "plan-doc__action--now" : "",
+        "plan-action",
+        "plan-action--gate",
+        variant === "now" ? "plan-action--now" : "",
       ]
         .filter(Boolean)
         .join(" ")}
     >
-      <div className="plan-doc__gate">
-        <span className="plan-doc__gate-n">{n}</span>
-        <span className="plan-doc__text">
-          {renderPlanInline(part.text)}
-          <PlanDocRefs refs={part.refs} onRefClick={onRefClick} />
-        </span>
-      </div>
+      <span className="plan-action__index plan-action__index--gate">{n}</span>
+      <span className="plan-action__main">
+        {renderPlanInline(part.text)}
+        <PlanDocRefs refs={part.refs} onRefClick={onRefClick} />
+      </span>
     </div>
   );
 }

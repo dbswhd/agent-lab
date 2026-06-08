@@ -19,6 +19,8 @@ export type SessionSummary = {
   workspace_preset?: string;
   session_template?: string;
   workspace_label?: string;
+  agents?: string[];
+  workspace_path?: string;
 };
 
 export type ChatLine = {
@@ -122,6 +124,12 @@ export type RoomTasksPayload = {
   artifact_count?: number;
 };
 
+export type SessionObservability = {
+  hook_runs_tail?: Array<Record<string, unknown>>;
+  hook_run_count?: number;
+  last_communicate_meta?: Record<string, unknown> | null;
+};
+
 export type SessionDetail = {
   id: string;
   topic: string;
@@ -131,6 +139,7 @@ export type SessionDetail = {
   chat?: ChatLine[];
   run?: Record<string, unknown>;
   attachments?: string[];
+  observability?: SessionObservability;
 };
 
 export type SessionGoalRecord = {
@@ -156,6 +165,52 @@ export type GoalLoopRecord = {
   achieved_at?: string;
   auto_continue_pending?: boolean;
   continue_prompt?: string;
+};
+
+export type VerifiedLoopProposal = {
+  goal?: string;
+  completion_promise?: string;
+  criteria?: string;
+  proposed_at?: string;
+  source?: string;
+};
+
+export type VerifiedLoopGoal = {
+  text?: string;
+  completion_promise?: string;
+  criteria?: string;
+  approved_at?: string;
+  approved_by?: string;
+};
+
+export type VerifiedLoopCheck = {
+  at?: string;
+  verdict?: "verified" | "fail" | string;
+  detail?: string;
+  source?: string;
+  oracle_session_id?: string;
+};
+
+export type VerifiedLoopRecord = {
+  status?:
+    | "proposing"
+    | "pending_approval"
+    | "running"
+    | "done"
+    | "failed"
+    | "cancelled"
+    | string;
+  proposed?: VerifiedLoopProposal;
+  loop_goal?: VerifiedLoopGoal;
+  iteration?: number;
+  max_iterations?: number;
+  verification_attempts?: number;
+  max_verification_attempts?: number;
+  checks?: VerifiedLoopCheck[];
+  last_check?: VerifiedLoopCheck;
+  verified_at?: string;
+  circuit_breaker?: boolean;
+  circuit_reason?: string;
 };
 
 const API_ORIGIN = "http://127.0.0.1:8765";
@@ -226,6 +281,53 @@ export function fetchHealth(probeBridge = false, probePreflight = false) {
   return json<HealthResponse>(`/api/health${q}`);
 }
 
+export type CredentialProviderId = "cursor" | "claude" | "codex";
+
+export type AgentCredentialRow = {
+  id: CredentialProviderId;
+  label: string;
+  env_primary: string;
+  env_fallback: string;
+  primary_label: string;
+  fallback_label: string;
+  has_primary: boolean;
+  has_fallback: boolean;
+  primary_masked: string | null;
+  fallback_masked: string | null;
+  stored_primary: boolean;
+  stored_fallback: boolean;
+};
+
+export type CredentialsResponse = {
+  ok: boolean;
+  path: string;
+  agents: AgentCredentialRow[];
+  saved?: boolean;
+};
+
+export type CredentialSlotPatch = {
+  primary?: string;
+  fallback?: string;
+  primary_label?: string;
+  fallback_label?: string;
+};
+
+export type CredentialsPatch = Partial<
+  Record<CredentialProviderId, CredentialSlotPatch>
+>;
+
+export function fetchCredentials() {
+  return json<CredentialsResponse>("/api/settings/credentials");
+}
+
+export function putCredentials(patch: CredentialsPatch) {
+  return json<CredentialsResponse>("/api/settings/credentials", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  });
+}
+
 export type DiagnosticsResponse = {
   ok: boolean;
   pid: number;
@@ -269,6 +371,19 @@ export function fetchSessionSetupOptions() {
   );
 }
 
+export function pickFolderViaDesktopApi(defaultPath?: string | null) {
+  return json<{ available: boolean; path: string | null; cancelled: boolean }>(
+    "/api/desktop/pick-folder",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        default_path: defaultPath?.trim() || null,
+      }),
+    },
+  );
+}
+
 export function fetchSessions(archived = false) {
   const q = archived ? "?archived=true" : "";
   return json<{ sessions: SessionSummary[] }>(`/api/sessions${q}`);
@@ -290,6 +405,13 @@ export function unarchiveSession(id: string) {
 
 export function fetchSession(id: string) {
   return json<SessionDetail>(`/api/sessions/${encodeURIComponent(id)}`);
+}
+
+export function autoSyncSessionPlan(id: string) {
+  return json<{ ok: boolean; synced: boolean } & SessionDetail>(
+    `/api/sessions/${encodeURIComponent(id)}/plan/auto-sync`,
+    { method: "POST" },
+  );
 }
 
 export function setSessionGoal(
@@ -318,6 +440,36 @@ export function checkSessionGoal(id: string) {
   }>(`/api/sessions/${encodeURIComponent(id)}/goal/check`, {
     method: "POST",
   });
+}
+
+export function approveVerifiedLoop(
+  id: string,
+  body?: {
+    goal?: string;
+    completion_promise?: string;
+    criteria?: string;
+  },
+) {
+  return json<{
+    ok: boolean;
+    verified_loop: VerifiedLoopRecord;
+    continue_prompt?: string;
+  }>(`/api/sessions/${encodeURIComponent(id)}/verified-loop/approve`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body ?? {}),
+  });
+}
+
+export function rejectVerifiedLoop(id: string, note = "") {
+  return json<{ ok: boolean; verified_loop: VerifiedLoopRecord }>(
+    `/api/sessions/${encodeURIComponent(id)}/verified-loop/reject`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ note }),
+    },
+  );
 }
 
 export type SlashCommandRecord = {
@@ -611,6 +763,8 @@ export type RunRoomOptions = {
   workspacePath?: string;
   /** Per-agent cwd/tools profile (run.json agent_capabilities). */
   agentCapabilities?: Record<string, AgentCapabilityRow>;
+  /** Per-agent resume bindings for new sessions (session id or "new"). */
+  agentThreadBindings?: Record<string, string>;
   /** Always general for now; workflow templates deferred. */
   sessionTemplate?: string;
   /** Abort in-flight SSE (UI stop). */
@@ -701,6 +855,12 @@ export async function runRoom(
     form.append(
       "agent_capabilities",
       JSON.stringify(opts.agentCapabilities),
+    );
+  }
+  if (opts?.agentThreadBindings && Object.keys(opts.agentThreadBindings).length) {
+    form.append(
+      "agent_thread_bindings",
+      JSON.stringify(opts.agentThreadBindings),
     );
   }
   form.append("session_template", opts?.sessionTemplate ?? "general");

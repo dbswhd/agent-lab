@@ -4,28 +4,27 @@ type Props = {
   text: string;
 };
 
+/** Rebuilt diff-stat. Logic (parseDiffStat) preserved; new `.diffstat` classes. */
 export function PlanDiffStat({ text }: Props) {
   const parsed = parseDiffStat(text);
   if (!parsed) {
-    return <pre className="plan-diff-stat plan-diff-stat--raw">{text}</pre>;
+    return <pre className="diffstat diffstat--raw">{text}</pre>;
   }
 
   return (
-    <div className="plan-diff-stat">
+    <div className="diffstat">
       {parsed.files.map((row) => (
-        <div key={row.path} className="plan-diff-stat__file">
-          <span className="plan-diff-stat__path" title={row.path}>
+        <div key={row.path} className="diffstat__file">
+          <span className="diffstat__path" title={row.path}>
             {row.path}
           </span>
-          <span className="plan-diff-stat__counts">
-            <span className="plan-diff-stat__add">+{row.adds}</span>
-            <span className="plan-diff-stat__del">-{row.dels}</span>
+          <span className="diffstat__counts">
+            <span className="diffstat__add">+{row.adds}</span>
+            <span className="diffstat__del">-{row.dels}</span>
           </span>
         </div>
       ))}
-      {parsed.summary ? (
-        <p className="plan-diff-stat__summary">{parsed.summary}</p>
-      ) : null}
+      {parsed.summary ? <p className="diffstat__summary">{parsed.summary}</p> : null}
     </div>
   );
 }

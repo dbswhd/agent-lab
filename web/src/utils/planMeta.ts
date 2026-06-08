@@ -1,6 +1,7 @@
 import { agentLabel } from "./transcript";
 import {
   agreementPlanSyncedLabel,
+  agreementPlanSyncFailedLabel,
   latestPendingConsensusAgreement,
   type ConsensusAgreementRow,
 } from "./consensusAgreement";
@@ -39,6 +40,8 @@ export type PlanMetaView = {
 function triggerLabel(trigger?: string, synthesizeOnly?: boolean): string {
   if (synthesizeOnly || trigger === "synthesize_only") return "지금 정리";
   if (trigger === "consensus_reached") return "합의 후 자동 정리";
+  if (trigger === "auto_turn") return "턴 후 자동 정리";
+  if (trigger === "verified_loop_done") return "Verified 후 자동 정리";
   if (trigger === "execute_advance") return "실행 후 plan 갱신";
   if (trigger === "plan_turn") return "정리 후 전송";
   return trigger || "알 수 없음";
@@ -65,6 +68,46 @@ function reviewTurnLabel(run: Record<string, unknown> | undefined): string | nul
   return advocate
     ? `쟁점 검토 · 반박 ${agentLabel(advocate)}`
     : "쟁점 검토 턴 포함";
+}
+
+/** Composer plan-stale banner when consensus or verified needs auto plan sync. */
+export function composerPlanStaleNotice(
+  run: Record<string, unknown> | undefined,
+): string | null {
+  const pending = latestPendingConsensusAgreement(run);
+  if (pending?.excerpt) {
+    return agreementPlanSyncFailedLabel(
+      pending.excerpt,
+      "plan.md 자동 정리 중…",
+    );
+  }
+  const loop = (run?.verified_loop as Record<string, unknown> | undefined) ?? {};
+  const sync =
+    (run?.verified_plan_sync as Record<string, unknown> | undefined) ?? {};
+  if (
+    loop.status === "done" &&
+    loop.verified_at &&
+    sync.verified_at !== loop.verified_at
+  ) {
+    const loopGoal =
+      (loop.loop_goal as Record<string, unknown> | undefined) ?? {};
+    const excerpt = String(loopGoal.text ?? "Verified loop").slice(0, 80);
+    return agreementPlanSyncFailedLabel(excerpt, "plan.md 자동 정리 중…");
+  }
+  return null;
+}
+
+export function workPlanMetaLine(meta: PlanMetaView): string | null {
+  if (!meta.lastUpdate) return null;
+  if (meta.pendingAgreement) return null;
+  const parts: string[] = [];
+  if (meta.timeLabel && meta.timeLabel !== "—") {
+    parts.push(meta.timeLabel);
+  }
+  if (meta.triggerLabel && meta.triggerLabel !== "알 수 없음") {
+    parts.push(meta.triggerLabel);
+  }
+  return parts.length > 0 ? parts.join(" · ") : null;
 }
 
 export function buildPlanMetaView(

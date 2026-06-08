@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   fetchAgentPlugins,
   patchSessionAgentPlugins,
   type AgentPluginRecord,
   type SlashCommandRecord,
 } from "../api/client";
+import { Avatar } from "./Avatar";
+import type { AgentRole } from "../utils/transcript";
 
 type Props = {
   sessionId: string | null;
@@ -13,7 +15,116 @@ type Props = {
   disabled?: boolean;
 };
 
-const AGENTS = ["claude", "codex", "cursor"] as const;
+const AGENTS = ["cursor", "codex", "claude"] as const;
+
+const AGENT_LABELS: Record<(typeof AGENTS)[number], string> = {
+  cursor: "Cursor",
+  codex: "Codex",
+  claude: "Claude",
+};
+
+function emptyGrouped(): Record<(typeof AGENTS)[number], AgentPluginRecord[]> {
+  return { cursor: [], codex: [], claude: [] };
+}
+
+function normalizeGrouped(
+  agents: Record<string, AgentPluginRecord[]> | undefined,
+): Record<(typeof AGENTS)[number], AgentPluginRecord[]> {
+  const map = emptyGrouped();
+  for (const agent of AGENTS) {
+    const rows = agents?.[agent] ?? [];
+    map[agent] = [...rows].sort((a, b) => a.name.localeCompare(b.name));
+  }
+  return map;
+}
+
+function initialOpenAgents(
+  grouped: Record<(typeof AGENTS)[number], AgentPluginRecord[]>,
+): Record<string, boolean> {
+  const firstWithPlugins = AGENTS.find((a) => grouped[a].length > 0);
+  if (!firstWithPlugins) {
+    return { cursor: true, codex: false, claude: false };
+  }
+  return Object.fromEntries(
+    AGENTS.map((a) => [a, a === firstWithPlugins]),
+  );
+}
+
+function AgentPluginGroup({
+  agent,
+  plugins,
+  allowlist,
+  open,
+  onToggle,
+  busy,
+  disabled,
+  onTogglePlugin,
+}: {
+  agent: (typeof AGENTS)[number];
+  plugins: AgentPluginRecord[];
+  allowlist: string[];
+  open: boolean;
+  onToggle: () => void;
+  busy: boolean;
+  disabled?: boolean;
+  onTogglePlugin: (pluginId: string, on: boolean) => void;
+}) {
+  const enabledCount = plugins.filter((row) => allowlist.includes(row.id)).length;
+
+  return (
+    <section className="plugin-agent-group">
+      <button
+        type="button"
+        className="plugin-agent-group__head"
+        aria-expanded={open}
+        onClick={onToggle}
+      >
+        <span className="plugin-agent-group__chevron" aria-hidden>
+          {open ? "▾" : "▸"}
+        </span>
+        <Avatar role={agent as AgentRole} size={20} />
+        <span className="plugin-agent-group__name">{AGENT_LABELS[agent]}</span>
+        <span className="plugin-agent-group__counts">
+          <span className="badge">{plugins.length}</span>
+          {enabledCount > 0 ? (
+            <span className="badge badge--ok">{enabledCount} on</span>
+          ) : null}
+        </span>
+      </button>
+      {open ? (
+        plugins.length === 0 ? (
+          <p className="plugin-panel__empty">목록 없음 — 네이티브 앱에서 추가</p>
+        ) : (
+          <ul className="plugin-panel__list">
+            {plugins.map((row) => {
+              const enabled = allowlist.includes(row.id);
+              return (
+                <li key={row.id} className="plugin-panel__row">
+                  <label className="plugin-panel__label">
+                    <input
+                      type="checkbox"
+                      className="checkbox"
+                      checked={enabled}
+                      disabled={busy || disabled}
+                      onChange={(e) => onTogglePlugin(row.id, e.target.checked)}
+                    />
+                    <span className="plugin-panel__name">{row.name}</span>
+                  </label>
+                  {row.description ? (
+                    <p className="plugin-panel__desc">{row.description}</p>
+                  ) : null}
+                  {row.native_add_hint ? (
+                    <p className="plugin-panel__native-hint">{row.native_add_hint}</p>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        )
+      ) : null}
+    </section>
+  );
+}
 
 export function PluginPanel({
   sessionId,
@@ -22,34 +133,39 @@ export function PluginPanel({
   disabled,
 }: Props) {
   const [tab, setTab] = useState<"plugins" | "commands">("plugins");
-  const [plugins, setPlugins] = useState<AgentPluginRecord[]>([]);
+  const [grouped, setGrouped] =
+    useState<Record<(typeof AGENTS)[number], AgentPluginRecord[]>>(emptyGrouped);
   const [allowlist, setAllowlist] = useState<Record<string, string[]>>({});
   const [busy, setBusy] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
+  const [openAgents, setOpenAgents] = useState<Record<string, boolean>>({});
+  const accordionInitRef = useRef<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!sessionId) return;
     const res = await fetchAgentPlugins(sessionId);
-    setPlugins(res.plugins ?? []);
+    const nextGrouped = normalizeGrouped(res.agents);
+    setGrouped(nextGrouped);
     setAllowlist(res.allowlist ?? {});
+
+    if (accordionInitRef.current !== sessionId) {
+      accordionInitRef.current = sessionId;
+      setOpenAgents(initialOpenAgents(nextGrouped));
+    }
   }, [sessionId]);
 
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
-
-  const grouped = useMemo(() => {
-    const map: Record<string, AgentPluginRecord[]> = {
-      claude: [],
-      codex: [],
-      cursor: [],
-    };
-    for (const row of plugins) {
-      const agent = row.agent?.toLowerCase();
-      if (agent && map[agent]) map[agent].push(row);
+    if (!sessionId) {
+      accordionInitRef.current = null;
+      setGrouped(emptyGrouped());
+      setAllowlist({});
+      setOpenAgents({});
+      setHint(null);
+      return;
     }
-    return map;
-  }, [plugins]);
+    accordionInitRef.current = null;
+    void refresh();
+  }, [sessionId, refresh]);
 
   async function togglePlugin(agent: string, pluginId: string, on: boolean) {
     if (!sessionId || disabled) return;
@@ -97,10 +213,11 @@ export function PluginPanel({
 
   return (
     <div className="plugin-panel" data-testid="plugin-panel">
-      <div className="plugin-panel__tabs" role="tablist">
+      <div className="plugin-panel__tabs turn-seg" role="tablist">
         <button
           type="button"
           role="tab"
+          aria-selected={tab === "plugins"}
           className={tab === "plugins" ? "is-active" : ""}
           onClick={() => setTab("plugins")}
         >
@@ -109,6 +226,7 @@ export function PluginPanel({
         <button
           type="button"
           role="tab"
+          aria-selected={tab === "commands"}
           className={tab === "commands" ? "is-active" : ""}
           onClick={() => setTab("commands")}
         >
@@ -119,40 +237,21 @@ export function PluginPanel({
       {tab === "plugins" ? (
         <div className="plugin-panel__body">
           {AGENTS.map((agent) => (
-            <section key={agent} className="plugin-panel__agent">
-              <h4>{agent}</h4>
-              {(grouped[agent] ?? []).length === 0 ? (
-                <p className="plugin-panel__empty">목록 없음 — 네이티브 앱에서 추가</p>
-              ) : (
-                <ul className="plugin-panel__list">
-                  {(grouped[agent] ?? []).map((row) => {
-                    const enabled = (allowlist[agent] ?? []).includes(row.id);
-                    return (
-                      <li key={row.id} className="plugin-panel__row">
-                        <label>
-                          <input
-                            type="checkbox"
-                            className="mac-checkbox"
-                            checked={enabled}
-                            disabled={busy || disabled}
-                            onChange={(e) =>
-                              void togglePlugin(agent, row.id, e.target.checked)
-                            }
-                          />
-                          <span className="plugin-panel__name">{row.name}</span>
-                        </label>
-                        {row.description ? (
-                          <p className="plugin-panel__desc">{row.description}</p>
-                        ) : null}
-                        {row.native_add_hint ? (
-                          <p className="plugin-panel__native-hint">{row.native_add_hint}</p>
-                        ) : null}
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </section>
+            <AgentPluginGroup
+              key={agent}
+              agent={agent}
+              plugins={grouped[agent]}
+              allowlist={allowlist[agent] ?? []}
+              open={Boolean(openAgents[agent])}
+              onToggle={() =>
+                setOpenAgents((prev) => ({ ...prev, [agent]: !prev[agent] }))
+              }
+              busy={busy}
+              disabled={disabled}
+              onTogglePlugin={(pluginId, on) =>
+                void togglePlugin(agent, pluginId, on)
+              }
+            />
           ))}
         </div>
       ) : (
@@ -160,15 +259,18 @@ export function PluginPanel({
           {(
             [
               ["built_in", "Built-in"],
-              ["claude", "Claude"],
-              ["codex", "Codex"],
               ["cursor", "Cursor"],
+              ["codex", "Codex"],
+              ["claude", "Claude"],
               ["external", "External"],
             ] as const
           ).map(([key, label]) =>
             commandGroups[key].length ? (
-              <section key={key} className="plugin-panel__agent">
-                <h4>{label}</h4>
+              <section key={key} className="plugin-agent-group">
+                <div className="plugin-agent-group__head plugin-agent-group__head--static">
+                  <span className="plugin-agent-group__name">{label}</span>
+                  <span className="badge">{commandGroups[key].length}</span>
+                </div>
                 <ul className="plugin-panel__list">
                   {commandGroups[key].map((cmd) => (
                     <li key={cmd.id}>
@@ -178,7 +280,7 @@ export function PluginPanel({
                         disabled={cmd.enabled === false}
                         onClick={() => onPrefillSlash(cmd.slash)}
                       >
-                        <span>{cmd.slash}</span>
+                        <code>{cmd.slash}</code>
                         <span>{cmd.description ?? cmd.label}</span>
                       </button>
                     </li>

@@ -63,11 +63,30 @@ export function roomPermissions(selected: string[]): AgentPermissions {
 }
 
 export function loadDefaultPermissions(): AgentPermissions {
-  return fullAgentPermissions();
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return fullAgentPermissions();
+    const parsed = JSON.parse(raw) as AgentPermissions;
+    return {
+      cursor: { ...FULL_AGENT_PERMISSIONS.cursor, ...parsed.cursor },
+      codex: { ...FULL_AGENT_PERMISSIONS.codex, ...parsed.codex },
+      claude: { ...FULL_AGENT_PERMISSIONS.claude, ...parsed.claude },
+    };
+  } catch {
+    return fullAgentPermissions();
+  }
 }
 
 export function saveDefaultPermissions(p: AgentPermissions): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
+}
+
+export function clearSavedPermissionDefaults(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
 }
 
 export function hasSavedPermissionDefaults(): boolean {
@@ -113,11 +132,13 @@ export function buildPermissionsFromForm(
     cursorTools: boolean;
     cursorAgentLab: boolean;
     cursorPipeline: boolean;
+    cursorLectureScript: boolean;
     codexCli: boolean;
     claudeTools: boolean;
     claudeWrite: boolean;
     claudeAgentLab: boolean;
     claudePipeline: boolean;
+    claudeLectureScript: boolean;
   },
 ): AgentPermissions {
   const p: AgentPermissions = {};
@@ -127,6 +148,7 @@ export function buildPermissionsFromForm(
       tools: form.cursorTools,
       local_agent_lab: form.cursorAgentLab,
       local_pipeline: form.cursorPipeline,
+      local_lecture_script: form.cursorLectureScript,
     };
   }
   if (selected.includes("codex")) {
@@ -139,6 +161,7 @@ export function buildPermissionsFromForm(
       write: form.claudeWrite,
       local_agent_lab: form.claudeAgentLab,
       local_pipeline: form.claudePipeline,
+      local_lecture_script: form.claudeLectureScript,
     };
   }
   return p;

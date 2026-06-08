@@ -3,7 +3,11 @@ import { Fragment, type ReactNode } from "react";
 const INLINE_RE =
   /(\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`|\[([^\]]+)\]\(([^)]+)\))/g;
 
-function renderInline(text: string, keyPrefix: string): ReactNode[] {
+function renderInline(
+  text: string,
+  keyPrefix: string,
+  inlineCodeClass: string,
+): ReactNode[] {
   const nodes: ReactNode[] = [];
   let last = 0;
   let i = 0;
@@ -21,7 +25,7 @@ function renderInline(text: string, keyPrefix: string): ReactNode[] {
       nodes.push(<em key={key}>{m[3]}</em>);
     } else if (m[4]) {
       nodes.push(
-        <code key={key} className="bubble-inline-code">
+        <code key={key} className={inlineCodeClass || undefined}>
           {m[4]}
         </code>,
       );
@@ -49,6 +53,37 @@ type Block =
   | { type: "code"; text: string }
   | { type: "quote"; lines: string[] }
   | { type: "hr" };
+
+type MarkdownVariant = "bubble" | "transcript";
+
+function mdClasses(variant: MarkdownVariant) {
+  if (variant === "transcript") {
+    return {
+      root: "md",
+      p: "",
+      h1: "",
+      h2: "",
+      h3: "",
+      list: "",
+      pre: "",
+      quote: "",
+      hr: "",
+      inlineCode: "",
+    };
+  }
+  return {
+    root: "bubble-md",
+    p: "bubble-md__p",
+    h1: "bubble-md__h1",
+    h2: "bubble-md__h2",
+    h3: "bubble-md__h3",
+    list: "bubble-md__list",
+    pre: "bubble-md__pre",
+    quote: "bubble-md__quote",
+    hr: "bubble-md__hr",
+    inlineCode: "bubble-inline-code",
+  };
+}
 
 function parseBlocks(text: string): Block[] {
   const blocks: Block[] = [];
@@ -142,59 +177,69 @@ function isBlockStart(line: string): boolean {
   );
 }
 
-function renderBlock(block: Block, index: number): ReactNode {
+function renderBlock(
+  block: Block,
+  index: number,
+  variant: MarkdownVariant,
+): ReactNode {
   const key = `b${index}`;
+  const c = mdClasses(variant);
+  const inline = (text: string, prefix: string) =>
+    renderInline(text, prefix, c.inlineCode);
+
   switch (block.type) {
     case "heading": {
       const Tag = (`h${block.level}` as "h1" | "h2" | "h3");
+      const headingClass =
+        block.level === 1 ? c.h1 : block.level === 2 ? c.h2 : c.h3;
       return (
-        <Tag key={key} className={`bubble-md__h${block.level}`}>
-          {renderInline(block.text, key)}
+        <Tag key={key} className={headingClass || undefined}>
+          {inline(block.text, key)}
         </Tag>
       );
     }
     case "ul":
       return (
-        <ul key={key} className="bubble-md__list">
+        <ul key={key} className={c.list || undefined}>
           {block.items.map((item, j) => (
-            <li key={`${key}-${j}`}>{renderInline(item, `${key}-li${j}`)}</li>
+            <li key={`${key}-${j}`}>{inline(item, `${key}-li${j}`)}</li>
           ))}
         </ul>
       );
     case "ol":
       return (
-        <ol key={key} className="bubble-md__list">
+        <ol key={key} className={c.list || undefined}>
           {block.items.map((item, j) => (
-            <li key={`${key}-${j}`}>{renderInline(item, `${key}-li${j}`)}</li>
+            <li key={`${key}-${j}`}>{inline(item, `${key}-li${j}`)}</li>
           ))}
         </ol>
       );
     case "code":
       return (
-        <pre key={key} className="bubble-md__pre">
+        <pre key={key} className={c.pre || undefined}>
           <code>{block.text}</code>
         </pre>
       );
     case "quote":
       return (
-        <blockquote key={key} className="bubble-md__quote">
+        <blockquote key={key} className={c.quote || undefined}>
           {block.lines.map((ln, j) => (
             <Fragment key={`${key}-q${j}`}>
               {j > 0 && <br />}
-              {renderInline(ln, `${key}-q${j}`)}
+              {inline(ln, `${key}-q${j}`)}
             </Fragment>
           ))}
         </blockquote>
       );
     case "hr":
-      return <hr key={key} className="bubble-md__hr" />;
+      return <hr key={key} className={c.hr || undefined} />;
     case "paragraph":
       return (
-        <p key={key} className="bubble-md__p">
+        <p key={key} className={c.p || undefined}>
           {block.lines.map((ln, j) => (
             <Fragment key={`${key}-p${j}`}>
               {j > 0 && <br />}
-              {renderInline(ln, `${key}-p${j}`)}
+              {inline(ln, `${key}-p${j}`)}
             </Fragment>
           ))}
         </p>
@@ -202,9 +247,20 @@ function renderBlock(block: Block, index: number): ReactNode {
   }
 }
 
-/** Block-aware markdown for chat bubbles. */
-export function MessageMarkdown({ text }: { text: string }) {
+/** Block-aware markdown for chat bubbles and console transcript. */
+export function MessageMarkdown({
+  text,
+  variant = "bubble",
+}: {
+  text: string;
+  variant?: MarkdownVariant;
+}) {
   const blocks = parseBlocks(text);
   if (blocks.length === 0) return null;
-  return <div className="bubble-md">{blocks.map(renderBlock)}</div>;
+  const rootClass = mdClasses(variant).root;
+  return (
+    <div className={rootClass}>
+      {blocks.map((block, i) => renderBlock(block, i, variant))}
+    </div>
+  );
 }

@@ -118,6 +118,7 @@ export function migratePendingSessionRun(realSessionId: string): void {
     }
     pendingListeners.forEach((fn) => realSet!.add(fn));
   }
+  notifySession(PENDING_KEY);
   notifySession(realSessionId);
 }
 

@@ -9,6 +9,7 @@ type Props = {
   disabled?: boolean;
 };
 
+/** Slash autocomplete — prototype `.slash-menu` / `.slash-item` (surfaces.css). */
 export function SlashCommandMenu({
   value,
   commands,
@@ -18,12 +19,12 @@ export function SlashCommandMenu({
 }: Props) {
   const open = !disabled && value.startsWith("/");
   const query = value.slice(1).split(/\s/)[0]?.toLowerCase() ?? "";
-  const [highlight, setHighlight] = useState(0);
-  const listRef = useRef<HTMLUListElement>(null);
+  const [hi, setHi] = useState(0);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const filtered = useMemo(() => {
     if (!open) return [];
-    const rows = commands;
+    const rows = commands.filter((c) => c.enabled !== false);
     if (!query) return rows;
     return rows.filter(
       (c) =>
@@ -34,61 +35,58 @@ export function SlashCommandMenu({
   }, [commands, open, query]);
 
   useEffect(() => {
-    setHighlight(0);
+    setHi(0);
   }, [query, open]);
 
   if (!open) return null;
 
   return (
-    <div className="slash-command-menu" data-testid="slash-command-menu">
-      <ul className="slash-command-menu__list" ref={listRef} role="listbox">
-        {filtered.map((cmd, index) => (
-          <li key={cmd.id}>
-            <button
-              type="button"
-              className={[
-                "slash-command-menu__item",
-                index === highlight ? "is-active" : "",
-                cmd.enabled === false ? "is-disabled" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              role="option"
-              aria-selected={index === highlight}
-              disabled={cmd.enabled === false}
-              onMouseEnter={() => setHighlight(index)}
-              onClick={() => {
-                if (cmd.enabled === false) return;
-                onSelect(cmd.slash);
-                onExecute(cmd);
-              }}
-            >
-              <span className="slash-command-menu__slash">{cmd.slash}</span>
-              <span className="slash-command-menu__body">
-                <span className="slash-command-menu__label">{cmd.label}</span>
-                {cmd.description ? (
-                  <span className="slash-command-menu__desc">{cmd.description}</span>
-                ) : null}
-                {cmd.enabled === false ? (
-                  <span className="slash-command-menu__disabled">
-                    {cmd.disabled_reason ?? "현재 세션에서 사용할 수 없음"}
-                  </span>
-                ) : null}
-              </span>
-              {cmd.agent ? (
-                <span className="slash-command-menu__agent">{cmd.agent}</span>
-              ) : null}
-            </button>
-          </li>
-        ))}
-        {filtered.length === 0 ? (
-          <li className="slash-command-menu__empty">일치하는 명령 없음</li>
-        ) : null}
-      </ul>
+    <div
+      className="slash-menu"
+      ref={listRef}
+      data-testid="slash-command-menu"
+      role="listbox"
+      aria-label="slash commands"
+    >
+      {filtered.map((cmd, i) => (
+        <button
+          key={cmd.id}
+          type="button"
+          className={[
+            "slash-item",
+            i === hi ? "is-active" : "",
+            cmd.enabled === false ? "is-disabled" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          role="option"
+          aria-selected={i === hi}
+          disabled={cmd.enabled === false}
+          onMouseEnter={() => setHi(i)}
+          onClick={() => {
+            if (cmd.enabled === false) return;
+            onSelect(cmd.slash);
+            onExecute(cmd);
+          }}
+        >
+          <span className="slash-item__slash">{cmd.slash}</span>
+          <span className="slash-item__label">
+            {cmd.label}
+            {cmd.description ? ` — ${cmd.description}` : ""}
+            {cmd.enabled === false
+              ? ` (${cmd.disabled_reason ?? "현재 세션에서 사용할 수 없음"})`
+              : ""}
+          </span>
+        </button>
+      ))}
+      {filtered.length === 0 ? (
+        <p className="slash-item slash-item--empty">일치하는 명령 없음</p>
+      ) : null}
     </div>
   );
 }
 
+/** Wire keyboard navigation into the composer's onKeyDown handler. */
 export function slashMenuKeyDown(
   e: React.KeyboardEvent,
   filtered: SlashCommandRecord[],

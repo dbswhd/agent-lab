@@ -7,7 +7,8 @@ export type WorkspaceTab =
 /** @deprecated Use `work` */
 export type LegacyWorkspaceTab = "plan" | "review";
 
-export type InspectorTab = "tasks" | "activity" | "quick";
+// ── P0: Overview / Tasks / Inbox  (was Tasks / Activity / Quick) ──
+export type InspectorTab = "overview" | "tasks" | "inbox";
 
 export const WORKSPACE_TABS: {
   id: WorkspaceTab;
@@ -15,18 +16,18 @@ export const WORKSPACE_TABS: {
   shortcut: string;
 }[] = [
   { id: "transcript", label: "Transcript", shortcut: "⌘1" },
-  { id: "work", label: "Work", shortcut: "⌘2" },
-  { id: "run", label: "Run", shortcut: "⌘3" },
-  { id: "artifacts", label: "Artifacts", shortcut: "⌘4" },
+  { id: "work",       label: "Work",       shortcut: "⌘2" },
+  { id: "run",        label: "Run",         shortcut: "⌘3" },
+  { id: "artifacts",  label: "Artifacts",  shortcut: "⌘4" },
 ];
 
 export const INSPECTOR_TABS: {
   id: InspectorTab;
   label: string;
 }[] = [
-  { id: "tasks", label: "Tasks" },
-  { id: "activity", label: "Activity" },
-  { id: "quick", label: "Quick" },
+  { id: "overview", label: "Overview" },
+  { id: "tasks",    label: "Tasks"    },
+  { id: "inbox",    label: "Inbox"    },
 ];
 
 export type TabAutoContext = {
@@ -53,7 +54,7 @@ export function resolveDefaultWorkspaceTab(ctx: TabAutoContext): WorkspaceTab {
 
 export function resolveDefaultInspectorTab(ctx: TabAutoContext): InspectorTab {
   if (ctx.hasBlocker) return "tasks";
-  return "tasks";
+  return "overview";                          // default → Overview
 }
 
 export function workspaceTabFromLegacy(tab: "chat" | "plan"): WorkspaceTab {

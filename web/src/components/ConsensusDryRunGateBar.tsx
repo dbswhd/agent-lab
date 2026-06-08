@@ -3,7 +3,6 @@ import {
   consensusDryRunActionTitle,
   consensusDryRunGateNotice,
 } from "../utils/consensusAgreement";
-import { AppBrandIcon } from "./AppBrandIcon";
 
 export type ConsensusDryRunProposal = {
   excerpt?: string;
@@ -23,6 +22,15 @@ type Props = {
   onDismiss: () => void;
 };
 
+/** ConsensusDryRunGateBar — banner shown after ♾️ consensus round completes.
+ *
+ *  Uses .consensus-gate-bar / .consensus-gate-bar__* classes (overlays.css).
+ *  Drop-in for old component that used .mac-notification--banner (macos26.css).
+ *
+ *  Shows: notice text · recommended action title ·
+ *         dry-run / plan 보기 / 나중에 buttons.
+ *  dry-run button hidden when has_executable is false.
+ */
 export function ConsensusDryRunGateBar({
   proposal,
   busy,
@@ -31,52 +39,65 @@ export function ConsensusDryRunGateBar({
   onOpenPlan,
   onDismiss,
 }: Props) {
-  const notice = consensusDryRunGateNotice(
+  const notice      = consensusDryRunGateNotice(
     proposal.excerpt,
     proposal.summary,
     proposal.notice,
   );
   const actionTitle = consensusDryRunActionTitle(proposal.recommended);
-  const canDryRun = Boolean(proposal.has_executable && proposal.action_key);
+  const canDryRun   = Boolean(proposal.has_executable && proposal.action_key);
 
   return (
     <div
-      className="mac-notification mac-notification--banner consensus-dry-run-gate-bar"
+      className="consensus-gate-bar"
       role="region"
       aria-label="합의 plan 반영 · dry-run 확인"
     >
-      <AppBrandIcon className="mac-notification-icon" />
-      <div className="mac-notification-body">
-        <div className="mac-notification-title">{notice}</div>
+      {/* Codex-tinted icon */}
+      <span className="consensus-gate-bar__icon" aria-hidden="true">
+        <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
+          <path d="M10 2l2.5 5 5.5.8-4 3.9.95 5.5L10 14.75 5.05 17.2 6 11.7 2 7.8l5.5-.8L10 2z"
+            stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+        </svg>
+      </span>
+
+      <div className="consensus-gate-bar__body">
+        <div className="consensus-gate-bar__title">{notice}</div>
+
         {canDryRun && actionTitle ? (
-          <div className="mac-notification-desc">추천 액션: {actionTitle}</div>
+          <div className="consensus-gate-bar__desc">
+            추천 액션: {actionTitle}
+          </div>
         ) : (
-          <div className="mac-notification-desc">
+          <div className="consensus-gate-bar__desc">
             실행 가능한 plan 액션이 없습니다.
           </div>
         )}
-        <div className="consensus-dry-run-gate-bar__actions">
+
+        <div className="consensus-gate-bar__actions">
           {canDryRun ? (
             <button
               type="button"
-              className="mac-btn-primary consensus-dry-run-gate-bar__primary"
+              className="btn btn--primary btn--sm"
               disabled={disabled || busy}
               onClick={() => void onDryRun()}
             >
               {busy ? "시작 중…" : "dry-run 실행"}
             </button>
           ) : null}
+
           <button
             type="button"
-            className="mac-btn-secondary"
+            className="btn btn--sm"
             disabled={disabled}
             onClick={onOpenPlan}
           >
             plan 보기
           </button>
+
           <button
             type="button"
-            className="mac-btn-secondary consensus-dry-run-gate-bar__later"
+            className="btn btn--ghost btn--sm"
             disabled={disabled || busy}
             onClick={onDismiss}
           >

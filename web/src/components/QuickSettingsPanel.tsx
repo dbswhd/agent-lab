@@ -45,7 +45,7 @@ export function QuickSettingsPanel({
       {onOpenFullSettings ? (
         <button
           type="button"
-          className="mac-btn-secondary quick-settings-panel__open"
+          className="btn quick-settings-panel__open"
           onClick={onOpenFullSettings}
         >
           전체 설정 열기…

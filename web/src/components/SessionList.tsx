@@ -1,9 +1,6 @@
 import { useState } from "react";
 import type { SessionSummary } from "../api/client";
-import {
-  SessionContextMenu,
-  type MenuAction,
-} from "./SessionContextMenu";
+import { SessionContextMenu, type MenuAction } from "./SessionContextMenu";
 import { MacAlert } from "./MacAlert";
 
 type Props = {
@@ -25,10 +22,7 @@ function formatTime(iso?: string): string {
     const d = new Date(iso);
     const now = new Date();
     if (d.toDateString() === now.toDateString()) {
-      return d.toLocaleTimeString("ko-KR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+      return d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
     }
     return d.toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
   } catch {
@@ -37,12 +31,20 @@ function formatTime(iso?: string): string {
 }
 
 function sessionSubtitle(s: SessionSummary): string {
-  if (s.workflow === "room.parallel") {
-    return "Cursor · Codex · Claude";
+  if (s.workspace_path) {
+    const leaf = s.workspace_path.split("/").filter(Boolean).pop();
+    if (leaf) return leaf;
   }
+  if (s.agents?.length) return s.agents.join(" · ");
+  if (s.workflow === "room.parallel") return "Cursor · Codex · Claude";
   return s.model || "Planner · Critic · Scribe";
 }
 
+/**
+ * Rebuilt session list. ALL behavior preserved: query filter, context menu,
+ * rename/delete MacAlert flows, running-dot, selection.
+ * New class system: `.session-list` / `.session-item` / `.session-item__*`.
+ */
 export function SessionList({
   sessions,
   selectedId,
@@ -55,11 +57,7 @@ export function SessionList({
   onRename,
   onDelete,
 }: Props) {
-  const [menu, setMenu] = useState<{
-    id: string;
-    x: number;
-    y: number;
-  } | null>(null);
+  const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const [renameId, setRenameId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -67,23 +65,15 @@ export function SessionList({
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const visibleSessions = normalizedQuery
     ? sessions.filter((session) =>
-        [
-          session.topic,
-          session.id,
-          session.model,
-          session.workflow,
-          sessionSubtitle(session),
-        ]
+        [session.topic, session.id, session.model, session.workflow, sessionSubtitle(session)]
           .filter(Boolean)
-          .some((value) =>
-            String(value).toLocaleLowerCase().includes(normalizedQuery),
-          ),
+          .some((value) => String(value).toLocaleLowerCase().includes(normalizedQuery)),
       )
     : sessions;
 
   if (visibleSessions.length === 0) {
     return (
-      <p className="chat-list-empty">
+      <p className="session-list-empty">
         {normalizedQuery
           ? "검색 결과가 없습니다"
           : archived
@@ -107,38 +97,37 @@ export function SessionList({
 
   return (
     <>
-      <div className="session-list-scroll">
-        <ul className="session-list">
-          {visibleSessions.map((s) => (
-            <li key={s.id}>
-              <button
-                type="button"
-                className={`session-row${selectedId === s.id ? " selected" : ""}${runningSessionIds.includes(s.id) ? " session-row--running" : ""}`}
-                aria-current={selectedId === s.id ? "true" : undefined}
-                onClick={() => onSelect(s.id)}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  setMenu({ id: s.id, x: e.clientX, y: e.clientY });
-                }}
-              >
-                <span className="session-preview">
-                  <span className="session-preview-title">
-                    {runningSessionIds.includes(s.id) ? (
-                      <span
-                        className="session-row__run-dot"
-                        aria-label="실행 중"
-                        title="에이전트 턴 실행 중"
-                      />
-                    ) : null}
-                    {s.topic || s.id}
+      <div className="session-list scroll-y">
+        {visibleSessions.map((s) => {
+          const running = runningSessionIds.includes(s.id);
+          return (
+            <button
+              key={s.id}
+              type="button"
+              className={`session-item${selectedId === s.id ? " is-active" : ""}${running ? " session-item--running" : ""}`}
+              aria-current={selectedId === s.id ? "true" : undefined}
+              onClick={() => onSelect(s.id)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setMenu({ id: s.id, x: e.clientX, y: e.clientY });
+              }}
+            >
+              <span className="session-item__top">
+                <span className="session-item__topic">{s.topic || s.id}</span>
+                {running ? (
+                  <span className="session-item__running">
+                    <span className="dot dot--ok dot--live" aria-hidden />
+                    실행 중
                   </span>
-                  <span className="session-preview-sub">{sessionSubtitle(s)}</span>
-                </span>
-                <span className="session-time">{formatTime(s.created_at)}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
+                ) : null}
+              </span>
+              <span className="session-item__sub">
+                <span>{sessionSubtitle(s)}</span>
+                <span className="session-item__time">{formatTime(s.created_at)}</span>
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {menu && (
@@ -156,11 +145,7 @@ export function SessionList({
         title="이름 변경"
         onClose={() => setRenameId(null)}
         buttons={[
-          {
-            label: "취소",
-            variant: "cancel",
-            onClick: () => setRenameId(null),
-          },
+          { label: "취소", variant: "cancel", onClick: () => setRenameId(null) },
           {
             label: "저장",
             variant: "default",
@@ -172,7 +157,7 @@ export function SessionList({
         ]}
       >
         <input
-          className="mac-alert-input mac-textfield"
+          className="field"
           value={renameValue}
           onChange={(e) => setRenameValue(e.target.value)}
           autoFocus
@@ -191,11 +176,7 @@ export function SessionList({
         message="이 작업은 되돌릴 수 없습니다. 세션 폴더가 영구 삭제됩니다."
         onClose={() => setDeleteId(null)}
         buttons={[
-          {
-            label: "취소",
-            variant: "cancel",
-            onClick: () => setDeleteId(null),
-          },
+          { label: "취소", variant: "cancel", onClick: () => setDeleteId(null) },
           {
             label: "삭제",
             variant: "destructive",

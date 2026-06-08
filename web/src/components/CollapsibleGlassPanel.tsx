@@ -2,14 +2,22 @@ import { useState, type ReactNode } from "react";
 
 type Props = {
   title: string;
-  /** Collapsed header hint (optional). */
+  /** Collapsed-state summary hint (shown next to ▸ when closed). */
   summary?: string | null;
   defaultOpen?: boolean;
+  /** "default" for neutral glass, "warn" for amber tint. */
   variant?: "default" | "warn";
   className?: string;
   children?: ReactNode;
 };
 
+/** CollapsibleGlassPanel — frosted collapsible panel used for
+ *  plan-stale notices, dry-run summaries, etc.
+ *
+ *  Uses .glass-panel / .glass-panel--{variant} / .glass-panel--{open|collapsed}
+ *  classes (overlays.css).
+ *  Drop-in for old component that used .lg-panel (macos26.css).
+ */
 export function CollapsibleGlassPanel({
   title,
   summary,
@@ -19,10 +27,11 @@ export function CollapsibleGlassPanel({
   children,
 }: Props) {
   const [open, setOpen] = useState(defaultOpen);
+
   const rootClass = [
-    "lg-panel",
-    `lg-panel--${variant}`,
-    open ? "lg-panel--open" : "lg-panel--collapsed",
+    "glass-panel",
+    `glass-panel--${variant}`,
+    open ? "glass-panel--open" : "glass-panel--collapsed",
     className,
   ]
     .filter(Boolean)
@@ -32,20 +41,20 @@ export function CollapsibleGlassPanel({
     <div className={rootClass}>
       <button
         type="button"
-        className="lg-panel__head"
+        className="glass-panel__head"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
-        <span className="lg-panel__title">{title}</span>
+        <span className="glass-panel__title">{title}</span>
         {!open && summary ? (
-          <span className="lg-panel__summary">{summary}</span>
+          <span className="glass-panel__summary">{summary}</span>
         ) : null}
-        <span className="lg-panel__chev" aria-hidden>
+        <span className="glass-panel__chev" aria-hidden="true">
           {open ? "▾" : "▸"}
         </span>
       </button>
       {open && children != null ? (
-        <div className="lg-panel__body">{children}</div>
+        <div className="glass-panel__body">{children}</div>
       ) : null}
     </div>
   );

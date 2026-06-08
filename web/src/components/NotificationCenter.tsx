@@ -86,7 +86,7 @@ export function NotificationCenter({ onOpen }: Props = {}) {
                 className="notification-center__open"
                 onClick={() => onOpen(n)}
               >
-                Open
+                바로가기
               </button>
             ) : null}
           </li>

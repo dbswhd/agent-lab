@@ -5,7 +5,8 @@ export type ComposerTurnProfile =
   | "analyze"
   | "review"
   | "free"
-  | "specialist";
+  | "specialist"
+  | "verified";
 
 export type TurnProfileConfig = {
   agentRounds: number;
@@ -17,33 +18,89 @@ export type TurnProfileConfig = {
 const STORAGE_KEY = "agent-lab-turn-profile";
 
 /** Picker-visible strategies (review folded into ♾️ debate loop). */
-export const TURN_STRATEGY_OPTIONS: {
-  id: ComposerTurnProfile;
-  label: string;
-  description: string;
-}[] = [
-  {
-    id: "quick",
-    label: "빠른",
-    description: "에이전트 1명 · R1 · 짧게 확인",
-  },
-  {
-    id: "analyze",
-    label: "분석",
-    description: "R1 병렬 · 현황·사실·근거만 · plan 유지",
-  },
-  {
-    id: "specialist",
-    label: "분업",
-    description: "R1 Codex+Claude → R2 Cursor · 비대칭 cwd/툴",
-  },
-  {
-    id: "free",
-    label: "♾️",
-    description:
-      "R1 주장 → R2 반박 ↔ R3 확장 루프 → 「이의 없습니다」 합의",
-  },
-];
+export function turnStrategyOptions(locale: "en" | "ko" = "en") {
+  const ko = locale === "ko";
+  return [
+    {
+      id: "quick" as const,
+      label: ko ? "빠른" : "Quick",
+      description: ko ? "에이전트 1명 · R1 · 짧게 확인" : "1 agent · R1 · short check",
+    },
+    {
+      id: "analyze" as const,
+      label: ko ? "분석" : "Analyze",
+      description: ko
+        ? "R1 병렬 · 현황·사실만 · plan 유지"
+        : "R1 parallel · facts only · keep plan",
+    },
+    {
+      id: "specialist" as const,
+      label: ko ? "분업" : "Split",
+      description: "R1 Codex+Claude → R2 Cursor",
+    },
+    {
+      id: "verified" as const,
+      label: ko ? "검증" : "Verified",
+      description: ko
+        ? "목표 합의 → Human 승인 → Oracle VERIFIED"
+        : "Agree goal → Human approve → Oracle VERIFIED",
+    },
+    {
+      id: "free" as const,
+      label: "♾️",
+      description: ko
+        ? "R1 주장 → R2 반박 ↔ R3 확장 루프 → 합의"
+        : "Claim → rebuttal ↔ expand loop → consensus",
+    },
+  ];
+}
+
+/** @deprecated use turnStrategyOptions(locale) */
+export const TURN_STRATEGY_OPTIONS = turnStrategyOptions("en");
+
+/** One-line hint under turn picker — matches offline prototype composer.jsx */
+export function composerTurnHint(
+  profile: ComposerTurnProfile,
+  selectedAgents: string[],
+  efficiencyOn = false,
+  locale: "en" | "ko" = "en",
+): string {
+  const normalized = normalizeTurnProfile(profile);
+  const resolved = resolveTurnSend(normalized, selectedAgents, efficiencyOn);
+  const n = resolved.agents.length;
+  const ko = locale === "ko";
+  if (normalized === "quick") {
+    const lead = selectedAgents[0] ?? "agent";
+    return ko
+      ? n > 1
+        ? `빠른 · ${lead}만 · R1`
+        : "빠른 · R1"
+      : n > 1
+        ? `Quick · ${lead} only · R1`
+        : "Quick · R1";
+  }
+  if (normalized === "analyze") {
+    return ko
+      ? `분석 · ${n}명 · 현황·사실만 · R${resolved.agentRounds}`
+      : `Analyze · ${n} agents · facts only · R${resolved.agentRounds}`;
+  }
+  if (normalized === "specialist") {
+    return ko
+      ? "분업 · R1 Codex+Claude → R2 Cursor"
+      : "Split · R1 Codex+Claude → R2 Cursor";
+  }
+  if (normalized === "verified") {
+    return ko
+      ? "검증 · 목표 합의 → Oracle VERIFIED"
+      : "Verified · goal → Oracle VERIFIED";
+  }
+  if (normalized === "free") {
+    return ko
+      ? `♾️ · ${n}명 · R2↔R3 루프 → 합의`
+      : `♾️ · ${n} agents · R2↔R3 loop → consensus`;
+  }
+  return turnProfileDescription(profile);
+}
 
 export const TURN_PROFILE_OPTIONS: {
   id: ComposerTurnProfile;
@@ -67,7 +124,8 @@ export function normalizeTurnProfile(
     profile === "quick" ||
     profile === "analyze" ||
     profile === "free" ||
-    profile === "specialist"
+    profile === "specialist" ||
+    profile === "verified"
   ) {
     return profile;
   }
@@ -77,7 +135,7 @@ export function normalizeTurnProfile(
 export function turnProfileDescription(profile: ComposerTurnProfile): string {
   const normalized = normalizeTurnProfile(profile);
   return (
-    TURN_STRATEGY_OPTIONS.find((o) => o.id === normalized)?.description ??
+    turnStrategyOptions("en").find((o) => o.id === normalized)?.description ??
     TURN_PROFILE_OPTIONS.find((o) => o.id === profile)?.description ??
     ""
   );
@@ -99,6 +157,12 @@ export const TURN_PROFILE_CONFIG: Record<ComposerTurnProfile, TurnProfileConfig>
     },
     specialist: {
       agentRounds: 2,
+      reviewMode: false,
+      singleAgent: false,
+      consensusMode: false,
+    },
+    verified: {
+      agentRounds: 1,
       reviewMode: false,
       singleAgent: false,
       consensusMode: false,
@@ -170,6 +234,11 @@ export function turnProfileHint(
       selectedAgents.length > 1
         ? `분업 · R1 Codex+Claude → R2 Cursor`
         : "분업 · 2R · Cursor R2";
+  } else if (normalized === "verified") {
+    hint =
+      selectedAgents.length > 1
+        ? `검증 · ${selectedAgents.length}명 · Oracle VERIFIED`
+        : "검증 · Oracle VERIFIED";
   } else if (normalized === "free") {
     hint =
       selectedAgents.length > 1

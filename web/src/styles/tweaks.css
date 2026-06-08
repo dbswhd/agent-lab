@@ -1,0 +1,140 @@
+/* Tweaks panel — prototype app/tweaks-panel.jsx (design QA) */
+
+.twk-panel {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 9000;
+  width: 280px;
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in srgb, var(--surface-card) 82%, transparent);
+  color: var(--label-primary);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border: 0.5px solid var(--border-soft);
+  border-radius: 14px;
+  box-shadow: var(--shadow-pop);
+  font: 11.5px/1.4 var(--font-sans);
+  overflow: hidden;
+}
+
+.twk-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 8px 10px 14px;
+  cursor: move;
+  user-select: none;
+  border-bottom: 1px solid var(--border-hair);
+}
+
+.twk-hd b {
+  font-size: 12px;
+  font-weight: var(--weight-semibold);
+}
+
+.twk-x {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--label-tertiary);
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.twk-x:hover {
+  background: var(--surface-hover);
+  color: var(--label-primary);
+}
+
+.twk-body {
+  padding: 2px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.twk-sect {
+  font-size: 10px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--label-quaternary);
+  padding: 10px 0 0;
+}
+
+.twk-sect:first-child {
+  padding-top: 0;
+}
+
+.twk-row-h {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.twk-lbl span {
+  font-weight: var(--weight-medium);
+  color: var(--label-secondary);
+}
+
+.twk-btn {
+  appearance: none;
+  width: 100%;
+  min-height: 28px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--label-primary);
+  color: var(--surface-card);
+  font: inherit;
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  text-align: left;
+}
+
+.twk-btn:hover {
+  opacity: 0.92;
+}
+
+.twk-toggle {
+  position: relative;
+  width: 32px;
+  height: 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--border-strong);
+  transition: background var(--transition);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.twk-toggle[data-on="1"] {
+  background: var(--success);
+}
+
+.twk-toggle i {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform var(--transition);
+}
+
+.twk-toggle[data-on="1"] i {
+  transform: translateX(14px);
+}

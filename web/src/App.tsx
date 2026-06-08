@@ -26,8 +26,20 @@ import { RunPanel } from "./components/RunPanel";
 import { SessionList } from "./components/SessionList";
 import { SessionRail } from "./components/SessionRail";
 import { SessionViewer } from "./components/SessionViewer";
+import {
+  NewSessionDialog,
+  type NewSessionParams,
+} from "./components/NewSessionDialog";
 import { MacTitlebar } from "./components/MacTitlebar";
 import { MacNotificationProvider } from "./components/MacNotificationHost";
+import { TweaksPanel } from "./components/TweaksPanel";
+import { TweaksDemoOverlays } from "./components/TweaksDemoOverlays";
+import { TweaksHotkeys } from "./components/TweaksHotkeys";
+import { SidebarToggle } from "./components/SidebarToggle";
+import {
+  TitlebarSlotsProvider,
+  useTitlebarSlotsContext,
+} from "./components/TitlebarSlotsContext";
 import { getSidebarOpen, setSidebarOpen } from "./utils/sidebarPrefs";
 import { formatRoomModelLine } from "./utils/roomModels";
 import { isTauriApp } from "./theme";
@@ -36,6 +48,15 @@ import {
   openCommandPalette,
   requestWorkspaceTabByIndex,
 } from "./utils/desktopShortcuts";
+import {
+  bindingsFromAgentChoices,
+  setStoredAgentThreadBindings,
+  type AgentThreadBindings,
+} from "./utils/agentThreadBindings";
+import {
+  setStoredWorkspaceId,
+  setStoredWorkspacePath,
+} from "./utils/sessionSetup";
 import {
   clearLastSessionId,
   getLastSessionId,
@@ -49,6 +70,55 @@ import {
 type Mode = "room" | "classic";
 type ListTab = "active" | "archived";
 type ShellView = "workspace" | "settings";
+
+function AppTitlebar({
+  inTauri,
+  sidebarOpen,
+  onToggleSidebar,
+  shellView,
+  mode,
+  fallbackTitle,
+}: {
+  inTauri: boolean;
+  sidebarOpen: boolean;
+  onToggleSidebar: () => void;
+  shellView: ShellView;
+  mode: Mode;
+  fallbackTitle?: string | null;
+}) {
+  const slotsCtx = useTitlebarSlotsContext();
+  const slots = slotsCtx?.slots ?? {};
+  const title =
+    mode === "room" && shellView === "workspace"
+      ? (slots.title ?? fallbackTitle ?? undefined)
+      : undefined;
+
+  return (
+    <MacTitlebar
+      leading={
+        <>
+          {!inTauri ? (
+            <div className="traffic-lights" aria-hidden>
+              <span className="close" />
+              <span className="minimize" />
+              <span className="zoom" />
+            </div>
+          ) : null}
+          <SidebarToggle
+            open={sidebarOpen}
+            onToggle={onToggleSidebar}
+            variant="panel"
+            className="icon-btn"
+          />
+        </>
+      }
+      title={title}
+      meta={mode === "room" && shellView === "workspace" ? slots.meta : undefined}
+      trailing={mode === "room" && shellView === "workspace" ? slots.trailing : undefined}
+      showThemeToggle={!(mode === "room" && shellView === "workspace")}
+    />
+  );
+}
 
 export default function App() {
   const [mode, setMode] = useState<Mode>("room");
@@ -71,6 +141,14 @@ export default function App() {
   const [detail, setDetail] = useState<SessionDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [composerNew, setComposerNew] = useState(() => getLastSessionId() == null);
+  const [newSessionOpen, setNewSessionOpen] = useState(
+    () => getLastSessionId() == null,
+  );
+  const [bootstrapAgentIds, setBootstrapAgentIds] = useState<string[] | null>(
+    null,
+  );
+  const [bootstrapAgentThreadBindings, setBootstrapAgentThreadBindings] =
+    useState<AgentThreadBindings | null>(null);
   const [sidebarOpen, setSidebarOpenState] = useState(getSidebarOpen);
   const [sessionRailWidth, setSessionRailWidthState] = useState(getSessionRailWidth);
   const [sessionQuery, setSessionQuery] = useState("");
@@ -271,11 +349,28 @@ export default function App() {
   }
 
   const startNew = useCallback(() => {
+    setNewSessionOpen(true);
+  }, []);
+
+  const handleNewSessionCreate = useCallback((params: NewSessionParams) => {
+    setStoredWorkspaceId(params.workspaceId);
+    setStoredWorkspacePath(params.workspacePath);
+    const bindings = bindingsFromAgentChoices(params.agents);
+    setStoredAgentThreadBindings(bindings);
+    setBootstrapAgentThreadBindings(bindings);
+    setBootstrapAgentIds(params.agents.map((a) => a.id));
     setComposerNew(true);
     setSelectedId(null);
     setDetail(null);
     setListTab("active");
     clearLastSessionId();
+    setNewSessionOpen(false);
+    setShellView("workspace");
+    setMode("room");
+  }, []);
+
+  const clearBootstrapAgents = useCallback(() => {
+    setBootstrapAgentIds(null);
   }, []);
 
   useEffect(() => {
@@ -360,48 +455,54 @@ export default function App() {
     roomSessionId &&
       (loadingDetail || (detail != null && detail.id !== roomSessionId)),
   );
+  const titlebarFallbackTopic =
+    roomSessionDetail?.topic ||
+    (composerNew ? "Session" : null);
 
   return (
-    <div className="mac-app mac-app--developer-console">
+    <div className="app">
       <MacNotificationProvider>
-      <div className="mac-window">
-        <MacTitlebar
-          leading={
-            !inTauri ? (
-              <div className="traffic-lights" aria-hidden>
-                <span className="close" />
-                <span className="minimize" />
-                <span className="zoom" />
-              </div>
-            ) : undefined
-          }
-        />
+        <TitlebarSlotsProvider>
+          <AppTitlebar
+            inTauri={inTauri}
+            sidebarOpen={sidebarOpen}
+            onToggleSidebar={toggleSidebar}
+            shellView={shellView}
+            mode={mode}
+            fallbackTitle={titlebarFallbackTopic}
+          />
 
-        <div
-          className={`workspace-shell${sidebarOpen ? "" : " workspace-shell--rail-collapsed"}`}
-        >
+          <div
+            className={`shell${sidebarOpen ? "" : " shell--rail-collapsed"}`}
+            style={
+              { "--rail-width": `${sessionRailWidth}px` } as React.CSSProperties
+            }
+          >
           <SessionRail
             open={sidebarOpen}
             width={sessionRailWidth}
             onWidthChange={setSessionRailWidthState}
             onWidthCommit={commitSessionRailWidth}
           >
-            <div className="chat-list-header">
-              <div className="sidebar-title-row">
-                <h1>{listTab === "archived" ? "Archive" : "Sessions"}</h1>
+            <div className="rail__header">
+              <div className="rail__title-row">
+                <h1 className="rail__title">Agent Lab</h1>
               </div>
-              <button
-                type="button"
-                className="mac-btn-primary mac-sidebar-btn"
-                onClick={startNew}
-                title="새 Session (⌘N)"
-              >
-                새 Session
-              </button>
-              <label className="session-search">
-                <span className="session-search__icon" aria-hidden>
-                  ⌕
-                </span>
+              <label className="rail__search">
+                <svg
+                  viewBox="0 0 24 24"
+                  width="15"
+                  height="15"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.7}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden
+                >
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="m21 21-4.3-4.3" />
+                </svg>
                 <input
                   type="search"
                   value={sessionQuery}
@@ -410,24 +511,32 @@ export default function App() {
                   aria-label="세션 검색"
                 />
               </label>
-              <div className="list-tabs mac-segmented" role="tablist">
+              <div className="rail-scope-tabs" role="tablist">
                 <button
                   type="button"
                   role="tab"
                   aria-selected={listTab === "active"}
-                  className={listTab === "active" ? "active" : ""}
+                  className={`rail-scope-tab${listTab === "active" ? " is-active" : ""}`}
                   onClick={() => setListTab("active")}
                 >
                   Sessions
+                  {listTab === "active" && sessions.length > 0 ? (
+                    <span className="rail-scope-tab__count">{sessions.length}</span>
+                  ) : null}
                 </button>
                 <button
                   type="button"
                   role="tab"
                   aria-selected={listTab === "archived"}
-                  className={listTab === "archived" ? "active" : ""}
+                  className={`rail-scope-tab${listTab === "archived" ? " is-active" : ""}`}
                   onClick={() => setListTab("archived")}
                 >
                   Archive
+                  {listTab === "archived" && sessions.length > 0 ? (
+                    <span className="rail-scope-tab__count rail-scope-tab__count--dim">
+                      {sessions.length}
+                    </span>
+                  ) : null}
                 </button>
               </div>
             </div>
@@ -465,33 +574,39 @@ export default function App() {
               onDelete={handleDelete}
             />
             {listTab === "active" ? (
-              <div className="sidebar-footer">
+              <div className="rail__footer">
                 <button
                   type="button"
-                  className="mac-btn-secondary sidebar-settings-btn"
-                  onClick={() => setShellView("settings")}
+                  className="btn btn--primary btn--block"
+                  onClick={startNew}
+                  title="새 Session (⌘N)"
                 >
-                  Settings…
+                  + 새 Session
+                  <span className="kbd" style={{ marginLeft: "auto" }}>
+                    ⌘N
+                  </span>
                 </button>
                 <button
                   type="button"
-                  className={[
-                    "mac-btn-secondary",
-                    "sidebar-mode-btn",
-                    mode === "classic" ? "is-active" : "",
-                  ].join(" ")}
-                  onClick={() =>
-                    setMode((m) => (m === "room" ? "classic" : "room"))
-                  }
-                  title={
-                    mode === "room"
-                      ? "Planner · Critic · Scribe 순차 모드"
-                      : "Session 모드로 돌아가기"
-                  }
+                  className={`icon-btn${shellView === "settings" ? " is-active" : ""}`}
+                  title="Settings"
+                  aria-label="Settings"
+                  onClick={() => setShellView("settings")}
                 >
-                  {mode === "room"
-                    ? "클래식 (레거시)…"
-                    : "← Session으로 돌아가기"}
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="17"
+                    height="17"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={1.7}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden
+                  >
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                  </svg>
                 </button>
               </div>
             ) : null}
@@ -499,8 +614,9 @@ export default function App() {
 
           <section
             className={[
+              "pane",
               "workspace-pane",
-              mode === "classic" ? "workspace-pane--classic chat-pane--classic" : "",
+              mode === "classic" ? "pane--classic chat-pane--classic" : "",
             ]
               .filter(Boolean)
               .join(" ")}
@@ -539,6 +655,9 @@ export default function App() {
                 sidebarOpen={sidebarOpen}
                 onToggleSidebar={toggleSidebar}
                 onOpenSettings={() => setShellView("settings")}
+                bootstrapAgentIds={bootstrapAgentIds}
+                bootstrapAgentThreadBindings={bootstrapAgentThreadBindings}
+                onBootstrapAgentsApplied={clearBootstrapAgents}
               />
             ) : composerNew ? (
               <RunPanel
@@ -561,8 +680,17 @@ export default function App() {
               />
             )}
           </section>
-        </div>
-      </div>
+          </div>
+        </TitlebarSlotsProvider>
+        <NewSessionDialog
+          open={newSessionOpen}
+          agents={agents}
+          onClose={() => setNewSessionOpen(false)}
+          onCreate={handleNewSessionCreate}
+        />
+        <TweaksPanel />
+        <TweaksDemoOverlays />
+        <TweaksHotkeys />
       </MacNotificationProvider>
     </div>
   );

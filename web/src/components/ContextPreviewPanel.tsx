@@ -8,6 +8,7 @@ import {
   parseLastTurnContext,
   trimLevelLabel,
   type AgentContextMeta,
+  LAYER_ORDER,
 } from "../utils/contextMeta";
 import { ContextLayerBars, ContextMetaStats } from "./ContextLayerBars";
 
@@ -19,6 +20,8 @@ type Props = {
   efficiencyOn?: boolean;
   disabled?: boolean;
   onClose?: () => void;
+  /** Settings page: hide sidebar chrome, use ctx-preview layout. */
+  embedded?: boolean;
 };
 
 type Tab = "preview" | "last_turn";
@@ -31,6 +34,7 @@ export function ContextPreviewPanel({
   efficiencyOn = false,
   disabled,
   onClose,
+  embedded = false,
 }: Props) {
   const [tab, setTab] = useState<Tab>("preview");
   const [agent, setAgent] = useState("cursor");
@@ -109,6 +113,118 @@ export function ContextPreviewPanel({
 
   const summary = lastTurnCtx?.summary;
 
+  const controls = (
+    <>
+      <div className={embedded ? "ctx-preview__head" : "context-sidebar-panel__controls"}>
+        <div className={embedded ? "ctx-preview__selectors" : undefined}>
+          <label className={embedded ? undefined : "context-preview__field"}>
+            {!embedded ? <span>에이전트</span> : null}
+            <select
+              className={embedded ? "ns-select" : undefined}
+              value={agent}
+              disabled={loading || disabled}
+              onChange={(e) => setAgent(e.target.value)}
+            >
+              {agents.map((id) => (
+                <option key={id} value={id}>
+                  {agentLabel(id)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className={embedded ? undefined : "context-preview__field"}>
+            {!embedded ? <span>라운드</span> : null}
+            <select
+              className={embedded ? "ns-select" : undefined}
+              value={parallelRound}
+              disabled={loading || disabled}
+              onChange={(e) => setParallelRound(Number(e.target.value))}
+            >
+              {Array.from({ length: maxRounds }, (_, i) => i + 1).map((r) => (
+                <option key={r} value={r}>
+                  R{r}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        {embedded && previewMeta ? (
+          <span className="ctx-preview__total">
+            ~{((previewMeta.layer_chars?.total ?? 0) / 1000).toFixed(1)}k chars ·{" "}
+            <span className="badge badge--accent">
+              {trimLevelLabel(previewMeta.trim_level)}
+            </span>
+          </span>
+        ) : null}
+        {!embedded ? (
+          <button
+            type="button"
+            className="context-preview__refresh"
+            disabled={loading || disabled}
+            onClick={() => void loadPreview()}
+          >
+            {loading ? "…" : "↻"}
+          </button>
+        ) : null}
+      </div>
+      {error ? <div className="context-preview__error">{error}</div> : null}
+      {previewMeta?.layer_chars ? (
+        <div className={embedded ? "ctx-preview__layers" : "context-preview__viz"}>
+          {!embedded ? (
+            <p className="context-preview__meta" role="status">
+              <span
+                className={`context-trim-badge context-trim-badge--${previewMeta.trim_level ?? "ok"}`}
+              >
+                {trimLevelLabel(previewMeta.trim_level)}
+              </span>
+              {" · "}
+              {formatBudgetLine(previewMeta)}
+            </p>
+          ) : null}
+          {!embedded ? <ContextMetaStats meta={previewMeta} /> : null}
+          {embedded ? (
+            <>
+              {LAYER_ORDER.map((key) => {
+                const chars = previewMeta.layer_chars?.[key];
+                if (!chars) return null;
+                const total = previewMeta.layer_chars?.total ?? 1;
+                const pct = Math.round((chars / total) * 100);
+                return (
+                  <div key={key} className="ctx-preview__layer">
+                    <span className="ctx-preview__layer-name">{key}</span>
+                    <div className="ctx-preview__bar-wrap">
+                      <div
+                        className="ctx-preview__bar"
+                        style={{ width: `${Math.max(4, pct)}%` }}
+                      />
+                    </div>
+                    <span className="ctx-preview__chars">
+                      {(chars / 1000).toFixed(1)}k
+                    </span>
+                  </div>
+                );
+              })}
+            </>
+          ) : (
+            <ContextLayerBars
+              layerChars={previewMeta.layer_chars}
+              budgetPct={previewMeta.budget_pct}
+              trimLevel={previewMeta.trim_level}
+            />
+          )}
+        </div>
+      ) : null}
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <div className="ctx-preview__body">
+        {controls}
+      </div>
+    );
+  }
+
   return (
     <div className="context-sidebar-panel">
       <header className="context-sidebar-panel__head">
@@ -149,64 +265,7 @@ export function ContextPreviewPanel({
 
       {tab === "preview" ? (
         <>
-          <div className="context-sidebar-panel__controls">
-            <label className="context-preview__field">
-              <span>에이전트</span>
-              <select
-                value={agent}
-                disabled={loading || disabled}
-                onChange={(e) => setAgent(e.target.value)}
-              >
-                {agents.map((id) => (
-                  <option key={id} value={id}>
-                    {agentLabel(id)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="context-preview__field">
-              <span>라운드</span>
-              <select
-                value={parallelRound}
-                disabled={loading || disabled}
-                onChange={(e) => setParallelRound(Number(e.target.value))}
-              >
-                {Array.from({ length: maxRounds }, (_, i) => i + 1).map((r) => (
-                  <option key={r} value={r}>
-                    R{r}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              type="button"
-              className="context-preview__refresh"
-              disabled={loading || disabled}
-              onClick={() => void loadPreview()}
-            >
-              {loading ? "…" : "↻"}
-            </button>
-          </div>
-          {error ? <div className="context-preview__error">{error}</div> : null}
-          {previewMeta?.layer_chars ? (
-            <div className="context-preview__viz">
-              <p className="context-preview__meta" role="status">
-                <span
-                  className={`context-trim-badge context-trim-badge--${previewMeta.trim_level ?? "ok"}`}
-                >
-                  {trimLevelLabel(previewMeta.trim_level)}
-                </span>
-                {" · "}
-                {formatBudgetLine(previewMeta)}
-              </p>
-              <ContextMetaStats meta={previewMeta} />
-              <ContextLayerBars
-                layerChars={previewMeta.layer_chars}
-                budgetPct={previewMeta.budget_pct}
-                trimLevel={previewMeta.trim_level}
-              />
-            </div>
-          ) : null}
+          {controls}
           <pre className="context-sidebar-panel__payload">
             {payload ?? (loading ? "…" : "—")}
           </pre>

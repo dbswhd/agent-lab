@@ -1,41 +1,71 @@
-import type { MouseEvent, ReactNode } from "react";
-import { AppBrandIcon } from "./AppBrandIcon";
+import type { ReactNode } from "react";
 import { ThemeToggle } from "./ThemeToggle";
-import { isTauri } from "../theme";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 
 type Props = {
   leading?: ReactNode;
+  title?: ReactNode;
+  meta?: ReactNode;
+  trailing?: ReactNode;
+  viewBadge?: string;
+  /** When false, theme toggle is omitted (pass in trailing yourself). */
+  showThemeToggle?: boolean;
 };
 
-/** Unified window title bar — brand centered, controls on edges. */
-export function MacTitlebar({ leading }: Props) {
-  const tauri = isTauri();
+export function MacTitlebar({
+  leading,
+  title,
+  meta,
+  trailing,
+  viewBadge,
+  showThemeToggle = true,
+}: Props) {
+  const tauri =
+    typeof window !== "undefined" &&
+    "__TAURI_INTERNALS__" in window;
 
-  function startWindowDrag(event: MouseEvent<HTMLElement>) {
+  function startWindowDrag(event: React.MouseEvent<HTMLElement>) {
     if (!tauri || event.button !== 0) return;
     const target = event.target as HTMLElement;
     if (target.closest("button, input, select, textarea, a")) return;
-    void getCurrentWindow().startDragging();
+    void import("@tauri-apps/api/window").then(({ getCurrentWindow }) =>
+      getCurrentWindow().startDragging(),
+    );
   }
 
   return (
     <header
-      className={`mac-titlebar${tauri ? " mac-titlebar--tauri" : ""}`}
-      aria-hidden={false}
+      className={`titlebar${tauri ? " titlebar--tauri" : ""}`}
       data-tauri-drag-region={tauri ? "" : undefined}
       onMouseDown={startWindowDrag}
     >
-      <div className="mac-titlebar-leading">{leading}</div>
+      {leading}
+      {viewBadge ? (
+        <span className="titlebar__view-badge">{viewBadge}</span>
+      ) : null}
       <div
-        className="mac-titlebar-brand"
+        className="titlebar__brand"
         data-tauri-drag-region={tauri ? "" : undefined}
       >
-        <AppBrandIcon />
-        <span className="mac-titlebar-title">Agent Lab</span>
+        <span className="titlebar__logo">
+          <img
+            className="titlebar__logo-img"
+            src="/icons/app-brand.png"
+            alt=""
+            width={22}
+            height={22}
+          />
+        </span>
+        {title ? (
+          <span className="titlebar__topic">{title}</span>
+        ) : (
+          <span className="titlebar__title">Agent Lab</span>
+        )}
       </div>
-      <div className="mac-titlebar-trailing">
-        <ThemeToggle />
+      <div className="titlebar__spacer" />
+      {meta ? <span className="titlebar__meta">{meta}</span> : null}
+      <div className="titlebar__actions">
+        {trailing}
+        {showThemeToggle ? <ThemeToggle /> : null}
       </div>
     </header>
   );

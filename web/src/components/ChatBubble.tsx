@@ -1,6 +1,8 @@
 import { Avatar } from "./Avatar";
+import { ConsoleTurn } from "./ConsoleTurn";
 import { HumanSynthesisBubble } from "./HumanSynthesisBubble";
 import type { ChatMessage, AgentRole } from "../utils/transcript";
+import { parseUserMessageContent } from "../utils/transcript";
 import { MessageMarkdown } from "../utils/messageMarkdown";
 import {
   getTranscriptMarkers,
@@ -41,19 +43,6 @@ function TypingIndicator({ variant }: { variant: "bubble" | "stream" }) {
   );
 }
 
-const REPLY_WAIT_ROLES = new Set<AgentRole>([
-  "cursor",
-  "codex",
-  "claude",
-  "planner",
-  "critic",
-  "scribe",
-]);
-
-export function isReplyWaitRole(role: AgentRole): boolean {
-  return REPLY_WAIT_ROLES.has(role);
-}
-
 type ReplyWaitingProps = {
   agent: AgentRole;
   label?: string;
@@ -65,34 +54,27 @@ export function ReplyWaitingBubble({ agent, label, activities }: ReplyWaitingPro
   const who = label?.trim() || agent;
   const lines = activities?.filter(Boolean) ?? [];
   return (
-    <article
-      className={`chat-turn chat-turn--${agent} chat-turn--waiting`}
-      role="status"
-      aria-live="polite"
-      aria-label={`${who} 답장 중`}
+    <ConsoleTurn
+      role={agent}
+      label={who}
+      author={who}
+      roleAttr="status"
+      ariaLabel={`${who} 답장 중`}
+      meta={<span className="turn__meta">typing…</span>}
     >
-      <header className="chat-turn__head">
-        <TranscriptIdentity label={who} role={agent} />
-      </header>
-      <div className="chat-turn__body">
-        <TranscriptAuthorLine
-          message={{
-            id: `waiting-${agent}`,
-            role: agent,
-            label: who,
-            body: "",
-          }}
-        />
-        {lines.length > 0 ? (
-          <ul className="agent-activity-log" aria-label="진행 중">
-            {lines.map((line, i) => (
-              <li key={`${line}-${i}`}>{line}</li>
-            ))}
-          </ul>
-        ) : null}
-        <TypingIndicator variant="stream" />
-      </div>
-    </article>
+      {lines.length > 0 ? (
+        <ul className="agent-activity-log" aria-label="진행 중">
+          {lines.map((line, i) => (
+            <li key={`${line}-${i}`}>{line}</li>
+          ))}
+        </ul>
+      ) : null}
+      <span className="typing" aria-hidden>
+        <span />
+        <span />
+        <span />
+      </span>
+    </ConsoleTurn>
   );
 }
 
@@ -107,15 +89,21 @@ export function ChatBubble({
   const consoleMode = presentation === "console";
 
   if (message.humanSynthesis && !typing) {
-    return <HumanSynthesisBubble message={message} highlighted={highlighted} />;
+    return (
+      <HumanSynthesisBubble
+        message={message}
+        highlighted={highlighted}
+        presentation={presentation}
+      />
+    );
   }
 
   if (role === "system") {
     if (consoleMode) {
       return (
-        <p className="transcript-log-line transcript-log-line--system" role="status">
+        <div className="transcript-system" role="status">
           {message.body}
-        </p>
+        </div>
       );
     }
     return (
@@ -126,25 +114,40 @@ export function ChatBubble({
   }
 
   if (sent) {
+    const parsed = message.attachments?.length
+      ? { body: message.body, attachments: message.attachments }
+      : parseUserMessageContent(message.body);
+    const sentAttachments = parsed.attachments ?? [];
+    const sentBody = message.attachments?.length ? message.body : parsed.body;
+    const showSentBubble = typing || sentBody.trim().length > 0;
+
     if (consoleMode) {
       return (
-        <article
-          className={[
-            "chat-turn",
-            "chat-turn--you",
-            highlighted ? "chat-turn--highlight" : undefined,
-          ]
-            .filter(Boolean)
-            .join(" ")}
-        >
-          <div className="chat-turn__body">
-            {typing ? (
-              <TypingIndicator variant="stream" />
-            ) : (
-              <MessageMarkdown text={message.body} />
-            )}
-          </div>
-        </article>
+        <div className="bubble-send-block">
+          {sentAttachments.length > 0 ? (
+            <div className="attachment-bar attachment-bar--sent">
+              {sentAttachments.map((name) => (
+                <span key={name} className="attachment-chip">
+                  <PaperclipIcon />
+                  <span className="attachment-chip-name">{name}</span>
+                </span>
+              ))}
+            </div>
+          ) : null}
+          {showSentBubble ? (
+            <div className="bubble-row bubble-row--sent">
+              <div className={`bubble-stack bubble-stack--${role}`}>
+                <div className="bubble bubble--sent">
+                  {typing ? (
+                    <TypingIndicator variant="bubble" />
+                  ) : (
+                    <MessageMarkdown text={sentBody} variant="transcript" />
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </div>
       );
     }
 
@@ -165,7 +168,7 @@ export function ChatBubble({
               <TypingIndicator variant="bubble" />
             ) : (
               <div className="bubble-body">
-                <MessageMarkdown text={message.body} />
+                <MessageMarkdown text={sentBody} />
               </div>
             )}
           </div>
@@ -177,10 +180,25 @@ export function ChatBubble({
 
   if (STREAM_ROLES.has(role)) {
     if (typing) return null;
-    const transcriptMarkers = consoleMode ? getTranscriptMarkers(message) : [];
+    const who = message.label?.trim() || role;
+    if (consoleMode) {
+      return (
+        <ConsoleTurn
+          role={role}
+          label={message.label}
+          author={who}
+          highlighted={highlighted}
+          peer={message.peerChannel}
+          chatLineIndex={message.chatLineIndex}
+        >
+          <MessageMarkdown text={message.body} variant="transcript" />
+        </ConsoleTurn>
+      );
+    }
+    const transcriptMarkers = getTranscriptMarkers(message);
     return (
       <article
-        className={`chat-turn chat-turn--${role}${highlighted ? " chat-turn--highlight" : ""}`}
+        className={`turn chat-turn chat-turn--${role}${highlighted ? " chat-turn--highlight" : ""}`}
       >
         <header className="chat-turn__head">
           <TranscriptIdentity label={message.label} role={role} />
@@ -210,5 +228,21 @@ export function ChatBubble({
         </div>
       </div>
     </div>
+  );
+}
+
+function PaperclipIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.7}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="m16 6-8.5 8.5a2.12 2.12 0 1 0 3 3L19 9a3.12 3.12 0 1 0-4.4-4.4L9.3 14.3a4.62 4.62 0 1 0 6.5 6.5" />
+    </svg>
   );
 }

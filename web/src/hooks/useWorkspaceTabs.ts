@@ -22,7 +22,8 @@ type Options = {
 
 export function useWorkspaceTabs({ sessionKey, isNew, autoContext }: Options) {
   const [workspaceTab, setWorkspaceTabState] = useState<WorkspaceTab>("transcript");
-  const [inspectorTab, setInspectorTabState] = useState<InspectorTab>("tasks");
+  const [inspectorTab, setInspectorTabState] = useState<InspectorTab>("overview");
+  const [workspaceTabPinned, setWorkspaceTabPinned] = useState(false);
   const workspacePinnedRef = useRef(false);
   const inspectorPinnedRef = useRef(false);
   const prevRunningRef = useRef(false);
@@ -31,6 +32,7 @@ export function useWorkspaceTabs({ sessionKey, isNew, autoContext }: Options) {
 
   const setWorkspaceTab = useCallback((tab: WorkspaceTab) => {
     workspacePinnedRef.current = true;
+    setWorkspaceTabPinned(true);
     setWorkspaceTabState(tab);
   }, []);
 
@@ -42,12 +44,13 @@ export function useWorkspaceTabs({ sessionKey, isNew, autoContext }: Options) {
   useEffect(() => {
     workspacePinnedRef.current = false;
     inspectorPinnedRef.current = false;
+    setWorkspaceTabPinned(false);
     prevRunningRef.current = false;
     prevPendingRef.current = false;
     prevBlockerRef.current = false;
     if (isNew) {
       setWorkspaceTabState("transcript");
-      setInspectorTabState("tasks");
+      setInspectorTabState("overview");
       return;
     }
     setWorkspaceTabState(resolveDefaultWorkspaceTab(autoContext));
@@ -103,6 +106,7 @@ export function useWorkspaceTabs({ sessionKey, isNew, autoContext }: Options) {
     workspaceTab,
     inspectorTab,
     suggestedWorkspaceTab,
+    workspaceTabPinned,
     setWorkspaceTab,
     setInspectorTab,
     openWorkTab: () => setWorkspaceTab("work"),

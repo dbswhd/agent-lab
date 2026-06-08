@@ -1,4 +1,4 @@
-import type { PlanMetaView } from "../utils/planMeta";
+import type { PlanExecutionRecord } from "../api/client";
 
 export type WorkPhase =
   | "plan_draft"
@@ -17,7 +17,7 @@ const STEPS: { id: WorkPhase; label: string }[] = [
 
 type Props = {
   phase: WorkPhase;
-  planMeta: PlanMetaView;
+  metaLine: string | null;
   hasPlan: boolean;
 };
 
@@ -26,14 +26,28 @@ export function resolveWorkPhase(input: {
   hasPendingExecution: boolean;
   hasDryRunDiff: boolean;
   pendingAgreement: boolean;
+  latestExecution?: PlanExecutionRecord | null;
 }): WorkPhase {
+  const exec = input.latestExecution;
+  const oraclePass = exec?.oracle?.verdict === "pass";
+  if (exec?.status === "completed" && oraclePass) return "done";
+  if (
+    exec &&
+    (exec.status === "merged" ||
+      exec.status === "review_required" ||
+      exec.status === "pending_approval" ||
+      exec.status === "merge_conflict" ||
+      Boolean(exec.oracle))
+  ) {
+    return "merge_verify";
+  }
   if (input.hasPendingExecution) return "execute_pending";
   if (input.hasDryRunDiff || input.pendingAgreement) return "review_needed";
   if (input.hasPlan) return "plan_draft";
   return "plan_draft";
 }
 
-export function WorkStatusBar({ phase, planMeta, hasPlan }: Props) {
+export function WorkStatusBar({ phase, metaLine, hasPlan }: Props) {
   const phaseIndex = STEPS.findIndex((s) => s.id === phase);
 
   return (
@@ -53,8 +67,8 @@ export function WorkStatusBar({ phase, planMeta, hasPlan }: Props) {
           </li>
         ))}
       </ol>
-      {planMeta.freshnessLabel && hasPlan ? (
-        <p className="work-status-bar__meta">{planMeta.freshnessLabel}</p>
+      {metaLine && hasPlan ? (
+        <p className="work-status-bar__meta">{metaLine}</p>
       ) : null}
     </div>
   );

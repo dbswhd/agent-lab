@@ -4,23 +4,25 @@ import {
   cancelRoomRun,
   checkSessionGoal,
   fetchCommands,
+  fetchSessionInbox,
   matchSlashCommand,
   releaseRoomRunLock,
   runRoom,
   runSessionCommand,
   setSessionGoal,
+  approveVerifiedLoop,
+  rejectVerifiedLoop,
+  autoSyncSessionPlan,
   type AgentHealthRow,
-  type GoalLoopRecord,
-  type SessionGoalRecord,
   type SlashCommandRecord,
 } from "../api/client";
 import {
   agentLabel,
   chatLineToMessage,
+  isReplyWaitRole,
   parseTranscript,
   topicAsUserMessage,
 } from "../utils/transcript";
-import { AgentPicker } from "./AgentPicker";
 import { WorkspaceTabBar } from "./WorkspaceTabBar";
 import { InspectorPane } from "./InspectorPane";
 import {
@@ -50,25 +52,28 @@ import {
 } from "../utils/inspectorPanePrefs";
 import {
   getShowHumanSynthesis,
-  setShowHumanSynthesis,
 } from "../utils/transcriptViewPrefs";
-import {
-  ChatBubble,
-  isReplyWaitRole,
-  ReplyWaitingBubble,
-} from "./ChatBubble";
+import { ChatBubble, ReplyWaitingBubble } from "./ChatBubble";
 import { HumanInboxPanel } from "./HumanInboxPanel";
 import { ChatComposer, type PendingFile } from "./ChatComposer";
-import { ChatPaneBody } from "./ChatPaneBody";
-import { ChatToolbar } from "./ChatToolbar";
 import { ContextSidebarToggle } from "./ContextSidebarToggle";
-import { NotificationCenter, useNotificationUnread } from "./NotificationCenter";
-import { QuickSettingsPanel } from "./QuickSettingsPanel";
+import { ThemeToggle } from "./ThemeToggle";
+import { ShellPortal } from "./ShellPortal";
+import { openCommandPalette } from "../utils/desktopShortcuts";
+import { useTitlebarSlots } from "./TitlebarSlotsContext";
+import { NotificationCenter } from "./NotificationCenter";
+import { useNotificationUnread } from "./NotificationCenter";
+import { ContextOverviewPanel } from "./ContextOverviewPanel";
+import { ContextTasksPanel } from "./ContextTasksPanel";
+import { GoalLoopBanner } from "./GoalLoopBanner";
+import { VerifiedLoopBanner } from "./VerifiedLoopBanner";
 import { WorkPanel } from "./WorkPanel";
 import { AgentPermissionAlert } from "./AgentPermissionAlert";
 import { useMacNotifications } from "./MacNotificationHost";
 import type { AgentPermissions } from "../utils/agentPermissions";
 import {
+  agentsNeedingPermissionPrompt,
+  hasSavedPermissionDefaults,
   roomPermissions,
 } from "../utils/agentPermissions";
 import {
@@ -76,11 +81,20 @@ import {
   agreementPlanSyncFailedLabel,
   consensusDryRunNotifyBody,
   consensusDryRunNotifyTitle,
+  latestPendingConsensusAgreement,
 } from "../utils/consensusAgreement";
 import { dispatchNotification } from "../utils/pushNotification";
+import { formatEnvelopeActivityLine, formatHookActivityLine } from "../utils/hookActivity";
+import {
+  notificationActionForKind,
+  subscribeNotificationActions,
+} from "../utils/notificationActions";
+import type { AppNotification } from "../utils/notificationStore";
+import { executionApprovalGate } from "../utils/executeApprovalGate";
 import { notifyDesktop } from "../utils/desktopNotify";
-import { buildPlanMetaView } from "../utils/planMeta";
-import { analyzePlanRefWarnings } from "../utils/planRefWarnings";
+import { buildPlanMetaView, composerPlanStaleNotice } from "../utils/planMeta";
+import { buildGoalLoopView } from "../utils/goalLoopView";
+import { buildVerifiedLoopView } from "../utils/verifiedLoopView";
 import {
   consensusIncompleteLabel,
   roundDividerLabel,
@@ -90,14 +104,14 @@ import {
   setEfficiencyMode,
 } from "../utils/efficiencyPrefs";
 import {
+  composerTurnHint,
   normalizeTurnProfile,
   resolveTurnSend,
   setTurnProfile,
   type ComposerTurnProfile,
 } from "../utils/turnProfile";
-import { estimateTurnCost } from "../utils/turnCostEstimate";
-import { formatRoomModelLine } from "../utils/roomModels";
-import { TurnRunPanel } from "./TurnRunPanel";
+import { RunLogPanel } from "./RunLogPanel";
+import { ArtifactsListPanel } from "./ArtifactsListPanel";
 import { ExecuteQueueBar } from "./ExecuteQueueBar";
 import { ConsensusDryRunGateBar } from "./ConsensusDryRunGateBar";
 import type { ConsensusDryRunProposal } from "./ConsensusDryRunGateBar";
@@ -109,16 +123,14 @@ import {
   type ComposeMode,
 } from "../utils/composeMode";
 import { usePlanExecute } from "../hooks/usePlanExecute";
+import { useLocale } from "../i18n/useLocale";
 import {
   type StoredPlanAction,
 } from "../utils/planExecuteHistory";
-import { SessionSetupBar } from "./SessionSetupBar";
-import { AgentSessionSettings } from "./AgentSessionSettings";
 import {
   fetchSessionAgentCapabilities,
   fetchSessionSetupOptions,
   fetchSessionTasks,
-  patchSessionAgentCapabilities,
   type PlanExecutionRecord,
   type RoomObjection,
   type RoomTasksPayload,
@@ -142,42 +154,36 @@ import {
   CUSTOM_WORKSPACE_ID,
   getStoredWorkspaceId,
   getStoredWorkspacePath,
-  sessionSetupSummary,
   setStoredWorkspaceId,
   setStoredWorkspacePath,
 } from "../utils/sessionSetup";
-import { pickWorkspaceFolder } from "../utils/pickWorkspaceFolder";
+import {
+  clearStoredAgentThreadBindings,
+  getStoredAgentThreadBindings,
+  type AgentThreadBindings,
+} from "../utils/agentThreadBindings";
 import {
   sendReceiptLabel,
   shouldShowSendReceiptOnChatTab,
 } from "../utils/sendReceipt";
 import { ComposerPreflightBar } from "./ComposerPreflightBar";
+import { useTweaksDemoOptional, TWEAKS_DEMO_OFF } from "../context/TweaksDemoContext";
+import {
+  DEMO_CONSENSUS_PROPOSAL,
+  DEMO_EXEC_PENDING,
+  DEMO_EXEC_PENDING_BLOCKED,
+  DEMO_OBJECTION_NOTICE,
+  DEMO_PLAN_STALE_NOTICE,
+  DEMO_PREFLIGHT_AGENTS,
+} from "../utils/tweaksDemoFixtures";
 import {
   ScrollToBottomButton,
   useMessagesScroll,
-  useScrollToTop,
 } from "./ScrollToBottomButton";
 
 const LONG_RUN_HINT_MS = Number(
   import.meta.env.VITE_ROOM_LONG_RUN_HINT_MS || "180000",
 );
-
-type GoalLoopView = {
-  goal: SessionGoalRecord;
-  loop: GoalLoopRecord;
-};
-
-function goalLoopView(run: Record<string, unknown> | undefined): GoalLoopView {
-  const goal =
-    run?.session_goal && typeof run.session_goal === "object"
-      ? (run.session_goal as SessionGoalRecord)
-      : {};
-  const loop =
-    run?.goal_loop && typeof run.goal_loop === "object"
-      ? (run.goal_loop as GoalLoopRecord)
-      : {};
-  return { goal, loop };
-}
 
 type Props = {
   agents: AgentOption[];
@@ -191,6 +197,11 @@ type Props = {
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
   onOpenSettings?: () => void;
+  /** Agent ids chosen in NewSessionDialog — applied once on isNew mount. */
+  bootstrapAgentIds?: string[] | null;
+  /** Per-agent resume bindings from NewSessionDialog (new sessions only). */
+  bootstrapAgentThreadBindings?: AgentThreadBindings | null;
+  onBootstrapAgentsApplied?: () => void;
 };
 
 function chatFingerprint(session: SessionDetail): string {
@@ -217,7 +228,7 @@ function sessionToMessages(
     for (let i = 0; i < session.chat.length; i++) {
       const line = session.chat[i];
       const pr = line.parallel_round ?? (line.role === "agent" ? 1 : 0);
-      if (line.role === "agent" && pr > 1 && pr > lastRound) {
+      if (line.role === "agent" && pr >= 1 && pr !== lastRound) {
         out.push({
           id: `round-divider-${pr}`,
           role: "system",
@@ -245,22 +256,29 @@ export function RoomChat({
   loading,
   onSessionChange,
   onSessionMetaRefresh,
-  sidebarOpen,
-  onToggleSidebar,
+  sidebarOpen: _sidebarOpen,
+  onToggleSidebar: _onToggleSidebar,
   onOpenSettings,
+  bootstrapAgentIds,
+  bootstrapAgentThreadBindings,
+  onBootstrapAgentsApplied,
 }: Props) {
   const { push: pushMacNotification } = useMacNotifications();
+  const tweaks = useTweaksDemoOptional() ?? TWEAKS_DEMO_OFF;
   const [selected, setSelected] = useState<string[]>([]);
   const [text, setText] = useState("");
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
-  const runSessionKey = sessionId ?? PENDING_KEY;
+  /** SSE start assigns a real session id before App props catch up. */
+  const [liveRunSessionKey, setLiveRunSessionKey] = useState<string | null>(
+    null,
+  );
+  const runSessionKey = sessionId ?? liveRunSessionKey ?? PENDING_KEY;
   const {
     messages,
     turnMessages,
     running,
     runBusy,
     synthesizing,
-    topologyDone,
     topologyActive,
     setSynthesizing,
   } = useSessionRunState(runSessionKey);
@@ -268,11 +286,8 @@ export function RoomChat({
   const [planActionFocusIndex, setPlanActionFocusIndex] = useState<
     number | null
   >(null);
-  const [showPeerChannel, setShowPeerChannel] = useState(false);
-  const [showHumanSynthesis, setShowHumanSynthesisState] = useState(
-    getShowHumanSynthesis,
-  );
-  const [viewOptionsOpen, setViewOptionsOpen] = useState(false);
+  const showPeerChannel = false;
+  const showHumanSynthesis = getShowHumanSynthesis();
   const [inspectorOpen, setInspectorOpenState] = useState(getInspectorOpen);
   const [inspectorWidth, setInspectorWidthState] = useState(getInspectorWidth);
   const [roomTasks, setRoomTasks] = useState<RoomTasksPayload | null>(null);
@@ -285,23 +300,36 @@ export function RoomChat({
   const [planAfterSend, setPlanAfterSendState] = useState(getPlanAfterSend);
   const composeMode: ComposeMode = planAfterSend ? "plan" : "discuss";
   const [efficiencyOn, setEfficiencyOnState] = useState(getEfficiencyMode);
-  const [researchMode, setResearchModeState] = useState(() => {
+  const [researchMode] = useState(() => {
     try {
       return localStorage.getItem("agent-lab-research-mode") === "1";
     } catch {
       return false;
     }
   });
+  const { locale, msg: localeMsg } = useLocale();
   const composerModeVariant = useMemo((): "discuss" | "plan" | "consensus" => {
     const profile = resolveTurnSend(turnProfile, selected, efficiencyOn);
     if (profile.consensusMode) return "consensus";
     if (planAfterSend) return "plan";
     return "discuss";
   }, [turnProfile, selected, efficiencyOn, planAfterSend]);
-  const turnCost = useMemo(
-    () => estimateTurnCost(turnProfile, selected, { efficiencyOn }),
-    [turnProfile, selected, efficiencyOn],
+  const composerTurnHintLine = useMemo(
+    () => composerTurnHint(turnProfile, selected, efficiencyOn, locale),
+    [turnProfile, selected, efficiencyOn, locale],
   );
+  const modeChipCopy = useMemo(() => {
+    if (composerModeVariant === "plan") {
+      return { label: localeMsg.modePlan, hint: localeMsg.modePlanHint };
+    }
+    if (composerModeVariant === "consensus") {
+      return {
+        label: localeMsg.modeConsensus,
+        hint: localeMsg.modeConsensusHint,
+      };
+    }
+    return { label: localeMsg.modeDiscuss, hint: localeMsg.modeDiscussHint };
+  }, [composerModeVariant, localeMsg]);
   const [pendingSend, setPendingSend] = useState<{
     text: string;
     files: PendingFile[];
@@ -309,6 +337,16 @@ export function RoomChat({
     planAfterSend: boolean;
     efficiencyOn: boolean;
   } | null>(null);
+  const [goalText, setGoalText] = useState("");
+  const [goalBusy, setGoalBusy] = useState(false);
+  const [goalError, setGoalError] = useState<string | null>(null);
+  const [verifiedEditGoal, setVerifiedEditGoal] = useState("");
+  const [verifiedEditCriteria, setVerifiedEditCriteria] = useState("");
+  const [verifiedEditPromise, setVerifiedEditPromise] = useState("DONE");
+  const [verifiedLoopBusy, setVerifiedLoopBusy] = useState(false);
+  const [verifiedLoopError, setVerifiedLoopError] = useState<string | null>(
+    null,
+  );
   const [highlightChatLine, setHighlightChatLine] = useState<number | null>(
     null,
   );
@@ -320,19 +358,17 @@ export function RoomChat({
   const [sendReceipt, setSendReceipt] = useState<string | null>(null);
   const [inboxPendingChip, setInboxPendingChip] = useState(false);
   const [inboxReloadKey, setInboxReloadKey] = useState(0);
-  const [inboxPopupDismissed, setInboxPopupDismissed] = useState(false);
+  const [workFocus, setWorkFocus] = useState<"execute" | "plan" | null>(null);
+  const prevExecPendingIdRef = useRef<string | null>(null);
   const sendReceiptTimerRef = useRef<number | null>(null);
   const [clarifierQuestions, setClarifierQuestions] = useState<string[] | null>(
     null,
   );
-  const [goalText, setGoalText] = useState("");
-  const [goalBusy, setGoalBusy] = useState(false);
-  const [goalError, setGoalError] = useState<string | null>(null);
   const [slashCommands, setSlashCommands] = useState<SlashCommandRecord[]>([]);
   const [commandHint, setCommandHint] = useState<string | null>(null);
   const runWatchdogRef = useRef<number | null>(null);
   const syncedChatRef = useRef("");
-  const [setupWorkspaces, setSetupWorkspaces] = useState<WorkspacePreset[]>([]);
+  const [, setSetupWorkspaces] = useState<WorkspacePreset[]>([]);
   const [workspaceId, setWorkspaceIdState] = useState(getStoredWorkspaceId);
   const [workspacePath, setWorkspacePathState] = useState<string | null>(
     getStoredWorkspacePath,
@@ -347,12 +383,9 @@ export function RoomChat({
   const [agentCapabilities, setAgentCapabilities] = useState<AgentCapabilitiesMap>(
     () => cloneCapabilities(DEFAULT_AGENT_CAPABILITIES),
   );
-  const [resolvedAgentCwd, setResolvedAgentCwd] = useState<
-    Record<string, string>
-  >({});
-  const [agentCapsBusy, setAgentCapsBusy] = useState(false);
-  const [agentCapsHint, setAgentCapsHint] = useState<string | null>(null);
+  const [, setResolvedAgentCwd] = useState<Record<string, string>>({});
   const activeSessionIdRef = useRef<string | null>(sessionId);
+  const navigatedToSessionRef = useRef(false);
   const agentCapsDirtyRef = useRef(false);
   const agentsPickerInitRef = useRef(false);
 
@@ -363,12 +396,6 @@ export function RoomChat({
       setWorkspacePathState(path);
       setStoredWorkspacePath(path);
     }
-  }
-
-  async function browseWorkspaceFolder() {
-    const picked = await pickWorkspaceFolder(workspacePath);
-    if (!picked) return;
-    setWorkspaceId(CUSTOM_WORKSPACE_ID, picked);
   }
 
   useEffect(() => {
@@ -388,7 +415,16 @@ export function RoomChat({
   }, []);
 
   useEffect(() => {
+    if (sessionId !== null) return;
+    setWorkspaceIdState(getStoredWorkspaceId());
+    setWorkspacePathState(getStoredWorkspacePath());
+  }, [sessionId]);
+
+  useEffect(() => {
     activeSessionIdRef.current = sessionId;
+    if (sessionId !== null) {
+      setLiveRunSessionKey(null);
+    }
   }, [sessionId]);
 
   useEffect(() => {
@@ -429,20 +465,8 @@ export function RoomChat({
       .catch(() => {});
   }, [sessionId, selected, session?.run?.agent_capabilities]);
 
-  const goalView = useMemo(() => goalLoopView(session?.run), [session?.run]);
-  useEffect(() => {
-    setGoalText(goalView.goal.text ?? "");
-    setGoalError(null);
-  }, [sessionId, goalView.goal.text]);
-
   function effectiveSessionId(): string | null {
     return sessionId ?? activeSessionIdRef.current;
-  }
-
-  function handleAgentCapabilitiesChange(caps: AgentCapabilitiesMap) {
-    agentCapsDirtyRef.current = true;
-    setAgentCapabilities(caps);
-    setAgentCapsHint(null);
   }
 
   function changeTurnProfile(profile: ComposerTurnProfile) {
@@ -498,55 +522,6 @@ export function RoomChat({
     refreshCommands(sid);
   }, [onSessionMetaRefresh, onSessionChange, refreshTasks, refreshCommands]);
 
-  const saveSessionGoal = useCallback(async () => {
-    const text = goalText.trim();
-    if (!sessionId || !text) return;
-    setGoalBusy(true);
-    setGoalError(null);
-    try {
-      await setSessionGoal(sessionId, { text });
-      refreshSessionMeta();
-    } catch (e) {
-      setGoalError(e instanceof Error ? e.message : "목표 저장 실패");
-    } finally {
-      setGoalBusy(false);
-    }
-  }, [sessionId, goalText]);
-
-  const runGoalCheck = useCallback(async () => {
-    if (!sessionId) return;
-    setGoalBusy(true);
-    setGoalError(null);
-    try {
-      await checkSessionGoal(sessionId);
-      refreshSessionMeta();
-    } catch (e) {
-      setGoalError(e instanceof Error ? e.message : "목표 확인 실패");
-    } finally {
-      setGoalBusy(false);
-    }
-  }, [sessionId]);
-
-  const saveAgentCapabilities = useCallback(async () => {
-    if (!sessionId) return;
-    setAgentCapsBusy(true);
-    setAgentCapsHint(null);
-    try {
-      const res = await patchSessionAgentCapabilities(
-        sessionId,
-        capabilitiesForApi(agentCapabilities),
-      );
-      setResolvedAgentCwd(res.resolved_cwd ?? {});
-      setAgentCapsHint("저장됨");
-      agentCapsDirtyRef.current = false;
-      refreshSessionMeta();
-    } catch (e) {
-      setAgentCapsHint(e instanceof Error ? e.message : "저장 실패");
-    } finally {
-      setAgentCapsBusy(false);
-    }
-  }, [sessionId, agentCapabilities, refreshSessionMeta]);
-
   useEffect(() => {
     refreshTasks();
   }, [refreshTasks, session?.run, session?.chat?.length]);
@@ -570,6 +545,7 @@ export function RoomChat({
   const {
     workspaceTab,
     inspectorTab,
+    workspaceTabPinned,
     setWorkspaceTab,
     setInspectorTab,
     openWorkTab,
@@ -591,52 +567,124 @@ export function RoomChat({
   const handleInboxBuildStarted = useCallback(() => {
     openReviewTab();
     refreshSessionMeta();
-  }, [openReviewTab, refreshSessionMeta]);
+    if (sessionId) {
+      dispatchNotification(
+        {
+          tier: "P2",
+          title: "Build 실행 시작",
+          body: "Work 탭에서 진행 상황을 확인하세요.",
+          sessionId,
+          kind: "human_inbox_build",
+          toastAction: { type: "work", focus: "plan" },
+        },
+        pushMacNotification,
+        notifyDesktop,
+      );
+    }
+  }, [openReviewTab, refreshSessionMeta, sessionId, pushMacNotification]);
 
   const handleInboxResolved = useCallback(() => {
     setInboxPendingChip(false);
-    setInboxPopupDismissed(false);
     refreshSessionMeta();
   }, [refreshSessionMeta]);
 
   const openHumanInbox = useCallback(() => {
     setInspectorOpenState(true);
     setInspectorOpen(true);
-    setInspectorTab("tasks");
+    setInspectorTab("inbox");
   }, [setInspectorTab]);
 
-  const openNotificationTarget = useCallback(
-    (notification: { kind: string }) => {
-      if (notification.kind === "human_inbox") {
+  const handleNotificationOpen = useCallback(
+    (note: AppNotification) => {
+      const action = notificationActionForKind(note.kind);
+      if (!action) return;
+      if (action.type === "inbox") {
         openHumanInbox();
         return;
       }
-      if (
-        notification.kind === "dry_run" ||
-        notification.kind === "plan_sync" ||
-        notification.kind === "plan_sync_fail"
-      ) {
-        openWorkTab();
+      if (action.type === "inspector") {
+        setInspectorOpenState(true);
+        setInspectorOpen(true);
+        setInspectorTab(action.tab ?? "tasks");
         return;
       }
-      if (notification.kind === "bridge" || notification.kind === "diagnostics") {
-        onOpenSettings?.();
-        return;
-      }
-      setInspectorTab("activity");
+      openWorkTab();
+      setWorkFocus(action.focus ?? "plan");
     },
-    [openHumanInbox, openWorkTab, onOpenSettings, setInspectorTab],
+    [openHumanInbox, openWorkTab, setInspectorTab],
   );
 
+  useEffect(() => {
+    return subscribeNotificationActions((action) => {
+      if (action.type === "inbox") {
+        openHumanInbox();
+        return;
+      }
+      if (action.type === "inspector") {
+        setInspectorOpen(true);
+        setInspectorOpenState(true);
+        setInspectorTab(action.tab ?? "tasks");
+        return;
+      }
+      openWorkTab();
+      setWorkFocus(action.focus ?? "plan");
+    });
+  }, [openHumanInbox, openWorkTab, setInspectorTab]);
+
   const showExecuteQueueStrip =
-    Boolean(sessionId) &&
-    workspaceTab !== "work" &&
-    hasPendingExecution;
+    tweaks.execQueueDemo === "hidden"
+      ? false
+      : tweaks.execQueueDemo === "normal" || tweaks.execQueueDemo === "blocked"
+        ? true
+        : Boolean(sessionId) &&
+          workspaceTab !== "work" &&
+          hasPendingExecution;
+  const demoExecPending =
+    tweaks.execQueueDemo === "blocked"
+      ? DEMO_EXEC_PENDING_BLOCKED
+      : tweaks.execQueueDemo === "normal"
+        ? DEMO_EXEC_PENDING
+        : null;
+  const execPendingForBar = demoExecPending ?? planExecute.activePending;
+  const consensusForBar = tweaks.consensusGateDemo
+    ? DEMO_CONSENSUS_PROPOSAL
+    : consensusProposal;
+
+  useEffect(() => {
+    const pending = planExecute.activePending;
+    if (!sessionId || !pending?.id) {
+      prevExecPendingIdRef.current = null;
+      return;
+    }
+    if (prevExecPendingIdRef.current === pending.id) return;
+    prevExecPendingIdRef.current = pending.id;
+    const gate = executionApprovalGate(pending);
+    dispatchNotification(
+      {
+        tier: "P1",
+        title: gate.blocked ? "Execute 차단" : "Execute 승인 필요",
+        body: gate.reason ?? planExecute.pendingTitle ?? undefined,
+        sessionId,
+        kind: gate.blocked ? "execute_blocked" : "execute_pending",
+        entityId: pending.id,
+        toastAction: { type: "work", focus: "execute" },
+      },
+      pushMacNotification,
+      notifyDesktop,
+    );
+  }, [
+    sessionId,
+    planExecute.activePending?.id,
+    planExecute.pendingTitle,
+    pushMacNotification,
+  ]);
+
   const showConsensusDryRunGate =
-    Boolean(sessionId) &&
-    workspaceTab !== "work" &&
     !showExecuteQueueStrip &&
-    consensusProposal != null;
+    (tweaks.consensusGateDemo ||
+      (Boolean(sessionId) &&
+        workspaceTab !== "work" &&
+        consensusProposal != null));
 
   const visibleMessages = useMemo(() => {
     if (showHumanSynthesis) {
@@ -647,11 +695,6 @@ export function RoomChat({
     if (showPeerChannel) return messages;
     return messages.filter((m) => !m.peerChannel);
   }, [messages, showPeerChannel, showHumanSynthesis]);
-
-  const hiddenPeerCount = messages.filter((m) => m.peerChannel).length;
-  const hiddenAgentCount = showHumanSynthesis
-    ? messages.filter((m) => m.role !== "you" && !m.humanSynthesis).length
-    : 0;
 
   function clearRunWatchdog() {
     if (runWatchdogRef.current != null) {
@@ -703,11 +746,6 @@ export function RoomChat({
     transcriptActive,
     `${sessionId ?? "new"}:chat`,
   );
-  const { scrollRef: workScrollRef, scrollElRef: workScrollElRef } =
-    useScrollToTop(
-      workspaceTab === "work" && Boolean(sessionId),
-      `${sessionId ?? "new"}:work`,
-    );
 
   const planExecutions = useMemo(
     () =>
@@ -715,13 +753,18 @@ export function RoomChat({
     [session?.run?.executions],
   );
 
+  const latestExecution = useMemo(() => {
+    if (!planExecutions.length) return null;
+    return planExecutions[planExecutions.length - 1] ?? null;
+  }, [planExecutions]);
+
   useEffect(() => {
     if (workspaceTab !== "work" || planActionFocusIndex == null) {
       return;
     }
     const index = planActionFocusIndex;
     const timer = window.setTimeout(() => {
-      const root = workScrollElRef.current;
+      const root = scrollElRef.current;
       const el = root?.querySelector(
         `[data-plan-action-index="${index}"]`,
       );
@@ -729,10 +772,20 @@ export function RoomChat({
       setPlanActionFocusIndex(null);
     }, 80);
     return () => window.clearTimeout(timer);
-  }, [workspaceTab, planActionFocusIndex, workScrollElRef]);
+  }, [workspaceTab, planActionFocusIndex, scrollElRef]);
 
   const isNew = !sessionId;
   const notificationUnread = useNotificationUnread();
+
+  const inspectorTasksBadge = useMemo(() => {
+    const n = roomTasks?.open_objection_count ?? 0;
+    return n > 0 ? n : undefined;
+  }, [roomTasks?.open_objection_count]);
+
+  const inspectorInboxBadge = useMemo(() => {
+    const n = notificationUnread + (inboxPendingChip ? 1 : 0);
+    return n > 0 ? n : undefined;
+  }, [notificationUnread, inboxPendingChip]);
 
   const toggleInspector = useCallback(() => {
     setInspectorOpenState((current) => {
@@ -748,17 +801,73 @@ export function RoomChat({
   }, []);
 
   useEffect(() => {
-    if (isNew) return;
-    function onKeyDown(event: KeyboardEvent) {
-      if (!event.metaKey || event.altKey) return;
-      if (event.ctrlKey && event.key.toLowerCase() === "i") {
-        event.preventDefault();
-        toggleInspector();
-      }
+    setGoalText(buildGoalLoopView(session?.run).goal.text ?? "");
+    setGoalError(null);
+  }, [sessionId, session?.run?.session_goal]);
+
+  const goalView = useMemo(
+    () => buildGoalLoopView(session?.run),
+    [session?.run],
+  );
+
+  const verifiedLoopView = useMemo(
+    () => buildVerifiedLoopView(session?.run),
+    [session?.run],
+  );
+
+  const showVerifiedLoop =
+    turnProfile === "verified" ||
+    Boolean(session?.run?.verified_loop);
+
+  useEffect(() => {
+    setVerifiedEditGoal(verifiedLoopView.proposedGoal);
+    setVerifiedEditCriteria(verifiedLoopView.criteria);
+    setVerifiedEditPromise(verifiedLoopView.completionPromise || "DONE");
+    setVerifiedLoopError(null);
+  }, [
+    sessionId,
+    verifiedLoopView.proposedGoal,
+    verifiedLoopView.criteria,
+    verifiedLoopView.completionPromise,
+  ]);
+
+  const handleGoalSave = useCallback(async () => {
+    if (!sessionId || !goalText.trim()) return;
+    setGoalBusy(true);
+    setGoalError(null);
+    try {
+      await setSessionGoal(sessionId, { text: goalText.trim() });
+      await refreshSessionMeta();
+    } catch (e) {
+      setGoalError(String(e));
+    } finally {
+      setGoalBusy(false);
     }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isNew, toggleInspector]);
+  }, [sessionId, goalText, refreshSessionMeta]);
+
+  const handleGoalCheck = useCallback(async () => {
+    if (!sessionId) return;
+    setGoalBusy(true);
+    setGoalError(null);
+    try {
+      const res = await checkSessionGoal(sessionId);
+      if (res.reason) setGoalError(res.reason);
+      await refreshSessionMeta();
+    } catch (e) {
+      setGoalError(String(e));
+    } finally {
+      setGoalBusy(false);
+    }
+  }, [sessionId, refreshSessionMeta]);
+
+  const handleGoalContinueDiscuss = useCallback(
+    (prefill: string) => {
+      setText(prefill);
+      openTranscriptTab();
+      focusComposerInput();
+    },
+    [openTranscriptTab],
+  );
 
   const waitingForSession = Boolean(sessionId && !session && loading);
   const composerInputLocked = waitingForSession;
@@ -788,6 +897,10 @@ export function RoomChat({
     const ready = agents.filter((a) => a.ready).map((a) => a.id);
     if (ready.length === 0) return;
     setSelected((prev) => {
+      if (bootstrapAgentIds?.length) {
+        const picked = bootstrapAgentIds.filter((id) => ready.includes(id));
+        if (picked.length > 0) return picked;
+      }
       if (!agentsPickerInitRef.current || prev.length === 0) {
         agentsPickerInitRef.current = true;
         return ready;
@@ -795,7 +908,13 @@ export function RoomChat({
       const kept = prev.filter((id) => ready.includes(id));
       return kept.length > 0 ? kept : ready;
     });
-  }, [agents]);
+  }, [agents, bootstrapAgentIds]);
+
+  useEffect(() => {
+    if (!sessionId && bootstrapAgentIds?.length) {
+      onBootstrapAgentsApplied?.();
+    }
+  }, [sessionId, bootstrapAgentIds, onBootstrapAgentsApplied]);
 
   const prevSessionIdRef = useRef<string | null>(sessionId);
 
@@ -854,15 +973,13 @@ export function RoomChat({
   useEffect(() => {
     if (sessionId !== null) return;
     syncedChatRef.current = "";
-    hydrateSessionMessages(PENDING_KEY, []);
+    setLiveRunSessionKey(null);
+    navigatedToSessionRef.current = false;
+    if (!isSessionRunActive(PENDING_KEY)) {
+      hydrateSessionMessages(PENDING_KEY, []);
+    }
     setPlanMd("");
   }, [sessionId]);
-
-  function toggleAgent(id: string) {
-    setSelected((s) =>
-      s.includes(id) ? s.filter((x) => x !== id) : [...s, id],
-    );
-  }
 
   function addFiles(fileList: FileList | File[]) {
     const next: PendingFile[] = [];
@@ -915,6 +1032,29 @@ export function RoomChat({
     }, 45_000);
   }, []);
 
+  useEffect(() => {
+    if (isNew) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (!event.metaKey || event.altKey) return;
+      if (event.ctrlKey && event.key.toLowerCase() === "i") {
+        event.preventDefault();
+        toggleInspector();
+        return;
+      }
+      if (
+        !event.ctrlKey &&
+        !event.shiftKey &&
+        event.key === "." &&
+        running
+      ) {
+        event.preventDefault();
+        handleStop();
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isNew, toggleInspector, running, handleStop]);
+
   function parseConsensusDryRunProposal(
     ev: Record<string, unknown>,
   ): ConsensusDryRunProposal {
@@ -938,14 +1078,18 @@ export function RoomChat({
       proposal.summary,
       proposal.recommended?.what,
     );
+    const freeConsensus = turnProfile === "free";
     dispatchNotification(
       {
         tier: "P1",
         title,
         body,
         sessionId: sessionId ?? undefined,
-        kind: proposal.recommended ? "dry_run" : "plan_sync",
+        kind: proposal.recommended ? "consensus_complete" : "plan_sync",
         entityId: proposal.action_key ?? proposal.excerpt,
+        toastAction: freeConsensus
+          ? { type: "work", focus: "plan" }
+          : undefined,
       },
       pushMacNotification,
       notifyDesktop,
@@ -995,6 +1139,7 @@ export function RoomChat({
       efficiency: boolean = efficiencyOn,
     ) => {
       if (mode === "execute") return;
+      if (runBusy || running || synthesizing) return;
       const roomMode = mode === "plan" ? "plan" : "discuss";
       const {
         agents,
@@ -1010,8 +1155,22 @@ export function RoomChat({
         (filesToSend.length ? attachmentSendTopic(filesToSend) : "");
       if (!sendText) return;
 
+      const attachmentNames = filesToSend.map((p) => p.file.name);
+      const displayBody = msgText.trim();
+      setPendingFiles([]);
+
+      const threadBindings =
+        !sessionId
+          ? bootstrapAgentThreadBindings ??
+            getStoredAgentThreadBindings() ??
+            undefined
+          : undefined;
+
       let runKey = resolveRunSessionKey(sessionId, activeSessionIdRef.current);
-      const userMsg = topicAsUserMessage(sendText);
+      const userMsg = topicAsUserMessage(
+        displayBody,
+        attachmentNames.length ? attachmentNames : undefined,
+      );
       resetTurnRun(runKey, userMsg);
       clearRunWatchdog();
       scheduleLongRunHint();
@@ -1030,14 +1189,34 @@ export function RoomChat({
           (ev) => {
           const t = String(ev.type);
           if (t === "start" && ev.session_id) {
-            activeSessionIdRef.current = String(ev.session_id);
-            activeSessionId = activeSessionIdRef.current;
-            if (runKey === PENDING_KEY || runKey !== activeSessionId) {
-              migratePendingSessionRun(activeSessionId);
-              runKey = activeSessionId;
+            const boundSessionId = String(ev.session_id);
+            activeSessionIdRef.current = boundSessionId;
+            activeSessionId = boundSessionId;
+            if (runKey === PENDING_KEY || runKey !== boundSessionId) {
+              migratePendingSessionRun(boundSessionId);
+              runKey = boundSessionId;
+            }
+            setLiveRunSessionKey(boundSessionId);
+            if (!sessionId && !navigatedToSessionRef.current) {
+              navigatedToSessionRef.current = true;
+              void onSessionChange(boundSessionId);
             }
             if (!sessionId && onSessionMetaRefresh) {
               void onSessionMetaRefresh(activeSessionIdRef.current);
+            }
+            if (Array.isArray(ev.attachments) && ev.attachments.length) {
+              const saved = ev.attachments as string[];
+              patchTurnMessages(runKey, (m) => {
+                for (let i = m.length - 1; i >= 0; i--) {
+                  const row = m[i];
+                  if (row.role === "you" && row.sent) {
+                    const next = [...m];
+                    next[i] = { ...row, attachments: saved };
+                    return next;
+                  }
+                }
+                return m;
+              });
             }
           }
           if (t === "run_cancelled") {
@@ -1064,7 +1243,7 @@ export function RoomChat({
               },
             ]);
           }
-          if (t === "consensus_plan_synced") {
+          if (t === "consensus_plan_synced" || t === "verified_plan_synced") {
             const excerpt =
               typeof ev.excerpt === "string" ? ev.excerpt : undefined;
             const summary =
@@ -1083,6 +1262,8 @@ export function RoomChat({
               },
             ]);
             refreshSessionMeta();
+            openPlanTab();
+            setInboxReloadKey((k) => k + 1);
             const partialProposal = {
               excerpt,
               summary,
@@ -1102,7 +1283,7 @@ export function RoomChat({
             setConsensusProposal(proposal);
             notifyConsensusSync(proposal);
           }
-          if (t === "consensus_plan_sync_failed") {
+          if (t === "consensus_plan_sync_failed" || t === "verified_plan_sync_failed") {
             const excerpt =
               typeof ev.excerpt === "string" ? ev.excerpt : undefined;
             const message =
@@ -1173,6 +1354,26 @@ export function RoomChat({
           if (t === "agent_done" && ev.agent) {
             const aid = String(ev.agent);
             const round = Number(ev.round ?? 1);
+            const envelopeParseError = ev.envelope_parse_error === true;
+            const envelope = ev.envelope as LiveMsg["envelope"];
+            const envelopeLine = formatEnvelopeActivityLine(round, {
+              hasAct: Boolean(envelope?.act),
+              parseError: envelopeParseError,
+            });
+            if (envelopeLine) {
+              dispatchNotification(
+                {
+                  tier: "P2",
+                  title: `Envelope · ${aid}`,
+                  body: envelopeLine,
+                  sessionId: activeSessionId ?? undefined,
+                  kind: "envelope_warn",
+                  entityId: `${aid}:r${round}`,
+                },
+                pushMacNotification,
+                notifyDesktop,
+              );
+            }
             updateSessionRun(runKey, (snap) => {
               const n = new Set(snap.topologyDone);
               n.add(`${aid}:${round}`);
@@ -1186,8 +1387,8 @@ export function RoomChat({
                 label: agentLabel(aid),
                 body: String(ev.content ?? "") || "(empty)",
                 parallelRound: round,
-                envelope: ev.envelope as LiveMsg["envelope"],
-                envelopeParseError: ev.envelope_parse_error === true,
+                envelope,
+                envelopeParseError,
               },
             ]);
           }
@@ -1203,6 +1404,57 @@ export function RoomChat({
                 body: `[${agentLabel(aid)}] ${ev.message}`,
               },
             ]);
+          }
+          if (t === "hook_event" && ev.event) {
+            const sid = activeSessionId ?? undefined;
+            const agentName = ev.agent ? agentLabel(String(ev.agent)) : "";
+            const eventName = String(ev.event);
+            const blocked = ev.blocked === true;
+            const feedback =
+              typeof ev.feedback === "string" ? ev.feedback.trim() : "";
+            const subReason =
+              typeof ev.sub_reason === "string" ? ev.sub_reason : "";
+            const round = Number(ev.round ?? 1);
+            const aid = ev.agent ? String(ev.agent) : "";
+            if (aid) {
+              const tid = `typing-${aid}-r${round}`;
+              const hookLine = formatHookActivityLine({
+                event: eventName,
+                blocked,
+                feedback,
+                sub_reason: subReason,
+              });
+              patchTurnMessages(runKey, (m) =>
+                m.map((msg) => {
+                  if (msg.id !== tid) return msg;
+                  const prev = msg.activities ?? [];
+                  const next =
+                    prev[prev.length - 1] === hookLine
+                      ? prev
+                      : [...prev, hookLine].slice(-12);
+                  return { ...msg, activities: next };
+                }),
+              );
+            }
+            if (blocked || feedback) {
+              dispatchNotification(
+                {
+                  tier: blocked ? "P1" : "P2",
+                  title: blocked
+                    ? `Hook blocked · ${eventName}`
+                    : `Hook · ${eventName}`,
+                  body:
+                    feedback ||
+                    (agentName ? `${agentName}${subReason ? ` (${subReason})` : ""}` : subReason),
+                  sessionId: sid,
+                  kind: blocked ? "hook_blocked" : "hook_warn",
+                  entityId: `${eventName}:${String(ev.agent ?? "")}`,
+                  forceToast: blocked,
+                },
+                pushMacNotification,
+                notifyDesktop,
+              );
+            }
           }
           if (t === "turn_failed") {
             const aid = ev.agent ? String(ev.agent) : "";
@@ -1225,15 +1477,103 @@ export function RoomChat({
             }
             if (ev.inbox_pending === true) {
               setInboxReloadKey((k) => k + 1);
-              setInboxPendingChip(true);
-              setInboxPopupDismissed(false);
+              void fetchSessionInbox(activeSessionId)
+                .then((payload) => {
+                  const sid = activeSessionId ?? undefined;
+                  const pending = (payload.human_inbox ?? []).filter(
+                    (item) => item.status === "pending",
+                  );
+                  setInboxPendingChip(pending.length > 0);
+                  const question = pending.find((item) => item.kind === "question");
+                  const build = pending.find((item) => item.kind === "build");
+                  if (build) {
+                    dispatchNotification(
+                      {
+                        tier: "P1",
+                        title: "Build 승인 필요",
+                        body: build.summary ?? build.prompt,
+                        sessionId: sid,
+                        kind: "human_inbox_build",
+                        entityId: build.id,
+                        toastAction: { type: "work", focus: "plan" },
+                      },
+                      pushMacNotification,
+                      notifyDesktop,
+                    );
+                  } else if (question) {
+                    dispatchNotification(
+                      {
+                        tier: "P1",
+                        title: "에이전트 질문",
+                        body: question.prompt,
+                        sessionId: sid,
+                        kind: "human_inbox_question",
+                        entityId: question.id,
+                        toastAction: { type: "inbox" },
+                      },
+                      pushMacNotification,
+                      notifyDesktop,
+                    );
+                  } else if (pending.length > 0) {
+                    dispatchNotification(
+                      {
+                        tier: "P2",
+                        title: "Human Inbox",
+                        body: `${pending.length}건 대기`,
+                        sessionId: sid,
+                        kind: "human_inbox",
+                        entityId: pending[0]?.id,
+                      },
+                      pushMacNotification,
+                      notifyDesktop,
+                    );
+                  }
+                })
+                .catch(() => {
+                  setInboxPendingChip(true);
+                });
+            }
+            if (ev.verified_loop_pending === true) {
+              void refreshSessionMeta();
+              const loop = ev.verified_loop as
+                | { proposed?: { goal?: string } }
+                | undefined;
+              const goalHint = loop?.proposed?.goal ?? "에이전트 목표 제안";
               dispatchNotification(
                 {
                   tier: "P1",
-                  title: "Human decision pending",
-                  body: "Transcript popup 또는 Inspector Inbox에서 처리하세요.",
+                  title: "Verified loop 승인",
+                  body: goalHint,
                   sessionId: activeSessionId,
-                  kind: "human_inbox",
+                  kind: "verified_loop_pending",
+                  toastAction: { type: "inspector", tab: "tasks" },
+                  toastActionLabel: "승인하기",
+                },
+                pushMacNotification,
+                notifyDesktop,
+              );
+            } else if (ev.verified_loop_status === "done") {
+              dispatchNotification(
+                {
+                  tier: "P1",
+                  title: "Oracle VERIFIED",
+                  body: "Verified loop 목표 달성",
+                  sessionId: activeSessionId,
+                  kind: "verified_loop_done",
+                  forceToast: true,
+                },
+                pushMacNotification,
+                notifyDesktop,
+              );
+            } else if (ev.verified_loop_circuit_breaker === true) {
+              dispatchNotification(
+                {
+                  tier: "P0",
+                  title: "Verified loop 중단",
+                  body: "Oracle 검증 한도 초과",
+                  sessionId: activeSessionId,
+                  kind: "verified_loop_failed",
+                  forceToast: true,
                 },
                 pushMacNotification,
                 notifyDesktop,
@@ -1278,7 +1618,6 @@ export function RoomChat({
             );
             if (msg.includes("already in progress")) {
               setRunLockStuck(true);
-              void cancelRoomRun().catch(() => {});
             }
             dispatchNotification(
               {
@@ -1311,21 +1650,22 @@ export function RoomChat({
                 ? undefined
                 : workspacePath ?? undefined,
             agentCapabilities: capabilitiesForApi(agentCapabilities),
+            agentThreadBindings: threadBindings,
           },
         );
         if (runFailed) {
           throw new Error("run failed");
         }
-        if (activeSessionId) {
+        if (!sessionId) {
+          clearStoredAgentThreadBindings();
+        }
+        if (activeSessionId && !navigatedToSessionRef.current) {
           activeSessionIdRef.current = activeSessionId;
           await onSessionChange(activeSessionId);
-          if (mode === "plan") {
-            openPlanTab();
-          }
-        } else if (mode === "plan") {
+        }
+        if (mode === "plan" && (activeSessionId ?? sessionId)) {
           openPlanTab();
         }
-        setPendingFiles([]);
         setSendReceipt(sendReceiptLabel(lastSendReceipt, mode, userStopped));
         if (sendReceiptTimerRef.current != null) {
           window.clearTimeout(sendReceiptTimerRef.current);
@@ -1344,6 +1684,7 @@ export function RoomChat({
         clearRunWatchdog();
         clearLongRunHint();
         finishSessionRun(runKey, activeSessionId ?? undefined);
+        navigatedToSessionRef.current = false;
         if (activeSessionId ?? sessionId) {
           changePlanAfterSend(false);
         }
@@ -1361,9 +1702,65 @@ export function RoomChat({
       workspaceId,
       workspacePath,
       agentCapabilities,
+      bootstrapAgentThreadBindings,
       refreshSessionMeta,
+      runBusy,
+      running,
+      synthesizing,
     ],
   );
+
+  const handleVerifiedApprove = useCallback(async () => {
+    if (!sessionId || !verifiedEditGoal.trim()) return;
+    setVerifiedLoopBusy(true);
+    setVerifiedLoopError(null);
+    try {
+      const res = await approveVerifiedLoop(sessionId, {
+        goal: verifiedEditGoal.trim(),
+        completion_promise: verifiedEditPromise.trim() || "DONE",
+        criteria: verifiedEditCriteria.trim() || verifiedEditGoal.trim(),
+      });
+      await refreshSessionMeta();
+      const prompt = res.continue_prompt?.trim();
+      if (prompt) {
+        void executeSend(
+          prompt,
+          [],
+          roomPermissions(selected),
+          "discuss",
+          "verified",
+          efficiencyOn,
+        );
+      }
+    } catch (e) {
+      setVerifiedLoopError(String(e));
+    } finally {
+      setVerifiedLoopBusy(false);
+    }
+  }, [
+    sessionId,
+    verifiedEditGoal,
+    verifiedEditCriteria,
+    verifiedEditPromise,
+    refreshSessionMeta,
+    executeSend,
+    selected,
+    efficiencyOn,
+  ]);
+
+  const handleVerifiedReject = useCallback(async () => {
+    if (!sessionId) return;
+    setVerifiedLoopBusy(true);
+    setVerifiedLoopError(null);
+    try {
+      await rejectVerifiedLoop(sessionId);
+      await refreshSessionMeta();
+    } catch (e) {
+      setVerifiedLoopError(String(e));
+    } finally {
+      setVerifiedLoopBusy(false);
+    }
+  }, [sessionId, refreshSessionMeta]);
 
   const executeSynthesizeOnly = useCallback(
     async (permissions: AgentPermissions) => {
@@ -1470,6 +1867,20 @@ export function RoomChat({
     ) {
       return;
     }
+    const needsPermissionPrompt =
+      !hasSavedPermissionDefaults() &&
+      agentsNeedingPermissionPrompt(selected).length > 0;
+    if (needsPermissionPrompt) {
+      setPendingSend({
+        text: msg,
+        files: pendingFiles,
+        turnProfile,
+        planAfterSend,
+        efficiencyOn,
+      });
+      setPermOpen(true);
+      return;
+    }
     void executeSend(msg, pendingFiles, roomPermissions(selected));
     setText("");
   }
@@ -1534,27 +1945,137 @@ export function RoomChat({
     return rows.find((o) => o.act === "BLOCK") ?? null;
   }, [roomTasks?.open_objections]);
   const planExecuteObjection = planExecute.openObjectionBlock?.objections[0];
-  const composerObjectionNotice = planExecuteObjection
-    ? {
-        message: planExecute.openObjectionBlock?.message ?? "미해결 이의가 있습니다.",
-        objectionId: planExecuteObjection.id,
-        actionIndex: planExecuteObjection.plan_action_index,
-      }
-    : null;
+  const composerObjectionNotice = tweaks.objectionDemo
+    ? DEMO_OBJECTION_NOTICE
+    : planExecuteObjection
+      ? {
+          message:
+            planExecute.openObjectionBlock?.message ?? "미해결 이의가 있습니다.",
+          objectionId: planExecuteObjection.id,
+          actionIndex: planExecuteObjection.plan_action_index,
+        }
+      : null;
   const composerPlaceholder = firstOpenBlock?.plan_action_index
-    ? `plan #${firstOpenBlock.plan_action_index} BLOCK 해결 후 execute`
-    : "메시지";
+    ? locale === "ko"
+      ? `plan #${firstOpenBlock.plan_action_index} BLOCK 해결 후 execute`
+      : `Resolve plan #${firstOpenBlock.plan_action_index} BLOCK before execute`
+    : localeMsg.composerPlaceholder;
 
   const readyCount = agents.filter((a) => a.ready).length;
   const agentsBlocked =
     !running && !loading && selected.length === 0 && agents.length >= 0;
   const title = isNew ? "Session" : session?.topic || sessionId || "Session";
-  const setupMeta = sessionSetupSummary(session?.meta, session?.run);
-  const attachments = session?.attachments ?? [];
+
+  useTitlebarSlots({
+    title,
+    meta:
+      !isNew || selected.length > 0
+        ? `${selected.length} agents`
+        : undefined,
+    trailing: (
+      <>
+        {!isNew ? (
+          <button
+            type="button"
+            className="icon-btn"
+            title="수신함"
+            aria-label="수신함"
+            onClick={openHumanInbox}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              width="17"
+              height="17"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.7}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <path d="M22 12h-6l-2 3H10l-2-3H2" />
+              <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+            </svg>
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className="icon-btn"
+          title="⌘K"
+          aria-label="명령 팔레트"
+          onClick={openCommandPalette}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="17"
+            height="17"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.7}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <circle cx="11" cy="11" r="7" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+        </button>
+        <ThemeToggle />
+        {!isNew ? (
+          <ContextSidebarToggle
+            open={inspectorOpen}
+            onToggle={toggleInspector}
+            badgeCount={notificationUnread}
+          />
+        ) : null}
+      </>
+    ),
+  });
+
   const planMeta = buildPlanMetaView(session?.run);
+  const composerPlanStale = composerPlanStaleNotice(session?.run);
+  const planAutoSyncKey = composerPlanStale
+    ? `${sessionId ?? ""}:${composerPlanStale}`
+    : null;
+  const planAutoSyncRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!sessionId || !planAutoSyncKey || running || synthesizing || runBusy) {
+      return;
+    }
+    if (planAutoSyncRef.current === planAutoSyncKey) return;
+    planAutoSyncRef.current = planAutoSyncKey;
+    void autoSyncSessionPlan(sessionId)
+      .then((detail) => {
+        const pending = latestPendingConsensusAgreement(detail.run);
+        if (pending?.excerpt) {
+          notifyConsensusFailure(
+            pending.excerpt,
+            "plan.md 자동 정리에 실패했습니다",
+          );
+          planAutoSyncRef.current = null;
+          return;
+        }
+        void onSessionChange(sessionId);
+        setInboxReloadKey((k) => k + 1);
+        openPlanTab();
+      })
+      .catch(() => {
+        notifyConsensusFailure(undefined, "plan.md 자동 정리 요청 실패");
+        planAutoSyncRef.current = null;
+      });
+  }, [
+    sessionId,
+    planAutoSyncKey,
+    running,
+    synthesizing,
+    runBusy,
+    onSessionChange,
+    openPlanTab,
+  ]);
+  const workPlanStaleNotice =
+    tweaks.planStaleDemo ? DEMO_PLAN_STALE_NOTICE : composerPlanStale;
   const currentPlanRevision =
     planMeta.lastUpdate?.completed_at || planMeta.lastUpdate?.ts || null;
-  const planRefWarnings = analyzePlanRefWarnings(planMd, session?.chat);
   const turnResolved = resolveTurnSend(turnProfile, selected, efficiencyOn);
   const taskBarContext = useMemo(
     () => ({
@@ -1640,284 +2161,179 @@ export function RoomChat({
   const sessionArtifacts = roomTasks?.artifacts ?? [];
 
   return (
-    <div
-      className={`room-workspace-shell${
-        !isNew && !inspectorOpen ? " room-workspace-shell--inspector-collapsed" : ""
-      }`}
-    >
+    <>
       <CommandPalette actions={paletteActions} />
-      <ChatPaneBody className="workspace-main">
-      <ChatToolbar
-        sidebarOpen={sidebarOpen}
-        onToggleSidebar={onToggleSidebar}
-        title={title}
-        meta={
-          isNew
-            ? `${formatRoomModelLine(agents) || "Claude · Codex · Cursor"} (${readyCount}/3)`
-            : setupMeta ?? undefined
-        }
-        trailing={
-          <>
-            <AgentPicker
-              agents={agents}
-              selected={selected}
-              disabled={running}
-              onToggle={toggleAgent}
-              inline
-            />
-            {!isNew ? (
-              <ContextSidebarToggle
-                open={inspectorOpen}
-                onToggle={toggleInspector}
-                badgeCount={notificationUnread}
-              />
-            ) : null}
-          </>
-        }
-      />
-
-      {isNew && setupWorkspaces.length > 0 ? (
-        <SessionSetupBar
-          workspaces={setupWorkspaces}
-          workspaceId={workspaceId}
-          workspacePath={workspacePath}
-          onWorkspaceChange={setWorkspaceId}
-          onBrowseFolder={() => void browseWorkspaceFolder()}
-          researchMode={researchMode}
-          onResearchModeChange={(on) => {
-            setResearchModeState(on);
-            try {
-              localStorage.setItem("agent-lab-research-mode", on ? "1" : "0");
-            } catch {
-              /* ignore */
-            }
-          }}
-          disabled={running || runBusy}
-        />
-      ) : null}
-
-      {isNew ? (
-        <AgentSessionSettings
-          capabilities={agentCapabilities}
-          onChange={handleAgentCapabilitiesChange}
-          resolvedCwd={resolvedAgentCwd}
-          selectedAgents={selected}
-          disabled={running || runBusy}
-          compact={false}
-          onSave={sessionId ? () => saveAgentCapabilities() : undefined}
-          saveBusy={agentCapsBusy}
-          saveHint={agentCapsHint ?? "첫 메시지 전송 시 세션에 함께 저장됩니다"}
-        />
-      ) : null}
 
       <WorkspaceTabBar
         active={workspaceTab}
         onChange={setWorkspaceTab}
         isNew={isNew}
-        trailing={
-          !isNew ? (
-            <div
-              className="view-tabs-bar__trailing"
-              onBlur={(e) => {
-                if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                  setViewOptionsOpen(false);
-                }
-              }}
-            >
-              <button
-                type="button"
-                className={`view-options-btn${viewOptionsOpen ? " is-active" : ""}`}
-                aria-label="보기 옵션"
-                title="보기 옵션"
-                onClick={() => setViewOptionsOpen((v) => !v)}
-              >
-                ⋯
-              </button>
-              {viewOptionsOpen && workspaceTab === "transcript" ? (
-                <div className="view-options-popover" role="menu">
-                  <label className="view-options-row">
-                    <input
-                      type="checkbox"
-                      checked={showHumanSynthesis}
-                      onChange={(e) => {
-                        const on = e.target.checked;
-                        setShowHumanSynthesisState(on);
-                        setShowHumanSynthesis(on);
-                      }}
-                    />
-                    Human 요약
-                    {hiddenAgentCount > 0 && showHumanSynthesis ? (
-                      <span className="room-peer-toggle__count">
-                        {" "}
-                        (+{hiddenAgentCount})
-                      </span>
-                    ) : null}
-                  </label>
-                  <label
-                    className="view-options-row"
-                    title={
-                      showHumanSynthesis
-                        ? "Human 요약 모드에서는 동료 채널을 켤 수 없습니다"
-                        : "에이전트 동료 발화(peer) 표시"
-                    }
-                  >
-                    <input
-                      type="checkbox"
-                      checked={showPeerChannel}
-                      onChange={(e) => setShowPeerChannel(e.target.checked)}
-                      disabled={showHumanSynthesis}
-                    />
-                    동료 채널
-                    {hiddenPeerCount > 0 && !showPeerChannel && !showHumanSynthesis ? (
-                      <span className="room-peer-toggle__count">
-                        {" "}
-                        ({hiddenPeerCount})
-                      </span>
-                    ) : null}
-                  </label>
-                </div>
-              ) : null}
-            </div>
-          ) : null
-        }
+        locale={locale}
+        tabPinned={workspaceTabPinned}
+        running={running || synthesizing || runBusy}
       />
 
-      {showExecuteQueueStrip && planExecute.activePending ? (
+      <div className="pane-row">
+        <div className="pane-main workspace-main">
+          <div className="workspace-body">
+            <div className="workspace-scroll scroll-y" ref={scrollRef}>
+
+      {(workspaceTab === "transcript" || workspaceTab === "work") &&
+      !isNew &&
+      sessionId ? (
+        <div className="taskbar-dock">
+          <RoomTaskBar
+            sessionId={sessionId}
+            payload={roomTasks}
+            context={taskBarContext}
+            loading={tasksLoading}
+            executions={planExecutions}
+            focusObjection={taskBarFocusObjection}
+            onRefresh={refreshTasks}
+            onFocusPlanAction={focusPlanAction}
+            onFocusTask={focusTask}
+            onRequestComposerPrefill={requestComposerPrefill}
+          />
+        </div>
+      ) : null}
+
+      {showExecuteQueueStrip && execPendingForBar ? (
         <div className="workspace-event-strip workspace-event-strip--review">
           <ExecuteQueueBar
-            pending={planExecute.activePending}
+            pending={execPendingForBar}
             storedActions={(session?.run?.actions as StoredPlanAction[]) ?? []}
             busy={executeBusy}
             disabled={running || synthesizing || runBusy}
             compact
-            onApprove={() => void planExecute.approve()}
-            onReject={() => void planExecute.reject()}
+            onApprove={() => {
+              if (demoExecPending) {
+                pushMacNotification({
+                  title: "Execute (demo)",
+                  body: "승인 시뮬레이트",
+                });
+                return;
+              }
+              void planExecute.approve();
+            }}
+            onReject={() => {
+              if (demoExecPending) {
+                pushMacNotification({
+                  title: "Execute (demo)",
+                  body: "거부 시뮬레이트",
+                });
+                return;
+              }
+              void planExecute.reject();
+            }}
             onOpenPlan={openWorkTab}
           />
         </div>
       ) : null}
 
-      {showConsensusDryRunGate && consensusProposal ? (
+      {showConsensusDryRunGate && consensusForBar ? (
         <div className="workspace-event-strip workspace-event-strip--review">
           <ConsensusDryRunGateBar
-            proposal={consensusProposal}
+            proposal={consensusForBar}
             busy={consensusGateBusy || executeBusy}
             disabled={running || synthesizing || runBusy}
-            onDryRun={handleConsensusDryRun}
+            onDryRun={
+              tweaks.consensusGateDemo
+                ? () =>
+                    pushMacNotification({
+                      title: "Consensus (demo)",
+                      body: "Dry-run 시뮬레이트",
+                    })
+                : handleConsensusDryRun
+            }
             onOpenPlan={openWorkTab}
-            onDismiss={dismissConsensusProposal}
+            onDismiss={
+              tweaks.consensusGateDemo
+                ? () => tweaks.setConsensusGateDemo(false)
+                : dismissConsensusProposal
+            }
           />
         </div>
       ) : null}
 
       {workspaceTab === "work" && sessionId ? (
-        <div
-          className="messages-scroll messages-scroll--document workspace-panel--work"
-          ref={workScrollRef}
-        >
-          <WorkPanel
+        <WorkPanel
           sessionId={sessionId}
           session={session}
           planMd={planMd}
           planMeta={planMeta}
-          planRefWarnings={planRefWarnings}
-          planAfterSend={planAfterSend}
-          onPlanAfterSendChange={changePlanAfterSend}
+          planStaleNotice={workPlanStaleNotice}
+          workFocus={workFocus}
+          onWorkFocusHandled={() => setWorkFocus(null)}
           synthesizing={synthesizing}
           running={running}
           runBusy={runBusy}
           onSynthesizeNow={handleSynthesizeNow}
-          hasPendingExecution={hasPendingExecution}
-          consensusProposal={consensusProposal}
-          consensusGateBusy={consensusGateBusy}
-          executeBusy={executeBusy}
-          onConsensusDryRun={() => void handleConsensusDryRun()}
-          onDismissConsensus={dismissConsensusProposal}
-          onApproveExecute={() => void planExecute.approve()}
-          onRejectExecute={() => void planExecute.reject()}
           onPlanRefClick={handlePlanRefClick}
           onFocusTask={focusTask}
           onFocusObjection={focusObjection}
           onSessionUpdated={refreshSessionMeta}
           roomTasks={roomTasks}
           cursorReady={agents.some((a) => a.id === "cursor" && a.ready)}
-          storedActions={(session?.run?.actions as StoredPlanAction[]) ?? []}
-          activePending={planExecute.activePending}
+          latestExecution={latestExecution}
+          hasPendingExecution={hasPendingExecution}
+          hasDryRunDiff={hasDryRunDiff}
         />
-        </div>
       ) : null}
 
       {workspaceTab === "run" && !isNew ? (
-        <div className="messages-scroll messages-scroll--document workspace-panel--run">
-          <div className="workspace-document-panel workspace-document-panel--run-turn">
-            <TurnRunPanel
-              totalRounds={turnResolved.agentRounds}
-              reviewMode={turnResolved.reviewMode}
-              agents={turnResolved.agents}
-              doneKeys={topologyDone}
-              active={topologyActive}
-              turnMessages={turnMessages}
-              running={running}
-              runBusy={runBusy}
-              longRunning={longRunning}
-              runLockStuck={runLockStuck}
-              releasingLock={releasingLock}
-              onStop={handleStop}
-              onReleaseLock={() => void handleReleaseRunLock()}
-            />
-          </div>
-        </div>
+        <RunLogPanel
+          turnMessages={turnMessages}
+          running={running}
+          active={topologyActive}
+          onStop={handleStop}
+          longRunning={longRunning}
+          runLockStuck={runLockStuck}
+          releasingLock={releasingLock}
+          onReleaseLock={() => void handleReleaseRunLock()}
+        />
       ) : null}
 
       {workspaceTab === "artifacts" && !isNew ? (
-        <div className="messages-scroll messages-scroll--document workspace-panel--artifacts">
-          <div className="workspace-document-panel">
-            <div className="workspace-document-panel__header">
-              <strong>Artifacts</strong>
-              <span>Outputs saved during this session</span>
-            </div>
-            {sessionArtifacts.length > 0 ? (
-              <ul className="workspace-artifacts-list">
-                {[...sessionArtifacts].reverse().map((art) => (
-                  <li key={art.id ?? art.path ?? `${art.producer}-${art.kind}`}>
-                    <strong>
-                      {art.producer} · {art.kind}
-                    </strong>
-                    {art.summary ? <span>{art.summary}</span> : null}
-                    {art.path ? (
-                      <span className="workspace-artifacts-list__path">{art.path}</span>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="workspace-empty-state">저장된 산출물이 없습니다.</p>
-            )}
-          </div>
-        </div>
+        <ArtifactsListPanel items={sessionArtifacts} />
       ) : null}
 
       {workspaceTab === "transcript" || isNew ? (
-        <>
-          <div
-            className="messages-scroll messages-scroll--document workspace-panel--transcript"
-            ref={scrollRef}
-          >
-            <div className="workspace-document-panel workspace-transcript-panel">
+        <div className="transcript transcript--console">
             {loading && !isNew ? (
-              <div className="empty-chat">Transcript 불러오는 중…</div>
+              <div className="empty-state">
+                <span className="empty-state__icon" aria-hidden>
+                  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                </span>
+                <span className="empty-state__title">{localeMsg.transcriptLoading}</span>
+              </div>
             ) : visibleMessages.length === 0 && !running ? (
-              <div className="empty-chat">메시지를 입력하세요</div>
+              <div className="empty-state">
+                <span className="empty-state__icon" aria-hidden>
+                  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                </span>
+                <span className="empty-state__title">{localeMsg.transcriptEmpty}</span>
+                <span className="empty-state__hint">
+                  {localeMsg.transcriptEmptyHint}
+                </span>
+              </div>
             ) : null}
             {visibleMessages.map((m) => {
               if (m.roundDivider) {
+                const roundLabel =
+                  locale === "ko"
+                    ? `라운드 ${m.roundDivider}`
+                    : `Round ${m.roundDivider}`;
                 return (
                   <div
                     key={m.id}
-                    className="chat-round-divider"
+                    className="round-divider"
                     aria-label={m.body}
                   >
-                    {m.body}
+                    {roundLabel}
                   </div>
                 );
               }
@@ -1933,44 +2349,46 @@ export function RoomChat({
               }
               const highlighted = highlightChatLine === m.chatLineIndex;
               return (
-                <div
-                  key={m.id}
-                  className={[
-                    "chat-line",
-                    m.role === "you" || m.sent ? "chat-line--you" : undefined,
-                    m.peerChannel ? "chat-line--peer" : undefined,
-                    m.humanSynthesis ? "chat-line--synthesis" : undefined,
-                    highlighted ? "chat-line--highlight" : undefined,
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                  {...(m.chatLineIndex != null
-                    ? { "data-chat-line": m.chatLineIndex }
-                    : {})}
-                >
                 <ChatBubble
+                  key={m.id}
                   message={m}
                   typing={m.typing}
                   highlighted={highlighted}
                   presentation="console"
                 />
-                </div>
               );
             })}
             {pendingReplyAgents.map((a) => (
-              <div key={a.id} className="chat-line">
-                <ReplyWaitingBubble
-                  agent={a.role}
-                  label={a.label}
-                  activities={[]}
-                />
-              </div>
+              <ReplyWaitingBubble
+                key={a.id}
+                agent={a.role}
+                label={a.label}
+                activities={[]}
+              />
             ))}
-            </div>
-          </div>
-        </>
+        </div>
       ) : null}
 
+      {transcriptActive && (
+        <ScrollToBottomButton
+          visible={showJumpButton || tweaks.forceScrollButton}
+          onClick={scrollToBottom}
+        />
+      )}
+
+            </div>
+
+      {(isNew || transcriptActive) ? (
+        <>
+          {tweaks.preflightDemo ? (
+            <ComposerPreflightBar
+              agents={DEMO_PREFLIGHT_AGENTS}
+              selected={["cursor"]}
+            />
+          ) : (
+            <ComposerPreflightBar agents={healthAgents} selected={selected} />
+          )}
+          <div className="composer-wrap">
       {clarifierQuestions && clarifierQuestions.length > 0 ? (
         <div
           className="clarifier-banner"
@@ -2003,13 +2421,6 @@ export function RoomChat({
         </div>
       ) : null}
 
-      {transcriptActive && (
-        <ScrollToBottomButton
-          visible={showJumpButton}
-          onClick={scrollToBottom}
-        />
-      )}
-
       {sendReceipt && shouldShowSendReceiptOnChatTab(sendReceipt) ? (
         <div className="composer-send-receipt" role="status">
           {sendReceipt}
@@ -2024,25 +2435,6 @@ export function RoomChat({
         >
           Human Inbox 대기
         </button>
-      ) : null}
-
-      <ComposerPreflightBar agents={healthAgents} selected={selected} />
-
-      {transcriptActive && !inboxPopupDismissed ? (
-        <HumanInboxPanel
-          sessionId={sessionId}
-          reloadKey={inboxReloadKey}
-          planRevision={currentPlanRevision}
-          onResolved={handleInboxResolved}
-          onBuildStarted={handleInboxBuildStarted}
-          onDismiss={() => {
-            setInboxPopupDismissed(true);
-            setInboxPendingChip(true);
-          }}
-          onOpenInbox={openHumanInbox}
-          disabled={running || synthesizing || runBusy}
-          presentation="popup"
-        />
       ) : null}
 
       <ChatComposer
@@ -2063,7 +2455,9 @@ export function RoomChat({
         sendDisabled={composerSendLocked}
         placeholder={composerPlaceholder}
         showPlanToggle={false}
-        showModeChipHint={false}
+        modeChip={modeChipCopy.label}
+        modeChipVariant={composerModeVariant}
+        modeChipHint={modeChipCopy.hint}
         running={running}
         onStop={handleStop}
         files={pendingFiles}
@@ -2071,7 +2465,6 @@ export function RoomChat({
         onFileRemove={(id) =>
           setPendingFiles((f) => f.filter((x) => x.id !== id))
         }
-        sessionAttachments={attachments}
         turnProfile={turnProfile}
         onTurnProfileChange={changeTurnProfile}
         planAfterSend={!isNew ? planAfterSend : undefined}
@@ -2080,11 +2473,10 @@ export function RoomChat({
           setEfficiencyOnState(on);
           setEfficiencyMode(on);
         }}
-        planStaleNotice={null}
         objectionNotice={composerObjectionNotice}
         onFocusObjection={focusObjection}
-        turnCostHint={turnCost.compactLabel}
-        fullTeamConfirm={null}
+        turnHint={composerTurnHintLine}
+        locale={locale}
       />
 
       {commandHint ? (
@@ -2092,11 +2484,19 @@ export function RoomChat({
           {commandHint}
         </p>
       ) : null}
+          </div>
+        </>
+      ) : null}
 
       <AgentPermissionAlert
-        open={permOpen}
-        selectedAgents={selected}
+        open={permOpen || tweaks.showPermAlert}
+        selectedAgents={
+          tweaks.showPermAlert && !permOpen
+            ? ["cursor", "claude"]
+            : selected
+        }
         onCancel={() => {
+          tweaks.setShowPermAlert(false);
           setPermOpen(false);
           if (pendingSend) {
             setText(pendingSend.text);
@@ -2105,6 +2505,7 @@ export function RoomChat({
           }
         }}
         onConfirm={(permissions) => {
+          tweaks.setShowPermAlert(false);
           setPermOpen(false);
           if (pendingSend) {
             void executeSend(
@@ -2119,10 +2520,13 @@ export function RoomChat({
           }
         }}
       />
-      </ChatPaneBody>
+          </div>
+        </div>
+      </div>
 
-      {!isNew ? (
-        <InspectorPane
+      {!isNew && inspectorOpen ? (
+        <ShellPortal>
+          <InspectorPane
           active={inspectorTab}
           onChange={setInspectorTab}
           open={inspectorOpen}
@@ -2130,97 +2534,61 @@ export function RoomChat({
           onWidthChange={setInspectorWidthState}
           onWidthCommit={commitInspectorWidth}
           badges={{
-            activity: notificationUnread,
-            tasks: inboxPendingChip ? 1 : undefined,
+            inbox: inspectorInboxBadge,
+            tasks: inspectorTasksBadge,
           }}
         >
-          {inspectorTab === "activity" ? (
-            <div className="inspector-pane__section inspector-pane__section-card">
-              <NotificationCenter onOpen={openNotificationTarget} />
-            </div>
+          {inspectorTab === "overview" && session ? (
+            <ContextOverviewPanel
+              session={session}
+              healthAgents={healthAgents}
+              goalView={goalView}
+              planMeta={planMeta}
+            />
           ) : null}
           {inspectorTab === "tasks" ? (
-            <div className="inspector-pane__section inspector-pane__section-card">
-              <section
-                className={`goal-loop-banner goal-loop-banner--${goalView.loop.status ?? "unset"}`}
-                aria-label="세션 목표"
-              >
-                <div className="goal-loop-banner__head">
-                  <strong>세션 목표</strong>
-                  {goalView.loop.status ? (
-                    <span
-                      className={`goal-oracle-badge goal-oracle-badge--${goalView.loop.status}`}
-                    >
-                      {goalView.loop.status === "achieved"
-                        ? "목표 달성"
-                        : goalView.loop.last_check?.verdict === "fail"
-                          ? "Oracle FAIL"
-                          : "진행 중"}
-                    </span>
-                  ) : null}
-                </div>
-                <div className="goal-loop-banner__controls">
-                  <input
-                    type="text"
-                    value={goalText}
-                    onChange={(e) => setGoalText(e.target.value)}
-                    placeholder="Human이 판단할 세션 목표"
-                    disabled={goalBusy}
-                  />
-                  <button
-                    type="button"
-                    className="room-task-bar__cta"
-                    disabled={goalBusy || !goalText.trim()}
-                    onClick={() => void saveSessionGoal()}
-                  >
-                    목표 설정
-                  </button>
-                  {goalView.goal.text ? (
-                    <button
-                      type="button"
-                      className="room-task-bar__cta"
-                      disabled={goalBusy || goalView.loop.status === "achieved"}
-                      onClick={() => void runGoalCheck()}
-                    >
-                      Oracle 재검
-                    </button>
-                  ) : null}
-                </div>
-                {goalView.loop.last_check?.detail ? (
-                  <p className="goal-loop-banner__detail">
-                    {goalView.loop.last_check.detail}
-                  </p>
-                ) : null}
-                {goalView.loop.last_check?.verdict === "fail" ? (
-                  <button
-                    type="button"
-                    className="room-task-bar__cta room-task-bar__cta--primary"
-                    onClick={() =>
-                      requestComposerPrefill(
-                        goalView.loop.continue_prompt ??
-                          `세션 목표를 달성하기 위해 한 턴 더 토론해 주세요: ${goalView.loop.last_check?.detail ?? ""}`,
-                      )
-                    }
-                  >
-                    한 턴 더 토론
-                  </button>
-                ) : null}
-                {goalError ? (
-                  <p className="goal-loop-banner__error">{goalError}</p>
-                ) : null}
-              </section>
-              <RoomTaskBar
-                sessionId={sessionId ?? ""}
-                payload={roomTasks}
-                context={taskBarContext}
-                loading={tasksLoading}
-                executions={planExecutions}
-                focusObjection={taskBarFocusObjection}
-                onRefresh={refreshTasks}
-                onFocusPlanAction={focusPlanAction}
-                onFocusTask={focusTask}
-                onRequestComposerPrefill={requestComposerPrefill}
-              />
+            <>
+              {sessionId && showVerifiedLoop ? (
+                <VerifiedLoopBanner
+                  view={verifiedLoopView}
+                  busy={verifiedLoopBusy || running || runBusy}
+                  error={verifiedLoopError}
+                  editGoal={verifiedEditGoal}
+                  editCriteria={verifiedEditCriteria}
+                  editPromise={verifiedEditPromise}
+                  onEditGoalChange={setVerifiedEditGoal}
+                  onEditCriteriaChange={setVerifiedEditCriteria}
+                  onEditPromiseChange={setVerifiedEditPromise}
+                  onApprove={() => void handleVerifiedApprove()}
+                  onReject={() => void handleVerifiedReject()}
+                />
+              ) : sessionId ? (
+                <GoalLoopBanner
+                  goalView={goalView}
+                  goalText={goalText}
+                  goalBusy={goalBusy}
+                  goalError={goalError}
+                  onGoalTextChange={setGoalText}
+                  onSave={() => void handleGoalSave()}
+                  onCheck={() => void handleGoalCheck()}
+                  onContinueDiscuss={handleGoalContinueDiscuss}
+                />
+              ) : null}
+              <ContextTasksPanel
+              sessionId={sessionId ?? ""}
+              tasks={[
+                ...(roomTasks?.tasks ?? []),
+                ...(roomTasks?.claimable ?? []),
+              ]}
+              objections={roomTasks?.objections ?? []}
+              disabled={running || synthesizing || runBusy}
+              onChanged={refreshTasks}
+            />
+            </>
+          ) : null}
+          {inspectorTab === "inbox" ? (
+            <>
+              <NotificationCenter onOpen={handleNotificationOpen} />
               <HumanInboxPanel
                 sessionId={sessionId}
                 reloadKey={inboxReloadKey}
@@ -2230,20 +2598,11 @@ export function RoomChat({
                 disabled={running || synthesizing || runBusy}
                 presentation="inspector"
               />
-            </div>
+            </>
           ) : null}
-          {inspectorTab === "quick" ? (
-            <div className="inspector-pane__section inspector-pane__section-card">
-              <QuickSettingsPanel
-                capabilities={agentCapabilities}
-                resolvedCwd={resolvedAgentCwd}
-                selectedAgents={selected}
-                onOpenFullSettings={onOpenSettings}
-              />
-            </div>
-          ) : null}
-        </InspectorPane>
+          </InspectorPane>
+        </ShellPortal>
       ) : null}
-    </div>
+    </>
   );
 }

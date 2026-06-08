@@ -40,6 +40,8 @@ export type ChatMessage = {
   roundDivider?: number;
   /** Live Cursor-style activity lines while the agent is running */
   activities?: string[];
+  /** Files sent with this user message (shown above bubble, not in composer). */
+  attachments?: string[];
 };
 
 const LABELS: Record<string, string> = {
@@ -55,6 +57,23 @@ const LABELS: Record<string, string> = {
 
 export function agentLabel(id: string): string {
   return LABELS[id] ?? id;
+}
+
+/** Split legacy `[첨부] …` user lines into attachment chips + visible body. */
+export function parseUserMessageContent(content: string): {
+  body: string;
+  attachments?: string[];
+} {
+  const trimmed = content.trim();
+  const attachOnly = /^\[첨부\]\s*(.+)$/s.exec(trimmed);
+  if (!attachOnly) return { body: content };
+
+  const payload = attachOnly[1].trim();
+  const multi = /^(\d+)개 파일$/.exec(payload);
+  if (multi) {
+    return { body: "", attachments: [`${multi[1]}개 파일`] };
+  }
+  return { body: "", attachments: [payload] };
 }
 
 function isPeerLine(line: {
@@ -89,11 +108,13 @@ export function chatLineToMessage(
   const peerChannel = isPeerLine(line);
   const humanSynthesis = isHumanSynthesisLine(line);
   if (line.role === "user") {
+    const parsed = parseUserMessageContent(line.content);
     return {
       id: `u-${i}`,
       role: "you",
       label: "나",
-      body: line.content,
+      body: parsed.body,
+      attachments: parsed.attachments,
       sent: true,
       chatLineIndex: i,
       peerChannel: false,
@@ -158,12 +179,30 @@ export function parseTranscript(md: string): ChatMessage[] {
   return messages;
 }
 
-export function topicAsUserMessage(topic: string): ChatMessage {
+export function topicAsUserMessage(
+  topic: string,
+  attachments?: string[],
+): ChatMessage {
   return {
     id: "topic",
     role: "you",
     label: "나",
     body: topic,
+    attachments: attachments?.length ? attachments : undefined,
     sent: true,
   };
+}
+
+const REPLY_WAIT_ROLES = new Set<AgentRole>([
+  "cursor",
+  "codex",
+  "claude",
+  "planner",
+  "critic",
+  "scribe",
+]);
+
+/** Agent roles that show a "reply in progress" waiting bubble. */
+export function isReplyWaitRole(role: AgentRole): boolean {
+  return REPLY_WAIT_ROLES.has(role);
 }

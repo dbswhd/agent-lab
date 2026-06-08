@@ -10,11 +10,14 @@ const BOTTOM_THRESHOLD_PX = 80;
 function isNearBottom(el: HTMLElement): boolean {
   return el.scrollHeight - el.scrollTop - el.clientHeight <= BOTTOM_THRESHOLD_PX;
 }
-
 function canScroll(el: HTMLElement): boolean {
   return el.scrollHeight > el.clientHeight + 8;
 }
 
+/** useMessagesScroll — attach to the workspace-scroll container.
+ *  Returns scrollRef (attach to the div), showJumpButton, scrollToBottom.
+ *  Auto-scrolls on new messages when user is near bottom.
+ */
 export function useMessagesScroll(
   scrollDeps: unknown[],
   enabled = true,
@@ -22,8 +25,7 @@ export function useMessagesScroll(
 ) {
   const scrollElRef = useRef<HTMLDivElement | null>(null);
   const [scrollTarget, setScrollTarget] = useState<HTMLDivElement | null>(null);
-  /** When true, new messages auto-scroll to bottom. Cleared when user scrolls up. */
-  const stickToBottomRef = useRef(true);
+  const stickRef = useRef(true);
   const [showJumpButton, setShowJumpButton] = useState(false);
 
   const scrollRef = useCallback((node: HTMLDivElement | null) => {
@@ -31,48 +33,36 @@ export function useMessagesScroll(
     setScrollTarget(node);
   }, []);
 
+  /* Reset on session change */
   useEffect(() => {
-    stickToBottomRef.current = true;
+    stickRef.current = true;
     setShowJumpButton(false);
   }, [resetKey]);
 
+  /* Scroll to bottom on mount / reset */
   useEffect(() => {
     if (!enabled || !scrollTarget) return;
-    stickToBottomRef.current = true;
+    stickRef.current = true;
     setShowJumpButton(false);
     scrollTarget.scrollTo({ top: scrollTarget.scrollHeight, behavior: "auto" });
   }, [scrollTarget, enabled, resetKey]);
 
+  /* Track scroll position */
   useEffect(() => {
-    if (!enabled || !scrollTarget) {
-      setShowJumpButton(false);
-      return;
-    }
-
+    if (!enabled || !scrollTarget) { setShowJumpButton(false); return; }
     const el = scrollTarget;
 
     const update = () => {
       const near = isNearBottom(el);
-      const scrollable = canScroll(el);
-      setShowJumpButton(!near && scrollable);
+      setShowJumpButton(!near && canScroll(el));
     };
-
-    const onScroll = () => {
-      stickToBottomRef.current = isNearBottom(el);
-      update();
-    };
+    const onScroll = () => { stickRef.current = isNearBottom(el); update(); };
 
     update();
     el.addEventListener("scroll", onScroll, { passive: true });
-
-    const ro = new ResizeObserver(() => {
-      requestAnimationFrame(update);
-    });
+    const ro = new ResizeObserver(() => requestAnimationFrame(update));
     ro.observe(el);
-
-    const mo = new MutationObserver(() => {
-      requestAnimationFrame(update);
-    });
+    const mo = new MutationObserver(() => requestAnimationFrame(update));
     mo.observe(el, { childList: true });
 
     return () => {
@@ -82,18 +72,19 @@ export function useMessagesScroll(
     };
   }, [scrollTarget, enabled, resetKey]);
 
+  /* Stick to bottom when new messages arrive */
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional dep array
   useEffect(() => {
     if (!enabled) return;
     const el = scrollElRef.current;
-    if (!el || !stickToBottomRef.current) return;
+    if (!el || !stickRef.current) return;
     el.scrollTo({ top: el.scrollHeight, behavior: "auto" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- scroll when chat content changes
   }, scrollDeps);
 
   const scrollToBottom = useCallback(() => {
     const el = scrollElRef.current;
     if (!el) return;
-    stickToBottomRef.current = true;
+    stickRef.current = true;
     setShowJumpButton(false);
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, []);
@@ -101,6 +92,9 @@ export function useMessagesScroll(
   return { scrollRef, scrollElRef, showJumpButton, scrollToBottom };
 }
 
+/** useScrollToTop — scroll the container to top on reset/enabled change.
+ *  Restored export — used by WorkPanel and PlanExecutePanel.
+ */
 export function useScrollToTop(
   enabled: boolean,
   resetKey: unknown,
@@ -128,6 +122,11 @@ type ButtonProps = {
   onClick: () => void;
 };
 
+/** ScrollToBottomButton — floating ↓ button shown when scrolled up.
+ *
+ *  Uses .scroll-to-bottom-btn / .is-visible (overlays.css).
+ *  Position: absolute bottom-right inside a position:relative scroll container.
+ */
 export function ScrollToBottomButton({ visible, onClick }: ButtonProps) {
   return (
     <button
@@ -147,7 +146,7 @@ export function ScrollToBottomButton({ visible, onClick }: ButtonProps) {
         strokeWidth="1.75"
         strokeLinecap="round"
         strokeLinejoin="round"
-        aria-hidden
+        aria-hidden="true"
       >
         <path d="M8 3.5v9" />
         <path d="m4.5 9 3.5 3.5L11.5 9" />

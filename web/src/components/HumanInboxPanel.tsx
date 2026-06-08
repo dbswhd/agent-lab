@@ -5,6 +5,9 @@ import {
   runPlanDryRun,
   type HumanInboxItem,
 } from "../api/client";
+import { Avatar } from "./Avatar";
+import { useLocale } from "../i18n/useLocale";
+import type { AgentRole } from "../utils/transcript";
 
 type Props = {
   sessionId: string | null;
@@ -36,6 +39,161 @@ function hasQuestionOptions(item: HumanInboxItem): boolean {
   return (item.options?.length ?? 0) > 0;
 }
 
+function inboxAgent(item: HumanInboxItem): AgentRole {
+  const src = (item.source ?? "cursor").toLowerCase();
+  if (src === "codex" || src === "claude" || src === "cursor") return src;
+  return "cursor";
+}
+
+function formatInboxTime(iso?: string): string {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleTimeString(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "";
+  }
+}
+
+type InboxRowProps = {
+  item: HumanInboxItem;
+  planRevision: string | null;
+  disabled?: boolean;
+  busyId: string | null;
+  freeformDraft: Record<string, string>;
+  setFreeformDraft: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  onQuestion: (item: HumanInboxItem, optionId: string) => void;
+  onFreeform: (item: HumanInboxItem) => void;
+  onBuild: (item: HumanInboxItem, decision: "go" | "defer" | "reject") => void;
+  onDefer: (item: HumanInboxItem) => void;
+  locale: "en" | "ko";
+};
+
+function InboxRow({
+  item,
+  planRevision,
+  disabled,
+  busyId,
+  freeformDraft,
+  setFreeformDraft,
+  onQuestion,
+  onFreeform,
+  onBuild,
+  onDefer,
+  locale,
+}: InboxRowProps) {
+  const ko = locale === "ko";
+  const subject =
+    item.kind === "build" ? (item.summary ?? item.prompt) : item.prompt;
+  const body =
+    item.kind === "build" && item.prompt !== subject ? item.prompt : null;
+  const planStale =
+    item.kind === "build" &&
+    item.plan_revision &&
+    planRevision &&
+    item.plan_revision !== planRevision;
+  const busy = disabled || busyId === item.id;
+
+  return (
+    <div className={`inbox-row inbox-row--${item.kind}`}>
+      <div className="inbox-row__head">
+        <Avatar role={inboxAgent(item)} size={20} />
+        <span className="inbox-row__subject">{subject}</span>
+        <span className="inbox-row__time">{formatInboxTime(item.created_at)}</span>
+      </div>
+      {body ? <p className="inbox-row__body">{body}</p> : null}
+      {item.action_ref ? (
+        <p className="inbox-row__body inbox-row__meta">{item.action_ref}</p>
+      ) : null}
+      {planStale ? (
+        <p className="inbox-row__body inbox-row__stale">
+          {ko ? "plan 갱신됨 — 확인 후 GO" : "Plan updated — review before GO"}
+        </p>
+      ) : null}
+      {item.refs && item.refs.length > 0 ? (
+        <p className="inbox-row__body inbox-row__meta">{item.refs.join(" · ")}</p>
+      ) : null}
+      {item.kind === "question" ? (
+        <div className="inbox-row__options">
+          {(item.options ?? []).map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              className="btn btn--sm"
+              disabled={busy}
+              onClick={() => void onQuestion(item, opt.id)}
+            >
+              {opt.label}
+            </button>
+          ))}
+          {!hasQuestionOptions(item) ? (
+            <>
+              <textarea
+                className="inbox-row__input"
+                rows={2}
+                placeholder={ko ? "방향을 입력…" : "Reply…"}
+                value={freeformDraft[item.id] ?? ""}
+                disabled={busy}
+                onChange={(e) =>
+                  setFreeformDraft((prev) => ({
+                    ...prev,
+                    [item.id]: e.target.value,
+                  }))
+                }
+              />
+              <button
+                type="button"
+                className="btn btn--sm btn--ok"
+                disabled={busy || !(freeformDraft[item.id] ?? "").trim()}
+                onClick={() => void onFreeform(item)}
+              >
+                {ko ? "답하기" : "Send"}
+              </button>
+            </>
+          ) : null}
+          <button
+            type="button"
+            className="btn btn--sm"
+            disabled={busy}
+            onClick={() => void onDefer(item)}
+          >
+            {ko ? "건너뛰기" : "Skip"}
+          </button>
+        </div>
+      ) : (
+        <div className="inbox-row__options inbox-row__options--build">
+          <button
+            type="button"
+            className="btn btn--sm btn--ok"
+            disabled={busy}
+            onClick={() => void onBuild(item, "go")}
+          >
+            GO
+          </button>
+          <button
+            type="button"
+            className="btn btn--sm"
+            disabled={busy}
+            onClick={() => void onBuild(item, "defer")}
+          >
+            {ko ? "보류" : "Defer"}
+          </button>
+          <button
+            type="button"
+            className="btn btn--sm btn--danger"
+            disabled={busy}
+            onClick={() => void onBuild(item, "reject")}
+          >
+            {ko ? "거부" : "Reject"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function HumanInboxPanel({
   sessionId,
   reloadKey = 0,
@@ -47,6 +205,8 @@ export function HumanInboxPanel({
   disabled,
   presentation = "inline",
 }: Props) {
+  const { locale } = useLocale();
+  const ko = locale === "ko";
   const [items, setItems] = useState<HumanInboxItem[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -127,9 +287,6 @@ export function HumanInboxPanel({
       if (!sessionId || disabled) return;
       setBusyId(item.id);
       try {
-        // GO → trigger dry-run first; only resolve the item if it starts.
-        // The dry-run endpoint re-checks gates (objection/snapshot/pre_execute)
-        // and throws on 409, leaving the item pending for retry/defer.
         if (decision === "go") {
           const action = parseActionRef(item.action_ref);
           if (action) {
@@ -172,7 +329,29 @@ export function HumanInboxPanel({
     [sessionId, disabled, reload, onResolved],
   );
 
-  if (!sessionId || pending.length === 0) {
+  if (!sessionId) {
+    return null;
+  }
+
+  if (presentation === "inspector") {
+    return (
+      <InspectorInboxView
+        items={items}
+        error={error}
+        disabled={disabled}
+        busyId={busyId}
+        planRevision={planRevision}
+        freeformDraft={freeformDraft}
+        setFreeformDraft={setFreeformDraft}
+        onQuestion={handleQuestion}
+        onFreeform={handleFreeform}
+        onBuild={handleBuild}
+        onDefer={handleDefer}
+      />
+    );
+  }
+
+  if (pending.length === 0) {
     return null;
   }
 
@@ -182,9 +361,26 @@ export function HumanInboxPanel({
   const title =
     presentation === "popup"
       ? pending[0]?.kind === "build"
-        ? "Build 승인 필요"
-        : "질문에 답해야 합니다"
+        ? ko
+          ? "Build 승인 필요"
+          : "Build approval required"
+        : ko
+          ? "질문에 답해야 합니다"
+          : "Answer required"
       : "Human Inbox";
+
+  const rowProps = {
+    planRevision,
+    disabled,
+    busyId,
+    freeformDraft,
+    setFreeformDraft,
+    onQuestion: handleQuestion,
+    onFreeform: handleFreeform,
+    onBuild: handleBuild,
+    onDefer: handleDefer,
+    locale,
+  };
 
   return (
     <div
@@ -199,9 +395,9 @@ export function HumanInboxPanel({
       <div className="human-inbox__header">
         <span className="human-inbox__title">{title}</span>
         <span className="human-inbox__counts">
-          {questionCount > 0 ? `방향 ${questionCount}` : null}
+          {questionCount > 0 ? (ko ? `방향 ${questionCount}` : `${questionCount} question`) : null}
           {questionCount > 0 && buildCount > 0 ? " · " : null}
-          {buildCount > 0 ? `실행 ${buildCount}` : null}
+          {buildCount > 0 ? (ko ? `실행 ${buildCount}` : `${buildCount} build`) : null}
         </span>
         {presentation === "popup" ? (
           <span className="human-inbox__header-actions">
@@ -219,9 +415,9 @@ export function HumanInboxPanel({
                 type="button"
                 className="human-inbox__header-btn"
                 onClick={onDismiss}
-                aria-label="Human Inbox popup 닫기"
+                aria-label={ko ? "Human Inbox popup 닫기" : "Dismiss Human Inbox popup"}
               >
-                닫기
+                {ko ? "닫기" : "Dismiss"}
               </button>
             ) : null}
           </span>
@@ -230,114 +426,89 @@ export function HumanInboxPanel({
       {error ? <div className="human-inbox__error">{error}</div> : null}
       <div className="human-inbox__items">
         {pending.map((item) => (
-          <div
-            key={item.id}
-            className={`human-inbox__item human-inbox__item--${item.kind}`}
-          >
-            <div className="human-inbox__prompt">
-              {item.kind === "build" ? item.summary ?? item.prompt : item.prompt}
-            </div>
-            {item.action_ref ? (
-              <div className="human-inbox__meta">{item.action_ref}</div>
-            ) : null}
-            {item.kind === "build" &&
-            item.plan_revision &&
-            planRevision &&
-            item.plan_revision !== planRevision ? (
-              <div className="human-inbox__meta human-inbox__plan-stale">
-                plan 갱신됨 — 확인
-              </div>
-            ) : null}
-            {item.refs && item.refs.length > 0 ? (
-              <div className="human-inbox__meta human-inbox__refs">
-                {item.refs.join(" · ")}
-              </div>
-            ) : null}
-            {item.kind === "question" ? (
-              <div className="human-inbox__options">
-                {(item.options ?? []).map((opt) => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    className="human-inbox__option"
-                    disabled={disabled || busyId === item.id}
-                    onClick={() => void handleQuestion(item, opt.id)}
-                  >
-                    <span className="human-inbox__option-label">{opt.label}</span>
-                    {opt.description ? (
-                      <span className="human-inbox__option-desc">{opt.description}</span>
-                    ) : null}
-                  </button>
-                ))}
-                {!hasQuestionOptions(item) ? (
-                  <div className="human-inbox__freeform">
-                    <textarea
-                      className="human-inbox__freeform-input"
-                      rows={2}
-                      placeholder="방향을 입력…"
-                      value={freeformDraft[item.id] ?? ""}
-                      disabled={disabled || busyId === item.id}
-                      onChange={(e) =>
-                        setFreeformDraft((prev) => ({
-                          ...prev,
-                          [item.id]: e.target.value,
-                        }))
-                      }
-                    />
-                    <button
-                      type="button"
-                      className="human-inbox__freeform-submit"
-                      disabled={
-                        disabled ||
-                        busyId === item.id ||
-                        !(freeformDraft[item.id] ?? "").trim()
-                      }
-                      onClick={() => void handleFreeform(item)}
-                    >
-                      답하기
-                    </button>
-                  </div>
-                ) : null}
-                <button
-                  type="button"
-                  className="human-inbox__skip"
-                  disabled={disabled || busyId === item.id}
-                  onClick={() => void handleDefer(item)}
-                >
-                  건너뛰기
-                </button>
-              </div>
-            ) : (
-              <div className="human-inbox__build-actions">
-                <button
-                  type="button"
-                  className="human-inbox__go"
-                  disabled={disabled || busyId === item.id}
-                  onClick={() => void handleBuild(item, "go")}
-                >
-                  GO
-                </button>
-                <button
-                  type="button"
-                  className="human-inbox__defer"
-                  disabled={disabled || busyId === item.id}
-                  onClick={() => void handleBuild(item, "defer")}
-                >
-                  보류
-                </button>
-                <button
-                  type="button"
-                  className="human-inbox__reject"
-                  disabled={disabled || busyId === item.id}
-                  onClick={() => void handleBuild(item, "reject")}
-                >
-                  거부
-                </button>
-              </div>
-            )}
-          </div>
+          <InboxRow key={item.id} item={item} {...rowProps} />
         ))}
       </div>
     </div>
+  );
+}
+
+type InspectorInboxProps = {
+  items: HumanInboxItem[];
+  error: string | null;
+  disabled?: boolean;
+  busyId: string | null;
+  planRevision: string | null;
+  freeformDraft: Record<string, string>;
+  setFreeformDraft: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  onQuestion: (item: HumanInboxItem, optionId: string) => void;
+  onFreeform: (item: HumanInboxItem) => void;
+  onBuild: (item: HumanInboxItem, decision: "go" | "defer" | "reject") => void;
+  onDefer: (item: HumanInboxItem) => void;
+};
+
+function InspectorInboxView({
+  items,
+  error,
+  disabled,
+  busyId,
+  planRevision,
+  freeformDraft,
+  setFreeformDraft,
+  onQuestion,
+  onFreeform,
+  onBuild,
+  onDefer,
+}: InspectorInboxProps) {
+  const { msg, locale } = useLocale();
+
+  return (
+    <section className="ctx-section">
+      <div className="ctx-section__label">{msg.humanInbox}</div>
+      {error ? <div className="ctx-empty">{error}</div> : null}
+      {items.length === 0 ? (
+        <div className="ctx-empty">{msg.inboxEmpty}</div>
+      ) : (
+        items.map((item) => {
+          if (item.status !== "pending") {
+            const subject =
+              item.kind === "build"
+                ? (item.summary ?? item.prompt)
+                : item.prompt;
+            return (
+              <div
+                key={item.id}
+                className="inbox-row inbox-row--resolved"
+              >
+                <div className="inbox-row__head">
+                  <Avatar role={inboxAgent(item)} size={20} />
+                  <span className="inbox-row__subject">{subject}</span>
+                  <span className="inbox-row__time">
+                    {formatInboxTime(item.created_at)}
+                  </span>
+                </div>
+                <p className="inbox-row__body">{item.status}</p>
+              </div>
+            );
+          }
+          return (
+            <InboxRow
+              key={item.id}
+              item={item}
+              planRevision={planRevision}
+              disabled={disabled}
+              busyId={busyId}
+              freeformDraft={freeformDraft}
+              setFreeformDraft={setFreeformDraft}
+              onQuestion={onQuestion}
+              onFreeform={onFreeform}
+              onBuild={onBuild}
+              onDefer={onDefer}
+              locale={locale}
+            />
+          );
+        })
+      )}
+    </section>
   );
 }

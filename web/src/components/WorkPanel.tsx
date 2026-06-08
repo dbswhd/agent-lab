@@ -1,246 +1,159 @@
-import type { PlanExecutionRecord, SessionDetail } from "../api/client";
-import type { PlanMetaView } from "../utils/planMeta";
-import type { StoredPlanAction } from "../utils/planExecuteHistory";
+import { useEffect } from "react";
+import type { SessionDetail } from "../api/client";
 import type { RoomTasksPayload } from "../api/client";
-import type { ConsensusDryRunProposal } from "./ConsensusDryRunGateBar";
-import { PlanDocument } from "./PlanDocument";
-import { PlanTabToolbar } from "./PlanTabToolbar";
-import { PlanExecutePanel } from "./PlanExecutePanel";
-import { ExecuteQueueBar } from "./ExecuteQueueBar";
-import { ConsensusDryRunGateBar } from "./ConsensusDryRunGateBar";
+import type { PlanMetaView } from "../utils/planMeta";
+import { workPlanMetaLine } from "../utils/planMeta";
+import { WorkStatusBar, resolveWorkPhase } from "./WorkStatusBar";
 import { CollapsibleGlassPanel } from "./CollapsibleGlassPanel";
-import {
-  WorkStatusBar,
-  resolveWorkPhase,
-} from "./WorkStatusBar";
-import type { PlanRefWarningsView } from "../utils/planRefWarnings";
-
-function statusLabel(activePending: PlanExecutionRecord | null | undefined): string {
-  if (!activePending) return "Plan ready";
-  if (activePending.status === "merge_conflict") return "Merge conflict";
-  if (activePending.status === "merged") return "Verified";
-  if (activePending.status === "blocked_isolation") return "Blocked";
-  return "Review pending";
-}
-
-function executionHistory(
-  run: SessionDetail["run"] | null | undefined,
-): PlanExecutionRecord[] {
-  const rows = Array.isArray(run?.executions)
-    ? (run.executions as PlanExecutionRecord[])
-    : [];
-  return rows.slice(-5).reverse();
-}
+import { PlanExecutePanel } from "./PlanExecutePanel";
+import type { PlanExecutionRecord } from "../api/client";
 
 type Props = {
   sessionId: string;
   session: SessionDetail | null;
   planMd: string;
   planMeta: PlanMetaView;
-  planRefWarnings: PlanRefWarningsView;
-  planAfterSend: boolean;
-  onPlanAfterSendChange: (on: boolean) => void;
+  planStaleNotice?: string | null;
+  workFocus?: "execute" | "plan" | null;
+  onWorkFocusHandled?: () => void;
   synthesizing: boolean;
   running: boolean;
   runBusy: boolean;
   onSynthesizeNow: () => void;
-  hasPendingExecution: boolean;
-  consensusProposal: ConsensusDryRunProposal | null;
-  consensusGateBusy: boolean;
-  executeBusy: boolean;
-  onConsensusDryRun: () => void;
-  onDismissConsensus: () => void;
-  onApproveExecute: () => void;
-  onRejectExecute: () => void;
   onPlanRefClick: (line: number) => void;
   onFocusTask: (taskId: string) => void;
   onFocusObjection: (id: string, actionIndex?: number) => void;
   onSessionUpdated: () => void;
   roomTasks: RoomTasksPayload | null;
   cursorReady: boolean;
-  storedActions: StoredPlanAction[];
-  activePending: PlanExecutionRecord | null | undefined;
+  latestExecution?: PlanExecutionRecord | null;
+  hasPendingExecution?: boolean;
+  hasDryRunDiff?: boolean;
 };
 
+/** Work tab — prototype `work-surface` + PlanExecutePanel only. */
 export function WorkPanel({
   sessionId,
   session,
   planMd,
   planMeta,
-  planRefWarnings,
-  planAfterSend,
-  onPlanAfterSendChange,
+  planStaleNotice = null,
+  workFocus = null,
+  onWorkFocusHandled,
   synthesizing,
   running,
   runBusy,
   onSynthesizeNow,
-  hasPendingExecution,
-  consensusProposal,
-  consensusGateBusy,
-  executeBusy,
-  onConsensusDryRun,
-  onDismissConsensus,
-  onApproveExecute,
-  onRejectExecute,
   onPlanRefClick,
   onFocusTask,
   onFocusObjection,
   onSessionUpdated,
   roomTasks,
   cursorReady,
-  storedActions,
-  activePending,
+  latestExecution = null,
+  hasPendingExecution = false,
+  hasDryRunDiff = false,
 }: Props) {
   const hasPlan = Boolean(planMd.trim());
-  const phase = resolveWorkPhase({
+  const disabled = running || synthesizing || runBusy;
+  const showPlanStalePanel = Boolean(planStaleNotice);
+  const showSyncFailedBar =
+    Boolean(planMeta.pendingAgreement) && !showPlanStalePanel;
+  const workPhase = resolveWorkPhase({
     hasPlan,
     hasPendingExecution,
-    hasDryRunDiff: consensusProposal != null || Boolean(activePending?.diff),
+    hasDryRunDiff,
     pendingAgreement: Boolean(planMeta.pendingAgreement),
+    latestExecution,
   });
-  const history = executionHistory(session?.run);
-  const selectedStatus = statusLabel(activePending);
+
+  useEffect(() => {
+    if (!workFocus) return;
+    const id =
+      workFocus === "execute" ? "work-execute-queue" : "work-plan-review";
+    window.setTimeout(() => {
+      document
+        .getElementById(id)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      onWorkFocusHandled?.();
+    }, 80);
+  }, [workFocus, onWorkFocusHandled]);
 
   if (!hasPlan) {
     return (
-      <div className="workspace-empty-state workspace-panel--work">
-        plan.md가 아직 없습니다. Transcript에서 토론을 시작하거나 「지금 정리」를
-        사용하세요.
+      <div className="work-surface">
+        <div className="empty-state">
+          <span className="empty-state__icon" aria-hidden>
+            <svg
+              viewBox="0 0 24 24"
+              width="24"
+              height="24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+            >
+              <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+              <path d="M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" />
+              <path d="M9 12h6M9 16h4" />
+            </svg>
+          </span>
+          <span className="empty-state__title">plan.md 없음</span>
+          <span className="empty-state__hint">
+            Transcript에서 토론을 시작하거나 「지금 정리」로 plan을 만드세요.
+          </span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="work-panel plan-tab-cluster workspace-document-panel workspace-document-panel--flat">
-        <div className="work-panel__header workspace-document-panel__header workspace-document-panel__header--work">
-          <div>
-            <strong>Work</strong>
-            <span>실행 판단 · diff review · merge verify</span>
-          </div>
-          <div className="work-panel__badges" aria-label="Work 상태">
-            <span className="work-panel__phase-badge">{selectedStatus}</span>
-            {planMeta.pendingAgreement ? (
-              <span className="work-panel__phase-badge work-panel__phase-badge--warn">
-                stale plan
-              </span>
-            ) : null}
-            {hasPendingExecution ? (
-              <span className="work-panel__phase-badge work-panel__phase-badge--action">
-                approval
-              </span>
-            ) : null}
-          </div>
-        </div>
-
-        <WorkStatusBar phase={phase} planMeta={planMeta} hasPlan={hasPlan} />
-
-        <PlanTabToolbar
-          planAfterSend={planAfterSend}
-          onPlanAfterSendChange={onPlanAfterSendChange}
-          synthesizing={synthesizing}
-          running={running}
-          disabled={runBusy}
-          onSynthesizeNow={onSynthesizeNow}
-          planMeta={planMeta}
+    <div className="work-stack">
+      <div className="work-surface work-surface--chrome">
+        <WorkStatusBar
+          phase={workPhase}
+          metaLine={workPlanMetaLine(planMeta)}
+          hasPlan={hasPlan}
         />
-
-        {planMeta.pendingAgreement ? (
-          <div className="plan-meta-bar plan-meta-bar--sync_failed work-panel__alert">
+      </div>
+      {showPlanStalePanel ? (
+        <div className="work-surface work-surface--alert work-plan-stale">
+          <CollapsibleGlassPanel
+            title="plan.md 변경됨"
+            summary={planStaleNotice}
+            variant="warn"
+            defaultOpen
+          >
+            <p className="plan-stale">{planStaleNotice}</p>
+          </CollapsibleGlassPanel>
+        </div>
+      ) : null}
+      {showSyncFailedBar ? (
+        <div className="work-surface work-surface--alert">
+          <div className="plan-meta-bar plan-meta-bar--sync_failed">
             <p className="plan-meta-bar__line">{planMeta.freshnessLabel}</p>
             <button
               type="button"
-              className="room-plan-btn room-plan-btn--accent"
-              disabled={running || synthesizing}
+              className="plan-btn plan-btn--primary"
+              disabled={disabled}
               onClick={onSynthesizeNow}
             >
               {synthesizing ? "정리 중…" : "다시 정리"}
             </button>
           </div>
-        ) : null}
-
-        {activePending ? (
-          <ExecuteQueueBar
-            pending={activePending}
-            storedActions={storedActions}
-            busy={executeBusy}
-            disabled={running || synthesizing || runBusy}
-            onApprove={onApproveExecute}
-            onReject={onRejectExecute}
-          />
-        ) : null}
-
-        {consensusProposal ? (
-          <ConsensusDryRunGateBar
-            proposal={consensusProposal}
-            busy={consensusGateBusy || executeBusy}
-            disabled={running || synthesizing || runBusy}
-            onDryRun={onConsensusDryRun}
-            onOpenPlan={() => {}}
-            onDismiss={onDismissConsensus}
-          />
-        ) : null}
-
-        {planRefWarnings.bannerText ? (
-          <CollapsibleGlassPanel
-            className="plan-ref-warn-panel"
-            title="ref 경고"
-            summary={planRefWarnings.bannerText}
-            variant="warn"
-            defaultOpen={false}
-          >
-            <p className="plan-ref-warn-panel__text">
-              {planRefWarnings.bannerText}
-            </p>
-          </CollapsibleGlassPanel>
-        ) : null}
-
-        <section className="work-panel__lane work-panel__lane--review" aria-label="Review lane">
-          <div className="work-panel__lane-head">
-            <div>
-              <h2>Action & Review</h2>
-              <p>지금 실행할 action을 고르고 dry-run diff를 승인·거부·재작업합니다.</p>
-            </div>
-          </div>
-          <PlanExecutePanel
-            sessionId={sessionId}
-            run={session?.run}
-            linkedTasks={roomTasks?.tasks}
-            cursorReady={cursorReady}
-            disabled={running || synthesizing || runBusy}
-            onChatRefClick={onPlanRefClick}
-            onFocusTask={onFocusTask}
-            onFocusObjection={onFocusObjection}
-            onUpdated={onSessionUpdated}
-          />
-        </section>
-
-        {history.length > 0 ? (
-          <section className="work-panel__history" aria-label="Execution history">
-            <div className="work-panel__lane-head">
-              <h2>Execution History</h2>
-            </div>
-            <ul>
-              {history.map((execution) => (
-                <li key={execution.id ?? `${execution.action_index}-${execution.status}`}>
-                  <span className="work-panel__history-status">{execution.status}</span>
-                  <span>{execution.exec_branch ?? execution.action_key ?? `#${execution.action_index ?? "?"}`}</span>
-                  {execution.merge?.commit_sha ? (
-                    <code>{execution.merge.commit_sha.slice(0, 7)}</code>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
-
-        <details className="work-panel__evidence" open={false}>
-          <summary>Plan Evidence</summary>
-          <PlanDocument
-            planMd={planMd}
-            skipExecuteSections
-            onRefClick={onPlanRefClick}
-          />
-        </details>
+        </div>
+      ) : null}
+      <PlanExecutePanel
+        sessionId={sessionId}
+        run={session?.run}
+        linkedTasks={roomTasks?.tasks}
+        cursorReady={cursorReady}
+        disabled={disabled}
+        onChatRefClick={onPlanRefClick}
+        onFocusTask={onFocusTask}
+        onFocusObjection={onFocusObjection}
+        onUpdated={onSessionUpdated}
+      />
     </div>
   );
 }

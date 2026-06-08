@@ -1,429 +1,177 @@
-/* macOS Kit — semantic colors (light default, dark via data-theme) */
-
-:root,
-[data-theme="light"] {
-  color-scheme: light;
-
-  /* Window & chrome — glass surfaces (semi-transparent for backdrop-filter) */
-  --mac-window-bg: rgba(242, 242, 247, 0.88);
-  --mac-content-bg: #ffffff;
-  --mac-sidebar-bg: #f2f2f7;
-  --mac-toolbar-bg: rgba(255, 255, 255, 0.72);
-  --composer-capsule-bg: #fafafa;
-  --mac-titlebar-bg: rgba(242, 242, 247, 0.70);
-  --mac-glass-blur: 24px;
-
-  /* Fills (HIG) */
-  --mac-fill-primary: rgba(0, 0, 0, 0.07);
-  --mac-fill-secondary: rgba(0, 0, 0, 0.05);
-  --mac-fill-tertiary: rgba(0, 0, 0, 0.03);
-  --mac-fill-quaternary: rgba(0, 0, 0, 0.02);
-
-  /* Labels */
-  --mac-label-primary: rgba(0, 0, 0, 0.88);
-  --mac-label-secondary: rgba(0, 0, 0, 0.5);
-  --mac-label-tertiary: rgba(0, 0, 0, 0.32);
-
-  /* System */
-  --mac-accent: #007aff;
-  --mac-accent-hover: #0066d6;
-  --mac-accent-muted: rgba(0, 122, 255, 0.14);
-  --mac-destructive: #ff3b30;
-  --mac-success: #34c759;
-  --mac-warning: #ff9500;
-
-  --mac-separator: rgba(0, 0, 0, 0.09);
-  --mac-separator-strong: rgba(0, 0, 0, 0.12);
-  --mac-focus-ring: rgba(0, 122, 255, 0.45);
-
-  /* Alert — light frosted sheet (not LG Medium dark stack) */
-  --mac-alert-bg: rgba(255, 255, 255, 0.88);
-  --mac-alert-width: 280px;
-  --mac-alert-min-height: 0;
-  --mac-alert-radius: 14px;
-  --mac-menu-surface: rgba(255, 255, 255, 0.94);
-  --mac-segmented-bg: rgba(0, 0, 0, 0.04);
-  --mac-control-height: 24px;
-  --mac-radius-menu: 13px;
-  --mac-radius-menu-item: 5px;
-  --mac-push-button-bg: rgba(0, 0, 0, 0.05);
-  --mac-push-button-hover: rgba(0, 0, 0, 0.08);
-
-  /* Liquid Glass — Medium UI (Alert, Menu, Sidebar, Sheet, Notification) */
-  --lg-medium-tint: rgba(245, 245, 245, 0.67);
-  --lg-medium-base: #262626;
-  --lg-medium-blend: normal, color-dodge;
-  --lg-medium-shadow: 0 8px 40px rgba(0, 0, 0, 0.12);
-
-  /* Liquid Glass — Small (toolbar pills / floating chrome) */
-  --lg-small-tint-1: #f7f7f7;
-  --lg-small-tint-2: rgba(255, 255, 255, 0.5);
-  --lg-small-base: #333333;
-  --lg-small-blend: plus-darker, normal, color-dodge;
-
-  /* Liquid Glass — sidebar only (subtle frosted panel) */
-  --lg-sidebar-blur: 22px;
-  --lg-sidebar-saturate: 1.42;
-  --lg-sidebar-surface: rgba(255, 255, 255, 0.58);
-  --lg-sidebar-surface-muted: rgba(255, 255, 255, 0.42);
-  --lg-sidebar-surface-elevated: rgba(255, 255, 255, 0.68);
-  --lg-sidebar-border: rgba(0, 0, 0, 0.06);
-  --lg-sidebar-edge: inset 0 1px 0 rgba(255, 255, 255, 0.72);
-  --lg-sidebar-tint: radial-gradient(
-      ellipse 100% 75% at 0% -8%,
-      rgba(0, 122, 255, 0.055),
-      transparent 58%
-    ),
-    var(--mac-sidebar-bg);
-
-  /* Glass Effect overlay (over Liquid Glass surfaces) */
-  --lg-overlay: rgba(0, 0, 0, 0.2);
-  --lg-menu-overlay: rgba(0, 0, 0, 0.004);
-
-  /* Collapsible glass panels — frosted alert sheet (no dark LG base / no stroke) */
-  --lg-panel-blur: 40px;
-  --lg-panel-saturate: 1.8;
-  --lg-panel-surface: var(--mac-alert-bg);
-  --lg-panel-warn-surface: color-mix(
-    in srgb,
-    var(--mac-orange, #c93400) 9%,
-    var(--mac-alert-bg)
-  );
-  --lg-panel-float-shadow: 0 10px 38px rgba(0, 0, 0, 0.09);
-
-  /* Traffic Lights (Standard) */
-  --mac-tl-size: 14px;
-  --mac-tl-close: #ff736a;
-  --mac-tl-min: #febc2e;
-  --mac-tl-zoom: #19c332;
-  --mac-tl-border: 0.5px solid rgba(0, 0, 0, 0.1);
-
-  /* Focus ring (2-layer per kit) */
-  --mac-focus-thick: 0 0 0 3.5px rgba(0, 122, 255, 0.25);
-  --mac-focus-thin: 0 0 0 1px rgba(0, 122, 255, 0.15);
-
-  /* Destructive (tinted bg per kit) */
-  --mac-destructive-bg: rgba(255, 56, 60, 0.23);
-  --mac-destructive-fg: #ff383c;
-
-  /* Sheet / Dialog trailing-default primary (Figma: Trailing Default Button) */
-  --mac-button-trailing-tint: #0d6fff;
-  --mac-button-trailing-tint-hover: #0a5fe0;
-
-  --shadow-menu: 0 0 2px rgba(0, 0, 0, 0.1), 0 0 25px rgba(0, 0, 0, 0.16);
-
-  /* Notification */
-  --mac-notification-radius: 16px;
-  --mac-notification-width: 344px;
-
-  /* Messages */
-  /* Chat bubble — Apple Messages palette */
-  --color-bubble-sent: #007aff;
-  --color-bubble-sent-text: #ffffff;
-  --color-bubble-sender: #8e8e93;
-  --color-bubble-received: #e5e5ea;
-  --color-bubble-received-text: #000000;
-  --color-agent-bubble-cursor: #3196d2;
-  --color-agent-bubble-codex: #6e54c8;
-  --color-agent-bubble-claude: #dc6438;
-  --color-agent-bubble-cursor-text: rgba(255, 255, 255, 0.97);
-  --color-agent-bubble-codex-text: rgba(255, 255, 255, 0.97);
-  --color-agent-bubble-claude-text: rgba(255, 255, 255, 0.97);
-
-  --mac-app-bg: #e5e5ea;
-  --shadow-window: 0 0 0 1px rgba(0, 0, 0, 0.23), 0 16px 48px rgba(0, 0, 0, 0.35);
-  --shadow-elevated: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-[data-theme="dark"] {
-  color-scheme: dark;
-
-  --mac-window-bg: rgba(28, 28, 30, 0.78);
-  --mac-content-bg: #141414;
-  --mac-sidebar-bg: #2c2c2e;
-  --mac-toolbar-bg: rgba(44, 44, 46, 0.56);
-  --composer-capsule-bg: #323234;
-  --composer-capsule-glass: rgba(50, 50, 52, 0.72);
-  --composer-capsule-fill-top: rgba(50, 50, 52, 0.68);
-  --composer-capsule-fill-mid: rgba(50, 50, 52, 0.38);
-  --composer-capsule-fill-bottom: transparent;
-  --composer-capsule-fade-bleed: 6px;
-  --mac-titlebar-bg: rgba(44, 44, 46, 0.56);
-
-  --mac-fill-primary: rgba(255, 255, 255, 0.11);
-  --mac-fill-secondary: rgba(255, 255, 255, 0.08);
-  --mac-fill-tertiary: rgba(255, 255, 255, 0.05);
-  --mac-fill-quaternary: rgba(255, 255, 255, 0.03);
-
-  --mac-label-primary: rgba(255, 255, 255, 0.92);
-  --mac-label-secondary: rgba(255, 255, 255, 0.52);
-  --mac-label-tertiary: rgba(255, 255, 255, 0.34);
-
-  --mac-accent: #0a84ff;
-  --mac-accent-hover: #409cff;
-  --mac-accent-muted: rgba(10, 132, 255, 0.2);
-
-  --mac-separator: rgba(255, 255, 255, 0.09);
-  --mac-separator-strong: rgba(255, 255, 255, 0.14);
-  --mac-focus-ring: rgba(10, 132, 255, 0.5);
-
-  --mac-alert-bg: rgba(44, 44, 46, 0.94);
-  --mac-menu-surface: rgba(44, 44, 46, 0.96);
-  --mac-segmented-bg: rgba(255, 255, 255, 0.08);
-
-  --chat-turn-glass-blur: 16px;
-  --chat-turn-glass-saturate: 1.06;
-  --chat-turn-glass-border: color-mix(in srgb, var(--mac-separator) 45%, transparent);
-  --chat-turn-glass-highlight: color-mix(in srgb, #fff 10%, transparent);
-  --chat-turn-glass-shadow: 0 2px 12px rgba(0, 0, 0, 0.22);
-  --chat-turn-glass-fill-mix: 42%;
-  --chat-turn-glass-sheen: rgba(255, 255, 255, 0.06);
-  --chat-turn-lg-overlay-opacity: 0.16;
-  --chat-turn-glass-depth: none;
-
-  --chat-turn-agent-mix: 14%;
-
-  --bubble-glass-blur: 18px;
-  --bubble-glass-saturate: 1.45;
-  --bubble-sent-glass: color-mix(in srgb, var(--color-bubble-sent) 68%, transparent);
-  --bubble-sent-glass-border: color-mix(in srgb, var(--color-bubble-sent) 42%, transparent);
-  --bubble-received-glass: color-mix(in srgb, var(--mac-alert-bg) 86%, transparent);
-  --bubble-received-glass-border: color-mix(in srgb, var(--mac-separator) 55%, transparent);
-  --bubble-system-glass: color-mix(in srgb, var(--mac-fill-secondary) 78%, transparent);
-
-  /* Liquid Glass — dark variants (kit doesn't ship dark; sensible defaults) */
-  --lg-medium-tint: rgba(58, 58, 60, 0.72);
-  --lg-medium-base: #0b0b0d;
-  --lg-medium-blend: normal, normal;
-  --lg-medium-shadow: 0 8px 40px rgba(0, 0, 0, 0.55);
-
-  --lg-small-tint-1: #2a2a2c;
-  --lg-small-tint-2: rgba(255, 255, 255, 0.08);
-  --lg-small-base: #0b0b0d;
-  --lg-small-blend: normal, normal, normal;
-
-  --lg-sidebar-surface: rgba(44, 44, 46, 0.50);
-  --lg-sidebar-surface-muted: rgba(44, 44, 46, 0.30);
-  --lg-sidebar-surface-elevated: rgba(62, 62, 66, 0.60);
-  --lg-sidebar-border: rgba(255, 255, 255, 0.08);
-  --lg-sidebar-edge: inset 0 1px 0 rgba(255, 255, 255, 0.07);
-  --lg-sidebar-tint: radial-gradient(
-      ellipse 100% 70% at 0% -6%,
-      rgba(10, 132, 255, 0.07),
-      transparent 56%
-    ),
-    var(--mac-sidebar-bg);
-
-  --lg-overlay: rgba(255, 255, 255, 0.04);
-  --lg-menu-overlay: rgba(255, 255, 255, 0.004);
-
-  --lg-panel-blur: 40px;
-  --lg-panel-saturate: 1.65;
-  --lg-panel-surface: var(--mac-alert-bg);
-  --lg-panel-warn-surface: color-mix(
-    in srgb,
-    var(--mac-orange, #ff9f0a) 12%,
-    var(--mac-alert-bg)
-  );
-  --lg-panel-float-shadow: 0 12px 42px rgba(0, 0, 0, 0.32);
-
-  --mac-push-button-bg: rgba(255, 255, 255, 0.05);
-  --mac-push-button-hover: rgba(255, 255, 255, 0.08);
-
-  --mac-button-trailing-tint-hover: #409cff;
-
-  --shadow-menu: 0 0 2px rgba(0, 0, 0, 0.35), 0 0 25px rgba(0, 0, 0, 0.45);
-
-  --mac-tl-border: 0.5px solid rgba(255, 255, 255, 0.15);
-
-  --mac-focus-thick: 0 0 0 3.5px rgba(10, 132, 255, 0.3);
-  --mac-focus-thin: 0 0 0 1px rgba(10, 132, 255, 0.18);
-
-  --mac-destructive-bg: rgba(255, 69, 58, 0.28);
-  --mac-destructive-fg: #ff6961;
-
-  --color-bubble-received: #3a3a3c;
-  --color-bubble-received-text: rgba(255, 255, 255, 0.92);
-  --color-bubble-sender: rgba(255, 255, 255, 0.45);
-  --color-agent-bubble-cursor: #3196d2;
-  --color-agent-bubble-codex: #6e54c8;
-  --color-agent-bubble-claude: #dc6438;
-  --color-agent-bubble-cursor-text: rgba(255, 255, 255, 0.97);
-  --color-agent-bubble-codex-text: rgba(255, 255, 255, 0.97);
-  --color-agent-bubble-claude-text: rgba(255, 255, 255, 0.97);
-
-  --agent-pill-tint-cursor: color-mix(in srgb, var(--color-agent-cursor) 26%, transparent);
-  --agent-pill-tint-codex: color-mix(in srgb, var(--color-agent-codex) 24%, transparent);
-  --agent-pill-tint-claude: color-mix(in srgb, var(--color-agent-claude) 24%, transparent);
-  --agent-pill-tint-neutral: var(--mac-fill-secondary);
-
-  --mac-app-bg: #000000;
-  --shadow-window: 0 0 0 1px rgba(255, 255, 255, 0.12), 0 16px 48px rgba(0, 0, 0, 0.6);
-  --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.35);
-}
+/* ============================================================
+   Agent Lab — Design Tokens (rebuilt)
+   Single tone · light-first · modern-minimal
+   Layer order: tokens → base → components
+   Light/dark switch by overriding variables under [data-theme]
+   ============================================================ */
 
 :root {
-  --color-agent-cursor: #3196d2;
-  --color-agent-codex: #6e54c8;
-  --color-agent-claude: #dc6438;
-  --mac-review: #8944ab;
+  /* ---- Surfaces (3 steps + sunken) — true neutral gray ---- */
+  --surface-app: #f4f4f3;        /* window background behind panes  */
+  --surface-rail: #eeeeec;       /* session rail                    */
+  --surface-pane: #fbfbfa;       /* main workspace                  */
+  --surface-card: #ffffff;       /* raised cards, composer capsule  */
+  --surface-sunken: #eeeeec;     /* wells, code, inputs             */
+  --surface-hover: rgba(20, 20, 19, 0.045);
+  --surface-active: rgba(20, 20, 19, 0.075);
+  --surface-scrim: rgba(22, 22, 21, 0.42);
 
-  --color-bg: var(--mac-content-bg);
-  --color-bg-elevated: var(--mac-toolbar-bg);
-  --color-surface: var(--mac-fill-secondary);
-  --color-surface-hover: var(--mac-fill-primary);
-  --color-border: var(--mac-separator);
-  --color-text: var(--mac-label-primary);
-  --color-text-muted: var(--mac-label-secondary);
-  --color-text-secondary: var(--mac-label-tertiary);
-  --color-accent: var(--mac-accent);
-  --color-accent-muted: var(--mac-accent-muted);
-  --color-success: var(--mac-success);
-  --color-error: var(--mac-destructive);
-  --color-typing: var(--mac-label-tertiary);
-  --color-bubble-system: var(--mac-fill-tertiary);
-  --color-bubble-system-text: var(--mac-label-secondary);
+  /* ---- Hairlines & borders -------------------------------- */
+  --border-hair: rgba(22, 22, 21, 0.08);
+  --border-soft: rgba(22, 22, 21, 0.12);
+  --border-strong: rgba(22, 22, 21, 0.2);
 
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue",
-    system-ui, sans-serif;
-  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
-    system-ui, sans-serif;
-  /* Chat body — Claude/Cursor-style readability + SF Pro on macOS */
-  --font-message: "SF Pro Text", ui-sans-serif, system-ui, -apple-system,
-    BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-compact: var(--font-message);
-  --font-mono: "SF Mono", ui-monospace, Menlo, monospace;
+  /* ---- Labels (3 steps + inverse) — neutral graphite ------ */
+  --label-primary: #1a1a18;
+  --label-secondary: #5c5c58;
+  --label-tertiary: #8b8b86;
+  --label-quaternary: #b5b5b0;
+  --label-inverse: #fbfbfa;
 
-  --text-large-title: 22px;
-  --text-title2: 15px;
-  --text-headline: 13px;
-  --text-body: 13px;
-  --text-caption: 11px;
-  --text-caption1: 11px;
-  --text-caption2: 10px;
-  --text-footnote: 10px;
+  /* ---- Accent (neutral graphite) -------------------------- */
+  --accent: #2f2f2c;
+  --accent-hover: #1f1f1d;
+  --accent-press: #141413;
+  --accent-soft: rgba(47, 47, 44, 0.10);
+  --accent-softer: rgba(47, 47, 44, 0.06);
+  --accent-ring: rgba(47, 47, 44, 0.32);
+  --on-accent: #ffffff;
 
-  --space-xs: 4px;
-  --space-sm: 8px;
-  --space-md: 12px;
-  --space-lg: 16px;
-  --space-xl: 20px;
+  /* ---- System semantic colors ----------------------------- */
+  --ok: #1f9d57;
+  --ok-soft: rgba(31, 157, 87, 0.13);
+  --warn: #c47a16;
+  --warn-soft: rgba(196, 122, 22, 0.14);
+  --danger: #d2483c;
+  --danger-soft: rgba(210, 72, 60, 0.13);
+  --info: #5c5c58;
 
-  --radius-window: 26px;
-  --radius-control: 6px;
-  --radius-large: 8px;
-  --radius-bubble: 18px;
-  --radius-bubble-tail: 4px;
-  --radius-bubble-cap: 20px;
+  /* ---- Agent identity (restrained, distinct) -------------- */
+  --agent-cursor: #5b67d6;       /* indigo */
+  --agent-cursor-soft: rgba(91, 103, 214, 0.12);
+  --agent-codex: #3a8a76;        /* muted teal */
+  --agent-codex-soft: rgba(58, 138, 118, 0.12);
+  --agent-claude: #b65a3c;       /* restrained clay (used sparingly) */
+  --agent-claude-soft: rgba(182, 90, 60, 0.12);
+  --agent-you: #6c727b;          /* neutral slate */
+  --agent-you-soft: rgba(108, 114, 123, 0.12);
+
+  /* ---- Spacing scale -------------------------------------- */
+  --space-2: 2px;
+  --space-3: 3px;
+  --space-4: 4px;
+  --space-6: 6px;
+  --space-8: 8px;
+  --space-10: 10px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-40: 40px;
+
+  /* ---- Radii ---------------------------------------------- */
+  --radius-xs: 5px;
+  --radius-sm: 7px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
   --radius-pill: 999px;
-  --composer-capsule-radius: 22px;
-  --composer-attach-size: 28px;
-  --composer-bar-height: 36px;
-  --composer-float-offset: 36px;
-  --composer-content-gap: 6px;
-  --composer-pad-x: var(--chat-thread-pad-x);
-  --composer-send-gap: 8px;
-  --composer-capsule-fill-top: rgba(255, 255, 255, 0.82);
-  --composer-capsule-fill-mid: rgba(255, 255, 255, 0.4);
-  --composer-capsule-fill-bottom: transparent;
-  --composer-capsule-fade-bleed: 6px;
-  /* Gradient backing: below capsule → strategy bar (+ overshoot above) */
-  --composer-chrome-fade-overshoot: 7px;
-  --composer-chrome-gradient-lift: 9px;
-  --composer-chrome-gradient-trim: 14px;
-  --composer-chrome-gradient-bottom-extra: 22px;
-  --composer-chrome-gradient-height: calc(
-    var(--composer-float-offset) + var(--space-xs) + var(--composer-bar-height) +
-      var(--composer-capsule-fade-bleed) + var(--composer-turn-capsule-gap) +
-      var(--composer-turn-block-height) + var(--composer-chrome-fade-overshoot) -
-      var(--composer-chrome-gradient-trim) + var(--composer-chrome-gradient-bottom-extra)
-  );
-  --composer-chrome-gradient-height-compact: calc(
-    var(--composer-float-offset) + var(--space-xs) + var(--composer-bar-height) +
-      var(--composer-capsule-fade-bleed) + var(--composer-chrome-fade-overshoot) -
-      var(--composer-chrome-gradient-trim) + var(--composer-chrome-gradient-bottom-extra)
-  );
-  /* Gap between turn picker and message capsule */
-  --composer-turn-capsule-gap: 10px;
-  /* Extra vertical space for cost hint + dock gap adjustments */
-  --composer-turn-block-extra: 14px;
-  /* Floating composer stacks (picker + capsule row) */
-  /* Strategy bar: seg + hint + gaps */
-  --composer-turn-block-height: 72px;
-  --composer-turn-stack: var(--composer-turn-block-height);
-  --composer-attachment-stack: 40px;
-  /* Gap between scroll-down btn and strategy bar */
-  --scroll-jump-gap: 10px;
-  --composer-scroll-btn-bottom: calc(
-    var(--composer-float-offset) + var(--space-xs) + var(--composer-bar-height) +
-      var(--composer-turn-capsule-gap) + var(--composer-turn-block-height) +
-      var(--scroll-jump-gap)
-  );
-  --composer-scroll-pad: calc(
-    var(--composer-float-offset) + var(--space-xs) + var(--composer-bar-height) +
-      var(--composer-capsule-fade-bleed) + var(--composer-turn-capsule-gap) +
-      var(--composer-turn-block-height) + var(--space-md)
-  );
-  --composer-capsule-glass: rgba(255, 255, 255, 0.72);
-  --composer-capsule-width-ratio: 0.667;
-  /* Capsule + gap + send — shared by composer row and chat thread */
-  --composer-cluster-width: calc(
-    (100% - var(--composer-send-gap) - var(--composer-bar-height)) *
-      var(--composer-capsule-width-ratio) + var(--composer-send-gap) +
-      var(--composer-bar-height)
-  );
 
-  --mac-titlebar-height: 40px;
-  --mac-titlebar-inset: 78px;
+  /* ---- Typography ----------------------------------------- */
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "SF Mono", ui-monospace, "JetBrains Mono", "Menlo",
+    "Cascadia Code", monospace;
 
-  --text-bubble-user: 14px;
-  --text-bubble-agent: 12px;
-  --bubble-line-height: 1.6;
-  /* Legacy aliases */
-  --text-bubble: var(--text-bubble-user);
-  --leading-bubble-user: var(--bubble-line-height);
-  --leading-bubble-agent: var(--bubble-line-height);
-  --leading-bubble: var(--bubble-line-height);
-  --bubble-tracking: -0.011em;
-  --bubble-pad-y: 9px;
-  --bubble-pad-x: 13px;
-  --bubble-name-indent: 28px;
-  --bubble-radius: 20px;
-  --bubble-tail-radius: 8px;
-  --chat-thread-pad-x: 16px;
-  --chat-thread-pad-y: 10px;
-  --chat-turn-radius: 16px;
-  /* Agent cards — frosted glass (minimal gradient, more see-through) */
-  --chat-turn-glass-blur: 14px;
-  --chat-turn-glass-saturate: 1.1;
-  --chat-turn-glass-border: color-mix(in srgb, var(--mac-separator) 38%, transparent);
-  --chat-turn-glass-highlight: color-mix(in srgb, #fff 22%, transparent);
-  --chat-turn-glass-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
-  --chat-turn-glass-fill-mix: 48%;
-  --chat-turn-glass-sheen: color-mix(in srgb, #fff 14%, transparent);
-  --chat-turn-lg-overlay-opacity: 0.1;
-  --chat-turn-glass-depth: none;
+  --text-micro: 11px;
+  --text-caption: 12px;
+  --text-footnote: 13px;
+  --text-body: 14px;
+  --text-callout: 15px;
+  --text-title3: 17px;
+  --text-title2: 20px;
+  --text-title1: 26px;
 
-  --chat-turn-agent-mix: 10%;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 680;
 
-  --bubble-glass-blur: 20px;
-  --bubble-glass-saturate: 1.55;
-  --bubble-sent-glass: color-mix(in srgb, var(--color-bubble-sent) 70%, transparent);
-  --bubble-sent-glass-border: color-mix(in srgb, var(--color-bubble-sent) 38%, transparent);
-  --bubble-received-glass: color-mix(in srgb, var(--mac-alert-bg) 88%, transparent);
-  --bubble-received-glass-border: color-mix(in srgb, var(--mac-separator) 65%, transparent);
-  --bubble-system-glass: color-mix(in srgb, var(--mac-fill-secondary) 82%, transparent);
+  --leading-tight: 1.28;
+  --leading-snug: 1.42;
+  --leading-body: 1.6;
 
-  --chat-list-width: 218px;
-  --context-sidebar-width: 280px;
-  --sidebar-title-size: 17px;
-  --sidebar-control-height: 22px;
-  --bubble-max-width: min(72%, 380px);
+  /* ---- Effects -------------------------------------------- */
+  --shadow-1: 0 1px 2px rgba(28, 27, 22, 0.06),
+    0 1px 1px rgba(28, 27, 22, 0.04);
+  --shadow-2: 0 4px 14px rgba(28, 27, 22, 0.09),
+    0 1px 3px rgba(28, 27, 22, 0.06);
+  --shadow-3: 0 14px 44px rgba(28, 27, 22, 0.16),
+    0 4px 12px rgba(28, 27, 22, 0.08);
+  --shadow-pop: 0 10px 30px rgba(28, 27, 22, 0.14);
 
-  /* Matches agent-picker pill (.is-on) tints */
-  --agent-pill-tint-cursor: color-mix(in srgb, var(--color-agent-cursor) 18%, transparent);
-  --agent-pill-tint-codex: color-mix(in srgb, var(--color-agent-codex) 16%, transparent);
-  --agent-pill-tint-claude: color-mix(in srgb, var(--color-agent-claude) 16%, transparent);
-  --agent-pill-tint-neutral: var(--mac-fill-tertiary);
-  --shadow-header: inset 0 -1px 0 var(--mac-separator);
+  --focus-ring: 0 0 0 2px var(--surface-pane), 0 0 0 4px var(--accent-ring);
+
+  /* ---- Layout metrics ------------------------------------- */
+  --titlebar-h: 44px;
+  --rail-w: 272px;
+  --composer-max: 860px;
+  --transition: 160ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* ============================================================
+   Dark theme — override variables only
+   ============================================================ */
+[data-theme="dark"] {
+  --surface-app: #0d0d0c;
+  --surface-rail: #141413;
+  --surface-pane: #18181c;
+  --surface-card: #1e1e1c;
+  --surface-sunken: #121211;
+  --surface-hover: rgba(248, 248, 245, 0.05);
+  --surface-active: rgba(248, 248, 245, 0.085);
+  --surface-scrim: rgba(0, 0, 0, 0.58);
+
+  --border-hair: rgba(248, 248, 245, 0.08);
+  --border-soft: rgba(248, 248, 245, 0.12);
+  --border-strong: rgba(248, 248, 245, 0.2);
+
+  --label-primary: #f0f0ec;
+  --label-secondary: #aaaaa3;
+  --label-tertiary: #7a7a73;
+  --label-quaternary: #545450;
+  --label-inverse: #18181c;
+
+  --on-accent: #18181c;
+
+  --accent: #e6e6e1;
+  --accent-hover: #f2f2ee;
+  --accent-press: #d2d2cc;
+  --accent-soft: rgba(230, 230, 225, 0.16);
+  --accent-softer: rgba(230, 230, 225, 0.09);
+  --accent-ring: rgba(230, 230, 225, 0.32);
+
+  --ok: #34c177;
+  --ok-soft: rgba(52, 193, 119, 0.16);
+  --warn: #e0a13a;
+  --warn-soft: rgba(224, 161, 58, 0.17);
+  --danger: #f0675a;
+  --danger-soft: rgba(240, 103, 90, 0.16);
+
+  --agent-cursor: #8189e8;
+  --agent-cursor-soft: rgba(129, 137, 232, 0.16);
+  --agent-codex: #4bb799;
+  --agent-codex-soft: rgba(75, 183, 153, 0.16);
+  --agent-claude: #d2785a;
+  --agent-claude-soft: rgba(210, 120, 90, 0.16);
+  --agent-you: #9aa0a9;
+  --agent-you-soft: rgba(154, 160, 169, 0.15);
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-2: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-3: 0 16px 48px rgba(0, 0, 0, 0.55);
+  --shadow-pop: 0 12px 34px rgba(0, 0, 0, 0.5);
+
+  --focus-ring: 0 0 0 2px var(--surface-pane), 0 0 0 4px var(--accent-ring);
 }

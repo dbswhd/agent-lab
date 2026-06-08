@@ -1,6 +1,39 @@
 from __future__ import annotations
 
 import subprocess
+import time
+
+
+class _FakeProc:
+    def __init__(self, returncode: int, stdout: str = "", stderr: str = "") -> None:
+        self.returncode = returncode
+        self._stdout = stdout
+        self._stderr = stderr
+
+    def poll(self) -> int:
+        return self.returncode
+
+    def communicate(self) -> tuple[str, str]:
+        return self._stdout, self._stderr
+
+    def kill(self) -> None:
+        return None
+
+    def wait(self, timeout: float | None = None) -> int:
+        return self.returncode
+
+
+def _patch_claude_popen(monkeypatch) -> None:
+    monkeypatch.setattr(time, "sleep", lambda _delay: None)
+    monkeypatch.setattr(
+        "agent_lab.run_control.register_child_process",
+        lambda _proc: None,
+    )
+    monkeypatch.setattr(
+        "agent_lab.run_control.unregister_child_process",
+        lambda _proc: None,
+    )
+    monkeypatch.setattr("agent_lab.run_control.is_cancelled", lambda: False)
 
 
 def test_claude_cli_retries_transient_subprocess_failure(monkeypatch, tmp_path):
@@ -20,19 +53,15 @@ def test_claude_cli_retries_transient_subprocess_failure(monkeypatch, tmp_path):
     )
     calls = 0
 
-    def fake_run(*_args, **_kwargs):
+    def fake_popen(*_args, **_kwargs):
         nonlocal calls
         calls += 1
         if calls == 1:
-            return subprocess.CompletedProcess(
-                _args[0],
-                52,
-                stdout="",
-                stderr="ERROR: temporarily unavailable",
-            )
-        return subprocess.CompletedProcess(_args[0], 0, stdout="done\n", stderr="")
+            return _FakeProc(52, "", "ERROR: temporarily unavailable")
+        return _FakeProc(0, "done\n", "")
 
-    monkeypatch.setattr(subprocess, "run", fake_run)
+    _patch_claude_popen(monkeypatch)
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
     activity: list[str] = []
 
     assert claude_cli.invoke("", "hello", on_activity=activity.append) == "done"
@@ -55,12 +84,13 @@ def test_claude_cli_does_not_retry_empty_output(monkeypatch, tmp_path):
     )
     calls = 0
 
-    def fake_run(*_args, **_kwargs):
+    def fake_popen(*_args, **_kwargs):
         nonlocal calls
         calls += 1
-        return subprocess.CompletedProcess(_args[0], 0, stdout="", stderr="")
+        return _FakeProc(0, "", "")
 
-    monkeypatch.setattr(subprocess, "run", fake_run)
+    _patch_claude_popen(monkeypatch)
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
 
     try:
         claude_cli.invoke("", "hello")

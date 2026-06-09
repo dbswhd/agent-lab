@@ -54,6 +54,19 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | ML-TC | UI | Mission Overview + context layers | ✅ | `MissionOverviewSection.tsx`, `context_layers.py`, `repo_tree_context.py` | Work + Inspector |
 | ML-TD | UX | Stop / pause / permission | ✅ | `run_control.py`, `pause_mission_loop`, `cursor_agent._wait_cursor_run`, `PluginPanel` cursor hint | `children_terminated` on cancel API |
 | ML-P1 | omo | Mission Conductor UI polish | ✅ | `WorkStatusBar`, `WorkPanel`, `MissionOverviewSection`, USER-GUIDE §4.3·§28 | 5-step stepper + paused badge + resume phase highlight |
+| MB-9 | OpenHarness | Readiness API + composer hint | ✅ | `readiness.py`, `GET /api/health/readiness`, `ReadinessComposerBar.tsx`, `tests/test_readiness_api.py` | No model calls |
+| MB-1 | Paperclip | Mission board schema + Work UI | ✅ | `mission_board.py`, `MissionBoardStrip.tsx`, runtime snapshot | goal_chain + checkout |
+| MB-2 | Paperclip | Turn budget meter | ✅ | `mission_board.py`, `TurnBudgetSection.tsx`, Work status bar | `turn_budget` in run.json |
+| MB-4 | GJC/OmO | Evidence ledger stream | ✅ | `evidence_ledger.py`, `EvidenceTimeline.tsx`, `GET …/evidence` | `.agent-lab/missions/<id>/evidence.jsonl` |
+| MB-5 | Conductor | Merge Checks SSOT | ✅ | `merge_checks.py`, `MergeChecksPanel.tsx` | merge CTA gate |
+| MB-3 | OmO | Five evidence gates | ✅ | `evidence_gates.py`, `EvidenceGatesPanel.tsx` | executions[].evidence_gates |
+| MB-7 | GJC | Clarifier interview v2 | ✅ | `session_clarifier.py`, `GET/POST …/clarifier-interview*`, `RoomChat.tsx` | inbox harvest + answers API |
+| MB-6 | Conductor | Worktree setup/verify hooks | ✅ | `worktree_hooks.py`, `plan_execute.py`, `tests/test_plan_execute_worktree.py` | `.agent-lab/worktree.yaml` |
+| MB-8 | GJC/H7 | External handoff JSON | ✅ | `external_handoff.py`, `runtime/external_runner.py`, `POST …/external-handoff` | auto-attach from runner stdout/file |
+| MB-10 | Hermes | Wisdom / evidence index | ✅ | `wisdom_index.py`, `WisdomSearchPanel.tsx`, `GET …/wisdom-search` | mission-auto; optional cross-session |
+| MB-11 | openai-oauth | Codex proxy adapter (dev) | ✅ | `runtime/adapters/codex.py`, `CodexProxyPanel.tsx`, `GET /api/health/codex-proxy` | `AGENT_LAB_CODEX_PROXY=1` |
+
+**Planning canonical:** [MISSION-BOARD-ADOPTION.md](MISSION-BOARD-ADOPTION.md) (P1–P4 shipped).
 
 ---
 
@@ -103,8 +116,11 @@ They are tracked here but do not belong in the runtime feature roadmap.
 
 ## Next implementation candidates
 
+Mission Board backlog (MB-9…MB-11) is **shipped** — see [MISSION-BOARD-ADOPTION.md](MISSION-BOARD-ADOPTION.md) §9.
+
 | Priority | ID | Suggested next action |
 |----------|-----|-----------------------|
+| — | — | _(MB queue complete; pick from HOOK-COMM / UI Tier 3 or new product work)_ |
 
 ---
 

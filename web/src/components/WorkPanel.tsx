@@ -2,8 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import {
   fetchSessionRuntime,
   resumeMissionLoop,
+  type MissionBoardPayload,
   type RuntimeSnapshot,
   type SessionDetail,
+  type TurnBudgetPayload,
 } from "../api/client";
 import type { RoomTasksPayload } from "../api/client";
 import type { PlanMetaView } from "../utils/planMeta";
@@ -17,6 +19,9 @@ import { CollapsibleGlassPanel } from "./CollapsibleGlassPanel";
 import { PlanExecutePanel } from "./PlanExecutePanel";
 import { PluginPanel } from "./PluginPanel";
 import { MissionOverviewSection } from "./MissionOverviewSection";
+import { MissionBoardStrip } from "./MissionBoardStrip";
+import { TurnBudgetSection } from "./TurnBudgetSection";
+import { WisdomSearchPanel } from "./WisdomSearchPanel";
 import { buildMissionOverviewView } from "../utils/missionOverviewView";
 import { missionPauseAlertText } from "../utils/missionPauseCopy";
 import { useLocale } from "../i18n/useLocale";
@@ -149,6 +154,13 @@ export function WorkPanel({
     });
   const workPhase = runtime?.work_phase ?? legacyWorkPhase;
   const metaLine = workPlanMetaLine(planMeta);
+  const turnBudget: TurnBudgetPayload | undefined =
+    runtime?.turn_budget ??
+    (session?.run?.turn_budget as TurnBudgetPayload | undefined);
+  const missionBoard: MissionBoardPayload | undefined =
+    runtime?.mission_board ??
+    (session?.run?.mission_board as MissionBoardPayload | undefined);
+  const budgetPct = turnBudget?.budget_pct ?? 0;
 
   useEffect(() => {
     if (!workFocus) return;
@@ -198,6 +210,15 @@ export function WorkPanel({
           metaLine={metaLine || null}
           hasPlan={hasPlan}
           missionPaused={missionPaused}
+          budgetPct={budgetPct}
+        />
+
+        <MissionBoardStrip board={missionBoard ?? null} ko={ko} />
+        <TurnBudgetSection budget={turnBudget ?? null} ko={ko} />
+        <WisdomSearchPanel
+          sessionId={sessionId}
+          index={runtime?.wisdom_index ?? null}
+          ko={ko}
         />
 
         {missionPaused ? (
@@ -291,6 +312,8 @@ export function WorkPanel({
         linkedTasks={roomTasks?.tasks}
         cursorReady={cursorReady}
         disabled={disabled}
+        mergeChecks={runtime?.merge_checks ?? null}
+        evidenceEntries={runtime?.evidence?.entries ?? []}
         onChatRefClick={onPlanRefClick}
         onFocusTask={onFocusTask}
         onFocusObjection={onFocusObjection}

@@ -763,6 +763,14 @@ def _call_one_agent(
                 envelope=envelope_dict,
                 run_meta=run_meta,
             )
+            from agent_lab.mission_board import record_agent_call
+
+            record_agent_call(
+                folder,
+                human_turn=human_turn,
+                agent=str(aid),
+                run_meta=run_meta,
+            )
         return msg
     except Exception as e:
         retryable = retryable_failure(e) or is_retryable(str(e))
@@ -2972,7 +2980,9 @@ def continue_room_round(
     messages.append(ChatMessage(role="user", agent=None, content=body))
     human_turn_num = _human_turn_count(messages)
     from agent_lab.human_inbox import supersede_pending_inbox
+    from agent_lab.mission_board import begin_human_turn
 
+    begin_human_turn(folder, human_turn=human_turn_num)
     supersede_pending_inbox(folder, human_turn_id=human_turn_num)
     active_agents = [a for a in (agents or available_agents())]
     mode = "plan" if synthesize else "discuss"
@@ -3012,16 +3022,28 @@ def continue_room_round(
             init_verified_loop(folder)
     if research_mode or run_meta.get("turn_profile") == "specialist":
         run_meta["research_mode"] = True
-    from agent_lab.session_clarifier import build_clarifier_questions
+    from agent_lab.session_clarifier import (
+        build_clarifier_interview,
+        interview_prompts,
+        persist_clarifier_interview,
+        sync_clarifier_answers_from_inbox,
+    )
 
-    clarifier_questions = build_clarifier_questions(
+    sync_clarifier_answers_from_inbox(folder)
+    clarifier_interview = build_clarifier_interview(
         body,
         is_new_session=False,
         human_message_count=human_turn_num,
         plan_mode=synthesize,
     )
+    clarifier_questions = interview_prompts(clarifier_interview)
+    if clarifier_interview:
+        persist_clarifier_interview(folder, clarifier_interview)
     if clarifier_questions and on_event:
-        on_event("clarifier_prompt", {"questions": clarifier_questions})
+        on_event(
+            "clarifier_prompt",
+            {"questions": clarifier_questions, "interview": clarifier_interview},
+        )
     t0 = time.perf_counter()
     context_log: list[dict[str, Any]] = []
     _prepare_team_coordination_before_round(
@@ -3375,17 +3397,29 @@ def run_room(
             init_verified_loop(folder)
     if research_mode or run_meta.get("turn_profile") == "specialist":
         run_meta["research_mode"] = True
-    from agent_lab.session_clarifier import build_clarifier_questions
+    from agent_lab.session_clarifier import (
+        build_clarifier_interview,
+        interview_prompts,
+        persist_clarifier_interview,
+        sync_clarifier_answers_from_inbox,
+    )
 
     is_new = folder is None or not (folder / "chat.jsonl").is_file()
-    clarifier_questions = build_clarifier_questions(
+    sync_clarifier_answers_from_inbox(folder)
+    clarifier_interview = build_clarifier_interview(
         body,
         is_new_session=is_new,
         human_message_count=human_turn_num,
         plan_mode=synthesize,
     )
+    clarifier_questions = interview_prompts(clarifier_interview)
+    if clarifier_interview and folder is not None:
+        persist_clarifier_interview(folder, clarifier_interview)
     if clarifier_questions and on_event:
-        on_event("clarifier_prompt", {"questions": clarifier_questions})
+        on_event(
+            "clarifier_prompt",
+            {"questions": clarifier_questions, "interview": clarifier_interview},
+        )
     t0 = time.perf_counter()
     context_log: list[dict[str, Any]] = []
     _prepare_team_coordination_before_round(

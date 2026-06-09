@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 from agent_lab.agent_health import build_health_payload, reconnect_cursor_bridge
 from agent_lab.agent_preflight import build_agent_preflight
+from agent_lab.readiness import build_readiness_payload
 from agent_lab.api_diagnostics import build_diagnostics_payload
 from agent_lab.native_folder_picker import pick_folder_native
 from agent_lab.session import SESSIONS_DIR
@@ -55,6 +56,29 @@ def health(
         probe_bridge=probe_bridge,
         probe_preflight=probe_preflight,
         run_meta=run_meta,
+    )
+
+
+@router.get("/health/codex-proxy")
+def health_codex_proxy() -> dict[str, Any]:
+    """Dev-only Codex openai-oauth proxy probe (MB-11)."""
+    from agent_lab.runtime.adapters.codex import codex_proxy_enabled, probe_codex_proxy
+
+    payload = probe_codex_proxy()
+    return {"ok": True, **payload, "env_enabled": codex_proxy_enabled()}
+
+
+@router.get("/health/readiness")
+def health_readiness(
+    session_id: str | None = None,
+    probe_bridge: bool = True,
+    probe_cli: bool = True,
+) -> dict[str, Any]:
+    """Dry-run readiness — no model calls (MB-9)."""
+    return build_readiness_payload(
+        session_id=session_id,
+        probe_bridge=probe_bridge,
+        probe_cli=probe_cli,
     )
 
 

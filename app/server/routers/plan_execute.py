@@ -26,6 +26,8 @@ from agent_lab.room_hooks import PreExecuteBlocked
 from agent_lab.room_objections import ObjectionBlocksExecute
 
 from app.server.deps import (
+    ClarifierAnswersRequest,
+    ExternalHandoffRequest,
     PlanExecuteDryRunRequest,
     PlanExecuteIsolationOverrideRequest,
     PlanExecuteMergeRequest,
@@ -37,6 +39,111 @@ from app.server.deps import (
 )
 
 router = APIRouter(prefix="/api")
+
+
+@router.get("/sessions/{session_id}/evidence")
+def session_evidence(
+    session_id: str,
+    limit: int = 50,
+) -> dict[str, Any]:
+    folder = session_folder_or_404(session_id)
+    from agent_lab.evidence_ledger import public_evidence_payload
+
+    payload = public_evidence_payload(folder, limit=min(max(limit, 1), 200))
+    return {"ok": True, "session_id": session_id, **payload}
+
+
+@router.get("/sessions/{session_id}/wisdom-search")
+def session_wisdom_search(
+    session_id: str,
+    q: str = "",
+    limit: int = 20,
+    cross_session: bool = False,
+) -> dict[str, Any]:
+    folder = session_folder_or_404(session_id)
+    from agent_lab.wisdom_index import public_wisdom_search_payload
+
+    return {
+        "ok": True,
+        "session_id": session_id,
+        **public_wisdom_search_payload(
+            folder,
+            query=q,
+            limit=min(max(limit, 1), 50),
+            cross_session=cross_session,
+        ),
+    }
+
+
+@router.post("/sessions/{session_id}/wisdom-index/rebuild")
+def session_wisdom_index_rebuild(session_id: str) -> dict[str, Any]:
+    folder = session_folder_or_404(session_id)
+    from agent_lab.wisdom_index import build_wisdom_index, public_wisdom_index_status, wisdom_index_enabled
+
+    if not wisdom_index_enabled():
+        raise HTTPException(
+            status_code=409,
+            detail="wisdom index disabled — set AGENT_LAB_WISDOM_INDEX=1",
+        )
+    build_wisdom_index(folder, force=True)
+    return {
+        "ok": True,
+        "session_id": session_id,
+        "index": public_wisdom_index_status(folder),
+    }
+
+
+@router.post("/sessions/{session_id}/clarifier-interview/answers")
+def session_clarifier_answers(
+    session_id: str,
+    body: ClarifierAnswersRequest,
+) -> dict[str, Any]:
+    folder = session_folder_or_404(session_id)
+    from agent_lab.session_clarifier import public_clarifier_interview, record_clarifier_answers
+
+    if not body.answers:
+        raise HTTPException(status_code=400, detail="answers required")
+    from agent_lab.run_meta import read_run_meta
+
+    interview = record_clarifier_answers(
+        folder,
+        answers=body.answers,
+        mark_complete=body.mark_complete,
+    )
+    return {
+        "ok": True,
+        "session_id": session_id,
+        "interview": interview or public_clarifier_interview(read_run_meta(folder)),
+    }
+
+
+@router.get("/sessions/{session_id}/clarifier-interview")
+def session_clarifier_interview(session_id: str) -> dict[str, Any]:
+    folder = session_folder_or_404(session_id)
+    from agent_lab.run_meta import read_run_meta
+    from agent_lab.session_clarifier import public_clarifier_interview
+
+    run = read_run_meta(folder)
+    interview = public_clarifier_interview(run)
+    return {
+        "ok": True,
+        "session_id": session_id,
+        "interview": interview,
+        "enabled": interview is not None,
+    }
+
+
+@router.get("/sessions/{session_id}/merge-checks")
+def session_merge_checks(session_id: str) -> dict[str, Any]:
+    folder = session_folder_or_404(session_id)
+    from agent_lab.merge_checks import public_merge_checks_payload
+    from agent_lab.run_meta import read_run_meta
+
+    return {
+        "ok": True,
+        "session_id": session_id,
+        **public_merge_checks_payload(read_run_meta(folder)),
+    }
 
 
 @router.get("/sessions/{session_id}/plan-actions")
@@ -260,6 +367,31 @@ def session_execute_merge_confirm(
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e)) from e
     return {"ok": True, **result}
+
+
+@router.post("/sessions/{session_id}/executions/{execution_id}/external-handoff")
+def session_external_handoff(
+    session_id: str,
+    execution_id: str,
+    body: ExternalHandoffRequest,
+) -> dict[str, Any]:
+    folder = session_folder_or_404(session_id)
+    from agent_lab.external_handoff import attach_external_handoff
+
+    try:
+        execution = attach_external_handoff(
+            folder,
+            execution_id=execution_id.strip(),
+            payload=body.model_dump(),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return {
+        "ok": True,
+        "session_id": session_id,
+        "execution_id": execution_id,
+        "execution": execution,
+    }
 
 
 @router.post("/sessions/{session_id}/execute/reverify")

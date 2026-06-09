@@ -73,6 +73,16 @@ def test_snapshot_mission_discuss_phase(session_folder: Path) -> None:
     assert snap["mission"]["enabled"] is True
     assert snap["work_phase"] == "plan_draft"
     assert snap["mission"]["phase"] in {"DISCUSS", "MISSION_DEFINE"}
+    assert "mission_board" in snap
+    assert snap["mission_board"]["lane_roles"]["discuss"] == [
+        "cursor",
+        "codex",
+        "claude",
+    ]
+    assert "turn_budget" in snap
+    assert snap["turn_budget"]["budget_pct"] == 0
+    assert "merge_checks" in snap
+    assert "evidence" in snap
 
 
 def test_snapshot_pending_execution_execute_pending(session_folder: Path) -> None:

@@ -8,6 +8,7 @@ import {
   type SlashCommandRecord,
 } from "../api/client";
 import { AgentCredentialsPanel } from "./AgentCredentialsPanel";
+import { CodexProxyPanel } from "./CodexProxyPanel";
 import { AgentSessionSettings } from "./AgentSessionSettings";
 import { ApiDiagnosticsBar } from "./ApiDiagnosticsBar";
 import { ContextPreviewPanel } from "./ContextPreviewPanel";
@@ -311,6 +312,7 @@ export function SettingsPage({
             </span>
           </div>
           <AgentCredentialsPanel />
+          <CodexProxyPanel />
         </section>
 
         {sessionId ? (

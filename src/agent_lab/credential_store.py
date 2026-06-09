@@ -17,6 +17,9 @@ ProviderId = Literal["cursor", "claude", "codex"]
 
 PROVIDERS: tuple[ProviderId, ...] = ("cursor", "claude", "codex")
 
+# Room Claude/Codex use CLI OAuth only — API keys in Settings are ignored.
+OAUTH_ONLY_PROVIDERS: frozenset[ProviderId] = frozenset({"claude", "codex"})
+
 _PROVIDER_ENV: dict[ProviderId, str] = {
     "cursor": "CURSOR_API_KEY",
     "claude": "ANTHROPIC_API_KEY",
@@ -62,6 +65,17 @@ def _empty_store() -> dict[str, Any]:
     return {pid: {"primary": "", "fallback": "", "primary_label": "", "fallback_label": ""} for pid in PROVIDERS}
 
 
+def sanitize_oauth_provider_credentials(data: dict[str, Any]) -> dict[str, Any]:
+    """Strip API keys for OAuth-only Room agents (Claude, Codex)."""
+    for pid in OAUTH_ONLY_PROVIDERS:
+        slot = data.get(pid)
+        if not isinstance(slot, dict):
+            continue
+        slot["primary"] = ""
+        slot["fallback"] = ""
+    return data
+
+
 def load_credentials(*, create_default: bool = False) -> dict[str, Any]:
     path = credentials_path()
     if not path.is_file():
@@ -86,10 +100,17 @@ def load_credentials(*, create_default: bool = False) -> dict[str, Any]:
             val = block.get(key)
             if val is not None:
                 slot[key] = str(val).strip()
-    return out
+    cleaned = sanitize_oauth_provider_credentials(out)
+    for pid in OAUTH_ONLY_PROVIDERS:
+        block = raw.get(pid) if isinstance(raw.get(pid), dict) else {}
+        if str(block.get("primary") or "").strip() or str(block.get("fallback") or "").strip():
+            save_credentials(cleaned)
+            break
+    return cleaned
 
 
 def save_credentials(data: dict[str, Any]) -> Path:
+    data = sanitize_oauth_provider_credentials(data)
     path = credentials_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     lines = [
@@ -177,6 +198,7 @@ def public_credentials_payload() -> dict[str, Any]:
         fallback = str(block.get("fallback") or "").strip()
         env_primary = (os.getenv(_PROVIDER_ENV[pid]) or "").strip()
         env_fallback = (os.getenv(_PROVIDER_FALLBACK_ENV[pid]) or "").strip()
+        oauth_only = pid in OAUTH_ONLY_PROVIDERS
         agents.append(
             {
                 "id": pid,
@@ -185,12 +207,13 @@ def public_credentials_payload() -> dict[str, Any]:
                 "env_fallback": _PROVIDER_FALLBACK_ENV[pid],
                 "primary_label": str(block.get("primary_label") or "").strip() or "메인",
                 "fallback_label": str(block.get("fallback_label") or "").strip() or "서브",
-                "has_primary": bool(primary or env_primary),
-                "has_fallback": bool(fallback or env_fallback),
-                "primary_masked": mask_secret(primary or env_primary),
-                "fallback_masked": mask_secret(fallback or env_fallback),
-                "stored_primary": bool(primary),
-                "stored_fallback": bool(fallback),
+                "oauth_only": oauth_only,
+                "has_primary": False if oauth_only else bool(primary or env_primary),
+                "has_fallback": False if oauth_only else bool(fallback or env_fallback),
+                "primary_masked": None if oauth_only else mask_secret(primary or env_primary),
+                "fallback_masked": None if oauth_only else mask_secret(fallback or env_fallback),
+                "stored_primary": False if oauth_only else bool(primary),
+                "stored_fallback": False if oauth_only else bool(fallback),
             }
         )
     return {
@@ -206,6 +229,8 @@ def provider_has_credentials(provider: ProviderId) -> bool:
 
 def get_credential_chain(provider: ProviderId) -> list[tuple[str, str]]:
     """Ordered (label, secret) pairs: store primary → env primary → store fallback → env fallback."""
+    if provider in OAUTH_ONLY_PROVIDERS:
+        return []
     data = load_credentials(create_default=False)
     block = data.get(provider) if isinstance(data.get(provider), dict) else {}
     store_primary = str(block.get("primary") or "").strip()
@@ -281,4 +306,4 @@ def patch_from_request(body: dict[str, Any]) -> dict[str, Any]:
                 slot[key] = ""
             else:
                 slot[key] = str(raw).strip()
-    return current
+    return sanitize_oauth_provider_credentials(current)

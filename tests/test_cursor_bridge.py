@@ -10,7 +10,18 @@ from agent_lab.cursor_bridge import (
     cursor_sdk_client,
     format_cursor_connect_error,
     invalidate_workspace,
+    is_transient_bridge_error,
 )
+
+
+def test_transient_bridge_error_includes_read_timeout():
+    assert is_transient_bridge_error(RuntimeError("Bridge request timed out: ReadTimeout"))
+    assert is_transient_bridge_error(RuntimeError("Connection refused"))
+
+
+def test_format_connect_error_timeout_hint():
+    msg = format_cursor_connect_error(RuntimeError("Bridge request timed out: ReadTimeout"))
+    assert "재연결" in msg or "CURSOR" in msg
 
 
 def test_format_connect_error_adds_hint():

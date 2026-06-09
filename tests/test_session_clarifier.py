@@ -1,13 +1,32 @@
-"""LC-clarifier: session_clarifier discuss + plan mode gates."""
+"""LC-clarifier + MB-7 interview v2."""
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import pytest
 
 from agent_lab.inbox_harvest import harvest_clarifier_questions
-from agent_lab.session_clarifier import build_clarifier_questions, clarifier_min_topic_chars
+from agent_lab.run_meta import read_run_meta
+from agent_lab.session_clarifier import (
+    build_clarifier_interview,
+    build_clarifier_questions,
+    clarifier_min_topic_chars,
+    interview_prompts,
+    persist_clarifier_interview,
+    public_clarifier_interview,
+    record_clarifier_answers,
+)
+
+try:
+    from fastapi.testclient import TestClient
+
+    from app.server.main import app
+
+    _HAS_TEST_CLIENT = True
+except ImportError:
+    _HAS_TEST_CLIENT = False
 
 
 @pytest.fixture(autouse=True)
@@ -35,35 +54,38 @@ def test_discuss_short_topic_returns_questions() -> None:
         plan_mode=False,
     )
     assert qs is not None
-    assert len(qs) == 2
+    assert len(qs) >= 2
     assert "결과물" in qs[0]
 
 
-def test_plan_mode_first_turn_returns_plan_questions() -> None:
+def test_plan_mode_first_turn_interview_v2() -> None:
     long_topic = "x" * (clarifier_min_topic_chars() + 10)
-    qs = build_clarifier_questions(
+    interview = build_clarifier_interview(
         long_topic,
         is_new_session=True,
         human_message_count=1,
         plan_mode=True,
     )
-    assert qs is not None
-    assert len(qs) == 2
-    assert any("plan.md" in q for q in qs)
+    assert interview is not None
+    assert interview["version"] == 2
+    prompts = interview_prompts(interview)
+    assert prompts is not None
+    assert len(prompts) >= 3
+    assert any("plan.md" in q for q in prompts)
 
 
 def test_plan_mode_long_topic_first_turn_still_questions() -> None:
     long_topic = "Implement durable session resume with regression coverage and docs."
     assert len(long_topic) >= clarifier_min_topic_chars()
-    qs = build_clarifier_questions(
+    interview = build_clarifier_interview(
         long_topic,
         is_new_session=True,
         human_message_count=1,
         plan_mode=True,
     )
-    assert qs is not None
-    assert len(qs) == 2
-    assert "검증" in qs[0]
+    assert interview is not None
+    categories = [q.get("category") for q in interview.get("questions") or []]
+    assert "verify" in categories
 
 
 def test_plan_mode_second_turn_returns_none_unless_short() -> None:
@@ -99,3 +121,66 @@ def test_clarifier_questions_surface_to_inbox() -> None:
     assert len(created) == len(qs)
     assert run_meta["human_inbox"][0]["kind"] == "question"
     assert run_meta["human_inbox"][0]["trigger"] == "T-Q0"
+
+
+def test_persist_and_record_clarifier_answers(tmp_path: Path) -> None:
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    (folder / "run.json").write_text("{}", encoding="utf-8")
+    interview = build_clarifier_interview(
+        "short topic",
+        is_new_session=True,
+        human_message_count=1,
+        plan_mode=True,
+    )
+    assert interview is not None
+    persist_clarifier_interview(folder, interview)
+    qids = [str(q["id"]) for q in interview["questions"]]
+    record_clarifier_answers(
+        folder,
+        answers={qids[0]: "answer one", qids[1]: "answer two"},
+        mark_complete=False,
+    )
+    public = public_clarifier_interview(read_run_meta(folder))
+    assert public is not None
+    assert public["answers"][qids[0]] == "answer one"
+
+
+@pytest.mark.skipif(not _HAS_TEST_CLIENT, reason="FastAPI test client unavailable")
+def test_clarifier_answers_api(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("agent_lab.session.SESSIONS_DIR", tmp_path)
+    monkeypatch.setattr("app.server.deps.SESSIONS_DIR", tmp_path)
+    folder = tmp_path / "api-sess"
+    folder.mkdir()
+    (folder / "run.json").write_text("{}", encoding="utf-8")
+    interview = build_clarifier_interview(
+        "short topic",
+        is_new_session=True,
+        human_message_count=1,
+        plan_mode=True,
+    )
+    assert interview is not None
+    persist_clarifier_interview(folder, interview)
+    qid = str(interview["questions"][0]["id"])
+    client = TestClient(app)
+    res = client.post(
+        f"/api/sessions/{folder.name}/clarifier-interview/answers",
+        json={"answers": {qid: "scope is src/ only"}, "mark_complete": False},
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["interview"]["answers"][qid] == "scope is src/ only"
+
+
+def test_legacy_interview_when_v2_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AGENT_LAB_CLARIFIER_INTERVIEW", "off")
+    long_topic = "x" * (clarifier_min_topic_chars() + 10)
+    qs = build_clarifier_questions(
+        long_topic,
+        is_new_session=True,
+        human_message_count=1,
+        plan_mode=True,
+    )
+    assert qs is not None
+    assert len(qs) == 2
+    assert "검증" in qs[0]

@@ -36,6 +36,31 @@ def _patch_claude_popen(monkeypatch) -> None:
     monkeypatch.setattr("agent_lab.run_control.is_cancelled", lambda: False)
 
 
+def test_claude_auth_logged_in_parses_status_json(monkeypatch, tmp_path) -> None:
+    from agent_lab import claude_cli
+
+    fake_bin = tmp_path / "claude"
+    fake_bin.write_text("#!/bin/sh\n", encoding="utf-8")
+    fake_bin.chmod(0o755)
+    monkeypatch.setenv("CLAUDE_BIN", str(fake_bin))
+
+    def fake_run(cmd, **_kwargs):
+        if cmd[-2:] == ["auth", "status"]:
+            return subprocess.CompletedProcess(
+                cmd,
+                0,
+                stdout='{"loggedIn": true, "authMethod": "claude.ai"}',
+                stderr="",
+            )
+        return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="fail")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    claude_cli._AUTH_STATUS_CACHE = None
+    ok, detail = claude_cli.claude_auth_logged_in(use_cache=False)
+    assert ok is True
+    assert detail is None
+
+
 def test_claude_invoke_never_injects_api_key(monkeypatch, tmp_path) -> None:
     from agent_lab import claude_cli
 

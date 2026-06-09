@@ -9,12 +9,19 @@ from agent_lab.consensus_agreements import pending_consensus_agreements
 from agent_lab.human_inbox import public_inbox_payload
 from agent_lab.mission_loop import get_mission_loop, sync_mission_phase_from_run
 from agent_lab.runtime.policy import PolicyEngine
-from agent_lab.plan_execute import PENDING_STATUS
 from agent_lab.run_meta import read_run_meta
+
+_PENDING_EXECUTION_STATUS = "pending_approval"
 from agent_lab.runtime.boulder import boulder_state, last_failure
 from agent_lab.runtime.external_runner import external_runner_enabled, external_tools_allowlist
 from agent_lab.external_tools import load_external_tools
 from agent_lab.runtime.phases import SessionMode
+from agent_lab.evidence_ledger import public_evidence_payload
+from agent_lab.merge_checks import public_merge_checks_payload
+from agent_lab.mission_board import (
+    public_mission_board_payload,
+    public_turn_budget_payload,
+)
 from agent_lab.runtime.work_phase import resolve_work_phase
 
 
@@ -24,7 +31,7 @@ def _execution_rows(run: dict[str, Any]) -> list[dict[str, Any]]:
 
 def pending_execution(run: dict[str, Any]) -> dict[str, Any] | None:
     for row in reversed(_execution_rows(run)):
-        if row.get("status") == PENDING_STATUS:
+        if row.get("status") == _PENDING_EXECUTION_STATUS:
             return row
     return None
 
@@ -193,7 +200,32 @@ def build_runtime_snapshot(
             "allowlist": external_tools_allowlist(run),
             "registered_count": len(load_external_tools()),
         },
+        "mission_board": public_mission_board_payload(run),
+        "turn_budget": public_turn_budget_payload(run),
+        "merge_checks": public_merge_checks_payload(run),
+        "evidence": public_evidence_payload(folder, limit=30),
+        "clarifier_interview": _public_clarifier_interview(run),
+        "wisdom_index": _public_wisdom_index(folder),
+        "codex_proxy": _public_codex_proxy(),
     }
+
+
+def _public_wisdom_index(folder: Path) -> dict[str, Any]:
+    from agent_lab.wisdom_index import public_wisdom_index_status
+
+    return public_wisdom_index_status(folder, run=read_run_meta(folder))
+
+
+def _public_codex_proxy() -> dict[str, Any]:
+    from agent_lab.runtime.adapters.codex import probe_codex_proxy
+
+    return probe_codex_proxy()
+
+
+def _public_clarifier_interview(run: dict[str, Any]) -> dict[str, Any] | None:
+    from agent_lab.session_clarifier import public_clarifier_interview
+
+    return public_clarifier_interview(run)
 
 
 def public_runtime_payload(folder: Path, *, plan_md: str | None = None) -> dict[str, Any]:

@@ -1089,6 +1089,19 @@ body {
   line-height: 1.4;
 }
 
+.clarifier-banner__category {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: var(--text-footnote);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--mac-system-orange, #ff9f0a);
+  background: color-mix(in srgb, var(--mac-system-orange, #ff9f0a) 12%, transparent);
+}
+
 .room-task-bar__lead-select {
   display: inline-flex;
   align-items: center;

@@ -64,6 +64,24 @@ def _connection_refused(exc: BaseException) -> bool:
     return "connection refused" in text or "errno 61" in text or "connecterror" in text
 
 
+def is_transient_bridge_error(exc: BaseException) -> bool:
+    """Timeouts / dead bridge — invalidate cache and retry."""
+    if _connection_refused(exc):
+        return True
+    text = str(exc).lower()
+    return any(
+        marker in text
+        for marker in (
+            "readtimeout",
+            "timed out",
+            "timeout",
+            "bridge request timed out",
+            "bridge request failed",
+            "temporarily unavailable",
+        )
+    )
+
+
 def _wrap_bridge_error(exc: BaseException, *, mode: str) -> CursorBridgeUnavailable:
     detail = str(exc).strip() or exc.__class__.__name__
     if isinstance(exc, CursorBridgeUnavailable):
@@ -211,6 +229,13 @@ def format_cursor_connect_error(exc: BaseException) -> str:
     msg = str(exc).strip() or exc.__class__.__name__
     if _connection_refused(exc):
         return f"{msg}\n{_BRIDGE_HINT}\nfallback: {CURSOR_BRIDGE_FALLBACK}"
-    if "Bridge request failed" in msg:
+    if "Bridge request failed" in msg or "readtimeout" in msg.lower():
         return f"{msg}\n{_BRIDGE_HINT}\nfallback: {CURSOR_BRIDGE_FALLBACK}"
+    if "timed out" in msg.lower():
+        return (
+            f"{msg}\n"
+            "bridge 응답 지연 — Cursor 앱 실행 후 Settings에서 'Cursor 재연결' "
+            "또는 CURSOR_SDK_BRIDGE_URL 이 죽은 bridge 를 가리키는지 확인\n"
+            f"fallback: {CURSOR_BRIDGE_FALLBACK}"
+        )
     return msg

@@ -169,6 +169,8 @@ import {
   shouldShowSendReceiptOnChatTab,
 } from "../utils/sendReceipt";
 import { ComposerPreflightBar } from "./ComposerPreflightBar";
+import { ReadinessComposerBar } from "./ReadinessComposerBar";
+import { fetchReadiness, type ReadinessResponse } from "../api/client";
 import { useTweaksDemoOptional, TWEAKS_DEMO_OFF } from "../context/TweaksDemoContext";
 import {
   DEMO_CONSENSUS_PROPOSAL,
@@ -366,6 +368,14 @@ export function RoomChat({
   const [clarifierQuestions, setClarifierQuestions] = useState<string[] | null>(
     null,
   );
+  const [clarifierInterview, setClarifierInterview] = useState<
+    | {
+        questions?: { id?: string; category?: string; prompt?: string }[];
+        plan_mode?: boolean;
+      }
+    | null
+  >(null);
+  const [readiness, setReadiness] = useState<ReadinessResponse | null>(null);
   const [slashCommands, setSlashCommands] = useState<SlashCommandRecord[]>([]);
   const [commandHint, setCommandHint] = useState<string | null>(null);
   const [externalCommandConfirm, setExternalCommandConfirm] = useState<{
@@ -432,6 +442,24 @@ export function RoomChat({
       setLiveRunSessionKey(null);
     }
   }, [sessionId]);
+
+  useEffect(() => {
+    if (!sessionId) {
+      setReadiness(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchReadiness(sessionId, true)
+      .then((payload) => {
+        if (!cancelled) setReadiness(payload);
+      })
+      .catch(() => {
+        if (!cancelled) setReadiness(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId, selected.join(",")]);
 
   useEffect(() => {
     if (sessionId !== null) return;
@@ -1314,6 +1342,14 @@ export function RoomChat({
             setClarifierQuestions(
               (ev.questions as unknown[]).map((q) => String(q)).filter(Boolean),
             );
+            if (ev.interview && typeof ev.interview === "object") {
+              setClarifierInterview(
+                ev.interview as {
+                  questions?: { id?: string; category?: string; prompt?: string }[];
+                  plan_mode?: boolean;
+                },
+              );
+            }
           }
           if (t === "consensus_incomplete") {
             patchTurnMessages(runKey, (m) => [
@@ -2116,9 +2152,8 @@ export function RoomChat({
           planAutoSyncRef.current = null;
           return;
         }
-        void onSessionChange(sessionId);
+        refreshSessionMeta();
         setInboxReloadKey((k) => k + 1);
-        openPlanTab();
       })
       .catch(() => {
         notifyConsensusFailure(undefined, "plan.md 자동 정리 요청 실패");
@@ -2130,8 +2165,7 @@ export function RoomChat({
     running,
     synthesizing,
     runBusy,
-    onSessionChange,
-    openPlanTab,
+    refreshSessionMeta,
   ]);
   const workPlanStaleNotice =
     tweaks.planStaleDemo ? DEMO_PLAN_STALE_NOTICE : composerPlanStale;
@@ -2343,6 +2377,7 @@ export function RoomChat({
 
       {workspaceTab === "run" && !isNew ? (
         <RunLogPanel
+          sessionId={sessionId}
           turnMessages={turnMessages}
           running={running}
           active={topologyActive}
@@ -2447,7 +2482,10 @@ export function RoomChat({
               selected={["cursor"]}
             />
           ) : (
-            <ComposerPreflightBar agents={healthAgents} selected={selected} />
+            <>
+              <ReadinessComposerBar readiness={readiness} />
+              <ComposerPreflightBar agents={healthAgents} selected={selected} />
+            </>
           )}
           <div className="composer-wrap">
       {clarifierQuestions && clarifierQuestions.length > 0 ? (
@@ -2456,10 +2494,23 @@ export function RoomChat({
           role="region"
           aria-label="확인 질문"
         >
-          <strong className="clarifier-banner__title">확인 질문</strong>
+          <strong className="clarifier-banner__title">
+            {clarifierInterview?.plan_mode ? "계획 확인 질문" : "확인 질문"}
+          </strong>
           <ul>
-            {clarifierQuestions.map((q) => (
-              <li key={q}>{q}</li>
+            {(clarifierInterview?.questions?.length
+              ? clarifierInterview.questions
+              : clarifierQuestions.map((prompt) => ({
+                  id: prompt,
+                  prompt,
+                }))
+            ).map((q) => (
+              <li key={q.id ?? q.prompt}>
+                {"category" in q && q.category ? (
+                  <span className="clarifier-banner__category">{q.category}</span>
+                ) : null}
+                {q.prompt ?? ""}
+              </li>
             ))}
           </ul>
           <p className="clarifier-banner__hint">

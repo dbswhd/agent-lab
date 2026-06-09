@@ -281,6 +281,200 @@ export function fetchHealth(probeBridge = false, probePreflight = false) {
   return json<HealthResponse>(`/api/health${q}`);
 }
 
+export type ReadinessCheck = {
+  id: string;
+  agent?: string;
+  ok: boolean;
+  detail?: string | null;
+  next?: string | null;
+};
+
+export type ReadinessResponse = {
+  verdict: "ready" | "warning" | "blocked";
+  session_id?: string | null;
+  checks: ReadinessCheck[];
+  next_actions: string[];
+  agents?: string[];
+};
+
+export function fetchReadiness(sessionId?: string | null, probe = true) {
+  const params = new URLSearchParams();
+  if (sessionId) params.set("session_id", sessionId);
+  if (probe) {
+    params.set("probe_bridge", "true");
+    params.set("probe_cli", "true");
+  }
+  const q = params.toString() ? `?${params.toString()}` : "";
+  return json<ReadinessResponse>(`/api/health/readiness${q}`);
+}
+
+export type MissionBoardGoalLink = {
+  kind: string;
+  ref?: string;
+  index?: number;
+  title?: string;
+};
+
+export type MissionBoardCheckout = {
+  lane?: string;
+  action_index?: number | null;
+  execution_id?: string | null;
+  checked_out_at?: string;
+};
+
+export type MissionBoardPayload = {
+  goal_chain: MissionBoardGoalLink[];
+  checkout?: MissionBoardCheckout | null;
+  lane_roles?: Record<string, unknown>;
+  checked_out?: boolean;
+  checkout_lane?: string | null;
+};
+
+export type TurnBudgetPayload = {
+  caps?: Record<string, number | null>;
+  counters?: Record<string, number | Record<string, number>>;
+  budget_pct?: number;
+  overflow?: { key?: string; message?: string; at?: string } | null;
+  updated_at?: string | null;
+};
+
+export type EvidenceEntry = {
+  at?: string;
+  phase?: string;
+  kind?: string;
+  execution_id?: string;
+  action_index?: number;
+  cmd?: string;
+  exit?: number;
+  detail?: string;
+  refs?: string[];
+  session_id?: string;
+};
+
+export type EvidencePayload = {
+  path?: string;
+  count?: number;
+  entries: EvidenceEntry[];
+};
+
+export type MergeCheckRow = {
+  id: string;
+  ok: boolean;
+  detail?: string | null;
+  count?: number;
+  open_count?: number;
+};
+
+export type MergeChecksPayload = {
+  checks: MergeCheckRow[];
+  merge_disabled: boolean;
+  merge_disabled_reason?: string | null;
+  pending_execution_id?: string | null;
+};
+
+export type EvidenceGateRow = {
+  gate: string;
+  status: "pass" | "fail" | "pending" | "skip";
+  detail?: string | null;
+  ssot?: string | null;
+  at?: string;
+};
+
+export function fetchSessionEvidence(sessionId: string, limit = 50) {
+  const q = `?limit=${encodeURIComponent(String(limit))}`;
+  return json<{ ok: boolean; session_id: string } & EvidencePayload>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/evidence${q}`,
+  );
+}
+
+export type CodexProxyHealth = {
+  ok?: boolean;
+  enabled?: boolean;
+  env_enabled?: boolean;
+  detail?: string;
+  base_url?: string;
+  models?: string[];
+  next?: string;
+};
+
+export function fetchCodexProxyHealth() {
+  return json<CodexProxyHealth>("/api/health/codex-proxy");
+}
+
+export function fetchSessionMergeChecks(sessionId: string) {
+  return json<{ ok: boolean; session_id: string } & MergeChecksPayload>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/merge-checks`,
+  );
+}
+
+export type WisdomHit = {
+  id?: string;
+  source?: string;
+  title?: string;
+  score?: number;
+  snippet?: string;
+  at?: string;
+  path?: string;
+  session_id?: string;
+};
+
+export type WisdomIndexStatus = {
+  enabled: boolean;
+  document_count: number;
+  built_at?: string | null;
+  path?: string;
+  cross_session?: boolean;
+  auto_enabled?: boolean;
+};
+
+export type WisdomSearchPayload = {
+  enabled: boolean;
+  query: string;
+  hits: WisdomHit[];
+  hit_count: number;
+  cross_session_hits?: WisdomHit[];
+  cross_session_hit_count?: number;
+  index?: WisdomIndexStatus;
+};
+
+export function postClarifierAnswers(
+  sessionId: string,
+  answers: Record<string, string>,
+  markComplete = true,
+) {
+  return json<{ ok: boolean; session_id: string; interview: unknown }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/clarifier-interview/answers`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ answers, mark_complete: markComplete }),
+    },
+  );
+}
+
+export function fetchSessionWisdomSearch(
+  sessionId: string,
+  q: string,
+  limit = 20,
+  crossSession = false,
+) {
+  const params = new URLSearchParams({
+    q,
+    limit: String(limit),
+    cross_session: crossSession ? "true" : "false",
+  });
+  return json<{ ok: boolean; session_id: string } & WisdomSearchPayload>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/wisdom-search?${params}`,
+  );
+}
+
+export function rebuildSessionWisdomIndex(sessionId: string) {
+  return json<{ ok: boolean; session_id: string; index: WisdomIndexStatus }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/wisdom-index/rebuild`,
+    { method: "POST" },
+  );
+}
+
 export type CredentialProviderId = "cursor" | "claude" | "codex";
 
 export type AgentCredentialRow = {
@@ -290,12 +484,37 @@ export type AgentCredentialRow = {
   env_fallback: string;
   primary_label: string;
   fallback_label: string;
+  oauth_only?: boolean;
   has_primary: boolean;
   has_fallback: boolean;
   primary_masked: string | null;
   fallback_masked: string | null;
   stored_primary: boolean;
   stored_fallback: boolean;
+};
+
+export type CodexOAuthSlot = "primary" | "fallback";
+
+export type CodexOAuthProfileProbe = {
+  slot: CodexOAuthSlot;
+  label?: string;
+  ok: boolean;
+  detail?: string | null;
+};
+
+export type CodexOAuthResponse = {
+  ok: boolean;
+  path: string;
+  primary_label: string;
+  fallback_label: string;
+  has_primary: boolean;
+  has_fallback: boolean;
+  primary_captured_at: string | null;
+  fallback_captured_at: string | null;
+  live_logged_in: boolean;
+  live_detail: string | null;
+  profiles?: CodexOAuthProfileProbe[];
+  probe_ok?: boolean;
 };
 
 export type CredentialsResponse = {
@@ -325,6 +544,45 @@ export function putCredentials(patch: CredentialsPatch) {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(patch),
+  });
+}
+
+export function fetchCodexOAuth() {
+  return json<CodexOAuthResponse>("/api/settings/codex-oauth");
+}
+
+export function putCodexOAuthMeta(meta: {
+  primary_label?: string;
+  fallback_label?: string;
+}) {
+  return json<CodexOAuthResponse>("/api/settings/codex-oauth/meta", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(meta),
+  });
+}
+
+export function captureCodexOAuth(slot: CodexOAuthSlot, label?: string) {
+  return json<CodexOAuthResponse & { capture?: { ok: boolean; slot: string } }>(
+    "/api/settings/codex-oauth/capture",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slot, label: label ?? "" }),
+    },
+  );
+}
+
+export function clearCodexOAuthSlot(slot: CodexOAuthSlot) {
+  return json<CodexOAuthResponse>(
+    `/api/settings/codex-oauth/${encodeURIComponent(slot)}`,
+    { method: "DELETE" },
+  );
+}
+
+export function probeCodexOAuth() {
+  return json<CodexOAuthResponse>("/api/settings/codex-oauth/probe", {
+    method: "POST",
   });
 }
 
@@ -469,6 +727,19 @@ export type RuntimeSnapshot = {
     reason?: string | null;
   } | null;
   next_action: string;
+  mission_board?: MissionBoardPayload;
+  turn_budget?: TurnBudgetPayload;
+  merge_checks?: MergeChecksPayload;
+  evidence?: EvidencePayload;
+  wisdom_index?: WisdomIndexStatus;
+  codex_proxy?: {
+    enabled?: boolean;
+    ok?: boolean;
+    detail?: string;
+    base_url?: string;
+    models?: string[];
+    next?: string;
+  };
 };
 
 export function fetchSessionRuntime(sessionId: string) {
@@ -1266,6 +1537,8 @@ export type PlanExecutionRecord = {
   superseded_by?: string;
   adversarial_note?: string;
   adversarial_source?: string;
+  evidence_gates?: EvidenceGateRow[];
+  oracle_verdict?: string;
   snapshot_id?: string;
   workspace_root?: string;
   workspace_label?: string;
@@ -1299,6 +1572,20 @@ export type PlanExecutionRecord = {
   started_at?: string;
   completed_at?: string | null;
   pre_verify?: PreVerifyRecord;
+  worktree_hooks?: {
+    setup?: { ok?: boolean; phase?: string };
+    verify?: { ok?: boolean; phase?: string };
+  };
+  external_handoff?: {
+    stopped_cleanly?: boolean;
+    changed_files?: string[];
+    checks?: { cmd?: string; exit?: number }[];
+    evidence_summary?: string;
+    risks?: string[];
+    attached_at?: string;
+    source?: string;
+    tool_id?: string | null;
+  };
 };
 
 export function fetchPlanActions(

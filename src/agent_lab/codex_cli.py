@@ -115,7 +115,10 @@ def _format_exec_error(stderr: str, stdout: str) -> str:
         )
     if detail:
         return format_codex_exec_error(detail[:800])
-    return "unknown error"
+    return (
+        "Codex CLI exited without stderr output. "
+        "Re-run `codex login` or re-capture OAuth in Settings (메인/서브)."
+    )
 
 
 def _codex_env(*, api_key: str | None = None) -> dict[str, str]:
@@ -470,7 +473,10 @@ def _run_codex(
         ) from exc
 
     if proc.returncode not in (0, None) and not outcome.limit_hit:
-        detail = _format_exec_error(stderr, "")
+        detail = _format_exec_error(
+            stderr,
+            outcome.streamed_message or "",
+        )
         raise RuntimeError(
             f"codex exec failed (exit {proc.returncode})"
             + (f": {detail}" if detail else "")
@@ -491,6 +497,30 @@ def invoke(
 ) -> str:
     from agent_lab.workspace_roots import discuss_primary_workspace
 
+    execute_plugins = bool((permissions or {}).get("_execute_plugins"))
+    use_inbox_mcp = False
+    if inbox_mcp and session_folder is not None:
+        from agent_lab.cursor_inbox_mcp import execute_inbox_mcp_enabled
+
+        use_inbox_mcp = execute_inbox_mcp_enabled()
+
+    from agent_lab.runtime.adapters.codex import can_route_codex_proxy, invoke_codex_proxy
+
+    if can_route_codex_proxy(inbox_mcp=use_inbox_mcp, execute_plugins=execute_plugins):
+        proxy_user = user.strip()
+        if room_turn:
+            proxy_user = f"{proxy_user}\n\n{_ROOM_TURN_SUFFIX}"
+        if request_structured_envelope:
+            from agent_lab.structured_envelope_adapter import structured_envelope_system_addon
+
+            proxy_user = f"{proxy_user}\n\n{structured_envelope_system_addon(compact=True)}"
+        return invoke_codex_proxy(
+            system,
+            proxy_user,
+            room_turn=room_turn,
+            on_activity=on_activity,
+        )
+
     codex = resolve_codex_bin()
     if not codex:
         raise RuntimeError(
@@ -499,19 +529,11 @@ def invoke(
             "(e.g. ~/.nvm/versions/node/v24.13.1/bin/codex)"
         )
 
-    use_inbox_mcp = False
     config_overrides: list[str] | None = None
-    if inbox_mcp and session_folder is not None:
-        from agent_lab.cursor_inbox_mcp import (
-            build_codex_inbox_mcp_config_args,
-            execute_inbox_mcp_enabled,
-        )
+    if use_inbox_mcp and session_folder is not None:
+        from agent_lab.cursor_inbox_mcp import build_codex_inbox_mcp_config_args
 
-        if execute_inbox_mcp_enabled():
-            use_inbox_mcp = True
-            config_overrides = build_codex_inbox_mcp_config_args(Path(session_folder))
-
-    execute_plugins = bool((permissions or {}).get("_execute_plugins"))
+        config_overrides = build_codex_inbox_mcp_config_args(Path(session_folder))
     if execute_plugins and session_folder is not None:
         from agent_lab.session_plugin_runtime import merge_codex_execute_config_overrides
 
@@ -581,12 +603,12 @@ def invoke(
 
     try:
         from agent_lab.agent_hooks_materializer import native_agent_hooks_overlay
-        from agent_lab.credential_store import call_with_credential_fallback
+        from agent_lab.codex_oauth import call_with_codex_oauth_fallback
 
-        def _run_for_key(api_key: str | None) -> str:
+        def _run_for_oauth_slot(_slot) -> str:
             def _run_with_hooks() -> str:
                 with native_agent_hooks_overlay("codex", session_folder, cwd):
-                    return _run_once(api_key)
+                    return _run_once(None)
 
             return retry_call(
                 _run_with_hooks,
@@ -595,10 +617,13 @@ def invoke(
                 on_retry_label=_on_retry,
             )
 
-        return call_with_credential_fallback(
-            "codex",
-            _run_for_key,
-            allow_oauth_without_key=True,
+        def _on_oauth_switch(label: str, _slot) -> None:
+            if on_activity:
+                on_activity(f"Codex OAuth → {label} 계정")
+
+        return call_with_codex_oauth_fallback(
+            _run_for_oauth_slot,
+            on_switch=_on_oauth_switch,
         )
     finally:
         Path(out_path).unlink(missing_ok=True)

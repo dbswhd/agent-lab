@@ -360,6 +360,21 @@ def enable_mission_loop(
         return run
 
     patch_run_meta(folder, _enable)
+
+    from agent_lab.mission_board import sync_mission_board
+
+    plan_path = folder / "plan.md"
+    plan_md = plan_path.read_text(encoding="utf-8") if plan_path.is_file() else None
+
+    def _board(run: dict[str, Any]) -> dict[str, Any]:
+        sync_mission_board(run, plan_md=plan_md)
+        from agent_lab.mission_board import default_turn_budget, refresh_turn_budget
+
+        if "turn_budget" not in run:
+            run["turn_budget"] = refresh_turn_budget({**run, "turn_budget": default_turn_budget()})
+        return run
+
+    patch_run_meta(folder, _board)
     ensure_mission_notepads(folder)
     append_wisdom_note(
         folder,
@@ -591,6 +606,16 @@ def on_dry_run_complete(folder: Path, execution: dict[str, Any]) -> dict[str, An
         return run_in
 
     patch_run_meta(folder, _merge_review)
+    from agent_lab.mission_board import sync_mission_board
+
+    plan_path = folder / "plan.md"
+    plan_md = plan_path.read_text(encoding="utf-8") if plan_path.is_file() else None
+
+    def _board(run_in: dict[str, Any]) -> dict[str, Any]:
+        sync_mission_board(run_in, plan_md=plan_md)
+        return run_in
+
+    patch_run_meta(folder, _board)
     append_wisdom_note(
         folder,
         line=f"dry-run complete action #{action_index} → MERGE_REVIEW ({exec_id})",
@@ -612,6 +637,9 @@ def on_merge_confirm(folder: Path, *, execution_id: str) -> dict[str, Any] | Non
         return run_in
 
     patch_run_meta(folder, _verify)
+    from agent_lab.mission_board import clear_checkout
+
+    clear_checkout(folder)
     return get_mission_loop(read_run_meta(folder))
 
 
@@ -629,6 +657,9 @@ def on_merge_abort(folder: Path, *, execution_id: str) -> dict[str, Any] | None:
         return run_in
 
     patch_run_meta(folder, _discuss)
+    from agent_lab.mission_board import clear_checkout
+
+    clear_checkout(folder)
     append_wisdom_note(folder, line=f"merge rejected {execution_id} → DISCUSS")
     return get_mission_loop(read_run_meta(folder))
 
@@ -640,6 +671,10 @@ def maybe_advance_mission(
     executor: str | None = None,
 ) -> dict[str, Any]:
     """Conductor tick: autorun dry-run or repair when phase allows."""
+    from agent_lab.mission_board import record_autorun_tick, sync_turn_budget_from_mission
+
+    record_autorun_tick(folder)
+    sync_turn_budget_from_mission(folder)
     run = read_run_meta(folder)
     ml = get_mission_loop(run)
     if not ml.get("enabled"):
@@ -1565,6 +1600,13 @@ def append_wisdom_note(
         return run
 
     patch_run_meta(folder, _ref)
+    try:
+        from agent_lab.wisdom_index import build_wisdom_index, wisdom_index_enabled
+
+        if wisdom_index_enabled(read_run_meta(folder)):
+            build_wisdom_index(folder, force=True)
+    except Exception:
+        pass
     return str(path)
 
 

@@ -25,6 +25,24 @@ def test_app_uses_workspace_shell_not_primary_messenger_label():
     assert "AgentHealthPanel" not in app or "healthToAgentOptions" in app
 
 
+def test_workspace_tabs_stay_on_transcript_while_running():
+    tabs = _read("web", "src", "utils", "workspaceTabs.ts")
+    assert "if (ctx.running) return \"run\"" not in tabs
+
+
+def test_app_guards_room_bound_session_before_sidebar_list():
+    app = _read("web", "src", "App.tsx")
+    assert "roomBoundSessionRef" in app
+    assert "roomBoundSessionRef.current === selectedId" in app
+
+
+def test_use_workspace_tabs_pins_transcript_on_session_bind():
+    hook = _read("web", "src", "hooks", "useWorkspaceTabs.ts")
+    assert "boundFromComposer" in hook
+    first_effect = hook.split("useEffect(() => {", 1)[1].split("}, [", 1)[1].split("]);", 1)[0]
+    assert "running" not in first_effect
+
+
 def test_workspace_tab_enum_in_utils():
     tabs = _read("web", "src", "utils", "workspaceTabs.ts")
     for slug in ("transcript", "work", "run", "artifacts"):
@@ -326,6 +344,12 @@ def test_run_session_registry_module_exists():
     assert "turnMessages" in reg
     assert "subscribeSessionRun" in reg
     assert "hydrateSessionMessages" in reg
+
+
+def test_run_log_panel_expands_agent_activities():
+    panel = _read("web", "src", "components", "RunLogPanel.tsx")
+    assert "expandRunLogEntries" in panel
+    assert "m.activities" in panel
 
 
 def test_turn_run_panel_renders_turn_messages():

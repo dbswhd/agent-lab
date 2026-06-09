@@ -46,7 +46,6 @@ export function normalizeWorkspaceTab(
 }
 
 export function resolveDefaultWorkspaceTab(ctx: TabAutoContext): WorkspaceTab {
-  if (ctx.running) return "run";
   if (ctx.hasPendingExecution || ctx.hasDryRunDiff) return "work";
   if (ctx.planMd.trim()) return "work";
   return "transcript";

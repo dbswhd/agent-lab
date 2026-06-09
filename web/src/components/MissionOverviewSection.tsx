@@ -9,6 +9,35 @@ type Props = {
   variant?: "inspector" | "work";
 };
 
+/** 언더스코어 enum → 사람이 읽기 좋은 짧은 레이블 (ko/en 분리) */
+const PHASE_LABELS_KO: Record<string, string> = {
+  MISSION_DEFINE: "정의 중",
+  MISSION_DONE:   "완료",
+  MISSION_PAUSED: "일시정지",
+  PLAN_GATE:      "게이트",
+  PLAN_REJECT:    "반려됨",
+  REPAIR:         "수정 중",
+  VERIFY:         "검증 중",
+  DISCUSS:        "토론 중",
+};
+
+const PHASE_LABELS_EN: Record<string, string> = {
+  MISSION_DEFINE: "Defining",
+  MISSION_DONE:   "Done",
+  MISSION_PAUSED: "Paused",
+  PLAN_GATE:      "Gate",
+  PLAN_REJECT:    "Rejected",
+  REPAIR:         "Repair",
+  VERIFY:         "Verify",
+  DISCUSS:        "Discuss",
+};
+
+function phaseLabel(phase: string | null, ko: boolean): string {
+  if (!phase) return "";
+  const map = ko ? PHASE_LABELS_KO : PHASE_LABELS_EN;
+  return map[phase] ?? phase.replace(/_/g, " ").toLowerCase();
+}
+
 function phaseBadgeClassWork(phase: string | null): string {
   if (!phase) return "work-mission__phase";
   if (phase === "MISSION_DONE") return "work-mission__phase work-mission__phase--done";
@@ -45,7 +74,7 @@ function WorkMissionOverview({
           </span>
         ) : null}
         {view.phase ? (
-          <span className={phaseBadgeClassWork(view.phase)}>{view.phase}</span>
+          <span className={phaseBadgeClassWork(view.phase)}>{phaseLabel(view.phase, ko)}</span>
         ) : null}
       </div>
       {view.goalText ? (
@@ -127,7 +156,7 @@ export function MissionOverviewSection({
       <div className="ctx-section__label">
         {ko ? "미션" : "Mission"}
         {view.phase ? (
-          <span className={phaseBadgeClass(view.phase)}>{view.phase}</span>
+          <span className={phaseBadgeClass(view.phase)}>{phaseLabel(view.phase, ko)}</span>
         ) : null}
       </div>
 

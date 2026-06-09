@@ -3,7 +3,9 @@ import {
   fetchContextLayers,
   patchContextLayers,
   type AgentHealthRow,
+  type MissionBoardPayload,
   type SessionDetail,
+  type TurnBudgetPayload,
 } from "../api/client";
 import { Avatar } from "./Avatar";
 import { useLocale } from "../i18n/useLocale";
@@ -19,6 +21,8 @@ import type { PlanMetaView } from "../utils/planMeta";
 import type { GoalLoopView } from "../utils/goalLoopView";
 import { buildMissionOverviewView } from "../utils/missionOverviewView";
 import { MissionOverviewSection } from "./MissionOverviewSection";
+import { TurnBudgetSection } from "./TurnBudgetSection";
+import { MissionBoardStrip } from "./MissionBoardStrip";
 
 type Props = {
   session: SessionDetail | null;
@@ -156,6 +160,15 @@ export function ContextOverviewPanel({
         onFocusBlock={onFocusObjection}
       />
 
+      <MissionBoardStrip
+        board={(session?.run?.mission_board as MissionBoardPayload | undefined) ?? null}
+        ko={ko}
+      />
+      <TurnBudgetSection
+        budget={(session?.run?.turn_budget as TurnBudgetPayload | undefined) ?? null}
+        ko={ko}
+      />
+
       <section className="ctx-section">
         <div className="ctx-section__label">{ko ? "세션 목표" : "Session goal"}</div>
         <div className="ctx-overview__goal-row">
@@ -257,7 +270,7 @@ export function ContextOverviewPanel({
                 ) : null}
                 <span
                   className={`dot dot--${h.ready ? "ok" : "warn"}`}
-                  style={{ marginLeft: "auto" }}
+                  aria-hidden
                 />
                 <span
                   className={`ctx-agent__status ctx-agent__status--${h.ready ? "ok" : "warn"}`}

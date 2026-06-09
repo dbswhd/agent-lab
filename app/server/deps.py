@@ -136,6 +136,21 @@ class PlanExecuteIsolationOverrideRequest(BaseModel):
     permissions: dict[str, Any] = Field(default_factory=dict)
 
 
+class ClarifierAnswersRequest(BaseModel):
+    answers: dict[str, str] = Field(default_factory=dict)
+    mark_complete: bool = True
+
+
+class ExternalHandoffRequest(BaseModel):
+    stopped_cleanly: bool
+    changed_files: list[str] = Field(default_factory=list)
+    checks: list[dict[str, Any]] = Field(default_factory=list)
+    evidence_summary: str = Field(..., min_length=1)
+    risks: list[str] = Field(default_factory=list)
+    source: str | None = None
+    tool_id: str | None = None
+
+
 class ContextPreviewRequest(BaseModel):
     session_id: str = Field(..., min_length=1)
     agent: str = Field(..., min_length=1)

@@ -133,15 +133,25 @@ def agent_health_row(
 
     if aid == "codex":
         from agent_lab import codex_cli
+        from agent_lab.codex_oauth import codex_oauth_ready
 
         bin_path = codex_cli.resolve_codex_bin()
         row["configured"] = bin_path is not None
-        row["ready"] = row["configured"]
         row["bridge"] = "n/a"
+        row["auth_mode"] = "oauth"
         if not bin_path:
+            row["ready"] = False
             row["hint"] = "codex CLI 없음 — codex login (CODEX_BIN 설정 가능)"
-        else:
-            row["detail"] = bin_path
+            return row
+        row["detail"] = bin_path
+        auth_ok, auth_detail = codex_oauth_ready()
+        if not auth_ok:
+            row["ready"] = False
+            row["hint"] = auth_detail or "codex OAuth 미등록 — codex login 후 Settings에서 캡처"
+            row["reason"] = row["hint"]
+            row["failure_code"] = "codex_auth_failed"
+            return row
+        row["ready"] = True
         return row
 
     if aid == "claude":
@@ -149,12 +159,22 @@ def agent_health_row(
 
         bin_path = claude_cli.resolve_claude_bin()
         row["configured"] = bin_path is not None
-        row["ready"] = row["configured"]
         row["bridge"] = "n/a"
         if not bin_path:
-            row["hint"] = "claude CLI 없음 — claude login (CLAUDE_BIN 설정 가능)"
-        else:
-            row["detail"] = bin_path
+            row["ready"] = False
+            row["hint"] = "claude CLI 없음 — claude auth login (CLAUDE_BIN 설정 가능)"
+            return row
+        row["detail"] = bin_path
+        row["auth_mode"] = "oauth"
+        auth_ok, auth_detail = claude_cli.claude_auth_logged_in()
+        if not auth_ok:
+            row["ready"] = False
+            row["hint"] = auth_detail or "claude OAuth 미로그인 — claude auth login"
+            row["reason"] = row["hint"]
+            row["failure_code"] = "claude_auth_failed"
+            row["remediation"] = claude_cli.auth_failure_remediation(auth_detail or "")
+            return row
+        row["ready"] = True
         return row
 
     row["hint"] = "unknown agent"

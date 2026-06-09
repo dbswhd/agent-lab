@@ -189,6 +189,37 @@ def agent_preflight_row(
                 return row
             if ver:
                 row["detail"] = ver
+            from agent_lab.codex_oauth import codex_oauth_ready
+
+            auth_ok, auth_detail = codex_oauth_ready()
+            if not auth_ok:
+                row["reason"] = auth_detail or "codex OAuth 미등록"
+                row["hint"] = row["reason"]
+                row["failure_code"] = "codex_auth_failed"
+                row["remediation"] = [
+                    "터미널: codex login (ChatGPT 계정)",
+                    "Settings → Codex OAuth → 메인/서브 계정 캡처",
+                    "한도 초과 시 서브 계정으로 자동 전환",
+                ]
+                return row
+            from agent_lab.codex_oauth import probe_captured_profiles
+
+            profiles = probe_captured_profiles()
+            if profiles:
+                row["oauth_profiles"] = profiles
+                bad = [p for p in profiles if not p.get("ok")]
+                if bad:
+                    names = ", ".join(
+                        str(p.get("label") or p.get("slot")) for p in bad
+                    )
+                    row["reason"] = f"Codex OAuth 프로필 검증 실패: {names}"
+                    row["hint"] = row["reason"]
+                    row["failure_code"] = "codex_oauth_profile_invalid"
+                    row["remediation"] = [
+                        "Settings → Codex OAuth → 프로필 검증",
+                        "실패한 계정으로 codex login 후 재캡처",
+                    ]
+                    return row
         row["ready"] = True
         return row
 

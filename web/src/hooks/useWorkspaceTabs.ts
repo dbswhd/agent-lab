@@ -45,12 +45,10 @@ export function useWorkspaceTabs({ sessionKey, isNew, autoContext }: Options) {
   useEffect(() => {
     const prevSessionKey = prevSessionKeyRef.current;
     prevSessionKeyRef.current = sessionKey;
-    const boundDuringRun =
-      prevSessionKey === "new" &&
-      sessionKey !== "new" &&
-      autoContext.running;
+    const boundFromComposer =
+      prevSessionKey === "new" && sessionKey !== "new";
 
-    if (boundDuringRun) {
+    if (boundFromComposer) {
       // First message bound a session id — keep Transcript visible while SSE streams.
       setWorkspaceTabState("transcript");
       setInspectorTabState("overview");
@@ -70,7 +68,14 @@ export function useWorkspaceTabs({ sessionKey, isNew, autoContext }: Options) {
     }
     setWorkspaceTabState(resolveDefaultWorkspaceTab(autoContext));
     setInspectorTabState(resolveDefaultInspectorTab(autoContext));
-  }, [sessionKey, isNew, autoContext.running]);
+  }, [
+    sessionKey,
+    isNew,
+    autoContext.hasPendingExecution,
+    autoContext.hasDryRunDiff,
+    autoContext.planMd,
+    autoContext.hasBlocker,
+  ]);
 
   useEffect(() => {
     if (isNew) return;

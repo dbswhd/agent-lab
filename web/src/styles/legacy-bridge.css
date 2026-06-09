@@ -629,8 +629,9 @@
   padding: 3px 9px; border-radius: var(--radius-pill);
   background: var(--surface-card); border: 1px solid var(--border-hair);
 }
-.goal-oracle-badge--passed { background: var(--ok-soft); color: var(--ok); border-color: transparent; }
-.goal-oracle-badge--failed { background: var(--danger-soft); color: var(--danger); border-color: transparent; }
+.goal-oracle-badge--passed  { background: var(--ok-soft); color: var(--ok); border-color: transparent; }
+.goal-oracle-badge--failed  { background: var(--danger-soft); color: var(--danger); border-color: transparent; }
+.goal-oracle-badge--open    { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
 
 /* ============================================================
    ChatBubble + TranscriptMessageChrome
@@ -845,3 +846,41 @@
 .room-task-bar__mailbox-body { color: var(--label-secondary); }
 .room-task-bar__cross-sep { color: var(--label-quaternary); }
 .room-task-bar__cross-link-more { font-size: var(--text-micro); color: var(--label-tertiary); }
+
+/* ============================================================
+   Old button class bridge (used in AgentHealthPanel, etc.)
+   mac-btn-secondary → new btn-sm visual
+   ============================================================ */
+.mac-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  height: 26px;
+  padding: 0 var(--space-10);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  color: var(--label-secondary);
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-1);
+  transition: background var(--transition), border-color var(--transition);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.mac-btn-secondary:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+.mac-btn-secondary:disabled { opacity: 0.45; cursor: not-allowed; }
+.mac-btn-secondary--compact {
+  height: 20px;
+  padding: 0 var(--space-8);
+  font-size: 11px;
+}
+.mac-btn-icon {
+  width: 26px;
+  min-width: 26px;
+  padding: 0;
+}

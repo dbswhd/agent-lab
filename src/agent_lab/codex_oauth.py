@@ -1,0 +1,304 @@
+"""Codex ChatGPT OAuth profile storage (메인/서브) for Room failover."""
+
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Callable, Literal, TypeVar
+
+from agent_lab.credential_store import is_credential_failure
+
+CodexOAuthSlot = Literal["primary", "fallback"]
+_OAUTH_SLOTS: tuple[CodexOAuthSlot, ...] = ("primary", "fallback")
+
+T = TypeVar("T")
+
+
+def _config_dir() -> Path:
+    from agent_lab.app_config import config_dir
+
+    return config_dir()
+
+
+def profiles_root() -> Path:
+    return _config_dir() / "codex-oauth"
+
+
+def meta_path() -> Path:
+    return profiles_root() / "meta.json"
+
+
+def live_auth_path() -> Path:
+    return Path.home() / ".codex" / "auth.json"
+
+
+def profile_auth_path(slot: CodexOAuthSlot) -> Path:
+    return profiles_root() / slot / "auth.json"
+
+
+def _resolve_codex_bin() -> str | None:
+    from agent_lab.codex_cli import resolve_codex_bin
+
+    return resolve_codex_bin()
+
+
+def _codex_env() -> dict[str, str]:
+    from agent_lab.codex_cli import _codex_env
+
+    return _codex_env(api_key=None)
+
+
+def load_meta() -> dict[str, Any]:
+    path = meta_path()
+    if not path.is_file():
+        return {
+            "primary_label": "메인",
+            "fallback_label": "서브",
+            "primary_captured_at": None,
+            "fallback_captured_at": None,
+        }
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {
+            "primary_label": "메인",
+            "fallback_label": "서브",
+            "primary_captured_at": None,
+            "fallback_captured_at": None,
+        }
+    if not isinstance(data, dict):
+        data = {}
+    return {
+        "primary_label": str(data.get("primary_label") or "메인").strip() or "메인",
+        "fallback_label": str(data.get("fallback_label") or "서브").strip() or "서브",
+        "primary_captured_at": data.get("primary_captured_at"),
+        "fallback_captured_at": data.get("fallback_captured_at"),
+    }
+
+
+def save_meta(patch: dict[str, Any]) -> dict[str, Any]:
+    meta = load_meta()
+    for key in (
+        "primary_label",
+        "fallback_label",
+        "primary_captured_at",
+        "fallback_captured_at",
+    ):
+        if key not in patch:
+            continue
+        val = patch[key]
+        if key.endswith("_label") and val is not None:
+            meta[key] = str(val).strip() or meta[key]
+        else:
+            meta[key] = val
+    meta_path().parent.mkdir(parents=True, exist_ok=True)
+    meta_path().write_text(
+        json.dumps(meta, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return meta
+
+
+def profile_exists(slot: CodexOAuthSlot) -> bool:
+    path = profile_auth_path(slot)
+    return path.is_file() and path.stat().st_size > 0
+
+
+def live_login_status() -> tuple[bool, str | None]:
+    if os.getenv("AGENT_LAB_MOCK_AGENTS", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }:
+        return True, "mock"
+    codex = _resolve_codex_bin()
+    if not codex:
+        return False, "codex CLI not found"
+    try:
+        result = subprocess.run(
+            [codex, "login", "status"],
+            capture_output=True,
+            text=True,
+            timeout=12.0,
+            env=_codex_env(),
+            cwd=str(Path.home()),
+        )
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        return False, str(exc)[:200]
+    combined = f"{result.stdout or ''}\n{result.stderr or ''}".strip()
+    low = combined.lower()
+    if result.returncode == 0 and "logged in" in low:
+        line = next((ln.strip() for ln in combined.splitlines() if ln.strip()), "logged in")
+        return True, line
+    if live_auth_path().is_file():
+        return True, "auth.json present"
+    return False, combined[:200] or "not logged in"
+
+
+def capture_profile(slot: CodexOAuthSlot, *, label: str | None = None) -> dict[str, Any]:
+    live = live_auth_path()
+    if not live.is_file():
+        ok, detail = live_login_status()
+        if not ok:
+            raise RuntimeError(
+                detail or "Codex OAuth 세션이 없습니다. 터미널에서 codex login 후 다시 시도하세요."
+            )
+        raise RuntimeError("~/.codex/auth.json 이 없습니다. codex login 후 다시 시도하세요.")
+
+    dest = profile_auth_path(slot)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(live, dest)
+    dest.chmod(0o600)
+
+    captured_at = datetime.now(timezone.utc).isoformat()
+    label_key = f"{slot}_label"
+    patch: dict[str, Any] = {f"{slot}_captured_at": captured_at}
+    if label and label.strip():
+        patch[label_key] = label.strip()
+    meta = save_meta(patch)
+
+    return {
+        "ok": True,
+        "slot": slot,
+        "label": meta[label_key],
+        "captured_at": captured_at,
+        "path": str(dest),
+    }
+
+
+def clear_profile(slot: CodexOAuthSlot) -> None:
+    path = profile_auth_path(slot)
+    if path.is_file():
+        path.unlink()
+    meta = load_meta()
+    meta[f"{slot}_captured_at"] = None
+    save_meta(meta)
+
+
+def apply_profile(slot: CodexOAuthSlot) -> None:
+    src = profile_auth_path(slot)
+    if not src.is_file():
+        raise RuntimeError(f"Codex OAuth profile missing: {slot}")
+    live = live_auth_path()
+    live.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(src, live)
+    live.chmod(0o600)
+
+
+def oauth_account_chain() -> list[tuple[str, CodexOAuthSlot | None]]:
+    """Ordered (label, slot). slot=None → use live ~/.codex without overlay."""
+    meta = load_meta()
+    chain: list[tuple[str, CodexOAuthSlot | None]] = []
+    if profile_exists("primary"):
+        chain.append((meta["primary_label"], "primary"))
+    if profile_exists("fallback"):
+        chain.append((meta["fallback_label"], "fallback"))
+    if not chain:
+        chain.append(("live", None))
+    return chain
+
+
+def codex_oauth_ready() -> tuple[bool, str | None]:
+    if profile_exists("primary") or profile_exists("fallback"):
+        return True, None
+    ok, detail = live_login_status()
+    if ok:
+        return True, None
+    return False, detail or "codex OAuth 미등록 — codex login 후 Settings에서 계정 캡처"
+
+
+def public_codex_oauth_payload() -> dict[str, Any]:
+    meta = load_meta()
+    live_ok, live_detail = live_login_status()
+    return {
+        "ok": True,
+        "path": str(profiles_root()),
+        "primary_label": meta["primary_label"],
+        "fallback_label": meta["fallback_label"],
+        "has_primary": profile_exists("primary"),
+        "has_fallback": profile_exists("fallback"),
+        "primary_captured_at": meta.get("primary_captured_at"),
+        "fallback_captured_at": meta.get("fallback_captured_at"),
+        "live_logged_in": live_ok,
+        "live_detail": live_detail,
+    }
+
+
+def probe_profile(slot: CodexOAuthSlot) -> dict[str, Any]:
+    """Apply a stored profile and run `codex login status` (Settings diagnostics)."""
+    if not profile_exists(slot):
+        return {"slot": slot, "ok": False, "detail": "프로필 없음 — Settings에서 캡처"}
+    try:
+        apply_profile(slot)
+        ok, detail = live_login_status()
+        return {
+            "slot": slot,
+            "ok": ok,
+            "detail": detail or ("logged in" if ok else "not logged in"),
+        }
+    except Exception as exc:
+        return {"slot": slot, "ok": False, "detail": str(exc)[:240]}
+
+
+def probe_captured_profiles() -> list[dict[str, Any]]:
+    meta = load_meta()
+    rows: list[dict[str, Any]] = []
+    for slot in _OAUTH_SLOTS:
+        if not profile_exists(slot):
+            continue
+        row = probe_profile(slot)
+        row["label"] = meta[f"{slot}_label"]
+        rows.append(row)
+    return rows
+
+
+def call_with_codex_oauth_fallback(
+    fn: Callable[[CodexOAuthSlot | None], T],
+    *,
+    on_switch: Callable[[str, CodexOAuthSlot], None] | None = None,
+) -> T:
+    """Try stored OAuth profiles in order; slot=None uses live ~/.codex session."""
+    chain = oauth_account_chain()
+    last_exc: BaseException | None = None
+    for index, (label, slot) in enumerate(chain):
+        try:
+            if slot is not None:
+                apply_profile(slot)
+                if on_switch and index > 0:
+                    on_switch(label, slot)
+            return fn(slot)
+        except Exception as exc:
+            last_exc = exc
+            is_last = index >= len(chain) - 1
+            if not is_last and _should_failover_codex(exc):
+                continue
+            raise
+    if last_exc is not None:
+        raise last_exc
+    raise RuntimeError("Codex OAuth account chain failed")
+
+
+def _should_failover_codex(exc: BaseException) -> bool:
+    """Whether to try the next stored OAuth profile."""
+    if _is_codex_usage_limit(exc):
+        return True
+    if is_credential_failure(exc):
+        return True
+    text = str(exc).lower()
+    if "codex exec failed" in text:
+        return True
+    if "oauth" in text and ("re-capture" in text or "codex login" in text):
+        return True
+    if "unknown error" in text and "codex" in text:
+        return True
+    return False
+
+
+def _is_codex_usage_limit(exc: BaseException) -> bool:
+    text = str(exc).lower()
+    return "usage limit" in text or "rate limit" in text or "quota" in text

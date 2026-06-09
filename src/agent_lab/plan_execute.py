@@ -241,6 +241,74 @@ def _exec_worktree_from_execution(target: dict[str, Any]) -> ExecWorktree:
     )
 
 
+def _worktree_hooks_setup(
+    exec_worktree: ExecWorktree,
+    *,
+    folder: Path,
+    exec_id: str,
+) -> dict[str, Any]:
+    from agent_lab.worktree_hooks import run_worktree_setup
+
+    setup_report = run_worktree_setup(
+        worktree_path=exec_worktree.worktree_path,
+        git_root=exec_worktree.git_root,
+    )
+    if setup_report is None:
+        return {}
+    if not setup_report.get("ok"):
+        discard_exec_worktree(exec_worktree, folder, exec_id)
+        failed = next(
+            (row for row in setup_report.get("results") or [] if not row.get("ok")),
+            None,
+        )
+        detail = (
+            str(failed.get("detail") or failed.get("cmd") or "setup failed")
+            if isinstance(failed, dict)
+            else "setup failed"
+        )
+        raise WorktreeUnavailable(
+            f"worktree setup hooks failed: {detail}",
+            reason="worktree_setup_failed",
+            execution_id=exec_id,
+        )
+    return {"setup": setup_report}
+
+
+def _worktree_hooks_verify_before_merge(
+    target: dict[str, Any],
+    *,
+    execution_id: str,
+) -> None:
+    if target.get("isolation_effective") != "worktree":
+        return
+    wt_path = target.get("worktree_path")
+    git_root = target.get("git_root")
+    if not wt_path or not git_root:
+        return
+    from agent_lab.worktree_hooks import run_worktree_verify
+
+    verify_report = run_worktree_verify(
+        worktree_path=Path(str(wt_path)),
+        git_root=Path(str(git_root)),
+    )
+    if verify_report is None:
+        return
+    hooks = dict(target.get("worktree_hooks") or {})
+    hooks["verify"] = verify_report
+    target["worktree_hooks"] = hooks
+    if not verify_report.get("ok"):
+        failed = next(
+            (row for row in verify_report.get("results") or [] if not row.get("ok")),
+            None,
+        )
+        detail = (
+            str(failed.get("detail") or failed.get("cmd") or "verify failed")
+            if isinstance(failed, dict)
+            else "verify failed"
+        )
+        raise ValueError(f"worktree verify hooks failed: {detail}")
+
+
 def _run_git(cwd: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         ["git", "-C", str(cwd), *args],
@@ -420,6 +488,11 @@ def _record_verify_after_merge(
         reason=reason,
         oracle=oracle,
     )
+    exec_id = str(target.get("id") or "")
+    if exec_id:
+        from agent_lab.evidence_sync import on_verify_recorded
+
+        on_verify_recorded(folder, exec_id, evidence=evidence)
     return evidence
 
 
@@ -909,6 +982,19 @@ def run_dry_run(
         action, permissions
     )
     exec_id = execution_id or _exec_id()
+    from agent_lab.mission_board import checkout_lane, sync_mission_board
+
+    checkout_lane(
+        folder,
+        "execute",
+        action_index=action.index,
+        execution_id=exec_id,
+    )
+    def _sync_board(run: dict[str, Any]) -> dict[str, Any]:
+        sync_mission_board(run, plan_md=plan_md)
+        return run
+
+    patch_run_meta(folder, _sync_board)
     action_key = f"{action.kind}:{action.index}"
     raw_source_paths = action.expected_paths()
     raw_verification_paths = action.verification_paths()
@@ -1002,6 +1088,13 @@ def run_dry_run(
             git_root=exec_worktree.git_root,
         )
         workspace_info = _workspace_info_for(cwd, monitored_path_inputs)
+        worktree_hooks_block = _worktree_hooks_setup(
+            exec_worktree,
+            folder=folder,
+            exec_id=exec_id,
+        )
+    else:
+        worktree_hooks_block = {}
 
     from agent_lab.room_hooks import PreExecuteBlocked
     from agent_lab.runtime.policy import PolicyEngine
@@ -1165,6 +1258,7 @@ def run_dry_run(
             discard_exec_worktree(exec_worktree, folder, exec_id)
             raise RuntimeError(f"Cursor execute git commit failed: {e}") from e
 
+    pre_verify: dict[str, Any] = {}
     execution = {
         "schema_version": 2,
         "id": exec_id,
@@ -1229,6 +1323,8 @@ def run_dry_run(
         "completed_at": None,
         "pre_verify": pre_verify,
     }
+    if worktree_hooks_block:
+        execution["worktree_hooks"] = worktree_hooks_block
     if supersedes_execution_id:
         execution["revision_of"] = supersedes_execution_id
     if revise_request:
@@ -1285,10 +1381,18 @@ def run_dry_run(
 
     patch_run_meta(folder, _mark_tasks)
 
+    from agent_lab.evidence_sync import on_dry_run_recorded
+
+    on_dry_run_recorded(folder, execution, action_index=action.index)
+
     from agent_lab.runtime.events import RuntimeEvent
     from agent_lab.runtime.runtime import dispatch
 
     dispatch(folder, RuntimeEvent.EXECUTE_DRY_RUN_COMPLETE, {"execution": execution})
+    run_after = read_run_meta(folder)
+    for row in run_after.get("executions") or []:
+        if isinstance(row, dict) and row.get("id") == exec_id:
+            return row
     return execution
 
 
@@ -1574,6 +1678,7 @@ def resolve_execution(
         block = _artifact_approve_block_reason(target)
         if block:
             raise ValueError(block)
+        _worktree_hooks_verify_before_merge(target, execution_id=execution_id)
         if retry_merge and target.get("isolation_effective") == "worktree":
             merge = dict(target.get("merge") or {})
             merge["attempted_at"] = completed
@@ -1598,6 +1703,13 @@ def resolve_execution(
                 target["merge"] = merge
                 target["status"] = "merged"
                 target["completed_at"] = merge["completed_at"]
+                from agent_lab.evidence_sync import on_merge_approved
+
+                on_merge_approved(
+                    folder,
+                    execution_id,
+                    commit_sha=str(merge.get("commit_sha") or "") or None,
+                )
                 _record_verify_after_merge(folder, target)
                 snapshot_id = str(target.get("snapshot_id") or target.get("id") or "")
                 if snapshot_id:
@@ -1678,6 +1790,13 @@ def resolve_execution(
                 target["merge"] = merge
                 target["status"] = "merged"
                 target["completed_at"] = merge["completed_at"]
+                from agent_lab.evidence_sync import on_merge_approved
+
+                on_merge_approved(
+                    folder,
+                    execution_id,
+                    commit_sha=str(merge.get("commit_sha") or "") or None,
+                )
                 _record_verify_after_merge(folder, target)
                 if snapshot_id:
                     delete_snapshot(folder, snapshot_id)
@@ -1830,6 +1949,13 @@ def confirm_merge_execution(
     target["merge"] = merge
     target["status"] = "merged"
     target["completed_at"] = completed
+    from agent_lab.evidence_sync import on_merge_approved
+
+    on_merge_approved(
+        folder,
+        execution_id,
+        commit_sha=str(merge.get("commit_sha") or "") or None,
+    )
     _record_verify_after_merge(folder, target)
     _update_execution_row(folder, execution_id=execution_id, target=target)
     plan_advance = _mark_approved_effects(
@@ -1918,6 +2044,9 @@ def reverify_merged_execution(
             repair["completed_at"] = _now()
             repair["oracle_after"] = dict(evidence.get("oracle") or {})
             _append_repair_history(target, repair)
+            from agent_lab.evidence_sync import on_repair_recorded
+
+            on_repair_recorded(folder, execution_id, attempt=attempt, detail="no_changes")
             _update_execution_row(folder, execution_id=execution_id, target=target)
             plan_advance = _mark_approved_effects(
                 folder,
@@ -1980,6 +2109,9 @@ def reverify_merged_execution(
         repair["completed_at"] = merge["completed_at"]
         repair["oracle_after"] = dict(evidence.get("oracle") or {})
         _append_repair_history(target, repair)
+        from agent_lab.evidence_sync import on_repair_recorded
+
+        on_repair_recorded(folder, execution_id, attempt=attempt)
     except Exception:
         if ew.worktree_path.exists():
             discard_exec_worktree(ew, folder, execution_id)

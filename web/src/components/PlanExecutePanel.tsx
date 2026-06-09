@@ -35,6 +35,10 @@ import {
 import { executionApprovalGate } from "../utils/executeApprovalGate";
 import { formatPlanExecuteError } from "../utils/planExecuteErrors";
 import { WorkPlanIcon } from "./WorkPlanIcon";
+import { MergeChecksPanel } from "./MergeChecksPanel";
+import { EvidenceGatesPanel } from "./EvidenceGatesPanel";
+import { EvidenceTimeline } from "./EvidenceTimeline";
+import type { EvidenceEntry, MergeChecksPayload } from "../api/client";
 import {
   executionApproveLabel,
   executionRejectLabel,
@@ -55,6 +59,8 @@ type Props = {
   onChatRefClick?: (lineNumber: number) => void;
   onFocusTask?: (taskId: string) => void;
   onFocusObjection?: (objectionId: string, actionIndex?: number) => void;
+  mergeChecks?: MergeChecksPayload | null;
+  evidenceEntries?: EvidenceEntry[];
 };
 
 function linkedTaskForAction(
@@ -185,6 +191,30 @@ function oracleStatusLabel(status: string | null): string {
     default:
       return "Oracle —";
   }
+}
+
+function ExternalHandoffBadge({ row }: { row: PlanExecutionRecord }) {
+  const handoff = row.external_handoff;
+  if (!handoff?.evidence_summary) return null;
+  const clean = handoff.stopped_cleanly !== false;
+  return (
+    <div
+      className={`plan-execute-handoff plan-execute-handoff--${clean ? "ok" : "warn"}`}
+      role="status"
+      data-testid="external-handoff-badge"
+    >
+      <span className="plan-execute-handoff__badge">
+        {clean ? "External handoff" : "External handoff (unclean stop)"}
+      </span>
+      <p className="plan-execute-handoff__summary">{handoff.evidence_summary}</p>
+      {handoff.changed_files?.length ? (
+        <p className="plan-execute-handoff__files">
+          {handoff.changed_files.slice(0, 5).join(", ")}
+          {handoff.changed_files.length > 5 ? " …" : ""}
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 function AdversarialBadge({ row }: { row: PlanExecutionRecord }) {
@@ -435,6 +465,8 @@ export function PlanExecutePanel({
   onChatRefClick,
   onFocusTask,
   onFocusObjection,
+  mergeChecks = null,
+  evidenceEntries = [],
 }: Props) {
   const [recommended, setRecommended] = useState<PlanActionItem | null>(null);
   const [nowItems, setNowItems] = useState<PlanActionItem[]>([]);
@@ -492,9 +524,14 @@ export function PlanExecutePanel({
     ? resolveExecutionAction(activePending, storedActions)
     : null;
   const approvalGate = executionApprovalGate(activePending);
+  const mergeBlocked = Boolean(mergeChecks?.merge_disabled);
   const approveBlocked =
     approvalGate.blocked ||
+    mergeBlocked ||
     Boolean(activePending?.needs_artifact_review && !artifactsReviewConfirmed);
+  const mergeBlockTitle =
+    mergeChecks?.merge_disabled_reason ??
+    (mergeBlocked ? "Merge checks failed" : undefined);
   const pendingDiffHunks = useMemo(
     () => diffHunks(activePending?.diff),
     [activePending?.diff],
@@ -1070,6 +1107,9 @@ export function PlanExecutePanel({
               </p>
             ) : null}
             <AdversarialBadge row={activePending} />
+            <ExternalHandoffBadge row={activePending} />
+            <MergeChecksPanel checks={mergeChecks} />
+            <EvidenceGatesPanel gates={activePending.evidence_gates} />
             <PlanActionContext
               {...executionContextFields(activePending, pendingAction)}
               onRefClick={onChatRefClick}
@@ -1295,7 +1335,7 @@ export function PlanExecutePanel({
                     type="button"
                     className="plan-btn plan-btn--ok"
                     disabled={disabled || busy || approveBlocked}
-                    title={approvalGate.reason ?? undefined}
+                    title={approvalGate.reason ?? mergeBlockTitle ?? undefined}
                     onClick={() => void handleResolve("approve")}
                   >
                     <WorkPlanIcon name="gitMerge" size={14} />
@@ -1437,6 +1477,8 @@ export function PlanExecutePanel({
           </ul>
         </details>
       ) : null}
+
+      <EvidenceTimeline entries={evidenceEntries} compact />
 
       {error ? <p className="plan-execute-panel__error">{error}</p> : null}
     </div>

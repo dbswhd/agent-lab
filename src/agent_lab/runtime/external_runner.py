@@ -116,6 +116,15 @@ def run_external_command(
         workspace=workspace,
     )
     if result.get("ok"):
+        from agent_lab.external_handoff import try_attach_handoff_from_external_result
+
+        handoff = try_attach_handoff_from_external_result(
+            session_folder,
+            result,
+            tool_id=tool_id,
+        )
+        if handoff:
+            result["handoff_attach"] = handoff
         clear_last_failure(session_folder)
     else:
         record_last_failure(

@@ -11,7 +11,11 @@ from agent_lab.cursor_bridge import (
     cursor_sdk_client,
     format_cursor_connect_error,
     invalidate_workspace,
+    is_transient_bridge_error,
 )
+
+_CURSOR_BRIDGE_ATTEMPTS = 3
+_CURSOR_BRIDGE_RETRY_BACKOFF_S = 0.4
 
 
 def _sdk_installed() -> bool:
@@ -37,11 +41,6 @@ def _resolve_cwd(permissions: dict[str, Any] | None) -> str:
     from agent_lab.workspace_roots import discuss_primary_workspace
 
     return str(discuss_primary_workspace(permissions))
-
-
-def _connection_refused(exc: BaseException) -> bool:
-    text = str(exc).lower()
-    return "connection refused" in text or "errno 61" in text or "connecterror" in text
 
 
 def _wait_cursor_run(run: Any) -> None:
@@ -85,7 +84,7 @@ def _run_cursor_session(
     )
 
     last_err: BaseException | None = None
-    for attempt in range(2):
+    for attempt in range(_CURSOR_BRIDGE_ATTEMPTS):
         try:
             with cursor_sdk_client(cwd_str) as client:
                 agent = Agent.create(agent_opts, client=client)
@@ -120,14 +119,22 @@ def _run_cursor_session(
                     agent.close()
         except CursorAgentError as e:
             last_err = e
-            if attempt == 0 and _connection_refused(e):
+            if (
+                is_transient_bridge_error(e)
+                and attempt < _CURSOR_BRIDGE_ATTEMPTS - 1
+            ):
                 invalidate_workspace(cwd_str)
+                time.sleep(_CURSOR_BRIDGE_RETRY_BACKOFF_S * (attempt + 1))
                 continue
             raise RuntimeError(format_cursor_connect_error(e)) from e
         except Exception as e:
             last_err = e
-            if attempt == 0 and _connection_refused(e):
+            if (
+                is_transient_bridge_error(e)
+                and attempt < _CURSOR_BRIDGE_ATTEMPTS - 1
+            ):
                 invalidate_workspace(cwd_str)
+                time.sleep(_CURSOR_BRIDGE_RETRY_BACKOFF_S * (attempt + 1))
                 continue
             raise RuntimeError(format_cursor_connect_error(e)) from e
 

@@ -21,6 +21,8 @@ type Props = {
   hasPlan: boolean;
   /** Mission loop paused — show badge; stepper uses resume phase when set. */
   missionPaused?: boolean;
+  /** MB-2 — call budget usage (distinct from context token budget). */
+  budgetPct?: number;
 };
 
 /** Map mission_loop.phase (Layer 6) to Work tab stepper when mission is enabled. */
@@ -80,6 +82,7 @@ export function WorkStatusBar({
   metaLine,
   hasPlan,
   missionPaused = false,
+  budgetPct = 0,
 }: Props) {
   const phaseIndex = STEPS.findIndex((s) => s.id === phase);
 
@@ -113,6 +116,20 @@ export function WorkStatusBar({
           </li>
         ))}
       </ol>
+      {budgetPct > 0 ? (
+        <div
+          className="work-status-bar__budget"
+          role="meter"
+          aria-valuenow={budgetPct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          title={`Call budget ${budgetPct}%`}
+        >
+          <span className="work-status-bar__budget-label">Budget</span>
+          <span className="work-status-bar__budget-fill" style={{ width: `${Math.min(100, budgetPct)}%` }} />
+          <span className="work-status-bar__budget-pct">{budgetPct}%</span>
+        </div>
+      ) : null}
       {metaLine && hasPlan ? (
         <p className="work-status-bar__meta">{metaLine}</p>
       ) : null}

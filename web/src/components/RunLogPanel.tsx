@@ -1,9 +1,13 @@
+import { useEffect, useState } from "react";
+import { fetchSessionEvidence, type EvidenceEntry } from "../api/client";
 import { Avatar } from "./Avatar";
+import { EvidenceTimeline } from "./EvidenceTimeline";
 import { agentLabel } from "../utils/transcript";
 import type { LiveMsg } from "../run/runSessionRegistry";
 import type { AgentRole } from "../utils/transcript";
 
 type Props = {
+  sessionId?: string | null;
   turnMessages: LiveMsg[];
   running: boolean;
   active: { agent: string; round: number } | null;
@@ -12,6 +16,15 @@ type Props = {
   runLockStuck?: boolean;
   releasingLock?: boolean;
   onReleaseLock?: () => void;
+};
+
+type RunLogEntry = {
+  id: string;
+  role: string;
+  label?: string;
+  text: string;
+  ts?: string;
+  kind: "tool" | "system" | "agent";
 };
 
 function entryType(role: string): "tool" | "system" | "agent" {
@@ -31,8 +44,58 @@ function formatTs(ts?: string): string {
   });
 }
 
+function expandRunLogEntries(turnMessages: LiveMsg[]): RunLogEntry[] {
+  const out: RunLogEntry[] = [];
+  for (const m of turnMessages) {
+    if (m.roundDivider || m.role === "you") continue;
+    const kind = entryType(m.role);
+    const ts = (m as LiveMsg & { ts?: string }).ts;
+    const label = m.label || (kind === "agent" ? agentLabel(m.role) : undefined);
+
+    if (m.activities?.length) {
+      for (let i = 0; i < m.activities.length; i++) {
+        const line = m.activities[i]?.trim();
+        if (!line) continue;
+        out.push({
+          id: `${m.id}-act-${i}`,
+          role: m.role,
+          label,
+          text: line,
+          ts,
+          kind: kind === "agent" ? "tool" : kind,
+        });
+      }
+    }
+
+    const body = m.body?.trim();
+    if (body) {
+      out.push({
+        id: `${m.id}-body`,
+        role: m.role,
+        label,
+        text: body,
+        ts,
+        kind,
+      });
+    } else if (m.typing && !m.activities?.length) {
+      out.push({
+        id: `${m.id}-typing`,
+        role: m.role,
+        label,
+        text: "응답 대기 중…",
+        ts,
+        kind,
+      });
+    } else if (kind === "system" && !body && !m.activities?.length) {
+      continue;
+    }
+  }
+  return out;
+}
+
 /** Run tab — prototype `run-log` / `run-entry` presentation. */
 export function RunLogPanel({
+  sessionId = null,
   turnMessages,
   running,
   active,
@@ -42,9 +105,26 @@ export function RunLogPanel({
   releasingLock,
   onReleaseLock,
 }: Props) {
-  const entries = turnMessages.filter(
-    (m) => !m.roundDivider && m.role !== "you" && m.body?.trim(),
-  );
+  const entries = expandRunLogEntries(turnMessages);
+  const [evidence, setEvidence] = useState<EvidenceEntry[]>([]);
+
+  useEffect(() => {
+    if (!sessionId) {
+      setEvidence([]);
+      return;
+    }
+    let cancelled = false;
+    void fetchSessionEvidence(sessionId, 30)
+      .then((payload) => {
+        if (!cancelled) setEvidence(payload.entries ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setEvidence([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId, running, entries.length]);
 
   return (
     <div className="run-log">
@@ -125,26 +205,27 @@ export function RunLogPanel({
         </div>
       ) : null}
 
-      {entries.map((m) => {
-        const type = entryType(m.role);
+      {entries.map((entry) => {
         const agentRole =
-          type === "agent" ? (m.role as AgentRole) : undefined;
+          entry.kind === "agent" ? (entry.role as AgentRole) : undefined;
         return (
-          <div key={m.id} className={`run-entry run-entry--${type}`}>
-            <span className="run-entry__ts">
-              {formatTs((m as LiveMsg & { ts?: string }).ts)}
-            </span>
-            {agentRole ? <Avatar role={agentRole} label={m.label} size={20} /> : null}
-            <span className={`run-entry__type run-entry__type--${type}`}>
-              {type === "tool" ? "$" : type === "system" ? "✦" : "▸"}
+          <div key={entry.id} className={`run-entry run-entry--${entry.kind}`}>
+            <span className="run-entry__ts">{formatTs(entry.ts)}</span>
+            {agentRole ? (
+              <Avatar role={agentRole} label={entry.label} size={20} />
+            ) : null}
+            <span className={`run-entry__type run-entry__type--${entry.kind}`}>
+              {entry.kind === "tool" ? "$" : entry.kind === "system" ? "✦" : "▸"}
             </span>
             <span className="run-entry__text">
-              {m.label && type === "agent" ? `${m.label}: ` : ""}
-              {m.body}
+              {entry.label && entry.kind === "agent" ? `${entry.label}: ` : ""}
+              {entry.text}
             </span>
           </div>
         );
       })}
+
+      <EvidenceTimeline entries={evidence} compact />
 
       {!running && entries.length > 0 ? (
         <div className="run-log__done">

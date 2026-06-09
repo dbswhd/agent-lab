@@ -40,7 +40,11 @@ tools:
     assert rows[0]["command"] == ["echo", "hello"]
 
 
-def test_external_runner_disabled_by_default(session_folder: Path) -> None:
+def test_external_runner_disabled_by_default(
+    session_folder: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("AGENT_LAB_EXTERNAL_TOOLS", raising=False)
     assert external_runner_enabled() is False
     result = run_external_command(session_folder, "external:echo")
     assert result["ok"] is False

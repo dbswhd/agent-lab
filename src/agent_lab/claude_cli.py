@@ -146,6 +146,70 @@ def _format_exec_error(stderr: str, stdout: str) -> str:
 
 _AUTH_PROBE_CACHE: tuple[float, bool, str | None] | None = None
 _AUTH_PROBE_TTL_SEC = 120.0
+_AUTH_STATUS_CACHE: tuple[float, bool, str | None] | None = None
+_AUTH_STATUS_TTL_SEC = 30.0
+
+
+def claude_auth_logged_in(*, use_cache: bool = True) -> tuple[bool, str | None]:
+    """Fast OAuth session check via `claude auth status` (no headless -p probe)."""
+    if os.getenv("AGENT_LAB_MOCK_AGENTS", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }:
+        return True, None
+
+    global _AUTH_STATUS_CACHE
+    now = time.time()
+    if use_cache and _AUTH_STATUS_CACHE is not None:
+        cached_at, ok, detail = _AUTH_STATUS_CACHE
+        if now - cached_at < _AUTH_STATUS_TTL_SEC:
+            return ok, detail
+
+    claude = resolve_claude_bin()
+    if not claude:
+        detail = "claude CLI not found"
+        _AUTH_STATUS_CACHE = (now, False, detail)
+        return False, detail
+
+    try:
+        result = subprocess.run(
+            [claude, "auth", "status"],
+            capture_output=True,
+            text=True,
+            timeout=8.0,
+            env=_claude_env(),
+            cwd=str(Path.home()),
+        )
+    except subprocess.TimeoutExpired:
+        detail = "claude auth status timed out"
+        _AUTH_STATUS_CACHE = (now, False, detail)
+        return False, detail
+    except OSError as exc:
+        detail = str(exc)[:200]
+        _AUTH_STATUS_CACHE = (now, False, detail)
+        return False, detail
+
+    raw = (result.stdout or result.stderr or "").strip()
+    if result.returncode != 0:
+        detail = raw[:200] or f"claude auth status exit {result.returncode}"
+        _AUTH_STATUS_CACHE = (now, False, detail)
+        return False, detail
+
+    try:
+        payload = json.loads(raw)
+        logged_in = bool(payload.get("loggedIn"))
+    except json.JSONDecodeError:
+        logged_in = '"loggedIn": true' in raw or '"loggedIn":true' in raw
+
+    if logged_in:
+        _AUTH_STATUS_CACHE = (now, True, None)
+        return True, None
+
+    detail = "Not logged in — run: claude auth login"
+    _AUTH_STATUS_CACHE = (now, False, detail)
+    return False, detail
 
 
 def probe_auth(*, timeout_sec: float = 15.0, use_cache: bool = True) -> tuple[bool, str | None]:
@@ -166,6 +230,11 @@ def probe_auth(*, timeout_sec: float = 15.0, use_cache: bool = True) -> tuple[bo
         cached_at, ok, detail = _AUTH_PROBE_CACHE
         if now - cached_at < _AUTH_PROBE_TTL_SEC:
             return ok, detail
+
+    logged_in, login_detail = claude_auth_logged_in(use_cache=use_cache)
+    if not logged_in:
+        _AUTH_PROBE_CACHE = (now, False, login_detail)
+        return False, login_detail
 
     claude = resolve_claude_bin()
     if not claude:

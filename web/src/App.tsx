@@ -188,6 +188,8 @@ export default function App() {
 
   const loadDetailRequestRef = useRef(0);
   const skipNextDetailLoadRef = useRef(false);
+  /** Room SSE bound a session id before it appears in the sidebar list. */
+  const roomBoundSessionRef = useRef<string | null>(null);
 
   const loadDetail = useCallback(async (id: string, keepPrevious = false) => {
     const req = ++loadDetailRequestRef.current;
@@ -308,7 +310,14 @@ export default function App() {
 
   useEffect(() => {
     if (sessions.length === 0) return;
+    if (selectedId && sessions.some((s) => s.id === selectedId)) {
+      if (roomBoundSessionRef.current === selectedId) {
+        roomBoundSessionRef.current = null;
+      }
+      return;
+    }
     if (selectedId && !sessions.some((s) => s.id === selectedId)) {
+      if (roomBoundSessionRef.current === selectedId) return;
       clearLastSessionId();
       setSelectedId(null);
       setComposerNew(true);
@@ -335,6 +344,7 @@ export default function App() {
   }, []);
 
   function onRoomSessionChange(sessionId: string) {
+    roomBoundSessionRef.current = sessionId;
     skipNextDetailLoadRef.current = true;
     setSelectedId(sessionId);
     setComposerNew(false);

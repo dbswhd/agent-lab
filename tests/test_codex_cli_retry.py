@@ -3,9 +3,22 @@ from __future__ import annotations
 import subprocess
 
 
+def _disable_codex_proxy(monkeypatch) -> None:
+    monkeypatch.delenv("AGENT_LAB_CODEX_PROXY", raising=False)
+    monkeypatch.setattr(
+        "agent_lab.runtime.adapters.codex.can_route_codex_proxy",
+        lambda **kwargs: False,
+    )
+    monkeypatch.setattr(
+        "agent_lab.codex_oauth.call_with_codex_oauth_fallback",
+        lambda fn, **kwargs: fn(None),
+    )
+
+
 def test_codex_cli_retries_transient_subprocess_failure(monkeypatch, tmp_path):
     from agent_lab import codex_cli
 
+    _disable_codex_proxy(monkeypatch)
     fake_bin = tmp_path / "codex"
     fake_bin.write_text("#!/bin/sh\n", encoding="utf-8")
     fake_bin.chmod(0o755)
@@ -42,6 +55,7 @@ def test_codex_cli_retries_transient_subprocess_failure(monkeypatch, tmp_path):
 def test_codex_cli_room_only_retry_env_skips_non_room_retry(monkeypatch, tmp_path):
     from agent_lab import codex_cli
 
+    _disable_codex_proxy(monkeypatch)
     fake_bin = tmp_path / "codex"
     fake_bin.write_text("#!/bin/sh\n", encoding="utf-8")
     fake_bin.chmod(0o755)

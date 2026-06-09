@@ -17,7 +17,7 @@ def test_room_send_keeps_transcript_visible_during_session_bind():
     room = _read("web/src/components/RoomChat.tsx")
 
     assert "detail != null" in app
-    assert "boundDuringRun" in _read("web/src/hooks/useWorkspaceTabs.ts")
+    assert "boundFromComposer" in _read("web/src/hooks/useWorkspaceTabs.ts")
     assert "loading && !isNew && !running" in room
 
 
@@ -47,7 +47,7 @@ def test_macos_shortcuts_cover_new_sidebar_and_content_tabs():
     assert "CONTENT_TAB_SHORTCUT_EVENT" in shortcut
     assert "CONTENT_TAB_SHORTCUT_EVENT" in workspace_tabs
     assert "CONTENT_TAB_SHORTCUT_EVENT" in viewer
-    assert "boundDuringRun" in workspace_tabs
+    assert "boundFromComposer" in workspace_tabs
 
 
 def test_tauri_titlebar_and_minimum_window_are_real_window_smoke_contracts():

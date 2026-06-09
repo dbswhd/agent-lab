@@ -30,15 +30,17 @@ def test_agent_preflight_claude_auth_failure(monkeypatch):
         lambda: "/tmp/claude",
     )
     monkeypatch.setattr(
+        "agent_lab.claude_cli.claude_auth_logged_in",
+        lambda **kw: (False, "401 Invalid authentication credentials"),
+    )
+    monkeypatch.setattr(
         "agent_lab.claude_cli.probe_auth",
         lambda **kw: (False, "401 Invalid authentication credentials"),
     )
-
-    def fake_run(cmd, **kwargs):
-        assert cmd[1] == "--version"
-        return MagicMock(returncode=0, stdout="2.1.147\n", stderr="")
-
-    monkeypatch.setattr("agent_lab.agent_preflight.subprocess.run", fake_run)
+    monkeypatch.setattr(
+        "agent_lab.agent_preflight._probe_cli_version",
+        lambda *_args, **_kwargs: (True, "2.1.147"),
+    )
     row = agent_preflight_row("claude", probe_bridge=False, probe_cli=True)
     assert row["ready"] is False
     assert row["failure_code"] == "claude_auth_failed"
@@ -51,12 +53,18 @@ def test_agent_preflight_codex_cli_probe(monkeypatch):
         "agent_lab.codex_cli.resolve_codex_bin",
         lambda: "/tmp/codex",
     )
-
-    def fake_run(cmd, **kwargs):
-        assert cmd[1] == "--version"
-        return MagicMock(returncode=0, stdout="codex 1.2.3\n", stderr="")
-
-    monkeypatch.setattr("agent_lab.agent_preflight.subprocess.run", fake_run)
+    monkeypatch.setattr(
+        "agent_lab.codex_oauth.codex_oauth_ready",
+        lambda: (True, "logged in"),
+    )
+    monkeypatch.setattr(
+        "agent_lab.agent_preflight._probe_cli_version",
+        lambda *_args, **_kwargs: (True, "codex 1.2.3"),
+    )
+    monkeypatch.setattr(
+        "agent_lab.codex_oauth.probe_captured_profiles",
+        lambda: [],
+    )
     row = agent_preflight_row("codex", probe_bridge=False, probe_cli=True)
     assert row["ready"] is True
 

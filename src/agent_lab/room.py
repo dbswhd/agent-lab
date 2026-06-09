@@ -3405,7 +3405,8 @@ def run_room(
     )
 
     is_new = folder is None or not (folder / "chat.jsonl").is_file()
-    sync_clarifier_answers_from_inbox(folder)
+    if folder is not None:
+        sync_clarifier_answers_from_inbox(folder)
     clarifier_interview = build_clarifier_interview(
         body,
         is_new_session=is_new,

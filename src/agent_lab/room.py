@@ -2204,12 +2204,9 @@ def _write_session_files(
             synced_at=synced_at,
         )
         run_meta["consensus_agreements"] = agreements
-    from agent_lab.run_meta import persist_run_meta
+    from agent_lab.run_meta import write_run_meta
 
-    (folder / "run.json").write_text(
-        json.dumps(persist_run_meta(run_meta), indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
+    write_run_meta(folder, run_meta)
     meta: dict[str, Any] = {
         "topic": topic,
         "created_at": created_at,

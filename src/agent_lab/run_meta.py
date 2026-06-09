@@ -3,23 +3,43 @@
 from __future__ import annotations
 
 import json
+import threading
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
+from weakref import WeakValueDictionary
+
+_LOCK_GUARD = threading.Lock()
+_FOLDER_LOCKS: WeakValueDictionary[str, threading.Lock] = WeakValueDictionary()
+
+
+def _folder_lock(folder: Path) -> threading.Lock:
+    key = str(folder.resolve())
+    with _LOCK_GUARD:
+        lock = _FOLDER_LOCKS.get(key)
+        if lock is None:
+            lock = threading.Lock()
+            _FOLDER_LOCKS[key] = lock
+        return lock
 
 
 def read_run_meta(folder: Path) -> dict[str, Any]:
     run_path = folder / "run.json"
     if not run_path.is_file():
         return {}
-    try:
-        raw = run_path.read_text(encoding="utf-8")
-    except UnicodeDecodeError:
-        raw = run_path.read_text(encoding="utf-8", errors="replace")
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        return {}
+    for attempt in range(4):
+        try:
+            raw = run_path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            raw = run_path.read_text(encoding="utf-8", errors="replace")
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            if attempt >= 3:
+                return {}
+            time.sleep(0.01 * (attempt + 1))
+    return {}
 
 
 _EPHEMERAL_RUN_KEYS = frozenset(
@@ -39,19 +59,26 @@ def persist_run_meta(run: dict[str, Any]) -> dict[str, Any]:
 
 
 def write_run_meta(folder: Path, run: dict[str, Any]) -> None:
-    (folder / "run.json").write_text(
-        json.dumps(persist_run_meta(run), indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
+    payload = json.dumps(persist_run_meta(run), indent=2, ensure_ascii=False) + "\n"
+    path = folder / "run.json"
+    tmp = path.with_suffix(".json.tmp")
+    with _folder_lock(folder):
+        tmp.write_text(payload, encoding="utf-8")
+        tmp.replace(path)
 
 
 def patch_run_meta(
     folder: Path,
     updater: Callable[[dict[str, Any]], dict[str, Any]],
 ) -> dict[str, Any]:
-    run = read_run_meta(folder)
-    updated = updater(run)
-    write_run_meta(folder, updated)
+    with _folder_lock(folder):
+        run = read_run_meta(folder)
+        updated = updater(run)
+        payload = json.dumps(persist_run_meta(updated), indent=2, ensure_ascii=False) + "\n"
+        path = folder / "run.json"
+        tmp = path.with_suffix(".json.tmp")
+        tmp.write_text(payload, encoding="utf-8")
+        tmp.replace(path)
     return updated
 
 

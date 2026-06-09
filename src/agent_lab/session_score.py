@@ -312,16 +312,32 @@ def _duplicate_speech_rate(
     return rate, {"pairs": pairs, "near_duplicates": near, "agents": len(agents)}
 
 
-def _mission_notepad_chars(folder: Path) -> int:
+def _mission_notepad_chars(folder: Path, run_meta: dict[str, Any]) -> int:
+    from agent_lab.mission_loop import get_mission_loop, mission_notepad_dir
+
+    ml = get_mission_loop(run_meta)
+    mission_base = mission_notepad_dir(folder)
+    session_has = any((folder / n).is_file() for n in _MISSION_NOTEPAD_FILES)
+    if session_has:
+        bases = [folder]
+    elif ml.get("enabled"):
+        bases = [mission_base]
+    else:
+        bases = [folder]
+
     total = 0
-    for name in _MISSION_NOTEPAD_FILES:
-        path = folder / name
-        if not path.is_file():
-            continue
-        try:
-            total += len(path.read_text(encoding="utf-8").strip())
-        except OSError:
-            continue
+    seen: set[str] = set()
+    for base in bases:
+        for name in _MISSION_NOTEPAD_FILES:
+            path = base / name
+            key = str(path.resolve())
+            if key in seen or not path.is_file():
+                continue
+            seen.add(key)
+            try:
+                total += len(path.read_text(encoding="utf-8").strip())
+            except OSError:
+                continue
     return total
 
 
@@ -341,7 +357,7 @@ def _mission_loop_kpis(
                 repair_total += int(val or 0)
             except (TypeError, ValueError):
                 continue
-    notepad_chars = _mission_notepad_chars(folder)
+    notepad_chars = _mission_notepad_chars(folder, run_meta)
     completed = 1.0 if phase == "MISSION_DONE" else 0.0
     breaker = 1.0 if ml.get("circuit_breaker") else 0.0
     paused = 1.0 if phase == "MISSION_PAUSED" else 0.0

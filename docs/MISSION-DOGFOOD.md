@@ -18,15 +18,23 @@ export AGENT_LAB_MISSION_LOOP=1
 4. ⌘. 또는 circuit breaker로 **pause** 한 번 재현 (선택)
 5. Resume로 `last_partial.resume_phase` 복귀 확인
 
+## Mock dogfood (CI-safe, no API)
+
+```bash
+make mission-dogfood-run
+```
+
+Creates `sessions/dogfood-<utc>/`, runs plan gate → pause/resume → verify PASS → `MISSION_DONE`, then prints KPI report.
+
 ## KPI (`make score-session` / dogfood report)
 
 ```bash
-LATEST=$(ls -t sessions | grep -v '^_' | head -1)
+LATEST=$(ls -t sessions | grep -v '^_' | grep -v '^dogfood' | head -1)
 make score-session SESSION=sessions/$LATEST
 python scripts/mission_dogfood_report.py sessions/$LATEST
 ```
 
-회귀 golden: `python scripts/mission_dogfood_report.py sessions/_regression/mission_loop_dogfood_ok`
+회귀 golden: `make mission-dogfood-report`
 
 | 항목 | 기대 |
 |------|------|

@@ -53,6 +53,9 @@ mission-dogfood-report:
 	@test -n "$(SESSION)" || SESSION=sessions/_regression/mission_loop_dogfood_ok; \
 	.venv/bin/python scripts/mission_dogfood_report.py $$SESSION
 
+mission-dogfood-run:
+	AGENT_LAB_MOCK_AGENTS=1 AGENT_LAB_MISSION_LOOP=1 .venv/bin/python scripts/mission_dogfood_run.py
+
 test-live:
 	@test "$$AGENT_LAB_RUN_LIVE" = "1" || (echo "Set AGENT_LAB_RUN_LIVE=1 for live Cursor spike tests" && exit 1)
 	.venv/bin/pytest tests/ -q -m live

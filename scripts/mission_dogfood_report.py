@@ -18,11 +18,21 @@ _MIN_NOTEPAD_CHARS = 200
 
 
 def _notepad_report(folder: Path) -> tuple[int, list[str]]:
+    from agent_lab.mission_loop import mission_notepad_dir
+
     lines: list[str] = []
     total = 0
+    mission_base = mission_notepad_dir(folder)
+    session_has = any((folder / n).is_file() for n in _NOTEPAD_FILES)
+    bases = [folder] if session_has else [mission_base, folder]
     for name in _NOTEPAD_FILES:
-        path = folder / name
-        if not path.is_file():
+        path = None
+        for base in bases:
+            candidate = base / name
+            if candidate.is_file():
+                path = candidate
+                break
+        if path is None:
             lines.append(f"missing: {name}")
             continue
         try:
@@ -31,7 +41,8 @@ def _notepad_report(folder: Path) -> tuple[int, list[str]]:
             lines.append(f"read error {name}: {exc}")
             continue
         total += chars
-        lines.append(f"{name}: {chars} chars")
+        rel = path.name if path.parent == folder else f"~/.agent-lab/missions/{folder.name}/{name}"
+        lines.append(f"{rel}: {chars} chars")
     return total, lines
 
 

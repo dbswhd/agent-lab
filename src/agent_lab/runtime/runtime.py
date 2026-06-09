@@ -9,6 +9,7 @@ from agent_lab.runtime.dispatch_result import DispatchResult
 from agent_lab.runtime.events import RuntimeEvent
 from agent_lab.runtime.discuss_lane import dispatch_discuss_event
 from agent_lab.runtime.execute_lane import dispatch_execute_event
+from agent_lab.runtime.mission_lane import dispatch_control_event, dispatch_mission_event
 
 
 def dispatch(
@@ -23,6 +24,10 @@ def dispatch(
         return dispatch_execute_event(folder, event, payload)
     if event.value.startswith("scribe.") or event.value.startswith("turn."):
         return dispatch_discuss_event(folder, event, payload)
+    if event.value.startswith("mission."):
+        return dispatch_mission_event(folder, event, payload)
+    if event == RuntimeEvent.RUN_CANCEL:
+        return dispatch_control_event(folder, event, payload)
     return DispatchResult(handled=False, reason=f"no handler for {event.value}")
 
 

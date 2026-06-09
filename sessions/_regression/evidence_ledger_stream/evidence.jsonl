@@ -1,0 +1,2 @@
+{"phase": "DRY_RUN", "kind": "dry_run", "detail": "mock dry-run complete", "session_id": "evidence_ledger_stream", "at": "2026-06-10T00:00:00+00:00"}
+{"phase": "MERGE", "kind": "merge_approve", "detail": "human approved merge", "session_id": "evidence_ledger_stream", "at": "2026-06-10T00:00:01+00:00"}

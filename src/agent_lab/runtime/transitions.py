@@ -1,4 +1,4 @@
-"""Mission FSM transition table — H0 contract (no runtime dispatcher yet)."""
+"""Mission FSM transition table — H0 contract (handlers in ``mission_lane``)."""
 
 from __future__ import annotations
 

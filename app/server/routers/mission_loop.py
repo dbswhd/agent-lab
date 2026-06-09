@@ -8,6 +8,8 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from app.server.deps import session_folder_or_404
+from agent_lab.runtime.events import RuntimeEvent
+from agent_lab.runtime.runtime import dispatch
 
 router = APIRouter(prefix="/api")
 
@@ -34,6 +36,20 @@ class MissionPauseRequest(BaseModel):
     cleanup_executions: bool = True
 
 
+def _dispatch_or_http(
+    folder,
+    event: RuntimeEvent,
+    payload: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    out = dispatch(folder, event, payload)
+    if not out.handled:
+        raise HTTPException(status_code=500, detail=out.reason or "dispatch failed")
+    result = out.result if isinstance(out.result, dict) else {}
+    if result.get("http_status") == 409:
+        raise HTTPException(status_code=409, detail=result.get("reason") or "blocked")
+    return result
+
+
 @router.get("/sessions/{session_id}/mission-loop")
 def get_mission_loop_state(session_id: str) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
@@ -48,9 +64,13 @@ def post_mission_loop_enable(
     body: MissionEnableRequest,
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.mission_loop import enable_mission_loop, public_mission_payload
+    from agent_lab.mission_loop import public_mission_payload
 
-    enable_mission_loop(folder, start_autonomous=body.start_autonomous)
+    _dispatch_or_http(
+        folder,
+        RuntimeEvent.MISSION_ENABLE,
+        {"start_autonomous": body.start_autonomous},
+    )
     return public_mission_payload(folder)
 
 
@@ -66,11 +86,12 @@ def post_mission_plan_gate(
         if not plan_path.is_file():
             raise HTTPException(status_code=404, detail="plan.md not found")
         plan_md = plan_path.read_text(encoding="utf-8")
-    from agent_lab.mission_loop import run_plan_gate
 
-    result = run_plan_gate(folder, plan_md)
-    if result.get("http_status") == 409:
-        raise HTTPException(status_code=409, detail=result.get("reason") or "blocked")
+    result = _dispatch_or_http(
+        folder,
+        RuntimeEvent.MISSION_PLAN_GATE,
+        {"plan_md": plan_md},
+    )
     return {"ok": True, "session_id": session_id, **result}
 
 
@@ -80,12 +101,15 @@ def post_mission_advance(
     body: MissionAdvanceRequest,
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.mission_loop import maybe_advance_mission, public_mission_payload
+    from agent_lab.mission_loop import public_mission_payload
 
-    advance = maybe_advance_mission(
+    advance = _dispatch_or_http(
         folder,
-        permissions=body.permissions,
-        executor=body.executor,
+        RuntimeEvent.MISSION_ADVANCE,
+        {
+            "permissions": body.permissions,
+            "executor": body.executor,
+        },
     )
     payload = public_mission_payload(folder)
     return {"ok": True, "session_id": session_id, "advance": advance, **payload}
@@ -97,12 +121,15 @@ def post_mission_pause(
     body: MissionPauseRequest,
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.mission_loop import pause_mission_loop, public_mission_payload
+    from agent_lab.mission_loop import public_mission_payload
 
-    result = pause_mission_loop(
+    result = _dispatch_or_http(
         folder,
-        reason=body.reason,
-        cleanup_executions=body.cleanup_executions,
+        RuntimeEvent.MISSION_PAUSE,
+        {
+            "reason": body.reason,
+            "cleanup_executions": body.cleanup_executions,
+        },
     )
     payload = public_mission_payload(folder)
     return {"ok": True, "session_id": session_id, "pause": result, **payload}
@@ -114,9 +141,13 @@ def post_mission_resume(
     body: MissionResumeRequest,
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.mission_loop import public_mission_payload, resume_mission_loop
+    from agent_lab.mission_loop import public_mission_payload
 
-    result = resume_mission_loop(folder, resume_phase=body.resume_phase)
+    result = _dispatch_or_http(
+        folder,
+        RuntimeEvent.MISSION_RESUME,
+        {"resume_phase": body.resume_phase},
+    )
     payload = public_mission_payload(folder)
     return {"ok": True, "session_id": session_id, "resume": result, **payload}
 
@@ -127,7 +158,11 @@ def post_clear_circuit_breaker(
     body: MissionResumeRequest,
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.mission_loop import clear_circuit_breaker, public_mission_payload
+    from agent_lab.mission_loop import public_mission_payload
 
-    clear_circuit_breaker(folder, resume_phase=body.resume_phase)
+    _dispatch_or_http(
+        folder,
+        RuntimeEvent.MISSION_CIRCUIT_CLEAR,
+        {"resume_phase": body.resume_phase},
+    )
     return public_mission_payload(folder)

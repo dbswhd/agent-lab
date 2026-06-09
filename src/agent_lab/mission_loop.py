@@ -54,6 +54,25 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _mission_dispatch(
+    folder: Path,
+    event: str,
+    payload: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Route a mission/control transition through AgentLabRuntime (P6)."""
+    from agent_lab.runtime.runtime import dispatch
+
+    out = dispatch(folder, event, payload)
+    if isinstance(out.result, dict):
+        return out.result
+    if not out.handled or out.skipped:
+        return {
+            "skipped": True,
+            "reason": out.reason or ("unhandled" if not out.handled else "skipped"),
+        }
+    return get_mission_loop(read_run_meta(folder))
+
+
 def mission_loop_env_enabled() -> bool:
     return os.getenv("AGENT_LAB_MISSION_LOOP", "").strip().lower() in {
         "1",
@@ -435,7 +454,7 @@ def run_plan_gate(folder: Path, plan_md: str) -> dict[str, Any]:
             "pending_action_indices": ml_out.get("pending_action_indices"),
             "plan_gate": ml_out.get("plan_gate"),
         }
-        advance = maybe_advance_mission(folder)
+        advance = _mission_dispatch(folder, "mission.advance")
         if advance and not advance.get("skipped"):
             result["advance"] = advance
             ml_out = get_mission_loop(read_run_meta(folder))
@@ -465,13 +484,16 @@ def run_plan_gate(folder: Path, plan_md: str) -> dict[str, Any]:
     ml = get_mission_loop(read_run_meta(folder))
 
     if momus_round >= max_rounds:
-        trigger_circuit_breaker(
+        _mission_dispatch(
             folder,
-            reason="momus_round_cap",
-            inbox_prompt=(
-                f"Plan gate failed {momus_round} times (max {max_rounds}). "
-                f"Last reason: {evaluation.get('reason')}"
-            ),
+            "mission.circuit_breaker",
+            {
+                "reason": "momus_round_cap",
+                "inbox_prompt": (
+                    f"Plan gate failed {momus_round} times (max {max_rounds}). "
+                    f"Last reason: {evaluation.get('reason')}"
+                ),
+            },
         )
         ml = get_mission_loop(read_run_meta(folder))
         return {
@@ -519,7 +541,11 @@ def after_plan_scribe(folder: Path, plan_md: str) -> dict[str, Any] | None:
         return run_in
 
     patch_run_meta(folder, _plan_gate_phase)
-    return run_plan_gate(folder, plan_md)
+    return _mission_dispatch(
+        folder,
+        "mission.plan_gate",
+        {"plan_md": plan_md},
+    )
 
 
 _OPEN_EXECUTION_STATUSES = frozenset(
@@ -692,10 +718,10 @@ def maybe_advance_mission(
     if phase == "DISCUSS":
         rec = ml.get("discuss_recovery") if isinstance(ml.get("discuss_recovery"), dict) else {}
         if rec.get("pending"):
-            return run_mission_discuss_recovery(
+            return _mission_dispatch(
                 folder,
-                permissions=permissions,
-                on_event=None,
+                "mission.discuss_recovery",
+                {"permissions": permissions, "on_event": on_event},
             )
     return {"skipped": True, "reason": "wrong_phase", "phase": phase}
 
@@ -927,7 +953,7 @@ def _on_verify_pass(
         "pending": pending,
     }
     if out.get("phase") == "EXECUTE_QUEUE":
-        advance = maybe_advance_mission(folder)
+        advance = _mission_dispatch(folder, "mission.advance")
         if advance and not advance.get("skipped"):
             result["advance"] = advance
             out = get_mission_loop(read_run_meta(folder))
@@ -989,7 +1015,7 @@ def _on_verify_fail(
             "action_index": action_index,
         }
         if mission_autorun_enabled(out):
-            advance = maybe_advance_mission(folder)
+            advance = _mission_dispatch(folder, "mission.advance")
             if advance and not advance.get("skipped"):
                 result["advance"] = advance
                 out = get_mission_loop(read_run_meta(folder))
@@ -1039,13 +1065,16 @@ def _on_verify_fail(
     )
 
     if structural:
-        trigger_circuit_breaker(
+        _mission_dispatch(
             folder,
-            reason=f"repair_cap_action_{action_index}",
-            inbox_prompt=(
-                f"Structural verify failure after {count} repair(s) "
-                f"for action {action_index}: {reason}"
-            ),
+            "mission.circuit_breaker",
+            {
+                "reason": f"repair_cap_action_{action_index}",
+                "inbox_prompt": (
+                    f"Structural verify failure after {count} repair(s) "
+                    f"for action {action_index}: {reason}"
+                ),
+            },
         )
         out = get_mission_loop(read_run_meta(folder))
 
@@ -1063,7 +1092,7 @@ def _on_verify_fail(
         and mission_autorun_enabled(out)
         and (out.get("discuss_recovery") or {}).get("pending")
     ):
-        recovery = run_mission_discuss_recovery(folder)
+        recovery = _mission_dispatch(folder, "mission.discuss_recovery")
         if recovery and not recovery.get("skipped"):
             result["discuss_recovery"] = recovery
             out = get_mission_loop(read_run_meta(folder))
@@ -1111,10 +1140,15 @@ def run_mission_discuss_recovery(
 
     max_iter = int(ml.get("max_mission_iterations") or DEFAULT_MAX_MISSION_ITERATIONS)
     if int(ml.get("iteration") or 0) >= max_iter:
-        trigger_circuit_breaker(
+        _mission_dispatch(
             folder,
-            reason="mission_iteration_cap",
-            inbox_prompt=f"Mission iteration cap ({max_iter}) reached during discuss recovery.",
+            "mission.circuit_breaker",
+            {
+                "reason": "mission_iteration_cap",
+                "inbox_prompt": (
+                    f"Mission iteration cap ({max_iter}) reached during discuss recovery."
+                ),
+            },
         )
         return {"skipped": True, "reason": "mission_iteration_cap", "circuit_breaker": True}
 
@@ -1217,10 +1251,13 @@ def on_structural_execution_failure(
         return run_in
 
     patch_run_meta(folder, _discuss)
-    trigger_circuit_breaker(
+    _mission_dispatch(
         folder,
-        reason="structural_execution_failure",
-        inbox_prompt=f"Structural execution failure: {reason}",
+        "mission.circuit_breaker",
+        {
+            "reason": "structural_execution_failure",
+            "inbox_prompt": f"Structural execution failure: {reason}",
+        },
     )
     return get_mission_loop(read_run_meta(folder))
 
@@ -1546,7 +1583,11 @@ def resume_mission_loop(
 
 def on_global_run_cancel(folder: Path) -> dict[str, Any]:
     """Hook from POST /api/room/runs/cancel when session_id is known."""
-    return pause_mission_loop(folder, reason="global_cancel")
+    return _mission_dispatch(
+        folder,
+        "run.cancel",
+        {"reason": "global_cancel"},
+    )
 
 
 def public_mission_payload(folder: Path) -> dict[str, Any]:

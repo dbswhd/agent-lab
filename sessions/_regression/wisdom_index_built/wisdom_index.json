@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "built_at": "2026-06-10T00:00:00+00:00",
+  "session_id": "wisdom_index_built",
+  "document_count": 2,
+  "fingerprint": "regression-fixture",
+  "documents": [
+    {
+      "source": "evidence",
+      "text": "oracle pending approval",
+      "tokens": ["oracle", "pending", "approval"]
+    },
+    {
+      "source": "notepad:learnings.md",
+      "text": "retry merge after verify failure",
+      "tokens": ["retry", "merge", "after", "verify", "failure"]
+    }
+  ]
+}

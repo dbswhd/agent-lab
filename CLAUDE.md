@@ -2,9 +2,10 @@
 
 ## 빠른 시작
 - `make dev` → API(8765) + web(5173)
-- `make test` → pytest 574+ tests (mock-first, `-m "not live"`)
+- `make test` → pytest 779+ tests (mock-first, `-m "not live"`)
 - `make ci` → pytest + smoke + web build
-- `python scripts/smoke_room.py` → 25 regression baselines
+- `python scripts/smoke_room.py` → 32 regression baselines
+- `make list-flags` → `AGENT_LAB_*` registry (or `GET /api/health/flags`)
 
 ## 핵심 모듈
 - `src/agent_lab/room.py` — 멀티에이전트 Room

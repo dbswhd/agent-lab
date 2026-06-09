@@ -268,9 +268,14 @@ def approve_verified_loop(
         return current
 
     updated = patch_run_meta(session_folder, _approve)
-    from agent_lab.mission_loop import enable_mission_loop
+    from agent_lab.runtime.events import RuntimeEvent
+    from agent_lab.runtime.runtime import dispatch
 
-    enable_mission_loop(session_folder, start_autonomous=True)
+    dispatch(
+        session_folder,
+        RuntimeEvent.MISSION_ENABLE,
+        {"start_autonomous": True},
+    )
     loop_out = dict(updated.get("verified_loop") or {})
     return {
         "verified_loop": loop_out,

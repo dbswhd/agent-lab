@@ -22,7 +22,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | PI-executed | Conductor | Merged diff archive | ✅ | `plan_execute_merge.py:archive_executed_diff()`, `tests/test_executed_archive.py` | `sessions/<id>/executed/{exec_id}.json` |
 | PI-ops | Conductor | Live worktree Go/No-Go | ✅ | `docs/LIVE-CURSOR-WORKTREE-DRY-RUN.md`, `scripts/live_cursor_worktree_dry_run.py`, Tier B in `docs/OPS-RUNBOOK.md` | Manual, not CI |
 | PI-ops-C | Conductor | Live merge operator | ✅ | `docs/LIVE-MERGE-OPERATOR.md`, `scripts/live_cursor_worktree_merge_run.py`, `make verify-ops-live-merge` | Disposable repo only |
-| E-smoke | Room | BLOCK/CHALLENGE governance | ✅ | `sessions/_regression/objection_blocks_execute/`, `envelope_consensus_endorse/`, `scripts/smoke_room.py` | 28 baselines |
+| E-smoke | Room | BLOCK/CHALLENGE governance | ✅ | `sessions/_regression/objection_blocks_execute/`, `envelope_consensus_endorse/`, `scripts/smoke_room.py` | 32 baselines |
 | F-R3 | Room | Asymmetric `capability_cwd` | ✅ | `sessions/_benchmark/specialist_asymmetric_cwd/`, `tests/test_benchmark_catalog.py` | Payload meta |
 | H-P1 | H4 | score_session CI | ✅ | `scripts/score_session.py`, `tests/test_session_score_ci.py`, `.github/workflows/ci.yml` | |
 | H-P2 | Room | Benchmark catalog + delegate replay | ✅ | `sessions/_benchmark/`, `tests/test_benchmark_catalog.py`, `tests/test_room_delegate_replay.py` | Offline R1–R5 catalog; PLAN Phase 3; see [ROOM-REINFORCEMENT.md](ROOM-REINFORCEMENT.md) |
@@ -32,6 +32,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | ops-P0 | Platform | FastAPI lifespan | ✅ | `app/server/main.py` lifespan | |
 | ops-P2 | Platform | Router split | ✅ | `app/server/routers/*`, `app/server/main.py` | |
 | ops-verify | Platform | Manual ops routine | ✅ | `make verify-ops`, `tests/test_verify_ops_makefile.py`, `docs/OPS-RUNBOOK.md` | Tier A |
+| ops-flags | Platform | AGENT_LAB_* flag discoverability | ✅ | `runtime_flags.py`, `GET /api/health/flags`, `scripts/list_flags.py`, `make list-flags`, `tests/test_health_flags_api.py` | 79 registry entries; path values masked |
 | R-P0 | Room | Partial turn | ✅ | `src/agent_lab/room.py`, `docs/STABILITY.md` | |
 | R-P1 | Room | F2 artifact-only R2 | ✅ | `sessions/_regression/specialist_r2_artifact_only/`, `context_bundle.py` | |
 | HOOK-COMM | Hook · Communicate reform | ✅ | `reply_policy.py`, `room_hooks.py`, `gate_snapshot.py`, `communicate_kpis.py`, `sessions/_regression/envelope_consensus_endorse/`, `make verify-hooks`, USER-GUIDE §9.8 | `LEGACY_ENDORSE` default **off** (2026-06-08) — [HOOK-COMMUNICATE-REFORM.md](./HOOK-COMMUNICATE-REFORM.md) |
@@ -44,7 +45,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | MD-PROJECT | Prompt | PROJECT.md + per-dir AGENTS hierarchy | ✅ | `session_guidance.py`, `workspace_md.py:resolve_agents_md_for_guidance()`, `repo_tree_context.py` | root flat fallback; plan path → ancestor chain in `session_guidance` |
 | MD-PLATFORM | Prompt | PLATFORM.md protocol injection | ✅ | `.agent-lab/PLATFORM.md`, `platform_md.py`, `tests/test_platform_md.py` | inject cap 500 chars |
 | LC-clarifier | LazyCodex | session_clarifier Socratic gate | ✅ | `session_clarifier.py`, `room.py`, `tests/test_session_clarifier.py` | `AGENT_LAB_CLARIFIER=1`; discuss + plan mode |
-| ML-C-omo | omo | Mission Loop Layer 6 FSM (C안) | ✅ | `mission_loop.py`, `routers/mission_loop.py`, `tests/test_mission_loop.py`, `sessions/_regression/mission_loop_*`, [MISSION-LOOP-C-OMO.md](MISSION-LOOP-C-OMO.md) | Discuss ↔ Execute ↔ Verify; Momus-lite gate; 7 smoke baselines (plan_reject · verify_repair · discuss_recovery 추가) |
+| ML-C-omo | omo | Mission Loop Layer 6 FSM (C안) | ✅ | `mission_loop.py`, `routers/mission_loop.py`, `tests/test_mission_loop.py`, `tests/test_mission_loop_e2e.py`, `sessions/_regression/mission_loop_*`, [MISSION-LOOP-C-OMO.md](MISSION-LOOP-C-OMO.md) | Discuss ↔ Execute ↔ Verify; Momus-lite gate; 7 smoke baselines (plan_reject · verify_repair · discuss_recovery 추가) |
 | ML-P0 | omo | MISSION_DEFINE / verified_loop bridge | ✅ | `verified_loop.py` hooks in `mission_loop.py`, `test_verified_approve_enables_mission` | |
 | ML-P2 | omo | Plan gate Momus-lite | ✅ | `evaluate_plan_gate()`, `run_plan_gate()`, `mcp_warnings` | |
 | ML-P3 | omo | Execute queue + autorun dry-run | ✅ | `maybe_advance_mission()`, merge/dry-run hooks, `test_maybe_advance_dry_run_mock` | |
@@ -57,14 +58,22 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | MB-9 | OpenHarness | Readiness API + composer hint | ✅ | `readiness.py`, `GET /api/health/readiness`, `ReadinessComposerBar.tsx`, `tests/test_readiness_api.py` | No model calls |
 | MB-1 | Paperclip | Mission board schema + Work UI | ✅ | `mission_board.py`, `MissionBoardStrip.tsx`, runtime snapshot | goal_chain + checkout |
 | MB-2 | Paperclip | Turn budget meter | ✅ | `mission_board.py`, `TurnBudgetSection.tsx`, Work status bar | `turn_budget` in run.json |
-| MB-4 | GJC/OmO | Evidence ledger stream | ✅ | `evidence_ledger.py`, `EvidenceTimeline.tsx`, `GET …/evidence` | `.agent-lab/missions/<id>/evidence.jsonl` |
+| MB-4 | GJC/OmO | Evidence ledger stream | ✅ | `evidence_ledger.py`, `EvidenceTimeline.tsx`, `GET …/evidence`, `sessions/_regression/evidence_ledger_stream/` | `.agent-lab/missions/<id>/evidence.jsonl` |
 | MB-5 | Conductor | Merge Checks SSOT | ✅ | `merge_checks.py`, `MergeChecksPanel.tsx` | merge CTA gate |
-| MB-3 | OmO | Five evidence gates | ✅ | `evidence_gates.py`, `EvidenceGatesPanel.tsx` | executions[].evidence_gates |
+| MB-3 | OmO | Five evidence gates | ✅ | `evidence_gates.py`, `EvidenceGatesPanel.tsx`, `sessions/_regression/evidence_gates_merged_ok/` | executions[].evidence_gates |
 | MB-7 | GJC | Clarifier interview v2 | ✅ | `session_clarifier.py`, `GET/POST …/clarifier-interview*`, `RoomChat.tsx` | inbox harvest + answers API |
 | MB-6 | Conductor | Worktree setup/verify hooks | ✅ | `worktree_hooks.py`, `plan_execute.py`, `tests/test_plan_execute_worktree.py` | `.agent-lab/worktree.yaml` |
-| MB-8 | GJC/H7 | External handoff JSON | ✅ | `external_handoff.py`, `runtime/external_runner.py`, `POST …/external-handoff` | auto-attach from runner stdout/file |
-| MB-10 | Hermes | Wisdom / evidence index | ✅ | `wisdom_index.py`, `WisdomSearchPanel.tsx`, `GET …/wisdom-search` | mission-auto; optional cross-session |
+| MB-8 | GJC/H7 | External handoff JSON | ✅ | `external_handoff.py`, `runtime/external_runner.py`, `POST …/external-handoff`, `sessions/_regression/external_handoff_attached/` | auto-attach from runner stdout/file |
+| MB-10 | Hermes | Wisdom / evidence index | ✅ | `wisdom_index.py`, `WisdomSearchPanel.tsx`, `GET …/wisdom-search`, `sessions/_regression/wisdom_index_built/` | mission-auto; optional cross-session |
 | MB-11 | openai-oauth | Codex proxy adapter (dev) | ✅ | `runtime/adapters/codex.py`, `CodexProxyPanel.tsx`, `GET /api/health/codex-proxy` | `AGENT_LAB_CODEX_PROXY=1` |
+| RT-H0 | Runtime | Unified harness contract (phases, events, transitions, import audit) | ✅ | `runtime/events.py`, `runtime/transitions.py`, `runtime/import_graph.py`, `runtime/mission_lane.py`, `tests/test_runtime_transition_table.py`, `tests/test_runtime_mission_dispatch.py`, `tests/test_mission_loop_e2e.py`, [RUNTIME-HARNESS-PLAN.md](RUNTIME-HARNESS-PLAN.md) | H0 contract + mission lane (P6, 2026-06-10) |
+| RT-H1 | Runtime | Snapshot read path + `GET /runtime` + Work stepper SSOT | ✅ | `runtime/snapshot.py`, `app/server/routers/runtime.py`, `tests/test_runtime_snapshot.py` | H1 read-path |
+| RT-H2 | Runtime | Execute lane `dispatch` + `invoke_execute` bridge | ✅ | `runtime/runtime.py`, `runtime/execute_lane.py`, `runtime/invoke_execute.py`, `tests/test_runtime_dispatch.py` | H2 execute lane |
+| RT-H3 | Runtime | Discuss lane `discuss_lane` + `invoke_discuss` bridge | ✅ | `runtime/discuss_lane.py`, `runtime/invoke_discuss.py`, `tests/test_runtime_discuss_dispatch.py` | H3 discuss lane |
+| RT-H4 | Runtime | PolicyEngine — gate snapshot + hook checks | ✅ | `runtime/policy.py`, `tests/test_runtime_policy.py`, `tests/test_pre_execute_hooks.py` | H4 policy |
+| RT-H5 | Runtime | Engine adapters — execute + discuss transport | ✅ | `runtime/adapters/`, `tests/test_runtime_adapters.py` | H5 adapters |
+| RT-H6 | Runtime | Boulder/resume — `last_failure` + checkpoint snapshot | ✅ | `runtime/boulder.py`, `tests/test_runtime_boulder.py` | H6 boulder |
+| RT-H7 | Runtime | External runner — `tools.yaml` opt-in + allowlist | ✅ | `runtime/external_runner.py`, `tests/test_external_runner.py` | H7 external runner |
 
 **Planning canonical:** [MISSION-BOARD-ADOPTION.md](MISSION-BOARD-ADOPTION.md) (P1–P4 shipped).
 
@@ -72,16 +81,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 
 ## Partial
 
-| ID | Item | Design doc |
-|----|------|------------|
-| RT-H0 | Unified runtime harness contract (phases, events, transitions, import audit) | [RUNTIME-HARNESS-PLAN.md](RUNTIME-HARNESS-PLAN.md) — **H0 shipped** |
-| RT-H1 | Runtime snapshot read path + `GET /runtime` + Work stepper SSOT | `runtime/snapshot.py`, `tests/test_runtime_snapshot.py` — **H1 shipped** |
-| RT-H2 | Execute lane `Runtime.dispatch` + `invoke_execute` bridge | `runtime/runtime.py`, `runtime/execute_lane.py`, `tests/test_runtime_dispatch.py` — **H2 shipped** |
-| RT-H3 | Discuss lane `discuss_lane` + `invoke_discuss` bridge | `runtime/discuss_lane.py`, `tests/test_runtime_discuss_dispatch.py` — **H3 shipped** |
-| RT-H4 | PolicyEngine — gate snapshot + hook checks | `runtime/policy.py`, `tests/test_runtime_policy.py` — **H4 shipped** |
-| RT-H5 | Engine adapters — execute + discuss transport | `runtime/adapters/`, `tests/test_runtime_adapters.py` — **H5 shipped** |
-| RT-H6 | Boulder/resume — `last_failure` + checkpoint snapshot | `runtime/boulder.py`, `tests/test_runtime_boulder.py` — **H6 shipped** |
-| RT-H7 | External runner — `tools.yaml` opt-in + allowlist | `runtime/external_runner.py`, `tests/test_external_runner.py` — **H7 shipped** |
+_(none — runtime harness RT-H0–H7 shipped; see §Shipped.)_
 
 ---
 

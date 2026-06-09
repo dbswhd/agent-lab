@@ -31,6 +31,10 @@ Baseline scenarios (minimal `run.json` fixtures):
 | `mission_loop_circuit_breaker/` | Mission Loop circuit breaker | `circuit_breaker: true` + `discuss_recovery.pending` |
 | `envelope_consensus_endorse/` | Envelope consensus (no legacy phrase) | `consensus.status: reached` + `communicate_meta.legacy_endorse_count: 0` |
 | `mission_loop_dogfood_ok/` | Mission dogfood KPI golden | `MISSION_DONE` + merged execution + notepad chars ≥200 |
+| `evidence_gates_merged_ok/` | MB-3 five evidence gates | merged execution + 5 gates + `oracle_verdict: pass` + `plan_gate.status: ok` |
+| `evidence_ledger_stream/` | MB-4 evidence ledger | `evidence.jsonl` ≥2 lines + `evidence_ledger.entry_count` |
+| `external_handoff_attached/` | MB-8 external handoff | execution `external_handoff` with required GJC keys |
+| `wisdom_index_built/` | MB-10 wisdom index | `wisdom_index.json` + companion `evidence.jsonl` + mission `wisdom_refs` |
 
 Compare live sessions against baselines:
 

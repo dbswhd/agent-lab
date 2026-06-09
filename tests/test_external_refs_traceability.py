@@ -42,6 +42,22 @@ SHIPPED_ROWS: list[tuple[str, list[str]]] = [
     ("PI-ops", ["scripts/live_cursor_worktree_dry_run.py", "docs/OPS-RUNBOOK.md"]),
     ("PI-ops-C", ["scripts/live_cursor_worktree_merge_run.py", "docs/LIVE-MERGE-OPERATOR.md"]),
     ("E-smoke", ["scripts/smoke_room.py", "sessions/_regression/objection_blocks_execute"]),
+    (
+        "MB-3",
+        ["src/agent_lab/evidence_gates.py", "sessions/_regression/evidence_gates_merged_ok"],
+    ),
+    (
+        "MB-4",
+        ["src/agent_lab/evidence_ledger.py", "sessions/_regression/evidence_ledger_stream"],
+    ),
+    (
+        "MB-8",
+        ["src/agent_lab/external_handoff.py", "sessions/_regression/external_handoff_attached"],
+    ),
+    (
+        "MB-10",
+        ["src/agent_lab/wisdom_index.py", "sessions/_regression/wisdom_index_built"],
+    ),
     ("F-R3", ["sessions/_benchmark/specialist_asymmetric_cwd"]),
     ("H-P1", ["tests/test_session_score_ci.py"]),
     (
@@ -56,6 +72,14 @@ SHIPPED_ROWS: list[tuple[str, list[str]]] = [
     ("H4-ops-live", ["tests/test_weekly_live_ops_summary.py"]),
     ("ops-P2", ["app/server/routers/health.py"]),
     ("ops-verify", ["Makefile", "docs/OPS-RUNBOOK.md"]),
+    (
+        "ops-flags",
+        [
+            "src/agent_lab/runtime_flags.py",
+            "scripts/list_flags.py",
+            "tests/test_health_flags_api.py",
+        ],
+    ),
     ("CENT-env", ["src/agent_lab/subprocess_env.py", "tests/test_subprocess_env.py"]),
     (
         "HOOK-COMM",
@@ -66,6 +90,23 @@ SHIPPED_ROWS: list[tuple[str, list[str]]] = [
             "Makefile",
         ],
     ),
+    (
+        "RT-H0",
+        [
+            "src/agent_lab/runtime/transitions.py",
+            "src/agent_lab/runtime/mission_lane.py",
+            "tests/test_runtime_transition_table.py",
+            "tests/test_runtime_mission_dispatch.py",
+            "tests/test_mission_loop_e2e.py",
+        ],
+    ),
+    ("RT-H1", ["src/agent_lab/runtime/snapshot.py", "tests/test_runtime_snapshot.py"]),
+    ("RT-H2", ["src/agent_lab/runtime/execute_lane.py", "tests/test_runtime_dispatch.py"]),
+    ("RT-H3", ["src/agent_lab/runtime/discuss_lane.py", "tests/test_runtime_discuss_dispatch.py"]),
+    ("RT-H4", ["src/agent_lab/runtime/policy.py", "tests/test_runtime_policy.py"]),
+    ("RT-H5", ["src/agent_lab/runtime/adapters", "tests/test_runtime_adapters.py"]),
+    ("RT-H6", ["src/agent_lab/runtime/boulder.py", "tests/test_runtime_boulder.py"]),
+    ("RT-H7", ["src/agent_lab/runtime/external_runner.py", "tests/test_external_runner.py"]),
 ]
 
 PARTIAL_ROWS: list[tuple[str, list[str]]] = [

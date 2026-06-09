@@ -78,6 +78,9 @@ SESSION_META_KEYS = (
     "goal_loop",
     "verified_loop",
     "verified_plan_sync",
+    "mission_loop",
+    "mission_board",
+    "turn_budget",
     "hook_runs",
     "agent_hooks_manifest",
 )

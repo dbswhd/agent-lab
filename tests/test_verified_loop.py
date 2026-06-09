@@ -334,6 +334,24 @@ def test_session_meta_preserves_verified_loop() -> None:
     assert run_meta["verified_loop"]["loop_goal"]["text"] == "Ship feature"
 
 
+def test_session_meta_preserves_mission_loop() -> None:
+    assert "mission_loop" in SESSION_META_KEYS
+    run_meta: dict = {"topic": "t", "last_turn": {}}
+    prev = {
+        "mission_loop": {
+            "enabled": True,
+            "phase": "DISCUSS",
+            "pending_action_indices": [1],
+        },
+        "mission_board": {"goal_chain": [{"text": "Ship"}]},
+        "turn_budget": {"used": 2, "limit": 12},
+    }
+    preserve_session_meta_from_prev(run_meta, prev)
+    assert run_meta["mission_loop"]["phase"] == "DISCUSS"
+    assert run_meta["mission_board"]["goal_chain"][0]["text"] == "Ship"
+    assert run_meta["turn_budget"]["used"] == 2
+
+
 def test_stale_done_before_approval_ignored(tmp_path: Path) -> None:
     folder = _session(tmp_path)
     record_proposed_goal(

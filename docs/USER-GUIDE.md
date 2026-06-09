@@ -1078,6 +1078,9 @@ Palette: tab open, stop, release lock, settings, focus composer, slash insert.
 | Method | Path | 용도 |
 |--------|------|------|
 | GET | `/api/health` | status + agents |
+| GET | `/api/health/flags` | `AGENT_LAB_*` registry + active values (`?category=`) |
+| GET | `/api/health/readiness` | dry-run readiness (MB-9) |
+| GET | `/api/health/codex-proxy` | Codex proxy probe (MB-11) |
 | POST | `/api/health/reconnect-cursor` | bridge |
 | GET | `/api/sessions` | list |
 | GET | `/api/sessions/{id}` | detail + messages |
@@ -1106,6 +1109,13 @@ Palette: tab open, stop, release lock, settings, focus composer, slash insert.
 ---
 
 ## 22. 환경 변수
+
+**Discoverability:** canonical list of ~79 `AGENT_LAB_*` flags (description, default, effective value):
+
+- CLI: `make list-flags` · `make list-flags -- --category feature --json`
+- API: `GET /api/health/flags` · `GET /api/health/flags?category=infra`
+
+Path-like values are home-masked in API/CLI output. Undocumented `AGENT_LAB_*` vars present in the process env appear under category `undocumented`. Full tables below remain the human-oriented reference; the registry in `runtime_flags.py` is the SSOT for tooling.
 
 ### Core / paths
 

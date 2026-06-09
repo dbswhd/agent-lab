@@ -8,7 +8,6 @@ from typing import Any
 from agent_lab.runtime.dispatch_result import DispatchResult
 from agent_lab.runtime.events import RuntimeEvent
 
-
 def _skipped(result: Any) -> DispatchResult:
     if isinstance(result, dict) and result.get("skipped"):
         return DispatchResult(
@@ -70,18 +69,16 @@ def handle_execute_dry_run_complete(folder: Path, payload: dict[str, Any]) -> Di
 
 
 def handle_execute_dry_run_cancel(folder: Path, payload: dict[str, Any]) -> DispatchResult:
-    from agent_lab.mission_loop import pause_mission_loop
+    from agent_lab.runtime.runtime import dispatch
 
-    result = pause_mission_loop(
+    return dispatch(
         folder,
-        reason=str(payload.get("reason") or "dry_run_cancelled"),
-        cleanup_executions=bool(payload.get("cleanup_executions", False)),
+        RuntimeEvent.MISSION_PAUSE,
+        {
+            "reason": str(payload.get("reason") or "dry_run_cancelled"),
+            "cleanup_executions": bool(payload.get("cleanup_executions", False)),
+        },
     )
-    if result.get("skipped"):
-        return _skipped(result)
-    ml = result.get("mission_loop") if isinstance(result.get("mission_loop"), dict) else result
-    phase = str(ml.get("phase") or "") if isinstance(ml, dict) else None
-    return DispatchResult(handled=True, result=result, phase=phase)
 
 
 def handle_execute_merge_approved(folder: Path, payload: dict[str, Any]) -> DispatchResult:

@@ -510,6 +510,141 @@ def _check_goal_loop_achieved(run: dict[str, Any]) -> bool:
     )
 
 
+_EVIDENCE_GATE_IDS = frozenset(
+    {"plan_reread", "automated", "manual_merge", "adversarial", "cleanup"}
+)
+
+
+def _check_evidence_gates_merged_ok(run: dict[str, Any]) -> bool:
+    ml = run.get("mission_loop")
+    if not isinstance(ml, dict) or not ml.get("enabled"):
+        return False
+    gate = ml.get("plan_gate") or {}
+    if not isinstance(gate, dict) or gate.get("status") != "ok":
+        return False
+    for row in _execs(run):
+        if row.get("status") != "merged":
+            continue
+        gates = row.get("evidence_gates")
+        if not isinstance(gates, list) or len(gates) != 5:
+            return False
+        by_gate = {
+            str(g.get("gate") or ""): str(g.get("status") or "")
+            for g in gates
+            if isinstance(g, dict) and g.get("gate")
+        }
+        if set(by_gate) != _EVIDENCE_GATE_IDS:
+            return False
+        if by_gate.get("automated") != "pass":
+            return False
+        if by_gate.get("manual_merge") != "pass":
+            return False
+        if row.get("oracle_verdict") != "pass":
+            return False
+        return True
+    return False
+
+
+def _validate_evidence_jsonl(path: Path) -> list[str]:
+    errors: list[str] = []
+    try:
+        lines = [line for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    except OSError as exc:
+        return [str(exc)]
+    if len(lines) < 2:
+        errors.append("evidence.jsonl expected at least 2 entries")
+        return errors
+    for i, line in enumerate(lines, start=1):
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            errors.append(f"evidence.jsonl line {i}: invalid JSON")
+            continue
+        if not isinstance(row, dict):
+            errors.append(f"evidence.jsonl line {i}: expected object")
+            continue
+        if not (row.get("phase") or row.get("kind") or row.get("event")):
+            errors.append(f"evidence.jsonl line {i}: missing phase/kind/event")
+    return errors
+
+
+def _check_evidence_ledger_stream(run: dict[str, Any]) -> bool:
+    ml = run.get("mission_loop")
+    if not isinstance(ml, dict) or not ml.get("enabled"):
+        return False
+    ledger = run.get("evidence_ledger")
+    if isinstance(ledger, dict):
+        try:
+            count = int(ledger.get("entry_count") or 0)
+        except (TypeError, ValueError):
+            return False
+        return count >= 2
+    return True
+
+
+def _check_external_handoff_attached(run: dict[str, Any]) -> bool:
+    required = frozenset(
+        {"stopped_cleanly", "changed_files", "checks", "evidence_summary", "risks"}
+    )
+    for row in _execs(run):
+        handoff = row.get("external_handoff")
+        if not isinstance(handoff, dict):
+            continue
+        if not required.issubset(handoff.keys()):
+            return False
+        if not isinstance(handoff.get("stopped_cleanly"), bool):
+            return False
+        if not isinstance(handoff.get("changed_files"), list):
+            return False
+        if not isinstance(handoff.get("checks"), list):
+            return False
+        if not isinstance(handoff.get("risks"), list):
+            return False
+        if not str(handoff.get("evidence_summary") or "").strip():
+            return False
+        return True
+    return False
+
+
+def _validate_wisdom_index_json(path: Path) -> list[str]:
+    errors: list[str] = []
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return [str(exc)]
+    if not isinstance(payload, dict):
+        return ["wisdom_index.json must be an object"]
+    if payload.get("version") != 1:
+        errors.append("wisdom_index.json version expected 1")
+    try:
+        doc_count = int(payload.get("document_count") or 0)
+    except (TypeError, ValueError):
+        errors.append("wisdom_index.json document_count invalid")
+        doc_count = 0
+    if doc_count < 2:
+        errors.append("wisdom_index.json document_count expected >= 2")
+    documents = payload.get("documents")
+    if not isinstance(documents, list) or len(documents) < 2:
+        errors.append("wisdom_index.json documents[] expected >= 2 rows")
+    return errors
+
+
+def _check_wisdom_index_built(run: dict[str, Any]) -> bool:
+    ml = run.get("mission_loop")
+    if not isinstance(ml, dict) or not ml.get("enabled"):
+        return False
+    refs = ml.get("wisdom_refs") or []
+    if not isinstance(refs, list) or not refs:
+        return False
+    status = run.get("wisdom_index")
+    if isinstance(status, dict):
+        try:
+            return int(status.get("document_count") or 0) >= 2
+        except (TypeError, ValueError):
+            return False
+    return True
+
+
 SCENARIOS: dict[str, dict[str, Any]] = {
     "discuss": {
         "label": "일반 discuss",
@@ -727,6 +862,62 @@ SCENARIOS: dict[str, dict[str, Any]] = {
             "approvals",
         ),
     },
+    "evidence_gates_merged_ok": {
+        "label": "MB-3 five evidence gates on merged execution",
+        "check": _check_evidence_gates_merged_ok,
+        "required_keys": (
+            "workflow_id",
+            "run_schema_version",
+            "turns",
+            "mission_loop",
+            "executions",
+            "actions",
+            "approvals",
+        ),
+    },
+    "evidence_ledger_stream": {
+        "label": "MB-4 evidence.jsonl append-only stream",
+        "check": _check_evidence_ledger_stream,
+        "expected_evidence": "evidence.jsonl",
+        "required_keys": (
+            "workflow_id",
+            "run_schema_version",
+            "turns",
+            "mission_loop",
+            "evidence_ledger",
+            "executions",
+            "actions",
+            "approvals",
+        ),
+    },
+    "external_handoff_attached": {
+        "label": "MB-8 external runner handoff JSON on execution",
+        "check": _check_external_handoff_attached,
+        "required_keys": (
+            "workflow_id",
+            "run_schema_version",
+            "turns",
+            "executions",
+            "actions",
+            "approvals",
+        ),
+    },
+    "wisdom_index_built": {
+        "label": "MB-10 wisdom index snapshot (evidence + notepad)",
+        "check": _check_wisdom_index_built,
+        "expected_evidence": "evidence.jsonl",
+        "expected_wisdom_index": "wisdom_index.json",
+        "required_keys": (
+            "workflow_id",
+            "run_schema_version",
+            "turns",
+            "mission_loop",
+            "wisdom_index",
+            "executions",
+            "actions",
+            "approvals",
+        ),
+    },
 }
 
 REQUIRED_RUN_KEYS = (
@@ -801,6 +992,28 @@ def validate_baseline(name: str, folder: Path) -> list[str]:
             errors.append(f"{name}: {expected_badges}: {exc}")
         else:
             errors.extend(f"{name}: {err}" for err in _check_adversarial_badge_payload(payload))
+
+    expected_evidence = spec.get("expected_evidence")
+    if expected_evidence:
+        path = folder / str(expected_evidence)
+        if not path.is_file():
+            errors.append(f"{name}: missing companion file {expected_evidence}")
+        else:
+            errors.extend(
+                f"{name}: {expected_evidence}: {err}"
+                for err in _validate_evidence_jsonl(path)
+            )
+
+    expected_wisdom_index = spec.get("expected_wisdom_index")
+    if expected_wisdom_index:
+        path = folder / str(expected_wisdom_index)
+        if not path.is_file():
+            errors.append(f"{name}: missing companion file {expected_wisdom_index}")
+        else:
+            errors.extend(
+                f"{name}: {expected_wisdom_index}: {err}"
+                for err in _validate_wisdom_index_json(path)
+            )
 
     return errors
 

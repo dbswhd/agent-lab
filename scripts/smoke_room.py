@@ -444,6 +444,55 @@ def _check_mission_loop_circuit_breaker(run: dict[str, Any]) -> bool:
     return isinstance(recovery, dict) and recovery.get("pending") is True
 
 
+def _check_mission_loop_plan_reject(run: dict[str, Any]) -> bool:
+    ml = run.get("mission_loop")
+    if not isinstance(ml, dict) or not ml.get("enabled"):
+        return False
+    if ml.get("phase") != "PLAN_REJECT":
+        return False
+    if ml.get("circuit_breaker"):
+        return False
+    gate = ml.get("plan_gate") or {}
+    if not isinstance(gate, dict) or gate.get("status") != "rejected":
+        return False
+    if int(gate.get("momus_round") or 0) < 1:
+        return False
+    return bool(str(gate.get("last_reject_reason") or "").strip())
+
+
+def _check_mission_loop_verify_repair(run: dict[str, Any]) -> bool:
+    ml = run.get("mission_loop")
+    if not isinstance(ml, dict) or not ml.get("enabled"):
+        return False
+    if ml.get("phase") != "MISSION_DONE":
+        return False
+    repairs = ml.get("action_repair_counts") or {}
+    if not isinstance(repairs, dict) or sum(int(v or 0) for v in repairs.values()) < 1:
+        return False
+    last_verify = ml.get("last_verify") or {}
+    if not isinstance(last_verify, dict) or last_verify.get("status") != "pass":
+        return False
+    return any(row.get("status") == "merged" for row in _execs(run))
+
+
+def _check_mission_loop_discuss_recovery(run: dict[str, Any]) -> bool:
+    ml = run.get("mission_loop")
+    if not isinstance(ml, dict) or not ml.get("enabled"):
+        return False
+    if ml.get("phase") != "DISCUSS":
+        return False
+    if ml.get("circuit_breaker"):
+        return False
+    recovery = ml.get("discuss_recovery") or {}
+    if not isinstance(recovery, dict) or recovery.get("pending") is not True:
+        return False
+    if recovery.get("reason") != "repair_cap":
+        return False
+    repairs = ml.get("action_repair_counts") or {}
+    max_r = int(ml.get("max_repair_per_action") or 2)
+    return any(int(v or 0) >= max_r for v in repairs.values())
+
+
 def _check_goal_loop_achieved(run: dict[str, Any]) -> bool:
     goal = run.get("session_goal") or {}
     loop = run.get("goal_loop") or {}
@@ -631,6 +680,47 @@ SCENARIOS: dict[str, dict[str, Any]] = {
             "workflow_id",
             "run_schema_version",
             "turns",
+            "mission_loop",
+            "executions",
+            "actions",
+            "approvals",
+        ),
+    },
+    "mission_loop_plan_reject": {
+        "label": "mission loop Momus-lite PLAN_REJECT (C안 gate)",
+        "check": _check_mission_loop_plan_reject,
+        "required_keys": (
+            "workflow_id",
+            "run_schema_version",
+            "turns",
+            "verified_loop",
+            "mission_loop",
+            "actions",
+            "approvals",
+            "executions",
+        ),
+    },
+    "mission_loop_verify_repair": {
+        "label": "mission loop verify FAIL → REPAIR → MISSION_DONE",
+        "check": _check_mission_loop_verify_repair,
+        "required_keys": (
+            "workflow_id",
+            "run_schema_version",
+            "turns",
+            "mission_loop",
+            "executions",
+            "actions",
+            "approvals",
+        ),
+    },
+    "mission_loop_discuss_recovery": {
+        "label": "mission loop repair cap → DISCUSS 백엣지 (C안 핵심)",
+        "check": _check_mission_loop_discuss_recovery,
+        "required_keys": (
+            "workflow_id",
+            "run_schema_version",
+            "turns",
+            "verified_loop",
             "mission_loop",
             "executions",
             "actions",

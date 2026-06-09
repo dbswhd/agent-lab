@@ -44,7 +44,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | MD-PROJECT | Prompt | PROJECT.md + per-dir AGENTS hierarchy | ✅ | `session_guidance.py`, `workspace_md.py:resolve_agents_md_for_guidance()`, `repo_tree_context.py` | root flat fallback; plan path → ancestor chain in `session_guidance` |
 | MD-PLATFORM | Prompt | PLATFORM.md protocol injection | ✅ | `.agent-lab/PLATFORM.md`, `platform_md.py`, `tests/test_platform_md.py` | inject cap 500 chars |
 | LC-clarifier | LazyCodex | session_clarifier Socratic gate | ✅ | `session_clarifier.py`, `room.py`, `tests/test_session_clarifier.py` | `AGENT_LAB_CLARIFIER=1`; discuss + plan mode |
-| ML-C-omo | omo | Mission Loop Layer 6 FSM (C안) | ✅ | `mission_loop.py`, `routers/mission_loop.py`, `tests/test_mission_loop.py`, `sessions/_regression/mission_loop_*`, [MISSION-LOOP-C-OMO.md](MISSION-LOOP-C-OMO.md) | Discuss ↔ Execute ↔ Verify; Momus-lite gate; 3 smoke baselines |
+| ML-C-omo | omo | Mission Loop Layer 6 FSM (C안) | ✅ | `mission_loop.py`, `routers/mission_loop.py`, `tests/test_mission_loop.py`, `sessions/_regression/mission_loop_*`, [MISSION-LOOP-C-OMO.md](MISSION-LOOP-C-OMO.md) | Discuss ↔ Execute ↔ Verify; Momus-lite gate; 7 smoke baselines (plan_reject · verify_repair · discuss_recovery 추가) |
 | ML-P0 | omo | MISSION_DEFINE / verified_loop bridge | ✅ | `verified_loop.py` hooks in `mission_loop.py`, `test_verified_approve_enables_mission` | |
 | ML-P2 | omo | Plan gate Momus-lite | ✅ | `evaluate_plan_gate()`, `run_plan_gate()`, `mcp_warnings` | |
 | ML-P3 | omo | Execute queue + autorun dry-run | ✅ | `maybe_advance_mission()`, merge/dry-run hooks, `test_maybe_advance_dry_run_mock` | |
@@ -59,7 +59,16 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 
 ## Partial
 
-_(none — mission UI + per-dir hierarchy closed 2026-06-08)_
+| ID | Item | Design doc |
+|----|------|------------|
+| RT-H0 | Unified runtime harness contract (phases, events, transitions, import audit) | [RUNTIME-HARNESS-PLAN.md](RUNTIME-HARNESS-PLAN.md) — **H0 shipped** |
+| RT-H1 | Runtime snapshot read path + `GET /runtime` + Work stepper SSOT | `runtime/snapshot.py`, `tests/test_runtime_snapshot.py` — **H1 shipped** |
+| RT-H2 | Execute lane `Runtime.dispatch` + `invoke_execute` bridge | `runtime/runtime.py`, `runtime/execute_lane.py`, `tests/test_runtime_dispatch.py` — **H2 shipped** |
+| RT-H3 | Discuss lane `discuss_lane` + `invoke_discuss` bridge | `runtime/discuss_lane.py`, `tests/test_runtime_discuss_dispatch.py` — **H3 shipped** |
+| RT-H4 | PolicyEngine — gate snapshot + hook checks | `runtime/policy.py`, `tests/test_runtime_policy.py` — **H4 shipped** |
+| RT-H5 | Engine adapters — execute + discuss transport | `runtime/adapters/`, `tests/test_runtime_adapters.py` — **H5 shipped** |
+| RT-H6 | Boulder/resume — `last_failure` + checkpoint snapshot | `runtime/boulder.py`, `tests/test_runtime_boulder.py` — **H6 shipped** |
+| RT-H7 | External runner — `tools.yaml` opt-in + allowlist | `runtime/external_runner.py`, `tests/test_external_runner.py` — **H7 shipped** |
 
 ---
 

@@ -1,0 +1,90 @@
+{
+  "workflow_id": "room.parallel",
+  "run_schema_version": 1,
+  "plan_format_version": 1,
+  "topic": "regression baseline: mission loop verify FAIL → REPAIR → MISSION_DONE",
+  "created_at": "2026-06-09T00:00:00+00:00",
+  "agents": ["cursor", "codex", "claude"],
+  "status": "completed",
+  "message_count": 12,
+  "agent_parallel_rounds": 1,
+  "turns": [
+    {
+      "mode": "plan",
+      "synthesize": true,
+      "status": "completed",
+      "ts": "2026-06-09T00:00:01+00:00"
+    }
+  ],
+  "actions": [],
+  "approvals": [],
+  "executions": [
+    {
+      "id": "exec-repair-1",
+      "action_index": 1,
+      "status": "merged",
+      "isolation_effective": "worktree",
+      "oracle": {
+        "verdict": "fail",
+        "source": "mock_oracle",
+        "detail": "FAIL: break-report.json missing pdfPageCount field"
+      }
+    },
+    {
+      "id": "exec-repair-2",
+      "action_index": 1,
+      "status": "merged",
+      "isolation_effective": "worktree",
+      "oracle": {
+        "verdict": "pass",
+        "source": "mock_oracle"
+      }
+    }
+  ],
+  "verified_loop": {
+    "status": "running",
+    "loop_goal": {
+      "text": "PDF build with valid break-report",
+      "set_at": "2026-06-09T00:00:00+00:00"
+    }
+  },
+  "mission_loop": {
+    "enabled": true,
+    "phase": "MISSION_DONE",
+    "iteration": 1,
+    "pending_action_indices": [],
+    "current_action_index": null,
+    "action_repair_counts": {"1": 1},
+    "max_repair_per_action": 2,
+    "last_verify": {
+      "status": "pass",
+      "execution_id": "exec-repair-2",
+      "at": "2026-06-09T00:00:10+00:00"
+    },
+    "last_execution_id": "exec-repair-2",
+    "plan_gate": {
+      "status": "ok",
+      "momus_round": 1,
+      "max_momus_rounds": 3,
+      "last_reject_reason": null,
+      "failures": []
+    },
+    "discuss_recovery": {
+      "pending": false,
+      "reason": null,
+      "action_index": null,
+      "started_at": null,
+      "completed_at": null
+    },
+    "autonomous_segment": {
+      "active": false,
+      "started_at": null,
+      "ends_on": ["merge_review", "circuit_breaker", "mission_done", "inbox_escalate"]
+    },
+    "circuit_breaker": false,
+    "circuit_breaker_reason": null,
+    "pause_reason": null,
+    "last_partial": null,
+    "wisdom_refs": ["learnings.md", "verification.md"]
+  }
+}

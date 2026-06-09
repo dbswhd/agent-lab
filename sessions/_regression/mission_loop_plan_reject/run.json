@@ -1,0 +1,64 @@
+{
+  "workflow_id": "room.parallel",
+  "run_schema_version": 1,
+  "plan_format_version": 1,
+  "topic": "regression baseline: mission loop plan gate REJECT (Momus-lite)",
+  "created_at": "2026-06-09T00:00:00+00:00",
+  "agents": ["cursor", "codex"],
+  "status": "active",
+  "message_count": 5,
+  "agent_parallel_rounds": 1,
+  "turns": [
+    {
+      "mode": "plan",
+      "synthesize": true,
+      "status": "completed",
+      "ts": "2026-06-09T00:00:01+00:00"
+    }
+  ],
+  "actions": [],
+  "approvals": [],
+  "executions": [],
+  "verified_loop": {
+    "status": "running",
+    "loop_goal": {
+      "text": "Refactor login handler with proper error types",
+      "set_at": "2026-06-09T00:00:00+00:00"
+    }
+  },
+  "mission_loop": {
+    "enabled": true,
+    "phase": "PLAN_REJECT",
+    "iteration": 1,
+    "pending_action_indices": [1],
+    "current_action_index": null,
+    "action_repair_counts": {},
+    "max_repair_per_action": 2,
+    "last_verify": null,
+    "last_execution_id": null,
+    "plan_gate": {
+      "status": "rejected",
+      "momus_round": 1,
+      "max_momus_rounds": 3,
+      "last_reject_reason": "action #1 verify 필드가 너무 모호함 — 구체적 명령이나 테스트 없음",
+      "failures": ["verify field not specific enough on action #1"]
+    },
+    "discuss_recovery": {
+      "pending": false,
+      "reason": null,
+      "action_index": null,
+      "started_at": null,
+      "completed_at": null
+    },
+    "autonomous_segment": {
+      "active": false,
+      "started_at": null,
+      "ends_on": ["merge_review", "circuit_breaker", "mission_done", "inbox_escalate"]
+    },
+    "circuit_breaker": false,
+    "circuit_breaker_reason": null,
+    "pause_reason": null,
+    "last_partial": null,
+    "wisdom_refs": []
+  }
+}

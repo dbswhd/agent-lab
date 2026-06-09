@@ -1,0 +1,96 @@
+{
+  "workflow_id": "room.parallel",
+  "run_schema_version": 1,
+  "plan_format_version": 1,
+  "topic": "regression baseline: mission loop repair cap → DISCUSS recovery (C안 백엣지)",
+  "created_at": "2026-06-09T00:00:00+00:00",
+  "agents": ["cursor", "codex", "claude"],
+  "status": "active",
+  "message_count": 16,
+  "agent_parallel_rounds": 1,
+  "turns": [
+    {
+      "mode": "discuss",
+      "status": "completed",
+      "ts": "2026-06-09T00:00:05+00:00"
+    }
+  ],
+  "actions": [],
+  "approvals": [],
+  "executions": [
+    {
+      "id": "exec-rec-1",
+      "action_index": 2,
+      "status": "merged",
+      "isolation_effective": "worktree",
+      "oracle": {
+        "verdict": "fail",
+        "source": "mock_oracle",
+        "detail": "FAIL: integration test timeout"
+      }
+    },
+    {
+      "id": "exec-rec-2",
+      "action_index": 2,
+      "status": "merged",
+      "isolation_effective": "worktree",
+      "oracle": {
+        "verdict": "fail",
+        "source": "mock_oracle",
+        "detail": "FAIL: integration test timeout (still)"
+      }
+    }
+  ],
+  "verified_loop": {
+    "status": "running",
+    "loop_goal": {
+      "text": "Fix flaky integration test with proper retry logic",
+      "set_at": "2026-06-09T00:00:00+00:00"
+    }
+  },
+  "mission_loop": {
+    "enabled": true,
+    "phase": "DISCUSS",
+    "iteration": 2,
+    "pending_action_indices": [2],
+    "current_action_index": 2,
+    "action_repair_counts": {"2": 2},
+    "max_repair_per_action": 2,
+    "last_verify": {
+      "status": "fail",
+      "execution_id": "exec-rec-2",
+      "reason": "integration test timeout (still)",
+      "at": "2026-06-09T00:00:14+00:00"
+    },
+    "last_execution_id": "exec-rec-2",
+    "plan_gate": {
+      "status": "ok",
+      "momus_round": 1,
+      "max_momus_rounds": 3,
+      "last_reject_reason": null,
+      "failures": []
+    },
+    "discuss_recovery": {
+      "pending": true,
+      "reason": "repair_cap",
+      "action_index": 2,
+      "started_at": "2026-06-09T00:00:15+00:00",
+      "completed_at": null
+    },
+    "autonomous_segment": {
+      "active": false,
+      "started_at": null,
+      "ends_on": ["merge_review", "circuit_breaker", "mission_done", "inbox_escalate"]
+    },
+    "circuit_breaker": false,
+    "circuit_breaker_reason": null,
+    "pause_reason": null,
+    "last_partial": {
+      "phase": "VERIFY",
+      "resume_phase": "DISCUSS",
+      "action_index": 2,
+      "reason": "repair_cap"
+    },
+    "wisdom_refs": ["verification.md"]
+  }
+}

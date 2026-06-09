@@ -453,7 +453,7 @@ def _check_mission_loop_plan_reject(run: dict[str, Any]) -> bool:
     if ml.get("circuit_breaker"):
         return False
     gate = ml.get("plan_gate") or {}
-    if not isinstance(gate, dict) or gate.get("status") != "rejected":
+    if not isinstance(gate, dict) or gate.get("status") != "reject":
         return False
     if int(gate.get("momus_round") or 0) < 1:
         return False

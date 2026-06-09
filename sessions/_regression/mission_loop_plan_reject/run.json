@@ -37,7 +37,7 @@
     "last_verify": null,
     "last_execution_id": null,
     "plan_gate": {
-      "status": "rejected",
+      "status": "reject",
       "momus_round": 1,
       "max_momus_rounds": 3,
       "last_reject_reason": "action #1 verify 필드가 너무 모호함 — 구체적 명령이나 테스트 없음",

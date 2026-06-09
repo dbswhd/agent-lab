@@ -430,9 +430,9 @@ def run_pre_agent_reply_hooks(
     gate_snapshot: dict[str, Any] | None = None,
     human_turn: int | None = None,
 ) -> HookResult:
-    from agent_lab.gate_snapshot import compute_gate_snapshot
+    from agent_lab.runtime.policy import PolicyEngine
 
-    snap = gate_snapshot if gate_snapshot is not None else compute_gate_snapshot(run_meta)
+    snap = gate_snapshot if gate_snapshot is not None else PolicyEngine.gate_snapshot(run_meta)
     ctx = {
         "event": "pre_agent_reply",
         "session_id": session_id,
@@ -501,9 +501,9 @@ def run_post_agent_reply_hooks(
     gate_snapshot: dict[str, Any] | None = None,
     human_turn: int | None = None,
 ) -> HookResult:
-    from agent_lab.gate_snapshot import compute_gate_snapshot
+    from agent_lab.runtime.policy import PolicyEngine
 
-    snap = gate_snapshot if gate_snapshot is not None else compute_gate_snapshot(run_meta)
+    snap = gate_snapshot if gate_snapshot is not None else PolicyEngine.gate_snapshot(run_meta)
     ctx = {
         "event": "post_agent_reply",
         "session_id": session_id,
@@ -572,7 +572,7 @@ def run_post_harvest_hooks(
     human_turn: int | None = None,
     mode: str = "discuss",
 ) -> HookResult:
-    from agent_lab.gate_snapshot import compute_gate_snapshot
+    from agent_lab.runtime.policy import PolicyEngine
 
     ctx = {
         "event": "post_harvest",
@@ -580,7 +580,7 @@ def run_post_harvest_hooks(
         "workspace": _workspace_for_hooks(run_meta, session_folder),
         "human_turn": human_turn,
         "mode": mode,
-        "gate_snapshot": compute_gate_snapshot(run_meta),
+        "gate_snapshot": PolicyEngine.gate_snapshot(run_meta),
         "team_lead": run_meta.get("team_lead"),
     }
     return run_hook("post_harvest", ctx)
@@ -594,7 +594,7 @@ def run_pre_scribe_hooks(
     trigger: str = "auto_turn",
     message_count: int = 0,
 ) -> HookResult:
-    from agent_lab.gate_snapshot import compute_gate_snapshot
+    from agent_lab.runtime.policy import PolicyEngine
 
     ctx = {
         "event": "pre_scribe",
@@ -602,7 +602,7 @@ def run_pre_scribe_hooks(
         "workspace": _workspace_for_hooks(run_meta, session_folder),
         "trigger": trigger,
         "message_count": message_count,
-        "gate_snapshot": compute_gate_snapshot(run_meta),
+        "gate_snapshot": PolicyEngine.gate_snapshot(run_meta),
         "team_lead": run_meta.get("team_lead"),
     }
     return run_hook("pre_scribe", ctx)

@@ -41,10 +41,17 @@ from agent_lab.plan_execute_worktree import (
     create_exec_worktree,
     discard_exec_worktree,
 )
+from agent_lab.runtime.adapters import (
+    DEFAULT_EXECUTE_AGENT as EXECUTOR_ID,
+    EXECUTE_AGENT_IDS,
+    execute_agent_available as _execute_agent_available,
+    invoke_execute,
+    invoke_repair,
+    normalize_execute_agent as _normalize_execute_agent,
+    pick_repair_agent as _repair_agent_id,
+    verify_follow_ups,
+)
 from agent_lab.session_guidance import verify_execution_artifacts
-
-EXECUTOR_ID = "cursor"
-EXECUTE_AGENT_IDS = {"cursor", "codex"}
 MAX_DIFF_CHARS = 120_000
 MAX_VERIFY_RETRIES = 2
 PENDING_STATUS = "pending_approval"
@@ -336,16 +343,20 @@ def _notify_merge_conflict_mission(
     folder: Path,
     target: dict[str, Any],
 ) -> None:
-    from agent_lab.mission_loop import on_structural_execution_failure
+    from agent_lab.runtime.events import RuntimeEvent
+    from agent_lab.runtime.runtime import dispatch
 
     merge = target.get("merge") if isinstance(target.get("merge"), dict) else {}
     files = [str(f) for f in (merge.get("conflict_files") or []) if f]
     detail = ", ".join(files) if files else "unknown files"
     idx = target.get("action_index")
-    on_structural_execution_failure(
+    dispatch(
         folder,
-        reason=f"merge conflict: {detail}",
-        action_index=int(idx) if idx is not None else None,
+        RuntimeEvent.EXECUTE_STRUCTURAL_FAIL,
+        {
+            "reason": f"merge conflict: {detail}",
+            "action_index": int(idx) if idx is not None else None,
+        },
     )
 
 
@@ -392,7 +403,7 @@ def _record_verify_after_merge(
         exec_id = str(target.get("id") or "")
         if exec_id:
             archive_executed_diff(folder, execution_id=exec_id, execution=target)
-    from agent_lab.mission_loop import on_verify_result
+    from agent_lab.runtime.runtime import dispatch_verify_result
 
     idx = int(target.get("action_index") or 0)
     verdict = str((oracle.get("verdict") or evidence.get("status") or "")).lower()
@@ -402,7 +413,7 @@ def _record_verify_after_merge(
         or oracle.get("reason")
         or ""
     )
-    on_verify_result(
+    dispatch_verify_result(
         folder,
         action_index=idx,
         verdict=verdict,
@@ -410,28 +421,6 @@ def _record_verify_after_merge(
         oracle=oracle,
     )
     return evidence
-
-
-def _repair_agent_id(
-    target: dict[str, Any],
-    requested: str | None,
-) -> str:
-    from agent_lab.agents.registry import available_agents
-
-    allowed = {"cursor", "codex"}
-    if requested and requested not in allowed:
-        raise ValueError("repair executor must be cursor or codex")
-    ready = set(available_agents())
-    candidates = [
-        requested,
-        str(target.get("executor") or ""),
-        "cursor",
-        "codex",
-    ]
-    for candidate in candidates:
-        if candidate in allowed and candidate in ready:
-            return candidate
-    raise RuntimeError("Cursor/Codex repair executor unavailable")
 
 
 def _repair_prompt(target: dict[str, Any], *, attempt: int) -> str:
@@ -464,7 +453,7 @@ def _call_repair_agent(
 ) -> str:
     prompt = _repair_prompt(target, attempt=attempt)
     if session_folder is not None:
-        from agent_lab.mission_loop import inject_wisdom_into_prompt
+        from agent_lab.runtime.context import enrich_execute_prompt
         from agent_lab.run_meta import read_run_meta
         from agent_lab.session_plugin_runtime import (
             enrich_execute_permissions,
@@ -473,26 +462,20 @@ def _call_repair_agent(
 
         permissions = enrich_execute_permissions(permissions, session_folder)
         prompt = execute_plugin_prompt_addon(prompt, session_folder, agent_id)
-        prompt = inject_wisdom_into_prompt(prompt, read_run_meta(session_folder))
+        prompt = enrich_execute_prompt(prompt, read_run_meta(session_folder))
+    from agent_lab.runtime.adapters import RepairInvokeRequest
+
     effective = dict(permissions or {})
     effective["_discuss_cwd"] = str(worktree_path.resolve())
-    if agent_id == "cursor":
-        from agent_lab.agents import cursor_agent
-
-        return cursor_agent.respond(
+    return invoke_repair(
+        agent_id,  # type: ignore[arg-type]
+        RepairInvokeRequest(
             system="You repair a merged plan action after independent verification failed.",
             user=prompt,
             permissions=effective,
             cwd=worktree_path,
-            follow_ups=_verify_follow_ups(str(target.get("action_verify") or "")),
-        )
-    from agent_lab.agents import codex_agent
-
-    return codex_agent.respond(
-        system="You repair a merged plan action after independent verification failed.",
-        user=prompt,
-        permissions=effective,
-        room_turn=False,
+            verify_follow_ups=verify_follow_ups(str(target.get("action_verify") or "")),
+        ),
     )
 
 
@@ -755,45 +738,12 @@ Previous selected diff:
     return prompt
 
 
-def _cursor_verify_follow_up(verify: str) -> str:
-    return f"""Phase 2 — verify and fix (same Cursor session, keep using tools):
-- Verification criterion from plan: {verify}
-- Re-read changed files; run tests/commands/build steps named in the criterion.
-- If anything fails, fix and re-check before you finish.
-- End with a line: VERIFICATION: PASS — … or VERIFICATION: FAIL — …
-- Then 3–5 lines summarizing files touched and what you verified."""
-
-
-def _verify_follow_ups(verify: str) -> list[str]:
-    text = (verify or "").strip()
-    if not text or text in {"검증 기준 없음", "-", "—", "none", "N/A"}:
-        return []
-    return [_cursor_verify_follow_up(text)]
-
-
 def _extract_draft_summary(text: str) -> str:
     body = (text or "").strip()
     if not body:
         return ""
     lines = [ln.strip() for ln in body.splitlines() if ln.strip()]
     return "\n".join(lines[:8])
-
-
-def _normalize_execute_agent(executor: str | None) -> str:
-    agent_id = str(executor or EXECUTOR_ID).strip().lower()
-    if agent_id not in EXECUTE_AGENT_IDS:
-        raise ValueError("execute agent must be cursor or codex")
-    return agent_id
-
-
-def _execute_agent_available(agent_id: str) -> bool:
-    if agent_id == "cursor":
-        from agent_lab.agents.cursor_agent import is_available
-
-        return is_available()
-    from agent_lab.agents.codex_agent import is_available
-
-    return is_available()
 
 
 def _call_execute_agent(
@@ -810,10 +760,12 @@ def _call_execute_agent(
     expected_paths: list[str] | None = None,
     revise_request: dict[str, Any] | None = None,
 ) -> str:
+    from agent_lab.runtime.adapters import ExecuteInvokeRequest
+
     system = "You implement approved plan actions with minimal scope."
-    verify_ups = _verify_follow_ups(verify)
+    verify_ups = verify_follow_ups(verify)
     if session_folder is not None:
-        from agent_lab.mission_loop import inject_wisdom_into_prompt
+        from agent_lab.runtime.context import enrich_execute_prompt
         from agent_lab.run_meta import read_run_meta
         from agent_lab.session_plugin_runtime import (
             enrich_execute_permissions,
@@ -822,91 +774,35 @@ def _call_execute_agent(
 
         permissions = enrich_execute_permissions(permissions, session_folder)
         user = execute_plugin_prompt_addon(user, session_folder, agent_id)
-        user = inject_wisdom_into_prompt(user, read_run_meta(session_folder))
+        user = enrich_execute_prompt(user, read_run_meta(session_folder))
 
+    req = ExecuteInvokeRequest(
+        system=system,
+        user=user,
+        permissions=permissions,
+        cwd=cwd,
+        verify_follow_ups=verify_ups,
+        on_activity=on_activity,
+        session_folder=session_folder,
+        inbox_mcp=inbox_mcp,
+    )
     if inbox_mcp and session_folder is not None and action is not None:
         from agent_lab.human_inbox import execute_inbox_build_go
 
-        plan_user = _cursor_plan_phase_prompt(
+        req.plan_phase_user = _cursor_plan_phase_prompt(
             action,
             expected_paths=expected_paths,
             verify=verify,
         )
-        implement_user = _cursor_implement_phase_prompt(
+        req.implement_phase_user = _cursor_implement_phase_prompt(
             action,
             expected_paths=expected_paths,
             verify=verify,
             revise_request=revise_request,
         )
-        extra = [implement_user, *verify_ups]
-        gate = lambda: execute_inbox_build_go(session_folder)
+        req.inbox_gate = lambda: execute_inbox_build_go(session_folder)
 
-        if agent_id == "cursor":
-            from agent_lab.agents.cursor_agent import respond_session
-
-            return respond_session(
-                system,
-                [plan_user],
-                permissions=permissions,
-                cwd=cwd,
-                on_activity=on_activity,
-                session_folder=session_folder,
-                inbox_mcp=True,
-                gate_after=0,
-                gate=gate,
-                extra_prompts_if_gate=extra,
-            )
-
-        from agent_lab.agents.codex_agent import respond_session
-
-        codex_permissions = dict(permissions)
-        codex_permissions["_discuss_cwd"] = str(cwd.resolve())
-        return respond_session(
-            system,
-            [plan_user],
-            permissions=codex_permissions,
-            on_activity=on_activity,
-            room_turn=False,
-            session_folder=session_folder,
-            inbox_mcp=True,
-            gate_after=0,
-            gate=gate,
-            extra_prompts_if_gate=extra,
-        )
-
-    if agent_id == "cursor":
-        from agent_lab.agents.cursor_agent import respond
-
-        return respond(
-            system=system,
-            user=user,
-            permissions=permissions,
-            cwd=cwd,
-            on_activity=on_activity,
-            follow_ups=verify_ups,
-            session_folder=session_folder,
-            inbox_mcp=inbox_mcp,
-        )
-
-    from agent_lab.agents.codex_agent import respond
-
-    codex_permissions = dict(permissions)
-    codex_permissions["_discuss_cwd"] = str(cwd.resolve())
-    follow_up = (
-        _cursor_verify_follow_up(verify).replace("same Cursor session", "same execution")
-        if verify_ups
-        else ""
-    )
-    codex_user = f"{user}\n\n{follow_up}" if follow_up else user
-    return respond(
-        system=system,
-        user=codex_user,
-        permissions=codex_permissions,
-        on_activity=on_activity,
-        room_turn=False,
-        session_folder=session_folder,
-        inbox_mcp=inbox_mcp,
-    )
+    return invoke_execute(_normalize_execute_agent(agent_id), req)
 
 
 def _selected_revision_diff(
@@ -977,12 +873,13 @@ def run_dry_run(
         else:
             kind, action_index = parsed
     action = find_dry_run_action(plan_md, action_index, kind=kind)
-    from agent_lab.mission_loop import set_execution_phase
+    from agent_lab.runtime.events import RuntimeEvent
+    from agent_lab.runtime.runtime import dispatch
 
-    set_execution_phase(
+    dispatch(
         folder,
-        phase="DRY_RUN",
-        current_action_index=action_index,
+        RuntimeEvent.EXECUTE_DRY_RUN_START,
+        {"action_index": action_index},
     )
     if action is None:
         kind_hint = f" ({kind})" if kind else ""
@@ -996,9 +893,9 @@ def run_dry_run(
     ensure_plan_snapshot_approved(folder, action, plan_md)
 
     run = read_run_meta(folder)
-    from agent_lab.room_objections import assert_execute_allowed
+    from agent_lab.runtime.policy import PolicyEngine
 
-    assert_execute_allowed(run, action.index, action.kind)
+    PolicyEngine.assert_execute_allowed(run, action.index, action.kind)
 
     pending = _pending_execution(run)
     if (
@@ -1106,21 +1003,20 @@ def run_dry_run(
         )
         workspace_info = _workspace_info_for(cwd, monitored_path_inputs)
 
-    from agent_lab.room_hooks import PreExecuteBlocked, run_pre_execute_hooks
+    from agent_lab.room_hooks import PreExecuteBlocked
+    from agent_lab.runtime.policy import PolicyEngine
 
-    pre_verify = run_pre_execute_hooks(
-        run,
-        action.to_dict(),
-        session_folder=folder,
-        session_id=folder.name,
-    )
-    if pre_verify.get("blocked"):
+    try:
+        PolicyEngine.require_pre_execute(
+            run,
+            action.to_dict(),
+            session_folder=folder,
+            session_id=folder.name,
+        )
+    except PreExecuteBlocked:
         if exec_worktree is not None:
             discard_exec_worktree(exec_worktree, folder, exec_id)
-        raise PreExecuteBlocked(
-            str(pre_verify.get("feedback") or "pre_execute hook blocked"),
-            pre_verify=pre_verify,
-        )
+        raise
 
     source_snapshot = paths_relative_to_workspace(cwd, source_path_inputs)
     artifact_snapshot = paths_relative_to_workspace(cwd, verification_path_inputs)
@@ -1203,9 +1099,14 @@ def run_dry_run(
         delete_snapshot(folder, exec_id)
         if exec_worktree is not None:
             discard_exec_worktree(exec_worktree, folder, exec_id)
-        from agent_lab.mission_loop import pause_mission_loop
+        from agent_lab.runtime.events import RuntimeEvent
+        from agent_lab.runtime.runtime import dispatch
 
-        pause_mission_loop(folder, reason="dry_run_cancelled", cleanup_executions=False)
+        dispatch(
+            folder,
+            RuntimeEvent.EXECUTE_DRY_RUN_CANCEL,
+            {"reason": "dry_run_cancelled", "cleanup_executions": False},
+        )
         raise
     except Exception as e:
         restore_snapshot(folder, exec_id=exec_id, cwd=cwd, manifest=manifest)
@@ -1384,9 +1285,10 @@ def run_dry_run(
 
     patch_run_meta(folder, _mark_tasks)
 
-    from agent_lab.mission_loop import on_dry_run_complete
+    from agent_lab.runtime.events import RuntimeEvent
+    from agent_lab.runtime.runtime import dispatch
 
-    on_dry_run_complete(folder, execution)
+    dispatch(folder, RuntimeEvent.EXECUTE_DRY_RUN_COMPLETE, {"execution": execution})
     return execution
 
 
@@ -1874,7 +1776,8 @@ def abort_merge_execution(
     *,
     execution_id: str,
 ) -> dict[str, Any]:
-    from agent_lab.mission_loop import on_merge_abort
+    from agent_lab.runtime.events import RuntimeEvent
+    from agent_lab.runtime.runtime import dispatch
 
     _run, target = _merge_conflict_execution(folder, execution_id)
     completed = _now()
@@ -1892,7 +1795,11 @@ def abort_merge_execution(
     target["completed_at"] = completed
     _update_execution_row(folder, execution_id=execution_id, target=target)
     _mark_rejected_tasks(folder, execution_id=execution_id, target=target)
-    on_merge_abort(folder, execution_id=execution_id)
+    dispatch(
+        folder,
+        RuntimeEvent.EXECUTE_MERGE_REJECTED,
+        {"execution_id": execution_id},
+    )
     return {"execution": target}
 
 
@@ -1901,10 +1808,15 @@ def confirm_merge_execution(
     *,
     execution_id: str,
 ) -> dict[str, Any]:
-    from agent_lab.mission_loop import on_merge_confirm
+    from agent_lab.runtime.events import RuntimeEvent
+    from agent_lab.runtime.runtime import dispatch
 
     _run, target = _merge_conflict_execution(folder, execution_id)
-    on_merge_confirm(folder, execution_id=execution_id)
+    dispatch(
+        folder,
+        RuntimeEvent.EXECUTE_MERGE_APPROVED,
+        {"execution_id": execution_id},
+    )
     completed = _now()
     ew = _exec_worktree_from_execution(target)
     result = confirm_exec_merge(ew, session_folder=folder, exec_id=execution_id)

@@ -228,8 +228,9 @@ Plan → Review → Execute → Verify → Done
 
 | Resolver | 우선순위 | 역할 |
 |----------|----------|------|
-| `resolveWorkPhaseFromMission()` | 미션 loop `phase` 있으면 **먼저** | Layer 6 FSM → stepper 매핑 |
-| `resolveWorkPhase()` | 미션 없을 때 | plan · execution · Oracle 상태에서 파생 |
+| `GET /api/sessions/{id}/runtime` → `work_phase` | **최우선** (`WorkPanel`) | Python SSOT [`work_phase.py`](../src/agent_lab/runtime/work_phase.py) |
+| `resolveWorkPhaseFromMission()` | runtime 없을 때, 미션 `phase` 매핑 | Layer 6 FSM → stepper |
+| `resolveWorkPhase()` | mission 매핑 `null`일 때 fallback | plan · execution · Oracle에서 **5상태** 파생 (`done`·`merge_verify` 포함) |
 
 | Phase | 조건 (파생) | 강조 UI |
 |-------|-------------|---------|
@@ -901,7 +902,7 @@ UI: Settings → PluginPanel (Plugins / Commands tabs).
 ### 14.3 Command registry
 
 Built-in: `/goal-check`, `/stop`, `/focus`  
-External stub: `~/.agent-lab/tools.yaml`  
+External (opt-in): `~/.agent-lab/tools.yaml` · `AGENT_LAB_EXTERNAL_TOOLS=1` · session allowlist `PATCH /api/sessions/{id}/external-tools` · run with `confirm: true` when `human_approve`  
 History: `command_history` max 50.
 
 ---
@@ -1257,7 +1258,6 @@ Tauri log: `~/Library/Logs/Agent Lab/agent-lab-api.log`
 | **⌘5** | Artifacts? | App 등록 · **shortcut map 없음** |
 | **⌘. Stop** | mission pause | `run_control` cancel + `mission_loop` pause · Work 탭 **미션 재개** 버튼 |
 | **Plan/Review 탭 이름** | legacy docs | 코드는 **Work** 단일 탭 |
-| **Work stepper** | WORK-TAB-IA | `resolveWorkPhaseFromMission()` — 미션 phase가 있으면 stepper 우선 |
 | **Human Inbox execute MCP** | reference-fidelity | discuss harvest **부분 구현** ([HUMAN-INBOX.md](./HUMAN-INBOX.md)) |
 
 ---
@@ -1270,7 +1270,7 @@ Tauri log: `~/Library/Logs/Agent Lab/agent-lab-api.log`
 
 | 영역 | 설명 |
 |------|------|
-| **Stepper** | plan_draft / review_needed / execute_pending (+ 미션 phase 오버레이) |
+| **Stepper** | 5단계: `plan_draft` → `review_needed` → `execute_pending` → `merge_verify` → `done` (§4.3) |
 | **Pause alert** | `MISSION_PAUSED` 시 사유·재개 phase 안내 + **미션 재개** |
 | **Mission strip** | 목표 · phase · 다음 action · circuit breaker · autonomous 배지 |
 | **Setup (접기)** | 세션 plugin allowlist — execute/repair MCP merge |

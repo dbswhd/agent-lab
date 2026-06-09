@@ -120,7 +120,17 @@ def run_dogfood(*, sessions_root: Path, session_id: str | None = None) -> Path:
 
     patch_run_meta(folder, _exec_queue)
     pause_mission_loop(folder, reason="dogfood_pause_drill")
+    from agent_lab.runtime.snapshot import build_runtime_snapshot
+
+    paused_snap = build_runtime_snapshot(folder)
+    if paused_snap.get("boulder", {}).get("resume_phase") != "EXECUTE_QUEUE":
+        raise RuntimeError(f"dogfood boulder missing after pause: {paused_snap.get('boulder')}")
+    if paused_snap.get("last_failure", {}).get("event") != "mission.pause":
+        raise RuntimeError(f"dogfood last_failure missing after pause: {paused_snap.get('last_failure')}")
     resume_mission_loop(folder)
+    resumed_snap = build_runtime_snapshot(folder)
+    if resumed_snap.get("last_failure") is not None:
+        raise RuntimeError("dogfood last_failure should clear after resume")
 
     def _verify_ready(run: dict) -> dict:
         ml = run.setdefault("mission_loop", {})
@@ -165,6 +175,12 @@ def run_dogfood(*, sessions_root: Path, session_id: str | None = None) -> Path:
     phase = read_run_meta(folder)["mission_loop"]["phase"]
     if phase != "MISSION_DONE":
         raise RuntimeError(f"expected MISSION_DONE, got {phase!r}")
+
+    done_snap = build_runtime_snapshot(folder)
+    if done_snap.get("boulder") is not None:
+        raise RuntimeError("dogfood boulder should clear on MISSION_DONE")
+    if done_snap.get("last_failure") is not None:
+        raise RuntimeError("dogfood last_failure should clear on MISSION_DONE")
 
     return folder
 

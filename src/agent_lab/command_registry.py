@@ -8,7 +8,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from agent_lab.external_tools import load_external_tools, run_external_tool
+from agent_lab.external_tools import load_external_tools
+from agent_lab.runtime.external_runner import (
+    external_runner_enabled,
+    external_tool_catalog_row,
+    external_tools_allowlist,
+    run_external_command,
+)
 from agent_lab.goal_loop import check_session_goal, goal_loop_enabled
 from agent_lab.plugin_discovery import (
     discover_plugins,
@@ -118,19 +124,21 @@ def list_commands(
 
     commands.extend(_plugin_as_commands(plugins, allowlist))
 
+    ext_allowlist = external_tools_allowlist(run_meta)
     for row in load_external_tools():
         commands.append(
-            {
-                **row,
-                "enabled": True,
-                "disabled_reason": None,
-            }
+            external_tool_catalog_row(row, allowlist=ext_allowlist),
         )
 
     return {
         "commands": commands,
         "plugins": plugins,
         "allowlist": allowlist,
+        "external_tools": {
+            "enabled": external_runner_enabled(),
+            "allowlist": ext_allowlist,
+            "registered": [r["id"] for r in load_external_tools()],
+        },
         "discovery_mock": discovery.get("mock", False),
     }
 
@@ -170,6 +178,7 @@ def execute_command(
     command_id: str,
     *,
     args: str = "",
+    confirm: bool = False,
     workspace: Path | None = None,
 ) -> dict[str, Any]:
     catalog = list_commands(session_folder, workspace=workspace)
@@ -200,9 +209,18 @@ def execute_command(
         return {"ok": True, "kind": "server", "result": result, "command": cmd}
 
     if kind == "external":
-        result = run_external_tool(str(cmd["id"]), session_folder=session_folder)
+        result = run_external_command(
+            session_folder,
+            str(cmd["id"]),
+            args=args,
+            confirm=confirm,
+            workspace=workspace,
+        )
         _record_command_history(session_folder, {**entry, "result": result})
-        return {"ok": bool(result.get("ok")), "kind": "external", "result": result, "command": cmd}
+        ok = bool(result.get("ok"))
+        if result.get("status") == "pending_human":
+            ok = False
+        return {"ok": ok, "kind": "external", "result": result, "command": cmd}
 
     if kind in {"agent_invoke", "plugin"}:
         agent = str(cmd.get("agent") or "claude").lower()

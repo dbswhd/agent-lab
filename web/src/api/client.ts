@@ -404,6 +404,79 @@ export type MissionLoopResponse = {
   notepads?: MissionNotepadSummary[];
 };
 
+export type RuntimeWorkPhase =
+  | "plan_draft"
+  | "review_needed"
+  | "execute_pending"
+  | "merge_verify"
+  | "done";
+
+export type RuntimeSnapshot = {
+  ok: boolean;
+  session_id: string;
+  mode: "standalone" | "mission";
+  has_plan: boolean;
+  work_phase: RuntimeWorkPhase;
+  mission: {
+    enabled: boolean;
+    phase: string;
+    paused: boolean;
+    pause_reason?: string | null;
+    circuit_breaker?: boolean;
+    circuit_breaker_reason?: string | null;
+    resume_phase?: string | null;
+    plan_gate_status?: string | null;
+    pending_action_indices?: number[];
+    current_action_index?: number | null;
+  };
+  execute: {
+    has_pending: boolean;
+    pending_execution_id?: string | null;
+    has_dry_run_diff: boolean;
+    latest_execution_id?: string | null;
+    latest_status?: string | null;
+    oracle_verdict?: string | null;
+  };
+  gates: {
+    block_reason?: string | null;
+    execute_blocked: boolean;
+    pending_agreement: boolean;
+  };
+  inbox: {
+    pending: boolean;
+    pending_count: number;
+    pending_questions: number;
+    pending_builds: number;
+  };
+  last_failure?: {
+    at?: string;
+    lane?: string;
+    event?: string;
+    reason?: string;
+    phase?: string | null;
+    action_index?: number | null;
+    execution_id?: string | null;
+    recoverable?: boolean;
+    resume_phase?: string | null;
+  } | null;
+  boulder?: {
+    resume_phase?: string;
+    phase_before?: string | null;
+    action_index?: number | null;
+    execution_id?: string | null;
+    at?: string;
+    source?: string;
+    reason?: string | null;
+  } | null;
+  next_action: string;
+};
+
+export function fetchSessionRuntime(sessionId: string) {
+  return json<RuntimeSnapshot>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/runtime`,
+  );
+}
+
 export function fetchMissionLoop(sessionId: string) {
   return json<MissionLoopResponse>(
     `/api/sessions/${encodeURIComponent(sessionId)}/mission-loop`,
@@ -639,6 +712,14 @@ export type SlashCommandRecord = {
   enabled?: boolean;
   disabled_reason?: string | null;
   native_add_hint?: string;
+  requires_human_confirm?: boolean;
+  status?: string;
+};
+
+export type ExternalToolsMeta = {
+  enabled: boolean;
+  allowlist: string[];
+  registered: string[];
 };
 
 export type AgentPluginRecord = {
@@ -661,6 +742,7 @@ export function fetchCommands(sessionId?: string | null) {
     ok: boolean;
     commands: SlashCommandRecord[];
     allowlist?: Record<string, string[]>;
+    external_tools?: ExternalToolsMeta;
     discovery_mock?: boolean;
   }>(`/api/commands${q}`);
 }
@@ -692,9 +774,21 @@ export function patchSessionAgentPlugins(
   );
 }
 
+export function patchSessionExternalTools(sessionId: string, enabled: string[]) {
+  return json<{
+    ok: boolean;
+    enabled: string[];
+    external_tools?: ExternalToolsMeta;
+  }>(`/api/sessions/${encodeURIComponent(sessionId)}/external-tools`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled }),
+  });
+}
+
 export function runSessionCommand(
   sessionId: string,
-  body: { command_id: string; args?: string },
+  body: { command_id: string; args?: string; confirm?: boolean },
 ) {
   return json<{
     ok: boolean;

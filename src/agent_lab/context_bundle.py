@@ -47,7 +47,7 @@ from agent_lab.reply_policy import (
     envelope_follow_up_block,
     resolve_reply_policy,
 )
-from agent_lab.gate_snapshot import compute_gate_snapshot, format_gate_snapshot_block
+from agent_lab.runtime.policy import PolicyEngine
 
 ARTIFACT_ONLY_RECENT_MAX_CHARS = 1200
 
@@ -273,7 +273,8 @@ def build_slim_consensus_bundle(
     challenge_block = build_challenge_owner_block(run_meta, agent)
     if challenge_block.strip():
         constraints = f"{constraints}\n\n{challenge_block.strip()}"
-    gate_block = format_gate_snapshot_block(compute_gate_snapshot(run_meta))
+    snap = PolicyEngine.gate_snapshot(run_meta)
+    gate_block = PolicyEngine.format_gate_block(snap)
     if gate_block.strip():
         constraints = f"{constraints}\n\n{gate_block.strip()}"
     plan_open = build_plan_open_block(
@@ -351,7 +352,7 @@ def _append_mission_track_c_blocks(
     run_meta: dict[str, Any] | None,
     plan_md: str,
 ) -> str:
-    from agent_lab.mission_loop import build_mission_wisdom_block
+    from agent_lab.runtime.context import build_mission_wisdom_block
     from agent_lab.repo_tree_context import (
         build_per_dir_agents_block,
         build_repo_tree_block,
@@ -498,7 +499,8 @@ def build_context_bundle(
     challenge_block = build_challenge_owner_block(run_meta, agent)
     if challenge_block.strip():
         constraints = f"{constraints}\n\n{challenge_block.strip()}"
-    gate_block = format_gate_snapshot_block(compute_gate_snapshot(run_meta))
+    snap = PolicyEngine.gate_snapshot(run_meta)
+    gate_block = PolicyEngine.format_gate_block(snap)
     if gate_block.strip():
         constraints = f"{constraints}\n\n{gate_block.strip()}"
     plan_open = build_plan_open_block(

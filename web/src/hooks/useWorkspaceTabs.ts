@@ -29,6 +29,7 @@ export function useWorkspaceTabs({ sessionKey, isNew, autoContext }: Options) {
   const prevRunningRef = useRef(false);
   const prevPendingRef = useRef(false);
   const prevBlockerRef = useRef(false);
+  const prevSessionKeyRef = useRef(sessionKey);
 
   const setWorkspaceTab = useCallback((tab: WorkspaceTab) => {
     workspacePinnedRef.current = true;
@@ -42,6 +43,20 @@ export function useWorkspaceTabs({ sessionKey, isNew, autoContext }: Options) {
   }, []);
 
   useEffect(() => {
+    const prevSessionKey = prevSessionKeyRef.current;
+    prevSessionKeyRef.current = sessionKey;
+    const boundDuringRun =
+      prevSessionKey === "new" &&
+      sessionKey !== "new" &&
+      autoContext.running;
+
+    if (boundDuringRun) {
+      // First message bound a session id — keep Transcript visible while SSE streams.
+      setWorkspaceTabState("transcript");
+      setInspectorTabState("overview");
+      return;
+    }
+
     workspacePinnedRef.current = false;
     inspectorPinnedRef.current = false;
     setWorkspaceTabPinned(false);
@@ -55,7 +70,7 @@ export function useWorkspaceTabs({ sessionKey, isNew, autoContext }: Options) {
     }
     setWorkspaceTabState(resolveDefaultWorkspaceTab(autoContext));
     setInspectorTabState(resolveDefaultInspectorTab(autoContext));
-  }, [sessionKey, isNew]);
+  }, [sessionKey, isNew, autoContext.running]);
 
   useEffect(() => {
     if (isNew) return;

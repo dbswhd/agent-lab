@@ -17,6 +17,7 @@ import {
   type AgentHealthRow,
   type SlashCommandRecord,
 } from "../api/client";
+import { MacAlert } from "./MacAlert";
 import {
   agentLabel,
   chatLineToMessage,
@@ -367,6 +368,10 @@ export function RoomChat({
   );
   const [slashCommands, setSlashCommands] = useState<SlashCommandRecord[]>([]);
   const [commandHint, setCommandHint] = useState<string | null>(null);
+  const [externalCommandConfirm, setExternalCommandConfirm] = useState<{
+    command: SlashCommandRecord;
+    args: string;
+  } | null>(null);
   const runWatchdogRef = useRef<number | null>(null);
   const syncedChatRef = useRef("");
   const [, setSetupWorkspaces] = useState<WorkspacePreset[]>([]);
@@ -1269,7 +1274,6 @@ export function RoomChat({
               },
             ]);
             refreshSessionMeta();
-            openPlanTab();
             setInboxReloadKey((k) => k + 1);
             const partialProposal = {
               excerpt,
@@ -1666,9 +1670,13 @@ export function RoomChat({
         if (!sessionId) {
           clearStoredAgentThreadBindings();
         }
-        if (activeSessionId && !navigatedToSessionRef.current) {
+        if (
+          activeSessionId &&
+          !navigatedToSessionRef.current &&
+          !sessionId
+        ) {
           activeSessionIdRef.current = activeSessionId;
-          await onSessionChange(activeSessionId);
+          onSessionChange(activeSessionId);
         }
         if (mode === "plan" && (activeSessionId ?? sessionId)) {
           openPlanTab();
@@ -1818,6 +1826,55 @@ export function RoomChat({
     void executeSynthesizeOnly(roomPermissions(selected));
   }
 
+  const executeSlashCommand = useCallback(
+    async (
+      command: SlashCommandRecord,
+      args: string,
+      confirm = false,
+    ) => {
+      if (!sessionId) return;
+      setCommandHint(null);
+      try {
+        const res = await runSessionCommand(sessionId, {
+          command_id: command.id,
+          args,
+          confirm,
+        });
+        if (res.kind === "server") {
+          refreshSessionMeta();
+          setCommandHint("명령 실행 완료");
+        } else if (res.kind === "external") {
+          const payload = res.result as { stdout?: string; detail?: string } | undefined;
+          setCommandHint(
+            (payload?.stdout ?? payload?.detail ?? "외부 명령 실행됨").slice(0, 240),
+          );
+        } else if (res.text) {
+          setCommandHint(res.text.slice(0, 240));
+        } else if (res.detail) {
+          setCommandHint(res.detail);
+        } else {
+          setCommandHint("명령 실행됨");
+        }
+        setText("");
+        void fetchCommands(sessionId)
+          .then((payload) => setSlashCommands(payload.commands ?? []))
+          .catch(() => undefined);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "명령 실패";
+        if (
+          command.kind === "external" &&
+          command.requires_human_confirm &&
+          /confirm/i.test(message)
+        ) {
+          setExternalCommandConfirm({ command, args });
+          return;
+        }
+        setCommandHint(message);
+      }
+    },
+    [sessionId, refreshSessionMeta],
+  );
+
   const runSlashCommand = useCallback(
     async (command: SlashCommandRecord, rawText?: string) => {
       setCommandHint(null);
@@ -1829,30 +1886,20 @@ export function RoomChat({
       }
       if (!sessionId) return;
       const parsed = rawText ? matchSlashCommand(rawText, slashCommands) : command;
-      const args =
-        rawText?.replace(/^\/[^\s]+\s*/, "").trim() ??
-        command.slash.replace(/^\//, "");
-      try {
-        const res = await runSessionCommand(sessionId, {
-          command_id: (parsed ?? command).id,
-          args,
-        });
-        if (res.kind === "server") {
-          refreshSessionMeta();
-          setCommandHint("명령 실행 완료");
-        } else if (res.text) {
-          setCommandHint(res.text.slice(0, 240));
-        } else if (res.detail) {
-          setCommandHint(res.detail);
-        } else {
-          setCommandHint("명령 실행됨");
-        }
-        setText("");
-      } catch (e) {
-        setCommandHint(e instanceof Error ? e.message : "명령 실패");
+      const target = parsed ?? command;
+      const args = rawText
+        ? rawText.replace(/^\/[^\s]+\s*/, "").trim()
+        : "";
+      if (
+        target.kind === "external" &&
+        target.requires_human_confirm !== false
+      ) {
+        setExternalCommandConfirm({ command: target, args });
+        return;
       }
+      await executeSlashCommand(target, args);
     },
-    [sessionId, slashCommands, refreshSessionMeta, handleStop],
+    [sessionId, slashCommands, executeSlashCommand, handleStop],
   );
 
   function handleSend() {
@@ -2313,7 +2360,7 @@ export function RoomChat({
 
       {workspaceTab === "transcript" || isNew ? (
         <div className="transcript transcript--console">
-            {loading && !isNew ? (
+            {loading && !isNew && !running && visibleMessages.length === 0 ? (
               <div className="empty-state">
                 <span className="empty-state__icon" aria-hidden>
                   <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth={1.5}>
@@ -2501,6 +2548,35 @@ export function RoomChat({
           </div>
         </>
       ) : null}
+
+      <MacAlert
+        open={externalCommandConfirm !== null}
+        title="외부 명령 실행"
+        message={
+          externalCommandConfirm
+            ? `${externalCommandConfirm.command.label} (${externalCommandConfirm.command.slash}) — 로컬 subprocess를 실행합니다. Settings에서 allowlist에 포함된 명령만 실행됩니다.`
+            : undefined
+        }
+        buttons={[
+          {
+            label: "취소",
+            variant: "cancel",
+            onClick: () => setExternalCommandConfirm(null),
+          },
+          {
+            label: "실행",
+            variant: "primary",
+            onClick: () => {
+              const pending = externalCommandConfirm;
+              setExternalCommandConfirm(null);
+              if (pending) {
+                void executeSlashCommand(pending.command, pending.args, true);
+              }
+            },
+          },
+        ]}
+        onClose={() => setExternalCommandConfirm(null)}
+      />
 
       <AgentPermissionAlert
         open={permOpen || tweaks.showPermAlert}

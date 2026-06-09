@@ -550,7 +550,7 @@ def _call_one_agent(
     session_id = str((run_meta or {}).get("_session_id") or "")
     human_turn = _human_turn_number(human_turn_index)
 
-    from agent_lab.gate_snapshot import compute_gate_snapshot
+    from agent_lab.runtime.policy import PolicyEngine
     from agent_lab.room_hooks import (
         _hook_run_record,
         run_post_agent_reply_hooks,
@@ -558,7 +558,7 @@ def _call_one_agent(
     )
     from agent_lab.run_meta import append_hook_run
 
-    gate_snap = compute_gate_snapshot(run_meta)
+    gate_snap = PolicyEngine.gate_snapshot(run_meta)
     from agent_lab.reply_policy import resolve_reply_policy
     from agent_lab.structured_envelope_adapter import should_request_structured_envelope
 
@@ -2442,9 +2442,10 @@ def _post_plan_scribe_inbox_harvest(
 
     patch_run_meta(folder, _patch)
 
-    from agent_lab.mission_loop import after_plan_scribe
+    from agent_lab.runtime.events import RuntimeEvent
+    from agent_lab.runtime.runtime import dispatch
 
-    after_plan_scribe(folder, plan_md)
+    dispatch(folder, RuntimeEvent.SCRIBE_COMPLETE, {"plan_md": plan_md})
 
 
 def _emit_plan_pipeline_proposal(
@@ -2473,7 +2474,7 @@ def _emit_plan_pipeline_proposal(
             "trigger": trigger,
         },
     )
-    from agent_lab.plan_execute import list_plan_actions
+    from agent_lab.runtime.invoke_execute import list_plan_actions
 
     actions_info = list_plan_actions(folder, permissions=permissions)
     recommended = actions_info.get("recommended")

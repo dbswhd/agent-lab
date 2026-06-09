@@ -1,0 +1,13 @@
+# Copy to ~/.agent-lab/tools.yaml and enable: export AGENT_LAB_EXTERNAL_TOOLS=1
+# Session allowlist: PATCH /api/sessions/{id}/external-tools {"enabled":["external:echo"]}
+tools:
+  - id: external:echo
+    slash: /echo-test
+    label: Echo smoke test
+    description: Prints args to stdout (mock external runner)
+    human_approve: true
+    cwd: session
+    command:
+      - /bin/sh
+      - -c
+      - 'echo "session={session_id} args={args}"'

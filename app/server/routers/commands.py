@@ -15,6 +15,7 @@ from agent_lab.plugin_discovery import (
     merge_session_allowlist,
     patch_agent_plugins,
 )
+from agent_lab.runtime.external_runner import patch_external_tools_allowlist
 from agent_lab.run_meta import patch_run_meta, read_run_meta
 from agent_lab.workspace_roots import discuss_primary_workspace
 from app.server.deps import session_folder_or_404
@@ -30,6 +31,11 @@ class AgentPluginsPatchRequest(BaseModel):
 class CommandRunRequest(BaseModel):
     command_id: str = Field(..., min_length=1)
     args: str = ""
+    confirm: bool = False
+
+
+class ExternalToolsPatchRequest(BaseModel):
+    enabled: list[str] = Field(default_factory=list)
 
 
 def _workspace_for_session(folder) -> Path:
@@ -98,7 +104,36 @@ def post_session_command_run(
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
     ws = _workspace_for_session(folder)
-    result = execute_command(folder, body.command_id, args=body.args, workspace=ws)
+    result = execute_command(
+        folder,
+        body.command_id,
+        args=body.args,
+        confirm=body.confirm,
+        workspace=ws,
+    )
     if not result.get("ok"):
-        raise HTTPException(status_code=409, detail=result.get("detail") or "command failed")
+        detail = result.get("detail")
+        if not detail and isinstance(result.get("result"), dict):
+            detail = result["result"].get("detail")
+        raise HTTPException(status_code=409, detail=detail or "command failed")
     return {"ok": True, **result}
+
+
+@router.patch("/sessions/{session_id}/external-tools")
+def patch_session_external_tools(
+    session_id: str,
+    body: ExternalToolsPatchRequest,
+) -> dict[str, Any]:
+    folder = session_folder_or_404(session_id)
+    ws = _workspace_for_session(folder)
+
+    def _patch(run: dict[str, Any]) -> dict[str, Any]:
+        return patch_external_tools_allowlist(run, body.enabled)
+
+    patch_run_meta(folder, _patch)
+    catalog = list_commands(folder, workspace=ws)
+    return {
+        "ok": True,
+        "enabled": body.enabled,
+        "external_tools": catalog.get("external_tools"),
+    }

@@ -1279,6 +1279,16 @@
 .command-row:hover { background: var(--surface-hover); }
 .command-row__cmd { font-family: var(--font-mono); font-size: var(--text-footnote); color: var(--accent); flex-shrink: 0; }
 .command-row__desc { flex: 1; font-size: var(--text-caption); color: var(--label-secondary); }
+.command-row__meta { color: var(--label-tertiary); }
+.command-row--disabled { opacity: 0.72; }
+.commands-list--grouped {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+}
+.commands-list__group-hint {
+  margin: 0 0 6px 28px;
+}
 
 /* ---- Plugin panel (Settings) ---- */
 .plugin-panel {

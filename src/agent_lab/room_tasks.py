@@ -205,7 +205,7 @@ def task_complete_block_reason(
     task: dict[str, Any],
 ) -> str | None:
     """Block manual complete when plan execute is not verified for this action."""
-    from agent_lab.plan_execute import execution_allows_task_complete
+    from agent_lab.runtime.invoke_execute import execution_allows_task_complete
 
     if task.get("plan_action_index") is None and not task.get("plan_action_id"):
         pass
@@ -252,20 +252,20 @@ def complete_task(
     block = task_complete_block_reason(run_meta, task)
     if block:
         raise ValueError(block)
-    from agent_lab.room_hooks import run_task_completed_hooks
+    from agent_lab.runtime.policy import PolicyEngine
 
     folder_raw = run_meta.get("_session_folder")
     session_folder = (
         Path(str(folder_raw)) if folder_raw and str(folder_raw).strip() else None
     )
-    hook_block = run_task_completed_hooks(
+    policy = PolicyEngine.check_task_completed(
         run_meta,
         task,
         session_folder=session_folder,
         session_id=str(run_meta.get("_session_id") or ""),
     )
-    if hook_block:
-        raise ValueError(hook_block)
+    if policy.blocked:
+        raise ValueError(policy.reason or "task_completed hook blocked")
     task["status"] = "completed"
     task["updated_at"] = _now()
     if artifact_refs:
@@ -634,7 +634,7 @@ def complete_tasks_for_execution(
 ) -> list[dict[str, Any]]:
     """Mark tasks linked to a plan action completed after Human approves execute."""
     if execution is not None:
-        from agent_lab.plan_execute import execution_allows_task_complete
+        from agent_lab.runtime.invoke_execute import execution_allows_task_complete
 
         if not execution_allows_task_complete(execution):
             return []

@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { resumeMissionLoop, type SessionDetail } from "../api/client";
+import {
+  fetchSessionRuntime,
+  resumeMissionLoop,
+  type RuntimeSnapshot,
+  type SessionDetail,
+} from "../api/client";
 import type { RoomTasksPayload } from "../api/client";
 import type { PlanMetaView } from "../utils/planMeta";
 import { workPlanMetaLine } from "../utils/planMeta";
@@ -76,6 +81,7 @@ export function WorkPanel({
   const showPlanStalePanel = Boolean(planStaleNotice);
   const showSyncFailedBar =
     Boolean(planMeta.pendingAgreement) && !showPlanStalePanel;
+  const [runtime, setRuntime] = useState<RuntimeSnapshot | null>(null);
   const missionLoop = session?.run?.mission_loop as
     | {
         enabled?: boolean;
@@ -87,15 +93,36 @@ export function WorkPanel({
       }
     | undefined;
   const [resumeBusy, setResumeBusy] = useState(false);
-  const missionPaused = missionLoop?.phase === "MISSION_PAUSED";
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchSessionRuntime(sessionId)
+      .then((payload) => {
+        if (!cancelled) setRuntime(payload);
+      })
+      .catch(() => {
+        if (!cancelled) setRuntime(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId, session?.run]);
+
+  const missionPaused =
+    runtime?.mission.paused ?? missionLoop?.phase === "MISSION_PAUSED";
   const handleMissionResume = useCallback(async () => {
     if (!missionPaused || resumeBusy) return;
     setResumeBusy(true);
     try {
       const resumePhase =
-        missionLoop?.last_partial?.resume_phase ?? "EXECUTE_QUEUE";
+        runtime?.boulder?.resume_phase ??
+        runtime?.mission.resume_phase ??
+        missionLoop?.last_partial?.resume_phase ??
+        "EXECUTE_QUEUE";
       await resumeMissionLoop(sessionId, resumePhase);
       onSessionUpdated();
+      const nextRuntime = await fetchSessionRuntime(sessionId);
+      setRuntime(nextRuntime);
     } finally {
       setResumeBusy(false);
     }
@@ -104,9 +131,11 @@ export function WorkPanel({
     missionPaused,
     onSessionUpdated,
     resumeBusy,
+    runtime?.boulder?.resume_phase,
+    runtime?.mission.resume_phase,
     sessionId,
   ]);
-  const workPhase =
+  const legacyWorkPhase =
     resolveWorkPhaseFromMission(
       missionLoop?.phase,
       missionLoop?.last_partial?.resume_phase,
@@ -118,6 +147,7 @@ export function WorkPanel({
       pendingAgreement: Boolean(planMeta.pendingAgreement),
       latestExecution,
     });
+  const workPhase = runtime?.work_phase ?? legacyWorkPhase;
   const metaLine = workPlanMetaLine(planMeta);
 
   useEffect(() => {
@@ -175,10 +205,19 @@ export function WorkPanel({
             <p className="work-alert__text">
               {missionPauseAlertText({
                 ko,
-                pauseReason: missionLoop?.pause_reason,
-                circuitBreaker: missionLoop?.circuit_breaker,
-                circuitBreakerReason: missionLoop?.circuit_breaker_reason,
-                resumePhase: missionLoop?.last_partial?.resume_phase,
+                pauseReason:
+                  runtime?.mission.pause_reason ?? missionLoop?.pause_reason,
+                circuitBreaker:
+                  runtime?.mission.circuit_breaker ??
+                  missionLoop?.circuit_breaker,
+                circuitBreakerReason:
+                  runtime?.mission.circuit_breaker_reason ??
+                  missionLoop?.circuit_breaker_reason,
+                resumePhase:
+                  runtime?.boulder?.resume_phase ??
+                  runtime?.mission.resume_phase ??
+                  missionLoop?.last_partial?.resume_phase,
+                lastFailureReason: runtime?.last_failure?.reason,
               })}
             </p>
             <button

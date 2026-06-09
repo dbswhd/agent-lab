@@ -96,15 +96,15 @@ def auth_failure_remediation(detail: str) -> list[str]:
     """Actionable steps when Claude headless auth fails."""
     low = detail.lower()
     steps = [
-        "터미널에서 `claude logout` 후 `claude login` (Claude Pro 구독 OAuth)",
+        "터미널에서 `claude logout` 후 `claude login` (Claude Code OAuth — Room은 API 키 미사용)",
         "수동 테스트: `env -u ANTHROPIC_API_KEY claude -p ping --output-format text --no-session-persistence`",
-        "~/.agent-lab/.env 의 ANTHROPIC_API_KEY 는 Room에서 무시됨 — 잘못된 키는 주석 처리",
+        "~/.agent-lab/.env 의 ANTHROPIC_API_KEY 는 Claude Room에서 주입하지 않음 — 혼동 방지용 주석 처리 권장",
         "GUI/Tauri: CLAUDE_BIN 절대경로 설정 후 앱 재시작",
     ]
     if "credit balance" in low:
         steps.insert(
             0,
-            "ANTHROPIC_API_KEY 잔액 부족 — 구독 OAuth(`claude login`) 사용 또는 Console 크레딧 충전",
+            "API 키 잔액 오류가 OAuth 대신 키로 인증된 경우 — `claude logout && claude login` 으로 OAuth만 사용",
         )
     if "401" in detail or "authenticate" in low:
         steps.insert(
@@ -388,8 +388,7 @@ def invoke(
             if "credit balance is too low" in detail.lower():
                 detail = (
                     f"{detail} "
-                    "(Agent Lab strips ANTHROPIC_API_KEY for Claude Code CLI; "
-                    "if this persists run: claude logout && claude login)"
+                    "(Claude Room uses OAuth only — run: claude logout && claude login)"
                 )
             raise RuntimeError(
                 f"claude -p failed (exit {proc.returncode})"
@@ -413,12 +412,11 @@ def invoke(
 
     try:
         from agent_lab.agent_hooks_materializer import native_claude_hooks_overlay
-        from agent_lab.credential_store import call_with_credential_fallback
 
-        def _run_for_key(api_key: str | None) -> str:
+        def _run_oauth_only() -> str:
             def _run_with_hooks() -> str:
                 with native_claude_hooks_overlay(session_folder, cwd):
-                    return _run_once(api_key)
+                    return _run_once(None)
 
             return retry_call(
                 _run_with_hooks,
@@ -427,11 +425,8 @@ def invoke(
                 on_retry_label=_on_retry,
             )
 
-        return call_with_credential_fallback(
-            "claude",
-            _run_for_key,
-            allow_oauth_without_key=True,
-        )
+        # Claude Code Room path: OAuth/keychain only — never inject API keys from credential store.
+        return _run_oauth_only()
     finally:
         Path(system_path).unlink(missing_ok=True)
 

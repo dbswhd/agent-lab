@@ -334,14 +334,14 @@ export default function App() {
     }
   }, []);
 
-  async function onRoomSessionChange(sessionId: string) {
+  function onRoomSessionChange(sessionId: string) {
     skipNextDetailLoadRef.current = true;
     setSelectedId(sessionId);
     setComposerNew(false);
     setLastSessionId(sessionId);
     setListTab("active");
-    await reloadSessions();
-    await loadDetail(sessionId, true);
+    void reloadSessions();
+    void loadDetail(sessionId, true);
   }
 
   async function onRunComplete(sessionId: string) {
@@ -453,7 +453,9 @@ export default function App() {
     roomSessionId && detail?.id === roomSessionId ? detail : null;
   const roomSessionLoading = Boolean(
     roomSessionId &&
-      (loadingDetail || (detail != null && detail.id !== roomSessionId)),
+      loadingDetail &&
+      detail != null &&
+      detail.id !== roomSessionId,
   );
   const titlebarFallbackTopic =
     roomSessionDetail?.topic ||

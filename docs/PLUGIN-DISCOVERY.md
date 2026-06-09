@@ -137,9 +137,9 @@ Merged with discovered agent commands in `GET /api/commands`.
 
 ## External tools (Phase C)
 
-LazyCodex / git tools — not discoverable via Claude/Codex/Cursor CLIs. Register in `~/.agent-lab/tools.yaml` (planned); expose under **External** group in slash menu.
+LazyCodex / git tools — not discoverable via Claude/Codex/Cursor CLIs. Register in `~/.agent-lab/tools.yaml` (see `.agent-lab/tools.yaml.example`); expose under **External** group in slash menu when `AGENT_LAB_EXTERNAL_TOOLS=1` and session allowlist includes the tool id.
 
-LazyCodex **patterns** (L1–L5) already shipped in Agent Lab code; **external runner** (`$ulw-loop`, boulder state) remains Phase C.
+LazyCodex **patterns** (L1–L5) shipped in Agent Lab code; **external runner** shipped (H7) — subprocess via `subprocess_env`, human `confirm` gate, `PATCH .../external-tools` allowlist.
 
 ---
 

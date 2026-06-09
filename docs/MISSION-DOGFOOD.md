@@ -16,7 +16,7 @@ export AGENT_LAB_MISSION_LOOP=1
 2. Work → plan gate 통과 → autonomous 구간 허용(필요 시)
 3. execute → verify → merge까지 1 action 이상
 4. ⌘. 또는 circuit breaker로 **pause** 한 번 재현 (선택)
-5. Resume로 `last_partial.resume_phase` 복귀 확인
+5. Resume로 `runtime.boulder.resume_phase` (또는 `last_partial`) 복귀 확인 — mock: `make mission-dogfood-run`이 `last_failure`/`boulder` lifecycle 검증
 
 ## Mock dogfood (CI-safe, no API)
 

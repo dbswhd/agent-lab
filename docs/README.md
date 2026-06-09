@@ -31,6 +31,7 @@ Use this page to pick the **one canonical doc** for your question. Older numbere
 | [GOAL-LOOP.md](./GOAL-LOOP.md) | Mock-first goal Oracle **shipped**; live Oracle opt-in |
 | [LIVE-ORACLE.md](./LIVE-ORACLE.md) | Execute + goal Oracle prompts, evidence, env flags |
 | [MISSION-LOOP-C-OMO.md](./MISSION-LOOP-C-OMO.md) | **Shipped** — Layer 6 FSM + Track B/C/D ([TRACEABILITY](./EXTERNAL-REFS-TRACEABILITY.md) §ML-*) |
+| [RUNTIME-HARNESS-PLAN.md](./RUNTIME-HARNESS-PLAN.md) | **H0–H4 shipped** — runtime contract, dispatch lanes, PolicyEngine |
 | [ROOM-REINFORCEMENT.md](./ROOM-REINFORCEMENT.md) | Benchmark / delegate / score **shipped** |
 | [PLUGIN-DISCOVERY.md](./PLUGIN-DISCOVERY.md) | Slash commands + plugins **shipped** |
 | [NOTIFICATION-TAXONOMY.md](./NOTIFICATION-TAXONOMY.md) | Toast / Activity kinds |

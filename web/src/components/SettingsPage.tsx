@@ -12,6 +12,7 @@ import { AgentSessionSettings } from "./AgentSessionSettings";
 import { ApiDiagnosticsBar } from "./ApiDiagnosticsBar";
 import { ContextPreviewPanel } from "./ContextPreviewPanel";
 import { PluginPanel } from "./PluginPanel";
+import { SlashCommandGroupList } from "./SlashCommandGroupList";
 import { ThemeToggle } from "./ThemeToggle";
 import { Avatar } from "./Avatar";
 import { SettingsSectionIcon } from "./SettingsSectionIcon";
@@ -50,54 +51,6 @@ type Props = {
   onReconnectCursor?: () => void;
   onOpenLegacy?: () => void;
 };
-
-function commandBadge(cmd: SlashCommandRecord): string {
-  if (cmd.scope === "external" || cmd.kind === "external") return "external";
-  if (cmd.agent) return cmd.agent;
-  return "built-in";
-}
-
-function SettingsCommandsList({
-  commands,
-  onCopy,
-  copied,
-}: {
-  commands: SlashCommandRecord[];
-  onCopy: (slash: string) => void;
-  copied: string | null;
-}) {
-  if (commands.length === 0) {
-    return (
-      <p className="settings-hint">등록된 slash 명령이 없습니다.</p>
-    );
-  }
-  return (
-    <div className="commands-list">
-      {commands.map((cmd) => {
-        const src = commandBadge(cmd);
-        const badgeClass =
-          src === "built-in" ? "ok" : src === "external" ? "accent" : "accent";
-        return (
-          <div key={cmd.id} className="command-row">
-            <code className="command-row__cmd">{cmd.slash}</code>
-            <span className="command-row__desc">
-              {cmd.description ?? cmd.label}
-            </span>
-            <span className={`badge badge--${badgeClass}`}>{src}</span>
-            <button
-              type="button"
-              className="icon-btn"
-              title="복사"
-              onClick={() => onCopy(cmd.slash)}
-            >
-              {copied === cmd.slash ? "✓" : "⎘"}
-            </button>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 function TweaksSettingsActions({ onBack }: { onBack: () => void }) {
   const tweaks = useTweaksDemo();
@@ -416,13 +369,15 @@ export function SettingsPage({
                 슬래시 명령 · agent 소스 · 활성 상태
               </span>
             </div>
-            <SettingsCommandsList
+            <SlashCommandGroupList
               commands={commands}
               onCopy={(slash) => void copySlash(slash)}
-              copied={copiedSlash}
+              copiedSlash={copiedSlash}
+              maxPerAgentGroup={24}
             />
             <p className="settings-hint">
-              외부 명령: ~/.agent-lab/tools.yaml · Claude skills: .claude/skills/*/SKILL.md
+              외부 명령: ~/.agent-lab/tools.yaml ·{" "}
+              <code>AGENT_LAB_EXTERNAL_TOOLS=1</code> · 플러그인 탭 External에서 세션 allowlist
             </p>
             <div className="settings-section__sub-head">플러그인</div>
             <PluginPanel

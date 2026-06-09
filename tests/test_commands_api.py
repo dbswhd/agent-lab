@@ -76,3 +76,53 @@ def test_session_plugin_allowlist_and_command_run(
     )
     assert run.status_code == 200
     assert run.json()["kind"] == "server"
+
+
+def test_patch_external_tools_allowlist(
+    client: TestClient,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from agent_lab import session as session_mod
+    import app.server.deps as deps_mod
+
+    tools_dir = tmp_path / "home" / ".agent-lab"
+    tools_dir.mkdir(parents=True)
+    (tools_dir / "tools.yaml").write_text(
+        'tools:\n  - id: external:echo\n    command: echo ok\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("AGENT_LAB_EXTERNAL_TOOLS", "1")
+    monkeypatch.setattr(
+        "agent_lab.external_tools._tools_paths",
+        lambda: [tools_dir / "tools.yaml"],
+    )
+
+    monkeypatch.setattr(session_mod, "SESSIONS_DIR", tmp_path / "sessions")
+    monkeypatch.setattr(deps_mod, "SESSIONS_DIR", tmp_path / "sessions")
+    folder = tmp_path / "sessions" / "ext-allow"
+    folder.mkdir(parents=True)
+    (folder / "topic.txt").write_text("ext", encoding="utf-8")
+    (folder / "run.json").write_text("{}", encoding="utf-8")
+
+    patch = client.patch(
+        f"/api/sessions/{folder.name}/external-tools",
+        json={"enabled": ["external:echo"]},
+    )
+    assert patch.status_code == 200
+    body = patch.json()
+    assert body["ok"] is True
+    assert "external:echo" in (body.get("external_tools") or {}).get("allowlist", [])
+
+    blocked = client.post(
+        f"/api/sessions/{folder.name}/commands/run",
+        json={"command_id": "external:echo"},
+    )
+    assert blocked.status_code == 409
+
+    run = client.post(
+        f"/api/sessions/{folder.name}/commands/run",
+        json={"command_id": "external:echo", "confirm": True},
+    )
+    assert run.status_code == 200
+    assert run.json()["kind"] == "external"

@@ -29,6 +29,7 @@ export function missionPauseAlertText(input: {
   circuitBreaker?: boolean;
   circuitBreakerReason?: string | null;
   resumePhase?: string | null;
+  lastFailureReason?: string | null;
 }): string {
   const lang = input.ko ? "ko" : "en";
   const key =
@@ -39,10 +40,17 @@ export function missionPauseAlertText(input: {
   if (mapped) {
     const base = mapped[lang];
     const resume = input.resumePhase?.trim();
-    if (!resume) return base;
+    const fail = input.lastFailureReason?.trim();
+    let text = base;
+    if (fail) {
+      text = input.ko
+        ? `${text} 마지막 실패: ${fail.slice(0, 120)}.`
+        : `${text} Last failure: ${fail.slice(0, 120)}.`;
+    }
+    if (!resume) return text;
     return input.ko
-      ? `${base} 재개 시 ${resume} 단계로 돌아갑니다.`
-      : `${base} Resume returns to ${resume}.`;
+      ? `${text} 재개 시 ${resume} 단계로 돌아갑니다.`
+      : `${text} Resume returns to ${resume}.`;
   }
   return input.ko
     ? "미션이 일시정지됨 — 진행 중 실행은 정리되었습니다."

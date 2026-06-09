@@ -246,12 +246,9 @@ def _action_indices_from_plan(plan_md: str) -> list[int]:
 
 
 def open_block_reason(run: dict[str, Any]) -> str | None:
-    from agent_lab.room_objections import open_objections
+    from agent_lab.runtime.policy import PolicyEngine
 
-    for obj in open_objections(run):
-        if obj.get("act") == "BLOCK" and obj.get("status") == "open":
-            return str(obj.get("body") or obj.get("id") or "open BLOCK")
-    return None
+    return PolicyEngine.execute_block_reason(run)
 
 
 def trigger_circuit_breaker(
@@ -290,7 +287,30 @@ def trigger_circuit_breaker(
 
     patch_run_meta(folder, _trip)
     run = read_run_meta(folder)
-    return get_mission_loop(run)
+    ml_out = get_mission_loop(run)
+    from agent_lab.runtime.boulder import record_last_failure, sync_boulder
+
+    record_last_failure(
+        folder,
+        lane="mission",
+        event="mission.circuit_breaker",
+        reason=reason,
+        phase=str(ml_out.get("phase") or ""),
+        action_index=ml_out.get("current_action_index"),
+        execution_id=str(ml_out.get("last_execution_id") or "").strip() or None,
+        recoverable=True,
+        resume_phase="DISCUSS",
+    )
+    sync_boulder(
+        folder,
+        resume_phase="DISCUSS",
+        phase_before=str(ml_out.get("phase") or "") or None,
+        action_index=ml_out.get("current_action_index"),
+        execution_id=str(ml_out.get("last_execution_id") or "").strip() or None,
+        source="circuit_breaker",
+        reason=reason,
+    )
+    return ml_out
 
 
 def clear_circuit_breaker(folder: Path, *, resume_phase: str = "DISCUSS") -> dict[str, Any]:
@@ -306,6 +326,9 @@ def clear_circuit_breaker(folder: Path, *, resume_phase: str = "DISCUSS") -> dic
         return run
 
     patch_run_meta(folder, _clear)
+    from agent_lab.runtime.boulder import clear_last_failure
+
+    clear_last_failure(folder)
     append_wisdom_note(
         folder,
         line=f"circuit breaker cleared — resume {phase}",
@@ -672,7 +695,7 @@ def _advance_execute_queue(
         }
 
     from agent_lab.plan_pending import PlanSnapshotRequired
-    from agent_lab.plan_execute import run_dry_run
+    from agent_lab.runtime.invoke_execute import run_dry_run
 
     try:
         execution = run_dry_run(
@@ -719,7 +742,7 @@ def _advance_repair(
     if not exec_id:
         return {"skipped": True, "reason": "no_execution_for_repair"}
 
-    from agent_lab.plan_execute import reverify_merged_execution
+    from agent_lab.runtime.invoke_execute import reverify_merged_execution
 
     try:
         result = reverify_merged_execution(
@@ -827,6 +850,11 @@ def _on_verify_pass(
 
     patch_run_meta(folder, _advance)
     out = get_mission_loop(read_run_meta(folder))
+    from agent_lab.runtime.boulder import clear_boulder, clear_last_failure
+
+    clear_last_failure(folder)
+    if out.get("phase") == "MISSION_DONE":
+        clear_boulder(folder)
     verify_line = f"verify PASS action #{action_index}"
     if oracle and str(oracle.get("detail") or "").strip():
         verify_line += f" — {str(oracle.get('detail') or '')[:220]}"
@@ -897,6 +925,19 @@ def _on_verify_fail(
 
         patch_run_meta(folder, _repair)
         out = get_mission_loop(read_run_meta(folder))
+        from agent_lab.runtime.boulder import record_last_failure
+
+        record_last_failure(
+            folder,
+            lane="execute",
+            event="execute.verify.fail",
+            reason=reason,
+            phase="REPAIR",
+            action_index=action_index,
+            execution_id=str(out.get("last_execution_id") or "").strip() or None,
+            recoverable=True,
+            resume_phase="REPAIR",
+        )
         append_wisdom_note(
             folder,
             line=(
@@ -948,6 +989,19 @@ def _on_verify_fail(
 
     patch_run_meta(folder, _discuss)
     out = get_mission_loop(read_run_meta(folder))
+    from agent_lab.runtime.boulder import record_last_failure
+
+    record_last_failure(
+        folder,
+        lane="execute",
+        event="execute.verify.fail",
+        reason=reason,
+        phase="DISCUSS",
+        action_index=action_index,
+        execution_id=str(out.get("last_execution_id") or "").strip() or None,
+        recoverable=not structural,
+        resume_phase="DISCUSS",
+    )
 
     if structural:
         trigger_circuit_breaker(
@@ -1054,7 +1108,7 @@ def run_mission_discuss_recovery(
     patch_run_meta(folder, _mark_started)
 
     from agent_lab.agents.registry import available_agents
-    from agent_lab.room import continue_room_round
+    from agent_lab.runtime.invoke_discuss import continue_room_round
 
     ready = set(available_agents())
     agents = [a for a in ("codex", "claude") if a in ready]
@@ -1344,7 +1398,7 @@ def pause_mission_loop(
     cleanup_result: dict[str, Any] | None = None
 
     if cleanup_executions and phase_before in _PAUSE_CLEANUP_PHASES:
-        from agent_lab.plan_execute import cancel_open_execution
+        from agent_lab.runtime.invoke_execute import cancel_open_execution
 
         cleanup_result = cancel_open_execution(
             folder,
@@ -1375,6 +1429,20 @@ def pause_mission_loop(
         return run_in
 
     patch_run_meta(folder, _pause)
+    from agent_lab.runtime.boulder import record_last_failure, sync_boulder_from_partial
+
+    sync_boulder_from_partial(folder, source="pause")
+    record_last_failure(
+        folder,
+        lane="mission",
+        event="mission.pause",
+        reason=reason,
+        phase=phase_before,
+        action_index=action_index,
+        execution_id=exec_id,
+        recoverable=True,
+        resume_phase=resume_phase,
+    )
     append_wisdom_note(
         folder,
         line=f"mission paused ({reason}) from {phase_before} → resume {resume_phase}",
@@ -1423,6 +1491,10 @@ def resume_mission_loop(
         return run_in
 
     patch_run_meta(folder, _resume)
+    from agent_lab.runtime.boulder import clear_boulder, clear_last_failure
+
+    clear_boulder(folder)
+    clear_last_failure(folder)
     append_wisdom_note(
         folder,
         line=f"mission resumed → {phase}",

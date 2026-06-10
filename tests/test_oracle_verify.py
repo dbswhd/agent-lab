@@ -52,7 +52,7 @@ def test_oracle_verify_mock_passes_when_literal_present(tmp_path: Path):
 def test_oracle_verify_mock_fails_when_literal_missing(tmp_path: Path):
     target = tmp_path / "src" / "app.py"
     target.parent.mkdir()
-    target.write_text("not ready\n", encoding="utf-8")
+    target.write_text("NOTREADY = True\n", encoding="utf-8")
 
     result = oracle_verify(
         _action("`src/app.py` contains `READY`"),
@@ -127,7 +127,7 @@ def test_verify_after_merge_wraps_oracle_pass(tmp_path: Path):
 def test_verify_after_merge_wraps_oracle_fail(tmp_path: Path):
     target = tmp_path / "src" / "app.py"
     target.parent.mkdir()
-    target.write_text("not done\n", encoding="utf-8")
+    target.write_text("pending\n", encoding="utf-8")
 
     result = verify_after_merge(
         _action("`src/app.py` contains `DONE`"),

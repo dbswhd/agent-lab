@@ -9,6 +9,7 @@ import pytest
 from agent_lab.goal_loop import goal_oracle_check
 from agent_lab.oracle_core import (
     build_execute_oracle_prompt,
+    literal_matches_text,
     mock_execute_oracle_response,
     mock_goal_oracle_response,
     oracle_live_enabled,
@@ -98,6 +99,33 @@ def test_oracle_live_enabled_unified_env(monkeypatch: pytest.MonkeyPatch) -> Non
 
 def test_verify_literals_skips_paths():
     assert verify_literals("`src/a.py` contains `TOKEN`") == ["TOKEN"]
+
+
+def test_literal_matches_text_rejects_embedded_substring():
+    assert literal_matches_text("READY", "STATUS = READY") is True
+    assert literal_matches_text("READY", "NOTREADY") is False
+    assert literal_matches_text("READY", "not ready") is True
+    assert literal_matches_text("GOAL_OK", "review complete: GOAL_OK") is True
+    assert literal_matches_text("GOAL_OK", "NO_GOAL_OK_EXTRA") is False
+
+
+def test_mock_goal_oracle_rejects_ready_substring_in_notready():
+    raw = mock_goal_oracle_response(
+        "최종 답에 `READY` 포함",
+        "Agent: status is NOTREADY for now.",
+    )
+    parsed = parse_oracle_response(raw)
+    assert parsed["verdict"] == "fail"
+    assert "READY" in parsed["detail"]
+
+
+def test_mock_execute_oracle_rejects_ready_substring_in_notready():
+    raw = mock_execute_oracle_response(
+        "`src/app.py` contains `READY`",
+        ["--- src/app.py ---\nNOTREADY = True\n"],
+    )
+    parsed = parse_oracle_response(raw)
+    assert parsed["verdict"] == "fail"
 
 
 def test_build_execute_prompt_includes_commands():

@@ -5,6 +5,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 
 from agent_lab.human_inbox import (
+    build_inbox_summary,
     create_inbox_item,
     public_inbox_payload,
     resolve_inbox_item,
@@ -20,6 +21,14 @@ from app.server.deps import (
 )
 
 router = APIRouter(prefix="/api")
+
+
+@router.get("/inbox/summary")
+def get_inbox_summary(include_archived: bool = False) -> dict[str, Any]:
+    from agent_lab.session import SESSIONS_DIR
+
+    summary = build_inbox_summary(SESSIONS_DIR, include_archived=include_archived)
+    return {"ok": True, **summary}
 
 
 @router.get("/sessions/{session_id}/inbox")

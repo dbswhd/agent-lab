@@ -15,7 +15,7 @@
 
 | 영역 | 상태 |
 |------|------|
-| CSS 스택 | `tokens → base → layout → surfaces → plan-execute → layout-extensions → legacy-bridge → satellites` |
+| CSS 스택 | `tokens → base → layout (+ merged plan bridge) → surfaces → plan-execute → overlays → tweaks → prototype-panels` |
 | App 셸 | `.app` / `.shell` / `.pane` / `.rail__*` + 단일 `MacTitlebar` (`TitlebarSlotsContext`) |
 | 리프 컴포넌트 | Avatar, SessionRail, SessionList, ChatComposer, WorkspaceTabBar, PlanActionCard 등 |
 | Settings | `settings-section*` dual-class + `layout-extensions.css` |
@@ -49,7 +49,7 @@
 |-----------|------|
 | `TweaksPanel` (accent, density, gate variant, simulate objection) | **미구현** — 디자인 QA용. `ThemeToggle`만 제공 |
 | `NewSessionDialog` (`ns-modal`) | **미구현** — 앱은 `composerNew` + `SessionSetupBar` 인라인 플로우 |
-| Titlebar **Inbox** 버튼 | **미구현** — Human inbox는 Inspector **Inbox** 탭·Taskbar에만; `GET /api/inbox/summary` 없음 |
+| Titlebar **Inbox** unread (다른 세션) | `GET /api/inbox/summary` + titlebar badge **shipped**; rail 전역 집계 UI는 미구현 |
 
 ---
 
@@ -63,7 +63,6 @@
 - `NotificationCenter` + `MacNotificationHost`
 - `AgentPermissionAlert` / `MacAlert`
 - `SessionSetupBar` / `AgentSessionSettings` (Settings 내 grid는 prototype `agent-settings`와 부분 일치)
-- `RunPanel` / `SessionViewer` (classic 모드)
 - `SlashCommandMenu` / `CollapsibleGlassPanel`
 - `ScrollToBottomButton` / `ComposerPreflightBar`
 
@@ -125,7 +124,7 @@ make dev   # http://localhost:5173 + API 8765
 2. Activity → Inbox 단일 피드 vs 별 surface — [NOTIFICATION-TAXONOMY.md](./NOTIFICATION-TAXONOMY.md) 라우팅 정리
 3. `SessionList`에 agent Avatar strip + dir/branch (prototype `session-item__sub`)
 4. `NewSessionDialog` vs inline setup — IA 통일
-5. Classic / RunPanel / SessionViewer deprecate 또는 별도 “legacy theme”
+5. ~~Classic / RunPanel / SessionViewer~~ — **removed** (2026-06-10); dual-class TSX rename remains
 
 ---
 

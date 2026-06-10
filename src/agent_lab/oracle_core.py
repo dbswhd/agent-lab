@@ -94,6 +94,18 @@ def parse_oracle_response(raw: str) -> dict[str, Any]:
     }
 
 
+def literal_matches_text(literal: str, text: str) -> bool:
+    """True when ``literal`` appears as a standalone token, not a substring (e.g. READY vs NOTREADY)."""
+    needle = (literal or "").strip()
+    if not needle:
+        return False
+    pattern = re.compile(
+        rf"(?<![\w]){re.escape(needle)}(?![\w])",
+        re.IGNORECASE,
+    )
+    return pattern.search(text) is not None
+
+
 def verify_literals(verify: str) -> list[str]:
     literals: list[str] = []
     for token in _BACKTICK_LITERAL.findall(verify or ""):
@@ -207,7 +219,7 @@ def mock_execute_oracle_response(verify: str, snippets: list[str]) -> str:
     body = "\n\n".join(snippets)
     literals = verify_literals(verify)
     evidence: list[str] = [f"read {len(snippets)} merged snippet(s)"]
-    missing = [literal for literal in literals if literal not in body]
+    missing = [literal for literal in literals if not literal_matches_text(literal, body)]
     if missing:
         evidence.append(f"missing literal(s): {', '.join(missing[:5])}")
         return (
@@ -230,10 +242,10 @@ def mock_execute_oracle_response(verify: str, snippets: list[str]) -> str:
 
 
 def mock_goal_oracle_response(goal_text: str, transcript: str) -> str:
-    haystack = transcript.casefold()
+    haystack = transcript
     literals = [m.strip() for m in _BACKTICK_LITERAL.findall(goal_text) if m.strip()]
     if literals:
-        missing = [literal for literal in literals if literal.casefold() not in haystack]
+        missing = [literal for literal in literals if not literal_matches_text(literal, haystack)]
         if missing:
             return (
                 "VERDICT: fail\n"
@@ -250,8 +262,8 @@ def mock_goal_oracle_response(goal_text: str, transcript: str) -> str:
 
     keywords = [
         word
-        for word in dict.fromkeys(_WORD.findall(goal_text.casefold()))
-        if word not in _GOAL_STOPWORDS
+        for word in dict.fromkeys(_WORD.findall(goal_text))
+        if word.casefold() not in _GOAL_STOPWORDS
     ][:8]
     if not keywords:
         return (
@@ -259,7 +271,7 @@ def mock_goal_oracle_response(goal_text: str, transcript: str) -> str:
             "REASON: goal needs a backtick literal or concrete keywords\n"
             "EVIDENCE:\n- no literals or keywords to match"
         )
-    matched = [word for word in keywords if word in haystack]
+    matched = [word for word in keywords if literal_matches_text(word, haystack)]
     required = max(1, (len(keywords) + 1) // 2)
     if len(matched) >= required:
         return (

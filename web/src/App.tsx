@@ -3,7 +3,6 @@ import { useRunningSessionIds } from "./hooks/useRunningSessionIds";
 import {
   archiveSession,
   deleteSession,
-  fetchBackends,
   fetchHealth,
   reconnectCursorBridge,
   fetchSession,
@@ -12,7 +11,6 @@ import {
   unarchiveSession,
   type AgentOption,
   type AgentHealthRow,
-  type BackendOption,
   type SessionDetail,
   type SessionSummary,
 } from "./api/client";
@@ -22,10 +20,8 @@ import { SettingsPage } from "./components/SettingsPage";
 import { getTurnStrategy } from "./utils/composeMode";
 import { getEfficiencyMode } from "./utils/efficiencyPrefs";
 import { SessionRailStatusChip } from "./components/SessionRailStatusChip";
-import { RunPanel } from "./components/RunPanel";
 import { SessionList } from "./components/SessionList";
 import { SessionRail } from "./components/SessionRail";
-import { SessionViewer } from "./components/SessionViewer";
 import {
   NewSessionDialog,
   type NewSessionParams,
@@ -67,7 +63,6 @@ import {
   setSessionRailWidth,
 } from "./utils/sessionRailPrefs";
 
-type Mode = "room" | "classic";
 type ListTab = "active" | "archived";
 type ShellView = "workspace" | "settings";
 
@@ -76,20 +71,18 @@ function AppTitlebar({
   sidebarOpen,
   onToggleSidebar,
   shellView,
-  mode,
   fallbackTitle,
 }: {
   inTauri: boolean;
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
   shellView: ShellView;
-  mode: Mode;
   fallbackTitle?: string | null;
 }) {
   const slotsCtx = useTitlebarSlotsContext();
   const slots = slotsCtx?.slots ?? {};
   const title =
-    mode === "room" && shellView === "workspace"
+    shellView === "workspace"
       ? (slots.title ?? fallbackTitle ?? undefined)
       : undefined;
 
@@ -113,15 +106,14 @@ function AppTitlebar({
         </>
       }
       title={title}
-      meta={mode === "room" && shellView === "workspace" ? slots.meta : undefined}
-      trailing={mode === "room" && shellView === "workspace" ? slots.trailing : undefined}
-      showThemeToggle={!(mode === "room" && shellView === "workspace")}
+      meta={shellView === "workspace" ? slots.meta : undefined}
+      trailing={shellView === "workspace" ? slots.trailing : undefined}
+      showThemeToggle={shellView !== "workspace"}
     />
   );
 }
 
 export default function App() {
-  const [mode, setMode] = useState<Mode>("room");
   const [listTab, setListTab] = useState<ListTab>("active");
   const [health, setHealth] = useState("");
   const [healthAgents, setHealthAgents] = useState<AgentHealthRow[]>([]);
@@ -129,8 +121,6 @@ export default function App() {
   const [healthLoading, setHealthLoading] = useState(false);
   const [reconnecting, setReconnecting] = useState(false);
   const [agents, setAgents] = useState<AgentOption[]>([]);
-  const [backends, setBackends] = useState<BackendOption[]>([]);
-  const [defaultBackend, setDefaultBackend] = useState("codex");
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [sessionsError, setSessionsError] = useState<string | null>(null);
   const [sessionsDir, setSessionsDir] = useState<string | null>(null);
@@ -270,12 +260,6 @@ export default function App() {
         if (cancelled) return;
         const ok = await reloadHealth(true);
         if (ok) {
-          const b = await fetchBackends().catch(() => ({
-            options: [],
-            default: null,
-          }));
-          setBackends(b.options);
-          if (b.default) setDefaultBackend(b.default);
           await reloadSessions();
           return;
         }
@@ -354,10 +338,6 @@ export default function App() {
     void loadDetail(sessionId, true);
   }
 
-  async function onRunComplete(sessionId: string) {
-    await onRoomSessionChange(sessionId);
-  }
-
   const startNew = useCallback(() => {
     setNewSessionOpen(true);
   }, []);
@@ -376,7 +356,6 @@ export default function App() {
     clearLastSessionId();
     setNewSessionOpen(false);
     setShellView("workspace");
-    setMode("room");
   }, []);
 
   const clearBootstrapAgents = useCallback(() => {
@@ -480,7 +459,6 @@ export default function App() {
             sidebarOpen={sidebarOpen}
             onToggleSidebar={toggleSidebar}
             shellView={shellView}
-            mode={mode}
             fallbackTitle={titlebarFallbackTopic}
           />
 
@@ -624,16 +602,7 @@ export default function App() {
             ) : null}
           </SessionRail>
 
-          <section
-            className={[
-              "pane",
-              "workspace-pane",
-              mode === "classic" ? "pane--classic chat-pane--classic" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            aria-label="Workspace"
-          >
+          <section className="pane workspace-pane" aria-label="Workspace">
             {shellView === "settings" ? (
               <SettingsPage
                 sessionId={roomSessionId}
@@ -650,12 +619,8 @@ export default function App() {
                 onRefreshDiagnostics={() => void reloadHealth(true)}
                 onReconnectCursor={() => void handleReconnectCursor()}
                 onBack={() => setShellView("workspace")}
-                onOpenLegacy={() => {
-                  setMode("classic");
-                  setShellView("workspace");
-                }}
               />
-            ) : mode === "room" ? (
+            ) : (
               <RoomChat
                 agents={agents}
                 healthAgents={healthAgents}
@@ -670,25 +635,6 @@ export default function App() {
                 bootstrapAgentIds={bootstrapAgentIds}
                 bootstrapAgentThreadBindings={bootstrapAgentThreadBindings}
                 onBootstrapAgentsApplied={clearBootstrapAgents}
-              />
-            ) : composerNew ? (
-              <RunPanel
-                backends={backends}
-                defaultBackend={defaultBackend}
-                onComplete={onRunComplete}
-                sidebarOpen={sidebarOpen}
-                onToggleSidebar={toggleSidebar}
-              />
-            ) : (
-              <SessionViewer
-                session={detail}
-                loading={loadingDetail}
-                sidebarOpen={sidebarOpen}
-                onToggleSidebar={toggleSidebar}
-                agents={agents}
-                onSessionRefresh={() => {
-                  if (selectedId) void loadDetail(selectedId, true);
-                }}
               />
             )}
           </section>

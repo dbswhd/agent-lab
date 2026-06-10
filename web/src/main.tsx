@@ -14,8 +14,6 @@ import "./styles/surfaces.css";
 import "./styles/plan-execute.css";
 import "./styles/overlays.css";
 import "./styles/tweaks.css";
-// Bridge: styles logic-dense containers still on legacy class names
-import "./styles/legacy-bridge.css";
 import "./styles/prototype-panels.css";
 
 initTheme();

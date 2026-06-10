@@ -50,7 +50,6 @@ type Props = {
   probeBridgeFailed?: boolean;
   onRefreshDiagnostics?: () => void;
   onReconnectCursor?: () => void;
-  onOpenLegacy?: () => void;
 };
 
 function TweaksSettingsActions({ onBack }: { onBack: () => void }) {
@@ -85,7 +84,6 @@ export function SettingsPage({
   probeBridgeFailed = false,
   onRefreshDiagnostics,
   onReconnectCursor,
-  onOpenLegacy,
 }: Props) {
   const { locale, setLocale, t } = useLocale();
   const [capabilities, setCapabilities] = useState<AgentCapabilitiesMap>(
@@ -479,28 +477,6 @@ export function SettingsPage({
               시뮬레이션합니다. ⌘⇧T 로도 열 수 있습니다.
             </p>
             <TweaksSettingsActions onBack={onBack} />
-          </div>
-          <div>
-            <div className="settings-section__head">
-              <h2 className="settings-section__title">
-                <SettingsSectionIcon name="archive" />
-                레거시
-              </h2>
-              <span className="settings-section__sub">
-                Classic 모드 (Planner→Critic→Scribe)
-              </span>
-            </div>
-            <p className="settings-hint">
-              새 작업은 Room 모드를 권장합니다. Classic은 참고용.
-            </p>
-            <button
-              type="button"
-              className="btn"
-              onClick={onOpenLegacy}
-              disabled={!onOpenLegacy}
-            >
-              클래식(레거시) 열기
-            </button>
           </div>
         </section>
       </div>

@@ -128,6 +128,29 @@ def test_wait_for_inbox_item_resolves(session_folder: Path, monkeypatch: pytest.
     assert result["selected"] == ["y"]
 
 
+def test_inbox_summary_api(client: TestClient, session_folder: Path):
+    session_id = session_folder.name
+    create_inbox_item(
+        session_folder,
+        kind="question",
+        source="manual",
+        prompt="Pick?",
+        options=[
+            {"id": "a", "label": "A"},
+            {"id": "b", "label": "B"},
+        ],
+    )
+
+    summary = client.get("/api/inbox/summary")
+    assert summary.status_code == 200
+    body = summary.json()
+    assert body["ok"] is True
+    assert body["total_pending"] == 1
+    assert body["pending_questions"] == 1
+    assert len(body["sessions"]) == 1
+    assert body["sessions"][0]["session_id"] == session_id
+
+
 def test_inbox_api_resolve(client: TestClient, session_folder: Path):
     session_id = session_folder.name
     create = client.post(

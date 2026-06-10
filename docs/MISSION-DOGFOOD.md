@@ -36,6 +36,33 @@ python scripts/mission_dogfood_report.py sessions/$LATEST
 
 회귀 golden: `make mission-dogfood-report`
 
+## Weekly routine (mock + KPI trend)
+
+```bash
+make mission-dogfood-weekly          # mock dogfood + score-weekly → sessions/_reports/dogfood-weekly-YYYY-MM-DD.{json,md}
+make mission-dogfood-weekly SKIP_MOCK=1   # weekly rollup only (after a live session)
+make score-weekly                    # standalone H4 weekly ops report
+```
+
+Live 미션 1건을 돌린 뒤에는 해당 `sessions/<id>`에 대해 `make score-session` + `mission_dogfood_report.py`를 실행하고, 위 weekly 루틴으로 트렌드를 묶습니다. 목표 달성 SSOT: `run.json` → `goal_loop.status` / `mission_loop.phase` (`check_session_goal()` 기록).
+
+## Live dogfood (manual, 1 mission)
+
+```bash
+make dev
+export AGENT_LAB_MISSION_LOOP=1
+# optional: export AGENT_LAB_ORACLE_LIVE=1
+```
+
+1. Discuss에서 목표 합의 → Work plan gate → execute → verify → merge
+2. Pause/resume 1회 (선택) — `runtime.boulder` / `last_failure` 확인
+3. KPI 캡처:
+
+```bash
+make score-session SESSION=sessions/<id>
+python scripts/mission_dogfood_report.py sessions/<id>
+```
+
 | 항목 | 기대 |
 |------|------|
 | `mission_loop.repair_events` | verify FAIL 시만 증가; cap 미만 |

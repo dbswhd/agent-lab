@@ -53,6 +53,19 @@ def test_mock_goal_oracle_passes_and_fails_on_backtick_literal(tmp_path: Path) -
     assert "GOAL_OK" in failed["detail"]
 
 
+def test_mock_goal_oracle_rejects_notready_substring_for_ready_goal(tmp_path: Path) -> None:
+    folder = _session(tmp_path)
+
+    result = goal_oracle_check(
+        folder,
+        "최종 답에 `READY` 포함",
+        [{"role": "agent", "content": "Current state: NOTREADY"}],
+    )
+
+    assert result["verdict"] == "fail"
+    assert "READY" in result["detail"]
+
+
 def test_mock_goal_oracle_does_not_accept_human_echo(tmp_path: Path) -> None:
     folder = _session(tmp_path)
 

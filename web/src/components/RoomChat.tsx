@@ -5,6 +5,7 @@ import {
   pauseMissionLoop,
   checkSessionGoal,
   fetchCommands,
+  fetchInboxSummary,
   fetchSessionInbox,
   matchSlashCommand,
   releaseRoomRunLock,
@@ -57,6 +58,7 @@ import {
 } from "../utils/transcriptViewPrefs";
 import { ChatBubble, ReplyWaitingBubble } from "./ChatBubble";
 import { HumanInboxPanel } from "./HumanInboxPanel";
+import { TitlebarInboxButton } from "./TitlebarInboxButton";
 import { ChatComposer, type PendingFile } from "./ChatComposer";
 import { ContextSidebarToggle } from "./ContextSidebarToggle";
 import { ThemeToggle } from "./ThemeToggle";
@@ -360,7 +362,8 @@ export function RoomChat({
   } | null>(null);
   const highlightTimerRef = useRef<number | null>(null);
   const [sendReceipt, setSendReceipt] = useState<string | null>(null);
-  const [inboxPendingChip, setInboxPendingChip] = useState(false);
+  const [inboxPendingCount, setInboxPendingCount] = useState(0);
+  const [globalInboxPending, setGlobalInboxPending] = useState(0);
   const [inboxReloadKey, setInboxReloadKey] = useState(0);
   const [workFocus, setWorkFocus] = useState<"execute" | "plan" | null>(null);
   const prevExecPendingIdRef = useRef<string | null>(null);
@@ -617,10 +620,23 @@ export function RoomChat({
     }
   }, [openReviewTab, refreshSessionMeta, sessionId, pushMacNotification]);
 
+  const refreshInboxPending = useCallback(async () => {
+    if (!sessionId) {
+      setInboxPendingCount(0);
+      return;
+    }
+    try {
+      const payload = await fetchSessionInbox(sessionId);
+      setInboxPendingCount(payload.pending_count ?? 0);
+    } catch {
+      setInboxPendingCount(0);
+    }
+  }, [sessionId]);
+
   const handleInboxResolved = useCallback(() => {
-    setInboxPendingChip(false);
+    void refreshInboxPending();
     refreshSessionMeta();
-  }, [refreshSessionMeta]);
+  }, [refreshInboxPending, refreshSessionMeta]);
 
   const openHumanInbox = useCallback(() => {
     setInspectorOpenState(true);
@@ -817,9 +833,37 @@ export function RoomChat({
   }, [roomTasks?.open_objection_count]);
 
   const inspectorInboxBadge = useMemo(() => {
-    const n = notificationUnread + (inboxPendingChip ? 1 : 0);
-    return n > 0 ? n : undefined;
-  }, [notificationUnread, inboxPendingChip]);
+    return inboxPendingCount > 0 ? inboxPendingCount : undefined;
+  }, [inboxPendingCount]);
+
+  const titlebarInboxPending = useMemo(() => {
+    if (inboxPendingCount > 0) return inboxPendingCount;
+    return globalInboxPending > 0 ? globalInboxPending : undefined;
+  }, [globalInboxPending, inboxPendingCount]);
+
+  useEffect(() => {
+    void refreshInboxPending();
+  }, [refreshInboxPending, inboxReloadKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadSummary = () => {
+      void fetchInboxSummary()
+        .then((payload) => {
+          if (cancelled) return;
+          setGlobalInboxPending(payload.total_pending ?? 0);
+        })
+        .catch(() => {
+          if (!cancelled) setGlobalInboxPending(0);
+        });
+    };
+    loadSummary();
+    const timer = window.setInterval(loadSummary, 30_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [sessionId, inboxReloadKey, inboxPendingCount]);
 
   const toggleInspector = useCallback(() => {
     setInspectorOpenState((current) => {
@@ -1530,7 +1574,7 @@ export function RoomChat({
                   const pending = (payload.human_inbox ?? []).filter(
                     (item) => item.status === "pending",
                   );
-                  setInboxPendingChip(pending.length > 0);
+                  setInboxPendingCount(pending.length);
                   const question = pending.find((item) => item.kind === "question");
                   const build = pending.find((item) => item.kind === "build");
                   if (build) {
@@ -1577,7 +1621,7 @@ export function RoomChat({
                   }
                 })
                 .catch(() => {
-                  setInboxPendingChip(true);
+                  setInboxPendingCount(1);
                 });
             }
             if (ev.verified_loop_pending === true) {
@@ -2072,28 +2116,10 @@ export function RoomChat({
     trailing: (
       <>
         {!isNew ? (
-          <button
-            type="button"
-            className="icon-btn"
-            title="수신함"
-            aria-label="수신함"
+          <TitlebarInboxButton
+            pendingCount={titlebarInboxPending}
             onClick={openHumanInbox}
-          >
-            <svg
-              viewBox="0 0 24 24"
-              width="17"
-              height="17"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={1.7}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden
-            >
-              <path d="M22 12h-6l-2 3H10l-2-3H2" />
-              <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
-            </svg>
-          </button>
+          />
         ) : null}
         <button
           type="button"
@@ -2539,13 +2565,13 @@ export function RoomChat({
         </div>
       ) : null}
 
-      {inboxPendingChip ? (
+      {inboxPendingCount > 0 ? (
         <button
           type="button"
           className="composer-inbox-pending"
           onClick={openHumanInbox}
         >
-          Human Inbox 대기
+          Human Inbox 대기 ({inboxPendingCount})
         </button>
       ) : null}
 

@@ -1922,6 +1922,28 @@ export async function fetchSessionInbox(sessionId: string): Promise<HumanInboxPa
   );
 }
 
+export type InboxSummarySession = {
+  session_id: string;
+  topic: string;
+  pending_count: number;
+  pending_questions: number;
+  pending_builds: number;
+  inbox_pending: boolean;
+};
+
+export type InboxSummaryPayload = {
+  ok: boolean;
+  total_pending: number;
+  pending_questions: number;
+  pending_builds: number;
+  sessions: InboxSummarySession[];
+};
+
+export async function fetchInboxSummary(includeArchived = false) {
+  const query = includeArchived ? "?include_archived=true" : "";
+  return json<InboxSummaryPayload>(`/api/inbox/summary${query}`);
+}
+
 export async function resolveInboxItem(
   sessionId: string,
   itemId: string,

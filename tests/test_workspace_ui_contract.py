@@ -13,10 +13,10 @@ def _read(*parts: str) -> str:
 def test_app_uses_workspace_shell_not_primary_messenger_label():
     app = _read("web", "src", "App.tsx")
     rail = _read("web", "src", "components", "SessionRail.tsx")
-    bridge = _read("web", "src", "styles", "legacy-bridge.css")
-    # Canonical shell is `.shell`; legacy `.workspace-shell` kept in bridge for RoomChat.
+    layout = _read("web", "src", "styles", "layout.css")
+    # Canonical shell is `.shell`; legacy `.workspace-shell` rules merged into layout.css.
     assert 'className={`shell' in app or " shell--rail-collapsed" in app
-    assert ".workspace-shell" in bridge or ".shell" in _read("web", "src", "styles", "layout.css")
+    assert ".workspace-shell" in layout or ".shell" in layout
     assert "SessionRail" in app
     assert 'aria-label="Sessions"' in rail
     assert 'aria-label="Workspace"' in app

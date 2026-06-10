@@ -2,7 +2,7 @@
    Prototype panel bridge — Work / Run / Artifacts / Transcript
    Maps legacy plan-execute markup inside .work-surface to
    offline HTML card structure (plan-card · exec-card).
-   Load after legacy-bridge.css.
+   Load after layout.css (plan-execute bridge rules merged into layout).
    ============================================================ */
 
 /* ---- Work: plan card shell around action list ---------------- */

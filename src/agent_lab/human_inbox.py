@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import time
 import uuid
@@ -96,6 +97,90 @@ def public_inbox_payload(run: dict[str, Any]) -> dict[str, Any]:
             1 for item in pending if item.get("kind") == "question"
         ),
         "pending_builds": sum(1 for item in pending if item.get("kind") == "build"),
+    }
+
+
+def _read_session_meta(folder: Path) -> dict[str, Any]:
+    meta_path = folder / "meta.json"
+    if not meta_path.is_file():
+        return {}
+    try:
+        payload = json.loads(meta_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _session_topic(folder: Path, meta: dict[str, Any]) -> str:
+    topic_file = folder / "topic.txt"
+    if topic_file.is_file():
+        try:
+            return topic_file.read_text(encoding="utf-8").strip() or folder.name
+        except OSError:
+            pass
+    topic = meta.get("topic")
+    return str(topic).strip() if topic else folder.name
+
+
+def build_inbox_summary(
+    sessions_root: Path,
+    *,
+    include_archived: bool = False,
+) -> dict[str, Any]:
+    """Aggregate pending Human Inbox items across non-fixture sessions."""
+    if not sessions_root.is_dir():
+        return {
+            "total_pending": 0,
+            "pending_questions": 0,
+            "pending_builds": 0,
+            "sessions": [],
+        }
+
+    sessions: list[dict[str, Any]] = []
+    total_pending = 0
+    total_questions = 0
+    total_builds = 0
+
+    for folder in sorted(sessions_root.iterdir(), reverse=True):
+        if not folder.is_dir() or folder.name.startswith(".") or folder.name.startswith("_"):
+            continue
+        meta = _read_session_meta(folder)
+        if bool(meta.get("archived")) != include_archived:
+            continue
+        run_path = folder / "run.json"
+        if not run_path.is_file():
+            continue
+        try:
+            run = json.loads(run_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(run, dict):
+            continue
+        payload = public_inbox_payload(run)
+        pending_count = int(payload.get("pending_count") or 0)
+        if pending_count <= 0:
+            continue
+        pending_questions = int(payload.get("pending_questions") or 0)
+        pending_builds = int(payload.get("pending_builds") or 0)
+        total_pending += pending_count
+        total_questions += pending_questions
+        total_builds += pending_builds
+        sessions.append(
+            {
+                "session_id": folder.name,
+                "topic": _session_topic(folder, meta),
+                "pending_count": pending_count,
+                "pending_questions": pending_questions,
+                "pending_builds": pending_builds,
+                "inbox_pending": True,
+            }
+        )
+
+    return {
+        "total_pending": total_pending,
+        "pending_questions": total_questions,
+        "pending_builds": total_builds,
+        "sessions": sessions,
     }
 
 

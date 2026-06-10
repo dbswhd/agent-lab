@@ -114,7 +114,7 @@
 
 | 기능 | 블로커 | UI 착수 조건 |
 |------|--------|--------------|
-| Titlebar **Inbox** unread | 전역 inbox 집계 API 없음 (세션별만) | `GET /api/inbox/summary` 또는 클라이언트 aggregate |
+| Titlebar **Inbox** unread (rail / multi-session) | `GET /api/inbox/summary` **shipped**; session rail badge 미구현 | Rail row badge 또는 aggregate cache |
 | Rail **Sessions+Archive 동시 count** | `fetchSessions`가 탭별 1회 | 양쪽 count 한 번에 주는 API 또는 병렬 fetch + cache |
 
 **Shipped:** Context layer **on/off** — `app/server/routers/context_layers.py`, `ContextOverviewPanel` + `ContextLayerBars`.
@@ -205,7 +205,7 @@
 | **P0** ✅ | Inspector IA → Overview/Tasks/Inbox, RoomTaskBar를 `taskbar-dock`으로 이동 | `ContextOverviewPanel`, `workspaceTabs.ts` |
 | **P1** | SessionList avatar/dir, Transcript presentation UI, Artifacts/Run visual | `SessionList.tsx`, `RoomChat` view-options |
 | **P2** | NewSessionDialog, titlebar Inbox, Quick 탭 제거 → Settings | `NewSessionDialog.tsx`, `App.tsx` |
-| **P3** | Classic mode·ChatToolbar·orphan CSS 삭제, legacy-bridge 제거 | TSX canonical class 일괄 rename |
+| **P3** ✅ | Classic mode·ChatToolbar 삭제, `legacy-bridge.css` → `layout.css` merge | dual-class TSX rename remains cosmetic |
 | **P4** ✅ | Context layer toggle | `context_layers.py` router + `ContextLayerBars` in Overview |
 
 ---
@@ -215,7 +215,7 @@
 - [x] Inspector 3탭: Overview / Tasks / Inbox — 프로토타입 `ContextSidebar`와 동일 라벨
 - [ ] RoomTaskBar가 Transcript·Work **본문 sticky**에만 존재 (Inspector Tasks에 full duplicate 없음)
 - [ ] ⌘N → New Session modal (또는 명시적 product decision 문서화)
-- [ ] Classic / `RunPanel` / `SessionViewer` / `mode` state **없음**
+- [x] Classic / `RunPanel` / `SessionViewer` / `mode` state **없음**
 - [ ] `main.tsx` CSS import 6개 이하: tokens, base, layout, surfaces, plan-execute (+ 선택 satellites 0)
 - [ ] `03-BEHAVIOR-CONTRACT.md` 체크리스트 전항목 통과
 

@@ -21,7 +21,7 @@ def test_css_is_split_into_chrome_and_content_surface_policy():
         'import "./styles/surfaces.css";',
         'import "./styles/plan-execute.css";',
         'import "./styles/overlays.css";',
-        'import "./styles/legacy-bridge.css";',
+        'import "./styles/tweaks.css";',
     )
     for import_line in ordered_imports:
         assert import_line in main
@@ -36,11 +36,9 @@ def test_backdrop_filter_is_owned_only_by_chrome_policy():
     base = _read("web/src/styles/base.css")
     layout = _read("web/src/styles/layout.css")
     surfaces = _read("web/src/styles/surfaces.css")
-    bridge = _read("web/src/styles/legacy-bridge.css")
 
     assert "backdrop-filter" not in base
     assert "backdrop-filter" not in surfaces
-    assert "backdrop-filter" not in bridge
     overlays = _read("web/src/styles/overlays.css")
     assert "backdrop-filter" in overlays
     assert ".titlebar" in base
@@ -61,8 +59,6 @@ def test_lists_documents_and_general_panels_are_solid():
     solid = (
         _read("web/src/styles/surfaces.css")
         + "\n"
-        + _read("web/src/styles/legacy-bridge.css")
-        + "\n"
         + _read("web/src/styles/layout.css")
         + "\n"
         + _read("web/src/styles/overlays.css")
@@ -78,9 +74,5 @@ def test_lists_documents_and_general_panels_are_solid():
         ".chat-turn",
     ):
         assert selector in solid
-    non_chrome_solid = (
-        _read("web/src/styles/surfaces.css")
-        + "\n"
-        + _read("web/src/styles/legacy-bridge.css")
-    )
+    non_chrome_solid = _read("web/src/styles/surfaces.css")
     assert "backdrop-filter" not in non_chrome_solid

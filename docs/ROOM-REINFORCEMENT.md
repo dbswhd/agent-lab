@@ -1,6 +1,6 @@
 # Room 실효성 보강 계획
 
-> **Status (2026-06):** Room **implementation queue is empty**. Phase E–H + Phase I + H-P1–P4 + R-P0/P1 + UX-P2 + ops-P0/P2 **shipped**. Evidence: [`EXTERNAL-REFS-TRACEABILITY.md`](EXTERNAL-REFS-TRACEABILITY.md), [`STABILITY.md`](STABILITY.md), `scripts/smoke_room.py` (**20** regression baselines).  
+> **Status (2026-06):** Room **implementation queue is empty**. Phase E–H + Phase I + H-P1–P4 + R-P0/P1 + UX-P2 + ops-P0/P2 **shipped**. Evidence: [`EXTERNAL-REFS-TRACEABILITY.md`](EXTERNAL-REFS-TRACEABILITY.md), [`STABILITY.md`](STABILITY.md), `scripts/smoke_room.py` (**32** regression baselines).  
 > **Phase I:** M0–M4 — [`EXECUTE-WORKTREE-REFORM.md`](EXECUTE-WORKTREE-REFORM.md). Live: [`LIVE-CURSOR-WORKTREE-DRY-RUN.md`](LIVE-CURSOR-WORKTREE-DRY-RUN.md), `make live-worktree-dry-run`.  
 > 아래 Phase E–H 본문은 **설계·배경**; shipped 여부는 위 추적 문서가 canonical.
 
@@ -272,7 +272,7 @@ Human 또는 턴 리드가 `DELEGATE codex: "백테스트만"` 한 줄
 
 ## Phase H — Scribe·비용·측정
 
-> **✅ Shipped:** H1 scribe enrichment, H2 composer turn hint, H3 smoke 20 baselines + benchmark catalog (H-P2), H4 `score_session` + weekly (H-P1/H4-weekly).
+> **✅ Shipped:** H1 scribe enrichment, H2 composer turn hint, H3 smoke 32 baselines + benchmark catalog (H-P2), H4 `score_session` + weekly (H-P1/H4-weekly).
 
 **문제 (배경):** 3N 비용, Scribe가 에이전트 기여를 흡수.
 
@@ -302,7 +302,7 @@ Human 또는 턴 리드가 `DELEGATE codex: "백테스트만"` 한 줄
 | `sessions/_benchmark/delegate_codex` | R4 delegate metadata/artifact fixture |
 | `sessions/_benchmark/ten_turn_kpi_stub` | R5 score_session key shape |
 
-CI: `pytest tests/ -q` + `scripts/smoke_room.py` (20 baselines) + `check_worktree_orphans.py` + `score_session.py --json` fixture smoke (LLM/secrets 없음).
+CI: `pytest tests/ -q` + `scripts/smoke_room.py` (32 baselines) + `check_worktree_orphans.py` + `score_session.py --json` fixture smoke (LLM/secrets 없음).
 
 ### H4. 세션 품질 스코어 (offline)
 
@@ -366,7 +366,7 @@ CI: `pytest tests/ -q` + `scripts/smoke_room.py` (20 baselines) + `check_worktre
 
 ## 다음 액션 (통합 로드맵)
 
-**Shipped (2026-06):** Phase I M0–M4, Room P0/P1, F2 R-P1, H-P1/H-P2/H-P3, H2, E-smoke (20 smoke baselines), UX-P2, ops-P0/P2, EXTERNAL-REFS (Layers 1–5, CON-diff, CENT/MD/CC).
+**Shipped (2026-06):** Phase I M0–M4, Room P0/P1, F2 R-P1, H-P1/H-P2/H-P3, H2, E-smoke (32 smoke baselines), UX-P2, ops-P0/P2, EXTERNAL-REFS (Layers 1–5, CON-diff, CENT/MD/CC).
 
 **다음 후보 (코드 작업 — 완료, 이력):**
 

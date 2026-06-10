@@ -1298,7 +1298,7 @@ Context 사이드바 **Overview**에도 동일 mission 메타(phase, BLOCK, next
 ### 회귀·dogfood
 
 ```bash
-python scripts/smoke_room.py   # 23 baselines — mission_loop_execute_queue | paused | circuit_breaker
+python scripts/smoke_room.py   # 32 baselines — mission_loop_execute_queue | paused | circuit_breaker
 make score-session SESSION=sessions/<id>   # mission_loop.* KPI
 ```
 

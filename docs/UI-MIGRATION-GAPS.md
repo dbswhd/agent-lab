@@ -7,7 +7,7 @@
 > 구현 대상: `web/src/` (React + Vite + FastAPI)  
 > 원칙: **로직·API 계약 불변**, **프레젠테이션만** 프로토타입 클래스/IA에 맞춤
 
-마지막 업데이트: 2026-06-07
+마지막 업데이트: 2026-06-10
 
 ---
 
@@ -19,7 +19,9 @@
 | App 셸 | `.app` / `.shell` / `.pane` / `.rail__*` + 단일 `MacTitlebar` (`TitlebarSlotsContext`) |
 | 리프 컴포넌트 | Avatar, SessionRail, SessionList, ChatComposer, WorkspaceTabBar, PlanActionCard 등 |
 | Settings | `settings-section*` dual-class + `layout-extensions.css` |
-| Inspector | `context-sidebar` + `ctx-tabs` dual-class (탭 IA는 아래 §3 유지) |
+| Inspector | `context-sidebar` + `ctx-tabs` — **Overview / Tasks / Inbox** (`ContextOverviewPanel`, `InspectorPane`) |
+| Context Overview | goal · plan · context layers · team health — `ContextOverviewPanel.tsx` |
+| Context layers | `GET/PATCH …/context-layers` + Overview `patchContextLayers` toggle |
 | Taskbar | `taskbar` + `room-task-bar` dual-class root |
 | Plan execute | `work-surface` + `plan-execute-panel` dual-class root |
 | Transcript | `turn` + `chat-turn` dual-class |
@@ -29,16 +31,15 @@
 
 ## 2. UI 구조 미구현 — 기능이 제대로 안 되거나 UX가 어긋나는 부분
 
-### 2.1 프로토타입 IA와 다른 탭 구조 (의도적 생산 확장 + 미매핑)
+### 2.1 프로토타입 IA와 다른 부분 (남은 갭)
 
 | 프로토타입 | 현재 앱 | 영향 |
 |-----------|---------|------|
-| Context sidebar: **Overview / Tasks / Inbox** | Inspector: **Tasks / Activity / Quick** | Overview(목표·다음 plan step·context layers·팀 health 한 화면) **없음**. 정보가 Settings·Taskbar·Tasks 탭에 **분산** |
-| Settings의 Context layer **토글** | `ContextPreviewPanel` (API 읽기 전용) | 레이어 on/off **UI 없음** — 서버에 토글 API도 없음 |
 | Run 탭 mock `RunLog` | `TurnRunPanel` + SSE | **동작함**. 비주얼만 프로토타입 run log와 다름 |
 | Artifacts mock `artifact-card` | `workspace-artifacts-list` | **동작함**. 카드 레이아웃 다름 |
+| Activity 피드 | `NotificationCenter` (Inbox 탭·별 surface) | 프로토타입 Inbox 단일 피드와 **배치·라우팅** 다름 — [NOTIFICATION-TAXONOMY.md](./NOTIFICATION-TAXONOMY.md) |
 
-**체감 증상:** 프로토타입 우측 패널 “Overview”에 있던 goal + next step + layers + team이 한곳에 안 모임.
+**Shipped (2026-06-10):** Context sidebar **Overview / Tasks / Inbox** (`workspaceTabs.ts`, `ContextOverviewPanel`); context layer on/off (`context_layers.py`, Overview toggle). Evidence: `tests/test_workspace_ui_contract.py`.
 
 ---
 
@@ -48,8 +49,7 @@
 |-----------|------|
 | `TweaksPanel` (accent, density, gate variant, simulate objection) | **미구현** — 디자인 QA용. `ThemeToggle`만 제공 |
 | `NewSessionDialog` (`ns-modal`) | **미구현** — 앱은 `composerNew` + `SessionSetupBar` 인라인 플로우 |
-| Titlebar **Inbox** 버튼 | **미구현** — Human inbox는 Taskbar/Inspector Tasks에만 |
-| Context layer **switch** (repo tree 등) | **mock only** — 토글해도 서버 상태 변경 없음 |
+| Titlebar **Inbox** 버튼 | **미구현** — Human inbox는 Inspector **Inbox** 탭·Taskbar에만; `GET /api/inbox/summary` 없음 |
 
 ---
 
@@ -102,7 +102,7 @@ TSX 내부 클래스는 **아직 legacy 이름**이 대부분. 루트만 canonic
 ## 3. 알려진 시각/레이아웃 갭 (기능은 됨)
 
 1. **Shell 3-column** — 프로토타입은 `.shell { grid: rail | pane | context-sidebar }`. 앱은 context sidebar가 `RoomChat` 내부 flex. 접힘/리사이즈 **동작은 함**, grid 구조만 다름.
-2. **Taskbar 탭 IA** — 프로토타입 `Overview/Tasks/Inbox` vs 앱 `all/unassigned` + objections/mailbox/artifacts **섹션**. 탭 라벨·개수 badge 스타일은 `layout-extensions`에 추가됨.
+2. **Taskbar 내부 IA** — Inspector는 `Overview/Tasks/Inbox`로 shipped; Taskbar 본문은 `all/unassigned` + objections/mailbox/artifacts **섹션** (프로토타입 task list와 라벨·badge 스타일 차이).
 3. **Transcript presentation** — 프로토타입 `transcript--console|bubble|compact` vs 앱 `transcriptViewPrefs`. Console/bubble **부분** bridge.
 4. **Session list row** — prototype `session-item__agents` Avatar strip; 앱 `SessionList`는 subtitle 문자열 위주 (avatar strip **미구현**).
 5. **Rail session counts** — active/archive **동시 count**는 API가 탭별 fetch라 한 탭에만 badge (프로토타입은 mock 전체 배열).
@@ -122,7 +122,7 @@ make dev   # http://localhost:5173 + API 8765
 ## 5. 후속 작업 (선택, cosmetic)
 
 1. `RoomTaskBar` / `PlanExecutePanel` / `RoomChat` **내부** legacy class → canonical 일괄 rename (bridge 제거)
-2. Inspector IA를 prototype **Overview/Tasks/Inbox**로 맞출지, Activity/Quick을 유지할지 **제품 결정**
+2. Activity → Inbox 단일 피드 vs 별 surface — [NOTIFICATION-TAXONOMY.md](./NOTIFICATION-TAXONOMY.md) 라우팅 정리
 3. `SessionList`에 agent Avatar strip + dir/branch (prototype `session-item__sub`)
 4. `NewSessionDialog` vs inline setup — IA 통일
 5. Classic / RunPanel / SessionViewer deprecate 또는 별도 “legacy theme”

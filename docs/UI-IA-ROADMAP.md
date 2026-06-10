@@ -2,7 +2,8 @@
 
 > **Tier 3 (target IA)** — roadmap only. **Shipped backend/UI contracts:** [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md) · [docs/README.md](./README.md)
 
-> **기준 시점:** 2026-06-07, `web/src` 새 디자인 셸(`.app` / `.shell` / `.pane`) + dual-class bridge  
+> **기준 시점:** 2026-06-10, `web/src` 새 디자인 셸(`.app` / `.shell` / `.pane`) + dual-class bridge  
+> **Shipped since 2026-06-07:** Inspector **Overview / Tasks / Inbox**, `ContextOverviewPanel`, `GET/PATCH …/context-layers` (see [UI-MIGRATION-GAPS.md](UI-MIGRATION-GAPS.md) §1).
 > **디자인 SSOT:** `~/Downloads/agent-lab/project/Agent Lab.html`  
 > **행동 SSOT:** `project/uploads/03-BEHAVIOR-CONTRACT.md`, `docs/USER-GUIDE.md`  
 > **관련:** [UI-MIGRATION-GAPS.md](UI-MIGRATION-GAPS.md) (갭 상세)
@@ -107,15 +108,16 @@
 - `web/src/utils/workspaceTabs.ts` — `InspectorTab` → `"overview" | "tasks" | "inbox"`
 - `web/src/components/InspectorPane.tsx` — `ctx-tabs` 라벨·badge 규칙
 - `web/src/components/RoomChat.tsx` — Inspector children 재배치; `RoomTaskBar`를 `workspace-scroll` 안 `taskbar-dock`으로
-- 신규: `web/src/components/ContextOverviewPanel.tsx` (Overview 전용 조립)
+- ✅ `web/src/components/ContextOverviewPanel.tsx` (Overview 전용 조립) — shipped
 
 ### 3.2 API 선행 없이 UI만 만들지 않는 것
 
 | 기능 | 블로커 | UI 착수 조건 |
 |------|--------|--------------|
-| Context layer **on/off** | 서버에 layer toggle·prompt injection API 없음 | API 스펙 in `04-API-CONTRACT.md` + `patch_run_meta` 경로 |
 | Titlebar **Inbox** unread | 전역 inbox 집계 API 없음 (세션별만) | `GET /api/inbox/summary` 또는 클라이언트 aggregate |
 | Rail **Sessions+Archive 동시 count** | `fetchSessions`가 탭별 1회 | 양쪽 count 한 번에 주는 API 또는 병렬 fetch + cache |
+
+**Shipped:** Context layer **on/off** — `app/server/routers/context_layers.py`, `ContextOverviewPanel` + `ContextLayerBars`.
 
 ### 3.3 디자인 parity (API 있음 · UI만 없음)
 
@@ -200,17 +202,17 @@
 
 | Phase | 내용 | 산출 |
 |-------|------|------|
-| **P0** | Inspector IA → Overview/Tasks/Inbox, RoomTaskBar를 `taskbar-dock`으로 이동 | `ContextOverviewPanel`, `workspaceTabs.ts` |
+| **P0** ✅ | Inspector IA → Overview/Tasks/Inbox, RoomTaskBar를 `taskbar-dock`으로 이동 | `ContextOverviewPanel`, `workspaceTabs.ts` |
 | **P1** | SessionList avatar/dir, Transcript presentation UI, Artifacts/Run visual | `SessionList.tsx`, `RoomChat` view-options |
 | **P2** | NewSessionDialog, titlebar Inbox, Quick 탭 제거 → Settings | `NewSessionDialog.tsx`, `App.tsx` |
 | **P3** | Classic mode·ChatToolbar·orphan CSS 삭제, legacy-bridge 제거 | TSX canonical class 일괄 rename |
-| **P4** | Context layer toggle (API 후) | router + `ContextLayerBars` wired |
+| **P4** ✅ | Context layer toggle | `context_layers.py` router + `ContextLayerBars` in Overview |
 
 ---
 
 ## 6. 검증 체크리스트 (IA 완료 정의)
 
-- [ ] Inspector 3탭: Overview / Tasks / Inbox — 프로토타입 `ContextSidebar`와 동일 라벨
+- [x] Inspector 3탭: Overview / Tasks / Inbox — 프로토타입 `ContextSidebar`와 동일 라벨
 - [ ] RoomTaskBar가 Transcript·Work **본문 sticky**에만 존재 (Inspector Tasks에 full duplicate 없음)
 - [ ] ⌘N → New Session modal (또는 명시적 product decision 문서화)
 - [ ] Classic / `RunPanel` / `SessionViewer` / `mode` state **없음**

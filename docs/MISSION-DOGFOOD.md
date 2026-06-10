@@ -52,7 +52,7 @@ python scripts/mission_dogfood_report.py sessions/$LATEST
 ## 회귀
 
 ```bash
-make smoke          # 23 baselines incl. mission_loop_*
+make smoke          # 32 baselines incl. mission_loop_*
 make test -k mission_loop
 ```
 

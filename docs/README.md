@@ -1,6 +1,6 @@
 # Agent Lab documentation index
 
-> **Updated:** 2026-06-07 · **Tests:** `639 passed` (`pytest -m "not live"`) · **Hook/communicate:** `make verify-hooks`
+> **Updated:** 2026-06-10 · **Tests:** `791 collected` (`pytest -m "not live"`) · **Smoke:** 32 regression baselines · **Hook/communicate:** `make verify-hooks`
 
 Use this page to pick the **one canonical doc** for your question. Older numbered guides (`00`–`05`) and early RFCs are kept for history but **must not** be used as shipped-status sources.
 
@@ -43,7 +43,7 @@ Use this page to pick the **one canonical doc** for your question. Older numbere
 
 | Doc | Notes |
 |-----|--------|
-| [UI-MIGRATION-GAPS.md](./UI-MIGRATION-GAPS.md) | Prototype vs app gaps (SessionList `.session-item`, Inspector tabs, …) |
+| [UI-MIGRATION-GAPS.md](./UI-MIGRATION-GAPS.md) | Prototype vs app gaps (titlebar Inbox, classic mode, CSS bridge, …) |
 | [UI-IA-ROADMAP.md](./UI-IA-ROADMAP.md) | Deprecate list + target IA |
 | [UI-HANDOFF-TEAM-AGENTS.md](./UI-HANDOFF-TEAM-AGENTS.md) | Polish checklist for Room UI |
 | [developer-agent-console.md](./developer-agent-console.md) | Current console UI reference |

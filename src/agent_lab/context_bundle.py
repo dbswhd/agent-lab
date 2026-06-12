@@ -290,7 +290,14 @@ def build_slim_consensus_bundle(
         turn_profile=str((run_meta or {}).get("turn_profile") or ""),
         efficiency_mode=efficiency_mode,
     )
-    guidance_parts = build_guidance_parts(reply_policy)
+    guidance_parts = build_guidance_parts(
+        reply_policy, run_meta=run_meta, agent=agent
+    )
+    from agent_lab.room_dispatch_intents import build_dispatch_intent_block
+
+    dispatch_block = build_dispatch_intent_block(run_meta, agent)
+    if dispatch_block.strip():
+        guidance_parts.append(dispatch_block.strip())
     guidance_block = (
         "---\n"
         + "\n".join(guidance_parts)
@@ -344,6 +351,77 @@ def build_slim_consensus_bundle(
         messages_in_session=count_messages(messages),
     )
     return bundle
+
+
+_WISDOM_BLOCK_CAP = 800
+
+
+def wisdom_in_context_mode() -> str:
+    """``AGENT_LAB_WISDOM_IN_CONTEXT`` — auto(기본, route 따름) | 0 | 1 (전역 강제)."""
+    raw = (os.getenv("AGENT_LAB_WISDOM_IN_CONTEXT") or "auto").strip().lower()
+    return raw if raw in ("auto", "0", "1") else "auto"
+
+
+def _wisdom_route_allows(run_meta: dict[str, Any] | None) -> bool:
+    mode = wisdom_in_context_mode()
+    if mode == "0":
+        return False
+    if mode == "1":
+        return True
+    category = (run_meta or {}).get("_turn_category") or {}
+    if not isinstance(category, dict):
+        return False
+    return str(category.get("value") or "") in ("deep", "critical")
+
+
+def _append_wisdom_search_block(
+    constraints: str,
+    *,
+    topic: str,
+    run_meta: dict[str, Any] | None,
+    parallel_round: int,
+) -> str:
+    """P5 stigmergy 읽기 경로 — wisdom index 상위 히트를 R1 컨텍스트에 주입.
+
+    R1 한정(이후 라운드는 동료 발화가 컨텍스트), deep/critical route에서만
+    (auto). 과거 세션의 검증·학습이 미래 토론의 출발점이 되어 루프가 닫힌다.
+    """
+    if parallel_round != 1 or not run_meta:
+        return constraints
+    if not _wisdom_route_allows(run_meta):
+        return constraints
+    folder_raw = run_meta.get("_session_folder")
+    if not folder_raw:
+        return constraints
+    from pathlib import Path
+
+    folder = Path(str(folder_raw))
+    if not folder.is_dir():
+        return constraints
+    try:
+        from agent_lab.wisdom_index import search_wisdom_index, wisdom_index_enabled
+
+        if not wisdom_index_enabled(run_meta):
+            return constraints
+        hits = search_wisdom_index(folder, topic, limit=3)
+    except Exception:
+        return constraints
+    if not hits:
+        return constraints
+    lines = ["[세션 위즈덤 — 과거 검증·학습 상위 히트]"]
+    used = len(lines[0])
+    for hit in hits:
+        body = str(hit.get("snippet") or hit.get("title") or "").strip()
+        if not body:
+            continue
+        line = f"- ({hit.get('source') or 'wisdom'}) {body}"
+        if used + len(line) > _WISDOM_BLOCK_CAP:
+            break
+        lines.append(line)
+        used += len(line)
+    if len(lines) == 1:
+        return constraints
+    return f"{constraints}\n\n" + "\n".join(lines)
 
 
 def _append_mission_track_c_blocks(
@@ -468,6 +546,12 @@ def build_context_bundle(
     constraints = _append_mission_track_c_blocks(
         constraints, run_meta=run_meta, plan_md=plan_md
     )
+    constraints = _append_wisdom_search_block(
+        constraints,
+        topic=topic,
+        run_meta=run_meta,
+        parallel_round=parallel_round,
+    )
     resume_block = build_agent_thread_resume_block(agent, run_meta)
     if resume_block.strip():
         constraints = f"{constraints}\n\n{resume_block.strip()}"
@@ -545,13 +629,20 @@ def build_context_bundle(
         turn_profile=profile,
         efficiency_mode=efficiency_mode,
     )
-    guidance_parts = build_guidance_parts(reply_policy)
+    guidance_parts = build_guidance_parts(
+        reply_policy, run_meta=run_meta, agent=agent
+    )
     if profile == "analyze":
         guidance_parts.insert(
             0,
             "[Analyze turn] Observe and report risks only. "
             "Do not use PROPOSE/ENDORSE/BLOCK envelope acts.",
         )
+    from agent_lab.room_dispatch_intents import build_dispatch_intent_block
+
+    dispatch_block = build_dispatch_intent_block(run_meta, agent)
+    if dispatch_block.strip():
+        guidance_parts.append(dispatch_block.strip())
     guidance_block = (
         "---\n"
         + "\n".join(guidance_parts)
@@ -590,7 +681,8 @@ def build_context_bundle(
         elif parallel_round >= 2:
             follow_up += (
                 "\n2라운드(순차 · 토론): 동료 의견을 **이어가거나 보완**하세요. "
-                "새 쟁점을 열기보다 합치거나 확장하는 쪽을 우선하세요."
+                "**또는** 실질적으로 다른 대안·리스크 1건을 CHALLENGE로 제기하세요. "
+                "빨리 합의하는 것이 목표가 아닙니다 — 결과를 바꾸는 이견이 가치입니다."
             )
 
     tool_rules = agent_tool_rules(agent)

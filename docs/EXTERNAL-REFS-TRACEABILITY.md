@@ -22,7 +22,12 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | PI-executed | Conductor | Merged diff archive | ✅ | `plan_execute_merge.py:archive_executed_diff()`, `tests/test_executed_archive.py` | `sessions/<id>/executed/{exec_id}.json` |
 | PI-ops | Conductor | Live worktree Go/No-Go | ✅ | `docs/LIVE-CURSOR-WORKTREE-DRY-RUN.md`, `scripts/live_cursor_worktree_dry_run.py`, Tier B in `docs/OPS-RUNBOOK.md` | Manual, not CI |
 | PI-ops-C | Conductor | Live merge operator | ✅ | `docs/LIVE-MERGE-OPERATOR.md`, `scripts/live_cursor_worktree_merge_run.py`, `make verify-ops-live-merge` | Disposable repo only |
-| E-smoke | Room | BLOCK/CHALLENGE governance | ✅ | `sessions/_regression/objection_blocks_execute/`, `envelope_consensus_endorse/`, `scripts/smoke_room.py` | 32 baselines |
+| E-smoke | Room | BLOCK/CHALLENGE governance | ✅ | `sessions/_regression/objection_blocks_execute/`, `envelope_consensus_endorse/`, `scripts/smoke_room.py` | 36 baselines |
+| LC-router | LazyCodex | Topic category routing (창발 예산) | ✅ | `topic_router.py`, `tests/test_topic_router.py`, `sessions/_regression/category_escalation_quick_to_deep/` | quick/standard/deep/critical; 충돌 act 자동 에스컬레이션; `AGENT_LAB_TOPIC_ROUTER=0` 롤백. LazyCodex 대비: 라우팅 대상이 워커가 아니라 합의 깊이 — [MISSION-LOOP-C-OMO.md](MISSION-LOOP-C-OMO.md) §4 |
+| EM-P1 | Emergence | 창발 KPI 1급 속성화 | ✅ | `emergence_kpis.py`, `tests/test_emergence_kpis.py`, `sessions/_regression/emergence_hybrid_plan/`, `AGENT_LAB_MOCK_ACT_SCRIPT` | hybrid_action_rate · challenge_yield · amend_chain · act 텔레메트리 (score_session 통합) |
+| EM-P3 | Emergence | discuss 충돌 상태화 + 품질 게이트 | ✅ | `room_objections.py`, `tests/test_discuss_objections.py`, `sessions/_regression/discuss_challenge_resolved/` | endorse 자동 해소(BLOCK 제외) · 무충돌 deep/critical 강제 反 · `consensus.quality` |
+| EM-P4 | Emergence | 재조합 라운드 + anchor 계보 | ✅ | `room_consensus.py`, `tests/test_recombination.py`, `sessions/_regression/recombination_synthesis/` | route.recombination on/auto/off; anchor id/parent_id 체인 + AMEND delta |
+| EM-P5 | Emergence | stigmergy 루프 + 창발 벤치 | ✅ | `context_bundle.py` wisdom R1 주입, `[LEARNED:]` 수확, `inbox_mcp_server.py:wisdom_search`, `scripts/emergence_bench.py`, `tests/test_stigmergy_loop.py` | `make emergence-bench` (mock, judge=heuristic); live는 `AGENT_LAB_EMERGENCE_BENCH_LIVE=1` CI 금지 |
 | F-R3 | Room | Asymmetric `capability_cwd` | ✅ | `sessions/_benchmark/specialist_asymmetric_cwd/`, `tests/test_benchmark_catalog.py` | Payload meta |
 | H-P1 | H4 | score_session CI | ✅ | `scripts/score_session.py`, `tests/test_session_score_ci.py`, `.github/workflows/ci.yml` | |
 | H-P2 | Room | Benchmark catalog + delegate replay | ✅ | `sessions/_benchmark/`, `tests/test_benchmark_catalog.py`, `tests/test_room_delegate_replay.py` | Offline R1–R5 catalog; PLAN Phase 3; see [ROOM-REINFORCEMENT.md](ROOM-REINFORCEMENT.md) |
@@ -36,6 +41,9 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | R-P0 | Room | Partial turn | ✅ | `src/agent_lab/room.py`, `docs/STABILITY.md` | |
 | R-P1 | Room | F2 artifact-only R2 | ✅ | `sessions/_regression/specialist_r2_artifact_only/`, `context_bundle.py` | |
 | HOOK-COMM | Hook · Communicate reform | ✅ | `reply_policy.py`, `room_hooks.py`, `gate_snapshot.py`, `communicate_kpis.py`, `sessions/_regression/envelope_consensus_endorse/`, `make verify-hooks`, USER-GUIDE §9.8 | `LEGACY_ENDORSE` default **off** (2026-06-08) — [HOOK-COMMUNICATE-REFORM.md](./HOOK-COMMUNICATE-REFORM.md) |
+| CMD-RDP | Fable fusion | Room worker dispatch protocol | ✅ | `room_dispatch.py`, `room_dispatch_intents.py`, `docs/ROOM-DISPATCH-PROTOCOL.md`, `tests/test_room_dispatch.py` | `DELEGATE` + `DISPATCH parallel:`; ledger `dispatch_ledger[]`; ≠ `runtime.dispatch()` |
+| CMD-hooks | Fable fusion | Dispatch hook lifecycle | ✅ | `room_hooks.py` (`pre_dispatch`, `post_dispatch`), `.agent-lab/hooks.example.toml` | Turn-boundary hooks; per-agent sandwich unchanged |
+| CMD-fanout | Fable fusion | Parallel scoped worker fan-out | ✅ | `room_dispatch.py`, `AGENT_LAB_DISPATCH_MAX_FANOUT`, `sessions/_regression/dispatch_parallel_explore/` | Cap independent of LC-router (EM-P2) |
 | UX-P2 | Room | Objection resolve UX | ✅ | `PlanExecutePanel.tsx`, `RoomTaskBar.tsx` | |
 | Bridge | Room | Cursor bridge degraded | ✅ | `sessions/_regression/bridge_degraded_health/`, H-P3 tests | |
 | CENT-env | Centaur | Subprocess env allowlist | ✅ | `src/agent_lab/subprocess_env.py`, `claude_cli.py`, `codex_cli.py`, `cursor_bridge.py`, `tests/test_subprocess_env.py` | [PLAN §3.2](EXTERNAL-REFS-PLAN.md#32-subprocess-credential-분리) |

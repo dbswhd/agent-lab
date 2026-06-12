@@ -85,6 +85,45 @@ def _envelope_dict(m: Any) -> dict[str, Any] | None:
     return parsed.envelope.to_dict() if parsed.envelope else None
 
 
+def escalation_harvest_keys_from_batch(messages: list[Any], *, act: str) -> list[str]:
+    """Harvest keys for act messages already consumed by topic-router escalation."""
+    from agent_lab.agent_envelope import envelope_act
+
+    act_u = str(act or "").upper()
+    if act_u not in _HARVEST_ACTS:
+        return []
+    keys: list[str] = []
+    for m in messages:
+        if getattr(m, "role", None) != "agent":
+            continue
+        agent = str(getattr(m, "agent", "") or "").strip().lower()
+        if agent not in _AGENT_IDS:
+            continue
+        env = _envelope_dict(m)
+        if not env or envelope_act(env) != act_u:
+            continue
+        message = str(env.get("message") or getattr(m, "content", "") or "").strip()
+        if not message:
+            continue
+        keys.append(_fingerprint(agent, act_u, message[:120]))
+    return keys
+
+
+def record_escalation_harvest_keys(
+    run_meta: dict[str, Any],
+    batch_msgs: list[Any],
+    *,
+    act: str,
+) -> None:
+    """Skip inbox harvest for CHALLENGE/AMEND/BLOCK that bumped category this turn."""
+    new_keys = escalation_harvest_keys_from_batch(batch_msgs, act=act)
+    if not new_keys:
+        return
+    prev = run_meta.get("_escalation_harvest_keys")
+    merged = {str(k) for k in (prev or []) if k} | set(new_keys)
+    run_meta["_escalation_harvest_keys"] = sorted(merged)
+
+
 def _challenge_amend_candidates(messages: list[Any]) -> list[InboxQuestionCandidate]:
     from agent_lab.agent_envelope import envelope_act
 
@@ -271,9 +310,16 @@ def harvest_discuss_questions(
     candidates = harvest_question_candidates(messages, plan_md=plan_md)
     if not candidates:
         return []
+    skip_escalation = {
+        str(k)
+        for k in (run_meta.get("_escalation_harvest_keys") or [])
+        if k
+    }
     existing = _existing_harvest_keys(run_meta)
     created: list[dict[str, Any]] = []
     for c in candidates:
+        if c.harvest_key in skip_escalation:
+            continue
         if c.harvest_key in existing:
             continue
         item = new_inbox_item(

@@ -11,6 +11,8 @@ timeout_s = 30
 [hooks.global]
 # post_harvest = ["./scripts/hooks/post-harvest.sh"]
 # pre_scribe = ["./scripts/hooks/pre-scribe.sh"]
+# pre_dispatch = ["./scripts/hooks/pre-dispatch.sh"]
+# post_dispatch = ["./scripts/hooks/post-dispatch.sh"]
 
 [hooks.cursor]
 # pre_agent_reply = []

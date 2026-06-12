@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Literal
@@ -85,6 +86,75 @@ def _mock_agents_enabled() -> bool:
     }
 
 
+_MOCK_SCRIPT_LOCK = threading.Lock()
+_MOCK_SCRIPT_CURSORS: dict[tuple[str, str], int] = {}
+_MOCK_SCRIPT_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
+
+
+def _load_mock_act_script(path: str) -> dict[str, Any] | None:
+    import json
+
+    try:
+        mtime = os.path.getmtime(path)
+    except OSError:
+        return None
+    cached = _MOCK_SCRIPT_CACHE.get(path)
+    if cached and cached[0] == mtime:
+        return cached[1]
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    _MOCK_SCRIPT_CACHE[path] = (mtime, data)
+    return data
+
+
+def _scripted_mock_response(agent: AgentId, snippet: str) -> str | None:
+    """Deterministic per-agent act sequence from AGENT_LAB_MOCK_ACT_SCRIPT (JSON path).
+
+    Schema: {"cursor": [{"act": "PROPOSE", "refs": ["L2"], "body": "..."}, ...], ...}
+    Steps are consumed in call order per agent (R1 runs in a ThreadPoolExecutor, hence
+    the lock); when the sequence is exhausted the agent falls back to ENDORSE.
+    """
+    import json
+
+    path = os.getenv("AGENT_LAB_MOCK_ACT_SCRIPT", "").strip()
+    if not path:
+        return None
+    script = _load_mock_act_script(path)
+    if script is None:
+        return None
+    steps = script.get(agent)
+    if not isinstance(steps, list):
+        return None
+    with _MOCK_SCRIPT_LOCK:
+        idx = _MOCK_SCRIPT_CURSORS.get((path, agent), 0)
+        _MOCK_SCRIPT_CURSORS[(path, agent)] = idx + 1
+    step = steps[idx] if idx < len(steps) and isinstance(steps[idx], dict) else {}
+    act = str(step.get("act") or "ENDORSE").upper()
+    env: dict[str, Any] = {
+        "act": act,
+        "refs": [str(r) for r in (step.get("refs") or [])],
+        "confidence": float(step.get("confidence") or 0.9),
+    }
+    if step.get("to"):
+        env["to"] = str(step["to"])
+    if step.get("message"):
+        env["message"] = str(step["message"])
+    body = str(step.get("body") or "") or (
+        f"[mock:{label(agent)}] {act} — {snippet or '(empty)'}"
+    )
+    return f"{json.dumps(env, ensure_ascii=False)}\n{body}"
+
+
+def reset_mock_act_script_cursors() -> None:
+    """Test helper — restart all scripted mock sequences."""
+    with _MOCK_SCRIPT_LOCK:
+        _MOCK_SCRIPT_CURSORS.clear()
+
+
 def _mock_agent_response(
     agent: AgentId,
     user: str,
@@ -94,6 +164,9 @@ def _mock_agent_response(
     if scribe:
         return "## Mock plan\n\n- mock scribe turn\n"
     snippet = " ".join(user.strip().split())[:100]
+    scripted = _scripted_mock_response(agent, snippet)
+    if scripted is not None:
+        return scripted
     if os.getenv("AGENT_LAB_MOCK_STRUCTURED_ENVELOPE", "").strip().lower() in {
         "1",
         "true",

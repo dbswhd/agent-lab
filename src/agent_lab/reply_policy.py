@@ -9,6 +9,7 @@ from typing import Any
 from agent_lab.agent_envelope import (
     DECISION_FORK_GUIDANCE,
     ENVELOPE_FORMAT_GUIDANCE,
+    envelope_act,
     envelope_protocol_block,
     is_endorse_reply,
     is_pass_reply,
@@ -19,6 +20,13 @@ from agent_lab.room_context import (
     EFFICIENCY_RESPONSE_GUIDANCE,
     MULTI_AGENT_COORDINATION,
     PEER_DECISION_GUIDANCE,
+)
+
+DISPATCH_LEAD_GUIDANCE = (
+    "[턴 리드 · dispatch]\n"
+    "동료에게 scoped work를 내릴 때 envelope `act: MESSAGE`, `to: <agent>`, "
+    "optional `dispatch: { \"op\": \"scoped\", \"prompt\": \"…\" }` 를 사용하세요. "
+    "실행은 Human `DELEGATE`/`DISPATCH` 또는 명시 GO 후에만 됩니다."
 )
 
 
@@ -135,8 +143,18 @@ def resolve_reply_policy(
     )
 
 
-def build_guidance_parts(policy: ReplyPolicy) -> list[str]:
+def build_guidance_parts(
+    policy: ReplyPolicy,
+    *,
+    run_meta: dict[str, Any] | None = None,
+    agent: str = "",
+) -> list[str]:
     parts: list[str] = []
+    if run_meta and agent:
+        from agent_lab.room_tasks import team_lead
+
+        if str(agent).strip().lower() == team_lead(run_meta):
+            parts.append(DISPATCH_LEAD_GUIDANCE)
     if policy.inject_analysis and policy.turn_profile in ("analyze", "discuss"):
         parts.append(ANALYSIS_TURN_GUIDANCE.strip())
     if policy.turn_profile == "specialist":
@@ -181,6 +199,8 @@ def summarize_turn_communicate_meta(
     legacy_endorse = 0
     parse_errors = 0
     agent_replies = 0
+    act_counts: dict[str, int] = {}
+    acts_by_round: dict[str, dict[str, int]] = {}
     for m in turn_messages:
         if getattr(m, "role", None) != "agent":
             continue
@@ -191,6 +211,12 @@ def summarize_turn_communicate_meta(
             legacy_endorse += 1
         if getattr(m, "envelope_parse_error", False):
             parse_errors += 1
+        act = envelope_act(env if isinstance(env, dict) else None)
+        if act:
+            act_counts[act] = act_counts.get(act, 0) + 1
+            round_key = str(getattr(m, "parallel_round", None) or 1)
+            per_round = acts_by_round.setdefault(round_key, {})
+            per_round[act] = per_round.get(act, 0) + 1
 
     meta: dict[str, Any] = {
         "envelope_strict": bool(policy.envelope_strict) if policy else False,
@@ -199,6 +225,9 @@ def summarize_turn_communicate_meta(
         "legacy_endorse_count": legacy_endorse,
         "agent_reply_count": agent_replies,
     }
+    if act_counts:
+        meta["act_counts"] = act_counts
+        meta["acts_by_round"] = acts_by_round
     if policy:
         meta["reply_policy"] = policy.to_dict()
     return meta

@@ -43,9 +43,8 @@ def test_append_and_execute_block():
         assert_execute_allowed(meta, 1, "now")
 
 
-def test_harvest_plan_mode_only():
-    meta: dict = {}
-    msgs = [
+def _block_msgs() -> list[_Msg]:
+    return [
         _Msg("user", content="go"),
         _Msg(
             "agent",
@@ -58,10 +57,28 @@ def test_harvest_plan_mode_only():
             ).to_dict(),
         ),
     ]
-    assert harvest_objections_from_turn(meta, msgs, human_turn=1, mode="discuss") == []
-    created = harvest_objections_from_turn(meta, msgs, human_turn=1, mode="plan")
+
+
+def test_harvest_plan_mode_tags_mode():
+    meta: dict = {}
+    created = harvest_objections_from_turn(meta, _block_msgs(), human_turn=1, mode="plan")
     assert len(created) == 1
     assert created[0]["plan_action_index"] == 2
+    assert created[0]["mode"] == "plan"
+
+
+def test_harvest_discuss_mode_default_on(monkeypatch):
+    monkeypatch.delenv("AGENT_LAB_DISCUSS_OBJECTIONS", raising=False)
+    meta: dict = {}
+    created = harvest_objections_from_turn(meta, _block_msgs(), human_turn=1, mode="discuss")
+    assert len(created) == 1
+    assert created[0]["mode"] == "discuss"
+
+
+def test_harvest_discuss_mode_flag_off(monkeypatch):
+    monkeypatch.setenv("AGENT_LAB_DISCUSS_OBJECTIONS", "0")
+    meta: dict = {}
+    assert harvest_objections_from_turn(meta, _block_msgs(), human_turn=1, mode="discuss") == []
 
 
 def test_resolve_clears_execute_block():

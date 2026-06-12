@@ -128,6 +128,9 @@ export type SessionObservability = {
   hook_runs_tail?: Array<Record<string, unknown>>;
   hook_run_count?: number;
   last_communicate_meta?: Record<string, unknown> | null;
+  dispatch_ledger_tail?: Array<Record<string, unknown>>;
+  dispatch_count?: number;
+  pending_dispatch_intents?: number;
 };
 
 export type SessionDetail = {
@@ -852,6 +855,17 @@ export function reconnectCursorBridge() {
     hint?: string | null;
     agent: AgentHealthRow;
   }>("/api/health/reconnect-cursor", { method: "POST" });
+}
+
+export function reconnectClaudeAuth() {
+  return json<{
+    ok: boolean;
+    auth_ok: boolean;
+    probe_ok: boolean;
+    hint?: string | null;
+    remediation?: string[] | null;
+    agent: AgentHealthRow;
+  }>("/api/health/reconnect-claude", { method: "POST" });
 }
 
 export function fetchAgents() {

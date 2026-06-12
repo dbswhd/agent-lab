@@ -7,6 +7,7 @@ type Props = {
   loading?: boolean;
   onRefresh?: () => void;
   onReconnectCursor?: () => void;
+  onReconnectClaude?: () => void;
   reconnecting?: boolean;
   /** Show bridge setup hint when probe_bridge=true failed for Cursor. */
   showBridgeSetupGuide?: boolean;
@@ -32,15 +33,19 @@ export function AgentHealthPanel({
   loading,
   onRefresh,
   onReconnectCursor,
+  onReconnectClaude,
   reconnecting,
   showBridgeSetupGuide,
 }: Props) {
   const [open, setOpen] = useState(false);
   const readyCount = agents.filter((a) => a.ready).length;
   const cursorRow = agents.find((a) => a.id === "cursor");
+  const claudeRow = agents.find((a) => a.id === "claude");
   const showReconnect =
     Boolean(cursorRow?.configured && onReconnectCursor) &&
     (cursorRow?.bridge === "error" || !cursorRow?.ready);
+  const showReconnectClaude =
+    Boolean(claudeRow?.configured && onReconnectClaude) && !claudeRow?.ready;
 
   return (
     <div
@@ -106,6 +111,16 @@ export function AgentHealthPanel({
                       className="mac-btn-secondary mac-btn-secondary--compact agent-health-row__reconnect"
                       disabled={loading || reconnecting}
                       onClick={onReconnectCursor}
+                    >
+                      {reconnecting ? "재연결…" : "재연결"}
+                    </button>
+                  ) : null}
+                  {row.id === "claude" && showReconnectClaude ? (
+                    <button
+                      type="button"
+                      className="mac-btn-secondary mac-btn-secondary--compact agent-health-row__reconnect"
+                      disabled={loading || reconnecting}
+                      onClick={onReconnectClaude}
                     >
                       {reconnecting ? "재연결…" : "재연결"}
                     </button>

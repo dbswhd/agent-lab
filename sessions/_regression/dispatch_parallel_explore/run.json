@@ -1,0 +1,52 @@
+{
+  "workflow_id": "room.parallel",
+  "run_schema_version": 1,
+  "topic": "dispatch parallel explore regression",
+  "agents": ["cursor", "codex", "claude"],
+  "status": "completed",
+  "last_delegate": {
+    "agents": ["codex", "cursor"],
+    "prompt": "survey hooks and dispatch modules",
+    "artifact_ids": ["art-disp-1", "art-disp-2"],
+    "replaced_full_round": true,
+    "dispatch_id": "disp-001"
+  },
+  "dispatch_ledger": [
+    {
+      "id": "disp-001",
+      "op": "parallel_delegate",
+      "issuer": "human",
+      "agents": ["codex", "cursor"],
+      "prompt": "survey hooks and dispatch modules",
+      "status": "done",
+      "artifact_ids": ["art-disp-1", "art-disp-2"],
+      "topic_category": "standard"
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "art-disp-1",
+      "producer": "codex",
+      "kind": "delegate",
+      "summary": "DISPATCH: survey hooks",
+      "refs": ["delegate", "dispatch"]
+    },
+    {
+      "id": "art-disp-2",
+      "producer": "cursor",
+      "kind": "delegate",
+      "summary": "DISPATCH: survey dispatch",
+      "refs": ["delegate", "dispatch"]
+    }
+  ],
+  "turns": [
+    {
+      "mode": "discuss",
+      "status": "completed",
+      "last_delegate": {
+        "dispatch_id": "disp-001",
+        "replaced_full_round": true
+      }
+    }
+  ]
+}

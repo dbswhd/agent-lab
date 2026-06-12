@@ -1,0 +1,6 @@
+{"role": "user", "agent": null, "content": "config 키 rename", "ts": "2026-06-12T01:00:01+00:00"}
+{"role": "agent", "agent": "cursor", "content": "단순 rename — sed 한 번이면 됩니다.", "ts": "2026-06-12T01:00:02+00:00", "parallel_round": 1, "envelope": {"act": "PROPOSE", "refs": [], "confidence": 0.8}}
+{"role": "agent", "agent": "codex", "content": "rename만으론 구버전 설정 파일을 읽는 배포본이 깨집니다 — 호환 레이어 필요.", "ts": "2026-06-12T01:00:03+00:00", "parallel_round": 1, "envelope": {"act": "CHALLENGE", "refs": ["L2"], "confidence": 0.75}}
+{"role": "agent", "agent": "claude", "content": "rename + 구키 fallback 읽기 경로 1릴리스 유지 — 두 우려를 결합한 수정안.", "ts": "2026-06-12T01:00:04+00:00", "parallel_round": 2, "envelope": {"act": "AMEND", "refs": ["L2", "L3"], "confidence": 0.85}}
+{"role": "agent", "agent": "codex", "content": "이의 없습니다", "ts": "2026-06-12T01:00:05+00:00", "parallel_round": 3, "envelope": {"act": "ENDORSE", "refs": ["L4"], "confidence": 0.9}}
+{"role": "agent", "agent": "cursor", "content": "이의 없습니다.", "ts": "2026-06-12T01:00:06+00:00", "parallel_round": 3, "envelope": {"act": "ENDORSE", "refs": ["L4"], "confidence": 0.9}}

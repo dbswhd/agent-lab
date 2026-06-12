@@ -77,6 +77,14 @@ _TARGET_EVENT_POLICIES: dict[str, HookEventPolicy] = {
         block_on_os_error=True,
         stop_on_block=True,
     ),
+    "pre_dispatch": HookEventPolicy(True, True, True, True, stop_on_block=True),
+    "post_dispatch": HookEventPolicy(
+        block_on_exit_2=False,
+        block_on_nonzero=False,
+        block_on_timeout=False,
+        block_on_os_error=False,
+        stop_on_block=False,
+    ),
 }
 
 _DEFAULT_POLICY = HookEventPolicy(True, True, True, True, stop_on_block=True)
@@ -394,6 +402,7 @@ def _hook_run_record(
     session_id: str = "",
     human_turn: int | None = None,
     parallel_round: int | None = None,
+    dispatch_id: str | None = None,
 ) -> dict[str, Any]:
     from datetime import datetime, timezone
 
@@ -412,6 +421,8 @@ def _hook_run_record(
         rec["human_turn"] = human_turn
     if parallel_round is not None:
         rec["parallel_round"] = parallel_round
+    if dispatch_id:
+        rec["dispatch_id"] = dispatch_id
     if result.structured:
         rec["structured"] = result.structured
     return rec
@@ -562,6 +573,64 @@ def run_post_agent_reply_hooks(
             retryable=False,
         )
     return result
+
+
+def run_pre_dispatch_hooks(
+    run_meta: dict[str, Any],
+    *,
+    session_folder: Path | None = None,
+    session_id: str = "",
+    human_turn: int | None = None,
+    dispatch_id: str = "",
+    dispatch_op: str = "",
+    dispatch_agents: list[str] | None = None,
+    prompt: str = "",
+    topic_route: dict[str, Any] | None = None,
+) -> HookResult:
+    from agent_lab.runtime.policy import PolicyEngine
+
+    ctx = {
+        "event": "pre_dispatch",
+        "session_id": session_id,
+        "workspace": _workspace_for_hooks(run_meta, session_folder),
+        "human_turn": human_turn,
+        "dispatch_id": dispatch_id,
+        "dispatch_op": dispatch_op,
+        "dispatch_agents": list(dispatch_agents or []),
+        "prompt": prompt[:500],
+        "topic_route": topic_route,
+        "gate_snapshot": PolicyEngine.gate_snapshot(run_meta),
+        "team_lead": run_meta.get("team_lead"),
+    }
+    return run_hook("pre_dispatch", ctx)
+
+
+def run_post_dispatch_hooks(
+    run_meta: dict[str, Any],
+    *,
+    session_folder: Path | None = None,
+    session_id: str = "",
+    human_turn: int | None = None,
+    dispatch_id: str = "",
+    dispatch_op: str = "",
+    dispatch_agents: list[str] | None = None,
+    topic_route: dict[str, Any] | None = None,
+) -> HookResult:
+    from agent_lab.runtime.policy import PolicyEngine
+
+    ctx = {
+        "event": "post_dispatch",
+        "session_id": session_id,
+        "workspace": _workspace_for_hooks(run_meta, session_folder),
+        "human_turn": human_turn,
+        "dispatch_id": dispatch_id,
+        "dispatch_op": dispatch_op,
+        "dispatch_agents": list(dispatch_agents or []),
+        "topic_route": topic_route,
+        "gate_snapshot": PolicyEngine.gate_snapshot(run_meta),
+        "team_lead": run_meta.get("team_lead"),
+    }
+    return run_hook("post_dispatch", ctx)
 
 
 def run_post_harvest_hooks(

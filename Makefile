@@ -1,4 +1,4 @@
-.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test ci check-worktrees smoke smoke-e2e smoke-web-ui smoke-tauri-ui validate-quant verify-quant-workspace verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags
+.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test ci check-worktrees smoke smoke-e2e smoke-web-ui smoke-tauri-ui validate-quant verify-quant-workspace verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench
 
 install:
 	python3 -m venv .venv
@@ -145,6 +145,12 @@ live-worktree-dry-run:
 score-regression-fixtures:
 	.venv/bin/python scripts/score_session.py --json sessions/_regression/worktree_merge_ok
 	.venv/bin/python scripts/score_session.py --json sessions/_regression/objection_blocks_execute
+	.venv/bin/python scripts/score_session.py --json sessions/_regression/emergence_hybrid_plan
+	.venv/bin/python scripts/score_session.py --json sessions/_regression/discuss_challenge_resolved
+	.venv/bin/python scripts/score_session.py --json sessions/_regression/recombination_synthesis
+
+emergence-bench:
+	.venv/bin/python scripts/emergence_bench.py
 
 smoke:
 	.venv/bin/python scripts/smoke_room.py

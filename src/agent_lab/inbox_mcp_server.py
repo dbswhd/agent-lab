@@ -90,6 +90,20 @@ def propose_build(
     )
 
 
+@mcp.tool()
+def wisdom_search(query: str, k: int = 3) -> dict[str, Any]:
+    """세션 위즈덤(검증·학습·evidence) 검색 — 과거 결론을 재발견해 토론에 인용한다."""
+    from agent_lab.wisdom_index import public_wisdom_search_payload
+
+    folder = _session_folder()
+    limit = max(1, min(int(k or 3), 10))
+    return public_wisdom_search_payload(
+        folder,
+        query=str(query or "").strip(),
+        limit=limit,
+    )
+
+
 def main() -> None:
     mcp.run(transport="stdio")
 

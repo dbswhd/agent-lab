@@ -37,6 +37,66 @@ def test_communicate_counts_from_run_meta():
     assert scores["envelope_parse_success_rate"] == 2 / 3
 
 
+def test_communicate_counts_aggregate_act_counts():
+    run = {
+        "turns": [
+            {
+                "communicate_meta": {
+                    "agent_reply_count": 3,
+                    "act_counts": {"PROPOSE": 1, "CHALLENGE": 1, "ENDORSE": 1},
+                }
+            },
+            {
+                "communicate_meta": {
+                    "agent_reply_count": 2,
+                    "act_counts": {"ENDORSE": 1, "AMEND": 1},
+                }
+            },
+        ],
+    }
+    counts = communicate_counts(run)
+    assert counts["acts_total"] == {
+        "PROPOSE": 1,
+        "CHALLENGE": 1,
+        "ENDORSE": 2,
+        "AMEND": 1,
+    }
+    scores = communicate_scores(counts)
+    assert scores["challenge_rate"] == 1 / 5
+    assert scores["endorse_rate"] == 2 / 5
+    assert scores["amend_rate"] == 1 / 5
+
+
+def test_summarize_turn_meta_records_acts_by_round():
+    from types import SimpleNamespace
+
+    from agent_lab.reply_policy import summarize_turn_communicate_meta
+
+    def _msg(agent: str, content: str, act: str | None, pr: int):
+        return SimpleNamespace(
+            role="agent",
+            agent=agent,
+            content=content,
+            envelope={"act": act, "refs": []} if act else None,
+            envelope_parse_error=False,
+            parallel_round=pr,
+        )
+
+    msgs = [
+        _msg("cursor", "제안", "PROPOSE", 1),
+        _msg("codex", "반박", "CHALLENGE", 2),
+        _msg("claude", "이의 없습니다", "ENDORSE", 2),
+        _msg("cursor", "no envelope", None, 2),
+    ]
+    meta = summarize_turn_communicate_meta(msgs, None)
+    assert meta["act_counts"] == {"PROPOSE": 1, "CHALLENGE": 1, "ENDORSE": 1}
+    assert meta["acts_by_round"] == {
+        "1": {"PROPOSE": 1},
+        "2": {"CHALLENGE": 1, "ENDORSE": 1},
+    }
+    assert meta["agent_reply_count"] == 4
+
+
 def test_envelope_follow_up_compact_by_default(monkeypatch):
     monkeypatch.delenv("AGENT_LAB_GUIDANCE_TIER", raising=False)
     policy = resolve_reply_policy(parallel_round=2, consensus_mode=True)

@@ -308,6 +308,58 @@ def public_wisdom_index_status(folder: Path, *, run: dict[str, Any] | None = Non
     }
 
 
+def agent_learnings_enabled() -> bool:
+    """``AGENT_LAB_AGENT_LEARNINGS`` — ``[LEARNED:]`` 마커 수확 (기본 on)."""
+    raw = (os.getenv("AGENT_LAB_AGENT_LEARNINGS") or "").strip().lower()
+    return raw not in ("0", "false", "no", "off")
+
+
+def harvest_agent_learnings(folder: Path, messages: list[Any]) -> int:
+    """P5 stigmergy 쓰기 경로 — 이번 턴 ``[LEARNED:]`` 마커를 learnings.md에 dedupe 추가.
+
+    루프 폐쇄: 에이전트 기록 → notepad → wisdom index → R1 주입이 미래 토론에 공급.
+    room.py가 mission_loop를 직접 import하지 않도록 여기서 배선한다 (레이어링).
+    """
+    if not agent_learnings_enabled():
+        return 0
+    from agent_lab.agent_envelope import extract_learned_notes
+
+    last_user = -1
+    for i, m in enumerate(messages):
+        if getattr(m, "role", None) == "user":
+            last_user = i
+    turn = messages[last_user + 1 :] if last_user >= 0 else list(messages)
+    entries: list[str] = []
+    for m in turn:
+        if getattr(m, "role", None) != "agent" or not getattr(m, "agent", None):
+            continue
+        for note in extract_learned_notes(getattr(m, "content", "") or ""):
+            entry = f"[{m.agent}] {note[:300]}"
+            if entry not in entries:
+                entries.append(entry)
+    if not entries:
+        return 0
+    from agent_lab.mission_loop import append_wisdom_note
+
+    existing = ""
+    notepad = mission_notepad_dir(folder) / "learnings.md"
+    if notepad.is_file():
+        existing = notepad.read_text(encoding="utf-8")
+    added = 0
+    for entry in entries:
+        if entry in existing:
+            continue
+        append_wisdom_note(
+            folder,
+            line=entry,
+            filename="learnings.md",
+            provenance="agent-learned",
+            auto_provenance=False,
+        )
+        added += 1
+    return added
+
+
 def public_wisdom_search_payload(
     folder: Path,
     *,

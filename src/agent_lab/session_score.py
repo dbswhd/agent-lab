@@ -9,6 +9,7 @@ from typing import Any
 
 from agent_lab.plan_refs import validate_plan_refs
 from agent_lab.communicate_kpis import communicate_counts, communicate_scores
+from agent_lab.emergence_kpis import emergence_kpis
 from agent_lab.room_objections import list_objections
 from agent_lab.mission_loop import get_mission_loop
 from agent_lab.run_meta import read_run_meta
@@ -392,6 +393,7 @@ def score_session(folder: Path) -> dict[str, Any]:
     comm_counts = communicate_counts(run_meta)
     comm_scores = communicate_scores(comm_counts)
     mission_scores, mission_counts = _mission_loop_kpis(folder, run_meta)
+    emergence_scores, emergence_counts = emergence_kpis(folder, run_meta, messages)
 
     scores: dict[str, float | None] = {
         "objection_resolution_rate": obj_rate,
@@ -404,6 +406,7 @@ def score_session(folder: Path) -> dict[str, Any]:
         **capability_scores,
         **comm_scores,
         **mission_scores,
+        **emergence_scores,
     }
     summary_lines = _format_summary_lines(
         folder.name,
@@ -416,6 +419,7 @@ def score_session(folder: Path) -> dict[str, Any]:
         ref_counts,
         dup_counts,
         mission_counts,
+        emergence_counts,
     )
     return {
         "session_id": folder.name,
@@ -431,6 +435,7 @@ def score_session(folder: Path) -> dict[str, Any]:
             "duplicate_speech": dup_counts,
             "communicate": comm_counts,
             "mission_loop": mission_counts,
+            "emergence": emergence_counts,
         },
         "summary_lines": summary_lines,
     }
@@ -453,6 +458,7 @@ def _format_summary_lines(
     ref_counts: dict[str, int],
     dup_counts: dict[str, int],
     mission_counts: dict[str, int],
+    emergence_counts: dict[str, Any] | None = None,
 ) -> list[str]:
     lines = [f"Session: {session_id}"]
     lines.append(
@@ -516,4 +522,22 @@ def _format_summary_lines(
             lines.append("  mission circuit breaker: triggered")
         if mission_counts.get("paused"):
             lines.append("  mission paused: yes (check last_partial in run.json)")
+    if emergence_counts:
+        hybrid = emergence_counts.get("hybrid") or {}
+        challenge = emergence_counts.get("challenge") or {}
+        amend = emergence_counts.get("amend") or {}
+        lines.append(
+            f"  hybrid plan actions: {_pct(scores.get('hybrid_action_rate'))} "
+            f"({hybrid.get('hybrid_bullets', 0)}/{hybrid.get('ref_bullets', 0)} ref bullets)"
+        )
+        lines.append(
+            f"  challenge yield: {_pct(scores.get('challenge_yield'))} "
+            f"({challenge.get('resolved_accepted', 0)}/{challenge.get('total', 0)} accepted)"
+        )
+        depth = scores.get("amend_chain_depth_max")
+        lines.append(
+            "  amend chain depth: "
+            f"{'n/a' if depth is None else int(depth)} "
+            f"({amend.get('amend_total', 0)} AMEND total)"
+        )
     return lines

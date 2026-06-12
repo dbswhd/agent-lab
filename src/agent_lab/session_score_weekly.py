@@ -234,6 +234,27 @@ def _pool_communicate_counts(reports: list[dict[str, Any]]) -> dict[str, int]:
     return pooled
 
 
+def _pool_emergence_counts(reports: list[dict[str, Any]]) -> dict[str, int]:
+    pooled = {
+        "ref_bullets": 0,
+        "hybrid_bullets": 0,
+        "challenge_total": 0,
+        "challenge_accepted": 0,
+        "amend_total": 0,
+    }
+    for report in reports:
+        counts = (report.get("counts") or {}).get("emergence") or {}
+        hybrid = counts.get("hybrid") or {}
+        challenge = counts.get("challenge") or {}
+        amend = counts.get("amend") or {}
+        pooled["ref_bullets"] += int(hybrid.get("ref_bullets") or 0)
+        pooled["hybrid_bullets"] += int(hybrid.get("hybrid_bullets") or 0)
+        pooled["challenge_total"] += int(challenge.get("total") or 0)
+        pooled["challenge_accepted"] += int(challenge.get("resolved_accepted") or 0)
+        pooled["amend_total"] += int(amend.get("amend_total") or 0)
+    return pooled
+
+
 def aggregate_rates(
     reports: list[dict[str, Any]],
 ) -> tuple[dict[str, float | None], dict[str, dict[str, int]]]:
@@ -244,6 +265,7 @@ def aggregate_rates(
     turns = _pool_turn_counts(reports)
     capability_cwd = _pool_capability_cwd_counts(reports)
     communicate = _pool_communicate_counts(reports)
+    emergence = _pool_emergence_counts(reports)
 
     objection_rate = (
         obj["resolved"] / obj["total"] if obj["total"] else None
@@ -297,6 +319,16 @@ def aggregate_rates(
             if communicate["hook_runs"]
             else None
         ),
+        "hybrid_action_rate": (
+            emergence["hybrid_bullets"] / emergence["ref_bullets"]
+            if emergence["ref_bullets"]
+            else None
+        ),
+        "challenge_yield": (
+            emergence["challenge_accepted"] / emergence["challenge_total"]
+            if emergence["challenge_total"]
+            else None
+        ),
     }
     counts = {
         "objections": obj,
@@ -305,6 +337,7 @@ def aggregate_rates(
         "turns": turns,
         "capability_cwd": capability_cwd,
         "communicate": communicate,
+        "emergence": emergence,
     }
     return scores, counts
 

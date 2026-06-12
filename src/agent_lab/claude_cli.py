@@ -150,6 +150,18 @@ _AUTH_STATUS_CACHE: tuple[float, bool, str | None] | None = None
 _AUTH_STATUS_TTL_SEC = 30.0
 
 
+def invalidate_claude_auth_cache() -> None:
+    """Clear cached auth status/probe results after invoke failures or reconnect."""
+    global _AUTH_PROBE_CACHE, _AUTH_STATUS_CACHE
+    _AUTH_PROBE_CACHE = None
+    _AUTH_STATUS_CACHE = None
+
+
+def _is_auth_failure(detail: str) -> bool:
+    low = detail.lower()
+    return "401" in detail or "authenticate" in low or "credit balance" in low
+
+
 def claude_auth_logged_in(*, use_cache: bool = True) -> tuple[bool, str | None]:
     """Fast OAuth session check via `claude auth status` (no headless -p probe)."""
     if os.getenv("AGENT_LAB_MOCK_AGENTS", "").strip().lower() in {
@@ -459,6 +471,8 @@ def invoke(
                     f"{detail} "
                     "(Claude Room uses OAuth only — run: claude logout && claude login)"
                 )
+            if _is_auth_failure(detail):
+                invalidate_claude_auth_cache()
             raise RuntimeError(
                 f"claude -p failed (exit {proc.returncode})"
                 + (f": {detail}" if detail else "")

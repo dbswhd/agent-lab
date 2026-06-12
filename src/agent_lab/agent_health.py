@@ -53,6 +53,40 @@ def _check_cursor_bridge(
     return "error", last_err
 
 
+def reconnect_claude_auth() -> dict[str, Any]:
+    """Invalidate cached Claude OAuth checks and re-probe (health panel reconnect)."""
+    from agent_lab import claude_cli
+
+    claude_cli.invalidate_claude_auth_cache()
+    auth_ok, auth_detail = claude_cli.claude_auth_logged_in(use_cache=False)
+    probe_ok = False
+    probe_detail: str | None = None
+    if auth_ok:
+        probe_ok, probe_detail = claude_cli.probe_auth(use_cache=False)
+
+    ok = auth_ok and probe_ok
+    hint = probe_detail or auth_detail
+    row = agent_health_row("claude", probe_bridge=False)
+    if not ok:
+        row["ready"] = False
+        row["hint"] = hint
+        row["reason"] = hint
+        row["failure_code"] = "claude_auth_failed"
+        row["remediation"] = claude_cli.auth_failure_remediation(hint or "")
+    else:
+        row["ready"] = True
+        row["hint"] = None
+
+    return {
+        "ok": ok,
+        "auth_ok": auth_ok,
+        "probe_ok": probe_ok,
+        "hint": hint,
+        "remediation": row.get("remediation"),
+        "agent": row,
+    }
+
+
 def reconnect_cursor_bridge(*, workspace: str | None = None) -> dict[str, Any]:
     """Invalidate cached bridge and probe with retries (health panel reconnect)."""
     from agent_lab.cursor_bridge import cursor_bridge_failure_payload, invalidate_workspace

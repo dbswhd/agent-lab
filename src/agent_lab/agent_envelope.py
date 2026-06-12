@@ -26,10 +26,21 @@ _ENVELOPE_FENCE = re.compile(
 
 # Mirror room_tasks._PROPOSED_RE — keep local to avoid import cycles.
 _PROPOSED_RE = re.compile(r"\[PROPOSED:\s*([^\]]+)\]", re.I)
+# P5: 에이전트 직접 학습 기록 — [LEARNED: …] → learnings.md → wisdom index.
+_LEARNED_RE = re.compile(r"\[LEARNED:\s*([^\]]+)\]", re.I)
 
 
 def body_has_proposed(text: str) -> bool:
     return bool(_PROPOSED_RE.search(text or ""))
+
+
+def extract_learned_notes(text: str) -> list[str]:
+    """본문 ``[LEARNED: …]`` 마커 추출 (P5 stigmergy 쓰기 경로)."""
+    return [
+        m.group(1).strip()
+        for m in _LEARNED_RE.finditer(text or "")
+        if m.group(1).strip()
+    ]
 
 
 @dataclass
@@ -40,6 +51,7 @@ class AgentEnvelope:
     anchor_id: str | None = None
     to: str | None = None
     message: str | None = None
+    dispatch: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         d: dict[str, Any] = {"act": self.act, "refs": list(self.refs)}
@@ -51,6 +63,8 @@ class AgentEnvelope:
             d["to"] = self.to
         if self.message:
             d["message"] = self.message
+        if self.dispatch:
+            d["dispatch"] = dict(self.dispatch)
         return d
 
     @classmethod
@@ -70,6 +84,14 @@ class AgentEnvelope:
         anchor_id = data.get("anchor_id")
         to_raw = data.get("to")
         msg_raw = data.get("message")
+        dispatch_raw = data.get("dispatch")
+        dispatch: dict[str, Any] | None = None
+        if isinstance(dispatch_raw, dict) and dispatch_raw:
+            dispatch = {
+                str(k): v
+                for k, v in dispatch_raw.items()
+                if str(k).strip()
+            }
         return cls(
             act=act,  # type: ignore[arg-type]
             refs=refs,
@@ -77,7 +99,17 @@ class AgentEnvelope:
             anchor_id=str(anchor_id).strip() if anchor_id else None,
             to=str(to_raw).strip().lower() if to_raw else None,
             message=str(msg_raw).strip() if msg_raw else None,
+            dispatch=dispatch,
         )
+
+
+def envelope_dispatch(envelope: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not isinstance(envelope, dict):
+        return None
+    raw = envelope.get("dispatch")
+    if isinstance(raw, dict) and raw:
+        return raw
+    return None
 
 
 @dataclass

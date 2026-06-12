@@ -9,9 +9,11 @@ import pytest
 
 from agent_lab.inbox_harvest import (
     clarifier_harvest_key,
+    escalation_harvest_keys_from_batch,
     harvest_clarifier_questions,
     harvest_discuss_questions,
     harvest_question_candidates,
+    record_escalation_harvest_keys,
 )
 from agent_lab.session_clarifier import build_clarifier_questions
 
@@ -133,6 +135,21 @@ def test_harvest_skips_plan_mode():
         _challenge("codex", "plan 모드에서는 objection으로"),
     ]
     created = harvest_discuss_questions(run_meta, messages, mode="plan")
+    assert created == []
+    assert "human_inbox" not in run_meta
+
+
+def test_harvest_skips_escalation_consumed_challenge():
+    messages = [
+        _Msg(role="user", content="topic"),
+        _challenge("codex", "rename만으론 호출부가 깨집니다"),
+    ]
+    keys = escalation_harvest_keys_from_batch(messages, act="CHALLENGE")
+    assert len(keys) == 1
+    run_meta: dict[str, Any] = {}
+    record_escalation_harvest_keys(run_meta, messages, act="CHALLENGE")
+    assert run_meta["_escalation_harvest_keys"] == keys
+    created = harvest_discuss_questions(run_meta, messages, human_turn=1)
     assert created == []
     assert "human_inbox" not in run_meta
 

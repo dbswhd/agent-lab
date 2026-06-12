@@ -1,0 +1,90 @@
+{
+  "workflow_id": "room.parallel",
+  "run_schema_version": 1,
+  "plan_format_version": 1,
+  "topic": "regression baseline: recombination synthesis anchor",
+  "created_at": "2026-06-12T00:00:00+00:00",
+  "agents": ["cursor", "codex", "claude"],
+  "status": "completed",
+  "message_count": 6,
+  "agent_parallel_rounds": 7,
+  "turns": [
+    {
+      "mode": "discuss",
+      "consensus_mode": true,
+      "status": "completed",
+      "ts": "2026-06-12T00:00:06+00:00",
+      "category": {
+        "value": "deep",
+        "source": "heuristic",
+        "signals": ["kw:아키텍처", "kw:트레이드오프"]
+      },
+      "communicate_meta": {
+        "legacy_endorse_count": 0,
+        "envelope_parse_error_count": 0,
+        "guidance_chars": 480,
+        "agent_reply_count": 5,
+        "act_counts": {"PROPOSE": 1, "CHALLENGE": 1, "AMEND": 1, "ENDORSE": 2},
+        "acts_by_round": {
+          "1": {"PROPOSE": 1},
+          "2": {"CHALLENGE": 1},
+          "6": {"AMEND": 1},
+          "7": {"ENDORSE": 2}
+        }
+      },
+      "consensus": {
+        "status": "reached",
+        "anchor": {
+          "agent": "claude",
+          "excerpt": "합성안: 기본은 cursor의 배치 집계, codex가 지적한 핵심 지표 3종만 경량 스트림으로 분리",
+          "parallel_round": 6,
+          "id": "a1-1"
+        },
+        "rounds": 7,
+        "agents_consented": ["codex", "cursor"],
+        "calls": 8,
+        "quality": {
+          "debate_challenges": 2,
+          "forced_review": false,
+          "category": "deep"
+        },
+        "recombination": {
+          "round": 6,
+          "replies": 3,
+          "valid_syntheses": 1
+        },
+        "anchor_lineage": [
+          {
+            "agent": "claude",
+            "excerpt": "합성안: 기본은 cursor의 배치 집계, codex가 지적한 핵심 지표 3종만 경량 스트림으로 분리",
+            "parallel_round": 6,
+            "id": "a1-1"
+          }
+        ],
+        "category": {
+          "value": "deep",
+          "source": "heuristic",
+          "signals": ["kw:아키텍처", "kw:트레이드오프"]
+        }
+      }
+    }
+  ],
+  "objections": [
+    {
+      "id": "obj-reco000001",
+      "from": "codex",
+      "act": "CHALLENGE",
+      "body": "배치 단독은 장애 감지가 하루 늦습니다 — 핵심 지표만이라도 준실시간 경로가 필요합니다.",
+      "status": "resolved_accepted",
+      "mode": "discuss",
+      "turn": 1,
+      "ts": "2026-06-12T00:00:03+00:00",
+      "resolved_at": "2026-06-12T00:00:05+00:00",
+      "resolved_by": "codex",
+      "resolution": "challenger_endorsed_anchor"
+    }
+  ],
+  "actions": [],
+  "approvals": [],
+  "executions": []
+}

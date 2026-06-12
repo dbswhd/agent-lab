@@ -88,7 +88,11 @@ import {
   latestPendingConsensusAgreement,
 } from "../utils/consensusAgreement";
 import { dispatchNotification } from "../utils/pushNotification";
-import { formatEnvelopeActivityLine, formatHookActivityLine } from "../utils/hookActivity";
+import {
+  formatDispatchActivityLine,
+  formatEnvelopeActivityLine,
+  formatHookActivityLine,
+} from "../utils/hookActivity";
 import {
   notificationActionForKind,
   subscribeNotificationActions,
@@ -1493,6 +1497,18 @@ export function RoomChat({
                 role: "system",
                 label: "시스템",
                 body: `[${agentLabel(aid)}] ${ev.message}`,
+              },
+            ]);
+          }
+          if ((t === "dispatch_start" || t === "dispatch_done") && ev.dispatch_id) {
+            const dispatchLine = formatDispatchActivityLine(ev as Record<string, unknown>);
+            patchTurnMessages(runKey, (m) => [
+              ...m,
+              {
+                id: `${t}-${String(ev.dispatch_id)}-${Date.now()}`,
+                role: "system",
+                label: "dispatch",
+                body: dispatchLine,
               },
             ]);
           }

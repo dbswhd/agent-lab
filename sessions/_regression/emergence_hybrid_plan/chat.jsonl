@@ -1,0 +1,6 @@
+{"role": "user", "agent": null, "content": "세션 캐시 전략 결정: sqlite vs redis — 합의까지.", "ts": "2026-06-12T00:00:01+00:00"}
+{"role": "agent", "agent": "cursor", "content": "**sqlite** 단일 파일 캐시 — 외부 의존 없음, 운영 부담 최소.", "ts": "2026-06-12T00:00:02+00:00", "parallel_round": 1, "envelope": {"act": "PROPOSE", "refs": [], "confidence": 0.8}}
+{"role": "agent", "agent": "codex", "content": "sqlite 단독은 동시 쓰기 락 위험 — TTL 무효화 경로가 빠져 있습니다.", "ts": "2026-06-12T00:00:03+00:00", "parallel_round": 2, "envelope": {"act": "CHALLENGE", "refs": ["L2"], "confidence": 0.7}}
+{"role": "agent", "agent": "claude", "content": "sqlite + WAL 모드 + TTL 인덱스 결합 — cursor의 단순성과 codex의 락 우려를 모두 수용.", "ts": "2026-06-12T00:00:04+00:00", "parallel_round": 3, "envelope": {"act": "AMEND", "refs": ["L2", "L3"], "confidence": 0.85}}
+{"role": "agent", "agent": "codex", "content": "이의 없습니다", "ts": "2026-06-12T00:00:05+00:00", "parallel_round": 4, "envelope": {"act": "ENDORSE", "refs": ["L4"], "confidence": 0.9}}
+{"role": "agent", "agent": "cursor", "content": "이의 없습니다.", "ts": "2026-06-12T00:00:06+00:00", "parallel_round": 4, "envelope": {"act": "ENDORSE", "refs": ["L4"], "confidence": 0.9}}

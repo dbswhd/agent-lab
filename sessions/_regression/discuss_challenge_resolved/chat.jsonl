@@ -1,0 +1,6 @@
+{"role": "user", "agent": null, "content": "이벤트 버스 재설계: 직접 호출 vs 큐 기반 — 아키텍처 트레이드오프 합의.", "ts": "2026-06-12T00:00:01+00:00"}
+{"role": "agent", "agent": "cursor", "content": "**직접 호출 유지** — 현재 트래픽에서 큐는 과설계, 운영 부담만 늘립니다.", "ts": "2026-06-12T00:00:02+00:00", "parallel_round": 1, "envelope": {"act": "PROPOSE", "refs": [], "confidence": 0.75}}
+{"role": "agent", "agent": "codex", "content": "직접 호출 유지는 재시도 경로가 없습니다 — 소비자 장애가 생산자 장애로 전파됩니다.", "ts": "2026-06-12T00:00:03+00:00", "parallel_round": 2, "envelope": {"act": "CHALLENGE", "refs": ["L2"], "confidence": 0.8}}
+{"role": "agent", "agent": "claude", "content": "직접 호출 + outbox 테이블 재시도 — cursor의 단순성을 유지하면서 codex의 장애 전파 우려를 격리.", "ts": "2026-06-12T00:00:04+00:00", "parallel_round": 3, "envelope": {"act": "AMEND", "refs": ["L2", "L3"], "confidence": 0.85}}
+{"role": "agent", "agent": "codex", "content": "이의 없습니다 — outbox 재시도면 전파 경로가 끊깁니다.", "ts": "2026-06-12T00:00:05+00:00", "parallel_round": 4, "envelope": {"act": "ENDORSE", "refs": ["L4"], "confidence": 0.9}}
+{"role": "agent", "agent": "cursor", "content": "이의 없습니다.", "ts": "2026-06-12T00:00:06+00:00", "parallel_round": 4, "envelope": {"act": "ENDORSE", "refs": ["L4"], "confidence": 0.9}}

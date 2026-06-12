@@ -15,6 +15,15 @@ export function formatHookActivityLine(ev: HookEventPayload): string {
   return `[hook · ${eventName} · ${tag}] ${detail.slice(0, 160)}`;
 }
 
+export function formatDispatchActivityLine(payload: Record<string, unknown>): string {
+  const op = String(payload.op ?? payload.status ?? "dispatch");
+  const agents = Array.isArray(payload.agents)
+    ? (payload.agents as string[]).join(",")
+    : String(payload.agent ?? "");
+  const id = String(payload.dispatch_id ?? "");
+  return `[dispatch · ${op}] ${id}${agents ? ` · ${agents}` : ""}`.slice(0, 160);
+}
+
 export function formatEnvelopeActivityLine(
   round: number,
   opts: { hasAct?: boolean; parseError?: boolean },

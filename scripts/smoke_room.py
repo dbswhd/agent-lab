@@ -362,6 +362,111 @@ def _check_specialist_asymmetric_cwd(run: dict[str, Any]) -> bool:
     )
 
 
+def _check_emergence_hybrid_plan(run: dict[str, Any]) -> bool:
+    reached = False
+    conflict_acts = 0
+    for turn in run.get("turns") or []:
+        if not isinstance(turn, dict):
+            continue
+        consensus = turn.get("consensus") or {}
+        if isinstance(consensus, dict) and consensus.get("status") == "reached":
+            reached = True
+        meta = turn.get("communicate_meta") or {}
+        acts = meta.get("act_counts") if isinstance(meta, dict) else None
+        if isinstance(acts, dict):
+            conflict_acts += int(acts.get("CHALLENGE") or 0) + int(acts.get("AMEND") or 0)
+    if not reached or conflict_acts < 2:
+        return False
+    return any(
+        isinstance(o, dict)
+        and o.get("act") in ("CHALLENGE", "BLOCK")
+        and o.get("status") == "resolved_accepted"
+        for o in run.get("objections") or []
+    )
+
+
+def _folder_check_emergence_hybrid_plan(run: dict[str, Any], folder: Path) -> bool:
+    from agent_lab.emergence_kpis import hybrid_action_rate
+
+    rate, _counts = hybrid_action_rate(folder)
+    return rate is not None and rate >= 0.5
+
+
+def _check_category_escalation(run: dict[str, Any]) -> bool:
+    for turn in run.get("turns") or []:
+        if not isinstance(turn, dict):
+            continue
+        category = turn.get("category") or {}
+        if not isinstance(category, dict):
+            continue
+        if category.get("escalated_from") != "quick":
+            continue
+        if category.get("value") not in ("standard", "deep"):
+            continue
+        if not category.get("escalation_act"):
+            continue
+        consensus = turn.get("consensus") or {}
+        if isinstance(consensus, dict) and consensus.get("status") == "reached":
+            return True
+    return False
+
+
+def _check_discuss_challenge_resolved(run: dict[str, Any]) -> bool:
+    """P3: discuss CHALLENGE가 상태에 남고 endorse로 자동 해소 + challenge_yield 측정."""
+    resolved = any(
+        isinstance(o, dict)
+        and o.get("act") == "CHALLENGE"
+        and o.get("mode") == "discuss"
+        and o.get("status") == "resolved_accepted"
+        and str(o.get("resolution") or "").startswith("challenger_")
+        for o in run.get("objections") or []
+    )
+    if not resolved:
+        return False
+    from agent_lab.emergence_kpis import challenge_yield
+
+    rate, _counts = challenge_yield(run)
+    if rate is None or rate < 1.0:
+        return False
+    for turn in run.get("turns") or []:
+        if not isinstance(turn, dict):
+            continue
+        consensus = turn.get("consensus") or {}
+        if not isinstance(consensus, dict) or consensus.get("status") != "reached":
+            continue
+        quality = consensus.get("quality")
+        if isinstance(quality, dict) and "forced_review" in quality:
+            return True
+    return False
+
+
+def _check_recombination_synthesis(run: dict[str, Any]) -> bool:
+    """P4: 재조합 라운드 합성안이 앵커 — valid_syntheses ≥ 1, anchor round == 재조합 round."""
+    for turn in run.get("turns") or []:
+        if not isinstance(turn, dict):
+            continue
+        consensus = turn.get("consensus") or {}
+        if not isinstance(consensus, dict) or consensus.get("status") != "reached":
+            continue
+        recomb = consensus.get("recombination")
+        if not isinstance(recomb, dict) or recomb.get("skipped"):
+            continue
+        if int(recomb.get("valid_syntheses") or 0) < 1:
+            continue
+        anchor = consensus.get("anchor") or {}
+        if not isinstance(anchor, dict) or not anchor.get("id"):
+            continue
+        if anchor.get("parallel_round") != recomb.get("round"):
+            continue
+        if not consensus.get("anchor_lineage"):
+            continue
+        from agent_lab.emergence_kpis import recombination_kpis
+
+        rate, _counts = recombination_kpis(run)
+        return rate is not None and rate > 0
+    return False
+
+
 def _check_envelope_consensus_endorse(run: dict[str, Any]) -> bool:
     for turn in run.get("turns") or []:
         if not isinstance(turn, dict):
@@ -808,6 +913,59 @@ SCENARIOS: dict[str, dict[str, Any]] = {
             "executions",
         ),
     },
+    "emergence_hybrid_plan": {
+        "label": "emergence: CHALLENGE→AMEND consensus + hybrid plan refs ≥ 0.5",
+        "check": _check_emergence_hybrid_plan,
+        "folder_check": _folder_check_emergence_hybrid_plan,
+        "required_keys": (
+            "workflow_id",
+            "run_schema_version",
+            "turns",
+            "objections",
+            "actions",
+            "approvals",
+            "executions",
+        ),
+    },
+    "category_escalation_quick_to_deep": {
+        "label": "topic router: conflict act escalates quick → standard/deep",
+        "check": _check_category_escalation,
+        "required_keys": (
+            "workflow_id",
+            "run_schema_version",
+            "turns",
+            "objections",
+            "actions",
+            "approvals",
+            "executions",
+        ),
+    },
+    "discuss_challenge_resolved": {
+        "label": "P3: discuss CHALLENGE harvested + auto-resolved on endorse (yield 1.0)",
+        "check": _check_discuss_challenge_resolved,
+        "required_keys": (
+            "workflow_id",
+            "run_schema_version",
+            "turns",
+            "objections",
+            "actions",
+            "approvals",
+            "executions",
+        ),
+    },
+    "recombination_synthesis": {
+        "label": "P4: recombination synthesis becomes anchor (validity > 0)",
+        "check": _check_recombination_synthesis,
+        "required_keys": (
+            "workflow_id",
+            "run_schema_version",
+            "turns",
+            "objections",
+            "actions",
+            "approvals",
+            "executions",
+        ),
+    },
     "mission_loop_dogfood_ok": {
         "label": "mission dogfood KPI golden path",
         "check": _check_mission_loop_dogfood_ok,
@@ -972,6 +1130,10 @@ def validate_baseline(name: str, folder: Path) -> list[str]:
         errors.append(f"{name}: turns[] must be a non-empty list")
     elif not spec["check"](run):
         errors.append(f"{name}: scenario check failed ({spec['label']})")
+
+    folder_check = spec.get("folder_check")
+    if folder_check and not folder_check(run, folder):
+        errors.append(f"{name}: folder check failed ({spec['label']})")
 
     expected_health = spec.get("expected_health")
     if expected_health:

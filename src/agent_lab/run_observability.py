@@ -26,10 +26,29 @@ def last_communicate_meta(run_meta: dict[str, Any] | None) -> dict[str, Any] | N
     return None
 
 
+def dispatch_ledger_tail(
+    run_meta: dict[str, Any] | None, *, limit: int = 10
+) -> list[dict[str, Any]]:
+    ledger = (run_meta or {}).get("dispatch_ledger") or []
+    if not isinstance(ledger, list):
+        return []
+    return [r for r in ledger if isinstance(r, dict)][-max(1, limit) :]
+
+
 def observability_snapshot(run_meta: dict[str, Any] | None) -> dict[str, Any]:
     meta = run_meta or {}
+    ledger = meta.get("dispatch_ledger") or []
     return {
         "hook_runs_tail": hook_runs_tail(meta),
         "hook_run_count": len(meta.get("hook_runs") or []),
         "last_communicate_meta": last_communicate_meta(meta),
+        "dispatch_ledger_tail": dispatch_ledger_tail(meta),
+        "dispatch_count": len(ledger) if isinstance(ledger, list) else 0,
+        "pending_dispatch_intents": len(
+            [
+                i
+                for i in (meta.get("dispatch_intents") or [])
+                if isinstance(i, dict) and i.get("status") == "pending"
+            ]
+        ),
     }

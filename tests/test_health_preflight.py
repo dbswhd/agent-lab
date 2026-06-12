@@ -127,6 +127,62 @@ def test_release_room_run_lock_endpoint():
     assert data.get("locked") is False
 
 
+def test_reconnect_claude_auth_invalidates_cache(monkeypatch):
+    from agent_lab.agent_health import reconnect_claude_auth
+
+    invalidated: list[str] = []
+
+    def fake_invalidate() -> None:
+        invalidated.append("yes")
+
+    monkeypatch.setattr(
+        "agent_lab.claude_cli.invalidate_claude_auth_cache",
+        fake_invalidate,
+    )
+    monkeypatch.setattr(
+        "agent_lab.claude_cli.resolve_claude_bin",
+        lambda: "/tmp/claude",
+    )
+    monkeypatch.setattr(
+        "agent_lab.claude_cli.claude_auth_logged_in",
+        lambda **kw: (True, None) if not kw.get("use_cache", True) else (False, "stale"),
+    )
+    monkeypatch.setattr(
+        "agent_lab.claude_cli.probe_auth",
+        lambda **kw: (True, None),
+    )
+
+    out = reconnect_claude_auth()
+
+    assert invalidated == ["yes"]
+    assert out["ok"] is True
+    assert out["auth_ok"] is True
+    assert out["probe_ok"] is True
+    assert out["agent"]["ready"] is True
+
+
+def test_reconnect_claude_auth_failure_has_remediation(monkeypatch):
+    from agent_lab.agent_health import reconnect_claude_auth
+
+    monkeypatch.setattr("agent_lab.claude_cli.invalidate_claude_auth_cache", lambda: None)
+    monkeypatch.setattr(
+        "agent_lab.claude_cli.resolve_claude_bin",
+        lambda: "/tmp/claude",
+    )
+    monkeypatch.setattr(
+        "agent_lab.claude_cli.claude_auth_logged_in",
+        lambda **kw: (False, "Not logged in — run: claude auth login"),
+    )
+
+    out = reconnect_claude_auth()
+
+    assert out["ok"] is False
+    assert out["auth_ok"] is False
+    assert out["probe_ok"] is False
+    assert out["agent"]["failure_code"] == "claude_auth_failed"
+    assert out["remediation"]
+
+
 def test_health_probe_preflight_flag(monkeypatch):
     from agent_lab.agent_health import build_health_payload
 

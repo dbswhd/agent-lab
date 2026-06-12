@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
@@ -23,13 +24,12 @@ from agent_lab.agent_envelope import (
     parse_agent_response_v2,
 )
 from agent_lab.room_consensus import (
-    consensus_caps,
     consensus_follow_up,
     consensus_reply_verdict,
     debate_review_round,
-    debate_round_last,
     is_substantive_reply,
     pick_anchor,
+    recombination_follow_up,
 )
 from agent_lab.consensus_agreements import (
     mark_agreements_plan_synced,
@@ -110,6 +110,52 @@ def _review_advocate(agents: list[AgentId], human_turn_index: int) -> AgentId:
     if not agents:
         raise ValueError("agents required for review mode")
     return agents[human_turn_index % len(agents)]
+
+
+_LINE_REF_RE = re.compile(r"(?:chat\.jsonl#)?L(\d+)$", re.IGNORECASE)
+
+
+def _ref_line_authors(
+    refs: list[Any],
+    thread: list[ChatMessage],
+) -> set[str]:
+    """envelope refs(`L{n}`/`chat.jsonl#L{n}`) → 발화 에이전트 집합 (1-based 라인)."""
+    authors: set[str] = set()
+    for ref in refs or []:
+        m = _LINE_REF_RE.match(str(ref).strip())
+        if not m:
+            continue
+        n = int(m.group(1))
+        if 1 <= n <= len(thread):
+            msg = thread[n - 1]
+            if msg.role == "agent" and msg.agent:
+                authors.add(str(msg.agent))
+    return authors
+
+
+def _distinct_substantive_proposers(replies: list[ChatMessage]) -> int:
+    """debate에서 실질 제안 act를 낸 서로 다른 에이전트 수 (재조합 auto-skip 판정)."""
+    agents: set[str] = set()
+    for m in replies:
+        env = getattr(m, "envelope", None)
+        if not isinstance(env, dict):
+            continue
+        if str(env.get("act") or "").upper() in ("PROPOSE", "AMEND", "CHALLENGE", "BLOCK"):
+            if m.agent:
+                agents.add(str(m.agent))
+    return len(agents)
+
+
+def _is_valid_synthesis(msg: ChatMessage, thread: list[ChatMessage]) -> bool:
+    """재조합 검증(v1 텔레메트리): PROPOSE/AMEND + refs가 다른 에이전트 2명 이상."""
+    env = getattr(msg, "envelope", None)
+    if not isinstance(env, dict):
+        return False
+    if str(env.get("act") or "").upper() not in ("PROPOSE", "AMEND"):
+        return False
+    authors = _ref_line_authors(list(env.get("refs") or []), thread)
+    authors.discard(str(msg.agent or ""))
+    return len(authors) >= 2
 
 
 def _current_turn_messages(messages: list[ChatMessage]) -> list[ChatMessage]:
@@ -808,13 +854,68 @@ def run_consensus_agent_rounds(
     efficiency_mode: bool = False,
 ) -> tuple[list[ChatMessage], dict[str, Any] | None]:
     """자유 토론: R1 병렬 후 앵커 제안에 전원 「이의 없습니다」까지 순차 반복."""
+    from agent_lab.topic_router import (
+        batch_escalation_act,
+        escalate_route,
+        resolve_topic_route,
+        route_debate_last,
+    )
+
     active = list(agents or available_agents())[:MAX_AGENTS_PER_ROUND]
     if not active:
         raise RuntimeError("No agents available.")
 
     all_replies: list[ChatMessage] = []
     calls = 0
-    cap_rounds, cap_calls = consensus_caps(efficiency_mode=efficiency_mode)
+    route = resolve_topic_route(
+        topic,
+        turn_profile=str((run_meta or {}).get("turn_profile") or ""),
+        efficiency_mode=efficiency_mode,
+    )
+    cap_rounds, cap_calls = route.max_rounds, route.max_calls
+    if run_meta is not None:
+        run_meta["_turn_category"] = route.category_dict()
+
+    def _harvest_discuss_objections(thread: list[ChatMessage]) -> None:
+        """충돌을 상태로 — discuss CHALLENGE/BLOCK을 run.json objections에 등록 (P3)."""
+        if run_meta is None:
+            return
+        from agent_lab.room_objections import harvest_objections_from_turn
+
+        harvest_objections_from_turn(
+            run_meta,
+            thread,
+            human_turn=_human_turn_number(human_turn_index),
+            mode="discuss",
+        )
+
+    def _maybe_escalate(batch_msgs: list[ChatMessage]) -> None:
+        """충돌 act → 카테고리 1단계 상승 (예산만 늘림, 강등 없음)."""
+        nonlocal route, cap_rounds, cap_calls
+        act = batch_escalation_act(batch_msgs)
+        if not act:
+            return
+        escalated = escalate_route(route, act=act, efficiency_mode=efficiency_mode)
+        if escalated.category == route.category:
+            return
+        route = escalated
+        cap_rounds, cap_calls = route.max_rounds, route.max_calls
+        if run_meta is not None:
+            run_meta["_turn_category"] = route.category_dict()
+            from agent_lab.inbox_harvest import record_escalation_harvest_keys
+
+            record_escalation_harvest_keys(run_meta, batch_msgs, act=act)
+        if on_event:
+            on_event(
+                "category_escalated",
+                {
+                    "from": route.escalated_from,
+                    "to": route.category,
+                    "act": route.escalation_act,
+                    "message": f"{route.escalation_act} 발생 — 토픽 카테고리를 "
+                    f"{route.escalated_from}→{route.category}로 승격합니다.",
+                },
+            )
 
     try:
         check_cancelled()
@@ -857,6 +958,8 @@ def run_consensus_agent_rounds(
             }
 
         working = messages + all_replies
+        _maybe_escalate(batch)
+        _harvest_discuss_objections(working)
         sync_run_meta_turn_state(
             run_meta,
             working,
@@ -868,8 +971,9 @@ def run_consensus_agent_rounds(
             return all_replies, None
 
         working = messages + all_replies
-        last_debate = debate_round_last(efficiency_mode=efficiency_mode)
-        for r in range(2, last_debate + 1):
+        last_debate = route_debate_last(route)
+        r = 2
+        while r <= last_debate:
             if calls >= cap_calls:
                 break
             check_cancelled()
@@ -902,6 +1006,9 @@ def run_consensus_agent_rounds(
             all_replies.extend(batch)
             calls += len(batch)
             working = messages + all_replies
+            _maybe_escalate(batch)
+            _harvest_discuss_objections(working)
+            last_debate = route_debate_last(route)
             sync_run_meta_turn_state(
                 run_meta,
                 working,
@@ -947,8 +1054,197 @@ def run_consensus_agent_rounds(
                         "rounds": r,
                         "calls": calls,
                     }
+            r += 1
 
-        anchor = pick_anchor(_current_turn_messages(working), active)
+        # P3 품질 게이트 판정은 debate 시점 충돌만 본다 (재조합 합성 act 제외).
+        debate_conflicts = sum(
+            1
+            for m in all_replies
+            if isinstance(getattr(m, "envelope", None), dict)
+            and str(m.envelope.get("act") or "").upper()
+            in ("CHALLENGE", "BLOCK", "AMEND")
+        )
+
+        # P4 재조합 라운드 — debate 종료 → pick_anchor 사이의 명시적 합성(crossover).
+        recomb_meta: dict[str, Any] | None = None
+        recomb_rounds = 0
+        if route.recombination != "off" and len(active) >= 2:
+            skip_reason = ""
+            if calls + len(active) > cap_calls:
+                skip_reason = "cap"
+            elif route.recombination == "auto":
+                if efficiency_mode:
+                    skip_reason = "efficiency"
+                elif _distinct_substantive_proposers(all_replies) < 2:
+                    skip_reason = "single_proposer"
+            if skip_reason:
+                recomb_meta = {"skipped": skip_reason}
+            else:
+                check_cancelled()
+                recomb_round_no = last_debate + 1
+                recomb_rounds = 1
+                if on_event:
+                    on_event(
+                        "recombination_round_start",
+                        {
+                            "round": recomb_round_no,
+                            "category": route.category,
+                            "message": "재조합 라운드 — 서로의 제안을 결합한 합성안을 요청합니다.",
+                        },
+                    )
+                batch = run_parallel_round(
+                    topic,
+                    working,
+                    agents=active,
+                    parallel_round=recomb_round_no,
+                    on_event=on_event,
+                    permissions=permissions,
+                    review_mode=False,
+                    human_turn_index=human_turn_index,
+                    plan_md=plan_md,
+                    run_meta=run_meta,
+                    context_log=context_log,
+                    efficiency_mode=efficiency_mode,
+                    extra_follow_up=recombination_follow_up(),
+                )
+                all_replies.extend(batch)
+                calls += len(batch)
+                working = messages + all_replies
+                if _agent_turn_failed(batch):
+                    if on_event:
+                        on_event(
+                            "consensus_incomplete",
+                            {
+                                "reason": "agent_error",
+                                "message": "재조합 라운드 실패 — 합의를 기록하지 않습니다.",
+                            },
+                        )
+                    return all_replies, {
+                        "status": "failed",
+                        "reason": "agent_error",
+                        "rounds": recomb_round_no,
+                        "calls": calls,
+                    }
+                _harvest_discuss_objections(working)
+                valid_syntheses = sum(
+                    1
+                    for m in batch
+                    if _is_valid_synthesis(m, working)
+                )
+                recomb_meta = {
+                    "round": recomb_round_no,
+                    "replies": len(batch),
+                    "valid_syntheses": valid_syntheses,
+                }
+                sync_run_meta_turn_state(
+                    run_meta,
+                    working,
+                    active_agents=active,
+                    plan_md=plan_md,
+                )
+
+        quality: dict[str, Any] = {
+            "debate_challenges": debate_conflicts,
+            "forced_review": False,
+            "category": route.category,
+        }
+        forced_review_rounds = 0
+        if (
+            route.quality_gate
+            and debate_conflicts == 0
+            and len(active) >= 2
+            and calls < cap_calls
+        ):
+            check_cancelled()
+            advocate = _review_advocate(active, human_turn_index)
+            quality["forced_review"] = True
+            quality["advocate"] = str(advocate)
+            forced_review_rounds = 1
+            if on_event:
+                on_event(
+                    "quality_gate_review",
+                    {
+                        "agent": advocate,
+                        "category": route.category,
+                        "round": last_debate + 1 + recomb_rounds,
+                        "message": (
+                            f"{label(advocate)}에게 합의 전 강제 반론 라운드를 요청합니다 "
+                            f"(토론 무충돌 · {route.category})."
+                        ),
+                    },
+                )
+            review_msg = _invoke_agent_for_round(
+                advocate,
+                topic=topic,
+                thread=working,
+                parallel_round=last_debate + 1 + recomb_rounds,
+                permissions=permissions,
+                review_mode=False,
+                review_advocate=None,
+                plan_md=plan_md,
+                run_meta=run_meta,
+                on_event=on_event,
+                context_log=context_log,
+                extra_follow_up=(
+                    "[품질 게이트 — 강제 반론] 이번 토론은 이견 없이 수렴했습니다. "
+                    "합의 확정 전 점검으로, 지금까지의 제안에서 가장 약한 가정이나 "
+                    "누락된 리스크 1건을 골라 CHALLENGE 또는 AMEND envelope로 "
+                    "실질적 반론·대안을 제시하세요. 형식적 반론은 금지 — 정말 "
+                    "반론이 없으면 그 근거를 한 줄로 밝히고 ENDORSE 하세요."
+                ),
+                efficiency_mode=efficiency_mode,
+                slim_context=efficiency_mode,
+                human_turn_index=human_turn_index,
+            )
+            all_replies.append(review_msg)
+            calls += 1
+            working = messages + all_replies
+            if _is_agent_error_message(review_msg):
+                if on_event:
+                    on_event(
+                        "consensus_incomplete",
+                        {
+                            "reason": "agent_error",
+                            "agent": advocate,
+                            "message": "품질 게이트 라운드 실패 — 합의를 기록하지 않습니다.",
+                        },
+                    )
+                return all_replies, {
+                    "status": "failed",
+                    "reason": "agent_error",
+                    "agent": advocate,
+                    "rounds": last_debate + 1 + recomb_rounds,
+                    "calls": calls,
+                    "quality": quality,
+                }
+            review_env = getattr(review_msg, "envelope", None)
+            review_act = (
+                str(review_env.get("act") or "").upper()
+                if isinstance(review_env, dict)
+                else ""
+            )
+            if review_act in ("CHALLENGE", "BLOCK", "AMEND"):
+                quality["forced_review_act"] = review_act
+            _maybe_escalate([review_msg])
+            _harvest_discuss_objections(working)
+            sync_run_meta_turn_state(
+                run_meta,
+                working,
+                active_agents=active,
+                plan_md=plan_md,
+            )
+
+        anchor_seq = 0
+        human_turn_no = _human_turn_number(human_turn_index)
+
+        def _next_anchor_id() -> str:
+            nonlocal anchor_seq
+            anchor_seq += 1
+            return f"a{human_turn_no}-{anchor_seq}"
+
+        anchor = pick_anchor(
+            _current_turn_messages(working), active, anchor_id=_next_anchor_id()
+        )
         if not anchor:
             if on_event:
                 on_event(
@@ -960,9 +1256,11 @@ def run_consensus_agent_rounds(
                 )
             return all_replies, None
 
+        anchor_lineage: list[dict[str, Any]] = [anchor.to_dict()]
+        anchor_delta = ""
         pending: set[AgentId] = {a for a in active if a != anchor.agent}
         consented: list[str] = []
-        parallel_round = last_debate + 1
+        parallel_round = last_debate + 1 + recomb_rounds + forced_review_rounds
         sync_run_meta_turn_state(
             run_meta,
             working,
@@ -996,7 +1294,11 @@ def run_consensus_agent_rounds(
                 for t in open_tasks
                 if t.get("id")
             ]
-            follow = consensus_follow_up(anchor, open_task_refs=task_refs or None)
+            follow = consensus_follow_up(
+                anchor,
+                open_task_refs=task_refs or None,
+                amend_delta=anchor_delta,
+            )
             for aid in [a for a in active if a in pending]:
                 if calls >= cap_calls:
                     break
@@ -1049,15 +1351,39 @@ def run_consensus_agent_rounds(
                     return all_replies, meta
                 text = msg.content or ""
                 verdict = consensus_reply_verdict(text, msg.envelope)
+                _maybe_escalate([msg])
+                _harvest_discuss_objections(thread)
                 if verdict in ("endorse", "pass"):
                     pending.discard(aid)
                     consented.append(aid)
+                    if run_meta is not None:
+                        from agent_lab.room_objections import (
+                            resolve_objections_on_endorse,
+                        )
+
+                        resolve_objections_on_endorse(
+                            run_meta,
+                            str(aid),
+                            human_turn=_human_turn_number(human_turn_index),
+                        )
                 elif verdict == "substantive" or is_substantive_reply(
                     text, msg.envelope
                 ):
-                    new_anchor = pick_anchor(_current_turn_messages(thread), active)
+                    new_anchor = pick_anchor(
+                        _current_turn_messages(thread),
+                        active,
+                        anchor_id=_next_anchor_id(),
+                        prev_anchor=anchor,
+                    )
                     if new_anchor:
+                        # 변경점 1줄 delta — 구 텍스트 동의 ≠ 새 텍스트 동의이므로
+                        # 하드 리셋은 유지하되 재확인 비용을 압축한다 (P4).
+                        anchor_delta = (
+                            f"직전 앵커({anchor.id}) "
+                            f"「{anchor.excerpt[:100]}」를 보완·대체한 수정안입니다."
+                        )
                         anchor = new_anchor
+                        anchor_lineage.append(anchor.to_dict())
                         pending = {a for a in active if a != anchor.agent}
                         consented = []
                     else:
@@ -1095,8 +1421,17 @@ def run_consensus_agent_rounds(
                 from agent_lab.room_objections import (
                     consensus_open_objection_blockers,
                     open_objections,
+                    resolve_objections_on_endorse,
                 )
 
+                # 도전자의 수정안이 앵커가 되어 전원 동의 = 충돌이 결과를 바꿈.
+                if run_meta is not None:
+                    resolve_objections_on_endorse(
+                        run_meta,
+                        str(anchor.agent),
+                        human_turn=_human_turn_number(human_turn_index),
+                        resolution="challenger_authored_anchor",
+                    )
                 open_objs = open_objections(run_meta)
                 max_r = max((m.parallel_round or 1) for m in all_replies)
                 if open_objs:
@@ -1109,6 +1444,9 @@ def run_consensus_agent_rounds(
                         "agents_consented": consented,
                         "calls": calls,
                         "open_objections": obj_refs[:12],
+                        "quality": quality,
+                        **({"recombination": recomb_meta} if recomb_meta else {}),
+                        "anchor_lineage": anchor_lineage,
                     }
                     sync_run_meta_turn_state(
                         run_meta,
@@ -1139,6 +1477,9 @@ def run_consensus_agent_rounds(
                         "agents_consented": consented,
                         "calls": calls,
                         "open_tasks": task_blockers[:12],
+                        "quality": quality,
+                        **({"recombination": recomb_meta} if recomb_meta else {}),
+                        "anchor_lineage": anchor_lineage,
                     }
                     sync_run_meta_turn_state(
                         run_meta,
@@ -1166,6 +1507,9 @@ def run_consensus_agent_rounds(
                     "rounds": max_r,
                     "agents_consented": consented,
                     "calls": calls,
+                    "quality": quality,
+                    **({"recombination": recomb_meta} if recomb_meta else {}),
+                    "anchor_lineage": anchor_lineage,
                 }
                 sync_run_meta_turn_state(
                     run_meta,
@@ -1188,6 +1532,9 @@ def run_consensus_agent_rounds(
             "agents_consented": consented,
             "calls": calls,
             "reason": "cap",
+            "quality": quality,
+            **({"recombination": recomb_meta} if recomb_meta else {}),
+            "anchor_lineage": anchor_lineage,
         }
         sync_run_meta_turn_state(
             run_meta,
@@ -1227,6 +1574,7 @@ def run_parallel_round(
     run_meta: dict[str, Any] | None = None,
     context_log: list[dict[str, Any]] | None = None,
     efficiency_mode: bool = False,
+    extra_follow_up: str = "",
 ) -> list[ChatMessage]:
     """Call selected agents for one round (round 1 parallel; round 2+ sequential for all modes)."""
     active = agents or available_agents()
@@ -1347,6 +1695,10 @@ def run_parallel_round(
             )
             ctx = "review" if review_mode else "discuss"
             round_follow = envelope_follow_up_block(policy, context=ctx)
+        if extra_follow_up.strip():
+            round_follow = "\n\n".join(
+                x for x in (round_follow, extra_follow_up) if x.strip()
+            )
         try:
             for aid in ordered:
                 check_cancelled()
@@ -1843,6 +2195,30 @@ def _read_run_meta(folder: Path) -> dict[str, Any]:
     return read_run_meta(folder)
 
 
+def _resolve_discuss_objections_from_consensus(
+    run_meta: dict[str, Any],
+    *,
+    consensus: dict[str, Any] | None,
+    human_turn: int,
+) -> None:
+    """합의 결과 replay — 도전자가 anchor를 endorse했거나 본인 수정안이 anchor가
+    되어 전원 동의했으면 그 discuss CHALLENGE는 resolved_accepted다 (P3)."""
+    if not isinstance(consensus, dict):
+        return
+    from agent_lab.room_objections import resolve_objections_on_endorse
+
+    for agent in consensus.get("agents_consented") or []:
+        resolve_objections_on_endorse(run_meta, str(agent), human_turn=human_turn)
+    anchor = consensus.get("anchor")
+    if consensus.get("status") == "reached" and isinstance(anchor, dict):
+        resolve_objections_on_endorse(
+            run_meta,
+            str(anchor.get("agent") or ""),
+            human_turn=human_turn,
+            resolution="challenger_authored_anchor",
+        )
+
+
 def _sse_inbox_pending(folder: Path) -> bool:
     from agent_lab.human_inbox import compute_inbox_pending
 
@@ -2046,6 +2422,14 @@ def _write_session_files(
         messages_to_store,
         human_turn=_human_turn_count(messages_to_store),
     )
+    from agent_lab.room_dispatch_intents import harvest_dispatch_intents_from_turn
+
+    harvest_dispatch_intents_from_turn(
+        run_meta,
+        messages_to_store,
+        human_turn=_human_turn_count(messages_to_store),
+        issuer_agent=team_lead(run_meta),
+    )
     from agent_lab.room_objections import (
         apply_challenge_task_blocks,
         harvest_objections_from_turn,
@@ -2058,6 +2442,16 @@ def _write_session_files(
         mode=str(tm.get("mode") or "discuss"),
     )
     apply_challenge_task_blocks(run_meta)
+    # P3: 턴 종료 dict는 디스크에서 다시 시작하므로, 합의 루프가 메모리에서
+    # 해소한 discuss CHALLENGE를 consented/anchor 결과로 재적용한다.
+    _resolve_discuss_objections_from_consensus(
+        run_meta,
+        consensus=tm.get("consensus") if isinstance(tm.get("consensus"), dict) else None,
+        human_turn=_human_turn_count(messages_to_store),
+    )
+    from agent_lab.wisdom_index import harvest_agent_learnings
+
+    harvest_agent_learnings(folder, messages_to_store)
     from agent_lab.inbox_harvest import (
         harvest_build_proposal,
         harvest_clarifier_questions,
@@ -2135,6 +2529,7 @@ def _write_session_files(
             "started_at",
             "completed_at",
             "last_delegate",
+            "dispatch_ledger",
         ):
             if key in turn_meta:
                 run_meta[key] = turn_meta[key]
@@ -2316,6 +2711,7 @@ def _turn_snapshot(
     succeeded_agents: list[str] | None = None,
     last_delegate: dict[str, Any] | None = None,
     communicate_meta: dict[str, Any] | None = None,
+    category: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     from agent_lab.invoke import model_name
 
@@ -2397,6 +2793,8 @@ def _turn_snapshot(
         snap["last_delegate"] = dict(last_delegate)
     if communicate_meta:
         snap["communicate_meta"] = communicate_meta
+    if category:
+        snap["category"] = dict(category)
     return snap
 
 
@@ -2830,6 +3228,34 @@ def ensure_session_plan_pipeline(folder: Path) -> bool:
     return changed
 
 
+def _try_dispatch_turn(
+    *,
+    body: str,
+    topic: str,
+    messages: list[ChatMessage],
+    run_meta: dict[str, Any],
+    folder: Path,
+    permissions: dict | None,
+    on_event: OnAgentEvent | None,
+    clarifier_questions: list[str] | None,
+    human_turn_num: int,
+) -> list[ChatMessage] | None:
+    from agent_lab.room_dispatch import try_dispatch_turn
+
+    replies = try_dispatch_turn(
+        body=body,
+        topic=topic,
+        messages=messages,
+        run_meta=run_meta,
+        folder=folder,
+        permissions=permissions,
+        on_event=on_event,
+        clarifier_questions=clarifier_questions,
+        human_turn=human_turn_num,
+    )
+    return replies  # type: ignore[return-value]
+
+
 def _try_delegate_turn(
     *,
     body: str,
@@ -2842,38 +3268,23 @@ def _try_delegate_turn(
     clarifier_questions: list[str] | None,
     human_turn_num: int,
 ) -> list[ChatMessage] | None:
-    if clarifier_questions:
-        return None
-    from agent_lab.room_delegate import parse_delegate_from_message, run_delegate_turn
-
-    spec = parse_delegate_from_message(body)
-    if not spec:
-        return None
-    replies, _ = run_delegate_turn(
+    return _try_dispatch_turn(
+        body=body,
         topic=topic,
         messages=messages,
         run_meta=run_meta,
         folder=folder,
-        agent=spec["agent"],
-        prompt=spec["prompt"],
         permissions=permissions,
         on_event=on_event,
-        human_turn=human_turn_num,
+        clarifier_questions=clarifier_questions,
+        human_turn_num=human_turn_num,
     )
-    return replies
 
 
 def _delegate_run_meta_patch(run_meta: dict[str, Any]) -> dict[str, Any] | None:
-    patch: dict[str, Any] = {}
-    if run_meta.get("last_delegate"):
-        patch["last_delegate"] = run_meta["last_delegate"]
-    if run_meta.get("artifacts"):
-        patch["artifacts"] = list(run_meta.get("artifacts") or [])
-    if run_meta.get("hook_runs"):
-        patch["hook_runs"] = list(run_meta.get("hook_runs") or [])
-    if run_meta.get("agent_hooks_manifest"):
-        patch["agent_hooks_manifest"] = dict(run_meta["agent_hooks_manifest"])
-    return patch or None
+    from agent_lab.room_dispatch import dispatch_run_meta_patch
+
+    return dispatch_run_meta_patch(run_meta)
 
 
 def _communicate_meta_for_turn(
@@ -3090,6 +3501,8 @@ def continue_room_round(
                 efficiency_mode=efficiency_mode,
             )
             parallel_rounds = consensus_meta.get("rounds", 1) if consensus_meta else 1
+            if consensus_meta is not None and run_meta.get("_turn_category"):
+                consensus_meta.setdefault("category", run_meta["_turn_category"])
         else:
             replies = run_agent_rounds(
                 topic,
@@ -3234,6 +3647,7 @@ def continue_room_round(
             last_delegate=run_meta.get("last_delegate"),
             plan_trigger=plan_trigger,
             communicate_meta=communicate_meta,
+            category=run_meta.get("_turn_category"),
         ),
         run_meta_patch=_delegate_run_meta_patch(run_meta),
         clarifier_questions=clarifier_questions,
@@ -3464,6 +3878,8 @@ def run_room(
                 efficiency_mode=efficiency_mode,
             )
             parallel_rounds = consensus_meta.get("rounds", 1) if consensus_meta else 1
+            if consensus_meta is not None and run_meta.get("_turn_category"):
+                consensus_meta.setdefault("category", run_meta["_turn_category"])
         else:
             replies = run_agent_rounds(
                 topic,
@@ -3581,6 +3997,7 @@ def run_room(
         last_delegate=run_meta.get("last_delegate"),
         plan_trigger=plan_trigger,
         communicate_meta=communicate_meta,
+        category=run_meta.get("_turn_category"),
     )
 
     from agent_lab.goal_loop import (

@@ -3,6 +3,8 @@ from __future__ import annotations
 import subprocess
 import time
 
+import pytest
+
 
 class _FakeProc:
     def __init__(self, returncode: int, stdout: str = "", stderr: str = "") -> None:
@@ -93,3 +95,51 @@ def test_claude_invoke_never_injects_api_key(monkeypatch, tmp_path) -> None:
     assert captured_env is not None
     assert "ANTHROPIC_API_KEY" not in captured_env
     assert "ANTHROPIC_AUTH_TOKEN" not in captured_env
+
+
+def test_invalidate_claude_auth_cache_clears_status(monkeypatch, tmp_path) -> None:
+    from agent_lab import claude_cli
+
+    fake_bin = tmp_path / "claude"
+    fake_bin.write_text("#!/bin/sh\n", encoding="utf-8")
+    fake_bin.chmod(0o755)
+    monkeypatch.setenv("CLAUDE_BIN", str(fake_bin))
+
+    now = time.time()
+    claude_cli._AUTH_STATUS_CACHE = (now, True, None)
+    claude_cli._AUTH_PROBE_CACHE = (now, True, None)
+
+    claude_cli.invalidate_claude_auth_cache()
+
+    assert claude_cli._AUTH_STATUS_CACHE is None
+    assert claude_cli._AUTH_PROBE_CACHE is None
+
+
+def test_invoke_invalidates_auth_cache_on_401(monkeypatch, tmp_path) -> None:
+    from agent_lab import claude_cli
+
+    fake_bin = tmp_path / "claude"
+    fake_bin.write_text("#!/bin/sh\n", encoding="utf-8")
+    fake_bin.chmod(0o755)
+    monkeypatch.setenv("CLAUDE_BIN", str(fake_bin))
+    monkeypatch.setattr(claude_cli, "resolve_claude_roots", lambda _perms: [])
+    monkeypatch.setattr(
+        "agent_lab.workspace_roots.discuss_primary_workspace",
+        lambda _perms: tmp_path,
+    )
+
+    now = time.time()
+    claude_cli._AUTH_STATUS_CACHE = (now, True, None)
+    claude_cli._AUTH_PROBE_CACHE = (now, True, None)
+
+    def fake_popen(*_args, **_kwargs):
+        return _FakeProc(1, "", "ERROR: 401 Invalid authentication credentials")
+
+    _patch_claude_popen(monkeypatch)
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+
+    with pytest.raises(RuntimeError, match="401"):
+        claude_cli.invoke("", "hello")
+
+    assert claude_cli._AUTH_STATUS_CACHE is None
+    assert claude_cli._AUTH_PROBE_CACHE is None

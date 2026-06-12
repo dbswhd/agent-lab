@@ -61,7 +61,7 @@ Discuss는 **read-only 유지** (말하면서 즉시 패치 X). 구현 연속성
 | Oracle (omo) | 아키텍처 자문 | verified_loop / goal Oracle (mock-first) | **MISSION_DONE** 판정 (live opt-in) |
 | `.sisyphus/plans`, boulder | 재개·상태 | `plan.md`, `run.json`, `completed_steps` | `mission_loop` + notepad |
 | `ulw-loop` | 100% 될 때까지 | L3 + L5 (층별 분리) | **통합 Mission FSM** |
-| Category routing | `deep` / `quick` … | cursor/codex/claude 고정 역할 | 턴 내 R1/R2 + (선택) category 메타 |
+| Category routing | `deep` / `quick` … | **강도 라우팅으로 채택** — `topic_router.py` (quick/standard/deep/critical, 충돌 act 자동 에스컬레이션) | 카테고리가 debate 라운드·재조합·품질 게이트·cap·wisdom 주입을 조절 (`turns[].category`) |
 | LSP / built-in MCP | 실행 전 진단 | PLUGIN-DISCOVERY Phase A만 | **Track B** |
 
 ---

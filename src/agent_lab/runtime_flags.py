@@ -134,6 +134,10 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         default="standard",
     ),
     FlagDef("AGENT_LAB_STRUCTURED_ENVELOPE", "feature", "Adapter JSON envelope prefix", default="1"),
+    FlagDef("AGENT_LAB_TOPIC_ROUTER", "feature", "Topic category routing (quick/standard/deep/critical)", default="1"),
+    FlagDef("AGENT_LAB_DISCUSS_OBJECTIONS", "feature", "Harvest discuss-mode CHALLENGE/BLOCK into objections", default="1"),
+    FlagDef("AGENT_LAB_WISDOM_IN_CONTEXT", "feature", "Wisdom hits in R1 context: auto (route) | 0 | 1", default="auto"),
+    FlagDef("AGENT_LAB_AGENT_LEARNINGS", "feature", "Harvest [LEARNED:] markers into learnings.md", default="1"),
     FlagDef("AGENT_LAB_NATIVE_HOOKS", "feature", "Stage session agent-hooks into workspace cwd"),
     FlagDef("AGENT_LAB_HOOK_TIMEOUT_S", "feature", "Room hook subprocess timeout (seconds)", default="30"),
     # --- feature: resilience ---
@@ -143,7 +147,9 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
     # --- test / dev ---
     FlagDef("AGENT_LAB_MOCK_AGENTS", "test", "Mock agents, plugins, and CLI subprocesses"),
     FlagDef("AGENT_LAB_MOCK_STRUCTURED_ENVELOPE", "test", "Mock structured envelope adapter output"),
+    FlagDef("AGENT_LAB_MOCK_ACT_SCRIPT", "test", "Scripted mock envelope acts (JSON path)", mask_value=True),
     FlagDef("AGENT_LAB_RUN_LIVE", "test", "Enable pytest -m live suites"),
+    FlagDef("AGENT_LAB_EMERGENCE_BENCH_LIVE", "test", "Allow live emergence bench (CI 금지)"),
     FlagDef("AGENT_LAB_SKIP_LIVE", "test", "Skip live execute spike paths"),
     FlagDef("AGENT_LAB_TAURI_UI_SMOKE_LAUNCH_ONLY", "test", "Tauri UI smoke: launch-only mode"),
     # --- internal (set by subprocess / session runtime) ---

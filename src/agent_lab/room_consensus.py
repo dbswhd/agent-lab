@@ -80,13 +80,20 @@ class ConsensusAnchor:
     agent: AgentId
     excerpt: str
     parallel_round: int
+    id: str = ""  # a{turn}-{seq} (P4 anchor lineage)
+    parent_id: str | None = None  # 재앵커 시 직전 앵커 — AMEND 체인 추적
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        out: dict[str, Any] = {
             "agent": self.agent,
             "excerpt": self.excerpt,
             "parallel_round": self.parallel_round,
         }
+        if self.id:
+            out["id"] = self.id
+        if self.parent_id:
+            out["parent_id"] = self.parent_id
+        return out
 
 
 def is_substantive_reply(
@@ -122,8 +129,15 @@ def _anchor_excerpt(content: str, *, max_len: int = 280) -> str:
 def pick_anchor(
     turn_messages: list[Any],
     active_agents: list[AgentId],
+    *,
+    anchor_id: str = "",
+    prev_anchor: ConsensusAnchor | None = None,
 ) -> ConsensusAnchor | None:
-    """Latest substantive agent reply in the current human turn."""
+    """Latest substantive agent reply in the current human turn.
+
+    ``prev_anchor``를 주면 재앵커 체인 — 새 앵커의 ``parent_id``가 직전 앵커를
+    가리켜 AMEND 계보가 run.json에 남는다 (P4). 하드 리셋(전원 재동의)은 유지.
+    """
     active = set(active_agents)
     for m in reversed(turn_messages):
         if m.role != "agent" or not m.agent or m.agent not in active:
@@ -138,6 +152,8 @@ def pick_anchor(
             agent=m.agent,
             excerpt=excerpt,
             parallel_round=m.parallel_round or 1,
+            id=anchor_id,
+            parent_id=(prev_anchor.id or None) if prev_anchor else None,
         )
     return None
 
@@ -146,6 +162,7 @@ def consensus_follow_up(
     anchor: ConsensusAnchor,
     *,
     open_task_refs: list[str] | None = None,
+    amend_delta: str = "",
 ) -> str:
     task_line = ""
     if open_task_refs:
@@ -156,10 +173,17 @@ def consensus_follow_up(
         )
     from agent_lab.reply_policy import legacy_endorse_enabled
 
+    anchor_line = f"앵커 id: `{anchor.id}`\n" if anchor.id else ""
+    delta_line = ""
+    if amend_delta.strip():
+        # AMEND 재앵커: 변경점 1줄만 재검토하면 되므로 재확인 비용을 압축한다 (P4).
+        delta_line = f"변경점(직전 앵커 대비): {amend_delta.strip()}\n"
     body = (
         f"[자유 토론 · 합의 확인]\n"
         f"현재 제안 — **{label(anchor.agent)}**:\n"
-        f"「{anchor.excerpt}」\n\n"
+        f"「{anchor.excerpt}」\n"
+        f"{anchor_line}"
+        f"{delta_line}\n"
         f"완전 동의(`act: ENDORSE`)는 추가 제안·리스크·`[PROPOSED:]` 없을 때만. "
         f"보완이 있으면 `act: AMEND` 로 수정안을 쓰세요 (새 앵커 라운드). "
         f"`ENDORSE`/`PASS` 본문은 1줄로 짧게 (fence JSON 필수). "
@@ -168,6 +192,18 @@ def consensus_follow_up(
         body += f"레거시: envelope 없이면 첫 줄만 `{NO_OBJECTION_LINE}` 도 허용."
     body += task_line
     return body
+
+
+def recombination_follow_up() -> str:
+    """P4 재조합 라운드 — 유전 알고리즘 crossover에 해당하는 명시적 합성 지시."""
+    return (
+        "[재조합 라운드 — 합성]\n"
+        "지금까지의 토론에서 **다른 에이전트 2명 이상**의 제안 요소를 인용·결합한 "
+        "합성안 1건을 제시하세요. envelope `act: PROPOSE` 또는 `AMEND`, "
+        "`refs`에 인용한 발화 라인(`L{n}`)을 2개 이상 넣으세요. "
+        "자기 제안 반복은 금지 — 결합으로 새 가치가 생기지 않으면 "
+        "`act: ENDORSE` 본문 1줄로 건너뛰세요."
+    )
 
 
 def consensus_reply_verdict(

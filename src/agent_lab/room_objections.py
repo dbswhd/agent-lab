@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import uuid
 from datetime import datetime, timezone
@@ -28,6 +29,12 @@ class ObjectionBlocksExecute(Exception):
     def __init__(self, message: str, *, objections: list[dict[str, Any]] | None = None):
         super().__init__(message)
         self.objections = objections or []
+
+
+def discuss_objections_enabled() -> bool:
+    """``AGENT_LAB_DISCUSS_OBJECTIONS`` — discuss 모드 CHALLENGE/BLOCK도 상태로 등록 (기본 on)."""
+    raw = (os.getenv("AGENT_LAB_DISCUSS_OBJECTIONS") or "").strip().lower()
+    return raw not in ("0", "false", "no", "off")
 
 
 def _now() -> str:
@@ -69,6 +76,10 @@ def normalize_objection(raw: dict[str, Any]) -> dict[str, Any]:
         kind = str(raw["plan_action_kind"]).strip().lower()
         if kind in ("now", "roadmap", "legacy"):
             out["plan_action_kind"] = kind
+    mode = str(raw.get("mode") or "plan").strip().lower()
+    out["mode"] = mode if mode in ("plan", "discuss", "verified") else "plan"
+    if raw.get("resolution"):
+        out["resolution"] = str(raw["resolution"]).strip()[:80]
     if raw.get("resolved_at"):
         out["resolved_at"] = str(raw["resolved_at"])
     if raw.get("resolved_by"):
@@ -149,6 +160,7 @@ def append_objection(
     human_turn: int,
     refs: list[str] | None = None,
     parallel_round: int | None = None,
+    mode: str = "plan",
 ) -> dict[str, Any] | None:
     from_a = str(from_agent or "").strip().lower()
     if from_a not in _AGENT_IDS:
@@ -177,9 +189,9 @@ def append_objection(
         plan_action_index=plan_idx,
     )
     rows = list_objections(run_meta)
+    # 같은 fingerprint면 status 무관 dedupe — endorse로 해소된 discuss CHALLENGE가
+    # 턴 종료 재수확에서 다시 open으로 살아나면 합의 게이트가 교착한다.
     for existing in rows[-30:]:
-        if existing.get("status") != "open":
-            continue
         if _objection_fingerprint(
             from_agent=str(existing.get("from") or ""),
             act=str(existing.get("act") or ""),
@@ -202,6 +214,7 @@ def append_objection(
             "plan_action_index": plan_idx,
             "plan_action_kind": plan_kind,
             "parallel_round": parallel_round,
+            "mode": mode,
         }
     )
     rows.append(row)
@@ -216,8 +229,12 @@ def harvest_objections_from_turn(
     human_turn: int,
     mode: str = "discuss",
 ) -> list[dict[str, Any]]:
-    """Harvest BLOCK/CHALLENGE envelopes from the current human turn (plan mode first)."""
-    if mode != "plan":
+    """Harvest BLOCK/CHALLENGE envelopes from the current human turn.
+
+    plan 모드는 항상, discuss 등 다른 모드는 ``AGENT_LAB_DISCUSS_OBJECTIONS``(기본 on)일 때
+    수확한다 — 충돌이 파싱만 되고 증발하지 않고 상태(run.json)에 남는다 (P3).
+    """
+    if mode != "plan" and not discuss_objections_enabled():
         return []
     from agent_lab.agent_envelope import envelope_act, parse_agent_response
 
@@ -254,10 +271,52 @@ def harvest_objections_from_turn(
             human_turn=human_turn,
             refs=refs,
             parallel_round=getattr(m, "parallel_round", None),
+            mode=mode,
         )
         if row and row not in created:
             created.append(row)
     return created
+
+
+def resolve_objections_on_endorse(
+    run_meta: dict[str, Any],
+    agent: str,
+    *,
+    human_turn: int | None = None,
+    resolution: str = "challenger_endorsed_anchor",
+) -> list[dict[str, Any]]:
+    """Endorse 직후 본인이 연 discuss CHALLENGE를 자동 해소 (P3 필수 동반).
+
+    도전자가 앵커를 ENDORSE했다 = 충돌이 도전자를 만족시키는 쪽으로 끝났다.
+    이게 없으면 open-objections 합의 게이트가 모든 discuss 세션을 교착시킨다.
+    BLOCK은 제외 — Human 해소 경로 유지.
+    """
+    agent_l = str(agent or "").strip().lower()
+    if not run_meta or agent_l not in _AGENT_IDS:
+        return []
+    rows = list_objections(run_meta)
+    resolved: list[dict[str, Any]] = []
+    for row in rows:
+        if row.get("status") != "open":
+            continue
+        if row.get("act") != "CHALLENGE":
+            continue
+        if str(row.get("mode") or "plan") == "plan":
+            continue
+        if str(row.get("from") or "").lower() != agent_l:
+            continue
+        row["status"] = "resolved_accepted"
+        row["resolved_at"] = _now()
+        row["resolved_by"] = agent_l
+        row["resolution"] = resolution
+        resolved.append(row)
+    if not resolved:
+        return []
+    write_objections(run_meta, rows)
+    for row in resolved:
+        if row.get("task_id"):
+            _unblock_task_if_no_open_challenge(run_meta, str(row["task_id"]))
+    return resolved
 
 
 def apply_challenge_task_blocks(run_meta: dict[str, Any]) -> int:

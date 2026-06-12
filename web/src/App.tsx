@@ -4,6 +4,7 @@ import {
   archiveSession,
   deleteSession,
   fetchHealth,
+  reconnectClaudeAuth,
   reconnectCursorBridge,
   fetchSession,
   fetchSessions,
@@ -245,6 +246,18 @@ export default function App() {
     setReconnecting(true);
     try {
       await reconnectCursorBridge();
+      await reloadHealth(true);
+    } catch (e) {
+      setHealth(String(e));
+    } finally {
+      setReconnecting(false);
+    }
+  }, [reloadHealth]);
+
+  const handleReconnectClaude = useCallback(async () => {
+    setReconnecting(true);
+    try {
+      await reconnectClaudeAuth();
       await reloadHealth(true);
     } catch (e) {
       setHealth(String(e));
@@ -539,6 +552,7 @@ export default function App() {
               probeBridgeFailed={bridgeProbeFailed}
               onRefresh={() => void reloadHealth(true)}
               onReconnectCursor={() => void handleReconnectCursor()}
+              onReconnectClaude={() => void handleReconnectClaude()}
             />
             {!apiOk && health ? (
               <p className="chat-list-status chat-list-status--error">{health}</p>

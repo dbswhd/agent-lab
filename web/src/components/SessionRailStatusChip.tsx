@@ -11,6 +11,7 @@ type Props = {
   probeBridgeFailed?: boolean;
   onRefresh?: () => void;
   onReconnectCursor?: () => void;
+  onReconnectClaude?: () => void;
   reconnecting?: boolean;
 };
 
@@ -26,6 +27,7 @@ export function SessionRailStatusChip({
   probeBridgeFailed,
   onRefresh,
   onReconnectCursor,
+  onReconnectClaude,
   reconnecting,
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -63,6 +65,7 @@ export function SessionRailStatusChip({
             showBridgeSetupGuide={probeBridgeFailed}
             onRefresh={onRefresh}
             onReconnectCursor={onReconnectCursor}
+            onReconnectClaude={onReconnectClaude}
           />
           <ApiDiagnosticsBar
             apiOk={apiOk}

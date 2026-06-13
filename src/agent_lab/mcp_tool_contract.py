@@ -35,6 +35,7 @@ QUANT_TRADING_REQUIRED: frozenset[str] = frozenset(
 
 QUANT_TRADING_ALLOWED: frozenset[str] = QUANT_TRADING_REQUIRED | frozenset(
     {
+        "create_trade_proposal",
         "get_control_plane_snapshot",
         "get_proposal",
         "ingest_proposal_batch",
@@ -73,6 +74,7 @@ RESEARCH_ALLOWED: frozenset[str] = RESEARCH_REQUIRED | frozenset(
 # Tools that must live on exactly one server (no overlap).
 QUANT_TRADING_EXCLUSIVE: frozenset[str] = frozenset(
     {
+        "create_trade_proposal",
         "ingest_proposal_batch",
         "ingest_trading_session",
         "list_pending_proposals",

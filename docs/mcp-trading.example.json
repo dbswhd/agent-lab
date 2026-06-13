@@ -12,7 +12,7 @@
     },
     "quant-trading": {
       "command": "$HOME/Projects/agent-lab/.venv/bin/python",
-      "args": ["-m", "quant_pipeline.quant_trading_mcp_server"],
+      "args": ["-m", "quant_pipeline.agentic_trading.mcp_server"],
       "env": {
         "PYTHONPATH": "$HOME/Projects/quant-agentic-trading/src",
         "QUANT_PIPELINE_ROOT": "$HOME/Desktop/pipeline",

@@ -64,6 +64,7 @@ from app.server.routers import (  # noqa: E402
     sessions,
     settings,
     verified_loop,
+    workspace_files,
 )
 
 setup_app_logging()
@@ -119,6 +120,7 @@ for router in (
     room.router,
     settings.router,
     verified_loop.router,
+    workspace_files.router,
 ):
     app.include_router(router)
 

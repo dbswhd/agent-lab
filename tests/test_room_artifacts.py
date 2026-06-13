@@ -27,6 +27,23 @@ class _Msg:
         self.parallel_round = parallel_round
 
 
+def test_append_artifact_writes_relative_path_under_session(tmp_path: Path):
+    session = tmp_path / "session-a"
+    session.mkdir()
+    meta: dict = {}
+    row = append_artifact(
+        meta,
+        producer="cursor",
+        kind="delegate",
+        summary="dispatch survey",
+        body="x" * 200,
+        session_folder=session,
+    )
+    assert row.get("path")
+    assert not str(row["path"]).startswith("/")
+    assert (session / row["path"]).is_file()
+
+
 def test_append_and_public_payload():
     meta: dict = {"turn_profile": "specialist"}
     row = append_artifact(

@@ -4,13 +4,14 @@ import { messages } from "../i18n/messages";
 
 const TAB_META: {
   id: WorkspaceTab;
-  icon: "transcript" | "work" | "run" | "artifacts";
+  icon: "transcript" | "work" | "run" | "artifacts" | "files";
   shortcut: string;
 }[] = [
   { id: "transcript", icon: "transcript", shortcut: "⌘1" },
   { id: "work", icon: "work", shortcut: "⌘2" },
   { id: "run", icon: "run", shortcut: "⌘3" },
   { id: "artifacts", icon: "artifacts", shortcut: "⌘4" },
+  { id: "files", icon: "files", shortcut: "⌘5" },
 ];
 
 type Props = {

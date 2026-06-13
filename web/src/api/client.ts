@@ -410,6 +410,87 @@ export function fetchSessionMergeChecks(sessionId: string) {
   );
 }
 
+// ── Workspace Files (Files tab) ──
+export type WorkspaceFileRoot = {
+  root_id: string;
+  label: string;
+  kind: "session" | "workspace";
+  is_primary: boolean;
+  missing: boolean;
+};
+
+export type WorkspaceFileEntry = {
+  name: string;
+  type: "dir" | "file";
+  size: number | null;
+  mtime: number;
+};
+
+export type WorkspaceFileContent = {
+  root_id: string;
+  path: string;
+  kind: "text" | "binary" | "large";
+  size: number;
+  content: string | null;
+  truncated?: boolean;
+};
+
+export function listWorkspaceFileRoots(sessionId: string) {
+  return json<{ roots: WorkspaceFileRoot[] }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/files/roots`,
+  );
+}
+
+export function listWorkspaceFiles(
+  sessionId: string,
+  rootId: string,
+  path = "",
+) {
+  const params = new URLSearchParams({ root_id: rootId, path });
+  return json<{ root_id: string; path: string; entries: WorkspaceFileEntry[] }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/files?${params.toString()}`,
+  );
+}
+
+export function readWorkspaceFile(
+  sessionId: string,
+  rootId: string,
+  path: string,
+) {
+  const params = new URLSearchParams({ root_id: rootId, path });
+  return json<WorkspaceFileContent>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/files/content?${params.toString()}`,
+  );
+}
+
+export function writeSessionFile(
+  sessionId: string,
+  rootId: string,
+  path: string,
+  content: string,
+) {
+  return json<{ root_id: string; path: string; size: number; ok: boolean }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/files/content`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ root_id: rootId, path, content }),
+    },
+  );
+}
+
+/** Absolute URL for a file's raw bytes — use as <img src> / <iframe src>. */
+export function workspaceFileRawUrl(
+  sessionId: string,
+  rootId: string,
+  path: string,
+): string {
+  const params = new URLSearchParams({ root_id: rootId, path });
+  return apiUrl(
+    `/api/sessions/${encodeURIComponent(sessionId)}/files/raw?${params.toString()}`,
+  );
+}
+
 export type WisdomHit = {
   id?: string;
   source?: string;

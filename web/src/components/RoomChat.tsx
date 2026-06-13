@@ -120,6 +120,7 @@ import {
 } from "../utils/turnProfile";
 import { RunLogPanel } from "./RunLogPanel";
 import { ArtifactsListPanel } from "./ArtifactsListPanel";
+import { WorkspaceFilesPanel } from "./WorkspaceFilesPanel";
 import { ExecuteQueueBar } from "./ExecuteQueueBar";
 import { ConsensusDryRunGateBar } from "./ConsensusDryRunGateBar";
 import type { ConsensusDryRunProposal } from "./ConsensusDryRunGateBar";
@@ -2432,7 +2433,11 @@ export function RoomChat({
       ) : null}
 
       {workspaceTab === "artifacts" && !isNew ? (
-        <ArtifactsListPanel items={sessionArtifacts} />
+        <ArtifactsListPanel items={sessionArtifacts} sessionId={sessionId} />
+      ) : null}
+
+      {workspaceTab === "files" && !isNew && sessionId ? (
+        <WorkspaceFilesPanel sessionId={sessionId} />
       ) : null}
 
       {workspaceTab === "transcript" || isNew ? (

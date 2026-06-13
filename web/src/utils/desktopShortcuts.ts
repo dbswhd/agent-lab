@@ -18,6 +18,7 @@ const SHORTCUT_INDEX: Record<string, WorkspaceTab> = {
   "2": "work",
   "3": "run",
   "4": "artifacts",
+  "5": "files",
 };
 
 export function requestWorkspaceTab(tab: WorkspaceTab): void {

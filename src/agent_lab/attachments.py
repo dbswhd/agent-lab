@@ -17,6 +17,8 @@ TEXT_SUFFIXES = {
     ".js",
     ".jsx",
     ".html",
+    ".diff",
+    ".patch",
     ".css",
     ".yaml",
     ".yml",

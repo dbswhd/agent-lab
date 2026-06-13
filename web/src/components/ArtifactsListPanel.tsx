@@ -1,9 +1,16 @@
-import type { RoomArtifact } from "../api/client";
+import { useCallback, useState } from "react";
+import {
+  readWorkspaceFile,
+  type RoomArtifact,
+  type WorkspaceFileContent,
+} from "../api/client";
 import { Avatar } from "./Avatar";
+import { FilePreview } from "./FilePreview";
 import type { AgentRole } from "../utils/transcript";
 
 type Props = {
   items: RoomArtifact[];
+  sessionId?: string | null;
 };
 
 function artifactExt(art: RoomArtifact): string {
@@ -29,8 +36,77 @@ function formatMeta(art: RoomArtifact): string {
   return parts.join(" · ") || art.summary || "—";
 }
 
+/** A single artifact row; expandable into an inline FilePreview when it has a path. */
+function ArtifactCard({
+  art,
+  sessionId,
+}: {
+  art: RoomArtifact;
+  sessionId?: string | null;
+}) {
+  const ext = artifactExt(art);
+  const producer = art.producer as AgentRole;
+  const previewable = Boolean(art.path && sessionId);
+
+  const [open, setOpen] = useState(false);
+  const [content, setContent] = useState<WorkspaceFileContent | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const toggle = useCallback(async () => {
+    const next = !open;
+    setOpen(next);
+    if (next && content == null && art.path && sessionId) {
+      try {
+        setContent(await readWorkspaceFile(sessionId, "session", art.path));
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "preview failed");
+      }
+    }
+  }, [open, content, art.path, sessionId]);
+
+  return (
+    <div className={`artifact-card${open ? " is-open" : ""}`}>
+      <button
+        type="button"
+        className="artifact-card__row"
+        disabled={!previewable}
+        aria-expanded={previewable ? open : undefined}
+        onClick={previewable ? () => void toggle() : undefined}
+      >
+        <div className={`artifact-card__type artifact-card__type--${ext}`}>
+          {ext.toUpperCase()}
+        </div>
+        <div className="artifact-card__main">
+          <span className="artifact-card__name">{artifactName(art)}</span>
+          <span className="artifact-card__meta">{formatMeta(art)}</span>
+          {art.summary ? (
+            <span className="artifact-card__meta">{art.summary}</span>
+          ) : null}
+        </div>
+        <div className="artifact-card__agent">
+          <Avatar role={producer} size={20} />
+        </div>
+      </button>
+      {open && art.path && sessionId ? (
+        <div className="artifact-card__preview">
+          {error ? (
+            <div className="files-error">{error}</div>
+          ) : (
+            <FilePreview
+              sessionId={sessionId}
+              rootId="session"
+              path={art.path}
+              content={content}
+            />
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 /** Artifacts tab — prototype `artifacts-list` / `artifact-card`. */
-export function ArtifactsListPanel({ items }: Props) {
+export function ArtifactsListPanel({ items, sessionId }: Props) {
   return (
     <div className="artifacts-list">
       <div className="artifacts-list__head">
@@ -72,30 +148,13 @@ export function ArtifactsListPanel({ items }: Props) {
           </span>
         </div>
       ) : (
-        [...items].reverse().map((art) => {
-          const ext = artifactExt(art);
-          const producer = art.producer as AgentRole;
-          return (
-            <div
-              key={art.id ?? art.path ?? `${art.producer}-${art.kind}`}
-              className="artifact-card"
-            >
-              <div className={`artifact-card__type artifact-card__type--${ext}`}>
-                {ext.toUpperCase()}
-              </div>
-              <div className="artifact-card__main">
-                <span className="artifact-card__name">{artifactName(art)}</span>
-                <span className="artifact-card__meta">{formatMeta(art)}</span>
-                {art.summary ? (
-                  <span className="artifact-card__meta">{art.summary}</span>
-                ) : null}
-              </div>
-              <div className="artifact-card__agent">
-                <Avatar role={producer} size={20} />
-              </div>
-            </div>
-          );
-        })
+        [...items].reverse().map((art) => (
+          <ArtifactCard
+            key={art.id ?? art.path ?? `${art.producer}-${art.kind}`}
+            art={art}
+            sessionId={sessionId}
+          />
+        ))
       )}
     </div>
   );

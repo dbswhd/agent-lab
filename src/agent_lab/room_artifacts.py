@@ -99,7 +99,8 @@ def append_artifact(
         fname = f"{_new_artifact_id()}.txt"
         path = art_dir / fname
         path.write_text(text[:120_000], encoding="utf-8")
-        fp = str(path.relative_to(session_folder.resolve()))
+        session_root = session_folder.resolve()
+        fp = str(path.resolve().relative_to(session_root))
     row = normalize_artifact(
         {
             "producer": producer_l,

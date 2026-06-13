@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.agentlab.trading-premarket</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>__AGENT_LAB_VENV_PYTHON__</string>
+    <string>__AGENT_LAB_ROOT__/scripts/run_trading_mission_scheduler.py</string>
+    <string>--ingest</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>QUANT_PIPELINE_ROOT</key>
+    <string>__QUANT_PIPELINE_ROOT__</string>
+    <key>AGENTIC_TRADING_DB</key>
+    <string>__AGENTIC_TRADING_DB__</string>
+    <key>AGENTIC_USE_NATIVE_INGEST</key>
+    <string>1</string>
+    <key>AGENTIC_QUANT_PIPELINE_SRC</key>
+    <string>__AGENTIC_QUANT_PIPELINE_SRC__</string>
+    <key>AGENTIC_APPLY_PROPOSAL_CRITIC</key>
+    <string>1</string>
+    <key>AGENT_LAB_FRESHNESS_PYTHON</key>
+    <string>__AGENT_LAB_FRESHNESS_PYTHON__</string>
+  </dict>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>7</integer>
+    <key>Minute</key>
+    <integer>35</integer>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>__AGENT_LAB_HOME__/logs/trading-premarket.log</string>
+  <key>StandardErrorPath</key>
+  <string>__AGENT_LAB_HOME__/logs/trading-premarket.err</string>
+</dict>
+</plist>

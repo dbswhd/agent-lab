@@ -192,6 +192,7 @@ def evaluate_plan_gate(
     plan_md: str,
     *,
     run: dict[str, Any] | None = None,
+    session_folder: Path | None = None,
 ) -> dict[str, Any]:
     """Momus-lite: mechanical plan gate before execute enqueue."""
     from agent_lab.context_layers import plan_gate_mcp_warnings
@@ -208,12 +209,36 @@ def evaluate_plan_gate(
                     "issues": issues,
                 }
             )
+
+    trading_failures: list[str] = []
+    if run and session_folder is not None:
+        from agent_lab.trading_mission.plan_gate import trading_plan_gate_issues
+        from agent_lab.trading_mission.trading_goal_oracle import is_trading_mission_run
+
+        if is_trading_mission_run(run):
+            trading_failures = trading_plan_gate_issues(plan_md, session_folder)
+
     def _with_mcp_warnings(result: dict[str, Any]) -> dict[str, Any]:
         warnings = plan_gate_mcp_warnings(run, actions)
         if warnings:
             result = dict(result)
             result["mcp_warnings"] = warnings
         return result
+
+    if trading_failures:
+        return _with_mcp_warnings(
+            {
+                "status": "reject",
+                "reason": "trading_checklist_failed",
+                "failures": [
+                    {
+                        "action_index": None,
+                        "action_key": "trading_consensus",
+                        "issues": trading_failures,
+                    }
+                ],
+            }
+        )
 
     if not actions:
         return _with_mcp_warnings(
@@ -413,7 +438,7 @@ def run_plan_gate(folder: Path, plan_md: str) -> dict[str, Any]:
     if ml.get("circuit_breaker"):
         return {"skipped": True, "reason": "circuit_breaker"}
 
-    evaluation = evaluate_plan_gate(plan_md, run=run)
+    evaluation = evaluate_plan_gate(plan_md, run=run, session_folder=folder)
     gate = dict(ml.get("plan_gate") or {})
 
     if evaluation["status"] == "ok":

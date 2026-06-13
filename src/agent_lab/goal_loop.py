@@ -87,6 +87,23 @@ def goal_oracle_check(
         oracle_live_enabled,
         session_oracle_context,
     )
+    from agent_lab.run_meta import read_run_meta
+    from agent_lab.trading_mission.trading_goal_oracle import (
+        is_trading_mission_run,
+        mock_trading_goal_oracle_response,
+    )
+
+    run = read_run_meta(session_folder)
+    if is_trading_mission_run(run):
+        raw = mock_trading_goal_oracle_response(session_folder, goal_text)
+        result = build_oracle_result(
+            raw=raw,
+            source="trading_artifact",
+            kind="goal",
+            goal_text=goal_text,
+        )
+        result["at"] = _now()
+        return result
 
     transcript = _messages_text(messages_snapshot)
     prompt = build_goal_oracle_prompt(

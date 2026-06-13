@@ -1,4 +1,4 @@
-.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test ci check-worktrees smoke smoke-e2e smoke-web-ui smoke-tauri-ui validate-quant verify-quant-workspace verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench
+.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test ci check-worktrees smoke smoke-e2e smoke-web-ui smoke-tauri-ui validate-quant verify-quant-workspace verify-trading-v1 verify-mcp-contract build-research-cards offline-lane thin-runtime-status verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate
 
 install:
 	python3 -m venv .venv
@@ -72,6 +72,56 @@ init-project-memory:
 verify-quant-workspace:
 	@test -n "$(QUANT_PIPELINE_ROOT)" || true; \
 	.venv/bin/python scripts/verify_quant_workspace_setup.py
+
+verify-trading-v1:
+	.venv/bin/python scripts/verify_trading_mission_v1.py --synthetic --pilot
+
+verify-mcp-contract:
+	PYTHONPATH=$${PYTHONPATH:-$(HOME)/Documents/New project/src} \
+	.venv/bin/python scripts/verify_mcp_contract.py
+	PYTHONPATH=$${PYTHONPATH:-$(HOME)/Documents/New project/src} \
+	.venv/bin/python -m pytest tests/test_mcp_tool_contract.py -q
+
+build-research-cards:
+	QUANT_PIPELINE_ROOT=$${QUANT_PIPELINE_ROOT:-$(HOME)/Desktop/pipeline} \
+	.venv/bin/python scripts/build_research_artifact_cards.py --pipeline "$$QUANT_PIPELINE_ROOT"
+
+artifact-cards: build-research-cards
+
+offline-lane:
+	QUANT_PIPELINE_ROOT=$${QUANT_PIPELINE_ROOT:-$(HOME)/Desktop/pipeline} \
+	.venv/bin/python scripts/run_trading_mission_offline.py --force
+
+thin-runtime-status:
+	@test -n "$(SESSION)" || (echo "Usage: make thin-runtime-status SESSION=sessions/<id>" && exit 1)
+	AGENT_LAB_SESSION_FOLDER="$(abspath $(SESSION))" \
+	AGENTIC_TRADING_DB=$${AGENTIC_TRADING_DB:-$(HOME)/Documents/New project/data/agentic_trading/control_plane.sqlite3} \
+	.venv/bin/python -m agent_lab.trading_mission.thin_runtime --session "$(abspath $(SESSION))" --db "$$AGENTIC_TRADING_DB"
+
+install-mission-triggers:
+	chmod +x scripts/install_mission_triggers.sh
+	QUANT_PIPELINE_ROOT=$${QUANT_PIPELINE_ROOT:-$(HOME)/Desktop/pipeline} \
+	AGENTIC_TRADING_DB=$${AGENTIC_TRADING_DB:-$(HOME)/Documents/New project/data/agentic_trading/control_plane.sqlite3} \
+	AGENTIC_QUANT_PIPELINE_SRC=$${AGENTIC_QUANT_PIPELINE_SRC:-$(HOME)/Documents/New project/src} \
+	AGENT_LAB_FRESHNESS_PYTHON=$${AGENT_LAB_FRESHNESS_PYTHON:-$(HOME)/Desktop/pipeline/.venv/bin/python} \
+	./scripts/install_mission_triggers.sh
+
+token-log-summary:
+	QUANT_PIPELINE_ROOT=$${QUANT_PIPELINE_ROOT:-$(HOME)/Desktop/pipeline} \
+	.venv/bin/python scripts/summarize_token_log.py --lines $${LINES:-20}
+
+refresh-freshness:
+	@test -x $${QUANT_PIPELINE_ROOT:-$(HOME)/Desktop/pipeline}/.venv/bin/python || (echo "pipeline .venv missing" && exit 1)
+	PRICE_BACKFILL_DAYS=$${PRICE_BACKFILL_DAYS:-15} \
+	$${QUANT_PIPELINE_ROOT:-$(HOME)/Desktop/pipeline}/.venv/bin/python \
+		$${QUANT_PIPELINE_ROOT:-$(HOME)/Desktop/pipeline}/scripts/spec91/spec91_daily_data_refresh.py \
+		--kind kr-daily
+	$${QUANT_PIPELINE_ROOT:-$(HOME)/Desktop/pipeline}/.venv/bin/python \
+		$${QUANT_PIPELINE_ROOT:-$(HOME)/Desktop/pipeline}/scripts/spec91/spec91_daily_data_refresh.py \
+		--kind us --skip-notebook
+	AGENT_LAB_FRESHNESS_PYTHON=$${AGENT_LAB_FRESHNESS_PYTHON:-$(HOME)/Desktop/pipeline/.venv/bin/python} \
+	QUANT_PIPELINE_ROOT=$${QUANT_PIPELINE_ROOT:-$(HOME)/Desktop/pipeline} \
+	.venv/bin/python -c "from agent_lab.pipeline_market_read import run_data_freshness; import json; r=run_data_freshness(); print(json.dumps({'ok':r.get('ok'),'blocking':r.get('blocking'),'message':r.get('message')}, ensure_ascii=False)); raise SystemExit(0 if r.get('ok') else 1)"
 
 check-worktrees:
 	.venv/bin/python scripts/check_worktree_orphans.py
@@ -151,6 +201,19 @@ score-regression-fixtures:
 
 emergence-bench:
 	.venv/bin/python scripts/emergence_bench.py
+
+dogfood-suite-mock:
+	AGENT_LAB_MOCK_AGENTS=1 .venv/bin/python scripts/run_dogfood_suite.py --mode mock \
+	  $(if $(TIER),--tier $(TIER),) $(if $(ONLY),--only $(ONLY),)
+
+dogfood-suite-checklist:
+	.venv/bin/python scripts/run_dogfood_suite.py --mode checklist \
+	  $(if $(TIER),--tier $(TIER),) $(if $(ONLY),--only $(ONLY),)
+
+dogfood-suite-aggregate:
+	@test -n "$(LOG)" || (echo "Usage: make dogfood-suite-aggregate LOG=suite-log.json" && exit 1)
+	.venv/bin/python scripts/run_dogfood_suite.py --mode aggregate --log "$(LOG)" \
+	  $(if $(TIER),--tier $(TIER),) $(if $(ONLY),--only $(ONLY),)
 
 smoke:
 	.venv/bin/python scripts/smoke_room.py

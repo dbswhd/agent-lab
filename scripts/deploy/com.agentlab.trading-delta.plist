@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.agentlab.trading-delta</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>__AGENT_LAB_VENV_PYTHON__</string>
+    <string>__AGENT_LAB_ROOT__/scripts/process_trading_mission_queue.py</string>
+    <string>--ingest</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>QUANT_PIPELINE_ROOT</key>
+    <string>__QUANT_PIPELINE_ROOT__</string>
+    <key>AGENTIC_TRADING_DB</key>
+    <string>__AGENTIC_TRADING_DB__</string>
+    <key>AGENTIC_USE_NATIVE_INGEST</key>
+    <string>1</string>
+    <key>AGENTIC_QUANT_PIPELINE_SRC</key>
+    <string>__AGENTIC_QUANT_PIPELINE_SRC__</string>
+  </dict>
+  <key>StartInterval</key>
+  <integer>600</integer>
+  <key>StandardOutPath</key>
+  <string>__AGENT_LAB_HOME__/logs/trading-delta.log</string>
+  <key>StandardErrorPath</key>
+  <string>__AGENT_LAB_HOME__/logs/trading-delta.err</string>
+</dict>
+</plist>

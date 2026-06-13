@@ -28,7 +28,9 @@ DEFAULT_WORKSPACE_ID = "agent-lab"
 DEFAULT_TEMPLATE_ID = "general"
 CUSTOM_WORKSPACE_ID = "custom"
 
-SESSION_TEMPLATE_IDS = frozenset({"general", "book-layout", "book-content"})
+SESSION_TEMPLATE_IDS = frozenset(
+    {"general", "book-layout", "book-content", "trading-mission", "trading-thin", "trading-offline"}
+)
 WORKSPACE_PRESET_IDS = frozenset(
     {"agent-lab", "quant-pipeline", "lecture-book", CUSTOM_WORKSPACE_ID}
 )
@@ -133,6 +135,24 @@ def list_session_templates() -> list[dict[str, Any]]:
             "description": "md/JSON/OCR/풀이 — 레이아웃 변경 금지",
             "default_phase": "content",
         },
+        {
+            "id": "trading-mission",
+            "label": "Trading Mission",
+            "description": "장전/이벤트 — snapshot → discuss → proposal batch + playbook",
+            "default_phase": "trading",
+        },
+        {
+            "id": "trading-thin",
+            "label": "Trading · 장중 thin",
+            "description": "장중 read-only — playbook/batch/console pending만 (Room 금지)",
+            "default_phase": "trading_thin",
+        },
+        {
+            "id": "trading-offline",
+            "label": "Trading · 주간 offline",
+            "description": "주 1회 wire-up — cards sync, WireUpDecision, runtime playbook (no ingest)",
+            "default_phase": "trading_offline",
+        },
     ]
 
 
@@ -166,6 +186,18 @@ def template_guidance_block(template_id: str | None) -> str:
             SINGLE_EXECUTOR_GUIDANCE.strip(),
         ]
         return "\n".join(parts)
+    if tid == "trading-mission":
+        from agent_lab.session_guidance import TRADING_MISSION_GUIDANCE
+
+        return TRADING_MISSION_GUIDANCE.strip()
+    if tid == "trading-thin":
+        from agent_lab.session_guidance import THIN_RUNTIME_GUIDANCE
+
+        return THIN_RUNTIME_GUIDANCE.strip()
+    if tid == "trading-offline":
+        from agent_lab.session_guidance import OFFLINE_LANE_GUIDANCE
+
+        return OFFLINE_LANE_GUIDANCE.strip()
     return ""
 
 
@@ -225,6 +257,17 @@ def build_setup_run_meta(
     if tpl["id"] == "book-content":
         meta["layout_frozen"] = True
         meta["layout_frozen_at"] = datetime.now(timezone.utc).isoformat()
+    if tpl["id"] == "trading-mission":
+        meta["mission_kind"] = "trading_premarket"
+        meta["response_contract"] = {"preset": "evidence_first"}
+        meta["turn_profile"] = "analyze"
+        from agent_lab.trading_mission.trading_goal_oracle import DEFAULT_TRADING_GOAL_TEXT
+
+        meta["session_goal"] = {"text": DEFAULT_TRADING_GOAL_TEXT, "preset": "trading_mission"}
+    if tpl["id"] == "trading-offline":
+        meta["mission_kind"] = "trading_weekly"
+        meta["response_contract"] = {"preset": "evidence_first"}
+        meta["turn_profile"] = "analyze"
     if agent_thread_bindings:
         meta["agent_thread_bindings"] = agent_thread_bindings
     return meta
@@ -294,9 +337,46 @@ def session_setup_options() -> dict[str, Any]:
     default_ws = DEFAULT_WORKSPACE_ID
     if not any(w["id"] == default_ws for w in workspaces) and workspaces:
         default_ws = str(workspaces[0]["id"])
+    trading_preset: dict[str, Any] | None = None
+    trading_thin_preset: dict[str, Any] | None = None
+    if any(w["id"] == "quant-pipeline" for w in workspaces):
+        try:
+            from agent_lab.trading_mission.topic import render_premarket_topic
+            from agent_lab.trading_mission.trading_goal_oracle import (
+                DEFAULT_TRADING_GOAL_TEXT,
+            )
+
+            trading_preset = {
+                "workspace_id": "quant-pipeline",
+                "session_template": "trading-mission",
+                "turn_profile": "analyze",
+                "topic": render_premarket_topic(),
+                "session_goal": DEFAULT_TRADING_GOAL_TEXT,
+            }
+            trading_thin_preset = {
+                "workspace_id": "quant-pipeline",
+                "session_template": "trading-thin",
+                "turn_profile": "analyze",
+                "topic": "[Trading · 장중 thin] playbook + pending batch + console approval only.",
+                "session_goal": "Read intraday status via MCP; no Room/backtest/live execute.",
+            }
+        except (ImportError, FileNotFoundError, OSError):
+            trading_preset = {
+                "workspace_id": "quant-pipeline",
+                "session_template": "trading-mission",
+                "turn_profile": "analyze",
+            }
+            trading_thin_preset = {
+                "workspace_id": "quant-pipeline",
+                "session_template": "trading-thin",
+                "turn_profile": "analyze",
+            }
     return {
         "workspaces": workspaces,
         "agent_threads": list_agent_threads(),
+        "session_templates": list_session_templates(),
+        "trading_mission_preset": trading_preset,
+        "trading_thin_preset": trading_thin_preset,
         "defaults": {
             "workspace_id": default_ws,
             "session_template": DEFAULT_TEMPLATE_ID,

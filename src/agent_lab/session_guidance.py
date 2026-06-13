@@ -124,6 +124,37 @@ RECIPE_GOLDEN_GUIDANCE = """\
 - Never overwrite v1 when promoting v2 — copy to `golden/` before full rebuild.
 """
 
+TRADING_MISSION_GUIDANCE = """\
+[Trading Mission — quant-pipeline preset]
+- Read-only: `artifacts/market_snapshot.json`, PASS cards, overlay signals. No KIS orders, no LIVE arm.
+- If `freshness.blocking` or `kill_switch`: agree `ingest_ready: false`, proposals=[], explain in `blocking_reason`.
+- Each proposal needs `backtest_ref` or `overlay_signal_ref`; FAIL verdict refs must not become proposals.
+- Scribe must include `## 합의` with: ingest_ready, blocking_reason, active_strategies, discuss_rounds_used.
+- Optional draft: `artifacts/proposals_draft.json` (array of proposal objects) for export.
+- Playbook: `artifacts/playbook.md` with 「오늘 장중 행동」section for thin runtime agent.
+- Max proposals per mission: see topic (default 5). No infinite debate — 2 rounds cap.
+"""
+
+THIN_RUNTIME_GUIDANCE = """\
+[Trading Mission — thin intraday runtime]
+- **Read-only MCP**: `get_intraday_status`, `get_playbook`, `get_pending_batch`, `list_pending_proposals` (quant-trading).
+- Use playbook + pending batch + control plane queue; **no new Room**, no backtest, no live execute.
+- Allowed: human approve via console (`:8765` / alternate port), small thesis edits, delta ingest via quant-trading MCP.
+- Forbidden: `run_backtest_refresh(dry_run=False)`, full 3-agent discuss, `AGENT_LAB_ALLOW_BACKTEST_RUN`, LIVE arm.
+- Set `AGENT_LAB_SESSION_FOLDER` to today's premarket session (or rely on latest-session auto-resolve).
+- Env: `QUANT_PIPELINE_ROOT`, `AGENTIC_TRADING_DB`, optional `AGENTIC_APPLY_PROPOSAL_CRITIC=1`.
+"""
+
+OFFLINE_LANE_GUIDANCE = """\
+[Trading Mission — weekly offline lane]
+- **No proposal ingest** — sync cards, emit `WireUpDecision`, push `data/agentic/wireup_decision.json` + playbook.
+- Read PASS/FAIL cards via `list_wireup_candidates` / `get_strategy_verdict`; no full JSON, no notebooks.
+- `active_refs` = overlay-eligible PASS strategies; `blocked_refs` = FAIL/ineligible (never propose).
+- Scribe: `## 합의` with wireup_ready, active_strategies, ingest_ready: false.
+- Artifacts: `artifacts/wireup_decision.json`, `artifacts/playbook.md` (주간 wire-up + 장중 행동).
+- Optional Room: strategy review only (1–2 rounds); do not create proposal_batch.
+"""
+
 
 class _MsgLike(Protocol):
     role: str

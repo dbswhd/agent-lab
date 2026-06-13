@@ -20,17 +20,17 @@ from agent_lab.room_consensus import (
     max_debate_round_count,
 )
 
-Category = Literal["quick", "standard", "deep", "critical"]
+Category = Literal["quick", "standard", "trading", "deep", "critical"]
 Recombination = Literal["on", "auto", "off"]
 
-CATEGORY_ORDER: tuple[Category, ...] = ("quick", "standard", "deep", "critical")
+CATEGORY_ORDER: tuple[Category, ...] = ("quick", "standard", "trading", "deep", "critical")
 ESCALATION_ACTS = frozenset({"CHALLENGE", "BLOCK", "AMEND"})
 
 _TRUE = {"1", "true", "yes", "on"}
 _FALSE = {"0", "false", "no", "off"}
 
 _CAT_MARKER_RE = re.compile(
-    r"(?:^|\n)\s*\[cat(?:egory)?\s*[:：]\s*(quick|standard|deep|critical)\]",
+    r"(?:^|\n)\s*\[cat(?:egory)?\s*[:：]\s*(quick|standard|trading|deep|critical)\]",
     re.I,
 )
 
@@ -74,6 +74,18 @@ _DEEP_KEYWORDS = (
     "redesign",
 )
 
+_TRADING_KEYWORDS = (
+    "trading mission",
+    "trading-mission",
+    "장전",
+    "premarket",
+    "proposal batch",
+    "proposal_batch",
+    "ingest_ready",
+    "trade proposal",
+    "오늘 장중",
+)
+
 _QUICK_KEYWORDS = (
     "오타",
     "typo",
@@ -107,6 +119,15 @@ _ROUTE_TABLE: dict[Category, dict[str, Any]] = {
         "max_rounds": 8,
         "max_calls": 20,
         "wisdom_in_context": False,
+        "suggest_verified": False,
+    },
+    "trading": {
+        "debate_rounds": 2,
+        "recombination": "auto",
+        "quality_gate": True,
+        "max_rounds": 6,
+        "max_calls": 15,
+        "wisdom_in_context": True,
         "suggest_verified": False,
     },
     "deep": {
@@ -173,6 +194,14 @@ def _env_int(key: str) -> int | None:
     return None
 
 
+def _trading_discuss_rounds() -> int:
+    raw = (os.getenv("AGENT_LAB_TRADING_DISCUSS_ROUNDS") or "2").strip()
+    try:
+        return max(0, min(int(raw), 4))
+    except ValueError:
+        return 2
+
+
 def _build_route(
     category: Category,
     *,
@@ -184,6 +213,8 @@ def _build_route(
 ) -> CategoryRoute:
     base = _ROUTE_TABLE[category]
     debate_rounds = int(base["debate_rounds"])
+    if category == "trading":
+        debate_rounds = _trading_discuss_rounds()
     max_rounds = int(base["max_rounds"])
     max_calls = int(base["max_calls"])
 
@@ -260,6 +291,10 @@ def classify_topic(topic: str) -> tuple[Category, tuple[str, ...]]:
     if critical_hits:
         return "critical", tuple(f"kw:{k}" for k in critical_hits[:4])
 
+    trading_hits = _keyword_hits(lower, _TRADING_KEYWORDS)
+    if trading_hits:
+        return "trading", tuple(f"kw:{k}" for k in trading_hits[:4])
+
     deep_hits = _keyword_hits(lower, _DEEP_KEYWORDS)
     if deep_hits:
         return "deep", tuple(f"kw:{k}" for k in deep_hits[:4])
@@ -279,6 +314,8 @@ def classify_topic(topic: str) -> tuple[Category, tuple[str, ...]]:
 _PROFILE_CATEGORY: dict[str, Category] = {
     "quick": "quick",
     "verified": "critical",
+    "trading": "trading",
+    "analyze": "standard",
 }
 
 
@@ -286,9 +323,10 @@ def resolve_topic_route(
     topic: str,
     *,
     turn_profile: str = "",
+    session_template: str = "",
     efficiency_mode: bool = False,
 ) -> CategoryRoute:
-    """marker > profile 함의 > 휴리스틱 순으로 카테고리를 정하고 창발 예산을 매핑."""
+    """marker > session template > profile 함의 > 휴리스틱 순으로 카테고리를 정하고 창발 예산을 매핑."""
     if not topic_router_enabled():
         return _legacy_route(efficiency_mode=efficiency_mode)
 
@@ -298,6 +336,15 @@ def resolve_topic_route(
             marker,
             source="marker",
             signals=(f"marker:{marker}",),
+            efficiency_mode=efficiency_mode,
+        )
+
+    template = (session_template or "").strip().lower()
+    if template == "trading-mission":
+        return _build_route(
+            "trading",
+            source="session_template",
+            signals=("template:trading-mission",),
             efficiency_mode=efficiency_mode,
         )
 

@@ -30,7 +30,14 @@ def test_list_workspace_presets_includes_agent_lab():
 
 def test_list_session_templates():
     templates = list_session_templates()
-    assert [t["id"] for t in templates] == ["general", "book-layout", "book-content"]
+    assert [t["id"] for t in templates] == [
+        "general",
+        "book-layout",
+        "book-content",
+        "trading-mission",
+        "trading-thin",
+        "trading-offline",
+    ]
 
 
 def test_merge_setup_permissions_sets_discuss_cwd(tmp_path, monkeypatch):

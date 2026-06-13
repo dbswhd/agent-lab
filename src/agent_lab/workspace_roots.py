@@ -124,21 +124,10 @@ def discuss_primary_workspace(permissions: dict[str, Any] | None) -> Path:
 
 def pipeline_root() -> Path | None:
     from agent_lab.app_config import apply_config_env
+    from agent_lab.extensions.quant_trading import optional_pipeline_root
 
     apply_config_env()
-    home = Path.home()
-    candidates = [
-        os.getenv("QUANT_PIPELINE_ROOT", "").strip(),
-        str(home / "Projects" / "quant-pipeline"),
-        str(home / "Desktop" / "pipeline"),
-    ]
-    for raw in candidates:
-        if not raw:
-            continue
-        path = Path(raw).expanduser()
-        if path.is_dir():
-            return path.resolve()
-    return None
+    return optional_pipeline_root()
 
 
 def lecture_script_root() -> Path | None:

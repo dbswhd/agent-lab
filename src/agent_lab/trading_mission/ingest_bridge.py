@@ -118,33 +118,14 @@ def apply_critic_caps_to_proposals(
 
 
 def detect_control_plane_db() -> Path | None:
-    """Resolve control plane SQLite path from env or common install locations."""
-    for key in ("AGENTIC_TRADING_DB", "CONTROL_PLANE_DB"):
-        raw = (os.getenv(key) or "").strip()
-        if raw:
-            return Path(raw).expanduser().resolve()
+    """Resolve control plane SQLite path from env or agentic-trading extension locations."""
+    from agent_lab.extensions.quant_trading import optional_agentic_db
 
-    home = Path.home()
-    candidates = (
-        home / "Documents/New project/data/agentic_trading/control_plane.sqlite3",
-        home / "Desktop/pipeline/data/agentic_trading/control_plane.sqlite3",
-        home / ".agent-lab/control_plane.sqlite3",
-    )
-    pipeline = (os.getenv("QUANT_PIPELINE_ROOT") or "").strip()
-    if pipeline:
-        candidates = (
-            Path(pipeline).expanduser().resolve()
-            / "data"
-            / "agentic_trading"
-            / "control_plane.sqlite3",
-            *candidates,
-        )
+    resolved = optional_agentic_db()
+    if resolved is not None:
+        return resolved
 
-    for path in candidates:
-        if path.is_file():
-            return path.resolve()
-
-    default = home / ".agent-lab/control_plane.sqlite3"
+    default = Path.home() / ".agent-lab" / "control_plane.sqlite3"
     default.parent.mkdir(parents=True, exist_ok=True)
     return default.resolve()
 

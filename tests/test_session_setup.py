@@ -28,7 +28,11 @@ def test_list_workspace_presets_includes_agent_lab():
     assert agent_lab["path"]
 
 
-def test_list_session_templates():
+def test_list_session_templates(monkeypatch):
+    monkeypatch.setattr(
+        "agent_lab.extensions.quant_trading.quant_pipeline_available",
+        lambda: True,
+    )
     templates = list_session_templates()
     assert [t["id"] for t in templates] == [
         "general",

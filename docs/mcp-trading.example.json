@@ -1,23 +1,23 @@
 {
   "mcpServers": {
     "agent-lab-research": {
-      "command": "/Users/yoonjong/Projects/agent-lab/.venv/bin/python",
+      "command": "$HOME/Projects/agent-lab/.venv/bin/python",
       "args": ["-m", "agent_lab.research_mcp_server"],
       "env": {
-        "QUANT_PIPELINE_ROOT": "/Users/yoonjong/Desktop/pipeline",
-        "AGENTIC_TRADING_DB": "/Users/yoonjong/Documents/New project/data/agentic_trading/control_plane.sqlite3",
-        "AGENT_LAB_SESSION_FOLDER": "/Users/yoonjong/Projects/agent-lab/sessions/REPLACE_WITH_PREMARKET_SESSION",
-        "AGENT_LAB_FRESHNESS_PYTHON": "/Users/yoonjong/Desktop/pipeline/.venv/bin/python"
+        "QUANT_PIPELINE_ROOT": "$HOME/Desktop/pipeline",
+        "AGENTIC_TRADING_DB": "$HOME/Projects/quant-agentic-trading/data/agentic_trading/control_plane.sqlite3",
+        "AGENT_LAB_SESSION_FOLDER": "$HOME/Projects/agent-lab/sessions/REPLACE_WITH_PREMARKET_SESSION",
+        "AGENT_LAB_FRESHNESS_PYTHON": "$HOME/Desktop/pipeline/.venv/bin/python"
       }
     },
     "quant-trading": {
-      "command": "/Users/yoonjong/Projects/agent-lab/.venv/bin/python",
+      "command": "$HOME/Projects/agent-lab/.venv/bin/python",
       "args": ["-m", "quant_pipeline.quant_trading_mcp_server"],
       "env": {
-        "PYTHONPATH": "/Users/yoonjong/Documents/New project/src",
-        "QUANT_PIPELINE_ROOT": "/Users/yoonjong/Desktop/pipeline",
-        "AGENTIC_TRADING_DB": "/Users/yoonjong/Documents/New project/data/agentic_trading/control_plane.sqlite3",
-        "AGENT_LAB_FRESHNESS_PYTHON": "/Users/yoonjong/Desktop/pipeline/.venv/bin/python"
+        "PYTHONPATH": "$HOME/Projects/quant-agentic-trading/src",
+        "QUANT_PIPELINE_ROOT": "$HOME/Desktop/pipeline",
+        "AGENTIC_TRADING_DB": "$HOME/Projects/quant-agentic-trading/data/agentic_trading/control_plane.sqlite3",
+        "AGENT_LAB_FRESHNESS_PYTHON": "$HOME/Desktop/pipeline/.venv/bin/python"
       }
     }
   }

@@ -31,6 +31,7 @@ CUSTOM_WORKSPACE_ID = "custom"
 SESSION_TEMPLATE_IDS = frozenset(
     {"general", "book-layout", "book-content", "trading-mission", "trading-thin", "trading-offline"}
 )
+TRADING_TEMPLATE_IDS = frozenset({"trading-mission", "trading-thin", "trading-offline"})
 WORKSPACE_PRESET_IDS = frozenset(
     {"agent-lab", "quant-pipeline", "lecture-book", CUSTOM_WORKSPACE_ID}
 )
@@ -115,7 +116,7 @@ def resolve_workspace_selection(
     return resolve_workspace_preset(workspace_id)
 
 
-def list_session_templates() -> list[dict[str, Any]]:
+def _all_session_template_defs() -> list[dict[str, Any]]:
     return [
         {
             "id": "general",
@@ -154,6 +155,16 @@ def list_session_templates() -> list[dict[str, Any]]:
             "default_phase": "trading_offline",
         },
     ]
+
+
+def list_session_templates() -> list[dict[str, Any]]:
+    """Workflow templates for session UI (trading templates require quant-pipeline extension)."""
+    templates = _all_session_template_defs()
+    from agent_lab.extensions.quant_trading import quant_pipeline_available
+
+    if quant_pipeline_available():
+        return templates
+    return [t for t in templates if t["id"] not in TRADING_TEMPLATE_IDS]
 
 
 def resolve_session_template(template_id: str | None) -> dict[str, Any]:

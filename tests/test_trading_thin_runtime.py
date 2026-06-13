@@ -15,7 +15,11 @@ from agent_lab.trading_mission.thin_runtime import (
 )
 
 
-def test_trading_thin_template_listed():
+def test_trading_thin_template_listed(monkeypatch):
+    monkeypatch.setattr(
+        "agent_lab.extensions.quant_trading.quant_pipeline_available",
+        lambda: True,
+    )
     ids = [t["id"] for t in list_session_templates()]
     assert "trading-thin" in ids
 

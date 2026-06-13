@@ -77,9 +77,9 @@ verify-trading-v1:
 	.venv/bin/python scripts/verify_trading_mission_v1.py --synthetic --pilot
 
 verify-mcp-contract:
-	PYTHONPATH=$${PYTHONPATH:-$(HOME)/Documents/New project/src} \
+	PYTHONPATH=$${PYTHONPATH:-$(HOME)/Projects/quant-agentic-trading/src} \
 	.venv/bin/python scripts/verify_mcp_contract.py
-	PYTHONPATH=$${PYTHONPATH:-$(HOME)/Documents/New project/src} \
+	PYTHONPATH=$${PYTHONPATH:-$(HOME)/Projects/quant-agentic-trading/src} \
 	.venv/bin/python -m pytest tests/test_mcp_tool_contract.py -q
 
 build-research-cards:
@@ -95,14 +95,14 @@ offline-lane:
 thin-runtime-status:
 	@test -n "$(SESSION)" || (echo "Usage: make thin-runtime-status SESSION=sessions/<id>" && exit 1)
 	AGENT_LAB_SESSION_FOLDER="$(abspath $(SESSION))" \
-	AGENTIC_TRADING_DB=$${AGENTIC_TRADING_DB:-$(HOME)/Documents/New project/data/agentic_trading/control_plane.sqlite3} \
+	AGENTIC_TRADING_DB=$${AGENTIC_TRADING_DB:-$(HOME)/Projects/quant-agentic-trading/data/agentic_trading/control_plane.sqlite3} \
 	.venv/bin/python -m agent_lab.trading_mission.thin_runtime --session "$(abspath $(SESSION))" --db "$$AGENTIC_TRADING_DB"
 
 install-mission-triggers:
 	chmod +x scripts/install_mission_triggers.sh
 	QUANT_PIPELINE_ROOT=$${QUANT_PIPELINE_ROOT:-$(HOME)/Desktop/pipeline} \
-	AGENTIC_TRADING_DB=$${AGENTIC_TRADING_DB:-$(HOME)/Documents/New project/data/agentic_trading/control_plane.sqlite3} \
-	AGENTIC_QUANT_PIPELINE_SRC=$${AGENTIC_QUANT_PIPELINE_SRC:-$(HOME)/Documents/New project/src} \
+	AGENTIC_TRADING_DB=$${AGENTIC_TRADING_DB:-$(HOME)/Projects/quant-agentic-trading/data/agentic_trading/control_plane.sqlite3} \
+	AGENTIC_QUANT_PIPELINE_SRC=$${AGENTIC_QUANT_PIPELINE_SRC:-$(HOME)/Projects/quant-agentic-trading/src} \
 	AGENT_LAB_FRESHNESS_PYTHON=$${AGENT_LAB_FRESHNESS_PYTHON:-$(HOME)/Desktop/pipeline/.venv/bin/python} \
 	./scripts/install_mission_triggers.sh
 

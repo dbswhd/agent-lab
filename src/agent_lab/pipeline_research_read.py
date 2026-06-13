@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from agent_lab.quant_utility_validation import detect_pipeline_root
+from agent_lab.extensions.quant_trading import optional_pipeline_root, require_pipeline_root
 from agent_lab.research_artifact_card import (
     build_card_from_full_json,
     slug_from_full_path,
@@ -23,12 +23,10 @@ def resolve_pipeline_root(explicit: Path | str | None = None) -> Path:
         if not root.is_dir():
             raise FileNotFoundError(f"pipeline root not found: {root}")
         return root
-    root = detect_pipeline_root()
-    if root is None:
-        raise FileNotFoundError(
-            "pipeline root not found — set QUANT_PIPELINE_ROOT or use ~/Desktop/pipeline"
-        )
-    return root.resolve()
+    try:
+        return require_pipeline_root()
+    except FileNotFoundError as exc:
+        raise FileNotFoundError(str(exc)) from exc
 
 
 def default_cards_dir(pipeline: Path | None = None) -> Path:

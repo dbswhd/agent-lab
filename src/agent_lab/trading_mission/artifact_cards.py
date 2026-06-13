@@ -8,7 +8,6 @@ from typing import Any
 
 from agent_lab.pipeline_research_read import (
     compact_card_index,
-    get_strategy_verdict,
     load_all_cached_cards,
     sync_research_cards_if_stale,
 )
@@ -65,38 +64,16 @@ def proposal_uses_fail_ref(
     snapshot: dict[str, Any] | None = None,
 ) -> bool:
     """True when backtest_ref resolves to FAIL / ineligible card."""
+    _ = pipeline
+    from agent_lab.extensions.quant_runtime import load_quant_module
+
+    mod = load_quant_module("quant_pipeline.agentic_trading.confidence")
+    if mod is not None:
+        return mod.proposal_uses_fail_ref(proposal, snapshot=snapshot, pipeline=pipeline)
+
     ref = str(proposal.get("backtest_ref") or "").strip()
     if not ref:
         return False
-
-    root: Path | None = None
-    if pipeline is not None:
-        root = pipeline.resolve()
-    elif snapshot and snapshot.get("pipeline_root"):
-        root = Path(str(snapshot["pipeline_root"])).expanduser().resolve()
-
-    if root is not None:
-        verdict = get_strategy_verdict(ref, pipeline=root)
-        if verdict.get("ok"):
-            if str(verdict.get("verdict") or "").upper() == "FAIL":
-                return True
-            return verdict.get("eligible_for_proposal") is False
-
-    snap = snapshot or {}
-    cards = snap.get("eligible_cards") or []
-    by_ref = {str(c.get("ref") or ""): c for c in cards if isinstance(c, dict)}
-    by_source = {str(c.get("source_file") or ""): c for c in cards if isinstance(c, dict)}
-    card = by_ref.get(ref) or by_source.get(ref)
-    if card is None:
-        for c in cards:
-            if isinstance(c, dict) and (
-                ref in str(c.get("ref") or "") or ref in str(c.get("source_file") or "")
-            ):
-                card = c
-                break
-    if card is not None:
-        return str(card.get("verdict") or "").upper() == "FAIL"
-
     lowered = ref.lower()
     return (
         lowered.endswith("_fail.json")

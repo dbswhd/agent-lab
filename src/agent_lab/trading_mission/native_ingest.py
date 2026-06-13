@@ -19,33 +19,12 @@ def use_native_ingest() -> bool:
     return raw in ("1", "true", "yes", "on")
 
 
+from agent_lab.extensions.quant_trading import optional_agentic_src
+
+
 def resolve_quant_pipeline_src() -> Path | None:
-    """Locate New project `src/` for quant_pipeline imports."""
-    for key in _SRC_ENV_KEYS:
-        raw = (os.getenv(key) or "").strip()
-        if raw:
-            path = Path(raw).expanduser().resolve()
-            if (path / "quant_pipeline").is_dir():
-                return path
-
-    home = Path.home()
-    candidates = (
-        home / "Documents/New project/src",
-        home / "Projects/quant-pipeline/src",
-    )
-    pipeline_root = (os.getenv("QUANT_PIPELINE_ROOT") or "").strip()
-    if pipeline_root:
-        root = Path(pipeline_root).expanduser().resolve()
-        candidates = (
-            root.parent / "New project/src",
-            root / "src",
-            *candidates,
-        )
-
-    for path in candidates:
-        if (path / "quant_pipeline").is_dir():
-            return path.resolve()
-    return None
+    """Locate quant-agentic-trading `src/` for quant_pipeline imports (extension only)."""
+    return optional_agentic_src()
 
 
 def _normalize_native_report(report: dict[str, Any]) -> dict[str, Any]:

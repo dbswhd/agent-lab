@@ -28,20 +28,9 @@ _AGENT_LAB_ROOT = Path(__file__).resolve().parents[2]
 
 
 def detect_pipeline_root() -> Path | None:
-    candidates: list[Path] = []
-    env = os.getenv("QUANT_PIPELINE_ROOT", "").strip()
-    if env:
-        candidates.append(Path(env).expanduser())
-    candidates.extend(
-        [
-            Path.home() / "Projects" / "quant-pipeline",
-            Path.home() / "Desktop" / "pipeline",
-        ]
-    )
-    for path in candidates:
-        if path.is_dir():
-            return path.resolve()
-    return None
+    from agent_lab.extensions.quant_trading import optional_pipeline_root
+
+    return optional_pipeline_root()
 
 
 @dataclass

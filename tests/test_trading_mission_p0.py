@@ -20,7 +20,11 @@ from agent_lab.session_setup import (
 from agent_lab.agents.prompts import room_scribe_prompt
 
 
-def test_trading_mission_template_listed():
+def test_trading_mission_template_listed(monkeypatch):
+    monkeypatch.setattr(
+        "agent_lab.extensions.quant_trading.quant_pipeline_available",
+        lambda: True,
+    )
     ids = [t["id"] for t in list_session_templates()]
     assert "trading-mission" in ids
 

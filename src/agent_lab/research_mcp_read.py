@@ -8,7 +8,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from agent_lab.quant_utility_validation import detect_pipeline_root
+from agent_lab.extensions.quant_trading import optional_pipeline_root
 
 _PLAYBOOK_HEADER = re.compile(r"오늘\s*장중\s*행동", re.IGNORECASE)
 _THESIS_MAX = 120
@@ -31,7 +31,7 @@ def _playbook_candidates(session_folder: Path | None) -> list[Path]:
         patch = session_folder / "artifacts" / "playbook_patch.md"
         if patch.is_file():
             paths.append(patch)
-    pipeline = detect_pipeline_root()
+    pipeline = optional_pipeline_root()
     if pipeline is not None:
         paths.append(pipeline / "data" / "agentic" / "playbook.md")
     lab_root = (os.getenv("AGENT_LAB_ROOT") or "").strip()

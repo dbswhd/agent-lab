@@ -10,10 +10,15 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from agent_lab.pipeline_research_read import resolve_pipeline_root
+from agent_lab.extensions.quant_runtime import load_quant_module
+from agent_lab.extensions.quant_trading import extension_unavailable, optional_pipeline_root
 
 _QUOTE_FIELD_CAP = 10
 _FRESHNESS_ROW_CAP = 8
+
+
+def _market_read():
+    return load_quant_module("quant_pipeline.agentic_trading.market_read")
 
 # Mock-first KR ETF quotes (v1 dev / no KIS keys).
 _MOCK_QUOTES_KR: dict[str, dict[str, Any]] = {
@@ -196,8 +201,16 @@ def get_quote(
     pipeline: Path | None = None,
 ) -> dict[str, Any]:
     """Compact quote read (mock-first; optional KIS via AGENT_LAB_QUOTE_MODE=kis)."""
-    root = pipeline or resolve_pipeline_root()
     mode = _quote_mode()
+    if mode == "mock":
+        return _quote_mock(symbol, market)
+    root = pipeline or optional_pipeline_root()
+    if root is None:
+        return extension_unavailable(
+            "quant_pipeline",
+            "quote in kis/pipeline mode requires QUANT_PIPELINE_ROOT",
+            extra={"symbol": symbol, "market": market},
+        )
     if mode == "kis":
         return _quote_via_kis(root, symbol, market)
     return _quote_mock(symbol, market)
@@ -205,7 +218,18 @@ def get_quote(
 
 def run_data_freshness(pipeline: Path | None = None) -> dict[str, Any]:
     """Run quant_control_freshness.py and return structured freshness block."""
-    root = pipeline or resolve_pipeline_root()
+    root = pipeline or optional_pipeline_root()
+    qm = _market_read()
+    if root is not None and qm is not None:
+        return qm.run_data_freshness(root)
+    if root is None:
+        return {
+            "blocking": True,
+            "ok": False,
+            "message": "quant-pipeline extension not configured (QUANT_PIPELINE_ROOT)",
+            "rows": [],
+            "extension": "quant_pipeline",
+        }
     script = root / "scripts" / "spec91" / "quant_control_freshness.py"
     if not script.is_file():
         return {
@@ -266,18 +290,24 @@ def run_data_freshness(pipeline: Path | None = None) -> dict[str, Any]:
 
 def get_data_freshness(*, pipeline: Path | None = None) -> dict[str, Any]:
     """MCP-friendly freshness summary."""
-    root = pipeline or resolve_pipeline_root()
+    root = pipeline or optional_pipeline_root()
+    if root is None:
+        return extension_unavailable(
+            "quant_pipeline",
+            "freshness requires QUANT_PIPELINE_ROOT",
+        )
     block = run_data_freshness(root)
     return {"ok": True, "pipeline_root": str(root), "freshness": block}
 
 
 def read_portfolio_snapshot(pipeline: Path | None = None) -> dict[str, Any]:
     """Mock-first portfolio JSON used by RiskEngine preflight."""
-    root = pipeline or resolve_pipeline_root()
-    mock_path = root / "data" / "agentic_trading" / "mock_portfolio.json"
-    mock = _read_json(mock_path)
-    if mock:
-        return mock
+    root = pipeline or optional_pipeline_root()
+    if root is not None:
+        mock_path = root / "data" / "agentic_trading" / "mock_portfolio.json"
+        mock = _read_json(mock_path)
+        if mock:
+            return mock
     return {
         "source": "mock_default",
         "cash": 1_000_000.0,
@@ -288,22 +318,39 @@ def read_portfolio_snapshot(pipeline: Path | None = None) -> dict[str, Any]:
 
 def get_portfolio_snapshot(*, pipeline: Path | None = None) -> dict[str, Any]:
     """Compact portfolio for MCP (cash, equity, positions only)."""
-    root = pipeline or resolve_pipeline_root()
+    root = pipeline or optional_pipeline_root()
     raw = read_portfolio_snapshot(root)
     positions = raw.get("positions") if isinstance(raw.get("positions"), dict) else {}
-    return {
+    payload: dict[str, Any] = {
         "ok": True,
-        "pipeline_root": str(root),
         "source": str(raw.get("source") or "mock"),
         "cash": float(raw.get("cash") or 0),
         "equity": float(raw.get("equity") or 0),
         "positions": positions,
         "position_count": len(positions),
     }
+    if root is not None:
+        payload["pipeline_root"] = str(root)
+    else:
+        payload["extension"] = "quant_pipeline"
+        payload["pipeline_root"] = None
+    return payload
 
 
 def read_overlay_signals(pipeline: Path | None = None) -> dict[str, Any]:
-    root = pipeline or resolve_pipeline_root()
+    root = pipeline or optional_pipeline_root()
+    qm = _market_read()
+    if root is not None and qm is not None:
+        return qm.read_overlay_signals(root)
+    if root is None:
+        return {
+            "kr_kospi_v1": {
+                "position": "unknown",
+                "action": "none",
+                "flag": None,
+                "recent_actions": [],
+            }
+        }
     state_path = root / "data" / "kr_kospi_v1" / "holdings_state.json"
     log_path = root / "logs" / "kr_kospi_v1" / "action_log.jsonl"
     flag_path = root / "logs" / "kr_kospi_v1" / "ACTION_REQUIRED.flag"
@@ -321,12 +368,25 @@ def read_overlay_signals(pipeline: Path | None = None) -> dict[str, Any]:
 
 
 def get_overlay_signals(*, pipeline: Path | None = None) -> dict[str, Any]:
-    root = pipeline or resolve_pipeline_root()
+    root = pipeline or optional_pipeline_root()
+    if root is None:
+        return extension_unavailable(
+            "quant_pipeline",
+            "overlay signals require QUANT_PIPELINE_ROOT",
+        )
+    qm = _market_read()
+    if qm is not None:
+        return qm.get_overlay_signals(pipeline=root)
     return {"ok": True, "pipeline_root": str(root), "overlay_signals": read_overlay_signals(root)}
 
 
 def read_kill_switch(pipeline: Path | None = None) -> bool:
-    root = pipeline or resolve_pipeline_root()
+    root = pipeline or optional_pipeline_root()
+    qm = _market_read()
+    if root is not None and qm is not None:
+        return qm.read_kill_switch(root)
+    if root is None:
+        return False
     flags = [
         root / "logs" / "kr_overlay" / "EMERGENCY_STOP",
         root / "logs" / "kr_kospi_v1" / "EMERGENCY_STOP",

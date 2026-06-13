@@ -56,9 +56,10 @@ def default_config_dict() -> dict[str, Any]:
     home = Path.home()
     paths: dict[str, str] = {}
     for candidate, key in (
+        (home / "Projects" / "agent-lab", "agent_lab"),
         (home / "Desktop" / "pipeline", "quant_pipeline"),
         (home / "Projects" / "quant-pipeline", "quant_pipeline"),
-        (home / "Projects" / "agent-lab", "agent_lab"),
+        (home / "Projects" / "quant-agentic-trading", "agentic_trading"),
     ):
         if candidate.is_dir() and key not in paths:
             paths[key] = str(candidate.resolve())
@@ -81,7 +82,9 @@ def write_default_config(path: Path | None = None) -> Path:
         "[paths]",
     ]
     if data["paths"].get("quant_pipeline"):
-        lines.append(f'quant_pipeline = "{data["paths"]["quant_pipeline"]}"')
+        lines.append(f'# quant_pipeline = "{data["paths"]["quant_pipeline"]}"  # optional extension')
+    if data["paths"].get("agentic_trading"):
+        lines.append(f'# agentic_trading = "{data["paths"]["agentic_trading"]}"  # optional extension')
     if data["paths"].get("agent_lab"):
         lines.append(f'# agent_lab = "{data["paths"]["agent_lab"]}"')
     lines.extend(
@@ -152,6 +155,12 @@ def apply_config_env(cfg: dict[str, Any] | None = None) -> dict[str, Any]:
             qp = _expand_path(str(paths.get("quant_pipeline") or ""))
             if qp is not None:
                 os.environ["QUANT_PIPELINE_ROOT"] = str(qp)
+        if not os.getenv("AGENTIC_QUANT_PIPELINE_SRC"):
+            at = _expand_path(str(paths.get("agentic_trading") or ""))
+            if at is not None:
+                src = at / "src"
+                if src.is_dir():
+                    os.environ["AGENTIC_QUANT_PIPELINE_SRC"] = str(src.resolve())
         if not os.getenv("AGENT_LAB_ROOT"):
             lab = _expand_path(str(paths.get("agent_lab") or ""))
             if lab is not None:

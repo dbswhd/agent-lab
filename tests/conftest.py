@@ -14,6 +14,14 @@ if str(_ROOT) not in sys.path:
 if str(_TESTS) not in sys.path:
     sys.path.insert(0, str(_TESTS))
 
+for _qat_src in (
+    Path.home() / "Projects" / "quant-agentic-trading" / "src",
+    Path.home() / "Documents" / "New project" / "src",
+):
+    if _qat_src.is_dir() and str(_qat_src) not in sys.path:
+        sys.path.insert(0, str(_qat_src.resolve()))
+        break
+
 
 @pytest.fixture(autouse=True)
 def _mock_goal_oracle_by_default(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -52,8 +52,9 @@ def test_mcp_servers_do_not_overlap_exclusive_tools() -> None:
         assert payload["ok"] is True
         research = set(payload["servers"]["agent-lab-research"]["tools"])
         trading = set(payload["servers"]["quant-trading"]["tools"])
-        assert "ingest_proposal_batch" in trading
-        assert "ingest_proposal_batch" not in research
+        assert "ingest_proposal_batch" not in trading
+        assert "ingest_trading_session" not in trading
+        assert "create_trade_proposal" in trading
         assert "get_playbook" in research
         assert "get_playbook" not in trading
 

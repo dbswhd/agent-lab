@@ -1,6 +1,7 @@
 # UI IA 로드맵 — 폐기 · 미구현 · 배치
 
 > **Tier 3 (target IA)** — roadmap only. **Shipped backend/UI contracts:** [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md) · [docs/README.md](./README.md)
+> **Productization SSOT:** [CONSOLE-PRODUCTIZATION.md](CONSOLE-PRODUCTIZATION.md). This file owns detailed UI migration gaps; phase numbering for the broader program lives in Console Productization.
 
 > **기준 시점:** 2026-06-10, `web/src` 새 디자인 셸(`.app` / `.shell` / `.pane`) + dual-class bridge  
 > **Shipped since 2026-06-07:** Inspector **Overview / Tasks / Inbox**, `ContextOverviewPanel`, `GET/PATCH …/context-layers` (see [UI-MIGRATION-GAPS.md](UI-MIGRATION-GAPS.md) §1).
@@ -39,13 +40,13 @@
 
 | 대상 | 이유 | 제거 조건 |
 |------|------|-----------|
-| `web/src/styles/app.css` 및 `@import` 체인 (`developer-console.css`, `content-surfaces.css`, `macos26.css`, `workspace-shell.css`, `chrome.css`) | `main.tsx`에서 **미로드**. `satellites.css` + `legacy-bridge.css`로 대체됨 | satellites에 필요 규칙 이전 완료 후 **파일 삭제** |
+| ~~`web/src/styles/app.css`~~, ~~`developer-console.css`~~, ~~`satellites.css`~~, ~~`layout-extensions.css`~~, ~~`content-surfaces.css`~~, ~~`workspace-shell.css`~~, ~~`chrome.css`~~ **(삭제 완료)** · `macos26.css` | `main.tsx`에서 **미로드**. Figma reference only (`web/src/figma/`) | orphan CSS 삭제 완료; `macos26.css`는 import 없이 figma 매핑 참조용 유지 |
 | `ChatToolbar.tsx` | 단일 `MacTitlebar` + `TitlebarSlotsContext`로 대체. **RunPanel·SessionViewer만** 아직 사용 | classic 모드 폐기 또는 titlebar 슬롯으로 이전 후 삭제 |
 | `App.tsx` `mode: "classic"` 분기 | Room 워크플로가 기본·유일 목표 | `RunPanel` / `SessionViewer` 흡수 또는 Settings Legacy로 격리 후 `mode` state 삭제 |
 | Rail footer **「…」 classic 토글** (`icon-btn` 세 번째) | 프로토타입에 없음, IA 분기 증가 | classic 제거와 동시 |
 | Dual-class bridge (예: `taskbar room-task-bar`, `context-sidebar inspector-pane`) | canonical rename 완료 후 **한 벌만** 유지 | §2 cosmetic rename 완료 후 `legacy-bridge.css` 삭제 |
-| `layout-extensions.css` | `layout.css`에 병합 가능한 파편 | 병합 후 파일 삭제 |
-| `satellites.css` | 위성 컴포넌트가 canonical CSS로 옮겨지면 | §3 구현 + §2 rename 후 단계적 삭제 |
+| ~~`layout-extensions.css`~~ | `layout.css`에 병합 완료 |
+| ~~`satellites.css`~~ | 위성 규칙 `layout.css` / `overlays.css`로 이전 완료 |
 
 ### 1.2 프로토타입 전용 — 제품에 넣지 않음
 
@@ -213,10 +214,11 @@
 ## 6. 검증 체크리스트 (IA 완료 정의)
 
 - [x] Inspector 3탭: Overview / Tasks / Inbox — 프로토타입 `ContextSidebar`와 동일 라벨
-- [ ] RoomTaskBar가 Transcript·Work **본문 sticky**에만 존재 (Inspector Tasks에 full duplicate 없음)
+- [x] RoomTaskBar가 Transcript·Work **본문 sticky**에만 존재 (Inspector Tasks는 jump 가능한 요약 queue만 유지)
+- [x] Inbox가 단일 피드 + segment (`All | Activity | Questions | Build`)로 Human Inbox와 Activity를 흡수
 - [ ] ⌘N → New Session modal (또는 명시적 product decision 문서화)
 - [x] Classic / `RunPanel` / `SessionViewer` / `mode` state **없음**
-- [ ] `main.tsx` CSS import 6개 이하: tokens, base, layout, surfaces, plan-execute (+ 선택 satellites 0)
+- [x] `main.tsx` CSS import 8개: tokens, base, layout, surfaces, plan-execute, overlays, tweaks, prototype-panels (orphan `app.css` 체인 0)
 - [ ] `03-BEHAVIOR-CONTRACT.md` 체크리스트 전항목 통과
 
 ---

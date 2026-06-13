@@ -26,7 +26,7 @@ def test_room_task_bar_and_banners_have_accessible_names():
 
 
 def test_room_task_bar_has_tauri_minimum_width_layout():
-    css = _read("web/src/styles/app.css")
+    css = _read("web/src/styles/layout.css")
 
     assert "@media (max-width: 1000px)" in css
     assert ".room-task-bar__lead-select,\n  .room-task-bar__meta" in css

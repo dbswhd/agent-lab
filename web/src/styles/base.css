@@ -415,6 +415,10 @@ textarea {
   background: var(--accent-soft);
   color: var(--accent);
 }
+.badge--neutral {
+  background: var(--surface-sunken);
+  color: var(--label-secondary);
+}
 
 .kbd {
   display: inline-flex;

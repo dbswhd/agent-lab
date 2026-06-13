@@ -76,7 +76,7 @@ inspectorTab =
 - **Solid**: transcript, plan, review, run 본문, composer
 - **Glass (chrome only)**: titlebar, rail, inspector chrome, popover
 
-토큰: `web/src/styles/developer-console.css`, `workspace-shell.css`
+토큰: `web/src/styles/tokens.css` (구 `developer-console.css` / `app.css` import 체인은 삭제됨)
 
 ## 코드 맵
 

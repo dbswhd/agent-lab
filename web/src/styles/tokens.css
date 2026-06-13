@@ -12,6 +12,8 @@
   --surface-pane: #fbfbfa;       /* main workspace                  */
   --surface-card: #ffffff;       /* raised cards, composer capsule  */
   --surface-sunken: #eeeeec;     /* wells, code, inputs             */
+  --surface-inset: var(--surface-sunken); /* legacy alias */
+  --surface-canvas: var(--surface-pane);  /* viewer / canvas wells */
   --surface-hover: rgba(20, 20, 19, 0.045);
   --surface-active: rgba(20, 20, 19, 0.075);
   --surface-scrim: rgba(22, 22, 21, 0.42);
@@ -39,6 +41,7 @@
 
   /* ---- System semantic colors ----------------------------- */
   --ok: #1f9d57;
+  --success: var(--ok); /* legacy alias used by plan-execute / tweaks */
   --ok-soft: rgba(31, 157, 87, 0.13);
   --warn: #c47a16;
   --warn-soft: rgba(196, 122, 22, 0.14);
@@ -57,19 +60,21 @@
   --agent-you-soft: rgba(108, 114, 123, 0.12);
 
   /* ---- Spacing scale -------------------------------------- */
+  /* Tiny gaps (2–8) unchanged; mid/large steps tightened ~15% so the layout
+     reads denser without collapsing any step (all values stay distinct). */
   --space-2: 2px;
   --space-3: 3px;
   --space-4: 4px;
   --space-6: 6px;
   --space-8: 8px;
-  --space-10: 10px;
-  --space-12: 12px;
-  --space-14: 14px;
-  --space-16: 16px;
-  --space-20: 20px;
-  --space-24: 24px;
-  --space-32: 32px;
-  --space-40: 40px;
+  --space-10: 9px;
+  --space-12: 10px;
+  --space-14: 12px;
+  --space-16: 14px;
+  --space-20: 17px;
+  --space-24: 20px;
+  --space-32: 27px;
+  --space-40: 33px;
 
   /* ---- Radii ---------------------------------------------- */
   --radius-xs: 5px;
@@ -85,14 +90,17 @@
   --font-mono: "SF Mono", ui-monospace, "JetBrains Mono", "Menlo",
     "Cascadia Code", monospace;
 
-  --text-micro: 11px;
-  --text-caption: 12px;
-  --text-footnote: 13px;
-  --text-body: 14px;
-  --text-callout: 15px;
-  --text-title3: 17px;
-  --text-title2: 20px;
-  --text-title1: 26px;
+  /* Compact base scale — shifted ~1px down from the original 11–26px ramp
+     so the UI reads denser (closer to the Files panel) while keeping all
+     8 steps distinct (hierarchy + variety unchanged). */
+  --text-micro: 10px;
+  --text-caption: 11px;
+  --text-footnote: 12px;
+  --text-body: 13px;
+  --text-callout: 14px;
+  --text-title3: 15px;
+  --text-title2: 18px;
+  --text-title1: 24px;
 
   --weight-regular: 400;
   --weight-medium: 500;
@@ -100,10 +108,11 @@
   --weight-bold: 680;
 
   --leading-tight: 1.28;
-  --leading-snug: 1.42;
-  --leading-body: 1.6;
+  --leading-snug: 1.4;
+  --leading-body: 1.5;
 
   /* ---- Effects -------------------------------------------- */
+  --shadow-hair: 0 1px 0 rgba(28, 27, 22, 0.06);
   --shadow-1: 0 1px 2px rgba(28, 27, 22, 0.06),
     0 1px 1px rgba(28, 27, 22, 0.04);
   --shadow-2: 0 4px 14px rgba(28, 27, 22, 0.09),

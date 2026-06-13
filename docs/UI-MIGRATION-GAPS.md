@@ -15,17 +15,16 @@
 
 | 영역 | 상태 |
 |------|------|
-| CSS 스택 | `tokens → base → layout (+ merged plan bridge) → surfaces → plan-execute → overlays → tweaks → prototype-panels` |
+| CSS 스택 | `tokens → base → layout → surfaces → plan-execute → overlays → tweaks → prototype-panels` |
 | App 셸 | `.app` / `.shell` / `.pane` / `.rail__*` + 단일 `MacTitlebar` (`TitlebarSlotsContext`) |
 | 리프 컴포넌트 | Avatar, SessionRail, SessionList, ChatComposer, WorkspaceTabBar, PlanActionCard 등 |
-| Settings | `settings-section*` dual-class + `layout-extensions.css` |
+| Settings | `settings-section*` + rules in `layout.css` |
 | Inspector | `context-sidebar` + `ctx-tabs` — **Overview / Tasks / Inbox** (`ContextOverviewPanel`, `InspectorPane`) |
 | Context Overview | goal · plan · context layers · team health — `ContextOverviewPanel.tsx` |
 | Context layers | `GET/PATCH …/context-layers` + Overview `patchContextLayers` toggle |
 | Taskbar | `taskbar` + `room-task-bar` dual-class root |
 | Plan execute | `work-surface` + `plan-execute-panel` dual-class root |
 | Transcript | `turn` + `chat-turn` dual-class |
-| 위성 UI CSS | `satellites.css` (구 `app.css` 스택에서 추출) |
 
 ---
 
@@ -55,7 +54,7 @@
 
 ### 2.3 생산 전용 UI (프로토타입에 없음 — 디자인 미적용)
 
-아래는 **로직은 동작**하나 프로토타입 HTML/CSS에 **1:1 마크업이 없어** `satellites.css` + legacy 클래스로 스타일링:
+아래는 **로직은 동작**하나 프로토타입 HTML/CSS에 **1:1 마크업이 없어** `layout.css` / `overlays.css` + legacy 클래스로 스타일링:
 
 - `WorkPanel` / `WorkStatusBar` / `PlanTabToolbar` / `PlanMetaBar`
 - `ExecuteQueueBar` / `ConsensusDryRunGateBar`

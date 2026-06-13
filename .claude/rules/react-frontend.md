@@ -13,7 +13,7 @@ paths:
 
 ## 컴포넌트 & 스타일
 - 새 UI: `web/src/components/` (기존 PascalCase 패턴)
-- 스타일: `web/src/styles/app.css` 클래스 (Tailwind/styled-components 금지)
+- 스타일: `web/src/styles/` 클래스 (`main.tsx` 로드 순서 기준; Tailwind/styled-components 금지)
 - 상태: React state + context (Redux/Zustand 금지)
 
 ## 타입

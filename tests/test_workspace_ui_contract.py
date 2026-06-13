@@ -65,43 +65,17 @@ def test_transcript_uses_console_presentation():
     assert 'presentation="console"' in room
     bubble = _read("web", "src", "components", "ChatBubble.tsx")
     assert 'presentation?: "console" | "messenger"' in bubble
-    css = _read("web", "src", "styles", "developer-console.css")
-    assert ".workspace-transcript-panel .chat-turn" in css
-    assert "--console-bg" in css
-
-
-def test_transcript_is_readable_document_stream_not_cards():
-    css = _read("web", "src", "styles", "developer-console.css")
-
-    assert "width: var(--composer-cluster-width);" in css
-    assert "max-width: calc(100% - 2 * var(--composer-pad-x));" in css
-    assert "margin-left: auto;" in css
-    assert "margin-right: auto;" in css
-    assert "/* Workspace content surfaces — inspector-like, not floating cards */" in css
-    assert "max-width: 76ch;" in css
-    assert ".workspace-transcript-panel .chat-turn__body" in css
-    assert "font-size: 14px;" in css
-    assert "line-height: 1.7;" in css
 
 
 def test_transcript_agent_rows_use_role_cards_with_initial_avatars():
-    css = _read("web", "src", "styles", "developer-console.css")
     bubble = _read("web", "src", "components", "ChatBubble.tsx")
     chrome = _read("web", "src", "components", "TranscriptMessageChrome.tsx")
 
-    assert "--transcript-role-tint" in css
-    assert "border-left: 4px solid var(--transcript-role-color);" in css
-    assert ".workspace-transcript-panel .chat-turn__head" in css
-    assert "background: var(--transcript-role-tint);" in css
     assert "TranscriptIdentity" in bubble
     assert "TranscriptAuthorLine" in bubble
     assert "transcript-identity" in chrome
     assert "transcriptInitial" in chrome
     assert "transcript-author-line" in chrome
-    assert "grid-template-columns:" in css
-    assert ".workspace-transcript-panel .chat-turn--cursor" in css
-    assert ".workspace-transcript-panel .chat-turn--codex" in css
-    assert ".workspace-transcript-panel .chat-turn--claude" in css
 
 
 def test_human_transcript_message_is_right_aligned_without_label_chrome():
@@ -129,7 +103,7 @@ def test_agent_waiting_state_shows_activity_log_and_dots():
 def test_transcript_has_review_aware_inline_markers():
     bubble = _read("web", "src", "components", "ChatBubble.tsx")
     chrome = _read("web", "src", "components", "TranscriptMessageChrome.tsx")
-    css = _read("web", "src", "styles", "developer-console.css")
+    css = _read("web", "src", "styles", "layout.css")
 
     assert "TranscriptMarkerStrip" in bubble
     assert "transcript-marker-strip" in chrome
@@ -147,27 +121,6 @@ def test_developer_console_doc_is_source_of_truth():
     deprecated = _read("docs", "02-ui-ux-handoff.md")
     lowered = deprecated.lower()
     assert "deprecated" in lowered or "legacy" in lowered
-
-
-def test_workspace_visual_hierarchy_tokens_are_defined():
-    css = _read("web", "src", "styles", "developer-console.css")
-
-    for token in (
-        "--console-canvas",
-        "--console-panel",
-        "--console-panel-elevated",
-        "--console-border-strong",
-        "--console-active",
-        "--console-review",
-        "--console-review-bg",
-        "--console-run",
-        "--console-shadow-soft",
-    ):
-        assert token in css
-
-    assert "--surface-base: var(--console-canvas);" in css
-    assert "--surface-raised: var(--console-panel);" in css
-    assert "--surface-overlay: var(--console-panel-elevated);" in css
 
 
 def test_workspace_tabs_do_not_render_inline_status_badges():
@@ -216,89 +169,6 @@ def test_workspace_panels_have_distinct_document_wrappers():
     assert "RunLogPanel" in room
     assert "ArtifactsListPanel" in room
     assert ".transcript--console" in surfaces
-
-
-def test_workspace_content_panels_use_full_inset_surface_not_small_cards():
-    css = _read("web", "src", "styles", "developer-console.css")
-    normalized_css = " ".join(css.split())
-
-    for selector in (
-        ".messages-scroll.workspace-panel--transcript > .workspace-transcript-panel",
-        ".messages-scroll.workspace-panel--work > .work-panel",
-        ".messages-scroll.workspace-panel--run > .workspace-document-panel",
-        ".messages-scroll.workspace-panel--artifacts > .workspace-document-panel",
-    ):
-        assert selector in normalized_css
-
-    full_surface_block = css.split(
-        "/* Workspace content surfaces — inspector-like, not floating cards */"
-    )[1].split("/* Work / Artifacts — composer-aligned column on full-width inset surface */")[0]
-    assert (
-        ".messages-scroll.workspace-panel--transcript\n  > .workspace-transcript-panel"
-        in css
-    )
-    assert (
-        ".messages-scroll.workspace-panel--run\n  > .workspace-document-panel"
-        in css
-    )
-    for declaration in (
-        "width: 100%;",
-        "max-width: none;",
-        "margin: 0;",
-        "border: none;",
-        "border-radius: 0;",
-        "background: transparent;",
-        "box-shadow: none;",
-    ):
-        assert declaration in full_surface_block
-
-    cluster_block = css.split(
-        "/* Work / Artifacts — composer-aligned column on full-width inset surface */"
-    )[1].split("/* Workspace content inner cards */")[0]
-    normalized_cluster = " ".join(cluster_block.split())
-    for selector in (
-        ".messages-scroll.workspace-panel--work > .work-panel",
-        ".messages-scroll.workspace-panel--work > .workspace-empty-state",
-        ".messages-scroll.workspace-panel--artifacts > .workspace-document-panel",
-    ):
-        assert selector in normalized_cluster
-    for declaration in (
-        "width: var(--composer-cluster-width);",
-        "max-width: calc(100% - 2 * var(--composer-pad-x));",
-        "margin-left: auto;",
-        "margin-right: auto;",
-        "background: transparent;",
-        "box-shadow: none;",
-    ):
-        assert declaration in cluster_block
-
-    composer_fade_block = css.split(
-        ".mac-app.mac-app--developer-console .chat-pane-body > .composer::before"
-    )[1].split("}")[0]
-    assert "backdrop-filter: none;" in composer_fade_block
-    assert "var(--console-bg-inset)" in composer_fade_block
-
-
-def test_workspace_tab_bar_blends_with_console_surface_not_segmented_card():
-    css = _read("web", "src", "styles", "developer-console.css")
-
-    assert "/* Workspace tab rail — flat console navigation */" in css
-
-    tab_bar_block = css.split(
-        "/* Workspace tab rail — flat console navigation */"
-    )[1].split("/* Workspace content surfaces — inspector-like, not floating cards */")[0]
-    for declaration in (
-        "background: var(--console-panel);",
-        "border-bottom: 0.5px solid var(--console-border-strong);",
-        "box-shadow: none;",
-    ):
-        assert declaration in tab_bar_block
-
-    assert ".workspace-tab-bar__seg.mac-segmented" in tab_bar_block
-    assert "background: transparent;" in tab_bar_block
-    assert "border: none;" in tab_bar_block
-    assert ".workspace-tab-bar__seg button.active" in tab_bar_block
-    assert "var(--mac-content-bg)" not in tab_bar_block
 
 
 def test_inspector_matches_prototype_context_sidebar_body():
@@ -376,14 +246,13 @@ def test_settings_page_and_work_ia_docs():
 
 
 def test_developer_console_blur_is_limited_to_titlebar_and_popovers():
-    chrome = _read("web", "src", "styles", "chrome.css")
+    overlays = _read("web", "src", "styles", "overlays.css")
+    layout = _read("web", "src", "styles", "layout.css")
 
-    assert ".mac-titlebar" in chrome
-    assert ".mac-context-menu" in chrome
-    assert ".command-palette" in chrome
-    assert ".view-options-popover" in chrome
+    assert "backdrop-filter" in overlays
+    assert ".cmd-palette-backdrop" in overlays or ".cmd-palette" in overlays
+    assert ".ctx-menu" in overlays or ".ctx-menu" in layout
 
-    assert ".session-rail::after" not in chrome
-    assert ".chat-list-pane::after" not in chrome
-    assert ".inspector-pane" not in chrome
-    assert ".context-sidebar" not in chrome
+    assert ".session-rail::after" not in layout
+    assert ".chat-list-pane::after" not in layout
+    assert ".context-sidebar::after" not in layout

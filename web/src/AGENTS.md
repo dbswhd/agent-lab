@@ -7,7 +7,7 @@
 
 ## 컴포넌트·스타일
 - 새 컴포넌트: `web/src/components/` PascalCase
-- 스타일: `web/src/styles/app.css` 기존 클래스 사용 (Tailwind/styled-components 금지)
+- 스타일: `web/src/styles/` — `main.tsx` import 순서: tokens → base → layout → surfaces → plan-execute → overlays → tweaks → prototype-panels (Tailwind/styled-components 금지)
 - 상태: React state + context (Redux/Zustand 금지)
 
 ## 타입

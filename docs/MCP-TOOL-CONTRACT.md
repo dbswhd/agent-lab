@@ -1,6 +1,8 @@
 # MCP tool contract — agentic trading
 
 두 MCP 서버의 **허용 read 도구**, **단일 write 도구**, **금지 execute/full-json** 경계를 코드로 고정합니다.
+거래 control-plane v1 의미론의 canonical source는 quant-agentic-trading
+`docs/agentic-trading-v1-spec.md`입니다.
 
 ## 서버 분리
 
@@ -50,7 +52,9 @@ PYTHONPATH=src python -m quant_pipeline.agentic_trading.ingest_cli ...
 - `read_notebook`, `read_full_backtest_json`, `read_full_json`, `read_ipynb`
 - `ingest_proposal_batch`, `ingest_trading_session` (quant MCP write surface에 포함 금지)
 
-Human console / Quant Control UI만 승인·실행.
+v1 live 실행은 Human console / Quant Control UI 승인만 허용합니다. paper/mock
+자동 실행은 quant-agentic-trading v1 spec의 `paper_auto_eligible()` 조건을
+통과한 경우에만 허용됩니다.
 
 ## 검증
 

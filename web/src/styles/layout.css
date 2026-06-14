@@ -421,11 +421,14 @@
   border-radius: 12px;
   background: color-mix(in srgb, var(--surface-card) 96%, transparent);
   box-shadow: var(--shadow-2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .workbench-mode-menu__item {
   width: 100%;
-  height: 34px;
+  height: 30px;
   display: grid;
   grid-template-columns: 24px minmax(0, 1fr) auto;
   align-items: center;
@@ -442,10 +445,10 @@
 }
 
 .workbench-mode-menu__item.has-separator {
-  margin-top: var(--space-8);
+  margin-top: var(--space-6);
   border-top: 1px solid var(--border-hair);
-  padding-top: var(--space-8);
-  height: 42px;
+  padding-top: var(--space-6);
+  height: 36px;
 }
 
 .workbench-mode-menu__item svg {

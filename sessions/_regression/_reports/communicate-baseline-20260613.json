@@ -1,0 +1,313 @@
+{
+  "ts": "2026-06-13T07:17:24.563290+00:00",
+  "session_count": 38,
+  "avg_agent_chars": 4.321052631578947,
+  "total_legacy_endorse": 0,
+  "total_parse_errors": 0,
+  "sessions": [
+    {
+      "session": "adversarial_gate_lgtm",
+      "turn_count": 1,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "bridge_degraded_health",
+      "turn_count": 1,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "category_escalation_quick_to_deep",
+      "turn_count": 1,
+      "avg_agent_chars": 27.6,
+      "median_guidance_chars": 460,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "challenge_revises_metric",
+      "turn_count": 0,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "discuss",
+      "turn_count": 1,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "discuss_challenge_resolved",
+      "turn_count": 1,
+      "avg_agent_chars": 39.4,
+      "median_guidance_chars": 480,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "dispatch_parallel_explore",
+      "turn_count": 1,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "durable_completed_steps",
+      "turn_count": 1,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "emergence_hybrid_plan",
+      "turn_count": 1,
+      "avg_agent_chars": 32.6,
+      "median_guidance_chars": 480,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "envelope_consensus_endorse",
+      "turn_count": 1,
+      "avg_agent_chars": 26.0,
+      "median_guidance_chars": 420,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "evidence_gates_merged_ok",
+      "turn_count": 1,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "evidence_ledger_stream",
+      "turn_count": 1,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "execute_verify_loop",
+      "turn_count": 1,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "external_handoff_attached",
+      "turn_count": 1,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "goal_loop_achieved",
+      "turn_count": 1,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "mailbox_handoff",
+      "turn_count": 1,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "merge_conflict",
+      "turn_count": 1,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "mission_loop_circuit_breaker",
+      "turn_count": 1,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "mission_loop_discuss_recovery",
+      "turn_count": 1,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "mission_loop_dogfood_ok",
+      "turn_count": 1,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "mission_loop_execute_queue",
+      "turn_count": 1,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "mission_loop_paused",
+      "turn_count": 1,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "mission_loop_plan_reject",
+      "turn_count": 1,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "mission_loop_verify_repair",
+      "turn_count": 1,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "objection_blocks_execute",
+      "turn_count": 1,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "plan",
+      "turn_count": 1,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "pre_execute_blocked",
+      "turn_count": 1,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "recombination_synthesis",
+      "turn_count": 1,
+      "avg_agent_chars": 38.6,
+      "median_guidance_chars": 480,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "review-on",
+      "turn_count": 1,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "snapshot_override_pending",
+      "turn_count": 1,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "specialist_asymmetric_cwd",
+      "turn_count": 1,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "specialist_r2_artifact_only",
+      "turn_count": 1,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "ui_pending_diff",
+      "turn_count": 0,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "wisdom_index_built",
+      "turn_count": 1,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "worktree_apply",
+      "turn_count": 1,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "worktree_merge_ok",
+      "turn_count": 1,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "worktree_reject",
+      "turn_count": 1,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    },
+    {
+      "session": "worktree_unavailable",
+      "turn_count": 1,
+      "avg_agent_chars": 0,
+      "median_guidance_chars": 0,
+      "legacy_endorse_count": 0,
+      "envelope_parse_errors": 0
+    }
+  ]
+}

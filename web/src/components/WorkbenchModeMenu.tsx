@@ -118,7 +118,6 @@ export function WorkbenchModeMenu({
   locale,
   badgeCount = 0,
   onSelect,
-  onToggleOpen,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -137,7 +136,6 @@ export function WorkbenchModeMenu({
 
   function pick(mode: RightPanelMode) {
     onSelect(mode);
-    if (!open) onToggleOpen();
     setMenuOpen(false);
   }
 
@@ -145,7 +143,7 @@ export function WorkbenchModeMenu({
     <div className="workbench-mode-menu" ref={rootRef}>
       <button
         type="button"
-        className={`workbench-mode-menu__trigger${open ? " is-open" : ""}`}
+        className={`workbench-mode-menu__trigger${menuOpen ? " is-open" : ""}`}
         aria-label="Workbench panel"
         aria-expanded={menuOpen}
         onClick={() => setMenuOpen((current) => !current)}
@@ -169,7 +167,7 @@ export function WorkbenchModeMenu({
               type="button"
               className={[
                 "workbench-mode-menu__item",
-                active === item.mode ? "is-active" : "",
+                open && active === item.mode ? "is-active" : "",
                 index === PRIMARY_ITEMS.length ? "has-separator" : "",
               ]
                 .filter(Boolean)

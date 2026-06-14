@@ -28,7 +28,8 @@ Use this page to pick the **one canonical doc** for your question. Older numbere
 |-----|---------------------|
 | [HOOK-COMMUNICATE-REFORM.md](./HOOK-COMMUNICATE-REFORM.md) | Phase 0–5 **shipped** incl. `LEGACY_ENDORSE` default off |
 | [EXECUTE-WORKTREE-REFORM.md](./EXECUTE-WORKTREE-REFORM.md) | Worktree execute/merge **shipped** |
-| [HUMAN-INBOX.md](./HUMAN-INBOX.md) | Execute MCP + API **shipped**; full Inbox UI / discuss harvest **partial** |
+| [MISSION-OS-DIRECTION.md](./MISSION-OS-DIRECTION.md) | **Mission OS SSOT** — gate_profile, Human Gates 1–5, Gateway roadmap, Phase map |
+| [HUMAN-INBOX.md](./HUMAN-INBOX.md) | Execute MCP + API **shipped**; plan-first §3.4.3 synced 2026-06-14 |
 | [GOAL-LOOP.md](./GOAL-LOOP.md) | Mock-first goal Oracle **shipped**; live Oracle opt-in |
 | [LIVE-ORACLE.md](./LIVE-ORACLE.md) | Execute + goal Oracle prompts, evidence, env flags |
 | [MISSION-LOOP-C-OMO.md](./MISSION-LOOP-C-OMO.md) | **Shipped** — Layer 6 FSM + Track B/C/D ([TRACEABILITY](./EXTERNAL-REFS-TRACEABILITY.md) §ML-*) |

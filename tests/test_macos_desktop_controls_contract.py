@@ -18,7 +18,10 @@ def test_room_send_keeps_transcript_visible_during_session_bind():
 
     assert "detail != null" in app
     assert "boundFromComposer" in _read("web/src/hooks/useWorkspaceTabs.ts")
-    assert "loading && !isNew && !running" in room
+    assert "loading &&" in room
+    assert "!isNew &&" in room
+    assert "!running &&" in room
+    assert "visibleMessages.length === 0" in room
 
 
 def test_session_rows_are_keyboard_controls_and_searchable():

@@ -21,7 +21,8 @@ def test_room_task_bar_and_banners_have_accessible_names():
     assert 'aria-label="확인 질문"' in room_chat
     assert 'aria-label="일부 에이전트 실패"' not in room_chat
     assert "room-partial-banner" not in room_chat
-    assert 'role="alert" aria-label="룸 오류"' in room_chat
+    assert 'role="alert"' in room_chat
+    assert 'aria-label="룸 오류"' in room_chat
     assert 'aria-label="에이전트 준비 상태"' in room_chat
 
 

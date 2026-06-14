@@ -1,9 +1,7 @@
 {
   "version": 1,
-  "exclude_files": [
-    "src/agent_lab/room.py"
-  ],
-  "max_ratchet_errors": 174,
-  "total_errors_snapshot": 236,
-  "note": "Ratchet counts only mypy ' error:' lines (not ' note:'). room.py has ~62 errors + ~78 notes; grep 'room.py:' over-counts."
+  "exclude_files": [],
+  "max_ratchet_errors": 240,
+  "total_errors_snapshot": 240,
+  "note": "room.py split into room_*.py modules (2026-06); ratchet applies project-wide. Prior exclude of monolithic room.py removed."
 }

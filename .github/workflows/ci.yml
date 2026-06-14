@@ -46,7 +46,7 @@ jobs:
       - name: Ruff format (gate)
         run: ruff format --check src/ app/ tests/ scripts/ examples/
 
-      - name: Mypy ratchet (gate — room.py excluded until split)
+      - name: Mypy ratchet (gate)
         run: python scripts/mypy_ratchet.py --check
 
       - name: Mypy full report (non-blocking)

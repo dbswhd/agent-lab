@@ -1,0 +1,302 @@
+"""Parallel and sequential agent round runners."""
+
+from __future__ import annotations
+
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
+from typing import Any
+
+from agent_lab.agents.registry import AgentId, available_agents
+from agent_lab.room_turn_state import sync_run_meta_turn_state
+from agent_lab.run_control import RoomRunCancelled, check_cancelled
+from agent_lab.room_messages import (
+    ChatMessage,
+    DEFAULT_AGENT_PARALLEL_ROUNDS,
+    MAX_AGENT_PARALLEL_ROUNDS,
+    MAX_AGENTS_PER_ROUND,
+    OnAgentEvent,
+    _human_turn_count,
+    _review_advocate,
+    _round_agent_order,
+    build_agent_context_bundle,
+)
+
+from agent_lab.room_agent_invoke import (
+    _invoke_agent_for_round,
+    _teammate_idle_peer_message,
+)
+from agent_lab.room_session_persist import _session_context, load_session_messages
+
+def run_parallel_round(
+    topic: str,
+    messages: list[ChatMessage],
+    agents: list[AgentId] | None = None,
+    *,
+    parallel_round: int = 1,
+    on_event: OnAgentEvent | None = None,
+    permissions: dict | None = None,
+    review_mode: bool = False,
+    human_turn_index: int = 0,
+    plan_md: str = "",
+    run_meta: dict[str, Any] | None = None,
+    context_log: list[dict[str, Any]] | None = None,
+    efficiency_mode: bool = False,
+    extra_follow_up: str = "",
+) -> list[ChatMessage]:
+    """Call selected agents for one round (round 1 parallel; round 2+ sequential for all modes)."""
+    active = agents or available_agents()
+    if not active:
+        raise RuntimeError("No agents available. Configure CURSOR_API_KEY, codex login, or claude login.")
+    active = active[:MAX_AGENTS_PER_ROUND]
+    ordered = _round_agent_order(
+        active,
+        review_mode=review_mode,
+        parallel_round=parallel_round,
+        run_meta=run_meta,
+    )
+    review_advocate = _review_advocate(active, human_turn_index) if review_mode else None
+
+    check_cancelled()
+    replies: list[ChatMessage] = []
+    sequential = parallel_round >= 2
+    from agent_lab.room_team_orchestration import team_r1_split
+
+    parallel_batch, lead_tail = (
+        team_r1_split([str(a) for a in ordered], run_meta)
+        if parallel_round == 1 and not review_mode and run_meta
+        else ([str(a) for a in ordered], [])
+    )
+    use_lead_last_r1 = parallel_round == 1 and not review_mode and lead_tail and len(parallel_batch) < len(ordered)
+
+    if use_lead_last_r1:
+        check_cancelled()
+        thread = list(messages)
+        if parallel_batch:
+            with ThreadPoolExecutor(max_workers=len(parallel_batch)) as pool:
+                futures = {
+                    pool.submit(
+                        _invoke_agent_for_round,
+                        aid,
+                        topic=topic,
+                        thread=messages,
+                        parallel_round=parallel_round,
+                        permissions=permissions,
+                        review_mode=review_mode,
+                        review_advocate=review_advocate,
+                        plan_md=plan_md,
+                        run_meta=run_meta,
+                        on_event=on_event,
+                        context_log=context_log,
+                        efficiency_mode=efficiency_mode,
+                        human_turn_index=human_turn_index,
+                    ): aid
+                    for aid in parallel_batch
+                }
+                try:
+                    for fut in as_completed(futures):
+                        check_cancelled()
+                        replies.append(fut.result())
+                except RoomRunCancelled:
+                    pass
+            thread = list(messages) + replies
+        for aid in lead_tail:
+            check_cancelled()
+            try:
+                msg = _invoke_agent_for_round(
+                    str(aid),
+                    topic=topic,
+                    thread=thread,
+                    parallel_round=parallel_round,
+                    permissions=permissions,
+                    review_mode=review_mode,
+                    review_advocate=review_advocate,
+                    plan_md=plan_md,
+                    run_meta=run_meta,
+                    on_event=on_event,
+                    context_log=context_log,
+                    efficiency_mode=efficiency_mode,
+                    human_turn_index=human_turn_index,
+                )
+                replies.append(msg)
+                thread.append(msg)
+                idle_peer = _teammate_idle_peer_message(str(aid), run_meta, parallel_round=parallel_round)
+                if idle_peer:
+                    replies.append(idle_peer)
+                    thread.append(idle_peer)
+            except RoomRunCancelled:
+                break
+        for aid in parallel_batch:
+            idle_peer = _teammate_idle_peer_message(aid, run_meta, parallel_round=parallel_round)
+            if idle_peer:
+                replies.append(idle_peer)
+        return replies
+
+    if sequential:
+        thread = list(messages)
+        round_follow = ""
+        if parallel_round >= 2:
+            from agent_lab.reply_policy import (
+                envelope_follow_up_block,
+                resolve_reply_policy,
+            )
+
+            policy = resolve_reply_policy(
+                parallel_round=parallel_round,
+                review_mode=review_mode,
+                consensus_mode=bool(run_meta and run_meta.get("_active_consensus")),
+                turn_profile=str((run_meta or {}).get("turn_profile") or ""),
+                efficiency_mode=efficiency_mode,
+            )
+            ctx = "review" if review_mode else "discuss"
+            round_follow = envelope_follow_up_block(policy, context=ctx)
+        if extra_follow_up.strip():
+            round_follow = "\n\n".join(x for x in (round_follow, extra_follow_up) if x.strip())
+        try:
+            for aid in ordered:
+                check_cancelled()
+                msg = _invoke_agent_for_round(
+                    aid,
+                    topic=topic,
+                    thread=thread,
+                    parallel_round=parallel_round,
+                    permissions=permissions,
+                    review_mode=review_mode,
+                    review_advocate=review_advocate,
+                    plan_md=plan_md,
+                    run_meta=run_meta,
+                    on_event=on_event,
+                    context_log=context_log,
+                    extra_follow_up=round_follow,
+                    efficiency_mode=efficiency_mode,
+                    human_turn_index=human_turn_index,
+                )
+                replies.append(msg)
+                thread.append(msg)
+                idle_peer = _teammate_idle_peer_message(aid, run_meta, parallel_round=parallel_round)
+                if idle_peer:
+                    replies.append(idle_peer)
+                    thread.append(idle_peer)
+        except RoomRunCancelled:
+            pass
+        return replies
+
+    with ThreadPoolExecutor(max_workers=len(ordered)) as pool:
+        futures = {
+            pool.submit(
+                _invoke_agent_for_round,
+                aid,
+                topic=topic,
+                thread=messages,
+                parallel_round=parallel_round,
+                permissions=permissions,
+                review_mode=review_mode,
+                review_advocate=review_advocate,
+                plan_md=plan_md,
+                run_meta=run_meta,
+                on_event=on_event,
+                context_log=context_log,
+                efficiency_mode=efficiency_mode,
+                human_turn_index=human_turn_index,
+            ): aid
+            for aid in ordered
+        }
+        for fut in as_completed(futures):
+            check_cancelled()
+            replies.append(fut.result())
+    for aid in ordered:
+        idle_peer = _teammate_idle_peer_message(aid, run_meta, parallel_round=parallel_round)
+        if idle_peer:
+            replies.append(idle_peer)
+    return replies
+
+
+def run_agent_rounds(
+    topic: str,
+    messages: list[ChatMessage],
+    *,
+    agents: list[AgentId] | None = None,
+    parallel_rounds: int = DEFAULT_AGENT_PARALLEL_ROUNDS,
+    on_event: OnAgentEvent | None = None,
+    permissions: dict | None = None,
+    review_mode: bool = False,
+    human_turn_index: int = 0,
+    plan_md: str = "",
+    run_meta: dict[str, Any] | None = None,
+    context_log: list[dict[str, Any]] | None = None,
+    efficiency_mode: bool = False,
+) -> list[ChatMessage]:
+    """Run multiple parallel waves; later waves see earlier agents' replies in the thread."""
+    from agent_lab.room_team_orchestration import normalize_turn_profile
+
+    profile = normalize_turn_profile(run_meta.get("turn_profile") if run_meta else None)
+    n = max(1, min(parallel_rounds, MAX_AGENT_PARALLEL_ROUNDS))
+    if profile == "specialist":
+        n = max(n, 2)
+    all_replies: list[ChatMessage] = []
+    try:
+        for r in range(1, n + 1):
+            check_cancelled()
+            if on_event:
+                on_event("agent_round_start", {"round": r, "total": n})
+            batch = run_parallel_round(
+                topic,
+                messages + all_replies,
+                agents=agents,
+                parallel_round=r,
+                on_event=on_event,
+                permissions=permissions,
+                review_mode=review_mode,
+                human_turn_index=human_turn_index,
+                plan_md=plan_md,
+                run_meta=run_meta,
+                context_log=context_log,
+                efficiency_mode=efficiency_mode,
+            )
+            all_replies.extend(batch)
+            sync_run_meta_turn_state(
+                run_meta,
+                messages + all_replies,
+                active_agents=list(agents or available_agents())[:MAX_AGENTS_PER_ROUND],
+                plan_md=plan_md,
+            )
+    except RoomRunCancelled:
+        pass
+    return all_replies
+
+
+def preview_agent_payload(
+    folder: Path,
+    agent: AgentId,
+    *,
+    agents: list[AgentId] | None = None,
+    parallel_round: int = 1,
+    permissions: dict | None = None,
+    review_mode: bool = False,
+    efficiency_mode: bool = False,
+    slim_context: bool = False,
+):
+    """Build agent context without calling an LLM. Returns (payload str, ContextBundle)."""
+    if not folder.is_dir():
+        raise FileNotFoundError(f"session not found: {folder}")
+    topic = (folder / "topic.txt").read_text(encoding="utf-8").strip()
+    messages = load_session_messages(folder)
+    plan_md, run_meta = _session_context(folder)
+    active = agents or available_agents()
+    active = active[:MAX_AGENTS_PER_ROUND]
+    human_turn_index = max(0, _human_turn_count(messages) - 1)
+    review_advocate = _review_advocate(active, human_turn_index) if review_mode else None
+    bundle = build_agent_context_bundle(
+        topic,
+        messages,
+        agent,
+        permissions=permissions,
+        parallel_round=parallel_round,
+        review_mode=review_mode,
+        review_advocate=review_advocate,
+        plan_md=plan_md,
+        run_meta=run_meta,
+        efficiency_mode=efficiency_mode,
+        slim_context=slim_context,
+    )
+    return bundle.render(), bundle
+

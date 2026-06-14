@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mypy error-count ratchet — fail CI when typing debt grows (room.py excluded until split)."""
+"""Mypy error-count ratchet — fail CI when typing debt grows."""
 
 from __future__ import annotations
 

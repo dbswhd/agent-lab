@@ -200,7 +200,7 @@ quant-pipeline/tasks/sprint.active.yaml
 
 | 주 | 목표 | 완료 기준 |
 |----|------|-----------|
-| 1 | SDK로 Planner 1회 호출 | `hello.py`가 주제 받아 bullet 출력 |
+| 1 | SDK로 Planner 1회 호출 | `examples/week1_smoke.py`가 주제 받아 bullet 출력 |
 | 2 | LangGraph 3노드 | `plan.md` 자동 저장 |
 | 3 | `sessions/` 규칙 + CLI | `run "주제"` 한 방에 동작 |
 | 4 | pipeline TASK 초안 export | `plan.md` → `TASK-draft.md` 템플릿 변환 스크립트 |

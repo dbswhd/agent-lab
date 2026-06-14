@@ -38,7 +38,14 @@ jobs:
           cache-dependency-path: pyproject.toml
 
       - name: Install Python package
-        run: pip install -e ".[cursor,test]"
+        run: pip install -e ".[cursor,test,dev]"
+
+      - name: Ruff lint (gate)
+        run: ruff check src/ app/ tests/ scripts/
+
+      - name: Mypy (non-blocking — gradual typing of src/agent_lab)
+        continue-on-error: true
+        run: mypy
 
       - name: Prepare mock test environment
         run: |

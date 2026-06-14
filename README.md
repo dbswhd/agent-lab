@@ -1,340 +1,227 @@
-# Agent Lab — 기초 교육 가이드
+# Agent Lab
 
-> **이 문서는 독립 프로젝트용입니다.**  
-> `quant-pipeline` repo와 **별도 GitHub repo·별도 작업 폴더**에서 시작하세요.  
-> pipeline은 “실행·검증·거래”, Agent Lab은 “주제 던지고 에이전트가 같이 생각하기” 연습장입니다.
+**주제 하나 → 세 AI 에이전트 협업 → `plan.md` → Human 승인 → worktree 실행·merge·Oracle 검증**
 
----
+Agent Lab은 Cursor · Codex · Claude가 한 Room에서 토론하고, 기획을 문서화한 뒤, 코드 변경을 **격리된 git worktree**에서 dry-run하고 Human이 승인·merge하는 **개발자용 멀티에이전트 콘솔**입니다.
 
-## 1. 이게 뭔가요?
+| | quant-pipeline | Agent Lab |
+|---|----------------|-----------|
+| 역할 | DB · 백테스트 · 실거래 실행 | 기획 · 토론 · 코드 초안 · 검증 루프 |
+| 산출물 | TASK · pytest · Handoff | `plan.md` · execute diff · verified merge |
+| Human | Conductor 운영 | 방향·승인·결정 (Human gate 유지) |
 
-**Agent Lab** = 주제 한 줄만 주면, 여러 LLM 역할이 **짧은 대화(또는 순차 메시지)** 로 기획안을 만드는 **교육용 샌드박스**입니다.
-
-| quant-pipeline | Agent Lab (이 프로젝트) |
-|----------------|-------------------------|
-| DB, 백테스트, 실거래 안전 | 없음 (기본) |
-| TASK · pytest · Handoff | PLAN · 아이디어 · 질문 목록 |
-| Conductor + messenger 운영 | **톡방/그래프 실험** |
-| 프로덕션에 가깝음 | **학습·프로토타입** |
-
-**목표**: “에이전트끼리 말하게” 만드는 법을 배우고, 나중에 pipeline의 `TASK-*.md` 초안만 **가져오기**.
-
-신규 기능은 **3자 룸(room)** 경로를 기준으로 추가합니다. 기존 Planner/Critic/Scribe 순차 경로는 **클래식(레거시)** 으로 유지합니다.
+`plan.md`를 Human이 검토한 뒤 pipeline의 `TASK-*.md`로 옮길 수 있습니다. Agent Lab이 pipeline을 **대신 실행하지는 않습니다**.
 
 ---
 
-## 2. 왜 repo를 나누나요?
+## 주요 기능
 
-1. **컨텍스트 분리** — pipeline을 열면 연구·SPEC91·DB가 섞여 LLM이 헷갈림  
-2. **비용·실험** — 톡방은 토큰이 많이 듦. 실패해도 main pipeline 히스토리가 지저분해지지 않음  
-3. **의존성** — LangGraph / AutoGen 등은 pipeline에 안 넣는 게 맞음  
-4. **보안** — Lab에는 `.env`에 API 키만, **브로커·DB 비밀번호 넣지 않기**
+| 영역 | 설명 |
+|------|------|
+| **3자 Room** | Cursor · Codex · Claude 병렬·순차 토론, 합의·이의(BLOCK) 거버넌스 |
+| **Plan workflow** | Clarify → Scribe → peer review → Human plan approve → execute |
+| **Execute gate** | worktree dry-run → diff review → merge → Oracle verify (실패 시 repair loop) |
+| **Mission Loop** | Discuss ↔ Execute ↔ Verify FSM, Momus-lite plan gate, evidence ledger |
+| **Human Inbox** | execute 중 MCP·승인 요청을 Human에게 라우팅 |
+| **Verified / Goal loop** | 목표 제안 → Human 승인 → Oracle 완료 판정 |
+| **Runtime harness** | discuss/execute lane, PolicyEngine, checkpoint resume |
+| **Desktop + Web** | Tauri 2 네이티브 앱 또는 브라우저 UI (FastAPI 백엔드 내장) |
 
----
-
-## 3. “세션”이란?
-
-여기서 **세션**은 세 가지를 구분합니다.
-
-| 용어 | 의미 | 예 |
-|------|------|-----|
-| **Chat session** | 한 번의 “주제”에 대한 대화 기록 | `sessions/2026-05-26-c45-overlay/run.json` |
-| **IDE session** | Cursor / Claude Code 창 하나 | Lab repo만 연 채로 작업 |
-| **Graph run** | LangGraph 등이 돌린 **상태 체크포인트** | `thread_id=abc`, 재개 가능 |
-
-**규칙 (교육용)**  
-- 주제 1개 = 폴더 1개 (`sessions/<date>-<slug>/`)  
-- 3자 룸(기본): `chat.jsonl`에 원문 대화, `run.json`에 `run_schema_version`과 `turns[]` 실행 메타, `plan.md`에 `chat.jsonl#L<n>` provenance가 포함된 정리를 저장
-- 클래식(레거시): `topic.txt`, `transcript.md`, `plan.md`, `meta.json` 산출물을 유지
-- 끝나면 세션 폴더를 **닫고** 새 주제는 새 폴더
+**아키텍처 불변 원칙:** 합의=Room · 격리=worktree · 완료=Oracle verified · BLOCK → execute 409
 
 ---
 
-## 4. 추천 기술 스택 (처음엔 하나만)
+## 빠른 시작
 
-처음부터 전부 만들지 말고 **한 가지**만 깊게.
+### 필요 환경
 
-| 단계 | 도구 | 왜 |
-|------|------|-----|
-| **0주차** | Python + `openai` / `anthropic` SDK 직접 호출 | “에이전트 = 프롬프트 + 역할” 감 잡기 |
-| **1주차** | **LangGraph** (또는 AG2 GroupChat) | 상태·노드·human approve 배우기 |
-| **2주차** | 간단한 **CLI** `agent-lab run "주제"` | 세션 폴더 자동 생성 |
-| 나중 | Web UI (Chainlit / Streamlit) | 선택 |
+- Python **3.11+**
+- Node **18+**
+- Rust (`rustc`) — Tauri 빌드 시
+- 에이전트 CLI 중 **하나 이상**: `codex login` · `claude login` · Cursor SDK (`pip install -e ".[cursor]"`)
 
-**비추천 (초반)**  
-- pipeline `orchestration/pipeline.py` 복사해서 억지로 톡방에 끼우기  
-- RL / Conductor 논문식 end-to-end 학습  
-- 실시간 무한 루프 대화 (비용·환각)
-
----
-
-## 5. 새 repo 만들기 (10분)
-
-### 5.1 GitHub
-
-```text
-repo 이름 예: agent-lab   (또는 mas-playground)
-Public / Private: Private 권장 (API 실험 로그)
-```
-
-### 5.2 로컬
+### 설치
 
 ```bash
-mkdir ~/Projects/agent-lab && cd ~/Projects/agent-lab
-git init
-python3 -m venv .venv
-source .venv/bin/activate
-pip install langgraph langchain-openai langchain-anthropic python-dotenv
+git clone <repo-url> ~/Projects/agent-lab
+cd ~/Projects/agent-lab
+make install
+cp .env.example ~/.agent-lab/.env   # 또는 repo 루트 .env
 ```
 
-### 5.3 최소 폴더 구조
+`.env`에 최소 하나의 provider를 설정합니다. 패키지 앱·GUI는 PATH가 짧으므로 `CODEX_BIN`, `CLAUDE_BIN` 등 **절대 경로**를 권장합니다.
+
+| Provider | 인증 | 비고 |
+|----------|------|------|
+| `codex` (기본) | `codex login` (ChatGPT/Plus) | Plus ≠ Platform API 과금 |
+| `openai` | `OPENAI_API_KEY` | Classic graph (Planner/Critic/Scribe) |
+| `anthropic` | `ANTHROPIC_API_KEY` | Classic graph |
+
+### 실행
+
+```bash
+make dev          # API :8765 + UI http://127.0.0.1:5173
+make tauri-dev    # 네이티브 데스크톱 창
+make prod         # web build + uvicorn :8765 (통합 서빙)
+python -m agent_lab run "주제"   # CLI — 동일 sessions/ 사용
+```
+
+**macOS 앱 빌드:** `make tauri-build` → `web/src-tauri/target/release/bundle/macos/Agent Lab.app`
+
+설정 우선순위: `~/.agent-lab/.env` → `~/.agent-lab/config.toml` → repo `.env`  
+상세: [docs/STABILITY.md](docs/STABILITY.md) · [docs/APP.md](docs/APP.md)
+
+---
+
+## 워크플로 개요
+
+```mermaid
+flowchart TB
+  H[Human: 주제 입력] --> R[Room 토론\nCursor · Codex · Claude]
+  R --> S[Scribe → plan.md]
+  S --> P{Plan approve?}
+  P -->|Human 승인| E[Execute gate\nworktree dry-run]
+  P -->|BLOCK| R
+  E --> D[Diff review · merge]
+  D --> O[Oracle verify]
+  O -->|PASS| Done[완료 · executed archive]
+  O -->|FAIL| E
+```
+
+1. **Discuss** — Composer에서 주제·메시지 전송 → Room 라운드 (합의·이의·Scribe)
+2. **Plan** — `plan.md`에 `## 지금 실행` 액션 정리 → Human plan approve
+3. **Execute** — git worktree에서 dry-run → diff 승인 → merge
+4. **Verify** — Oracle이 criteria 대조 (mock 기본, live opt-in)
+
+Turn profile `verified` 사용 시 LazyCodex-style verified loop(제안 → Human 승인 → DONE → Oracle VERIFIED)가 적용됩니다.
+
+---
+
+## 세 에이전트
+
+| 에이전트 | 역할 | 잘 맡기는 일 |
+|----------|------|--------------|
+| **Cursor** | 레포 직접 탐색 · 패치 · execute | 버그 원인, UI/코드 변경, worktree 실행 |
+| **Codex** | 분해 · 순서 · 검증 기준 | 테스트 플랜, decompose, completion criteria |
+| **Claude** | 맹점·리스크 · 두 번째 의견 | 설계 검토, Scribe, Oracle |
+
+역할 프롬프트: `src/agent_lab/agents/prompts.py`
+
+---
+
+## 세션·산출물
+
+주제 1개 = `sessions/<date>-<slug>/` 폴더 1개.
+
+| 파일 | 내용 |
+|------|------|
+| `chat.jsonl` | 원문 대화 (line ref provenance) |
+| `run.json` | `run_schema_version`, turns, mission, verified_loop, execute 메타 |
+| `plan.md` | Scribe 정리 기획 (`chat.jsonl#L<n>` 출처 포함) |
+| `executed/` | merge된 diff 아카이브 (`{exec_id}.json`) |
+
+Classic graph(Planner/Critic/Scribe)는 `topic.txt`, `transcript.md`, `meta.json`을 추가로 생성합니다. 신규 기능은 **Room 경로** 기준입니다.
+
+---
+
+## 프로젝트 구조
 
 ```text
 agent-lab/
-├── README.md                 # 이 문서 요약 + 실행법
-├── .env.example              # OPENAI_API_KEY=, ANTHROPIC_API_KEY=
-├── .gitignore                # .env, .venv, sessions/*/raw/
-├── pyproject.toml            # optional
-├── src/
-│   └── agent_lab/
-│       ├── __init__.py
-│       ├── graph.py          # LangGraph 정의
-│       ├── roles.py          # system prompts (Planner, Critic, Scribe)
-│       └── cli.py              # python -m agent_lab run "주제"
-├── sessions/                 # git에 transcript/plan만 (선택)
-│   └── .gitkeep
-└── docs/
-    └── 00-GETTING-STARTED.md   # pipeline에서 복사한 이 파일
-```
-
-### 5.4 `.gitignore` 필수
-
-```gitignore
-.env
-.venv/
-__pycache__/
-sessions/**/raw/
-*.log
+├── src/agent_lab/          # Room · execute · mission · oracle 코어
+│   ├── room.py             # 멀티에이전트 Room 오케스트레이션
+│   ├── plan_execute*.py    # worktree execute · merge · verify
+│   ├── plan_workflow.py    # Plan-First FSM
+│   ├── mission_loop.py     # Mission Loop Layer 6
+│   └── runtime/            # Runtime harness (discuss/execute lane)
+├── app/server/             # FastAPI (routers/* — main.py는 조립만)
+├── web/                    # React 18 + Vite UI
+│   └── src-tauri/          # Tauri 2 데스크톱 셸
+├── tests/                  # pytest (~870 mock-fast, integration 별도)
+├── scripts/                # smoke · score · ops · dogfood
+├── sessions/
+│   └── _regression/        # 36 regression baselines (git tracked)
+└── docs/                   # 제품·운영·RFC 문서
 ```
 
 ---
 
-## 6. 가장 작은 “톡방” 개념 (3역할)
-
-에이전트가 **진짜 채팅앱처럼** 무한 대화하지 않게, **노드 3개**로 고정합니다.
-
-```mermaid
-flowchart LR
-  T[Human: topic] --> P[Planner]
-  P --> C[Critic]
-  C --> S[Scribe]
-  S --> O[plan.md]
-```
-
-| 역할 | 하는 일 | 출력 |
-|------|---------|------|
-| **Planner** | 주제를 3~5개 하위 질문·가설로 쪼갬 | bullet list |
-| **Critic** | 맹점·리스크·검증 방법 지적 | 짧은 반박 |
-| **Scribe** | 최종 `plan.md` (목표, 범위, 비목표, 다음 TASK 후보) | 파일 |
-
-**Human은**  
-- 시작: `topic`만 입력  
-- 끝: `plan.md` 읽고 pipeline에 TASK로 옮길지 결정  
-
-**이게 “톡방”의 교육용 핵심**: 자유 대화 ❌ → **역할 + 순서 + 산출물 1개** ✅
-
----
-
-## 7. 첫 실습 (의사 코드)
-
-`src/agent_lab/graph.py` 안에서 대략 이런 흐름입니다.
-
-```python
-# 1) state = {"topic": "...", "messages": []}
-# 2) planner_node → messages += planner_reply
-# 3) critic_node  → messages += critic_reply (planner 출력 참조)
-# 4) scribe_node  → plan_md string
-# 5) save sessions/<slug>/plan.md + transcript.md
-```
-
-**실행**
+## 개발·테스트
 
 ```bash
-export $(grep -v '^#' .env | xargs)   # macOS: 수동 export 권장
-python -m agent_lab.cli run "C4of5를 기존 KR 전략에 얹는 방법"
-ls sessions/
+make dev              # API + web hot reload
+make lint             # ruff check (src/ app/ tests/ scripts/)
+make typecheck        # mypy src/agent_lab (gradual; non-blocking in CI)
+make test-fast        # mock-only, ~1분 (~870 tests, -n auto when xdist)
+make test             # full mock suite (integration 포함)
+make ci               # lint + test-fast + smoke + score fixtures
+make ci-full          # lint + full test + smoke + score
+
+python scripts/smoke_room.py     # 36 regression baselines
+make verify-hooks                # Hook · Communicate suite
+make list-flags                  # AGENT_LAB_* 레지스트리 (79 entries)
+make dogfood-suite-mock          # Eval Program v1 mock topics
 ```
 
----
+**규칙:** CI는 mock-only (`AGENT_LAB_MOCK_AGENTS=1`). live LLM 테스트는 `AGENT_LAB_RUN_LIVE=1`로 opt-in.  
+subprocess env는 `subprocess_env.subprocess_env()` allowlist만 — **`.env` 전체 상속 금지**.  
+`sessions/*` 커밋 금지 (`sessions/_regression/` 제외). execute gate 우회 금지.
 
-## 8. pipeline과 연결하는 법 (선택, 2주차)
-
-Agent Lab **끝 산출물**만 pipeline으로 넘깁니다.
-
-```text
-agent-lab/sessions/.../plan.md
-        │
-        ▼  (Human + Claude Conductor)
-quant-pipeline/tasks/TASK-NNN-*.md
-quant-pipeline/tasks/sprint.active.yaml
-```
-
-**Lab이 하면 안 되는 것**  
-- `git push` pipeline  
-- `kor_price` 접속  
-- LIVE / SPEC91 실행  
+개발 가이드: [CLAUDE.md](CLAUDE.md)
 
 ---
 
-## 9. 비용·안전 교육
+## 환경 변수
 
-| 항목 | 가이드 |
-|------|--------|
-| API 비용 | 세션당 max_turns=6 등 **상한** 코드에 박기 |
-| 로그 | transcript에 API key 넣지 않기 |
-| 모델 | 교육은 **작은 모델**로 그래프 디버그, 최종만 큰 모델 |
-| 환각 | “대화가 그럴듯함” ≠ “맞음” — Critic 노드 필수 |
+전체 목록: `make list-flags` 또는 `GET /api/health/flags`
 
----
+자주 쓰는 플래그:
 
-## 10. 학습 로드맵 (4주)
+| 변수 | 기본 | 설명 |
+|------|------|------|
+| `AGENT_LAB_MOCK_AGENTS` | 0 | 1 = mock agent (테스트·CI) |
+| `AGENT_LAB_PLAN_WORKFLOW` | 1 | Plan-First workflow |
+| `AGENT_LAB_ORACLE_LIVE` | 0 | live Oracle (execute verify) |
+| `AGENT_LAB_MISSION_LOOP` | 0 | Mission Loop FSM |
+| `AGENT_LAB_CLARIFIER` | 0 | 첫 턴 Socratic clarifier |
+| `AGENT_LAB_EFFICIENCY` | 0 | Room 토큰 절약 모드 |
 
-| 주 | 목표 | 완료 기준 |
-|----|------|-----------|
-| 1 | SDK로 Planner 1회 호출 | `hello.py`가 주제 받아 bullet 출력 |
-| 2 | LangGraph 3노드 | `plan.md` 자동 저장 |
-| 3 | `sessions/` 규칙 + CLI | `run "주제"` 한 방에 동작 |
-| 4 | pipeline TASK 초안 export | `plan.md` → `TASK-draft.md` 템플릿 변환 스크립트 |
+템플릿: [.env.example](.env.example)
 
 ---
 
-## 11. 자주 하는 질문
+## 문서
 
-**Q. pipeline의 Option A (`pipeline run`) 를 Lab에서 쓰면?**  
-A. 안 됨. 그건 **Cursor Cloud + Git PR** 전용. Lab은 **기획 대화**만.
-
-**Q. AutoGen GroupChat이 더 톡방 같은데?**  
-A. 데모는 좋음. 통제·재현은 LangGraph가 나음. 둘 다 2주차에 비교 실습 추천.
-
-**Q. 에이전트가 서로 API로 직접 호출?**  
-A. 교육용으론 **오케스트레이터 Python이 중개** (너 = 그 오케스트레이터 작성자). 진짜 분산 MCP는 나중.
-
-**Q. 한 repo에 `agent-lab/` 서브폴더만?**  
-A. 학습 초반은 가능. **본격 실험은 분리 repo** 권장 (위 2절).
-
----
-
-## 12. 다음에 읽을 것 (만들 문서)
-
-분리 repo에 이어서 작성하면 좋은 md:
-
-| 파일 | 내용 |
+| 문서 | 용도 |
 |------|------|
-| `docs/01-roles-and-prompts.md` | Planner/Critic/Scribe system prompt |
-| `docs/02-langgraph-tutorial.md` | 노드·edge·checkpoint 예제 |
-| `docs/03-session-format.md` | `meta.json` 스키마 |
-| `docs/02-ui-ux-handoff.md` | UI/UX · Figma Mac/iOS Kit |
-| `docs/04-multi-agent-room.md` | **Cursor·Codex·Claude** 3자 룸 |
-| `docs/01-CONTROLLED-WORKFLOW-SYSTEM.md` | 통제 워크플로 설계 |
-| `docs/04-export-to-pipeline.md` | plan → TASK md 변환 규칙 |
+| [docs/USER-GUIDE.md](docs/USER-GUIDE.md) | **제품 동작 명세** (기능·상태·API·env) |
+| [docs/README.md](docs/README.md) | 문서 인덱스 (Tier 1–5) |
+| [docs/EXTERNAL-REFS-TRACEABILITY.md](docs/EXTERNAL-REFS-TRACEABILITY.md) | **Shipped 기능** 증거 매트릭스 |
+| [docs/STABILITY.md](docs/STABILITY.md) | CI · smoke · config · release |
+| [docs/OPS-RUNBOOK.md](docs/OPS-RUNBOOK.md) | live worktree · merge operator |
+| [docs/PLAN-WORKFLOW.md](docs/PLAN-WORKFLOW.md) | Plan-First FSM |
+| [docs/GOAL-LOOP.md](docs/GOAL-LOOP.md) | Goal loop · verified loop |
+| [docs/APP.md](docs/APP.md) | Tauri 패키징 · API 개요 |
+
+**규칙:** shipped 상태는 TRACEABILITY + 코드 + 테스트가 SSOT. `docs/00`–`05` 번호 문서는 교육용 레거시입니다.
 
 ---
 
-## 13. 한 줄 요약
+## API 개요
 
-**Agent Lab** = 새 repo + 세션 폴더 + 3역할 그래프 + `plan.md` 산출.  
-**pipeline** = 그 plan을 Human/Conductor가 검토한 뒤 **실행**하는 곳.  
-지금 단계에선 **톡방 전체 자동화**보다 **“주제 → plan.md” 한 줄기**만 완성하면 교육 목표 달성입니다.
+| Method | Path | 설명 |
+|--------|------|------|
+| GET | `/api/health` | 백엔드 상태 · flags |
+| GET | `/api/sessions` | 세션 목록 |
+| POST | `/api/room/runs` | Room 턴 (SSE) |
+| POST | `/api/sessions/{id}/execute` | Execute gate |
+| GET | `/api/runtime` | Runtime harness snapshot |
 
----
-
-## Quick start (구현됨)
-
-### 데스크톱 앱 (quant-control 스타일)
-
-```bash
-cd ~/Projects/agent-lab
-make install
-cp .env.example .env
-npm i -g @openai/codex && codex login   # Plus → AGENT_LAB_PROVIDER=codex
-make tauri-dev
-```
-
-설치 파일 빌드: `make tauri-build` → `web/src-tauri/target/release/bundle/macos/Agent Lab.app`
-
-### CLI / 브라우저
-
-```bash
-make dev                    # 브라우저 http://127.0.0.1:5173
-python -m agent_lab run "주제"
-make test                    # pytest
-make smoke                   # sessions/_regression fixture check
-make smoke-e2e               # mock discuss 1-turn (no live LLM)
-make prod                    # web build + uvicorn :8765 (serves web/dist)
-```
-
-| `AGENT_LAB_PROVIDER` | 인증 | 비고 |
-|----------------------|------|------|
-| `codex` | `codex login` (ChatGPT/Plus) | Plus ≠ `OPENAI_API_KEY` 과금 |
-| `openai` | Platform API 키 | Billing 별도 |
-| `anthropic` | Anthropic API 키 | |
-
-**클래식(레거시) 산출물** (`sessions/<date>-<slug>/`):
-
-| 파일 | 내용 |
-|------|------|
-| `topic.txt` | 입력 주제 |
-| `transcript.md` | Planner / Critic / Scribe 전체 로그 |
-| `plan.md` | Scribe 최종 기획안 |
-| `meta.json` | 모델·타임스탬프 메타 |
-
-3자 룸의 정식 산출물은 [`docs/04-multi-agent-room.md`](docs/04-multi-agent-room.md)의 `chat.jsonl`, `run.json`, `plan.md` 정의를 따릅니다.
-
-**Week-1 단일 호출 테스트:** `python hello.py "주제"`
+전체 라우터: `app/server/routers/`
 
 ---
 
-## Verified loop (검증 모드)
+## 한 줄 요약
 
-Composer **turn profile**을 `verified`(검증)로 두면, 3자 룸 턴이 **LazyCodex-style verified loop**로 동작합니다. 에이전트가 목표를 제안하고 Human이 승인한 뒤, 독립 **Oracle**(Claude `scribe` 역할)이 transcript만 보고 완료 여부를 판정합니다.
-
-| 단계 | 누가 | 무엇을 |
-|------|------|--------|
-| **1. Propose** | 에이전트 1명 | 첫 라운드에서 `<ulw_proposal>` 블록 1개만 emit. 나머지는 ENDORSE/AMEND(plain text). 턴 종료 시 `run.json` → `verified_loop.status=pending_approval` |
-| **2. Human 승인** | Human | UI **VerifiedLoopBanner**에서 goal/criteria 검토 후 Approve (`POST /api/sessions/{id}/verified-loop/approve`) → `status=running`, `verified_loop.loop_goal.approved_at` 기록 |
-| **3. Execute** | 에이전트 팀 | 승인된 goal·criteria에 맞게 작업. criteria에 적힌 **파일·테스트·transcript 증거**를 발화에 명시 |
-| **4. DONE** | 에이전트 1명 | 완료 시 `<promise>DONE</promise>` **1회만** (또는 proposal의 `completion_promise`). **에이전트는 `<promise>VERIFIED</promise>` 금지** |
-| **5. Oracle VERIFIED** | Oracle (`claude_cli`) | 턴 종료 후 `run_verified_oracle()` — transcript tail + criteria 대조. 합격 시 `<promise>VERIFIED</promise>` → `verified_loop.status=done`, `goal_loop.status=achieved` |
-
-**proposal 블록 형식**
-
-```text
-<ulw_proposal>
-goal: (한 줄 목표)
-completion_promise: DONE
-criteria: (Oracle이 transcript에서 찾을 완료 조건 — 아래 예시 참고)
-</ulw_proposal>
-```
-
-**criteria 작성 예시** (파일 · 테스트 · transcript 증거를 한 블록에)
-
-```text
-<ulw_proposal>
-goal: health 라우터 스모크 — GET /api/health가 200을 반환한다
-completion_promise: DONE
-criteria: (1) `app/server/routers/health.py`에 `/api/health` 라우트가 존재 (2) `tests/test_health_preflight.py`가 `pytest tests/test_health_preflight.py -q`로 PASS (3) 승인 후 라운드에서 에이전트가 위 경로·테스트 명령·PASS 한 줄을 transcript에 정리하고 <promise>DONE</promise> 1회 (4) Oracle이 criteria 충족을 확인하면 VERIFIED — 픽셀/OCR 등 범위 밖 증거는 제외
-</ulw_proposal>
-```
-
-실행 중 상태는 `run.json`의 `verified_loop`(배너·SSE `verified_loop_pending`)와 `tests/test_verified_loop.py`로 확인할 수 있습니다. Goal loop(`AGENT_LAB_GOAL_LOOP`)와는 별 레이어입니다 — [`docs/GOAL-LOOP.md`](docs/GOAL-LOOP.md) 참고.
-
----
-
-## Desktop-style app (quant-control-like shell)
-
-```bash
-make install   # first time
-make dev       # API :8765 + UI http://127.0.0.1:5173
-```
-
-See [docs/APP.md](docs/APP.md) for API, design handoff (Figma/Stitch), and comparison to `quant-control-app`.
+Agent Lab = **세 AI가 토론하고 plan을 쓰고, Human이 승인한 뒤 worktree에서 실행·merge·Oracle 검증까지 이어가는 개발자 콘솔**.  
+pipeline은 그 plan을 검토한 뒤 **프로덕션 실행**하는 곳입니다.

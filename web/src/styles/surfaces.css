@@ -280,6 +280,16 @@
 .mode-chip--consensus .mode-chip__label { background: var(--agent-codex-soft); color: var(--agent-codex); }
 .mode-chip__hint { color: var(--label-tertiary); }
 
+/* Mode chip mutual-exclusivity — one primary mode reads active at a time */
+.composer--plan-mode .mode-chip--discuss,
+.composer--plan-mode .mode-chip--consensus { opacity: 0.45; }
+.composer--consensus-mode .mode-chip--discuss,
+.composer--consensus-mode .mode-chip--plan { opacity: 0.45; }
+.composer--discuss-mode .mode-chip--plan,
+.composer--discuss-mode .mode-chip--consensus { opacity: 0.45; }
+.composer--plan-mode .composer-turn-picker { opacity: 0.72; }
+.composer--consensus-mode .composer-turn-picker { border-color: color-mix(in srgb, var(--agent-codex) 35%, var(--border-hair)); }
+
 /* ---- Turn picker ----------------------------------------- */
 .turn-row { display: flex; flex-direction: column; gap: var(--space-6); }
 .turn-picker__head { display: flex; align-items: center; gap: var(--space-10); flex-wrap: wrap; }

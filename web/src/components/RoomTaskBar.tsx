@@ -20,6 +20,7 @@ import {
   formatTaskBarModeHint,
   formatTeamAgreementLabel,
   LEAD_HELP_SUMMARY,
+  LEAD_HELP_DETAIL,
   resolveRequiredAgreements,
   resolveTaskBarMode,
   shouldShowConsensusBlocker,
@@ -27,6 +28,8 @@ import {
   TASK_BAR_AUTO_REFRESH_HINT,
   UNASSIGNED_OWNER_LABEL,
   UNASSIGNED_OWNER_TOOLTIP,
+  buildTaskCrossLinks,
+  isUnassignedOpenTask,
 } from "../utils/taskBarCopy";
 import { getTaskBarCollapsed, setTaskBarCollapsed } from "../utils/taskBarPrefs";
 import type { ComposerTurnProfile } from "../utils/turnProfile";
@@ -180,6 +183,9 @@ export function RoomTaskBar({
   const [section, setSection] = useState<TaskSection>("tasks");
   const [collapsed, setCollapsed] = useState(() => getTaskBarCollapsed());
   const [blockerCompleteBusy, setBlockerCompleteBusy] = useState(false);
+  const [blockerCompleteError, setBlockerCompleteError] = useState<string | null>(
+    null,
+  );
   const [objectionBusyId, setObjectionBusyId] = useState<string | null>(null);
   const [busyTaskId, setBusyTaskId] = useState<string | null>(null);
   const [completeErrors, setCompleteErrors] = useState<Record<string, string>>(
@@ -205,7 +211,8 @@ export function RoomTaskBar({
   }, [focusObjection]);
 
   const tasks = payload?.tasks ?? [];
-  const claimableCount = (payload?.claimable ?? []).length;
+  const claimable = payload?.claimable ?? [];
+  const claimableCount = claimable.length;
   const requiredAgreements = resolveRequiredAgreements(payload);
   const taskBarMode = resolveTaskBarMode(
     context.composerVariant,
@@ -244,6 +251,22 @@ export function RoomTaskBar({
     if (!ref) return undefined;
     return findTaskByBlockerRef(tasks, ref);
   }, [payload, blockers, tasks]);
+
+  const turnLeadEntries = useMemo(() => {
+    const map = payload?.turn_leads ?? {};
+    return Object.entries(map)
+      .sort(([a], [b]) => Number(a) - Number(b))
+      .slice(-6);
+  }, [payload?.turn_leads]);
+
+  const claimableIds = useMemo(
+    () => new Set(claimable.map((t) => t.id)),
+    [claimable],
+  );
+  const crossLinks = useMemo(
+    () => buildTaskCrossLinks(tasks, executions),
+    [tasks, executions],
+  );
 
   if (!payload) return null;
   const openObjections = payload.open_objections ?? [];
@@ -369,11 +392,14 @@ export function RoomTaskBar({
   async function completePrimaryBlockedTask() {
     if (!primaryBlockedTask) return;
     setBlockerCompleteBusy(true);
+    setBlockerCompleteError(null);
     try {
       await completeSessionTask(sessionId, primaryBlockedTask.id);
       onRefresh?.();
-    } catch {
-      /* row-level errors shown on next refresh */
+    } catch (e) {
+      const msg =
+        e instanceof Error ? parseApiErrorDetail(e.message) : "완료 처리 실패";
+      setBlockerCompleteError(msg);
     } finally {
       setBlockerCompleteBusy(false);
     }
@@ -481,11 +507,12 @@ export function RoomTaskBar({
               <>
                 <div className="taskbar-section-label taskbar-section-label--inline">
                   <label className="taskbar-lead-select" title={LEAD_HELP_SUMMARY}>
-                    세션 리드
+                    <span className="taskbar-lead-select__label">세션 리드</span>
                     <select
                       value={payload.team_lead ?? "cursor"}
                       disabled={leadBusy || loading}
                       onChange={(e) => void changeLead(e.target.value)}
+                      aria-describedby="taskbar-lead-help"
                     >
                       {LEAD_OPTIONS.map((id) => (
                         <option key={id} value={id}>
@@ -494,6 +521,15 @@ export function RoomTaskBar({
                       ))}
                     </select>
                   </label>
+                  <button
+                    type="button"
+                    className="btn btn--sm btn--ghost taskbar-lead-help"
+                    id="taskbar-lead-help"
+                    title={LEAD_HELP_DETAIL}
+                    aria-label={LEAD_HELP_SUMMARY}
+                  >
+                    ?
+                  </button>
                   {onRefresh ? (
                     <button
                       type="button"
@@ -510,6 +546,24 @@ export function RoomTaskBar({
                   <p className="taskbar-inline-error" role="alert">
                     {leadError}
                   </p>
+                ) : null}
+                {turnLeadEntries.length > 0 ? (
+                  <div
+                    className="taskbar__turn-leads-history"
+                    title={LEAD_HELP_DETAIL}
+                  >
+                    <span className="taskbar__turn-leads-label">
+                      이번 턴 리드
+                    </span>
+                    {turnLeadEntries.map(([turn, agent]) => (
+                      <span
+                        key={`${turn}-${agent}`}
+                        className="taskbar__turn-lead-chip"
+                      >
+                        T{turn}→{agent}
+                      </span>
+                    ))}
+                  </div>
                 ) : null}
                 {showConsensusBlocker ? (
                   <div className="taskbar__consensus-gate" aria-label="합의 차단">
@@ -539,6 +593,11 @@ export function RoomTaskBar({
                         ) : null}
                       </span>
                     </div>
+                    {blockerCompleteError ? (
+                      <p className="taskbar-inline-error" role="alert">
+                        {blockerCompleteError}
+                      </p>
+                    ) : null}
                   </div>
                 ) : null}
                 {tasks.length === 0 ? (
@@ -553,10 +612,17 @@ export function RoomTaskBar({
                     const rowError = completeErrors[task.id];
                     const statusKey =
                       task.status === "cancelled" ? "blocked" : task.status;
+                    const isClaimable = claimableIds.has(task.id);
                     return (
                       <div
                         key={task.id}
-                        className={`task-row${statusKey === "blocked" ? " task-row--blocked" : ""}`}
+                        className={[
+                          "task-row",
+                          statusKey === "blocked" ? "task-row--blocked" : undefined,
+                          isClaimable ? "task-row--claimable" : undefined,
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
                         data-task-id={task.id}
                       >
                         <span className={`task-row__dot task-row__dot--${statusKey}`} />
@@ -578,7 +644,15 @@ export function RoomTaskBar({
                           </span>
                         ) : (
                           <span
-                            className="task-row__owner task-row__owner--open"
+                            className={[
+                              "task-row__owner",
+                              "task-row__owner--open",
+                              isClaimable || isUnassignedOpenTask(task)
+                                ? "task-row__owner--claimable"
+                                : undefined,
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
                             title={UNASSIGNED_OWNER_TOOLTIP}
                           >
                             {UNASSIGNED_OWNER_LABEL}
@@ -768,6 +842,55 @@ export function RoomTaskBar({
               </>
             ) : null}
           </div>
+
+          {crossLinks.visible.length > 0 ? (
+            <div
+              className="taskbar__cross-links"
+              role="navigation"
+              aria-label="plan-task-execution links"
+            >
+              <span className="taskbar__cross-links-label">
+                plan ↔ task ↔ execution
+              </span>
+              <ul className="taskbar__cross-links-list">
+                {crossLinks.visible.map((link) => (
+                  <li key={link.taskId} className="taskbar__cross-link-row">
+                    {onFocusPlanAction ? (
+                      <button
+                        type="button"
+                        className="btn btn--sm btn--ghost"
+                        onClick={() => onFocusPlanAction(link.planIndex)}
+                      >
+                        plan #{link.planIndex}
+                      </button>
+                    ) : (
+                      <span>plan #{link.planIndex}</span>
+                    )}
+                    <span aria-hidden>↔</span>
+                    {onFocusTask ? (
+                      <button
+                        type="button"
+                        className="btn btn--sm btn--ghost"
+                        onClick={() => onFocusTask(link.taskId)}
+                      >
+                        {link.taskId}
+                      </button>
+                    ) : (
+                      <span>{link.taskId}</span>
+                    )}
+                    {link.execStatus ? (
+                      <span className="badge badge--accent">{link.execStatus}</span>
+                    ) : null}
+                  </li>
+                ))}
+                {crossLinks.hidden > 0 ? (
+                  <li className="taskbar__cross-link-more">
+                    +{crossLinks.hidden} more
+                  </li>
+                ) : null}
+              </ul>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

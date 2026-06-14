@@ -19,6 +19,7 @@ type Props = {
   onOpenInbox?: () => void;
   disabled?: boolean;
   presentation?: "inline" | "popup" | "inspector";
+  kindFilter?: "question" | "build";
 };
 
 function pendingItems(items: HumanInboxItem[]): HumanInboxItem[] {
@@ -204,6 +205,7 @@ export function HumanInboxPanel({
   onOpenInbox,
   disabled,
   presentation = "inline",
+  kindFilter,
 }: Props) {
   const { locale } = useLocale();
   const ko = locale === "ko";
@@ -231,6 +233,13 @@ export function HumanInboxPanel({
   }, [reload, reloadKey]);
 
   const pending = useMemo(() => pendingItems(items), [items]);
+  const visibleItems = useMemo(
+    () =>
+      kindFilter
+        ? items.filter((item) => item.kind === kindFilter)
+        : items,
+    [items, kindFilter],
+  );
   const hasPending = pending.length > 0;
 
   useEffect(() => {
@@ -336,7 +345,7 @@ export function HumanInboxPanel({
   if (presentation === "inspector") {
     return (
       <InspectorInboxView
-        items={items}
+        items={visibleItems}
         error={error}
         disabled={disabled}
         busyId={busyId}

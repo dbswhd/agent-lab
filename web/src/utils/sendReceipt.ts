@@ -11,12 +11,20 @@ export function sendReceiptLabel(
   receipt: string | undefined,
   fallbackMode: ComposeMode,
   stopped: boolean,
+  locale: "en" | "ko" = "ko",
 ): string {
-  if (stopped) return "답변 중지됨 · 부분 저장";
-  if (receipt === "plan_updated") return "plan 갱신됨";
-  if (receipt === "consensus_done") return "합의 완료";
-  if (receipt === "discuss_saved") return "토론 저장됨";
-  return fallbackMode === "plan" ? "plan 갱신됨" : "토론 저장됨";
+  const ko = locale === "ko";
+  if (stopped) return ko ? "답변 중지됨 · 부분 저장" : "Stopped · partial save";
+  if (receipt === "plan_updated") return ko ? "plan 갱신됨" : "Plan updated";
+  if (receipt === "consensus_done") return ko ? "합의 완료" : "Consensus reached";
+  if (receipt === "discuss_saved") return ko ? "토론 저장됨" : "Discussion saved";
+  return fallbackMode === "plan"
+    ? ko
+      ? "plan 갱신됨"
+      : "Plan updated"
+    : ko
+      ? "토론 저장됨"
+      : "Discussion saved";
 }
 
 /** Hide plan-centric toasts on the chat tab (plan tab has its own toolbar). */

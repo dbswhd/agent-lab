@@ -35,6 +35,8 @@ import {
 import { executionApprovalGate } from "../utils/executeApprovalGate";
 import { formatPlanExecuteError } from "../utils/planExecuteErrors";
 import { WorkPlanIcon } from "./WorkPlanIcon";
+import { SideBySideDiff } from "./SideBySideDiff";
+import { PlanProvenanceFooter } from "./PlanProvenanceFooter";
 import { MergeChecksPanel } from "./MergeChecksPanel";
 import { EvidenceGatesPanel } from "./EvidenceGatesPanel";
 import { EvidenceTimeline } from "./EvidenceTimeline";
@@ -51,6 +53,7 @@ import {
 
 type Props = {
   sessionId: string;
+  planMd?: string;
   run?: Record<string, unknown>;
   linkedTasks?: RoomTask[];
   cursorReady: boolean;
@@ -61,6 +64,8 @@ type Props = {
   onFocusObjection?: (objectionId: string, actionIndex?: number) => void;
   mergeChecks?: MergeChecksPayload | null;
   evidenceEntries?: EvidenceEntry[];
+  workHookAlert?: { event: string; body: string; blocked: boolean } | null;
+  onDismissWorkHookAlert?: () => void;
 };
 
 function linkedTaskForAction(
@@ -88,11 +93,11 @@ function PlanLinkedTaskLine({
 }) {
   if (!task || !onFocusTask) return null;
   return (
-    <p className="plan-execute-panel__linked-task">
+    <p className="plan-card__linked-task">
       연결 작업:{" "}
       <button
         type="button"
-        className="plan-execute-panel__linked-task-btn"
+        className="plan-card__linked-task-btn"
         onClick={() => onFocusTask(task.id)}
         title="작업 바로 이동"
       >
@@ -301,15 +306,6 @@ function execStatusKey(status: string | undefined): string {
   return status.replace("_required", "");
 }
 
-function diffLineKind(line: string): "add" | "del" | "meta" | "" {
-  if (line.startsWith("+++") || line.startsWith("---") || line.startsWith("@@")) {
-    return "meta";
-  }
-  if (line.startsWith("+")) return "add";
-  if (line.startsWith("-")) return "del";
-  return "";
-}
-
 function WorktreePendingBanner({ row }: { row: PlanExecutionRecord }) {
   const lines = worktreeBannerLines(row);
   if (!isWorktreeExecution(row)) return null;
@@ -457,6 +453,7 @@ function PlanObjectionAlert({
 
 export function PlanExecutePanel({
   sessionId,
+  planMd = "",
   run,
   linkedTasks,
   cursorReady,
@@ -467,6 +464,8 @@ export function PlanExecutePanel({
   onFocusObjection,
   mergeChecks = null,
   evidenceEntries = [],
+  workHookAlert = null,
+  onDismissWorkHookAlert,
 }: Props) {
   const [recommended, setRecommended] = useState<PlanActionItem | null>(null);
   const [nowItems, setNowItems] = useState<PlanActionItem[]>([]);
@@ -893,6 +892,24 @@ export function PlanExecutePanel({
 
   return (
     <div className="work-surface" aria-label="plan 실행">
+      {workHookAlert ? (
+        <div
+          className={`work-hook-alert${workHookAlert.blocked ? " work-hook-alert--blocked" : ""}`}
+          role={workHookAlert.blocked ? "alert" : "status"}
+        >
+          <strong>{workHookAlert.event}</strong>
+          <p>{workHookAlert.body}</p>
+          {onDismissWorkHookAlert ? (
+            <button
+              type="button"
+              className="btn btn--sm btn--ghost"
+              onClick={onDismissWorkHookAlert}
+            >
+              닫기
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       <div className="plan-card" id="work-plan-review">
         <div className="plan-card__head">
           <span className="plan-card__title">
@@ -903,9 +920,9 @@ export function PlanExecutePanel({
         </div>
         <div className="plan-card__body">
           {loadingActions ? (
-            <p className="plan-execute-panel__muted">액션 불러오는 중…</p>
+            <p className="plan-card__muted">액션 불러오는 중…</p>
           ) : !hasNowSection && !hasDryRun && !recommended ? (
-            <p className="plan-execute-panel__muted">
+            <p className="plan-card__muted">
               plan.md에 실행 액션이 없습니다. 토론·분석만 있으면{" "}
               <code>## 지금 실행</code> 섹션이 비어 있을 수 있습니다. Transcript에서
               구현 항목을 합의한 뒤 다음 턴 plan 갱신을 확인하세요.
@@ -924,7 +941,7 @@ export function PlanExecutePanel({
                       : null}
                   </div>
                   {nowHasOnlyGates ? (
-                    <p className="plan-execute-panel__muted plan-execute-panel__gate-note">
+                    <p className="plan-card__muted plan-card__gate-note">
                       Human 확인 항목만 있습니다. Cursor dry-run은{" "}
                       <strong>무엇을 / 어디서 / 검증</strong> 3필드 액션 필요.
                     </p>
@@ -1045,7 +1062,7 @@ export function PlanExecutePanel({
           {!activePending && hasDryRun && !planSnapshot ? (
             <div className="plan-actions-bar">
               {executeWorkspace?.label ? (
-                <span className="plan-execute-panel__workspace">
+                <span className="plan-card__workspace">
                   {executeWorkspace.label}
                 </span>
               ) : null}
@@ -1070,6 +1087,8 @@ export function PlanExecutePanel({
               </button>
             </div>
           ) : null}
+
+          <PlanProvenanceFooter planMd={planMd} onRefClick={onChatRefClick} />
         </div>
       </div>
       {activePending ? (
@@ -1231,24 +1250,15 @@ export function PlanExecutePanel({
             <PlanDiffStat text={activePending.diff_stat} />
           ) : null}
             {activePending.diff ? (
-              <div className="exec-diff">
+              <div className="exec-diff-wrap">
                 <div className="exec-diff__head">
                   <WorkPlanIcon name="gitMerge" size={14} />
                   Diff preview
                 </div>
-                <div className="exec-diff__body">
-                  {activePending.diff.split("\n").map((line, index) => {
-                    const kind = diffLineKind(line);
-                    return (
-                      <div
-                        key={`${activePending.id}-diff-${index}`}
-                        className={`diff-line${kind ? ` diff-line--${kind}` : ""}`}
-                      >
-                        {line}
-                      </div>
-                    );
-                  })}
-                </div>
+                <SideBySideDiff
+                  diff={activePending.diff}
+                  activeHunkId={reviseHunkId || undefined}
+                />
               </div>
             ) : null}
             {activePending.status === "pending_approval" &&
@@ -1480,7 +1490,7 @@ export function PlanExecutePanel({
 
       <EvidenceTimeline entries={evidenceEntries} compact />
 
-      {error ? <p className="plan-execute-panel__error">{error}</p> : null}
+      {error ? <p className="plan-card__error">{error}</p> : null}
     </div>
   );
 }

@@ -97,7 +97,7 @@
       ]
     },
     "cssSourceOfTruth": "web/src/styles/macos26.css",
-    "layoutOnly": "web/src/styles/app.css"
+    "layoutOnly": "web/src/styles/layout.css"
   },
   "agentLabPriority": [
     "Alerts",

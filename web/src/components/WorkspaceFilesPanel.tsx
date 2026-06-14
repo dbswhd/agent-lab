@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, lazy, Suspense } from "react";
 import {
   listWorkspaceFileRoots,
   listWorkspaceFiles,
@@ -8,7 +8,12 @@ import {
   type WorkspaceFileEntry,
   type WorkspaceFileRoot,
 } from "../api/client";
+import { collectMentionPaths } from "../hooks/useComposerMentionPaths";
 import { FilePreview } from "./FilePreview";
+
+const FilesMonacoEditor = lazy(() =>
+  import("./FilesMonacoEditor").then((m) => ({ default: m.FilesMonacoEditor })),
+);
 
 type Props = {
   sessionId: string;
@@ -136,6 +141,15 @@ function DirNode({
               >
                 <FileGlyph />
                 <span className="files-row__name">{entry.name}</span>
+                {entry.git_status ? (
+                  <span
+                    className="files-row__git"
+                    data-status={entry.git_status}
+                    title={`git ${entry.git_status}`}
+                  >
+                    {entry.git_status}
+                  </span>
+                ) : null}
               </button>
             );
           })}
@@ -176,6 +190,17 @@ export function WorkspaceFilesPanel({ sessionId }: Props) {
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [viewerError, setViewerError] = useState<string | null>(null);
+  const [pathSuggestions, setPathSuggestions] = useState<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void collectMentionPaths(sessionId).then((paths) => {
+      if (!cancelled) setPathSuggestions(paths);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId]);
 
   // Load roots when the session changes; pick the primary (binding) root.
   useEffect(() => {
@@ -324,15 +349,17 @@ export function WorkspaceFilesPanel({ sessionId }: Props) {
               ) : null}
               {content && activeRoot ? (
                 writable && content.kind === "text" ? (
-                  <textarea
-                    className="files-editor"
-                    value={draft}
-                    spellCheck={false}
-                    onChange={(e) => {
-                      setDraft(e.target.value);
-                      setDirty(true);
-                    }}
-                  />
+                  <Suspense fallback={<div className="files-hint">loading editor…</div>}>
+                    <FilesMonacoEditor
+                      path={selected}
+                      value={draft}
+                      pathSuggestions={pathSuggestions}
+                      onChange={(next) => {
+                        setDraft(next);
+                        setDirty(true);
+                      }}
+                    />
+                  </Suspense>
                 ) : (
                   <FilePreview
                     sessionId={sessionId}

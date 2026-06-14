@@ -9,6 +9,7 @@ folder's ``attachments/`` so the worktree/Oracle safety loop is never bypassed
 from __future__ import annotations
 
 import hashlib
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -201,6 +202,37 @@ def _is_excluded(entry: Path) -> bool:
     return False
 
 
+def _git_status_map(root: Path) -> dict[str, str]:
+    """Relative path → single-letter git status for workspace roots."""
+    if not (root / ".git").exists():
+        return {}
+    try:
+        from agent_lab.subprocess_env import subprocess_env
+
+        result = subprocess.run(
+            ["git", "-C", str(root), "status", "--porcelain", "-uall"],
+            env=subprocess_env(),
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        if result.returncode != 0:
+            return {}
+        out: dict[str, str] = {}
+        for line in result.stdout.splitlines():
+            if len(line) < 4:
+                continue
+            code = line[:2].strip() or "?"
+            rel = line[3:].strip().strip('"')
+            if " -> " in rel:
+                rel = rel.split(" -> ", 1)[1].strip()
+            out[rel] = code[0] if code else "?"
+        return out
+    except (OSError, subprocess.SubprocessError):
+        return {}
+
+
 def list_roots(session_id: str) -> dict[str, Any]:
     folder = _session_folder(session_id)
     return {"roots": [r.to_dict() for r in _build_roots(folder)]}
@@ -215,6 +247,8 @@ def list_dir(session_id: str, root_id: str, rel_path: str = "") -> dict[str, Any
     if not target.is_dir():
         raise PathNotAllowed(f"not a directory: {rel_path}")
     entries: list[dict[str, Any]] = []
+    git_map = _git_status_map(root.path) if root.kind == "workspace" else {}
+    rel_prefix = rel_path.strip("/")
     for child in sorted(target.iterdir(), key=lambda p: (p.is_file(), p.name.lower())):
         if _is_excluded(child):
             continue
@@ -222,14 +256,18 @@ def list_dir(session_id: str, root_id: str, rel_path: str = "") -> dict[str, Any
             stat = child.stat()
         except OSError:
             continue
-        entries.append(
-            {
-                "name": child.name,
-                "type": "dir" if child.is_dir() else "file",
-                "size": stat.st_size if child.is_file() else None,
-                "mtime": stat.st_mtime,
-            }
-        )
+        child_rel = f"{rel_prefix}/{child.name}" if rel_prefix else child.name
+        entry: dict[str, Any] = {
+            "name": child.name,
+            "type": "dir" if child.is_dir() else "file",
+            "size": stat.st_size if child.is_file() else None,
+            "mtime": stat.st_mtime,
+        }
+        if git_map and child.is_file():
+            status = git_map.get(child_rel)
+            if status:
+                entry["git_status"] = status
+        entries.append(entry)
     return {
         "root_id": root_id,
         "path": rel_path,

@@ -94,10 +94,15 @@ def test_human_transcript_message_is_right_aligned_without_label_chrome():
 def test_agent_waiting_state_shows_activity_log_and_dots():
     bubble = _read("web", "src", "components", "ChatBubble.tsx")
     css = _read("web", "src", "styles", "surfaces.css")
+    layout = _read("web", "src", "styles", "layout.css")
+    room = _read("web", "src", "components", "RoomChat.tsx")
 
     assert "agent-activity-log" in bubble
+    assert "agent-stream-preview" in bubble
     assert 'className="typing"' in bubble or 'className={`typing' in bubble
     assert ".typing span" in css
+    assert ".agent-stream-preview" in layout
+    assert 't === "agent_token"' in room
 
 
 def test_transcript_has_review_aware_inline_markers():
@@ -220,6 +225,8 @@ def test_run_log_panel_expands_agent_activities():
     panel = _read("web", "src", "components", "RunLogPanel.tsx")
     assert "expandRunLogEntries" in panel
     assert "m.activities" in panel
+    assert "RunLogEntryText" in panel
+    assert "run-entry__tool" in panel
 
 
 def test_turn_run_panel_renders_turn_messages():
@@ -231,12 +238,129 @@ def test_turn_run_panel_renders_turn_messages():
     assert "run-log" in panel
 
 
+def test_m3_terminal_uses_xterm():
+    terminal = _read("web", "src", "components", "TerminalPanel.tsx")
+    layout = _read("web", "src", "styles", "layout.css")
+    assert "@xterm/xterm" in terminal
+    assert "FitAddon" in terminal
+    assert "terminal-panel__xterm" in terminal
+    assert ".terminal-panel__xterm" in layout
+
+
+def test_m3_preview_auto_probe_and_presets():
+    preview = _read("web", "src", "components", "PreviewPanel.tsx")
+    assert "probePreviewPort" in preview
+    assert "getPreviewPresets" in preview
+    assert "preview-panel__presets" in preview
+
+
+def test_m3_files_monaco_editor_lazy():
+    files = _read("web", "src", "components", "WorkspaceFilesPanel.tsx")
+    monaco = _read("web", "src", "components", "FilesMonacoEditor.tsx")
+    assert "FilesMonacoEditor" in files
+    assert "lazy(" in files
+    assert "@monaco-editor/react" in monaco
+
+
+def test_m3_side_by_side_diff_in_work():
+    plan = _read("web", "src", "components", "PlanExecutePanel.tsx")
+    diff = _read("web", "src", "components", "SideBySideDiff.tsx")
+    util = _read("web", "src", "utils", "sideBySideDiff.ts")
+    css = _read("web", "src", "styles", "plan-execute.css")
+    assert "SideBySideDiff" in plan
+    assert "activeHunkId" in diff
+    assert "parseSideBySideDiff" in util
+    assert "exec-diff--split" in css
+
+
+def test_m4_diagnostics_show_bridge_audit():
+    diag = _read("web", "src", "components", "ApiDiagnosticsBar.tsx")
+    assert "bridge_audit" in diag
+    assert "auth_bootstrap_line" in diag
+    assert "diag-bar__bridge" in diag
+
+
+def test_m5_i18n_panels_use_locale():
+    bgtask = _read("web", "src", "components", "BackgroundTasksPanel.tsx")
+    run_log = _read("web", "src", "components", "RunLogPanel.tsx")
+    terminal = _read("web", "src", "components", "TerminalPanel.tsx")
+    live = _read("web", "src", "components", "LiveAgentsStrip.tsx")
+    room = _read("web", "src", "components", "RoomChat.tsx")
+    plan_refs = _read("web", "src", "utils", "planDocInline.tsx")
+    layout = _read("web", "src", "styles", "layout.css")
+
+    assert "useLocale" in bgtask
+    assert "msg.bgtaskTitle" in bgtask
+    assert "useLocale" in run_log
+    assert "msg.runLogTitle" in run_log
+    assert "msg.terminalHint" in terminal
+    assert "msg.liveAgentsResponding" in live
+    assert "localeMsg.inboxActivity" in room
+    assert "msg.planRefGoToChat" in plan_refs
+    assert ".plan-doc__ref--link" in layout
+
+
+def test_m5_console_presentation_is_default():
+    bubble = _read("web", "src", "components", "ChatBubble.tsx")
+    synth = _read("web", "src", "components", "HumanSynthesisBubble.tsx")
+    assert 'presentation = "console"' in bubble
+    assert 'presentation = "console"' in synth
+
+
 def test_session_list_shows_running_indicator():
     list_tsx = _read("web", "src", "components", "SessionList.tsx")
     app = _read("web", "src", "App.tsx")
     assert "runningSessionIds" in list_tsx
     assert "session-item__running" in list_tsx
     assert "useRunningSessionIds" in app
+
+
+def test_m6_taskbar_canonical_classes_only():
+    taskbar = _read("web", "src", "components", "RoomTaskBar.tsx")
+    layout = _read("web", "src", "styles", "layout.css")
+    assert "room-task-bar__" not in taskbar
+    assert ".taskbar__turn-leads-history" in layout
+    assert "legacy `.room-task-bar__*` block removed" in layout
+
+
+def test_m6_plan_card_canonical_classes_only():
+    panel = _read("web", "src", "components", "PlanExecutePanel.tsx")
+    plan_css = _read("web", "src", "styles", "plan-execute.css")
+    layout = _read("web", "src", "styles", "layout.css")
+    assert "plan-execute-panel__" not in panel
+    assert 'className="work-surface"' in panel
+    assert ".plan-card__muted" in plan_css
+    assert "Legacy `.plan-execute-panel`" in layout
+
+
+def test_m6_chat_turn_no_dual_class_root():
+    bubble = _read("web", "src", "components", "ChatBubble.tsx")
+    assert "`turn chat-turn" not in bubble
+    assert 'className={`chat-turn chat-turn--${role}' in bubble
+    assert 'className="chat-turn__head"' in bubble
+
+
+def test_m6_room_chat_canonical_shell_only():
+    room = _read("web", "src", "components", "RoomChat.tsx")
+    layout = _read("web", "src", "styles", "layout.css")
+    assert "room-workspace-shell" not in room
+    assert "view-options-btn" not in room
+    assert "view-options-popover" not in room
+    assert 'className="pane-row"' in room
+    assert 'className="pane-main workspace-main"' in room
+    assert "TranscriptViewOptions" in room
+    assert "transcript-view-options" in _read(
+        "web", "src", "components", "TranscriptViewOptions.tsx"
+    )
+    assert "legacy `.room-workspace-shell`" in layout
+
+
+def test_claude_stream_bridge_in_cli():
+    cli = _read("src", "agent_lab", "claude_cli.py")
+    parser = _read("src", "agent_lab", "bridge_stdout_parser.py")
+    assert "_run_claude_stream" in cli
+    assert "parse_claude_json_event" in parser
+    assert "stream-json" in cli
 
 
 def test_settings_page_and_work_ia_docs():

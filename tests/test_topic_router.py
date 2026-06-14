@@ -53,7 +53,23 @@ def test_keyword_classification(monkeypatch):
     assert classify_topic("README 오타 고쳐줘")[0] == "quick"
 
 
-def test_short_topic_is_quick_and_default_standard(monkeypatch):
+def test_trading_route_from_session_template(monkeypatch):
+    _clear_router_env(monkeypatch)
+    route = resolve_topic_route(
+        "일반 토픽",
+        session_template="trading-mission",
+    )
+    assert route.category == "trading"
+    assert route.source == "session_template"
+    assert route.quality_gate is True
+    assert route.wisdom_in_context is True
+
+
+def test_trading_keyword_classification(monkeypatch):
+    _clear_router_env(monkeypatch)
+    cat, _ = classify_topic("[Trading Mission — 장전] proposal batch 작성")
+    assert cat == "trading"
+
     _clear_router_env(monkeypatch)
     cat, signals = classify_topic("이거 머지됐어?")
     assert cat == "quick"
@@ -120,10 +136,12 @@ def test_escalation_one_step_no_demote(monkeypatch):
     assert up1.escalated_from == "quick"
     assert up1.escalation_act == "CHALLENGE"
     up2 = escalate_route(up1, act="AMEND")
-    assert up2.category == "deep"
+    assert up2.category == "trading"
     assert up2.escalated_from == "quick"  # 최초 카테고리 보존
     up3 = escalate_route(up2, act="BLOCK")
-    assert up3.category == "deep"  # deep에서 멈춤 (critical은 명시적만)
+    assert up3.category == "deep"
+    up4 = escalate_route(up3, act="BLOCK")
+    assert up4.category == "deep"  # deep에서 멈춤 (critical은 명시적만)
 
 
 def test_escalation_disabled_route_noop(monkeypatch):

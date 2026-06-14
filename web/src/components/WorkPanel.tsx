@@ -48,6 +48,8 @@ type Props = {
   latestExecution?: PlanExecutionRecord | null;
   hasPendingExecution?: boolean;
   hasDryRunDiff?: boolean;
+  workHookAlert?: { event: string; body: string; blocked: boolean } | null;
+  onDismissWorkHookAlert?: () => void;
 };
 
 /** Work tab — stepper chrome, mission strip, plan/execute body. */
@@ -72,6 +74,8 @@ export function WorkPanel({
   latestExecution = null,
   hasPendingExecution = false,
   hasDryRunDiff = false,
+  workHookAlert = null,
+  onDismissWorkHookAlert,
 }: Props) {
   const { locale } = useLocale();
   const ko = locale === "ko";
@@ -308,6 +312,7 @@ export function WorkPanel({
 
       <PlanExecutePanel
         sessionId={sessionId}
+        planMd={planMd}
         run={session?.run}
         linkedTasks={roomTasks?.tasks}
         cursorReady={cursorReady}
@@ -318,6 +323,8 @@ export function WorkPanel({
         onFocusTask={onFocusTask}
         onFocusObjection={onFocusObjection}
         onUpdated={onSessionUpdated}
+        workHookAlert={workHookAlert}
+        onDismissWorkHookAlert={onDismissWorkHookAlert}
       />
     </div>
   );

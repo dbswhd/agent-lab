@@ -145,6 +145,7 @@ def test_after_turn_fail_arms_bounded_auto_continue_signal(
     assert "한 턴 더 토론" in loop["continue_prompt"]
 
 
+@pytest.mark.integration
 def test_auto_continue_runs_exactly_one_extra_discuss_round(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -190,6 +191,7 @@ def test_auto_continue_runs_exactly_one_extra_discuss_round(
     assert len(run["turns"]) == 2
 
 
+@pytest.mark.integration
 def test_auto_continue_respects_goal_check_cap(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

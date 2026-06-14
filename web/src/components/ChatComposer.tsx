@@ -2,6 +2,11 @@ import { useMemo, useRef, useState, useEffect, type ReactNode } from "react";
 import { ComposerPlanToggle } from "./ComposerPlanToggle";
 import { ComposerEfficiencyToggle } from "./ComposerEfficiencyToggle";
 import { ComposerTurnPicker } from "./ComposerTurnPicker";
+import { ComposerMentionMenu } from "./ComposerMentionMenu";
+import {
+  mentionQueryAtCursor,
+  useComposerMentionPaths,
+} from "../hooks/useComposerMentionPaths";
 import { SlashCommandMenu } from "./SlashCommandMenu";
 import type { SlashCommandRecord } from "../api/client";
 import type { ComposerTurnProfile } from "../utils/turnProfile";
@@ -61,6 +66,8 @@ type Props = {
   isNewSession?: boolean;
   slashCommands?: SlashCommandRecord[];
   onSlashExecute?: (command: SlashCommandRecord) => void;
+  /** When set, `@` opens a workspace file mention picker (Files tab roots). */
+  sessionId?: string | null;
 };
 
 /**
@@ -105,10 +112,14 @@ export function ChatComposer({
   isNewSession = false,
   slashCommands = [],
   onSlashExecute,
+  sessionId = null,
 }: Props) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [slashHighlight, setSlashHighlight] = useState(0);
+  const [mentionCursor, setMentionCursor] = useState(0);
+  const { paths: mentionPaths, loading: mentionLoading, ensureLoaded } =
+    useComposerMentionPaths(sessionId);
 
   useEffect(() => {
     const el = inputRef.current;
@@ -126,6 +137,34 @@ export function ChatComposer({
       (c) => c.slash.toLowerCase().includes(query) || c.label.toLowerCase().includes(query),
     );
   }, [slashCommands, value]);
+
+  const mentionQuery = useMemo(() => {
+    if (!sessionId) return null;
+    return mentionQueryAtCursor(value, mentionCursor);
+  }, [sessionId, value, mentionCursor]);
+
+  useEffect(() => {
+    if (mentionQuery != null) void ensureLoaded();
+  }, [mentionQuery, ensureLoaded]);
+
+  function applyMention(path: string) {
+    const el = inputRef.current;
+    const cursor = el?.selectionStart ?? value.length;
+    const head = value.slice(0, cursor);
+    const tail = value.slice(cursor);
+    const replaced = head.replace(/(?:^|\s)@([^\s@]*)$/, (m) =>
+      m.startsWith(" ") ? ` @${path} ` : `@${path} `,
+    );
+    onChange(`${replaced}${tail}`);
+    requestAnimationFrame(() => {
+      const next = inputRef.current;
+      if (!next) return;
+      const pos = replaced.length;
+      next.focus();
+      next.setSelectionRange(pos, pos);
+      setMentionCursor(pos);
+    });
+  }
 
   const rootClass = ["composer", className].filter(Boolean).join(" ");
   const inputLocked = disabled;
@@ -259,11 +298,27 @@ export function ChatComposer({
                 onSelect={(slash) => onChange(slash)}
                 onExecute={(cmd) => onSlashExecute?.(cmd)}
               />
+              {mentionQuery != null ? (
+                <ComposerMentionMenu
+                  query={mentionQuery}
+                  paths={mentionPaths}
+                  loading={mentionLoading}
+                  onPick={applyMention}
+                />
+              ) : null}
               <textarea
                 ref={inputRef}
                 className="composer-input"
                 value={value}
-                onChange={(e) => onChange(e.target.value)}
+                onChange={(e) => {
+                  onChange(e.target.value);
+                  setMentionCursor(e.target.selectionStart ?? e.target.value.length);
+                }}
+                onClick={(e) =>
+                  setMentionCursor(
+                    (e.target as HTMLTextAreaElement).selectionStart ?? value.length,
+                  )
+                }
                 placeholder={placeholder}
                 disabled={inputLocked}
                 rows={1}

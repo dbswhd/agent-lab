@@ -20,7 +20,7 @@ function agentSlug(name: string): string {
 export function HumanSynthesisBubble({
   message,
   highlighted,
-  presentation = "messenger",
+  presentation = "console",
 }: Props) {
   const { msg } = useLocale();
   const parsed = parseHumanSynthesisBody(message.body);

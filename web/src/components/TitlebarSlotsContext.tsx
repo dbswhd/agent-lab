@@ -3,6 +3,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -29,7 +30,16 @@ export function TitlebarSlotsProvider({ children }: { children: ReactNode }) {
     () => ({
       slots,
       setSlots: (patch: TitlebarSlots) =>
-        setSlotsState((prev) => ({ ...prev, ...patch })),
+        setSlotsState((prev) => {
+          if (
+            prev.title === patch.title &&
+            prev.meta === patch.meta &&
+            prev.trailing === patch.trailing
+          ) {
+            return prev;
+          }
+          return { ...prev, ...patch };
+        }),
       clearSlots: () => setSlotsState({}),
     }),
     [slots],
@@ -48,10 +58,15 @@ export function useTitlebarSlotsContext() {
 /** RoomChat (and similar panes) register dynamic titlebar content. */
 export function useTitlebarSlots(next: TitlebarSlots) {
   const ctx = useTitlebarSlotsContext();
+  // Keep ctx in a ref so we can call it from effects without it being a dep.
+  // Including ctx as a dep creates a feedback cycle:
+  //   setSlots → new slots → new ctx → cleanup clearSlots → new ctx → setSlots ...
+  const ctxRef = useRef(ctx);
+  ctxRef.current = ctx;
+
   const { title, meta, trailing } = next;
   useEffect(() => {
-    if (!ctx) return;
-    ctx.setSlots({ title, meta, trailing });
-    return () => ctx.clearSlots();
-  }, [ctx, title, meta, trailing]);
+    ctxRef.current?.setSlots({ title, meta, trailing });
+    return () => ctxRef.current?.clearSlots();
+  }, [title, meta, trailing]);
 }

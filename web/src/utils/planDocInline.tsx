@@ -1,4 +1,5 @@
 import { type ReactNode } from "react";
+import { useLocale } from "../i18n/useLocale";
 
 export function renderPlanInline(text: string): ReactNode[] {
   const nodes: ReactNode[] = [];
@@ -30,6 +31,7 @@ export function PlanDocRefs({
   refs: number[];
   onRefClick?: (line: number) => void;
 }) {
+  const { msg } = useLocale();
   if (!refs.length) return null;
   return (
     <span className="plan-doc__refs">
@@ -39,7 +41,7 @@ export function PlanDocRefs({
             key={line}
             type="button"
             className="plan-doc__ref plan-doc__ref--link"
-            title={`대화 L${line}로 이동`}
+            title={msg.planRefGoToChat(line)}
             onClick={() => onRefClick(line)}
           >
             L{line}

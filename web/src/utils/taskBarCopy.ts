@@ -1,4 +1,4 @@
-import type { ConsensusGatePayload, RoomTask, RoomTasksPayload } from "../api/client";
+import type { ConsensusGatePayload, RoomTask, RoomTasksPayload, PlanExecutionRecord } from "../api/client";
 import type { ComposerTurnProfile } from "./turnProfile";
 
 export type TaskBarComposerVariant = "discuss" | "plan" | "consensus";
@@ -182,6 +182,50 @@ export function isUnassignedOpenTask(task: RoomTask): boolean {
     !task.owner_agent &&
     (task.status === "pending" || task.status === "in_progress")
   );
+}
+
+export type TaskCrossLink = {
+  taskId: string;
+  planIndex: number;
+  execStatus: string | null;
+};
+
+function latestExecutionForTask(
+  task: RoomTask,
+  executions: PlanExecutionRecord[] | undefined,
+): PlanExecutionRecord | null {
+  if (!executions?.length) return null;
+  for (let i = executions.length - 1; i >= 0; i -= 1) {
+    const ex = executions[i];
+    const match =
+      (task.plan_action_index != null &&
+        ex.action_index === task.plan_action_index) ||
+      (task.plan_action_id != null && ex.action_id === task.plan_action_id);
+    if (match) return ex;
+  }
+  return null;
+}
+
+/** plan #N ↔ task ↔ execution status rows for taskbar footer (D7). */
+export function buildTaskCrossLinks(
+  tasks: RoomTask[],
+  executions: PlanExecutionRecord[] | undefined,
+  maxVisible = 5,
+): { visible: TaskCrossLink[]; hidden: number } {
+  const rows: TaskCrossLink[] = [];
+  for (const task of tasks) {
+    if (task.plan_action_index == null) continue;
+    const ex = latestExecutionForTask(task, executions);
+    rows.push({
+      taskId: task.id,
+      planIndex: task.plan_action_index,
+      execStatus: ex?.status ?? null,
+    });
+  }
+  return {
+    visible: rows.slice(0, maxVisible),
+    hidden: Math.max(0, rows.length - maxVisible),
+  };
 }
 
 export type ChatSearchLine = {

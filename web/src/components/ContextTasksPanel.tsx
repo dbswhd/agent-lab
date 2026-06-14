@@ -14,6 +14,8 @@ type Props = {
   objections: RoomObjection[];
   disabled?: boolean;
   onChanged?: () => void;
+  onFocusTask?: (taskId: string) => void;
+  onFocusObjection?: (id: string, actionIndex?: number) => void;
 };
 
 /** Context sidebar — Tasks tab (prototype `ContextSidebar` tasks section). */
@@ -23,6 +25,8 @@ export function ContextTasksPanel({
   objections,
   disabled,
   onChanged,
+  onFocusTask,
+  onFocusObjection,
 }: Props) {
   const { locale, msg } = useLocale();
   const [resolving, setResolving] = useState<string | null>(null);
@@ -71,6 +75,17 @@ export function ContextTasksPanel({
               </div>
               <p className="ctx-objection__body">{obj.body}</p>
               <div className="ctx-objection__actions">
+                {onFocusObjection ? (
+                  <button
+                    type="button"
+                    className="btn btn--sm"
+                    onClick={() =>
+                      onFocusObjection(obj.id, obj.plan_action_index)
+                    }
+                  >
+                    {ko ? "본문에서 보기" : "Open"}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   className="btn btn--sm btn--ok"
@@ -113,14 +128,28 @@ export function ContextTasksPanel({
 
       <section className="ctx-section">
         <div className="ctx-section__label">{msg.ctxTasks}</div>
+        <p className="ctx-section__hint">
+          {ko
+            ? "상세 TaskBar는 Transcript/Work 본문에 고정됩니다. 여기서는 필요한 항목으로 바로 이동합니다."
+            : "The full taskbar stays docked in Transcript/Work. Use this queue to jump to the right item."}
+        </p>
         {tasks.length === 0 ? (
           <div className="ctx-empty">{msg.ctxTasksEmpty}</div>
         ) : null}
         {tasks.map((task) => (
-          <div
+          <button
+            type="button"
             key={task.id}
-            className={`task-row${task.status === "blocked" ? " task-row--blocked" : ""}`}
+            className={[
+              "task-row",
+              "task-row--button",
+              task.status === "blocked" ? "task-row--blocked" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
             data-task-id={task.id}
+            onClick={() => onFocusTask?.(task.id)}
+            disabled={!onFocusTask}
           >
             <span
               className={`task-row__dot task-row__dot--${dotStatus(task.status)}`}
@@ -129,7 +158,7 @@ export function ContextTasksPanel({
             {task.owner_agent ? (
               <Avatar role={task.owner_agent as AgentRole} size={20} />
             ) : null}
-          </div>
+          </button>
         ))}
       </section>
     </>

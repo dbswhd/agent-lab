@@ -7,7 +7,7 @@
 > 구현 대상: `web/src/` (React + Vite + FastAPI)  
 > 원칙: **로직·API 계약 불변**, **프레젠테이션만** 프로토타입 클래스/IA에 맞춤
 
-마지막 업데이트: 2026-06-10
+마지막 업데이트: 2026-06-14
 
 ---
 
@@ -18,13 +18,14 @@
 | CSS 스택 | `tokens → base → layout → surfaces → plan-execute → overlays → tweaks → prototype-panels` |
 | App 셸 | `.app` / `.shell` / `.pane` / `.rail__*` + 단일 `MacTitlebar` (`TitlebarSlotsContext`) |
 | 리프 컴포넌트 | Avatar, SessionRail, SessionList, ChatComposer, WorkspaceTabBar, PlanActionCard 등 |
+| New session | `NewSessionDialog` wired in `App.tsx` (composer new-session flow) |
 | Settings | `settings-section*` + rules in `layout.css` |
 | Inspector | `context-sidebar` + `ctx-tabs` — **Overview / Tasks / Inbox** (`ContextOverviewPanel`, `InspectorPane`) |
 | Context Overview | goal · plan · context layers · team health — `ContextOverviewPanel.tsx` |
 | Context layers | `GET/PATCH …/context-layers` + Overview `patchContextLayers` toggle |
-| Taskbar | `taskbar` + `room-task-bar` dual-class root |
-| Plan execute | `work-surface` + `plan-execute-panel` dual-class root |
-| Transcript | `turn` + `chat-turn` dual-class |
+| Taskbar | `taskbar__*` canonical (M6 pass) |
+| Plan execute | `work-surface` + `plan-card__*` canonical (M6 pass) |
+| Transcript shell | `pane-row` · `workspace-main` · `transcript-view-options` (M6 pass) |
 
 ---
 
@@ -34,7 +35,9 @@
 
 | 프로토타입 | 현재 앱 | 영향 |
 |-----------|---------|------|
-| Run 탭 mock `RunLog` | `TurnRunPanel` + SSE | **동작함**. 비주얼만 프로토타입 run log와 다름 |
+| Run 탭 mock `RunLog` | `RunLogPanel` + SSE `toolCards` | **동작함**. structured tool cards + duration |
+| Files tree git badge | `workspace_files.git_status` + `files-row__git` | **shipped** (workspace roots only) |
+| Composer `@file` | `ComposerMentionMenu` | **shipped** (workspace path picker stub) |
 | Artifacts mock `artifact-card` | `workspace-artifacts-list` | **동작함**. 카드 레이아웃 다름 |
 | Activity 피드 | `NotificationCenter` (Inbox 탭·별 surface) | 프로토타입 Inbox 단일 피드와 **배치·라우팅** 다름 — [NOTIFICATION-TAXONOMY.md](./NOTIFICATION-TAXONOMY.md) |
 
@@ -47,7 +50,7 @@
 | 프로토타입 | 상태 |
 |-----------|------|
 | `TweaksPanel` (accent, density, gate variant, simulate objection) | **미구현** — 디자인 QA용. `ThemeToggle`만 제공 |
-| `NewSessionDialog` (`ns-modal`) | **미구현** — 앱은 `composerNew` + `SessionSetupBar` 인라인 플로우 |
+| `NewSessionDialog` (`ns-modal`) | **shipped** — `App.tsx` + `NewSessionDialog.tsx` |
 | Titlebar **Inbox** unread (다른 세션) | `GET /api/inbox/summary` + titlebar badge **shipped**; rail 전역 집계 UI는 미구현 |
 
 ---
@@ -69,18 +72,14 @@
 
 ---
 
-### 2.4 거대 컨테이너 — dual-class + bridge (canonical rename 미완)
+### 2.4 거대 컨테이너 — dual-class bridge (M6 complete)
 
-TSX 내부 클래스는 **아직 legacy 이름**이 대부분. 루트만 canonical 추가:
-
-| 파일 | 루트 dual-class | 내부 |
-|------|----------------|------|
-| `RoomTaskBar.tsx` | `taskbar` | `room-task-bar__*` 전부 (~880줄) |
-| `PlanExecutePanel.tsx` | `work-surface` | `plan-execute-*`, `room-plan-btn` |
-| `RoomChat.tsx` | — | `room-workspace-shell`, `messages-scroll`, `view-options-*` |
-| `ChatBubble.tsx` | `turn` | `chat-turn__*`, `mac-bubble__*` |
-
-**체감 증상:** 없음(bridge가 스타일). 유지보수 시 **클래스 두 벌** 혼재.
+| 파일 | 상태 | Notes |
+|------|------|-------|
+| `RoomTaskBar.tsx` | **M6 Pass** | canonical `.taskbar__*` only; legacy `.room-task-bar__*` CSS block removed |
+| `PlanExecutePanel.tsx` | **M6 Pass** | canonical `.work-surface` + `.plan-card__*`; legacy `.plan-execute-panel__*` removed |
+| `RoomChat.tsx` | **M6 Pass** | canonical `.pane-row` · `.workspace-main`; `TranscriptViewOptions` (`.transcript-view-options__*`); legacy `.room-workspace-shell` / `.view-options-*` CSS removed |
+| `ChatBubble.tsx` | **M6 Pass** | messenger path: `.chat-turn` only (no `turn` dual-class); console uses `ConsoleTurn` `.turn__*` |
 
 ---
 
@@ -119,7 +118,7 @@ make dev   # http://localhost:5173 + API 8765
 
 ## 5. 후속 작업 (선택, cosmetic)
 
-1. `RoomTaskBar` / `PlanExecutePanel` / `RoomChat` **내부** legacy class → canonical 일괄 rename (bridge 제거)
+1. ~~`RoomTaskBar` / `PlanExecutePanel` / `RoomChat` / `ChatBubble` 내부 legacy class~~ — **M6 complete** (2026-06-14)
 2. Activity → Inbox 단일 피드 vs 별 surface — [NOTIFICATION-TAXONOMY.md](./NOTIFICATION-TAXONOMY.md) 라우팅 정리
 3. `SessionList`에 agent Avatar strip + dir/branch (prototype `session-item__sub`)
 4. `NewSessionDialog` vs inline setup — IA 통일

@@ -1613,7 +1613,7 @@ body.is-tauri .chat-list-header {
   box-sizing: border-box;
 }
 
-.messages-scroll--document > .plan-execute-panel {
+.messages-scroll--document > .work-surface {
   width: var(--composer-cluster-width);
   max-width: calc(100% - 2 * var(--chat-thread-pad-x));
   margin-left: auto;
@@ -3225,67 +3225,6 @@ body.is-tauri .chat-list-header {
 }
 [aria-expanded="true"] .agent-session-settings__toggle-chev {
   transform: rotate(90deg);
-}
-
-/* ── View tabs bar options popover ─────────────────────── */
-.view-tabs-bar__trailing {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  position: relative;
-  margin-left: auto;
-}
-.view-options-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border: none;
-  border-radius: var(--radius-control);
-  background: transparent;
-  color: var(--mac-label-tertiary);
-  cursor: pointer;
-  font-size: 16px;
-  line-height: 1;
-  transition: background 0.12s, color 0.12s;
-}
-.view-options-btn:hover {
-  background: var(--mac-fill-secondary);
-  color: var(--mac-label-primary);
-}
-.view-options-btn.is-active {
-  background: var(--mac-fill-secondary);
-  color: var(--mac-label-primary);
-}
-.view-options-popover {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  z-index: 200;
-  min-width: 160px;
-  padding: 8px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  background: var(--mac-menu-surface, var(--mac-window-bg));
-  border: 0.5px solid var(--mac-separator-strong);
-  border-radius: var(--mac-radius-menu, var(--radius-control));
-  box-shadow: var(--shadow-menu, var(--shadow-panel));
-  animation: lg-panel-in 0.18s ease-out;
-}
-.view-options-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: var(--text-body);
-  color: var(--mac-label-primary);
-  cursor: pointer;
-  user-select: none;
-}
-.view-options-row input[type="checkbox"] {
-  margin: 0;
-  accent-color: var(--mac-accent, #007aff);
 }
 
 /* ── Composer turn hint — subtle ───────────────────────── */

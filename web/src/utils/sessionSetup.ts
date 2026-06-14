@@ -12,6 +12,21 @@ export type AgentThreadOption = {
   last: string;
 };
 
+export type SessionTemplate = {
+  id: string;
+  label: string;
+  description: string;
+  default_phase?: string | null;
+};
+
+export type TradingMissionPreset = {
+  workspace_id: string;
+  session_template: string;
+  turn_profile?: string;
+  topic?: string;
+  session_goal?: string;
+};
+
 export type SessionSetupDefaults = {
   workspace_id: string;
   session_template: string;
@@ -20,6 +35,8 @@ export type SessionSetupDefaults = {
 export type SessionSetupOptions = {
   workspaces: WorkspacePreset[];
   agent_threads?: Partial<Record<"cursor" | "codex" | "claude", AgentThreadOption[]>>;
+  session_templates?: SessionTemplate[];
+  trading_mission_preset?: TradingMissionPreset | null;
   defaults: SessionSetupDefaults;
 };
 
@@ -27,6 +44,7 @@ export const CUSTOM_WORKSPACE_ID = "custom";
 
 const WORKSPACE_KEY = "agent-lab-workspace-id";
 const WORKSPACE_PATH_KEY = "agent-lab-workspace-path";
+const SESSION_TEMPLATE_KEY = "agent-lab-session-template";
 
 export function getStoredWorkspaceId(fallback = "agent-lab"): string {
   try {
@@ -56,6 +74,19 @@ export function setStoredWorkspacePath(path: string | null): void {
   } else {
     localStorage.removeItem(WORKSPACE_PATH_KEY);
   }
+}
+
+export function getStoredSessionTemplate(fallback = "general"): string {
+  try {
+    const v = localStorage.getItem(SESSION_TEMPLATE_KEY);
+    return v?.trim() || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+export function setStoredSessionTemplate(id: string): void {
+  localStorage.setItem(SESSION_TEMPLATE_KEY, id);
 }
 
 export function workspaceLabelFromId(

@@ -146,6 +146,64 @@ def collect_documents(folder: Path) -> list[dict[str, Any]]:
         row = _notepad_document(folder, name)
         if row:
             docs.append(row)
+    docs.extend(_trading_artifact_documents(folder))
+    return docs
+
+
+def _trading_wisdom_tags(folder: Path) -> list[str]:
+    from agent_lab.run_meta import read_run_meta
+    from agent_lab.trading_mission.trading_goal_oracle import is_trading_mission_run
+
+    run = read_run_meta(folder)
+    if not is_trading_mission_run(run):
+        return []
+    tags = [f"trading:session:{folder.name}"]
+    mission_kind = str(run.get("mission_kind") or "").strip()
+    if mission_kind:
+        tags.append(f"trading:kind:{mission_kind}")
+    batch_path = folder / "artifacts" / "proposal_batch.json"
+    if batch_path.is_file():
+        try:
+            batch = json.loads(batch_path.read_text(encoding="utf-8"))
+            if isinstance(batch, dict):
+                mid = str(batch.get("mission_id") or "").strip()
+                if mid:
+                    tags.append(f"trading:mission:{mid}")
+                if batch.get("ingest_ready") is False:
+                    tags.append("trading:blocked")
+        except (OSError, json.JSONDecodeError):
+            pass
+    return tags
+
+
+def _trading_artifact_documents(folder: Path) -> list[dict[str, Any]]:
+    tags = _trading_wisdom_tags(folder)
+    if not tags:
+        return []
+    docs: list[dict[str, Any]] = []
+    for rel in (
+        "artifacts/mission_summary.md",
+        "artifacts/playbook.md",
+        "plan.md",
+    ):
+        path = folder / rel
+        if not path.is_file():
+            continue
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        docs.append(
+            {
+                "id": f"trading:{rel.replace('/', ':')}",
+                "source": "trading_mission",
+                "title": rel,
+                "text": text[:4000],
+                "path": rel,
+                "at": _now_iso(),
+                "tags": tags,
+            }
+        )
     return docs
 
 
@@ -229,6 +287,7 @@ def search_wisdom_index(
             "snippet": _snippet(text, query_terms=terms),
             "at": doc.get("at"),
             "path": doc.get("path"),
+            "tags": list(doc.get("tags") or []),
         }
         scored.append((score, hit))
     scored.sort(key=lambda row: row[0], reverse=True)

@@ -1,5 +1,7 @@
 # Codex Handoff — IDE 기능 구현 (UI Tier 3 CSS 수렴)
 
+> **Archived 2026-06-14** — M6 CSS migration shipped; see contract tests + [archive/README.md](./README.md).
+
 > **작성:** 2026-06-13  
 > **대상:** Codex (다음 구현 담당)  
 > **워크스페이스:** `/Users/yoonjong/Projects/agent-lab`  

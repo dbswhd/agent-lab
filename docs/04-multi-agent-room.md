@@ -116,7 +116,7 @@ Composer는 전송 전 예상 에이전트 호출 수를 표시한다. 3-agent `
 | 목록 | **Messages** sidebar / IG DM row height | `--chat-list-width`, `.session-list` |
 | 칩 | iOS **segmented** / capsule buttons | `--mac-segmented-bg`, `--radius-pill`, `.mac-segmented` |
 | 에이전트 색 | Cursor blue, Codex purple, Claude orange | `--color-agent-cursor`, `--color-agent-codex`, `--color-agent-claude` |
-| 작업 바 | macOS inset panel, readable body | `--lg-panel-surface`, `--mac-separator`, `.room-task-bar` |
+| 작업 바 | macOS inset panel, readable body | `--lg-panel-surface`, `--mac-separator`, `.taskbar`, `.taskbar-dock` |
 | 턴 요약 | compact document summary | `--space-sm`, `--text-caption`, `.chat-line--synthesis` |
 | 확인 질문 | warning banner | `--mac-system-orange`, `.clarifier-banner` |
 

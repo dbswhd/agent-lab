@@ -70,6 +70,8 @@ Use this page to pick the **one canonical doc** for your question. Older numbere
 | [SPRINT-D-CHECKLIST.md](./SPRINT-D-CHECKLIST.md) | STABILITY / closed sprint |
 | [MD-SYSTEM-DESIGN.md](./MD-SYSTEM-DESIGN.md) | MD-WRITING-PLAN (authoring); TRACEABILITY (shipped) |
 
+**Archived handoffs / audits:** [archive/](./archive/) — do not use for status.
+
 ---
 
 ## Tier 5 — Authoring & live ops runbooks

@@ -20,5 +20,6 @@
 
 ## 주요 컴포넌트
 - `PlanExecutePanel.tsx` — execute UI
-- `RoomChat.tsx` — Room 대화
-- `WorkPanel.tsx` — Work tab (stepper + mission strip)
+- `RoomChat.tsx` — Room 대화 · Workbench shell
+- `WorkToolPanel.tsx` — Tools > Plan (execute-focused)
+- `WorkPanel.tsx` — mission stepper strip (WorkStatusBar host)

@@ -1,5 +1,7 @@
 # Production Audit — 2026-06-14
 
+> **Archived 2026-06-14** — point-in-time audit. Shipped status: [EXTERNAL-REFS-TRACEABILITY.md](../EXTERNAL-REFS-TRACEABILITY.md).
+
 > M0 shipped-surface inventory. Status: **Pass** / **Fix** / **Defer**.
 
 ## Summary

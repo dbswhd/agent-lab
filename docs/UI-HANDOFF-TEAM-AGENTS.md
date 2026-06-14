@@ -53,7 +53,7 @@ plan 탭: PlanExecutePanel — 액션 카드 · pending plan 스냅샷 · dry-ru
 | 입력 | `web/src/components/ChatComposer.tsx`, `ComposerTurnPicker.tsx` |
 | chat 파싱 | `web/src/utils/transcript.ts` |
 | API 타입 | `web/src/api/client.ts` |
-| 스타일 | `web/src/styles/` (`.room-task-bar*`, `.composer-mode-chip`, `.clarifier-banner`, `.chat-line--synthesis`, `.chat-line--peer`) |
+| 스타일 | `web/src/styles/` (`.taskbar`, `.taskbar-dock`, `.taskbar__*`, `.composer-mode-chip`, `.clarifier-banner`, `.chat-line--synthesis`, `.chat-line--peer`) |
 
 ---
 
@@ -227,7 +227,7 @@ UI 담당은 아래를 **수동 스모크** 체크리스트로 사용.
 
 ### P2 — 시각·a11y·Figma
 
-- [x] `docs/04-multi-agent-room.md` §5 Figma 토큰과 `.room-task-bar`, `.chat-line--synthesis`, `.clarifier-banner` 대조
+- [x] `docs/04-multi-agent-room.md` §5 Figma 토큰과 `.taskbar`, `.chat-line--synthesis`, `.clarifier-banner` 대조
 - [x] `role="region"` / `aria-label` on 작업 바·배너 점검
 - [x] narrow width(Tauri)에서 작업 바 head 줄바꿈
 

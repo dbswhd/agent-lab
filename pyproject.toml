@@ -1,7 +1,7 @@
 [project]
 name = "agent-lab"
 version = "0.1.0"
-description = "Educational sandbox: topic → multi-role LLM graph → plan.md"
+description = "Multi-agent developer console: Room discuss, plan workflow, and Human-gated worktree execute with Oracle verification"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }

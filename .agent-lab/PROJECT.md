@@ -1,7 +1,9 @@
 # 프로젝트 메모리 — agent-lab
 
 ## 아키텍처 한 줄
-Educational sandbox: topic → multi-role LLM graph → plan.md
+주제 → 세 AI Room 협업 → `plan.md` → Human 승인 → worktree execute · merge · Oracle verify (개발자용 멀티에이전트 콘솔)
+
+**불변:** 합의=Room · 격리=worktree · 완료=Oracle verified · Human gate 유지
 
 ## 핵심 모듈
 - `src/agent_lab` — Python Room·execute 코어

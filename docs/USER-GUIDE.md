@@ -41,7 +41,7 @@
 15. [Run 탭](#15-run-탭)
 16. [Artifacts 탭](#16-artifacts-탭)
 17. [Settings·Health·진단](#17-settingshealth진단)
-18. [Inspector (Tasks / Activity / Quick)](#18-inspector-tasks--activity--quick)
+18. [Workbench (Overview / Tasks / Inbox / Tools)](#18-workbench-overview--tasks--inbox--tools)
 19. [알림·SSE·스트리밍](#19-알림sse스트리밍)
 20. [키보드·상태 유지(localStorage)](#20-키보드상태-유지localstorage)
 21. [REST API 개요](#21-rest-api-개요)
@@ -85,7 +85,7 @@
 |----------------|-----------|
 | DB, 백테스트, 실거래 | 없음 (기본) |
 | TASK · pytest · Handoff | PLAN · 토론 · 문서화 |
-| 프로덕션 실행 | **기획·토론·초안** 연습장 |
+| 프로덕션 실행 | **기획·토론·execute gate·검증 루프** (pipeline 대체 아님) |
 
 `plan.md`를 Human이 검토한 뒤 pipeline의 `TASK-*.md`로 옮길 수 있다. Agent Lab이 pipeline을 **대신 실행하지는 않는다**.
 
@@ -197,26 +197,31 @@ AGENT_LAB_GOAL_LOOP=1
 
 ```text
 ┌─────────────────┬──────────────────────────────────┬─────────────────┐
-│ Session rail    │ Workspace                        │ Inspector       │
-│ (세션 목록)     │ Transcript / Work / Run / Artifacts │ Tasks / Activity / Quick │
-│ Health chip     │ Composer (하단)                   │ (접기·리사이즈) │
+│ Session rail    │ Transcript + taskbar-dock           │ Workbench       │
+│ (세션 목록)     │ Composer (하단)                     │ Overview/Tasks/ │
+│ Health chip     │                                     │ Inbox/Tools     │
 └─────────────────┴──────────────────────────────────┴─────────────────┘
 ```
+
+**Workbench Tools** (`rightPanelMode`): `plan`(WorkToolPanel + execute), `background`, `diff`, `files`, `preview`, `terminal`.
 
 별도 **Settings 페이지** (`shellView === "settings"`) — Context 미리보기·에이전트 cwd·Plugin·진단.
 
 **Classic 모드:** 레거시 Planner→Critic→Scribe (`RunPanel` / `SessionViewer`). Room이 기본·권장.
 
-### 4.2 Workspace 탭
+### 4.2 Workspace · Tools 탭
 
 | ID | 라벨 | 단축키 | 역할 |
 |----|------|--------|------|
 | `transcript` | Transcript | ⌘1 | Human·에이전트 대화 전체 |
-| `work` | Work | ⌘2 | `plan.md` + execute/review/approval |
-| `run` | Run | ⌘3 | 현재 턴 topology·스트림 |
-| `artifacts` | Artifacts | ⌘4 | 세션 산출물 목록 |
+| `plan` | Plan | ⌘2 | `WorkToolPanel` — plan + execute/review/approval |
+| `background` | Background | ⌘3 | 백그라운드 태스크 |
+| `diff` | Diff | ⌘4 | execute diff |
+| `files` | Files | ⌘5 | workspace files · Monaco |
+| `preview` | Preview | ⌘6 | dev preview |
+| `terminal` | Terminal | ⌘7 | xterm |
 
-레거시 alias: `plan` / `review` → `work`, `chat` → `transcript`.
+레거시 alias: `work` / `review` / `artifacts` → `plan`, `run` → `background`, `chat` → `transcript`.
 
 ### 4.3 Work 내부 단계 (stepper)
 
@@ -228,7 +233,7 @@ Plan → Review → Execute → Verify → Done
 
 | Resolver | 우선순위 | 역할 |
 |----------|----------|------|
-| `GET /api/sessions/{id}/runtime` → `work_phase` | **최우선** (`WorkPanel`) | Python SSOT [`work_phase.py`](../src/agent_lab/runtime/work_phase.py) |
+| `GET /api/sessions/{id}/runtime` → `work_phase` | **최우선** (`WorkToolPanel` / `WorkStatusBar`) | Python SSOT [`work_phase.py`](../src/agent_lab/runtime/work_phase.py) |
 | `resolveWorkPhaseFromMission()` | runtime 없을 때, 미션 `phase` 매핑 | Layer 6 FSM → stepper |
 | `resolveWorkPhase()` | mission 매핑 `null`일 때 fallback | plan · execution · Oracle에서 **5상태** 파생 (`done`·`merge_verify` 포함) |
 
@@ -242,28 +247,28 @@ Plan → Review → Execute → Verify → Done
 
 **미션 일시정지:** `MISSION_PAUSED`이면 stepper는 `last_partial.resume_phase` 기준으로 강조하고 **Paused** 배지를 표시합니다. 재개는 Work alert의 「미션 재개」.
 
-### 4.4 Inspector 탭
+### 4.4 Workbench 탭
 
 | ID | 라벨 | 역할 |
 |----|------|------|
-| `tasks` | Tasks | Goal loop · RoomTaskBar · Human Inbox (inspector) |
-| `activity` | Activity | NotificationCenter |
-| `quick` | Quick | cwd/툴 요약 → Settings 링크 |
+| `overview` | Overview | ContextOverviewPanel — session · goal · plan meta |
+| `tasks` | Tasks | Goal loop · HumanGate · plan approval |
+| `inbox` | Inbox | Human Inbox · Discuss Inbox · notifications |
+| `tools` | Tools | Workbench tool modes (`plan`, `diff`, `files`, …) |
 
-**Context 미리보기는 Inspector 탭이 아님** — Settings 페이지 Workspace 섹션.
+**Context 미리보기는 Workbench 탭이 아님** — Settings 페이지 Workspace 섹션.
 
 ### 4.5 탭 자동 전환 규칙
 
-**Workspace 기본 탭** (`resolveDefaultWorkspaceTab`):
+**Tools 기본 모드** (`resolveDefaultWorkspaceTab`):
 
-1. `running` → **run**
-2. `hasPendingExecution` OR `hasDryRunDiff` → **work**
-3. `planMd` 비어 있지 않음 → **work**
-4. else → **transcript**
+1. `hasDryRunDiff` → **diff**
+2. `hasPendingExecution` OR `planMd` 비어 있지 않음 → **plan** (WorkToolPanel)
+3. else → **transcript**
 
-**Inspector 기본:** blocker 있으면 **tasks** (objection / consensus_tasks_ready=false / consensus blockers).
+**Workbench 기본:** blocker 있으면 **tasks**; else **overview**.
 
-**핀(pin) 동작:** 사용자가 탭을 직접 고르면 해당 세션 동안 workspace 탭은 **고정** (run 시작/종료만 inspector 쪽 재평가). 새 세션은 transcript + tasks.
+**핀(pin) 동작:** 사용자가 탭/모드를 직접 고르면 해당 세션 동안 고정. run 시작/종료는 inspector 쪽만 재평가(Transcript pin 유지).
 
 **프로그램matic 전환 예:**
 
@@ -271,8 +276,8 @@ Plan → Review → Execute → Verify → Done
 |--------|------|
 | plan ref 클릭 | transcript + 줄 하이라이트 |
 | TaskBar 할 일 클릭 | transcript |
-| Human inbox / blocker 알림 | inspector tasks |
-| dry-run / plan sync 알림 | work |
+| Human inbox / blocker 알림 | workbench inbox |
+| dry-run / plan sync 알림 | tools → plan |
 | Bridge 실패 | settings |
 
 ### 4.6 Transcript 밖 조건부 strip
@@ -957,28 +962,30 @@ Boot: 90× retry + 45s interval refresh.
 
 ---
 
-## 18. Inspector (Tasks / Activity / Quick)
+## 18. Workbench (Overview / Tasks / Inbox / Tools)
 
-### 18.1 Tasks
+### 18.1 Overview
 
-Goal loop banner + **RoomTaskBar** + HumanInbox (inspector).
+`ContextOverviewPanel` — session meta, goal loop, plan summary.
+
+### 18.2 Tasks
+
+Goal loop banner + plan approval + HumanGate panels.
 
 Blocker 시 auto-focus tasks tab.
 
-### 18.2 Activity
+### 18.3 Inbox
 
-`NotificationCenter` — P0/P1/P2 taxonomy ([NOTIFICATION-TAXONOMY.md](./NOTIFICATION-TAXONOMY.md))
+`HumanInboxPanel`, `DiscussInboxPanel`, `NotificationCenter` (P0/P1/P2 — [NOTIFICATION-TAXONOMY.md](./NOTIFICATION-TAXONOMY.md)).
 
-예: run_failed, consensus_plan_sync_failed, human_inbox, bridge.
+### 18.4 Tools
 
-### 18.3 Quick
+`WorkbenchPanel` + tool modes: `WorkToolPanel`(plan/execute), `DiffToolPanel`, `WorkspaceFilesPanel`, `PreviewPanel`, `TerminalPanel`, `BackgroundTasksPanel`.
 
-cwd/툴 read-only summary → 「전체 설정 열기」
-
-### 18.4 Inspector chrome
+### 18.5 Workbench chrome
 
 - Toggle: toolbar / **⌃⌘I**
-- Width drag resize — persist `agent-lab-inspector-width`
+- Width drag resize — persist workbench width prefs
 
 ---
 
@@ -1349,4 +1356,4 @@ Live 품질 체크: [MISSION-DOGFOOD.md](./MISSION-DOGFOOD.md).
 
 ---
 
-*코드 기준: `web/src/utils/workspaceTabs.ts`, `web/src/components/RoomChat.tsx`, `web/src/components/WorkPanel.tsx`, `src/agent_lab/room.py`, `src/agent_lab/room_tasks.py`, `src/agent_lab/room_team_orchestration.py`. UI 재설계 후 이 문서의 §4·§27을 우선 갱신하세요.*
+*코드 기준: `web/src/utils/workspaceTabs.ts`, `web/src/components/RoomChat.tsx`, `web/src/components/WorkToolPanel.tsx`, `web/src/components/WorkPanel.tsx`, `src/agent_lab/room.py`, `src/agent_lab/room_tasks.py`, `src/agent_lab/room_team_orchestration.py`. Shipped status: TRACEABILITY + tests.*

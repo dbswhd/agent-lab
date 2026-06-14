@@ -16,7 +16,7 @@ API log: same directory, `agent-lab-api.log`.
 
 API startup uses FastAPI lifespan hooks. Startup diagnostics keep the same boot log behavior; shutdown is currently a no-op. Session detail loads still run stale worktree GC after reading `run.json`.
 
-ops-P2 split FastAPI routes into `app/server/routers/*`; `app/server/main.py` is now app assembly only (1254 → 111 lines).
+ops-P2 split FastAPI routes into `app/server/routers/*`; `app/server/main.py` is app assembly only (routers + lifespan + static mounts).
 
 When the UI shows **API offline**, open diagnostics (sidebar) or call `/api/diagnostics` from curl. Retry: `make dev`, `make tauri-dev`, or restart the packaged app so Tauri spawns uvicorn again.
 

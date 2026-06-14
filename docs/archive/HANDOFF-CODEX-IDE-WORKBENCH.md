@@ -1,5 +1,7 @@
 # Codex Handoff — IDE 기능 구현 (Workbench / clever-questing-moth)
 
+> **Archived 2026-06-14** — point-in-time handoff; Workbench core is shipped on `main`. Do not use for status. See [archive/README.md](./README.md) · [EXTERNAL-REFS-TRACEABILITY.md](../EXTERNAL-REFS-TRACEABILITY.md).
+
 > **작성:** 2026-06-13  
 > **대상:** Codex (이어서 구현)  
 > **SSOT 플랜:** [`/Users/yoonjong/.claude/plans/clever-questing-moth.md`](/Users/yoonjong/.claude/plans/clever-questing-moth.md)  
@@ -10,7 +12,7 @@
 
 ## 0. 이전 handoff 정정
 
-`docs/HANDOFF-CODEX-IDE-CSS-CLEANUP.md`는 **별도 Cursor 스레드**의 orphan CSS 정리용입니다.  
+`docs/archive/HANDOFF-CODEX-IDE-CSS-CLEANUP.md`는 **별도 Cursor 스레드**의 orphan CSS 정리용입니다.  
 **본 Workbench(파일·프리뷰·터미널·백그라운드) 작업과 무관**합니다. Codex는 **이 문서**를 SSOT로 삼으세요.
 
 ---
@@ -198,4 +200,4 @@ python scripts/smoke_room.py
 
 - 플랜 리뷰: Cursor [clever-questing-moth 검토](81bb956e-7c8a-426c-a75f-8b71192b304f)
 - 구현 세션: Claude Desktop slug `clever-questing-moth` (custom title: IDE 기능 구현)
-- CSS orphan 정리: `docs/HANDOFF-CODEX-IDE-CSS-CLEANUP.md` (별도 트랙)
+- CSS orphan 정리: `docs/archive/HANDOFF-CODEX-IDE-CSS-CLEANUP.md` (별도 트랙)

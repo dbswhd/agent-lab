@@ -99,7 +99,6 @@ __all__ = [
     "_write_session_files",
     "auto_plan_scribe_enabled",
     "available_agents",
-    "available_agents",
     "build_agent_context_bundle",
     "call_agent",
     "consensus_reached",

@@ -2,9 +2,11 @@
 
 ## 빠른 시작
 - `make dev` → API(8765) + web(5173)
-- `make test` → pytest 860+ tests (mock-first, `-m "not live"`)
+- `make test-fast` → pytest ~870 tests (`not live and not integration`, `-n auto` when xdist installed, ~1 min)
+- `make test` / `make ci-full` → full mock suite incl. integration
 - `make ci` → pytest + smoke + web build
 - `python scripts/smoke_room.py` → 36 regression baselines
+- `make dogfood-suite-mock` → Eval Program v1 mock topics ([`docs/EVAL-PROGRAM.md`](docs/EVAL-PROGRAM.md))
 - `make list-flags` → `AGENT_LAB_*` registry (or `GET /api/health/flags`)
 
 ## 핵심 모듈

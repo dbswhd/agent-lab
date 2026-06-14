@@ -27,8 +27,9 @@ def _make_dry_run(*args: str) -> str:
 def test_verify_ops_dry_run_wires_ci_orphans_and_weekly_report():
     out = _make_dry_run("verify-ops")
 
-    assert "make ci" in out
+    assert "make ci-full" in out
     assert "scripts/check_worktree_orphans.py" in out
+    assert "scripts/check_bridge_processes.py" in out
     assert "make score-weekly" in out
     assert "--write-artifacts" in out
     assert "Ops report:" in out
@@ -37,8 +38,9 @@ def test_verify_ops_dry_run_wires_ci_orphans_and_weekly_report():
 def test_verify_ops_report_zero_skips_weekly_artifact():
     out = _make_dry_run("verify-ops", "REPORT=0")
 
-    assert "make ci" in out
+    assert "make ci-full" in out
     assert "scripts/check_worktree_orphans.py" in out
+    assert "scripts/check_bridge_processes.py" in out
     assert "Ops report: skipped (REPORT=0)" in out
     assert "--write-artifacts" not in out
 

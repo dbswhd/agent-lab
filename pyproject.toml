@@ -18,7 +18,7 @@ dependencies = [
 
 [project.optional-dependencies]
 cursor = ["cursor-sdk>=0.1.0"]
-test = ["pytest>=8"]
+test = ["pytest>=8", "pytest-xdist>=3.5"]
 
 [project.scripts]
 agent-lab = "agent_lab.cli:main"
@@ -33,4 +33,7 @@ where = ["src"]
 [tool.pytest.ini_options]
 markers = [
     "live: real Cursor SDK / bridge (requires AGENT_LAB_RUN_LIVE=1 and secrets)",
+    "fast: explicit quick unit test (subset marker; most tests are unmarked mock-fast)",
+    "integration: slower multi-component or subprocess tests (excluded from make test-fast)",
+    "bridge: cursor bridge lifecycle / external probe tests",
 ]

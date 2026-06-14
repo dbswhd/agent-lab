@@ -1,4 +1,4 @@
-.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test ci check-worktrees smoke smoke-e2e smoke-web-ui smoke-tauri-ui validate-quant verify-quant-workspace verify-trading-v1 verify-mcp-contract build-research-cards offline-lane thin-runtime-status verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate
+.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test test-fast test-duration-report ci ci-full check-worktrees smoke smoke-e2e smoke-web-ui smoke-tauri-ui validate-quant verify-quant-workspace verify-trading-v1 verify-mcp-contract build-research-cards offline-lane thin-runtime-status verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate
 
 install:
 	python3 -m venv .venv
@@ -42,6 +42,19 @@ tauri-build: prepare-bundled-runtime
 test: check-worktrees
 	.venv/bin/pytest tests/ -q -m "not live"
 
+test-fast: check-worktrees
+	@if .venv/bin/python -c "import xdist" 2>/dev/null; then \
+		.venv/bin/pytest tests/ -q -m "not live and not integration" -n $${TEST_FAST_WORKERS:-auto}; \
+	else \
+		.venv/bin/pytest tests/ -q -m "not live and not integration"; \
+	fi
+
+test-integration: check-worktrees
+	.venv/bin/pytest tests/ -q -m "integration and not live"
+
+test-duration-report: check-worktrees
+	.venv/bin/pytest tests/ -q -m "not live and not integration" --durations=20
+
 verify-hooks:
 	.venv/bin/pytest tests/test_room_hooks.py tests/test_pre_execute_hooks.py tests/test_hook_router.py tests/test_reply_policy.py tests/test_gate_snapshot.py tests/test_hook_communicate_patches.py tests/test_hook_communicate_remaining.py tests/test_communicate_kpis.py tests/test_measure_communicate_baseline.py -q
 
@@ -63,7 +76,9 @@ test-live:
 	@test "$$AGENT_LAB_RUN_LIVE" = "1" || (echo "Set AGENT_LAB_RUN_LIVE=1 for live Cursor spike tests" && exit 1)
 	.venv/bin/pytest tests/ -q -m live
 
-ci: test smoke score-regression-fixtures
+ci: test-fast smoke score-regression-fixtures
+
+ci-full: test smoke score-regression-fixtures
 
 init-project-memory:
 	@test -n "$(WORKSPACE)" || WORKSPACE=.; \
@@ -142,8 +157,9 @@ score-weekly:
 	fi
 
 verify-ops:
-	$(MAKE) ci
+	$(MAKE) ci-full
 	.venv/bin/python scripts/check_worktree_orphans.py
+	.venv/bin/python scripts/check_bridge_processes.py
 	@if [ "$${REPORT:-1}" = "0" ]; then \
 		echo "Ops report: skipped (REPORT=0)"; \
 	else \

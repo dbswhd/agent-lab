@@ -51,10 +51,10 @@ jobs:
           EOF
           chmod +x .venv/bin/codex
 
-      - name: Pytest (mock-only, no secrets)
+      - name: Pytest (PR fast path — mock-only, no secrets)
         env:
           AGENT_LAB_ROOT: ${{ github.workspace }}
-        run: pytest tests/ -q -m "not live"
+        run: pytest tests/ -q -m "not live and not integration" -n auto
 
       - name: Regression smoke and score fixtures
         run: |

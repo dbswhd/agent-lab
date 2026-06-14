@@ -45,6 +45,24 @@ Applied in this order (explicit `os.environ` values win and are not overwritten)
 
 Template: see `.env.example` (absolute path section).
 
+## Auth bootstrap (`make dev` restarts)
+
+On every API process start (FastAPI lifespan), `agent_auth_bootstrap.bootstrap_room_auth_on_startup()` runs **without LLM calls**:
+
+| Agent | Startup action |
+|-------|----------------|
+| **Cursor** | If `CURSOR_API_KEY` is in env but missing from `~/.agent-lab/credentials.toml`, persist to credentials + `~/.agent-lab/.env`. Also writes absolute `CODEX_BIN` / `CLAUDE_BIN` / `CURSOR_SDK_BRIDGE_BIN` when discoverable. |
+| **Codex** | Applies captured OAuth **primary** profile to live `~/.codex/auth.json` when stale or logged out; clears duplicate **fallback** profile when it differs from primary. |
+| **Claude** | Clears auth status cache and runs `claude auth status` only (no headless `-p` probe unless `AGENT_LAB_CLAUDE_HEADLESS_PROBE=1`). |
+
+Disable with `AGENT_LAB_SKIP_AUTH_BOOTSTRAP=1`. Boot summary: `~/Library/Logs/Agent Lab/agent-lab-boot.log` (`auth bootstrap: …`).
+
+**One-time manual steps (cannot be automated):**
+
+- **Claude OAuth expired** → terminal: `claude logout && claude login` (or Settings → Health → Claude **재연결** after login).
+- **Codex OAuth never captured** → `codex login`, then Settings → Codex OAuth **캡처**.
+- **Cursor SDK missing** → `pip install -e '.[cursor]'` in repo venv.
+
 ## Plan / execute after scribe
 
 After scribe writes `plan.md`, the room emits SSE `plan_actions_validation` with issues such as:
@@ -159,6 +177,8 @@ See **[SPRINT-D-CHECKLIST.md](./SPRINT-D-CHECKLIST.md)** for the full checkbox l
 
 Example: `.agent-lab/hooks.example.toml`, `scripts/hooks/verify-task.sh`.
 
+UI observability: Settings → **Hooks & Response** shows hook config candidates, relevant envelope/native-hook flags, recent `hook_runs[]`, and last communicate meta. Hook Activity rows open Settings for diagnosis. Response Contract presets persist in `run.json` as `response_contract` and inject a short guidance block into agent payloads.
+
 ### Phase E — objections (ROOM-REINFORCEMENT P0)
 
 | Piece | Behavior |
@@ -237,7 +257,12 @@ Room turns use Codex CLI in a **read-only** workspace sandbox by default (debate
 | Variable | Effect |
 |----------|--------|
 | `CODEX_ROOM_WORKSPACE_WRITE=1` | Allow writes in the room workspace (use only when the turn must edit files). |
+| `CODEX_ROOM_IDLE_TIMEOUT_SEC` | Fail when no JSONL **or stderr** for N seconds (default `600`; `0` = off). Prevents silent 30+ min hangs. |
+| `CODEX_ROOM_TIMEOUT_SEC` | Optional wall-clock cap for the whole `codex exec` (unset = no limit). |
+| `CODEX_ROOM_HEARTBEAT_SEC` | Emit UI activity every N seconds while Codex is thinking (default `60`). |
 | `CODEX_BIN` | Absolute path when GUI `PATH` lacks `codex`. |
+
+On stall/failure, stderr is persisted to a temp `agent-lab-codex-stderr-*.log` path included in the error message.
 
 **os error 2** (missing file/path) is mapped to a Korean hint in API/UI responses; check workspace binding and sandbox before enabling writes.
 
@@ -261,6 +286,8 @@ General discuss/plan turns now store `status: partial` when at least one agent s
 
 | Layer | What | How |
 |-------|------|-----|
+| **PR fast path** | mock unit + API (excludes `integration` + `live`) | `make test-fast` — `-n auto` when `pytest-xdist` installed (~2 min target) |
+| **Full mock suite** | all non-live tests incl. integration | `make ci-full` / `pytest tests/ -q -m "not live"` |
 | Unit / API | `tests/test_*.py` | `make test` / `pytest tests/ -q -m "not live"` — no live LLM, no secrets |
 | Tauri paths | `tests/test_tauri_config.py` | `frontendDist` → `web/dist`; bundle `resources` → `runtime/web/dist`, `runtime/venv` |
 | Room fixtures | `sessions/_regression/*` (32 smoke baselines via `scripts/smoke_room.py`) | `tests/test_regression_baselines.py`, `tests/test_smoke_room_governance.py`, `tests/test_mb_smoke_fixtures.py`, `scripts/smoke_room.py` |
@@ -273,7 +300,8 @@ General discuss/plan turns now store `status: partial` when at least one agent s
 
 **Every PR / push (`test` job, ubuntu):**
 
-- `pip install -e ".[cursor]"` → `make test` (402 tests; excludes `@pytest.mark.live` opt-in Cursor spikes)
+- `pip install -e ".[cursor,test]"` → `make test-fast` (PR gate) or `make ci-full` (release / verify-ops)
+- `make test-duration-report` — slowest 20 tests in the test-fast bucket
 - Live spike only: `AGENT_LAB_RUN_LIVE=1 make test-live` (`tests/test_live_execute_spike.py`)
 - `scripts/smoke_room.py` (32 regression baselines), `scripts/check_worktree_orphans.py`, `scripts/score_session.py --json` on regression fixtures
 - `cd web && npm ci && npm run build`

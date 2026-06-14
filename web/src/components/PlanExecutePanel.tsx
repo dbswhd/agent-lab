@@ -205,16 +205,16 @@ function ExternalHandoffBadge({ row }: { row: PlanExecutionRecord }) {
   const clean = handoff.stopped_cleanly !== false;
   return (
     <div
-      className={`plan-execute-handoff plan-execute-handoff--${clean ? "ok" : "warn"}`}
+      className={`work-exec-handoff work-exec-handoff--${clean ? "ok" : "warn"}`}
       role="status"
       data-testid="external-handoff-badge"
     >
-      <span className="plan-execute-handoff__badge">
+      <span className="work-exec-handoff__badge">
         {clean ? "External handoff" : "External handoff (unclean stop)"}
       </span>
-      <p className="plan-execute-handoff__summary">{handoff.evidence_summary}</p>
+      <p className="work-exec-handoff__summary">{handoff.evidence_summary}</p>
       {handoff.changed_files?.length ? (
-        <p className="plan-execute-handoff__files">
+        <p className="work-exec-handoff__files">
           {handoff.changed_files.slice(0, 5).join(", ")}
           {handoff.changed_files.length > 5 ? " …" : ""}
         </p>
@@ -229,17 +229,17 @@ function AdversarialBadge({ row }: { row: PlanExecutionRecord }) {
   const tone = note.toUpperCase() === "LGTM" ? "lgtm" : "warning";
   return (
     <div
-      className={`plan-execute-adversarial plan-execute-adversarial--${tone}`}
+      className={`work-exec-adversarial work-exec-adversarial--${tone}`}
       role="status"
     >
-      <span className="plan-execute-adversarial__badge">
+      <span className="work-exec-adversarial__badge">
         {tone === "lgtm" ? "Adversarial LGTM" : "Adversarial review"}
       </span>
       {row.adversarial_source ? (
-        <span className="plan-execute-adversarial__meta">{row.adversarial_source}</span>
+        <span className="work-exec-adversarial__meta">{row.adversarial_source}</span>
       ) : null}
       {tone !== "lgtm" ? (
-        <span className="plan-execute-adversarial__detail" title={note}>
+        <span className="work-exec-adversarial__detail" title={note}>
           {note}
         </span>
       ) : null}
@@ -266,29 +266,29 @@ function OracleBadge({
   const detail = oracle?.detail?.trim();
   return (
     <div
-      className={`plan-execute-oracle plan-execute-oracle--${failed ? "fail" : "ok"}`}
+      className={`work-exec-oracle work-exec-oracle--${failed ? "fail" : "ok"}`}
       role="status"
     >
-      <span className="plan-execute-oracle__badge">
+      <span className="work-exec-oracle__badge">
         {oracleStatusLabel(status)}
       </span>
       {retryCount ? (
-        <span className="plan-execute-oracle__meta">retry {retryCount}</span>
+        <span className="work-exec-oracle__meta">retry {retryCount}</span>
       ) : null}
       {checked ? (
-        <span className="plan-execute-oracle__meta">
+        <span className="work-exec-oracle__meta">
           {formatExecutionTime(checked)}
         </span>
       ) : null}
       {detail ? (
-        <span className="plan-execute-oracle__detail" title={detail}>
+        <span className="work-exec-oracle__detail" title={detail}>
           {detail}
         </span>
       ) : null}
       {failed ? (
         <button
           type="button"
-          className="room-plan-btn plan-execute-oracle__action"
+          className="plan-card__btn work-exec-oracle__action"
           disabled={busy || retryLimitReached}
           title={retryLimitReached ? "Oracle 수정 재시도 상한(2회)에 도달했습니다." : undefined}
           onClick={() => onReverify(row.id)}
@@ -425,7 +425,7 @@ function PlanObjectionAlert({
 }) {
   if (!objections.length) return null;
   return (
-    <div className="plan-execute-objection-alert" role="alert">
+    <div className="work-exec-objection-alert" role="alert">
       <strong>{title}</strong>
       {message ? <p>{message}</p> : null}
       <ul>
@@ -983,18 +983,18 @@ export function PlanExecutePanel({
 
           {planSnapshot ? (
             <div
-              className="plan-execute-plan-snapshot"
+              className="work-exec-plan-snapshot"
               role="region"
               aria-label="plan 스냅샷 승인"
             >
-              <p className="plan-execute-plan-snapshot__lead">
+              <p className="work-exec-plan-snapshot__lead">
                 dry-run 전에 아래 plan 실행 항목을 확인·승인하세요 (스냅샷).
               </p>
-              <pre className="plan-execute-plan-snapshot__body">
+              <pre className="work-exec-plan-snapshot__body">
                 {planSnapshot.snapshot_text ||
                   `${planSnapshot.action_what}\n${planSnapshot.action_where}\n${planSnapshot.action_verify}`}
               </pre>
-              <div className="plan-execute-plan-snapshot__actions">
+              <div className="work-exec-plan-snapshot__actions">
                 <button
                   type="button"
                   className="plan-btn plan-btn--primary"
@@ -1016,19 +1016,19 @@ export function PlanExecutePanel({
           ) : null}
 
           {isolationBlock ? (
-            <div className="plan-execute-isolation-modal" role="alertdialog">
-              <p className="plan-execute-isolation-modal__title">
+            <div className="work-exec-isolation-modal" role="alertdialog">
+              <p className="work-exec-isolation-modal__title">
                 격리 worktree를 만들 수 없습니다
               </p>
-              <p className="plan-execute-isolation-modal__reason">
+              <p className="work-exec-isolation-modal__reason">
                 {isolationBlock.code}: {isolationBlock.message}
               </p>
               {isolationBlock.remediation?.length ? (
-                <p className="plan-execute-isolation-modal__hint">
+                <p className="work-exec-isolation-modal__hint">
                   {isolationBlock.remediation.join(" · ")}
                 </p>
               ) : null}
-              <div className="plan-execute-isolation-modal__actions">
+              <div className="work-exec-isolation-modal__actions">
                 <button
                   type="button"
                   className="plan-btn plan-btn--primary"
@@ -1116,8 +1116,8 @@ export function PlanExecutePanel({
               <p
                 className={
                   activePending.pre_verify?.blocked
-                    ? "plan-execute-pending__pre-verify plan-execute-pending__pre-verify--blocked"
-                    : "plan-execute-pending__pre-verify"
+                    ? "work-exec-pending__pre-verify work-exec-pending__pre-verify--blocked"
+                    : "work-exec-pending__pre-verify"
                 }
                 role={activePending.pre_verify?.blocked ? "alert" : "status"}
               >
@@ -1142,16 +1142,16 @@ export function PlanExecutePanel({
           {activePending.draft_summary ? (
             <PlanAgentResponse
               text={activePending.draft_summary}
-              className="plan-execute-pending__summary"
+              className="work-exec-pending__summary"
             />
           ) : null}
           {activePending.agent_log?.length ? (
-            <details className="plan-execute-pending__log" open>
+            <details className="work-exec-pending__log" open>
               <summary>
                 Cursor 로그 ({activePending.executor_label ?? "Cursor"} ·{" "}
                 {activePending.agent_log.length})
               </summary>
-              <ol className="plan-execute-agent-log">
+              <ol className="work-exec-agent-log">
                 {activePending.agent_log.map((line, i) => (
                   <li key={`${activePending.id}-log-${i}`}>{line}</li>
                 ))}
@@ -1159,21 +1159,21 @@ export function PlanExecutePanel({
             </details>
           ) : null}
           {activePending.touched_paths?.length ? (
-            <p className="plan-execute-pending__paths">
+            <p className="work-exec-pending__paths">
               변경 파일: {formatPathList(activePending.touched_paths)}
             </p>
           ) : (
-            <p className="plan-execute-pending__paths plan-execute-pending__paths--empty">
+            <p className="work-exec-pending__paths work-exec-pending__paths--empty">
               소스 diff 없음 (스냅샷 diff 없음)
             </p>
           )}
           {activePending.artifact_touched_paths?.length ? (
-            <p className="plan-execute-pending__paths">
+            <p className="work-exec-pending__paths">
               검증 산출물: {formatPathList(activePending.artifact_touched_paths)}
             </p>
           ) : null}
           {activePending.needs_artifact_review ? (
-            <p className="plan-execute-pending__artifact-note" role="note">
+            <p className="work-exec-pending__artifact-note" role="note">
               소스 파일 변경은 없지만 PDF/break-report 확인이 필요합니다. 승인 시
               &quot;{reviewRequiredLabel(activePending)}&quot;로 기록됩니다.
               {activePending.verification_paths?.length
@@ -1227,22 +1227,22 @@ export function PlanExecutePanel({
               </div>
             ) : null}
           {activePending.paths_outside_expected?.length ? (
-            <p className="plan-execute-pending__warn">
+            <p className="work-exec-pending__warn">
               예상 범위 밖: {formatPathList(activePending.paths_outside_expected)}
             </p>
           ) : null}
           {activePending.status === "merge_conflict" ? (
             <div
-              className="plan-execute-merge-conflict"
+              className="work-exec-merge-conflict"
               role="alert"
               aria-label="merge 충돌"
             >
-              <p className="plan-execute-merge-conflict__lead">
+              <p className="work-exec-merge-conflict__lead">
                 main 병합 중 충돌이 발생했습니다. 저장소에서 충돌을 해결한 뒤 다시
                 시도하세요.
               </p>
               {mergeConflictFiles(activePending).length ? (
-                <ul className="plan-execute-merge-conflict__files">
+                <ul className="work-exec-merge-conflict__files">
                   {mergeConflictFiles(activePending).map((path) => (
                     <li key={path}>
                       <code>{path}</code>
@@ -1270,8 +1270,8 @@ export function PlanExecutePanel({
             {activePending.status === "pending_approval" &&
             isWorktreeExecution(activePending) &&
             activePending.diff ? (
-              <div className="plan-execute-revise">
-                <div className="plan-execute-revise__controls">
+              <div className="work-exec-revise">
+                <div className="work-exec-revise__controls">
                   <select
                     aria-label="재작업할 diff hunk"
                     value={reviseHunkId}
@@ -1296,7 +1296,7 @@ export function PlanExecutePanel({
                   />
                 </div>
                 {reviseError ? (
-                  <p className="plan-execute-revise__error" role="alert">
+                  <p className="work-exec-revise__error" role="alert">
                     {reviseError}
                   </p>
                 ) : null}
@@ -1412,12 +1412,12 @@ export function PlanExecutePanel({
       ) : null}
 
       {!activePending && historyRows.length ? (
-        <details className="plan-execute-history">
+        <details className="work-exec-history">
           <summary>
             실행 기록
             {historyHiddenCount ? ` · 최근 ${EXECUTION_HISTORY_LIMIT}건` : null}
           </summary>
-          <ul className="plan-execute-history__list">
+          <ul className="work-exec-history__list">
             {historyVisible.map((row) => {
                 const action = resolveExecutionAction(row, storedActions);
                 const context = executionContextFields(row, action);
@@ -1425,30 +1425,30 @@ export function PlanExecutePanel({
                   row.completed_at || row.started_at,
                 );
                 return (
-                <li key={row.id} className="plan-execute-history__item">
-                  <div className="plan-execute-history__title-row">
-                    <span className="plan-execute-history__badge">
+                <li key={row.id} className="work-exec-history__item">
+                  <div className="work-exec-history__title-row">
+                    <span className="work-exec-history__badge">
                       {executionHistoryBadge(row)}
                     </span>
-                    <strong className="plan-execute-history__title">
+                    <strong className="work-exec-history__title">
                       {executionHistoryTitle(row, action)}
                     </strong>
                   </div>
-                  <div className="plan-execute-history__meta">
-                    <span className="plan-execute-history__status">
+                  <div className="work-exec-history__meta">
+                    <span className="work-exec-history__status">
                       {statusLabel(row.status, row)}
                     </span>
                     {row.executor_label ? (
-                      <span className="plan-execute-history__executor">
+                      <span className="work-exec-history__executor">
                         {row.executor_label}
                       </span>
                     ) : null}
                     {completedAt ? (
-                      <span className="plan-execute-history__time">{completedAt}</span>
+                      <span className="work-exec-history__time">{completedAt}</span>
                     ) : null}
                     {mergedCommitSha(row) ? (
                       <span
-                        className="plan-execute-history__merge-sha"
+                        className="work-exec-history__merge-sha"
                         title={mergedCommitSha(row) ?? undefined}
                       >
                         merge {(mergedCommitSha(row) ?? "").slice(0, 7)}
@@ -1467,14 +1467,14 @@ export function PlanExecutePanel({
                     onReverify={(executionId) => void handleReverify(executionId)}
                   />
                   {row.touched_paths?.length ? (
-                    <p className="plan-execute-history__paths">
+                    <p className="work-exec-history__paths">
                       변경: {formatPathList(row.touched_paths)}
                     </p>
                   ) : null}
                   {row.agent_log?.length ? (
-                    <details className="plan-execute-history__log">
+                    <details className="work-exec-history__log">
                       <summary>에이전트 로그 ({row.agent_log.length})</summary>
-                      <ol className="plan-execute-agent-log">
+                      <ol className="work-exec-agent-log">
                         {row.agent_log.map((line, i) => (
                           <li key={`${row.id}-log-${i}`}>{line}</li>
                         ))}
@@ -1482,7 +1482,7 @@ export function PlanExecutePanel({
                     </details>
                   ) : null}
                   {row.agent_response || row.draft_summary ? (
-                    <details className="plan-execute-history__response">
+                    <details className="work-exec-history__response">
                       <summary>에이전트 응답</summary>
                       <PlanAgentResponse text={row.agent_response || row.draft_summary || ""} />
                     </details>

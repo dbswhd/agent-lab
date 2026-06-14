@@ -6,10 +6,10 @@
    ============================================================ */
 
 /* ---- Work: plan card shell around action list ---------------- */
-/* M6: legacy `.work-surface.plan-execute-panel` dual-class removed — canonical `.work-surface` only */
+/* M6: legacy `.work-surface.work-exec-panel` dual-class removed — canonical `.work-surface` only */
 
 /* Pending block → exec-card */
-.work-surface .plan-execute-pending {
+.work-surface .work-exec-pending {
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-lg);
   background: var(--surface-card);
@@ -21,7 +21,7 @@
   gap: 0;
 }
 
-.work-surface .plan-execute-pending__head {
+.work-surface .work-exec-pending__head {
   display: flex;
   align-items: center;
   gap: var(--space-10);
@@ -30,12 +30,12 @@
   border-bottom: 1px solid var(--border-hair);
 }
 
-.work-surface .plan-execute-pending__head .plan-execute-history__title {
+.work-surface .work-exec-pending__head .work-exec-history__title {
   font-size: var(--text-callout);
   font-weight: var(--weight-semibold);
 }
 
-.work-surface .plan-execute-pending__status {
+.work-surface .work-exec-pending__status {
   margin-left: auto;
   font-size: var(--text-micro);
   font-weight: var(--weight-semibold);
@@ -47,16 +47,16 @@
   color: var(--warn);
 }
 
-.work-surface .plan-execute-pending > *:not(.plan-execute-pending__head) {
+.work-surface .work-exec-pending > *:not(.work-exec-pending__head) {
   margin-left: var(--space-16);
   margin-right: var(--space-16);
 }
 
-.work-surface .plan-execute-pending > *:first-child {
+.work-surface .work-exec-pending > *:first-child {
   margin-top: var(--space-12);
 }
 
-.work-surface .plan-execute-pending__actions {
+.work-surface .work-exec-pending__actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-8);
@@ -65,7 +65,7 @@
   border-top: 1px solid var(--border-hair);
 }
 
-.work-surface .plan-execute-pending__diff pre {
+.work-surface .work-exec-pending__diff pre {
   font-family: var(--font-mono);
   font-size: var(--text-caption);
   line-height: 1.55;
@@ -76,7 +76,7 @@
   border: 1px solid var(--border-hair);
 }
 
-.work-surface .plan-execute-history {
+.work-surface .work-exec-history {
   border: 1px solid var(--border-hair);
   border-radius: var(--radius-md);
   background: var(--surface-sunken);
@@ -365,5 +365,72 @@
 
 .human-inbox--taskbar-empty {
   margin: 0;
+}
+
+.discuss-inbox-panel__pause,
+.workspace-discuss-pause-banner {
+  padding: var(--space-8) var(--space-10);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--warn) 12%, var(--surface-raised));
+  border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+  color: var(--text-primary);
+  font-size: var(--text-caption);
+}
+
+.discuss-inbox-panel__hint {
+  margin: 0 0 var(--space-8);
+  color: var(--text-secondary);
+  font-size: var(--text-caption);
+}
+
+.inbox-row__badges {
+  display: inline-flex;
+  gap: var(--space-4);
+  margin-left: auto;
+  margin-right: var(--space-6);
+}
+
+.inbox-row__lane-badge,
+.inbox-row__trigger-badge,
+.inbox-row__fork-badge {
+  padding: 1px var(--space-6);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-micro);
+  letter-spacing: 0.02em;
+}
+
+.inbox-row__lane-badge {
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+}
+
+.inbox-row__trigger-badge {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+
+.inbox-row__fork-badge {
+  background: color-mix(in srgb, var(--warn) 18%, transparent);
+  color: var(--warn);
+}
+
+.inbox-row--fork {
+  border-left: 3px solid var(--warn);
+}
+
+.inbox-row__option-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.inbox-row__option-desc {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-caption);
+}
+
+.inbox-row__refs {
+  font-family: var(--font-mono, ui-monospace, monospace);
 }
 

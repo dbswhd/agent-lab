@@ -20,6 +20,8 @@ type Props = {
   disabled?: boolean;
   presentation?: "inline" | "popup" | "inspector" | "taskbar";
   kindFilter?: "question" | "build" | "skill_draft";
+  discussOnly?: boolean;
+  hideInspectorLabel?: boolean;
 };
 
 function pendingItems(items: HumanInboxItem[]): HumanInboxItem[] {
@@ -44,6 +46,25 @@ function inboxAgent(item: HumanInboxItem): AgentRole {
   const src = (item.source ?? "cursor").toLowerCase();
   if (src === "codex" || src === "claude" || src === "cursor") return src;
   return "cursor";
+}
+
+function isDiscussHarvest(item: HumanInboxItem): boolean {
+  return (item.source ?? "").toLowerCase() === "orchestrator";
+}
+
+function inboxLaneLabel(item: HumanInboxItem, ko: boolean): string {
+  if (isDiscussHarvest(item)) return ko ? "Discuss" : "Discuss";
+  const src = (item.source ?? "").toLowerCase();
+  if (src.includes("mcp") || src.includes("execute")) return ko ? "Execute" : "Execute";
+  return src || (ko ? "Human" : "Human");
+}
+
+function triggerBadge(trigger: string | null | undefined, ko: boolean): string | null {
+  if (!trigger) return null;
+  const map: Record<string, string> = ko
+    ? { "T-Q0": "Clarifier", "T-Q1": "방향", "T-Q2": "Plan OPEN", "T-Q5": "수동" }
+    : { "T-Q0": "Clarifier", "T-Q1": "Direction", "T-Q2": "Plan OPEN", "T-Q5": "Manual" };
+  return map[trigger] ?? trigger;
 }
 
 function formatInboxTime(iso?: string): string {
@@ -98,12 +119,33 @@ function InboxRow({
     planRevision &&
     item.plan_revision !== planRevision;
   const busy = disabled || busyId === item.id;
+  const forkRow = item.kind === "question" && (item.options?.length ?? 0) >= 2;
+  const lane = inboxLaneLabel(item, ko);
+  const trigger = triggerBadge(item.trigger, ko);
 
   return (
-    <div className={`inbox-row inbox-row--${item.kind}`}>
+    <div
+      className={[
+        "inbox-row",
+        `inbox-row--${item.kind}`,
+        forkRow ? "inbox-row--fork" : "",
+        isDiscussHarvest(item) ? "inbox-row--discuss" : "inbox-row--execute-lane",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <div className="inbox-row__head">
         <Avatar role={inboxAgent(item)} size={20} />
         <span className="inbox-row__subject">{subject}</span>
+        <span className="inbox-row__badges">
+          <span className="inbox-row__lane-badge">{lane}</span>
+          {trigger ? <span className="inbox-row__trigger-badge">{trigger}</span> : null}
+          {forkRow ? (
+            <span className="inbox-row__fork-badge">
+              {ko ? "FORK" : "FORK"}
+            </span>
+          ) : null}
+        </span>
         <span className="inbox-row__time">{formatInboxTime(item.created_at)}</span>
       </div>
       {body ? <p className="inbox-row__body">{body}</p> : null}
@@ -116,23 +158,26 @@ function InboxRow({
         </p>
       ) : null}
       {item.refs && item.refs.length > 0 ? (
-        <p className="inbox-row__body inbox-row__meta">{item.refs.join(" · ")}</p>
-      ) : null}
-      {item.trigger ? (
-        <p className="inbox-row__body inbox-row__meta">{item.trigger}</p>
+        <p className="inbox-row__body inbox-row__meta inbox-row__refs">
+          {item.refs.join(" · ")}
+        </p>
       ) : null}
       {item.kind === "question" ? (
         <div className="inbox-row__options">
           {(item.options ?? []).map((opt) => (
-            <button
-              key={opt.id}
-              type="button"
-              className="btn btn--sm"
-              disabled={busy}
-              onClick={() => void onQuestion(item, opt.id)}
-            >
-              {opt.label}
-            </button>
+            <div key={opt.id} className="inbox-row__option-block">
+              <button
+                type="button"
+                className="btn btn--sm"
+                disabled={busy}
+                onClick={() => void onQuestion(item, opt.id)}
+              >
+                {opt.label}
+              </button>
+              {opt.description ? (
+                <p className="inbox-row__option-desc">{opt.description}</p>
+              ) : null}
+            </div>
           ))}
           {!hasQuestionOptions(item) ? (
             <>
@@ -230,6 +275,8 @@ export function HumanInboxPanel({
   disabled,
   presentation = "inline",
   kindFilter,
+  discussOnly = false,
+  hideInspectorLabel = false,
 }: Props) {
   const { locale } = useLocale();
   const ko = locale === "ko";
@@ -257,13 +304,13 @@ export function HumanInboxPanel({
   }, [reload, reloadKey]);
 
   const pending = useMemo(() => pendingItems(items), [items]);
-  const visibleItems = useMemo(
-    () =>
-      kindFilter
-        ? items.filter((item) => item.kind === kindFilter)
-        : items,
-    [items, kindFilter],
-  );
+  const visibleItems = useMemo(() => {
+    let rows = kindFilter ? items.filter((item) => item.kind === kindFilter) : items;
+    if (discussOnly) {
+      rows = rows.filter((item) => isDiscussHarvest(item));
+    }
+    return rows;
+  }, [items, kindFilter, discussOnly]);
   const hasPending = pending.length > 0;
 
   useEffect(() => {
@@ -400,6 +447,7 @@ export function HumanInboxPanel({
         onBuild={handleBuild}
         onSkillDraft={handleSkillDraft}
         onDefer={handleDefer}
+        hideLabel={hideInspectorLabel}
       />
     );
   }
@@ -516,6 +564,7 @@ type InspectorInboxProps = {
   onBuild: (item: HumanInboxItem, decision: "go" | "defer" | "reject") => void;
   onSkillDraft: (item: HumanInboxItem, decision: "approve" | "reject") => void;
   onDefer: (item: HumanInboxItem) => void;
+  hideLabel?: boolean;
 };
 
 function InspectorInboxView({
@@ -531,12 +580,13 @@ function InspectorInboxView({
   onBuild,
   onSkillDraft,
   onDefer,
+  hideLabel = false,
 }: InspectorInboxProps) {
   const { msg, locale } = useLocale();
 
   return (
-    <section className="ctx-section">
-      <div className="ctx-section__label">{msg.humanInbox}</div>
+    <section className={hideLabel ? "ctx-section ctx-section--embedded" : "ctx-section"}>
+      {hideLabel ? null : <div className="ctx-section__label">{msg.humanInbox}</div>}
       {error ? <div className="ctx-empty">{error}</div> : null}
       {items.length === 0 ? (
         <div className="ctx-empty">{msg.inboxEmpty}</div>

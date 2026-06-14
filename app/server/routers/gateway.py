@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
@@ -81,11 +82,20 @@ def post_discord_webhook(body: DiscordIngressBody) -> dict[str, Any]:
 
 
 @router.post("/gateway/slack/events")
-def post_slack_events(body: SlackIngressBody) -> dict[str, Any]:
-    result = process_gateway_ingress(
-        "slack",
-        body.model_dump(exclude_none=True),
-    )
+async def post_slack_events(request: Request) -> dict[str, Any]:
+    body_bytes = await request.body()
+    headers = {k: v for k, v in request.headers.items()}
+    try:
+        payload = json.loads(body_bytes.decode("utf-8"))
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=400, detail="invalid json") from exc
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="payload must be object")
+    payload["_headers"] = headers
+    payload["_raw_body"] = body_bytes
+    result = process_gateway_ingress("slack", payload)
+    if result.get("reason") == "invalid_signature":
+        raise HTTPException(status_code=401, detail="invalid slack signature")
     if result.get("challenge"):
         return {"challenge": result["challenge"]}
     return {"ok": True, **result}

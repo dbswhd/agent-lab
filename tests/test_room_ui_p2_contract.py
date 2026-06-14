@@ -40,7 +40,7 @@ def test_room_figma_mapping_uses_code_tokens():
         "--color-bubble-sent",
         "--color-agent-cursor",
         "--lg-panel-surface",
-        ".room-task-bar",
+        ".taskbar",
         ".chat-line--synthesis",
         ".clarifier-banner",
     ):

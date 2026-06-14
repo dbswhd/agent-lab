@@ -328,9 +328,10 @@ def test_m6_plan_card_canonical_classes_only():
     plan_css = _read("web", "src", "styles", "plan-execute.css")
     layout = _read("web", "src", "styles", "layout.css")
     assert "plan-execute-panel__" not in panel
+    assert "plan-execute-" not in panel
+    assert "work-exec-" in panel
     assert 'className="work-surface"' in panel
     assert ".plan-card__muted" in plan_css
-    assert "Legacy `.plan-execute-panel`" in layout
 
 
 def test_m6_chat_turn_no_dual_class_root():

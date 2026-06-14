@@ -51,7 +51,9 @@ class GatewaySlackPatch(BaseModel):
     enabled: bool | None = None
     webhook_url: str | None = None
     bot_token: str | None = None
+    signing_secret: str | None = None
     allowed_channel_ids: list[str] | None = None
+    allow_ingress_without_webhook: bool | None = None
 
 
 class GatewayHybridPatch(BaseModel):

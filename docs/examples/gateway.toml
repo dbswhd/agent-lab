@@ -13,6 +13,13 @@ enabled = false
 # webhook_url = "https://discord.com/api/webhooks/..."
 allow_ingress_without_webhook = true
 
+[slack]
+enabled = false
+# webhook_url = "https://hooks.slack.com/services/..."
+# bot_token = "xoxb-..."
+# signing_secret = "..."
+allow_ingress_without_webhook = true
+
 [hybrid]
 enabled = false
 relay_when = "daemon_offline"
@@ -24,4 +31,4 @@ timeout_s = 8
 # wake_events = ["schedule_tick", "merge_ready", "auto_merge_blocked", "gate_blocked"]
 
 [adapters]
-enabled = ["telegram", "webhook_inbound", "cli", "discord"]
+enabled = ["telegram", "webhook_inbound", "cli", "discord", "slack"]

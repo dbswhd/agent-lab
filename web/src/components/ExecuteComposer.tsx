@@ -76,7 +76,7 @@ export function ExecuteComposer({
           <div className="execute-composer__actions">
             <button
               type="button"
-              className="room-plan-btn room-plan-btn--accent execute-composer__run"
+              className="plan-card__btn plan-card__btn--accent execute-composer__run"
               disabled={disabled || busy || !selectedKey}
               onClick={onDryRun}
             >
@@ -85,7 +85,7 @@ export function ExecuteComposer({
             {onOpenPlan ? (
               <button
                 type="button"
-                className="room-plan-btn"
+                className="plan-card__btn"
                 disabled={disabled}
                 onClick={onOpenPlan}
               >

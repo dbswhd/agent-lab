@@ -37,7 +37,7 @@ export function PlanTabToolbar({
         />
         <button
           type="button"
-          className="room-plan-btn room-plan-btn--accent"
+          className="plan-card__btn plan-card__btn--accent"
           disabled={disabled || running || synthesizing}
           aria-busy={synthesizing}
           title="대화 내용만으로 plan.md 갱신"

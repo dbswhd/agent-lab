@@ -1,8 +1,11 @@
-"""Slack adapter — simplified ingress + Incoming Webhook egress."""
+"""Slack adapter — Events API ingress + Incoming Webhook egress."""
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
+import time
 import urllib.error
 import urllib.request
 from typing import Any
@@ -12,6 +15,28 @@ from agent_lab.gateway.router import route_inbound
 
 def _slack_cfg(config: dict[str, Any]) -> dict[str, Any]:
     return dict(config.get("slack") or {})
+
+
+def verify_slack_signature(
+    signing_secret: str,
+    *,
+    timestamp: str,
+    body: bytes,
+    signature: str,
+) -> bool:
+    secret = signing_secret.strip()
+    if not secret or not timestamp or not signature:
+        return False
+    try:
+        ts = int(timestamp)
+    except ValueError:
+        return False
+    if abs(time.time() - ts) > 60 * 5:
+        return False
+    basestring = f"v0:{timestamp}:{body.decode('utf-8')}"
+    digest = hmac.new(secret.encode("utf-8"), basestring.encode("utf-8"), hashlib.sha256).hexdigest()
+    expected = f"v0={digest}"
+    return hmac.compare_digest(expected, signature)
 
 
 class SlackGatewayAdapter:
@@ -27,15 +52,19 @@ class SlackGatewayAdapter:
             "ingress": True,
             "egress": bool(str(cfg.get("webhook_url") or "").strip()),
             "webhook_url_set": bool(str(cfg.get("webhook_url") or "").strip()),
+            "signing_secret_set": bool(str(cfg.get("signing_secret") or "").strip()),
             "allowed_channel_ids": list(cfg.get("allowed_channel_ids") or []),
         }
 
     def is_enabled(self, config: dict[str, Any]) -> bool:
         cfg = _slack_cfg(config)
-        return bool(cfg.get("enabled")) and (
-            bool(str(cfg.get("webhook_url") or "").strip())
-            or bool(str(cfg.get("bot_token") or "").strip())
-        )
+        if not cfg.get("enabled"):
+            return False
+        if bool(str(cfg.get("webhook_url") or "").strip()):
+            return True
+        if bool(str(cfg.get("bot_token") or "").strip()):
+            return True
+        return bool(cfg.get("allow_ingress_without_webhook"))
 
     def _allowed_channel(self, config: dict[str, Any], channel_id: str | None) -> bool:
         cfg = _slack_cfg(config)
@@ -44,6 +73,18 @@ class SlackGatewayAdapter:
             return True
         return channel_id is not None and str(channel_id) in allowed
 
+    def _verify_request(self, cfg: dict[str, Any], payload: dict[str, Any]) -> bool:
+        secret = str(_slack_cfg(cfg).get("signing_secret") or "").strip()
+        if not secret:
+            return True
+        headers = payload.get("_headers")
+        raw_body = payload.get("_raw_body")
+        if not isinstance(headers, dict) or not isinstance(raw_body, (bytes, bytearray)):
+            return False
+        sig = str(headers.get("X-Slack-Signature") or headers.get("x-slack-signature") or "")
+        ts = str(headers.get("X-Slack-Request-Timestamp") or headers.get("x-slack-request-timestamp") or "")
+        return verify_slack_signature(secret, timestamp=ts, body=bytes(raw_body), signature=sig)
+
     def process_ingress(self, payload: dict[str, Any]) -> dict[str, Any]:
         from agent_lab.gateway.config import load_gateway_config
 
@@ -51,13 +92,22 @@ class SlackGatewayAdapter:
         if not self.is_enabled(cfg):
             return {"ok": False, "reason": "slack_not_configured"}
 
-        # URL verification challenge (Events API)
+        if not self._verify_request(cfg, payload):
+            return {"ok": False, "reason": "invalid_signature"}
+
         if payload.get("type") == "url_verification":
             return {"ok": True, "challenge": payload.get("challenge")}
 
         content = str(payload.get("content") or "").strip()
         channel_id = payload.get("channel_id")
         event = payload.get("event")
+
+        if payload.get("type") == "event_callback" and isinstance(event, dict):
+            if event.get("bot_id") or event.get("subtype"):
+                return {"ok": True, "skipped": True, "reason": "bot_or_subtype_message"}
+            content = str(event.get("text") or "").strip()
+            channel_id = channel_id or event.get("channel")
+
         if not content and isinstance(event, dict):
             content = str(event.get("text") or "").strip()
             channel_id = channel_id or event.get("channel")

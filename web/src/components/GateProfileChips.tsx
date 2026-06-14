@@ -4,9 +4,11 @@ import { useLocale } from "../i18n/useLocale";
 
 type Props = {
   readonly sessionId: string | null;
+  compact?: boolean;
+  reloadKey?: number;
 };
 
-export function GateProfileChips({ sessionId }: Props) {
+export function GateProfileChips({ sessionId, compact = false, reloadKey = 0 }: Props) {
   const { t } = useLocale();
   const [runtime, setRuntime] = useState<RuntimeSnapshot | null>(null);
 
@@ -26,7 +28,7 @@ export function GateProfileChips({ sessionId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [sessionId]);
+  }, [sessionId, reloadKey]);
 
   const gates = runtime?.gates;
   if (!gates?.gate_profile) return null;
@@ -47,7 +49,18 @@ export function GateProfileChips({ sessionId }: Props) {
     chips.push({ label: t("gateExecuteBlocked"), cls: "fail" });
   }
 
-  return (
+  return compact ? (
+    <div className="ctx-overview__goal-row gate-profile-chips--compact">
+      {chips.map((chip) => (
+        <span
+          key={chip.label}
+          className={`ctx-oracle-badge ctx-oracle-badge--${chip.cls}`}
+        >
+          {chip.label}
+        </span>
+      ))}
+    </div>
+  ) : (
     <section className="ctx-section">
       <div className="ctx-section__label">Gate profile</div>
       <div className="ctx-overview__goal-row">

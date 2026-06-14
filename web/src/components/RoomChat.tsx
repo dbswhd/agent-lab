@@ -70,6 +70,7 @@ import {
 import { TranscriptViewOptions } from "./TranscriptViewOptions";
 import { ChatBubble, ReplyWaitingBubble } from "./ChatBubble";
 import { HumanInboxPanel } from "./HumanInboxPanel";
+import { DiscussInboxPanel } from "./DiscussInboxPanel";
 import { ChatComposer, type PendingFile } from "./ChatComposer";
 import { ShellPortal } from "./ShellPortal";
 import { NotificationCenter } from "./NotificationCenter";
@@ -415,8 +416,10 @@ export function RoomChat({
   const [globalInboxPending, setGlobalInboxPending] = useState(0);
   const [inboxReloadKey, setInboxReloadKey] = useState(0);
   const [inboxSegment, setInboxSegment] = useState<
-    "all" | "activity" | "questions" | "build" | "skills"
+    "all" | "discuss" | "activity" | "questions" | "build" | "skills"
   >("all");
+  const [discussPaused, setDiscussPaused] = useState(false);
+  const [showInboxPopup, setShowInboxPopup] = useState(false);
   const [workFocus, setWorkFocus] = useState<"execute" | "plan" | null>(null);
   const prevExecPendingIdRef = useRef<string | null>(null);
   const sendReceiptTimerRef = useRef<number | null>(null);
@@ -715,6 +718,8 @@ export function RoomChat({
   const handleInboxResolved = useCallback(() => {
     void refreshInboxPending();
     refreshSessionMeta();
+    setDiscussPaused(false);
+    setShowInboxPopup(false);
   }, [refreshInboxPending, refreshSessionMeta]);
 
   const openHumanInbox = useCallback(() => {
@@ -1842,6 +1847,13 @@ export function RoomChat({
               },
             ]);
           }
+          if (t === "inbox_pause") {
+            setDiscussPaused(true);
+            setInboxReloadKey((k) => k + 1);
+            void refreshInboxPending();
+            openHumanInbox();
+            setInboxSegment("discuss");
+          }
           if (t === "complete" && ev.session_id) {
             activeSessionId = String(ev.session_id);
             if (typeof ev.send_receipt === "string") {
@@ -1899,6 +1911,11 @@ export function RoomChat({
                       pushMacNotification,
                       notifyDesktop,
                     );
+                  }
+                  const hasBlocking =
+                    pending.some((item) => item.kind === "question" || item.kind === "build");
+                  if (hasBlocking) {
+                    setShowInboxPopup(true);
                   }
                 })
                 .catch(() => {
@@ -2845,6 +2862,29 @@ export function RoomChat({
         </div>
       ) : null}
 
+      {discussPaused ? (
+        <div className="workspace-discuss-pause-banner" role="status">
+          {localeMsg.inboxDiscussPausedBanner}
+        </div>
+      ) : null}
+
+      {showInboxPopup && sessionId && inboxPendingCount > 0 ? (
+        <HumanInboxPanel
+          sessionId={sessionId}
+          reloadKey={inboxReloadKey}
+          planRevision={currentPlanRevision}
+          onResolved={handleInboxResolved}
+          onBuildStarted={handleInboxBuildStarted}
+          disabled={running || synthesizing || runBusy}
+          presentation="popup"
+          onDismiss={() => setShowInboxPopup(false)}
+          onOpenInbox={() => {
+            setShowInboxPopup(false);
+            openHumanInbox();
+          }}
+        />
+      ) : null}
+
       {inboxPendingCount > 0 ? (
         <button
           type="button"
@@ -3071,7 +3111,7 @@ export function RoomChat({
             {rightPanelMode === "inbox" ? (
               <>
                 <div className="ctx-segmented" role="tablist" aria-label="Inbox filter">
-                  {(["all", "activity", "questions", "build", "skills"] as const).map(
+                  {(["all", "discuss", "activity", "questions", "build", "skills"] as const).map(
                     (segment) => (
                       <button
                         key={segment}
@@ -3083,6 +3123,8 @@ export function RoomChat({
                       >
                         {segment === "all"
                           ? localeMsg.inboxAll
+                          : segment === "discuss"
+                            ? localeMsg.inboxDiscuss
                           : segment === "activity"
                             ? localeMsg.inboxActivity
                             : segment === "questions"
@@ -3094,7 +3136,19 @@ export function RoomChat({
                     ),
                   )}
                 </div>
-                {inboxSegment !== "activity" ? (
+                {inboxSegment === "discuss" ? (
+                  <DiscussInboxPanel
+                    sessionId={sessionId}
+                    reloadKey={inboxReloadKey}
+                    planRevision={currentPlanRevision}
+                    discussPaused={discussPaused}
+                    onResolved={handleInboxResolved}
+                    onBuildStarted={handleInboxBuildStarted}
+                    disabled={running || synthesizing || runBusy}
+                    onOpenInbox={openHumanInbox}
+                  />
+                ) : null}
+                {inboxSegment !== "activity" && inboxSegment !== "discuss" ? (
                   <HumanInboxPanel
                     sessionId={sessionId}
                     reloadKey={inboxReloadKey}

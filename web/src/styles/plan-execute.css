@@ -607,18 +607,18 @@
   border-radius: var(--radius-lg);
 }
 
-.exec-card .plan-execute-pending__paths,
-.exec-card .plan-execute-pending__artifact-note,
-.exec-card .plan-execute-pending__warn,
-.exec-card .plan-execute-pending__summary,
-.exec-card .plan-execute-pending__log,
-.exec-card .plan-execute-pending__pre-verify,
-.exec-card .plan-execute-revise {
+.exec-card .work-exec-pending__paths,
+.exec-card .work-exec-pending__artifact-note,
+.exec-card .work-exec-pending__warn,
+.exec-card .work-exec-pending__summary,
+.exec-card .work-exec-pending__log,
+.exec-card .work-exec-pending__pre-verify,
+.exec-card .work-exec-revise {
   font-size: var(--text-caption);
   color: var(--label-secondary);
 }
 
-.exec-card .plan-execute-merge-conflict {
+.exec-card .work-exec-merge-conflict {
   padding: var(--space-10) var(--space-12);
   border-radius: var(--radius-md);
   background: var(--danger-soft);
@@ -753,7 +753,7 @@
 .diffstat__summary { margin: 2px 0 0; color: var(--label-tertiary); }
 
 /* ---- Plan / Execute buttons ------------------------------ */
-.room-plan-btn,
+.plan-card__btn,
 .plan-btn {
   display: inline-flex;
   align-items: center;
@@ -771,9 +771,9 @@
   transition: background var(--transition), border-color var(--transition);
   white-space: nowrap;
 }
-.room-plan-btn:hover:not(:disabled),
+.plan-card__btn:hover:not(:disabled),
 .plan-btn:hover:not(:disabled) { background: var(--surface-hover); border-color: var(--border-strong); }
-.room-plan-btn:disabled,
+.plan-card__btn:disabled,
 .plan-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .plan-btn--primary { background: var(--accent); color: #fff; border-color: transparent; box-shadow: 0 1px 3px rgba(47,109,246,0.4); }
 .plan-btn--primary:hover:not(:disabled) { background: var(--accent-hover); }
@@ -975,7 +975,7 @@
 .exec-oracle--ok .exec-oracle__badge { color: var(--ok); }
 .exec-oracle--fail .exec-oracle__badge { color: var(--danger); }
 .exec-oracle__meta { font-size: var(--text-caption); color: var(--label-tertiary); }
-.exec-oracle .room-plan-btn { margin-left: auto; }
+.exec-oracle .plan-card__btn { margin-left: auto; }
 
 /* plan objection alert */
 .plan-objection {
@@ -1113,7 +1113,7 @@
 }
 .work-plan-stale .glass-panel { width: 100%; }
 
-.plan-execute-handoff {
+.work-exec-handoff {
   margin: var(--space-8) 0;
   padding: var(--space-8) var(--space-10);
   border-radius: var(--radius-md);
@@ -1122,17 +1122,17 @@
   font-size: var(--text-footnote);
 }
 
-.plan-execute-handoff--warn {
+.work-exec-handoff--warn {
   border-color: color-mix(in srgb, var(--mac-system-orange, #ff9f0a) 40%, var(--border-hair));
 }
 
-.plan-execute-handoff__badge {
+.work-exec-handoff__badge {
   font-weight: var(--weight-semibold);
   color: var(--label-secondary);
 }
 
-.plan-execute-handoff__summary,
-.plan-execute-handoff__files {
+.work-exec-handoff__summary,
+.work-exec-handoff__files {
   margin: var(--space-4) 0 0;
   color: var(--label-tertiary);
 }

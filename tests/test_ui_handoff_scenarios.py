@@ -155,3 +155,23 @@ def test_taskbar_human_inbox_integration_contract():
     assert '"taskbar"' in inbox
     assert "onOpenInspectorInbox={openHumanInbox}" in room
     assert "humanInboxPendingCount={inboxPendingCount}" in room
+
+
+def test_discuss_inbox_panel_contract():
+    """M3–M4: Discuss segment + popup + inbox_pause wiring."""
+    room = _read("web", "src", "components", "RoomChat.tsx")
+    discuss = _read("web", "src", "components", "DiscussInboxPanel.tsx")
+    inbox = _read("web", "src", "components", "HumanInboxPanel.tsx")
+    assert "DiscussInboxPanel" in room
+    assert 'inboxSegment === "discuss"' in room
+    assert 't === "inbox_pause"' in room
+    assert 'presentation="popup"' in room
+    assert "discussOnly" in discuss
+    assert "inbox-row--fork" in inbox
+
+
+def test_m6_work_exec_classes_only_in_plan_execute_panel():
+    panel = _read("web", "src", "components", "PlanExecutePanel.tsx")
+    assert "plan-execute-" not in panel
+    assert "work-exec-" in panel
+    assert "plan-card__btn" in panel

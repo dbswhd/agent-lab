@@ -2476,7 +2476,7 @@ body.is-tauri .chat-list-header {
 .view-tabs-bar__leading button:focus-visible,
 .room-rounds-btn:focus-visible,
 .composer-turn-seg button:focus-visible,
-.room-plan-btn:focus-visible,
+.plan-card__btn:focus-visible,
 .lg-panel__head:focus-visible,
 .scroll-to-bottom-btn:focus-visible {
   outline: 2px solid var(--mac-focus-ring);

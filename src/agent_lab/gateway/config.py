@@ -40,6 +40,7 @@ _DEFAULT_CONFIG: dict[str, Any] = {
         "signing_secret": "",
         "allowed_channel_ids": [],
         "prefix": "",
+        "allow_ingress_without_webhook": True,
     },
     "hybrid": {
         "enabled": False,
@@ -161,6 +162,8 @@ def public_gateway_payload(config: dict[str, Any] | None = None) -> dict[str, An
             "enabled": bool(slack.get("enabled")),
             "webhook_url_set": bool(str(slack.get("webhook_url") or "").strip()),
             "bot_token_set": bool(str(slack.get("bot_token") or "").strip()),
+            "signing_secret_set": bool(str(slack.get("signing_secret") or "").strip()),
+            "allow_ingress_without_webhook": bool(slack.get("allow_ingress_without_webhook")),
             "allowed_channel_ids": list(slack.get("allowed_channel_ids") or []),
         },
         "hybrid": public_hybrid_payload(cfg),
@@ -280,6 +283,11 @@ def save_gateway_config(patch: dict[str, Any]) -> dict[str, Any]:
     slack_token = str(slack.get("bot_token") or "")
     if slack_token.strip():
         lines.append(f"bot_token = {_toml_quote(slack_token)}")
+    slack_secret = str(slack.get("signing_secret") or "")
+    if slack_secret.strip():
+        lines.append(f"signing_secret = {_toml_quote(slack_secret)}")
+    if slack.get("allow_ingress_without_webhook") is False:
+        lines.append("allow_ingress_without_webhook = false")
     slack_channels = slack.get("allowed_channel_ids") or []
     if slack_channels:
         lines.append("allowed_channel_ids = [")

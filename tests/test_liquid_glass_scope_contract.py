@@ -47,7 +47,7 @@ def test_backdrop_filter_is_owned_only_by_chrome_policy():
         ".chat-list-pane::after",
         ".context-sidebar::after",
         ".session-list::after",
-        ".room-task-bar::after",
+        ".taskbar::after",
         ".mac-bubble::after",
         ".chat-turn::after",
         ".composer-capsule::after",
@@ -66,7 +66,7 @@ def test_lists_documents_and_general_panels_are_solid():
 
     for selector in (
         ".session-item",
-        ".room-task-bar",
+        ".taskbar",
         ".clarifier-banner",
         ".composer-capsule",
         ".exec-queue-bar",

@@ -4808,16 +4808,16 @@
 /* ============================================================
    Plan execute history status
    ============================================================ */
-.plan-execute-history__status {
+.work-exec-history__status {
   font-size: var(--text-micro);
   font-weight: var(--weight-semibold);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--label-tertiary);
 }
-.plan-execute-history__status--ok { color: var(--ok); }
-.plan-execute-history__status--fail { color: var(--danger); }
-.plan-execute-history__status--running { color: var(--accent); }
+.work-exec-history__status--ok { color: var(--ok); }
+.work-exec-history__status--fail { color: var(--danger); }
+.work-exec-history__status--running { color: var(--accent); }
 
 /* ============================================================
    Plugin panel extra hint
@@ -4930,7 +4930,7 @@
    ============================================================ */
 
 /* ---------- PlanExecutePanel: container (M6 — canonical .work-surface + .plan-card__*) ---------- */
-/* Legacy `.plan-execute-panel` / `.plan-execute-panel__*` block removed — see plan-execute.css */
+/* Legacy `.work-exec-panel` / `.work-exec-panel__*` block removed — see plan-execute.css */
 
 .plan-doc__h2 {
   margin: var(--space-8) 0 var(--space-4);
@@ -4940,7 +4940,7 @@
   letter-spacing: 0.06em;
   color: var(--label-tertiary);
 }
-.plan-execute-roadmap {
+.work-exec-roadmap {
   display: flex;
   flex-direction: column;
   gap: var(--space-8);
@@ -5052,8 +5052,8 @@ button.plan-doc__ref--link:hover {
 }
 
 /* ---------- Plan snapshot / isolation modals ---------- */
-.plan-execute-plan-snapshot,
-.plan-execute-isolation-modal {
+.work-exec-plan-snapshot,
+.work-exec-isolation-modal {
   padding: var(--space-12);
   border-radius: var(--radius-md);
   background: var(--surface-card);
@@ -5063,9 +5063,9 @@ button.plan-doc__ref--link:hover {
   flex-direction: column;
   gap: var(--space-8);
 }
-.plan-execute-isolation-modal { border-color: color-mix(in srgb, var(--warn) 30%, transparent); }
-.plan-execute-plan-snapshot__lead { margin: 0; font-size: var(--text-footnote); font-weight: var(--weight-medium); }
-.plan-execute-plan-snapshot__body {
+.work-exec-isolation-modal { border-color: color-mix(in srgb, var(--warn) 30%, transparent); }
+.work-exec-plan-snapshot__lead { margin: 0; font-size: var(--text-footnote); font-weight: var(--weight-medium); }
+.work-exec-plan-snapshot__body {
   margin: 0;
   padding: var(--space-10) var(--space-12);
   background: var(--surface-sunken);
@@ -5076,18 +5076,18 @@ button.plan-doc__ref--link:hover {
   white-space: pre-wrap;
   overflow-x: auto;
 }
-.plan-execute-plan-snapshot__actions,
-.plan-execute-isolation-modal__actions {
+.work-exec-plan-snapshot__actions,
+.work-exec-isolation-modal__actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-8);
 }
-.plan-execute-isolation-modal__title { margin: 0; font-size: var(--text-callout); font-weight: var(--weight-semibold); }
-.plan-execute-isolation-modal__reason { margin: 0; font-size: var(--text-caption); color: var(--danger); }
-.plan-execute-isolation-modal__hint { margin: 0; font-size: var(--text-caption); color: var(--label-tertiary); }
+.work-exec-isolation-modal__title { margin: 0; font-size: var(--text-callout); font-weight: var(--weight-semibold); }
+.work-exec-isolation-modal__reason { margin: 0; font-size: var(--text-caption); color: var(--danger); }
+.work-exec-isolation-modal__hint { margin: 0; font-size: var(--text-caption); color: var(--label-tertiary); }
 
 /* ---------- Pending execution (the Human gate) ---------- */
-.plan-execute-pending {
+.work-exec-pending {
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-lg);
   background: var(--surface-card);
@@ -5097,13 +5097,13 @@ button.plan-doc__ref--link:hover {
   flex-direction: column;
   gap: var(--space-12);
 }
-.plan-execute-pending__head {
+.work-exec-pending__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-10);
 }
-.plan-execute-pending__status {
+.work-exec-pending__status {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -5116,7 +5116,7 @@ button.plan-doc__ref--link:hover {
   background: var(--warn-soft);
   color: var(--warn);
 }
-.plan-execute-pending__pre-verify {
+.work-exec-pending__pre-verify {
   margin: 0;
   padding: var(--space-8) var(--space-12);
   border-radius: var(--radius-md);
@@ -5124,22 +5124,22 @@ button.plan-doc__ref--link:hover {
   font-size: var(--text-caption);
   color: var(--label-secondary);
 }
-.plan-execute-pending__pre-verify--blocked {
+.work-exec-pending__pre-verify--blocked {
   background: var(--danger-soft);
   color: var(--label-primary);
   border: 1px solid color-mix(in srgb, var(--danger) 26%, transparent);
 }
-.plan-execute-pending__summary { font-size: var(--text-footnote); line-height: var(--leading-snug); }
-.plan-execute-pending__paths,
-.plan-execute-pending__artifact-note,
-.plan-execute-pending__warn {
+.work-exec-pending__summary { font-size: var(--text-footnote); line-height: var(--leading-snug); }
+.work-exec-pending__paths,
+.work-exec-pending__artifact-note,
+.work-exec-pending__warn {
   margin: 0;
   font-size: var(--text-caption);
   color: var(--label-tertiary);
 }
-.plan-execute-pending__paths--empty { font-style: italic; }
-.plan-execute-pending__warn { color: var(--warn); }
-.plan-execute-pending__gate {
+.work-exec-pending__paths--empty { font-style: italic; }
+.work-exec-pending__warn { color: var(--warn); }
+.work-exec-pending__gate {
   margin: 0;
   padding: var(--space-8) var(--space-12);
   border-radius: var(--radius-md);
@@ -5148,7 +5148,7 @@ button.plan-doc__ref--link:hover {
   color: var(--label-primary);
   font-size: var(--text-caption);
 }
-.plan-execute-pending__verify {
+.work-exec-pending__verify {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-8) var(--space-16);
@@ -5160,23 +5160,23 @@ button.plan-doc__ref--link:hover {
   font-family: var(--font-mono);
   color: var(--label-secondary);
 }
-.plan-execute-pending__actions {
+.work-exec-pending__actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-8);
   padding-top: var(--space-4);
 }
-.plan-execute-pending__log summary,
-.plan-execute-pending__diff summary,
-.plan-execute-history__log summary,
-.plan-execute-history__response summary {
+.work-exec-pending__log summary,
+.work-exec-pending__diff summary,
+.work-exec-history__log summary,
+.work-exec-history__response summary {
   cursor: pointer;
   font-size: var(--text-caption);
   color: var(--label-secondary);
   padding: var(--space-4) 0;
 }
-.plan-execute-pending__diff pre,
-.plan-execute-agent-log {
+.work-exec-pending__diff pre,
+.work-exec-agent-log {
   margin: var(--space-6) 0 0;
   padding: var(--space-10) var(--space-12);
   background: var(--surface-sunken);
@@ -5187,12 +5187,12 @@ button.plan-doc__ref--link:hover {
   line-height: 1.5;
   overflow-x: auto;
 }
-.plan-execute-agent-log { list-style: decimal; padding-left: var(--space-24); }
-.plan-execute-agent-log li { margin: 2px 0; }
+.work-exec-agent-log { list-style: decimal; padding-left: var(--space-24); }
+.work-exec-agent-log li { margin: 2px 0; }
 
 /* ---------- Worktree / apply banners ---------- */
-.plan-execute-worktree-banner,
-.plan-execute-apply-banner {
+.work-exec-worktree-banner,
+.work-exec-apply-banner {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -5202,17 +5202,17 @@ button.plan-doc__ref--link:hover {
   border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent);
   font-size: var(--text-caption);
 }
-.plan-execute-worktree-banner__title { font-weight: var(--weight-semibold); font-size: var(--text-footnote); margin: 0; }
-.plan-execute-worktree-banner__line { display: flex; gap: var(--space-8); margin: 0; color: var(--label-secondary); }
-.plan-execute-worktree-banner__label { flex: 0 0 64px; color: var(--label-tertiary); }
-.plan-execute-worktree-banner code,
-.plan-execute-apply-banner code { font-family: var(--font-mono); }
-.plan-execute-worktree-banner__path { word-break: break-all; }
-.plan-execute-apply-banner strong { font-size: var(--text-footnote); }
+.work-exec-worktree-banner__title { font-weight: var(--weight-semibold); font-size: var(--text-footnote); margin: 0; }
+.work-exec-worktree-banner__line { display: flex; gap: var(--space-8); margin: 0; color: var(--label-secondary); }
+.work-exec-worktree-banner__label { flex: 0 0 64px; color: var(--label-tertiary); }
+.work-exec-worktree-banner code,
+.work-exec-apply-banner code { font-family: var(--font-mono); }
+.work-exec-worktree-banner__path { word-break: break-all; }
+.work-exec-apply-banner strong { font-size: var(--text-footnote); }
 
 /* ---------- Adversarial + Oracle badges ---------- */
-.plan-execute-adversarial,
-.plan-execute-oracle {
+.work-exec-adversarial,
+.work-exec-oracle {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -5221,28 +5221,28 @@ button.plan-doc__ref--link:hover {
   border-radius: var(--radius-md);
   font-size: var(--text-caption);
 }
-.plan-execute-adversarial--lgtm,
-.plan-execute-oracle--ok {
+.work-exec-adversarial--lgtm,
+.work-exec-oracle--ok {
   background: var(--ok-soft);
   border: 1px solid color-mix(in srgb, var(--ok) 22%, transparent);
 }
-.plan-execute-adversarial--warning,
-.plan-execute-oracle--fail {
+.work-exec-adversarial--warning,
+.work-exec-oracle--fail {
   background: var(--danger-soft);
   border: 1px solid color-mix(in srgb, var(--danger) 22%, transparent);
 }
-.plan-execute-adversarial__badge,
-.plan-execute-oracle__badge { font-weight: var(--weight-semibold); }
-.plan-execute-oracle--ok .plan-execute-oracle__badge { color: var(--ok); }
-.plan-execute-oracle--fail .plan-execute-oracle__badge { color: var(--danger); }
-.plan-execute-adversarial__meta,
-.plan-execute-adversarial__detail,
-.plan-execute-oracle__meta,
-.plan-execute-oracle__detail { color: var(--label-tertiary); }
-.plan-execute-oracle__action { margin-left: auto; }
+.work-exec-adversarial__badge,
+.work-exec-oracle__badge { font-weight: var(--weight-semibold); }
+.work-exec-oracle--ok .work-exec-oracle__badge { color: var(--ok); }
+.work-exec-oracle--fail .work-exec-oracle__badge { color: var(--danger); }
+.work-exec-adversarial__meta,
+.work-exec-adversarial__detail,
+.work-exec-oracle__meta,
+.work-exec-oracle__detail { color: var(--label-tertiary); }
+.work-exec-oracle__action { margin-left: auto; }
 
 /* ---------- Objection alert ---------- */
-.plan-execute-objection-alert {
+.work-exec-objection-alert {
   padding: var(--space-12);
   border-radius: var(--radius-md);
   background: var(--danger-soft);
@@ -5251,10 +5251,10 @@ button.plan-doc__ref--link:hover {
   flex-direction: column;
   gap: var(--space-6);
 }
-.plan-execute-objection-alert > strong { color: var(--danger); font-size: var(--text-footnote); }
-.plan-execute-objection-alert p { margin: 0; font-size: var(--text-caption); color: var(--label-secondary); }
-.plan-execute-objection-alert ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--space-6); }
-.plan-execute-objection-alert li {
+.work-exec-objection-alert > strong { color: var(--danger); font-size: var(--text-footnote); }
+.work-exec-objection-alert p { margin: 0; font-size: var(--text-caption); color: var(--label-secondary); }
+.work-exec-objection-alert ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--space-6); }
+.work-exec-objection-alert li {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -5265,20 +5265,20 @@ button.plan-doc__ref--link:hover {
 }
 
 /* ---------- Merge conflict ---------- */
-.plan-execute-merge-conflict {
+.work-exec-merge-conflict {
   padding: var(--space-12);
   border-radius: var(--radius-md);
   background: var(--danger-soft);
   border: 1px solid color-mix(in srgb, var(--danger) 26%, transparent);
 }
-.plan-execute-merge-conflict__lead { margin: 0 0 var(--space-6); font-size: var(--text-footnote); }
-.plan-execute-merge-conflict__files { margin: 0; padding-left: var(--space-20); font-family: var(--font-mono); font-size: var(--text-caption); }
+.work-exec-merge-conflict__lead { margin: 0 0 var(--space-6); font-size: var(--text-footnote); }
+.work-exec-merge-conflict__files { margin: 0; padding-left: var(--space-20); font-family: var(--font-mono); font-size: var(--text-caption); }
 
 /* ---------- Revise form ---------- */
-.plan-execute-revise { margin: var(--space-8) 0; display: flex; flex-direction: column; gap: var(--space-6); }
-.plan-execute-revise__controls { display: flex; flex-direction: column; gap: var(--space-6); }
-.plan-execute-revise__controls select,
-.plan-execute-revise__controls textarea {
+.work-exec-revise { margin: var(--space-8) 0; display: flex; flex-direction: column; gap: var(--space-6); }
+.work-exec-revise__controls { display: flex; flex-direction: column; gap: var(--space-6); }
+.work-exec-revise__controls select,
+.work-exec-revise__controls textarea {
   width: 100%;
   padding: var(--space-6) var(--space-10);
   border-radius: var(--radius-sm);
@@ -5287,19 +5287,19 @@ button.plan-doc__ref--link:hover {
   font-size: var(--text-caption);
   color: var(--label-primary);
 }
-.plan-execute-revise__controls textarea { resize: vertical; font-family: inherit; }
-.plan-execute-revise__error { margin: 0; color: var(--danger); font-size: var(--text-caption); }
+.work-exec-revise__controls textarea { resize: vertical; font-family: inherit; }
+.work-exec-revise__error { margin: 0; color: var(--danger); font-size: var(--text-caption); }
 
 /* ---------- Execution history ---------- */
-.plan-execute-history { border-top: 1px solid var(--border-hair); padding-top: var(--space-8); }
-.plan-execute-history > summary {
+.work-exec-history { border-top: 1px solid var(--border-hair); padding-top: var(--space-8); }
+.work-exec-history > summary {
   cursor: pointer;
   font-size: var(--text-footnote);
   font-weight: var(--weight-semibold);
   color: var(--label-secondary);
 }
-.plan-execute-history__list { margin: var(--space-8) 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--space-8); }
-.plan-execute-history__item {
+.work-exec-history__list { margin: var(--space-8) 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--space-8); }
+.work-exec-history__item {
   padding: var(--space-10) var(--space-12);
   border-radius: var(--radius-md);
   background: var(--surface-sunken);
@@ -5307,8 +5307,8 @@ button.plan-doc__ref--link:hover {
   flex-direction: column;
   gap: var(--space-6);
 }
-.plan-execute-history__title-row { display: flex; align-items: center; gap: var(--space-8); }
-.plan-execute-history__badge {
+.work-exec-history__title-row { display: flex; align-items: center; gap: var(--space-8); }
+.work-exec-history__badge {
   font-size: var(--text-micro);
   font-weight: var(--weight-semibold);
   padding: 2px 7px;
@@ -5317,13 +5317,13 @@ button.plan-doc__ref--link:hover {
   border: 1px solid var(--border-hair);
   color: var(--label-secondary);
 }
-.plan-execute-history__title { font-size: var(--text-footnote); }
-.plan-execute-history__meta { display: flex; flex-wrap: wrap; gap: var(--space-6) var(--space-10); font-size: var(--text-caption); color: var(--label-tertiary); }
-.plan-execute-history__merge-sha { font-family: var(--font-mono); }
-.plan-execute-history__paths { margin: 0; font-size: var(--text-caption); color: var(--label-tertiary); }
+.work-exec-history__title { font-size: var(--text-footnote); }
+.work-exec-history__meta { display: flex; flex-wrap: wrap; gap: var(--space-6) var(--space-10); font-size: var(--text-caption); color: var(--label-tertiary); }
+.work-exec-history__merge-sha { font-family: var(--font-mono); }
+.work-exec-history__paths { margin: 0; font-size: var(--text-caption); color: var(--label-tertiary); }
 
 /* ---------- Room plan buttons (shared) ---------- */
-.room-plan-btn {
+.plan-card__btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -5340,15 +5340,15 @@ button.plan-doc__ref--link:hover {
   transition: background var(--transition), border-color var(--transition);
   white-space: nowrap;
 }
-.room-plan-btn:hover:not(:disabled) { background: var(--surface-hover); border-color: var(--border-strong); }
-.room-plan-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.room-plan-btn--accent {
+.plan-card__btn:hover:not(:disabled) { background: var(--surface-hover); border-color: var(--border-strong); }
+.plan-card__btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.plan-card__btn--accent {
   background: var(--accent);
   color: var(--on-accent);
   border-color: transparent;
   box-shadow: 0 1px 3px rgba(47, 109, 246, 0.4);
 }
-.room-plan-btn--accent:hover:not(:disabled) { background: var(--accent-hover); }
+.plan-card__btn--accent:hover:not(:disabled) { background: var(--accent-hover); }
 
 /* ---------- PlanDiffStat / PlanActionContext legacy ---------- */
 .plan-diff-stat {

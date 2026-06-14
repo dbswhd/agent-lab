@@ -1,5 +1,6 @@
 import { GateProfileChips } from "./GateProfileChips";
 import { HumanInboxPanel } from "./HumanInboxPanel";
+import { DiscussRecoveryBanner, type DiscussRecoveryState } from "./DiscussRecoveryBanner";
 import { useLocale } from "../i18n/useLocale";
 
 type Props = {
@@ -7,10 +8,14 @@ type Props = {
   reloadKey?: number;
   planRevision?: string | null;
   discussPaused?: boolean;
+  discussRecovery?: DiscussRecoveryState | null;
+  discussRecoveryBusy?: boolean;
+  onRunDiscussRecovery?: () => void;
   onResolved?: () => void;
   onBuildStarted?: () => void;
   disabled?: boolean;
   onOpenInbox?: () => void;
+  onRefClick?: (ref: string) => void;
 };
 
 export function DiscussInboxPanel({
@@ -18,10 +23,14 @@ export function DiscussInboxPanel({
   reloadKey = 0,
   planRevision = null,
   discussPaused = false,
+  discussRecovery = null,
+  discussRecoveryBusy = false,
+  onRunDiscussRecovery,
   onResolved,
   onBuildStarted,
   disabled,
   onOpenInbox,
+  onRefClick,
 }: Props) {
   const { msg } = useLocale();
 
@@ -30,6 +39,12 @@ export function DiscussInboxPanel({
   return (
     <section className="discuss-inbox-panel ctx-section">
       <div className="ctx-section__label">{msg.inboxDiscuss}</div>
+      <DiscussRecoveryBanner
+        recovery={discussRecovery}
+        busy={discussRecoveryBusy}
+        onRunRecovery={onRunDiscussRecovery}
+        onOpenDiscussInbox={onOpenInbox}
+      />
       {discussPaused ? (
         <div className="discuss-inbox-panel__pause" role="status">
           {msg.inboxDiscussPausedBanner}
@@ -45,6 +60,7 @@ export function DiscussInboxPanel({
         onBuildStarted={onBuildStarted}
         disabled={disabled}
         onOpenInbox={onOpenInbox}
+        onRefClick={onRefClick}
         presentation="inspector"
         kindFilter="question"
         discussOnly

@@ -7,7 +7,10 @@ import {
   checkSessionGoal,
   fetchCommands,
   fetchInboxSummary,
+  fetchInboxSettings,
   fetchSessionInbox,
+  patchInboxSettings,
+  postMissionDiscussRecovery,
   matchSlashCommand,
   releaseRoomRunLock,
   runRoom,
@@ -71,6 +74,7 @@ import { TranscriptViewOptions } from "./TranscriptViewOptions";
 import { ChatBubble, ReplyWaitingBubble } from "./ChatBubble";
 import { HumanInboxPanel } from "./HumanInboxPanel";
 import { DiscussInboxPanel } from "./DiscussInboxPanel";
+import { DiscussRecoveryBanner } from "./DiscussRecoveryBanner";
 import { ChatComposer, type PendingFile } from "./ChatComposer";
 import { ShellPortal } from "./ShellPortal";
 import { NotificationCenter } from "./NotificationCenter";
@@ -115,6 +119,7 @@ import { notifyDesktop } from "../utils/desktopNotify";
 import { buildPlanMetaView, composerPlanStaleNotice } from "../utils/planMeta";
 import { buildGoalLoopView } from "../utils/goalLoopView";
 import { buildVerifiedLoopView } from "../utils/verifiedLoopView";
+import { activateInboxRef } from "../utils/inboxRefNavigation";
 import { isPlanWorkflowPhaseBanner, isPlanWorkflowComposerHint, planWorkflowPhaseTranscriptLine } from "../utils/planWorkflowView";
 import {
   consensusIncompleteLabel,
@@ -415,6 +420,8 @@ export function RoomChat({
   const [inboxPendingCount, setInboxPendingCount] = useState(0);
   const [globalInboxPending, setGlobalInboxPending] = useState(0);
   const [inboxReloadKey, setInboxReloadKey] = useState(0);
+  const [inboxSyncMode, setInboxSyncMode] = useState(true);
+  const [discussRecoveryBusy, setDiscussRecoveryBusy] = useState(false);
   const [inboxSegment, setInboxSegment] = useState<
     "all" | "discuss" | "activity" | "questions" | "build" | "skills"
   >("all");
@@ -920,6 +927,21 @@ export function RoomChat({
   useEffect(() => {
     void refreshInboxPending();
   }, [refreshInboxPending, inboxReloadKey]);
+
+  useEffect(() => {
+    if (!sessionId) return;
+    let cancelled = false;
+    void fetchInboxSettings(sessionId)
+      .then((payload) => {
+        if (!cancelled) setInboxSyncMode(payload.inbox_mode === "sync");
+      })
+      .catch(() => {
+        if (!cancelled) setInboxSyncMode(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId, inboxReloadKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -2391,6 +2413,47 @@ export function RoomChat({
     [roomTasks, session?.chat, messages, openTranscriptTab, setRightPanelMode],
   );
 
+  const handleInboxRefClick = useCallback(
+    (ref: string) => {
+      activateInboxRef(ref, {
+        onChatLine: handlePlanRefClick,
+        onOpenPlan: () => {
+          openWorkTab();
+          setWorkFocus("plan");
+        },
+        onFocusTask: focusTask,
+      });
+    },
+    [focusTask, handlePlanRefClick, openWorkTab],
+  );
+
+  const discussRecovery = useMemo(() => {
+    const ml = session?.run?.mission_loop as
+      | { discuss_recovery?: { pending?: boolean; reason?: string | null; action_index?: number | null } }
+      | undefined;
+    return ml?.discuss_recovery ?? null;
+  }, [session?.run?.mission_loop]);
+
+  const handleInboxSyncModeChange = useCallback(
+    (sync: boolean) => {
+      setInboxSyncMode(sync);
+      if (!sessionId) return;
+      void patchInboxSettings(sessionId, sync ? "sync" : "soft").catch(() => {});
+    },
+    [sessionId],
+  );
+
+  const handleDiscussRecoveryRun = useCallback(async () => {
+    if (!sessionId) return;
+    setDiscussRecoveryBusy(true);
+    try {
+      await postMissionDiscussRecovery(sessionId);
+      refreshSessionMeta();
+    } finally {
+      setDiscussRecoveryBusy(false);
+    }
+  }, [refreshSessionMeta, sessionId]);
+
   const requestComposerPrefill = useCallback(
     (prefill: string) => {
       openTranscriptTab();
@@ -2615,6 +2678,7 @@ export function RoomChat({
             humanInboxDisabled={running || synthesizing || runBusy}
             onHumanInboxResolved={handleInboxResolved}
             onHumanInboxBuildStarted={handleInboxBuildStarted}
+            onHumanInboxRefClick={handleInboxRefClick}
             onOpenInspectorInbox={openHumanInbox}
             onRefresh={refreshTasks}
             onFocusPlanAction={focusPlanAction}
@@ -2862,6 +2926,18 @@ export function RoomChat({
         </div>
       ) : null}
 
+      {discussRecovery?.pending ? (
+        <DiscussRecoveryBanner
+          recovery={discussRecovery}
+          busy={discussRecoveryBusy}
+          onRunRecovery={() => void handleDiscussRecoveryRun()}
+          onOpenDiscussInbox={() => {
+            setInboxSegment("discuss");
+            openHumanInbox();
+          }}
+        />
+      ) : null}
+
       {discussPaused ? (
         <div className="workspace-discuss-pause-banner" role="status">
           {localeMsg.inboxDiscussPausedBanner}
@@ -2882,6 +2958,7 @@ export function RoomChat({
             setShowInboxPopup(false);
             openHumanInbox();
           }}
+          onRefClick={handleInboxRefClick}
         />
       ) : null}
 
@@ -2934,6 +3011,10 @@ export function RoomChat({
           setEfficiencyOnState(on);
           setEfficiencyMode(on);
         }}
+        inboxSyncMode={inboxSyncMode}
+        onInboxSyncModeChange={
+          !isNew && composerModeVariant === "discuss" ? handleInboxSyncModeChange : undefined
+        }
         objectionNotice={composerObjectionNotice}
         onFocusObjection={focusObjection}
         turnHint={composerTurnHintLine}
@@ -3142,10 +3223,14 @@ export function RoomChat({
                     reloadKey={inboxReloadKey}
                     planRevision={currentPlanRevision}
                     discussPaused={discussPaused}
+                    discussRecovery={discussRecovery}
+                    discussRecoveryBusy={discussRecoveryBusy}
+                    onRunDiscussRecovery={() => void handleDiscussRecoveryRun()}
                     onResolved={handleInboxResolved}
                     onBuildStarted={handleInboxBuildStarted}
                     disabled={running || synthesizing || runBusy}
                     onOpenInbox={openHumanInbox}
+                    onRefClick={handleInboxRefClick}
                   />
                 ) : null}
                 {inboxSegment !== "activity" && inboxSegment !== "discuss" ? (
@@ -3157,6 +3242,7 @@ export function RoomChat({
                     onBuildStarted={handleInboxBuildStarted}
                     disabled={running || synthesizing || runBusy}
                     presentation="inspector"
+                    onRefClick={handleInboxRefClick}
                     kindFilter={
                       inboxSegment === "questions"
                         ? "question"

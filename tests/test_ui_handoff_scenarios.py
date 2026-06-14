@@ -175,3 +175,33 @@ def test_m6_work_exec_classes_only_in_plan_execute_panel():
     assert "plan-execute-" not in panel
     assert "work-exec-" in panel
     assert "plan-card__btn" in panel
+
+
+def test_remaining_gaps_slack_inbox_ref_recovery_contract():
+    """Slack settings, inbox ref jump, sync toggle, discuss recovery banner."""
+    room = _read("web", "src", "components", "RoomChat.tsx")
+    composer = _read("web", "src", "components", "ChatComposer.tsx")
+    gateway = _read("web", "src", "components", "GatewaySettingsPanel.tsx")
+    discuss = _read("web", "src", "components", "DiscussInboxPanel.tsx")
+    recovery = _read("web", "src", "components", "DiscussRecoveryBanner.tsx")
+    ref_nav = _read("web", "src", "utils", "inboxRefNavigation.ts")
+    client = _read("web", "src", "api", "client.ts")
+    css = _read("web", "src", "styles", "prototype-panels.css")
+
+    assert "missionOsSlackSigningSecret" in gateway or "slackSigningSecret" in gateway
+    assert "activateInboxRef" in room
+    assert "handleInboxRefClick" in room
+    assert "onRefClick={handleInboxRefClick}" in room
+    assert "ComposerInboxModeToggle" in composer
+    assert "onInboxSyncModeChange" in composer
+    assert "fetchInboxSettings" in room
+    assert "patchInboxSettings" in room
+    assert "DiscussRecoveryBanner" in room
+    assert "postMissionDiscussRecovery" in room
+    assert "DiscussRecoveryBanner" in discuss
+    assert "discuss-recovery-banner" in recovery
+    assert "parseInboxRef" in ref_nav
+    assert "fetchInboxSettings" in client
+    assert "postMissionDiscussRecovery" in client
+    assert "inbox-row__ref-link" in css
+    assert "discuss-recovery-banner" in css

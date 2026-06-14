@@ -12,15 +12,20 @@ from agent_lab.human_inbox import (
     supersede_pending_inbox,
 )
 from agent_lab.room import ensure_session_plan_pipeline
-from agent_lab.run_meta import read_run_meta
+from agent_lab.run_meta import patch_run_meta, read_run_meta
 
 from app.server.deps import (
     HumanInboxCreateRequest,
     HumanInboxResolveRequest,
     session_folder_or_404,
 )
+from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api")
+
+
+class InboxSettingsPatch(BaseModel):
+    inbox_mode: str = Field(pattern="^(sync|soft)$")
 
 
 @router.get("/inbox/summary")
@@ -36,7 +41,47 @@ def get_session_inbox(session_id: str) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
     ensure_session_plan_pipeline(folder)
     run = read_run_meta(folder)
-    return {"ok": True, "session_id": session_id, **public_inbox_payload(run)}
+    from agent_lab.inbox_harvest import inbox_mode_for_run
+
+    return {
+        "ok": True,
+        "session_id": session_id,
+        "inbox_mode": inbox_mode_for_run(run),
+        **public_inbox_payload(run),
+    }
+
+
+@router.get("/sessions/{session_id}/inbox/settings")
+def get_session_inbox_settings(session_id: str) -> dict[str, Any]:
+    folder = session_folder_or_404(session_id)
+    run = read_run_meta(folder)
+    from agent_lab.inbox_harvest import inbox_mode_for_run
+
+    return {
+        "ok": True,
+        "session_id": session_id,
+        "inbox_mode": inbox_mode_for_run(run),
+        "session_override": run.get("inbox_mode"),
+    }
+
+
+@router.patch("/sessions/{session_id}/inbox/settings")
+def patch_session_inbox_settings(session_id: str, body: InboxSettingsPatch) -> dict[str, Any]:
+    folder = session_folder_or_404(session_id)
+
+    def _patch(run: dict[str, Any]) -> dict[str, Any]:
+        run["inbox_mode"] = body.inbox_mode
+        return run
+
+    updated = patch_run_meta(folder, _patch)
+    from agent_lab.inbox_harvest import inbox_mode_for_run
+
+    return {
+        "ok": True,
+        "session_id": session_id,
+        "inbox_mode": inbox_mode_for_run(updated),
+        "session_override": updated.get("inbox_mode"),
+    }
 
 
 @router.post("/sessions/{session_id}/inbox/items")

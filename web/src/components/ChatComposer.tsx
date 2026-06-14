@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, useEffect, type ReactNode } from "react";
 import { ComposerPlanToggle } from "./ComposerPlanToggle";
 import { ComposerEfficiencyToggle } from "./ComposerEfficiencyToggle";
+import { ComposerInboxModeToggle } from "./ComposerInboxModeToggle";
 import { ComposerTurnPicker } from "./ComposerTurnPicker";
 import { ComposerMentionMenu } from "./ComposerMentionMenu";
 import {
@@ -11,6 +12,7 @@ import { SlashCommandMenu } from "./SlashCommandMenu";
 import type { SlashCommandRecord } from "../api/client";
 import type { ComposerTurnProfile } from "../utils/turnProfile";
 import type { Locale } from "../i18n/locale";
+import { useLocale } from "../i18n/useLocale";
 
 export type PendingFile = { id: string; file: File };
 
@@ -42,6 +44,8 @@ type Props = {
   pendingExecuteCount?: number;
   efficiencyOn?: boolean;
   onEfficiencyChange?: (on: boolean) => void;
+  inboxSyncMode?: boolean;
+  onInboxSyncModeChange?: (syncMode: boolean) => void;
   /** @deprecated Plan stale notices live on the Work tab. */
   planStaleNotice?: string | null;
   objectionNotice?: ObjectionNotice | null;
@@ -97,6 +101,8 @@ export function ChatComposer({
   pendingExecuteCount: _pendingExecuteCount,
   efficiencyOn = false,
   onEfficiencyChange,
+  inboxSyncMode = true,
+  onInboxSyncModeChange,
   objectionNotice,
   onFocusObjection,
   turnHint,
@@ -114,6 +120,7 @@ export function ChatComposer({
   onSlashExecute,
   sessionId = null,
 }: Props) {
+  const { msg: localeMsg } = useLocale();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [slashHighlight, setSlashHighlight] = useState(0);
@@ -236,6 +243,15 @@ export function ChatComposer({
                   onChange={onEfficiencyChange}
                   disabled={inputLocked}
                   label={locale === "ko" ? "효율" : "Efficiency"}
+                />
+              ) : null}
+              {onInboxSyncModeChange ? (
+                <ComposerInboxModeToggle
+                  syncMode={inboxSyncMode}
+                  onChange={onInboxSyncModeChange}
+                  disabled={inputLocked}
+                  label={localeMsg.inboxSyncMode}
+                  title={localeMsg.inboxSyncModeHint}
                 />
               ) : null}
             </>

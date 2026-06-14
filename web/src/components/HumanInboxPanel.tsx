@@ -22,6 +22,7 @@ type Props = {
   kindFilter?: "question" | "build" | "skill_draft";
   discussOnly?: boolean;
   hideInspectorLabel?: boolean;
+  onRefClick?: (ref: string) => void;
 };
 
 function pendingItems(items: HumanInboxItem[]): HumanInboxItem[] {
@@ -92,6 +93,7 @@ type InboxRowProps = {
   onSkillDraft: (item: HumanInboxItem, decision: "approve" | "reject") => void;
   onDefer: (item: HumanInboxItem) => void;
   locale: "en" | "ko";
+  onRefClick?: (ref: string) => void;
 };
 
 function InboxRow({
@@ -107,6 +109,7 @@ function InboxRow({
   onSkillDraft,
   onDefer,
   locale,
+  onRefClick,
 }: InboxRowProps) {
   const ko = locale === "ko";
   const subject =
@@ -159,7 +162,22 @@ function InboxRow({
       ) : null}
       {item.refs && item.refs.length > 0 ? (
         <p className="inbox-row__body inbox-row__meta inbox-row__refs">
-          {item.refs.join(" · ")}
+          {item.refs.map((ref) =>
+            onRefClick ? (
+              <button
+                key={ref}
+                type="button"
+                className="inbox-row__ref-link"
+                onClick={() => onRefClick(ref)}
+              >
+                {ref}
+              </button>
+            ) : (
+              <span key={ref} className="inbox-row__ref-text">
+                {ref}
+              </span>
+            ),
+          )}
         </p>
       ) : null}
       {item.kind === "question" ? (
@@ -277,6 +295,7 @@ export function HumanInboxPanel({
   kindFilter,
   discussOnly = false,
   hideInspectorLabel = false,
+  onRefClick,
 }: Props) {
   const { locale } = useLocale();
   const ko = locale === "ko";
@@ -448,6 +467,7 @@ export function HumanInboxPanel({
         onSkillDraft={handleSkillDraft}
         onDefer={handleDefer}
         hideLabel={hideInspectorLabel}
+        onRefClick={onRefClick}
       />
     );
   }
@@ -537,7 +557,7 @@ export function HumanInboxPanel({
       {error ? <div className="human-inbox__error">{error}</div> : null}
       <div className="human-inbox__items">
         {pending.map((item) => (
-          <InboxRow key={item.id} item={item} {...rowProps} />
+          <InboxRow key={item.id} item={item} {...rowProps} onRefClick={onRefClick} />
         ))}
       </div>
       {presentation === "taskbar" && onOpenInbox ? (
@@ -565,6 +585,7 @@ type InspectorInboxProps = {
   onSkillDraft: (item: HumanInboxItem, decision: "approve" | "reject") => void;
   onDefer: (item: HumanInboxItem) => void;
   hideLabel?: boolean;
+  onRefClick?: (ref: string) => void;
 };
 
 function InspectorInboxView({
@@ -581,6 +602,7 @@ function InspectorInboxView({
   onSkillDraft,
   onDefer,
   hideLabel = false,
+  onRefClick,
 }: InspectorInboxProps) {
   const { msg, locale } = useLocale();
 
@@ -628,6 +650,7 @@ function InspectorInboxView({
               onSkillDraft={onSkillDraft}
               onDefer={onDefer}
               locale={locale}
+              onRefClick={onRefClick}
             />
           );
         })

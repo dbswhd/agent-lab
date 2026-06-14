@@ -494,11 +494,20 @@ def inbox_mode() -> str:
     return mode if mode in ("sync", "soft") else "sync"
 
 
+def inbox_mode_for_run(run_meta: dict[str, Any] | None) -> str:
+    """Session ``inbox_mode`` overrides env when set to sync|soft."""
+    if isinstance(run_meta, dict):
+        raw = str(run_meta.get("inbox_mode") or "").strip().lower()
+        if raw in ("sync", "soft"):
+            return raw
+    return inbox_mode()
+
+
 def should_pause_discuss(run_meta: dict[str, Any]) -> bool:
     """Sync checkpoint: pending question halts further auto rounds (lane-aware when gate_scope on)."""
     import os
 
-    if inbox_mode() != "sync":
+    if inbox_mode_for_run(run_meta) != "sync":
         return False
     if os.getenv("AGENT_LAB_GATE_SCOPE", "1").strip().lower() not in ("0", "false", "no"):
         from agent_lab.gate_scope import should_pause_discuss_for_profile

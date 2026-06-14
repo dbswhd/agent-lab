@@ -878,6 +878,13 @@ export type MissionLoopState = {
     max_momus_rounds?: number;
   };
   autonomous_segment?: { active?: boolean };
+  discuss_recovery?: {
+    pending?: boolean;
+    reason?: string | null;
+    action_index?: number | null;
+    started_at?: string | null;
+    completed_at?: string | null;
+  };
 };
 
 export type ContextLayersState = {
@@ -951,6 +958,8 @@ export type RuntimeSnapshot = {
     plan_gate_status?: string | null;
     pending_action_indices?: number[];
     current_action_index?: number | null;
+    discuss_recovery?: MissionLoopState["discuss_recovery"];
+    discuss_recovery_pending?: boolean;
   };
   execute: {
     has_pending: boolean;
@@ -2245,6 +2254,37 @@ export function overridePlanExecutionIsolation(
   ) as Promise<{ ok: boolean; execution: PlanExecutionRecord }>;
 }
 
+export type InboxSettingsPayload = {
+  ok: boolean;
+  session_id: string;
+  inbox_mode: "sync" | "soft";
+  session_override?: string | null;
+};
+
+export async function fetchInboxSettings(sessionId: string) {
+  return json<InboxSettingsPayload>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/inbox/settings`,
+  );
+}
+
+export async function patchInboxSettings(sessionId: string, inboxMode: "sync" | "soft") {
+  return json<InboxSettingsPayload>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/inbox/settings`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ inbox_mode: inboxMode }),
+    },
+  );
+}
+
+export function postMissionDiscussRecovery(sessionId: string) {
+  return json<MissionLoopResponse & { discuss_recovery?: Record<string, unknown> }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/mission-loop/discuss-recovery`,
+    { method: "POST" },
+  );
+}
+
 export type HumanInboxOption = {
   id: string;
   label: string;
@@ -2347,6 +2387,15 @@ export type GatewayDiscordSettings = {
   allowed_channel_ids?: string[];
 };
 
+export type GatewaySlackSettings = {
+  enabled?: boolean;
+  webhook_url_set?: boolean;
+  bot_token_set?: boolean;
+  signing_secret_set?: boolean;
+  allow_ingress_without_webhook?: boolean;
+  allowed_channel_ids?: string[];
+};
+
 export type GatewayHybridSettings = {
   enabled?: boolean;
   relay_url?: string | null;
@@ -2368,6 +2417,7 @@ export type GatewaySettingsPayload = {
   outbound?: GatewayOutboundSettings;
   telegram?: GatewayTelegramSettings;
   discord?: GatewayDiscordSettings;
+  slack?: GatewaySlackSettings;
   hybrid?: GatewayHybridSettings;
   adapters?: GatewayAdapterInfo[];
   enabled?: string[];

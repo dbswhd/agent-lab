@@ -105,3 +105,27 @@ def test_harvest_and_check_pause_plan_mode_noop(monkeypatch: pytest.MonkeyPatch)
     paused = harvest_and_check_pause(run_meta, messages, mode="plan")
     assert paused is False
     assert "human_inbox" not in run_meta
+
+
+def test_session_inbox_mode_overrides_env_sync(monkeypatch: pytest.MonkeyPatch):
+    from agent_lab.inbox_harvest import inbox_mode_for_run, should_pause_discuss
+
+    monkeypatch.delenv("AGENT_LAB_INBOX_MODE", raising=False)
+    run_meta = {
+        "inbox_mode": "soft",
+        "human_inbox": [{"id": "q1", "kind": "question", "status": "pending"}],
+    }
+    assert inbox_mode_for_run(run_meta) == "soft"
+    assert should_pause_discuss(run_meta) is False
+
+
+def test_session_inbox_mode_overrides_env_soft(monkeypatch: pytest.MonkeyPatch):
+    from agent_lab.inbox_harvest import inbox_mode_for_run, should_pause_discuss
+
+    monkeypatch.setenv("AGENT_LAB_INBOX_MODE", "soft")
+    run_meta = {
+        "inbox_mode": "sync",
+        "human_inbox": [{"id": "q1", "kind": "question", "status": "pending"}],
+    }
+    assert inbox_mode_for_run(run_meta) == "sync"
+    assert should_pause_discuss(run_meta) is True

@@ -170,6 +170,13 @@ def build_runtime_snapshot(
             else None,
             "pending_action_indices": list(ml.get("pending_action_indices") or []),
             "current_action_index": ml.get("current_action_index"),
+            "discuss_recovery": ml.get("discuss_recovery")
+            if isinstance(ml.get("discuss_recovery"), dict)
+            else None,
+            "discuss_recovery_pending": bool(
+                isinstance(ml.get("discuss_recovery"), dict)
+                and ml.get("discuss_recovery", {}).get("pending")
+            ),
         },
         "execute": {
             "has_pending": pending_exec is not None,

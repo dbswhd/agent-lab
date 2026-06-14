@@ -388,3 +388,26 @@ def test_complete_sse_inbox_pending_on_clarifier(monkeypatch, tmp_path):
         item.get("trigger") == "T-Q0" and item.get("status") == "pending"
         for item in run.get("human_inbox") or []
     )
+
+
+def test_inbox_settings_api(client: TestClient, session_folder: Path, monkeypatch: pytest.MonkeyPatch):
+    session_id = session_folder.name
+    monkeypatch.delenv("AGENT_LAB_INBOX_MODE", raising=False)
+
+    get_res = client.get(f"/api/sessions/{session_id}/inbox/settings")
+    assert get_res.status_code == 200
+    get_body = get_res.json()
+    assert get_body["ok"] is True
+    assert get_body["inbox_mode"] == "sync"
+
+    patch_res = client.patch(
+        f"/api/sessions/{session_id}/inbox/settings",
+        json={"inbox_mode": "soft"},
+    )
+    assert patch_res.status_code == 200
+    patch_body = patch_res.json()
+    assert patch_body["inbox_mode"] == "soft"
+    assert patch_body["session_override"] == "soft"
+
+    run = read_run_meta(session_folder)
+    assert run.get("inbox_mode") == "soft"

@@ -57,6 +57,7 @@ type Props = {
   humanInboxDisabled?: boolean;
   onHumanInboxResolved?: () => void;
   onHumanInboxBuildStarted?: () => void;
+  onHumanInboxRefClick?: (ref: string) => void;
   onOpenInspectorInbox?: () => void;
   onRefresh?: () => void;
   onFocusPlanAction?: (actionIndex: number) => void;
@@ -187,6 +188,7 @@ export function RoomTaskBar({
   humanInboxDisabled,
   onHumanInboxResolved,
   onHumanInboxBuildStarted,
+  onHumanInboxRefClick,
   onOpenInspectorInbox,
   onRefresh,
   onFocusPlanAction,
@@ -846,6 +848,7 @@ export function RoomTaskBar({
                 onResolved={onHumanInboxResolved}
                 onBuildStarted={onHumanInboxBuildStarted}
                 onOpenInbox={onOpenInspectorInbox}
+                onRefClick={onHumanInboxRefClick}
               />
             ) : null}
 

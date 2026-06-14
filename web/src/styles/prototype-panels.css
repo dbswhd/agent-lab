@@ -434,3 +434,59 @@
   font-family: var(--font-mono, ui-monospace, monospace);
 }
 
+.inbox-row__ref-link {
+  margin: 0 0.35rem 0.15rem 0;
+  padding: 0.05rem 0.35rem;
+  border: 1px solid var(--border-subtle, rgba(127, 127, 127, 0.35));
+  border-radius: 4px;
+  background: transparent;
+  color: var(--accent, #4a9eff);
+  font: inherit;
+  cursor: pointer;
+}
+
+.inbox-row__ref-link:hover {
+  background: var(--surface-hover, rgba(127, 127, 127, 0.12));
+}
+
+.discuss-recovery-banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0.5rem 0 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--warn-border, rgba(255, 180, 0, 0.45));
+  border-radius: 8px;
+  background: var(--warn-bg, rgba(255, 180, 0, 0.08));
+  font-size: var(--text-caption);
+}
+
+.discuss-recovery-banner__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.discuss-recovery-banner__detail {
+  color: var(--text-secondary);
+}
+
+.discuss-recovery-banner__actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.35rem;
+}
+
+.settings-field--row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.settings-field--row > input[type="checkbox"] {
+  width: auto;
+  flex-shrink: 0;
+}
+

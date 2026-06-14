@@ -686,3 +686,45 @@ def test_mission_loop_api(session_folder: Path, monkeypatch: pytest.MonkeyPatch)
     body = res.json()
     assert body["enabled"] is True
     assert isinstance(body.get("notepads"), list)
+
+
+def test_discuss_recovery_api(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from fastapi.testclient import TestClient
+
+    from app.server.main import app
+
+    monkeypatch.setattr(
+        "app.server.routers.mission_loop.session_folder_or_404",
+        lambda _sid: session_folder,
+    )
+    enable_mission_loop(session_folder)
+
+    def _pending(run: dict) -> dict:
+        ml = run.setdefault("mission_loop", {})
+        ml.update(
+            {
+                "enabled": True,
+                "phase": "DISCUSS",
+                "discuss_recovery": {
+                    "pending": True,
+                    "reason": "api_test",
+                    "action_index": 1,
+                },
+            }
+        )
+        return run
+
+    patch_run_meta(session_folder, _pending)
+    monkeypatch.setattr(
+        "agent_lab.mission_loop.run_mission_discuss_recovery",
+        lambda folder, **kw: {
+            "status": "discuss_recovery_complete",
+            "phase": "EXECUTE_QUEUE",
+        },
+    )
+    client = TestClient(app)
+    res = client.post("/api/sessions/sess-mission/mission-loop/discuss-recovery")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["ok"] is True
+    assert body.get("discuss_recovery") is not None

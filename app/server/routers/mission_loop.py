@@ -166,3 +166,13 @@ def post_clear_circuit_breaker(
         {"resume_phase": body.resume_phase},
     )
     return public_mission_payload(folder)
+
+
+@router.post("/sessions/{session_id}/mission-loop/discuss-recovery")
+def post_mission_discuss_recovery(session_id: str) -> dict[str, Any]:
+    folder = session_folder_or_404(session_id)
+    from agent_lab.mission_loop import public_mission_payload
+
+    result = _dispatch_or_http(folder, RuntimeEvent.MISSION_DISCUSS_RECOVERY, {})
+    payload = public_mission_payload(folder)
+    return {"ok": True, "session_id": session_id, "discuss_recovery": result, **payload}

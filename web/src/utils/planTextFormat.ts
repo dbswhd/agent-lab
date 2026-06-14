@@ -26,7 +26,7 @@ export function stripPlanRefAnnotations(text: string): string {
     .replace(PLAN_REF_BLOCK, "")
     .replace(/\s{2,}/g, " ")
     .replace(/\s+([,.;])/g, "$1")
-    .replace(/([(\[])\s+/g, "$1")
+    .replace(/(\(|\[)\s+/g, "$1")
     .trim();
 }
 

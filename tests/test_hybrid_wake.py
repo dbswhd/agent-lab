@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import json
-from http.server import BaseHTTPRequestHandler, HTTPServer
-from threading import Thread
+from http.server import BaseHTTPRequestHandler
 from unittest.mock import MagicMock
 
 import pytest
@@ -20,6 +19,11 @@ from agent_lab.gateway.hybrid_relay import (
     wake_events_for,
 )
 from app.server.main import app
+from tests.http_server_helpers import (
+    read_post_body,
+    start_local_http_server,
+    stop_local_http_server,
+)
 
 
 @pytest.fixture
@@ -68,40 +72,37 @@ def test_deliver_hybrid_relay_includes_wake_hint(
 
     class Handler(BaseHTTPRequestHandler):
         def do_POST(self):
-            length = int(self.headers.get("Content-Length", "0"))
-            received.append(self.rfile.read(length))
+            received.append(read_post_body(self))
             self.send_response(200)
             self.end_headers()
 
         def log_message(self, *_args):
             return
 
-    server = HTTPServer(("127.0.0.1", 0), Handler)
-    port = server.server_address[1]
-    thread = Thread(target=server.serve_forever, daemon=True)
-    thread.start()
+    server, port, thread = start_local_http_server(Handler)
+    try:
+        wake_url = "https://tunnel.example/api/hooks/mission-wake"
+        save_gateway_config(
+            {
+                "hybrid": {
+                    "enabled": True,
+                    "relay_url": f"http://127.0.0.1:{port}/relay",
+                    "wake_url": wake_url,
+                    "wake_enabled": True,
+                },
+            }
+        )
+        monkeypatch.setenv("AGENT_LAB_DAEMON_STATE", str(tmp_path / "missing_daemon.json"))
 
-    wake_url = "https://tunnel.example/api/hooks/mission-wake"
-    save_gateway_config(
-        {
-            "hybrid": {
-                "enabled": True,
-                "relay_url": f"http://127.0.0.1:{port}/relay",
-                "wake_url": wake_url,
-                "wake_enabled": True,
-            },
-        }
-    )
-    monkeypatch.setenv("AGENT_LAB_DAEMON_STATE", str(tmp_path / "missing_daemon.json"))
-
-    result = deliver_hybrid_relay("schedule_tick", {"schedule_id": "s1"})
-    assert result.get("ok") is True
-    assert received
-    body = json.loads(received[0].decode("utf-8"))
-    assert body["daemon_online"] is False
-    assert body["wake"]["url"] == wake_url
-    assert body["wake"]["event"] == "schedule_tick"
-    server.shutdown()
+        result = deliver_hybrid_relay("schedule_tick", {"schedule_id": "s1"})
+        assert result.get("ok") is True
+        assert received
+        body = json.loads(received[0].decode("utf-8"))
+        assert body["daemon_online"] is False
+        assert body["wake"]["url"] == wake_url
+        assert body["wake"]["event"] == "schedule_tick"
+    finally:
+        stop_local_http_server(server, thread)
 
 
 def test_verify_wake_request_scheduler_token(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -147,6 +148,7 @@ def test_request_scheduler_wake_posts_token(
 
     class Handler(BaseHTTPRequestHandler):
         def do_POST(self):
+            read_post_body(self)
             captured["token"] = self.headers.get("X-Agent-Lab-Scheduler-Token", "")
             self.send_response(200)
             self.end_headers()
@@ -155,16 +157,14 @@ def test_request_scheduler_wake_posts_token(
         def log_message(self, *_args):
             return
 
-    server = HTTPServer(("127.0.0.1", 0), Handler)
-    port = server.server_address[1]
-    thread = Thread(target=server.serve_forever, daemon=True)
-    thread.start()
+    server, port, thread = start_local_http_server(Handler)
+    try:
+        wake_url = f"http://127.0.0.1:{port}/wake"
+        save_gateway_config({"hybrid": {"wake_url": wake_url}})
+        monkeypatch.setenv("AGENT_LAB_SCHEDULER_HOOK_TOKEN", "tok123")
 
-    wake_url = f"http://127.0.0.1:{port}/wake"
-    save_gateway_config({"hybrid": {"wake_url": wake_url}})
-    monkeypatch.setenv("AGENT_LAB_SCHEDULER_HOOK_TOKEN", "tok123")
-
-    result = request_scheduler_wake()
-    assert result.get("ok") is True
-    assert captured.get("token") == "tok123"
-    server.shutdown()
+        result = request_scheduler_wake()
+        assert result.get("ok") is True
+        assert captured.get("token") == "tok123"
+    finally:
+        stop_local_http_server(server, thread)

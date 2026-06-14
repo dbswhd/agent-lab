@@ -94,9 +94,7 @@ export function PreviewPanel({ sessionId }: Props) {
   }, [sessionId]);
 
   const refresh = useCallback(() => {
-    if (iframeRef.current) {
-      iframeRef.current.src = iframeRef.current.src;
-    }
+    iframeRef.current?.contentWindow?.location.reload();
   }, []);
 
   const startPreset = useCallback(

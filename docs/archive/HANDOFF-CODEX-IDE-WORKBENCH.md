@@ -4,7 +4,7 @@
 
 > **작성:** 2026-06-13  
 > **대상:** Codex (이어서 구현)  
-> **SSOT 플랜:** [`/Users/yoonjong/.claude/plans/clever-questing-moth.md`](/Users/yoonjong/.claude/plans/clever-questing-moth.md)  
+> **SSOT 플랜:** Claude Desktop slug `clever-questing-moth` (local plan file — not in repo)  
 > **Claude Desktop 세션:** slug `clever-questing-moth`, custom title **「IDE 기능 구현」**  
 > **상태:** Phase 1 완료(미커밋) · Phase 2 Track 1 코드 완료 · Phase 2 검증/Track 2 미완 · **전체 미커밋**
 
@@ -156,9 +156,7 @@ feat(web): add Workspace Files tab and inline artifact preview
 ## 7. 검증 명령
 
 ```bash
-cd /Users/yoonjong/Projects/agent-lab
-
-# API (mock)
+# from repository root
 AGENT_LAB_MOCK_AGENTS=1 .venv/bin/pytest tests/test_workspace_files_api.py -q
 
 # Shortcut contract

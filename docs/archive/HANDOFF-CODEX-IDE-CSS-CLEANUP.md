@@ -4,7 +4,7 @@
 
 > **작성:** 2026-06-13  
 > **대상:** Codex (다음 구현 담당)  
-> **워크스페이스:** `/Users/yoonjong/Projects/agent-lab`  
+> **워크스페이스:** agent-lab repository root (historical handoff)  
 > **범위:** `Remove orphaned developer-console.css / app.css` — UI Tier 3 CSS 스택 수렴  
 > **상태 SSOT:** 이 문서 + `web/src/main.tsx` + `git diff web/src/styles/`
 
@@ -174,9 +174,7 @@ refactor(web): remove orphaned app.css stack and port remaining rules
 ## 7. 검증 명령
 
 ```bash
-cd /Users/yoonjong/Projects/agent-lab
-
-# Frontend build
+# from repository root
 cd web && npm run build && cd ..
 
 # CSS / UI contract subset (mock-only)

@@ -155,6 +155,7 @@ make format-check     # ruff format --check (+ examples/)
 make format           # apply ruff format locally
 make typecheck        # mypy src/agent_lab (full report)
 make typecheck-ratchet # mypy error budget (excludes room.py; gated in CI)
+make web-lint         # eslint (web/src)
 make test-fast        # mock-only, ~1분 (~870 tests, -n auto when xdist)
 make test             # full mock suite (integration 포함)
 make ci               # lint + format-check + typecheck-ratchet + test-fast + smoke + score fixtures

@@ -8,4 +8,4 @@ Do **not** use for shipped status. See [docs/README.md](../README.md) Tier 1 (US
 | HANDOFF-CODEX-IDE-CSS-CLEANUP.md | M6 CSS migration — `layout.css`, contract tests |
 | PRODUCTION-AUDIT-20260614.md | [EXTERNAL-REFS-TRACEABILITY.md](../EXTERNAL-REFS-TRACEABILITY.md) |
 
-These files keep local session paths and **미커밋** snapshots from early June 2026; code on `main` has moved on.
+These files keep **point-in-time** session notes from early June 2026. Local machine paths were generalized; code on `main` has moved on.

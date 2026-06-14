@@ -4,13 +4,15 @@ import { Avatar } from "./Avatar";
 import { EvidenceTimeline } from "./EvidenceTimeline";
 import { agentLabel } from "../utils/transcript";
 import type { LiveMsg } from "../run/runSessionRegistry";
-import type { AgentRole } from "../utils/transcript";
+import type { AgentRole, ToolRunCard } from "../utils/transcript";
+import { useLocale } from "../i18n/useLocale";
 
 type Props = {
   sessionId?: string | null;
   turnMessages: LiveMsg[];
   running: boolean;
   active: { agent: string; round: number } | null;
+  runningAgents?: { agent: string; round: number; label?: string }[];
   onStop?: () => void;
   longRunning?: boolean;
   runLockStuck?: boolean;
@@ -25,6 +27,7 @@ type RunLogEntry = {
   text: string;
   ts?: string;
   kind: "tool" | "system" | "agent";
+  toolCard?: ToolRunCard;
 };
 
 function entryType(role: string): "tool" | "system" | "agent" {
@@ -44,13 +47,85 @@ function formatTs(ts?: string): string {
   });
 }
 
-function expandRunLogEntries(turnMessages: LiveMsg[]): RunLogEntry[] {
+function isToolActivityLine(text: string): boolean {
+  return text.trimStart().toLowerCase().startsWith("[tool ·");
+}
+
+function formatDurationMs(startedAt?: number, doneAt?: number): string | null {
+  if (!startedAt || !doneAt || doneAt <= startedAt) return null;
+  const ms = doneAt - startedAt;
+  if (ms < 1000) return `${ms}ms`;
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+
+function RunLogToolCard({ card }: { card: ToolRunCard }) {
+  const duration = formatDurationMs(card.startedAt, card.doneAt);
+  return (
+    <details className="run-entry__tool run-entry__tool--structured" open={false}>
+      <summary className="run-entry__text run-entry__text--tool">
+        <span className="run-entry__tool-name">{card.tool}</span>
+        {card.args ? <span className="run-entry__tool-args">{card.args}</span> : null}
+        {duration ? <span className="run-entry__tool-duration">{duration}</span> : null}
+      </summary>
+      {card.output ? (
+        <pre className="run-entry__tool-body">{card.output}</pre>
+      ) : (
+        <p className="run-entry__tool-body run-entry__tool-body--empty">(no stdout)</p>
+      )}
+    </details>
+  );
+}
+
+function RunLogEntryText({ entry }: { entry: RunLogEntry }) {
+  if (entry.toolCard) {
+    return <RunLogToolCard card={entry.toolCard} />;
+  }
+  if (entry.kind !== "tool" || !isToolActivityLine(entry.text)) {
+    return (
+      <span className="run-entry__text">
+        {entry.label && entry.kind === "agent" ? `${entry.label}: ` : ""}
+        {entry.text}
+      </span>
+    );
+  }
+  const match = entry.text.match(/^\[tool · ([^\]]+)\]\s*(.*)$/i);
+  const toolName = match?.[1]?.trim() || "tool";
+  const detail = match?.[2]?.trim() || "";
+  return (
+    <details className="run-entry__tool" open={false}>
+      <summary className="run-entry__text run-entry__text--tool">
+        <span className="run-entry__tool-name">{toolName}</span>
+        {detail ? <span className="run-entry__tool-args">{detail}</span> : null}
+      </summary>
+      {detail ? <pre className="run-entry__tool-body">{detail}</pre> : null}
+    </details>
+  );
+}
+
+function expandRunLogEntries(
+  turnMessages: LiveMsg[],
+  waitingText: string,
+): RunLogEntry[] {
   const out: RunLogEntry[] = [];
   for (const m of turnMessages) {
     if (m.roundDivider || m.role === "you") continue;
     const kind = entryType(m.role);
     const ts = (m as LiveMsg & { ts?: string }).ts;
     const label = m.label || (kind === "agent" ? agentLabel(m.role) : undefined);
+
+    if (m.toolCards?.length) {
+      for (const card of m.toolCards) {
+        out.push({
+          id: `${m.id}-tool-${card.id}`,
+          role: m.role,
+          label,
+          text: `[tool · ${card.tool}] ${card.args ?? ""}`.trim(),
+          ts,
+          kind: "tool",
+          toolCard: card,
+        });
+      }
+    }
 
     if (m.activities?.length) {
       for (let i = 0; i < m.activities.length; i++) {
@@ -82,7 +157,7 @@ function expandRunLogEntries(turnMessages: LiveMsg[]): RunLogEntry[] {
         id: `${m.id}-typing`,
         role: m.role,
         label,
-        text: "응답 대기 중…",
+        text: waitingText,
         ts,
         kind,
       });
@@ -99,13 +174,15 @@ export function RunLogPanel({
   turnMessages,
   running,
   active,
+  runningAgents = [],
   onStop,
   longRunning,
   runLockStuck,
   releasingLock,
   onReleaseLock,
 }: Props) {
-  const entries = expandRunLogEntries(turnMessages);
+  const { msg } = useLocale();
+  const entries = expandRunLogEntries(turnMessages, msg.runLogWaiting);
   const [evidence, setEvidence] = useState<EvidenceEntry[]>([]);
 
   useEffect(() => {
@@ -142,10 +219,10 @@ export function RunLogPanel({
           <rect x="4" y="4" width="16" height="16" rx="2" />
           <path d="M9 9h6M9 13h6M9 17h4" />
         </svg>
-        Run log
+        {msg.runLogTitle}
         {longRunning && running ? (
           <span className="badge badge--warn" style={{ marginLeft: 8 }}>
-            long run
+            {msg.runLogLongRun}
           </span>
         ) : null}
         {runLockStuck && onReleaseLock ? (
@@ -156,7 +233,7 @@ export function RunLogPanel({
             disabled={releasingLock}
             onClick={onReleaseLock}
           >
-            {releasingLock ? "해제 중…" : "실행 잠금 해제"}
+            {releasingLock ? msg.runLogReleasingLock : msg.runLogReleaseLock}
           </button>
         ) : null}
         {running && onStop && !runLockStuck ? (
@@ -166,7 +243,7 @@ export function RunLogPanel({
             style={{ marginLeft: "auto" }}
             onClick={onStop}
           >
-            Stop
+            {msg.runLogStop}
           </button>
         ) : null}
       </div>
@@ -187,20 +264,34 @@ export function RunLogPanel({
               <path d="M9 9h6M9 13h6" />
             </svg>
           </span>
-          <span className="empty-state__title">실행 중인 턴 없음</span>
-          <span className="empty-state__hint">
-            메시지를 보내면 에이전트 실행 로그가 여기에 표시됩니다.
-          </span>
+          <span className="empty-state__title">{msg.runLogEmptyTitle}</span>
+          <span className="empty-state__hint">{msg.runLogEmptyHint}</span>
         </div>
       ) : null}
 
-      {running && active && entries.length === 0 ? (
+      {running && runningAgents.length > 0 && entries.length === 0
+        ? runningAgents.map((slot) => (
+            <div key={`${slot.agent}-r${slot.round}`} className="run-entry run-entry--agent">
+              <span className="run-entry__ts">…</span>
+              <Avatar role={slot.agent as AgentRole} size={20} />
+              <span className="run-entry__type run-entry__type--agent">▸</span>
+              <span className="run-entry__text">
+                {msg.runLogWaitingRound(
+                  slot.label ?? agentLabel(slot.agent),
+                  slot.round,
+                )}
+              </span>
+            </div>
+          ))
+        : null}
+
+      {running && active && entries.length === 0 && runningAgents.length === 0 ? (
         <div className={`run-entry run-entry--agent`}>
           <span className="run-entry__ts">…</span>
           <Avatar role={active.agent as AgentRole} size={20} />
           <span className="run-entry__type run-entry__type--agent">▸</span>
           <span className="run-entry__text">
-            {agentLabel(active.agent)} · R{active.round} 응답 대기 중…
+            {msg.runLogWaitingRound(agentLabel(active.agent), active.round)}
           </span>
         </div>
       ) : null}
@@ -217,10 +308,7 @@ export function RunLogPanel({
             <span className={`run-entry__type run-entry__type--${entry.kind}`}>
               {entry.kind === "tool" ? "$" : entry.kind === "system" ? "✦" : "▸"}
             </span>
-            <span className="run-entry__text">
-              {entry.label && entry.kind === "agent" ? `${entry.label}: ` : ""}
-              {entry.text}
-            </span>
+            <RunLogEntryText entry={entry} />
           </div>
         );
       })}
@@ -241,7 +329,7 @@ export function RunLogPanel({
           >
             <path d="M2 8l4 4 8-8" />
           </svg>
-          Turn complete
+          {msg.runLogTurnComplete}
         </div>
       ) : null}
     </div>

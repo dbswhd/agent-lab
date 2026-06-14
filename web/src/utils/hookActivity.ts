@@ -5,6 +5,20 @@ export type HookEventPayload = {
   sub_reason?: string;
 };
 
+export function isExecutionRelevantHook(
+  event: string,
+  blocked: boolean,
+  _feedback?: string,
+): boolean {
+  const e = event.trim().toLowerCase();
+  if (e === "pre_execute" && blocked) return true;
+  if (e === "pre_verify" && blocked) return true;
+  if (e.includes("contract") && blocked) return true;
+  if (e === "response_contract_invalid") return true;
+  if (blocked && (e.includes("verify") || e.includes("execute"))) return true;
+  return false;
+}
+
 export function formatHookActivityLine(ev: HookEventPayload): string {
   const eventName = String(ev.event ?? "hook");
   const tag = ev.blocked ? "blocked" : "warn";

@@ -1,7 +1,8 @@
 export type NotificationAction =
   | { type: "work"; focus?: "execute" | "plan" }
   | { type: "inbox" }
-  | { type: "inspector"; tab?: "overview" | "tasks" | "inbox" };
+  | { type: "inspector"; tab?: "overview" | "tasks" | "inbox" }
+  | { type: "settings" };
 
 export const NOTIFICATION_ACTION_EVENT = "agent-lab-notification-action";
 
@@ -16,7 +17,12 @@ export function subscribeNotificationActions(
 ): () => void {
   function onEvent(event: Event) {
     const detail = (event as CustomEvent<NotificationAction>).detail;
-    if (detail?.type === "work" || detail?.type === "inbox" || detail?.type === "inspector") {
+    if (
+      detail?.type === "work" ||
+      detail?.type === "inbox" ||
+      detail?.type === "inspector" ||
+      detail?.type === "settings"
+    ) {
       handler(detail);
     }
   }
@@ -54,6 +60,14 @@ export function notificationActionForKind(
   if (kind === "verified_loop_pending") {
     return { type: "inspector", tab: "tasks" };
   }
+  if (
+    kind === "hook_blocked" ||
+    kind === "hook_warn" ||
+    kind === "hook_event" ||
+    kind === "response_contract_invalid"
+  ) {
+    return { type: "settings" };
+  }
   return null;
 }
 
@@ -66,6 +80,9 @@ export function defaultActionLabel(
   }
   if (action.type === "inspector") {
     return locale === "ko" ? "Inspector · Tasks" : "Inspector · Tasks";
+  }
+  if (action.type === "settings") {
+    return locale === "ko" ? "Settings 열기" : "Open Settings";
   }
   if (action.focus === "execute") {
     return locale === "ko" ? "Work · Execute" : "Work · Execute";

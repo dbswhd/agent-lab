@@ -1,9 +1,11 @@
 import { Avatar } from "./Avatar";
+import { AgentResponseCard } from "./AgentResponseCard";
 import { ConsoleTurn } from "./ConsoleTurn";
 import { HumanSynthesisBubble } from "./HumanSynthesisBubble";
 import type { ChatMessage, AgentRole } from "../utils/transcript";
 import { parseUserMessageContent } from "../utils/transcript";
 import { MessageMarkdown } from "../utils/messageMarkdown";
+import { buildAgentResponseCard } from "../utils/agentResponseCard";
 import {
   getTranscriptMarkers,
   TranscriptAuthorLine,
@@ -47,12 +49,16 @@ type ReplyWaitingProps = {
   agent: AgentRole;
   label?: string;
   activities?: string[];
+  /** Incremental SSE body while agent_token events arrive */
+  body?: string;
 };
 
 /** Agent reply in progress — same full-width card as the final response */
-export function ReplyWaitingBubble({ agent, label, activities }: ReplyWaitingProps) {
+export function ReplyWaitingBubble({ agent, label, activities, body }: ReplyWaitingProps) {
   const who = label?.trim() || agent;
   const lines = activities?.filter(Boolean) ?? [];
+  const streamText = body?.trim() ?? "";
+  const streaming = streamText.length > 0;
   return (
     <ConsoleTurn
       role={agent}
@@ -60,7 +66,7 @@ export function ReplyWaitingBubble({ agent, label, activities }: ReplyWaitingPro
       author={who}
       roleAttr="status"
       ariaLabel={`${who} 답장 중`}
-      meta={<span className="turn__meta">typing…</span>}
+      meta={<span className="turn__meta">{streaming ? "streaming…" : "typing…"}</span>}
     >
       {lines.length > 0 ? (
         <ul className="agent-activity-log" aria-label="진행 중">
@@ -68,6 +74,11 @@ export function ReplyWaitingBubble({ agent, label, activities }: ReplyWaitingPro
             <li key={`${line}-${i}`}>{line}</li>
           ))}
         </ul>
+      ) : null}
+      {streaming ? (
+        <div className="agent-stream-preview">
+          <MessageMarkdown text={streamText} variant="transcript" />
+        </div>
       ) : null}
       <span className="typing" aria-hidden>
         <span />
@@ -82,7 +93,7 @@ export function ChatBubble({
   message,
   typing,
   highlighted,
-  presentation = "messenger",
+  presentation = "console",
 }: Props) {
   const sent = message.sent ?? message.role === "you";
   const role = message.role;
@@ -181,7 +192,11 @@ export function ChatBubble({
   if (STREAM_ROLES.has(role)) {
     if (typing) return null;
     const who = message.label?.trim() || role;
+    const responseCard = consoleMode ? buildAgentResponseCard(message) : null;
     if (consoleMode) {
+      const markdown = (
+        <MessageMarkdown text={message.body} variant="transcript" />
+      );
       return (
         <ConsoleTurn
           role={role}
@@ -191,14 +206,18 @@ export function ChatBubble({
           peer={message.peerChannel}
           chatLineIndex={message.chatLineIndex}
         >
-          <MessageMarkdown text={message.body} variant="transcript" />
+          {responseCard ? (
+            <AgentResponseCard fields={responseCard} rawMarkdown={markdown} />
+          ) : (
+            markdown
+          )}
         </ConsoleTurn>
       );
     }
     const transcriptMarkers = getTranscriptMarkers(message);
     return (
       <article
-        className={`turn chat-turn chat-turn--${role}${highlighted ? " chat-turn--highlight" : ""}`}
+        className={`chat-turn chat-turn--${role}${highlighted ? " chat-turn--highlight" : ""}`}
       >
         <header className="chat-turn__head">
           <TranscriptIdentity label={message.label} role={role} />

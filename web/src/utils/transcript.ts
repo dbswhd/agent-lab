@@ -20,6 +20,15 @@ export type AgentEnvelope = {
   anchor_id?: string;
 };
 
+export type ToolRunCard = {
+  id: string;
+  tool: string;
+  args?: string;
+  output?: string;
+  startedAt?: number;
+  doneAt?: number;
+};
+
 export type ChatMessage = {
   id: string;
   role: AgentRole;
@@ -40,6 +49,8 @@ export type ChatMessage = {
   roundDivider?: number;
   /** Live Cursor-style activity lines while the agent is running */
   activities?: string[];
+  /** Structured tool timeline (Run log cards with duration/stdout). */
+  toolCards?: ToolRunCard[];
   /** Files sent with this user message (shown above bubble, not in composer). */
   attachments?: string[];
 };

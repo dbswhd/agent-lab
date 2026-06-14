@@ -150,6 +150,12 @@ def build_guidance_parts(
     agent: str = "",
 ) -> list[str]:
     parts: list[str] = []
+    if run_meta:
+        from agent_lab.response_contracts import response_contract_guidance
+
+        contract_guidance = response_contract_guidance(run_meta)
+        if contract_guidance:
+            parts.append(contract_guidance)
     if run_meta and agent:
         from agent_lab.room_tasks import team_lead
 

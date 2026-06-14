@@ -14,6 +14,7 @@ import { ApiDiagnosticsBar } from "./ApiDiagnosticsBar";
 import { ContextPreviewPanel } from "./ContextPreviewPanel";
 import { PluginPanel } from "./PluginPanel";
 import { SlashCommandGroupList } from "./SlashCommandGroupList";
+import { HooksResponseSettings } from "./HooksResponseSettings";
 import { ThemeToggle } from "./ThemeToggle";
 import { Avatar } from "./Avatar";
 import { SettingsSectionIcon } from "./SettingsSectionIcon";
@@ -393,6 +394,8 @@ export function SettingsPage({
             </p>
           </section>
         )}
+
+        <HooksResponseSettings sessionId={sessionId} session={session} />
 
         <section className="settings-section">
           <div className="settings-section__head">

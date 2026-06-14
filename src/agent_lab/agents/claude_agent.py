@@ -20,6 +20,7 @@ def respond(
     on_bridge_event: Any | None = None,
     session_folder: str | Path | None = None,
     request_structured_envelope: bool = False,
+    inbox_mcp: bool = False,
 ) -> str:
     parts = [system or CLAUDE_ROOM]
     handoff = claude_handoff_block()
@@ -36,4 +37,5 @@ def respond(
         on_bridge_event=on_bridge_event,
         session_folder=session_folder,
         request_structured_envelope=request_structured_envelope,
+        inbox_mcp=inbox_mcp,
     )

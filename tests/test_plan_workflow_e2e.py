@@ -13,10 +13,11 @@ from agent_lab.plan_workflow import (
     ensure_plan_workflow_approved,
     get_plan_workflow,
     init_plan_workflow_on_plan_send,
+    orchestrate_plan_workflow_pipeline,
     set_plan_workflow_phase,
     tick_plan_workflow_after_turn,
 )
-from agent_lab.run_meta import read_run_meta
+from agent_lab.run_meta import patch_run_meta, read_run_meta
 
 SAMPLE_PLAN = """# Demo feature
 
@@ -27,6 +28,94 @@ SAMPLE_PLAN = """# Demo feature
    - 어디서: `src/widget.py`
    - 검증: `pytest tests/test_widget.py`
 """
+
+REFINED_PLAN = SAMPLE_PLAN + "\n\n<!-- peer refine -->\n"
+
+
+def _add_open_plan_challenge(folder: Path) -> None:
+    def _patch(run: dict) -> dict:
+        rows = list(run.get("objections") or [])
+        rows.append(
+            {
+                "id": "obj-peer-challenge",
+                "from": "codex",
+                "act": "CHALLENGE",
+                "body": "narrow verify scope",
+                "status": "open",
+                "turn": 1,
+            }
+        )
+        run["objections"] = rows
+        return run
+
+    patch_run_meta(folder, _patch)
+
+
+def test_orchestrate_pipeline_peer_refine_human_pending(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Post-scribe pipeline: peer review → refine scribe → second peer → HUMAN_PENDING."""
+    monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
+    monkeypatch.setenv("ROOM_SCRIBE_AGENT", "claude")
+
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    (folder / "run.json").write_text("{}", encoding="utf-8")
+    init_plan_workflow_on_plan_send(folder)
+    set_plan_workflow_phase(folder, "DRAFT")
+    (folder / "plan.md").write_text(SAMPLE_PLAN, encoding="utf-8")
+
+    peer_calls = {"n": 0}
+
+    def _fake_peer_review(folder, *_args, **_kwargs):
+        peer_calls["n"] += 1
+        if peer_calls["n"] == 1:
+            _add_open_plan_challenge(folder)
+        else:
+
+            def _clear(run: dict) -> dict:
+                for obj in run.get("objections") or []:
+                    if obj.get("status") == "open":
+                        obj["status"] = "resolved_wontfix"
+                return run
+
+            patch_run_meta(folder, _clear)
+        return []
+
+    def _fake_synthesize_plan(_topic, _messages, **kwargs):
+        return REFINED_PLAN
+
+    monkeypatch.setattr(
+        "agent_lab.plan_workflow.run_plan_peer_review_round",
+        _fake_peer_review,
+    )
+    monkeypatch.setattr(
+        "agent_lab.room.synthesize_plan",
+        _fake_synthesize_plan,
+    )
+
+    run_meta = read_run_meta(folder)
+    run_meta["_session_folder"] = str(folder)
+    plan_md, _replies, tick = orchestrate_plan_workflow_pipeline(
+        folder,
+        topic="Build widget",
+        messages=[],
+        plan_md=SAMPLE_PLAN,
+        plan_before="",
+        synthesize=True,
+        cancelled=False,
+        agents=["claude", "codex", "cursor"],
+        permissions={},
+        run_meta=run_meta,
+    )
+
+    pw = get_plan_workflow(read_run_meta(folder))
+    assert peer_calls["n"] == 2
+    assert plan_md.strip() == REFINED_PLAN.strip()
+    assert pw["phase"] == "HUMAN_PENDING"
+    assert tick.get("pending_approval") is True
+    assert (folder / "plan.md").read_text(encoding="utf-8").strip() == REFINED_PLAN.strip()
 
 
 def test_inbox_resolve_advances_clarify_to_draft(tmp_path: Path) -> None:

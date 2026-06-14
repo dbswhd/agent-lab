@@ -206,6 +206,53 @@ def test_build_codex_inbox_mcp_config_args(session_folder: Path):
     assert str(session_folder.resolve()) in joined
 
 
+def test_build_claude_inbox_mcp_overlay(session_folder: Path):
+    import json
+
+    from agent_lab.cursor_inbox_mcp import (
+        INBOX_MCP_SERVER_NAME,
+        build_claude_inbox_mcp_overlay,
+    )
+
+    overlay = build_claude_inbox_mcp_overlay(session_folder)
+    data = json.loads(overlay.read_text(encoding="utf-8"))
+    entry = data["mcpServers"][INBOX_MCP_SERVER_NAME]
+    assert "agent_lab.inbox_mcp_server" in entry["args"]
+    assert entry["env"]["AGENT_LAB_SESSION_FOLDER"] == str(session_folder.resolve())
+
+
+def test_resolve_claude_mcp_config_inbox_overlay(tmp_path: Path):
+    import json
+
+    from agent_lab.claude_cli import _resolve_claude_mcp_config
+    from agent_lab.cursor_inbox_mcp import INBOX_MCP_SERVER_NAME
+
+    sess = tmp_path / "sess"
+    sess.mkdir()
+    cfg = _resolve_claude_mcp_config(sess, {}, inbox_mcp=True)
+    assert cfg is not None
+    data = json.loads(Path(cfg).read_text(encoding="utf-8"))
+    assert INBOX_MCP_SERVER_NAME in data["mcpServers"]
+
+
+def test_call_agent_reply_passes_inbox_mcp_to_claude(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from agent_lab.agents.registry import call_agent_reply
+
+    captured: dict[str, object] = {}
+
+    def _fake_claude(_system: str, _user: str, **kwargs):
+        captured.update(kwargs)
+        return "ok"
+
+    monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "0")
+    monkeypatch.setattr("agent_lab.agents.registry._is_ready", lambda _a: True)
+    monkeypatch.setattr("agent_lab.agents.claude_agent.respond", _fake_claude)
+    call_agent_reply("claude", "", "hi", inbox_mcp=True)
+    assert captured.get("inbox_mcp") is True
+
+
 def test_execute_inbox_mcp_enabled_env(monkeypatch: pytest.MonkeyPatch):
     from agent_lab.cursor_inbox_mcp import execute_inbox_mcp_enabled
 

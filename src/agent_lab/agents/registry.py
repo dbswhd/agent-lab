@@ -259,6 +259,7 @@ def call_agent_reply(
             on_bridge_event=on_bridge_event,
             session_folder=session_folder,
             request_structured_envelope=request_structured_envelope,
+            inbox_mcp=inbox_mcp,
         )
     else:
         text = _CALLERS[agent](system, user)

@@ -338,6 +338,43 @@ def _timeout_sec(*, room_turn: bool) -> int | None:
     return _optional_timeout_sec("CLAUDE_TIMEOUT_SEC")
 
 
+def _resolve_claude_mcp_config(
+    session_folder: Path | None,
+    permissions: dict | None,
+    *,
+    inbox_mcp: bool,
+) -> str | None:
+    """Merge inbox MCP + execute-plugin overlays for Claude ``--mcp-config``."""
+    paths: list[Path] = []
+    if inbox_mcp and session_folder is not None:
+        from agent_lab.cursor_inbox_mcp import build_claude_inbox_mcp_overlay
+
+        paths.append(build_claude_inbox_mcp_overlay(session_folder))
+    if (permissions or {}).get("_execute_plugins") and session_folder is not None:
+        from agent_lab.session_plugin_runtime import resolve_claude_mcp_config_path
+
+        cfg = resolve_claude_mcp_config_path(session_folder)
+        if cfg:
+            paths.append(Path(cfg))
+    if not paths:
+        return None
+    if len(paths) == 1:
+        return str(paths[0].resolve())
+    servers: dict[str, Any] = {}
+    for path in paths:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            continue
+        servers.update(data.get("mcpServers") or {})
+    merged = session_folder / ".agent-lab" / "claude-mcp-merged.json"
+    merged.parent.mkdir(parents=True, exist_ok=True)
+    merged.write_text(
+        json.dumps({"mcpServers": servers}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return str(merged.resolve())
+
+
 def invoke(
     system: str,
     user: str,
@@ -349,6 +386,7 @@ def invoke(
     on_bridge_event: Callable[[str, dict[str, Any]], None] | None = None,
     session_folder: str | Path | None = None,
     request_structured_envelope: bool = False,
+    inbox_mcp: bool = False,
 ) -> str:
     from agent_lab.agent_permissions import normalize_claude_permissions
 
@@ -411,7 +449,11 @@ def invoke(
     for root in resolve_claude_roots(perms):
         cmd.extend(["--add-dir", str(root)])
 
-    if perms.get("_execute_plugins"):
+    session_path = Path(session_folder).expanduser() if session_folder else None
+    mcp_cfg = _resolve_claude_mcp_config(session_path, perms, inbox_mcp=inbox_mcp)
+    if mcp_cfg:
+        cmd.extend(["--mcp-config", mcp_cfg])
+    elif perms.get("_execute_plugins"):
         from agent_lab.session_plugin_runtime import claude_execute_extra_args
 
         cmd.extend(claude_execute_extra_args(perms))

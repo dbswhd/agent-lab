@@ -282,7 +282,47 @@ def approve_plan(
         raise ValueError("plan workflow is not enabled")
     if str(pw.get("phase") or "") != "HUMAN_PENDING":
         raise ValueError("plan is not awaiting Human approval")
+    return _finalize_plan_approval(
+        session_folder,
+        goal=goal,
+        completion_promise=completion_promise,
+        criteria=criteria,
+        plan_md=plan_md,
+        approved_by="human",
+    )
 
+
+def approve_plan_bypass(
+    session_folder: Path,
+    *,
+    goal: str | None = None,
+    completion_promise: str | None = None,
+    criteria: str | None = None,
+    plan_md: str | None = None,
+    approved_by: str = "template",
+) -> dict[str, Any]:
+    """Template fast-path — skip HUMAN_PENDING; reuse approve side effects."""
+    return _finalize_plan_approval(
+        session_folder,
+        goal=goal,
+        completion_promise=completion_promise,
+        criteria=criteria,
+        plan_md=plan_md,
+        approved_by=approved_by,
+        enable_workflow=True,
+    )
+
+
+def _finalize_plan_approval(
+    session_folder: Path,
+    *,
+    goal: str | None = None,
+    completion_promise: str | None = None,
+    criteria: str | None = None,
+    plan_md: str | None = None,
+    approved_by: str = "human",
+    enable_workflow: bool = False,
+) -> dict[str, Any]:
     path = session_folder / "plan.md"
     md = plan_md if plan_md is not None else (
         path.read_text(encoding="utf-8") if path.is_file() else ""
@@ -307,16 +347,18 @@ def approve_plan(
         "completion_promise": promise,
         "criteria": criteria_resolved,
         "approved_at": now,
-        "approved_by": "human",
+        "approved_by": approved_by,
     }
     oracle_session_id = f"oracle_{session_folder.name}_{uuid.uuid4().hex[:8]}"
 
     def _approve(current: dict[str, Any]) -> dict[str, Any]:
         current_pw = get_plan_workflow(current)
+        if enable_workflow or not current_pw.get("enabled"):
+            current_pw["enabled"] = True
         current_pw["phase"] = "APPROVED"
         current_pw["plan_hash_at_approval"] = plan_hash
         current_pw["approved_at"] = now
-        current_pw["approved_by"] = "human"
+        current_pw["approved_by"] = approved_by
         current["plan_workflow"] = current_pw
 
         current_loop = dict(current.get("verified_loop") or {})
@@ -361,6 +403,7 @@ def approve_plan(
     pw_out = get_plan_workflow(updated)
     loop_out = dict(updated.get("verified_loop") or {})
     return {
+        "fast_path": enable_workflow,
         "plan_workflow": pw_out,
         "verified_loop": loop_out,
         "session_goal": updated.get("session_goal"),
@@ -577,55 +620,59 @@ def orchestrate_plan_workflow_pipeline(
         return plan_md, [], {"handled": False}
 
     extra_messages: list[Any] = []
+    plan_md_current = plan_md
     tick = tick_plan_workflow_after_turn(
         folder,
         synthesize=synthesize,
         cancelled=cancelled,
-        plan_md=plan_md,
+        plan_md=plan_md_current,
         plan_before=plan_before,
         has_pending_inbox_question=has_pending_question(read_run_meta(folder)),
     )
-    plan_md_current = plan_md
-    run = read_run_meta(folder)
-    phase = plan_workflow_phase(run)
 
-    if phase == "PEER_REVIEW" and tick.get("advance") == "PEER_REVIEW":
-        peer_replies = run_plan_peer_review_round(
-            folder,
-            topic=topic,
-            messages=messages + extra_messages,
-            agents=agents,
-            permissions=permissions,
-            run_meta=run_meta,
-            plan_md=plan_md_current,
-            on_event=on_event,
-        )
-        extra_messages.extend(peer_replies)
-        tick = tick_plan_workflow_after_turn(
-            folder,
-            synthesize=synthesize,
-            cancelled=False,
-            plan_md=plan_md_current,
-            plan_before=plan_before,
-            has_pending_inbox_question=False,
-        )
+    for _ in range(5):
         phase = plan_workflow_phase(read_run_meta(folder))
+        if phase in ("HUMAN_PENDING", "APPROVED"):
+            break
+        if phase == "PEER_REVIEW":
+            peer_replies = run_plan_peer_review_round(
+                folder,
+                topic=topic,
+                messages=messages + extra_messages,
+                agents=agents,
+                permissions=permissions,
+                run_meta=run_meta,
+                plan_md=plan_md_current,
+                on_event=on_event,
+            )
+            extra_messages.extend(peer_replies)
+            tick = tick_plan_workflow_after_turn(
+                folder,
+                synthesize=synthesize,
+                cancelled=False,
+                plan_md=plan_md_current,
+                plan_before=plan_before,
+                has_pending_inbox_question=False,
+            )
+            continue
+        if phase == "REFINE":
+            from agent_lab.room import synthesize_plan
 
-    if phase == "REFINE":
-        from agent_lab.room import synthesize_plan
-
-        refined = synthesize_plan(topic, messages + extra_messages, run_meta=run_meta)
-        if refined.strip():
-            plan_md_current = refined
-            (folder / "plan.md").write_text(refined, encoding="utf-8")
-        tick = tick_plan_workflow_after_turn(
-            folder,
-            synthesize=synthesize,
-            cancelled=False,
-            plan_md=plan_md_current,
-            plan_before=plan_md,
-            has_pending_inbox_question=False,
-        )
+            prior = plan_md_current
+            refined = synthesize_plan(topic, messages + extra_messages, run_meta=run_meta)
+            if refined.strip():
+                plan_md_current = refined
+                (folder / "plan.md").write_text(refined, encoding="utf-8")
+            tick = tick_plan_workflow_after_turn(
+                folder,
+                synthesize=synthesize,
+                cancelled=False,
+                plan_md=plan_md_current,
+                plan_before=prior,
+                has_pending_inbox_question=False,
+            )
+            continue
+        break
 
     return plan_md_current, extra_messages, tick
 

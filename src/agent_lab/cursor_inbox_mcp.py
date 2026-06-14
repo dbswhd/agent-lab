@@ -92,3 +92,22 @@ def build_codex_inbox_mcp_config_args(session_folder: Path) -> list[str]:
         if value:
             args.extend(["-c", f'{prefix}.env.{key}="{value}"'])
     return args
+
+
+def build_claude_inbox_mcp_overlay(session_folder: Path) -> Path:
+    """Write Claude `--mcp-config` JSON for the stdio Human Inbox MCP server."""
+    spec = inbox_mcp_stdio_spec(session_folder)
+    overlay_dir = session_folder / ".agent-lab"
+    overlay_dir.mkdir(parents=True, exist_ok=True)
+    overlay = overlay_dir / "claude-inbox-mcp.json"
+    entry: dict[str, Any] = {
+        "command": spec["command"],
+        "args": spec["args"],
+    }
+    if spec.get("env"):
+        entry["env"] = spec["env"]
+    overlay.write_text(
+        json.dumps({"mcpServers": {INBOX_MCP_SERVER_NAME: entry}}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return overlay

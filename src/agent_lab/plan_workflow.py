@@ -151,6 +151,8 @@ def plan_workflow_allows_scribe(
 ) -> bool:
     if not is_plan_workflow_active(run):
         return synthesize or _auto_plan_scribe_fallback()
+    if not synthesize:
+        return False
     phase = plan_workflow_phase(run)
     if phase in _PLAN_DRAFT_PHASES:
         return True

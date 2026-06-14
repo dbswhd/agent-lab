@@ -95,6 +95,19 @@ def test_plan_workflow_should_advance_only_on_plan_send(tmp_path: Path) -> None:
     assert plan_workflow_should_advance_on_turn(run, synthesize=False) is False
     assert plan_workflow_should_advance_on_turn({}, synthesize=True) is False
 
+
+def test_plan_workflow_scribe_requires_plan_send_when_active() -> None:
+    from agent_lab.plan_workflow import plan_workflow_allows_scribe
+
+    draft_run = {"plan_workflow": {"enabled": True, "phase": "DRAFT"}}
+    refine_run = {"plan_workflow": {"enabled": True, "phase": "REFINE"}}
+    assert plan_workflow_allows_scribe(draft_run, synthesize=True, user_plan_send=True) is True
+    assert plan_workflow_allows_scribe(draft_run, synthesize=False, user_plan_send=False) is False
+    assert plan_workflow_allows_scribe(refine_run, synthesize=False, user_plan_send=False) is False
+    approved = {"plan_workflow": {"enabled": True, "phase": "APPROVED"}}
+    assert plan_workflow_allows_scribe(approved, synthesize=True, user_plan_send=True) is True
+    assert plan_workflow_allows_scribe(approved, synthesize=False, user_plan_send=False) is False
+
 def test_derive_loop_goal_from_plan() -> None:
     derived = derive_loop_goal_from_plan(SAMPLE_PLAN)
     assert derived["goal"] == "Demo feature"

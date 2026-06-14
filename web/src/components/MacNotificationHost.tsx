@@ -1,7 +1,5 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -11,27 +9,16 @@ import {
 import {
   defaultActionLabel,
   dispatchNotificationAction,
-  type NotificationAction,
 } from "../utils/notificationActions";
+import { MacNotificationContext } from "./macNotificationContext";
+import type { MacNotificationPayload } from "./macNotificationTypes";
 
-export type MacNotificationPayload = {
-  title: string;
-  body?: string;
-  action?: NotificationAction;
-  actionLabel?: string;
-};
+export type { MacNotificationPayload } from "./macNotificationTypes";
 
 type MacNotificationItem = MacNotificationPayload & {
   id: string;
   createdAt: number;
 };
-
-type MacNotificationContextValue = {
-  push: (payload: MacNotificationPayload) => void;
-};
-
-const MacNotificationContext =
-  createContext<MacNotificationContextValue | null>(null);
 
 const AUTO_DISMISS_MS = 7_000;
 
@@ -135,20 +122,7 @@ function NotifyCard({
   );
 }
 
-/** MacNotificationProvider — wrap the app root.
- *
- *  Uses .notify-stack / .notify-card-* classes (overlays.css).
- *  Drop-in for old MacNotificationProvider (macos26 classes).
- *
- *  @example
- *    <MacNotificationProvider>
- *      <App />
- *    </MacNotificationProvider>
- *
- *  In any child:
- *    const { push } = useMacNotifications();
- *    push({ title: "Run complete", body: "Oracle verified" });
- */
+/** MacNotificationProvider — wrap the app root (overlays.css notify-stack). */
 export function MacNotificationProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<MacNotificationItem[]>([]);
   const seqRef = useRef(0);
@@ -181,14 +155,4 @@ export function MacNotificationProvider({ children }: { children: ReactNode }) {
       </div>
     </MacNotificationContext.Provider>
   );
-}
-
-export function useMacNotifications(): MacNotificationContextValue {
-  const ctx = useContext(MacNotificationContext);
-  if (!ctx) {
-    throw new Error(
-      "useMacNotifications must be used inside <MacNotificationProvider>",
-    );
-  }
-  return ctx;
 }

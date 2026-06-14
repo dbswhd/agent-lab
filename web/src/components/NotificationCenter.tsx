@@ -95,11 +95,3 @@ export function NotificationCenter({ onOpen }: Props = {}) {
     </div>
   );
 }
-
-export function useNotificationUnread(): number {
-  const subscribe = useCallback(
-    (onStoreChange: () => void) => subscribeNotifications(onStoreChange),
-    [],
-  );
-  return useSyncExternalStore(subscribe, unreadNotificationCount, () => 0);
-}

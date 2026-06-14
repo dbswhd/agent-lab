@@ -163,14 +163,3 @@ export function AgentHealthPanel({
     </div>
   );
 }
-
-export function healthToAgentOptions(
-  agents: AgentHealthRow[],
-): import("../api/client").AgentOption[] {
-  return agents.map((a) => ({
-    id: a.id,
-    label: a.label,
-    ready: a.ready,
-    model: a.model,
-  }));
-}

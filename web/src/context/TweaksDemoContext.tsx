@@ -1,43 +1,11 @@
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+  TweaksDemoContext,
+  type ExecQueueDemoMode,
+  type TweaksDemoContextValue,
+} from "./tweaksDemoStore";
 
-export type ExecQueueDemoMode = false | "normal" | "blocked" | "hidden";
-
-type TweaksDemoContextValue = {
-  panelOpen: boolean;
-  setPanelOpen: (open: boolean) => void;
-  togglePanel: () => void;
-  showMacAlert: boolean;
-  setShowMacAlert: (open: boolean) => void;
-  showPermAlert: boolean;
-  setShowPermAlert: (open: boolean) => void;
-  execQueueDemo: ExecQueueDemoMode;
-  setExecQueueDemo: (mode: ExecQueueDemoMode) => void;
-  toggleExecQueueVisible: () => void;
-  toggleExecBlocked: () => void;
-  consensusGateDemo: boolean;
-  setConsensusGateDemo: (on: boolean) => void;
-  toggleConsensusGateDemo: () => void;
-  objectionDemo: boolean;
-  setObjectionDemo: (on: boolean) => void;
-  toggleObjectionDemo: () => void;
-  preflightDemo: boolean;
-  setPreflightDemo: (on: boolean) => void;
-  togglePreflightDemo: () => void;
-  planStaleDemo: boolean;
-  setPlanStaleDemo: (on: boolean) => void;
-  togglePlanStaleDemo: () => void;
-  forceScrollButton: boolean;
-  setForceScrollButton: (on: boolean) => void;
-};
-
-const TweaksDemoContext = createContext<TweaksDemoContextValue | null>(null);
+export type { ExecQueueDemoMode } from "./tweaksDemoStore";
 
 const PANEL_KEY = "agent-lab-tweaks-open";
 
@@ -48,34 +16,6 @@ function readPanelOpen(): boolean {
     return false;
   }
 }
-
-export const TWEAKS_DEMO_OFF: TweaksDemoContextValue = {
-  panelOpen: false,
-  setPanelOpen: () => {},
-  togglePanel: () => {},
-  showMacAlert: false,
-  setShowMacAlert: () => {},
-  showPermAlert: false,
-  setShowPermAlert: () => {},
-  execQueueDemo: false,
-  setExecQueueDemo: () => {},
-  toggleExecQueueVisible: () => {},
-  toggleExecBlocked: () => {},
-  consensusGateDemo: false,
-  setConsensusGateDemo: () => {},
-  toggleConsensusGateDemo: () => {},
-  objectionDemo: false,
-  setObjectionDemo: () => {},
-  toggleObjectionDemo: () => {},
-  preflightDemo: false,
-  setPreflightDemo: () => {},
-  togglePreflightDemo: () => {},
-  planStaleDemo: false,
-  setPlanStaleDemo: () => {},
-  togglePlanStaleDemo: () => {},
-  forceScrollButton: false,
-  setForceScrollButton: () => {},
-};
 
 export function TweaksDemoProvider({ children }: { children: ReactNode }) {
   const [panelOpen, setPanelOpenState] = useState(readPanelOpen);
@@ -193,16 +133,4 @@ export function TweaksDemoProvider({ children }: { children: ReactNode }) {
       {children}
     </TweaksDemoContext.Provider>
   );
-}
-
-export function useTweaksDemo(): TweaksDemoContextValue {
-  const ctx = useContext(TweaksDemoContext);
-  if (!ctx) {
-    throw new Error("useTweaksDemo must be used inside TweaksDemoProvider");
-  }
-  return ctx;
-}
-
-export function useTweaksDemoOptional(): TweaksDemoContextValue | null {
-  return useContext(TweaksDemoContext);
 }

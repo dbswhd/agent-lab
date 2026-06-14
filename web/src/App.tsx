@@ -15,7 +15,7 @@ import {
   type SessionDetail,
   type SessionSummary,
 } from "./api/client";
-import { healthToAgentOptions } from "./components/AgentHealthPanel";
+import { healthToAgentOptions } from "./utils/agentHealthOptions";
 import { RoomChat } from "./components/RoomChat";
 import { SettingsPage } from "./components/SettingsPage";
 import { getTurnStrategy } from "./utils/composeMode";
@@ -32,10 +32,8 @@ import { TweaksPanel } from "./components/TweaksPanel";
 import { TweaksDemoOverlays } from "./components/TweaksDemoOverlays";
 import { TweaksHotkeys } from "./components/TweaksHotkeys";
 import { SidebarToggle } from "./components/SidebarToggle";
-import {
-  TitlebarSlotsProvider,
-  useTitlebarSlotsContext,
-} from "./components/TitlebarSlotsContext";
+import { TitlebarSlotsProvider } from "./components/TitlebarSlotsContext";
+import { useTitlebarSlotsContext } from "./hooks/useTitlebarSlots";
 import { getSidebarOpen, setSidebarOpen } from "./utils/sidebarPrefs";
 import { formatRoomModelLine } from "./utils/roomModels";
 import { isTauriApp } from "./theme";

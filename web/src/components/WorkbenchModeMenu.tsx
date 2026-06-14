@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { RightPanelMode } from "../utils/workspaceTabs";
 import type { Locale } from "../i18n/locale";
-import { messages } from "../i18n/messages";
+import { workbenchModeLabel } from "../utils/workbenchModeLabel";
 
 type MenuItem = {
   readonly mode: RightPanelMode;
@@ -31,30 +31,6 @@ type Props = {
   readonly onSelect: (mode: RightPanelMode) => void;
   readonly onToggleOpen: () => void;
 };
-
-function modeLabel(mode: RightPanelMode, locale: Locale): string {
-  const msg = messages(locale);
-  switch (mode) {
-    case "overview":
-      return msg.ctxOverview;
-    case "tasks":
-      return msg.ctxTasks;
-    case "inbox":
-      return msg.ctxInbox;
-    case "plan":
-      return msg.plan;
-    case "preview":
-      return msg.preview;
-    case "files":
-      return msg.files;
-    case "terminal":
-      return msg.terminal;
-    case "diff":
-      return msg.diff;
-    case "background":
-      return msg.background;
-  }
-}
 
 function modeIcon(mode: RightPanelMode) {
   switch (mode) {
@@ -203,7 +179,7 @@ export function WorkbenchModeMenu({
               >
                 {modeIcon(item.mode)}
               </svg>
-              <span>{modeLabel(item.mode, locale)}</span>
+              <span>{workbenchModeLabel(item.mode, locale)}</span>
               {item.shortcut ? <kbd>{item.shortcut}</kbd> : null}
             </button>
           ))}
@@ -212,5 +188,3 @@ export function WorkbenchModeMenu({
     </div>
   );
 }
-
-export { modeLabel as workbenchModeLabel };

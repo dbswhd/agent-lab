@@ -10,11 +10,11 @@ import {
 import type { RoomTasksPayload } from "../api/client";
 import type { PlanMetaView } from "../utils/planMeta";
 import { workPlanMetaLine } from "../utils/planMeta";
+import { WorkStatusBar } from "./WorkStatusBar";
 import {
-  WorkStatusBar,
   resolveWorkPhase,
   resolveWorkPhaseFromMission,
-} from "./WorkStatusBar";
+} from "../utils/workStatusPhase";
 import { CollapsibleGlassPanel } from "./CollapsibleGlassPanel";
 import { PlanExecutePanel } from "./PlanExecutePanel";
 import { PluginPanel } from "./PluginPanel";

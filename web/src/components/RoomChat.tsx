@@ -35,7 +35,8 @@ import {
   parseTranscript,
   topicAsUserMessage,
 } from "../utils/transcript";
-import { CommandPalette, workspacePaletteActions } from "./CommandPalette";
+import { CommandPalette } from "./CommandPalette";
+import { workspacePaletteActions } from "../utils/commandPaletteActions";
 import { useWorkspaceTabs } from "../hooks/useWorkspaceTabs";
 import { useSessionRunState } from "../hooks/useSessionRunState";
 import {
@@ -77,7 +78,7 @@ import { HumanDecisionBanner } from "./HumanDecisionBanner";
 import { ChatComposer, type PendingFile } from "./ChatComposer";
 import { ShellPortal } from "./ShellPortal";
 import { NotificationCenter } from "./NotificationCenter";
-import { useNotificationUnread } from "./NotificationCenter";
+import { useNotificationUnread } from "../hooks/useNotificationUnread";
 import { ContextOverviewPanel } from "./ContextOverviewPanel";
 import { ContextTasksPanel } from "./ContextTasksPanel";
 import { GoalLoopBanner } from "./GoalLoopBanner";
@@ -87,7 +88,7 @@ import { VerifiedLoopBanner } from "./VerifiedLoopBanner";
 import { WorkToolPanel } from "./WorkToolPanel";
 import { HumanGatePanel } from "./HumanGatePanel";
 import { AgentPermissionAlert } from "./AgentPermissionAlert";
-import { useMacNotifications } from "./MacNotificationHost";
+import { useMacNotifications } from "../hooks/useMacNotifications";
 import type { AgentPermissions } from "../utils/agentPermissions";
 import {
   agentsNeedingPermissionPrompt,
@@ -199,10 +200,8 @@ import {
 import { ComposerPreflightBar } from "./ComposerPreflightBar";
 import { ReadinessComposerBar } from "./ReadinessComposerBar";
 import { fetchReadiness, type ReadinessResponse } from "../api/client";
-import {
-  useTweaksDemoOptional,
-  TWEAKS_DEMO_OFF,
-} from "../context/TweaksDemoContext";
+import { useTweaksDemoOptional } from "../hooks/useTweaksDemo";
+import { TWEAKS_DEMO_OFF } from "../context/tweaksDemoStore";
 import {
   DEMO_CONSENSUS_PROPOSAL,
   DEMO_EXEC_PENDING,
@@ -211,10 +210,8 @@ import {
   DEMO_PLAN_STALE_NOTICE,
   DEMO_PREFLIGHT_AGENTS,
 } from "../utils/tweaksDemoFixtures";
-import {
-  ScrollToBottomButton,
-  useMessagesScroll,
-} from "./ScrollToBottomButton";
+import { ScrollToBottomButton } from "./ScrollToBottomButton";
+import { useMessagesScroll } from "../hooks/useMessagesScroll";
 import { WorkbenchPanel } from "./WorkbenchPanel";
 import { WorkspaceChrome } from "./WorkspaceChrome";
 import { DiffToolPanel } from "./DiffToolPanel";

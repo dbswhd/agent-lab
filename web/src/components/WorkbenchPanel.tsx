@@ -6,7 +6,7 @@ import {
   clampWorkbenchPanelWidth,
 } from "../utils/inspectorPanePrefs";
 import type { Locale } from "../i18n/locale";
-import { workbenchModeLabel } from "./WorkbenchModeMenu";
+import { workbenchModeLabel } from "../utils/workbenchModeLabel";
 
 type Props = {
   readonly mode: RightPanelMode;

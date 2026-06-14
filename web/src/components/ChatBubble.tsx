@@ -6,8 +6,8 @@ import type { ChatMessage, AgentRole } from "../utils/transcript";
 import { parseUserMessageContent } from "../utils/transcript";
 import { MessageMarkdown } from "../utils/messageMarkdown";
 import { buildAgentResponseCard } from "../utils/agentResponseCard";
+import { getTranscriptMarkers } from "../utils/transcriptMessageMarkers";
 import {
-  getTranscriptMarkers,
   TranscriptAuthorLine,
   TranscriptIdentity,
   TranscriptMarkerStrip,

@@ -21,7 +21,7 @@ import { SchedulesPanel } from "./SchedulesPanel";
 import { ThemeToggle } from "./ThemeToggle";
 import { Avatar } from "./Avatar";
 import { SettingsSectionIcon } from "./SettingsSectionIcon";
-import { useTweaksDemo } from "../context/TweaksDemoContext";
+import { useTweaksDemo } from "../hooks/useTweaksDemo";
 import { useLocale } from "../i18n/useLocale";
 import { localeLabel } from "../i18n/locale";
 import {

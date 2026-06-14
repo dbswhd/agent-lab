@@ -1,5 +1,5 @@
 import { MacAlert } from "./MacAlert";
-import { useTweaksDemo } from "../context/TweaksDemoContext";
+import { useTweaksDemo } from "../hooks/useTweaksDemo";
 
 /** MacAlert triggered from Tweaks panel (delete confirm demo). */
 export function TweaksDemoOverlays() {

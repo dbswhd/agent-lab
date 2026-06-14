@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useTweaksDemo } from "../context/TweaksDemoContext";
+import { useTweaksDemo } from "../hooks/useTweaksDemo";
 
 /** Global ⌘⇧T shortcut to toggle the Tweaks panel. */
 export function TweaksHotkeys() {

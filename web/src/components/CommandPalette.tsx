@@ -1,16 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { WorkspaceTab } from "../utils/workspaceTabs";
-import { WORKSPACE_TABS } from "../utils/workspaceTabs";
+import type { CommandAction } from "../utils/commandPaletteActions";
 import { COMMAND_PALETTE_EVENT } from "../utils/desktopShortcuts";
-
-export type CommandAction = {
-  id: string;
-  label: string;
-  hint?: string;
-  icon?: string;
-  danger?: boolean;
-  run: () => void;
-};
 
 type Props = {
   actions: CommandAction[];
@@ -149,20 +139,4 @@ export function CommandPalette({ actions }: Props) {
       </div>
     </div>
   );
-}
-
-/** Build actions for the workspace command palette. */
-export function workspacePaletteActions(
-  onTab: (tab: WorkspaceTab) => void,
-  extras: CommandAction[] = [],
-): CommandAction[] {
-  return [
-    ...WORKSPACE_TABS.map((tab) => ({
-      id: `tab-${tab.id}`,
-      label: `Open ${tab.label}`,
-      hint: tab.shortcut,
-      run: () => onTab(tab.id),
-    })),
-    ...extras,
-  ];
 }

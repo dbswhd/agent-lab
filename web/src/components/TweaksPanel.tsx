@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
-import { useTweaksDemo } from "../context/TweaksDemoContext";
+import { useTweaksDemo } from "../hooks/useTweaksDemo";
 import { openCommandPalette } from "../utils/desktopShortcuts";
-import { useMacNotifications } from "./MacNotificationHost";
+import { useMacNotifications } from "../hooks/useMacNotifications";
 
 function TweakSection({ label }: { label: string }) {
   return <div className="twk-sect">{label}</div>;

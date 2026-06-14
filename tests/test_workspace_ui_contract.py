@@ -1,4 +1,8 @@
-"""UI shell contract — developer agent console (PR 5+)."""
+"""UI shell contract — developer agent console (PR 5+).
+
+Source checks use format-independent tokens (symbol names, class fragments)
+rather than full JSX attribute strings so Prettier reflows do not break tests.
+"""
 
 from pathlib import Path
 
@@ -72,11 +76,12 @@ def test_transcript_uses_console_presentation():
 def test_transcript_agent_rows_use_role_cards_with_initial_avatars():
     bubble = _read("web", "src", "components", "ChatBubble.tsx")
     chrome = _read("web", "src", "components", "TranscriptMessageChrome.tsx")
+    markers = _read("web", "src", "utils", "transcriptMessageMarkers.ts")
 
     assert "TranscriptIdentity" in bubble
     assert "TranscriptAuthorLine" in bubble
     assert "transcript-identity" in chrome
-    assert "transcriptInitial" in chrome
+    assert "transcriptInitial" in markers
     assert "transcript-author-line" in chrome
 
 
@@ -85,7 +90,7 @@ def test_human_transcript_message_is_right_aligned_without_label_chrome():
     room = _read("web", "src", "components", "RoomChat.tsx")
     css = _read("web", "src", "styles", "surfaces.css")
 
-    assert 'className="chat-turn__head"' in bubble
+    assert "chat-turn__head" in bubble
     assert 'message={{ ...message, label: message.label ?? "Human" }}' not in bubble
     assert "transcript transcript--console" in room
     assert "bubble-row bubble-row--sent" in bubble
@@ -101,7 +106,7 @@ def test_agent_waiting_state_shows_activity_log_and_dots():
 
     assert "agent-activity-log" in bubble
     assert "agent-stream-preview" in bubble
-    assert 'className="typing"' in bubble or "className={`typing" in bubble
+    assert "typing" in bubble
     assert ".typing span" in css
     assert ".agent-stream-preview" in layout
     assert 't === "agent_token"' in room
@@ -110,13 +115,14 @@ def test_agent_waiting_state_shows_activity_log_and_dots():
 def test_transcript_has_review_aware_inline_markers():
     bubble = _read("web", "src", "components", "ChatBubble.tsx")
     chrome = _read("web", "src", "components", "TranscriptMessageChrome.tsx")
+    markers = _read("web", "src", "utils", "transcriptMessageMarkers.ts")
     css = _read("web", "src", "styles", "layout.css")
 
     assert "TranscriptMarkerStrip" in bubble
     assert "transcript-marker-strip" in chrome
-    assert "getTranscriptMarkers" in chrome
-    assert "Review blocker" in chrome
-    assert "Plan ref" in chrome
+    assert "getTranscriptMarkers" in markers
+    assert "Review blocker" in markers
+    assert "Plan ref" in markers
     assert ".transcript-marker-strip" in css
     assert ".transcript-marker" in css
 
@@ -151,10 +157,11 @@ def test_workspace_panels_have_distinct_document_wrappers():
     assert "MissionOverviewSection" in work
     assert 'variant="work"' in work or 'variant="work"' in work
     assert "work-chrome" in work
-    status = _read("web", "src", "components", "WorkStatusBar.tsx")
+    status = _read("web", "src", "utils", "workStatusPhase.ts")
+    status_bar = _read("web", "src", "components", "WorkStatusBar.tsx")
     assert "resolveWorkPhaseFromMission" in status
-    assert "missionPaused" in status
-    assert "work-status-bar__pause-badge" in status
+    assert "missionPaused" in status_bar
+    assert "work-status-bar__pause-badge" in status_bar
     assert "last_partial?.resume_phase" in work
     assert "work-mission-overview" in _read("web", "src", "components", "MissionOverviewSection.tsx")
     plugin = _read("web", "src", "components", "PluginPanel.tsx")
@@ -193,7 +200,8 @@ def test_phase0_composer_plan_toggle_beside_turn_picker():
     room = _read("web", "src", "components", "RoomChat.tsx")
     assert "ComposerPlanToggle" in composer
     assert "onPlanAfterSendChange" in composer
-    assert "onPlanAfterSendChange={changePlanAfterSend}" in room
+    assert "onPlanAfterSendChange" in room
+    assert "changePlanAfterSend" in room
     assert "ComposerEfficiencyToggle" not in composer
     assert "efficiencyOn" not in room
 
@@ -333,15 +341,15 @@ def test_m6_plan_card_canonical_classes_only():
     assert "plan-execute-panel__" not in panel
     assert "plan-execute-" not in panel
     assert "work-exec-" in panel
-    assert 'className="work-surface"' in panel
+    assert "work-surface" in panel
     assert ".plan-card__muted" in plan_css
 
 
 def test_m6_chat_turn_no_dual_class_root():
     bubble = _read("web", "src", "components", "ChatBubble.tsx")
     assert "`turn chat-turn" not in bubble
-    assert "className={`chat-turn chat-turn--${role}" in bubble
-    assert 'className="chat-turn__head"' in bubble
+    assert "className={`chat-turn chat-turn--${role}" in bubble or "chat-turn--${role}" in bubble
+    assert "chat-turn__head" in bubble
 
 
 def test_m6_room_chat_canonical_shell_only():
@@ -350,8 +358,9 @@ def test_m6_room_chat_canonical_shell_only():
     assert "room-workspace-shell" not in room
     assert "view-options-btn" not in room
     assert "view-options-popover" not in room
-    assert 'className="pane-row"' in room
-    assert 'className="pane-main workspace-main"' in room
+    assert "pane-row" in room
+    assert "pane-main" in room
+    assert "workspace-main" in room
     assert "TranscriptViewOptions" in room
     assert "transcript-view-options" in _read("web", "src", "components", "TranscriptViewOptions.tsx")
     assert "legacy `.room-workspace-shell`" in layout

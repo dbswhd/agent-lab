@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { AgentOption, PlanActionItem, SessionDetail } from "../api/client";
+import type { AgentOption, PlanActionItem, PlanWorkflowRecord, SessionDetail } from "../api/client";
 import {
   cancelRoomRun,
   pauseMissionLoop,
@@ -113,7 +113,7 @@ import { notifyDesktop } from "../utils/desktopNotify";
 import { buildPlanMetaView, composerPlanStaleNotice } from "../utils/planMeta";
 import { buildGoalLoopView } from "../utils/goalLoopView";
 import { buildVerifiedLoopView } from "../utils/verifiedLoopView";
-import { isPlanWorkflowPhaseBanner } from "../utils/planWorkflowView";
+import { isPlanWorkflowPhaseBanner, isPlanWorkflowComposerHint, planWorkflowPhaseTranscriptLine } from "../utils/planWorkflowView";
 import {
   consensusIncompleteLabel,
   roundDividerLabel,
@@ -395,6 +395,7 @@ export function RoomChat({
   } | null>(null);
   const highlightTimerRef = useRef<number | null>(null);
   const [sendReceipt, setSendReceipt] = useState<string | null>(null);
+  const [sendReceiptRaw, setSendReceiptRaw] = useState<string | undefined>();
   const [inboxPendingCount, setInboxPendingCount] = useState(0);
   const [globalInboxPending, setGlobalInboxPending] = useState(0);
   const [inboxReloadKey, setInboxReloadKey] = useState(0);
@@ -658,6 +659,11 @@ export function RoomChat({
   useEffect(() => {
     setLastRightPanelMode(rightPanelMode);
   }, [rightPanelMode]);
+
+  const openTasksInspector = useCallback(() => {
+    setRightPanelMode("tasks");
+    openInspectorPane();
+  }, [setRightPanelMode, openInspectorPane]);
 
   const handleInboxBuildStarted = useCallback(() => {
     openReviewTab();
@@ -947,9 +953,7 @@ export function RoomChat({
     [session?.run],
   );
 
-  const planWorkflow = session?.run?.plan_workflow as
-    | { enabled?: boolean; phase?: string }
-    | undefined;
+  const planWorkflow = session?.run?.plan_workflow as PlanWorkflowRecord | undefined;
   const planWorkflowActive = Boolean(planWorkflow?.enabled);
   const showPlanApproval =
     planWorkflowActive &&
@@ -960,6 +964,13 @@ export function RoomChat({
     planWorkflowActive &&
     !showPlanApproval &&
     isPlanWorkflowPhaseBanner(planWorkflow?.phase);
+
+  const showPlanWorkflowComposerHint =
+    planWorkflowActive &&
+    isPlanWorkflowComposerHint(planWorkflow?.phase) &&
+    !running &&
+    !runBusy &&
+    !synthesizing;
 
   const showVerifiedLoop =
     !planWorkflowActive &&
@@ -1743,6 +1754,37 @@ export function RoomChat({
               );
             }
           }
+          if (t === "plan_workflow_phase" && ev.phase) {
+            const phase = String(ev.phase);
+            const notice =
+              typeof ev.notice === "string" ? ev.notice : undefined;
+            patchTurnMessages(runKey, (m) => [
+              ...m,
+              {
+                id: `plan-workflow-${phase}-${Date.now()}`,
+                role: "system",
+                label: "",
+                body: planWorkflowPhaseTranscriptLine(phase, localeMsg, notice),
+              },
+            ]);
+            refreshSessionMeta();
+          }
+          if (t === "plan_workflow_pending") {
+            void refreshSessionMeta();
+            dispatchNotification(
+              {
+                tier: "P1",
+                title: localeMsg.planWorkflowPendingTitle,
+                body: localeMsg.planWorkflowPendingDetail,
+                sessionId: activeSessionId ?? sessionId ?? undefined,
+                kind: "plan_workflow_pending",
+                toastAction: { type: "inspector", tab: "tasks" },
+                toastActionLabel: localeMsg.planWorkflowPendingOpenTasks,
+              },
+              pushMacNotification,
+              notifyDesktop,
+            );
+          }
           if (t === "turn_failed") {
             const aid = ev.agent ? String(ev.agent) : "";
             const reason = String(ev.reason ?? "agent_error");
@@ -1958,6 +2000,7 @@ export function RoomChat({
         if (mode === "plan" && (activeSessionId ?? sessionId)) {
           openPlanTab();
         }
+        setSendReceiptRaw(lastSendReceipt);
         setSendReceipt(
           sendReceiptLabel(lastSendReceipt, mode, userStopped, locale),
         );
@@ -2729,6 +2772,14 @@ export function RoomChat({
         </div>
       ) : null}
 
+      {showPlanWorkflowComposerHint && planWorkflow ? (
+        <PlanWorkflowBanner
+          workflow={planWorkflow}
+          variant="compact"
+          onOpenTasks={openTasksInspector}
+        />
+      ) : null}
+
       {showPlanWorkflowBanner && planWorkflow ? (
         <PlanWorkflowBanner
           workflow={planWorkflow}
@@ -2738,7 +2789,7 @@ export function RoomChat({
         />
       ) : null}
 
-      {sendReceipt && shouldShowSendReceiptOnChatTab(sendReceipt) ? (
+      {sendReceipt && shouldShowSendReceiptOnChatTab(sendReceipt, sendReceiptRaw) ? (
         <div className="composer-send-receipt" role="status">
           {sendReceipt}
         </div>
@@ -2911,6 +2962,8 @@ export function RoomChat({
                       view={verifiedLoopView}
                       planMd={session?.plan_md ?? ""}
                       phase={planWorkflow?.phase ?? "HUMAN_PENDING"}
+                      workflowNotice={planWorkflow?.notice}
+                      planGate={planWorkflow?.last_plan_gate ?? null}
                       objections={roomTasks?.open_objections ?? []}
                       busy={verifiedLoopBusy || running || runBusy}
                       error={verifiedLoopError}

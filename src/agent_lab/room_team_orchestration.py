@@ -87,12 +87,18 @@ def resolve_send_receipt(
     consensus: dict[str, Any] | None = None,
     plan_updated: bool = False,
     status: str = "completed",
+    plan_workflow_phase: str | None = None,
 ) -> str:
     """Turn outcome label for UI receipts and run.json turn snapshots."""
     if status == "cancelled":
         return "discuss_saved"
     if consensus_mode and consensus and consensus.get("status") == "reached":
         return "consensus_done"
+    from agent_lab.plan_workflow import plan_workflow_send_receipt
+
+    pw_receipt = plan_workflow_send_receipt(plan_workflow_phase)
+    if pw_receipt:
+        return pw_receipt
     if mode == "plan" or synthesize or plan_updated:
         return "plan_updated"
     return "discuss_saved"

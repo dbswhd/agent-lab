@@ -5510,6 +5510,22 @@ button.plan-doc__ref--link:hover {
   color: var(--label-tertiary);
 }
 .plan-workflow-banner__inbox { margin-top: var(--space-8); }
+.plan-workflow-banner--compact {
+  margin-bottom: var(--space-6);
+  padding: var(--space-8) var(--space-10);
+}
+.plan-workflow-banner--pending {
+  border-left: 3px solid var(--accent);
+}
+.plan-workflow-banner--approved {
+  border-left: 3px solid var(--semantic-success, #2ecc71);
+}
+.plan-workflow-banner__warn {
+  margin: var(--space-4) 0 0;
+  font-size: var(--text-caption);
+  color: var(--semantic-warning, #c97a00);
+}
+.plan-workflow-banner__tasks { margin-top: var(--space-8); }
 .plan-approval-reject {
   display: flex;
   flex-direction: column;

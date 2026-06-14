@@ -6,6 +6,8 @@ import { parsePlanMarkdown } from "../utils/planMarkdown";
 import { useLocale } from "../i18n/useLocale";
 import {
   PLAN_REJECT_TARGETS,
+  planWorkflowGateReason,
+  planWorkflowNoticeLabel,
   type PlanRejectTarget,
 } from "../utils/planWorkflowView";
 
@@ -18,6 +20,8 @@ type Props = {
   view: VerifiedLoopView;
   planMd: string;
   phase: string;
+  workflowNotice?: string;
+  planGate?: Record<string, unknown> | null;
   objections?: RoomObjection[];
   busy: boolean;
   error: string | null;
@@ -36,6 +40,8 @@ export function PlanApprovalPanel({
   view,
   planMd,
   phase,
+  workflowNotice,
+  planGate = null,
   objections = [],
   busy,
   error,
@@ -56,33 +62,40 @@ export function PlanApprovalPanel({
   const planBlocks = parsePlanMarkdown(planMd);
   const planActions = planBlocks.filter((b) => b.type === "action");
   const openObjections = objections.filter((o) => o.status === "open");
+  const noticeLabel = planWorkflowNoticeLabel(workflowNotice, msg);
+  const gateReason = planWorkflowGateReason(planGate);
 
   return (
     <section
       className={`goal-loop-banner goal-loop-banner--${pending ? "open" : "achieved"}`}
-      aria-label="Plan approval"
+      aria-label={msg.planApprovalTitle}
     >
       <div className="goal-loop-banner__head">
-        <strong>Plan 승인</strong>
+        <strong>{msg.planApprovalTitle}</strong>
         {pending ? (
           <span className="goal-oracle-badge goal-oracle-badge--open">
-            승인 대기
+            {msg.planApprovalPending}
           </span>
         ) : (
           <span className="goal-oracle-badge goal-oracle-badge--achieved">
-            승인됨
+            {msg.planApprovalApproved}
           </span>
         )}
       </div>
       {pending ? (
         <>
-          <p className="goal-loop-banner__detail">
-            에이전트가 작성·검토한 plan.md를 확인한 뒤 승인하면 execute 루프가
-            시작됩니다.
-          </p>
+          <p className="goal-loop-banner__detail">{msg.planApprovalDetail}</p>
+          {noticeLabel ? (
+            <p className="plan-workflow-banner__warn">{noticeLabel}</p>
+          ) : null}
+          {gateReason ? (
+            <p className="plan-workflow-banner__warn">
+              {msg.planWorkflowGateWarn(gateReason)}
+            </p>
+          ) : null}
           {planActions.length > 0 ? (
             <div className="plan-approval-actions">
-              <p className="field-label">지금 실행</p>
+              <p className="field-label">{msg.planApprovalRunNow}</p>
               {planActions.map((block) =>
                 block.type === "action" ? (
                   <PlanActionCard
@@ -100,7 +113,7 @@ export function PlanApprovalPanel({
           ) : null}
           {openObjections.length > 0 ? (
             <div className="plan-approval-objections">
-              <p className="field-label">Peer review 이의</p>
+              <p className="field-label">{msg.planApprovalPeerObjections}</p>
               <ul className="plan-approval-objections__list">
                 {openObjections.map((obj) => (
                   <li key={obj.id}>
@@ -126,11 +139,11 @@ export function PlanApprovalPanel({
             </div>
           ) : null}
           <details className="plan-approval-preview">
-            <summary>plan.md 전문</summary>
+            <summary>{msg.planApprovalPlanFull}</summary>
             <pre className="plan-approval-preview__body">{planMd || "(empty)"}</pre>
           </details>
           <label className="field-label" htmlFor="plan-approval-goal">
-            목표 (파생)
+            {msg.planApprovalGoalDerived}
           </label>
           <input
             id="plan-approval-goal"
@@ -141,7 +154,7 @@ export function PlanApprovalPanel({
             disabled={busy}
           />
           <label className="field-label" htmlFor="plan-approval-criteria">
-            검증 기준
+            {msg.planApprovalCriteria}
           </label>
           <textarea
             id="plan-approval-criteria"
@@ -152,7 +165,7 @@ export function PlanApprovalPanel({
             disabled={busy}
           />
           <label className="field-label" htmlFor="plan-approval-promise">
-            completion promise
+            {msg.planApprovalPromise}
           </label>
           <input
             id="plan-approval-promise"
@@ -169,7 +182,7 @@ export function PlanApprovalPanel({
               disabled={busy || !editGoal.trim()}
               onClick={onApprove}
             >
-              Plan 승인
+              {msg.planApprovalApproveBtn}
             </button>
           </div>
           <div className="plan-approval-reject">

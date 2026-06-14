@@ -1288,6 +1288,8 @@ export type PlanWorkflowRecord = {
   peer_review_round?: number;
   plan_hash_at_approval?: string | null;
   approved_at?: string | null;
+  notice?: string;
+  last_plan_gate?: Record<string, unknown> | null;
 };
 
 export function fetchPlanWorkflow(id: string) {

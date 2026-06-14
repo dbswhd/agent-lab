@@ -3,6 +3,7 @@ import type {
   ResponseContractPreset,
   ResponseContractRecord,
   RuntimeFlagRow,
+  PlanWorkflowRecord,
   SessionDetail,
 } from "../api/client";
 import { fetchHealthFlags, setSessionResponseContract } from "../api/client";
@@ -73,6 +74,9 @@ export function HooksResponseSettings({
     [runtimeFlags],
   );
   const hookRuns = session?.observability?.hook_runs_tail ?? [];
+  const planWorkflowEnabled = Boolean(
+    (session?.run?.plan_workflow as PlanWorkflowRecord | undefined)?.enabled,
+  );
   const communicateRows = communicateMetaRows(
     session?.observability?.last_communicate_meta,
   );
@@ -239,6 +243,13 @@ export function HooksResponseSettings({
         hooks.toml 편집은 아직 읽기 전용입니다. Response preset은 세션별 agent guidance에만
         반영됩니다.
       </p>
+      {planWorkflowEnabled ? (
+        <p className="settings-hint settings-hint--plan-workflow">
+          Plan workflow 활성: response contract preset은 CLARIFY/PEER 단계 에이전트 답변 형식을
+          조정합니다. Plan FSM을 대체하지 않고 보조합니다 — clarify에는 evidence_first, peer
+          전 plan_ready를 고려하세요.
+        </p>
+      ) : null}
     </section>
   );
 }

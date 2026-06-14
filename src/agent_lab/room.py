@@ -2096,6 +2096,7 @@ def _plan_workflow_post_agent_turn(
     """Tick plan FSM, optional scribe, peer-review pipeline after agent replies."""
     from agent_lab.human_inbox import has_pending_question
     from agent_lab.plan_workflow import (
+        emit_plan_workflow_phase_if_changed,
         is_plan_workflow_active,
         orchestrate_plan_workflow_pipeline,
         plan_workflow_phase,
@@ -2105,7 +2106,9 @@ def _plan_workflow_post_agent_turn(
 
     plan_md = plan_before
     pw_force_scribe = False
-    if is_plan_workflow_active(run_meta) and not cancelled:
+    pw_active = is_plan_workflow_active(run_meta)
+    phase_before = plan_workflow_phase(run_meta) if pw_active else None
+    if pw_active and not cancelled:
         pw_tick = tick_plan_workflow_after_turn(
             folder,
             synthesize=synthesize,
@@ -2162,6 +2165,14 @@ def _plan_workflow_post_agent_turn(
                 "plan_workflow_pending",
                 {"phase": plan_workflow_phase(read_run_meta(folder))},
             )
+    if pw_active:
+        run_meta = read_run_meta(folder)
+        emit_plan_workflow_phase_if_changed(
+            folder,
+            on_event,
+            phase_before,
+            plan_workflow_phase(run_meta),
+        )
     return plan_md, scribe_applied, run_meta
 
 
@@ -3811,9 +3822,13 @@ def continue_room_round(
             pass
     from agent_lab.room_tasks import team_lead
     from agent_lab.room_team_orchestration import resolve_send_receipt, turn_leads_map
+    from agent_lab.plan_workflow import is_plan_workflow_active, plan_workflow_complete_payload, plan_workflow_phase
 
     plan_updated = bool(
         not cancelled and scribe_applied and plan_md and plan_md != plan_before
+    )
+    pw_phase = (
+        plan_workflow_phase(run_meta) if is_plan_workflow_active(run_meta) else None
     )
     peer = _peer_metrics_for_messages(messages)
     send_receipt_val = resolve_send_receipt(
@@ -3823,6 +3838,7 @@ def continue_room_round(
         consensus=consensus_meta,
         plan_updated=plan_updated,
         status=turn_status,
+        plan_workflow_phase=pw_phase,
     )
     communicate_meta = _communicate_meta_for_turn(
         replies,
@@ -3972,6 +3988,7 @@ def continue_room_round(
                     len((_read_run_meta(folder).get("turns") or [])) - 1,
                 ),
                 **_verified_loop_complete_payload(verified_result),
+                **plan_workflow_complete_payload(folder),
             },
         )
     return messages, plan_md
@@ -4228,8 +4245,12 @@ def run_room(
     )
     from agent_lab.room_tasks import team_lead
     from agent_lab.room_team_orchestration import resolve_send_receipt, turn_leads_map
+    from agent_lab.plan_workflow import is_plan_workflow_active, plan_workflow_complete_payload, plan_workflow_phase
 
     peer = _peer_metrics_for_messages(messages)
+    pw_phase = (
+        plan_workflow_phase(run_meta) if is_plan_workflow_active(run_meta) else None
+    )
     send_receipt_val = resolve_send_receipt(
         mode=mode,
         synthesize=synthesize,
@@ -4239,6 +4260,7 @@ def run_room(
             scribe_applied and not cancelled and plan_md and plan_md != plan_before
         ),
         status=turn_status,
+        plan_workflow_phase=pw_phase,
     )
     communicate_meta = _communicate_meta_for_turn(
         replies,
@@ -4413,6 +4435,7 @@ def run_room(
                     len((_read_run_meta(folder).get("turns") or [])) - 1,
                 ),
                 **_verified_loop_complete_payload(verified_result),
+                **plan_workflow_complete_payload(folder),
             },
         )
     return folder, messages, plan_md

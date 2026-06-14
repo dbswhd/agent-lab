@@ -27,6 +27,22 @@ AGENT_LAB_PLAN_INBOX=1   # default: follows AGENT_LAB_EXECUTE_INBOX
 5. **HUMAN_PENDING** — Human approves whole plan in **Plan 승인** panel (Tasks inspector).
 6. **APPROVED** — `verified_loop.loop_goal`, `session_goal`, `goal_loop`, and `mission_loop` derived/enabled; execute/dry-run allowed.
 
+## Round limits & Momus-lite
+
+- **Clarify cap** (`max_clarify_rounds`, default 3): after the cap, FSM advances to **DRAFT** anyway; `plan_workflow.notice=clarify_cap_reached` surfaces in banner / Tasks.
+- **Peer cap** (`max_peer_review_rounds`, default 2): open objections or Momus-lite rejects no longer loop — phase moves to **HUMAN_PENDING** with `notice=peer_review_cap_reached` or `plan_gate_cap_reached`.
+- **Momus-lite gate** during peer: `reject` sends **REFINE** while rounds remain; `last_plan_gate` is shown in REFINE banner and Plan 승인 panel.
+
+## UI receipts & SSE
+
+Turn `complete` events include phase-specific `send_receipt` (`plan_clarify`, `plan_draft`, `plan_peer_review`, `plan_refine`, `plan_pending_approval`, `plan_approved`) plus `plan_workflow_phase` / optional `plan_workflow_notice`.
+
+Mid-turn transitions emit `plan_workflow_phase`; human gate emits `plan_workflow_pending`.
+
+Composer shows phase banners (CLARIFY→REFINE), compact **HUMAN_PENDING** / **APPROVED** hints, and plan-workflow send receipts on the chat tab.
+
+Response contract presets (Settings → Hooks & Response) shape agent envelopes during CLARIFY/PEER; they complement — do not replace — the plan FSM.
+
 ## API
 
 | Method | Path |

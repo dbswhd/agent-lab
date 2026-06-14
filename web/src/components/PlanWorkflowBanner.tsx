@@ -1,16 +1,23 @@
 import type { PlanWorkflowRecord } from "../api/client";
 import { useLocale } from "../i18n/useLocale";
+import {
+  planWorkflowGateReason,
+  planWorkflowNoticeLabel,
+} from "../utils/planWorkflowView";
 
 type Props = {
   workflow: PlanWorkflowRecord;
   inboxPendingCount?: number;
   running?: boolean;
+  variant?: "full" | "compact";
   onOpenInbox?: () => void;
+  onOpenTasks?: () => void;
 };
 
 function phaseLabel(
   phase: string,
   msg: ReturnType<typeof useLocale>["msg"],
+  variant: "full" | "compact",
 ): { title: string; detail: string; badge: string } | null {
   switch (phase) {
     case "INTAKE":
@@ -38,6 +45,20 @@ function phaseLabel(
         detail: msg.planWorkflowRefineDetail,
         badge: msg.planWorkflowPhaseRefine,
       };
+    case "HUMAN_PENDING":
+      return variant === "compact"
+        ? {
+            title: msg.planWorkflowPendingTitle,
+            detail: msg.planWorkflowPendingDetail,
+            badge: msg.planWorkflowPhasePending,
+          }
+        : null;
+    case "APPROVED":
+      return {
+        title: msg.planWorkflowApprovedTitle,
+        detail: msg.planWorkflowApprovedDetail,
+        badge: msg.planWorkflowPhaseApproved,
+      };
     default:
       return null;
   }
@@ -47,11 +68,13 @@ export function PlanWorkflowBanner({
   workflow,
   inboxPendingCount = 0,
   running = false,
+  variant = "full",
   onOpenInbox,
+  onOpenTasks,
 }: Props) {
   const { msg } = useLocale();
   const phase = (workflow.phase ?? "").toUpperCase();
-  const copy = phaseLabel(phase, msg);
+  const copy = phaseLabel(phase, msg, variant);
   if (!copy) return null;
 
   const roundBits: string[] = [];
@@ -62,9 +85,20 @@ export function PlanWorkflowBanner({
     roundBits.push(`PEER R${workflow.peer_review_round}`);
   }
 
+  const noticeLabel = planWorkflowNoticeLabel(workflow.notice, msg);
+  const gateReason = planWorkflowGateReason(workflow.last_plan_gate);
+
   return (
     <div
-      className="clarifier-banner plan-workflow-banner"
+      className={[
+        "clarifier-banner",
+        "plan-workflow-banner",
+        variant === "compact" ? "plan-workflow-banner--compact" : undefined,
+        phase === "APPROVED" ? "plan-workflow-banner--approved" : undefined,
+        phase === "HUMAN_PENDING" ? "plan-workflow-banner--pending" : undefined,
+      ]
+        .filter(Boolean)
+        .join(" ")}
       role="region"
       aria-label={msg.planWorkflowBannerAria}
     >
@@ -78,6 +112,14 @@ export function PlanWorkflowBanner({
         ) : null}
       </div>
       <p className="clarifier-banner__hint">{copy.detail}</p>
+      {noticeLabel ? (
+        <p className="plan-workflow-banner__warn">{noticeLabel}</p>
+      ) : null}
+      {gateReason ? (
+        <p className="plan-workflow-banner__warn">
+          {msg.planWorkflowGateWarn(gateReason)}
+        </p>
+      ) : null}
       {roundBits.length > 0 ? (
         <p className="plan-workflow-banner__meta">{roundBits.join(" · ")}</p>
       ) : null}
@@ -88,6 +130,15 @@ export function PlanWorkflowBanner({
           onClick={onOpenInbox}
         >
           {msg.planWorkflowOpenInbox(inboxPendingCount)}
+        </button>
+      ) : null}
+      {phase === "HUMAN_PENDING" && variant === "compact" && onOpenTasks ? (
+        <button
+          type="button"
+          className="btn btn--sm btn--primary plan-workflow-banner__tasks"
+          onClick={onOpenTasks}
+        >
+          {msg.planWorkflowPendingOpenTasks}
         </button>
       ) : null}
     </div>

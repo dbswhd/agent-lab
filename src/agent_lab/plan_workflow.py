@@ -27,6 +27,16 @@ PlanWorkflowPhase = Literal[
 DEFAULT_MAX_CLARIFY_ROUNDS = 3
 DEFAULT_MAX_PEER_REVIEW_ROUNDS = 2
 
+PLAN_WORKFLOW_RECEIPTS: dict[str, str] = {
+    "INTAKE": "plan_clarify",
+    "CLARIFY": "plan_clarify",
+    "DRAFT": "plan_draft",
+    "PEER_REVIEW": "plan_peer_review",
+    "REFINE": "plan_refine",
+    "HUMAN_PENDING": "plan_pending_approval",
+    "APPROVED": "plan_approved",
+}
+
 _PLAN_DRAFT_PHASES = frozenset({"DRAFT", "REFINE"})
 _PLAN_PRE_APPROVAL = frozenset(
     {"INTAKE", "CLARIFY", "DRAFT", "PEER_REVIEW", "REFINE", "HUMAN_PENDING"}
@@ -359,6 +369,8 @@ def _finalize_plan_approval(
         current_pw["plan_hash_at_approval"] = plan_hash
         current_pw["approved_at"] = now
         current_pw["approved_by"] = approved_by
+        current_pw.pop("notice", None)
+        current_pw.pop("last_plan_gate", None)
         current["plan_workflow"] = current_pw
 
         current_loop = dict(current.get("verified_loop") or {})
@@ -423,6 +435,8 @@ def reject_plan(
     def _reject(run: dict[str, Any]) -> dict[str, Any]:
         pw = get_plan_workflow(run)
         pw["phase"] = phase
+        pw.pop("notice", None)
+        pw.pop("last_plan_gate", None)
         if note.strip():
             pw["last_reject_note"] = note.strip()[:500]
         run["plan_workflow"] = pw
@@ -433,6 +447,55 @@ def reject_plan(
 
     patch_run_meta(session_folder, _reject)
     return get_plan_workflow(read_run_meta(session_folder))
+
+
+def plan_workflow_send_receipt(phase: str | None) -> str | None:
+    if not phase:
+        return None
+    return PLAN_WORKFLOW_RECEIPTS.get(phase.strip().upper())
+
+
+def plan_workflow_complete_payload(folder: Path) -> dict[str, Any]:
+    run = read_run_meta(folder)
+    if not is_plan_workflow_active(run):
+        return {}
+    pw = get_plan_workflow(run)
+    phase = str(pw.get("phase") or "")
+    out: dict[str, Any] = {
+        "plan_workflow_phase": phase,
+        "plan_workflow_pending_approval": phase == "HUMAN_PENDING",
+    }
+    notice = pw.get("notice")
+    if notice:
+        out["plan_workflow_notice"] = notice
+    gate = pw.get("last_plan_gate")
+    if isinstance(gate, dict) and gate:
+        out["plan_workflow_gate"] = gate
+    return out
+
+
+def emit_plan_workflow_phase_if_changed(
+    folder: Path,
+    on_event: Any | None,
+    phase_before: str | None,
+    phase_after: str | None,
+) -> None:
+    if not on_event or not phase_after or phase_after == phase_before:
+        return
+    pw = get_plan_workflow(read_run_meta(folder))
+    payload: dict[str, Any] = {
+        "session_id": folder.name,
+        "phase": phase_after,
+        "clarify_round": pw.get("clarify_round"),
+        "peer_review_round": pw.get("peer_review_round"),
+    }
+    notice = pw.get("notice")
+    if notice:
+        payload["notice"] = notice
+    gate = pw.get("last_plan_gate")
+    if isinstance(gate, dict) and gate:
+        payload["plan_gate"] = gate
+    on_event("plan_workflow_phase", payload)
 
 
 def plan_workflow_public(run: dict[str, Any] | None) -> dict[str, Any]:
@@ -504,7 +567,15 @@ def tick_plan_workflow_after_turn(
 
         patch_run_meta(folder, _clarify_done)
         if clarify_round > max_clarify:
-            set_plan_workflow_phase(folder, "DRAFT")
+
+            def _clarify_cap(run_in: dict[str, Any]) -> dict[str, Any]:
+                cur = get_plan_workflow(run_in)
+                cur["notice"] = "clarify_cap_reached"
+                run_in["plan_workflow"] = cur
+                return run_in
+
+            patch_run_meta(folder, _clarify_cap)
+            out["clarify_cap_reached"] = True
         out["advance"] = "DRAFT"
         out["phase"] = "DRAFT"
         return out
@@ -527,14 +598,33 @@ def tick_plan_workflow_after_turn(
             return out
         evaluation = _evaluate_plan_for_human_pending(folder, plan_md)
         if evaluation.get("status") == "reject" and peer_round < max_peer:
-            set_plan_workflow_phase(folder, "REFINE")
+
+            def _refine_gate(run_in: dict[str, Any]) -> dict[str, Any]:
+                cur = get_plan_workflow(run_in)
+                cur["phase"] = "REFINE"
+                cur["last_plan_gate"] = evaluation
+                run_in["plan_workflow"] = cur
+                _mirror_verified_loop_status(run_in, cur)
+                return run_in
+
+            patch_run_meta(folder, _refine_gate)
             out["plan_gate"] = evaluation
             out["phase"] = "REFINE"
             return out
 
+        pending_notices: list[str] = []
+        if objections and peer_round >= max_peer:
+            pending_notices.append("peer_review_cap_reached")
+        if evaluation.get("status") == "reject":
+            pending_notices.append("plan_gate_cap_reached")
+
         def _human_pending(run_in: dict[str, Any]) -> dict[str, Any]:
             cur = get_plan_workflow(run_in)
             cur["phase"] = "HUMAN_PENDING"
+            if pending_notices:
+                cur["notice"] = pending_notices[-1]
+            if evaluation.get("status") == "reject":
+                cur["last_plan_gate"] = evaluation
             run_in["plan_workflow"] = cur
             proposed = derive_loop_goal_from_plan(plan_md)
             loop = dict(run_in.get("verified_loop") or {})
@@ -558,6 +648,7 @@ def tick_plan_workflow_after_turn(
                 cur = get_plan_workflow(run_in)
                 cur["peer_review_round"] = int(cur.get("peer_review_round") or 0) + 1
                 cur["phase"] = "PEER_REVIEW"
+                cur.pop("last_plan_gate", None)
                 run_in["plan_workflow"] = cur
                 _mirror_verified_loop_status(run_in, cur)
                 return run_in

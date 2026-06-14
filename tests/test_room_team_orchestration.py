@@ -59,6 +59,24 @@ def test_resolve_send_receipt():
         )
         == "consensus_done"
     )
+    assert (
+        resolve_send_receipt(
+            mode="plan",
+            synthesize=True,
+            consensus_mode=False,
+            plan_workflow_phase="PEER_REVIEW",
+        )
+        == "plan_peer_review"
+    )
+    assert (
+        resolve_send_receipt(
+            mode="discuss",
+            synthesize=False,
+            consensus_mode=False,
+            plan_workflow_phase="HUMAN_PENDING",
+        )
+        == "plan_pending_approval"
+    )
 
 
 def test_should_assign_tasks_on_turn():

@@ -420,6 +420,108 @@
     "mock": "skip:집계 전용(passive) — aggregate 모드에서 자동 포함"
   },
   {
+    "id": "PW1",
+    "tier": "P",
+    "category": "standard",
+    "topic": "README Tier 1 문서 목록에 빠진 SSOT 링크가 있는지 조사하고, plan mode로 정리해 주세요.",
+    "profile": "analyze",
+    "flags": {},
+    "workspace": "agent-lab",
+    "kpis": [
+      "plan_workflow_enabled",
+      "plan_workflow_clarify_rounds",
+      "ref_validity_rate"
+    ],
+    "pass": [
+      "plan_workflow.enabled == true",
+      "phase ∈ {CLARIFY, DRAFT, PEER_REVIEW, REFINE, HUMAN_PENDING, APPROVED}"
+    ],
+    "live_only": false,
+    "repeat": 1,
+    "mock": "scenario:plan_workflow_init"
+  },
+  {
+    "id": "PW2",
+    "tier": "P",
+    "category": "standard",
+    "topic": "plan workflow mock: peer review → refine → Human 승인 대기까지 FSM 완주.",
+    "profile": "analyze",
+    "flags": {},
+    "workspace": "agent-lab",
+    "kpis": [
+      "plan_workflow_reached_human_pending",
+      "plan_workflow_peer_rounds",
+      "objection_resolution_rate"
+    ],
+    "pass": [
+      "plan_workflow.phase == HUMAN_PENDING",
+      "verified_loop.status == pending_approval"
+    ],
+    "live_only": false,
+    "repeat": 1,
+    "mock": "scenario:plan_fsm_human_pending"
+  },
+  {
+    "id": "PW3",
+    "tier": "P",
+    "category": "standard",
+    "topic": "plan workflow clarify cap: max_clarify_rounds 초과 시 notice와 DRAFT 전환.",
+    "profile": "analyze",
+    "flags": {},
+    "workspace": "agent-lab",
+    "kpis": ["plan_workflow_cap_triggered", "plan_workflow_clarify_rounds"],
+    "pass": [
+      "plan_workflow.notice == clarify_cap_reached",
+      "phase == DRAFT"
+    ],
+    "live_only": false,
+    "repeat": 1,
+    "mock": "scenario:plan_clarify_cap"
+  },
+  {
+    "id": "PW4",
+    "tier": "P",
+    "category": "standard",
+    "topic": "plan workflow peer cap: open objections + max peer rounds → HUMAN_PENDING.",
+    "profile": "analyze",
+    "flags": {},
+    "workspace": "agent-lab",
+    "kpis": [
+      "plan_workflow_cap_triggered",
+      "plan_workflow_reached_human_pending",
+      "plan_workflow_peer_rounds"
+    ],
+    "pass": [
+      "plan_workflow.notice == peer_review_cap_reached",
+      "phase == HUMAN_PENDING"
+    ],
+    "live_only": false,
+    "repeat": 1,
+    "mock": "scenario:plan_peer_cap"
+  },
+  {
+    "id": "PW5",
+    "tier": "P",
+    "category": "standard",
+    "topic": "plan.md Human 승인까지 소요 시간(human_minutes)과 승인 후 execute gate 해제를 기록해 주세요.",
+    "profile": "analyze",
+    "flags": {},
+    "workspace": "agent-lab",
+    "kpis": [
+      "plan_workflow_approved",
+      "plan_workflow_approval_latency_sec"
+    ],
+    "pass": [
+      "Human 승인 후 plan_workflow.phase == APPROVED",
+      "suite-log human_minutes 기록 (median 관찰)",
+      "execute dry-run gate 해제 확인"
+    ],
+    "live_only": true,
+    "repeat": 2,
+    "mock": "scenario:plan_approve_latency",
+    "notes": "mock arm: plan_workflow_approval_latency_sec; live arm: suite-log human_minutes median"
+  },
+  {
     "id": "D1",
     "tier": "D",
     "category": "deep",

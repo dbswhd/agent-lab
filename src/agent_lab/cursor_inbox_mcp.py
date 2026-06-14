@@ -32,6 +32,18 @@ def discuss_inbox_mcp_enabled(run_meta: dict[str, Any] | None = None) -> bool:
     return False
 
 
+def mount_inbox_mcp_when_requested(inbox_mcp: bool) -> bool:
+    """True when callers pass ``inbox_mcp=True`` and either lane allows MCP mount.
+
+    Room gates plan CLARIFY via ``discuss_inbox_mcp_enabled``; this helper ensures
+    ``AGENT_LAB_EXECUTE_INBOX=0`` + ``AGENT_LAB_PLAN_INBOX=1`` still mounts for
+    Cursor/Codex when ``inbox_mcp=True``.
+    """
+    if not inbox_mcp:
+        return False
+    return execute_inbox_mcp_enabled() or plan_inbox_mcp_enabled()
+
+
 def _execute_inbox_mcp_enabled() -> bool:
     """Backward-compatible alias."""
     return execute_inbox_mcp_enabled()

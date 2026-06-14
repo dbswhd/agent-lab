@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AgentOption, PlanActionItem, PlanWorkflowRecord, SessionDetail } from "../api/client";
 import {
+  applySessionTemplate,
   cancelRoomRun,
   pauseMissionLoop,
   checkSessionGoal,
@@ -231,7 +232,10 @@ type Props = {
   bootstrapAgentThreadBindings?: AgentThreadBindings | null;
   bootstrapSessionTemplate?: string | null;
   bootstrapTopic?: string | null;
+  /** Mission OS template — applied once when session folder is created. */
+  bootstrapMissionTemplateId?: string | null;
   onBootstrapAgentsApplied?: () => void;
+  onBootstrapMissionTemplateApplied?: () => void;
 };
 
 function chatFingerprint(session: SessionDetail): string {
@@ -294,9 +298,19 @@ export function RoomChat({
   bootstrapAgentThreadBindings,
   bootstrapSessionTemplate,
   bootstrapTopic,
+  bootstrapMissionTemplateId,
   onBootstrapAgentsApplied,
+  onBootstrapMissionTemplateApplied,
 }: Props) {
   const { push: pushMacNotification } = useMacNotifications();
+  const pendingMissionTemplateRef = useRef<string | null>(
+    bootstrapMissionTemplateId ?? null,
+  );
+  useEffect(() => {
+    if (bootstrapMissionTemplateId) {
+      pendingMissionTemplateRef.current = bootstrapMissionTemplateId;
+    }
+  }, [bootstrapMissionTemplateId]);
   const tweaks = useTweaksDemoOptional() ?? TWEAKS_DEMO_OFF;
   const [selected, setSelected] = useState<string[]>([]);
   const [text, setText] = useState("");
@@ -396,6 +410,7 @@ export function RoomChat({
   const highlightTimerRef = useRef<number | null>(null);
   const [sendReceipt, setSendReceipt] = useState<string | null>(null);
   const [sendReceiptRaw, setSendReceiptRaw] = useState<string | undefined>();
+  const [hideApprovedPlanBanner, setHideApprovedPlanBanner] = useState(false);
   const [inboxPendingCount, setInboxPendingCount] = useState(0);
   const [globalInboxPending, setGlobalInboxPending] = useState(0);
   const [inboxReloadKey, setInboxReloadKey] = useState(0);
@@ -968,9 +983,20 @@ export function RoomChat({
   const showPlanWorkflowComposerHint =
     planWorkflowActive &&
     isPlanWorkflowComposerHint(planWorkflow?.phase) &&
+    !(planWorkflow?.phase === "APPROVED" && hideApprovedPlanBanner) &&
     !running &&
     !runBusy &&
     !synthesizing;
+
+  useEffect(() => {
+    if (planWorkflow?.phase !== "APPROVED") {
+      setHideApprovedPlanBanner(false);
+      return;
+    }
+    setHideApprovedPlanBanner(false);
+    const timer = window.setTimeout(() => setHideApprovedPlanBanner(true), 8000);
+    return () => window.clearTimeout(timer);
+  }, [sessionId, planWorkflow?.phase]);
 
   const showVerifiedLoop =
     !planWorkflowActive &&
@@ -1381,6 +1407,23 @@ export function RoomChat({
             }
             if (!sessionId && onSessionMetaRefresh) {
               void onSessionMetaRefresh(activeSessionIdRef.current);
+            }
+            const pendingTemplateId = pendingMissionTemplateRef.current;
+            if (!sessionId && pendingTemplateId && boundSessionId) {
+              pendingMissionTemplateRef.current = null;
+              void applySessionTemplate(boundSessionId, pendingTemplateId)
+                .then((res) => {
+                  onBootstrapMissionTemplateApplied?.();
+                  if (onSessionMetaRefresh) {
+                    void onSessionMetaRefresh(boundSessionId);
+                  }
+                  if (res.fast_path) {
+                    openPlanTab();
+                  }
+                })
+                .catch(() => {
+                  /* template apply is best-effort; room run continues */
+                });
             }
             if (Array.isArray(ev.attachments) && ev.attachments.length) {
               const saved = ev.attachments as string[];

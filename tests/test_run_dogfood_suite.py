@@ -26,9 +26,9 @@ def _load_runner():
 
 def test_dogfood_v1_catalog_shape():
     rows = json.loads(_TOPICS.read_text(encoding="utf-8"))
-    assert len(rows) >= 24
+    assert len(rows) >= 29
     ids = {str(r["id"]) for r in rows}
-    assert {"S1", "M4", "L1", "X1", "A2", "D1"}.issubset(ids)
+    assert {"S1", "M4", "L1", "X1", "A2", "D1", "PW1", "PW2"}.issubset(ids)
     for row in rows:
         assert row.get("topic")
         assert row.get("tier")
@@ -65,6 +65,28 @@ def test_mock_scenario_m5_dispatch_parallel(tmp_path, monkeypatch):
     rows = runner.load_topics(_TOPICS)
     entry = next(r for r in rows if r["id"] == "M5")
     out = runner.scenario_dispatch_parallel(entry, tmp_path)
+    assert out["ok"] is True
+
+
+@pytest.mark.parametrize(
+    "topic_id,scenario_fn",
+    [
+        ("PW2", "scenario_plan_fsm_human_pending"),
+        ("PW3", "scenario_plan_clarify_cap"),
+        ("PW4", "scenario_plan_peer_cap"),
+        ("PW5", "scenario_plan_approve_latency"),
+    ],
+)
+def test_mock_plan_workflow_scenarios(
+    tmp_path, monkeypatch, topic_id: str, scenario_fn: str
+):
+    monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
+    monkeypatch.setenv("AGENT_LAB_CLARIFIER", "0")
+    runner = _load_runner()
+    rows = runner.load_topics(_TOPICS)
+    entry = next(r for r in rows if r["id"] == topic_id)
+    fn = getattr(runner, scenario_fn)
+    out = fn(entry, tmp_path)
     assert out["ok"] is True
 
 

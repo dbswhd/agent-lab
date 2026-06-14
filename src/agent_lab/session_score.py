@@ -377,6 +377,54 @@ def _mission_loop_kpis(
     }
 
 
+def _parse_iso_ts(raw: str | None) -> float | None:
+    if not raw or not str(raw).strip():
+        return None
+    from datetime import datetime
+
+    text = str(raw).strip().replace("Z", "+00:00")
+    try:
+        return datetime.fromisoformat(text).timestamp()
+    except ValueError:
+        return None
+
+
+def _plan_workflow_kpis(run_meta: dict[str, Any]) -> tuple[dict[str, float | None], dict[str, Any]]:
+    from agent_lab.plan_workflow import get_plan_workflow, is_plan_workflow_active
+
+    if not is_plan_workflow_active(run_meta):
+        return {}, {}
+    pw = get_plan_workflow(run_meta)
+    phase = str(pw.get("phase") or "")
+    loop = dict(run_meta.get("verified_loop") or {})
+    proposed = dict(loop.get("proposed") or {})
+    proposed_at = _parse_iso_ts(str(proposed.get("proposed_at") or ""))
+    approved_at = _parse_iso_ts(str(pw.get("approved_at") or ""))
+    approval_latency_sec: float | None = None
+    if proposed_at is not None and approved_at is not None and approved_at >= proposed_at:
+        approval_latency_sec = round(approved_at - proposed_at, 3)
+
+    scores: dict[str, float | None] = {
+        "plan_workflow_enabled": 1.0,
+        "plan_workflow_reached_human_pending": 1.0
+        if phase in {"HUMAN_PENDING", "APPROVED"}
+        else 0.0,
+        "plan_workflow_approved": 1.0 if phase == "APPROVED" else 0.0,
+        "plan_workflow_cap_triggered": 1.0 if pw.get("notice") else 0.0,
+        "plan_workflow_clarify_rounds": float(pw.get("clarify_round") or 0),
+        "plan_workflow_peer_rounds": float(pw.get("peer_review_round") or 0),
+        "plan_workflow_approval_latency_sec": approval_latency_sec,
+    }
+    counts = {
+        "phase": phase,
+        "notice": pw.get("notice"),
+        "clarify_round": int(pw.get("clarify_round") or 0),
+        "peer_review_round": int(pw.get("peer_review_round") or 0),
+        "has_plan_gate": bool(pw.get("last_plan_gate")),
+    }
+    return scores, counts
+
+
 def score_session(folder: Path) -> dict[str, Any]:
     """Compute offline KPIs for a session folder."""
     folder = folder.expanduser().resolve()
@@ -394,6 +442,7 @@ def score_session(folder: Path) -> dict[str, Any]:
     comm_scores = communicate_scores(comm_counts)
     mission_scores, mission_counts = _mission_loop_kpis(folder, run_meta)
     emergence_scores, emergence_counts = emergence_kpis(folder, run_meta, messages)
+    plan_scores, plan_counts = _plan_workflow_kpis(run_meta)
 
     scores: dict[str, float | None] = {
         "objection_resolution_rate": obj_rate,
@@ -407,6 +456,7 @@ def score_session(folder: Path) -> dict[str, Any]:
         **comm_scores,
         **mission_scores,
         **emergence_scores,
+        **plan_scores,
     }
     summary_lines = _format_summary_lines(
         folder.name,
@@ -436,6 +486,7 @@ def score_session(folder: Path) -> dict[str, Any]:
             "communicate": comm_counts,
             "mission_loop": mission_counts,
             "emergence": emergence_counts,
+            "plan_workflow": plan_counts,
         },
         "summary_lines": summary_lines,
     }

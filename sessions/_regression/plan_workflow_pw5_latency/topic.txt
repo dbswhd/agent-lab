@@ -1,0 +1,1 @@
+plan.md Human 승인까지 소요 시간(human_minutes)과 승인 후 execute gate 해제를 기록해 주세요.

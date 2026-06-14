@@ -31,7 +31,19 @@ ROOT = Path(__file__).resolve().parents[1]
 REPORTS = ROOT / "sessions" / "_reports"
 DEFAULT_TOPICS = ROOT / "sessions" / "_benchmark" / "topics" / "dogfood-v1.json"
 
-TIER_ORDER = {"S": 0, "M": 1, "L": 2, "X": 3, "A": 4, "D": 5}
+TIER_ORDER = {"S": 0, "M": 1, "P": 2, "L": 3, "X": 4, "A": 5, "D": 6}
+
+_DOGFOOD_SAMPLE_PLAN = """# Demo feature
+
+## 지금 실행
+
+1. Add widget
+   - 무엇을: implement widget
+   - 어디서: `src/widget.py`
+   - 검증: `pytest tests/test_widget.py`
+"""
+
+_DOGFOOD_REFINED_PLAN = _DOGFOOD_SAMPLE_PLAN + "\n\n<!-- peer refine -->\n"
 
 
 def load_topics(path: Path) -> list[dict[str, Any]]:
@@ -296,12 +308,319 @@ def scenario_escalation(entry: dict[str, Any], base: Path) -> dict[str, Any]:
     }
 
 
+def scenario_plan_workflow_init(entry: dict[str, Any], base: Path) -> dict[str, Any]:
+    """Plan mode send enables plan_workflow FSM (PW1)."""
+    from agent_lab.plan_workflow import get_plan_workflow
+    from agent_lab.run_meta import read_run_meta
+
+    folder, report = _run_topic_session(entry, base)
+    pw = get_plan_workflow(read_run_meta(folder))
+    phase = str(pw.get("phase") or "")
+    ok = bool(pw.get("enabled")) and phase in {
+        "CLARIFY",
+        "DRAFT",
+        "PEER_REVIEW",
+        "REFINE",
+        "HUMAN_PENDING",
+        "APPROVED",
+    }
+    return {
+        "ok": ok,
+        "detail": f"enabled={pw.get('enabled')} phase={phase}",
+        "session_id": report.get("session_id"),
+        "kpis": _kpi_subset(report, entry.get("kpis") or []),
+    }
+
+
+def scenario_plan_fsm_human_pending(entry: dict[str, Any], base: Path) -> dict[str, Any]:
+    """Peer → refine → second peer → HUMAN_PENDING (PW2 mock arm)."""
+    from agent_lab.plan_workflow import (
+        get_plan_workflow,
+        init_plan_workflow_on_plan_send,
+        orchestrate_plan_workflow_pipeline,
+        set_plan_workflow_phase,
+    )
+    from agent_lab.run_meta import patch_run_meta, read_run_meta
+    from agent_lab.session_score import score_session
+
+    folder = base / (
+        "plan_workflow_pw5_latency"
+        if str(entry.get("id")) == "PW5"
+        else f"pw-fsm-{entry.get('id', 'x')}"
+    )
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "run.json").write_text("{}", encoding="utf-8")
+    init_plan_workflow_on_plan_send(folder)
+    set_plan_workflow_phase(folder, "DRAFT")
+    (folder / "plan.md").write_text(_DOGFOOD_SAMPLE_PLAN, encoding="utf-8")
+
+    peer_calls = {"n": 0}
+
+    def _fake_peer_review(_folder, *_args, **_kwargs):
+        peer_calls["n"] += 1
+        if peer_calls["n"] == 1:
+
+            def _patch(run: dict[str, Any]) -> dict[str, Any]:
+                rows = list(run.get("objections") or [])
+                rows.append(
+                    {
+                        "id": "obj-dogfood-peer",
+                        "from": "codex",
+                        "act": "CHALLENGE",
+                        "body": "narrow verify scope",
+                        "status": "open",
+                        "turn": 1,
+                    }
+                )
+                run["objections"] = rows
+                return run
+
+            patch_run_meta(folder, _patch)
+        else:
+
+            def _clear(run: dict[str, Any]) -> dict[str, Any]:
+                for obj in run.get("objections") or []:
+                    if obj.get("status") == "open":
+                        obj["status"] = "resolved_wontfix"
+                return run
+
+            patch_run_meta(folder, _clear)
+        return []
+
+    import agent_lab.plan_workflow as pw_mod
+    import agent_lab.room as room_mod
+
+    orig_peer = pw_mod.run_plan_peer_review_round
+    orig_synth = room_mod.synthesize_plan
+    pw_mod.run_plan_peer_review_round = _fake_peer_review
+    room_mod.synthesize_plan = lambda *_a, **_k: _DOGFOOD_REFINED_PLAN
+    try:
+        run_meta = read_run_meta(folder)
+        run_meta["_session_folder"] = str(folder)
+        _plan_md, _replies, tick = orchestrate_plan_workflow_pipeline(
+            folder,
+            topic=str(entry.get("topic") or "dogfood plan FSM"),
+            messages=[],
+            plan_md=_DOGFOOD_SAMPLE_PLAN,
+            plan_before="",
+            synthesize=True,
+            cancelled=False,
+            agents=["claude", "codex", "cursor"],
+            permissions={},
+            run_meta=run_meta,
+        )
+    finally:
+        pw_mod.run_plan_peer_review_round = orig_peer
+        room_mod.synthesize_plan = orig_synth
+
+    pw = get_plan_workflow(read_run_meta(folder))
+    report = score_session(folder)
+    ok = (
+        peer_calls["n"] == 2
+        and pw.get("phase") == "HUMAN_PENDING"
+        and tick.get("pending_approval") is True
+    )
+    return {
+        "ok": ok,
+        "detail": f"peer_rounds={peer_calls['n']} phase={pw.get('phase')}",
+        "session_id": report.get("session_id"),
+        "kpis": _kpi_subset(report, entry.get("kpis") or []),
+    }
+
+
+def scenario_plan_clarify_cap(entry: dict[str, Any], base: Path) -> dict[str, Any]:
+    """Clarify round cap sets notice and advances to DRAFT (PW3)."""
+    from agent_lab.plan_workflow import (
+        get_plan_workflow,
+        init_plan_workflow_on_plan_send,
+        tick_plan_workflow_after_turn,
+    )
+    from agent_lab.run_meta import patch_run_meta, read_run_meta
+    from agent_lab.session_score import score_session
+
+    folder = base / f"pw-clarify-cap-{entry.get('id', 'x')}"
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "run.json").write_text("{}", encoding="utf-8")
+    init_plan_workflow_on_plan_send(folder)
+
+    def _cap(run: dict[str, Any]) -> dict[str, Any]:
+        from agent_lab.plan_workflow import get_plan_workflow as _gpw
+
+        pw = _gpw(run)
+        pw["max_clarify_rounds"] = 0
+        run["plan_workflow"] = pw
+        return run
+
+    patch_run_meta(folder, _cap)
+    tick_plan_workflow_after_turn(
+        folder,
+        synthesize=True,
+        cancelled=False,
+        plan_md="",
+        plan_before="",
+        has_pending_inbox_question=False,
+    )
+    pw = get_plan_workflow(read_run_meta(folder))
+    report = score_session(folder)
+    ok = pw.get("phase") == "DRAFT" and pw.get("notice") == "clarify_cap_reached"
+    return {
+        "ok": ok,
+        "detail": f"phase={pw.get('phase')} notice={pw.get('notice')}",
+        "session_id": report.get("session_id"),
+        "kpis": _kpi_subset(report, entry.get("kpis") or []),
+    }
+
+
+def scenario_plan_peer_cap(entry: dict[str, Any], base: Path) -> dict[str, Any]:
+    """Peer cap with open objections → HUMAN_PENDING + peer_review_cap_reached (PW4)."""
+    from agent_lab.plan_workflow import (
+        get_plan_workflow,
+        init_plan_workflow_on_plan_send,
+        set_plan_workflow_phase,
+        tick_plan_workflow_after_turn,
+    )
+    from agent_lab.run_meta import patch_run_meta, read_run_meta
+    from agent_lab.session_score import score_session
+
+    folder = base / f"pw-peer-cap-{entry.get('id', 'x')}"
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "run.json").write_text("{}", encoding="utf-8")
+    init_plan_workflow_on_plan_send(folder)
+    set_plan_workflow_phase(folder, "PEER_REVIEW")
+    (folder / "plan.md").write_text(_DOGFOOD_SAMPLE_PLAN, encoding="utf-8")
+
+    def _patch(run: dict[str, Any]) -> dict[str, Any]:
+        from agent_lab.plan_workflow import get_plan_workflow as _gpw
+
+        pw = _gpw(run)
+        pw["max_peer_review_rounds"] = 0
+        pw["peer_review_round"] = 0
+        run["plan_workflow"] = pw
+        rows = list(run.get("objections") or [])
+        rows.append(
+            {
+                "id": "obj-cap",
+                "from": "codex",
+                "act": "CHALLENGE",
+                "body": "still open",
+                "status": "open",
+                "turn": 1,
+            }
+        )
+        run["objections"] = rows
+        return run
+
+    patch_run_meta(folder, _patch)
+    tick_plan_workflow_after_turn(
+        folder,
+        synthesize=True,
+        cancelled=False,
+        plan_md=_DOGFOOD_SAMPLE_PLAN,
+        plan_before=_DOGFOOD_SAMPLE_PLAN,
+        has_pending_inbox_question=False,
+    )
+    pw = get_plan_workflow(read_run_meta(folder))
+    report = score_session(folder)
+    ok = pw.get("phase") == "HUMAN_PENDING" and pw.get("notice") in {
+        "peer_review_cap_reached",
+        "plan_gate_cap_reached",
+    }
+    return {
+        "ok": ok,
+        "detail": f"phase={pw.get('phase')} notice={pw.get('notice')}",
+        "session_id": report.get("session_id"),
+        "kpis": _kpi_subset(report, entry.get("kpis") or []),
+    }
+
+
+def scenario_plan_approve_latency(entry: dict[str, Any], base: Path) -> dict[str, Any]:
+    """HUMAN_PENDING → approve → APPROVED; measure approval latency (PW5)."""
+    from datetime import datetime, timedelta, timezone
+
+    from agent_lab.plan_workflow import (
+        approve_plan,
+        ensure_plan_workflow_approved,
+        get_plan_workflow,
+    )
+    from agent_lab.run_meta import patch_run_meta, read_run_meta
+    from agent_lab.session_score import score_session
+
+    pending = scenario_plan_fsm_human_pending(entry, base)
+    if not pending.get("ok"):
+        return pending
+
+    folder = base / (
+        "plan_workflow_pw5_latency"
+        if str(entry.get("id")) == "PW5"
+        else f"pw-fsm-{entry.get('id', 'x')}"
+    )
+    proposed_at = (datetime.now(timezone.utc) - timedelta(minutes=7)).isoformat()
+
+    def _proposed(run: dict[str, Any]) -> dict[str, Any]:
+        loop = dict(run.get("verified_loop") or {})
+        loop["proposed"] = {
+            "goal": "Demo feature",
+            "completion_promise": "DONE",
+            "criteria": "pytest tests/test_widget.py",
+            "proposed_at": proposed_at,
+            "source": "plan_workflow",
+        }
+        loop["status"] = "pending_approval"
+        run["verified_loop"] = loop
+        return run
+
+    patch_run_meta(folder, _proposed)
+    monkeypatch_mission = os.environ.get("AGENT_LAB_MISSION_LOOP", "")
+    os.environ["AGENT_LAB_MISSION_LOOP"] = "1"
+    try:
+        approve_plan(folder)
+    finally:
+        if monkeypatch_mission:
+            os.environ["AGENT_LAB_MISSION_LOOP"] = monkeypatch_mission
+        else:
+            os.environ.pop("AGENT_LAB_MISSION_LOOP", None)
+
+    report = score_session(folder)
+    scores = report.get("scores") or {}
+    latency = scores.get("plan_workflow_approval_latency_sec")
+    pw = get_plan_workflow(read_run_meta(folder))
+    gate_ok = True
+    try:
+        ensure_plan_workflow_approved(folder)
+    except Exception:
+        gate_ok = False
+
+    human_minutes = round(float(latency or 0) / 60.0, 2) if latency is not None else None
+    ok = (
+        pw.get("phase") == "APPROVED"
+        and scores.get("plan_workflow_approved") == 1.0
+        and latency is not None
+        and float(latency) >= 0
+        and gate_ok
+    )
+    return {
+        "ok": ok,
+        "detail": (
+            f"phase={pw.get('phase')} latency_sec={latency} "
+            f"human_minutes~{human_minutes} gate_ok={gate_ok}"
+        ),
+        "session_id": report.get("session_id"),
+        "human_minutes": human_minutes,
+        "kpis": _kpi_subset(report, entry.get("kpis") or []),
+    }
+
+
 SCENARIOS = {
     "block_objection": scenario_block_objection,
     "challenge_amend": scenario_challenge_amend,
     "dispatch_parallel": scenario_dispatch_parallel,
     "dispatch_fanout_cap": scenario_dispatch_fanout_cap,
     "escalation": scenario_escalation,
+    "plan_workflow_init": scenario_plan_workflow_init,
+    "plan_fsm_human_pending": scenario_plan_fsm_human_pending,
+    "plan_clarify_cap": scenario_plan_clarify_cap,
+    "plan_peer_cap": scenario_plan_peer_cap,
+    "plan_approve_latency": scenario_plan_approve_latency,
 }
 
 
@@ -463,6 +782,11 @@ def run_aggregate(rows: list[dict[str, Any]], log_path: Path) -> int:
             for k in kpi_keys
         }
         passes = [r["human_pass"] for r in runs if r["human_pass"] is not None]
+        minutes = [
+            float(r["human_minutes"])
+            for r in runs
+            if r.get("human_minutes") is not None
+        ]
         topics_out.append(
             {
                 "id": topic_id,
@@ -471,6 +795,7 @@ def run_aggregate(rows: list[dict[str, Any]], log_path: Path) -> int:
                 "human_pass_rate": (
                     round(sum(1 for p in passes if p) / len(passes), 2) if passes else None
                 ),
+                "human_minutes_median": _median(minutes),
                 "kpi_medians": medians,
                 "pass_criteria": entry.get("pass") or [],
                 "details": runs,

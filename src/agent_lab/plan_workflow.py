@@ -88,6 +88,12 @@ def apply_legacy_verified_turn_profile(
         init_verified_loop(folder)
 
 
+def _round_cap(raw: object, default: int) -> int:
+    if raw is None:
+        return default
+    return int(raw)
+
+
 def default_plan_workflow() -> dict[str, Any]:
     return {
         "enabled": False,
@@ -555,7 +561,7 @@ def tick_plan_workflow_after_turn(
             out["wait_inbox"] = True
             return out
         clarify_round = int(pw.get("clarify_round") or 0) + 1
-        max_clarify = int(pw.get("max_clarify_rounds") or DEFAULT_MAX_CLARIFY_ROUNDS)
+        max_clarify = _round_cap(pw.get("max_clarify_rounds"), DEFAULT_MAX_CLARIFY_ROUNDS)
 
         def _clarify_done(run_in: dict[str, Any]) -> dict[str, Any]:
             cur = get_plan_workflow(run_in)
@@ -590,7 +596,7 @@ def tick_plan_workflow_after_turn(
     if phase == "PEER_REVIEW":
         objections = _open_plan_objections(read_run_meta(folder))
         peer_round = int(pw.get("peer_review_round") or 0)
-        max_peer = int(pw.get("max_peer_review_rounds") or DEFAULT_MAX_PEER_REVIEW_ROUNDS)
+        max_peer = _round_cap(pw.get("max_peer_review_rounds"), DEFAULT_MAX_PEER_REVIEW_ROUNDS)
         if objections and peer_round < max_peer:
             set_plan_workflow_phase(folder, "REFINE")
             out["phase"] = "REFINE"

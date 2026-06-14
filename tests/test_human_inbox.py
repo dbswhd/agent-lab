@@ -262,6 +262,59 @@ def test_execute_inbox_mcp_enabled_env(monkeypatch: pytest.MonkeyPatch):
     assert execute_inbox_mcp_enabled() is False
 
 
+def test_mount_inbox_mcp_plan_lane_when_execute_off(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from agent_lab.cursor_inbox_mcp import mount_inbox_mcp_when_requested
+
+    monkeypatch.setenv("AGENT_LAB_EXECUTE_INBOX", "0")
+    monkeypatch.setenv("AGENT_LAB_PLAN_INBOX", "1")
+    assert mount_inbox_mcp_when_requested(True) is True
+    assert mount_inbox_mcp_when_requested(False) is False
+    monkeypatch.setenv("AGENT_LAB_PLAN_INBOX", "0")
+    assert mount_inbox_mcp_when_requested(True) is False
+
+
+def test_codex_invoke_uses_plan_inbox_when_execute_off(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AGENT_LAB_EXECUTE_INBOX", "0")
+    monkeypatch.setenv("AGENT_LAB_PLAN_INBOX", "1")
+    out_path = tmp_path / "codex-out.txt"
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr("agent_lab.codex_cli.tempfile.mktemp", lambda **_k: str(out_path))
+
+    def _fake_build_cmd(**kwargs):
+        captured["config_overrides"] = kwargs.get("config_overrides")
+        return ["codex", "exec"]
+
+    def _fake_run_codex(_cmd, _prompt, **_kwargs):
+        out_path.write_text("done", encoding="utf-8")
+        from agent_lab.codex_cli import CodexRunOutcome
+
+        return CodexRunOutcome()
+
+    monkeypatch.setattr("agent_lab.codex_cli._build_cmd", _fake_build_cmd)
+    monkeypatch.setattr("agent_lab.codex_cli._run_codex", _fake_run_codex)
+    monkeypatch.setattr("agent_lab.codex_cli.resolve_codex_bin", lambda: "/bin/codex")
+    monkeypatch.setattr(
+        "agent_lab.runtime.adapters.codex.can_route_codex_proxy",
+        lambda **_k: False,
+    )
+    monkeypatch.setattr(
+        "agent_lab.agent_hooks_materializer.native_agent_hooks_overlay",
+        lambda *_a, **_k: __import__("contextlib").nullcontext(),
+    )
+
+    from agent_lab.codex_cli import invoke
+
+    text = invoke("sys", "user", session_folder=tmp_path, inbox_mcp=True, room_turn=True)
+    assert text == "done"
+    assert captured.get("config_overrides") is not None
+
+
 def test_call_execute_agent_passes_inbox_mcp_to_codex(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):

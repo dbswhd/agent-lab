@@ -43,6 +43,17 @@ Composer shows phase banners (CLARIFY→REFINE), compact **HUMAN_PENDING** / **A
 
 Response contract presets (Settings → Hooks & Response) shape agent envelopes during CLARIFY/PEER; they complement — do not replace — the plan FSM.
 
+## Eval (dogfood)
+
+Tier **P** topics in `sessions/_benchmark/topics/dogfood-v1.json` (`PW1`–`PW5`) measure plan FSM init, peer→Human gate, cap notices, and (live) approval latency via `suite-log.json` + `score_session` KPIs (`plan_workflow_*`).
+
+```bash
+make dogfood-suite-mock ONLY=PW1,PW2,PW3,PW4
+AGENT_LAB_MOCK_AGENTS=1 .venv/bin/python scripts/run_dogfood_suite.py --mode mock \
+  --only PW5 --sessions-base sessions/_regression
+make dogfood-suite-aggregate LOG=sessions/_benchmark/topics/suite-log.example.json
+```
+
 ## API
 
 | Method | Path |

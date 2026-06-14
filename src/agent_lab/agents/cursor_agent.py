@@ -161,10 +161,10 @@ def _build_agent_options(
     if inbox_mcp and session_folder is not None:
         from agent_lab.cursor_inbox_mcp import (
             build_inbox_mcp_servers,
-            execute_inbox_mcp_enabled,
+            mount_inbox_mcp_when_requested,
         )
 
-        if execute_inbox_mcp_enabled():
+        if mount_inbox_mcp_when_requested(inbox_mcp):
             mcp_servers = build_inbox_mcp_servers(Path(session_folder))
 
     agent_opts = AgentOptions(

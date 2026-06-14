@@ -54,7 +54,7 @@
 
 ## 2. 토픽 카탈로그
 
-**SSOT:** `sessions/_benchmark/topics/dogfood-v1.json` (27 topics, 6 tier).
+**SSOT:** `sessions/_benchmark/topics/dogfood-v1.json` (32 topics, 7 tier).
 
 각 항목 필드: `id`, `tier`, `category`, `topic`, `profile`, `flags`, `workspace`, `kpis`, `pass`, `live_only`, `repeat`, `mock`.
 
@@ -62,10 +62,24 @@
 |------|------|-----|
 | **S** | 단일턴·라우팅 | S1–S3 |
 | **M** | 토론·정리·dispatch·goal | M1–M6 |
+| **P** | Plan-First FSM (mock + live approval) | PW1–PW5 |
 | **L** | 설계·합의·escalation·창발 | L1–L4 |
 | **X** | execute·Mission·hook | X1–X4 |
 | **A** | 적대/부정 (게이트 공격) | A1–A7 |
 | **D** | 외부 도메인 (편향 통제) | D1–D3 |
+
+### Plan workflow KPIs (`score_session`)
+
+| KPI | 의미 |
+|-----|------|
+| `plan_workflow_enabled` | FSM 활성 |
+| `plan_workflow_reached_human_pending` | HUMAN_PENDING 이상 도달 |
+| `plan_workflow_approved` | Human 승인 완료 |
+| `plan_workflow_cap_triggered` | clarify/peer cap notice |
+| `plan_workflow_clarify_rounds` / `plan_workflow_peer_rounds` | 라운드 수 |
+| `plan_workflow_approval_latency_sec` | proposed_at → approved_at (초) |
+
+PW5 live: `suite-log.json`의 `human_minutes` median + 위 KPI를 aggregate 모드에서 집계.
 
 `workspace`: `agent-lab` | `pipeline` (`/Users/yoonjong/Desktop/pipeline`) | `neutral`
 

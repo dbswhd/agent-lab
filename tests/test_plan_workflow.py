@@ -189,3 +189,59 @@ def test_verified_loop_approve_delegates_with_deprecation_header(
     assert res.headers.get("Deprecation") == "true"
     assert "plan/approve" in (res.headers.get("Link") or "")
     assert res.json()["deprecated"] == "use POST /plan/approve"
+
+
+def test_plan_workflow_send_receipt_mapping() -> None:
+    from agent_lab.plan_workflow import plan_workflow_send_receipt
+
+    assert plan_workflow_send_receipt("CLARIFY") == "plan_clarify"
+    assert plan_workflow_send_receipt("HUMAN_PENDING") == "plan_pending_approval"
+    assert plan_workflow_send_receipt(None) is None
+
+
+def test_clarify_cap_sets_notice(tmp_path: Path) -> None:
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    (folder / "run.json").write_text("{}", encoding="utf-8")
+    init_plan_workflow_on_plan_send(folder)
+
+    def _cap(run: dict) -> dict:
+        pw = get_plan_workflow(run)
+        pw["max_clarify_rounds"] = 0
+        run["plan_workflow"] = pw
+        return run
+
+    patch_run_meta(folder, _cap)
+    tick_plan_workflow_after_turn(
+        folder,
+        synthesize=True,
+        cancelled=False,
+        plan_md="",
+        plan_before="",
+        has_pending_inbox_question=False,
+    )
+    pw = get_plan_workflow(read_run_meta(folder))
+    assert pw["phase"] == "DRAFT"
+    assert pw.get("notice") == "clarify_cap_reached"
+
+
+def test_plan_workflow_complete_payload_includes_notice(tmp_path: Path) -> None:
+    from agent_lab.plan_workflow import plan_workflow_complete_payload
+
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    (folder / "run.json").write_text("{}", encoding="utf-8")
+    init_plan_workflow_on_plan_send(folder)
+
+    def _notice(run: dict) -> dict:
+        pw = get_plan_workflow(run)
+        pw["notice"] = "peer_review_cap_reached"
+        pw["phase"] = "HUMAN_PENDING"
+        run["plan_workflow"] = pw
+        return run
+
+    patch_run_meta(folder, _notice)
+    payload = plan_workflow_complete_payload(folder)
+    assert payload["plan_workflow_phase"] == "HUMAN_PENDING"
+    assert payload["plan_workflow_notice"] == "peer_review_cap_reached"
+    assert payload["plan_workflow_pending_approval"] is True

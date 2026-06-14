@@ -16,5 +16,14 @@
     "human_minutes": 18,
     "tags": ["communicate"],
     "notes": "CHALLENGE만 있고 AMEND 없음 — repeat 2 median 집계용 예시"
+  },
+  {
+    "id": "PW5",
+    "session": "sessions/_regression/plan_workflow_pw5_latency",
+    "repeat": 1,
+    "pass": true,
+    "human_minutes": 7,
+    "tags": ["plan_workflow", "approval"],
+    "notes": "mock PW5 scenario; human_minutes는 live 관찰값 예시 (aggregate median)"
   }
 ]

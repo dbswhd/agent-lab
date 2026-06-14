@@ -682,9 +682,9 @@ def invoke(
     execute_plugins = bool((permissions or {}).get("_execute_plugins"))
     use_inbox_mcp = False
     if inbox_mcp and session_folder is not None:
-        from agent_lab.cursor_inbox_mcp import execute_inbox_mcp_enabled
+        from agent_lab.cursor_inbox_mcp import mount_inbox_mcp_when_requested
 
-        use_inbox_mcp = execute_inbox_mcp_enabled()
+        use_inbox_mcp = mount_inbox_mcp_when_requested(inbox_mcp)
 
     from agent_lab.runtime.adapters.codex import can_route_codex_proxy, invoke_codex_proxy
 

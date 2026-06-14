@@ -1,0 +1,151 @@
+{
+  "plan_workflow": {
+    "enabled": true,
+    "phase": "APPROVED",
+    "clarify_round": 0,
+    "max_clarify_rounds": 3,
+    "peer_review_round": 1,
+    "max_peer_review_rounds": 2,
+    "plan_hash_at_approval": "d8ff0259c8eabcdb",
+    "approved_at": "2026-06-14T10:59:44.255538+00:00",
+    "approved_by": "human"
+  },
+  "verified_loop": {
+    "status": "running",
+    "proposed": {
+      "goal": "Demo feature",
+      "completion_promise": "DONE",
+      "criteria": "pytest tests/test_widget.py",
+      "proposed_at": "2026-06-14T10:52:44.255056+00:00",
+      "source": "plan_workflow"
+    },
+    "loop_goal": {
+      "text": "Demo feature",
+      "completion_promise": "DONE",
+      "criteria": "`pytest tests/test_widget.py`",
+      "approved_at": "2026-06-14T10:59:44.255538+00:00",
+      "approved_by": "human"
+    },
+    "iteration": 0,
+    "verification_attempts": 0,
+    "oracle_session_id": "oracle_plan_workflow_pw5_latency_726c35ad"
+  },
+  "objections": [
+    {
+      "id": "obj-dogfood-peer",
+      "from": "codex",
+      "act": "CHALLENGE",
+      "body": "narrow verify scope",
+      "status": "resolved_wontfix",
+      "turn": 1
+    }
+  ],
+  "session_goal": {
+    "text": "Demo feature",
+    "set_at": "2026-06-14T10:59:44.255538+00:00",
+    "updated_at": "2026-06-14T10:59:44.255538+00:00",
+    "set_by": "agents+human"
+  },
+  "goal_loop": {
+    "enabled": true,
+    "status": "open",
+    "max_checks": 5,
+    "checks": []
+  },
+  "mission_loop": {
+    "enabled": true,
+    "phase": "EXECUTE_QUEUE",
+    "iteration": 0,
+    "max_mission_iterations": 20,
+    "pending_action_indices": [
+      1
+    ],
+    "current_action_index": 1,
+    "action_repair_counts": {},
+    "max_repair_per_action": 2,
+    "last_verify": null,
+    "last_execution_id": null,
+    "plan_gate": {
+      "status": "ok",
+      "momus_round": 0,
+      "max_momus_rounds": 3,
+      "last_reject_reason": null,
+      "failures": []
+    },
+    "wisdom_refs": [
+      "missions/plan_workflow_pw5_latency/learnings.md",
+      "missions/plan_workflow_pw5_latency/verification.md",
+      "missions/plan_workflow_pw5_latency/decisions.md"
+    ],
+    "discuss_recovery": {
+      "pending": false,
+      "reason": null,
+      "action_index": null,
+      "started_at": null,
+      "completed_at": null
+    },
+    "autonomous_segment": {
+      "active": true,
+      "started_at": "2026-06-14T10:59:44.260548+00:00",
+      "ends_on": [
+        "merge_review",
+        "circuit_breaker",
+        "mission_done",
+        "inbox_escalate"
+      ]
+    },
+    "circuit_breaker": false,
+    "circuit_breaker_reason": null,
+    "pause_reason": null,
+    "last_partial": null
+  },
+  "mission_board": {
+    "goal_chain": [
+      {
+        "kind": "verified_loop.loop_goal",
+        "ref": "run.json"
+      },
+      {
+        "kind": "session_goal",
+        "ref": "run.json"
+      },
+      {
+        "kind": "plan_action",
+        "index": 1,
+        "title": "implement widget"
+      }
+    ],
+    "checkout": null,
+    "lane_roles": {
+      "discuss": [
+        "cursor",
+        "codex",
+        "claude"
+      ],
+      "execute_default": "cursor",
+      "repair_default": "codex",
+      "verify_oracle": "mock"
+    }
+  },
+  "turn_budget": {
+    "caps": {
+      "agent_calls_per_human_turn": 9,
+      "codex_shell_per_turn": null,
+      "repairs_per_action": 2,
+      "mission_iterations": 20,
+      "autorun_ticks_per_hour": 60
+    },
+    "counters": {
+      "agent_calls_per_human_turn": 0,
+      "codex_shell_per_turn": 0,
+      "repairs_per_action": {},
+      "mission_iterations": 0,
+      "autorun_ticks_this_hour": 1,
+      "autorun_tick_hour": "2026-06-14T10",
+      "human_turn": 0
+    },
+    "budget_pct": 1,
+    "overflow": null,
+    "updated_at": "2026-06-14T10:59:44.260254+00:00"
+  }
+}

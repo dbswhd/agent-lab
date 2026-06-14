@@ -48,19 +48,30 @@ def test_scenario_b_plan_synthesis_contract():
 
 
 def test_scenario_b2_plan_workflow_ui_contract():
-    """B2: plan workflow phase banner + reject target_phase."""
+    """B2: plan workflow phase banner + reject target_phase + receipts/SSE."""
     room = _read("web", "src", "components", "RoomChat.tsx")
     banner = _read("web", "src", "components", "PlanWorkflowBanner.tsx")
     approval = _read("web", "src", "components", "PlanApprovalPanel.tsx")
+    receipt = _read("web", "src", "utils", "sendReceipt.ts")
+    plan_view = _read("web", "src", "utils", "planWorkflowView.ts")
 
     assert "PlanWorkflowBanner" in room
     assert "showPlanWorkflowBanner" in room
+    assert "showPlanWorkflowComposerHint" in room
+    assert "plan_workflow_phase" in room
+    assert "plan_workflow_pending" in room
+    assert "sendReceiptRaw" in room
     assert "plan-workflow-banner" in banner
+    assert "HUMAN_PENDING" in banner
+    assert "APPROVED" in banner
     assert "CLARIFY" in banner
     assert "PEER_REVIEW" in banner
     assert "plan-reject-target" in approval
     assert "target_phase" in approval
     assert "PLAN_REJECT_TARGETS" in approval
+    assert "plan_pending_approval" in receipt
+    assert "isPlanWorkflowSendReceipt" in receipt
+    assert "planWorkflowPhaseTranscriptLine" in plan_view
 
 
 def test_scenario_b_diff_tool_contract():
@@ -118,3 +129,15 @@ def test_m6_taskbar_no_legacy_room_task_bar_classes():
 def test_claude_bridge_wired_in_room():
     room_py = _read("src", "agent_lab", "room.py")
     assert 'aid in ("cursor", "codex", "claude")' in room_py
+
+
+def test_new_session_mission_template_picker_contract():
+    """NewSessionDialog ↔ /api/templates + apply on session bind."""
+    ns = _read("web", "src", "components", "NewSessionDialog.tsx")
+    app = _read("web", "src", "App.tsx")
+    room = _read("web", "src", "components", "RoomChat.tsx")
+    assert "fetchMissionTemplates" in ns
+    assert "missionTemplateId" in ns
+    assert "bootstrapMissionTemplateId" in app
+    assert "applySessionTemplate" in room
+    assert "bootstrapMissionTemplateId" in room

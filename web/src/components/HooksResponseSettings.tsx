@@ -7,6 +7,7 @@ import type {
   SessionDetail,
 } from "../api/client";
 import { fetchHealthFlags, setSessionResponseContract } from "../api/client";
+import { useLocale } from "../i18n/useLocale";
 import {
   communicateMetaRows,
   formatHookMeta,
@@ -29,6 +30,7 @@ export function HooksResponseSettings({
   sessionId,
   session,
 }: HooksResponseSettingsProps) {
+  const { msg } = useLocale();
   const [runtimeFlags, setRuntimeFlags] = useState<RuntimeFlagRow[]>([]);
   const [runtimeFlagsError, setRuntimeFlagsError] = useState<string | null>(null);
   const [contract, setContract] = useState<ResponseContractRecord | null>(
@@ -245,9 +247,7 @@ export function HooksResponseSettings({
       </p>
       {planWorkflowEnabled ? (
         <p className="settings-hint settings-hint--plan-workflow">
-          Plan workflow 활성: response contract preset은 CLARIFY/PEER 단계 에이전트 답변 형식을
-          조정합니다. Plan FSM을 대체하지 않고 보조합니다 — clarify에는 evidence_first, peer
-          전 plan_ready를 고려하세요.
+          {msg.hooksPlanWorkflowHint}
         </p>
       ) : null}
     </section>

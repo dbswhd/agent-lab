@@ -204,3 +204,57 @@ def test_run_room_new_session_bootstraps_plan_workflow(
         "REFINE",
         "HUMAN_PENDING",
     }
+
+
+def test_run_room_plan_send_reaches_human_pending(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Full room plan send (mock) → scribe → peer/refine pipeline → HUMAN_PENDING."""
+    monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
+    monkeypatch.setenv("AGENT_LAB_CLARIFIER", "0")
+    monkeypatch.setenv("ROOM_SCRIBE_AGENT", "claude")
+    from agent_lab import session as session_mod
+
+    monkeypatch.setattr(session_mod, "SESSIONS_DIR", tmp_path)
+
+    peer_calls = {"n": 0}
+
+    def _fake_peer_review(folder, *_args, **_kwargs):
+        peer_calls["n"] += 1
+        if peer_calls["n"] == 1:
+            _add_open_plan_challenge(folder)
+        else:
+
+            def _clear(run: dict) -> dict:
+                for obj in run.get("objections") or []:
+                    if obj.get("status") == "open":
+                        obj["status"] = "resolved_wontfix"
+                return run
+
+            patch_run_meta(folder, _clear)
+        return []
+
+    def _fake_synthesize_plan(_topic, _messages, **kwargs):
+        return SAMPLE_PLAN if peer_calls["n"] == 0 else REFINED_PLAN
+
+    monkeypatch.setattr(
+        "agent_lab.plan_workflow.run_plan_peer_review_round",
+        _fake_peer_review,
+    )
+    monkeypatch.setattr("agent_lab.room.synthesize_plan", _fake_synthesize_plan)
+
+    from agent_lab import room
+
+    folder, _messages, plan_md = room.run_room(
+        "Build widget feature with peer review",
+        synthesize=True,
+        sessions_base=tmp_path,
+        parallel_rounds=1,
+    )
+    pw = get_plan_workflow(read_run_meta(folder))
+    assert peer_calls["n"] >= 1
+    assert pw["phase"] == "HUMAN_PENDING"
+    assert plan_md.strip()
+    loop = read_run_meta(folder).get("verified_loop") or {}
+    assert loop.get("status") == "pending_approval"

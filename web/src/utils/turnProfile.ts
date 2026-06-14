@@ -39,13 +39,6 @@ export function turnStrategyOptions(locale: "en" | "ko" = "en") {
       description: "R1 Codex+Claude → R2 Cursor",
     },
     {
-      id: "verified" as const,
-      label: ko ? "검증" : "Verified",
-      description: ko
-        ? "목표 합의 → Human 승인 → Oracle VERIFIED"
-        : "Agree goal → Human approve → Oracle VERIFIED",
-    },
-    {
       id: "free" as const,
       label: "♾️",
       description: ko
@@ -120,12 +113,12 @@ export function normalizeTurnProfile(
 ): ComposerTurnProfile {
   if (profile === "review") return "free";
   if (profile === "discuss") return "analyze";
+  if (profile === "verified") return "analyze";
   if (
     profile === "quick" ||
     profile === "analyze" ||
     profile === "free" ||
-    profile === "specialist" ||
-    profile === "verified"
+    profile === "specialist"
   ) {
     return profile;
   }
@@ -185,6 +178,10 @@ export function getTurnProfile(): ComposerTurnProfile {
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored === "efficient") {
     setEfficiencyMode(true);
+    localStorage.setItem(STORAGE_KEY, "analyze");
+    return "analyze";
+  }
+  if (stored === "verified") {
     localStorage.setItem(STORAGE_KEY, "analyze");
     return "analyze";
   }

@@ -170,6 +170,21 @@ export type GoalLoopRecord = {
   continue_prompt?: string;
 };
 
+export type ResponseContractPreset =
+  | "concise"
+  | "evidence_first"
+  | "plan_ready"
+  | "review_only"
+  | "build_handoff";
+
+export type ResponseContractRecord = {
+  preset?: ResponseContractPreset | string;
+  label?: string;
+  guidance?: string;
+  set_by?: string;
+  updated_at?: string;
+};
+
 export type VerifiedLoopProposal = {
   goal?: string;
   completion_promise?: string;
@@ -276,12 +291,40 @@ export type HealthResponse = {
   sessions_dir?: string;
 };
 
+export type RuntimeFlagRow = {
+  name: string;
+  category: "feature" | "infra" | "test" | "internal" | "undocumented" | string;
+  description?: string | null;
+  default?: string | null;
+  value?: string | null;
+  effective?: string | null;
+  set?: boolean;
+  documented?: boolean;
+};
+
+export type HealthFlagsResponse = {
+  ok: boolean;
+  count: number;
+  registry_count?: number;
+  categories?: string[];
+  category_filter?: string | null;
+  flags: RuntimeFlagRow[];
+  undocumented_count?: number;
+};
+
 export function fetchHealth(probeBridge = false, probePreflight = false) {
   const params = new URLSearchParams();
   if (probeBridge) params.set("probe_bridge", "true");
   if (probePreflight) params.set("probe_preflight", "true");
   const q = params.toString() ? `?${params.toString()}` : "";
   return json<HealthResponse>(`/api/health${q}`);
+}
+
+export function fetchHealthFlags(category?: string) {
+  const params = new URLSearchParams();
+  if (category) params.set("category", category);
+  const q = params.toString() ? `?${params.toString()}` : "";
+  return json<HealthFlagsResponse>(`/api/health/flags${q}`);
 }
 
 export type ReadinessCheck = {
@@ -424,6 +467,7 @@ export type WorkspaceFileEntry = {
   type: "dir" | "file";
   size: number | null;
   mtime: number;
+  git_status?: string;
 };
 
 export type WorkspaceFileContent = {
@@ -490,6 +534,142 @@ export function workspaceFileRawUrl(
     `/api/sessions/${encodeURIComponent(sessionId)}/files/raw?${params.toString()}`,
   );
 }
+
+// ── Background Tasks ─────────────────────────────────────────────────────────
+
+export type BgTaskStatus = "queued" | "running" | "done" | "failed" | "cancelled";
+
+export type BgTask = {
+  task_id: string;
+  session_id: string;
+  label: string;
+  command: string[];
+  cwd: string;
+  status: BgTaskStatus;
+  created_at: string;
+  started_at: string | null;
+  ended_at: string | null;
+  exit_code: number | null;
+};
+
+export type BgLogLine = {
+  text: string;
+  stream?: "out" | "err";
+};
+
+export function submitBgTask(
+  sessionId: string,
+  label: string,
+  command: string[],
+  cwd?: string,
+): Promise<BgTask> {
+  return json<BgTask>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/bg-tasks`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ label, command, cwd: cwd ?? null }),
+    },
+  );
+}
+
+export function listBgTasks(sessionId: string): Promise<{ tasks: BgTask[] }> {
+  return json<{ tasks: BgTask[] }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/bg-tasks`,
+  );
+}
+
+export function getBgTask(sessionId: string, taskId: string): Promise<BgTask> {
+  return json<BgTask>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/bg-tasks/${encodeURIComponent(taskId)}`,
+  );
+}
+
+export function getBgTaskLog(
+  sessionId: string,
+  taskId: string,
+  offset = 0,
+): Promise<{ task_id: string; offset: number; lines: BgLogLine[] }> {
+  return json(
+    `/api/sessions/${encodeURIComponent(sessionId)}/bg-tasks/${encodeURIComponent(taskId)}/log?offset=${offset}`,
+  );
+}
+
+export async function cancelBgTask(
+  sessionId: string,
+  taskId: string,
+): Promise<void> {
+  await fetch(
+    apiUrl(
+      `/api/sessions/${encodeURIComponent(sessionId)}/bg-tasks/${encodeURIComponent(taskId)}`,
+    ),
+    { method: "DELETE" },
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── Dev Preview ──────────────────────────────────────────────────────────────
+
+export type PreviewStatus = {
+  port: number | null;
+  alive: boolean;
+};
+
+export function getPreviewStatus(sessionId: string): Promise<PreviewStatus> {
+  return json<PreviewStatus>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/preview/status`,
+  );
+}
+
+export function setPreviewPort(
+  sessionId: string,
+  port: number,
+): Promise<PreviewStatus> {
+  return json<PreviewStatus>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/preview/port`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ port }),
+    },
+  );
+}
+
+export async function clearPreviewPort(sessionId: string): Promise<void> {
+  await fetch(
+    apiUrl(`/api/sessions/${encodeURIComponent(sessionId)}/preview/port`),
+    { method: "DELETE" },
+  );
+}
+
+export type PreviewProbeResult = PreviewStatus & {
+  probed: number[];
+};
+
+export function probePreviewPort(sessionId: string): Promise<PreviewProbeResult> {
+  return json<PreviewProbeResult>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/preview/probe`,
+    { method: "POST" },
+  );
+}
+
+export type DevServerPreset = {
+  id: string;
+  label: string;
+  command: string[];
+  cwd: string;
+};
+
+export function getPreviewPresets(
+  sessionId: string,
+): Promise<{ presets: DevServerPreset[] }> {
+  return json<{ presets: DevServerPreset[] }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/preview/presets`,
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export type WisdomHit = {
   id?: string;
@@ -595,6 +775,7 @@ export type CodexOAuthResponse = {
   has_fallback: boolean;
   primary_captured_at: string | null;
   fallback_captured_at: string | null;
+  fallback_stale?: boolean;
   live_logged_in: boolean;
   live_detail: string | null;
   profiles?: CodexOAuthProfileProbe[];
@@ -923,6 +1104,16 @@ export type DiagnosticsResponse = {
   boot_log_tail: string[];
   boot_log_path: string;
   api_log_path: string;
+  auth_bootstrap_line?: string | null;
+  bridge_audit?: {
+    record_count?: number;
+    active_count?: number;
+    stale_count?: number;
+    orphan_process_count?: number;
+    stale_records?: { workspace?: string; pid?: number | null; age_hours?: number }[];
+    orphan_processes?: { pid?: number; command?: string }[];
+    error?: string;
+  };
 };
 
 export function fetchDiagnostics() {
@@ -1036,6 +1227,25 @@ export function checkSessionGoal(id: string) {
   });
 }
 
+export function setSessionResponseContract(
+  id: string,
+  preset: ResponseContractPreset,
+) {
+  return json<{
+    ok: boolean;
+    response_contract: ResponseContractRecord;
+    presets: Array<{
+      preset: ResponseContractPreset;
+      label: string;
+      guidance: string;
+    }>;
+  }>(`/api/sessions/${encodeURIComponent(id)}/response-contract`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ preset }),
+  });
+}
+
 export function approveVerifiedLoop(
   id: string,
   body?: {
@@ -1062,6 +1272,57 @@ export function rejectVerifiedLoop(id: string, note = "") {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ note }),
+    },
+  );
+}
+
+export type PlanWorkflowRecord = {
+  enabled?: boolean;
+  phase?: string;
+  clarify_round?: number;
+  peer_review_round?: number;
+  plan_hash_at_approval?: string | null;
+  approved_at?: string | null;
+};
+
+export function fetchPlanWorkflow(id: string) {
+  return json<{
+    ok: boolean;
+    plan_md: string;
+    plan_workflow: PlanWorkflowRecord;
+    plan_workflow_pending_approval?: boolean;
+  }>(`/api/sessions/${encodeURIComponent(id)}/plan/workflow`);
+}
+
+export function approvePlan(
+  id: string,
+  body?: {
+    goal?: string;
+    completion_promise?: string;
+    criteria?: string;
+  },
+) {
+  return json<{
+    ok: boolean;
+    plan_workflow: PlanWorkflowRecord;
+    verified_loop: VerifiedLoopRecord;
+  }>(`/api/sessions/${encodeURIComponent(id)}/plan/approve`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body ?? {}),
+  });
+}
+
+export function rejectPlan(
+  id: string,
+  body?: { note?: string; target_phase?: string },
+) {
+  return json<{ ok: boolean; plan_workflow: PlanWorkflowRecord }>(
+    `/api/sessions/${encodeURIComponent(id)}/plan/reject`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body ?? {}),
     },
   );
 }
@@ -2055,4 +2316,15 @@ export async function resolveInboxItem(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+}
+
+// ── Terminal ──────────────────────────────────────────────────────────────────
+
+/** WebSocket URL for the PTY terminal of a session. */
+export function terminalWsUrl(sessionId: string): string {
+  const base = apiBase();
+  const wsBase = base
+    ? base.replace(/^https?/, (p) => (p === "https" ? "wss" : "ws"))
+    : `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`;
+  return `${wsBase}/api/sessions/${encodeURIComponent(sessionId)}/terminal`;
 }

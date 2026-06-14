@@ -598,6 +598,16 @@ def _check_mission_loop_discuss_recovery(run: dict[str, Any]) -> bool:
     return any(int(v or 0) >= max_r for v in repairs.values())
 
 
+def _check_plan_workflow_approved(run: dict[str, Any]) -> bool:
+    pw = run.get("plan_workflow") or {}
+    if not isinstance(pw, dict) or not pw.get("enabled"):
+        return False
+    if pw.get("phase") != "APPROVED":
+        return False
+    loop = run.get("verified_loop") or {}
+    return isinstance(loop, dict) and loop.get("status") == "running"
+
+
 def _check_goal_loop_achieved(run: dict[str, Any]) -> bool:
     goal = run.get("session_goal") or {}
     loop = run.get("goal_loop") or {}
@@ -860,6 +870,22 @@ SCENARIOS: dict[str, dict[str, Any]] = {
     "goal_loop_achieved": {
         "label": "LC-L5 mock goal Oracle achieved",
         "check": _check_goal_loop_achieved,
+    },
+    "plan_workflow_approved": {
+        "label": "Plan workflow Human approved → verified running",
+        "check": _check_plan_workflow_approved,
+        "required_keys": (
+            "workflow_id",
+            "run_schema_version",
+            "turns",
+            "plan_workflow",
+            "verified_loop",
+            "session_goal",
+            "goal_loop",
+            "actions",
+            "approvals",
+            "executions",
+        ),
     },
     "mission_loop_execute_queue": {
         "label": "mission loop plan gate ok → EXECUTE_QUEUE",

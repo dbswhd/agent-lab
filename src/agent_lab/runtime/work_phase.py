@@ -82,12 +82,20 @@ def resolve_work_phase(
     mission_enabled: bool,
     mission_phase: str | None,
     resume_phase: str | None,
+    plan_workflow_phase: str | None = None,
+    plan_workflow_enabled: bool = False,
     has_plan: bool,
     has_pending_execution: bool,
     has_dry_run_diff: bool,
     pending_agreement: bool,
     latest_execution: dict[str, Any] | None,
 ) -> WorkPhase:
+    if plan_workflow_enabled:
+        from agent_lab.plan_workflow import resolve_work_phase_from_plan_workflow
+
+        from_plan = resolve_work_phase_from_plan_workflow(plan_workflow_phase)
+        if from_plan is not None and from_plan != "execute_pending":
+            return from_plan  # type: ignore[return-value]
     if mission_enabled:
         from_mission = resolve_work_phase_from_mission(
             mission_phase,
@@ -95,6 +103,12 @@ def resolve_work_phase(
         )
         if from_mission is not None:
             return from_mission
+    if plan_workflow_enabled:
+        from agent_lab.plan_workflow import resolve_work_phase_from_plan_workflow
+
+        from_plan = resolve_work_phase_from_plan_workflow(plan_workflow_phase)
+        if from_plan == "execute_pending":
+            return from_plan  # type: ignore[return-value]
     return resolve_work_phase_standalone(
         has_plan=has_plan,
         has_pending_execution=has_pending_execution,

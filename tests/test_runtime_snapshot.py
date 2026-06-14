@@ -128,6 +128,19 @@ def test_snapshot_matches_legacy_work_phase_resolver(session_folder: Path) -> No
     assert snap["work_phase"] == legacy == "review_needed"
 
 
+def test_runtime_snapshot_plan_workflow_human_pending(tmp_path: Path) -> None:
+    folder = tmp_path / "pw-runtime"
+    folder.mkdir()
+    (folder / "topic.txt").write_text("plan\n", encoding="utf-8")
+    (folder / "plan.md").write_text("# Plan\n", encoding="utf-8")
+    (folder / "run.json").write_text(
+        '{"plan_workflow":{"enabled":true,"phase":"HUMAN_PENDING"}}',
+        encoding="utf-8",
+    )
+    snap = build_runtime_snapshot(folder)
+    assert snap["work_phase"] == "review_needed"
+
+
 def test_get_runtime_api(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from app.server.main import app
 

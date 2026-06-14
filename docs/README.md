@@ -15,6 +15,7 @@ Use this page to pick the **one canonical doc** for your question. Older numbere
 | [EXTERNAL-REFS-PLAN.md](./EXTERNAL-REFS-PLAN.md) | **Why** external ideas were adopted (history; queue empty) |
 | [STABILITY.md](./STABILITY.md) | Regression baselines, smoke, CI expectations |
 | [OPS-RUNBOOK.md](./OPS-RUNBOOK.md) | Manual verify tiers, live worktree ops |
+| [EVAL-PROGRAM.md](./EVAL-PROGRAM.md) | Live dogfood test program — topic catalog, weekly matrix, KPI loop |
 | [CLAUDE.md](../CLAUDE.md) | Repo dev quick start (root, not `docs/`) |
 
 **Rule:** If two docs disagree, **TRACEABILITY + code + tests** win.
@@ -43,6 +44,7 @@ Use this page to pick the **one canonical doc** for your question. Older numbere
 
 | Doc | Notes |
 |-----|--------|
+| [CONSOLE-PRODUCTIZATION.md](./CONSOLE-PRODUCTIZATION.md) | Productization SSOT: IA P0, Hooks/Response P1, verification P2, bridge lifecycle P3 |
 | [UI-MIGRATION-GAPS.md](./UI-MIGRATION-GAPS.md) | Prototype vs app gaps (titlebar Inbox, classic mode, CSS bridge, …) |
 | [UI-IA-ROADMAP.md](./UI-IA-ROADMAP.md) | Deprecate list + target IA |
 | [UI-HANDOFF-TEAM-AGENTS.md](./UI-HANDOFF-TEAM-AGENTS.md) | Polish checklist for Room UI |

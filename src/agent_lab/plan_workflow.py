@@ -1,0 +1,669 @@
+"""Plan-First Workflow FSM — Merge Verified (4C-style plan mode)."""
+
+from __future__ import annotations
+
+import hashlib
+import os
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Literal
+
+from agent_lab.plan_actions import parse_plan_actions
+from agent_lab.plan_pending import plan_content_hash
+from agent_lab.run_meta import patch_run_meta, read_run_meta
+from agent_lab.verified_loop import DEFAULT_COMPLETION_PROMISE
+
+PlanWorkflowPhase = Literal[
+    "INTAKE",
+    "CLARIFY",
+    "DRAFT",
+    "PEER_REVIEW",
+    "REFINE",
+    "HUMAN_PENDING",
+    "APPROVED",
+]
+
+DEFAULT_MAX_CLARIFY_ROUNDS = 3
+DEFAULT_MAX_PEER_REVIEW_ROUNDS = 2
+
+_PLAN_DRAFT_PHASES = frozenset({"DRAFT", "REFINE"})
+_PLAN_PRE_APPROVAL = frozenset(
+    {"INTAKE", "CLARIFY", "DRAFT", "PEER_REVIEW", "REFINE", "HUMAN_PENDING"}
+)
+_VERIFIED_PROPOSING = frozenset({"INTAKE", "CLARIFY", "DRAFT", "PEER_REVIEW", "REFINE"})
+_PLAN_CLARIFY_PHASES = frozenset({"INTAKE", "CLARIFY"})
+_PLAN_PEER_PHASES = frozenset({"PEER_REVIEW"})
+
+
+class PlanWorkflowNotApproved(Exception):
+    """Raised when execute/dry-run requires whole-plan Human approval first."""
+
+    def __init__(self, phase: str | None = None):
+        self.phase = phase
+        super().__init__("plan_workflow_approval_required")
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def plan_workflow_env_disabled() -> bool:
+    raw = (os.getenv("AGENT_LAB_PLAN_WORKFLOW") or "").strip().lower()
+    return raw in ("0", "false", "no", "off")
+
+
+def should_enable_plan_workflow(*, synthesize: bool) -> bool:
+    if plan_workflow_env_disabled():
+        return False
+    return bool(synthesize)
+
+
+def apply_legacy_verified_turn_profile(
+    folder: Path | None,
+    run_meta: dict[str, Any],
+    *,
+    synthesize: bool,
+) -> None:
+    """Plan-First: verified turn profile on plan send → analyze + plan workflow."""
+    tp = str(run_meta.get("turn_profile") or "").strip().lower()
+    if tp != "verified":
+        return
+    if should_enable_plan_workflow(synthesize=synthesize):
+        run_meta["turn_profile"] = "analyze"
+        return
+    if folder is not None:
+        from agent_lab.verified_loop import init_verified_loop
+
+        init_verified_loop(folder)
+
+
+def default_plan_workflow() -> dict[str, Any]:
+    return {
+        "enabled": False,
+        "phase": "INTAKE",
+        "clarify_round": 0,
+        "max_clarify_rounds": DEFAULT_MAX_CLARIFY_ROUNDS,
+        "peer_review_round": 0,
+        "max_peer_review_rounds": DEFAULT_MAX_PEER_REVIEW_ROUNDS,
+        "plan_hash_at_approval": None,
+        "approved_at": None,
+        "approved_by": None,
+    }
+
+
+def get_plan_workflow(run: dict[str, Any] | None) -> dict[str, Any]:
+    raw = (run or {}).get("plan_workflow")
+    if not isinstance(raw, dict):
+        return default_plan_workflow()
+    base = default_plan_workflow()
+    base.update(raw)
+    return base
+
+
+def is_plan_workflow_active(run: dict[str, Any] | None) -> bool:
+    pw = get_plan_workflow(run)
+    return bool(pw.get("enabled"))
+
+
+def plan_workflow_phase(run: dict[str, Any] | None) -> str:
+    return str(get_plan_workflow(run).get("phase") or "INTAKE")
+
+
+def plan_workflow_wants_inbox_mcp(run: dict[str, Any] | None) -> bool:
+    if not is_plan_workflow_active(run):
+        return False
+    return plan_workflow_phase(run) in _PLAN_CLARIFY_PHASES
+
+
+def plan_workflow_allows_scribe(
+    run: dict[str, Any] | None,
+    *,
+    synthesize: bool,
+    user_plan_send: bool,
+) -> bool:
+    if not is_plan_workflow_active(run):
+        return synthesize or _auto_plan_scribe_fallback()
+    phase = plan_workflow_phase(run)
+    if phase in _PLAN_DRAFT_PHASES:
+        return True
+    if phase in _PLAN_CLARIFY_PHASES:
+        return False
+    if phase in _PLAN_PEER_PHASES:
+        return False
+    if phase == "HUMAN_PENDING":
+        return False
+    if phase == "APPROVED":
+        return user_plan_send and synthesize
+    return False
+
+
+def plan_workflow_allows_auto_scribe(run: dict[str, Any] | None) -> bool:
+    if is_plan_workflow_active(run):
+        return False
+    return _auto_plan_scribe_fallback()
+
+
+def _auto_plan_scribe_fallback() -> bool:
+    raw = os.getenv("AGENT_LAB_AUTO_PLAN_SCRIBE", "1").strip().lower()
+    return raw not in ("0", "false", "no", "off")
+
+
+def plan_workflow_skips_goal_check(run: dict[str, Any] | None) -> bool:
+    return is_plan_workflow_active(run)
+
+
+def plan_workflow_skips_server_clarifier(run: dict[str, Any] | None) -> bool:
+    return is_plan_workflow_active(run)
+
+
+def init_plan_workflow_on_plan_send(folder: Path) -> dict[str, Any]:
+    def _init(run: dict[str, Any]) -> dict[str, Any]:
+        pw = get_plan_workflow(run)
+        if pw.get("enabled") and pw.get("phase") == "APPROVED":
+            return run
+        pw["enabled"] = True
+        if pw.get("phase") not in _PLAN_PRE_APPROVAL and pw.get("phase") != "APPROVED":
+            pw["phase"] = "CLARIFY"
+        elif pw.get("phase") == "INTAKE":
+            pw["phase"] = "CLARIFY"
+        run["plan_workflow"] = pw
+        _mirror_verified_loop_status(run, pw)
+        return run
+
+    patch_run_meta(folder, _init)
+    return get_plan_workflow(read_run_meta(folder))
+
+
+def _mirror_verified_loop_status(run: dict[str, Any], pw: dict[str, Any]) -> None:
+    loop = dict(run.get("verified_loop") or {})
+    phase = str(pw.get("phase") or "INTAKE")
+    if phase == "APPROVED":
+        if loop.get("status") not in {"done", "failed", "cancelled"}:
+            loop["status"] = "running"
+    elif phase == "HUMAN_PENDING":
+        loop["status"] = "pending_approval"
+    elif phase in _VERIFIED_PROPOSING or phase == "INTAKE":
+        if loop.get("status") not in {"running", "done", "failed", "cancelled"}:
+            loop["status"] = "proposing"
+    run["verified_loop"] = loop
+
+
+def set_plan_workflow_phase(folder: Path, phase: PlanWorkflowPhase) -> dict[str, Any]:
+    def _set(run: dict[str, Any]) -> dict[str, Any]:
+        pw = get_plan_workflow(run)
+        pw["enabled"] = True
+        pw["phase"] = phase
+        run["plan_workflow"] = pw
+        _mirror_verified_loop_status(run, pw)
+        return run
+
+    patch_run_meta(folder, _set)
+    return get_plan_workflow(read_run_meta(folder))
+
+
+def derive_loop_goal_from_plan(plan_md: str) -> dict[str, str]:
+    text = (plan_md or "").strip()
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    title = ""
+    for ln in lines:
+        if ln.startswith("#"):
+            title = ln.lstrip("#").strip()
+            break
+    if not title:
+        title = lines[0][:500] if lines else "Session plan"
+    actions = parse_plan_actions(plan_md or "")
+    verify_bits = [a.verify.strip() for a in actions if a.verify.strip()]
+    criteria = "; ".join(verify_bits[:8]) if verify_bits else title
+    return {
+        "goal": title,
+        "completion_promise": DEFAULT_COMPLETION_PROMISE,
+        "criteria": criteria[:2000],
+    }
+
+
+def build_clarify_context_block(folder: Path) -> str:
+    from agent_lab.human_inbox import inbox_items
+
+    run = read_run_meta(folder)
+    rows: list[str] = []
+    for item in inbox_items(run):
+        if item.get("kind") != "question":
+            continue
+        if item.get("status") not in {"resolved", "deferred"}:
+            continue
+        prompt = str(item.get("prompt") or "").strip()
+        if not prompt:
+            continue
+        choice = item.get("resolved_choice")
+        selected = item.get("resolved_selected")
+        answer = choice if choice is not None else selected
+        if answer is None:
+            answer = item.get("resolved_note") or item.get("resolved_text") or ""
+        rows.append(f"Q: {prompt}\nA: {answer}")
+    if not rows:
+        return ""
+    return "## Clarifier answers (Human Inbox)\n\n" + "\n\n".join(rows)
+
+
+PLAN_CLARIFY_GUIDANCE = (
+    "Plan workflow CLARIFY phase: ask Human clarifying questions via the "
+    "`ask_human` tool only (never ask in prose). Each question needs at least "
+    "two options. Focus on goal, scope, verify criteria, and constraints."
+)
+
+PLAN_PEER_REVIEW_GUIDANCE = (
+    "Plan peer review: read plan.md only. Do not propose code changes. "
+    "Use envelope CHALLENGE or ENDORSE on specific plan actions or sections. "
+    "Reference plan_action:N in refs when applicable."
+)
+
+
+def ensure_plan_workflow_approved(folder: Path) -> None:
+    run = read_run_meta(folder)
+    if not is_plan_workflow_active(run):
+        return
+    phase = plan_workflow_phase(run)
+    if phase != "APPROVED":
+        raise PlanWorkflowNotApproved(phase)
+
+
+def approve_plan(
+    session_folder: Path,
+    *,
+    goal: str | None = None,
+    completion_promise: str | None = None,
+    criteria: str | None = None,
+    plan_md: str | None = None,
+) -> dict[str, Any]:
+    run = read_run_meta(session_folder)
+    pw = get_plan_workflow(run)
+    if not pw.get("enabled"):
+        raise ValueError("plan workflow is not enabled")
+    if str(pw.get("phase") or "") != "HUMAN_PENDING":
+        raise ValueError("plan is not awaiting Human approval")
+
+    path = session_folder / "plan.md"
+    md = plan_md if plan_md is not None else (
+        path.read_text(encoding="utf-8") if path.is_file() else ""
+    )
+    if not (md or "").strip():
+        raise ValueError("plan.md is empty")
+
+    derived = derive_loop_goal_from_plan(md)
+    goal_text = (goal or derived["goal"]).strip()
+    criteria_resolved = (criteria or derived["criteria"]).strip() or goal_text
+    promise = (
+        (completion_promise or derived["completion_promise"]).strip()
+        or DEFAULT_COMPLETION_PROMISE
+    )
+    if not goal_text:
+        raise ValueError("plan goal text is required")
+
+    plan_hash = plan_content_hash(md)
+    now = _now()
+    approved = {
+        "text": goal_text,
+        "completion_promise": promise,
+        "criteria": criteria_resolved,
+        "approved_at": now,
+        "approved_by": "human",
+    }
+    oracle_session_id = f"oracle_{session_folder.name}_{uuid.uuid4().hex[:8]}"
+
+    def _approve(current: dict[str, Any]) -> dict[str, Any]:
+        current_pw = get_plan_workflow(current)
+        current_pw["phase"] = "APPROVED"
+        current_pw["plan_hash_at_approval"] = plan_hash
+        current_pw["approved_at"] = now
+        current_pw["approved_by"] = "human"
+        current["plan_workflow"] = current_pw
+
+        current_loop = dict(current.get("verified_loop") or {})
+        current_loop["loop_goal"] = approved
+        current_loop["status"] = "running"
+        current_loop["iteration"] = 0
+        current_loop["verification_attempts"] = 0
+        current_loop["oracle_session_id"] = oracle_session_id
+        current_loop.pop("circuit_breaker", None)
+        current["verified_loop"] = current_loop
+
+        current["session_goal"] = {
+            "text": goal_text,
+            "set_at": now,
+            "updated_at": now,
+            "set_by": "agents+human",
+        }
+        current["goal_loop"] = {
+            "enabled": True,
+            "status": "open",
+            "max_checks": 5,
+            "checks": [],
+        }
+        return current
+
+    updated = patch_run_meta(session_folder, _approve)
+
+    from agent_lab.mission_loop import after_plan_scribe, enable_mission_loop
+
+    enable_mission_loop(session_folder)
+    after_plan_scribe(session_folder, md)
+
+    from agent_lab.runtime.events import RuntimeEvent
+    from agent_lab.runtime.runtime import dispatch
+
+    dispatch(
+        session_folder,
+        RuntimeEvent.MISSION_ENABLE,
+        {"start_autonomous": True},
+    )
+
+    pw_out = get_plan_workflow(updated)
+    loop_out = dict(updated.get("verified_loop") or {})
+    return {
+        "plan_workflow": pw_out,
+        "verified_loop": loop_out,
+        "session_goal": updated.get("session_goal"),
+        "goal_loop": updated.get("goal_loop"),
+    }
+
+
+def reject_plan(
+    session_folder: Path,
+    *,
+    note: str = "",
+    target_phase: PlanWorkflowPhase = "CLARIFY",
+) -> dict[str, Any]:
+    allowed = {"CLARIFY", "REFINE", "DRAFT"}
+    phase = target_phase if target_phase in allowed else "CLARIFY"
+
+    def _reject(run: dict[str, Any]) -> dict[str, Any]:
+        pw = get_plan_workflow(run)
+        pw["phase"] = phase
+        if note.strip():
+            pw["last_reject_note"] = note.strip()[:500]
+        run["plan_workflow"] = pw
+        loop = dict(run.get("verified_loop") or {})
+        loop["status"] = "proposing"
+        run["verified_loop"] = loop
+        return run
+
+    patch_run_meta(session_folder, _reject)
+    return get_plan_workflow(read_run_meta(session_folder))
+
+
+def plan_workflow_public(run: dict[str, Any] | None) -> dict[str, Any]:
+    pw = get_plan_workflow(run)
+    return {
+        "plan_workflow": pw,
+        "plan_workflow_pending_approval": pw.get("enabled")
+        and pw.get("phase") == "HUMAN_PENDING",
+    }
+
+
+def resolve_work_phase_from_plan_workflow(phase: str | None) -> str | None:
+    if not (phase or "").strip():
+        return None
+    p = phase.strip().upper()
+    if p == "HUMAN_PENDING":
+        return "review_needed"
+    if p == "APPROVED":
+        return "execute_pending"
+    if p in {"INTAKE", "CLARIFY", "DRAFT", "PEER_REVIEW", "REFINE"}:
+        return "plan_draft"
+    return None
+
+
+def _open_plan_objections(run: dict[str, Any]) -> list[dict[str, Any]]:
+    from agent_lab.room_objections import list_objections
+
+    return [
+        o
+        for o in list_objections(run)
+        if o.get("status") == "open" and o.get("act") in {"CHALLENGE", "BLOCK"}
+    ]
+
+
+def tick_plan_workflow_after_turn(
+    folder: Path,
+    *,
+    synthesize: bool,
+    cancelled: bool,
+    plan_md: str,
+    plan_before: str,
+    has_pending_inbox_question: bool,
+) -> dict[str, Any]:
+    """Advance FSM after a room turn; returns hints for follow-up automation."""
+    run = read_run_meta(folder)
+    if not is_plan_workflow_active(run) or cancelled:
+        return {"handled": False}
+
+    pw = get_plan_workflow(run)
+    phase = str(pw.get("phase") or "CLARIFY")
+    out: dict[str, Any] = {"handled": True, "phase": phase}
+
+    if phase in _PLAN_CLARIFY_PHASES:
+        if has_pending_inbox_question:
+            set_plan_workflow_phase(folder, "CLARIFY")
+            out["phase"] = "CLARIFY"
+            out["wait_inbox"] = True
+            return out
+        clarify_round = int(pw.get("clarify_round") or 0) + 1
+        max_clarify = int(pw.get("max_clarify_rounds") or DEFAULT_MAX_CLARIFY_ROUNDS)
+
+        def _clarify_done(run_in: dict[str, Any]) -> dict[str, Any]:
+            cur = get_plan_workflow(run_in)
+            cur["clarify_round"] = clarify_round
+            cur["phase"] = "DRAFT"
+            run_in["plan_workflow"] = cur
+            _mirror_verified_loop_status(run_in, cur)
+            return run_in
+
+        patch_run_meta(folder, _clarify_done)
+        if clarify_round > max_clarify:
+            set_plan_workflow_phase(folder, "DRAFT")
+        out["advance"] = "DRAFT"
+        out["phase"] = "DRAFT"
+        return out
+
+    if phase == "DRAFT":
+        if plan_md and plan_md != plan_before:
+            set_plan_workflow_phase(folder, "PEER_REVIEW")
+            out["phase"] = "PEER_REVIEW"
+            out["advance"] = "PEER_REVIEW"
+        return out
+
+    if phase == "PEER_REVIEW":
+        objections = _open_plan_objections(read_run_meta(folder))
+        peer_round = int(pw.get("peer_review_round") or 0)
+        max_peer = int(pw.get("max_peer_review_rounds") or DEFAULT_MAX_PEER_REVIEW_ROUNDS)
+        if objections and peer_round < max_peer:
+            set_plan_workflow_phase(folder, "REFINE")
+            out["phase"] = "REFINE"
+            out["advance"] = "REFINE"
+            return out
+        evaluation = _evaluate_plan_for_human_pending(folder, plan_md)
+        if evaluation.get("status") == "reject" and peer_round < max_peer:
+            set_plan_workflow_phase(folder, "REFINE")
+            out["plan_gate"] = evaluation
+            out["phase"] = "REFINE"
+            return out
+
+        def _human_pending(run_in: dict[str, Any]) -> dict[str, Any]:
+            cur = get_plan_workflow(run_in)
+            cur["phase"] = "HUMAN_PENDING"
+            run_in["plan_workflow"] = cur
+            proposed = derive_loop_goal_from_plan(plan_md)
+            loop = dict(run_in.get("verified_loop") or {})
+            loop["proposed"] = {
+                **proposed,
+                "proposed_at": _now(),
+                "source": "plan_workflow",
+            }
+            loop["status"] = "pending_approval"
+            run_in["verified_loop"] = loop
+            return run_in
+
+        patch_run_meta(folder, _human_pending)
+        out["phase"] = "HUMAN_PENDING"
+        out["pending_approval"] = True
+        return out
+
+    if phase == "REFINE":
+        if plan_md and plan_md != plan_before:
+            def _inc_peer(run_in: dict[str, Any]) -> dict[str, Any]:
+                cur = get_plan_workflow(run_in)
+                cur["peer_review_round"] = int(cur.get("peer_review_round") or 0) + 1
+                cur["phase"] = "PEER_REVIEW"
+                run_in["plan_workflow"] = cur
+                _mirror_verified_loop_status(run_in, cur)
+                return run_in
+
+            patch_run_meta(folder, _inc_peer)
+            out["phase"] = "PEER_REVIEW"
+        return out
+
+    return out
+
+
+def tick_plan_workflow_after_inbox_resolve(folder: Path) -> dict[str, Any]:
+    """Advance CLARIFY→DRAFT when Human resolves inbox without a new chat turn."""
+    run = read_run_meta(folder)
+    if not is_plan_workflow_active(run):
+        return {"handled": False}
+    phase = plan_workflow_phase(run).upper()
+    if phase not in _PLAN_CLARIFY_PHASES:
+        return {"handled": False, "phase": phase}
+    from agent_lab.human_inbox import has_pending_question
+
+    run = read_run_meta(folder)
+    plan_path = folder / "plan.md"
+    plan_md = plan_path.read_text(encoding="utf-8") if plan_path.is_file() else ""
+    return tick_plan_workflow_after_turn(
+        folder,
+        synthesize=True,
+        cancelled=False,
+        plan_md=plan_md,
+        plan_before=plan_md,
+        has_pending_inbox_question=has_pending_question(run),
+    )
+
+
+def _evaluate_plan_for_human_pending(folder: Path, plan_md: str) -> dict[str, Any]:
+    from agent_lab.mission_loop import evaluate_plan_gate
+
+    run = read_run_meta(folder)
+    return evaluate_plan_gate(plan_md, run=run, session_folder=folder)
+
+
+def orchestrate_plan_workflow_pipeline(
+    folder: Path,
+    *,
+    topic: str,
+    messages: list[Any],
+    plan_md: str,
+    plan_before: str,
+    synthesize: bool,
+    cancelled: bool,
+    agents: list[str] | None,
+    permissions: dict[str, Any] | None,
+    run_meta: dict[str, Any] | None,
+    on_event: Any | None = None,
+) -> tuple[str, list[Any], dict[str, Any]]:
+    """Run post-scribe plan pipeline: peer review, refine scribe, human pending."""
+    from agent_lab.human_inbox import has_pending_question
+
+    if cancelled or not is_plan_workflow_active(run_meta):
+        return plan_md, [], {"handled": False}
+
+    extra_messages: list[Any] = []
+    tick = tick_plan_workflow_after_turn(
+        folder,
+        synthesize=synthesize,
+        cancelled=cancelled,
+        plan_md=plan_md,
+        plan_before=plan_before,
+        has_pending_inbox_question=has_pending_question(read_run_meta(folder)),
+    )
+    plan_md_current = plan_md
+    run = read_run_meta(folder)
+    phase = plan_workflow_phase(run)
+
+    if phase == "PEER_REVIEW" and tick.get("advance") == "PEER_REVIEW":
+        peer_replies = run_plan_peer_review_round(
+            folder,
+            topic=topic,
+            messages=messages + extra_messages,
+            agents=agents,
+            permissions=permissions,
+            run_meta=run_meta,
+            plan_md=plan_md_current,
+            on_event=on_event,
+        )
+        extra_messages.extend(peer_replies)
+        tick = tick_plan_workflow_after_turn(
+            folder,
+            synthesize=synthesize,
+            cancelled=False,
+            plan_md=plan_md_current,
+            plan_before=plan_before,
+            has_pending_inbox_question=False,
+        )
+        phase = plan_workflow_phase(read_run_meta(folder))
+
+    if phase == "REFINE":
+        from agent_lab.room import synthesize_plan
+
+        refined = synthesize_plan(topic, messages + extra_messages, run_meta=run_meta)
+        if refined.strip():
+            plan_md_current = refined
+            (folder / "plan.md").write_text(refined, encoding="utf-8")
+        tick = tick_plan_workflow_after_turn(
+            folder,
+            synthesize=synthesize,
+            cancelled=False,
+            plan_md=plan_md_current,
+            plan_before=plan_md,
+            has_pending_inbox_question=False,
+        )
+
+    return plan_md_current, extra_messages, tick
+
+
+def run_plan_peer_review_round(
+    folder: Path,
+    *,
+    topic: str,
+    messages: list[Any],
+    agents: list[str] | None,
+    permissions: dict[str, Any] | None,
+    run_meta: dict[str, Any] | None,
+    plan_md: str,
+    on_event: Any | None = None,
+) -> list[Any]:
+    """Read-only peer review of plan.md by non-scribe agents."""
+    from agent_lab.agents.registry import AGENT_IDS, available_agents
+    from agent_lab.room import run_parallel_round
+
+    scribe_raw = (os.getenv("ROOM_SCRIBE_AGENT") or "claude").strip().lower()
+    active = [a for a in (agents or available_agents()) if a in AGENT_IDS]
+    reviewers = [a for a in active if str(a) != scribe_raw][:2]
+    if not reviewers:
+        reviewers = [a for a in active if a in AGENT_IDS][:2]
+    if not reviewers:
+        return []
+
+    if run_meta is not None:
+        run_meta["_plan_peer_review"] = True
+
+    return run_parallel_round(
+        topic,
+        messages,
+        agents=reviewers,  # type: ignore[arg-type]
+        parallel_round=1,
+        on_event=on_event,
+        permissions=permissions,
+        plan_md=plan_md,
+        run_meta=run_meta,
+        extra_follow_up=PLAN_PEER_REVIEW_GUIDANCE,
+    )

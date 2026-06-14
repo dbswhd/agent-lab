@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import shutil
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
+from pydantic import BaseModel
 
 from agent_lab.attachments import list_attachment_names
 from agent_lab.goal_loop import check_session_goal, goal_loop_enabled, set_session_goal
+from agent_lab.response_contracts import (
+    response_contract_presets,
+    set_response_contract,
+)
 
 from app.server.deps import (
     RenameSessionRequest,
@@ -21,6 +26,16 @@ from app.server.deps import (
 )
 
 router = APIRouter(prefix="/api")
+
+
+class ResponseContractPatchRequest(BaseModel):
+    preset: Literal[
+        "concise",
+        "evidence_first",
+        "plan_ready",
+        "review_only",
+        "build_handoff",
+    ]
 
 
 @router.get("/sessions")
@@ -75,12 +90,34 @@ def rename_session(session_id: str, body: RenameSessionRequest) -> dict[str, Any
     return {"ok": True, "id": session_id, "topic": topic}
 
 
+@router.patch("/sessions/{session_id}/response-contract")
+def patch_session_response_contract(
+    session_id: str,
+    body: ResponseContractPatchRequest,
+) -> dict[str, Any]:
+    folder = session_folder_or_404(session_id)
+    contract = set_response_contract(folder, body.preset)
+    return {
+        "ok": True,
+        "response_contract": contract,
+        "presets": response_contract_presets(),
+    }
+
+
 @router.patch("/sessions/{session_id}/goal")
 def patch_session_goal(
     session_id: str,
     body: SessionGoalPatchRequest,
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
+    from agent_lab.plan_workflow import is_plan_workflow_active
+    from agent_lab.run_meta import read_run_meta
+
+    if is_plan_workflow_active(read_run_meta(folder)):
+        raise HTTPException(
+            status_code=409,
+            detail="manual goal patch disabled during plan workflow; approve plan.md instead",
+        )
     try:
         result = set_session_goal(folder, body.text, max_checks=body.max_checks)
     except ValueError as exc:

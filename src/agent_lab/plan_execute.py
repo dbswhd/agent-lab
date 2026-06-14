@@ -931,6 +931,14 @@ def run_dry_run(
         raise FileNotFoundError("plan.md not found")
 
     plan_md = plan_path.read_text(encoding="utf-8")
+    from agent_lab.plan_workflow import PlanWorkflowNotApproved, ensure_plan_workflow_approved
+
+    try:
+        ensure_plan_workflow_approved(folder)
+    except PlanWorkflowNotApproved as exc:
+        raise RuntimeError(
+            f"plan workflow approval required (phase={exc.phase})"
+        ) from exc
     from agent_lab.plan_pending import ensure_plan_snapshot_approved
 
     sections = parse_plan_action_sections(plan_md)

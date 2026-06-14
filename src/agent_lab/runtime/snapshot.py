@@ -123,10 +123,18 @@ def build_runtime_snapshot(
     inbox = public_inbox_payload(run)
     block_reason = PolicyEngine.execute_block_reason(run)
 
+    from agent_lab.plan_workflow import get_plan_workflow, is_plan_workflow_active
+
+    pw = get_plan_workflow(run)
+    plan_workflow_enabled = is_plan_workflow_active(run)
+    plan_workflow_phase = str(pw.get("phase") or "") if plan_workflow_enabled else None
+
     work_phase = resolve_work_phase(
         mission_enabled=mission_enabled,
         mission_phase=mission_phase,
         resume_phase=str(resume_phase) if resume_phase else None,
+        plan_workflow_phase=plan_workflow_phase,
+        plan_workflow_enabled=plan_workflow_enabled,
         has_plan=has_plan,
         has_pending_execution=pending_exec is not None,
         has_dry_run_diff=has_dry_run_diff(run),

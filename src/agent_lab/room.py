@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
-from agent_lab.agents.prompts import ROOM_SCRIBE
+from agent_lab.agents.prompts import room_scribe_prompt
 from agent_lab.agents.registry import AGENT_IDS, AgentId, available_agents, call_agent, label, model_label
 from agent_lab.attachments import describe_attachments
 from agent_lab.context_bundle import build_context_bundle
@@ -396,9 +396,17 @@ def _try_replay_completed_agent(
     content = str(step.get("content") or "")
     envelope = step.get("envelope")
     if on_event:
+        from agent_lab.room_sse_stream import emit_agent_tokens
+
         on_event(
             "agent_start",
             {"agent": aid, "round": parallel_round, "resumed": True},
+        )
+        emit_agent_tokens(
+            on_event,
+            agent=str(aid),
+            round=parallel_round,
+            text=content,
         )
         on_event(
             "agent_done",
@@ -575,10 +583,72 @@ def _call_one_agent(
     _emit("agent_start", {"agent": aid, "round": parallel_round})
 
     def _activity(line: str) -> None:
+        from agent_lab.room_sse_stream import maybe_emit_tool_events
+
         _emit(
             "agent_activity",
             {"agent": aid, "round": parallel_round, "text": line},
         )
+        maybe_emit_tool_events(
+            _emit,
+            agent=str(aid),
+            round=parallel_round,
+            line=line,
+        )
+
+    streamed_live = False
+
+    def _bridge_event(kind: str, data: dict[str, Any]) -> None:
+        nonlocal streamed_live
+        if kind == "text":
+            chunk = str(data.get("text") or "")
+            if not chunk:
+                return
+            streamed_live = True
+            _emit(
+                "agent_token",
+                {"agent": aid, "round": parallel_round, "text": chunk},
+            )
+            return
+        if kind == "tool_start":
+            _emit(
+                "tool_start",
+                {
+                    "agent": aid,
+                    "round": parallel_round,
+                    "tool": data.get("tool", "tool"),
+                    "args": data.get("args") or {},
+                },
+            )
+            return
+        if kind == "tool_output":
+            _emit(
+                "tool_output",
+                {
+                    "agent": aid,
+                    "round": parallel_round,
+                    "tool": data.get("tool", "tool"),
+                    "chunk": data.get("chunk", ""),
+                },
+            )
+            return
+        if kind == "tool_done":
+            _emit(
+                "tool_done",
+                {
+                    "agent": aid,
+                    "round": parallel_round,
+                    "tool": data.get("tool", "tool"),
+                },
+            )
+            return
+        if kind == "activity":
+            line = str(data.get("text") or "")
+            if line:
+                _activity(line)
+
+    if aid == "cursor":
+        _activity("Cursor bridge 연결 중…")
 
     effective_permissions = _effective_discuss_permissions(
         permissions,
@@ -670,21 +740,30 @@ def _call_one_agent(
     ):
         lead_block = lead_discuss_role_block(aid, run_meta)
     hook_prepend = pre_hook.feedback.strip()
+    from agent_lab.plan_workflow import PLAN_CLARIFY_GUIDANCE, plan_workflow_wants_inbox_mcp
+
+    plan_clarify = ""
+    if run_meta and plan_workflow_wants_inbox_mcp(run_meta):
+        plan_clarify = PLAN_CLARIFY_GUIDANCE
     combined_follow = "\n\n".join(
-        x for x in (lead_block, hook_prepend, extra_follow_up) if x and x.strip()
+        x for x in (lead_block, hook_prepend, plan_clarify, extra_follow_up) if x and x.strip()
     )
 
     def _invoke_agent(payload: str):
         from agent_lab.agents.registry import call_agent_reply
+        from agent_lab.cursor_inbox_mcp import discuss_inbox_mcp_enabled
 
+        use_inbox_mcp = discuss_inbox_mcp_enabled(run_meta)
         agent_reply = call_agent_reply(
             aid,
             "",
             payload,
             permissions=effective_permissions,
             on_activity=_activity if aid in ("cursor", "codex", "claude") else None,
+            on_bridge_event=_bridge_event if aid in ("cursor", "codex", "claude") else None,
             session_folder=folder,
             request_structured_envelope=request_structured,
+            inbox_mcp=use_inbox_mcp,
         )
         text = agent_reply.text
         parsed = parse_agent_response_v2(
@@ -781,6 +860,15 @@ def _call_one_agent(
                 _activity("[envelope · parse_error] R2+ fence/JSON invalid")
             elif not (envelope_dict or {}).get("act"):
                 _activity("[envelope · missing] R2+ act required")
+        from agent_lab.room_sse_stream import emit_agent_tokens
+
+        if not streamed_live:
+            emit_agent_tokens(
+                _emit,
+                agent=str(aid),
+                round=parallel_round,
+                text=body,
+            )
         _emit(
             "agent_done",
             {
@@ -870,6 +958,7 @@ def run_consensus_agent_rounds(
     route = resolve_topic_route(
         topic,
         turn_profile=str((run_meta or {}).get("turn_profile") or ""),
+        session_template=str((run_meta or {}).get("session_template") or ""),
         efficiency_mode=efficiency_mode,
     )
     cap_rounds, cap_calls = route.max_rounds, route.max_calls
@@ -1912,7 +2001,14 @@ def synthesize_plan(
     enrichment = build_scribe_enrichment(run_meta, messages)
     if enrichment.strip():
         user = f"{user}\n\n---\n\n{enrichment.strip()}"
-    return call_agent(agent, ROOM_SCRIBE, user, scribe=True)
+    folder_raw = (run_meta or {}).get("_session_folder")
+    if folder_raw:
+        from agent_lab.plan_workflow import build_clarify_context_block
+
+        clarify_block = build_clarify_context_block(Path(str(folder_raw)))
+        if clarify_block.strip():
+            user = f"{user}\n\n---\n\n{clarify_block.strip()}"
+    return call_agent(agent, room_scribe_prompt(run_meta), user, scribe=True)
 
 
 def auto_plan_scribe_enabled() -> bool:
@@ -1921,16 +2017,151 @@ def auto_plan_scribe_enabled() -> bool:
     return raw not in ("0", "false", "no", "off")
 
 
-def _should_scribe_plan_after_turn(*, synthesize: bool, cancelled: bool) -> bool:
+def _should_scribe_plan_after_turn(
+    *,
+    synthesize: bool,
+    cancelled: bool,
+    run_meta: dict[str, Any] | None = None,
+    user_plan_send: bool = False,
+) -> bool:
     if cancelled:
         return False
-    return synthesize or auto_plan_scribe_enabled()
+    from agent_lab.plan_workflow import (
+        is_plan_workflow_active,
+        plan_workflow_allows_auto_scribe,
+        plan_workflow_allows_scribe,
+    )
+
+    if is_plan_workflow_active(run_meta):
+        return plan_workflow_allows_scribe(
+            run_meta,
+            synthesize=synthesize,
+            user_plan_send=user_plan_send,
+        )
+    return synthesize or plan_workflow_allows_auto_scribe(run_meta)
 
 
 def _plan_trigger_for_turn(*, synthesize: bool, scribe_applied: bool) -> str | None:
     if not scribe_applied:
         return None
     return "plan_turn" if synthesize else "auto_turn"
+
+
+def _read_plan_before(folder: Path | None) -> str:
+    if folder is None:
+        return ""
+    plan_path = folder / "plan.md"
+    if not plan_path.is_file():
+        return ""
+    return plan_path.read_text(encoding="utf-8")
+
+
+def _bootstrap_session_folder_for_plan_workflow(
+    topic: str,
+    *,
+    base: Path | None,
+    synthesize: bool,
+) -> Path | None:
+    """Create on-disk session folder before first agent round (plan workflow needs run.json)."""
+    from agent_lab.plan_workflow import (
+        init_plan_workflow_on_plan_send,
+        should_enable_plan_workflow,
+    )
+    from agent_lab.session import session_dir
+
+    if not should_enable_plan_workflow(synthesize=synthesize):
+        return None
+    folder = session_dir(topic, base=base or SESSIONS_DIR)
+    (folder / "topic.txt").write_text(topic.strip() + "\n", encoding="utf-8")
+    (folder / "run.json").write_text("{}", encoding="utf-8")
+    init_plan_workflow_on_plan_send(folder)
+    return folder
+
+
+def _plan_workflow_post_agent_turn(
+    folder: Path,
+    *,
+    topic: str,
+    messages: list[ChatMessage],
+    run_meta: dict[str, Any],
+    plan_before: str,
+    mode: str,
+    synthesize: bool,
+    cancelled: bool,
+    active_agents: list[Any],
+    permissions: dict | None,
+    on_event: OnAgentEvent | None,
+) -> tuple[str, bool, dict[str, Any]]:
+    """Tick plan FSM, optional scribe, peer-review pipeline after agent replies."""
+    from agent_lab.human_inbox import has_pending_question
+    from agent_lab.plan_workflow import (
+        is_plan_workflow_active,
+        orchestrate_plan_workflow_pipeline,
+        plan_workflow_phase,
+        tick_plan_workflow_after_turn,
+    )
+    from agent_lab.run_meta import read_run_meta
+
+    plan_md = plan_before
+    pw_force_scribe = False
+    if is_plan_workflow_active(run_meta) and not cancelled:
+        pw_tick = tick_plan_workflow_after_turn(
+            folder,
+            synthesize=synthesize,
+            cancelled=cancelled,
+            plan_md=plan_md,
+            plan_before=plan_before,
+            has_pending_inbox_question=has_pending_question(run_meta),
+        )
+        if pw_tick.get("wait_inbox") and on_event:
+            on_event("inbox_pending", {"phase": "CLARIFY"})
+        if pw_tick.get("advance") == "DRAFT":
+            pw_force_scribe = True
+        plan_md, run_meta = _session_context(folder)
+        _bind_session_to_run_meta(run_meta, folder)
+
+    scribe_applied = _should_scribe_plan_after_turn(
+        synthesize=synthesize,
+        cancelled=cancelled,
+        run_meta=run_meta,
+        user_plan_send=synthesize,
+    ) or pw_force_scribe
+    if scribe_applied:
+        plan_md = _apply_scribe_after_turn(
+            topic=topic,
+            messages=messages,
+            run_meta=run_meta,
+            plan_before=plan_before,
+            mode=mode,
+            scribe=True,
+            user_plan_send=synthesize,
+            cancelled=cancelled,
+            on_event=on_event,
+            session_folder=folder,
+            plan_trigger="plan_turn" if synthesize else "auto_turn",
+        )
+    if is_plan_workflow_active(run_meta) and not cancelled and scribe_applied:
+        plan_md, pw_replies, pw_meta = orchestrate_plan_workflow_pipeline(
+            folder,
+            topic=topic,
+            messages=messages,
+            plan_md=plan_md,
+            plan_before=plan_before,
+            synthesize=synthesize,
+            cancelled=cancelled,
+            agents=[str(a) for a in active_agents],
+            permissions=permissions,
+            run_meta=run_meta,
+            on_event=on_event,
+        )
+        if pw_replies:
+            messages.extend(pw_replies)
+        if pw_meta.get("pending_approval") and on_event:
+            on_event(
+                "plan_workflow_pending",
+                {"phase": plan_workflow_phase(read_run_meta(folder))},
+            )
+    return plan_md, scribe_applied, run_meta
 
 
 def _apply_scribe_after_turn(
@@ -3415,6 +3646,16 @@ def continue_room_round(
         synthesize=synthesize,
         consensus_mode=consensus_mode,
     )
+    from agent_lab.plan_workflow import (
+        init_plan_workflow_on_plan_send,
+        plan_workflow_skips_server_clarifier,
+        should_enable_plan_workflow,
+    )
+
+    if should_enable_plan_workflow(synthesize=synthesize):
+        init_plan_workflow_on_plan_send(folder)
+        plan_md, run_meta = _session_context(folder)
+        _bind_session_to_run_meta(run_meta, folder)
     if turn_profile:
         tp = (turn_profile or "analyze").strip().lower()
         run_meta["turn_profile"] = "analyze" if tp == "discuss" else tp
@@ -3424,10 +3665,9 @@ def continue_room_round(
             if not run_meta.get("agent_capabilities_custom"):
                 ensure_specialist_capabilities(run_meta)
             parallel_rounds = max(parallel_rounds, 2)
-        if run_meta["turn_profile"] == "verified":
-            from agent_lab.verified_loop import init_verified_loop
+        from agent_lab.plan_workflow import apply_legacy_verified_turn_profile
 
-            init_verified_loop(folder)
+        apply_legacy_verified_turn_profile(folder, run_meta, synthesize=synthesize)
     if research_mode or run_meta.get("turn_profile") == "specialist":
         run_meta["research_mode"] = True
     from agent_lab.session_clarifier import (
@@ -3438,20 +3678,24 @@ def continue_room_round(
     )
 
     sync_clarifier_answers_from_inbox(folder)
-    clarifier_interview = build_clarifier_interview(
-        body,
-        is_new_session=False,
-        human_message_count=human_turn_num,
-        plan_mode=synthesize,
-    )
-    clarifier_questions = interview_prompts(clarifier_interview)
-    if clarifier_interview:
-        persist_clarifier_interview(folder, clarifier_interview)
-    if clarifier_questions and on_event:
-        on_event(
-            "clarifier_prompt",
-            {"questions": clarifier_questions, "interview": clarifier_interview},
+    skip_server_clarifier = plan_workflow_skips_server_clarifier(run_meta)
+    clarifier_interview = None
+    clarifier_questions: list[str] | None = None
+    if not skip_server_clarifier:
+        clarifier_interview = build_clarifier_interview(
+            body,
+            is_new_session=False,
+            human_message_count=human_turn_num,
+            plan_mode=synthesize,
         )
+        clarifier_questions = interview_prompts(clarifier_interview)
+        if clarifier_interview:
+            persist_clarifier_interview(folder, clarifier_interview)
+        if clarifier_questions and on_event:
+            on_event(
+                "clarifier_prompt",
+                {"questions": clarifier_questions, "interview": clarifier_interview},
+            )
     t0 = time.perf_counter()
     context_log: list[dict[str, Any]] = []
     _prepare_team_coordination_before_round(
@@ -3525,24 +3769,19 @@ def continue_room_round(
         if on_event:
             on_event("run_cancelled", {"message": "답변 중지됨"})
     messages.extend(replies)
-    plan_md = plan_before
-    scribe_applied = _should_scribe_plan_after_turn(
-        synthesize=synthesize, cancelled=cancelled
+    plan_md, scribe_applied, run_meta = _plan_workflow_post_agent_turn(
+        folder,
+        topic=topic,
+        messages=messages,
+        run_meta=run_meta,
+        plan_before=plan_before,
+        mode=mode,
+        synthesize=synthesize,
+        cancelled=cancelled,
+        active_agents=active_agents,
+        permissions=permissions,
+        on_event=on_event,
     )
-    if scribe_applied:
-        plan_md = _apply_scribe_after_turn(
-            topic=topic,
-            messages=messages,
-            run_meta=run_meta,
-            plan_before=plan_before,
-            mode=mode,
-            scribe=True,
-            user_plan_send=synthesize,
-            cancelled=cancelled,
-            on_event=on_event,
-            session_folder=folder,
-            plan_trigger="plan_turn" if synthesize else "auto_turn",
-        )
     plan_trigger = _plan_trigger_for_turn(
         synthesize=synthesize, scribe_applied=scribe_applied
     )
@@ -3596,6 +3835,7 @@ def continue_room_round(
         goal_auto_continue_enabled,
         maybe_check_session_goal_after_turn,
     )
+    from agent_lab.plan_workflow import plan_workflow_skips_goal_check
     from agent_lab.verified_loop import normalize_verified_profile
 
     active_profile = turn_profile or run_meta.get("turn_profile")
@@ -3671,7 +3911,9 @@ def continue_room_round(
         )
 
     goal_result = None
-    if not normalize_verified_profile(active_profile):
+    if not normalize_verified_profile(active_profile) and not plan_workflow_skips_goal_check(
+        run_meta
+    ):
         goal_result = maybe_check_session_goal_after_turn(folder, messages)
     goal_continue = _goal_auto_continue_message(goal_result)
     if goal_auto_continue_enabled() and goal_continue and _goal_auto_continue_depth < 1:
@@ -3779,6 +4021,16 @@ def run_room(
     plan_md, run_meta = _session_context(folder)
     _bind_session_to_run_meta(run_meta, folder)
     human_turn_num = max(1, _human_turn_count(messages))
+    if folder is None and synthesize:
+        boot = _bootstrap_session_folder_for_plan_workflow(
+            topic,
+            base=sessions_base,
+            synthesize=synthesize,
+        )
+        if boot is not None:
+            folder = boot
+            plan_md, run_meta = _session_context(folder)
+            _bind_session_to_run_meta(run_meta, folder)
     from agent_lab.room_team_orchestration import resolve_turn_lead
 
     resolve_turn_lead(
@@ -3793,6 +4045,16 @@ def run_room(
         synthesize=synthesize,
         consensus_mode=consensus_mode,
     )
+    from agent_lab.plan_workflow import (
+        init_plan_workflow_on_plan_send,
+        plan_workflow_skips_server_clarifier,
+        should_enable_plan_workflow,
+    )
+
+    if folder is not None and should_enable_plan_workflow(synthesize=synthesize):
+        init_plan_workflow_on_plan_send(folder)
+        plan_md, run_meta = _session_context(folder)
+        _bind_session_to_run_meta(run_meta, folder)
     if turn_profile:
         tp = (turn_profile or "analyze").strip().lower()
         run_meta["turn_profile"] = "analyze" if tp == "discuss" else tp
@@ -3802,10 +4064,9 @@ def run_room(
             if not run_meta.get("agent_capabilities_custom"):
                 ensure_specialist_capabilities(run_meta)
             parallel_rounds = max(parallel_rounds, 2)
-        if run_meta["turn_profile"] == "verified":
-            from agent_lab.verified_loop import init_verified_loop
+        from agent_lab.plan_workflow import apply_legacy_verified_turn_profile
 
-            init_verified_loop(folder)
+        apply_legacy_verified_turn_profile(folder, run_meta, synthesize=synthesize)
     if research_mode or run_meta.get("turn_profile") == "specialist":
         run_meta["research_mode"] = True
     from agent_lab.session_clarifier import (
@@ -3818,20 +4079,24 @@ def run_room(
     is_new = folder is None or not (folder / "chat.jsonl").is_file()
     if folder is not None:
         sync_clarifier_answers_from_inbox(folder)
-    clarifier_interview = build_clarifier_interview(
-        body,
-        is_new_session=is_new,
-        human_message_count=human_turn_num,
-        plan_mode=synthesize,
-    )
-    clarifier_questions = interview_prompts(clarifier_interview)
-    if clarifier_interview and folder is not None:
-        persist_clarifier_interview(folder, clarifier_interview)
-    if clarifier_questions and on_event:
-        on_event(
-            "clarifier_prompt",
-            {"questions": clarifier_questions, "interview": clarifier_interview},
+    skip_server_clarifier = plan_workflow_skips_server_clarifier(run_meta)
+    clarifier_interview = None
+    clarifier_questions: list[str] | None = None
+    if not skip_server_clarifier:
+        clarifier_interview = build_clarifier_interview(
+            body,
+            is_new_session=is_new,
+            human_message_count=human_turn_num,
+            plan_mode=synthesize,
         )
+        clarifier_questions = interview_prompts(clarifier_interview)
+        if clarifier_interview and folder is not None:
+            persist_clarifier_interview(folder, clarifier_interview)
+        if clarifier_questions and on_event:
+            on_event(
+                "clarifier_prompt",
+                {"questions": clarifier_questions, "interview": clarifier_interview},
+            )
     t0 = time.perf_counter()
     context_log: list[dict[str, Any]] = []
     _prepare_team_coordination_before_round(
@@ -3903,27 +4168,44 @@ def run_room(
             on_event("run_cancelled", {"message": "답변 중지됨"})
     messages.extend(replies)
 
-    plan_before = ""
+    plan_before = _read_plan_before(folder)
     plan_md = plan_before
-    scribe_applied = _should_scribe_plan_after_turn(
-        synthesize=synthesize, cancelled=cancelled
-    )
-    if scribe_applied:
-        plan_md = _apply_scribe_after_turn(
+    if folder is not None:
+        plan_md, scribe_applied, run_meta = _plan_workflow_post_agent_turn(
+            folder,
             topic=topic,
             messages=messages,
             run_meta=run_meta,
             plan_before=plan_before,
             mode=mode,
-            scribe=True,
-            user_plan_send=synthesize,
+            synthesize=synthesize,
             cancelled=cancelled,
+            active_agents=active_agents,
+            permissions=permissions,
             on_event=on_event,
-            session_folder=folder,
-            plan_trigger="plan_turn" if synthesize else "auto_turn",
         )
-        if synthesize and not plan_md:
+        if synthesize and scribe_applied and not plan_md:
             plan_md = "## Plan synthesis failed\n\nunknown error"
+    else:
+        scribe_applied = _should_scribe_plan_after_turn(
+            synthesize=synthesize, cancelled=cancelled
+        )
+        if scribe_applied:
+            plan_md = _apply_scribe_after_turn(
+                topic=topic,
+                messages=messages,
+                run_meta=run_meta,
+                plan_before=plan_before,
+                mode=mode,
+                scribe=True,
+                user_plan_send=synthesize,
+                cancelled=cancelled,
+                on_event=on_event,
+                session_folder=folder,
+                plan_trigger="plan_turn" if synthesize else "auto_turn",
+            )
+            if synthesize and not plan_md:
+                plan_md = "## Plan synthesis failed\n\nunknown error"
     plan_trigger = _plan_trigger_for_turn(
         synthesize=synthesize, scribe_applied=scribe_applied
     )
@@ -4004,6 +4286,7 @@ def run_room(
         goal_auto_continue_enabled,
         maybe_check_session_goal_after_turn,
     )
+    from agent_lab.plan_workflow import plan_workflow_skips_goal_check
     from agent_lab.verified_loop import normalize_verified_profile
 
     active_profile = turn_profile or run_meta.get("turn_profile")
@@ -4027,6 +4310,8 @@ def run_room(
             turn_meta=turn_meta,
             clarifier_questions=clarifier_questions,
         )
+        if should_enable_plan_workflow(synthesize=synthesize):
+            init_plan_workflow_on_plan_send(folder)
     else:
         existing_meta: dict[str, Any] = {}
         if (folder / "meta.json").is_file():
@@ -4067,7 +4352,9 @@ def run_room(
         return folder, auto_messages, auto_plan_md
 
     goal_result = None
-    if not normalize_verified_profile(active_profile):
+    if not normalize_verified_profile(active_profile) and not plan_workflow_skips_goal_check(
+        run_meta
+    ):
         goal_result = maybe_check_session_goal_after_turn(folder, messages)
     goal_continue = _goal_auto_continue_message(goal_result)
     if goal_auto_continue_enabled() and goal_continue:

@@ -14,6 +14,24 @@ def execute_inbox_mcp_enabled() -> bool:
     return raw not in ("0", "false", "no", "off")
 
 
+def plan_inbox_mcp_enabled() -> bool:
+    """Inbox MCP for plan-workflow CLARIFY turns (discuss lane)."""
+    raw = (os.getenv("AGENT_LAB_PLAN_INBOX") or "").strip().lower()
+    if raw in ("0", "false", "no", "off"):
+        return False
+    if raw in ("1", "true", "yes", "on"):
+        return True
+    return execute_inbox_mcp_enabled()
+
+
+def discuss_inbox_mcp_enabled(run_meta: dict[str, Any] | None = None) -> bool:
+    from agent_lab.plan_workflow import plan_workflow_wants_inbox_mcp
+
+    if run_meta and plan_workflow_wants_inbox_mcp(run_meta):
+        return plan_inbox_mcp_enabled()
+    return False
+
+
 def _execute_inbox_mcp_enabled() -> bool:
     """Backward-compatible alias."""
     return execute_inbox_mcp_enabled()

@@ -365,6 +365,10 @@ def resolve_inbox_item(
     if append_chat and status in ("resolved", "deferred"):
         _append_decision_to_chat(folder, updated)
 
+    from agent_lab.plan_workflow import tick_plan_workflow_after_inbox_resolve
+
+    tick_plan_workflow_after_inbox_resolve(folder)
+
     return updated
 
 

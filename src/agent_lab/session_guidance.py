@@ -77,6 +77,7 @@ SESSION_META_KEYS = (
     "session_goal",
     "goal_loop",
     "verified_loop",
+    "plan_workflow",
     "verified_plan_sync",
     "mission_loop",
     "mission_board",

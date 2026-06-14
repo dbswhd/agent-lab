@@ -13,6 +13,8 @@ import {
   runSessionCommand,
   setSessionGoal,
   approveVerifiedLoop,
+  approvePlan,
+  rejectPlan,
   rejectVerifiedLoop,
   autoSyncSessionPlan,
   type AgentHealthRow,
@@ -48,6 +50,11 @@ import {
 } from "../run/runSessionRegistry";
 import { patchTurnMessages } from "../run/runSessionSsePatch";
 import {
+  deriveRunningAgentSlots,
+  runningAgentsSummary,
+} from "../run/runningAgents";
+import { LiveAgentsStrip } from "./LiveAgentsStrip";
+import {
   getInspectorOpen,
   getInspectorWidth,
   setInspectorOpen,
@@ -55,7 +62,12 @@ import {
 } from "../utils/inspectorPanePrefs";
 import {
   getShowHumanSynthesis,
+  getShowPeerChannel,
+  setShowHumanSynthesis,
+  setShowPeerChannel,
+  TRANSCRIPT_VIEW_PREFS_EVENT,
 } from "../utils/transcriptViewPrefs";
+import { TranscriptViewOptions } from "./TranscriptViewOptions";
 import { ChatBubble, ReplyWaitingBubble } from "./ChatBubble";
 import { HumanInboxPanel } from "./HumanInboxPanel";
 import { TitlebarInboxButton } from "./TitlebarInboxButton";
@@ -70,6 +82,7 @@ import { useNotificationUnread } from "./NotificationCenter";
 import { ContextOverviewPanel } from "./ContextOverviewPanel";
 import { ContextTasksPanel } from "./ContextTasksPanel";
 import { GoalLoopBanner } from "./GoalLoopBanner";
+import { PlanApprovalPanel } from "./PlanApprovalPanel";
 import { VerifiedLoopBanner } from "./VerifiedLoopBanner";
 import { WorkPanel } from "./WorkPanel";
 import { AgentPermissionAlert } from "./AgentPermissionAlert";
@@ -92,6 +105,7 @@ import {
   formatDispatchActivityLine,
   formatEnvelopeActivityLine,
   formatHookActivityLine,
+  isExecutionRelevantHook,
 } from "../utils/hookActivity";
 import {
   notificationActionForKind,
@@ -121,6 +135,9 @@ import {
 import { RunLogPanel } from "./RunLogPanel";
 import { ArtifactsListPanel } from "./ArtifactsListPanel";
 import { WorkspaceFilesPanel } from "./WorkspaceFilesPanel";
+import { PreviewPanel } from "./PreviewPanel";
+import { TerminalPanel } from "./TerminalPanel";
+import { BackgroundTasksPanel } from "./BackgroundTasksPanel";
 import { ExecuteQueueBar } from "./ExecuteQueueBar";
 import { ConsensusDryRunGateBar } from "./ConsensusDryRunGateBar";
 import type { ConsensusDryRunProposal } from "./ConsensusDryRunGateBar";
@@ -161,6 +178,7 @@ import {
 import type { WorkspacePreset } from "../utils/sessionSetup";
 import {
   CUSTOM_WORKSPACE_ID,
+  getStoredSessionTemplate,
   getStoredWorkspaceId,
   getStoredWorkspacePath,
   setStoredWorkspaceId,
@@ -203,6 +221,8 @@ type Props = {
   session: SessionDetail | null;
   loading?: boolean;
   onSessionChange: (sessionId: string) => void | Promise<void>;
+  /** Sidebar/list only — no full session fetch (use during SSE start). */
+  onSessionBind?: (sessionId: string) => void | Promise<void>;
   /** run.json / plan.md only — must not reset chat messages */
   onSessionMetaRefresh?: (sessionId: string) => void | Promise<void>;
   sidebarOpen: boolean;
@@ -212,6 +232,8 @@ type Props = {
   bootstrapAgentIds?: string[] | null;
   /** Per-agent resume bindings from NewSessionDialog (new sessions only). */
   bootstrapAgentThreadBindings?: AgentThreadBindings | null;
+  bootstrapSessionTemplate?: string | null;
+  bootstrapTopic?: string | null;
   onBootstrapAgentsApplied?: () => void;
 };
 
@@ -266,12 +288,15 @@ export function RoomChat({
   session,
   loading,
   onSessionChange,
+  onSessionBind,
   onSessionMetaRefresh,
   sidebarOpen: _sidebarOpen,
   onToggleSidebar: _onToggleSidebar,
   onOpenSettings,
   bootstrapAgentIds,
   bootstrapAgentThreadBindings,
+  bootstrapSessionTemplate,
+  bootstrapTopic,
   onBootstrapAgentsApplied,
 }: Props) {
   const { push: pushMacNotification } = useMacNotifications();
@@ -297,8 +322,15 @@ export function RoomChat({
   const [planActionFocusIndex, setPlanActionFocusIndex] = useState<
     number | null
   >(null);
-  const showPeerChannel = false;
-  const showHumanSynthesis = getShowHumanSynthesis();
+  const [showPeerChannel, setShowPeerChannelState] = useState(getShowPeerChannel);
+  const [showHumanSynthesis, setShowHumanSynthesisState] = useState(
+    getShowHumanSynthesis,
+  );
+  const [workHookAlert, setWorkHookAlert] = useState<{
+    event: string;
+    body: string;
+    blocked: boolean;
+  } | null>(null);
   const [inspectorOpen, setInspectorOpenState] = useState(getInspectorOpen);
   const [inspectorWidth, setInspectorWidthState] = useState(getInspectorWidth);
   const [roomTasks, setRoomTasks] = useState<RoomTasksPayload | null>(null);
@@ -370,6 +402,9 @@ export function RoomChat({
   const [inboxPendingCount, setInboxPendingCount] = useState(0);
   const [globalInboxPending, setGlobalInboxPending] = useState(0);
   const [inboxReloadKey, setInboxReloadKey] = useState(0);
+  const [inboxSegment, setInboxSegment] = useState<
+    "all" | "activity" | "questions" | "build"
+  >("all");
   const [workFocus, setWorkFocus] = useState<"execute" | "plan" | null>(null);
   const prevExecPendingIdRef = useRef<string | null>(null);
   const sendReceiptTimerRef = useRef<number | null>(null);
@@ -439,6 +474,15 @@ export function RoomChat({
   }, []);
 
   useEffect(() => {
+    const onPrefs = () => {
+      setShowHumanSynthesisState(getShowHumanSynthesis());
+      setShowPeerChannelState(getShowPeerChannel());
+    };
+    window.addEventListener(TRANSCRIPT_VIEW_PREFS_EVENT, onPrefs);
+    return () => window.removeEventListener(TRANSCRIPT_VIEW_PREFS_EVENT, onPrefs);
+  }, []);
+
+  useEffect(() => {
     if (sessionId !== null) return;
     setWorkspaceIdState(getStoredWorkspaceId());
     setWorkspacePathState(getStoredWorkspacePath());
@@ -456,6 +500,9 @@ export function RoomChat({
       setReadiness(null);
       return;
     }
+    if (running || runBusy || synthesizing) {
+      return;
+    }
     let cancelled = false;
     void fetchReadiness(sessionId, true)
       .then((payload) => {
@@ -467,7 +514,7 @@ export function RoomChat({
     return () => {
       cancelled = true;
     };
-  }, [sessionId, selected.join(",")]);
+  }, [sessionId, selected.join(","), running, runBusy, synthesizing]);
 
   useEffect(() => {
     if (sessionId !== null) return;
@@ -505,7 +552,8 @@ export function RoomChat({
         setResolvedAgentCwd(r.resolved_cwd ?? {});
       })
       .catch(() => {});
-  }, [sessionId, selected, session?.run?.agent_capabilities]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, selected.join(","), JSON.stringify(session?.run?.agent_capabilities)]);
 
   function effectiveSessionId(): string | null {
     return sessionId ?? activeSessionIdRef.current;
@@ -566,7 +614,7 @@ export function RoomChat({
 
   useEffect(() => {
     refreshTasks();
-  }, [refreshTasks, session?.run, session?.chat?.length]);
+  }, [refreshTasks, (session?.run?.artifacts as unknown[] | undefined)?.length, session?.run?.status, session?.chat?.length]);
 
   const planExecute = usePlanExecute({
     sessionId,
@@ -663,10 +711,14 @@ export function RoomChat({
         setInspectorTab(action.tab ?? "tasks");
         return;
       }
+      if (action.type === "settings") {
+        onOpenSettings?.();
+        return;
+      }
       openWorkTab();
       setWorkFocus(action.focus ?? "plan");
     },
-    [openHumanInbox, openWorkTab, setInspectorTab],
+    [onOpenSettings, openHumanInbox, openWorkTab, setInspectorTab],
   );
 
   useEffect(() => {
@@ -681,10 +733,14 @@ export function RoomChat({
         setInspectorTab(action.tab ?? "tasks");
         return;
       }
+      if (action.type === "settings") {
+        onOpenSettings?.();
+        return;
+      }
       openWorkTab();
       setWorkFocus(action.focus ?? "plan");
     });
-  }, [openHumanInbox, openWorkTab, setInspectorTab]);
+  }, [onOpenSettings, openHumanInbox, openWorkTab, setInspectorTab]);
 
   const showExecuteQueueStrip =
     tweaks.execQueueDemo === "hidden"
@@ -793,7 +849,7 @@ export function RoomChat({
     (m) => m.typing && isReplyWaitRole(m.role),
   );
   const pendingReplyCount =
-    running && workspaceTab === "transcript" && typingAgents.length === 0
+    running && typingAgents.length === 0
       ? resolveTurnSend(turnProfile, selected, efficiencyOn).agents.length
       : 0;
   const { scrollRef, scrollElRef, showJumpButton, scrollToBottom } = useMessagesScroll(
@@ -886,7 +942,8 @@ export function RoomChat({
   useEffect(() => {
     setGoalText(buildGoalLoopView(session?.run).goal.text ?? "");
     setGoalError(null);
-  }, [sessionId, session?.run?.session_goal]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, JSON.stringify(session?.run?.session_goal)]);
 
   const goalView = useMemo(
     () => buildGoalLoopView(session?.run),
@@ -898,9 +955,20 @@ export function RoomChat({
     [session?.run],
   );
 
+  const planWorkflow = session?.run?.plan_workflow as
+    | { enabled?: boolean; phase?: string }
+    | undefined;
+  const planWorkflowActive = Boolean(planWorkflow?.enabled);
+  const showPlanApproval =
+    planWorkflowActive &&
+    (planWorkflow?.phase === "HUMAN_PENDING" ||
+      verifiedLoopView.pendingApproval);
+
   const showVerifiedLoop =
-    turnProfile === "verified" ||
-    Boolean(session?.run?.verified_loop);
+    !planWorkflowActive &&
+    (turnProfile === "verified" || Boolean(session?.run?.verified_loop));
+
+  const showGoalLoop = !planWorkflowActive && !showVerifiedLoop;
 
   useEffect(() => {
     setVerifiedEditGoal(verifiedLoopView.proposedGoal);
@@ -998,6 +1066,11 @@ export function RoomChat({
       onBootstrapAgentsApplied?.();
     }
   }, [sessionId, bootstrapAgentIds, onBootstrapAgentsApplied]);
+
+  useEffect(() => {
+    if (sessionId || !bootstrapTopic?.trim()) return;
+    setText((prev) => (prev.trim() ? prev : bootstrapTopic));
+  }, [sessionId, bootstrapTopic]);
 
   const prevSessionIdRef = useRef<string | null>(sessionId);
 
@@ -1254,6 +1327,10 @@ export function RoomChat({
             getStoredAgentThreadBindings() ??
             undefined
           : undefined;
+      const sessionTemplate =
+        sessionId
+          ? undefined
+          : bootstrapSessionTemplate ?? getStoredSessionTemplate();
 
       let runKey = resolveRunSessionKey(sessionId, activeSessionIdRef.current);
       const userMsg = topicAsUserMessage(
@@ -1288,7 +1365,11 @@ export function RoomChat({
             setLiveRunSessionKey(boundSessionId);
             if (!sessionId && !navigatedToSessionRef.current) {
               navigatedToSessionRef.current = true;
-              void onSessionChange(boundSessionId);
+              if (onSessionBind) {
+                onSessionBind(boundSessionId);
+              } else {
+                void onSessionChange(boundSessionId);
+              }
             }
             if (!sessionId && onSessionMetaRefresh) {
               void onSessionMetaRefresh(activeSessionIdRef.current);
@@ -1447,6 +1528,83 @@ export function RoomChat({
               }),
             );
           }
+          if (t === "agent_token" && ev.agent && typeof ev.text === "string") {
+            const aid = String(ev.agent);
+            const round = Number(ev.round ?? 1);
+            const tid = `typing-${aid}-r${round}`;
+            const chunk = String(ev.text);
+            patchTurnMessages(runKey, (m) =>
+              m.map((msg) => {
+                if (msg.id !== tid) return msg;
+                return { ...msg, body: `${msg.body ?? ""}${chunk}` };
+              }),
+            );
+          }
+          if (t === "tool_start" && ev.agent) {
+            const aid = String(ev.agent);
+            const round = Number(ev.round ?? 1);
+            const tid = `typing-${aid}-r${round}`;
+            const tool = String(ev.tool ?? "tool");
+            const argsObj = ev.args as Record<string, unknown> | undefined;
+            const target =
+              typeof argsObj?.target === "string" ? argsObj.target : "";
+            patchTurnMessages(runKey, (m) =>
+              m.map((msg) => {
+                if (msg.id !== tid) return msg;
+                const cards = [...(msg.toolCards ?? [])];
+                cards.push({
+                  id: `tool-${tool}-${Date.now()}`,
+                  tool,
+                  args: target || undefined,
+                  startedAt: Date.now(),
+                });
+                return { ...msg, toolCards: cards.slice(-16) };
+              }),
+            );
+          }
+          if (t === "tool_output" && ev.agent) {
+            const aid = String(ev.agent);
+            const round = Number(ev.round ?? 1);
+            const tid = `typing-${aid}-r${round}`;
+            const tool = String(ev.tool ?? "tool");
+            const chunk = String(ev.chunk ?? "");
+            if (!chunk) return;
+            patchTurnMessages(runKey, (m) =>
+              m.map((msg) => {
+                if (msg.id !== tid) return msg;
+                const cards = [...(msg.toolCards ?? [])];
+                for (let i = cards.length - 1; i >= 0; i -= 1) {
+                  if (cards[i].tool === tool && !cards[i].doneAt) {
+                    cards[i] = {
+                      ...cards[i],
+                      output: `${cards[i].output ?? ""}${chunk}`.slice(-4000),
+                    };
+                    break;
+                  }
+                }
+                return { ...msg, toolCards: cards };
+              }),
+            );
+          }
+          if (t === "tool_done" && ev.agent) {
+            const aid = String(ev.agent);
+            const round = Number(ev.round ?? 1);
+            const tid = `typing-${aid}-r${round}`;
+            const tool = String(ev.tool ?? "tool");
+            patchTurnMessages(runKey, (m) =>
+              m.map((msg) => {
+                if (msg.id !== tid) return msg;
+                const cards = [...(msg.toolCards ?? [])];
+                for (let i = cards.length - 1; i >= 0; i -= 1) {
+                  if (cards[i].tool === tool && !cards[i].doneAt) {
+                    cards[i] = { ...cards[i], doneAt: Date.now() };
+                    break;
+                  }
+                }
+                return { ...msg, toolCards: cards };
+              }),
+            );
+          }
           if (t === "agent_done" && ev.agent) {
             const aid = String(ev.agent);
             const round = Number(ev.round ?? 1);
@@ -1473,7 +1631,17 @@ export function RoomChat({
             updateSessionRun(runKey, (snap) => {
               const n = new Set(snap.topologyDone);
               n.add(`${aid}:${round}`);
-              return { topologyActive: null, topologyDone: n };
+              const stillTyping = snap.turnMessages.filter(
+                (m) => m.typing && isReplyWaitRole(m.role),
+              );
+              const next =
+                stillTyping.length > 0
+                  ? {
+                      agent: String(stillTyping[0].role),
+                      round: stillTyping[0].parallelRound ?? round,
+                    }
+                  : null;
+              return { topologyActive: next, topologyDone: n };
             });
             patchTurnMessages(runKey, (m) => [
               ...m.filter((x) => x.id !== `typing-${aid}-r${round}`),
@@ -1485,6 +1653,7 @@ export function RoomChat({
                 parallelRound: round,
                 envelope,
                 envelopeParseError,
+                toolCards: m.find((x) => x.id === `typing-${aid}-r${round}`)?.toolCards,
               },
             ]);
           }
@@ -1545,6 +1714,19 @@ export function RoomChat({
               );
             }
             if (blocked || feedback) {
+              if (
+                isExecutionRelevantHook(eventName, blocked, feedback || subReason)
+              ) {
+                setWorkHookAlert({
+                  event: eventName,
+                  body:
+                    feedback ||
+                    subReason ||
+                    (blocked ? "Execution blocked by hook" : eventName),
+                  blocked,
+                });
+                openWorkTab();
+              }
               dispatchNotification(
                 {
                   tier: blocked ? "P1" : "P2",
@@ -1759,6 +1941,7 @@ export function RoomChat({
                 : workspacePath ?? undefined,
             agentCapabilities: capabilitiesForApi(agentCapabilities),
             agentThreadBindings: threadBindings,
+            sessionTemplate,
           },
         );
         if (runFailed) {
@@ -1778,7 +1961,9 @@ export function RoomChat({
         if (mode === "plan" && (activeSessionId ?? sessionId)) {
           openPlanTab();
         }
-        setSendReceipt(sendReceiptLabel(lastSendReceipt, mode, userStopped));
+        setSendReceipt(
+          sendReceiptLabel(lastSendReceipt, mode, userStopped, locale),
+        );
         if (sendReceiptTimerRef.current != null) {
           window.clearTimeout(sendReceiptTimerRef.current);
         }
@@ -1796,16 +1981,18 @@ export function RoomChat({
         clearRunWatchdog();
         clearLongRunHint();
         finishSessionRun(runKey, activeSessionId ?? undefined);
-        navigatedToSessionRef.current = false;
-        if (activeSessionId ?? sessionId) {
-          changePlanAfterSend(false);
+        const boundSid = activeSessionId ?? sessionId;
+        if (boundSid && onSessionMetaRefresh) {
+          void onSessionMetaRefresh(boundSid);
         }
+        navigatedToSessionRef.current = false;
       }
     },
     [
       selected,
       sessionId,
       onSessionChange,
+      onSessionBind,
       onSessionMetaRefresh,
       composeMode,
       turnProfile,
@@ -1815,6 +2002,7 @@ export function RoomChat({
       workspacePath,
       agentCapabilities,
       bootstrapAgentThreadBindings,
+      bootstrapSessionTemplate,
       refreshSessionMeta,
       runBusy,
       running,
@@ -1827,14 +2015,18 @@ export function RoomChat({
     setVerifiedLoopBusy(true);
     setVerifiedLoopError(null);
     try {
-      const res = await approveVerifiedLoop(sessionId, {
+      const approveFn = showPlanApproval ? approvePlan : approveVerifiedLoop;
+      const res = await approveFn(sessionId, {
         goal: verifiedEditGoal.trim(),
         completion_promise: verifiedEditPromise.trim() || "DONE",
         criteria: verifiedEditCriteria.trim() || verifiedEditGoal.trim(),
       });
       await refreshSessionMeta();
-      const prompt = res.continue_prompt?.trim();
-      if (prompt) {
+      const prompt =
+        "continue_prompt" in res
+          ? (res.continue_prompt as string | undefined)?.trim()
+          : undefined;
+      if (prompt && !showPlanApproval) {
         void executeSend(
           prompt,
           [],
@@ -1858,6 +2050,7 @@ export function RoomChat({
     executeSend,
     selected,
     efficiencyOn,
+    showPlanApproval,
   ]);
 
   const handleVerifiedReject = useCallback(async () => {
@@ -1865,14 +2058,18 @@ export function RoomChat({
     setVerifiedLoopBusy(true);
     setVerifiedLoopError(null);
     try {
-      await rejectVerifiedLoop(sessionId);
+      if (showPlanApproval) {
+        await rejectPlan(sessionId, { note: "Human requested plan revise" });
+      } else {
+        await rejectVerifiedLoop(sessionId);
+      }
       await refreshSessionMeta();
     } catch (e) {
       setVerifiedLoopError(String(e));
     } finally {
       setVerifiedLoopBusy(false);
     }
-  }, [sessionId, refreshSessionMeta]);
+  }, [sessionId, refreshSessionMeta, showPlanApproval]);
 
   const executeSynthesizeOnly = useCallback(
     async (permissions: AgentPermissions) => {
@@ -2124,13 +2321,8 @@ export function RoomChat({
     !running && !loading && selected.length === 0 && agents.length >= 0;
   const title = isNew ? "Session" : session?.topic || sessionId || "Session";
 
-  useTitlebarSlots({
-    title,
-    meta:
-      !isNew || selected.length > 0
-        ? `${selected.length} agents`
-        : undefined,
-    trailing: (
+  const titlebarTrailing = useMemo(
+    () => (
       <>
         {!isNew ? (
           <TitlebarInboxButton
@@ -2170,6 +2362,16 @@ export function RoomChat({
         ) : null}
       </>
     ),
+    [isNew, titlebarInboxPending, openHumanInbox, inspectorOpen, toggleInspector, notificationUnread],
+  );
+
+  useTitlebarSlots({
+    title,
+    meta:
+      !isNew || selected.length > 0
+        ? `${selected.length} agents`
+        : undefined,
+    trailing: titlebarTrailing,
   });
 
   const planMeta = buildPlanMetaView(session?.run);
@@ -2230,13 +2432,24 @@ export function RoomChat({
     ],
   );
   const pendingReplyAgents =
-    running && workspaceTab === "transcript" && typingAgents.length === 0
+    running && typingAgents.length === 0
       ? turnResolved.agents.map((id) => ({
           id: `pending-${id}`,
           role: id as LiveMsg["role"],
           label: agentLabel(id),
         }))
       : [];
+
+  const runningAgentSlots = useMemo(
+    () =>
+      deriveRunningAgentSlots(messages, {
+        running: running || synthesizing || runBusy,
+        expectedAgents: turnResolved.agents,
+      }),
+    [messages, running, synthesizing, runBusy, turnResolved.agents],
+  );
+
+  const runningLabel = runningAgentsSummary(runningAgentSlots, locale);
 
   const paletteActions = useMemo(
     () => {
@@ -2308,6 +2521,12 @@ export function RoomChat({
         isNew={isNew}
         locale={locale}
         tabPinned={workspaceTabPinned}
+        running={running || synthesizing || runBusy}
+        runningLabel={runningLabel}
+      />
+
+      <LiveAgentsStrip
+        slots={runningAgentSlots}
         running={running || synthesizing || runBusy}
       />
 
@@ -2415,21 +2634,29 @@ export function RoomChat({
           latestExecution={latestExecution}
           hasPendingExecution={hasPendingExecution}
           hasDryRunDiff={hasDryRunDiff}
+          workHookAlert={workHookAlert}
+          onDismissWorkHookAlert={() => setWorkHookAlert(null)}
         />
       ) : null}
 
       {workspaceTab === "run" && !isNew ? (
-        <RunLogPanel
-          sessionId={sessionId}
-          turnMessages={turnMessages}
-          running={running}
-          active={topologyActive}
-          onStop={handleStop}
-          longRunning={longRunning}
-          runLockStuck={runLockStuck}
-          releasingLock={releasingLock}
-          onReleaseLock={() => void handleReleaseRunLock()}
-        />
+        <div className="run-tab-stack">
+          <RunLogPanel
+            sessionId={sessionId}
+            turnMessages={turnMessages}
+            running={running}
+            active={topologyActive}
+            runningAgents={runningAgentSlots}
+            onStop={handleStop}
+            longRunning={longRunning}
+            runLockStuck={runLockStuck}
+            releasingLock={releasingLock}
+            onReleaseLock={() => void handleReleaseRunLock()}
+          />
+          {sessionId ? (
+            <BackgroundTasksPanel sessionId={sessionId} />
+          ) : null}
+        </div>
       ) : null}
 
       {workspaceTab === "artifacts" && !isNew ? (
@@ -2440,8 +2667,34 @@ export function RoomChat({
         <WorkspaceFilesPanel sessionId={sessionId} />
       ) : null}
 
+      {workspaceTab === "preview" && !isNew && sessionId ? (
+        <PreviewPanel sessionId={sessionId} />
+      ) : null}
+
+      {workspaceTab === "terminal" && !isNew && sessionId ? (
+        <TerminalPanel sessionId={sessionId} />
+      ) : null}
+
       {workspaceTab === "transcript" || isNew ? (
         <div className="transcript transcript--console">
+            {!isNew && sessionId ? (
+              <TranscriptViewOptions
+                showHumanSynthesis={showHumanSynthesis}
+                showPeerChannel={showPeerChannel}
+                onHumanSynthesisChange={(on) => {
+                  setShowHumanSynthesis(on);
+                  setShowHumanSynthesisState(on);
+                  if (on) {
+                    setShowPeerChannel(false);
+                    setShowPeerChannelState(false);
+                  }
+                }}
+                onPeerChannelChange={(on) => {
+                  setShowPeerChannel(on);
+                  setShowPeerChannelState(on);
+                }}
+              />
+            ) : null}
             {loading && !isNew && !running && visibleMessages.length === 0 ? (
               <div className="empty-state">
                 <span className="empty-state__icon" aria-hidden>
@@ -2487,6 +2740,7 @@ export function RoomChat({
                     agent={m.role}
                     label={m.label}
                     activities={m.activities}
+                    body={m.body}
                   />
                 );
               }
@@ -2602,6 +2856,8 @@ export function RoomChat({
           turnProfile === "free" ? "composer--free" : undefined,
           efficiencyOn ? "composer--efficient" : undefined,
           composerModeVariant === "consensus" ? "composer--consensus-mode" : undefined,
+          composerModeVariant === "plan" ? "composer--plan-mode" : undefined,
+          composerModeVariant === "discuss" ? "composer--discuss-mode" : undefined,
         ]
           .filter(Boolean)
           .join(" ") || undefined}
@@ -2627,6 +2883,7 @@ export function RoomChat({
         turnProfile={turnProfile}
         onTurnProfileChange={changeTurnProfile}
         planAfterSend={!isNew ? planAfterSend : undefined}
+        onPlanAfterSendChange={!isNew ? changePlanAfterSend : undefined}
         efficiencyOn={efficiencyOn}
         onEfficiencyChange={(on) => {
           setEfficiencyOnState(on);
@@ -2636,6 +2893,7 @@ export function RoomChat({
         onFocusObjection={focusObjection}
         turnHint={composerTurnHintLine}
         locale={locale}
+        sessionId={sessionId}
       />
 
       {commandHint ? (
@@ -2738,7 +2996,25 @@ export function RoomChat({
           ) : null}
           {inspectorTab === "tasks" ? (
             <>
-              {sessionId && showVerifiedLoop ? (
+              {sessionId && showPlanApproval ? (
+                <PlanApprovalPanel
+                  view={verifiedLoopView}
+                  planMd={session?.plan_md ?? ""}
+                  phase={planWorkflow?.phase ?? "HUMAN_PENDING"}
+                  objections={roomTasks?.open_objections ?? []}
+                  busy={verifiedLoopBusy || running || runBusy}
+                  error={verifiedLoopError}
+                  editGoal={verifiedEditGoal}
+                  editCriteria={verifiedEditCriteria}
+                  editPromise={verifiedEditPromise}
+                  onEditGoalChange={setVerifiedEditGoal}
+                  onEditCriteriaChange={setVerifiedEditCriteria}
+                  onEditPromiseChange={setVerifiedEditPromise}
+                  onFocusObjection={focusObjection}
+                  onApprove={() => void handleVerifiedApprove()}
+                  onReject={() => void handleVerifiedReject()}
+                />
+              ) : sessionId && showVerifiedLoop ? (
                 <VerifiedLoopBanner
                   view={verifiedLoopView}
                   busy={verifiedLoopBusy || running || runBusy}
@@ -2752,7 +3028,7 @@ export function RoomChat({
                   onApprove={() => void handleVerifiedApprove()}
                   onReject={() => void handleVerifiedReject()}
                 />
-              ) : sessionId ? (
+              ) : sessionId && showGoalLoop ? (
                 <GoalLoopBanner
                   goalView={goalView}
                   goalText={goalText}
@@ -2773,21 +3049,56 @@ export function RoomChat({
               objections={roomTasks?.objections ?? []}
               disabled={running || synthesizing || runBusy}
               onChanged={refreshTasks}
+              onFocusTask={focusTask}
+              onFocusObjection={focusObjection}
             />
             </>
           ) : null}
           {inspectorTab === "inbox" ? (
             <>
-              <NotificationCenter onOpen={handleNotificationOpen} />
-              <HumanInboxPanel
-                sessionId={sessionId}
-                reloadKey={inboxReloadKey}
-                planRevision={currentPlanRevision}
-                onResolved={handleInboxResolved}
-                onBuildStarted={handleInboxBuildStarted}
-                disabled={running || synthesizing || runBusy}
-                presentation="inspector"
-              />
+              <div className="ctx-segmented" role="tablist" aria-label="Inbox filter">
+                {(["all", "activity", "questions", "build"] as const).map(
+                  (segment) => (
+                    <button
+                      key={segment}
+                      type="button"
+                      role="tab"
+                      aria-selected={inboxSegment === segment}
+                      className={inboxSegment === segment ? "is-active" : ""}
+                      onClick={() => setInboxSegment(segment)}
+                    >
+                      {segment === "all"
+                        ? localeMsg.inboxAll
+                        : segment === "activity"
+                          ? localeMsg.inboxActivity
+                          : segment === "questions"
+                            ? localeMsg.inboxQuestions
+                            : localeMsg.inboxBuild}
+                    </button>
+                  ),
+                )}
+              </div>
+              {inboxSegment !== "activity" ? (
+                <HumanInboxPanel
+                  sessionId={sessionId}
+                  reloadKey={inboxReloadKey}
+                  planRevision={currentPlanRevision}
+                  onResolved={handleInboxResolved}
+                  onBuildStarted={handleInboxBuildStarted}
+                  disabled={running || synthesizing || runBusy}
+                  presentation="inspector"
+                  kindFilter={
+                    inboxSegment === "questions"
+                      ? "question"
+                      : inboxSegment === "build"
+                        ? "build"
+                        : undefined
+                  }
+                />
+              ) : null}
+              {inboxSegment === "all" || inboxSegment === "activity" ? (
+                <NotificationCenter onOpen={handleNotificationOpen} />
+              ) : null}
             </>
           ) : null}
           </InspectorPane>

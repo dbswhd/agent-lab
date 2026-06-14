@@ -10,9 +10,13 @@ import {
   CUSTOM_WORKSPACE_ID,
   getStoredWorkspaceId,
   getStoredWorkspacePath,
+  setStoredSessionTemplate,
   setStoredWorkspaceId,
   setStoredWorkspacePath,
+  type SessionTemplate,
+  type TradingMissionPreset,
 } from "../utils/sessionSetup";
+import { setPlanAfterSend } from "../utils/composeMode";
 import { pickWorkspaceFolder } from "../utils/pickWorkspaceFolder";
 import type { AgentRole } from "../utils/transcript";
 
@@ -24,6 +28,10 @@ export type NewSessionAgentChoice = {
 export type NewSessionParams = {
   workspaceId: string;
   workspacePath: string | null;
+  sessionTemplate: string;
+  topic?: string | null;
+  /** First composer send uses plan mode (Plan-First workflow). */
+  planAfterSend?: boolean;
   agents: NewSessionAgentChoice[];
 };
 
@@ -63,6 +71,9 @@ export function NewSessionDialog({ open, agents, onClose, onCreate }: Props) {
   const [agentPicks, setAgentPicks] = useState<Record<TeamAgentId, AgentPick>>(() =>
     defaultAgentPicks(agents),
   );
+  const [sessionTemplate, setSessionTemplate] = useState("general");
+  const [presetTopic, setPresetTopic] = useState<string | null>(null);
+  const [planWorkflowOnCreate, setPlanWorkflowOnCreate] = useState(true);
 
   const dirRef = useRef<HTMLInputElement>(null);
 
@@ -74,9 +85,20 @@ export function NewSessionDialog({ open, agents, onClose, onCreate }: Props) {
       .then((opts) => {
         setSetupOptions(opts);
         setWorkspaceId((prev) => prev || opts.defaults.workspace_id);
+        setSessionTemplate(opts.defaults.session_template || "general");
       })
       .catch(() => setLoadError(true));
   }, [open, agents]);
+
+  const applyTradingPreset = useCallback((preset: TradingMissionPreset) => {
+    setWorkspaceId(preset.workspace_id);
+    setWorkspacePath(null);
+    setStoredWorkspaceId(preset.workspace_id);
+    setStoredWorkspacePath(null);
+    setSessionTemplate(preset.session_template);
+    setStoredSessionTemplate(preset.session_template);
+    setPresetTopic(preset.topic ?? null);
+  }, []);
 
   const toggleAgent = useCallback((id: TeamAgentId) => {
     setAgentPicks((prev) => ({
@@ -155,9 +177,13 @@ export function NewSessionDialog({ open, agents, onClose, onCreate }: Props) {
     const wpath = isCustom ? workspacePath : null;
     setStoredWorkspaceId(wid);
     setStoredWorkspacePath(wpath);
+    setPlanAfterSend(planWorkflowOnCreate);
     onCreate({
       workspaceId: wid,
       workspacePath: wpath,
+      sessionTemplate,
+      topic: presetTopic,
+      planAfterSend: planWorkflowOnCreate,
       agents: chosen.map((a) => {
         const role = a.id as TeamAgentId;
         return {
@@ -171,6 +197,8 @@ export function NewSessionDialog({ open, agents, onClose, onCreate }: Props) {
   if (!open) return null;
 
   const workspaces = setupOptions?.workspaces ?? [];
+  const templates = (setupOptions?.session_templates ?? []) as SessionTemplate[];
+  const tradingPreset = setupOptions?.trading_mission_preset ?? null;
 
   return (
     <div className="ns-overlay" role="presentation" onMouseDown={onClose}>
@@ -393,6 +421,67 @@ export function NewSessionDialog({ open, agents, onClose, onCreate }: Props) {
                 설정 로드 실패 — API 연결을 확인하세요.
               </p>
             ) : null}
+          </section>
+
+          {templates.length > 0 ? (
+            <section className="ns-block">
+              <div className="ns-block__head">
+                <span className="ns-block__label">세션 템플릿</span>
+                <span className="ns-block__hint">Room 가이던스·예산 프리셋</span>
+              </div>
+              <select
+                className="mac-popup session-setup-bar__select"
+                value={sessionTemplate}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setSessionTemplate(next);
+                  setStoredSessionTemplate(next);
+                  if (next !== "trading-mission") {
+                    setPresetTopic(null);
+                  }
+                }}
+                aria-label="세션 템플릿"
+              >
+                {templates.map((tpl) => (
+                  <option key={tpl.id} value={tpl.id}>
+                    {tpl.label}
+                  </option>
+                ))}
+              </select>
+              {tradingPreset ? (
+                <button
+                  type="button"
+                  className="btn btn--sm"
+                  style={{ marginTop: 8 }}
+                  onClick={() => applyTradingPreset(tradingPreset)}
+                >
+                  Trading Mission (장전) 원클릭
+                </button>
+              ) : null}
+              {presetTopic ? (
+                <p className="ns-block__hint" style={{ marginTop: 8 }}>
+                  장전 topic이 준비됩니다 — Session 생성 후 전송하세요.
+                </p>
+              ) : null}
+            </section>
+          ) : null}
+
+          <section className="ns-block">
+            <label className="ns-agent__pick">
+              <input
+                type="checkbox"
+                className="checkbox"
+                checked={planWorkflowOnCreate}
+                onChange={(e) => setPlanWorkflowOnCreate(e.target.checked)}
+              />
+              <span className="ns-block__label" style={{ marginLeft: 8 }}>
+                Plan workflow (첫 메시지 plan mode)
+              </span>
+            </label>
+            <p className="ns-block__hint">
+              Clarify → plan.md → Human 승인 → execute. Verified turn profile
+              대신 기본 진입입니다.
+            </p>
           </section>
 
           <section className="ns-block">

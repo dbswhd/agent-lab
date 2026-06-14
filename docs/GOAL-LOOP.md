@@ -1,5 +1,7 @@
 # Goal-Driven Session Loop
 
+> **Legacy (discuss-only):** Default plan sessions use [PLAN-WORKFLOW.md](./PLAN-WORKFLOW.md) (Merge Verified). Manual `PATCH /goal` is disabled while `plan_workflow.enabled`.
+
 Layer 5 lets a Human define a session-level goal and lets an independent, mock-first Oracle decide whether a completed Room turn demonstrated that goal.
 
 ## Enable

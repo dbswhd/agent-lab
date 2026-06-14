@@ -15,7 +15,8 @@ Human이 3자 룸(Cursor / Codex / Claude)에서:
 1. **토론** — 에이전트 말풍선·동료 채널·요약 뷰로 맥락 조절  
 2. **작업 보드** — `[PROPOSED:]` → 공유 task, 리드·청구·합의 게이트  
 3. **plan + execute** — `plan.md` 액션 dry-run → Human 승인 → task 상태 연동  
-4. **신뢰 신호** — 모드·영수증·차단 사유·plan↔task↔execution 한 줄로 “지금 뭐가 막혔는지” 표시  
+4. **Plan workflow (Merge Verified)** — plan mode send → inbox clarify → scribe → peer review → **Plan 승인** panel → execute  
+5. **신뢰 신호** — 모드·영수증·차단 사유·plan↔task↔execution 한 줄로 “지금 뭐가 막혔는지” 표시  
 
 아키텍처는 **단일 오케스트레이터** (멀티 프로세스 Teams UI 아님).
 
@@ -52,7 +53,7 @@ plan 탭: PlanExecutePanel — 액션 카드 · pending plan 스냅샷 · dry-ru
 | 입력 | `web/src/components/ChatComposer.tsx`, `ComposerTurnPicker.tsx` |
 | chat 파싱 | `web/src/utils/transcript.ts` |
 | API 타입 | `web/src/api/client.ts` |
-| 스타일 | `web/src/styles/app.css` (`.room-task-bar*`, `.composer-mode-chip`, `.clarifier-banner`, `.chat-line--synthesis`, `.chat-line--peer`) |
+| 스타일 | `web/src/styles/` (`.room-task-bar*`, `.composer-mode-chip`, `.clarifier-banner`, `.chat-line--synthesis`, `.chat-line--peer`) |
 
 ---
 
@@ -64,7 +65,7 @@ plan 탭: PlanExecutePanel — 액션 카드 · pending plan 스냅샷 · dry-ru
 |------|-----------------|-------------|--------------|
 | `tasks[]` | **작업** 바, 상태 칩, owner | ✅ `RoomTaskBar` | 빈 상태·로딩·에러 토스트 정리 |
 | `visibility: peer` | **동료 채널** 체크박스, peer 말풍선 스타일 | ✅ `RoomChat` + `transcript.ts` | 기본 OFF 유지, 카운트 `(N)` 가독성 |
-| claim API | (에이전트 주도; Human은 owner 확인) | △ 백엔드만 | 선택: claimable 행에 “담당 없음” 강조 |
+| claim API | (에이전트 주도; Human은 owner 확인) | ✅ claimable 행 `task-row--claimable` 강조 | — |
 
 ### Phase 2 — lead + assign
 
@@ -116,7 +117,7 @@ plan 탭: PlanExecutePanel — 액션 카드 · pending plan 스냅샷 · dry-ru
 | D7 | plan↔task↔execution | ✅ 작업 바 푸터 한 줄 |
 | D9 | Clarifier | ✅ `clarifier-banner` (`AGENT_LAB_CLARIFIER=1`) |
 | D11 | `send_receipt` | ✅ SSE → composer 위 칩 (~5s) |
-| D4 | plan provenance | △ scribe `(ref: chat.jsonl#Ln)` — **plan 탭 ref 클릭 → chat** 기존 `onRefClick` 재사용·스타일 통일 |
+| D4 | plan provenance | ✅ `PlanProvenanceFooter` + plan ref 클릭 → Transcript scroll/highlight |
 
 ---
 
@@ -171,8 +172,17 @@ UI 담당은 아래를 **수동 스모크** 체크리스트로 사용.
 
 ### B. plan 정리
 
-1. **plan after send ON** → chip **정리·plan**, receipt `plan_updated`
+1. **plan after send ON** (New Session: Plan workflow 체크 기본 ON) → chip **정리·plan**, receipt `plan_updated`
 2. plan 탭 → `## 지금 실행` 액션 선택
+
+### B2. Plan workflow (Merge Verified)
+
+1. plan mode send → `plan_workflow.phase=CLARIFY` (inbox MCP 질문 가능)
+2. Inbox resolve → CLARIFY→DRAFT (별도 채팅 없이 phase advance)
+3. Scribe + peer review → Tasks inspector **Plan 승인** panel (`PlanApprovalPanel`)
+4. Action cards + open objections 표시; Approve → `POST /plan/approve`
+5. Work runtime `work_phase=review_needed` at HUMAN_PENDING; `execute_pending` after APPROVED
+6. Legacy: `VerifiedLoopBanner` / `GoalLoopBanner` / Composer **verified** profile 숨김 (`plan_workflow.enabled`)
 
 ### C. execute + task
 
@@ -203,17 +213,17 @@ UI 담당은 아래를 **수동 스모크** 체크리스트로 사용.
 
 - [x] **objection resolve discoverability**: dry-run 409 `open_objection`을 Composer/plan 인라인 알림으로 표시하고 **이의 해결** CTA가 TaskBar 항목으로 이동
 - [x] **plan BLOCK visibility**: selected plan action에 open BLOCK이 있으면 PlanExecutePanel에서 execute 차단 배너 표시
-- [ ] **세션 리드 vs 이번 턴 리드**: `RoomTaskBar`에 짧은 설명 또는 `?` 툴팁 (“세션 리드 select는 기본값; 이번 턴은 메시지 `GO codex` 또는 자동 회전”)
-- [ ] **409 complete**: `markComplete` catch 시 서버 `detail` 문자열을 toast/인라인으로 표시 (현재 silent ignore 가능)
-- [ ] **Human 요약 + 동료 채널**: disabled 상태 시 왜 꺼졌는지 `title` 속성
-- [ ] **discuss 턴 빈 owner**: 작업 바 empty hint에 “토론 턴은 자동 배정 없음 — plan/합의 턴에서 배정” 추가
+- [x] **세션 리드 vs 이번 턴 리드**: `RoomTaskBar`에 짧은 설명 또는 `?` 툴팁 (“세션 리드 select는 기본값; 이번 턴은 메시지 `GO codex` 또는 자동 회전”)
+- [x] **409 complete**: `markComplete` catch 시 서버 `detail` 문자열을 toast/인라인으로 표시 (현재 silent ignore 가능)
+- [x] **Human 요약 + 동료 채널**: disabled 상태 시 왜 꺼졌는지 `title` 속성
+- [x] **discuss 턴 빈 owner**: 작업 바 empty hint에 “토론 턴은 자동 배정 없음 — plan/합의 턴에서 배정” 추가
 
 ### P1 — 정보 밀도·내비
 
-- [ ] **plan provenance**: plan.md 내 `(ref: chat.jsonl#L12)` 링크 스타일·hover·클릭 시 chat 스크롤 하이라이트 (`RoomChat` `onRefClick` / `data-chat-line-index`)
-- [ ] **cross-link 푸터**: 5건 cap → “+N more” 또는 작업 행 인라인으로 통합 검토
-- [ ] **send_receipt** 한글 라벨 매핑 테이블을 `RoomChat.sendReceiptLabel` 한곳에 문서화
-- [ ] **mode chip** + `ComposerTurnPicker` / `planAfterSend` / consensus 토글 **상호 배타** 시각 (동시에 켜진 것처럼 보이지 않게)
+- [x] **plan provenance**: plan.md 내 `(ref: chat.jsonl#L12)` 링크 스타일·hover·클릭 시 chat 스크롤 하이라이트 (`RoomChat` `onRefClick` / `data-chat-line-index`)
+- [x] **cross-link 푸터**: 5건 cap → “+N more” (`buildTaskCrossLinks` + `taskbar__cross-links`)
+- [x] **send_receipt** 한글 라벨 매핑 테이블을 `sendReceiptLabel` 한곳에 문서화 (`web/src/utils/sendReceipt.ts`)
+- [x] **mode chip** + `ComposerTurnPicker` / `planAfterSend` / consensus 토글 **상호 배타** 시각 (동시에 켜진 것처럼 보이지 않게)
 
 ### P2 — 시각·a11y·Figma
 
@@ -265,10 +275,10 @@ UI 담당은 아래를 **수동 스모크** 체크리스트로 사용.
 ## 8. 스타일 훅 (검색용)
 
 ```css
-.room-task-bar, .room-task-bar__turn-lead, .room-task-bar__cross-links
+.taskbar, .taskbar__turn-leads-history, .taskbar__cross-links
 .room-peer-toggle, .chat-line--peer, .chat-line--synthesis
-.composer-mode-chip, .clarifier-banner
-.plan-execute-panel__linked-task, .plan-execute-panel__snapshot (스냅샷 배너)
+.mode-chip, .clarifier-banner
+.plan-card__linked-task, .plan-execute-plan-snapshot (스냅샷 배너)
 ```
 
 에이전트 색: `web/src/styles/tokens.css` — Cursor / Codex / Claude.
@@ -289,10 +299,10 @@ UI 담당은 아래를 **수동 스모크** 체크리스트로 사용.
 
 ## 10. 완료 정의 (UI 담당)
 
-- [ ] §5 시나리오 A–E 스모크 통과 (스크린샷 또는 짧은 GIF optional)
-- [ ] §6 P0 체크 4항목 이상 반영
-- [ ] `npm run build` 통과
-- [ ] 회귀: 기존 plan execute·consensus·단일 에이전트 채팅 깨지지 않음
+- [x] §5 시나리오 A–E 스모크 통과 — `tests/test_ui_handoff_scenarios.py` (2026-06-14)
+- [x] §6 P0 체크 4항목 이상 반영
+- [x] `npm run build` 통과
+- [ ] 회귀: 기존 plan execute·consensus·단일 에이전트 채팅 깨지지 않음 (수동 `make dev` 권장)
 
 ---
 

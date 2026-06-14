@@ -1,7 +1,18 @@
+import { useState } from "react";
 import type { RoomObjection } from "../api/client";
 import { PlanActionCard } from "./PlanActionCard";
 import type { VerifiedLoopView } from "../utils/verifiedLoopView";
 import { parsePlanMarkdown } from "../utils/planMarkdown";
+import { useLocale } from "../i18n/useLocale";
+import {
+  PLAN_REJECT_TARGETS,
+  type PlanRejectTarget,
+} from "../utils/planWorkflowView";
+
+export type PlanRejectPayload = {
+  note?: string;
+  target_phase: PlanRejectTarget;
+};
 
 type Props = {
   view: VerifiedLoopView;
@@ -18,7 +29,7 @@ type Props = {
   onEditPromiseChange: (value: string) => void;
   onFocusObjection?: (objectionId: string) => void;
   onApprove: () => void;
-  onReject: () => void;
+  onReject: (payload: PlanRejectPayload) => void;
 };
 
 export function PlanApprovalPanel({
@@ -38,6 +49,9 @@ export function PlanApprovalPanel({
   onApprove,
   onReject,
 }: Props) {
+  const { msg } = useLocale();
+  const [rejectTarget, setRejectTarget] = useState<PlanRejectTarget>("CLARIFY");
+  const [rejectNote, setRejectNote] = useState("");
   const pending = phase === "HUMAN_PENDING" || view.pendingApproval;
   const planBlocks = parsePlanMarkdown(planMd);
   const planActions = planBlocks.filter((b) => b.type === "action");
@@ -157,13 +171,53 @@ export function PlanApprovalPanel({
             >
               Plan 승인
             </button>
+          </div>
+          <div className="plan-approval-reject">
+            <label className="field-label" htmlFor="plan-reject-target">
+              {msg.planRejectTarget}
+            </label>
+            <select
+              id="plan-reject-target"
+              className="field"
+              value={rejectTarget}
+              disabled={busy}
+              onChange={(e) =>
+                setRejectTarget(e.target.value as PlanRejectTarget)
+              }
+            >
+              {PLAN_REJECT_TARGETS.map((target) => (
+                <option key={target} value={target}>
+                  {target === "CLARIFY"
+                    ? msg.planRejectClarify
+                    : target === "DRAFT"
+                      ? msg.planRejectDraft
+                      : msg.planRejectRefine}
+                </option>
+              ))}
+            </select>
+            <label className="field-label" htmlFor="plan-reject-note">
+              {msg.planRejectNote}
+            </label>
+            <input
+              id="plan-reject-note"
+              type="text"
+              className="field"
+              value={rejectNote}
+              disabled={busy}
+              onChange={(e) => setRejectNote(e.target.value)}
+            />
             <button
               type="button"
               className="btn btn--sm"
               disabled={busy}
-              onClick={onReject}
+              onClick={() =>
+                onReject({
+                  target_phase: rejectTarget,
+                  note: rejectNote.trim() || undefined,
+                })
+              }
             >
-              수정 요청
+              {msg.planRejectSubmit}
             </button>
           </div>
         </>

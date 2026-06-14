@@ -77,6 +77,7 @@ import { ContextOverviewPanel } from "./ContextOverviewPanel";
 import { ContextTasksPanel } from "./ContextTasksPanel";
 import { GoalLoopBanner } from "./GoalLoopBanner";
 import { PlanApprovalPanel } from "./PlanApprovalPanel";
+import { PlanWorkflowBanner } from "./PlanWorkflowBanner";
 import { VerifiedLoopBanner } from "./VerifiedLoopBanner";
 import { WorkToolPanel } from "./WorkToolPanel";
 import { HumanGatePanel } from "./HumanGatePanel";
@@ -112,6 +113,7 @@ import { notifyDesktop } from "../utils/desktopNotify";
 import { buildPlanMetaView, composerPlanStaleNotice } from "../utils/planMeta";
 import { buildGoalLoopView } from "../utils/goalLoopView";
 import { buildVerifiedLoopView } from "../utils/verifiedLoopView";
+import { isPlanWorkflowPhaseBanner } from "../utils/planWorkflowView";
 import {
   consensusIncompleteLabel,
   roundDividerLabel,
@@ -397,7 +399,7 @@ export function RoomChat({
   const [globalInboxPending, setGlobalInboxPending] = useState(0);
   const [inboxReloadKey, setInboxReloadKey] = useState(0);
   const [inboxSegment, setInboxSegment] = useState<
-    "all" | "activity" | "questions" | "build"
+    "all" | "activity" | "questions" | "build" | "skills"
   >("all");
   const [workFocus, setWorkFocus] = useState<"execute" | "plan" | null>(null);
   const prevExecPendingIdRef = useRef<string | null>(null);
@@ -953,6 +955,11 @@ export function RoomChat({
     planWorkflowActive &&
     (planWorkflow?.phase === "HUMAN_PENDING" ||
       verifiedLoopView.pendingApproval);
+
+  const showPlanWorkflowBanner =
+    planWorkflowActive &&
+    !showPlanApproval &&
+    isPlanWorkflowPhaseBanner(planWorkflow?.phase);
 
   const showVerifiedLoop =
     !planWorkflowActive &&
@@ -2043,23 +2050,29 @@ export function RoomChat({
     showPlanApproval,
   ]);
 
-  const handleVerifiedReject = useCallback(async () => {
-    if (!sessionId) return;
-    setVerifiedLoopBusy(true);
-    setVerifiedLoopError(null);
-    try {
-      if (showPlanApproval) {
-        await rejectPlan(sessionId, { note: "Human requested plan revise" });
-      } else {
-        await rejectVerifiedLoop(sessionId);
+  const handleVerifiedReject = useCallback(
+    async (payload?: { note?: string; target_phase?: string }) => {
+      if (!sessionId) return;
+      setVerifiedLoopBusy(true);
+      setVerifiedLoopError(null);
+      try {
+        if (showPlanApproval) {
+          await rejectPlan(sessionId, {
+            note: payload?.note ?? "Human requested plan revise",
+            target_phase: payload?.target_phase ?? "CLARIFY",
+          });
+        } else {
+          await rejectVerifiedLoop(sessionId);
+        }
+        await refreshSessionMeta();
+      } catch (e) {
+        setVerifiedLoopError(String(e));
+      } finally {
+        setVerifiedLoopBusy(false);
       }
-      await refreshSessionMeta();
-    } catch (e) {
-      setVerifiedLoopError(String(e));
-    } finally {
-      setVerifiedLoopBusy(false);
-    }
-  }, [sessionId, refreshSessionMeta, showPlanApproval]);
+    },
+    [sessionId, refreshSessionMeta, showPlanApproval],
+  );
 
   const executeSynthesizeOnly = useCallback(
     async (permissions: AgentPermissions) => {
@@ -2716,6 +2729,15 @@ export function RoomChat({
         </div>
       ) : null}
 
+      {showPlanWorkflowBanner && planWorkflow ? (
+        <PlanWorkflowBanner
+          workflow={planWorkflow}
+          inboxPendingCount={inboxPendingCount}
+          running={running || runBusy || synthesizing}
+          onOpenInbox={openHumanInbox}
+        />
+      ) : null}
+
       {sendReceipt && shouldShowSendReceiptOnChatTab(sendReceipt) ? (
         <div className="composer-send-receipt" role="status">
           {sendReceipt}
@@ -2876,6 +2898,14 @@ export function RoomChat({
             {rightPanelMode === "tasks" ? (
               <>
                 <HumanGatePanel>
+                  {sessionId && showPlanWorkflowBanner && planWorkflow ? (
+                    <PlanWorkflowBanner
+                      workflow={planWorkflow}
+                      inboxPendingCount={inboxPendingCount}
+                      running={running || runBusy || synthesizing}
+                      onOpenInbox={openHumanInbox}
+                    />
+                  ) : null}
                   {sessionId && showPlanApproval ? (
                     <PlanApprovalPanel
                       view={verifiedLoopView}
@@ -2892,7 +2922,7 @@ export function RoomChat({
                       onEditPromiseChange={setVerifiedEditPromise}
                       onFocusObjection={focusObjection}
                       onApprove={() => void handleVerifiedApprove()}
-                      onReject={() => void handleVerifiedReject()}
+                      onReject={(payload) => void handleVerifiedReject(payload)}
                     />
                   ) : sessionId && showVerifiedLoop ? (
                     <VerifiedLoopBanner
@@ -2938,7 +2968,7 @@ export function RoomChat({
             {rightPanelMode === "inbox" ? (
               <>
                 <div className="ctx-segmented" role="tablist" aria-label="Inbox filter">
-                  {(["all", "activity", "questions", "build"] as const).map(
+                  {(["all", "activity", "questions", "build", "skills"] as const).map(
                     (segment) => (
                       <button
                         key={segment}
@@ -2954,7 +2984,9 @@ export function RoomChat({
                             ? localeMsg.inboxActivity
                             : segment === "questions"
                               ? localeMsg.inboxQuestions
-                              : localeMsg.inboxBuild}
+                              : segment === "build"
+                                ? localeMsg.inboxBuild
+                                : localeMsg.inboxSkills}
                       </button>
                     ),
                   )}
@@ -2973,7 +3005,9 @@ export function RoomChat({
                         ? "question"
                         : inboxSegment === "build"
                           ? "build"
-                          : undefined
+                          : inboxSegment === "skills"
+                            ? "skill_draft"
+                            : undefined
                     }
                   />
                 ) : null}

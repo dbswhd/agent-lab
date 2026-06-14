@@ -5486,6 +5486,38 @@ button.plan-doc__ref--link:hover {
 }
 .clarifier-banner__title { color: var(--accent); font-size: var(--text-footnote); }
 .clarifier-banner__hint { margin: 0; font-size: var(--text-caption); color: var(--label-tertiary); }
+.plan-workflow-banner { margin-bottom: var(--space-8); }
+.plan-workflow-banner__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-6);
+}
+.plan-workflow-banner__badge {
+  font-size: var(--text-micro);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--label-secondary);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-hover);
+}
+.plan-workflow-banner__badge--active { color: var(--accent); }
+.plan-workflow-banner__meta {
+  margin: var(--space-4) 0 0;
+  font-size: var(--text-micro);
+  color: var(--label-tertiary);
+}
+.plan-workflow-banner__inbox { margin-top: var(--space-8); }
+.plan-approval-reject {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  margin-top: var(--space-10);
+  padding-top: var(--space-8);
+  border-top: 1px solid var(--separator);
+}
 .error-banner {
   padding: var(--space-10) var(--space-12); border-radius: var(--radius-md);
   background: var(--danger-soft); border: 1px solid color-mix(in srgb, var(--danger) 26%, transparent);

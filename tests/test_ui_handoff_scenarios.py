@@ -47,6 +47,22 @@ def test_scenario_b_plan_synthesis_contract():
     assert "지금 실행" in plan or "nowItems" in plan
 
 
+def test_scenario_b2_plan_workflow_ui_contract():
+    """B2: plan workflow phase banner + reject target_phase."""
+    room = _read("web", "src", "components", "RoomChat.tsx")
+    banner = _read("web", "src", "components", "PlanWorkflowBanner.tsx")
+    approval = _read("web", "src", "components", "PlanApprovalPanel.tsx")
+
+    assert "PlanWorkflowBanner" in room
+    assert "showPlanWorkflowBanner" in room
+    assert "plan-workflow-banner" in banner
+    assert "CLARIFY" in banner
+    assert "PEER_REVIEW" in banner
+    assert "plan-reject-target" in approval
+    assert "target_phase" in approval
+    assert "PLAN_REJECT_TARGETS" in approval
+
+
 def test_scenario_b_diff_tool_contract():
     """B2: workbench diff mode renders execution diffs."""
     room = _read("web", "src", "components", "RoomChat.tsx")

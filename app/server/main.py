@@ -51,8 +51,10 @@ from app.server.deps import (  # noqa: E402
 )
 from app.server.routers import (  # noqa: E402
     agents,
+    background_tasks,
     commands,
     context_layers,
+    dev_preview,
     health,
     human_inbox,
     mission_loop,
@@ -64,6 +66,7 @@ from app.server.routers import (  # noqa: E402
     session_tasks,
     sessions,
     settings,
+    terminal,
     verified_loop,
     workspace_files,
 )
@@ -72,8 +75,13 @@ setup_app_logging()
 
 
 def _api_startup() -> None:
+    from agent_lab.agent_auth_bootstrap import bootstrap_room_auth_on_startup
     from agent_lab.app_logging import write_boot_line
 
+    try:
+        bootstrap_room_auth_on_startup()
+    except Exception as exc:
+        write_boot_line(f"auth bootstrap failed: {exc}")
     try:
         payload = build_diagnostics_payload()
         write_boot_line(
@@ -109,8 +117,10 @@ app.add_middleware(
 for router in (
     health.router,
     agents.router,
+    background_tasks.router,
     commands.router,
     context_layers.router,
+    dev_preview.router,
     sessions.router,
     session_tasks.router,
     session_governance.router,
@@ -121,6 +131,7 @@ for router in (
     runtime.router,
     room.router,
     settings.router,
+    terminal.router,
     verified_loop.router,
     workspace_files.router,
 ):

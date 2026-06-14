@@ -395,7 +395,7 @@ export default function App() {
         openCommandPalette();
         return;
       }
-      if (!event.ctrlKey && ["1", "2", "3", "4", "5"].includes(key)) {
+      if (!event.ctrlKey && ["1", "2", "3", "4", "5", "6", "7"].includes(key)) {
         event.preventDefault();
         requestWorkspaceTabByIndex(key);
       }

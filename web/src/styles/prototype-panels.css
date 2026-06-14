@@ -6,56 +6,7 @@
    ============================================================ */
 
 /* ---- Work: plan card shell around action list ---------------- */
-.work-surface.plan-execute-panel {
-  padding: var(--space-20) var(--space-16) var(--space-32);
-  gap: var(--space-16);
-}
-
-.work-surface.plan-execute-panel > .plan-execute-panel__lead,
-.work-surface.plan-execute-panel > .plan-doc__h2,
-.work-surface.plan-execute-panel > .plan-execute-roadmap,
-.work-surface.plan-execute-panel > .plan-action-label,
-.work-surface.plan-execute-panel > .plan-action,
-.work-surface.plan-execute-panel > .plan-execute-panel__run-row {
-  /* grouped visually via pseudo card — see below */
-}
-
-.work-surface.plan-execute-panel:not(.plan-execute-panel--muted)::before {
-  content: "";
-  display: none;
-}
-
-/* Plan actions block → plan-card body */
-.work-surface.plan-execute-panel > .plan-doc__h2:first-of-type,
-.work-surface.plan-execute-panel > .plan-execute-panel__lead:first-child {
-  margin-top: 0;
-}
-
-.work-surface.plan-execute-panel .plan-doc__h2 {
-  font-size: var(--text-micro);
-  font-weight: var(--weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--label-tertiary);
-  margin: var(--space-8) 0 var(--space-4);
-}
-
-.work-surface.plan-execute-panel .plan-execute-panel__lead {
-  display: none;
-}
-
-.work-surface.plan-execute-panel .plan-execute-panel__run-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-8);
-  padding-top: var(--space-8);
-  border-top: 1px solid var(--border-hair);
-  margin-top: var(--space-8);
-}
-
-.work-surface.plan-execute-panel .plan-execute-panel__run-row .room-plan-btn {
-  margin-left: auto;
-}
+/* M6: legacy `.work-surface.plan-execute-panel` dual-class removed — canonical `.work-surface` only */
 
 /* Pending block → exec-card */
 .work-surface .plan-execute-pending {
@@ -186,20 +137,6 @@
 
 .agent-settings__card--dim {
   opacity: 0.55;
-}
-
-/* Room task bar — prototype summary row; secondary head inside body */
-.room-task-bar__head--secondary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-8);
-  padding: 0 0 var(--space-8);
-  border-bottom: none;
-}
-
-.room-task-bar__head--secondary .room-task-bar__meta {
-  margin-left: auto;
 }
 
 /* Composer docked to workspace body bottom */

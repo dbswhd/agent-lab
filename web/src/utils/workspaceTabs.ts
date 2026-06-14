@@ -3,7 +3,9 @@ export type WorkspaceTab =
   | "work"
   | "run"
   | "artifacts"
-  | "files";
+  | "files"
+  | "preview"
+  | "terminal";
 
 /** @deprecated Use `work` */
 export type LegacyWorkspaceTab = "plan" | "review";
@@ -21,6 +23,8 @@ export const WORKSPACE_TABS: {
   { id: "run",        label: "Run",         shortcut: "⌘3" },
   { id: "artifacts",  label: "Artifacts",  shortcut: "⌘4" },
   { id: "files",      label: "Files",      shortcut: "⌘5" },
+  { id: "preview",    label: "Preview",    shortcut: "⌘6" },
+  { id: "terminal",   label: "Terminal",   shortcut: "⌘7" },
 ];
 
 export const INSPECTOR_TABS: {

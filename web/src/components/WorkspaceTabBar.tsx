@@ -4,7 +4,7 @@ import { messages } from "../i18n/messages";
 
 const TAB_META: {
   id: WorkspaceTab;
-  icon: "transcript" | "work" | "run" | "artifacts" | "files";
+  icon: "transcript" | "work" | "run" | "artifacts" | "files" | "preview" | "terminal";
   shortcut: string;
 }[] = [
   { id: "transcript", icon: "transcript", shortcut: "⌘1" },
@@ -12,6 +12,8 @@ const TAB_META: {
   { id: "run", icon: "run", shortcut: "⌘3" },
   { id: "artifacts", icon: "artifacts", shortcut: "⌘4" },
   { id: "files", icon: "files", shortcut: "⌘5" },
+  { id: "preview", icon: "preview", shortcut: "⌘6" },
+  { id: "terminal", icon: "terminal", shortcut: "⌘7" },
 ];
 
 type Props = {
@@ -22,6 +24,7 @@ type Props = {
   locale?: Locale;
   tabPinned?: boolean;
   running?: boolean;
+  runningLabel?: string | null;
 };
 
 function TabIcon({ kind }: { kind: (typeof TAB_META)[number]["icon"] }) {
@@ -64,6 +67,26 @@ function TabIcon({ kind }: { kind: (typeof TAB_META)[number]["icon"] }) {
           <path d="M14 2v6h6" />
         </svg>
       );
+    case "files":
+      return (
+        <svg {...common}>
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2Z" />
+        </svg>
+      );
+    case "preview":
+      return (
+        <svg {...common}>
+          <rect x="2" y="3" width="20" height="14" rx="2" />
+          <path d="M8 21h8M12 17v4" />
+        </svg>
+      );
+    case "terminal":
+      return (
+        <svg {...common}>
+          <polyline points="4 17 10 11 4 5" />
+          <line x1="12" y1="19" x2="20" y2="19" />
+        </svg>
+      );
   }
 }
 
@@ -76,6 +99,7 @@ export function WorkspaceTabBar({
   locale = "en",
   tabPinned,
   running,
+  runningLabel,
 }: Props) {
   const m = messages(locale);
 
@@ -116,9 +140,9 @@ export function WorkspaceTabBar({
           </span>
         ) : null}
         {running ? (
-          <span className="badge badge--accent">
+          <span className="badge badge--accent" title={runningLabel ?? undefined}>
             <span className="dot dot--live" aria-hidden />
-            {m.running}
+            {runningLabel ?? m.running}
           </span>
         ) : null}
       </div>

@@ -338,6 +338,28 @@
   font-size: var(--text-caption);
 }
 
+@media (max-width: 720px) {
+  .composer-wrap > .human-inbox--popup {
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    bottom: 132px;
+    z-index: var(--z-popover);
+    width: auto;
+    max-height: min(420px, calc(100vh - 168px));
+    margin: 0;
+    overflow: auto;
+  }
+
+  .composer-wrap > .human-inbox--popup .human-inbox__header {
+    align-items: flex-start;
+  }
+
+  .composer-wrap > .human-inbox--popup .inbox-row__head {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+}
+
 .human-inbox--taskbar {
   display: flex;
   flex-direction: column;

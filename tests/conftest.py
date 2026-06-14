@@ -80,6 +80,9 @@ _INTEGRATION_MODULES = frozenset(
         "test_agent_capabilities",
         "test_room_agent_capabilities",
         "test_commands_api",
+        "test_model_policy",
+        "test_room_mode_contract_api",
+        "test_smoke_room_governance",
     }
 )
 

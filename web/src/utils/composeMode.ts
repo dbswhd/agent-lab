@@ -6,6 +6,8 @@ export type ComposeMode = "discuss" | "plan" | "execute";
 /** Single composer control: turn profile + discuss/plan/execute. */
 export type UnifiedComposerMode =
   | "quick"
+  | "team"
+  | "loop"
   | "analyze"
   | "discuss"
   | "review"
@@ -42,7 +44,6 @@ export const UNIFIED_MODE_OPTIONS: {
   id: UnifiedComposerMode;
   label: string;
   title: string;
-  infinity?: boolean;
 }[] = [
   {
     id: "quick",
@@ -50,19 +51,24 @@ export const UNIFIED_MODE_OPTIONS: {
     title: "에이전트 1명 · 1라운드 · 짧게 확인",
   },
   {
-    id: "analyze",
-    label: "분석",
-    title: "R1 병렬 · 현황·사실·근거만 · plan 유지",
+    id: "team",
+    label: "팀",
+    title: "3명 병렬 · R1 · plan 선택",
+  },
+  {
+    id: "loop",
+    label: "루프",
+    title: "3명 · plan 필수 · 실행/검증 게이트",
   },
   {
     id: "discuss",
     label: "토론",
-    title: "레거시 — 분석 모드로 대체됨",
+    title: "레거시 — Team 모드로 대체됨",
   },
   {
     id: "review",
     label: "검토",
-    title: "레거시 — ♾️ 모드 사용",
+    title: "레거시 — Loop 모드 사용",
   },
   {
     id: "plan",
@@ -76,15 +82,15 @@ export const UNIFIED_MODE_OPTIONS: {
   },
   {
     id: "free",
-    label: "♾️",
-    title: "R1 주장 → R2 반박 ↔ R3 확장 루프 → 「이의 없습니다」",
-    infinity: true,
+    label: "루프",
+    title: "레거시 — Loop 모드 사용",
   },
 ];
 
-/** Composer strategy seg — quick / discuss / ♾️ only. */
+export const TEAM_PLAN_ALLOWED = true;
+
 export const TURN_STRATEGY_OPTIONS = UNIFIED_MODE_OPTIONS.filter(
-  (o) => o.id === "quick" || o.id === "analyze" || o.id === "free",
+  (o) => o.id === "quick" || o.id === "team" || o.id === "loop",
 );
 
 const PLAN_AFTER_SEND_KEY = "agent-lab-plan-after-send";
@@ -169,19 +175,23 @@ export function splitUnifiedMode(mode: UnifiedComposerMode): {
 } {
   switch (mode) {
     case "plan":
-      return { composeMode: "plan", turnProfile: "analyze" };
+      return { composeMode: "plan", turnProfile: "team" };
     case "execute":
-      return { composeMode: "execute", turnProfile: "analyze" };
+      return { composeMode: "execute", turnProfile: "team" };
     case "quick":
       return { composeMode: "discuss", turnProfile: "quick" };
+    case "team":
+      return { composeMode: "discuss", turnProfile: "team" };
+    case "loop":
+      return { composeMode: "plan", turnProfile: "loop" };
     case "review":
-      return { composeMode: "discuss", turnProfile: "review" };
+      return { composeMode: "plan", turnProfile: "loop" };
     case "free":
-      return { composeMode: "discuss", turnProfile: "free" };
+      return { composeMode: "plan", turnProfile: "loop" };
     case "analyze":
     case "discuss":
     default:
-      return { composeMode: "discuss", turnProfile: "analyze" };
+      return { composeMode: "discuss", turnProfile: "team" };
   }
 }
 
@@ -189,13 +199,11 @@ export function mergeToUnifiedMode(
   composeMode: ComposeMode,
   turnProfile: ComposerTurnProfile,
 ): UnifiedComposerMode {
-  if (composeMode === "plan") return "plan";
   if (composeMode === "execute") return "execute";
-  if (turnProfile === "quick") return "quick";
-  if (turnProfile === "review") return "free";
-  if (turnProfile === "free") return "free";
-  if (normalizeTurnProfile(turnProfile) === "analyze") return "analyze";
-  return "analyze";
+  const normalized = normalizeTurnProfile(turnProfile);
+  if (normalized === "quick") return "quick";
+  if (normalized === "loop") return "loop";
+  return "team";
 }
 
 export function unifiedModeDescription(mode: UnifiedComposerMode): string {
@@ -223,6 +231,8 @@ export function getUnifiedComposerMode(): UnifiedComposerMode {
     const unified = localStorage.getItem(UNIFIED_STORAGE_KEY);
     if (
       unified === "quick" ||
+      unified === "team" ||
+      unified === "loop" ||
       unified === "analyze" ||
       unified === "discuss" ||
       unified === "review" ||
@@ -232,11 +242,11 @@ export function getUnifiedComposerMode(): UnifiedComposerMode {
     ) {
       const turnRaw =
         unified === "review"
-          ? "free"
+          ? "loop"
           : unified === "discuss"
-            ? "analyze"
+            ? "team"
             : unified === "plan" || unified === "execute"
-              ? "analyze"
+              ? "team"
               : unified;
       return mergeToUnifiedMode(
         unified === "plan"
@@ -258,7 +268,7 @@ export function getUnifiedComposerMode(): UnifiedComposerMode {
   } catch {
     /* ignore */
   }
-  return "analyze";
+  return "team";
 }
 
 export function setUnifiedComposerMode(mode: UnifiedComposerMode): void {

@@ -1,5 +1,7 @@
 export type ComposerTurnProfile =
   | "quick"
+  | "team"
+  | "loop"
   | "analyze"
   | "review"
   | "free"
@@ -15,7 +17,6 @@ export type TurnProfileConfig = {
 
 const STORAGE_KEY = "agent-lab-turn-profile";
 
-/** Picker-visible strategies (review folded into ♾️ debate loop). */
 export function turnStrategyOptions(locale: "en" | "ko" = "en") {
   const ko = locale === "ko";
   return [
@@ -23,35 +24,28 @@ export function turnStrategyOptions(locale: "en" | "ko" = "en") {
       id: "quick" as const,
       label: ko ? "빠른" : "Quick",
       description: ko
-        ? "에이전트 1명 · R1 · 짧게 확인"
-        : "1 agent · R1 · short check",
+        ? "에이전트 1명 · R1 · plan 선택"
+        : "1 agent · R1 · optional plan",
     },
     {
-      id: "analyze" as const,
-      label: ko ? "분석" : "Analyze",
+      id: "team" as const,
+      label: ko ? "팀" : "Team",
       description: ko
-        ? "R1 병렬 · 현황·사실만 · plan 유지"
-        : "R1 parallel · facts only · keep plan",
+        ? "3명 병렬 · R1 · plan 선택"
+        : "3 agents · R1 · optional plan",
     },
     {
-      id: "specialist" as const,
-      label: ko ? "분업" : "Split",
-      description: "R1 Codex+Claude → R2 Cursor",
-    },
-    {
-      id: "free" as const,
-      label: "♾️",
+      id: "loop" as const,
+      label: ko ? "루프" : "Loop",
       description: ko
-        ? "R1 주장 → R2 반박 ↔ R3 확장 루프 → 합의"
-        : "Claim → rebuttal ↔ expand loop → consensus",
+        ? "3명 · plan 필수 · 실행/검증 게이트"
+        : "3 agents · plan required · execute/verify gates",
     },
   ];
 }
 
-/** @deprecated use turnStrategyOptions(locale) */
 export const TURN_STRATEGY_OPTIONS = turnStrategyOptions("en");
 
-/** One-line hint under turn picker — matches offline prototype composer.jsx */
 export function composerTurnHint(
   profile: ComposerTurnProfile,
   selectedAgents: string[],
@@ -64,34 +58,21 @@ export function composerTurnHint(
   if (normalized === "quick") {
     const lead = selectedAgents[0] ?? "agent";
     return ko
-      ? n > 1
+      ? selectedAgents.length > 1
         ? `빠른 · ${lead}만 · R1`
         : "빠른 · R1"
-      : n > 1
+      : selectedAgents.length > 1
         ? `Quick · ${lead} only · R1`
         : "Quick · R1";
   }
-  if (normalized === "analyze") {
+  if (normalized === "team") {
     return ko
-      ? `분석 · ${n}명 · 현황·사실만 · R${resolved.agentRounds}`
-      : `Analyze · ${n} agents · facts only · R${resolved.agentRounds}`;
+      ? `팀 · ${n}명 · R1 · plan 선택`
+      : `Team · ${n} agents · R1 · optional plan`;
   }
-  if (normalized === "specialist") {
-    return ko
-      ? "분업 · R1 Codex+Claude → R2 Cursor"
-      : "Split · R1 Codex+Claude → R2 Cursor";
-  }
-  if (normalized === "verified") {
-    return ko
-      ? "검증 · 목표 합의 → Oracle VERIFIED"
-      : "Verified · goal → Oracle VERIFIED";
-  }
-  if (normalized === "free") {
-    return ko
-      ? `♾️ · ${n}명 · R2↔R3 루프 → 합의`
-      : `♾️ · ${n} agents · R2↔R3 loop → consensus`;
-  }
-  return turnProfileDescription(profile);
+  return ko
+    ? `루프 · ${n}명 · plan 필수 · 검증 게이트`
+    : `Loop · ${n} agents · plan required · verify gates`;
 }
 
 export const TURN_PROFILE_OPTIONS: {
@@ -103,25 +84,23 @@ export const TURN_PROFILE_OPTIONS: {
   {
     id: "review",
     label: "검토",
-    description: "레거시 — ♾️ 모드로 대체됨",
+    description: "레거시 — Loop 모드로 대체됨",
   },
 ];
 
 export function normalizeTurnProfile(
   profile: string | null | undefined,
 ): ComposerTurnProfile {
-  if (profile === "review") return "free";
-  if (profile === "discuss") return "analyze";
-  if (profile === "verified") return "analyze";
-  if (
-    profile === "quick" ||
-    profile === "analyze" ||
-    profile === "free" ||
-    profile === "specialist"
-  ) {
-    return profile;
-  }
-  return "analyze";
+  if (profile === "quick") return "quick";
+  if (profile === "team") return "team";
+  if (profile === "loop") return "loop";
+  if (profile === "analyze") return "team";
+  if (profile === "discuss") return "team";
+  if (profile === "free") return "loop";
+  if (profile === "review") return "loop";
+  if (profile === "verified") return "loop";
+  if (profile === "specialist") return "loop";
+  return "team";
 }
 
 export function turnProfileDescription(profile: ComposerTurnProfile): string {
@@ -142,6 +121,18 @@ export const TURN_PROFILE_CONFIG: Record<
     reviewMode: false,
     singleAgent: true,
     consensusMode: false,
+  },
+  team: {
+    agentRounds: 1,
+    reviewMode: false,
+    singleAgent: false,
+    consensusMode: false,
+  },
+  loop: {
+    agentRounds: 1,
+    reviewMode: false,
+    singleAgent: false,
+    consensusMode: true,
   },
   analyze: {
     agentRounds: 1,
@@ -177,15 +168,11 @@ export const TURN_PROFILE_CONFIG: Record<
 
 export function getTurnProfile(): ComposerTurnProfile {
   const stored = localStorage.getItem(STORAGE_KEY);
-  if (stored === "efficient") {
-    localStorage.setItem(STORAGE_KEY, "analyze");
-    return "analyze";
+  const normalized = normalizeTurnProfile(stored);
+  if (stored !== normalized) {
+    localStorage.setItem(STORAGE_KEY, normalized);
   }
-  if (stored === "verified") {
-    localStorage.setItem(STORAGE_KEY, "analyze");
-    return "analyze";
-  }
-  return normalizeTurnProfile(stored);
+  return normalized;
 }
 
 export function setTurnProfile(profile: ComposerTurnProfile): void {
@@ -219,29 +206,15 @@ export function turnProfileHint(
   selectedAgents: string[],
 ): string | null {
   const normalized = normalizeTurnProfile(profile);
-  let hint: string | null = null;
   if (normalized === "quick" && selectedAgents.length > 1) {
-    hint = `빠른 · ${selectedAgents[0]}만 · R1`;
-  } else if (normalized === "specialist") {
-    hint =
-      selectedAgents.length > 1
-        ? `분업 · R1 Codex+Claude → R2 Cursor`
-        : "분업 · 2R · Cursor R2";
-  } else if (normalized === "verified") {
-    hint =
-      selectedAgents.length > 1
-        ? `검증 · ${selectedAgents.length}명 · Oracle VERIFIED`
-        : "검증 · Oracle VERIFIED";
-  } else if (normalized === "free") {
-    hint =
-      selectedAgents.length > 1
-        ? `♾️ · ${selectedAgents.length}명 · R2↔R3 루프 → 합의`
-        : "♾️ · 1명 · R1";
-  } else if (normalized === "analyze") {
-    hint =
-      selectedAgents.length > 1
-        ? `분석 · ${selectedAgents.length}명 · 현황만 · R1`
-        : "분석 · 현황만 · R1";
+    return `빠른 · ${selectedAgents[0]}만 · R1`;
   }
-  return hint;
+  if (normalized === "team") {
+    return selectedAgents.length > 1
+      ? `팀 · ${selectedAgents.length}명 · R1 · plan 선택`
+      : "팀 · R1 · plan 선택";
+  }
+  return selectedAgents.length > 1
+    ? `루프 · ${selectedAgents.length}명 · plan 필수 · 검증`
+    : "루프 · plan 필수 · 검증";
 }

@@ -24,7 +24,7 @@ from agent_lab.room import (
 from agent_lab.run_observability import observability_snapshot
 from agent_lab.session import SESSIONS_DIR
 
-TURN_PROFILES = frozenset({"quick", "analyze", "discuss", "review", "free", "specialist", "verified"})
+TURN_PROFILES = frozenset({"quick", "team", "loop", "analyze", "discuss", "review", "free", "specialist", "verified"})
 
 
 class RunRequest(BaseModel):

@@ -10,6 +10,8 @@ export type TaskBarComposerVariant = "discuss" | "plan" | "consensus";
 
 export type TaskBarMode =
   | "discuss"
+  | "team"
+  | "loop"
   | "analyze"
   | "quick"
   | "consensus"
@@ -45,7 +47,8 @@ export function resolveTaskBarMode(
   if (composerVariant === "plan") return "plan";
   if (turnProfile === "quick") return "quick";
   if (turnProfile === "specialist") return "specialist";
-  if (turnProfile === "analyze") return "analyze";
+  if (turnProfile === "loop") return "loop";
+  if (turnProfile === "team" || turnProfile === "analyze") return "team";
   return "discuss";
 }
 
@@ -96,12 +99,15 @@ export function formatTaskBarModeHint(
       return taskCount > 0
         ? `plan 탭 · 할 일 ${taskCount}건 · 실행 연결`
         : "plan 탭 · 문서·실행은 여기서";
+    case "team":
     case "analyze":
       return selectedAgentCount > 1
-        ? `분석 · ${selectedAgentCount}명 병렬 · 할 일은 [PROPOSED:] 제안만 (자동 배정 없음)`
-        : "분석 · R1 현황만 · 할 일은 제안만 쌓입니다";
+        ? `팀 · ${selectedAgentCount}명 병렬 · 할 일은 [PROPOSED:] 제안만 (자동 배정 없음)`
+        : "팀 · R1 · 할 일은 제안만 쌓입니다";
     case "quick":
       return "빠른 · 1명 · 할 일 제안은 가능하지만 자동 배정 없음";
+    case "loop":
+      return "루프 · plan/execute/verify 게이트 · 팀 동의와 검증을 기다립니다";
     case "specialist":
       return "분업 · R1 Codex+Claude → R2 Cursor · cwd/툴 비대칭";
     default:
@@ -291,16 +297,23 @@ export function formatTaskBarEmptyState(mode: TaskBarMode): {
         message: "plan 정리 턴에서 나온 할 일이 plan 실행과 연결됩니다.",
         example: "예: [PROPOSED: API 스키마 확정] → plan #2와 연결",
       };
+    case "team":
     case "analyze":
       return {
         message:
-          "분석 턴에서는 할 일을 제안만 하고, 담당은 자동으로 붙지 않습니다.",
+          "팀 턴에서는 할 일을 제안만 하고, 담당은 자동으로 붙지 않습니다.",
         example: "예: [PROPOSED: 현황 요약]",
       };
     case "quick":
       return {
         message: "빠른 모드에서도 [PROPOSED:] 제안은 할 일로 쌓일 수 있습니다.",
         example: "예: [PROPOSED: 버그 재현 확인]",
+      };
+    case "loop":
+      return {
+        message:
+          "루프에서는 plan/execute/verify로 이어질 수 있는 할 일이 게이트와 연결됩니다.",
+        example: "예: [PROPOSED: 검증 자동화]",
       };
     default:
       return {

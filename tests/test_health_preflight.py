@@ -196,6 +196,23 @@ def test_health_probe_preflight_flag(monkeypatch):
     payload = build_health_payload(probe_preflight=True)
     assert payload["preflight"] is True
     assert len(payload["agents"]) == 3
+    cursor = next(row for row in payload["agents"] if row["id"] == "cursor")
+    assert cursor["team_ready"] is True
+    assert cursor["loop_ready"] is True
+
+
+@pytest.mark.integration
+def test_health_payload_includes_model_readiness() -> None:
+    from agent_lab.agent_health import build_health_payload
+
+    payload = build_health_payload()
+    rows = {row["id"]: row for row in payload["agents"]}
+
+    assert rows["cursor"]["team_ready"] is True
+    assert rows["cursor"]["loop_ready"] is True
+    assert rows["cursor"]["model_provider"] == "local"
+    assert rows["cursor"]["loop_blockers"] == []
+    assert rows["codex"]["loop_ready"] is True
 
 
 def test_agents_not_ready_subset():

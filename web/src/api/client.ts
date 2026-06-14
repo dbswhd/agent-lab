@@ -279,6 +279,10 @@ export type AgentHealthRow = {
   remediation?: string[];
   capabilities?: string[];
   capability_label?: string;
+  model_provider?: string;
+  team_ready?: boolean;
+  loop_ready?: boolean;
+  loop_blockers?: string[];
 };
 
 export type HealthResponse = {
@@ -1669,7 +1673,6 @@ export type RunRoomOptions = {
   consensusMode?: boolean;
   /** Pin cap, shorter replies, slimmer consensus payloads (subscription-friendly). */
   efficiencyMode?: boolean;
-  /** Composer turn profile id (quick/analyze/free). */
   turnProfile?: string;
   /** Collect agent outputs into artifacts[] (research / specialist). */
   researchMode?: boolean;
@@ -2315,7 +2318,8 @@ export function postMissionDiscussRecovery(sessionId: string) {
 }
 
 export type HumanInboxOption = {
-  id: string;
+  id?: string;
+  value?: string;
   label: string;
   description?: string;
 };

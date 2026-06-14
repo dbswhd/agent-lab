@@ -154,7 +154,7 @@ def test_taskbar_human_inbox_integration_contract():
     assert "humanInboxPendingCount" in taskbar
     assert '"taskbar"' in inbox
     assert "onOpenInspectorInbox={openHumanInbox}" in room
-    assert "humanInboxPendingCount={inboxPendingCount}" in room
+    assert "humanInboxPendingCount={inboxPendingNonQuestions}" in room
 
 
 def test_discuss_inbox_panel_contract():
@@ -168,6 +168,32 @@ def test_discuss_inbox_panel_contract():
     assert 'presentation="popup"' in room
     assert "discussOnly" in discuss
     assert "inbox-row--fork" in inbox
+
+
+def test_composer_question_inbox_is_separate_from_generic_pending_hint():
+    room = _read("web", "src", "components", "RoomChat.tsx")
+    inbox = _read("web", "src", "components", "HumanInboxPanel.tsx")
+    assert "inboxPendingQuestions > 0" in room
+    assert 'kindFilter="question"' in room
+    assert "inboxPendingNonQuestions > 0" in room
+    assert "Human Inbox 대기 ({inboxPendingNonQuestions})" in room
+    assert 'excludeKind="question"' in _read(
+        "web", "src", "components", "RoomTaskBar.tsx"
+    )
+    assert "visiblePending.map" in inbox
+    assert "visiblePending[0]?.kind" in inbox
+
+
+def test_turn_picker_uses_quick_team_loop_contract():
+    turn = _read("web", "src", "utils", "turnProfile.ts")
+    compose = _read("web", "src", "utils", "composeMode.ts")
+    assert 'id: "team"' in turn
+    assert 'id: "loop"' in turn
+    assert 'label: ko ? "팀" : "Team"' in turn
+    assert '"verified") return "loop"' in turn
+    assert 'id === "specialist"' not in turn
+    assert 'label: "♾️"' not in turn
+    assert "TEAM_PLAN_ALLOWED" in compose
 
 
 def test_m6_work_exec_classes_only_in_plan_execute_panel():

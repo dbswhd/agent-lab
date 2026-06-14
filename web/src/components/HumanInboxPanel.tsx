@@ -20,6 +20,7 @@ type Props = {
   disabled?: boolean;
   presentation?: "inline" | "popup" | "inspector" | "taskbar";
   kindFilter?: "question" | "build" | "skill_draft";
+  excludeKind?: "question" | "build" | "skill_draft";
   discussOnly?: boolean;
   hideInspectorLabel?: boolean;
   onRefClick?: (ref: string) => void;
@@ -204,21 +205,25 @@ function InboxRow({
       ) : null}
       {item.kind === "question" ? (
         <div className="inbox-row__options">
-          {(item.options ?? []).map((opt) => (
-            <div key={opt.id} className="inbox-row__option-block">
-              <button
-                type="button"
-                className="btn btn--sm"
-                disabled={busy}
-                onClick={() => void onQuestion(item, opt.id)}
-              >
-                {opt.label}
-              </button>
-              {opt.description ? (
-                <p className="inbox-row__option-desc">{opt.description}</p>
-              ) : null}
-            </div>
-          ))}
+          {(item.options ?? []).map((opt, index) => {
+            const optionId = opt.id ?? opt.value ?? opt.label;
+            const optionKey = `${item.id}:${optionId}:${index}`;
+            return (
+              <div key={optionKey} className="inbox-row__option-block">
+                <button
+                  type="button"
+                  className="btn btn--sm"
+                  disabled={busy}
+                  onClick={() => void onQuestion(item, optionId)}
+                >
+                  {opt.label}
+                </button>
+                {opt.description ? (
+                  <p className="inbox-row__option-desc">{opt.description}</p>
+                ) : null}
+              </div>
+            );
+          })}
           {!hasQuestionOptions(item) ? (
             <>
               <textarea
@@ -315,6 +320,7 @@ export function HumanInboxPanel({
   disabled,
   presentation = "inline",
   kindFilter,
+  excludeKind,
   discussOnly = false,
   hideInspectorLabel = false,
   onRefClick,
@@ -351,11 +357,18 @@ export function HumanInboxPanel({
     let rows = kindFilter
       ? items.filter((item) => item.kind === kindFilter)
       : items;
+    if (excludeKind) {
+      rows = rows.filter((item) => item.kind !== excludeKind);
+    }
     if (discussOnly) {
       rows = rows.filter((item) => isDiscussHarvest(item));
     }
     return rows;
-  }, [items, kindFilter, discussOnly]);
+  }, [items, kindFilter, excludeKind, discussOnly]);
+  const visiblePending = useMemo(
+    () => pendingItems(visibleItems),
+    [visibleItems],
+  );
   const hasPending = pending.length > 0;
 
   useEffect(() => {
@@ -498,7 +511,7 @@ export function HumanInboxPanel({
     );
   }
 
-  if (pending.length === 0) {
+  if (visiblePending.length === 0) {
     if (presentation === "taskbar") {
       return (
         <div className="taskbar__empty human-inbox--taskbar-empty">
@@ -509,14 +522,16 @@ export function HumanInboxPanel({
     return null;
   }
 
-  const questionCount = pending.filter(
+  const questionCount = visiblePending.filter(
     (item) => item.kind === "question",
   ).length;
-  const buildCount = pending.filter((item) => item.kind === "build").length;
+  const buildCount = visiblePending.filter(
+    (item) => item.kind === "build",
+  ).length;
 
   const title =
     presentation === "popup"
-      ? pending[0]?.kind === "build"
+      ? visiblePending[0]?.kind === "build"
         ? ko
           ? "Build 승인 필요"
           : "Build approval required"
@@ -591,7 +606,7 @@ export function HumanInboxPanel({
       ) : null}
       {error ? <div className="human-inbox__error">{error}</div> : null}
       <div className="human-inbox__items">
-        {pending.map((item) => (
+        {visiblePending.map((item) => (
           <InboxRow
             key={item.id}
             item={item}

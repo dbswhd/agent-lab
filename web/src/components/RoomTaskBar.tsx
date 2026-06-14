@@ -870,6 +870,7 @@ export function RoomTaskBar({
                 onBuildStarted={onHumanInboxBuildStarted}
                 onOpenInbox={onOpenInspectorInbox}
                 onRefClick={onHumanInboxRefClick}
+                excludeKind="question"
               />
             ) : null}
 

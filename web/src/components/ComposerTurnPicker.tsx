@@ -54,7 +54,7 @@ export function ComposerTurnPicker({
               aria-checked={value === opt.id}
               className={[
                 value === opt.id ? "is-active" : "",
-                opt.id === "free" ? "turn-seg__infinity" : "",
+                opt.id === "loop" ? "turn-seg__loop" : "",
               ]
                 .filter(Boolean)
                 .join(" ")}

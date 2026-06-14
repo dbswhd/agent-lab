@@ -10,8 +10,10 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from agent_lab.agents.registry import AGENT_IDS
 from agent_lab.context_limits import all_limits_for_api
 from agent_lab.invoke import ensure_ready
+from agent_lab.model_policy import loop_readiness_failure
 from agent_lab.room import (
     DEFAULT_AGENT_PARALLEL_ROUNDS,
     MAX_AGENT_PARALLEL_ROUNDS,
@@ -32,11 +34,11 @@ from agent_lab.runner import provider_override, run_topic_with_progress
 from agent_lab.session import SESSIONS_DIR, session_dir
 from agent_lab.session_setup import merge_setup_permissions, seed_session_setup
 from agent_lab.agent_thread_catalog import normalize_agent_thread_bindings
+from agent_lab.turn_modes import ModeContractError, resolve_mode_contract
 
 from app.server.deps import (
     ContextPreviewRequest,
     RunRequest,
-    TURN_PROFILES,
     room_session_context,
     save_uploads,
     session_folder_or_404,
@@ -51,6 +53,18 @@ def _agents_not_ready(agent_list: list[str]) -> list[dict[str, Any]]:
     from agent_lab.agent_preflight import agents_not_ready
 
     return agents_not_ready(agent_list)
+
+
+def _loop_readiness_detail(agent_list: list[str] | None) -> dict[str, Any] | None:
+    effective_agents = agent_list or list(AGENT_IDS)
+    failure = loop_readiness_failure(effective_agents)
+    if failure is None:
+        return None
+    return {
+        "message": "loop model readiness failed",
+        "agents": list(failure.agents),
+        "reason": failure.reason,
+    }
 
 
 @router.post("/room/context-preview")
@@ -187,6 +201,19 @@ async def create_room_run(
     except json.JSONDecodeError:
         agent_ids = []
     agent_list = [a.strip().lower() for a in agent_ids if str(a).strip()] or None
+    try:
+        mode_contract = resolve_mode_contract(
+            mode=mode_norm,
+            synthesize=bool(synthesize),
+            turn_profile=turn_profile,
+            agents=agent_list,
+            agent_rounds=max(1, min(agent_rounds, MAX_AGENT_PARALLEL_ROUNDS)),
+            review_mode=review_mode,
+            consensus_mode=consensus_mode,
+        )
+    except ModeContractError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    agent_list = mode_contract.agents
 
     if not synthesize_only and agent_list:
         bad = _agents_not_ready(agent_list)
@@ -198,6 +225,11 @@ async def create_room_run(
                     "agents": bad,
                 },
             )
+    if not synthesize_only and mode_contract.plan_intent == "loop":
+        loop_readiness_detail = _loop_readiness_detail(agent_list)
+        if loop_readiness_detail is not None:
+            loop_readiness_detail["topology"] = mode_contract.topology
+            raise HTTPException(status_code=422, detail=loop_readiness_detail)
 
     try:
         perm_obj = json.loads(permissions) if permissions else {}
@@ -264,16 +296,11 @@ async def create_room_run(
         )
 
     saved_files = await save_uploads(folder, files)
-    parallel_rounds = max(1, min(agent_rounds, MAX_AGENT_PARALLEL_ROUNDS))
-    # Align with UI turn profiles: discuss=1, review>=2 (non-UI callers may omit agent_rounds).
-    if review_mode and not consensus_mode and parallel_rounds < 2:
-        parallel_rounds = 2
+    parallel_rounds = max(1, min(mode_contract.agent_rounds, MAX_AGENT_PARALLEL_ROUNDS))
+    review_mode = mode_contract.review_mode
+    consensus_mode = mode_contract.consensus_mode
     use_efficiency = bool(efficiency_mode)
-    profile_norm = (turn_profile or "analyze").strip().lower()
-    if profile_norm == "discuss":
-        profile_norm = "analyze"
-    if profile_norm not in TURN_PROFILES:
-        profile_norm = "analyze"
+    profile_norm = mode_contract.runtime_turn_profile
 
     def generate():
         event_q: queue.SimpleQueue[dict[str, Any] | None] = queue.SimpleQueue()

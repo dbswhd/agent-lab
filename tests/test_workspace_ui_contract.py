@@ -6,6 +6,8 @@ rather than full JSX attribute strings so Prettier reflows do not break tests.
 
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web" / "src"
 
@@ -27,6 +29,18 @@ def test_app_uses_workspace_shell_not_primary_messenger_label():
     assert "Sessions" in app
     assert "SessionRailStatusChip" in app
     assert "AgentHealthPanel" not in app or "healthToAgentOptions" in app
+
+
+@pytest.mark.integration
+def test_agent_health_panel_shows_model_readiness_lane():
+    client = _read("web", "src", "api", "client.ts")
+    panel = _read("web", "src", "components", "AgentHealthPanel.tsx")
+
+    assert "team_ready?: boolean" in client
+    assert "loop_ready?: boolean" in client
+    assert "model_provider?: string" in client
+    assert "Team-ready" in panel
+    assert "Loop-ready" in panel
 
 
 def test_workspace_tabs_stay_on_transcript_while_running():

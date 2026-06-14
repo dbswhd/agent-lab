@@ -193,10 +193,10 @@ def test_patch_goal_blocked_when_plan_workflow(tmp_path: Path, monkeypatch: pyte
     assert exc.value.status_code == 409
 
 
-def test_apply_legacy_verified_redirects_on_plan_send() -> None:
+def test_apply_legacy_verified_keeps_loop_semantics_on_plan_send() -> None:
     run_meta: dict = {"turn_profile": "verified"}
     apply_legacy_verified_turn_profile(None, run_meta, synthesize=True)
-    assert run_meta["turn_profile"] == "analyze"
+    assert run_meta["turn_profile"] == "verified"
 
 
 def test_verified_loop_approve_delegates_with_deprecation_header(

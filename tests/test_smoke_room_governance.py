@@ -119,3 +119,13 @@ def test_specialist_asymmetric_cwd_requires_capability_cwd_meta():
         }
     }
     assert not smoke._check_specialist_asymmetric_cwd(broken)
+
+
+def test_smoke_baseline_preserves_verified_loop_semantics():
+    smoke = _load_smoke_room()
+
+    run = smoke._load_run(smoke.REGRESSION / "plan_workflow_approved")
+
+    assert smoke._check_plan_workflow_approved(run)
+    assert run["plan_workflow"]["phase"] == "APPROVED"
+    assert run["verified_loop"]["status"] == "running"

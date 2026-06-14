@@ -27,6 +27,12 @@ function bridgeLabel(row: AgentHealthRow): string | null {
   return mode;
 }
 
+function modelReadinessLabel(row: AgentHealthRow): string | null {
+  if (row.loop_ready) return "Loop-ready";
+  if (row.team_ready) return "Team-ready";
+  return null;
+}
+
 export function AgentHealthPanel({
   apiOk,
   agents,
@@ -94,6 +100,7 @@ export function AgentHealthPanel({
           <ul className="agent-health-list">
             {agents.map((row) => {
               const bridge = bridgeLabel(row);
+              const modelReadiness = modelReadinessLabel(row);
               return (
                 <li
                   key={row.id}
@@ -117,6 +124,8 @@ export function AgentHealthPanel({
                         ? "설정됨"
                         : "미설정"}
                     {bridge ? ` · ${bridge}` : ""}
+                    {modelReadiness ? ` · ${modelReadiness}` : ""}
+                    {row.model_provider ? ` · ${row.model_provider}` : ""}
                   </span>
                   {row.id === "cursor" && showReconnect ? (
                     <button

@@ -131,7 +131,6 @@ import {
 } from "../utils/roundTopology";
 import {
   composerTurnHint,
-  normalizeTurnProfile,
   resolveTurnSend,
   setTurnProfile,
   type ComposerTurnProfile,
@@ -425,6 +424,9 @@ export function RoomChat({
   const [sendReceiptRaw, setSendReceiptRaw] = useState<string | undefined>();
   const [hideApprovedPlanBanner, setHideApprovedPlanBanner] = useState(false);
   const [inboxPendingCount, setInboxPendingCount] = useState(0);
+  const [inboxPendingQuestions, setInboxPendingQuestions] = useState(0);
+  const [inboxPendingBuilds, setInboxPendingBuilds] = useState(0);
+  const [inboxPendingSkillDrafts, setInboxPendingSkillDrafts] = useState(0);
   const [globalInboxPending, setGlobalInboxPending] = useState(0);
   const [inboxReloadKey, setInboxReloadKey] = useState(0);
   const [discussRecoveryBusy, setDiscussRecoveryBusy] = useState(false);
@@ -596,9 +598,18 @@ export function RoomChat({
     setTurnProfileState(profile);
     setTurnStrategy(profile);
     setTurnProfile(profile);
+    if (profile === "loop" && !planAfterSend) {
+      setPlanAfterSendState(true);
+      setPlanAfterSendForSession(sessionId ?? activeSessionIdRef.current, true);
+    }
   }
 
   function changePlanAfterSend(on: boolean) {
+    if (turnProfile === "loop" && !on) {
+      setPlanAfterSendState(true);
+      setPlanAfterSendForSession(sessionId ?? activeSessionIdRef.current, true);
+      return;
+    }
     setPlanAfterSendState(on);
     setPlanAfterSendForSession(sessionId ?? activeSessionIdRef.current, on);
   }
@@ -607,6 +618,11 @@ export function RoomChat({
 
   useEffect(() => {
     if (!sessionId) {
+      if (turnProfile === "loop" && !planAfterSend) {
+        setPlanAfterSendState(true);
+        setPlanAfterSendForSession(activeSessionIdRef.current, true);
+        return;
+      }
       setPlanAfterSendState(getPlanAfterSend());
       return;
     }
@@ -614,6 +630,11 @@ export function RoomChat({
     if (isPlanWorkflowAwaitingApproval(wf)) {
       setPlanAfterSendState(false);
       setPlanAfterSendForSession(sessionId, false);
+      return;
+    }
+    if (turnProfile === "loop" && !planAfterSend) {
+      setPlanAfterSendState(true);
+      setPlanAfterSendForSession(sessionId, true);
       return;
     }
     const syncKey = `${sessionId}:${(wf?.phase ?? "none").toUpperCase()}:${wf?.enabled ? "1" : "0"}`;
@@ -626,7 +647,7 @@ export function RoomChat({
     } else {
       setPlanAfterSendState(getPlanAfterSendForSession(sessionId));
     }
-  }, [sessionId, session?.run?.plan_workflow]);
+  }, [sessionId, session?.run?.plan_workflow, turnProfile, planAfterSend]);
 
   const refreshTasks = useCallback(
     (overrideId?: string | null) => {
@@ -753,13 +774,22 @@ export function RoomChat({
   const refreshInboxPending = useCallback(async () => {
     if (!sessionId) {
       setInboxPendingCount(0);
+      setInboxPendingQuestions(0);
+      setInboxPendingBuilds(0);
+      setInboxPendingSkillDrafts(0);
       return;
     }
     try {
       const payload = await fetchSessionInbox(sessionId);
       setInboxPendingCount(payload.pending_count ?? 0);
+      setInboxPendingQuestions(payload.pending_questions ?? 0);
+      setInboxPendingBuilds(payload.pending_builds ?? 0);
+      setInboxPendingSkillDrafts(payload.pending_skill_drafts ?? 0);
     } catch {
       setInboxPendingCount(0);
+      setInboxPendingQuestions(0);
+      setInboxPendingBuilds(0);
+      setInboxPendingSkillDrafts(0);
     }
   }, [sessionId]);
 
@@ -955,14 +985,24 @@ export function RoomChat({
     return n > 0 ? n : undefined;
   }, [roomTasks?.open_objection_count]);
 
+  const inboxPendingNonQuestions = useMemo(() => {
+    const typedCount = inboxPendingBuilds + inboxPendingSkillDrafts;
+    return Math.max(0, typedCount || inboxPendingCount - inboxPendingQuestions);
+  }, [
+    inboxPendingBuilds,
+    inboxPendingCount,
+    inboxPendingQuestions,
+    inboxPendingSkillDrafts,
+  ]);
+
   const inspectorInboxBadge = useMemo(() => {
-    return inboxPendingCount > 0 ? inboxPendingCount : undefined;
-  }, [inboxPendingCount]);
+    return inboxPendingNonQuestions > 0 ? inboxPendingNonQuestions : undefined;
+  }, [inboxPendingNonQuestions]);
 
   const titlebarInboxPending = useMemo(() => {
-    if (inboxPendingCount > 0) return inboxPendingCount;
+    if (inboxPendingNonQuestions > 0) return inboxPendingNonQuestions;
     return globalInboxPending > 0 ? globalInboxPending : undefined;
-  }, [globalInboxPending, inboxPendingCount]);
+  }, [globalInboxPending, inboxPendingNonQuestions]);
 
   useEffect(() => {
     void refreshInboxPending();
@@ -974,7 +1014,12 @@ export function RoomChat({
       void fetchInboxSummary()
         .then((payload) => {
           if (cancelled) return;
-          setGlobalInboxPending(payload.total_pending ?? 0);
+          setGlobalInboxPending(
+            Math.max(
+              0,
+              (payload.total_pending ?? 0) - (payload.pending_questions ?? 0),
+            ),
+          );
         })
         .catch(() => {
           if (!cancelled) setGlobalInboxPending(0);
@@ -1057,7 +1102,7 @@ export function RoomChat({
 
   const showVerifiedLoop =
     !planWorkflowActive &&
-    (turnProfile === "verified" || Boolean(session?.run?.verified_loop));
+    (turnProfile === "loop" || Boolean(session?.run?.verified_loop));
 
   const showGoalLoop = !planWorkflowActive && !showVerifiedLoop;
 
@@ -1328,7 +1373,7 @@ export function RoomChat({
       proposal.summary,
       proposal.recommended?.what,
     );
-    const freeConsensus = turnProfile === "free";
+    const freeConsensus = turnProfile === "loop";
     dispatchNotification(
       {
         tier: "P1",
@@ -1389,7 +1434,8 @@ export function RoomChat({
     ) => {
       if (mode === "execute") return;
       if (runBusy || running || synthesizing) return;
-      const roomMode = mode === "plan" ? "plan" : "discuss";
+      const roomMode =
+        mode === "plan" || profile === "loop" ? "plan" : "discuss";
       const {
         agents,
         agentRounds,
@@ -1944,7 +1990,22 @@ export function RoomChat({
                     const pending = (payload.human_inbox ?? []).filter(
                       (item) => item.status === "pending",
                     );
-                    setInboxPendingCount(pending.length);
+                    const pendingQuestions =
+                      payload.pending_questions ??
+                      pending.filter((item) => item.kind === "question").length;
+                    const pendingBuilds =
+                      payload.pending_builds ??
+                      pending.filter((item) => item.kind === "build").length;
+                    const pendingSkillDrafts =
+                      payload.pending_skill_drafts ??
+                      pending.filter((item) => item.kind === "skill_draft")
+                        .length;
+                    setInboxPendingCount(
+                      payload.pending_count ?? pending.length,
+                    );
+                    setInboxPendingQuestions(pendingQuestions);
+                    setInboxPendingBuilds(pendingBuilds);
+                    setInboxPendingSkillDrafts(pendingSkillDrafts);
                     const question = pending.find(
                       (item) => item.kind === "question",
                     );
@@ -1991,16 +2052,18 @@ export function RoomChat({
                         notifyDesktop,
                       );
                     }
-                    const hasBlocking = pending.some(
-                      (item) =>
-                        item.kind === "question" || item.kind === "build",
+                    const hasBuildGate = pending.some(
+                      (item) => item.kind === "build",
                     );
-                    if (hasBlocking) {
+                    if (hasBuildGate) {
                       setShowInboxPopup(true);
                     }
                   })
                   .catch(() => {
                     setInboxPendingCount(1);
+                    setInboxPendingQuestions(0);
+                    setInboxPendingBuilds(0);
+                    setInboxPendingSkillDrafts(0);
                   });
               }
               if (ev.verified_loop_pending === true) {
@@ -2111,8 +2174,7 @@ export function RoomChat({
             reviewMode: useReviewMode,
             consensusMode: useConsensusMode,
             turnProfile: profile,
-            researchMode:
-              researchMode || normalizeTurnProfile(profile) === "specialist",
+            researchMode: researchMode || profile === "specialist",
             workspaceId: sessionId ? undefined : workspaceId,
             workspacePath:
               sessionId || workspaceId !== CUSTOM_WORKSPACE_ID
@@ -2727,7 +2789,7 @@ export function RoomChat({
                     loading={tasksLoading}
                     executions={planExecutions}
                     focusObjection={taskBarFocusObjection}
-                    humanInboxPendingCount={inboxPendingCount}
+                    humanInboxPendingCount={inboxPendingNonQuestions}
                     inboxReloadKey={inboxReloadKey}
                     planRevision={currentPlanRevision}
                     humanInboxDisabled={running || synthesizing || runBusy}
@@ -3048,7 +3110,24 @@ export function RoomChat({
                     />
                   ) : null}
 
-                  {showInboxPopup && sessionId && inboxPendingCount > 0 ? (
+                  {sessionId && inboxPendingQuestions > 0 ? (
+                    <HumanInboxPanel
+                      sessionId={sessionId}
+                      reloadKey={inboxReloadKey}
+                      planRevision={currentPlanRevision}
+                      onResolved={handleInboxResolved}
+                      disabled={running || synthesizing || runBusy}
+                      presentation="popup"
+                      kindFilter="question"
+                      onOpenInbox={() => {
+                        setInboxSegment("questions");
+                        openHumanInbox();
+                      }}
+                      onRefClick={handleInboxRefClick}
+                    />
+                  ) : null}
+
+                  {showInboxPopup && sessionId && inboxPendingBuilds > 0 ? (
                     <HumanInboxPanel
                       sessionId={sessionId}
                       reloadKey={inboxReloadKey}
@@ -3057,22 +3136,24 @@ export function RoomChat({
                       onBuildStarted={handleInboxBuildStarted}
                       disabled={running || synthesizing || runBusy}
                       presentation="popup"
+                      kindFilter="build"
                       onDismiss={() => setShowInboxPopup(false)}
                       onOpenInbox={() => {
                         setShowInboxPopup(false);
+                        setInboxSegment("build");
                         openHumanInbox();
                       }}
                       onRefClick={handleInboxRefClick}
                     />
                   ) : null}
 
-                  {inboxPendingCount > 0 ? (
+                  {inboxPendingNonQuestions > 0 ? (
                     <button
                       type="button"
                       className="composer-inbox-pending"
                       onClick={openHumanInbox}
                     >
-                      Human Inbox 대기 ({inboxPendingCount})
+                      Human Inbox 대기 ({inboxPendingNonQuestions})
                     </button>
                   ) : null}
 
@@ -3082,7 +3163,7 @@ export function RoomChat({
                         turnProfile === "review"
                           ? "composer--review"
                           : undefined,
-                        turnProfile === "free" ? "composer--free" : undefined,
+                        turnProfile === "loop" ? "composer--free" : undefined,
                         composerModeVariant === "consensus"
                           ? "composer--consensus-mode"
                           : undefined,
@@ -3121,7 +3202,9 @@ export function RoomChat({
                     onTurnProfileChange={changeTurnProfile}
                     planAfterSend={planAfterSend}
                     onPlanAfterSendChange={changePlanAfterSend}
-                    planToggleDisabled={planWorkflowAwaitingApproval}
+                    planToggleDisabled={
+                      planWorkflowAwaitingApproval || turnProfile === "loop"
+                    }
                     objectionNotice={composerObjectionNotice}
                     onFocusObjection={focusObjection}
                     turnHint={composerTurnHintLine}
@@ -3195,7 +3278,10 @@ export function RoomChat({
                     pendingSend.text,
                     pendingSend.files,
                     permissions,
-                    pendingSend.planAfterSend ? "plan" : "discuss",
+                    pendingSend.planAfterSend ||
+                      pendingSend.turnProfile === "loop"
+                      ? "plan"
+                      : "discuss",
                     pendingSend.turnProfile,
                   );
                   setPendingSend(null);

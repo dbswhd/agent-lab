@@ -121,6 +121,20 @@ def _capability_fields(agent_id: str, run_meta: dict[str, Any] | None) -> dict[s
     return out
 
 
+def _model_readiness_fields(agent_id: str) -> dict[str, Any]:
+    from agent_lab.model_policy import model_readiness
+
+    readiness = model_readiness(agent_id)
+    if readiness is None:
+        return {}
+    return {
+        "model_provider": readiness.provider,
+        "team_ready": readiness.team_ready,
+        "loop_ready": readiness.loop_ready,
+        "loop_blockers": list(readiness.loop_blockers),
+    }
+
+
 def agent_health_row(
     agent_id: str,
     *,
@@ -137,6 +151,7 @@ def agent_health_row(
         "bridge": "n/a",
         "hint": None,
         **_capability_fields(aid, run_meta),
+        **_model_readiness_fields(aid),
     }
 
     if aid == "cursor":
@@ -223,7 +238,9 @@ def build_agent_health(
 
         rows = build_agent_preflight(probe_bridge=probe_bridge, probe_cli=True)
         for row in rows:
-            row.update(_capability_fields(str(row.get("id") or ""), run_meta))
+            agent_id = str(row.get("id") or "")
+            row.update(_capability_fields(agent_id, run_meta))
+            row.update(_model_readiness_fields(agent_id))
         return rows
     return [agent_health_row(aid, probe_bridge=probe_bridge, run_meta=run_meta) for aid in AGENT_IDS]
 

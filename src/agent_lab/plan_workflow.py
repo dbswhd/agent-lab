@@ -83,12 +83,10 @@ def apply_legacy_verified_turn_profile(
     *,
     synthesize: bool,
 ) -> None:
-    """Plan-First: verified turn profile on plan send → analyze + plan workflow."""
     tp = str(run_meta.get("turn_profile") or "").strip().lower()
     if tp != "verified":
         return
     if should_enable_plan_workflow(synthesize=synthesize):
-        run_meta["turn_profile"] = "analyze"
         return
     if folder is not None:
         from agent_lab.verified_loop import init_verified_loop

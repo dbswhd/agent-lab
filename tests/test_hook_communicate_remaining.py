@@ -179,8 +179,10 @@ def test_call_agent_reply_passes_structured_flag(monkeypatch: pytest.MonkeyPatch
         *,
         permissions=None,
         on_activity=None,
+        on_bridge_event=None,
         session_folder=None,
         request_structured_envelope=False,
+        inbox_mcp=False,
     ):
         captured["structured"] = request_structured_envelope
         return "ok"

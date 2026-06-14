@@ -131,8 +131,10 @@ def test_plan_workflow_public_pending_flag(tmp_path: Path) -> None:
 def test_patch_goal_blocked_when_plan_workflow(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     pytest.importorskip("fastapi")
     import agent_lab.session as session_mod
+    import app.server.deps as deps_mod
 
     monkeypatch.setattr(session_mod, "SESSIONS_DIR", tmp_path)
+    monkeypatch.setattr(deps_mod, "SESSIONS_DIR", tmp_path)
     folder = tmp_path / "pw-sess"
     folder.mkdir()
     (folder / "topic.txt").write_text("topic\n", encoding="utf-8")

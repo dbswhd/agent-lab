@@ -29,7 +29,7 @@ def test_room_task_bar_has_tauri_minimum_width_layout():
     css = _read("web/src/styles/layout.css")
 
     assert "@media (max-width: 1000px)" in css
-    assert ".room-task-bar__lead-select,\n  .room-task-bar__meta" in css
+    assert ".taskbar-lead-select,\n  .taskbar__summary" in css
     assert "flex: 1 0 100%;" in css
 
 

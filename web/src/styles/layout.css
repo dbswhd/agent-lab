@@ -5468,3 +5468,10 @@ button.plan-doc__ref--link:hover {
   min-width: 1.75rem;
   padding: 0;
 }
+
+@media (max-width: 1000px) {
+  .taskbar-lead-select,
+  .taskbar__summary {
+    flex: 1 0 100%;
+  }
+}

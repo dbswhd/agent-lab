@@ -1,7 +1,7 @@
 {
   "version": 1,
   "exclude_files": [],
-  "max_ratchet_errors": 240,
-  "total_errors_snapshot": 240,
-  "note": "room.py split into room_*.py modules (2026-06); ratchet applies project-wide. Prior exclude of monolithic room.py removed."
+  "max_ratchet_errors": 212,
+  "total_errors_snapshot": 212,
+  "note": "room.py split into room_*.py modules (2026-06); facade has 0 errors. Lower max_ratchet_errors when fixing types."
 }

@@ -42,10 +42,14 @@ export function ContextPreviewPanel({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { agents, reviewMode, agentRounds, consensusMode } = resolveTurnSend(
-    turnProfile,
-    selectedAgents,
+  const selectedAgentsKey = selectedAgents.join("\0");
+  const turnSend = useMemo(
+    () => resolveTurnSend(turnProfile, selectedAgents),
+    // selectedAgentsKey avoids re-resolve when parent passes a new array ref.
+    [turnProfile, selectedAgentsKey, selectedAgents],
   );
+  const { agents, reviewMode, agentRounds, consensusMode } = turnSend;
+  const agentsKey = agents.join("\0");
 
   const lastTurnCtx = useMemo(
     () => parseLastTurnContext(session?.run),
@@ -60,7 +64,7 @@ export function ContextPreviewPanel({
     if (agents.length > 0 && !agents.includes(agent)) {
       setAgent(agents[0]);
     }
-  }, [agents, agent]);
+  }, [agentsKey, agent]);
 
   useEffect(() => {
     if (lastAgentIdx >= lastTurnAgents.length) {
@@ -91,11 +95,39 @@ export function ContextPreviewPanel({
     } finally {
       setLoading(false);
     }
-  }, [sessionId, agent, parallelRound, reviewMode, consensusMode, agents]);
+  }, [sessionId, agent, parallelRound, reviewMode, agentsKey, agents]);
 
   useEffect(() => {
-    if (tab === "preview") void loadPreview();
-  }, [tab, loadPreview]);
+    if (tab !== "preview") return;
+    let cancelled = false;
+    if (!sessionId || agents.length === 0) return;
+    setLoading(true);
+    setError(null);
+    void fetchContextPreview({
+      sessionId,
+      agent,
+      parallelRound,
+      reviewMode,
+      agents,
+    })
+      .then((res) => {
+        if (cancelled) return;
+        setPayload(res.payload);
+        setPreviewMeta((res.meta as AgentContextMeta) ?? null);
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setError(String(e));
+        setPayload(null);
+        setPreviewMeta(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, sessionId, agent, parallelRound, reviewMode, agentsKey, agents]);
 
   if (!sessionId) return null;
 

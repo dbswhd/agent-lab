@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from collections.abc import Sequence
 from typing import Any, Protocol
 
 from agent_lab.agent_envelope import envelope_act
@@ -240,7 +241,7 @@ def render_turn_state_block(state: dict[str, Any] | TurnState | None) -> str:
 
 
 def current_turn_slice(
-    all_messages: list[_MsgLike],
+    all_messages: Sequence[_MsgLike],
 ) -> tuple[list[_MsgLike], int]:
     """Return (messages from latest Human through agents, 1-based line of turn[0])."""
     last_user = -1
@@ -273,9 +274,9 @@ def peer_turn_metrics(turn_messages: list[_MsgLike]) -> dict[str, Any]:
 
 def sync_run_meta_turn_state(
     run_meta: dict[str, Any] | None,
-    all_messages: list[_MsgLike],
+    all_messages: Sequence[_MsgLike],
     *,
-    active_agents: list[str] | None = None,
+    active_agents: Sequence[str] | None = None,
     consensus: dict[str, Any] | None = None,
     plan_md: str = "",
     pending_agents: list[str] | None = None,

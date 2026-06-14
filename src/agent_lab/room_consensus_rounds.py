@@ -255,9 +255,10 @@ def run_consensus_agent_rounds(
         # P3 품질 게이트 판정은 debate 시점 충돌만 본다 (재조합 합성 act 제외).
         debate_conflicts = sum(
             1
+            if isinstance(env := getattr(m, "envelope", None), dict)
+            and str(env.get("act") or "").upper() in ("CHALLENGE", "BLOCK", "AMEND")
+            else 0
             for m in all_replies
-            if isinstance(getattr(m, "envelope", None), dict)
-            and str(m.envelope.get("act") or "").upper() in ("CHALLENGE", "BLOCK", "AMEND")
         )
 
         # P4 재조합 라운드 — debate 종료 → pick_anchor 사이의 명시적 합성(crossover).

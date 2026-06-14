@@ -73,6 +73,7 @@ import { ChatBubble, ReplyWaitingBubble } from "./ChatBubble";
 import { HumanInboxPanel } from "./HumanInboxPanel";
 import { DiscussInboxPanel } from "./DiscussInboxPanel";
 import { DiscussRecoveryBanner } from "./DiscussRecoveryBanner";
+import { HumanDecisionBanner } from "./HumanDecisionBanner";
 import { ChatComposer, type PendingFile } from "./ChatComposer";
 import { ShellPortal } from "./ShellPortal";
 import { NotificationCenter } from "./NotificationCenter";
@@ -2940,10 +2941,16 @@ export function RoomChat({
         />
       ) : null}
 
-      {discussPaused ? (
-        <div className="workspace-discuss-pause-banner" role="status">
-          {localeMsg.inboxDiscussPausedBanner}
-        </div>
+      {!isNew && sessionId ? (
+        <HumanDecisionBanner
+          sessionId={sessionId}
+          reloadKey={inboxReloadKey}
+          discussPaused={discussPaused}
+          onOpenInbox={() => {
+            setInboxSegment("discuss");
+            openHumanInbox();
+          }}
+        />
       ) : null}
 
       {showInboxPopup && sessionId && inboxPendingCount > 0 ? (

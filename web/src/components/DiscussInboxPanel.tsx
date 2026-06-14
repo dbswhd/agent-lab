@@ -1,4 +1,4 @@
-import { GateProfileChips } from "./GateProfileChips";
+import { HumanDecisionBanner } from "./HumanDecisionBanner";
 import { HumanInboxPanel } from "./HumanInboxPanel";
 import { DiscussRecoveryBanner, type DiscussRecoveryState } from "./DiscussRecoveryBanner";
 import { useLocale } from "../i18n/useLocale";
@@ -45,12 +45,13 @@ export function DiscussInboxPanel({
         onRunRecovery={onRunDiscussRecovery}
         onOpenDiscussInbox={onOpenInbox}
       />
-      {discussPaused ? (
-        <div className="discuss-inbox-panel__pause" role="status">
-          {msg.inboxDiscussPausedBanner}
-        </div>
-      ) : null}
-      <GateProfileChips sessionId={sessionId} compact reloadKey={reloadKey} />
+      <HumanDecisionBanner
+        sessionId={sessionId}
+        reloadKey={reloadKey}
+        discussPaused={discussPaused}
+        compact
+        onOpenInbox={onOpenInbox}
+      />
       <p className="discuss-inbox-panel__hint">{msg.inboxDiscussHint}</p>
       <HumanInboxPanel
         sessionId={sessionId}

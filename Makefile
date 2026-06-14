@@ -82,6 +82,14 @@ test-live:
 	@test "$$AGENT_LAB_RUN_LIVE" = "1" || (echo "Set AGENT_LAB_RUN_LIVE=1 for live Cursor spike tests" && exit 1)
 	.venv/bin/pytest tests/ -q -m live
 
+loop-model-eval-mock:
+	AGENT_LAB_MOCK_AGENTS=1 AGENT_LAB_MOCK_STRUCTURED_ENVELOPE=1 AGENT_LAB_LOOP_PROBE=0 \
+		.venv/bin/python scripts/run_loop_model_eval.py --mock
+
+loop-model-eval-live:
+	@test "$$AGENT_LAB_RUN_LIVE" = "1" || (echo "Set AGENT_LAB_RUN_LIVE=1 for live loop eval" && exit 1)
+	.venv/bin/python scripts/run_loop_model_eval.py --live
+
 lint:
 	.venv/bin/ruff check src/ app/ tests/ scripts/
 

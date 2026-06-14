@@ -284,6 +284,8 @@ export type AgentHealthRow = {
   team_ready?: boolean;
   loop_ready?: boolean;
   loop_blockers?: string[];
+  model_cost_tier?: "low" | "medium" | "high";
+  loop_cost_blocked?: boolean;
 };
 
 export type HealthResponse = {

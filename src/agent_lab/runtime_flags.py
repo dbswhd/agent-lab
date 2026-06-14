@@ -40,6 +40,33 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
     FlagDef("AGENT_LAB_BUNDLE_PYTHON", "infra", "Bundled .app Python path hint", mask_value=True),
     # --- feature: mission / execute ---
     FlagDef("AGENT_LAB_MISSION_LOOP", "feature", "Verified mission loop FSM"),
+    FlagDef("AGENT_LAB_LOOP_PROBE", "feature", "Runtime static loop capability probe", default="1"),
+    FlagDef(
+        "AGENT_LAB_LOOP_PROBE_CACHE",
+        "infra",
+        "Override loop probe cache path",
+        mask_value=True,
+    ),
+    FlagDef(
+        "AGENT_LAB_LOOP_EVAL_REGISTRY",
+        "infra",
+        "Override loop_model_eval.json path",
+        mask_value=True,
+    ),
+    FlagDef(
+        "AGENT_LAB_LOOP_MAX_COST_TIER",
+        "feature",
+        "Loop max model cost tier (low|medium|high)",
+        default="high",
+    ),
+    FlagDef("AGENT_LAB_LOOP_MAX_ROUNDS", "feature", "Loop mode max consensus rounds", default="4"),
+    FlagDef("AGENT_LAB_LOOP_MAX_CALLS", "feature", "Loop mode max agent calls", default="12"),
+    FlagDef(
+        "AGENT_LAB_LOOP_MAX_TOKEN_EST",
+        "feature",
+        "Loop mode max token estimate budget",
+        default="500000",
+    ),
     FlagDef("AGENT_LAB_MISSION_AUTORUN", "feature", "Auto-advance mission loop after approve"),
     FlagDef("AGENT_LAB_GOAL_LOOP", "feature", "Session goal Oracle after Room turns"),
     FlagDef("AGENT_LAB_GOAL_ORACLE_LIVE", "feature", "Live Claude oracle for session goal"),

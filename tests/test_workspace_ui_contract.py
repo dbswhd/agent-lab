@@ -41,11 +41,15 @@ def test_agent_health_panel_shows_model_readiness_lane():
     assert "team_ready?: boolean" in client
     assert "loop_ready?: boolean" in client
     assert "model_id?: string" in client
+    assert "model_cost_tier?: string" in client
+    assert "loop_cost_blocked?: boolean" in client
     assert "fetchRoomModes" in room_modes
+    assert "loopCostHintLine" in room_modes
     assert "fetchRoomModes" in picker
     assert "model_provider?: string" in client
     assert "Team-ready" in panel
     assert "Loop-ready" in panel
+    assert "cost low" in panel
 
 
 def test_workspace_tabs_stay_on_transcript_while_running():

@@ -135,6 +135,7 @@ import {
   setTurnProfile,
   type ComposerTurnProfile,
 } from "../utils/turnProfile";
+import { fetchRoomModes, loopCostHintLine } from "../utils/roomModes";
 import { WorkspaceFilesPanel } from "./WorkspaceFilesPanel";
 import { PreviewPanel } from "./PreviewPanel";
 import { TerminalPanel } from "./TerminalPanel";
@@ -357,6 +358,7 @@ export function RoomChat({
   const [turnProfile, setTurnProfileState] =
     useState<ComposerTurnProfile>(getTurnStrategy);
   const [planAfterSend, setPlanAfterSendState] = useState(getPlanAfterSend);
+  const [loopMaxCostTier, setLoopMaxCostTier] = useState<string | null>(null);
   const composeMode: ComposeMode = planAfterSend ? "plan" : "discuss";
   const [researchMode] = useState(() => {
     try {
@@ -366,16 +368,41 @@ export function RoomChat({
     }
   });
   const { locale, msg: localeMsg } = useLocale();
+  useEffect(() => {
+    let cancelled = false;
+    void fetchRoomModes()
+      .then((catalog) => {
+        if (cancelled) return;
+        const loopMode = catalog.modes.find((mode) => mode.id === "loop");
+        const maxTier = loopMode?.budget?.max_cost_tier;
+        if (typeof maxTier === "string" && maxTier.trim()) {
+          setLoopMaxCostTier(maxTier.trim().toLowerCase());
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setLoopMaxCostTier(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const composerModeVariant = useMemo((): "discuss" | "plan" | "consensus" => {
     const profile = resolveTurnSend(turnProfile, selected);
     if (profile.consensusMode) return "consensus";
     if (planAfterSend) return "plan";
     return "discuss";
   }, [turnProfile, selected, planAfterSend]);
-  const composerTurnHintLine = useMemo(
-    () => composerTurnHint(turnProfile, selected, locale),
-    [turnProfile, selected, locale],
-  );
+  const composerTurnHintLine = useMemo(() => {
+    const base = composerTurnHint(turnProfile, selected, locale);
+    const costLine = loopCostHintLine(
+      healthAgents,
+      selected,
+      turnProfile,
+      locale,
+      loopMaxCostTier ?? undefined,
+    );
+    return [base, costLine].filter(Boolean).join(" · ");
+  }, [turnProfile, selected, locale, healthAgents, loopMaxCostTier]);
   const modeChipCopy = useMemo(() => {
     const wf = session?.run?.plan_workflow as PlanWorkflowRecord | undefined;
     const wfActive = Boolean(wf?.enabled);

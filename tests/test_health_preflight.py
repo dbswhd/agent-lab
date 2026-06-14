@@ -212,6 +212,8 @@ def test_health_payload_includes_model_readiness() -> None:
     assert rows["cursor"]["loop_ready"] is True
     assert rows["cursor"]["model_provider"] == "local"
     assert rows["cursor"]["loop_blockers"] == []
+    assert rows["cursor"]["model_cost_tier"] == "low"
+    assert rows["cursor"]["loop_cost_blocked"] is False
     assert rows["codex"]["loop_ready"] is True
 
 

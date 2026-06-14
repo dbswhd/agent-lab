@@ -1,4 +1,9 @@
 import { apiBase } from "../api/client";
+import type { AgentHealthRow } from "../api/client";
+import {
+  normalizeTurnProfile,
+  type ComposerTurnProfile,
+} from "./turnProfile";
 
 export type RoomModeRow = {
   id: string;
@@ -78,4 +83,48 @@ export function turnStrategyFromCatalog(
         description: roomModeDescription(mode, locale),
       };
     });
+}
+
+const TIER_LABEL: Record<string, { en: string; ko: string }> = {
+  low: { en: "low", ko: "저" },
+  medium: { en: "med", ko: "중" },
+  high: { en: "high", ko: "고" },
+};
+
+export function loopCostHintLine(
+  healthAgents: AgentHealthRow[],
+  selectedAgentIds: string[],
+  profile: ComposerTurnProfile,
+  locale: "en" | "ko" = "en",
+  maxCostTier?: string,
+): string | null {
+  const normalized = normalizeTurnProfile(profile);
+  if (normalized !== "loop") return null;
+  const ko = locale === "ko";
+  const max = (maxCostTier || "high").toLowerCase();
+  const maxLabel = TIER_LABEL[max]?.[locale] ?? max;
+  const selected = selectedAgentIds
+    .map((id) => healthAgents.find((row) => row.id === id))
+    .filter((row): row is AgentHealthRow => Boolean(row));
+  const blocked = selected.filter((row) => row.loop_cost_blocked);
+  if (blocked.length) {
+    const names = blocked.map((row) => row.id).join(", ");
+    return ko
+      ? `비용 한도 ${maxLabel} 초과 · ${names}`
+      : `Cost ceiling ${maxLabel} · blocked ${names}`;
+  }
+  const tiers = [
+    ...new Set(
+      selected
+        .map((row) => row.model_cost_tier)
+        .filter((tier): tier is "low" | "medium" | "high" => Boolean(tier)),
+    ),
+  ];
+  if (tiers.length) {
+    const labels = tiers.map((tier) => TIER_LABEL[tier]?.[locale] ?? tier).join("/");
+    return ko
+      ? `모델 비용 ${labels} · 루프 한도 ${maxLabel}`
+      : `Model cost ${labels} · loop max ${maxLabel}`;
+  }
+  return ko ? `루프 비용 한도 ${maxLabel}` : `Loop cost ceiling ${maxLabel}`;
 }

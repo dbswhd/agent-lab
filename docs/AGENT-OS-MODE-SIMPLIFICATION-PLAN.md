@@ -63,6 +63,8 @@ Open-source and local models are not UI modes. They are model capabilities.
 
 **P5 shipped:** runtime loop probe (`AGENT_LAB_LOOP_PROBE`, `.agent-lab/loop_probe_cache.json`), cost-tier gate (`AGENT_LAB_LOOP_MAX_COST_TIER`), composer consumes `/api/room/modes`, legacy split/infinity migration, composer question surface.
 
+**P6 shipped:** live loop eval harness (`scripts/run_loop_model_eval.py`, `make loop-model-eval-mock|live`), composer + health cost-tier display, CI runs `integration and not live` pytest bucket.
+
 ## Question Surface
 
 Pending Human Inbox questions are separated from the generic inbox/taskbar flow:

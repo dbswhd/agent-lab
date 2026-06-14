@@ -28,9 +28,15 @@ function bridgeLabel(row: AgentHealthRow): string | null {
 }
 
 function modelReadinessLabel(row: AgentHealthRow): string | null {
+  if (row.loop_cost_blocked) return "Loop cost blocked";
   if (row.loop_ready) return "Loop-ready";
   if (row.team_ready) return "Team-ready";
   return null;
+}
+
+function costTierLabel(row: AgentHealthRow): string | null {
+  if (!row.model_cost_tier) return null;
+  return `cost ${row.model_cost_tier}`;
 }
 
 export function AgentHealthPanel({
@@ -101,6 +107,7 @@ export function AgentHealthPanel({
             {agents.map((row) => {
               const bridge = bridgeLabel(row);
               const modelReadiness = modelReadinessLabel(row);
+              const costTier = costTierLabel(row);
               return (
                 <li
                   key={row.id}
@@ -126,6 +133,7 @@ export function AgentHealthPanel({
                           ? "설정됨"
                           : "미설정"}
                     {bridge ? ` · ${bridge}` : ""}
+                    {costTier ? ` · ${costTier}` : ""}
                     {modelReadiness ? ` · ${modelReadiness}` : ""}
                     {row.model_provider ? ` · ${row.model_provider}` : ""}
                   </span>

@@ -122,18 +122,23 @@ def _capability_fields(agent_id: str, run_meta: dict[str, Any] | None) -> dict[s
 
 
 def _model_readiness_fields(agent_id: str) -> dict[str, Any]:
-    from agent_lab.model_policy import model_readiness
+    from agent_lab.model_policy import model_profile_for, model_readiness, loop_cost_tier_blocks
 
     readiness = model_readiness(agent_id)
     if readiness is None:
         return {}
-    return {
+    profile = model_profile_for(agent_id)
+    out: dict[str, Any] = {
         "model_provider": readiness.provider,
         "model_id": readiness.model_id,
         "team_ready": readiness.team_ready,
         "loop_ready": readiness.loop_ready,
         "loop_blockers": list(readiness.loop_blockers),
     }
+    if profile is not None:
+        out["model_cost_tier"] = profile.cost_tier
+        out["loop_cost_blocked"] = loop_cost_tier_blocks(profile)
+    return out
 
 
 def agent_health_row(

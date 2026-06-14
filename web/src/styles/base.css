@@ -93,23 +93,8 @@ textarea {
   user-select: none;
 }
 
-.app--fullscreen .titlebar {
-  position: absolute;
-  inset: 0 0 auto;
-  z-index: 50;
-  transform: translateY(calc(-100% + 6px));
-  opacity: 0.35;
-  box-shadow: var(--shadow-2);
-  transition:
-    transform var(--transition),
-    opacity var(--transition);
-}
-
-.app--fullscreen .titlebar:hover,
-.app--fullscreen .titlebar:focus-within {
-  transform: translateY(0);
-  opacity: 1;
-}
+/* Keep the titlebar pinned in fullscreen, matching the web layout (no
+   slide-away-on-hover). */
 
 .titlebar__brand {
   display: flex;

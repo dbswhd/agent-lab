@@ -412,13 +412,24 @@ pub fn run_app() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_notification::init())
         .manage(ApiServer(Mutex::new(None)))
         .setup(|app| {
             let handle = app.handle().clone();
             // Start API in background so a slow/failed uvicorn boot never blocks the webview.
             thread::spawn(move || {
                 if cfg!(debug_assertions) {
-                    append_boot("dev: API from Vite plugin (port 8765); not spawning uvicorn here");
+                    // Auto-start the API in dev too. start_api reuses an
+                    // already-running instance (port + /api/health check), so
+                    // `make dev:tauri` alone is enough — no separate `make api`
+                    // / `make dev` needed on each launch. Falls back gracefully
+                    // if uvicorn can't start (logged to boot log).
+                    let api_state = handle.state::<ApiServer>();
+                    if let Err(e) = start_api(&handle, &api_state) {
+                        append_boot(&format!(
+                            "dev: API not auto-started ({e}); run `make api`"
+                        ));
+                    }
                     let _ = navigate_main_to_api_origin(&handle);
                     return;
                 }

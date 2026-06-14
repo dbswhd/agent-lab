@@ -22,6 +22,7 @@ from agent_lab.agent_models import (  # noqa: E402
     DEFAULT_CODEX_ROOM_IDLE_TIMEOUT_SEC,
     DEFAULT_CODEX_ROOM_MAX_COMMANDS,
     DEFAULT_CODEX_ROOM_REASONING_EFFORT,
+    DEFAULT_CODEX_ROOM_TIMEOUT_SEC,
 )
 from agent_lab.cli_retry import retry_base_delay_sec, retry_call, retry_max_attempts
 
@@ -45,6 +46,10 @@ class CodexRunOutcome:
     streamed_message: str | None = None
     json_events: int = 0
     stderr: str = ""
+    # True once Codex emits its first response item (reasoning/message/command).
+    # The wall-clock cap only guards time-to-first-output; once a turn is actively
+    # responding it runs uncapped (idle timeout still guards mid-response stalls).
+    response_started: bool = False
 
 
 def _env_bool(name: str, default: bool = False) -> bool:
@@ -158,7 +163,10 @@ def _optional_timeout_sec(*env_keys: str) -> int | None:
 
 def _timeout_sec(*, room_turn: bool) -> int | None:
     if room_turn:
-        return _optional_timeout_sec("CODEX_ROOM_TIMEOUT_SEC", "CODEX_TIMEOUT_SEC")
+        override = _optional_timeout_sec("CODEX_ROOM_TIMEOUT_SEC", "CODEX_TIMEOUT_SEC")
+        if override is not None:
+            return override if override > 0 else None
+        return DEFAULT_CODEX_ROOM_TIMEOUT_SEC
     return _optional_timeout_sec("CODEX_TIMEOUT_SEC")
 
 
@@ -336,6 +344,11 @@ def _process_codex_event(
     typ = event.get("type")
     item = event.get("item") if isinstance(event.get("item"), dict) else {}
     item_type = item.get("type")
+
+    # Any response item (reasoning / message / command) means the turn has begun
+    # producing output — as opposed to session metadata or stderr retry noise.
+    if isinstance(typ, str) and typ.startswith("item."):
+        outcome.response_started = True
 
     if typ == "item.completed" and item_type == "agent_message":
         msg = _extract_agent_message(item)
@@ -518,9 +531,16 @@ def _run_codex(
                 raise RoomRunCancelled("run cancelled by user")
 
             now = time.monotonic()
-            if timeout is not None and now - started_at >= timeout:
+            # Wall-clock cap guards only time-to-first-output: an agent stuck on a
+            # usage/rate limit (retrying via stderr, never emitting a response item)
+            # is bounded, while a turn that is actively responding runs uncapped.
+            if (
+                timeout is not None
+                and not outcome.response_started
+                and now - started_at >= timeout
+            ):
                 _raise_stall(
-                    f"wall-clock timeout after {timeout}s",
+                    f"no response started within {timeout}s",
                     idle_sec=int(now - last_activity_at),
                 )
             if idle_timeout is not None and now - last_activity_at >= idle_timeout:

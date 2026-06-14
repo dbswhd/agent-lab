@@ -12,6 +12,7 @@ from agent_lab.agent_envelope import (
     parse_agent_response_v2,
 )
 from agent_lab.cli_retry import is_retryable, retry_attempts, retryable_failure
+from agent_lab.run_control import RoomRunCancelled, is_cancelled
 from agent_lab.room_messages import (
     ChatMessage,
     OnAgentEvent,
@@ -19,6 +20,31 @@ from agent_lab.room_messages import (
     _human_turn_number,
     build_agent_context_bundle,
 )
+
+
+_NON_PARTICIPATION_PATTERNS: dict[str, tuple[str, ...]] = {
+    "usage_limit": ("usage limit", "rate limit", "429", "quota", "credit balance"),
+    "timeout": (
+        "no jsonl/stderr activity",
+        "wall-clock timeout",
+        "idle timeout",
+        "stall",
+    ),
+}
+
+
+def _non_participation_reason(error: Exception) -> str | None:
+    """Classify a failure that should read as a calm 'sat out this turn' note —
+    letting the rest of the team proceed — rather than a hard error.
+
+    Alternate-model reassignment for the missing slot is tracked as Later in
+    docs/AGENT-OS-MODE-SIMPLIFICATION-PLAN.md.
+    """
+    text = str(error).lower()
+    for reason, needles in _NON_PARTICIPATION_PATTERNS.items():
+        if any(needle in text for needle in needles):
+            return reason
+    return None
 
 
 def _session_folder_from_run_meta(run_meta: dict[str, Any] | None) -> Path | None:
@@ -252,6 +278,8 @@ def _call_one_agent(
         )
 
     streamed_live = False
+    # Accumulate streamed text so a cancel can preserve the partial reply (issue D).
+    streamed_parts: list[str] = []
 
     def _bridge_event(kind: str, data: dict[str, Any]) -> None:
         nonlocal streamed_live
@@ -260,6 +288,7 @@ def _call_one_agent(
             if not chunk:
                 return
             streamed_live = True
+            streamed_parts.append(chunk)
             _emit(
                 "agent_token",
                 {"agent": aid, "round": parallel_round, "text": chunk},
@@ -556,6 +585,33 @@ def _call_one_agent(
             )
         return msg
     except Exception as e:
+        if isinstance(e, RoomRunCancelled) or is_cancelled():
+            # Preserve whatever the agent streamed before ⌘. instead of wiping it
+            # with "[X error] run cancelled by user" (issue D).
+            partial = "".join(streamed_parts).strip()
+            body = f"{partial}\n\n_(취소됨)_" if partial else "_(취소됨)_"
+            _emit(
+                "agent_done",
+                {
+                    "agent": aid,
+                    "chars": len(partial),
+                    "content": body,
+                    "round": parallel_round,
+                    "cancelled": True,
+                },
+            )
+            return ChatMessage(
+                role="agent" if partial else "system",
+                agent=aid,
+                content=body,
+                parallel_round=parallel_round,
+            )
+        reason = _non_participation_reason(e)
+        note: str | None = None
+        if reason == "usage_limit":
+            note = f"[{label(aid)}] 사용량 한도 도달로 이번 턴 불참합니다 (나머지 에이전트로 진행)."
+        elif reason:
+            note = f"[{label(aid)}] 응답 지연으로 이번 턴 불참합니다 (나머지 에이전트로 진행)."
         retryable = retryable_failure(e) or is_retryable(str(e))
         attempts = retry_attempts(e)
         _emit(
@@ -564,11 +620,21 @@ def _call_one_agent(
                 "agent": aid,
                 "message": str(e),
                 "round": parallel_round,
-                "failed": True,
+                "failed": not bool(reason),
+                "non_participation": bool(reason),
+                "reason": reason,
+                "note": note,
                 "retryable": retryable,
                 "attempts": attempts,
             },
         )
+        if note:
+            return ChatMessage(
+                role="system",
+                agent=aid,
+                content=note,
+                parallel_round=parallel_round,
+            )
         return ChatMessage(
             role="system",
             agent=aid,

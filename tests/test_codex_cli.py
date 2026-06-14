@@ -27,11 +27,16 @@ def test_room_timeout_default(monkeypatch):
     monkeypatch.delenv("CODEX_ROOM_TIMEOUT_SEC", raising=False)
     monkeypatch.delenv("CODEX_TIMEOUT_SEC", raising=False)
     monkeypatch.delenv("CODEX_ROOM_IDLE_TIMEOUT_SEC", raising=False)
-    assert _timeout_sec(room_turn=True) is None
-    assert _idle_timeout_sec(room_turn=True) == 600
+    # Room turns now have a default wall-clock cap so a rate-limited Codex that
+    # keeps emitting retry events can't block the turn forever.
+    assert _timeout_sec(room_turn=True) == 300
+    assert _timeout_sec(room_turn=False) is None
+    assert _idle_timeout_sec(room_turn=True) == 180
     assert _idle_timeout_sec(room_turn=False) is None
     monkeypatch.setenv("CODEX_ROOM_TIMEOUT_SEC", "240")
     assert _timeout_sec(room_turn=True) == 240
+    monkeypatch.setenv("CODEX_ROOM_TIMEOUT_SEC", "0")
+    assert _timeout_sec(room_turn=True) is None
     monkeypatch.setenv("CODEX_ROOM_IDLE_TIMEOUT_SEC", "0")
     assert _idle_timeout_sec(room_turn=True) is None
     assert _room_max_commands() == 6

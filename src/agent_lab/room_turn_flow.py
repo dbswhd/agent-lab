@@ -315,7 +315,15 @@ def continue_room_round(
         active_profile,
         cancelled=cancelled,
     )
-    verified_continue = None if cancelled else _verified_loop_continue_message(verified_result)
+    # Hard stop: a cancelled agent can be swallowed into a message without raising,
+    # so the local `cancelled` flag may be False even though the run was cancelled.
+    # Consult the global cancel flag so verified-loop / goal continuations never run
+    # after ⌘. (issue E).
+    verified_continue = (
+        None
+        if (cancelled or is_cancelled())
+        else _verified_loop_continue_message(verified_result)
+    )
     _write_session_files(
         folder,
         topic,
@@ -382,7 +390,12 @@ def continue_room_round(
     if not normalize_verified_profile(active_profile) and not plan_workflow_skips_goal_check(run_meta):
         goal_result = maybe_check_session_goal_after_turn(folder, messages)
     goal_continue = _goal_auto_continue_message(goal_result)
-    if goal_auto_continue_enabled() and goal_continue and _goal_auto_continue_depth < 1:
+    if (
+        goal_auto_continue_enabled()
+        and goal_continue
+        and not is_cancelled()
+        and _goal_auto_continue_depth < 1
+    ):
         return continue_room_round(
             folder,
             goal_continue,
@@ -758,7 +771,15 @@ def run_room(
         active_profile,
         cancelled=cancelled,
     )
-    verified_continue = None if cancelled else _verified_loop_continue_message(verified_result)
+    # Hard stop: a cancelled agent can be swallowed into a message without raising,
+    # so the local `cancelled` flag may be False even though the run was cancelled.
+    # Consult the global cancel flag so verified-loop / goal continuations never run
+    # after ⌘. (issue E).
+    verified_continue = (
+        None
+        if (cancelled or is_cancelled())
+        else _verified_loop_continue_message(verified_result)
+    )
 
     if folder is None:
         folder = save_room_session(
@@ -813,7 +834,7 @@ def run_room(
     if not normalize_verified_profile(active_profile) and not plan_workflow_skips_goal_check(run_meta):
         goal_result = maybe_check_session_goal_after_turn(folder, messages)
     goal_continue = _goal_auto_continue_message(goal_result)
-    if goal_auto_continue_enabled() and goal_continue:
+    if goal_auto_continue_enabled() and goal_continue and not is_cancelled():
         auto_messages, auto_plan_md = continue_room_round(
             folder,
             goal_continue,

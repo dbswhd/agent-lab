@@ -338,21 +338,23 @@
    ============================================================ */
 .composer-wrap {
   flex: 0 0 auto;
-  padding: var(--space-10) var(--space-16) var(--space-16);
-  background: var(--surface-pane);
-  border-top: 1px solid var(--border-hair);
+  /* No separate panel background/border — the composer shares the transcript
+     surface (Cursor / Claude Code style); the input capsule provides its own
+     border + shadow for separation. */
+  padding: var(--space-6) var(--space-16) var(--space-12);
 }
 .composer {
   max-width: var(--composer-max);
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: var(--space-8);
+  gap: var(--space-6);
 }
 .composer-wrap > .clarifier-banner,
 .composer-wrap > .error-banner,
 .composer-wrap > .composer-send-receipt,
 .composer-wrap > .composer-inbox-pending,
+.composer-wrap > .composer-question-surface,
 .composer-wrap > .composer-command-hint {
   max-width: var(--composer-max);
   margin-left: auto;
@@ -480,7 +482,7 @@
 .turn-row {
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--space-4);
 }
 .turn-picker__head {
   display: flex;
@@ -574,7 +576,7 @@
   display: flex;
   align-items: flex-end;
   gap: var(--space-6);
-  padding: var(--space-6) var(--space-8) var(--space-6) var(--space-6);
+  padding: var(--space-4) var(--space-6) var(--space-4) var(--space-4);
   background: var(--surface-card);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-lg);
@@ -618,10 +620,10 @@
   background: none;
   resize: none;
   font-size: var(--text-body);
-  line-height: 1.5;
+  line-height: 1.45;
   color: var(--label-primary);
-  padding: var(--space-6) var(--space-4);
-  max-height: 180px;
+  padding: var(--space-4) var(--space-4);
+  max-height: 160px;
 }
 .composer-input:focus {
   outline: none;

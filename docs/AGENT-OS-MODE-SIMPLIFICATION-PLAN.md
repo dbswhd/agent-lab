@@ -90,3 +90,17 @@ This avoids focus-stealing prompts while keeping agent questions close to the pl
 - Frontend contract tests cover Quick/Team/Loop labels, Team plan availability, and removal of Split/infinity as primary modes.
 - UI tests cover Question rendering above composer and exclusion from generic Inbox/taskbar.
 - Regression runs include `scripts/smoke_room.py`, focused pytest suites, `npm run build`, and `make test-fast`.
+
+## Loop participation — Later
+
+When an agent cannot participate in a Loop/Team turn (usage limit, rate limit, or
+response stall), the current behavior is: classify it as a non-participation note
+(`_non_participation_reason` in `room_agent_invoke.py`), show a calm "sat out this
+turn" system message, and proceed with the remaining agents (decision: keep the
+note + proceed). Timeouts are bounded by `DEFAULT_CODEX_ROOM_IDLE_TIMEOUT_SEC`
+(180s) and `DEFAULT_CODEX_ROOM_TIMEOUT_SEC` (300s), both env-overridable.
+
+Deferred (Later): **alternate-model reassignment** — automatically re-route the
+missing slot to another available model instead of leaving it empty. Higher value
+but higher implementation/cost complexity; revisit after the participation model
+(non-blocking quorum) lands.

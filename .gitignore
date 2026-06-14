@@ -9,6 +9,8 @@ web/node_modules/
 web/dist/
 web/src-tauri/target/
 web/src-tauri/bundled-runtime/
+# Runtime loop-capability probe cache (not source)
+.agent-lab/loop_probe_cache.json
 # Local design dry-run artifact (not session plan.md)
 /plan.md
 # Local room runs (regression fixtures stay in repo)

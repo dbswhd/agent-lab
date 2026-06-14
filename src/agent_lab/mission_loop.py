@@ -618,6 +618,44 @@ def mission_autorun_enabled(ml: dict[str, Any] | None = None) -> bool:
     return bool(seg.get("active"))
 
 
+def _scheduled_autorun_allowed(
+    run: dict[str, Any],
+    ml: dict[str, Any],
+    *,
+    scheduled: bool,
+) -> bool:
+    if mission_autorun_enabled(ml):
+        return True
+    if not scheduled:
+        return False
+    if run.get("schedule_sandbox"):
+        return False
+    from agent_lab.gate_scope import get_gate_profile
+
+    return get_gate_profile(run) == "assistant"
+
+
+def _find_pending_merge_execution(
+    run: dict[str, Any],
+    *,
+    execution_id: str | None = None,
+) -> dict[str, Any] | None:
+    from agent_lab.merge_checks import OPEN_PENDING_STATUSES
+
+    rows = [row for row in (run.get("executions") or []) if isinstance(row, dict)]
+    if execution_id:
+        for row in reversed(rows):
+            if str(row.get("id") or "") != execution_id:
+                continue
+            if str(row.get("status") or "") in OPEN_PENDING_STATUSES:
+                return row
+            return None
+    for row in reversed(rows):
+        if str(row.get("status") or "") in OPEN_PENDING_STATUSES:
+            return row
+    return None
+
+
 def _find_open_execution(
     run: dict[str, Any],
     *,
@@ -720,8 +758,9 @@ def maybe_advance_mission(
     *,
     permissions: dict[str, Any] | None = None,
     executor: str | None = None,
+    scheduled: bool = False,
 ) -> dict[str, Any]:
-    """Conductor tick: autorun dry-run or repair when phase allows."""
+    """Conductor tick: autorun dry-run, merge, verify, or repair when phase allows."""
     from agent_lab.mission_board import record_autorun_tick, sync_turn_budget_from_mission
 
     record_autorun_tick(folder)
@@ -732,7 +771,7 @@ def maybe_advance_mission(
         return {"skipped": True, "reason": "mission_loop_disabled"}
     if ml.get("circuit_breaker"):
         return {"skipped": True, "reason": "circuit_breaker"}
-    if not mission_autorun_enabled(ml):
+    if not _scheduled_autorun_allowed(run, ml, scheduled=scheduled):
         return {"skipped": True, "reason": "autorun_off"}
 
     phase = str(ml.get("phase") or "")
@@ -740,6 +779,10 @@ def maybe_advance_mission(
         return _advance_execute_queue(folder, permissions=permissions, executor=executor)
     if phase == "REPAIR":
         return _advance_repair(folder, permissions=permissions, executor=executor)
+    if phase == "MERGE_REVIEW" and scheduled:
+        return _advance_merge_review(folder)
+    if phase == "VERIFY" and scheduled:
+        return _advance_verify_stalled(folder)
     if phase == "DISCUSS":
         rec = ml.get("discuss_recovery") if isinstance(ml.get("discuss_recovery"), dict) else {}
         if rec.get("pending"):
@@ -751,6 +794,102 @@ def maybe_advance_mission(
     return {"skipped": True, "reason": "wrong_phase", "phase": phase}
 
 
+def _advance_merge_review(folder: Path) -> dict[str, Any]:
+    run = read_run_meta(folder)
+    ml = get_mission_loop(run)
+    if run.get("schedule_sandbox"):
+        return {
+            "skipped": True,
+            "reason": "schedule_sandbox_read_only",
+            "phase": str(ml.get("phase") or ""),
+        }
+
+    exec_id = str(ml.get("last_execution_id") or "").strip() or None
+    pending = _find_pending_merge_execution(run, execution_id=exec_id)
+    if pending is None:
+        return {"skipped": True, "reason": "no_pending_execution", "phase": "MERGE_REVIEW"}
+
+    block = open_block_reason(run)
+    if block:
+        return {"skipped": True, "reason": "blocked", "detail": block, "phase": "MERGE_REVIEW"}
+
+    from agent_lab.auto_merge import evaluate_auto_merge_eligibility, resolve_auto_merge
+
+    pending_id = str(pending.get("id") or "")
+    elig = evaluate_auto_merge_eligibility(folder, execution_id=pending_id)
+    if not elig.get("eligible"):
+        notify_result: dict[str, Any] | None = None
+        try:
+            from agent_lab.gateway.notify_helpers import notify_auto_merge_blocked
+
+            notify_result = notify_auto_merge_blocked(
+                folder,
+                execution=pending,
+                eligibility=elig,
+                source="scheduled_tick",
+            )
+        except Exception:
+            pass
+        return {
+            "skipped": True,
+            "reason": "auto_merge_not_eligible",
+            "detail": elig.get("reason"),
+            "phase": "MERGE_REVIEW",
+            "execution_id": pending_id,
+            "notify": notify_result,
+        }
+
+    try:
+        result = resolve_auto_merge(folder, execution_id=pending_id)
+    except Exception as exc:
+        append_wisdom_note(folder, line=f"scheduled auto-merge failed {pending_id}: {exc}")
+        return {
+            "status": "error",
+            "error": str(exc),
+            "execution_id": pending_id,
+            "phase": "MERGE_REVIEW",
+        }
+
+    phase = str(get_mission_loop(read_run_meta(folder)).get("phase") or "")
+    return {
+        "status": "auto_merge_complete",
+        "execution_id": pending_id,
+        "phase": phase,
+        "auto_merge": result.get("auto_merge"),
+    }
+
+
+def _advance_verify_stalled(folder: Path) -> dict[str, Any]:
+    """Recover VERIFY when merge+oracle already recorded but phase did not advance."""
+    run = read_run_meta(folder)
+    ml = get_mission_loop(run)
+    exec_id = str(ml.get("last_execution_id") or "").strip()
+    target: dict[str, Any] | None = None
+    for row in reversed(run.get("executions") or []):
+        if isinstance(row, dict) and str(row.get("id") or "") == exec_id:
+            target = row
+            break
+    if target is None:
+        return {"skipped": True, "reason": "no_execution_for_verify", "phase": "VERIFY"}
+
+    oracle = target.get("oracle") if isinstance(target.get("oracle"), dict) else {}
+    verdict = str(oracle.get("verdict") or "").strip().lower()
+    if str(target.get("status") or "") != "merged" or not verdict:
+        return {"skipped": True, "reason": "verify_in_progress", "phase": "VERIFY"}
+
+    action_index = int(target.get("action_index") or ml.get("current_action_index") or 0)
+    reason = str(
+        oracle.get("detail") or oracle.get("feedback") or oracle.get("reason") or ""
+    )
+    return on_verify_result(
+        folder,
+        action_index=action_index,
+        verdict=verdict,
+        reason=reason,
+        oracle=oracle,
+    )
+
+
 def _advance_execute_queue(
     folder: Path,
     *,
@@ -759,6 +898,13 @@ def _advance_execute_queue(
 ) -> dict[str, Any]:
     run = read_run_meta(folder)
     ml = get_mission_loop(run)
+    if run.get("schedule_sandbox"):
+        return {
+            "skipped": True,
+            "reason": "schedule_sandbox_read_only",
+            "phase": str(ml.get("phase") or ""),
+        }
+
     idx = ml.get("current_action_index")
     pending = list(ml.get("pending_action_indices") or [])
     if idx is None and pending:

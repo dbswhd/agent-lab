@@ -41,7 +41,7 @@ export function WorkspaceChrome({
   onToggleRightPanel,
   onSelectRightPanelMode,
   onOpenInbox,
-  onOpenSettings,
+  onOpenSettings: _onOpenSettings,
   onStop,
 }: Props) {
   const tauri = isTauriApp();

@@ -1,0 +1,16 @@
+# Gateway routes — see docs/MISSION-OS-DIRECTION.md
+
+[[route]]
+match = { channel = "telegram", prefix = "/dev" }
+session_id = "agent-lab-dev"
+gate_profile = "dev"
+
+[[route]]
+match = { channel = "webhook", hook_id = "github-ci" }
+session_id = "ci-triage"
+gate_profile = "assistant"
+sandbox = true
+
+[default]
+session_id = "assistant-home"
+gate_profile = "assistant"

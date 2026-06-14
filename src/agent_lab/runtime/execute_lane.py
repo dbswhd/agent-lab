@@ -29,6 +29,12 @@ def handle_execute_dry_run_start(folder: Path, payload: dict[str, Any]) -> Dispa
     if snap.get("block_source") and not (snap.get("gates") or {}).get("execute", {}).get(
         "open", True
     ):
+        try:
+            from agent_lab.gateway.notify_helpers import notify_gate_blocked
+
+            notify_gate_blocked(folder, snap, source="execute_dry_run_start")
+        except Exception:
+            pass
         return DispatchResult(
             handled=True,
             skipped=True,

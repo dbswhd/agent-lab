@@ -19,7 +19,7 @@ type Props = {
   onOpenInbox?: () => void;
   disabled?: boolean;
   presentation?: "inline" | "popup" | "inspector";
-  kindFilter?: "question" | "build";
+  kindFilter?: "question" | "build" | "skill_draft";
 };
 
 function pendingItems(items: HumanInboxItem[]): HumanInboxItem[] {
@@ -68,6 +68,7 @@ type InboxRowProps = {
   onQuestion: (item: HumanInboxItem, optionId: string) => void;
   onFreeform: (item: HumanInboxItem) => void;
   onBuild: (item: HumanInboxItem, decision: "go" | "defer" | "reject") => void;
+  onSkillDraft: (item: HumanInboxItem, decision: "approve" | "reject") => void;
   onDefer: (item: HumanInboxItem) => void;
   locale: "en" | "ko";
 };
@@ -82,6 +83,7 @@ function InboxRow({
   onQuestion,
   onFreeform,
   onBuild,
+  onSkillDraft,
   onDefer,
   locale,
 }: InboxRowProps) {
@@ -115,6 +117,9 @@ function InboxRow({
       ) : null}
       {item.refs && item.refs.length > 0 ? (
         <p className="inbox-row__body inbox-row__meta">{item.refs.join(" · ")}</p>
+      ) : null}
+      {item.trigger ? (
+        <p className="inbox-row__body inbox-row__meta">{item.trigger}</p>
       ) : null}
       {item.kind === "question" ? (
         <div className="inbox-row__options">
@@ -161,6 +166,25 @@ function InboxRow({
             onClick={() => void onDefer(item)}
           >
             {ko ? "건너뛰기" : "Skip"}
+          </button>
+        </div>
+      ) : item.kind === "skill_draft" ? (
+        <div className="inbox-row__options inbox-row__options--build">
+          <button
+            type="button"
+            className="btn btn--sm btn--ok"
+            disabled={busy}
+            onClick={() => void onSkillDraft(item, "approve")}
+          >
+            {ko ? "승격" : "Promote"}
+          </button>
+          <button
+            type="button"
+            className="btn btn--sm btn--danger"
+            disabled={busy}
+            onClick={() => void onSkillDraft(item, "reject")}
+          >
+            {ko ? "거절" : "Reject"}
           </button>
         </div>
       ) : (
@@ -288,7 +312,26 @@ export function HumanInboxPanel({
         setBusyId(null);
       }
     },
-    [sessionId, disabled, freeformDraft, reload, onResolved],
+    [sessionId, disabled, reload, onResolved],
+  );
+
+  const handleSkillDraft = useCallback(
+    async (item: HumanInboxItem, decision: "approve" | "reject") => {
+      if (!sessionId || disabled) return;
+      setBusyId(item.id);
+      try {
+        await resolveInboxItem(sessionId, item.id, {
+          selected: decision === "approve" ? ["approve"] : ["reject"],
+        });
+        await reload();
+        onResolved?.();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [sessionId, disabled, reload, onResolved],
   );
 
   const handleBuild = useCallback(
@@ -355,6 +398,7 @@ export function HumanInboxPanel({
         onQuestion={handleQuestion}
         onFreeform={handleFreeform}
         onBuild={handleBuild}
+        onSkillDraft={handleSkillDraft}
         onDefer={handleDefer}
       />
     );
@@ -387,6 +431,7 @@ export function HumanInboxPanel({
     onQuestion: handleQuestion,
     onFreeform: handleFreeform,
     onBuild: handleBuild,
+    onSkillDraft: handleSkillDraft,
     onDefer: handleDefer,
     locale,
   };
@@ -453,6 +498,7 @@ type InspectorInboxProps = {
   onQuestion: (item: HumanInboxItem, optionId: string) => void;
   onFreeform: (item: HumanInboxItem) => void;
   onBuild: (item: HumanInboxItem, decision: "go" | "defer" | "reject") => void;
+  onSkillDraft: (item: HumanInboxItem, decision: "approve" | "reject") => void;
   onDefer: (item: HumanInboxItem) => void;
 };
 
@@ -467,6 +513,7 @@ function InspectorInboxView({
   onQuestion,
   onFreeform,
   onBuild,
+  onSkillDraft,
   onDefer,
 }: InspectorInboxProps) {
   const { msg, locale } = useLocale();
@@ -512,6 +559,7 @@ function InspectorInboxView({
               onQuestion={onQuestion}
               onFreeform={onFreeform}
               onBuild={onBuild}
+              onSkillDraft={onSkillDraft}
               onDefer={onDefer}
               locale={locale}
             />

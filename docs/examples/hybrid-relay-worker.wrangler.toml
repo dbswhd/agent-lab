@@ -1,0 +1,13 @@
+# Cloudflare Workers deploy config (예시)
+# Usage: wrangler deploy --config docs/examples/hybrid-relay-worker.wrangler.toml
+#
+# Secrets (wrangler secret put …):
+#   RELAY_SECRET         — gateway.toml [hybrid] relay_secret 와 동일
+#   TELEGRAM_BOT_TOKEN   — @BotFather token
+#   TELEGRAM_CHAT_IDS    — "12345,67890"
+
+name = "agent-lab-hybrid-relay"
+main = "hybrid-relay-worker.js"
+compatibility_date = "2024-06-01"
+
+# Workers 무료 tier에서도 POST relay 용도로 충분

@@ -1128,6 +1128,7 @@ def run_consensus_agent_rounds(
                     human_turn=_human_turn_number(human_turn_index),
                     plan_md=plan_md,
                     mode="discuss",
+                    session_id=folder.name,
                 ):
                     if on_event:
                         on_event(
@@ -2703,6 +2704,7 @@ def _write_session_files(
         human_turn=_inbox_human_turn,
         plan_md=plan_md,
         mode=_inbox_mode,
+        session_id=folder.name,
     )
     # Build proposal after questions so a pending question blocks build (§3.2).
     harvest_build_proposal(

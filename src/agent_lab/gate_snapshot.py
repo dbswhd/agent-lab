@@ -42,6 +42,20 @@ def compute_gate_snapshot(run_meta: dict[str, Any] | None) -> dict[str, Any]:
         block_source = "inbox_pending"
         block_reason = pending[0].get("prompt") or pending[0].get("id") or "Human Inbox pending"
 
+    try:
+        from agent_lab.gate_scope import public_gate_scope_payload
+
+        scope = public_gate_scope_payload(meta)
+        gates["gate_profile"] = scope.get("gate_profile")
+        gates["discuss"] = scope.get("discuss")
+        gates["plan_clarify"] = scope.get("plan_clarify")
+        gates["execute_gate"] = scope.get("execute")
+        inbox_scope = scope.get("inbox")
+        if isinstance(inbox_scope, dict):
+            gates["inbox"].update(inbox_scope)
+    except Exception:
+        pass
+
     from agent_lab.room_objections import open_objections
 
     open_objs = open_objections(meta)

@@ -54,8 +54,15 @@ class PolicyEngine:
     ) -> PolicyResult:
         from agent_lab.room_objections import execute_block_reason_for_action
 
-        reason = execute_block_reason_for_action(run_meta, action_index, action_kind)
         snap = PolicyEngine.gate_snapshot(run_meta)
+        if run_meta and run_meta.get("schedule_sandbox"):
+            return PolicyResult(
+                allowed=False,
+                reason="schedule_sandbox_read_only",
+                source="schedule_sandbox",
+                gate_snapshot=snap,
+            )
+        reason = execute_block_reason_for_action(run_meta, action_index, action_kind)
         if reason:
             return PolicyResult(
                 allowed=False,
@@ -78,13 +85,20 @@ class PolicyEngine:
         action_index: int,
         action_kind: Any = None,
     ) -> PolicyResult:
+        gate = PolicyEngine.check_execute_allowed(run_meta, action_index, action_kind)
+        if not gate.allowed:
+            if gate.source == "schedule_sandbox":
+                raise RuntimeError(gate.reason or "schedule_sandbox_read_only")
+            from agent_lab.room_objections import ObjectionBlocksExecute
+
+            raise ObjectionBlocksExecute(
+                gate.reason or "execute blocked",
+                objections=[],
+            )
         from agent_lab.room_objections import assert_execute_allowed as _assert
 
         _assert(run_meta, action_index, action_kind)
-        return PolicyResult(
-            allowed=True,
-            gate_snapshot=PolicyEngine.gate_snapshot(run_meta),
-        )
+        return PolicyResult(allowed=True, gate_snapshot=gate.gate_snapshot)
 
     @staticmethod
     def check_pre_execute(

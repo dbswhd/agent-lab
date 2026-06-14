@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.agentlab.serve-daemon</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>__AGENT_LAB_VENV_PYTHON__</string>
+    <string>-m</string>
+    <string>agent_lab.cli</string>
+    <string>serve</string>
+    <string>--daemon</string>
+    <string>--host</string>
+    <string>127.0.0.1</string>
+    <string>--port</string>
+    <string>8765</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>AGENT_LAB_ROOT</key>
+    <string>__AGENT_LAB_ROOT__</string>
+    <key>AGENT_LAB_MISSION_SCHEDULER</key>
+    <string>1</string>
+    <key>AGENT_LAB_DAEMON_STATE</key>
+    <string>__AGENT_LAB_HOME__/daemon_state.json</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>__AGENT_LAB_HOME__/logs/serve-daemon.out</string>
+  <key>StandardErrorPath</key>
+  <string>__AGENT_LAB_HOME__/logs/serve-daemon.err</string>
+</dict>
+</plist>

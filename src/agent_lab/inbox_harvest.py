@@ -295,6 +295,7 @@ def harvest_discuss_questions(
     human_turn: int | None = None,
     plan_md: str = "",
     mode: str = "discuss",
+    session_id: str | None = None,
 ) -> list[dict[str, Any]]:
     """Surface deterministic discuss questions into the in-memory ``run_meta`` (M3).
 
@@ -337,6 +338,10 @@ def harvest_discuss_questions(
         append_inbox_item(run_meta, item)
         existing.add(c.harvest_key)
         created.append(item)
+        if session_id:
+            from agent_lab.human_inbox import fan_out_inbox_item
+
+            fan_out_inbox_item(session_id, item)
     return created
 
 
@@ -490,9 +495,15 @@ def inbox_mode() -> str:
 
 
 def should_pause_discuss(run_meta: dict[str, Any]) -> bool:
-    """Sync checkpoint: in ``sync`` mode a pending question halts further auto rounds."""
+    """Sync checkpoint: pending question halts further auto rounds (lane-aware when gate_scope on)."""
+    import os
+
     if inbox_mode() != "sync":
         return False
+    if os.getenv("AGENT_LAB_GATE_SCOPE", "1").strip().lower() not in ("0", "false", "no"):
+        from agent_lab.gate_scope import should_pause_discuss_for_profile
+
+        return should_pause_discuss_for_profile(run_meta)
     return has_pending_question(run_meta)
 
 
@@ -503,6 +514,7 @@ def harvest_and_check_pause(
     human_turn: int | None = None,
     plan_md: str = "",
     mode: str = "discuss",
+    session_id: str | None = None,
 ) -> bool:
     """Harvest this round's questions into ``run_meta`` then report sync-pause.
 
@@ -510,6 +522,11 @@ def harvest_and_check_pause(
     to call after each discuss round as well as once at turn end.
     """
     harvest_discuss_questions(
-        run_meta, messages, human_turn=human_turn, plan_md=plan_md, mode=mode
+        run_meta,
+        messages,
+        human_turn=human_turn,
+        plan_md=plan_md,
+        mode=mode,
+        session_id=session_id,
     )
     return should_pause_discuss(run_meta)

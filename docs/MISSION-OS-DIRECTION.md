@@ -100,23 +100,53 @@ Web Console remains SSOT for dev audit; **24/7 Human loop primary UX = Telegram*
 
 ## 6. Implementation phases
 
-### Phase 0 — Docs (this file + HUMAN-INBOX sync)
+### Phase 0 — Docs ✅
 
-### Phase 1 — Daemon + scheduler + templates + outbound
+### Phase 1 — Daemon + scheduler + templates + outbound ✅
 
-- `agent-lab serve --daemon` + `mission_scheduler.py`
-- `sessions/_templates/` + `mission_templates.py`
+- `agent-lab serve --daemon` + `AGENT_LAB_MISSION_SCHEDULER=1`
+- `mission_scheduler.py` + `run.json` `schedules[]`
+- `sessions/_templates/` + `mission_templates.py` + `approve_plan_bypass`
 - `gateway/outbound.py` + `GET/PATCH /api/settings/gateway`
-- `GET/PATCH /api/sessions/{id}/schedules`, `GET /api/templates`
-- `GET /api/health/daemon`
+- `GET/PATCH /api/sessions/{id}/schedules`, `GET /api/templates`, `GET /api/health/daemon`
+- Tests: `tests/test_mission_os_phase1.py`
 
-### Phase 2 — Telegram + `gate_scope.py`
+### Phase 2 — Telegram + `gate_scope.py` ✅
 
-### Phase 3 — `trust_budget` + `merge_classifier`
+- `gate_scope.py` — `gate_profile`-aware discuss / plan_clarify / execute tiers
+- `gateway/router.py` + `~/.agent-lab/routes.toml` (example: `docs/examples/routes.toml`)
+- `gateway/telegram_adapter.py` — webhook, `/resolve`, `/approve plan|merge`, inbox push
+- API: `POST /api/gateway/telegram/webhook`, `GET /api/gateway/routes`, `POST /api/hooks/{hook_id}`
+- Runtime: `GET /api/sessions/{id}/runtime` → `gates.gate_profile`, `gates.discuss`, …
+- Tests: `tests/test_mission_os_phase2.py`
 
-### Phase 4 — Skill drafts
+### Phase 3 — `trust_budget` + `merge_classifier` ✅
 
-### Phase 5 — Gateway E + hybrid deploy
+- `run.json` `trust_budget`: `{ auto_merge_remaining, auto_merge_total, classifier_allow[] }`
+- `merge_classifier.py`: `docs_only`, `test_only`, `single_file`; deny high-risk paths
+- Auto-merge when: `gate_profile=assistant` + merge checks green + classifier + budget > 0
+- API: `GET/PATCH …/trust-budget`, `GET …/auto-merge/eligibility`, `POST …/auto-merge`
+- Telegram: `/approve auto`
+- Tests: `tests/test_mission_os_phase3.py`
+
+### Phase 4 — Skill drafts ✅
+
+- Hook: Oracle verify PASS → skill draft + inbox promote
+- Session-local skills in `context_bundle`
+- Tests: `tests/test_mission_os_phase4.py`
+
+### Phase 5 — Gateway E + hybrid deploy ✅
+
+- `GatewayAdapter` protocol + registry (`gateway/adapters.py`)
+- Adapters: `telegram`, `webhook_inbound`, `cli`, `discord`
+- Unified ingress: `process_gateway_ingress(channel, payload)`
+- Unified egress: `fan_out_gateway_notify(event, payload)` — outbound + adapters + hybrid
+- Hybrid relay: `gateway/hybrid_relay.py` — POST to cloud when `daemon_offline`
+- Config: `gateway.toml` → `[adapters]`, `[hybrid]`, `[discord]`
+- API: `GET /api/gateway/adapters`, `POST /api/gateway/cli`, `POST /api/gateway/discord/webhook`
+- Example: `docs/examples/gateway.toml`
+- Hybrid Worker (cloud notify): `docs/HYBRID-RELAY-WORKER.md`, `docs/examples/hybrid-relay-worker.js`
+- Tests: `tests/test_mission_os_phase5.py`
 
 ---
 
@@ -126,11 +156,11 @@ Workbench shipped: transcript center + `WorkbenchPanel` (`overview|tasks|inbox|p
 
 | OS Phase | UI wiring (when backend lands) |
 |----------|--------------------------------|
-| 1 | Settings: Schedules, Gateway; `NewSessionDialog` template picker |
-| 2 | Settings Telegram; Overview gate chips |
-| 3 | Overview / Plan tool badges (trust budget, gate_profile) |
-| 4 | Inbox `skill_draft` row |
-| 5 | Settings adapter registry |
+| 1 | Settings: Schedules, Gateway; `NewSessionDialog` template picker — **Settings shipped** |
+| 2 | Settings Telegram; Overview gate chips — **GateProfileChips shipped** |
+| 3 | Overview / Plan tool badges (trust budget, gate_profile) — **TrustAutoMergeBar shipped** |
+| 4 | Inbox `skill_draft` row — **skills segment shipped** |
+| 5 | Settings adapter registry — **GatewaySettingsPanel adapters list** |
 
 Optional follow-up (non-blocking): `RunLogPanel` mount, `dry_run`→diff notification routing.
 
@@ -155,4 +185,16 @@ Optional follow-up (non-blocking): `RunLogPanel` mount, `dry_run`→diff notific
 | `src/agent_lab/mission_templates.py` | Template registry + fast-path approve |
 | `src/agent_lab/daemon_state.py` | Daemon pid / last tick |
 | `src/agent_lab/plan_workflow.py` | `approve_plan_bypass` for templates |
+| `src/agent_lab/gate_scope.py` | gate_profile policy tiers |
+| `src/agent_lab/gateway/router.py` | routes.toml mission picker |
+| `src/agent_lab/gateway/telegram_adapter.py` | Telegram two-way MVP |
+| `src/agent_lab/trust_budget.py` | Auto-merge budget on `run.json` |
+| `src/agent_lab/merge_classifier.py` | Low-risk path classifier |
+| `src/agent_lab/auto_merge.py` | Eligibility + governed auto-merge |
+| `src/agent_lab/skill_drafts.py` | Verify PASS → draft + session skill + promote |
 | `app/server/routers/mission_os.py` | Templates, schedules, gateway settings, daemon health |
+| `app/server/routers/skill_drafts.py` | Skill draft list / promote / reject API |
+| `src/agent_lab/gateway/adapters.py` | GatewayAdapter registry + fan-out |
+| `src/agent_lab/gateway/hybrid_relay.py` | Cloud notify when daemon offline |
+| `app/server/routers/gateway.py` | Ingress adapters + hooks |
+| `app/server/routers/gateway.py` | Telegram webhook + inbound hooks |

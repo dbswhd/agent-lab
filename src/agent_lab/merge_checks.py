@@ -228,5 +228,21 @@ def build_merge_checks(
     }
 
 
-def public_merge_checks_payload(run: dict[str, Any]) -> dict[str, Any]:
-    return build_merge_checks(run)
+def public_merge_checks_payload(
+    run: dict[str, Any],
+    *,
+    folder: Path | None = None,
+) -> dict[str, Any]:
+    payload = build_merge_checks(run)
+    if folder is not None:
+        from agent_lab.auto_merge import evaluate_auto_merge_eligibility
+
+        payload["auto_merge"] = evaluate_auto_merge_eligibility(folder)
+    else:
+        exec_id = payload.get("pending_execution_id")
+        payload["auto_merge"] = {
+            "eligible": False,
+            "reason": "session_folder_unavailable",
+            "pending_execution_id": exec_id,
+        }
+    return payload

@@ -12,7 +12,7 @@ from typing import Any, Literal
 
 from agent_lab.run_meta import patch_run_meta, read_run_meta
 
-InboxKind = Literal["question", "build"]
+InboxKind = Literal["question", "build", "skill_draft"]
 InboxStatus = Literal["pending", "resolved", "deferred", "superseded", "rejected", "timeout"]
 
 DEFAULT_INBOX_TIMEOUT_SEC = int(os.getenv("AGENT_LAB_INBOX_TIMEOUT_SEC", "1800"))
@@ -97,6 +97,9 @@ def public_inbox_payload(run: dict[str, Any]) -> dict[str, Any]:
             1 for item in pending if item.get("kind") == "question"
         ),
         "pending_builds": sum(1 for item in pending if item.get("kind") == "build"),
+        "pending_skill_drafts": sum(
+            1 for item in pending if item.get("kind") == "skill_draft"
+        ),
     }
 
 
@@ -289,7 +292,29 @@ def create_inbox_item(
         harvest_key=harvest_key,
     )
     patch_run_meta(folder, lambda run: append_inbox_item(run, item))
+    try:
+        from agent_lab.gateway.adapters import fan_out_gateway_notify
+
+        fan_out_gateway_notify(
+            "inbox_pending",
+            {"session_id": folder.name, "item": item},
+        )
+    except Exception:
+        pass
     return item
+
+
+def fan_out_inbox_item(session_id: str, item: dict[str, Any]) -> None:
+    """Notify gateway adapters for a newly appended inbox item (harvest path)."""
+    try:
+        from agent_lab.gateway.adapters import fan_out_gateway_notify
+
+        fan_out_gateway_notify(
+            "inbox_pending",
+            {"session_id": session_id, "item": item},
+        )
+    except Exception:
+        pass
 
 
 def supersede_pending_inbox(folder: Path, *, human_turn_id: int | None = None) -> int:
@@ -364,6 +389,19 @@ def resolve_inbox_item(
 
     if append_chat and status in ("resolved", "deferred"):
         _append_decision_to_chat(folder, updated)
+
+    if updated.get("kind") == "skill_draft" and status in ("resolved", "rejected", "superseded"):
+        try:
+            from agent_lab.skill_drafts import handle_skill_draft_inbox_resolve
+
+            handle_skill_draft_inbox_resolve(
+                folder,
+                updated,
+                selected=selected,
+                status=status,
+            )
+        except ValueError:
+            pass
 
     from agent_lab.plan_workflow import tick_plan_workflow_after_inbox_resolve
 

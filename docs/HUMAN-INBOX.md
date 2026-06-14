@@ -12,9 +12,10 @@
 | Plan-first → Build GO gate (`execute_inbox_build_go`) | ✅ | — |
 | Taskbar **peer mailbox** UI | ✅ | Peer channel, not Human decision resolve |
 | Dedicated Human Inbox resolve panel | 🔶 | API exists; full UI polish in [UI-MIGRATION-GAPS.md](./UI-MIGRATION-GAPS.md) |
-| Discuss deterministic harvest → Inbox | 🔶 | Partial via `inbox_harvest.py` |
-| Discuss sync-pause (`should_pause_discuss`) | 🔶 | Shipped global via `AGENT_LAB_INBOX_MODE=sync|soft`; lane-aware `gate_scope` Phase 2 |
-| FORK / Facilitator | ⬜ | Future |
+| Discuss deterministic harvest → Inbox | ✅ | M3 shipped — `inbox_harvest.py` + gateway notify on harvest |
+| Discuss sync-pause (`should_pause_discuss`) | ✅ | `gate_scope` lane-aware + Overview gate chips |
+| FORK / Facilitator | ✅ | `inbox_facilitator.py` — ref-anchored options; live opt-in `AGENT_LAB_FACILITATOR_LIVE` |
+| Inbox `skill_draft` row (Mission OS Phase 4) | ✅ | Web Inbox skills segment + promote/reject |
 
 Claude Code(`AskUserQuestion`, `ExitPlanMode`)와 Cursor(`ask-follow-up`, plan→build)가 수렴하는 **레퍼런스 메커니즘**을 execute 경로에 맞추고, discuss Room은 Agent Lab 고유 오케스트레이션으로 분리한다. **확정 흐름:** discuss에서 합의 → execute **plan phase** → **Build GO** → implement (§3.4). Human Inbox는 두 경로 모두에서 Human이 답하는 **단일 UI surface**다.
 
@@ -729,13 +730,13 @@ flowchart LR
 
 **M3 — Discuss harvest**
 
-- [ ] harvest → excerpt + refs Inbox (options 없음) — partial in `inbox_harvest.py`
+- [x] harvest → excerpt + refs Inbox (options 없음) — `inbox_harvest.py` + `fan_out_inbox_item`
 - [x] Facilitator / LLM option invent 금지 (policy)
 
 **M4 — Discuss advanced**
 
-- [ ] FORK / ref-anchored options
-- [ ] sync pause + skip/defer
+- [x] FORK / ref-anchored options — `inbox_facilitator.merge_forks`
+- [x] sync pause + skip/defer — `should_pause_discuss` + gate_scope UI chips
 
 **M5 — End-to-end Build**
 

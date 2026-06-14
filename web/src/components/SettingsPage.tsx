@@ -15,6 +15,9 @@ import { ContextPreviewPanel } from "./ContextPreviewPanel";
 import { PluginPanel } from "./PluginPanel";
 import { SlashCommandGroupList } from "./SlashCommandGroupList";
 import { HooksResponseSettings } from "./HooksResponseSettings";
+import { DaemonStatusBar } from "./DaemonStatusBar";
+import { GatewaySettingsPanel } from "./GatewaySettingsPanel";
+import { SchedulesPanel } from "./SchedulesPanel";
 import { ThemeToggle } from "./ThemeToggle";
 import { Avatar } from "./Avatar";
 import { SettingsSectionIcon } from "./SettingsSectionIcon";
@@ -396,6 +399,19 @@ export function SettingsPage({
         )}
 
         <HooksResponseSettings sessionId={sessionId} session={session} />
+
+        <section className="settings-section">
+          <div className="settings-section__head">
+            <h2 className="settings-section__title">
+              <SettingsSectionIcon name="activity" />
+              {t("missionOsTitle")}
+            </h2>
+            <span className="settings-section__sub">{t("missionOsSub")}</span>
+          </div>
+          <DaemonStatusBar />
+          <GatewaySettingsPanel />
+          {sessionId ? <SchedulesPanel sessionId={sessionId} /> : null}
+        </section>
 
         <section className="settings-section">
           <div className="settings-section__head">

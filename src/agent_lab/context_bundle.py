@@ -552,6 +552,11 @@ def build_context_bundle(
         run_meta=run_meta,
         parallel_round=parallel_round,
     )
+    from agent_lab.skill_drafts import build_session_skills_block
+
+    session_skills = build_session_skills_block(run_meta)
+    if session_skills.strip():
+        constraints = f"{constraints}\n\n{session_skills.strip()}"
     resume_block = build_agent_thread_resume_block(agent, run_meta)
     if resume_block.strip():
         constraints = f"{constraints}\n\n{resume_block.strip()}"

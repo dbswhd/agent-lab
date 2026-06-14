@@ -964,6 +964,11 @@ export type RuntimeSnapshot = {
     block_reason?: string | null;
     execute_blocked: boolean;
     pending_agreement: boolean;
+    gate_profile?: "dev" | "assistant";
+    discuss?: { open?: boolean; reason?: string | null };
+    plan_clarify?: { open?: boolean; reason?: string | null };
+    execute?: { open?: boolean; reason?: string | null };
+    inbox?: { pending_questions?: number; pending_builds?: number; kinds?: string[] };
   };
   inbox: {
     pending: boolean;
@@ -2246,7 +2251,7 @@ export type HumanInboxOption = {
 
 export type HumanInboxItem = {
   id: string;
-  kind: "question" | "build";
+  kind: "question" | "build" | "skill_draft";
   source?: string;
   status: "pending" | "resolved" | "deferred" | "superseded" | "rejected" | "timeout";
   prompt: string;
@@ -2270,6 +2275,7 @@ export type HumanInboxPayload = {
   pending_count: number;
   pending_questions: number;
   pending_builds: number;
+  pending_skill_drafts?: number;
 };
 
 export async function fetchSessionInbox(sessionId: string): Promise<HumanInboxPayload> {
@@ -2316,6 +2322,247 @@ export async function resolveInboxItem(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+}
+
+// ── Mission OS (gateway, schedules, daemon, templates) ─────────────────────
+
+export type GatewayOutboundSettings = {
+  enabled?: boolean;
+  urls?: string[];
+  events?: string[];
+  secret_set?: boolean;
+  timeout_s?: number;
+};
+
+export type GatewayTelegramSettings = {
+  enabled?: boolean;
+  bot_token_set?: boolean;
+  allowed_chat_ids?: number[];
+};
+
+export type GatewayDiscordSettings = {
+  webhook_url_set?: boolean;
+  allowed_channel_ids?: string[];
+};
+
+export type GatewayHybridSettings = {
+  enabled?: boolean;
+  relay_url?: string | null;
+  relay_secret_set?: boolean;
+  relay_when?: string;
+  timeout_s?: number;
+};
+
+export type GatewayAdapterInfo = {
+  id: string;
+  channel?: string;
+  enabled?: boolean;
+  description?: string;
+  ingress?: boolean;
+  egress?: boolean;
+};
+
+export type GatewaySettingsPayload = {
+  outbound?: GatewayOutboundSettings;
+  telegram?: GatewayTelegramSettings;
+  discord?: GatewayDiscordSettings;
+  hybrid?: GatewayHybridSettings;
+  adapters?: GatewayAdapterInfo[];
+  enabled?: string[];
+};
+
+export type DaemonHealthPayload = {
+  ok: boolean;
+  pid?: number | null;
+  started_at?: string | null;
+  scheduler_enabled?: boolean;
+  last_scheduler_tick_at?: string | null;
+  gateway?: GatewaySettingsPayload;
+};
+
+export type MissionScheduleEntry = {
+  id: string;
+  cron: string;
+  tz?: string;
+  template_id?: string | null;
+  gate_profile?: "dev" | "assistant";
+  sandbox?: boolean;
+  enabled?: boolean;
+  notify?: { on_start?: boolean };
+  pre_approved_at?: string | null;
+  pre_approved_by?: string | null;
+  last_run_date?: string | null;
+  last_run_at?: string | null;
+  last_run_status?: string | null;
+  last_run_error?: string | null;
+  last_failed_at?: string | null;
+};
+
+export type MissionTemplateSummary = {
+  id: string;
+  path?: string;
+  hash_match?: boolean;
+  topic?: string;
+  meta?: Record<string, unknown>;
+};
+
+export function fetchGatewaySettings() {
+  return json<GatewaySettingsPayload>("/api/settings/gateway");
+}
+
+export function patchGatewaySettings(body: Record<string, unknown>) {
+  return json<GatewaySettingsPayload & { ok?: boolean }>("/api/settings/gateway", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export function pingGateway() {
+  return json<{ ok: boolean; delivered?: number }>("/api/settings/gateway/ping", {
+    method: "POST",
+  });
+}
+
+export function fetchDaemonHealth() {
+  return json<DaemonHealthPayload>("/api/health/daemon");
+}
+
+export function fetchMissionTemplates() {
+  return json<{ templates: MissionTemplateSummary[] }>("/api/templates");
+}
+
+export function fetchSessionSchedules(sessionId: string) {
+  return json<{ session_id: string; schedules: MissionScheduleEntry[] }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/schedules`,
+  );
+}
+
+export function patchSessionSchedules(
+  sessionId: string,
+  schedules: MissionScheduleEntry[],
+) {
+  return json<{ ok: boolean; schedules: MissionScheduleEntry[] }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/schedules`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ schedules }),
+    },
+  );
+}
+
+export function approveSessionSchedule(sessionId: string, scheduleId: string) {
+  return json<{ ok: boolean; schedules: MissionScheduleEntry[] }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/schedules/${encodeURIComponent(scheduleId)}/approve`,
+    { method: "POST" },
+  );
+}
+
+export function applySessionTemplate(sessionId: string, templateId: string) {
+  return json<{ ok: boolean; fast_path?: boolean }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/templates/apply`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ template_id: templateId }),
+    },
+  );
+}
+
+export function fetchGatewayAdapters() {
+  return json<{ adapters: GatewayAdapterInfo[]; enabled: string[] }>(
+    "/api/gateway/adapters",
+  );
+}
+
+export function triggerMissionSchedulerTick(force = false) {
+  const q = force ? "?force=true" : "";
+  return json<{ ok: boolean; runs?: unknown[] }>(`/api/mission-scheduler/tick${q}`, {
+    method: "POST",
+  });
+}
+
+export type TrustBudgetPayload = {
+  auto_merge_remaining: number;
+  auto_merge_total: number;
+  classifier_allow: string[];
+};
+
+export type AutoMergeEligibilityPayload = {
+  eligible: boolean;
+  gate_profile: string;
+  reason?: string | null;
+  pending_execution_id?: string | null;
+  trust_budget?: TrustBudgetPayload;
+};
+
+export function fetchSessionTrustBudget(sessionId: string) {
+  return json<{ trust_budget: TrustBudgetPayload; gate_profile: string }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/trust-budget`,
+  );
+}
+
+export function patchSessionTrustBudget(
+  sessionId: string,
+  body: Partial<TrustBudgetPayload>,
+) {
+  return json<{ ok: boolean; trust_budget: TrustBudgetPayload }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/trust-budget`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+export function fetchAutoMergeEligibility(sessionId: string, executionId?: string) {
+  const q = executionId
+    ? `?execution_id=${encodeURIComponent(executionId)}`
+    : "";
+  return json<AutoMergeEligibilityPayload>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/auto-merge/eligibility${q}`,
+  );
+}
+
+export function postAutoMerge(sessionId: string, executionId: string) {
+  return json<{ ok: boolean; execution?: Record<string, unknown> }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/auto-merge`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ execution_id: executionId }),
+    },
+  );
+}
+
+export type SkillDraftSummary = {
+  id: string;
+  name?: string;
+  path?: string;
+  status?: string;
+  created_at?: string;
+};
+
+export function fetchSkillDrafts(sessionId: string) {
+  return json<{ drafts: SkillDraftSummary[] }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/skills/drafts`,
+  );
+}
+
+export function promoteSkillDraft(sessionId: string, draftId: string) {
+  return json<{ ok: boolean }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/skills/drafts/${encodeURIComponent(draftId)}/promote`,
+    { method: "POST" },
+  );
+}
+
+export function rejectSkillDraft(sessionId: string, draftId: string) {
+  return json<{ ok: boolean }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/skills/drafts/${encodeURIComponent(draftId)}/reject`,
+    { method: "POST" },
+  );
 }
 
 // ── Terminal ──────────────────────────────────────────────────────────────────

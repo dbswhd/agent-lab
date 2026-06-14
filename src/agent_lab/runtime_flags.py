@@ -58,6 +58,14 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
     ),
     FlagDef("AGENT_LAB_EXECUTE_INBOX", "feature", "Cursor execute inbox MCP", default="1"),
     FlagDef("AGENT_LAB_INBOX_MODE", "feature", "Inbox harvest: sync | soft", default="sync"),
+    FlagDef("AGENT_LAB_GATE_SCOPE", "feature", "Lane-aware gate_scope for discuss pause (1=on, 0=legacy INBOX_MODE only)", default="1"),
+    FlagDef(
+        "AGENT_LAB_SKILL_DRAFTS",
+        "feature",
+        "Verify PASS → skill draft inbox + session skills (1=on)",
+        default="1",
+    ),
+    FlagDef("AGENT_LAB_ROUTES_CONFIG", "infra", "Path to gateway routes.toml", default=""),
     FlagDef(
         "AGENT_LAB_INBOX_TIMEOUT_SEC",
         "feature",

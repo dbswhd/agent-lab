@@ -121,6 +121,10 @@ install-mission-triggers:
 	AGENT_LAB_FRESHNESS_PYTHON=$${AGENT_LAB_FRESHNESS_PYTHON:-$(HOME)/Desktop/pipeline/.venv/bin/python} \
 	./scripts/install_mission_triggers.sh
 
+install-serve-daemon:
+	chmod +x scripts/install_serve_daemon.sh
+	./scripts/install_serve_daemon.sh
+
 token-log-summary:
 	QUANT_PIPELINE_ROOT=$${QUANT_PIPELINE_ROOT:-$(HOME)/Desktop/pipeline} \
 	.venv/bin/python scripts/summarize_token_log.py --lines $${LINES:-20}

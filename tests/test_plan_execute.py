@@ -890,3 +890,69 @@ def test_resolve_reject_restores_files(tmp_path: Path, monkeypatch):
     assert result["execution"]["status"] == "rejected"
     assert target.read_text(encoding="utf-8") == "before\n"
     assert not (session / ".execute-snapshots" / exec_id).exists()
+
+
+def test_resolve_execution_apply_isolation_records_verify(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from agent_lab.mission_loop import enable_mission_loop
+    from agent_lab.run_meta import patch_run_meta, read_run_meta
+    from agent_lab.trust_budget import set_trust_budget
+
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    session = tmp_path / "sess-apply-verify"
+    session.mkdir()
+    exec_id = "exec-apply-1"
+    enable_mission_loop(session, start_autonomous=False)
+    set_trust_budget(session, {"auto_merge_remaining": 1})
+
+    def _merge_review(run: dict) -> dict:
+        run["executions"] = [
+            {
+                "id": exec_id,
+                "status": "pending_approval",
+                "action_index": 1,
+                "isolation_effective": "apply",
+                "expected_paths": ["src/app.py"],
+                "action_verify": "make test",
+            }
+        ]
+        ml = run.setdefault("mission_loop", {})
+        ml.update(
+            {
+                "enabled": True,
+                "phase": "MERGE_REVIEW",
+                "current_action_index": 1,
+                "pending_action_indices": [1],
+                "last_execution_id": exec_id,
+            }
+        )
+        return run
+
+    patch_run_meta(session, _merge_review)
+    monkeypatch.setattr(
+        "agent_lab.plan_execute.resolve_execute_workspace",
+        lambda _permissions=None, _expected=None: (workspace, {}),
+    )
+    monkeypatch.setattr(
+        "agent_lab.plan_execute.verify_after_merge",
+        lambda *a, **k: {
+            "status": "passed",
+            "oracle": {"verdict": "pass", "detail": "mock ok"},
+        },
+    )
+
+    result = resolve_execution(
+        session,
+        execution_id=exec_id,
+        vote="approve",
+        permissions={},
+        approved_by="auto",
+    )
+    execution = result["execution"]
+    assert execution["status"] == "completed"
+    assert execution["oracle"]["verdict"] == "pass"
+    assert execution.get("verify_after_merge") is not None
+    run = read_run_meta(session)
+    assert run["mission_loop"]["phase"] == "MISSION_DONE"

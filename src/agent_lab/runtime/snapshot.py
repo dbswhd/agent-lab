@@ -123,6 +123,10 @@ def build_runtime_snapshot(
     inbox = public_inbox_payload(run)
     block_reason = PolicyEngine.execute_block_reason(run)
 
+    from agent_lab.gate_scope import public_gate_scope_payload
+
+    gate_scope = public_gate_scope_payload(run)
+
     from agent_lab.plan_workflow import get_plan_workflow, is_plan_workflow_active
 
     pw = get_plan_workflow(run)
@@ -183,6 +187,7 @@ def build_runtime_snapshot(
             "block_reason": block_reason,
             "execute_blocked": block_reason is not None,
             "pending_agreement": pending_agreement,
+            **gate_scope,
         },
         "inbox": {
             "pending": inbox.get("inbox_pending", False),
@@ -210,7 +215,7 @@ def build_runtime_snapshot(
         },
         "mission_board": public_mission_board_payload(run),
         "turn_budget": public_turn_budget_payload(run),
-        "merge_checks": public_merge_checks_payload(run),
+        "merge_checks": public_merge_checks_payload(run, folder=folder),
         "evidence": public_evidence_payload(folder, limit=30),
         "clarifier_interview": _public_clarifier_interview(run),
         "wisdom_index": _public_wisdom_index(folder),

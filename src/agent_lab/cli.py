@@ -1,4 +1,5 @@
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -24,6 +25,20 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         default=None,
         help="Override sessions output directory",
+    )
+
+    serve_p = sub.add_parser("serve", help="Run Agent Lab API server")
+    serve_p.add_argument("--host", default="127.0.0.1")
+    serve_p.add_argument("--port", type=int, default=8765)
+    serve_p.add_argument(
+        "--daemon",
+        action="store_true",
+        help="Enable mission scheduler background thread (sets AGENT_LAB_MISSION_SCHEDULER=1)",
+    )
+    serve_p.add_argument(
+        "--reload",
+        action="store_true",
+        help="Uvicorn auto-reload (dev only)",
     )
 
     args = parser.parse_args(argv)
@@ -62,6 +77,19 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  plan.md       ({(folder / 'plan.md').stat().st_size} bytes)")
         print(f"  transcript.md")
         print(f"  meta.json")
+        return 0
+
+    if args.command == "serve":
+        if args.daemon:
+            os.environ["AGENT_LAB_MISSION_SCHEDULER"] = "1"
+        import uvicorn
+
+        uvicorn.run(
+            "app.server.main:app",
+            host=args.host,
+            port=args.port,
+            reload=args.reload,
+        )
         return 0
 
     return 1

@@ -24,6 +24,7 @@ from agent_lab.plan_pending import (
 )
 from agent_lab.room_hooks import PreExecuteBlocked
 from agent_lab.room_objections import ObjectionBlocksExecute
+from agent_lab.run_meta import read_run_meta
 
 from app.server.deps import (
     ClarifierAnswersRequest,
@@ -39,6 +40,17 @@ from app.server.deps import (
 )
 
 router = APIRouter(prefix="/api")
+
+
+def _notify_execute_gate_blocked(folder, *, source: str) -> None:
+    try:
+        from agent_lab.gateway.notify_helpers import notify_gate_blocked
+        from agent_lab.runtime.policy import PolicyEngine
+
+        snap = PolicyEngine.gate_snapshot(read_run_meta(folder))
+        notify_gate_blocked(folder, snap, source=source)
+    except Exception:
+        pass
 
 
 @router.get("/sessions/{session_id}/evidence")
@@ -142,8 +154,62 @@ def session_merge_checks(session_id: str) -> dict[str, Any]:
     return {
         "ok": True,
         "session_id": session_id,
-        **public_merge_checks_payload(read_run_meta(folder)),
+        **public_merge_checks_payload(read_run_meta(folder), folder=folder),
     }
+
+
+@router.get("/sessions/{session_id}/trust-budget")
+def session_trust_budget(session_id: str) -> dict[str, Any]:
+    folder = session_folder_or_404(session_id)
+    from agent_lab.run_meta import read_run_meta
+    from agent_lab.trust_budget import get_trust_budget
+
+    run = read_run_meta(folder)
+    return {
+        "ok": True,
+        "session_id": session_id,
+        "trust_budget": get_trust_budget(run),
+    }
+
+
+@router.patch("/sessions/{session_id}/trust-budget")
+def patch_session_trust_budget(session_id: str, body: dict[str, Any]) -> dict[str, Any]:
+    folder = session_folder_or_404(session_id)
+    from agent_lab.trust_budget import set_trust_budget
+
+    allowed = {"auto_merge_remaining", "auto_merge_total", "classifier_allow"}
+    patch = {k: v for k, v in body.items() if k in allowed}
+    if not patch:
+        raise HTTPException(status_code=400, detail="trust_budget patch required")
+    budget = set_trust_budget(folder, patch)
+    return {"ok": True, "session_id": session_id, "trust_budget": budget}
+
+
+@router.get("/sessions/{session_id}/auto-merge/eligibility")
+def session_auto_merge_eligibility(
+    session_id: str,
+    execution_id: str | None = None,
+) -> dict[str, Any]:
+    folder = session_folder_or_404(session_id)
+    from agent_lab.auto_merge import evaluate_auto_merge_eligibility
+
+    payload = evaluate_auto_merge_eligibility(folder, execution_id=execution_id)
+    return {"ok": True, "session_id": session_id, **payload}
+
+
+@router.post("/sessions/{session_id}/auto-merge")
+def session_auto_merge(
+    session_id: str,
+    body: PlanExecuteMergeRequest,
+) -> dict[str, Any]:
+    folder = session_folder_or_404(session_id)
+    from agent_lab.auto_merge import resolve_auto_merge
+
+    try:
+        result = resolve_auto_merge(folder, execution_id=body.execution_id.strip())
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    return {"ok": True, "session_id": session_id, **result}
 
 
 @router.get("/sessions/{session_id}/plan-actions")
@@ -278,6 +344,7 @@ def session_execute_dry_run(
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e)) from e
     except ObjectionBlocksExecute as e:
+        _notify_execute_gate_blocked(folder, source="execute_api_objection")
         raise HTTPException(
             status_code=409,
             detail={
@@ -287,6 +354,7 @@ def session_execute_dry_run(
             },
         ) from e
     except PreExecuteBlocked as e:
+        _notify_execute_gate_blocked(folder, source="execute_api_pre_verify")
         raise HTTPException(
             status_code=409,
             detail={

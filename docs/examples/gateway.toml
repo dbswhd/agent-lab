@@ -1,0 +1,24 @@
+# Gateway config example — Phase 5 adapters + hybrid relay
+# Copy to ~/.agent-lab/gateway.toml
+
+[outbound]
+enabled = false
+timeout_s = 5
+events = ["inbox_pending", "merge_ready", "schedule_tick", "gate_blocked", "auto_merge_blocked"]
+
+[telegram]
+enabled = false
+
+[discord]
+# webhook_url = "https://discord.com/api/webhooks/..."
+allow_ingress_without_webhook = true
+
+[hybrid]
+enabled = false
+relay_when = "daemon_offline"
+timeout_s = 8
+# relay_url = "https://agent-lab-hybrid-relay.<subdomain>.workers.dev"
+# relay_secret = "..."   # Worker RELAY_SECRET 과 동일 — docs/HYBRID-RELAY-WORKER.md
+
+[adapters]
+enabled = ["telegram", "webhook_inbound", "cli", "discord"]

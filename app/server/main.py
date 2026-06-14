@@ -55,9 +55,11 @@ from app.server.routers import (  # noqa: E402
     commands,
     context_layers,
     dev_preview,
+    gateway,
     health,
     human_inbox,
     mission_loop,
+    mission_os,
     plan_execute,
     plan_workflow,
     room,
@@ -66,6 +68,7 @@ from app.server.routers import (  # noqa: E402
     session_tasks,
     sessions,
     settings,
+    skill_drafts,
     terminal,
     verified_loop,
     workspace_files,
@@ -77,6 +80,8 @@ setup_app_logging()
 def _api_startup() -> None:
     from agent_lab.agent_auth_bootstrap import bootstrap_room_auth_on_startup
     from agent_lab.app_logging import write_boot_line
+    from agent_lab.daemon_state import mark_daemon_started
+    from agent_lab.mission_scheduler import start_mission_scheduler_background
 
     try:
         bootstrap_room_auth_on_startup()
@@ -88,6 +93,9 @@ def _api_startup() -> None:
             "uvicorn startup pid=%s port=%s sessions=%s"
             % (payload["pid"], payload["port"], payload["sessions_dir"])
         )
+        mark_daemon_started(pid=int(payload["pid"]))
+        if start_mission_scheduler_background():
+            write_boot_line("mission scheduler background thread started")
     except Exception as exc:
         write_boot_line(f"uvicorn startup diagnostics failed: {exc}")
 
@@ -121,13 +129,16 @@ for router in (
     commands.router,
     context_layers.router,
     dev_preview.router,
+    gateway.router,
     sessions.router,
     session_tasks.router,
     session_governance.router,
     human_inbox.router,
     mission_loop.router,
+    mission_os.router,
     plan_execute.router,
     plan_workflow.router,
+    skill_drafts.router,
     runtime.router,
     room.router,
     settings.router,

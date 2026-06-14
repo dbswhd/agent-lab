@@ -23,6 +23,7 @@ import { buildMissionOverviewView } from "../utils/missionOverviewView";
 import { MissionOverviewSection } from "./MissionOverviewSection";
 import { TurnBudgetSection } from "./TurnBudgetSection";
 import { MissionBoardStrip } from "./MissionBoardStrip";
+import { GateProfileChips } from "./GateProfileChips";
 
 type Props = {
   session: SessionDetail | null;
@@ -159,6 +160,8 @@ export function ContextOverviewPanel({
         ko={ko}
         onFocusBlock={onFocusObjection}
       />
+
+      <GateProfileChips sessionId={sessionId} />
 
       <MissionBoardStrip
         board={(session?.run?.mission_board as MissionBoardPayload | undefined) ?? null}

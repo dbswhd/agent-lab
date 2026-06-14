@@ -493,6 +493,16 @@ def _record_verify_after_merge(
         from agent_lab.evidence_sync import on_verify_recorded
 
         on_verify_recorded(folder, exec_id, evidence=evidence)
+    try:
+        from agent_lab.skill_drafts import (
+            maybe_create_skill_draft_from_verify,
+            verify_evidence_passed,
+        )
+
+        if verify_evidence_passed(evidence):
+            maybe_create_skill_draft_from_verify(folder, target, evidence)
+    except Exception:
+        pass
     return evidence
 
 
@@ -1397,6 +1407,13 @@ def run_dry_run(
     from agent_lab.runtime.runtime import dispatch
 
     dispatch(folder, RuntimeEvent.EXECUTE_DRY_RUN_COMPLETE, {"execution": execution})
+    if str(execution.get("status") or "") == PENDING_STATUS:
+        try:
+            from agent_lab.gateway.notify_helpers import notify_merge_ready
+
+            notify_merge_ready(folder, execution)
+        except Exception:
+            pass
     run_after = read_run_meta(folder)
     for row in run_after.get("executions") or []:
         if isinstance(row, dict) and row.get("id") == exec_id:
@@ -1601,12 +1618,65 @@ def cancel_open_execution(
     }
 
 
+def _execution_approval_record(
+    *,
+    execution_id: str,
+    target: dict[str, Any],
+    vote_norm: str,
+    completed: str,
+    approved_by: str = "human",
+    auto_merge_meta: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    approval: dict[str, Any] = {
+        "id": f"appr-{uuid.uuid4().hex[:12]}",
+        "execution_id": execution_id,
+        "action_id": target.get("action_id"),
+        "vote": vote_norm,
+        "ts": completed,
+        "by": approved_by,
+    }
+    if auto_merge_meta:
+        approval["auto_merge"] = True
+        approval.update(auto_merge_meta)
+    return approval
+
+
+def _append_execution_approval(run: dict[str, Any], approval: dict[str, Any]) -> dict[str, Any]:
+    for key in ("approvals", "execution_approvals"):
+        rows = list(run.get(key) or [])
+        rows.append(approval)
+        run[key] = rows
+    return run
+
+
+def _finalize_auto_merge_meta(
+    folder: Path,
+    *,
+    approved_by: str,
+    target: dict[str, Any],
+    auto_merge_meta: dict[str, Any] | None,
+) -> dict[str, Any]:
+    meta = dict(auto_merge_meta or {})
+    if approved_by != "auto":
+        return meta
+    if target.get("status") not in {"merged", "completed"}:
+        raise ValueError("auto_merge did not complete")
+    from agent_lab.trust_budget import consume_auto_merge_budget
+
+    before, after = consume_auto_merge_budget(folder)
+    meta["budget_before"] = before
+    meta["budget_after"] = after
+    return meta
+
+
 def resolve_execution(
     folder: Path,
     *,
     execution_id: str,
     vote: str,
     permissions: dict[str, Any] | None = None,
+    approved_by: str = "human",
+    auto_merge_meta: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     vote_norm = vote.strip().lower()
     if vote_norm not in {"approve", "reject"}:
@@ -1723,14 +1793,23 @@ def resolve_execution(
                 if snapshot_id:
                     delete_snapshot(folder, snapshot_id)
 
-            approval = {
-                "id": f"appr-{uuid.uuid4().hex[:12]}",
-                "execution_id": execution_id,
-                "action_id": target.get("action_id"),
-                "vote": vote_norm,
-                "ts": completed,
-                "by": "human",
-            }
+            if vote_norm == "approve" and approved_by == "auto":
+                auto_meta = _finalize_auto_merge_meta(
+                    folder,
+                    approved_by=approved_by,
+                    target=target,
+                    auto_merge_meta=auto_merge_meta,
+                )
+            else:
+                auto_meta = auto_merge_meta
+            approval = _execution_approval_record(
+                execution_id=execution_id,
+                target=target,
+                vote_norm=vote_norm,
+                completed=completed,
+                approved_by=approved_by,
+                auto_merge_meta=auto_meta,
+            )
 
             def _update_retry(run: dict[str, Any]) -> dict[str, Any]:
                 rows = list(run.get("executions") or [])
@@ -1739,10 +1818,7 @@ def resolve_execution(
                         rows[i] = target
                         break
                 run["executions"] = rows
-                approvals = list(run.get("execution_approvals") or [])
-                approvals.append(approval)
-                run["execution_approvals"] = approvals
-                return run
+                return _append_execution_approval(run, approval)
 
             patch_run_meta(folder, _update_retry)
             return {
@@ -1813,15 +1889,30 @@ def resolve_execution(
                 delete_snapshot(folder, snapshot_id)
             target["status"] = _approve_status(target)
             target["completed_at"] = completed
+            if vote_norm == "approve" and target.get("status") == "completed":
+                from agent_lab.evidence_sync import on_merge_approved
 
-    approval = {
-        "id": f"appr-{uuid.uuid4().hex[:12]}",
-        "execution_id": execution_id,
-        "action_id": target.get("action_id"),
-        "vote": vote_norm,
-        "ts": completed,
-        "by": "human",
-    }
+                on_merge_approved(folder, execution_id, commit_sha=None)
+                _record_verify_after_merge(folder, target)
+
+    auto_meta = (
+        _finalize_auto_merge_meta(
+            folder,
+            approved_by=approved_by,
+            target=target,
+            auto_merge_meta=auto_merge_meta,
+        )
+        if vote_norm == "approve" and approved_by == "auto"
+        else auto_merge_meta
+    )
+    approval = _execution_approval_record(
+        execution_id=execution_id,
+        target=target,
+        vote_norm=vote_norm,
+        completed=completed,
+        approved_by=approved_by,
+        auto_merge_meta=auto_meta,
+    )
 
     def _update(run: dict[str, Any]) -> dict[str, Any]:
         rows = list(run.get("executions") or [])
@@ -1830,10 +1921,7 @@ def resolve_execution(
                 rows[i] = target
                 break
         run["executions"] = rows
-        approvals = list(run.get("approvals") or [])
-        approvals.append(approval)
-        run["approvals"] = approvals
-        return run
+        return _append_execution_approval(run, approval)
 
     patch_run_meta(folder, _update)
 

@@ -38,6 +38,7 @@ import { WorkPlanIcon } from "./WorkPlanIcon";
 import { SideBySideDiff } from "./SideBySideDiff";
 import { PlanProvenanceFooter } from "./PlanProvenanceFooter";
 import { MergeChecksPanel } from "./MergeChecksPanel";
+import { TrustAutoMergeBar } from "./TrustAutoMergeBar";
 import { EvidenceGatesPanel } from "./EvidenceGatesPanel";
 import { EvidenceTimeline } from "./EvidenceTimeline";
 import type { EvidenceEntry, MergeChecksPayload } from "../api/client";
@@ -1128,6 +1129,11 @@ export function PlanExecutePanel({
             <AdversarialBadge row={activePending} />
             <ExternalHandoffBadge row={activePending} />
             <MergeChecksPanel checks={mergeChecks} />
+            <TrustAutoMergeBar
+              sessionId={sessionId}
+              executionId={activePending.id}
+              onMerged={onUpdated}
+            />
             <EvidenceGatesPanel gates={activePending.evidence_gates} />
             <PlanActionContext
               {...executionContextFields(activePending, pendingAction)}

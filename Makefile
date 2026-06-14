@@ -88,9 +88,12 @@ format-check:
 typecheck:
 	.venv/bin/mypy
 
-ci: lint format-check test-fast smoke score-regression-fixtures
+typecheck-ratchet:
+	.venv/bin/python scripts/mypy_ratchet.py --check
 
-ci-full: lint format-check test smoke score-regression-fixtures
+ci: lint format-check typecheck-ratchet test-fast smoke score-regression-fixtures
+
+ci-full: lint format-check typecheck-ratchet test smoke score-regression-fixtures
 
 init-project-memory:
 	@test -n "$(WORKSPACE)" || WORKSPACE=.; \

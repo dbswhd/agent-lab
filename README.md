@@ -153,11 +153,12 @@ make dev              # API + web hot reload
 make lint             # ruff check (src/ app/ tests/ scripts/)
 make format-check     # ruff format --check (+ examples/)
 make format           # apply ruff format locally
-make typecheck        # mypy src/agent_lab (gradual; non-blocking in CI)
+make typecheck        # mypy src/agent_lab (full report)
+make typecheck-ratchet # mypy error budget (excludes room.py; gated in CI)
 make test-fast        # mock-only, ~1분 (~870 tests, -n auto when xdist)
 make test             # full mock suite (integration 포함)
-make ci               # lint + format-check + test-fast + smoke + score fixtures
-make ci-full          # lint + format-check + full test + smoke + score
+make ci               # lint + format-check + typecheck-ratchet + test-fast + smoke + score fixtures
+make ci-full          # lint + format-check + typecheck-ratchet + full test + smoke + score
 
 python scripts/smoke_room.py     # 36 regression baselines
 make verify-hooks                # Hook · Communicate suite

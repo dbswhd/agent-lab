@@ -3,7 +3,7 @@
 > **Tier 3 (target IA)** — roadmap only. **Shipped backend/UI contracts:** [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md) · [docs/README.md](./README.md)
 > **Productization SSOT:** [CONSOLE-PRODUCTIZATION.md](CONSOLE-PRODUCTIZATION.md). This file owns detailed UI migration gaps; phase numbering for the broader program lives in Console Productization.
 
-> **기준 시점:** 2026-06-10, `web/src` 새 디자인 셸(`.app` / `.shell` / `.pane`) + dual-class bridge  
+> **기준 시점:** 2026-06-14 — Workbench IA (Overview/Tasks/Inbox/Tools), `.taskbar` / `.taskbar-dock` canonical (M6)  
 > **Shipped since 2026-06-07:** Inspector **Overview / Tasks / Inbox**, `ContextOverviewPanel`, `GET/PATCH …/context-layers` (see [UI-MIGRATION-GAPS.md](UI-MIGRATION-GAPS.md) §1).
 > **디자인 SSOT:** `~/Downloads/agent-lab/project/Agent Lab.html`  
 > **행동 SSOT:** `project/uploads/03-BEHAVIOR-CONTRACT.md`, `docs/USER-GUIDE.md`  
@@ -44,7 +44,7 @@
 | `ChatToolbar.tsx` | 단일 `MacTitlebar` + `TitlebarSlotsContext`로 대체. **RunPanel·SessionViewer만** 아직 사용 | classic 모드 폐기 또는 titlebar 슬롯으로 이전 후 삭제 |
 | `App.tsx` `mode: "classic"` 분기 | Room 워크플로가 기본·유일 목표 | `RunPanel` / `SessionViewer` 흡수 또는 Settings Legacy로 격리 후 `mode` state 삭제 |
 | Rail footer **「…」 classic 토글** (`icon-btn` 세 번째) | 프로토타입에 없음, IA 분기 증가 | classic 제거와 동시 |
-| Dual-class bridge (예: `taskbar room-task-bar`, `context-sidebar inspector-pane`) | canonical rename 완료 후 **한 벌만** 유지 | §2 cosmetic rename 완료 후 `legacy-bridge.css` 삭제 |
+| ~~Dual-class bridge (`taskbar` + `room-task-bar`, `legacy-bridge.css`)~~ **✅ M6** | canonical `.taskbar` / `.taskbar__*` only; `legacy-bridge.css` merged into `layout.css` | [UI-MIGRATION-GAPS.md](UI-MIGRATION-GAPS.md) §1 Taskbar |
 | ~~`layout-extensions.css`~~ | `layout.css`에 병합 완료 |
 | ~~`satellites.css`~~ | 위성 규칙 `layout.css` / `overlays.css`로 이전 완료 |
 
@@ -206,7 +206,7 @@
 | **P0** ✅ | Inspector IA → Overview/Tasks/Inbox, RoomTaskBar를 `taskbar-dock`으로 이동 | `ContextOverviewPanel`, `workspaceTabs.ts` |
 | **P1** | SessionList avatar/dir, Transcript presentation UI, Artifacts/Run visual | `SessionList.tsx`, `RoomChat` view-options |
 | **P2** | NewSessionDialog, titlebar Inbox, Quick 탭 제거 → Settings | `NewSessionDialog.tsx`, `App.tsx` |
-| **P3** ✅ | Classic mode·ChatToolbar 삭제, `legacy-bridge.css` → `layout.css` merge | dual-class TSX rename remains cosmetic |
+| **P3** ✅ | Classic mode·ChatToolbar 삭제, `legacy-bridge.css` → `layout.css` merge, taskbar dual-class removed | M6: `RoomTaskBar` uses `.taskbar` only |
 | **P4** ✅ | Context layer toggle | `context_layers.py` router + `ContextLayerBars` in Overview |
 
 ---

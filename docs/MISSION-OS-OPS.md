@@ -59,6 +59,34 @@ Deploy: [HYBRID-RELAY-WORKER.md](HYBRID-RELAY-WORKER.md)
 
 Do not confuse trading triggers (`make install-mission-triggers`) with serve daemon.
 
+## Tier D — Telegram merge ingress soak (live)
+
+Validates **real** Cursor dry-run → `POST /api/gateway/telegram/webhook` with `/approve merge` → worktree merge (not pytest mocks).
+
+```bash
+AGENT_LAB_RUN_LIVE=1 make verify-ops-live-telegram-merge
+# or without Tier A preflight:
+AGENT_LAB_RUN_LIVE=1 SKIP_PREFLIGHT=1 make verify-ops-live-telegram-merge
+```
+
+Report: `sessions/_reports/live-telegram-merge-YYYY-MM-DD.json`
+
+Requires `CURSOR_API_KEY` + bridge (same as Tier C). Telegram Bot API egress may fail with soak token — merge ingress is verified via HTTP webhook + execution status.
+
+CI integration (Cursor stubbed): `tests/test_live_telegram_merge_soak.py::test_telegram_merge_ingress_webhook_integration`
+
+## Tier E — tunnel + launchd soak (live)
+
+Validates launchd serve daemon, `POST /api/hooks/mission-wake`, optional public tunnel URL, hybrid wake hints.
+
+```bash
+AGENT_LAB_RUN_LIVE=1 make verify-ops-live-tunnel-launchd
+```
+
+Report: `sessions/_reports/live-tunnel-launchd-YYYY-MM-DD.json`
+
+Runbook: [TUNNEL-LAUNCHD-SOAK-RUNBOOK.md](TUNNEL-LAUNCHD-SOAK-RUNBOOK.md)
+
 ## Troubleshooting
 
 | Symptom | Check |

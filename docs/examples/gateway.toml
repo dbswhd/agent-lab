@@ -19,6 +19,9 @@ relay_when = "daemon_offline"
 timeout_s = 8
 # relay_url = "https://agent-lab-hybrid-relay.<subdomain>.workers.dev"
 # relay_secret = "..."   # Worker RELAY_SECRET 과 동일 — docs/HYBRID-RELAY-WORKER.md
+# wake_url = "https://your-tunnel.example/api/hooks/mission-wake"
+# wake_enabled = true
+# wake_events = ["schedule_tick", "merge_ready", "auto_merge_blocked", "gate_blocked"]
 
 [adapters]
 enabled = ["telegram", "webhook_inbound", "cli", "discord"]

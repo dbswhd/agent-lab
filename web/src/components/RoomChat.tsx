@@ -2592,6 +2592,13 @@ export function RoomChat({
             loading={tasksLoading}
             executions={planExecutions}
             focusObjection={taskBarFocusObjection}
+            humanInboxPendingCount={inboxPendingCount}
+            inboxReloadKey={inboxReloadKey}
+            planRevision={currentPlanRevision}
+            humanInboxDisabled={running || synthesizing || runBusy}
+            onHumanInboxResolved={handleInboxResolved}
+            onHumanInboxBuildStarted={handleInboxBuildStarted}
+            onOpenInspectorInbox={openHumanInbox}
             onRefresh={refreshTasks}
             onFocusPlanAction={focusPlanAction}
             onFocusTask={focusTask}

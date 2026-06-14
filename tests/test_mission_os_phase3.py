@@ -203,6 +203,30 @@ def test_resolve_auto_merge_records_audit(session_folder: Path, monkeypatch: pyt
     assert get_trust_budget(read_run_meta(session_folder))["auto_merge_remaining"] == 0
 
 
+def test_telegram_approve_merge_pending_apply(
+    session_folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_run(
+        session_folder,
+        {
+            "gate_profile": "assistant",
+            "executions": [_eligible_pending()],
+        },
+    )
+
+    def _resolve(folder, *, execution_id, vote, permissions=None, approved_by="human", auto_merge_meta=None):
+        return {"execution": {"id": execution_id, "status": "completed"}}
+
+    monkeypatch.setattr("agent_lab.plan_execute.resolve_execution", _resolve)
+    result = handle_gateway_command(
+        session_id=session_folder.name,
+        text="/approve merge",
+        gate_profile="assistant",
+    )
+    assert result["ok"] is True
+    assert "merge approved" in result["reply"]
+
+
 def test_telegram_approve_auto_blocked_on_dev(session_folder: Path) -> None:
     _write_run(
         session_folder,

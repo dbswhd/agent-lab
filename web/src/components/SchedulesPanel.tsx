@@ -77,6 +77,7 @@ export function SchedulesPanel({ sessionId }: SchedulesPanelProps) {
   return (
     <div className="mission-os-schedules">
       <div className="settings-section__sub-head">{t("missionOsSchedules")}</div>
+      <p className="settings-hint">{t("missionOsTemplateOptionalHint")}</p>
       {schedules.length === 0 ? (
         <p className="settings-hint">{t("missionOsNoSchedules")}</p>
       ) : null}

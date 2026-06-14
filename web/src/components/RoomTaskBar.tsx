@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   completeSessionTask,
   patchSessionTeamLead,
@@ -35,6 +35,7 @@ import { getTaskBarCollapsed, setTaskBarCollapsed } from "../utils/taskBarPrefs"
 import type { ComposerTurnProfile } from "../utils/turnProfile";
 import type { AgentRole } from "../utils/transcript";
 import { Avatar } from "./Avatar";
+import { HumanInboxPanel } from "./HumanInboxPanel";
 
 export type TaskBarContext = {
   composerVariant: TaskBarComposerVariant;
@@ -50,13 +51,20 @@ type Props = {
   loading?: boolean;
   executions?: PlanExecutionRecord[];
   focusObjection?: { id: string; nonce: number } | null;
+  humanInboxPendingCount?: number;
+  inboxReloadKey?: number;
+  planRevision?: string | null;
+  humanInboxDisabled?: boolean;
+  onHumanInboxResolved?: () => void;
+  onHumanInboxBuildStarted?: () => void;
+  onOpenInspectorInbox?: () => void;
   onRefresh?: () => void;
   onFocusPlanAction?: (actionIndex: number) => void;
   onFocusTask?: (taskId: string) => void;
   onRequestComposerPrefill?: (text: string) => void;
 };
 
-type TaskSection = "tasks" | "objections" | "inbox" | "artifacts";
+type TaskSection = "tasks" | "objections" | "human" | "peer" | "artifacts";
 
 const LEAD_OPTIONS = ["cursor", "codex", "claude"] as const;
 
@@ -173,6 +181,13 @@ export function RoomTaskBar({
   loading,
   executions,
   focusObjection,
+  humanInboxPendingCount = 0,
+  inboxReloadKey = 0,
+  planRevision = null,
+  humanInboxDisabled,
+  onHumanInboxResolved,
+  onHumanInboxBuildStarted,
+  onOpenInspectorInbox,
   onRefresh,
   onFocusPlanAction,
   onFocusTask,
@@ -191,6 +206,18 @@ export function RoomTaskBar({
   const [completeErrors, setCompleteErrors] = useState<Record<string, string>>(
     {},
   );
+  const prevHumanPending = useRef(humanInboxPendingCount);
+
+  useEffect(() => {
+    if (
+      humanInboxPendingCount > prevHumanPending.current &&
+      humanInboxPendingCount > 0
+    ) {
+      setCollapsed(false);
+      setSection("human");
+    }
+    prevHumanPending.current = humanInboxPendingCount;
+  }, [humanInboxPendingCount]);
 
   useEffect(() => {
     setTaskBarCollapsed(collapsed);
@@ -269,13 +296,22 @@ export function RoomTaskBar({
   );
 
   if (!payload) return null;
+
+  const mailbox = payload.mailbox ?? [];
+  const mailboxUnread = payload.mailbox_unread ?? {};
+  const unreadTotal = Object.values(mailboxUnread).reduce((a, b) => a + b, 0);
+  const artifacts = payload.artifacts ?? [];
   const openObjections = payload.open_objections ?? [];
   const allObjections = payload.objections ?? openObjections;
   const openObjectionCount = payload.open_objection_count ?? openObjections.length;
+
   if (
     tasks.length === 0 &&
     claimableCount === 0 &&
     openObjectionCount === 0 &&
+    humanInboxPendingCount === 0 &&
+    unreadTotal === 0 &&
+    artifacts.length === 0 &&
     !loading
   ) {
     return null;
@@ -306,16 +342,14 @@ export function RoomTaskBar({
       )
     : { headline: "", detail: "" };
 
-  const mailbox = payload.mailbox ?? [];
-  const mailboxUnread = payload.mailbox_unread ?? {};
-  const unreadTotal = Object.values(mailboxUnread).reduce((a, b) => a + b, 0);
-  const artifacts = payload.artifacts ?? [];
-
   const taskOpenCount =
     (payload.counts?.pending ?? 0) + (payload.counts?.in_progress ?? 0);
   const taskDoneCount = payload.counts?.completed ?? 0;
   const taskBlockedCount = showConsensusBlocker ? blockers.length : 0;
-  const hasTaskbarAlert = openObjections.length > 0 || taskBlockedCount > 0;
+  const hasTaskbarAlert =
+    openObjections.length > 0 ||
+    taskBlockedCount > 0 ||
+    humanInboxPendingCount > 0;
   const isOpen = !collapsed;
 
   const sections: {
@@ -341,9 +375,16 @@ export function RoomTaskBar({
       danger: openObjections.length > 0,
     },
     {
-      id: "inbox",
+      id: "human",
+      icon: "alert",
+      label: "Human gate",
+      count: humanInboxPendingCount,
+      danger: humanInboxPendingCount > 0,
+    },
+    {
+      id: "peer",
       icon: "mail",
-      label: "받은함",
+      label: "Peer mail",
       count: unreadTotal,
       accent: unreadTotal > 0,
     },
@@ -447,6 +488,11 @@ export function RoomTaskBar({
           {openObjections.length > 0 ? (
             <span className="badge badge--danger">
               <TabIcon name="alert" /> {openObjections.length}
+            </span>
+          ) : null}
+          {humanInboxPendingCount > 0 ? (
+            <span className="badge badge--danger">
+              Human {humanInboxPendingCount}
             </span>
           ) : null}
           {unreadTotal > 0 ? (
@@ -790,10 +836,23 @@ export function RoomTaskBar({
               </>
             ) : null}
 
-            {section === "inbox" ? (
+            {section === "human" ? (
+              <HumanInboxPanel
+                sessionId={sessionId}
+                presentation="taskbar"
+                reloadKey={inboxReloadKey}
+                planRevision={planRevision}
+                disabled={humanInboxDisabled}
+                onResolved={onHumanInboxResolved}
+                onBuildStarted={onHumanInboxBuildStarted}
+                onOpenInbox={onOpenInspectorInbox}
+              />
+            ) : null}
+
+            {section === "peer" ? (
               <>
                 {mailbox.length === 0 ? (
-                  <div className="taskbar__empty">받은함이 비어 있습니다</div>
+                  <div className="taskbar__empty">Peer mail이 비어 있습니다</div>
                 ) : (
                   mailbox.map((m: MailboxMessage) => (
                     <div

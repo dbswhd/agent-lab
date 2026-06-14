@@ -18,7 +18,7 @@ import {
 import { healthToAgentOptions } from "./components/AgentHealthPanel";
 import { RoomChat } from "./components/RoomChat";
 import { SettingsPage } from "./components/SettingsPage";
-import { getTurnStrategy } from "./utils/composeMode";
+import { getTurnStrategy, setPlanAfterSend } from "./utils/composeMode";
 import { getEfficiencyMode } from "./utils/efficiencyPrefs";
 import { SessionRailStatusChip } from "./components/SessionRailStatusChip";
 import { SessionList } from "./components/SessionList";
@@ -53,6 +53,7 @@ import {
 import {
   setStoredWorkspaceId,
   setStoredWorkspacePath,
+  setStoredSessionTemplate,
 } from "./utils/sessionSetup";
 import {
   clearLastSessionId,
@@ -178,6 +179,13 @@ export default function App() {
   );
   const [bootstrapAgentThreadBindings, setBootstrapAgentThreadBindings] =
     useState<AgentThreadBindings | null>(null);
+  const [bootstrapSessionTemplate, setBootstrapSessionTemplate] = useState<
+    string | null
+  >(null);
+  const [bootstrapTopic, setBootstrapTopic] = useState<string | null>(null);
+  const [bootstrapMissionTemplateId, setBootstrapMissionTemplateId] = useState<
+    string | null
+  >(null);
   const [sidebarOpen, setSidebarOpenState] = useState(getSidebarOpen);
   const [sessionRailWidth, setSessionRailWidthState] = useState(getSessionRailWidth);
   const [sessionQuery, setSessionQuery] = useState("");
@@ -396,10 +404,17 @@ export default function App() {
   const handleNewSessionCreate = useCallback((params: NewSessionParams) => {
     setStoredWorkspaceId(params.workspaceId);
     setStoredWorkspacePath(params.workspacePath);
+    setStoredSessionTemplate(params.sessionTemplate);
     const bindings = bindingsFromAgentChoices(params.agents);
     setStoredAgentThreadBindings(bindings);
     setBootstrapAgentThreadBindings(bindings);
     setBootstrapAgentIds(params.agents.map((a) => a.id));
+    setBootstrapSessionTemplate(params.sessionTemplate);
+    setBootstrapTopic(params.topic ?? null);
+    setBootstrapMissionTemplateId(params.missionTemplateId ?? null);
+    if (params.planAfterSend !== undefined) {
+      setPlanAfterSend(params.planAfterSend);
+    }
     setComposerNew(true);
     setSelectedId(null);
     setDetail(null);
@@ -409,8 +424,14 @@ export default function App() {
     setShellView("workspace");
   }, []);
 
+  const clearBootstrapMissionTemplate = useCallback(() => {
+    setBootstrapMissionTemplateId(null);
+  }, []);
+
   const clearBootstrapAgents = useCallback(() => {
     setBootstrapAgentIds(null);
+    setBootstrapSessionTemplate(null);
+    setBootstrapTopic(null);
   }, []);
 
   useEffect(() => {
@@ -688,7 +709,11 @@ export default function App() {
                 onOpenSettings={() => setShellView("settings")}
                 bootstrapAgentIds={bootstrapAgentIds}
                 bootstrapAgentThreadBindings={bootstrapAgentThreadBindings}
+                bootstrapSessionTemplate={bootstrapSessionTemplate}
+                bootstrapTopic={bootstrapTopic}
+                bootstrapMissionTemplateId={bootstrapMissionTemplateId}
                 onBootstrapAgentsApplied={clearBootstrapAgents}
+                onBootstrapMissionTemplateApplied={clearBootstrapMissionTemplate}
               />
             )}
           </section>

@@ -135,7 +135,7 @@ def handle_gateway_command(
         return {"ok": True, "reply": f"plan approved → {phase}", "result": result}
 
     if lower.startswith("/approve merge") or lower == "approve merge":
-        from agent_lab.plan_execute import confirm_merge_execution
+        from agent_lab.plan_execute import confirm_merge_execution, resolve_execution
         from agent_lab.runtime.snapshot import pending_execution
 
         run = read_run_meta(folder)
@@ -143,13 +143,29 @@ def handle_gateway_command(
         if not pending or not pending.get("id"):
             return {"ok": False, "reply": "no pending execution to merge"}
         execution_id = str(pending.get("id"))
+        status = str(pending.get("status") or "")
+        merge_status = str((pending.get("merge") or {}).get("status") or "")
         try:
-            result = confirm_merge_execution(folder, execution_id=execution_id)
+            if status == "merge_conflict" or merge_status == "conflict":
+                result = confirm_merge_execution(folder, execution_id=execution_id)
+                reply = f"merge confirmed ({execution_id})"
+            else:
+                result = resolve_execution(
+                    folder,
+                    execution_id=execution_id,
+                    vote="approve",
+                    approved_by="human",
+                )
+                merged = result.get("execution") or {}
+                reply = (
+                    f"merge approved ({execution_id}) → "
+                    f"{merged.get('status') or 'ok'}"
+                )
         except ValueError as exc:
             return {"ok": False, "reply": f"merge confirm failed: {exc}"}
         except Exception as exc:
             return {"ok": False, "reply": f"merge confirm error: {exc}"}
-        return {"ok": True, "reply": f"merge confirmed ({execution_id})", "result": result}
+        return {"ok": True, "reply": reply, "result": result}
 
     if lower.startswith("/approve auto") or lower == "approve auto":
         from agent_lab.auto_merge import evaluate_auto_merge_eligibility, resolve_auto_merge

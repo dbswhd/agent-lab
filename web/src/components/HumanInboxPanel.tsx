@@ -18,7 +18,7 @@ type Props = {
   onDismiss?: () => void;
   onOpenInbox?: () => void;
   disabled?: boolean;
-  presentation?: "inline" | "popup" | "inspector";
+  presentation?: "inline" | "popup" | "inspector" | "taskbar";
   kindFilter?: "question" | "build" | "skill_draft";
 };
 
@@ -405,6 +405,13 @@ export function HumanInboxPanel({
   }
 
   if (pending.length === 0) {
+    if (presentation === "taskbar") {
+      return (
+        <div className="taskbar__empty human-inbox--taskbar-empty">
+          {ko ? "Human gate 항목 없음" : "No human gate items"}
+        </div>
+      );
+    }
     return null;
   }
 
@@ -446,43 +453,52 @@ export function HumanInboxPanel({
       aria-label="Human Inbox"
       aria-modal={presentation === "popup" ? true : undefined}
     >
-      <div className="human-inbox__header">
-        <span className="human-inbox__title">{title}</span>
-        <span className="human-inbox__counts">
-          {questionCount > 0 ? (ko ? `방향 ${questionCount}` : `${questionCount} question`) : null}
-          {questionCount > 0 && buildCount > 0 ? " · " : null}
-          {buildCount > 0 ? (ko ? `실행 ${buildCount}` : `${buildCount} build`) : null}
-        </span>
-        {presentation === "popup" ? (
-          <span className="human-inbox__header-actions">
-            {onOpenInbox ? (
-              <button
-                type="button"
-                className="human-inbox__header-btn"
-                onClick={onOpenInbox}
-              >
-                Inbox
-              </button>
-            ) : null}
-            {onDismiss ? (
-              <button
-                type="button"
-                className="human-inbox__header-btn"
-                onClick={onDismiss}
-                aria-label={ko ? "Human Inbox popup 닫기" : "Dismiss Human Inbox popup"}
-              >
-                {ko ? "닫기" : "Dismiss"}
-              </button>
-            ) : null}
+      {presentation !== "taskbar" ? (
+        <div className="human-inbox__header">
+          <span className="human-inbox__title">{title}</span>
+          <span className="human-inbox__counts">
+            {questionCount > 0 ? (ko ? `방향 ${questionCount}` : `${questionCount} question`) : null}
+            {questionCount > 0 && buildCount > 0 ? " · " : null}
+            {buildCount > 0 ? (ko ? `실행 ${buildCount}` : `${buildCount} build`) : null}
           </span>
-        ) : null}
-      </div>
+          {presentation === "popup" ? (
+            <span className="human-inbox__header-actions">
+              {onOpenInbox ? (
+                <button
+                  type="button"
+                  className="human-inbox__header-btn"
+                  onClick={onOpenInbox}
+                >
+                  Inbox
+                </button>
+              ) : null}
+              {onDismiss ? (
+                <button
+                  type="button"
+                  className="human-inbox__header-btn"
+                  onClick={onDismiss}
+                  aria-label={ko ? "Human Inbox popup 닫기" : "Dismiss Human Inbox popup"}
+                >
+                  {ko ? "닫기" : "Dismiss"}
+                </button>
+              ) : null}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
       {error ? <div className="human-inbox__error">{error}</div> : null}
       <div className="human-inbox__items">
         {pending.map((item) => (
           <InboxRow key={item.id} item={item} {...rowProps} />
         ))}
       </div>
+      {presentation === "taskbar" && onOpenInbox ? (
+        <div className="human-inbox__taskbar-footer">
+          <button type="button" className="btn btn--sm" onClick={onOpenInbox}>
+            {ko ? "전체 Inbox" : "Full Inbox"}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

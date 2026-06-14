@@ -208,6 +208,8 @@ const EN = {
   missionOsNoSchedules: "No schedules — add one below.",
   missionOsGateProfile: "Gate profile",
   missionOsTemplate: "Template",
+  missionOsTemplateOptionalHint:
+    "Optional — empty runs mission conductor on this session's plan.md.",
   missionOsSandbox: "Sandbox (read-only)",
   missionOsPreApproved: "Pre-approved",
   missionOsApproveSchedule: "Pre-approve",
@@ -436,6 +438,8 @@ const KO = {
   missionOsNoSchedules: "스케줄 없음 — 아래에서 추가하세요.",
   missionOsGateProfile: "Gate profile",
   missionOsTemplate: "템플릿",
+  missionOsTemplateOptionalHint:
+    "선택 — 비우면 세션 plan.md 기준 mission conductor tick",
   missionOsSandbox: "Sandbox (read-only)",
   missionOsPreApproved: "사전 승인됨",
   missionOsApproveSchedule: "사전 승인",

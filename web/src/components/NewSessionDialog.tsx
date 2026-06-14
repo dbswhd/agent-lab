@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { AgentOption } from "../api/client";
-import { fetchSessionSetupOptions } from "../api/client";
+import type { AgentOption, MissionTemplateSummary } from "../api/client";
+import { fetchMissionTemplates, fetchSessionSetupOptions } from "../api/client";
 import { Avatar } from "./Avatar";
 import type {
   SessionSetupOptions,
@@ -29,6 +29,8 @@ export type NewSessionParams = {
   workspaceId: string;
   workspacePath: string | null;
   sessionTemplate: string;
+  /** Mission OS template from sessions/_templates (Gate 2-B). */
+  missionTemplateId?: string | null;
   topic?: string | null;
   /** First composer send uses plan mode (Plan-First workflow). */
   planAfterSend?: boolean;
@@ -46,6 +48,12 @@ const TEAM_AGENT_ORDER = ["cursor", "codex", "claude"] as const;
 type TeamAgentId = (typeof TEAM_AGENT_ORDER)[number];
 
 type AgentPick = { on: boolean; thread: "new" | string };
+
+function missionTemplateLabel(tpl: MissionTemplateSummary): string {
+  const title =
+    typeof tpl.meta?.title === "string" ? tpl.meta.title.trim() : "";
+  return title || tpl.id;
+}
 
 function defaultAgentPicks(agents: AgentOption[]): Record<TeamAgentId, AgentPick> {
   const ready = new Set(agents.filter((a) => a.ready).map((a) => a.id));
@@ -72,6 +80,10 @@ export function NewSessionDialog({ open, agents, onClose, onCreate }: Props) {
     defaultAgentPicks(agents),
   );
   const [sessionTemplate, setSessionTemplate] = useState("general");
+  const [missionTemplates, setMissionTemplates] = useState<MissionTemplateSummary[]>(
+    [],
+  );
+  const [missionTemplateId, setMissionTemplateId] = useState("");
   const [presetTopic, setPresetTopic] = useState<string | null>(null);
   const [planWorkflowOnCreate, setPlanWorkflowOnCreate] = useState(true);
 
@@ -81,14 +93,26 @@ export function NewSessionDialog({ open, agents, onClose, onCreate }: Props) {
     if (!open) return;
     setLoadError(false);
     setAgentPicks(defaultAgentPicks(agents));
-    fetchSessionSetupOptions()
-      .then((opts) => {
+    setMissionTemplateId("");
+    void Promise.all([fetchSessionSetupOptions(), fetchMissionTemplates()])
+      .then(([opts, mission]) => {
         setSetupOptions(opts);
+        setMissionTemplates(mission.templates ?? []);
         setWorkspaceId((prev) => prev || opts.defaults.workspace_id);
         setSessionTemplate(opts.defaults.session_template || "general");
       })
       .catch(() => setLoadError(true));
   }, [open, agents]);
+
+  const applyMissionTemplate = useCallback((templateId: string) => {
+    setMissionTemplateId(templateId);
+    if (!templateId) return;
+    setPlanWorkflowOnCreate(true);
+    const tpl = missionTemplates.find((row) => row.id === templateId);
+    if (tpl?.topic?.trim() && !presetTopic) {
+      setPresetTopic(tpl.topic.trim());
+    }
+  }, [missionTemplates, presetTopic]);
 
   const applyTradingPreset = useCallback((preset: TradingMissionPreset) => {
     setWorkspaceId(preset.workspace_id);
@@ -182,6 +206,7 @@ export function NewSessionDialog({ open, agents, onClose, onCreate }: Props) {
       workspaceId: wid,
       workspacePath: wpath,
       sessionTemplate,
+      missionTemplateId: missionTemplateId.trim() || null,
       topic: presetTopic,
       planAfterSend: planWorkflowOnCreate,
       agents: chosen.map((a) => {
@@ -422,6 +447,43 @@ export function NewSessionDialog({ open, agents, onClose, onCreate }: Props) {
               </p>
             ) : null}
           </section>
+
+          {missionTemplates.length > 0 ? (
+            <section className="ns-block">
+              <div className="ns-block__head">
+                <span className="ns-block__label">Mission 템플릿</span>
+                <span className="ns-block__hint">
+                  sessions/_templates · plan.md 사전 복사 (Gate 2-B)
+                </span>
+              </div>
+              <select
+                className="mac-popup session-setup-bar__select"
+                value={missionTemplateId}
+                onChange={(e) => applyMissionTemplate(e.target.value)}
+                aria-label="Mission 템플릿"
+              >
+                <option value="">— 선택 안 함 —</option>
+                {missionTemplates.map((tpl) => (
+                  <option key={tpl.id} value={tpl.id}>
+                    {missionTemplateLabel(tpl)}
+                    {tpl.hash_match ? " ✓" : ""}
+                  </option>
+                ))}
+              </select>
+              {missionTemplateId ? (
+                <p className="ns-block__hint" style={{ marginTop: 8 }}>
+                  {missionTemplates.find((row) => row.id === missionTemplateId)
+                    ?.hash_match
+                    ? "Pre-approved — 첫 전송 후 plan fast-path (APPROVED)."
+                    : "Hash drift — 전체 plan workflow (CLARIFY부터)."}
+                  {missionTemplates.find((row) => row.id === missionTemplateId)
+                    ?.topic
+                    ? " Topic이 composer에 채워집니다."
+                    : null}
+                </p>
+              ) : null}
+            </section>
+          ) : null}
 
           {templates.length > 0 ? (
             <section className="ns-block">

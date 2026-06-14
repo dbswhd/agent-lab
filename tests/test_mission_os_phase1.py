@@ -275,6 +275,130 @@ def test_scheduler_applies_template_assistant(sessions_env: Path, gateway_config
     assert read_run_meta(folder).get("schedule_sandbox") is True
 
 
+def test_scheduler_templateless_sandbox_runs_conductor_tick(
+    sessions_env: Path, gateway_config: Path
+) -> None:
+    """Template-less assistant schedule still runs sandbox mission conductor."""
+    from agent_lab.mission_loop import enable_mission_loop
+    from agent_lab.mission_scheduler import run_schedule_entry
+
+    folder = sessions_env / "sched-no-tmpl-sandbox"
+    folder.mkdir()
+    (folder / "plan.md").write_text(
+        "# Plan\n\n1. Step\n   - 무엇을: fix\n   - 어디서: src\n   - 검증: `make test`\n",
+        encoding="utf-8",
+    )
+    (folder / "run.json").write_text("{}", encoding="utf-8")
+    enable_mission_loop(folder, start_autonomous=False)
+    patch_run_meta(
+        folder,
+        lambda run: {
+            **run,
+            "schedules": [
+                {
+                    "id": "s-no-tmpl",
+                    "cron": "0 9 * * *",
+                    "tz": "UTC",
+                    "enabled": True,
+                    "pre_approved_at": "2026-06-01T00:00:00+00:00",
+                    "pre_approved_by": "human",
+                    "gate_profile": "assistant",
+                    "sandbox": True,
+                }
+            ],
+        },
+    )
+    save_gateway_config({"outbound": {"enabled": False}})
+
+    result = run_schedule_entry(
+        folder.name,
+        read_run_meta(folder)["schedules"][0],
+        sessions_dir=sessions_env,
+        force=True,
+    )
+    assert result["ok"] is True
+    assert result["mode"] == "assistant_sandbox_tick"
+    tick = result.get("sandbox_tick") or {}
+    assert tick.get("ok") is True
+    assert tick.get("read_only") is True
+    assert read_run_meta(folder).get("schedule_sandbox") is True
+
+
+def test_scheduler_templateless_non_sandbox_runs_mission_tick(
+    sessions_env: Path, gateway_config: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Template-less non-sandbox schedule advances mission_loop conductor."""
+    from agent_lab.mission_loop import enable_mission_loop
+    from agent_lab.mission_scheduler import run_schedule_entry
+
+    folder = sessions_env / "sched-no-tmpl-live"
+    folder.mkdir()
+    plan = """# Plan
+
+## 지금 실행
+
+1. Fix auth module
+   - 무엇을: JWT validation in `src/auth.py`
+   - 어디서: `src/auth.py`
+   - 검증: `make test tests/test_auth.py`
+"""
+    (folder / "plan.md").write_text(plan, encoding="utf-8")
+    (folder / "run.json").write_text("{}", encoding="utf-8")
+    enable_mission_loop(folder, start_autonomous=True)
+
+    def _queue(run: dict) -> dict:
+        ml = run.setdefault("mission_loop", {})
+        ml.update(
+            {
+                "enabled": True,
+                "phase": "EXECUTE_QUEUE",
+                "current_action_index": 1,
+                "pending_action_indices": [1],
+                "autonomous_segment": {"active": True},
+            }
+        )
+        run["schedules"] = [
+            {
+                "id": "s-no-tmpl-live",
+                "cron": "0 9 * * *",
+                "tz": "UTC",
+                "enabled": True,
+                "pre_approved_at": "2026-06-01T00:00:00+00:00",
+                "pre_approved_by": "human",
+                "gate_profile": "assistant",
+                "sandbox": False,
+            }
+        ]
+        return run
+
+    patch_run_meta(folder, _queue)
+    save_gateway_config({"outbound": {"enabled": False}})
+
+    fake_exec = {
+        "id": "exec-no-tmpl",
+        "action_index": 1,
+        "status": "pending_approval",
+    }
+    monkeypatch.setattr(
+        "agent_lab.plan_execute.run_dry_run",
+        lambda *a, **k: fake_exec,
+    )
+
+    result = run_schedule_entry(
+        folder.name,
+        read_run_meta(folder)["schedules"][0],
+        sessions_dir=sessions_env,
+        force=True,
+    )
+    assert result["ok"] is True
+    assert result["mode"] == "assistant_mission_tick"
+    tick = result.get("sandbox_tick") or {}
+    assert tick.get("sandbox") is False
+    assert tick.get("mission_loop", {}).get("status") == "dry_run_complete"
+    run = read_run_meta(folder)
+    assert run["mission_loop"]["phase"] == "MERGE_REVIEW"
+
+
 def test_scheduled_mission_tick_sandbox_skips_execute_queue(sessions_env: Path) -> None:
     folder = sessions_env / "sandbox-exec"
     folder.mkdir()

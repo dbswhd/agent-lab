@@ -1,4 +1,4 @@
-.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test test-fast test-duration-report ci ci-full check-worktrees smoke smoke-e2e smoke-web-ui smoke-tauri-ui validate-quant verify-quant-workspace verify-trading-v1 verify-mcp-contract build-research-cards offline-lane thin-runtime-status verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate
+.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test test-fast test-duration-report ci ci-full check-worktrees smoke smoke-e2e smoke-web-ui smoke-tauri-ui validate-quant verify-quant-workspace verify-trading-v1 verify-mcp-contract build-research-cards offline-lane thin-runtime-status verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate
 
 install:
 	python3 -m venv .venv
@@ -207,6 +207,42 @@ verify-ops-live-merge:
 	if [ "$$status" = "0" ]; then verdict="GO"; elif [ "$$status" = "3" ]; then verdict="SKIPPED"; fi; \
 	echo "Live merge ops report: $$REPORT_PATH ($$verdict)"; \
 	exit "$$status"
+
+verify-ops-live-telegram-merge:
+	@if [ "$${SKIP_PREFLIGHT:-0}" != "1" ]; then \
+		$(MAKE) verify-ops REPORT=0; \
+	fi
+	@test "$$AGENT_LAB_RUN_LIVE" = "1" || (echo "Set AGENT_LAB_RUN_LIVE=1 before verify-ops-live-telegram-merge" && exit 1)
+	@REPORT_DIR="$${AGENT_LAB_WEEKLY_REPORT_DIR:-sessions/_reports}"; \
+	REPORT_PATH="$$REPORT_DIR/live-telegram-merge-$$(date -u +%F).json"; \
+	AGENT_LAB_RUN_LIVE=1 .venv/bin/python scripts/live_telegram_merge_ingress_soak.py --write "$$REPORT_PATH"; \
+	status="$$?"; \
+	verdict="NO_GO"; \
+	if [ "$$status" = "0" ]; then verdict="GO"; elif [ "$$status" = "3" ]; then verdict="SKIPPED"; fi; \
+	echo "Live Telegram merge ingress report: $$REPORT_PATH ($$verdict)"; \
+	exit "$$status"
+
+live-telegram-merge-soak:
+	@test "$$AGENT_LAB_RUN_LIVE" = "1" || (echo "Set AGENT_LAB_RUN_LIVE=1 before live Telegram merge soak" && exit 1)
+	.venv/bin/python scripts/live_telegram_merge_ingress_soak.py
+
+verify-ops-live-tunnel-launchd:
+	@if [ "$${SKIP_PREFLIGHT:-0}" != "1" ]; then \
+		$(MAKE) verify-ops REPORT=0; \
+	fi
+	@test "$$AGENT_LAB_RUN_LIVE" = "1" || (echo "Set AGENT_LAB_RUN_LIVE=1 before verify-ops-live-tunnel-launchd" && exit 1)
+	@REPORT_DIR="$${AGENT_LAB_WEEKLY_REPORT_DIR:-sessions/_reports}"; \
+	REPORT_PATH="$$REPORT_DIR/live-tunnel-launchd-$$(date -u +%F).json"; \
+	AGENT_LAB_RUN_LIVE=1 .venv/bin/python scripts/live_tunnel_launchd_soak.py --write "$$REPORT_PATH"; \
+	status="$$?"; \
+	verdict="NO_GO"; \
+	if [ "$$status" = "0" ]; then verdict="GO"; elif [ "$$status" = "3" ]; then verdict="SKIPPED"; fi; \
+	echo "Live tunnel+launchd report: $$REPORT_PATH ($$verdict)"; \
+	exit "$$status"
+
+live-tunnel-launchd-soak:
+	@test "$$AGENT_LAB_RUN_LIVE" = "1" || (echo "Set AGENT_LAB_RUN_LIVE=1 before live tunnel+launchd soak" && exit 1)
+	.venv/bin/python scripts/live_tunnel_launchd_soak.py
 
 live-worktree-dry-run:
 	@test "$$AGENT_LAB_RUN_LIVE" = "1" || (echo "Set AGENT_LAB_RUN_LIVE=1 before live Cursor spike" && exit 1)

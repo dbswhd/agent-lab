@@ -5,6 +5,8 @@
 #   RELAY_SECRET         — gateway.toml [hybrid] relay_secret 와 동일
 #   TELEGRAM_BOT_TOKEN   — @BotFather token
 #   TELEGRAM_CHAT_IDS    — "12345,67890"
+#   WAKE_URL             — optional override (default: envelope.wake.url from PC)
+#   WAKE_TOKEN           — AGENT_LAB_SCHEDULER_HOOK_TOKEN 과 동일 (tunnel wake auth)
 
 name = "agent-lab-hybrid-relay"
 main = "hybrid-relay-worker.js"

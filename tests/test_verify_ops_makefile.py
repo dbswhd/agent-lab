@@ -88,3 +88,19 @@ def test_verify_ops_live_merge_can_skip_regression_preflight():
     assert "make verify-ops REPORT=0" in out
     assert "make ci" not in out
     assert "scripts/live_cursor_worktree_merge_run.py --write" in out
+
+
+def test_verify_ops_live_telegram_merge_dry_run_wires_guard_and_report():
+    out = _make_dry_run("verify-ops-live-telegram-merge")
+    assert "AGENT_LAB_RUN_LIVE" in out
+    assert "live_telegram_merge_ingress_soak.py" in out
+    assert "live-telegram-merge-$(date -u +%F).json" in out
+    assert "Live Telegram merge ingress report:" in out
+
+
+def test_verify_ops_live_tunnel_launchd_dry_run_wires_guard_and_report():
+    out = _make_dry_run("verify-ops-live-tunnel-launchd")
+    assert "AGENT_LAB_RUN_LIVE" in out
+    assert "live_tunnel_launchd_soak.py" in out
+    assert "live-tunnel-launchd-$(date -u +%F).json" in out
+    assert "Live tunnel+launchd report:" in out

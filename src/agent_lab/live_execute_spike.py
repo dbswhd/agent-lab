@@ -383,18 +383,31 @@ def run_live_worktree_merge_spike(
 
 def format_report_lines(report: dict[str, Any]) -> list[str]:
     label = "Live Cursor worktree dry-run"
-    if report.get("kind") == "live_cursor_worktree_merge":
+    kind = report.get("kind")
+    if kind == "live_cursor_worktree_merge":
         label = "Live Cursor worktree merge"
+    elif kind == "live_telegram_merge_ingress":
+        label = "Live Telegram merge ingress soak"
     lines = [
         f"{label}: {report.get('status', 'unknown').upper()}",
+    ]
+    if report.get("ingress_status"):
+        lines.append(f"  ingress: {str(report.get('ingress_status')).upper()}")
+    if report.get("content_status"):
+        lines.append(f"  content: {str(report.get('content_status')).upper()}")
+    lines.extend(
+        [
         f"  preflight ready: {report.get('preflight', {}).get('ready')}",
         f"  bridge_mode: {report.get('preflight', {}).get('bridge_mode')}",
-    ]
+        ]
+    )
     checks = report.get("checks") or {}
     for key, ok in sorted(checks.items()):
         lines.append(f"  {key}: {'OK' if ok else 'FAIL'}")
     for err in report.get("errors") or []:
         lines.append(f"  error: {err}")
+    for warn in report.get("warnings") or []:
+        lines.append(f"  warn: {warn}")
     if report.get("execution"):
         ex = report["execution"]
         lines.append(f"  execution: {ex.get('id')} ({ex.get('status')})")

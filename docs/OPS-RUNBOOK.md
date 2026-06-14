@@ -112,6 +112,34 @@ Live merge ops report: sessions/_reports/live-merge-YYYY-MM-DD.json (GO)
 
 Rollback instructions and the operator prompt are in [LIVE-MERGE-OPERATOR.md](LIVE-MERGE-OPERATOR.md).
 
+## Tier D — live Telegram merge ingress
+
+Use Tier D after gateway/Telegram ingress changes. Validates real Cursor dry-run → Telegram webhook `/approve merge` → disposable repo merge.
+
+```bash
+AGENT_LAB_RUN_LIVE=1 make verify-ops-live-telegram-merge
+```
+
+Report: `sessions/_reports/live-telegram-merge-YYYY-MM-DD.json`
+
+See [MISSION-OS-OPS.md](MISSION-OS-OPS.md) §Tier D.
+
+## Tier E — tunnel + launchd soak
+
+Use Tier E after `make install-serve-daemon`, hybrid wake URL changes, or monthly 24/7 ops checks. Validates daemon health, local/tunnel `mission-wake`, and hybrid wake hints. Does not call Cursor SDK.
+
+```bash
+export AGENT_LAB_SCHEDULER_HOOK_TOKEN='…'
+export AGENT_LAB_TUNNEL_WAKE_URL='https://your-tunnel.example'   # optional
+AGENT_LAB_RUN_LIVE=1 make verify-ops-live-tunnel-launchd
+```
+
+Report: `sessions/_reports/live-tunnel-launchd-YYYY-MM-DD.json`
+
+Operator steps: [TUNNEL-LAUNCHD-SOAK-RUNBOOK.md](TUNNEL-LAUNCHD-SOAK-RUNBOOK.md)
+
+CI integration: `tests/test_live_tunnel_launchd_soak.py::test_tunnel_launchd_soak_integration`
+
 ## Troubleshooting
 
 | Symptom | Action |

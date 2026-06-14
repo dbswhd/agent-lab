@@ -47,6 +47,15 @@ _DEFAULT_CONFIG: dict[str, Any] = {
         "relay_secret": "",
         "relay_when": "daemon_offline",
         "timeout_s": 8,
+        "wake_url": "",
+        "wake_secret": "",
+        "wake_enabled": True,
+        "wake_events": [
+            "schedule_tick",
+            "merge_ready",
+            "auto_merge_blocked",
+            "gate_blocked",
+        ],
     },
     "adapters": {
         "enabled": ["telegram", "webhook_inbound", "cli", "discord", "slack"],
@@ -92,7 +101,13 @@ def _normalize_config(data: dict[str, Any]) -> dict[str, Any]:
         out["slack"] = {**out["slack"], **slack}
     hybrid = data.get("hybrid")
     if isinstance(hybrid, dict):
-        out["hybrid"] = {**out["hybrid"], **hybrid}
+        merged = {**out["hybrid"], **hybrid}
+        wake_events = merged.get("wake_events")
+        if isinstance(wake_events, str):
+            merged["wake_events"] = [e.strip() for e in wake_events.split(",") if e.strip()]
+        elif isinstance(wake_events, list):
+            merged["wake_events"] = [str(e).strip() for e in wake_events if str(e).strip()]
+        out["hybrid"] = merged
     adapters = data.get("adapters")
     if isinstance(adapters, dict):
         out["adapters"] = {**out["adapters"], **adapters}
@@ -286,6 +301,17 @@ def save_gateway_config(patch: dict[str, Any]) -> dict[str, Any]:
     relay_secret = str(hybrid.get("relay_secret") or "")
     if relay_secret.strip():
         lines.append(f"relay_secret = {_toml_quote(relay_secret)}")
+    wake_url = str(hybrid.get("wake_url") or "")
+    if wake_url.strip():
+        lines.append(f"wake_url = {_toml_quote(wake_url)}")
+    if hybrid.get("wake_enabled") is False:
+        lines.append("wake_enabled = false")
+    wake_events = hybrid.get("wake_events") or []
+    if wake_events:
+        lines.append("wake_events = [")
+        for event_name in wake_events:
+            lines.append(f"  {_toml_quote(str(event_name))},")
+        lines.append("]")
     enabled = list(adapters.get("enabled") or [])
     if enabled:
         lines.extend(["", "[adapters]", "enabled = ["])

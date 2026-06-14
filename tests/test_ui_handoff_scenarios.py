@@ -141,3 +141,17 @@ def test_new_session_mission_template_picker_contract():
     assert "bootstrapMissionTemplateId" in app
     assert "applySessionTemplate" in room
     assert "bootstrapMissionTemplateId" in room
+
+
+def test_taskbar_human_inbox_integration_contract():
+    """L5: Human gate resolve in Taskbar; peer mail renamed from 받은함."""
+    taskbar = _read("web", "src", "components", "RoomTaskBar.tsx")
+    inbox = _read("web", "src", "components", "HumanInboxPanel.tsx")
+    room = _read("web", "src", "components", "RoomChat.tsx")
+    assert 'presentation="taskbar"' in taskbar
+    assert 'id: "human"' in taskbar
+    assert 'id: "peer"' in taskbar
+    assert "humanInboxPendingCount" in taskbar
+    assert '"taskbar"' in inbox
+    assert "onOpenInspectorInbox={openHumanInbox}" in room
+    assert "humanInboxPendingCount={inboxPendingCount}" in room

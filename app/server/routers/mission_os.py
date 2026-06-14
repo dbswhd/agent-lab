@@ -60,6 +60,10 @@ class GatewayHybridPatch(BaseModel):
     relay_secret: str | None = None
     relay_when: str | None = None
     timeout_s: int | None = Field(default=None, ge=1, le=30)
+    wake_url: str | None = None
+    wake_secret: str | None = None
+    wake_enabled: bool | None = None
+    wake_events: list[str] | None = None
 
 
 class GatewayAdaptersPatch(BaseModel):

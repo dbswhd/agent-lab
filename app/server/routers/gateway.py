@@ -101,8 +101,21 @@ def post_gateway_cli(body: CliIngressBody) -> dict[str, Any]:
 
 
 @router.post("/hooks/{hook_id}")
-def post_inbound_hook(hook_id: str, body: InboundHookBody | None = None) -> dict[str, Any]:
+def post_inbound_hook(
+    hook_id: str,
+    request: Request,
+    body: InboundHookBody | None = None,
+) -> dict[str, Any]:
     """CI / external wake — routes to session via routes.toml."""
+    if hook_id == "mission-wake":
+        from agent_lab.gateway.hybrid_relay import verify_wake_request
+        from agent_lab.mission_scheduler import scheduler_tick
+
+        headers = {k: v for k, v in request.headers.items()}
+        if not verify_wake_request(headers, body=b"{}"):
+            raise HTTPException(status_code=401, detail="invalid wake credentials")
+        tick = scheduler_tick(force=True)
+        return {"ok": True, "wake": True, **tick}
     payload = body or InboundHookBody()
     result = process_gateway_ingress(
         "webhook",

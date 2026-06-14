@@ -338,3 +338,32 @@
   font-size: var(--text-caption);
 }
 
+.human-inbox--taskbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.human-inbox--taskbar .human-inbox__items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.human-inbox--taskbar .inbox-row {
+  padding: var(--space-8) var(--space-10);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+}
+
+.human-inbox--taskbar .human-inbox__taskbar-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: var(--space-4);
+}
+
+.human-inbox--taskbar-empty {
+  margin: 0;
+}
+

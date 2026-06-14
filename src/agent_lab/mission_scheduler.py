@@ -227,7 +227,6 @@ def run_schedule_entry(
     else:
         _apply_schedule_sandbox(folder, schedule_id, sandbox=sandbox)
         if template_id:
-            mode = "assistant_template"
             try:
                 from agent_lab.mission_templates import init_plan_workflow_from_template
 
@@ -271,27 +270,15 @@ def run_schedule_entry(
                     "reason": "hash_mismatch",
                     "template_result": template_result,
                 }
-            if sandbox:
-                from agent_lab.mission_tick import run_scheduled_mission_tick
 
-                tick_result = run_scheduled_mission_tick(
-                    folder,
-                    schedule_id=schedule_id,
-                    sandbox=True,
-                )
-                mode = "assistant_sandbox_tick"
-            else:
-                from agent_lab.mission_tick import run_scheduled_mission_tick
+        from agent_lab.mission_tick import run_scheduled_mission_tick
 
-                tick_result = run_scheduled_mission_tick(
-                    folder,
-                    schedule_id=schedule_id,
-                    sandbox=False,
-                )
-                mode = "assistant_mission_tick"
-        elif sandbox:
-            _apply_schedule_sandbox(folder, schedule_id, sandbox=True)
-            mode = "assistant_notify_only"
+        tick_result = run_scheduled_mission_tick(
+            folder,
+            schedule_id=schedule_id,
+            sandbox=sandbox,
+        )
+        mode = "assistant_sandbox_tick" if sandbox else "assistant_mission_tick"
 
     payload: dict[str, Any] = {
         "session_id": session_id,

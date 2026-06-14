@@ -43,9 +43,10 @@ export default {
     }
 
     const text = formatMessage(event, envelope);
+    const wake = await maybeWakePc(envelope, env);
     const results = await pushTelegram(text, env);
     const slack = await pushSlack(text, env);
-    return json({ ok: results.every((r) => r.ok), event, telegram: results, slack });
+    return json({ ok: results.every((r) => r.ok), event, wake, telegram: results, slack });
   },
 };
 
@@ -178,4 +179,73 @@ function parseChatIds(raw) {
     .map((s) => s.trim())
     .filter(Boolean)
     .map((s) => (/^-?\d+$/.test(s) ? Number(s) : s));
+}
+
+/**
+ * When PC daemon is offline, Agent Lab includes envelope.wake with tunnel URL.
+ * Worker POSTs wake_url → local /api/hooks/mission-wake or scheduler tick.
+ */
+async function maybeWakePc(envelope, env) {
+  const hint = envelope.wake;
+  if (!hint || hint.attempt !== true) {
+    return { ok: true, skipped: true, reason: "no_wake_hint" };
+  }
+  if (envelope.daemon_online === true) {
+    return { ok: true, skipped: true, reason: "daemon_online" };
+  }
+
+  const url = String(hint.url || env.WAKE_URL || "").trim();
+  if (!url) {
+    return { ok: false, skipped: true, reason: "no_wake_url" };
+  }
+
+  const headers = {
+    "Content-Type": "application/json",
+    "User-Agent": "agent-lab-hybrid-wake/1",
+  };
+  const token = (env.WAKE_TOKEN || env.SCHEDULER_HOOK_TOKEN || "").trim();
+  if (token) {
+    headers["X-Agent-Lab-Scheduler-Token"] = token;
+  } else {
+    const secret = (env.WAKE_SECRET || env.RELAY_SECRET || "").trim();
+    if (secret) {
+      const body = "{}";
+      headers["X-Agent-Lab-Signature"] = await hmacSha256Hex(secret, body);
+    }
+  }
+
+  try {
+    const resp = await fetch(url, { method: "POST", headers, body: "{}" });
+    let parsed = null;
+    const raw = await resp.text();
+    if (raw.trim()) {
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        parsed = null;
+      }
+    }
+    return {
+      ok: resp.ok,
+      status: resp.status,
+      url,
+      event: hint.event || envelope.event,
+      body: parsed,
+    };
+  } catch (err) {
+    return { ok: false, error: String(err), url, event: hint.event || envelope.event };
+  }
+}
+
+async function hmacSha256Hex(secret, body) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(body));
+  const hex = [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  return `sha256=${hex}`;
 }

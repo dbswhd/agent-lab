@@ -17,6 +17,7 @@ def respond(
     permissions: dict[str, Any] | None = None,
     scribe: bool = False,
     on_activity: Callable[[str], None] | None = None,
+    on_bridge_event: Any | None = None,
     session_folder: str | Path | None = None,
     request_structured_envelope: bool = False,
 ) -> str:
@@ -32,6 +33,7 @@ def respond(
         permissions=permissions,
         scribe=scribe,
         on_activity=on_activity,
+        on_bridge_event=on_bridge_event,
         session_folder=session_folder,
         request_structured_envelope=request_structured_envelope,
     )

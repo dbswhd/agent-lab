@@ -114,6 +114,21 @@ def build_diagnostics_payload() -> dict[str, Any]:
 
     root = Path(os.getenv("AGENT_LAB_ROOT", Path(__file__).resolve().parents[2]))
     discovery = discover_plugins(root, mock=False)
+
+    auth_bootstrap_line = None
+    for line in reversed(boot_tail):
+        if "auth bootstrap:" in line:
+            auth_bootstrap_line = line.strip()
+            break
+
+    bridge_audit: dict[str, Any] = {}
+    try:
+        from agent_lab.bridge_registry import audit_bridge_processes
+
+        bridge_audit = audit_bridge_processes()
+    except Exception as exc:
+        bridge_audit = {"error": str(exc)[:200]}
+
     return {
         "ok": True,
         "pid": _PROCESS_ID,
@@ -129,4 +144,6 @@ def build_diagnostics_payload() -> dict[str, Any]:
         "boot_log_tail": boot_tail,
         "boot_log_path": str(boot_log_path()),
         "api_log_path": str(log_dir() / "agent-lab-api.log"),
+        "auth_bootstrap_line": auth_bootstrap_line,
+        "bridge_audit": bridge_audit,
     }

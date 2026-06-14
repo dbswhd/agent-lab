@@ -70,6 +70,13 @@ def build_readiness_payload(
             folder = candidate
             run = read_run_meta(candidate)
 
+    from agent_lab.run_control import room_run_in_progress
+
+    if room_run_in_progress():
+        # Avoid OAuth/profile probes and headless CLI pings during an active turn.
+        probe_bridge = False
+        probe_cli = False
+
     ids = [
         str(a).strip().lower()
         for a in (agent_ids or run.get("agents") or list(AGENT_IDS))

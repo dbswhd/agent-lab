@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -9,8 +10,6 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Literal, TypeVar
-
-from agent_lab.credential_store import is_credential_failure
 
 CodexOAuthSlot = Literal["primary", "fallback"]
 _OAUTH_SLOTS: tuple[CodexOAuthSlot, ...] = ("primary", "fallback")
@@ -190,14 +189,27 @@ def apply_profile(slot: CodexOAuthSlot) -> None:
     live.chmod(0o600)
 
 
+def _profile_auth_fingerprint(slot: CodexOAuthSlot) -> str | None:
+    path = profile_auth_path(slot)
+    if not path.is_file():
+        return None
+    return hashlib.sha256(path.read_bytes()).hexdigest()[:16]
+
+
 def oauth_account_chain() -> list[tuple[str, CodexOAuthSlot | None]]:
     """Ordered (label, slot). slot=None → use live ~/.codex without overlay."""
     meta = load_meta()
     chain: list[tuple[str, CodexOAuthSlot | None]] = []
-    if profile_exists("primary"):
-        chain.append((meta["primary_label"], "primary"))
-    if profile_exists("fallback"):
-        chain.append((meta["fallback_label"], "fallback"))
+    seen_fp: set[str] = set()
+    for slot in _OAUTH_SLOTS:
+        if not profile_exists(slot):
+            continue
+        fp = _profile_auth_fingerprint(slot)
+        if fp and fp in seen_fp:
+            continue
+        if fp:
+            seen_fp.add(fp)
+        chain.append((meta[f"{slot}_label"], slot))
     if not chain:
         chain.append(("live", None))
     return chain
@@ -215,6 +227,15 @@ def codex_oauth_ready() -> tuple[bool, str | None]:
 def public_codex_oauth_payload() -> dict[str, Any]:
     meta = load_meta()
     live_ok, live_detail = live_login_status()
+    primary_fp = _profile_auth_fingerprint("primary")
+    fallback_fp = _profile_auth_fingerprint("fallback")
+    fallback_stale = bool(
+        profile_exists("primary")
+        and profile_exists("fallback")
+        and primary_fp
+        and fallback_fp
+        and primary_fp != fallback_fp
+    )
     return {
         "ok": True,
         "path": str(profiles_root()),
@@ -224,6 +245,7 @@ def public_codex_oauth_payload() -> dict[str, Any]:
         "has_fallback": profile_exists("fallback"),
         "primary_captured_at": meta.get("primary_captured_at"),
         "fallback_captured_at": meta.get("fallback_captured_at"),
+        "fallback_stale": fallback_stale,
         "live_logged_in": live_ok,
         "live_detail": live_detail,
     }
@@ -284,19 +306,17 @@ def call_with_codex_oauth_fallback(
 
 
 def _should_failover_codex(exc: BaseException) -> bool:
-    """Whether to try the next stored OAuth profile."""
-    if _is_codex_usage_limit(exc):
-        return True
-    if is_credential_failure(exc):
-        return True
-    text = str(exc).lower()
-    if "codex exec failed" in text:
-        return True
-    if "oauth" in text and ("re-capture" in text or "codex login" in text):
-        return True
-    if "unknown error" in text and "codex" in text:
-        return True
-    return False
+    """Whether to try the next stored OAuth profile (quota only — not auth errors)."""
+    return _is_codex_usage_limit(exc)
+
+
+def codex_auth_failure_remediation(detail: str) -> list[str]:
+    """Actionable steps when Codex OAuth token fails (401 / invalidated)."""
+    return [
+        "터미널에서 `codex logout` 후 `codex login` — 토큰 갱신",
+        "Settings → Codex OAuth → **현재 로그인 → 메인** 으로 프로필 재캡처",
+        "메인·서브가 같은 계정이면 서브 캡처는 한도 failover에만 의미 있음 — 다른 계정이 아니면 서브 삭제",
+    ]
 
 
 def _is_codex_usage_limit(exc: BaseException) -> bool:

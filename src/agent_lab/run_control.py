@@ -163,6 +163,11 @@ def maybe_release_orphaned_run_lock() -> bool:
     return maybe_release_stale_run_lock(max_age_sec=90)
 
 
+def room_run_in_progress() -> bool:
+    """True while a room/classic worker holds the global run lock."""
+    return _run_active > 0
+
+
 def try_begin_run() -> bool:
     """Acquire the global single-flight run lock (worker thread only)."""
     global _run_active, _run_started_at

@@ -176,23 +176,36 @@ def _build_agent_options(
     return cwd_str, agent_opts
 
 
-def _build_send_options(on_activity: Any | None) -> Any | None:
-    if not on_activity:
+def _build_send_options(
+    on_activity: Any | None,
+    on_bridge_event: Any | None = None,
+) -> Any | None:
+    if not on_activity and not on_bridge_event:
         return None
     from cursor_sdk import SendOptions
 
-    from agent_lab.cursor_activity import (
-        format_conversation_step,
-        format_interaction_update,
-    )
+    from agent_lab.bridge_stdout_parser import parse_stream_update
 
-    def _emit(label: str | None) -> None:
-        if label and on_activity:
-            on_activity(label)
+    def _dispatch(update: Any, *, from_step: bool) -> None:
+        for kind, data in parse_stream_update(update, from_step=from_step):
+            if kind == "text":
+                if on_bridge_event:
+                    on_bridge_event("text", data)
+                continue
+            if kind in {"tool_start", "tool_output", "tool_done"}:
+                if on_bridge_event:
+                    on_bridge_event(kind, data)
+                continue
+            if kind == "activity":
+                text = str(data.get("text") or "")
+                if on_bridge_event:
+                    on_bridge_event("activity", data)
+                elif on_activity and text:
+                    on_activity(text)
 
     return SendOptions(
-        on_delta=lambda u: _emit(format_interaction_update(u)),
-        on_step=lambda s: _emit(format_conversation_step(s)),
+        on_delta=lambda u: _dispatch(u, from_step=False),
+        on_step=lambda s: _dispatch(s, from_step=True),
     )
 
 
@@ -218,6 +231,7 @@ def respond_session(
     permissions: dict[str, Any] | None = None,
     cwd: str | Path | None = None,
     on_activity: Any | None = None,
+    on_bridge_event: Any | None = None,
     session_folder: str | Path | None = None,
     inbox_mcp: bool = False,
     gate_after: int | None = None,
@@ -261,7 +275,7 @@ def respond_session(
                 cwd_str=cwd_local,
                 agent_opts=opts,
                 prompts=prepared,
-                send_opts=_build_send_options(on_activity),
+                send_opts=_build_send_options(on_activity, on_bridge_event),
                 gate_after=gate_after,
                 gate=gate,
                 extra_prompts_if_gate=extra_prompts_if_gate,
@@ -277,6 +291,7 @@ def respond(
     permissions: dict[str, Any] | None = None,
     cwd: str | Path | None = None,
     on_activity: Any | None = None,
+    on_bridge_event: Any | None = None,
     follow_ups: list[str] | None = None,
     session_folder: str | Path | None = None,
     inbox_mcp: bool = False,
@@ -302,6 +317,7 @@ def respond(
         permissions=permissions,
         cwd=cwd,
         on_activity=on_activity,
+        on_bridge_event=on_bridge_event,
         session_folder=session_folder,
         inbox_mcp=inbox_mcp,
         request_structured_envelope=request_structured_envelope,

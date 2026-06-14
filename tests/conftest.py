@@ -39,3 +39,62 @@ def _reset_run_control_cancel() -> None:
     yield
     clear_cancel()
     terminate_active_children()
+
+
+_INTEGRATION_MODULES = frozenset(
+    {
+        # Subprocess / WS / multi-step API
+        "test_terminal_ws",
+        "test_mission_loop",
+        "test_mission_loop_e2e",
+        "test_smoke_room_e2e",
+        "test_inbox_execute_e2e",
+        "test_quant_utility_validation",
+        "test_measure_communicate_baseline",
+        "test_mb_smoke_fixtures",
+        "test_run_dogfood_suite",
+        "test_session_score_ci",
+        "test_background_tasks_api",
+        "test_trading_mission_native_ingest",
+        # Room mock E2E (consensus / goal auto-continue; 30–140s/test)
+        "test_discuss_objections",
+        "test_human_inbox",
+        "test_durable_completed_steps",
+        "test_analysis_turn",
+        "test_recombination",
+        "test_topic_router",
+        "test_room_partial_turn",
+        "test_room_dispatch",
+        # Plan execute git worktrees / subprocess API (~30–100s/module)
+        "test_plan_execute_worktree",
+        "test_plan_execute",
+        "test_plan_execute_revise_api",
+        "test_plan_execute_reverify_api",
+        "test_plan_execute_agent_repair",
+        "test_live_execute_spike",
+        # Heavy FastAPI boot + port probes (~5–8s/test)
+        "test_dev_preview_api",
+        "test_dev_preview_probe",
+        # Multi-agent context bundling
+        "test_context_bundle",
+        "test_agent_capabilities",
+        "test_room_agent_capabilities",
+        "test_commands_api",
+    }
+)
+
+_BRIDGE_MODULES = frozenset(
+    {
+        "test_cursor_bridge",
+        "test_health_preflight",
+    }
+)
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    for item in items:
+        module = item.module.__name__.rsplit(".", 1)[-1]
+        if module in _INTEGRATION_MODULES:
+            item.add_marker(pytest.mark.integration)
+        if module in _BRIDGE_MODULES:
+            item.add_marker(pytest.mark.bridge)

@@ -46,8 +46,39 @@ def test_oauth_chain_two_profiles(oauth_home: Path) -> None:
     assert [slot for _, slot in chain] == ["primary", "fallback"]
 
 
-def test_oauth_fallback_on_codex_exec_exit1(oauth_home: Path) -> None:
+def test_oauth_chain_dedupes_identical_profiles(oauth_home: Path) -> None:
     co.capture_profile("primary", label="A")
+    co.capture_profile("fallback", label="B")
+    chain = co.oauth_account_chain()
+    assert [slot for _, slot in chain] == ["primary"]
+
+
+def test_oauth_no_fallback_on_auth_failure(oauth_home: Path) -> None:
+    co.capture_profile("primary", label="A")
+    (co.live_auth_path()).write_text(
+        json.dumps({"auth_mode": "chatgpt", "tokens": {"access": "b"}}),
+        encoding="utf-8",
+    )
+    co.capture_profile("fallback", label="B")
+    calls: list[str | None] = []
+
+    def fn(slot):
+        calls.append(slot)
+        raise RuntimeError(
+            "codex exec failed (exit 1): 401 Unauthorized: token_invalidated"
+        )
+
+    with pytest.raises(RuntimeError, match="401"):
+        co.call_with_codex_oauth_fallback(fn)
+    assert calls == ["primary"]
+
+
+def test_oauth_no_fallback_on_generic_exec_failure(oauth_home: Path) -> None:
+    co.capture_profile("primary", label="A")
+    (co.live_auth_path()).write_text(
+        json.dumps({"auth_mode": "chatgpt", "tokens": {"access": "b"}}),
+        encoding="utf-8",
+    )
     co.capture_profile("fallback", label="B")
     calls: list[str | None] = []
 
@@ -57,8 +88,9 @@ def test_oauth_fallback_on_codex_exec_exit1(oauth_home: Path) -> None:
             raise RuntimeError("codex exec failed (exit 1): unknown error")
         return "ok"
 
-    assert co.call_with_codex_oauth_fallback(fn) == "ok"
-    assert calls == ["primary", "fallback"]
+    with pytest.raises(RuntimeError, match="unknown error"):
+        co.call_with_codex_oauth_fallback(fn)
+    assert calls == ["primary"]
 
 
 def test_probe_captured_profiles(oauth_home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -73,6 +105,10 @@ def test_probe_captured_profiles(oauth_home: Path, monkeypatch: pytest.MonkeyPat
 
 def test_oauth_fallback_on_usage_limit(oauth_home: Path) -> None:
     co.capture_profile("primary", label="A")
+    (co.live_auth_path()).write_text(
+        json.dumps({"auth_mode": "chatgpt", "tokens": {"access": "b"}}),
+        encoding="utf-8",
+    )
     co.capture_profile("fallback", label="B")
     calls: list[str | None] = []
 

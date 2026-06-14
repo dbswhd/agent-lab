@@ -188,6 +188,7 @@ def call_agent(
     permissions: dict[str, Any] | None = None,
     scribe: bool = False,
     on_activity: Callable[[str], None] | None = None,
+    on_bridge_event: Callable[[str, dict[str, Any]], None] | None = None,
     session_folder: str | Path | None = None,
 ) -> str:
     return call_agent_reply(
@@ -209,11 +210,21 @@ def call_agent_reply(
     permissions: dict[str, Any] | None = None,
     scribe: bool = False,
     on_activity: Callable[[str], None] | None = None,
+    on_bridge_event: Callable[[str, dict[str, Any]], None] | None = None,
     session_folder: str | Path | None = None,
     request_structured_envelope: bool = False,
+    inbox_mcp: bool = False,
 ) -> AgentReply:
     if _mock_agents_enabled():
+        if on_activity:
+            on_activity(f"[tool · read] src/agent_lab/agents/{agent}_agent.py")
+            on_activity(f"[tool · grep] mock streaming")
         text = _mock_agent_response(agent, user, scribe=scribe)
+        if on_bridge_event:
+            from agent_lab.room_sse_stream import chunk_text
+
+            for chunk in chunk_text(text, chunk_size=24):
+                on_bridge_event("text", {"text": chunk})
     elif not _is_ready(agent):
         raise RuntimeError(f"{label(agent)} is not configured")
     elif agent == "cursor":
@@ -222,8 +233,10 @@ def call_agent_reply(
             user,
             permissions=permissions,
             on_activity=on_activity,
+            on_bridge_event=on_bridge_event,
             session_folder=session_folder,
             request_structured_envelope=request_structured_envelope,
+            inbox_mcp=inbox_mcp,
         )
     elif agent == "codex":
         text = codex_agent.respond(
@@ -231,8 +244,10 @@ def call_agent_reply(
             user,
             permissions=permissions,
             on_activity=on_activity,
+            on_bridge_event=on_bridge_event,
             session_folder=session_folder,
             request_structured_envelope=request_structured_envelope,
+            inbox_mcp=inbox_mcp,
         )
     elif agent == "claude":
         text = claude_agent.respond(
@@ -241,6 +256,7 @@ def call_agent_reply(
             permissions=permissions,
             scribe=scribe,
             on_activity=on_activity,
+            on_bridge_event=on_bridge_event,
             session_folder=session_folder,
             request_structured_envelope=request_structured_envelope,
         )

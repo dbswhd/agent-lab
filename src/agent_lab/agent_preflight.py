@@ -243,9 +243,9 @@ def agent_preflight_row(
                 return row
             if ver:
                 row["detail"] = ver
-            auth_ok, auth_detail = claude_cli.probe_auth()
+            auth_ok, auth_detail = claude_cli.claude_auth_logged_in(use_cache=True)
             if not auth_ok:
-                row["reason"] = auth_detail or "claude headless auth failed"
+                row["reason"] = auth_detail or "claude OAuth 미로그인 — claude auth login"
                 row["hint"] = row["reason"]
                 row["failure_code"] = "claude_auth_failed"
                 row["remediation"] = claude_cli.auth_failure_remediation(
@@ -256,6 +256,17 @@ def agent_preflight_row(
                     "터미널에서 claude login 후 재시도"
                 )
                 return row
+            headless = os.getenv("AGENT_LAB_CLAUDE_HEADLESS_PROBE", "").strip().lower()
+            if headless in {"1", "true", "yes", "on"}:
+                probe_ok, probe_detail = claude_cli.probe_auth(use_cache=True)
+                if not probe_ok:
+                    row["reason"] = probe_detail or "claude headless auth failed"
+                    row["hint"] = row["reason"]
+                    row["failure_code"] = "claude_auth_failed"
+                    row["remediation"] = claude_cli.auth_failure_remediation(
+                        probe_detail or ""
+                    )
+                    return row
         row["ready"] = True
         return row
 

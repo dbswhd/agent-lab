@@ -113,6 +113,34 @@ export function ApiDiagnosticsBar({
           </button>
         </div>
 
+        {diag?.auth_bootstrap_line ? (
+          <p className="diag-bar__hint" title="최근 API 시작 시 Room auth bootstrap">
+            {diag.auth_bootstrap_line}
+          </p>
+        ) : null}
+
+        {diag?.bridge_audit ? (
+          <div className="diag-bar__bridge" role="status">
+            <span className="diag-bar__bridge-title">Bridge registry</span>
+            <span className="diag-bar__bridge-meta">
+              rows={diag.bridge_audit.record_count ?? 0} · active=
+              {diag.bridge_audit.active_count ?? 0} · stale=
+              {diag.bridge_audit.stale_count ?? 0} · orphan=
+              {diag.bridge_audit.orphan_process_count ?? 0}
+            </span>
+            {(diag.bridge_audit.stale_records ?? []).slice(0, 3).map((row) => (
+              <span key={`${row.workspace}-${row.pid}`} className="diag-bar__bridge-row">
+                stale · {row.workspace} · pid {row.pid ?? "—"}
+              </span>
+            ))}
+            {(diag.bridge_audit.orphan_processes ?? []).slice(0, 2).map((row) => (
+              <span key={row.pid} className="diag-bar__bridge-row">
+                orphan pid {row.pid} · {(row.command ?? "").slice(0, 60)}
+              </span>
+            ))}
+          </div>
+        ) : null}
+
         {diag?.boot_log_tail?.length ? (
           <details className="diag-bar__boot">
             <summary>

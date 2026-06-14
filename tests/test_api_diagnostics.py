@@ -24,5 +24,6 @@ def test_build_diagnostics_payload_shape():
     assert "port_status" in payload
     assert "agent_tools" in payload
     assert "boot_log_path" in payload
+    assert "bridge_audit" in payload
     assert isinstance(read_boot_log_tail(), list)
 

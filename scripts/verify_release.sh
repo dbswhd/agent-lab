@@ -103,6 +103,12 @@ if [[ "$FAIL" -ne 0 ]]; then
   exit 1
 fi
 
+if [[ -x "$ROOT/.venv/bin/python" ]] && [[ -f "$ROOT/scripts/check_bridge_processes.py" ]]; then
+  echo ""
+  echo "Bridge registry audit:"
+  "$ROOT/.venv/bin/python" "$ROOT/scripts/check_bridge_processes.py" || true
+fi
+
 echo ""
 echo "Release verification passed. / 릴리스 검증 통과."
 exit 0

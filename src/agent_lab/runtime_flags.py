@@ -144,6 +144,16 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
     FlagDef("AGENT_LAB_CLI_RETRY_MAX", "feature", "CLI transport retry count", default="3"),
     FlagDef("AGENT_LAB_CLI_RETRY_BASE_SEC", "feature", "CLI retry base delay (seconds)", default="2.0"),
     FlagDef("AGENT_LAB_CLI_RETRY_ROOM_ONLY", "feature", "Limit CLI retries to room turns only"),
+    FlagDef(
+        "AGENT_LAB_SKIP_AUTH_BOOTSTRAP",
+        "feature",
+        "Skip startup OAuth/API-key sync (Codex/Claude/Cursor)",
+    ),
+    FlagDef(
+        "AGENT_LAB_CLAUDE_HEADLESS_PROBE",
+        "feature",
+        "Run claude -p auth probe in preflight (slower; default off)",
+    ),
     # --- test / dev ---
     FlagDef("AGENT_LAB_MOCK_AGENTS", "test", "Mock agents, plugins, and CLI subprocesses"),
     FlagDef("AGENT_LAB_MOCK_STRUCTURED_ENVELOPE", "test", "Mock structured envelope adapter output"),

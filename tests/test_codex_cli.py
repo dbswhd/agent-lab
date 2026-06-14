@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
+
 from agent_lab.codex_cli import codex_event_label
 
 
@@ -15,13 +18,22 @@ def test_sandbox_mode_room_defaults_read_only():
 
 
 def test_room_timeout_default(monkeypatch):
-    from agent_lab.codex_cli import _room_max_commands, _timeout_sec
+    from agent_lab.codex_cli import (
+        _idle_timeout_sec,
+        _room_max_commands,
+        _timeout_sec,
+    )
 
     monkeypatch.delenv("CODEX_ROOM_TIMEOUT_SEC", raising=False)
     monkeypatch.delenv("CODEX_TIMEOUT_SEC", raising=False)
+    monkeypatch.delenv("CODEX_ROOM_IDLE_TIMEOUT_SEC", raising=False)
     assert _timeout_sec(room_turn=True) is None
+    assert _idle_timeout_sec(room_turn=True) == 600
+    assert _idle_timeout_sec(room_turn=False) is None
     monkeypatch.setenv("CODEX_ROOM_TIMEOUT_SEC", "240")
     assert _timeout_sec(room_turn=True) == 240
+    monkeypatch.setenv("CODEX_ROOM_IDLE_TIMEOUT_SEC", "0")
+    assert _idle_timeout_sec(room_turn=True) is None
     assert _room_max_commands() == 6
     label = codex_event_label(
         {
@@ -153,3 +165,70 @@ def test_build_cmd_includes_inbox_mcp_overrides(tmp_path: Path):
     )
     assert "--json" in cmd
     assert "agent_lab.inbox_mcp_server" in " ".join(cmd)
+
+
+def test_run_codex_idle_timeout(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    from agent_lab import codex_cli
+
+    hang = tmp_path / "hang.sh"
+    hang.write_text("#!/bin/sh\nsleep 120\n", encoding="utf-8")
+    hang.chmod(0o755)
+    monkeypatch.setenv("CODEX_ROOM_IDLE_TIMEOUT_SEC", "2")
+    monkeypatch.setattr(
+        "agent_lab.run_control.register_child_process",
+        lambda _proc: None,
+    )
+    monkeypatch.setattr(
+        "agent_lab.run_control.unregister_child_process",
+        lambda _proc: None,
+    )
+    monkeypatch.setattr("agent_lab.run_control.is_cancelled", lambda: False)
+
+    with pytest.raises(RuntimeError, match="no JSONL/stderr activity"):
+        codex_cli._run_codex(
+            [str(hang), "-"],
+            "prompt",
+            on_activity=None,
+            timeout=None,
+            room_turn=True,
+        )
+
+
+def test_run_codex_drains_stderr_while_waiting(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from agent_lab import codex_cli
+
+    script = tmp_path / "stderr_flood.sh"
+    script.write_text(
+        "#!/bin/sh\n"
+        "i=0\n"
+        "while [ \"$i\" -lt 400 ]; do\n"
+        "  echo \"progress $i\" >&2\n"
+        "  i=$((i+1))\n"
+        "done\n"
+        "echo '{\"type\":\"item.completed\",\"item\":{\"type\":\"agent_message\",\"text\":\"ok\"}}'\n",
+        encoding="utf-8",
+    )
+    script.chmod(0o755)
+    monkeypatch.setenv("CODEX_ROOM_IDLE_TIMEOUT_SEC", "30")
+    monkeypatch.setattr(
+        "agent_lab.run_control.register_child_process",
+        lambda _proc: None,
+    )
+    monkeypatch.setattr(
+        "agent_lab.run_control.unregister_child_process",
+        lambda _proc: None,
+    )
+    monkeypatch.setattr("agent_lab.run_control.is_cancelled", lambda: False)
+
+    outcome = codex_cli._run_codex(
+        [str(script), "-"],
+        "prompt",
+        on_activity=None,
+        timeout=None,
+        room_turn=True,
+    )
+    assert outcome.streamed_message == "ok"
+    assert "progress" in outcome.stderr
+    assert outcome.json_events == 1

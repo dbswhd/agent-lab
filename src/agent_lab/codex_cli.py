@@ -19,6 +19,7 @@ from agent_lab.agent_permissions import codex_cli_allowed
 from agent_lab.agent_models import (  # noqa: E402
     DEFAULT_CODEX_MODEL,
     DEFAULT_CODEX_REASONING_EFFORT,
+    DEFAULT_CODEX_ROOM_IDLE_TIMEOUT_SEC,
     DEFAULT_CODEX_ROOM_MAX_COMMANDS,
     DEFAULT_CODEX_ROOM_REASONING_EFFORT,
 )
@@ -34,6 +35,7 @@ _ROOM_TURN_SUFFIX = """\
 """
 
 DEFAULT_CODEX_ROOM_LIMIT_GRACE_SEC = 25
+DEFAULT_CODEX_ROOM_HEARTBEAT_SEC = 60
 
 
 @dataclass
@@ -41,6 +43,8 @@ class CodexRunOutcome:
     limit_hit: bool = False
     commands_done: int = 0
     streamed_message: str | None = None
+    json_events: int = 0
+    stderr: str = ""
 
 
 def _env_bool(name: str, default: bool = False) -> bool:
@@ -108,6 +112,12 @@ def _format_exec_error(stderr: str, stdout: str) -> str:
             "Codex usage limit reached (ChatGPT/Codex subscription). "
             "Try again later or upgrade — see chatgpt.com/explore/plus"
         )
+    low = detail.lower()
+    if "401" in detail or "token_invalidated" in low or "authentication token has been invalidated" in low:
+        from agent_lab.codex_oauth import codex_auth_failure_remediation
+
+        hint = codex_auth_failure_remediation(detail)[0]
+        return f"{format_codex_exec_error(detail[:600])} — {hint}"
     if "Reading additional input from stdin" in detail:
         return (
             "Codex CLI stdin/prompt handling failed. "
@@ -162,6 +172,71 @@ def _timeout_sec(*, room_turn: bool) -> int | None:
     if room_turn:
         return _optional_timeout_sec("CODEX_ROOM_TIMEOUT_SEC", "CODEX_TIMEOUT_SEC")
     return _optional_timeout_sec("CODEX_TIMEOUT_SEC")
+
+
+def _idle_timeout_sec(*, room_turn: bool) -> int | None:
+    if not room_turn:
+        return None
+    raw = (os.getenv("CODEX_ROOM_IDLE_TIMEOUT_SEC") or "").strip()
+    if raw:
+        val = int(raw)
+        return val if val > 0 else None
+    return DEFAULT_CODEX_ROOM_IDLE_TIMEOUT_SEC
+
+
+def _room_heartbeat_sec() -> int:
+    raw = (os.getenv("CODEX_ROOM_HEARTBEAT_SEC") or "").strip()
+    if raw:
+        return max(15, int(raw))
+    return DEFAULT_CODEX_ROOM_HEARTBEAT_SEC
+
+
+def _stderr_tail(text: str, *, limit: int = 1200) -> str:
+    cleaned = text.strip()
+    if not cleaned:
+        return ""
+    if len(cleaned) <= limit:
+        return cleaned
+    return "…" + cleaned[-limit:]
+
+
+def _persist_codex_stderr(text: str) -> str | None:
+    cleaned = text.strip()
+    if not cleaned:
+        return None
+    path = Path(tempfile.mktemp(prefix="agent-lab-codex-stderr-", suffix=".log"))
+    path.write_text(cleaned, encoding="utf-8")
+    return str(path)
+
+
+def _format_codex_stall_error(
+    *,
+    reason: str,
+    room_turn: bool,
+    outcome: CodexRunOutcome,
+    idle_sec: int | None = None,
+    wall_sec: int | None = None,
+    stderr_path: str | None = None,
+) -> str:
+    parts = [
+        reason,
+        f"room_turn={room_turn}",
+        f"json_events={outcome.json_events}",
+        f"commands={outcome.commands_done}",
+    ]
+    if idle_sec is not None:
+        parts.append(f"idle_sec={idle_sec}")
+    if wall_sec is not None:
+        parts.append(f"wall_sec={wall_sec}")
+    tail = _stderr_tail(outcome.stderr)
+    if tail:
+        parts.append(f"stderr_tail={tail!r}")
+    if stderr_path:
+        parts.append(f"stderr_log={stderr_path}")
+    parts.append(
+        "Tune CODEX_ROOM_IDLE_TIMEOUT_SEC / CODEX_ROOM_TIMEOUT_SEC or inspect stderr_log."
+    )
+    return "Codex exec stalled — " + ", ".join(parts)
 
 
 def _room_max_commands() -> int:
@@ -256,11 +331,18 @@ def _process_codex_event(
     event: dict[str, Any],
     *,
     on_activity: Callable[[str], None] | None,
+    on_bridge_event: Callable[[str, dict[str, Any]], None] | None = None,
     max_commands: int,
     outcome: CodexRunOutcome,
     limit_hit_at: float | None,
 ) -> float | None:
     """Update outcome from one Codex `--json` event. Returns new limit_hit_at."""
+    if on_bridge_event:
+        from agent_lab.bridge_stdout_parser import parse_codex_json_event
+
+        for kind, data in parse_codex_json_event(event):
+            on_bridge_event(kind, data)
+
     label = codex_event_label(event)
     if label and on_activity:
         on_activity(label)
@@ -355,6 +437,7 @@ def _run_codex(
     prompt: str,
     *,
     on_activity: Callable[[str], None] | None,
+    on_bridge_event: Callable[[str, dict[str, Any]], None] | None = None,
     timeout: int | None,
     room_turn: bool,
     api_key: str | None = None,
@@ -362,6 +445,8 @@ def _run_codex(
     env = _codex_env(api_key=api_key)
     max_commands = _room_max_commands() if room_turn else 0
     grace_sec = _room_limit_grace_sec() if room_turn else 0
+    idle_timeout = _idle_timeout_sec(room_turn=room_turn)
+    heartbeat_sec = _room_heartbeat_sec() if room_turn else 0
     outcome = CodexRunOutcome()
 
     if not room_turn and on_activity is None:
@@ -403,84 +488,180 @@ def _run_codex(
 
     limit_hit_at: float | None = None
     stdout = proc.stdout
+    stderr = proc.stderr
     assert stdout is not None
+    assert stderr is not None
+
+    started_at = time.monotonic()
+    last_activity_at = started_at
+    last_heartbeat_at = started_at
+    stderr_parts: list[str] = []
+
+    def _touch_activity() -> None:
+        nonlocal last_activity_at
+        last_activity_at = time.monotonic()
+
+    def _record_stderr(chunk: str) -> None:
+        if not chunk:
+            return
+        stderr_parts.append(chunk)
+        _touch_activity()
+        line = chunk.strip().splitlines()[0] if chunk.strip() else ""
+        if line and on_activity and len(line) <= 160:
+            on_activity(f"Codex stderr: {line[:160]}")
+
+    def _raise_stall(
+        reason: str,
+        *,
+        idle_sec: int | None = None,
+        cause: BaseException | None = None,
+    ) -> None:
+        outcome.stderr = "".join(stderr_parts)
+        stderr_path = _persist_codex_stderr(outcome.stderr)
+        wall_sec = int(time.monotonic() - started_at)
+        _terminate_proc(proc)
+        err = RuntimeError(
+            _format_codex_stall_error(
+                reason=reason,
+                room_turn=room_turn,
+                outcome=outcome,
+                idle_sec=idle_sec,
+                wall_sec=wall_sec,
+                stderr_path=stderr_path,
+            )
+        )
+        if cause is not None:
+            raise err from cause
+        raise err
 
     try:
         while True:
             if is_cancelled():
                 _terminate_proc(proc)
                 raise RoomRunCancelled("run cancelled by user")
+
+            now = time.monotonic()
+            if timeout is not None and now - started_at >= timeout:
+                _raise_stall(
+                    f"wall-clock timeout after {timeout}s",
+                    idle_sec=int(now - last_activity_at),
+                )
+            if idle_timeout is not None and now - last_activity_at >= idle_timeout:
+                _raise_stall(
+                    f"no JSONL/stderr activity for {idle_timeout}s",
+                    idle_sec=idle_timeout,
+                )
+            if (
+                on_activity
+                and heartbeat_sec
+                and room_turn
+                and now - last_heartbeat_at >= heartbeat_sec
+            ):
+                idle_for = int(now - last_activity_at)
+                on_activity(
+                    f"Codex 대기 중… ({idle_for}s, events={outcome.json_events})"
+                )
+                last_heartbeat_at = now
+
             if _should_stop_after_limit(outcome, limit_hit_at, grace_sec=grace_sec):
                 if outcome.streamed_message:
                     break
                 _terminate_proc(proc)
                 break
 
-            ready, _, _ = select.select([stdout], [], [], 0.25)
+            exited = proc.poll()
+            if exited is not None and outcome.streamed_message:
+                break
+
+            watch = [stdout, stderr]
+            ready, _, _ = select.select(watch, [], [], 0.25)
             if not ready:
                 if proc.poll() is not None:
                     break
                 continue
 
-            line = stdout.readline()
-            if not line:
-                break
-            stripped = line.strip()
-            if not stripped:
-                continue
-            try:
-                event = json.loads(stripped)
-            except json.JSONDecodeError:
-                continue
+            for fd in ready:
+                if fd is stderr:
+                    chunk = stderr.read(4096)
+                    if chunk:
+                        _record_stderr(chunk)
+                    continue
 
-            typ = event.get("type")
-            item = event.get("item") if isinstance(event.get("item"), dict) else {}
-            if (
-                outcome.limit_hit
-                and typ == "item.started"
-                and item.get("type") == "command_execution"
-            ):
-                if on_activity:
-                    on_activity("shell 상한 초과 — 추가 명령 중단")
-                _terminate_proc(proc)
-                break
+                line = stdout.readline()
+                if not line:
+                    if proc.poll() is not None:
+                        break
+                    continue
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                _touch_activity()
+                try:
+                    event = json.loads(stripped)
+                except json.JSONDecodeError:
+                    continue
 
-            limit_hit_at = _process_codex_event(
-                event,
-                on_activity=on_activity,
-                max_commands=max_commands,
-                outcome=outcome,
-                limit_hit_at=limit_hit_at,
-            )
+                outcome.json_events += 1
+                typ = event.get("type")
+                item = event.get("item") if isinstance(event.get("item"), dict) else {}
+                if (
+                    outcome.limit_hit
+                    and typ == "item.started"
+                    and item.get("type") == "command_execution"
+                ):
+                    if on_activity:
+                        on_activity("shell 상한 초과 — 추가 명령 중단")
+                    _terminate_proc(proc)
+                    break
+
+                limit_hit_at = _process_codex_event(
+                    event,
+                    on_activity=on_activity,
+                    on_bridge_event=on_bridge_event,
+                    max_commands=max_commands,
+                    outcome=outcome,
+                    limit_hit_at=limit_hit_at,
+                )
+            if proc.poll() is not None and not select.select([stdout], [], [], 0)[0]:
+                break
     finally:
         unregister_child_process(proc)
 
-    stderr = proc.stderr.read() if proc.stderr is not None else ""
+    remainder = stderr.read()
+    if remainder:
+        stderr_parts.append(remainder)
+    outcome.stderr = "".join(stderr_parts)
+
     try:
         if timeout is None:
             proc.wait()
         else:
-            proc.wait(timeout=timeout)
+            remaining = timeout - (time.monotonic() - started_at)
+            if remaining <= 0:
+                _raise_stall(
+                    f"wall-clock timeout after {timeout}s",
+                    idle_sec=int(time.monotonic() - last_activity_at),
+                )
+            proc.wait(timeout=remaining)
     except subprocess.TimeoutExpired as exc:
-        _terminate_proc(proc)
-        effort = _reasoning_effort(room_turn=room_turn)
-        raise RuntimeError(
-            "Codex exec timed out "
-            f"after {timeout}s (room_turn={room_turn}, effort={effort}, "
-            f"commands={outcome.commands_done}). "
-            "Room turns use read-only sandbox + command cap; "
-            "set CODEX_ROOM_WORKSPACE_WRITE=1 only if edits are required."
-        ) from exc
+        _raise_stall(
+            f"wall-clock timeout after {timeout}s",
+            idle_sec=int(time.monotonic() - last_activity_at),
+            cause=exc,
+        )
 
     if proc.returncode not in (0, None) and not outcome.limit_hit:
         detail = _format_exec_error(
-            stderr,
+            outcome.stderr,
             outcome.streamed_message or "",
         )
-        raise RuntimeError(
-            f"codex exec failed (exit {proc.returncode})"
-            + (f": {detail}" if detail else "")
-        )
+        stderr_path = _persist_codex_stderr(outcome.stderr)
+        msg = f"codex exec failed (exit {proc.returncode})"
+        if detail:
+            msg += f": {detail}"
+        if stderr_path:
+            msg += f" (stderr_log={stderr_path})"
+        raise RuntimeError(msg)
     return outcome
 
 
@@ -490,6 +671,7 @@ def invoke(
     *,
     permissions: dict | None = None,
     on_activity: Callable[[str], None] | None = None,
+    on_bridge_event: Callable[[str, dict[str, Any]], None] | None = None,
     room_turn: bool = False,
     session_folder: str | Path | None = None,
     inbox_mcp: bool = False,
@@ -562,7 +744,7 @@ def invoke(
             "Do not use tools, MCP, or shell commands. Respond with text only."
         )
 
-    stream_json = room_turn or on_activity is not None or use_inbox_mcp
+    stream_json = room_turn or on_activity is not None or on_bridge_event is not None or use_inbox_mcp
     cmd = _build_cmd(
         codex=codex,
         cwd=cwd,
@@ -581,6 +763,7 @@ def invoke(
             cmd,
             prompt,
             on_activity=on_activity,
+            on_bridge_event=on_bridge_event,
             timeout=timeout,
             room_turn=room_turn,
             api_key=api_key,

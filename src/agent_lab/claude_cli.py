@@ -346,6 +346,7 @@ def invoke(
     scribe: bool = False,
     room_turn: bool = True,
     on_activity: Callable[[str], None] | None = None,
+    on_bridge_event: Callable[[str, dict[str, Any]], None] | None = None,
     session_folder: str | Path | None = None,
     request_structured_envelope: bool = False,
 ) -> str:
@@ -374,7 +375,13 @@ def invoke(
 
         system_text = f"{system_text}\n\n{structured_envelope_system_addon(compact=True)}"
     # `-p` is required for headless tool loops (Read/Grep/Bash) from a subprocess.
-    output_format = "json" if request_structured_envelope else "text"
+    use_stream = on_bridge_event is not None and not request_structured_envelope
+    if request_structured_envelope:
+        output_format = "json"
+    elif use_stream:
+        output_format = "stream-json"
+    else:
+        output_format = "text"
     cmd: list[str] = [
         claude,
         "-p",
@@ -386,6 +393,8 @@ def invoke(
         "--permission-mode",
         permission_mode,
     ]
+    if use_stream:
+        cmd.extend(["--verbose", "--include-partial-messages"])
 
     if skip_permissions:
         cmd.append("--dangerously-skip-permissions")
@@ -429,6 +438,15 @@ def invoke(
     Path(system_path).write_text(system_text + "\n", encoding="utf-8")
 
     def _run_once(api_key: str | None) -> str:
+        if use_stream:
+            return _run_claude_stream(
+                cmd,
+                on_bridge_event=on_bridge_event,
+                on_activity=on_activity,
+                timeout=_timeout_sec(room_turn=room_turn),
+                api_key=api_key,
+                cwd=cwd,
+            )
         import time
 
         from agent_lab.run_control import (
@@ -512,6 +530,94 @@ def invoke(
         return _run_oauth_only()
     finally:
         Path(system_path).unlink(missing_ok=True)
+
+
+def _run_claude_stream(
+    cmd: list[str],
+    *,
+    on_bridge_event: Callable[[str, dict[str, Any]], None],
+    on_activity: Callable[[str], None] | None,
+    timeout: int | None,
+    api_key: str | None,
+    cwd: str,
+) -> str:
+    """Read Claude ``stream-json`` stdout and emit Room bridge events."""
+    import select
+    import time
+
+    from agent_lab.bridge_stdout_parser import parse_claude_json_event
+    from agent_lab.run_control import (
+        RoomRunCancelled,
+        is_cancelled,
+        register_child_process,
+        unregister_child_process,
+    )
+
+    proc = subprocess.Popen(
+        cmd,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=_claude_env(api_key=api_key),
+        cwd=cwd,
+    )
+    register_child_process(proc)
+    stdout = proc.stdout
+    assert stdout is not None
+    stderr_parts: list[str] = []
+    result_text = ""
+    started = time.monotonic()
+    try:
+        while True:
+            if is_cancelled():
+                proc.kill()
+                proc.wait(timeout=5)
+                raise RoomRunCancelled("run cancelled by user")
+            if timeout is not None and time.monotonic() - started >= timeout:
+                proc.kill()
+                proc.wait(timeout=5)
+                raise subprocess.TimeoutExpired(cmd, timeout)
+            if proc.poll() is not None and not select.select([stdout], [], [], 0)[0]:
+                break
+            ready, _, _ = select.select([stdout], [], [], 0.25)
+            if not ready:
+                continue
+            line = stdout.readline()
+            if not line:
+                continue
+            stripped = line.strip()
+            if not stripped:
+                continue
+            try:
+                event = json.loads(stripped)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(event, dict):
+                continue
+            for kind, data in parse_claude_json_event(event):
+                on_bridge_event(kind, data)
+            if event.get("type") == "result":
+                res = event.get("result")
+                if isinstance(res, str) and res.strip():
+                    result_text = res.strip()
+    finally:
+        unregister_child_process(proc)
+    if proc.stderr:
+        stderr_parts.append(proc.stderr.read() or "")
+    if proc.poll() is None:
+        proc.wait()
+    if proc.returncode not in (0, None):
+        detail = _format_exec_error("".join(stderr_parts), result_text)
+        if _is_auth_failure(detail):
+            invalidate_claude_auth_cache()
+        raise RuntimeError(
+            f"claude -p failed (exit {proc.returncode})"
+            + (f": {detail}" if detail else "")
+        )
+    if not result_text:
+        raise RuntimeError("claude stream-json returned empty result")
+    return result_text
 
 
 def model_label() -> str:

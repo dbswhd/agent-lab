@@ -161,3 +161,27 @@ If a line number is not in the thread, use (ref: 불명확) instead.
 
 If the topic shifted (e.g. from greeting to trading research), the summary must reflect the LATEST topic.
 Max ~600 words. No secrets."""
+
+TRADING_MISSION_SCRIBE_ADDENDUM = """
+[Trading Mission — required plan.md extras]
+Always include these sections in addition to standard room sections:
+
+## 합의
+- ingest_ready: true | false
+- blocking_reason: (empty if none)
+- active_strategies: ["slug", ...]
+- discuss_rounds_used: N
+
+If proposals were agreed, note that Codex should validate `artifacts/proposals_draft.json`.
+Playbook content should also appear in `artifacts/playbook.md` under 「오늘 장중 행동」.
+
+Under ## 지금 실행, prefer actions that seal snapshot, write proposals_draft/playbook, or run:
+`python -m agent_lab.trading_mission.verify --check goal`
+"""
+
+
+def room_scribe_prompt(run_meta: dict | None) -> str:
+    """Scribe system prompt; trading-mission template gets extra sections."""
+    if run_meta and str(run_meta.get("session_template") or "") == "trading-mission":
+        return ROOM_SCRIBE + TRADING_MISSION_SCRIBE_ADDENDUM
+    return ROOM_SCRIBE

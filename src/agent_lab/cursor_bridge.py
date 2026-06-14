@@ -167,6 +167,12 @@ def invalidate_workspace(workspace: str) -> None:
         entry.client.close()  # type: ignore[attr-defined]
     except Exception:
         pass
+    try:
+        from agent_lab.bridge_registry import remove_workspace
+
+        remove_workspace(ws)
+    except Exception:
+        pass
 
 
 def _get_or_launch(workspace: str) -> _BridgeEntry:
@@ -185,6 +191,12 @@ def _get_or_launch(workspace: str) -> _BridgeEntry:
                 _cache.pop(ws, None)
 
         client = _launch_client(ws)
+        try:
+            from agent_lab.bridge_registry import guess_bridge_pid, register_bridge
+
+            register_bridge(ws, pid=guess_bridge_pid(), mode="auto")
+        except Exception:
+            pass
         entry = _BridgeEntry(client=client, lock=threading.Lock())
         _cache[ws] = entry
         return entry

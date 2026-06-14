@@ -22,6 +22,10 @@ def test_agent_health_cursor_without_key(monkeypatch):
         "agent_lab.agent_health._cursor_sdk_installed",
         lambda: True,
     )
+    monkeypatch.setattr(
+        "agent_lab.credential_store.provider_has_credentials",
+        lambda _provider: False,
+    )
     row = agent_health_row("cursor", probe_bridge=False)
     assert row["configured"] is False
     assert row["bridge"] == "n/a" or row["bridge"] == "unknown"

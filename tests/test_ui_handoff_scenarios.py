@@ -195,6 +195,16 @@ def test_human_decision_banner_contract():
     assert "human-decision-banner" in css
 
 
+def test_plan_workflow_banner_hides_inbox_when_human_decision_visible():
+    """Plan workflow inbox CTA defers to HumanDecisionBanner."""
+    banner = _read("web", "src", "components", "PlanWorkflowBanner.tsx")
+    room = _read("web", "src", "components", "RoomChat.tsx")
+    assert "hideInboxButton" in banner
+    assert "humanDecisionBannerVisible" in room
+    assert "hideInboxButton={humanDecisionBannerVisible}" in room
+    assert "onVisibleChange={setHumanDecisionBannerVisible}" in room
+
+
 def test_remaining_gaps_slack_inbox_ref_recovery_contract():
     """Slack settings, inbox ref jump, discuss recovery banner."""
     room = _read("web", "src", "components", "RoomChat.tsx")

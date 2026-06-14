@@ -10,6 +10,8 @@ type Props = {
   inboxPendingCount?: number;
   running?: boolean;
   variant?: "full" | "compact";
+  /** When HumanDecisionBanner is visible, avoid duplicate Open Inbox CTA. */
+  hideInboxButton?: boolean;
   onOpenInbox?: () => void;
   onOpenTasks?: () => void;
 };
@@ -69,6 +71,7 @@ export function PlanWorkflowBanner({
   inboxPendingCount = 0,
   running = false,
   variant = "full",
+  hideInboxButton = false,
   onOpenInbox,
   onOpenTasks,
 }: Props) {
@@ -123,7 +126,9 @@ export function PlanWorkflowBanner({
       {roundBits.length > 0 ? (
         <p className="plan-workflow-banner__meta">{roundBits.join(" · ")}</p>
       ) : null}
-      {(phase === "CLARIFY" || phase === "INTAKE") && inboxPendingCount > 0 ? (
+      {(phase === "CLARIFY" || phase === "INTAKE") &&
+      inboxPendingCount > 0 &&
+      !hideInboxButton ? (
         <button
           type="button"
           className="btn btn--sm plan-workflow-banner__inbox"

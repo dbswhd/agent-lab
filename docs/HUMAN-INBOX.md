@@ -13,7 +13,7 @@
 | Taskbar **peer mailbox** UI | ✅ | Peer channel, not Human decision resolve |
 | Dedicated Human Inbox resolve panel | 🔶 | API exists; full UI polish in [UI-MIGRATION-GAPS.md](./UI-MIGRATION-GAPS.md) |
 | Discuss deterministic harvest → Inbox | ✅ | M3 shipped — `inbox_harvest.py` + gateway notify on harvest |
-| Discuss sync-pause (`should_pause_discuss`) | ✅ | `gate_scope` lane-aware + Overview gate chips |
+| Discuss sync-pause (`should_pause_discuss`) | ✅ | sync-only default; `HumanDecisionBanner` + grace round (FORK · T-Q2) |
 | FORK / Facilitator | ✅ | `inbox_facilitator.py` — ref-anchored options; live opt-in `AGENT_LAB_FACILITATOR_LIVE` |
 | Inbox `skill_draft` row (Mission OS Phase 4) | ✅ | Web Inbox skills segment + promote/reject |
 
@@ -494,8 +494,34 @@ flowchart TB
 
 - Facilitator = **Claude read-only 1-call** — 3명 발화 **합성** (Cursor에 맡기지 않음)
 - Facilitator는 option을 **invent하지 않음** — FORK/envelope ref anchor만
-- 기본 **sync pause** — Facilitator 패스 동안 discuss 전원 정지 → (1) 비대칭 우려 완화
-- soft mode (“OPEN만 freeze, R3 계속”)는 Composer 토글 **옵션** — 기본 아님
+- **sync-only (default)** — pending pause-eligible Inbox question이 있으면 discuss auto 라운드 정지. Composer 토글은 제거됨; 벤치/회귀만 `AGENT_LAB_INBOX_MODE=soft` 또는 세션 `inbox_mode: soft`
+- **grace round** — 새 FORK(T-Q1+options) 또는 T-Q2(plan OPEN) harvest 직후 **1 debate 라운드** 추가(동료 ENDORSE/AMEND/PASS) → 그다음 pause
+- **HumanDecisionBanner** — runtime `gates` snapshot으로 discuss · plan clarify · execute 차단 레인을 Composer 위 단일 배너에 표시
+
+### 5.3.1 Sync mode · grace round (shipped 2026-06-14)
+
+| 설정 | 동작 |
+|------|------|
+| `AGENT_LAB_INBOX_MODE=sync` (default) | pause-eligible pending question → discuss pause |
+| `AGENT_LAB_INBOX_MODE=soft` | harvest·Inbox surface만; discuss 계속 |
+| 세션 `run.json` `inbox_mode` | env보다 우선 (`sync` \| `soft`) |
+
+**Pause-eligible triggers:** T-Q0 (Clarifier), T-Q2 (plan OPEN), T-Q1 FORK (options≥2), manual/gateway sources.
+
+**Grace (1 extra round before pause):**
+
+| Trigger | Guidance | Reply policy |
+|---------|----------|--------------|
+| T-Q1 FORK | `[Inbox fork grace round]` | `decision-fork` inject 억제 |
+| T-Q2 plan OPEN | `[Inbox plan-open grace round]` | peer 반응 유도 |
+
+**UI:** `HumanDecisionBanner` (`web/src/components/HumanDecisionBanner.tsx`) — `/api/sessions/{id}/runtime`의 `gates` + `discussPaused`. `PlanWorkflowBanner`의 Inbox 버튼은 배너 표시 중 숨김.
+
+**Not pause-eligible (by design):** T-Q1 without options (CHALLENGE/AMEND harvest 제거됨) — transcript `room_objections`에 유지.
+
+### 5.3.2 Legacy note
+
+이전 초안의 “soft mode Composer 토글”은 제거됨 — Human Inbox 질문은 sync에서만 discuss를 멈추는 것이 제품 의도.
 
 ### 5.4 Discuss 트리거 (개념 ID)
 
@@ -795,5 +821,5 @@ flowchart LR
 |------|------|
 | 2026-06-06 | 초안 — Question/Build·Inbox·트리거·native capture gap·MVP 순서 |
 | 2026-06-06 | **전면 개정** — reference-fidelity axis, execute MCP primary, discuss idiom 분리, Question-Claude 분리 거부, capture 허용 |
-| 2026-06-06 | **§3.4** — Discuss → Plan phase → Build → Implement end-to-end; Plan mode는 discuss **후** execute 경계; `propose_build` = Build 타이밍 |
+| 2026-06-14 | **sync-only UI** — Composer inbox toggle removed; `HumanDecisionBanner`; FORK+T-Q2 grace round; docs §5.3.1 |
 | 2026-06-06 | **§3.4.3 fast-path**, **§4.4 Cursor MCP 사실 수정** (SDK 지원·wiring 갭), execute tool timeout (§4.3·§6.5⑧), M2에 `mcp_servers` 편입 |

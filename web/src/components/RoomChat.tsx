@@ -431,6 +431,8 @@ export function RoomChat({
     "all" | "discuss" | "activity" | "questions" | "build" | "skills"
   >("all");
   const [discussPaused, setDiscussPaused] = useState(false);
+  const [humanDecisionBannerVisible, setHumanDecisionBannerVisible] =
+    useState(false);
   const [showInboxPopup, setShowInboxPopup] = useState(false);
   const [workFocus, setWorkFocus] = useState<"execute" | "plan" | null>(null);
   const prevExecPendingIdRef = useRef<string | null>(null);
@@ -2919,6 +2921,7 @@ export function RoomChat({
           workflow={planWorkflow}
           inboxPendingCount={inboxPendingCount}
           running={running || runBusy || synthesizing}
+          hideInboxButton={humanDecisionBannerVisible}
           onOpenInbox={openHumanInbox}
         />
       ) : null}
@@ -2946,6 +2949,7 @@ export function RoomChat({
           sessionId={sessionId}
           reloadKey={inboxReloadKey}
           discussPaused={discussPaused}
+          onVisibleChange={setHumanDecisionBannerVisible}
           onOpenInbox={() => {
             setInboxSegment("discuss");
             openHumanInbox();
@@ -3124,6 +3128,7 @@ export function RoomChat({
                       workflow={planWorkflow}
                       inboxPendingCount={inboxPendingCount}
                       running={running || runBusy || synthesizing}
+                      hideInboxButton={humanDecisionBannerVisible}
                       onOpenInbox={openHumanInbox}
                     />
                   ) : null}

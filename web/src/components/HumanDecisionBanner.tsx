@@ -13,6 +13,7 @@ type Props = {
   discussPaused?: boolean;
   compact?: boolean;
   onOpenInbox?: () => void;
+  onVisibleChange?: (visible: boolean) => void;
 };
 
 export function HumanDecisionBanner({
@@ -21,6 +22,7 @@ export function HumanDecisionBanner({
   discussPaused = false,
   compact = false,
   onOpenInbox,
+  onVisibleChange,
 }: Props) {
   const { msg } = useLocale();
   const [runtime, setRuntime] = useState<RuntimeSnapshot | null>(null);
@@ -49,8 +51,13 @@ export function HumanDecisionBanner({
   );
   const blocked = useMemo(() => humanDecisionBlockedLanes(lanes), [lanes]);
   const visible = shouldShowHumanDecisionBanner(runtime, discussPaused);
+  const showing = visible && blocked.length > 0;
 
-  if (!visible || blocked.length === 0) return null;
+  useEffect(() => {
+    onVisibleChange?.(showing);
+  }, [onVisibleChange, showing]);
+
+  if (!showing) return null;
 
   const profile = runtime?.gates?.gate_profile;
 

@@ -115,7 +115,8 @@ def test_harvest_and_check_pause_sync(monkeypatch: pytest.MonkeyPatch):
     messages = [_Msg(role="user", content="topic"), _fork_msg("codex")]
     first = harvest_and_check_pause(run_meta, messages, human_turn=1)
     assert first is False
-    assert run_meta.get("_inbox_fork_grace_pending") is True
+    assert run_meta.get("_inbox_pause_grace_pending") is True
+    assert run_meta.get("_inbox_pause_grace_kind") == "fork"
     second = harvest_and_check_pause(run_meta, messages, human_turn=1)
     assert second is True
     assert run_meta["human_inbox"][0]["kind"] == "question"
@@ -139,10 +140,30 @@ def test_harvest_and_check_pause_fork_grace_then_pause(monkeypatch: pytest.Monke
     messages = [_Msg(role="user", content="topic"), _fork_msg("codex")]
     first = harvest_and_check_pause(run_meta, messages, human_turn=1)
     assert first is False
-    assert run_meta.get("_inbox_fork_grace_pending") is True
+    assert run_meta.get("_inbox_pause_grace_pending") is True
+    assert run_meta.get("_inbox_pause_grace_kind") == "fork"
     second = harvest_and_check_pause(run_meta, messages, human_turn=1)
     assert second is True
-    assert "_inbox_fork_grace_pending" not in run_meta
+    assert "_inbox_pause_grace_pending" not in run_meta
+
+
+def test_harvest_and_check_pause_tq2_grace_then_pause(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.delenv("AGENT_LAB_INBOX_MODE", raising=False)
+    run_meta: dict[str, Any] = {}
+    plan_md = "## 쟁점 / 미결정\n\n- VU 스윕 범위를 Human이 정해야 함\n"
+    messages = [_Msg(role="user", content="topic")]
+    first = harvest_and_check_pause(
+        run_meta, messages, human_turn=1, plan_md=plan_md
+    )
+    assert first is False
+    assert run_meta.get("_inbox_pause_grace_pending") is True
+    assert run_meta.get("_inbox_pause_grace_kind") == "plan_open"
+    assert run_meta["human_inbox"][0]["trigger"] == "T-Q2"
+    second = harvest_and_check_pause(
+        run_meta, messages, human_turn=1, plan_md=plan_md
+    )
+    assert second is True
+    assert "_inbox_pause_grace_pending" not in run_meta
 
 
 def test_harvest_and_check_pause_plan_mode_noop(monkeypatch: pytest.MonkeyPatch):

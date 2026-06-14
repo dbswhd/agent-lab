@@ -14,7 +14,7 @@ from agent_lab.agent_envelope import (
     is_endorse_reply,
     is_pass_reply,
 )
-from agent_lab.inbox_harvest import INBOX_FORK_GRACE_GUIDANCE, inbox_fork_grace_pending
+from agent_lab.inbox_harvest import inbox_pause_grace_guidance, inbox_pause_grace_pending
 from agent_lab.room_context import (
     ANALYSIS_TURN_GUIDANCE,
     CONVERSATION_GUIDANCE,
@@ -160,8 +160,8 @@ def build_guidance_parts(
 
         if str(agent).strip().lower() == team_lead(run_meta):
             parts.append(DISPATCH_LEAD_GUIDANCE)
-    if run_meta and inbox_fork_grace_pending(run_meta):
-        parts.append(INBOX_FORK_GRACE_GUIDANCE)
+    if run_meta and inbox_pause_grace_pending(run_meta):
+        parts.append(inbox_pause_grace_guidance(run_meta))
     if policy.inject_analysis and policy.turn_profile in ("analyze", "discuss"):
         parts.append(ANALYSIS_TURN_GUIDANCE.strip())
     if policy.turn_profile == "specialist":
@@ -184,13 +184,16 @@ def build_guidance_parts(
     return parts
 
 
-def apply_inbox_fork_grace_policy(
+def apply_inbox_pause_grace_policy(
     policy: ReplyPolicy,
     run_meta: dict[str, Any] | None,
 ) -> ReplyPolicy:
-    if inbox_fork_grace_pending(run_meta):
+    if inbox_pause_grace_pending(run_meta):
         return replace(policy, inject_decision_fork=False)
     return policy
+
+
+apply_inbox_fork_grace_policy = apply_inbox_pause_grace_policy
 
 
 def envelope_follow_up_block(policy: ReplyPolicy, *, context: str = "discuss") -> str:

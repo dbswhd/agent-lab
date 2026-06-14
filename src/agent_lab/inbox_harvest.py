@@ -536,14 +536,72 @@ INBOX_FORK_GRACE_GUIDANCE = (
     "새 `decision-fork` 블록은 금지 — Human 선택을 기다립니다."
 )
 
+INBOX_TQ2_GRACE_GUIDANCE = (
+    "[Inbox plan-open grace round]\n"
+    "plan.md OPEN 항목이 Human Inbox에 올라갔습니다. 동료들이 ENDORSE/AMEND/PASS로 짧게 반응하세요. "
+    "새 OPEN bullet 추가는 금지 — Human 결정을 기다립니다."
+)
 
-def clear_inbox_fork_grace(run_meta: dict[str, Any] | None) -> None:
+PAUSE_GRACE_KIND_FORK = "fork"
+PAUSE_GRACE_KIND_PLAN_OPEN = "plan_open"
+
+
+def clear_inbox_pause_grace(run_meta: dict[str, Any] | None) -> None:
     if isinstance(run_meta, dict):
+        run_meta.pop("_inbox_pause_grace_pending", None)
+        run_meta.pop("_inbox_pause_grace_kind", None)
         run_meta.pop("_inbox_fork_grace_pending", None)
 
 
-def inbox_fork_grace_pending(run_meta: dict[str, Any] | None) -> bool:
-    return bool(isinstance(run_meta, dict) and run_meta.get("_inbox_fork_grace_pending"))
+clear_inbox_fork_grace = clear_inbox_pause_grace
+
+
+def inbox_pause_grace_pending(run_meta: dict[str, Any] | None) -> bool:
+    if not isinstance(run_meta, dict):
+        return False
+    return bool(
+        run_meta.get("_inbox_pause_grace_pending")
+        or run_meta.get("_inbox_fork_grace_pending")
+    )
+
+
+inbox_fork_grace_pending = inbox_pause_grace_pending
+
+
+def inbox_pause_grace_kind(run_meta: dict[str, Any] | None) -> str | None:
+    if not isinstance(run_meta, dict):
+        return None
+    kind = str(run_meta.get("_inbox_pause_grace_kind") or "").strip()
+    if kind in (PAUSE_GRACE_KIND_FORK, PAUSE_GRACE_KIND_PLAN_OPEN):
+        return kind
+    if run_meta.get("_inbox_fork_grace_pending") or run_meta.get(
+        "_inbox_pause_grace_pending"
+    ):
+        return PAUSE_GRACE_KIND_FORK
+    return None
+
+
+def inbox_pause_grace_guidance(run_meta: dict[str, Any] | None) -> str:
+    if inbox_pause_grace_kind(run_meta) == PAUSE_GRACE_KIND_PLAN_OPEN:
+        return INBOX_TQ2_GRACE_GUIDANCE
+    return INBOX_FORK_GRACE_GUIDANCE
+
+
+def _item_qualifies_for_pause_grace(item: dict[str, Any]) -> bool:
+    if not inbox_question_pauses_discuss(item):
+        return False
+    trigger = str(item.get("trigger") or "").strip()
+    if trigger == "T-Q1":
+        options = item.get("options")
+        return isinstance(options, list) and len(options) >= 2
+    return trigger == "T-Q2"
+
+
+def _pause_grace_kind_for_item(item: dict[str, Any]) -> str:
+    trigger = str(item.get("trigger") or "").strip()
+    if trigger == "T-Q2":
+        return PAUSE_GRACE_KIND_PLAN_OPEN
+    return PAUSE_GRACE_KIND_FORK
 
 
 def harvest_and_check_pause(
@@ -557,8 +615,8 @@ def harvest_and_check_pause(
 ) -> bool:
     """Harvest this round's questions into ``run_meta`` then report sync-pause.
 
-    FORK (T-Q1 + options) gets one grace debate round for peer ENDORSE/AMEND
-    before ``should_pause_discuss`` stops further auto rounds.
+    FORK (T-Q1 + options) and T-Q2 (plan OPEN) each get one grace debate round
+    for peer ENDORSE/AMEND before ``should_pause_discuss`` stops further auto rounds.
     """
     had_pause = has_pending_discuss_pause_question(run_meta)
     created = harvest_discuss_questions(
@@ -570,17 +628,18 @@ def harvest_and_check_pause(
         session_id=session_id,
     )
     if not should_pause_discuss(run_meta):
-        clear_inbox_fork_grace(run_meta)
+        clear_inbox_pause_grace(run_meta)
         return False
 
-    new_fork = any(
-        inbox_question_pauses_discuss(item)
-        and str(item.get("trigger") or "") == "T-Q1"
-        for item in created
-    )
-    if new_fork and not had_pause:
-        if not inbox_fork_grace_pending(run_meta):
-            run_meta["_inbox_fork_grace_pending"] = True
+    new_grace = [
+        item for item in created if _item_qualifies_for_pause_grace(item)
+    ]
+    if new_grace and not had_pause:
+        if not inbox_pause_grace_pending(run_meta):
+            run_meta["_inbox_pause_grace_pending"] = True
+            run_meta["_inbox_pause_grace_kind"] = _pause_grace_kind_for_item(
+                new_grace[0]
+            )
             return False
-    clear_inbox_fork_grace(run_meta)
+    clear_inbox_pause_grace(run_meta)
     return True

@@ -27,6 +27,7 @@ from agent_lab.room_agent_invoke import (
 )
 from agent_lab.room_session_persist import _session_context, load_session_messages
 
+
 def run_parallel_round(
     topic: str,
     messages: list[ChatMessage],
@@ -299,4 +300,3 @@ def preview_agent_payload(
         slim_context=slim_context,
     )
     return bundle.render(), bundle
-

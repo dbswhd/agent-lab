@@ -26,6 +26,7 @@ REVIEW_ROUND2_ORDER: tuple[AgentId, ...] = ("claude", "codex", "cursor")
 OnAgentEvent = Callable[[str, dict[str, Any]], None]
 # event types: agent_start, agent_activity, agent_done, agent_error, turn_failed
 
+
 @dataclass
 class ChatMessage:
     role: str  # user | agent | system

@@ -24,6 +24,7 @@ from agent_lab.room_messages import (
     _now,
 )
 
+
 def load_session_messages(folder: Path) -> list[ChatMessage]:
     from agent_lab.room_chat_channels import message_visibility
 
@@ -601,4 +602,3 @@ def save_room_session(
         clarifier_questions=clarifier_questions,
     )
     return folder
-

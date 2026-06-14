@@ -15,6 +15,7 @@ from agent_lab.room_messages import (
     _human_turn_count,
 )
 
+
 def format_thread_numbered(messages: list[ChatMessage]) -> str:
     """Thread with chat.jsonl line numbers for scribe provenance."""
     lines: list[str] = []
@@ -349,4 +350,3 @@ def _emit_plan_actions_validation(
             result.get("issues"),
         )
     return result
-

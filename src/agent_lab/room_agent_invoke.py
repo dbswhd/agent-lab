@@ -20,6 +20,7 @@ from agent_lab.room_messages import (
     build_agent_context_bundle,
 )
 
+
 def _session_folder_from_run_meta(run_meta: dict[str, Any] | None) -> Path | None:
     if not run_meta:
         return None
@@ -574,4 +575,3 @@ def _call_one_agent(
             content=f"[{label(aid)} error] {e}",
             parallel_round=parallel_round,
         )
-

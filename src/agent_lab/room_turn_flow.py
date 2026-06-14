@@ -28,7 +28,6 @@ from agent_lab.room_agent_invoke import (
 )
 
 
-
 from agent_lab.room_plan_scribe import (
     _apply_scribe_after_turn,
     _bootstrap_session_folder_for_plan_workflow,
@@ -62,6 +61,7 @@ from agent_lab.room_turn_meta import (
     maybe_auto_scribe_after_consensus,
     maybe_auto_scribe_after_verified_loop,
 )
+
 
 def continue_room_round(
     folder: Path,

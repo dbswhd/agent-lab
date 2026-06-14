@@ -32,6 +32,7 @@ from agent_lab.room_session_persist import (
     load_session_messages,
 )
 
+
 def _peer_metrics_for_messages(messages: list[ChatMessage]) -> dict[str, Any]:
     from agent_lab.room_turn_state import current_turn_slice, peer_turn_metrics
 
@@ -724,4 +725,3 @@ def _maybe_verified_loop_after_turn(
         turn_profile,
         cancelled=cancelled,
     )
-

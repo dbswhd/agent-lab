@@ -33,6 +33,7 @@ from agent_lab.room_agent_invoke import (
 )
 from agent_lab.room_parallel_rounds import run_parallel_round
 
+
 def run_consensus_agent_rounds(
     topic: str,
     messages: list[ChatMessage],
@@ -725,5 +726,3 @@ def run_consensus_agent_rounds(
         return all_replies, meta
     except RoomRunCancelled:
         return all_replies, None
-
-

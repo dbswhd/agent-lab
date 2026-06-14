@@ -167,12 +167,20 @@ def loop_budget_caps() -> LoopBudgetCaps:
     )
 
 
-def loop_budget_dict() -> dict[str, int]:
+def loop_max_cost_tier() -> str:
+    raw = (os.getenv("AGENT_LAB_LOOP_MAX_COST_TIER") or "high").strip().lower()
+    if raw in ("low", "medium", "high"):
+        return raw
+    return "high"
+
+
+def loop_budget_dict() -> dict[str, int | str]:
     caps = loop_budget_caps()
     return {
         "max_rounds": caps.max_rounds,
         "max_calls": caps.max_calls,
         "max_token_estimate": caps.max_token_estimate,
+        "max_cost_tier": loop_max_cost_tier(),
     }
 
 

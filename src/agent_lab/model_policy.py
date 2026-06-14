@@ -229,6 +229,14 @@ def _unknown_model_profile(agent: AgentId, model_id: str) -> ModelProfile:
     )
 
 
+def loop_cost_tier_blocks(profile: ModelProfile) -> bool:
+    from agent_lab.turn_modes import loop_max_cost_tier
+
+    rank = {"low": 0, "medium": 1, "high": 2}
+    max_tier = loop_max_cost_tier()
+    return rank.get(profile.cost_tier, 2) > rank.get(max_tier, 2)
+
+
 def model_profile_for(agent_id: str, *, model_id: str | None = None) -> ModelProfile | None:
     _ensure_loop_eval_loaded()
     known = _known_agent_id(agent_id)
@@ -243,6 +251,12 @@ def model_profile_for(agent_id: str, *, model_id: str | None = None) -> ModelPro
     default = agent_model_profiles()[known]
     if mid.lower() == default.model_id.strip().lower():
         return default
+    from agent_lab.model_policy_probe import loop_probe_enabled, probe_loop_capabilities_cached
+
+    if loop_probe_enabled():
+        probed = probe_loop_capabilities_cached(agent_id, mid)
+        if probed is not None:
+            return probed
     return _unknown_model_profile(known, mid)
 
 
@@ -261,11 +275,25 @@ def model_readiness(agent_id: str, *, model_id: str | None = None) -> ModelReadi
 
 
 def loop_readiness_failure(agent_ids: Sequence[str]) -> LoopReadinessFailure | None:
+    from agent_lab.turn_modes import loop_max_cost_tier
+
     not_ready: list[str] = []
+    cost_blocked: list[str] = []
     for agent_id in agent_ids:
         readiness = model_readiness(agent_id)
-        if readiness is not None and not readiness.loop_ready:
+        if readiness is None:
+            continue
+        profile = model_profile_for(agent_id)
+        if profile is not None and loop_cost_tier_blocks(profile):
+            cost_blocked.append(agent_id.strip().lower())
+            continue
+        if not readiness.loop_ready:
             not_ready.append(agent_id.strip().lower())
+    if cost_blocked:
+        return LoopReadinessFailure(
+            agents=tuple(cost_blocked),
+            reason=f"model cost tier exceeds Loop ceiling ({loop_max_cost_tier()})",
+        )
     if not not_ready:
         return None
     return LoopReadinessFailure(

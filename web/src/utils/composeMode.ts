@@ -233,6 +233,8 @@ export function getUnifiedComposerMode(): UnifiedComposerMode {
       unified === "quick" ||
       unified === "team" ||
       unified === "loop" ||
+      unified === "split" ||
+      unified === "infinity" ||
       unified === "analyze" ||
       unified === "discuss" ||
       unified === "review" ||
@@ -243,7 +245,11 @@ export function getUnifiedComposerMode(): UnifiedComposerMode {
       const turnRaw =
         unified === "review"
           ? "loop"
-          : unified === "discuss"
+          : unified === "split"
+            ? "loop"
+            : unified === "infinity"
+              ? "loop"
+              : unified === "discuss"
             ? "team"
             : unified === "plan" || unified === "execute"
               ? "team"

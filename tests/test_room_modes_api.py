@@ -22,3 +22,5 @@ def test_room_modes_catalog() -> None:
     assert team_mode["execute_loop_on_approve"] is False
     assert body["legacy_migration"]["verified"] == "loop"
     assert body["verified_routing"]["legacy_verified_api"]["in_turn_verified_loop"] is True
+    loop_mode = next(row for row in body["modes"] if row["id"] == "loop")
+    assert loop_mode.get("budget", {}).get("max_cost_tier") == "high"

@@ -61,6 +61,8 @@ Open-source and local models are not UI modes. They are model capabilities.
 
 **P3 shipped:** `GET /api/room/modes`, Team plan-approved UI hint, health `model_id`, loop budget caps (`AGENT_LAB_LOOP_MAX_*`), eval registry loader.
 
+**P5 shipped:** runtime loop probe (`AGENT_LAB_LOOP_PROBE`, `.agent-lab/loop_probe_cache.json`), cost-tier gate (`AGENT_LAB_LOOP_MAX_COST_TIER`), composer consumes `/api/room/modes`, legacy split/infinity migration, composer question surface.
+
 ## Question Surface
 
 Pending Human Inbox questions are separated from the generic inbox/taskbar flow:

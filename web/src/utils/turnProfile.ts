@@ -79,14 +79,7 @@ export const TURN_PROFILE_OPTIONS: {
   id: ComposerTurnProfile;
   label: string;
   description: string;
-}[] = [
-  ...TURN_STRATEGY_OPTIONS,
-  {
-    id: "review",
-    label: "검토",
-    description: "레거시 — Loop 모드로 대체됨",
-  },
-];
+}[] = [...TURN_STRATEGY_OPTIONS];
 
 export function normalizeTurnProfile(
   profile: string | null | undefined,
@@ -100,6 +93,8 @@ export function normalizeTurnProfile(
   if (profile === "review") return "loop";
   if (profile === "verified") return "loop";
   if (profile === "specialist") return "loop";
+  if (profile === "split") return "loop";
+  if (profile === "infinity") return "loop";
   return "team";
 }
 

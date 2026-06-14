@@ -18,7 +18,7 @@ type Props = {
   onDismiss?: () => void;
   onOpenInbox?: () => void;
   disabled?: boolean;
-  presentation?: "inline" | "popup" | "inspector" | "taskbar";
+  presentation?: "inline" | "popup" | "inspector" | "taskbar" | "composer";
   kindFilter?: "question" | "build" | "skill_draft";
   excludeKind?: "question" | "build" | "skill_draft";
   discussOnly?: boolean;
@@ -530,7 +530,11 @@ export function HumanInboxPanel({
   ).length;
 
   const title =
-    presentation === "popup"
+    presentation === "composer"
+      ? ko
+        ? "에이전트 질문"
+        : "Agent questions"
+      : presentation === "popup"
       ? visiblePending[0]?.kind === "build"
         ? ko
           ? "Build 승인 필요"

@@ -1,9 +1,10 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   turnStrategyOptions,
   turnProfileDescription,
   type ComposerTurnProfile,
 } from "../utils/turnProfile";
+import { fetchRoomModes, turnStrategyFromCatalog } from "../utils/roomModes";
 import type { Locale } from "../i18n/locale";
 
 type Props = {
@@ -32,8 +33,30 @@ export function ComposerTurnPicker({
   costHint,
   hint,
 }: Props) {
-  const options = turnStrategyOptions(locale);
-  const description = turnProfileDescription(value);
+  const fallback = turnStrategyOptions(locale);
+  const [options, setOptions] =
+    useState<Array<{ id: ComposerTurnProfile; label: string; description: string }>>(
+      fallback,
+    );
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchRoomModes()
+      .then((catalog) => {
+        if (cancelled) return;
+        const fromApi = turnStrategyFromCatalog(catalog, locale);
+        if (fromApi.length) setOptions(fromApi);
+      })
+      .catch(() => {
+        if (!cancelled) setOptions(fallback);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [locale]);
+
+  const description =
+    options.find((o) => o.id === value)?.description ?? turnProfileDescription(value);
   const hintText =
     hint?.trim() || [description, costHint?.trim()].filter(Boolean).join(" · ");
 

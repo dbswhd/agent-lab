@@ -44,6 +44,7 @@ def test_loop_ready_requires_tools_inbox_and_envelope() -> None:
 
 
 def test_model_id_lookup_env_and_registry(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AGENT_LAB_LOOP_PROBE", "0")
     readiness = model_readiness("cursor", model_id="llama-3-local")
     assert readiness is not None
     assert readiness.team_ready is True
@@ -73,6 +74,20 @@ def test_model_id_lookup_env_and_registry(monkeypatch: pytest.MonkeyPatch) -> No
         )
         assert model_readiness("cursor").loop_ready is True
         assert loop_readiness_failure(["cursor"]) is None
+    finally:
+        model_policy_mod._MODEL_PROFILE_REGISTRY.clear()
+        model_policy_mod._MODEL_PROFILE_REGISTRY.update(registry_before)
+
+    monkeypatch.setenv("AGENT_LAB_LOOP_MAX_COST_TIER", "medium")
+    monkeypatch.setenv("CODEX_MODEL", "expensive-model")
+    base_codex = model_policy_mod.agent_model_profiles()["codex"]
+    try:
+        model_policy_mod.register_model_profile(
+            replace(base_codex, model_id="expensive-model", cost_tier="high")
+        )
+        cost_failure = model_policy_mod.loop_readiness_failure(["codex"])
+        assert cost_failure is not None
+        assert "cost tier" in cost_failure.reason
     finally:
         model_policy_mod._MODEL_PROFILE_REGISTRY.clear()
         model_policy_mod._MODEL_PROFILE_REGISTRY.update(registry_before)
@@ -115,4 +130,5 @@ def test_load_loop_eval_registry(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
         model_policy_mod._LOOP_EVAL_LOADED = False
         model_policy_mod._MODEL_PROFILE_REGISTRY.clear()
         model_policy_mod._MODEL_PROFILE_REGISTRY.update(registry_before)
+
 

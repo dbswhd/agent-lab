@@ -35,10 +35,14 @@ def test_app_uses_workspace_shell_not_primary_messenger_label():
 def test_agent_health_panel_shows_model_readiness_lane():
     client = _read("web", "src", "api", "client.ts")
     panel = _read("web", "src", "components", "AgentHealthPanel.tsx")
+    room_modes = _read("web", "src", "utils", "roomModes.ts")
+    picker = _read("web", "src", "components", "ComposerTurnPicker.tsx")
 
     assert "team_ready?: boolean" in client
     assert "loop_ready?: boolean" in client
     assert "model_id?: string" in client
+    assert "fetchRoomModes" in room_modes
+    assert "fetchRoomModes" in picker
     assert "model_provider?: string" in client
     assert "Team-ready" in panel
     assert "Loop-ready" in panel

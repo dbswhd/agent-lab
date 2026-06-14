@@ -3117,20 +3117,22 @@ export function RoomChat({
                   ) : null}
 
                   {sessionId && inboxPendingQuestions > 0 ? (
-                    <HumanInboxPanel
-                      sessionId={sessionId}
-                      reloadKey={inboxReloadKey}
-                      planRevision={currentPlanRevision}
-                      onResolved={handleInboxResolved}
-                      disabled={running || synthesizing || runBusy}
-                      presentation="popup"
-                      kindFilter="question"
-                      onOpenInbox={() => {
-                        setInboxSegment("questions");
-                        openHumanInbox();
-                      }}
-                      onRefClick={handleInboxRefClick}
-                    />
+                    <div className="composer-question-surface">
+                      <HumanInboxPanel
+                        sessionId={sessionId}
+                        reloadKey={inboxReloadKey}
+                        planRevision={currentPlanRevision}
+                        onResolved={handleInboxResolved}
+                        disabled={running || synthesizing || runBusy}
+                        presentation="composer"
+                        kindFilter="question"
+                        onOpenInbox={() => {
+                          setInboxSegment("questions");
+                          openHumanInbox();
+                        }}
+                        onRefClick={handleInboxRefClick}
+                      />
+                    </div>
                   ) : null}
 
                   {showInboxPopup && sessionId && inboxPendingBuilds > 0 ? (

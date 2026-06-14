@@ -38,6 +38,21 @@ def _fork_msg(agent: str) -> _Msg:
     return _Msg(role="agent", agent=agent, content=block)
 
 
+def _pause_eligible_question(**extra: object) -> dict:
+    base = {
+        "id": "q1",
+        "kind": "question",
+        "status": "pending",
+        "trigger": "T-Q1",
+        "options": [
+            {"id": "a", "label": "VU만", "refs": ["L42"]},
+            {"id": "b", "label": "VU+Theme", "refs": ["L51"]},
+        ],
+    }
+    base.update(extra)
+    return base
+
+
 def test_inbox_mode_default_sync(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.delenv("AGENT_LAB_INBOX_MODE", raising=False)
     assert inbox_mode() == "sync"
@@ -56,7 +71,7 @@ def test_inbox_mode_unknown_falls_back_to_sync(monkeypatch: pytest.MonkeyPatch):
 def test_should_pause_sync_with_pending(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.delenv("AGENT_LAB_INBOX_MODE", raising=False)
     run_meta = {
-        "human_inbox": [{"id": "q1", "kind": "question", "status": "pending"}],
+        "human_inbox": [_pause_eligible_question()],
     }
     assert should_pause_discuss(run_meta) is True
 
@@ -64,7 +79,7 @@ def test_should_pause_sync_with_pending(monkeypatch: pytest.MonkeyPatch):
 def test_should_not_pause_without_pending(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.delenv("AGENT_LAB_INBOX_MODE", raising=False)
     run_meta = {
-        "human_inbox": [{"id": "q1", "kind": "question", "status": "resolved"}],
+        "human_inbox": [_pause_eligible_question(status="resolved")],
     }
     assert should_pause_discuss(run_meta) is False
 
@@ -72,7 +87,24 @@ def test_should_not_pause_without_pending(monkeypatch: pytest.MonkeyPatch):
 def test_soft_mode_never_pauses(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("AGENT_LAB_INBOX_MODE", "soft")
     run_meta = {
-        "human_inbox": [{"id": "q1", "kind": "question", "status": "pending"}],
+        "human_inbox": [_pause_eligible_question()],
+    }
+    assert should_pause_discuss(run_meta) is False
+
+
+def test_legacy_optionless_question_does_not_pause(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.delenv("AGENT_LAB_INBOX_MODE", raising=False)
+    run_meta = {
+        "human_inbox": [
+            {
+                "id": "q1",
+                "kind": "question",
+                "status": "pending",
+                "trigger": "T-Q1",
+                "options": [],
+                "prompt": "codex CHALLENGE: scope",
+            }
+        ],
     }
     assert should_pause_discuss(run_meta) is False
 
@@ -81,8 +113,11 @@ def test_harvest_and_check_pause_sync(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.delenv("AGENT_LAB_INBOX_MODE", raising=False)
     run_meta: dict[str, Any] = {}
     messages = [_Msg(role="user", content="topic"), _fork_msg("codex")]
-    paused = harvest_and_check_pause(run_meta, messages, human_turn=1)
-    assert paused is True
+    first = harvest_and_check_pause(run_meta, messages, human_turn=1)
+    assert first is False
+    assert run_meta.get("_inbox_fork_grace_pending") is True
+    second = harvest_and_check_pause(run_meta, messages, human_turn=1)
+    assert second is True
     assert run_meta["human_inbox"][0]["kind"] == "question"
     assert run_meta.get("inbox_pending") is True
 
@@ -96,6 +131,18 @@ def test_harvest_and_check_pause_soft_surfaces_without_pausing(
     paused = harvest_and_check_pause(run_meta, messages, human_turn=1)
     assert paused is False  # soft: surfaced but no pause
     assert run_meta["human_inbox"][0]["kind"] == "question"  # still harvested
+
+
+def test_harvest_and_check_pause_fork_grace_then_pause(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.delenv("AGENT_LAB_INBOX_MODE", raising=False)
+    run_meta: dict[str, Any] = {}
+    messages = [_Msg(role="user", content="topic"), _fork_msg("codex")]
+    first = harvest_and_check_pause(run_meta, messages, human_turn=1)
+    assert first is False
+    assert run_meta.get("_inbox_fork_grace_pending") is True
+    second = harvest_and_check_pause(run_meta, messages, human_turn=1)
+    assert second is True
+    assert "_inbox_fork_grace_pending" not in run_meta
 
 
 def test_harvest_and_check_pause_plan_mode_noop(monkeypatch: pytest.MonkeyPatch):
@@ -113,7 +160,7 @@ def test_session_inbox_mode_overrides_env_sync(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.delenv("AGENT_LAB_INBOX_MODE", raising=False)
     run_meta = {
         "inbox_mode": "soft",
-        "human_inbox": [{"id": "q1", "kind": "question", "status": "pending"}],
+        "human_inbox": [_pause_eligible_question()],
     }
     assert inbox_mode_for_run(run_meta) == "soft"
     assert should_pause_discuss(run_meta) is False
@@ -125,7 +172,7 @@ def test_session_inbox_mode_overrides_env_soft(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("AGENT_LAB_INBOX_MODE", "soft")
     run_meta = {
         "inbox_mode": "sync",
-        "human_inbox": [{"id": "q1", "kind": "question", "status": "pending"}],
+        "human_inbox": [_pause_eligible_question()],
     }
     assert inbox_mode_for_run(run_meta) == "sync"
     assert should_pause_discuss(run_meta) is True

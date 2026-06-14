@@ -18,6 +18,21 @@ from agent_lab.run_meta import read_run_meta
 from app.server.main import app
 
 
+def _pause_eligible_question(**extra: object) -> dict:
+    base = {
+        "id": "q1",
+        "kind": "question",
+        "status": "pending",
+        "trigger": "T-Q1",
+        "options": [
+            {"id": "a", "label": "A"},
+            {"id": "b", "label": "B"},
+        ],
+    }
+    base.update(extra)
+    return base
+
+
 @pytest.fixture
 def client() -> TestClient:
     return TestClient(app)
@@ -45,9 +60,7 @@ def test_gate_profile_defaults_dev() -> None:
 def test_assistant_soft_discuss_with_pending_question() -> None:
     run = {
         "gate_profile": "assistant",
-        "human_inbox": [
-            {"id": "q1", "kind": "question", "status": "pending", "prompt": "Scope?"},
-        ],
+        "human_inbox": [_pause_eligible_question(prompt="Scope?")],
     }
     scope = compute_gate_scope(run)
     assert scope.discuss_rounds == "allow"
@@ -55,12 +68,28 @@ def test_assistant_soft_discuss_with_pending_question() -> None:
     assert should_pause_discuss_for_profile(run) is False
 
 
+def test_assistant_ignores_legacy_optionless_question() -> None:
+    run = {
+        "gate_profile": "assistant",
+        "human_inbox": [
+            {
+                "id": "q1",
+                "kind": "question",
+                "status": "pending",
+                "trigger": "T-Q1",
+                "options": [],
+                "prompt": "Scope?",
+            }
+        ],
+    }
+    scope = compute_gate_scope(run)
+    assert scope.plan_workflow == "allow"
+
+
 def test_dev_pause_discuss_with_pending_question() -> None:
     run = {
         "gate_profile": "dev",
-        "human_inbox": [
-            {"id": "q1", "kind": "question", "status": "pending", "prompt": "Scope?"},
-        ],
+        "human_inbox": [_pause_eligible_question(prompt="Scope?")],
     }
     scope = compute_gate_scope(run)
     assert scope.discuss_rounds == "pause"

@@ -381,6 +381,9 @@ def resolve_inbox_item(
 
         run["human_inbox"] = inbox_items(run)
         updated = dict(item)
+        from agent_lab.inbox_harvest import clear_inbox_fork_grace
+
+        clear_inbox_fork_grace(run)
         return _sync_inbox_flag(run)
 
     patch_run_meta(folder, _resolve)

@@ -2,17 +2,22 @@ type Props = {
   checked: boolean;
   onChange: (on: boolean) => void;
   disabled?: boolean;
+  label?: string;
+  title?: string;
 };
 
-/**
- * Rebuilt plan toggle. Prop signature preserved.
- * New class system reuses `.switch` track from base.css.
- */
-export function ComposerPlanToggle({ checked, onChange, disabled }: Props) {
+/** Plan mode — per-send toggle (4C: decide at composer, not at session create). */
+export function ComposerPlanToggle({
+  checked,
+  onChange,
+  disabled,
+  label = "Plan",
+  title = "Clarify → plan.md → Human 승인 → execute",
+}: Props) {
   return (
     <label
       className={`switch${checked ? " is-on" : ""}`}
-      title="켜면 메시지 전송 후 plan 문서를 갱신합니다 (plan 탭)"
+      title={title}
     >
       <input
         type="checkbox"
@@ -21,7 +26,7 @@ export function ComposerPlanToggle({ checked, onChange, disabled }: Props) {
         onChange={(e) => onChange(e.target.checked)}
       />
       <span className="switch__track" />
-      <span>전송 시 plan 갱신</span>
+      <span>{label}</span>
     </label>
   );
 }

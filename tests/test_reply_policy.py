@@ -38,8 +38,7 @@ def test_minimal_guidance_tier(monkeypatch: pytest.MonkeyPatch):
     assert not any("MULTI_AGENT" in p for p in parts)
 
 
-def test_analyze_plus_efficiency_combo(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("AGENT_LAB_EFFICIENCY", "1")
+def test_analyze_plus_efficiency_param():
     policy = resolve_reply_policy(
         parallel_round=1,
         turn_profile="analyze",

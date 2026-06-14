@@ -1,5 +1,3 @@
-import { setEfficiencyMode } from "./efficiencyPrefs";
-
 export type ComposerTurnProfile =
   | "quick"
   | "analyze"
@@ -55,11 +53,10 @@ export const TURN_STRATEGY_OPTIONS = turnStrategyOptions("en");
 export function composerTurnHint(
   profile: ComposerTurnProfile,
   selectedAgents: string[],
-  efficiencyOn = false,
   locale: "en" | "ko" = "en",
 ): string {
   const normalized = normalizeTurnProfile(profile);
-  const resolved = resolveTurnSend(normalized, selectedAgents, efficiencyOn);
+  const resolved = resolveTurnSend(normalized, selectedAgents);
   const n = resolved.agents.length;
   const ko = locale === "ko";
   if (normalized === "quick") {
@@ -177,7 +174,6 @@ export const TURN_PROFILE_CONFIG: Record<ComposerTurnProfile, TurnProfileConfig>
 export function getTurnProfile(): ComposerTurnProfile {
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored === "efficient") {
-    setEfficiencyMode(true);
     localStorage.setItem(STORAGE_KEY, "analyze");
     return "analyze";
   }
@@ -195,13 +191,11 @@ export function setTurnProfile(profile: ComposerTurnProfile): void {
 export function resolveTurnSend(
   profile: ComposerTurnProfile,
   selectedAgents: string[],
-  efficiencyOn = false,
 ): {
   agents: string[];
   agentRounds: number;
   reviewMode: boolean;
   consensusMode: boolean;
-  efficiencyMode: boolean;
 } {
   const normalized = normalizeTurnProfile(profile);
   const cfg = TURN_PROFILE_CONFIG[normalized];
@@ -213,14 +207,12 @@ export function resolveTurnSend(
     agentRounds: cfg.agentRounds,
     reviewMode: cfg.reviewMode,
     consensusMode: cfg.consensusMode,
-    efficiencyMode: efficiencyOn,
   };
 }
 
 export function turnProfileHint(
   profile: ComposerTurnProfile,
   selectedAgents: string[],
-  efficiencyOn = false,
 ): string | null {
   const normalized = normalizeTurnProfile(profile);
   let hint: string | null = null;
@@ -246,10 +238,6 @@ export function turnProfileHint(
       selectedAgents.length > 1
         ? `분석 · ${selectedAgents.length}명 · 현황만 · R1`
         : "분석 · 현황만 · R1";
-  }
-  if (efficiencyOn) {
-    const eff = "효율 · pin cap · 짧은 응답";
-    return hint ? `${hint} · ${eff}` : eff;
   }
   return hint;
 }

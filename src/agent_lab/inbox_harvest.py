@@ -1,17 +1,11 @@
-"""Deterministic discuss harvest → Human Inbox question items (M3).
+"""Deterministic discuss harvest → Human Inbox question items (M3–M4).
 
-No LLM Facilitator, no options — refs + excerpt only. Mirrors
-``room_objections.harvest_objections_from_turn``: operates on the in-memory
-``run_meta`` dict (the caller persists it), so it never races the wholesale
-run.json write that follows the turn-harvest block in ``room.py``.
+Peer ``CHALLENGE``/``AMEND`` envelopes belong in ``room_objections`` — not Inbox.
+Inbox questions are Human-direction only:
 
-Sources (RFC §5.4 / §5.5):
-- ``DECISION-FORK`` blocks → ref-anchored option questions (M4, ``inbox_facilitator``)  → ``T-Q1``
-- envelope ``CHALLENGE`` / ``AMEND`` in the current turn → option-less question (M3)     → ``T-Q1``
-- ``plan.md`` OPEN bullets → option-less question (M3)                                    → ``T-Q2``
-
-FORK candidates carry options from the deterministic Facilitator merge; the M3
-CHALLENGE/AMEND/plan-OPEN sources stay option-less.
+- ``DECISION-FORK`` blocks → ref-anchored option questions (M4) → ``T-Q1`` (pause-eligible)
+- ``plan.md`` OPEN bullets → ``T-Q2`` (pause-eligible)
+- Clarifier → ``T-Q0`` (pause-eligible)
 """
 
 from __future__ import annotations
@@ -216,14 +210,9 @@ def harvest_question_candidates(
 ) -> list[InboxQuestionCandidate]:
     """Pure deterministic harvest — no I/O, no LLM synthesis. Deduped + capped.
 
-    FORK candidates (with ref-anchored options) take priority over option-less
-    CHALLENGE/AMEND and plan OPEN candidates.
+    FORK (ref-anchored options) and plan OPEN only — not envelope CHALLENGE/AMEND.
     """
-    raw = (
-        _fork_candidates(messages)
-        + _challenge_amend_candidates(messages)
-        + _plan_open_candidates(plan_md)
-    )
+    raw = _fork_candidates(messages) + _plan_open_candidates(plan_md)
     seen: set[str] = set()
     out: list[InboxQuestionCandidate] = []
     for c in raw:
@@ -485,7 +474,30 @@ def _now_iso_verified_supersede() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-# --- sync pause (M4) — pending question pauses further auto discuss rounds ------
+# --- sync pause (M4) — pending Human-direction question pauses debate rounds ----
+
+DISCUSS_PAUSE_TRIGGERS = frozenset({"T-Q0", "T-Q2"})
+_HUMAN_QUESTION_SOURCES = frozenset(
+    {"manual", "mission_circuit_break", "mcp_ask_human", "gateway"}
+)
+
+
+def inbox_question_pauses_discuss(item: dict[str, Any]) -> bool:
+    """True when a pending inbox question should halt auto discuss rounds."""
+    if item.get("kind") != "question" or item.get("status") != "pending":
+        return False
+    trigger = str(item.get("trigger") or "").strip()
+    if trigger in DISCUSS_PAUSE_TRIGGERS:
+        return True
+    if trigger == "T-Q1":
+        options = item.get("options")
+        return isinstance(options, list) and len(options) >= 2
+    source = str(item.get("source") or "").strip().lower()
+    return source in _HUMAN_QUESTION_SOURCES
+
+
+def has_pending_discuss_pause_question(run_meta: dict[str, Any]) -> bool:
+    return any(inbox_question_pauses_discuss(item) for item in inbox_items(run_meta))
 
 
 def inbox_mode() -> str:
@@ -504,16 +516,34 @@ def inbox_mode_for_run(run_meta: dict[str, Any] | None) -> str:
 
 
 def should_pause_discuss(run_meta: dict[str, Any]) -> bool:
-    """Sync checkpoint: pending question halts further auto rounds (lane-aware when gate_scope on)."""
+    """Sync checkpoint: pause-eligible pending question halts further auto rounds."""
     import os
 
     if inbox_mode_for_run(run_meta) != "sync":
+        return False
+    if not has_pending_discuss_pause_question(run_meta):
         return False
     if os.getenv("AGENT_LAB_GATE_SCOPE", "1").strip().lower() not in ("0", "false", "no"):
         from agent_lab.gate_scope import should_pause_discuss_for_profile
 
         return should_pause_discuss_for_profile(run_meta)
-    return has_pending_question(run_meta)
+    return True
+
+
+INBOX_FORK_GRACE_GUIDANCE = (
+    "[Inbox fork grace round]\n"
+    "Human Inbox에 방향 fork가 올라갔습니다. 동료 옵션에 ENDORSE/AMEND/PASS로 짧게 반응하세요. "
+    "새 `decision-fork` 블록은 금지 — Human 선택을 기다립니다."
+)
+
+
+def clear_inbox_fork_grace(run_meta: dict[str, Any] | None) -> None:
+    if isinstance(run_meta, dict):
+        run_meta.pop("_inbox_fork_grace_pending", None)
+
+
+def inbox_fork_grace_pending(run_meta: dict[str, Any] | None) -> bool:
+    return bool(isinstance(run_meta, dict) and run_meta.get("_inbox_fork_grace_pending"))
 
 
 def harvest_and_check_pause(
@@ -527,10 +557,11 @@ def harvest_and_check_pause(
 ) -> bool:
     """Harvest this round's questions into ``run_meta`` then report sync-pause.
 
-    Idempotent with the post-turn harvest (``harvest_key`` dedupe), so it is safe
-    to call after each discuss round as well as once at turn end.
+    FORK (T-Q1 + options) gets one grace debate round for peer ENDORSE/AMEND
+    before ``should_pause_discuss`` stops further auto rounds.
     """
-    harvest_discuss_questions(
+    had_pause = has_pending_discuss_pause_question(run_meta)
+    created = harvest_discuss_questions(
         run_meta,
         messages,
         human_turn=human_turn,
@@ -538,4 +569,18 @@ def harvest_and_check_pause(
         mode=mode,
         session_id=session_id,
     )
-    return should_pause_discuss(run_meta)
+    if not should_pause_discuss(run_meta):
+        clear_inbox_fork_grace(run_meta)
+        return False
+
+    new_fork = any(
+        inbox_question_pauses_discuss(item)
+        and str(item.get("trigger") or "") == "T-Q1"
+        for item in created
+    )
+    if new_fork and not had_pause:
+        if not inbox_fork_grace_pending(run_meta):
+            run_meta["_inbox_fork_grace_pending"] = True
+            return False
+    clear_inbox_fork_grace(run_meta)
+    return True

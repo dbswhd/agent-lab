@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from typing import Any
 
@@ -35,6 +36,14 @@ def _challenge(agent: str, message: str, refs: list[str] | None = None) -> _Msg:
     )
 
 
+def _fork_block(topic: str, options: list[tuple[str, list[str]]]) -> str:
+    payload = {
+        "topic": topic,
+        "options": [{"label": label, "refs": refs} for label, refs in options],
+    }
+    return "토론:\n```decision-fork\n" + json.dumps(payload, ensure_ascii=False) + "\n```"
+
+
 _PLAN_OPEN = """\
 ## 합의
 
@@ -49,18 +58,25 @@ _PLAN_OPEN = """\
 # --- pure candidate extraction -------------------------------------------------
 
 
-def test_candidates_from_challenge():
+def test_candidates_exclude_challenge_amend():
     messages = [
         _Msg(role="user", content="topic"),
         _challenge("codex", "VU만 스윕하면 Theme 회귀를 놓친다", refs=["L42"]),
+    ]
+    assert harvest_question_candidates(messages) == []
+
+
+def test_candidates_from_decision_fork():
+    messages = [
+        _Msg(role="user", content="topic"),
+        _Msg(role="agent", agent="codex", content=_fork_block("스윕 범위", [("VU만", ["L42"]), ("VU+Theme", ["L51"])])),
     ]
     cands = harvest_question_candidates(messages)
     assert len(cands) == 1
     c = cands[0]
     assert c.trigger == "T-Q1"
-    assert c.refs == ("L42",)
-    assert "codex CHALLENGE" in c.prompt
-    assert "Theme" in c.excerpt
+    assert len(c.options) == 2
+    assert "L42" in c.refs
 
 
 def test_candidates_ignore_endorse_and_pass():
@@ -80,25 +96,24 @@ def test_candidates_from_plan_open():
     assert "cadence" in cands[0].excerpt
 
 
-def test_candidates_cap_and_dedupe():
-    msgs = [_Msg(role="user", content="t")]
-    # same challenge text twice → one candidate; plus 4 distinct → capped at 3
-    msgs.append(_challenge("codex", "dup challenge"))
-    msgs.append(_challenge("claude", "dup challenge"))  # different agent → distinct key
-    for i in range(4):
-        msgs.append(_challenge("cursor", f"distinct {i}"))
-    cands = harvest_question_candidates(msgs)
-    assert len(cands) <= 3
+def test_candidates_cap_and_dedupe_plan_open():
+    plan_md = "## 쟁점 / 미결정\n\n" + "\n".join(f"- open item {i}" for i in range(6))
+    cands = harvest_question_candidates([], plan_md=plan_md)
+    assert len(cands) == 3
 
 
 # --- run_meta mutation ---------------------------------------------------------
 
 
-def test_harvest_creates_question_no_options():
+def test_harvest_creates_fork_question_with_options():
     run_meta: dict[str, Any] = {}
     messages = [
         _Msg(role="user", content="topic"),
-        _challenge("codex", "스코프가 너무 넓다", refs=["L7"]),
+        _Msg(
+            role="agent",
+            agent="codex",
+            content=_fork_block("스윕 범위", [("VU만", ["L7"]), ("전체", ["L8"])]),
+        ),
     ]
     created = harvest_discuss_questions(run_meta, messages, human_turn=2)
 
@@ -106,10 +121,10 @@ def test_harvest_creates_question_no_options():
     item = created[0]
     assert item["kind"] == "question"
     assert item["source"] == "orchestrator"
-    assert item["options"] == []  # M3: no options, no LLM synthesis
+    assert len(item["options"]) == 2
     assert item["status"] == "pending"
     assert item["trigger"] == "T-Q1"
-    assert item["refs"] == ["L7"]
+    assert "L7" in item["refs"]
     assert item["human_turn_id"] == 2
     assert run_meta["human_inbox"][0]["id"] == item["id"]
     assert run_meta.get("inbox_pending") is True
@@ -119,12 +134,16 @@ def test_harvest_idempotent_across_turns():
     run_meta: dict[str, Any] = {}
     messages = [
         _Msg(role="user", content="topic"),
-        _challenge("codex", "동일 쟁점"),
+        _Msg(
+            role="agent",
+            agent="codex",
+            content=_fork_block("동일 fork", [("A", ["L1"]), ("B", ["L2"])]),
+        ),
     ]
     first = harvest_discuss_questions(run_meta, messages)
     second = harvest_discuss_questions(run_meta, messages)
     assert len(first) == 1
-    assert second == []  # same harvest_key already in inbox → not re-created
+    assert second == []
     assert len(run_meta["human_inbox"]) == 1
 
 
@@ -132,7 +151,11 @@ def test_harvest_skips_plan_mode():
     run_meta: dict[str, Any] = {}
     messages = [
         _Msg(role="user", content="topic"),
-        _challenge("codex", "plan 모드에서는 objection으로"),
+        _Msg(
+            role="agent",
+            agent="codex",
+            content=_fork_block("plan 모드", [("A", ["L1"]), ("B", ["L2"])]),
+        ),
     ]
     created = harvest_discuss_questions(run_meta, messages, mode="plan")
     assert created == []

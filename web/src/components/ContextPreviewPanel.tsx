@@ -17,7 +17,6 @@ type Props = {
   session?: SessionDetail | null;
   selectedAgents: string[];
   turnProfile: ComposerTurnProfile;
-  efficiencyOn?: boolean;
   disabled?: boolean;
   onClose?: () => void;
   /** Settings page: hide sidebar chrome, use ctx-preview layout. */
@@ -31,7 +30,6 @@ export function ContextPreviewPanel({
   session,
   selectedAgents,
   turnProfile,
-  efficiencyOn = false,
   disabled,
   onClose,
   embedded = false,
@@ -44,8 +42,8 @@ export function ContextPreviewPanel({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { agents, reviewMode, agentRounds, consensusMode, efficiencyMode } =
-    resolveTurnSend(turnProfile, selectedAgents, efficiencyOn);
+  const { agents, reviewMode, agentRounds, consensusMode } =
+    resolveTurnSend(turnProfile, selectedAgents);
 
   const lastTurnCtx = useMemo(
     () => parseLastTurnContext(session?.run),
@@ -82,8 +80,6 @@ export function ContextPreviewPanel({
         agent,
         parallelRound,
         reviewMode,
-        efficiencyMode,
-        slimContext: consensusMode && parallelRound >= 2 && efficiencyMode,
         agents,
       });
       setPayload(res.payload);
@@ -100,7 +96,6 @@ export function ContextPreviewPanel({
     agent,
     parallelRound,
     reviewMode,
-    efficiencyMode,
     consensusMode,
     agents,
   ]);

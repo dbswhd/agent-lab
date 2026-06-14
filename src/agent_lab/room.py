@@ -1128,7 +1128,7 @@ def run_consensus_agent_rounds(
                     human_turn=_human_turn_number(human_turn_index),
                     plan_md=plan_md,
                     mode="discuss",
-                    session_id=folder.name,
+                    session_id=str(run_meta.get("_session_id") or "") or None,
                 ):
                     if on_event:
                         on_event(
@@ -2100,6 +2100,7 @@ def _plan_workflow_post_agent_turn(
         is_plan_workflow_active,
         orchestrate_plan_workflow_pipeline,
         plan_workflow_phase,
+        plan_workflow_should_advance_on_turn,
         tick_plan_workflow_after_turn,
     )
     from agent_lab.run_meta import read_run_meta
@@ -2107,8 +2108,9 @@ def _plan_workflow_post_agent_turn(
     plan_md = plan_before
     pw_force_scribe = False
     pw_active = is_plan_workflow_active(run_meta)
+    pw_advance = plan_workflow_should_advance_on_turn(run_meta, synthesize=synthesize)
     phase_before = plan_workflow_phase(run_meta) if pw_active else None
-    if pw_active and not cancelled:
+    if pw_active and pw_advance and not cancelled:
         pw_tick = tick_plan_workflow_after_turn(
             folder,
             synthesize=synthesize,
@@ -2144,7 +2146,12 @@ def _plan_workflow_post_agent_turn(
             session_folder=folder,
             plan_trigger="plan_turn" if synthesize else "auto_turn",
         )
-    if is_plan_workflow_active(run_meta) and not cancelled and scribe_applied:
+    if (
+        pw_advance
+        and is_plan_workflow_active(run_meta)
+        and not cancelled
+        and scribe_applied
+    ):
         plan_md, pw_replies, pw_meta = orchestrate_plan_workflow_pipeline(
             folder,
             topic=topic,
@@ -3636,6 +3643,11 @@ def continue_room_round(
 
     begin_human_turn(folder, human_turn=human_turn_num)
     supersede_pending_inbox(folder, human_turn_id=human_turn_num)
+    plan_md, run_meta = _session_context(folder)
+    from agent_lab.inbox_harvest import clear_inbox_fork_grace
+
+    clear_inbox_fork_grace(run_meta)
+    _bind_session_to_run_meta(run_meta, folder)
     active_agents = [a for a in (agents or available_agents())]
     mode = "plan" if synthesize else "discuss"
     review_advocate = (
@@ -3643,8 +3655,6 @@ def continue_room_round(
         if review_mode and active_agents
         else None
     )
-    plan_md, run_meta = _session_context(folder)
-    _bind_session_to_run_meta(run_meta, folder)
     from agent_lab.room_team_orchestration import resolve_turn_lead
 
     resolve_turn_lead(

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from agent_lab.agent_envelope import (
@@ -14,6 +14,7 @@ from agent_lab.agent_envelope import (
     is_endorse_reply,
     is_pass_reply,
 )
+from agent_lab.inbox_harvest import INBOX_FORK_GRACE_GUIDANCE, inbox_fork_grace_pending
 from agent_lab.room_context import (
     ANALYSIS_TURN_GUIDANCE,
     CONVERSATION_GUIDANCE,
@@ -116,9 +117,7 @@ def resolve_reply_policy(
         envelope_warn = True
 
     inject_analysis = profile in ("analyze", "discuss")
-    inject_efficiency = bool(efficiency_mode) or (
-        os.getenv("AGENT_LAB_EFFICIENCY", "").strip().lower() in ("1", "true", "yes", "on")
-    )
+    inject_efficiency = bool(efficiency_mode)
 
     tier = guidance_tier_env()
     inject_conversation = tier != "minimal"
@@ -161,6 +160,8 @@ def build_guidance_parts(
 
         if str(agent).strip().lower() == team_lead(run_meta):
             parts.append(DISPATCH_LEAD_GUIDANCE)
+    if run_meta and inbox_fork_grace_pending(run_meta):
+        parts.append(INBOX_FORK_GRACE_GUIDANCE)
     if policy.inject_analysis and policy.turn_profile in ("analyze", "discuss"):
         parts.append(ANALYSIS_TURN_GUIDANCE.strip())
     if policy.turn_profile == "specialist":
@@ -183,11 +184,32 @@ def build_guidance_parts(
     return parts
 
 
+def apply_inbox_fork_grace_policy(
+    policy: ReplyPolicy,
+    run_meta: dict[str, Any] | None,
+) -> ReplyPolicy:
+    if inbox_fork_grace_pending(run_meta):
+        return replace(policy, inject_decision_fork=False)
+    return policy
+
+
 def envelope_follow_up_block(policy: ReplyPolicy, *, context: str = "discuss") -> str:
     if not policy.inject_envelope_guidance:
         return ""
     compact = guidance_tier_env() != "debug"
-    return envelope_protocol_block(context=context, compact=compact)
+    labels = {
+        "consensus": "자유 토론 · 합의 확인 R2+",
+        "review": "리뷰 · R2+ 순차",
+        "discuss": "회의 · R2+ 순차 (동료 답변 반영)",
+    }
+    label = labels.get(context, context)
+    if policy.inject_decision_fork:
+        return envelope_protocol_block(context=context, compact=compact)
+    if compact:
+        from agent_lab.agent_envelope import ENVELOPE_FORMAT_GUIDANCE_SHORT
+
+        return f"{ENVELOPE_FORMAT_GUIDANCE_SHORT}\n(Context: {label})"
+    return f"{ENVELOPE_FORMAT_GUIDANCE}\n(Context: {label})"
 
 
 def summarize_turn_communicate_meta(

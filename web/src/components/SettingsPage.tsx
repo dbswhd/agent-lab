@@ -44,7 +44,6 @@ type Props = {
   session: SessionDetail | null;
   selectedAgents: string[];
   turnProfile: ComposerTurnProfile;
-  efficiencyOn: boolean;
   onBack: () => void;
   apiOk?: boolean;
   healthAgents?: AgentHealthRow[];
@@ -78,7 +77,6 @@ export function SettingsPage({
   session,
   selectedAgents,
   turnProfile,
-  efficiencyOn,
   onBack,
   apiOk = true,
   healthAgents = [],
@@ -355,7 +353,6 @@ export function SettingsPage({
                 session={session}
                 selectedAgents={selectedAgents}
                 turnProfile={turnProfile}
-                efficiencyOn={efficiencyOn}
                 embedded
               />
             </div>

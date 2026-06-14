@@ -190,10 +190,14 @@ def test_inspector_matches_prototype_context_sidebar_body():
     assert ".context-sidebar__head" in layout
 
 
-def test_phase0_efficiency_toggle_uses_efficient_class():
+def test_phase0_composer_plan_toggle_beside_turn_picker():
+    composer = _read("web", "src", "components", "ChatComposer.tsx")
     room = _read("web", "src", "components", "RoomChat.tsx")
-    assert 'efficiencyOn ? "composer--efficient"' in room
-    assert "composer--efficiency" not in room
+    assert "ComposerPlanToggle" in composer
+    assert "onPlanAfterSendChange" in composer
+    assert "onPlanAfterSendChange={changePlanAfterSend}" in room
+    assert "ComposerEfficiencyToggle" not in composer
+    assert "efficiencyOn" not in room
 
 
 def test_phase0_session_rail_status_detail_is_distinct():

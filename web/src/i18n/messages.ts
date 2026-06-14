@@ -20,11 +20,10 @@ const EN = {
   modeDiscuss: "Discuss",
   modeDiscussHint: "Agents debate · plan.md auto-updates each turn",
   modePlan: "Plan",
-  modePlanHint: "Draft or refresh plan.md after send",
+  modePlanHint: "Clarify → plan.md → Human approval → execute",
   modeConsensus: "Consensus",
   modeConsensusHint: "Agents must endorse before execute",
   composerPlaceholder: "Message the team…  /plan to draft a plan",
-  efficiency: "Efficiency",
   turnQuick: "Quick",
   turnAnalyze: "Analyze",
   turnSplit: "Split",
@@ -177,6 +176,10 @@ const EN = {
   planWorkflowTranscriptPending: "[Plan workflow] Awaiting human approval",
   planWorkflowTranscriptApproved: "[Plan workflow] Approved",
   planWorkflowTranscriptGeneric: (phase: string) => `[Plan workflow] ${phase}`,
+  planWorkflowSideDiscussHint: (phase: string) =>
+    `Plan workflow ${phase || "active"} · next send: Discuss (side thread, no plan advance)`,
+  planWorkflowComposerBlocked:
+    "Plan awaiting approval — use Tasks to approve or reject before sending",
   hooksPlanWorkflowHint:
     "Plan workflow is active: response contract presets shape agent replies during CLARIFY/PEER. They complement (not replace) the plan FSM — use evidence_first during clarify and plan_ready before peer review if helpful.",
   inboxAll: "All",
@@ -265,11 +268,10 @@ const KO = {
   modeDiscuss: "토론",
   modeDiscussHint: "에이전트 토론 · 턴마다 plan.md 자동 갱신",
   modePlan: "Plan",
-  modePlanHint: "전송 후 plan.md 갱신",
+  modePlanHint: "Clarify → plan.md → Human 승인 → execute",
   modeConsensus: "합의",
   modeConsensusHint: "execute 전 에이전트 endorse 필요",
   composerPlaceholder: "팀에게 메시지…  /plan 으로 계획 작성",
-  efficiency: "효율",
   turnQuick: "빠른",
   turnAnalyze: "분석",
   turnSplit: "분업",
@@ -424,6 +426,10 @@ const KO = {
   planWorkflowTranscriptPending: "[Plan workflow] Human 승인 대기",
   planWorkflowTranscriptApproved: "[Plan workflow] 승인됨",
   planWorkflowTranscriptGeneric: (phase: string) => `[Plan workflow] ${phase}`,
+  planWorkflowSideDiscussHint: (phase: string) =>
+    `Plan workflow ${phase || "진행 중"} · 다음 전송: Discuss (보조 토론, plan FSM 진행 없음)`,
+  planWorkflowComposerBlocked:
+    "Plan 승인 대기 — 전송 전 Tasks에서 승인 또는 반려하세요",
   hooksPlanWorkflowHint:
     "Plan workflow 활성: response contract preset은 CLARIFY/PEER 단계 에이전트 답변 형식을 조정합니다. Plan FSM을 대체하지 않고 보조합니다 — clarify에는 evidence_first, peer 전 plan_ready를 고려하세요.",
   inboxAll: "전체",

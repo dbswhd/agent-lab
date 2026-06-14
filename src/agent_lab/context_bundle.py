@@ -43,6 +43,7 @@ from agent_lab.session_guidance import (
 )
 from agent_lab.plugin_discovery import build_plugin_allowlist_block
 from agent_lab.reply_policy import (
+    apply_inbox_fork_grace_policy,
     build_guidance_parts,
     envelope_follow_up_block,
     resolve_reply_policy,
@@ -284,11 +285,14 @@ def build_slim_consensus_bundle(
     turn_state_block = render_turn_state_block(
         (run_meta or {}).get("turn_state")
     )
-    reply_policy = resolve_reply_policy(
+    reply_policy = apply_inbox_fork_grace_policy(
+        resolve_reply_policy(
         parallel_round=2,
         consensus_mode=consensus_mode,
         turn_profile=str((run_meta or {}).get("turn_profile") or ""),
         efficiency_mode=efficiency_mode,
+        ),
+        run_meta,
     )
     guidance_parts = build_guidance_parts(
         reply_policy, run_meta=run_meta, agent=agent
@@ -627,12 +631,15 @@ def build_context_bundle(
 
     connect_hint = AGENT_CONNECT_HINT.get(agent, "").strip()
     profile = str((run_meta or {}).get("turn_profile") or "").strip().lower()
-    reply_policy = resolve_reply_policy(
+    reply_policy = apply_inbox_fork_grace_policy(
+        resolve_reply_policy(
         parallel_round=parallel_round,
         review_mode=review_mode,
         consensus_mode=consensus_mode,
         turn_profile=profile,
         efficiency_mode=efficiency_mode,
+        ),
+        run_meta,
     )
     guidance_parts = build_guidance_parts(
         reply_policy, run_meta=run_meta, agent=agent

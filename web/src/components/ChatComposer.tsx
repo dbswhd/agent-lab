@@ -1,7 +1,5 @@
 import { useMemo, useRef, useState, useEffect, type ReactNode } from "react";
 import { ComposerPlanToggle } from "./ComposerPlanToggle";
-import { ComposerEfficiencyToggle } from "./ComposerEfficiencyToggle";
-import { ComposerInboxModeToggle } from "./ComposerInboxModeToggle";
 import { ComposerTurnPicker } from "./ComposerTurnPicker";
 import { ComposerMentionMenu } from "./ComposerMentionMenu";
 import {
@@ -40,12 +38,10 @@ type Props = {
   onTurnProfileChange?: (profile: ComposerTurnProfile) => void;
   planAfterSend?: boolean;
   onPlanAfterSendChange?: (on: boolean) => void;
+  /** Lock Plan toggle (e.g. HUMAN_PENDING — approve/reject first). */
+  planToggleDisabled?: boolean;
   executeDisabled?: boolean;
   pendingExecuteCount?: number;
-  efficiencyOn?: boolean;
-  onEfficiencyChange?: (on: boolean) => void;
-  inboxSyncMode?: boolean;
-  onInboxSyncModeChange?: (syncMode: boolean) => void;
   /** @deprecated Plan stale notices live on the Work tab. */
   planStaleNotice?: string | null;
   objectionNotice?: ObjectionNotice | null;
@@ -55,8 +51,6 @@ type Props = {
   locale?: Locale;
   /** Hide textarea/send (mode picker stays visible). */
   inputHidden?: boolean;
-  /** Show 「정리」 toggle beside turn picker (default: plan tab only). */
-  showPlanToggle?: boolean;
   /** Secondary line under mode chip (off = less plan noise on chat). */
   showModeChipHint?: boolean;
   /** Always-visible mode chip subline (prototype `mode_*_hint`). */
@@ -97,18 +91,14 @@ export function ChatComposer({
   onTurnProfileChange,
   planAfterSend = false,
   onPlanAfterSendChange,
+  planToggleDisabled = false,
   executeDisabled: _executeDisabled,
   pendingExecuteCount: _pendingExecuteCount,
-  efficiencyOn = false,
-  onEfficiencyChange,
-  inboxSyncMode = true,
-  onInboxSyncModeChange,
   objectionNotice,
   onFocusObjection,
   turnHint,
   locale = "en",
   inputHidden = false,
-  showPlanToggle = false,
   showModeChipHint = false,
   modeChipHint,
   running = false,
@@ -230,28 +220,17 @@ export function ChatComposer({
           hint={turnHint}
           trailing={
             <>
-              {showPlanToggle && onPlanAfterSendChange ? (
+              {onPlanAfterSendChange ? (
                 <ComposerPlanToggle
                   checked={planAfterSend}
                   onChange={onPlanAfterSendChange}
-                  disabled={inputLocked}
-                />
-              ) : null}
-              {onEfficiencyChange ? (
-                <ComposerEfficiencyToggle
-                  checked={efficiencyOn}
-                  onChange={onEfficiencyChange}
-                  disabled={inputLocked}
-                  label={locale === "ko" ? "효율" : "Efficiency"}
-                />
-              ) : null}
-              {onInboxSyncModeChange ? (
-                <ComposerInboxModeToggle
-                  syncMode={inboxSyncMode}
-                  onChange={onInboxSyncModeChange}
-                  disabled={inputLocked}
-                  label={localeMsg.inboxSyncMode}
-                  title={localeMsg.inboxSyncModeHint}
+                  disabled={inputLocked || planToggleDisabled}
+                  label={localeMsg.modePlan}
+                  title={
+                    planToggleDisabled
+                      ? localeMsg.planWorkflowComposerBlocked
+                      : localeMsg.modePlanHint
+                  }
                 />
               ) : null}
             </>

@@ -16,7 +16,6 @@ import {
   type SessionTemplate,
   type TradingMissionPreset,
 } from "../utils/sessionSetup";
-import { setPlanAfterSend } from "../utils/composeMode";
 import { pickWorkspaceFolder } from "../utils/pickWorkspaceFolder";
 import type { AgentRole } from "../utils/transcript";
 
@@ -32,8 +31,6 @@ export type NewSessionParams = {
   /** Mission OS template from sessions/_templates (Gate 2-B). */
   missionTemplateId?: string | null;
   topic?: string | null;
-  /** First composer send uses plan mode (Plan-First workflow). */
-  planAfterSend?: boolean;
   agents: NewSessionAgentChoice[];
 };
 
@@ -85,7 +82,6 @@ export function NewSessionDialog({ open, agents, onClose, onCreate }: Props) {
   );
   const [missionTemplateId, setMissionTemplateId] = useState("");
   const [presetTopic, setPresetTopic] = useState<string | null>(null);
-  const [planWorkflowOnCreate, setPlanWorkflowOnCreate] = useState(true);
 
   const dirRef = useRef<HTMLInputElement>(null);
 
@@ -107,7 +103,6 @@ export function NewSessionDialog({ open, agents, onClose, onCreate }: Props) {
   const applyMissionTemplate = useCallback((templateId: string) => {
     setMissionTemplateId(templateId);
     if (!templateId) return;
-    setPlanWorkflowOnCreate(true);
     const tpl = missionTemplates.find((row) => row.id === templateId);
     if (tpl?.topic?.trim() && !presetTopic) {
       setPresetTopic(tpl.topic.trim());
@@ -201,14 +196,12 @@ export function NewSessionDialog({ open, agents, onClose, onCreate }: Props) {
     const wpath = isCustom ? workspacePath : null;
     setStoredWorkspaceId(wid);
     setStoredWorkspacePath(wpath);
-    setPlanAfterSend(planWorkflowOnCreate);
     onCreate({
       workspaceId: wid,
       workspacePath: wpath,
       sessionTemplate,
       missionTemplateId: missionTemplateId.trim() || null,
       topic: presetTopic,
-      planAfterSend: planWorkflowOnCreate,
       agents: chosen.map((a) => {
         const role = a.id as TeamAgentId;
         return {
@@ -527,24 +520,6 @@ export function NewSessionDialog({ open, agents, onClose, onCreate }: Props) {
               ) : null}
             </section>
           ) : null}
-
-          <section className="ns-block">
-            <label className="ns-agent__pick">
-              <input
-                type="checkbox"
-                className="checkbox"
-                checked={planWorkflowOnCreate}
-                onChange={(e) => setPlanWorkflowOnCreate(e.target.checked)}
-              />
-              <span className="ns-block__label" style={{ marginLeft: 8 }}>
-                Plan workflow (첫 메시지 plan mode)
-              </span>
-            </label>
-            <p className="ns-block__hint">
-              Clarify → plan.md → Human 승인 → execute. Verified turn profile
-              대신 기본 진입입니다.
-            </p>
-          </section>
 
           <section className="ns-block">
             <div className="ns-block__head">

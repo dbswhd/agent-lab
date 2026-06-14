@@ -18,8 +18,7 @@ import {
 import { healthToAgentOptions } from "./components/AgentHealthPanel";
 import { RoomChat } from "./components/RoomChat";
 import { SettingsPage } from "./components/SettingsPage";
-import { getTurnStrategy, setPlanAfterSend } from "./utils/composeMode";
-import { getEfficiencyMode } from "./utils/efficiencyPrefs";
+import { getTurnStrategy } from "./utils/composeMode";
 import { SessionRailStatusChip } from "./components/SessionRailStatusChip";
 import { SessionList } from "./components/SessionList";
 import { SessionRail } from "./components/SessionRail";
@@ -412,9 +411,6 @@ export default function App() {
     setBootstrapSessionTemplate(params.sessionTemplate);
     setBootstrapTopic(params.topic ?? null);
     setBootstrapMissionTemplateId(params.missionTemplateId ?? null);
-    if (params.planAfterSend !== undefined) {
-      setPlanAfterSend(params.planAfterSend);
-    }
     setComposerNew(true);
     setSelectedId(null);
     setDetail(null);
@@ -684,7 +680,6 @@ export default function App() {
                 session={roomSessionDetail}
                 selectedAgents={agents.filter((a) => a.ready).map((a) => a.id)}
                 turnProfile={getTurnStrategy()}
-                efficiencyOn={getEfficiencyMode()}
                 apiOk={apiOk}
                 healthAgents={healthAgents}
                 healthLoading={healthLoading}

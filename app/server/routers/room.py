@@ -10,7 +10,7 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from agent_lab.context_limits import all_limits_for_api, efficiency_mode_default
+from agent_lab.context_limits import all_limits_for_api
 from agent_lab.invoke import ensure_ready
 from agent_lab.room import (
     DEFAULT_AGENT_PARALLEL_ROUNDS,
@@ -273,7 +273,7 @@ async def create_room_run(
     # Align with UI turn profiles: discuss=1, review>=2 (non-UI callers may omit agent_rounds).
     if review_mode and not consensus_mode and parallel_rounds < 2:
         parallel_rounds = 2
-    use_efficiency = efficiency_mode or efficiency_mode_default()
+    use_efficiency = bool(efficiency_mode)
     profile_norm = (turn_profile or "analyze").strip().lower()
     if profile_norm == "discuss":
         profile_norm = "analyze"

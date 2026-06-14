@@ -7,9 +7,7 @@ import {
   checkSessionGoal,
   fetchCommands,
   fetchInboxSummary,
-  fetchInboxSettings,
   fetchSessionInbox,
-  patchInboxSettings,
   postMissionDiscussRecovery,
   matchSlashCommand,
   releaseRoomRunLock,
@@ -126,10 +124,6 @@ import {
   roundDividerLabel,
 } from "../utils/roundTopology";
 import {
-  getEfficiencyMode,
-  setEfficiencyMode,
-} from "../utils/efficiencyPrefs";
-import {
   composerTurnHint,
   normalizeTurnProfile,
   resolveTurnSend,
@@ -145,11 +139,16 @@ import { ConsensusDryRunGateBar } from "./ConsensusDryRunGateBar";
 import type { ConsensusDryRunProposal } from "./ConsensusDryRunGateBar";
 import {
   getPlanAfterSend,
-  setPlanAfterSend,
+  getPlanAfterSendForSession,
+  setPlanAfterSendForSession,
   setTurnStrategy,
   getTurnStrategy,
   type ComposeMode,
 } from "../utils/composeMode";
+import {
+  isPlanWorkflowAwaitingApproval,
+  suggestPlanToggleForWorkflow,
+} from "../utils/planComposerSync";
 import { usePlanExecute } from "../hooks/usePlanExecute";
 import { useLocale } from "../i18n/useLocale";
 import {
@@ -358,7 +357,6 @@ export function RoomChat({
   );
   const [planAfterSend, setPlanAfterSendState] = useState(getPlanAfterSend);
   const composeMode: ComposeMode = planAfterSend ? "plan" : "discuss";
-  const [efficiencyOn, setEfficiencyOnState] = useState(getEfficiencyMode);
   const [researchMode] = useState(() => {
     try {
       return localStorage.getItem("agent-lab-research-mode") === "1";
@@ -368,16 +366,18 @@ export function RoomChat({
   });
   const { locale, msg: localeMsg } = useLocale();
   const composerModeVariant = useMemo((): "discuss" | "plan" | "consensus" => {
-    const profile = resolveTurnSend(turnProfile, selected, efficiencyOn);
+    const profile = resolveTurnSend(turnProfile, selected);
     if (profile.consensusMode) return "consensus";
     if (planAfterSend) return "plan";
     return "discuss";
-  }, [turnProfile, selected, efficiencyOn, planAfterSend]);
+  }, [turnProfile, selected, planAfterSend]);
   const composerTurnHintLine = useMemo(
-    () => composerTurnHint(turnProfile, selected, efficiencyOn, locale),
-    [turnProfile, selected, efficiencyOn, locale],
+    () => composerTurnHint(turnProfile, selected, locale),
+    [turnProfile, selected, locale],
   );
   const modeChipCopy = useMemo(() => {
+    const wf = session?.run?.plan_workflow as PlanWorkflowRecord | undefined;
+    const wfActive = Boolean(wf?.enabled);
     if (composerModeVariant === "plan") {
       return { label: localeMsg.modePlan, hint: localeMsg.modePlanHint };
     }
@@ -387,14 +387,19 @@ export function RoomChat({
         hint: localeMsg.modeConsensusHint,
       };
     }
+    if (wfActive && wf?.phase && wf.phase !== "APPROVED") {
+      return {
+        label: localeMsg.modeDiscuss,
+        hint: localeMsg.planWorkflowSideDiscussHint(wf.phase),
+      };
+    }
     return { label: localeMsg.modeDiscuss, hint: localeMsg.modeDiscussHint };
-  }, [composerModeVariant, localeMsg]);
+  }, [composerModeVariant, localeMsg, session?.run?.plan_workflow]);
   const [pendingSend, setPendingSend] = useState<{
     text: string;
     files: PendingFile[];
     turnProfile: ComposerTurnProfile;
     planAfterSend: boolean;
-    efficiencyOn: boolean;
   } | null>(null);
   const [goalText, setGoalText] = useState("");
   const [goalBusy, setGoalBusy] = useState(false);
@@ -420,7 +425,6 @@ export function RoomChat({
   const [inboxPendingCount, setInboxPendingCount] = useState(0);
   const [globalInboxPending, setGlobalInboxPending] = useState(0);
   const [inboxReloadKey, setInboxReloadKey] = useState(0);
-  const [inboxSyncMode, setInboxSyncMode] = useState(true);
   const [discussRecoveryBusy, setDiscussRecoveryBusy] = useState(false);
   const [inboxSegment, setInboxSegment] = useState<
     "all" | "discuss" | "activity" | "questions" | "build" | "skills"
@@ -589,8 +593,33 @@ export function RoomChat({
 
   function changePlanAfterSend(on: boolean) {
     setPlanAfterSendState(on);
-    setPlanAfterSend(on);
+    setPlanAfterSendForSession(sessionId ?? activeSessionIdRef.current, on);
   }
+
+  const planToggleSyncedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!sessionId) {
+      setPlanAfterSendState(getPlanAfterSend());
+      return;
+    }
+    const wf = session?.run?.plan_workflow as PlanWorkflowRecord | undefined;
+    if (isPlanWorkflowAwaitingApproval(wf)) {
+      setPlanAfterSendState(false);
+      setPlanAfterSendForSession(sessionId, false);
+      return;
+    }
+    const syncKey = `${sessionId}:${(wf?.phase ?? "none").toUpperCase()}:${wf?.enabled ? "1" : "0"}`;
+    if (planToggleSyncedRef.current === syncKey) return;
+    planToggleSyncedRef.current = syncKey;
+    const suggested = suggestPlanToggleForWorkflow(wf);
+    if (suggested !== null) {
+      setPlanAfterSendState(suggested);
+      setPlanAfterSendForSession(sessionId, suggested);
+    } else {
+      setPlanAfterSendState(getPlanAfterSendForSession(sessionId));
+    }
+  }, [sessionId, session?.run?.plan_workflow]);
 
   const refreshTasks = useCallback(
     (overrideId?: string | null) => {
@@ -881,7 +910,7 @@ export function RoomChat({
   );
   const pendingReplyCount =
     running && typingAgents.length === 0
-      ? resolveTurnSend(turnProfile, selected, efficiencyOn).agents.length
+      ? resolveTurnSend(turnProfile, selected).agents.length
       : 0;
   const { scrollRef, scrollElRef, showJumpButton, scrollToBottom } = useMessagesScroll(
     [messages, running, pendingReplyCount, selected.join(",")],
@@ -927,21 +956,6 @@ export function RoomChat({
   useEffect(() => {
     void refreshInboxPending();
   }, [refreshInboxPending, inboxReloadKey]);
-
-  useEffect(() => {
-    if (!sessionId) return;
-    let cancelled = false;
-    void fetchInboxSettings(sessionId)
-      .then((payload) => {
-        if (!cancelled) setInboxSyncMode(payload.inbox_mode === "sync");
-      })
-      .catch(() => {
-        if (!cancelled) setInboxSyncMode(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [sessionId, inboxReloadKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1091,6 +1105,7 @@ export function RoomChat({
     isNew &&
     workspaceId === CUSTOM_WORKSPACE_ID &&
     !workspacePath?.trim();
+  const planWorkflowAwaitingApproval = isPlanWorkflowAwaitingApproval(planWorkflow);
   const composerSendLocked =
     runBusy ||
     running ||
@@ -1099,6 +1114,7 @@ export function RoomChat({
     selected.length === 0 ||
     preflightBlocked ||
     customWorkspaceBlocked ||
+    planWorkflowAwaitingApproval ||
     (!text.trim() && pendingFiles.length === 0);
   const sessionReviewMode = Boolean(
     (session?.run?.last_turn as { review_mode?: boolean } | undefined)
@@ -1359,7 +1375,6 @@ export function RoomChat({
       permissions: AgentPermissions,
       mode: ComposeMode = composeMode,
       profile: ComposerTurnProfile = turnProfile,
-      efficiency: boolean = efficiencyOn,
     ) => {
       if (mode === "execute") return;
       if (runBusy || running || synthesizing) return;
@@ -1369,8 +1384,7 @@ export function RoomChat({
         agentRounds,
         reviewMode: useReviewMode,
         consensusMode: useConsensusMode,
-        efficiencyMode: useEfficiencyMode,
-      } = resolveTurnSend(profile, selected, efficiency);
+      } = resolveTurnSend(profile, selected);
       if (agents.length === 0) return;
 
       const sendText =
@@ -1474,7 +1488,7 @@ export function RoomChat({
             const round = Number(ev.round);
             updateSessionRun(runKey, { topologyActive: null });
             const rid = `round-divider-${round}`;
-            const resolved = resolveTurnSend(profile, selected, efficiency);
+            const resolved = resolveTurnSend(profile, selected);
             patchTurnMessages(runKey, (m) => [
               ...m.filter((x) => x.id !== rid),
               {
@@ -2051,7 +2065,6 @@ export function RoomChat({
             permissions,
             reviewMode: useReviewMode,
             consensusMode: useConsensusMode,
-            efficiencyMode: useEfficiencyMode,
             turnProfile: profile,
             researchMode:
               researchMode || normalizeTurnProfile(profile) === "specialist",
@@ -2118,7 +2131,6 @@ export function RoomChat({
       onSessionMetaRefresh,
       composeMode,
       turnProfile,
-      efficiencyOn,
       researchMode,
       workspaceId,
       workspacePath,
@@ -2155,7 +2167,6 @@ export function RoomChat({
           roomPermissions(selected),
           "discuss",
           "verified",
-          efficiencyOn,
         );
       }
     } catch (e) {
@@ -2171,7 +2182,6 @@ export function RoomChat({
     refreshSessionMeta,
     executeSend,
     selected,
-    efficiencyOn,
     showPlanApproval,
   ]);
 
@@ -2359,7 +2369,6 @@ export function RoomChat({
         files: pendingFiles,
         turnProfile,
         planAfterSend,
-        efficiencyOn,
       });
       setPermOpen(true);
       return;
@@ -2434,15 +2443,6 @@ export function RoomChat({
     return ml?.discuss_recovery ?? null;
   }, [session?.run?.mission_loop]);
 
-  const handleInboxSyncModeChange = useCallback(
-    (sync: boolean) => {
-      setInboxSyncMode(sync);
-      if (!sessionId) return;
-      void patchInboxSettings(sessionId, sync ? "sync" : "soft").catch(() => {});
-    },
-    [sessionId],
-  );
-
   const handleDiscussRecoveryRun = useCallback(async () => {
     if (!sessionId) return;
     setDiscussRecoveryBusy(true);
@@ -2479,7 +2479,9 @@ export function RoomChat({
           actionIndex: planExecuteObjection.plan_action_index,
         }
       : null;
-  const composerPlaceholder = firstOpenBlock?.plan_action_index
+  const composerPlaceholder = planWorkflowAwaitingApproval
+    ? localeMsg.planWorkflowComposerBlocked
+    : firstOpenBlock?.plan_action_index
     ? locale === "ko"
       ? `plan #${firstOpenBlock.plan_action_index} BLOCK 해결 후 execute`
       : `Resolve plan #${firstOpenBlock.plan_action_index} BLOCK before execute`
@@ -2534,7 +2536,7 @@ export function RoomChat({
     tweaks.planStaleDemo ? DEMO_PLAN_STALE_NOTICE : composerPlanStale;
   const currentPlanRevision =
     planMeta.lastUpdate?.completed_at || planMeta.lastUpdate?.ts || null;
-  const turnResolved = resolveTurnSend(turnProfile, selected, efficiencyOn);
+  const turnResolved = resolveTurnSend(turnProfile, selected);
   const taskBarContext = useMemo(
     () => ({
       composerVariant: composerModeVariant,
@@ -2976,7 +2978,6 @@ export function RoomChat({
         className={[
           turnProfile === "review" ? "composer--review" : undefined,
           turnProfile === "free" ? "composer--free" : undefined,
-          efficiencyOn ? "composer--efficient" : undefined,
           composerModeVariant === "consensus" ? "composer--consensus-mode" : undefined,
           composerModeVariant === "plan" ? "composer--plan-mode" : undefined,
           composerModeVariant === "discuss" ? "composer--discuss-mode" : undefined,
@@ -2991,7 +2992,7 @@ export function RoomChat({
         disabled={composerInputLocked}
         sendDisabled={composerSendLocked}
         placeholder={composerPlaceholder}
-        showPlanToggle={false}
+        showModeChipHint={false}
         modeChip={modeChipCopy.label}
         modeChipVariant={composerModeVariant}
         modeChipHint={modeChipCopy.hint}
@@ -3004,17 +3005,9 @@ export function RoomChat({
         }
         turnProfile={turnProfile}
         onTurnProfileChange={changeTurnProfile}
-        planAfterSend={!isNew ? planAfterSend : undefined}
-        onPlanAfterSendChange={!isNew ? changePlanAfterSend : undefined}
-        efficiencyOn={efficiencyOn}
-        onEfficiencyChange={(on) => {
-          setEfficiencyOnState(on);
-          setEfficiencyMode(on);
-        }}
-        inboxSyncMode={inboxSyncMode}
-        onInboxSyncModeChange={
-          !isNew && composerModeVariant === "discuss" ? handleInboxSyncModeChange : undefined
-        }
+        planAfterSend={planAfterSend}
+        onPlanAfterSendChange={changePlanAfterSend}
+        planToggleDisabled={planWorkflowAwaitingApproval}
         objectionNotice={composerObjectionNotice}
         onFocusObjection={focusObjection}
         turnHint={composerTurnHintLine}
@@ -3086,7 +3079,6 @@ export function RoomChat({
               permissions,
               pendingSend.planAfterSend ? "plan" : "discuss",
               pendingSend.turnProfile,
-              pendingSend.efficiencyOn,
             );
             setPendingSend(null);
           }

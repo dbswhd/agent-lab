@@ -11,7 +11,7 @@ type Props = {
   onChange: (profile: ComposerTurnProfile) => void;
   disabled?: boolean;
   locale?: Locale;
-  /** Right of the segmented control (cleanup toggle · efficiency toggle …) */
+  /** Right of the segmented control (plan toggle · inbox sync …) */
   trailing?: ReactNode;
   /** Inline with mode description (single hint line). */
   costHint?: string | null;

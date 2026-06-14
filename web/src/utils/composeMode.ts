@@ -91,6 +91,38 @@ export const TURN_STRATEGY_OPTIONS = UNIFIED_MODE_OPTIONS.filter(
 );
 
 const PLAN_AFTER_SEND_KEY = "agent-lab-plan-after-send";
+const PLAN_AFTER_SEND_SESSION_PREFIX = "agent-lab-plan-after-send:";
+
+function planAfterSendSessionKey(sessionId: string): string {
+  return `${PLAN_AFTER_SEND_SESSION_PREFIX}${sessionId}`;
+}
+
+export function getPlanAfterSendForSession(sessionId: string | null): boolean {
+  if (sessionId) {
+    try {
+      const flag = localStorage.getItem(planAfterSendSessionKey(sessionId));
+      if (flag === "1" || flag === "true") return true;
+      if (flag === "0" || flag === "false") return false;
+    } catch {
+      /* fall through */
+    }
+  }
+  return getPlanAfterSend();
+}
+
+export function setPlanAfterSendForSession(
+  sessionId: string | null,
+  on: boolean,
+): void {
+  if (sessionId) {
+    try {
+      localStorage.setItem(planAfterSendSessionKey(sessionId), on ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }
+  setPlanAfterSend(on);
+}
 
 export function turnStrategyDescription(profile: ComposerTurnProfile): string {
   const normalized = normalizeTurnProfile(profile);

@@ -69,6 +69,17 @@ def should_enable_plan_workflow(*, synthesize: bool) -> bool:
     return bool(synthesize)
 
 
+def plan_workflow_should_advance_on_turn(
+    run: dict[str, Any] | None,
+    *,
+    synthesize: bool,
+) -> bool:
+    """FSM ticks (scribe / peer / phase advance) only on explicit plan-mode sends."""
+    if not is_plan_workflow_active(run):
+        return False
+    return bool(synthesize)
+
+
 def apply_legacy_verified_turn_profile(
     folder: Path | None,
     run_meta: dict[str, Any],
@@ -553,6 +564,10 @@ def tick_plan_workflow_after_turn(
     pw = get_plan_workflow(run)
     phase = str(pw.get("phase") or "CLARIFY")
     out: dict[str, Any] = {"handled": True, "phase": phase}
+
+    if not synthesize:
+        out["discuss_only"] = True
+        return out
 
     if phase in _PLAN_CLARIFY_PHASES:
         if has_pending_inbox_question:

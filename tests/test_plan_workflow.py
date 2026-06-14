@@ -15,6 +15,7 @@ from agent_lab.plan_workflow import (
     get_plan_workflow,
     init_plan_workflow_on_plan_send,
     plan_workflow_public,
+    plan_workflow_should_advance_on_turn,
     reject_plan,
     set_plan_workflow_phase,
     should_enable_plan_workflow,
@@ -67,6 +68,32 @@ def test_tick_clarify_to_draft_when_inbox_clear(tmp_path: Path) -> None:
     assert tick.get("advance") == "DRAFT"
     assert get_plan_workflow(read_run_meta(folder))["phase"] == "DRAFT"
 
+
+def test_tick_clarify_discuss_send_does_not_advance(tmp_path: Path) -> None:
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    init_plan_workflow_on_plan_send(folder)
+    tick = tick_plan_workflow_after_turn(
+        folder,
+        synthesize=False,
+        cancelled=False,
+        plan_md="",
+        plan_before="",
+        has_pending_inbox_question=False,
+    )
+    assert tick.get("discuss_only") is True
+    assert tick.get("advance") is None
+    assert get_plan_workflow(read_run_meta(folder))["phase"] == "CLARIFY"
+
+
+def test_plan_workflow_should_advance_only_on_plan_send(tmp_path: Path) -> None:
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    init_plan_workflow_on_plan_send(folder)
+    run = read_run_meta(folder)
+    assert plan_workflow_should_advance_on_turn(run, synthesize=True) is True
+    assert plan_workflow_should_advance_on_turn(run, synthesize=False) is False
+    assert plan_workflow_should_advance_on_turn({}, synthesize=True) is False
 
 def test_derive_loop_goal_from_plan() -> None:
     derived = derive_loop_goal_from_plan(SAMPLE_PLAN)

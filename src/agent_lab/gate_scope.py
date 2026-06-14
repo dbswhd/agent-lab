@@ -48,18 +48,20 @@ def _pending_by_kind(run_meta: dict[str, Any]) -> dict[str, list[dict[str, Any]]
 
 
 def compute_gate_scope(run_meta: dict[str, Any] | None) -> GateScope:
-    """Policy table: dev=discuss pause on harvest question; assistant=soft discuss."""
+    """Policy table: dev=discuss pause on Human-direction inbox; assistant=soft discuss."""
+    from agent_lab.inbox_harvest import has_pending_discuss_pause_question
+
     profile = get_gate_profile(run_meta)
     pending = _pending_by_kind(run_meta or {})
-    has_question = bool(pending["question"])
+    has_pause_q = has_pending_discuss_pause_question(run_meta or {})
     has_build = bool(pending["build"])
 
     if profile == "assistant":
         discuss: DiscussPolicy = "allow"
     else:
-        discuss = "pause" if has_question else "allow"
+        discuss = "pause" if has_pause_q else "allow"
 
-    plan_workflow: PlanWorkflowPolicy = "block_clarify" if has_question else "allow"
+    plan_workflow: PlanWorkflowPolicy = "block_clarify" if has_pause_q else "allow"
     execute: ExecutePolicy = "block" if has_build else "allow"
 
     return GateScope(

@@ -192,10 +192,6 @@ def test_remaining_gaps_slack_inbox_ref_recovery_contract():
     assert "activateInboxRef" in room
     assert "handleInboxRefClick" in room
     assert "onRefClick={handleInboxRefClick}" in room
-    assert "ComposerInboxModeToggle" in composer
-    assert "onInboxSyncModeChange" in composer
-    assert "fetchInboxSettings" in room
-    assert "patchInboxSettings" in room
     assert "DiscussRecoveryBanner" in room
     assert "postMissionDiscussRecovery" in room
     assert "DiscussRecoveryBanner" in discuss

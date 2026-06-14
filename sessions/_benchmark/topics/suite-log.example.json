@@ -1,0 +1,20 @@
+[
+  {
+    "id": "M1",
+    "session": "sessions/2026-06-12-weekly-kpi-plan",
+    "repeat": 1,
+    "pass": true,
+    "human_minutes": 12,
+    "tags": ["scribe"],
+    "notes": "plan ## 지금 실행에 action 2건; ref_validity 관찰 OK"
+  },
+  {
+    "id": "M4",
+    "session": "sessions/2026-06-12-challenge-amend",
+    "repeat": 2,
+    "pass": false,
+    "human_minutes": 18,
+    "tags": ["communicate"],
+    "notes": "CHALLENGE만 있고 AMEND 없음 — repeat 2 median 집계용 예시"
+  }
+]

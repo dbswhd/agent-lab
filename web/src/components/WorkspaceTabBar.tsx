@@ -4,13 +4,13 @@ import { messages } from "../i18n/messages";
 
 const TAB_META: {
   id: WorkspaceTab;
-  icon: "transcript" | "work" | "run" | "artifacts" | "files" | "preview" | "terminal";
+  icon: "transcript" | "plan" | "background" | "diff" | "files" | "preview" | "terminal";
   shortcut: string;
 }[] = [
   { id: "transcript", icon: "transcript", shortcut: "⌘1" },
-  { id: "work", icon: "work", shortcut: "⌘2" },
-  { id: "run", icon: "run", shortcut: "⌘3" },
-  { id: "artifacts", icon: "artifacts", shortcut: "⌘4" },
+  { id: "plan", icon: "plan", shortcut: "⌘2" },
+  { id: "background", icon: "background", shortcut: "⌘3" },
+  { id: "diff", icon: "diff", shortcut: "⌘4" },
   { id: "files", icon: "files", shortcut: "⌘5" },
   { id: "preview", icon: "preview", shortcut: "⌘6" },
   { id: "terminal", icon: "terminal", shortcut: "⌘7" },
@@ -48,23 +48,25 @@ function TabIcon({ kind }: { kind: (typeof TAB_META)[number]["icon"] }) {
           <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
         </svg>
       );
-    case "work":
+    case "plan":
       return (
         <svg {...common}>
           <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
         </svg>
       );
-    case "run":
+    case "background":
       return (
         <svg {...common}>
           <polygon points="8,5 19,12 8,19" fill="currentColor" stroke="none" />
         </svg>
       );
-    case "artifacts":
+    case "diff":
       return (
         <svg {...common}>
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
-          <path d="M14 2v6h6" />
+          <path d="M8 5h10" />
+          <path d="M8 12h10" />
+          <path d="M8 19h10" />
+          <path d="M4 12h.01" />
         </svg>
       );
     case "files":

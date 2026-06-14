@@ -67,14 +67,59 @@ import {
 type ListTab = "active" | "archived";
 type ShellView = "workspace" | "settings";
 
+function useTauriFullscreen(inTauri: boolean): boolean {
+  const [fullscreen, setFullscreen] = useState(false);
+
+  useEffect(() => {
+    if (!inTauri) {
+      setFullscreen(false);
+      return;
+    }
+
+    let cancelled = false;
+    let unlistenResize: (() => void) | null = null;
+    let unlistenFocus: (() => void) | null = null;
+
+    const refresh = async () => {
+      try {
+        const { getCurrentWindow } = await import("@tauri-apps/api/window");
+        const current = await getCurrentWindow().isFullscreen();
+        if (!cancelled) setFullscreen(current);
+      } catch {
+        if (!cancelled) setFullscreen(false);
+      }
+    };
+
+    void (async () => {
+      const { getCurrentWindow } = await import("@tauri-apps/api/window");
+      const currentWindow = getCurrentWindow();
+      await refresh();
+      unlistenResize = await currentWindow.onResized(() => {
+        void refresh();
+      });
+      unlistenFocus = await currentWindow.onFocusChanged(() => {
+        void refresh();
+      });
+    })().catch(() => {
+      if (!cancelled) setFullscreen(false);
+    });
+
+    return () => {
+      cancelled = true;
+      unlistenResize?.();
+      unlistenFocus?.();
+    };
+  }, [inTauri]);
+
+  return fullscreen;
+}
+
 function AppTitlebar({
-  inTauri,
   sidebarOpen,
   onToggleSidebar,
   shellView,
   fallbackTitle,
 }: {
-  inTauri: boolean;
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
   shellView: ShellView;
@@ -91,13 +136,6 @@ function AppTitlebar({
     <MacTitlebar
       leading={
         <>
-          {!inTauri ? (
-            <div className="traffic-lights" aria-hidden>
-              <span className="close" />
-              <span className="minimize" />
-              <span className="zoom" />
-            </div>
-          ) : null}
           <SidebarToggle
             open={sidebarOpen}
             onToggle={onToggleSidebar}
@@ -450,6 +488,7 @@ export default function App() {
   }
 
   const inTauri = isTauriApp();
+  const fullscreen = useTauriFullscreen(inTauri);
   const roomSessionId = composerNew ? null : selectedId;
   const roomSessionDetail =
     roomSessionId && detail?.id === roomSessionId ? detail : null;
@@ -464,16 +503,17 @@ export default function App() {
     (composerNew ? "Session" : null);
 
   return (
-    <div className="app">
+    <div className={`app${fullscreen ? " app--fullscreen" : ""}`}>
       <MacNotificationProvider>
         <TitlebarSlotsProvider>
-          <AppTitlebar
-            inTauri={inTauri}
-            sidebarOpen={sidebarOpen}
-            onToggleSidebar={toggleSidebar}
-            shellView={shellView}
-            fallbackTitle={titlebarFallbackTopic}
-          />
+          {shellView === "workspace" ? null : (
+            <AppTitlebar
+              sidebarOpen={sidebarOpen}
+              onToggleSidebar={toggleSidebar}
+              shellView={shellView}
+              fallbackTitle={titlebarFallbackTopic}
+            />
+          )}
 
           <div
             className={`shell${sidebarOpen ? "" : " shell--rail-collapsed"}`}

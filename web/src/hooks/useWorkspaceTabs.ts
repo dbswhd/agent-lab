@@ -4,7 +4,9 @@ import {
   resolveDefaultWorkspaceTab,
   normalizeWorkspaceTab,
   type InspectorTab,
+  type RightPanelMode,
   type TabAutoContext,
+  type ToolPanelTab,
   type WorkspaceTab,
   workspaceTabFromLegacy,
 } from "../utils/workspaceTabs";
@@ -18,11 +20,29 @@ type Options = {
   sessionKey: string;
   isNew: boolean;
   autoContext: TabAutoContext;
+  initialRightPanelMode?: RightPanelMode;
+  onToolRequested?: () => void;
 };
 
-export function useWorkspaceTabs({ sessionKey, isNew, autoContext }: Options) {
+function isToolPanelTab(tab: WorkspaceTab): tab is ToolPanelTab {
+  return tab !== "transcript";
+}
+
+function rightPanelModeFromInspectorTab(tab: InspectorTab): RightPanelMode {
+  return tab === "tools" ? "plan" : tab;
+}
+
+export function useWorkspaceTabs({
+  sessionKey,
+  isNew,
+  autoContext,
+  initialRightPanelMode = "overview",
+  onToolRequested,
+}: Options) {
   const [workspaceTab, setWorkspaceTabState] = useState<WorkspaceTab>("transcript");
   const [inspectorTab, setInspectorTabState] = useState<InspectorTab>("overview");
+  const [rightPanelMode, setRightPanelModeState] =
+    useState<RightPanelMode>(initialRightPanelMode);
   const [workspaceTabPinned, setWorkspaceTabPinned] = useState(false);
   const workspacePinnedRef = useRef(false);
   const inspectorPinnedRef = useRef(false);
@@ -34,13 +54,43 @@ export function useWorkspaceTabs({ sessionKey, isNew, autoContext }: Options) {
   const setWorkspaceTab = useCallback((tab: WorkspaceTab) => {
     workspacePinnedRef.current = true;
     setWorkspaceTabPinned(true);
-    setWorkspaceTabState(tab);
-  }, []);
+    if (!isToolPanelTab(tab)) {
+      setWorkspaceTabState("transcript");
+      return;
+    }
+    setWorkspaceTabState("transcript");
+    setRightPanelModeState(tab);
+    inspectorPinnedRef.current = true;
+    setInspectorTabState("tools");
+    onToolRequested?.();
+  }, [onToolRequested]);
 
   const setInspectorTab = useCallback((tab: InspectorTab) => {
     inspectorPinnedRef.current = true;
     setInspectorTabState(tab);
+    setRightPanelModeState(rightPanelModeFromInspectorTab(tab));
   }, []);
+
+  const setRightPanelMode = useCallback((mode: RightPanelMode) => {
+    workspacePinnedRef.current = true;
+    setWorkspaceTabPinned(true);
+    setWorkspaceTabState("transcript");
+    setRightPanelModeState(mode);
+    if (mode === "overview" || mode === "tasks" || mode === "inbox") {
+      setInspectorTabState(mode);
+    } else {
+      setInspectorTabState("tools");
+    }
+    onToolRequested?.();
+  }, [onToolRequested]);
+
+  const setToolPanelTab = useCallback((tab: ToolPanelTab) => {
+    setRightPanelMode(tab);
+  }, [setRightPanelMode]);
+
+  const openRightPanelMode = useCallback((mode: RightPanelMode) => {
+    setRightPanelMode(mode);
+  }, [setRightPanelMode]);
 
   useEffect(() => {
     const prevSessionKey = prevSessionKeyRef.current;
@@ -52,6 +102,7 @@ export function useWorkspaceTabs({ sessionKey, isNew, autoContext }: Options) {
       // First message bound a session id — keep Transcript visible while SSE streams.
       setWorkspaceTabState("transcript");
       setInspectorTabState("overview");
+      setRightPanelModeState("overview");
       return;
     }
 
@@ -64,10 +115,13 @@ export function useWorkspaceTabs({ sessionKey, isNew, autoContext }: Options) {
     if (isNew) {
       setWorkspaceTabState("transcript");
       setInspectorTabState("overview");
+      setRightPanelModeState("overview");
       return;
     }
-    setWorkspaceTabState(resolveDefaultWorkspaceTab(autoContext));
-    setInspectorTabState(resolveDefaultInspectorTab(autoContext));
+    setWorkspaceTabState("transcript");
+    const defaultInspector = resolveDefaultInspectorTab(autoContext);
+    setInspectorTabState(defaultInspector);
+    setRightPanelModeState(rightPanelModeFromInspectorTab(defaultInspector));
   }, [
     sessionKey,
     isNew,
@@ -91,7 +145,9 @@ export function useWorkspaceTabs({ sessionKey, isNew, autoContext }: Options) {
 
     if (!inspectorPinnedRef.current) {
       if (runStarted || runEnded || blockerAppeared) {
-        setInspectorTabState(resolveDefaultInspectorTab(autoContext));
+        const next = resolveDefaultInspectorTab(autoContext);
+        setInspectorTabState(next);
+        setRightPanelModeState(rightPanelModeFromInspectorTab(next));
       }
     }
   }, [autoContext, isNew]);
@@ -125,13 +181,23 @@ export function useWorkspaceTabs({ sessionKey, isNew, autoContext }: Options) {
   return {
     workspaceTab,
     inspectorTab,
+    toolPanelTab:
+      rightPanelMode === "overview" ||
+      rightPanelMode === "tasks" ||
+      rightPanelMode === "inbox"
+        ? "plan"
+        : rightPanelMode,
+    rightPanelMode,
     suggestedWorkspaceTab,
     workspaceTabPinned,
     setWorkspaceTab,
     setInspectorTab,
-    openWorkTab: () => setWorkspaceTab("work"),
-    openPlanTab: () => setWorkspaceTab("work"),
-    openReviewTab: () => setWorkspaceTab("work"),
+    setToolPanelTab,
+    setRightPanelMode,
+    openRightPanelMode,
+    openWorkTab: () => setWorkspaceTab("plan"),
+    openPlanTab: () => setWorkspaceTab("plan"),
+    openReviewTab: () => setWorkspaceTab("plan"),
     openTranscriptTab: () => setWorkspaceTab("transcript"),
   };
 }

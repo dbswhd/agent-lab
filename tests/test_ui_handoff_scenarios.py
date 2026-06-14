@@ -31,17 +31,32 @@ def test_scenario_a_discuss_only_contract():
 
 
 def test_scenario_b_plan_synthesis_contract():
-    """B: plan after send → plan chip + Work tab."""
+    """B: plan after send → plan chip + Workbench/Plan surface."""
     room = _read("web", "src", "components", "RoomChat.tsx")
-    work = _read("web", "src", "components", "WorkPanel.tsx")
+    work = _read("web", "src", "components", "WorkToolPanel.tsx")
     plan = _read("web", "src", "components", "PlanExecutePanel.tsx")
 
     assert "planAfterSend" in room
     assert "modePlan" in room or "plan_updated" in _read("web", "src", "utils", "sendReceipt.ts")
-    assert "openPlanTab" in room or 'workspaceTab === "work"' in room
+    assert "openPlanTab" in room
+    assert 'rightPanelMode === "plan"' in room
+    assert "WorkbenchPanel" in room
     assert "PlanExecutePanel" in work
+    assert "MissionOverviewSection" not in work
     assert "plan-card" in plan
     assert "지금 실행" in plan or "nowItems" in plan
+
+
+def test_scenario_b_diff_tool_contract():
+    """B2: workbench diff mode renders execution diffs."""
+    room = _read("web", "src", "components", "RoomChat.tsx")
+    diff = _read("web", "src", "components", "DiffToolPanel.tsx")
+
+    assert 'rightPanelMode === "diff"' in room
+    assert "DiffToolPanel" in room
+    assert "PlanDiffStat" in diff
+    assert "SideBySideDiff" in diff
+    assert "출력할 diff 없음" in diff
 
 
 def test_scenario_c_execute_task_contract():

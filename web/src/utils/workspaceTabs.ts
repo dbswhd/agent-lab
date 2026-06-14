@@ -1,17 +1,25 @@
 export type WorkspaceTab =
   | "transcript"
-  | "work"
-  | "run"
-  | "artifacts"
+  | "plan"
+  | "background"
+  | "diff"
   | "files"
   | "preview"
   | "terminal";
 
-/** @deprecated Use `work` */
-export type LegacyWorkspaceTab = "plan" | "review";
+export type ToolPanelTab = Exclude<WorkspaceTab, "transcript">;
 
-// ── P0: Overview / Tasks / Inbox  (was Tasks / Activity / Quick) ──
-export type InspectorTab = "overview" | "tasks" | "inbox";
+export type RightPanelMode =
+  | "overview"
+  | "tasks"
+  | "inbox"
+  | ToolPanelTab;
+
+/** @deprecated Use `plan` */
+export type LegacyWorkspaceTab = "work" | "run" | "artifacts" | "review";
+
+// ── P0: Overview / Tasks / Inbox / Tools  (was Tasks / Activity / Quick) ──
+export type InspectorTab = "overview" | "tasks" | "inbox" | "tools";
 
 export const WORKSPACE_TABS: {
   id: WorkspaceTab;
@@ -19,9 +27,9 @@ export const WORKSPACE_TABS: {
   shortcut: string;
 }[] = [
   { id: "transcript", label: "Transcript", shortcut: "⌘1" },
-  { id: "work",       label: "Work",       shortcut: "⌘2" },
-  { id: "run",        label: "Run",         shortcut: "⌘3" },
-  { id: "artifacts",  label: "Artifacts",  shortcut: "⌘4" },
+  { id: "plan",       label: "Plan",       shortcut: "⌘2" },
+  { id: "background", label: "Background", shortcut: "⌘3" },
+  { id: "diff",       label: "Diff",       shortcut: "⌘4" },
   { id: "files",      label: "Files",      shortcut: "⌘5" },
   { id: "preview",    label: "Preview",    shortcut: "⌘6" },
   { id: "terminal",   label: "Terminal",   shortcut: "⌘7" },
@@ -34,6 +42,7 @@ export const INSPECTOR_TABS: {
   { id: "overview", label: "Overview" },
   { id: "tasks",    label: "Tasks"    },
   { id: "inbox",    label: "Inbox"    },
+  { id: "tools",    label: "Tools"    },
 ];
 
 export type TabAutoContext = {
@@ -47,13 +56,14 @@ export type TabAutoContext = {
 export function normalizeWorkspaceTab(
   tab: WorkspaceTab | LegacyWorkspaceTab,
 ): WorkspaceTab {
-  if (tab === "plan" || tab === "review") return "work";
+  if (tab === "work" || tab === "review" || tab === "artifacts") return "plan";
+  if (tab === "run") return "background";
   return tab;
 }
 
 export function resolveDefaultWorkspaceTab(ctx: TabAutoContext): WorkspaceTab {
-  if (ctx.hasPendingExecution || ctx.hasDryRunDiff) return "work";
-  if (ctx.planMd.trim()) return "work";
+  if (ctx.hasDryRunDiff) return "diff";
+  if (ctx.hasPendingExecution || ctx.planMd.trim()) return "plan";
   return "transcript";
 }
 
@@ -63,5 +73,5 @@ export function resolveDefaultInspectorTab(ctx: TabAutoContext): InspectorTab {
 }
 
 export function workspaceTabFromLegacy(tab: "chat" | "plan"): WorkspaceTab {
-  return tab === "plan" ? "work" : "transcript";
+  return tab === "plan" ? "plan" : "transcript";
 }

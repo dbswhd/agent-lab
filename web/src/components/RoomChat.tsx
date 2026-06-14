@@ -28,8 +28,6 @@ import {
   parseTranscript,
   topicAsUserMessage,
 } from "../utils/transcript";
-import { WorkspaceTabBar } from "./WorkspaceTabBar";
-import { InspectorPane } from "./InspectorPane";
 import {
   CommandPalette,
   workspacePaletteActions,
@@ -51,14 +49,15 @@ import {
 import { patchTurnMessages } from "../run/runSessionSsePatch";
 import {
   deriveRunningAgentSlots,
-  runningAgentsSummary,
 } from "../run/runningAgents";
 import { LiveAgentsStrip } from "./LiveAgentsStrip";
 import {
   getInspectorOpen,
-  getInspectorWidth,
+  getLastRightPanelMode,
+  getWorkbenchPanelWidth,
   setInspectorOpen,
-  setInspectorWidth,
+  setLastRightPanelMode,
+  setWorkbenchPanelWidth,
 } from "../utils/inspectorPanePrefs";
 import {
   getShowHumanSynthesis,
@@ -70,13 +69,8 @@ import {
 import { TranscriptViewOptions } from "./TranscriptViewOptions";
 import { ChatBubble, ReplyWaitingBubble } from "./ChatBubble";
 import { HumanInboxPanel } from "./HumanInboxPanel";
-import { TitlebarInboxButton } from "./TitlebarInboxButton";
 import { ChatComposer, type PendingFile } from "./ChatComposer";
-import { ContextSidebarToggle } from "./ContextSidebarToggle";
-import { ThemeToggle } from "./ThemeToggle";
 import { ShellPortal } from "./ShellPortal";
-import { openCommandPalette } from "../utils/desktopShortcuts";
-import { useTitlebarSlots } from "./TitlebarSlotsContext";
 import { NotificationCenter } from "./NotificationCenter";
 import { useNotificationUnread } from "./NotificationCenter";
 import { ContextOverviewPanel } from "./ContextOverviewPanel";
@@ -84,7 +78,8 @@ import { ContextTasksPanel } from "./ContextTasksPanel";
 import { GoalLoopBanner } from "./GoalLoopBanner";
 import { PlanApprovalPanel } from "./PlanApprovalPanel";
 import { VerifiedLoopBanner } from "./VerifiedLoopBanner";
-import { WorkPanel } from "./WorkPanel";
+import { WorkToolPanel } from "./WorkToolPanel";
+import { HumanGatePanel } from "./HumanGatePanel";
 import { AgentPermissionAlert } from "./AgentPermissionAlert";
 import { useMacNotifications } from "./MacNotificationHost";
 import type { AgentPermissions } from "../utils/agentPermissions";
@@ -132,8 +127,6 @@ import {
   setTurnProfile,
   type ComposerTurnProfile,
 } from "../utils/turnProfile";
-import { RunLogPanel } from "./RunLogPanel";
-import { ArtifactsListPanel } from "./ArtifactsListPanel";
 import { WorkspaceFilesPanel } from "./WorkspaceFilesPanel";
 import { PreviewPanel } from "./PreviewPanel";
 import { TerminalPanel } from "./TerminalPanel";
@@ -157,7 +150,6 @@ import {
   fetchSessionAgentCapabilities,
   fetchSessionSetupOptions,
   fetchSessionTasks,
-  type PlanExecutionRecord,
   type RoomObjection,
   type RoomTasksPayload,
 } from "../api/client";
@@ -209,6 +201,9 @@ import {
   ScrollToBottomButton,
   useMessagesScroll,
 } from "./ScrollToBottomButton";
+import { WorkbenchPanel } from "./WorkbenchPanel";
+import { WorkspaceChrome } from "./WorkspaceChrome";
+import { DiffToolPanel } from "./DiffToolPanel";
 
 const LONG_RUN_HINT_MS = Number(
   import.meta.env.VITE_ROOM_LONG_RUN_HINT_MS || "180000",
@@ -311,11 +306,9 @@ export function RoomChat({
   const runSessionKey = sessionId ?? liveRunSessionKey ?? PENDING_KEY;
   const {
     messages,
-    turnMessages,
     running,
     runBusy,
     synthesizing,
-    topologyActive,
     setSynthesizing,
   } = useSessionRunState(runSessionKey);
   const [error, setError] = useState<string | null>(null);
@@ -332,7 +325,8 @@ export function RoomChat({
     blocked: boolean;
   } | null>(null);
   const [inspectorOpen, setInspectorOpenState] = useState(getInspectorOpen);
-  const [inspectorWidth, setInspectorWidthState] = useState(getInspectorWidth);
+  const [workbenchPanelWidth, setWorkbenchPanelWidthState] =
+    useState(getWorkbenchPanelWidth);
   const [roomTasks, setRoomTasks] = useState<RoomTasksPayload | null>(null);
   const [tasksLoading, setTasksLoading] = useState(false);
   const [planMd, setPlanMd] = useState("");
@@ -435,9 +429,9 @@ export function RoomChat({
   const [consensusProposal, setConsensusProposal] =
     useState<ConsensusDryRunProposal | null>(null);
   const [consensusGateBusy, setConsensusGateBusy] = useState(false);
-  const [longRunning, setLongRunning] = useState(false);
-  const [runLockStuck, setRunLockStuck] = useState(false);
-  const [releasingLock, setReleasingLock] = useState(false);
+  const [, setLongRunning] = useState(false);
+  const [, setRunLockStuck] = useState(false);
+  const [, setReleasingLock] = useState(false);
   const longRunHintRef = useRef<number | null>(null);
   const [agentCapabilities, setAgentCapabilities] = useState<AgentCapabilitiesMap>(
     () => cloneCapabilities(DEFAULT_AGENT_CAPABILITIES),
@@ -632,12 +626,15 @@ export function RoomChat({
         (roomTasks.open_objection_count ?? 0) > 0),
   );
 
+  const openInspectorPane = useCallback(() => {
+    setInspectorOpenState(true);
+    setInspectorOpen(true);
+  }, []);
+
   const {
-    workspaceTab,
-    inspectorTab,
-    workspaceTabPinned,
+    rightPanelMode,
     setWorkspaceTab,
-    setInspectorTab,
+    setRightPanelMode,
     openWorkTab,
     openReviewTab,
     openPlanTab,
@@ -645,6 +642,8 @@ export function RoomChat({
   } = useWorkspaceTabs({
     sessionKey: sessionId ?? "new",
     isNew: !sessionId,
+    initialRightPanelMode: getLastRightPanelMode(),
+    onToolRequested: openInspectorPane,
     autoContext: {
       running,
       hasPendingExecution,
@@ -653,6 +652,10 @@ export function RoomChat({
       hasBlocker,
     },
   });
+
+  useEffect(() => {
+    setLastRightPanelMode(rightPanelMode);
+  }, [rightPanelMode]);
 
   const handleInboxBuildStarted = useCallback(() => {
     openReviewTab();
@@ -692,10 +695,8 @@ export function RoomChat({
   }, [refreshInboxPending, refreshSessionMeta]);
 
   const openHumanInbox = useCallback(() => {
-    setInspectorOpenState(true);
-    setInspectorOpen(true);
-    setInspectorTab("inbox");
-  }, [setInspectorTab]);
+    setRightPanelMode("inbox");
+  }, [setRightPanelMode]);
 
   const handleNotificationOpen = useCallback(
     (note: AppNotification) => {
@@ -706,9 +707,7 @@ export function RoomChat({
         return;
       }
       if (action.type === "inspector") {
-        setInspectorOpenState(true);
-        setInspectorOpen(true);
-        setInspectorTab(action.tab ?? "tasks");
+        setRightPanelMode(action.tab ?? "tasks");
         return;
       }
       if (action.type === "settings") {
@@ -718,7 +717,7 @@ export function RoomChat({
       openWorkTab();
       setWorkFocus(action.focus ?? "plan");
     },
-    [onOpenSettings, openHumanInbox, openWorkTab, setInspectorTab],
+    [onOpenSettings, openHumanInbox, openWorkTab, setRightPanelMode],
   );
 
   useEffect(() => {
@@ -728,9 +727,7 @@ export function RoomChat({
         return;
       }
       if (action.type === "inspector") {
-        setInspectorOpen(true);
-        setInspectorOpenState(true);
-        setInspectorTab(action.tab ?? "tasks");
+        setRightPanelMode(action.tab ?? "tasks");
         return;
       }
       if (action.type === "settings") {
@@ -740,15 +737,15 @@ export function RoomChat({
       openWorkTab();
       setWorkFocus(action.focus ?? "plan");
     });
-  }, [onOpenSettings, openHumanInbox, openWorkTab, setInspectorTab]);
+  }, [onOpenSettings, openHumanInbox, openWorkTab, setRightPanelMode]);
 
   const showExecuteQueueStrip =
     tweaks.execQueueDemo === "hidden"
       ? false
       : tweaks.execQueueDemo === "normal" || tweaks.execQueueDemo === "blocked"
-        ? true
-        : Boolean(sessionId) &&
-          workspaceTab !== "work" &&
+      ? true
+      : Boolean(sessionId) &&
+          !(inspectorOpen && rightPanelMode === "plan") &&
           hasPendingExecution;
   const demoExecPending =
     tweaks.execQueueDemo === "blocked"
@@ -792,9 +789,9 @@ export function RoomChat({
 
   const showConsensusDryRunGate =
     !showExecuteQueueStrip &&
-    (tweaks.consensusGateDemo ||
+      (tweaks.consensusGateDemo ||
       (Boolean(sessionId) &&
-        workspaceTab !== "work" &&
+        !(inspectorOpen && rightPanelMode === "plan") &&
         consensusProposal != null));
 
   const visibleMessages = useMemo(() => {
@@ -843,8 +840,7 @@ export function RoomChat({
       setReleasingLock(false);
     }
   }, []);
-  const transcriptActive =
-    workspaceTab === "transcript" || (workspaceTab === "work" && !planMd);
+  const transcriptActive = true;
   const typingAgents = messages.filter(
     (m) => m.typing && isReplyWaitRole(m.role),
   );
@@ -858,19 +854,10 @@ export function RoomChat({
     `${sessionId ?? "new"}:chat`,
   );
 
-  const planExecutions = useMemo(
-    () =>
-      (session?.run?.executions as PlanExecutionRecord[] | undefined) ?? [],
-    [session?.run?.executions],
-  );
-
-  const latestExecution = useMemo(() => {
-    if (!planExecutions.length) return null;
-    return planExecutions[planExecutions.length - 1] ?? null;
-  }, [planExecutions]);
+  const planExecutions = planExecute.executions;
 
   useEffect(() => {
-    if (workspaceTab !== "work" || planActionFocusIndex == null) {
+    if (rightPanelMode !== "plan" || planActionFocusIndex == null) {
       return;
     }
     const index = planActionFocusIndex;
@@ -883,7 +870,7 @@ export function RoomChat({
       setPlanActionFocusIndex(null);
     }, 80);
     return () => window.clearTimeout(timer);
-  }, [workspaceTab, planActionFocusIndex, scrollElRef]);
+  }, [rightPanelMode, planActionFocusIndex, scrollElRef]);
 
   const isNew = !sessionId;
   const notificationUnread = useNotificationUnread();
@@ -934,9 +921,12 @@ export function RoomChat({
     });
   }, []);
 
-  const commitInspectorWidth = useCallback((width: number) => {
-    setInspectorWidthState(width);
-    setInspectorWidth(width);
+  const setActiveWorkbenchWidth = useCallback((width: number) => {
+    setWorkbenchPanelWidthState(width);
+  }, []);
+  const commitWorkbenchWidth = useCallback((width: number) => {
+    setWorkbenchPanelWidthState(width);
+    setWorkbenchPanelWidth(width);
   }, []);
 
   useEffect(() => {
@@ -1154,7 +1144,7 @@ export function RoomChat({
   );
 
   useEffect(() => {
-    if (highlightChatLine == null || workspaceTab !== "transcript") return;
+    if (highlightChatLine == null) return;
     const root = scrollElRef.current;
     const el = root?.querySelector(
       `[data-chat-line="${highlightChatLine}"]`,
@@ -1172,7 +1162,7 @@ export function RoomChat({
         window.clearTimeout(highlightTimerRef.current);
       }
     };
-  }, [highlightChatLine, workspaceTab, messages, scrollElRef]);
+  }, [highlightChatLine, messages, scrollElRef]);
 
   const handleStop = useCallback(() => {
     const runningIds = getRunningSessionIds();
@@ -2246,15 +2236,15 @@ export function RoomChat({
   };
   const focusObjection = useCallback(
     (objectionId: string) => {
-      setInspectorTab("tasks");
+      setRightPanelMode("tasks");
       setTaskBarFocusObjection({ id: objectionId, nonce: Date.now() });
     },
-    [setInspectorTab],
+    [setRightPanelMode],
   );
   const focusTask = useCallback(
     (taskId: string) => {
       openTranscriptTab();
-      setInspectorTab("tasks");
+      setRightPanelMode("tasks");
       const task =
         roomTasks?.tasks?.find((t) => t.id === taskId) ??
         roomTasks?.claimable?.find((t) => t.id === taskId);
@@ -2282,7 +2272,7 @@ export function RoomChat({
           ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
       }, 60);
     },
-    [roomTasks, session?.chat, messages, openTranscriptTab, setInspectorTab],
+    [roomTasks, session?.chat, messages, openTranscriptTab, setRightPanelMode],
   );
 
   const requestComposerPrefill = useCallback(
@@ -2320,59 +2310,8 @@ export function RoomChat({
   const agentsBlocked =
     !running && !loading && selected.length === 0 && agents.length >= 0;
   const title = isNew ? "Session" : session?.topic || sessionId || "Session";
-
-  const titlebarTrailing = useMemo(
-    () => (
-      <>
-        {!isNew ? (
-          <TitlebarInboxButton
-            pendingCount={titlebarInboxPending}
-            onClick={openHumanInbox}
-          />
-        ) : null}
-        <button
-          type="button"
-          className="icon-btn"
-          title="⌘K"
-          aria-label="명령 팔레트"
-          onClick={openCommandPalette}
-        >
-          <svg
-            viewBox="0 0 24 24"
-            width="17"
-            height="17"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1.7}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden
-          >
-            <circle cx="11" cy="11" r="7" />
-            <path d="m21 21-4.3-4.3" />
-          </svg>
-        </button>
-        <ThemeToggle />
-        {!isNew ? (
-          <ContextSidebarToggle
-            open={inspectorOpen}
-            onToggle={toggleInspector}
-            badgeCount={notificationUnread}
-          />
-        ) : null}
-      </>
-    ),
-    [isNew, titlebarInboxPending, openHumanInbox, inspectorOpen, toggleInspector, notificationUnread],
-  );
-
-  useTitlebarSlots({
-    title,
-    meta:
-      !isNew || selected.length > 0
-        ? `${selected.length} agents`
-        : undefined,
-    trailing: titlebarTrailing,
-  });
+  const titleMeta =
+    !isNew || selected.length > 0 ? `${selected.length} agents` : undefined;
 
   const planMeta = buildPlanMetaView(session?.run);
   const composerPlanStale = composerPlanStaleNotice(session?.run);
@@ -2449,8 +2388,6 @@ export function RoomChat({
     [messages, running, synthesizing, runBusy, turnResolved.agents],
   );
 
-  const runningLabel = runningAgentsSummary(runningAgentSlots, locale);
-
   const paletteActions = useMemo(
     () => {
       const commandActions = slashCommands
@@ -2509,20 +2446,32 @@ export function RoomChat({
     ],
   );
 
-  const sessionArtifacts = roomTasks?.artifacts ?? [];
-
   return (
     <>
       <CommandPalette actions={paletteActions} />
 
-      <WorkspaceTabBar
-        active={workspaceTab}
-        onChange={setWorkspaceTab}
-        isNew={isNew}
+      <WorkspaceChrome
+        title={title}
+        meta={titleMeta}
+        sidebarOpen={_sidebarOpen}
+        rightPanelOpen={inspectorOpen}
+        rightPanelMode={rightPanelMode}
         locale={locale}
-        tabPinned={workspaceTabPinned}
+        inboxPendingCount={!isNew ? titlebarInboxPending ?? 0 : 0}
+        panelBadgeCount={
+          !isNew
+            ? notificationUnread +
+              (inspectorTasksBadge ?? 0) +
+              (inspectorInboxBadge ?? 0)
+            : 0
+        }
         running={running || synthesizing || runBusy}
-        runningLabel={runningLabel}
+        onToggleSidebar={_onToggleSidebar}
+        onToggleRightPanel={toggleInspector}
+        onSelectRightPanelMode={setRightPanelMode}
+        onOpenInbox={openHumanInbox}
+        onOpenSettings={onOpenSettings}
+        onStop={handleStop}
       />
 
       <LiveAgentsStrip
@@ -2535,9 +2484,7 @@ export function RoomChat({
           <div className="workspace-body">
             <div className="workspace-scroll scroll-y" ref={scrollRef}>
 
-      {(workspaceTab === "transcript" || workspaceTab === "work") &&
-      !isNew &&
-      sessionId ? (
+      {!isNew && sessionId ? (
         <div className="taskbar-dock">
           <RoomTaskBar
             sessionId={sessionId}
@@ -2612,70 +2559,6 @@ export function RoomChat({
         </div>
       ) : null}
 
-      {workspaceTab === "work" && sessionId ? (
-        <WorkPanel
-          sessionId={sessionId}
-          session={session}
-          planMd={planMd}
-          planMeta={planMeta}
-          planStaleNotice={workPlanStaleNotice}
-          workFocus={workFocus}
-          onWorkFocusHandled={() => setWorkFocus(null)}
-          synthesizing={synthesizing}
-          running={running}
-          runBusy={runBusy}
-          onSynthesizeNow={handleSynthesizeNow}
-          onPlanRefClick={handlePlanRefClick}
-          onFocusTask={focusTask}
-          onFocusObjection={focusObjection}
-          onSessionUpdated={refreshSessionMeta}
-          roomTasks={roomTasks}
-          cursorReady={agents.some((a) => a.id === "cursor" && a.ready)}
-          latestExecution={latestExecution}
-          hasPendingExecution={hasPendingExecution}
-          hasDryRunDiff={hasDryRunDiff}
-          workHookAlert={workHookAlert}
-          onDismissWorkHookAlert={() => setWorkHookAlert(null)}
-        />
-      ) : null}
-
-      {workspaceTab === "run" && !isNew ? (
-        <div className="run-tab-stack">
-          <RunLogPanel
-            sessionId={sessionId}
-            turnMessages={turnMessages}
-            running={running}
-            active={topologyActive}
-            runningAgents={runningAgentSlots}
-            onStop={handleStop}
-            longRunning={longRunning}
-            runLockStuck={runLockStuck}
-            releasingLock={releasingLock}
-            onReleaseLock={() => void handleReleaseRunLock()}
-          />
-          {sessionId ? (
-            <BackgroundTasksPanel sessionId={sessionId} />
-          ) : null}
-        </div>
-      ) : null}
-
-      {workspaceTab === "artifacts" && !isNew ? (
-        <ArtifactsListPanel items={sessionArtifacts} sessionId={sessionId} />
-      ) : null}
-
-      {workspaceTab === "files" && !isNew && sessionId ? (
-        <WorkspaceFilesPanel sessionId={sessionId} />
-      ) : null}
-
-      {workspaceTab === "preview" && !isNew && sessionId ? (
-        <PreviewPanel sessionId={sessionId} />
-      ) : null}
-
-      {workspaceTab === "terminal" && !isNew && sessionId ? (
-        <TerminalPanel sessionId={sessionId} />
-      ) : null}
-
-      {workspaceTab === "transcript" || isNew ? (
         <div className="transcript transcript--console">
             {!isNew && sessionId ? (
               <TranscriptViewOptions
@@ -2764,7 +2647,6 @@ export function RoomChat({
               />
             ))}
         </div>
-      ) : null}
 
       {transcriptActive && (
         <ScrollToBottomButton
@@ -2972,136 +2854,173 @@ export function RoomChat({
 
       {!isNew && inspectorOpen ? (
         <ShellPortal>
-          <InspectorPane
-          active={inspectorTab}
-          onChange={setInspectorTab}
-          open={inspectorOpen}
-          width={inspectorWidth}
-          onWidthChange={setInspectorWidthState}
-          onWidthCommit={commitInspectorWidth}
-          badges={{
-            inbox: inspectorInboxBadge,
-            tasks: inspectorTasksBadge,
-          }}
-        >
-          {inspectorTab === "overview" && session ? (
-            <ContextOverviewPanel
-              session={session}
-              sessionId={sessionId}
-              healthAgents={healthAgents}
-              goalView={goalView}
-              planMeta={planMeta}
-              onFocusObjection={focusObjection}
-            />
-          ) : null}
-          {inspectorTab === "tasks" ? (
-            <>
-              {sessionId && showPlanApproval ? (
-                <PlanApprovalPanel
-                  view={verifiedLoopView}
-                  planMd={session?.plan_md ?? ""}
-                  phase={planWorkflow?.phase ?? "HUMAN_PENDING"}
-                  objections={roomTasks?.open_objections ?? []}
-                  busy={verifiedLoopBusy || running || runBusy}
-                  error={verifiedLoopError}
-                  editGoal={verifiedEditGoal}
-                  editCriteria={verifiedEditCriteria}
-                  editPromise={verifiedEditPromise}
-                  onEditGoalChange={setVerifiedEditGoal}
-                  onEditCriteriaChange={setVerifiedEditCriteria}
-                  onEditPromiseChange={setVerifiedEditPromise}
-                  onFocusObjection={focusObjection}
-                  onApprove={() => void handleVerifiedApprove()}
-                  onReject={() => void handleVerifiedReject()}
-                />
-              ) : sessionId && showVerifiedLoop ? (
-                <VerifiedLoopBanner
-                  view={verifiedLoopView}
-                  busy={verifiedLoopBusy || running || runBusy}
-                  error={verifiedLoopError}
-                  editGoal={verifiedEditGoal}
-                  editCriteria={verifiedEditCriteria}
-                  editPromise={verifiedEditPromise}
-                  onEditGoalChange={setVerifiedEditGoal}
-                  onEditCriteriaChange={setVerifiedEditCriteria}
-                  onEditPromiseChange={setVerifiedEditPromise}
-                  onApprove={() => void handleVerifiedApprove()}
-                  onReject={() => void handleVerifiedReject()}
-                />
-              ) : sessionId && showGoalLoop ? (
-                <GoalLoopBanner
-                  goalView={goalView}
-                  goalText={goalText}
-                  goalBusy={goalBusy}
-                  goalError={goalError}
-                  onGoalTextChange={setGoalText}
-                  onSave={() => void handleGoalSave()}
-                  onCheck={() => void handleGoalCheck()}
-                  onContinueDiscuss={handleGoalContinueDiscuss}
-                />
-              ) : null}
-              <ContextTasksPanel
-              sessionId={sessionId ?? ""}
-              tasks={[
-                ...(roomTasks?.tasks ?? []),
-                ...(roomTasks?.claimable ?? []),
-              ]}
-              objections={roomTasks?.objections ?? []}
-              disabled={running || synthesizing || runBusy}
-              onChanged={refreshTasks}
-              onFocusTask={focusTask}
-              onFocusObjection={focusObjection}
-            />
-            </>
-          ) : null}
-          {inspectorTab === "inbox" ? (
-            <>
-              <div className="ctx-segmented" role="tablist" aria-label="Inbox filter">
-                {(["all", "activity", "questions", "build"] as const).map(
-                  (segment) => (
-                    <button
-                      key={segment}
-                      type="button"
-                      role="tab"
-                      aria-selected={inboxSegment === segment}
-                      className={inboxSegment === segment ? "is-active" : ""}
-                      onClick={() => setInboxSegment(segment)}
-                    >
-                      {segment === "all"
-                        ? localeMsg.inboxAll
-                        : segment === "activity"
-                          ? localeMsg.inboxActivity
-                          : segment === "questions"
-                            ? localeMsg.inboxQuestions
-                            : localeMsg.inboxBuild}
-                    </button>
-                  ),
-                )}
-              </div>
-              {inboxSegment !== "activity" ? (
-                <HumanInboxPanel
-                  sessionId={sessionId}
-                  reloadKey={inboxReloadKey}
-                  planRevision={currentPlanRevision}
-                  onResolved={handleInboxResolved}
-                  onBuildStarted={handleInboxBuildStarted}
+          <WorkbenchPanel
+            mode={rightPanelMode}
+            locale={locale}
+            open={inspectorOpen}
+            width={workbenchPanelWidth}
+            onWidthChange={setActiveWorkbenchWidth}
+            onWidthCommit={commitWorkbenchWidth}
+            onClose={toggleInspector}
+          >
+            {rightPanelMode === "overview" && session ? (
+              <ContextOverviewPanel
+                session={session}
+                sessionId={sessionId}
+                healthAgents={healthAgents}
+                goalView={goalView}
+                planMeta={planMeta}
+                onFocusObjection={focusObjection}
+              />
+            ) : null}
+            {rightPanelMode === "tasks" ? (
+              <>
+                <HumanGatePanel>
+                  {sessionId && showPlanApproval ? (
+                    <PlanApprovalPanel
+                      view={verifiedLoopView}
+                      planMd={session?.plan_md ?? ""}
+                      phase={planWorkflow?.phase ?? "HUMAN_PENDING"}
+                      objections={roomTasks?.open_objections ?? []}
+                      busy={verifiedLoopBusy || running || runBusy}
+                      error={verifiedLoopError}
+                      editGoal={verifiedEditGoal}
+                      editCriteria={verifiedEditCriteria}
+                      editPromise={verifiedEditPromise}
+                      onEditGoalChange={setVerifiedEditGoal}
+                      onEditCriteriaChange={setVerifiedEditCriteria}
+                      onEditPromiseChange={setVerifiedEditPromise}
+                      onFocusObjection={focusObjection}
+                      onApprove={() => void handleVerifiedApprove()}
+                      onReject={() => void handleVerifiedReject()}
+                    />
+                  ) : sessionId && showVerifiedLoop ? (
+                    <VerifiedLoopBanner
+                      view={verifiedLoopView}
+                      busy={verifiedLoopBusy || running || runBusy}
+                      error={verifiedLoopError}
+                      editGoal={verifiedEditGoal}
+                      editCriteria={verifiedEditCriteria}
+                      editPromise={verifiedEditPromise}
+                      onEditGoalChange={setVerifiedEditGoal}
+                      onEditCriteriaChange={setVerifiedEditCriteria}
+                      onEditPromiseChange={setVerifiedEditPromise}
+                      onApprove={() => void handleVerifiedApprove()}
+                      onReject={() => void handleVerifiedReject()}
+                    />
+                  ) : sessionId && showGoalLoop ? (
+                    <GoalLoopBanner
+                      goalView={goalView}
+                      goalText={goalText}
+                      goalBusy={goalBusy}
+                      goalError={goalError}
+                      onGoalTextChange={setGoalText}
+                      onSave={() => void handleGoalSave()}
+                      onCheck={() => void handleGoalCheck()}
+                      onContinueDiscuss={handleGoalContinueDiscuss}
+                    />
+                  ) : null}
+                </HumanGatePanel>
+                <ContextTasksPanel
+                  sessionId={sessionId ?? ""}
+                  tasks={[
+                    ...(roomTasks?.tasks ?? []),
+                    ...(roomTasks?.claimable ?? []),
+                  ]}
+                  objections={roomTasks?.objections ?? []}
                   disabled={running || synthesizing || runBusy}
-                  presentation="inspector"
-                  kindFilter={
-                    inboxSegment === "questions"
-                      ? "question"
-                      : inboxSegment === "build"
-                        ? "build"
-                        : undefined
-                  }
+                  onChanged={refreshTasks}
+                  onFocusTask={focusTask}
+                  onFocusObjection={focusObjection}
                 />
-              ) : null}
-              {inboxSegment === "all" || inboxSegment === "activity" ? (
-                <NotificationCenter onOpen={handleNotificationOpen} />
-              ) : null}
-            </>
-          ) : null}
-          </InspectorPane>
+              </>
+            ) : null}
+            {rightPanelMode === "inbox" ? (
+              <>
+                <div className="ctx-segmented" role="tablist" aria-label="Inbox filter">
+                  {(["all", "activity", "questions", "build"] as const).map(
+                    (segment) => (
+                      <button
+                        key={segment}
+                        type="button"
+                        role="tab"
+                        aria-selected={inboxSegment === segment}
+                        className={inboxSegment === segment ? "is-active" : ""}
+                        onClick={() => setInboxSegment(segment)}
+                      >
+                        {segment === "all"
+                          ? localeMsg.inboxAll
+                          : segment === "activity"
+                            ? localeMsg.inboxActivity
+                            : segment === "questions"
+                              ? localeMsg.inboxQuestions
+                              : localeMsg.inboxBuild}
+                      </button>
+                    ),
+                  )}
+                </div>
+                {inboxSegment !== "activity" ? (
+                  <HumanInboxPanel
+                    sessionId={sessionId}
+                    reloadKey={inboxReloadKey}
+                    planRevision={currentPlanRevision}
+                    onResolved={handleInboxResolved}
+                    onBuildStarted={handleInboxBuildStarted}
+                    disabled={running || synthesizing || runBusy}
+                    presentation="inspector"
+                    kindFilter={
+                      inboxSegment === "questions"
+                        ? "question"
+                        : inboxSegment === "build"
+                          ? "build"
+                          : undefined
+                    }
+                  />
+                ) : null}
+                {inboxSegment === "all" || inboxSegment === "activity" ? (
+                  <NotificationCenter onOpen={handleNotificationOpen} />
+                ) : null}
+              </>
+            ) : null}
+            {rightPanelMode === "plan" && sessionId ? (
+              <WorkToolPanel
+                sessionId={sessionId}
+                session={session}
+                planMd={planMd}
+                planMeta={planMeta}
+                planStaleNotice={workPlanStaleNotice}
+                workFocus={workFocus}
+                onWorkFocusHandled={() => setWorkFocus(null)}
+                synthesizing={synthesizing}
+                running={running}
+                runBusy={runBusy}
+                onSynthesizeNow={handleSynthesizeNow}
+                onPlanRefClick={handlePlanRefClick}
+                onFocusTask={focusTask}
+                onFocusObjection={focusObjection}
+                onSessionUpdated={refreshSessionMeta}
+                roomTasks={roomTasks}
+                cursorReady={agents.some((a) => a.id === "cursor" && a.ready)}
+                workHookAlert={workHookAlert}
+                onDismissWorkHookAlert={() => setWorkHookAlert(null)}
+              />
+            ) : null}
+            {rightPanelMode === "background" && sessionId ? (
+              <BackgroundTasksPanel sessionId={sessionId} />
+            ) : null}
+            {rightPanelMode === "diff" ? (
+              <DiffToolPanel executions={planExecutions} />
+            ) : null}
+            {rightPanelMode === "files" && sessionId ? (
+              <WorkspaceFilesPanel sessionId={sessionId} />
+            ) : null}
+            {rightPanelMode === "preview" && sessionId ? (
+              <PreviewPanel sessionId={sessionId} />
+            ) : null}
+            {rightPanelMode === "terminal" && sessionId ? (
+              <TerminalPanel sessionId={sessionId} />
+            ) : null}
+          </WorkbenchPanel>
         </ShellPortal>
       ) : null}
     </>

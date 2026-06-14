@@ -287,6 +287,7 @@ export function usePlanExecute({ sessionId, run, onUpdated }: Options) {
     recommended,
     nowItems,
     roadmap,
+    executions,
     executableItems,
     selectedKey,
     setSelectedKey,

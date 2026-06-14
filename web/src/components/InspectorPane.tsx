@@ -2,11 +2,12 @@ import { useCallback, useRef, useState } from "react";
 import type { InspectorTab } from "../utils/workspaceTabs";
 import {
   clampInspectorWidth,
+  clampToolsInspectorWidth,
   INSPECTOR_MIN_WIDTH,
 } from "../utils/inspectorPanePrefs";
 import { useLocale } from "../i18n/useLocale";
 
-const TAB_IDS: InspectorTab[] = ["overview", "tasks", "inbox"];
+const TAB_IDS: InspectorTab[] = ["overview", "tasks", "inbox", "tools"];
 
 type Props = {
   active: InspectorTab;
@@ -34,10 +35,13 @@ export function InspectorPane({
   const { msg } = useLocale();
   const [isResizing, setIsResizing] = useState(false);
   const dragRef = useRef({ startX: 0, startWidth: INSPECTOR_MIN_WIDTH });
+  const clampWidth =
+    active === "tools" ? clampToolsInspectorWidth : clampInspectorWidth;
 
   const tabLabel = (tab: InspectorTab) => {
     if (tab === "overview") return msg.ctxOverview;
     if (tab === "tasks") return msg.ctxTasks;
+    if (tab === "tools") return msg.ctxTools;
     return msg.ctxInbox;
   };
 
@@ -56,9 +60,9 @@ export function InspectorPane({
     (event: React.PointerEvent<HTMLDivElement>) => {
       if (!isResizing) return;
       const delta = dragRef.current.startX - event.clientX;
-      onWidthChange(clampInspectorWidth(dragRef.current.startWidth + delta));
+      onWidthChange(clampWidth(dragRef.current.startWidth + delta));
     },
-    [isResizing, onWidthChange],
+    [clampWidth, isResizing, onWidthChange],
   );
 
   const finishResize = useCallback(
@@ -68,9 +72,9 @@ export function InspectorPane({
       if (event.currentTarget.hasPointerCapture(event.pointerId)) {
         event.currentTarget.releasePointerCapture(event.pointerId);
       }
-      onWidthCommit(clampInspectorWidth(finalWidth));
+      onWidthCommit(clampWidth(finalWidth));
     },
-    [isResizing, onWidthCommit],
+    [clampWidth, isResizing, onWidthCommit],
   );
 
   return (
@@ -78,6 +82,7 @@ export function InspectorPane({
       className={[
         "context-sidebar",
         open ? "" : "context-sidebar--collapsed",
+        active === "tools" ? "context-sidebar--tools" : "context-sidebar--context",
         isResizing ? "inspector-pane--resizing" : "",
       ]
         .filter(Boolean)

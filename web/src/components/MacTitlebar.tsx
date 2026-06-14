@@ -46,15 +46,6 @@ export function MacTitlebar({
         className="titlebar__brand"
         data-tauri-drag-region={tauri ? "" : undefined}
       >
-        <span className="titlebar__logo">
-          <img
-            className="titlebar__logo-img"
-            src="/icons/app-brand.png"
-            alt=""
-            width={22}
-            height={22}
-          />
-        </span>
         {title ? (
           <span className="titlebar__topic">{title}</span>
         ) : (

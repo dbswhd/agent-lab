@@ -93,25 +93,22 @@ textarea {
   user-select: none;
 }
 
-.traffic-lights {
-  display: flex;
-  gap: 8px;
-  align-items: center;
+.app--fullscreen .titlebar {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 50;
+  transform: translateY(calc(-100% + 6px));
+  opacity: 0.35;
+  box-shadow: var(--shadow-2);
+  transition:
+    transform var(--transition),
+    opacity var(--transition);
 }
-.traffic-lights span {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  display: block;
-}
-.traffic-lights .close {
-  background: #ec6a5e;
-}
-.traffic-lights .minimize {
-  background: #f4bf4f;
-}
-.traffic-lights .zoom {
-  background: #61c554;
+
+.app--fullscreen .titlebar:hover,
+.app--fullscreen .titlebar:focus-within {
+  transform: translateY(0);
+  opacity: 1;
 }
 
 .titlebar__brand {

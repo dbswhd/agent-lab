@@ -60,9 +60,7 @@ def normalize_capability(raw: dict[str, Any] | None) -> dict[str, Any]:
     }
     restrictions = raw.get("restrictions") or []
     if isinstance(restrictions, list) and restrictions:
-        out["restrictions"] = [
-            str(r).strip() for r in restrictions if str(r).strip()
-        ][:6]
+        out["restrictions"] = [str(r).strip() for r in restrictions if str(r).strip()][:6]
     cwd_path = str(raw.get("cwd_path") or "").strip()
     if cwd_path:
         out["cwd_path"] = cwd_path[:500]
@@ -104,15 +102,10 @@ def capabilities_public_payload(
     permissions: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     caps = get_agent_capabilities(run_meta)
-    resolved = {
-        agent: agent_capability_cwd(agent, permissions, run_meta)
-        for agent in ("cursor", "codex", "claude")
-    }
+    resolved = {agent: agent_capability_cwd(agent, permissions, run_meta) for agent in ("cursor", "codex", "claude")}
     return {
         "agent_capabilities": caps,
-        "agent_capabilities_custom": bool(
-            (run_meta or {}).get(RUN_AGENT_CAPABILITIES_CUSTOM_KEY)
-        ),
+        "agent_capabilities_custom": bool((run_meta or {}).get(RUN_AGENT_CAPABILITIES_CUSTOM_KEY)),
         "resolved_cwd": resolved,
     }
 
@@ -182,9 +175,7 @@ def agent_capability_cwd(
 ) -> str:
     caps = get_agent_capabilities(run_meta)
     cap = caps.get(str(agent).strip().lower()) or normalize_capability({})
-    root = _resolve_role_root(
-        agent, str(cap.get("cwd_role") or "primary"), permissions, run_meta
-    )
+    root = _resolve_role_root(agent, str(cap.get("cwd_role") or "primary"), permissions, run_meta)
     return str(root.resolve())
 
 
@@ -227,9 +218,7 @@ def capability_preamble_block(
         elif parallel_round == 2 and agent in ("codex", "claude"):
             parts.append("R1 완료 — R2는 Cursor 패치 검토만.")
         elif parallel_round == 2 and agent == "cursor":
-            parts.append(
-                "R2: Codex/Claude R1 발화와 CHALLENGE를 반영해 패치·실행 제안."
-            )
+            parts.append("R2: Codex/Claude R1 발화와 CHALLENGE를 반영해 패치·실행 제안.")
     restrictions = cap.get("restrictions") or []
     if restrictions:
         parts.append("제한: " + "; ".join(restrictions))

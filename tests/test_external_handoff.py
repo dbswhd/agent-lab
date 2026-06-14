@@ -112,9 +112,7 @@ def test_run_external_command_auto_attaches_handoff(
     (folder / "run.json").write_text(
         json.dumps(
             {
-                "executions": [
-                    {"id": "exec-4", "status": "pending_approval", "action_index": 1}
-                ],
+                "executions": [{"id": "exec-4", "status": "pending_approval", "action_index": 1}],
                 "external_tools": {"enabled": ["external:handoff"]},
             }
         ),

@@ -116,11 +116,7 @@ def auth_failure_remediation(detail: str) -> list[str]:
 
 def _format_exec_error(stderr: str, stdout: str) -> str:
     combined = f"{stderr or ''}\n{stdout or ''}"
-    errors = [
-        ln.strip()
-        for ln in combined.splitlines()
-        if ln.strip().startswith("ERROR:")
-    ]
+    errors = [ln.strip() for ln in combined.splitlines() if ln.strip().startswith("ERROR:")]
     if errors:
         seen: set[str] = set()
         unique: list[str] = []
@@ -459,9 +455,7 @@ def invoke(
         cmd.extend(claude_execute_extra_args(perms))
 
     if scribe:
-        model = os.getenv("CLAUDE_SCRIBE_MODEL") or os.getenv(
-            "CLAUDE_MODEL", DEFAULT_CLAUDE_MODEL
-        )
+        model = os.getenv("CLAUDE_SCRIBE_MODEL") or os.getenv("CLAUDE_MODEL", DEFAULT_CLAUDE_MODEL)
     else:
         model = os.getenv("CLAUDE_MODEL", DEFAULT_CLAUDE_MODEL)
     cmd.extend(["--model", model])
@@ -527,16 +521,10 @@ def invoke(
         if proc.returncode != 0:
             detail = _format_exec_error(stderr or "", stdout or "")
             if "credit balance is too low" in detail.lower():
-                detail = (
-                    f"{detail} "
-                    "(Claude Room uses OAuth only — run: claude logout && claude login)"
-                )
+                detail = f"{detail} (Claude Room uses OAuth only — run: claude logout && claude login)"
             if _is_auth_failure(detail):
                 invalidate_claude_auth_cache()
-            raise RuntimeError(
-                f"claude -p failed (exit {proc.returncode})"
-                + (f": {detail}" if detail else "")
-            )
+            raise RuntimeError(f"claude -p failed (exit {proc.returncode})" + (f": {detail}" if detail else ""))
         raw = (stdout or "").strip()
         if not raw:
             raise RuntimeError("claude -p returned empty output")
@@ -653,10 +641,7 @@ def _run_claude_stream(
         detail = _format_exec_error("".join(stderr_parts), result_text)
         if _is_auth_failure(detail):
             invalidate_claude_auth_cache()
-        raise RuntimeError(
-            f"claude -p failed (exit {proc.returncode})"
-            + (f": {detail}" if detail else "")
-        )
+        raise RuntimeError(f"claude -p failed (exit {proc.returncode})" + (f": {detail}" if detail else ""))
     if not result_text:
         raise RuntimeError("claude stream-json returned empty result")
     return result_text

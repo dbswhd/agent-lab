@@ -90,9 +90,7 @@ def test_hybrid_action_rate_ignores_user_refs_and_out_of_range(tmp_path: Path) -
         ],
     )
     (folder / "plan.md").write_text(
-        "- 사용자 ref만 (ref: chat.jsonl#L1)\n"
-        "- 범위 밖 (ref: chat.jsonl#L99)\n"
-        "- 단독 (ref: chat.jsonl#L2)\n",
+        "- 사용자 ref만 (ref: chat.jsonl#L1)\n- 범위 밖 (ref: chat.jsonl#L99)\n- 단독 (ref: chat.jsonl#L2)\n",
         encoding="utf-8",
     )
     rate, counts = hybrid_action_rate(folder)
@@ -139,9 +137,7 @@ def test_amend_chain_depth_resets_per_turn() -> None:
 
 
 def test_amend_chain_depth_none_without_envelopes() -> None:
-    depth, counts = amend_chain_depth(
-        [{"role": "agent", "agent": "cursor", "content": "plain"}]
-    )
+    depth, counts = amend_chain_depth([{"role": "agent", "agent": "cursor", "content": "plain"}])
     assert depth is None
     assert counts["amend_total"] == 0
 

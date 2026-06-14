@@ -90,9 +90,7 @@ def _normalize_config(data: dict[str, Any]) -> dict[str, Any]:
         if isinstance(chat_ids, (int, str)) and str(chat_ids).strip():
             merged["allowed_chat_ids"] = [int(chat_ids)]
         elif isinstance(chat_ids, list):
-            merged["allowed_chat_ids"] = [
-                int(c) for c in chat_ids if str(c).strip()
-            ]
+            merged["allowed_chat_ids"] = [int(c) for c in chat_ids if str(c).strip()]
         out["telegram"] = merged
     discord = data.get("discord")
     if isinstance(discord, dict):

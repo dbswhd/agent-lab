@@ -25,12 +25,12 @@ def structured_envelope_system_addon(*, compact: bool = False) -> str:
     if compact:
         return (
             "[Structured envelope]\n"
-            "Line 1: JSON object {\"act\":\"ENDORSE\",\"refs\":[],\"confidence\":0.9}\n"
+            'Line 1: JSON object {"act":"ENDORSE","refs":[],"confidence":0.9}\n'
             "Line 2+: human-readable body (markdown OK). Fence optional."
         )
     return (
         "[Structured envelope — machine layer first]\n"
-        "Output line 1 as a single JSON object with required field \"act\":\n"
+        'Output line 1 as a single JSON object with required field "act":\n'
         '{"act":"ENDORSE","refs":[],"confidence":0.9}\n'
         "Then a blank line, then your normal readable reply for the Human.\n"
         "Valid acts: PROPOSE | AMEND | ENDORSE | CHALLENGE | PASS | BLOCK | MESSAGE\n"

@@ -44,11 +44,7 @@ def test_ui_pending_diff_fixture_contract():
 
 def test_ui_pending_diff_fixture_is_read_only_pending_state():
     run = json.loads((FIXTURE / "run.json").read_text(encoding="utf-8"))
-    pending = [
-        row
-        for row in run["executions"]
-        if row.get("status") == "pending_approval"
-    ]
+    pending = [row for row in run["executions"] if row.get("status") == "pending_approval"]
 
     assert len(pending) == 1
     assert pending[0]["isolation_effective"] == "snapshot_override"

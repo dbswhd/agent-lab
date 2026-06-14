@@ -19,11 +19,7 @@ def enrich_bundle_meta(
     """Mutate meta with budget / trim fields (after layer_chars set)."""
     limits = agent_context_limits()
     total = meta.layer_chars.get("total", len(bundle.render()))
-    budget_pct = (
-        round(100.0 * total / limits.max_thread_chars, 1)
-        if limits.max_thread_chars > 0
-        else 0.0
-    )
+    budget_pct = round(100.0 * total / limits.max_thread_chars, 1) if limits.max_thread_chars > 0 else 0.0
     level = trim_level(
         budget_pct=budget_pct,
         turns_omitted=meta.turns_omitted,
@@ -43,9 +39,7 @@ def summarize_turn_context(agents_log: list[dict[str, Any]]) -> dict[str, Any]:
     """Aggregate per-agent context meta for run.json last_turn.context."""
     if not agents_log:
         return {}
-    totals = [
-        (e.get("layer_chars") or {}).get("total", 0) for e in agents_log
-    ]
+    totals = [(e.get("layer_chars") or {}).get("total", 0) for e in agents_log]
     levels = [e.get("trim_level", "ok") for e in agents_log]
     worst = "ok"
     if "critical" in levels:

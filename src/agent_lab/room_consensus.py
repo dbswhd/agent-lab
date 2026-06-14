@@ -166,10 +166,7 @@ def consensus_follow_up(
     task_line = ""
     if open_task_refs:
         joined = ", ".join(open_task_refs[:8])
-        task_line = (
-            f"\n열린 **작업**에도 동의하면 envelope `refs`에 task id를 넣으세요 "
-            f"(예: {joined}).\n"
-        )
+        task_line = f"\n열린 **작업**에도 동의하면 envelope `refs`에 task id를 넣으세요 (예: {joined}).\n"
     from agent_lab.reply_policy import legacy_endorse_enabled
 
     anchor_line = f"앵커 id: `{anchor.id}`\n" if anchor.id else ""

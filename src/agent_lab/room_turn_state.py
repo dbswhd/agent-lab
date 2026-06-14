@@ -231,8 +231,7 @@ def render_turn_state_block(state: dict[str, Any] | TurnState | None) -> str:
         lines.append(f"consensus: {ts.consensus_status}")
     if ts.recent_acts:
         act_bits = [
-            f"{label(str(x.get('agent', '')))} {x.get('act')} {x.get('ref', '')}".strip()
-            for x in ts.recent_acts[-4:]
+            f"{label(str(x.get('agent', '')))} {x.get('act')} {x.get('ref', '')}".strip() for x in ts.recent_acts[-4:]
         ]
         lines.append("최근 act: " + " | ".join(act_bits))
     if len(lines) == 1:

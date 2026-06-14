@@ -49,9 +49,7 @@ def test_pick_anchor_chains_parent_id():
     assert first.to_dict()["id"] == "a1-1"
     assert "parent_id" not in first.to_dict()
 
-    msgs.append(
-        _Msg("agent", "codex", "수정안: 첫 제안에 검증 단계를 추가합니다.", {"act": "AMEND"}, 2)
-    )
+    msgs.append(_Msg("agent", "codex", "수정안: 첫 제안에 검증 단계를 추가합니다.", {"act": "AMEND"}, 2))
     second = pick_anchor(msgs, ["cursor", "codex"], anchor_id="a1-2", prev_anchor=first)
     assert second is not None
     assert second.id == "a1-2"
@@ -60,9 +58,7 @@ def test_pick_anchor_chains_parent_id():
 
 
 def test_consensus_follow_up_echoes_anchor_id_and_delta():
-    anchor = ConsensusAnchor(
-        agent="codex", excerpt="수정안 발췌", parallel_round=3, id="a1-2", parent_id="a1-1"
-    )
+    anchor = ConsensusAnchor(agent="codex", excerpt="수정안 발췌", parallel_round=3, id="a1-2", parent_id="a1-1")
     body = consensus_follow_up(anchor, amend_delta="직전 앵커(a1-1)를 보완·대체한 수정안입니다.")
     assert "a1-2" in body
     assert "변경점" in body

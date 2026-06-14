@@ -8,6 +8,7 @@ from typing import Any
 from agent_lab.runtime.dispatch_result import DispatchResult
 from agent_lab.runtime.events import RuntimeEvent
 
+
 def _skipped(result: Any) -> DispatchResult:
     if isinstance(result, dict) and result.get("skipped"):
         return DispatchResult(
@@ -26,9 +27,7 @@ def handle_execute_dry_run_start(folder: Path, payload: dict[str, Any]) -> Dispa
 
     run = read_run_meta(folder)
     snap = PolicyEngine.gate_snapshot(run)
-    if snap.get("block_source") and not (snap.get("gates") or {}).get("execute", {}).get(
-        "open", True
-    ):
+    if snap.get("block_source") and not (snap.get("gates") or {}).get("execute", {}).get("open", True):
         try:
             from agent_lab.gateway.notify_helpers import notify_gate_blocked
 

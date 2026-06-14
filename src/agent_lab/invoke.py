@@ -26,9 +26,7 @@ def ensure_ready() -> None:
     p = provider()
     if p == "codex":
         if not codex_cli.is_available():
-            raise RuntimeError(
-                "Codex CLI not found. Run: npm i -g @openai/codex && codex login"
-            )
+            raise RuntimeError("Codex CLI not found. Run: npm i -g @openai/codex && codex login")
         return
     if p in ("openai", "anthropic"):
         from agent_lab.llm import get_llm

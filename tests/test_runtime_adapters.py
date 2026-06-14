@@ -53,9 +53,7 @@ def test_invoke_execute_cursor(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     assert captured["cwd"] == tmp_path
 
 
-def test_invoke_execute_codex_appends_verify(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_invoke_execute_codex_appends_verify(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     captured: dict[str, object] = {}
 
     def _respond(**kwargs):
@@ -106,9 +104,7 @@ def test_pick_repair_agent_prefers_requested(monkeypatch: pytest.MonkeyPatch) ->
     assert pick_repair_agent(target, "codex") == "codex"
 
 
-def test_plan_execute_call_execute_agent_uses_adapter(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_plan_execute_call_execute_agent_uses_adapter(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from agent_lab.plan_execute import _call_execute_agent
 
     captured: dict[str, object] = {}

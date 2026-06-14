@@ -70,13 +70,9 @@ def test_execute_reverify_endpoint_records_mock_oracle(
     assert body["ok"] is True
     assert body["verify_after_merge"]["status"] == "passed"
     assert body["execution"]["verify_retries"] == 1
-    assert body["execution"]["reverify_endpoint"] == (
-        "/api/sessions/{session_id}/execute/reverify"
-    )
+    assert body["execution"]["reverify_endpoint"] == ("/api/sessions/{session_id}/execute/reverify")
     assert body["execution"]["oracle"]["verdict"] == "pass"
-    assert body["execution"]["verify_after_merge"]["oracle"]["checked_paths"] == [
-        "src/app.py"
-    ]
+    assert body["execution"]["verify_after_merge"]["oracle"]["checked_paths"] == ["src/app.py"]
 
 
 def test_execute_reverify_endpoint_repairs_oracle_fail(
@@ -148,6 +144,4 @@ def test_execute_reverify_endpoint_repairs_oracle_fail(
     assert body["repair"]["agent"] == "cursor"
     assert body["execution"]["verify_retries"] == 1
     assert body["execution"]["oracle"]["verdict"] == "pass"
-    assert (repo / "src" / "app.py").read_text(encoding="utf-8").endswith(
-        "REPAIRED_OK\n"
-    )
+    assert (repo / "src" / "app.py").read_text(encoding="utf-8").endswith("REPAIRED_OK\n")

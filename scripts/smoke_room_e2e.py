@@ -26,8 +26,7 @@ def run_mock_discuss_turn() -> tuple[int, list[str]]:
         (folder / "topic.txt").write_text("mock discuss\n", encoding="utf-8")
         (folder / "plan.md").write_text("# plan\n", encoding="utf-8")
         (folder / "chat.jsonl").write_text(
-            json.dumps({"role": "user", "content": "seed", "ts": "t0"}, ensure_ascii=False)
-            + "\n",
+            json.dumps({"role": "user", "content": "seed", "ts": "t0"}, ensure_ascii=False) + "\n",
             encoding="utf-8",
         )
         (folder / "run.json").write_text(
@@ -56,9 +55,7 @@ def run_mock_discuss_turn() -> tuple[int, list[str]]:
             synthesize=False,
             parallel_rounds=1,
         )
-        agent_replies = [
-            m for m in messages if m.role == "agent" and (m.content or "").strip()
-        ]
+        agent_replies = [m for m in messages if m.role == "agent" and (m.content or "").strip()]
         if len(agent_replies) < 1:
             errors.append("expected at least one agent reply")
         if not all("[mock:" in (m.content or "") for m in agent_replies):

@@ -46,9 +46,4 @@ def mock_trading_goal_oracle_response(
             "- playbook.md 장중 행동\n"
             "- plan.md ingest_ready"
         )
-    return (
-        "VERDICT: fail\n"
-        f"REASON: trading mission goal not met — {detail}\n"
-        "EVIDENCE:\n"
-        f"- {detail}"
-    )
+    return f"VERDICT: fail\nREASON: trading mission goal not met — {detail}\nEVIDENCE:\n- {detail}"

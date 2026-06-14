@@ -119,20 +119,14 @@ def _run_cursor_session(
                     agent.close()
         except CursorAgentError as e:
             last_err = e
-            if (
-                is_transient_bridge_error(e)
-                and attempt < _CURSOR_BRIDGE_ATTEMPTS - 1
-            ):
+            if is_transient_bridge_error(e) and attempt < _CURSOR_BRIDGE_ATTEMPTS - 1:
                 invalidate_workspace(cwd_str)
                 time.sleep(_CURSOR_BRIDGE_RETRY_BACKOFF_S * (attempt + 1))
                 continue
             raise RuntimeError(format_cursor_connect_error(e)) from e
         except Exception as e:
             last_err = e
-            if (
-                is_transient_bridge_error(e)
-                and attempt < _CURSOR_BRIDGE_ATTEMPTS - 1
-            ):
+            if is_transient_bridge_error(e) and attempt < _CURSOR_BRIDGE_ATTEMPTS - 1:
                 invalidate_workspace(cwd_str)
                 time.sleep(_CURSOR_BRIDGE_RETRY_BACKOFF_S * (attempt + 1))
                 continue
@@ -248,9 +242,7 @@ def respond_session(
     try:
         from cursor_sdk import AgentOptions  # noqa: F401
     except ImportError as e:
-        raise RuntimeError(
-            "Install cursor-sdk: pip install cursor-sdk"
-        ) from e
+        raise RuntimeError("Install cursor-sdk: pip install cursor-sdk") from e
 
     prepared = _prepare_prompts(system, prompts)
     if request_structured_envelope:

@@ -40,10 +40,7 @@ def session_folder(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 def test_resolve_work_phase_from_mission_paused_uses_resume() -> None:
-    assert (
-        resolve_work_phase_from_mission("MISSION_PAUSED", resume_phase="VERIFY")
-        == "merge_verify"
-    )
+    assert resolve_work_phase_from_mission("MISSION_PAUSED", resume_phase="VERIFY") == "merge_verify"
 
 
 def test_resolve_work_phase_standalone_merge_verify() -> None:

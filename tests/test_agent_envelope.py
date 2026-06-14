@@ -15,12 +15,7 @@ from agent_lab.agent_envelope import (
 
 
 def test_parse_envelope_and_body():
-    raw = (
-        '```agent-envelope\n'
-        '{"act":"ENDORSE","refs":["L12"],"confidence":0.95}\n'
-        '```\n'
-        "이의 없습니다"
-    )
+    raw = '```agent-envelope\n{"act":"ENDORSE","refs":["L12"],"confidence":0.95}\n```\n이의 없습니다'
     parsed = parse_agent_response(raw)
     assert parsed.envelope is not None
     assert parsed.envelope.act == "ENDORSE"
@@ -29,12 +24,7 @@ def test_parse_envelope_and_body():
 
 
 def test_envelope_amend_overrides_no_objection_text():
-    raw = (
-        '```agent-envelope\n'
-        '{"act":"AMEND","refs":[]}\n'
-        '```\n'
-        "이의 없습니다\n[PROPOSED: 보완]"
-    )
+    raw = '```agent-envelope\n{"act":"AMEND","refs":[]}\n```\n이의 없습니다\n[PROPOSED: 보완]'
     parsed = parse_agent_response(raw)
     assert envelope_act(parsed.envelope) == "AMEND"
     assert classify_consensus_reply(parsed.body, parsed.envelope.to_dict()) == "substantive"
@@ -47,16 +37,14 @@ def test_fallback_text_heuristics_without_envelope(
     monkeypatch.setenv("AGENT_LAB_LEGACY_ENDORSE", "1")
     assert classify_consensus_reply("이의 없습니다") == "endorse"
     assert classify_consensus_reply("PASS") == "pass"
-    assert (
-        classify_consensus_reply("이의 없습니다\n[PROPOSED: x]") == "substantive"
-    )
+    assert classify_consensus_reply("이의 없습니다\n[PROPOSED: x]") == "substantive"
 
 
 def test_endorse_envelope_with_proposed_body_is_substantive():
     raw = (
-        '```agent-envelope\n'
+        "```agent-envelope\n"
         '{"act":"ENDORSE","refs":[],"confidence":0.9}\n'
-        '```\n'
+        "```\n"
         "이의 없습니다\n[PROPOSED: follow-up item]"
     )
     parsed = parse_agent_response(raw)
@@ -73,7 +61,7 @@ def test_no_fence_returns_full_body():
 
 
 def test_invalid_fence_strips_body_and_flags_error():
-    raw = '```agent-envelope\nnot json\n```\n'
+    raw = "```agent-envelope\nnot json\n```\n"
     parsed = parse_agent_response(raw)
     assert parsed.envelope is None
     assert parsed.envelope_parse_error
@@ -81,7 +69,7 @@ def test_invalid_fence_strips_body_and_flags_error():
 
 
 def test_invalid_fence_with_trailing_body():
-    raw = '```agent-envelope\n{broken\n```\n짧은 동의'
+    raw = "```agent-envelope\n{broken\n```\n짧은 동의"
     parsed = parse_agent_response(raw)
     assert parsed.envelope is None
     assert parsed.envelope_parse_error

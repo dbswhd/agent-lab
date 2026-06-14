@@ -10,9 +10,7 @@ import pytest
 from agent_lab.room_hooks import clear_hooks_config_cache, run_hook_for_agent
 
 
-def test_per_agent_post_agent_reply_routing(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_per_agent_post_agent_reply_routing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     cursor_script = tmp_path / "cursor.sh"
     cursor_script.write_text("#!/bin/sh\necho cursor-hook\n", encoding="utf-8")
     cursor_script.chmod(cursor_script.stat().st_mode | stat.S_IXUSR)

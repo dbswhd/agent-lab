@@ -153,9 +153,7 @@ def ensure_session_agent_hooks_from_config(session_folder: Path) -> dict[str, An
         cursor=cursor_hooks,
         claude=claude_hooks if isinstance(claude_hooks, dict) else None,
     )
-    manifest = json.loads(
-        (agent_hooks_root(session_folder) / "manifest.json").read_text(encoding="utf-8")
-    )
+    manifest = json.loads((agent_hooks_root(session_folder) / "manifest.json").read_text(encoding="utf-8"))
     return {"agents": manifest.get("agents", []), "paths": written}
 
 
@@ -204,9 +202,7 @@ def native_codex_hooks_overlay(
     if not _native_hooks_enabled():
         yield
         return
-    src = codex_hooks_source(
-        Path(session_folder) if session_folder is not None else None
-    )
+    src = codex_hooks_source(Path(session_folder) if session_folder is not None else None)
     if src is None:
         yield
         return
@@ -223,9 +219,7 @@ def native_cursor_hooks_overlay(
     if not _native_hooks_enabled():
         yield
         return
-    src = cursor_hooks_source(
-        Path(session_folder) if session_folder is not None else None
-    )
+    src = cursor_hooks_source(Path(session_folder) if session_folder is not None else None)
     if src is None:
         yield
         return
@@ -241,9 +235,7 @@ def native_claude_hooks_overlay(
     if not _native_hooks_enabled():
         yield
         return
-    src = claude_hooks_source(
-        Path(session_folder) if session_folder is not None else None
-    )
+    src = claude_hooks_source(Path(session_folder) if session_folder is not None else None)
     if src is None:
         yield
         return

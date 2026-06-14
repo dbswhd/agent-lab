@@ -106,9 +106,7 @@ def _parse_proposal_block(block: str) -> dict[str, str] | None:
         return None
     return {
         "goal": goal,
-        "completion_promise": (
-            fields.get("completion_promise") or DEFAULT_COMPLETION_PROMISE
-        ).strip()
+        "completion_promise": (fields.get("completion_promise") or DEFAULT_COMPLETION_PROMISE).strip()
         or DEFAULT_COMPLETION_PROMISE,
         "criteria": fields.get("criteria", "").strip() or goal,
     }
@@ -143,9 +141,7 @@ def merge_proposals(proposals: list[dict[str, str]]) -> dict[str, str] | None:
     if len(criteria_parts) == 1:
         merged_criteria = criteria_parts[0]
     elif criteria_parts:
-        merged_criteria = "\n".join(
-            f"({i + 1}) {part}" for i, part in enumerate(criteria_parts)
-        )
+        merged_criteria = "\n".join(f"({i + 1}) {part}" for i, part in enumerate(criteria_parts))
     else:
         merged_criteria = primary["goal"]
     merged: dict[str, str] = {
@@ -226,9 +222,7 @@ def approve_verified_loop(
     approved = {
         "text": goal_text,
         "completion_promise": (
-            completion_promise
-            or proposed.get("completion_promise")
-            or DEFAULT_COMPLETION_PROMISE
+            completion_promise or proposed.get("completion_promise") or DEFAULT_COMPLETION_PROMISE
         ).strip()
         or DEFAULT_COMPLETION_PROMISE,
         "criteria": criteria_resolved,
@@ -447,9 +441,7 @@ def maybe_handle_verified_loop_after_turn(
 
     iteration = int(loop.get("iteration") or 0) + 1
     max_iterations = int(loop.get("max_iterations") or MAX_ITERATIONS)
-    completion_promise = str(
-        loop_goal.get("completion_promise") or DEFAULT_COMPLETION_PROMISE
-    )
+    completion_promise = str(loop_goal.get("completion_promise") or DEFAULT_COMPLETION_PROMISE)
     since_iso = str(loop_goal.get("approved_at") or "").strip() or None
 
     def _patch_iteration(current: dict[str, Any]) -> dict[str, Any]:
@@ -475,9 +467,7 @@ def maybe_handle_verified_loop_after_turn(
             "handled": True,
             "verified_loop": read_run_meta(session_folder).get("verified_loop") or {},
             "verified_loop_pending": False,
-            "continue_prompt": _loop_work_prompt(
-                read_run_meta(session_folder).get("verified_loop") or {}
-            ),
+            "continue_prompt": _loop_work_prompt(read_run_meta(session_folder).get("verified_loop") or {}),
         }
 
     check = run_verified_oracle(
@@ -517,18 +507,13 @@ def maybe_handle_verified_loop_after_turn(
         else:
             attempts = int(current_loop.get("verification_attempts") or 0) + 1
             current_loop["verification_attempts"] = attempts
-            if attempts >= int(
-                current_loop.get("max_verification_attempts") or MAX_VERIFICATION_ATTEMPTS
-            ):
+            if attempts >= int(current_loop.get("max_verification_attempts") or MAX_VERIFICATION_ATTEMPTS):
                 current_loop["status"] = "failed"
                 current_loop["circuit_breaker"] = True
-                current_loop["circuit_reason"] = (
-                    f"Oracle verification failed {attempts} times"
-                )
+                current_loop["circuit_reason"] = f"Oracle verification failed {attempts} times"
             else:
                 current_loop["continue_prompt"] = (
-                    "Oracle verification failed. Address the gaps and try again:\n"
-                    f"{check['detail'][:400]}"
+                    f"Oracle verification failed. Address the gaps and try again:\n{check['detail'][:400]}"
                 )
         current["verified_loop"] = current_loop
         return current
@@ -543,9 +528,7 @@ def maybe_handle_verified_loop_after_turn(
         "continue_prompt": None,
     }
     if loop_out.get("status") == "running":
-        result["continue_prompt"] = loop_out.get("continue_prompt") or _loop_work_prompt(
-            loop_out
-        )
+        result["continue_prompt"] = loop_out.get("continue_prompt") or _loop_work_prompt(loop_out)
     if loop_out.get("circuit_breaker"):
         result["circuit_breaker"] = True
     return result

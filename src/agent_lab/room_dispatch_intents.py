@@ -66,10 +66,7 @@ def build_dispatch_intent_block(run_meta: dict[str, Any] | None, agent: str) -> 
         to_a = str(row.get("to") or "")
         if aid != lead and aid != to_a:
             continue
-        lines.append(
-            f"- {row.get('id')}: {row.get('issuer')} → {to_a}: "
-            f"{(row.get('prompt') or '')[:120]}"
-        )
+        lines.append(f"- {row.get('id')}: {row.get('issuer')} → {to_a}: {(row.get('prompt') or '')[:120]}")
     if len(lines) == 1:
         return ""
     lines.append("Human `DELEGATE`/`DISPATCH` 또는 리드 GO 후에만 실행됩니다.")

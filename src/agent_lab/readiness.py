@@ -77,11 +77,7 @@ def build_readiness_payload(
         probe_bridge = False
         probe_cli = False
 
-    ids = [
-        str(a).strip().lower()
-        for a in (agent_ids or run.get("agents") or list(AGENT_IDS))
-        if str(a).strip()
-    ]
+    ids = [str(a).strip().lower() for a in (agent_ids or run.get("agents") or list(AGENT_IDS)) if str(a).strip()]
     if not ids:
         ids = list(AGENT_IDS)
 

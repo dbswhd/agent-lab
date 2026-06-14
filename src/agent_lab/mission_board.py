@@ -82,16 +82,12 @@ def get_mission_board(run: dict[str, Any] | None) -> dict[str, Any]:
         roles.update(raw["lane_roles"])
         discuss = roles.get("discuss")
         if isinstance(discuss, list) and discuss:
-            roles["discuss"] = [
-                str(a).strip().lower()
-                for a in discuss
-                if str(a).strip()
-            ] or list(DEFAULT_DISCUSS_ROLES)
+            roles["discuss"] = [str(a).strip().lower() for a in discuss if str(a).strip()] or list(
+                DEFAULT_DISCUSS_ROLES
+            )
         merged["lane_roles"] = roles
     if isinstance(raw.get("goal_chain"), list):
-        merged["goal_chain"] = [
-            item for item in raw["goal_chain"] if isinstance(item, dict)
-        ]
+        merged["goal_chain"] = [item for item in raw["goal_chain"] if isinstance(item, dict)]
     checkout = raw.get("checkout")
     merged["checkout"] = checkout if isinstance(checkout, dict) else None
     return merged
@@ -341,9 +337,7 @@ def record_agent_call(
         if int(counters.get("human_turn") or 0) != human_turn:
             counters["human_turn"] = human_turn
             counters["agent_calls_per_human_turn"] = 0
-        counters["agent_calls_per_human_turn"] = (
-            int(counters.get("agent_calls_per_human_turn") or 0) + 1
-        )
+        counters["agent_calls_per_human_turn"] = int(counters.get("agent_calls_per_human_turn") or 0) + 1
         tb["counters"] = counters
         run["turn_budget"] = refresh_turn_budget({**run, "turn_budget": tb})
         key, msg = _check_overflow(run)
@@ -370,9 +364,7 @@ def record_autorun_tick(folder) -> dict[str, Any]:
         if counters.get("autorun_tick_hour") != bucket:
             counters["autorun_tick_hour"] = bucket
             counters["autorun_ticks_this_hour"] = 0
-        counters["autorun_ticks_this_hour"] = (
-            int(counters.get("autorun_ticks_this_hour") or 0) + 1
-        )
+        counters["autorun_ticks_this_hour"] = int(counters.get("autorun_ticks_this_hour") or 0) + 1
         tb["counters"] = counters
         run["turn_budget"] = refresh_turn_budget({**run, "turn_budget": tb})
         key, msg = _check_overflow(run)
@@ -424,10 +416,7 @@ def _apply_overflow(
     item = new_inbox_item(
         kind="question",
         source="turn_budget",
-        prompt=(
-            f"Turn budget exceeded ({message}). "
-            "Continue with a new human message or resolve in Inspector."
-        ),
+        prompt=(f"Turn budget exceeded ({message}). Continue with a new human message or resolve in Inspector."),
         summary=f"turn_budget: {key}",
         options=[
             {"id": "continue", "label": "Acknowledge"},

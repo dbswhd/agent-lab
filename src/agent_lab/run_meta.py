@@ -136,11 +136,7 @@ def record_completed_step(
         entry["msg_idx"] = msg_idx
 
     def _upsert(run: dict[str, Any]) -> dict[str, Any]:
-        steps = [
-            s
-            for s in (run.get("completed_steps") or [])
-            if s.get("step") != key
-        ]
+        steps = [s for s in (run.get("completed_steps") or []) if s.get("step") != key]
         steps.append(entry)
         run["completed_steps"] = steps
         return run
@@ -153,11 +149,7 @@ def record_completed_step(
 
 def clear_completed_steps_for_human_turn(folder: Path, human_turn: int) -> None:
     def _clear(run: dict[str, Any]) -> dict[str, Any]:
-        steps = [
-            s
-            for s in (run.get("completed_steps") or [])
-            if int(s.get("human_turn") or 0) != human_turn
-        ]
+        steps = [s for s in (run.get("completed_steps") or []) if int(s.get("human_turn") or 0) != human_turn]
         run["completed_steps"] = steps
         return run
 

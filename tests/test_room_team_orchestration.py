@@ -80,18 +80,10 @@ def test_resolve_send_receipt():
 
 
 def test_should_assign_tasks_on_turn():
-    assert not should_assign_tasks_on_turn(
-        mode="discuss", synthesize=False, consensus_mode=False
-    )
-    assert should_assign_tasks_on_turn(
-        mode="discuss", synthesize=True, consensus_mode=False
-    )
-    assert should_assign_tasks_on_turn(
-        mode="discuss", synthesize=False, consensus_mode=True
-    )
-    assert is_discuss_only_turn(
-        mode="discuss", synthesize=False, consensus_mode=False
-    )
+    assert not should_assign_tasks_on_turn(mode="discuss", synthesize=False, consensus_mode=False)
+    assert should_assign_tasks_on_turn(mode="discuss", synthesize=True, consensus_mode=False)
+    assert should_assign_tasks_on_turn(mode="discuss", synthesize=False, consensus_mode=True)
+    assert is_discuss_only_turn(mode="discuss", synthesize=False, consensus_mode=False)
 
 
 def test_team_r1_split_lead_last():

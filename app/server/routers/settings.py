@@ -19,6 +19,7 @@ from agent_lab.credential_store import (
     public_credentials_payload,
     save_credentials,
 )
+
 router = APIRouter(prefix="/api")
 
 
@@ -68,13 +69,7 @@ def get_codex_oauth() -> dict[str, Any]:
 
 @router.put("/settings/codex-oauth/meta")
 def put_codex_oauth_meta(body: CodexOAuthMetaRequest) -> dict[str, Any]:
-    meta = save_meta(
-        {
-            k: v
-            for k, v in body.model_dump().items()
-            if v and str(v).strip()
-        }
-    )
+    meta = save_meta({k: v for k, v in body.model_dump().items() if v and str(v).strip()})
     payload = public_codex_oauth_payload()
     payload["meta"] = meta
     return payload

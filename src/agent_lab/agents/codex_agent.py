@@ -40,13 +40,7 @@ def respond_session(
         inbox_mcp=inbox_mcp,
         request_structured_envelope=request_structured_envelope,
     )
-    if (
-        gate_after is not None
-        and gate_after == 0
-        and gate is not None
-        and extra_prompts_if_gate
-        and gate()
-    ):
+    if gate_after is not None and gate_after == 0 and gate is not None and extra_prompts_if_gate and gate():
         combined = "\n\n---\n\n".join(p.strip() for p in extra_prompts_if_gate if p.strip())
         if combined:
             last = codex_cli.invoke(

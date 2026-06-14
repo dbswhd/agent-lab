@@ -64,9 +64,7 @@ def test_oauth_no_fallback_on_auth_failure(oauth_home: Path) -> None:
 
     def fn(slot):
         calls.append(slot)
-        raise RuntimeError(
-            "codex exec failed (exit 1): 401 Unauthorized: token_invalidated"
-        )
+        raise RuntimeError("codex exec failed (exit 1): 401 Unauthorized: token_invalidated")
 
     with pytest.raises(RuntimeError, match="401"):
         co.call_with_codex_oauth_fallback(fn)

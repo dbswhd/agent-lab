@@ -240,9 +240,7 @@ def build_artifacts_block(
     artifact_only: bool = False,
     body_cap_chars: int = 2000,
 ) -> str:
-    rows = recent_artifacts_for_agent(
-        run_meta, agent, parallel_round=parallel_round
-    )
+    rows = recent_artifacts_for_agent(run_meta, agent, parallel_round=parallel_round)
     if not rows:
         return ""
     if artifact_only:
@@ -272,9 +270,7 @@ def build_artifacts_block(
                     lines.append(f"    {line}")
     lines.append("")
     if artifact_only:
-        lines.append(
-            "Cursor R2: full chat 없음. artifacts와 이번 Human 질문만 근거로 패치 제안."
-        )
+        lines.append("Cursor R2: full chat 없음. artifacts와 이번 Human 질문만 근거로 패치 제안.")
     else:
         lines.append("Cursor R2: artifacts만 근거로 패치 제안 가능.")
     return "\n".join(lines)

@@ -94,8 +94,6 @@ def test_needs_human_when_critic_flags() -> None:
 
 
 def test_batch_context_from_snapshot_blocking() -> None:
-    ctx = batch_context_from_snapshot(
-        {"trade_allowed": False, "freshness": {"blocking": True, "ok": False}}
-    )
+    ctx = batch_context_from_snapshot({"trade_allowed": False, "freshness": {"blocking": True, "ok": False}})
     assert ctx["trade_allowed"] is False
     assert ctx["freshness_score"] == 0.0

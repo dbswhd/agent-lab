@@ -49,9 +49,7 @@ def _yaml_scalar(raw: str) -> Any:
         return True
     if lowered in {"false", "no", "off"}:
         return False
-    if (text.startswith('"') and text.endswith('"')) or (
-        text.startswith("'") and text.endswith("'")
-    ):
+    if (text.startswith('"') and text.endswith('"')) or (text.startswith("'") and text.endswith("'")):
         return text[1:-1]
     if text.startswith("[") and text.endswith("]"):
         try:
@@ -171,8 +169,7 @@ def run_external_tool(
                 "ok": True,
                 "status": "stub",
                 "detail": (
-                    f"{row['label']} is registered but not executed. "
-                    "Configure command in ~/.agent-lab/tools.yaml"
+                    f"{row['label']} is registered but not executed. Configure command in ~/.agent-lab/tools.yaml"
                 ),
             }
         cmd = row["command"]
@@ -180,10 +177,7 @@ def run_external_tool(
             cmd_list = shlex.split(cmd)
         else:
             cmd_list = [str(part) for part in cmd]
-        cmd_list = [
-            part.replace("{session_id}", session_folder.name).replace("{args}", args)
-            for part in cmd_list
-        ]
+        cmd_list = [part.replace("{session_id}", session_folder.name).replace("{args}", args) for part in cmd_list]
         cwd_mode = str(row.get("cwd") or "session")
         cwd = session_folder if cwd_mode == "session" else (workspace or session_folder)
         proc = subprocess.run(

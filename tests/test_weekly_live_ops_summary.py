@@ -97,7 +97,9 @@ def test_weekly_report_markdown_surfaces_last_live_checks(tmp_path: Path):
 
     assert report["live_ops_summary"]["worktree"]["status"] == "go"
     assert report["live_ops_summary"]["merge"]["status"] == "no_go"
-    assert any("Last live: worktree GO (2026-06-01), merge NO_GO (2026-06-02)" in line for line in report["summary_lines"])
+    assert any(
+        "Last live: worktree GO (2026-06-01), merge NO_GO (2026-06-02)" in line for line in report["summary_lines"]
+    )
     assert "## Last live checks" in md
     assert "| Tier B worktree | 2026-06-01 | GO | `live-worktree-2026-06-01.json` |" in md
     assert "| Tier C merge | 2026-06-02 | NO_GO | `live-merge-2026-06-02.json` |" in md

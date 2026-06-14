@@ -12,9 +12,7 @@ from agent_lab.room_context import is_pass_response, is_pure_no_objection
 ActType = Literal["PROPOSE", "AMEND", "ENDORSE", "CHALLENGE", "PASS", "BLOCK", "MESSAGE"]
 ConsensusVerdict = Literal["endorse", "pass", "substantive", "neutral"]
 
-VALID_ACTS: frozenset[str] = frozenset(
-    {"PROPOSE", "AMEND", "ENDORSE", "CHALLENGE", "PASS", "BLOCK", "MESSAGE"}
-)
+VALID_ACTS: frozenset[str] = frozenset({"PROPOSE", "AMEND", "ENDORSE", "CHALLENGE", "PASS", "BLOCK", "MESSAGE"})
 
 # Acts where the human-readable body should stay very short (token efficiency).
 COMPACT_ACTS: frozenset[str] = frozenset({"ENDORSE", "PASS"})
@@ -36,11 +34,7 @@ def body_has_proposed(text: str) -> bool:
 
 def extract_learned_notes(text: str) -> list[str]:
     """본문 ``[LEARNED: …]`` 마커 추출 (P5 stigmergy 쓰기 경로)."""
-    return [
-        m.group(1).strip()
-        for m in _LEARNED_RE.finditer(text or "")
-        if m.group(1).strip()
-    ]
+    return [m.group(1).strip() for m in _LEARNED_RE.finditer(text or "") if m.group(1).strip()]
 
 
 @dataclass
@@ -87,11 +81,7 @@ class AgentEnvelope:
         dispatch_raw = data.get("dispatch")
         dispatch: dict[str, Any] | None = None
         if isinstance(dispatch_raw, dict) and dispatch_raw:
-            dispatch = {
-                str(k): v
-                for k, v in dispatch_raw.items()
-                if str(k).strip()
-            }
+            dispatch = {str(k): v for k, v in dispatch_raw.items() if str(k).strip()}
         return cls(
             act=act,  # type: ignore[arg-type]
             refs=refs,
@@ -144,11 +134,7 @@ def parse_agent_response(text: str) -> ParsedAgentResponse:
             raw=raw,
             envelope_parse_error=True,
         )
-    envelope = (
-        AgentEnvelope.from_dict(payload)
-        if isinstance(payload, dict)
-        else None
-    )
+    envelope = AgentEnvelope.from_dict(payload) if isinstance(payload, dict) else None
     body = raw[m.end() :].strip()
     if not body and envelope:
         body = raw.strip()
@@ -260,9 +246,7 @@ def parse_decision_forks(text: str) -> list[DecisionFork]:
             label = str(raw.get("label") or "").strip()
             if not label:
                 continue
-            refs = tuple(
-                str(r).strip() for r in (raw.get("refs") or []) if str(r).strip()
-            )
+            refs = tuple(str(r).strip() for r in (raw.get("refs") or []) if str(r).strip())
             options.append(ForkOption(label=label[:120], refs=refs))
         if topic and options:
             out.append(DecisionFork(topic=topic[:200], options=tuple(options)))
@@ -398,10 +382,5 @@ def envelope_protocol_block(*, context: str = "consensus", compact: bool = False
     }
     label = labels.get(context, context)
     if compact:
-        return (
-            f"{ENVELOPE_FORMAT_GUIDANCE_SHORT}\n\n"
-            f"{DECISION_FORK_GUIDANCE_SHORT}\n(Context: {label})"
-        )
-    return (
-        f"{ENVELOPE_FORMAT_GUIDANCE}\n\n{DECISION_FORK_GUIDANCE}\n(Context: {label})"
-    )
+        return f"{ENVELOPE_FORMAT_GUIDANCE_SHORT}\n\n{DECISION_FORK_GUIDANCE_SHORT}\n(Context: {label})"
+    return f"{ENVELOPE_FORMAT_GUIDANCE}\n\n{DECISION_FORK_GUIDANCE}\n(Context: {label})"

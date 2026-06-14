@@ -173,11 +173,7 @@ class SlackGatewayAdapter:
         elif event == "auto_merge_blocked":
             exec_id = str(payload.get("execution_id") or "")
             reason = str(payload.get("reason") or "auto_merge_not_eligible")
-            text = (
-                f"*[{session_id}]* auto-merge blocked\n"
-                f"`{exec_id}` — {reason[:240]}\n"
-                f"/approve merge"
-            )
+            text = f"*[{session_id}]* auto-merge blocked\n`{exec_id}` — {reason[:240]}\n/approve merge"
         else:
             return {"ok": True, "skipped": True, "reason": "event_not_handled"}
         return self._post_webhook(cfg, text)

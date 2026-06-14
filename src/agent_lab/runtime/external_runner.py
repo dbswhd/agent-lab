@@ -96,8 +96,7 @@ def run_external_command(
             "ok": True,
             "status": "stub",
             "detail": (
-                f"{tool_row.get('label')} is registered but has no command. "
-                "Add command to ~/.agent-lab/tools.yaml"
+                f"{tool_row.get('label')} is registered but has no command. Add command to ~/.agent-lab/tools.yaml"
             ),
         }
 

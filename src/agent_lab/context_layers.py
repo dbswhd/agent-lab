@@ -53,10 +53,7 @@ def plan_gate_mcp_warnings(
 
     if not actions:
         return []
-    mentions_mcp = any(
-        "mcp" in str(getattr(a, "verify", "") or "").lower()
-        for a in actions
-    )
+    mentions_mcp = any("mcp" in str(getattr(a, "verify", "") or "").lower() for a in actions)
     if not mentions_mcp:
         return []
     if mcp_allowed_for_agent("claude", run) or mcp_allowed_for_agent("codex", run):

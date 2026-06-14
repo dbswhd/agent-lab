@@ -55,9 +55,7 @@ def validate_fixture(
     sections = parse_plan_action_sections(plan_md)
     recommended = sections.get("recommended") or {}
     pending = [
-        row
-        for row in run.get("executions") or []
-        if isinstance(row, dict) and row.get("status") == "pending_approval"
+        row for row in run.get("executions") or [] if isinstance(row, dict) and row.get("status") == "pending_approval"
     ]
 
     if topic != "P0 UI smoke · pending dry-run diff":

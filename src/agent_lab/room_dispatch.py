@@ -549,14 +549,10 @@ def run_synthesize_dispatch(
         if not isinstance(art, dict):
             continue
         if art.get("id") in artifact_ids:
-            summaries.append(
-                f"- {art.get('id')} ({art.get('producer')}): "
-                f"{(art.get('summary') or '')[:200]}"
-            )
+            summaries.append(f"- {art.get('id')} ({art.get('producer')}): {(art.get('summary') or '')[:200]}")
     synth_prompt = (
         "[DISPATCH synthesize]\n"
-        "아래 scoped worker artifact들을 종합해 한 건의 실행 가능한 요약을 제시하세요.\n"
-        + "\n".join(summaries[:10])
+        "아래 scoped worker artifact들을 종합해 한 건의 실행 가능한 요약을 제시하세요.\n" + "\n".join(summaries[:10])
     )
     plan_md, _ = _session_context(folder)
     _emit_dispatch_events(

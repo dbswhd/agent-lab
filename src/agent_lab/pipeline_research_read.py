@@ -170,7 +170,7 @@ def list_wireup_candidates(
             if row.get("eligible_for_proposal"):
                 cards.append(row)
 
-    cards.sort(key=lambda c: (c.get("oos_sharpe") or 0), reverse=True)
+    cards.sort(key=lambda c: c.get("oos_sharpe") or 0, reverse=True)
     cards = cards[:cap]
     return {
         "ok": True,

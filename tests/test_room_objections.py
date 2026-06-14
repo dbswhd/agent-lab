@@ -97,9 +97,7 @@ def test_resolve_clears_execute_block():
 
 
 def test_challenge_blocks_task():
-    meta: dict = {
-        "tasks": [normalize_task({"id": "t-abc1234567", "title": "x", "status": "pending"})]
-    }
+    meta: dict = {"tasks": [normalize_task({"id": "t-abc1234567", "title": "x", "status": "pending"})]}
     append_objection(
         meta,
         from_agent="claude",
@@ -121,13 +119,7 @@ def test_dry_run_blocked_by_objection(tmp_path, monkeypatch):
 
     folder = tmp_path / "sess"
     folder.mkdir()
-    plan_md = (
-        "## 지금 실행\n"
-        "1.\n"
-        "   - 무엇을: fix\n"
-        "   - 어디서: `README.md`\n"
-        "   - 검증: ok\n"
-    )
+    plan_md = "## 지금 실행\n1.\n   - 무엇을: fix\n   - 어디서: `README.md`\n   - 검증: ok\n"
     (folder / "plan.md").write_text(plan_md, encoding="utf-8")
     (folder / "run.json").write_text(
         '{"objections":[{"id":"obj-x","from":"claude","act":"BLOCK",'

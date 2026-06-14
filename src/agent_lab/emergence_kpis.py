@@ -217,9 +217,7 @@ def routing_kpis(run_meta: dict[str, Any]) -> tuple[dict[str, float | None], dic
     escalation_rate = escalated / auto_routed if auto_routed else None
     savings: float | None = None
     if quick_calls and standard_calls:
-        savings = (sum(standard_calls) / len(standard_calls)) - (
-            sum(quick_calls) / len(quick_calls)
-        )
+        savings = (sum(standard_calls) / len(standard_calls)) - (sum(quick_calls) / len(quick_calls))
     return {"escalation_rate": escalation_rate, "quick_call_savings": savings}, counts
 
 

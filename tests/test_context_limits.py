@@ -41,18 +41,24 @@ def test_enriched_meta_has_budget_and_trim():
 def test_trim_level_thresholds():
     lim = agent_context_limits()
     assert trim_level(budget_pct=50, turns_omitted=0, chars_omitted=0, limits=lim) == "ok"
-    assert trim_level(
-        budget_pct=lim.warn_budget_pct,
-        turns_omitted=1,
-        chars_omitted=0,
-        limits=lim,
-    ) == "warn"
-    assert trim_level(
-        budget_pct=lim.critical_budget_pct,
-        turns_omitted=0,
-        chars_omitted=0,
-        limits=lim,
-    ) == "critical"
+    assert (
+        trim_level(
+            budget_pct=lim.warn_budget_pct,
+            turns_omitted=1,
+            chars_omitted=0,
+            limits=lim,
+        )
+        == "warn"
+    )
+    assert (
+        trim_level(
+            budget_pct=lim.critical_budget_pct,
+            turns_omitted=0,
+            chars_omitted=0,
+            limits=lim,
+        )
+        == "critical"
+    )
 
 
 def test_summarize_turn_context():

@@ -18,7 +18,7 @@ def test_summaries_exclude_long_verbatim_body():
         ChatMessage(
             role="agent",
             agent="codex",
-            content=f"```agent-envelope\n{{\"act\": \"CHALLENGE\", \"refs\": [\"plan_action:1\"]}}\n```\n{long_body}",
+            content=f'```agent-envelope\n{{"act": "CHALLENGE", "refs": ["plan_action:1"]}}\n```\n{long_body}',
             envelope={"act": "CHALLENGE", "refs": ["plan_action:1"]},
         ),
     ]
@@ -36,7 +36,7 @@ def test_block_challenge_captured_in_summary():
         ChatMessage(
             role="agent",
             agent="claude",
-            content="```agent-envelope\n{\"act\": \"BLOCK\", \"refs\": [\"plan_action:2\"]}\n```\n수치 근거 없음",
+            content='```agent-envelope\n{"act": "BLOCK", "refs": ["plan_action:2"]}\n```\n수치 근거 없음',
             envelope={"act": "BLOCK", "refs": ["plan_action:2"]},
         ),
     ]

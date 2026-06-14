@@ -84,14 +84,8 @@ def test_list_dir_excludes_vcs_and_other_sessions(tmp_path, monkeypatch):
 def test_read_text_file(tmp_path, monkeypatch):
     repo = tmp_path / "repo"
     client, sid, _ = _make_session(tmp_path, monkeypatch, binding_path=str(repo))
-    ws = next(
-        r
-        for r in client.get(f"/api/sessions/{sid}/files/roots").json()["roots"]
-        if r["kind"] == "workspace"
-    )
-    res = client.get(
-        f"/api/sessions/{sid}/files/content?root_id={ws['root_id']}&path=src/foo.py"
-    )
+    ws = next(r for r in client.get(f"/api/sessions/{sid}/files/roots").json()["roots"] if r["kind"] == "workspace")
+    res = client.get(f"/api/sessions/{sid}/files/content?root_id={ws['root_id']}&path=src/foo.py")
     assert res.status_code == 200
     body = res.json()
     assert body["kind"] == "text"
@@ -106,15 +100,8 @@ def test_read_diff_file_as_text(tmp_path, monkeypatch):
         "@@ -1 +1 @@\n-old\n+new PHASE2A_DIFF_OK\n",
         encoding="utf-8",
     )
-    ws = next(
-        r
-        for r in client.get(f"/api/sessions/{sid}/files/roots").json()["roots"]
-        if r["kind"] == "workspace"
-    )
-    res = client.get(
-        f"/api/sessions/{sid}/files/content"
-        f"?root_id={ws['root_id']}&path=src/change.diff"
-    )
+    ws = next(r for r in client.get(f"/api/sessions/{sid}/files/roots").json()["roots"] if r["kind"] == "workspace")
+    res = client.get(f"/api/sessions/{sid}/files/content?root_id={ws['root_id']}&path=src/change.diff")
     assert res.status_code == 200
     body = res.json()
     assert body["kind"] == "text"
@@ -124,14 +111,8 @@ def test_read_diff_file_as_text(tmp_path, monkeypatch):
 def test_path_traversal_rejected(tmp_path, monkeypatch):
     repo = tmp_path / "repo"
     client, sid, _ = _make_session(tmp_path, monkeypatch, binding_path=str(repo))
-    ws = next(
-        r
-        for r in client.get(f"/api/sessions/{sid}/files/roots").json()["roots"]
-        if r["kind"] == "workspace"
-    )
-    res = client.get(
-        f"/api/sessions/{sid}/files?root_id={ws['root_id']}&path=../../../../etc"
-    )
+    ws = next(r for r in client.get(f"/api/sessions/{sid}/files/roots").json()["roots"] if r["kind"] == "workspace")
+    res = client.get(f"/api/sessions/{sid}/files?root_id={ws['root_id']}&path=../../../../etc")
     assert res.status_code == 403
 
 
@@ -145,9 +126,7 @@ def test_write_attachments_ok(tmp_path, monkeypatch):
     assert res.status_code == 200
     assert res.json()["ok"] is True
     # Read it back.
-    got = client.get(
-        f"/api/sessions/{sid}/files/content?root_id=session&path=attachments/note.md"
-    )
+    got = client.get(f"/api/sessions/{sid}/files/content?root_id=session&path=attachments/note.md")
     assert got.json()["content"] == "# hi"
 
 
@@ -166,11 +145,7 @@ def test_write_outside_attachments_rejected(tmp_path, monkeypatch):
 def test_write_repo_file_rejected(tmp_path, monkeypatch):
     repo = tmp_path / "repo"
     client, sid, _ = _make_session(tmp_path, monkeypatch, binding_path=str(repo))
-    ws = next(
-        r
-        for r in client.get(f"/api/sessions/{sid}/files/roots").json()["roots"]
-        if r["kind"] == "workspace"
-    )
+    ws = next(r for r in client.get(f"/api/sessions/{sid}/files/roots").json()["roots"] if r["kind"] == "workspace")
     res = client.put(
         f"/api/sessions/{sid}/files/content",
         json={"root_id": ws["root_id"], "path": "src/foo.py", "content": "x"},
@@ -179,9 +154,7 @@ def test_write_repo_file_rejected(tmp_path, monkeypatch):
 
 
 def test_binding_missing_marked(tmp_path, monkeypatch):
-    client, sid, _ = _make_session(
-        tmp_path, monkeypatch, binding_path=str(tmp_path / "does-not-exist")
-    )
+    client, sid, _ = _make_session(tmp_path, monkeypatch, binding_path=str(tmp_path / "does-not-exist"))
     roots = client.get(f"/api/sessions/{sid}/files/roots").json()["roots"]
     missing = [r for r in roots if r.get("missing")]
     assert missing, "broken binding should be marked missing"
@@ -211,9 +184,7 @@ def test_raw_serves_image_bytes(tmp_path, monkeypatch):
     client, sid, _ = _make_session(tmp_path, monkeypatch, binding_path=str(repo))
     png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 16
     (repo / "sessions" / sid / "attachments" / "pic.png").write_bytes(png)
-    res = client.get(
-        f"/api/sessions/{sid}/files/raw?root_id=session&path=attachments/pic.png"
-    )
+    res = client.get(f"/api/sessions/{sid}/files/raw?root_id=session&path=attachments/pic.png")
     assert res.status_code == 200
     assert res.headers["content-type"].startswith("image/png")
     assert res.content == png
@@ -222,9 +193,7 @@ def test_raw_serves_image_bytes(tmp_path, monkeypatch):
 def test_raw_rejects_traversal(tmp_path, monkeypatch):
     repo = tmp_path / "repo"
     client, sid, _ = _make_session(tmp_path, monkeypatch, binding_path=str(repo))
-    res = client.get(
-        f"/api/sessions/{sid}/files/raw?root_id=session&path=../../../etc/hosts"
-    )
+    res = client.get(f"/api/sessions/{sid}/files/raw?root_id=session&path=../../../etc/hosts")
     assert res.status_code == 403
 
 

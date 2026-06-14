@@ -120,9 +120,7 @@ def run_live_worktree_spike(
         return report
     if preflight.get("ready") is not True:
         report["errors"].append(
-            preflight.get("reason")
-            or preflight.get("failure_code")
-            or "cursor preflight not ready"
+            preflight.get("reason") or preflight.get("failure_code") or "cursor preflight not ready"
         )
         report["finished_at"] = _now()
         return report
@@ -254,9 +252,7 @@ def run_live_worktree_merge_spike(
         return report
     if preflight.get("ready") is not True:
         report["errors"].append(
-            preflight.get("reason")
-            or preflight.get("failure_code")
-            or "cursor preflight not ready"
+            preflight.get("reason") or preflight.get("failure_code") or "cursor preflight not ready"
         )
         report["finished_at"] = _now()
         return report
@@ -351,8 +347,7 @@ def run_live_worktree_merge_spike(
                 {
                     "approve_status_merged": merged_execution.get("status") == "merged",
                     "merge_commit_sha_present": bool(merge_commit_sha),
-                    "head_is_merge_commit": bool(merge_commit_sha)
-                    and head_sha == merge_commit_sha,
+                    "head_is_merge_commit": bool(merge_commit_sha) and head_sha == merge_commit_sha,
                     "base_head_changed": head_sha != pre_merge_sha,
                     "base_branch_contains_marker": SPIKE_MARKER in base_text,
                     "main_clean_after_merge": _git_porcelain(git_root) == "",
@@ -397,8 +392,8 @@ def format_report_lines(report: dict[str, Any]) -> list[str]:
         lines.append(f"  content: {str(report.get('content_status')).upper()}")
     lines.extend(
         [
-        f"  preflight ready: {report.get('preflight', {}).get('ready')}",
-        f"  bridge_mode: {report.get('preflight', {}).get('bridge_mode')}",
+            f"  preflight ready: {report.get('preflight', {}).get('ready')}",
+            f"  bridge_mode: {report.get('preflight', {}).get('bridge_mode')}",
         ]
     )
     checks = report.get("checks") or {}
@@ -413,7 +408,5 @@ def format_report_lines(report: dict[str, Any]) -> list[str]:
         lines.append(f"  execution: {ex.get('id')} ({ex.get('status')})")
     if report.get("merge"):
         merge = report["merge"]
-        lines.append(
-            f"  merge: {merge.get('status')} ({str(merge.get('commit_sha') or '')[:12]})"
-        )
+        lines.append(f"  merge: {merge.get('status')} ({str(merge.get('commit_sha') or '')[:12]})")
     return lines

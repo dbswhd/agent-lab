@@ -51,9 +51,7 @@ def test_workspace_roots_block_lists_paths():
     assert "agent-lab" in block.lower() or "/" in block
 
 
-def test_resolve_execute_workspace_picks_lecture_script_when_files_exist(
-    tmp_path, monkeypatch
-):
+def test_resolve_execute_workspace_picks_lecture_script_when_files_exist(tmp_path, monkeypatch):
     agent_lab = tmp_path / "agent-lab"
     agent_lab.mkdir()
     lecture = tmp_path / "lecture-book"
@@ -71,9 +69,7 @@ def test_resolve_execute_workspace_picks_lecture_script_when_files_exist(
     assert perms["cursor"]["local_lecture_script"] is True
 
 
-def test_resolve_execute_workspace_stays_agent_lab_when_files_only_there(
-    tmp_path, monkeypatch
-):
+def test_resolve_execute_workspace_stays_agent_lab_when_files_only_there(tmp_path, monkeypatch):
     agent_lab = tmp_path / "agent-lab"
     agent_lab.mkdir()
     (agent_lab / "plan_execute.py").write_text("# local\n", encoding="utf-8")
@@ -87,9 +83,7 @@ def test_resolve_execute_workspace_stays_agent_lab_when_files_only_there(
     assert cwd == agent_lab.resolve()
 
 
-def test_resolve_execute_workspace_heuristic_for_lecture_basenames(
-    tmp_path, monkeypatch
-):
+def test_resolve_execute_workspace_heuristic_for_lecture_basenames(tmp_path, monkeypatch):
     agent_lab = tmp_path / "agent-lab"
     agent_lab.mkdir()
     lecture = tmp_path / "lecture-book"

@@ -170,12 +170,9 @@ def build_runtime_snapshot(
             else None,
             "pending_action_indices": list(ml.get("pending_action_indices") or []),
             "current_action_index": ml.get("current_action_index"),
-            "discuss_recovery": ml.get("discuss_recovery")
-            if isinstance(ml.get("discuss_recovery"), dict)
-            else None,
+            "discuss_recovery": ml.get("discuss_recovery") if isinstance(ml.get("discuss_recovery"), dict) else None,
             "discuss_recovery_pending": bool(
-                isinstance(ml.get("discuss_recovery"), dict)
-                and ml.get("discuss_recovery", {}).get("pending")
+                isinstance(ml.get("discuss_recovery"), dict) and ml.get("discuss_recovery", {}).get("pending")
             ),
         },
         "execute": {
@@ -209,9 +206,7 @@ def build_runtime_snapshot(
             work_phase=work_phase,
             block_reason=block_reason,
             inbox_pending=bool(inbox.get("inbox_pending")),
-            pending_execution_id=(
-                str(pending_exec.get("id")) if pending_exec and pending_exec.get("id") else None
-            ),
+            pending_execution_id=(str(pending_exec.get("id")) if pending_exec and pending_exec.get("id") else None),
         ),
         "last_failure": failure,
         "boulder": boulder,

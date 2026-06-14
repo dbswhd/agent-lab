@@ -125,7 +125,7 @@ gate_profile = "assistant"
 
 def test_gateway_routes_api(client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     routes = tmp_path / "routes.toml"
-    routes.write_text("[default]\nsession_id = \"home\"\ngate_profile = \"assistant\"\n", encoding="utf-8")
+    routes.write_text('[default]\nsession_id = "home"\ngate_profile = "assistant"\n', encoding="utf-8")
     monkeypatch.setenv("AGENT_LAB_ROUTES_CONFIG", str(routes))
     r = client.get("/api/gateway/routes")
     assert r.status_code == 200
@@ -187,7 +187,7 @@ allowed_chat_ids = [12345]
     )
     routes = tmp_path / "routes.toml"
     routes.write_text(
-        f"[default]\nsession_id = \"{session_folder.name}\"\ngate_profile = \"assistant\"\n",
+        f'[default]\nsession_id = "{session_folder.name}"\ngate_profile = "assistant"\n',
         encoding="utf-8",
     )
     monkeypatch.setenv("AGENT_LAB_GATEWAY_CONFIG", str(gw))

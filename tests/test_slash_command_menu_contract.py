@@ -15,9 +15,7 @@ def test_chat_composer_wires_slash_command_menu():
     text = _read("web/src/components/ChatComposer.tsx")
     assert "SlashCommandMenu" in text
     assert "slashCommands" in text
-    assert "data-testid=\"slash-command-menu\"" in _read(
-        "web/src/components/SlashCommandMenu.tsx"
-    )
+    assert 'data-testid="slash-command-menu"' in _read("web/src/components/SlashCommandMenu.tsx")
 
 
 def test_room_chat_fetches_commands_and_plugin_panel():

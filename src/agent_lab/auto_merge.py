@@ -34,11 +34,7 @@ def evaluate_auto_merge_eligibility(
     pending = _pending_execution(run)
     if execution_id:
         pending = next(
-            (
-                row
-                for row in (run.get("executions") or [])
-                if isinstance(row, dict) and row.get("id") == execution_id
-            ),
+            (row for row in (run.get("executions") or []) if isinstance(row, dict) and row.get("id") == execution_id),
             None,
         )
     classifier_preview = public_classifier_preview(pending)

@@ -70,9 +70,7 @@ def test_maybe_emit_tool_events_cli_prefix():
 
 
 def test_format_tool_activity_line():
-    assert format_tool_activity_line(tool="grep", args="agent_token") == (
-        "[tool · grep] agent_token"
-    )
+    assert format_tool_activity_line(tool="grep", args="agent_token") == ("[tool · grep] agent_token")
 
 
 def test_call_one_agent_emits_live_bridge_tokens_before_done(monkeypatch, tmp_path):
@@ -184,9 +182,7 @@ def test_call_one_agent_emits_agent_token_before_done(monkeypatch, tmp_path):
     token_idx = types.index("agent_token")
     done_idx = types.index("agent_done")
     assert token_idx < done_idx
-    streamed = "".join(
-        e[1]["text"] for e in events if e[0] == "agent_token"
-    )
+    streamed = "".join(e[1]["text"] for e in events if e[0] == "agent_token")
     done = next(e for e in events if e[0] == "agent_done")
     assert streamed == done[1]["content"]
     assert "streaming body" in streamed

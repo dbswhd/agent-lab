@@ -21,7 +21,14 @@ SHIPPED_ROWS: list[tuple[str, list[str]]] = [
         ],
     ),
     ("CENT-durable", ["tests/test_durable_completed_steps.py", "sessions/_regression/durable_completed_steps"]),
-    ("LC-L4", ["src/agent_lab/adversarial_gate.py", "sessions/_regression/adversarial_gate_lgtm", "tests/test_lc_l4_runtime.py"]),
+    (
+        "LC-L4",
+        [
+            "src/agent_lab/adversarial_gate.py",
+            "sessions/_regression/adversarial_gate_lgtm",
+            "tests/test_lc_l4_runtime.py",
+        ],
+    ),
     ("LC-L5", ["src/agent_lab/goal_loop.py", "sessions/_regression/goal_loop_achieved", "tests/test_goal_loop.py"]),
     ("MD-PLATFORM", [".agent-lab/PLATFORM.md", "src/agent_lab/platform_md.py", "tests/test_platform_md.py"]),
     ("LC-clarifier", ["src/agent_lab/session_clarifier.py", "tests/test_session_clarifier.py"]),
@@ -109,8 +116,7 @@ SHIPPED_ROWS: list[tuple[str, list[str]]] = [
     ("RT-H7", ["src/agent_lab/runtime/external_runner.py", "tests/test_external_runner.py"]),
 ]
 
-PARTIAL_ROWS: list[tuple[str, list[str]]] = [
-]
+PARTIAL_ROWS: list[tuple[str, list[str]]] = []
 
 FUTURE_TICKETS: tuple[str, ...] = ()
 

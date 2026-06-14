@@ -42,9 +42,7 @@ def _turn_summary(turns: list[dict[str, Any]]) -> list[str]:
         advocate = f" advocate={t['review_advocate']}" if t.get("review_advocate") else ""
         latency = t.get("latency_ms")
         lat = f" {latency}ms" if latency is not None else ""
-        lines.append(
-            f"  {i}. {mode}{review}{advocate} synthesize={synth}{lat}"
-        )
+        lines.append(f"  {i}. {mode}{review}{advocate} synthesize={synth}{lat}")
     return lines
 
 
@@ -78,10 +76,7 @@ def compare_sessions(left: Path, right: Path) -> int:
         va = run_a.get(key)
         vb = run_b.get(key)
         if va != vb:
-            print(
-                f"  WARNING: {key} mismatch ({va!r} vs {vb!r}) — "
-                "compare run metadata with caution"
-            )
+            print(f"  WARNING: {key} mismatch ({va!r} vs {vb!r}) — compare run metadata with caution")
     for key in (
         "workflow_id",
         "message_count",

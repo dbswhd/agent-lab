@@ -44,9 +44,7 @@ def test_init_project_memory_cli_dry_run(tmp_path: Path):
     import subprocess
     import sys
 
-    (tmp_path / "pyproject.toml").write_text(
-        '[project]\nname = "demo"\ndescription = "CLI dry run"\n'
-    )
+    (tmp_path / "pyproject.toml").write_text('[project]\nname = "demo"\ndescription = "CLI dry run"\n')
     root = Path(__file__).resolve().parents[1]
     proc = subprocess.run(
         [sys.executable, str(root / "scripts/init_project_memory.py"), str(tmp_path), "--dry-run"],

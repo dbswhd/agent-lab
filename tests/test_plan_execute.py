@@ -46,6 +46,7 @@ SAMPLE_PLAN = """## 다음에 할 일
    - 검증: discuss 1턴 후 `executions[]`가 유지된다.
 """
 
+
 def _seed_approved_plan_snapshot(
     folder: Path,
     plan_md: str,
@@ -218,9 +219,7 @@ def test_root_dir_listing_detects_new_sibling_file(tmp_path: Path):
     assert "break-report.json" in touched
 
 
-def test_approve_empty_source_diff_with_verification_paths_is_review_required(
-    tmp_path: Path, monkeypatch
-):
+def test_approve_empty_source_diff_with_verification_paths_is_review_required(tmp_path: Path, monkeypatch):
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     session = tmp_path / "sess"
@@ -660,10 +659,7 @@ def test_ensure_consensus_plan_sync_backfill(tmp_path: Path, monkeypatch) -> Non
     folder.mkdir()
     (folder / "topic.txt").write_text("topic\n", encoding="utf-8")
     (folder / "chat.jsonl").write_text(
-        "\n".join(
-            f'{{"role":"user","content":"m{i}"}}' for i in range(3)
-        )
-        + "\n",
+        "\n".join(f'{{"role":"user","content":"m{i}"}}' for i in range(3)) + "\n",
         encoding="utf-8",
     )
     write_run_meta(
@@ -892,9 +888,7 @@ def test_resolve_reject_restores_files(tmp_path: Path, monkeypatch):
     assert not (session / ".execute-snapshots" / exec_id).exists()
 
 
-def test_resolve_execution_apply_isolation_records_verify(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_resolve_execution_apply_isolation_records_verify(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from agent_lab.mission_loop import enable_mission_loop
     from agent_lab.run_meta import patch_run_meta, read_run_meta
     from agent_lab.trust_budget import set_trust_budget

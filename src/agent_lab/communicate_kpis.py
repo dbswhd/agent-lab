@@ -37,13 +37,9 @@ def communicate_counts(run_meta: dict[str, Any]) -> dict[str, Any]:
 
     hook_runs = [h for h in (run_meta.get("hook_runs") or []) if isinstance(h, dict)]
     hook_blocked = sum(1 for h in hook_runs if h.get("blocked"))
-    hook_envelope_invalid = sum(
-        1 for h in hook_runs if str(h.get("sub_reason") or "") == "envelope_invalid"
-    )
+    hook_envelope_invalid = sum(1 for h in hook_runs if str(h.get("sub_reason") or "") == "envelope_invalid")
 
-    ledger = [
-        e for e in (run_meta.get("dispatch_ledger") or []) if isinstance(e, dict)
-    ]
+    ledger = [e for e in (run_meta.get("dispatch_ledger") or []) if isinstance(e, dict)]
     fanout_workers: list[int] = []
     for entry in ledger:
         agents = entry.get("agents")
@@ -62,9 +58,7 @@ def communicate_counts(run_meta: dict[str, Any]) -> dict[str, Any]:
         "hook_envelope_invalid": hook_envelope_invalid,
         "acts_total": acts_total,
         "dispatch_count": len(ledger),
-        "dispatch_fanout_avg": (
-            sum(fanout_workers) / len(fanout_workers) if fanout_workers else None
-        ),
+        "dispatch_fanout_avg": (sum(fanout_workers) / len(fanout_workers) if fanout_workers else None),
     }
 
 
@@ -84,13 +78,9 @@ def communicate_scores(counts: dict[str, Any]) -> dict[str, float | None]:
     amend = int(acts.get("AMEND") or 0)
 
     return {
-        "envelope_parse_success_rate": (
-            (replies - parse_errors) / replies if replies else None
-        ),
+        "envelope_parse_success_rate": ((replies - parse_errors) / replies if replies else None),
         "legacy_endorse_rate": (legacy / replies if replies else None),
-        "median_guidance_chars_per_turn": (
-            guidance_total / guidance_turns if guidance_turns else None
-        ),
+        "median_guidance_chars_per_turn": (guidance_total / guidance_turns if guidance_turns else None),
         "hook_block_rate": (hook_blocked / hook_runs if hook_runs else None),
         "challenge_rate": (challenge_like / replies if replies else None),
         "endorse_rate": (endorse / replies if replies else None),

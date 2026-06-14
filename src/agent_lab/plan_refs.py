@@ -71,23 +71,17 @@ class PlanRefValidation:
 
     def summary(self) -> str:
         if self.valid:
-            return (
-                f"OK: {len(self.refs)} ref(s), all within chat.jsonl "
-                f"(1..{self.chat_line_count})"
-            )
+            return f"OK: {len(self.refs)} ref(s), all within chat.jsonl (1..{self.chat_line_count})"
         bad = ", ".join(f"L{n}" for n in self.invalid_refs)
         return (
-            f"FAIL: {len(self.invalid_refs)} ref(s) out of range "
-            f"(chat.jsonl has {self.chat_line_count} lines): {bad}"
+            f"FAIL: {len(self.invalid_refs)} ref(s) out of range (chat.jsonl has {self.chat_line_count} lines): {bad}"
         )
 
 
 def count_chat_lines(chat_path: Path) -> int:
     if not chat_path.is_file():
         return 0
-    return sum(
-        1 for line in chat_path.read_text(encoding="utf-8").splitlines() if line.strip()
-    )
+    return sum(1 for line in chat_path.read_text(encoding="utf-8").splitlines() if line.strip())
 
 
 def extract_plan_refs(plan_md: str) -> list[int]:
@@ -105,11 +99,7 @@ def _strip_refs(text: str) -> str:
 def tokenize_for_overlap(text: str) -> set[str]:
     cleaned = _strip_refs(text)
     cleaned = re.sub(r"[*`#|]", " ", cleaned)
-    tokens = {
-        t.lower()
-        for t in TOKEN_PATTERN.findall(cleaned)
-        if t.lower() not in _STOPWORDS
-    }
+    tokens = {t.lower() for t in TOKEN_PATTERN.findall(cleaned) if t.lower() not in _STOPWORDS}
     return tokens
 
 
@@ -152,10 +142,7 @@ class PlanRefMeaningValidation:
     def summary(self) -> str:
         if not self.warnings:
             return f"OK: {self.total_ref_items} ref item(s), no low-overlap warnings"
-        lines = ", ".join(
-            f"plan L{w.plan_line} → chat L{','.join(str(r) for r in w.refs)}"
-            for w in self.warnings[:5]
-        )
+        lines = ", ".join(f"plan L{w.plan_line} → chat L{','.join(str(r) for r in w.refs)}" for w in self.warnings[:5])
         extra = f" (+{len(self.warnings) - 5} more)" if len(self.warnings) > 5 else ""
         return f"WARN: {len(self.warnings)} low-overlap ref item(s): {lines}{extra}"
 
@@ -199,11 +186,7 @@ def validate_plan_ref_meaning(session_folder: Path) -> PlanRefMeaningValidation:
         if not refs:
             continue
         total += 1
-        ref_text = "\n".join(
-            chat_contents[n - 1]
-            for n in refs
-            if 1 <= n <= len(chat_contents)
-        )
+        ref_text = "\n".join(chat_contents[n - 1] for n in refs if 1 <= n <= len(chat_contents))
         ref_tokens = tokenize_for_overlap(ref_text)
         shared, score = overlap_score(plan_tokens, ref_tokens)
         if is_suspicious_ref_overlap(plan_tokens, ref_tokens):

@@ -46,14 +46,15 @@ def test_harvest_agent_learnings_dedupe(tmp_path, monkeypatch, request):
     folder.mkdir()
     (folder / "run.json").write_text("{}", encoding="utf-8")
     ensure_mission_notepads(folder)
-    request.addfinalizer(
-        lambda: shutil.rmtree(mission_notepad_dir(folder), ignore_errors=True)
-    )
+    request.addfinalizer(lambda: shutil.rmtree(mission_notepad_dir(folder), ignore_errors=True))
     msgs = [
         _Msg("user", content="topic"),
         _Msg("agent", "codex", "[LEARNED: outbox 패턴이 장애 전파를 끊는다]"),
-        _Msg("agent", "claude", "[LEARNED: outbox 패턴이 장애 전파를 끊는다]는 동의.\n"
-             "[LEARNED: 핵심 지표는 스트림 분리가 싸다]"),
+        _Msg(
+            "agent",
+            "claude",
+            "[LEARNED: outbox 패턴이 장애 전파를 끊는다]는 동의.\n[LEARNED: 핵심 지표는 스트림 분리가 싸다]",
+        ),
     ]
     added = harvest_agent_learnings(folder, msgs)
     assert added == 3  # codex 1 + claude 2 (에이전트 prefix 달라 별개 항목)
@@ -88,9 +89,7 @@ def wisdom_session(tmp_path: Path):
 
     folder = tmp_path / f"sess-{uuid.uuid4().hex[:10]}"
     folder.mkdir()
-    (folder / "run.json").write_text(
-        json.dumps({"wisdom_index": {"enabled": True}}), encoding="utf-8"
-    )
+    (folder / "run.json").write_text(json.dumps({"wisdom_index": {"enabled": True}}), encoding="utf-8")
     ensure_mission_notepads(folder)
     append_wisdom_note(
         folder,
@@ -111,17 +110,13 @@ def test_wisdom_block_injected_for_deep_r1(wisdom_session, monkeypatch):
         "_turn_category": {"value": "deep", "source": "heuristic", "signals": []},
         "wisdom_index": {"enabled": True},
     }
-    out = _append_wisdom_search_block(
-        "BASE", topic="outbox 장애 전파 재시도 결정", run_meta=run_meta, parallel_round=1
-    )
+    out = _append_wisdom_search_block("BASE", topic="outbox 장애 전파 재시도 결정", run_meta=run_meta, parallel_round=1)
     assert "[세션 위즈덤" in out
     assert "outbox" in out
     assert len(out) <= len("BASE") + 2 + 820  # ~800자 cap
 
     # R2에는 미주입
-    r2 = _append_wisdom_search_block(
-        "BASE", topic="outbox 장애 전파 재시도 결정", run_meta=run_meta, parallel_round=2
-    )
+    r2 = _append_wisdom_search_block("BASE", topic="outbox 장애 전파 재시도 결정", run_meta=run_meta, parallel_round=2)
     assert r2 == "BASE"
 
 
@@ -136,22 +131,16 @@ def test_wisdom_block_respects_route_and_override(wisdom_session, monkeypatch):
 
     monkeypatch.setenv("AGENT_LAB_WISDOM_IN_CONTEXT", "auto")
     assert wisdom_in_context_mode() == "auto"
-    out = _append_wisdom_search_block(
-        "BASE", topic="outbox 재시도", run_meta=standard, parallel_round=1
-    )
+    out = _append_wisdom_search_block("BASE", topic="outbox 재시도", run_meta=standard, parallel_round=1)
     assert out == "BASE"  # auto: standard route는 off
 
     monkeypatch.setenv("AGENT_LAB_WISDOM_IN_CONTEXT", "1")
-    forced = _append_wisdom_search_block(
-        "BASE", topic="outbox 재시도", run_meta=standard, parallel_round=1
-    )
+    forced = _append_wisdom_search_block("BASE", topic="outbox 재시도", run_meta=standard, parallel_round=1)
     assert "[세션 위즈덤" in forced  # 전역 강제 on
 
     monkeypatch.setenv("AGENT_LAB_WISDOM_IN_CONTEXT", "0")
     deep = {**base_meta, "_turn_category": {"value": "deep"}}
-    off = _append_wisdom_search_block(
-        "BASE", topic="outbox 재시도", run_meta=deep, parallel_round=1
-    )
+    off = _append_wisdom_search_block("BASE", topic="outbox 재시도", run_meta=deep, parallel_round=1)
     assert off == "BASE"  # 전역 강제 off
 
 

@@ -75,9 +75,7 @@ def test_delegate_codex_replay_invokes_one_agent_and_writes_artifact(
 
     assert calls == ["codex"]
     agent_msgs = [m for m in messages if m.role == "agent"]
-    assert [m.agent for m in agent_msgs if "Delegate result" in (m.content or "")] == [
-        "codex"
-    ]
+    assert [m.agent for m in agent_msgs if "Delegate result" in (m.content or "")] == ["codex"]
 
     run = json.loads((folder / "run.json").read_text(encoding="utf-8"))
     assert run["last_delegate"]["agent"] == "codex"

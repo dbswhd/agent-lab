@@ -24,7 +24,7 @@ from agent_lab.room_context import (
 DISPATCH_LEAD_GUIDANCE = (
     "[턴 리드 · dispatch]\n"
     "동료에게 scoped work를 내릴 때 envelope `act: MESSAGE`, `to: <agent>`, "
-    "optional `dispatch: { \"op\": \"scoped\", \"prompt\": \"…\" }` 를 사용하세요. "
+    'optional `dispatch: { "op": "scoped", "prompt": "…" }` 를 사용하세요. '
     "실행은 Human `DELEGATE`/`DISPATCH` 또는 명시 GO 후에만 됩니다."
 )
 
@@ -163,10 +163,7 @@ def build_guidance_parts(
     if policy.inject_analysis and policy.turn_profile in ("analyze", "discuss"):
         parts.append(ANALYSIS_TURN_GUIDANCE.strip())
     if policy.turn_profile == "specialist":
-        parts.append(
-            "[Specialist turn · R1 Codex+Claude → R2 Cursor patch. "
-            "Stay in your capability lane.]"
-        )
+        parts.append("[Specialist turn · R1 Codex+Claude → R2 Cursor patch. Stay in your capability lane.]")
     if policy.turn_profile == "verified":
         from agent_lab.verified_loop import VERIFIED_LOOP_GUIDANCE
 

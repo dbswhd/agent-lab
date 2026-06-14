@@ -37,9 +37,7 @@ def test_pinned_current_turn_keeps_human_under_char_trim():
     a1 = _Msg("agent", "claude", "x" * 50000, 1)
     a2 = _Msg("agent", "codex", "y" * 50000, 1)
     messages = [old, old_a, human, a1, a2]
-    trimmed, _, chars_om, pin_count = prepare_recent_messages(
-        messages, max_turns=8, max_chars=80000
-    )
+    trimmed, _, chars_om, pin_count = prepare_recent_messages(messages, max_turns=8, max_chars=80000)
     assert pin_count == 3
     assert human in trimmed
     assert a1 in trimmed

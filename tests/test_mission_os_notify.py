@@ -167,12 +167,15 @@ def test_execute_lane_notifies_gate_blocked(session_folder: Path) -> None:
         "gates": {"execute": {"open": False}},
     }
     calls: list[str] = []
-    with patch(
-        "agent_lab.runtime.policy.PolicyEngine.gate_snapshot",
-        return_value=blocked_snap,
-    ), patch(
-        "agent_lab.gateway.notify_helpers.notify_gate_blocked",
-        side_effect=lambda *a, **k: calls.append("blocked") or {"ok": True},
+    with (
+        patch(
+            "agent_lab.runtime.policy.PolicyEngine.gate_snapshot",
+            return_value=blocked_snap,
+        ),
+        patch(
+            "agent_lab.gateway.notify_helpers.notify_gate_blocked",
+            side_effect=lambda *a, **k: calls.append("blocked") or {"ok": True},
+        ),
     ):
         result = handle_execute_dry_run_start(session_folder, {"action_index": 0})
     assert result.skipped is True

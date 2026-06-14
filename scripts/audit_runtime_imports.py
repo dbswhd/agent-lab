@@ -70,11 +70,7 @@ def main() -> int:
 
     missing = contract - found
     extra = {
-        edge
-        for edge in found
-        if edge[0] in scan_modules
-        and edge[1] in orchestration_targets
-        and edge not in contract
+        edge for edge in found if edge[0] in scan_modules and edge[1] in orchestration_targets and edge not in contract
     }
 
     print(f"Contract edges: {len(contract)}")

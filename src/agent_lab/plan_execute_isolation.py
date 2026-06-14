@@ -75,13 +75,7 @@ def resolve_action_isolation(
         if hinted_root is not None:
             roots = {hinted_root.resolve()}
     root = next(iter(roots)) if len(roots) == 1 else None
-    under = bool(
-        root
-        and (
-            not monitored
-            or paths_under_git_root(root, monitored, cwd_hint=cwd_hint)
-        )
-    )
+    under = bool(root and (not monitored or paths_under_git_root(root, monitored, cwd_hint=cwd_hint)))
 
     if requested == "block":
         return IsolationDecision(

@@ -121,9 +121,7 @@ def handle_gateway_command(
         ]
         for item in pending[:5]:
             lines.append(f"  - {item.get('id')}: {item.get('kind')} {str(item.get('prompt') or '')[:80]}")
-        lines.append(
-            "Commands: /status | /approve plan | /approve merge | /approve auto | /approve skill"
-        )
+        lines.append("Commands: /status | /approve plan | /approve merge | /approve auto | /approve skill")
         return {"ok": True, "reply": "\n".join(lines)}
 
     if lower.startswith("/approve plan") or lower == "approve plan":
@@ -157,10 +155,7 @@ def handle_gateway_command(
                     approved_by="human",
                 )
                 merged = result.get("execution") or {}
-                reply = (
-                    f"merge approved ({execution_id}) → "
-                    f"{merged.get('status') or 'ok'}"
-                )
+                reply = f"merge approved ({execution_id}) → {merged.get('status') or 'ok'}"
         except ValueError as exc:
             return {"ok": False, "reply": f"merge confirm failed: {exc}"}
         except Exception as exc:
@@ -199,11 +194,7 @@ def handle_gateway_command(
 
     if lower.startswith("/approve skill") or lower == "approve skill":
         run = read_run_meta(folder)
-        pending_skills = [
-            item
-            for item in pending_inbox_items(run)
-            if item.get("kind") == "skill_draft"
-        ]
+        pending_skills = [item for item in pending_inbox_items(run) if item.get("kind") == "skill_draft"]
         if not pending_skills:
             return {"ok": False, "reply": "no pending skill draft to promote"}
         item = pending_skills[-1]
@@ -269,10 +260,7 @@ def handle_gateway_command(
         head = pending[0]
         return {
             "ok": False,
-            "reply": (
-                f"pending inbox {head.get('id')} ({head.get('kind')}) — "
-                f"`/resolve {head.get('id')} <answer>`"
-            ),
+            "reply": (f"pending inbox {head.get('id')} ({head.get('kind')}) — `/resolve {head.get('id')} <answer>`"),
         }
 
     return {"ok": True, "reply": f"no action for: {cmd[:120]}"}
@@ -317,11 +305,7 @@ def notify_inbox_pending(
     prompt = str(item.get("prompt") or item.get("summary") or item.get("id") or "Inbox")
     kind = item.get("kind") or "item"
     item_id = item.get("id") or ""
-    text = (
-        f"[{session_id}] inbox {kind}\n"
-        f"{prompt[:500]}\n\n"
-        f"`/resolve {item_id} <answer>` or `/approve plan`"
-    )
+    text = f"[{session_id}] inbox {kind}\n{prompt[:500]}\n\n`/resolve {item_id} <answer>` or `/approve plan`"
     results = [send_telegram_message(cid, text) for cid in targets]
     return {"ok": all(r.get("ok") for r in results), "results": results}
 
@@ -341,18 +325,15 @@ def notify_merge_ready(payload: dict[str, Any]) -> dict[str, Any]:
     session_id = str(payload.get("session_id") or "")
     exec_id = str(payload.get("execution_id") or "")
     profile = str(payload.get("gate_profile") or "")
-    eligibility = payload.get("auto_merge_eligibility") if isinstance(
-        payload.get("auto_merge_eligibility"), dict
-    ) else {}
+    eligibility = (
+        payload.get("auto_merge_eligibility") if isinstance(payload.get("auto_merge_eligibility"), dict) else {}
+    )
     auto_hint = ""
     if eligibility.get("eligible"):
         auto_hint = "\n`/approve auto` or `/approve merge`"
     elif profile == "assistant":
         auto_hint = "\n`/approve merge`"
-    text = (
-        f"[{session_id}] merge ready\n"
-        f"execution `{exec_id}` (profile: {profile}){auto_hint}"
-    )
+    text = f"[{session_id}] merge ready\nexecution `{exec_id}` (profile: {profile}){auto_hint}"
     return _notify_telegram_text(text)
 
 

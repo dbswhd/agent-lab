@@ -26,9 +26,7 @@ class VerifiedLoopRejectRequest(BaseModel):
 
 def _set_plan_successor_headers(response: Response, session_id: str, successor: str) -> None:
     response.headers["Deprecation"] = _DEPRECATION
-    response.headers["Link"] = (
-        f'</api/sessions/{session_id}/{successor}>; rel="successor-version"'
-    )
+    response.headers["Link"] = f'</api/sessions/{session_id}/{successor}>; rel="successor-version"'
 
 
 @router.post("/sessions/{session_id}/verified-loop/approve")

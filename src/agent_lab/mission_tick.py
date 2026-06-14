@@ -10,9 +10,7 @@ from agent_lab.run_meta import patch_run_meta, read_run_meta
 
 _EARLY_MISSION_PHASES = frozenset({"DISCUSS", "PLAN_GATE", "PLAN_REJECT", "MISSION_DEFINE"})
 _MAX_SCHEDULED_CONDUCTOR_STEPS = 8
-_TERMINAL_MISSION_PHASES = frozenset(
-    {"MISSION_DONE", "MISSION_PAUSED", "DISCUSS", "PLAN_REJECT"}
-)
+_TERMINAL_MISSION_PHASES = frozenset({"MISSION_DONE", "MISSION_PAUSED", "DISCUSS", "PLAN_REJECT"})
 
 
 def _harvest_plan_questions(
@@ -47,9 +45,7 @@ def _notify_harvest_items(folder: Path, items: list[dict[str, Any]]) -> None:
 def _stamp_schedule_meta(run_meta: dict[str, Any], schedule_id: str) -> dict[str, Any]:
     run_meta["mission_schedule"] = {
         **dict(run_meta.get("mission_schedule") or {}),
-        "last_sandbox_tick_at": datetime.now(timezone.utc)
-        .replace(microsecond=0)
-        .isoformat(),
+        "last_sandbox_tick_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
         "last_schedule_id": schedule_id,
     }
     return run_meta

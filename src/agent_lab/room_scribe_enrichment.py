@@ -21,13 +21,9 @@ def format_unresolved_objections_section(run_meta: dict[str, Any] | None) -> str
     lines = ["## 미해결 이의", ""]
     for o in rows[:12]:
         ref = o.get("target_ref") or o.get("task_id") or "—"
-        lines.append(
-            f"- **{o.get('from')}** · {o.get('act')} → {ref}: {(o.get('body') or '')[:200]}"
-        )
+        lines.append(f"- **{o.get('from')}** · {o.get('act')} → {ref}: {(o.get('body') or '')[:200]}")
     lines.append("")
-    lines.append(
-        "(Human이 작업 바에서 수용/기각하기 전까지 linked plan execute는 차단됩니다.)"
-    )
+    lines.append("(Human이 작업 바에서 수용/기각하기 전까지 linked plan execute는 차단됩니다.)")
     return "\n".join(lines)
 
 
@@ -125,9 +121,7 @@ def extract_agent_turn_summaries(
         raw = getattr(m, "content", "") or ""
         parsed = parse_agent_response(raw)
         body = (parsed.body or raw).strip()
-        env = getattr(m, "envelope", None) or (
-            parsed.envelope.to_dict() if parsed.envelope else None
-        )
+        env = getattr(m, "envelope", None) or (parsed.envelope.to_dict() if parsed.envelope else None)
         act = envelope_act(env)
         line_no = _message_line_no(messages, i)
         bullets = _claim_bullets(body)
@@ -151,9 +145,7 @@ def extract_agent_turn_summaries(
                 summary["act_refs"] = refs
         parts: list[str] = []
         if act and act in _SUMMARY_ACTS:
-            ref_tail = f" → {', '.join(summary.get('act_refs') or [])}" if summary.get(
-                "act_refs"
-            ) else ""
+            ref_tail = f" → {', '.join(summary.get('act_refs') or [])}" if summary.get("act_refs") else ""
             parts.append(f"**{act}**{ref_tail}")
         for b in bullets:
             parts.append(f"• {b}")
@@ -191,9 +183,7 @@ def format_scribe_agent_summaries_block(
         lines.append(header)
         lines.append(str(row.get("text") or "").strip())
         lines.append("")
-    lines.append(
-        "(Full verbatim agent replies omitted — synthesize from summaries + enrichment below.)"
-    )
+    lines.append("(Full verbatim agent replies omitted — synthesize from summaries + enrichment below.)")
     return "\n".join(lines).strip()
 
 
@@ -255,28 +245,21 @@ def build_scribe_enrichment(
     obj_sec = format_unresolved_objections_section(run_meta)
     if obj_sec:
         parts.append(
-            "[Scribe · objections]\n"
-            "Include the following section verbatim (update if already present):\n\n"
-            + obj_sec
+            "[Scribe · objections]\nInclude the following section verbatim (update if already present):\n\n" + obj_sec
         )
     contrib = agent_contributions_section(messages)
     if contrib:
         parts.append(
             "[Scribe · contributions]\n"
-            "Include or merge this auto summary under plan (do not drop agent names):\n\n"
-            + contrib
+            "Include or merge this auto summary under plan (do not drop agent names):\n\n" + contrib
         )
-    resolved = [
-        o
-        for o in list_objections(run_meta)
-        if o.get("status") in ("resolved_accepted", "resolved_wontfix")
-    ][-6:]
+    resolved = [o for o in list_objections(run_meta) if o.get("status") in ("resolved_accepted", "resolved_wontfix")][
+        -6:
+    ]
     if resolved:
         lines = ["[Scribe · resolved objections — for audit]", ""]
         for o in resolved:
-            lines.append(
-                f"- {o.get('id')}: {o.get('status')} — {(o.get('body') or '')[:80]}"
-            )
+            lines.append(f"- {o.get('id')}: {o.get('status')} — {(o.get('body') or '')[:80]}")
         parts.append("\n".join(lines))
     return "\n\n---\n\n".join(parts)
 

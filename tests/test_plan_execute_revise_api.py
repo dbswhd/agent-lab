@@ -83,9 +83,7 @@ def test_revise_pending_execution_replaces_diff_and_remains_approvable(
     monkeypatch.setattr("agent_lab.agents.cursor_agent.respond", _initial)
     initial = run_dry_run(folder, action_index=1, permissions={})
     initial_worktree = Path(initial["worktree_path"])
-    hunk_ref = next(
-        line for line in str(initial["diff"]).splitlines() if line.startswith("@@")
-    )
+    hunk_ref = next(line for line in str(initial["diff"]).splitlines() if line.startswith("@@"))
 
     seen: dict[str, str] = {}
     monkeypatch.setattr("agent_lab.agents.codex_agent.is_available", lambda: True)
@@ -139,9 +137,7 @@ def test_revise_pending_execution_replaces_diff_and_remains_approvable(
     )
     assert approved.status_code == 200
     assert approved.json()["execution"]["status"] == "merged"
-    assert (repo / "src" / "app.py").read_text(encoding="utf-8") == (
-        "revised draft\nkeep from first draft\n"
-    )
+    assert (repo / "src" / "app.py").read_text(encoding="utf-8") == ("revised draft\nkeep from first draft\n")
 
 
 def test_revise_pending_execution_returns_409_when_not_pending(

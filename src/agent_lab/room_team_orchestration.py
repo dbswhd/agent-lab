@@ -185,9 +185,7 @@ def should_emit_human_turn_synthesis(
     if profile != "analyze":
         return False
     parallel = count_parallel_r1_agents(turn_messages)
-    scheduled = len(
-        {str(a).strip().lower() for a in (agents_used or []) if str(a).strip()}
-    )
+    scheduled = len({str(a).strip().lower() for a in (agents_used or []) if str(a).strip()})
     return max(parallel, scheduled) >= 3
 
 

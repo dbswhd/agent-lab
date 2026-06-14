@@ -50,12 +50,8 @@ def test_e2b_skip_scribe_on_discuss_with_open_objections():
         human_turn=1,
         refs=["1"],
     )
-    assert should_skip_scribe_for_open_objections(
-        meta, mode="discuss", synthesize=True
-    )
-    assert not should_skip_scribe_for_open_objections(
-        meta, mode="plan", synthesize=True
-    )
+    assert should_skip_scribe_for_open_objections(meta, mode="discuss", synthesize=True)
+    assert not should_skip_scribe_for_open_objections(meta, mode="plan", synthesize=True)
 
 
 def test_patch_plan_objections_only():

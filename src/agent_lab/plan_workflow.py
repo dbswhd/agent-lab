@@ -37,9 +37,7 @@ PLAN_WORKFLOW_RECEIPTS: dict[str, str] = {
 }
 
 _PLAN_DRAFT_PHASES = frozenset({"DRAFT", "REFINE"})
-_PLAN_PRE_APPROVAL = frozenset(
-    {"INTAKE", "CLARIFY", "DRAFT", "PEER_REVIEW", "REFINE", "HUMAN_PENDING"}
-)
+_PLAN_PRE_APPROVAL = frozenset({"INTAKE", "CLARIFY", "DRAFT", "PEER_REVIEW", "REFINE", "HUMAN_PENDING"})
 _VERIFIED_PROPOSING = frozenset({"INTAKE", "CLARIFY", "DRAFT", "PEER_REVIEW", "REFINE"})
 _PLAN_CLARIFY_PHASES = frozenset({"INTAKE", "CLARIFY"})
 _PLAN_PEER_PHASES = frozenset({"PEER_REVIEW"})
@@ -352,19 +350,14 @@ def _finalize_plan_approval(
     enable_workflow: bool = False,
 ) -> dict[str, Any]:
     path = session_folder / "plan.md"
-    md = plan_md if plan_md is not None else (
-        path.read_text(encoding="utf-8") if path.is_file() else ""
-    )
+    md = plan_md if plan_md is not None else (path.read_text(encoding="utf-8") if path.is_file() else "")
     if not (md or "").strip():
         raise ValueError("plan.md is empty")
 
     derived = derive_loop_goal_from_plan(md)
     goal_text = (goal or derived["goal"]).strip()
     criteria_resolved = (criteria or derived["criteria"]).strip() or goal_text
-    promise = (
-        (completion_promise or derived["completion_promise"]).strip()
-        or DEFAULT_COMPLETION_PROMISE
-    )
+    promise = (completion_promise or derived["completion_promise"]).strip() or DEFAULT_COMPLETION_PROMISE
     if not goal_text:
         raise ValueError("plan goal text is required")
 
@@ -520,8 +513,7 @@ def plan_workflow_public(run: dict[str, Any] | None) -> dict[str, Any]:
     pw = get_plan_workflow(run)
     return {
         "plan_workflow": pw,
-        "plan_workflow_pending_approval": pw.get("enabled")
-        and pw.get("phase") == "HUMAN_PENDING",
+        "plan_workflow_pending_approval": pw.get("enabled") and pw.get("phase") == "HUMAN_PENDING",
     }
 
 
@@ -541,11 +533,7 @@ def resolve_work_phase_from_plan_workflow(phase: str | None) -> str | None:
 def _open_plan_objections(run: dict[str, Any]) -> list[dict[str, Any]]:
     from agent_lab.room_objections import list_objections
 
-    return [
-        o
-        for o in list_objections(run)
-        if o.get("status") == "open" and o.get("act") in {"CHALLENGE", "BLOCK"}
-    ]
+    return [o for o in list_objections(run) if o.get("status") == "open" and o.get("act") in {"CHALLENGE", "BLOCK"}]
 
 
 def tick_plan_workflow_after_turn(
@@ -666,6 +654,7 @@ def tick_plan_workflow_after_turn(
 
     if phase == "REFINE":
         if plan_md and plan_md != plan_before:
+
             def _inc_peer(run_in: dict[str, Any]) -> dict[str, Any]:
                 cur = get_plan_workflow(run_in)
                 cur["peer_review_round"] = int(cur.get("peer_review_round") or 0) + 1

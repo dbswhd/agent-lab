@@ -30,9 +30,7 @@ def test_completed_step_key_and_record(tmp_path):
         envelope={"act": "PROPOSE"},
     )
     run = read_run_meta(folder)
-    step = get_completed_step(
-        run, human_turn=2, parallel_round=1, agent="cursor"
-    )
+    step = get_completed_step(run, human_turn=2, parallel_round=1, agent="cursor")
     assert step is not None
     assert step["content"] == "cached reply"
     assert step["step"] == key
@@ -156,9 +154,7 @@ def test_call_one_agent_records_completed_step(monkeypatch, tmp_path):
         human_turn_index=0,
     )
     assert msg.role == "agent"
-    step = get_completed_step(
-        read_run_meta(folder), human_turn=1, parallel_round=1, agent="cursor"
-    )
+    step = get_completed_step(read_run_meta(folder), human_turn=1, parallel_round=1, agent="cursor")
     assert step is not None
     assert "cursor ok" in step["content"]
 

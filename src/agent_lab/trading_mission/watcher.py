@@ -163,11 +163,7 @@ def mark_queue_done(trigger: str, *, queue_path: Path | None = None) -> None:
         except json.JSONDecodeError:
             lines.append(line)
             continue
-        if (
-            isinstance(row, dict)
-            and row.get("status") == "pending"
-            and row.get("trigger") == trigger
-        ):
+        if isinstance(row, dict) and row.get("status") == "pending" and row.get("trigger") == trigger:
             row = dict(row)
             row["status"] = "done"
             row["done_at"] = _now_kst().isoformat()

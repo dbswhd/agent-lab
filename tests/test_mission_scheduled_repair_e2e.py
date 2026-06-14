@@ -60,9 +60,7 @@ def _repair_state(
     return run
 
 
-def test_scheduled_tick_repair_passes_to_mission_done(
-    sessions_env: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_scheduled_tick_repair_passes_to_mission_done(sessions_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     folder = sessions_env / "repair-pass"
     folder.mkdir()
     (folder / "run.json").write_text("{}", encoding="utf-8")
@@ -96,9 +94,7 @@ def test_scheduled_tick_repair_passes_to_mission_done(
     assert steps[0].get("status") == "repair_complete"
 
 
-def test_maybe_advance_scheduled_repair(
-    sessions_env: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_maybe_advance_scheduled_repair(sessions_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     folder = sessions_env / "repair-advance"
     folder.mkdir()
     (folder / "run.json").write_text("{}", encoding="utf-8")
@@ -121,9 +117,7 @@ def test_maybe_advance_scheduled_repair(
     assert read_run_meta(folder)["mission_loop"]["phase"] == "MISSION_DONE"
 
 
-def test_scheduled_conductor_merge_fail_repair_pass_chain(
-    sessions_env: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_scheduled_conductor_merge_fail_repair_pass_chain(sessions_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """MERGE_REVIEW → verify fail → REPAIR → reverify pass in one scheduled tick."""
     folder = sessions_env / "repair-chain"
     folder.mkdir()
@@ -286,8 +280,5 @@ def test_scheduled_conductor_execute_merge_fail_repair_pass(
     assert result["ok"] is True
     run = read_run_meta(folder)
     assert run["mission_loop"]["phase"] == "MISSION_DONE"
-    statuses = [
-        step.get("status")
-        for step in (result["mission_loop"].get("conductor_steps") or [])
-    ]
+    statuses = [step.get("status") for step in (result["mission_loop"].get("conductor_steps") or [])]
     assert statuses == ["dry_run_complete", "auto_merge_complete", "repair_complete"]

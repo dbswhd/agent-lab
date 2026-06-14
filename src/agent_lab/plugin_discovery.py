@@ -355,8 +355,7 @@ def build_plugin_allowlist_block(
     agent_ids = [
         row["name"]
         for row in plugins
-        if str(row.get("agent")).lower() == agent.lower()
-        and is_plugin_enabled(str(row["id"]), agent, allow)
+        if str(row.get("agent")).lower() == agent.lower() and is_plugin_enabled(str(row["id"]), agent, allow)
     ]
     if not agent_ids:
         return (

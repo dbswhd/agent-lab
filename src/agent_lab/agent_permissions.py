@@ -54,9 +54,7 @@ def normalize_cursor_permissions(
 def normalize_agent_permissions(
     permissions: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    return normalize_codex_permissions(
-        normalize_claude_permissions(normalize_cursor_permissions(permissions))
-    )
+    return normalize_codex_permissions(normalize_claude_permissions(normalize_cursor_permissions(permissions)))
 
 
 def normalize_claude_permissions(
@@ -85,9 +83,7 @@ def claude_runtime_block(
     perms = normalize_claude_permissions(permissions)
     block = perms.get("claude") or {}
     if not block.get("tools", True):
-        return (
-            "Claude Code runtime: text-only this turn (tools disabled by human)."
-        )
+        return "Claude Code runtime: text-only this turn (tools disabled by human)."
     roots = resolve_claude_roots(perms)
     root_lines = "\n".join(f"  - {p}" for p in roots) or "  - (project root)"
     edit = "acceptEdits (file edits allowed)" if block.get("write", True) else "read-only"

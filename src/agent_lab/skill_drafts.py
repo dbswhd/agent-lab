@@ -53,10 +53,7 @@ def _slugify(text: str, *, max_len: int = 48) -> str:
 def slug_for_execution(execution: dict[str, Any]) -> str:
     idx = execution.get("action_index")
     summary = str(
-        execution.get("draft_summary")
-        or execution.get("action_verify")
-        or execution.get("action_id")
-        or "lesson"
+        execution.get("draft_summary") or execution.get("action_verify") or execution.get("action_id") or "lesson"
     )
     base = _slugify(summary)
     if idx is not None:
@@ -112,15 +109,9 @@ def render_skill_markdown(
     exec_id = str(execution.get("id") or "")
     verify_line = str(execution.get("action_verify") or "").strip()
     summary = str(execution.get("draft_summary") or "").strip()
-    paths = list(
-        execution.get("source_touched_paths")
-        or execution.get("touched_paths")
-        or []
-    )
+    paths = list(execution.get("source_touched_paths") or execution.get("touched_paths") or [])
     oracle = evidence.get("oracle") if isinstance(evidence.get("oracle"), dict) else {}
-    oracle_detail = str(
-        oracle.get("detail") or oracle.get("feedback") or oracle.get("reason") or ""
-    ).strip()
+    oracle_detail = str(oracle.get("detail") or oracle.get("feedback") or oracle.get("reason") or "").strip()
     desc = summary or verify_line or f"Verified lesson from {exec_id}"
     if len(desc) > 160:
         desc = desc[:157] + "..."

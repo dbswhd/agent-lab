@@ -127,9 +127,7 @@ def paths_under_git_root(git_root: Path, paths: list[str], *, cwd_hint: Path | N
             if p.is_file():
                 p.relative_to(root)
             else:
-                (cwd_hint / raw if cwd_hint and not Path(raw).is_absolute() else p).resolve().relative_to(
-                    root
-                )
+                (cwd_hint / raw if cwd_hint and not Path(raw).is_absolute() else p).resolve().relative_to(root)
         except ValueError:
             return False
     return True
@@ -170,10 +168,7 @@ def resolve_action_git_context(
         roots_for_paths = None
     under = bool(
         roots_for_paths
-        and (
-            not monitored_paths
-            or paths_under_git_root(roots_for_paths, monitored_paths, cwd_hint=cwd_hint)
-        )
+        and (not monitored_paths or paths_under_git_root(roots_for_paths, monitored_paths, cwd_hint=cwd_hint))
     )
 
     if req == "block":

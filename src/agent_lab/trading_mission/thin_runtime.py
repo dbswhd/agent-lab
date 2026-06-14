@@ -30,10 +30,7 @@ def find_latest_trading_session(*, base: Path | None = None) -> Path | None:
         artifacts = child / "artifacts"
         if not artifacts.is_dir():
             continue
-        if not (
-            (artifacts / "proposal_batch.json").is_file()
-            or (artifacts / "market_snapshot.json").is_file()
-        ):
+        if not ((artifacts / "proposal_batch.json").is_file() or (artifacts / "market_snapshot.json").is_file()):
             continue
         try:
             mtime = max(

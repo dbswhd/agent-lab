@@ -38,9 +38,7 @@ def trading_mission_budget() -> TradingMissionBudget:
     return TradingMissionBudget(
         max_discuss_rounds=_int_env("AGENT_LAB_TRADING_DISCUSS_ROUNDS", 2),
         max_parallel_rounds=_int_env("AGENT_LAB_TRADING_PARALLEL_ROUNDS", 1),
-        max_agent_calls_per_human_turn=_int_env(
-            "AGENT_LAB_TRADING_AGENT_CALLS_CAP", 9
-        ),
+        max_agent_calls_per_human_turn=_int_env("AGENT_LAB_TRADING_AGENT_CALLS_CAP", 9),
         codex_shell_per_turn=_int_env("CODEX_ROOM_MAX_COMMANDS", 6),
         recent_context_turns=_int_env("AGENT_LAB_TRADING_RECENT_TURNS", 2),
         max_proposal_retries=_int_env("AGENT_LAB_TRADING_PROPOSAL_RETRIES", 1),
@@ -108,7 +106,5 @@ def turn_budget_telemetry(run: dict[str, Any] | None) -> dict[str, Any]:
         "codex_shell_used": counters.get("codex_shell_per_turn"),
         "codex_shell_cap": caps.get("codex_shell_per_turn"),
         "caps": caps,
-        "trading_mission_budget": mission_budget
-        if isinstance(mission_budget, dict)
-        else None,
+        "trading_mission_budget": mission_budget if isinstance(mission_budget, dict) else None,
     }

@@ -10,9 +10,7 @@ from typing import Any, Literal
 
 TaskStatus = Literal["pending", "in_progress", "completed", "cancelled", "blocked"]
 
-_TASK_STATUSES: frozenset[str] = frozenset(
-    {"pending", "in_progress", "completed", "cancelled", "blocked"}
-)
+_TASK_STATUSES: frozenset[str] = frozenset({"pending", "in_progress", "completed", "cancelled", "blocked"})
 
 _PROPOSED_RE = re.compile(r"\[PROPOSED:\s*([^\]]+)\]", re.I)
 
@@ -77,9 +75,7 @@ def normalize_task(raw: dict[str, Any]) -> dict[str, Any]:
     end = raw.get("endorsements")
     if isinstance(end, dict):
         out["endorsements"] = {
-            str(k).strip().lower(): str(v).strip()
-            for k, v in end.items()
-            if str(k).strip() and str(v).strip()
+            str(k).strip().lower(): str(v).strip() for k, v in end.items() if str(k).strip() and str(v).strip()
         }
     return out
 
@@ -229,9 +225,7 @@ def task_complete_block_reason(
             continue
         ex = _execution_by_id(run_meta, ex_id)
         if ex and not execution_allows_task_complete(ex):
-            return (
-                f"연결된 실행({ex_id}) 검증 미완료 — execute 승인·검증 후 완료하세요."
-            )
+            return f"연결된 실행({ex_id}) 검증 미완료 — execute 승인·검증 후 완료하세요."
     return None
 
 
@@ -246,18 +240,14 @@ def complete_task(
     if task is None:
         raise ValueError(f"task not found: {task_id}")
     if task.get("status") == "blocked":
-        raise ValueError(
-            "CHALLENGE로 차단된 작업입니다 — 이의를 해소하거나 AMEND 후 다시 진행하세요."
-        )
+        raise ValueError("CHALLENGE로 차단된 작업입니다 — 이의를 해소하거나 AMEND 후 다시 진행하세요.")
     block = task_complete_block_reason(run_meta, task)
     if block:
         raise ValueError(block)
     from agent_lab.runtime.policy import PolicyEngine
 
     folder_raw = run_meta.get("_session_folder")
-    session_folder = (
-        Path(str(folder_raw)) if folder_raw and str(folder_raw).strip() else None
-    )
+    session_folder = Path(str(folder_raw)) if folder_raw and str(folder_raw).strip() else None
     policy = PolicyEngine.check_task_completed(
         run_meta,
         task,
@@ -296,10 +286,7 @@ def add_task(
         raise ValueError("task title required")
     key = title_norm.lower()
     for t in tasks:
-        if (
-            str(t.get("title", "")).strip().lower() == key
-            and t.get("status") in ("pending", "in_progress")
-        ):
+        if str(t.get("title", "")).strip().lower() == key and t.get("status") in ("pending", "in_progress"):
             return t
     task = normalize_task(
         {
@@ -449,11 +436,7 @@ def revert_tasks_for_rejected_execution(
         task["status"] = "pending"
         task["updated_at"] = _now()
         if execution_id:
-            refs = [
-                r
-                for r in (task.get("artifact_refs") or [])
-                if r != f"execution:{execution_id}"
-            ]
+            refs = [r for r in (task.get("artifact_refs") or []) if r != f"execution:{execution_id}"]
             task["artifact_refs"] = refs
         reverted.append(dict(task))
     if reverted:
@@ -567,11 +550,7 @@ def harvest_task_endorsements(
 
 
 def open_tasks_for_consensus(run_meta: dict[str, Any] | None) -> list[dict[str, Any]]:
-    return [
-        t
-        for t in list_tasks(run_meta)
-        if t.get("status") in ("pending", "in_progress")
-    ]
+    return [t for t in list_tasks(run_meta) if t.get("status") in ("pending", "in_progress")]
 
 
 def build_consensus_gate(
@@ -650,9 +629,7 @@ def complete_tasks_for_execution(
         if not match:
             continue
         refs = [f"execution:{execution_id}"] if execution_id else []
-        done.append(
-            complete_task(run_meta, str(task["id"]), artifact_refs=refs or None)
-        )
+        done.append(complete_task(run_meta, str(task["id"]), artifact_refs=refs or None))
     return done
 
 
@@ -670,15 +647,9 @@ def sync_tasks_after_turn(
     from agent_lab.room_team_orchestration import is_discuss_only_turn
 
     ensure_team_lead(run_meta)
-    from_proposed = sync_tasks_from_messages(
-        run_meta, messages, human_turn=human_turn
-    )
-    discuss_only = is_discuss_only_turn(
-        mode=mode, synthesize=synthesize, consensus_mode=consensus_mode
-    )
-    from_state = (
-        sync_tasks_from_turn_state(run_meta) if not discuss_only else []
-    )
+    from_proposed = sync_tasks_from_messages(run_meta, messages, human_turn=human_turn)
+    discuss_only = is_discuss_only_turn(mode=mode, synthesize=synthesize, consensus_mode=consensus_mode)
+    from_state = sync_tasks_from_turn_state(run_meta) if not discuss_only else []
     harvest_task_endorsements(
         run_meta,
         messages,
@@ -788,8 +759,7 @@ def build_team_task_block(
     if aid == lead:
         lines.append(f"역할: 팀 리드 — 전체 작업 조율·우선순위·합의 정리 (리드: {lead})")
         lines.append(
-            "discuss: 동료 제안을 종합하고 claim·execute 분배를 조율 — "
-            "대형 패치는 plan execute·Human 승인 후."
+            "discuss: 동료 제안을 종합하고 claim·execute 분배를 조율 — 대형 패치는 plan execute·Human 승인 후."
         )
         for t in tasks:
             if t.get("status") == "cancelled":
@@ -801,12 +771,7 @@ def build_team_task_block(
             for t in claimable:
                 lines.append(f"  · {t.get('title')}")
     else:
-        mine = [
-            t
-            for t in tasks
-            if t.get("owner_agent") == aid
-            and t.get("status") in ("pending", "in_progress")
-        ]
+        mine = [t for t in tasks if t.get("owner_agent") == aid and t.get("status") in ("pending", "in_progress")]
         if mine:
             lines.append(f"내 담당 작업 ({aid}):")
             for t in mine:
@@ -816,18 +781,12 @@ def build_team_task_block(
             lines.append("청구 가능 (envelope refs 또는 POST claim, 턴당 1건):")
             for t in claimable[:8]:
                 lines.append(f"  · {t.get('title')} ({t.get('id')})")
-        lines.append(
-            "teammate discuss: 전체 패치 구현 금지 — [PROPOSED:]·claim·검증 제안만."
-        )
+        lines.append("teammate discuss: 전체 패치 구현 금지 — [PROPOSED:]·claim·검증 제안만.")
         if not mine and not claimable:
             return ""
 
-    lines.append(
-        "discuss 턴: 작업 제안·분해만 — plan execute는 Human 승인 후 별도."
-    )
-    lines.append(
-        "동료에게 직접 메시지: envelope `MESSAGE` + `\"to\":\"codex\"` (+ optional `message`)."
-    )
+    lines.append("discuss 턴: 작업 제안·분해만 — plan execute는 Human 승인 후 별도.")
+    lines.append('동료에게 직접 메시지: envelope `MESSAGE` + `"to":"codex"` (+ optional `message`).')
     return "\n".join(lines)
 
 

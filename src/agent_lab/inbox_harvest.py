@@ -137,9 +137,7 @@ def _challenge_amend_candidates(messages: list[Any]) -> list[InboxQuestionCandid
         message = str(env.get("message") or getattr(m, "content", "") or "").strip()
         if not message:
             continue
-        refs = tuple(
-            str(r).strip() for r in (env.get("refs") or []) if str(r).strip()
-        )
+        refs = tuple(str(r).strip() for r in (env.get("refs") or []) if str(r).strip())
         out.append(
             InboxQuestionCandidate(
                 prompt=f"{agent} {act}: {message[:_PROMPT_CHARS]}",
@@ -224,11 +222,7 @@ def harvest_question_candidates(
 
 
 def _existing_harvest_keys(run: dict[str, Any]) -> set[str]:
-    return {
-        str(item.get("harvest_key"))
-        for item in inbox_items(run)
-        if item.get("harvest_key")
-    }
+    return {str(item.get("harvest_key")) for item in inbox_items(run) if item.get("harvest_key")}
 
 
 def clarifier_harvest_key(question: str) -> str:
@@ -300,11 +294,7 @@ def harvest_discuss_questions(
     candidates = harvest_question_candidates(messages, plan_md=plan_md)
     if not candidates:
         return []
-    skip_escalation = {
-        str(k)
-        for k in (run_meta.get("_escalation_harvest_keys") or [])
-        if k
-    }
+    skip_escalation = {str(k) for k in (run_meta.get("_escalation_harvest_keys") or []) if k}
     existing = _existing_harvest_keys(run_meta)
     created: list[dict[str, Any]] = []
     for c in candidates:
@@ -441,9 +431,7 @@ def harvest_post_plan_inbox(
         mode="discuss",
     )
     return {
-        "questions": sum(
-            1 for i in inbox_items(run_meta) if i.get("kind") == "question"
-        ),
+        "questions": sum(1 for i in inbox_items(run_meta) if i.get("kind") == "question"),
         "build_created": build_item is not None,
     }
 
@@ -453,11 +441,7 @@ def _supersede_legacy_verified_build_items(run_meta: dict[str, Any]) -> None:
     items = inbox_items(run_meta)
     changed = False
     for item in items:
-        if (
-            item.get("kind") == "build"
-            and item.get("source") == "verified_loop"
-            and item.get("status") == "pending"
-        ):
+        if item.get("kind") == "build" and item.get("source") == "verified_loop" and item.get("status") == "pending":
             item["status"] = "superseded"
             item["resolved_at"] = _now_iso_verified_supersede()
             changed = True
@@ -477,9 +461,7 @@ def _now_iso_verified_supersede() -> str:
 # --- sync pause (M4) — pending Human-direction question pauses debate rounds ----
 
 DISCUSS_PAUSE_TRIGGERS = frozenset({"T-Q0", "T-Q2"})
-_HUMAN_QUESTION_SOURCES = frozenset(
-    {"manual", "mission_circuit_break", "mcp_ask_human", "gateway"}
-)
+_HUMAN_QUESTION_SOURCES = frozenset({"manual", "mission_circuit_break", "mcp_ask_human", "gateway"})
 
 
 def inbox_question_pauses_discuss(item: dict[str, Any]) -> bool:
@@ -559,10 +541,7 @@ clear_inbox_fork_grace = clear_inbox_pause_grace
 def inbox_pause_grace_pending(run_meta: dict[str, Any] | None) -> bool:
     if not isinstance(run_meta, dict):
         return False
-    return bool(
-        run_meta.get("_inbox_pause_grace_pending")
-        or run_meta.get("_inbox_fork_grace_pending")
-    )
+    return bool(run_meta.get("_inbox_pause_grace_pending") or run_meta.get("_inbox_fork_grace_pending"))
 
 
 inbox_fork_grace_pending = inbox_pause_grace_pending
@@ -574,9 +553,7 @@ def inbox_pause_grace_kind(run_meta: dict[str, Any] | None) -> str | None:
     kind = str(run_meta.get("_inbox_pause_grace_kind") or "").strip()
     if kind in (PAUSE_GRACE_KIND_FORK, PAUSE_GRACE_KIND_PLAN_OPEN):
         return kind
-    if run_meta.get("_inbox_fork_grace_pending") or run_meta.get(
-        "_inbox_pause_grace_pending"
-    ):
+    if run_meta.get("_inbox_fork_grace_pending") or run_meta.get("_inbox_pause_grace_pending"):
         return PAUSE_GRACE_KIND_FORK
     return None
 
@@ -631,15 +608,11 @@ def harvest_and_check_pause(
         clear_inbox_pause_grace(run_meta)
         return False
 
-    new_grace = [
-        item for item in created if _item_qualifies_for_pause_grace(item)
-    ]
+    new_grace = [item for item in created if _item_qualifies_for_pause_grace(item)]
     if new_grace and not had_pause:
         if not inbox_pause_grace_pending(run_meta):
             run_meta["_inbox_pause_grace_pending"] = True
-            run_meta["_inbox_pause_grace_kind"] = _pause_grace_kind_for_item(
-                new_grace[0]
-            )
+            run_meta["_inbox_pause_grace_kind"] = _pause_grace_kind_for_item(new_grace[0])
             return False
     clear_inbox_pause_grace(run_meta)
     return True

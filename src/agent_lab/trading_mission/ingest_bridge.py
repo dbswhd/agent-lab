@@ -264,10 +264,7 @@ def normalize_proposal_draft(
         "created_at": created_at.isoformat(),
         "approval_status": "pending",
     }
-    agent_prompt = (
-        f"trading_mission:{mission_id} session:{session_id} "
-        f"source:agent-lab/trading_mission/ingest_bridge"
-    )
+    agent_prompt = f"trading_mission:{mission_id} session:{session_id} source:agent-lab/trading_mission/ingest_bridge"
     result: dict[str, Any] = {"proposal": payload, "agent_prompt": agent_prompt}
     if critic_review is not None:
         result["critic_review"] = critic_review

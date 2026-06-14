@@ -64,11 +64,7 @@ def is_retryable(exc_or_stderr: object) -> bool:
 
 
 def retry_max_attempts(*, room_turn: bool) -> int:
-    if (
-        os.getenv("AGENT_LAB_CLI_RETRY_ROOM_ONLY", "").strip().lower()
-        in {"1", "true", "yes", "on"}
-        and not room_turn
-    ):
+    if os.getenv("AGENT_LAB_CLI_RETRY_ROOM_ONLY", "").strip().lower() in {"1", "true", "yes", "on"} and not room_turn:
         return 1
     return _env_int("AGENT_LAB_CLI_RETRY_MAX", 3)
 

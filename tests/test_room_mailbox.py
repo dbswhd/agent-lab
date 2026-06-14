@@ -22,9 +22,7 @@ class _Msg:
 
 def test_append_and_unread():
     meta: dict = {}
-    append_mailbox_message(
-        meta, from_agent="cursor", to_agent="codex", body="review my patch"
-    )
+    append_mailbox_message(meta, from_agent="cursor", to_agent="codex", body="review my patch")
     assert len(unread_for_agent(meta, "codex")) == 1
     block = build_mailbox_block(meta, "codex")
     assert "review my patch" in block

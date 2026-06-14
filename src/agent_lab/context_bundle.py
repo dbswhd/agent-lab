@@ -238,16 +238,12 @@ def build_slim_consensus_bundle(
         permission_lines=permission_lines,
         human_gates=extract_human_gates(messages, topic),
         agreed_bullets=agreed,
-        status_tags=extract_status_tags(messages)[
-            : limits.max_status_tags
-        ],
+        status_tags=extract_status_tags(messages)[: limits.max_status_tags],
         workspace_lines=_workspace_lines_for_agent(agent, permissions, run_meta),
     )
     if session_guidance.strip():
         constraints = f"{constraints}\n\n{session_guidance.strip()}"
-    constraints = _append_mission_track_c_blocks(
-        constraints, run_meta=run_meta, plan_md=plan_md
-    )
+    constraints = _append_mission_track_c_blocks(constraints, run_meta=run_meta, plan_md=plan_md)
     resume_block = build_agent_thread_resume_block(agent, run_meta)
     if resume_block.strip():
         constraints = f"{constraints}\n\n{resume_block.strip()}"
@@ -263,9 +259,7 @@ def build_slim_consensus_bundle(
     mailbox_block = build_mailbox_block(run_meta, agent)
     if mailbox_block.strip():
         constraints = f"{constraints}\n\n{mailbox_block.strip()}"
-    artifacts_block = build_artifacts_block(
-        run_meta, agent, parallel_round=2
-    )
+    artifacts_block = build_artifacts_block(run_meta, agent, parallel_round=2)
     if artifacts_block.strip():
         constraints = f"{constraints}\n\n{artifacts_block.strip()}"
     objection_block = build_objection_block(run_meta, agent)
@@ -282,32 +276,23 @@ def build_slim_consensus_bundle(
         open_bullets=open_bullets,
         stale_line=plan_stale_banner(run_meta),
     )
-    turn_state_block = render_turn_state_block(
-        (run_meta or {}).get("turn_state")
-    )
+    turn_state_block = render_turn_state_block((run_meta or {}).get("turn_state"))
     reply_policy = apply_inbox_fork_grace_policy(
         resolve_reply_policy(
-        parallel_round=2,
-        consensus_mode=consensus_mode,
-        turn_profile=str((run_meta or {}).get("turn_profile") or ""),
-        efficiency_mode=efficiency_mode,
+            parallel_round=2,
+            consensus_mode=consensus_mode,
+            turn_profile=str((run_meta or {}).get("turn_profile") or ""),
+            efficiency_mode=efficiency_mode,
         ),
         run_meta,
     )
-    guidance_parts = build_guidance_parts(
-        reply_policy, run_meta=run_meta, agent=agent
-    )
+    guidance_parts = build_guidance_parts(reply_policy, run_meta=run_meta, agent=agent)
     from agent_lab.room_dispatch_intents import build_dispatch_intent_block
 
     dispatch_block = build_dispatch_intent_block(run_meta, agent)
     if dispatch_block.strip():
         guidance_parts.append(dispatch_block.strip())
-    guidance_block = (
-        "---\n"
-        + "\n".join(guidance_parts)
-        + "\n---\n"
-        f"Respond as {label(agent)} only."
-    )
+    guidance_block = "---\n" + "\n".join(guidance_parts) + f"\n---\nRespond as {label(agent)} only."
     follow_up = envelope_follow_up_block(reply_policy, context="consensus")
     connect_hint = AGENT_CONNECT_HINT.get(agent, "").strip()
     tool_rules = agent_tool_rules(agent)
@@ -476,9 +461,7 @@ def build_context_bundle(
     """Build layered context for one agent call (discuss / plan agent rounds)."""
     from agent_lab.context_layers import should_use_mission_slim_bundle
 
-    if should_use_mission_slim_bundle(run_meta) and not (
-        slim_context and efficiency_mode
-    ):
+    if should_use_mission_slim_bundle(run_meta) and not (slim_context and efficiency_mode):
         slim_context = True
         efficiency_mode = True
     if slim_context and efficiency_mode:
@@ -547,9 +530,7 @@ def build_context_bundle(
     )
     if session_guidance.strip():
         constraints = f"{constraints}\n\n{session_guidance.strip()}"
-    constraints = _append_mission_track_c_blocks(
-        constraints, run_meta=run_meta, plan_md=plan_md
-    )
+    constraints = _append_mission_track_c_blocks(constraints, run_meta=run_meta, plan_md=plan_md)
     constraints = _append_wisdom_search_block(
         constraints,
         topic=topic,
@@ -567,9 +548,7 @@ def build_context_bundle(
     plugin_block = build_plugin_allowlist_block(agent, run_meta)
     if plugin_block.strip():
         constraints = f"{constraints}\n\n{plugin_block.strip()}"
-    cap_block = capability_preamble_block(
-        agent, run_meta, parallel_round=parallel_round
-    )
+    cap_block = capability_preamble_block(agent, run_meta, parallel_round=parallel_round)
     if cap_block.strip():
         constraints = f"{constraints}\n\n{cap_block.strip()}"
     team_block = build_team_task_block(run_meta, agent)
@@ -600,23 +579,15 @@ def build_context_bundle(
         open_bullets=open_bullets,
         stale_line=plan_stale_banner(run_meta),
     )
-    turn_state_block = (
-        ""
-        if artifact_only
-        else render_turn_state_block((run_meta or {}).get("turn_state"))
-    )
+    turn_state_block = "" if artifact_only else render_turn_state_block((run_meta or {}).get("turn_state"))
     if artifact_only:
         bridge_block = ""
-        recent_block, has_user_in_recent = _build_human_only_recent_block(
-            topic, messages
-        )
+        recent_block, has_user_in_recent = _build_human_only_recent_block(topic, messages)
         line_range = ""
         peer_block = ""
     else:
         has_user_in_recent = any(m.role == "user" for m in recent_msgs)
-        bridge_block = build_turn_bridge_block(
-            messages, parallel_round=parallel_round
-        )
+        bridge_block = build_turn_bridge_block(messages, parallel_round=parallel_round)
         recent_block, line_range = build_recent_turns_block(
             topic=topic,
             messages=recent_msgs,
@@ -633,34 +604,26 @@ def build_context_bundle(
     profile = str((run_meta or {}).get("turn_profile") or "").strip().lower()
     reply_policy = apply_inbox_fork_grace_policy(
         resolve_reply_policy(
-        parallel_round=parallel_round,
-        review_mode=review_mode,
-        consensus_mode=consensus_mode,
-        turn_profile=profile,
-        efficiency_mode=efficiency_mode,
+            parallel_round=parallel_round,
+            review_mode=review_mode,
+            consensus_mode=consensus_mode,
+            turn_profile=profile,
+            efficiency_mode=efficiency_mode,
         ),
         run_meta,
     )
-    guidance_parts = build_guidance_parts(
-        reply_policy, run_meta=run_meta, agent=agent
-    )
+    guidance_parts = build_guidance_parts(reply_policy, run_meta=run_meta, agent=agent)
     if profile == "analyze":
         guidance_parts.insert(
             0,
-            "[Analyze turn] Observe and report risks only. "
-            "Do not use PROPOSE/ENDORSE/BLOCK envelope acts.",
+            "[Analyze turn] Observe and report risks only. Do not use PROPOSE/ENDORSE/BLOCK envelope acts.",
         )
     from agent_lab.room_dispatch_intents import build_dispatch_intent_block
 
     dispatch_block = build_dispatch_intent_block(run_meta, agent)
     if dispatch_block.strip():
         guidance_parts.append(dispatch_block.strip())
-    guidance_block = (
-        "---\n"
-        + "\n".join(guidance_parts)
-        + "\n---\n"
-        f"Respond as {label(agent)} only."
-    )
+    guidance_block = "---\n" + "\n".join(guidance_parts) + f"\n---\nRespond as {label(agent)} only."
 
     follow_up = ""
     env_ctx = "consensus" if consensus_mode else ("review" if review_mode else "discuss")
@@ -681,15 +644,9 @@ def build_context_bundle(
         follow_up = "\n\n".join(x for x in (follow_up, peer_follow) if x.strip())
         if review_mode and parallel_round >= 2 and review_advocate:
             if agent == review_advocate:
-                follow_up += (
-                    "\n[쟁점 검토 — 반박] "
-                    "1라운드 주장 중 가장 약한 가정 하나를 골라 반박하세요."
-                )
+                follow_up += "\n[쟁점 검토 — 반박] 1라운드 주장 중 가장 약한 가정 하나를 골라 반박하세요."
             else:
-                follow_up += (
-                    f"\n[쟁점 검토 — 검토] "
-                    f"{label(review_advocate)}의 반박에 답하세요(인정 또는 반론)."
-                )
+                follow_up += f"\n[쟁점 검토 — 검토] {label(review_advocate)}의 반박에 답하세요(인정 또는 반론)."
         elif parallel_round >= 2:
             follow_up += (
                 "\n2라운드(순차 · 토론): 동료 의견을 **이어가거나 보완**하세요. "
@@ -713,9 +670,7 @@ def build_context_bundle(
         pin_capped=pin_capped,
         capability_cwd=agent_capability_cwd(agent, permissions, run_meta),
         context_mode="artifact_only" if artifact_only else "full",
-        recent_max_chars=(
-            ARTIFACT_ONLY_RECENT_MAX_CHARS if artifact_only else None
-        ),
+        recent_max_chars=(ARTIFACT_ONLY_RECENT_MAX_CHARS if artifact_only else None),
         peer_suppressed=artifact_only,
     )
     bundle = ContextBundle(
@@ -748,9 +703,7 @@ def build_context_bundle(
     enrich_bundle_meta(
         meta,
         bundle,
-        messages_in_payload=(
-            1 if artifact_only and has_user_in_recent else len(recent_msgs)
-        ),
+        messages_in_payload=(1 if artifact_only and has_user_in_recent else len(recent_msgs)),
         messages_in_turn=current_turn_message_count(full),
         messages_in_session=count_messages(full),
     )

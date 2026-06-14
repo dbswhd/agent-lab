@@ -53,9 +53,7 @@ def handle_mission_advance(folder: Path, payload: dict[str, Any]) -> DispatchRes
     executor_raw = payload.get("executor")
     result = maybe_advance_mission(
         folder,
-        permissions=payload.get("permissions")
-        if isinstance(payload.get("permissions"), dict)
-        else None,
+        permissions=payload.get("permissions") if isinstance(payload.get("permissions"), dict) else None,
         executor=str(executor_raw).strip() if executor_raw is not None else None,
     )
     if isinstance(result, dict) and result.get("skipped"):
@@ -100,9 +98,7 @@ def handle_mission_circuit_breaker(folder: Path, payload: dict[str, Any]) -> Dis
     ml = trigger_circuit_breaker(
         folder,
         reason=reason,
-        inbox_prompt=str(inbox_prompt).strip()
-        if isinstance(inbox_prompt, str) and inbox_prompt.strip()
-        else None,
+        inbox_prompt=str(inbox_prompt).strip() if isinstance(inbox_prompt, str) and inbox_prompt.strip() else None,
     )
     return DispatchResult(
         handled=True,
@@ -128,9 +124,7 @@ def handle_mission_discuss_recovery(folder: Path, payload: dict[str, Any]) -> Di
 
     result = run_mission_discuss_recovery(
         folder,
-        permissions=payload.get("permissions")
-        if isinstance(payload.get("permissions"), dict)
-        else None,
+        permissions=payload.get("permissions") if isinstance(payload.get("permissions"), dict) else None,
         on_event=payload.get("on_event"),
     )
     if isinstance(result, dict) and result.get("skipped"):

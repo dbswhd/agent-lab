@@ -69,16 +69,12 @@ def test_merge_drops_refless_options():
 
 
 def test_merge_skips_fork_with_under_two_anchored():
-    forks = parse_decision_forks(
-        _fork_block("scope", [("only-anchored", ["L1"]), ("refless", [])])
-    )
+    forks = parse_decision_forks(_fork_block("scope", [("only-anchored", ["L1"]), ("refless", [])]))
     assert merge_forks(forks) == []  # < 2 surviving options → not a real fork
 
 
 def test_merge_dedupes_and_unions_across_same_topic():
-    forks = parse_decision_forks(
-        _fork_block("scope", [("A", ["L1"]), ("B", ["L2"])])
-    ) + parse_decision_forks(
+    forks = parse_decision_forks(_fork_block("scope", [("A", ["L1"]), ("B", ["L2"])])) + parse_decision_forks(
         _fork_block("scope", [("A", ["L3"]), ("C", ["L4"])])  # same topic, A dup + C new
     )
     qs = merge_forks(forks)

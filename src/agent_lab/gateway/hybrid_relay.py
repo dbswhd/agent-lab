@@ -77,7 +77,9 @@ def verify_wake_request(
 ) -> bool:
     """Authorize cloud wake — scheduler token or hybrid relay HMAC."""
     token = (os.getenv("AGENT_LAB_SCHEDULER_HOOK_TOKEN") or "").strip()
-    header_token = str(headers.get("X-Agent-Lab-Scheduler-Token") or headers.get("x-agent-lab-scheduler-token") or "").strip()
+    header_token = str(
+        headers.get("X-Agent-Lab-Scheduler-Token") or headers.get("x-agent-lab-scheduler-token") or ""
+    ).strip()
     if token:
         return header_token == token
 

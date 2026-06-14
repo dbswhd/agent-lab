@@ -18,10 +18,7 @@ def test_room_turn_partial_preserves_success_and_runs_scribe(monkeypatch, tmp_pa
             assert "Cursor" in user or "cursor ok" in user
             return "## Plan\n\n- keep successful agent response\n"
         if agent == "cursor":
-            return (
-                '```agent-envelope\n{"act":"PROPOSE","refs":[],"confidence":0.8}\n```\n'
-                "cursor ok"
-            )
+            return '```agent-envelope\n{"act":"PROPOSE","refs":[],"confidence":0.8}\n```\ncursor ok'
         if agent == "claude":
             raise RuntimeError("429 rate limit")
         raise AssertionError(f"unexpected agent: {agent}")

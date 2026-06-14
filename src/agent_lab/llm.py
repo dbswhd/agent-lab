@@ -17,17 +17,12 @@ def get_llm() -> BaseChatModel:
     if has_anthropic:
         return _anthropic()
 
-    raise RuntimeError(
-        "No API key found. Copy .env.example to .env and set "
-        "OPENAI_API_KEY and/or ANTHROPIC_API_KEY."
-    )
+    raise RuntimeError("No API key found. Copy .env.example to .env and set OPENAI_API_KEY and/or ANTHROPIC_API_KEY.")
 
 
 def model_name() -> str:
     provider = (os.getenv("AGENT_LAB_PROVIDER") or "").strip().lower()
-    if provider == "anthropic" or (
-        not os.getenv("OPENAI_API_KEY") and os.getenv("ANTHROPIC_API_KEY")
-    ):
+    if provider == "anthropic" or (not os.getenv("OPENAI_API_KEY") and os.getenv("ANTHROPIC_API_KEY")):
         return os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
     return os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 

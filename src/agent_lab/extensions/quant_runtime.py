@@ -38,8 +38,5 @@ def load_quant_module(dotted: str) -> ModuleType | None:
 def require_quant_module(dotted: str) -> ModuleType:
     mod = load_quant_module(dotted)
     if mod is None:
-        raise RuntimeError(
-            f"quant-agentic-trading extension required for {dotted} "
-            "(set AGENTIC_QUANT_PIPELINE_SRC)"
-        )
+        raise RuntimeError(f"quant-agentic-trading extension required for {dotted} (set AGENTIC_QUANT_PIPELINE_SRC)")
     return mod

@@ -86,24 +86,14 @@ def notify_auto_merge_blocked(
     execution_id = str(execution.get("id") or "").strip()
     if dedupe and execution_id:
         run = read_run_meta(folder)
-        schedule_meta = (
-            run.get("mission_schedule") if isinstance(run.get("mission_schedule"), dict) else {}
-        )
-        seen = {
-            str(row)
-            for row in (schedule_meta.get("auto_merge_blocked_executions") or [])
-            if str(row).strip()
-        }
+        schedule_meta = run.get("mission_schedule") if isinstance(run.get("mission_schedule"), dict) else {}
+        seen = {str(row) for row in (schedule_meta.get("auto_merge_blocked_executions") or []) if str(row).strip()}
         if execution_id in seen:
             return {"ok": True, "skipped": True, "reason": "already_notified", "event": "auto_merge_blocked"}
 
         def _mark(run_in: dict[str, Any]) -> dict[str, Any]:
             ms = dict(run_in.get("mission_schedule") or {})
-            rows = [
-                str(row)
-                for row in (ms.get("auto_merge_blocked_executions") or [])
-                if str(row).strip()
-            ]
+            rows = [str(row) for row in (ms.get("auto_merge_blocked_executions") or []) if str(row).strip()]
             if execution_id not in rows:
                 rows.append(execution_id)
             ms["auto_merge_blocked_executions"] = rows[-20:]

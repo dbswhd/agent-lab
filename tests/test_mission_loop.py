@@ -169,9 +169,7 @@ def test_momus_round_cap_circuit_breaker(session_folder: Path) -> None:
     run = read_run_meta(session_folder)
     assert run["mission_loop"]["circuit_breaker"] is True
     assert run["mission_loop"]["phase"] == "MISSION_PAUSED"
-    assert any(
-        i.get("source") == "mission_circuit_break" for i in run.get("human_inbox") or []
-    )
+    assert any(i.get("source") == "mission_circuit_break" for i in run.get("human_inbox") or [])
 
 
 def test_verify_pass_advances_queue(session_folder: Path) -> None:

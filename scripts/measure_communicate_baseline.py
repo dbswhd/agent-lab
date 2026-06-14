@@ -12,9 +12,7 @@ from pathlib import Path
 def _session_dirs(root: Path) -> list[Path]:
     if not root.is_dir():
         return []
-    return sorted(
-        p for p in root.iterdir() if p.is_dir() and (p / "run.json").is_file()
-    )
+    return sorted(p for p in root.iterdir() if p.is_dir() and (p / "run.json").is_file())
 
 
 def measure_session(folder: Path) -> dict:
@@ -54,21 +52,13 @@ def measure_session(folder: Path) -> dict:
             agent_chars.append(len(body))
             from agent_lab.reply_policy import legacy_endorse_enabled
 
-            if (
-                legacy_endorse_enabled()
-                and "이의 없습니다" in body[:40]
-                and not msg.get("envelope")
-            ):
+            if legacy_endorse_enabled() and "이의 없습니다" in body[:40] and not msg.get("envelope"):
                 legacy_endorse += 1
     return {
         "session": folder.name,
         "turn_count": len(turns),
-        "avg_agent_chars": (
-            sum(agent_chars) / len(agent_chars) if agent_chars else 0
-        ),
-        "median_guidance_chars": sorted(guidance_chars)[len(guidance_chars) // 2]
-        if guidance_chars
-        else 0,
+        "avg_agent_chars": (sum(agent_chars) / len(agent_chars) if agent_chars else 0),
+        "median_guidance_chars": sorted(guidance_chars)[len(guidance_chars) // 2] if guidance_chars else 0,
         "legacy_endorse_count": legacy_endorse,
         "envelope_parse_errors": parse_errors,
     }
@@ -94,9 +84,7 @@ def main() -> None:
     summary = {
         "ts": datetime.now(timezone.utc).isoformat(),
         "session_count": len(rows),
-        "avg_agent_chars": (
-            sum(r["avg_agent_chars"] for r in rows) / len(rows) if rows else 0
-        ),
+        "avg_agent_chars": (sum(r["avg_agent_chars"] for r in rows) / len(rows) if rows else 0),
         "total_legacy_endorse": sum(r["legacy_endorse_count"] for r in rows),
         "total_parse_errors": sum(r["envelope_parse_errors"] for r in rows),
         "sessions": rows,

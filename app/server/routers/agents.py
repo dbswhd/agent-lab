@@ -55,9 +55,7 @@ def backends() -> dict[str, Any]:
     if os.getenv("OPENAI_API_KEY"):
         options.append({"id": "openai", "label": "OpenAI API", "ready": True})
     if os.getenv("ANTHROPIC_API_KEY"):
-        options.append(
-            {"id": "anthropic", "label": "Anthropic API", "ready": True}
-        )
+        options.append({"id": "anthropic", "label": "Anthropic API", "ready": True})
     return {
         "default": provider() or (options[0]["id"] if options else None),
         "options": options,

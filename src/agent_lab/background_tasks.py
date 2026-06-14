@@ -58,9 +58,7 @@ class TaskManager:
         self._tasks: dict[str, BgTask] = {}
         self._procs: dict[str, subprocess.Popen[str]] = {}
         self._lock = threading.Lock()
-        self._pool = ThreadPoolExecutor(
-            max_workers=_POOL_SIZE, thread_name_prefix="bg-task"
-        )
+        self._pool = ThreadPoolExecutor(max_workers=_POOL_SIZE, thread_name_prefix="bg-task")
 
     # ── public API ────────────────────────────────────────────────────────────
 
@@ -119,9 +117,7 @@ class TaskManager:
                 pass
         return True
 
-    def read_log(
-        self, session_folder: Path, task_id: str, offset: int = 0
-    ) -> list[dict[str, Any]]:
+    def read_log(self, session_folder: Path, task_id: str, offset: int = 0) -> list[dict[str, Any]]:
         log_path = _log_path(session_folder, task_id)
         if not log_path.is_file():
             return []
@@ -174,9 +170,7 @@ class TaskManager:
         except Exception as exc:
             exit_code = -1
             with log.open("a", encoding="utf-8") as lf:
-                lf.write(
-                    json.dumps({"text": f"[error] {exc}", "stream": "err"}) + "\n"
-                )
+                lf.write(json.dumps({"text": f"[error] {exc}", "stream": "err"}) + "\n")
         finally:
             with self._lock:
                 self._procs.pop(task_id, None)

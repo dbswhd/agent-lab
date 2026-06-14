@@ -93,10 +93,8 @@ def evaluate(folder: Path) -> dict:
         checks.append(
             {
                 "name": "notepad_chars",
-                "ok": notepad_chars >= _MIN_NOTEPAD_CHARS
-                or int(ml.get("notepad_chars") or 0) >= _MIN_NOTEPAD_CHARS,
-                "detail": f"chars={max(notepad_chars, int(ml.get('notepad_chars') or 0))} "
-                f"(min {_MIN_NOTEPAD_CHARS})",
+                "ok": notepad_chars >= _MIN_NOTEPAD_CHARS or int(ml.get("notepad_chars") or 0) >= _MIN_NOTEPAD_CHARS,
+                "detail": f"chars={max(notepad_chars, int(ml.get('notepad_chars') or 0))} (min {_MIN_NOTEPAD_CHARS})",
             }
         )
         completed = scores.get("mission_completed")

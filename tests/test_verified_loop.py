@@ -164,6 +164,7 @@ def test_circuit_breaker_after_max_verification_attempts(tmp_path: Path) -> None
     )
     approve_verified_loop(folder)
     messages = [{"role": "agent", "content": "<promise>DONE</promise>"}]
+
     def oracle_fail(_p):
         return "FAIL: still missing"
 
@@ -413,9 +414,7 @@ def test_detect_completion_promise_since_iso_filters_messages() -> None:
     assert detect_completion_promise(messages, "DONE", since_iso=since) is True
 
 
-def test_maybe_auto_scribe_after_verified_loop_harvests_inbox(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_maybe_auto_scribe_after_verified_loop_harvests_inbox(tmp_path: Path, monkeypatch) -> None:
     from agent_lab.room import maybe_auto_scribe_after_verified_loop
 
     folder = _session(tmp_path)

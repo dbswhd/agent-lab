@@ -139,9 +139,7 @@ def test_assign_tasks_round_robin_skips_lead():
     run_meta: dict = {"tasks": [], "team_lead": "cursor"}
     for title in ("A", "B", "C"):
         add_task(run_meta, title, source="test")
-    assigned = assign_tasks_to_agents(
-        run_meta, ["cursor", "codex", "claude"], max_per_agent=2
-    )
+    assigned = assign_tasks_to_agents(run_meta, ["cursor", "codex", "claude"], max_per_agent=2)
     assert len(assigned) == 3
     owners = [t["owner_agent"] for t in list_tasks(run_meta) if t.get("owner_agent")]
     assert "cursor" not in owners
@@ -198,9 +196,7 @@ def test_harvest_task_endorsements_and_consensus_gate():
         ),
     ]
     harvest_task_endorsements(run_meta, msgs, ["codex", "claude", "cursor"])
-    ready, blockers = consensus_tasks_ready(
-        run_meta, ["cursor", "codex", "claude"]
-    )
+    ready, blockers = consensus_tasks_ready(run_meta, ["cursor", "codex", "claude"])
     assert not ready
     assert blockers
     msgs.append(

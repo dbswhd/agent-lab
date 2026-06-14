@@ -79,12 +79,18 @@ test-live:
 lint:
 	.venv/bin/ruff check src/ app/ tests/ scripts/
 
+format:
+	.venv/bin/ruff format src/ app/ tests/ scripts/ examples/
+
+format-check:
+	.venv/bin/ruff format --check src/ app/ tests/ scripts/ examples/
+
 typecheck:
 	.venv/bin/mypy
 
-ci: lint test-fast smoke score-regression-fixtures
+ci: lint format-check test-fast smoke score-regression-fixtures
 
-ci-full: lint test smoke score-regression-fixtures
+ci-full: lint format-check test smoke score-regression-fixtures
 
 init-project-memory:
 	@test -n "$(WORKSPACE)" || WORKSPACE=.; \

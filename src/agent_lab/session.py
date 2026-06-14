@@ -53,9 +53,7 @@ def save_session(state: GraphState, base: Path | None = None) -> Path:
 
     (folder / "topic.txt").write_text(state["topic"].strip() + "\n", encoding="utf-8")
     (folder / "plan.md").write_text(state["plan_md"] + "\n", encoding="utf-8")
-    (folder / "transcript.md").write_text(
-        build_transcript(state), encoding="utf-8"
-    )
+    (folder / "transcript.md").write_text(build_transcript(state), encoding="utf-8")
     meta = {
         "topic": state["topic"],
         "created_at": now,

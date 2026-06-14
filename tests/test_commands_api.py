@@ -89,7 +89,7 @@ def test_patch_external_tools_allowlist(
     tools_dir = tmp_path / "home" / ".agent-lab"
     tools_dir.mkdir(parents=True)
     (tools_dir / "tools.yaml").write_text(
-        'tools:\n  - id: external:echo\n    command: echo ok\n',
+        "tools:\n  - id: external:echo\n    command: echo ok\n",
         encoding="utf-8",
     )
     monkeypatch.setenv("AGENT_LAB_EXTERNAL_TOOLS", "1")

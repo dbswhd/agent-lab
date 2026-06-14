@@ -144,9 +144,7 @@ def capture_profile(slot: CodexOAuthSlot, *, label: str | None = None) -> dict[s
     if not live.is_file():
         ok, detail = live_login_status()
         if not ok:
-            raise RuntimeError(
-                detail or "Codex OAuth 세션이 없습니다. 터미널에서 codex login 후 다시 시도하세요."
-            )
+            raise RuntimeError(detail or "Codex OAuth 세션이 없습니다. 터미널에서 codex login 후 다시 시도하세요.")
         raise RuntimeError("~/.codex/auth.json 이 없습니다. codex login 후 다시 시도하세요.")
 
     dest = profile_auth_path(slot)

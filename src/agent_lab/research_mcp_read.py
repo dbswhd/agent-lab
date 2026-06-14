@@ -131,11 +131,7 @@ def read_pending_batch_summary(session_folder: Path | None = None) -> dict[str, 
         }
 
     proposals_raw = batch.get("proposals") if isinstance(batch.get("proposals"), list) else []
-    compact = [
-        _compact_proposal(row)
-        for row in proposals_raw
-        if isinstance(row, dict)
-    ]
+    compact = [_compact_proposal(row) for row in proposals_raw if isinstance(row, dict)]
 
     return {
         "ok": True,

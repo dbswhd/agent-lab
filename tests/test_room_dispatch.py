@@ -21,9 +21,7 @@ def test_parse_delegate_unchanged():
 
 
 def test_parse_parallel_dispatch():
-    spec = parse_dispatch_from_message(
-        'DISPATCH parallel: codex,cursor: "survey hooks"'
-    )
+    spec = parse_dispatch_from_message('DISPATCH parallel: codex,cursor: "survey hooks"')
     assert spec is not None
     assert spec.op == "parallel_delegate"
     assert spec.agents == ("codex", "cursor")
@@ -33,9 +31,7 @@ def test_parse_parallel_dispatch():
 def test_parallel_dispatch_trims_fanout(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("AGENT_LAB_DISPATCH_MAX_FANOUT", "2")
     assert dispatch_max_fanout() == 2
-    spec = parse_dispatch_from_message(
-        'DISPATCH parallel: codex,cursor,claude: "big survey"'
-    )
+    spec = parse_dispatch_from_message('DISPATCH parallel: codex,cursor,claude: "big survey"')
     assert spec is not None
     assert spec.agents == ("codex", "cursor")
     assert spec.trimmed_agents == ("claude",)
@@ -51,8 +47,7 @@ def test_delegate_replay_invokes_one_agent(monkeypatch: pytest.MonkeyPatch, tmp_
     (folder / "topic.txt").write_text("dispatch\n", encoding="utf-8")
     (folder / "plan.md").write_text("## 합의\n\n- x\n", encoding="utf-8")
     (folder / "chat.jsonl").write_text(
-        json.dumps({"role": "user", "content": "seed", "ts": "2026-06-10T00:00:00Z"})
-        + "\n",
+        json.dumps({"role": "user", "content": "seed", "ts": "2026-06-10T00:00:00Z"}) + "\n",
         encoding="utf-8",
     )
     (folder / "run.json").write_text(
@@ -106,8 +101,7 @@ def test_parallel_fanout_two_agents(monkeypatch: pytest.MonkeyPatch, tmp_path: P
     (folder / "topic.txt").write_text("dispatch\n", encoding="utf-8")
     (folder / "plan.md").write_text("## 합의\n\n- x\n", encoding="utf-8")
     (folder / "chat.jsonl").write_text(
-        json.dumps({"role": "user", "content": "seed", "ts": "2026-06-10T00:00:00Z"})
-        + "\n",
+        json.dumps({"role": "user", "content": "seed", "ts": "2026-06-10T00:00:00Z"}) + "\n",
         encoding="utf-8",
     )
     (folder / "run.json").write_text(
@@ -163,8 +157,7 @@ def test_pre_dispatch_hook_blocks(monkeypatch: pytest.MonkeyPatch, tmp_path: Pat
     (folder / "topic.txt").write_text("x\n", encoding="utf-8")
     (folder / "plan.md").write_text("## x\n", encoding="utf-8")
     (folder / "chat.jsonl").write_text(
-        json.dumps({"role": "user", "content": "s", "ts": "2026-06-10T00:00:00Z"})
-        + "\n",
+        json.dumps({"role": "user", "content": "s", "ts": "2026-06-10T00:00:00Z"}) + "\n",
         encoding="utf-8",
     )
     (folder / "run.json").write_text(

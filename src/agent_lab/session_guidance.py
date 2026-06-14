@@ -275,9 +275,7 @@ def discuss_cwd_from_permissions(permissions: dict[str, Any] | None) -> Path | N
 
 
 def detect_layout_freeze(messages: list[_MsgLike], topic: str = "") -> bool:
-    for source in ([topic] if topic.strip() else []) + [
-        m.content for m in messages if m.role == "user"
-    ]:
+    for source in ([topic] if topic.strip() else []) + [m.content for m in messages if m.role == "user"]:
         for pat in _LAYOUT_FREEZE_PATTERNS:
             if pat.search(source):
                 return True
@@ -343,9 +341,7 @@ def sync_session_meta(
         plan_md=plan_md,
         messages=messages,
     )
-    binding = resolve_session_workspace_binding(
-        permissions, topic=topic, plan_md=plan_md, run_meta=meta
-    )
+    binding = resolve_session_workspace_binding(permissions, topic=topic, plan_md=plan_md, run_meta=meta)
     if binding:
         meta["workspace_binding"] = binding
     _clear_human_gate_meta(meta)

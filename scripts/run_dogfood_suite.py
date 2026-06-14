@@ -53,9 +53,7 @@ def load_topics(path: Path) -> list[dict[str, Any]]:
     return sorted(rows, key=lambda r: (TIER_ORDER.get(str(r.get("tier")), 9), str(r.get("id"))))
 
 
-def filter_topics(
-    rows: list[dict[str, Any]], tiers: set[str] | None, only: set[str] | None
-) -> list[dict[str, Any]]:
+def filter_topics(rows: list[dict[str, Any]], tiers: set[str] | None, only: set[str] | None) -> list[dict[str, Any]]:
     out = []
     for row in rows:
         if tiers and str(row.get("tier")) not in tiers:
@@ -98,9 +96,7 @@ def _reset_act_cursors() -> None:
     reset_mock_act_script_cursors()
 
 
-def _run_topic_session(
-    entry: dict[str, Any], sessions_base: Path
-) -> tuple[Path, dict[str, Any]]:
+def _run_topic_session(entry: dict[str, Any], sessions_base: Path) -> tuple[Path, dict[str, Any]]:
     """run_room + score_session — emergence_bench와 동일 패턴."""
     from agent_lab import room
     from agent_lab.session_score import score_session
@@ -216,9 +212,7 @@ def scenario_challenge_amend(entry: dict[str, Any], base: Path) -> dict[str, Any
     }
 
 
-def _scenario_dispatch(
-    entry: dict[str, Any], base: Path, *, agents_csv: str, max_agents: int
-) -> dict[str, Any]:
+def _scenario_dispatch(entry: dict[str, Any], base: Path, *, agents_csv: str, max_agents: int) -> dict[str, Any]:
     from agent_lab import room
     from agent_lab.run_meta import read_run_meta
     from agent_lab.session_score import score_session
@@ -257,9 +251,7 @@ def scenario_dispatch_parallel(entry: dict[str, Any], base: Path) -> dict[str, A
 
 def scenario_dispatch_fanout_cap(entry: dict[str, Any], base: Path) -> dict[str, Any]:
     with _ScopedEnv({"AGENT_LAB_DISPATCH_MAX_FANOUT": "2"}):
-        return _scenario_dispatch(
-            entry, base, agents_csv="cursor,codex,claude", max_agents=2
-        )
+        return _scenario_dispatch(entry, base, agents_csv="cursor,codex,claude", max_agents=2)
 
 
 def scenario_escalation(entry: dict[str, Any], base: Path) -> dict[str, Any]:
@@ -301,8 +293,7 @@ def scenario_escalation(entry: dict[str, Any], base: Path) -> dict[str, Any]:
     escalated = cat.get("escalated_from")
     return {
         "ok": escalated == "quick",
-        "detail": f"category={cat.get('value')} escalated_from={escalated}"
-        f" act={cat.get('escalation_act')}",
+        "detail": f"category={cat.get('value')} escalated_from={escalated} act={cat.get('escalation_act')}",
         "session_id": report.get("session_id"),
         "kpis": _kpi_subset(report, entry.get("kpis") or []),
     }
@@ -343,11 +334,7 @@ def scenario_plan_fsm_human_pending(entry: dict[str, Any], base: Path) -> dict[s
     from agent_lab.run_meta import patch_run_meta, read_run_meta
     from agent_lab.session_score import score_session
 
-    folder = base / (
-        "plan_workflow_pw5_latency"
-        if str(entry.get("id")) == "PW5"
-        else f"pw-fsm-{entry.get('id', 'x')}"
-    )
+    folder = base / ("plan_workflow_pw5_latency" if str(entry.get("id")) == "PW5" else f"pw-fsm-{entry.get('id', 'x')}")
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "run.json").write_text("{}", encoding="utf-8")
     init_plan_workflow_on_plan_send(folder)
@@ -415,11 +402,7 @@ def scenario_plan_fsm_human_pending(entry: dict[str, Any], base: Path) -> dict[s
 
     pw = get_plan_workflow(read_run_meta(folder))
     report = score_session(folder)
-    ok = (
-        peer_calls["n"] == 2
-        and pw.get("phase") == "HUMAN_PENDING"
-        and tick.get("pending_approval") is True
-    )
+    ok = peer_calls["n"] == 2 and pw.get("phase") == "HUMAN_PENDING" and tick.get("pending_approval") is True
     return {
         "ok": ok,
         "detail": f"peer_rounds={peer_calls['n']} phase={pw.get('phase')}",
@@ -549,11 +532,7 @@ def scenario_plan_approve_latency(entry: dict[str, Any], base: Path) -> dict[str
     if not pending.get("ok"):
         return pending
 
-    folder = base / (
-        "plan_workflow_pw5_latency"
-        if str(entry.get("id")) == "PW5"
-        else f"pw-fsm-{entry.get('id', 'x')}"
-    )
+    folder = base / ("plan_workflow_pw5_latency" if str(entry.get("id")) == "PW5" else f"pw-fsm-{entry.get('id', 'x')}")
     proposed_at = (datetime.now(timezone.utc) - timedelta(minutes=7)).isoformat()
 
     def _proposed(run: dict[str, Any]) -> dict[str, Any]:
@@ -600,10 +579,7 @@ def scenario_plan_approve_latency(entry: dict[str, Any], base: Path) -> dict[str
     )
     return {
         "ok": ok,
-        "detail": (
-            f"phase={pw.get('phase')} latency_sec={latency} "
-            f"human_minutes~{human_minutes} gate_ok={gate_ok}"
-        ),
+        "detail": (f"phase={pw.get('phase')} latency_sec={latency} human_minutes~{human_minutes} gate_ok={gate_ok}"),
         "session_id": report.get("session_id"),
         "human_minutes": human_minutes,
         "kpis": _kpi_subset(report, entry.get("kpis") or []),
@@ -649,9 +625,7 @@ def run_mock(rows: list[dict[str, Any]], sessions_base: Path | None) -> int:
             if mock_mode.startswith("scenario:"):
                 fn = SCENARIOS.get(mock_mode.split(":", 1)[1])
                 if fn is None:
-                    results.append(
-                        {"id": topic_id, "status": "error", "reason": f"unknown {mock_mode}"}
-                    )
+                    results.append({"id": topic_id, "status": "error", "reason": f"unknown {mock_mode}"})
                     print(f"  ERROR {topic_id}: unknown scenario {mock_mode}")
                     continue
                 out = fn(entry, base)
@@ -703,9 +677,7 @@ def run_mock(rows: list[dict[str, Any]], sessions_base: Path | None) -> int:
     REPORTS.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     out_path = REPORTS / f"dogfood-suite-mock-{stamp}.json"
-    out_path.write_text(
-        json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-    )
+    out_path.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"\nmock suite report: {out_path} ({len(failed)} failed/error)")
     return 1 if failed else 0
 
@@ -777,24 +749,15 @@ def run_aggregate(rows: list[dict[str, Any]], log_path: Path) -> int:
     for topic_id, runs in sorted(per_topic.items()):
         entry = by_id.get(topic_id) or {}
         kpi_keys = sorted({k for r in runs for k in r["kpis"]})
-        medians = {
-            k: _median([float(r["kpis"][k]) for r in runs if r["kpis"].get(k) is not None])
-            for k in kpi_keys
-        }
+        medians = {k: _median([float(r["kpis"][k]) for r in runs if r["kpis"].get(k) is not None]) for k in kpi_keys}
         passes = [r["human_pass"] for r in runs if r["human_pass"] is not None]
-        minutes = [
-            float(r["human_minutes"])
-            for r in runs
-            if r.get("human_minutes") is not None
-        ]
+        minutes = [float(r["human_minutes"]) for r in runs if r.get("human_minutes") is not None]
         topics_out.append(
             {
                 "id": topic_id,
                 "tier": entry.get("tier"),
                 "runs": len(runs),
-                "human_pass_rate": (
-                    round(sum(1 for p in passes if p) / len(passes), 2) if passes else None
-                ),
+                "human_pass_rate": (round(sum(1 for p in passes if p) / len(passes), 2) if passes else None),
                 "human_minutes_median": _median(minutes),
                 "kpi_medians": medians,
                 "pass_criteria": entry.get("pass") or [],
@@ -812,9 +775,7 @@ def run_aggregate(rows: list[dict[str, Any]], log_path: Path) -> int:
     REPORTS.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     json_path = REPORTS / f"dogfood-suite-{stamp}.json"
-    json_path.write_text(
-        json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-    )
+    json_path.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     lines = [
         f"# Dogfood suite 집계 — {stamp}",
@@ -826,14 +787,12 @@ def run_aggregate(rows: list[dict[str, Any]], log_path: Path) -> int:
         kpis = ", ".join(f"{k}={v}" for k, v in t["kpi_medians"].items()) or "—"
         pass_rate = t["human_pass_rate"]
         lines.append(
-            f"| {t['id']} | {t['tier']} | {t['runs']} | "
-            f"{pass_rate if pass_rate is not None else '—'} | {kpis} |"
+            f"| {t['id']} | {t['tier']} | {t['runs']} | {pass_rate if pass_rate is not None else '—'} | {kpis} |"
         )
     if report["a7_envelope_parse_success_min"] is not None:
         lines += [
             "",
-            f"A7 (passive): envelope_parse_success_rate 최솟값 = "
-            f"{report['a7_envelope_parse_success_min']}",
+            f"A7 (passive): envelope_parse_success_rate 최솟값 = {report['a7_envelope_parse_success_min']}",
         ]
     md_path = REPORTS / f"dogfood-suite-{stamp}.md"
     md_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -843,9 +802,7 @@ def run_aggregate(rows: list[dict[str, Any]], log_path: Path) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--mode", choices=["mock", "checklist", "aggregate"], default="checklist"
-    )
+    parser.add_argument("--mode", choices=["mock", "checklist", "aggregate"], default="checklist")
     parser.add_argument("--topics", help=f"토픽 카탈로그 경로 (기본 {DEFAULT_TOPICS})")
     parser.add_argument("--tier", help="필터: 쉼표 구분 tier (예: S,M)")
     parser.add_argument("--only", help="필터: 쉼표 구분 topic id (예: M4,A3)")

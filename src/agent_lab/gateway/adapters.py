@@ -16,14 +16,11 @@ class GatewayAdapter(Protocol):
     def public_info(self) -> dict[str, Any]:
         """Settings registry row — no secrets."""
 
-    def is_enabled(self, config: dict[str, Any]) -> bool:
-        ...
+    def is_enabled(self, config: dict[str, Any]) -> bool: ...
 
-    def process_ingress(self, payload: dict[str, Any]) -> dict[str, Any]:
-        ...
+    def process_ingress(self, payload: dict[str, Any]) -> dict[str, Any]: ...
 
-    def notify(self, event: str, payload: dict[str, Any]) -> dict[str, Any]:
-        ...
+    def notify(self, event: str, payload: dict[str, Any]) -> dict[str, Any]: ...
 
 
 @dataclass(frozen=True)
@@ -120,13 +117,9 @@ def fan_out_gateway_notify(
         if adapter.adapter_id not in enabled or not adapter.is_enabled(cfg):
             continue
         try:
-            adapter_results.append(
-                {"adapter": adapter.adapter_id, **adapter.notify(event, payload)}
-            )
+            adapter_results.append({"adapter": adapter.adapter_id, **adapter.notify(event, payload)})
         except Exception as exc:
-            adapter_results.append(
-                {"adapter": adapter.adapter_id, "ok": False, "error": str(exc)}
-            )
+            adapter_results.append({"adapter": adapter.adapter_id, "ok": False, "error": str(exc)})
     hybrid = maybe_deliver_hybrid_relay(event, payload, config=cfg)
     return {
         "ok": True,

@@ -100,7 +100,7 @@ def test_list_commands_marks_external_disabled(
     tools_dir = tmp_path / "lab"
     tools_dir.mkdir()
     (tools_dir / "tools.yaml").write_text(
-        'tools:\n  - id: external:t\n    command: echo t\n',
+        "tools:\n  - id: external:t\n    command: echo t\n",
         encoding="utf-8",
     )
     monkeypatch.setattr("agent_lab.external_tools._tools_paths", lambda: [tools_dir / "tools.yaml"])

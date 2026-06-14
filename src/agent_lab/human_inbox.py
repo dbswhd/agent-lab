@@ -67,10 +67,7 @@ def execute_inbox_build_go(folder: Path) -> bool:
 
 
 def has_pending_question(run: dict[str, Any]) -> bool:
-    return any(
-        item.get("status") == "pending" and item.get("kind") == "question"
-        for item in inbox_items(run)
-    )
+    return any(item.get("status") == "pending" and item.get("kind") == "question" for item in inbox_items(run))
 
 
 def format_human_decision(item: dict[str, Any]) -> str:
@@ -93,13 +90,9 @@ def public_inbox_payload(run: dict[str, Any]) -> dict[str, Any]:
         "human_inbox": items,
         "inbox_pending": compute_inbox_pending(run),
         "pending_count": len(pending),
-        "pending_questions": sum(
-            1 for item in pending if item.get("kind") == "question"
-        ),
+        "pending_questions": sum(1 for item in pending if item.get("kind") == "question"),
         "pending_builds": sum(1 for item in pending if item.get("kind") == "build"),
-        "pending_skill_drafts": sum(
-            1 for item in pending if item.get("kind") == "skill_draft"
-        ),
+        "pending_skill_drafts": sum(1 for item in pending if item.get("kind") == "skill_draft"),
     }
 
 
@@ -448,11 +441,7 @@ def build_ask_human_tool_result(item: dict[str, Any]) -> dict[str, Any]:
         }
     selected = item.get("resolved_selected") or []
     if not selected and item.get("resolved_choice"):
-        selected = [
-            part.strip()
-            for part in str(item["resolved_choice"]).split(",")
-            if part.strip()
-        ]
+        selected = [part.strip() for part in str(item["resolved_choice"]).split(",") if part.strip()]
     return {
         "selected": selected,
         "freeform": item.get("resolved_note"),

@@ -40,10 +40,7 @@ def main() -> int:
         meaning = validate_plan_ref_meaning(folder)
         print(meaning.summary())
         for w in meaning.warnings:
-            print(
-                f"  plan L{w.plan_line}: shared={w.shared_count} "
-                f"score={w.overlap_score} refs={w.refs}"
-            )
+            print(f"  plan L{w.plan_line}: shared={w.shared_count} score={w.overlap_score} refs={w.refs}")
     return exit_code
 
 

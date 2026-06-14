@@ -107,9 +107,7 @@ def reconnect_cursor_bridge(*, workspace: str | None = None) -> dict[str, Any]:
     }
 
 
-def _capability_fields(
-    agent_id: str, run_meta: dict[str, Any] | None
-) -> dict[str, Any]:
+def _capability_fields(agent_id: str, run_meta: dict[str, Any] | None) -> dict[str, Any]:
     from agent_lab.room_agent_capabilities import get_agent_capabilities
 
     cap = get_agent_capabilities(run_meta).get(agent_id.strip().lower()) or {}
@@ -227,10 +225,7 @@ def build_agent_health(
         for row in rows:
             row.update(_capability_fields(str(row.get("id") or ""), run_meta))
         return rows
-    return [
-        agent_health_row(aid, probe_bridge=probe_bridge, run_meta=run_meta)
-        for aid in AGENT_IDS
-    ]
+    return [agent_health_row(aid, probe_bridge=probe_bridge, run_meta=run_meta) for aid in AGENT_IDS]
 
 
 def build_health_payload(

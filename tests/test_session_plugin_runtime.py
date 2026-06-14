@@ -27,15 +27,11 @@ def session_folder(tmp_path: Path) -> Path:
     return folder
 
 
-def test_execute_plugins_enabled_with_mock_defaults(
-    session_folder: Path, mock_env: None
-) -> None:
+def test_execute_plugins_enabled_with_mock_defaults(session_folder: Path, mock_env: None) -> None:
     assert execute_plugins_enabled(session_folder) is True
 
 
-def test_execute_plugins_disabled_when_allowlist_cleared(
-    session_folder: Path, mock_env: None
-) -> None:
+def test_execute_plugins_disabled_when_allowlist_cleared(session_folder: Path, mock_env: None) -> None:
     patch_run_meta(
         session_folder,
         lambda run: {
@@ -50,17 +46,13 @@ def test_execute_plugins_disabled_when_allowlist_cleared(
     assert execute_plugins_enabled(session_folder) is False
 
 
-def test_enrich_execute_permissions_sets_flags(
-    session_folder: Path, mock_env: None
-) -> None:
+def test_enrich_execute_permissions_sets_flags(session_folder: Path, mock_env: None) -> None:
     out = enrich_execute_permissions({}, session_folder)
     assert out["_execute_plugins"] is True
     assert out["_session_folder"] == str(session_folder.resolve())
 
 
-def test_execute_plugin_prompt_addon_injects_block(
-    session_folder: Path, mock_env: None
-) -> None:
+def test_execute_plugin_prompt_addon_injects_block(session_folder: Path, mock_env: None) -> None:
     user = execute_plugin_prompt_addon("do work", session_folder, "claude")
     assert "do work" in user
     assert "claude" in user.lower() or "plugin" in user.lower()
@@ -92,8 +84,10 @@ def test_codex_execute_plugin_config_args_enables_allowlisted_mcp(
             "enabled_default": True,
         }
     ]
+
     def stub(*_a, **_k):
         return {"plugins": fake_plugins}
+
     monkeypatch.setattr("agent_lab.session_plugin_runtime.discover_plugins", stub)
     monkeypatch.setattr("agent_lab.command_registry.discover_plugins", stub)
     monkeypatch.setattr("agent_lab.mcp_spec_export.discover_plugins", stub)

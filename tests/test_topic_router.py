@@ -32,16 +32,17 @@ def _clear_router_env(monkeypatch) -> None:
 
 def test_marker_overrides_everything(monkeypatch):
     _clear_router_env(monkeypatch)
-    route = resolve_topic_route(
-        "보안 마이그레이션 설계\n[cat: quick]", turn_profile="verified"
-    )
+    route = resolve_topic_route("보안 마이그레이션 설계\n[cat: quick]", turn_profile="verified")
     assert route.category == "quick"
     assert route.source == "marker"
 
 
 def test_profile_implies_category(monkeypatch):
     _clear_router_env(monkeypatch)
-    assert resolve_topic_route("아무 토픽이나 길게 쓴 일반 토론 주제입니다 — 충분히 길게.", turn_profile="quick").category == "quick"
+    assert (
+        resolve_topic_route("아무 토픽이나 길게 쓴 일반 토론 주제입니다 — 충분히 길게.", turn_profile="quick").category
+        == "quick"
+    )
     assert resolve_topic_route("아무 토픽", turn_profile="verified").category == "critical"
 
 
@@ -223,9 +224,7 @@ def test_challenge_escalates_quick_turn(monkeypatch, tmp_path):
         if agent == "cursor" and n == 1:
             return _envelope_reply("PROPOSE", "단순 rename으로 충분합니다.")
         if agent == "codex" and n == 1:
-            return _envelope_reply(
-                "CHALLENGE", "rename만으론 호출부가 깨집니다 — 마이그레이션 경로 필요."
-            )
+            return _envelope_reply("CHALLENGE", "rename만으론 호출부가 깨집니다 — 마이그레이션 경로 필요.")
         return _envelope_reply("ENDORSE", "이의 없습니다")
 
     patch_call_agent_reply(monkeypatch, fake_call_agent)

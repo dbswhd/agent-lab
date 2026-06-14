@@ -99,14 +99,8 @@ AGENT_CONNECT_HINT: dict[str, str] = {
         "경로·코드 질문이면 도구로 읽은 뒤 답할 것. "
         "동료의 범위·순서는 받아 이어가고, 같은 체크리스트만 반복하지 말 것."
     ),
-    "codex": (
-        "이번 턴 각도: 쪼개기·검증 순서·완료 기준. "
-        "동료의 사실·경로는 인용하고, 같은 분해만 다시 쓰지 말 것."
-    ),
-    "claude": (
-        "이번 턴 각도: 맹점·리스크·머지 전 확인. "
-        "동료는 이름으로 짚고, 새 근거·반론·질문만 추가."
-    ),
+    "codex": ("이번 턴 각도: 쪼개기·검증 순서·완료 기준. 동료의 사실·경로는 인용하고, 같은 분해만 다시 쓰지 말 것."),
+    "claude": ("이번 턴 각도: 맹점·리스크·머지 전 확인. 동료는 이름으로 짚고, 새 근거·반론·질문만 추가."),
 }
 
 CLAUDE_TOOL_RULES = """\
@@ -139,6 +133,7 @@ def agent_tool_rules(agent: str) -> str:
     if agent == "codex":
         return CODEX_TOOL_RULES
     return ""
+
 
 # Backward-compatible alias for imports/tests.
 REPLY_FORMAT_RULES = CONVERSATION_GUIDANCE
@@ -263,10 +258,7 @@ def format_agent_numbered_thread(
     numbered, first_l, last_l = format_thread_numbered_slice(all_messages, slice_messages)
     header = f"Human topic:\n{topic.strip()}\n"
     if first_l and last_l:
-        header += (
-            f"\n[chat.jsonl line refs: L{first_l}..L{last_l} in this block; "
-            "cite as chat.jsonl#Ln]\n"
-        )
+        header += f"\n[chat.jsonl line refs: L{first_l}..L{last_l} in this block; cite as chat.jsonl#Ln]\n"
     return f"{header}\n{numbered}".strip()
 
 
@@ -306,9 +298,7 @@ def extract_agreed_bullets(plan_md: str) -> list[str]:
 def extract_open_bullets(plan_md: str) -> list[str]:
     sections = _split_plan_sections(plan_md)
     body = _section_body(sections, _OPEN_HEADERS)
-    return _bullet_lines(
-        body, max_items=agent_context_limits().max_open_items, max_chars=7000
-    )
+    return _bullet_lines(body, max_items=agent_context_limits().max_open_items, max_chars=7000)
 
 
 def extract_human_gates(messages: list[_MessageLike], topic: str = "") -> list[str]:
@@ -490,9 +480,7 @@ def trim_messages_by_chars_pinned(
     budget = max(max_chars - pin_chars, 4096)
     trimmed_rest, omitted = trim_messages_by_chars(rest, max_chars=budget)
     rest_kept_ids = {id(m) for m in trimmed_rest}
-    merged: list[_MessageLike] = [
-        m for m in messages if id(m) in pin_ids or id(m) in rest_kept_ids
-    ]
+    merged: list[_MessageLike] = [m for m in messages if id(m) in pin_ids or id(m) in rest_kept_ids]
     return merged, omitted
 
 
@@ -519,9 +507,7 @@ def prepare_recent_messages(
             max_messages=eff.max_pin_messages,
             max_chars=pin_budget,
         )
-    trimmed, chars_omitted = trim_messages_by_chars_pinned(
-        recent, max_chars=max_chars, pinned=pinned
-    )
+    trimmed, chars_omitted = trim_messages_by_chars_pinned(recent, max_chars=max_chars, pinned=pinned)
     return trimmed, turns_omitted, chars_omitted, len(pinned)
 
 
@@ -539,10 +525,7 @@ def collect_peer_messages(
     same_round = [
         m
         for m in turn_msgs
-        if m.role == "agent"
-        and m.agent
-        and m.agent != agent
-        and (m.parallel_round or 1) == parallel_round
+        if m.role == "agent" and m.agent and m.agent != agent and (m.parallel_round or 1) == parallel_round
     ]
     if same_round:
         return same_round
@@ -551,10 +534,7 @@ def collect_peer_messages(
         return [
             m
             for m in turn_msgs
-            if m.role == "agent"
-            and m.agent
-            and m.agent != agent
-            and (m.parallel_round or 1) == prev
+            if m.role == "agent" and m.agent and m.agent != agent and (m.parallel_round or 1) == prev
         ]
     return []
 
@@ -776,20 +756,14 @@ def build_recent_turns_block(
     if chars_omitted:
         header += f"; {chars_omitted} older message(s) trimmed by size"
     if peer_deduped:
-        header += (
-            f"; {peer_deduped} peer line(s) only in [이번 턴 · 동료 발화]"
-        )
+        header += f"; {peer_deduped} peer line(s) only in [이번 턴 · 동료 발화]"
     header += " — full log in chat.jsonl)"
     thread = format_thread(topic, messages)
     note_parts: list[str] = []
     if turns_omitted or chars_omitted:
-        note_parts.append(
-            "earlier context omitted from this payload — use constraints + plan 미결"
-        )
+        note_parts.append("earlier context omitted from this payload — use constraints + plan 미결")
     if peer_deduped:
-        note_parts.append(
-            "peer replies in this turn appear only in [이번 턴 · 동료 발화]"
-        )
+        note_parts.append("peer replies in this turn appear only in [이번 턴 · 동료 발화]")
     note = ""
     if note_parts:
         note = "\n[Note: " + "; ".join(note_parts) + ".]\n\n"

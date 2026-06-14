@@ -178,8 +178,7 @@ def run_structural_checks(report: ValidationReport, pipeline: Path) -> None:
     )
     report.add(
         "execute resolves quant-control path",
-        exec_info.get("label") == "quant-pipeline"
-        and not exec_info.get("paths_missing"),
+        exec_info.get("label") == "quant-pipeline" and not exec_info.get("paths_missing"),
         json.dumps(exec_info, ensure_ascii=False),
     )
 
@@ -248,10 +247,7 @@ def run_mock_discuss(report: ValidationReport, pipeline: Path) -> None:
 
 def compare_may27_regression(report: ValidationReport) -> None:
     """May 27 quant session had local_pipeline: false — binding fixes that."""
-    session = (
-        _AGENT_LAB_ROOT
-        / "sessions/2026-05-27-quant-control-앱에-적용시킬-새로운-전략을-한-번-연구해보자"
-    )
+    session = _AGENT_LAB_ROOT / "sessions/2026-05-27-quant-control-앱에-적용시킬-새로운-전략을-한-번-연구해보자"
     if not session.is_dir():
         report.add("may27 regression baseline", True, "session folder missing — skip")
         return

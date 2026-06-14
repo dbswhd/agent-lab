@@ -22,6 +22,4 @@ def test_en_ko_message_keys_match():
     ko_block = text.split("const KO = {", 1)[1].split("} as const;", 1)[0]
     en_keys = _extract_keys(en_block)
     ko_keys = _extract_keys(ko_block)
-    assert en_keys == ko_keys, (
-        f"EN-only: {sorted(en_keys - ko_keys)}; KO-only: {sorted(ko_keys - en_keys)}"
-    )
+    assert en_keys == ko_keys, f"EN-only: {sorted(en_keys - ko_keys)}; KO-only: {sorted(ko_keys - en_keys)}"

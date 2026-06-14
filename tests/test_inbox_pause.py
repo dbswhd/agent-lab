@@ -27,10 +27,13 @@ def _fork_msg(agent: str) -> _Msg:
     block = (
         "```decision-fork\n"
         + json.dumps(
-            {"topic": "스윕 범위", "options": [
-                {"label": "VU만", "refs": ["L42"]},
-                {"label": "VU+Theme", "refs": ["L51"]},
-            ]},
+            {
+                "topic": "스윕 범위",
+                "options": [
+                    {"label": "VU만", "refs": ["L42"]},
+                    {"label": "VU+Theme", "refs": ["L51"]},
+                ],
+            },
             ensure_ascii=False,
         )
         + "\n```"
@@ -152,16 +155,12 @@ def test_harvest_and_check_pause_tq2_grace_then_pause(monkeypatch: pytest.Monkey
     run_meta: dict[str, Any] = {}
     plan_md = "## 쟁점 / 미결정\n\n- VU 스윕 범위를 Human이 정해야 함\n"
     messages = [_Msg(role="user", content="topic")]
-    first = harvest_and_check_pause(
-        run_meta, messages, human_turn=1, plan_md=plan_md
-    )
+    first = harvest_and_check_pause(run_meta, messages, human_turn=1, plan_md=plan_md)
     assert first is False
     assert run_meta.get("_inbox_pause_grace_pending") is True
     assert run_meta.get("_inbox_pause_grace_kind") == "plan_open"
     assert run_meta["human_inbox"][0]["trigger"] == "T-Q2"
-    second = harvest_and_check_pause(
-        run_meta, messages, human_turn=1, plan_md=plan_md
-    )
+    second = harvest_and_check_pause(run_meta, messages, human_turn=1, plan_md=plan_md)
     assert second is True
     assert "_inbox_pause_grace_pending" not in run_meta
 

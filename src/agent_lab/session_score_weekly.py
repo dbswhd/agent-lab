@@ -106,11 +106,7 @@ def _iter_session_candidates(
     for child in sorted(root.iterdir()):
         if child.name in ("_regression", "_benchmark") and include_fixtures and child.is_dir():
             candidates.extend(
-                sorted(
-                    p
-                    for p in child.iterdir()
-                    if is_scorable_session_folder(p, include_fixtures=True)
-                )
+                sorted(p for p in child.iterdir() if is_scorable_session_folder(p, include_fixtures=True))
             )
             continue
         if is_scorable_session_folder(child, include_fixtures=include_fixtures):
@@ -267,9 +263,7 @@ def aggregate_rates(
     communicate = _pool_communicate_counts(reports)
     emergence = _pool_emergence_counts(reports)
 
-    objection_rate = (
-        obj["resolved"] / obj["total"] if obj["total"] else None
-    )
+    objection_rate = obj["resolved"] / obj["total"] if obj["total"] else None
     first_try_rate = exe["first_try"] / exe["terminal"] if exe["terminal"] else None
     retry_rate = exe["retried"] / exe["terminal"] if exe["terminal"] else None
     partial_rate = turns["partial"] / turns["total"] if turns["total"] else None
@@ -279,20 +273,12 @@ def aggregate_rates(
         "execute_first_try_rate": first_try_rate,
         "execute_retry_rate": retry_rate,
         "partial_turn_rate": partial_rate,
-        "worktree_usage_rate": (
-            merge["worktree"] / merge["gitish"] if merge["gitish"] else None
-        ),
-        "snapshot_override_rate": (
-            merge["snapshot_override"] / merge["total"] if merge["total"] else None
-        ),
+        "worktree_usage_rate": (merge["worktree"] / merge["gitish"] if merge["gitish"] else None),
+        "snapshot_override_rate": (merge["snapshot_override"] / merge["total"] if merge["total"] else None),
         "merge_first_success_rate": (
-            merge["merge_first_success"] / merge["worktree_terminal"]
-            if merge["worktree_terminal"]
-            else None
+            merge["merge_first_success"] / merge["worktree_terminal"] if merge["worktree_terminal"] else None
         ),
-        "merge_conflict_rate": (
-            merge["merge_conflict"] / merge["worktree"] if merge["worktree"] else None
-        ),
+        "merge_conflict_rate": (merge["merge_conflict"] / merge["worktree"] if merge["worktree"] else None),
         "asymmetric_capability_cwd_rate": (
             capability_cwd["asymmetric"] / capability_cwd["specialist_contexts"]
             if capability_cwd["specialist_contexts"]
@@ -304,30 +290,21 @@ def aggregate_rates(
             else None
         ),
         "envelope_parse_success_rate": (
-            (communicate["agent_replies"] - communicate["envelope_parse_errors"])
-            / communicate["agent_replies"]
+            (communicate["agent_replies"] - communicate["envelope_parse_errors"]) / communicate["agent_replies"]
             if communicate["agent_replies"]
             else None
         ),
         "legacy_endorse_rate": (
-            communicate["legacy_endorse_count"] / communicate["agent_replies"]
-            if communicate["agent_replies"]
-            else None
+            communicate["legacy_endorse_count"] / communicate["agent_replies"] if communicate["agent_replies"] else None
         ),
         "hook_block_rate": (
-            communicate["hook_blocked"] / communicate["hook_runs"]
-            if communicate["hook_runs"]
-            else None
+            communicate["hook_blocked"] / communicate["hook_runs"] if communicate["hook_runs"] else None
         ),
         "hybrid_action_rate": (
-            emergence["hybrid_bullets"] / emergence["ref_bullets"]
-            if emergence["ref_bullets"]
-            else None
+            emergence["hybrid_bullets"] / emergence["ref_bullets"] if emergence["ref_bullets"] else None
         ),
         "challenge_yield": (
-            emergence["challenge_accepted"] / emergence["challenge_total"]
-            if emergence["challenge_total"]
-            else None
+            emergence["challenge_accepted"] / emergence["challenge_total"] if emergence["challenge_total"] else None
         ),
     }
     counts = {
@@ -357,22 +334,14 @@ def evaluate_m4_milestones(
         "target": f">={M4_OBJECTION_RESOLUTION_MIN:.0%}",
         "applicable": obj_total > 0,
         "value": obj_rate,
-        "pass": (
-            obj_rate is not None and obj_rate >= M4_OBJECTION_RESOLUTION_MIN
-            if obj_total > 0
-            else None
-        ),
+        "pass": (obj_rate is not None and obj_rate >= M4_OBJECTION_RESOLUTION_MIN if obj_total > 0 else None),
     }
     execute_retry = {
         "metric": "execute_retry_rate",
         "target": f"<{M4_EXECUTE_RETRY_RATE_MAX:.0%}",
         "applicable": exe_terminal > 0,
         "value": retry_rate,
-        "pass": (
-            retry_rate is not None and retry_rate < M4_EXECUTE_RETRY_RATE_MAX
-            if exe_terminal > 0
-            else None
-        ),
+        "pass": (retry_rate is not None and retry_rate < M4_EXECUTE_RETRY_RATE_MAX if exe_terminal > 0 else None),
     }
     applicable = [m for m in (objection, execute_retry) if m["applicable"]]
     passes = [m for m in applicable if m["pass"] is True]
@@ -474,9 +443,7 @@ def discover_live_ops_reports(report_dir: Path) -> dict[str, dict[str, Any] | No
     if not base.is_dir():
         return {"worktree": None, "merge": None}
 
-    candidates = sorted(
-        list(base.glob("live-worktree-*.json")) + list(base.glob("live-merge-*.json"))
-    )
+    candidates = sorted(list(base.glob("live-worktree-*.json")) + list(base.glob("live-merge-*.json")))
     for path in candidates:
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
@@ -641,9 +608,7 @@ def format_weekly_report_markdown(report: dict[str, Any]) -> str:
         report_file = _live_file(row)
         if report_file != "—":
             report_file = f"`{report_file}`"
-        lines.append(
-            f"| {label} | {_live_date(row)} | {_live_table_status(row)} | {report_file} |"
-        )
+        lines.append(f"| {label} | {_live_date(row)} | {_live_table_status(row)} | {report_file} |")
     lines.extend(
         [
             "",

@@ -74,8 +74,7 @@ def _api_startup() -> None:
     try:
         payload = build_diagnostics_payload()
         write_boot_line(
-            "uvicorn startup pid=%s port=%s sessions=%s"
-            % (payload["pid"], payload["port"], payload["sessions_dir"])
+            "uvicorn startup pid=%s port=%s sessions=%s" % (payload["pid"], payload["port"], payload["sessions_dir"])
         )
         mark_daemon_started(pid=int(payload["pid"]))
         if start_mission_scheduler_background():

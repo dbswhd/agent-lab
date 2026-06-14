@@ -8,9 +8,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Iterator
 
-CURSOR_BRIDGE_FALLBACK = (
-    "Cursor 제외 후 Codex/Claude 로컬 CLI로 전송하거나 Cursor bridge 재연결 후 재시도"
-)
+CURSOR_BRIDGE_FALLBACK = "Cursor 제외 후 Codex/Claude 로컬 CLI로 전송하거나 Cursor bridge 재연결 후 재시도"
 CURSOR_BRIDGE_REMEDIATION = (
     "Cursor 앱 실행",
     "상태 패널의 재연결 버튼으로 bridge ping 재시도",
@@ -133,11 +131,7 @@ def _launch_client(workspace: str) -> object:
 
 def _external_client() -> object | None:
     url = os.getenv("CURSOR_SDK_BRIDGE_URL", "").strip()
-    token = (
-        os.getenv("CURSOR_SDK_BRIDGE_TOKEN")
-        or os.getenv("CURSOR_SDK_BRIDGE_AUTH_TOKEN")
-        or ""
-    ).strip()
+    token = (os.getenv("CURSOR_SDK_BRIDGE_TOKEN") or os.getenv("CURSOR_SDK_BRIDGE_AUTH_TOKEN") or "").strip()
     if not url:
         return None
     if not token:
@@ -233,11 +227,7 @@ def format_cursor_connect_error(exc: BaseException) -> str:
     if isinstance(exc, CursorBridgeUnavailable):
         payload = cursor_bridge_failure_payload(exc)
         remediation = "; ".join(str(x) for x in payload["remediation"])
-        return (
-            f"{payload['reason']}\n"
-            f"fallback: {payload['fallback']}\n"
-            f"remediation: {remediation}"
-        )
+        return f"{payload['reason']}\nfallback: {payload['fallback']}\nremediation: {remediation}"
     msg = str(exc).strip() or exc.__class__.__name__
     if _connection_refused(exc):
         return f"{msg}\n{_BRIDGE_HINT}\nfallback: {CURSOR_BRIDGE_FALLBACK}"

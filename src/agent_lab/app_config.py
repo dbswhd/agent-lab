@@ -184,9 +184,7 @@ def apply_config_env(cfg: dict[str, Any] | None = None) -> dict[str, Any]:
     if isinstance(api, dict) and api.get("port") and not os.getenv("AGENT_LAB_API_PORT"):
         os.environ["AGENT_LAB_API_PORT"] = str(int(api["port"]))
     logging_cfg = data.get("logging") if isinstance(data.get("logging"), dict) else {}
-    if isinstance(logging_cfg, dict) and logging_cfg.get("dir") and not os.getenv(
-        "AGENT_LAB_LOG_DIR"
-    ):
+    if isinstance(logging_cfg, dict) and logging_cfg.get("dir") and not os.getenv("AGENT_LAB_LOG_DIR"):
         raw_log = str(logging_cfg["dir"]).strip()
         if raw_log:
             os.environ["AGENT_LAB_LOG_DIR"] = str(Path(raw_log).expanduser().resolve())

@@ -79,9 +79,7 @@ def activity_from_thinking_completed(duration_ms: int) -> str:
 
 def format_interaction_update(update: Any) -> str | None:
     """Return a one-line activity label, or None to skip."""
-    utype = getattr(update, "type", None) or (
-        update.get("type") if isinstance(update, Mapping) else None
-    )
+    utype = getattr(update, "type", None) or (update.get("type") if isinstance(update, Mapping) else None)
     if utype == "thinking-completed":
         ms = int(getattr(update, "thinking_duration_ms", 0) or 0)
         return activity_from_thinking_completed(ms)
@@ -98,9 +96,7 @@ def format_interaction_update(update: Any) -> str | None:
 
 
 def format_conversation_step(step: Any) -> str | None:
-    stype = getattr(step, "type", None) or (
-        step.get("type") if isinstance(step, Mapping) else None
-    )
+    stype = getattr(step, "type", None) or (step.get("type") if isinstance(step, Mapping) else None)
     if stype == "thinkingMessage":
         msg = getattr(step, "message", None)
         ms = getattr(msg, "thinking_duration_ms", None) if msg is not None else None

@@ -315,9 +315,7 @@ def test_codex_invoke_uses_plan_inbox_when_execute_off(
     assert captured.get("config_overrides") is not None
 
 
-def test_call_execute_agent_passes_inbox_mcp_to_codex(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_call_execute_agent_passes_inbox_mcp_to_codex(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     from agent_lab.plan_execute import _call_execute_agent
 
     captured: dict[str, object] = {}
@@ -385,8 +383,7 @@ def test_complete_sse_inbox_pending_on_clarifier(monkeypatch, tmp_path):
     run = read_run_meta(folder)
     assert run.get("inbox_pending") is True
     assert any(
-        item.get("trigger") == "T-Q0" and item.get("status") == "pending"
-        for item in run.get("human_inbox") or []
+        item.get("trigger") == "T-Q0" and item.get("status") == "pending" for item in run.get("human_inbox") or []
     )
 
 

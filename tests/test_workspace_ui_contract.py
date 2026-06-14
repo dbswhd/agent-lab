@@ -15,7 +15,7 @@ def test_app_uses_workspace_shell_not_primary_messenger_label():
     rail = _read("web", "src", "components", "SessionRail.tsx")
     layout = _read("web", "src", "styles", "layout.css")
     # Canonical shell is `.shell`; legacy `.workspace-shell` rules merged into layout.css.
-    assert 'className={`shell' in app or " shell--rail-collapsed" in app
+    assert "className={`shell" in app or " shell--rail-collapsed" in app
     assert ".workspace-shell" in layout or ".shell" in layout
     assert "SessionRail" in app
     assert 'aria-label="Sessions"' in rail
@@ -27,7 +27,7 @@ def test_app_uses_workspace_shell_not_primary_messenger_label():
 
 def test_workspace_tabs_stay_on_transcript_while_running():
     tabs = _read("web", "src", "utils", "workspaceTabs.ts")
-    assert "if (ctx.running) return \"run\"" not in tabs
+    assert 'if (ctx.running) return "run"' not in tabs
 
 
 def test_app_guards_room_bound_session_before_sidebar_list():
@@ -86,9 +86,9 @@ def test_human_transcript_message_is_right_aligned_without_label_chrome():
     css = _read("web", "src", "styles", "surfaces.css")
 
     assert 'className="chat-turn__head"' in bubble
-    assert "message={{ ...message, label: message.label ?? \"Human\" }}" not in bubble
-    assert 'transcript transcript--console' in room
-    assert 'bubble-row bubble-row--sent' in bubble
+    assert 'message={{ ...message, label: message.label ?? "Human" }}' not in bubble
+    assert "transcript transcript--console" in room
+    assert "bubble-row bubble-row--sent" in bubble
     assert ".transcript--console .bubble-row--sent" in css
     assert "margin-left: auto;" in css
 
@@ -101,7 +101,7 @@ def test_agent_waiting_state_shows_activity_log_and_dots():
 
     assert "agent-activity-log" in bubble
     assert "agent-stream-preview" in bubble
-    assert 'className="typing"' in bubble or 'className={`typing' in bubble
+    assert 'className="typing"' in bubble or "className={`typing" in bubble
     assert ".typing span" in css
     assert ".agent-stream-preview" in layout
     assert 't === "agent_token"' in room
@@ -149,16 +149,14 @@ def test_workspace_panels_have_distinct_document_wrappers():
     work = _read("web", "src", "components", "WorkPanel.tsx")
     assert "work-surface" in work_tool or "work-stack" in work_tool
     assert "MissionOverviewSection" in work
-    assert 'variant="work"' in work or "variant=\"work\"" in work
+    assert 'variant="work"' in work or 'variant="work"' in work
     assert "work-chrome" in work
     status = _read("web", "src", "components", "WorkStatusBar.tsx")
     assert "resolveWorkPhaseFromMission" in status
     assert "missionPaused" in status
     assert "work-status-bar__pause-badge" in status
     assert "last_partial?.resume_phase" in work
-    assert "work-mission-overview" in _read(
-        "web", "src", "components", "MissionOverviewSection.tsx"
-    )
+    assert "work-mission-overview" in _read("web", "src", "components", "MissionOverviewSection.tsx")
     plugin = _read("web", "src", "components", "PluginPanel.tsx")
     assert "cursor-ide-mcp-hint" in plugin
     plan_exec = _read("web", "src", "components", "PlanExecutePanel.tsx")
@@ -342,7 +340,7 @@ def test_m6_plan_card_canonical_classes_only():
 def test_m6_chat_turn_no_dual_class_root():
     bubble = _read("web", "src", "components", "ChatBubble.tsx")
     assert "`turn chat-turn" not in bubble
-    assert 'className={`chat-turn chat-turn--${role}' in bubble
+    assert "className={`chat-turn chat-turn--${role}" in bubble
     assert 'className="chat-turn__head"' in bubble
 
 
@@ -355,9 +353,7 @@ def test_m6_room_chat_canonical_shell_only():
     assert 'className="pane-row"' in room
     assert 'className="pane-main workspace-main"' in room
     assert "TranscriptViewOptions" in room
-    assert "transcript-view-options" in _read(
-        "web", "src", "components", "TranscriptViewOptions.tsx"
-    )
+    assert "transcript-view-options" in _read("web", "src", "components", "TranscriptViewOptions.tsx")
     assert "legacy `.room-workspace-shell`" in layout
 
 

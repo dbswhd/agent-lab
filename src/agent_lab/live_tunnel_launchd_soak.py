@@ -131,15 +131,8 @@ def run_live_tunnel_launchd_soak(
 
     Requires a running API (`serve --daemon` or launchd). Does not call Cursor SDK.
     """
-    base = (api_base or os.getenv("AGENT_LAB_SOAK_API_BASE") or "http://127.0.0.1:8765").rstrip(
-        "/"
-    )
-    tunnel = (
-        tunnel_wake_url
-        or os.getenv("AGENT_LAB_TUNNEL_WAKE_URL")
-        or os.getenv("TUNNEL_WAKE_URL")
-        or ""
-    ).strip()
+    base = (api_base or os.getenv("AGENT_LAB_SOAK_API_BASE") or "http://127.0.0.1:8765").rstrip("/")
+    tunnel = (tunnel_wake_url or os.getenv("AGENT_LAB_TUNNEL_WAKE_URL") or os.getenv("TUNNEL_WAKE_URL") or "").strip()
     local_wake = f"{base}/api/hooks/mission-wake"
 
     report: dict[str, Any] = {
@@ -192,11 +185,7 @@ def run_live_tunnel_launchd_soak(
     if not checks["daemon_scheduler_enabled"]:
         report["warnings"].append("scheduler_enabled false in daemon_state — wake may still work")
 
-    tick_before = (
-        str(health_body.get("last_scheduler_tick_at") or "")
-        if isinstance(health_body, dict)
-        else ""
-    )
+    tick_before = str(health_body.get("last_scheduler_tick_at") or "") if isinstance(health_body, dict) else ""
 
     local_ok, local_body, local_err = post_mission_wake(wake_url=local_wake)
     checks["local_mission_wake_ok"] = local_ok
@@ -206,11 +195,7 @@ def run_live_tunnel_launchd_soak(
 
     _, health_after, _ = fetch_daemon_health(base)
     report["daemon_after"] = health_after
-    tick_after = (
-        str(health_after.get("last_scheduler_tick_at") or "")
-        if isinstance(health_after, dict)
-        else ""
-    )
+    tick_after = str(health_after.get("last_scheduler_tick_at") or "") if isinstance(health_after, dict) else ""
     checks["scheduler_tick_updated"] = bool(tick_after and tick_after != tick_before) or local_ok
     if local_ok and tick_before == tick_after:
         report["warnings"].append("last_scheduler_tick_at unchanged after wake (tick may be noop)")
@@ -219,7 +204,9 @@ def run_live_tunnel_launchd_soak(
     report["hybrid"] = {"wake_hint_ok": checks["hybrid_wake_hint_ok"]}
 
     if tunnel:
-        tunnel_url = tunnel if tunnel.endswith("/api/hooks/mission-wake") else f"{tunnel.rstrip('/')}/api/hooks/mission-wake"
+        tunnel_url = (
+            tunnel if tunnel.endswith("/api/hooks/mission-wake") else f"{tunnel.rstrip('/')}/api/hooks/mission-wake"
+        )
         tunnel_ok, tunnel_body, tunnel_err = post_mission_wake(wake_url=tunnel_url)
         checks["tunnel_wake_ok"] = tunnel_ok
         report["tunnel_wake"] = {

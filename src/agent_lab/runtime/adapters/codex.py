@@ -25,11 +25,7 @@ def codex_proxy_base_url() -> str:
 
 def codex_proxy_model(*, room_turn: bool) -> str:
     if room_turn:
-        return (
-            os.getenv("CODEX_PROXY_ROOM_MODEL")
-            or os.getenv("CODEX_MODEL")
-            or DEFAULT_CODEX_MODEL
-        )
+        return os.getenv("CODEX_PROXY_ROOM_MODEL") or os.getenv("CODEX_MODEL") or DEFAULT_CODEX_MODEL
     return os.getenv("CODEX_PROXY_MODEL") or os.getenv("CODEX_MODEL") or DEFAULT_CODEX_MODEL
 
 
@@ -122,13 +118,9 @@ def invoke_codex_proxy(
             body = resp.read().decode("utf-8", errors="replace")
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")[:400]
-        raise RuntimeError(
-            f"Codex proxy HTTP {exc.code}: {detail or exc.reason}"
-        ) from exc
+        raise RuntimeError(f"Codex proxy HTTP {exc.code}: {detail or exc.reason}") from exc
     except OSError as exc:
-        raise RuntimeError(
-            f"Codex proxy unreachable at {codex_proxy_base_url()}: {exc}"
-        ) from exc
+        raise RuntimeError(f"Codex proxy unreachable at {codex_proxy_base_url()}: {exc}") from exc
 
     try:
         parsed = json.loads(body)

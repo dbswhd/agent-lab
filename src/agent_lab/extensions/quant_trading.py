@@ -46,9 +46,7 @@ def quant_pipeline_available() -> bool:
 def require_pipeline_root() -> Path:
     root = optional_pipeline_root()
     if root is None:
-        raise FileNotFoundError(
-            "quant-pipeline extension: set QUANT_PIPELINE_ROOT to the research pipeline checkout"
-        )
+        raise FileNotFoundError("quant-pipeline extension: set QUANT_PIPELINE_ROOT to the research pipeline checkout")
     return root
 
 

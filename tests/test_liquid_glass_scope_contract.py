@@ -25,9 +25,7 @@ def test_css_is_split_into_chrome_and_content_surface_policy():
     )
     for import_line in ordered_imports:
         assert import_line in main
-    assert [main.index(line) for line in ordered_imports] == sorted(
-        main.index(line) for line in ordered_imports
-    )
+    assert [main.index(line) for line in ordered_imports] == sorted(main.index(line) for line in ordered_imports)
     assert 'import "./styles/chrome.css";' not in main
     assert 'import "./styles/content-surfaces.css";' not in main
 

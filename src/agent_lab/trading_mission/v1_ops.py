@@ -230,9 +230,7 @@ def build_fail_ref_fixture(base: Path) -> Path:
         json.dumps(
             {
                 "trade_allowed": True,
-                "eligible_cards": [
-                    {"ref": "research/kr/results/demo/demo_fail_full.json", "verdict": "FAIL"}
-                ],
+                "eligible_cards": [{"ref": "research/kr/results/demo/demo_fail_full.json", "verdict": "FAIL"}],
             }
         ),
         encoding="utf-8",

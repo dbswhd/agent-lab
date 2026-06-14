@@ -48,12 +48,10 @@ def main() -> int:
         ("efficiency_mode", "true"),
         ("permissions", "{}"),
     ]
-    body = "".join(
-        f"--{boundary}\r\n"
-        f'Content-Disposition: form-data; name="{k}"\r\n\r\n'
-        f"{v}\r\n"
-        for k, v in fields
-    ) + f"--{boundary}--\r\n"
+    body = (
+        "".join(f'--{boundary}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n' for k, v in fields)
+        + f"--{boundary}--\r\n"
+    )
 
     print(f"Starting smoke run: {topic[:60]}…")
     t0 = time.time()
@@ -99,13 +97,12 @@ def main() -> int:
         rnd = e.get("round", "?")
         agent = e.get("agent", "?")
         no_obj = e.get("no_objection")
-        print(
-            f"  R{rnd} {agent}: act={act} no_objection={no_obj} "
-            f"chars={e.get('chars', 0)}"
-        )
+        print(f"  R{rnd} {agent}: act={act} no_objection={no_obj} chars={e.get('chars', 0)}")
 
     if consensus_status:
-        print(f"consensus: {consensus_status.get('type')} — {consensus_status.get('status', consensus_status.get('message', ''))}")
+        print(
+            f"consensus: {consensus_status.get('type')} — {consensus_status.get('status', consensus_status.get('message', ''))}"
+        )
 
     if not session_id:
         errs = [e for e in events if e.get("type") == "error"]
@@ -123,10 +120,7 @@ def main() -> int:
     print(f"chat.jsonl lines: {len(lines)}, with envelope: {len(env_lines)}")
     for i in env_lines:
         row = lines[i]
-        print(
-            f"  L{i+1} {row.get('agent')} R{row.get('parallel_round')} "
-            f"act={row.get('envelope', {}).get('act')}"
-        )
+        print(f"  L{i + 1} {row.get('agent')} R{row.get('parallel_round')} act={row.get('envelope', {}).get('act')}")
 
     if not with_env:
         print("WARN: no envelope in agent_done — agents may not have used fence yet")

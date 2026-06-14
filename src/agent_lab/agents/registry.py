@@ -143,9 +143,7 @@ def _scripted_mock_response(agent: AgentId, snippet: str) -> str | None:
         env["to"] = str(step["to"])
     if step.get("message"):
         env["message"] = str(step["message"])
-    body = str(step.get("body") or "") or (
-        f"[mock:{label(agent)}] {act} — {snippet or '(empty)'}"
-    )
+    body = str(step.get("body") or "") or (f"[mock:{label(agent)}] {act} — {snippet or '(empty)'}")
     return f"{json.dumps(env, ensure_ascii=False)}\n{body}"
 
 

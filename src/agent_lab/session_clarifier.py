@@ -266,11 +266,7 @@ def public_clarifier_interview(run: dict[str, Any] | None) -> dict[str, Any] | N
         return None
     questions = interview.get("questions") if isinstance(interview.get("questions"), list) else []
     answers = interview.get("answers") if isinstance(interview.get("answers"), dict) else {}
-    pending = [
-        q
-        for q in questions
-        if isinstance(q, dict) and not str(answers.get(str(q.get("id") or ""), "")).strip()
-    ]
+    pending = [q for q in questions if isinstance(q, dict) and not str(answers.get(str(q.get("id") or ""), "")).strip()]
     return {
         "version": interview.get("version"),
         "plan_mode": interview.get("plan_mode"),
@@ -307,9 +303,7 @@ def record_clarifier_answers(
         interview["answers"] = merged
         questions = interview.get("questions") or []
         all_answered = all(
-            str(merged.get(str(q.get("id") or ""), "")).strip()
-            for q in questions
-            if isinstance(q, dict)
+            str(merged.get(str(q.get("id") or ""), "")).strip() for q in questions if isinstance(q, dict)
         )
         if mark_complete and all_answered:
             interview["status"] = "complete"

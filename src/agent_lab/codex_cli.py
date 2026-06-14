@@ -93,11 +93,7 @@ def _format_exec_error(stderr: str, stdout: str) -> str:
     from agent_lab.agent_preflight import format_codex_exec_error
 
     combined = f"{stderr or ''}\n{stdout or ''}"
-    errors = [
-        ln.strip()
-        for ln in combined.splitlines()
-        if ln.strip().startswith("ERROR:")
-    ]
+    errors = [ln.strip() for ln in combined.splitlines() if ln.strip().startswith("ERROR:")]
     if errors:
         seen: set[str] = set()
         unique: list[str] = []
@@ -119,16 +115,10 @@ def _format_exec_error(stderr: str, stdout: str) -> str:
         hint = codex_auth_failure_remediation(detail)[0]
         return f"{format_codex_exec_error(detail[:600])} — {hint}"
     if "Reading additional input from stdin" in detail:
-        return (
-            "Codex CLI stdin/prompt handling failed. "
-            "Update Agent Lab (prompt is passed on stdin, not as a CLI arg)."
-        )
+        return "Codex CLI stdin/prompt handling failed. Update Agent Lab (prompt is passed on stdin, not as a CLI arg)."
     if detail:
         return format_codex_exec_error(detail[:800])
-    return (
-        "Codex CLI exited without stderr output. "
-        "Re-run `codex login` or re-capture OAuth in Settings (메인/서브)."
-    )
+    return "Codex CLI exited without stderr output. Re-run `codex login` or re-capture OAuth in Settings (메인/서브)."
 
 
 def _codex_env(*, api_key: str | None = None) -> dict[str, str]:
@@ -154,9 +144,7 @@ def _codex_env(*, api_key: str | None = None) -> dict[str, str]:
 
 def _reasoning_effort(*, room_turn: bool) -> str:
     if room_turn:
-        return os.getenv(
-            "CODEX_ROOM_REASONING_EFFORT", DEFAULT_CODEX_ROOM_REASONING_EFFORT
-        )
+        return os.getenv("CODEX_ROOM_REASONING_EFFORT", DEFAULT_CODEX_ROOM_REASONING_EFFORT)
     return os.getenv("CODEX_REASONING_EFFORT", DEFAULT_CODEX_REASONING_EFFORT)
 
 
@@ -233,9 +221,7 @@ def _format_codex_stall_error(
         parts.append(f"stderr_tail={tail!r}")
     if stderr_path:
         parts.append(f"stderr_log={stderr_path}")
-    parts.append(
-        "Tune CODEX_ROOM_IDLE_TIMEOUT_SEC / CODEX_ROOM_TIMEOUT_SEC or inspect stderr_log."
-    )
+    parts.append("Tune CODEX_ROOM_IDLE_TIMEOUT_SEC / CODEX_ROOM_TIMEOUT_SEC or inspect stderr_log.")
     return "Codex exec stalled — " + ", ".join(parts)
 
 
@@ -356,18 +342,12 @@ def _process_codex_event(
         if msg:
             outcome.streamed_message = msg
 
-    if (
-        max_commands
-        and typ == "item.completed"
-        and item_type == "command_execution"
-    ):
+    if max_commands and typ == "item.completed" and item_type == "command_execution":
         outcome.commands_done += 1
         if outcome.commands_done >= max_commands and not outcome.limit_hit:
             outcome.limit_hit = True
             if on_activity:
-                on_activity(
-                    f"룸 턴 shell 상한 ({max_commands}회) — 답변 정리 대기"
-                )
+                on_activity(f"룸 턴 shell 상한 ({max_commands}회) — 답변 정리 대기")
             return time.monotonic()
     return limit_hit_at
 
@@ -460,10 +440,7 @@ def _run_codex(
         )
         if result.returncode != 0:
             detail = _format_exec_error(result.stderr or "", result.stdout or "")
-            raise RuntimeError(
-                f"codex exec failed (exit {result.returncode})"
-                + (f": {detail}" if detail else "")
-            )
+            raise RuntimeError(f"codex exec failed (exit {result.returncode})" + (f": {detail}" if detail else ""))
         return outcome
 
     from agent_lab.run_control import (
@@ -551,16 +528,9 @@ def _run_codex(
                     f"no JSONL/stderr activity for {idle_timeout}s",
                     idle_sec=idle_timeout,
                 )
-            if (
-                on_activity
-                and heartbeat_sec
-                and room_turn
-                and now - last_heartbeat_at >= heartbeat_sec
-            ):
+            if on_activity and heartbeat_sec and room_turn and now - last_heartbeat_at >= heartbeat_sec:
                 idle_for = int(now - last_activity_at)
-                on_activity(
-                    f"Codex 대기 중… ({idle_for}s, events={outcome.json_events})"
-                )
+                on_activity(f"Codex 대기 중… ({idle_for}s, events={outcome.json_events})")
                 last_heartbeat_at = now
 
             if _should_stop_after_limit(outcome, limit_hit_at, grace_sec=grace_sec):
@@ -604,11 +574,7 @@ def _run_codex(
                 outcome.json_events += 1
                 typ = event.get("type")
                 item = event.get("item") if isinstance(event.get("item"), dict) else {}
-                if (
-                    outcome.limit_hit
-                    and typ == "item.started"
-                    and item.get("type") == "command_execution"
-                ):
+                if outcome.limit_hit and typ == "item.started" and item.get("type") == "command_execution":
                     if on_activity:
                         on_activity("shell 상한 초과 — 추가 명령 중단")
                     _terminate_proc(proc)
@@ -739,10 +705,7 @@ def invoke(
     if room_turn:
         prompt = f"{prompt}\n\n{_ROOM_TURN_SUFFIX}"
     if not allow_tools:
-        prompt = (
-            f"{prompt}\n\n"
-            "Do not use tools, MCP, or shell commands. Respond with text only."
-        )
+        prompt = f"{prompt}\n\nDo not use tools, MCP, or shell commands. Respond with text only."
 
     stream_json = room_turn or on_activity is not None or on_bridge_event is not None or use_inbox_mcp
     cmd = _build_cmd(

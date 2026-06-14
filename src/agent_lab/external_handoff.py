@@ -10,9 +10,7 @@ from typing import Any
 
 from agent_lab.run_meta import patch_run_meta, read_run_meta
 
-_PENDING_EXECUTION_STATUSES = frozenset(
-    {"pending_approval", "pending", "review_required", "merge_conflict"}
-)
+_PENDING_EXECUTION_STATUSES = frozenset({"pending_approval", "pending", "review_required", "merge_conflict"})
 
 
 def _now_iso() -> str:
@@ -70,9 +68,7 @@ def normalize_external_handoff(payload: dict[str, Any]) -> dict[str, Any]:
         )
     return {
         "stopped_cleanly": bool(payload.get("stopped_cleanly")),
-        "changed_files": [
-            str(p) for p in (payload.get("changed_files") or []) if str(p).strip()
-        ],
+        "changed_files": [str(p) for p in (payload.get("changed_files") or []) if str(p).strip()],
         "checks": checks,
         "evidence_summary": str(payload.get("evidence_summary") or "").strip(),
         "risks": [str(r) for r in (payload.get("risks") or []) if str(r).strip()],

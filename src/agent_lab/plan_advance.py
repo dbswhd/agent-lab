@@ -122,14 +122,10 @@ def advance_plan_md(
 
     if now_body or roadmap_body:
         now_items = _parse_section_items(now_body, kind="now") if now_body else []
-        roadmap_items = (
-            _parse_section_items(roadmap_body, kind="roadmap") if roadmap_body else []
-        )
+        roadmap_items = _parse_section_items(roadmap_body, kind="roadmap") if roadmap_body else []
         now_items = _remove_item(now_items, kind=kind, index=index)
         roadmap_items = _remove_item(roadmap_items, kind=kind, index=index)
-        now_items, roadmap_items, promoted = _promote_first_executable_roadmap(
-            now_items, roadmap_items
-        )
+        now_items, roadmap_items, promoted = _promote_first_executable_roadmap(now_items, roadmap_items)
         if promoted is not None:
             meta["promoted_action_key"] = action_key("now", 1)
         new_plan = _compose_v1_plan(prefix, now_items, roadmap_items)

@@ -99,19 +99,11 @@ def public_gate_scope_payload(run_meta: dict[str, Any] | None) -> dict[str, Any]
         "gate_profile": scope.gate_profile,
         "discuss": {
             "open": scope.discuss_rounds == "allow",
-            "reason": (
-                "pending_question"
-                if scope.discuss_rounds == "pause"
-                else None
-            ),
+            "reason": ("pending_question" if scope.discuss_rounds == "pause" else None),
         },
         "plan_clarify": {
             "open": scope.plan_workflow == "allow",
-            "reason": (
-                "pending_inbox_question"
-                if scope.plan_workflow == "block_clarify"
-                else None
-            ),
+            "reason": ("pending_inbox_question" if scope.plan_workflow == "block_clarify" else None),
         },
         "execute": {
             "open": scope.execute == "allow",
@@ -120,11 +112,7 @@ def public_gate_scope_payload(run_meta: dict[str, Any] | None) -> dict[str, Any]
         "inbox": {
             "pending_questions": len(pending["question"]),
             "pending_builds": len(pending["build"]),
-            "kinds": [
-                k
-                for k, rows in pending.items()
-                if rows and k != "other"
-            ],
+            "kinds": [k for k, rows in pending.items() if rows and k != "other"],
         },
     }
 

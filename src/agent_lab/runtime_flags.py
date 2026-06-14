@@ -58,7 +58,12 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
     ),
     FlagDef("AGENT_LAB_EXECUTE_INBOX", "feature", "Cursor execute inbox MCP", default="1"),
     FlagDef("AGENT_LAB_INBOX_MODE", "feature", "Inbox harvest: sync | soft", default="sync"),
-    FlagDef("AGENT_LAB_GATE_SCOPE", "feature", "Lane-aware gate_scope for discuss pause (1=on, 0=legacy INBOX_MODE only)", default="1"),
+    FlagDef(
+        "AGENT_LAB_GATE_SCOPE",
+        "feature",
+        "Lane-aware gate_scope for discuss pause (1=on, 0=legacy INBOX_MODE only)",
+        default="1",
+    ),
     FlagDef(
         "AGENT_LAB_SKILL_DRAFTS",
         "feature",
@@ -143,8 +148,12 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
     ),
     FlagDef("AGENT_LAB_STRUCTURED_ENVELOPE", "feature", "Adapter JSON envelope prefix", default="1"),
     FlagDef("AGENT_LAB_TOPIC_ROUTER", "feature", "Topic category routing (quick/standard/deep/critical)", default="1"),
-    FlagDef("AGENT_LAB_DISCUSS_OBJECTIONS", "feature", "Harvest discuss-mode CHALLENGE/BLOCK into objections", default="1"),
-    FlagDef("AGENT_LAB_WISDOM_IN_CONTEXT", "feature", "Wisdom hits in R1 context: auto (route) | 0 | 1", default="auto"),
+    FlagDef(
+        "AGENT_LAB_DISCUSS_OBJECTIONS", "feature", "Harvest discuss-mode CHALLENGE/BLOCK into objections", default="1"
+    ),
+    FlagDef(
+        "AGENT_LAB_WISDOM_IN_CONTEXT", "feature", "Wisdom hits in R1 context: auto (route) | 0 | 1", default="auto"
+    ),
     FlagDef("AGENT_LAB_AGENT_LEARNINGS", "feature", "Harvest [LEARNED:] markers into learnings.md", default="1"),
     FlagDef("AGENT_LAB_NATIVE_HOOKS", "feature", "Stage session agent-hooks into workspace cwd"),
     FlagDef("AGENT_LAB_HOOK_TIMEOUT_S", "feature", "Room hook subprocess timeout (seconds)", default="30"),

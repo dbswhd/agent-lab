@@ -66,7 +66,9 @@ def parse_interaction_update(update: Any) -> list[StreamEvent]:
         ]
         label = activity_from_tool_call(tool_call)
         if label:
-            events.append(("activity", {"text": format_tool_activity_line(tool=tool, args=args.get("target", "")) or label}))
+            events.append(
+                ("activity", {"text": format_tool_activity_line(tool=tool, args=args.get("target", "")) or label})
+            )
         return events
 
     if utype == "tool-call-completed":

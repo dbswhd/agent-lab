@@ -27,9 +27,7 @@ def test_scripted_mock_follows_sequence(tmp_path: Path, monkeypatch) -> None:
             {"act": "AMEND", "refs": ["L2"], "body": "retry 추가"},
         ],
     }
-    monkeypatch.setenv(
-        "AGENT_LAB_MOCK_ACT_SCRIPT", str(_write_script(tmp_path, script))
-    )
+    monkeypatch.setenv("AGENT_LAB_MOCK_ACT_SCRIPT", str(_write_script(tmp_path, script)))
     reset_mock_act_script_cursors()
 
     first = call_agent_reply("cursor", "sys", "topic")
@@ -46,9 +44,7 @@ def test_scripted_mock_follows_sequence(tmp_path: Path, monkeypatch) -> None:
 def test_scripted_mock_endorse_fallback_when_exhausted(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     script = {"codex": [{"act": "CHALLENGE", "body": "이 가정은 약합니다"}]}
-    monkeypatch.setenv(
-        "AGENT_LAB_MOCK_ACT_SCRIPT", str(_write_script(tmp_path, script))
-    )
+    monkeypatch.setenv("AGENT_LAB_MOCK_ACT_SCRIPT", str(_write_script(tmp_path, script)))
     reset_mock_act_script_cursors()
 
     first = call_agent_reply("codex", "sys", "topic")
@@ -64,9 +60,7 @@ def test_scripted_mock_unlisted_agent_uses_default(tmp_path: Path, monkeypatch) 
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     monkeypatch.delenv("AGENT_LAB_MOCK_STRUCTURED_ENVELOPE", raising=False)
     script = {"cursor": [{"act": "PROPOSE"}]}
-    monkeypatch.setenv(
-        "AGENT_LAB_MOCK_ACT_SCRIPT", str(_write_script(tmp_path, script))
-    )
+    monkeypatch.setenv("AGENT_LAB_MOCK_ACT_SCRIPT", str(_write_script(tmp_path, script)))
     reset_mock_act_script_cursors()
 
     reply = call_agent("claude", "sys", "topic")
@@ -76,9 +70,7 @@ def test_scripted_mock_unlisted_agent_uses_default(tmp_path: Path, monkeypatch) 
 def test_scripted_mock_parses_as_envelope(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     script = {"claude": [{"act": "BLOCK", "refs": ["plan_action:1"], "body": "보안 위험"}]}
-    monkeypatch.setenv(
-        "AGENT_LAB_MOCK_ACT_SCRIPT", str(_write_script(tmp_path, script))
-    )
+    monkeypatch.setenv("AGENT_LAB_MOCK_ACT_SCRIPT", str(_write_script(tmp_path, script)))
     reset_mock_act_script_cursors()
 
     reply = call_agent_reply("claude", "sys", "topic")

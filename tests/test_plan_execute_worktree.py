@@ -135,7 +135,7 @@ def test_worktree_merge_ok(git_repo: Path, session_folder: Path):
     assert detect_git_root(git_repo) == git_repo.resolve()
     assert _git(git_repo, "status", "--porcelain") == ""
 
-  # simulate Cursor patch in isolated tree
+    # simulate Cursor patch in isolated tree
     target = ew.worktree_path / "src" / "app.py"
     target.write_text("v2\n", encoding="utf-8")
     _commit_all(ew.worktree_path, "agent-lab dry-run")
@@ -309,9 +309,7 @@ def test_paths_span_repos_blocked(tmp_path: Path):
         monitored_paths=[str(a / "src" / "app.py"), str(b / "src" / "app.py")],
     )
     assert ctx.isolation == "block"
-    assert git_root_for_paths(
-        [str(a / "src" / "app.py"), str(b / "src" / "app.py")]
-    ) is None
+    assert git_root_for_paths([str(a / "src" / "app.py"), str(b / "src" / "app.py")]) is None
 
 
 def test_run_dry_run_worktree_cwd_and_record(
@@ -434,6 +432,7 @@ def test_resolve_approve_merges_worktree_execution(
     _seed_approved_plan_snapshot(session_folder, plan_md)
 
     monkeypatch.setattr("agent_lab.agents.cursor_agent.is_available", lambda: True)
+
     def _respond_merge(**kwargs):
         (Path(kwargs["cwd"]) / "src" / "app.py").write_text("v2\n", encoding="utf-8")
         return "VERIFICATION: PASS"
@@ -458,12 +457,8 @@ def test_resolve_approve_merges_worktree_execution(
     assert result["execution"]["merge"]["commit_sha"]
     assert result["execution"]["verify_after_merge"]["status"] == "passed"
     assert result["execution"]["oracle"]["verdict"] == "pass"
-    assert result["execution"]["reverify_endpoint"] == (
-        "/api/sessions/{session_id}/execute/reverify"
-    )
-    assert result["execution"]["verify_after_merge"]["oracle"]["checked_paths"] == [
-        "src/app.py"
-    ]
+    assert result["execution"]["reverify_endpoint"] == ("/api/sessions/{session_id}/execute/reverify")
+    assert result["execution"]["verify_after_merge"]["oracle"]["checked_paths"] == ["src/app.py"]
     assert (git_repo / "src" / "app.py").read_text(encoding="utf-8") == "v2\n"
     assert not worktree_path.exists()
     assert _git(git_repo, "branch", "--list", "agent-lab/*", check=False) == ""
@@ -494,6 +489,7 @@ def test_resolve_reject_discards_worktree_execution(
     _seed_approved_plan_snapshot(session_folder, plan_md)
 
     monkeypatch.setattr("agent_lab.agents.cursor_agent.is_available", lambda: True)
+
     def _respond_reject(**kwargs):
         (Path(kwargs["cwd"]) / "src" / "app.py").write_text(
             "discard me\n",

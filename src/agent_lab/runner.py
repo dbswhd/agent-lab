@@ -66,8 +66,7 @@ def run_topic_with_progress(
 
         emit("scribe", "running")
         user = (
-            f"Topic:\n{topic}\n\nPlanner output:\n{state['planner_output']}\n\n"
-            f"Critic output:\n{state['critic_output']}"
+            f"Topic:\n{topic}\n\nPlanner output:\n{state['planner_output']}\n\nCritic output:\n{state['critic_output']}"
         )
         state["plan_md"] = invoke_role(roles.SCRIBE, user)
         emit("scribe", "done", {"chars": len(state["plan_md"])})

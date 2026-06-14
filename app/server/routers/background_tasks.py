@@ -48,9 +48,7 @@ def get_task(session_id: str, task_id: str) -> dict[str, Any]:
 
 
 @router.get("/sessions/{session_id}/bg-tasks/{task_id}/log")
-def get_task_log(
-    session_id: str, task_id: str, offset: int = 0
-) -> dict[str, Any]:
+def get_task_log(session_id: str, task_id: str, offset: int = 0) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
     mgr = get_manager()
     task = mgr.get(task_id)
@@ -78,9 +76,7 @@ _loaded_sessions: set[str] = set()
 _loaded_lock = __import__("threading").Lock()
 
 
-def _ensure_session_loaded(
-    session_id: str, mgr: Any, folder: Any
-) -> None:
+def _ensure_session_loaded(session_id: str, mgr: Any, folder: Any) -> None:
     with _loaded_lock:
         if session_id not in _loaded_sessions:
             load_persisted_tasks(folder, mgr)

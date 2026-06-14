@@ -194,20 +194,18 @@ def test_run_codex_idle_timeout(monkeypatch: pytest.MonkeyPatch, tmp_path: Path)
         )
 
 
-def test_run_codex_drains_stderr_while_waiting(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_run_codex_drains_stderr_while_waiting(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     from agent_lab import codex_cli
 
     script = tmp_path / "stderr_flood.sh"
     script.write_text(
         "#!/bin/sh\n"
         "i=0\n"
-        "while [ \"$i\" -lt 400 ]; do\n"
-        "  echo \"progress $i\" >&2\n"
+        'while [ "$i" -lt 400 ]; do\n'
+        '  echo "progress $i" >&2\n'
         "  i=$((i+1))\n"
         "done\n"
-        "echo '{\"type\":\"item.completed\",\"item\":{\"type\":\"agent_message\",\"text\":\"ok\"}}'\n",
+        'echo \'{"type":"item.completed","item":{"type":"agent_message","text":"ok"}}\'\n',
         encoding="utf-8",
     )
     script.chmod(0o755)

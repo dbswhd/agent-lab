@@ -45,11 +45,7 @@ def _parse_consensus(plan_md: str) -> dict[str, Any]:
     m = _CONSENSUS_STRATEGIES.search(text)
     if m:
         inner = m.group(1)
-        strategies = [
-            s.strip().strip('"').strip("'")
-            for s in inner.split(",")
-            if s.strip()
-        ]
+        strategies = [s.strip().strip('"').strip("'") for s in inner.split(",") if s.strip()]
     return {
         "ingest_ready": ingest,
         "blocking_reason": blocking_reason,

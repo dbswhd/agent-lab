@@ -87,9 +87,7 @@ def test_execute_inbox_build_go_false_without_go(session_folder: Path):
     assert execute_inbox_build_go(session_folder) is False
 
 
-def test_plan_execute_inbox_gate_skips_implement(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_plan_execute_inbox_gate_skips_implement(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     from agent_lab.plan_actions import PlanAction
     from agent_lab.plan_execute import _call_execute_agent
 
@@ -135,9 +133,7 @@ def test_plan_execute_inbox_gate_skips_implement(
     assert "plan-first" in calls[0][0].lower()
 
 
-def test_plan_execute_inbox_gate_runs_implement_after_go(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_plan_execute_inbox_gate_runs_implement_after_go(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     from agent_lab.human_inbox import create_inbox_item, resolve_inbox_item
     from agent_lab.plan_actions import PlanAction
     from agent_lab.plan_execute import _call_execute_agent

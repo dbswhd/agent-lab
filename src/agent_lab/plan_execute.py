@@ -52,6 +52,7 @@ from agent_lab.runtime.adapters import (
     verify_follow_ups,
 )
 from agent_lab.session_guidance import verify_execution_artifacts
+
 MAX_DIFF_CHARS = 120_000
 MAX_VERIFY_RETRIES = 2
 PENDING_STATUS = "pending_approval"
@@ -166,10 +167,7 @@ def _paths_outside_expected(
     extras: list[str] = []
     for path in touched:
         norm = normalize_path(path, cwd=cwd)
-        if any(
-            norm == exp or norm.endswith(f"/{exp}") or exp.endswith(f"/{norm}")
-            for exp in expected_norm
-        ):
+        if any(norm == exp or norm.endswith(f"/{exp}") or exp.endswith(f"/{norm}") for exp in expected_norm):
             continue
         if any(norm.startswith(exp.rstrip("/") + "/") for exp in expected_norm):
             continue
@@ -226,9 +224,7 @@ def _workspace_info_for(cwd: Path, raw_paths: list[str]) -> dict[str, Any]:
 
 def _exec_worktree_from_execution(target: dict[str, Any]) -> ExecWorktree:
     missing = [
-        key
-        for key in ("git_root", "worktree_path", "exec_branch", "base_branch", "base_sha")
-        if not target.get(key)
+        key for key in ("git_root", "worktree_path", "exec_branch", "base_branch", "base_sha") if not target.get(key)
     ]
     if missing:
         raise ValueError(f"execution missing worktree metadata: {', '.join(missing)}")
@@ -434,9 +430,7 @@ def _record_verify_after_merge(
     *,
     verify_retries: int | None = None,
 ) -> dict[str, Any]:
-    retries = int(
-        verify_retries if verify_retries is not None else target.get("verify_retries") or 0
-    )
+    retries = int(verify_retries if verify_retries is not None else target.get("verify_retries") or 0)
     checked_at = _now()
     evidence = verify_after_merge(
         _execution_verify_action(target),
@@ -475,12 +469,7 @@ def _record_verify_after_merge(
 
     idx = int(target.get("action_index") or 0)
     verdict = str((oracle.get("verdict") or evidence.get("status") or "")).lower()
-    reason = str(
-        oracle.get("detail")
-        or oracle.get("feedback")
-        or oracle.get("reason")
-        or ""
-    )
+    reason = str(oracle.get("detail") or oracle.get("feedback") or oracle.get("reason") or "")
     dispatch_verify_result(
         folder,
         action_index=idx,
@@ -946,9 +935,7 @@ def run_dry_run(
     try:
         ensure_plan_workflow_approved(folder)
     except PlanWorkflowNotApproved as exc:
-        raise RuntimeError(
-            f"plan workflow approval required (phase={exc.phase})"
-        ) from exc
+        raise RuntimeError(f"plan workflow approval required (phase={exc.phase})") from exc
     from agent_lab.plan_pending import ensure_plan_snapshot_approved
 
     sections = parse_plan_action_sections(plan_md)
@@ -989,16 +976,10 @@ def run_dry_run(
     PolicyEngine.assert_execute_allowed(run, action.index, action.kind)
 
     pending = _pending_execution(run)
-    if (
-        pending
-        and pending.get("id") != execution_id
-        and pending.get("id") != supersedes_execution_id
-    ):
+    if pending and pending.get("id") != execution_id and pending.get("id") != supersedes_execution_id:
         raise ValueError("finish or reject the pending execution first")
 
-    base_cwd, effective_permissions, base_workspace_info = _preflight_execute_workspace(
-        action, permissions
-    )
+    base_cwd, effective_permissions, base_workspace_info = _preflight_execute_workspace(action, permissions)
     exec_id = execution_id or _exec_id()
     from agent_lab.mission_board import checkout_lane, sync_mission_board
 
@@ -1008,6 +989,7 @@ def run_dry_run(
         action_index=action.index,
         execution_id=exec_id,
     )
+
     def _sync_board(run: dict[str, Any]) -> dict[str, Any]:
         sync_mission_board(run, plan_md=plan_md)
         return run
@@ -1297,9 +1279,9 @@ def run_dry_run(
         "isolation_override_by": "human" if isolation_override else None,
         "action_git_context": isolation_decision.to_dict(),
         "isolation_decision": isolation_decision.to_dict(),
-        "git_root": str(exec_worktree.git_root) if exec_worktree else (
-            str(isolation_decision.git_root) if isolation_decision.git_root else None
-        ),
+        "git_root": str(exec_worktree.git_root)
+        if exec_worktree
+        else (str(isolation_decision.git_root) if isolation_decision.git_root else None),
         "base_branch": exec_worktree.base_branch if exec_worktree else isolation_decision.base_branch,
         "base_sha": exec_worktree.base_sha if exec_worktree else None,
         "exec_branch": exec_worktree.branch if exec_worktree else None,
@@ -1578,9 +1560,7 @@ def revise_pending_execution(
     }
 
 
-_CANCELLABLE_EXECUTION_STATUSES = frozenset(
-    {PENDING_STATUS, "merge_conflict", "review_required", "pending"}
-)
+_CANCELLABLE_EXECUTION_STATUSES = frozenset({PENDING_STATUS, "merge_conflict", "review_required", "pending"})
 
 
 def cancel_open_execution(
@@ -1696,9 +1676,7 @@ def resolve_execution(
     retry_merge = status == "merge_conflict"
 
     stored_root = target.get("workspace_root")
-    raw_expected_paths = list(
-        target.get("expected_paths") or target.get("snapshotted_paths") or []
-    )
+    raw_expected_paths = list(target.get("expected_paths") or target.get("snapshotted_paths") or [])
     if stored_root:
         cwd = Path(stored_root)
     else:
@@ -1706,10 +1684,7 @@ def resolve_execution(
     snapshot_paths = list(target.get("snapshot_paths") or [])
     if not snapshot_paths:
         raw_monitored = list(
-            target.get("monitored_paths")
-            or target.get("snapshotted_paths")
-            or target.get("expected_paths")
-            or []
+            target.get("monitored_paths") or target.get("snapshotted_paths") or target.get("expected_paths") or []
         )
         snapshot_paths = paths_relative_to_workspace(cwd, raw_monitored)
     source_snapshot = list(target.get("source_snapshot_paths") or [])
@@ -2096,10 +2071,7 @@ def reverify_merged_execution(
     started_at = _now()
     agent_id = _repair_agent_id(target, executor)
     repair_id = f"repair-{uuid.uuid4().hex[:12]}"
-    action_key = str(
-        target.get("action_key")
-        or f"{target.get('action_kind')}:{target.get('action_index')}"
-    )
+    action_key = str(target.get("action_key") or f"{target.get('action_kind')}:{target.get('action_index')}")
     ew = create_exec_worktree(
         folder,
         exec_id=execution_id,

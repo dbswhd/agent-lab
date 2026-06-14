@@ -202,20 +202,14 @@ def audit_bridge_processes(
         age_s = max(0.0, now - seen_ts)
         row["pid_alive"] = pid_alive
         row["age_hours"] = round(age_s / 3600.0, 2)
-        is_stale = (record.pid is not None and not pid_alive) or (
-            age_s > stale_after_s and record.pid not in live_pids
-        )
+        is_stale = (record.pid is not None and not pid_alive) or (age_s > stale_after_s and record.pid not in live_pids)
         row["stale"] = is_stale
         if is_stale:
             stale_records.append(row)
         else:
             active_records.append(row)
 
-    orphan_pids = [
-        row
-        for row in live
-        if int(row["pid"]) not in {r.pid for r in records if r.pid is not None}
-    ]
+    orphan_pids = [row for row in live if int(row["pid"]) not in {r.pid for r in records if r.pid is not None}]
 
     return {
         "registry_path": str(registry_path()),
@@ -245,11 +239,7 @@ def cleanup_stale_bridges(
         for row in audit.get("active_records") or []:
             if not isinstance(row, dict) or not row.get("workspace"):
                 continue
-            fields = {
-                k: row[k]
-                for k in BridgeRecord.__dataclass_fields__
-                if k in row
-            }
+            fields = {k: row[k] for k in BridgeRecord.__dataclass_fields__ if k in row}
             kept.append(BridgeRecord(**fields))
         removed_registry = len(load_records()) - len(kept)
         save_records(kept)

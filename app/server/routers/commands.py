@@ -47,8 +47,10 @@ def _workspace_for_session(folder) -> Path:
 @router.get("/commands")
 def get_commands(session_id: str | None = None) -> dict[str, Any]:
     folder = session_folder_or_404(session_id) if session_id else None
-    ws = _workspace_for_session(folder) if folder else Path(
-        os.getenv("AGENT_LAB_ROOT", Path(__file__).resolve().parents[3])
+    ws = (
+        _workspace_for_session(folder)
+        if folder
+        else Path(os.getenv("AGENT_LAB_ROOT", Path(__file__).resolve().parents[3]))
     )
     payload = list_commands(folder, workspace=ws)
     return {"ok": True, **payload}
@@ -57,8 +59,10 @@ def get_commands(session_id: str | None = None) -> dict[str, Any]:
 @router.get("/agents/plugins")
 def get_agent_plugins(session_id: str | None = None) -> dict[str, Any]:
     folder = session_folder_or_404(session_id) if session_id else None
-    ws = _workspace_for_session(folder) if folder else Path(
-        os.getenv("AGENT_LAB_ROOT", Path(__file__).resolve().parents[3])
+    ws = (
+        _workspace_for_session(folder)
+        if folder
+        else Path(os.getenv("AGENT_LAB_ROOT", Path(__file__).resolve().parents[3]))
     )
     discovery = discover_plugins(ws)
     run = read_run_meta(folder) if folder else {}

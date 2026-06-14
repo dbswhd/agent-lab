@@ -73,22 +73,14 @@ def classify_source_paths(source_paths: list[str]) -> ClassifierKind | None:
 
 
 def classify_execution(execution: dict[str, Any]) -> ClassifierKind | None:
-    source = list(
-        execution.get("source_touched_paths")
-        or execution.get("touched_paths")
-        or []
-    )
+    source = list(execution.get("source_touched_paths") or execution.get("touched_paths") or [])
     return classify_source_paths(source)
 
 
 def public_classifier_preview(execution: dict[str, Any] | None) -> dict[str, Any]:
     if not execution:
         return {"classifier": None, "eligible_kind": None, "source_paths": []}
-    source = list(
-        execution.get("source_touched_paths")
-        or execution.get("touched_paths")
-        or []
-    )
+    source = list(execution.get("source_touched_paths") or execution.get("touched_paths") or [])
     kind = classify_source_paths(source)
     return {
         "classifier": kind,

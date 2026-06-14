@@ -30,11 +30,7 @@ def _parse_plan_consensus(plan_md: str) -> dict[str, Any]:
     m = _CONSENSUS_STRATEGIES.search(text)
     if m:
         inner = m.group(1)
-        strategies = [
-            s.strip().strip('"').strip("'")
-            for s in inner.split(",")
-            if s.strip()
-        ]
+        strategies = [s.strip().strip('"').strip("'") for s in inner.split(",") if s.strip()]
     return {
         "ingest_ready": ingest,
         "blocking_reason": blocking_reason,
@@ -108,7 +104,7 @@ def ensure_playbook_after_room(session_folder: Path) -> bool:
     body = f"""# 오늘 장중 행동 — {today}
 
 ## 상태
-- ingest_ready: {str(consensus['ingest_ready']).lower()}
+- ingest_ready: {str(consensus["ingest_ready"]).lower()}
 - mode: {mode}
 - blocking_reason: {blocking}
 - active_strategies: {active}

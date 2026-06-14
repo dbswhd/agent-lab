@@ -179,9 +179,7 @@ def run_live_telegram_merge_ingress_soak(
         return report
     if preflight.get("ready") is not True:
         report["errors"].append(
-            preflight.get("reason")
-            or preflight.get("failure_code")
-            or "cursor preflight not ready"
+            preflight.get("reason") or preflight.get("failure_code") or "cursor preflight not ready"
         )
         report["finished_at"] = _now()
         return report
@@ -276,8 +274,8 @@ def run_live_telegram_merge_ingress_soak(
         checks["telegram_command_ok"] = bool(body.get("ok"))
         reply = str(body.get("reply") or "")
         checks["telegram_merge_confirmed_reply"] = (
-        "merge approved" in reply.lower() or "merge confirmed" in reply.lower()
-    )
+            "merge approved" in reply.lower() or "merge confirmed" in reply.lower()
+        )
 
         run_after = read_run_meta(session)
         merged_row = next(

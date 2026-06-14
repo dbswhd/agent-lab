@@ -334,9 +334,7 @@ def write_session_file(
     try:
         target.resolve().relative_to(allowed_dir)
     except ValueError as exc:
-        raise WriteNotAllowed(
-            "writes are only allowed under the session attachments/"
-        ) from exc
+        raise WriteNotAllowed("writes are only allowed under the session attachments/") from exc
     if target.name.startswith("."):
         raise WriteNotAllowed("hidden files are not writable")
     target.parent.mkdir(parents=True, exist_ok=True)

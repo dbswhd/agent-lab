@@ -263,7 +263,9 @@ def test_scheduler_applies_template_assistant(sessions_env: Path, gateway_config
     save_gateway_config({"outbound": {"enabled": False}})
     from agent_lab.mission_scheduler import run_schedule_entry
 
-    result = run_schedule_entry(folder.name, read_run_meta(folder)["schedules"][0], sessions_dir=sessions_env, force=True)
+    result = run_schedule_entry(
+        folder.name, read_run_meta(folder)["schedules"][0], sessions_dir=sessions_env, force=True
+    )
     assert result["ok"] is True
     assert result["mode"] == "assistant_sandbox_tick"
     tick = result.get("sandbox_tick") or {}
@@ -275,9 +277,7 @@ def test_scheduler_applies_template_assistant(sessions_env: Path, gateway_config
     assert read_run_meta(folder).get("schedule_sandbox") is True
 
 
-def test_scheduler_templateless_sandbox_runs_conductor_tick(
-    sessions_env: Path, gateway_config: Path
-) -> None:
+def test_scheduler_templateless_sandbox_runs_conductor_tick(sessions_env: Path, gateway_config: Path) -> None:
     """Template-less assistant schedule still runs sandbox mission conductor."""
     from agent_lab.mission_loop import enable_mission_loop
     from agent_lab.mission_scheduler import run_schedule_entry
@@ -552,9 +552,7 @@ def test_scheduler_non_sandbox_runs_mission_tick(
     assert tick.get("mission_loop", {}).get("status") == "dry_run_complete"
 
 
-def test_scheduled_autorun_without_active_segment(
-    sessions_env: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_scheduled_autorun_without_active_segment(sessions_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Scheduled assistant tick advances execute even after dry-run cleared autorun."""
     from agent_lab.mission_loop import enable_mission_loop
     from agent_lab.mission_tick import run_scheduled_mission_tick
@@ -593,9 +591,7 @@ def test_scheduled_autorun_without_active_segment(
     assert result["mission_loop"].get("status") == "dry_run_complete"
 
 
-def test_scheduled_conductor_auto_merge_and_next_action(
-    sessions_env: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_scheduled_conductor_auto_merge_and_next_action(sessions_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from agent_lab.mission_loop import enable_mission_loop, on_verify_result
     from agent_lab.mission_tick import run_scheduled_mission_tick
     from agent_lab.trust_budget import set_trust_budget
@@ -661,9 +657,7 @@ def test_scheduled_conductor_auto_merge_and_next_action(
         merge_calls.append(execution_id)
         run = read_run_meta(folder_arg)
         target = next(
-            row
-            for row in (run.get("executions") or [])
-            if isinstance(row, dict) and row.get("id") == execution_id
+            row for row in (run.get("executions") or []) if isinstance(row, dict) and row.get("id") == execution_id
         )
         idx = int(target.get("action_index") or 0)
         on_verify_result(folder_arg, action_index=idx, verdict="pass")
@@ -691,9 +685,7 @@ def test_scheduled_conductor_auto_merge_and_next_action(
     assert run["mission_loop"]["pending_action_indices"] == []
 
 
-def test_maybe_advance_scheduled_merge_review(
-    sessions_env: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_maybe_advance_scheduled_merge_review(sessions_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from agent_lab.mission_loop import enable_mission_loop, maybe_advance_mission, on_verify_result
     from agent_lab.trust_budget import set_trust_budget
 

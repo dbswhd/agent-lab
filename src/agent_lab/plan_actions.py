@@ -81,19 +81,13 @@ class PlanAction:
     def expected_paths(self) -> list[str]:
         if not self.executable:
             return []
-        tokens = [
-            match.group(1).strip()
-            for match in PATH_IN_BACKTICKS.finditer(self.where)
-        ]
+        tokens = [match.group(1).strip() for match in PATH_IN_BACKTICKS.finditer(self.where)]
         return filter_file_paths(tokens)
 
     def verification_paths(self) -> list[str]:
         if not self.executable:
             return []
-        tokens = [
-            match.group(1).strip()
-            for match in PATH_IN_BACKTICKS.finditer(self.verify)
-        ]
+        tokens = [match.group(1).strip() for match in PATH_IN_BACKTICKS.finditer(self.verify)]
         return filter_file_paths(tokens)
 
     def monitored_paths(self) -> list[str]:

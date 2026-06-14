@@ -33,9 +33,7 @@ class DiscordGatewayAdapter:
 
     def is_enabled(self, config: dict[str, Any]) -> bool:
         cfg = _discord_cfg(config)
-        return bool(str(cfg.get("webhook_url") or "").strip()) or bool(
-            cfg.get("allow_ingress_without_webhook")
-        )
+        return bool(str(cfg.get("webhook_url") or "").strip()) or bool(cfg.get("allow_ingress_without_webhook"))
 
     def _allowed_channel(self, config: dict[str, Any], channel_id: str | None) -> bool:
         cfg = _discord_cfg(config)
@@ -114,23 +112,15 @@ class DiscordGatewayAdapter:
             prompt = str(item.get("prompt") or item.get("summary") or item.get("id") or "Inbox")
             kind = str(item.get("kind") or "item")
             item_id = str(item.get("id") or "")
-            text = (
-                f"**[{session_id}]** inbox `{kind}`\n"
-                f"{prompt[:500]}\n"
-                f"Resolve: `/resolve {item_id} <answer>`"
-            )
+            text = f"**[{session_id}]** inbox `{kind}`\n{prompt[:500]}\nResolve: `/resolve {item_id} <answer>`"
         elif event == "merge_ready":
             exec_id = str(payload.get("execution_id") or "")
             profile = str(payload.get("gate_profile") or "")
             text = (
-                f"**[{session_id}]** merge ready\n"
-                f"`{exec_id}` (profile: {profile})\n"
-                f"`/approve merge` or `/approve auto`"
+                f"**[{session_id}]** merge ready\n`{exec_id}` (profile: {profile})\n`/approve merge` or `/approve auto`"
             )
         elif event == "gate_blocked":
-            reason = str(
-                payload.get("block_reason") or payload.get("block_source") or "blocked"
-            )
+            reason = str(payload.get("block_reason") or payload.get("block_source") or "blocked")
             text = f"**[{session_id}]** gate blocked\n{reason[:500]}"
         elif event == "schedule_tick":
             schedule_id = str(payload.get("schedule_id") or "")
@@ -138,11 +128,7 @@ class DiscordGatewayAdapter:
         elif event == "auto_merge_blocked":
             exec_id = str(payload.get("execution_id") or "")
             reason = str(payload.get("reason") or "auto_merge_not_eligible")
-            text = (
-                f"**[{session_id}]** auto-merge blocked\n"
-                f"`{exec_id}` — {reason[:240]}\n"
-                f"`/approve merge`"
-            )
+            text = f"**[{session_id}]** auto-merge blocked\n`{exec_id}` — {reason[:240]}\n`/approve merge`"
         else:
             return {"ok": True, "skipped": True, "reason": "event_not_handled"}
         return self._post_webhook(cfg, text)

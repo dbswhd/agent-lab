@@ -25,21 +25,15 @@ def test_no_objection_first_line_only():
     assert is_no_objection_response("이의 없습니다\n(부연 설명)")
     assert not is_no_objection_response("동의합니다. 이의 없습니다")
     assert not is_no_objection_response("PASS")
-    assert not is_no_objection_response(
-        "이의 없습니다\n다만 한 가지 추가 리스크 — strip 전에 샘플 확인"
-    )
-    assert not is_no_objection_response(
-        "이의 없습니다\n[PROPOSED: 보완 계획 요약]\n- 단계 1"
-    )
+    assert not is_no_objection_response("이의 없습니다\n다만 한 가지 추가 리스크 — strip 전에 샘플 확인")
+    assert not is_no_objection_response("이의 없습니다\n[PROPOSED: 보완 계획 요약]\n- 단계 1")
 
 
 def test_substantive_vs_pass_and_no_objection():
     assert not is_substantive_reply("PASS")
     assert not is_substantive_reply(NO_OBJECTION_LINE)
     assert is_substantive_reply("다음은 A부터 검증하자.")
-    assert is_substantive_reply(
-        "이의 없습니다\n[PROPOSED: 보완 계획]\n- 육안 확인 후 strip"
-    )
+    assert is_substantive_reply("이의 없습니다\n[PROPOSED: 보완 계획]\n- 육안 확인 후 strip")
 
 
 def test_debate_round_phases():

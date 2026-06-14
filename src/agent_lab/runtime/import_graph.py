@@ -215,6 +215,4 @@ FORBIDDEN_CROSS_IMPORTS: frozenset[tuple[str, str]] = frozenset(
 )
 
 # Backward-compatible alias (H2 tests).
-FORBIDDEN_EXECUTE_IMPORTS = frozenset(
-    {pair for pair in FORBIDDEN_CROSS_IMPORTS if pair[0] == "agent_lab.plan_execute"}
-)
+FORBIDDEN_EXECUTE_IMPORTS = frozenset({pair for pair in FORBIDDEN_CROSS_IMPORTS if pair[0] == "agent_lab.plan_execute"})

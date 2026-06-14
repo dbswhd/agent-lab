@@ -71,10 +71,13 @@ def test_session_auto_assistant_vs_dev_code() -> None:
     exec_row = _execution(source_touched_paths=["src/foo.py"])
     assert session_auto_allowed({"gate_profile": "assistant"}, exec_row) is True
     assert session_auto_allowed({"gate_profile": "dev"}, exec_row) is False
-    assert session_auto_allowed(
-        {"gate_profile": "dev"},
-        _execution(source_touched_paths=["docs/a.md"]),
-    ) is True
+    assert (
+        session_auto_allowed(
+            {"gate_profile": "dev"},
+            _execution(source_touched_paths=["docs/a.md"]),
+        )
+        is True
+    )
 
 
 def test_maybe_create_skill_draft_assistant(

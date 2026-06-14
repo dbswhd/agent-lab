@@ -87,9 +87,7 @@ def get_template_detail(template_id: str, sessions_dir: Path | None = None) -> d
         "plan_md": plan_md,
         "plan_hash": live_hash,
         "hash_match": bool(meta_hash and meta_hash == live_hash),
-        "topic": (tdir / "topic.txt").read_text(encoding="utf-8").strip()
-        if (tdir / "topic.txt").is_file()
-        else "",
+        "topic": (tdir / "topic.txt").read_text(encoding="utf-8").strip() if (tdir / "topic.txt").is_file() else "",
     }
 
 

@@ -34,11 +34,7 @@ def register_child_process(proc: subprocess.Popen[Any]) -> None:
 
 def unregister_child_process(proc: subprocess.Popen[Any]) -> None:
     with _children_lock:
-        _active_children[:] = [
-            ref
-            for ref in _active_children
-            if ref() is not None and ref() is not proc
-        ]
+        _active_children[:] = [ref for ref in _active_children if ref() is not None and ref() is not proc]
 
 
 def register_cursor_run(run: Any) -> None:
@@ -49,11 +45,7 @@ def register_cursor_run(run: Any) -> None:
 
 def unregister_cursor_run(run: Any) -> None:
     with _cursor_runs_lock:
-        _active_cursor_runs[:] = [
-            ref
-            for ref in _active_cursor_runs
-            if ref() is not None and ref() is not run
-        ]
+        _active_cursor_runs[:] = [ref for ref in _active_cursor_runs if ref() is not None and ref() is not run]
 
 
 def _terminate_subprocess_children() -> int:

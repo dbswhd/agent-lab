@@ -197,9 +197,7 @@ def test_verified_mission_loop_mock_e2e_full_fsm(
     (folder / "plan.md").write_text(plan_md, encoding="utf-8")
     _seed_approved_plan_snapshot(folder, plan_md)
 
-    scribe_out = runtime_module.dispatch(
-        folder, RuntimeEvent.SCRIBE_COMPLETE, {"plan_md": plan_md}
-    )
+    scribe_out = runtime_module.dispatch(folder, RuntimeEvent.SCRIBE_COMPLETE, {"plan_md": plan_md})
     assert scribe_out.handled is True
     phase_after_gate = _record_phase()
     assert phase_after_gate in {"EXECUTE_QUEUE", "MERGE_REVIEW", "DRY_RUN"}

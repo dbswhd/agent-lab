@@ -21,10 +21,7 @@ def planner_node(state: GraphState) -> dict:
 
 
 def critic_node(state: GraphState) -> dict:
-    user = (
-        f"Topic:\n{state['topic']}\n\n"
-        f"Planner output:\n{state['planner_output']}"
-    )
+    user = f"Topic:\n{state['topic']}\n\nPlanner output:\n{state['planner_output']}"
     return {"critic_output": invoke_role(roles.CRITIC, user)}
 
 

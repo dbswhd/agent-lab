@@ -57,8 +57,7 @@ def main() -> int:
 
     bridge = reconnect_cursor_bridge(workspace=str(pipeline))
     print(
-        f"cursor bridge: ok={bridge.get('ok')} bridge={bridge.get('bridge')} "
-        f"hint={bridge.get('hint') or '(none)'}",
+        f"cursor bridge: ok={bridge.get('ok')} bridge={bridge.get('bridge')} hint={bridge.get('hint') or '(none)'}",
         flush=True,
     )
 

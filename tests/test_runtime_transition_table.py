@@ -19,9 +19,7 @@ def test_mission_phases_cover_transition_table() -> None:
 def test_transition_from_phases_are_valid() -> None:
     for row in TRANSITION_TABLE:
         for phase in row.from_phases:
-            assert phase in MISSION_PHASES, (
-                f"{row.event}: invalid from_phase {phase!r}"
-            )
+            assert phase in MISSION_PHASES, f"{row.event}: invalid from_phase {phase!r}"
 
 
 def test_transition_handlers_are_importable() -> None:
@@ -56,9 +54,7 @@ def test_standalone_events_not_in_mission_only_set() -> None:
 
 
 def test_cross_lane_import_graph_triangle() -> None:
-    lanes = {row.source_lane for row in CROSS_LANE_IMPORTS} | {
-        row.target_lane for row in CROSS_LANE_IMPORTS
-    }
+    lanes = {row.source_lane for row in CROSS_LANE_IMPORTS} | {row.target_lane for row in CROSS_LANE_IMPORTS}
     assert OrchestrationLane.EXECUTE in lanes
     assert OrchestrationLane.MISSION in lanes
     assert OrchestrationLane.DISCUSS in lanes

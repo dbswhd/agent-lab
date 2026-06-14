@@ -52,10 +52,7 @@ def main() -> int:
     else:
         _print_table(payload)
         if payload.get("undocumented_count"):
-            print(
-                f"\n* = set in environment · "
-                f"{payload['undocumented_count']} undocumented AGENT_LAB_* var(s) in env"
-            )
+            print(f"\n* = set in environment · {payload['undocumented_count']} undocumented AGENT_LAB_* var(s) in env")
         else:
             print("\n* = set in environment")
     return 0

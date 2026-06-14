@@ -63,17 +63,13 @@ def _probe_cli_version(
 def format_codex_exec_error(detail: str) -> str:
     """Human-readable Codex failure (incl. os error 2 / missing path)."""
     low = detail.lower()
-    if "os error 2" in low or (
-        "no such file or directory" in low and "codex" not in low
-    ):
+    if "os error 2" in low or ("no such file or directory" in low and "codex" not in low):
         return (
             "Codex가 참조한 파일/경로를 찾을 수 없습니다 (os error 2). "
             "workspace·샌드박스 확인 — CODEX_ROOM_WORKSPACE_WRITE, docs/STABILITY.md"
         )
     if "enoent" in low and "codex" in low:
-        return (
-            "Codex CLI를 찾을 수 없습니다. codex login 또는 CODEX_BIN 절대경로 설정"
-        )
+        return "Codex CLI를 찾을 수 없습니다. codex login 또는 CODEX_BIN 절대경로 설정"
     return detail
 
 
@@ -140,12 +136,8 @@ def agent_preflight_row(
             return row
         bridge_bin = _bridge_bin_path()
         if probe_cli and bridge_bin is None:
-            row["reason"] = (
-                "CURSOR_SDK_BRIDGE_BIN 없음 — ~/.agent-lab/.env 절대경로 설정"
-            )
-            row["fallback"] = (
-                "Cursor 제외 후 Codex/Claude 로컬 CLI로 전송하거나 bridge 설정 후 재시도"
-            )
+            row["reason"] = "CURSOR_SDK_BRIDGE_BIN 없음 — ~/.agent-lab/.env 절대경로 설정"
+            row["fallback"] = "Cursor 제외 후 Codex/Claude 로컬 CLI로 전송하거나 bridge 설정 후 재시도"
             row["remediation"] = [
                 "CURSOR_SDK_BRIDGE_BIN 절대경로 설정",
                 "Cursor 앱 실행",
@@ -209,9 +201,7 @@ def agent_preflight_row(
                 row["oauth_profiles"] = profiles
                 bad = [p for p in profiles if not p.get("ok")]
                 if bad:
-                    names = ", ".join(
-                        str(p.get("label") or p.get("slot")) for p in bad
-                    )
+                    names = ", ".join(str(p.get("label") or p.get("slot")) for p in bad)
                     row["reason"] = f"Codex OAuth 프로필 검증 실패: {names}"
                     row["hint"] = row["reason"]
                     row["failure_code"] = "codex_oauth_profile_invalid"
@@ -248,13 +238,8 @@ def agent_preflight_row(
                 row["reason"] = auth_detail or "claude OAuth 미로그인 — claude auth login"
                 row["hint"] = row["reason"]
                 row["failure_code"] = "claude_auth_failed"
-                row["remediation"] = claude_cli.auth_failure_remediation(
-                    auth_detail or ""
-                )
-                row["fallback"] = (
-                    "Claude 칩을 끄고 Cursor·Codex만 전송하거나 "
-                    "터미널에서 claude login 후 재시도"
-                )
+                row["remediation"] = claude_cli.auth_failure_remediation(auth_detail or "")
+                row["fallback"] = "Claude 칩을 끄고 Cursor·Codex만 전송하거나 터미널에서 claude login 후 재시도"
                 return row
             headless = os.getenv("AGENT_LAB_CLAUDE_HEADLESS_PROBE", "").strip().lower()
             if headless in {"1", "true", "yes", "on"}:
@@ -263,9 +248,7 @@ def agent_preflight_row(
                     row["reason"] = probe_detail or "claude headless auth failed"
                     row["hint"] = row["reason"]
                     row["failure_code"] = "claude_auth_failed"
-                    row["remediation"] = claude_cli.auth_failure_remediation(
-                        probe_detail or ""
-                    )
+                    row["remediation"] = claude_cli.auth_failure_remediation(probe_detail or "")
                     return row
         row["ready"] = True
         return row
@@ -279,10 +262,7 @@ def build_agent_preflight(
     probe_bridge: bool = True,
     probe_cli: bool = True,
 ) -> list[dict[str, Any]]:
-    return [
-        agent_preflight_row(aid, probe_bridge=probe_bridge, probe_cli=probe_cli)
-        for aid in AGENT_IDS
-    ]
+    return [agent_preflight_row(aid, probe_bridge=probe_bridge, probe_cli=probe_cli) for aid in AGENT_IDS]
 
 
 def agents_not_ready(

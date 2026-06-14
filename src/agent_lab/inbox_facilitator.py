@@ -77,9 +77,7 @@ def merge_forks(forks: list[DecisionFork]) -> list[FacilitatedQuestion]:
                 if label_key in seen_labels:
                     continue
                 seen_labels.add(label_key)
-                options.append(
-                    {"id": _option_id(opt.label), "label": opt.label, "refs": list(opt.refs)}
-                )
+                options.append({"id": _option_id(opt.label), "label": opt.label, "refs": list(opt.refs)})
                 for ref in opt.refs:
                     if ref not in refs_union:
                         refs_union.append(ref)

@@ -46,9 +46,7 @@ def set_session_goal(
                 "enabled": True,
                 "max_checks": limit,
                 "checks": list(loop.get("checks") or []),
-                "status": "achieved"
-                if same_goal and loop.get("status") == "achieved"
-                else "open",
+                "status": "achieved" if same_goal and loop.get("status") == "achieved" else "open",
             }
         )
         loop.pop("auto_continue_pending", None)

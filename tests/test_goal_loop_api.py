@@ -27,8 +27,7 @@ def _session(sessions_dir: Path) -> Path:
         encoding="utf-8",
     )
     (folder / "chat.jsonl").write_text(
-        json.dumps({"role": "agent", "agent": "codex", "content": "GOAL_API_OK"})
-        + "\n",
+        json.dumps({"role": "agent", "agent": "codex", "content": "GOAL_API_OK"}) + "\n",
         encoding="utf-8",
     )
     return folder

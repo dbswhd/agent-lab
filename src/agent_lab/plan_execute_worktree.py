@@ -178,11 +178,7 @@ def list_orphan_worktrees(
     root = session_folder / "worktrees"
     if not root.is_dir():
         return []
-    known = {
-        str(row.get("id"))
-        for row in run_meta.get("executions") or []
-        if isinstance(row, dict) and row.get("id")
-    }
+    known = {str(row.get("id")) for row in run_meta.get("executions") or [] if isinstance(row, dict) and row.get("id")}
     return sorted(path for path in root.iterdir() if path.is_dir() and path.name not in known)
 
 

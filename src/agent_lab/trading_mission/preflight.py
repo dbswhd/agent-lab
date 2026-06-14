@@ -39,9 +39,7 @@ def build_market_snapshot(
 ) -> dict[str, Any]:
     root = pipeline or detect_pipeline_root()
     if root is None:
-        raise FileNotFoundError(
-            "pipeline root not found — set QUANT_PIPELINE_ROOT or use ~/Desktop/pipeline"
-        )
+        raise FileNotFoundError("pipeline root not found — set QUANT_PIPELINE_ROOT or use ~/Desktop/pipeline")
     root = root.resolve()
     freshness = _run_freshness(root)
     sync_report: dict[str, Any] = {}

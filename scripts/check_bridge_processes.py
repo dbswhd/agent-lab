@@ -66,18 +66,12 @@ def main() -> int:
                 f"killed={payload.get('killed_pids', [])}"
             )
         for row in audit.get("stale_records") or []:
-            print(
-                f"  stale workspace={row.get('workspace')} pid={row.get('pid')} "
-                f"age_h={row.get('age_hours')}"
-            )
+            print(f"  stale workspace={row.get('workspace')} pid={row.get('pid')} age_h={row.get('age_hours')}")
         for row in audit.get("orphan_processes") or []:
             print(f"  orphan pid={row.get('pid')} cmd={row.get('command', '')[:80]}")
 
     audit = payload.get("audit", {})
-    if args.strict and (
-        int(audit.get("stale_count") or 0) > 0
-        or int(audit.get("orphan_process_count") or 0) > 0
-    ):
+    if args.strict and (int(audit.get("stale_count") or 0) > 0 or int(audit.get("orphan_process_count") or 0) > 0):
         return 1
     return 0
 

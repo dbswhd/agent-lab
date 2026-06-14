@@ -30,9 +30,7 @@ def setup_app_logging(*, log_dir: Path | None = None) -> Path:
         backupCount=5,
         encoding="utf-8",
     )
-    handler.setFormatter(
-        logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
-    )
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
     root.addHandler(handler)
 
     for name in ("uvicorn", "uvicorn.error", "uvicorn.access", "fastapi"):

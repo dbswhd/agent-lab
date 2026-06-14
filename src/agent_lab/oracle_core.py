@@ -169,9 +169,7 @@ def build_execute_oracle_prompt(
     commands = command_hints_from_verify(verify)
     cmd_block = ""
     if commands:
-        cmd_block = "Suggested commands from criterion:\n" + "\n".join(
-            f"- `{cmd}`" for cmd in commands
-        )
+        cmd_block = "Suggested commands from criterion:\n" + "\n".join(f"- `{cmd}`" for cmd in commands)
     return (
         "You are an independent verification Oracle. Do not trust agent claims without "
         "checking the evidence bundle.\n\n"
@@ -211,28 +209,20 @@ def build_goal_oracle_prompt(
 
 def mock_execute_oracle_response(verify: str, snippets: list[str]) -> str:
     if not snippets:
-        return (
-            "VERDICT: fail\n"
-            "REASON: no readable merged files to check\n"
-            "EVIDENCE:\n- checked_paths empty"
-        )
+        return "VERDICT: fail\nREASON: no readable merged files to check\nEVIDENCE:\n- checked_paths empty"
     body = "\n\n".join(snippets)
     literals = verify_literals(verify)
     evidence: list[str] = [f"read {len(snippets)} merged snippet(s)"]
     missing = [literal for literal in literals if not literal_matches_text(literal, body)]
     if missing:
         evidence.append(f"missing literal(s): {', '.join(missing[:5])}")
-        return (
-            "VERDICT: fail\n"
-            f"REASON: missing expected literal(s): {', '.join(missing[:5])}\n"
-            "EVIDENCE:\n" + "\n".join(f"- {row}" for row in evidence)
+        return f"VERDICT: fail\nREASON: missing expected literal(s): {', '.join(missing[:5])}\nEVIDENCE:\n" + "\n".join(
+            f"- {row}" for row in evidence
         )
     if literals:
         evidence.append(f"found literal(s): {', '.join(literals[:5])}")
-        return (
-            "VERDICT: pass\n"
-            f"REASON: found expected literal(s): {', '.join(literals[:5])}\n"
-            "EVIDENCE:\n" + "\n".join(f"- {row}" for row in evidence)
+        return f"VERDICT: pass\nREASON: found expected literal(s): {', '.join(literals[:5])}\nEVIDENCE:\n" + "\n".join(
+            f"- {row}" for row in evidence
         )
     return (
         "VERDICT: pass\n"
@@ -247,24 +237,14 @@ def mock_goal_oracle_response(goal_text: str, transcript: str) -> str:
     if literals:
         missing = [literal for literal in literals if not literal_matches_text(literal, haystack)]
         if missing:
-            return (
-                "VERDICT: fail\n"
-                f"REASON: missing goal literal(s): {', '.join(missing)}\n"
-                "EVIDENCE:\n"
-                + "\n".join(f"- missing `{lit}` in transcript" for lit in missing[:5])
+            return f"VERDICT: fail\nREASON: missing goal literal(s): {', '.join(missing)}\nEVIDENCE:\n" + "\n".join(
+                f"- missing `{lit}` in transcript" for lit in missing[:5]
             )
-        return (
-            "VERDICT: pass\n"
-            "REASON: all goal literals appear in the session transcript\n"
-            "EVIDENCE:\n"
-            + "\n".join(f"- found `{lit}` in transcript" for lit in literals[:5])
+        return "VERDICT: pass\nREASON: all goal literals appear in the session transcript\nEVIDENCE:\n" + "\n".join(
+            f"- found `{lit}` in transcript" for lit in literals[:5]
         )
 
-    keywords = [
-        word
-        for word in dict.fromkeys(_WORD.findall(goal_text))
-        if word.casefold() not in _GOAL_STOPWORDS
-    ][:8]
+    keywords = [word for word in dict.fromkeys(_WORD.findall(goal_text)) if word.casefold() not in _GOAL_STOPWORDS][:8]
     if not keywords:
         return (
             "VERDICT: fail\n"
@@ -274,18 +254,12 @@ def mock_goal_oracle_response(goal_text: str, transcript: str) -> str:
     matched = [word for word in keywords if literal_matches_text(word, haystack)]
     required = max(1, (len(keywords) + 1) // 2)
     if len(matched) >= required:
-        return (
-            "VERDICT: pass\n"
-            f"REASON: matched {len(matched)}/{len(keywords)} goal keywords\n"
-            "EVIDENCE:\n"
-            + "\n".join(f"- keyword `{word}` present" for word in matched[:5])
+        return f"VERDICT: pass\nREASON: matched {len(matched)}/{len(keywords)} goal keywords\nEVIDENCE:\n" + "\n".join(
+            f"- keyword `{word}` present" for word in matched[:5]
         )
     missing = [word for word in keywords if word not in matched]
-    return (
-        "VERDICT: fail\n"
-        f"REASON: missing goal keyword(s): {', '.join(missing[:5])}\n"
-        "EVIDENCE:\n"
-        + "\n".join(f"- keyword `{word}` absent" for word in missing[:5])
+    return f"VERDICT: fail\nREASON: missing goal keyword(s): {', '.join(missing[:5])}\nEVIDENCE:\n" + "\n".join(
+        f"- keyword `{word}` absent" for word in missing[:5]
     )
 
 

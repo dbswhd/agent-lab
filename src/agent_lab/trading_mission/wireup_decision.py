@@ -85,9 +85,7 @@ def build_wireup_decision(
         {
             str(c.get("ref") or "").strip()
             for c in all_cards
-            if isinstance(c, dict)
-            and c.get("ref")
-            and not c.get("eligible_for_proposal")
+            if isinstance(c, dict) and c.get("ref") and not c.get("eligible_for_proposal")
         }
     )
 

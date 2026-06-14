@@ -18,9 +18,7 @@ _MISSION_NOTEPAD_FILES = ("learnings.md", "verification.md", "decisions.md")
 
 _TOKEN_RE = re.compile(r"[a-zA-Z0-9가-힣]{2,}")
 _DUP_JACCARD_THRESHOLD = 0.65
-_TERMINAL_EXEC_STATUSES = frozenset(
-    {"rejected", "completed", "review_required", "merged", "merge_conflict"}
-)
+_TERMINAL_EXEC_STATUSES = frozenset({"rejected", "completed", "review_required", "merged", "merge_conflict"})
 _WORKTREE_TERMINAL_STATUSES = frozenset({"merged", "rejected", "merge_conflict"})
 
 
@@ -79,11 +77,7 @@ def _objection_resolution_rate(run_meta: dict[str, Any]) -> tuple[float | None, 
     total = len(rows)
     if total == 0:
         return None, {"total": 0, "resolved": 0, "open": 0}
-    resolved = sum(
-        1
-        for o in rows
-        if o.get("status") in ("resolved_accepted", "resolved_wontfix")
-    )
+    resolved = sum(1 for o in rows if o.get("status") in ("resolved_accepted", "resolved_wontfix"))
     open_n = sum(1 for o in rows if o.get("status") == "open")
     return resolved / total, {"total": total, "resolved": resolved, "open": open_n}
 
@@ -91,9 +85,7 @@ def _objection_resolution_rate(run_meta: dict[str, Any]) -> tuple[float | None, 
 def _execute_first_try_rate(
     run_meta: dict[str, Any],
 ) -> tuple[float | None, dict[str, int]]:
-    executions = [
-        e for e in (run_meta.get("executions") or []) if isinstance(e, dict)
-    ]
+    executions = [e for e in (run_meta.get("executions") or []) if isinstance(e, dict)]
     prior_rejected: dict[str, bool] = {}
     first_try = 0
     retried = 0
@@ -129,28 +121,20 @@ def _execute_retry_rate(exec_counts: dict[str, int]) -> float | None:
 def _execute_merge_kpis(
     run_meta: dict[str, Any],
 ) -> tuple[dict[str, float | None], dict[str, int]]:
-    executions = [
-        e for e in (run_meta.get("executions") or []) if isinstance(e, dict)
-    ]
+    executions = [e for e in (run_meta.get("executions") or []) if isinstance(e, dict)]
     total = len(executions)
     gitish = [
         e
         for e in executions
-        if e.get("git_root")
-        or e.get("isolation_effective") in {"worktree", "snapshot_override", "block"}
+        if e.get("git_root") or e.get("isolation_effective") in {"worktree", "snapshot_override", "block"}
     ]
     worktree = [e for e in executions if e.get("isolation_effective") == "worktree"]
-    snapshot_override = [
-        e for e in executions if e.get("isolation_effective") == "snapshot_override"
-    ]
+    snapshot_override = [e for e in executions if e.get("isolation_effective") == "snapshot_override"]
     conflicts = [
         e
         for e in worktree
         if e.get("status") == "merge_conflict"
-        or (
-            isinstance(e.get("merge"), dict)
-            and e["merge"].get("status") == "conflict"
-        )
+        or (isinstance(e.get("merge"), dict) and e["merge"].get("status") == "conflict")
     ]
 
     prior_failed: dict[str, bool] = {}
@@ -168,18 +152,10 @@ def _execute_merge_kpis(
             prior_failed[key] = True
 
     scores = {
-        "worktree_usage_rate": (
-            len(worktree) / len(gitish) if gitish else None
-        ),
-        "snapshot_override_rate": (
-            len(snapshot_override) / total if total else None
-        ),
-        "merge_first_success_rate": (
-            first_success / worktree_terminal if worktree_terminal else None
-        ),
-        "merge_conflict_rate": (
-            len(conflicts) / len(worktree) if worktree else None
-        ),
+        "worktree_usage_rate": (len(worktree) / len(gitish) if gitish else None),
+        "snapshot_override_rate": (len(snapshot_override) / total if total else None),
+        "merge_first_success_rate": (first_success / worktree_terminal if worktree_terminal else None),
+        "merge_conflict_rate": (len(conflicts) / len(worktree) if worktree else None),
     }
     counts = {
         "total": total,
@@ -215,10 +191,7 @@ def _capability_cwd_kpis(
     last_turn = run_meta.get("last_turn") or {}
     if not isinstance(last_turn, dict):
         last_turn = {}
-    is_specialist = (
-        run_meta.get("turn_profile") == "specialist"
-        or last_turn.get("turn_profile") == "specialist"
-    )
+    is_specialist = run_meta.get("turn_profile") == "specialist" or last_turn.get("turn_profile") == "specialist"
     if not is_specialist:
         return {
             "specialist_context_recorded": None,
@@ -232,7 +205,7 @@ def _capability_cwd_kpis(
             "asymmetric": 0,
         }
 
-    agents = ((last_turn.get("context") or {}).get("agents") or [])
+    agents = (last_turn.get("context") or {}).get("agents") or []
     if not isinstance(agents, list):
         agents = []
     cwd_by_agent: dict[str, str] = {}
@@ -287,11 +260,7 @@ def _duplicate_speech_rate(
         if m.get("role") == "user":
             last_user = i
     turn = messages[last_user + 1 :] if last_user >= 0 else messages
-    agents = [
-        m
-        for m in turn
-        if m.get("role") == "agent" and str(m.get("agent") or "").strip()
-    ]
+    agents = [m for m in turn if m.get("role") == "agent" and str(m.get("agent") or "").strip()]
     if len(agents) < 2:
         return None, {"pairs": 0, "near_duplicates": 0, "agents": len(agents)}
     lines = [_first_speech_line(str(m.get("content") or "")) for m in agents]
@@ -406,9 +375,7 @@ def _plan_workflow_kpis(run_meta: dict[str, Any]) -> tuple[dict[str, float | Non
 
     scores: dict[str, float | None] = {
         "plan_workflow_enabled": 1.0,
-        "plan_workflow_reached_human_pending": 1.0
-        if phase in {"HUMAN_PENDING", "APPROVED"}
-        else 0.0,
+        "plan_workflow_reached_human_pending": 1.0 if phase in {"HUMAN_PENDING", "APPROVED"} else 0.0,
         "plan_workflow_approved": 1.0 if phase == "APPROVED" else 0.0,
         "plan_workflow_cap_triggered": 1.0 if pw.get("notice") else 0.0,
         "plan_workflow_clarify_rounds": float(pw.get("clarify_round") or 0),
@@ -587,8 +554,6 @@ def _format_summary_lines(
         )
         depth = scores.get("amend_chain_depth_max")
         lines.append(
-            "  amend chain depth: "
-            f"{'n/a' if depth is None else int(depth)} "
-            f"({amend.get('amend_total', 0)} AMEND total)"
+            f"  amend chain depth: {'n/a' if depth is None else int(depth)} ({amend.get('amend_total', 0)} AMEND total)"
         )
     return lines

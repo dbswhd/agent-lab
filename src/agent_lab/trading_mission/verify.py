@@ -11,6 +11,7 @@ from agent_lab.trading_mission.artifact_cards import proposal_uses_fail_ref
 
 _PLAYBOOK_HEADER = re.compile(r"오늘\s*장중\s*행동", re.IGNORECASE)
 
+
 # Back-compat wrapper for ingest_bridge / plan_gate (positional snapshot arg)
 def _proposal_has_fail_ref(
     proposal: dict[str, Any],
@@ -54,11 +55,7 @@ def check_artifacts(session_folder: Path, *, check: str | None = None) -> dict[s
 
     if mode in ("all", "cards"):
         pipeline_root = str(snapshot.get("pipeline_root") or "").strip()
-        cards_dir = (
-            Path(pipeline_root) / "data" / "agentic_trading" / "cards"
-            if pipeline_root
-            else None
-        )
+        cards_dir = Path(pipeline_root) / "data" / "agentic_trading" / "cards" if pipeline_root else None
         sync = snapshot.get("cards_sync") if isinstance(snapshot.get("cards_sync"), dict) else {}
         if mode == "cards" or pipeline_root:
             record("snapshot has pipeline_root", bool(pipeline_root))
@@ -86,11 +83,7 @@ def check_artifacts(session_folder: Path, *, check: str | None = None) -> dict[s
         batch = _load_json(artifacts / "proposal_batch.json") or {}
         record("proposal_batch.json exists", (artifacts / "proposal_batch.json").is_file())
         proposals = batch.get("proposals") if isinstance(batch.get("proposals"), list) else []
-        fail_only = any(
-            proposal_uses_fail_ref(p, snapshot=snapshot)
-            for p in proposals
-            if isinstance(p, dict)
-        )
+        fail_only = any(proposal_uses_fail_ref(p, snapshot=snapshot) for p in proposals if isinstance(p, dict))
         record("no FAIL-only proposals", not fail_only, "FAIL ref in batch")
 
     if mode in ("all", "playbook"):

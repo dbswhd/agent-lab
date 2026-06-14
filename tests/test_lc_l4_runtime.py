@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 
-
-
 def test_adversarial_review_mock_and_injected():
     from agent_lab.adversarial_gate import LGTM_TOKEN, adversarial_review
 
@@ -31,12 +29,8 @@ def test_read_project_md_in_guidance(tmp_path):
 
     ws = tmp_path / "proj"
     (ws / ".agent-lab").mkdir(parents=True)
-    (ws / ".agent-lab" / "PROJECT.md").write_text(
-        "# Proj\n\nAlways use typed errors.\n", encoding="utf-8"
-    )
-    block = build_session_guidance_block(
-        {"workspace_binding": {"path": str(ws), "label": "proj"}}
-    )
+    (ws / ".agent-lab" / "PROJECT.md").write_text("# Proj\n\nAlways use typed errors.\n", encoding="utf-8")
+    block = build_session_guidance_block({"workspace_binding": {"path": str(ws), "label": "proj"}})
     assert "PROJECT.md" in block
     assert "typed errors" in block
 

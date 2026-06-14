@@ -24,27 +24,19 @@ from agent_lab.room import (
 from agent_lab.run_observability import observability_snapshot
 from agent_lab.session import SESSIONS_DIR
 
-TURN_PROFILES = frozenset(
-    {"quick", "analyze", "discuss", "review", "free", "specialist", "verified"}
-)
+TURN_PROFILES = frozenset({"quick", "analyze", "discuss", "review", "free", "specialist", "verified"})
 
 
 class RunRequest(BaseModel):
     topic: str = Field(..., min_length=1, max_length=2000)
-    backend: str | None = Field(
-        default=None, description="codex | openai | anthropic"
-    )
+    backend: str | None = Field(default=None, description="codex | openai | anthropic")
 
 
 class RoomRunRequest(BaseModel):
     topic: str = Field(..., min_length=1, max_length=2000)
-    agents: list[str] | None = Field(
-        default=None, description="cursor, codex, claude — default: all available"
-    )
+    agents: list[str] | None = Field(default=None, description="cursor, codex, claude — default: all available")
     synthesize: bool = Field(default=True, description="Scribe plan.md after round")
-    session_id: str | None = Field(
-        default=None, description="Continue an existing room session"
-    )
+    session_id: str | None = Field(default=None, description="Continue an existing room session")
 
 
 class RenameSessionRequest(BaseModel):
@@ -174,9 +166,7 @@ def session_folder_or_404(session_id: str) -> Path:
 
 async def save_uploads(folder: Path, files: list[UploadFile]) -> list[str]:
     if len(files) > MAX_FILES:
-        raise HTTPException(
-            status_code=400, detail=f"max {MAX_FILES} files per message"
-        )
+        raise HTTPException(status_code=400, detail=f"max {MAX_FILES} files per message")
     dest = attachments_dir(folder)
     saved: list[str] = []
     for uf in files:
@@ -226,11 +216,7 @@ def list_sessions(*, archived: bool = False) -> list[dict[str, Any]]:
         if is_archived != archived:
             continue
         topic_file = path / "topic.txt"
-        topic = (
-            topic_file.read_text(encoding="utf-8").strip()
-            if topic_file.is_file()
-            else meta.get("topic", path.name)
-        )
+        topic = topic_file.read_text(encoding="utf-8").strip() if topic_file.is_file() else meta.get("topic", path.name)
         agents: list[str] = []
         workspace_path: str | None = None
         run_path = path / "run.json"
@@ -242,9 +228,7 @@ def list_sessions(*, archived: bool = False) -> list[dict[str, Any]]:
                     agents = [str(a) for a in raw_agents if a]
                 elif run_json.get("turns"):
                     last_turn = run_json["turns"][-1]
-                    if isinstance(last_turn, dict) and isinstance(
-                        last_turn.get("agents"), list
-                    ):
+                    if isinstance(last_turn, dict) and isinstance(last_turn.get("agents"), list):
                         agents = [str(a) for a in last_turn["agents"] if a]
                 binding = run_json.get("workspace_binding")
                 if isinstance(binding, dict) and binding.get("path"):
@@ -308,9 +292,7 @@ def session_detail(session_id: str) -> dict[str, Any]:
 def archive_meta(folder: Path) -> dict[str, Any]:
     meta = read_meta(folder)
     meta["archived"] = True
-    meta["archived_at"] = meta.get("archived_at") or datetime.now(
-        timezone.utc
-    ).isoformat()
+    meta["archived_at"] = meta.get("archived_at") or datetime.now(timezone.utc).isoformat()
     write_meta(folder, meta)
     return meta
 

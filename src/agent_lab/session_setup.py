@@ -31,9 +31,7 @@ SESSION_TEMPLATE_IDS = frozenset(
     {"general", "book-layout", "book-content", "trading-mission", "trading-thin", "trading-offline"}
 )
 TRADING_TEMPLATE_IDS = frozenset({"trading-mission", "trading-thin", "trading-offline"})
-WORKSPACE_PRESET_IDS = frozenset(
-    {"agent-lab", "quant-pipeline", "lecture-book", CUSTOM_WORKSPACE_ID}
-)
+WORKSPACE_PRESET_IDS = frozenset({"agent-lab", "quant-pipeline", "lecture-book", CUSTOM_WORKSPACE_ID})
 
 
 def _preset(

@@ -77,9 +77,7 @@ def create_snapshot(
     for parent in parent_dirs(expected_paths, cwd=cwd):
         parent_path = _resolve_under(cwd, parent)
         if parent_path.is_dir():
-            dir_listings[parent] = sorted(
-                entry.name for entry in parent_path.iterdir() if entry.is_file()
-            )
+            dir_listings[parent] = sorted(entry.name for entry in parent_path.iterdir() if entry.is_file())
 
     manifest: dict[str, Any] = {
         "exec_id": exec_id,
@@ -144,9 +142,7 @@ def compute_touched_paths(
         parent_path = _resolve_under(cwd, parent)
         if not parent_path.is_dir():
             continue
-        after_names = {
-            entry.name for entry in parent_path.iterdir() if entry.is_file()
-        }
+        after_names = {entry.name for entry in parent_path.iterdir() if entry.is_file()}
         before_set = set(before_names)
         for name in sorted(after_names - before_set):
             rel = normalize_path(str(Path(parent) / name), cwd=cwd)

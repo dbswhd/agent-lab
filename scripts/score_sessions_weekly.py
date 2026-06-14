@@ -137,8 +137,8 @@ def _fmt(value: float | None) -> str:
 
 def _ops_line(report: dict, md_path: Path) -> str:
     m4 = report.get("m4_milestones") or {}
-    scores = ((report.get("aggregate") or {}).get("scores") or {})
-    counts = (((report.get("aggregate") or {}).get("counts") or {}).get("capability_cwd") or {})
+    scores = (report.get("aggregate") or {}).get("scores") or {}
+    counts = ((report.get("aggregate") or {}).get("counts") or {}).get("capability_cwd") or {}
     live = report.get("live_ops_summary") or {}
     worktree = live.get("worktree") or {}
     merge = live.get("merge") or {}

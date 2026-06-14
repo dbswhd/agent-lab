@@ -21,12 +21,7 @@ from agent_lab.plan_actions import PlanAction
 
 
 def test_parse_structured_oracle_response():
-    raw = (
-        "VERDICT: pass\n"
-        "REASON: literals present\n"
-        "EVIDENCE:\n"
-        "- found `OK` in src/app.py"
-    )
+    raw = "VERDICT: pass\nREASON: literals present\nEVIDENCE:\n- found `OK` in src/app.py"
     parsed = parse_oracle_response(raw)
     assert parsed["verdict"] == "pass"
     assert "literals" in parsed["detail"]

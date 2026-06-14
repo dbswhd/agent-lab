@@ -12,9 +12,7 @@ def test_workspace_md_injection_order(tmp_path: Path):
     ws = tmp_path / "ws"
     ws.mkdir()
     bootstrap_workspace_memory(ws, overwrite=True)
-    block = build_session_guidance_block(
-        {"workspace_binding": {"path": str(ws), "label": "ws"}}
-    )
+    block = build_session_guidance_block({"workspace_binding": {"path": str(ws), "label": "ws"}})
     assert block.index("SHARED_CONTEXT") < block.index("PROJECT.md")
     assert block.index("PROJECT.md") < block.index("AGENTS.md")
     assert "Codex" in block
@@ -26,13 +24,7 @@ def test_per_dir_agents_hierarchy_in_session_guidance(tmp_path: Path) -> None:
     src.mkdir(parents=True)
     (ws / "AGENTS.md").write_text("root-only", encoding="utf-8")
     (src / "AGENTS.md").write_text("auth-specific rules", encoding="utf-8")
-    plan = (
-        "## 지금 실행\n"
-        "1. Fix handler\n"
-        "   - 무엇을: patch\n"
-        "   - 어디서: `src/auth/handler.py`\n"
-        "   - 검증: pytest\n"
-    )
+    plan = "## 지금 실행\n1. Fix handler\n   - 무엇을: patch\n   - 어디서: `src/auth/handler.py`\n   - 검증: pytest\n"
     block = build_session_guidance_block(
         {"workspace_binding": {"path": str(ws), "label": "ws"}},
         plan_md=plan,

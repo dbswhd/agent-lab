@@ -83,9 +83,7 @@ def trading_plan_gate_issues(
             break
         ref = str(proposal.get("backtest_ref") or "").strip()
         sources = proposal.get("data_sources")
-        has_overlay = isinstance(sources, list) and any(
-            "overlay" in str(s).lower() for s in sources
-        )
+        has_overlay = isinstance(sources, list) and any("overlay" in str(s).lower() for s in sources)
         if not ref and not has_overlay:
             issues.append("proposal_missing_ref")
             break

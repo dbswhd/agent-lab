@@ -51,15 +51,9 @@ def test_endorse_resolves_own_discuss_challenge():
 
 def test_endorse_does_not_resolve_block_or_plan_or_other_agent():
     meta: dict = {}
-    append_objection(
-        meta, from_agent="codex", act="BLOCK", body="비가역 위험", human_turn=1, mode="discuss"
-    )
-    append_objection(
-        meta, from_agent="codex", act="CHALLENGE", body="plan 모드 충돌", human_turn=1, mode="plan"
-    )
-    append_objection(
-        meta, from_agent="claude", act="CHALLENGE", body="남의 충돌", human_turn=1, mode="discuss"
-    )
+    append_objection(meta, from_agent="codex", act="BLOCK", body="비가역 위험", human_turn=1, mode="discuss")
+    append_objection(meta, from_agent="codex", act="CHALLENGE", body="plan 모드 충돌", human_turn=1, mode="plan")
+    append_objection(meta, from_agent="claude", act="CHALLENGE", body="남의 충돌", human_turn=1, mode="discuss")
     assert resolve_objections_on_endorse(meta, "codex", human_turn=1) == []
     assert len(open_objections(meta)) == 3
 
@@ -67,13 +61,9 @@ def test_endorse_does_not_resolve_block_or_plan_or_other_agent():
 def test_resolved_objection_not_recreated_by_reharvest():
     """턴 종료 재수확이 endorse로 해소된 충돌을 다시 열면 합의 게이트가 교착한다."""
     meta: dict = {}
-    append_objection(
-        meta, from_agent="codex", act="CHALLENGE", body="같은 충돌", human_turn=1, mode="discuss"
-    )
+    append_objection(meta, from_agent="codex", act="CHALLENGE", body="같은 충돌", human_turn=1, mode="discuss")
     resolve_objections_on_endorse(meta, "codex")
-    again = append_objection(
-        meta, from_agent="codex", act="CHALLENGE", body="같은 충돌", human_turn=1, mode="discuss"
-    )
+    again = append_objection(meta, from_agent="codex", act="CHALLENGE", body="같은 충돌", human_turn=1, mode="discuss")
     assert again is not None
     assert again["status"] == "resolved_accepted"  # 기존 행 반환, 재개 없음
     assert open_objections(meta) == []
@@ -114,9 +104,7 @@ def test_discuss_challenge_resolved_in_consensus_loop(monkeypatch, tmp_path):
         if agent == "cursor" and n == 1:
             return _envelope_reply("PROPOSE", "직접 호출 유지가 단순합니다.")
         if agent == "codex" and n == 2:
-            return _envelope_reply(
-                "CHALLENGE", "직접 호출 유지는 재시도 경로가 없습니다 — outbox가 필요합니다."
-            )
+            return _envelope_reply("CHALLENGE", "직접 호출 유지는 재시도 경로가 없습니다 — outbox가 필요합니다.")
         return _envelope_reply("ENDORSE", "이의 없습니다")
 
     patch_call_agent_reply(monkeypatch, fake_call_agent)
@@ -161,9 +149,7 @@ def test_quality_gate_forces_review_on_quiet_deep_debate(monkeypatch, tmp_path):
         per_agent[agent] = n
         if "품질 게이트" in (user or ""):
             forced_calls.append(agent)
-            return _envelope_reply(
-                "CHALLENGE", "가장 약한 가정: 단일 리전 전제 — 멀티 리전 장애 시나리오 누락."
-            )
+            return _envelope_reply("CHALLENGE", "가장 약한 가정: 단일 리전 전제 — 멀티 리전 장애 시나리오 누락.")
         if agent == "cursor" and n == 1:
             return _envelope_reply("PROPOSE", "캐시 계층은 단일 리전 redis로 갑니다.")
         return _envelope_reply("ENDORSE", "이의 없습니다")

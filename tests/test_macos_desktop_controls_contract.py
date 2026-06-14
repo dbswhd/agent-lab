@@ -25,9 +25,9 @@ def test_session_rows_are_keyboard_controls_and_searchable():
     session_list = _read("web/src/components/SessionList.tsx")
     app = _read("web/src/App.tsx")
 
-    assert 'className={`session-item' in session_list
+    assert "className={`session-item" in session_list
     assert 'type="button"' in session_list
-    assert 'aria-current=' in session_list
+    assert "aria-current=" in session_list
     assert 'type="search"' in app
     assert 'aria-label="세션 검색"' in app
 
@@ -96,7 +96,7 @@ def test_workbench_diff_panel_reuses_execution_diff_records():
     assert "findActiveExecution" in diff_panel
     assert "PlanDiffStat" in diff_panel
     assert "SideBySideDiff" in diff_panel
-    assert '<DiffToolPanel executions={planExecutions}' in room
+    assert "<DiffToolPanel executions={planExecutions}" in room
 
 
 def test_tauri_titlebar_and_minimum_window_are_real_window_smoke_contracts():

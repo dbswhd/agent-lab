@@ -175,11 +175,7 @@ def harvest_mailbox_from_turn(
 
 def unread_for_agent(run_meta: dict[str, Any] | None, agent: str) -> list[dict[str, Any]]:
     agent_l = str(agent or "").strip().lower()
-    return [
-        m
-        for m in list_mailbox(run_meta)
-        if m.get("to") == agent_l and not m.get("read")
-    ]
+    return [m for m in list_mailbox(run_meta) if m.get("to") == agent_l and not m.get("read")]
 
 
 def mark_delivered(run_meta: dict[str, Any], agent: str, mail_ids: list[str]) -> None:
@@ -204,18 +200,14 @@ def build_mailbox_block(run_meta: dict[str, Any] | None, agent: str) -> str:
     lines = ["[받은함 — 동료에게서]", ""]
     ids: list[str] = []
     for m in unread[-12:]:
-        lines.append(
-            f"- **{m.get('from')}** → 나: {str(m.get('body') or '')[:800]}"
-        )
+        lines.append(f"- **{m.get('from')}** → 나: {str(m.get('body') or '')[:800]}")
         if m.get("task_id"):
             lines.append(f"  (task: {m.get('task_id')})")
         mid = m.get("id")
         if mid:
             ids.append(str(mid))
     lines.append("")
-    lines.append(
-        "답장은 envelope `MESSAGE` + `to` 필드, 또는 본문에서 동료를 @멘션하세요."
-    )
+    lines.append("답장은 envelope `MESSAGE` + `to` 필드, 또는 본문에서 동료를 @멘션하세요.")
     mark_delivered(run_meta, agent, ids)
     return "\n".join(lines)
 

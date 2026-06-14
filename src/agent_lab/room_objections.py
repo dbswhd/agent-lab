@@ -192,14 +192,17 @@ def append_objection(
     # 같은 fingerprint면 status 무관 dedupe — endorse로 해소된 discuss CHALLENGE가
     # 턴 종료 재수확에서 다시 open으로 살아나면 합의 게이트가 교착한다.
     for existing in rows[-30:]:
-        if _objection_fingerprint(
-            from_agent=str(existing.get("from") or ""),
-            act=str(existing.get("act") or ""),
-            body=str(existing.get("body") or ""),
-            target_ref=existing.get("target_ref"),
-            task_id=existing.get("task_id"),
-            plan_action_index=existing.get("plan_action_index"),
-        ) == fp:
+        if (
+            _objection_fingerprint(
+                from_agent=str(existing.get("from") or ""),
+                act=str(existing.get("act") or ""),
+                body=str(existing.get("body") or ""),
+                target_ref=existing.get("target_ref"),
+                task_id=existing.get("task_id"),
+                plan_action_index=existing.get("plan_action_index"),
+            )
+            == fp
+        ):
             return existing
 
     row = normalize_objection(
@@ -323,11 +326,7 @@ def apply_challenge_task_blocks(run_meta: dict[str, Any]) -> int:
     """Mark tasks blocked when an open CHALLENGE references them."""
     from agent_lab.room_tasks import list_tasks, write_tasks
 
-    open_ch = [
-        o
-        for o in open_objections(run_meta)
-        if o.get("act") == "CHALLENGE" and o.get("task_id")
-    ]
+    open_ch = [o for o in open_objections(run_meta) if o.get("act") == "CHALLENGE" and o.get("task_id")]
     if not open_ch:
         return 0
     task_ids = {str(o["task_id"]) for o in open_ch if o.get("task_id")}
@@ -362,9 +361,7 @@ def resolve_objection(
             continue
         if row.get("status") != "open":
             raise ValueError(f"objection not open: {oid}")
-        row["status"] = (
-            "resolved_accepted" if verdict == "accepted" else "resolved_wontfix"
-        )
+        row["status"] = "resolved_accepted" if verdict == "accepted" else "resolved_wontfix"
         row["resolved_at"] = _now()
         row["resolved_by"] = resolved_by
         if note.strip():
@@ -380,9 +377,7 @@ def _unblock_task_if_no_open_challenge(run_meta: dict[str, Any], task_id: str) -
     from agent_lab.room_tasks import list_tasks, write_tasks
 
     still = any(
-        o.get("status") == "open"
-        and o.get("act") == "CHALLENGE"
-        and o.get("task_id") == task_id
+        o.get("status") == "open" and o.get("act") == "CHALLENGE" and o.get("task_id") == task_id
         for o in list_objections(run_meta)
     )
     if still:
@@ -425,21 +420,11 @@ def execute_block_reason_for_action(
     action_kind: PlanActionKind | None = None,
 ) -> str | None:
     """Return human-readable block reason for dry-run, or None."""
-    blocking = [
-        o
-        for o in open_objections(run_meta)
-        if _action_matches_objection(o, action_index, action_kind)
-    ]
+    blocking = [o for o in open_objections(run_meta) if _action_matches_objection(o, action_index, action_kind)]
     if not blocking:
         return None
-    parts = [
-        f"{o.get('from')} BLOCK (#{o.get('id', '?')[:8]}): {(o.get('body') or '')[:80]}"
-        for o in blocking[:3]
-    ]
-    return (
-        "미해결 이의(BLOCK)로 plan 실행을 할 수 없습니다 — 작업 바에서 이의를 해소하세요. "
-        + " · ".join(parts)
-    )
+    parts = [f"{o.get('from')} BLOCK (#{o.get('id', '?')[:8]}): {(o.get('body') or '')[:80]}" for o in blocking[:3]]
+    return "미해결 이의(BLOCK)로 plan 실행을 할 수 없습니다 — 작업 바에서 이의를 해소하세요. " + " · ".join(parts)
 
 
 def assert_execute_allowed(
@@ -449,19 +434,12 @@ def assert_execute_allowed(
 ) -> None:
     reason = execute_block_reason_for_action(run_meta, action_index, action_kind)
     if reason:
-        blocking = [
-            o
-            for o in open_objections(run_meta)
-            if _action_matches_objection(o, action_index, action_kind)
-        ]
+        blocking = [o for o in open_objections(run_meta) if _action_matches_objection(o, action_index, action_kind)]
         raise ObjectionBlocksExecute(reason, objections=blocking)
 
 
 def consensus_open_objection_blockers(run_meta: dict[str, Any] | None) -> list[str]:
-    return [
-        f"{o.get('from')}:{o.get('act')}:{o.get('id')}"
-        for o in open_objections(run_meta)
-    ]
+    return [f"{o.get('from')}:{o.get('act')}:{o.get('id')}" for o in open_objections(run_meta)]
 
 
 def objections_public_payload(run_meta: dict[str, Any] | None) -> dict[str, Any]:
@@ -476,19 +454,13 @@ def objections_public_payload(run_meta: dict[str, Any] | None) -> dict[str, Any]
 
 def build_objection_block(run_meta: dict[str, Any] | None, agent: str) -> str:
     agent_l = str(agent or "").strip().lower()
-    relevant = [
-        o
-        for o in open_objections(run_meta)
-        if str(o.get("from") or "").lower() != agent_l
-    ]
+    relevant = [o for o in open_objections(run_meta) if str(o.get("from") or "").lower() != agent_l]
     if not relevant:
         return ""
     lines = ["[미해결 이의 — BLOCK/CHALLENGE]", ""]
     for o in relevant[:6]:
         ref = o.get("target_ref") or o.get("task_id") or "—"
-        lines.append(
-            f"- {o.get('from')} {o.get('act')} → {ref}: {(o.get('body') or '')[:120]}"
-        )
+        lines.append(f"- {o.get('from')} {o.get('act')} → {ref}: {(o.get('body') or '')[:120]}")
     lines.append("")
     lines.append("해소: Human이 작업 바에서 accepted/wontfix, 또는 AMEND envelope.")
     return "\n".join(lines)
@@ -500,9 +472,7 @@ def build_challenge_owner_block(run_meta: dict[str, Any] | None, agent: str) -> 
 
     agent_l = str(agent or "").strip().lower()
     challenged_ids = {
-        str(o.get("task_id"))
-        for o in open_objections(run_meta)
-        if o.get("act") == "CHALLENGE" and o.get("task_id")
+        str(o.get("task_id")) for o in open_objections(run_meta) if o.get("act") == "CHALLENGE" and o.get("task_id")
     }
     if not challenged_ids:
         return ""
@@ -520,20 +490,12 @@ def build_challenge_owner_block(run_meta: dict[str, Any] | None, agent: str) -> 
     lines = ["[CHALLENGE · 반드시 응답]", ""]
     for task in owned[:4]:
         oid = next(
-            (
-                o
-                for o in open_objections(run_meta)
-                if o.get("task_id") == task.get("id")
-            ),
+            (o for o in open_objections(run_meta) if o.get("task_id") == task.get("id")),
             {},
         )
-        lines.append(
-            f"- task {task.get('id')}: {(task.get('title') or '')[:80]}"
-        )
+        lines.append(f"- task {task.get('id')}: {(task.get('title') or '')[:80]}")
         if oid.get("body"):
             lines.append(f"  challenge: {(oid.get('body') or '')[:160]}")
     lines.append("")
-    lines.append(
-        "envelope `AMEND` + refs에 task id, 또는 본문에서 근거·수정안을 제시하세요."
-    )
+    lines.append("envelope `AMEND` + refs에 task id, 또는 본문에서 근거·수정안을 제시하세요.")
     return "\n".join(lines)

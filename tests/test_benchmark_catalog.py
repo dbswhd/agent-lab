@@ -50,9 +50,7 @@ def test_r2_plan_now_actions_parser_shape():
         ".github/workflows/ci.yml",
         "./Makefile",
     ]
-    assert sections["recommended"]["verification_paths"] == [
-        "tests/test_session_score_ci.py"
-    ]
+    assert sections["recommended"]["verification_paths"] == ["tests/test_session_score_ci.py"]
     assert len(sections["all_executable"]) == 2
 
 
@@ -60,14 +58,8 @@ def test_r3_specialist_asymmetric_cwd_meta():
     run = _run("specialist_asymmetric_cwd")
     caps = run["agent_capabilities"]
     context_agents = run["last_turn"]["context"]["agents"]
-    cwd_by_agent = {
-        row["agent"]: row["capability_cwd"]
-        for row in context_agents
-    }
-    round_by_agent = {
-        row["agent"]: row["parallel_round"]
-        for row in context_agents
-    }
+    cwd_by_agent = {row["agent"]: row["capability_cwd"] for row in context_agents}
+    round_by_agent = {row["agent"]: row["parallel_round"] for row in context_agents}
 
     assert run["turn_profile"] == "specialist"
     assert caps["cursor"]["cwd_role"] == "execute"

@@ -21,9 +21,7 @@ def test_cap_pinned_keeps_human_and_newest_agents():
     human = _Msg("user", None, "question")
     agents = [_Msg("agent", "claude", "a" * 30000, 1) for _ in range(5)]
     pinned = [human, *agents]
-    capped, dropped = cap_pinned_messages(
-        pinned, max_messages=3, max_chars=50000
-    )
+    capped, dropped = cap_pinned_messages(pinned, max_messages=3, max_chars=50000)
     assert human in capped
     assert dropped >= 2
     assert len(capped) <= 3
@@ -35,9 +33,7 @@ def test_prepare_recent_efficiency_uses_fewer_turns():
         msgs.append(_Msg("user", None, f"human {i}"))
         msgs.append(_Msg("agent", "codex", f"reply {i}", 1))
     eff_turns = efficiency_limits().recent_turns
-    _, turns_std, _, _ = prepare_recent_messages(
-        msgs, max_turns=8, efficiency_mode=False
-    )
+    _, turns_std, _, _ = prepare_recent_messages(msgs, max_turns=8, efficiency_mode=False)
     _, turns_eff, _, _ = prepare_recent_messages(msgs, efficiency_mode=True)
     assert turns_eff >= turns_std
     assert eff_turns <= 8

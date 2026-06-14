@@ -20,6 +20,7 @@ _FRESHNESS_ROW_CAP = 8
 def _market_read():
     return load_quant_module("quant_pipeline.agentic_trading.market_read")
 
+
 # Mock-first KR ETF quotes (v1 dev / no KIS keys).
 _MOCK_QUOTES_KR: dict[str, dict[str, Any]] = {
     "069500": {

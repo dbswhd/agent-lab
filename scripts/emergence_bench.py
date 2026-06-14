@@ -41,10 +41,7 @@ DEFAULT_TOPICS: list[dict[str, str]] = [
     },
     {
         "category": "deep",
-        "topic": (
-            "수집 파이프라인 아키텍처 결정: 스트리밍 vs 배치 — "
-            "트레이드오프를 비교하고 합의까지 가주세요."
-        ),
+        "topic": ("수집 파이프라인 아키텍처 결정: 스트리밍 vs 배치 — 트레이드오프를 비교하고 합의까지 가주세요."),
     },
     {
         "category": "critical",
@@ -151,12 +148,8 @@ def bench_topic(
     topic = entry["topic"]
     solos: list[dict[str, Any]] = []
     for agent in solo_agents:
-        solos.append(
-            _run_session(topic, [agent], sessions_base=sessions_base, consensus=False)
-        )
-    room_run = _run_session(
-        topic, list(solo_agents), sessions_base=sessions_base, consensus=True
-    )
+        solos.append(_run_session(topic, [agent], sessions_base=sessions_base, consensus=False))
+    room_run = _run_session(topic, list(solo_agents), sessions_base=sessions_base, consensus=True)
     solo_scores = [s["composite"] for s in solos if s["composite"] is not None]
     room_score = room_run["composite"]
     delta: float | None = None
@@ -171,9 +164,7 @@ def bench_topic(
         "emergence_delta": delta,
     }
     if include_dispatch:
-        out["room_dispatch"] = _run_dispatch_arm(
-            topic, list(solo_agents), sessions_base=sessions_base
-        )
+        out["room_dispatch"] = _run_dispatch_arm(topic, list(solo_agents), sessions_base=sessions_base)
     return out
 
 
@@ -206,9 +197,7 @@ def main() -> int:
     parser.add_argument("--topics", help="카테고리 라벨된 토픽 JSON 파일 경로")
     parser.add_argument("--live", action="store_true", help="실 LLM 사용 (CI 금지)")
     parser.add_argument("--out", help="리포트 출력 경로 (기본 sessions/_reports/)")
-    parser.add_argument(
-        "--sessions-base", help="벤치 세션 폴더 (기본 임시 디렉토리)"
-    )
+    parser.add_argument("--sessions-base", help="벤치 세션 폴더 (기본 임시 디렉토리)")
     parser.add_argument(
         "--include-dispatch",
         action="store_true",
@@ -240,8 +229,7 @@ def main() -> int:
     solo_agents = ["cursor", "codex", "claude"]
     include_dispatch = bool(
         args.include_dispatch
-        or (os.getenv("AGENT_LAB_EMERGENCE_BENCH_DISPATCH") or "").strip().lower()
-        in ("1", "true", "yes", "on")
+        or (os.getenv("AGENT_LAB_EMERGENCE_BENCH_DISPATCH") or "").strip().lower() in ("1", "true", "yes", "on")
     )
     rows = [
         bench_topic(
@@ -268,14 +256,11 @@ def main() -> int:
         REPORTS.mkdir(parents=True, exist_ok=True)
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         out_path = REPORTS / f"emergence_bench_{stamp}.json"
-    out_path.write_text(
-        json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-    )
+    out_path.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"emergence bench report: {out_path}")
     for cat, bucket in report["by_category"].items():
         print(
-            f"  {cat}: topics={bucket['topics']} "
-            f"delta_mean={bucket['delta_mean']} positive={bucket['delta_positive']}"
+            f"  {cat}: topics={bucket['topics']} delta_mean={bucket['delta_mean']} positive={bucket['delta_positive']}"
         )
     return 0
 

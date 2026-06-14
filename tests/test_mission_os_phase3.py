@@ -203,9 +203,7 @@ def test_resolve_auto_merge_records_audit(session_folder: Path, monkeypatch: pyt
     assert get_trust_budget(read_run_meta(session_folder))["auto_merge_remaining"] == 0
 
 
-def test_telegram_approve_merge_pending_apply(
-    session_folder: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_telegram_approve_merge_pending_apply(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _write_run(
         session_folder,
         {

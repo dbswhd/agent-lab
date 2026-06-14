@@ -67,9 +67,7 @@ def test_infer_session_phase_defaults_to_content_for_general_topic():
 
 
 def test_build_session_guidance_includes_frozen_block():
-    block = build_session_guidance_block(
-        {"layout_frozen": True, "session_phase": "content"}
-    )
+    block = build_session_guidance_block({"layout_frozen": True, "session_phase": "content"})
     assert "LAYOUT_FROZEN" in block
     assert "SINGLE_EXECUTOR" in block
     assert "27p OK" not in block

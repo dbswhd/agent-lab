@@ -179,9 +179,7 @@ def sync_mission_phase_from_run(run: dict[str, Any]) -> dict[str, Any]:
     phase = str(ml.get("phase") or "MISSION_DEFINE")
     if phase == "MISSION_DEFINE" and mission_define_ready(run):
         ml["phase"] = "DISCUSS"
-    if isinstance(run.get("verified_loop"), dict) and run["verified_loop"].get(
-        "circuit_breaker"
-    ):
+    if isinstance(run.get("verified_loop"), dict) and run["verified_loop"].get("circuit_breaker"):
         ml["circuit_breaker"] = True
         ml["circuit_breaker_reason"] = ml.get("circuit_breaker_reason") or "verified_loop"
         ml["phase"] = "MISSION_PAUSED"
@@ -245,9 +243,7 @@ def evaluate_plan_gate(
             {
                 "status": "reject",
                 "reason": "no_executable_actions",
-                "failures": [
-                    {"action_index": None, "issues": ["no_executable_actions"]}
-                ],
+                "failures": [{"action_index": None, "issues": ["no_executable_actions"]}],
             }
         )
     if failures:
@@ -303,10 +299,7 @@ def trigger_circuit_breaker(
 ) -> dict[str, Any]:
     from agent_lab.human_inbox import append_inbox_item, new_inbox_item
 
-    prompt = inbox_prompt or (
-        f"Mission loop circuit breaker: {reason}. "
-        "Resolve to resume (DISCUSS or EXECUTE_QUEUE)."
-    )
+    prompt = inbox_prompt or (f"Mission loop circuit breaker: {reason}. Resolve to resume (DISCUSS or EXECUTE_QUEUE).")
 
     def _trip(run: dict[str, Any]) -> dict[str, Any]:
         ml = get_mission_loop(run)
@@ -515,8 +508,7 @@ def run_plan_gate(folder: Path, plan_md: str) -> dict[str, Any]:
             {
                 "reason": "momus_round_cap",
                 "inbox_prompt": (
-                    f"Plan gate failed {momus_round} times (max {max_rounds}). "
-                    f"Last reason: {evaluation.get('reason')}"
+                    f"Plan gate failed {momus_round} times (max {max_rounds}). Last reason: {evaluation.get('reason')}"
                 ),
             },
         )
@@ -573,13 +565,9 @@ def after_plan_scribe(folder: Path, plan_md: str) -> dict[str, Any] | None:
     )
 
 
-_OPEN_EXECUTION_STATUSES = frozenset(
-    {"pending_approval", "review_required", "merge_conflict", "pending"}
-)
+_OPEN_EXECUTION_STATUSES = frozenset({"pending_approval", "review_required", "merge_conflict", "pending"})
 
-_PAUSE_CLEANUP_PHASES = frozenset(
-    {"DRY_RUN", "MERGE_REVIEW", "EXECUTE_QUEUE", "REPAIR", "VERIFY"}
-)
+_PAUSE_CLEANUP_PHASES = frozenset({"DRY_RUN", "MERGE_REVIEW", "EXECUTE_QUEUE", "REPAIR", "VERIFY"})
 
 _ROLLBACK_RESUME_PHASES: dict[str, str] = {
     "DRY_RUN": "EXECUTE_QUEUE",
@@ -879,9 +867,7 @@ def _advance_verify_stalled(folder: Path) -> dict[str, Any]:
         return {"skipped": True, "reason": "verify_in_progress", "phase": "VERIFY"}
 
     action_index = int(target.get("action_index") or ml.get("current_action_index") or 0)
-    reason = str(
-        oracle.get("detail") or oracle.get("feedback") or oracle.get("reason") or ""
-    )
+    reason = str(oracle.get("detail") or oracle.get("feedback") or oracle.get("reason") or "")
     return on_verify_result(
         folder,
         action_index=action_index,
@@ -1148,6 +1134,7 @@ def _on_verify_fail(
     max_rep = int(ml.get("max_repair_per_action") or DEFAULT_MAX_REPAIR_PER_ACTION)
 
     if count < max_rep:
+
         def _repair(run: dict[str, Any]) -> dict[str, Any]:
             m = get_mission_loop(run)
             m["action_repair_counts"] = repairs
@@ -1173,10 +1160,7 @@ def _on_verify_fail(
         )
         append_wisdom_note(
             folder,
-            line=(
-                f"verify FAIL action #{action_index} → REPAIR "
-                f"({count}/{max_rep}): {reason}"
-            ),
+            line=(f"verify FAIL action #{action_index} → REPAIR ({count}/{max_rep}): {reason}"),
             filename="verification.md",
             action_index=action_index,
         )
@@ -1197,10 +1181,7 @@ def _on_verify_fail(
     structural = is_structural_verify_fail(reason)
     append_wisdom_note(
         folder,
-        line=(
-            f"verify repair cap action #{action_index}"
-            f" ({'structural' if structural else 'recoverable'}): {reason}"
-        ),
+        line=(f"verify repair cap action #{action_index} ({'structural' if structural else 'recoverable'}): {reason}"),
         filename="verification.md",
     )
 
@@ -1243,8 +1224,7 @@ def _on_verify_fail(
             {
                 "reason": f"repair_cap_action_{action_index}",
                 "inbox_prompt": (
-                    f"Structural verify failure after {count} repair(s) "
-                    f"for action {action_index}: {reason}"
+                    f"Structural verify failure after {count} repair(s) for action {action_index}: {reason}"
                 ),
             },
         )
@@ -1259,11 +1239,7 @@ def _on_verify_fail(
         "circuit_breaker": out.get("circuit_breaker"),
         "discuss_recovery_pending": (out.get("discuss_recovery") or {}).get("pending"),
     }
-    if (
-        not structural
-        and mission_autorun_enabled(out)
-        and (out.get("discuss_recovery") or {}).get("pending")
-    ):
+    if not structural and mission_autorun_enabled(out) and (out.get("discuss_recovery") or {}).get("pending"):
         recovery = _mission_dispatch(folder, "mission.discuss_recovery")
         if recovery and not recovery.get("skipped"):
             result["discuss_recovery"] = recovery
@@ -1317,9 +1293,7 @@ def run_mission_discuss_recovery(
             "mission.circuit_breaker",
             {
                 "reason": "mission_iteration_cap",
-                "inbox_prompt": (
-                    f"Mission iteration cap ({max_iter}) reached during discuss recovery."
-                ),
+                "inbox_prompt": (f"Mission iteration cap ({max_iter}) reached during discuss recovery."),
             },
         )
         return {"skipped": True, "reason": "mission_iteration_cap", "circuit_breaker": True}

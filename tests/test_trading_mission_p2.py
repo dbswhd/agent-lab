@@ -88,10 +88,21 @@ def test_build_proposal_delta_caps_proposals(tmp_path, monkeypatch):
         encoding="utf-8",
     )
     (session / "plan.md").write_text("## 합의\n- ingest_ready: true\n", encoding="utf-8")
-    drafts = [{"symbol": f"S{i}", "market": "kr", "side": "buy", "quantity": 1,
-               "notional": 1, "order_type": "market", "thesis": "x" * 12,
-               "data_sources": ["a"], "confidence": 0.5, "expires_at": "2026-06-13T15:20:00+09:00"}
-              for i in range(5)]
+    drafts = [
+        {
+            "symbol": f"S{i}",
+            "market": "kr",
+            "side": "buy",
+            "quantity": 1,
+            "notional": 1,
+            "order_type": "market",
+            "thesis": "x" * 12,
+            "data_sources": ["a"],
+            "confidence": 0.5,
+            "expires_at": "2026-06-13T15:20:00+09:00",
+        }
+        for i in range(5)
+    ]
     (artifacts / "proposals_draft.json").write_text(json.dumps(drafts), encoding="utf-8")
     delta = build_proposal_delta(session, trigger="test")
     assert len(delta["proposals"]) <= 2

@@ -209,7 +209,5 @@ def test_log_offset(tmp_path: Path) -> None:
         all_lines = client.get(f"/api/sessions/{sid}/bg-tasks/{task_id}/log").json()["lines"]
         assert len(all_lines) >= 3
 
-        partial = client.get(
-            f"/api/sessions/{sid}/bg-tasks/{task_id}/log?offset=1"
-        ).json()["lines"]
+        partial = client.get(f"/api/sessions/{sid}/bg-tasks/{task_id}/log?offset=1").json()["lines"]
         assert len(partial) == len(all_lines) - 1

@@ -123,9 +123,7 @@ def create_run(body: RunRequest) -> StreamingResponse:
                     yield sse({"type": "error", "message": str(e)})
                     return
             yield sse({"type": "start", "topic": topic, "backend": body.backend})
-            state, folder = run_topic_with_progress(
-                topic, on_step=on_step, backend=body.backend
-            )
+            state, folder = run_topic_with_progress(topic, on_step=on_step, backend=body.backend)
             for ev in events:
                 yield sse(ev)
             session_id = Path(folder).name
@@ -180,9 +178,7 @@ async def create_room_run(
     if synthesize is None:
         synthesize = mode_norm == "plan"
     if synthesize_only and not session_id:
-        raise HTTPException(
-            status_code=400, detail="synthesize_only requires session_id"
-        )
+        raise HTTPException(status_code=400, detail="synthesize_only requires session_id")
     if not synthesize_only and not topic:
         raise HTTPException(status_code=400, detail="topic required")
 

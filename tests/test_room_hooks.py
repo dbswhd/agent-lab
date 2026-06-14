@@ -14,10 +14,7 @@ from agent_lab.room_tasks import complete_task, normalize_task
 def test_run_hook_exit_2_blocks(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     script = tmp_path / "block.sh"
     script.write_text(
-        "#!/bin/sh\n"
-        'read _\n'
-        'echo "nope" >&2\n'
-        "exit 2\n",
+        '#!/bin/sh\nread _\necho "nope" >&2\nexit 2\n',
         encoding="utf-8",
     )
     script.chmod(script.stat().st_mode | stat.S_IXUSR)

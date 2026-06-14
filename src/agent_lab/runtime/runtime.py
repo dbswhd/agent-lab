@@ -41,11 +41,7 @@ def dispatch_verify_result(
 ) -> DispatchResult:
     """Convenience wrapper for merge-time Oracle verdict."""
     verdict_norm = str(verdict or "").strip().lower()
-    event = (
-        RuntimeEvent.EXECUTE_VERIFY_PASS
-        if verdict_norm == "pass"
-        else RuntimeEvent.EXECUTE_VERIFY_FAIL
-    )
+    event = RuntimeEvent.EXECUTE_VERIFY_PASS if verdict_norm == "pass" else RuntimeEvent.EXECUTE_VERIFY_FAIL
     return dispatch(
         folder,
         event,

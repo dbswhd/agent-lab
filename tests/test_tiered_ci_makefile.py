@@ -26,18 +26,18 @@ def _make_dry_run(*args: str) -> str:
 
 def test_test_fast_excludes_integration_marker():
     out = _make_dry_run("test-fast")
-    assert 'not live and not integration' in out
+    assert "not live and not integration" in out
 
 
 def test_test_fast_uses_parallel_pytest_when_xdist_installed():
     out = _make_dry_run("test-fast")
-    assert 'not live and not integration' in out
+    assert "not live and not integration" in out
     assert "import xdist" in out or "-n" in out
 
 
 def test_ci_uses_test_fast():
     out = _make_dry_run("ci")
-    assert 'not live and not integration' in out
+    assert "not live and not integration" in out
     assert "smoke" in out
 
 

@@ -31,9 +31,7 @@ def test_asymmetric_workspace_lines(tmp_path, monkeypatch):
     cursor_block = agent_workspace_lines("cursor", perms, meta)
     assert "codex" in codex_block.lower()
     assert str(tmp_path / "pipe") in codex_block or "pipe" in codex_block
-    assert agent_capability_cwd("codex", perms, meta) != agent_capability_cwd(
-        "cursor", perms, meta
-    )
+    assert agent_capability_cwd("codex", perms, meta) != agent_capability_cwd("cursor", perms, meta)
     assert cursor_block != codex_block
 
 

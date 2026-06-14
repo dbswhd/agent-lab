@@ -22,6 +22,7 @@ SubReason = Literal[
     "envelope_invalid",
 ]
 
+
 # Shipped events — normative policy (see docs/HOOK-COMMUNICATE-REFORM.md §5).
 @dataclass(frozen=True)
 class HookEventPolicy:
@@ -165,11 +166,7 @@ def load_hooks_config(*, force_reload: bool = False) -> dict[str, Any]:
 
 
 def _event_policy(event: str, cfg: dict[str, Any] | None = None) -> HookEventPolicy:
-    base = (
-        _SHIPPED_EVENT_POLICIES.get(event)
-        or _TARGET_EVENT_POLICIES.get(event)
-        or _DEFAULT_POLICY
-    )
+    base = _SHIPPED_EVENT_POLICIES.get(event) or _TARGET_EVENT_POLICIES.get(event) or _DEFAULT_POLICY
     if not cfg:
         return base
     policy_root = cfg.get("policy")
@@ -183,9 +180,7 @@ def _event_policy(event: str, cfg: dict[str, Any] | None = None) -> HookEventPol
         fail_set = {str(x).strip() for x in fail_on}
         return HookEventPolicy(
             block_on_exit_2=(
-                "exit_2" in fail_set
-                if fail_set
-                else bool(override.get("block_on_exit_2", base.block_on_exit_2))
+                "exit_2" in fail_set if fail_set else bool(override.get("block_on_exit_2", base.block_on_exit_2))
             ),
             block_on_nonzero=(
                 "nonzero" in fail_set or "exit_nonzero" in fail_set
@@ -193,14 +188,10 @@ def _event_policy(event: str, cfg: dict[str, Any] | None = None) -> HookEventPol
                 else bool(override.get("block_on_nonzero", base.block_on_nonzero))
             ),
             block_on_timeout=(
-                "timeout" in fail_set
-                if fail_set
-                else bool(override.get("block_on_timeout", base.block_on_timeout))
+                "timeout" in fail_set if fail_set else bool(override.get("block_on_timeout", base.block_on_timeout))
             ),
             block_on_os_error=(
-                "os_error" in fail_set
-                if fail_set
-                else bool(override.get("block_on_os_error", base.block_on_os_error))
+                "os_error" in fail_set if fail_set else bool(override.get("block_on_os_error", base.block_on_os_error))
             ),
             stop_on_block=bool(override.get("stop_on_block", base.stop_on_block)),
         )
@@ -208,9 +199,7 @@ def _event_policy(event: str, cfg: dict[str, Any] | None = None) -> HookEventPol
         block_on_exit_2=bool(override.get("block_on_exit_2", base.block_on_exit_2)),
         block_on_nonzero=bool(override.get("block_on_nonzero", base.block_on_nonzero)),
         block_on_timeout=bool(override.get("block_on_timeout", base.block_on_timeout)),
-        block_on_os_error=bool(
-            override.get("block_on_os_error", base.block_on_os_error)
-        ),
+        block_on_os_error=bool(override.get("block_on_os_error", base.block_on_os_error)),
         stop_on_block=bool(override.get("stop_on_block", base.stop_on_block)),
     )
 
@@ -772,9 +761,7 @@ def run_teammate_idle_hooks(
     if result.feedback.strip():
         return result.feedback.strip()
     if tasks:
-        titles = ", ".join(
-            str(t.get("title") or t.get("id") or "?")[:40] for t in tasks[:3]
-        )
+        titles = ", ".join(str(t.get("title") or t.get("id") or "?")[:40] for t in tasks[:3])
         return (
             f"담당 작업이 아직 in_progress입니다 ({titles}). "
             "완료·claim·MESSAGE로 handoff 하거나 [PROPOSED:]로 분해하세요."

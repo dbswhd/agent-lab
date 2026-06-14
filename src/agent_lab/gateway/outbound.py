@@ -65,9 +65,7 @@ def deliver_outbound_event(
         req = urllib.request.Request(url, data=body, headers=headers, method="POST")
         try:
             with urllib.request.urlopen(req, timeout=timeout) as resp:
-                results.append(
-                    {"url": url, "ok": 200 <= resp.status < 300, "status": resp.status}
-                )
+                results.append({"url": url, "ok": 200 <= resp.status < 300, "status": resp.status})
         except urllib.error.HTTPError as exc:
             results.append({"url": url, "ok": False, "status": exc.code, "error": str(exc)})
         except (urllib.error.URLError, TimeoutError, OSError) as exc:

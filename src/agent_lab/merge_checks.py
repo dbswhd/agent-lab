@@ -6,9 +6,7 @@ from pathlib import Path
 from typing import Any
 
 PENDING_STATUS = "pending_approval"
-OPEN_PENDING_STATUSES = frozenset(
-    {PENDING_STATUS, "pending_approval", "review_required", "merge_conflict", "pending"}
-)
+OPEN_PENDING_STATUSES = frozenset({PENDING_STATUS, "pending_approval", "review_required", "merge_conflict", "pending"})
 
 
 def _worktree_hooks_check(execution: dict[str, Any] | None) -> dict[str, Any]:
@@ -142,18 +140,10 @@ def _room_tasks_check(run: dict[str, Any], execution: dict[str, Any] | None) -> 
     if not isinstance(tasks, list):
         tasks = []
     open_statuses = {"pending", "in_progress", "blocked"}
-    open_tasks = [
-        t
-        for t in tasks
-        if isinstance(t, dict) and str(t.get("status") or "") in open_statuses
-    ]
+    open_tasks = [t for t in tasks if isinstance(t, dict) and str(t.get("status") or "") in open_statuses]
     if execution and execution.get("action_index") is not None:
         idx = int(execution.get("action_index"))
-        linked = [
-            t
-            for t in open_tasks
-            if int(t.get("plan_action_index") or -1) == idx
-        ]
+        linked = [t for t in open_tasks if int(t.get("plan_action_index") or -1) == idx]
         if linked:
             titles = ", ".join(str(t.get("title") or t.get("id")) for t in linked[:3])
             return {
@@ -196,9 +186,12 @@ def build_merge_checks(
     merge_disabled = False
     reason: str | None = None
     for check in checks:
-        if check.get("id") == "oracle_verdict" and pending and str(
-            pending.get("status") or ""
-        ) in {PENDING_STATUS, "pending_approval", "review_required", "merge_conflict"}:
+        if (
+            check.get("id") == "oracle_verdict"
+            and pending
+            and str(pending.get("status") or "")
+            in {PENDING_STATUS, "pending_approval", "review_required", "merge_conflict"}
+        ):
             continue
         if not check.get("ok"):
             merge_disabled = True
@@ -210,9 +203,7 @@ def build_merge_checks(
     if block:
         merge_disabled = True
         reason = reason or block
-    if pending and isinstance(pending.get("pre_verify"), dict) and pending["pre_verify"].get(
-        "blocked"
-    ):
+    if pending and isinstance(pending.get("pre_verify"), dict) and pending["pre_verify"].get("blocked"):
         merge_disabled = True
         reason = reason or str(pending["pre_verify"].get("feedback") or "pre_verify blocked")
     if pending and pending.get("needs_artifact_review"):

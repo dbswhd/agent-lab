@@ -53,7 +53,7 @@ def load_strategy_cards(pipeline: Path) -> list[dict[str, Any]]:
 
 def eligible_cards(cards: list[dict[str, Any]], *, limit: int = 20) -> list[dict[str, Any]]:
     eligible = [c for c in cards if c.get("eligible_for_proposal")]
-    eligible.sort(key=lambda c: (c.get("oos_sharpe") or 0), reverse=True)
+    eligible.sort(key=lambda c: c.get("oos_sharpe") or 0, reverse=True)
     return eligible[: max(1, min(limit, 50))]
 
 
@@ -98,9 +98,5 @@ def cards_snapshot_fields(
         "eligible_cards": eligible,
         "eligible_refs": [c.get("ref") for c in eligible if c.get("ref")],
         "strategy_card_index": compact_card_index(cards),
-        "ineligible_refs": [
-            c.get("ref")
-            for c in cards
-            if c.get("ref") and not c.get("eligible_for_proposal")
-        ],
+        "ineligible_refs": [c.get("ref") for c in cards if c.get("ref") and not c.get("eligible_for_proposal")],
     }

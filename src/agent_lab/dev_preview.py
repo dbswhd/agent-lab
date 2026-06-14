@@ -51,9 +51,7 @@ def resolve_session_workspace_cwd(folder: Path) -> str:
 
 def _validate_port(port: int) -> None:
     if not isinstance(port, int) or port < PORT_MIN or port > PORT_MAX:
-        raise DevPreviewError(
-            f"port {port} out of allowed range {PORT_MIN}–{PORT_MAX}"
-        )
+        raise DevPreviewError(f"port {port} out of allowed range {PORT_MIN}–{PORT_MAX}")
     if port in _BLOCKED_PORTS:
         raise DevPreviewError(f"port {port} is reserved by Agent Lab")
 

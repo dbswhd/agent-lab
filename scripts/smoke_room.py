@@ -36,11 +36,7 @@ def _check_worktree_merge_ok(run: dict[str, Any]) -> bool:
 
 
 def _check_worktree_reject(run: dict[str, Any]) -> bool:
-    return any(
-        row.get("status") == "rejected"
-        and row.get("isolation_effective") == "worktree"
-        for row in _execs(run)
-    )
+    return any(row.get("status") == "rejected" and row.get("isolation_effective") == "worktree" for row in _execs(run))
 
 
 def _check_worktree_unavailable(run: dict[str, Any]) -> bool:
@@ -64,8 +60,7 @@ def _check_merge_conflict(run: dict[str, Any]) -> bool:
 
 def _check_apply(run: dict[str, Any]) -> bool:
     return any(
-        row.get("isolation_effective") == "apply"
-        and row.get("status") in {"completed", "review_required"}
+        row.get("isolation_effective") == "apply" and row.get("status") in {"completed", "review_required"}
         for row in _execs(run)
     )
 
@@ -163,6 +158,7 @@ def _check_durable_completed_steps(run: dict[str, Any]) -> bool:
     last = turns[-1]
     return last.get("status") == "partial" and bool(last.get("succeeded_agents"))
 
+
 def _check_adversarial_badge_payload(payload: dict[str, Any]) -> list[str]:
     from agent_lab.adversarial_gate import badge_tone
 
@@ -185,9 +181,7 @@ def _check_adversarial_badge_payload(payload: dict[str, Any]) -> list[str]:
             errors.append(f"cases[{idx}] badge_tone must be lgtm|warning")
             continue
         if badge_tone(note) != expected:
-            errors.append(
-                f"cases[{idx}] badge_tone expected {expected!r}, got {badge_tone(note)!r}"
-            )
+            errors.append(f"cases[{idx}] badge_tone expected {expected!r}, got {badge_tone(note)!r}")
     return errors
 
 
@@ -251,21 +245,13 @@ def _open_objections(run: dict[str, Any], act: str) -> list[dict[str, Any]]:
     rows = run.get("objections") or []
     if not isinstance(rows, list):
         return []
-    return [
-        row
-        for row in rows
-        if isinstance(row, dict)
-        and row.get("act") == act
-        and row.get("status") == "open"
-    ]
+    return [row for row in rows if isinstance(row, dict) and row.get("act") == act and row.get("status") == "open"]
 
 
 def _check_objection_blocks_execute(run: dict[str, Any]) -> bool:
     blocks = _open_objections(run, "BLOCK")
     if not any(
-        row.get("plan_action_index")
-        or str(row.get("target_ref") or "").startswith("plan_action:")
-        for row in blocks
+        row.get("plan_action_index") or str(row.get("target_ref") or "").startswith("plan_action:") for row in blocks
     ):
         return False
     executions = _execs(run)
@@ -346,19 +332,14 @@ def _check_specialist_asymmetric_cwd(run: dict[str, Any]) -> bool:
     if set(cwd_by_agent) != expected_agents or len(set(cwd_by_agent.values())) != 3:
         return False
     if not (
-        rounds_by_agent.get("codex") == 1
-        and rounds_by_agent.get("claude") == 1
-        and rounds_by_agent.get("cursor") == 2
+        rounds_by_agent.get("codex") == 1 and rounds_by_agent.get("claude") == 1 and rounds_by_agent.get("cursor") == 2
     ):
         return False
     turns = run.get("turns") or []
     if not isinstance(turns, list) or not turns:
         return True
     return any(
-        isinstance(t, dict)
-        and t.get("mode") == "discuss"
-        and t.get("turn_profile") == "specialist"
-        for t in turns
+        isinstance(t, dict) and t.get("mode") == "discuss" and t.get("turn_profile") == "specialist" for t in turns
     )
 
 
@@ -378,9 +359,7 @@ def _check_emergence_hybrid_plan(run: dict[str, Any]) -> bool:
     if not reached or conflict_acts < 2:
         return False
     return any(
-        isinstance(o, dict)
-        and o.get("act") in ("CHALLENGE", "BLOCK")
-        and o.get("status") == "resolved_accepted"
+        isinstance(o, dict) and o.get("act") in ("CHALLENGE", "BLOCK") and o.get("status") == "resolved_accepted"
         for o in run.get("objections") or []
     )
 
@@ -625,9 +604,7 @@ def _check_goal_loop_achieved(run: dict[str, Any]) -> bool:
     )
 
 
-_EVIDENCE_GATE_IDS = frozenset(
-    {"plan_reread", "automated", "manual_merge", "adversarial", "cleanup"}
-)
+_EVIDENCE_GATE_IDS = frozenset({"plan_reread", "automated", "manual_merge", "adversarial", "cleanup"})
 
 
 def _check_evidence_gates_merged_ok(run: dict[str, Any]) -> bool:
@@ -644,9 +621,7 @@ def _check_evidence_gates_merged_ok(run: dict[str, Any]) -> bool:
         if not isinstance(gates, list) or len(gates) != 5:
             return False
         by_gate = {
-            str(g.get("gate") or ""): str(g.get("status") or "")
-            for g in gates
-            if isinstance(g, dict) and g.get("gate")
+            str(g.get("gate") or ""): str(g.get("status") or "") for g in gates if isinstance(g, dict) and g.get("gate")
         }
         if set(by_gate) != _EVIDENCE_GATE_IDS:
             return False
@@ -698,9 +673,7 @@ def _check_evidence_ledger_stream(run: dict[str, Any]) -> bool:
 
 
 def _check_external_handoff_attached(run: dict[str, Any]) -> bool:
-    required = frozenset(
-        {"stopped_cleanly", "changed_files", "checks", "evidence_summary", "risks"}
-    )
+    required = frozenset({"stopped_cleanly", "changed_files", "checks", "evidence_summary", "risks"})
     for row in _execs(run):
         handoff = row.get("external_handoff")
         if not isinstance(handoff, dict):
@@ -763,21 +736,21 @@ def _check_wisdom_index_built(run: dict[str, Any]) -> bool:
 SCENARIOS: dict[str, dict[str, Any]] = {
     "discuss": {
         "label": "일반 discuss",
-        "check": lambda run: any(t.get("mode") == "discuss" for t in run.get("turns") or [])
-        and not any(t.get("review_mode") for t in run.get("turns") or []),
+        "check": lambda run: (
+            any(t.get("mode") == "discuss" for t in run.get("turns") or [])
+            and not any(t.get("review_mode") for t in run.get("turns") or [])
+        ),
     },
     "review-on": {
         "label": "쟁점 검토 ON",
         "check": lambda run: any(
-            t.get("mode") == "discuss" and t.get("review_mode") is True
-            for t in run.get("turns") or []
+            t.get("mode") == "discuss" and t.get("review_mode") is True for t in run.get("turns") or []
         ),
     },
     "plan": {
         "label": "지금 정리",
         "check": lambda run: any(
-            t.get("mode") == "plan" and t.get("synthesize") is True
-            for t in run.get("turns") or []
+            t.get("mode") == "plan" and t.get("synthesize") is True for t in run.get("turns") or []
         ),
     },
     "objection_blocks_execute": {
@@ -1141,14 +1114,10 @@ def validate_baseline(name: str, folder: Path) -> list[str]:
             errors.append(f"{name}: run.json missing key {key!r}")
 
     if run.get("run_schema_version") != 1:
-        errors.append(
-            f"{name}: run_schema_version expected 1, got {run.get('run_schema_version')!r}"
-        )
+        errors.append(f"{name}: run_schema_version expected 1, got {run.get('run_schema_version')!r}")
     workflow_ids = set(spec.get("workflow_ids") or {"room.parallel"})
     if run.get("workflow_id") not in workflow_ids:
-        errors.append(
-            f"{name}: workflow_id expected {sorted(workflow_ids)!r}, got {run.get('workflow_id')!r}"
-        )
+        errors.append(f"{name}: workflow_id expected {sorted(workflow_ids)!r}, got {run.get('workflow_id')!r}")
 
     turns = run.get("turns") or []
     requires_turns = bool(spec.get("requires_turns", True))
@@ -1187,10 +1156,7 @@ def validate_baseline(name: str, folder: Path) -> list[str]:
         if not path.is_file():
             errors.append(f"{name}: missing companion file {expected_evidence}")
         else:
-            errors.extend(
-                f"{name}: {expected_evidence}: {err}"
-                for err in _validate_evidence_jsonl(path)
-            )
+            errors.extend(f"{name}: {expected_evidence}: {err}" for err in _validate_evidence_jsonl(path))
 
     expected_wisdom_index = spec.get("expected_wisdom_index")
     if expected_wisdom_index:
@@ -1198,10 +1164,7 @@ def validate_baseline(name: str, folder: Path) -> list[str]:
         if not path.is_file():
             errors.append(f"{name}: missing companion file {expected_wisdom_index}")
         else:
-            errors.extend(
-                f"{name}: {expected_wisdom_index}: {err}"
-                for err in _validate_wisdom_index_json(path)
-            )
+            errors.extend(f"{name}: {expected_wisdom_index}: {err}" for err in _validate_wisdom_index_json(path))
 
     return errors
 

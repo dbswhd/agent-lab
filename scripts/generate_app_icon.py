@@ -22,8 +22,7 @@ MASTER_SIZE = 1024
 def ensure_master() -> None:
     if not MASTER_PATH.is_file():
         raise SystemExit(
-            f"Missing master icon: {MASTER_PATH}\n"
-            "Place the approved 1024×1024 PNG at assets/icon-master.png",
+            f"Missing master icon: {MASTER_PATH}\nPlace the approved 1024×1024 PNG at assets/icon-master.png",
         )
     img = Image.open(MASTER_PATH).convert("RGBA")
     if img.size != (MASTER_SIZE, MASTER_SIZE):
@@ -59,8 +58,7 @@ def write_layer_readme(master: Image.Image) -> None:
     LAYER_DIR.mkdir(parents=True, exist_ok=True)
     master.save(LAYER_DIR / "master.png", "PNG", optimize=True)
     (LAYER_DIR / "README.txt").write_text(
-        "Approved flat master at assets/icon-master.png (1024×1024).\n"
-        "Edit that file, then run: make icons\n",
+        "Approved flat master at assets/icon-master.png (1024×1024).\nEdit that file, then run: make icons\n",
         encoding="utf-8",
     )
 

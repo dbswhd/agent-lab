@@ -33,8 +33,7 @@ RESPONSE_CONTRACT_PRESETS: tuple[ResponseContractPreset, ...] = (
 
 PRESET_GUIDANCE: dict[ResponseContractPreset, str] = {
     "concise": (
-        "[Response contract · Concise]\n"
-        "Give the shortest useful answer. Lead with status and one concrete next step."
+        "[Response contract · Concise]\nGive the shortest useful answer. Lead with status and one concrete next step."
     ),
     "evidence_first": (
         "[Response contract · Evidence-first]\n"

@@ -77,9 +77,7 @@ def test_mock_scenario_m5_dispatch_parallel(tmp_path, monkeypatch):
         ("PW5", "scenario_plan_approve_latency"),
     ],
 )
-def test_mock_plan_workflow_scenarios(
-    tmp_path, monkeypatch, topic_id: str, scenario_fn: str
-):
+def test_mock_plan_workflow_scenarios(tmp_path, monkeypatch, topic_id: str, scenario_fn: str):
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     monkeypatch.setenv("AGENT_LAB_CLARIFIER", "0")
     runner = _load_runner()

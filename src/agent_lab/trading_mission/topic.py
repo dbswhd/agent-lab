@@ -7,9 +7,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 _KST = timezone(timedelta(hours=9))
-_TEMPLATE_PATH = (
-    Path(__file__).resolve().parents[3] / "docs" / "trading-mission" / "topic_template.md"
-)
+_TEMPLATE_PATH = Path(__file__).resolve().parents[3] / "docs" / "trading-mission" / "topic_template.md"
 
 
 def _default_max_proposals() -> int:
@@ -34,12 +32,7 @@ def render_premarket_topic(
     if not path.is_file():
         raise FileNotFoundError(f"topic template not found: {path}")
     text = path.read_text(encoding="utf-8")
-    return (
-        text.replace("{{DATE_KST}}", when.strftime("%Y-%m-%d"))
-        .replace("{{MAX_PROPOSALS}}", str(cap))
-        .strip()
-        + "\n"
-    )
+    return text.replace("{{DATE_KST}}", when.strftime("%Y-%m-%d")).replace("{{MAX_PROPOSALS}}", str(cap)).strip() + "\n"
 
 
 def mission_id_from_date(date_kst: datetime | None = None) -> str:
@@ -52,9 +45,7 @@ def mission_id_weekly(date_kst: datetime | None = None) -> str:
     return f"{when.strftime('%Y-%m-%d')}-weekly"
 
 
-_OFFLINE_TEMPLATE = (
-    Path(__file__).resolve().parents[3] / "docs" / "trading-mission" / "offline_topic_template.md"
-)
+_OFFLINE_TEMPLATE = Path(__file__).resolve().parents[3] / "docs" / "trading-mission" / "offline_topic_template.md"
 
 
 def render_offline_topic(

@@ -108,6 +108,7 @@ def test_plan_workflow_scribe_requires_plan_send_when_active() -> None:
     assert plan_workflow_allows_scribe(approved, synthesize=True, user_plan_send=True) is True
     assert plan_workflow_allows_scribe(approved, synthesize=False, user_plan_send=False) is False
 
+
 def test_derive_loop_goal_from_plan() -> None:
     derived = derive_loop_goal_from_plan(SAMPLE_PLAN)
     assert derived["goal"] == "Demo feature"

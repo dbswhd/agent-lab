@@ -53,11 +53,7 @@ def list_pending_plans(run_meta: dict[str, Any] | None) -> list[dict[str, Any]]:
 
 
 def _action_snapshot_text(action: PlanAction) -> str:
-    return (
-        f"무엇을: {action.what}\n"
-        f"어디서: {action.where}\n"
-        f"검증: {action.verify}\n"
-    ).strip()
+    return (f"무엇을: {action.what}\n어디서: {action.where}\n검증: {action.verify}\n").strip()
 
 
 def find_approved_snapshot(
@@ -115,10 +111,7 @@ def ensure_plan_snapshot_approved(
     def _upsert(run: dict[str, Any]) -> dict[str, Any]:
         plans = list_pending_plans(run)
         for row in plans:
-            if (
-                row.get("action_key") == action_key
-                and row.get("status") == "pending_approval"
-            ):
+            if row.get("action_key") == action_key and row.get("status") == "pending_approval":
                 row["status"] = "superseded"
                 row["updated_at"] = _now()
         plans.append(pending)

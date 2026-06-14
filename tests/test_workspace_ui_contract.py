@@ -53,10 +53,12 @@ def test_workspace_tab_enum_in_utils():
 
 def test_plan_execute_routed_to_work_workspace():
     room = _read("web", "src", "components", "RoomChat.tsx")
-    assert 'workspaceTab === "work"' in room
-    assert "WorkPanel" in room
-    assert "PlanExecutePanel" in _read("web", "src", "components", "WorkPanel.tsx")
-    assert "openWorkTab();" not in room or "openWorkTab" in room
+    hook = _read("web", "src", "hooks", "useWorkspaceTabs.ts")
+    work_tool = _read("web", "src", "components", "WorkToolPanel.tsx")
+    assert 'rightPanelMode === "plan"' in room
+    assert "WorkToolPanel" in room
+    assert "PlanExecutePanel" in work_tool
+    assert 'openWorkTab: () => setWorkspaceTab("plan")' in hook
     assert "reviewScrollRef" not in room
 
 
@@ -143,10 +145,9 @@ def test_workspace_tabs_do_not_render_inline_status_badges():
 def test_workspace_panels_have_distinct_document_wrappers():
     room = _read("web", "src", "components", "RoomChat.tsx")
     surfaces = _read("web", "src", "styles", "surfaces.css")
+    work_tool = _read("web", "src", "components", "WorkToolPanel.tsx")
     work = _read("web", "src", "components", "WorkPanel.tsx")
-    assert "work-plugin-panel" in work or (
-        "PluginPanel" in work and "compact" in work
-    )
+    assert "work-surface" in work_tool or "work-stack" in work_tool
     assert "MissionOverviewSection" in work
     assert 'variant="work"' in work or "variant=\"work\"" in work
     assert "work-chrome" in work
@@ -165,14 +166,13 @@ def test_workspace_panels_have_distinct_document_wrappers():
     artifacts = _read("web", "src", "components", "ArtifactsListPanel.tsx")
 
     assert "transcript--console" in room
-    assert "work-surface" in work
+    assert "WorkbenchPanel" in room
     assert "plan-card" in plan_exec
     assert "exec-card" in plan_exec
     assert "plan-actions-bar" in plan_exec
     assert "run-log" in run_panel
     assert "artifacts-list" in artifacts
-    assert "RunLogPanel" in room
-    assert "ArtifactsListPanel" in room
+    assert "PlanExecutePanel" in work_tool
     assert ".transcript--console" in surfaces
 
 
@@ -235,10 +235,12 @@ def test_run_log_panel_expands_agent_activities():
 
 def test_turn_run_panel_renders_turn_messages():
     panel = _read("web", "src", "components", "RunLogPanel.tsx")
+    turn_panel = _read("web", "src", "components", "TurnRunPanel.tsx")
     room = _read("web", "src", "components", "RoomChat.tsx")
     assert "turnMessages" in panel
-    assert "RunLogPanel" in room
-    assert "turnMessages={turnMessages}" in room
+    assert "turnMessages" in turn_panel
+    assert "patchTurnMessages" in room
+    assert "expandRunLogEntries" in panel
     assert "run-log" in panel
 
 
@@ -330,7 +332,6 @@ def test_m6_taskbar_canonical_classes_only():
 def test_m6_plan_card_canonical_classes_only():
     panel = _read("web", "src", "components", "PlanExecutePanel.tsx")
     plan_css = _read("web", "src", "styles", "plan-execute.css")
-    layout = _read("web", "src", "styles", "layout.css")
     assert "plan-execute-panel__" not in panel
     assert "plan-execute-" not in panel
     assert "work-exec-" in panel

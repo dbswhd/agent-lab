@@ -125,21 +125,37 @@ def test_approve_plan_requires_human_pending(tmp_path: Path) -> None:
         approve_plan(folder)
 
 
-def test_approve_plan_derives_verified_and_goal(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_approve_plan_execute_loop_gated_by_plan_intent(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     monkeypatch.setenv("AGENT_LAB_MISSION_LOOP", "1")
     folder = tmp_path / "sess"
     folder.mkdir()
     (folder / "plan.md").write_text(SAMPLE_PLAN, encoding="utf-8")
-    (folder / "run.json").write_text("{}", encoding="utf-8")
-    set_plan_workflow_phase(folder, "HUMAN_PENDING")
 
-    result = approve_plan(folder)
-    run = read_run_meta(folder)
-    assert result["plan_workflow"]["phase"] == "APPROVED"
-    assert run["session_goal"]["set_by"] == "agents+human"
-    assert run["verified_loop"]["status"] == "running"
-    assert run["goal_loop"]["enabled"] is True
+    (folder / "run.json").write_text(
+        '{"plan_intent":"loop","user_mode":"loop"}',
+        encoding="utf-8",
+    )
+    set_plan_workflow_phase(folder, "HUMAN_PENDING")
+    loop_result = approve_plan(folder)
+    loop_run = read_run_meta(folder)
+    assert loop_result["execute_loop_started"] is True
+    assert loop_run["verified_loop"]["status"] == "running"
+
+    (folder / "run.json").write_text(
+        '{"plan_intent":"plan_only","user_mode":"team"}',
+        encoding="utf-8",
+    )
+    set_plan_workflow_phase(folder, "HUMAN_PENDING")
+    team_result = approve_plan(folder)
+    team_run = read_run_meta(folder)
+    assert team_result["execute_loop_started"] is False
+    assert team_run.get("session_goal") is None
+    assert team_run.get("verified_loop", {}).get("status") != "running"
+    ensure_plan_workflow_approved(folder)
 
 
 def test_ensure_plan_workflow_approved_blocks_execute(tmp_path: Path) -> None:

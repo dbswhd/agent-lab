@@ -11,6 +11,7 @@ from typing import Any, Literal
 from agent_lab.plan_actions import parse_plan_actions
 from agent_lab.plan_pending import plan_content_hash
 from agent_lab.run_meta import patch_run_meta, read_run_meta
+from agent_lab.turn_modes import approval_starts_execute_loop
 from agent_lab.verified_loop import DEFAULT_COMPLETION_PROMISE
 
 PlanWorkflowPhase = Literal[
@@ -369,6 +370,8 @@ def _finalize_plan_approval(
         "approved_by": approved_by,
     }
     oracle_session_id = f"oracle_{session_folder.name}_{uuid.uuid4().hex[:8]}"
+    run_before = read_run_meta(session_folder)
+    start_execute_loop = approval_starts_execute_loop(run_before)
 
     def _approve(current: dict[str, Any]) -> dict[str, Any]:
         current_pw = get_plan_workflow(current)
@@ -382,44 +385,47 @@ def _finalize_plan_approval(
         current_pw.pop("last_plan_gate", None)
         current["plan_workflow"] = current_pw
 
-        current_loop = dict(current.get("verified_loop") or {})
-        current_loop["loop_goal"] = approved
-        current_loop["status"] = "running"
-        current_loop["iteration"] = 0
-        current_loop["verification_attempts"] = 0
-        current_loop["oracle_session_id"] = oracle_session_id
-        current_loop.pop("circuit_breaker", None)
-        current["verified_loop"] = current_loop
+        if start_execute_loop:
+            current_loop = dict(current.get("verified_loop") or {})
+            current_loop["loop_goal"] = approved
+            current_loop["status"] = "running"
+            current_loop["iteration"] = 0
+            current_loop["verification_attempts"] = 0
+            current_loop["oracle_session_id"] = oracle_session_id
+            current_loop.pop("circuit_breaker", None)
+            current["verified_loop"] = current_loop
 
-        current["session_goal"] = {
-            "text": goal_text,
-            "set_at": now,
-            "updated_at": now,
-            "set_by": "agents+human",
-        }
-        current["goal_loop"] = {
-            "enabled": True,
-            "status": "open",
-            "max_checks": 5,
-            "checks": [],
-        }
+            current["session_goal"] = {
+                "text": goal_text,
+                "set_at": now,
+                "updated_at": now,
+                "set_by": "agents+human",
+            }
+            current["goal_loop"] = {
+                "enabled": True,
+                "status": "open",
+                "max_checks": 5,
+                "checks": [],
+            }
         return current
 
     updated = patch_run_meta(session_folder, _approve)
 
-    from agent_lab.mission_loop import after_plan_scribe, enable_mission_loop
+    if start_execute_loop:
+        from agent_lab.mission_loop import after_plan_scribe, enable_mission_loop
 
-    enable_mission_loop(session_folder)
-    after_plan_scribe(session_folder, md)
+        enable_mission_loop(session_folder)
+        after_plan_scribe(session_folder, md)
 
-    from agent_lab.runtime.events import RuntimeEvent
-    from agent_lab.runtime.runtime import dispatch
+        from agent_lab.runtime.events import RuntimeEvent
+        from agent_lab.runtime.runtime import dispatch
 
-    dispatch(
-        session_folder,
-        RuntimeEvent.MISSION_ENABLE,
-        {"start_autonomous": True},
-    )
+        dispatch(
+            session_folder,
+            RuntimeEvent.MISSION_ENABLE,
+            {"start_autonomous": True},
+        )
+        updated = read_run_meta(session_folder)
 
     pw_out = get_plan_workflow(updated)
     loop_out = dict(updated.get("verified_loop") or {})
@@ -429,6 +435,7 @@ def _finalize_plan_approval(
         "verified_loop": loop_out,
         "session_goal": updated.get("session_goal"),
         "goal_loop": updated.get("goal_loop"),
+        "execute_loop_started": start_execute_loop,
     }
 
 

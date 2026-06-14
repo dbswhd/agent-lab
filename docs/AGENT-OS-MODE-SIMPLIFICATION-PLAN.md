@@ -1,6 +1,6 @@
 # Agent OS Mode Simplification Plan
 
-Status: implementation plan aligned with code on 2026-06-15.
+Status: shipped through P1/P2 on 2026-06-15 (mode contract, plan_intent approval gate, model_id readiness).
 
 ## Summary
 
@@ -39,11 +39,25 @@ The new user-facing contract is:
 
 Derived runtime fields include effective agents, `agent_rounds`, `runtime_turn_profile`, `consensus_mode`, `review_mode`, `topology`, and `plan_intent`.
 
+Persisted on each room send (`run.json`: `user_mode`, `plan_intent`, `loop_topology`):
+
+- **Plan approval gate (P1):** `approval_starts_execute_loop()` reads `plan_intent`. Only `loop` starts `verified_loop`, `goal_loop`, `mission_loop`, and `MISSION_ENABLE` on plan approve. `plan_only` (Quick/Team + plan) marks plan APPROVED and unlocks manual execute gate only. Legacy sessions without `plan_intent` keep loop-on-approve.
+
+**Verified routing paths:**
+
+| Source | Runtime profile | In-turn verified loop | Post-approve execute loop |
+| --- | --- | --- | --- |
+| UI Loop (`turn_profile=loop`) | `free` (consensus) | No | Yes (plan workflow approve) |
+| Legacy API `verified` | `verified` | Yes (`maybe_handle_verified_loop_after_turn`) | Yes |
+| Team + plan | `analyze` | No | No (plan-only approve) |
+
 ## Model Capability Lane
 
 Open-source and local models are not UI modes. They are model capabilities.
 
 `agent_lab.model_policy.ModelProfile` tracks provider, model id, agent, tool support, Inbox/MCP support, JSON envelope support, long-context support, latency tier, and cost tier. Local/open-source profiles can be Team-ready before they are Loop-ready. Loop readiness requires the model to pass tool, question-surface, and JSON envelope requirements.
+
+**Model id lookup (P2):** `model_profile_for(agent_id)` resolves `CURSOR_MODEL` / `CODEX_MODEL` / `CLAUDE_MODEL` env overrides. Known defaults are loop-ready. Unregistered model ids are Team-ready but not Loop-ready until registered via `register_model_profile()` after eval pass.
 
 ## Question Surface
 

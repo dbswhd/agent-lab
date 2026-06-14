@@ -55,14 +55,19 @@ def test_room_run_rejects_loop_when_selected_model_is_not_loop_ready(
     monkeypatch.setattr(deps_mod, "SESSIONS_DIR", tmp_path)
     monkeypatch.setattr(room_router, "_agents_not_ready", lambda _agents: [])
 
-    # The default cursor model is loop-ready; simulate a local/open-source model that
-    # lacks tool + inbox capability to exercise the Loop readiness gate.
-    real = model_policy.agent_model_profiles()
-    patched = dict(real)
-    patched["cursor"] = replace(
-        real["cursor"], supports_tools=False, supports_inbox_mcp=False
+    real = model_policy.agent_model_profiles()["cursor"]
+    incapable = replace(
+        real,
+        model_id="incapable-local",
+        supports_tools=False,
+        supports_inbox_mcp=False,
+        supports_json_envelope=False,
     )
-    monkeypatch.setattr(model_policy, "agent_model_profiles", lambda: patched)
+    monkeypatch.setattr(
+        model_policy,
+        "model_profile_for",
+        lambda agent_id, model_id=None: incapable if agent_id == "cursor" else real,
+    )
 
     from app.server.main import app
 

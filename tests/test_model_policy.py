@@ -2,10 +2,18 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+import pytest
+
 from agent_lab.model_policy import (
+    ModelProfile,
     agent_model_profiles,
     loop_blockers,
+    loop_readiness_failure,
     loop_ready,
+    model_profile_for,
+    model_readiness,
+    register_model_profile,
+    resolve_runtime_model_id,
     team_ready,
 )
 
@@ -17,8 +25,6 @@ def test_default_agent_model_profiles_are_team_ready() -> None:
 
 
 def test_default_agent_profiles_are_loop_ready() -> None:
-    # cursor/codex/claude all support tools + inbox MCP + JSON envelope at runtime,
-    # so the default team can enter Loop without readiness gating.
     profiles = agent_model_profiles()
     assert all(loop_ready(profile) for profile in profiles.values())
 
@@ -33,4 +39,39 @@ def test_loop_ready_requires_tools_inbox_and_envelope() -> None:
         "supports_json_envelope",
     )
     assert loop_ready(replace(base, supports_tools=False)) is False
+
+
+def test_model_id_lookup_env_and_registry(monkeypatch: pytest.MonkeyPatch) -> None:
+    readiness = model_readiness("cursor", model_id="llama-3-local")
+    assert readiness is not None
+    assert readiness.team_ready is True
+    assert readiness.loop_ready is False
+
+    monkeypatch.setenv("CURSOR_MODEL", "custom-cursor-model")
+    assert resolve_runtime_model_id("cursor") == "custom-cursor-model"
+    assert model_profile_for("cursor").model_id == "custom-cursor-model"
+
+    import agent_lab.model_policy as model_policy_mod
+
+    registry_before = dict(model_policy_mod._MODEL_PROFILE_REGISTRY)
+    monkeypatch.setenv("CURSOR_MODEL", "llama-3-local")
+    try:
+        register_model_profile(
+            ModelProfile(
+                provider="local",
+                model_id="llama-3-local",
+                agent="cursor",
+                supports_tools=True,
+                supports_inbox_mcp=True,
+                supports_json_envelope=True,
+                supports_long_context=False,
+                cost_tier="low",
+                latency_tier="high",
+            )
+        )
+        assert model_readiness("cursor").loop_ready is True
+        assert loop_readiness_failure(["cursor"]) is None
+    finally:
+        model_policy_mod._MODEL_PROFILE_REGISTRY.clear()
+        model_policy_mod._MODEL_PROFILE_REGISTRY.update(registry_before)
 

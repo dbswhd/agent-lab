@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent_lab.turn_modes import ModeContractError, resolve_mode_contract
+from agent_lab.turn_modes import ModeContractError, approval_starts_execute_loop, resolve_mode_contract
 
 
 def test_quick_contract_slices_to_lead_and_r1() -> None:
@@ -38,6 +38,9 @@ def test_team_contract_preserves_team_and_allows_plan_only() -> None:
     assert contract.agent_rounds == 1
     assert contract.consensus_mode is False
     assert contract.plan_intent == "plan_only"
+    assert approval_starts_execute_loop({"plan_intent": contract.plan_intent}) is False
+    assert approval_starts_execute_loop({"plan_intent": "loop"}) is True
+    assert approval_starts_execute_loop({}) is True
 
 
 def test_loop_without_plan_is_rejected() -> None:

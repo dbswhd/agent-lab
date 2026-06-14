@@ -34,7 +34,7 @@ from agent_lab.runner import provider_override, run_topic_with_progress
 from agent_lab.session import SESSIONS_DIR, session_dir
 from agent_lab.session_setup import merge_setup_permissions, seed_session_setup
 from agent_lab.agent_thread_catalog import normalize_agent_thread_bindings
-from agent_lab.turn_modes import ModeContractError, resolve_mode_contract
+from agent_lab.turn_modes import ModeContractError, patch_run_mode_contract, resolve_mode_contract
 
 from app.server.deps import (
     ContextPreviewRequest,
@@ -324,6 +324,8 @@ async def create_room_run(
                     event_q.put(None)
                     return
             try:
+                if folder is not None:
+                    patch_run_mode_contract(folder, mode_contract)
                 if synthesize_only and session_id:
                     plan_md, _summary = synthesize_session_plan(
                         folder,  # type: ignore[arg-type]

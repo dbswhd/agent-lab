@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
+from pathlib import Path
+from typing import Any, Literal
 
 UserMode = Literal["quick", "team", "loop"]
 LoopTopology = Literal["route_auto", "specialist", "verified"]
@@ -138,3 +139,27 @@ def resolve_mode_contract(
                 topology=topology,
                 plan_intent=plan_intent,
             )
+
+
+def patch_run_mode_contract(folder: Path, contract: ModeContract) -> None:
+    """Persist user-facing mode contract on the session for approval gating."""
+    from agent_lab.run_meta import patch_run_meta
+
+    def _patch(run: dict[str, Any]) -> dict[str, Any]:
+        run["user_mode"] = contract.user_mode
+        run["plan_intent"] = contract.plan_intent
+        run["loop_topology"] = contract.topology
+        return run
+
+    patch_run_meta(folder, _patch)
+
+
+def approval_starts_execute_loop(run: dict[str, Any] | None) -> bool:
+    """True when plan approval should enable mission/verified execute loops."""
+    if not run:
+        return True
+    intent = str(run.get("plan_intent") or "").strip().lower()
+    if not intent:
+        # Legacy sessions predate mode contract — preserve loop-on-approve.
+        return True
+    return intent == "loop"

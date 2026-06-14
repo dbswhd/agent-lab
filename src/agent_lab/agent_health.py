@@ -129,6 +129,7 @@ def _model_readiness_fields(agent_id: str) -> dict[str, Any]:
         return {}
     return {
         "model_provider": readiness.provider,
+        "model_id": readiness.model_id,
         "team_ready": readiness.team_ready,
         "loop_ready": readiness.loop_ready,
         "loop_blockers": list(readiness.loop_blockers),

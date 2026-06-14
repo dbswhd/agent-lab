@@ -12,24 +12,24 @@ type Props = {
 /** 언더스코어 enum → 사람이 읽기 좋은 짧은 레이블 (ko/en 분리) */
 const PHASE_LABELS_KO: Record<string, string> = {
   MISSION_DEFINE: "정의 중",
-  MISSION_DONE:   "완료",
+  MISSION_DONE: "완료",
   MISSION_PAUSED: "일시정지",
-  PLAN_GATE:      "게이트",
-  PLAN_REJECT:    "반려됨",
-  REPAIR:         "수정 중",
-  VERIFY:         "검증 중",
-  DISCUSS:        "토론 중",
+  PLAN_GATE: "게이트",
+  PLAN_REJECT: "반려됨",
+  REPAIR: "수정 중",
+  VERIFY: "검증 중",
+  DISCUSS: "토론 중",
 };
 
 const PHASE_LABELS_EN: Record<string, string> = {
   MISSION_DEFINE: "Defining",
-  MISSION_DONE:   "Done",
+  MISSION_DONE: "Done",
   MISSION_PAUSED: "Paused",
-  PLAN_GATE:      "Gate",
-  PLAN_REJECT:    "Rejected",
-  REPAIR:         "Repair",
-  VERIFY:         "Verify",
-  DISCUSS:        "Discuss",
+  PLAN_GATE: "Gate",
+  PLAN_REJECT: "Rejected",
+  REPAIR: "Repair",
+  VERIFY: "Verify",
+  DISCUSS: "Discuss",
 };
 
 function phaseLabel(phase: string | null, ko: boolean): string {
@@ -40,7 +40,8 @@ function phaseLabel(phase: string | null, ko: boolean): string {
 
 function phaseBadgeClassWork(phase: string | null): string {
   if (!phase) return "work-mission__phase";
-  if (phase === "MISSION_DONE") return "work-mission__phase work-mission__phase--done";
+  if (phase === "MISSION_DONE")
+    return "work-mission__phase work-mission__phase--done";
   if (phase === "MISSION_PAUSED" || phase === "PLAN_REJECT") {
     return "work-mission__phase work-mission__phase--warn";
   }
@@ -49,7 +50,8 @@ function phaseBadgeClassWork(phase: string | null): string {
 
 function phaseBadgeClass(phase: string | null): string {
   if (!phase) return "ctx-mission__phase";
-  if (phase === "MISSION_DONE") return "ctx-mission__phase ctx-mission__phase--done";
+  if (phase === "MISSION_DONE")
+    return "ctx-mission__phase ctx-mission__phase--done";
   if (phase === "MISSION_PAUSED" || phase === "PLAN_REJECT") {
     return "ctx-mission__phase ctx-mission__phase--warn";
   }
@@ -74,7 +76,9 @@ function WorkMissionOverview({
           </span>
         ) : null}
         {view.phase ? (
-          <span className={phaseBadgeClassWork(view.phase)}>{phaseLabel(view.phase, ko)}</span>
+          <span className={phaseBadgeClassWork(view.phase)}>
+            {phaseLabel(view.phase, ko)}
+          </span>
         ) : null}
       </div>
       {view.goalText ? (
@@ -148,7 +152,9 @@ export function MissionOverviewSection({
   if (!view.enabled && !view.goalText) return null;
 
   if (variant === "work") {
-    return <WorkMissionOverview view={view} ko={ko} onFocusBlock={onFocusBlock} />;
+    return (
+      <WorkMissionOverview view={view} ko={ko} onFocusBlock={onFocusBlock} />
+    );
   }
 
   return (
@@ -156,7 +162,9 @@ export function MissionOverviewSection({
       <div className="ctx-section__label">
         {ko ? "미션" : "Mission"}
         {view.phase ? (
-          <span className={phaseBadgeClass(view.phase)}>{phaseLabel(view.phase, ko)}</span>
+          <span className={phaseBadgeClass(view.phase)}>
+            {phaseLabel(view.phase, ko)}
+          </span>
         ) : null}
       </div>
 

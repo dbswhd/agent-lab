@@ -31,7 +31,10 @@ import {
   buildTaskCrossLinks,
   isUnassignedOpenTask,
 } from "../utils/taskBarCopy";
-import { getTaskBarCollapsed, setTaskBarCollapsed } from "../utils/taskBarPrefs";
+import {
+  getTaskBarCollapsed,
+  setTaskBarCollapsed,
+} from "../utils/taskBarPrefs";
 import type { ComposerTurnProfile } from "../utils/turnProfile";
 import type { AgentRole } from "../utils/transcript";
 import { Avatar } from "./Avatar";
@@ -155,7 +158,8 @@ function TaskbarChevronIcon() {
 function TabIcon({ name }: { name: "list" | "alert" | "mail" | "doc" }) {
   const paths = {
     list: "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01",
-    alert: "M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z",
+    alert:
+      "M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z",
     mail: "M4 4h16v16H4V4zM4 8l8 5 8-5",
     doc: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM14 2v6h6",
   };
@@ -200,9 +204,9 @@ export function RoomTaskBar({
   const [section, setSection] = useState<TaskSection>("tasks");
   const [collapsed, setCollapsed] = useState(() => getTaskBarCollapsed());
   const [blockerCompleteBusy, setBlockerCompleteBusy] = useState(false);
-  const [blockerCompleteError, setBlockerCompleteError] = useState<string | null>(
-    null,
-  );
+  const [blockerCompleteError, setBlockerCompleteError] = useState<
+    string | null
+  >(null);
   const [objectionBusyId, setObjectionBusyId] = useState<string | null>(null);
   const [busyTaskId, setBusyTaskId] = useState<string | null>(null);
   const [completeErrors, setCompleteErrors] = useState<Record<string, string>>(
@@ -305,7 +309,8 @@ export function RoomTaskBar({
   const artifacts = payload.artifacts ?? [];
   const openObjections = payload.open_objections ?? [];
   const allObjections = payload.objections ?? openObjections;
-  const openObjectionCount = payload.open_objection_count ?? openObjections.length;
+  const openObjectionCount =
+    payload.open_objection_count ?? openObjections.length;
 
   if (
     tasks.length === 0 &&
@@ -450,7 +455,9 @@ export function RoomTaskBar({
 
   function requestEndorsementPrefill() {
     if (!primaryBlockedTask || !onRequestComposerPrefill) return;
-    onRequestComposerPrefill(buildEndorsementRequestPrefill(primaryBlockedTask));
+    onRequestComposerPrefill(
+      buildEndorsementRequestPrefill(primaryBlockedTask),
+    );
   }
 
   return (
@@ -554,8 +561,13 @@ export function RoomTaskBar({
             {section === "tasks" ? (
               <>
                 <div className="taskbar-section-label taskbar-section-label--inline">
-                  <label className="taskbar-lead-select" title={LEAD_HELP_SUMMARY}>
-                    <span className="taskbar-lead-select__label">세션 리드</span>
+                  <label
+                    className="taskbar-lead-select"
+                    title={LEAD_HELP_SUMMARY}
+                  >
+                    <span className="taskbar-lead-select__label">
+                      세션 리드
+                    </span>
                     <select
                       value={payload.team_lead ?? "cursor"}
                       disabled={leadBusy || loading}
@@ -614,11 +626,16 @@ export function RoomTaskBar({
                   </div>
                 ) : null}
                 {showConsensusBlocker ? (
-                  <div className="taskbar__consensus-gate" aria-label="합의 차단">
+                  <div
+                    className="taskbar__consensus-gate"
+                    aria-label="합의 차단"
+                  >
                     <TabIcon name="alert" />
                     <div className="taskbar__gate-body">
                       <strong>{blockerCopy.headline}</strong>
-                      <span className="taskbar__gate-meta">{blockerCopy.detail}</span>
+                      <span className="taskbar__gate-meta">
+                        {blockerCopy.detail}
+                      </span>
                       <span className="taskbar__gate-actions">
                         {onRequestComposerPrefill && primaryBlockedTask ? (
                           <button
@@ -666,14 +683,18 @@ export function RoomTaskBar({
                         key={task.id}
                         className={[
                           "task-row",
-                          statusKey === "blocked" ? "task-row--blocked" : undefined,
+                          statusKey === "blocked"
+                            ? "task-row--blocked"
+                            : undefined,
                           isClaimable ? "task-row--claimable" : undefined,
                         ]
                           .filter(Boolean)
                           .join(" ")}
                         data-task-id={task.id}
                       >
-                        <span className={`task-row__dot task-row__dot--${statusKey}`} />
+                        <span
+                          className={`task-row__dot task-row__dot--${statusKey}`}
+                        />
                         {onFocusTask ? (
                           <button
                             type="button"
@@ -688,7 +709,10 @@ export function RoomTaskBar({
                         )}
                         {task.owner_agent ? (
                           <span className="task-row__owner">
-                            <Avatar role={agentRole(task.owner_agent)} size={18} />
+                            <Avatar
+                              role={agentRole(task.owner_agent)}
+                              size={18}
+                            />
                           </span>
                         ) : (
                           <span
@@ -714,10 +738,7 @@ export function RoomTaskBar({
                         {task.status !== "completed" &&
                         task.status !== "cancelled" ? (
                           <span className="task-row__actions">
-                            <span
-                              className="task-row__agree"
-                              title="팀 동의"
-                            >
+                            <span className="task-row__agree" title="팀 동의">
                               {formatTeamAgreementLabel(
                                 agreeCount,
                                 requiredAgreements,
@@ -855,7 +876,9 @@ export function RoomTaskBar({
             {section === "peer" ? (
               <>
                 {mailbox.length === 0 ? (
-                  <div className="taskbar__empty">Peer mail이 비어 있습니다</div>
+                  <div className="taskbar__empty">
+                    Peer mail이 비어 있습니다
+                  </div>
                 ) : (
                   mailbox.map((m: MailboxMessage) => (
                     <div
@@ -941,7 +964,9 @@ export function RoomTaskBar({
                       <span>{link.taskId}</span>
                     )}
                     {link.execStatus ? (
-                      <span className="badge badge--accent">{link.execStatus}</span>
+                      <span className="badge badge--accent">
+                        {link.execStatus}
+                      </span>
                     ) : null}
                   </li>
                 ))}

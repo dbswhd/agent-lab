@@ -115,8 +115,11 @@ export function ChatComposer({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [slashHighlight, setSlashHighlight] = useState(0);
   const [mentionCursor, setMentionCursor] = useState(0);
-  const { paths: mentionPaths, loading: mentionLoading, ensureLoaded } =
-    useComposerMentionPaths(sessionId);
+  const {
+    paths: mentionPaths,
+    loading: mentionLoading,
+    ensureLoaded,
+  } = useComposerMentionPaths(sessionId);
 
   useEffect(() => {
     const el = inputRef.current;
@@ -131,7 +134,9 @@ export function ChatComposer({
     const rows = slashCommands.filter((c) => c.enabled !== false);
     if (!query) return rows;
     return rows.filter(
-      (c) => c.slash.toLowerCase().includes(query) || c.label.toLowerCase().includes(query),
+      (c) =>
+        c.slash.toLowerCase().includes(query) ||
+        c.label.toLowerCase().includes(query),
     );
   }, [slashCommands, value]);
 
@@ -190,7 +195,10 @@ export function ChatComposer({
 
       {modeChip ? (
         <div
-          className={["mode-chip", modeChipVariant ? `mode-chip--${modeChipVariant}` : undefined]
+          className={[
+            "mode-chip",
+            modeChipVariant ? `mode-chip--${modeChipVariant}` : undefined,
+          ]
             .filter(Boolean)
             .join(" ")}
           role="status"
@@ -204,9 +212,13 @@ export function ChatComposer({
           {modeChipHint ? (
             <span className="mode-chip__hint">{modeChipHint}</span>
           ) : showModeChipHint && isNewSession ? (
-            <span className="mode-chip__hint">모든 턴 후 plan.md 자동 갱신</span>
+            <span className="mode-chip__hint">
+              모든 턴 후 plan.md 자동 갱신
+            </span>
           ) : showModeChipHint && planAfterSend ? (
-            <span className="mode-chip__hint">전송 시 plan.md 갱신 (plan 탭에서 끌 수 있음)</span>
+            <span className="mode-chip__hint">
+              전송 시 plan.md 갱신 (plan 탭에서 끌 수 있음)
+            </span>
           ) : null}
         </div>
       ) : null}
@@ -249,7 +261,10 @@ export function ChatComposer({
               type="button"
               className="btn btn--danger btn--sm"
               onClick={() =>
-                onFocusObjection(objectionNotice.objectionId, objectionNotice.actionIndex)
+                onFocusObjection(
+                  objectionNotice.objectionId,
+                  objectionNotice.actionIndex,
+                )
               }
             >
               {locale === "ko" ? "이의 해결" : "Resolve"}
@@ -307,11 +322,14 @@ export function ChatComposer({
                 value={value}
                 onChange={(e) => {
                   onChange(e.target.value);
-                  setMentionCursor(e.target.selectionStart ?? e.target.value.length);
+                  setMentionCursor(
+                    e.target.selectionStart ?? e.target.value.length,
+                  );
                 }}
                 onClick={(e) =>
                   setMentionCursor(
-                    (e.target as HTMLTextAreaElement).selectionStart ?? value.length,
+                    (e.target as HTMLTextAreaElement).selectionStart ??
+                      value.length,
                   )
                 }
                 placeholder={placeholder}
@@ -321,13 +339,16 @@ export function ChatComposer({
                   if (value.startsWith("/") && slashFiltered.length > 0) {
                     if (e.key === "ArrowDown") {
                       e.preventDefault();
-                      setSlashHighlight((slashHighlight + 1) % slashFiltered.length);
+                      setSlashHighlight(
+                        (slashHighlight + 1) % slashFiltered.length,
+                      );
                       return;
                     }
                     if (e.key === "ArrowUp") {
                       e.preventDefault();
                       setSlashHighlight(
-                        (slashHighlight - 1 + slashFiltered.length) % slashFiltered.length,
+                        (slashHighlight - 1 + slashFiltered.length) %
+                          slashFiltered.length,
                       );
                       return;
                     }
@@ -375,8 +396,16 @@ export function ChatComposer({
 
 function UsersIcon() {
   return (
-    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
-      strokeWidth={1.7} strokeLinecap="round" aria-hidden>
+    <svg
+      viewBox="0 0 24 24"
+      width="13"
+      height="13"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.7}
+      strokeLinecap="round"
+      aria-hidden
+    >
       <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
       <circle cx="9" cy="7" r="4" />
       <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
@@ -386,8 +415,16 @@ function UsersIcon() {
 
 function ListIcon() {
   return (
-    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
-      strokeWidth={1.7} strokeLinecap="round" aria-hidden>
+    <svg
+      viewBox="0 0 24 24"
+      width="13"
+      height="13"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.7}
+      strokeLinecap="round"
+      aria-hidden
+    >
       <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
     </svg>
   );
@@ -395,8 +432,16 @@ function ListIcon() {
 
 function SparkleIcon() {
   return (
-    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
-      strokeWidth={1.7} strokeLinecap="round" aria-hidden>
+    <svg
+      viewBox="0 0 24 24"
+      width="13"
+      height="13"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.7}
+      strokeLinecap="round"
+      aria-hidden
+    >
       <path d="m12 3 1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3Z" />
     </svg>
   );
@@ -404,8 +449,17 @@ function SparkleIcon() {
 
 function SendIcon() {
   return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
-      strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.7}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
       <path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z" />
     </svg>
   );
@@ -413,8 +467,17 @@ function SendIcon() {
 
 function AlertIcon() {
   return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
-      strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.7}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
       <path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
     </svg>
   );
@@ -422,8 +485,15 @@ function AlertIcon() {
 
 function PaperclipIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.7}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
       <path d="m16 6-8.5 8.5a2.12 2.12 0 1 0 3 3L19 9a3.12 3.12 0 1 0-4.4-4.4L9.3 14.3a4.62 4.62 0 1 0 6.5 6.5" />
     </svg>
   );

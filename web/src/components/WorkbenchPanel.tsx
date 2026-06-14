@@ -52,7 +52,9 @@ export function WorkbenchPanel({
     (event: React.PointerEvent<HTMLDivElement>) => {
       if (!isResizing) return;
       const delta = dragRef.current.startX - event.clientX;
-      onWidthChange(clampWorkbenchPanelWidth(dragRef.current.startWidth + delta));
+      onWidthChange(
+        clampWorkbenchPanelWidth(dragRef.current.startWidth + delta),
+      );
     },
     [isResizing, onWidthChange],
   );

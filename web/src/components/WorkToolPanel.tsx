@@ -26,7 +26,11 @@ type Props = {
   onSessionUpdated: () => void;
   roomTasks: RoomTasksPayload | null;
   cursorReady: boolean;
-  workHookAlert?: { readonly event: string; readonly body: string; readonly blocked: boolean } | null;
+  workHookAlert?: {
+    readonly event: string;
+    readonly body: string;
+    readonly blocked: boolean;
+  } | null;
   onDismissWorkHookAlert?: () => void;
 };
 

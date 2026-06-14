@@ -2,7 +2,8 @@
 
 const MARKER_RE = /^\[human synthesis[^\]]*\]\s*/i;
 const LEAD_RE = /^리드:\s*(\S+)/im;
-const HUMAN_SECTION_RE = /\*\*Human\*\*\s*([\s\S]*?)(?=\n\*\*에이전트|\n\*\*|$)/i;
+const HUMAN_SECTION_RE =
+  /\*\*Human\*\*\s*([\s\S]*?)(?=\n\*\*에이전트|\n\*\*|$)/i;
 const AGENTS_SECTION_RE = /\*\*에이전트\s*\(요약\)\*\*\s*([\s\S]*)/i;
 const AGENT_BULLET_RE = /^-\s*\*\*([^*]+)\*\*:\s*(.+)$/gm;
 

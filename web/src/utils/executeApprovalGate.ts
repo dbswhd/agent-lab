@@ -23,7 +23,9 @@ export function executionApprovalGate(
   const arts = pending.verification_artifacts;
   const pdfPath =
     arts?.pdf_path ??
-    pending.artifact_touched_paths?.find((p) => p.toLowerCase().endsWith(".pdf")) ??
+    pending.artifact_touched_paths?.find((p) =>
+      p.toLowerCase().endsWith(".pdf"),
+    ) ??
     pending.verification_paths?.find((p) => p.toLowerCase().endsWith(".pdf")) ??
     null;
   const pageCount =
@@ -54,12 +56,19 @@ export function executionApprovalGate(
   if (!artifactsOk) {
     return {
       blocked: true,
-      reason: "검증 산출물이 불완전합니다 — PDF·break-report 확인 후 승인하세요.",
+      reason:
+        "검증 산출물이 불완전합니다 — PDF·break-report 확인 후 승인하세요.",
       pdfPath,
       pageCount,
       artifactsOk,
     };
   }
 
-  return { blocked: false, reason: null, pdfPath, pageCount, artifactsOk: true };
+  return {
+    blocked: false,
+    reason: null,
+    pdfPath,
+    pageCount,
+    artifactsOk: true,
+  };
 }

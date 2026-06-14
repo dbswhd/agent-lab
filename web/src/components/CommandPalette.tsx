@@ -51,8 +51,7 @@ export function CommandPalette({ actions }: Props) {
     if (!q) return actions;
     return actions.filter(
       (a) =>
-        a.label.toLowerCase().includes(q) ||
-        a.hint?.toLowerCase().includes(q),
+        a.label.toLowerCase().includes(q) || a.hint?.toLowerCase().includes(q),
     );
   }, [actions, query]);
 
@@ -62,14 +61,19 @@ export function CommandPalette({ actions }: Props) {
   }
 
   function onKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Escape") { setOpen(false); return; }
+    if (e.key === "Escape") {
+      setOpen(false);
+      return;
+    }
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setActiveIdx((v) => (v + 1) % Math.max(1, filtered.length));
     }
     if (e.key === "ArrowUp") {
       e.preventDefault();
-      setActiveIdx((v) => (v - 1 + filtered.length) % Math.max(1, filtered.length));
+      setActiveIdx(
+        (v) => (v - 1 + filtered.length) % Math.max(1, filtered.length),
+      );
     }
     if (e.key === "Enter" && filtered[activeIdx]) pick(filtered[activeIdx]);
   }
@@ -93,7 +97,10 @@ export function CommandPalette({ actions }: Props) {
           className="cmd-palette__input"
           value={query}
           placeholder="명령 검색… (⌘K)"
-          onChange={(e) => { setQuery(e.target.value); setActiveIdx(0); }}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setActiveIdx(0);
+          }}
           onKeyDown={onKeyDown}
         />
 
@@ -106,7 +113,9 @@ export function CommandPalette({ actions }: Props) {
                   "cmd-palette__item",
                   action.danger ? "cmd-palette__item--danger" : "",
                   i === activeIdx ? "is-active" : "",
-                ].filter(Boolean).join(" ")}
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
                 role="option"
                 aria-selected={i === activeIdx}
                 onMouseEnter={() => setActiveIdx(i)}

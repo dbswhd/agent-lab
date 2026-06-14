@@ -80,8 +80,7 @@ function linkedTaskForAction(
         t.plan_action_index === actionIndex &&
         t.status !== "completed" &&
         t.status !== "cancelled",
-    ) ??
-    tasks.find((t) => t.plan_action_index === actionIndex)
+    ) ?? tasks.find((t) => t.plan_action_index === actionIndex)
   );
 }
 
@@ -126,7 +125,9 @@ function executePermissions(): AgentPermissions {
   return fullAgentPermissions();
 }
 
-function reviewRequiredLabel(row: PlanExecutionRecord | null | undefined): string {
+function reviewRequiredLabel(
+  row: PlanExecutionRecord | null | undefined,
+): string {
   if (!row) return "PDF 확인 후 승인";
   const artifacts = row.verification_artifacts;
   const pages =
@@ -236,7 +237,9 @@ function AdversarialBadge({ row }: { row: PlanExecutionRecord }) {
         {tone === "lgtm" ? "Adversarial LGTM" : "Adversarial review"}
       </span>
       {row.adversarial_source ? (
-        <span className="work-exec-adversarial__meta">{row.adversarial_source}</span>
+        <span className="work-exec-adversarial__meta">
+          {row.adversarial_source}
+        </span>
       ) : null}
       {tone !== "lgtm" ? (
         <span className="work-exec-adversarial__detail" title={note}>
@@ -261,7 +264,8 @@ function OracleBadge({
   if (!status && !oracle) return null;
   const failed = status === "failed" || status === "fail";
   const checked = row.verify_after_merge?.checked_at ?? oracle?.checked_at;
-  const retryCount = row.verify_retries ?? row.verify_after_merge?.verify_retries ?? 0;
+  const retryCount =
+    row.verify_retries ?? row.verify_after_merge?.verify_retries ?? 0;
   const retryLimitReached = retryCount >= MAX_VERIFY_RETRIES;
   const detail = oracle?.detail?.trim();
   return (
@@ -290,10 +294,16 @@ function OracleBadge({
           type="button"
           className="plan-card__btn work-exec-oracle__action"
           disabled={busy || retryLimitReached}
-          title={retryLimitReached ? "Oracle 수정 재시도 상한(2회)에 도달했습니다." : undefined}
+          title={
+            retryLimitReached
+              ? "Oracle 수정 재시도 상한(2회)에 도달했습니다."
+              : undefined
+          }
           onClick={() => onReverify(row.id)}
         >
-          {retryLimitReached ? "수정 재시도 상한 도달" : "에이전트에게 수정 요청"}
+          {retryLimitReached
+            ? "수정 재시도 상한 도달"
+            : "에이전트에게 수정 요청"}
         </button>
       ) : null}
     </div>
@@ -302,7 +312,8 @@ function OracleBadge({
 
 function execStatusKey(status: string | undefined): string {
   if (!status) return "review";
-  if (status === "review_required" || status === "pending_approval") return "review";
+  if (status === "review_required" || status === "pending_approval")
+    return "review";
   if (status === "merge_conflict") return "rejected";
   return status.replace("_required", "");
 }
@@ -333,7 +344,10 @@ function WorktreePendingBanner({ row }: { row: PlanExecutionRecord }) {
 }
 
 function ApplyIsolationBanner({ row }: { row: PlanExecutionRecord }) {
-  if (row.isolation_effective !== "apply" && row.isolation_effective !== "snapshot_override") {
+  if (
+    row.isolation_effective !== "apply" &&
+    row.isolation_effective !== "snapshot_override"
+  ) {
     return null;
   }
   return (
@@ -350,7 +364,9 @@ function ApplyIsolationBanner({ row }: { row: PlanExecutionRecord }) {
   );
 }
 
-function actionKey(item: Pick<PlanActionItem, "kind" | "index" | "recommended">): string {
+function actionKey(
+  item: Pick<PlanActionItem, "kind" | "index" | "recommended">,
+): string {
   const kind = item.kind ?? (item.recommended ? "now" : "roadmap");
   return `${kind}:${item.index}`;
 }
@@ -379,7 +395,10 @@ function diffHunks(diff: string | undefined): DiffHunk[] {
     if (!ref.startsWith("@@")) continue;
     let end = lines.length;
     for (let next = index + 1; next < lines.length; next += 1) {
-      if (lines[next].startsWith("@@") || lines[next].startsWith("diff --git ")) {
+      if (
+        lines[next].startsWith("@@") ||
+        lines[next].startsWith("diff --git ")
+      ) {
         end = next;
         break;
       }
@@ -433,14 +452,16 @@ function PlanObjectionAlert({
           <li key={o.id}>
             <span>
               {o.from} · {o.act}
-              {o.plan_action_index != null ? ` · plan #${o.plan_action_index}` : ""}
+              {o.plan_action_index != null
+                ? ` · plan #${o.plan_action_index}`
+                : ""}
             </span>
             <span>{o.body}</span>
             {onFocusObjection ? (
               <button
                 type="button"
-        className="plan-btn"
-        onClick={() => onFocusObjection(o.id, o.plan_action_index)}
+                className="plan-btn"
+                onClick={() => onFocusObjection(o.id, o.plan_action_index)}
               >
                 이의 해결
               </button>
@@ -477,9 +498,8 @@ export function PlanExecutePanel({
   );
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [pending, setPending] = useState<PlanExecutionRecord | null>(null);
-  const [isolationBlock, setIsolationBlock] = useState<PlanExecuteDryRunError | null>(
-    null,
-  );
+  const [isolationBlock, setIsolationBlock] =
+    useState<PlanExecuteDryRunError | null>(null);
   const [objectionBlock, setObjectionBlock] =
     useState<PlanExecuteDryRunError | null>(null);
   const [busy, setBusy] = useState(false);
@@ -488,7 +508,8 @@ export function PlanExecutePanel({
   const [reviseHunkId, setReviseHunkId] = useState("");
   const [reviseError, setReviseError] = useState<string | null>(null);
   const [revising, setRevising] = useState(false);
-  const [artifactsReviewConfirmed, setArtifactsReviewConfirmed] = useState(false);
+  const [artifactsReviewConfirmed, setArtifactsReviewConfirmed] =
+    useState(false);
 
   const executions = useMemo(
     () => (run?.executions as PlanExecutionRecord[] | undefined) ?? [],
@@ -505,14 +526,18 @@ export function PlanExecutePanel({
       [...executions]
         .filter(
           (row) =>
-            row.status !== "pending_approval" && row.status !== "merge_conflict",
+            row.status !== "pending_approval" &&
+            row.status !== "merge_conflict",
         )
         .reverse(),
     [executions],
   );
 
   const historyVisible = historyRows.slice(0, EXECUTION_HISTORY_LIMIT);
-  const historyHiddenCount = Math.max(0, historyRows.length - historyVisible.length);
+  const historyHiddenCount = Math.max(
+    0,
+    historyRows.length - historyVisible.length,
+  );
 
   const pendingFromRun = useMemo(
     () => findActiveExecution(executions),
@@ -574,7 +599,9 @@ export function PlanExecutePanel({
   }, [sessionId]);
 
   const lastPlanUpdateTs = useMemo(() => {
-    const lpu = run?.last_plan_update as { completed_at?: string; ts?: string } | undefined;
+    const lpu = run?.last_plan_update as
+      | { completed_at?: string; ts?: string }
+      | undefined;
     return lpu?.completed_at || lpu?.ts || null;
   }, [run?.last_plan_update]);
 
@@ -620,7 +647,11 @@ export function PlanExecutePanel({
         setError(null);
       } else if (
         e instanceof PlanExecuteDryRunError &&
-        ["worktree_unavailable", "base_branch_dirty", "paths_span_repos"].includes(e.code)
+        [
+          "worktree_unavailable",
+          "base_branch_dirty",
+          "paths_span_repos",
+        ].includes(e.code)
       ) {
         setIsolationBlock(e);
         setError(null);
@@ -691,7 +722,9 @@ export function PlanExecutePanel({
 
   async function handleRevisePending() {
     if (!activePending?.id || !reviseComment.trim()) return;
-    const selectedHunk = pendingDiffHunks.find((hunk) => hunk.id === reviseHunkId);
+    const selectedHunk = pendingDiffHunks.find(
+      (hunk) => hunk.id === reviseHunkId,
+    );
     setBusy(true);
     setRevising(true);
     setError(null);
@@ -753,11 +786,7 @@ export function PlanExecutePanel({
     setBusy(true);
     setError(null);
     try {
-      await reverifyPlanExecution(
-        sessionId,
-        executionId,
-        executePermissions(),
-      );
+      await reverifyPlanExecution(sessionId, executionId, executePermissions());
       onUpdated();
       await refreshActions();
     } catch (e) {
@@ -815,8 +844,7 @@ export function PlanExecutePanel({
   const selectedAction = useMemo(() => {
     if (!selectedKey) return null;
     return (
-      executableItems.find((item) => actionKey(item) === selectedKey) ??
-      null
+      executableItems.find((item) => actionKey(item) === selectedKey) ?? null
     );
   }, [executableItems, selectedKey]);
 
@@ -834,7 +862,8 @@ export function PlanExecutePanel({
     pendingAction?.index ?? activePending?.action_index,
   );
 
-  const executeWorkspace = selectedAction?.execute_workspace ?? recommended?.execute_workspace;
+  const executeWorkspace =
+    selectedAction?.execute_workspace ?? recommended?.execute_workspace;
 
   const nowWithoutRecommended = useMemo(() => {
     if (!recommended) return nowItems;
@@ -873,7 +902,9 @@ export function PlanExecutePanel({
         key={key}
         n={item.index}
         text={
-          opts?.variant === "now" ? item.summary || item.what : roadmapLabel(item)
+          opts?.variant === "now"
+            ? item.summary || item.what
+            : roadmapLabel(item)
         }
         onRefClick={onChatRefClick}
         variant={opts?.variant}
@@ -925,8 +956,9 @@ export function PlanExecutePanel({
           ) : !hasNowSection && !hasDryRun && !recommended ? (
             <p className="plan-card__muted">
               plan.md에 실행 액션이 없습니다. 토론·분석만 있으면{" "}
-              <code>## 지금 실행</code> 섹션이 비어 있을 수 있습니다. Transcript에서
-              구현 항목을 합의한 뒤 다음 턴 plan 갱신을 확인하세요.
+              <code>## 지금 실행</code> 섹션이 비어 있을 수 있습니다.
+              Transcript에서 구현 항목을 합의한 뒤 다음 턴 plan 갱신을
+              확인하세요.
             </p>
           ) : (
             <>
@@ -934,7 +966,12 @@ export function PlanExecutePanel({
                 <>
                   <div className="plan-roadmap-label">추천 다음 단계</div>
                   <div className="plan-actions">
-                    {recommended ? renderPlanListItem(recommended, { recommended: true, variant: "now" }) : null}
+                    {recommended
+                      ? renderPlanListItem(recommended, {
+                          recommended: true,
+                          variant: "now",
+                        })
+                      : null}
                     {hasNowSection
                       ? nowWithoutRecommended.map((item) =>
                           renderPlanListItem(item, { variant: "now" }),
@@ -961,7 +998,10 @@ export function PlanExecutePanel({
             </>
           )}
 
-          <PlanLinkedTaskLine task={linkedForSelected} onFocusTask={onFocusTask} />
+          <PlanLinkedTaskLine
+            task={linkedForSelected}
+            onFocusTask={onFocusTask}
+          />
 
           {selectedOpenBlocks.length ? (
             <PlanObjectionAlert
@@ -1093,7 +1133,12 @@ export function PlanExecutePanel({
         </div>
       </div>
       {activePending ? (
-        <div className="exec-card" id="work-execute-queue" role="region" aria-label="승인 대기">
+        <div
+          className="exec-card"
+          id="work-execute-queue"
+          role="region"
+          aria-label="승인 대기"
+        >
           <div className="exec-card__head">
             <span className="exec-card__title">
               <WorkPlanIcon name="bolt" size={16} />
@@ -1109,7 +1154,10 @@ export function PlanExecutePanel({
           <div className="exec-card__body">
             <ApplyIsolationBanner row={activePending} />
             <WorktreePendingBanner row={activePending} />
-            <PlanLinkedTaskLine task={linkedForPending} onFocusTask={onFocusTask} />
+            <PlanLinkedTaskLine
+              task={linkedForPending}
+              onFocusTask={onFocusTask}
+            />
             {activePending.pre_verify?.blocked ||
             (activePending.pre_verify?.feedback &&
               !activePending.pre_verify?.blocked) ? (
@@ -1139,48 +1187,50 @@ export function PlanExecutePanel({
               {...executionContextFields(activePending, pendingAction)}
               onRefClick={onChatRefClick}
             />
-          {activePending.draft_summary ? (
-            <PlanAgentResponse
-              text={activePending.draft_summary}
-              className="work-exec-pending__summary"
-            />
-          ) : null}
-          {activePending.agent_log?.length ? (
-            <details className="work-exec-pending__log" open>
-              <summary>
-                Cursor 로그 ({activePending.executor_label ?? "Cursor"} ·{" "}
-                {activePending.agent_log.length})
-              </summary>
-              <ol className="work-exec-agent-log">
-                {activePending.agent_log.map((line, i) => (
-                  <li key={`${activePending.id}-log-${i}`}>{line}</li>
-                ))}
-              </ol>
-            </details>
-          ) : null}
-          {activePending.touched_paths?.length ? (
-            <p className="work-exec-pending__paths">
-              변경 파일: {formatPathList(activePending.touched_paths)}
-            </p>
-          ) : (
-            <p className="work-exec-pending__paths work-exec-pending__paths--empty">
-              소스 diff 없음 (스냅샷 diff 없음)
-            </p>
-          )}
-          {activePending.artifact_touched_paths?.length ? (
-            <p className="work-exec-pending__paths">
-              검증 산출물: {formatPathList(activePending.artifact_touched_paths)}
-            </p>
-          ) : null}
-          {activePending.needs_artifact_review ? (
-            <p className="work-exec-pending__artifact-note" role="note">
-              소스 파일 변경은 없지만 PDF/break-report 확인이 필요합니다. 승인 시
-              &quot;{reviewRequiredLabel(activePending)}&quot;로 기록됩니다.
-              {activePending.verification_paths?.length
-                ? ` (모니터: ${formatPathList(activePending.verification_paths)})`
-                : ""}
-            </p>
-          ) : null}
+            {activePending.draft_summary ? (
+              <PlanAgentResponse
+                text={activePending.draft_summary}
+                className="work-exec-pending__summary"
+              />
+            ) : null}
+            {activePending.agent_log?.length ? (
+              <details className="work-exec-pending__log" open>
+                <summary>
+                  Cursor 로그 ({activePending.executor_label ?? "Cursor"} ·{" "}
+                  {activePending.agent_log.length})
+                </summary>
+                <ol className="work-exec-agent-log">
+                  {activePending.agent_log.map((line, i) => (
+                    <li key={`${activePending.id}-log-${i}`}>{line}</li>
+                  ))}
+                </ol>
+              </details>
+            ) : null}
+            {activePending.touched_paths?.length ? (
+              <p className="work-exec-pending__paths">
+                변경 파일: {formatPathList(activePending.touched_paths)}
+              </p>
+            ) : (
+              <p className="work-exec-pending__paths work-exec-pending__paths--empty">
+                소스 diff 없음 (스냅샷 diff 없음)
+              </p>
+            )}
+            {activePending.artifact_touched_paths?.length ? (
+              <p className="work-exec-pending__paths">
+                검증 산출물:{" "}
+                {formatPathList(activePending.artifact_touched_paths)}
+              </p>
+            ) : null}
+            {activePending.needs_artifact_review ? (
+              <p className="work-exec-pending__artifact-note" role="note">
+                소스 파일 변경은 없지만 PDF/break-report 확인이 필요합니다. 승인
+                시 &quot;{reviewRequiredLabel(activePending)}&quot;로
+                기록됩니다.
+                {activePending.verification_paths?.length
+                  ? ` (모니터: ${formatPathList(activePending.verification_paths)})`
+                  : ""}
+              </p>
+            ) : null}
             {approvalGate.blocked && approvalGate.reason ? (
               <p className="exec-gate-hint" role="alert">
                 <WorkPlanIcon name="alert" size={13} />
@@ -1226,35 +1276,36 @@ export function PlanExecutePanel({
                 </label>
               </div>
             ) : null}
-          {activePending.paths_outside_expected?.length ? (
-            <p className="work-exec-pending__warn">
-              예상 범위 밖: {formatPathList(activePending.paths_outside_expected)}
-            </p>
-          ) : null}
-          {activePending.status === "merge_conflict" ? (
-            <div
-              className="work-exec-merge-conflict"
-              role="alert"
-              aria-label="merge 충돌"
-            >
-              <p className="work-exec-merge-conflict__lead">
-                main 병합 중 충돌이 발생했습니다. 저장소에서 충돌을 해결한 뒤 다시
-                시도하세요.
+            {activePending.paths_outside_expected?.length ? (
+              <p className="work-exec-pending__warn">
+                예상 범위 밖:{" "}
+                {formatPathList(activePending.paths_outside_expected)}
               </p>
-              {mergeConflictFiles(activePending).length ? (
-                <ul className="work-exec-merge-conflict__files">
-                  {mergeConflictFiles(activePending).map((path) => (
-                    <li key={path}>
-                      <code>{path}</code>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
-          ) : null}
-          {activePending.diff_stat ? (
-            <PlanDiffStat text={activePending.diff_stat} />
-          ) : null}
+            ) : null}
+            {activePending.status === "merge_conflict" ? (
+              <div
+                className="work-exec-merge-conflict"
+                role="alert"
+                aria-label="merge 충돌"
+              >
+                <p className="work-exec-merge-conflict__lead">
+                  main 병합 중 충돌이 발생했습니다. 저장소에서 충돌을 해결한 뒤
+                  다시 시도하세요.
+                </p>
+                {mergeConflictFiles(activePending).length ? (
+                  <ul className="work-exec-merge-conflict__files">
+                    {mergeConflictFiles(activePending).map((path) => (
+                      <li key={path}>
+                        <code>{path}</code>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ) : null}
+            {activePending.diff_stat ? (
+              <PlanDiffStat text={activePending.diff_stat} />
+            ) : null}
             {activePending.diff ? (
               <div className="exec-diff-wrap">
                 <div className="exec-diff__head">
@@ -1374,7 +1425,9 @@ export function PlanExecutePanel({
                         <WorkPlanIcon name="activity" size={13} />
                         {executionHistoryTitle(row, action)}
                         {completedAt ? (
-                          <span className="exec-history__time">{completedAt}</span>
+                          <span className="exec-history__time">
+                            {completedAt}
+                          </span>
                         ) : null}
                       </div>
                     );
@@ -1419,12 +1472,12 @@ export function PlanExecutePanel({
           </summary>
           <ul className="work-exec-history__list">
             {historyVisible.map((row) => {
-                const action = resolveExecutionAction(row, storedActions);
-                const context = executionContextFields(row, action);
-                const completedAt = formatExecutionTime(
-                  row.completed_at || row.started_at,
-                );
-                return (
+              const action = resolveExecutionAction(row, storedActions);
+              const context = executionContextFields(row, action);
+              const completedAt = formatExecutionTime(
+                row.completed_at || row.started_at,
+              );
+              return (
                 <li key={row.id} className="work-exec-history__item">
                   <div className="work-exec-history__title-row">
                     <span className="work-exec-history__badge">
@@ -1444,7 +1497,9 @@ export function PlanExecutePanel({
                       </span>
                     ) : null}
                     {completedAt ? (
-                      <span className="work-exec-history__time">{completedAt}</span>
+                      <span className="work-exec-history__time">
+                        {completedAt}
+                      </span>
                     ) : null}
                     {mergedCommitSha(row) ? (
                       <span
@@ -1464,7 +1519,9 @@ export function PlanExecutePanel({
                   <OracleBadge
                     row={row}
                     busy={busy}
-                    onReverify={(executionId) => void handleReverify(executionId)}
+                    onReverify={(executionId) =>
+                      void handleReverify(executionId)
+                    }
                   />
                   {row.touched_paths?.length ? (
                     <p className="work-exec-history__paths">
@@ -1484,12 +1541,14 @@ export function PlanExecutePanel({
                   {row.agent_response || row.draft_summary ? (
                     <details className="work-exec-history__response">
                       <summary>에이전트 응답</summary>
-                      <PlanAgentResponse text={row.agent_response || row.draft_summary || ""} />
+                      <PlanAgentResponse
+                        text={row.agent_response || row.draft_summary || ""}
+                      />
                     </details>
                   ) : null}
                 </li>
-                );
-              })}
+              );
+            })}
           </ul>
         </details>
       ) : null}

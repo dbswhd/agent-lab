@@ -59,7 +59,9 @@ function formatTime(iso?: string): string {
   });
 }
 
-function reviewTurnLabel(run: Record<string, unknown> | undefined): string | null {
+function reviewTurnLabel(
+  run: Record<string, unknown> | undefined,
+): string | null {
   const turns = (run?.turns as Record<string, unknown>[] | undefined) ?? [];
   const reviewTurns = turns.filter((t) => t.review_mode === true);
   if (reviewTurns.length === 0) return null;
@@ -81,7 +83,8 @@ export function composerPlanStaleNotice(
       "plan.md 자동 정리 중…",
     );
   }
-  const loop = (run?.verified_loop as Record<string, unknown> | undefined) ?? {};
+  const loop =
+    (run?.verified_loop as Record<string, unknown> | undefined) ?? {};
   const sync =
     (run?.verified_plan_sync as Record<string, unknown> | undefined) ?? {};
   if (

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { PlanActionCard, PlanGateLine } from "../components/PlanActionCard";
-import { PlanDocRefs, renderPlanInline } from "./planDocInline";
+import { PlanMarkdownBody } from "./planMarkdownBody";
 import { extractChatLineRefs, stripPlanRefAnnotations } from "./planTextFormat";
 
 type RefSplit = { body: string; refs: number[] };
@@ -11,7 +11,14 @@ export type PlanBlock =
   | { type: "p"; text: string; refs: number[] }
   | { type: "item"; text: string; refs: number[] }
   | { type: "agent"; name: string; text: string; refs: number[] }
-  | { type: "action"; n: number; what?: string; where?: string; verify?: string; refs: number[] }
+  | {
+      type: "action";
+      n: number;
+      what?: string;
+      where?: string;
+      verify?: string;
+      refs: number[];
+    }
   | { type: "gate"; n: number; text: string; refs: number[] };
 
 function splitRefs(raw: string): RefSplit {
@@ -152,23 +159,6 @@ export function parsePlanMarkdown(text: string): PlanBlock[] {
   return blocks;
 }
 
-function PlanBody({
-  text,
-  refs,
-  onRefClick,
-}: {
-  text: string;
-  refs: number[];
-  onRefClick?: (line: number) => void;
-}) {
-  return (
-    <span className="plan-doc__text">
-      {renderPlanInline(text)}
-      <PlanDocRefs refs={refs} onRefClick={onRefClick} />
-    </span>
-  );
-}
-
 /** Hidden in plan tab when PlanExecutePanel shows the same sections (new format). */
 const EXECUTE_SECTION_HEADERS = new Set(["지금 실행"]);
 
@@ -228,13 +218,21 @@ export function renderPlanMarkdown(
           case "p":
             return (
               <p key={key} className="plan-doc__p">
-                <PlanBody text={block.text} refs={block.refs} onRefClick={onRefClick} />
+                <PlanMarkdownBody
+                  text={block.text}
+                  refs={block.refs}
+                  onRefClick={onRefClick}
+                />
               </p>
             );
           case "item":
             return (
               <p key={key} className="plan-doc__item">
-                <PlanBody text={block.text} refs={block.refs} onRefClick={onRefClick} />
+                <PlanMarkdownBody
+                  text={block.text}
+                  refs={block.refs}
+                  onRefClick={onRefClick}
+                />
               </p>
             );
           case "agent":
@@ -242,7 +240,11 @@ export function renderPlanMarkdown(
               <div key={key} className="plan-doc__agent">
                 <span className="plan-doc__agent-name">{block.name}</span>
                 <span className="plan-doc__agent-body">
-                  <PlanBody text={block.text} refs={block.refs} onRefClick={onRefClick} />
+                  <PlanMarkdownBody
+                    text={block.text}
+                    refs={block.refs}
+                    onRefClick={onRefClick}
+                  />
                 </span>
               </div>
             );

@@ -77,7 +77,9 @@ export function MacAlert({
         aria-modal="true"
       >
         <div className="alert__body">
-          <h2 id="mac-alert-title" className="alert__title">{title}</h2>
+          <h2 id="mac-alert-title" className="alert__title">
+            {title}
+          </h2>
           {message ? <p className="alert__message">{message}</p> : null}
         </div>
         {children ? <div className="alert__form-body">{children}</div> : null}

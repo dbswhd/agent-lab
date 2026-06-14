@@ -42,7 +42,8 @@ export function TurnBudgetSection({ budget, ko = true }: Props) {
         />
       </div>
       <p className="turn-budget__detail">
-        {ko ? "이번 턴 에이전트 호출" : "Agent calls this turn"}: {agentUsed}/{agentCap}
+        {ko ? "이번 턴 에이전트 호출" : "Agent calls this turn"}: {agentUsed}/
+        {agentCap}
       </p>
       {budget.overflow ? (
         <p className="turn-budget__overflow" role="status">

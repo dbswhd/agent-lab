@@ -1,6 +1,9 @@
 import { HumanDecisionBanner } from "./HumanDecisionBanner";
 import { HumanInboxPanel } from "./HumanInboxPanel";
-import { DiscussRecoveryBanner, type DiscussRecoveryState } from "./DiscussRecoveryBanner";
+import {
+  DiscussRecoveryBanner,
+  type DiscussRecoveryState,
+} from "./DiscussRecoveryBanner";
 import { useLocale } from "../i18n/useLocale";
 
 type Props = {

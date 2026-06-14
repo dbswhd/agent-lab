@@ -46,5 +46,7 @@ export function shouldWarnMissingEnvelope(
   envelope: AgentEnvelope | undefined,
   envelopeParseError?: boolean,
 ): boolean {
-  return (parallelRound ?? 1) >= 2 && (!envelope?.act || envelopeParseError === true);
+  return (
+    (parallelRound ?? 1) >= 2 && (!envelope?.act || envelopeParseError === true)
+  );
 }

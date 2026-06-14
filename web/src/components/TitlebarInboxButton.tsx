@@ -16,9 +16,7 @@ export function TitlebarInboxButton({
       type="button"
       className="titlebar-inbox-btn icon-btn"
       title="Human Inbox"
-      aria-label={
-        badge ? `Human Inbox, ${badge} pending` : "Human Inbox"
-      }
+      aria-label={badge ? `Human Inbox, ${badge} pending` : "Human Inbox"}
       disabled={disabled}
       onClick={onClick}
     >

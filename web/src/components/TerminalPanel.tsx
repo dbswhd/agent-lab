@@ -39,7 +39,8 @@ export function TerminalPanel({ sessionId }: Props) {
     const term = new Terminal({
       cursorBlink: true,
       fontSize: 13,
-      fontFamily: "var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace)",
+      fontFamily:
+        "var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace)",
       theme: {
         background: "#1a1b1e",
         foreground: "#e8e8ea",
@@ -194,9 +195,7 @@ export function TerminalPanel({ sessionId }: Props) {
         aria-label={msg.terminal}
       />
       {!isConnected && status === "idle" ? (
-        <div className="terminal-panel__hint">
-          {msg.terminalHint}
-        </div>
+        <div className="terminal-panel__hint">{msg.terminalHint}</div>
       ) : null}
     </div>
   );

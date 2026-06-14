@@ -31,13 +31,19 @@ export function DiscussRecoveryBanner({
       <div className="discuss-recovery-banner__body">
         <strong>{msg.discussRecoveryTitle}</strong>
         <span className="discuss-recovery-banner__detail">
-          {reason ? msg.discussRecoveryReason(reason) : msg.discussRecoveryDefault}
+          {reason
+            ? msg.discussRecoveryReason(reason)
+            : msg.discussRecoveryDefault}
           {actionIndex != null ? ` · plan #${actionIndex}` : null}
         </span>
       </div>
       <span className="discuss-recovery-banner__actions">
         {onOpenDiscussInbox ? (
-          <button type="button" className="btn btn--sm" onClick={onOpenDiscussInbox}>
+          <button
+            type="button"
+            className="btn btn--sm"
+            onClick={onOpenDiscussInbox}
+          >
             {msg.inboxDiscuss}
           </button>
         ) : null}

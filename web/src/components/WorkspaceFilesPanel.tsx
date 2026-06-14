@@ -30,7 +30,17 @@ function isWritable(rootId: string, path: string): boolean {
 
 function FolderIcon() {
   return (
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg
+      viewBox="0 0 24 24"
+      width="14"
+      height="14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.7}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
       <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
     </svg>
   );
@@ -38,7 +48,17 @@ function FolderIcon() {
 
 function FileGlyph() {
   return (
-    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg
+      viewBox="0 0 24 24"
+      width="13"
+      height="13"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
       <path d="M14 2v6h6" />
     </svg>
@@ -95,7 +115,10 @@ function DirNode({
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
         >
-          <span className={`files-row__twisty${open ? " is-open" : ""}`} aria-hidden>
+          <span
+            className={`files-row__twisty${open ? " is-open" : ""}`}
+            aria-hidden
+          >
             ▸
           </span>
           <FolderIcon />
@@ -105,12 +128,18 @@ function DirNode({
       {open ? (
         <div className="files-children">
           {loading ? (
-            <div className="files-hint" style={{ paddingLeft: 8 + indent + 13 }}>
+            <div
+              className="files-hint"
+              style={{ paddingLeft: 8 + indent + 13 }}
+            >
               loading…
             </div>
           ) : null}
           {error ? (
-            <div className="files-error" style={{ paddingLeft: 8 + indent + 13 }}>
+            <div
+              className="files-error"
+              style={{ paddingLeft: 8 + indent + 13 }}
+            >
               {error}
             </div>
           ) : null}
@@ -154,7 +183,10 @@ function DirNode({
             );
           })}
           {entries && entries.length === 0 ? (
-            <div className="files-hint" style={{ paddingLeft: 8 + indent + 13 }}>
+            <div
+              className="files-hint"
+              style={{ paddingLeft: 8 + indent + 13 }}
+            >
               empty
             </div>
           ) : null}
@@ -168,7 +200,16 @@ function ViewerEmpty({ title, hint }: { title: string; hint: string }) {
   return (
     <div className="empty-state">
       <span className="empty-state__icon" aria-hidden>
-        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          viewBox="0 0 24 24"
+          width="24"
+          height="24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
           <path d="M14 2v6h6" />
         </svg>
@@ -220,7 +261,8 @@ export function WorkspaceFilesPanel({ sessionId }: Props) {
           res.roots[0];
         setActiveRoot(primary?.root_id ?? null);
       } catch (e) {
-        if (!cancelled) setRootsError(e instanceof Error ? e.message : "load failed");
+        if (!cancelled)
+          setRootsError(e instanceof Error ? e.message : "load failed");
       }
     })();
     return () => {
@@ -292,7 +334,9 @@ export function WorkspaceFilesPanel({ sessionId }: Props) {
                 }}
               >
                 <span className="files-root__label">{r.label}</span>
-                {r.is_primary ? <span className="files-root__tag">primary</span> : null}
+                {r.is_primary ? (
+                  <span className="files-root__tag">primary</span>
+                ) : null}
               </button>
             ))}
           </div>
@@ -339,17 +383,23 @@ export function WorkspaceFilesPanel({ sessionId }: Props) {
                   {saving ? "Saving…" : "Save"}
                 </button>
               ) : (
-                <span className="files-viewer__readonly">read-only · edit via Execute</span>
+                <span className="files-viewer__readonly">
+                  read-only · edit via Execute
+                </span>
               )}
             </header>
             <div className="files-viewer__body">
-              {viewerError ? <div className="files-error">{viewerError}</div> : null}
+              {viewerError ? (
+                <div className="files-error">{viewerError}</div>
+              ) : null}
               {content == null && !viewerError ? (
                 <div className="files-hint">loading…</div>
               ) : null}
               {content && activeRoot ? (
                 writable && content.kind === "text" ? (
-                  <Suspense fallback={<div className="files-hint">loading editor…</div>}>
+                  <Suspense
+                    fallback={<div className="files-hint">loading editor…</div>}
+                  >
                     <FilesMonacoEditor
                       path={selected}
                       value={draft}
@@ -370,7 +420,9 @@ export function WorkspaceFilesPanel({ sessionId }: Props) {
                 )
               ) : null}
               {content?.truncated ? (
-                <div className="files-hint files-hint--foot">truncated for preview</div>
+                <div className="files-hint files-hint--foot">
+                  truncated for preview
+                </div>
               ) : null}
             </div>
           </>

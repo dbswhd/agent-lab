@@ -11,7 +11,13 @@ type Props = {
   inline?: boolean;
 };
 
-export function AgentPicker({ agents, selected, disabled, onToggle, inline }: Props) {
+export function AgentPicker({
+  agents,
+  selected,
+  disabled,
+  onToggle,
+  inline,
+}: Props) {
   return (
     <div
       className={`agent-picker${inline ? " agent-picker--inline" : ""}`}

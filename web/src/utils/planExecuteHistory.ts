@@ -86,7 +86,10 @@ export function executionHistoryTitle(
   const raw =
     action?.what?.trim() ||
     row.action_what?.trim() ||
-    row.draft_summary?.split("\n").find((line) => line.trim())?.trim();
+    row.draft_summary
+      ?.split("\n")
+      .find((line) => line.trim())
+      ?.trim();
   if (raw) return stripPlanRefs(raw);
   return executionHistoryBadge(row);
 }

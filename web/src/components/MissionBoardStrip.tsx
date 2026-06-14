@@ -5,7 +5,10 @@ type Props = {
   ko?: boolean;
 };
 
-function goalLabel(link: MissionBoardPayload["goal_chain"][number], ko: boolean): string {
+function goalLabel(
+  link: MissionBoardPayload["goal_chain"][number],
+  ko: boolean,
+): string {
   if (link.kind === "verified_loop.loop_goal") {
     return ko ? "검증 목표" : "Verified goal";
   }
@@ -29,9 +32,15 @@ export function MissionBoardStrip({ board, ko = true }: Props) {
   return (
     <section className="mission-board-strip" data-testid="mission-board-strip">
       {chain.length > 0 ? (
-        <ol className="mission-board-strip__chain" aria-label={ko ? "목표 경로" : "Goal chain"}>
+        <ol
+          className="mission-board-strip__chain"
+          aria-label={ko ? "목표 경로" : "Goal chain"}
+        >
           {chain.map((link, i) => (
-            <li key={`${link.kind}-${link.index ?? i}`} className="mission-board-strip__link">
+            <li
+              key={`${link.kind}-${link.index ?? i}`}
+              className="mission-board-strip__link"
+            >
               {goalLabel(link, ko)}
             </li>
           ))}
@@ -42,7 +51,9 @@ export function MissionBoardStrip({ board, ko = true }: Props) {
           <span className="mission-board-strip__checkout-label">
             {ko ? "체크아웃" : "Checkout"}
           </span>
-          <span className="mission-board-strip__checkout-lane">{checkout.lane}</span>
+          <span className="mission-board-strip__checkout-lane">
+            {checkout.lane}
+          </span>
           {checkout.action_index != null ? (
             <span className="mission-board-strip__checkout-meta">
               #{checkout.action_index}

@@ -5,7 +5,10 @@ export const SESSION_RAIL_MIN_WIDTH = 200;
 export const SESSION_RAIL_MAX_WIDTH = 520;
 
 export function clampSessionRailWidth(width: number): number {
-  return Math.min(SESSION_RAIL_MAX_WIDTH, Math.max(SESSION_RAIL_MIN_WIDTH, width));
+  return Math.min(
+    SESSION_RAIL_MAX_WIDTH,
+    Math.max(SESSION_RAIL_MIN_WIDTH, width),
+  );
 }
 
 export function getSessionRailWidth(): number {

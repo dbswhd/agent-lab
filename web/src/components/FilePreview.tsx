@@ -33,8 +33,10 @@ function DiffView({ text }: { text: string }) {
     <div className="files-diff">
       {lines.map((line, i) => {
         let cls = "files-diff__ctx";
-        if (line.startsWith("+") && !line.startsWith("+++")) cls = "files-diff__add";
-        else if (line.startsWith("-") && !line.startsWith("---")) cls = "files-diff__del";
+        if (line.startsWith("+") && !line.startsWith("+++"))
+          cls = "files-diff__add";
+        else if (line.startsWith("-") && !line.startsWith("---"))
+          cls = "files-diff__del";
         else if (line.startsWith("@@")) cls = "files-diff__hunk";
         else if (
           line.startsWith("diff ") ||

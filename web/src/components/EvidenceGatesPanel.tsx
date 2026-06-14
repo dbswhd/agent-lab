@@ -20,7 +20,9 @@ export function EvidenceGatesPanel({ gates, ko = true }: Props) {
 
   return (
     <section className="evidence-gates" data-testid="evidence-gates-panel">
-      <div className="evidence-gates__title">{ko ? "Evidence gates" : "Evidence gates"}</div>
+      <div className="evidence-gates__title">
+        {ko ? "Evidence gates" : "Evidence gates"}
+      </div>
       <ul className="evidence-gates__list">
         {gates.map((gate) => (
           <li
@@ -30,7 +32,9 @@ export function EvidenceGatesPanel({ gates, ko = true }: Props) {
               `evidence-gates__item--${gate.status ?? "pending"}`,
             ].join(" ")}
           >
-            <span className="evidence-gates__name">{labels[gate.gate] ?? gate.gate}</span>
+            <span className="evidence-gates__name">
+              {labels[gate.gate] ?? gate.gate}
+            </span>
             <span className="evidence-gates__status">{gate.status}</span>
           </li>
         ))}

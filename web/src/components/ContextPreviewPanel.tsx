@@ -42,8 +42,10 @@ export function ContextPreviewPanel({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { agents, reviewMode, agentRounds, consensusMode } =
-    resolveTurnSend(turnProfile, selectedAgents);
+  const { agents, reviewMode, agentRounds, consensusMode } = resolveTurnSend(
+    turnProfile,
+    selectedAgents,
+  );
 
   const lastTurnCtx = useMemo(
     () => parseLastTurnContext(session?.run),
@@ -66,9 +68,7 @@ export function ContextPreviewPanel({
     }
   }, [lastTurnAgents.length, lastAgentIdx]);
 
-  const maxRounds = consensusMode
-    ? 12
-    : Math.max(agentRounds, 2);
+  const maxRounds = consensusMode ? 12 : Math.max(agentRounds, 2);
 
   const loadPreview = useCallback(async () => {
     if (!sessionId || agents.length === 0) return;
@@ -91,14 +91,7 @@ export function ContextPreviewPanel({
     } finally {
       setLoading(false);
     }
-  }, [
-    sessionId,
-    agent,
-    parallelRound,
-    reviewMode,
-    consensusMode,
-    agents,
-  ]);
+  }, [sessionId, agent, parallelRound, reviewMode, consensusMode, agents]);
 
   useEffect(() => {
     if (tab === "preview") void loadPreview();
@@ -110,7 +103,11 @@ export function ContextPreviewPanel({
 
   const controls = (
     <>
-      <div className={embedded ? "ctx-preview__head" : "context-sidebar-panel__controls"}>
+      <div
+        className={
+          embedded ? "ctx-preview__head" : "context-sidebar-panel__controls"
+        }
+      >
         <div className={embedded ? "ctx-preview__selectors" : undefined}>
           <label className={embedded ? undefined : "context-preview__field"}>
             {!embedded ? <span>에이전트</span> : null}
@@ -145,7 +142,8 @@ export function ContextPreviewPanel({
         </div>
         {embedded && previewMeta ? (
           <span className="ctx-preview__total">
-            ~{((previewMeta.layer_chars?.total ?? 0) / 1000).toFixed(1)}k chars ·{" "}
+            ~{((previewMeta.layer_chars?.total ?? 0) / 1000).toFixed(1)}k chars
+            ·{" "}
             <span className="badge badge--accent">
               {trimLevelLabel(previewMeta.trim_level)}
             </span>
@@ -164,7 +162,9 @@ export function ContextPreviewPanel({
       </div>
       {error ? <div className="context-preview__error">{error}</div> : null}
       {previewMeta?.layer_chars ? (
-        <div className={embedded ? "ctx-preview__layers" : "context-preview__viz"}>
+        <div
+          className={embedded ? "ctx-preview__layers" : "context-preview__viz"}
+        >
           {!embedded ? (
             <p className="context-preview__meta" role="status">
               <span
@@ -213,11 +213,7 @@ export function ContextPreviewPanel({
   );
 
   if (embedded) {
-    return (
-      <div className="ctx-preview__body">
-        {controls}
-      </div>
-    );
+    return <div className="ctx-preview__body">{controls}</div>;
   }
 
   return (
@@ -282,7 +278,8 @@ export function ContextPreviewPanel({
                     {trimLevelLabel(summary.trim_level)}
                   </span>
                   {" · "}
-                  최대 {summary.payload_chars_max?.toLocaleString() ?? "—"} chars
+                  최대 {summary.payload_chars_max?.toLocaleString() ?? "—"}{" "}
+                  chars
                   {summary.any_turns_omitted ? " · 오래된 턴 생략" : ""}
                   {summary.any_chars_omitted ? " · 크기 trim" : ""}
                 </p>
@@ -294,7 +291,10 @@ export function ContextPreviewPanel({
                   onChange={(e) => setLastAgentIdx(Number(e.target.value))}
                 >
                   {lastTurnAgents.map((a, i) => (
-                    <option key={`${a.agent}-r${a.parallel_round}-${i}`} value={i}>
+                    <option
+                      key={`${a.agent}-r${a.parallel_round}-${i}`}
+                      value={i}
+                    >
                       {agentLabel(a.agent)} · R{a.parallel_round ?? 1}
                       {a.model ? ` · ${a.model}` : ""}
                     </option>

@@ -30,9 +30,9 @@ export function ApiDiagnosticsBar({
   sessionsDir,
   probeBridgeFailed,
 }: Props) {
-  const [diag,    setDiag]    = useState<DiagnosticsResponse | null>(null);
+  const [diag, setDiag] = useState<DiagnosticsResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [copied,  setCopied]  = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -63,13 +63,12 @@ export function ApiDiagnosticsBar({
     }
   }
 
-  const bootPath      = diag?.boot_log_path
-    ?? "~/Library/Logs/Agent Lab/agent-lab-boot.log";
+  const bootPath =
+    diag?.boot_log_path ?? "~/Library/Logs/Agent Lab/agent-lab-boot.log";
   const displaySessions = sessionsDir ?? diag?.sessions_dir ?? null;
 
   return (
     <div className="diag-bar" aria-label="API diagnostics">
-
       {displaySessions ? (
         <p className="diag-bar__sessions" title={displaySessions}>
           세션: {displaySessions}
@@ -84,8 +83,7 @@ export function ApiDiagnosticsBar({
 
       {probeBridgeFailed ? (
         <p className="diag-bar__hint">
-          Cursor bridge 실패 —{" "}
-          <code>~/.agent-lab/.env</code>에{" "}
+          Cursor bridge 실패 — <code>~/.agent-lab/.env</code>에{" "}
           <code>CURSOR_SDK_BRIDGE_BIN</code> 절대 경로 설정.{" "}
           <code>docs/STABILITY.md</code> 참고.
         </p>
@@ -114,7 +112,10 @@ export function ApiDiagnosticsBar({
         </div>
 
         {diag?.auth_bootstrap_line ? (
-          <p className="diag-bar__hint" title="최근 API 시작 시 Room auth bootstrap">
+          <p
+            className="diag-bar__hint"
+            title="최근 API 시작 시 Room auth bootstrap"
+          >
             {diag.auth_bootstrap_line}
           </p>
         ) : null}
@@ -129,29 +130,30 @@ export function ApiDiagnosticsBar({
               {diag.bridge_audit.orphan_process_count ?? 0}
             </span>
             {(diag.bridge_audit.stale_records ?? []).slice(0, 3).map((row) => (
-              <span key={`${row.workspace}-${row.pid}`} className="diag-bar__bridge-row">
+              <span
+                key={`${row.workspace}-${row.pid}`}
+                className="diag-bar__bridge-row"
+              >
                 stale · {row.workspace} · pid {row.pid ?? "—"}
               </span>
             ))}
-            {(diag.bridge_audit.orphan_processes ?? []).slice(0, 2).map((row) => (
-              <span key={row.pid} className="diag-bar__bridge-row">
-                orphan pid {row.pid} · {(row.command ?? "").slice(0, 60)}
-              </span>
-            ))}
+            {(diag.bridge_audit.orphan_processes ?? [])
+              .slice(0, 2)
+              .map((row) => (
+                <span key={row.pid} className="diag-bar__bridge-row">
+                  orphan pid {row.pid} · {(row.command ?? "").slice(0, 60)}
+                </span>
+              ))}
           </div>
         ) : null}
 
         {diag?.boot_log_tail?.length ? (
           <details className="diag-bar__boot">
-            <summary>
-              부트 로그 (최근 {diag.boot_log_tail.length}줄)
-            </summary>
+            <summary>부트 로그 (최근 {diag.boot_log_tail.length}줄)</summary>
             <p className="diag-bar__path" title={bootPath}>
               {bootPath}
             </p>
-            <pre className="diag-bar__log">
-              {diag.boot_log_tail.join("\n")}
-            </pre>
+            <pre className="diag-bar__log">{diag.boot_log_tail.join("\n")}</pre>
           </details>
         ) : (
           <p className="diag-bar__path" title={bootPath}>

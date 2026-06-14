@@ -5,5 +5,5 @@
   ],
   "max_ratchet_errors": 174,
   "total_errors_snapshot": 236,
-  "note": "Ratchet applies to errors outside exclude_files. Lower max_ratchet_errors when fixing types."
+  "note": "Ratchet counts only mypy ' error:' lines (not ' note:'). room.py has ~62 errors + ~78 notes; grep 'room.py:' over-counts."
 }

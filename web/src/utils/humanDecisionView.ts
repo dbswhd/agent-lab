@@ -13,14 +13,14 @@ export function buildHumanDecisionLanes(
   discussPaused: boolean,
 ): HumanDecisionLane[] {
   const gates = runtime?.gates;
-  const discussBlocked =
-    discussPaused || gates?.discuss?.open === false;
+  const discussBlocked = discussPaused || gates?.discuss?.open === false;
   return [
     {
       id: "discuss",
       blocked: discussBlocked,
       reason: discussBlocked
-        ? gates?.discuss?.reason ?? (discussPaused ? "pending_question" : null)
+        ? (gates?.discuss?.reason ??
+          (discussPaused ? "pending_question" : null))
         : null,
     },
     {

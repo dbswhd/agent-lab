@@ -40,12 +40,17 @@ export function resolveWorkPhaseFromMission(
     return "plan_draft";
   }
   if (phase === "MISSION_DONE") return "done";
-  if (phase === "MERGE_REVIEW" || phase === "PLAN_REJECT") return "review_needed";
+  if (phase === "MERGE_REVIEW" || phase === "PLAN_REJECT")
+    return "review_needed";
   if (phase === "VERIFY") return "merge_verify";
   if (phase === "EXECUTE_QUEUE" || phase === "DRY_RUN" || phase === "REPAIR") {
     return "execute_pending";
   }
-  if (phase === "DISCUSS" || phase === "PLAN_GATE" || phase === "MISSION_DEFINE") {
+  if (
+    phase === "DISCUSS" ||
+    phase === "PLAN_GATE" ||
+    phase === "MISSION_DEFINE"
+  ) {
     return "plan_draft";
   }
   return null;
@@ -97,7 +102,10 @@ export function WorkStatusBar({
       role="status"
     >
       {missionPaused ? (
-        <span className="work-status-bar__pause-badge" aria-label="Mission paused">
+        <span
+          className="work-status-bar__pause-badge"
+          aria-label="Mission paused"
+        >
           Paused
         </span>
       ) : null}
@@ -126,7 +134,10 @@ export function WorkStatusBar({
           title={`Call budget ${budgetPct}%`}
         >
           <span className="work-status-bar__budget-label">Budget</span>
-          <span className="work-status-bar__budget-fill" style={{ width: `${Math.min(100, budgetPct)}%` }} />
+          <span
+            className="work-status-bar__budget-fill"
+            style={{ width: `${Math.min(100, budgetPct)}%` }}
+          />
           <span className="work-status-bar__budget-pct">{budgetPct}%</span>
         </div>
       ) : null}

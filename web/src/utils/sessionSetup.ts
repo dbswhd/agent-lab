@@ -34,7 +34,9 @@ export type SessionSetupDefaults = {
 
 export type SessionSetupOptions = {
   workspaces: WorkspacePreset[];
-  agent_threads?: Partial<Record<"cursor" | "codex" | "claude", AgentThreadOption[]>>;
+  agent_threads?: Partial<
+    Record<"cursor" | "codex" | "claude", AgentThreadOption[]>
+  >;
   session_templates?: SessionTemplate[];
   trading_mission_preset?: TradingMissionPreset | null;
   defaults: SessionSetupDefaults;

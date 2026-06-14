@@ -24,12 +24,16 @@ import {
   isActiveExecution,
 } from "../utils/planExecuteWorktree";
 
-function actionKey(item: Pick<PlanActionItem, "kind" | "index" | "recommended">): string {
+function actionKey(
+  item: Pick<PlanActionItem, "kind" | "index" | "recommended">,
+): string {
   const kind = item.kind ?? (item.recommended ? "now" : "roadmap");
   return `${kind}:${item.index}`;
 }
 
-export function parsePlanActionKey(key: string): { kind: string; index: number } | null {
+export function parsePlanActionKey(
+  key: string,
+): { kind: string; index: number } | null {
   const sep = key.indexOf(":");
   if (sep <= 0) return null;
   const kind = key.slice(0, sep);
@@ -38,7 +42,9 @@ export function parsePlanActionKey(key: string): { kind: string; index: number }
   return { kind, index };
 }
 
-export function reviewRequiredLabel(row: PlanExecutionRecord | null | undefined): string {
+export function reviewRequiredLabel(
+  row: PlanExecutionRecord | null | undefined,
+): string {
   if (!row) return "PDF 확인 후 승인";
   const artifacts = row.verification_artifacts;
   const pages =
@@ -104,7 +110,9 @@ export function usePlanExecute({ sessionId, run, onUpdated }: Options) {
   const [roadmap, setRoadmap] = useState<PlanActionItem[]>([]);
   const [loadingActions, setLoadingActions] = useState(false);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  const [localPending, setLocalPending] = useState<PlanExecutionRecord | null>(null);
+  const [localPending, setLocalPending] = useState<PlanExecutionRecord | null>(
+    null,
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openObjectionBlock, setOpenObjectionBlock] = useState<{
@@ -133,7 +141,9 @@ export function usePlanExecute({ sessionId, run, onUpdated }: Options) {
     : null;
 
   const lastPlanUpdateTs = useMemo(() => {
-    const lpu = run?.last_plan_update as { completed_at?: string; ts?: string } | undefined;
+    const lpu = run?.last_plan_update as
+      | { completed_at?: string; ts?: string }
+      | undefined;
     return lpu?.completed_at || lpu?.ts || null;
   }, [run?.last_plan_update]);
 
@@ -200,49 +210,54 @@ export function usePlanExecute({ sessionId, run, onUpdated }: Options) {
 
   const selectedAction = useMemo(() => {
     if (!selectedKey) return null;
-    return executableItems.find((item) => actionKey(item) === selectedKey) ?? null;
+    return (
+      executableItems.find((item) => actionKey(item) === selectedKey) ?? null
+    );
   }, [executableItems, selectedKey]);
 
   const canDryRun = Boolean(
     sessionId && selectedKey && !activePending && executableItems.length > 0,
   );
 
-  const dryRun = useCallback(async (overrideKey?: string | null) => {
-    const key = overrideKey ?? selectedKey;
-    if (!sessionId || key == null || activePending) return false;
-    const parsed = parsePlanActionKey(key);
-    if (!parsed) return false;
-    setBusy(true);
-    setError(null);
-    setOpenObjectionBlock(null);
-    try {
-      const res = await runPlanDryRun(sessionId, {
-        actionIndex: parsed.index,
-        actionKind: parsed.kind,
-        permissions: fullAgentPermissions(),
-      });
-      setLocalPending(res.execution);
-      onUpdated?.();
-      return true;
-    } catch (e) {
-      if (
-        e instanceof PlanExecuteDryRunError &&
-        e.code === "open_objection" &&
-        e.objections?.length
-      ) {
-        setOpenObjectionBlock({
-          message: e.message,
-          objections: e.objections,
+  const dryRun = useCallback(
+    async (overrideKey?: string | null) => {
+      const key = overrideKey ?? selectedKey;
+      if (!sessionId || key == null || activePending) return false;
+      const parsed = parsePlanActionKey(key);
+      if (!parsed) return false;
+      setBusy(true);
+      setError(null);
+      setOpenObjectionBlock(null);
+      try {
+        const res = await runPlanDryRun(sessionId, {
+          actionIndex: parsed.index,
+          actionKind: parsed.kind,
+          permissions: fullAgentPermissions(),
         });
-        setError(null);
-      } else {
-        setError(formatPlanExecuteError(e));
+        setLocalPending(res.execution);
+        onUpdated?.();
+        return true;
+      } catch (e) {
+        if (
+          e instanceof PlanExecuteDryRunError &&
+          e.code === "open_objection" &&
+          e.objections?.length
+        ) {
+          setOpenObjectionBlock({
+            message: e.message,
+            objections: e.objections,
+          });
+          setError(null);
+        } else {
+          setError(formatPlanExecuteError(e));
+        }
+        return false;
+      } finally {
+        setBusy(false);
       }
-      return false;
-    } finally {
-      setBusy(false);
-    }
-  }, [sessionId, selectedKey, activePending, onUpdated]);
+    },
+    [sessionId, selectedKey, activePending, onUpdated],
+  );
 
   const resolve = useCallback(
     async (vote: "approve" | "reject") => {

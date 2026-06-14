@@ -9,11 +9,7 @@ export type WorkspaceTab =
 
 export type ToolPanelTab = Exclude<WorkspaceTab, "transcript">;
 
-export type RightPanelMode =
-  | "overview"
-  | "tasks"
-  | "inbox"
-  | ToolPanelTab;
+export type RightPanelMode = "overview" | "tasks" | "inbox" | ToolPanelTab;
 
 /** @deprecated Use `plan` */
 export type LegacyWorkspaceTab = "work" | "run" | "artifacts" | "review";
@@ -27,12 +23,12 @@ export const WORKSPACE_TABS: {
   shortcut: string;
 }[] = [
   { id: "transcript", label: "Transcript", shortcut: "⌘1" },
-  { id: "plan",       label: "Plan",       shortcut: "⌘2" },
+  { id: "plan", label: "Plan", shortcut: "⌘2" },
   { id: "background", label: "Background", shortcut: "⌘3" },
-  { id: "diff",       label: "Diff",       shortcut: "⌘4" },
-  { id: "files",      label: "Files",      shortcut: "⌘5" },
-  { id: "preview",    label: "Preview",    shortcut: "⌘6" },
-  { id: "terminal",   label: "Terminal",   shortcut: "⌘7" },
+  { id: "diff", label: "Diff", shortcut: "⌘4" },
+  { id: "files", label: "Files", shortcut: "⌘5" },
+  { id: "preview", label: "Preview", shortcut: "⌘6" },
+  { id: "terminal", label: "Terminal", shortcut: "⌘7" },
 ];
 
 export const INSPECTOR_TABS: {
@@ -40,9 +36,9 @@ export const INSPECTOR_TABS: {
   label: string;
 }[] = [
   { id: "overview", label: "Overview" },
-  { id: "tasks",    label: "Tasks"    },
-  { id: "inbox",    label: "Inbox"    },
-  { id: "tools",    label: "Tools"    },
+  { id: "tasks", label: "Tasks" },
+  { id: "inbox", label: "Inbox" },
+  { id: "tools", label: "Tools" },
 ];
 
 export type TabAutoContext = {
@@ -69,7 +65,7 @@ export function resolveDefaultWorkspaceTab(ctx: TabAutoContext): WorkspaceTab {
 
 export function resolveDefaultInspectorTab(ctx: TabAutoContext): InspectorTab {
   if (ctx.hasBlocker) return "tasks";
-  return "overview";                          // default → Overview
+  return "overview"; // default → Overview
 }
 
 export function workspaceTabFromLegacy(tab: "chat" | "plan"): WorkspaceTab {

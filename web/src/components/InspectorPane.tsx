@@ -82,7 +82,9 @@ export function InspectorPane({
       className={[
         "context-sidebar",
         open ? "" : "context-sidebar--collapsed",
-        active === "tools" ? "context-sidebar--tools" : "context-sidebar--context",
+        active === "tools"
+          ? "context-sidebar--tools"
+          : "context-sidebar--context",
         isResizing ? "inspector-pane--resizing" : "",
       ]
         .filter(Boolean)

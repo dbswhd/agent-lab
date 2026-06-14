@@ -38,8 +38,12 @@ export function SideBySideDiff({ diff, activeHunkId }: Props) {
               row.hunkId === activeHunkId ? " diff-split-row--active-hunk" : ""
             }`}
           >
-            <pre className="diff-split-cell diff-split-cell--left">{row.left}</pre>
-            <pre className="diff-split-cell diff-split-cell--right">{row.right}</pre>
+            <pre className="diff-split-cell diff-split-cell--left">
+              {row.left}
+            </pre>
+            <pre className="diff-split-cell diff-split-cell--right">
+              {row.right}
+            </pre>
           </div>
         ))}
       </div>

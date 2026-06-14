@@ -30,11 +30,7 @@ function lineKind(raw: string): DiffRowKind {
 }
 
 function stripPrefix(line: string): string {
-  if (
-    line.startsWith("+") ||
-    line.startsWith("-") ||
-    line.startsWith(" ")
-  ) {
+  if (line.startsWith("+") || line.startsWith("-") || line.startsWith(" ")) {
     return line.slice(1);
   }
   return line;
@@ -103,7 +99,13 @@ export function parseSideBySideDiff(diff: string | undefined): {
         const right = adds[j] ?? "";
         const rowKind: DiffRowKind =
           left && right ? "pair" : left ? "del" : right ? "add" : "ctx";
-        pushRow(left, right, rowKind, left ? `- ${left}` : "", right ? `+ ${right}` : "");
+        pushRow(
+          left,
+          right,
+          rowKind,
+          left ? `- ${left}` : "",
+          right ? `+ ${right}` : "",
+        );
       }
       continue;
     }

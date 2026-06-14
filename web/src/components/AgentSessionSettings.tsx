@@ -46,7 +46,9 @@ export function AgentSessionSettings({
   const [open, setOpen] = useState(false);
   const showBody = hideToggle || open;
   const activeSet = new Set(
-    (selectedAgents?.length ? selectedAgents : AGENT_ORDER).map((a) => a.toLowerCase()),
+    (selectedAgents?.length ? selectedAgents : AGENT_ORDER).map((a) =>
+      a.toLowerCase(),
+    ),
   );
 
   function patch(updater: (c: AgentCapabilitiesMap) => AgentCapabilitiesMap) {

@@ -43,13 +43,25 @@ export function SessionRailStatusChip({
         onClick={() => setOpen((v) => !v)}
         title="에이전트·API 상태"
       >
-        <span className={`dot dot--${apiOk ? "ok" : "danger"}${apiOk ? " dot--live" : ""}`} aria-hidden />
+        <span
+          className={`dot dot--${apiOk ? "ok" : "danger"}${apiOk ? " dot--live" : ""}`}
+          aria-hidden
+        />
         <span>
-          팀 상태 · <strong>{apiOk ? `${readyCount}/3 ready` : "API offline"}</strong>
+          팀 상태 ·{" "}
+          <strong>{apiOk ? `${readyCount}/3 ready` : "API offline"}</strong>
         </span>
         <span className="rail-status__caret" aria-hidden>
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
-            strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            viewBox="0 0 24 24"
+            width="14"
+            height="14"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.7}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="m6 9 6 6 6-6" />
           </svg>
         </span>

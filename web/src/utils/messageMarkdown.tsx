@@ -112,7 +112,11 @@ function parseBlocks(text: string): Block[] {
 
     if (/^#{1,3}\s/.test(line)) {
       const level = Math.min(3, line.match(/^#+/)![0].length) as 1 | 2 | 3;
-      blocks.push({ type: "heading", level, text: line.replace(/^#{1,3}\s+/, "") });
+      blocks.push({
+        type: "heading",
+        level,
+        text: line.replace(/^#{1,3}\s+/, ""),
+      });
       i += 1;
       continue;
     }
@@ -155,7 +159,11 @@ function parseBlocks(text: string): Block[] {
 
     const paraLines: string[] = [line];
     i += 1;
-    while (i < lines.length && lines[i].trim() !== "" && !isBlockStart(lines[i])) {
+    while (
+      i < lines.length &&
+      lines[i].trim() !== "" &&
+      !isBlockStart(lines[i])
+    ) {
       paraLines.push(lines[i]);
       i += 1;
     }
@@ -189,7 +197,7 @@ function renderBlock(
 
   switch (block.type) {
     case "heading": {
-      const Tag = (`h${block.level}` as "h1" | "h2" | "h3");
+      const Tag = `h${block.level}` as "h1" | "h2" | "h3";
       const headingClass =
         block.level === 1 ? c.h1 : block.level === 2 ? c.h2 : c.h3;
       return (

@@ -48,23 +48,25 @@ export function buildMissionOverviewView(input: {
   planMd?: string;
 }): MissionOverviewView {
   const run = input.run ?? {};
-  const ml: MissionLoopState =
-    (run.mission_loop as MissionLoopState | undefined) ?? {
-      enabled: false,
-      phase: "MISSION_DEFINE",
-    };
-  const verified = (run.verified_loop as Record<string, unknown> | undefined) ?? {};
+  const ml: MissionLoopState = (run.mission_loop as
+    | MissionLoopState
+    | undefined) ?? {
+    enabled: false,
+    phase: "MISSION_DEFINE",
+  };
+  const verified =
+    (run.verified_loop as Record<string, unknown> | undefined) ?? {};
   const loopGoal = (verified.loop_goal as { text?: string } | undefined) ?? {};
   const proposed = (verified.proposed as { goal?: string } | undefined) ?? {};
   const sessionGoal = (run.session_goal as { text?: string } | undefined) ?? {};
 
   const goalText =
-    String(loopGoal.text ?? proposed.goal ?? sessionGoal.text ?? "").trim() || null;
+    String(loopGoal.text ?? proposed.goal ?? sessionGoal.text ?? "").trim() ||
+    null;
 
   const pending = ml.pending_action_indices ?? [];
   const nextIndex =
-    ml.current_action_index ??
-    (pending.length > 0 ? pending[0] : null);
+    ml.current_action_index ?? (pending.length > 0 ? pending[0] : null);
 
   const planMd = input.planMd ?? "";
   const objections = (run.objections as RoomObjection[] | undefined) ?? [];
@@ -80,8 +82,8 @@ export function buildMissionOverviewView(input: {
     nextActionIndex: nextIndex ?? null,
     nextActionWhat:
       nextIndex != null
-        ? actionWhatFromPlan(planMd, nextIndex) ??
-          actionTitleFromPlan(planMd, nextIndex)
+        ? (actionWhatFromPlan(planMd, nextIndex) ??
+          actionTitleFromPlan(planMd, nextIndex))
         : null,
     pendingCount: pending.length,
     circuitBreaker: Boolean(ml.circuit_breaker),

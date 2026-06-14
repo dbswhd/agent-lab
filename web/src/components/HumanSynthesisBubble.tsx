@@ -36,9 +36,7 @@ export function HumanSynthesisBubble({
         roleAttr="article"
         ariaLabel={msg.turnSummary}
         meta={
-          lead ? (
-            <span className="turn__meta">lead · {lead}</span>
-          ) : undefined
+          lead ? <span className="turn__meta">lead · {lead}</span> : undefined
         }
       >
         {parsed.humanExcerpt ? (
@@ -51,8 +49,12 @@ export function HumanSynthesisBubble({
                 key={`${row.name}-${row.summary.slice(0, 24)}`}
                 className={`synthesis-console__agent synthesis-console__agent--${agentSlug(row.name)}`}
               >
-                <span className="synthesis-console__agent-name">{row.name}</span>
-                <span className="synthesis-console__agent-summary">{row.summary}</span>
+                <span className="synthesis-console__agent-name">
+                  {row.name}
+                </span>
+                <span className="synthesis-console__agent-summary">
+                  {row.summary}
+                </span>
               </li>
             ))}
           </ul>
@@ -100,7 +102,9 @@ export function HumanSynthesisBubble({
 
       {parsed.agents.length > 0 ? (
         <section className="human-synthesis-bubble__section">
-          <h3 className="human-synthesis-bubble__section-title">에이전트 요약</h3>
+          <h3 className="human-synthesis-bubble__section-title">
+            에이전트 요약
+          </h3>
           <ul className="human-synthesis-bubble__agents">
             {parsed.agents.map((row) => (
               <li

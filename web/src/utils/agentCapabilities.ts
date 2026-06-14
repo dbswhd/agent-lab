@@ -56,10 +56,7 @@ export const CWD_ROLE_OPTIONS: { id: string; label: string }[] = [
   { id: "review", label: "프로젝트 루트 (읽기)" },
 ];
 
-export const TOOL_OPTIONS: Record<
-  AgentId,
-  { id: string; label: string }[]
-> = {
+export const TOOL_OPTIONS: Record<AgentId, { id: string; label: string }[]> = {
   cursor: [{ id: "sdk_edit", label: "SDK 패치" }],
   codex: [
     { id: "codex_cli", label: "Codex CLI" },
@@ -70,20 +67,29 @@ export const TOOL_OPTIONS: Record<
 
 const AGENTS: AgentId[] = ["cursor", "codex", "claude"];
 
-function normalizeOne(raw: unknown, fallback: AgentCapability): AgentCapability {
-  const r = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+function normalizeOne(
+  raw: unknown,
+  fallback: AgentCapability,
+): AgentCapability {
+  const r =
+    raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   const toolsRaw = r.tools;
   const tools = Array.isArray(toolsRaw)
     ? toolsRaw.map((t) => String(t).trim()).filter(Boolean)
     : [...fallback.tools];
   const restrictionsRaw = r.restrictions;
   const restrictions = Array.isArray(restrictionsRaw)
-    ? restrictionsRaw.map((x) => String(x).trim()).filter(Boolean).slice(0, 6)
+    ? restrictionsRaw
+        .map((x) => String(x).trim())
+        .filter(Boolean)
+        .slice(0, 6)
     : fallback.restrictions;
   const out: AgentCapability = {
     tools: tools.length ? tools : [...fallback.tools],
-    cwd_role: String(r.cwd_role || fallback.cwd_role).trim() || fallback.cwd_role,
-    label: String(r.label || fallback.label || "").slice(0, 120) || fallback.label,
+    cwd_role:
+      String(r.cwd_role || fallback.cwd_role).trim() || fallback.cwd_role,
+    label:
+      String(r.label || fallback.label || "").slice(0, 120) || fallback.label,
   };
   if (restrictions?.length) out.restrictions = restrictions;
   const cwdPath = String(r.cwd_path || "").trim();
@@ -101,7 +107,9 @@ export function parseAgentCapabilities(raw: unknown): AgentCapabilitiesMap {
   };
 }
 
-export function cloneCapabilities(caps: AgentCapabilitiesMap): AgentCapabilitiesMap {
+export function cloneCapabilities(
+  caps: AgentCapabilitiesMap,
+): AgentCapabilitiesMap {
   return {
     cursor: { ...caps.cursor, tools: [...caps.cursor.tools] },
     codex: { ...caps.codex, tools: [...caps.codex.tools] },
@@ -109,7 +117,9 @@ export function cloneCapabilities(caps: AgentCapabilitiesMap): AgentCapabilities
   };
 }
 
-export function capabilitiesForApi(caps: AgentCapabilitiesMap): Record<string, AgentCapability> {
+export function capabilitiesForApi(
+  caps: AgentCapabilitiesMap,
+): Record<string, AgentCapability> {
   const out: Record<string, AgentCapability> = {};
   for (const id of AGENTS) {
     const c = caps[id];
@@ -131,7 +141,11 @@ export function agentLabel(id: AgentId): string {
   return "Claude";
 }
 
-export function toggleTool(caps: AgentCapabilitiesMap, agent: AgentId, toolId: string): AgentCapabilitiesMap {
+export function toggleTool(
+  caps: AgentCapabilitiesMap,
+  agent: AgentId,
+  toolId: string,
+): AgentCapabilitiesMap {
   const next = cloneCapabilities(caps);
   const set = new Set(next[agent].tools);
   if (set.has(toolId)) set.delete(toolId);
@@ -161,7 +175,11 @@ export function setAgentCwdPath(
 ): AgentCapabilitiesMap {
   const next = cloneCapabilities(caps);
   if (cwd_path?.trim()) {
-    next[agent] = { ...next[agent], cwd_path: cwd_path.trim(), cwd_role: "primary" };
+    next[agent] = {
+      ...next[agent],
+      cwd_path: cwd_path.trim(),
+      cwd_role: "primary",
+    };
   } else {
     const { cwd_path: _drop, ...rest } = next[agent];
     next[agent] = rest as AgentCapability;

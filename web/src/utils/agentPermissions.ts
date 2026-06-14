@@ -120,7 +120,12 @@ export function agentsNeedingPermissionPrompt(
     out.push({
       id: "claude",
       label: "Claude",
-      needs: ["Claude Code 읽기", "Claude Code 편집", "agent-lab 폴더", "quant-pipeline 폴더"],
+      needs: [
+        "Claude Code 읽기",
+        "Claude Code 편집",
+        "agent-lab 폴더",
+        "quant-pipeline 폴더",
+      ],
     });
   }
   return out;

@@ -77,7 +77,9 @@ function modeIcon(mode: RightPanelMode) {
         </>
       );
     case "files":
-      return <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />;
+      return (
+        <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
+      );
     case "background":
       return (
         <>
@@ -125,7 +127,10 @@ export function WorkbenchModeMenu({
   useEffect(() => {
     if (!menuOpen) return;
     function onPointerDown(event: PointerEvent) {
-      if (event.target instanceof Node && rootRef.current?.contains(event.target)) {
+      if (
+        event.target instanceof Node &&
+        rootRef.current?.contains(event.target)
+      ) {
         return;
       }
       setMenuOpen(false);
@@ -148,7 +153,17 @@ export function WorkbenchModeMenu({
         aria-expanded={menuOpen}
         onClick={() => setMenuOpen((current) => !current)}
       >
-        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <svg
+          viewBox="0 0 24 24"
+          width="17"
+          height="17"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.8}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
           <path d="M4 5h16v14H4Z" />
           <path d="M14 5v14" />
         </svg>
@@ -175,7 +190,17 @@ export function WorkbenchModeMenu({
               role="menuitem"
               onClick={() => pick(item.mode)}
             >
-              <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <svg
+                viewBox="0 0 24 24"
+                width="17"
+                height="17"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.8}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
                 {modeIcon(item.mode)}
               </svg>
               <span>{modeLabel(item.mode, locale)}</span>

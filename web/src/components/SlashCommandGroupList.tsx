@@ -92,12 +92,16 @@ export function SlashCommandGroupList({
         if (rows.length === 0) return null;
         const isAgent = key !== "built_in" && key !== "external";
         const expanded = open[key];
-        const cap = isAgent && maxPerAgentGroup > 0 ? maxPerAgentGroup : rows.length;
+        const cap =
+          isAgent && maxPerAgentGroup > 0 ? maxPerAgentGroup : rows.length;
         const visible = expanded ? rows.slice(0, cap) : [];
         const hidden = rows.length - visible.length;
 
         return (
-          <section key={key} className="plugin-agent-group commands-list__group">
+          <section
+            key={key}
+            className="plugin-agent-group commands-list__group"
+          >
             <button
               type="button"
               className={[

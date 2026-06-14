@@ -24,7 +24,9 @@ export function PlanDiffStat({ text }: Props) {
           </span>
         </div>
       ))}
-      {parsed.summary ? <p className="diffstat__summary">{parsed.summary}</p> : null}
+      {parsed.summary ? (
+        <p className="diffstat__summary">{parsed.summary}</p>
+      ) : null}
     </div>
   );
 }

@@ -33,8 +33,12 @@ export function SchedulesPanel({ sessionId }: SchedulesPanelProps) {
   const [hint, setHint] = useState<string | null>(null);
 
   const load = useCallback(() => {
-    void fetchSessionSchedules(sessionId).then((res) => setSchedules(res.schedules ?? []));
-    void fetchMissionTemplates().then((res) => setTemplates(res.templates ?? []));
+    void fetchSessionSchedules(sessionId).then((res) =>
+      setSchedules(res.schedules ?? []),
+    );
+    void fetchMissionTemplates().then((res) =>
+      setTemplates(res.templates ?? []),
+    );
   }, [sessionId]);
 
   useEffect(() => {
@@ -76,7 +80,9 @@ export function SchedulesPanel({ sessionId }: SchedulesPanelProps) {
 
   return (
     <div className="mission-os-schedules">
-      <div className="settings-section__sub-head">{t("missionOsSchedules")}</div>
+      <div className="settings-section__sub-head">
+        {t("missionOsSchedules")}
+      </div>
       <p className="settings-hint">{t("missionOsTemplateOptionalHint")}</p>
       {schedules.length === 0 ? (
         <p className="settings-hint">{t("missionOsNoSchedules")}</p>
@@ -173,7 +179,12 @@ export function SchedulesPanel({ sessionId }: SchedulesPanelProps) {
         >
           {t("missionOsAddSchedule")}
         </button>
-        <button type="button" className="settings-btn" disabled={busy} onClick={() => void save()}>
+        <button
+          type="button"
+          className="settings-btn"
+          disabled={busy}
+          onClick={() => void save()}
+        >
           {t("save")}
         </button>
       </div>

@@ -1,5 +1,6 @@
 import { parsePlanField } from "../utils/planTextFormat";
-import { PlanDocRefs, renderPlanInline } from "../utils/planDocInline";
+import { PlanDocRefs } from "../utils/PlanDocRefs";
+import { renderPlanInline } from "../utils/planDocInline";
 
 type Props = {
   n?: number;
@@ -18,7 +19,10 @@ type Props = {
   onSelect?: () => void;
 };
 
-function fieldBody(value: string | undefined | null): { text: string; refs: number[] } {
+function fieldBody(value: string | undefined | null): {
+  text: string;
+  refs: number[];
+} {
   const parsed = parsePlanField(value);
   return { text: parsed?.body ?? "", refs: parsed?.refs ?? [] };
 }
@@ -47,7 +51,12 @@ export function PlanActionCard({
   const wherePart = fieldBody(where);
   const verifyPart = fieldBody(verify);
   const refs = [
-    ...new Set([...(refsProp ?? []), ...whatPart.refs, ...wherePart.refs, ...verifyPart.refs]),
+    ...new Set([
+      ...(refsProp ?? []),
+      ...whatPart.refs,
+      ...wherePart.refs,
+      ...verifyPart.refs,
+    ]),
   ].sort((a, b) => a - b);
 
   const card = (
@@ -67,7 +76,9 @@ export function PlanActionCard({
       {n != null ? <span className="plan-action__index">{n}</span> : null}
       <div className="plan-action__main">
         {whatPart.text ? (
-          <span className="plan-action__what">{renderPlanInline(whatPart.text)}</span>
+          <span className="plan-action__what">
+            {renderPlanInline(whatPart.text)}
+          </span>
         ) : null}
         {(wherePart.text || verifyPart.text) && (
           <dl className="plan-action__fields">

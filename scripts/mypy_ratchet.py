@@ -63,7 +63,10 @@ def main() -> int:
     ratchet = ratchet_count(counts, exclude)
 
     if args.print:
+        excluded_counts = {path: counts.get(path, 0) for path in exclude}
         print(f"total={total} ratchet={ratchet} excluded={exclude}")
+        for path, n in excluded_counts.items():
+            print(f"  {path}: {n} errors (notes ignored — grep 'room.py:' over-counts)")
         print(f"baseline max_ratchet_errors={baseline.get('max_ratchet_errors', '?')}")
         return 0
 

@@ -14,9 +14,7 @@ export function deriveRunningAgentSlots(
   options: { running: boolean; expectedAgents: string[] },
 ): RunningAgentSlot[] {
   const { running, expectedAgents } = options;
-  const typing = messages.filter(
-    (m) => m.typing && isReplyWaitRole(m.role),
-  );
+  const typing = messages.filter((m) => m.typing && isReplyWaitRole(m.role));
   if (typing.length) {
     return typing.map((m) => ({
       agent: String(m.role),
@@ -47,7 +45,9 @@ export function runningAgentsSummary(
       ? `${names} 실행 중`
       : `${names} 실행 중 (${slots.length})`;
   }
-  return slots.length === 1 ? `${names} running` : `${names} running (${slots.length})`;
+  return slots.length === 1
+    ? `${names} running`
+    : `${names} running (${slots.length})`;
 }
 
 export function pickPrimaryRunningSlot(

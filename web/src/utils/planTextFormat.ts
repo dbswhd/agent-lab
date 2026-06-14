@@ -30,7 +30,9 @@ export function stripPlanRefAnnotations(text: string): string {
     .trim();
 }
 
-export function parsePlanField(text: string | undefined | null): ParsedPlanField | null {
+export function parsePlanField(
+  text: string | undefined | null,
+): ParsedPlanField | null {
   const raw = text?.trim();
   if (!raw) return null;
   return {

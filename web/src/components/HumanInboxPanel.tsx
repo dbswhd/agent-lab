@@ -56,15 +56,29 @@ function isDiscussHarvest(item: HumanInboxItem): boolean {
 function inboxLaneLabel(item: HumanInboxItem, ko: boolean): string {
   if (isDiscussHarvest(item)) return ko ? "Discuss" : "Discuss";
   const src = (item.source ?? "").toLowerCase();
-  if (src.includes("mcp") || src.includes("execute")) return ko ? "Execute" : "Execute";
+  if (src.includes("mcp") || src.includes("execute"))
+    return ko ? "Execute" : "Execute";
   return src || (ko ? "Human" : "Human");
 }
 
-function triggerBadge(trigger: string | null | undefined, ko: boolean): string | null {
+function triggerBadge(
+  trigger: string | null | undefined,
+  ko: boolean,
+): string | null {
   if (!trigger) return null;
   const map: Record<string, string> = ko
-    ? { "T-Q0": "Clarifier", "T-Q1": "방향", "T-Q2": "Plan OPEN", "T-Q5": "수동" }
-    : { "T-Q0": "Clarifier", "T-Q1": "Direction", "T-Q2": "Plan OPEN", "T-Q5": "Manual" };
+    ? {
+        "T-Q0": "Clarifier",
+        "T-Q1": "방향",
+        "T-Q2": "Plan OPEN",
+        "T-Q5": "수동",
+      }
+    : {
+        "T-Q0": "Clarifier",
+        "T-Q1": "Direction",
+        "T-Q2": "Plan OPEN",
+        "T-Q5": "Manual",
+      };
   return map[trigger] ?? trigger;
 }
 
@@ -86,7 +100,9 @@ type InboxRowProps = {
   disabled?: boolean;
   busyId: string | null;
   freeformDraft: Record<string, string>;
-  setFreeformDraft: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  setFreeformDraft: React.Dispatch<
+    React.SetStateAction<Record<string, string>>
+  >;
   onQuestion: (item: HumanInboxItem, optionId: string) => void;
   onFreeform: (item: HumanInboxItem) => void;
   onBuild: (item: HumanInboxItem, decision: "go" | "defer" | "reject") => void;
@@ -132,7 +148,9 @@ function InboxRow({
         "inbox-row",
         `inbox-row--${item.kind}`,
         forkRow ? "inbox-row--fork" : "",
-        isDiscussHarvest(item) ? "inbox-row--discuss" : "inbox-row--execute-lane",
+        isDiscussHarvest(item)
+          ? "inbox-row--discuss"
+          : "inbox-row--execute-lane",
       ]
         .filter(Boolean)
         .join(" ")}
@@ -142,14 +160,18 @@ function InboxRow({
         <span className="inbox-row__subject">{subject}</span>
         <span className="inbox-row__badges">
           <span className="inbox-row__lane-badge">{lane}</span>
-          {trigger ? <span className="inbox-row__trigger-badge">{trigger}</span> : null}
+          {trigger ? (
+            <span className="inbox-row__trigger-badge">{trigger}</span>
+          ) : null}
           {forkRow ? (
             <span className="inbox-row__fork-badge">
               {ko ? "FORK" : "FORK"}
             </span>
           ) : null}
         </span>
-        <span className="inbox-row__time">{formatInboxTime(item.created_at)}</span>
+        <span className="inbox-row__time">
+          {formatInboxTime(item.created_at)}
+        </span>
       </div>
       {body ? <p className="inbox-row__body">{body}</p> : null}
       {item.action_ref ? (
@@ -302,7 +324,9 @@ export function HumanInboxPanel({
   const [items, setItems] = useState<HumanInboxItem[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [freeformDraft, setFreeformDraft] = useState<Record<string, string>>({});
+  const [freeformDraft, setFreeformDraft] = useState<Record<string, string>>(
+    {},
+  );
 
   const reload = useCallback(async () => {
     if (!sessionId) {
@@ -324,7 +348,9 @@ export function HumanInboxPanel({
 
   const pending = useMemo(() => pendingItems(items), [items]);
   const visibleItems = useMemo(() => {
-    let rows = kindFilter ? items.filter((item) => item.kind === kindFilter) : items;
+    let rows = kindFilter
+      ? items.filter((item) => item.kind === kindFilter)
+      : items;
     if (discussOnly) {
       rows = rows.filter((item) => isDiscussHarvest(item));
     }
@@ -483,7 +509,9 @@ export function HumanInboxPanel({
     return null;
   }
 
-  const questionCount = pending.filter((item) => item.kind === "question").length;
+  const questionCount = pending.filter(
+    (item) => item.kind === "question",
+  ).length;
   const buildCount = pending.filter((item) => item.kind === "build").length;
 
   const title =
@@ -513,10 +541,7 @@ export function HumanInboxPanel({
 
   return (
     <div
-      className={[
-        "human-inbox",
-        `human-inbox--${presentation}`,
-      ].join(" ")}
+      className={["human-inbox", `human-inbox--${presentation}`].join(" ")}
       role={presentation === "popup" ? "dialog" : "region"}
       aria-label="Human Inbox"
       aria-modal={presentation === "popup" ? true : undefined}
@@ -525,9 +550,17 @@ export function HumanInboxPanel({
         <div className="human-inbox__header">
           <span className="human-inbox__title">{title}</span>
           <span className="human-inbox__counts">
-            {questionCount > 0 ? (ko ? `방향 ${questionCount}` : `${questionCount} question`) : null}
+            {questionCount > 0
+              ? ko
+                ? `방향 ${questionCount}`
+                : `${questionCount} question`
+              : null}
             {questionCount > 0 && buildCount > 0 ? " · " : null}
-            {buildCount > 0 ? (ko ? `실행 ${buildCount}` : `${buildCount} build`) : null}
+            {buildCount > 0
+              ? ko
+                ? `실행 ${buildCount}`
+                : `${buildCount} build`
+              : null}
           </span>
           {presentation === "popup" ? (
             <span className="human-inbox__header-actions">
@@ -545,7 +578,9 @@ export function HumanInboxPanel({
                   type="button"
                   className="human-inbox__header-btn"
                   onClick={onDismiss}
-                  aria-label={ko ? "Human Inbox popup 닫기" : "Dismiss Human Inbox popup"}
+                  aria-label={
+                    ko ? "Human Inbox popup 닫기" : "Dismiss Human Inbox popup"
+                  }
                 >
                   {ko ? "닫기" : "Dismiss"}
                 </button>
@@ -557,7 +592,12 @@ export function HumanInboxPanel({
       {error ? <div className="human-inbox__error">{error}</div> : null}
       <div className="human-inbox__items">
         {pending.map((item) => (
-          <InboxRow key={item.id} item={item} {...rowProps} onRefClick={onRefClick} />
+          <InboxRow
+            key={item.id}
+            item={item}
+            {...rowProps}
+            onRefClick={onRefClick}
+          />
         ))}
       </div>
       {presentation === "taskbar" && onOpenInbox ? (
@@ -578,7 +618,9 @@ type InspectorInboxProps = {
   busyId: string | null;
   planRevision: string | null;
   freeformDraft: Record<string, string>;
-  setFreeformDraft: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  setFreeformDraft: React.Dispatch<
+    React.SetStateAction<Record<string, string>>
+  >;
   onQuestion: (item: HumanInboxItem, optionId: string) => void;
   onFreeform: (item: HumanInboxItem) => void;
   onBuild: (item: HumanInboxItem, decision: "go" | "defer" | "reject") => void;
@@ -607,8 +649,14 @@ function InspectorInboxView({
   const { msg, locale } = useLocale();
 
   return (
-    <section className={hideLabel ? "ctx-section ctx-section--embedded" : "ctx-section"}>
-      {hideLabel ? null : <div className="ctx-section__label">{msg.humanInbox}</div>}
+    <section
+      className={
+        hideLabel ? "ctx-section ctx-section--embedded" : "ctx-section"
+      }
+    >
+      {hideLabel ? null : (
+        <div className="ctx-section__label">{msg.humanInbox}</div>
+      )}
       {error ? <div className="ctx-empty">{error}</div> : null}
       {items.length === 0 ? (
         <div className="ctx-empty">{msg.inboxEmpty}</div>
@@ -620,10 +668,7 @@ function InspectorInboxView({
                 ? (item.summary ?? item.prompt)
                 : item.prompt;
             return (
-              <div
-                key={item.id}
-                className="inbox-row inbox-row--resolved"
-              >
+              <div key={item.id} className="inbox-row inbox-row--resolved">
                 <div className="inbox-row__head">
                   <Avatar role={inboxAgent(item)} size={20} />
                   <span className="inbox-row__subject">{subject}</span>

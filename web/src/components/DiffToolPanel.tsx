@@ -25,9 +25,11 @@ export function DiffToolPanel({ executions }: Props) {
   const activeRow = useMemo(() => {
     const active = findActiveExecution([...executions]);
     if (active?.diff || active?.diff_stat) return active;
-    return [...executions]
-      .filter((row) => Boolean(row.diff || row.diff_stat))
-      .sort((left, right) => rowTime(right) - rowTime(left))[0] ?? null;
+    return (
+      [...executions]
+        .filter((row) => Boolean(row.diff || row.diff_stat))
+        .sort((left, right) => rowTime(right) - rowTime(left))[0] ?? null
+    );
   }, [executions]);
 
   if (!activeRow) {
@@ -35,7 +37,16 @@ export function DiffToolPanel({ executions }: Props) {
       <div className="diff-tool-panel">
         <div className="empty-state">
           <span className="empty-state__icon" aria-hidden>
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              viewBox="0 0 24 24"
+              width="24"
+              height="24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M8 5h10" />
               <path d="M8 12h10" />
               <path d="M8 19h10" />
@@ -58,7 +69,7 @@ export function DiffToolPanel({ executions }: Props) {
           {activeRow.status ?? "diff"}
         </span>
         <h3>{rowTitle(activeRow)}</h3>
-        {activeRow.executor_label ?? activeRow.executor ? (
+        {(activeRow.executor_label ?? activeRow.executor) ? (
           <p>{activeRow.executor_label ?? activeRow.executor}</p>
         ) : null}
       </section>

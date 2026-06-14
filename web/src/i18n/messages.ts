@@ -69,7 +69,8 @@ const EN = {
   responseRawDisclosure: "Raw response",
   turnLeadSession: "Session lead",
   turnLeadThisTurn: "Turn leads",
-  turnLeadHelp: "Session lead is the room default; turn lead comes from GO / rotation.",
+  turnLeadHelp:
+    "Session lead is the room default; turn lead comes from GO / rotation.",
   terminalOffline: "Offline",
   terminalConnecting: "Connecting…",
   terminalConnected: "Connected",
@@ -131,13 +132,16 @@ const EN = {
     "Agents ask structured questions via Human Inbox before drafting plan.md.",
   planWorkflowPhaseClarify: "CLARIFY",
   planWorkflowDraftTitle: "Plan workflow · Draft",
-  planWorkflowDraftDetail: "Session scribe is synthesizing plan.md from the room thread.",
+  planWorkflowDraftDetail:
+    "Session scribe is synthesizing plan.md from the room thread.",
   planWorkflowPhaseDraft: "DRAFT",
   planWorkflowPeerTitle: "Plan workflow · Peer review",
-  planWorkflowPeerDetail: "Non-scribe agents review plan.md (read-only CHALLENGE / ENDORSE).",
+  planWorkflowPeerDetail:
+    "Non-scribe agents review plan.md (read-only CHALLENGE / ENDORSE).",
   planWorkflowPhasePeer: "PEER REVIEW",
   planWorkflowRefineTitle: "Plan workflow · Refine",
-  planWorkflowRefineDetail: "Scribe updates plan.md from peer objections and Momus-lite checks.",
+  planWorkflowRefineDetail:
+    "Scribe updates plan.md from peer objections and Momus-lite checks.",
   planWorkflowPhaseRefine: "REFINE",
   planWorkflowOpenInbox: (n: number) => `Open Human Inbox (${n})`,
   planRejectTarget: "Send back to",
@@ -159,15 +163,19 @@ const EN = {
   planApprovalPromise: "Completion promise",
   planApprovalApproveBtn: "Approve plan",
   planWorkflowPendingTitle: "Plan workflow · Approval",
-  planWorkflowPendingDetail: "Review and approve plan.md in the Tasks inspector.",
+  planWorkflowPendingDetail:
+    "Review and approve plan.md in the Tasks inspector.",
   planWorkflowPhasePending: "HUMAN PENDING",
   planWorkflowPendingOpenTasks: "Open Tasks · Approve",
   planWorkflowApprovedTitle: "Plan workflow · Approved",
   planWorkflowApprovedDetail: "Plan approved — execute / dry-run is enabled.",
   planWorkflowPhaseApproved: "APPROVED",
-  planWorkflowNoticeClarifyCap: "Clarify round limit reached — drafting anyway.",
-  planWorkflowNoticePeerCap: "Peer review round limit reached — sent for human approval.",
-  planWorkflowNoticeGateCap: "Momus-lite still has warnings — human review required.",
+  planWorkflowNoticeClarifyCap:
+    "Clarify round limit reached — drafting anyway.",
+  planWorkflowNoticePeerCap:
+    "Peer review round limit reached — sent for human approval.",
+  planWorkflowNoticeGateCap:
+    "Momus-lite still has warnings — human review required.",
   planWorkflowGateWarn: (reason: string) => `Momus-lite: ${reason}`,
   planWorkflowTranscriptClarify: "[Plan workflow] Clarify",
   planWorkflowTranscriptDraft: "[Plan workflow] Draft",
@@ -235,11 +243,14 @@ const EN = {
   humanDecisionProfile: (profile: string) => `Gate profile: ${profile}`,
   inboxSkills: "Skills",
   inboxDiscuss: "Discuss",
-  inboxDiscussHint: "Harvested direction questions from Room discuss (M3–M4). FORK rows show ref-anchored facilitator options.",
-  inboxDiscussPausedBanner: "Discuss paused — answer the pending Human Inbox question to resume.",
+  inboxDiscussHint:
+    "Harvested direction questions from Room discuss (M3–M4). FORK rows show ref-anchored facilitator options.",
+  inboxDiscussPausedBanner:
+    "Discuss paused — answer the pending Human Inbox question to resume.",
   inboxPopupDismiss: "Dismiss",
   discussRecoveryTitle: "Discuss recovery pending",
-  discussRecoveryDefault: "Verify/repair cap reached — run recovery discuss round.",
+  discussRecoveryDefault:
+    "Verify/repair cap reached — run recovery discuss round.",
   discussRecoveryReason: (reason: string) => `Reason: ${reason}`,
   discussRecoveryRun: "Run recovery",
   missionOsSlack: "Slack",
@@ -298,7 +309,8 @@ const KO = {
   dark: "다크",
   transcriptLoading: "Transcript 불러오는 중…",
   transcriptEmpty: "메시지를 입력하세요",
-  transcriptEmptyHint: "Composer에서 메시지를 보내면 에이전트 토론이 시작됩니다.",
+  transcriptEmptyHint:
+    "Composer에서 메시지를 보내면 에이전트 토론이 시작됩니다.",
   humanInbox: "수신함",
   inboxEmpty: "수신함이 비어 있습니다",
   ctxTitle: "컨텍스트",
@@ -387,7 +399,8 @@ const KO = {
     "에이전트가 Human Inbox로 구조화 질문을 보낸 뒤 plan.md를 작성합니다.",
   planWorkflowPhaseClarify: "CLARIFY",
   planWorkflowDraftTitle: "Plan workflow · Draft",
-  planWorkflowDraftDetail: "Scribe가 Room 대화를 바탕으로 plan.md를 작성 중입니다.",
+  planWorkflowDraftDetail:
+    "Scribe가 Room 대화를 바탕으로 plan.md를 작성 중입니다.",
   planWorkflowPhaseDraft: "DRAFT",
   planWorkflowPeerTitle: "Plan workflow · Peer review",
   planWorkflowPeerDetail:
@@ -417,15 +430,20 @@ const KO = {
   planApprovalPromise: "completion promise",
   planApprovalApproveBtn: "Plan 승인",
   planWorkflowPendingTitle: "Plan workflow · 승인",
-  planWorkflowPendingDetail: "Tasks inspector에서 plan.md를 확인하고 승인하세요.",
+  planWorkflowPendingDetail:
+    "Tasks inspector에서 plan.md를 확인하고 승인하세요.",
   planWorkflowPhasePending: "HUMAN PENDING",
   planWorkflowPendingOpenTasks: "Tasks · 승인하기",
   planWorkflowApprovedTitle: "Plan workflow · 승인됨",
-  planWorkflowApprovedDetail: "Plan이 승인되었습니다 — execute / dry-run을 사용할 수 있습니다.",
+  planWorkflowApprovedDetail:
+    "Plan이 승인되었습니다 — execute / dry-run을 사용할 수 있습니다.",
   planWorkflowPhaseApproved: "APPROVED",
-  planWorkflowNoticeClarifyCap: "Clarify 라운드 한도 도달 — Draft로 진행합니다.",
-  planWorkflowNoticePeerCap: "Peer review 라운드 한도 도달 — Human 승인으로 넘깁니다.",
-  planWorkflowNoticeGateCap: "Momus-lite 경고가 남아 있습니다 — Human 검토가 필요합니다.",
+  planWorkflowNoticeClarifyCap:
+    "Clarify 라운드 한도 도달 — Draft로 진행합니다.",
+  planWorkflowNoticePeerCap:
+    "Peer review 라운드 한도 도달 — Human 승인으로 넘깁니다.",
+  planWorkflowNoticeGateCap:
+    "Momus-lite 경고가 남아 있습니다 — Human 검토가 필요합니다.",
   planWorkflowGateWarn: (reason: string) => `Momus-lite: ${reason}`,
   planWorkflowTranscriptClarify: "[Plan workflow] Clarify",
   planWorkflowTranscriptDraft: "[Plan workflow] Draft",
@@ -493,11 +511,14 @@ const KO = {
   humanDecisionProfile: (profile: string) => `Gate profile: ${profile}`,
   inboxSkills: "스킬",
   inboxDiscuss: "Discuss",
-  inboxDiscussHint: "Room discuss에서 수확한 방향 질문(M3–M4). FORK 행은 ref 기반 Facilitator 옵션입니다.",
-  inboxDiscussPausedBanner: "Discuss 일시 중단 — Inbox 질문에 답하면 재개됩니다.",
+  inboxDiscussHint:
+    "Room discuss에서 수확한 방향 질문(M3–M4). FORK 행은 ref 기반 Facilitator 옵션입니다.",
+  inboxDiscussPausedBanner:
+    "Discuss 일시 중단 — Inbox 질문에 답하면 재개됩니다.",
   inboxPopupDismiss: "닫기",
   discussRecoveryTitle: "Discuss recovery 대기",
-  discussRecoveryDefault: "Verify/repair cap — recovery discuss 라운드를 실행하세요.",
+  discussRecoveryDefault:
+    "Verify/repair cap — recovery discuss 라운드를 실행하세요.",
   discussRecoveryReason: (reason: string) => `사유: ${reason}`,
   discussRecoveryRun: "Recovery 실행",
   missionOsSlack: "Slack",

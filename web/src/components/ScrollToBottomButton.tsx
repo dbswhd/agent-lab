@@ -1,14 +1,11 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const BOTTOM_THRESHOLD_PX = 80;
 
 function isNearBottom(el: HTMLElement): boolean {
-  return el.scrollHeight - el.scrollTop - el.clientHeight <= BOTTOM_THRESHOLD_PX;
+  return (
+    el.scrollHeight - el.scrollTop - el.clientHeight <= BOTTOM_THRESHOLD_PX
+  );
 }
 function canScroll(el: HTMLElement): boolean {
   return el.scrollHeight > el.clientHeight + 8;
@@ -49,14 +46,20 @@ export function useMessagesScroll(
 
   /* Track scroll position */
   useEffect(() => {
-    if (!enabled || !scrollTarget) { setShowJumpButton(false); return; }
+    if (!enabled || !scrollTarget) {
+      setShowJumpButton(false);
+      return;
+    }
     const el = scrollTarget;
 
     const update = () => {
       const near = isNearBottom(el);
       setShowJumpButton(!near && canScroll(el));
     };
-    const onScroll = () => { stickRef.current = isNearBottom(el); update(); };
+    const onScroll = () => {
+      stickRef.current = isNearBottom(el);
+      update();
+    };
 
     update();
     el.addEventListener("scroll", onScroll, { passive: true });
@@ -95,10 +98,7 @@ export function useMessagesScroll(
 /** useScrollToTop — scroll the container to top on reset/enabled change.
  *  Restored export — used by WorkPanel and PlanExecutePanel.
  */
-export function useScrollToTop(
-  enabled: boolean,
-  resetKey: unknown,
-) {
+export function useScrollToTop(enabled: boolean, resetKey: unknown) {
   const scrollElRef = useRef<HTMLDivElement | null>(null);
   const [scrollTarget, setScrollTarget] = useState<HTMLDivElement | null>(null);
 

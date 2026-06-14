@@ -1,4 +1,7 @@
-import { pushAppNotification, type NotificationTier } from "./notificationStore";
+import {
+  pushAppNotification,
+  type NotificationTier,
+} from "./notificationStore";
 import {
   defaultActionLabel,
   type NotificationAction,

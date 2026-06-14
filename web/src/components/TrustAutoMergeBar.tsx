@@ -14,9 +14,8 @@ type Props = {
 
 export function TrustAutoMergeBar({ sessionId, executionId, onMerged }: Props) {
   const { t } = useLocale();
-  const [eligibility, setEligibility] = useState<AutoMergeEligibilityPayload | null>(
-    null,
-  );
+  const [eligibility, setEligibility] =
+    useState<AutoMergeEligibilityPayload | null>(null);
   const [busy, setBusy] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
 

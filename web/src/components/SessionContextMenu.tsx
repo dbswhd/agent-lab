@@ -17,7 +17,13 @@ type Props = {
  *  Drop-in for old .mac-context-menu (macos26.css).
  *  Position clamped to viewport; rendered into document.body via portal.
  */
-export function SessionContextMenu({ x, y, archived, onAction, onClose }: Props) {
+export function SessionContextMenu({
+  x,
+  y,
+  archived,
+  onAction,
+  onClose,
+}: Props) {
   const ref = useRef<HTMLDivElement>(null);
 
   /* Close on outside click or Escape */
@@ -39,7 +45,7 @@ export function SessionContextMenu({ x, y, archived, onAction, onClose }: Props)
   /* Clamp to viewport */
   const MENU_W = 188;
   const MENU_H = 116;
-  const cx = Math.min(x, window.innerWidth  - MENU_W - 8);
+  const cx = Math.min(x, window.innerWidth - MENU_W - 8);
   const cy = Math.min(y, window.innerHeight - MENU_H - 8);
 
   return createPortal(
@@ -54,7 +60,10 @@ export function SessionContextMenu({ x, y, archived, onAction, onClose }: Props)
           type="button"
           className="ctx-menu__item"
           role="menuitem"
-          onClick={() => { onAction("rename"); onClose(); }}
+          onClick={() => {
+            onAction("rename");
+            onClose();
+          }}
         >
           이름 변경…
         </button>
@@ -65,7 +74,10 @@ export function SessionContextMenu({ x, y, archived, onAction, onClose }: Props)
           type="button"
           className="ctx-menu__item"
           role="menuitem"
-          onClick={() => { onAction("unarchive"); onClose(); }}
+          onClick={() => {
+            onAction("unarchive");
+            onClose();
+          }}
         >
           복원
         </button>
@@ -74,7 +86,10 @@ export function SessionContextMenu({ x, y, archived, onAction, onClose }: Props)
           type="button"
           className="ctx-menu__item"
           role="menuitem"
-          onClick={() => { onAction("archive"); onClose(); }}
+          onClick={() => {
+            onAction("archive");
+            onClose();
+          }}
         >
           보관
         </button>
@@ -86,7 +101,10 @@ export function SessionContextMenu({ x, y, archived, onAction, onClose }: Props)
         type="button"
         className="ctx-menu__item ctx-menu__item--danger"
         role="menuitem"
-        onClick={() => { onAction("delete"); onClose(); }}
+        onClick={() => {
+          onAction("delete");
+          onClose();
+        }}
       >
         삭제…
       </button>

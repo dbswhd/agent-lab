@@ -14,7 +14,8 @@ isolation: isolate;
 position: relative;
 width: 260px;
 height: 218px;
-filter: drop-shadow(0px 0px 1px rgba(0, 0, 0, 0.2)) drop-shadow(0px 17px 45px rgba(0, 0, 0, 0.5));
+filter: drop-shadow(0px 0px 1px rgba(0, 0, 0, 0.2))
+  drop-shadow(0px 17px 45px rgba(0, 0, 0, 0.5));
 border-radius: 10px;
 
 /* Push Button */
@@ -74,8 +75,10 @@ backdrop-filter: blur(10px);
 border-radius: 1px;
 
 /* Window */
-background: #FFFFFF;
-box-shadow: 0px 0px 0px 1px rgba(0, 0, 0, 0.23), 0px 16px 48px rgba(0, 0, 0, 0.35);
+background: #ffffff;
+box-shadow:
+  0px 0px 0px 1px rgba(0, 0, 0, 0.23),
+  0px 16px 48px rgba(0, 0, 0, 0.35);
 border-radius: 26px;
 
 /* See macos26.css for app mappings */

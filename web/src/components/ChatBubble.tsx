@@ -54,7 +54,12 @@ type ReplyWaitingProps = {
 };
 
 /** Agent reply in progress — same full-width card as the final response */
-export function ReplyWaitingBubble({ agent, label, activities, body }: ReplyWaitingProps) {
+export function ReplyWaitingBubble({
+  agent,
+  label,
+  activities,
+  body,
+}: ReplyWaitingProps) {
   const who = label?.trim() || agent;
   const lines = activities?.filter(Boolean) ?? [];
   const streamText = body?.trim() ?? "";
@@ -66,7 +71,11 @@ export function ReplyWaitingBubble({ agent, label, activities, body }: ReplyWait
       author={who}
       roleAttr="status"
       ariaLabel={`${who} 답장 중`}
-      meta={<span className="turn__meta">{streaming ? "streaming…" : "typing…"}</span>}
+      meta={
+        <span className="turn__meta">
+          {streaming ? "streaming…" : "typing…"}
+        </span>
+      }
     >
       {lines.length > 0 ? (
         <ul className="agent-activity-log" aria-label="진행 중">
@@ -236,7 +245,9 @@ export function ChatBubble({
       <Avatar role={role} label={message.label} size={AVATAR_SIZE} />
       <div className="bubble-stack">
         <span className="bubble-sender">{message.label}</span>
-        <div className={`mac-bubble mac-bubble--received${typing ? " mac-bubble--typing" : ""}`}>
+        <div
+          className={`mac-bubble mac-bubble--received${typing ? " mac-bubble--typing" : ""}`}
+        >
           {typing ? (
             <TypingIndicator variant="bubble" />
           ) : (

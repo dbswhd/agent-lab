@@ -61,16 +61,25 @@ function formatDurationMs(startedAt?: number, doneAt?: number): string | null {
 function RunLogToolCard({ card }: { card: ToolRunCard }) {
   const duration = formatDurationMs(card.startedAt, card.doneAt);
   return (
-    <details className="run-entry__tool run-entry__tool--structured" open={false}>
+    <details
+      className="run-entry__tool run-entry__tool--structured"
+      open={false}
+    >
       <summary className="run-entry__text run-entry__text--tool">
         <span className="run-entry__tool-name">{card.tool}</span>
-        {card.args ? <span className="run-entry__tool-args">{card.args}</span> : null}
-        {duration ? <span className="run-entry__tool-duration">{duration}</span> : null}
+        {card.args ? (
+          <span className="run-entry__tool-args">{card.args}</span>
+        ) : null}
+        {duration ? (
+          <span className="run-entry__tool-duration">{duration}</span>
+        ) : null}
       </summary>
       {card.output ? (
         <pre className="run-entry__tool-body">{card.output}</pre>
       ) : (
-        <p className="run-entry__tool-body run-entry__tool-body--empty">(no stdout)</p>
+        <p className="run-entry__tool-body run-entry__tool-body--empty">
+          (no stdout)
+        </p>
       )}
     </details>
   );
@@ -111,7 +120,8 @@ function expandRunLogEntries(
     if (m.roundDivider || m.role === "you") continue;
     const kind = entryType(m.role);
     const ts = (m as LiveMsg & { ts?: string }).ts;
-    const label = m.label || (kind === "agent" ? agentLabel(m.role) : undefined);
+    const label =
+      m.label || (kind === "agent" ? agentLabel(m.role) : undefined);
 
     if (m.toolCards?.length) {
       for (const card of m.toolCards) {
@@ -271,7 +281,10 @@ export function RunLogPanel({
 
       {running && runningAgents.length > 0 && entries.length === 0
         ? runningAgents.map((slot) => (
-            <div key={`${slot.agent}-r${slot.round}`} className="run-entry run-entry--agent">
+            <div
+              key={`${slot.agent}-r${slot.round}`}
+              className="run-entry run-entry--agent"
+            >
               <span className="run-entry__ts">…</span>
               <Avatar role={slot.agent as AgentRole} size={20} />
               <span className="run-entry__type run-entry__type--agent">▸</span>
@@ -285,7 +298,10 @@ export function RunLogPanel({
           ))
         : null}
 
-      {running && active && entries.length === 0 && runningAgents.length === 0 ? (
+      {running &&
+      active &&
+      entries.length === 0 &&
+      runningAgents.length === 0 ? (
         <div className={`run-entry run-entry--agent`}>
           <span className="run-entry__ts">…</span>
           <Avatar role={active.agent as AgentRole} size={20} />
@@ -306,7 +322,11 @@ export function RunLogPanel({
               <Avatar role={agentRole} label={entry.label} size={20} />
             ) : null}
             <span className={`run-entry__type run-entry__type--${entry.kind}`}>
-              {entry.kind === "tool" ? "$" : entry.kind === "system" ? "✦" : "▸"}
+              {entry.kind === "tool"
+                ? "$"
+                : entry.kind === "system"
+                  ? "✦"
+                  : "▸"}
             </span>
             <RunLogEntryText entry={entry} />
           </div>

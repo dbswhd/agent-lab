@@ -24,10 +24,7 @@ export function useLocale() {
     setLocaleState(next);
   }, []);
 
-  const t = useCallback(
-    (key: MessageKey) => translate(locale, key),
-    [locale],
-  );
+  const t = useCallback((key: MessageKey) => translate(locale, key), [locale]);
 
   return { locale, setLocale, t, msg: messages(locale) };
 }

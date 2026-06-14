@@ -23,8 +23,8 @@ export class BootstrapErrorBoundary extends Component<Props, State> {
           <p>화면을 불러오지 못했습니다.</p>
           <pre>{this.state.error.message}</pre>
           <p className="boot-fallback-hint">
-            앱을 종료한 뒤 터미널에서 <code>make tauri-build</code>로 다시 빌드하거나, 개발
-            모드는 <code>make tauri-dev</code>를 사용하세요.
+            앱을 종료한 뒤 터미널에서 <code>make tauri-build</code>로 다시
+            빌드하거나, 개발 모드는 <code>make tauri-dev</code>를 사용하세요.
           </p>
         </div>
       );

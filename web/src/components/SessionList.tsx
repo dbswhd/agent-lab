@@ -22,7 +22,10 @@ function formatTime(iso?: string): string {
     const d = new Date(iso);
     const now = new Date();
     if (d.toDateString() === now.toDateString()) {
-      return d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+      return d.toLocaleTimeString("ko-KR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
     }
     return d.toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
   } catch {
@@ -57,7 +60,9 @@ export function SessionList({
   onRename,
   onDelete,
 }: Props) {
-  const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(
+    null,
+  );
   const [renameId, setRenameId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -65,9 +70,17 @@ export function SessionList({
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const visibleSessions = normalizedQuery
     ? sessions.filter((session) =>
-        [session.topic, session.id, session.model, session.workflow, sessionSubtitle(session)]
+        [
+          session.topic,
+          session.id,
+          session.model,
+          session.workflow,
+          sessionSubtitle(session),
+        ]
           .filter(Boolean)
-          .some((value) => String(value).toLocaleLowerCase().includes(normalizedQuery)),
+          .some((value) =>
+            String(value).toLocaleLowerCase().includes(normalizedQuery),
+          ),
       )
     : sessions;
 
@@ -123,7 +136,9 @@ export function SessionList({
               </span>
               <span className="session-item__sub">
                 <span>{sessionSubtitle(s)}</span>
-                <span className="session-item__time">{formatTime(s.created_at)}</span>
+                <span className="session-item__time">
+                  {formatTime(s.created_at)}
+                </span>
               </span>
             </button>
           );
@@ -145,7 +160,11 @@ export function SessionList({
         title="이름 변경"
         onClose={() => setRenameId(null)}
         buttons={[
-          { label: "취소", variant: "cancel", onClick: () => setRenameId(null) },
+          {
+            label: "취소",
+            variant: "cancel",
+            onClick: () => setRenameId(null),
+          },
           {
             label: "저장",
             variant: "default",
@@ -176,7 +195,11 @@ export function SessionList({
         message="이 작업은 되돌릴 수 없습니다. 세션 폴더가 영구 삭제됩니다."
         onClose={() => setDeleteId(null)}
         buttons={[
-          { label: "취소", variant: "cancel", onClick: () => setDeleteId(null) },
+          {
+            label: "취소",
+            variant: "cancel",
+            onClick: () => setDeleteId(null),
+          },
           {
             label: "삭제",
             variant: "destructive",

@@ -25,6 +25,9 @@ api:
 web-lint:
 	cd web && npm run lint
 
+web-format-check:
+	cd web && npm run format:check
+
 web:
 	cd web && npm run dev
 

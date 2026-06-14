@@ -537,7 +537,12 @@ export function workspaceFileRawUrl(
 
 // ── Background Tasks ─────────────────────────────────────────────────────────
 
-export type BgTaskStatus = "queued" | "running" | "done" | "failed" | "cancelled";
+export type BgTaskStatus =
+  | "queued"
+  | "running"
+  | "done"
+  | "failed"
+  | "cancelled";
 
 export type BgTask = {
   task_id: string;
@@ -647,7 +652,9 @@ export type PreviewProbeResult = PreviewStatus & {
   probed: number[];
 };
 
-export function probePreviewPort(sessionId: string): Promise<PreviewProbeResult> {
+export function probePreviewPort(
+  sessionId: string,
+): Promise<PreviewProbeResult> {
   return json<PreviewProbeResult>(
     `/api/sessions/${encodeURIComponent(sessionId)}/preview/probe`,
     { method: "POST" },
@@ -977,7 +984,11 @@ export type RuntimeSnapshot = {
     discuss?: { open?: boolean; reason?: string | null };
     plan_clarify?: { open?: boolean; reason?: string | null };
     execute?: { open?: boolean; reason?: string | null };
-    inbox?: { pending_questions?: number; pending_builds?: number; kinds?: string[] };
+    inbox?: {
+      pending_questions?: number;
+      pending_builds?: number;
+      kinds?: string[];
+    };
   };
   inbox: {
     pending: boolean;
@@ -1033,10 +1044,7 @@ export function fetchMissionLoop(sessionId: string) {
   );
 }
 
-export function enableMissionLoop(
-  sessionId: string,
-  startAutonomous = true,
-) {
+export function enableMissionLoop(sessionId: string, startAutonomous = true) {
   return json<MissionLoopResponse>(
     `/api/sessions/${encodeURIComponent(sessionId)}/mission-loop/enable`,
     {
@@ -1081,7 +1089,10 @@ export function pauseMissionLoop(
   );
 }
 
-export function resumeMissionLoop(sessionId: string, resumePhase = "EXECUTE_QUEUE") {
+export function resumeMissionLoop(
+  sessionId: string,
+  resumePhase = "EXECUTE_QUEUE",
+) {
   return json<MissionLoopResponse & { resume?: Record<string, unknown> }>(
     `/api/sessions/${encodeURIComponent(sessionId)}/mission-loop/resume`,
     {
@@ -1111,7 +1122,12 @@ export type DiagnosticsResponse = {
   pid: number;
   uptime_seconds: number;
   port: number;
-  port_status: { listening: boolean; host?: string; port?: number; error?: string };
+  port_status: {
+    listening: boolean;
+    host?: string;
+    port?: number;
+    error?: string;
+  };
   sessions_dir: string;
   paths: Record<string, string | null>;
   agent_tools: Record<string, string | null>;
@@ -1124,7 +1140,11 @@ export type DiagnosticsResponse = {
     active_count?: number;
     stale_count?: number;
     orphan_process_count?: number;
-    stale_records?: { workspace?: string; pid?: number | null; age_hours?: number }[];
+    stale_records?: {
+      workspace?: string;
+      pid?: number | null;
+      age_hours?: number;
+    }[];
     orphan_processes?: { pid?: number; command?: string }[];
     error?: string;
   };
@@ -1378,9 +1398,7 @@ export type AgentPluginRecord = {
 };
 
 export function fetchCommands(sessionId?: string | null) {
-  const q = sessionId
-    ? `?session_id=${encodeURIComponent(sessionId)}`
-    : "";
+  const q = sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : "";
   return json<{
     ok: boolean;
     commands: SlashCommandRecord[];
@@ -1391,9 +1409,7 @@ export function fetchCommands(sessionId?: string | null) {
 }
 
 export function fetchAgentPlugins(sessionId?: string | null) {
-  const q = sessionId
-    ? `?session_id=${encodeURIComponent(sessionId)}`
-    : "";
+  const q = sessionId ? `?session_id=${encodeURIComponent(sessionId)}` : "";
   return json<{
     ok: boolean;
     plugins: AgentPluginRecord[];
@@ -1407,17 +1423,21 @@ export function patchSessionAgentPlugins(
   sessionId: string,
   body: { agent: string; enabled: string[] },
 ) {
-  return json<{ ok: boolean; enabled: string[]; allowlist: Record<string, string[]> }>(
-    `/api/sessions/${encodeURIComponent(sessionId)}/agent-plugins`,
-    {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    },
-  );
+  return json<{
+    ok: boolean;
+    enabled: string[];
+    allowlist: Record<string, string[]>;
+  }>(`/api/sessions/${encodeURIComponent(sessionId)}/agent-plugins`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
 }
 
-export function patchSessionExternalTools(sessionId: string, enabled: string[]) {
+export function patchSessionExternalTools(
+  sessionId: string,
+  enabled: string[],
+) {
   return json<{
     ok: boolean;
     enabled: string[];
@@ -1448,7 +1468,9 @@ export function runSessionCommand(
   });
 }
 
-export function parseSlashInput(text: string): { name: string; args: string } | null {
+export function parseSlashInput(
+  text: string,
+): { name: string; args: string } | null {
   const trimmed = text.trim();
   if (!trimmed.startsWith("/")) return null;
   const match = /^\/([a-zA-Z0-9_-]+)(?:\s+(.*))?$/s.exec(trimmed);
@@ -1566,7 +1588,9 @@ export function resolveSessionObjection(
 function parseRoomRunHttpError(text: string): string {
   try {
     const body = JSON.parse(text) as {
-      detail?: string | { message?: string; agents?: { id: string; reason: string }[] };
+      detail?:
+        | string
+        | { message?: string; agents?: { id: string; reason: string }[] };
     };
     const detail = body.detail;
     if (detail && typeof detail === "object" && Array.isArray(detail.agents)) {
@@ -1675,10 +1699,9 @@ export function renameSession(id: string, topic: string) {
 }
 
 export function deleteSession(id: string) {
-  return json<{ ok: boolean }>(
-    `/api/sessions/${encodeURIComponent(id)}`,
-    { method: "DELETE" },
-  );
+  return json<{ ok: boolean }>(`/api/sessions/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
 }
 
 export type ContextPreviewOptions = {
@@ -1725,8 +1748,7 @@ export async function runRoom(
   opts?: RunRoomOptions,
 ): Promise<void> {
   const mode = opts?.mode ?? (opts?.synthesize ? "plan" : "discuss");
-  const synthesize =
-    opts?.synthesize ?? (mode === "plan");
+  const synthesize = opts?.synthesize ?? mode === "plan";
   const form = new FormData();
   form.append("topic", topic);
   form.append("agents", JSON.stringify(agents));
@@ -1744,12 +1766,12 @@ export async function runRoom(
     form.append("workspace_path", opts.workspacePath.trim());
   }
   if (opts?.agentCapabilities && Object.keys(opts.agentCapabilities).length) {
-    form.append(
-      "agent_capabilities",
-      JSON.stringify(opts.agentCapabilities),
-    );
+    form.append("agent_capabilities", JSON.stringify(opts.agentCapabilities));
   }
-  if (opts?.agentThreadBindings && Object.keys(opts.agentThreadBindings).length) {
+  if (
+    opts?.agentThreadBindings &&
+    Object.keys(opts.agentThreadBindings).length
+  ) {
     form.append(
       "agent_thread_bindings",
       JSON.stringify(opts.agentThreadBindings),
@@ -1789,9 +1811,7 @@ export async function cancelRoomRun(sessionId?: string): Promise<void> {
   const res = await fetch(apiUrl("/api/room/runs/cancel"), {
     method: "POST",
     headers: sessionId ? { "Content-Type": "application/json" } : undefined,
-    body: sessionId
-      ? JSON.stringify({ session_id: sessionId })
-      : undefined,
+    body: sessionId ? JSON.stringify({ session_id: sessionId }) : undefined,
   });
   if (!res.ok) throw new Error(await res.text());
 }
@@ -2044,9 +2064,7 @@ export async function runPlanDryRun(
   },
 ) {
   const res = await fetch(
-    apiUrl(
-      `/api/sessions/${encodeURIComponent(sessionId)}/execute/dry-run`,
-    ),
+    apiUrl(`/api/sessions/${encodeURIComponent(sessionId)}/execute/dry-run`),
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -2206,11 +2224,17 @@ async function postPlanMergeAction(
   };
 }
 
-export function abortPlanExecutionMerge(sessionId: string, executionId: string) {
+export function abortPlanExecutionMerge(
+  sessionId: string,
+  executionId: string,
+) {
   return postPlanMergeAction(sessionId, "abort", executionId);
 }
 
-export function confirmPlanExecutionMerge(sessionId: string, executionId: string) {
+export function confirmPlanExecutionMerge(
+  sessionId: string,
+  executionId: string,
+) {
   return postPlanMergeAction(sessionId, "confirm", executionId);
 }
 
@@ -2267,7 +2291,10 @@ export async function fetchInboxSettings(sessionId: string) {
   );
 }
 
-export async function patchInboxSettings(sessionId: string, inboxMode: "sync" | "soft") {
+export async function patchInboxSettings(
+  sessionId: string,
+  inboxMode: "sync" | "soft",
+) {
   return json<InboxSettingsPayload>(
     `/api/sessions/${encodeURIComponent(sessionId)}/inbox/settings`,
     {
@@ -2279,7 +2306,9 @@ export async function patchInboxSettings(sessionId: string, inboxMode: "sync" | 
 }
 
 export function postMissionDiscussRecovery(sessionId: string) {
-  return json<MissionLoopResponse & { discuss_recovery?: Record<string, unknown> }>(
+  return json<
+    MissionLoopResponse & { discuss_recovery?: Record<string, unknown> }
+  >(
     `/api/sessions/${encodeURIComponent(sessionId)}/mission-loop/discuss-recovery`,
     { method: "POST" },
   );
@@ -2295,7 +2324,13 @@ export type HumanInboxItem = {
   id: string;
   kind: "question" | "build" | "skill_draft";
   source?: string;
-  status: "pending" | "resolved" | "deferred" | "superseded" | "rejected" | "timeout";
+  status:
+    | "pending"
+    | "resolved"
+    | "deferred"
+    | "superseded"
+    | "rejected"
+    | "timeout";
   prompt: string;
   summary?: string | null;
   options?: HumanInboxOption[];
@@ -2320,7 +2355,9 @@ export type HumanInboxPayload = {
   pending_skill_drafts?: number;
 };
 
-export async function fetchSessionInbox(sessionId: string): Promise<HumanInboxPayload> {
+export async function fetchSessionInbox(
+  sessionId: string,
+): Promise<HumanInboxPayload> {
   return json<HumanInboxPayload>(
     `/api/sessions/${encodeURIComponent(sessionId)}/inbox`,
   );
@@ -2358,12 +2395,17 @@ export async function resolveInboxItem(
     status?: "resolved" | "deferred" | "rejected";
     append_chat?: boolean;
   },
-): Promise<HumanInboxPayload & { human_decision?: string; item: HumanInboxItem }> {
-  return json(`/api/sessions/${encodeURIComponent(sessionId)}/inbox/${encodeURIComponent(itemId)}/resolve`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+): Promise<
+  HumanInboxPayload & { human_decision?: string; item: HumanInboxItem }
+> {
+  return json(
+    `/api/sessions/${encodeURIComponent(sessionId)}/inbox/${encodeURIComponent(itemId)}/resolve`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
 }
 
 // ── Mission OS (gateway, schedules, daemon, templates) ─────────────────────
@@ -2463,17 +2505,23 @@ export function fetchGatewaySettings() {
 }
 
 export function patchGatewaySettings(body: Record<string, unknown>) {
-  return json<GatewaySettingsPayload & { ok?: boolean }>("/api/settings/gateway", {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  return json<GatewaySettingsPayload & { ok?: boolean }>(
+    "/api/settings/gateway",
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
 }
 
 export function pingGateway() {
-  return json<{ ok: boolean; delivered?: number }>("/api/settings/gateway/ping", {
-    method: "POST",
-  });
+  return json<{ ok: boolean; delivered?: number }>(
+    "/api/settings/gateway/ping",
+    {
+      method: "POST",
+    },
+  );
 }
 
 export function fetchDaemonHealth() {
@@ -2530,9 +2578,12 @@ export function fetchGatewayAdapters() {
 
 export function triggerMissionSchedulerTick(force = false) {
   const q = force ? "?force=true" : "";
-  return json<{ ok: boolean; runs?: unknown[] }>(`/api/mission-scheduler/tick${q}`, {
-    method: "POST",
-  });
+  return json<{ ok: boolean; runs?: unknown[] }>(
+    `/api/mission-scheduler/tick${q}`,
+    {
+      method: "POST",
+    },
+  );
 }
 
 export type TrustBudgetPayload = {
@@ -2569,7 +2620,10 @@ export function patchSessionTrustBudget(
   );
 }
 
-export function fetchAutoMergeEligibility(sessionId: string, executionId?: string) {
+export function fetchAutoMergeEligibility(
+  sessionId: string,
+  executionId?: string,
+) {
   const q = executionId
     ? `?execution_id=${encodeURIComponent(executionId)}`
     : "";

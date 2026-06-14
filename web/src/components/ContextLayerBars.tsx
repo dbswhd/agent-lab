@@ -27,8 +27,16 @@ export function ContextLayerBars({
         : "";
 
   return (
-    <div className={`context-layers ${levelClass}${className ? ` ${className}` : ""}`}>
-      <div className="context-layers__budget" role="meter" aria-valuenow={budgetPct} aria-valuemin={0} aria-valuemax={100}>
+    <div
+      className={`context-layers ${levelClass}${className ? ` ${className}` : ""}`}
+    >
+      <div
+        className="context-layers__budget"
+        role="meter"
+        aria-valuenow={budgetPct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
         <div
           className="context-layers__budget-fill"
           style={{ width: `${Math.min(100, budgetPct)}%` }}

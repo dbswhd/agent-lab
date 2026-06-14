@@ -39,21 +39,23 @@ export function ExecuteQueueBar({
   onReject,
   onOpenPlan,
 }: Props) {
-  const action  = resolveExecutionAction(pending, storedActions);
-  const title   = executionHistoryTitle(pending, action);
-  const badge   = executionHistoryBadge(pending);
-  const status  = executionStatusLabel(pending.status, pending);
-  const gate    = executionApprovalGate(pending);
-  const pdfPath   = gate.pdfPath;
+  const action = resolveExecutionAction(pending, storedActions);
+  const title = executionHistoryTitle(pending, action);
+  const badge = executionHistoryBadge(pending);
+  const status = executionStatusLabel(pending.status, pending);
+  const gate = executionApprovalGate(pending);
+  const pdfPath = gate.pdfPath;
   const pageCount = gate.pageCount;
 
   return (
     <div
       className={[
         "exec-queue-bar",
-        compact          ? "exec-queue-bar--compact"  : undefined,
-        gate.blocked     ? "exec-queue-bar--blocked"  : undefined,
-      ].filter(Boolean).join(" ")}
+        compact ? "exec-queue-bar--compact" : undefined,
+        gate.blocked ? "exec-queue-bar--blocked" : undefined,
+      ]
+        .filter(Boolean)
+        .join(" ")}
       role="region"
       aria-label="실행 승인 대기"
     >
@@ -65,11 +67,11 @@ export function ExecuteQueueBar({
 
           {pending.needs_artifact_review ? (
             <span className="exec-queue-bar__artifact">
-              {pdfPath   ? `PDF: ${pdfPath}` : "PDF: —"}
+              {pdfPath ? `PDF: ${pdfPath}` : "PDF: —"}
               {pageCount != null ? ` · ${pageCount}p` : " · 페이지 수 —"}
               {gate.artifactsOk ? " · 검증 OK" : " · 검증 대기"}
             </span>
-          ) : (pdfPath || pageCount != null) ? (
+          ) : pdfPath || pageCount != null ? (
             <span className="exec-queue-bar__artifact">
               {pdfPath ?? ""}
               {pageCount != null ? ` · ${pageCount}p` : ""}

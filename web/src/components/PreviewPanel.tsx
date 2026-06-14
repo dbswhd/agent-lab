@@ -17,7 +17,10 @@ type Props = {
 
 export function PreviewPanel({ sessionId }: Props) {
   const { msg } = useLocale();
-  const [status, setStatus] = useState<PreviewStatus>({ port: null, alive: false });
+  const [status, setStatus] = useState<PreviewStatus>({
+    port: null,
+    alive: false,
+  });
   const [inputPort, setInputPort] = useState("");
   const [saving, setSaving] = useState(false);
   const [probing, setProbing] = useState(false);
@@ -79,7 +82,9 @@ export function PreviewPanel({ sessionId }: Props) {
       try {
         const parsed = JSON.parse(errMsg) as { detail?: string };
         if (parsed.detail) errMsg = parsed.detail;
-      } catch { /* not JSON */ }
+      } catch {
+        /* not JSON */
+      }
       setError(errMsg);
     } finally {
       setSaving(false);
@@ -193,7 +198,9 @@ export function PreviewPanel({ sessionId }: Props) {
               disabled={startingPreset != null}
               onClick={() => void startPreset(preset)}
             >
-              {startingPreset === preset.id ? msg.previewStarting : preset.label}
+              {startingPreset === preset.id
+                ? msg.previewStarting
+                : preset.label}
             </button>
           ))}
         </div>

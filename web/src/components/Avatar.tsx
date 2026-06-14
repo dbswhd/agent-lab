@@ -33,7 +33,13 @@ export function Avatar({ role, label, size = 28 }: Props) {
         className={`avatar avatar--${role}${sm}`}
         style={{ width: size, height: size }}
       >
-        <img src={icon} alt={label ?? role} width={size} height={size} aria-hidden />
+        <img
+          src={icon}
+          alt={label ?? role}
+          width={size}
+          height={size}
+          aria-hidden
+        />
       </span>
     );
   }

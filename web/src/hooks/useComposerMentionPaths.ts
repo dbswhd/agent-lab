@@ -3,11 +3,17 @@ import { listWorkspaceFileRoots, listWorkspaceFiles } from "../api/client";
 
 const MAX_PATHS = 120;
 
-export async function collectMentionPaths(sessionId: string): Promise<string[]> {
+export async function collectMentionPaths(
+  sessionId: string,
+): Promise<string[]> {
   const { roots } = await listWorkspaceFileRoots(sessionId);
   const out: string[] = [];
 
-  async function walk(rootId: string, dir: string, depth: number): Promise<void> {
+  async function walk(
+    rootId: string,
+    dir: string,
+    depth: number,
+  ): Promise<void> {
     if (out.length >= MAX_PATHS || depth > 3) return;
     const res = await listWorkspaceFiles(sessionId, rootId, dir);
     for (const entry of res.entries) {
@@ -54,7 +60,10 @@ export function useComposerMentionPaths(sessionId: string | null | undefined) {
   return { paths, loading, ensureLoaded };
 }
 
-export function mentionQueryAtCursor(value: string, cursor: number): string | null {
+export function mentionQueryAtCursor(
+  value: string,
+  cursor: number,
+): string | null {
   const head = value.slice(0, cursor);
   const match = head.match(/(?:^|\s)@([^\s@]*)$/);
   return match ? match[1] : null;

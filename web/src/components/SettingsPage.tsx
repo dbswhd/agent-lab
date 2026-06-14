@@ -88,8 +88,8 @@ export function SettingsPage({
   onReconnectCursor,
 }: Props) {
   const { locale, setLocale, t } = useLocale();
-  const [capabilities, setCapabilities] = useState<AgentCapabilitiesMap>(
-    () => cloneCapabilities(DEFAULT_AGENT_CAPABILITIES),
+  const [capabilities, setCapabilities] = useState<AgentCapabilitiesMap>(() =>
+    cloneCapabilities(DEFAULT_AGENT_CAPABILITIES),
   );
   const [resolvedCwd, setResolvedCwd] = useState<Record<string, string>>({});
   const [saveBusy, setSaveBusy] = useState(false);
@@ -278,7 +278,8 @@ export function SettingsPage({
             aria-expanded={agentSettingsOpen}
             onClick={() => setAgentSettingsOpen((v) => !v)}
           >
-            {agentSettingsOpen ? "▾" : "▸"} 에이전트별 세션 설정 (작업 폴더·도구)
+            {agentSettingsOpen ? "▾" : "▸"} 에이전트별 세션 설정 (작업
+            폴더·도구)
             <span className="settings-expand-btn__hint">
               Cursor: execute · Codex: repo · Claude: review
             </span>
@@ -296,7 +297,9 @@ export function SettingsPage({
                 saveBusy={saveBusy}
                 saveHint={saveHint ?? undefined}
               />
-              {saveHint ? <p className="settings-save-hint">{saveHint}</p> : null}
+              {saveHint ? (
+                <p className="settings-save-hint">{saveHint}</p>
+              ) : null}
             </>
           ) : null}
         </section>
@@ -341,9 +344,7 @@ export function SettingsPage({
               </div>
               <div className="settings-workspace-info__row">
                 <dt>Execute cwd</dt>
-                <dd>
-                  worktree 격리 가능 시 별도 worktree에서 실행됩니다.
-                </dd>
+                <dd>worktree 격리 가능 시 별도 worktree에서 실행됩니다.</dd>
               </div>
             </dl>
             <div className="settings-section__sub-head">Context 미리보기</div>
@@ -378,7 +379,8 @@ export function SettingsPage({
             />
             <p className="settings-hint">
               외부 명령: ~/.agent-lab/tools.yaml ·{" "}
-              <code>AGENT_LAB_EXTERNAL_TOOLS=1</code> · 플러그인 탭 External에서 세션 allowlist
+              <code>AGENT_LAB_EXTERNAL_TOOLS=1</code> · 플러그인 탭 External에서
+              세션 allowlist
             </p>
             <div className="settings-section__sub-head">플러그인</div>
             <PluginPanel
@@ -390,7 +392,8 @@ export function SettingsPage({
         ) : (
           <section className="settings-section">
             <p className="settings-hint">
-              세션을 선택하면 Context 미리보기와 플러그인 설정을 사용할 수 있습니다.
+              세션을 선택하면 Context 미리보기와 플러그인 설정을 사용할 수
+              있습니다.
             </p>
           </section>
         )}
@@ -454,7 +457,11 @@ export function SettingsPage({
                 <span className="settings-appearance__label">
                   {t("settingsLanguage")}
                 </span>
-                <div className="turn-seg" role="radiogroup" aria-label={t("settingsLanguage")}>
+                <div
+                  className="turn-seg"
+                  role="radiogroup"
+                  aria-label={t("settingsLanguage")}
+                >
                   {(["en", "ko"] as const).map((code) => (
                     <button
                       key={code}
@@ -489,8 +496,8 @@ export function SettingsPage({
               </span>
             </div>
             <p className="settings-hint">
-              Tweaks 패널에서 Command Palette, MacAlert, 토스트, ExecuteQueueBar 등을
-              시뮬레이션합니다. ⌘⇧T 로도 열 수 있습니다.
+              Tweaks 패널에서 Command Palette, MacAlert, 토스트, ExecuteQueueBar
+              등을 시뮬레이션합니다. ⌘⇧T 로도 열 수 있습니다.
             </p>
             <TweaksSettingsActions onBack={onBack} />
           </div>

@@ -18,9 +18,7 @@ export function findActiveExecution(
 ): PlanExecutionRecord | null {
   if (!executions?.length) return null;
   return (
-    [...executions]
-      .reverse()
-      .find((row) => isActiveExecution(row)) ?? null
+    [...executions].reverse().find((row) => isActiveExecution(row)) ?? null
   );
 }
 
@@ -40,9 +38,12 @@ export function executionRejectLabel(
   return "거부 (되돌리기)";
 }
 
-export function worktreeBannerLines(
-  row: PlanExecutionRecord,
-): { branch?: string; worktree?: string; base?: string; commit?: string } {
+export function worktreeBannerLines(row: PlanExecutionRecord): {
+  branch?: string;
+  worktree?: string;
+  base?: string;
+  commit?: string;
+} {
   return {
     branch: row.exec_branch?.trim() || undefined,
     worktree: row.worktree_path?.trim() || undefined,

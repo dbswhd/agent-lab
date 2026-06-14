@@ -17,7 +17,13 @@ type Props = {
  * pointer-driven resize, width clamp/commit, aria-hidden when closed.
  * New class system: `.rail` (+ `--resizing`) with `--rail-width` custom prop.
  */
-export function SessionRail({ open, width, onWidthChange, onWidthCommit, children }: Props) {
+export function SessionRail({
+  open,
+  width,
+  onWidthChange,
+  onWidthCommit,
+  children,
+}: Props) {
   const [isResizing, setIsResizing] = useState(false);
   const dragRef = useRef({ startX: 0, startWidth: SESSION_RAIL_MIN_WIDTH });
 
@@ -55,7 +61,9 @@ export function SessionRail({ open, width, onWidthChange, onWidthCommit, childre
 
   return (
     <aside
-      className={["rail", isResizing ? "rail--resizing" : ""].filter(Boolean).join(" ")}
+      className={["rail", isResizing ? "rail--resizing" : ""]
+        .filter(Boolean)
+        .join(" ")}
       aria-label="Sessions"
       aria-hidden={!open}
       style={{ "--rail-width": `${width}px` } as React.CSSProperties}

@@ -11,7 +11,9 @@ export function PlanAgentResponse({ text, className }: Props) {
   if (!trimmed) return null;
 
   return (
-    <div className={["plan-agent-response", className].filter(Boolean).join(" ")}>
+    <div
+      className={["plan-agent-response", className].filter(Boolean).join(" ")}
+    >
       <MessageMarkdown text={trimmed} />
     </div>
   );

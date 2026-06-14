@@ -83,11 +83,7 @@ export function TurnRunPanel({
         >
           {visibleTurnMessages.map((m) =>
             m.roundDivider != null ? (
-              <div
-                key={m.id}
-                className="chat-round-divider"
-                role="separator"
-              >
+              <div key={m.id} className="chat-round-divider" role="separator">
                 {m.body}
               </div>
             ) : (
@@ -108,7 +104,8 @@ export function TurnRunPanel({
         </p>
       ) : (
         <p className="workspace-empty-state">
-          실행 중이 아닙니다. 새 메시지를 보내면 이 턴의 진행과 출력이 표시됩니다.
+          실행 중이 아닙니다. 새 메시지를 보내면 이 턴의 진행과 출력이
+          표시됩니다.
         </p>
       )}
     </div>

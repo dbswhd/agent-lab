@@ -72,14 +72,20 @@ export function WorkspaceChrome({
           variant="panel"
           className="icon-btn"
         />
-        <div className="workspace-chrome__title" data-tauri-drag-region={tauri ? "" : undefined}>
+        <div
+          className="workspace-chrome__title"
+          data-tauri-drag-region={tauri ? "" : undefined}
+        >
           <span className="workspace-chrome__topic" title={title}>
             {title}
           </span>
           {meta ? <span className="workspace-chrome__meta">{meta}</span> : null}
         </div>
       </div>
-      <div className="workspace-chrome__spacer" data-tauri-drag-region={tauri ? "" : undefined} />
+      <div
+        className="workspace-chrome__spacer"
+        data-tauri-drag-region={tauri ? "" : undefined}
+      />
       <div className="workspace-chrome__actions">
         {running ? (
           <button
@@ -104,7 +110,17 @@ export function WorkspaceChrome({
           aria-label="명령 팔레트"
           onClick={openCommandPalette}
         >
-          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <svg
+            viewBox="0 0 24 24"
+            width="17"
+            height="17"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.7}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
             <circle cx="11" cy="11" r="7" />
             <path d="m21 21-4.3-4.3" />
           </svg>

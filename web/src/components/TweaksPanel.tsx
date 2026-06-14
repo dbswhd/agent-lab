@@ -71,7 +71,10 @@ export function TweaksPanel() {
     if (!panel) return;
     const pad = 16;
     const maxRight = Math.max(pad, window.innerWidth - panel.offsetWidth - pad);
-    const maxBottom = Math.max(pad, window.innerHeight - panel.offsetHeight - pad);
+    const maxBottom = Math.max(
+      pad,
+      window.innerHeight - panel.offsetHeight - pad,
+    );
     offsetRef.current = {
       x: Math.min(maxRight, Math.max(pad, offsetRef.current.x)),
       y: Math.min(maxBottom, Math.max(pad, offsetRef.current.y)),
@@ -162,13 +165,18 @@ export function TweaksPanel() {
 
         <TweakSection label="배너 토글" />
         <TweakButton
-          label={execVisible ? "ExecuteQueueBar 숨기기" : "ExecuteQueueBar 표시"}
+          label={
+            execVisible ? "ExecuteQueueBar 숨기기" : "ExecuteQueueBar 표시"
+          }
           onClick={demo.toggleExecQueueVisible}
         />
         <TweakButton
           label={execBlocked ? "차단 해제" : "승인 차단 시뮬레이트"}
           onClick={() => {
-            if (demo.execQueueDemo === false || demo.execQueueDemo === "hidden") {
+            if (
+              demo.execQueueDemo === false ||
+              demo.execQueueDemo === "hidden"
+            ) {
               demo.setExecQueueDemo("blocked");
             } else {
               demo.toggleExecBlocked();

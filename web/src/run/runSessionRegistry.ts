@@ -82,7 +82,9 @@ export function isSessionRunActive(sessionId: string): boolean {
 
 export function updateSessionRun(
   sessionId: string,
-  patch: Partial<SessionRunSnapshot> | ((snap: SessionRunSnapshot) => Partial<SessionRunSnapshot>),
+  patch:
+    | Partial<SessionRunSnapshot>
+    | ((snap: SessionRunSnapshot) => Partial<SessionRunSnapshot>),
 ): SessionRunSnapshot {
   const current = getSessionRunSnapshot(sessionId);
   const delta = typeof patch === "function" ? patch(current) : patch;
@@ -148,11 +150,7 @@ export function appendSessionMessages(
   items: LiveMsg[],
   options?: { alsoTurn?: boolean },
 ): void {
-  patchSessionMessages(
-    sessionKey,
-    (m) => [...m, ...items],
-    options,
-  );
+  patchSessionMessages(sessionKey, (m) => [...m, ...items], options);
 }
 
 export function resetTurnRun(sessionKey: string, userMsg: LiveMsg): void {
@@ -170,7 +168,8 @@ export function finishSessionRun(
   sessionKey: string,
   realSessionId?: string,
 ): void {
-  const key = realSessionId && realSessionId !== sessionKey ? realSessionId : sessionKey;
+  const key =
+    realSessionId && realSessionId !== sessionKey ? realSessionId : sessionKey;
   if (realSessionId && realSessionId !== sessionKey) {
     migratePendingSessionRun(realSessionId);
   }

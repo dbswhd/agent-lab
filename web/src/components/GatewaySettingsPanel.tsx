@@ -54,11 +54,15 @@ export function GatewaySettingsPanel() {
       };
       if (slackWebhook.trim()) slackPatch.webhook_url = slackWebhook.trim();
       if (slackBotToken.trim()) slackPatch.bot_token = slackBotToken.trim();
-      if (slackSigningSecret.trim()) slackPatch.signing_secret = slackSigningSecret.trim();
+      if (slackSigningSecret.trim())
+        slackPatch.signing_secret = slackSigningSecret.trim();
 
       const res = await patchGatewaySettings({
         outbound: { enabled: true, urls },
-        hybrid: { enabled: Boolean(hybridUrl.trim()), relay_url: hybridUrl.trim() || null },
+        hybrid: {
+          enabled: Boolean(hybridUrl.trim()),
+          relay_url: hybridUrl.trim() || null,
+        },
         slack: slackPatch,
       });
       setSettings(res);
@@ -130,7 +134,9 @@ export function GatewaySettingsPanel() {
           value={slackWebhook}
           onChange={(e) => setSlackWebhook(e.target.value)}
           placeholder={
-            slack?.webhook_url_set ? t("missionOsSecretPlaceholder") : "https://hooks.slack.com/..."
+            slack?.webhook_url_set
+              ? t("missionOsSecretPlaceholder")
+              : "https://hooks.slack.com/..."
           }
         />
       </label>
@@ -142,7 +148,9 @@ export function GatewaySettingsPanel() {
           autoComplete="off"
           value={slackBotToken}
           onChange={(e) => setSlackBotToken(e.target.value)}
-          placeholder={slack?.bot_token_set ? t("missionOsSecretPlaceholder") : "xoxb-..."}
+          placeholder={
+            slack?.bot_token_set ? t("missionOsSecretPlaceholder") : "xoxb-..."
+          }
         />
       </label>
       <label className="settings-field">
@@ -153,7 +161,9 @@ export function GatewaySettingsPanel() {
           autoComplete="off"
           value={slackSigningSecret}
           onChange={(e) => setSlackSigningSecret(e.target.value)}
-          placeholder={slack?.signing_secret_set ? t("missionOsSecretPlaceholder") : ""}
+          placeholder={
+            slack?.signing_secret_set ? t("missionOsSecretPlaceholder") : ""
+          }
         />
       </label>
       <label className="settings-field">
@@ -167,17 +177,29 @@ export function GatewaySettingsPanel() {
       </label>
 
       <div className="settings-actions">
-        <button type="button" className="settings-btn" disabled={busy} onClick={() => void save()}>
+        <button
+          type="button"
+          className="settings-btn"
+          disabled={busy}
+          onClick={() => void save()}
+        >
           {t("save")}
         </button>
-        <button type="button" className="settings-btn settings-btn--ghost" disabled={busy} onClick={() => void ping()}>
+        <button
+          type="button"
+          className="settings-btn settings-btn--ghost"
+          disabled={busy}
+          onClick={() => void ping()}
+        >
           {t("missionOsPing")}
         </button>
       </div>
       {hint ? <p className="settings-hint">{hint}</p> : null}
       {adapters.length > 0 ? (
         <>
-          <div className="settings-section__sub-head">{t("missionOsAdapters")}</div>
+          <div className="settings-section__sub-head">
+            {t("missionOsAdapters")}
+          </div>
           <ul className="mission-os-adapters">
             {adapters.map((row) => (
               <li key={row.id}>

@@ -8,10 +8,13 @@ type Props = {
   skipExecuteSections?: boolean;
 };
 
-export function PlanDocument({ planMd, onRefClick, skipExecuteSections }: Props) {
+export function PlanDocument({
+  planMd,
+  onRefClick,
+  skipExecuteSections,
+}: Props) {
   const content = useMemo(
-    () =>
-      renderPlanMarkdown(planMd, onRefClick, { skipExecuteSections }),
+    () => renderPlanMarkdown(planMd, onRefClick, { skipExecuteSections }),
     [planMd, onRefClick, skipExecuteSections],
   );
 

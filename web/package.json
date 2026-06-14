@@ -8,6 +8,8 @@
     "dev:tauri": "AGENT_LAB_SKIP_TAURI_API=1 sh scripts/tauri-dev.sh",
     "build": "tsc && vite build",
     "lint": "eslint .",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\"",
     "preview": "vite preview",
     "tauri": "tauri"
   },
@@ -33,6 +35,7 @@
     "eslint-plugin-react-refresh": "^0.4.26",
     "globals": "^15.15.0",
     "playwright": "^1.60.0",
+    "prettier": "^3.8.4",
     "typescript": "~5.6.2",
     "typescript-eslint": "^8.61.0",
     "vite": "^6.0.3"

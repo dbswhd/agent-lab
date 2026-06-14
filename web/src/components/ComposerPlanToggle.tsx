@@ -15,10 +15,7 @@ export function ComposerPlanToggle({
   title = "Clarify → plan.md → Human 승인 → execute",
 }: Props) {
   return (
-    <label
-      className={`switch${checked ? " is-on" : ""}`}
-      title={title}
-    >
+    <label className={`switch${checked ? " is-on" : ""}`} title={title}>
       <input
         type="checkbox"
         checked={checked}

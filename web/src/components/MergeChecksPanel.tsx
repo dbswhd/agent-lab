@@ -37,7 +37,9 @@ export function MergeChecksPanel({ checks, ko = true }: Props) {
             {ko ? "merge 비활성" : "merge disabled"}
           </span>
         ) : (
-          <span className="merge-checks__ok">{ko ? "merge 가능" : "merge ready"}</span>
+          <span className="merge-checks__ok">
+            {ko ? "merge 가능" : "merge ready"}
+          </span>
         )}
       </div>
       <ul className="merge-checks__list">
@@ -49,8 +51,12 @@ export function MergeChecksPanel({ checks, ko = true }: Props) {
               row.ok ? "merge-checks__item--ok" : "merge-checks__item--fail",
             ].join(" ")}
           >
-            <span className="merge-checks__label">{labels[row.id] ?? row.id}</span>
-            <span className="merge-checks__detail">{row.detail ?? (row.ok ? "OK" : "FAIL")}</span>
+            <span className="merge-checks__label">
+              {labels[row.id] ?? row.id}
+            </span>
+            <span className="merge-checks__detail">
+              {row.detail ?? (row.ok ? "OK" : "FAIL")}
+            </span>
           </li>
         ))}
       </ul>

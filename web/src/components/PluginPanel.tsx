@@ -50,9 +50,7 @@ function initialOpenAgents(
   if (!firstWithPlugins) {
     return { cursor: true, codex: false, claude: false };
   }
-  return Object.fromEntries(
-    AGENTS.map((a) => [a, a === firstWithPlugins]),
-  );
+  return Object.fromEntries(AGENTS.map((a) => [a, a === firstWithPlugins]));
 }
 
 const EXTERNAL_DISABLED_HINT: Record<string, string> = {
@@ -83,7 +81,9 @@ function ExternalToolsGroup({
   const external = commands.filter(
     (cmd) => cmd.scope === "external" || cmd.kind === "external",
   );
-  const enabledCount = external.filter((row) => allowlist.includes(row.id)).length;
+  const enabledCount = external.filter((row) =>
+    allowlist.includes(row.id),
+  ).length;
 
   return (
     <section className="plugin-agent-group">
@@ -107,8 +107,8 @@ function ExternalToolsGroup({
       {open ? (
         !runnerEnabled ? (
           <p className="plugin-panel__hint">
-            외부 runner 비활성 — 서버에 <code>AGENT_LAB_EXTERNAL_TOOLS=1</code> 설정 후
-            ~/.agent-lab/tools.yaml 을 등록하세요.
+            외부 runner 비활성 — 서버에 <code>AGENT_LAB_EXTERNAL_TOOLS=1</code>{" "}
+            설정 후 ~/.agent-lab/tools.yaml 을 등록하세요.
           </p>
         ) : external.length === 0 ? (
           <p className="plugin-panel__empty">등록된 외부 명령 없음</p>
@@ -170,7 +170,9 @@ function AgentPluginGroup({
   disabled?: boolean;
   onTogglePlugin: (pluginId: string, on: boolean) => void;
 }) {
-  const enabledCount = plugins.filter((row) => allowlist.includes(row.id)).length;
+  const enabledCount = plugins.filter((row) =>
+    allowlist.includes(row.id),
+  ).length;
 
   return (
     <section className="plugin-agent-group">
@@ -194,7 +196,9 @@ function AgentPluginGroup({
       </button>
       {open ? (
         plugins.length === 0 ? (
-          <p className="plugin-panel__empty">목록 없음 — 네이티브 앱에서 추가</p>
+          <p className="plugin-panel__empty">
+            목록 없음 — 네이티브 앱에서 추가
+          </p>
         ) : (
           <ul className="plugin-panel__list">
             {plugins.map((row) => {
@@ -215,7 +219,9 @@ function AgentPluginGroup({
                     <p className="plugin-panel__desc">{row.description}</p>
                   ) : null}
                   {row.native_add_hint ? (
-                    <p className="plugin-panel__native-hint">{row.native_add_hint}</p>
+                    <p className="plugin-panel__native-hint">
+                      {row.native_add_hint}
+                    </p>
                   ) : null}
                 </li>
               );
@@ -224,9 +230,13 @@ function AgentPluginGroup({
         )
       ) : null}
       {agent === "cursor" && open ? (
-        <p className="plugin-panel__cursor-ide-hint" data-testid="cursor-ide-mcp-hint">
-          Cursor MCP/plugins are inherited from Cursor IDE (Settings → Features → MCP).
-          The bridge has no list API — activity stream may show MCP tool names during runs.
+        <p
+          className="plugin-panel__cursor-ide-hint"
+          data-testid="cursor-ide-mcp-hint"
+        >
+          Cursor MCP/plugins are inherited from Cursor IDE (Settings → Features
+          → MCP). The bridge has no list API — activity stream may show MCP tool
+          names during runs.
         </p>
       ) : null}
     </section>
@@ -242,7 +252,9 @@ export function PluginPanel({
 }: Props) {
   const [tab, setTab] = useState<"plugins" | "commands">("plugins");
   const [grouped, setGrouped] =
-    useState<Record<(typeof AGENTS)[number], AgentPluginRecord[]>>(emptyGrouped);
+    useState<Record<(typeof AGENTS)[number], AgentPluginRecord[]>>(
+      emptyGrouped,
+    );
   const [allowlist, setAllowlist] = useState<Record<string, string[]>>({});
   const [busy, setBusy] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
@@ -250,9 +262,8 @@ export function PluginPanel({
   const [externalAllowlist, setExternalAllowlist] = useState<string[]>([]);
   const [externalRunnerEnabled, setExternalRunnerEnabled] = useState(false);
   const [externalOpen, setExternalOpen] = useState(false);
-  const [catalogCommands, setCatalogCommands] = useState<SlashCommandRecord[]>(
-    commands,
-  );
+  const [catalogCommands, setCatalogCommands] =
+    useState<SlashCommandRecord[]>(commands);
   const accordionInitRef = useRef<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -271,7 +282,9 @@ export function PluginPanel({
     if (accordionInitRef.current !== sessionId) {
       accordionInitRef.current = sessionId;
       setOpenAgents(initialOpenAgents(nextGrouped));
-      setExternalOpen((cmdRes.commands ?? []).some((c) => c.kind === "external"));
+      setExternalOpen(
+        (cmdRes.commands ?? []).some((c) => c.kind === "external"),
+      );
     }
   }, [sessionId]);
 
@@ -334,7 +347,11 @@ export function PluginPanel({
     catalogCommands.length > 0 ? catalogCommands : commands;
 
   if (!sessionId) {
-    return <p className="plugin-panel__hint">세션을 선택하면 plugin을 관리할 수 있습니다.</p>;
+    return (
+      <p className="plugin-panel__hint">
+        세션을 선택하면 plugin을 관리할 수 있습니다.
+      </p>
+    );
   }
 
   const pluginBody = (

@@ -92,9 +92,7 @@ export function useSessionRunState(sessionId: string | null) {
   );
 
   const setTopologyActive = useCallback(
-    (
-      active: SessionRunSnapshot["topologyActive"] | null,
-    ) => {
+    (active: SessionRunSnapshot["topologyActive"] | null) => {
       if (!sessionId) return;
       updateSessionRun(sessionId, { topologyActive: active });
     },

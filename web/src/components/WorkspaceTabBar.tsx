@@ -4,7 +4,14 @@ import { messages } from "../i18n/messages";
 
 const TAB_META: {
   id: WorkspaceTab;
-  icon: "transcript" | "plan" | "background" | "diff" | "files" | "preview" | "terminal";
+  icon:
+    | "transcript"
+    | "plan"
+    | "background"
+    | "diff"
+    | "files"
+    | "preview"
+    | "terminal";
   shortcut: string;
 }[] = [
   { id: "transcript", icon: "transcript", shortcut: "⌘1" },
@@ -142,7 +149,10 @@ export function WorkspaceTabBar({
           </span>
         ) : null}
         {running ? (
-          <span className="badge badge--accent" title={runningLabel ?? undefined}>
+          <span
+            className="badge badge--accent"
+            title={runningLabel ?? undefined}
+          >
             <span className="dot dot--live" aria-hidden />
             {runningLabel ?? m.running}
           </span>

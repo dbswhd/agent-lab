@@ -84,10 +84,7 @@ export const UNIFIED_MODE_OPTIONS: {
 
 /** Composer strategy seg — quick / discuss / ♾️ only. */
 export const TURN_STRATEGY_OPTIONS = UNIFIED_MODE_OPTIONS.filter(
-  (o) =>
-    o.id === "quick" ||
-    o.id === "analyze" ||
-    o.id === "free",
+  (o) => o.id === "quick" || o.id === "analyze" || o.id === "free",
 );
 
 const PLAN_AFTER_SEND_KEY = "agent-lab-plan-after-send";
@@ -126,9 +123,7 @@ export function setPlanAfterSendForSession(
 
 export function turnStrategyDescription(profile: ComposerTurnProfile): string {
   const normalized = normalizeTurnProfile(profile);
-  return (
-    TURN_STRATEGY_OPTIONS.find((o) => o.id === normalized)?.title ?? ""
-  );
+  return TURN_STRATEGY_OPTIONS.find((o) => o.id === normalized)?.title ?? "";
 }
 
 export function getPlanAfterSend(): boolean {
@@ -244,7 +239,11 @@ export function getUnifiedComposerMode(): UnifiedComposerMode {
               ? "analyze"
               : unified;
       return mergeToUnifiedMode(
-        unified === "plan" ? "plan" : unified === "execute" ? "execute" : "discuss",
+        unified === "plan"
+          ? "plan"
+          : unified === "execute"
+            ? "execute"
+            : "discuss",
         normalizeTurnProfile(turnRaw),
       );
     }

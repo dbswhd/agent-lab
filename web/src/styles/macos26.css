@@ -5,10 +5,26 @@
   min-height: 100vh;
   padding: var(--space-xl);
   background:
-    radial-gradient(ellipse 72% 55% at 18% 8%, rgba(0, 122, 255, 0.13) 0%, transparent 62%),
-    radial-gradient(ellipse 58% 48% at 88% 18%, rgba(88, 50, 220, 0.10) 0%, transparent 55%),
-    radial-gradient(ellipse 65% 65% at 78% 88%, rgba(255, 95, 45, 0.08) 0%, transparent 60%),
-    radial-gradient(ellipse 52% 55% at 8% 82%, rgba(40, 195, 95, 0.07) 0%, transparent 58%),
+    radial-gradient(
+      ellipse 72% 55% at 18% 8%,
+      rgba(0, 122, 255, 0.13) 0%,
+      transparent 62%
+    ),
+    radial-gradient(
+      ellipse 58% 48% at 88% 18%,
+      rgba(88, 50, 220, 0.1) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse 65% 65% at 78% 88%,
+      rgba(255, 95, 45, 0.08) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 52% 55% at 8% 82%,
+      rgba(40, 195, 95, 0.07) 0%,
+      transparent 58%
+    ),
     var(--mac-app-bg);
   display: flex;
   align-items: center;
@@ -17,10 +33,26 @@
 
 [data-theme="dark"] .mac-app {
   background:
-    radial-gradient(ellipse 72% 55% at 18% 8%, rgba(10, 132, 255, 0.20) 0%, transparent 62%),
-    radial-gradient(ellipse 58% 48% at 88% 18%, rgba(120, 80, 255, 0.15) 0%, transparent 55%),
-    radial-gradient(ellipse 65% 65% at 78% 88%, rgba(255, 115, 60, 0.11) 0%, transparent 60%),
-    radial-gradient(ellipse 52% 55% at 8% 82%, rgba(50, 210, 100, 0.09) 0%, transparent 58%),
+    radial-gradient(
+      ellipse 72% 55% at 18% 8%,
+      rgba(10, 132, 255, 0.2) 0%,
+      transparent 62%
+    ),
+    radial-gradient(
+      ellipse 58% 48% at 88% 18%,
+      rgba(120, 80, 255, 0.15) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse 65% 65% at 78% 88%,
+      rgba(255, 115, 60, 0.11) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 52% 55% at 8% 82%,
+      rgba(50, 210, 100, 0.09) 0%,
+      transparent 58%
+    ),
     var(--mac-app-bg);
 }
 
@@ -183,7 +215,11 @@ body.is-tauri .chat-list-header {
   height: var(--mac-control-height);
   border-radius: var(--radius-control);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.12s ease, box-shadow 0.15s ease, transform 0.08s ease;
+  transition:
+    background 0.15s ease,
+    color 0.12s ease,
+    box-shadow 0.15s ease,
+    transform 0.08s ease;
   white-space: nowrap;
 }
 
@@ -198,7 +234,9 @@ body.is-tauri .chat-list-header {
 .mac-segmented button.active {
   background: var(--mac-content-bg);
   color: var(--mac-label-primary);
-  box-shadow: 0 0.5px 2px rgba(0, 0, 0, 0.12), 0 0 0 0.5px var(--mac-separator);
+  box-shadow:
+    0 0.5px 2px rgba(0, 0, 0, 0.12),
+    0 0 0 0.5px var(--mac-separator);
 }
 
 [data-theme="dark"] .mac-segmented button.active {
@@ -239,9 +277,12 @@ body.is-tauri .chat-list-header {
   font-weight: 510;
   letter-spacing: -0.01em;
   cursor: pointer;
-  transition: background 0.12s ease, opacity 0.12s ease, transform 0.08s ease;
+  transition:
+    background 0.12s ease,
+    opacity 0.12s ease,
+    transform 0.08s ease;
   box-shadow:
-    0 0.5px 1px rgba(0, 0, 0, 0.10),
+    0 0.5px 1px rgba(0, 0, 0, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
@@ -275,7 +316,10 @@ body.is-tauri .chat-list-header {
   font-size: var(--text-headline);
   font-weight: 510;
   cursor: pointer;
-  transition: background 0.12s ease, box-shadow 0.12s ease, transform 0.08s ease;
+  transition:
+    background 0.12s ease,
+    box-shadow 0.12s ease,
+    transform 0.08s ease;
   box-shadow:
     0 0 0 0.5px var(--mac-separator),
     inset 0 1px 0 rgba(255, 255, 255, 0.62);
@@ -285,7 +329,7 @@ body.is-tauri .chat-list-header {
   color: var(--mac-label-primary);
   box-shadow:
     0 0 0 0.5px var(--mac-separator),
-    inset 0 1px 0 rgba(255, 255, 255, 0.10);
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .mac-btn-secondary:hover {
@@ -528,11 +572,17 @@ body.is-tauri .chat-list-header {
   border: none;
   padding: 7px 10px;
   gap: 8px;
-  transition: background 0.14s ease, box-shadow 0.14s ease;
+  transition:
+    background 0.14s ease,
+    box-shadow 0.14s ease;
 }
 
 .chat-list-pane .session-row.selected {
-  background: color-mix(in srgb, var(--lg-sidebar-surface-elevated) 88%, var(--mac-accent) 5%);
+  background: color-mix(
+    in srgb,
+    var(--lg-sidebar-surface-elevated) 88%,
+    var(--mac-accent) 5%
+  );
   box-shadow:
     var(--lg-sidebar-edge),
     inset 0 0 0 0.5px var(--lg-sidebar-border);
@@ -552,11 +602,19 @@ body.is-tauri .chat-list-header {
 }
 
 [data-theme="dark"] .chat-list-pane .session-row.selected {
-  background: color-mix(in srgb, var(--lg-sidebar-surface-elevated) 82%, var(--mac-accent) 8%);
+  background: color-mix(
+    in srgb,
+    var(--lg-sidebar-surface-elevated) 82%,
+    var(--mac-accent) 8%
+  );
 }
 
 .chat-list-pane .session-row:hover:not(.selected) {
-  background: color-mix(in srgb, var(--lg-sidebar-surface-elevated) 45%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--lg-sidebar-surface-elevated) 45%,
+    transparent
+  );
 }
 
 .chat-list-pane .session-row:focus-visible {
@@ -619,7 +677,11 @@ body.is-tauri .chat-list-header {
 
 .session-setup-bar--needs-path .session-setup-bar__card {
   border-color: color-mix(in srgb, var(--mac-accent) 28%, var(--mac-separator));
-  background: color-mix(in srgb, var(--mac-accent) 4%, var(--mac-fill-tertiary));
+  background: color-mix(
+    in srgb,
+    var(--mac-accent) 4%,
+    var(--mac-fill-tertiary)
+  );
 }
 
 .session-setup-bar__head {
@@ -1208,7 +1270,11 @@ body.is-tauri .chat-list-header {
   border: 1px solid var(--mac-separator);
   background: var(--mac-fill-quaternary);
   cursor: pointer;
-  transition: background 0.12s, border-color 0.12s, opacity 0.12s, transform 0.08s ease;
+  transition:
+    background 0.12s,
+    border-color 0.12s,
+    opacity 0.12s,
+    transform 0.08s ease;
 }
 
 .agent-pill:active:not(:disabled) {
@@ -1410,7 +1476,8 @@ body.is-tauri .chat-list-header {
 }
 
 [data-theme="dark"] .composer-capsule::before {
-  background-image: linear-gradient(
+  background-image:
+    linear-gradient(
       180deg,
       color-mix(in srgb, #fff 14%, transparent) 0%,
       transparent 28%
@@ -1471,7 +1538,10 @@ body.is-tauri .chat-list-header {
   place-items: center;
   padding: 0;
   line-height: 0;
-  transition: background 0.12s ease, color 0.12s ease, transform 0.1s ease;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease,
+    transform 0.1s ease;
 }
 
 .btn-attach:hover:not(:disabled) {
@@ -1558,7 +1628,10 @@ body.is-tauri .chat-list-header {
   letter-spacing: var(--bubble-tracking);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+  font-feature-settings:
+    "kern" 1,
+    "liga" 1,
+    "calt" 1;
   text-rendering: optimizeLegibility;
 }
 
@@ -1655,9 +1728,10 @@ body.is-tauri .chat-list-header {
   background: var(--color-bubble-sent);
   border-color: transparent;
   color: var(--color-bubble-sent-text);
-  box-shadow: 0 1px 8px color-mix(in srgb, var(--color-bubble-sent) 22%, transparent);
-  border-radius: var(--bubble-radius) var(--bubble-radius) var(--bubble-tail-radius)
-    var(--bubble-radius);
+  box-shadow: 0 1px 8px
+    color-mix(in srgb, var(--color-bubble-sent) 22%, transparent);
+  border-radius: var(--bubble-radius) var(--bubble-radius)
+    var(--bubble-tail-radius) var(--bubble-radius);
 }
 
 .mac-bubble--received {
@@ -1863,7 +1937,8 @@ body.is-tauri .chat-list-header {
 .bubble-body .bubble-md__quote {
   margin: 0;
   padding-left: 10px;
-  border-left: 2px solid color-mix(in srgb, var(--mac-label-primary) 22%, transparent);
+  border-left: 2px solid
+    color-mix(in srgb, var(--mac-label-primary) 22%, transparent);
 }
 
 .bubble-body .bubble-md__hr {
@@ -2081,7 +2156,11 @@ body.is-tauri .chat-list-header {
 }
 
 .chat-turn__body .bubble-md__quote {
-  border-left-color: color-mix(in srgb, var(--mac-label-primary) 22%, transparent);
+  border-left-color: color-mix(
+    in srgb,
+    var(--mac-label-primary) 22%,
+    transparent
+  );
 }
 
 .chat-turn__body .bubble-inline-code,
@@ -2244,7 +2323,11 @@ body.is-tauri .chat-list-header {
 }
 
 .lg-panel--warn .lg-panel__title {
-  color: color-mix(in srgb, var(--mac-orange, #c93400) 78%, var(--mac-label-secondary));
+  color: color-mix(
+    in srgb,
+    var(--mac-orange, #c93400) 78%,
+    var(--mac-label-secondary)
+  );
 }
 
 .composer-alert-panel,
@@ -2276,7 +2359,11 @@ body.is-tauri .chat-list-header {
 
 .lg-panel--warn .composer-alert-panel__text,
 .lg-panel--warn .plan-ref-warn-panel__text {
-  color: color-mix(in srgb, var(--mac-orange, #c93400) 55%, var(--mac-label-primary));
+  color: color-mix(
+    in srgb,
+    var(--mac-orange, #c93400) 55%,
+    var(--mac-label-primary)
+  );
 }
 
 .turn-progress-strip {
@@ -2325,13 +2412,21 @@ body.is-tauri .chat-list-header {
   font-weight: 600;
   border: none;
   outline: none;
-  background: color-mix(in srgb, var(--mac-fill-secondary) 72%, var(--mac-content-bg));
+  background: color-mix(
+    in srgb,
+    var(--mac-fill-secondary) 72%,
+    var(--mac-content-bg)
+  );
   color: var(--mac-label-secondary);
   box-shadow: none;
 }
 
 .turn-progress-chip--done {
-  background: color-mix(in srgb, var(--mac-green, #248a3d) 12%, var(--mac-content-bg));
+  background: color-mix(
+    in srgb,
+    var(--mac-green, #248a3d) 12%,
+    var(--mac-content-bg)
+  );
   color: var(--mac-label-primary);
 }
 
@@ -2379,7 +2474,8 @@ body.is-tauri .chat-list-header {
     var(--mac-orange, #c93400) 10%,
     var(--mac-fill-secondary)
   );
-  border: 0.5px solid color-mix(in srgb, var(--mac-orange, #c93400) 28%, var(--mac-separator));
+  border: 0.5px solid
+    color-mix(in srgb, var(--mac-orange, #c93400) 28%, var(--mac-separator));
 }
 
 .composer-send-receipt {
@@ -2414,7 +2510,9 @@ body.is-tauri .chat-list-header {
   font-size: var(--text-headline);
   font-weight: 600;
   box-shadow: 0 0.5px 2px rgba(0, 0, 0, 0.12);
-  transition: background 0.12s ease, transform 0.12s ease;
+  transition:
+    background 0.12s ease,
+    transform 0.12s ease;
 }
 
 .btn-send--composer {
@@ -2453,8 +2551,11 @@ body.is-tauri .chat-list-header {
   display: grid;
   place-items: center;
   cursor: pointer;
-  box-shadow: 0 1px 6px color-mix(in srgb, var(--color-bubble-sent) 28%, transparent);
-  transition: transform 0.12s ease, opacity 0.12s ease;
+  box-shadow: 0 1px 6px
+    color-mix(in srgb, var(--color-bubble-sent) 28%, transparent);
+  transition:
+    transform 0.12s ease,
+    opacity 0.12s ease;
 }
 
 .btn-stop-reply:hover {
@@ -2536,11 +2637,13 @@ body.is-tauri .chat-list-header {
   color: var(--mac-label-primary);
   cursor: pointer;
   flex-shrink: 0;
-  transition: opacity 0.12s ease, transform 0.08s ease;
+  transition:
+    opacity 0.12s ease,
+    transform 0.08s ease;
 }
 
 .theme-toggle:active {
-  transform: scale(0.90);
+  transform: scale(0.9);
 }
 
 .theme-toggle::before {
@@ -2764,7 +2867,9 @@ body.is-tauri .chat-list-header {
   line-height: 1;
   white-space: nowrap;
   cursor: pointer;
-  transition: background 0.12s ease, opacity 0.12s ease;
+  transition:
+    background 0.12s ease,
+    opacity 0.12s ease;
 }
 
 .mac-alert-btn--cancel {
@@ -2778,7 +2883,7 @@ body.is-tauri .chat-list-header {
 [data-theme="dark"] .mac-alert-btn--cancel {
   box-shadow:
     0 0 0 0.5px var(--mac-separator),
-    inset 0 1px 0 rgba(255, 255, 255, 0.10);
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .mac-alert-btn--cancel:hover {
@@ -3090,7 +3195,9 @@ body.is-tauri .chat-list-header {
   font-size: 16px;
   line-height: 1;
   cursor: pointer;
-  transition: background 0.12s ease, color 0.12s ease;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease;
 }
 
 .mac-notification-close:hover {

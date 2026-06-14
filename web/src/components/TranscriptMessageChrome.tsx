@@ -45,11 +45,7 @@ export function TranscriptIdentity({
   );
 }
 
-export function TranscriptAuthorLine({
-  message,
-}: {
-  message: ChatMessage;
-}) {
+export function TranscriptAuthorLine({ message }: { message: ChatMessage }) {
   const act = normalizeAct(message.envelope?.act);
   const meta = message.envelope ? formatEnvelopeMeta(message.envelope) : null;
   const round = Math.max(1, message.parallelRound ?? 1);

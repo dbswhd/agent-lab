@@ -140,7 +140,9 @@ export function PlanApprovalPanel({
           ) : null}
           <details className="plan-approval-preview">
             <summary>{msg.planApprovalPlanFull}</summary>
-            <pre className="plan-approval-preview__body">{planMd || "(empty)"}</pre>
+            <pre className="plan-approval-preview__body">
+              {planMd || "(empty)"}
+            </pre>
           </details>
           <label className="field-label" htmlFor="plan-approval-goal">
             {msg.planApprovalGoalDerived}

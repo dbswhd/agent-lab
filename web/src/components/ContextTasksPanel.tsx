@@ -116,7 +116,10 @@ export function ContextTasksPanel({
                   {obj.act}
                 </span>
                 <span className="ctx-objection__time">{obj.ts ?? ""}</span>
-                <span className="badge badge--ok" style={{ marginLeft: "auto" }}>
+                <span
+                  className="badge badge--ok"
+                  style={{ marginLeft: "auto" }}
+                >
                   {ko ? "해결됨" : "resolved"}
                 </span>
               </div>

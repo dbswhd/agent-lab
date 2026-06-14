@@ -5,7 +5,11 @@ type Props = {
 };
 
 /** Right context sidebar toggle — prototype titlebar icon-btn. */
-export function ContextSidebarToggle({ open, onToggle, badgeCount = 0 }: Props) {
+export function ContextSidebarToggle({
+  open,
+  onToggle,
+  badgeCount = 0,
+}: Props) {
   return (
     <button
       type="button"

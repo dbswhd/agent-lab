@@ -56,23 +56,25 @@ export function SessionSetupBar({
   const isCustom = workspaceId === CUSTOM_WORKSPACE_ID;
   const preset =
     workspaces.find((w) => w.id === workspaceId) ??
-    (isCustom ? null : workspaces.find((w) => w.available) ?? workspaces[0]);
-  const displayPath = isCustom ? workspacePath : preset?.path ?? null;
+    (isCustom ? null : (workspaces.find((w) => w.available) ?? workspaces[0]));
+  const displayPath = isCustom ? workspacePath : (preset?.path ?? null);
   const selectValue = isCustom
     ? CUSTOM_WORKSPACE_ID
-    : preset?.id ?? workspaceId;
+    : (preset?.id ?? workspaceId);
   const activeLabel = isCustom
     ? workspacePath
       ? "선택한 폴더"
       : "폴더를 선택하세요"
-    : preset?.label ?? "작업 폴더";
+    : (preset?.label ?? "작업 폴더");
 
   return (
     <div
       className={[
         "session-setup-bar",
         compact ? "session-setup-bar--compact" : undefined,
-        isCustom && !workspacePath ? "session-setup-bar--needs-path" : undefined,
+        isCustom && !workspacePath
+          ? "session-setup-bar--needs-path"
+          : undefined,
       ]
         .filter(Boolean)
         .join(" ")}

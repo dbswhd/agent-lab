@@ -93,13 +93,13 @@ function isPeerLine(line: {
   visibility?: string;
 }): boolean {
   if (line.visibility === "peer") return true;
-  if (line.role === "agent" && /^\[이번 턴\s*·\s*동료 발화\]/i.test(line.content.trim())) {
+  if (
+    line.role === "agent" &&
+    /^\[이번 턴\s*·\s*동료 발화\]/i.test(line.content.trim())
+  ) {
     return true;
   }
-  if (
-    line.role === "system" &&
-    /peer digest/i.test(line.content)
-  ) {
+  if (line.role === "system" && /peer digest/i.test(line.content)) {
     return true;
   }
   return false;

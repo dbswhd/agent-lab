@@ -42,7 +42,9 @@ function isStoredToolPanelTab(tab: string | null): tab is StoredToolPanelTab {
   return TOOL_PANEL_TABS.some((candidate) => candidate === tab);
 }
 
-function isStoredRightPanelMode(tab: string | null): tab is StoredRightPanelMode {
+function isStoredRightPanelMode(
+  tab: string | null,
+): tab is StoredRightPanelMode {
   return RIGHT_PANEL_MODES.some((candidate) => candidate === tab);
 }
 
@@ -93,7 +95,10 @@ export function getToolsInspectorWidth(): number {
 }
 
 export function setToolsInspectorWidth(width: number): void {
-  localStorage.setItem(TOOLS_WIDTH_KEY, String(clampToolsInspectorWidth(width)));
+  localStorage.setItem(
+    TOOLS_WIDTH_KEY,
+    String(clampToolsInspectorWidth(width)),
+  );
 }
 
 export function getWorkbenchPanelWidth(): number {
@@ -104,7 +109,10 @@ export function getWorkbenchPanelWidth(): number {
 }
 
 export function setWorkbenchPanelWidth(width: number): void {
-  localStorage.setItem(WORKBENCH_WIDTH_KEY, String(clampWorkbenchPanelWidth(width)));
+  localStorage.setItem(
+    WORKBENCH_WIDTH_KEY,
+    String(clampWorkbenchPanelWidth(width)),
+  );
 }
 
 export function getLastToolPanelTab(): StoredToolPanelTab {

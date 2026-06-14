@@ -1,8 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  fetchDaemonHealth,
-  type DaemonHealthPayload,
-} from "../api/client";
+import { fetchDaemonHealth, type DaemonHealthPayload } from "../api/client";
 import { useLocale } from "../i18n/useLocale";
 import { SettingsSectionIcon } from "./SettingsSectionIcon";
 
@@ -45,7 +42,11 @@ export function DaemonStatusBar() {
             <span
               className={`ctx-oracle-badge ctx-oracle-badge--${online && !stale ? "pass" : "warn"}`}
             >
-              {online ? (stale ? t("missionOsDaemonStale") : t("missionOsDaemonOnline")) : t("missionOsDaemonOffline")}
+              {online
+                ? stale
+                  ? t("missionOsDaemonStale")
+                  : t("missionOsDaemonOnline")
+                : t("missionOsDaemonOffline")}
             </span>
           </dd>
         </div>
@@ -68,8 +69,14 @@ export function DaemonStatusBar() {
           </div>
         ) : null}
       </dl>
-      {error ? <p className="settings-hint settings-hint--error">{error}</p> : null}
-      <button type="button" className="settings-btn settings-btn--ghost" onClick={load}>
+      {error ? (
+        <p className="settings-hint settings-hint--error">{error}</p>
+      ) : null}
+      <button
+        type="button"
+        className="settings-btn settings-btn--ghost"
+        onClick={load}
+      >
         {t("refresh")}
       </button>
     </div>

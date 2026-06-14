@@ -96,9 +96,7 @@ function TaskRow({
           >
             {statusLabel(msg, task.status)}
           </span>
-          <span className="bgtask-row__cmd">
-            {task.command.join(" ")}
-          </span>
+          <span className="bgtask-row__cmd">{task.command.join(" ")}</span>
         </button>
         {isActive(task.status) ? (
           <button
@@ -110,9 +108,7 @@ function TaskRow({
             ✕
           </button>
         ) : task.exit_code != null ? (
-          <span className="bgtask-row__exit">
-            exit {task.exit_code}
-          </span>
+          <span className="bgtask-row__exit">exit {task.exit_code}</span>
         ) : null}
       </div>
 
@@ -165,7 +161,9 @@ function NewTaskForm({
       try {
         const p = JSON.parse(errMsg) as { detail?: string };
         if (p.detail) errMsg = p.detail;
-      } catch { /* not JSON */ }
+      } catch {
+        /* not JSON */
+      }
       setError(errMsg);
     } finally {
       setLoading(false);

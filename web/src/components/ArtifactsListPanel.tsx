@@ -148,13 +148,15 @@ export function ArtifactsListPanel({ items, sessionId }: Props) {
           </span>
         </div>
       ) : (
-        [...items].reverse().map((art) => (
-          <ArtifactCard
-            key={art.id ?? art.path ?? `${art.producer}-${art.kind}`}
-            art={art}
-            sessionId={sessionId}
-          />
-        ))
+        [...items]
+          .reverse()
+          .map((art) => (
+            <ArtifactCard
+              key={art.id ?? art.path ?? `${art.producer}-${art.kind}`}
+              art={art}
+              sessionId={sessionId}
+            />
+          ))
       )}
     </div>
   );

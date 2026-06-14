@@ -81,10 +81,16 @@ export function PlanWorkflowBanner({
   if (!copy) return null;
 
   const roundBits: string[] = [];
-  if (typeof workflow.clarify_round === "number" && workflow.clarify_round > 0) {
+  if (
+    typeof workflow.clarify_round === "number" &&
+    workflow.clarify_round > 0
+  ) {
     roundBits.push(`CLARIFY R${workflow.clarify_round}`);
   }
-  if (typeof workflow.peer_review_round === "number" && workflow.peer_review_round > 0) {
+  if (
+    typeof workflow.peer_review_round === "number" &&
+    workflow.peer_review_round > 0
+  ) {
     roundBits.push(`PEER R${workflow.peer_review_round}`);
   }
 

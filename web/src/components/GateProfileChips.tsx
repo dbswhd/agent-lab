@@ -8,7 +8,11 @@ type Props = {
   reloadKey?: number;
 };
 
-export function GateProfileChips({ sessionId, compact = false, reloadKey = 0 }: Props) {
+export function GateProfileChips({
+  sessionId,
+  compact = false,
+  reloadKey = 0,
+}: Props) {
   const { t } = useLocale();
   const [runtime, setRuntime] = useState<RuntimeSnapshot | null>(null);
 

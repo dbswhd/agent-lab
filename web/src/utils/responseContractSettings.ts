@@ -83,7 +83,8 @@ export function recordBoolean(
 function compactValue(value: unknown): string {
   if (value === null || value === undefined || value === "") return "—";
   if (typeof value === "string") return value;
-  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (typeof value === "number" || typeof value === "boolean")
+    return String(value);
   try {
     return JSON.stringify(value);
   } catch (error) {
@@ -118,15 +119,20 @@ export function communicateMetaRows(
     .map(([label, value]) => ({ label, value: compactValue(value) }));
 }
 
-export function parseResponseContract(value: unknown): ResponseContractRecord | null {
+export function parseResponseContract(
+  value: unknown,
+): ResponseContractRecord | null {
   if (!value || typeof value !== "object") return null;
   const record: ResponseContractRecord = {};
-  if ("preset" in value && typeof value.preset === "string") record.preset = value.preset;
-  if ("label" in value && typeof value.label === "string") record.label = value.label;
+  if ("preset" in value && typeof value.preset === "string")
+    record.preset = value.preset;
+  if ("label" in value && typeof value.label === "string")
+    record.label = value.label;
   if ("guidance" in value && typeof value.guidance === "string") {
     record.guidance = value.guidance;
   }
-  if ("set_by" in value && typeof value.set_by === "string") record.set_by = value.set_by;
+  if ("set_by" in value && typeof value.set_by === "string")
+    record.set_by = value.set_by;
   if ("updated_at" in value && typeof value.updated_at === "string") {
     record.updated_at = value.updated_at;
   }

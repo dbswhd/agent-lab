@@ -10,8 +10,7 @@ export type ParsedDiffStat = {
 };
 
 /** Per-file: `path | 19 + 7 -` (legacy) or `path | +19 -7` */
-const FILE_LINE =
-  /^ (.+?) \| (?:(?:\d+\s+\+\s*\d+\s+-)|(?:\+\d+\s+-\d+))$/;
+const FILE_LINE = /^ (.+?) \| (?:(?:\d+\s+\+\s*\d+\s+-)|(?:\+\d+\s+-\d+))$/;
 
 function parseFileLine(line: string): DiffStatFileRow | null {
   const trimmed = line.trimEnd();

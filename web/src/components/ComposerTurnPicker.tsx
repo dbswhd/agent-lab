@@ -35,8 +35,7 @@ export function ComposerTurnPicker({
   const options = turnStrategyOptions(locale);
   const description = turnProfileDescription(value);
   const hintText =
-    hint?.trim() ||
-    [description, costHint?.trim()].filter(Boolean).join(" · ");
+    hint?.trim() || [description, costHint?.trim()].filter(Boolean).join(" · ");
 
   return (
     <div
@@ -68,7 +67,9 @@ export function ComposerTurnPicker({
             </button>
           ))}
         </div>
-        {trailing ? <div className="turn-picker__trailing">{trailing}</div> : null}
+        {trailing ? (
+          <div className="turn-picker__trailing">{trailing}</div>
+        ) : null}
       </div>
       {hintText ? (
         <p id="composer-turn-desc" className="turn-hint">

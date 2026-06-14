@@ -62,8 +62,7 @@ function NotifyCard({
   }
 
   const actionLabel =
-    item.actionLabel ??
-    (item.action ? defaultActionLabel(item.action) : null);
+    item.actionLabel ?? (item.action ? defaultActionLabel(item.action) : null);
 
   return (
     <div
@@ -84,9 +83,23 @@ function NotifyCard({
       >
         <span className="notify-card__icon" aria-hidden="true">
           <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
-            <rect width="20" height="20" rx="5" fill="currentColor" opacity=".15" />
-            <text x="10" y="14" textAnchor="middle" fontSize="11"
-              fontWeight="700" fill="currentColor">A</text>
+            <rect
+              width="20"
+              height="20"
+              rx="5"
+              fill="currentColor"
+              opacity=".15"
+            />
+            <text
+              x="10"
+              y="14"
+              textAnchor="middle"
+              fontSize="11"
+              fontWeight="700"
+              fill="currentColor"
+            >
+              A
+            </text>
           </svg>
         </span>
         <div className="notify-card__body">
@@ -106,11 +119,7 @@ function NotifyCard({
         </time>
       </button>
       {item.action && actionLabel ? (
-        <button
-          type="button"
-          className="notify-card__go"
-          onClick={handleOpen}
-        >
+        <button type="button" className="notify-card__go" onClick={handleOpen}>
           {actionLabel}
         </button>
       ) : null}
@@ -140,11 +149,7 @@ function NotifyCard({
  *    const { push } = useMacNotifications();
  *    push({ title: "Run complete", body: "Oracle verified" });
  */
-export function MacNotificationProvider({
-  children,
-}: {
-  children: ReactNode;
-}) {
+export function MacNotificationProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<MacNotificationItem[]>([]);
   const seqRef = useRef(0);
 
@@ -154,7 +159,9 @@ export function MacNotificationProvider({
 
   const push = useCallback((payload: MacNotificationPayload) => {
     const id = `mac-notify-${Date.now()}-${seqRef.current++}`;
-    setItems((prev) => [...prev, { ...payload, id, createdAt: Date.now() }].slice(-4));
+    setItems((prev) =>
+      [...prev, { ...payload, id, createdAt: Date.now() }].slice(-4),
+    );
   }, []);
 
   const value = useMemo(() => ({ push }), [push]);

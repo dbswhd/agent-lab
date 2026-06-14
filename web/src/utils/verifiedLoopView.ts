@@ -17,12 +17,11 @@ export function buildVerifiedLoopView(
   const proposed = loop.proposed ?? {};
   const approved = loop.loop_goal ?? {};
   const sessionGoal = run?.session_goal as { text?: string } | undefined;
-  const proposedGoal =
-    String(proposed.goal ?? approved.text ?? sessionGoal?.text ?? "").trim();
+  const proposedGoal = String(
+    proposed.goal ?? approved.text ?? sessionGoal?.text ?? "",
+  ).trim();
   const completionPromise = String(
-    proposed.completion_promise ??
-      approved.completion_promise ??
-      "DONE",
+    proposed.completion_promise ?? approved.completion_promise ?? "DONE",
   ).trim();
   const criteria = String(
     proposed.criteria ?? approved.criteria ?? proposedGoal,

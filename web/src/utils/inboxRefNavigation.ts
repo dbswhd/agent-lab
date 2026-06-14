@@ -29,7 +29,10 @@ export type InboxRefHandlers = {
   onFocusTask?: (taskId: string) => void;
 };
 
-export function activateInboxRef(ref: string, handlers: InboxRefHandlers): boolean {
+export function activateInboxRef(
+  ref: string,
+  handlers: InboxRefHandlers,
+): boolean {
   const target = parseInboxRef(ref);
   if (target.kind === "chat") {
     handlers.onChatLine?.(target.line);

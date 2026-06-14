@@ -13,7 +13,8 @@ export function TweaksHotkeys() {
       togglePanel();
     }
     window.addEventListener("keydown", onKey, { capture: true });
-    return () => window.removeEventListener("keydown", onKey, { capture: true });
+    return () =>
+      window.removeEventListener("keydown", onKey, { capture: true });
   }, [togglePanel]);
 
   return null;

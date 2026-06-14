@@ -39,13 +39,13 @@ export function ConsensusDryRunGateBar({
   onOpenPlan,
   onDismiss,
 }: Props) {
-  const notice      = consensusDryRunGateNotice(
+  const notice = consensusDryRunGateNotice(
     proposal.excerpt,
     proposal.summary,
     proposal.notice,
   );
   const actionTitle = consensusDryRunActionTitle(proposal.recommended);
-  const canDryRun   = Boolean(proposal.has_executable && proposal.action_key);
+  const canDryRun = Boolean(proposal.has_executable && proposal.action_key);
 
   return (
     <div
@@ -56,8 +56,12 @@ export function ConsensusDryRunGateBar({
       {/* Codex-tinted icon */}
       <span className="consensus-gate-bar__icon" aria-hidden="true">
         <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
-          <path d="M10 2l2.5 5 5.5.8-4 3.9.95 5.5L10 14.75 5.05 17.2 6 11.7 2 7.8l5.5-.8L10 2z"
-            stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+          <path
+            d="M10 2l2.5 5 5.5.8-4 3.9.95 5.5L10 14.75 5.05 17.2 6 11.7 2 7.8l5.5-.8L10 2z"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinejoin="round"
+          />
         </svg>
       </span>
 

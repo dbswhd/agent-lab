@@ -14,7 +14,11 @@ export function ComposerMentionMenu({ query, paths, loading, onPick }: Props) {
   if (!loading && filtered.length === 0) return null;
 
   return (
-    <div className="composer-mention-menu" role="listbox" aria-label="File mentions">
+    <div
+      className="composer-mention-menu"
+      role="listbox"
+      aria-label="File mentions"
+    >
       {loading ? (
         <div className="composer-mention-menu__hint">Loading files…</div>
       ) : (

@@ -47,7 +47,9 @@ function draftFromRow(row: AgentCredentialRow): SlotDraft {
   };
 }
 
-function patchFromDrafts(drafts: Record<"cursor", SlotDraft>): CredentialsPatch {
+function patchFromDrafts(
+  drafts: Record<"cursor", SlotDraft>,
+): CredentialsPatch {
   const d = drafts.cursor;
   const patch: CredentialsPatch = {
     cursor: {
@@ -294,7 +296,10 @@ function CodexOAuthCard() {
       </div>
       {hint ? <p className="settings-save-hint">{hint}</p> : null}
       {meta?.path ? (
-        <p className="settings-hint settings-credentials__path" title={meta.path}>
+        <p
+          className="settings-hint settings-credentials__path"
+          title={meta.path}
+        >
           OAuth 저장: <code>{meta.path}</code>
         </p>
       ) : null}
@@ -363,7 +368,11 @@ export function AgentCredentialsPanel() {
     return (
       <div className="settings-credentials__error">
         <p className="settings-hint">{error}</p>
-        <button type="button" className="btn btn--sm" onClick={() => void load()}>
+        <button
+          type="button"
+          className="btn btn--sm"
+          onClick={() => void load()}
+        >
           다시 시도
         </button>
       </div>
@@ -400,7 +409,9 @@ export function AgentCredentialsPanel() {
           <legend className="agent-settings__legend">
             <Avatar role="cursor" size={18} />
             Cursor
-            <span className="agent-settings__model">{cursorRow.env_primary}</span>
+            <span className="agent-settings__model">
+              {cursorRow.env_primary}
+            </span>
           </legend>
 
           <label className="agent-settings__field">

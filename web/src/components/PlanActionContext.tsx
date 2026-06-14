@@ -13,7 +13,11 @@ function PlanActionField({ label, value, onRefClick, compact }: FieldProps) {
   if (!parsed?.body && !parsed?.refs.length) return null;
 
   return (
-    <div className={["plan-field", compact ? "plan-field--compact" : ""].filter(Boolean).join(" ")}>
+    <div
+      className={["plan-field", compact ? "plan-field--compact" : ""]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <span className="plan-field__label">{label}</span>
       <div className="plan-field__content">
         {parsed.body ? (
@@ -56,7 +60,13 @@ type Props = {
 };
 
 /** Rebuilt plan action context (어디/검증/workspace). Logic preserved; new classes. */
-export function PlanActionContext({ where, verify, workspaceLabel, onRefClick, compact }: Props) {
+export function PlanActionContext({
+  where,
+  verify,
+  workspaceLabel,
+  onRefClick,
+  compact,
+}: Props) {
   const hasWhere = Boolean(parsePlanField(where));
   const hasVerify = Boolean(parsePlanField(verify));
   const hasWorkspace = Boolean(workspaceLabel?.trim());
@@ -64,9 +74,23 @@ export function PlanActionContext({ where, verify, workspaceLabel, onRefClick, c
   if (!hasWhere && !hasVerify && !hasWorkspace) return null;
 
   return (
-    <div className={["plan-context", compact ? "plan-context--compact" : ""].filter(Boolean).join(" ")}>
-      <PlanActionField label="어디" value={where} onRefClick={onRefClick} compact={compact} />
-      <PlanActionField label="검증" value={verify} onRefClick={onRefClick} compact={compact} />
+    <div
+      className={["plan-context", compact ? "plan-context--compact" : ""]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <PlanActionField
+        label="어디"
+        value={where}
+        onRefClick={onRefClick}
+        compact={compact}
+      />
+      <PlanActionField
+        label="검증"
+        value={verify}
+        onRefClick={onRefClick}
+        compact={compact}
+      />
       {hasWorkspace ? (
         <div className="plan-field plan-field--workspace">
           <span className="plan-field__label">workspace</span>

@@ -1,4 +1,9 @@
-import type { ConsensusGatePayload, RoomTask, RoomTasksPayload, PlanExecutionRecord } from "../api/client";
+import type {
+  ConsensusGatePayload,
+  RoomTask,
+  RoomTasksPayload,
+  PlanExecutionRecord,
+} from "../api/client";
 import type { ComposerTurnProfile } from "./turnProfile";
 
 export type TaskBarComposerVariant = "discuss" | "plan" | "consensus";
@@ -22,7 +27,9 @@ function activeAgentCount(agents: string[] | undefined): number {
   return n > 0 ? n : 3;
 }
 
-export function resolveRequiredAgreements(payload: RoomTasksPayload | null): number {
+export function resolveRequiredAgreements(
+  payload: RoomTasksPayload | null,
+): number {
   const gate = payload?.consensus_gate;
   if (gate && gate.required_endorsements > 0) {
     return gate.required_endorsements;
@@ -160,8 +167,7 @@ export function formatConsensusBlockerCopy(
   const firstTask = findTaskByBlockerRef(tasks, firstRef);
   const title = firstGate?.title ?? firstTask?.title ?? firstRef;
   const current =
-    firstGate?.endorsements ??
-    (firstTask ? endorsementCount(firstTask) : 0);
+    firstGate?.endorsements ?? (firstTask ? endorsementCount(firstTask) : 0);
 
   if (blockers.length === 1) {
     return {
@@ -277,12 +283,12 @@ export function formatTaskBarEmptyState(mode: TaskBarMode): {
       return {
         message:
           "♾️ 합의 중 제안된 할 일이 여기에 쌓입니다. 팀 동의가 채워져야 합의가 끝납니다.",
-        example: "예: 에이전트가 [PROPOSED: 다음 검증] 이라고 쓰면 항목이 생깁니다.",
+        example:
+          "예: 에이전트가 [PROPOSED: 다음 검증] 이라고 쓰면 항목이 생깁니다.",
       };
     case "plan":
       return {
-        message:
-          "plan 정리 턴에서 나온 할 일이 plan 실행과 연결됩니다.",
+        message: "plan 정리 턴에서 나온 할 일이 plan 실행과 연결됩니다.",
         example: "예: [PROPOSED: API 스키마 확정] → plan #2와 연결",
       };
     case "analyze":

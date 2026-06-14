@@ -32,7 +32,9 @@ export function GoalLoopBanner({
       <div className="goal-loop-banner__head">
         <strong>세션 목표</strong>
         {goalView.loop.status ? (
-          <span className={`goal-oracle-badge goal-oracle-badge--${goalView.loop.status}`}>
+          <span
+            className={`goal-oracle-badge goal-oracle-badge--${goalView.loop.status}`}
+          >
             {goalView.loop.status === "achieved"
               ? "목표 달성"
               : fail
@@ -70,7 +72,9 @@ export function GoalLoopBanner({
         ) : null}
       </div>
       {goalView.loop.last_check?.detail ? (
-        <p className="goal-loop-banner__detail">{goalView.loop.last_check.detail}</p>
+        <p className="goal-loop-banner__detail">
+          {goalView.loop.last_check.detail}
+        </p>
       ) : null}
       {fail ? (
         <button
@@ -86,7 +90,9 @@ export function GoalLoopBanner({
           한 턴 더 토론
         </button>
       ) : null}
-      {goalError ? <p className="goal-loop-banner__error">{goalError}</p> : null}
+      {goalError ? (
+        <p className="goal-loop-banner__error">{goalError}</p>
+      ) : null}
     </section>
   );
 }

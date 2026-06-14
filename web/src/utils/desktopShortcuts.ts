@@ -25,7 +25,9 @@ const SHORTCUT_INDEX: Record<string, WorkspaceTab> = {
 
 export function requestWorkspaceTab(tab: WorkspaceTab): void {
   window.dispatchEvent(
-    new CustomEvent<WorkspaceTab>(WORKSPACE_TAB_SHORTCUT_EVENT, { detail: tab }),
+    new CustomEvent<WorkspaceTab>(WORKSPACE_TAB_SHORTCUT_EVENT, {
+      detail: tab,
+    }),
   );
 }
 

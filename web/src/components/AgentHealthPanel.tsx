@@ -49,7 +49,9 @@ export function AgentHealthPanel({
 
   return (
     <div
-      className={["agent-health-panel", open ? "agent-health-panel--open" : ""].filter(Boolean).join(" ")}
+      className={["agent-health-panel", open ? "agent-health-panel--open" : ""]
+        .filter(Boolean)
+        .join(" ")}
       aria-label="에이전트 상태"
     >
       <button
@@ -73,14 +75,19 @@ export function AgentHealthPanel({
             type="button"
             className="mac-btn-secondary mac-btn-icon agent-health-panel__refresh"
             disabled={loading || reconnecting}
-            onClick={(e) => { e.stopPropagation(); onRefresh(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onRefresh();
+            }}
             title="bridge 포함 재확인"
             aria-label="상태 새로고침"
           >
             {loading ? "…" : "↻"}
           </button>
         ) : null}
-        <span className="agent-health-panel__chev" aria-hidden>›</span>
+        <span className="agent-health-panel__chev" aria-hidden>
+          ›
+        </span>
       </button>
       {open ? (
         <>
@@ -92,7 +99,9 @@ export function AgentHealthPanel({
                   key={row.id}
                   className={[
                     "agent-health-row",
-                    row.ready ? "agent-health-row--ok" : "agent-health-row--bad",
+                    row.ready
+                      ? "agent-health-row--ok"
+                      : "agent-health-row--bad",
                   ].join(" ")}
                   title={row.hint ?? undefined}
                 >
@@ -102,7 +111,11 @@ export function AgentHealthPanel({
                   />
                   <span className="agent-health-row__label">{row.label}</span>
                   <span className="agent-health-row__meta">
-                    {row.model ? row.model : row.configured ? "설정됨" : "미설정"}
+                    {row.model
+                      ? row.model
+                      : row.configured
+                        ? "설정됨"
+                        : "미설정"}
                     {bridge ? ` · ${bridge}` : ""}
                   </span>
                   {row.id === "cursor" && showReconnect ? (
@@ -141,7 +154,8 @@ export function AgentHealthPanel({
             <p className="agent-health-panel__setup-guide">
               Cursor bridge — <code>~/.agent-lab/.env</code>에{" "}
               <code>CURSOR_SDK_BRIDGE_BIN</code> 절대 경로.{" "}
-              <code>pip install -e &quot;.[cursor]&quot;</code> · docs/STABILITY.md
+              <code>pip install -e &quot;.[cursor]&quot;</code> ·
+              docs/STABILITY.md
             </p>
           ) : null}
         </>

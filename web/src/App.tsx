@@ -169,7 +169,9 @@ export default function App() {
   );
   const [detail, setDetail] = useState<SessionDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
-  const [composerNew, setComposerNew] = useState(() => getLastSessionId() == null);
+  const [composerNew, setComposerNew] = useState(
+    () => getLastSessionId() == null,
+  );
   const [newSessionOpen, setNewSessionOpen] = useState(
     () => getLastSessionId() == null,
   );
@@ -186,7 +188,8 @@ export default function App() {
     string | null
   >(null);
   const [sidebarOpen, setSidebarOpenState] = useState(getSidebarOpen);
-  const [sessionRailWidth, setSessionRailWidthState] = useState(getSessionRailWidth);
+  const [sessionRailWidth, setSessionRailWidthState] =
+    useState(getSessionRailWidth);
   const [sessionQuery, setSessionQuery] = useState("");
   const [shellView, setShellView] = useState<ShellView>("workspace");
 
@@ -249,43 +252,48 @@ export default function App() {
     }
   }, []);
 
-  const reloadHealth = useCallback(async (probeBridge = false): Promise<boolean> => {
-    setHealthLoading(true);
-    try {
-      const h = await fetchHealth(probeBridge, probeBridge);
-      const ok = Boolean(h.ok && h.api?.ok !== false);
-      setApiOk(ok);
-      apiOkRef.current = ok;
-      setSessionsDir(typeof h.sessions_dir === "string" ? h.sessions_dir : null);
-      const rows = h.agents ?? [];
-      setHealthAgents(rows);
-      const cursor = rows.find((a) => a.id === "cursor");
-      setBridgeProbeFailed(
-        Boolean(
-          probeBridge &&
+  const reloadHealth = useCallback(
+    async (probeBridge = false): Promise<boolean> => {
+      setHealthLoading(true);
+      try {
+        const h = await fetchHealth(probeBridge, probeBridge);
+        const ok = Boolean(h.ok && h.api?.ok !== false);
+        setApiOk(ok);
+        apiOkRef.current = ok;
+        setSessionsDir(
+          typeof h.sessions_dir === "string" ? h.sessions_dir : null,
+        );
+        const rows = h.agents ?? [];
+        setHealthAgents(rows);
+        const cursor = rows.find((a) => a.id === "cursor");
+        setBridgeProbeFailed(
+          Boolean(
+            probeBridge &&
             cursor &&
             cursor.configured &&
             (cursor.bridge === "error" || !cursor.ready),
-        ),
-      );
-      const opts = healthToAgentOptions(rows);
-      setAgents(opts);
-      setHealth(formatRoomModelLine(opts) || "backend");
-      return ok;
-    } catch (e) {
-      const msg = String(e);
-      setApiOk(false);
-      apiOkRef.current = false;
-      setHealth(
-        msg.includes("Load failed") || msg.includes("Failed to fetch")
-          ? "API(8765) 연결 실패 — make dev / tauri-dev 재시작"
-          : msg,
-      );
-      return false;
-    } finally {
-      setHealthLoading(false);
-    }
-  }, []);
+          ),
+        );
+        const opts = healthToAgentOptions(rows);
+        setAgents(opts);
+        setHealth(formatRoomModelLine(opts) || "backend");
+        return ok;
+      } catch (e) {
+        const msg = String(e);
+        setApiOk(false);
+        apiOkRef.current = false;
+        setHealth(
+          msg.includes("Load failed") || msg.includes("Failed to fetch")
+            ? "API(8765) 연결 실패 — make dev / tauri-dev 재시작"
+            : msg,
+        );
+        return false;
+      } finally {
+        setHealthLoading(false);
+      }
+    },
+    [],
+  );
 
   const handleReconnectCursor = useCallback(async () => {
     setReconnecting(true);
@@ -457,7 +465,8 @@ export default function App() {
     }
 
     window.addEventListener("keydown", onKeyDown, { capture: true });
-    return () => window.removeEventListener("keydown", onKeyDown, { capture: true });
+    return () =>
+      window.removeEventListener("keydown", onKeyDown, { capture: true });
   }, [startNew, toggleSidebar]);
 
   function selectSession(id: string) {
@@ -511,13 +520,12 @@ export default function App() {
     roomSessionId && detail?.id === roomSessionId ? detail : null;
   const roomSessionLoading = Boolean(
     roomSessionId &&
-      loadingDetail &&
-      detail != null &&
-      detail.id !== roomSessionId,
+    loadingDetail &&
+    detail != null &&
+    detail.id !== roomSessionId,
   );
   const titlebarFallbackTopic =
-    roomSessionDetail?.topic ||
-    (composerNew ? "Session" : null);
+    roomSessionDetail?.topic || (composerNew ? "Session" : null);
 
   return (
     <div className={`app${fullscreen ? " app--fullscreen" : ""}`}>
@@ -538,126 +546,21 @@ export default function App() {
               { "--rail-width": `${sessionRailWidth}px` } as React.CSSProperties
             }
           >
-          <SessionRail
-            open={sidebarOpen}
-            width={sessionRailWidth}
-            onWidthChange={setSessionRailWidthState}
-            onWidthCommit={commitSessionRailWidth}
-          >
-            <div className="rail__header">
-              <div className="rail__title-row">
-                <h1 className="rail__title">Agent Lab</h1>
-              </div>
-              <label className="rail__search">
-                <svg
-                  viewBox="0 0 24 24"
-                  width="15"
-                  height="15"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={1.7}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden
-                >
-                  <circle cx="11" cy="11" r="7" />
-                  <path d="m21 21-4.3-4.3" />
-                </svg>
-                <input
-                  type="search"
-                  value={sessionQuery}
-                  onChange={(event) => setSessionQuery(event.target.value)}
-                  placeholder="세션 검색"
-                  aria-label="세션 검색"
-                />
-              </label>
-              <div className="rail-scope-tabs" role="tablist">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={listTab === "active"}
-                  className={`rail-scope-tab${listTab === "active" ? " is-active" : ""}`}
-                  onClick={() => setListTab("active")}
-                >
-                  Sessions
-                  {listTab === "active" && sessions.length > 0 ? (
-                    <span className="rail-scope-tab__count">{sessions.length}</span>
-                  ) : null}
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={listTab === "archived"}
-                  className={`rail-scope-tab${listTab === "archived" ? " is-active" : ""}`}
-                  onClick={() => setListTab("archived")}
-                >
-                  Archive
-                  {listTab === "archived" && sessions.length > 0 ? (
-                    <span className="rail-scope-tab__count rail-scope-tab__count--dim">
-                      {sessions.length}
-                    </span>
-                  ) : null}
-                </button>
-              </div>
-            </div>
-            <SessionRailStatusChip
-              apiOk={apiOk}
-              agents={healthAgents}
-              loading={healthLoading}
-              reconnecting={reconnecting}
-              sessionsDir={sessionsDir}
-              probeBridgeFailed={bridgeProbeFailed}
-              onRefresh={() => void reloadHealth(true)}
-              onReconnectCursor={() => void handleReconnectCursor()}
-              onReconnectClaude={() => void handleReconnectClaude()}
-            />
-            {!apiOk && health ? (
-              <p className="chat-list-status chat-list-status--error">{health}</p>
-            ) : null}
-            {sessionsError ? (
-              <p className="chat-list-status chat-list-status--error">{sessionsError}</p>
-            ) : null}
-            {apiOk && sessions.length === 0 && !sessionsError && sessionsDir ? (
-              <p className="chat-list-status" title={sessionsDir}>
-                세션 폴더 비어 있음 · {sessionsDir}
-              </p>
-            ) : null}
-            <SessionList
-              sessions={sessions}
-              selectedId={!composerNew ? selectedId : null}
-              runningSessionIds={runningSessionIds}
-              archived={listTab === "archived"}
-              query={sessionQuery}
-              onSelect={selectSession}
-              onArchive={listTab === "active" ? handleArchive : undefined}
-              onUnarchive={listTab === "archived" ? handleUnarchive : undefined}
-              onRename={handleRename}
-              onDelete={handleDelete}
-            />
-            {listTab === "active" ? (
-              <div className="rail__footer">
-                <button
-                  type="button"
-                  className="btn btn--primary btn--block"
-                  onClick={startNew}
-                  title="새 Session (⌘N)"
-                >
-                  + 새 Session
-                  <span className="kbd" style={{ marginLeft: "auto" }}>
-                    ⌘N
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className={`icon-btn${shellView === "settings" ? " is-active" : ""}`}
-                  title="Settings"
-                  aria-label="Settings"
-                  onClick={() => setShellView("settings")}
-                >
+            <SessionRail
+              open={sidebarOpen}
+              width={sessionRailWidth}
+              onWidthChange={setSessionRailWidthState}
+              onWidthCommit={commitSessionRailWidth}
+            >
+              <div className="rail__header">
+                <div className="rail__title-row">
+                  <h1 className="rail__title">Agent Lab</h1>
+                </div>
+                <label className="rail__search">
                   <svg
                     viewBox="0 0 24 24"
-                    width="17"
-                    height="17"
+                    width="15"
+                    height="15"
                     fill="none"
                     stroke="currentColor"
                     strokeWidth={1.7}
@@ -665,53 +568,173 @@ export default function App() {
                     strokeLinejoin="round"
                     aria-hidden
                   >
-                    <circle cx="12" cy="12" r="3" />
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="m21 21-4.3-4.3" />
                   </svg>
-                </button>
+                  <input
+                    type="search"
+                    value={sessionQuery}
+                    onChange={(event) => setSessionQuery(event.target.value)}
+                    placeholder="세션 검색"
+                    aria-label="세션 검색"
+                  />
+                </label>
+                <div className="rail-scope-tabs" role="tablist">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={listTab === "active"}
+                    className={`rail-scope-tab${listTab === "active" ? " is-active" : ""}`}
+                    onClick={() => setListTab("active")}
+                  >
+                    Sessions
+                    {listTab === "active" && sessions.length > 0 ? (
+                      <span className="rail-scope-tab__count">
+                        {sessions.length}
+                      </span>
+                    ) : null}
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={listTab === "archived"}
+                    className={`rail-scope-tab${listTab === "archived" ? " is-active" : ""}`}
+                    onClick={() => setListTab("archived")}
+                  >
+                    Archive
+                    {listTab === "archived" && sessions.length > 0 ? (
+                      <span className="rail-scope-tab__count rail-scope-tab__count--dim">
+                        {sessions.length}
+                      </span>
+                    ) : null}
+                  </button>
+                </div>
               </div>
-            ) : null}
-          </SessionRail>
-
-          <section className="pane workspace-pane" aria-label="Workspace">
-            {shellView === "settings" ? (
-              <SettingsPage
-                sessionId={roomSessionId}
-                session={roomSessionDetail}
-                selectedAgents={agents.filter((a) => a.ready).map((a) => a.id)}
-                turnProfile={getTurnStrategy()}
+              <SessionRailStatusChip
                 apiOk={apiOk}
-                healthAgents={healthAgents}
-                healthLoading={healthLoading}
+                agents={healthAgents}
+                loading={healthLoading}
                 reconnecting={reconnecting}
                 sessionsDir={sessionsDir}
                 probeBridgeFailed={bridgeProbeFailed}
-                onRefreshDiagnostics={() => void reloadHealth(true)}
+                onRefresh={() => void reloadHealth(true)}
                 onReconnectCursor={() => void handleReconnectCursor()}
-                onBack={() => setShellView("workspace")}
+                onReconnectClaude={() => void handleReconnectClaude()}
               />
-            ) : (
-              <RoomChat
-                agents={agents}
-                healthAgents={healthAgents}
-                sessionId={roomSessionId}
-                session={roomSessionDetail}
-                loading={roomSessionLoading}
-                onSessionChange={onRoomSessionChange}
-                onSessionMetaRefresh={refreshSessionRun}
-                sidebarOpen={sidebarOpen}
-                onToggleSidebar={toggleSidebar}
-                onOpenSettings={() => setShellView("settings")}
-                bootstrapAgentIds={bootstrapAgentIds}
-                bootstrapAgentThreadBindings={bootstrapAgentThreadBindings}
-                bootstrapSessionTemplate={bootstrapSessionTemplate}
-                bootstrapTopic={bootstrapTopic}
-                bootstrapMissionTemplateId={bootstrapMissionTemplateId}
-                onBootstrapAgentsApplied={clearBootstrapAgents}
-                onBootstrapMissionTemplateApplied={clearBootstrapMissionTemplate}
+              {!apiOk && health ? (
+                <p className="chat-list-status chat-list-status--error">
+                  {health}
+                </p>
+              ) : null}
+              {sessionsError ? (
+                <p className="chat-list-status chat-list-status--error">
+                  {sessionsError}
+                </p>
+              ) : null}
+              {apiOk &&
+              sessions.length === 0 &&
+              !sessionsError &&
+              sessionsDir ? (
+                <p className="chat-list-status" title={sessionsDir}>
+                  세션 폴더 비어 있음 · {sessionsDir}
+                </p>
+              ) : null}
+              <SessionList
+                sessions={sessions}
+                selectedId={!composerNew ? selectedId : null}
+                runningSessionIds={runningSessionIds}
+                archived={listTab === "archived"}
+                query={sessionQuery}
+                onSelect={selectSession}
+                onArchive={listTab === "active" ? handleArchive : undefined}
+                onUnarchive={
+                  listTab === "archived" ? handleUnarchive : undefined
+                }
+                onRename={handleRename}
+                onDelete={handleDelete}
               />
-            )}
-          </section>
+              {listTab === "active" ? (
+                <div className="rail__footer">
+                  <button
+                    type="button"
+                    className="btn btn--primary btn--block"
+                    onClick={startNew}
+                    title="새 Session (⌘N)"
+                  >
+                    + 새 Session
+                    <span className="kbd" style={{ marginLeft: "auto" }}>
+                      ⌘N
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`icon-btn${shellView === "settings" ? " is-active" : ""}`}
+                    title="Settings"
+                    aria-label="Settings"
+                    onClick={() => setShellView("settings")}
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="17"
+                      height="17"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={1.7}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden
+                    >
+                      <circle cx="12" cy="12" r="3" />
+                      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg>
+                  </button>
+                </div>
+              ) : null}
+            </SessionRail>
+
+            <section className="pane workspace-pane" aria-label="Workspace">
+              {shellView === "settings" ? (
+                <SettingsPage
+                  sessionId={roomSessionId}
+                  session={roomSessionDetail}
+                  selectedAgents={agents
+                    .filter((a) => a.ready)
+                    .map((a) => a.id)}
+                  turnProfile={getTurnStrategy()}
+                  apiOk={apiOk}
+                  healthAgents={healthAgents}
+                  healthLoading={healthLoading}
+                  reconnecting={reconnecting}
+                  sessionsDir={sessionsDir}
+                  probeBridgeFailed={bridgeProbeFailed}
+                  onRefreshDiagnostics={() => void reloadHealth(true)}
+                  onReconnectCursor={() => void handleReconnectCursor()}
+                  onBack={() => setShellView("workspace")}
+                />
+              ) : (
+                <RoomChat
+                  agents={agents}
+                  healthAgents={healthAgents}
+                  sessionId={roomSessionId}
+                  session={roomSessionDetail}
+                  loading={roomSessionLoading}
+                  onSessionChange={onRoomSessionChange}
+                  onSessionMetaRefresh={refreshSessionRun}
+                  sidebarOpen={sidebarOpen}
+                  onToggleSidebar={toggleSidebar}
+                  onOpenSettings={() => setShellView("settings")}
+                  bootstrapAgentIds={bootstrapAgentIds}
+                  bootstrapAgentThreadBindings={bootstrapAgentThreadBindings}
+                  bootstrapSessionTemplate={bootstrapSessionTemplate}
+                  bootstrapTopic={bootstrapTopic}
+                  bootstrapMissionTemplateId={bootstrapMissionTemplateId}
+                  onBootstrapAgentsApplied={clearBootstrapAgents}
+                  onBootstrapMissionTemplateApplied={
+                    clearBootstrapMissionTemplate
+                  }
+                />
+              )}
+            </section>
           </div>
         </TitlebarSlotsProvider>
         <NewSessionDialog

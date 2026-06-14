@@ -38,7 +38,11 @@ export function ExecuteComposer({
         <p className="execute-composer__muted">
           실행 가능한 plan 액션이 없습니다.{" "}
           {onOpenPlan ? (
-            <button type="button" className="execute-composer__link" onClick={onOpenPlan}>
+            <button
+              type="button"
+              className="execute-composer__link"
+              onClick={onOpenPlan}
+            >
               plan.md 확인
             </button>
           ) : (

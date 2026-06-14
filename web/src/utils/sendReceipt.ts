@@ -52,11 +52,15 @@ export function sendReceiptLabel(
     return ko ? "Plan 승인 대기" : "Plan pending approval";
   }
   if (receipt === "plan_approved") {
-    return ko ? "Plan 승인됨 · execute 준비" : "Plan approved · ready to execute";
+    return ko
+      ? "Plan 승인됨 · execute 준비"
+      : "Plan approved · ready to execute";
   }
   if (receipt === "plan_updated") return ko ? "plan 갱신됨" : "Plan updated";
-  if (receipt === "consensus_done") return ko ? "합의 완료" : "Consensus reached";
-  if (receipt === "discuss_saved") return ko ? "토론 저장됨" : "Discussion saved";
+  if (receipt === "consensus_done")
+    return ko ? "합의 완료" : "Consensus reached";
+  if (receipt === "discuss_saved")
+    return ko ? "토론 저장됨" : "Discussion saved";
   return fallbackMode === "plan"
     ? ko
       ? "plan 갱신됨"

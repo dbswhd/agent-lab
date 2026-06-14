@@ -100,7 +100,10 @@ function overlapScore(
 }
 
 /** Conservative heuristic — informational only, not a hard invalidation. */
-function isSuspicious(planTokens: Set<string>, refTokens: Set<string>): boolean {
+function isSuspicious(
+  planTokens: Set<string>,
+  refTokens: Set<string>,
+): boolean {
   if (planTokens.size < MIN_PLAN_TOKENS) return false;
   const { shared, score } = overlapScore(planTokens, refTokens);
   if (shared >= 2) return false;

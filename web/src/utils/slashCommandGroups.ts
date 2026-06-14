@@ -15,13 +15,14 @@ export const SLASH_COMMAND_GROUP_ORDER: SlashCommandGroupKey[] = [
   "external",
 ];
 
-export const SLASH_COMMAND_GROUP_LABELS: Record<SlashCommandGroupKey, string> = {
-  built_in: "Built-in",
-  cursor: "Cursor",
-  codex: "Codex",
-  claude: "Claude",
-  external: "External",
-};
+export const SLASH_COMMAND_GROUP_LABELS: Record<SlashCommandGroupKey, string> =
+  {
+    built_in: "Built-in",
+    cursor: "Cursor",
+    codex: "Codex",
+    claude: "Claude",
+    external: "External",
+  };
 
 export function slashCommandGroupKey(
   cmd: SlashCommandRecord,

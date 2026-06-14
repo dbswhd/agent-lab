@@ -22,7 +22,9 @@ export function turnStrategyOptions(locale: "en" | "ko" = "en") {
     {
       id: "quick" as const,
       label: ko ? "빠른" : "Quick",
-      description: ko ? "에이전트 1명 · R1 · 짧게 확인" : "1 agent · R1 · short check",
+      description: ko
+        ? "에이전트 1명 · R1 · 짧게 확인"
+        : "1 agent · R1 · short check",
     },
     {
       id: "analyze" as const,
@@ -131,45 +133,47 @@ export function turnProfileDescription(profile: ComposerTurnProfile): string {
   );
 }
 
-export const TURN_PROFILE_CONFIG: Record<ComposerTurnProfile, TurnProfileConfig> =
-  {
-    quick: {
-      agentRounds: 1,
-      reviewMode: false,
-      singleAgent: true,
-      consensusMode: false,
-    },
-    analyze: {
-      agentRounds: 1,
-      reviewMode: false,
-      singleAgent: false,
-      consensusMode: false,
-    },
-    specialist: {
-      agentRounds: 2,
-      reviewMode: false,
-      singleAgent: false,
-      consensusMode: false,
-    },
-    verified: {
-      agentRounds: 1,
-      reviewMode: false,
-      singleAgent: false,
-      consensusMode: false,
-    },
-    review: {
-      agentRounds: 1,
-      reviewMode: false,
-      singleAgent: false,
-      consensusMode: true,
-    },
-    free: {
-      agentRounds: 1,
-      reviewMode: false,
-      singleAgent: false,
-      consensusMode: true,
-    },
-  };
+export const TURN_PROFILE_CONFIG: Record<
+  ComposerTurnProfile,
+  TurnProfileConfig
+> = {
+  quick: {
+    agentRounds: 1,
+    reviewMode: false,
+    singleAgent: true,
+    consensusMode: false,
+  },
+  analyze: {
+    agentRounds: 1,
+    reviewMode: false,
+    singleAgent: false,
+    consensusMode: false,
+  },
+  specialist: {
+    agentRounds: 2,
+    reviewMode: false,
+    singleAgent: false,
+    consensusMode: false,
+  },
+  verified: {
+    agentRounds: 1,
+    reviewMode: false,
+    singleAgent: false,
+    consensusMode: false,
+  },
+  review: {
+    agentRounds: 1,
+    reviewMode: false,
+    singleAgent: false,
+    consensusMode: true,
+  },
+  free: {
+    agentRounds: 1,
+    reviewMode: false,
+    singleAgent: false,
+    consensusMode: true,
+  },
+};
 
 export function getTurnProfile(): ComposerTurnProfile {
   const stored = localStorage.getItem(STORAGE_KEY);

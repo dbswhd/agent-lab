@@ -20,8 +20,7 @@ export function MacTitlebar({
   showThemeToggle = true,
 }: Props) {
   const tauri =
-    typeof window !== "undefined" &&
-    "__TAURI_INTERNALS__" in window;
+    typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
   function startWindowDrag(event: React.MouseEvent<HTMLElement>) {
     if (!tauri || event.button !== 0) return;

@@ -17,8 +17,14 @@ export function PlanProvenanceFooter({ planMd, onRefClick }: Props) {
   const hidden = refs.length - visible.length;
 
   return (
-    <div className="plan-provenance-footer" role="navigation" aria-label={msg.planProvenanceTitle}>
-      <span className="plan-provenance-footer__label">{msg.planProvenanceTitle}</span>
+    <div
+      className="plan-provenance-footer"
+      role="navigation"
+      aria-label={msg.planProvenanceTitle}
+    >
+      <span className="plan-provenance-footer__label">
+        {msg.planProvenanceTitle}
+      </span>
       <div className="plan-provenance-footer__links">
         {visible.map((line) => (
           <button

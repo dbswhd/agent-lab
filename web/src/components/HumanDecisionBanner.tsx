@@ -103,7 +103,11 @@ export function HumanDecisionBanner({
       </div>
       {onOpenInbox ? (
         <span className="human-decision-banner__actions">
-          <button type="button" className="btn btn--sm btn--ok" onClick={onOpenInbox}>
+          <button
+            type="button"
+            className="btn btn--sm btn--ok"
+            onClick={onOpenInbox}
+          >
             {msg.humanDecisionOpenInbox}
           </button>
         </span>

@@ -7,13 +7,13 @@
 
 :root {
   /* ---- Surfaces (3 steps + sunken) — true neutral gray ---- */
-  --surface-app: #f4f4f3;        /* window background behind panes  */
-  --surface-rail: #eeeeec;       /* session rail                    */
-  --surface-pane: #fbfbfa;       /* main workspace                  */
-  --surface-card: #ffffff;       /* raised cards, composer capsule  */
-  --surface-sunken: #eeeeec;     /* wells, code, inputs             */
+  --surface-app: #f4f4f3; /* window background behind panes  */
+  --surface-rail: #eeeeec; /* session rail                    */
+  --surface-pane: #fbfbfa; /* main workspace                  */
+  --surface-card: #ffffff; /* raised cards, composer capsule  */
+  --surface-sunken: #eeeeec; /* wells, code, inputs             */
   --surface-inset: var(--surface-sunken); /* legacy alias */
-  --surface-canvas: var(--surface-pane);  /* viewer / canvas wells */
+  --surface-canvas: var(--surface-pane); /* viewer / canvas wells */
   --surface-hover: rgba(20, 20, 19, 0.045);
   --surface-active: rgba(20, 20, 19, 0.075);
   --surface-scrim: rgba(22, 22, 21, 0.42);
@@ -34,7 +34,7 @@
   --accent: #2f2f2c;
   --accent-hover: #1f1f1d;
   --accent-press: #141413;
-  --accent-soft: rgba(47, 47, 44, 0.10);
+  --accent-soft: rgba(47, 47, 44, 0.1);
   --accent-softer: rgba(47, 47, 44, 0.06);
   --accent-ring: rgba(47, 47, 44, 0.32);
   --on-accent: #ffffff;
@@ -50,13 +50,13 @@
   --info: #5c5c58;
 
   /* ---- Agent identity (restrained, distinct) -------------- */
-  --agent-cursor: #5b67d6;       /* indigo */
+  --agent-cursor: #5b67d6; /* indigo */
   --agent-cursor-soft: rgba(91, 103, 214, 0.12);
-  --agent-codex: #3a8a76;        /* muted teal */
+  --agent-codex: #3a8a76; /* muted teal */
   --agent-codex-soft: rgba(58, 138, 118, 0.12);
-  --agent-claude: #b65a3c;       /* restrained clay (used sparingly) */
+  --agent-claude: #b65a3c; /* restrained clay (used sparingly) */
   --agent-claude-soft: rgba(182, 90, 60, 0.12);
-  --agent-you: #6c727b;          /* neutral slate */
+  --agent-you: #6c727b; /* neutral slate */
   --agent-you-soft: rgba(108, 114, 123, 0.12);
 
   /* ---- Spacing scale -------------------------------------- */
@@ -85,10 +85,12 @@
   --radius-pill: 999px;
 
   /* ---- Typography ----------------------------------------- */
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text",
-    "SF Pro Display", "Segoe UI", system-ui, sans-serif;
-  --font-mono: "SF Mono", ui-monospace, "JetBrains Mono", "Menlo",
-    "Cascadia Code", monospace;
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+    "Segoe UI", system-ui, sans-serif;
+  --font-mono:
+    "SF Mono", ui-monospace, "JetBrains Mono", "Menlo", "Cascadia Code",
+    monospace;
 
   /* Compact base scale — shifted ~1px down from the original 11–26px ramp
      so the UI reads denser (closer to the Files panel) while keeping all
@@ -113,12 +115,12 @@
 
   /* ---- Effects -------------------------------------------- */
   --shadow-hair: 0 1px 0 rgba(28, 27, 22, 0.06);
-  --shadow-1: 0 1px 2px rgba(28, 27, 22, 0.06),
-    0 1px 1px rgba(28, 27, 22, 0.04);
-  --shadow-2: 0 4px 14px rgba(28, 27, 22, 0.09),
-    0 1px 3px rgba(28, 27, 22, 0.06);
-  --shadow-3: 0 14px 44px rgba(28, 27, 22, 0.16),
-    0 4px 12px rgba(28, 27, 22, 0.08);
+  --shadow-1:
+    0 1px 2px rgba(28, 27, 22, 0.06), 0 1px 1px rgba(28, 27, 22, 0.04);
+  --shadow-2:
+    0 4px 14px rgba(28, 27, 22, 0.09), 0 1px 3px rgba(28, 27, 22, 0.06);
+  --shadow-3:
+    0 14px 44px rgba(28, 27, 22, 0.16), 0 4px 12px rgba(28, 27, 22, 0.08);
   --shadow-pop: 0 10px 30px rgba(28, 27, 22, 0.14);
 
   --focus-ring: 0 0 0 2px var(--surface-pane), 0 0 0 4px var(--accent-ring);

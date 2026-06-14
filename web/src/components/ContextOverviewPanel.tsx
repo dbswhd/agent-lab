@@ -72,8 +72,7 @@ export function ContextOverviewPanel({
     )?.context_layers;
     if (runLayers) {
       setLayerToggles((prev) => ({
-        mission_wisdom:
-          runLayers.mission_wisdom ?? prev.mission_wisdom,
+        mission_wisdom: runLayers.mission_wisdom ?? prev.mission_wisdom,
         repo_tree: runLayers.repo_tree ?? prev.repo_tree,
       }));
       return;
@@ -136,7 +135,12 @@ export function ContextOverviewPanel({
       on: layerToggles.repo_tree,
       toggle: true as const,
     },
-    { id: "plan", label: "plan.md", meta: ko ? "plan" : "plan", on: Boolean(session?.plan_md?.trim()) },
+    {
+      id: "plan",
+      label: "plan.md",
+      meta: ko ? "plan" : "plan",
+      on: Boolean(session?.plan_md?.trim()),
+    },
     {
       id: "chat",
       label: "chat.jsonl",
@@ -164,36 +168,51 @@ export function ContextOverviewPanel({
       <GateProfileChips sessionId={sessionId} />
 
       <MissionBoardStrip
-        board={(session?.run?.mission_board as MissionBoardPayload | undefined) ?? null}
+        board={
+          (session?.run?.mission_board as MissionBoardPayload | undefined) ??
+          null
+        }
         ko={ko}
       />
       <TurnBudgetSection
-        budget={(session?.run?.turn_budget as TurnBudgetPayload | undefined) ?? null}
+        budget={
+          (session?.run?.turn_budget as TurnBudgetPayload | undefined) ?? null
+        }
         ko={ko}
       />
 
       <section className="ctx-section">
-        <div className="ctx-section__label">{ko ? "세션 목표" : "Session goal"}</div>
+        <div className="ctx-section__label">
+          {ko ? "세션 목표" : "Session goal"}
+        </div>
         <div className="ctx-overview__goal-row">
           {hasGoal ? (
             <p className="ctx-goal">{goalView.goal.text}</p>
           ) : (
             <p className="ctx-overview__empty">
-              {ko ? "목표 미설정 — Tasks 탭에서 설정" : "No goal — set in Tasks tab"}
+              {ko
+                ? "목표 미설정 — Tasks 탭에서 설정"
+                : "No goal — set in Tasks tab"}
             </p>
           )}
           <OracleStatusBadge loop={goalView.loop} />
         </div>
         {goalView.loop.last_check?.detail ? (
-          <p className="ctx-overview__detail">{goalView.loop.last_check.detail}</p>
+          <p className="ctx-overview__detail">
+            {goalView.loop.last_check.detail}
+          </p>
         ) : null}
       </section>
 
       {planMeta.lastUpdate ? (
         <section className="ctx-section">
           <div className="ctx-section__label">Plan</div>
-          <div className={`ctx-plan-status ctx-plan-status--${planMeta.freshness}`}>
-            <span className="ctx-plan-status__label">{planMeta.freshnessLabel}</span>
+          <div
+            className={`ctx-plan-status ctx-plan-status--${planMeta.freshness}`}
+          >
+            <span className="ctx-plan-status__label">
+              {planMeta.freshnessLabel}
+            </span>
             {planStatusLine ? (
               <span className="ctx-plan-status__meta">{planStatusLine}</span>
             ) : null}

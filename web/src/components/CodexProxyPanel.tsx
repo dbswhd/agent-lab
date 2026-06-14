@@ -28,7 +28,8 @@ export function CodexProxyPanel() {
     <section className="codex-proxy-panel" data-testid="codex-proxy-panel">
       <p className="codex-proxy-panel__hint">
         개발용 Codex transport — <code>AGENT_LAB_CODEX_PROXY=1</code> +{" "}
-        <code>npx openai-oauth</code>. MCP/inbox execute 경로는 CLI를 사용합니다.
+        <code>npx openai-oauth</code>. MCP/inbox execute 경로는 CLI를
+        사용합니다.
       </p>
       {error ? <p className="codex-proxy-panel__error">{error}</p> : null}
       <dl className="codex-proxy-panel__rows">
@@ -46,8 +47,8 @@ export function CodexProxyPanel() {
             {!envOn
               ? "비활성"
               : proxyOk
-                ? status?.detail ?? "reachable"
-                : status?.detail ?? "unreachable"}
+                ? (status?.detail ?? "reachable")
+                : (status?.detail ?? "unreachable")}
           </dd>
         </div>
       </dl>

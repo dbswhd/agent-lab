@@ -290,7 +290,7 @@ def test_m5_i18n_panels_use_locale():
     terminal = _read("web", "src", "components", "TerminalPanel.tsx")
     live = _read("web", "src", "components", "LiveAgentsStrip.tsx")
     room = _read("web", "src", "components", "RoomChat.tsx")
-    plan_refs = _read("web", "src", "utils", "planDocInline.tsx")
+    plan_refs = _read("web", "src", "utils", "PlanDocRefs.tsx")
     layout = _read("web", "src", "styles", "layout.css")
 
     assert "useLocale" in bgtask

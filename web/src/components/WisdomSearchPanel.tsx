@@ -80,7 +80,9 @@ export function WisdomSearchPanel({ sessionId, index, ko = true }: Props) {
           onKeyDown={(e) => {
             if (e.key === "Enter") void runSearch();
           }}
-          placeholder={ko ? "evidence · notepad 검색" : "Search evidence & notepads"}
+          placeholder={
+            ko ? "evidence · notepad 검색" : "Search evidence & notepads"
+          }
           aria-label={ko ? "미션 지식 검색" : "Mission wisdom search"}
         />
         <button

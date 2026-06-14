@@ -32,13 +32,17 @@ export function HooksResponseSettings({
 }: HooksResponseSettingsProps) {
   const { msg } = useLocale();
   const [runtimeFlags, setRuntimeFlags] = useState<RuntimeFlagRow[]>([]);
-  const [runtimeFlagsError, setRuntimeFlagsError] = useState<string | null>(null);
-  const [contract, setContract] = useState<ResponseContractRecord | null>(
-    () => parseResponseContract(session?.run?.response_contract),
+  const [runtimeFlagsError, setRuntimeFlagsError] = useState<string | null>(
+    null,
+  );
+  const [contract, setContract] = useState<ResponseContractRecord | null>(() =>
+    parseResponseContract(session?.run?.response_contract),
   );
   const [selectedPreset, setSelectedPreset] = useState<ResponseContractPreset>(
     () => {
-      const preset = parseResponseContract(session?.run?.response_contract)?.preset;
+      const preset = parseResponseContract(
+        session?.run?.response_contract,
+      )?.preset;
       return isResponseContractPreset(preset) ? preset : "concise";
     },
   );
@@ -72,7 +76,8 @@ export function HooksResponseSettings({
   }, []);
 
   const hookResponseFlags = useMemo(
-    () => runtimeFlags.filter((flag) => HOOK_RESPONSE_FLAG_NAMES.has(flag.name)),
+    () =>
+      runtimeFlags.filter((flag) => HOOK_RESPONSE_FLAG_NAMES.has(flag.name)),
     [runtimeFlags],
   );
   const hookRuns = session?.observability?.hook_runs_tail ?? [];
@@ -110,14 +115,20 @@ export function HooksResponseSettings({
         </span>
       </div>
 
-      <div className="settings-contract-presets" role="radiogroup" aria-label="Response contract preset">
+      <div
+        className="settings-contract-presets"
+        role="radiogroup"
+        aria-label="Response contract preset"
+      >
         {RESPONSE_CONTRACT_PRESETS.map((preset) => (
           <button
             key={preset.preset}
             type="button"
             role="radio"
             aria-checked={selectedPreset === preset.preset}
-            className={selectedPreset === preset.preset ? "is-active" : undefined}
+            className={
+              selectedPreset === preset.preset ? "is-active" : undefined
+            }
             onClick={() => setSelectedPreset(preset.preset)}
           >
             <span>{preset.label}</span>
@@ -135,10 +146,12 @@ export function HooksResponseSettings({
           {saveBusy ? "저장 중…" : "Contract 저장"}
         </button>
         <span className="settings-hint">
-          현재: {contract?.label ?? "기본 정책"} · P1b는 기존 guidance block에 preset hint를
-          추가합니다.
+          현재: {contract?.label ?? "기본 정책"} · P1b는 기존 guidance block에
+          preset hint를 추가합니다.
         </span>
-        {saveHint ? <span className="settings-save-hint">{saveHint}</span> : null}
+        {saveHint ? (
+          <span className="settings-save-hint">{saveHint}</span>
+        ) : null}
       </div>
 
       <div className="settings-observability-grid">
@@ -158,7 +171,11 @@ export function HooksResponseSettings({
                     recordString(row, "sub_reason") ||
                     recordString(row, "command") ||
                     "no feedback";
-                  const status = blocked ? "blocked" : exitCode === 0 ? "ok" : "warn";
+                  const status = blocked
+                    ? "blocked"
+                    : exitCode === 0
+                      ? "ok"
+                      : "warn";
                   return (
                     <div
                       key={`${recordString(row, "ts")}-${eventName}-${index}`}
@@ -166,7 +183,9 @@ export function HooksResponseSettings({
                     >
                       <div className="settings-observability-row__head">
                         <span>{eventName}</span>
-                        <span className={`badge badge--${blocked ? "danger" : "ok"}`}>
+                        <span
+                          className={`badge badge--${blocked ? "danger" : "ok"}`}
+                        >
                           {blocked ? "blocked" : exitCode === 0 ? "ok" : "warn"}
                         </span>
                       </div>
@@ -179,12 +198,16 @@ export function HooksResponseSettings({
                 })}
             </div>
           ) : (
-            <p className="settings-hint">이 세션에 기록된 hook run이 아직 없습니다.</p>
+            <p className="settings-hint">
+              이 세션에 기록된 hook run이 아직 없습니다.
+            </p>
           )}
         </div>
 
         <div className="settings-observability-panel">
-          <div className="settings-section__sub-head">Response contract meta</div>
+          <div className="settings-section__sub-head">
+            Response contract meta
+          </div>
           {communicateRows.length > 0 ? (
             <dl className="settings-observability-kv">
               {communicateRows.map((row) => (
@@ -195,7 +218,9 @@ export function HooksResponseSettings({
               ))}
             </dl>
           ) : (
-            <p className="settings-hint">아직 envelope / communicate meta가 없습니다.</p>
+            <p className="settings-hint">
+              아직 envelope / communicate meta가 없습니다.
+            </p>
           )}
 
           <div className="settings-section__sub-head">Config paths</div>
@@ -239,11 +264,13 @@ export function HooksResponseSettings({
           ))}
         </div>
       ) : (
-        <p className="settings-hint">Hook/contract 관련 flag를 불러오는 중입니다.</p>
+        <p className="settings-hint">
+          Hook/contract 관련 flag를 불러오는 중입니다.
+        </p>
       )}
       <p className="settings-hint">
-        hooks.toml 편집은 아직 읽기 전용입니다. Response preset은 세션별 agent guidance에만
-        반영됩니다.
+        hooks.toml 편집은 아직 읽기 전용입니다. Response preset은 세션별 agent
+        guidance에만 반영됩니다.
       </p>
       {planWorkflowEnabled ? (
         <p className="settings-hint settings-hint--plan-workflow">

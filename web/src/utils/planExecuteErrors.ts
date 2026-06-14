@@ -16,7 +16,8 @@ export function formatPlanExecuteError(err: unknown): string {
     return parts.filter(Boolean).join(" — ");
   }
   if (err && typeof err === "object" && "preVerify" in err) {
-    const fb = (err as Error & { preVerify?: PreVerifyRecord }).preVerify?.feedback;
+    const fb = (err as Error & { preVerify?: PreVerifyRecord }).preVerify
+      ?.feedback;
     if (fb) return `pre_execute: ${fb}`;
   }
   if (err instanceof Error) return err.message;

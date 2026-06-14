@@ -52,7 +52,9 @@ function missionTemplateLabel(tpl: MissionTemplateSummary): string {
   return title || tpl.id;
 }
 
-function defaultAgentPicks(agents: AgentOption[]): Record<TeamAgentId, AgentPick> {
+function defaultAgentPicks(
+  agents: AgentOption[],
+): Record<TeamAgentId, AgentPick> {
   const ready = new Set(agents.filter((a) => a.ready).map((a) => a.id));
   const use = ready.size ? ready : new Set(agents.map((a) => a.id));
   return {
@@ -73,13 +75,13 @@ export function NewSessionDialog({ open, agents, onClose, onCreate }: Props) {
   const [workspacePath, setWorkspacePath] = useState<string | null>(() =>
     getStoredWorkspacePath(),
   );
-  const [agentPicks, setAgentPicks] = useState<Record<TeamAgentId, AgentPick>>(() =>
-    defaultAgentPicks(agents),
+  const [agentPicks, setAgentPicks] = useState<Record<TeamAgentId, AgentPick>>(
+    () => defaultAgentPicks(agents),
   );
   const [sessionTemplate, setSessionTemplate] = useState("general");
-  const [missionTemplates, setMissionTemplates] = useState<MissionTemplateSummary[]>(
-    [],
-  );
+  const [missionTemplates, setMissionTemplates] = useState<
+    MissionTemplateSummary[]
+  >([]);
   const [missionTemplateId, setMissionTemplateId] = useState("");
   const [presetTopic, setPresetTopic] = useState<string | null>(null);
 
@@ -100,14 +102,17 @@ export function NewSessionDialog({ open, agents, onClose, onCreate }: Props) {
       .catch(() => setLoadError(true));
   }, [open, agents]);
 
-  const applyMissionTemplate = useCallback((templateId: string) => {
-    setMissionTemplateId(templateId);
-    if (!templateId) return;
-    const tpl = missionTemplates.find((row) => row.id === templateId);
-    if (tpl?.topic?.trim() && !presetTopic) {
-      setPresetTopic(tpl.topic.trim());
-    }
-  }, [missionTemplates, presetTopic]);
+  const applyMissionTemplate = useCallback(
+    (templateId: string) => {
+      setMissionTemplateId(templateId);
+      if (!templateId) return;
+      const tpl = missionTemplates.find((row) => row.id === templateId);
+      if (tpl?.topic?.trim() && !presetTopic) {
+        setPresetTopic(tpl.topic.trim());
+      }
+    },
+    [missionTemplates, presetTopic],
+  );
 
   const applyTradingPreset = useCallback((preset: TradingMissionPreset) => {
     setWorkspaceId(preset.workspace_id);
@@ -126,12 +131,15 @@ export function NewSessionDialog({ open, agents, onClose, onCreate }: Props) {
     }));
   }, []);
 
-  const setAgentThread = useCallback((id: TeamAgentId, thread: "new" | string) => {
-    setAgentPicks((prev) => ({
-      ...prev,
-      [id]: { on: true, thread },
-    }));
-  }, []);
+  const setAgentThread = useCallback(
+    (id: TeamAgentId, thread: "new" | string) => {
+      setAgentPicks((prev) => ({
+        ...prev,
+        [id]: { on: true, thread },
+      }));
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -185,7 +193,9 @@ export function NewSessionDialog({ open, agents, onClose, onCreate }: Props) {
   ).filter(Boolean) as AgentOption[];
 
   const agentThreads = setupOptions?.agent_threads ?? {};
-  const chosen = orderedAgents.filter((a) => agentPicks[a.id as TeamAgentId]?.on);
+  const chosen = orderedAgents.filter(
+    (a) => agentPicks[a.id as TeamAgentId]?.on,
+  );
   const canCreate =
     (isCustom ? Boolean(workspacePath?.trim()) : Boolean(displayDir)) &&
     chosen.length > 0;
@@ -215,7 +225,8 @@ export function NewSessionDialog({ open, agents, onClose, onCreate }: Props) {
   if (!open) return null;
 
   const workspaces = setupOptions?.workspaces ?? [];
-  const templates = (setupOptions?.session_templates ?? []) as SessionTemplate[];
+  const templates = (setupOptions?.session_templates ??
+    []) as SessionTemplate[];
   const tradingPreset = setupOptions?.trading_mission_preset ?? null;
 
   return (
@@ -371,7 +382,9 @@ export function NewSessionDialog({ open, agents, onClose, onCreate }: Props) {
                         >
                           <path d="M1 4a1 1 0 0 1 1-1h4l2 2h6a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V4z" />
                         </svg>
-                        <span className="ns-recent__path">{w.path ?? w.label}</span>
+                        <span className="ns-recent__path">
+                          {w.path ?? w.label}
+                        </span>
                         {branch ? (
                           <span className="ns-recent__branch">
                             <svg
@@ -394,7 +407,10 @@ export function NewSessionDialog({ open, agents, onClose, onCreate }: Props) {
                         ) : null}
                         <span className="ns-recent__time">{w.label}</span>
                         {active ? (
-                          <span className="ns-recent__check" aria-label="selected">
+                          <span
+                            className="ns-recent__check"
+                            aria-label="selected"
+                          >
                             <svg
                               width="14"
                               height="14"
@@ -482,7 +498,9 @@ export function NewSessionDialog({ open, agents, onClose, onCreate }: Props) {
             <section className="ns-block">
               <div className="ns-block__head">
                 <span className="ns-block__label">세션 템플릿</span>
-                <span className="ns-block__hint">Room 가이던스·예산 프리셋</span>
+                <span className="ns-block__hint">
+                  Room 가이던스·예산 프리셋
+                </span>
               </div>
               <select
                 className="mac-popup session-setup-bar__select"
@@ -529,7 +547,10 @@ export function NewSessionDialog({ open, agents, onClose, onCreate }: Props) {
             <div className="ns-agents">
               {orderedAgents.map((ag) => {
                 const role = ag.id as TeamAgentId;
-                const pick = agentPicks[role] ?? { on: false, thread: "new" as const };
+                const pick = agentPicks[role] ?? {
+                  on: false,
+                  thread: "new" as const,
+                };
                 const threads = agentThreads[role] ?? [];
                 const resumed =
                   pick.thread !== "new"
@@ -549,11 +570,7 @@ export function NewSessionDialog({ open, agents, onClose, onCreate }: Props) {
                         aria-label={`${ag.label} 포함`}
                       />
                     </label>
-                    <Avatar
-                      role={role}
-                      label={ag.label}
-                      size={28}
-                    />
+                    <Avatar role={role} label={ag.label} size={28} />
                     <div className="ns-agent__id">
                       <span className="ns-agent__name">{ag.label}</span>
                       {ag.model ? (
@@ -562,11 +579,7 @@ export function NewSessionDialog({ open, agents, onClose, onCreate }: Props) {
                     </div>
                     <div className="ns-agent__thread">
                       <div className="ns-select">
-                        {pick.thread === "new" ? (
-                          <PlusIcon />
-                        ) : (
-                          <ResumeIcon />
-                        )}
+                        {pick.thread === "new" ? <PlusIcon /> : <ResumeIcon />}
                         <select
                           value={pick.thread}
                           disabled={!pick.on}
@@ -666,7 +679,16 @@ export function NewSessionDialog({ open, agents, onClose, onCreate }: Props) {
 
 function PlusIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden>
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      aria-hidden
+    >
       <path d="M8 3v10M3 8h10" />
     </svg>
   );
@@ -674,7 +696,16 @@ function PlusIcon() {
 
 function ResumeIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden>
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      aria-hidden
+    >
       <path d="M4 4v8h8M12 8 4 4" />
     </svg>
   );
@@ -682,7 +713,16 @@ function ResumeIcon() {
 
 function ChevronDownIcon() {
   return (
-    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden>
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      aria-hidden
+    >
       <path d="M4 6l4 4 4-4" />
     </svg>
   );

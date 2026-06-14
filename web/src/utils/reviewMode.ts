@@ -9,9 +9,7 @@ export function pickReviewAdvocate(
   return agents[humanTurnIndex % agents.length];
 }
 
-export function countUserTurns(
-  messages: { role: string }[],
-): number {
+export function countUserTurns(messages: { role: string }[]): number {
   return messages.filter((m) => m.role === "you").length;
 }
 

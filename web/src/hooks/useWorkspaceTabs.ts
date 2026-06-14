@@ -39,10 +39,13 @@ export function useWorkspaceTabs({
   initialRightPanelMode = "overview",
   onToolRequested,
 }: Options) {
-  const [workspaceTab, setWorkspaceTabState] = useState<WorkspaceTab>("transcript");
-  const [inspectorTab, setInspectorTabState] = useState<InspectorTab>("overview");
-  const [rightPanelMode, setRightPanelModeState] =
-    useState<RightPanelMode>(initialRightPanelMode);
+  const [workspaceTab, setWorkspaceTabState] =
+    useState<WorkspaceTab>("transcript");
+  const [inspectorTab, setInspectorTabState] =
+    useState<InspectorTab>("overview");
+  const [rightPanelMode, setRightPanelModeState] = useState<RightPanelMode>(
+    initialRightPanelMode,
+  );
   const [workspaceTabPinned, setWorkspaceTabPinned] = useState(false);
   const workspacePinnedRef = useRef(false);
   const inspectorPinnedRef = useRef(false);
@@ -51,19 +54,22 @@ export function useWorkspaceTabs({
   const prevBlockerRef = useRef(false);
   const prevSessionKeyRef = useRef(sessionKey);
 
-  const setWorkspaceTab = useCallback((tab: WorkspaceTab) => {
-    workspacePinnedRef.current = true;
-    setWorkspaceTabPinned(true);
-    if (!isToolPanelTab(tab)) {
+  const setWorkspaceTab = useCallback(
+    (tab: WorkspaceTab) => {
+      workspacePinnedRef.current = true;
+      setWorkspaceTabPinned(true);
+      if (!isToolPanelTab(tab)) {
+        setWorkspaceTabState("transcript");
+        return;
+      }
       setWorkspaceTabState("transcript");
-      return;
-    }
-    setWorkspaceTabState("transcript");
-    setRightPanelModeState(tab);
-    inspectorPinnedRef.current = true;
-    setInspectorTabState("tools");
-    onToolRequested?.();
-  }, [onToolRequested]);
+      setRightPanelModeState(tab);
+      inspectorPinnedRef.current = true;
+      setInspectorTabState("tools");
+      onToolRequested?.();
+    },
+    [onToolRequested],
+  );
 
   const setInspectorTab = useCallback((tab: InspectorTab) => {
     inspectorPinnedRef.current = true;
@@ -71,32 +77,40 @@ export function useWorkspaceTabs({
     setRightPanelModeState(rightPanelModeFromInspectorTab(tab));
   }, []);
 
-  const setRightPanelMode = useCallback((mode: RightPanelMode) => {
-    workspacePinnedRef.current = true;
-    setWorkspaceTabPinned(true);
-    setWorkspaceTabState("transcript");
-    setRightPanelModeState(mode);
-    if (mode === "overview" || mode === "tasks" || mode === "inbox") {
-      setInspectorTabState(mode);
-    } else {
-      setInspectorTabState("tools");
-    }
-    onToolRequested?.();
-  }, [onToolRequested]);
+  const setRightPanelMode = useCallback(
+    (mode: RightPanelMode) => {
+      workspacePinnedRef.current = true;
+      setWorkspaceTabPinned(true);
+      setWorkspaceTabState("transcript");
+      setRightPanelModeState(mode);
+      if (mode === "overview" || mode === "tasks" || mode === "inbox") {
+        setInspectorTabState(mode);
+      } else {
+        setInspectorTabState("tools");
+      }
+      onToolRequested?.();
+    },
+    [onToolRequested],
+  );
 
-  const setToolPanelTab = useCallback((tab: ToolPanelTab) => {
-    setRightPanelMode(tab);
-  }, [setRightPanelMode]);
+  const setToolPanelTab = useCallback(
+    (tab: ToolPanelTab) => {
+      setRightPanelMode(tab);
+    },
+    [setRightPanelMode],
+  );
 
-  const openRightPanelMode = useCallback((mode: RightPanelMode) => {
-    setRightPanelMode(mode);
-  }, [setRightPanelMode]);
+  const openRightPanelMode = useCallback(
+    (mode: RightPanelMode) => {
+      setRightPanelMode(mode);
+    },
+    [setRightPanelMode],
+  );
 
   useEffect(() => {
     const prevSessionKey = prevSessionKeyRef.current;
     prevSessionKeyRef.current = sessionKey;
-    const boundFromComposer =
-      prevSessionKey === "new" && sessionKey !== "new";
+    const boundFromComposer = prevSessionKey === "new" && sessionKey !== "new";
 
     if (boundFromComposer) {
       // First message bound a session id — keep Transcript visible while SSE streams.
@@ -173,7 +187,10 @@ export function useWorkspaceTabs({
     window.addEventListener(WORKSPACE_TAB_SHORTCUT_EVENT, onWorkspaceShortcut);
     window.addEventListener(CONTENT_TAB_SHORTCUT_EVENT, onLegacyShortcut);
     return () => {
-      window.removeEventListener(WORKSPACE_TAB_SHORTCUT_EVENT, onWorkspaceShortcut);
+      window.removeEventListener(
+        WORKSPACE_TAB_SHORTCUT_EVENT,
+        onWorkspaceShortcut,
+      );
       window.removeEventListener(CONTENT_TAB_SHORTCUT_EVENT, onLegacyShortcut);
     };
   }, [isNew, setWorkspaceTab]);

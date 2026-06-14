@@ -34,7 +34,12 @@ from agent_lab.runner import provider_override, run_topic_with_progress
 from agent_lab.session import SESSIONS_DIR, session_dir
 from agent_lab.session_setup import merge_setup_permissions, seed_session_setup
 from agent_lab.agent_thread_catalog import normalize_agent_thread_bindings
-from agent_lab.turn_modes import ModeContractError, patch_run_mode_contract, resolve_mode_contract
+from agent_lab.turn_modes import (
+    ModeContractError,
+    mode_contract_catalog,
+    patch_run_mode_contract,
+    resolve_mode_contract,
+)
 
 from app.server.deps import (
     ContextPreviewRequest,
@@ -65,6 +70,11 @@ def _loop_readiness_detail(agent_list: list[str] | None) -> dict[str, Any] | Non
         "agents": list(failure.agents),
         "reason": failure.reason,
     }
+
+
+@router.get("/room/modes")
+def room_modes() -> dict[str, Any]:
+    return mode_contract_catalog()
 
 
 @router.post("/room/context-preview")

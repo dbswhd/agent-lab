@@ -169,6 +169,8 @@ const EN = {
   planWorkflowPendingOpenTasks: "Open Tasks · Approve",
   planWorkflowApprovedTitle: "Plan workflow · Approved",
   planWorkflowApprovedDetail: "Plan approved — execute / dry-run is enabled.",
+  planWorkflowApprovedTeamDetail:
+    "Plan approved (Team) — plan.md is locked; use Plan tab for manual dry-run. Mission loop does not auto-start.",
   planWorkflowPhaseApproved: "APPROVED",
   planWorkflowNoticeClarifyCap:
     "Clarify round limit reached — drafting anyway.",
@@ -436,6 +438,8 @@ const KO = {
   planWorkflowApprovedTitle: "Plan workflow · 승인됨",
   planWorkflowApprovedDetail:
     "Plan이 승인되었습니다 — execute / dry-run을 사용할 수 있습니다.",
+  planWorkflowApprovedTeamDetail:
+    "Plan 승인됨 (Team) — plan.md 확정. Plan 탭에서 수동 dry-run 가능. Mission loop는 자동 시작하지 않습니다.",
   planWorkflowPhaseApproved: "APPROVED",
   planWorkflowNoticeClarifyCap:
     "Clarify 라운드 한도 도달 — Draft로 진행합니다.",

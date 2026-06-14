@@ -587,6 +587,21 @@ def _check_plan_workflow_approved(run: dict[str, Any]) -> bool:
     return isinstance(loop, dict) and loop.get("status") == "running"
 
 
+def _check_team_plan_only_approved(run: dict[str, Any]) -> bool:
+    pw = run.get("plan_workflow") or {}
+    if not isinstance(pw, dict) or pw.get("phase") != "APPROVED":
+        return False
+    if str(run.get("plan_intent") or "") != "plan_only":
+        return False
+    loop = run.get("verified_loop") or {}
+    if isinstance(loop, dict) and loop.get("status") == "running":
+        return False
+    ml = run.get("mission_loop") or {}
+    if isinstance(ml, dict) and ml.get("enabled"):
+        return False
+    return True
+
+
 def _check_goal_loop_achieved(run: dict[str, Any]) -> bool:
     goal = run.get("session_goal") or {}
     loop = run.get("goal_loop") or {}

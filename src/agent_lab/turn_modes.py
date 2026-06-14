@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
@@ -141,6 +142,133 @@ def resolve_mode_contract(
             )
 
 
+@dataclass(frozen=True, slots=True)
+class LoopBudgetCaps:
+    max_rounds: int
+    max_calls: int
+    max_token_estimate: int
+
+
+def _int_env(name: str, default: int) -> int:
+    raw = (os.getenv(name) or "").strip()
+    if not raw:
+        return default
+    try:
+        return max(1, int(raw))
+    except ValueError:
+        return default
+
+
+def loop_budget_caps() -> LoopBudgetCaps:
+    return LoopBudgetCaps(
+        max_rounds=_int_env("AGENT_LAB_LOOP_MAX_ROUNDS", 4),
+        max_calls=_int_env("AGENT_LAB_LOOP_MAX_CALLS", 12),
+        max_token_estimate=_int_env("AGENT_LAB_LOOP_MAX_TOKEN_EST", 500_000),
+    )
+
+
+def loop_budget_dict() -> dict[str, int]:
+    caps = loop_budget_caps()
+    return {
+        "max_rounds": caps.max_rounds,
+        "max_calls": caps.max_calls,
+        "max_token_estimate": caps.max_token_estimate,
+    }
+
+
+def apply_loop_budget_caps(
+    run_meta: dict[str, Any] | None,
+    cap_rounds: int,
+    cap_calls: int,
+) -> tuple[int, int]:
+    if not run_meta or str(run_meta.get("plan_intent") or "") != "loop":
+        return cap_rounds, cap_calls
+    budget = run_meta.get("loop_budget")
+    if not isinstance(budget, dict):
+        return cap_rounds, cap_calls
+    if budget.get("max_rounds"):
+        cap_rounds = min(cap_rounds, int(budget["max_rounds"]))
+    if budget.get("max_calls"):
+        cap_calls = min(cap_calls, int(budget["max_calls"]))
+    return cap_rounds, cap_calls
+
+
+def loop_token_budget_exceeded(
+    run_meta: dict[str, Any] | None,
+    context_log: list[dict[str, Any]],
+) -> bool:
+    if not run_meta or str(run_meta.get("plan_intent") or "") != "loop":
+        return False
+    budget = run_meta.get("loop_budget")
+    if not isinstance(budget, dict):
+        return False
+    max_est = budget.get("max_token_estimate")
+    if not max_est:
+        return False
+    from agent_lab.context_meta import summarize_turn_context
+
+    summary = summarize_turn_context(context_log)
+    chars = int(summary.get("payload_chars_total") or 0)
+    token_est = chars // 4
+    return token_est >= int(max_est)
+
+
+def mode_contract_catalog() -> dict[str, Any]:
+    """Public mode contract for GET /api/room/modes."""
+    return {
+        "modes": [
+            {
+                "id": "quick",
+                "agents": "1 lead",
+                "plan": "optional",
+                "plan_intent": "plan_only when plan on",
+                "execute_loop_on_approve": False,
+            },
+            {
+                "id": "team",
+                "agents": "selected team",
+                "plan": "optional",
+                "plan_intent": "plan_only when plan on",
+                "execute_loop_on_approve": False,
+            },
+            {
+                "id": "loop",
+                "agents": "selected team",
+                "plan": "required",
+                "plan_intent": "loop",
+                "execute_loop_on_approve": True,
+                "budget": loop_budget_dict(),
+            },
+        ],
+        "legacy_migration": {
+            "quick": "quick",
+            "analyze": "team",
+            "discuss": "team",
+            "free": "loop",
+            "review": "loop",
+            "verified": "loop",
+            "specialist": "loop",
+        },
+        "verified_routing": {
+            "ui_loop": {
+                "runtime_turn_profile": "free",
+                "in_turn_verified_loop": False,
+                "execute_loop_on_approve": True,
+            },
+            "legacy_verified_api": {
+                "runtime_turn_profile": "verified",
+                "in_turn_verified_loop": True,
+                "execute_loop_on_approve": True,
+            },
+            "team_plan_only": {
+                "runtime_turn_profile": "analyze",
+                "in_turn_verified_loop": False,
+                "execute_loop_on_approve": False,
+            },
+        },
+    }
+
+
 def patch_run_mode_contract(folder: Path, contract: ModeContract) -> None:
     """Persist user-facing mode contract on the session for approval gating."""
     from agent_lab.run_meta import patch_run_meta
@@ -149,6 +277,8 @@ def patch_run_mode_contract(folder: Path, contract: ModeContract) -> None:
         run["user_mode"] = contract.user_mode
         run["plan_intent"] = contract.plan_intent
         run["loop_topology"] = contract.topology
+        if contract.plan_intent == "loop":
+            run["loop_budget"] = loop_budget_dict()
         return run
 
     patch_run_meta(folder, _patch)

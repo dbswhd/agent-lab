@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Sequence
 from typing import Literal
 
@@ -57,6 +59,13 @@ def loop_blockers(profile: ModelProfile) -> tuple[str, ...]:
 
 def loop_ready(profile: ModelProfile) -> bool:
     return not loop_blockers(profile)
+
+
+def _tier(raw: object, default: Tier) -> Tier:
+    value = str(raw or default).strip().lower()
+    if value in ("low", "medium", "high"):
+        return value
+    return default
 
 
 def _known_agent_id(agent_id: str) -> AgentId | None:
@@ -137,6 +146,66 @@ def _build_default_registry() -> dict[str, ModelProfile]:
 
 
 _MODEL_PROFILE_REGISTRY: dict[str, ModelProfile] = _build_default_registry()
+_LOOP_EVAL_LOADED = False
+
+
+def _loop_eval_registry_path() -> Path:
+    from agent_lab.workspace_roots import project_root
+
+    override = (os.getenv("AGENT_LAB_LOOP_EVAL_REGISTRY") or "").strip()
+    if override:
+        return Path(override).expanduser()
+    return project_root() / ".agent-lab" / "loop_model_eval.json"
+
+
+def load_loop_eval_registry(*, force: bool = False) -> int:
+    """Load loop-capability eval results from disk into the profile registry."""
+    global _LOOP_EVAL_LOADED
+    if _LOOP_EVAL_LOADED and not force:
+        return 0
+    path = _loop_eval_registry_path()
+    if not path.is_file():
+        _LOOP_EVAL_LOADED = True
+        return 0
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        _LOOP_EVAL_LOADED = True
+        return 0
+    rows = raw.get("profiles") if isinstance(raw, dict) else raw
+    if not isinstance(rows, list):
+        _LOOP_EVAL_LOADED = True
+        return 0
+    loaded = 0
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        agent = str(row.get("agent") or "").strip().lower()
+        model_id = str(row.get("model_id") or "").strip()
+        if agent not in ("cursor", "codex", "claude") or not model_id:
+            continue
+        provider = str(row.get("provider") or "local").strip().lower()
+        if provider not in ("local", "openai", "anthropic"):
+            provider = "local"
+        profile = ModelProfile(
+            provider=provider,
+            model_id=model_id,
+            agent=agent,
+            supports_tools=bool(row.get("supports_tools")),
+            supports_inbox_mcp=bool(row.get("supports_inbox_mcp")),
+            supports_json_envelope=bool(row.get("supports_json_envelope")),
+            supports_long_context=bool(row.get("supports_long_context")),
+            cost_tier=_tier(row.get("cost_tier"), "medium"),
+            latency_tier=_tier(row.get("latency_tier"), "medium"),
+        )
+        register_model_profile(profile)
+        loaded += 1
+    _LOOP_EVAL_LOADED = True
+    return loaded
+
+
+def _ensure_loop_eval_loaded() -> None:
+    load_loop_eval_registry()
 
 
 def register_model_profile(profile: ModelProfile) -> None:
@@ -161,6 +230,7 @@ def _unknown_model_profile(agent: AgentId, model_id: str) -> ModelProfile:
 
 
 def model_profile_for(agent_id: str, *, model_id: str | None = None) -> ModelProfile | None:
+    _ensure_loop_eval_loaded()
     known = _known_agent_id(agent_id)
     if known is None:
         return None

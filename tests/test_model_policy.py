@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -72,6 +74,45 @@ def test_model_id_lookup_env_and_registry(monkeypatch: pytest.MonkeyPatch) -> No
         assert model_readiness("cursor").loop_ready is True
         assert loop_readiness_failure(["cursor"]) is None
     finally:
+        model_policy_mod._MODEL_PROFILE_REGISTRY.clear()
+        model_policy_mod._MODEL_PROFILE_REGISTRY.update(registry_before)
+
+
+def test_load_loop_eval_registry(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import agent_lab.model_policy as model_policy_mod
+
+    eval_path = tmp_path / "loop_model_eval.json"
+    eval_path.write_text(
+        json.dumps(
+            {
+                "profiles": [
+                    {
+                        "agent": "cursor",
+                        "model_id": "oss-eval-pass",
+                        "provider": "local",
+                        "supports_tools": True,
+                        "supports_inbox_mcp": True,
+                        "supports_json_envelope": True,
+                        "supports_long_context": False,
+                        "cost_tier": "low",
+                        "latency_tier": "high",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("AGENT_LAB_LOOP_EVAL_REGISTRY", str(eval_path))
+    registry_before = dict(model_policy_mod._MODEL_PROFILE_REGISTRY)
+    model_policy_mod._LOOP_EVAL_LOADED = False
+    try:
+        loaded = model_policy_mod.load_loop_eval_registry(force=True)
+        assert loaded == 1
+        readiness = model_policy_mod.model_readiness("cursor", model_id="oss-eval-pass")
+        assert readiness is not None
+        assert readiness.loop_ready is True
+    finally:
+        model_policy_mod._LOOP_EVAL_LOADED = False
         model_policy_mod._MODEL_PROFILE_REGISTRY.clear()
         model_policy_mod._MODEL_PROFILE_REGISTRY.update(registry_before)
 

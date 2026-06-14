@@ -97,7 +97,7 @@ typecheck:
 typecheck-ratchet:
 	.venv/bin/python scripts/mypy_ratchet.py --check
 
-ci: lint format-check typecheck-ratchet test-fast smoke score-regression-fixtures
+ci: lint format-check typecheck-ratchet test-fast test-integration smoke score-regression-fixtures
 
 ci-full: lint format-check typecheck-ratchet test smoke score-regression-fixtures
 

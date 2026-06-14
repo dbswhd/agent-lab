@@ -7,6 +7,7 @@ import {
 
 type Props = {
   workflow: PlanWorkflowRecord;
+  planIntent?: string | null;
   inboxPendingCount?: number;
   running?: boolean;
   variant?: "full" | "compact";
@@ -20,6 +21,7 @@ function phaseLabel(
   phase: string,
   msg: ReturnType<typeof useLocale>["msg"],
   variant: "full" | "compact",
+  planIntent?: string | null,
 ): { title: string; detail: string; badge: string } | null {
   switch (phase) {
     case "INTAKE":
@@ -58,7 +60,10 @@ function phaseLabel(
     case "APPROVED":
       return {
         title: msg.planWorkflowApprovedTitle,
-        detail: msg.planWorkflowApprovedDetail,
+        detail:
+          planIntent === "plan_only"
+            ? msg.planWorkflowApprovedTeamDetail
+            : msg.planWorkflowApprovedDetail,
         badge: msg.planWorkflowPhaseApproved,
       };
     default:
@@ -68,6 +73,7 @@ function phaseLabel(
 
 export function PlanWorkflowBanner({
   workflow,
+  planIntent,
   inboxPendingCount = 0,
   running = false,
   variant = "full",
@@ -77,7 +83,7 @@ export function PlanWorkflowBanner({
 }: Props) {
   const { msg } = useLocale();
   const phase = (workflow.phase ?? "").toUpperCase();
-  const copy = phaseLabel(phase, msg, variant);
+  const copy = phaseLabel(phase, msg, variant, planIntent);
   if (!copy) return null;
 
   const roundBits: string[] = [];

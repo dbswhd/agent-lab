@@ -68,6 +68,9 @@ def run_consensus_agent_rounds(
         efficiency_mode=efficiency_mode,
     )
     cap_rounds, cap_calls = route.max_rounds, route.max_calls
+    from agent_lab.turn_modes import apply_loop_budget_caps, loop_token_budget_exceeded
+
+    cap_rounds, cap_calls = apply_loop_budget_caps(run_meta, cap_rounds, cap_calls)
     if run_meta is not None:
         run_meta["_turn_category"] = route.category_dict()
 
@@ -457,6 +460,16 @@ def run_consensus_agent_rounds(
 
         while pending and parallel_round <= cap_rounds and calls < cap_calls:
             check_cancelled()
+            if loop_token_budget_exceeded(run_meta, context_log):
+                if on_event:
+                    on_event(
+                        "consensus_incomplete",
+                        {
+                            "reason": "loop_token_budget",
+                            "message": "Loop token budget reached — consensus paused.",
+                        },
+                    )
+                break
             if on_event:
                 on_event(
                     "agent_round_start",

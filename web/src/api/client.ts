@@ -280,6 +280,7 @@ export type AgentHealthRow = {
   capabilities?: string[];
   capability_label?: string;
   model_provider?: string;
+  model_id?: string;
   team_ready?: boolean;
   loop_ready?: boolean;
   loop_blockers?: string[];

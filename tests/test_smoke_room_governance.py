@@ -129,3 +129,18 @@ def test_smoke_baseline_preserves_verified_loop_semantics():
     assert smoke._check_plan_workflow_approved(run)
     assert run["plan_workflow"]["phase"] == "APPROVED"
     assert run["verified_loop"]["status"] == "running"
+
+
+def test_smoke_team_plan_only_approved_fixture():
+    smoke = _load_smoke_room()
+    run = {
+        "plan_workflow": {"enabled": True, "phase": "APPROVED"},
+        "plan_intent": "plan_only",
+        "user_mode": "team",
+        "verified_loop": {"status": "proposing"},
+        "mission_loop": {"enabled": False},
+    }
+    assert smoke._check_team_plan_only_approved(run)
+    loop_run = dict(run)
+    loop_run["verified_loop"] = {"status": "running"}
+    assert not smoke._check_team_plan_only_approved(loop_run)

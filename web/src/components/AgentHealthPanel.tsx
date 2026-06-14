@@ -118,11 +118,13 @@ export function AgentHealthPanel({
                   />
                   <span className="agent-health-row__label">{row.label}</span>
                   <span className="agent-health-row__meta">
-                    {row.model
-                      ? row.model
-                      : row.configured
-                        ? "설정됨"
-                        : "미설정"}
+                    {row.model_id
+                      ? row.model_id
+                      : row.model
+                        ? row.model
+                        : row.configured
+                          ? "설정됨"
+                          : "미설정"}
                     {bridge ? ` · ${bridge}` : ""}
                     {modelReadiness ? ` · ${modelReadiness}` : ""}
                     {row.model_provider ? ` · ${row.model_provider}` : ""}

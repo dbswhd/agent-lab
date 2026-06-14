@@ -38,6 +38,7 @@ def test_agent_health_panel_shows_model_readiness_lane():
 
     assert "team_ready?: boolean" in client
     assert "loop_ready?: boolean" in client
+    assert "model_id?: string" in client
     assert "model_provider?: string" in client
     assert "Team-ready" in panel
     assert "Loop-ready" in panel

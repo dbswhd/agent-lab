@@ -1068,6 +1068,10 @@ export function RoomChat({
   const planWorkflow = session?.run?.plan_workflow as
     | PlanWorkflowRecord
     | undefined;
+  const planWorkflowPlanIntent =
+    typeof session?.run?.plan_intent === "string"
+      ? session.run.plan_intent
+      : null;
   const planWorkflowActive = Boolean(planWorkflow?.enabled);
   const showPlanApproval =
     planWorkflowActive &&
@@ -3060,6 +3064,7 @@ export function RoomChat({
                   {showPlanWorkflowComposerHint && planWorkflow ? (
                     <PlanWorkflowBanner
                       workflow={planWorkflow}
+                      planIntent={planWorkflowPlanIntent}
                       variant="compact"
                       onOpenTasks={openTasksInspector}
                     />
@@ -3068,6 +3073,7 @@ export function RoomChat({
                   {showPlanWorkflowBanner && planWorkflow ? (
                     <PlanWorkflowBanner
                       workflow={planWorkflow}
+                      planIntent={planWorkflowPlanIntent}
                       inboxPendingCount={inboxPendingCount}
                       running={running || runBusy || synthesizing}
                       hideInboxButton={humanDecisionBannerVisible}
@@ -3319,6 +3325,7 @@ export function RoomChat({
                   {sessionId && showPlanWorkflowBanner && planWorkflow ? (
                     <PlanWorkflowBanner
                       workflow={planWorkflow}
+                      planIntent={planWorkflowPlanIntent}
                       inboxPendingCount={inboxPendingCount}
                       running={running || runBusy || synthesizing}
                       hideInboxButton={humanDecisionBannerVisible}

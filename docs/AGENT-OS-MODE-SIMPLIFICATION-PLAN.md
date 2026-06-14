@@ -57,7 +57,9 @@ Open-source and local models are not UI modes. They are model capabilities.
 
 `agent_lab.model_policy.ModelProfile` tracks provider, model id, agent, tool support, Inbox/MCP support, JSON envelope support, long-context support, latency tier, and cost tier. Local/open-source profiles can be Team-ready before they are Loop-ready. Loop readiness requires the model to pass tool, question-surface, and JSON envelope requirements.
 
-**Model id lookup (P2):** `model_profile_for(agent_id)` resolves `CURSOR_MODEL` / `CODEX_MODEL` / `CLAUDE_MODEL` env overrides. Known defaults are loop-ready. Unregistered model ids are Team-ready but not Loop-ready until registered via `register_model_profile()` after eval pass.
+**Model id lookup (P2):** `model_profile_for(agent_id)` resolves `CURSOR_MODEL` / `CODEX_MODEL` / `CLAUDE_MODEL` env overrides. Known defaults are loop-ready. Unregistered model ids are Team-ready but not Loop-ready until registered via `register_model_profile()` or `load_loop_eval_registry()` from `.agent-lab/loop_model_eval.json`.
+
+**P3 shipped:** `GET /api/room/modes`, Team plan-approved UI hint, health `model_id`, loop budget caps (`AGENT_LAB_LOOP_MAX_*`), eval registry loader.
 
 ## Question Surface
 

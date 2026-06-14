@@ -8,7 +8,6 @@ from agent_lab.context_bundle import build_context_bundle
 from agent_lab.room_context import (
     collect_peer_messages,
     dedupe_peer_from_recent,
-    pinned_current_turn_messages,
     prepare_recent_messages,
 )
 

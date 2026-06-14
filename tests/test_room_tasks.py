@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent_lab.room import ChatMessage, _append_peer_turn_digest, _human_turn_count
+from agent_lab.room import ChatMessage, _append_peer_turn_digest
 from agent_lab.room_chat_channels import message_visibility
 from agent_lab.room_tasks import (
     add_task,
@@ -233,7 +233,7 @@ def test_tasks_public_payload_includes_consensus_gate():
 
 def test_complete_tasks_for_execution():
     run_meta: dict = {"tasks": []}
-    t = add_task(run_meta, "Edit file", source="test")
+    add_task(run_meta, "Edit file", source="test")
     tasks = list_tasks(run_meta)
     tasks[0]["plan_action_index"] = 2
     tasks[0]["plan_action_id"] = "plan-action-now-2"

@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import Any, Literal
 
 from agent_lab.gate_scope import GateProfile, get_gate_profile
-from agent_lab.run_meta import patch_run_meta, read_run_meta
+from agent_lab.run_meta import patch_run_meta
 
 ClassifierAllow = Literal["docs_only", "test_only", "single_file"]
 

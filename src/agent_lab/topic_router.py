@@ -15,8 +15,6 @@ from dataclasses import dataclass, replace
 from typing import Any, Literal
 
 from agent_lab.room_consensus import (
-    max_consensus_calls,
-    max_consensus_rounds,
     max_debate_round_count,
 )
 

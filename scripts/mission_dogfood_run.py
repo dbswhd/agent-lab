@@ -33,7 +33,6 @@ def _utc_slug() -> str:
 
 def run_dogfood(*, sessions_root: Path, session_id: str | None = None) -> Path:
     from agent_lab.mission_loop import (
-        enable_mission_loop,
         on_verify_result,
         pause_mission_loop,
         resume_mission_loop,

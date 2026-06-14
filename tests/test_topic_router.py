@@ -11,7 +11,6 @@ from agent_lab.topic_router import (
     batch_escalation_act,
     classify_topic,
     escalate_route,
-    parse_category_marker,
     resolve_topic_route,
     route_debate_last,
 )

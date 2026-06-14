@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 from agent_lab.agent_thread_catalog import list_agent_threads, relative_last_label
 from agent_lab.agent_thread_resume import build_agent_thread_resume_block

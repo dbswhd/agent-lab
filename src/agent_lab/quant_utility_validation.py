@@ -7,7 +7,6 @@ import os
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 # Chosen validation topic (quant research → app wire-up, not book layout).
 VALIDATION_TOPIC = (

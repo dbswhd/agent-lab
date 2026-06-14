@@ -134,7 +134,7 @@ def test_get_strategy_verdict_and_wireup_list(tmp_path: Path, monkeypatch: pytes
 
 def test_get_backtest_card_from_source_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     pipeline = tmp_path / "pipeline"
-    source = _write_pass_full(pipeline / "research" / "kr" / "results")
+    _write_pass_full(pipeline / "research" / "kr" / "results")
     monkeypatch.setenv("QUANT_PIPELINE_ROOT", str(pipeline))
 
     payload = get_backtest_card(

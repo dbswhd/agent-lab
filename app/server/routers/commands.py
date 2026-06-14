@@ -86,7 +86,7 @@ def patch_session_agent_plugins(
     def _patch(run: dict[str, Any]) -> dict[str, Any]:
         return patch_agent_plugins(run, agent, body.enabled)
 
-    updated = patch_run_meta(folder, _patch)
+    patch_run_meta(folder, _patch)
     ws = _workspace_for_session(folder)
     catalog = list_commands(folder, workspace=ws)
     return {

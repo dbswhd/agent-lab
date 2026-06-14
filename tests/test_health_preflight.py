@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -96,7 +95,7 @@ def test_room_run_blocked_when_agent_not_ready(monkeypatch):
     from app.server.main import app
 
     monkeypatch.setattr(
-        "app.server.main.agents_not_ready",
+        "agent_lab.agent_preflight.agents_not_ready",
         lambda ids, **kw: [{"id": "codex", "ready": False, "reason": "codex CLI 없음"}],
     )
     client = TestClient(app)

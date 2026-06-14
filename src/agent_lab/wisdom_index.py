@@ -360,10 +360,7 @@ def public_wisdom_index_status(folder: Path, *, run: dict[str, Any] | None = Non
         "built_at": index.get("built_at"),
         "path": str(index_path(folder)),
         "cross_session": wisdom_cross_session_enabled(),
-        "auto_enabled": not (
-            (os.getenv("AGENT_LAB_WISDOM_INDEX") or "").strip().lower()
-            in ("1", "true", "yes", "on")
-        ),
+        "auto_enabled": (os.getenv("AGENT_LAB_WISDOM_INDEX") or "").strip().lower() not in ("1", "true", "yes", "on"),
     }
 
 

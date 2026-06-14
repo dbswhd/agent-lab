@@ -7,7 +7,7 @@ from typing import Any, Literal
 
 from agent_lab.consensus_agreements import pending_consensus_agreements
 from agent_lab.human_inbox import public_inbox_payload
-from agent_lab.mission_loop import get_mission_loop, sync_mission_phase_from_run
+from agent_lab.mission_loop import sync_mission_phase_from_run
 from agent_lab.runtime.policy import PolicyEngine
 from agent_lab.run_meta import read_run_meta
 

@@ -64,13 +64,11 @@ def project_root() -> Path:
 
 def resolve_workspace_roots(permissions: dict[str, Any] | None) -> list[Path]:
     """Directories agents may read when permissions allow (unified across backends)."""
-    home = Path.home()
     perms = permissions or {}
     roots: list[Path] = []
 
     cursor = perms.get("cursor") or {}
     claude = perms.get("claude") or {}
-    codex = perms.get("codex") or {}
 
     if cursor.get("local_agent_lab", True) or claude.get("local_agent_lab", True):
         roots.append(user_agent_lab_root())

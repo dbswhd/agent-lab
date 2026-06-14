@@ -10,7 +10,7 @@ from typing import Any
 
 from agent_lab.adversarial_gate import adversarial_review
 from agent_lab.plan_actions import PlanAction, find_dry_run_action, parse_plan_action_sections
-from agent_lab.plan_execute_isolation import IsolationDecision, resolve_action_isolation
+from agent_lab.plan_execute_isolation import resolve_action_isolation
 from agent_lab.plan_execute_merge import (
     MergeConflict,
     abort_exec_merge,
@@ -1205,7 +1205,7 @@ def run_dry_run(
             expected_paths=source_path_inputs,
             revise_request=revise_request,
         )
-    except RoomRunCancelled as e:
+    except RoomRunCancelled:
         restore_snapshot(folder, exec_id=exec_id, cwd=cwd, manifest=manifest)
         delete_snapshot(folder, exec_id)
         if exec_worktree is not None:

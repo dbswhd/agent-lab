@@ -17,7 +17,10 @@ from agent_lab.attachments import (
     list_attachment_names,
 )
 from agent_lab.plan_execute_worktree import gc_stale_worktrees
-from agent_lab.room import MAX_AGENT_PARALLEL_ROUNDS, _session_context as room_session_context
+from agent_lab.room import (
+    MAX_AGENT_PARALLEL_ROUNDS,
+    _session_context as room_session_context,  # noqa: F401 — re-export for routers
+)
 from agent_lab.run_observability import observability_snapshot
 from agent_lab.session import SESSIONS_DIR
 

@@ -3,7 +3,6 @@ from __future__ import annotations
 import importlib
 from collections import defaultdict
 
-import pytest
 
 from agent_lab.runtime.events import RuntimeEvent
 from agent_lab.runtime.import_graph import CROSS_LANE_IMPORTS, OrchestrationLane
@@ -51,7 +50,6 @@ def test_runtime_event_catalog_is_unique() -> None:
 
 def test_standalone_events_not_in_mission_only_set() -> None:
     mission_events = {row.event for row in TRANSITION_TABLE}
-    overlap = STANDALONE_EVENTS & mission_events
     # Overlap is OK when standalone sessions skip phase writes; document overlap.
     assert RuntimeEvent.EXECUTE_DRY_RUN_START in STANDALONE_EVENTS
     assert RuntimeEvent.SCRIBE_COMPLETE in mission_events

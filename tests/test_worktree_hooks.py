@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
 
 from agent_lab.merge_checks import build_merge_checks
 from agent_lab.worktree_hooks import (

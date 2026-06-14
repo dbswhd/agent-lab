@@ -48,10 +48,9 @@ _active_run = False
 
 
 def _agents_not_ready(agent_list: list[str]) -> list[dict[str, Any]]:
-    # Preserve the historical monkeypatch path app.server.main.agents_not_ready.
-    from app.server import main as main_module
+    from agent_lab.agent_preflight import agents_not_ready
 
-    return main_module.agents_not_ready(agent_list)
+    return agents_not_ready(agent_list)
 
 
 @router.post("/room/context-preview")

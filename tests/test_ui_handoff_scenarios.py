@@ -15,7 +15,7 @@ def _read(*parts: str) -> str:
 def test_scenario_a_discuss_only_contract():
     """A: discuss mode, receipt, human synthesis, peer channel, claimable."""
     room = _read("web", "src", "components", "RoomChat.tsx")
-    composer = _read("web", "src", "components", "ChatComposer.tsx")
+    _read("web", "src", "components", "ChatComposer.tsx")
     taskbar = _read("web", "src", "components", "RoomTaskBar.tsx")
     receipt = _read("web", "src", "utils", "sendReceipt.ts")
     transcript = _read("web", "src", "utils", "transcriptViewPrefs.ts")

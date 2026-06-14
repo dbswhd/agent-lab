@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Generator
 from unittest.mock import patch
 
-import pytest
 from fastapi.testclient import TestClient
 
 
@@ -104,7 +103,7 @@ def test_task_produces_log(tmp_path: Path) -> None:
         log_r = client.get(f"/api/sessions/{sid}/bg-tasks/{task_id}/log")
         assert log_r.status_code == 200
         lines = log_r.json()["lines"]
-        assert any("hello world" in (l.get("text", "")) for l in lines)
+        assert any("hello world" in (ln.get("text", "")) for ln in lines)
 
 
 def test_task_done_exit_code_zero(tmp_path: Path) -> None:

@@ -62,7 +62,7 @@ def _write_plan_consensus(session_folder: Path, decision: dict[str, Any]) -> Pat
         [
             "## 합의",
             f"- wireup_ready: {'true' if decision.get('wireup_ready') else 'false'}",
-            f"- ingest_ready: false",
+            "- ingest_ready: false",
             "- blocking_reason:",
             f"- active_strategies: {json.dumps(active, ensure_ascii=False)}",
             "- discuss_rounds_used: 0",

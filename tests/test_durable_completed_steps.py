@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
 
 from agent_mocks import patch_call_agent_reply
 

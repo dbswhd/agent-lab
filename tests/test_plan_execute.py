@@ -228,7 +228,7 @@ def test_approve_empty_source_diff_with_verification_paths_is_review_required(
     exec_id = "exec-artifact-review"
     target = workspace / "build.mjs"
     target.write_text("same\n", encoding="utf-8")
-    manifest = create_snapshot(
+    create_snapshot(
         session,
         exec_id=exec_id,
         cwd=workspace,
@@ -848,7 +848,7 @@ def test_resolve_reject_restores_files(tmp_path: Path, monkeypatch):
     exec_id = "exec-resolve01"
     target = workspace / "target.txt"
     target.write_text("before\n", encoding="utf-8")
-    manifest = create_snapshot(
+    create_snapshot(
         session,
         exec_id=exec_id,
         cwd=workspace,

@@ -6,7 +6,6 @@ import json
 import sqlite3
 from pathlib import Path
 
-import pytest
 
 from agent_lab.trading_mission.ingest_bridge import (
     apply_critic_cap_to_draft,

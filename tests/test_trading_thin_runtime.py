@@ -10,7 +10,6 @@ import pytest
 from agent_lab.session_setup import list_session_templates, template_guidance_block
 from agent_lab.trading_mission.thin_runtime import (
     find_latest_trading_session,
-    get_intraday_status,
     resolve_thin_session_folder,
 )
 

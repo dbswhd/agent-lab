@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 from agent_lab.session_setup import (
     CUSTOM_WORKSPACE_ID,

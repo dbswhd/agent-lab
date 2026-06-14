@@ -90,7 +90,7 @@ def main() -> int:
     )
 
     if args.skip_discuss:
-        plan_stub = f"""# plan — Trading Mission (delta skip-discuss)
+        plan_stub = """# plan — Trading Mission (delta skip-discuss)
 
 ## 합의
 - ingest_ready: false

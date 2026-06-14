@@ -103,7 +103,6 @@ class TemplateApplyRequest(BaseModel):
 @router.get("/settings/gateway")
 def get_gateway_settings() -> dict[str, Any]:
     from agent_lab.gateway.adapters import public_adapters_payload
-    from agent_lab.gateway.config import load_gateway_config
 
     cfg = load_gateway_config()
     return {**public_gateway_payload(cfg), **public_adapters_payload(cfg)}
@@ -139,7 +138,6 @@ def post_gateway_ping() -> dict[str, Any]:
 @router.get("/health/daemon")
 def health_daemon() -> dict[str, Any]:
     from agent_lab.gateway.adapters import public_adapters_payload
-    from agent_lab.gateway.config import load_gateway_config
 
     cfg = load_gateway_config()
     payload = public_daemon_payload()

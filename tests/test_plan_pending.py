@@ -7,7 +7,6 @@ from pathlib import Path
 import pytest
 
 from agent_lab.plan_actions import find_dry_run_action
-from agent_lab.plan_execute import run_dry_run
 from agent_lab.plan_pending import (
     PlanSnapshotRequired,
     approve_pending_plan,
@@ -100,7 +99,7 @@ def test_task_in_progress_and_revert_on_reject():
     run_meta: dict = {"tasks": []}
     from agent_lab.room_tasks import add_task
 
-    t = add_task(run_meta, "Add feature flag", source="test")
+    add_task(run_meta, "Add feature flag", source="test")
     tasks = list_tasks(run_meta)
     tasks[0]["plan_action_index"] = 1
     tasks[0]["plan_action_id"] = "plan-action-now-1"

@@ -128,9 +128,6 @@ def main() -> int:
             f"act={row.get('envelope', {}).get('act')}"
         )
 
-    ok = len(with_env) > 0 or any(
-        e.get("round", 0) >= 2 for e in agent_done
-    )
     if not with_env:
         print("WARN: no envelope in agent_done — agents may not have used fence yet")
     return 0 if session_id and agent_done else 1

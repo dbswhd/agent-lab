@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.room_hooks import clear_hooks_config_cache, run_hook, run_task_completed_hooks
+from agent_lab.room_hooks import clear_hooks_config_cache, run_hook
 from agent_lab.room_tasks import complete_task, normalize_task
 
 

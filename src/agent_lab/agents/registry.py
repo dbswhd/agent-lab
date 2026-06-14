@@ -218,7 +218,7 @@ def call_agent_reply(
     if _mock_agents_enabled():
         if on_activity:
             on_activity(f"[tool · read] src/agent_lab/agents/{agent}_agent.py")
-            on_activity(f"[tool · grep] mock streaming")
+            on_activity("[tool · grep] mock streaming")
         text = _mock_agent_response(agent, user, scribe=scribe)
         if on_bridge_event:
             from agent_lab.room_sse_stream import chunk_text

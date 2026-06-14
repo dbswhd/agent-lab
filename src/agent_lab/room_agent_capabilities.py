@@ -144,7 +144,6 @@ def _resolve_role_root(
     from agent_lab.workspace_roots import (
         discuss_primary_workspace,
         pipeline_root,
-        primary_workspace,
         project_root,
     )
 

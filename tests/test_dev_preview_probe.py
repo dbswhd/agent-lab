@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Generator
 from unittest.mock import patch
 
-import pytest
 from fastapi.testclient import TestClient
 
 from agent_lab.dev_preview import (

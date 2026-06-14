@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import importlib
 from typing import Any
 
@@ -138,7 +137,6 @@ def validate_mcp_tool_surface(
     spec = _SERVER_SPECS[server]
     allowed: frozenset[str] = spec["allowed"]
     required: frozenset[str] = spec["required"]
-    exclusive: frozenset[str] = spec["exclusive"]
     names = set(tool_names)
 
     issues: list[str] = []
@@ -154,7 +152,6 @@ def validate_mcp_tool_surface(
     if missing:
         issues.append(f"missing required tools: {', '.join(missing)}")
 
-    overlap = sorted(names & exclusive)
     other = "quant-trading" if server == "agent-lab-research" else "agent-lab-research"
     other_spec = _SERVER_SPECS[other]
     other_exclusive: frozenset[str] = other_spec["exclusive"]

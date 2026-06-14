@@ -6,8 +6,7 @@ from pathlib import Path
 import pytest
 
 from agent_lab.command_registry import execute_command, list_commands
-from agent_lab.external_tools import _parse_tools_yaml, load_external_tools
-from agent_lab.run_meta import read_run_meta
+from agent_lab.external_tools import _parse_tools_yaml
 from agent_lab.runtime.external_runner import (
     external_runner_enabled,
     patch_external_tools_allowlist,

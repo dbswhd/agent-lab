@@ -75,8 +75,8 @@ def main(argv: list[str] | None = None) -> int:
 
         print(f"Saved session → {folder}")
         print(f"  plan.md       ({(folder / 'plan.md').stat().st_size} bytes)")
-        print(f"  transcript.md")
-        print(f"  meta.json")
+        print("  transcript.md")
+        print("  meta.json")
         return 0
 
     if args.command == "serve":

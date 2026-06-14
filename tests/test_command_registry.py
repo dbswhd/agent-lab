@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 
 import pytest
@@ -16,7 +15,6 @@ from agent_lab.command_registry import (
 )
 from agent_lab.goal_loop import set_session_goal
 from agent_lab.plugin_discovery import (
-    default_allowlist,
     discover_plugins,
     merge_session_allowlist,
     patch_agent_plugins,

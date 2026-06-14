@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Literal
 
-from agent_lab.agents.registry import AGENT_IDS, AgentId
+from agent_lab.agents.registry import AGENT_IDS
 
 DispatchOp = Literal["single_delegate", "parallel_delegate", "synthesize"]
 

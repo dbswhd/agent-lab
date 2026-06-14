@@ -12,7 +12,6 @@ from agent_lab.plugin_discovery import (
     merge_session_allowlist,
     mock_mode,
 )
-from agent_lab.run_meta import read_run_meta
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 

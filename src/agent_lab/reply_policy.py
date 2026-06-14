@@ -7,12 +7,10 @@ from dataclasses import dataclass, replace
 from typing import Any
 
 from agent_lab.agent_envelope import (
-    DECISION_FORK_GUIDANCE,
     ENVELOPE_FORMAT_GUIDANCE,
     envelope_act,
     envelope_protocol_block,
     is_endorse_reply,
-    is_pass_reply,
 )
 from agent_lab.inbox_harvest import inbox_pause_grace_guidance, inbox_pause_grace_pending
 from agent_lab.room_context import (

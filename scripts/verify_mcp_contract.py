@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import sys
 
 from agent_lab.mcp_tool_contract import audit_mcp_contracts
 

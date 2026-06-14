@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 from agent_lab.communicate_kpis import communicate_counts, communicate_scores

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from agent_lab.run_meta import read_run_meta
@@ -164,7 +164,8 @@ def test_circuit_breaker_after_max_verification_attempts(tmp_path: Path) -> None
     )
     approve_verified_loop(folder)
     messages = [{"role": "agent", "content": "<promise>DONE</promise>"}]
-    oracle_fail = lambda _p: "FAIL: still missing"
+    def oracle_fail(_p):
+        return "FAIL: still missing"
 
     for _ in range(3):
         maybe_handle_verified_loop_after_turn(

@@ -9,7 +9,6 @@ from typing import Any
 from agent_lab.agents.registry import AgentId, label
 from agent_lab.agent_envelope import classify_consensus_reply, envelope_act
 from agent_lab.room_context import (
-    is_no_objection_response,
     is_pass_response,
     is_pure_no_objection,
 )

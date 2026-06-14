@@ -759,6 +759,7 @@ def maybe_advance_mission(
     permissions: dict[str, Any] | None = None,
     executor: str | None = None,
     scheduled: bool = False,
+    on_event: Any = None,
 ) -> dict[str, Any]:
     """Conductor tick: autorun dry-run, merge, verify, or repair when phase allows."""
     from agent_lab.mission_board import record_autorun_tick, sync_turn_budget_from_mission

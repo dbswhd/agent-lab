@@ -19,7 +19,6 @@ from agent_lab.agent_thread_catalog import list_agent_threads
 from agent_lab.workspace_roots import (
     lecture_script_root,
     pipeline_root,
-    project_root,
     user_agent_lab_root,
     workspace_label,
 )

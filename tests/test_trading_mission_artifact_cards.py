@@ -11,7 +11,6 @@ import pytest
 from agent_lab.pipeline_research_read import cards_cache_stale, sync_research_cards_if_stale
 from agent_lab.trading_mission.artifact_cards import (
     eligible_cards,
-    proposal_uses_fail_ref,
 )
 from agent_lab.trading_mission.export_batch import build_proposal_batch
 from agent_lab.trading_mission.preflight import build_market_snapshot

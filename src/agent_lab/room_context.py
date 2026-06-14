@@ -10,7 +10,6 @@ from typing import Any, Protocol
 from agent_lab.context_limits import agent_context_limits, scribe_context_limits
 from agent_lab.consensus_agreements import (
     agreement_sync_failed_notice,
-    agreement_pending_notice,
     pending_consensus_agreements,
 )
 

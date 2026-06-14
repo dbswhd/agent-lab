@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from agent_lab.extensions.quant_trading import optional_pipeline_root, require_pipeline_root
+from agent_lab.extensions.quant_trading import require_pipeline_root
 from agent_lab.research_artifact_card import (
     build_card_from_full_json,
     slug_from_full_path,

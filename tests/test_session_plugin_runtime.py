@@ -92,7 +92,8 @@ def test_codex_execute_plugin_config_args_enables_allowlisted_mcp(
             "enabled_default": True,
         }
     ]
-    stub = lambda *_a, **_k: {"plugins": fake_plugins}
+    def stub(*_a, **_k):
+        return {"plugins": fake_plugins}
     monkeypatch.setattr("agent_lab.session_plugin_runtime.discover_plugins", stub)
     monkeypatch.setattr("agent_lab.command_registry.discover_plugins", stub)
     monkeypatch.setattr("agent_lab.mcp_spec_export.discover_plugins", stub)

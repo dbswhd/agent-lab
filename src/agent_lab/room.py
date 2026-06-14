@@ -20,7 +20,6 @@ from agent_lab.context_meta import summarize_turn_context
 from agent_lab.agent_envelope import (
     is_endorse_reply,
     is_pass_reply,
-    parse_agent_response,
     parse_agent_response_v2,
 )
 from agent_lab.room_consensus import (

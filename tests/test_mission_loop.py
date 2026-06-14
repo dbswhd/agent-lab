@@ -672,7 +672,6 @@ def test_cancel_room_run_pauses_mission(
 def test_mission_loop_api(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from fastapi.testclient import TestClient
 
-    from app.server.deps import session_folder_or_404
     from app.server.main import app
 
     monkeypatch.setattr(

@@ -9,7 +9,7 @@ from agent_lab.room_consensus import (
     is_substantive_reply,
     pick_anchor,
 )
-from agent_lab.room_context import is_no_objection_response, is_pass_response
+from agent_lab.room_context import is_no_objection_response
 
 
 @dataclass

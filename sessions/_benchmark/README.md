@@ -10,6 +10,8 @@ Recorded/mock-only fixtures for H-P2. These are offline benchmark baselines; the
 | R4 | `delegate_codex/` | Delegate metadata/artifact fixture; live call count is asserted by `tests/test_room_delegate_replay.py`. |
 | R5 | `ten_turn_kpi_stub/` | Synthetic 10-turn session; `score_session` keys are present. |
 
+**Dogfood eval (v1):** [`topics/dogfood-v1.json`](topics/dogfood-v1.json) — 26 live/mock topics; [`scripts/run_dogfood_suite.py`](../../scripts/run_dogfood_suite.py); spec [`docs/EVAL-PROGRAM.md`](../../docs/EVAL-PROGRAM.md).
+
 Execute E scenario cross-reference:
 
 | ID | Regression fixture |

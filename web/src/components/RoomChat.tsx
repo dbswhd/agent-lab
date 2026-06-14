@@ -269,10 +269,13 @@ function sessionToMessages(
     let lastRound = 0;
     for (let i = 0; i < session.chat.length; i++) {
       const line = session.chat[i];
+      if (line.role === "user") {
+        lastRound = 0;
+      }
       const pr = line.parallel_round ?? (line.role === "agent" ? 1 : 0);
       if (line.role === "agent" && pr >= 1 && pr !== lastRound) {
         out.push({
-          id: `round-divider-${pr}`,
+          id: `round-divider-${i}-${pr}`,
           role: "system",
           label: "",
           body: roundDividerLabel(pr, reviewModeHint),
@@ -1493,23 +1496,24 @@ export function RoomChat({
             if (t === "agent_round_start" && Number(ev.round) > 1) {
               const round = Number(ev.round);
               updateSessionRun(runKey, { topologyActive: null });
-              const rid = `round-divider-${round}`;
-              const resolved = resolveTurnSend(profile, selected);
-              patchTurnMessages(runKey, (m) => [
-                ...m.filter((x) => x.id !== rid),
-                {
-                  id: rid,
-                  role: "system",
-                  label: "",
-                  body: roundDividerLabel(
-                    round,
-                    Boolean(ev.review_mode),
-                    resolved.consensusMode,
-                    Boolean(ev.debate),
-                  ),
-                  roundDivider: round,
-                },
-              ]);
+              patchTurnMessages(runKey, (m) => {
+                const rid = `round-divider-live-${round}`;
+                return [
+                  ...m.filter((x) => x.id !== rid),
+                  {
+                    id: rid,
+                    role: "system",
+                    label: "",
+                    body: roundDividerLabel(
+                      round,
+                      Boolean(ev.review_mode),
+                      resolveTurnSend(profile, selected).consensusMode,
+                      Boolean(ev.debate),
+                    ),
+                    roundDivider: round,
+                  },
+                ];
+              });
             }
             if (t === "consensus_plan_synced" || t === "verified_plan_synced") {
               const excerpt =

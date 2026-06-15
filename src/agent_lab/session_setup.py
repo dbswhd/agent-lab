@@ -306,10 +306,8 @@ def seed_session_setup(
         **setup,
     }
     run_path = folder / "run.json"
-    run_path.write_text(
-        json.dumps(run_meta, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
+    from agent_lab.run_meta import write_run_meta
+    write_run_meta(folder, run_meta)
     meta_path = folder / "meta.json"
     meta: dict[str, Any] = {}
     if meta_path.is_file():

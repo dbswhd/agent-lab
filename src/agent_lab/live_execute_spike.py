@@ -130,20 +130,14 @@ def run_live_worktree_spike(
     repo = parent / "repo"
     session = parent / "session"
     session.mkdir(parents=True, exist_ok=True)
-    (session / "run.json").write_text(
-        json.dumps(
-            {
-                "workflow_id": "room",
-                "run_schema_version": 1,
-                "topic": "live M0 worktree spike",
-                "created_at": _now(),
-            },
-            indent=2,
-            ensure_ascii=False,
-        )
-        + "\n",
-        encoding="utf-8",
-    )
+    run_meta = {
+        "workflow_id": "room",
+        "run_schema_version": 1,
+        "topic": "live M0 worktree spike",
+        "created_at": _now(),
+    }
+    from agent_lab.run_meta import write_run_meta
+    write_run_meta(session, run_meta)
 
     try:
         _init_spike_repo(repo)
@@ -262,20 +256,14 @@ def run_live_worktree_merge_spike(
     repo = parent / "repo"
     session = parent / "session"
     session.mkdir(parents=True, exist_ok=True)
-    (session / "run.json").write_text(
-        json.dumps(
-            {
-                "workflow_id": "room",
-                "run_schema_version": 1,
-                "topic": "live worktree merge spike",
-                "created_at": _now(),
-            },
-            indent=2,
-            ensure_ascii=False,
-        )
-        + "\n",
-        encoding="utf-8",
-    )
+    run_meta = {
+        "workflow_id": "room",
+        "run_schema_version": 1,
+        "topic": "live worktree merge spike",
+        "created_at": _now(),
+    }
+    from agent_lab.run_meta import write_run_meta
+    write_run_meta(session, run_meta)
 
     try:
         _init_spike_repo(repo)

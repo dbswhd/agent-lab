@@ -141,7 +141,9 @@ def _bootstrap_session_folder_for_plan_workflow(
         return None
     folder = session_dir(topic, base=base or SESSIONS_DIR)
     (folder / "topic.txt").write_text(topic.strip() + "\n", encoding="utf-8")
-    (folder / "run.json").write_text("{}", encoding="utf-8")
+    from agent_lab.run_meta import write_run_meta
+
+    write_run_meta(folder, {})
     init_plan_workflow_on_plan_send(folder)
     return folder
 

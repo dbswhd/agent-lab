@@ -550,7 +550,8 @@ def invoke(
                     proc.kill()
                     proc.wait(timeout=5)
                     raise subprocess.TimeoutExpired(cmd, deadline)
-                time.sleep(0.2)
+                from agent_lab.backoff_policy import wait as _backoff_wait
+                _backoff_wait(1, base_sec=0.2)
             stdout, stderr = proc.communicate()
         finally:
             unregister_child_process(proc)

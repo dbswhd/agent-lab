@@ -100,10 +100,10 @@
    - `app/server/routers/gateway.py`가 `agent_lab.gateway.*` 패키지와 정상 연동 확인
    - `gateway/routers.py` 형태 구조 확인되어 별도 통합 작업 없음
    - 추가 정리 필요 없음
-6. FIXME/TODO/not implemented 주석 정리
-   - `mission_loop.py`, `goal_loop.py`, `run_control.py` 등 핵심 파일 대상
-   - 각 FIXME를 ①제거 ②이슈 연결 ③문서 주석으로 분류
-   - 산출물: `FIXME_TRAIL.md`
+6. ~~FIXME/TODO/not implemented 주석 정리~~ 완료
+   - 대상: `mission_loop.py`, `goal_loop.py`, `run_control.py`
+   - 결과: FIXME/TODO/not implemented/NotImplementedError 미발견, 추가 조치 없음
+   - 산출물: `FIXME_TRAIL.md` 불필요
 7. 검증 기준
    - `PYTHONPATH=. python -m pytest tests/ -q` 정상 통과
    - 관련 파일만 범위로 커밋/푸시 (`A(관련 파일만)`Scope)

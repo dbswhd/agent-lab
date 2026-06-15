@@ -32,6 +32,7 @@ from agent_lab.room_agent_invoke import (
     _invoke_agent_for_round,
 )
 from agent_lab.room_parallel_rounds import run_parallel_round
+from agent_lab.consensus_policy import ConsensusPolicy, default_consensus_policy
 
 
 def run_consensus_agent_rounds(
@@ -46,7 +47,9 @@ def run_consensus_agent_rounds(
     run_meta: dict[str, Any] | None = None,
     context_log: list[dict[str, Any]] | None = None,
     efficiency_mode: bool = False,
+    consensus_policy: ConsensusPolicy | None = None,
 ) -> tuple[list[ChatMessage], dict[str, Any] | None]:
+    policy = consensus_policy or default_consensus_policy()
     """자유 토론: R1 병렬 후 앵커 제안에 전원 「이의 없습니다」까지 순차 반복."""
     from agent_lab.topic_router import (
         batch_escalation_act,

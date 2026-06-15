@@ -1,21 +1,19 @@
 {
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "hooks": {
-    "PostEdit": [
+    "PostToolUse": [
       {
-        "matcher": "*.py",
+        "matcher": "Edit|Write",
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/post-edit-ruff.sh"
-          }
-        ]
-      },
-      {
-        "matcher": "*.tsx",
-        "hooks": [
+            "if": "Edit(*.py)|Write(*.py)",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-edit-ruff.sh"
+          },
           {
             "type": "command",
-            "command": ".claude/hooks/post-edit-prettier.sh"
+            "if": "Edit(*.tsx)|Write(*.tsx)",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-edit-prettier.sh"
           }
         ]
       }
@@ -25,7 +23,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/stop-pytest.sh",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/stop-pytest.sh",
             "statusMessage": "pytest 실행 중..."
           }
         ]

@@ -94,6 +94,7 @@ def invoke_codex_proxy(
     *,
     room_turn: bool = False,
     on_activity: Callable[[str], None] | None = None,
+    on_bridge_event: Callable[[str, dict[str, Any]], None] | None = None,
 ) -> str:
     if on_activity:
         on_activity("Codex proxy 요청")
@@ -104,6 +105,7 @@ def invoke_codex_proxy(
             {"role": "system", "content": system.strip()},
             {"role": "user", "content": user.strip()},
         ],
+        "stream": True,
     }
     url = f"{codex_proxy_base_url()}/chat/completions"
     data = json.dumps(payload).encode("utf-8")
@@ -113,8 +115,59 @@ def invoke_codex_proxy(
         method="POST",
         headers={"Content-Type": "application/json"},
     )
+    from agent_lab.room_sse_stream import CumulativeTextStreamer
+
+    streamer = CumulativeTextStreamer()
+    parts: list[str] = []
     try:
         with urllib.request.urlopen(req, timeout=120.0) as resp:
+            for raw_line in resp:
+                line = raw_line.decode("utf-8", errors="replace").strip()
+                if not line or not line.startswith("data:"):
+                    continue
+                chunk_data = line[5:].strip()
+                if chunk_data == "[DONE]":
+                    break
+                try:
+                    parsed = json.loads(chunk_data)
+                except json.JSONDecodeError:
+                    continue
+                choices = parsed.get("choices") if isinstance(parsed, dict) else None
+                if not isinstance(choices, list) or not choices:
+                    continue
+                delta = choices[0].get("delta") if isinstance(choices[0], dict) else None
+                if not isinstance(delta, dict):
+                    continue
+                piece = delta.get("content")
+                if not isinstance(piece, str) or not piece:
+                    continue
+                parts.append(piece)
+                if on_bridge_event:
+                    for live in streamer.feed(piece):
+                        on_bridge_event("text", {"text": live})
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")[:400]
+        raise RuntimeError(f"Codex proxy HTTP {exc.code}: {detail or exc.reason}") from exc
+    except OSError as exc:
+        raise RuntimeError(f"Codex proxy unreachable at {codex_proxy_base_url()}: {exc}") from exc
+
+    content = "".join(parts).strip()
+    if content:
+        if on_activity:
+            on_activity("Codex proxy 응답")
+        return content
+
+    # Fallback: non-streaming JSON body (older proxies).
+    try:
+        with urllib.request.urlopen(
+            urllib.request.Request(
+                url,
+                data=json.dumps({**payload, "stream": False}).encode("utf-8"),
+                method="POST",
+                headers={"Content-Type": "application/json"},
+            ),
+            timeout=120.0,
+        ) as resp:
             body = resp.read().decode("utf-8", errors="replace")
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")[:400]
@@ -132,9 +185,14 @@ def invoke_codex_proxy(
     message = choices[0].get("message") if isinstance(choices[0], dict) else None
     if not isinstance(message, dict):
         raise RuntimeError("Codex proxy missing message")
-    content = message.get("content")
-    if isinstance(content, str) and content.strip():
+    fallback = message.get("content")
+    if isinstance(fallback, str) and fallback.strip():
         if on_activity:
             on_activity("Codex proxy 응답")
-        return content.strip()
+        if on_bridge_event:
+            from agent_lab.room_sse_stream import chunk_text
+
+            for piece in chunk_text(fallback.strip(), chunk_size=32):
+                on_bridge_event("text", {"text": piece})
+        return fallback.strip()
     raise RuntimeError("Codex proxy returned empty content")

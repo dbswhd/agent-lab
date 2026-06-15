@@ -11,7 +11,7 @@ import tempfile
 import time
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 from agent_lab.agent_models import (  # noqa: E402
     DEFAULT_CLAUDE_MODEL,
@@ -141,9 +141,11 @@ def _format_exec_error(stderr: str, stdout: str) -> str:
 
 
 _AUTH_PROBE_CACHE: tuple[float, bool, str | None] | None = None
-_AUTH_PROBE_TTL_SEC = 120.0
+_AUTH_PROBE_TTL_SEC = 300.0
 _AUTH_STATUS_CACHE: tuple[float, bool, str | None] | None = None
-_AUTH_STATUS_TTL_SEC = 30.0
+_AUTH_STATUS_TTL_SEC = 60.0
+_DEFAULT_PROBE_TIMEOUT_SEC = 25.0
+_DEFAULT_ROOM_TIMEOUT_SEC = 900
 
 
 def invalidate_claude_auth_cache() -> None:
@@ -220,9 +222,38 @@ def claude_auth_logged_in(*, use_cache: bool = True) -> tuple[bool, str | None]:
     return False, detail
 
 
-def probe_auth(*, timeout_sec: float = 15.0, use_cache: bool = True) -> tuple[bool, str | None]:
+def _skip_headless_probe() -> bool:
+    return _env_bool("AGENT_LAB_CLAUDE_SKIP_HEADLESS_PROBE", default=False) or _env_bool(
+        "CLAUDE_SKIP_AUTH_PROBE",
+        default=False,
+    )
+
+
+def probe_timeout_sec() -> float:
+    raw = (os.getenv("AGENT_LAB_CLAUDE_PROBE_TIMEOUT_SEC") or "").strip()
+    if raw:
+        try:
+            return max(5.0, float(raw))
+        except ValueError:
+            pass
+    return _DEFAULT_PROBE_TIMEOUT_SEC
+
+
+def ensure_claude_headless_ready(*, use_cache: bool = True) -> None:
+    """Fail fast when OAuth status lies but headless ``-p`` is broken (cached)."""
+    if _skip_headless_probe():
+        logged_in, detail = claude_auth_logged_in(use_cache=use_cache)
+        if not logged_in:
+            raise RuntimeError(detail or "claude OAuth not logged in")
+        return
+    ok, detail = probe_auth(timeout_sec=probe_timeout_sec(), use_cache=use_cache)
+    if not ok:
+        raise RuntimeError(detail or "claude headless auth failed")
+
+
+def probe_auth(*, timeout_sec: float | None = None, use_cache: bool = True) -> tuple[bool, str | None]:
     """Headless auth ping using the same stripped env as Room invoke."""
-    if _env_bool("CLAUDE_SKIP_AUTH_PROBE", default=False):
+    if _skip_headless_probe():
         return True, None
     if os.getenv("AGENT_LAB_MOCK_AGENTS", "").strip().lower() in {
         "1",
@@ -263,18 +294,19 @@ def probe_auth(*, timeout_sec: float = 15.0, use_cache: bool = True) -> tuple[bo
         "--tools",
         "",
     ]
+    deadline = probe_timeout_sec() if timeout_sec is None else timeout_sec
     try:
         result = subprocess.run(
             cmd,
             stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
-            timeout=timeout_sec,
+            timeout=deadline,
             env=_claude_env(),
             cwd=str(Path.home()),
         )
     except subprocess.TimeoutExpired:
-        detail = f"claude auth probe timed out ({int(timeout_sec)}s)"
+        detail = f"claude auth probe timed out ({int(deadline)}s)"
         _AUTH_PROBE_CACHE = (now, False, detail)
         return False, detail
     except OSError as exc:
@@ -330,7 +362,8 @@ def _optional_timeout_sec(*env_keys: str) -> int | None:
 
 def _timeout_sec(*, room_turn: bool) -> int | None:
     if room_turn:
-        return _optional_timeout_sec("CLAUDE_ROOM_TIMEOUT_SEC", "CLAUDE_TIMEOUT_SEC")
+        explicit = _optional_timeout_sec("CLAUDE_ROOM_TIMEOUT_SEC", "CLAUDE_TIMEOUT_SEC")
+        return explicit if explicit is not None else _DEFAULT_ROOM_TIMEOUT_SEC
     return _optional_timeout_sec("CLAUDE_TIMEOUT_SEC")
 
 
@@ -473,6 +506,9 @@ def invoke(
 
     Path(system_path).write_text(system_text + "\n", encoding="utf-8")
 
+    if room_turn:
+        ensure_claude_headless_ready(use_cache=True)
+
     def _run_once(api_key: str | None) -> str:
         if use_stream:
             return _run_claude_stream(
@@ -519,6 +555,8 @@ def invoke(
         finally:
             unregister_child_process(proc)
         if proc.returncode != 0:
+            if is_cancelled():
+                raise RoomRunCancelled("run cancelled by user")
             detail = _format_exec_error(stderr or "", stdout or "")
             if "credit balance is too low" in detail.lower():
                 detail = f"{detail} (Claude Room uses OAuth only — run: claude logout && claude login)"
@@ -594,9 +632,12 @@ def _run_claude_stream(
     )
     register_child_process(proc)
     stdout = proc.stdout
+    stderr = proc.stderr
     assert stdout is not None
+    assert stderr is not None
     stderr_parts: list[str] = []
     result_text = ""
+    seen_text_delta = False
     started = time.monotonic()
     try:
         while True:
@@ -608,13 +649,29 @@ def _run_claude_stream(
                 proc.kill()
                 proc.wait(timeout=5)
                 raise subprocess.TimeoutExpired(cmd, timeout)
-            if proc.poll() is not None and not select.select([stdout], [], [], 0)[0]:
-                break
-            ready, _, _ = select.select([stdout], [], [], 0.25)
-            if not ready:
+            if proc.poll() is not None:
+                if not select.select([stdout, stderr], [], [], 0)[0]:
+                    break
+            ready, _, _ = select.select([stdout, stderr], [], [], 0.25)
+            if stderr in ready:
+                err_chunk = stderr.read()
+                if err_chunk:
+                    stderr_parts.append(err_chunk)
+                    if _is_auth_failure(err_chunk):
+                        proc.kill()
+                        proc.wait(timeout=5)
+                        detail = _format_exec_error("".join(stderr_parts), result_text)
+                        invalidate_claude_auth_cache()
+                        raise RuntimeError(
+                            f"claude -p failed (auth)" + (f": {detail}" if detail else "")
+                        )
+            if stdout not in ready:
                 continue
             line = stdout.readline()
             if not line:
+                # Child exited but select can still report stdout readable (EOF spin).
+                if proc.poll() is not None:
+                    break
                 continue
             stripped = line.strip()
             if not stripped:
@@ -625,7 +682,15 @@ def _run_claude_stream(
                 continue
             if not isinstance(event, dict):
                 continue
+            evt_type = str(event.get("type") or "")
+            if evt_type == "stream_event":
+                inner = event.get("event") if isinstance(event.get("event"), Mapping) else {}
+                delta = inner.get("delta") if isinstance(inner.get("delta"), Mapping) else {}
+                if str(delta.get("type") or "") == "text_delta" and str(delta.get("text") or ""):
+                    seen_text_delta = True
             for kind, data in parse_claude_json_event(event):
+                if kind == "text" and evt_type == "assistant" and seen_text_delta:
+                    continue
                 on_bridge_event(kind, data)
             if event.get("type") == "result":
                 res = event.get("result")
@@ -638,6 +703,8 @@ def _run_claude_stream(
     if proc.poll() is None:
         proc.wait()
     if proc.returncode not in (0, None):
+        if is_cancelled():
+            raise RoomRunCancelled("run cancelled by user")
         detail = _format_exec_error("".join(stderr_parts), result_text)
         if _is_auth_failure(detail):
             invalidate_claude_auth_cache()

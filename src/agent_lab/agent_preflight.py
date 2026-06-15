@@ -241,15 +241,17 @@ def agent_preflight_row(
                 row["remediation"] = claude_cli.auth_failure_remediation(auth_detail or "")
                 row["fallback"] = "Claude 칩을 끄고 Cursor·Codex만 전송하거나 터미널에서 claude login 후 재시도"
                 return row
-            headless = os.getenv("AGENT_LAB_CLAUDE_HEADLESS_PROBE", "").strip().lower()
-            if headless in {"1", "true", "yes", "on"}:
-                probe_ok, probe_detail = claude_cli.probe_auth(use_cache=True)
-                if not probe_ok:
-                    row["reason"] = probe_detail or "claude headless auth failed"
-                    row["hint"] = row["reason"]
-                    row["failure_code"] = "claude_auth_failed"
-                    row["remediation"] = claude_cli.auth_failure_remediation(probe_detail or "")
-                    return row
+            probe_ok, probe_detail = claude_cli.probe_auth(use_cache=True)
+            if not probe_ok:
+                row["reason"] = probe_detail or "claude headless auth failed"
+                row["hint"] = row["reason"]
+                row["failure_code"] = "claude_auth_failed"
+                row["remediation"] = claude_cli.auth_failure_remediation(probe_detail or "")
+                row["fallback"] = (
+                    "Claude 칩을 끄고 Cursor·Codex만 전송하거나 "
+                    "상태 패널 → Claude 재연결 / 터미널 `claude logout && claude login`"
+                )
+                return row
         row["ready"] = True
         return row
 

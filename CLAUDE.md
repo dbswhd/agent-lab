@@ -38,7 +38,7 @@
 - MD 작성: `docs/MD-WRITING-PLAN.md`
 
 ## Claude Code hooks (CC-hooks)
-- `.claude/settings.json` — PostEdit: ruff (`.py`), prettier (`.tsx`); Stop: pytest tail
+- `.claude/settings.json` — PostToolUse: ruff (`.py`), prettier (`.tsx`); Stop: pytest tail
 - `room_hooks.py`와 별개 (서버 런타임 훅)
 
 ## Claude Code rules (CC-rules)

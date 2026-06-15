@@ -30,6 +30,12 @@ def _mock_goal_oracle_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture(autouse=True)
+def _skip_claude_headless_probe_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Most unit tests mock Claude subprocess; skip slow real OAuth probe."""
+    monkeypatch.setenv("AGENT_LAB_CLAUDE_SKIP_HEADLESS_PROBE", "1")
+
+
+@pytest.fixture(autouse=True)
 def _reset_run_control_cancel() -> None:
     """Prevent cancel flag / child registry leaking across tests."""
     from agent_lab.run_control import clear_cancel, terminate_active_children

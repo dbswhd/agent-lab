@@ -40,6 +40,19 @@ def test_terminate_active_children_noop_when_empty() -> None:
     assert terminate_active_children() == 0
 
 
+def test_force_reset_run_lock_preserves_cancel_flag() -> None:
+    from agent_lab.run_control import end_run, force_reset_run_lock, try_begin_run
+
+    clear_cancel()
+    assert try_begin_run() is True
+    request_cancel()
+    assert is_cancelled()
+    force_reset_run_lock()
+    assert is_cancelled()
+    end_run()
+    clear_cancel()
+
+
 def test_request_cancel_cancels_cursor_run() -> None:
     clear_cancel()
 

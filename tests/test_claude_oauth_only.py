@@ -36,6 +36,10 @@ def _patch_claude_popen(monkeypatch) -> None:
         lambda _proc: None,
     )
     monkeypatch.setattr("agent_lab.run_control.is_cancelled", lambda: False)
+    monkeypatch.setattr(
+        "agent_lab.claude_cli.ensure_claude_headless_ready",
+        lambda **_kw: None,
+    )
 
 
 def test_claude_auth_logged_in_parses_status_json(monkeypatch, tmp_path) -> None:

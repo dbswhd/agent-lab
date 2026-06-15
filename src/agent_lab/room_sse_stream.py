@@ -29,6 +29,77 @@ def chunk_text(text: str, *, chunk_size: int = 32) -> list[str]:
     return [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
 
 
+class CumulativeTextStreamer:
+    """Emit only new suffixes when providers send cumulative snapshots."""
+
+    def __init__(self) -> None:
+        self._buffer = ""
+
+    def feed(self, text: str) -> list[str]:
+        if not text:
+            return []
+        if not self._buffer:
+            self._buffer = text
+            return [text]
+        if len(text) > len(self._buffer) and text.startswith(self._buffer):
+            delta = text[len(self._buffer) :]
+            self._buffer = text
+            return [delta] if delta else []
+        if text == self._buffer:
+            return []
+        self._buffer += text
+        return [text]
+
+    def reset(self) -> None:
+        self._buffer = ""
+
+
+def dedupe_adjacent_stream_dupes(text: str) -> str:
+    """Drop back-to-back repeated paragraphs and exact halved duplicates."""
+    t = text.strip()
+    if not t:
+        return text
+    half = len(t) // 2
+    if len(t) % 2 == 0 and half > 0 and t[:half] == t[half:]:
+        return t[:half]
+    parts = re.split(r"\n{2,}", t)
+    if len(parts) < 2:
+        return t
+    out: list[str] = []
+    for part in parts:
+        chunk = part.strip()
+        if not chunk:
+            continue
+        if out and out[-1].strip() == chunk:
+            continue
+        out.append(part)
+    return "\n\n".join(out)
+
+
+def choose_agent_reply_body(
+    *,
+    streamed: str,
+    final_body: str,
+) -> str:
+    """Pick the most complete agent reply for persist/UI (not length-only)."""
+    streamed_clean = dedupe_adjacent_stream_dupes(streamed)
+    final_clean = dedupe_adjacent_stream_dupes(final_body)
+    if not streamed_clean.strip():
+        return final_clean or final_body
+    if not final_clean.strip():
+        return streamed_clean
+    if final_clean.startswith(streamed_clean):
+        return final_clean
+    if streamed_clean.startswith(final_clean) and len(streamed_clean) > len(final_clean) + 40:
+        return streamed_clean
+    # Claude CLI ``result`` is often only the last assistant line after tool loops.
+    if len(final_clean) < max(200, len(streamed_clean) // 8):
+        return streamed_clean
+    if len(final_clean) >= len(streamed_clean):
+        return final_clean
+    return streamed_clean
+
+
 def emit_agent_tokens(
     emit: EmitFn,
     *,

@@ -29,6 +29,10 @@ import {
 } from "../api/client";
 import { MacAlert } from "./MacAlert";
 import {
+  mergeAgentReplyBody,
+  replayLiveLogToMessages,
+} from "../utils/liveRoomLog";
+import {
   agentLabel,
   chatLineToMessage,
   isReplyWaitRole,
@@ -42,6 +46,7 @@ import { useSessionRunState } from "../hooks/useSessionRunState";
 import {
   PENDING_KEY,
   finishSessionRun,
+  finalizeCancelledTyping,
   getRunningSessionIds,
   hydrateSessionMessages,
   isSessionRunActive,
@@ -287,6 +292,13 @@ function sessionToMessages(
     }
     return out;
   }
+  const live = session.live_log;
+  if (live && live.length > 0) {
+    return [
+      topicAsUserMessage(session.topic || session.id),
+      ...replayLiveLogToMessages(live, agentLabel),
+    ];
+  }
   return [
     topicAsUserMessage(session.topic || session.id),
     ...parseTranscript(session.transcript_md || ""),
@@ -482,6 +494,7 @@ export function RoomChat({
     args: string;
   } | null>(null);
   const runWatchdogRef = useRef<number | null>(null);
+  const runAbortRef = useRef<AbortController | null>(null);
   const syncedChatRef = useRef("");
   const [, setSetupWorkspaces] = useState<WorkspacePreset[]>([]);
   const [workspaceId, setWorkspaceIdState] = useState(getStoredWorkspaceId);
@@ -1344,23 +1357,37 @@ export function RoomChat({
   const handleStop = useCallback(() => {
     const runningIds = getRunningSessionIds();
     const primaryId = sessionId ?? runningIds[0] ?? null;
-    void cancelRoomRun(primaryId ?? undefined).catch(() => {});
+    const keys = new Set<string>();
     for (const id of runningIds) {
-      updateSessionRun(id, { running: false });
+      keys.add(resolveRunSessionKey(id, id));
       void pauseMissionLoop(id, { reason: "global_cancel" }).catch(() => {});
     }
-    if (primaryId && !runningIds.includes(primaryId)) {
-      void pauseMissionLoop(primaryId, { reason: "global_cancel" }).catch(
-        () => {},
-      );
+    if (primaryId) {
+      keys.add(resolveRunSessionKey(primaryId, primaryId));
+      if (!runningIds.includes(primaryId)) {
+        void pauseMissionLoop(primaryId, { reason: "global_cancel" }).catch(
+          () => {},
+        );
+      }
     }
+    for (const key of keys) {
+      finalizeCancelledTyping(key);
+    }
+    void (async () => {
+      try {
+        await cancelRoomRun(primaryId ?? undefined);
+      } catch {
+        /* still abort local SSE */
+      }
+      runAbortRef.current?.abort();
+    })();
     clearRunWatchdog();
     runWatchdogRef.current = window.setTimeout(() => {
       for (const id of getRunningSessionIds()) {
-        updateSessionRun(id, { runBusy: false });
+        updateSessionRun(id, { runBusy: false, running: false });
       }
       runWatchdogRef.current = null;
-    }, 45_000);
+    }, 8_000);
   }, [sessionId]);
 
   useEffect(() => {
@@ -1507,6 +1534,9 @@ export function RoomChat({
       let userStopped = false;
       let activeSessionId = sessionId;
       let lastSendReceipt: string | undefined;
+      runAbortRef.current?.abort();
+      const runAbort = new AbortController();
+      runAbortRef.current = runAbort;
 
       try {
         let runFailed = false;
@@ -1837,39 +1867,72 @@ export function RoomChat({
                     : null;
                 return { topologyActive: next, topologyDone: n };
               });
-              patchTurnMessages(runKey, (m) => [
-                ...m.filter((x) => x.id !== `typing-${aid}-r${round}`),
-                {
-                  id: `msg-${aid}-r${round}-${Date.now()}`,
-                  role: aid as LiveMsg["role"],
-                  label: agentLabel(aid),
-                  body: String(ev.content ?? "") || "(empty)",
-                  parallelRound: round,
-                  envelope,
-                  envelopeParseError,
-                  toolCards: m.find((x) => x.id === `typing-${aid}-r${round}`)
-                    ?.toolCards,
-                },
-              ]);
+              patchTurnMessages(runKey, (m) => {
+                const tid = `typing-${aid}-r${round}`;
+                const typing = m.find((x) => x.id === tid);
+                const streamed = typing?.body ?? "";
+                const body = mergeAgentReplyBody(
+                  streamed,
+                  typeof ev.content === "string" ? ev.content : "",
+                );
+                return [
+                  ...m.filter((x) => x.id !== tid),
+                  {
+                    id: `msg-${aid}-r${round}-${Date.now()}`,
+                    role: aid as LiveMsg["role"],
+                    label: agentLabel(aid),
+                    body,
+                    parallelRound: round,
+                    envelope,
+                    envelopeParseError,
+                    activities: typing?.activities,
+                    toolCards: typing?.toolCards,
+                  },
+                ];
+              });
             }
             if (t === "agent_error" && ev.agent) {
               const aid = String(ev.agent);
               const round = Number(ev.round ?? 1);
               const nonParticipation = ev.non_participation === true;
               const note = typeof ev.note === "string" ? ev.note : "";
-              const body =
-                nonParticipation && note
-                  ? note
-                  : `[${agentLabel(aid)}] ${ev.message}`;
-              patchTurnMessages(runKey, (m) => [
-                ...m.filter((x) => x.id !== `typing-${aid}-r${round}`),
-                {
-                  id: `err-${aid}-r${round}-${Date.now()}`,
-                  role: "system",
-                  label: nonParticipation ? "알림" : "시스템",
-                  body,
-                },
-              ]);
+              patchTurnMessages(runKey, (m) => {
+                const tid = `typing-${aid}-r${round}`;
+                const typing = m.find((x) => x.id === tid);
+                const streamedBody = typing?.body ?? "";
+                const err = typeof ev.message === "string" ? ev.message : "";
+                const resolvedBody =
+                  nonParticipation && note
+                    ? note
+                    : streamedBody.trim() && err
+                      ? `${streamedBody}\n\n—\n[${agentLabel(aid)}] ${err}`
+                      : err
+                        ? `[${agentLabel(aid)}] ${err}`
+                        : streamedBody || "agent error";
+                if (typing && streamedBody.trim()) {
+                  return m.map((msg) =>
+                    msg.id === tid
+                      ? {
+                          ...msg,
+                          id: `err-${aid}-r${round}-${Date.now()}`,
+                          role: "system" as const,
+                          label: nonParticipation ? "알림" : agentLabel(aid),
+                          body: resolvedBody,
+                          typing: false,
+                        }
+                      : msg,
+                  );
+                }
+                return [
+                  ...m.filter((x) => x.id !== tid),
+                  {
+                    id: `err-${aid}-r${round}-${Date.now()}`,
+                    role: "system",
+                    label: nonParticipation ? "알림" : "시스템",
+                    body: resolvedBody,
+                  },
+                ];
+              });
             }
             if (
               (t === "dispatch_start" || t === "dispatch_done") &&
@@ -2220,6 +2283,7 @@ export function RoomChat({
             agentCapabilities: capabilitiesForApi(agentCapabilities),
             agentThreadBindings: threadBindings,
             sessionTemplate,
+            signal: runAbort.signal,
           },
         );
         if (runFailed) {
@@ -2248,11 +2312,24 @@ export function RoomChat({
         }, 5000);
       } catch (e) {
         const msg = String(e);
-        setError(msg);
-        if (msg.includes("already in progress") || msg.includes("not ready")) {
-          setRunLockStuck(msg.includes("already in progress"));
+        if (runAbort.signal.aborted || msg.includes("aborted")) {
+          userStopped = true;
+        } else {
+          setError(msg);
+          if (
+            msg.includes("already in progress") ||
+            msg.includes("not ready")
+          ) {
+            setRunLockStuck(msg.includes("already in progress"));
+          }
         }
       } finally {
+        if (runAbortRef.current === runAbort) {
+          runAbortRef.current = null;
+        }
+        if (userStopped) {
+          finalizeCancelledTyping(runKey);
+        }
         clearRunWatchdog();
         clearLongRunHint();
         finishSessionRun(runKey, activeSessionId ?? undefined);

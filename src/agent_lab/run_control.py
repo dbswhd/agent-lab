@@ -123,7 +123,8 @@ def force_reset_run_lock() -> None:
     global _run_active, _run_started_at
     _run_active = 0
     _run_started_at = None
-    clear_cancel()
+    # Do not clear_cancel() here — an in-flight worker may still be winding down
+    # after request_cancel(); try_begin_run() clears cancel on the next run.
     while _run_lock.locked():
         try:
             _run_lock.release()

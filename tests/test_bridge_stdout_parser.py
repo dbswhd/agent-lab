@@ -53,6 +53,56 @@ def test_parse_stream_update_routes_steps():
     assert events == [("activity", {"text": "Thought briefly"})]
 
 
+def test_cursor_summary_delta_streams_text():
+    update = SimpleNamespace(type="summary", summary="Hello ")
+    events = parse_interaction_update(update)
+    assert events == [("text", {"text": "Hello "})]
+
+
+def test_cursor_assistant_message_step_streams_text():
+    step = SimpleNamespace(
+        type="assistantMessage",
+        message=SimpleNamespace(text="Cursor says hi"),
+    )
+    from agent_lab.bridge_stdout_parser import parse_conversation_step
+
+    events = parse_conversation_step(step)
+    assert events
+    assert "".join(e[1]["text"] for e in events if e[0] == "text") == "Cursor says hi"
+
+
+def test_codex_item_updated_streams_partial_message():
+    event = {
+        "type": "item.updated",
+        "item": {"type": "agent_message", "text": "Partial codex"},
+    }
+    from agent_lab.bridge_stdout_parser import parse_codex_json_event
+
+    events = parse_codex_json_event(event)
+    assert events
+    assert "".join(e[1]["text"] for e in events if e[0] == "text") == "Partial codex"
+
+
+def test_cumulative_text_streamer_dedupes_snapshots():
+    from agent_lab.room_sse_stream import CumulativeTextStreamer
+
+    streamer = CumulativeTextStreamer()
+    assert streamer.feed("Hello") == ["Hello"]
+    assert streamer.feed("Hello world") == [" world"]
+    assert streamer.feed("Hello world") == []
+
+
+def test_cumulative_text_streamer_appends_incremental_slices():
+    from agent_lab.room_sse_stream import CumulativeTextStreamer
+
+    streamer = CumulativeTextStreamer()
+    full = "".join(chr(65 + (i % 26)) for i in range(100))
+    emitted: list[str] = []
+    for ch in full:
+        emitted.extend(streamer.feed(ch))
+    assert "".join(emitted) == full
+
+
 def test_codex_command_started_emits_tool_start():
     event = {
         "type": "item.started",
@@ -89,6 +139,23 @@ def test_claude_stream_event_tool_use():
     events = parse_claude_json_event(event)
     assert events[0][0] == "tool_start"
     assert events[0][1]["tool"] == "Read"
+
+
+def test_claude_assistant_text_block_emits_live_tokens():
+    event = {
+        "type": "assistant",
+        "message": {
+            "content": [
+                {"type": "text", "text": "Let me start by reading the repo."},
+            ],
+        },
+    }
+    from agent_lab.bridge_stdout_parser import parse_claude_json_event
+
+    events = parse_claude_json_event(event)
+    assert events
+    assert all(e[0] == "text" for e in events)
+    assert "".join(e[1]["text"] for e in events) == "Let me start by reading the repo."
 
 
 def test_codex_agent_message_emits_text_chunks():

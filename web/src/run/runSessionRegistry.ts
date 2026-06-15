@@ -164,6 +164,31 @@ export function resetTurnRun(sessionKey: string, userMsg: LiveMsg): void {
   }));
 }
 
+function finalizeTypingAsCancelled(msgs: LiveMsg[]): LiveMsg[] {
+  return msgs.map((m) => {
+    if (!m.typing) return m;
+    const partial = (m.body ?? "").trim();
+    return {
+      ...m,
+      id: m.id.replace(/^typing-/, "cancel-"),
+      typing: false,
+      body: partial ? `${partial}\n\n_(취소됨)_` : "_(취소됨)_",
+    };
+  });
+}
+
+/** User stop: keep streamed partials, drop empty typing shells. */
+export function finalizeCancelledTyping(sessionKey: string): void {
+  updateSessionRun(sessionKey, (snap) => ({
+    messages: finalizeTypingAsCancelled(snap.messages),
+    turnMessages: finalizeTypingAsCancelled(snap.turnMessages),
+    running: false,
+    runBusy: false,
+    synthesizing: false,
+    topologyActive: null,
+  }));
+}
+
 export function finishSessionRun(
   sessionKey: string,
   realSessionId?: string,

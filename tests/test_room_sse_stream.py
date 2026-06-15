@@ -6,10 +6,13 @@ from __future__ import annotations
 from agent_mocks import patch_call_agent_reply
 
 from agent_lab.room_sse_stream import (
+    choose_agent_reply_body,
     chunk_text,
+    dedupe_adjacent_stream_dupes,
     emit_agent_tokens,
     format_tool_activity_line,
     maybe_emit_tool_events,
+    CumulativeTextStreamer,
 )
 
 
@@ -71,6 +74,86 @@ def test_maybe_emit_tool_events_cli_prefix():
 
 def test_format_tool_activity_line():
     assert format_tool_activity_line(tool="grep", args="agent_token") == ("[tool · grep] agent_token")
+
+
+def test_cumulative_text_streamer_skips_exact_duplicate_snapshot():
+    streamer = CumulativeTextStreamer()
+    assert streamer.feed("Hello world") == ["Hello world"]
+    assert streamer.feed("Hello world") == []
+
+
+def test_dedupe_adjacent_stream_dupes_halves_and_paragraphs():
+    doubled_para = "alpha line\n\nalpha line"
+    assert dedupe_adjacent_stream_dupes(doubled_para) == "alpha line"
+    exact = "x" * 100
+    assert dedupe_adjacent_stream_dupes(exact + exact) == exact
+
+
+def test_choose_agent_reply_body_prefers_stream_when_result_is_tail_only():
+    report = "A" * 4000 + "\n\n**axis 1** score 3/5"
+    tail = "이미 반영 완료된 데이터입니다."
+    chosen = choose_agent_reply_body(streamed=report + report, final_body=tail)
+    assert "axis 1" in chosen
+    assert chosen.count("axis 1") == 1
+    assert len(chosen) > len(tail) * 10
+
+
+def test_call_one_agent_persists_streamed_body_over_short_result(monkeypatch, tmp_path):
+    from agent_lab import room
+
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    from agent_lab.run_meta import write_run_meta
+
+    write_run_meta(folder, {})
+    long_report = "Z" * 3000 + "\n\n**axis** 3/5"
+    short_tail = "done tail only"
+
+    def fake_reply(*_a, **kwargs):
+        on_bridge = kwargs.get("on_bridge_event")
+        if on_bridge:
+            for i in range(0, len(long_report), 40):
+                on_bridge("text", {"text": long_report[i : i + 40]})
+        return type("R", (), {"text": short_tail, "structured_envelope": None})()
+
+    monkeypatch.setattr("agent_lab.agents.registry.call_agent_reply", fake_reply)
+    monkeypatch.setattr(room, "model_label", lambda agent: agent)
+    monkeypatch.setattr(
+        room,
+        "build_agent_context_bundle",
+        lambda *a, **k: type(
+            "B",
+            (),
+            {
+                "render": lambda self: "payload",
+                "meta": type("M", (), {"to_dict": lambda self: {}})(),
+            },
+        )(),
+    )
+
+    events: list[tuple[str, dict]] = []
+
+    def on_event(typ: str, payload: dict) -> None:
+        events.append((typ, payload))
+
+    msg = room._call_one_agent(
+        "claude",
+        topic="t",
+        thread=[],
+        parallel_round=1,
+        permissions=None,
+        review_mode=False,
+        review_advocate=None,
+        plan_md="",
+        run_meta={"_session_folder": str(folder)},
+        on_event=on_event,
+        human_turn_index=0,
+    )
+    done = next(e for e in events if e[0] == "agent_done")
+    assert "**axis**" in msg.content
+    assert done[1]["content"] == msg.content
+    assert len(msg.content) > 500
+    assert short_tail not in msg.content
 
 
 def test_call_one_agent_emits_live_bridge_tokens_before_done(monkeypatch, tmp_path):

@@ -1,7 +1,7 @@
 /**
  * Start uvicorn on :8765 before Vite proxies /api (any dev entry: tauri, vite, 5173/1420).
  */
-import { spawn } from "node:child_process";
+import { execSync, spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -45,8 +45,8 @@ async function apiHealthy() {
   }
 }
 
-/** Port taken but uvicorn still booting — wait before spawning a duplicate. */
-async function waitForExistingApi(maxMs = 30_000) {
+/** Port taken but uvicorn still booting — wait before killing a duplicate listener. */
+async function waitForExistingApi(maxMs = 8_000) {
   const steps = Math.ceil(maxMs / 400);
   for (let i = 0; i < steps; i += 1) {
     if (await apiHealthy()) {
@@ -56,6 +56,31 @@ async function waitForExistingApi(maxMs = 30_000) {
     await sleep(400);
   }
   return false;
+}
+
+function stopStaleApiOnPort() {
+  try {
+    execSync(
+      `lsof -ti tcp:${API_PORT} 2>/dev/null | xargs kill -9 2>/dev/null || true`,
+      { stdio: "ignore" },
+    );
+  } catch {
+    /* best-effort */
+  }
+}
+
+async function reclaimApiPort() {
+  console.warn(
+    `[agent-lab] Port ${API_PORT} is open but /api/health is not ready — stopping stale listener`,
+  );
+  stopStaleApiOnPort();
+  await sleep(500);
+  if (await portOpen()) {
+    throw new Error(
+      `[agent-lab] Port ${API_PORT} still in use after cleanup.\n` +
+        `Run: kill $(lsof -ti:${API_PORT})`,
+    );
+  }
 }
 
 function stopChild() {
@@ -74,10 +99,7 @@ export async function ensureDevApi() {
     if (await waitForExistingApi()) {
       return;
     }
-    throw new Error(
-      `[agent-lab] Port ${API_PORT} is in use but /api/health is not ready.\n` +
-        `Stop the stale process: kill $(lsof -ti:${API_PORT})`,
-    );
+    await reclaimApiPort();
   }
 
   if (!fs.existsSync(PYTHON)) {

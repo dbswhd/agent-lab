@@ -38,7 +38,8 @@ def read_run_meta(folder: Path) -> dict[str, Any]:
         except json.JSONDecodeError:
             if attempt >= 3:
                 return {}
-            time.sleep(0.01 * (attempt + 1))
+            from agent_lab.backoff_policy import wait as _backoff_wait
+            _backoff_wait(attempt + 1, base_sec=0.01)
     return {}
 
 
@@ -61,6 +62,9 @@ def persist_run_meta(run: dict[str, Any]) -> dict[str, Any]:
 
 
 def write_run_meta(folder: Path, run: dict[str, Any]) -> None:
+    from agent_lab.run_schema import validate_run
+
+    validate_run(run)
     payload = json.dumps(persist_run_meta(run), indent=2, ensure_ascii=False) + "\n"
     path = folder / "run.json"
     tmp = path.with_suffix(".json.tmp")
@@ -73,9 +77,12 @@ def patch_run_meta(
     folder: Path,
     updater: Callable[[dict[str, Any]], dict[str, Any]],
 ) -> dict[str, Any]:
+    from agent_lab.run_schema import validate_run
+
     with _folder_lock(folder):
         run = read_run_meta(folder)
         updated = updater(run)
+        validate_run(updated)
         payload = json.dumps(persist_run_meta(updated), indent=2, ensure_ascii=False) + "\n"
         path = folder / "run.json"
         tmp = path.with_suffix(".json.tmp")

@@ -38,12 +38,16 @@
 ### 코드 레벨 미완료
 1. `run.json` 런타임 스키마 검증
    - 빈 값/불일치 상태에서 `patch_run_meta()`를 거치지 않는 direct write 경로 존재 가능
-2. 9개 time.sleep 백오프 → 중앙 정책 모듈 추상화
-   - 현재 per-file hard-coded backoff → 공통화
-3. 합의 라운드 N-of-M 정책 지원 최적화
+2. 합의 라운드 N-of-M 정책 지원 최적화
    - 불필요한 재합성 라운드 스킵 로직 구현 필요
-4. context_bundle.py 컨텍스트 바이트 사용량 로깅
+3. context_bundle.py 컨텍스트 바이트 사용량 로깅
    - 토큰/바이트 예산 추적 모듈 추가 필요
+
+### 백오프 정책 완료
+- `src/agent_lab/backoff_policy.py` 신규
+- `tests/test_backoff_policy.py` 7/7 통과
+- retry-style 백오프 4개 call site 교체: `run_meta.py`, `agents/cursor_agent.py`, `agent_health.py`, `bridge_registry.py`
+- 남은 intentional `time.sleep(...)` 보존: `claude_cli.py` 폴링/대기 루프, `human_inbox.py` inbox 폴링, `agents/cursor_agent.py` 런 대기 루프, `cli_retry.py` 고유 exponential+jitter 정책
 
 ---
 

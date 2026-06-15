@@ -1044,6 +1044,18 @@ def on_verify_result(
     if verdict_norm == "pass":
         return _on_verify_pass(folder, action_index, ml, oracle=oracle)
 
+    failure = None
+    try:
+        from agent_lab.verify_repair_policy import classify_failure
+        failure = classify_failure({
+            "oracle": oracle,
+            "status": "failed",
+            "blocked_message": reason,
+        }, evidence={"error": reason})
+    except Exception:
+        pass
+
+    _advance_verify_with_policy(folder, {"oracle": oracle, "status": "failed", "blocked_message": reason}, action_index)
     return _on_verify_fail(folder, action_index, ml, reason=reason, oracle=oracle)
 
 
@@ -1117,6 +1129,43 @@ def _on_verify_pass(
             out = get_mission_loop(read_run_meta(folder))
             result["phase"] = out.get("phase")
     return result
+
+
+def _advance_verify_with_policy(folder: Path, execution: dict[str, Any], action_index: int) -> dict[str, Any]:
+    try:
+        from agent_lab.verify_repair_policy import (
+            classify_failure,
+            ensure_worktree_usable,
+            policy_for,
+            repair_counts_key,
+            normalize_repair_counts,
+        )
+    except Exception:
+        return {"skipped": True, "reason": "policy_unavailable"}
+    failure = classify_failure(execution)
+    policy = policy_for(failure)
+    repair_label = policy.get("repair")
+    if repair_label in {"reinvoke", "reverify", "merge_repair", "worktree_recreate"}:
+        run = read_run_meta(folder)
+        ml = get_mission_loop(run)
+        counts = normalize_repair_counts(ml)
+        key = repair_counts_key(action_index)
+        counts[key] = int(counts.get(key, 0)) + 1
+        def _patch(run_in: dict[str, Any]) -> dict[str, Any]:
+            m = get_mission_loop(run_in)
+            m["action_repair_counts"] = counts
+            m["current_action_index"] = action_index
+            run_in["mission_loop"] = m
+            return run_in
+        patch_run_meta(folder, _patch)
+    outcome: dict[str, Any] = {"applied": True, "failure": failure, "policy": policy}
+    if repair_label == "worktree_recreate":
+        try:
+            ok, result = ensure_worktree_usable(folder, execution=execution, exec_id=str(action_index), mode="recreate")
+        except Exception as exc:
+            ok, result = False, {"action": "recreate_exception", "error": str(exc)}
+        outcome["worktree_recreate"] = {"ok": ok, "result": result}
+    return outcome
 
 
 def _on_verify_fail(
@@ -1239,6 +1288,15 @@ def _on_verify_fail(
         "circuit_breaker": out.get("circuit_breaker"),
         "discuss_recovery_pending": (out.get("discuss_recovery") or {}).get("pending"),
     }
+    try:
+        from agent_lab.verify_repair_policy import classify_failure
+        result["failure"] = classify_failure({
+            "oracle": oracle,
+            "status": "failed",
+            "blocked_message": reason,
+        }, evidence={"error": reason})
+    except Exception:
+        pass
     if not structural and mission_autorun_enabled(out) and (out.get("discuss_recovery") or {}).get("pending"):
         recovery = _mission_dispatch(folder, "mission.discuss_recovery")
         if recovery and not recovery.get("skipped"):

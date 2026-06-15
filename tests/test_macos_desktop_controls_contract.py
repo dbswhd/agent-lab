@@ -86,8 +86,10 @@ def test_workspace_chrome_replaces_web_traffic_lights_and_titlebar_logo():
     assert "traffic-lights" not in app
     assert "traffic-lights" not in chrome
     assert "titlebar__logo" not in titlebar
+    assert "MacTitlebar" not in app
+    assert "app--tauri" in app
     assert "<WorkspaceChrome" in room
-    assert 'shellView === "workspace" ? null' in app
+    assert "workspace-chrome--tauri" in chrome
     assert "WorkbenchModeMenu" in chrome
 
 

@@ -177,9 +177,7 @@ def test_composer_question_inbox_is_separate_from_generic_pending_hint():
     assert 'kindFilter="question"' in room
     assert "inboxPendingNonQuestions > 0" in room
     assert "Human Inbox 대기 ({inboxPendingNonQuestions})" in room
-    assert 'excludeKind="question"' in _read(
-        "web", "src", "components", "RoomTaskBar.tsx"
-    )
+    assert 'excludeKind="question"' in _read("web", "src", "components", "RoomTaskBar.tsx")
     assert "visiblePending.map" in inbox
     assert "visiblePending[0]?.kind" in inbox
 

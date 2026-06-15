@@ -19,6 +19,21 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+async function portOpen() {
+  const net = await import("node:net");
+  return new Promise((resolve) => {
+    const socket = net.createConnection({ host: "127.0.0.1", port: API_PORT });
+    const done = (open) => {
+      socket.destroy();
+      resolve(open);
+    };
+    socket.setTimeout(500);
+    socket.once("connect", () => done(true));
+    socket.once("timeout", () => done(false));
+    socket.once("error", () => done(false));
+  });
+}
+
 async function apiHealthy() {
   try {
     const res = await fetch(HEALTH_URL, { signal: AbortSignal.timeout(2000) });
@@ -28,6 +43,19 @@ async function apiHealthy() {
   } catch {
     return false;
   }
+}
+
+/** Port taken but uvicorn still booting — wait before spawning a duplicate. */
+async function waitForExistingApi(maxMs = 30_000) {
+  const steps = Math.ceil(maxMs / 400);
+  for (let i = 0; i < steps; i += 1) {
+    if (await apiHealthy()) {
+      console.log(`[agent-lab] API already on http://127.0.0.1:${API_PORT}`);
+      return true;
+    }
+    await sleep(400);
+  }
+  return false;
 }
 
 function stopChild() {
@@ -40,6 +68,16 @@ export async function ensureDevApi() {
   if (await apiHealthy()) {
     console.log(`[agent-lab] API already on http://127.0.0.1:${API_PORT}`);
     return;
+  }
+
+  if (await portOpen()) {
+    if (await waitForExistingApi()) {
+      return;
+    }
+    throw new Error(
+      `[agent-lab] Port ${API_PORT} is in use but /api/health is not ready.\n` +
+        `Stop the stale process: kill $(lsof -ti:${API_PORT})`,
+    );
   }
 
   if (!fs.existsSync(PYTHON)) {

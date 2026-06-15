@@ -4,6 +4,7 @@ import App from "./App";
 import { BootstrapErrorBoundary } from "./components/BootstrapErrorBoundary";
 import { TweaksDemoProvider } from "./context/TweaksDemoContext";
 import { initTheme, isTauri } from "./theme";
+import { initDesktopZoom } from "./utils/desktopZoom";
 import { getLocale } from "./i18n/locale";
 
 // Design system (SSOT: ~/Downloads/Agent lab/styles/) — order matters
@@ -20,6 +21,7 @@ initTheme();
 document.documentElement.lang = getLocale();
 if (isTauri()) {
   document.body.classList.add("is-tauri");
+  initDesktopZoom();
 }
 
 const rootEl = document.getElementById("root");

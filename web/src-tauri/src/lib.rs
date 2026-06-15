@@ -17,6 +17,15 @@ fn port_in_use(port: u16) -> bool {
     TcpStream::connect(("127.0.0.1", port)).is_ok()
 }
 
+fn http_response_body(raw: &str) -> Option<String> {
+    let (_, body) = raw.split_once("\r\n\r\n")?;
+    let trimmed = body.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    Some(trimmed.to_string())
+}
+
 fn api_health_body() -> Option<String> {
     use std::io::{Read, Write};
     let Ok(mut stream) = TcpStream::connect(("127.0.0.1", API_PORT)) else {
@@ -41,8 +50,16 @@ fn api_health_body() -> Option<String> {
             break;
         }
     }
-    let text = String::from_utf8_lossy(&buf);
-    text.rfind('{').map(|start| text[start..].to_string())
+    http_response_body(&String::from_utf8_lossy(&buf))
+}
+
+fn skip_tauri_api() -> bool {
+    std::env::var("AGENT_LAB_SKIP_TAURI_API")
+        .map(|v| {
+            let t = v.trim().to_ascii_lowercase();
+            matches!(t.as_str(), "1" | "true" | "yes" | "on")
+        })
+        .unwrap_or(false)
 }
 
 fn api_health_ok() -> bool {
@@ -412,13 +429,25 @@ pub fn run_app() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_notification::init())
         .manage(ApiServer(Mutex::new(None)))
         .setup(|app| {
             let handle = app.handle().clone();
             // Start API in background so a slow/failed uvicorn boot never blocks the webview.
             thread::spawn(move || {
                 if cfg!(debug_assertions) {
-                    append_boot("dev: API from Vite plugin (port 8765); not spawning uvicorn here");
+                    // Vite's ensure-dev-api.mjs owns :8765 during `tauri dev`.
+                    if skip_tauri_api() {
+                        append_boot("dev: API startup skipped (AGENT_LAB_SKIP_TAURI_API)");
+                    } else {
+                        // Fallback when launching the debug binary without Vite.
+                        let api_state = handle.state::<ApiServer>();
+                        if let Err(e) = start_api(&handle, &api_state) {
+                            append_boot(&format!(
+                                "dev: API not auto-started ({e}); run `make api`"
+                            ));
+                        }
+                    }
                     let _ = navigate_main_to_api_origin(&handle);
                     return;
                 }
@@ -450,4 +479,23 @@ pub fn run_app() {
                 }
             }
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::http_response_body;
+
+    #[test]
+    fn http_response_body_parses_nested_health_json() {
+        let raw = concat!(
+            "HTTP/1.1 200 OK\r\n",
+            "content-type: application/json\r\n",
+            "connection: close\r\n",
+            "\r\n",
+            r#"{"ok":true,"room":{"default_agent_parallel_rounds":1,"context":{"agent":{"recent_turns":4}}}}"#,
+        );
+        let body = http_response_body(raw).expect("body");
+        assert!(body.contains(r#""ok":true"#));
+        assert!(body.contains("default_agent_parallel_rounds"));
+    }
 }

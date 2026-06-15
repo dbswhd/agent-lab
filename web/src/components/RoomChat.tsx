@@ -1855,13 +1855,19 @@ export function RoomChat({
             if (t === "agent_error" && ev.agent) {
               const aid = String(ev.agent);
               const round = Number(ev.round ?? 1);
+              const nonParticipation = ev.non_participation === true;
+              const note = typeof ev.note === "string" ? ev.note : "";
+              const body =
+                nonParticipation && note
+                  ? note
+                  : `[${agentLabel(aid)}] ${ev.message}`;
               patchTurnMessages(runKey, (m) => [
                 ...m.filter((x) => x.id !== `typing-${aid}-r${round}`),
                 {
                   id: `err-${aid}-r${round}-${Date.now()}`,
                   role: "system",
-                  label: "시스템",
-                  body: `[${agentLabel(aid)}] ${ev.message}`,
+                  label: nonParticipation ? "알림" : "시스템",
+                  body,
                 },
               ]);
             }

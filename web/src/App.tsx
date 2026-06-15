@@ -26,14 +26,11 @@ import {
   NewSessionDialog,
   type NewSessionParams,
 } from "./components/NewSessionDialog";
-import { MacTitlebar } from "./components/MacTitlebar";
 import { MacNotificationProvider } from "./components/MacNotificationHost";
 import { TweaksPanel } from "./components/TweaksPanel";
 import { TweaksDemoOverlays } from "./components/TweaksDemoOverlays";
 import { TweaksHotkeys } from "./components/TweaksHotkeys";
-import { SidebarToggle } from "./components/SidebarToggle";
 import { TitlebarSlotsProvider } from "./components/TitlebarSlotsContext";
-import { useTitlebarSlotsContext } from "./hooks/useTitlebarSlots";
 import { getSidebarOpen, setSidebarOpen } from "./utils/sidebarPrefs";
 import { formatRoomModelLine } from "./utils/roomModels";
 import { isTauriApp } from "./theme";
@@ -110,44 +107,6 @@ function useTauriFullscreen(inTauri: boolean): boolean {
   }, [inTauri]);
 
   return fullscreen;
-}
-
-function AppTitlebar({
-  sidebarOpen,
-  onToggleSidebar,
-  shellView,
-  fallbackTitle,
-}: {
-  sidebarOpen: boolean;
-  onToggleSidebar: () => void;
-  shellView: ShellView;
-  fallbackTitle?: string | null;
-}) {
-  const slotsCtx = useTitlebarSlotsContext();
-  const slots = slotsCtx?.slots ?? {};
-  const title =
-    shellView === "workspace"
-      ? (slots.title ?? fallbackTitle ?? undefined)
-      : undefined;
-
-  return (
-    <MacTitlebar
-      leading={
-        <>
-          <SidebarToggle
-            open={sidebarOpen}
-            onToggle={onToggleSidebar}
-            variant="panel"
-            className="icon-btn"
-          />
-        </>
-      }
-      title={title}
-      meta={shellView === "workspace" ? slots.meta : undefined}
-      trailing={shellView === "workspace" ? slots.trailing : undefined}
-      showThemeToggle={shellView !== "workspace"}
-    />
-  );
 }
 
 export default function App() {
@@ -522,22 +481,14 @@ export default function App() {
     detail != null &&
     detail.id !== roomSessionId,
   );
-  const titlebarFallbackTopic =
-    roomSessionDetail?.topic || (composerNew ? "Session" : null);
-
   return (
-    <div className={`app${fullscreen ? " app--fullscreen" : ""}`}>
+    <div
+      className={`app${inTauri ? " app--tauri" : ""}${
+        fullscreen ? " app--fullscreen" : ""
+      }`}
+    >
       <MacNotificationProvider>
         <TitlebarSlotsProvider>
-          {shellView === "workspace" ? null : (
-            <AppTitlebar
-              sidebarOpen={sidebarOpen}
-              onToggleSidebar={toggleSidebar}
-              shellView={shellView}
-              fallbackTitle={titlebarFallbackTopic}
-            />
-          )}
-
           <div
             className={`shell${sidebarOpen ? "" : " shell--rail-collapsed"}`}
             style={

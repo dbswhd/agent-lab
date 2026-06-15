@@ -72,6 +72,19 @@
   font-weight: var(--weight-bold);
   letter-spacing: -0.01em;
 }
+
+/* macOS traffic-light buttons overlay the top-left of the window content in
+   windowed Tauri (titleBarStyle: "Overlay" + hiddenTitle). Reserve space so
+   they don't cover the rail title / collapsed-chrome toggle. In fullscreen the
+   buttons are hidden, so the inset is dropped. */
+.app--tauri:not(.app--fullscreen) .rail__header {
+  padding-top: 30px;
+}
+.app--tauri:not(.app--fullscreen)
+  .shell--rail-collapsed
+  .workspace-chrome__leading {
+  padding-left: 72px;
+}
 .rail__search {
   position: relative;
   display: flex;
@@ -329,22 +342,8 @@
   z-index: 12;
 }
 
-.app--fullscreen .workspace-chrome {
-  position: absolute;
-  inset: 0 0 auto;
-  transform: translateY(calc(-100% + 6px));
-  opacity: 0.3;
-  box-shadow: var(--shadow-2);
-  transition:
-    transform var(--transition),
-    opacity var(--transition);
-}
-
-.app--fullscreen .workspace-chrome:hover,
-.app--fullscreen .workspace-chrome:focus-within {
-  transform: translateY(0);
-  opacity: 1;
-}
+/* Keep the workspace top bar pinned in fullscreen, matching the web layout
+   (no slide-away-on-hover). The chrome stays in normal flow like windowed. */
 
 .workspace-chrome--tauri,
 .workspace-chrome--tauri .workspace-chrome__title,
@@ -1856,6 +1855,19 @@
   border-bottom: 1px solid var(--border-hair);
   background: var(--surface-pane);
   flex-shrink: 0;
+}
+/* Settings has no separate titlebar — its own header is the window drag region. */
+.app--tauri .settings-page__header {
+  -webkit-app-region: drag;
+}
+.app--tauri .settings-page__header button {
+  -webkit-app-region: no-drag;
+}
+/* Clear the macOS traffic lights when the rail is collapsed (windowed only). */
+.app--tauri:not(.app--fullscreen)
+  .shell--rail-collapsed
+  .settings-page__header {
+  padding-left: 72px;
 }
 .settings-page__heading {
   display: flex;

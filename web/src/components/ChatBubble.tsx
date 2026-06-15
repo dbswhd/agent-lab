@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Avatar } from "./Avatar";
 import { AgentResponseCard } from "./AgentResponseCard";
 import { ConsoleTurn } from "./ConsoleTurn";
@@ -53,6 +54,17 @@ type ReplyWaitingProps = {
   body?: string;
 };
 
+/** Counts seconds up from mount, so a waiting agent never looks frozen even
+ *  when its adapter can't stream tokens (e.g. Claude in structured-envelope mode). */
+function useElapsedSeconds(): number {
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  return seconds;
+}
+
 /** Agent reply in progress — same full-width card as the final response */
 export function ReplyWaitingBubble({
   agent,
@@ -64,6 +76,7 @@ export function ReplyWaitingBubble({
   const lines = activities?.filter(Boolean) ?? [];
   const streamText = body?.trim() ?? "";
   const streaming = streamText.length > 0;
+  const elapsed = useElapsedSeconds();
   return (
     <ConsoleTurn
       role={agent}
@@ -73,7 +86,7 @@ export function ReplyWaitingBubble({
       ariaLabel={`${who} 답장 중`}
       meta={
         <span className="turn__meta">
-          {streaming ? "streaming…" : "typing…"}
+          {streaming ? "스트리밍" : "작업 중"} · {elapsed}s
         </span>
       }
     >

@@ -55,7 +55,7 @@ def test_validate_run_accepts_valid_execution_status(status: str) -> None:
 
 
 def test_validate_run_rejects_non_dict_execution_entry() -> None:
-    with pytest.raises(RuntimeValidationError, match="execution\[0\] is not a dict"):
+    with pytest.raises(RuntimeValidationError, match=r"execution\[0\] is not a dict"):
         validate_run({"executions": ["not-a-dict"]})
 
 

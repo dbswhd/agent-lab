@@ -557,6 +557,13 @@ def _write_session_files(
             synced_at=synced_at,
         )
         run_meta["consensus_agreements"] = agreements
+    ctx = (turn_meta or {}).get("context")
+    if isinstance(ctx, dict):
+        agents_log = ctx.get("agents")
+        if isinstance(agents_log, list) and agents_log:
+            from agent_lab.token_budget import record_run_token_budget
+
+            record_run_token_budget(run_meta, agents_log, turn_meta=turn_meta)
     from agent_lab.run_meta import write_run_meta
 
     write_run_meta(folder, run_meta)

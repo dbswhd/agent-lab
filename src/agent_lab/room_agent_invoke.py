@@ -518,6 +518,10 @@ def _call_one_agent(
         context_meta["model"] = __import__("agent_lab.room", fromlist=["model_label"]).model_label(aid)
         if context_log is not None:
             context_log.append(context_meta)
+            if run_meta is not None:
+                from agent_lab.token_budget import record_run_token_budget
+
+                record_run_token_budget(run_meta, context_log, turn_meta=context_meta)
 
         text, parsed, envelope_dict, body, post_hook = _invoke_agent(payload)
         needs_envelope_fix = reply_policy.envelope_strict and (parsed.envelope_parse_error or parsed.envelope is None)

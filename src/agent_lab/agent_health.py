@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import time
 from typing import Any
 
 from agent_lab.agents.registry import AGENT_IDS, label, model_label
@@ -48,7 +47,8 @@ def _check_cursor_bridge(
             return bridge, None
         last_err = err
         if attempt + 1 < attempts:
-            time.sleep(_BRIDGE_RETRY_BACKOFF_S * (attempt + 1))
+            from agent_lab.backoff_policy import wait as _backoff_wait
+            _backoff_wait(attempt + 1, base_sec=_BRIDGE_RETRY_BACKOFF_S)
     return "error", last_err
 
 

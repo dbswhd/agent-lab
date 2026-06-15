@@ -49,10 +49,11 @@ def test_maybe_advance_mission_autoforwards_discuss(monkeypatch, tmp_path):
     def fake_mission_dispatch(folder, topic, payload):
         calls.append(("dispatch", topic, payload))
 
+    import agent_lab.mission_board as mb
     import agent_lab.mission_loop as ml
 
-    monkeypatch.setattr(ml, "record_autorun_tick", fake_record)
-    monkeypatch.setattr(ml, "sync_turn_budget_from_mission", fake_sync)
+    monkeypatch.setattr(mb, "record_autorun_tick", fake_record)
+    monkeypatch.setattr(mb, "sync_turn_budget_from_mission", fake_sync)
     monkeypatch.setattr(ml, "_scheduled_autorun_allowed", fake_allowed)
     monkeypatch.setattr(ml, "read_run_meta", fake_read_run_meta)
     monkeypatch.setattr(ml, "patch_run_meta", fake_patch_run_meta)
@@ -63,6 +64,20 @@ def test_maybe_advance_mission_autoforwards_discuss(monkeypatch, tmp_path):
 
 def test_on_verify_result_does_not_double_count(monkeypatch, tmp_path):
     calls = []
+    state = {
+        "mission_loop": {
+            "enabled": True,
+            "phase": "VERIFY",
+            "last_verify": {},
+            "plan_gate": {},
+            "pending_executions": [],
+            "action_repair_counts": {"0": 1},
+            "max_repair_per_action": 3,
+            "autonomous_segment": {"active": True},
+            "discuss_recovery": {},
+        },
+        "schedule_sandbox": False,
+    }
 
     def fake_record_autorun(*args, **kwargs):
         return None
@@ -74,47 +89,45 @@ def test_on_verify_result_does_not_double_count(monkeypatch, tmp_path):
         return True
 
     def fake_read(folder):
-        return {
-            "mission_loop": {
-                "enabled": True,
-                "phase": "VERIFY",
-                "last_verify": {},
-                "plan_gate": {},
-                "pending_executions": [],
-                "action_repair_counts": {"0": 1},
-                "max_repair_per_action": 3,
-                "autonomous_segment": {"active": True},
-                "discuss_recovery": {},
-            },
-            "schedule_sandbox": False,
-        }
+        return state
 
     def fake_patch(folder, fn):
-        updated = fn({"mission_loop": {}})
+        nonlocal state
+        state = fn(state)
+        ml = state.get("mission_loop") or {}
         calls.append(
             {
-                "phase": updated.get("mission_loop", {}).get("phase"),
-                "repairs": updated.get("mission_loop", {}).get("action_repair_counts"),
+                "phase": ml.get("phase"),
+                "repairs": dict(ml.get("action_repair_counts") or {}),
             }
         )
 
-    def fake_dispatch(folder, topic, payload):
+    def fake_dispatch(folder, topic, payload=None):
         calls.append({"dispatch": topic})
-        return {}
+        return {"skipped": True}
 
     def fake_record_last_failure(*args, **kwargs):
         return None
 
-    import agent_lab.mission_loop as ml
+    def fake_append_wisdom(*args, **kwargs):
+        return None
 
-    monkeypatch.setattr(ml, "record_autorun_tick", fake_record_autorun)
-    monkeypatch.setattr(ml, "sync_turn_budget_from_mission", fake_sync)
+    import agent_lab.mission_board as mb
+    import agent_lab.mission_loop as ml
+    import agent_lab.runtime.boulder as boulder
+
+    monkeypatch.setattr(mb, "record_autorun_tick", fake_record_autorun)
+    monkeypatch.setattr(mb, "sync_turn_budget_from_mission", fake_sync)
     monkeypatch.setattr(ml, "_scheduled_autorun_allowed", fake_allowed)
     monkeypatch.setattr(ml, "read_run_meta", fake_read)
     monkeypatch.setattr(ml, "patch_run_meta", fake_patch)
     monkeypatch.setattr(ml, "_mission_dispatch", fake_dispatch)
-    monkeypatch.setattr(ml, "record_last_failure", fake_record_last_failure)
+    monkeypatch.setattr(ml, "append_wisdom_note", fake_append_wisdom)
+    monkeypatch.setattr(boulder, "record_last_failure", fake_record_last_failure)
+    monkeypatch.setattr(ml, "mission_autorun_enabled", lambda _ml: False)
 
     ml.on_verify_result(tmp_path, action_index=0, verdict="fail", reason="soft-error")
 
-    assert any(entry.get("repairs", {}).get("0") == 1 for entry in calls), calls
+    repair_counts = [entry.get("repairs", {}).get("0") for entry in calls if "repairs" in entry]
+    assert repair_counts.count(2) <= 1, calls
+    assert any(entry.get("repairs", {}).get("0") == 2 for entry in calls), calls

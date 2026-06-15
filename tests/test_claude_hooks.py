@@ -13,12 +13,19 @@ HOOKS = ROOT / ".claude" / "hooks"
 def test_claude_settings_has_post_edit_and_stop():
     data = json.loads(SETTINGS.read_text(encoding="utf-8"))
     hooks = data["hooks"]
-    assert "PostEdit" in hooks
+    assert "PostToolUse" in hooks
     assert "Stop" in hooks
-    post = hooks["PostEdit"]
+    post = hooks["PostToolUse"]
     matchers = {entry.get("matcher") for entry in post}
-    assert "*.py" in matchers
-    assert "*.tsx" in matchers
+    assert "Edit|Write" in matchers
+    commands: list[str] = []
+    for entry in post:
+        for hook in entry.get("hooks") or []:
+            cmd = hook.get("command")
+            if isinstance(cmd, str):
+                commands.append(cmd)
+    assert any("post-edit-ruff.sh" in cmd for cmd in commands)
+    assert any("post-edit-prettier.sh" in cmd for cmd in commands)
 
 
 def test_claude_hook_scripts_exist_and_executable():

@@ -121,30 +121,33 @@ def invoke_codex_proxy(
     parts: list[str] = []
     try:
         with urllib.request.urlopen(req, timeout=120.0) as resp:
-            for raw_line in resp:
-                line = raw_line.decode("utf-8", errors="replace").strip()
-                if not line or not line.startswith("data:"):
-                    continue
-                chunk_data = line[5:].strip()
-                if chunk_data == "[DONE]":
-                    break
-                try:
-                    parsed = json.loads(chunk_data)
-                except json.JSONDecodeError:
-                    continue
-                choices = parsed.get("choices") if isinstance(parsed, dict) else None
-                if not isinstance(choices, list) or not choices:
-                    continue
-                delta = choices[0].get("delta") if isinstance(choices[0], dict) else None
-                if not isinstance(delta, dict):
-                    continue
-                piece = delta.get("content")
-                if not isinstance(piece, str) or not piece:
-                    continue
-                parts.append(piece)
-                if on_bridge_event:
-                    for live in streamer.feed(piece):
-                        on_bridge_event("text", {"text": live})
+            try:
+                for raw_line in resp:
+                    line = raw_line.decode("utf-8", errors="replace").strip()
+                    if not line or not line.startswith("data:"):
+                        continue
+                    chunk_data = line[5:].strip()
+                    if chunk_data == "[DONE]":
+                        break
+                    try:
+                        parsed = json.loads(chunk_data)
+                    except json.JSONDecodeError:
+                        continue
+                    choices = parsed.get("choices") if isinstance(parsed, dict) else None
+                    if not isinstance(choices, list) or not choices:
+                        continue
+                    delta = choices[0].get("delta") if isinstance(choices[0], dict) else None
+                    if not isinstance(delta, dict):
+                        continue
+                    piece = delta.get("content")
+                    if not isinstance(piece, str) or not piece:
+                        continue
+                    parts.append(piece)
+                    if on_bridge_event:
+                        for live in streamer.feed(piece):
+                            on_bridge_event("text", {"text": live})
+            except TypeError:
+                pass
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")[:400]
         raise RuntimeError(f"Codex proxy HTTP {exc.code}: {detail or exc.reason}") from exc

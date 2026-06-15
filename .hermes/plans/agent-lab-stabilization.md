@@ -81,10 +81,11 @@
 1. ~~합의 라운드 N-of-M 정책 지원~~ 완료
    - `src/agent_lab/consensus_policy.py` 신규: `ConsensusPolicy`, `default_consensus_policy()`
    - `room_consensus_rounds.py` 시그니처에 `consensus_policy` 옵션 추가 및 정책 초기화 연동
-   - `tests/test_consensus_policy.py` 3 passed
-   - `src/agent_lab/room_consensus_rounds.py` 개선
-   - 정책 모듈: `consensus_policy.py` 분리
-   - 최적화: 합의 완료 조건이 충족되면 즉시 종료
+   7. ~~합의 라운드 N-of-M 정책 지원~~ 완료
+      - `src/agent_lab/consensus_policy.py` 신규, `ConsensusPolicy`, `default_consensus_policy()`
+      - `room_consensus_rounds.py`에 정책 파라미터 추가
+      - `tests/test_consensus_policy.py` 3 passed
+      - `tests/test_context_bundle.py` 8 passed
 2. context_bundle.py 토큰/바이트 로깅
    - 예산 한도 초과 시 자르기/압축 정책 추가
 3. 종합 안정성 테스트

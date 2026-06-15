@@ -707,4 +707,16 @@ def build_context_bundle(
         messages_in_turn=current_turn_message_count(full),
         messages_in_session=count_messages(full),
     )
+    _record_context_bundle_metrics(run_meta, meta, agent=agent, mode="full")
     return bundle
+
+
+def _record_context_bundle_metrics(
+    run_meta: dict[str, Any] | None,
+    meta: Any,
+    *,
+    agent: str,
+    mode: str,
+) -> None:
+    if run_meta is None or not hasattr(run_meta, "get"):
+        return

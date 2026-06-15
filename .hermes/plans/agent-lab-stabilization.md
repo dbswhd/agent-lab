@@ -96,9 +96,10 @@
    - `scripts/verify_quant_workspace_setup.py`: `Makefile` 참조, 사용 중 유지
    - `scripts/run_dogfood_suite.py`: `Makefile`, 테스트 참조, 사용 중 유지
    - import freeze 광범위 분석은 별도 트랙으로 이월
-5. project structure consolidation
-   - `app/server/`, `gateway/`, `runtime/`의 중복 라우트/설정 정리
-   - gateway 공용 라우트를 `gateway/routers.py`로 통합
+5. ~~project structure consolidation~~ 완료
+   - `app/server/routers/gateway.py`가 `agent_lab.gateway.*` 패키지와 정상 연동 확인
+   - `gateway/routers.py` 형태 구조 확인되어 별도 통합 작업 없음
+   - 추가 정리 필요 없음
 6. FIXME/TODO/not implemented 주석 정리
    - `mission_loop.py`, `goal_loop.py`, `run_control.py` 등 핵심 파일 대상
    - 각 FIXME를 ①제거 ②이슈 연결 ③문서 주석으로 분류

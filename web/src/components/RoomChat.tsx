@@ -3326,6 +3326,10 @@ export function RoomChat({
                     pendingSend.turnProfile,
                   );
                   setPendingSend(null);
+                  // Clear the composer once the send is dispatched — the
+                  // non-permission path clears in handleSend, this path didn't.
+                  setText("");
+                  setPendingFiles([]);
                 }
               }}
             />

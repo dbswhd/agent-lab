@@ -91,6 +91,23 @@ def test_message_visibility_peer_echo():
     assert vis == "peer"
 
 
+def test_strip_peer_header_echo_keeps_real_content_human_visible():
+    from agent_lab.room_chat_channels import strip_peer_header_echo
+
+    # Real reply that merely *prepends* the echoed header must stay visible.
+    body = "[이번 턴 · 동료 발화] Claude TS 선택에 동의합니다. 다음 수정은…"
+    stripped = strip_peer_header_echo(body)
+    assert stripped == "Claude TS 선택에 동의합니다. 다음 수정은…"
+    assert message_visibility(role="agent", content=stripped) == "human"
+
+    # No header → unchanged. Pure echo → kept (still hidden by visibility).
+    assert strip_peer_header_echo("plain reply") == "plain reply"
+    assert message_visibility(
+        role="agent",
+        content=strip_peer_header_echo("[이번 턴 · 동료 발화]"),
+    ) == "peer"
+
+
 def test_append_peer_turn_digest_once():
     msgs = [
         ChatMessage(role="user", agent=None, content="topic"),

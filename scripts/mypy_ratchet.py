@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -15,9 +16,19 @@ BASELINE_PATH = ROOT / "tests" / "fixtures" / "mypy-ratchet.json"
 ERROR_RE = re.compile(r"^([^:]+):\d+: error:")
 
 
+def resolve_mypy() -> str:
+    venv = ROOT / ".venv" / "bin" / "mypy"
+    if venv.is_file():
+        return str(venv)
+    on_path = shutil.which("mypy")
+    if on_path:
+        return on_path
+    raise FileNotFoundError("mypy not found (.venv/bin/mypy or PATH)")
+
+
 def run_mypy() -> tuple[int, dict[str, int]]:
     proc = subprocess.run(
-        [str(ROOT / ".venv" / "bin" / "mypy")],
+        [resolve_mypy()],
         cwd=ROOT,
         capture_output=True,
         text=True,

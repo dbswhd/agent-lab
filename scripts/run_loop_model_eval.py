@@ -83,10 +83,7 @@ def main(argv: list[str] | None = None) -> int:
             ]
             err = row.get("eval_error")
             suffix = f" err={err}" if err else ""
-            print(
-                f"  {row.get('agent')}:{row.get('model_id')} "
-                f"[{row.get('eval_source')}] {', '.join(flags)}{suffix}"
-            )
+            print(f"  {row.get('agent')}:{row.get('model_id')} [{row.get('eval_source')}] {', '.join(flags)}{suffix}")
     return 0
 
 

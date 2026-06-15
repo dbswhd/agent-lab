@@ -534,11 +534,7 @@ def _run_codex(
             # Wall-clock cap guards only time-to-first-output: an agent stuck on a
             # usage/rate limit (retrying via stderr, never emitting a response item)
             # is bounded, while a turn that is actively responding runs uncapped.
-            if (
-                timeout is not None
-                and not outcome.response_started
-                and now - started_at >= timeout
-            ):
+            if timeout is not None and not outcome.response_started and now - started_at >= timeout:
                 _raise_stall(
                     f"no response started within {timeout}s",
                     idle_sec=int(now - last_activity_at),

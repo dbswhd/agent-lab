@@ -37,9 +37,7 @@ def test_loop_ready_requires_tools_inbox_and_envelope() -> None:
 
     assert loop_blockers(replace(base, supports_tools=False)) == ("supports_tools",)
     assert loop_blockers(replace(base, supports_inbox_mcp=False)) == ("supports_inbox_mcp",)
-    assert loop_blockers(replace(base, supports_json_envelope=False)) == (
-        "supports_json_envelope",
-    )
+    assert loop_blockers(replace(base, supports_json_envelope=False)) == ("supports_json_envelope",)
     assert loop_ready(replace(base, supports_tools=False)) is False
 
 
@@ -82,9 +80,7 @@ def test_model_id_lookup_env_and_registry(monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.setenv("CODEX_MODEL", "expensive-model")
     base_codex = model_policy_mod.agent_model_profiles()["codex"]
     try:
-        model_policy_mod.register_model_profile(
-            replace(base_codex, model_id="expensive-model", cost_tier="high")
-        )
+        model_policy_mod.register_model_profile(replace(base_codex, model_id="expensive-model", cost_tier="high"))
         cost_failure = model_policy_mod.loop_readiness_failure(["codex"])
         assert cost_failure is not None
         assert "cost tier" in cost_failure.reason
@@ -130,5 +126,3 @@ def test_load_loop_eval_registry(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
         model_policy_mod._LOOP_EVAL_LOADED = False
         model_policy_mod._MODEL_PROFILE_REGISTRY.clear()
         model_policy_mod._MODEL_PROFILE_REGISTRY.update(registry_before)
-
-

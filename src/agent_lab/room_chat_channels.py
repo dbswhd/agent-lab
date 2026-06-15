@@ -36,6 +36,23 @@ def message_visibility(
     return "human"
 
 
+def strip_peer_header_echo(content: str) -> str:
+    """Drop a leading echoed ``[이번 턴 · 동료 발화]`` header that some agents
+    prepend to their reply.
+
+    Without this, :func:`message_visibility` marks the whole reply peer-only and
+    hides the agent's real content from the human transcript (the agent appears
+    to "disappear"). Returns the original content if stripping leaves nothing
+    (a pure echo), so genuine echo-only noise still gets hidden.
+    """
+    text = content or ""
+    match = PEER_HEADER_ECHO.match(text.lstrip())
+    if not match:
+        return content
+    rest = text.lstrip()[match.end() :].lstrip(" :·\t").lstrip()
+    return rest if rest.strip() else content
+
+
 def filter_messages_for_human(
     messages: list[Any],
     *,

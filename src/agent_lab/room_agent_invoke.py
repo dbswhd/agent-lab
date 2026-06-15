@@ -522,7 +522,15 @@ def _call_one_agent(
             retry_payload = f"{payload}\n\n{retry_follow}"
             text, parsed, envelope_dict, body, post_hook = _invoke_agent(retry_payload)
 
-        from agent_lab.room_chat_channels import message_visibility
+        from agent_lab.room_chat_channels import (
+            message_visibility,
+            strip_peer_header_echo,
+        )
+
+        # Some agents (often the lead, which sees the most peer context) prepend
+        # the "[이번 턴 · 동료 발화]" header to their reply; left in, the whole
+        # message is classified peer-only and vanishes from the transcript.
+        body = strip_peer_header_echo(body)
 
         msg = ChatMessage(
             role="agent",

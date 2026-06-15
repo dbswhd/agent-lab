@@ -339,6 +339,7 @@ def build_slim_consensus_bundle(
         messages_in_turn=current_turn_message_count(messages),
         messages_in_session=count_messages(messages),
     )
+    _record_context_bundle_metrics(run_meta, meta, agent=agent, mode="slim")
     return bundle
 
 

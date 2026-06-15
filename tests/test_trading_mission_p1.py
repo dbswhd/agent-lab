@@ -6,6 +6,7 @@ import json
 import sqlite3
 from pathlib import Path
 
+import pytest
 
 from agent_lab.trading_mission.ingest_bridge import (
     apply_critic_cap_to_draft,
@@ -75,6 +76,7 @@ def _write_ready_session(
     )
 
 
+@pytest.mark.quant
 def test_normalize_proposal_draft_ok():
     mapped, err = normalize_proposal_draft(
         {
@@ -131,6 +133,7 @@ def test_ingest_skipped_when_not_ready(tmp_path):
     assert report["reason"] == "ingest_ready is false"
 
 
+@pytest.mark.quant
 def test_ingest_writes_sqlite(tmp_path):
     session = tmp_path / "sess-ingest"
     session.mkdir()
@@ -155,6 +158,7 @@ def test_ingest_writes_sqlite(tmp_path):
         assert evt is not None
 
 
+@pytest.mark.quant
 def test_ingest_idempotent_by_mission(tmp_path):
     session = tmp_path / "sess-idem"
     session.mkdir()
@@ -173,6 +177,7 @@ def test_ingest_idempotent_by_mission(tmp_path):
         assert count == 1
 
 
+@pytest.mark.quant
 def test_ingest_force_reingest(tmp_path):
     session = tmp_path / "sess-force"
     session.mkdir()
@@ -224,6 +229,7 @@ def test_detect_control_plane_db_env(tmp_path, monkeypatch):
     assert detect_control_plane_db() == custom.resolve()
 
 
+@pytest.mark.quant
 def test_ingest_applies_critic_cap(tmp_path, monkeypatch):
     pipeline = tmp_path / "pipeline"
     cards = pipeline / "data" / "agentic_trading" / "cards"
@@ -261,6 +267,7 @@ def test_ingest_applies_critic_cap(tmp_path, monkeypatch):
         assert payload["confidence"] == report["critic_reviews"][0]["applied_confidence"]
 
 
+@pytest.mark.quant
 def test_normalize_with_critic_enabled(tmp_path, monkeypatch):
     pipeline = tmp_path / "pipeline"
     cards = pipeline / "data" / "agentic_trading" / "cards"

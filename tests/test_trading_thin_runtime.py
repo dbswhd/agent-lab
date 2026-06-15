@@ -23,7 +23,11 @@ def test_trading_thin_template_listed(monkeypatch):
     assert "trading-thin" in ids
 
 
-def test_thin_template_guidance_forbids_room():
+def test_thin_template_guidance_forbids_room(monkeypatch):
+    monkeypatch.setattr(
+        "agent_lab.extensions.quant_trading.quant_pipeline_available",
+        lambda: True,
+    )
     block = template_guidance_block("trading-thin")
     assert "no new Room" in block or "no new Room" in block.lower() or "Room" in block
     assert "get_intraday_status" in block

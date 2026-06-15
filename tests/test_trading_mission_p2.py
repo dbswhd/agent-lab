@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from datetime import datetime, timedelta, timezone
 
+import pytest
+
 from agent_lab.trading_mission.delta_export import (
     build_proposal_delta,
     write_proposal_delta,
@@ -78,6 +80,7 @@ def test_enqueue_and_read_queue(tmp_path, monkeypatch):
     assert len(pending) == 1
 
 
+@pytest.mark.quant
 def test_build_proposal_delta_caps_proposals(tmp_path, monkeypatch):
     monkeypatch.setenv("AGENT_LAB_TRADING_DELTA_MAX_PROPOSALS", "2")
     session = tmp_path / "sess-delta"

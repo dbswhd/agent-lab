@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = [pytest.mark.integration, pytest.mark.quant]
+
 from agent_lab.trading_mission.effective_confidence import (
     batch_context_from_snapshot,
     effective_confidence,

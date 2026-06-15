@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 
+import pytest
 
 from agent_lab.trading_mission.blocked import write_blocked_artifacts
 from agent_lab.trading_mission.export_batch import build_proposal_batch, write_proposal_batch
@@ -27,16 +28,25 @@ def test_trading_mission_template_listed(monkeypatch):
     assert "trading-mission" in ids
 
 
-def test_trading_mission_setup_meta():
+def test_trading_mission_setup_meta(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "agent_lab.extensions.quant_trading.quant_pipeline_available",
+        lambda: True,
+    )
     meta = build_setup_run_meta(
-        workspace_id="quant-pipeline",
+        workspace_id="custom",
+        workspace_path=str(tmp_path),
         session_template="trading-mission",
     )
     assert meta["session_template"] == "trading-mission"
     assert meta.get("mission_kind") == "trading_premarket"
 
 
-def test_template_guidance_trading():
+def test_template_guidance_trading(monkeypatch):
+    monkeypatch.setattr(
+        "agent_lab.extensions.quant_trading.quant_pipeline_available",
+        lambda: True,
+    )
     block = template_guidance_block("trading-mission")
     assert "Trading Mission" in block
     assert "ingest_ready" in block
@@ -57,6 +67,7 @@ def test_render_premarket_topic():
     assert "{{" not in text
 
 
+@pytest.mark.quant
 def test_preflight_snapshot_shape(tmp_path, monkeypatch):
     pipeline = tmp_path / "pipeline"
     (pipeline / "scripts" / "spec91").mkdir(parents=True)
@@ -94,6 +105,7 @@ def test_blocked_artifacts_goal_ok(tmp_path):
     assert goal["ok"] is True
 
 
+@pytest.mark.quant
 def test_export_batch_from_draft(tmp_path):
     session = tmp_path / "sess-export"
     artifacts = session / "artifacts"
@@ -158,6 +170,7 @@ def test_resolve_freshness_python_prefers_pipeline_venv(tmp_path, monkeypatch):
     assert _resolve_freshness_python(pipeline) == "/custom/py"
 
 
+@pytest.mark.quant
 def test_ensure_mock_trading_artifacts_seeds_draft(tmp_path):
     from agent_lab.trading_mission.mock_artifacts import ensure_mock_trading_artifacts
 

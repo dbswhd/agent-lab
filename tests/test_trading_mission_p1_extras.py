@@ -125,7 +125,11 @@ def test_wisdom_index_trading_tags(tmp_path):
     assert any("trading:session:" in t for d in tagged for t in d.get("tags", []))
 
 
-def test_session_setup_options_includes_trading_preset():
+def test_session_setup_options_includes_trading_preset(monkeypatch):
+    monkeypatch.setattr(
+        "agent_lab.extensions.quant_trading.quant_pipeline_available",
+        lambda: True,
+    )
     opts = session_setup_options()
     assert "session_templates" in opts
     ids = [t["id"] for t in opts["session_templates"]]

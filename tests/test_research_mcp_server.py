@@ -141,6 +141,7 @@ def test_mcp_tools_with_session_folder(tmp_path: Path, monkeypatch: pytest.Monke
     assert hits["enabled"] is True
 
 
+@pytest.mark.quant
 def test_mcp_research_card_tools(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     pytest.importorskip("mcp")
     from agent_lab.pipeline_research_read import sync_research_cards
@@ -187,6 +188,7 @@ def test_mcp_research_card_tools(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     assert "kospi_v1" in listed["refs"]
 
 
+@pytest.mark.quant
 def test_mcp_market_tools(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     pytest.importorskip("mcp")
     pipeline = tmp_path / "pipeline"

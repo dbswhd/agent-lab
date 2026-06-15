@@ -94,6 +94,14 @@ _BRIDGE_MODULES = frozenset(
 )
 
 
+def pytest_runtest_setup(item: pytest.Item) -> None:
+    if item.get_closest_marker("quant"):
+        from agent_lab.extensions.quant_trading import agentic_trading_available
+
+        if not agentic_trading_available():
+            pytest.skip("quant-agentic-trading extension not available")
+
+
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
     for item in items:
         module = item.module.__name__.rsplit(".", 1)[-1]
@@ -101,3 +109,5 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
             item.add_marker(pytest.mark.integration)
         if module in _BRIDGE_MODULES:
             item.add_marker(pytest.mark.bridge)
+        if item.get_closest_marker("quant"):
+            item.add_marker(pytest.mark.integration)

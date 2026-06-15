@@ -31,6 +31,7 @@ def test_research_mcp_contract_surface() -> None:
     asyncio.run(_run())
 
 
+@pytest.mark.quant
 def test_quant_trading_mcp_contract_surface() -> None:
     pytest.importorskip("mcp")
 
@@ -44,6 +45,7 @@ def test_quant_trading_mcp_contract_surface() -> None:
     asyncio.run(_run())
 
 
+@pytest.mark.quant
 def test_mcp_servers_do_not_overlap_exclusive_tools() -> None:
     pytest.importorskip("mcp")
 
@@ -61,6 +63,7 @@ def test_mcp_servers_do_not_overlap_exclusive_tools() -> None:
     asyncio.run(_run())
 
 
+@pytest.mark.quant
 def test_quant_trading_market_read_tools(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     pipeline = tmp_path / "pipeline"
     script_dir = pipeline / "scripts" / "spec91"
@@ -92,6 +95,7 @@ def test_quant_trading_market_read_tools(tmp_path: Path, monkeypatch: pytest.Mon
     assert kill["kill_switch_enabled"] is False
 
 
+@pytest.mark.quant
 def test_quant_trading_mcp_tools_callable(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     pytest.importorskip("mcp")
     pipeline = tmp_path / "pipeline"

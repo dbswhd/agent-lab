@@ -38,6 +38,7 @@ markers = [
     "fast: explicit quick unit test (subset marker; most tests are unmarked mock-fast)",
     "integration: slower multi-component or subprocess tests (excluded from make test-fast)",
     "bridge: cursor bridge lifecycle / external probe tests",
+    "quant: requires quant-agentic-trading extension (skipped when absent on CI)",
 ]
 
 [tool.ruff]

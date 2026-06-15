@@ -17,7 +17,7 @@ def client(monkeypatch: pytest.MonkeyPatch):
 
 def test_health_readiness_endpoint(client: TestClient, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
-        "agent_lab.readiness.build_readiness_payload",
+        "app.server.routers.health.build_readiness_payload",
         lambda **kw: {
             "verdict": "ready",
             "session_id": kw.get("session_id"),

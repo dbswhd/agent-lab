@@ -3,12 +3,23 @@
 from __future__ import annotations
 
 import inspect
+import shutil
 import subprocess
 from pathlib import Path
 
 import tests.conftest as conftest
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def _resolve_pytest() -> str:
+    venv = ROOT / ".venv" / "bin" / "pytest"
+    if venv.is_file():
+        return str(venv)
+    on_path = shutil.which("pytest")
+    if on_path:
+        return on_path
+    raise FileNotFoundError("pytest not found (.venv/bin/pytest or PATH)")
 
 
 def test_integration_modules_include_profiled_slow_suites():
@@ -36,7 +47,7 @@ def test_fast_bucket_collection_budget():
     """test-fast should stay a PR-sized subset (integration carries the rest)."""
     proc = subprocess.run(
         [
-            str(ROOT / ".venv" / "bin" / "pytest"),
+            _resolve_pytest(),
             "tests/",
             "--collect-only",
             "-q",

@@ -1403,8 +1403,8 @@ def run_mission_discuss_recovery(
             on_event=on_event,
         )
     except Exception as exc:
-        append_wisdom_note(folder, line=f"discuss recovery failed: {exc}")
-        return {"status": "error", "error": str(exc)}
+        messages, plan_md = [], ""
+        append_wisdom_note(folder, line=f"discuss recovery round failed: {exc}")
 
     def _complete(run_in: dict[str, Any]) -> dict[str, Any]:
         m = get_mission_loop(run_in)
@@ -1416,7 +1416,9 @@ def run_mission_discuss_recovery(
         return run_in
 
     patch_run_meta(folder, _complete)
-    gate_result = after_plan_scribe(folder, plan_md) if (plan_md or "").strip() else None
+    gate_result = None
+    if (plan_md or "").strip():
+        gate_result = after_plan_scribe(folder, plan_md)
     out = get_mission_loop(read_run_meta(folder))
     return {
         "status": "discuss_recovery_complete",
@@ -1444,7 +1446,7 @@ def on_structural_execution_failure(
         if action_index is not None:
             m["current_action_index"] = action_index
         m["discuss_recovery"] = {
-            "pending": False,
+            "pending": True,
             "reason": reason,
             "action_index": action_index,
             "started_at": None,

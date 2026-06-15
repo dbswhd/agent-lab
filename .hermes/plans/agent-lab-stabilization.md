@@ -91,9 +91,11 @@
 3. 종합 안정성 테스트
    - `tests/` 아래 integration test suite 추가
    - CI에서 실행되도록 `Makefile` / workflow 연동
-4. 미사용 스크립트·모듈 정리
-   - `scripts/cleanup_dmg_mounts.sh`, `scripts/verify_quant_workspace_setup.py`, `scripts/run_dogfood_suite.py` 등 사용 여부 확인 후 미사용은 archive 이관
-   - import freeze 분석으로 사용하지 않는 파일 0 유지
+4. ~~미사용 스크립트·모듈 정리~~ 완료
+   - `scripts/cleanup_dmg_mounts.sh` -> `archive/cleanup_dmg_mounts.sh`
+   - `scripts/verify_quant_workspace_setup.py`: `Makefile` 참조, 사용 중 유지
+   - `scripts/run_dogfood_suite.py`: `Makefile`, 테스트 참조, 사용 중 유지
+   - import freeze 광범위 분석은 별도 트랙으로 이월
 5. project structure consolidation
    - `app/server/`, `gateway/`, `runtime/`의 중복 라우트/설정 정리
    - gateway 공용 라우트를 `gateway/routers.py`로 통합

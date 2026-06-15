@@ -78,7 +78,10 @@
    - `tests/test_token_budget.py` 2 passed
 
 ### 장기 (1주 이상)
-1. 합의 라운드 N-of-M 정책 지원
+1. ~~합의 라운드 N-of-M 정책 지원~~ 완료
+   - `src/agent_lab/consensus_policy.py` 신규: `ConsensusPolicy`, `default_consensus_policy()`
+   - `room_consensus_rounds.py` 시그니처에 `consensus_policy` 옵션 추가 및 정책 초기화 연동
+   - `tests/test_consensus_policy.py` 3 passed
    - `src/agent_lab/room_consensus_rounds.py` 개선
    - 정책 모듈: `consensus_policy.py` 분리
    - 최적화: 합의 완료 조건이 충족되면 즉시 종료

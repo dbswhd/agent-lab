@@ -51,7 +51,7 @@
 
 ### 단기 (1~2일)
 1. ~~DISCUSS → PLAN_GATE auto-forward 검증 및 안정화 완료~~
-2. worktree discard edge case 반영
+2. ~~worktree discard edge case 반영~~
 3. (empty) 원인 분석 및 방지 로직 정리
 
 ### 중기 (3~5일)

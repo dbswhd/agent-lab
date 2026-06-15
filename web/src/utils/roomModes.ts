@@ -1,9 +1,6 @@
 import { apiBase } from "../api/client";
 import type { AgentHealthRow } from "../api/client";
-import {
-  normalizeTurnProfile,
-  type ComposerTurnProfile,
-} from "./turnProfile";
+import { normalizeTurnProfile, type ComposerTurnProfile } from "./turnProfile";
 
 export type RoomModeRow = {
   id: string;
@@ -22,9 +19,9 @@ export type RoomModeCatalog = {
 
 let cachedCatalog: RoomModeCatalog | null = null;
 
-export async function fetchRoomModes(
-  opts?: { force?: boolean },
-): Promise<RoomModeCatalog> {
+export async function fetchRoomModes(opts?: {
+  force?: boolean;
+}): Promise<RoomModeCatalog> {
   if (cachedCatalog && !opts?.force) {
     return cachedCatalog;
   }
@@ -121,7 +118,9 @@ export function loopCostHintLine(
     ),
   ];
   if (tiers.length) {
-    const labels = tiers.map((tier) => TIER_LABEL[tier]?.[locale] ?? tier).join("/");
+    const labels = tiers
+      .map((tier) => TIER_LABEL[tier]?.[locale] ?? tier)
+      .join("/");
     return ko
       ? `모델 비용 ${labels} · 루프 한도 ${maxLabel}`
       : `Model cost ${labels} · loop max ${maxLabel}`;

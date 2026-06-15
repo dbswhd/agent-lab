@@ -250,10 +250,10 @@ export function getUnifiedComposerMode(): UnifiedComposerMode {
             : unified === "infinity"
               ? "loop"
               : unified === "discuss"
-            ? "team"
-            : unified === "plan" || unified === "execute"
-              ? "team"
-              : unified;
+                ? "team"
+                : unified === "plan" || unified === "execute"
+                  ? "team"
+                  : unified;
       return mergeToUnifiedMode(
         unified === "plan"
           ? "plan"

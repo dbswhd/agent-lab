@@ -535,14 +535,14 @@ export function HumanInboxPanel({
         ? "에이전트 질문"
         : "Agent questions"
       : presentation === "popup"
-      ? visiblePending[0]?.kind === "build"
-        ? ko
-          ? "Build 승인 필요"
-          : "Build approval required"
-        : ko
-          ? "질문에 답해야 합니다"
-          : "Answer required"
-      : "Human Inbox";
+        ? visiblePending[0]?.kind === "build"
+          ? ko
+            ? "Build 승인 필요"
+            : "Build approval required"
+          : ko
+            ? "질문에 답해야 합니다"
+            : "Answer required"
+        : "Human Inbox";
 
   const rowProps = {
     planRevision,

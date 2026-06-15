@@ -35,9 +35,9 @@ export function ComposerTurnPicker({
 }: Props) {
   const fallback = turnStrategyOptions(locale);
   const [options, setOptions] =
-    useState<Array<{ id: ComposerTurnProfile; label: string; description: string }>>(
-      fallback,
-    );
+    useState<
+      Array<{ id: ComposerTurnProfile; label: string; description: string }>
+    >(fallback);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,7 +56,8 @@ export function ComposerTurnPicker({
   }, [locale]);
 
   const description =
-    options.find((o) => o.id === value)?.description ?? turnProfileDescription(value);
+    options.find((o) => o.id === value)?.description ??
+    turnProfileDescription(value);
   const hintText =
     hint?.trim() || [description, costHint?.trim()].filter(Boolean).join(" · ");
 

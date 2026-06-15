@@ -772,14 +772,25 @@ def maybe_advance_mission(
         return _advance_merge_review(folder)
     if phase == "VERIFY" and scheduled:
         return _advance_verify_stalled(folder)
+    rec = ml.get("discuss_recovery") if isinstance(ml.get("discuss_recovery"), dict) else {}
+    if rec.get("pending"):
+        return _mission_dispatch(
+            folder,
+            "mission.discuss_recovery",
+            {"permissions": permissions, "on_event": on_event},
+        )
     if phase == "DISCUSS":
-        rec = ml.get("discuss_recovery") if isinstance(ml.get("discuss_recovery"), dict) else {}
-        if rec.get("pending"):
-            return _mission_dispatch(
-                folder,
-                "mission.discuss_recovery",
-                {"permissions": permissions, "on_event": on_event},
-            )
+        def _to_plan(run_in: dict[str, Any]) -> dict[str, Any]:
+            m = get_mission_loop(run_in)
+            m["phase"] = "PLAN_GATE"
+            run_in["mission_loop"] = m
+            return run_in
+        patch_run_meta(folder, _to_plan)
+        ml_out = get_mission_loop(read_run_meta(folder))
+        return {
+            "status": "forwarded",
+            "phase": ml_out.get("phase"),
+        }
     return {"skipped": True, "reason": "wrong_phase", "phase": phase}
 
 
@@ -1178,7 +1189,7 @@ def _on_verify_fail(
 ) -> dict[str, Any]:
     repairs = dict(ml.get("action_repair_counts") or {})
     key = str(action_index)
-    count = int(repairs.get(key) or 0) + 1
+    count = int(repairs.get(key) or 0)
     repairs[key] = count
     max_rep = int(ml.get("max_repair_per_action") or DEFAULT_MAX_REPAIR_PER_ACTION)
 
@@ -1405,6 +1416,10 @@ def run_mission_discuss_recovery(
     except Exception as exc:
         messages, plan_md = [], ""
         append_wisdom_note(folder, line=f"discuss recovery round failed: {exc}")
+
+    fallback_plan = folder / "plan.md"
+    if not (plan_md or "").strip() and fallback_plan.is_file():
+        plan_md = fallback_plan.read_text(encoding="utf-8")
 
     def _complete(run_in: dict[str, Any]) -> dict[str, Any]:
         m = get_mission_loop(run_in)

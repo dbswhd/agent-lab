@@ -140,6 +140,8 @@ export type SessionDetail = {
   transcript_md: string;
   meta: Record<string, unknown>;
   chat?: ChatLine[];
+  /** Append-only SSE replay when turn did not finish (chat.jsonl missing). */
+  live_log?: Array<Record<string, unknown>>;
   run?: Record<string, unknown>;
   attachments?: string[];
   observability?: SessionObservability;
@@ -1630,7 +1632,7 @@ async function consumeSse(
         if (line.startsWith("data: ")) {
           const data = JSON.parse(line.slice(6)) as Record<string, unknown>;
           const t = String(data.type ?? "");
-          if (t === "complete" || t === "error" || t === "run_failed") {
+          if (t === "complete" || t === "error" || t === "run_failed" || t === "run_cancelled") {
             sawTerminal = true;
           }
           onEvent(data);

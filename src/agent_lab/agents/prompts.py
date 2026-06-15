@@ -54,6 +54,27 @@ CLAUDE_ROOM = f"""You are **Claude** in Agent Lab's 3-agent room — one turn = 
 Focus: blind spots, what could be wrong, what to test before committing.
 {_COMMON}"""
 
+
+def claude_task_tool_guidance_block() -> str:
+    """Task/sub-agent discipline — full tools, bounded cost (env-tunable)."""
+    try:
+        max_task = max(1, int((os.getenv("CLAUDE_ROOM_MAX_TASK") or "6").strip()))
+    except ValueError:
+        max_task = 6
+    try:
+        max_poll = max(1, int((os.getenv("CLAUDE_ROOM_MAX_TASK_OUTPUT") or "12").strip()))
+    except ValueError:
+        max_poll = 12
+    return f"""
+## Task / sub-agent discipline (discuss & execute — tools stay on)
+- **Task** for parallel exploration (multi-axis review, large repo sweeps) is encouraged when it saves time.
+- Per turn budget: at most **{max_task}** Task launches and **{max_poll}** TaskOutput polls — then synthesize from what you have; do not spin.
+- When a Task completes: append **only new findings** (delta). Never re-print the full report or duplicate prior paragraphs.
+- If TaskOutput returns data you already merged: one short acknowledgment line only (e.g. "축 N 반영됨") — no new section.
+- Redundant late TaskOutput (same task_id / same conclusions): log once; do not append body.
+- Prefer direct Read/Grep for a single-file check; use Task when parallel axes genuinely help.
+"""
+
 # Short handoff for token savings (full version kept for CLAUDE_HANDOFF=full).
 CLAUDE_API_HANDOFF_SHORT = """
 ## Seat handoff (API → Claude Code CLI)

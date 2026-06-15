@@ -53,6 +53,22 @@ def parse_interaction_update(update: Any) -> list[StreamEvent]:
             return []
         return [("text", {"text": text})]
 
+    if utype == "thinking-delta":
+        text = str(getattr(update, "text", "") or "")
+        if not text and isinstance(update, Mapping):
+            text = str(update.get("text") or "")
+        if text:
+            return [("text", {"text": text})]
+        return []
+
+    if utype == "summary":
+        summary = str(getattr(update, "summary", "") or "")
+        if not summary and isinstance(update, Mapping):
+            summary = str(update.get("summary") or "")
+        if summary:
+            return [("text", {"text": summary})]
+        return []
+
     if utype == "token-delta":
         return []
 
@@ -102,19 +118,32 @@ def parse_interaction_update(update: Any) -> list[StreamEvent]:
 
 def parse_conversation_step(step: Any) -> list[StreamEvent]:
     """Map Cursor SDK ``on_step`` events to Room stream events."""
-    label = format_conversation_step(step)
-    if not label:
-        return []
     stype = _update_type(step)
+    if stype == "assistantMessage":
+        msg = getattr(step, "message", None)
+        text = ""
+        if msg is not None:
+            text = str(getattr(msg, "text", "") or "")
+            if not text and isinstance(msg, Mapping):
+                text = str(msg.get("text") or "")
+        if text.strip():
+            return [("text", {"text": chunk}) for chunk in chunk_text(text, chunk_size=48)]
     if stype == "toolCall":
         msg = getattr(step, "message", None) or {}
         if isinstance(msg, Mapping):
             tool, args = _tool_payload(msg)
+            label = format_conversation_step(step) or format_tool_activity_line(
+                tool=tool,
+                args=str(args.get("target") or ""),
+            )
             return [
                 ("tool_start", {"tool": tool, "args": args}),
-                ("activity", {"text": format_tool_activity_line(tool=tool, args=args.get("target", "")) or label}),
+                ("activity", {"text": label or f"[tool · {tool}]"}),
             ]
-    return [("activity", {"text": label})]
+    label = format_conversation_step(step)
+    if label:
+        return [("activity", {"text": label})]
+    return []
 
 
 def parse_stream_update(update: Any, *, from_step: bool = False) -> list[StreamEvent]:
@@ -131,6 +160,21 @@ def _codex_agent_message(item: Mapping[str, Any]) -> str | None:
         if isinstance(raw, str) and raw.strip():
             return raw.strip()
     return None
+
+
+def _codex_item_text_events(item: Mapping[str, Any]) -> list[StreamEvent]:
+    item_type = str(item.get("type") or "")
+    if item_type == "agent_message":
+        msg = _codex_agent_message(item)
+        if msg:
+            return [("text", {"text": chunk}) for chunk in chunk_text(msg, chunk_size=32)]
+    if item_type in ("reasoning", "reasoning_summary", "reasoning_text"):
+        for key in ("text", "content", "summary"):
+            raw = item.get(key)
+            if isinstance(raw, str) and raw.strip():
+                body = raw.strip()
+                return [("text", {"text": chunk}) for chunk in chunk_text(body, chunk_size=32)]
+    return []
 
 
 def parse_codex_json_event(event: Mapping[str, Any]) -> list[StreamEvent]:
@@ -161,11 +205,10 @@ def parse_codex_json_event(event: Mapping[str, Any]) -> list[StreamEvent]:
             )
         return events
 
-    if typ == "item.completed" and item_type == "agent_message":
-        msg = _codex_agent_message(item)
-        if not msg:
-            return []
-        return [("text", {"text": chunk}) for chunk in chunk_text(msg, chunk_size=32)]
+    if typ in ("item.completed", "item.updated"):
+        text_events = _codex_item_text_events(item)
+        if text_events:
+            return text_events
 
     label = codex_event_label(dict(event))
     if label:
@@ -195,26 +238,39 @@ def parse_claude_json_event(event: Mapping[str, Any]) -> list[StreamEvent]:
     if typ == "stream_event":
         inner = event.get("event") if isinstance(event.get("event"), Mapping) else {}
         delta = inner.get("delta") if isinstance(inner.get("delta"), Mapping) else {}
-        if delta.get("type") == "text_delta":
+        delta_type = str(delta.get("type") or "")
+        if delta_type == "text_delta":
             text = str(delta.get("text") or "")
             if text:
                 return [("text", {"text": text})]
+        if delta_type == "thinking_delta":
+            text = str(delta.get("thinking") or "")
+            if text:
+                return [("activity", {"text": text[:500]})]
         return []
 
     if typ == "assistant":
         message = event.get("message") if isinstance(event.get("message"), Mapping) else {}
         events: list[StreamEvent] = []
         for block in _claude_content_blocks(message):
-            if block.get("type") != "tool_use":
+            btyp = str(block.get("type") or "")
+            if btyp == "tool_use":
+                tool = str(block.get("name") or "tool")
+                inp = block.get("input") if isinstance(block.get("input"), Mapping) else {}
+                target = _claude_tool_target(inp)
+                events.append(
+                    ("tool_start", {"tool": tool, "args": {"target": target} if target else {}}),
+                )
+                line = format_tool_activity_line(tool=tool, args=target) or f"[tool · {tool}]"
+                events.append(("activity", {"text": line}))
                 continue
-            tool = str(block.get("name") or "tool")
-            inp = block.get("input") if isinstance(block.get("input"), Mapping) else {}
-            target = _claude_tool_target(inp)
-            events.append(
-                ("tool_start", {"tool": tool, "args": {"target": target} if target else {}}),
-            )
-            line = format_tool_activity_line(tool=tool, args=target) or f"[tool · {tool}]"
-            events.append(("activity", {"text": line}))
+            if btyp == "text":
+                text = str(block.get("text") or "")
+                if text:
+                    events.extend(
+                        ("text", {"text": chunk})
+                        for chunk in chunk_text(text, chunk_size=48)
+                    )
         return events
 
     if typ == "user":

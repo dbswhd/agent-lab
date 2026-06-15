@@ -276,6 +276,10 @@ def session_detail(session_id: str) -> dict[str, Any]:
         run_json = json.loads((folder / "run.json").read_text(encoding="utf-8"))
         gc_stale_worktrees(folder, run_json)
 
+    from agent_lab.room_live_log import read_live_room_log
+
+    live_log = read_live_room_log(folder)
+
     return {
         "id": session_id,
         "topic": read("topic.txt") or meta.get("topic", ""),
@@ -283,6 +287,7 @@ def session_detail(session_id: str) -> dict[str, Any]:
         "transcript_md": read("transcript.md"),
         "meta": meta,
         "chat": chat,
+        "live_log": live_log,
         "run": run_json,
         "attachments": list_attachment_names(folder),
         "observability": observability_snapshot(run_json),

@@ -633,6 +633,8 @@ def _run_codex(
         )
 
     if proc.returncode not in (0, None) and not outcome.limit_hit:
+        if is_cancelled():
+            raise RoomRunCancelled("run cancelled by user")
         detail = _format_exec_error(
             outcome.stderr,
             outcome.streamed_message or "",
@@ -683,6 +685,7 @@ def invoke(
             proxy_user,
             room_turn=room_turn,
             on_activity=on_activity,
+            on_bridge_event=on_bridge_event,
         )
 
     codex = resolve_codex_bin()

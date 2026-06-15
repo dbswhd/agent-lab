@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import Future, ThreadPoolExecutor, wait, FIRST_COMPLETED
 from pathlib import Path
 from typing import Any
 
 from agent_lab.agents.registry import AgentId, available_agents
 from agent_lab.room_turn_state import sync_run_meta_turn_state
-from agent_lab.run_control import RoomRunCancelled, check_cancelled
+from agent_lab.run_control import (
+    RoomRunCancelled,
+    check_cancelled,
+    is_cancelled,
+    terminate_active_children,
+)
 from agent_lab.room_messages import (
     ChatMessage,
     DEFAULT_AGENT_PARALLEL_ROUNDS,
@@ -26,6 +31,29 @@ from agent_lab.room_agent_invoke import (
     _teammate_idle_peer_message,
 )
 from agent_lab.room_session_persist import _session_context, load_session_messages
+
+
+def _collect_parallel_futures(executor: ThreadPoolExecutor, futures: set[Future[Any]]) -> list[Any]:
+    """Collect agent futures; cooperative cancel must not block on slow siblings."""
+    results: list[Any] = []
+    pending = set(futures)
+    try:
+        while pending:
+            check_cancelled()
+            done, pending = wait(pending, timeout=0.5, return_when=FIRST_COMPLETED)
+            if not done:
+                continue
+            for fut in done:
+                results.append(fut.result())
+        return results
+    except RoomRunCancelled:
+        terminate_active_children()
+        raise
+    finally:
+        if is_cancelled():
+            executor.shutdown(wait=False, cancel_futures=True)
+        else:
+            executor.shutdown(wait=True, cancel_futures=False)
 
 
 def run_parallel_round(
@@ -73,32 +101,30 @@ def run_parallel_round(
         check_cancelled()
         thread = list(messages)
         if parallel_batch:
-            with ThreadPoolExecutor(max_workers=len(parallel_batch)) as pool:
-                futures = {
-                    pool.submit(
-                        _invoke_agent_for_round,
-                        aid,
-                        topic=topic,
-                        thread=messages,
-                        parallel_round=parallel_round,
-                        permissions=permissions,
-                        review_mode=review_mode,
-                        review_advocate=review_advocate,
-                        plan_md=plan_md,
-                        run_meta=run_meta,
-                        on_event=on_event,
-                        context_log=context_log,
-                        efficiency_mode=efficiency_mode,
-                        human_turn_index=human_turn_index,
-                    ): aid
-                    for aid in parallel_batch
-                }
-                try:
-                    for fut in as_completed(futures):
-                        check_cancelled()
-                        replies.append(fut.result())
-                except RoomRunCancelled:
-                    pass
+            executor = ThreadPoolExecutor(max_workers=len(parallel_batch))
+            futures = {
+                executor.submit(
+                    _invoke_agent_for_round,
+                    aid,
+                    topic=topic,
+                    thread=messages,
+                    parallel_round=parallel_round,
+                    permissions=permissions,
+                    review_mode=review_mode,
+                    review_advocate=review_advocate,
+                    plan_md=plan_md,
+                    run_meta=run_meta,
+                    on_event=on_event,
+                    context_log=context_log,
+                    efficiency_mode=efficiency_mode,
+                    human_turn_index=human_turn_index,
+                )
+                for aid in parallel_batch
+            }
+            try:
+                replies.extend(_collect_parallel_futures(executor, futures))
+            except RoomRunCancelled:
+                pass
             thread = list(messages) + replies
         for aid in lead_tail:
             check_cancelled()
@@ -181,29 +207,30 @@ def run_parallel_round(
             pass
         return replies
 
-    with ThreadPoolExecutor(max_workers=len(ordered)) as pool:
-        futures = {
-            pool.submit(
-                _invoke_agent_for_round,
-                aid,
-                topic=topic,
-                thread=messages,
-                parallel_round=parallel_round,
-                permissions=permissions,
-                review_mode=review_mode,
-                review_advocate=review_advocate,
-                plan_md=plan_md,
-                run_meta=run_meta,
-                on_event=on_event,
-                context_log=context_log,
-                efficiency_mode=efficiency_mode,
-                human_turn_index=human_turn_index,
-            ): aid
-            for aid in ordered
-        }
-        for fut in as_completed(futures):
-            check_cancelled()
-            replies.append(fut.result())
+    executor = ThreadPoolExecutor(max_workers=len(ordered))
+    futures = {
+        executor.submit(
+            _invoke_agent_for_round,
+            aid,
+            topic=topic,
+            thread=messages,
+            parallel_round=parallel_round,
+            permissions=permissions,
+            review_mode=review_mode,
+            review_advocate=review_advocate,
+            plan_md=plan_md,
+            run_meta=run_meta,
+            on_event=on_event,
+            context_log=context_log,
+            efficiency_mode=efficiency_mode,
+            human_turn_index=human_turn_index,
+        )
+        for aid in ordered
+    }
+    try:
+        replies.extend(_collect_parallel_futures(executor, futures))
+    except RoomRunCancelled:
+        pass
     for aid in ordered:
         idle_peer = _teammate_idle_peer_message(aid, run_meta, parallel_round=parallel_round)
         if idle_peer:

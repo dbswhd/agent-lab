@@ -280,19 +280,30 @@ def _call_one_agent(
     streamed_live = False
     # Accumulate streamed text so a cancel can preserve the partial reply (issue D).
     streamed_parts: list[str] = []
+    from agent_lab.room_sse_stream import CumulativeTextStreamer
+
+    text_stream = CumulativeTextStreamer()
 
     def _bridge_event(kind: str, data: dict[str, Any]) -> None:
         nonlocal streamed_live
         if kind == "text":
-            chunk = str(data.get("text") or "")
-            if not chunk:
+            piece = str(data.get("text") or "")
+            if not piece:
                 return
-            streamed_live = True
-            streamed_parts.append(chunk)
-            _emit(
-                "agent_token",
-                {"agent": aid, "round": parallel_round, "text": chunk},
-            )
+            # Claude text_delta is incremental; Codex/Cursor often send cumulative snapshots.
+            if aid == "claude":
+                chunks = [piece]
+            else:
+                chunks = text_stream.feed(piece)
+            for chunk in chunks:
+                if not chunk:
+                    continue
+                streamed_live = True
+                streamed_parts.append(chunk)
+                _emit(
+                    "agent_token",
+                    {"agent": aid, "round": parallel_round, "text": chunk},
+                )
             return
         if kind == "tool_start":
             _emit(
@@ -531,6 +542,13 @@ def _call_one_agent(
         # the "[이번 턴 · 동료 발화]" header to their reply; left in, the whole
         # message is classified peer-only and vanishes from the transcript.
         body = strip_peer_header_echo(body)
+        if streamed_live and streamed_parts:
+            from agent_lab.room_sse_stream import choose_agent_reply_body
+
+            body = choose_agent_reply_body(
+                streamed="".join(streamed_parts),
+                final_body=body,
+            )
 
         msg = ChatMessage(
             role="agent",

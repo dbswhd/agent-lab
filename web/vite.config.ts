@@ -9,7 +9,7 @@ const isTauri = Boolean(process.env.TAURI_ENV_PLATFORM);
 function agentLabDevApi() {
   return {
     name: "agent-lab-dev-api",
-    async configureServer() {
+    async buildStart() {
       if (process.env.VITEST || process.env.VITE_SKIP_API) return;
       await ensureDevApi();
     },
@@ -54,6 +54,15 @@ export default defineConfig({
         target: "http://127.0.0.1:8765",
         changeOrigin: true,
         ws: true,
+        configure: (proxy) => {
+          proxy.on("proxyRes", (proxyRes) => {
+            const ct = String(proxyRes.headers["content-type"] ?? "");
+            if (ct.includes("text/event-stream")) {
+              proxyRes.headers["cache-control"] = "no-cache";
+              proxyRes.headers["x-accel-buffering"] = "no";
+            }
+          });
+        },
       },
     },
   },

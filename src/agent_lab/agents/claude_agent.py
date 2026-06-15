@@ -3,7 +3,11 @@ from pathlib import Path
 from typing import Any
 
 from agent_lab import claude_cli
-from agent_lab.agents.prompts import CLAUDE_ROOM, claude_handoff_block
+from agent_lab.agents.prompts import (
+    CLAUDE_ROOM,
+    claude_handoff_block,
+    claude_task_tool_guidance_block,
+)
 
 
 def is_available() -> bool:
@@ -22,7 +26,7 @@ def respond(
     request_structured_envelope: bool = False,
     inbox_mcp: bool = False,
 ) -> str:
-    parts = [system or CLAUDE_ROOM]
+    parts = [system or CLAUDE_ROOM, claude_task_tool_guidance_block()]
     handoff = claude_handoff_block()
     if handoff:
         parts.append(handoff)

@@ -318,6 +318,10 @@ async def create_room_run(
 
         def on_event(typ: str, payload: dict[str, Any]) -> None:
             event_q.put({"type": typ, **payload})
+            if folder is not None:
+                from agent_lab.room_live_log import append_live_room_event
+
+                append_live_room_event(folder, typ, payload)
 
         def worker() -> None:
             if not try_begin_run():
@@ -333,6 +337,10 @@ async def create_room_run(
                     )
                     event_q.put(None)
                     return
+            if folder is not None:
+                from agent_lab.room_live_log import clear_live_room_log
+
+                clear_live_room_log(folder)
             try:
                 if folder is not None:
                     patch_run_mode_contract(folder, mode_contract)
@@ -382,6 +390,10 @@ async def create_room_run(
             except Exception as e:
                 result["error"] = e
             finally:
+                from agent_lab.run_control import is_cancelled
+
+                if is_cancelled():
+                    event_q.put({"type": "run_cancelled", "message": "답변 중지됨"})
                 end_run()
                 event_q.put(None)
 

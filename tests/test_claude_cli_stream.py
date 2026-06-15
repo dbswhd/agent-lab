@@ -65,6 +65,10 @@ def test_claude_invoke_stream_json_emits_bridge_events(monkeypatch, tmp_path):
     )
     monkeypatch.setattr("agent_lab.run_control.is_cancelled", lambda: False)
     monkeypatch.setattr(
+        "agent_lab.claude_cli.ensure_claude_headless_ready",
+        lambda **_kw: None,
+    )
+    monkeypatch.setattr(
         "agent_lab.agent_hooks_materializer.native_claude_hooks_overlay",
         lambda *_a, **_k: _NullCtx(),
     )
@@ -106,3 +110,204 @@ def test_claude_invoke_stream_json_emits_bridge_events(monkeypatch, tmp_path):
     )
     assert out == "Hello world"
     assert ("text", {"text": "Hello"}) in bridge
+
+
+def test_claude_stream_skips_assistant_text_after_text_delta(monkeypatch, tmp_path):
+    from agent_lab import claude_cli
+
+    fake_bin = tmp_path / "claude"
+    fake_bin.write_text("#!/bin/sh\n", encoding="utf-8")
+    fake_bin.chmod(0o755)
+    monkeypatch.setenv("CLAUDE_BIN", str(fake_bin))
+    monkeypatch.setattr(claude_cli, "resolve_claude_roots", lambda _perms: [])
+    monkeypatch.setattr(
+        "agent_lab.workspace_roots.discuss_primary_workspace",
+        lambda _perms: tmp_path,
+    )
+    monkeypatch.setattr(
+        "agent_lab.run_control.register_child_process",
+        lambda _proc: None,
+    )
+    monkeypatch.setattr(
+        "agent_lab.run_control.unregister_child_process",
+        lambda _proc: None,
+    )
+    monkeypatch.setattr("agent_lab.run_control.is_cancelled", lambda: False)
+    monkeypatch.setattr(
+        "agent_lab.claude_cli.ensure_claude_headless_ready",
+        lambda **_kw: None,
+    )
+    monkeypatch.setattr(
+        "agent_lab.agent_hooks_materializer.native_claude_hooks_overlay",
+        lambda *_a, **_k: _NullCtx(),
+    )
+
+    lines = [
+        json.dumps(
+            {
+                "type": "stream_event",
+                "event": {"delta": {"type": "text_delta", "text": "Hello world"}},
+            }
+        ),
+        json.dumps(
+            {
+                "type": "assistant",
+                "message": {"content": [{"type": "text", "text": "Hello world"}]},
+            }
+        ),
+        json.dumps({"type": "result", "result": "Hello world"}),
+    ]
+
+    def fake_popen(cmd, **_kwargs):
+        return _StreamProc(lines)
+
+    def fake_select(rlist, wlist, xlist, timeout):
+        if rlist and getattr(rlist[0], "_lines", None) is not None:
+            proc = rlist[0]
+            if proc._idx < len(proc._lines):
+                return (rlist, [], [])
+            proc.returncode = proc._final_rc
+            return ([], [], [])
+        return ([], [], [])
+
+    monkeypatch.setattr("select.select", fake_select)
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+    bridge: list[tuple[str, dict]] = []
+
+    claude_cli.invoke(
+        "sys",
+        "user",
+        on_bridge_event=lambda k, d: bridge.append((k, d)),
+    )
+    text_events = [d["text"] for k, d in bridge if k == "text"]
+    assert text_events == ["Hello world"]
+    assert "".join(text_events) == "Hello world"
+
+
+def test_claude_stream_raises_cancelled_when_killed_after_cancel(monkeypatch, tmp_path):
+    from agent_lab import claude_cli
+
+    fake_bin = tmp_path / "claude"
+    fake_bin.write_text("#!/bin/sh\n", encoding="utf-8")
+    fake_bin.chmod(0o755)
+    monkeypatch.setenv("CLAUDE_BIN", str(fake_bin))
+    monkeypatch.setattr(claude_cli, "resolve_claude_roots", lambda _perms: [])
+    monkeypatch.setattr(
+        "agent_lab.workspace_roots.discuss_primary_workspace",
+        lambda _perms: tmp_path,
+    )
+    monkeypatch.setattr(
+        "agent_lab.run_control.register_child_process",
+        lambda _proc: None,
+    )
+    monkeypatch.setattr(
+        "agent_lab.run_control.unregister_child_process",
+        lambda _proc: None,
+    )
+    monkeypatch.setattr(
+        "agent_lab.claude_cli.ensure_claude_headless_ready",
+        lambda **_kw: None,
+    )
+    monkeypatch.setattr(
+        "agent_lab.agent_hooks_materializer.native_claude_hooks_overlay",
+        lambda *_a, **_k: _NullCtx(),
+    )
+
+    class _KilledProc(_StreamProc):
+        def readline(self) -> str:
+            self.returncode = -9
+            return ""
+
+    def fake_popen(cmd, **_kwargs):
+        return _KilledProc([])
+
+    def fake_select(rlist, wlist, xlist, timeout):
+        from agent_lab.run_control import request_cancel
+
+        request_cancel()
+        return (rlist, [], [])
+
+    monkeypatch.setattr("select.select", fake_select)
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+
+    import pytest
+    from agent_lab.run_control import RoomRunCancelled, clear_cancel
+
+    clear_cancel()
+    with pytest.raises(RoomRunCancelled):
+        claude_cli.invoke("sys", "user", on_bridge_event=lambda _k, _d: None)
+    clear_cancel()
+
+
+class _EofSpinProc:
+    """CLI exits without a result line; select keeps reporting stdout readable."""
+
+    def __init__(self) -> None:
+        self.returncode: int | None = None
+        self.stdout = self
+        self.stderr = SimpleNamespace(read=lambda: "")
+
+    def poll(self) -> int | None:
+        return self.returncode
+
+    def readline(self) -> str:
+        if self.returncode is None:
+            self.returncode = 0
+        return ""
+
+    def wait(self, timeout: float | None = None) -> int:
+        if self.returncode is None:
+            self.returncode = 0
+        return self.returncode
+
+    def kill(self) -> None:
+        if self.returncode is None:
+            self.returncode = -9
+
+
+def test_claude_stream_exits_when_child_eof_without_result(monkeypatch, tmp_path):
+    """Avoid busy-loop when claude exits but stdout stays select-readable."""
+    from agent_lab import claude_cli
+
+    fake_bin = tmp_path / "claude"
+    fake_bin.write_text("#!/bin/sh\n", encoding="utf-8")
+    fake_bin.chmod(0o755)
+    monkeypatch.setenv("CLAUDE_BIN", str(fake_bin))
+    monkeypatch.setattr(claude_cli, "resolve_claude_roots", lambda _perms: [])
+    monkeypatch.setattr(
+        "agent_lab.workspace_roots.discuss_primary_workspace",
+        lambda _perms: tmp_path,
+    )
+    monkeypatch.setattr(
+        "agent_lab.run_control.register_child_process",
+        lambda _proc: None,
+    )
+    monkeypatch.setattr(
+        "agent_lab.run_control.unregister_child_process",
+        lambda _proc: None,
+    )
+    monkeypatch.setattr("agent_lab.run_control.is_cancelled", lambda: False)
+    monkeypatch.setattr(
+        "agent_lab.claude_cli.ensure_claude_headless_ready",
+        lambda **_kw: None,
+    )
+    monkeypatch.setattr(
+        "agent_lab.agent_hooks_materializer.native_claude_hooks_overlay",
+        lambda *_a, **_k: _NullCtx(),
+    )
+
+    proc = _EofSpinProc()
+
+    def fake_popen(cmd, **_kwargs):
+        return proc
+
+    def fake_select(rlist, _wlist, _xlist, _timeout):
+        return (rlist, [], [])
+
+    monkeypatch.setattr("select.select", fake_select)
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+
+    import pytest
+
+    with pytest.raises(RuntimeError, match="empty result"):
+        claude_cli.invoke("sys", "user", on_bridge_event=lambda _k, _d: None)

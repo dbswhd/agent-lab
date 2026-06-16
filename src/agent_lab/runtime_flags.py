@@ -96,6 +96,12 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         default="1",
     ),
     FlagDef(
+        "AGENT_LAB_CRASH_RECOVERY",
+        "feature",
+        "Boot-time reconcile of crashed in-flight merges (G3)",
+        default="1",
+    ),
+    FlagDef(
         "AGENT_LAB_JUDGE_LIVE",
         "feature",
         "Live LLM-as-judge quality eval in score_session (default off)",

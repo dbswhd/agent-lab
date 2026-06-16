@@ -35,6 +35,13 @@ _VALID_EXECUTION_STATUSES = frozenset(
         "failed",
         "reverted",
         "cancelled",
+        # Canonical execution statuses also emitted by plan_execute but previously
+        # absent from this set (shipped regression baselines carry them); crash
+        # recovery's patch_run_meta validates the whole run, so these must be valid.
+        "completed",
+        "rejected",
+        "blocked_isolation",
+        "superseded",
     }
 )
 

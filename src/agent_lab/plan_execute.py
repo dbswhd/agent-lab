@@ -374,6 +374,67 @@ def _update_execution_row(
     patch_run_meta(folder, _update)
 
 
+def _arm_merge_checkpoint(
+    folder: Path,
+    *,
+    execution_id: str,
+    target: dict[str, Any],
+    op: str,
+    worktree: ExecWorktree | None = None,
+    exec_commit_sha: str | None = None,
+) -> None:
+    """Persist a write-ahead checkpoint to run.json *before* an irreversible merge (G3).
+
+    The merge (``git merge --no-ff`` on the base branch) is irreversible, but the
+    ``status="merged"`` persist only happens *after* it. A crash in between leaves
+    base advanced while run.json still reads ``pending_approval`` with no breadcrumb.
+    This durably records — on its own ``patch_run_meta`` flush, not the end-of-function
+    one — enough git anchors (base HEAD before, exec tip, branch, worktree) for the
+    boot-time ``crash_recovery`` scan to reconcile run.json against git ground-truth.
+    """
+    ew = worktree if worktree is not None else _exec_worktree_from_execution(target)
+    base_sha_before = ew.base_sha
+    try:
+        head = subprocess.run(
+            ["git", "-C", str(ew.git_root), "rev-parse", ew.base_branch],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if head.returncode == 0 and head.stdout.strip():
+            base_sha_before = head.stdout.strip()
+    except Exception:
+        pass
+    checkpoint = {
+        "phase": "merging",
+        "op": op,
+        "started_at": _now(),
+        "git_root": str(ew.git_root),
+        "worktree_path": str(ew.worktree_path),
+        "base_branch": ew.base_branch,
+        "base_sha_before": base_sha_before,
+        "exec_branch": ew.branch,
+        "exec_commit_sha": str(exec_commit_sha or target.get("exec_commit_sha") or ""),
+        "prev_status": target.get("status"),
+        "prev_merge": dict(target.get("merge") or {}),
+        "snapshot_id": str(target.get("snapshot_id") or target.get("id") or ""),
+    }
+    target["checkpoint"] = checkpoint
+
+    def _patch(run: dict[str, Any]) -> dict[str, Any]:
+        for row in run.get("executions") or []:
+            if isinstance(row, dict) and row.get("id") == execution_id:
+                row["checkpoint"] = checkpoint
+        return run
+
+    patch_run_meta(folder, _patch)
+
+
+def _clear_merge_checkpoint(target: dict[str, Any]) -> None:
+    """Drop the in-memory checkpoint; the end-of-function persist removes it from disk."""
+    target.pop("checkpoint", None)
+
+
 def _execution_verify_action(target: dict[str, Any]) -> dict[str, Any]:
     return {
         "what": target.get("action_what"),
@@ -1739,6 +1800,7 @@ def resolve_execution(
         if retry_merge and target.get("isolation_effective") == "worktree":
             merge = dict(target.get("merge") or {})
             merge["attempted_at"] = completed
+            _arm_merge_checkpoint(folder, execution_id=execution_id, target=target, op="merge")
             try:
                 merge_result = merge_exec_branch(
                     _exec_worktree_from_execution(target),
@@ -1753,6 +1815,7 @@ def resolve_execution(
                 target["merge"] = merge
                 target["status"] = "merge_conflict"
                 target["completed_at"] = merge["completed_at"]
+                _clear_merge_checkpoint(target)
                 _notify_merge_conflict_mission(folder, target)
             else:
                 merge.update(merge_result.to_dict())
@@ -1760,6 +1823,7 @@ def resolve_execution(
                 target["merge"] = merge
                 target["status"] = "merged"
                 target["completed_at"] = merge["completed_at"]
+                _clear_merge_checkpoint(target)
                 from agent_lab.evidence_sync import on_merge_approved
 
                 on_merge_approved(
@@ -1832,6 +1896,7 @@ def resolve_execution(
         if target.get("isolation_effective") == "worktree":
             merge = dict(target.get("merge") or {})
             merge["attempted_at"] = completed
+            _arm_merge_checkpoint(folder, execution_id=execution_id, target=target, op="merge")
             try:
                 merge_result = merge_exec_branch(
                     _exec_worktree_from_execution(target),
@@ -1846,6 +1911,7 @@ def resolve_execution(
                 target["merge"] = merge
                 target["status"] = "merge_conflict"
                 target["completed_at"] = merge["completed_at"]
+                _clear_merge_checkpoint(target)
                 _notify_merge_conflict_mission(folder, target)
             else:
                 merge.update(merge_result.to_dict())
@@ -1853,6 +1919,7 @@ def resolve_execution(
                 target["merge"] = merge
                 target["status"] = "merged"
                 target["completed_at"] = merge["completed_at"]
+                _clear_merge_checkpoint(target)
                 from agent_lab.evidence_sync import on_merge_approved
 
                 on_merge_approved(
@@ -2013,6 +2080,9 @@ def confirm_merge_execution(
     )
     completed = _now()
     ew = _exec_worktree_from_execution(target)
+    _arm_merge_checkpoint(
+        folder, execution_id=execution_id, target=target, op="confirm", worktree=ew
+    )
     result = confirm_exec_merge(ew, session_folder=folder, exec_id=execution_id)
     snapshot_id = str(target.get("snapshot_id") or target.get("id") or "")
     if snapshot_id:
@@ -2024,6 +2094,7 @@ def confirm_merge_execution(
     target["merge"] = merge
     target["status"] = "merged"
     target["completed_at"] = completed
+    _clear_merge_checkpoint(target)
     from agent_lab.evidence_sync import on_merge_approved
 
     on_merge_approved(
@@ -2140,6 +2211,14 @@ def reverify_merged_execution(
             "attempted_at": _now(),
             "completed_at": None,
         }
+        _arm_merge_checkpoint(
+            folder,
+            execution_id=execution_id,
+            target=target,
+            op="repair_merge",
+            worktree=ew,
+            exec_commit_sha=repair_commit,
+        )
         try:
             merge_result = merge_exec_branch(
                 ew,
@@ -2156,6 +2235,7 @@ def reverify_merged_execution(
             target["merge"] = merge
             target["status"] = "merge_conflict"
             target["verify_retries"] = attempt
+            _clear_merge_checkpoint(target)
             repair["status"] = "merge_conflict"
             repair["merge"] = merge
             repair["completed_at"] = merge["completed_at"]
@@ -2175,6 +2255,7 @@ def reverify_merged_execution(
         target["merge"] = merge
         target["status"] = "merged"
         target["completed_at"] = merge["completed_at"]
+        _clear_merge_checkpoint(target)
         evidence = _record_verify_after_merge(folder, target, verify_retries=attempt)
         repair["status"] = "merged"
         repair["merge"] = merge

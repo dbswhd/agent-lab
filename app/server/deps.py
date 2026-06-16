@@ -280,6 +280,13 @@ def session_detail(session_id: str) -> dict[str, Any]:
 
     live_log = read_live_room_log(folder)
 
+    from agent_lab.cost_ledger import budget_status
+
+    cost = {
+        "ledger": run_json.get("cost_ledger") if isinstance(run_json.get("cost_ledger"), dict) else None,
+        "budget": budget_status(run_json),
+    }
+
     return {
         "id": session_id,
         "topic": read("topic.txt") or meta.get("topic", ""),
@@ -289,6 +296,7 @@ def session_detail(session_id: str) -> dict[str, Any]:
         "chat": chat,
         "live_log": live_log,
         "run": run_json,
+        "cost": cost,
         "attachments": list_attachment_names(folder),
         "observability": observability_snapshot(run_json),
     }

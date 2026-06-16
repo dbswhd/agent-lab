@@ -1325,6 +1325,10 @@ def run_dry_run(
     }
     if worktree_hooks_block:
         execution["worktree_hooks"] = worktree_hooks_block
+    from agent_lab.diff_safety import diff_safety_enabled, scan_diff
+
+    if diff_safety_enabled():
+        execution["safety_scan"] = scan_diff(diff)
     if supersedes_execution_id:
         execution["revision_of"] = supersedes_execution_id
     if revise_request:

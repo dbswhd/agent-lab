@@ -305,6 +305,19 @@ def _call_one_agent(
                     {"agent": aid, "round": parallel_round, "text": chunk},
                 )
             return
+        if kind == "usage":
+            if run_meta is not None:
+                from agent_lab.cost_ledger import record_agent_usage, usage_from_bridge
+
+                usage = usage_from_bridge(data)
+                if usage is not None:
+                    record_agent_usage(
+                        run_meta,
+                        str(aid),
+                        usage,
+                        turn=_human_turn_number(human_turn_index),
+                    )
+            return
         if kind == "tool_start":
             _emit(
                 "tool_start",

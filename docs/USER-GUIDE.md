@@ -1147,6 +1147,9 @@ Path-like values are home-masked in API/CLI output. Undocumented `AGENT_LAB_*` v
 | `AGENT_LAB_F2_ARTIFACT_ONLY` | specialist R2 artifact context |
 | `AGENT_LAB_INBOX_MODE` | sync vs soft inbox |
 | `AGENT_LAB_ORACLE_LIVE` | execute Oracle live |
+| `AGENT_LAB_MISSION_BUDGET_USD` | mission USD ceiling → circuit-breaker pause (empty=unlimited) |
+| `AGENT_LAB_BUDGET_WARN_PCT` | budget warn threshold % (default 80) |
+| `AGENT_LAB_DIFF_SAFETY` | pre-merge diff secret/danger scanner (default on) |
 
 ### Room / consensus
 

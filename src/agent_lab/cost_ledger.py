@@ -1,0 +1,195 @@
+"""Real token/USD accounting for room missions (G1 economics layer).
+
+Distinct from ``token_budget.py`` (which tracks *payload character* budget for
+context trimming). This module records *authoritative* token + cost numbers
+extracted from each agent bridge response and accumulates them into
+``run.json.cost_ledger``.
+
+Mirrors the ``token_budget.record_run_token_budget`` pattern: it mutates the
+in-memory ``run_meta`` dict in place and lets the normal turn-boundary persist
+flow write it to disk (writing mid-turn via ``patch_run_meta`` would race with
+the turn-end ``_write_session_files`` rebuild and be clobbered).
+"""
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass
+from typing import Any
+
+from agent_lab.agent_models import estimate_cost_usd
+
+
+@dataclass
+class AgentUsage:
+    """One agent invocation's authoritative usage, normalized across bridges."""
+
+    tokens_in: int = 0
+    tokens_out: int = 0
+    cache_read: int = 0
+    cache_creation: int = 0
+    usd: float | None = None  # provider-reported cost; None → estimate via pricing
+    model: str | None = None
+
+    def resolved_usd(self) -> float:
+        if self.usd is not None:
+            return float(self.usd)
+        return estimate_cost_usd(
+            self.model,
+            tokens_in=self.tokens_in,
+            tokens_out=self.tokens_out,
+            cache_read=self.cache_read,
+        )
+
+
+def _as_int(value: Any) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
+def usage_from_bridge(data: dict[str, Any] | None) -> AgentUsage | None:
+    """Normalize a bridge ``usage`` event payload into ``AgentUsage``.
+
+    Accepts both the Anthropic ``usage`` shape (``input_tokens`` /
+    ``output_tokens`` / ``cache_read_input_tokens`` /
+    ``cache_creation_input_tokens``) and a pre-flattened shape. Returns ``None``
+    when no token/cost signal is present.
+    """
+    if not isinstance(data, dict):
+        return None
+    usd_raw = data.get("usd")
+    if usd_raw is None:
+        usd_raw = data.get("total_cost_usd")
+    usage = AgentUsage(
+        tokens_in=_as_int(data.get("tokens_in") or data.get("input_tokens")),
+        tokens_out=_as_int(data.get("tokens_out") or data.get("output_tokens")),
+        cache_read=_as_int(
+            data.get("cache_read") or data.get("cache_read_input_tokens")
+        ),
+        cache_creation=_as_int(
+            data.get("cache_creation") or data.get("cache_creation_input_tokens")
+        ),
+        usd=float(usd_raw) if usd_raw is not None else None,
+        model=(str(data["model"]) if data.get("model") else None),
+    )
+    if not any(
+        (
+            usage.tokens_in,
+            usage.tokens_out,
+            usage.cache_read,
+            usage.cache_creation,
+            usage.usd,
+        )
+    ):
+        return None
+    return usage
+
+
+def _empty_agent_entry() -> dict[str, Any]:
+    return {
+        "calls": 0,
+        "tokens_in": 0,
+        "tokens_out": 0,
+        "cache_read": 0,
+        "cache_creation": 0,
+        "usd": 0.0,
+    }
+
+
+def _recompute_cumulative(ledger: dict[str, Any]) -> None:
+    by_agent = ledger.get("by_agent")
+    if not isinstance(by_agent, dict):
+        by_agent = {}
+    cumulative = _empty_agent_entry()
+    for entry in by_agent.values():
+        if not isinstance(entry, dict):
+            continue
+        for key in cumulative:
+            cumulative[key] += entry.get(key, 0) or 0
+    cumulative["usd"] = round(cumulative["usd"], 6)
+    ledger["cumulative"] = cumulative
+    total_in = cumulative["tokens_in"]
+    ledger["cache_hit_rate"] = (
+        round(cumulative["cache_read"] / total_in, 4) if total_in > 0 else 0.0
+    )
+
+
+def record_agent_usage(
+    run_meta: dict[str, Any] | None,
+    agent_id: str,
+    usage: AgentUsage | None,
+    *,
+    turn: int | None = None,
+) -> dict[str, Any] | None:
+    """Accumulate one agent call's usage into ``run_meta['cost_ledger']``.
+
+    Mutates ``run_meta`` in place (see module docstring) and returns the ledger.
+    No-op when ``run_meta`` or ``usage`` is missing.
+    """
+    if run_meta is None or usage is None:
+        return None
+    ledger = run_meta.get("cost_ledger")
+    if not isinstance(ledger, dict):
+        ledger = {"by_agent": {}, "cumulative": _empty_agent_entry(), "cache_hit_rate": 0.0}
+    by_agent = ledger.setdefault("by_agent", {})
+    entry = by_agent.get(agent_id)
+    if not isinstance(entry, dict):
+        entry = _empty_agent_entry()
+    entry["calls"] = entry.get("calls", 0) + 1
+    entry["tokens_in"] = entry.get("tokens_in", 0) + usage.tokens_in
+    entry["tokens_out"] = entry.get("tokens_out", 0) + usage.tokens_out
+    entry["cache_read"] = entry.get("cache_read", 0) + usage.cache_read
+    entry["cache_creation"] = entry.get("cache_creation", 0) + usage.cache_creation
+    entry["usd"] = round(entry.get("usd", 0.0) + usage.resolved_usd(), 6)
+    by_agent[agent_id] = entry
+    _recompute_cumulative(ledger)
+    if turn is not None:
+        ledger["updated_at_turn"] = int(turn)
+    run_meta["cost_ledger"] = ledger
+    return ledger
+
+
+def _budget_limit_usd() -> float | None:
+    raw = (os.getenv("AGENT_LAB_MISSION_BUDGET_USD") or "").strip()
+    if not raw:
+        return None
+    try:
+        limit = float(raw)
+    except ValueError:
+        return None
+    return limit if limit > 0 else None
+
+
+def _warn_pct() -> float:
+    raw = (os.getenv("AGENT_LAB_BUDGET_WARN_PCT") or "").strip()
+    try:
+        pct = float(raw)
+    except ValueError:
+        pct = 80.0
+    return pct if 0 < pct <= 100 else 80.0
+
+
+def budget_status(run_meta: dict[str, Any] | None) -> dict[str, Any]:
+    """Return mission budget status for the current cost_ledger.
+
+    ``limit_usd`` is None when ``AGENT_LAB_MISSION_BUDGET_USD`` is unset (no cap).
+    """
+    spent = 0.0
+    if isinstance(run_meta, dict):
+        ledger = run_meta.get("cost_ledger")
+        if isinstance(ledger, dict):
+            cumulative = ledger.get("cumulative")
+            if isinstance(cumulative, dict):
+                spent = float(cumulative.get("usd", 0.0) or 0.0)
+    limit = _budget_limit_usd()
+    warn_pct = _warn_pct()
+    over = limit is not None and spent >= limit
+    warn = limit is not None and spent >= limit * (warn_pct / 100.0)
+    return {
+        "limit_usd": limit,
+        "spent_usd": round(spent, 6),
+        "warn_pct": warn_pct,
+        "over": over,
+        "warn": warn,
+    }

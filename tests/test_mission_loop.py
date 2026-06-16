@@ -68,6 +68,39 @@ def session_folder(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return folder
 
 
+def test_maybe_advance_trips_circuit_breaker_when_budget_exceeded(
+    session_folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AGENT_LAB_MISSION_BUDGET_USD", "0.10")
+    enable_mission_loop(session_folder)
+    patch_run_meta(
+        session_folder,
+        lambda run: {**run, "cost_ledger": {"cumulative": {"usd": 0.25}}},
+    )
+    result = maybe_advance_mission(session_folder, scheduled=True)
+    assert result["skipped"] is True
+    assert result["reason"] == "budget_exceeded"
+    ml = read_run_meta(session_folder)["mission_loop"]
+    assert ml["circuit_breaker"] is True
+    assert ml["circuit_breaker_reason"] == "budget_exceeded"
+    assert ml["phase"] == "MISSION_PAUSED"
+
+
+def test_maybe_advance_under_budget_does_not_trip(
+    session_folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AGENT_LAB_MISSION_BUDGET_USD", "0.10")
+    enable_mission_loop(session_folder)
+    patch_run_meta(
+        session_folder,
+        lambda run: {**run, "cost_ledger": {"cumulative": {"usd": 0.02}}},
+    )
+    result = maybe_advance_mission(session_folder, scheduled=True)
+    assert result.get("reason") != "budget_exceeded"
+    ml = read_run_meta(session_folder)["mission_loop"]
+    assert ml.get("circuit_breaker") is not True
+
+
 def test_evaluate_plan_gate_ok() -> None:
     result = evaluate_plan_gate(_good_plan())
     assert result["status"] == "ok"

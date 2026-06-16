@@ -760,6 +760,20 @@ def maybe_advance_mission(
         return {"skipped": True, "reason": "mission_loop_disabled"}
     if ml.get("circuit_breaker"):
         return {"skipped": True, "reason": "circuit_breaker"}
+    from agent_lab.cost_ledger import budget_status
+
+    budget = budget_status(run)
+    if budget["over"]:
+        trigger_circuit_breaker(
+            folder,
+            reason="budget_exceeded",
+            inbox_prompt=(
+                f"Mission budget exceeded: spent ${budget['spent_usd']:.4f} of "
+                f"${budget['limit_usd']:.4f} cap. Resolve to resume (raise "
+                "AGENT_LAB_MISSION_BUDGET_USD then Discuss/Execute)."
+            ),
+        )
+        return {"skipped": True, "reason": "budget_exceeded", "budget": budget}
     if not _scheduled_autorun_allowed(run, ml, scheduled=scheduled):
         return {"skipped": True, "reason": "autorun_off"}
 

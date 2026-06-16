@@ -160,6 +160,24 @@ def _room_tasks_check(run: dict[str, Any], execution: dict[str, Any] | None) -> 
     }
 
 
+def _diff_safety_check(execution: dict[str, Any] | None) -> dict[str, Any]:
+    if execution is None:
+        return {"id": "diff_safety", "ok": True, "detail": "no pending execution"}
+    scan = execution.get("safety_scan")
+    if not isinstance(scan, dict):
+        return {"id": "diff_safety", "ok": True, "detail": "not scanned"}
+    from agent_lab.diff_safety import scan_summary
+
+    findings = scan.get("findings") or []
+    blocking = [f for f in findings if isinstance(f, dict) and f.get("severity") == "block"]
+    return {
+        "id": "diff_safety",
+        "ok": not blocking,
+        "detail": scan_summary(scan) if findings else "clean",
+        "findings": findings,
+    }
+
+
 def _pending_execution(run: dict[str, Any]) -> dict[str, Any] | None:
     for row in reversed(run.get("executions") or []):
         if not isinstance(row, dict):
@@ -182,6 +200,7 @@ def build_merge_checks(
         _oracle_check(pending),
         _open_blocks_check(run),
         _room_tasks_check(run, pending),
+        _diff_safety_check(pending),
     ]
     merge_disabled = False
     reason: str | None = None

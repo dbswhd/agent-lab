@@ -89,6 +89,12 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "Pre-merge diff secret/danger scanner (gates merge on findings)",
         default="1",
     ),
+    FlagDef(
+        "AGENT_LAB_TRACE",
+        "feature",
+        "OTel-lite span tracer → trace.jsonl (turn/agent/tool latency + tokens)",
+        default="1",
+    ),
     FlagDef("AGENT_LAB_ADVERSARIAL_LIVE", "feature", "Live Claude adversarial dry-run note"),
     FlagDef("AGENT_LAB_WISDOM_INDEX", "feature", "Force wisdom index (MB-10)"),
     FlagDef("AGENT_LAB_WISDOM_CROSS_SESSION", "feature", "Cross-session wisdom search"),

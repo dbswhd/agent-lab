@@ -1,4 +1,4 @@
-# Live / 수동 검증 체크리스트 — Economics(G1+G2) · Diff Safety(G6)
+# Live / 수동 검증 체크리스트 — Economics(G1+G2) · Diff Safety(G6) · Tracing(G5)
 
 > **목적.** mock 테스트(`make test-fast`)로 커버되지 않는, **실 LLM 미션**이나 **사람이 직접 눈으로
 > 확인해야 하는** 검증 항목만 모았다. 코드·단위/통합 테스트는 이미 green이며(아래 "자동으로 검증된
@@ -8,6 +8,7 @@
 > **대상 기능:**
 > - **G1+G2 Economics** — 실제 토큰·USD 회계(`cost_ledger`) + 예산 초과 시 circuit-breaker pause
 > - **G6 Diff Safety** — merge 전 diff의 secret/위험명령 스캔 → merge 차단 + auto-merge 거부
+> - **G5 Tracing** — agent/tool span을 latency + 토큰/USD와 함께 `trace.jsonl`에 기록
 
 ---
 
@@ -20,7 +21,9 @@
 | 예산 초과 → circuit-breaker 전이 | 통합 | `tests/test_mission_loop.py::test_maybe_advance_trips_circuit_breaker_when_budget_exceeded` |
 | diff secret/danger 탐지·redaction·allowlist | 단위 | `tests/test_diff_safety.py` |
 | safety_scan → merge_disabled gating | 통합 | `tests/test_merge_checks.py` |
-| 플래그 등록 | `make list-flags` | `AGENT_LAB_MISSION_BUDGET_USD`, `AGENT_LAB_BUDGET_WARN_PCT`, `AGENT_LAB_DIFF_SAFETY` |
+| trace span 계층·cost 델타·flush·forward | 단위 | `tests/test_trace_recorder.py` |
+| mock 룸 턴 → trace.jsonl 생성 | e2e | `tests/test_trace_recorder.py::test_run_room_writes_trace_jsonl` |
+| 플래그 등록 | `make list-flags` | `AGENT_LAB_MISSION_BUDGET_USD`, `AGENT_LAB_BUDGET_WARN_PCT`, `AGENT_LAB_DIFF_SAFETY`, `AGENT_LAB_TRACE` |
 
 **→ 아래 live 항목은 "실제 공급사 호출/실제 diff에서도 위 로직이 동작하는가"만 확인하면 된다.**
 
@@ -213,6 +216,32 @@ curl -s -X POST localhost:8765/api/sessions/$SID/execute/dry-run \
 
 ---
 
+# Part C — Tracing (G5)
+
+> 단위/e2e 테스트(`tests/test_trace_recorder.py`)가 span 계층·cost 델타·flush·forward + mock 룸 턴이
+> `trace.jsonl`을 쓰는 것까지 이미 보장한다. 아래는 **실제 LLM 턴**에서 토큰/USD/latency가 실수치로
+> 붙는지만 확인한다.
+
+## C1. 실제 턴이 span을 latency + 토큰과 함께 기록  ⬜
+
+1. A1처럼 실제 Claude 룸 턴 1회를 돌린 세션(`$SID`)을 준비.
+2. trace.jsonl 확인:
+
+```bash
+jq -c '{kind,name,round,dur_ms,status,tokens_in,tokens_out,usd}' sessions/$SID/trace.jsonl
+# 또는 API:
+curl -s localhost:8765/api/sessions/$SID | jq '.observability | {trace_span_count, tail: .trace_tail}'
+```
+
+**기대:** agent span(`kind:"agent"`)에 `dur_ms > 0`, `status:"ok"`, 그리고 Claude 턴이면 `tokens_in/out`·`usd`가 cost_ledger 델타로 채워짐. tool 사용 시 `kind:"tool"` span의 `parent_id`가 해당 agent span을 가리킴.
+- [ ] agent span에 `dur_ms` 기록
+- [ ] Claude 턴 → `tokens_out > 0`, `usd > 0` (cost_ledger 델타)
+- [ ] tool span `parent_id`가 agent span_id와 일치
+- [ ] `observability.trace_span_count > 0`
+- [ ] `AGENT_LAB_TRACE=0`으로 재기동 시 trace.jsonl 미생성
+
+---
+
 ## 검증 결과 기록
 
 | 항목 | 결과 | 일시 | 비고 |
@@ -226,6 +255,7 @@ curl -s -X POST localhost:8765/api/sessions/$SID/execute/dry-run \
 | B3 redaction | ⬜ | | |
 | B4 allowlist/다운그레이드 | ⬜ | | |
 | B5 플래그 off | ⬜ | | |
+| C1 trace span latency/토큰 | ⬜ | | |
 
 ---
 

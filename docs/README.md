@@ -81,7 +81,7 @@ Use this page to pick the **one canonical doc** for your question. Older numbere
 | [MD-WRITING-PLAN.md](./MD-WRITING-PLAN.md) | How to write PROJECT.md, CLAUDE.md, skills |
 | [LIVE-CURSOR-WORKTREE-DRY-RUN.md](./LIVE-CURSOR-WORKTREE-DRY-RUN.md) | Disposable repo dry-run |
 | [LIVE-MERGE-OPERATOR.md](./LIVE-MERGE-OPERATOR.md) | Live merge operator |
-| [LIVE-VERIFICATION-ECONOMICS-SAFETY.md](./LIVE-VERIFICATION-ECONOMICS-SAFETY.md) | Live/manual checklist — cost_ledger budget (G1+G2) · diff safety scan (G6) |
+| [LIVE-VERIFICATION-ECONOMICS-SAFETY.md](./LIVE-VERIFICATION-ECONOMICS-SAFETY.md) | Live/manual checklist — cost_ledger budget (G1+G2) · diff safety scan (G6) · tracing (G5) |
 | [TUNNEL-LAUNCHD-SOAK-RUNBOOK.md](./TUNNEL-LAUNCHD-SOAK-RUNBOOK.md) | Tier E — launchd + tunnel mission-wake soak |
 | [LC-L4-ADVERSARIAL-LIVE.md](./LC-L4-ADVERSARIAL-LIVE.md) | Live adversarial gate opt-in |
 | [HUMAN-INBOX-CLAUDE-HANDOFF.md](./HUMAN-INBOX-CLAUDE-HANDOFF.md) | Claude-side handoff notes |

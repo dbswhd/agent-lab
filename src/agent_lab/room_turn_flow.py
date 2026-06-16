@@ -129,6 +129,9 @@ def continue_room_round(
         init_plan_workflow_on_plan_send(folder)
         plan_md, run_meta = _session_context(folder)
         _bind_session_to_run_meta(run_meta, folder)
+    from agent_lab.trace_recorder import install_tracer
+
+    on_event = install_tracer(folder, run_meta, on_event, human_turn=human_turn_num)
     if turn_profile:
         tp = (turn_profile or "analyze").strip().lower()
         run_meta["turn_profile"] = "analyze" if tp == "discuss" else tp
@@ -498,6 +501,9 @@ def run_room(
             folder = boot
             plan_md, run_meta = _session_context(folder)
             _bind_session_to_run_meta(run_meta, folder)
+    from agent_lab.trace_recorder import install_tracer
+
+    on_event = install_tracer(folder, run_meta, on_event, human_turn=human_turn_num)
     from agent_lab.room_team_orchestration import resolve_turn_lead
 
     resolve_turn_lead(

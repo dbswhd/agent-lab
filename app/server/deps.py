@@ -298,7 +298,7 @@ def session_detail(session_id: str) -> dict[str, Any]:
         "run": run_json,
         "cost": cost,
         "attachments": list_attachment_names(folder),
-        "observability": observability_snapshot(run_json),
+        "observability": observability_snapshot(run_json, folder=folder),
     }
 
 

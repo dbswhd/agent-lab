@@ -95,6 +95,16 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "OTel-lite span tracer → trace.jsonl (turn/agent/tool latency + tokens)",
         default="1",
     ),
+    FlagDef(
+        "AGENT_LAB_JUDGE_LIVE",
+        "feature",
+        "Live LLM-as-judge quality eval in score_session (default off)",
+    ),
+    FlagDef(
+        "AGENT_LAB_JUDGE_MODEL",
+        "feature",
+        "Override Claude model for the quality judge (default scribe model)",
+    ),
     FlagDef("AGENT_LAB_ADVERSARIAL_LIVE", "feature", "Live Claude adversarial dry-run note"),
     FlagDef("AGENT_LAB_WISDOM_INDEX", "feature", "Force wisdom index (MB-10)"),
     FlagDef("AGENT_LAB_WISDOM_CROSS_SESSION", "feature", "Cross-session wisdom search"),

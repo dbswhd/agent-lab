@@ -1,4 +1,4 @@
-# Live / 수동 검증 체크리스트 — Economics(G1+G2) · Diff Safety(G6) · Tracing(G5)
+# Live / 수동 검증 체크리스트 — Economics(G1+G2) · Diff Safety(G6) · Tracing(G5) · Judge(G8)
 
 > **목적.** mock 테스트(`make test-fast`)로 커버되지 않는, **실 LLM 미션**이나 **사람이 직접 눈으로
 > 확인해야 하는** 검증 항목만 모았다. 코드·단위/통합 테스트는 이미 green이며(아래 "자동으로 검증된
@@ -9,6 +9,7 @@
 > - **G1+G2 Economics** — 실제 토큰·USD 회계(`cost_ledger`) + 예산 초과 시 circuit-breaker pause
 > - **G6 Diff Safety** — merge 전 diff의 secret/위험명령 스캔 → merge 차단 + auto-merge 거부
 > - **G5 Tracing** — agent/tool span을 latency + 토큰/USD와 함께 `trace.jsonl`에 기록
+> - **G8 LLM-as-judge** — 세션 transcript/plan/goal을 rubric으로 채점 + usd_per_point
 
 ---
 
@@ -23,7 +24,8 @@
 | safety_scan → merge_disabled gating | 통합 | `tests/test_merge_checks.py` |
 | trace span 계층·cost 델타·flush·forward | 단위 | `tests/test_trace_recorder.py` |
 | mock 룸 턴 → trace.jsonl 생성 | e2e | `tests/test_trace_recorder.py::test_run_room_writes_trace_jsonl` |
-| 플래그 등록 | `make list-flags` | `AGENT_LAB_MISSION_BUDGET_USD`, `AGENT_LAB_BUDGET_WARN_PCT`, `AGENT_LAB_DIFF_SAFETY`, `AGENT_LAB_TRACE` |
+| judge parse·disabled no-LLM·cost 결합·score_session 합류 | 단위 | `tests/test_quality_judge.py` |
+| 플래그 등록 | `make list-flags` | `…_MISSION_BUDGET_USD`, `…_BUDGET_WARN_PCT`, `…_DIFF_SAFETY`, `…_TRACE`, `…_JUDGE_LIVE` |
 
 **→ 아래 live 항목은 "실제 공급사 호출/실제 diff에서도 위 로직이 동작하는가"만 확인하면 된다.**
 
@@ -242,6 +244,35 @@ curl -s localhost:8765/api/sessions/$SID | jq '.observability | {trace_span_coun
 
 ---
 
+# Part D — LLM-as-judge (G8)
+
+> 단위 테스트(`tests/test_quality_judge.py`)가 parse(견고성)·disabled no-LLM·주입 fake-live·cost 결합·
+> score_session 합류를 보장한다. 아래는 **실제 judge LLM**이 세션을 rubric으로 채점하는지 확인한다.
+
+## D1. 실제 judge가 세션 품질을 채점 + usd/point  ⬜
+
+```bash
+SID=sessions/<완료된 세션>
+AGENT_LAB_JUDGE_LIVE=1 make score-session SESSION=$SID
+# 또는 JSON 전체:
+AGENT_LAB_JUDGE_LIVE=1 .venv/bin/python scripts/score_session.py --json $SID | jq '.judge'
+```
+
+**기대(`judge` 블록):**
+```json
+{ "enabled": true, "source": "live",
+  "scores": {"goal_fit":4,"correctness":4,"completeness":3,"clarity":5,"efficiency":4},
+  "overall": 4.0, "verdict": "pass", "rationale": "...",
+  "cost": {"usd": 0.31, "usd_per_point": 0.0775} }
+```
+- [ ] `enabled:true`, `source:"live"`, rubric 5차원 점수(1~5)
+- [ ] `overall`·`verdict` 채워짐, `rationale` 비어있지 않음
+- [ ] cost_ledger가 있으면 `cost.usd_per_point` 산출(품질당 비용)
+- [ ] `AGENT_LAB_JUDGE_LIVE` 미설정 시 `judge.enabled == false` (LLM 미호출, 기존 KPI 그대로)
+- [ ] summary 출력에 `judge (live): overall N/5 · pass · $X/pt` 라인
+
+---
+
 ## 검증 결과 기록
 
 | 항목 | 결과 | 일시 | 비고 |
@@ -256,6 +287,7 @@ curl -s localhost:8765/api/sessions/$SID | jq '.observability | {trace_span_coun
 | B4 allowlist/다운그레이드 | ⬜ | | |
 | B5 플래그 off | ⬜ | | |
 | C1 trace span latency/토큰 | ⬜ | | |
+| D1 judge rubric + usd/point | ⬜ | | |
 
 ---
 

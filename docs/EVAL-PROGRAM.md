@@ -15,6 +15,7 @@
 |----|------|------|-----|
 | **L1 회귀** | `make smoke` | FSM·게이트·메타 shape | mock |
 | **L2 KPI** | `score_session`, `score-weekly`, `emergence-bench`, `run_dogfood_suite` | 품질 수치화 | mock/live |
+| **L2 judge** | `score_session` + `AGENT_LAB_JUDGE_LIVE=1` (G8) | rubric 의미 품질 + usd/point | live opt-in |
 | **L3 dogfood** | `MISSION-DOGFOOD.md`, `make mission-dogfood-run` | end-to-end 미션 | mock/live |
 
 ### M4 강제 vs 관찰

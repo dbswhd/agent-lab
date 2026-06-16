@@ -203,7 +203,7 @@ AGENT_LAB_GOAL_LOOP=1
 └─────────────────┴──────────────────────────────────┴─────────────────┘
 ```
 
-**Workbench Tools** (`rightPanelMode`): `plan`(WorkToolPanel + execute), `background`, `diff`, `files`, `preview`, `terminal`.
+**Workbench Tools** (`rightPanelMode`): `plan`(visible label **Work**, `WorkToolPanel` + approve/execute/verify), `background`, `diff`, `files`, `preview`, `terminal`.
 
 별도 **Settings 페이지** (`shellView === "settings"`) — Context 미리보기·에이전트 cwd·Plugin·진단.
 
@@ -214,7 +214,7 @@ AGENT_LAB_GOAL_LOOP=1
 | ID | 라벨 | 단축키 | 역할 |
 |----|------|--------|------|
 | `transcript` | Transcript | ⌘1 | Human·에이전트 대화 전체 |
-| `plan` | Plan | ⌘2 | `WorkToolPanel` — plan + execute/review/approval |
+| `plan` | Work | ⌘2 | `WorkToolPanel` — plan approval + execute/review/verification |
 | `background` | Background | ⌘3 | 백그라운드 태스크 |
 | `diff` | Diff | ⌘4 | execute diff |
 | `files` | Files | ⌘5 | workspace files · Monaco |
@@ -637,6 +637,8 @@ Scribe prompt (`ROOM_SCRIBE`): 한국어, 필수 섹션 **`## 지금 실행`**, 
 
 ```text
 WorkStatusBar (stepper + freshness)
+WorkDecisionPanel (Approve · Blocked · Verified)
+PlanApprovalPanel (조건부: plan workflow HUMAN_PENDING)
 PlanTabToolbar (전송 시 plan 갱신 · 지금 정리)
 [ExecuteQueueBar | ConsensusDryRunGateBar]  ← 조건부
 PlanDocument
@@ -687,14 +689,26 @@ plan ## 지금 실행
 - Linked task jump
 - Cursor ready 필요 경로 있음
 
-### 9.7 Consensus → execute 연결
+### 9.7 Work decision surface
+
+Work 상단은 사용자가 문서 없이 세 질문을 판단하게 하는 요약 표면입니다.
+
+| 질문 | Work 표시 | 상세/액션 소유자 |
+|------|-----------|------------------|
+| 지금 무엇을 승인해야 하나? | `Approve` cell + primary CTA | plan 승인: `PlanApprovalPanel`, merge 승인: `PlanExecutePanel` |
+| 왜 막혔나? | `Blocked` cell + checks/evidence anchor | BLOCK objection, pre_execute hook, merge checks, runtime gate |
+| 결과가 검증됐나? | `Verified` cell | Oracle badge, `EvidenceGatesPanel`, evidence timeline |
+
+Tasks는 Work로 점프하는 요약을 제공하지만, plan approval 전문 UI는 Work가 소유합니다.
+
+### 9.8 Consensus → execute 연결
 
 ♾️ `reached` 후:
 
 - SSE `consensus_plan_sync_*`
 - optional `consensus_dry_run_proposal` — Work에서 dry-run CTA
 
-### 9.8 Hook · Communicate (Room Router)
+### 9.9 Hook · Communicate (Room Router)
 
 > 설계: [HOOK-COMMUNICATE-REFORM.md](./HOOK-COMMUNICATE-REFORM.md) · 회귀: `make verify-hooks`
 

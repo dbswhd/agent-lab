@@ -16,6 +16,8 @@ import {
   postMissionDiscussRecovery,
   matchSlashCommand,
   releaseRoomRunLock,
+  reconnectClaudeAuth,
+  reconnectCursorBridge,
   runRoom,
   runSessionCommand,
   setSessionGoal,
@@ -78,7 +80,6 @@ import { TranscriptViewOptions } from "./TranscriptViewOptions";
 import { ChatBubble, ReplyWaitingBubble } from "./ChatBubble";
 import { HumanInboxPanel } from "./HumanInboxPanel";
 import { DiscussInboxPanel } from "./DiscussInboxPanel";
-import { DiscussRecoveryBanner } from "./DiscussRecoveryBanner";
 import { HumanDecisionBanner } from "./HumanDecisionBanner";
 import { ChatComposer, type PendingFile } from "./ChatComposer";
 import { ShellPortal } from "./ShellPortal";
@@ -87,10 +88,10 @@ import { useNotificationUnread } from "../hooks/useNotificationUnread";
 import { ContextOverviewPanel } from "./ContextOverviewPanel";
 import { ContextTasksPanel } from "./ContextTasksPanel";
 import { GoalLoopBanner } from "./GoalLoopBanner";
-import { PlanApprovalPanel } from "./PlanApprovalPanel";
+import type { PlanRejectPayload } from "./PlanApprovalPanel";
 import { PlanWorkflowBanner } from "./PlanWorkflowBanner";
 import { VerifiedLoopBanner } from "./VerifiedLoopBanner";
-import { WorkToolPanel } from "./WorkToolPanel";
+import { WorkToolPanel, type WorkFocusTarget } from "./WorkToolPanel";
 import { HumanGatePanel } from "./HumanGatePanel";
 import { AgentPermissionAlert } from "./AgentPermissionAlert";
 import { useMacNotifications } from "../hooks/useMacNotifications";
@@ -205,6 +206,12 @@ import {
 import { ComposerPreflightBar } from "./ComposerPreflightBar";
 import { ReadinessComposerBar } from "./ReadinessComposerBar";
 import { fetchReadiness, type ReadinessResponse } from "../api/client";
+import { RecoveryStrip } from "./RecoveryStrip";
+import {
+  buildRecoveryItems,
+  type RecoveryActionId,
+  type RecoveryItem,
+} from "../utils/recoveryItems";
 import { useTweaksDemoOptional } from "../hooks/useTweaksDemo";
 import { TWEAKS_DEMO_OFF } from "../context/tweaksDemoStore";
 import {
@@ -476,7 +483,7 @@ export function RoomChat({
   const [humanDecisionBannerVisible, setHumanDecisionBannerVisible] =
     useState(false);
   const [showInboxPopup, setShowInboxPopup] = useState(false);
-  const [workFocus, setWorkFocus] = useState<"execute" | "plan" | null>(null);
+  const [workFocus, setWorkFocus] = useState<WorkFocusTarget | null>(null);
   const prevExecPendingIdRef = useRef<string | null>(null);
   const sendReceiptTimerRef = useRef<number | null>(null);
   const [clarifierQuestions, setClarifierQuestions] = useState<string[] | null>(
@@ -504,9 +511,11 @@ export function RoomChat({
   const [consensusProposal, setConsensusProposal] =
     useState<ConsensusDryRunProposal | null>(null);
   const [consensusGateBusy, setConsensusGateBusy] = useState(false);
-  const [, setLongRunning] = useState(false);
-  const [, setRunLockStuck] = useState(false);
-  const [, setReleasingLock] = useState(false);
+  const [longRunning, setLongRunning] = useState(false);
+  const [runLockStuck, setRunLockStuck] = useState(false);
+  const [releasingLock, setReleasingLock] = useState(false);
+  const [recoveryBusyAction, setRecoveryBusyAction] =
+    useState<RecoveryActionId | null>(null);
   const longRunHintRef = useRef<number | null>(null);
   const [agentCapabilities, setAgentCapabilities] =
     useState<AgentCapabilitiesMap>(() =>
@@ -791,6 +800,10 @@ export function RoomChat({
     setRightPanelMode("tasks");
     openInspectorPane();
   }, [setRightPanelMode, openInspectorPane]);
+  const openWorkApproval = useCallback(() => {
+    openWorkTab();
+    setWorkFocus("plan_approval");
+  }, [openWorkTab]);
 
   const handleInboxBuildStarted = useCallback(() => {
     openReviewTab();
@@ -2403,7 +2416,7 @@ export function RoomChat({
   ]);
 
   const handleVerifiedReject = useCallback(
-    async (payload?: { note?: string; target_phase?: string }) => {
+    async (payload?: PlanRejectPayload) => {
       if (!sessionId) return;
       setVerifiedLoopBusy(true);
       setVerifiedLoopError(null);
@@ -2685,6 +2698,64 @@ export function RoomChat({
     }
   }, [refreshSessionMeta, sessionId]);
 
+  const refreshRecoveryReadiness = useCallback(async () => {
+    if (sessionId) {
+      const next = await fetchReadiness(sessionId, true);
+      setReadiness(next);
+    }
+    refreshSessionMeta();
+  }, [refreshSessionMeta, sessionId]);
+
+  const handleRecoveryAction = useCallback(
+    async (actionId: RecoveryActionId, _item: RecoveryItem) => {
+      setRecoveryBusyAction(actionId);
+      try {
+        switch (actionId) {
+          case "open_settings":
+            onOpenSettings?.();
+            return;
+          case "refresh_health":
+            await refreshRecoveryReadiness();
+            return;
+          case "reconnect_cursor":
+            await reconnectCursorBridge();
+            await refreshRecoveryReadiness();
+            return;
+          case "reconnect_claude":
+            await reconnectClaudeAuth();
+            await refreshRecoveryReadiness();
+            return;
+          case "release_lock":
+            await handleReleaseRunLock();
+            return;
+          case "open_work":
+            openWorkTab();
+            setWorkFocus("execute");
+            return;
+          case "open_inbox":
+            setInboxSegment("discuss");
+            openHumanInbox();
+            return;
+          case "run_discuss_recovery":
+            await handleDiscussRecoveryRun();
+            return;
+        }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setRecoveryBusyAction(null);
+      }
+    },
+    [
+      handleDiscussRecoveryRun,
+      handleReleaseRunLock,
+      onOpenSettings,
+      openHumanInbox,
+      openWorkTab,
+      refreshRecoveryReadiness,
+    ],
+  );
+
   const requestComposerPrefill = useCallback(
     (prefill: string) => {
       openTranscriptTab();
@@ -2695,6 +2766,27 @@ export function RoomChat({
   );
   const executeBusy = planExecute.busy;
   const combinedError = error || planExecute.error;
+  const recoveryItems = useMemo(
+    () =>
+      buildRecoveryItems({
+        apiOk: agents.length > 0 || healthAgents.length > 0,
+        agents: healthAgents,
+        readiness,
+        combinedError,
+        runLockStuck,
+        discussRecovery,
+        executions: planExecutions,
+      }),
+    [
+      agents.length,
+      combinedError,
+      discussRecovery,
+      healthAgents,
+      planExecutions,
+      readiness,
+      runLockStuck,
+    ],
+  );
   const firstOpenBlock = useMemo<RoomObjection | null>(() => {
     const rows = roomTasks?.open_objections ?? [];
     return rows.find((o) => o.act === "BLOCK") ?? null;
@@ -2719,9 +2811,6 @@ export function RoomChat({
         : `Resolve plan #${firstOpenBlock.plan_action_index} BLOCK before execute`
       : localeMsg.composerPlaceholder;
 
-  const readyCount = agents.filter((a) => a.ready).length;
-  const agentsBlocked =
-    !running && !loading && selected.length === 0 && agents.length >= 0;
   const title = isNew ? "Session" : session?.topic || sessionId || "Session";
   const titleMeta =
     !isNew || selected.length > 0 ? `${selected.length} agents` : undefined;
@@ -3149,34 +3238,39 @@ export function RoomChat({
                     </div>
                   ) : null}
 
-                  {combinedError ? (
-                    <div
-                      className="error-banner"
-                      role="alert"
-                      aria-label="룸 오류"
-                    >
-                      {combinedError}
+                  {longRunning && running ? (
+                    <div className="room-run-status" role="status">
+                      <span className="room-run-status__hint">
+                        장시간 실행 중...
+                      </span>
+                      <button
+                        type="button"
+                        className="mac-btn-secondary mac-btn-secondary--compact"
+                        onClick={handleStop}
+                      >
+                        답변 중지
+                      </button>
                     </div>
                   ) : null}
 
-                  {agentsBlocked && !combinedError ? (
-                    <div
-                      className="error-banner"
-                      role="status"
-                      aria-label="에이전트 준비 상태"
-                    >
-                      {agents.length === 0
-                        ? "API(8765)에 연결할 수 없습니다. Tauri 앱을 완전히 종료한 뒤 make tauri-dev로 다시 시작하세요."
-                        : `준비된 에이전트가 없습니다 (${readyCount}/3). cursor/codex/claude 로그인을 확인하세요.`}
-                    </div>
-                  ) : null}
+                  <RecoveryStrip
+                    items={recoveryItems}
+                    busyActionId={
+                      recoveryBusyAction ??
+                      (releasingLock ? "release_lock" : null) ??
+                      (discussRecoveryBusy ? "run_discuss_recovery" : null)
+                    }
+                    onAction={(actionId, item) =>
+                      void handleRecoveryAction(actionId, item)
+                    }
+                  />
 
                   {showPlanWorkflowComposerHint && planWorkflow ? (
                     <PlanWorkflowBanner
                       workflow={planWorkflow}
                       planIntent={planWorkflowPlanIntent}
                       variant="compact"
-                      onOpenTasks={openTasksInspector}
+                      onOpenTasks={openWorkApproval}
                     />
                   ) : null}
 
@@ -3199,18 +3293,6 @@ export function RoomChat({
                     <div className="composer-send-receipt" role="status">
                       {sendReceipt}
                     </div>
-                  ) : null}
-
-                  {discussRecovery?.pending ? (
-                    <DiscussRecoveryBanner
-                      recovery={discussRecovery}
-                      busy={discussRecoveryBusy}
-                      onRunRecovery={() => void handleDiscussRecoveryRun()}
-                      onOpenDiscussInbox={() => {
-                        setInboxSegment("discuss");
-                        openHumanInbox();
-                      }}
-                    />
                   ) : null}
 
                   {!isNew && sessionId ? (
@@ -3446,28 +3528,34 @@ export function RoomChat({
                       running={running || runBusy || synthesizing}
                       hideInboxButton={humanDecisionBannerVisible}
                       onOpenInbox={openHumanInbox}
+                      onOpenTasks={openWorkApproval}
                     />
                   ) : null}
                   {sessionId && showPlanApproval ? (
-                    <PlanApprovalPanel
-                      view={verifiedLoopView}
-                      planMd={session?.plan_md ?? ""}
-                      phase={planWorkflow?.phase ?? "HUMAN_PENDING"}
-                      workflowNotice={planWorkflow?.notice}
-                      planGate={planWorkflow?.last_plan_gate ?? null}
-                      objections={roomTasks?.open_objections ?? []}
-                      busy={verifiedLoopBusy || running || runBusy}
-                      error={verifiedLoopError}
-                      editGoal={verifiedEditGoal}
-                      editCriteria={verifiedEditCriteria}
-                      editPromise={verifiedEditPromise}
-                      onEditGoalChange={setVerifiedEditGoal}
-                      onEditCriteriaChange={setVerifiedEditCriteria}
-                      onEditPromiseChange={setVerifiedEditPromise}
-                      onFocusObjection={focusObjection}
-                      onApprove={() => void handleVerifiedApprove()}
-                      onReject={(payload) => void handleVerifiedReject(payload)}
-                    />
+                    <div
+                      className="goal-loop-banner goal-loop-banner--open"
+                      role="region"
+                      aria-label="Work approval handoff"
+                    >
+                      <div className="goal-loop-banner__head">
+                        <strong>Plan approval</strong>
+                        <span className="goal-oracle-badge goal-oracle-badge--open">
+                          Work
+                        </span>
+                      </div>
+                      <p className="goal-loop-banner__detail">
+                        Plan 승인과 execute 판단은 Work에서 처리합니다.
+                      </p>
+                      <div className="goal-loop-banner__controls">
+                        <button
+                          type="button"
+                          className="btn btn--sm btn--primary"
+                          onClick={openWorkApproval}
+                        >
+                          Work · 승인하기
+                        </button>
+                      </div>
+                    </div>
                   ) : sessionId && showVerifiedLoop ? (
                     <VerifiedLoopBanner
                       view={verifiedLoopView}
@@ -3609,6 +3697,29 @@ export function RoomChat({
                 onSessionUpdated={refreshSessionMeta}
                 roomTasks={roomTasks}
                 cursorReady={agents.some((a) => a.id === "cursor" && a.ready)}
+                planWorkflow={planWorkflow}
+                planApproval={
+                  showPlanApproval
+                    ? {
+                        enabled: true,
+                        view: verifiedLoopView,
+                        phase: planWorkflow?.phase ?? "HUMAN_PENDING",
+                        workflowNotice: planWorkflow?.notice,
+                        planGate: planWorkflow?.last_plan_gate ?? null,
+                        busy: verifiedLoopBusy || running || runBusy,
+                        error: verifiedLoopError,
+                        editGoal: verifiedEditGoal,
+                        editCriteria: verifiedEditCriteria,
+                        editPromise: verifiedEditPromise,
+                        onEditGoalChange: setVerifiedEditGoal,
+                        onEditCriteriaChange: setVerifiedEditCriteria,
+                        onEditPromiseChange: setVerifiedEditPromise,
+                        onApprove: () => void handleVerifiedApprove(),
+                        onReject: (payload) => void handleVerifiedReject(payload),
+                      }
+                    : null
+                }
+                onOpenTasks={openTasksInspector}
                 workHookAlert={workHookAlert}
                 onDismissWorkHookAlert={() => setWorkHookAlert(null)}
               />

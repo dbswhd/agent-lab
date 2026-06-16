@@ -29,7 +29,11 @@ export function MergeChecksPanel({ checks, ko = true }: Props) {
   const labels = ko ? LABELS_KO : LABELS_EN;
 
   return (
-    <section className="merge-checks" data-testid="merge-checks-panel">
+    <section
+      id="work-merge-checks"
+      className="merge-checks"
+      data-testid="merge-checks-panel"
+    >
       <div className="merge-checks__head">
         <span className="merge-checks__title">{ko ? "Checks" : "Checks"}</span>
         {checks.merge_disabled ? (

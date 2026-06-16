@@ -88,6 +88,71 @@
   - `next_actions`
 - Raw markdown remains available in a collapsed disclosure.
 
+**P1d: Failure Recovery UX** ✅
+
+**Goal:** users recover common operational failures without reading docs or opening raw logs first.
+
+**Scope:** expose existing recovery signals and actions in one predictable route. Do **not** reimplement backend recovery logic already owned by health, run lock, partial turn, mission resume, or Oracle repair.
+
+| Failure | Detection source | Primary surface | Required user action | Must not do |
+|---------|------------------|-----------------|----------------------|-------------|
+| Auth expired | health/preflight agent row, OAuth panels | Recovery strip + Settings deep link | Re-login / reconnect, then re-run health check | Hide behind generic "agent failed" |
+| Cursor bridge failed | `AgentHealthPanel` bridge fields, degraded health | Recovery strip + Settings Diagnostics | Reconnect bridge, show fallback/exclude Cursor option | Duplicate a separate bridge wizard outside Settings |
+| Run lock stuck | `/api/room/run-lock`, `RoomRunStatusBar` | Composer/Transcript top strip | Release lock after stale/orphan explanation | Auto-release an active run silently |
+| Partial turn | turn status `partial`, `agent_error`, preserved successful replies | Transcript turn recovery card | Retry failed agents, continue with successful replies, or open Settings | Discard successful agent output |
+| Oracle fail | execution oracle verdict / mission `discuss_recovery.pending` | Work + Inspector Inbox | Reverify, start repair, or run discuss recovery | Call it "done" or bury it in logs |
+
+**UX contract:**
+
+- A single **Recovery** strip appears above the main work area when any blocking failure is active.
+- Each item has: `what happened`, `why it blocks`, `primary action`, `secondary action`, `details`.
+- The strip routes to the canonical surface:
+  - auth / bridge -> Settings Diagnostics
+  - run lock / partial turn -> Transcript or composer run status
+  - Oracle fail / discuss recovery -> Work + Inbox
+- The Inbox `Activity` segment records recovery events, but it is not the only place to act.
+- Multiple failures are grouped by severity: `blocking execute` -> `blocking send` -> `degraded team` -> `informational`.
+
+**Acceptance:**
+
+- Trigger each failure in mock or fixture mode and verify a user can recover using only visible UI copy.
+- Every recovery CTA has an API call or navigation target; no dead-end "read docs" actions.
+- Raw logs remain available under details, not as the first required step.
+- Existing shipped behavior remains authoritative:
+  - bridge degraded health: `Bridge` traceability row
+  - partial turn: `R-P0`
+  - Oracle repair/reverify: `LC-L3`
+  - mission discuss recovery: `ML-P4`
+  - boulder/resume state: `RT-H6`
+
+**P1e: Work Decision Surface**
+
+**Goal:** users can decide in one Work surface what needs approval, why progress is blocked, and whether the result is verified.
+
+**Scope:** frontend integration only. Do **not** add a backend Work endpoint or duplicate merge/reverify handlers outside their canonical owners.
+
+| Decision question | Source | Primary surface | Canonical action owner |
+|-------------------|--------|-----------------|------------------------|
+| What do I approve? | plan workflow, pending executions | Work decision panel + Work approval card | `PlanApprovalPanel`, `PlanExecutePanel` |
+| Why is it blocked? | plan stale notice, BLOCK objections, pre-execute hooks, merge checks, runtime gates | Work decision panel + Checks/Evidence anchors | Tasks, hook/runtime gates, merge checks |
+| Was it verified? | execution Oracle, `verify_after_merge`, evidence gates | Work decision panel + evidence/execute cards | `PlanExecutePanel` + evidence timeline |
+
+**UX contract:**
+
+- Visible tab/surface label is **Work**. Internal route id may remain `plan` for compatibility.
+- Work top chrome contains the stepper plus one decision summary with `Approve`, `Blocked`, `Verified` columns.
+- Tasks may summarize approval/blocking work, but full plan approval lives in Work.
+- `PlanExecutePanel` remains the owner for merge approve/reject/revise/reverify.
+- RecoveryStrip remains operational recovery; WorkDecisionPanel is execution judgment.
+
+**Acceptance:**
+
+- `HUMAN_PENDING` plan workflow shows plan approval in Work and only a Work jump in Tasks.
+- Pending execution shows merge/artifact approval target at the top and anchors to the pending card.
+- merge checks, pre-verify, open BLOCK, merge conflict, and Oracle FAIL explain why Work is blocked.
+- Oracle PASS + completed execution reads as verified/done.
+- Mobile width does not overlap decision text or CTA controls.
+
 ### P2 — Verification Speed
 
 **Goal:** make local status legible without waiting for the full slow suite.
@@ -145,10 +210,10 @@
 
 ## 4. Current Next Ticket Recommendation
 
-**Next:** P1c — Agent Response Card MVP from existing envelope / `communicate_meta`.
+**Next:** P1e — Work Decision Surface.
 
 Why:
 
-- P1a now exposes hook runs, envelope flags, and hook/contract Activity routing.
-- P1b now persists a session response contract and injects its guidance into agent payloads.
-- The next product gap is display: Transcript still mostly renders markdown rather than a parsed response card.
+- Failure recovery is now consolidated; the next launch-readiness gap is deciding approval/block/verify state without scanning separate panels.
+- Work already owns execute judgment, but plan approval and verification state need one top-level decision summary.
+- P1c Agent Response Card remains display polish after the core Work decision loop is legible.

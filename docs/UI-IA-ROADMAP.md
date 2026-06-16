@@ -60,7 +60,7 @@
 
 | 대상 | 대체 |
 |------|------|
-| `LegacyWorkspaceTab` (`plan` / `review`) | `work` |
+| `LegacyWorkspaceTab` (`work` / `review` / `artifacts`) | visible **Work** label; internal id remains `plan` |
 | `mac-btn-*`, `mac-segmented`, `mac-popup` | `base.css`의 `btn`, `segmented`, `field` |
 | `workspace-shell`, `mac-app--developer-console` (TSX) | `.shell`, `.app` |
 | `inspector-pane__*` (canonical) | `context-sidebar`, `ctx-*` |
@@ -72,13 +72,13 @@
 | 현재 | 처리 |
 |------|------|
 | `RoomChat` + hooks | **앱 심장** — 유지 |
-| `PlanExecutePanel` + `usePlanExecute` | Work 탭 본문 — 유지, 마크업만 `work-surface` / `exec-*` |
+| `WorkToolPanel` + `PlanExecutePanel` | Work 탭 본문 — decision summary + plan approval + execute 유지 |
 | `RoomTaskBar` | Transcript/Work **sticky `taskbar-dock`** — 유지. Inspector Tasks와 **역할 분리** (아래 §3.1) |
 | `CommandPalette` (⌘K) | 유지 — **전역 오버레이**, 디자인만 `base.css` modal 토큰 적용 |
 | `NotificationCenter` | 유지 — **Context Inbox/Activity** 또는 titlebar로 흡수 |
 | `HumanInboxPanel` | 유지 — **Context Inbox 탭**으로 이동 |
 | `SessionSetupBar` + `AgentSessionSettings` | 유지 — **New Session** 플로우로 통합 (§3.4) |
-| `WorkPanel` / `WorkStatusBar` | **래퍼 축소** — `PlanExecutePanel` 직접 렌더, status는 `exec-status` 바 |
+| `WorkPanel` / `WorkStatusBar` | `WorkPanel`은 비활성 wrapper, `WorkStatusBar`는 `WorkToolPanel` top chrome에서 사용 |
 
 ---
 
@@ -169,7 +169,10 @@
 ├─ .tabbar
 └─ .workspace-scroll
    ├─ .taskbar-dock              ← (선택) 축약 taskbar
-   └─ .work-surface              ← PlanExecutePanel
+   └─ .work-surface              ← WorkToolPanel
+      ├─ .work-status-bar
+      ├─ .work-decision          ← Approve · Blocked · Verified
+      ├─ .goal-loop-banner       ← plan approval when HUMAN_PENDING
       ├─ .plan-card
       └─ .exec-card …
 ```
@@ -232,6 +235,7 @@
 | 메인 워크스페이스 | `web/src/components/RoomChat.tsx` |
 | 우측 패널 chrome | `web/src/components/InspectorPane.tsx` |
 | Floating taskbar | `web/src/components/RoomTaskBar.tsx` |
+| Work decision surface | `web/src/components/WorkDecisionPanel.tsx` |
 | Plan execute | `web/src/components/PlanExecutePanel.tsx` |
 | CSS canonical | `web/src/styles/{tokens,base,layout,surfaces,plan-execute}.css` |
 | 갭 추적 | [UI-MIGRATION-GAPS.md](UI-MIGRATION-GAPS.md) |

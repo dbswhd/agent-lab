@@ -1,12 +1,31 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   fetchSessionRuntime,
+  type PlanExecutionRecord,
+  type PlanWorkflowRecord,
   type RuntimeSnapshot,
   type SessionDetail,
 } from "../api/client";
 import type { RoomTasksPayload } from "../api/client";
 import type { PlanMetaView } from "../utils/planMeta";
+import { workPlanMetaLine } from "../utils/planMeta";
+import { buildWorkDecisionSummary } from "../utils/workDecisionSummary";
+import type { WorkDecisionActionId } from "../utils/workDecisionTypes";
+import {
+  workDecisionActionElementId,
+  workFocusElementId,
+  type WorkFocusTarget,
+} from "../utils/workFocusTargets";
+import { resolveWorkPhase } from "../utils/workStatusPhase";
 import { PlanExecutePanel } from "./PlanExecutePanel";
+import { WorkDecisionPanel } from "./WorkDecisionPanel";
+import {
+  WorkPlanApprovalSection,
+  type PlanApprovalHost,
+} from "./WorkPlanApprovalSection";
+import { WorkStatusBar } from "./WorkStatusBar";
+
+export type { WorkFocusTarget } from "../utils/workFocusTargets";
 
 type Props = {
   sessionId: string;
@@ -14,7 +33,7 @@ type Props = {
   planMd: string;
   planMeta: PlanMetaView;
   planStaleNotice?: string | null;
-  workFocus?: "execute" | "plan" | null;
+  workFocus?: WorkFocusTarget | null;
   onWorkFocusHandled?: () => void;
   synthesizing: boolean;
   running: boolean;
@@ -26,6 +45,9 @@ type Props = {
   onSessionUpdated: () => void;
   roomTasks: RoomTasksPayload | null;
   cursorReady: boolean;
+  planWorkflow?: PlanWorkflowRecord;
+  planApproval?: PlanApprovalHost | null;
+  onOpenTasks?: () => void;
   workHookAlert?: {
     readonly event: string;
     readonly body: string;
@@ -53,6 +75,9 @@ export function WorkToolPanel({
   onSessionUpdated,
   roomTasks,
   cursorReady,
+  planWorkflow,
+  planApproval = null,
+  onOpenTasks,
   workHookAlert = null,
   onDismissWorkHookAlert,
 }: Props) {
@@ -62,6 +87,56 @@ export function WorkToolPanel({
   const showSyncFailedBar =
     Boolean(planMeta.pendingAgreement) && !showPlanStalePanel;
   const [runtime, setRuntime] = useState<RuntimeSnapshot | null>(null);
+  const executions = useMemo(
+    () => (session?.run?.executions as PlanExecutionRecord[] | undefined) ?? [],
+    [session?.run],
+  );
+  const latestExecution = executions.length
+    ? executions[executions.length - 1]
+    : null;
+  const workPhase =
+    runtime?.work_phase ??
+    resolveWorkPhase({
+      hasPlan,
+      hasPendingExecution: Boolean(runtime?.execute.has_pending),
+      hasDryRunDiff: Boolean(runtime?.execute.has_dry_run_diff),
+      pendingAgreement: Boolean(planMeta.pendingAgreement),
+      latestExecution,
+    });
+  const decisionSummary = useMemo(
+    () =>
+      buildWorkDecisionSummary({
+        hasPlan,
+        planMeta,
+        planStaleNotice,
+        planWorkflow,
+        verifiedLoopView: planApproval?.view ?? {
+          loop: {},
+          proposedGoal: "",
+          completionPromise: "DONE",
+          criteria: "",
+          pendingApproval: false,
+          isDone: false,
+          isFailed: false,
+        },
+        runtime,
+        executions,
+        mergeChecks: runtime?.merge_checks ?? null,
+        workHookAlert,
+        roomTasks,
+      }),
+    [
+      executions,
+      hasPlan,
+      planApproval?.view,
+      planMeta,
+      planStaleNotice,
+      planWorkflow,
+      roomTasks,
+      runtime,
+      workHookAlert,
+    ],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -79,8 +154,7 @@ export function WorkToolPanel({
 
   useEffect(() => {
     if (!workFocus) return;
-    const id =
-      workFocus === "execute" ? "work-execute-queue" : "work-plan-review";
+    const id = workFocusElementId(workFocus);
     window.setTimeout(() => {
       document
         .getElementById(id)
@@ -88,6 +162,21 @@ export function WorkToolPanel({
       onWorkFocusHandled?.();
     }, 80);
   }, [workFocus, onWorkFocusHandled]);
+
+  const handleDecisionAction = useCallback(
+    (actionId: WorkDecisionActionId) => {
+      if (actionId === "open_tasks") {
+        onOpenTasks?.();
+        return;
+      }
+      const id = workDecisionActionElementId(actionId);
+      document.getElementById(id)?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    },
+    [onOpenTasks],
+  );
 
   if (!hasPlan) {
     return (
@@ -104,6 +193,18 @@ export function WorkToolPanel({
 
   return (
     <div className="work-stack work-stack--tool">
+      <div className="work-surface work-surface--chrome work-chrome">
+        <WorkStatusBar
+          phase={workPhase}
+          metaLine={workPlanMetaLine(planMeta)}
+          hasPlan={hasPlan}
+        />
+        <WorkDecisionPanel
+          summary={decisionSummary}
+          onAction={handleDecisionAction}
+        />
+      </div>
+
       {showPlanStalePanel ? (
         <div className="work-surface work-surface--alert work-plan-stale">
           <p className="plan-stale">{planStaleNotice}</p>
@@ -124,6 +225,15 @@ export function WorkToolPanel({
             </button>
           </div>
         </div>
+      ) : null}
+
+      {planApproval ? (
+        <WorkPlanApprovalSection
+          planMd={planMd}
+          approval={planApproval}
+          objections={roomTasks?.open_objections ?? []}
+          onFocusObjection={onFocusObjection}
+        />
       ) : null}
 
       <PlanExecutePanel

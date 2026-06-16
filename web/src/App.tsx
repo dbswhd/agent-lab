@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRunningSessionIds } from "./hooks/useRunningSessionIds";
+import { useTauriFullscreen } from "./hooks/useTauriFullscreen";
 import {
   archiveSession,
   deleteSession,
@@ -26,6 +27,7 @@ import {
   NewSessionDialog,
   type NewSessionParams,
 } from "./components/NewSessionDialog";
+import { FirstRunOnboarding } from "./components/FirstRunOnboarding";
 import { MacNotificationProvider } from "./components/MacNotificationHost";
 import { TweaksPanel } from "./components/TweaksPanel";
 import { TweaksDemoOverlays } from "./components/TweaksDemoOverlays";
@@ -58,56 +60,16 @@ import {
   getSessionRailWidth,
   setSessionRailWidth,
 } from "./utils/sessionRailPrefs";
+import {
+  getFirstRunOnboardingDismissed,
+  setFirstRunOnboardingDismissed as persistFirstRunOnboardingDismissed,
+} from "./utils/onboardingPrefs";
 
 type ListTab = "active" | "archived";
 type ShellView = "workspace" | "settings";
 
-function useTauriFullscreen(inTauri: boolean): boolean {
-  const [fullscreen, setFullscreen] = useState(false);
-
-  useEffect(() => {
-    if (!inTauri) {
-      setFullscreen(false);
-      return;
-    }
-
-    let cancelled = false;
-    let unlistenResize: (() => void) | null = null;
-    let unlistenFocus: (() => void) | null = null;
-
-    const refresh = async () => {
-      try {
-        const { getCurrentWindow } = await import("@tauri-apps/api/window");
-        const current = await getCurrentWindow().isFullscreen();
-        if (!cancelled) setFullscreen(current);
-      } catch {
-        if (!cancelled) setFullscreen(false);
-      }
-    };
-
-    void (async () => {
-      const { getCurrentWindow } = await import("@tauri-apps/api/window");
-      const currentWindow = getCurrentWindow();
-      await refresh();
-      unlistenResize = await currentWindow.onResized(() => {
-        void refresh();
-      });
-      unlistenFocus = await currentWindow.onFocusChanged(() => {
-        void refresh();
-      });
-    })().catch(() => {
-      if (!cancelled) setFullscreen(false);
-    });
-
-    return () => {
-      cancelled = true;
-      unlistenResize?.();
-      unlistenFocus?.();
-    };
-  }, [inTauri]);
-
-  return fullscreen;
-}
+const ONBOARDING_SAMPLE_TOPIC =
+  "Agent Lab 온보딩 샘플: 이 레포의 구조를 5줄로 설명하고, 안전하게 실행 가능한 첫 plan action 하나를 제안해줘.";
 
 export default function App() {
   const [listTab, setListTab] = useState<ListTab>("active");
@@ -129,9 +91,13 @@ export default function App() {
   const [composerNew, setComposerNew] = useState(
     () => getLastSessionId() == null,
   );
-  const [newSessionOpen, setNewSessionOpen] = useState(
-    () => getLastSessionId() == null,
-  );
+  const [newSessionOpen, setNewSessionOpen] = useState(false);
+  const [newSessionInitialTopic, setNewSessionInitialTopic] = useState<
+    string | null
+  >(null);
+  const [firstRunOnboardingDismissed, setFirstRunOnboardingDismissedState] =
+    useState(() => getFirstRunOnboardingDismissed());
+  const [firstRunSetupActive, setFirstRunSetupActive] = useState(false);
   const [bootstrapAgentIds, setBootstrapAgentIds] = useState<string[] | null>(
     null,
   );
@@ -362,7 +328,20 @@ export default function App() {
   }
 
   const startNew = useCallback(() => {
+    setFirstRunSetupActive(true);
+    setNewSessionInitialTopic(null);
     setNewSessionOpen(true);
+  }, []);
+
+  const startOnboardingSample = useCallback(() => {
+    setFirstRunSetupActive(true);
+    setNewSessionInitialTopic(ONBOARDING_SAMPLE_TOPIC);
+    setNewSessionOpen(true);
+  }, []);
+
+  const dismissFirstRunOnboarding = useCallback(() => {
+    persistFirstRunOnboardingDismissed(true);
+    setFirstRunOnboardingDismissedState(true);
   }, []);
 
   const handleNewSessionCreate = useCallback((params: NewSessionParams) => {
@@ -376,14 +355,20 @@ export default function App() {
     setBootstrapSessionTemplate(params.sessionTemplate);
     setBootstrapTopic(params.topic ?? null);
     setBootstrapMissionTemplateId(params.missionTemplateId ?? null);
+    if (!firstRunOnboardingDismissed) {
+      persistFirstRunOnboardingDismissed(true);
+      setFirstRunOnboardingDismissedState(true);
+    }
     setComposerNew(true);
     setSelectedId(null);
     setDetail(null);
     setListTab("active");
     clearLastSessionId();
+    setFirstRunSetupActive(false);
+    setNewSessionInitialTopic(null);
     setNewSessionOpen(false);
     setShellView("workspace");
-  }, []);
+  }, [firstRunOnboardingDismissed]);
 
   const clearBootstrapMissionTemplate = useCallback(() => {
     setBootstrapMissionTemplateId(null);
@@ -481,6 +466,16 @@ export default function App() {
     detail != null &&
     detail.id !== roomSessionId,
   );
+  const showFirstRunOnboarding =
+    shellView === "workspace" &&
+    listTab === "active" &&
+    sessions.length === 0 &&
+    !sessionsError &&
+    composerNew &&
+    !selectedId &&
+    !newSessionOpen &&
+    !firstRunSetupActive &&
+    !firstRunOnboardingDismissed;
   return (
     <div
       className={`app${inTauri ? " app--tauri" : ""}${
@@ -660,6 +655,20 @@ export default function App() {
                   onReconnectCursor={() => void handleReconnectCursor()}
                   onBack={() => setShellView("workspace")}
                 />
+              ) : showFirstRunOnboarding ? (
+                <FirstRunOnboarding
+                  apiOk={apiOk}
+                  healthText={health}
+                  agents={healthAgents}
+                  loading={healthLoading}
+                  sessionsDir={sessionsDir}
+                  onRefresh={() => void reloadHealth(true)}
+                  onOpenSettings={() => setShellView("settings")}
+                  onReconnectCursor={() => void handleReconnectCursor()}
+                  onReconnectClaude={() => void handleReconnectClaude()}
+                  onStartSample={startOnboardingSample}
+                  onSkip={dismissFirstRunOnboarding}
+                />
               ) : (
                 <RoomChat
                   agents={agents}
@@ -689,7 +698,12 @@ export default function App() {
         <NewSessionDialog
           open={newSessionOpen}
           agents={agents}
-          onClose={() => setNewSessionOpen(false)}
+          initialTopic={newSessionInitialTopic}
+          onClose={() => {
+            setFirstRunSetupActive(false);
+            setNewSessionInitialTopic(null);
+            setNewSessionOpen(false);
+          }}
           onCreate={handleNewSessionCreate}
         />
         <TweaksPanel />

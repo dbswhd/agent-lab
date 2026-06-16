@@ -8,6 +8,10 @@
 
 ## 1. Product IA Contract
 
+### Launch Positioning Note
+
+출시 문구에서 `AI 에이전트 오케스트레이션 플랫폼`은 상위 카테고리로만 사용한다. 첫 화면·README·세일즈 문구의 주 메시지는 **Human-in-the-loop 에이전트 개발 콘솔**로 둔다: AI 개발 작업을 `plan.md`로 구조화하고, Human 승인 뒤 worktree에서 격리 실행·merge·Oracle 검증까지 감사 가능하게 잇는 제품.
+
 | Surface | Product role | Must contain | Must not contain |
 |---------|--------------|--------------|------------------|
 | Transcript | Conversation consumption and Human popup entry | Agent response cards, raw response disclosure, Question/Build popups, Human decision events | Hook settings, merge approval, diagnostics |

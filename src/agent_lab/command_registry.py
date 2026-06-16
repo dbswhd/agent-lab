@@ -263,6 +263,40 @@ def execute_command(
     return {"ok": False, "detail": f"unsupported command kind: {kind}"}
 
 
+def invoke_tool(
+    session_folder: Path,
+    tool_id: str,
+    *,
+    args: str = "",
+    confirm: bool = False,
+    workspace: Path | None = None,
+):
+    """Unified front-door: dispatch a tool and return a normalized ``ToolResult``.
+
+    Wraps :func:`execute_command` (reusing its dispatch + history), normalizes the
+    heterogeneous result into one envelope, and records a G5 ``kind:"tool"`` trace
+    span. ``execute_command`` itself is unchanged for raw-dict back-compat callers.
+    """
+    import time
+
+    from agent_lab.tool_envelope import ToolDescriptor, normalize_tool_result
+    from agent_lab.trace_recorder import record_tool_span
+
+    t0 = time.monotonic()
+    raw = execute_command(session_folder, tool_id, args=args, confirm=confirm, workspace=workspace)
+    dur_ms = round((time.monotonic() - t0) * 1000.0, 1)
+    row = raw.get("command") if isinstance(raw.get("command"), dict) else None
+    descriptor = ToolDescriptor.from_row(row) if row else None
+    result = normalize_tool_result(raw, descriptor=descriptor, duration_ms=dur_ms)
+    record_tool_span(
+        session_folder,
+        name=result.tool_id or tool_id,
+        dur_ms=dur_ms,
+        status=result.status or ("ok" if result.ok else "error"),
+    )
+    return result
+
+
 def mcp_allowed_for_agent(
     agent: str,
     run_meta: dict[str, Any] | None,

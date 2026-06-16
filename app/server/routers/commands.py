@@ -9,7 +9,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from agent_lab.command_registry import execute_command, list_commands
+from agent_lab.command_registry import list_commands
 from agent_lab.plugin_discovery import (
     discover_plugins,
     merge_session_allowlist,
@@ -108,19 +108,21 @@ def post_session_command_run(
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
     ws = _workspace_for_session(folder)
-    result = execute_command(
+    from agent_lab.command_registry import invoke_tool
+
+    tr = invoke_tool(
         folder,
         body.command_id,
         args=body.args,
         confirm=body.confirm,
         workspace=ws,
     )
-    if not result.get("ok"):
-        detail = result.get("detail")
-        if not detail and isinstance(result.get("result"), dict):
-            detail = result["result"].get("detail")
+    if not tr.ok:
+        detail = tr.error
+        if not detail and isinstance(tr.raw.get("result"), dict):
+            detail = tr.raw["result"].get("detail")
         raise HTTPException(status_code=409, detail=detail or "command failed")
-    return {"ok": True, **result}
+    return {"ok": True, **tr.raw, "envelope": tr.to_dict()}
 
 
 @router.patch("/sessions/{session_id}/external-tools")

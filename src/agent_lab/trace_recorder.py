@@ -196,3 +196,41 @@ def install_tracer(
     if not trace_enabled():
         return on_event
     return TraceRecorder(folder, run_meta, on_event, human_turn=human_turn)
+
+
+def record_tool_span(
+    folder: Path | None,
+    *,
+    name: str,
+    dur_ms: float | None,
+    status: str,
+    data: dict[str, Any] | None = None,
+) -> None:
+    """Append a standalone ``kind:"tool"`` span to ``trace.jsonl`` (G7).
+
+    For tools agent-lab executes out-of-band (slash commands, external tools)
+    that don't flow through the Room event stream / ``TraceRecorder``. Never
+    raises — tracing must not break a tool call.
+    """
+    if not trace_enabled() or folder is None:
+        return
+    try:
+        import uuid
+
+        _, wall = _now()
+        span: dict[str, Any] = {
+            "trace_id": "tools",
+            "span_id": f"x{uuid.uuid4().hex[:8]}",
+            "parent_id": None,
+            "kind": "tool",
+            "name": name,
+            "end": wall,
+            "dur_ms": round(dur_ms, 1) if dur_ms is not None else None,
+            "status": status,
+        }
+        if data:
+            span["data"] = data
+        with (folder / "trace.jsonl").open("a", encoding="utf-8") as f:
+            f.write(json.dumps(span, ensure_ascii=False) + "\n")
+    except Exception:
+        pass

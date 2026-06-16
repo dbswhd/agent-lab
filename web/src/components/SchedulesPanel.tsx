@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   approveSessionSchedule,
+  deleteSessionSchedule,
   fetchMissionTemplates,
   fetchSessionSchedules,
   patchSessionSchedules,
@@ -8,6 +9,10 @@ import {
   type MissionTemplateSummary,
 } from "../api/client";
 import { useLocale } from "../i18n/useLocale";
+
+function cronLooksValid(cron: string): boolean {
+  return cron.trim().split(/\s+/).length === 5;
+}
 
 type SchedulesPanelProps = {
   readonly sessionId: string;
@@ -78,6 +83,21 @@ export function SchedulesPanel({ sessionId }: SchedulesPanelProps) {
     );
   };
 
+  const removeRow = async (index: number, scheduleId: string) => {
+    setBusy(true);
+    setHint(null);
+    try {
+      const res = await deleteSessionSchedule(sessionId, scheduleId);
+      setSchedules(res.schedules);
+    } catch (err) {
+      // Row may not be persisted yet — drop it locally.
+      setSchedules((rows) => rows.filter((_, i) => i !== index));
+      setHint(err instanceof Error ? err.message : null);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="mission-os-schedules">
       <div className="settings-section__sub-head">
@@ -103,6 +123,17 @@ export function SchedulesPanel({ sessionId }: SchedulesPanelProps) {
               className="settings-input"
               value={row.cron}
               onChange={(e) => updateRow(index, { cron: e.target.value })}
+            />
+            {!cronLooksValid(row.cron) ? (
+              <span className="settings-hint">{t("missionOsCronInvalid")}</span>
+            ) : null}
+          </label>
+          <label className="settings-field">
+            <span>tz</span>
+            <input
+              className="settings-input"
+              value={row.tz ?? "UTC"}
+              onChange={(e) => updateRow(index, { tz: e.target.value })}
             />
           </label>
           <label className="settings-field">
@@ -146,6 +177,14 @@ export function SchedulesPanel({ sessionId }: SchedulesPanelProps) {
             />
             <span>{t("missionOsSandbox")}</span>
           </label>
+          <label className="settings-field settings-field--inline">
+            <input
+              type="checkbox"
+              checked={row.enabled !== false}
+              onChange={(e) => updateRow(index, { enabled: e.target.checked })}
+            />
+            <span>{t("missionOsEnabled")}</span>
+          </label>
           <div className="mission-os-schedule-meta">
             {row.pre_approved_at ? (
               <span className="ctx-oracle-badge ctx-oracle-badge--pass">
@@ -167,6 +206,14 @@ export function SchedulesPanel({ sessionId }: SchedulesPanelProps) {
                 {row.last_run_at ? ` @ ${row.last_run_at}` : ""}
               </span>
             ) : null}
+            <button
+              type="button"
+              className="settings-btn settings-btn--ghost"
+              disabled={busy}
+              onClick={() => void removeRow(index, row.id)}
+            >
+              {t("missionOsDeleteSchedule")}
+            </button>
           </div>
         </div>
       ))}

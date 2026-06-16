@@ -15,7 +15,7 @@ from agent_lab.gateway.config import (
     save_gateway_config,
 )
 from agent_lab.gateway.outbound import ping_outbound
-from agent_lab.mission_scheduler import scheduler_tick
+from agent_lab.mission_scheduler import scheduler_tick, validate_cron
 from agent_lab.mission_templates import (
     get_template_detail,
     init_plan_workflow_from_template,
@@ -167,15 +167,73 @@ def get_session_schedules(session_id: str) -> dict[str, Any]:
     return {"session_id": session_id, "schedules": list(run.get("schedules") or [])}
 
 
+# Server-managed schedule fields the client must never overwrite via PATCH.
+_SCHEDULE_SERVER_FIELDS = (
+    "pre_approved_at",
+    "pre_approved_by",
+    "last_run_date",
+    "last_run_at",
+    "last_run_status",
+    "last_run_error",
+    "last_failed_at",
+)
+# Safety-relevant fields whose change forces re-approval.
+_SCHEDULE_APPROVAL_FIELDS = ("cron", "tz", "gate_profile", "template_id", "sandbox")
+
+
+def _merge_schedule_preserving(existing: dict[str, Any], incoming: dict[str, Any]) -> dict[str, Any]:
+    """Carry server-managed fields from ``existing`` onto ``incoming``; drop the
+    human approval when any safety-relevant field changed."""
+    merged = dict(incoming)
+    for key in _SCHEDULE_SERVER_FIELDS:
+        if key in existing:
+            merged[key] = existing[key]
+    safety_changed = any(existing.get(f) != incoming.get(f) for f in _SCHEDULE_APPROVAL_FIELDS)
+    if safety_changed:
+        merged.pop("pre_approved_at", None)
+        merged.pop("pre_approved_by", None)
+    return merged
+
+
 @router.patch("/sessions/{session_id}/schedules")
 def patch_session_schedules(session_id: str, body: SchedulesPatchRequest) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
+    for entry in body.schedules:
+        if not validate_cron(entry.cron):
+            raise HTTPException(status_code=400, detail=f"invalid cron for schedule {entry.id!r}")
 
     def _patch(run: dict[str, Any]) -> dict[str, Any]:
-        run["schedules"] = [entry.model_dump() for entry in body.schedules]
+        prior = {
+            str(e.get("id")): e
+            for e in (run.get("schedules") or [])
+            if isinstance(e, dict) and e.get("id")
+        }
+        run["schedules"] = [
+            _merge_schedule_preserving(prior.get(entry.id, {}), entry.model_dump())
+            for entry in body.schedules
+        ]
         return run
 
     updated = patch_run_meta(folder, _patch)
+    return {"ok": True, "session_id": session_id, "schedules": updated.get("schedules") or []}
+
+
+@router.delete("/sessions/{session_id}/schedules/{schedule_id}")
+def delete_session_schedule(session_id: str, schedule_id: str) -> dict[str, Any]:
+    folder = session_folder_or_404(session_id)
+    found = False
+
+    def _patch(run: dict[str, Any]) -> dict[str, Any]:
+        nonlocal found
+        schedules = list(run.get("schedules") or [])
+        kept = [e for e in schedules if not (isinstance(e, dict) and str(e.get("id") or "") == schedule_id)]
+        found = len(kept) != len(schedules)
+        run["schedules"] = kept
+        return run
+
+    updated = patch_run_meta(folder, _patch)
+    if not found:
+        raise HTTPException(status_code=404, detail="schedule not found")
     return {"ok": True, "session_id": session_id, "schedules": updated.get("schedules") or []}
 
 

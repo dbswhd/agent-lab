@@ -2568,6 +2568,13 @@ export function approveSessionSchedule(sessionId: string, scheduleId: string) {
   );
 }
 
+export function deleteSessionSchedule(sessionId: string, scheduleId: string) {
+  return json<{ ok: boolean; schedules: MissionScheduleEntry[] }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/schedules/${encodeURIComponent(scheduleId)}`,
+    { method: "DELETE" },
+  );
+}
+
 export function applySessionTemplate(sessionId: string, templateId: string) {
   return json<{ ok: boolean; fast_path?: boolean }>(
     `/api/sessions/${encodeURIComponent(sessionId)}/templates/apply`,

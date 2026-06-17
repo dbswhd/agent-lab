@@ -83,6 +83,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | RT-H5 | Runtime | Engine adapters — execute + discuss transport | ✅ | `runtime/adapters/`, `tests/test_runtime_adapters.py` | H5 adapters |
 | RT-H6 | Runtime | Boulder/resume — `last_failure` + checkpoint snapshot | ✅ | `runtime/boulder.py`, `tests/test_runtime_boulder.py` | H6 boulder |
 | RT-H7 | Runtime | External runner — `tools.yaml` opt-in + allowlist | ✅ | `runtime/external_runner.py`, `tests/test_external_runner.py` | H7 external runner |
+| GJC-MAP | GJC | Workflow pipeline ↔ agent-lab integration map | ✅ | [GJC-WORKFLOW-PIPELINE.md](GJC-WORKFLOW-PIPELINE.md), Learn AI `notes/05-agent-lab/gajae-code-workflow-pipeline.md` | Doc only; adoption backlog AL-009…011 |
 
 **Planning canonical:** [MISSION-BOARD-ADOPTION.md](MISSION-BOARD-ADOPTION.md) (P1–P4 shipped).
 

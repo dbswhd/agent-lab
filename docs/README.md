@@ -21,6 +21,7 @@ Use this page to pick the **one canonical doc** for your question. Older numbere
 | Gateway · scheduler · Mission OS | [MISSION-OS-DIRECTION.md](./MISSION-OS-DIRECTION.md) · [MISSION-OS-OPS.md](./MISSION-OS-OPS.md) |
 | Human Inbox · MCP | [HUMAN-INBOX.md](./HUMAN-INBOX.md) · [MCP-TOOL-CONTRACT.md](./MCP-TOOL-CONTRACT.md) |
 | Runtime harness · external runner | [RUNTIME-HARNESS-PLAN.md](./RUNTIME-HARNESS-PLAN.md) · [ROOM-DISPATCH-PROTOCOL.md](./ROOM-DISPATCH-PROTOCOL.md) |
+| GJC workflow · agent-lab map | [GJC-WORKFLOW-PIPELINE.md](./GJC-WORKFLOW-PIPELINE.md) |
 | Trading extension | [extensions/QUANT-TRADING.md](./extensions/QUANT-TRADING.md) · [trading-mission/](./trading-mission/) |
 | CI · regression · live ops | [STABILITY.md](./STABILITY.md) · [OPS-RUNBOOK.md](./OPS-RUNBOOK.md) · Tier 5 runbooks |
 | MD / PROJECT.md 작성 | [MD-WRITING-PLAN.md](./MD-WRITING-PLAN.md) |
@@ -63,6 +64,7 @@ Use this page to pick the **one canonical doc** for your question. Older numbere
 | [NOTIFICATION-TAXONOMY.md](./NOTIFICATION-TAXONOMY.md) | Toast / Activity kinds |
 | [PLAN-WORKFLOW.md](./PLAN-WORKFLOW.md) | Plan-First FSM — clarify → approve → execute |
 | [ROOM-DISPATCH-PROTOCOL.md](./ROOM-DISPATCH-PROTOCOL.md) | DELEGATE / parallel dispatch protocol |
+| [GJC-WORKFLOW-PIPELINE.md](./GJC-WORKFLOW-PIPELINE.md) | GJC 4-skill pipeline ↔ agent-lab mapping (MB-7/8, PW-1, ML-C) |
 | [MCP-TOOL-CONTRACT.md](./MCP-TOOL-CONTRACT.md) | MCP tool contract for inbox / session plugins |
 | [MISSION-OS-OPS.md](./MISSION-OS-OPS.md) | Mission OS operational notes |
 | [MISSION-DOGFOOD.md](./MISSION-DOGFOOD.md) | Mission dogfood procedures |

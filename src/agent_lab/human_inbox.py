@@ -508,6 +508,7 @@ def wait_for_inbox_item(
         if status != "pending":
             return tool_result_for_item(item)
         from agent_lab.backoff_policy import wait as _backoff_wait
+
         _backoff_wait(1, base_sec=interval)
 
     def _timeout(run: dict[str, Any]) -> dict[str, Any]:

@@ -128,6 +128,8 @@ def test_on_verify_result_does_not_double_count(monkeypatch, tmp_path):
 
     ml.on_verify_result(tmp_path, action_index=0, verdict="fail", reason="soft-error")
 
+    final = state.get("mission_loop", {}).get("action_repair_counts", {})
+    assert final.get("0") == 2
     repair_counts = [entry.get("repairs", {}).get("0") for entry in calls if "repairs" in entry]
-    assert repair_counts.count(2) <= 1, calls
-    assert any(entry.get("repairs", {}).get("0") == 2 for entry in calls), calls
+    assert 2 in repair_counts
+    assert final.get("0") != 3

@@ -832,7 +832,18 @@ def test_patch_preserves_approval_and_history(client: TestClient, sessions_env: 
     # Edit only a non-safety field (notify) → approval + history must survive.
     r = client.patch(
         f"/api/sessions/{folder.name}/schedules",
-        json={"schedules": [{"id": "s1", "cron": "0 9 * * *", "tz": "UTC", "gate_profile": "assistant", "sandbox": True, "notify": {"on_start": False}}]},
+        json={
+            "schedules": [
+                {
+                    "id": "s1",
+                    "cron": "0 9 * * *",
+                    "tz": "UTC",
+                    "gate_profile": "assistant",
+                    "sandbox": True,
+                    "notify": {"on_start": False},
+                }
+            ]
+        },
     )
     assert r.status_code == 200
     sched = read_run_meta(folder)["schedules"][0]
@@ -845,13 +856,24 @@ def test_patch_resets_approval_on_cron_change(client: TestClient, sessions_env: 
     folder = sessions_env / "reset-sess"
     _seed_schedule(
         folder,
-        {"id": "s1", "cron": "0 9 * * *", "tz": "UTC", "gate_profile": "assistant",
-         "sandbox": True, "pre_approved_at": "2026-06-01T00:00:00+00:00", "pre_approved_by": "human",
-         "last_run_date": "2026-06-15"},
+        {
+            "id": "s1",
+            "cron": "0 9 * * *",
+            "tz": "UTC",
+            "gate_profile": "assistant",
+            "sandbox": True,
+            "pre_approved_at": "2026-06-01T00:00:00+00:00",
+            "pre_approved_by": "human",
+            "last_run_date": "2026-06-15",
+        },
     )
     r = client.patch(
         f"/api/sessions/{folder.name}/schedules",
-        json={"schedules": [{"id": "s1", "cron": "30 10 * * *", "tz": "UTC", "gate_profile": "assistant", "sandbox": True}]},
+        json={
+            "schedules": [
+                {"id": "s1", "cron": "30 10 * * *", "tz": "UTC", "gate_profile": "assistant", "sandbox": True}
+            ]
+        },
     )
     assert r.status_code == 200
     sched = read_run_meta(folder)["schedules"][0]
@@ -906,7 +928,10 @@ def test_scheduler_tick_isolates_failing_schedule(
 
 def test_disabled_schedule_not_due() -> None:
     entry = {
-        "id": "s1", "cron": "* * * * *", "tz": "UTC", "enabled": False,
+        "id": "s1",
+        "cron": "* * * * *",
+        "tz": "UTC",
+        "enabled": False,
         "pre_approved_at": "2026-06-01T00:00:00+00:00",
     }
     assert schedule_due(entry, now=datetime(2026, 6, 15, 7, 30, tzinfo=timezone.utc)) is False

@@ -18,6 +18,7 @@ scans every session for live ``checkpoint.phase == "merging"`` rows and, using
 It never performs a *new* irreversible git operation (honors P5:
 irreversible → human gate), is idempotent (safe every boot), and never raises.
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -215,12 +216,7 @@ def _crashed_rows(run: dict[str, Any]) -> list[tuple[dict[str, Any], dict[str, A
         # git anchors to trust git ground-truth, so quarantine unconditionally.
         recovery = row.get("recovery") if isinstance(row.get("recovery"), dict) else None
         merge = row.get("merge") if isinstance(row.get("merge"), dict) else {}
-        if (
-            cp is None
-            and recovery is None
-            and row.get("status") == "pending_approval"
-            and merge.get("attempted_at")
-        ):
+        if cp is None and recovery is None and row.get("status") == "pending_approval" and merge.get("attempted_at"):
             out.append((row, {}, True))
     return out
 

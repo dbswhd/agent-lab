@@ -26,25 +26,25 @@ def _make_dry_run(*args: str) -> str:
 
 def test_test_fast_excludes_integration_marker():
     out = _make_dry_run("test-fast")
-    assert "not live and not integration" in out
+    assert "not live and not integration and not bridge" in out
 
 
 def test_test_fast_uses_parallel_pytest_when_xdist_installed():
     out = _make_dry_run("test-fast")
-    assert "not live and not integration" in out
+    assert "not live and not integration and not bridge" in out
     assert "import xdist" in out or "-n" in out
 
 
 def test_ci_uses_test_fast():
     out = _make_dry_run("ci")
-    assert "not live and not integration" in out
+    assert "not live and not integration and not bridge" in out
     assert "smoke" in out
 
 
-def test_ci_full_runs_full_pytest_suite():
+def test_ci_full_runs_split_verification_lanes():
     out = _make_dry_run("ci-full")
-    assert 'pytest tests/ -q -m "not live"' in out
-    assert "test-fast" not in out
+    assert "run_verification_lane.py --lane ci_full" in out
+    assert "test-fast test-integration test-bridge" in out
 
 
 def test_verify_ops_wires_bridge_check():

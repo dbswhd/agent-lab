@@ -282,10 +282,12 @@ def run_consensus_agent_rounds(
             policy_skip, policy_reason = policy.should_skip_recombination(
                 consensus_status=consensus_status,
                 substantive_proposers=substantive_proposers,
-                rounds=last_debate,
+                rounds=debate_conflicts,
             )
             if policy_skip:
                 skip_reason = policy_reason or "policy"
+                if skip_reason == "insufficient_proposers" and substantive_proposers < 2:
+                    skip_reason = "single_proposer"
             elif calls + len(active) > cap_calls:
                 skip_reason = "cap"
             elif route.recombination == "auto":

@@ -1,5 +1,4 @@
 import os
-import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -61,6 +60,7 @@ def _wait_cursor_run(run: Any) -> None:
                     pass
                 raise RoomRunCancelled("run cancelled by user")
             from agent_lab.backoff_policy import wait as _backoff_wait
+
             _backoff_wait(1, base_sec=0.2)
         fut.result()
 
@@ -123,6 +123,7 @@ def _run_cursor_session(
             if is_transient_bridge_error(e) and attempt < _CURSOR_BRIDGE_ATTEMPTS - 1:
                 invalidate_workspace(cwd_str)
                 from agent_lab.backoff_policy import wait as _backoff_wait
+
                 _backoff_wait(attempt + 1, base_sec=_CURSOR_BRIDGE_RETRY_BACKOFF_S)
                 continue
             raise RuntimeError(format_cursor_connect_error(e)) from e
@@ -131,6 +132,7 @@ def _run_cursor_session(
             if is_transient_bridge_error(e) and attempt < _CURSOR_BRIDGE_ATTEMPTS - 1:
                 invalidate_workspace(cwd_str)
                 from agent_lab.backoff_policy import wait as _backoff_wait
+
                 _backoff_wait(attempt + 1, base_sec=_CURSOR_BRIDGE_RETRY_BACKOFF_S)
                 continue
             raise RuntimeError(format_cursor_connect_error(e)) from e

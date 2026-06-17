@@ -48,6 +48,7 @@ def _check_cursor_bridge(
         last_err = err
         if attempt + 1 < attempts:
             from agent_lab.backoff_policy import wait as _backoff_wait
+
             _backoff_wait(attempt + 1, base_sec=_BRIDGE_RETRY_BACKOFF_S)
     return "error", last_err
 

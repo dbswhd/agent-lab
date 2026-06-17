@@ -212,6 +212,15 @@ import {
   type RecoveryActionId,
   type RecoveryItem,
 } from "../utils/recoveryItems";
+import {
+  buildRecoveryLifecycleView,
+  createRecoveryAttempt,
+  recoveryItemKey,
+  resolveRecoveryAttempt,
+  type RecoveryAttempt,
+  type RecoveryResolutionEvent,
+  type RecoveryRetryActionId,
+} from "../utils/recoveryLifecycle";
 import { useTweaksDemoOptional } from "../hooks/useTweaksDemo";
 import { TWEAKS_DEMO_OFF } from "../context/tweaksDemoStore";
 import {
@@ -246,6 +255,7 @@ type Props = {
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
   onOpenSettings?: () => void;
+  onRefreshHealth?: () => void | Promise<void>;
   /** Agent ids chosen in NewSessionDialog — applied once on isNew mount. */
   bootstrapAgentIds?: string[] | null;
   /** Per-agent resume bindings from NewSessionDialog (new sessions only). */
@@ -324,6 +334,7 @@ export function RoomChat({
   sidebarOpen: _sidebarOpen,
   onToggleSidebar: _onToggleSidebar,
   onOpenSettings,
+  onRefreshHealth,
   bootstrapAgentIds,
   bootstrapAgentThreadBindings,
   bootstrapSessionTemplate,
@@ -448,6 +459,15 @@ export function RoomChat({
     turnProfile: ComposerTurnProfile;
     planAfterSend: boolean;
   } | null>(null);
+  const lastPlainSendTextRef = useRef<string | null>(null);
+  const [pendingRecoveryAttempt, setPendingRecoveryAttempt] =
+    useState<RecoveryAttempt | null>(null);
+  const [recoveryCheckAttemptId, setRecoveryCheckAttemptId] = useState<
+    string | null
+  >(null);
+  const [recoveryResolutionEvents, setRecoveryResolutionEvents] = useState<
+    RecoveryResolutionEvent[]
+  >([]);
   const [goalText, setGoalText] = useState("");
   const [goalBusy, setGoalBusy] = useState(false);
   const [goalError, setGoalError] = useState<string | null>(null);
@@ -1477,6 +1497,56 @@ export function RoomChat({
     );
   }
 
+  const notifyRecoveryStarted = useCallback(
+    (item: RecoveryItem, actionId: RecoveryActionId) => {
+      dispatchNotification(
+        {
+          tier: "P2",
+          title: "Recovery action started",
+          body: `${item.title} · ${actionId}`,
+          sessionId: sessionId ?? undefined,
+          kind: "recovery_started",
+          entityId: recoveryItemKey(item),
+        },
+        pushMacNotification,
+        notifyDesktop,
+      );
+    },
+    [pushMacNotification, sessionId],
+  );
+
+  const notifyRecoveryResolution = useCallback(
+    (event: RecoveryResolutionEvent) => {
+      const workRecovery =
+        event.kind === "oracle_fail" || event.kind === "discuss_recovery";
+      dispatchNotification(
+        {
+          tier: event.status === "resolved" ? "P1" : "P0",
+          title:
+            event.status === "resolved"
+              ? "Recovery resolved"
+              : "Recovery still blocked",
+          body: event.message,
+          sessionId: sessionId ?? undefined,
+          kind:
+            event.status === "resolved"
+              ? workRecovery
+                ? "recovery_resolved_work"
+                : "recovery_resolved"
+              : "recovery_still_blocked",
+          entityId: event.key,
+          toastAction:
+            event.status === "resolved" && workRecovery
+              ? { type: "work", focus: "execute" }
+              : undefined,
+        },
+        pushMacNotification,
+        notifyDesktop,
+      );
+    },
+    [pushMacNotification, sessionId],
+  );
+
   const handleConsensusDryRun = useCallback(async () => {
     const key = consensusProposal?.action_key;
     if (!key) return;
@@ -1522,6 +1592,9 @@ export function RoomChat({
 
       const attachmentNames = filesToSend.map((p) => p.file.name);
       const displayBody = msgText.trim();
+      if (displayBody && filesToSend.length === 0) {
+        lastPlainSendTextRef.current = displayBody;
+      }
       setPendingFiles([]);
 
       const threadBindings = !sessionId
@@ -2699,15 +2772,32 @@ export function RoomChat({
   }, [refreshSessionMeta, sessionId]);
 
   const refreshRecoveryReadiness = useCallback(async () => {
+    await onRefreshHealth?.();
     if (sessionId) {
       const next = await fetchReadiness(sessionId, true);
       setReadiness(next);
     }
     refreshSessionMeta();
-  }, [refreshSessionMeta, sessionId]);
+  }, [onRefreshHealth, refreshSessionMeta, sessionId]);
 
   const handleRecoveryAction = useCallback(
-    async (actionId: RecoveryActionId, _item: RecoveryItem) => {
+    async (actionId: RecoveryActionId, item: RecoveryItem) => {
+      const tracksResolution =
+        actionId !== "open_settings" &&
+        actionId !== "open_work" &&
+        actionId !== "open_inbox";
+      let attemptId: string | null = null;
+      if (tracksResolution) {
+        const attempt = createRecoveryAttempt({
+          item,
+          actionId,
+          canRestoreLastMessage: Boolean(lastPlainSendTextRef.current),
+        });
+        attemptId = attempt.id;
+        setPendingRecoveryAttempt(attempt);
+        setRecoveryCheckAttemptId(null);
+        notifyRecoveryStarted(item, actionId);
+      }
       setRecoveryBusyAction(actionId);
       try {
         switch (actionId) {
@@ -2744,11 +2834,17 @@ export function RoomChat({
         setError(e instanceof Error ? e.message : String(e));
       } finally {
         setRecoveryBusyAction(null);
+        if (attemptId) {
+          window.setTimeout(() => {
+            setRecoveryCheckAttemptId(attemptId);
+          }, 250);
+        }
       }
     },
     [
       handleDiscussRecoveryRun,
       handleReleaseRunLock,
+      notifyRecoveryStarted,
       onOpenSettings,
       openHumanInbox,
       openWorkTab,
@@ -2763,6 +2859,24 @@ export function RoomChat({
       focusComposerInput();
     },
     [openTranscriptTab],
+  );
+  const handleRecoveryRetryAction = useCallback(
+    (
+      actionId: RecoveryRetryActionId,
+      event: RecoveryResolutionEvent,
+    ): void => {
+      if (event.kind === "oracle_fail" || event.kind === "discuss_recovery") {
+        openWorkTab();
+        setWorkFocus("execute");
+        return;
+      }
+      openTranscriptTab();
+      if (actionId === "restore_last_message" && lastPlainSendTextRef.current) {
+        setText(lastPlainSendTextRef.current);
+      }
+      focusComposerInput();
+    },
+    [openTranscriptTab, openWorkTab],
   );
   const executeBusy = planExecute.busy;
   const combinedError = error || planExecute.error;
@@ -2786,6 +2900,36 @@ export function RoomChat({
       readiness,
       runLockStuck,
     ],
+  );
+  useEffect(() => {
+    if (
+      !pendingRecoveryAttempt ||
+      recoveryCheckAttemptId !== pendingRecoveryAttempt.id
+    ) {
+      return;
+    }
+    const event = resolveRecoveryAttempt({
+      attempt: pendingRecoveryAttempt,
+      currentItems: recoveryItems,
+    });
+    setRecoveryResolutionEvents((current) => [event, ...current].slice(0, 3));
+    setPendingRecoveryAttempt(null);
+    setRecoveryCheckAttemptId(null);
+    notifyRecoveryResolution(event);
+  }, [
+    notifyRecoveryResolution,
+    recoveryCheckAttemptId,
+    pendingRecoveryAttempt,
+    recoveryItems,
+  ]);
+  const recoveryLifecycleView = useMemo(
+    () =>
+      buildRecoveryLifecycleView({
+        activeItems: recoveryItems,
+        resolvedEvents: recoveryResolutionEvents,
+        composerSendLocked,
+      }),
+    [composerSendLocked, recoveryItems, recoveryResolutionEvents],
   );
   const firstOpenBlock = useMemo<RoomObjection | null>(() => {
     const rows = roomTasks?.open_objections ?? [];
@@ -3254,7 +3398,11 @@ export function RoomChat({
                   ) : null}
 
                   <RecoveryStrip
-                    items={recoveryItems}
+                    items={recoveryLifecycleView.activeItems}
+                    resolvedEvents={recoveryLifecycleView.resolvedEvents}
+                    canRetrySend={
+                      recoveryLifecycleView.retryState.canFocusComposer
+                    }
                     busyActionId={
                       recoveryBusyAction ??
                       (releasingLock ? "release_lock" : null) ??
@@ -3263,6 +3411,7 @@ export function RoomChat({
                     onAction={(actionId, item) =>
                       void handleRecoveryAction(actionId, item)
                     }
+                    onRetryAction={handleRecoveryRetryAction}
                   />
 
                   {showPlanWorkflowComposerHint && planWorkflow ? (

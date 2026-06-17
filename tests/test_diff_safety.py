@@ -1,4 +1,5 @@
 """Tests for the pre-merge diff safety scanner (G6)."""
+
 from __future__ import annotations
 
 from agent_lab.diff_safety import scan_diff

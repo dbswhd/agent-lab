@@ -28,10 +28,15 @@ class ModeContract:
     consensus_mode: bool
     topology: LoopTopology
     plan_intent: PlanIntent
+    divergence: bool = False
 
 
 def _clean_profile(turn_profile: str | None) -> str:
     return (turn_profile or "team").strip().lower()
+
+
+def _is_divergence(turn_profile: str | None) -> bool:
+    return _clean_profile(turn_profile) in ("divergence", "발산")
 
 
 def _user_mode(turn_profile: str | None) -> UserMode:
@@ -101,6 +106,18 @@ def resolve_mode_contract(
     review_mode: bool,
     consensus_mode: bool,
 ) -> ModeContract:
+    if _is_divergence(turn_profile):
+        return ModeContract(
+            user_mode="team",
+            runtime_turn_profile="divergence",
+            agents=agents,
+            agent_rounds=max(1, agent_rounds),
+            review_mode=False,
+            consensus_mode=False,
+            topology="route_auto",
+            plan_intent="none",
+            divergence=True,
+        )
     user_mode = _user_mode(turn_profile)
     plan_intent = _plan_intent(mode, synthesize, user_mode, turn_profile)
     runtime_profile = _runtime_profile(turn_profile, user_mode)
@@ -247,6 +264,15 @@ def mode_contract_catalog() -> dict[str, Any]:
                 "execute_loop_on_approve": True,
                 "budget": loop_budget_dict(),
             },
+            {
+                "id": "divergence",
+                "agents": "selected team (parallel, independent)",
+                "plan": "none",
+                "plan_intent": "none",
+                "execute_loop_on_approve": False,
+                "divergence": True,
+                "options": "2-4 approach-distinct alternatives; stops at options list",
+            },
         ],
         "legacy_migration": {
             "quick": "quick",
@@ -256,6 +282,7 @@ def mode_contract_catalog() -> dict[str, Any]:
             "review": "loop",
             "verified": "loop",
             "specialist": "loop",
+            "divergence": "divergence",
         },
         "verified_routing": {
             "ui_loop": {
@@ -285,6 +312,7 @@ def patch_run_mode_contract(folder: Path, contract: ModeContract) -> None:
         run["user_mode"] = contract.user_mode
         run["plan_intent"] = contract.plan_intent
         run["loop_topology"] = contract.topology
+        run["divergence_mode"] = contract.divergence
         if contract.plan_intent == "loop":
             run["loop_budget"] = loop_budget_dict()
         return run

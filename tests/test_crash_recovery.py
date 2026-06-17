@@ -69,9 +69,7 @@ def sessions_root(tmp_path: Path) -> Path:
 
 
 def _make_worktree(sess: Path, repo: Path, *, exec_id: str, edit: bool = True):
-    ew = create_exec_worktree(
-        sess, exec_id=exec_id, git_root=repo, action_key="now:1", session_id=sess.name
-    )
+    ew = create_exec_worktree(sess, exec_id=exec_id, git_root=repo, action_key="now:1", session_id=sess.name)
     if edit:
         (ew.worktree_path / "src" / "app.py").write_text("v2\n", encoding="utf-8")
         _git(ew.worktree_path, "add", "-A")
@@ -90,7 +88,9 @@ def test_reconcile_landed_merge_marks_merged(sessions_root: Path, tmp_path: Path
     # but the status persist never happened → run.json still pending_approval.
     merge_exec_branch(ew, session_folder=sess, exec_id="exec-1")
     base_head = _git(repo, "rev-parse", "main")
-    cp = _checkpoint(ew, op="merge", exec_commit_sha=exec_sha, base_sha_before=base_before, prev_status="pending_approval")
+    cp = _checkpoint(
+        ew, op="merge", exec_commit_sha=exec_sha, base_sha_before=base_before, prev_status="pending_approval"
+    )
     _write_run(sess, {"executions": [_exec_row("exec-1", status="pending_approval", checkpoint=cp)]})
 
     summary = reconcile_crashed_merges(sessions_root=sessions_root)
@@ -112,7 +112,9 @@ def test_rollback_when_merge_never_landed(sessions_root: Path, tmp_path: Path):
     base_before = _git(repo, "rev-parse", "main")
     ew, exec_sha = _make_worktree(sess, repo, exec_id="exec-1")
     # Crash BEFORE merge landed: base unchanged, worktree still present.
-    cp = _checkpoint(ew, op="merge", exec_commit_sha=exec_sha, base_sha_before=base_before, prev_status="pending_approval")
+    cp = _checkpoint(
+        ew, op="merge", exec_commit_sha=exec_sha, base_sha_before=base_before, prev_status="pending_approval"
+    )
     _write_run(sess, {"executions": [_exec_row("exec-1", status="pending_approval", checkpoint=cp)]})
 
     summary = reconcile_crashed_merges(sessions_root=sessions_root)
@@ -132,8 +134,12 @@ def test_rollback_restores_prev_status_confirm(sessions_root: Path, tmp_path: Pa
     ew, exec_sha = _make_worktree(sess, repo, exec_id="exec-1")
     prev_merge = {"status": "conflict", "conflict_files": ["src/app.py"]}
     cp = _checkpoint(
-        ew, op="confirm", exec_commit_sha=exec_sha, base_sha_before=base_before,
-        prev_status="merge_conflict", prev_merge=prev_merge,
+        ew,
+        op="confirm",
+        exec_commit_sha=exec_sha,
+        base_sha_before=base_before,
+        prev_status="merge_conflict",
+        prev_merge=prev_merge,
     )
     _write_run(sess, {"executions": [_exec_row("exec-1", status="merge_conflict", checkpoint=cp)]})
 
@@ -148,9 +154,15 @@ def test_quarantine_when_git_root_missing(sessions_root: Path, tmp_path: Path):
     sess = sessions_root / "sess"
     sess.mkdir()
     cp = {
-        "phase": "merging", "op": "merge", "git_root": str(tmp_path / "nope"),
-        "base_branch": "main", "base_sha_before": "abc", "exec_branch": "x",
-        "exec_commit_sha": "def", "prev_status": "pending_approval", "prev_merge": {},
+        "phase": "merging",
+        "op": "merge",
+        "git_root": str(tmp_path / "nope"),
+        "base_branch": "main",
+        "base_sha_before": "abc",
+        "exec_branch": "x",
+        "exec_commit_sha": "def",
+        "prev_status": "pending_approval",
+        "prev_merge": {},
     }
     _write_run(sess, {"executions": [_exec_row("exec-1", status="pending_approval", checkpoint=cp)]})
 
@@ -169,9 +181,15 @@ def test_quarantine_ambiguous_noop(sessions_root: Path, tmp_path: Path):
     base_head = _git(repo, "rev-parse", "main")
     # exec_commit == base head (trivially an ancestor) AND base did not move.
     cp = {
-        "phase": "merging", "op": "merge", "git_root": str(repo),
-        "base_branch": "main", "base_sha_before": base_head, "exec_branch": "main",
-        "exec_commit_sha": base_head, "prev_status": "pending_approval", "prev_merge": {},
+        "phase": "merging",
+        "op": "merge",
+        "git_root": str(repo),
+        "base_branch": "main",
+        "base_sha_before": base_head,
+        "exec_branch": "main",
+        "exec_commit_sha": base_head,
+        "prev_status": "pending_approval",
+        "prev_merge": {},
     }
     _write_run(sess, {"executions": [_exec_row("exec-1", status="pending_approval", checkpoint=cp)]})
 
@@ -190,7 +208,9 @@ def test_idempotent_double_run(sessions_root: Path, tmp_path: Path):
     base_before = _git(repo, "rev-parse", "main")
     ew, exec_sha = _make_worktree(sess, repo, exec_id="exec-1")
     merge_exec_branch(ew, session_folder=sess, exec_id="exec-1")
-    cp = _checkpoint(ew, op="merge", exec_commit_sha=exec_sha, base_sha_before=base_before, prev_status="pending_approval")
+    cp = _checkpoint(
+        ew, op="merge", exec_commit_sha=exec_sha, base_sha_before=base_before, prev_status="pending_approval"
+    )
     _write_run(sess, {"executions": [_exec_row("exec-1", status="pending_approval", checkpoint=cp)]})
 
     first = reconcile_crashed_merges(sessions_root=sessions_root)
@@ -204,10 +224,15 @@ def test_idempotent_double_run(sessions_root: Path, tmp_path: Path):
 def test_no_checkpoint_rows_are_noop(sessions_root: Path, tmp_path: Path):
     sess = sessions_root / "sess"
     sess.mkdir()
-    _write_run(sess, {"executions": [
-        _exec_row("e1", status="merged"),
-        _exec_row("e2", status="pending_approval"),
-    ]})
+    _write_run(
+        sess,
+        {
+            "executions": [
+                _exec_row("e1", status="merged"),
+                _exec_row("e2", status="pending_approval"),
+            ]
+        },
+    )
 
     summary = reconcile_crashed_merges(sessions_root=sessions_root)
 
@@ -218,9 +243,18 @@ def test_no_checkpoint_rows_are_noop(sessions_root: Path, tmp_path: Path):
 def test_pre_feature_pending_with_attempted_at_quarantines(sessions_root: Path, tmp_path: Path):
     sess = sessions_root / "sess"
     sess.mkdir()
-    _write_run(sess, {"executions": [
-        _exec_row("e1", status="pending_approval", merge={"status": "pending", "attempted_at": "2026-01-01T00:00:00+00:00"}),
-    ]})
+    _write_run(
+        sess,
+        {
+            "executions": [
+                _exec_row(
+                    "e1",
+                    status="pending_approval",
+                    merge={"status": "pending", "attempted_at": "2026-01-01T00:00:00+00:00"},
+                ),
+            ]
+        },
+    )
 
     summary = reconcile_crashed_merges(sessions_root=sessions_root)
 
@@ -243,7 +277,9 @@ def test_one_bad_session_does_not_abort_scan(sessions_root: Path, tmp_path: Path
     base_before = _git(repo, "rev-parse", "main")
     ew, exec_sha = _make_worktree(good, repo, exec_id="exec-1")
     merge_exec_branch(ew, session_folder=good, exec_id="exec-1")
-    cp = _checkpoint(ew, op="merge", exec_commit_sha=exec_sha, base_sha_before=base_before, prev_status="pending_approval")
+    cp = _checkpoint(
+        ew, op="merge", exec_commit_sha=exec_sha, base_sha_before=base_before, prev_status="pending_approval"
+    )
     _write_run(good, {"executions": [_exec_row("exec-1", status="pending_approval", checkpoint=cp)]})
 
     summary = reconcile_crashed_merges(sessions_root=sessions_root)

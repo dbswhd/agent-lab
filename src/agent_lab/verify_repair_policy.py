@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import subprocess
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -95,29 +96,31 @@ _POLICY: dict[FailureCode, dict[str, Any]] = {
     },
 }
 
-_MERGE_KEYWORDS = re.compile(
-    r"merge conflict|conflict|CONFLICT|merge_conflict", re.IGNORECASE
+_MERGE_KEYWORDS = re.compile(r"merge conflict|conflict|CONFLICT|merge_conflict", re.IGNORECASE)
+_STRUCTURAL_KEYWORDS = frozenset(
+    {
+        "merge conflict",
+        "merge_conflict",
+        "worktree",
+        "fail closed",
+        "fail_closed",
+        "structural",
+        "isolation_required",
+        "isolation_blocked",
+        "git root missing",
+    }
 )
-_STRUCTURAL_KEYWORDS = frozenset({
-    "merge conflict",
-    "merge_conflict",
-    "worktree",
-    "fail closed",
-    "fail_closed",
-    "structural",
-    "isolation_required",
-    "isolation_blocked",
-    "git root missing",
-})
-_ORACLE_SKIP_TOKENS = frozenset({
-    "",
-    "verify field missing",
-    "검증 기준 없음",
-    "-",
-    "—",
-    "n/a",
-    "none",
-})
+_ORACLE_SKIP_TOKENS = frozenset(
+    {
+        "",
+        "verify field missing",
+        "검증 기준 없음",
+        "-",
+        "—",
+        "n/a",
+        "none",
+    }
+)
 
 
 def classify_failure(
@@ -233,12 +236,13 @@ def ensure_worktree_usable(
         return True, {"ok": True, "skipped": "healthy"}
 
     if mode != "recreate":
+        from agent_lab.plan_execute_worktree import discard_exec_worktree
+
         discard_exec_worktree(ew, folder, exec_id)
         return False, {"action": "discarded", "exec_id": exec_id}
 
     try:
         from agent_lab.plan_execute_worktree import (
-            ExecWorktree,
             create_exec_worktree,
             discard_exec_worktree,
         )
@@ -279,9 +283,7 @@ def _code_meta(code: FailureCode, *, reason: str) -> dict[str, Any]:
     return meta
 
 
-def subprocess_exec(args: list[str], *, check: bool = True) -> "subprocess.CompletedProcess[str]":
-    import subprocess
-
+def subprocess_exec(args: list[str], *, check: bool = True) -> subprocess.CompletedProcess[str]:
     return subprocess.run(args, capture_output=True, text=True, check=check)
 
 

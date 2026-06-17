@@ -1,4 +1,5 @@
 """Tests for the real token/USD cost ledger (G1 economics)."""
+
 from __future__ import annotations
 
 from typing import Any

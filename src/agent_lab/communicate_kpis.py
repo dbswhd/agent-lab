@@ -89,9 +89,7 @@ def communicate_scores(counts: dict[str, Any]) -> dict[str, float | None]:
             replies,
         ),
         "legacy_endorse_rate": _rate(legacy, replies),
-        "median_guidance_chars_per_turn": (
-            guidance_total / guidance_turns if guidance_turns else None
-        ),
+        "median_guidance_chars_per_turn": (guidance_total / guidance_turns if guidance_turns else None),
         "hook_block_rate": _rate(hook_blocked, hook_runs),
         "challenge_rate": _rate(challenge_like, replies),
         "endorse_rate": _rate(endorse, replies),

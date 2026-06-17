@@ -28,7 +28,7 @@ def trace_tail(folder: Path | None, *, limit: int = 50) -> list[dict[str, Any]]:
                 spans.append(obj)
     except OSError:
         return []
-    return spans[-max(1, limit):]
+    return spans[-max(1, limit) :]
 
 
 def hook_runs_tail(run_meta: dict[str, Any] | None, *, limit: int = 20) -> list[dict[str, Any]]:

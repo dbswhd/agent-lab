@@ -203,14 +203,9 @@ def patch_session_schedules(session_id: str, body: SchedulesPatchRequest) -> dic
             raise HTTPException(status_code=400, detail=f"invalid cron for schedule {entry.id!r}")
 
     def _patch(run: dict[str, Any]) -> dict[str, Any]:
-        prior = {
-            str(e.get("id")): e
-            for e in (run.get("schedules") or [])
-            if isinstance(e, dict) and e.get("id")
-        }
+        prior = {str(e.get("id")): e for e in (run.get("schedules") or []) if isinstance(e, dict) and e.get("id")}
         run["schedules"] = [
-            _merge_schedule_preserving(prior.get(entry.id, {}), entry.model_dump())
-            for entry in body.schedules
+            _merge_schedule_preserving(prior.get(entry.id, {}), entry.model_dump()) for entry in body.schedules
         ]
         return run
 

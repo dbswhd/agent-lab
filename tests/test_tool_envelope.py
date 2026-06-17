@@ -44,21 +44,35 @@ def test_normalize_external_disabled_and_stub() -> None:
 
 
 def test_normalize_server_goal_check() -> None:
-    raw = {"ok": True, "kind": "server", "result": {"verdict": "pass", "detail": "goal met"}, "command": {"id": "goal-check", "kind": "server"}}
+    raw = {
+        "ok": True,
+        "kind": "server",
+        "result": {"verdict": "pass", "detail": "goal met"},
+        "command": {"id": "goal-check", "kind": "server"},
+    }
     tr = normalize_tool_result(raw)
     assert tr.ok and tr.kind == "server" and tr.content == "goal met"
     assert tr.data["verdict"] == "pass"
 
 
 def test_normalize_client_and_unknown() -> None:
-    client = normalize_tool_result({"ok": True, "kind": "client", "handler": "stop_run", "command": {"id": "stop", "kind": "client"}})
+    client = normalize_tool_result(
+        {"ok": True, "kind": "client", "handler": "stop_run", "command": {"id": "stop", "kind": "client"}}
+    )
     assert client.ok and client.status == "client_dispatch" and client.content == "stop_run"
     unknown = normalize_tool_result({"ok": False, "detail": "unknown command: x"})
     assert unknown.ok is False and unknown.error == "unknown command: x"
 
 
 def test_descriptor_from_row_roundtrip() -> None:
-    row = {"id": "goal-check", "slash": "/goal-check", "label": "Oracle", "kind": "server", "enabled": False, "disabled_reason": "env_required"}
+    row = {
+        "id": "goal-check",
+        "slash": "/goal-check",
+        "label": "Oracle",
+        "kind": "server",
+        "enabled": False,
+        "disabled_reason": "env_required",
+    }
     d = ToolDescriptor.from_row(row)
     assert d.id == "goal-check" and d.kind == "server"
     assert d.gate() == (False, "env_required")
@@ -66,7 +80,12 @@ def test_descriptor_from_row_roundtrip() -> None:
 
 
 def test_tool_descriptors_view() -> None:
-    catalog = {"commands": [{"id": "a", "kind": "client", "enabled": True}, {"id": "b", "kind": "external", "enabled": False, "disabled_reason": "x"}]}
+    catalog = {
+        "commands": [
+            {"id": "a", "kind": "client", "enabled": True},
+            {"id": "b", "kind": "external", "enabled": False, "disabled_reason": "x"},
+        ]
+    }
     ds = tool_descriptors(catalog)
     assert [d.id for d in ds] == ["a", "b"]
     assert ds[1].gate() == (False, "x")
@@ -83,9 +102,7 @@ def session_folder(tmp_path: Path) -> Path:
     return folder
 
 
-def test_invoke_tool_records_trace_span(
-    session_folder: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_invoke_tool_records_trace_span(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_TRACE", "1")
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     from agent_lab.command_registry import invoke_tool
@@ -93,7 +110,7 @@ def test_invoke_tool_records_trace_span(
     # "stop" is a builtin client command — always enabled, no external setup.
     tr = invoke_tool(session_folder, "stop")
     assert tr.ok and tr.kind == "client" and tr.duration_ms is not None
-    trace = (session_folder / "trace.jsonl")
+    trace = session_folder / "trace.jsonl"
     assert trace.is_file()
     spans = [json.loads(line) for line in trace.read_text(encoding="utf-8").splitlines() if line.strip()]
     tool_spans = [s for s in spans if s.get("kind") == "tool"]

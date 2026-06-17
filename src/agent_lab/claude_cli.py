@@ -551,6 +551,7 @@ def invoke(
                     proc.wait(timeout=5)
                     raise subprocess.TimeoutExpired(cmd, deadline)
                 from agent_lab.backoff_policy import wait as _backoff_wait
+
                 _backoff_wait(1, base_sec=0.2)
             stdout, stderr = proc.communicate()
         finally:
@@ -694,9 +695,7 @@ def _run_claude_stream(
                         proc.wait(timeout=5)
                         detail = _format_exec_error("".join(stderr_parts), result_text)
                         invalidate_claude_auth_cache()
-                        raise RuntimeError(
-                            f"claude -p failed (auth)" + (f": {detail}" if detail else "")
-                        )
+                        raise RuntimeError("claude -p failed (auth)" + (f": {detail}" if detail else ""))
             if stdout not in ready:
                 continue
             line = stdout.readline()

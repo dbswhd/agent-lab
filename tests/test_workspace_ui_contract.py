@@ -153,7 +153,7 @@ def test_transcript_has_review_aware_inline_markers():
 
 def test_developer_console_doc_is_source_of_truth():
     doc = _read("docs", "developer-agent-console.md")
-    assert "Developer Agent Console" in doc or "developer agent console" in doc
+    assert "Human-in-the-loop Agent Development Console" in doc
     assert "Transcript" in doc
     deprecated = _read("docs", "02-ui-ux-handoff.md")
     lowered = deprecated.lower()

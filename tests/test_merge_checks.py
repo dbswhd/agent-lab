@@ -1,4 +1,5 @@
 """Integration: diff safety scan gates merge via build_merge_checks (G6)."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -24,9 +25,7 @@ def _diff_safety_check(checks: list[dict[str, Any]]) -> dict[str, Any]:
 def test_blocking_finding_disables_merge() -> None:
     scan = {
         "ok": False,
-        "findings": [
-            {"kind": "secret", "rule": "aws_access_key", "file": "a.py", "line": 1, "severity": "block"}
-        ],
+        "findings": [{"kind": "secret", "rule": "aws_access_key", "file": "a.py", "line": 1, "severity": "block"}],
         "counts": {"secret": 1, "danger": 0, "blocking": 1},
     }
     result = build_merge_checks(_execution(scan))
@@ -44,9 +43,7 @@ def test_clean_scan_does_not_block_on_safety() -> None:
 def test_warn_only_finding_does_not_block() -> None:
     scan = {
         "ok": True,
-        "findings": [
-            {"kind": "secret", "rule": "aws_access_key", "file": "tests/x.py", "line": 1, "severity": "warn"}
-        ],
+        "findings": [{"kind": "secret", "rule": "aws_access_key", "file": "tests/x.py", "line": 1, "severity": "warn"}],
         "counts": {"secret": 1, "danger": 0, "blocking": 0},
     }
     check = _diff_safety_check(build_merge_checks(_execution(scan))["checks"])

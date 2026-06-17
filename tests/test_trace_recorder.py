@@ -1,4 +1,5 @@
 """Tests for the OTel-lite span tracer (G5)."""
+
 from __future__ import annotations
 
 import json
@@ -43,7 +44,9 @@ def test_tool_span_parented_to_agent(tmp_path: Path) -> None:
 
 
 def test_cost_delta_attached_from_ledger(tmp_path: Path) -> None:
-    run_meta: dict[str, Any] = {"cost_ledger": {"by_agent": {"claude": {"tokens_in": 100, "tokens_out": 10, "usd": 0.01}}}}
+    run_meta: dict[str, Any] = {
+        "cost_ledger": {"by_agent": {"claude": {"tokens_in": 100, "tokens_out": 10, "usd": 0.01}}}
+    }
     rec = TraceRecorder(tmp_path, run_meta, None, human_turn=1)
     rec("agent_start", {"agent": "claude", "round": 1})
     # simulate record_agent_usage mutating the shared run_meta during the turn

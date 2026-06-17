@@ -8,7 +8,7 @@ from unittest import mock
 import pytest
 
 from agent_lab import backoff_policy
-from agent_lab.backoff_policy import next_backoff, sleep_base_sec, wait
+from agent_lab.backoff_policy import next_backoff, wait
 
 
 @pytest.mark.parametrize(

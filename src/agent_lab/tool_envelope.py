@@ -10,6 +10,7 @@ a tool result stops re-deriving kind-specific branches when a tool is added.
 This does NOT touch the agent bridges: Claude/Codex/Cursor run their own tools
 internally; only the tools agent-lab executes itself flow through here.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -119,9 +120,7 @@ def normalize_tool_result(
     raw = raw if isinstance(raw, dict) else {}
     ok = bool(raw.get("ok"))
     kind = raw.get("kind") or (descriptor.kind if descriptor else None)
-    tool_id = (descriptor.id if descriptor else None) or str(
-        (raw.get("command") or {}).get("id") or ""
-    )
+    tool_id = (descriptor.id if descriptor else None) or str((raw.get("command") or {}).get("id") or "")
 
     def _build(*, status: str | None, content: str | None, error: str | None, data: dict[str, Any]) -> ToolResult:
         return ToolResult(
@@ -142,7 +141,9 @@ def normalize_tool_result(
         return _build(status="error", content=None, error=raw.get("detail"), data={})
 
     if kind == "client":
-        return _build(status="client_dispatch", content=raw.get("handler"), error=None, data={"handler": raw.get("handler")})
+        return _build(
+            status="client_dispatch", content=raw.get("handler"), error=None, data={"handler": raw.get("handler")}
+        )
 
     if kind == "server":
         result = raw.get("result") if isinstance(raw.get("result"), dict) else {}

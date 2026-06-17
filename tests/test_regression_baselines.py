@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import importlib.util
-import subprocess
-import sys
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[1]

@@ -60,6 +60,17 @@ def _agents_not_ready(agent_list: list[str]) -> list[dict[str, Any]]:
     return agents_not_ready(agent_list)
 
 
+def _session_hard_cap_exhausted(folder: Path) -> bool:
+    """True when AGENT_LAB_SESSION_HARD_CAP is on and the session is budget-exhausted."""
+    import os
+
+    if (os.getenv("AGENT_LAB_SESSION_HARD_CAP") or "").strip().lower() not in ("1", "true", "yes", "on"):
+        return False
+    from agent_lab.run_meta import read_run_meta
+
+    return bool(read_run_meta(folder).get("budget_exhausted"))
+
+
 def _loop_readiness_detail(agent_list: list[str] | None) -> dict[str, Any] | None:
     effective_agents = agent_list or list(AGENT_IDS)
     failure = loop_readiness_failure(effective_agents)
@@ -278,6 +289,14 @@ async def create_room_run(
         folder = SESSIONS_DIR / session_id
         if not folder.is_dir():
             raise HTTPException(status_code=404, detail="session not found")
+        if _session_hard_cap_exhausted(folder):
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": "session token budget exhausted (AGENT_LAB_SESSION_HARD_CAP)",
+                    "code": "budget_exhausted",
+                },
+            )
     else:
         folder = session_dir(topic, base=SESSIONS_DIR)
         (folder / "topic.txt").write_text(topic + "\n", encoding="utf-8")

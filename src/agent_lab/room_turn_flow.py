@@ -63,6 +63,63 @@ from agent_lab.room_turn_meta import (
 )
 
 
+def _emit_divergence_options(run_meta, replies, on_event, cancelled):
+    """Emit the divergence options list as the terminal artifact of a 발산 run.
+
+    No-op unless run_meta selects a divergence turn profile. Divergence stops
+    here: this emits the options for human selection and never triggers execute.
+    """
+    from agent_lab.divergence import format_divergence_options, is_divergence_profile
+
+    profile = str((run_meta or {}).get("turn_profile") or "")
+    if cancelled or not on_event or not replies or not is_divergence_profile(profile):
+        return
+    options = format_divergence_options(replies)
+    if options:
+        on_event("divergence_options", {"options": options, "count": len(options)})
+
+
+def _session_hard_cap_enabled() -> bool:
+    import os
+
+    return (os.getenv("AGENT_LAB_SESSION_HARD_CAP") or "").strip().lower() in ("1", "true", "yes", "on")
+
+
+def _emit_budget_status(run_meta, on_event):
+    """Surface cumulative session cost each turn and trip adaptive efficiency on over.
+
+    Always emits a budget_status event (cost is visible even with no budget set).
+    On the first over-transition, enables adaptive efficiency for subsequent turns
+    and announces it once; mission/loop circuit-breakers are untouched.
+    """
+    if not on_event or not isinstance(run_meta, dict):
+        return
+    from agent_lab.cost_ledger import session_budget_action
+
+    action = session_budget_action(run_meta)
+    run_meta["budget_status"] = {
+        "warn": action["warn"],
+        "over": action["over"],
+        "budget_set": action["budget_set"],
+        "cumulative": action["cumulative"],
+    }
+    on_event("budget_status", action)
+    if action.get("over") and not run_meta.get("adaptive_efficiency"):
+        run_meta["adaptive_efficiency"] = True
+        on_event(
+            "efficiency_auto_enabled",
+            {
+                "reason": "session_budget_over",
+                "cumulative": action.get("cumulative"),
+                "usd_limit": action.get("usd_limit"),
+                "token_limit": action.get("token_limit"),
+            },
+        )
+    if action.get("over") and _session_hard_cap_enabled() and not run_meta.get("budget_exhausted"):
+        run_meta["budget_exhausted"] = True
+        on_event("budget_exhausted", {"cumulative": action.get("cumulative")})
+
+
 def continue_room_round(
     folder: Path,
     user_message: str,
@@ -98,6 +155,7 @@ def continue_room_round(
     begin_human_turn(folder, human_turn=human_turn_num)
     supersede_pending_inbox(folder, human_turn_id=human_turn_num)
     plan_md, run_meta = _session_context(folder)
+    efficiency_mode = efficiency_mode or bool((run_meta or {}).get("adaptive_efficiency"))
     from agent_lab.inbox_harvest import clear_inbox_fork_grace
 
     clear_inbox_fork_grace(run_meta)
@@ -243,6 +301,8 @@ def continue_room_round(
         if on_event:
             on_event("run_cancelled", {"message": "답변 중지됨"})
     messages.extend(replies)
+    _emit_divergence_options(run_meta, replies, on_event, cancelled)
+    _emit_budget_status(run_meta, on_event)
     plan_md, scribe_applied, run_meta = _plan_workflow_post_agent_turn(
         folder,
         topic=topic,
@@ -490,6 +550,7 @@ def run_room(
     )
     plan_md, run_meta = _session_context(folder)
     _bind_session_to_run_meta(run_meta, folder)
+    efficiency_mode = efficiency_mode or bool((run_meta or {}).get("adaptive_efficiency"))
     human_turn_num = max(1, _human_turn_count(messages))
     if folder is None and synthesize:
         boot = _bootstrap_session_folder_for_plan_workflow(
@@ -642,6 +703,8 @@ def run_room(
         if on_event:
             on_event("run_cancelled", {"message": "답변 중지됨"})
     messages.extend(replies)
+    _emit_divergence_options(run_meta, replies, on_event, cancelled)
+    _emit_budget_status(run_meta, on_event)
 
     plan_before = _read_plan_before(folder)
     plan_md = plan_before

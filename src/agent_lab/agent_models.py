@@ -56,9 +56,5 @@ def estimate_cost_usd(
     """
     in_rate, out_rate, cache_rate = _price_for(model)
     fresh_in = max(0, int(tokens_in) - int(cache_read))
-    cost = (
-        fresh_in * in_rate
-        + int(cache_read) * cache_rate
-        + int(tokens_out) * out_rate
-    ) / 1_000_000.0
+    cost = (fresh_in * in_rate + int(cache_read) * cache_rate + int(tokens_out) * out_rate) / 1_000_000.0
     return round(cost, 6)

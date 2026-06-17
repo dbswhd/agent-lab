@@ -1,7 +1,9 @@
 # 프로젝트 메모리 — agent-lab
 
 ## 아키텍처 한 줄
-주제 → 세 AI Room 협업 → `plan.md` → Human 승인 → worktree execute · merge · Oracle verify (개발자용 멀티에이전트 콘솔)
+AI 개발 작업을 계획·승인·격리 실행·검증하는 Human-in-the-loop 에이전트 개발 콘솔.
+
+주제 → Cursor · Codex · Claude Room → `plan.md` → Human 승인 → worktree execute · merge · Oracle verify
 
 **불변:** 합의=Room · 격리=worktree · 완료=Oracle verified · Human gate 유지
 
@@ -15,8 +17,10 @@
 
 ## 빌드 & 실행
 - `make dev`
-- `make test`
-- `make ci`
+- `make test-fast` — PR fast lane (`not live and not integration and not bridge`)
+- `make test-integration` / `make test-bridge` — slower mock lanes
+- `make ci` — PR gate
+- `make ci-full` — release confidence gate
 - `make install`
 
 ## 에이전트 주의사항

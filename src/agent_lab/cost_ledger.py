@@ -10,6 +10,7 @@ in-memory ``run_meta`` dict in place and lets the normal turn-boundary persist
 flow write it to disk (writing mid-turn via ``patch_run_meta`` would race with
 the turn-end ``_write_session_files`` rebuild and be clobbered).
 """
+
 from __future__ import annotations
 
 import os
@@ -64,12 +65,8 @@ def usage_from_bridge(data: dict[str, Any] | None) -> AgentUsage | None:
     usage = AgentUsage(
         tokens_in=_as_int(data.get("tokens_in") or data.get("input_tokens")),
         tokens_out=_as_int(data.get("tokens_out") or data.get("output_tokens")),
-        cache_read=_as_int(
-            data.get("cache_read") or data.get("cache_read_input_tokens")
-        ),
-        cache_creation=_as_int(
-            data.get("cache_creation") or data.get("cache_creation_input_tokens")
-        ),
+        cache_read=_as_int(data.get("cache_read") or data.get("cache_read_input_tokens")),
+        cache_creation=_as_int(data.get("cache_creation") or data.get("cache_creation_input_tokens")),
         usd=float(usd_raw) if usd_raw is not None else None,
         model=(str(data["model"]) if data.get("model") else None),
     )
@@ -110,9 +107,7 @@ def _recompute_cumulative(ledger: dict[str, Any]) -> None:
     cumulative["usd"] = round(cumulative["usd"], 6)
     ledger["cumulative"] = cumulative
     total_in = cumulative["tokens_in"]
-    ledger["cache_hit_rate"] = (
-        round(cumulative["cache_read"] / total_in, 4) if total_in > 0 else 0.0
-    )
+    ledger["cache_hit_rate"] = round(cumulative["cache_read"] / total_in, 4) if total_in > 0 else 0.0
 
 
 def record_agent_usage(
@@ -192,4 +187,64 @@ def budget_status(run_meta: dict[str, Any] | None) -> dict[str, Any]:
         "warn_pct": warn_pct,
         "over": over,
         "warn": warn,
+    }
+
+
+def _session_token_budget() -> int | None:
+    """Session cumulative-token cap from ``AGENT_LAB_SESSION_TOKEN_BUDGET`` (unset → no cap)."""
+    raw = (os.getenv("AGENT_LAB_SESSION_TOKEN_BUDGET") or "").strip()
+    if not raw:
+        return None
+    try:
+        value = int(raw)
+    except ValueError:
+        return None
+    return value if value > 0 else None
+
+
+def _cumulative_tokens(run_meta: dict[str, Any] | None) -> tuple[int, int]:
+    if isinstance(run_meta, dict):
+        ledger = run_meta.get("cost_ledger")
+        if isinstance(ledger, dict):
+            cumulative = ledger.get("cumulative")
+            if isinstance(cumulative, dict):
+                return (
+                    int(cumulative.get("tokens_in", 0) or 0),
+                    int(cumulative.get("tokens_out", 0) or 0),
+                )
+    return 0, 0
+
+
+def session_budget_action(run_meta: dict[str, Any] | None) -> dict[str, Any]:
+    """Surface cumulative session cost and decide adaptive-efficiency action.
+
+    Combines the existing USD ``budget_status`` with an optional cumulative-token
+    cap. ``surface`` is always True so callers can show live cost even with no
+    budget set; ``warn``/``over`` are True only when a budget (USD or token) is
+    configured and crossed. ``over`` is the OR of the USD and token caps.
+    """
+    usd = budget_status(run_meta)
+    tokens_in, tokens_out = _cumulative_tokens(run_meta)
+    tokens_total = tokens_in + tokens_out
+    usd_limit = usd.get("limit_usd")
+    token_limit = _session_token_budget()
+    warn_pct = float(usd.get("warn_pct", 80.0) or 80.0)
+    token_over = token_limit is not None and tokens_total >= token_limit
+    token_warn = token_limit is not None and tokens_total >= token_limit * (warn_pct / 100.0)
+    over = bool(usd.get("over")) or token_over
+    warn = bool(usd.get("warn")) or token_warn
+    return {
+        "cumulative": {
+            "tokens_in": tokens_in,
+            "tokens_out": tokens_out,
+            "tokens_total": tokens_total,
+            "usd": float(usd.get("spent_usd", 0.0) or 0.0),
+        },
+        "surface": True,
+        "budget_set": usd_limit is not None or token_limit is not None,
+        "usd_limit": usd_limit,
+        "token_limit": token_limit,
+        "warn": warn,
+        "over": over,
+        "suggest_efficiency": over,
     }

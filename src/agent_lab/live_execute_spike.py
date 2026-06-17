@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import os
 import shutil
 import subprocess
@@ -137,6 +136,7 @@ def run_live_worktree_spike(
         "created_at": _now(),
     }
     from agent_lab.run_meta import write_run_meta
+
     write_run_meta(session, run_meta)
 
     try:
@@ -263,6 +263,7 @@ def run_live_worktree_merge_spike(
         "created_at": _now(),
     }
     from agent_lab.run_meta import write_run_meta
+
     write_run_meta(session, run_meta)
 
     try:

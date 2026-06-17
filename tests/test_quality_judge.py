@@ -1,4 +1,5 @@
 """Tests for the LLM-as-judge quality eval (G8)."""
+
 from __future__ import annotations
 
 import json
@@ -71,8 +72,10 @@ def _session(tmp_path: Path, *, usd: float = 0.0) -> Path:
     (folder / "topic.txt").write_text("Add retry to CLI", encoding="utf-8")
     (folder / "plan.md").write_text("## Plan\n- add retry\n", encoding="utf-8")
     (folder / "chat.jsonl").write_text(
-        json.dumps({"role": "user", "content": "add retry"}) + "\n"
-        + json.dumps({"role": "agent", "agent": "claude", "content": "done"}) + "\n",
+        json.dumps({"role": "user", "content": "add retry"})
+        + "\n"
+        + json.dumps({"role": "agent", "agent": "claude", "content": "done"})
+        + "\n",
         encoding="utf-8",
     )
     run = {"cost_ledger": {"cumulative": {"usd": usd}}} if usd else {}

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import threading
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
@@ -39,6 +38,7 @@ def read_run_meta(folder: Path) -> dict[str, Any]:
             if attempt >= 3:
                 return {}
             from agent_lab.backoff_policy import wait as _backoff_wait
+
             _backoff_wait(attempt + 1, base_sec=0.01)
     return {}
 

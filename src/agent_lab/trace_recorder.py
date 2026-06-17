@@ -11,6 +11,7 @@ turn-end event, so spans are written when they close (``agent_done`` /
 ``incomplete`` on ``turn_failed`` / ``run_cancelled``. Tracing must never break a
 turn — every handler is wrapped so failures are swallowed.
 """
+
 from __future__ import annotations
 
 import json

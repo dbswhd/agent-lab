@@ -619,6 +619,10 @@ def build_context_bundle(
             0,
             "[Analyze turn] Observe and report risks only. Do not use PROPOSE/ENDORSE/BLOCK envelope acts.",
         )
+    elif profile in {"divergence", "발산"}:
+        from agent_lab.agents.prompts import DIVERGENCE_INSTRUCTION
+
+        guidance_parts.insert(0, DIVERGENCE_INSTRUCTION)
     from agent_lab.room_dispatch_intents import build_dispatch_intent_block
 
     dispatch_block = build_dispatch_intent_block(run_meta, agent)

@@ -14,6 +14,7 @@ Design notes:
   override for known-safe fixtures). Findings under ``tests/`` / ``fixtures/``
   are downgraded to non-blocking ``warn`` severity.
 """
+
 from __future__ import annotations
 
 import os

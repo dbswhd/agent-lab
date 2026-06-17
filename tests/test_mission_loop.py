@@ -86,9 +86,7 @@ def test_maybe_advance_trips_circuit_breaker_when_budget_exceeded(
     assert ml["phase"] == "MISSION_PAUSED"
 
 
-def test_maybe_advance_under_budget_does_not_trip(
-    session_folder: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_maybe_advance_under_budget_does_not_trip(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_MISSION_BUDGET_USD", "0.10")
     enable_mission_loop(session_folder)
     patch_run_meta(

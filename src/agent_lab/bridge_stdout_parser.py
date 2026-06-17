@@ -267,10 +267,7 @@ def parse_claude_json_event(event: Mapping[str, Any]) -> list[StreamEvent]:
             if btyp == "text":
                 text = str(block.get("text") or "")
                 if text:
-                    events.extend(
-                        ("text", {"text": chunk})
-                        for chunk in chunk_text(text, chunk_size=48)
-                    )
+                    events.extend(("text", {"text": chunk}) for chunk in chunk_text(text, chunk_size=48))
         return events
 
     if typ == "user":

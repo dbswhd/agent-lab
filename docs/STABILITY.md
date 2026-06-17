@@ -286,13 +286,17 @@ General discuss/plan turns now store `status: partial` when at least one agent s
 
 | Layer | What | How |
 |-------|------|-----|
-| **PR fast path** | mock unit + API (excludes `integration` + `live`) | `make test-fast` — `-n auto` when `pytest-xdist` installed (~2 min target) |
-| **Full mock suite** | all non-live tests incl. integration | `make ci-full` / `pytest tests/ -q -m "not live"` |
+| **PR fast path** | mock unit + API (excludes `integration` + `bridge` + `live`) | `make test-fast` / `pytest tests/ -q -m "not live and not integration and not bridge"` — `-n auto` when `pytest-xdist` installed |
+| **Integration lane** | mock worktree / subprocess / multi-component tests | `make test-integration` / `pytest tests/ -q -m "integration and not live and not bridge"` |
+| **Bridge lane** | Cursor bridge lifecycle / reconnect / preflight | `make test-bridge` / `pytest tests/ -q -m "bridge and not live"` |
+| **Release confidence** | fast + integration + bridge + smoke + score | `make ci-full` |
 | Unit / API | `tests/test_*.py` | `make test` / `pytest tests/ -q -m "not live"` — no live LLM, no secrets |
 | Tauri paths | `tests/test_tauri_config.py` | `frontendDist` → `web/dist`; bundle `resources` → `runtime/web/dist`, `runtime/venv` |
 | Room fixtures | `sessions/_regression/*` (32 smoke baselines via `scripts/smoke_room.py`) | `tests/test_regression_baselines.py`, `tests/test_smoke_room_governance.py`, `tests/test_mb_smoke_fixtures.py`, `scripts/smoke_room.py` |
 | Score / guards | regression fixtures + execute worktrees | `scripts/score_session.py --json`, `scripts/check_worktree_orphans.py` |
 | Mock E2E | `scripts/smoke_room_e2e.py` | `tests/test_smoke_room_e2e.py`, `AGENT_LAB_MOCK_AGENTS=1` |
+
+`make test-fast`, `make test-integration`, `make test-bridge`, `make test-live`, and `make ci-full` write the latest local status to `sessions/_reports/verification-latest.json`. The app reads that file through `/api/diagnostics` and shows Fast / Integration / Bridge / CI full in Settings Diagnostics and the rail diagnostics detail.
 
 `scripts/smoke_room.py` is also runnable locally; use **`--api`** only when uvicorn is already on `:8765`. Treat full room scripts as **nightly / manual** when they need a live API or real CLIs — CI uses pytest wrappers only.
 
@@ -300,7 +304,7 @@ General discuss/plan turns now store `status: partial` when at least one agent s
 
 **Every PR / push (`test` job, ubuntu):**
 
-- `pip install -e ".[cursor,test]"` → `make test-fast` (PR gate) or `make ci-full` (release / verify-ops)
+- `pip install -e ".[cursor,test]"` → fast, integration, and bridge pytest lanes in order; use `make ci-full` locally for release / verify-ops confidence.
 - `make test-duration-report` — slowest 20 tests in the test-fast bucket
 - Live spike only: `AGENT_LAB_RUN_LIVE=1 make test-live` (`tests/test_live_execute_spike.py`)
 - `scripts/smoke_room.py` (32 regression baselines), `scripts/check_worktree_orphans.py`, `scripts/score_session.py --json` on regression fixtures

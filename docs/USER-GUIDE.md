@@ -58,7 +58,9 @@
 
 ### 1.1 Agent Lab이란
 
-**Agent Lab**은 주제(질문·기획·조사·코드 작업)를 던지면 **세 명의 AI 에이전트(Cursor · Codex · Claude)** 가 협업하고, 대화를 **`plan.md`** 로 정리하며, 필요 시 **코드 변경을 dry-run → Human 승인 → merge**까지 이어가는 **개발자용 에이전트 콘솔**이다.
+**Agent Lab**은 AI 개발 작업을 계획·승인·격리 실행·검증하는 **Human-in-the-loop 에이전트 개발 콘솔**이다. Cursor · Codex · Claude가 Room에서 협업하고, 대화를 **`plan.md` 계약**으로 정리하며, 필요 시 코드 변경을 **worktree 실행 → Human 승인 → merge → Oracle 검증**까지 이어간다.
+
+1차 타깃은 AI-native 개발팀과 내부 플랫폼팀의 tech lead·maintainer다. 일반 챗봇이나 범용 AI 오케스트레이션 대시보드가 아니라, 코드 변경을 안전하고 감사 가능한 실행 단위로 묶는 작업 도구다.
 
 | 축 | 설명 |
 |----|------|
@@ -292,6 +294,8 @@ Work 탭이 아닐 때:
 ## 5. 세션 생명주기
 
 ### 5.1 새 세션
+
+첫 실행 또는 재설정이 필요할 때는 rail의 **Setup**을 연다. Setup wizard는 `Connect agents` → `Choose workspace` → `Start sample session` 순서로 안내하며, Cursor/Claude reconnect와 Codex Settings 진입을 앱 안에서 제공한다. 샘플 세션은 topic을 채우지만 자동 전송하지 않는다.
 
 1. **새 Session** (⌘N)
 2. **작업 폴더** (`SessionSetupBar`) — agent-lab / quant-pipeline 프리셋 또는 **다른 폴더…**

@@ -1,4 +1,5 @@
 """Token/budget visibility helpers for run.json + room context."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -21,11 +22,7 @@ def _build_entry(
     warn_pct = limits.warn_budget_pct
     critical_pct = limits.critical_budget_pct
 
-    payload_budget_pct = (
-        round(100.0 * payload_chars_total / max_thread_chars, 1)
-        if max_thread_chars > 0
-        else 0.0
-    )
+    payload_budget_pct = round(100.0 * payload_chars_total / max_thread_chars, 1) if max_thread_chars > 0 else 0.0
     warn = payload_budget_pct >= warn_pct
     critical = payload_budget_pct >= critical_pct
 

@@ -102,10 +102,13 @@ def test_strip_peer_header_echo_keeps_real_content_human_visible():
 
     # No header → unchanged. Pure echo → kept (still hidden by visibility).
     assert strip_peer_header_echo("plain reply") == "plain reply"
-    assert message_visibility(
-        role="agent",
-        content=strip_peer_header_echo("[이번 턴 · 동료 발화]"),
-    ) == "peer"
+    assert (
+        message_visibility(
+            role="agent",
+            content=strip_peer_header_echo("[이번 턴 · 동료 발화]"),
+        )
+        == "peer"
+    )
 
 
 def test_append_peer_turn_digest_once():

@@ -98,6 +98,7 @@ def agent_tool_paths() -> dict[str, str | None]:
 def build_diagnostics_payload() -> dict[str, Any]:
     from agent_lab.app_config import log_dir
     from agent_lab.session import SESSIONS_DIR
+    from agent_lab.verification_report import build_verification_report
 
     port_raw = (os.getenv("AGENT_LAB_API_PORT") or "8765").strip()
     try:
@@ -146,4 +147,5 @@ def build_diagnostics_payload() -> dict[str, Any]:
         "api_log_path": str(log_dir() / "agent-lab-api.log"),
         "auth_bootstrap_line": auth_bootstrap_line,
         "bridge_audit": bridge_audit,
+        "verification": build_verification_report(SESSIONS_DIR),
     }

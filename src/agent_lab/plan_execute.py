@@ -2080,9 +2080,7 @@ def confirm_merge_execution(
     )
     completed = _now()
     ew = _exec_worktree_from_execution(target)
-    _arm_merge_checkpoint(
-        folder, execution_id=execution_id, target=target, op="confirm", worktree=ew
-    )
+    _arm_merge_checkpoint(folder, execution_id=execution_id, target=target, op="confirm", worktree=ew)
     result = confirm_exec_merge(ew, session_folder=folder, exec_id=execution_id)
     snapshot_id = str(target.get("snapshot_id") or target.get("id") or "")
     if snapshot_id:

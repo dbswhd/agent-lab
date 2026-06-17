@@ -794,11 +794,13 @@ def maybe_advance_mission(
             {"permissions": permissions, "on_event": on_event},
         )
     if phase == "DISCUSS":
+
         def _to_plan(run_in: dict[str, Any]) -> dict[str, Any]:
             m = get_mission_loop(run_in)
             m["phase"] = "PLAN_GATE"
             run_in["mission_loop"] = m
             return run_in
+
         patch_run_meta(folder, _to_plan)
         ml_out = get_mission_loop(read_run_meta(folder))
         return {
@@ -1069,18 +1071,8 @@ def on_verify_result(
     if verdict_norm == "pass":
         return _on_verify_pass(folder, action_index, ml, oracle=oracle)
 
-    failure = None
-    try:
-        from agent_lab.verify_repair_policy import classify_failure
-        failure = classify_failure({
-            "oracle": oracle,
-            "status": "failed",
-            "blocked_message": reason,
-        }, evidence={"error": reason})
-    except Exception:
-        pass
-
     _advance_verify_with_policy(folder, {"oracle": oracle, "status": "failed", "blocked_message": reason}, action_index)
+    ml = get_mission_loop(read_run_meta(folder))
     return _on_verify_fail(folder, action_index, ml, reason=reason, oracle=oracle)
 
 
@@ -1176,12 +1168,14 @@ def _advance_verify_with_policy(folder: Path, execution: dict[str, Any], action_
         counts = normalize_repair_counts(ml)
         key = repair_counts_key(action_index)
         counts[key] = int(counts.get(key, 0)) + 1
+
         def _patch(run_in: dict[str, Any]) -> dict[str, Any]:
             m = get_mission_loop(run_in)
             m["action_repair_counts"] = counts
             m["current_action_index"] = action_index
             run_in["mission_loop"] = m
             return run_in
+
         patch_run_meta(folder, _patch)
     outcome: dict[str, Any] = {"applied": True, "failure": failure, "policy": policy}
     if repair_label == "worktree_recreate":
@@ -1315,11 +1309,15 @@ def _on_verify_fail(
     }
     try:
         from agent_lab.verify_repair_policy import classify_failure
-        result["failure"] = classify_failure({
-            "oracle": oracle,
-            "status": "failed",
-            "blocked_message": reason,
-        }, evidence={"error": reason})
+
+        result["failure"] = classify_failure(
+            {
+                "oracle": oracle,
+                "status": "failed",
+                "blocked_message": reason,
+            },
+            evidence={"error": reason},
+        )
     except Exception:
         pass
     if not structural and mission_autorun_enabled(out) and (out.get("discuss_recovery") or {}).get("pending"):

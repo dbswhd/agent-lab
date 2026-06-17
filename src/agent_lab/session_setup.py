@@ -305,8 +305,8 @@ def seed_session_setup(
         "created_at": now,
         **setup,
     }
-    run_path = folder / "run.json"
     from agent_lab.run_meta import write_run_meta
+
     write_run_meta(folder, run_meta)
     meta_path = folder / "meta.json"
     meta: dict[str, Any] = {}

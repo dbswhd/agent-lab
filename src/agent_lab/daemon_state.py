@@ -62,8 +62,7 @@ def record_last_recovery(result: dict[str, Any]) -> dict[str, Any]:
     state = load_daemon_state()
     state["last_recovery_at"] = _now_iso()
     state["last_recovery_result"] = {
-        key: result.get(key)
-        for key in ("scanned", "reconciled_merged", "rolled_back", "quarantined", "errors")
+        key: result.get(key) for key in ("scanned", "reconciled_merged", "rolled_back", "quarantined", "errors")
     }
     save_daemon_state(state)
     return state

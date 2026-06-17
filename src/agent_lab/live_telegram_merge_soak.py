@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import os
 import shutil
 import tempfile
@@ -210,6 +209,7 @@ def run_live_telegram_merge_ingress_soak(
         "created_at": _now(),
     }
     from agent_lab.run_meta import write_run_meta
+
     write_run_meta(session, run_meta)
 
     try:

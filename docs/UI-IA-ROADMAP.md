@@ -78,6 +78,7 @@
 | `NotificationCenter` | 유지 — **Context Inbox/Activity** 또는 titlebar로 흡수 |
 | `HumanInboxPanel` | 유지 — **Context Inbox 탭**으로 이동 |
 | `SessionSetupBar` + `AgentSessionSettings` | 유지 — **New Session** 플로우로 통합 (§3.4) |
+| `FirstRunOnboarding` | **Setup wizard**로 승격 — agent 연결, workspace 선택, sample session 시작 진입점. Settings/Recovery/Work 판단을 중복하지 않음 |
 | `WorkPanel` / `WorkStatusBar` | `WorkPanel`은 비활성 wrapper, `WorkStatusBar`는 `WorkToolPanel` top chrome에서 사용 |
 
 ---

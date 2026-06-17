@@ -47,6 +47,8 @@ import {
   type AgentThreadBindings,
 } from "./utils/agentThreadBindings";
 import {
+  getStoredWorkspaceId,
+  getStoredWorkspacePath,
   setStoredWorkspaceId,
   setStoredWorkspacePath,
   setStoredSessionTemplate,
@@ -97,7 +99,11 @@ export default function App() {
   >(null);
   const [firstRunOnboardingDismissed, setFirstRunOnboardingDismissedState] =
     useState(() => getFirstRunOnboardingDismissed());
+  const [firstRunOnboardingOpen, setFirstRunOnboardingOpen] = useState(false);
   const [firstRunSetupActive, setFirstRunSetupActive] = useState(false);
+  const [setupWorkspaceChosen, setSetupWorkspaceChosen] = useState(
+    () => Boolean(getStoredWorkspaceId("") || getStoredWorkspacePath()),
+  );
   const [bootstrapAgentIds, setBootstrapAgentIds] = useState<string[] | null>(
     null,
   );
@@ -333,6 +339,13 @@ export default function App() {
     setNewSessionOpen(true);
   }, []);
 
+  const openSetupWizard = useCallback(() => {
+    setShellView("workspace");
+    setFirstRunOnboardingOpen(true);
+    setNewSessionOpen(false);
+    setNewSessionInitialTopic(null);
+  }, []);
+
   const startOnboardingSample = useCallback(() => {
     setFirstRunSetupActive(true);
     setNewSessionInitialTopic(ONBOARDING_SAMPLE_TOPIC);
@@ -342,12 +355,14 @@ export default function App() {
   const dismissFirstRunOnboarding = useCallback(() => {
     persistFirstRunOnboardingDismissed(true);
     setFirstRunOnboardingDismissedState(true);
+    setFirstRunOnboardingOpen(false);
   }, []);
 
   const handleNewSessionCreate = useCallback((params: NewSessionParams) => {
     setStoredWorkspaceId(params.workspaceId);
     setStoredWorkspacePath(params.workspacePath);
     setStoredSessionTemplate(params.sessionTemplate);
+    setSetupWorkspaceChosen(true);
     const bindings = bindingsFromAgentChoices(params.agents);
     setStoredAgentThreadBindings(bindings);
     setBootstrapAgentThreadBindings(bindings);
@@ -365,6 +380,7 @@ export default function App() {
     setListTab("active");
     clearLastSessionId();
     setFirstRunSetupActive(false);
+    setFirstRunOnboardingOpen(false);
     setNewSessionInitialTopic(null);
     setNewSessionOpen(false);
     setShellView("workspace");
@@ -468,14 +484,15 @@ export default function App() {
   );
   const showFirstRunOnboarding =
     shellView === "workspace" &&
-    listTab === "active" &&
-    sessions.length === 0 &&
-    !sessionsError &&
-    composerNew &&
-    !selectedId &&
     !newSessionOpen &&
     !firstRunSetupActive &&
-    !firstRunOnboardingDismissed;
+    (firstRunOnboardingOpen ||
+      (listTab === "active" &&
+        sessions.length === 0 &&
+        !sessionsError &&
+        composerNew &&
+        !selectedId &&
+        !firstRunOnboardingDismissed));
   return (
     <div
       className={`app${inTauri ? " app--tauri" : ""}${
@@ -612,6 +629,27 @@ export default function App() {
                   </button>
                   <button
                     type="button"
+                    className="btn btn--block"
+                    onClick={openSetupWizard}
+                    title="Setup wizard"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="15"
+                      height="15"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={1.7}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden
+                    >
+                      <path d="M20 6 9 17l-5-5" />
+                    </svg>
+                    Setup
+                  </button>
+                  <button
+                    type="button"
                     className={`icon-btn${shellView === "settings" ? " is-active" : ""}`}
                     title="Settings"
                     aria-label="Settings"
@@ -662,10 +700,12 @@ export default function App() {
                   agents={healthAgents}
                   loading={healthLoading}
                   sessionsDir={sessionsDir}
+                  hasWorkspace={setupWorkspaceChosen}
                   onRefresh={() => void reloadHealth(true)}
                   onOpenSettings={() => setShellView("settings")}
                   onReconnectCursor={() => void handleReconnectCursor()}
                   onReconnectClaude={() => void handleReconnectClaude()}
+                  onChooseWorkspace={startNew}
                   onStartSample={startOnboardingSample}
                   onSkip={dismissFirstRunOnboarding}
                 />
@@ -681,6 +721,9 @@ export default function App() {
                   sidebarOpen={sidebarOpen}
                   onToggleSidebar={toggleSidebar}
                   onOpenSettings={() => setShellView("settings")}
+                  onRefreshHealth={() =>
+                    reloadHealth(true).then(() => undefined)
+                  }
                   bootstrapAgentIds={bootstrapAgentIds}
                   bootstrapAgentThreadBindings={bootstrapAgentThreadBindings}
                   bootstrapSessionTemplate={bootstrapSessionTemplate}

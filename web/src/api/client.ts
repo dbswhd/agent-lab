@@ -1157,11 +1157,48 @@ export type DiagnosticsResponse = {
     orphan_processes?: { pid?: number; command?: string }[];
     error?: string;
   };
+  verification?: VerificationReport;
 };
 
 export function fetchDiagnostics() {
   return json<DiagnosticsResponse>("/api/diagnostics");
 }
+
+export type VerificationLaneId =
+  | "fast"
+  | "integration"
+  | "bridge"
+  | "ci_full"
+  | "live";
+
+export type VerificationStatus =
+  | "passed"
+  | "failed"
+  | "not_run"
+  | "running"
+  | "unknown";
+
+export type VerificationLaneReport = {
+  readonly lane: VerificationLaneId;
+  readonly label: string;
+  readonly command: string;
+  readonly marker_expression: string | null;
+  readonly status: VerificationStatus;
+  readonly exit_code: number | null;
+  readonly started_at: string | null;
+  readonly finished_at: string | null;
+  readonly duration_seconds: number | null;
+  readonly selected_count: number | null;
+  readonly total_count: number | null;
+  readonly failure_summary: string | null;
+  readonly report_path?: string;
+};
+
+export type VerificationReport = {
+  readonly generated_at: string | null;
+  readonly report_dir: string;
+  readonly lanes: Partial<Record<VerificationLaneId, VerificationLaneReport>>;
+};
 
 export function reconnectCursorBridge() {
   return json<{

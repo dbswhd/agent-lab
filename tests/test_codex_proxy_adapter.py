@@ -51,10 +51,7 @@ def test_probe_codex_proxy_ok(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_invoke_codex_proxy_parses_response(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_CODEX_PROXY", "1")
 
-    sse_body = (
-        'data: {"choices":[{"delta":{"content":"proxy says hello"}}]}\n'
-        "data: [DONE]\n"
-    ).encode()
+    sse_body = ('data: {"choices":[{"delta":{"content":"proxy says hello"}}]}\ndata: [DONE]\n').encode()
 
     class _StreamResp:
         def __iter__(self):

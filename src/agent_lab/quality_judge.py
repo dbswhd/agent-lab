@@ -9,6 +9,7 @@ Mirrors the live opt-in pattern of ``oracle_core``: judging is OFF unless
 the default mock CI path never calls an LLM and ``score_session`` stays
 deterministic. Every entry point is defensive — judging must never break scoring.
 """
+
 from __future__ import annotations
 
 import json
@@ -180,7 +181,7 @@ def _build_transcript(messages: list[dict[str, Any]]) -> str:
     if len(text) <= _MAX_TRANSCRIPT_CHARS:
         return text
     head = text[:4_000]
-    tail = text[-(_MAX_TRANSCRIPT_CHARS - 4_000):]
+    tail = text[-(_MAX_TRANSCRIPT_CHARS - 4_000) :]
     return f"{head}\n\n…(trimmed)…\n\n{tail}"
 
 
@@ -226,9 +227,7 @@ def judge_session(
         parsed = parse_judge_response(raw)
         usd = _cumulative_usd(run_meta)
         overall = parsed.get("overall")
-        usd_per_point = (
-            round(usd / overall, 6) if isinstance(overall, (int, float)) and overall > 0 else None
-        )
+        usd_per_point = round(usd / overall, 6) if isinstance(overall, (int, float)) and overall > 0 else None
         return {
             "enabled": True,
             "source": source,

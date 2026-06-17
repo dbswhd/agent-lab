@@ -107,6 +107,32 @@ def check_cancelled() -> None:
         raise RoomRunCancelled("run cancelled by user")
 
 
+def run_lock_recovery_hint() -> dict[str, object]:
+    """Structured recovery signal for a blocked run start (RecoveryStrip-friendly).
+
+    Reuses run_lock_status; ``releasable`` follows the existing conservative policy
+    (no lock / no active worker / stale) and never proposes force-releasing a
+    genuinely active run. Pairs with POST /api/room/runs/release-lock and /cancel.
+    """
+    status = run_lock_status()
+    locked = bool(status.get("locked"))
+    active_workers = int(status.get("active_workers") or 0)
+    age_raw = status.get("age_sec")
+    age_sec = age_raw if isinstance(age_raw, (int, float)) else None
+    releasable = (not locked) or active_workers == 0 or (age_sec is not None and age_sec >= RUN_LOCK_STALE_SEC)
+    if releasable:
+        action = "release_lock: POST /api/room/runs/release-lock to clear the stale/orphaned lock, then retry."
+    else:
+        action = "wait_or_cancel: an active run is in progress — wait for it to finish or POST /api/room/runs/cancel."
+    return {
+        "locked": locked,
+        "age_sec": age_sec,
+        "active_workers": active_workers,
+        "releasable": releasable,
+        "action": action,
+    }
+
+
 def run_lock_status() -> dict[str, object]:
     locked = _run_lock.locked()
     age_sec: float | None = None

@@ -27,6 +27,7 @@ from agent_lab.run_control import (
     force_reset_run_lock,
     maybe_release_orphaned_run_lock,
     request_cancel,
+    run_lock_recovery_hint,
     run_lock_status,
     try_begin_run,
 )
@@ -134,6 +135,7 @@ def create_run(body: RunRequest) -> StreamingResponse:
         if not try_begin_run():
             maybe_release_orphaned_run_lock()
             if not try_begin_run():
+                yield sse({"type": "run_lock_blocked", **run_lock_recovery_hint()})
                 yield sse({"type": "error", "message": "a run is already in progress"})
                 return
 
@@ -347,7 +349,10 @@ async def create_room_run(
                 maybe_release_orphaned_run_lock()
                 if not try_begin_run():
                     lock_msg = "a run is already in progress"
+                    lock_hint = run_lock_recovery_hint()
                     result["error"] = lock_msg
+                    result["run_lock"] = lock_hint
+                    event_q.put({"type": "run_lock_blocked", **lock_hint})
                     event_q.put(
                         {
                             "type": "error",

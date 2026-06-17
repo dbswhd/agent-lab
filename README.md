@@ -14,6 +14,8 @@ Agent Lab은 Cursor · Codex · Claude가 한 Room에서 토론하고, 작업을
 
 ---
 
+**시스템 지도:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — 백엔드·프론트·UX 전체 분류 · [docs/README.md](docs/README.md) — 문서 인덱스
+
 ## 주요 기능
 
 | 영역 | 설명 |

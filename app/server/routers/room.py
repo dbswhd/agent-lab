@@ -534,3 +534,31 @@ def release_room_run_lock() -> dict[str, Any]:
         released = True
         status = run_lock_status()
     return {"ok": True, "released": released, **status}
+
+
+class RetryAgentsRequest(BaseModel):
+    session_id: str = Field(..., min_length=1, max_length=120)
+    agents: list[str] | None = None
+
+
+@router.post("/room/runs/retry-agents")
+def retry_room_agents(body: RetryAgentsRequest) -> dict[str, Any]:
+    """Re-invoke only the failed agents of the last partial turn (same human turn)."""
+    from app.server.deps import session_folder_or_404
+    from agent_lab.room_retry import RetryError, retry_failed_agents
+
+    folder = session_folder_or_404(body.session_id)
+    if not try_begin_run():
+        maybe_release_orphaned_run_lock()
+        if not try_begin_run():
+            raise HTTPException(
+                status_code=409,
+                detail={"message": "a run is already in progress", **run_lock_recovery_hint()},
+            )
+    try:
+        result = retry_failed_agents(folder, agents=body.agents)
+    except RetryError as exc:
+        raise HTTPException(status_code=exc.code, detail=exc.message) from exc
+    finally:
+        end_run()
+    return {"ok": True, **result}

@@ -61,7 +61,9 @@ def test_fast_bucket_collection_budget():
     )
     line = proc.stdout.strip().splitlines()[-1]
     count = int(line.split("/")[0])
-    assert count <= 1100, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-06-17: raised 1100 -> 1150 for the divergence / token-efficiency /
+    # run-lock-recovery fast unit suites (genuinely fast, belong in the fast lane).
+    assert count <= 1150, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

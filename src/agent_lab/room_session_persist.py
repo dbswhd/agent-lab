@@ -48,6 +48,7 @@ def load_session_messages(folder: Path) -> list[ChatMessage]:
                 ts=data.get("ts", _now()),
                 parallel_round=int(pr) if pr is not None else None,
                 envelope=data.get("envelope"),
+                retry_of_turn=data.get("retry_of_turn"),
                 visibility=message_visibility(
                     role=role,
                     content=content,

@@ -37,6 +37,7 @@ class ChatMessage:
     envelope: dict[str, Any] | None = None
     visibility: str = "human"  # human | peer (peer = coordination channel)
     envelope_parse_error: bool = False
+    retry_of_turn: int | None = None  # set on a reply produced by partial-turn retry
 
     def to_dict(self) -> dict[str, Any]:
         from agent_lab.room_chat_channels import normalize_visibility
@@ -53,6 +54,8 @@ class ChatMessage:
             d["envelope"] = self.envelope
         if self.envelope_parse_error:
             d["envelope_parse_error"] = True
+        if self.retry_of_turn is not None:
+            d["retry_of_turn"] = self.retry_of_turn
         vis = normalize_visibility(self.visibility)
         if vis != "human":
             d["visibility"] = vis

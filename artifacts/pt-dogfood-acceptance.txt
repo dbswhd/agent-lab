@@ -1,0 +1,6 @@
+# Pipeline dogfood acceptance — consensus persist + clarity/scorer paths
+Room consensus persisted: run.json["consensus"] + mission_loop.consensus synced from turns (best reached snapshot survives follow-up writes)
+consensus_gate fed: DISCUSS->PLAN_GATE advances after consensus Room turn under AGENT_LAB_PIPELINE=1
+clarity paths: anchored CLARIFY->DISCUSS; vague clarity_pending; mock scorer 0.8; live scorer via call_agent when AGENT_LAB_MOCK_AGENTS=0 (cursor verified)
+dogfood runner: make pipeline-dogfood-run (12 checks green)
+fast lane: make test-fast 1140 passed / 0 failed; mypy 243==baseline; ruff clean

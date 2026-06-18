@@ -78,6 +78,9 @@ mission-dogfood-report:
 mission-dogfood-run:
 	AGENT_LAB_MOCK_AGENTS=1 AGENT_LAB_MISSION_LOOP=1 .venv/bin/python scripts/mission_dogfood_run.py
 
+pipeline-dogfood-run:
+	AGENT_LAB_MOCK_AGENTS=1 AGENT_LAB_MISSION_LOOP=1 AGENT_LAB_PIPELINE=1 .venv/bin/python scripts/pipeline_dogfood_run.py
+
 mission-dogfood-weekly:
 	AGENT_LAB_MOCK_AGENTS=1 AGENT_LAB_MISSION_LOOP=1 .venv/bin/python scripts/mission_dogfood_weekly.py --days $${DAYS:-7} $(if $(SKIP_MOCK),--skip-mock,) $(if $(INCLUDE_FIXTURES),--include-fixtures,)
 

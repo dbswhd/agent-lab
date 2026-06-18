@@ -1,0 +1,24 @@
+=== G005 verification ===
+============================= test session starts ==============================
+platform darwin -- Python 3.13.9, pytest-8.4.2, pluggy-1.5.0 -- /opt/anaconda3/bin/python3
+cachedir: .pytest_cache
+rootdir: /Users/yoonjong/Projects/agent-lab
+configfile: pyproject.toml
+plugins: anyio-4.10.0, langsmith-0.8.5
+collecting ... collected 12 items
+
+tests/test_dynamic_slash_commands.py::test_parse_command PASSED          [  8%]
+tests/test_dynamic_slash_commands.py::test_all_six_commands_dispatch PASSED [ 16%]
+tests/test_dynamic_slash_commands.py::test_login_api_provider_masked PASSED [ 25%]
+tests/test_dynamic_slash_commands.py::test_login_oauth_no_secret_storage PASSED [ 33%]
+tests/test_dynamic_slash_commands.py::test_accounts_add_list_remove_masked PASSED [ 41%]
+tests/test_dynamic_slash_commands.py::test_accounts_write_path_persists PASSED [ 50%]
+tests/test_dynamic_slash_commands.py::test_logout_clears PASSED          [ 58%]
+tests/test_dynamic_slash_commands.py::test_model_view_and_set PASSED     [ 66%]
+tests/test_dynamic_slash_commands.py::test_usage_reports_cooldown PASSED [ 75%]
+tests/test_dynamic_slash_commands.py::test_agents_reports_roster_and_roles PASSED [ 83%]
+tests/test_dynamic_slash_commands.py::test_settings_put_readonly_when_dynamic PASSED [ 91%]
+tests/test_dynamic_slash_commands.py::test_settings_put_writes_when_off PASSED [100%]
+
+============================== 12 passed in 0.56s ==============================
+## ruff clean; mypy src 244==baseline; make test-fast 1192 (1180+12); bucket cap 1200->1300

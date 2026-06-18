@@ -1,0 +1,14 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.9, pytest-8.4.2, pluggy-1.5.0 -- /opt/anaconda3/bin/python3
+cachedir: .pytest_cache
+rootdir: /Users/yoonjong/Projects/agent-lab
+configfile: pyproject.toml
+plugins: anyio-4.10.0, langsmith-0.8.5
+collecting ... collected 12 items / 8 deselected / 4 selected
+
+tests/test_dynamic_slash_commands.py::test_login_api_provider_masked PASSED [ 25%]
+tests/test_dynamic_slash_commands.py::test_accounts_add_list_remove_masked PASSED [ 50%]
+tests/test_dynamic_slash_commands.py::test_settings_put_readonly_when_dynamic PASSED [ 75%]
+tests/test_dynamic_slash_commands.py::test_settings_put_writes_when_off PASSED [100%]
+
+======================= 4 passed, 8 deselected in 0.44s ========================

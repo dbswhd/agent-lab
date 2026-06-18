@@ -65,7 +65,9 @@ def test_fast_bucket_collection_budget():
     # run-lock-recovery fast unit suites (genuinely fast, belong in the fast lane).
     # 2026-06-18: raised 1150 -> 1200 for the AGENT_LAB_PIPELINE transplant fast unit
     # suites (clarity scorer, mode router, goal ledger, CLARIFY scaffold).
-    assert count <= 1200, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-06-18: raised 1200 -> 1300 for the AGENT_LAB_DYNAMIC_ROOM fast unit suites
+    # (provider registry, account chain, agent roster, consensus floor, slash commands).
+    assert count <= 1300, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

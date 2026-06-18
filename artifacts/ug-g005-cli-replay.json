@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "kind": "cli-replay",
+  "replaySafe": true,
+  "command": [
+    ".venv/bin/python",
+    "-c",
+    "from agent_lab.slash_commands import is_slash_command as f; print(f('/usage'))"
+  ],
+  "recordedStdout": "True\n"
+}

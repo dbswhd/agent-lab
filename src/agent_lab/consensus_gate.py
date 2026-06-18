@@ -111,3 +111,62 @@ def consensus_gate_met(run: dict[str, Any]) -> bool:
     except (TypeError, ValueError):
         endorse = 0
     return endorse >= policy.min_endorse_agents
+
+
+# --- Dynamic resilient room: role allocation + degradation-aware consensus floor ---
+# Pure additive helpers operating on the LIVE roster ids (never static default
+# names). They build on default_consensus_policy (min_endorse_agents == floor 2).
+
+ROLE_FILL_ORDER: tuple[str, ...] = ("propose", "endorse", "synthesize", "scribe")
+
+
+def allocate_roles(agents: list[str]) -> dict[str, str]:
+    """Assign roles to the live roster in fill order propose->endorse->synthesize->scribe.
+
+    Operates on the actual agent ids passed in (post-substitution), not the static
+    cursor/codex/claude defaults. Agents beyond the four named roles endorse.
+    """
+    roster = [a for a in agents]
+    roles: dict[str, str] = {}
+    for index, agent in enumerate(roster):
+        if index < len(ROLE_FILL_ORDER):
+            roles[agent] = ROLE_FILL_ORDER[index]
+        else:
+            roles[agent] = "endorse"
+    return roles
+
+
+def effective_consensus(agents: list[str]) -> dict[str, Any]:
+    """Consensus mode for the current (possibly degraded) live roster.
+
+    size >= 2 -> consensus enabled, floor 2 (required endorsements = min(floor, size)).
+    size == 1 -> solo mode: consensus disabled, the single agent's output is accepted.
+    size == 0 -> none (should not occur once the local fallback floor is wired, G006).
+    """
+    from agent_lab.consensus_policy import default_consensus_policy
+
+    n = len([a for a in agents])
+    floor = default_consensus_policy().min_endorse_agents
+    if n <= 0:
+        return {
+            "roster_size": 0,
+            "mode": "none",
+            "consensus_enabled": False,
+            "floor": floor,
+            "required_endorsements": 0,
+        }
+    if n == 1:
+        return {
+            "roster_size": 1,
+            "mode": "solo",
+            "consensus_enabled": False,
+            "floor": floor,
+            "required_endorsements": 0,
+        }
+    return {
+        "roster_size": n,
+        "mode": "consensus",
+        "consensus_enabled": True,
+        "floor": floor,
+        "required_endorsements": min(floor, n),
+    }

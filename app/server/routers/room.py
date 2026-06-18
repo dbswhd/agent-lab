@@ -562,3 +562,15 @@ def retry_room_agents(body: RetryAgentsRequest) -> dict[str, Any]:
     finally:
         end_run()
     return {"ok": True, **result}
+
+
+class SlashCommandRequest(BaseModel):
+    text: str = Field(default="", max_length=2000)
+
+
+@router.post("/room/slash")
+def room_slash_command(body: SlashCommandRequest) -> dict[str, Any]:
+    """Dispatch a /login|/logout|/accounts|/model|/usage|/agents slash command."""
+    from agent_lab.slash_commands import dispatch
+
+    return dispatch(body.text)

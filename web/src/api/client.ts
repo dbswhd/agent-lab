@@ -1669,7 +1669,12 @@ async function consumeSse(
         if (line.startsWith("data: ")) {
           const data = JSON.parse(line.slice(6)) as Record<string, unknown>;
           const t = String(data.type ?? "");
-          if (t === "complete" || t === "error" || t === "run_failed" || t === "run_cancelled") {
+          if (
+            t === "complete" ||
+            t === "error" ||
+            t === "run_failed" ||
+            t === "run_cancelled"
+          ) {
             sawTerminal = true;
           }
           onEvent(data);
@@ -1868,6 +1873,25 @@ export function releaseRoomRunLock() {
     locked?: boolean;
     age_sec?: number | null;
   }>("/api/room/runs/release-lock", { method: "POST" });
+}
+
+export function retryAgents(sessionId: string, agents?: string[]) {
+  return json<{
+    ok: boolean;
+    status: string;
+    retried: string[];
+    succeeded: string[];
+    failed_agents: string[];
+    human_turn: number;
+  }>("/api/room/runs/retry-agents", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(
+      agents && agents.length
+        ? { session_id: sessionId, agents }
+        : { session_id: sessionId },
+    ),
+  });
 }
 
 export function fetchRoomRunLock() {

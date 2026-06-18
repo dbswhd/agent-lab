@@ -16,6 +16,7 @@ import {
   postMissionDiscussRecovery,
   matchSlashCommand,
   releaseRoomRunLock,
+  retryAgents,
   reconnectClaudeAuth,
   reconnectCursorBridge,
   runRoom,
@@ -1019,6 +1020,13 @@ export function RoomChat({
       setReleasingLock(false);
     }
   }, []);
+  const handleRetryFailedAgents = useCallback(async () => {
+    const sid = sessionId ?? activeSessionIdRef.current;
+    if (!sid) return;
+    await retryAgents(sid);
+    // Full session reload so the retried reply + recomputed turn status surface.
+    await onSessionChange(sid);
+  }, [sessionId, onSessionChange]);
   const transcriptActive = true;
   const typingAgents = messages.filter(
     (m) => m.typing && isReplyWaitRole(m.role),
@@ -2818,6 +2826,9 @@ export function RoomChat({
           case "release_lock":
             await handleReleaseRunLock();
             return;
+          case "retry_failed_agents":
+            await handleRetryFailedAgents();
+            return;
           case "open_work":
             openWorkTab();
             setWorkFocus("execute");
@@ -2844,6 +2855,7 @@ export function RoomChat({
     [
       handleDiscussRecoveryRun,
       handleReleaseRunLock,
+      handleRetryFailedAgents,
       notifyRecoveryStarted,
       onOpenSettings,
       openHumanInbox,
@@ -2861,10 +2873,7 @@ export function RoomChat({
     [openTranscriptTab],
   );
   const handleRecoveryRetryAction = useCallback(
-    (
-      actionId: RecoveryRetryActionId,
-      event: RecoveryResolutionEvent,
-    ): void => {
+    (actionId: RecoveryRetryActionId, event: RecoveryResolutionEvent): void => {
       if (event.kind === "oracle_fail" || event.kind === "discuss_recovery") {
         openWorkTab();
         setWorkFocus("execute");
@@ -3864,7 +3873,8 @@ export function RoomChat({
                         onEditCriteriaChange: setVerifiedEditCriteria,
                         onEditPromiseChange: setVerifiedEditPromise,
                         onApprove: () => void handleVerifiedApprove(),
-                        onReject: (payload) => void handleVerifiedReject(payload),
+                        onReject: (payload) =>
+                          void handleVerifiedReject(payload),
                       }
                     : null
                 }

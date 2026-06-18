@@ -1,7 +1,4 @@
-import type {
-  RecoveryActionId,
-  RecoveryItem,
-} from "../utils/recoveryItems";
+import type { RecoveryActionId, RecoveryItem } from "../utils/recoveryItems";
 import type {
   RecoveryResolutionEvent,
   RecoveryRetryActionId,
@@ -39,6 +36,8 @@ function actionBusyLabel(actionId: RecoveryActionId): string {
       return "재확인 중...";
     case "release_lock":
       return "해제 중...";
+    case "retry_failed_agents":
+      return "재시도 중...";
     case "run_discuss_recovery":
       return "실행 중...";
     case "refresh_health":
@@ -89,9 +88,7 @@ export function RecoveryStrip({
       <header className="recovery-strip__head">
         <strong>Recovery</strong>
         <span>
-          {items.length > 0
-            ? `${items.length}개 확인 필요`
-            : "최근 복구 완료"}
+          {items.length > 0 ? `${items.length}개 확인 필요` : "최근 복구 완료"}
         </span>
       </header>
       {items.length > 0 ? (
@@ -152,8 +149,7 @@ export function RecoveryStrip({
         <div className="recovery-strip__resolved" aria-label="최근 복구 결과">
           {resolvedEvents.slice(0, 3).map((event) => {
             const workEvent =
-              event.kind === "oracle_fail" ||
-              event.kind === "discuss_recovery";
+              event.kind === "oracle_fail" || event.kind === "discuss_recovery";
             const actionId: RecoveryRetryActionId =
               event.canRestoreLastMessage && !workEvent
                 ? "restore_last_message"

@@ -25,6 +25,7 @@ export type RecoveryActionId =
   | "reconnect_cursor"
   | "reconnect_claude"
   | "release_lock"
+  | "retry_failed_agents"
   | "open_work"
   | "open_inbox"
   | "run_discuss_recovery";
@@ -50,7 +51,10 @@ export type RecoveryItemsInput = {
   readonly readiness: ReadinessResponse | null;
   readonly combinedError: string | null;
   readonly runLockStuck: boolean;
-  readonly discussRecovery: MissionLoopState["discuss_recovery"] | null | undefined;
+  readonly discussRecovery:
+    | MissionLoopState["discuss_recovery"]
+    | null
+    | undefined;
   readonly executions: readonly PlanExecutionRecord[];
 };
 
@@ -160,9 +164,13 @@ function buildRunErrorItem(error: string): RecoveryItem | null {
     kind: "partial_turn",
     severity: "blocking_send",
     title: "최근 턴이 완전히 끝나지 않았습니다.",
-    reason: "성공한 에이전트 답변은 유지됩니다. 실패 원인을 확인한 뒤 이어서 전송할 수 있습니다.",
+    reason:
+      "성공한 에이전트 답변은 유지됩니다. 실패 원인을 확인한 뒤 이어서 전송할 수 있습니다.",
     details: trimmed,
-    primaryAction: { id: "open_settings", label: "Settings 확인" },
+    primaryAction: {
+      id: "retry_failed_agents",
+      label: "실패한 에이전트만 재시도",
+    },
     secondaryAction: { id: "refresh_health", label: "상태 재확인" },
   };
 }
@@ -177,7 +185,8 @@ export function buildRecoveryItems(
       kind: "auth_expired",
       severity: "blocking_send",
       title: "Agent Lab API에 연결할 수 없습니다.",
-      reason: "세션과 에이전트 상태를 확인할 수 없어 새 턴을 시작할 수 없습니다.",
+      reason:
+        "세션과 에이전트 상태를 확인할 수 없어 새 턴을 시작할 수 없습니다.",
       details: input.combinedError ?? "API(8765) 연결 상태를 확인하세요.",
       primaryAction: { id: "open_settings", label: "Settings 열기" },
       secondaryAction: { id: "refresh_health", label: "상태 재확인" },
@@ -231,7 +240,8 @@ export function buildRecoveryItems(
       kind: "oracle_fail",
       severity: "blocking_execute",
       title: `Oracle 검증 실패 · ${oracleFailure.action_index ?? "?"}`,
-      reason: "완료로 볼 수 없습니다. Work에서 재검증 또는 repair 흐름을 선택하세요.",
+      reason:
+        "완료로 볼 수 없습니다. Work에서 재검증 또는 repair 흐름을 선택하세요.",
       details: oracleDetail(oracleFailure),
       primaryAction: { id: "open_work", label: "Work 열기" },
       secondaryAction: { id: "open_inbox", label: "Inbox 확인" },
@@ -243,7 +253,8 @@ export function buildRecoveryItems(
       kind: "discuss_recovery",
       severity: "blocking_execute",
       title: "Discuss recovery가 필요합니다.",
-      reason: "Verify/repair 한도에 도달했습니다. 회복 라운드로 plan을 다시 정리해야 합니다.",
+      reason:
+        "Verify/repair 한도에 도달했습니다. 회복 라운드로 plan을 다시 정리해야 합니다.",
       details: input.discussRecovery.reason ?? undefined,
       primaryAction: { id: "run_discuss_recovery", label: "Recovery 실행" },
       secondaryAction: { id: "open_inbox", label: "Discuss Inbox" },
@@ -256,10 +267,13 @@ export function buildRecoveryItems(
       kind: "partial_turn",
       severity: "blocking_send",
       title: "Room readiness가 blocked 상태입니다.",
-      reason: input.readiness?.next_actions[0] ?? "준비 상태를 확인해야 합니다.",
+      reason:
+        input.readiness?.next_actions[0] ?? "준비 상태를 확인해야 합니다.",
       details: input.readiness?.checks
         .filter((check) => !check.ok)
-        .map((check) => `${check.id}: ${check.detail ?? check.next ?? "blocked"}`)
+        .map(
+          (check) => `${check.id}: ${check.detail ?? check.next ?? "blocked"}`,
+        )
         .join("\n"),
       primaryAction: { id: "open_settings", label: "Settings 열기" },
       secondaryAction: { id: "refresh_health", label: "상태 재확인" },
@@ -267,6 +281,7 @@ export function buildRecoveryItems(
   }
 
   return items.sort(
-    (left, right) => SEVERITY_RANK[left.severity] - SEVERITY_RANK[right.severity],
+    (left, right) =>
+      SEVERITY_RANK[left.severity] - SEVERITY_RANK[right.severity],
   );
 }

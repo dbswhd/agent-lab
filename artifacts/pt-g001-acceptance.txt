@@ -1,0 +1,8 @@
+# G001 Foundation acceptance — AGENT_LAB_PIPELINE flag + CLARIFY scaffold
+AC1 OFF-parity: make test-fast 1105 passed (1101 prior + 4 new), 1 skipped, 0 failed — 0 regression; flag OFF default => CLARIFY dormant; existing behavior byte-identical
+AC2 CLARIFY: flag ON => enable_mission_loop sets CLARIFY; maybe_advance_mission passthrough CLARIFY->DISCUSS (tested); flag OFF => branch refuses (pipeline_disabled)
+AC7 transition contract: test_runtime_transition_table green (CLARIFY in MISSION_PHASES)
+phase vocab synced: mission_loop.MissionPhase + runtime/phases.{MissionPhase,MISSION_PHASES} + run_schema._VALID_MISSION_PHASES contain CLARIFY
+ruff: clean on 4 edited files; mypy: 243 == baseline (0 new)
+files: mission_loop.py, runtime/phases.py, run_schema.py, mission_advance.py, + tests/test_pipeline_clarify_scaffold.py
+NOTE: transition-table contract rows for CLARIFY deferred (table is contract-only, live wiring imperative). Real LLM scorer = G002.

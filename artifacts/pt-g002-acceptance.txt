@@ -1,0 +1,9 @@
+# G002 acceptance — dedicated clarity scorer + CLARIFY guard
+vague task fires CLARIFY: maybe_advance with vague goal => stays CLARIFY (clarity_pending) [tested]
+anchored task skips: goal with file path/symbol/issue#/criteria => advances CLARIFY->DISCUSS [tested]
+flag OFF unchanged: CLARIFY branch refuses (pipeline_disabled); full lane 1120 passed, 0 regression
+dedicated scorer (separate from Room): clarity.score_ambiguity — anchored=0.0, mock vague=0.8 deterministic, real=single call_agent (one agent, not Room) with parse; available-agents-empty => conservative 0.8
+concrete-anchor detection reuses ralplan-gate signal idea (file path/issue#/camel/Pascal/snake/acceptance criteria/code block)
+clarity_threshold_met guard wired into mission_advance CLARIFY branch; threshold default 0.30, env AGENT_LAB_CLARITY_THRESHOLD
+mypy 243==baseline (0 new); ruff clean
+files: src/agent_lab/clarity.py (new), mission_advance.py (CLARIFY gate), tests/test_pipeline_clarity.py (new), tests/test_pipeline_clarify_scaffold.py (updated to real gating)

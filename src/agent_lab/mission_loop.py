@@ -27,6 +27,7 @@ from agent_lab.mission_advance import (  # noqa: F401  public FSM handlers re-ex
 MissionPhase = Literal[
     "MISSION_DEFINE",
     "MISSION_PAUSED",
+    "CLARIFY",
     "DISCUSS",
     "PLAN_GATE",
     "PLAN_REJECT",
@@ -74,6 +75,16 @@ def _mission_dispatch(
 
 def mission_loop_env_enabled() -> bool:
     return os.getenv("AGENT_LAB_MISSION_LOOP", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+def pipeline_enabled() -> bool:
+    """AGENT_LAB_PIPELINE: gate the staged deep-interview->ralplan->ultragoal orchestration (additive; OFF = current behavior)."""
+    return os.getenv("AGENT_LAB_PIPELINE", "").strip().lower() in {
         "1",
         "true",
         "yes",
@@ -385,7 +396,7 @@ def enable_mission_loop(
         ml["enabled"] = True
         ml["iteration"] = int(ml.get("iteration") or 0)
         if ml.get("phase") == "MISSION_DEFINE" and mission_define_ready(run):
-            ml["phase"] = "DISCUSS"
+            ml["phase"] = "CLARIFY" if pipeline_enabled() else "DISCUSS"
         if start_autonomous:
             ml["autonomous_segment"] = {
                 "active": True,

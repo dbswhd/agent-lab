@@ -12,6 +12,7 @@ class RuntimeValidationError(Exception):
 _VALID_MISSION_PHASES = frozenset(
     {
         "MISSION_DEFINE",
+        "CLARIFY",
         "DISCUSS",
         "PLAN_GATE",
         "PLAN_REJECT",
@@ -70,3 +71,8 @@ def validate_run(run: dict[str, Any]) -> None:
     if pending is not None:
         if not isinstance(pending, list) or not all(isinstance(item, int) for item in pending):
             raise RuntimeValidationError("pending_action_indices must be a list of ints")
+
+    goal_ledger = run.get("goal_ledger")
+    if goal_ledger is not None:
+        if not isinstance(goal_ledger, list) or not all(isinstance(entry, dict) for entry in goal_ledger):
+            raise RuntimeValidationError("goal_ledger must be a list of dicts")

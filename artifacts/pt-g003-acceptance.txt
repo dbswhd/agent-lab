@@ -1,0 +1,7 @@
+# G003 acceptance — autonomous mode router
+routing decisions recorded: mode_router.record_mode_route persists mission_loop.mode_route={mode,phase,at} to run.json [tested]
+classifier: select_mode -> EXECUTE (execute phases) / CONSENSUS (discuss/plan phases) / CLARIFY|CONSENSUS (pre-discuss via clarity_threshold_met) [tested]
+HITL preserved: router only classifies (pure read + adds mode_route field); never mutates approval/merge gates
+OFF-parity: maybe_advance records route only when pipeline_enabled; flag OFF => no mode_route, no behavior change; full lane 1125 passed/0
+mypy 243==baseline (0 new; fixed union-attr via isinstance narrowing); ruff clean
+files: src/agent_lab/mode_router.py (new), mission_advance.py (pipeline-gated record), tests/test_pipeline_mode_router.py (new, 5 tests)

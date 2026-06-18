@@ -5516,108 +5516,11 @@
   max-width: 400px;
 }
 
-/* ============================================================
-   Session setup bar (new session inline card)
-   ============================================================ */
-.session-setup-bar__card {
-  border-radius: var(--radius-lg);
-  background: var(--surface-card);
-  border: 1px solid var(--border-hair);
-  box-shadow: var(--shadow-2);
-  overflow: hidden;
-  margin: var(--space-16) auto;
-  max-width: var(--composer-max);
-}
-.session-setup-bar__head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-12);
-  padding: var(--space-16);
-  border-bottom: 1px solid var(--border-hair);
-}
-.session-setup-bar__icon-wrap {
-  width: 36px;
-  height: 36px;
-  flex: 0 0 36px;
-  border-radius: var(--radius-sm);
-  display: grid;
-  place-items: center;
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-.session-setup-bar__intro {
-  flex: 1;
-}
-.session-setup-bar__label {
-  display: block;
-  font-size: var(--text-footnote);
-  font-weight: var(--weight-semibold);
-  color: var(--label-primary);
-  margin-bottom: 2px;
-}
-.session-setup-bar__hint {
-  display: block;
-  font-size: var(--text-caption);
-  color: var(--label-tertiary);
-}
-.session-setup-bar__folder-icon {
-  color: var(--label-tertiary);
-  display: inline-flex;
-}
-.session-setup-bar__path {
-  flex: 1;
-  min-width: 0;
-  font-family: var(--font-mono);
-  font-size: var(--text-footnote);
-  color: var(--label-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.session-setup-bar__browse {
-  flex-shrink: 0;
-}
-.session-setup-bar__controls {
-  padding: var(--space-12) var(--space-16);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-12);
-}
 .session-setup-bar__select {
   display: flex;
   gap: var(--space-8);
   flex-wrap: wrap;
   align-items: center;
-}
-.session-setup-bar__research {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-}
-.session-setup-bar__research-input {
-  width: 100%;
-  min-height: 80px;
-  resize: vertical;
-  padding: var(--space-8) var(--space-10);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-soft);
-  background: var(--surface-sunken);
-  font-family: inherit;
-  font-size: var(--text-footnote);
-  color: var(--label-primary);
-  outline: none;
-}
-.session-setup-bar__research-input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
-}
-.session-setup-bar__active {
-  display: flex;
-  align-items: center;
-  gap: var(--space-8);
-  padding: var(--space-10) var(--space-16);
-  font-size: var(--text-caption);
-  color: var(--label-secondary);
 }
 
 /* ============================================================

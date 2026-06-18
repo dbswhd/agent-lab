@@ -339,13 +339,6 @@ export default function App() {
     setNewSessionOpen(true);
   }, []);
 
-  const openSetupWizard = useCallback(() => {
-    setShellView("workspace");
-    setFirstRunOnboardingOpen(true);
-    setNewSessionOpen(false);
-    setNewSessionInitialTopic(null);
-  }, []);
-
   const startOnboardingSample = useCallback(() => {
     setFirstRunSetupActive(true);
     setNewSessionInitialTopic(ONBOARDING_SAMPLE_TOPIC);
@@ -626,27 +619,6 @@ export default function App() {
                     <span className="kbd" style={{ marginLeft: "auto" }}>
                       ⌘N
                     </span>
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn--block"
-                    onClick={openSetupWizard}
-                    title="Setup wizard"
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      width="15"
-                      height="15"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={1.7}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden
-                    >
-                      <path d="M20 6 9 17l-5-5" />
-                    </svg>
-                    Setup
                   </button>
                   <button
                     type="button"

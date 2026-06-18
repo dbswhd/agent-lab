@@ -1011,6 +1011,59 @@ def cancel_open_execution(
     }
 
 
+def _resolve_reject(
+    folder: Path,
+    target: dict[str, Any],
+    *,
+    manifest: dict[str, Any] | None,
+    snapshot_id: str,
+    cwd: Path,
+    execution_id: str,
+    completed: str,
+) -> None:
+    """Reject path: restore snapshot, discard worktree, mark rejected, revert tasks."""
+    if manifest is not None:
+        restore_snapshot(folder, exec_id=snapshot_id, cwd=cwd, manifest=manifest)
+        delete_snapshot(folder, snapshot_id)
+    if target.get("isolation_effective") == "worktree":
+        discard_exec_worktree(_exec_worktree_from_execution(target), folder, execution_id)
+    target["status"] = "rejected"
+    target["completed_at"] = completed
+
+    def _revert_tasks(run: dict[str, Any]) -> dict[str, Any]:
+        from agent_lab.room_tasks import revert_tasks_for_rejected_execution
+
+        revert_tasks_for_rejected_execution(
+            run,
+            action_index=target.get("action_index"),
+            action_id=target.get("action_id"),
+            execution_id=execution_id,
+        )
+        return run
+
+    patch_run_meta(folder, _revert_tasks)
+
+
+def _resolve_snapshot_paths(target: dict[str, Any], cwd: Any) -> tuple[list[str], list[str], list[str], str]:
+    """Reconstruct snapshot/source/artifact paths and snapshot id from the execution row."""
+    snapshot_paths = list(target.get("snapshot_paths") or [])
+    if not snapshot_paths:
+        raw_monitored = list(
+            target.get("monitored_paths") or target.get("snapshotted_paths") or target.get("expected_paths") or []
+        )
+        snapshot_paths = paths_relative_to_workspace(cwd, raw_monitored)
+    source_snapshot = list(target.get("source_snapshot_paths") or [])
+    if not source_snapshot:
+        raw_source = list(target.get("expected_paths") or [])
+        source_snapshot = paths_relative_to_workspace(cwd, raw_source)
+    artifact_snapshot = list(target.get("artifact_snapshot_paths") or [])
+    if not artifact_snapshot:
+        raw_verify = list(target.get("verification_paths") or [])
+        artifact_snapshot = paths_relative_to_workspace(cwd, raw_verify)
+    snapshot_id = str(target.get("snapshot_id") or target.get("id") or "")
+    return snapshot_paths, source_snapshot, artifact_snapshot, snapshot_id
+
+
 def resolve_execution(
     folder: Path,
     *,
@@ -1043,21 +1096,7 @@ def resolve_execution(
         cwd = Path(stored_root)
     else:
         cwd, _ = resolve_execute_workspace(permissions, raw_expected_paths)
-    snapshot_paths = list(target.get("snapshot_paths") or [])
-    if not snapshot_paths:
-        raw_monitored = list(
-            target.get("monitored_paths") or target.get("snapshotted_paths") or target.get("expected_paths") or []
-        )
-        snapshot_paths = paths_relative_to_workspace(cwd, raw_monitored)
-    source_snapshot = list(target.get("source_snapshot_paths") or [])
-    if not source_snapshot:
-        raw_source = list(target.get("expected_paths") or [])
-        source_snapshot = paths_relative_to_workspace(cwd, raw_source)
-    artifact_snapshot = list(target.get("artifact_snapshot_paths") or [])
-    if not artifact_snapshot:
-        raw_verify = list(target.get("verification_paths") or [])
-        artifact_snapshot = paths_relative_to_workspace(cwd, raw_verify)
-    snapshot_id = str(target.get("snapshot_id") or target.get("id") or "")
+    snapshot_paths, source_snapshot, artifact_snapshot, snapshot_id = _resolve_snapshot_paths(target, cwd)
     completed = _now()
 
     if snapshot_id:
@@ -1069,26 +1108,7 @@ def resolve_execution(
         manifest = None
 
     if vote_norm == "reject":
-        if manifest is not None:
-            restore_snapshot(folder, exec_id=snapshot_id, cwd=cwd, manifest=manifest)
-            delete_snapshot(folder, snapshot_id)
-        if target.get("isolation_effective") == "worktree":
-            discard_exec_worktree(_exec_worktree_from_execution(target), folder, execution_id)
-        target["status"] = "rejected"
-        target["completed_at"] = completed
-
-        def _revert_tasks(run: dict[str, Any]) -> dict[str, Any]:
-            from agent_lab.room_tasks import revert_tasks_for_rejected_execution
-
-            revert_tasks_for_rejected_execution(
-                run,
-                action_index=target.get("action_index"),
-                action_id=target.get("action_id"),
-                execution_id=execution_id,
-            )
-            return run
-
-        patch_run_meta(folder, _revert_tasks)
+        _resolve_reject(folder, target, manifest=manifest, snapshot_id=snapshot_id, cwd=cwd, execution_id=execution_id, completed=completed)
     else:
         block = _artifact_approve_block_reason(target)
         if block:

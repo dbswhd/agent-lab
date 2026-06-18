@@ -1,0 +1,15 @@
+# Phase 3 acceptance — giant-function extract-method (Option A, conservative)
+## Extracted (clean pure-seams, verified safe)
+  _resolve_reject (31L): reject then-block (restore snapshot, discard worktree, mark rejected, revert tasks)
+  _resolve_snapshot_paths (18L): snapshot/source/artifact path reconstruction (pure fn of target,cwd)
+  resolve_execution: 299 -> 266 lines
+## Left inline per Option A (high-coupling, by design)
+  resolve_execution approve/merge else-block (~147L): shares mutable run/approval/auto_meta with the common tail
+  run_dry_run (499L): pipeline with 5 closures + early-returns + 30-local execution dict
+  -> full decomposition = Option B (module extraction + state objects), separate follow-up
+## Verification
+  AC2 signatures UNCHANGED (artifacts/sd-phase3-sig.txt)
+  AC3 make test-fast 1101 passed / 0 failed
+  AC4 mypy 243 == baseline 243 (0 new); ruff clean
+  AC5 move-only: extracted blocks are verbatim lifts; bound locals raw_source/raw_verify/raw_monitored confirmed NOT used outside helper (no escape)
+  AC7 plan_execute.py file 1578->1599 (function decomposition, not file reduction - as planned)

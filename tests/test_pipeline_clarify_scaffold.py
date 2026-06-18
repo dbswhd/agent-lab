@@ -15,14 +15,21 @@ def _write_run(folder: Path, ml: dict, *, goal_text: str | None = None) -> None:
 
 
 def test_pipeline_enabled_env_gated(monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab.mission_loop import pipeline_enabled
+    from agent_lab.mission_loop import pipeline_enabled, pipeline_explicitly_disabled
 
+    # G006 default-on: unset enables pipeline
     monkeypatch.delenv("AGENT_LAB_PIPELINE", raising=False)
-    assert pipeline_enabled() is False
+    assert pipeline_enabled() is True
+    assert pipeline_explicitly_disabled() is False
+
     monkeypatch.setenv("AGENT_LAB_PIPELINE", "1")
     assert pipeline_enabled() is True
-    monkeypatch.setenv("AGENT_LAB_PIPELINE", "off")
-    assert pipeline_enabled() is False
+    assert pipeline_explicitly_disabled() is False
+
+    for off in ("0", "false", "no", "off"):
+        monkeypatch.setenv("AGENT_LAB_PIPELINE", off)
+        assert pipeline_enabled() is False, off
+        assert pipeline_explicitly_disabled() is True, off
 
 
 def test_clarify_in_phase_vocab() -> None:
@@ -67,7 +74,8 @@ def test_clarify_stays_when_vague(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
 
 
 def test_clarify_branch_refuses_when_flag_off(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("AGENT_LAB_PIPELINE", raising=False)
+    # G006: legacy behavior requires explicit opt-out
+    monkeypatch.setenv("AGENT_LAB_PIPELINE", "0")
     from agent_lab.mission_advance import maybe_advance_mission
     from agent_lab.run_meta import read_run_meta
 
@@ -80,3 +88,20 @@ def test_clarify_branch_refuses_when_flag_off(tmp_path: Path, monkeypatch: pytes
     ml = read_run_meta(tmp_path).get("mission_loop", {})
     assert ml.get("phase") == "CLARIFY", out
     assert out.get("reason") == "pipeline_disabled"
+
+
+def test_clarify_branch_default_on(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """With default-on, an anchored goal advances from CLARIFY even when env is unset."""
+    monkeypatch.delenv("AGENT_LAB_PIPELINE", raising=False)
+    monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
+    from agent_lab.mission_advance import maybe_advance_mission
+    from agent_lab.run_meta import read_run_meta
+
+    _write_run(
+        tmp_path,
+        {"enabled": True, "phase": "CLARIFY", "autonomous_segment": {"active": True}},
+        goal_text="fix the null check in src/agent_lab/run_meta.py",
+    )
+    maybe_advance_mission(tmp_path, scheduled=True)
+    ml = read_run_meta(tmp_path).get("mission_loop", {})
+    assert ml.get("phase") == "DISCUSS"

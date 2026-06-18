@@ -49,7 +49,8 @@ def test_discuss_advances_when_consensus_reached(tmp_path: Path, monkeypatch: py
 
 
 def test_discuss_advances_when_flag_off(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("AGENT_LAB_PIPELINE", raising=False)
+    # G006 default-on: explicit opt-out required to test legacy behavior
+    monkeypatch.setenv("AGENT_LAB_PIPELINE", "0")
     from agent_lab.mission_advance import maybe_advance_mission
     from agent_lab.run_meta import read_run_meta
 

@@ -487,6 +487,8 @@ def test_scheduled_mission_tick_non_sandbox_advances_execute(
 def test_scheduler_non_sandbox_runs_mission_tick(
     sessions_env: Path, gateway_config: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    # G006 default-on: this legacy test exercises pre-pipeline scheduler behavior.
+    monkeypatch.setenv("AGENT_LAB_PIPELINE", "0")
     tid = "cron-live"
     tdir = templates_root(sessions_env) / tid
     tdir.mkdir(parents=True)

@@ -83,13 +83,20 @@ def mission_loop_env_enabled() -> bool:
 
 
 def pipeline_enabled() -> bool:
-    """AGENT_LAB_PIPELINE: gate the staged deep-interview->ralplan->ultragoal orchestration (additive; OFF = current behavior)."""
-    return os.getenv("AGENT_LAB_PIPELINE", "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
+    """AGENT_LAB_PIPELINE: gate the staged deep-interview->ralplan->ultragoal orchestration (additive).
+
+    Default is ON (production dogfood). Set AGENT_LAB_PIPELINE=0 to fall back to legacy behavior.
+    """
+    val = os.getenv("AGENT_LAB_PIPELINE", "1").strip().lower()
+    if val in {"0", "false", "no", "off"}:
+        return False
+    # default-on: empty, "", or any truthy token all enable the pipeline
+    return True
+
+
+def pipeline_explicitly_disabled() -> bool:
+    """True only when the user explicitly opted out of the pipeline."""
+    return os.getenv("AGENT_LAB_PIPELINE", "1").strip().lower() in {"0", "false", "no", "off"}
 
 
 def default_mission_loop() -> dict[str, Any]:

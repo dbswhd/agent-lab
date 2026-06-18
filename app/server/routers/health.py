@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 from agent_lab.agent_health import (
@@ -19,6 +19,7 @@ from agent_lab.session import SESSIONS_DIR
 from agent_lab.session_setup import session_setup_options
 
 from app.server.deps import room_session_context
+from app.server.health_rate_limit import enforce_health_burst_limit
 
 router = APIRouter(prefix="/api")
 
@@ -51,6 +52,7 @@ def health(
     probe_bridge: bool = False,
     probe_preflight: bool = False,
     session_id: str | None = None,
+    _: None = Depends(enforce_health_burst_limit),
 ) -> dict[str, Any]:
     run_meta: dict[str, Any] | None = None
     if session_id:

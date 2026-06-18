@@ -12,7 +12,8 @@ from agent_lab.context_layers import (
     repo_tree_layer_enabled,
     should_use_mission_slim_bundle,
 )
-from agent_lab.mission_loop import append_wisdom_note, build_mission_wisdom_block, enable_mission_loop
+from agent_lab.mission_loop import append_wisdom_note, enable_mission_loop
+from agent_lab.mission_notepad import build_mission_wisdom_block
 from agent_lab.run_meta import read_run_meta
 
 

@@ -283,7 +283,8 @@ def _duplicate_speech_rate(
 
 
 def _mission_notepad_chars(folder: Path, run_meta: dict[str, Any]) -> int:
-    from agent_lab.mission_loop import get_mission_loop, mission_notepad_dir
+    from agent_lab.mission_loop import get_mission_loop
+    from agent_lab.mission_notepad import mission_notepad_dir
 
     ml = get_mission_loop(run_meta)
     mission_base = mission_notepad_dir(folder)

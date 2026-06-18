@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from agent_lab.mission_loop import mission_notepad_dir
+from agent_lab.mission_notepad import mission_notepad_dir
 
 DEFAULT_TAIL_LIMIT = 50
 

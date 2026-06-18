@@ -185,7 +185,8 @@ def test_execute_lane_notifies_gate_blocked(session_folder: Path) -> None:
 def test_scheduled_merge_review_notifies_auto_merge_blocked(
     session_folder: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from agent_lab.mission_loop import enable_mission_loop, maybe_advance_mission
+    from agent_lab.mission_loop import enable_mission_loop
+    from agent_lab.mission_advance import maybe_advance_mission
     from agent_lab.run_meta import patch_run_meta
 
     enable_mission_loop(session_folder)

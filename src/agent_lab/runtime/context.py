@@ -7,7 +7,7 @@ from typing import Any
 
 def enrich_execute_prompt(user: str, run_meta: dict[str, Any] | None) -> str:
     """Append mission wisdom block to execute/repair user prompts."""
-    from agent_lab.mission_loop import inject_wisdom_into_prompt
+    from agent_lab.mission_notepad import inject_wisdom_into_prompt
 
     return inject_wisdom_into_prompt(user, run_meta)
 
@@ -18,6 +18,6 @@ def build_mission_wisdom_block(
     max_chars: int = 1500,
 ) -> str:
     """Mission notepad tails for agent context bundles."""
-    from agent_lab.mission_loop import build_mission_wisdom_block as _build
+    from agent_lab.mission_notepad import build_mission_wisdom_block as _build
 
     return _build(run_meta, max_chars=max_chars)

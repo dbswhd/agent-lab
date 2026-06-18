@@ -114,7 +114,7 @@ def test_plan_execute_call_execute_agent_uses_adapter(tmp_path: Path, monkeypatc
         captured["user"] = req.user
         return "via-adapter"
 
-    monkeypatch.setattr("agent_lab.plan_execute.invoke_execute", _invoke)
+    monkeypatch.setattr("agent_lab.plan_execute_prompts.invoke_execute", _invoke)
     out = _call_execute_agent(
         "codex",
         user="do work",

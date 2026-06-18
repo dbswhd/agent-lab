@@ -592,7 +592,8 @@ def test_scheduled_autorun_without_active_segment(sessions_env: Path, monkeypatc
 
 
 def test_scheduled_conductor_auto_merge_and_next_action(sessions_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab.mission_loop import enable_mission_loop, on_verify_result
+    from agent_lab.mission_loop import enable_mission_loop
+    from agent_lab.mission_advance import on_verify_result
     from agent_lab.mission_tick import run_scheduled_mission_tick
     from agent_lab.trust_budget import set_trust_budget
 
@@ -686,7 +687,8 @@ def test_scheduled_conductor_auto_merge_and_next_action(sessions_env: Path, monk
 
 
 def test_maybe_advance_scheduled_merge_review(sessions_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab.mission_loop import enable_mission_loop, maybe_advance_mission, on_verify_result
+    from agent_lab.mission_loop import enable_mission_loop
+    from agent_lab.mission_advance import maybe_advance_mission, on_verify_result
     from agent_lab.trust_budget import set_trust_budget
 
     folder = sessions_env / "merge-review"

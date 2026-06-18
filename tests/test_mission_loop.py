@@ -5,28 +5,32 @@ from pathlib import Path
 import pytest
 
 from agent_lab.mission_loop import (
-    MISSION_NOTEPAD_FILES,
     after_plan_scribe,
     append_wisdom_note,
-    build_mission_wisdom_block,
     clear_circuit_breaker,
     enable_mission_loop,
     ensure_mission_notepads,
     evaluate_plan_gate,
-    inject_wisdom_into_prompt,
     is_structural_verify_fail,
     list_mission_notepad_summaries,
-    maybe_advance_mission,
-    mission_notepad_dir,
-    on_dry_run_complete,
-    on_merge_abort,
-    on_merge_confirm,
     on_structural_execution_failure,
-    on_verify_result,
     pause_mission_loop,
     resume_mission_loop,
     run_mission_discuss_recovery,
     run_plan_gate,
+)
+from agent_lab.mission_notepad import (
+    MISSION_NOTEPAD_FILES,
+    build_mission_wisdom_block,
+    inject_wisdom_into_prompt,
+    mission_notepad_dir,
+)
+from agent_lab.mission_advance import (
+    maybe_advance_mission,
+    on_dry_run_complete,
+    on_merge_abort,
+    on_merge_confirm,
+    on_verify_result,
 )
 from agent_lab.run_meta import patch_run_meta, read_run_meta
 from agent_lab.verified_loop import approve_verified_loop, init_verified_loop, record_proposed_goal

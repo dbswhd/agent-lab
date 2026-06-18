@@ -59,11 +59,11 @@ def _run_mission_loop_conductor(
     from agent_lab.mission_board import record_autorun_tick, sync_turn_budget_from_mission
     from agent_lab.mission_loop import (
         get_mission_loop,
-        maybe_advance_mission,
         mission_autorun_enabled,
         run_plan_gate,
         _scheduled_autorun_allowed,
     )
+    from agent_lab.mission_advance import maybe_advance_mission
 
     run = read_run_meta(folder)
     ml = get_mission_loop(run)

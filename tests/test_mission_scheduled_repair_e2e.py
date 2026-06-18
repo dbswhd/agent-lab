@@ -6,7 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.mission_loop import enable_mission_loop, maybe_advance_mission, on_verify_result
+from agent_lab.mission_loop import enable_mission_loop
+from agent_lab.mission_advance import maybe_advance_mission, on_verify_result
 from agent_lab.mission_tick import run_scheduled_mission_tick
 from agent_lab.run_meta import patch_run_meta, read_run_meta
 from agent_lab.trust_budget import set_trust_budget

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from agent_lab.mission_loop import maybe_advance_mission
+from agent_lab.mission_advance import maybe_advance_mission
 
 
 def _make_run(tmp_path: Path, *, phase: str = "DISCUSS", pending: bool = False):
@@ -114,15 +114,17 @@ def test_on_verify_result_does_not_double_count(monkeypatch, tmp_path):
 
     import agent_lab.mission_board as mb
     import agent_lab.mission_loop as ml
+    import agent_lab.mission_advance as ma
+    import agent_lab.mission_notepad as mn
     import agent_lab.runtime.boulder as boulder
 
     monkeypatch.setattr(mb, "record_autorun_tick", fake_record_autorun)
     monkeypatch.setattr(mb, "sync_turn_budget_from_mission", fake_sync)
     monkeypatch.setattr(ml, "_scheduled_autorun_allowed", fake_allowed)
-    monkeypatch.setattr(ml, "read_run_meta", fake_read)
-    monkeypatch.setattr(ml, "patch_run_meta", fake_patch)
+    monkeypatch.setattr(ma, "read_run_meta", fake_read)
+    monkeypatch.setattr(ma, "patch_run_meta", fake_patch)
     monkeypatch.setattr(ml, "_mission_dispatch", fake_dispatch)
-    monkeypatch.setattr(ml, "append_wisdom_note", fake_append_wisdom)
+    monkeypatch.setattr(mn, "append_wisdom_note", fake_append_wisdom)
     monkeypatch.setattr(boulder, "record_last_failure", fake_record_last_failure)
     monkeypatch.setattr(ml, "mission_autorun_enabled", lambda _ml: False)
 

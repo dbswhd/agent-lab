@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from agent_lab.evidence_ledger import evidence_path, read_evidence_tail
-from agent_lab.mission_loop import MISSION_NOTEPAD_FILES, mission_notepad_dir
+from agent_lab.mission_notepad import MISSION_NOTEPAD_FILES, mission_notepad_dir
 
 _TOKEN_RE = re.compile(r"[\w가-힣]+", re.UNICODE)
 _INDEX_FILENAME = "wisdom_index.json"

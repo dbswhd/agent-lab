@@ -59,7 +59,7 @@ def provider_spent_usd(run_meta: dict[str, Any] | None, provider: str) -> float:
     entry = by_agent.get(provider)
     if not isinstance(entry, dict):
         return 0.0
-    raw = entry.get("cost_usd")
+    raw = entry.get("usd")
     return float(raw) if isinstance(raw, (int, float)) else 0.0
 
 

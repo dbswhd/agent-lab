@@ -45,7 +45,7 @@ def test_should_preempt_usage_header_precedence() -> None:
 def test_provider_spent_usd_reads_ledger() -> None:
     from agent_lab import usage_monitor as um
 
-    run = {"cost_ledger": {"by_agent": {"kimi": {"cost_usd": 1.25}}}}
+    run = {"cost_ledger": {"by_agent": {"kimi": {"usd": 1.25}}}}
     assert um.provider_spent_usd(run, "kimi") == 1.25
     assert um.provider_spent_usd(run, "cursor") == 0.0
     assert um.provider_spent_usd(None, "kimi") == 0.0

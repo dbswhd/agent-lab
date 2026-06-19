@@ -55,6 +55,26 @@ type Props = {
   onReconnectCursor?: () => void;
 };
 
+type SettingsCategory =
+  | "general"
+  | "agents"
+  | "connections"
+  | "workspace"
+  | "automation"
+  | "advanced";
+
+const SETTINGS_CATEGORIES: readonly {
+  id: SettingsCategory;
+  label: string;
+}[] = [
+  { id: "general", label: "일반" },
+  { id: "agents", label: "에이전트와 모델" },
+  { id: "connections", label: "연결" },
+  { id: "workspace", label: "워크스페이스" },
+  { id: "automation", label: "자동화" },
+  { id: "advanced", label: "고급·진단" },
+];
+
 function TweaksSettingsActions({ onBack }: { onBack: () => void }) {
   const tweaks = useTweaksDemo();
 
@@ -100,6 +120,17 @@ export function SettingsPage({
   const [permissionDefaultsSaved, setPermissionDefaultsSaved] = useState(
     hasSavedPermissionDefaults,
   );
+  const [category, setCategory] = useState<SettingsCategory>(() => {
+    const stored = window.localStorage.getItem("agent-lab.settings-category");
+    return SETTINGS_CATEGORIES.some((item) => item.id === stored)
+      ? (stored as SettingsCategory)
+      : "general";
+  });
+
+  const selectCategory = (next: SettingsCategory) => {
+    setCategory(next);
+    window.localStorage.setItem("agent-lab.settings-category", next);
+  };
 
   useEffect(() => {
     setPermissionDefaultsSaved(hasSavedPermissionDefaults());
@@ -181,7 +212,7 @@ export function SettingsPage({
     healthAgents.length > 0 && healthAgents.every((h) => h.ready);
 
   return (
-    <div className="settings-page">
+    <div className="settings-page" data-settings-category={category}>
       <header className="settings-page__header">
         <button type="button" className="btn" onClick={onBack}>
           ← 워크스페이스
@@ -189,13 +220,44 @@ export function SettingsPage({
         <div className="settings-page__heading">
           <h1 className="settings-page__title">설정</h1>
           <p className="settings-page__sub">
-            에이전트 · API 키 · 워크스페이스 · 명령 · 진단 · 테마 · 레거시
+            필요한 설정만 단계적으로 표시합니다.
           </p>
         </div>
       </header>
 
+      <div className="settings-category-mobile">
+        <label htmlFor="settings-category">설정 카테고리</label>
+        <select
+          id="settings-category"
+          value={category}
+          onChange={(event) =>
+            selectCategory(event.target.value as SettingsCategory)
+          }
+        >
+          {SETTINGS_CATEGORIES.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <nav className="settings-category-nav" aria-label="설정 카테고리">
+        {SETTINGS_CATEGORIES.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className={category === item.id ? "is-active" : undefined}
+            aria-current={category === item.id ? "page" : undefined}
+            onClick={() => selectCategory(item.id)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </nav>
+
       <div className="settings-page__body scroll-y">
-        <section className="settings-section">
+        <section className="settings-section settings-panel settings-panel--agents">
           <div className="settings-section__head">
             <h2 className="settings-section__title">
               <SettingsSectionIcon name="users" />
@@ -304,7 +366,7 @@ export function SettingsPage({
           ) : null}
         </section>
 
-        <section className="settings-section">
+        <section className="settings-section settings-panel settings-panel--connections">
           <div className="settings-section__head">
             <h2 className="settings-section__title">
               <SettingsSectionIcon name="key" />
@@ -319,7 +381,7 @@ export function SettingsPage({
         </section>
 
         {sessionId ? (
-          <section className="settings-section">
+          <section className="settings-section settings-panel settings-panel--workspace">
             <div className="settings-section__head">
               <h2 className="settings-section__title">
                 <SettingsSectionIcon name="folder" />
@@ -361,7 +423,7 @@ export function SettingsPage({
         ) : null}
 
         {sessionId ? (
-          <section className="settings-section">
+          <section className="settings-section settings-panel settings-panel--advanced">
             <div className="settings-section__head">
               <h2 className="settings-section__title">
                 <SettingsSectionIcon name="terminal" />
@@ -390,7 +452,7 @@ export function SettingsPage({
             />
           </section>
         ) : (
-          <section className="settings-section">
+          <section className="settings-section settings-panel settings-panel--advanced">
             <p className="settings-hint">
               세션을 선택하면 Context 미리보기와 플러그인 설정을 사용할 수
               있습니다.
@@ -398,9 +460,11 @@ export function SettingsPage({
           </section>
         )}
 
-        <HooksResponseSettings sessionId={sessionId} session={session} />
+        <div className="settings-panel settings-panel--advanced">
+          <HooksResponseSettings sessionId={sessionId} session={session} />
+        </div>
 
-        <section className="settings-section">
+        <section className="settings-section settings-panel settings-panel--automation">
           <div className="settings-section__head">
             <h2 className="settings-section__title">
               <SettingsSectionIcon name="activity" />
@@ -413,7 +477,7 @@ export function SettingsPage({
           {sessionId ? <SchedulesPanel sessionId={sessionId} /> : null}
         </section>
 
-        <section className="settings-section">
+        <section className="settings-section settings-panel settings-panel--advanced">
           <div className="settings-section__head">
             <h2 className="settings-section__title">
               <SettingsSectionIcon name="activity" />
@@ -441,66 +505,89 @@ export function SettingsPage({
           />
         </section>
 
-        <section className="settings-section settings-section--split">
-          <div>
-            <div className="settings-section__head">
-              <h2 className="settings-section__title">
-                <SettingsSectionIcon name="sun" />
-                {t("appearance")}
-              </h2>
-              <span className="settings-section__sub">
-                {t("settingsLanguageSub")}
-              </span>
-            </div>
-            <div className="settings-appearance">
-              <div className="settings-appearance__row">
-                <span className="settings-appearance__label">
-                  {t("settingsLanguage")}
-                </span>
-                <div
-                  className="turn-seg"
-                  role="radiogroup"
-                  aria-label={t("settingsLanguage")}
-                >
-                  {(["en", "ko"] as const).map((code) => (
-                    <button
-                      key={code}
-                      type="button"
-                      role="radio"
-                      aria-checked={locale === code}
-                      className={locale === code ? "is-active" : undefined}
-                      onClick={() => setLocale(code)}
-                    >
-                      {localeLabel(code)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="settings-appearance__row">
-                <span className="settings-appearance__label">{t("theme")}</span>
-                <ThemeToggle />
-              </div>
-            </div>
-            <p className="settings-hint">
-              P0/P1 상태 변화는 toast + Inspector Activity에 함께 기록됩니다.
-            </p>
+        <section className="settings-section settings-panel settings-panel--general">
+          <div className="settings-section__head">
+            <h2 className="settings-section__title">
+              <SettingsSectionIcon name="sun" />
+              일반
+            </h2>
+            <span className="settings-section__sub">
+              언어 · 테마 · 현재 모델 · 연결 상태
+            </span>
           </div>
-          <div>
-            <div className="settings-section__head">
-              <h2 className="settings-section__title">
-                <SettingsSectionIcon name="activity" />
-                개발 · QA
-              </h2>
-              <span className="settings-section__sub">
-                오버레이 · 배너 · 알림 UI 미리보기
-              </span>
+          <div className="settings-summary-grid">
+            <div>
+              <span>연결</span>
+              <strong>{apiOk ? "API 연결됨" : "연결 확인 필요"}</strong>
             </div>
-            <p className="settings-hint">
-              Tweaks 패널에서 Command Palette, MacAlert, 토스트, ExecuteQueueBar
-              등을 시뮬레이션합니다. ⌘⇧T 로도 열 수 있습니다.
-            </p>
-            <TweaksSettingsActions onBack={onBack} />
+            <div>
+              <span>현재 모델</span>
+              <strong>
+                {healthAgents
+                  .filter((agent) => selectedAgents.includes(agent.id))
+                  .map((agent) => agent.model || agent.label)
+                  .join(" · ") || "선택된 모델 없음"}
+              </strong>
+            </div>
           </div>
+          <div className="settings-section__head">
+            <h2 className="settings-section__title">
+              <SettingsSectionIcon name="sun" />
+              {t("appearance")}
+            </h2>
+            <span className="settings-section__sub">
+              {t("settingsLanguageSub")}
+            </span>
+          </div>
+          <div className="settings-appearance">
+            <div className="settings-appearance__row">
+              <span className="settings-appearance__label">
+                {t("settingsLanguage")}
+              </span>
+              <div
+                className="turn-seg"
+                role="radiogroup"
+                aria-label={t("settingsLanguage")}
+              >
+                {(["en", "ko"] as const).map((code) => (
+                  <button
+                    key={code}
+                    type="button"
+                    role="radio"
+                    aria-checked={locale === code}
+                    className={locale === code ? "is-active" : undefined}
+                    onClick={() => setLocale(code)}
+                  >
+                    {localeLabel(code)}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="settings-appearance__row">
+              <span className="settings-appearance__label">{t("theme")}</span>
+              <ThemeToggle />
+            </div>
+          </div>
+          <p className="settings-hint">
+            P0/P1 상태 변화는 toast + Inspector Activity에 함께 기록됩니다.
+          </p>
+        </section>
+
+        <section className="settings-section settings-panel settings-panel--advanced">
+          <div className="settings-section__head">
+            <h2 className="settings-section__title">
+              <SettingsSectionIcon name="activity" />
+              개발 · QA
+            </h2>
+            <span className="settings-section__sub">
+              오버레이 · 배너 · 알림 UI 미리보기
+            </span>
+          </div>
+          <p className="settings-hint">
+            Tweaks 패널에서 Command Palette, MacAlert, toast와 execute UI를
+            시뮬레이션합니다.
+          </p>
+          <TweaksSettingsActions onBack={onBack} />
         </section>
       </div>
     </div>

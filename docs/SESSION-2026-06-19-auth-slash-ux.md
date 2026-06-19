@@ -75,17 +75,36 @@
 ## 변경 파일 (요약)
 
 **백엔드(`src/agent_lab/`)**: `plugin_discovery.py`, `slash_commands.py`, `command_registry.py`, `provider_registry.py`, `credential_store.py`, `auth_runs.py`, `room_turn_flow.py`
+**서버(`app/server/`)**: `main.py`
 **프론트(`web/src/`)**: `api/client.ts`, `components/RoomChat.tsx`, `components/AuthFlowPanel.tsx`, `components/RecoveryStrip.tsx`, `styles/surfaces.css`, `styles/layout.css`
-**테스트(`tests/`)**: `test_dynamic_slash_commands.py`, `test_command_registry.py`, `test_auth_runs.py`
+**테스트(`tests/`)**: `test_dynamic_slash_commands.py`, `test_command_registry.py`, `test_auth_runs.py`, `conftest.py`
 
 ## 검증 상태 (세션 종료 시점)
 
-- `make test-fast` 계열: **1242 passed**, 3 failed(기존 kimi/local roster, 무관), 1 skipped
+- `make test-fast` 계열: **1247 passed**, 1 skipped (이전 1242 passed / 3 failed → 전부 해결)
 - `mypy src/`: **243 errors == baseline** (추가 0)
 - `tsc --noEmit`: clean / `eslint`: error 0 (warning은 기존)
+- `make lint`: clean
 
 ## 후속 거리
 
-- 기존 kimi/local roster 테스트 3건 실패 정리 (이번 작업과 무관, 사전 존재)
+- 기존 kimi/local roster 테스트 3건 실패 — **해결** (원인: `app.server.main` import 시점 `apply_default_room_models_to_env()` 누수 + `AGENT_LAB_ROOM_MODELS` 테스트 간 누수)
 - 멀티계정 전환 UX(`confirm_relogin`)를 안전하게 재도입할지 결정
 - mypy 243 baseline 점진 감축 (별도 작업)
+---
+
+## 8. "극초반 구현 누락" 의심 — 진단 및 해결
+
+- **사용자 질문**: "극초반 거는 구현이 안 됐네 컨텍스트 요약으로 날아갔나?"
+- **결론**: **코드 유실은 없었음**. 모든 초기 산출물(`plugin_discovery` 캐시, Pipeline G006, Dynamic Room, `/login` picker, dead-code 제거)이 코드에 그대로 존재.
+- **실제 원인 1 — 테스트 누수**: `app/server/main.py`가 **import 시점**에 `apply_default_room_models_to_env()`를 호출해 사용자의 실제 `~/.agent-lab/room_models` 파일을 `AGENT_LAB_ROOM_MODELS`로 프로세스 전역에 적용. 이로 인해 테스트가 `app.server.main`을 import하면 사용자의 dogfooding 설정이 로스터 테스트로 누수되어 codex 기대값이 깨지고, 실행 순서에 따라 다른 실패가 나타나 플레이크로 보임.
+- **실제 원인 2 — 사용자 환경 설정**: `~/.agent-lab/room_models` 내용이 `cursor,claude,kimi`로 저장되어 있어 codex가 기본 room composition에서 빠진 상태였음. 이는 `/model` picker로 적용 시 `persist_default_room_models()`에 의해 저장된 것으로 보임.
+- **수정**:
+  - `app/server/main.py`: `apply_default_room_models_to_env()` 호출을 `_api_startup()` (lifespan)으로 이동. import 시점에는 환경 오염 없음.
+  - `tests/conftest.py`: `_isolate_room_model_env` autouse 픽스처 추가 — 매 테스트 전 `AGENT_LAB_ROOM_MODELS` / `AGENT_LAB_ROOM_SUBSTITUTION`을 비우고 테스트 후 복원.
+- **검증**:
+  - `make test-fast`: **1247 passed**, 1 skipped (이전 1242 passed / 3 failed → 전부 해결)
+  - 두 번 연속 전체 스위트 실행: 동일한 1247 passed / 1 skipped (결정적)
+  - `mypy src/`: 243 errors == baseline
+  - `make lint`: clean
+- **사용자 안내**: codex를 기본 room에 다시 포함하려면 `/model` picker에서 `cursor,codex,claude`를 선택해 적용하거나, `~/.agent-lab/room_models` 파일을 직접 수정하면 됨.

@@ -66,6 +66,13 @@ type Props = {
   onSlashExecute?: (command: SlashCommandRecord) => void;
   /** When set, `@` opens a workspace file mention picker (Files tab roots). */
   sessionId?: string | null;
+  activeModels?: readonly {
+    id: string;
+    label: string;
+    model?: string | null;
+    ready?: boolean;
+  }[];
+  onOpenModelPicker?: () => void;
 };
 
 /**
@@ -109,6 +116,8 @@ export function ChatComposer({
   slashCommands = [],
   onSlashExecute,
   sessionId = null,
+  activeModels = [],
+  onOpenModelPicker,
 }: Props) {
   const { msg: localeMsg } = useLocale();
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -249,6 +258,39 @@ export function ChatComposer({
             </>
           }
         />
+      ) : null}
+
+      {activeModels.length > 0 ? (
+        <div className="composer-models" aria-label="현재 에이전트와 모델">
+          <div className="composer-models__scroll">
+            {activeModels.slice(0, 5).map((agent) => (
+              <button
+                key={agent.id}
+                type="button"
+                className="composer-model-chip"
+                onClick={onOpenModelPicker}
+                disabled={!onOpenModelPicker}
+                title={`${agent.label} · ${agent.model || "기본 모델"}`}
+              >
+                <span>{agent.label}</span>
+                <span aria-hidden="true">·</span>
+                <strong>{agent.model || "기본 모델"}</strong>
+              </button>
+            ))}
+            {activeModels.length > 5 ? (
+              <button
+                type="button"
+                className="composer-model-chip composer-model-chip--more"
+                onClick={onOpenModelPicker}
+                disabled={!onOpenModelPicker}
+                aria-label={`에이전트 ${activeModels.length - 5}개 더 보기`}
+              >
+                +{activeModels.length - 5}
+              </button>
+            ) : null}
+          </div>
+          <span className="composer-models__hint">/model</span>
+        </div>
       ) : null}
 
       {objectionNotice ? (

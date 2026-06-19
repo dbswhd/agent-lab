@@ -123,9 +123,14 @@ export function AuthFlowPanel({ run, onClose, onComplete }: Props) {
   };
 
   return (
-    <section className="auth-flow" aria-label={`${run.provider_id} CLI ${flowLabel}`}>
+    <section
+      className="auth-flow"
+      aria-label={`${run.provider_id} CLI ${flowLabel}`}
+    >
       <div className="auth-flow__head">
-        <strong>{run.provider_id} CLI {flowLabel}</strong>
+        <strong>
+          {run.provider_id} CLI {flowLabel}
+        </strong>
         <span className={`auth-flow__status auth-flow__status--${status}`}>
           {STATUS_LABELS[status]}
         </span>
@@ -144,38 +149,40 @@ export function AuthFlowPanel({ run, onClose, onComplete }: Props) {
       ) : null}
       {status === "running" ? (
         <>
-        <div className="auth-flow__input-row">
-          <input
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") submitInput();
-            }}
-            placeholder="브라우저에 표시된 인증 코드를 붙여넣으세요"
-            aria-label="인증 코드 입력"
-          />
-          <button type="button" className="btn btn--sm" onClick={submitInput}>
-            입력
-          </button>
-          <button
-            type="button"
-            className="btn btn--danger btn--sm"
-            onClick={() =>
-              wsRef.current?.send(JSON.stringify({ type: "cancel" }))
-            }
-          >
-            취소
-          </button>
-        </div>
-        <p className="auth-flow__hint">
-          {run.provider_id === "claude"
-            ? "Claude는 브라우저 승인 후 표시되는 코드를 요청합니다. 코드를 복사해 위에 붙여넣고 Enter를 누르세요."
-            : "브라우저에서 승인하면 CLI가 자동으로 완료됩니다. 코드를 요청하면 붙여넣고 Enter를 누르세요."}
-        </p>
+          <div className="auth-flow__input-row">
+            <input
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") submitInput();
+              }}
+              placeholder="브라우저에 표시된 인증 코드를 붙여넣으세요"
+              aria-label="인증 코드 입력"
+            />
+            <button type="button" className="btn btn--sm" onClick={submitInput}>
+              입력
+            </button>
+            <button
+              type="button"
+              className="btn btn--danger btn--sm"
+              onClick={() =>
+                wsRef.current?.send(JSON.stringify({ type: "cancel" }))
+              }
+            >
+              취소
+            </button>
+          </div>
+          <p className="auth-flow__hint">
+            {run.provider_id === "claude"
+              ? "Claude는 브라우저 승인 후 표시되는 코드를 요청합니다. 코드를 복사해 위에 붙여넣고 Enter를 누르세요."
+              : "브라우저에서 승인하면 CLI가 자동으로 완료됩니다. 코드를 요청하면 붙여넣고 Enter를 누르세요."}
+          </p>
         </>
       ) : (
         <div className="auth-flow__input-row">
-          {status === "completed" && run.provider_id === "codex" && run.action === "login" ? (
+          {status === "completed" &&
+          run.provider_id === "codex" &&
+          run.action === "login" ? (
             <>
               <button
                 type="button"

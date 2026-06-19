@@ -1,4 +1,5 @@
 """G005 — slash command surface (6 commands), masked output, write path, settings gate."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -137,3 +138,71 @@ def test_settings_put_writes_when_off(monkeypatch: pytest.MonkeyPatch, tmp_path:
     res = client.put("/api/settings/credentials", json={"cursor": {"primary": "sk-off"}})
     assert res.status_code == 200
     assert res.json().get("saved") is True  # OFF-parity: legacy write path intact
+
+
+# --- Composer integration: command_registry catalog + dispatch (option A) ---
+
+
+def test_command_registry_gates_dynamic_room(cfg: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The 6 dynamic-room commands appear in the composer catalog only when on."""
+    from agent_lab.command_registry import list_commands
+
+    dyn = {"login", "logout", "accounts", "model", "usage", "agents"}
+
+    monkeypatch.delenv("AGENT_LAB_DYNAMIC_ROOM", raising=False)
+    off_ids = {c["id"] for c in list_commands(cfg, workspace=cfg)["commands"]}
+    assert dyn.isdisjoint(off_ids)
+
+    monkeypatch.setenv("AGENT_LAB_DYNAMIC_ROOM", "1")
+    on = list_commands(cfg, workspace=cfg)["commands"]
+    on_ids = {c["id"] for c in on}
+    assert dyn <= on_ids
+    for row in on:
+        if row["id"] in dyn:
+            assert row["slash"] == f"/{row['id']}"
+            assert row["kind"] == "server"
+            assert row["enabled"] is True
+            assert row["handler"] == f"dynamic_room:{row['id']}"
+
+
+def test_execute_command_dispatches_dynamic_room(cfg: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """execute_command delegates to slash_commands.dispatch with composer-renderable text."""
+    from agent_lab.command_registry import execute_command, invoke_tool
+
+    monkeypatch.setenv("AGENT_LAB_DYNAMIC_ROOM", "1")
+    # _model writes AGENT_LAB_ROOM_MODELS directly; record it so teardown clears it.
+    monkeypatch.setenv("AGENT_LAB_ROOM_MODELS", "")
+
+    res = execute_command(cfg, "agents", workspace=cfg)
+    assert res["ok"] is True and res["kind"] == "server"
+    assert res["text"].startswith("/agents roster:")
+    # roster is dynamically resolved when dynamic room is on; just assert wiring.
+    roster = res["result"]["roster"]
+    assert isinstance(roster, list) and roster
+    assert set(res["result"]["roles"]) == set(roster)
+
+    setm = execute_command(cfg, "model", args="kimi,local", workspace=cfg)
+    assert setm["ok"] is True and "kimi" in setm["text"]
+
+    # invoke_tool envelope stays ok for the server-kind dynamic command
+    tr = invoke_tool(cfg, "usage", workspace=cfg)
+    assert tr.ok is True and tr.kind == "server"
+
+
+def test_execute_command_dynamic_room_error_surfaces_detail(cfg: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from agent_lab.command_registry import execute_command
+
+    monkeypatch.setenv("AGENT_LAB_DYNAMIC_ROOM", "1")
+    res = execute_command(cfg, "login", workspace=cfg)  # missing provider
+    assert res["ok"] is False
+    assert res["detail"] == "provider required"
+    assert "result" not in res  # gate-failure shape → endpoint 409 with detail
+
+
+def test_execute_command_dynamic_room_blocked_when_off(cfg: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from agent_lab.command_registry import execute_command
+
+    monkeypatch.delenv("AGENT_LAB_DYNAMIC_ROOM", raising=False)
+    res = execute_command(cfg, "usage", workspace=cfg)
+    assert res["ok"] is False
+    assert "unknown command" in (res.get("detail") or "")

@@ -456,12 +456,6 @@ export function fetchCodexProxyHealth() {
   return json<CodexProxyHealth>("/api/health/codex-proxy");
 }
 
-export function fetchSessionMergeChecks(sessionId: string) {
-  return json<{ ok: boolean; session_id: string } & MergeChecksPayload>(
-    `/api/sessions/${encodeURIComponent(sessionId)}/merge-checks`,
-  );
-}
-
 // ── Workspace Files (Files tab) ──
 export type WorkspaceFileRoot = {
   root_id: string;
@@ -593,12 +587,6 @@ export function listBgTasks(sessionId: string): Promise<{ tasks: BgTask[] }> {
   );
 }
 
-export function getBgTask(sessionId: string, taskId: string): Promise<BgTask> {
-  return json<BgTask>(
-    `/api/sessions/${encodeURIComponent(sessionId)}/bg-tasks/${encodeURIComponent(taskId)}`,
-  );
-}
-
 export function getBgTaskLog(
   sessionId: string,
   taskId: string,
@@ -716,21 +704,6 @@ export type WisdomSearchPayload = {
   cross_session_hit_count?: number;
   index?: WisdomIndexStatus;
 };
-
-export function postClarifierAnswers(
-  sessionId: string,
-  answers: Record<string, string>,
-  markComplete = true,
-) {
-  return json<{ ok: boolean; session_id: string; interview: unknown }>(
-    `/api/sessions/${encodeURIComponent(sessionId)}/clarifier-interview/answers`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ answers, mark_complete: markComplete }),
-    },
-  );
-}
 
 export function fetchSessionWisdomSearch(
   sessionId: string,
@@ -1047,40 +1020,6 @@ export function fetchSessionRuntime(sessionId: string) {
   );
 }
 
-export function fetchMissionLoop(sessionId: string) {
-  return json<MissionLoopResponse>(
-    `/api/sessions/${encodeURIComponent(sessionId)}/mission-loop`,
-  );
-}
-
-export function enableMissionLoop(sessionId: string, startAutonomous = true) {
-  return json<MissionLoopResponse>(
-    `/api/sessions/${encodeURIComponent(sessionId)}/mission-loop/enable`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ start_autonomous: startAutonomous }),
-    },
-  );
-}
-
-export function advanceMissionLoop(
-  sessionId: string,
-  opts?: { permissions?: Record<string, unknown>; executor?: string },
-) {
-  return json<MissionLoopResponse & { advance?: Record<string, unknown> }>(
-    `/api/sessions/${encodeURIComponent(sessionId)}/mission-loop/advance`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        permissions: opts?.permissions,
-        executor: opts?.executor,
-      }),
-    },
-  );
-}
-
 export function pauseMissionLoop(
   sessionId: string,
   opts?: { reason?: string; cleanupExecutions?: boolean },
@@ -1104,20 +1043,6 @@ export function resumeMissionLoop(
 ) {
   return json<MissionLoopResponse & { resume?: Record<string, unknown> }>(
     `/api/sessions/${encodeURIComponent(sessionId)}/mission-loop/resume`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ resume_phase: resumePhase }),
-    },
-  );
-}
-
-export function clearMissionCircuitBreaker(
-  sessionId: string,
-  resumePhase = "DISCUSS",
-) {
-  return json<MissionLoopResponse>(
-    `/api/sessions/${encodeURIComponent(sessionId)}/mission-loop/clear-circuit-breaker`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1218,16 +1143,6 @@ export function reconnectClaudeAuth() {
     remediation?: string[] | null;
     agent: AgentHealthRow;
   }>("/api/health/reconnect-claude", { method: "POST" });
-}
-
-export function fetchAgents() {
-  return json<{ agents: AgentOption[]; default: string[] }>("/api/agents");
-}
-
-export function fetchBackends() {
-  return json<{ default: string | null; options: BackendOption[] }>(
-    "/api/backends",
-  );
 }
 
 export function fetchSessionSetupOptions() {
@@ -1366,15 +1281,6 @@ export type PlanWorkflowRecord = {
   notice?: string;
   last_plan_gate?: Record<string, unknown> | null;
 };
-
-export function fetchPlanWorkflow(id: string) {
-  return json<{
-    ok: boolean;
-    plan_md: string;
-    plan_workflow: PlanWorkflowRecord;
-    plan_workflow_pending_approval?: boolean;
-  }>(`/api/sessions/${encodeURIComponent(id)}/plan/workflow`);
-}
 
 export function approvePlan(
   id: string,
@@ -1892,14 +1798,6 @@ export function retryAgents(sessionId: string, agents?: string[]) {
         : { session_id: sessionId },
     ),
   });
-}
-
-export function fetchRoomRunLock() {
-  return json<{
-    ok: boolean;
-    locked: boolean;
-    age_sec?: number | null;
-  }>("/api/room/run-lock");
 }
 
 export type ExecuteWorkspace = {
@@ -2647,22 +2545,6 @@ export function applySessionTemplate(sessionId: string, templateId: string) {
   );
 }
 
-export function fetchGatewayAdapters() {
-  return json<{ adapters: GatewayAdapterInfo[]; enabled: string[] }>(
-    "/api/gateway/adapters",
-  );
-}
-
-export function triggerMissionSchedulerTick(force = false) {
-  const q = force ? "?force=true" : "";
-  return json<{ ok: boolean; runs?: unknown[] }>(
-    `/api/mission-scheduler/tick${q}`,
-    {
-      method: "POST",
-    },
-  );
-}
-
 export type TrustBudgetPayload = {
   auto_merge_remaining: number;
   auto_merge_total: number;
@@ -2676,26 +2558,6 @@ export type AutoMergeEligibilityPayload = {
   pending_execution_id?: string | null;
   trust_budget?: TrustBudgetPayload;
 };
-
-export function fetchSessionTrustBudget(sessionId: string) {
-  return json<{ trust_budget: TrustBudgetPayload; gate_profile: string }>(
-    `/api/sessions/${encodeURIComponent(sessionId)}/trust-budget`,
-  );
-}
-
-export function patchSessionTrustBudget(
-  sessionId: string,
-  body: Partial<TrustBudgetPayload>,
-) {
-  return json<{ ok: boolean; trust_budget: TrustBudgetPayload }>(
-    `/api/sessions/${encodeURIComponent(sessionId)}/trust-budget`,
-    {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    },
-  );
-}
 
 export function fetchAutoMergeEligibility(
   sessionId: string,
@@ -2727,26 +2589,6 @@ export type SkillDraftSummary = {
   status?: string;
   created_at?: string;
 };
-
-export function fetchSkillDrafts(sessionId: string) {
-  return json<{ drafts: SkillDraftSummary[] }>(
-    `/api/sessions/${encodeURIComponent(sessionId)}/skills/drafts`,
-  );
-}
-
-export function promoteSkillDraft(sessionId: string, draftId: string) {
-  return json<{ ok: boolean }>(
-    `/api/sessions/${encodeURIComponent(sessionId)}/skills/drafts/${encodeURIComponent(draftId)}/promote`,
-    { method: "POST" },
-  );
-}
-
-export function rejectSkillDraft(sessionId: string, draftId: string) {
-  return json<{ ok: boolean }>(
-    `/api/sessions/${encodeURIComponent(sessionId)}/skills/drafts/${encodeURIComponent(draftId)}/reject`,
-    { method: "POST" },
-  );
-}
 
 // ── Terminal ──────────────────────────────────────────────────────────────────
 

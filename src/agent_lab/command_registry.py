@@ -16,6 +16,7 @@ from agent_lab.runtime.external_runner import (
     run_external_command,
 )
 from agent_lab.goal_loop import check_session_goal, goal_loop_enabled
+from agent_lab.agent_roster import dynamic_room_enabled
 from agent_lab.plugin_discovery import (
     discover_plugins,
     is_plugin_enabled,
@@ -57,6 +58,73 @@ _BUILTIN_COMMANDS: list[dict[str, Any]] = [
         "kind": "client",
         "agent": None,
         "handler": "focus_composer",
+    },
+]
+
+
+# Dynamic resilient room management commands (G005). Exposed in the composer
+# command catalog only when AGENT_LAB_DYNAMIC_ROOM is on; each delegates to
+# agent_lab.slash_commands.dispatch via the "dynamic_room:<name>" handler.
+_DYNAMIC_ROOM_COMMANDS: list[dict[str, Any]] = [
+    {
+        "id": "login",
+        "slash": "/login",
+        "label": "Provider 로그인",
+        "description": "/login <provider> [key] — 계정 추가/로그인 (oauth는 CLI 안내)",
+        "scope": "room",
+        "kind": "server",
+        "agent": None,
+        "handler": "dynamic_room:login",
+    },
+    {
+        "id": "logout",
+        "slash": "/logout",
+        "label": "Provider 로그아웃",
+        "description": "/logout <provider> — 저장된 계정 비우기",
+        "scope": "room",
+        "kind": "server",
+        "agent": None,
+        "handler": "dynamic_room:logout",
+    },
+    {
+        "id": "accounts",
+        "slash": "/accounts",
+        "label": "계정 관리",
+        "description": "/accounts <provider> [list|add <label> <secret>|remove <label>]",
+        "scope": "room",
+        "kind": "server",
+        "agent": None,
+        "handler": "dynamic_room:accounts",
+    },
+    {
+        "id": "model",
+        "slash": "/model",
+        "label": "Room 모델 구성",
+        "description": "/model [a,b,c] — roster 구성 조회/변경",
+        "scope": "room",
+        "kind": "server",
+        "agent": None,
+        "handler": "dynamic_room:model",
+    },
+    {
+        "id": "usage",
+        "slash": "/usage",
+        "label": "사용량/쿨다운",
+        "description": "/usage [provider] — 계정 쿨다운/노출 상태",
+        "scope": "room",
+        "kind": "server",
+        "agent": None,
+        "handler": "dynamic_room:usage",
+    },
+    {
+        "id": "agents",
+        "slash": "/agents",
+        "label": "활성 Roster",
+        "description": "/agents — 현재 활성 에이전트와 역할 배치",
+        "scope": "room",
+        "kind": "server",
+        "agent": None,
+        "handler": "dynamic_room:agents",
     },
 ]
 
@@ -122,6 +190,10 @@ def list_commands(
             cmd["disabled_reason"] = "env_required"
         commands.append(cmd)
 
+    if dynamic_room_enabled():
+        for row in _DYNAMIC_ROOM_COMMANDS:
+            commands.append({**row, "enabled": True})
+
     commands.extend(_plugin_as_commands(plugins, allowlist))
 
     ext_allowlist = external_tools_allowlist(run_meta)
@@ -173,6 +245,47 @@ def _record_command_history(folder: Path, entry: dict[str, Any]) -> None:
     patch_run_meta(folder, _append)
 
 
+def _format_dynamic_room(name: str, res: dict[str, Any]) -> str:
+    """Compact human-readable summary of a slash_commands.dispatch result."""
+
+    def _accts(rows: list[dict[str, Any]]) -> str:
+        return ", ".join(f"{a.get('label')}={a.get('masked')}" for a in rows) or "(없음)"
+
+    if name == "login":
+        prov = res.get("provider", "")
+        if res.get("note"):
+            return f"/login {prov}: {res['note']}"
+        return f"/login {prov}: {_accts(res.get('accounts') or [])}"
+    if name == "logout":
+        return f"/logout {res.get('provider', '')}: 계정 비움"
+    if name == "accounts":
+        prov = res.get("provider", "")
+        delta = ""
+        if res.get("added"):
+            delta = f" (+{res['added']})"
+        elif res.get("removed"):
+            delta = f" (-{res['removed']})"
+        return f"/accounts {prov}{delta}: {_accts(res.get('accounts') or [])}"
+    if name == "model":
+        comp = ", ".join(res.get("composition") or [])
+        sub = ", ".join(res.get("substitution") or [])
+        verb = "변경됨" if res.get("updated") else "현재"
+        return f"/model {verb}: [{comp}] · 대체 [{sub}]"
+    if name == "usage":
+        rows = res.get("rows") or []
+        if not rows:
+            return "/usage: 등록된 계정 없음"
+        return "/usage: " + " | ".join(
+            f"{r.get('provider')}/{r.get('label')}" + ("(cooldown)" if r.get("cooldown_active") else "") for r in rows
+        )
+    if name == "agents":
+        roster = ", ".join(res.get("roster") or [])
+        roles = res.get("roles") or {}
+        roles_s = ", ".join(f"{k}:{v}" for k, v in roles.items())
+        return f"/agents roster: [{roster}] · roles: {roles_s}"
+    return f"/{name} 실행됨"
+
+
 def execute_command(
     session_folder: Path,
     command_id: str,
@@ -207,6 +320,34 @@ def execute_command(
         result = check_session_goal(session_folder)
         _record_command_history(session_folder, {**entry, "result": result})
         return {"ok": True, "kind": "server", "result": result, "command": cmd}
+
+    if kind == "server" and str(handler or "").startswith("dynamic_room:"):
+        if not dynamic_room_enabled():
+            return {"ok": False, "detail": "dynamic room disabled", "command": cmd}
+        from agent_lab.slash_commands import dispatch as _slash_dispatch
+
+        name = str(handler).split(":", 1)[1]
+        text_in = str(cmd.get("slash") or f"/{name}")
+        if args:
+            text_in = f"{text_in} {args}"
+        res = _slash_dispatch(text_in)
+        if not res.get("ok"):
+            _record_command_history(session_folder, {**entry, "result": {"error": res.get("error")}})
+            return {
+                "ok": False,
+                "detail": res.get("error") or "command failed",
+                "command": cmd,
+            }
+        summary = _format_dynamic_room(name, res)
+        _record_command_history(session_folder, {**entry, "result": {"summary": summary}})
+        return {
+            "ok": True,
+            "kind": "server",
+            "handler": handler,
+            "text": summary,
+            "result": {**res, "summary": summary},
+            "command": cmd,
+        }
 
     if kind == "external":
         result = run_external_command(

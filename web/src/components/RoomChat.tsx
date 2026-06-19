@@ -2588,7 +2588,7 @@ export function RoomChat({
         });
         if (res.kind === "server") {
           refreshSessionMeta();
-          setCommandHint("명령 실행 완료");
+          setCommandHint(res.text ?? "명령 실행 완료");
         } else if (res.kind === "external") {
           const payload = res.result as
             | { stdout?: string; detail?: string }

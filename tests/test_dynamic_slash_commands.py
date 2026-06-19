@@ -16,6 +16,19 @@ def cfg(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return tmp_path
 
 
+@pytest.fixture(autouse=True)
+def _restore_room_models() -> object:
+    """/model writes AGENT_LAB_ROOM_MODELS to os.environ directly; isolate it."""
+    import os
+
+    prev = os.environ.get("AGENT_LAB_ROOM_MODELS")
+    yield
+    if prev is None:
+        os.environ.pop("AGENT_LAB_ROOM_MODELS", None)
+    else:
+        os.environ["AGENT_LAB_ROOM_MODELS"] = prev
+
+
 def test_parse_command() -> None:
     from agent_lab.slash_commands import is_slash_command, parse_command
 

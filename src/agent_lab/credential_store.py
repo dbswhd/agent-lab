@@ -6,19 +6,39 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Any, Callable, Literal, TypeVar
+from typing import Any, Callable, Literal, TypeVar, cast
 
 if sys.version_info >= (3, 11):
     import tomllib
 else:
     tomllib = None  # type: ignore[assignment,misc]
 
+from agent_lab import provider_registry as _provider_registry
+
 ProviderId = Literal["cursor", "claude", "codex"]
 
 PROVIDERS: tuple[ProviderId, ...] = ("cursor", "claude", "codex")
 
+
+def _derive_oauth_only() -> frozenset[ProviderId]:
+    """Legacy typed providers needing no in-turn secret (supported auth ⊆ {oauth, cli}).
+
+    Derived from the provider_registry single source of truth so this set and
+    the /login picker never drift. Resolves to {"claude", "codex"} today
+    (CLI OAuth only — API keys in Settings are ignored). Scoped to PROVIDERS:
+    kimi/local use the accounts.toml chain, not this credentials.toml gate.
+    """
+    secretless = frozenset({"oauth", "cli"})
+    return frozenset(
+        cast(ProviderId, pid)
+        for pid in PROVIDERS
+        if _provider_registry.supported_auth(pid)
+        and _provider_registry.supported_auth(pid) <= secretless
+    )
+
+
 # Room Claude/Codex use CLI OAuth only — API keys in Settings are ignored.
-OAUTH_ONLY_PROVIDERS: frozenset[ProviderId] = frozenset({"claude", "codex"})
+OAUTH_ONLY_PROVIDERS: frozenset[ProviderId] = _derive_oauth_only()
 
 _PROVIDER_ENV: dict[ProviderId, str] = {
     "cursor": "CURSOR_API_KEY",

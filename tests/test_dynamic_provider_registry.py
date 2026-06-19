@@ -113,3 +113,45 @@ def test_get_account_chain_appends_legacy_for_typed(cfg: Path, monkeypatch: pyte
     secrets = [s for _, s in chain]
     assert secrets[0] == "sk-acct1"
     assert "legacy-cursor" in secrets
+
+
+# --- Phase 1: supported_auth single source of truth (login picker foundation) ---
+
+
+def test_supported_auth_single_source() -> None:
+    from agent_lab import provider_registry as pr
+
+    expected = {
+        "cursor": {"api"},
+        "claude": {"oauth"},
+        "codex": {"oauth"},
+        "kimi": {"api"},
+        "local": {"local"},
+    }
+    for pid, methods in expected.items():
+        assert set(pr.supported_auth(pid)) == methods
+        # auth_kind must always be one of the supported methods (no drift)
+        assert pr.auth_kind(pid) in pr.supported_auth(pid)
+        for m in methods:
+            assert pr.supports_auth(pid, m) is True  # type: ignore[arg-type]
+    # honest: no fake OAuth for cursor/kimi yet
+    assert pr.supports_auth("cursor", "oauth") is False
+    assert pr.supports_auth("kimi", "oauth") is False
+    # unknown provider → empty set, never crashes
+    assert pr.supported_auth("nope") == frozenset()
+
+
+def test_oauth_only_providers_derived_from_registry() -> None:
+    """credential_store OAUTH_ONLY must be derived, not hardcoded — and OFF-parity."""
+    from agent_lab import credential_store as cs
+    from agent_lab import provider_registry as pr
+
+    assert cs.OAUTH_ONLY_PROVIDERS == frozenset({"claude", "codex"})
+    # equivalently: providers whose supported auth ⊆ {oauth, cli}
+    secretless = frozenset({"oauth", "cli"})
+    derived = {
+        pid
+        for pid in pr.provider_ids()
+        if pr.supported_auth(pid) and pr.supported_auth(pid) <= secretless
+    }
+    assert derived == set(cs.OAUTH_ONLY_PROVIDERS)

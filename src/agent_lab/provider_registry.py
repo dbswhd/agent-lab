@@ -26,15 +26,30 @@ class ProviderSpec:
     fallback_class: FallbackClass
     always_available: bool = False
     cooldown_exempt: bool = False
+    # Auth methods this provider supports. Single source of truth for the
+    # /login picker; empty means "derive {auth_kind}" via supported_auth().
+    supported_auth: frozenset[AuthKind] = frozenset()
 
 
 # Default catalog. cursor/claude/codex mirror the existing room agents; kimi and
 # local are the new spare/floor providers from the approved plan.
 _REGISTRY: dict[str, ProviderSpec] = {
-    "cursor": ProviderSpec("cursor", "Cursor", "api", True, "primary"),
-    "claude": ProviderSpec("claude", "Claude", "oauth", False, "primary"),
-    "codex": ProviderSpec("codex", "Codex", "oauth", False, "primary"),
-    "kimi": ProviderSpec("kimi", "KIMI", "api", True, "spare"),
+    "cursor": ProviderSpec(
+        "cursor", "Cursor", "api", True, "primary",
+        supported_auth=frozenset({"api"}),
+    ),
+    "claude": ProviderSpec(
+        "claude", "Claude", "oauth", False, "primary",
+        supported_auth=frozenset({"oauth"}),
+    ),
+    "codex": ProviderSpec(
+        "codex", "Codex", "oauth", False, "primary",
+        supported_auth=frozenset({"oauth"}),
+    ),
+    "kimi": ProviderSpec(
+        "kimi", "KIMI", "api", True, "spare",
+        supported_auth=frozenset({"api"}),
+    ),
     "local": ProviderSpec(
         "local",
         "Local",
@@ -43,6 +58,7 @@ _REGISTRY: dict[str, ProviderSpec] = {
         "local",
         always_available=True,
         cooldown_exempt=True,
+        supported_auth=frozenset({"local"}),
     ),
 }
 
@@ -71,6 +87,21 @@ def is_registered(pid: str) -> bool:
 def auth_kind(pid: str) -> AuthKind | None:
     spec = _REGISTRY.get(pid)
     return spec.auth_kind if spec else None
+
+
+def supported_auth(pid: str) -> frozenset[AuthKind]:
+    """Auth methods a provider supports — single source of truth for /login.
+
+    Falls back to ``{auth_kind}`` when a spec leaves the explicit set empty.
+    """
+    spec = _REGISTRY.get(pid)
+    if not spec:
+        return frozenset()
+    return spec.supported_auth or frozenset({spec.auth_kind})
+
+
+def supports_auth(pid: str, kind: AuthKind) -> bool:
+    return kind in supported_auth(pid)
 
 
 def is_usage_exposing(pid: str) -> bool:

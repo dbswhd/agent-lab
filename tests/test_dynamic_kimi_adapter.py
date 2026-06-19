@@ -81,3 +81,28 @@ def test_resolve_falls_to_local_without_kimi_chain(cfg: Path, monkeypatch: pytes
     # kimi has no chain -> excluded; local floor still fills
     roster = ar.resolve_active_agents(None, lambda: ["claude"], enabled=True)
     assert "kimi" not in roster and "local" in roster
+
+
+def test_kimi_first_class_streams_and_emits_activity(cfg: Path) -> None:
+    """Phase 2: KIMI is a first-class room substitute (activity + streaming)."""
+    import os
+
+    os.environ["AGENT_LAB_MOCK_AGENTS"] = "1"
+    try:
+        from agent_lab import kimi_provider as kp
+
+        acts: list[str] = []
+        chunks: list[tuple[str, str]] = []
+        text = kp.respond(
+            "sys",
+            "stream this please across multiple chunks now",
+            on_activity=acts.append,
+            on_bridge_event=lambda ev, d: chunks.append((ev, d.get("text", ""))),
+            session_folder=None,
+            request_structured_envelope=True,
+        )
+        assert acts and "kimi:" in acts[0]
+        assert chunks and all(ev == "text" for ev, _ in chunks)
+        assert "".join(t for _, t in chunks) == text
+    finally:
+        os.environ.pop("AGENT_LAB_MOCK_AGENTS", None)

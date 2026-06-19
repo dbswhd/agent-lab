@@ -15,14 +15,6 @@ AgentId = Literal["cursor", "codex", "claude", "kimi", "local"]
 # Default room agents (OFF-parity): the dynamic roster may add kimi/local at runtime.
 AGENT_IDS: tuple[AgentId, ...] = ("cursor", "codex", "claude")
 
-_CALLERS: dict[AgentId, Callable[..., str]] = {
-    "cursor": cursor_agent.respond,
-    "codex": codex_agent.respond,
-    "claude": claude_agent.respond,
-    "kimi": kimi_provider.respond,
-    "local": local_provider.respond,
-}
-
 _LABELS: dict[AgentId, str] = {
     "cursor": "Cursor",
     "codex": "Codex",
@@ -274,10 +266,24 @@ def call_agent_reply(
             inbox_mcp=inbox_mcp,
         )
     elif agent == "local":
-        text = local_provider.respond(system, user)
+        text = local_provider.respond(
+            system,
+            user,
+            on_activity=on_activity,
+            on_bridge_event=on_bridge_event,
+            session_folder=session_folder,
+            request_structured_envelope=request_structured_envelope,
+        )
     elif agent == "kimi":
-        text = kimi_provider.respond(system, user)
+        text = kimi_provider.respond(
+            system,
+            user,
+            on_activity=on_activity,
+            on_bridge_event=on_bridge_event,
+            session_folder=session_folder,
+            request_structured_envelope=request_structured_envelope,
+        )
     else:
-        text = _CALLERS[agent](system, user)
+        raise RuntimeError(f"unknown agent: {agent}")
     prose, structured = merge_structured_reply(text)
     return AgentReply(text=prose, structured_envelope=structured)

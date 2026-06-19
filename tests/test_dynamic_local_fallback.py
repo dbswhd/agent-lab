@@ -109,3 +109,23 @@ def test_e2e_room_completes_with_degraded_roster(tmp_path: Path, monkeypatch: py
         consensus_mode=True,
     )
     assert messages  # turn completed with >=1 agent
+
+
+def test_local_first_class_streams_and_emits_activity(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Phase 2: local is a first-class room substitute (activity + streaming)."""
+    from agent_lab import local_provider as lp
+
+    monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
+    acts: list[str] = []
+    chunks: list[tuple[str, str]] = []
+    text = lp.respond(
+        "sys",
+        "stream this please across multiple chunks now",
+        on_activity=acts.append,
+        on_bridge_event=lambda ev, d: chunks.append((ev, d.get("text", ""))),
+        session_folder=None,  # absorbed
+        request_structured_envelope=True,  # absorbed (prompt-carried)
+    )
+    assert acts and "local:" in acts[0]
+    assert chunks and all(ev == "text" for ev, _ in chunks)
+    assert "".join(t for _, t in chunks) == text

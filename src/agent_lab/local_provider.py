@@ -10,7 +10,7 @@ without a running local model.
 from __future__ import annotations
 
 import os
-from typing import Any
+from typing import Any, Callable
 
 DEFAULT_ENDPOINT = "http://localhost:11434/v1"
 DEFAULT_MODEL = "llama3.2"
@@ -37,12 +37,36 @@ def _mock_enabled() -> bool:
     return os.getenv("AGENT_LAB_MOCK_AGENTS", "").strip().lower() in {"1", "true", "yes", "on"}
 
 
-def respond(system: str, user: str, **_kwargs: Any) -> str:
-    """Produce a local reply. Mock-safe; real path calls the OpenAI-compatible endpoint."""
+def respond(
+    system: str,
+    user: str,
+    *,
+    on_activity: Callable[[str], None] | None = None,
+    on_bridge_event: Callable[[str, dict[str, Any]], None] | None = None,
+    **_kwargs: Any,
+) -> str:
+    """Produce a local reply — first-class room substitute (activity + streaming).
+
+    Mock-safe; the real path calls the OpenAI-compatible endpoint. Extra
+    call_agent_reply kwargs are absorbed (local has no tool/MCP loop).
+    """
+    if on_activity:
+        on_activity(f"[net] {model_label()} /chat/completions")
     if _mock_enabled():
         snippet = " ".join((user or "").strip().split())[:100]
-        return f"[mock:Local] ACK — {snippet or '(empty)'}"
-    # Real path: OpenAI-compatible chat completion against the local endpoint.
-    from agent_lab.openai_compat import chat_completion
+        text = f"[mock:Local] ACK — {snippet or '(empty)'}"
+    else:
+        from agent_lab.openai_compat import chat_completion
 
-    return chat_completion(endpoint=local_endpoint(), model=local_model(), system=system, user=user)
+        text = chat_completion(endpoint=local_endpoint(), model=local_model(), system=system, user=user)
+    _stream(on_bridge_event, text)
+    return text
+
+
+def _stream(on_bridge_event: Callable[[str, dict[str, Any]], None] | None, text: str) -> None:
+    if not on_bridge_event or not text:
+        return
+    from agent_lab.room_sse_stream import chunk_text
+
+    for chunk in chunk_text(text, chunk_size=24):
+        on_bridge_event("text", {"text": chunk})

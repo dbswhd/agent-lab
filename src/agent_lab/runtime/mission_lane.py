@@ -48,7 +48,7 @@ def handle_mission_plan_gate(folder: Path, payload: dict[str, Any]) -> DispatchR
 
 
 def handle_mission_advance(folder: Path, payload: dict[str, Any]) -> DispatchResult:
-    from agent_lab.mission_loop import maybe_advance_mission
+    from agent_lab.mission_advance import maybe_advance_mission
 
     executor_raw = payload.get("executor")
     result = maybe_advance_mission(

@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "kind": "cli-replay",
+  "replaySafe": true,
+  "command": [
+    ".venv/bin/python",
+    "-c",
+    "from agent_lab.consensus_gate import effective_consensus as e; print(e(['local'])['mode'])"
+  ],
+  "recordedStdout": "solo\n"
+}

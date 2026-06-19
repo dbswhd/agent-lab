@@ -16,6 +16,7 @@ export function ReadinessComposerBar({ readiness }: Props) {
         blocked ? "preflight-bar--blocked" : "preflight-bar--warn",
       ].join(" ")}
       role="alert"
+      aria-label="에이전트 준비 상태"
     >
       <span className="preflight-bar__title">
         {blocked ? "Readiness blocked" : "Readiness warning"}

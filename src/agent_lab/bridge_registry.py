@@ -173,7 +173,9 @@ def list_live_bridge_processes() -> list[dict[str, Any]]:
 def guess_bridge_pid(*, settle_s: float = 0.15) -> int | None:
     """Return the newest bridge PID after a short settle window."""
     if settle_s > 0:
-        time.sleep(settle_s)
+        from agent_lab.backoff_policy import wait as _backoff_wait
+
+        _backoff_wait(1, base_sec=settle_s)
     live = list_live_bridge_processes()
     if not live:
         return None

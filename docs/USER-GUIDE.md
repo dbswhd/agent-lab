@@ -58,7 +58,9 @@
 
 ### 1.1 Agent Lab이란
 
-**Agent Lab**은 주제(질문·기획·조사·코드 작업)를 던지면 **세 명의 AI 에이전트(Cursor · Codex · Claude)** 가 협업하고, 대화를 **`plan.md`** 로 정리하며, 필요 시 **코드 변경을 dry-run → Human 승인 → merge**까지 이어가는 **개발자용 에이전트 콘솔**이다.
+**Agent Lab**은 AI 개발 작업을 계획·승인·격리 실행·검증하는 **Human-in-the-loop 에이전트 개발 콘솔**이다. Cursor · Codex · Claude가 Room에서 협업하고, 대화를 **`plan.md` 계약**으로 정리하며, 필요 시 코드 변경을 **worktree 실행 → Human 승인 → merge → Oracle 검증**까지 이어간다.
+
+1차 타깃은 AI-native 개발팀과 내부 플랫폼팀의 tech lead·maintainer다. 일반 챗봇이나 범용 AI 오케스트레이션 대시보드가 아니라, 코드 변경을 안전하고 감사 가능한 실행 단위로 묶는 작업 도구다.
 
 | 축 | 설명 |
 |----|------|
@@ -203,7 +205,7 @@ AGENT_LAB_GOAL_LOOP=1
 └─────────────────┴──────────────────────────────────┴─────────────────┘
 ```
 
-**Workbench Tools** (`rightPanelMode`): `plan`(WorkToolPanel + execute), `background`, `diff`, `files`, `preview`, `terminal`.
+**Workbench Tools** (`rightPanelMode`): `plan`(visible label **Work**, `WorkToolPanel` + approve/execute/verify), `background`, `diff`, `files`, `preview`, `terminal`.
 
 별도 **Settings 페이지** (`shellView === "settings"`) — Context 미리보기·에이전트 cwd·Plugin·진단.
 
@@ -214,7 +216,7 @@ AGENT_LAB_GOAL_LOOP=1
 | ID | 라벨 | 단축키 | 역할 |
 |----|------|--------|------|
 | `transcript` | Transcript | ⌘1 | Human·에이전트 대화 전체 |
-| `plan` | Plan | ⌘2 | `WorkToolPanel` — plan + execute/review/approval |
+| `plan` | Work | ⌘2 | `WorkToolPanel` — plan approval + execute/review/verification |
 | `background` | Background | ⌘3 | 백그라운드 태스크 |
 | `diff` | Diff | ⌘4 | execute diff |
 | `files` | Files | ⌘5 | workspace files · Monaco |
@@ -292,6 +294,8 @@ Work 탭이 아닐 때:
 ## 5. 세션 생명주기
 
 ### 5.1 새 세션
+
+첫 실행 또는 재설정이 필요할 때는 rail의 **Setup**을 연다. Setup wizard는 `Connect agents` → `Choose workspace` → `Start sample session` 순서로 안내하며, Cursor/Claude reconnect와 Codex Settings 진입을 앱 안에서 제공한다. 샘플 세션은 topic을 채우지만 자동 전송하지 않는다.
 
 1. **새 Session** (⌘N)
 2. **작업 폴더** (`SessionSetupBar`) — agent-lab / quant-pipeline 프리셋 또는 **다른 폴더…**
@@ -637,6 +641,8 @@ Scribe prompt (`ROOM_SCRIBE`): 한국어, 필수 섹션 **`## 지금 실행`**, 
 
 ```text
 WorkStatusBar (stepper + freshness)
+WorkDecisionPanel (Approve · Blocked · Verified)
+PlanApprovalPanel (조건부: plan workflow HUMAN_PENDING)
 PlanTabToolbar (전송 시 plan 갱신 · 지금 정리)
 [ExecuteQueueBar | ConsensusDryRunGateBar]  ← 조건부
 PlanDocument
@@ -687,14 +693,26 @@ plan ## 지금 실행
 - Linked task jump
 - Cursor ready 필요 경로 있음
 
-### 9.7 Consensus → execute 연결
+### 9.7 Work decision surface
+
+Work 상단은 사용자가 문서 없이 세 질문을 판단하게 하는 요약 표면입니다.
+
+| 질문 | Work 표시 | 상세/액션 소유자 |
+|------|-----------|------------------|
+| 지금 무엇을 승인해야 하나? | `Approve` cell + primary CTA | plan 승인: `PlanApprovalPanel`, merge 승인: `PlanExecutePanel` |
+| 왜 막혔나? | `Blocked` cell + checks/evidence anchor | BLOCK objection, pre_execute hook, merge checks, runtime gate |
+| 결과가 검증됐나? | `Verified` cell | Oracle badge, `EvidenceGatesPanel`, evidence timeline |
+
+Tasks는 Work로 점프하는 요약을 제공하지만, plan approval 전문 UI는 Work가 소유합니다.
+
+### 9.8 Consensus → execute 연결
 
 ♾️ `reached` 후:
 
 - SSE `consensus_plan_sync_*`
 - optional `consensus_dry_run_proposal` — Work에서 dry-run CTA
 
-### 9.8 Hook · Communicate (Room Router)
+### 9.9 Hook · Communicate (Room Router)
 
 > 설계: [HOOK-COMMUNICATE-REFORM.md](./HOOK-COMMUNICATE-REFORM.md) · 회귀: `make verify-hooks`
 
@@ -1147,6 +1165,13 @@ Path-like values are home-masked in API/CLI output. Undocumented `AGENT_LAB_*` v
 | `AGENT_LAB_F2_ARTIFACT_ONLY` | specialist R2 artifact context |
 | `AGENT_LAB_INBOX_MODE` | sync vs soft inbox |
 | `AGENT_LAB_ORACLE_LIVE` | execute Oracle live |
+| `AGENT_LAB_MISSION_BUDGET_USD` | mission USD ceiling → circuit-breaker pause (empty=unlimited) |
+| `AGENT_LAB_BUDGET_WARN_PCT` | budget warn threshold % (default 80) |
+| `AGENT_LAB_DIFF_SAFETY` | pre-merge diff secret/danger scanner (default on) |
+| `AGENT_LAB_TRACE` | OTel-lite span tracer → `trace.jsonl` (default on) |
+| `AGENT_LAB_CRASH_RECOVERY` | boot-time reconcile of crashed in-flight merges, G3 (default on) |
+| `AGENT_LAB_JUDGE_LIVE` | live LLM-as-judge quality eval in `score_session` (default off) |
+| `AGENT_LAB_JUDGE_MODEL` | override Claude model for the judge |
 
 ### Room / consensus
 

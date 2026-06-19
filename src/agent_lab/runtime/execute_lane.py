@@ -21,7 +21,7 @@ def _skipped(result: Any) -> DispatchResult:
 
 
 def handle_execute_dry_run_start(folder: Path, payload: dict[str, Any]) -> DispatchResult:
-    from agent_lab.mission_loop import set_execution_phase
+    from agent_lab.mission_advance import set_execution_phase
     from agent_lab.run_meta import read_run_meta
     from agent_lab.runtime.policy import PolicyEngine
 
@@ -58,7 +58,7 @@ def handle_execute_dry_run_start(folder: Path, payload: dict[str, Any]) -> Dispa
 
 
 def handle_execute_dry_run_complete(folder: Path, payload: dict[str, Any]) -> DispatchResult:
-    from agent_lab.mission_loop import on_dry_run_complete
+    from agent_lab.mission_advance import on_dry_run_complete
 
     execution = payload.get("execution")
     if not isinstance(execution, dict):
@@ -87,7 +87,7 @@ def handle_execute_dry_run_cancel(folder: Path, payload: dict[str, Any]) -> Disp
 
 
 def handle_execute_merge_approved(folder: Path, payload: dict[str, Any]) -> DispatchResult:
-    from agent_lab.mission_loop import on_merge_confirm
+    from agent_lab.mission_advance import on_merge_confirm
 
     execution_id = str(payload.get("execution_id") or "").strip()
     if not execution_id:
@@ -103,7 +103,7 @@ def handle_execute_merge_approved(folder: Path, payload: dict[str, Any]) -> Disp
 
 
 def handle_execute_merge_rejected(folder: Path, payload: dict[str, Any]) -> DispatchResult:
-    from agent_lab.mission_loop import on_merge_abort
+    from agent_lab.mission_advance import on_merge_abort
 
     execution_id = str(payload.get("execution_id") or "").strip()
     if not execution_id:
@@ -119,7 +119,7 @@ def handle_execute_merge_rejected(folder: Path, payload: dict[str, Any]) -> Disp
 
 
 def handle_execute_verify_result(folder: Path, payload: dict[str, Any]) -> DispatchResult:
-    from agent_lab.mission_loop import on_verify_result
+    from agent_lab.mission_advance import on_verify_result
 
     action_index = payload.get("action_index")
     if action_index is None:

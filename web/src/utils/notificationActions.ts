@@ -64,9 +64,13 @@ export function notificationActionForKind(
     kind === "hook_blocked" ||
     kind === "hook_warn" ||
     kind === "hook_event" ||
-    kind === "response_contract_invalid"
+    kind === "response_contract_invalid" ||
+    kind === "recovery_still_blocked"
   ) {
     return { type: "settings" };
+  }
+  if (kind === "recovery_resolved_work") {
+    return { type: "work", focus: "execute" };
   }
   return null;
 }

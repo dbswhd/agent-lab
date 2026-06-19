@@ -18,7 +18,7 @@ _MIN_NOTEPAD_CHARS = 200
 
 
 def _notepad_report(folder: Path) -> tuple[int, list[str]]:
-    from agent_lab.mission_loop import mission_notepad_dir
+    from agent_lab.mission_notepad import mission_notepad_dir
 
     lines: list[str] = []
     total = 0

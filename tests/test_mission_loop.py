@@ -5,28 +5,32 @@ from pathlib import Path
 import pytest
 
 from agent_lab.mission_loop import (
-    MISSION_NOTEPAD_FILES,
     after_plan_scribe,
     append_wisdom_note,
-    build_mission_wisdom_block,
     clear_circuit_breaker,
     enable_mission_loop,
     ensure_mission_notepads,
     evaluate_plan_gate,
-    inject_wisdom_into_prompt,
     is_structural_verify_fail,
     list_mission_notepad_summaries,
-    maybe_advance_mission,
-    mission_notepad_dir,
-    on_dry_run_complete,
-    on_merge_abort,
-    on_merge_confirm,
     on_structural_execution_failure,
-    on_verify_result,
     pause_mission_loop,
     resume_mission_loop,
     run_mission_discuss_recovery,
     run_plan_gate,
+)
+from agent_lab.mission_notepad import (
+    MISSION_NOTEPAD_FILES,
+    build_mission_wisdom_block,
+    inject_wisdom_into_prompt,
+    mission_notepad_dir,
+)
+from agent_lab.mission_advance import (
+    maybe_advance_mission,
+    on_dry_run_complete,
+    on_merge_abort,
+    on_merge_confirm,
+    on_verify_result,
 )
 from agent_lab.run_meta import patch_run_meta, read_run_meta
 from agent_lab.verified_loop import approve_verified_loop, init_verified_loop, record_proposed_goal
@@ -66,6 +70,37 @@ def session_folder(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     (folder / "run.json").write_text("{}", encoding="utf-8")
     (folder / "topic.txt").write_text("mission test", encoding="utf-8")
     return folder
+
+
+def test_maybe_advance_trips_circuit_breaker_when_budget_exceeded(
+    session_folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AGENT_LAB_MISSION_BUDGET_USD", "0.10")
+    enable_mission_loop(session_folder)
+    patch_run_meta(
+        session_folder,
+        lambda run: {**run, "cost_ledger": {"cumulative": {"usd": 0.25}}},
+    )
+    result = maybe_advance_mission(session_folder, scheduled=True)
+    assert result["skipped"] is True
+    assert result["reason"] == "budget_exceeded"
+    ml = read_run_meta(session_folder)["mission_loop"]
+    assert ml["circuit_breaker"] is True
+    assert ml["circuit_breaker_reason"] == "budget_exceeded"
+    assert ml["phase"] == "MISSION_PAUSED"
+
+
+def test_maybe_advance_under_budget_does_not_trip(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AGENT_LAB_MISSION_BUDGET_USD", "0.10")
+    enable_mission_loop(session_folder)
+    patch_run_meta(
+        session_folder,
+        lambda run: {**run, "cost_ledger": {"cumulative": {"usd": 0.02}}},
+    )
+    result = maybe_advance_mission(session_folder, scheduled=True)
+    assert result.get("reason") != "budget_exceeded"
+    ml = read_run_meta(session_folder)["mission_loop"]
+    assert ml.get("circuit_breaker") is not True
 
 
 def test_evaluate_plan_gate_ok() -> None:
@@ -454,7 +489,9 @@ def test_after_plan_scribe_runs_gate(session_folder: Path) -> None:
     assert result["status"] == "ok"
 
 
-def test_verified_approve_enables_mission(session_folder: Path) -> None:
+def test_verified_approve_enables_mission(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Legacy mission bootstrap expects DISCUSS; pipeline default-on routes via CLARIFY.
+    monkeypatch.setenv("AGENT_LAB_PIPELINE", "0")
     init_verified_loop(session_folder)
     record_proposed_goal(
         session_folder,

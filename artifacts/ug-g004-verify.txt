@@ -1,0 +1,21 @@
+=== G004 verification ===
+============================= test session starts ==============================
+platform darwin -- Python 3.13.9, pytest-8.4.2, pluggy-1.5.0 -- /opt/anaconda3/bin/python3
+cachedir: .pytest_cache
+rootdir: /Users/yoonjong/Projects/agent-lab
+configfile: pyproject.toml
+plugins: anyio-4.10.0, langsmith-0.8.5
+collecting ... collected 9 items
+
+tests/test_dynamic_consensus_floor.py::test_allocate_roles_three_agents PASSED [ 11%]
+tests/test_dynamic_consensus_floor.py::test_allocate_roles_two_agents PASSED [ 22%]
+tests/test_dynamic_consensus_floor.py::test_allocate_roles_one_agent PASSED [ 33%]
+tests/test_dynamic_consensus_floor.py::test_allocate_roles_live_ids_not_static PASSED [ 44%]
+tests/test_dynamic_consensus_floor.py::test_allocate_roles_extra_agents_endorse PASSED [ 55%]
+tests/test_dynamic_consensus_floor.py::test_effective_consensus_three PASSED [ 66%]
+tests/test_dynamic_consensus_floor.py::test_effective_consensus_two_floor PASSED [ 77%]
+tests/test_dynamic_consensus_floor.py::test_effective_consensus_one_solo PASSED [ 88%]
+tests/test_dynamic_consensus_floor.py::test_effective_consensus_zero_none PASSED [100%]
+
+============================== 9 passed in 0.02s ===============================
+## ruff clean; mypy 244==baseline; make test-fast 1180 passed (1171+9)

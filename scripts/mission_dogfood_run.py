@@ -32,12 +32,8 @@ def _utc_slug() -> str:
 
 
 def run_dogfood(*, sessions_root: Path, session_id: str | None = None) -> Path:
-    from agent_lab.mission_loop import (
-        on_verify_result,
-        pause_mission_loop,
-        resume_mission_loop,
-        run_plan_gate,
-    )
+    from agent_lab.mission_loop import pause_mission_loop, resume_mission_loop, run_plan_gate
+    from agent_lab.mission_advance import on_verify_result
     from agent_lab.oracle_core import PROMPT_VERSION
     from agent_lab.run_meta import patch_run_meta, read_run_meta
     from agent_lab.verified_loop import (

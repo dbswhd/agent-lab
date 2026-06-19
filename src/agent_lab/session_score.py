@@ -283,7 +283,8 @@ def _duplicate_speech_rate(
 
 
 def _mission_notepad_chars(folder: Path, run_meta: dict[str, Any]) -> int:
-    from agent_lab.mission_loop import get_mission_loop, mission_notepad_dir
+    from agent_lab.mission_loop import get_mission_loop
+    from agent_lab.mission_notepad import mission_notepad_dir
 
     ml = get_mission_loop(run_meta)
     mission_base = mission_notepad_dir(folder)
@@ -425,6 +426,9 @@ def score_session(folder: Path) -> dict[str, Any]:
         **emergence_scores,
         **plan_scores,
     }
+    from agent_lab.quality_judge import judge_session
+
+    judge = judge_session(folder, run_meta=run_meta, messages=messages)
     summary_lines = _format_summary_lines(
         folder.name,
         scores,
@@ -438,10 +442,18 @@ def score_session(folder: Path) -> dict[str, Any]:
         mission_counts,
         emergence_counts,
     )
+    if judge.get("enabled") and judge.get("overall") is not None:
+        cost = judge.get("cost") or {}
+        upp = cost.get("usd_per_point")
+        summary_lines.append(
+            f"  judge ({judge.get('source')}): overall {judge['overall']}/5 · {judge.get('verdict')}"
+            + (f" · ${upp}/pt" if upp is not None else "")
+        )
     return {
         "session_id": folder.name,
         "folder": str(folder),
         "scores": scores,
+        "judge": judge,
         "counts": {
             "objections": obj_counts,
             "executions": exec_counts,

@@ -32,6 +32,7 @@ from agent_lab.room_agent_invoke import (
     _invoke_agent_for_round,
 )
 from agent_lab.room_parallel_rounds import run_parallel_round
+from agent_lab.consensus_policy import ConsensusPolicy, default_consensus_policy
 
 
 def run_consensus_agent_rounds(
@@ -46,8 +47,10 @@ def run_consensus_agent_rounds(
     run_meta: dict[str, Any] | None = None,
     context_log: list[dict[str, Any]] | None = None,
     efficiency_mode: bool = False,
+    consensus_policy: ConsensusPolicy | None = None,
 ) -> tuple[list[ChatMessage], dict[str, Any] | None]:
     """자유 토론: R1 병렬 후 앵커 제안에 전원 「이의 없습니다」까지 순차 반복."""
+    policy = consensus_policy or default_consensus_policy()
     from agent_lab.topic_router import (
         batch_escalation_act,
         escalate_route,
@@ -269,7 +272,23 @@ def run_consensus_agent_rounds(
         recomb_rounds = 0
         if route.recombination != "off" and len(active) >= 2:
             skip_reason = ""
-            if calls + len(active) > cap_calls:
+            substantive_proposers = _distinct_substantive_proposers(all_replies)
+            turn_state = (run_meta or {}).get("turn_state")
+            consensus_status = (
+                str(turn_state.get("consensus_status"))
+                if isinstance(turn_state, dict) and turn_state.get("consensus_status")
+                else None
+            )
+            policy_skip, policy_reason = policy.should_skip_recombination(
+                consensus_status=consensus_status,
+                substantive_proposers=substantive_proposers,
+                rounds=debate_conflicts,
+            )
+            if policy_skip:
+                skip_reason = policy_reason or "policy"
+                if skip_reason == "insufficient_proposers" and substantive_proposers < 2:
+                    skip_reason = "single_proposer"
+            elif calls + len(active) > cap_calls:
                 skip_reason = "cap"
             elif route.recombination == "auto":
                 if efficiency_mode:
@@ -587,6 +606,18 @@ def run_consensus_agent_rounds(
                     plan_md=plan_md,
                     pending_agents=sorted(pending),
                 )
+
+            _, endorse_exit_reason = policy.should_exit_round(
+                consensus_status=None,
+                endorse_count=len(consented),
+                active_agents=[str(a) for a in active],
+                calls=calls,
+                max_calls=cap_calls,
+                rounds=parallel_round,
+                max_rounds=cap_rounds,
+            )
+            if endorse_exit_reason == "endorse_threshold" and pending:
+                pending.clear()
 
             if not pending:
                 from agent_lab.room_tasks import (

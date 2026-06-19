@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import os
 import shutil
 import tempfile
@@ -202,21 +201,16 @@ def run_live_telegram_merge_ingress_soak(
     _write_soak_routes_config(routes_path, session_id=session_id)
 
     session.mkdir(parents=True, exist_ok=True)
-    (session / "run.json").write_text(
-        json.dumps(
-            {
-                "workflow_id": "room",
-                "run_schema_version": 1,
-                "gate_profile": "assistant",
-                "topic": "live telegram merge ingress soak",
-                "created_at": _now(),
-            },
-            indent=2,
-            ensure_ascii=False,
-        )
-        + "\n",
-        encoding="utf-8",
-    )
+    run_meta = {
+        "workflow_id": "room",
+        "run_schema_version": 1,
+        "gate_profile": "assistant",
+        "topic": "live telegram merge ingress soak",
+        "created_at": _now(),
+    }
+    from agent_lab.run_meta import write_run_meta
+
+    write_run_meta(session, run_meta)
 
     try:
         _init_spike_repo(repo)

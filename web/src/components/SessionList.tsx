@@ -40,7 +40,7 @@ function sessionSubtitle(s: SessionSummary): string {
   }
   if (s.agents?.length) return s.agents.join(" · ");
   if (s.workflow === "room.parallel") return "Cursor · Codex · Claude";
-  return s.model || "Planner · Critic · Scribe";
+  return s.model || "Legacy classic graph";
 }
 
 /**

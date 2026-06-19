@@ -339,6 +339,7 @@ def build_slim_consensus_bundle(
         messages_in_turn=current_turn_message_count(messages),
         messages_in_session=count_messages(messages),
     )
+    _record_context_bundle_metrics(run_meta, meta, agent=agent, mode="slim")
     return bundle
 
 
@@ -618,6 +619,10 @@ def build_context_bundle(
             0,
             "[Analyze turn] Observe and report risks only. Do not use PROPOSE/ENDORSE/BLOCK envelope acts.",
         )
+    elif profile in {"divergence", "발산"}:
+        from agent_lab.agents.prompts import DIVERGENCE_INSTRUCTION
+
+        guidance_parts.insert(0, DIVERGENCE_INSTRUCTION)
     from agent_lab.room_dispatch_intents import build_dispatch_intent_block
 
     dispatch_block = build_dispatch_intent_block(run_meta, agent)
@@ -707,4 +712,20 @@ def build_context_bundle(
         messages_in_turn=current_turn_message_count(full),
         messages_in_session=count_messages(full),
     )
+    _record_context_bundle_metrics(run_meta, meta, agent=agent, mode="full")
     return bundle
+
+
+def _record_context_bundle_metrics(
+    run_meta: dict[str, Any] | None,
+    meta: Any,
+    *,
+    agent: str,
+    mode: str,
+) -> None:
+    if run_meta is None or not hasattr(run_meta, "get"):
+        return
+    row = meta.to_dict() if hasattr(meta, "to_dict") else {}
+    row["agent"] = agent
+    row["mode"] = mode
+    run_meta["last_context_bundle"] = row

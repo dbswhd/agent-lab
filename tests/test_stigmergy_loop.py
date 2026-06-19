@@ -36,7 +36,7 @@ def test_harvest_agent_learnings_dedupe(tmp_path, monkeypatch, request):
     import shutil
     import uuid
 
-    from agent_lab.mission_loop import ensure_mission_notepads, mission_notepad_dir
+    from agent_lab.mission_notepad import ensure_mission_notepads, mission_notepad_dir
     from agent_lab.wisdom_index import harvest_agent_learnings
 
     monkeypatch.delenv("AGENT_LAB_AGENT_LEARNINGS", raising=False)
@@ -81,11 +81,8 @@ def wisdom_session(tmp_path: Path):
     import shutil
     import uuid
 
-    from agent_lab.mission_loop import (
-        append_wisdom_note,
-        ensure_mission_notepads,
-        mission_notepad_dir,
-    )
+    from agent_lab.mission_loop import append_wisdom_note, ensure_mission_notepads
+    from agent_lab.mission_notepad import mission_notepad_dir
 
     folder = tmp_path / f"sess-{uuid.uuid4().hex[:10]}"
     folder.mkdir()

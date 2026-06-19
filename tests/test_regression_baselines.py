@@ -1,4 +1,4 @@
-"""Regression baseline fixtures under sessions/_regression/."""
+"""Regression baseline contracts under code + stable fixtures."""
 
 from __future__ import annotations
 
@@ -21,3 +21,25 @@ def test_regression_baselines_pass():
     smoke = _load_smoke_room()
     code, errors = smoke.validate_regression_fixtures()
     assert code == 0, "\n".join(errors)
+
+
+def test_regression_run_meta_write_import():
+    mod = importlib.import_module("agent_lab.run_meta")
+    assert hasattr(mod, "write_run_meta")
+    assert hasattr(mod, "patch_run_meta")
+    assert callable(mod.write_run_meta)
+    assert callable(mod.patch_run_meta)
+
+
+def test_regression_run_schema_validation():
+    mod = importlib.import_module("agent_lab.run_schema")
+    assert hasattr(mod, "validate_run")
+    bad = {"phase": "BAD", "executions": [{"status": "BAD"}], "pending_action_indices": "not-a-list"}
+    raised = False
+    try:
+        mod.validate_run(bad)
+    except Exception as exc:
+        raised = True
+        msg = str(exc)
+    assert raised is True
+    assert msg != ""

@@ -53,6 +53,17 @@ def get_credentials() -> dict[str, Any]:
 
 @router.put("/settings/credentials")
 def put_credentials(body: CredentialsPatchRequest) -> dict[str, Any]:
+    # Dynamic resilient room: credential writes move to slash commands (/login,
+    # /accounts). When AGENT_LAB_DYNAMIC_ROOM is on, the Settings PUT is read-only
+    # status; OFF-parity keeps the legacy write path byte-stable.
+    from agent_lab.agent_roster import dynamic_room_enabled
+
+    if dynamic_room_enabled():
+        result = public_credentials_payload()
+        result["saved"] = False
+        result["read_only"] = True
+        result["note"] = "Credential writes are managed via slash commands (/login, /accounts)."
+        return result
     payload = body.model_dump(exclude_none=True)
     merged = patch_from_request(payload)
     path = save_credentials(merged)

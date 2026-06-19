@@ -1,4 +1,4 @@
-# Agent Lab — Developer Agent Console
+# Agent Lab — Human-in-the-loop Agent Development Console
 
 > **Document tier:** Tier 3 — current console UI. Index: [README.md](./README.md)
 
@@ -6,7 +6,9 @@
 
 ## 제품 정의
 
-Agent Lab은 **developer agent console**입니다. 메신저가 아니라 세션·plan·diff·run·artifacts를 orchestration하는 작업 도구입니다.
+Agent Lab은 **AI 개발 작업을 계획·승인·격리 실행·검증하는 Human-in-the-loop 에이전트 개발 콘솔**입니다. 메신저가 아니라 세션·`plan.md` 계약·diff·run·verify 결과를 한 작업 흐름으로 묶는 도구입니다.
+
+`AI 에이전트 오케스트레이션 플랫폼`은 상위 카테고리 표현으로만 사용합니다. launch-facing 표면의 주 메시지는 Human 승인, worktree 격리 실행, Oracle 검증입니다.
 
 | 참고 | 가져온 것 |
 |------|-----------|

@@ -77,6 +77,23 @@ def _api_startup() -> None:
             "uvicorn startup pid=%s port=%s sessions=%s" % (payload["pid"], payload["port"], payload["sessions_dir"])
         )
         mark_daemon_started(pid=int(payload["pid"]))
+        from agent_lab.crash_recovery import crash_recovery_enabled, reconcile_crashed_merges
+
+        if crash_recovery_enabled():
+            from agent_lab.daemon_state import record_last_recovery
+
+            rec = reconcile_crashed_merges()
+            write_boot_line(
+                "crash-recovery scanned=%s merged=%s rolled_back=%s quarantined=%s errors=%s"
+                % (
+                    rec["scanned"],
+                    rec["reconciled_merged"],
+                    rec["rolled_back"],
+                    rec["quarantined"],
+                    rec["errors"],
+                )
+            )
+            record_last_recovery(rec)
         if start_mission_scheduler_background():
             write_boot_line("mission scheduler background thread started")
     except Exception as exc:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import threading
 from datetime import datetime, timezone
@@ -12,6 +13,8 @@ from zoneinfo import ZoneInfo
 from agent_lab.daemon_state import mark_scheduler_tick
 from agent_lab.run_meta import patch_run_meta, read_run_meta
 from agent_lab.session import SESSIONS_DIR
+
+logger = logging.getLogger("agent_lab.mission_scheduler")
 
 _SCHEDULER_THREAD: threading.Thread | None = None
 _SCHEDULER_STOP = threading.Event()
@@ -91,6 +94,64 @@ def cron_matches(cron: str, when: datetime) -> bool:
     if not _field_matches(dow, dow_val, min_v=0, max_v=7):
         return False
     return True
+
+
+def _field_valid(field: str, *, min_v: int, max_v: int) -> bool:
+    field = field.strip()
+    if not field:
+        return False
+    if field == "*":
+        return True
+    for part in field.split(","):
+        part = part.strip()
+        if not part:
+            return False
+        if "/" in part:
+            base, step_s = part.split("/", 1)
+            try:
+                if int(step_s) <= 0:
+                    return False
+            except ValueError:
+                return False
+            if base == "*":
+                continue
+            part = base
+        if "-" in part:
+            a_s, b_s = part.split("-", 1)
+            try:
+                lo, hi = int(a_s), int(b_s)
+            except ValueError:
+                return False
+            if lo > hi or lo < min_v or hi > max_v:
+                return False
+            continue
+        try:
+            val = int(part)
+        except ValueError:
+            return False
+        if val < min_v or val > max_v:
+            return False
+    return True
+
+
+def validate_cron(cron: str) -> bool:
+    """Strict 5-field cron syntax + range check (minute hour dom month dow).
+
+    Unlike ``cron_matches`` (which silently returns False for malformed cron),
+    this rejects bad input up front so the API can 400 instead of saving a
+    schedule that never fires.
+    """
+    parts = str(cron or "").split()
+    if len(parts) != 5:
+        return False
+    minute, hour, dom, month, dow = parts
+    return (
+        _field_valid(minute, min_v=0, max_v=59)
+        and _field_valid(hour, min_v=0, max_v=23)
+        and _field_valid(dom, min_v=1, max_v=31)
+        and _field_valid(month, min_v=1, max_v=12)
+        and _field_valid(dow, min_v=0, max_v=7)
+    )
 
 
 def _schedule_when(entry: dict[str, Any], *, now: datetime | None = None) -> datetime:
@@ -318,23 +379,48 @@ def scheduler_tick(
     sessions_dir: Path | None = None,
     force: bool = False,
 ) -> dict[str, Any]:
-    """One poll — run due schedules across all sessions."""
+    """One poll — run due schedules across all sessions.
+
+    Per-schedule failures are isolated and logged so one bad schedule never
+    aborts the tick or starves the others.
+    """
     runs: list[dict[str, Any]] = []
-    for row in list_session_schedules(sessions_dir):
+    try:
+        rows = list_session_schedules(sessions_dir)
+    except Exception:
+        logger.exception("scheduler: list_session_schedules failed")
+        rows = []
+    for row in rows:
         entry = dict(row["schedule"])
-        result = run_schedule_entry(
-            row["session_id"],
-            entry,
-            sessions_dir=sessions_dir,
-            force=force,
-        )
+        try:
+            result = run_schedule_entry(
+                row["session_id"],
+                entry,
+                sessions_dir=sessions_dir,
+                force=force,
+            )
+        except Exception as exc:
+            logger.exception(
+                "scheduler: schedule %s in %s failed",
+                entry.get("id"),
+                row.get("session_id"),
+            )
+            runs.append(
+                {
+                    "ok": False,
+                    "session_id": row.get("session_id"),
+                    "schedule_id": entry.get("id"),
+                    "error": str(exc)[:200],
+                }
+            )
+            continue
         if not result.get("skipped"):
             runs.append(result)
     payload = {
         "ok": True,
         "skipped": not runs,
         "runs": runs,
-        "checked": len(list_session_schedules(sessions_dir)),
+        "checked": len(rows),
     }
     mark_scheduler_tick(payload)
     return payload
@@ -345,7 +431,7 @@ def _scheduler_loop() -> None:
         try:
             scheduler_tick()
         except Exception:
-            pass
+            logger.exception("scheduler tick failed")
 
 
 def start_mission_scheduler_background() -> bool:

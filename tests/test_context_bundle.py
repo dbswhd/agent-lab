@@ -202,6 +202,22 @@ def test_research_mode_cursor_r2_uses_artifact_only_context():
     assert "research artifact" in bundle.render()
 
 
+def test_build_context_bundle_records_last_context_bundle():
+    messages = [_Msg("user", None, "topic question")]
+    run_meta: dict = {}
+    bundle = build_context_bundle(
+        "topic",
+        messages,
+        "claude",
+        format_thread=_format_thread,
+        run_meta=run_meta,
+    )
+    assert bundle.meta.agent == "claude"
+    snap = run_meta.get("last_context_bundle") or {}
+    assert snap.get("agent") == "claude"
+    assert (snap.get("layer_chars") or {}).get("total", 0) > 0
+
+
 def test_codex_r2_keeps_full_peer_context():
     messages = [
         _Msg("user", None, "q"),

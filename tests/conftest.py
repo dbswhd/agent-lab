@@ -89,6 +89,12 @@ _INTEGRATION_MODULES = frozenset(
         "test_model_policy",
         "test_room_mode_contract_api",
         "test_smoke_room_governance",
+        # Stabilization suites (policy/schema/stream helpers; keep PR fast bucket lean)
+        "test_run_schema",
+        "test_verify_repair_policy",
+        "test_room_sse_stream",
+        "test_claude_cli_stream",
+        "test_claude_headless_auth",
     }
 )
 

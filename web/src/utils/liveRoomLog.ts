@@ -107,8 +107,7 @@ export function replayLiveLogToMessages(
     if (t === "tool_start") {
       const tool = String(ev.tool ?? "tool");
       const argsObj = ev.args as Record<string, unknown> | undefined;
-      const target =
-        typeof argsObj?.target === "string" ? argsObj.target : "";
+      const target = typeof argsObj?.target === "string" ? argsObj.target : "";
       const cards = [...(msg.toolCards ?? [])];
       cards.push({
         id: `tool-${tool}-${cards.length}`,

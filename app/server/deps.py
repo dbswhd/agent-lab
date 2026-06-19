@@ -24,7 +24,9 @@ from agent_lab.room import (
 from agent_lab.run_observability import observability_snapshot
 from agent_lab.session import SESSIONS_DIR
 
-TURN_PROFILES = frozenset({"quick", "team", "loop", "analyze", "discuss", "review", "free", "specialist", "verified"})
+TURN_PROFILES = frozenset(
+    {"quick", "team", "loop", "analyze", "discuss", "review", "free", "specialist", "verified", "divergence", "발산"}
+)
 
 
 class RunRequest(BaseModel):
@@ -280,6 +282,13 @@ def session_detail(session_id: str) -> dict[str, Any]:
 
     live_log = read_live_room_log(folder)
 
+    from agent_lab.cost_ledger import budget_status
+
+    cost = {
+        "ledger": run_json.get("cost_ledger") if isinstance(run_json.get("cost_ledger"), dict) else None,
+        "budget": budget_status(run_json),
+    }
+
     return {
         "id": session_id,
         "topic": read("topic.txt") or meta.get("topic", ""),
@@ -289,8 +298,9 @@ def session_detail(session_id: str) -> dict[str, Any]:
         "chat": chat,
         "live_log": live_log,
         "run": run_json,
+        "cost": cost,
         "attachments": list_attachment_names(folder),
-        "observability": observability_snapshot(run_json),
+        "observability": observability_snapshot(run_json, folder=folder),
     }
 
 

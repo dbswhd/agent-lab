@@ -81,11 +81,9 @@ def test_workspace_chrome_replaces_web_traffic_lights_and_titlebar_logo():
     app = _read("web/src/App.tsx")
     room = _read("web/src/components/RoomChat.tsx")
     chrome = _read("web/src/components/WorkspaceChrome.tsx")
-    titlebar = _read("web/src/components/MacTitlebar.tsx")
 
     assert "traffic-lights" not in app
     assert "traffic-lights" not in chrome
-    assert "titlebar__logo" not in titlebar
     assert "MacTitlebar" not in app
     assert "app--tauri" in app
     assert "<WorkspaceChrome" in room
@@ -105,15 +103,12 @@ def test_workbench_diff_panel_reuses_execution_diff_records():
 
 
 def test_tauri_titlebar_and_minimum_window_are_real_window_smoke_contracts():
-    titlebar = _read("web/src/components/MacTitlebar.tsx")
     chrome = _read("web/src/components/WorkspaceChrome.tsx")
     smoke = _read("scripts/smoke_tauri_ui.sh")
     capability = _read("web/src-tauri/capabilities/default.json")
     config = json.loads(_read("web/src-tauri/tauri.conf.json"))
     window = config["app"]["windows"][0]
 
-    assert "data-tauri-drag-region" in titlebar
-    assert "getCurrentWindow().startDragging()" in titlebar
     assert "data-tauri-drag-region" in chrome
     assert "getCurrentWindow().startDragging()" in chrome
     assert "core:window:allow-start-dragging" in capability

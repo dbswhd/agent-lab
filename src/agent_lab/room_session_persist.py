@@ -48,6 +48,7 @@ def load_session_messages(folder: Path) -> list[ChatMessage]:
                 ts=data.get("ts", _now()),
                 parallel_round=int(pr) if pr is not None else None,
                 envelope=data.get("envelope"),
+                retry_of_turn=data.get("retry_of_turn"),
                 visibility=message_visibility(
                     role=role,
                     content=content,
@@ -557,6 +558,18 @@ def _write_session_files(
             synced_at=synced_at,
         )
         run_meta["consensus_agreements"] = agreements
+    ctx = (turn_meta or {}).get("context")
+    if isinstance(ctx, dict):
+        agents_log = ctx.get("agents")
+        if isinstance(agents_log, list) and agents_log:
+            from agent_lab.token_budget import record_run_token_budget
+
+            record_run_token_budget(run_meta, agents_log, turn_meta=turn_meta)
+    from agent_lab.consensus_gate import best_consensus_for_persist, sync_consensus_snapshot
+
+    snapshot = best_consensus_for_persist(turns, prev_run)
+    if snapshot:
+        sync_consensus_snapshot(run_meta, consensus=snapshot)
     from agent_lab.run_meta import write_run_meta
 
     write_run_meta(folder, run_meta)

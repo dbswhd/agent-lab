@@ -5,13 +5,15 @@ import { ensureDevApi } from "./scripts/ensure-dev-api.mjs";
 const host = process.env.TAURI_DEV_HOST;
 const isTauri = Boolean(process.env.TAURI_ENV_PLATFORM);
 
-/** Start uvicorn :8765 before the /api proxy accepts traffic. */
+/** Start uvicorn :8765 before the dev /api proxy accepts traffic. */
 function agentLabDevApi() {
   return {
     name: "agent-lab-dev-api",
-    async buildStart() {
-      if (process.env.VITEST || process.env.VITE_SKIP_API) return;
-      await ensureDevApi();
+    configureServer() {
+      return async () => {
+        if (process.env.VITEST || process.env.VITE_SKIP_API) return;
+        await ensureDevApi();
+      };
     },
   };
 }

@@ -16,7 +16,7 @@ from agent_lab.plan_execute_merge import (
     abort_exec_merge,
     confirm_exec_merge,
     merge_exec_branch,
-    verify_after_merge,
+    verify_after_merge,  # noqa: F401 — re-export for tests / monkeypatch
 )
 from agent_lab.plan_execute_paths import paths_relative_to_workspace, paths_under_workspace
 from agent_lab.plan_execute_snapshot import (
@@ -25,7 +25,6 @@ from agent_lab.plan_execute_snapshot import (
     create_snapshot,
     delete_snapshot,
     load_manifest,
-    normalize_path,
     restore_snapshot,
 )
 from agent_lab.run_meta import patch_run_meta, read_run_meta
@@ -45,13 +44,41 @@ from agent_lab.runtime.adapters import (
     DEFAULT_EXECUTE_AGENT as EXECUTOR_ID,
     EXECUTE_AGENT_IDS,
     execute_agent_available as _execute_agent_available,
-    invoke_execute,
-    invoke_repair,
     normalize_execute_agent as _normalize_execute_agent,
     pick_repair_agent as _repair_agent_id,
-    verify_follow_ups,
 )
 from agent_lab.session_guidance import verify_execution_artifacts
+from agent_lab.plan_execute_prompts import (
+    _cursor_execute_prompt,
+    _extract_draft_summary,
+    _call_execute_agent,
+    _selected_revision_diff,
+)
+from agent_lab.plan_execute_status import (
+    _count_existed_files,
+    _count_existed_in_paths,
+    _split_touched_paths,
+    _needs_artifact_review,
+    _approve_status,
+    execution_allows_task_complete,
+    _artifact_approve_block_reason,
+    _paths_outside_expected,
+    _pending_execution,
+    _update_execution_row,
+    _mark_rejected_tasks,
+    _mark_approved_effects,
+    _execution_approval_record,
+    _append_execution_approval,
+    _finalize_auto_merge_meta,
+)
+from agent_lab.plan_execute_verify import (
+    _arm_merge_checkpoint,
+    _clear_merge_checkpoint,
+    _notify_merge_conflict_mission,
+    _record_verify_after_merge,
+    _call_repair_agent,
+    _append_repair_history,
+)
 
 MAX_DIFF_CHARS = 120_000
 MAX_VERIFY_RETRIES = 2
@@ -64,115 +91,6 @@ def _now() -> str:
 
 def _exec_id() -> str:
     return f"exec-{uuid.uuid4().hex[:12]}"
-
-
-def _count_existed_files(manifest: dict[str, Any]) -> int:
-    files = manifest.get("files") or {}
-    return sum(1 for entry in files.values() if entry.get("existed"))
-
-
-def _count_existed_in_paths(manifest: dict[str, Any], paths: list[str]) -> int:
-    files: dict[str, dict[str, Any]] = manifest.get("files") or {}
-    count = 0
-    for path in paths:
-        if files.get(path, {}).get("existed"):
-            count += 1
-    return count
-
-
-def _split_touched_paths(
-    touched: list[str],
-    *,
-    source_snapshot: list[str],
-    artifact_snapshot: list[str],
-) -> tuple[list[str], list[str], bool]:
-    source_set = set(source_snapshot)
-    artifact_set = set(artifact_snapshot)
-    source_touched = [path for path in touched if path in source_set]
-    artifact_touched = [path for path in touched if path in artifact_set]
-    return source_touched, artifact_touched, len(source_touched) == 0
-
-
-def _needs_artifact_review(
-    *,
-    empty_source_diff: bool,
-    artifact_touched: list[str],
-    verification_paths: list[str],
-    draft_summary: str,
-) -> bool:
-    if not empty_source_diff:
-        return False
-    if artifact_touched:
-        return True
-    return bool(verification_paths and draft_summary.strip())
-
-
-def _approve_status(target: dict[str, Any]) -> str:
-    if target.get("paths_outside_expected"):
-        return "review_required"
-    if _needs_artifact_review(
-        empty_source_diff=bool(target.get("empty_source_diff")),
-        artifact_touched=list(target.get("artifact_touched_paths") or []),
-        verification_paths=list(target.get("verification_paths") or []),
-        draft_summary=str(target.get("draft_summary") or ""),
-    ):
-        return "review_required"
-    return "completed"
-
-
-def execution_allows_task_complete(execution: dict[str, Any]) -> bool:
-    """True when linked room tasks may be marked completed (mirrors _approve_status)."""
-    status = str(execution.get("status") or "")
-    if status in ("review_required", "pending_approval", "rejected", "failed"):
-        return False
-    oracle = execution.get("oracle")
-    if isinstance(oracle, dict) and oracle.get("verdict") == "fail":
-        return False
-    if status == "completed":
-        return True
-    return _approve_status(execution) == "completed"
-
-
-def _artifact_approve_block_reason(target: dict[str, Any]) -> str | None:
-    """Block Human approve until PDF path + page count + artifacts are verified."""
-    if not target.get("needs_artifact_review"):
-        return None
-    arts = target.get("verification_artifacts")
-    if not isinstance(arts, dict):
-        return "검증 산출물(PDF·break-report) 확인 후 승인하세요."
-    pdf_path = arts.get("pdf_path")
-    page_count = arts.get("pdf_page_count")
-    break_report = arts.get("break_report")
-    baseline_pages = None
-    if isinstance(break_report, dict):
-        baseline_pages = break_report.get("baselinePdfPageCount")
-    if not pdf_path and not break_report:
-        return "PDF 경로 또는 break-report.json 확인 후 승인하세요."
-    if page_count is None and baseline_pages is None:
-        return "PDF 페이지 수 확인 후 승인하세요."
-    if not arts.get("ok"):
-        return "검증 산출물이 불완전합니다 — PDF·break-report 확인 후 승인하세요."
-    return None
-
-
-def _paths_outside_expected(
-    touched: list[str],
-    expected: list[str],
-    *,
-    cwd: Path,
-) -> list[str]:
-    if not expected:
-        return list(touched)
-    expected_norm = {normalize_path(p, cwd=cwd) for p in expected}
-    extras: list[str] = []
-    for path in touched:
-        norm = normalize_path(path, cwd=cwd)
-        if any(norm == exp or norm.endswith(f"/{exp}") or exp.endswith(f"/{norm}") for exp in expected_norm):
-            continue
-        if any(norm.startswith(exp.rstrip("/") + "/") for exp in expected_norm):
-            continue
-        extras.append(path)
-    return extras
 
 
 def _preflight_execute_workspace(
@@ -349,208 +267,6 @@ def _merge_commit_message(target: dict[str, Any], *, session_id: str) -> str:
     return "\n".join(lines)
 
 
-def _pending_execution(run: dict[str, Any]) -> dict[str, Any] | None:
-    for row in reversed(run.get("executions") or []):
-        if row.get("status") == PENDING_STATUS:
-            return row
-    return None
-
-
-def _update_execution_row(
-    folder: Path,
-    *,
-    execution_id: str,
-    target: dict[str, Any],
-) -> None:
-    def _update(run: dict[str, Any]) -> dict[str, Any]:
-        rows = list(run.get("executions") or [])
-        for i, row in enumerate(rows):
-            if row.get("id") == execution_id:
-                rows[i] = target
-                break
-        run["executions"] = rows
-        return run
-
-    patch_run_meta(folder, _update)
-
-
-def _execution_verify_action(target: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "what": target.get("action_what"),
-        "where": target.get("action_where"),
-        "verify": target.get("action_verify"),
-    }
-
-
-def _merged_verify_paths(target: dict[str, Any]) -> list[str]:
-    paths: list[str] = []
-    for key in (
-        "source_touched_paths",
-        "touched_paths",
-        "expected_paths",
-        "verification_paths",
-        "monitored_paths",
-    ):
-        for raw in target.get(key) or []:
-            path = str(raw)
-            if path and path not in paths:
-                paths.append(path)
-    return paths
-
-
-def _verify_workspace_root(target: dict[str, Any]) -> Path | None:
-    raw = target.get("git_root") or target.get("workspace_root")
-    return Path(str(raw)) if raw else None
-
-
-def _notify_merge_conflict_mission(
-    folder: Path,
-    target: dict[str, Any],
-) -> None:
-    from agent_lab.runtime.events import RuntimeEvent
-    from agent_lab.runtime.runtime import dispatch
-
-    merge = target.get("merge") if isinstance(target.get("merge"), dict) else {}
-    files = [str(f) for f in (merge.get("conflict_files") or []) if f]
-    detail = ", ".join(files) if files else "unknown files"
-    idx = target.get("action_index")
-    dispatch(
-        folder,
-        RuntimeEvent.EXECUTE_STRUCTURAL_FAIL,
-        {
-            "reason": f"merge conflict: {detail}",
-            "action_index": int(idx) if idx is not None else None,
-        },
-    )
-
-
-def _record_verify_after_merge(
-    folder: Path,
-    target: dict[str, Any],
-    *,
-    verify_retries: int | None = None,
-) -> dict[str, Any]:
-    retries = int(verify_retries if verify_retries is not None else target.get("verify_retries") or 0)
-    checked_at = _now()
-    evidence = verify_after_merge(
-        _execution_verify_action(target),
-        _merged_verify_paths(target),
-        session_folder=folder,
-        workspace_root=_verify_workspace_root(target),
-        verify_retries=retries,
-    )
-    evidence["checked_at"] = checked_at
-    oracle = dict(evidence.get("oracle") or {})
-    oracle["checked_at"] = checked_at
-    evidence["oracle"] = oracle
-    src = str(oracle.get("source") or "mock")
-    evidence["source"] = "live_oracle" if src == "live" else "mock_oracle"
-    target["verify_after_merge"] = evidence
-    target["oracle"] = oracle
-    target["verify_retries"] = retries
-    target["reverify_endpoint"] = "/api/sessions/{session_id}/execute/reverify"
-    history = list(target.get("verify_history") or [])
-    history.append(
-        {
-            "attempt": retries,
-            "checked_at": checked_at,
-            "status": evidence.get("status"),
-            "oracle": oracle,
-        }
-    )
-    target["verify_history"] = history
-    if str(target.get("status") or "") == "merged":
-        from agent_lab.plan_execute_merge import archive_executed_diff
-
-        exec_id = str(target.get("id") or "")
-        if exec_id:
-            archive_executed_diff(folder, execution_id=exec_id, execution=target)
-    from agent_lab.runtime.runtime import dispatch_verify_result
-
-    idx = int(target.get("action_index") or 0)
-    verdict = str((oracle.get("verdict") or evidence.get("status") or "")).lower()
-    reason = str(oracle.get("detail") or oracle.get("feedback") or oracle.get("reason") or "")
-    dispatch_verify_result(
-        folder,
-        action_index=idx,
-        verdict=verdict,
-        reason=reason,
-        oracle=oracle,
-    )
-    exec_id = str(target.get("id") or "")
-    if exec_id:
-        from agent_lab.evidence_sync import on_verify_recorded
-
-        on_verify_recorded(folder, exec_id, evidence=evidence)
-    try:
-        from agent_lab.skill_drafts import (
-            maybe_create_skill_draft_from_verify,
-            verify_evidence_passed,
-        )
-
-        if verify_evidence_passed(evidence):
-            maybe_create_skill_draft_from_verify(folder, target, evidence)
-    except Exception:
-        pass
-    return evidence
-
-
-def _repair_prompt(target: dict[str, Any], *, attempt: int) -> str:
-    oracle = target.get("oracle") if isinstance(target.get("oracle"), dict) else {}
-    reason = str(oracle.get("detail") or "Oracle verification failed")
-    paths = ", ".join(_merged_verify_paths(target)) or "(plan paths unavailable)"
-    return f"""Layer 3 repair attempt {attempt}/{MAX_VERIFY_RETRIES}.
-
-The previous merge completed, but the independent Oracle returned FAIL:
-{reason}
-
-Repair only the current plan action in this isolated worktree.
-- 무엇을: {target.get("action_what") or target.get("action_key") or "plan action"}
-- 어디서: {target.get("action_where") or paths}
-- 검증: {target.get("action_verify") or "verify field missing"}
-- 관련 경로: {paths}
-
-Re-read the files, make the smallest required fix, and run the named verification.
-End with `VERIFICATION: PASS — ...` or `VERIFICATION: FAIL — ...`."""
-
-
-def _call_repair_agent(
-    agent_id: str,
-    *,
-    target: dict[str, Any],
-    worktree_path: Path,
-    permissions: dict[str, Any] | None,
-    attempt: int,
-    session_folder: Path | None = None,
-) -> str:
-    prompt = _repair_prompt(target, attempt=attempt)
-    if session_folder is not None:
-        from agent_lab.runtime.context import enrich_execute_prompt
-        from agent_lab.run_meta import read_run_meta
-        from agent_lab.session_plugin_runtime import (
-            enrich_execute_permissions,
-            execute_plugin_prompt_addon,
-        )
-
-        permissions = enrich_execute_permissions(permissions, session_folder)
-        prompt = execute_plugin_prompt_addon(prompt, session_folder, agent_id)
-        prompt = enrich_execute_prompt(prompt, read_run_meta(session_folder))
-    from agent_lab.runtime.adapters import RepairInvokeRequest
-
-    effective = dict(permissions or {})
-    effective["_discuss_cwd"] = str(worktree_path.resolve())
-    return invoke_repair(
-        agent_id,  # type: ignore[arg-type]
-        RepairInvokeRequest(
-            system="You repair a merged plan action after independent verification failed.",
-            user=prompt,
-            permissions=effective,
-            cwd=worktree_path,
-            verify_follow_ups=verify_follow_ups(str(target.get("action_verify") or "")),
-        ),
-    )
-
-
 def _commit_repair_worktree(
     worktree_path: Path,
     *,
@@ -569,84 +285,6 @@ def _commit_repair_worktree(
         f"agent-lab: repair {action_key} attempt {attempt}",
     )
     return _run_git(worktree_path, "rev-parse", "HEAD").stdout.strip()
-
-
-def _append_repair_history(
-    target: dict[str, Any],
-    repair: dict[str, Any],
-) -> None:
-    history = list(target.get("repair_history") or [])
-    history.append(repair)
-    target["repair_history"] = history
-    target["last_repair"] = repair
-
-
-def _mark_rejected_tasks(
-    folder: Path,
-    *,
-    execution_id: str,
-    target: dict[str, Any],
-) -> None:
-    def _revert_tasks(run: dict[str, Any]) -> dict[str, Any]:
-        from agent_lab.room_tasks import revert_tasks_for_rejected_execution
-
-        revert_tasks_for_rejected_execution(
-            run,
-            action_index=target.get("action_index"),
-            action_id=target.get("action_id"),
-            execution_id=execution_id,
-        )
-        return run
-
-    patch_run_meta(folder, _revert_tasks)
-
-
-def _mark_approved_effects(
-    folder: Path,
-    *,
-    execution_id: str,
-    target: dict[str, Any],
-) -> dict[str, Any]:
-    if execution_allows_task_complete(target):
-
-        def _complete_linked_tasks(run: dict[str, Any]) -> dict[str, Any]:
-            from agent_lab.room_tasks import complete_tasks_for_execution
-
-            complete_tasks_for_execution(
-                run,
-                action_index=target.get("action_index"),
-                action_id=target.get("action_id"),
-                execution_id=execution_id,
-                execution=target,
-            )
-            return run
-
-        patch_run_meta(folder, _complete_linked_tasks)
-
-    plan_advance: dict[str, Any] = {"advanced": False}
-    if target.get("status") in {"completed", "review_required"} or (
-        target.get("status") == "merged" and execution_allows_task_complete(target)
-    ):
-        from agent_lab.plan_advance import advance_plan_after_approval
-
-        plan_advance = advance_plan_after_approval(folder, target)
-        if plan_advance.get("advanced"):
-            completed_ts = target.get("completed_at") or _now()
-
-            def _mark_plan(run: dict[str, Any]) -> dict[str, Any]:
-                run["last_plan_update"] = {
-                    "trigger": "execute_advance",
-                    "ts": completed_ts,
-                    "completed_at": completed_ts,
-                    "status": "completed",
-                    "execution_id": execution_id,
-                    "action_key": target.get("action_key"),
-                    "promoted_action_key": plan_advance.get("promoted_action_key"),
-                }
-                return run
-
-            patch_run_meta(folder, _mark_plan)
-    return plan_advance
 
 
 def list_plan_actions(
@@ -675,235 +313,6 @@ def list_plan_actions(
         "roadmap": sections["roadmap"],
         "actions": sections["actions"],
     }
-
-
-def _inbox_mcp_instructions(action: PlanAction) -> str:
-    action_key = f"{action.kind}:{action.index}"
-    return f"""
-Human Inbox MCP (agent-lab-inbox) — mandatory for direction and GO:
-- Before ANY file edits: plan-first phase. Draft a short execution plan from the approved plan.md.
-- If blocked on direction, call `ask_human` with question + at least 2 options (never ask in prose).
-- When the execution plan is ready, call `propose_build` with summary + action_ref="{action_key}" and wait for Human GO.
-- Only after `propose_build` returns decision=go may you edit files (implement phase).
-- If decision is defer or reject, stop without editing files.
-- During implement, if blocked again, use `ask_human` only.
-"""
-
-
-def _cursor_plan_phase_prompt(
-    action: PlanAction,
-    *,
-    expected_paths: list[str] | None = None,
-    verify: str | None = None,
-) -> str:
-    expected = ", ".join(expected_paths or action.expected_paths()) or action.where
-    verify_line = verify if verify is not None else action.verify
-    inbox_block = _inbox_mcp_instructions(action)
-    return f"""Agent Lab execute — plan-first phase ONLY (no file edits yet).
-{inbox_block}
-Plan action (from approved plan.md):
-- 무엇을: {action.what}
-- 어디서: {expected}
-- 검증: {verify_line}
-
-Phase 0 — plan-first:
-- Read the repo as needed; draft a short execution plan for this action.
-- If blocked on direction, call `ask_human` with at least 2 options (never ask in prose).
-- When ready, call `propose_build` with summary + action_ref and STOP — do not edit files until Human GO."""
-
-
-def _cursor_implement_phase_prompt(
-    action: PlanAction,
-    *,
-    expected_paths: list[str] | None = None,
-    verify: str | None = None,
-    revise_request: dict[str, Any] | None = None,
-) -> str:
-    expected = ", ".join(expected_paths or action.expected_paths()) or action.where
-    verify_line = verify if verify is not None else action.verify
-    prompt = f"""Agent Lab execute — implement phase (Human GO received).
-
-Phase 1 — implement (tools expected):
-- Change only what is needed for this action.
-- Prefer paths listed in "어디서": {expected}
-- Do not refactor unrelated code.
-- Do not commit; leave changes in the working tree.
-- Read before edit; use tools like the IDE agent.
-- During implement, if blocked again, use `ask_human` only.
-
-Plan action:
-- 무엇을: {action.what}
-- 어디서: {expected}
-- 검증: {verify_line}
-
-When phase 1 edits are done, stop and wait — a phase 2 verification message follows in this same session."""
-    if revise_request:
-        chunk_ref = str(revise_request.get("chunk_ref") or "전체 diff")
-        comment = str(revise_request.get("comment") or "").strip()
-        selected_diff = str(revise_request.get("selected_diff") or "").strip()
-        prompt += f"""
-
-Human inline revise request:
-- 선택 범위: {chunk_ref}
-- 요청: {comment}
-
-Revise the selected part without undoing correct parts of the plan action."""
-        if selected_diff:
-            prompt += f"""
-
-Previous selected diff:
-```diff
-{selected_diff}
-```"""
-    return prompt
-
-
-def _cursor_execute_prompt(
-    action: PlanAction,
-    *,
-    expected_paths: list[str] | None = None,
-    verify: str | None = None,
-    revise_request: dict[str, Any] | None = None,
-    inbox_mcp: bool = False,
-) -> str:
-    if inbox_mcp:
-        return _cursor_plan_phase_prompt(
-            action,
-            expected_paths=expected_paths,
-            verify=verify,
-        )
-    expected = ", ".join(expected_paths or action.expected_paths()) or action.where
-    verify_line = verify if verify is not None else action.verify
-    prompt = f"""Agent Lab thin execute — implement exactly one plan action.
-
-Phase 1 — implement (tools expected):
-- Change only what is needed for this action.
-- Prefer paths listed in "어디서": {expected}
-- Do not refactor unrelated code.
-- Do not commit; leave changes in the working tree.
-- Read before edit; use tools like the IDE agent.
-
-Plan action:
-- 무엇을: {action.what}
-- 어디서: {expected}
-- 검증: {verify_line}
-
-When phase 1 edits are done, stop and wait — a phase 2 verification message follows in this same session."""
-    if revise_request:
-        chunk_ref = str(revise_request.get("chunk_ref") or "전체 diff")
-        comment = str(revise_request.get("comment") or "").strip()
-        selected_diff = str(revise_request.get("selected_diff") or "").strip()
-        prompt += f"""
-
-Human inline revise request:
-- 선택 범위: {chunk_ref}
-- 요청: {comment}
-
-Revise the selected part without undoing correct parts of the plan action."""
-        if selected_diff:
-            prompt += f"""
-
-Previous selected diff:
-```diff
-{selected_diff}
-```"""
-    return prompt
-
-
-def _extract_draft_summary(text: str) -> str:
-    body = (text or "").strip()
-    if not body:
-        return ""
-    lines = [ln.strip() for ln in body.splitlines() if ln.strip()]
-    return "\n".join(lines[:8])
-
-
-def _call_execute_agent(
-    agent_id: str,
-    *,
-    user: str,
-    permissions: dict[str, Any],
-    cwd: Path,
-    on_activity: Any,
-    verify: str,
-    session_folder: Path | None = None,
-    inbox_mcp: bool = False,
-    action: Any | None = None,
-    expected_paths: list[str] | None = None,
-    revise_request: dict[str, Any] | None = None,
-) -> str:
-    from agent_lab.runtime.adapters import ExecuteInvokeRequest
-
-    system = "You implement approved plan actions with minimal scope."
-    verify_ups = verify_follow_ups(verify)
-    if session_folder is not None:
-        from agent_lab.runtime.context import enrich_execute_prompt
-        from agent_lab.run_meta import read_run_meta
-        from agent_lab.session_plugin_runtime import (
-            enrich_execute_permissions,
-            execute_plugin_prompt_addon,
-        )
-
-        permissions = enrich_execute_permissions(permissions, session_folder)
-        user = execute_plugin_prompt_addon(user, session_folder, agent_id)
-        user = enrich_execute_prompt(user, read_run_meta(session_folder))
-
-    req = ExecuteInvokeRequest(
-        system=system,
-        user=user,
-        permissions=permissions,
-        cwd=cwd,
-        verify_follow_ups=verify_ups,
-        on_activity=on_activity,
-        session_folder=session_folder,
-        inbox_mcp=inbox_mcp,
-    )
-    if inbox_mcp and session_folder is not None and action is not None:
-        from agent_lab.human_inbox import execute_inbox_build_go
-
-        req.plan_phase_user = _cursor_plan_phase_prompt(
-            action,
-            expected_paths=expected_paths,
-            verify=verify,
-        )
-        req.implement_phase_user = _cursor_implement_phase_prompt(
-            action,
-            expected_paths=expected_paths,
-            verify=verify,
-            revise_request=revise_request,
-        )
-        req.inbox_gate = lambda: execute_inbox_build_go(session_folder)
-
-    return invoke_execute(_normalize_execute_agent(agent_id), req)
-
-
-def _selected_revision_diff(
-    diff: str,
-    *,
-    chunk_ref: str | None,
-    line_start: int | None,
-    line_end: int | None,
-    max_chars: int = 6000,
-) -> str:
-    lines = (diff or "").splitlines()
-    selected: list[str] = []
-    if line_start is not None:
-        start = max(0, line_start - 1)
-        end = max(start + 1, line_end or line_start)
-        selected = lines[start:end]
-    elif chunk_ref:
-        for index, line in enumerate(lines):
-            if line.strip() != chunk_ref.strip():
-                continue
-            selected.append(line)
-            for following in lines[index + 1 :]:
-                if following.startswith("@@") or following.startswith("diff --git "):
-                    break
-                selected.append(following)
-            break
-    else:
-        selected = lines
-    return "\n".join(selected)[:max_chars]
 
 
 def run_dry_run(
@@ -1325,6 +734,10 @@ def run_dry_run(
     }
     if worktree_hooks_block:
         execution["worktree_hooks"] = worktree_hooks_block
+    from agent_lab.diff_safety import diff_safety_enabled, scan_diff
+
+    if diff_safety_enabled():
+        execution["safety_scan"] = scan_diff(diff)
     if supersedes_execution_id:
         execution["revision_of"] = supersedes_execution_id
     if revise_request:
@@ -1598,55 +1011,57 @@ def cancel_open_execution(
     }
 
 
-def _execution_approval_record(
-    *,
-    execution_id: str,
-    target: dict[str, Any],
-    vote_norm: str,
-    completed: str,
-    approved_by: str = "human",
-    auto_merge_meta: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    approval: dict[str, Any] = {
-        "id": f"appr-{uuid.uuid4().hex[:12]}",
-        "execution_id": execution_id,
-        "action_id": target.get("action_id"),
-        "vote": vote_norm,
-        "ts": completed,
-        "by": approved_by,
-    }
-    if auto_merge_meta:
-        approval["auto_merge"] = True
-        approval.update(auto_merge_meta)
-    return approval
-
-
-def _append_execution_approval(run: dict[str, Any], approval: dict[str, Any]) -> dict[str, Any]:
-    for key in ("approvals", "execution_approvals"):
-        rows = list(run.get(key) or [])
-        rows.append(approval)
-        run[key] = rows
-    return run
-
-
-def _finalize_auto_merge_meta(
+def _resolve_reject(
     folder: Path,
-    *,
-    approved_by: str,
     target: dict[str, Any],
-    auto_merge_meta: dict[str, Any] | None,
-) -> dict[str, Any]:
-    meta = dict(auto_merge_meta or {})
-    if approved_by != "auto":
-        return meta
-    if target.get("status") not in {"merged", "completed"}:
-        raise ValueError("auto_merge did not complete")
-    from agent_lab.trust_budget import consume_auto_merge_budget
+    *,
+    manifest: dict[str, Any] | None,
+    snapshot_id: str,
+    cwd: Path,
+    execution_id: str,
+    completed: str,
+) -> None:
+    """Reject path: restore snapshot, discard worktree, mark rejected, revert tasks."""
+    if manifest is not None:
+        restore_snapshot(folder, exec_id=snapshot_id, cwd=cwd, manifest=manifest)
+        delete_snapshot(folder, snapshot_id)
+    if target.get("isolation_effective") == "worktree":
+        discard_exec_worktree(_exec_worktree_from_execution(target), folder, execution_id)
+    target["status"] = "rejected"
+    target["completed_at"] = completed
 
-    before, after = consume_auto_merge_budget(folder)
-    meta["budget_before"] = before
-    meta["budget_after"] = after
-    return meta
+    def _revert_tasks(run: dict[str, Any]) -> dict[str, Any]:
+        from agent_lab.room_tasks import revert_tasks_for_rejected_execution
+
+        revert_tasks_for_rejected_execution(
+            run,
+            action_index=target.get("action_index"),
+            action_id=target.get("action_id"),
+            execution_id=execution_id,
+        )
+        return run
+
+    patch_run_meta(folder, _revert_tasks)
+
+
+def _resolve_snapshot_paths(target: dict[str, Any], cwd: Any) -> tuple[list[str], list[str], list[str], str]:
+    """Reconstruct snapshot/source/artifact paths and snapshot id from the execution row."""
+    snapshot_paths = list(target.get("snapshot_paths") or [])
+    if not snapshot_paths:
+        raw_monitored = list(
+            target.get("monitored_paths") or target.get("snapshotted_paths") or target.get("expected_paths") or []
+        )
+        snapshot_paths = paths_relative_to_workspace(cwd, raw_monitored)
+    source_snapshot = list(target.get("source_snapshot_paths") or [])
+    if not source_snapshot:
+        raw_source = list(target.get("expected_paths") or [])
+        source_snapshot = paths_relative_to_workspace(cwd, raw_source)
+    artifact_snapshot = list(target.get("artifact_snapshot_paths") or [])
+    if not artifact_snapshot:
+        raw_verify = list(target.get("verification_paths") or [])
+        artifact_snapshot = paths_relative_to_workspace(cwd, raw_verify)
+    snapshot_id = str(target.get("snapshot_id") or target.get("id") or "")
+    return snapshot_paths, source_snapshot, artifact_snapshot, snapshot_id
 
 
 def resolve_execution(
@@ -1681,21 +1096,7 @@ def resolve_execution(
         cwd = Path(stored_root)
     else:
         cwd, _ = resolve_execute_workspace(permissions, raw_expected_paths)
-    snapshot_paths = list(target.get("snapshot_paths") or [])
-    if not snapshot_paths:
-        raw_monitored = list(
-            target.get("monitored_paths") or target.get("snapshotted_paths") or target.get("expected_paths") or []
-        )
-        snapshot_paths = paths_relative_to_workspace(cwd, raw_monitored)
-    source_snapshot = list(target.get("source_snapshot_paths") or [])
-    if not source_snapshot:
-        raw_source = list(target.get("expected_paths") or [])
-        source_snapshot = paths_relative_to_workspace(cwd, raw_source)
-    artifact_snapshot = list(target.get("artifact_snapshot_paths") or [])
-    if not artifact_snapshot:
-        raw_verify = list(target.get("verification_paths") or [])
-        artifact_snapshot = paths_relative_to_workspace(cwd, raw_verify)
-    snapshot_id = str(target.get("snapshot_id") or target.get("id") or "")
+    snapshot_paths, source_snapshot, artifact_snapshot, snapshot_id = _resolve_snapshot_paths(target, cwd)
     completed = _now()
 
     if snapshot_id:
@@ -1707,26 +1108,15 @@ def resolve_execution(
         manifest = None
 
     if vote_norm == "reject":
-        if manifest is not None:
-            restore_snapshot(folder, exec_id=snapshot_id, cwd=cwd, manifest=manifest)
-            delete_snapshot(folder, snapshot_id)
-        if target.get("isolation_effective") == "worktree":
-            discard_exec_worktree(_exec_worktree_from_execution(target), folder, execution_id)
-        target["status"] = "rejected"
-        target["completed_at"] = completed
-
-        def _revert_tasks(run: dict[str, Any]) -> dict[str, Any]:
-            from agent_lab.room_tasks import revert_tasks_for_rejected_execution
-
-            revert_tasks_for_rejected_execution(
-                run,
-                action_index=target.get("action_index"),
-                action_id=target.get("action_id"),
-                execution_id=execution_id,
-            )
-            return run
-
-        patch_run_meta(folder, _revert_tasks)
+        _resolve_reject(
+            folder,
+            target,
+            manifest=manifest,
+            snapshot_id=snapshot_id,
+            cwd=cwd,
+            execution_id=execution_id,
+            completed=completed,
+        )
     else:
         block = _artifact_approve_block_reason(target)
         if block:
@@ -1735,6 +1125,7 @@ def resolve_execution(
         if retry_merge and target.get("isolation_effective") == "worktree":
             merge = dict(target.get("merge") or {})
             merge["attempted_at"] = completed
+            _arm_merge_checkpoint(folder, execution_id=execution_id, target=target, op="merge")
             try:
                 merge_result = merge_exec_branch(
                     _exec_worktree_from_execution(target),
@@ -1749,6 +1140,7 @@ def resolve_execution(
                 target["merge"] = merge
                 target["status"] = "merge_conflict"
                 target["completed_at"] = merge["completed_at"]
+                _clear_merge_checkpoint(target)
                 _notify_merge_conflict_mission(folder, target)
             else:
                 merge.update(merge_result.to_dict())
@@ -1756,6 +1148,7 @@ def resolve_execution(
                 target["merge"] = merge
                 target["status"] = "merged"
                 target["completed_at"] = merge["completed_at"]
+                _clear_merge_checkpoint(target)
                 from agent_lab.evidence_sync import on_merge_approved
 
                 on_merge_approved(
@@ -1828,6 +1221,7 @@ def resolve_execution(
         if target.get("isolation_effective") == "worktree":
             merge = dict(target.get("merge") or {})
             merge["attempted_at"] = completed
+            _arm_merge_checkpoint(folder, execution_id=execution_id, target=target, op="merge")
             try:
                 merge_result = merge_exec_branch(
                     _exec_worktree_from_execution(target),
@@ -1842,6 +1236,7 @@ def resolve_execution(
                 target["merge"] = merge
                 target["status"] = "merge_conflict"
                 target["completed_at"] = merge["completed_at"]
+                _clear_merge_checkpoint(target)
                 _notify_merge_conflict_mission(folder, target)
             else:
                 merge.update(merge_result.to_dict())
@@ -1849,6 +1244,7 @@ def resolve_execution(
                 target["merge"] = merge
                 target["status"] = "merged"
                 target["completed_at"] = merge["completed_at"]
+                _clear_merge_checkpoint(target)
                 from agent_lab.evidence_sync import on_merge_approved
 
                 on_merge_approved(
@@ -2009,6 +1405,7 @@ def confirm_merge_execution(
     )
     completed = _now()
     ew = _exec_worktree_from_execution(target)
+    _arm_merge_checkpoint(folder, execution_id=execution_id, target=target, op="confirm", worktree=ew)
     result = confirm_exec_merge(ew, session_folder=folder, exec_id=execution_id)
     snapshot_id = str(target.get("snapshot_id") or target.get("id") or "")
     if snapshot_id:
@@ -2020,6 +1417,7 @@ def confirm_merge_execution(
     target["merge"] = merge
     target["status"] = "merged"
     target["completed_at"] = completed
+    _clear_merge_checkpoint(target)
     from agent_lab.evidence_sync import on_merge_approved
 
     on_merge_approved(
@@ -2136,6 +1534,14 @@ def reverify_merged_execution(
             "attempted_at": _now(),
             "completed_at": None,
         }
+        _arm_merge_checkpoint(
+            folder,
+            execution_id=execution_id,
+            target=target,
+            op="repair_merge",
+            worktree=ew,
+            exec_commit_sha=repair_commit,
+        )
         try:
             merge_result = merge_exec_branch(
                 ew,
@@ -2152,6 +1558,7 @@ def reverify_merged_execution(
             target["merge"] = merge
             target["status"] = "merge_conflict"
             target["verify_retries"] = attempt
+            _clear_merge_checkpoint(target)
             repair["status"] = "merge_conflict"
             repair["merge"] = merge
             repair["completed_at"] = merge["completed_at"]
@@ -2171,6 +1578,7 @@ def reverify_merged_execution(
         target["merge"] = merge
         target["status"] = "merged"
         target["completed_at"] = merge["completed_at"]
+        _clear_merge_checkpoint(target)
         evidence = _record_verify_after_merge(folder, target, verify_retries=attempt)
         repair["status"] = "merged"
         repair["merge"] = merge

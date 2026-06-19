@@ -153,7 +153,7 @@ def test_transcript_has_review_aware_inline_markers():
 
 def test_developer_console_doc_is_source_of_truth():
     doc = _read("docs", "developer-agent-console.md")
-    assert "Developer Agent Console" in doc or "developer agent console" in doc
+    assert "Human-in-the-loop Agent Development Console" in doc
     assert "Transcript" in doc
     deprecated = _read("docs", "02-ui-ux-handoff.md")
     lowered = deprecated.lower()
@@ -161,13 +161,8 @@ def test_developer_console_doc_is_source_of_truth():
 
 
 def test_workspace_tabs_do_not_render_inline_status_badges():
-    tab_bar = _read("web", "src", "components", "WorkspaceTabBar.tsx")
     room = _read("web", "src", "components", "RoomChat.tsx")
 
-    assert "workspace-tab-bar__badge" not in tab_bar
-    assert "workspace-tab-bar__badge-dot" not in tab_bar
-    assert "Work pending" not in tab_bar
-    assert "Review pending" not in tab_bar
     assert "suggestedTab=" not in room
     assert "reviewPending=" not in room
 
@@ -176,42 +171,31 @@ def test_workspace_panels_have_distinct_document_wrappers():
     room = _read("web", "src", "components", "RoomChat.tsx")
     surfaces = _read("web", "src", "styles", "surfaces.css")
     work_tool = _read("web", "src", "components", "WorkToolPanel.tsx")
-    work = _read("web", "src", "components", "WorkPanel.tsx")
     assert "work-surface" in work_tool or "work-stack" in work_tool
-    assert "MissionOverviewSection" in work
-    assert 'variant="work"' in work or 'variant="work"' in work
-    assert "work-chrome" in work
     status = _read("web", "src", "utils", "workStatusPhase.ts")
     status_bar = _read("web", "src", "components", "WorkStatusBar.tsx")
     assert "resolveWorkPhaseFromMission" in status
     assert "missionPaused" in status_bar
     assert "work-status-bar__pause-badge" in status_bar
-    assert "last_partial?.resume_phase" in work
     assert "work-mission-overview" in _read("web", "src", "components", "MissionOverviewSection.tsx")
     plugin = _read("web", "src", "components", "PluginPanel.tsx")
     assert "cursor-ide-mcp-hint" in plugin
     plan_exec = _read("web", "src", "components", "PlanExecutePanel.tsx")
-    run_panel = _read("web", "src", "components", "RunLogPanel.tsx")
-    artifacts = _read("web", "src", "components", "ArtifactsListPanel.tsx")
 
     assert "transcript--console" in room
     assert "WorkbenchPanel" in room
     assert "plan-card" in plan_exec
     assert "exec-card" in plan_exec
     assert "plan-actions-bar" in plan_exec
-    assert "run-log" in run_panel
-    assert "artifacts-list" in artifacts
     assert "PlanExecutePanel" in work_tool
     assert ".transcript--console" in surfaces
 
 
 def test_inspector_matches_prototype_context_sidebar_body():
-    inspector = _read("web", "src", "components", "InspectorPane.tsx")
     room = _read("web", "src", "components", "RoomChat.tsx")
     overview = _read("web", "src", "components", "ContextOverviewPanel.tsx")
     layout = _read("web", "src", "styles", "layout.css")
 
-    assert "context-sidebar__body scroll-y" in inspector
     assert "ContextOverviewPanel" in room
     assert "MissionOverviewSection" in overview
     assert "inspector-pane__section-card" not in room
@@ -255,23 +239,9 @@ def test_run_session_registry_module_exists():
     assert "hydrateSessionMessages" in reg
 
 
-def test_run_log_panel_expands_agent_activities():
-    panel = _read("web", "src", "components", "RunLogPanel.tsx")
-    assert "expandRunLogEntries" in panel
-    assert "m.activities" in panel
-    assert "RunLogEntryText" in panel
-    assert "run-entry__tool" in panel
-
-
-def test_turn_run_panel_renders_turn_messages():
-    panel = _read("web", "src", "components", "RunLogPanel.tsx")
-    turn_panel = _read("web", "src", "components", "TurnRunPanel.tsx")
+def test_room_patches_turn_messages():
     room = _read("web", "src", "components", "RoomChat.tsx")
-    assert "turnMessages" in panel
-    assert "turnMessages" in turn_panel
     assert "patchTurnMessages" in room
-    assert "expandRunLogEntries" in panel
-    assert "run-log" in panel
 
 
 def test_m3_terminal_uses_xterm():
@@ -318,7 +288,6 @@ def test_m4_diagnostics_show_bridge_audit():
 
 def test_m5_i18n_panels_use_locale():
     bgtask = _read("web", "src", "components", "BackgroundTasksPanel.tsx")
-    run_log = _read("web", "src", "components", "RunLogPanel.tsx")
     terminal = _read("web", "src", "components", "TerminalPanel.tsx")
     live = _read("web", "src", "components", "LiveAgentsStrip.tsx")
     room = _read("web", "src", "components", "RoomChat.tsx")
@@ -327,8 +296,6 @@ def test_m5_i18n_panels_use_locale():
 
     assert "useLocale" in bgtask
     assert "msg.bgtaskTitle" in bgtask
-    assert "useLocale" in run_log
-    assert "msg.runLogTitle" in run_log
     assert "msg.terminalHint" in terminal
     assert "msg.liveAgentsResponding" in live
     assert "localeMsg.inboxActivity" in room

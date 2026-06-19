@@ -25,4 +25,12 @@ def test_build_diagnostics_payload_shape():
     assert "agent_tools" in payload
     assert "boot_log_path" in payload
     assert "bridge_audit" in payload
+    assert "verification" in payload
+    assert payload["verification"]["lanes"]["fast"]["status"] in {
+        "passed",
+        "failed",
+        "not_run",
+        "running",
+        "unknown",
+    }
     assert isinstance(read_boot_log_tail(), list)

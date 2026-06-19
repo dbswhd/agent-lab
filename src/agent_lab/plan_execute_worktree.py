@@ -122,13 +122,18 @@ def remove_exec_worktree(
 
 def discard_exec_worktree(ew: ExecWorktree, session_folder: Path, exec_id: str) -> None:
     """Reject path: drop worktree without merging."""
-    remove_exec_worktree(
-        session_folder,
-        exec_id=exec_id,
-        git_root=ew.git_root,
-        branch=ew.branch,
-        worktree_path=ew.worktree_path,
-    )
+    if ew.worktree_path.exists() or ew.branch:
+        remove_exec_worktree(
+            session_folder,
+            exec_id=exec_id,
+            git_root=ew.git_root,
+            branch=ew.branch,
+            worktree_path=ew.worktree_path,
+        )
+        return
+    fallback = worktree_dir(session_folder, exec_id)
+    if fallback.exists():
+        _remove_unknown_worktree(fallback, prune_roots={ew.git_root.resolve()})
 
 
 def _execution_worktree(row: dict[str, Any]) -> ExecWorktree | None:

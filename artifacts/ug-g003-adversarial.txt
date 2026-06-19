@@ -1,0 +1,15 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.9, pytest-8.4.2, pluggy-1.5.0 -- /opt/anaconda3/bin/python3
+cachedir: .pytest_cache
+rootdir: /Users/yoonjong/Projects/agent-lab
+configfile: pyproject.toml
+plugins: anyio-4.10.0, langsmith-0.8.5
+collecting ... collected 9 items / 4 deselected / 5 selected
+
+tests/test_dynamic_agent_roster.py::test_select_roster_substitution_priority PASSED [ 20%]
+tests/test_dynamic_agent_roster.py::test_select_roster_substitution_override PASSED [ 40%]
+tests/test_dynamic_agent_roster.py::test_off_parity_default_roster PASSED [ 60%]
+tests/test_dynamic_agent_roster.py::test_off_parity_passthrough_explicit PASSED [ 80%]
+tests/test_dynamic_agent_roster.py::test_resolve_on_restricts_to_invokable_agentids PASSED [100%]
+
+======================= 5 passed, 4 deselected in 0.03s ========================

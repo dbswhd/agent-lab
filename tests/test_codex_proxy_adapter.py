@@ -51,6 +51,27 @@ def test_probe_codex_proxy_ok(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_invoke_codex_proxy_parses_response(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_CODEX_PROXY", "1")
 
+    sse_body = ('data: {"choices":[{"delta":{"content":"proxy says hello"}}]}\ndata: [DONE]\n').encode()
+
+    class _StreamResp:
+        def __iter__(self):
+            for line in sse_body.splitlines(keepends=True):
+                yield line
+
+        def __enter__(self) -> "_StreamResp":
+            return self
+
+        def __exit__(self, *args: Any) -> None:
+            return None
+
+    monkeypatch.setattr("urllib.request.urlopen", lambda *a, **k: _StreamResp())
+    text = invoke_codex_proxy("sys", "user")
+    assert text == "proxy says hello"
+
+
+def test_invoke_codex_proxy_non_streaming_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AGENT_LAB_CODEX_PROXY", "1")
+
     body = json.dumps(
         {
             "choices": [
@@ -58,20 +79,38 @@ def test_invoke_codex_proxy_parses_response(monkeypatch: pytest.MonkeyPatch) -> 
             ]
         }
     ).encode()
+    calls = {"n": 0}
 
-    class _Resp:
-        def read(self) -> bytes:
-            return body
+    class _StreamResp:
+        def __iter__(self):
+            raise TypeError("not iterable")
 
-        def __enter__(self) -> "_Resp":
+        def __enter__(self) -> "_StreamResp":
             return self
 
         def __exit__(self, *args: Any) -> None:
             return None
 
-    monkeypatch.setattr("urllib.request.urlopen", lambda *a, **k: _Resp())
+    class _JsonResp:
+        def read(self) -> bytes:
+            return body
+
+        def __enter__(self) -> "_JsonResp":
+            return self
+
+        def __exit__(self, *args: Any) -> None:
+            return None
+
+    def _urlopen(*args: Any, **kwargs: Any):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return _StreamResp()
+        return _JsonResp()
+
+    monkeypatch.setattr("urllib.request.urlopen", _urlopen)
     text = invoke_codex_proxy("sys", "user")
     assert text == "proxy says hello"
+    assert calls["n"] == 2
 
 
 def test_codex_cli_routes_to_proxy(monkeypatch: pytest.MonkeyPatch) -> None:

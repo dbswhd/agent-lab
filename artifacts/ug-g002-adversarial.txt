@@ -1,0 +1,15 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.9, pytest-8.4.2, pluggy-1.5.0 -- /opt/anaconda3/bin/python3
+cachedir: .pytest_cache
+rootdir: /Users/yoonjong/Projects/agent-lab
+configfile: pyproject.toml
+plugins: anyio-4.10.0, langsmith-0.8.5
+collecting ... collected 11 items / 6 deselected / 5 selected
+
+tests/test_dynamic_account_chain.py::test_should_preempt_only_for_usage_exposing PASSED [ 20%]
+tests/test_dynamic_account_chain.py::test_mark_exhausted_only_on_credential_failure PASSED [ 40%]
+tests/test_dynamic_account_chain.py::test_oauth_usable_chain_single_profile PASSED [ 60%]
+tests/test_dynamic_account_chain.py::test_api_inturn_rotation_on_credential_failure PASSED [ 80%]
+tests/test_dynamic_account_chain.py::test_oauth_no_inturn_rotation PASSED [100%]
+
+======================= 5 passed, 6 deselected in 0.02s ========================

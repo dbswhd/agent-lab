@@ -19,7 +19,11 @@ export function EvidenceGatesPanel({ gates, ko = true }: Props) {
   const labels = GATE_LABELS_KO;
 
   return (
-    <section className="evidence-gates" data-testid="evidence-gates-panel">
+    <section
+      id="work-evidence-gates"
+      className="evidence-gates"
+      data-testid="evidence-gates-panel"
+    >
       <div className="evidence-gates__title">
         {ko ? "Evidence gates" : "Evidence gates"}
       </div>

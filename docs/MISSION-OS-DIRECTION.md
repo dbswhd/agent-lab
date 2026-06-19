@@ -11,7 +11,7 @@ Agent Lab stays a **Mission OS** (Room consensus · worktree isolation · Oracle
 
 | Choice | Decision |
 |--------|----------|
-| Product identity | **Mission OS** + Developer Agent Console |
+| Product identity | **Mission OS** capability inside the Human-in-the-loop agent development console |
 | Extension | dev mission conductor → 24/7 assistant (same brain, different **gate_profile** policy) |
 | Deploy | local daemon (launchd/systemd) now → hybrid cloud notify later |
 | Gateway | A Web/API → **B outbound** (Phase 1) → **D Telegram** (Phase 2) → **E plugin** (Phase 5); **C skip** |

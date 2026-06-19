@@ -27,6 +27,7 @@ from agent_lab.run_control import (
     force_reset_run_lock,
     maybe_release_orphaned_run_lock,
     request_cancel,
+    run_lock_recovery_hint,
     run_lock_status,
     try_begin_run,
 )
@@ -58,6 +59,17 @@ def _agents_not_ready(agent_list: list[str]) -> list[dict[str, Any]]:
     from agent_lab.agent_preflight import agents_not_ready
 
     return agents_not_ready(agent_list)
+
+
+def _session_hard_cap_exhausted(folder: Path) -> bool:
+    """True when AGENT_LAB_SESSION_HARD_CAP is on and the session is budget-exhausted."""
+    import os
+
+    if (os.getenv("AGENT_LAB_SESSION_HARD_CAP") or "").strip().lower() not in ("1", "true", "yes", "on"):
+        return False
+    from agent_lab.run_meta import read_run_meta
+
+    return bool(read_run_meta(folder).get("budget_exhausted"))
 
 
 def _loop_readiness_detail(agent_list: list[str] | None) -> dict[str, Any] | None:
@@ -123,6 +135,7 @@ def create_run(body: RunRequest) -> StreamingResponse:
         if not try_begin_run():
             maybe_release_orphaned_run_lock()
             if not try_begin_run():
+                yield sse({"type": "run_lock_blocked", **run_lock_recovery_hint()})
                 yield sse({"type": "error", "message": "a run is already in progress"})
                 return
 
@@ -278,6 +291,14 @@ async def create_room_run(
         folder = SESSIONS_DIR / session_id
         if not folder.is_dir():
             raise HTTPException(status_code=404, detail="session not found")
+        if _session_hard_cap_exhausted(folder):
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": "session token budget exhausted (AGENT_LAB_SESSION_HARD_CAP)",
+                    "code": "budget_exhausted",
+                },
+            )
     else:
         folder = session_dir(topic, base=SESSIONS_DIR)
         (folder / "topic.txt").write_text(topic + "\n", encoding="utf-8")
@@ -328,7 +349,10 @@ async def create_room_run(
                 maybe_release_orphaned_run_lock()
                 if not try_begin_run():
                     lock_msg = "a run is already in progress"
+                    lock_hint = run_lock_recovery_hint()
                     result["error"] = lock_msg
+                    result["run_lock"] = lock_hint
+                    event_q.put({"type": "run_lock_blocked", **lock_hint})
                     event_q.put(
                         {
                             "type": "error",
@@ -510,3 +534,43 @@ def release_room_run_lock() -> dict[str, Any]:
         released = True
         status = run_lock_status()
     return {"ok": True, "released": released, **status}
+
+
+class RetryAgentsRequest(BaseModel):
+    session_id: str = Field(..., min_length=1, max_length=120)
+    agents: list[str] | None = None
+
+
+@router.post("/room/runs/retry-agents")
+def retry_room_agents(body: RetryAgentsRequest) -> dict[str, Any]:
+    """Re-invoke only the failed agents of the last partial turn (same human turn)."""
+    from app.server.deps import session_folder_or_404
+    from agent_lab.room_retry import RetryError, retry_failed_agents
+
+    folder = session_folder_or_404(body.session_id)
+    if not try_begin_run():
+        maybe_release_orphaned_run_lock()
+        if not try_begin_run():
+            raise HTTPException(
+                status_code=409,
+                detail={"message": "a run is already in progress", **run_lock_recovery_hint()},
+            )
+    try:
+        result = retry_failed_agents(folder, agents=body.agents)
+    except RetryError as exc:
+        raise HTTPException(status_code=exc.code, detail=exc.message) from exc
+    finally:
+        end_run()
+    return {"ok": True, **result}
+
+
+class SlashCommandRequest(BaseModel):
+    text: str = Field(default="", max_length=2000)
+
+
+@router.post("/room/slash")
+def room_slash_command(body: SlashCommandRequest) -> dict[str, Any]:
+    """Dispatch a /login|/logout|/accounts|/model|/usage|/agents slash command."""
+    from agent_lab.slash_commands import dispatch
+
+    return dispatch(body.text)

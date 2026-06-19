@@ -1,0 +1,28 @@
+=== G001 verification transcript ===
+## pytest (G001 mock unit tests)
+============================= test session starts ==============================
+platform darwin -- Python 3.13.9, pytest-8.4.2, pluggy-1.5.0 -- /opt/anaconda3/bin/python3
+cachedir: .pytest_cache
+rootdir: /Users/yoonjong/Projects/agent-lab
+configfile: pyproject.toml
+plugins: anyio-4.10.0, langsmith-0.8.5
+collecting ... collected 7 items
+
+tests/test_dynamic_provider_registry.py::test_registry_catalog PASSED    [ 14%]
+tests/test_dynamic_provider_registry.py::test_default_roster_byte_stable PASSED [ 28%]
+tests/test_dynamic_provider_registry.py::test_set_get_provider_accounts_roundtrip PASSED [ 42%]
+tests/test_dynamic_provider_registry.py::test_get_account_chain_priority_order_api PASSED [ 57%]
+tests/test_dynamic_provider_registry.py::test_get_account_chain_cooldown_filter PASSED [ 71%]
+tests/test_dynamic_provider_registry.py::test_get_account_chain_oauth_excludes_secrets PASSED [ 85%]
+tests/test_dynamic_provider_registry.py::test_get_account_chain_appends_legacy_for_typed PASSED [100%]
+
+============================== 7 passed in 0.04s ===============================
+
+## ruff
+All checks passed!
+
+## mypy total (baseline 244)
+Found 244 errors in 71 files (checked 246 source files)
+## make test-fast tail
+........................................................................ [100%]
+1151 passed, 1 skipped in 11.08s

@@ -15,7 +15,10 @@ def test_room_modes_catalog() -> None:
     assert res.status_code == 200
     body = res.json()
     mode_ids = {row["id"] for row in body.get("modes") or []}
-    assert mode_ids == {"quick", "team", "loop"}
+    assert mode_ids == {"quick", "team", "loop", "divergence"}
+    divergence_mode = next(row for row in body["modes"] if row["id"] == "divergence")
+    assert divergence_mode["execute_loop_on_approve"] is False
+    assert divergence_mode["divergence"] is True
     loop_mode = next(row for row in body["modes"] if row["id"] == "loop")
     assert loop_mode["execute_loop_on_approve"] is True
     team_mode = next(row for row in body["modes"] if row["id"] == "team")

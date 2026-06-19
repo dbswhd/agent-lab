@@ -550,7 +550,9 @@ def invoke(
                     proc.kill()
                     proc.wait(timeout=5)
                     raise subprocess.TimeoutExpired(cmd, deadline)
-                time.sleep(0.2)
+                from agent_lab.backoff_policy import wait as _backoff_wait
+
+                _backoff_wait(1, base_sec=0.2)
             stdout, stderr = proc.communicate()
         finally:
             unregister_child_process(proc)
@@ -598,6 +600,37 @@ def invoke(
         return _run_oauth_only()
     finally:
         Path(system_path).unlink(missing_ok=True)
+
+
+def _emit_claude_usage(
+    event: dict[str, Any],
+    on_bridge_event: Callable[[str, dict[str, Any]], None] | None,
+) -> None:
+    """Surface authoritative token/cost from a stream-json ``result`` event.
+
+    The Claude Code CLI ``result`` event carries top-level ``usage`` and
+    ``total_cost_usd``; relay them as a ``usage`` bridge event so the Room layer
+    can record them into the cost ledger (G1).
+    """
+    if on_bridge_event is None:
+        return
+    usage = event.get("usage") if isinstance(event.get("usage"), Mapping) else {}
+    cost = event.get("total_cost_usd")
+    if not usage and cost is None:
+        return
+    payload: dict[str, Any] = {
+        "input_tokens": usage.get("input_tokens"),
+        "output_tokens": usage.get("output_tokens"),
+        "cache_read_input_tokens": usage.get("cache_read_input_tokens"),
+        "cache_creation_input_tokens": usage.get("cache_creation_input_tokens"),
+        "total_cost_usd": cost,
+        "model": event.get("model") or os.getenv("CLAUDE_MODEL", DEFAULT_CLAUDE_MODEL),
+    }
+    try:
+        on_bridge_event("usage", payload)
+    except Exception:
+        # Usage accounting must never break the turn.
+        pass
 
 
 def _run_claude_stream(
@@ -662,9 +695,7 @@ def _run_claude_stream(
                         proc.wait(timeout=5)
                         detail = _format_exec_error("".join(stderr_parts), result_text)
                         invalidate_claude_auth_cache()
-                        raise RuntimeError(
-                            f"claude -p failed (auth)" + (f": {detail}" if detail else "")
-                        )
+                        raise RuntimeError("claude -p failed (auth)" + (f": {detail}" if detail else ""))
             if stdout not in ready:
                 continue
             line = stdout.readline()
@@ -696,6 +727,7 @@ def _run_claude_stream(
                 res = event.get("result")
                 if isinstance(res, str) and res.strip():
                     result_text = res.strip()
+                _emit_claude_usage(event, on_bridge_event)
     finally:
         unregister_child_process(proc)
     if proc.stderr:

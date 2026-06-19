@@ -1,6 +1,6 @@
 # Agent Lab App
 
-Desktop + web UI for topic → Planner → Critic → Scribe → `sessions/`.
+Desktop + web UI for AI development work → Cursor/Codex/Claude Room → `plan.md` → Human approval → worktree execute/merge → Oracle verify.
 
 ## Stack (vs quant-control)
 
@@ -81,7 +81,9 @@ python -m agent_lab run "주제"
 
 ## Design handoff
 
-Visual polish is **intentionally minimal**. Full brief for outsourcing:
+This document is packaging/API guidance. Product positioning lives in [CONSOLE-PRODUCTIZATION.md](./CONSOLE-PRODUCTIZATION.md); current launch copy is **Human-in-the-loop agent development console**.
+
+Legacy visual handoff references remain available for history:
 
 → **[docs/02-ui-ux-handoff.md](./02-ui-ux-handoff.md)** (iMessage / IG DM / Telegram 레퍼런스, 외주)  
 → **[docs/03-workflow.md](./03-workflow.md)** (단계별 사용 워크플로)

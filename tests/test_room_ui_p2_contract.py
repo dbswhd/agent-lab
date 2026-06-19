@@ -14,6 +14,8 @@ def _read(path: str) -> str:
 def test_room_task_bar_and_banners_have_accessible_names():
     task_bar = _read("web/src/components/RoomTaskBar.tsx")
     room_chat = _read("web/src/components/RoomChat.tsx")
+    recovery = _read("web/src/components/RecoveryStrip.tsx")
+    readiness = _read("web/src/components/ReadinessComposerBar.tsx")
 
     assert 'role="region"' in task_bar
     assert 'aria-label="팀 할 일 목록"' in task_bar
@@ -21,9 +23,9 @@ def test_room_task_bar_and_banners_have_accessible_names():
     assert 'aria-label="확인 질문"' in room_chat
     assert 'aria-label="일부 에이전트 실패"' not in room_chat
     assert "room-partial-banner" not in room_chat
-    assert 'role="alert"' in room_chat
-    assert 'aria-label="룸 오류"' in room_chat
-    assert 'aria-label="에이전트 준비 상태"' in room_chat
+    assert 'role={items.length > 0 ? "alert" : "status"}' in recovery
+    assert 'aria-label="복구 액션"' in recovery
+    assert 'aria-label="에이전트 준비 상태"' in readiness
 
 
 def test_room_task_bar_has_tauri_minimum_width_layout():

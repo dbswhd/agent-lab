@@ -9,6 +9,7 @@ from typing import Literal
 MissionPhase = Literal[
     "MISSION_DEFINE",
     "MISSION_PAUSED",
+    "CLARIFY",
     "DISCUSS",
     "PLAN_GATE",
     "PLAN_REJECT",
@@ -24,6 +25,7 @@ MISSION_PHASES: frozenset[str] = frozenset(
     {
         "MISSION_DEFINE",
         "MISSION_PAUSED",
+        "CLARIFY",
         "DISCUSS",
         "PLAN_GATE",
         "PLAN_REJECT",

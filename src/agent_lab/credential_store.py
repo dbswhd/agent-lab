@@ -307,3 +307,125 @@ def patch_from_request(body: dict[str, Any]) -> dict[str, Any]:
             else:
                 slot[key] = str(raw).strip()
     return sanitize_oauth_provider_credentials(current)
+
+
+# --- Dynamic resilient room: additive multi-account chain (AGENT_LAB_DYNAMIC_ROOM) ---
+# Accounts live in a sibling accounts.toml so the existing credentials.toml
+# Settings save/load path stays byte-stable (OFF-parity). get_account_chain
+# composes accounts[] (priority-sorted, cooldown-filtered) then the legacy chain.
+
+
+def accounts_path() -> Path:
+    from agent_lab.app_config import config_dir
+
+    return config_dir() / "accounts.toml"
+
+
+def _account_cooled(account: dict[str, Any], *, now: float | None = None) -> bool:
+    raw = account.get("cooldown_until")
+    if not isinstance(raw, (int, float, str)):
+        return False
+    try:
+        until = float(raw)
+    except (TypeError, ValueError):
+        return False
+    import time as _time
+
+    return until > (now if now is not None else _time.time())
+
+
+def _sorted_accounts(accounts: list[Any]) -> list[dict[str, Any]]:
+    valid = [a for a in accounts if isinstance(a, dict)]
+
+    def _key(a: dict[str, Any]) -> float:
+        pr = a.get("priority")
+        return float(pr) if isinstance(pr, (int, float)) else 1_000_000.0
+
+    return sorted(valid, key=_key)
+
+
+def _read_accounts_store() -> dict[str, list[dict[str, Any]]]:
+    path = accounts_path()
+    if not path.is_file() or tomllib is None:
+        return {}
+    try:
+        raw = tomllib.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    out: dict[str, list[dict[str, Any]]] = {}
+    if not isinstance(raw, dict):
+        return out
+    for pid, block in raw.items():
+        if isinstance(block, dict) and isinstance(block.get("accounts"), list):
+            out[pid] = [a for a in block["accounts"] if isinstance(a, dict)]
+    return out
+
+
+def get_provider_accounts(provider: str) -> list[dict[str, Any]]:
+    return _read_accounts_store().get(provider, [])
+
+
+def set_provider_accounts(provider: str, accounts: list[dict[str, Any]]) -> Path:
+    """Persist accounts[] for one provider into accounts.toml, preserving others."""
+    store = _read_accounts_store()
+    store[provider] = [a for a in accounts if isinstance(a, dict)]
+    lines = [
+        "# Agent Lab multi-account chains — managed via /accounts or edited manually.",
+        "# Additive to credentials.toml; primary/fallback there remain the legacy chain.",
+        "",
+    ]
+    for pid in sorted(store):
+        rows = store[pid]
+        if not rows:
+            continue
+        for acct in rows:
+            label = _escape_toml(str(acct.get("label") or "").strip())
+            secret = _escape_toml(str(acct.get("secret_or_profile_ref") or acct.get("secret") or "").strip())
+            priority = acct.get("priority")
+            priority_val = int(priority) if isinstance(priority, (int, float)) else 1000
+            cooldown = acct.get("cooldown_until")
+            cooldown_val = float(cooldown) if isinstance(cooldown, (int, float)) else 0.0
+            lines.append(f"[[{pid}.accounts]]")
+            lines.append(f'label = "{label}"')
+            lines.append(f'secret_or_profile_ref = "{secret}"')
+            lines.append(f"priority = {priority_val}")
+            lines.append(f"cooldown_until = {cooldown_val}")
+            lines.append("")
+    path = accounts_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines), encoding="utf-8")
+    return path
+
+
+def get_account_chain(provider: str, *, now: float | None = None) -> list[tuple[str, str]]:
+    """Ordered (label, secret) for a provider.
+
+    accounts[] (priority asc, cooldown-filtered, non-empty secret) first, then the
+    legacy credentials.toml chain for the existing typed providers. For oauth/cli
+    providers the accounts[] entries hold profile refs (not secrets) and are excluded
+    from this secret chain, mirroring get_credential_chain() == [] for OAUTH_ONLY.
+    """
+    from agent_lab import provider_registry as _pr
+
+    if _pr.is_registered(provider):
+        rotates = _pr.supports_inturn_key_rotation(provider)
+    else:
+        rotates = provider not in OAUTH_ONLY_PROVIDERS
+
+    chain: list[tuple[str, str]] = []
+    if rotates:
+        for acct in _sorted_accounts(get_provider_accounts(provider)):
+            secret = str(acct.get("secret_or_profile_ref") or acct.get("secret") or "").strip()
+            label = str(acct.get("label") or "").strip() or "account"
+            if not secret or _account_cooled(acct, now=now):
+                continue
+            if chain and chain[-1][1] == secret:
+                continue
+            chain.append((label, secret))
+
+    if provider in PROVIDERS:
+        for entry in get_credential_chain(provider):  # type: ignore[arg-type]
+            if chain and chain[-1][1] == entry[1]:
+                continue
+            chain.append(entry)
+    return chain

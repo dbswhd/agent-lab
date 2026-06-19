@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { DiagnosticsResponse } from "../api/client";
 import { fetchDiagnostics } from "../api/client";
+import { VerificationStatusPanel } from "./VerificationStatusPanel";
 
 type Props = {
   /** true when backend /health returned OK */
@@ -146,6 +147,8 @@ export function ApiDiagnosticsBar({
               ))}
           </div>
         ) : null}
+
+        <VerificationStatusPanel report={diag?.verification ?? null} />
 
         {diag?.boot_log_tail?.length ? (
           <details className="diag-bar__boot">

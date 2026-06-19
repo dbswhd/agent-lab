@@ -65,7 +65,8 @@ def communicate_counts(run_meta: dict[str, Any]) -> dict[str, Any]:
 def communicate_scores(counts: dict[str, Any]) -> dict[str, float | None]:
     replies = int(counts.get("agent_replies") or 0)
     parse_errors = int(counts.get("envelope_parse_errors") or 0)
-    legacy = int(counts.get("legacy_endorse_count") or 0)
+    legacy_enabled = legacy_endorse_enabled()
+    legacy = int(counts.get("legacy_endorse_count") or 0) if legacy_enabled else None
     guidance_turns = int(counts.get("communicate_turns") or 0)
     guidance_total = int(counts.get("guidance_chars_total") or 0)
     hook_runs = int(counts.get("hook_runs") or 0)
@@ -77,12 +78,20 @@ def communicate_scores(counts: dict[str, Any]) -> dict[str, float | None]:
     endorse = int(acts.get("ENDORSE") or 0)
     amend = int(acts.get("AMEND") or 0)
 
+    def _rate(numerator: int | None, denominator: int) -> float | None:
+        if numerator is None:
+            return None
+        return numerator / denominator if denominator else None
+
     return {
-        "envelope_parse_success_rate": ((replies - parse_errors) / replies if replies else None),
-        "legacy_endorse_rate": (legacy / replies if replies else None),
+        "envelope_parse_success_rate": _rate(
+            replies - parse_errors if replies else None,
+            replies,
+        ),
+        "legacy_endorse_rate": _rate(legacy, replies),
         "median_guidance_chars_per_turn": (guidance_total / guidance_turns if guidance_turns else None),
-        "hook_block_rate": (hook_blocked / hook_runs if hook_runs else None),
-        "challenge_rate": (challenge_like / replies if replies else None),
-        "endorse_rate": (endorse / replies if replies else None),
-        "amend_rate": (amend / replies if replies else None),
+        "hook_block_rate": _rate(hook_blocked, hook_runs),
+        "challenge_rate": _rate(challenge_like, replies),
+        "endorse_rate": _rate(endorse, replies),
+        "amend_rate": _rate(amend, replies),
     }

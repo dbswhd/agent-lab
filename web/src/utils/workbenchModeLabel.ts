@@ -15,7 +15,7 @@ export function workbenchModeLabel(
     case "inbox":
       return msg.ctxInbox;
     case "plan":
-      return msg.plan;
+      return msg.work;
     case "preview":
       return msg.preview;
     case "files":

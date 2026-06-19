@@ -1,0 +1,21 @@
+=== G003 verification ===
+============================= test session starts ==============================
+platform darwin -- Python 3.13.9, pytest-8.4.2, pluggy-1.5.0 -- /opt/anaconda3/bin/python3
+cachedir: .pytest_cache
+rootdir: /Users/yoonjong/Projects/agent-lab
+configfile: pyproject.toml
+plugins: anyio-4.10.0, langsmith-0.8.5
+collecting ... collected 9 items
+
+tests/test_dynamic_agent_roster.py::test_dynamic_room_flag_gate PASSED   [ 11%]
+tests/test_dynamic_agent_roster.py::test_select_roster_default_composition PASSED [ 22%]
+tests/test_dynamic_agent_roster.py::test_select_roster_substitution_priority PASSED [ 33%]
+tests/test_dynamic_agent_roster.py::test_select_roster_falls_through_to_local PASSED [ 44%]
+tests/test_dynamic_agent_roster.py::test_select_roster_model_override PASSED [ 55%]
+tests/test_dynamic_agent_roster.py::test_select_roster_substitution_override PASSED [ 66%]
+tests/test_dynamic_agent_roster.py::test_off_parity_default_roster PASSED [ 77%]
+tests/test_dynamic_agent_roster.py::test_off_parity_passthrough_explicit PASSED [ 88%]
+tests/test_dynamic_agent_roster.py::test_resolve_on_restricts_to_invokable_agentids PASSED [100%]
+
+============================== 9 passed in 0.05s ===============================
+## ruff clean; mypy 244==baseline; make test-fast 1171 passed (1162+9), room OFF-parity preserved

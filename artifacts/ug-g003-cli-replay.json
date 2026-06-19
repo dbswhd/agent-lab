@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "kind": "cli-replay",
+  "replaySafe": true,
+  "command": [
+    "env",
+    "AGENT_LAB_MOCK_AGENTS=1",
+    ".venv/bin/python",
+    "-c",
+    "from agent_lab import agent_roster as ar; from agent_lab.agents.registry import available_agents; print(ar.resolve_active_agents(None, available_agents))"
+  ],
+  "recordedStdout": "['cursor', 'codex', 'claude']\n"
+}

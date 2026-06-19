@@ -58,6 +58,16 @@ def mark_scheduler_tick(result: dict[str, Any]) -> dict[str, Any]:
     return state
 
 
+def record_last_recovery(result: dict[str, Any]) -> dict[str, Any]:
+    state = load_daemon_state()
+    state["last_recovery_at"] = _now_iso()
+    state["last_recovery_result"] = {
+        key: result.get(key) for key in ("scanned", "reconciled_merged", "rolled_back", "quarantined", "errors")
+    }
+    save_daemon_state(state)
+    return state
+
+
 def public_daemon_payload() -> dict[str, Any]:
     state = load_daemon_state()
     return {
@@ -67,4 +77,6 @@ def public_daemon_payload() -> dict[str, Any]:
         "scheduler_enabled": bool(state.get("scheduler_enabled")),
         "last_scheduler_tick_at": state.get("last_scheduler_tick_at"),
         "last_scheduler_result": state.get("last_scheduler_result"),
+        "last_recovery_at": state.get("last_recovery_at"),
+        "last_recovery_result": state.get("last_recovery_result"),
     }

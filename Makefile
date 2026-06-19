@@ -1,4 +1,4 @@
-.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test test-fast test-duration-report lint typecheck ci ci-full check-worktrees smoke smoke-e2e smoke-web-ui smoke-tauri-ui validate-quant verify-quant-workspace verify-trading-v1 verify-mcp-contract build-research-cards offline-lane thin-runtime-status verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate
+.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test test-fast test-integration test-bridge test-duration-report lint typecheck ci ci-full check-worktrees smoke smoke-e2e smoke-web-ui smoke-tauri-ui validate-quant verify-quant-workspace verify-trading-v1 verify-mcp-contract build-research-cards offline-lane thin-runtime-status verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate
 
 install:
 	python3 -m venv .venv
@@ -50,16 +50,19 @@ test: check-worktrees
 
 test-fast: check-worktrees
 	@if .venv/bin/python -c "import xdist" 2>/dev/null; then \
-		.venv/bin/pytest tests/ -q -m "not live and not integration" -n $${TEST_FAST_WORKERS:-auto}; \
+		.venv/bin/python scripts/run_verification_lane.py --lane fast --marker-expression "not live and not integration and not bridge" -- .venv/bin/pytest tests/ -q -m "not live and not integration and not bridge" -n $${TEST_FAST_WORKERS:-auto}; \
 	else \
-		.venv/bin/pytest tests/ -q -m "not live and not integration"; \
+		.venv/bin/python scripts/run_verification_lane.py --lane fast --marker-expression "not live and not integration and not bridge" -- .venv/bin/pytest tests/ -q -m "not live and not integration and not bridge"; \
 	fi
 
 test-integration: check-worktrees
-	.venv/bin/pytest tests/ -q -m "integration and not live"
+	.venv/bin/python scripts/run_verification_lane.py --lane integration --marker-expression "integration and not live and not bridge" -- .venv/bin/pytest tests/ -q -m "integration and not live and not bridge"
+
+test-bridge: check-worktrees
+	.venv/bin/python scripts/run_verification_lane.py --lane bridge --marker-expression "bridge and not live" -- .venv/bin/pytest tests/ -q -m "bridge and not live"
 
 test-duration-report: check-worktrees
-	.venv/bin/pytest tests/ -q -m "not live and not integration" --durations=20
+	.venv/bin/pytest tests/ -q -m "not live and not integration and not bridge" --durations=20
 
 verify-hooks:
 	.venv/bin/pytest tests/test_room_hooks.py tests/test_pre_execute_hooks.py tests/test_hook_router.py tests/test_reply_policy.py tests/test_gate_snapshot.py tests/test_hook_communicate_patches.py tests/test_hook_communicate_remaining.py tests/test_communicate_kpis.py tests/test_measure_communicate_baseline.py -q
@@ -75,12 +78,15 @@ mission-dogfood-report:
 mission-dogfood-run:
 	AGENT_LAB_MOCK_AGENTS=1 AGENT_LAB_MISSION_LOOP=1 .venv/bin/python scripts/mission_dogfood_run.py
 
+pipeline-dogfood-run:
+	AGENT_LAB_MOCK_AGENTS=1 AGENT_LAB_MISSION_LOOP=1 AGENT_LAB_PIPELINE=1 .venv/bin/python scripts/pipeline_dogfood_run.py
+
 mission-dogfood-weekly:
 	AGENT_LAB_MOCK_AGENTS=1 AGENT_LAB_MISSION_LOOP=1 .venv/bin/python scripts/mission_dogfood_weekly.py --days $${DAYS:-7} $(if $(SKIP_MOCK),--skip-mock,) $(if $(INCLUDE_FIXTURES),--include-fixtures,)
 
 test-live:
 	@test "$$AGENT_LAB_RUN_LIVE" = "1" || (echo "Set AGENT_LAB_RUN_LIVE=1 for live Cursor spike tests" && exit 1)
-	.venv/bin/pytest tests/ -q -m live
+	.venv/bin/python scripts/run_verification_lane.py --lane live --marker-expression "live" -- .venv/bin/pytest tests/ -q -m live
 
 loop-model-eval-mock:
 	AGENT_LAB_MOCK_AGENTS=1 AGENT_LAB_MOCK_STRUCTURED_ENVELOPE=1 AGENT_LAB_LOOP_PROBE=0 \
@@ -105,9 +111,10 @@ typecheck:
 typecheck-ratchet:
 	.venv/bin/python scripts/mypy_ratchet.py --check
 
-ci: lint format-check typecheck-ratchet test-fast test-integration smoke score-regression-fixtures
+ci: lint format-check typecheck-ratchet test-fast smoke
 
-ci-full: lint format-check typecheck-ratchet test smoke score-regression-fixtures
+ci-full: check-worktrees
+	.venv/bin/python scripts/run_verification_lane.py --lane ci_full -- sh -c 'make lint format-check typecheck-ratchet test-fast test-integration test-bridge smoke score-regression-fixtures'
 
 init-project-memory:
 	@test -n "$(WORKSPACE)" || WORKSPACE=.; \

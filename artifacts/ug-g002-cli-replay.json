@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "kind": "cli-replay",
+  "replaySafe": true,
+  "command": [
+    ".venv/bin/python",
+    "-c",
+    "from agent_lab import account_chain as ac; print(ac.is_rotating('codex'))"
+  ],
+  "recordedStdout": "False\n"
+}

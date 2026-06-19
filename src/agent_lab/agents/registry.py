@@ -7,22 +7,28 @@ from pathlib import Path
 from typing import Any, Callable, Literal
 
 from agent_lab.agents import claude_agent, codex_agent, cursor_agent
+from agent_lab import kimi_provider, local_provider
 from agent_lab.structured_envelope_adapter import merge_structured_reply
 
-AgentId = Literal["cursor", "codex", "claude"]
+AgentId = Literal["cursor", "codex", "claude", "kimi", "local"]
 
+# Default room agents (OFF-parity): the dynamic roster may add kimi/local at runtime.
 AGENT_IDS: tuple[AgentId, ...] = ("cursor", "codex", "claude")
 
 _CALLERS: dict[AgentId, Callable[..., str]] = {
     "cursor": cursor_agent.respond,
     "codex": codex_agent.respond,
     "claude": claude_agent.respond,
+    "kimi": kimi_provider.respond,
+    "local": local_provider.respond,
 }
 
 _LABELS: dict[AgentId, str] = {
     "cursor": "Cursor",
     "codex": "Codex",
     "claude": "Claude",
+    "kimi": "KIMI",
+    "local": "Local",
 }
 
 
@@ -47,6 +53,10 @@ def model_label(agent: AgentId) -> str:
         return claude_cli.model_label()
     if agent == "cursor":
         return cursor_agent.model_label()
+    if agent == "local":
+        return local_provider.model_label()
+    if agent == "kimi":
+        return kimi_provider.model_label()
     return ""
 
 
@@ -74,6 +84,10 @@ def _is_ready(agent: AgentId) -> bool:
         return claude_cli.is_available()
     if agent == "cursor":
         return cursor_agent.is_available()
+    if agent == "local":
+        return local_provider.is_available()
+    if agent == "kimi":
+        return kimi_provider.is_available()
     return False
 
 
@@ -259,6 +273,10 @@ def call_agent_reply(
             request_structured_envelope=request_structured_envelope,
             inbox_mcp=inbox_mcp,
         )
+    elif agent == "local":
+        text = local_provider.respond(system, user)
+    elif agent == "kimi":
+        text = kimi_provider.respond(system, user)
     else:
         text = _CALLERS[agent](system, user)
     prose, structured = merge_structured_reply(text)

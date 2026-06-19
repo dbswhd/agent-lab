@@ -23,7 +23,7 @@ export const WORKSPACE_TABS: {
   shortcut: string;
 }[] = [
   { id: "transcript", label: "Transcript", shortcut: "⌘1" },
-  { id: "plan", label: "Plan", shortcut: "⌘2" },
+  { id: "plan", label: "Work", shortcut: "⌘2" },
   { id: "background", label: "Background", shortcut: "⌘3" },
   { id: "diff", label: "Diff", shortcut: "⌘4" },
   { id: "files", label: "Files", shortcut: "⌘5" },

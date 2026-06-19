@@ -37,6 +37,7 @@ export type NewSessionParams = {
 type Props = {
   open: boolean;
   agents: AgentOption[];
+  initialTopic?: string | null;
   onClose: () => void;
   onCreate: (params: NewSessionParams) => void;
 };
@@ -65,7 +66,13 @@ function defaultAgentPicks(
 }
 
 /** New Session modal — prototype app/newsession.jsx layout + real API wiring. */
-export function NewSessionDialog({ open, agents, onClose, onCreate }: Props) {
+export function NewSessionDialog({
+  open,
+  agents,
+  initialTopic = null,
+  onClose,
+  onCreate,
+}: Props) {
   const [setupOptions, setSetupOptions] = useState<SessionSetupOptions | null>(
     null,
   );
@@ -92,6 +99,7 @@ export function NewSessionDialog({ open, agents, onClose, onCreate }: Props) {
     setLoadError(false);
     setAgentPicks(defaultAgentPicks(agents));
     setMissionTemplateId("");
+    setPresetTopic(initialTopic?.trim() || null);
     void Promise.all([fetchSessionSetupOptions(), fetchMissionTemplates()])
       .then(([opts, mission]) => {
         setSetupOptions(opts);
@@ -100,7 +108,7 @@ export function NewSessionDialog({ open, agents, onClose, onCreate }: Props) {
         setSessionTemplate(opts.defaults.session_template || "general");
       })
       .catch(() => setLoadError(true));
-  }, [open, agents]);
+  }, [open, agents, initialTopic]);
 
   const applyMissionTemplate = useCallback(
     (templateId: string) => {
@@ -539,6 +547,18 @@ export function NewSessionDialog({ open, agents, onClose, onCreate }: Props) {
             </section>
           ) : null}
 
+          {presetTopic ? (
+            <section className="ns-block ns-block--sample">
+              <div className="ns-block__head">
+                <span className="ns-block__label">샘플 주제</span>
+                <span className="ns-block__hint">
+                  Session 생성 후 composer에 입력됩니다
+                </span>
+              </div>
+              <p className="ns-sample-topic">{presetTopic}</p>
+            </section>
+          ) : null}
+
           <section className="ns-block">
             <div className="ns-block__head">
               <span className="ns-block__label">팀</span>
@@ -668,7 +688,7 @@ export function NewSessionDialog({ open, agents, onClose, onCreate }: Props) {
               >
                 <path d="M2 8l4 4 8-8" />
               </svg>
-              Session 만들기
+              {presetTopic ? "샘플 준비하기" : "Session 만들기"}
             </button>
           </div>
         </footer>

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 
 from agent_lab.verify_repair_policy import (
     FailureCode,
@@ -37,9 +36,7 @@ def test_classify_oracle_fail_default():
 
 
 def test_classify_merge_conflict():
-    failure = classify_failure(
-        _execution(merge={"status": "conflict", "conflict_files": ["a.py"]})
-    )
+    failure = classify_failure(_execution(merge={"status": "conflict", "conflict_files": ["a.py"]}))
     assert failure["code"] == FailureCode.MERGE_CONFLICT
     assert failure["recoverable"] is True
     assert failure["fallback"] == "discuss"
@@ -51,21 +48,22 @@ def test_classify_merge_conflict_from_reason():
 
 
 def test_classify_isolation_blocked():
-    failure = classify_failure(
-        _execution(status="blocked_isolation", blocked_reason="isolation_blocked")
-    )
+    failure = classify_failure(_execution(status="blocked_isolation", blocked_reason="isolation_blocked"))
     assert failure["code"] == FailureCode.ISOLATION_BLOCKED
     assert failure["recoverable"] is False
+
 
 def test_classify_structural_from_structural_keyword():
     failure = classify_failure(_execution(oracle={"detail": "structural failure"}))
     assert failure["code"] == FailureCode.STRUCTURAL
 
-    failure = classify_failure({
-        "id": "exec-1",
-        "status": "",
-        "blocked_message": "isolation_blocked during execute",
-    })
+    failure = classify_failure(
+        {
+            "id": "exec-1",
+            "status": "",
+            "blocked_message": "isolation_blocked during execute",
+        }
+    )
     assert failure["code"] == FailureCode.STRUCTURAL
 
 
@@ -78,9 +76,7 @@ def test_classify_worktree_git_dirty_best_effort():
 
 def test_classify_skip_tokens_are_exact_case_insensitive():
     for token in ("verify field missing", "검증 기준 없음", "-", "—", "n/a", "none"):
-        failure = classify_failure(
-            _execution(oracle={"detail": token, "verdict": "skipped"})
-        )
+        failure = classify_failure(_execution(oracle={"detail": token, "verdict": "skipped"}))
         assert failure["code"] == FailureCode.ORACLE_SKIP
 
 
@@ -133,8 +129,6 @@ def _init_repo(path: Path) -> Path:
 
 def test_ensure_worktree_usable_no_op_default():
     folder = Path("/tmp/does-not-matter")
-    ok, result = ensure_worktree_usable(
-        folder, execution={"id": "e1"}, exec_id="e1"
-    )
+    ok, result = ensure_worktree_usable(folder, execution={"id": "e1"}, exec_id="e1")
     assert ok is True
     assert result.get("skipped") == "no_worktree"

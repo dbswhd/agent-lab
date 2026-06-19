@@ -487,6 +487,8 @@ def test_scheduled_mission_tick_non_sandbox_advances_execute(
 def test_scheduler_non_sandbox_runs_mission_tick(
     sessions_env: Path, gateway_config: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    # G006 default-on: this legacy test exercises pre-pipeline scheduler behavior.
+    monkeypatch.setenv("AGENT_LAB_PIPELINE", "0")
     tid = "cron-live"
     tdir = templates_root(sessions_env) / tid
     tdir.mkdir(parents=True)
@@ -592,7 +594,8 @@ def test_scheduled_autorun_without_active_segment(sessions_env: Path, monkeypatc
 
 
 def test_scheduled_conductor_auto_merge_and_next_action(sessions_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab.mission_loop import enable_mission_loop, on_verify_result
+    from agent_lab.mission_loop import enable_mission_loop
+    from agent_lab.mission_advance import on_verify_result
     from agent_lab.mission_tick import run_scheduled_mission_tick
     from agent_lab.trust_budget import set_trust_budget
 
@@ -686,7 +689,8 @@ def test_scheduled_conductor_auto_merge_and_next_action(sessions_env: Path, monk
 
 
 def test_maybe_advance_scheduled_merge_review(sessions_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab.mission_loop import enable_mission_loop, maybe_advance_mission, on_verify_result
+    from agent_lab.mission_loop import enable_mission_loop
+    from agent_lab.mission_advance import maybe_advance_mission, on_verify_result
     from agent_lab.trust_budget import set_trust_budget
 
     folder = sessions_env / "merge-review"
@@ -787,3 +791,151 @@ def test_schedule_sandbox_blocks_execute(sessions_env: Path) -> None:
     result = PolicyEngine.check_execute_allowed(read_run_meta(folder), 0)
     assert result.allowed is False
     assert result.source == "schedule_sandbox"
+
+
+# --- G9 hardening ------------------------------------------------------------
+
+
+def test_validate_cron_unit() -> None:
+    from agent_lab.mission_scheduler import validate_cron
+
+    assert validate_cron("0 9 * * 1-5")
+    assert validate_cron("*/15 0-6 1 1 *")
+    assert not validate_cron("0 9 * *")  # 4 fields
+    assert not validate_cron("0 9 * * * *")  # 6 fields
+    assert not validate_cron("99 9 * * *")  # minute out of range
+    assert not validate_cron("0 9 32 * *")  # dom out of range
+    assert not validate_cron("0 9 * 13 *")  # month out of range
+    assert not validate_cron("0 9 * * abc")  # unparseable
+    assert not validate_cron("0 9 * * */0")  # zero step
+
+
+def _seed_schedule(folder: Path, entry: dict) -> None:
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "run.json").write_text("{}", encoding="utf-8")
+    patch_run_meta(folder, lambda run: {**run, "schedules": [entry]})
+
+
+def test_patch_preserves_approval_and_history(client: TestClient, sessions_env: Path) -> None:
+    folder = sessions_env / "preserve-sess"
+    _seed_schedule(
+        folder,
+        {
+            "id": "s1",
+            "cron": "0 9 * * *",
+            "tz": "UTC",
+            "gate_profile": "assistant",
+            "sandbox": True,
+            "notify": {"on_start": True},
+            "pre_approved_at": "2026-06-01T00:00:00+00:00",
+            "pre_approved_by": "human",
+            "last_run_date": "2026-06-15",
+            "last_run_status": "ok",
+        },
+    )
+    # Edit only a non-safety field (notify) → approval + history must survive.
+    r = client.patch(
+        f"/api/sessions/{folder.name}/schedules",
+        json={
+            "schedules": [
+                {
+                    "id": "s1",
+                    "cron": "0 9 * * *",
+                    "tz": "UTC",
+                    "gate_profile": "assistant",
+                    "sandbox": True,
+                    "notify": {"on_start": False},
+                }
+            ]
+        },
+    )
+    assert r.status_code == 200
+    sched = read_run_meta(folder)["schedules"][0]
+    assert sched["pre_approved_at"] == "2026-06-01T00:00:00+00:00"
+    assert sched["last_run_date"] == "2026-06-15"
+    assert sched["notify"] == {"on_start": False}
+
+
+def test_patch_resets_approval_on_cron_change(client: TestClient, sessions_env: Path) -> None:
+    folder = sessions_env / "reset-sess"
+    _seed_schedule(
+        folder,
+        {
+            "id": "s1",
+            "cron": "0 9 * * *",
+            "tz": "UTC",
+            "gate_profile": "assistant",
+            "sandbox": True,
+            "pre_approved_at": "2026-06-01T00:00:00+00:00",
+            "pre_approved_by": "human",
+            "last_run_date": "2026-06-15",
+        },
+    )
+    r = client.patch(
+        f"/api/sessions/{folder.name}/schedules",
+        json={
+            "schedules": [
+                {"id": "s1", "cron": "30 10 * * *", "tz": "UTC", "gate_profile": "assistant", "sandbox": True}
+            ]
+        },
+    )
+    assert r.status_code == 200
+    sched = read_run_meta(folder)["schedules"][0]
+    assert "pre_approved_at" not in sched  # safety-relevant change forces re-approval
+    assert sched["last_run_date"] == "2026-06-15"  # history still preserved
+
+
+def test_patch_rejects_invalid_cron(client: TestClient, sessions_env: Path) -> None:
+    folder = sessions_env / "badcron-sess"
+    folder.mkdir()
+    (folder / "run.json").write_text("{}", encoding="utf-8")
+    r = client.patch(
+        f"/api/sessions/{folder.name}/schedules",
+        json={"schedules": [{"id": "s1", "cron": "0 9 * *", "tz": "UTC"}]},
+    )
+    assert r.status_code == 400
+
+
+def test_delete_schedule(client: TestClient, sessions_env: Path) -> None:
+    folder = sessions_env / "del-sess"
+    _seed_schedule(folder, {"id": "s1", "cron": "0 9 * * *", "tz": "UTC"})
+    r = client.delete(f"/api/sessions/{folder.name}/schedules/s1")
+    assert r.status_code == 200
+    assert read_run_meta(folder).get("schedules") == []
+    # Re-delete → 404.
+    r2 = client.delete(f"/api/sessions/{folder.name}/schedules/s1")
+    assert r2.status_code == 404
+
+
+def test_scheduler_tick_isolates_failing_schedule(
+    sessions_env: Path, gateway_config: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import agent_lab.mission_scheduler as sched_mod
+
+    for sid in ("good", "bad"):
+        folder = sessions_env / f"iso-{sid}"
+        _seed_schedule(folder, {"id": sid, "cron": "0 9 * * *", "tz": "UTC", "enabled": True})
+
+    def _fake_run(session_id, entry, *, sessions_dir=None, force=False):
+        if entry.get("id") == "bad":
+            raise RuntimeError("boom")
+        return {"ok": True, "skipped": False, "schedule_id": entry.get("id")}
+
+    monkeypatch.setattr(sched_mod, "run_schedule_entry", _fake_run)
+    result = sched_mod.scheduler_tick(sessions_dir=sessions_env, force=True)
+    assert result["ok"] is True  # tick not aborted
+    ids = {r.get("schedule_id") for r in result["runs"]}
+    assert "good" in ids  # good schedule still fired
+    bad = next(r for r in result["runs"] if r.get("schedule_id") == "bad")
+    assert bad["ok"] is False and "boom" in bad["error"]
+
+
+def test_disabled_schedule_not_due() -> None:
+    entry = {
+        "id": "s1",
+        "cron": "* * * * *",
+        "tz": "UTC",
+        "enabled": False,
+        "pre_approved_at": "2026-06-01T00:00:00+00:00",
+    }
+    assert schedule_due(entry, now=datetime(2026, 6, 15, 7, 30, tzinfo=timezone.utc)) is False

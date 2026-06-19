@@ -1,0 +1,8 @@
+# G004 acceptance — goal_ledger on run.json
+optional goal_ledger via patch_run_meta: goal_ledger.append_goal_event appends {at,event,mode,phase,note}, capped 200, dedup on mode [tested]
+run_schema validation passes: validate_run accepts list-of-dicts goal_ledger, rejects malformed [tested]
+crash_recovery compatible: read_run_meta + patch_run_meta round-trip a run with goal_ledger (same validate path crash_recovery uses) [tested]
+goal progress tracked: mode_router.record_mode_route appends a mode_route ledger event (dedup) each pipeline tick
+OFF-parity: flag OFF => no goal_ledger written; full lane 1132 passed/0
+fast-bucket budget raised 1150->1200 (sanctioned; pipeline fast unit suites); mypy 243==baseline; ruff clean
+files: src/agent_lab/goal_ledger.py (new), run_schema.py (lenient validation), mode_router.py (append), tests/test_pipeline_goal_ledger.py (new, 7 tests), tests/test_integration_registry.py (budget bump)

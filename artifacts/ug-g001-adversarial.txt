@@ -1,0 +1,13 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.9, pytest-8.4.2, pluggy-1.5.0 -- /opt/anaconda3/bin/python3
+cachedir: .pytest_cache
+rootdir: /Users/yoonjong/Projects/agent-lab
+configfile: pyproject.toml
+plugins: anyio-4.10.0, langsmith-0.8.5
+collecting ... collected 7 items / 4 deselected / 3 selected
+
+tests/test_dynamic_provider_registry.py::test_get_account_chain_priority_order_api PASSED [ 33%]
+tests/test_dynamic_provider_registry.py::test_get_account_chain_cooldown_filter PASSED [ 66%]
+tests/test_dynamic_provider_registry.py::test_get_account_chain_oauth_excludes_secrets PASSED [100%]
+
+======================= 3 passed, 4 deselected in 0.04s ========================

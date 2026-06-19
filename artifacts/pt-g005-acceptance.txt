@@ -1,0 +1,7 @@
+# G005 acceptance — Room consensus gate (ralplan analog)
+consensus phase gates plan.md: maybe_advance DISCUSS->PLAN_GATE gated on consensus_gate_met when pipeline on; no consensus => stays DISCUSS (consensus_pending) [tested]
+reuses consensus engine: consensus_gate_met uses default_consensus_policy() (min_endorse_agents) + Room consensus signal (status reached / endorse_count); consensus rounds = source of truth, not 1:1 agent->role mapping
+Room debate preserved: consensus_gate is read-only over consensus state (no mutation) [tested]
+OFF-parity: flag off => DISCUSS advances as before (no gate); full lane 1137 passed/0
+mypy 243==baseline; ruff clean
+files: src/agent_lab/consensus_gate.py (new), mission_advance.py (DISCUSS gate), tests/test_pipeline_consensus_gate.py (new, 5 tests)

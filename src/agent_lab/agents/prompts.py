@@ -75,6 +75,7 @@ def claude_task_tool_guidance_block() -> str:
 - Prefer direct Read/Grep for a single-file check; use Task when parallel axes genuinely help.
 """
 
+
 # Short handoff for token savings (full version kept for CLAUDE_HANDOFF=full).
 CLAUDE_API_HANDOFF_SHORT = """
 ## Seat handoff (API → Claude Code CLI)
@@ -206,3 +207,10 @@ def room_scribe_prompt(run_meta: dict | None) -> str:
     if run_meta and str(run_meta.get("session_template") or "") == "trading-mission":
         return ROOM_SCRIBE + TRADING_MISSION_SCRIBE_ADDENDUM
     return ROOM_SCRIBE
+
+
+DIVERGENCE_INSTRUCTION = (
+    "[발산 모드 / divergence] 합의가 목표가 아닙니다. 다른 에이전트와 *접근 자체*가 다른 안을 내세요. "
+    "조기 동의·수렴 금지. PROPOSE/ENDORSE/BLOCK 합의 envelope를 쓰지 마세요. "
+    "사용자가 미처 고려하지 못했을 대안 접근/설계 옵션을 독립적으로 제시하고, 선택은 사용자에게 맡기세요."
+)

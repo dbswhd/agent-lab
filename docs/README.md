@@ -1,8 +1,31 @@
 # Agent Lab documentation index
 
-> **Updated:** 2026-06-10 · **Tests:** `791 collected` (`pytest -m "not live"`) · **Smoke:** 32 regression baselines · **Hook/communicate:** `make verify-hooks`
+> **Updated:** 2026-06-18 · **Tests:** `pytest -m "not live"` · **Smoke:** regression baselines · **Hook/communicate:** `make verify-hooks`
 
 Use this page to pick the **one canonical doc** for your question. Older numbered guides (`00`–`05`) and early RFCs are kept for history but **must not** be used as shipped-status sources.
+
+**New:** [ARCHITECTURE.md](./ARCHITECTURE.md) — 기능·백엔드·프론트·UX **전체 분류 지도** (모듈/라우터/컴포넌트 맵).
+
+---
+
+## 질문별 빠른 찾기
+
+| 질문 | 문서 |
+|------|------|
+| 시스템 전체 구조·레이어 | [ARCHITECTURE.md](./ARCHITECTURE.md) |
+| 기능·동작·API·UI 상태 | [USER-GUIDE.md](./USER-GUIDE.md) |
+| shipped / partial / future | [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md) |
+| 백엔드 Room / execute / mission | ARCHITECTURE §3–4 · USER-GUIDE §7–9 · [PLAN-WORKFLOW.md](./PLAN-WORKFLOW.md) · [MISSION-LOOP-C-OMO.md](./MISSION-LOOP-C-OMO.md) |
+| 프론트 컴포넌트·IA | ARCHITECTURE §5–6 · [developer-agent-console.md](./developer-agent-console.md) · [UI-IA-ROADMAP.md](./UI-IA-ROADMAP.md) |
+| UX gap / productization | [UI-MIGRATION-GAPS.md](./UI-MIGRATION-GAPS.md) · [CONSOLE-PRODUCTIZATION.md](./CONSOLE-PRODUCTIZATION.md) |
+| Gateway · scheduler · Mission OS | [MISSION-OS-DIRECTION.md](./MISSION-OS-DIRECTION.md) · [MISSION-OS-OPS.md](./MISSION-OS-OPS.md) |
+| Human Inbox · MCP | [HUMAN-INBOX.md](./HUMAN-INBOX.md) · [MCP-TOOL-CONTRACT.md](./MCP-TOOL-CONTRACT.md) |
+| Runtime harness · external runner | [RUNTIME-HARNESS-PLAN.md](./RUNTIME-HARNESS-PLAN.md) · [ROOM-DISPATCH-PROTOCOL.md](./ROOM-DISPATCH-PROTOCOL.md) |
+| GJC workflow · agent-lab map | [GJC-WORKFLOW-PIPELINE.md](./GJC-WORKFLOW-PIPELINE.md) |
+| Trading extension | [extensions/QUANT-TRADING.md](./extensions/QUANT-TRADING.md) · [trading-mission/](./trading-mission/) |
+| CI · regression · live ops | [STABILITY.md](./STABILITY.md) · [OPS-RUNBOOK.md](./OPS-RUNBOOK.md) · Tier 5 runbooks |
+| MD / PROJECT.md 작성 | [MD-WRITING-PLAN.md](./MD-WRITING-PLAN.md) |
+| 레거시 early design | Tier 4 only — **not** for shipped status |
 
 ---
 
@@ -10,6 +33,7 @@ Use this page to pick the **one canonical doc** for your question. Older numbere
 
 | Doc | Use when |
 |-----|----------|
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | **System map** — backend routers, core modules, frontend components, UX flows |
 | [USER-GUIDE.md](./USER-GUIDE.md) | Product behavior, env flags, Room · execute · UI |
 | [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md) | **What is shipped** — evidence paths, partial/future queue |
 | [EXTERNAL-REFS-PLAN.md](./EXTERNAL-REFS-PLAN.md) | **Why** external ideas were adopted (history; queue empty) |
@@ -38,6 +62,25 @@ Use this page to pick the **one canonical doc** for your question. Older numbere
 | [ROOM-REINFORCEMENT.md](./ROOM-REINFORCEMENT.md) | Benchmark / delegate / score **shipped** |
 | [PLUGIN-DISCOVERY.md](./PLUGIN-DISCOVERY.md) | Slash commands + plugins **shipped** |
 | [NOTIFICATION-TAXONOMY.md](./NOTIFICATION-TAXONOMY.md) | Toast / Activity kinds |
+| [PLAN-WORKFLOW.md](./PLAN-WORKFLOW.md) | Plan-First FSM — clarify → approve → execute |
+| [ROOM-DISPATCH-PROTOCOL.md](./ROOM-DISPATCH-PROTOCOL.md) | DELEGATE / parallel dispatch protocol |
+| [GJC-WORKFLOW-PIPELINE.md](./GJC-WORKFLOW-PIPELINE.md) | GJC 4-skill pipeline ↔ agent-lab mapping (MB-7/8, PW-1, ML-C) |
+| [MCP-TOOL-CONTRACT.md](./MCP-TOOL-CONTRACT.md) | MCP tool contract for inbox / session plugins |
+| [MISSION-OS-OPS.md](./MISSION-OS-OPS.md) | Mission OS operational notes |
+| [MISSION-DOGFOOD.md](./MISSION-DOGFOOD.md) | Mission dogfood procedures |
+| [HYBRID-RELAY-WORKER.md](./HYBRID-RELAY-WORKER.md) | Cloudflare hybrid relay worker |
+| [AGENT-OS-MODE-SIMPLIFICATION-PLAN.md](./AGENT-OS-MODE-SIMPLIFICATION-PLAN.md) | Agent OS mode simplification (planning) |
+
+### Extensions & trading
+
+| Doc | Role |
+|-----|------|
+| [extensions/QUANT-TRADING.md](./extensions/QUANT-TRADING.md) | Quant trading extension overview |
+| [trading-mission/THIN-RUNTIME.md](./trading-mission/THIN-RUNTIME.md) | Thin runtime for trading missions |
+| [trading-mission/OFFLINE-LANE.md](./trading-mission/OFFLINE-LANE.md) | Offline lane |
+| [trading-mission/SCHEDULER.md](./trading-mission/SCHEDULER.md) | Trading scheduler |
+| [trading-mission/topic_template.md](./trading-mission/topic_template.md) | Live topic template |
+| [trading-mission/offline_topic_template.md](./trading-mission/offline_topic_template.md) | Offline topic template |
 
 ---
 
@@ -72,6 +115,17 @@ Use this page to pick the **one canonical doc** for your question. Older numbere
 
 **Archived handoffs / audits:** [archive/](./archive/) — do not use for status.
 
+### Root & `.hermes/` (repo 외부 tier)
+
+| Doc | Role | Note |
+|-----|------|------|
+| [../README.md](../README.md) | Project overview, quick start | |
+| [../CLAUDE.md](../CLAUDE.md) | Dev quick start | Tier 1 canonical |
+| [../AGENTS.md](../AGENTS.md) | Coding conventions | |
+| [../Agent-Lab Stabilization Plan.md](../Agent-Lab%20Stabilization%20Plan.md) | Stabilization backlog | **Duplicate** of `.hermes/plans/agent-lab-stabilization.md` — prefer `.hermes/` for edits |
+| `../.hermes/plans/agent-lab-stabilization.md` | Same stabilization plan | Hermes-format SSOT |
+| `../.agent-lab/PROJECT.md` | Workspace project memory | Runtime-injected, not design doc |
+
 ---
 
 ## Tier 5 — Authoring & live ops runbooks
@@ -81,6 +135,7 @@ Use this page to pick the **one canonical doc** for your question. Older numbere
 | [MD-WRITING-PLAN.md](./MD-WRITING-PLAN.md) | How to write PROJECT.md, CLAUDE.md, skills |
 | [LIVE-CURSOR-WORKTREE-DRY-RUN.md](./LIVE-CURSOR-WORKTREE-DRY-RUN.md) | Disposable repo dry-run |
 | [LIVE-MERGE-OPERATOR.md](./LIVE-MERGE-OPERATOR.md) | Live merge operator |
+| [LIVE-VERIFICATION-ECONOMICS-SAFETY.md](./LIVE-VERIFICATION-ECONOMICS-SAFETY.md) | Live/manual checklist — cost_ledger budget (G1+G2) · diff safety scan (G6) · tracing (G5) · judge (G8) |
 | [TUNNEL-LAUNCHD-SOAK-RUNBOOK.md](./TUNNEL-LAUNCHD-SOAK-RUNBOOK.md) | Tier E — launchd + tunnel mission-wake soak |
 | [LC-L4-ADVERSARIAL-LIVE.md](./LC-L4-ADVERSARIAL-LIVE.md) | Live adversarial gate opt-in |
 | [HUMAN-INBOX-CLAUDE-HANDOFF.md](./HUMAN-INBOX-CLAUDE-HANDOFF.md) | Claude-side handoff notes |

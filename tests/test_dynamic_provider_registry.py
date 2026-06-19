@@ -122,7 +122,7 @@ def test_supported_auth_single_source() -> None:
     from agent_lab import provider_registry as pr
 
     expected = {
-        "cursor": {"api"},
+        "cursor": {"api", "oauth"},  # cursor-agent: CURSOR_API_KEY or `cursor-agent login`
         "claude": {"oauth"},
         "codex": {"oauth"},
         "kimi": {"api"},
@@ -134,8 +134,9 @@ def test_supported_auth_single_source() -> None:
         assert pr.auth_kind(pid) in pr.supported_auth(pid)
         for m in methods:
             assert pr.supports_auth(pid, m) is True  # type: ignore[arg-type]
-    # honest: no fake OAuth for cursor/kimi yet
-    assert pr.supports_auth("cursor", "oauth") is False
+    # cursor gained real OAuth (cursor-agent login); kimi stays api-only
+    # (Kimi Code CLI OAuth is a separate invocation path, not wired)
+    assert pr.supports_auth("cursor", "oauth") is True
     assert pr.supports_auth("kimi", "oauth") is False
     # unknown provider → empty set, never crashes
     assert pr.supported_auth("nope") == frozenset()
@@ -155,3 +156,41 @@ def test_oauth_only_providers_derived_from_registry() -> None:
         if pr.supported_auth(pid) and pr.supported_auth(pid) <= secretless
     }
     assert derived == set(cs.OAUTH_ONLY_PROVIDERS)
+
+
+# --- Cursor OAuth wiring: ready + invokable without CURSOR_API_KEY when logged in ---
+
+
+def test_cursor_oauth_ready_without_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    from agent_lab import credential_store
+    from agent_lab.agents import cursor_agent
+
+    # isolate: no api key (env or stored) so only OAuth decides readiness
+    monkeypatch.delenv("CURSOR_API_KEY", raising=False)
+    monkeypatch.setattr(credential_store, "provider_has_credentials", lambda p: False)
+    monkeypatch.setattr(cursor_agent, "_sdk_installed", lambda: True)
+    monkeypatch.setattr(cursor_agent, "_cursor_oauth_available", lambda: True)
+    assert cursor_agent.is_available() is True  # OAuth session, no key needed
+
+    monkeypatch.setattr(cursor_agent, "_cursor_oauth_available", lambda: False)
+    assert cursor_agent.is_available() is False  # neither key nor OAuth
+
+
+def test_cursor_build_options_allows_oauth_no_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    from agent_lab.agents import cursor_agent
+
+    monkeypatch.delenv("CURSOR_API_KEY", raising=False)
+    monkeypatch.setattr(cursor_agent, "_cursor_oauth_available", lambda: True)
+    # no key + OAuth available -> must not raise (SDK falls back to OAuth session)
+    cwd, opts = cursor_agent._build_agent_options(
+        permissions=None, cwd="/tmp", session_folder=None, inbox_mcp=False
+    )
+    assert getattr(opts, "api_key", "sentinel") in (None, "")
+
+    monkeypatch.setattr(cursor_agent, "_cursor_oauth_available", lambda: False)
+    import pytest as _pytest
+
+    with _pytest.raises(RuntimeError):
+        cursor_agent._build_agent_options(
+            permissions=None, cwd="/tmp", session_folder=None, inbox_mcp=False
+        )

@@ -26,7 +26,28 @@ DEFAULT_SUBSTITUTION_PRIORITY = provider_registry.DEFAULT_SUBSTITUTION_PRIORITY
 
 
 def dynamic_room_enabled() -> bool:
-    return os.getenv("AGENT_LAB_DYNAMIC_ROOM", "").strip().lower() in {"1", "true", "yes", "on"}
+    """AGENT_LAB_DYNAMIC_ROOM: gate the dynamic resilient room (additive).
+
+    Default ON (production dogfood): dynamic roster, /login etc. slash commands,
+    and credential management via slash. Set AGENT_LAB_DYNAMIC_ROOM=0 to fall
+    back to the static cursor/codex/claude room (OFF-parity escape hatch).
+    """
+    return os.getenv("AGENT_LAB_DYNAMIC_ROOM", "1").strip().lower() not in {
+        "0",
+        "false",
+        "no",
+        "off",
+    }
+
+
+def dynamic_room_explicitly_disabled() -> bool:
+    """True only when the user explicitly opted out of the dynamic room."""
+    return os.getenv("AGENT_LAB_DYNAMIC_ROOM", "1").strip().lower() in {
+        "0",
+        "false",
+        "no",
+        "off",
+    }
 
 
 def _parse_csv_env(name: str) -> list[str] | None:

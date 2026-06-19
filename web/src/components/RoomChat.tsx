@@ -517,6 +517,11 @@ export function RoomChat({
   const [readiness, setReadiness] = useState<ReadinessResponse | null>(null);
   const [slashCommands, setSlashCommands] = useState<SlashCommandRecord[]>([]);
   const [commandHint, setCommandHint] = useState<string | null>(null);
+  const [commandChoices, setCommandChoices] = useState<{
+    command: SlashCommandRecord;
+    argsPrefix: string;
+    options: { value: string; label: string }[];
+  } | null>(null);
   const [externalCommandConfirm, setExternalCommandConfirm] = useState<{
     command: SlashCommandRecord;
     args: string;
@@ -2580,6 +2585,7 @@ export function RoomChat({
     async (command: SlashCommandRecord, args: string, confirm = false) => {
       if (!sessionId) return;
       setCommandHint(null);
+      setCommandChoices(null);
       try {
         const res = await runSessionCommand(sessionId, {
           command_id: command.id,
@@ -2606,7 +2612,24 @@ export function RoomChat({
         } else {
           setCommandHint("명령 실행됨");
         }
-        setText("");
+        const stage = res.result as
+          | {
+              choices?: { options: { value: string; label: string }[] };
+              input?: { prefill?: string };
+            }
+          | undefined;
+        if (stage?.choices?.options?.length) {
+          setCommandChoices({
+            command,
+            argsPrefix: args,
+            options: stage.choices.options,
+          });
+        }
+        if (stage?.input?.prefill) {
+          setText(stage.input.prefill);
+        } else {
+          setText("");
+        }
         void fetchCommands(sessionId)
           .then((payload) => setSlashCommands(payload.commands ?? []))
           .catch(() => undefined);
@@ -3574,6 +3597,35 @@ export function RoomChat({
                     <p className="composer-command-hint" role="status">
                       {commandHint}
                     </p>
+                  ) : null}
+                  {commandChoices ? (
+                    <div
+                      className="composer-command-choices"
+                      role="group"
+                      aria-label="명령 선택지"
+                      style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: "6px",
+                        marginTop: "6px",
+                      }}
+                    >
+                      {commandChoices.options.map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          className="btn btn--sm"
+                          onClick={() =>
+                            void executeSlashCommand(
+                              commandChoices.command,
+                              `${commandChoices.argsPrefix} ${opt.value}`.trim(),
+                            )
+                          }
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
                   ) : null}
                 </div>
               </>

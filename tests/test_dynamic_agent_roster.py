@@ -9,7 +9,9 @@ def test_dynamic_room_flag_gate(monkeypatch: pytest.MonkeyPatch) -> None:
     from agent_lab import agent_roster as ar
 
     monkeypatch.delenv("AGENT_LAB_DYNAMIC_ROOM", raising=False)
-    assert ar.dynamic_room_enabled() is False
+    assert ar.dynamic_room_enabled() is True  # default-on (production dogfood)
+    monkeypatch.setenv("AGENT_LAB_DYNAMIC_ROOM", "0")
+    assert ar.dynamic_room_enabled() is False  # explicit opt-out
     monkeypatch.setenv("AGENT_LAB_DYNAMIC_ROOM", "1")
     assert ar.dynamic_room_enabled() is True
     monkeypatch.setenv("AGENT_LAB_DYNAMIC_ROOM", "off")

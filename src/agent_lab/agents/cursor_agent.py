@@ -1,4 +1,7 @@
 import os
+import shutil
+import subprocess
+import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -26,10 +29,58 @@ def _sdk_installed() -> bool:
         return False
 
 
+_OAUTH_STATUS_TTL_S = 30.0
+_oauth_status_cache: tuple[float, bool] | None = None
+
+
+def _cursor_oauth_available() -> bool:
+    """Best-effort: True if the cursor-agent CLI has an active login session.
+
+    cursor-agent supports `cursor-agent login` (browser OAuth) alongside
+    CURSOR_API_KEY. We cannot read the OAuth token, so we ask the CLI via
+    `cursor-agent status`. Tolerant by design: a missing binary or any error
+    returns False, so callers fall back to requiring CURSOR_API_KEY (prior
+    behavior). Cached briefly to avoid spawning a subprocess on every probe.
+    """
+    global _oauth_status_cache
+    now = time.monotonic()
+    cached = _oauth_status_cache
+    if cached is not None and now - cached[0] < _OAUTH_STATUS_TTL_S:
+        return cached[1]
+    ok = False
+    exe = shutil.which("cursor-agent") or shutil.which("agent")
+    if exe:
+        try:
+            proc = subprocess.run(
+                [exe, "status"], capture_output=True, text=True, timeout=8
+            )
+            out = f"{proc.stdout}\n{proc.stderr}".lower()
+            ok = (
+                proc.returncode == 0
+                and "not logged in" not in out
+                and "no auth" not in out
+                and ("logged in" in out or "authenticated" in out or "@" in out)
+            )
+        except Exception:
+            ok = False
+    _oauth_status_cache = (now, ok)
+    return ok
+
+
+def reset_cursor_oauth_cache() -> None:
+    """Test helper — clear the cursor OAuth status cache."""
+    global _oauth_status_cache
+    _oauth_status_cache = None
+
+
 def is_available() -> bool:
     from agent_lab.credential_store import provider_has_credentials
 
-    return provider_has_credentials("cursor") and _sdk_installed()
+    if not _sdk_installed():
+        return False
+    # OFF-parity: a configured CURSOR_API_KEY keeps the legacy api path; OAuth
+    # login (cursor-agent login) is an additional, key-less way to be ready.
+    return provider_has_credentials("cursor") or _cursor_oauth_available()
 
 
 def model_label() -> str:
@@ -151,8 +202,10 @@ def _build_agent_options(
     from cursor_sdk import AgentOptions, LocalAgentOptions
 
     key = (api_key or os.getenv("CURSOR_API_KEY", "")).strip()
-    if not key:
-        raise RuntimeError("CURSOR_API_KEY not set")
+    if not key and not _cursor_oauth_available():
+        raise RuntimeError(
+            "Cursor needs CURSOR_API_KEY or `cursor-agent login` (OAuth)"
+        )
 
     perms = normalize_agent_permissions(permissions)
     cwd_str = str(cwd) if cwd is not None else _resolve_cwd(perms)
@@ -167,7 +220,8 @@ def _build_agent_options(
             mcp_servers = build_inbox_mcp_servers(Path(session_folder))
 
     agent_opts = AgentOptions(
-        api_key=key,
+        # None lets the SDK fall back to the cursor-agent OAuth session.
+        api_key=key or None,
         model=os.getenv("CURSOR_MODEL", DEFAULT_CURSOR_MODEL),
         local=LocalAgentOptions(cwd=cwd_str),
         mcp_servers=mcp_servers,

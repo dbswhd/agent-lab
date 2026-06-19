@@ -252,6 +252,8 @@ def _format_dynamic_room(name: str, res: dict[str, Any]) -> str:
         return ", ".join(f"{a.get('label')}={a.get('masked')}" for a in rows) or "(없음)"
 
     if name == "login":
+        if res.get("prompt"):
+            return str(res["prompt"])
         prov = res.get("provider", "")
         if res.get("note"):
             return f"/login {prov}: {res['note']}"

@@ -66,22 +66,66 @@ def _masked_accounts(provider: str) -> list[dict[str, Any]]:
     return out
 
 
-def _login(args: list[str]) -> dict[str, Any]:
-    provider = _require_provider("login", args)
-    if isinstance(provider, dict):
-        return provider
-    kind = provider_registry.auth_kind(provider)
-    if kind in ("oauth", "cli"):
+_AUTH_METHOD_LABELS = {"oauth": "OAuth (CLI 로그인)", "api": "API 키"}
+
+
+def _login_methods() -> list[str]:
+    """User-facing login methods = union of provider supported_auth, minus local."""
+    methods: set[str] = set()
+    for pid in provider_registry.provider_ids():
+        methods |= set(provider_registry.supported_auth(pid))
+    methods.discard("local")
+    if "cli" in methods:  # treat CLI auth as OAuth in the picker
+        methods.discard("cli")
+        methods.add("oauth")
+    return [m for m in ("oauth", "api") if m in methods]
+
+
+def _login_provider_choices(method: str) -> dict[str, Any]:
+    match = {method} | ({"cli"} if method == "oauth" else set())
+    options: list[dict[str, Any]] = []
+    for pid in provider_registry.provider_ids():
+        if provider_registry.supported_auth(pid) & match:
+            spec = provider_registry.get_provider(pid)
+            options.append({"value": pid, "label": spec.label if spec else pid})
+    if not options:
+        return _err("login", f"no provider supports {method} login")
+    return {
+        "ok": True,
+        "command": "login",
+        "stage": "provider",
+        "prompt": f"{_AUTH_METHOD_LABELS.get(method, method)} — provider 선택",
+        "choices": {"kind": "provider", "method": method, "options": options},
+    }
+
+
+def _login_complete(method: str, provider: str, rest: list[str]) -> dict[str, Any]:
+    if not provider_registry.is_registered(provider):
+        return _err("login", f"unknown provider: {provider}")
+    method = "oauth" if method == "cli" else method
+    if not provider_registry.supports_auth(provider, method):  # type: ignore[arg-type]
+        # tolerate cli/oauth equivalence
+        if not (method == "oauth" and provider_registry.supports_auth(provider, "cli")):
+            return _err("login", f"{provider} does not support {method} login")
+    if method == "oauth":
         return {
             "ok": True,
             "command": "login",
             "provider": provider,
-            "auth_kind": kind,
+            "auth_kind": "oauth",
             "note": f"Run the {provider} CLI OAuth login; profiles are referenced, not stored as secrets.",
         }
-    secret = args[1] if len(args) > 1 else ""
+    secret = rest[0] if rest else ""
     if not secret:
-        return _err("login", f"{provider} is an API provider; supply a key: /login {provider} <key>")
+        return {
+            "ok": True,
+            "command": "login",
+            "stage": "secret",
+            "provider": provider,
+            "auth_kind": "api",
+            "prompt": f"{provider} API 키 입력",
+            "input": {"kind": "secret", "prefill": f"/login api {provider} "},
+        }
     accounts = get_provider_accounts(provider)
     accounts.append(
         {
@@ -96,9 +140,45 @@ def _login(args: list[str]) -> dict[str, Any]:
         "ok": True,
         "command": "login",
         "provider": provider,
-        "auth_kind": kind,
+        "auth_kind": "api",
         "accounts": _masked_accounts(provider),
     }
+
+
+def _login(args: list[str]) -> dict[str, Any]:
+    """Staged login picker.
+
+    /login                      -> auth-method choices [OAuth, API key]
+    /login <method>             -> provider choices supporting that method
+    /login <method> <provider>  -> OAuth note, or API-key input prompt
+    /login <method> <provider> <key> -> store API key
+    /login <provider> [key]     -> legacy: infer method from supported_auth
+    """
+    if not args:
+        return {
+            "ok": True,
+            "command": "login",
+            "stage": "auth_method",
+            "prompt": "로그인 방식 선택",
+            "choices": {
+                "kind": "auth_method",
+                "options": [
+                    {"value": m, "label": _AUTH_METHOD_LABELS.get(m, m)}
+                    for m in _login_methods()
+                ],
+            },
+        }
+    head = args[0].lower()
+    if head in ("oauth", "api"):
+        if len(args) == 1:
+            return _login_provider_choices(head)
+        return _login_complete(head, args[1], args[2:])
+    # Legacy positional form: /login <provider> [key]
+    if not provider_registry.is_registered(head):
+        return _err("login", f"unknown provider: {head}")
+    kind = provider_registry.auth_kind(head) or "api"
+    method = "oauth" if kind in ("oauth", "cli") else "api"
+    return _login_complete(method, head, args[1:])
 
 
 def _logout(args: list[str]) -> dict[str, Any]:

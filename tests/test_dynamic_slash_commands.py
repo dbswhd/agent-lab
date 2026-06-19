@@ -145,7 +145,7 @@ def test_settings_put_writes_when_off(monkeypatch: pytest.MonkeyPatch, tmp_path:
     import agent_lab.app_config as app_config
     from app.server.main import app
 
-    monkeypatch.delenv("AGENT_LAB_DYNAMIC_ROOM", raising=False)
+    monkeypatch.setenv("AGENT_LAB_DYNAMIC_ROOM", "0")
     monkeypatch.setattr(app_config, "config_dir", lambda: tmp_path)
     client = TestClient(app)
     res = client.put("/api/settings/credentials", json={"cursor": {"primary": "sk-off"}})
@@ -162,7 +162,7 @@ def test_command_registry_gates_dynamic_room(cfg: Path, monkeypatch: pytest.Monk
 
     dyn = {"login", "logout", "accounts", "model", "usage", "agents"}
 
-    monkeypatch.delenv("AGENT_LAB_DYNAMIC_ROOM", raising=False)
+    monkeypatch.setenv("AGENT_LAB_DYNAMIC_ROOM", "0")
     off_ids = {c["id"] for c in list_commands(cfg, workspace=cfg)["commands"]}
     assert dyn.isdisjoint(off_ids)
 
@@ -206,16 +206,67 @@ def test_execute_command_dynamic_room_error_surfaces_detail(cfg: Path, monkeypat
     from agent_lab.command_registry import execute_command
 
     monkeypatch.setenv("AGENT_LAB_DYNAMIC_ROOM", "1")
-    res = execute_command(cfg, "login", workspace=cfg)  # missing provider
+    # /login with no args now returns the auth-method picker (ok); use a real error.
+    res = execute_command(cfg, "login", args="bogus", workspace=cfg)  # unknown provider
     assert res["ok"] is False
-    assert res["detail"] == "provider required"
+    assert "unknown provider" in res["detail"]
     assert "result" not in res  # gate-failure shape → endpoint 409 with detail
 
 
 def test_execute_command_dynamic_room_blocked_when_off(cfg: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from agent_lab.command_registry import execute_command
 
-    monkeypatch.delenv("AGENT_LAB_DYNAMIC_ROOM", raising=False)
+    monkeypatch.setenv("AGENT_LAB_DYNAMIC_ROOM", "0")
     res = execute_command(cfg, "usage", workspace=cfg)
     assert res["ok"] is False
     assert "unknown command" in (res.get("detail") or "")
+
+
+# --- Phase 3: staged /login picker (auth method -> provider -> key) ---
+
+
+def test_login_stage_auth_method_choices(cfg: Path) -> None:
+    from agent_lab.slash_commands import dispatch
+
+    res = dispatch("/login")
+    assert res["ok"] is True and res["stage"] == "auth_method"
+    values = [o["value"] for o in res["choices"]["options"]]
+    assert values == ["oauth", "api"]  # local needs no login
+
+
+def test_login_stage_provider_choices_by_method(cfg: Path) -> None:
+    from agent_lab.slash_commands import dispatch
+
+    oauth = dispatch("/login oauth")["choices"]
+    assert oauth["kind"] == "provider" and oauth["method"] == "oauth"
+    assert {o["value"] for o in oauth["options"]} == {"claude", "codex", "cursor"}
+
+    api = dispatch("/login api")["choices"]
+    assert {o["value"] for o in api["options"]} == {"cursor", "kimi"}
+
+
+def test_login_stage_api_prompts_for_secret_then_stores(cfg: Path) -> None:
+    from agent_lab.slash_commands import dispatch
+
+    prompt = dispatch("/login api kimi")
+    assert prompt["stage"] == "secret"
+    assert prompt["input"]["prefill"] == "/login api kimi "
+
+    stored = dispatch("/login api kimi sk-staged-7777")
+    assert stored["provider"] == "kimi"
+    assert stored["accounts"][0]["masked"].endswith("7777")
+    assert "sk-staged-7777" not in str(stored)
+
+
+def test_login_stage_oauth_provider_returns_cli_note(cfg: Path) -> None:
+    from agent_lab.slash_commands import dispatch
+
+    res = dispatch("/login oauth claude")
+    assert res["auth_kind"] == "oauth" and "note" in res
+
+
+def test_login_legacy_positional_still_works(cfg: Path) -> None:
+    from agent_lab.slash_commands import dispatch
+
+    assert dispatch("/login codex")["auth_kind"] == "oauth"
+    assert dispatch("/login kimi sk-legacy-2222")["accounts"][-1]["masked"].endswith("2222")

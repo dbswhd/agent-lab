@@ -108,11 +108,13 @@ def test_public_payload_masks_secrets(creds_home: Path) -> None:
     assert "abcdef" not in (cursor["primary_masked"] or "")
 
 
-def test_credentials_api(creds_home: Path) -> None:
+def test_credentials_api(creds_home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from fastapi.testclient import TestClient
 
     from app.server.main import app
 
+    # legacy Settings credential write path = OFF-parity (dynamic room moves it to slash)
+    monkeypatch.setenv("AGENT_LAB_DYNAMIC_ROOM", "0")
     client = TestClient(app)
     get_res = client.get("/api/settings/credentials")
     assert get_res.status_code == 200

@@ -36,7 +36,9 @@ class ProviderSpec:
 _REGISTRY: dict[str, ProviderSpec] = {
     "cursor": ProviderSpec(
         "cursor", "Cursor", "api", True, "primary",
-        supported_auth=frozenset({"api"}),
+        # cursor-agent CLI supports both CURSOR_API_KEY and `cursor-agent login`
+        # (browser OAuth). auth_kind stays "api" (default/primary path).
+        supported_auth=frozenset({"api", "oauth"}),
     ),
     "claude": ProviderSpec(
         "claude", "Claude", "oauth", False, "primary",

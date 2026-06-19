@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "kind": "cli-replay",
+  "replaySafe": true,
+  "command": [
+    ".venv/bin/python",
+    "-c",
+    "from agent_lab import agent_roster as ar; print(ar.resolve_active_agents(None, lambda: [], enabled=True))"
+  ],
+  "recordedStdout": "['local']\n"
+}

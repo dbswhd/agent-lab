@@ -62,12 +62,34 @@ def select_roster(
 
     roster: list[str] = [pid for pid in composition if pid in avail]
     if len(roster) < target:
-        for sub in (override_substitution() or list(DEFAULT_SUBSTITUTION_PRIORITY)):
+        for sub in override_substitution() or list(DEFAULT_SUBSTITUTION_PRIORITY):
             if len(roster) >= target:
                 break
             if sub not in roster and sub in avail:
                 roster.append(sub)
     return roster
+
+
+def dynamic_available_ids(
+    available_fn: Callable[[], list[AgentId]],
+    *,
+    now: float | None = None,
+) -> list[str]:
+    """Runtime availability for the dynamic roster: cloud agents + the local floor.
+
+    local is always available (the >=1-agent guarantee). kimi participates in
+    selection tests but is excluded from the live invokable set until its adapter
+    lands; including only invokable providers keeps the live room safe.
+    """
+    ids = [str(a) for a in available_fn()]
+    # KIMI is a live api substitute when it has a usable account chain.
+    from agent_lab.credential_store import get_account_chain
+
+    if "kimi" not in ids and get_account_chain("kimi", now=now):
+        ids.append("kimi")
+    if "local" not in ids:
+        ids.append("local")
+    return ids
 
 
 def resolve_active_agents(
@@ -87,8 +109,9 @@ def resolve_active_agents(
 
     from agent_lab.agents.registry import AGENT_IDS
 
-    available = [str(a) for a in available_fn()]
+    available = dynamic_available_ids(available_fn)
     requested = [str(a) for a in agents] if agents else None
     roster = select_roster(requested=requested, available_ids=available)
-    valid = set(AGENT_IDS)
-    return [cast("AgentId", pid) for pid in roster if pid in valid]
+    # Live invokable set: default cloud agents + KIMI (api substitute) + the local floor.
+    invokable = set(AGENT_IDS) | {"kimi", "local"}
+    return [cast("AgentId", pid) for pid in roster if pid in invokable]

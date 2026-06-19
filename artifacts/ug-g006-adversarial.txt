@@ -1,0 +1,15 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.9, pytest-8.4.2, pluggy-1.5.0 -- /opt/anaconda3/bin/python3
+cachedir: .pytest_cache
+rootdir: /Users/yoonjong/Projects/agent-lab
+configfile: pyproject.toml
+plugins: anyio-4.10.0, langsmith-0.8.5
+collecting ... collected 9 items / 4 deselected / 5 selected
+
+tests/test_dynamic_local_fallback.py::test_dynamic_available_ids_includes_local_floor PASSED [ 20%]
+tests/test_dynamic_local_fallback.py::test_resolve_full_cloud_exhaustion_keeps_one PASSED [ 40%]
+tests/test_dynamic_local_fallback.py::test_consensus_modes_for_degraded_rosters PASSED [ 60%]
+tests/test_dynamic_local_fallback.py::test_e2e_room_completes_with_local_only PASSED [ 80%]
+tests/test_dynamic_local_fallback.py::test_e2e_room_completes_with_degraded_roster PASSED [100%]
+
+======================= 5 passed, 4 deselected in 0.21s ========================

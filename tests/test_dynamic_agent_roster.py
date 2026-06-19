@@ -1,4 +1,5 @@
 """G003 — dynamic agent roster (flag-gated) + OFF-parity named test."""
+
 from __future__ import annotations
 
 import pytest
@@ -76,11 +77,13 @@ def test_off_parity_passthrough_explicit(monkeypatch: pytest.MonkeyPatch) -> Non
     assert ar.resolve_active_agents(["claude", "cursor"], fake_available) == ["claude", "cursor"]
 
 
-def test_resolve_on_restricts_to_invokable_agentids() -> None:
+def test_resolve_on_excludes_uninvokable_kimi_keeps_local_floor() -> None:
     from agent_lab import agent_roster as ar
 
-    # ON, but available_fn only yields invokable AgentIds -> kimi/local never leak live.
+    # ON: local is the always-available floor (G006); kimi stays excluded from the
+    # live invokable set until its adapter lands. Cloud agents are preserved.
     fake_available = lambda: ["codex", "claude"]  # noqa: E731
     resolved = ar.resolve_active_agents(None, fake_available, enabled=True)
-    assert resolved == ["codex", "claude"]
-    assert "kimi" not in resolved and "local" not in resolved
+    assert "codex" in resolved and "claude" in resolved
+    assert "local" in resolved  # floor guarantees >=1 and fills the open seat
+    assert "kimi" not in resolved  # uninvokable until adapter (follow-up)

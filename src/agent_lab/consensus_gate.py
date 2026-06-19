@@ -5,6 +5,7 @@ reached consensus before plan.md may be finalized (DISCUSS -> PLAN_GATE). This m
 over the Room's consensus state — the multi-agent debate engine (room_consensus_rounds) is
 unchanged; consensus rounds are the source of truth, not a 1:1 agent->role mapping.
 """
+
 from __future__ import annotations
 
 from typing import Any

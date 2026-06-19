@@ -1108,7 +1108,15 @@ def resolve_execution(
         manifest = None
 
     if vote_norm == "reject":
-        _resolve_reject(folder, target, manifest=manifest, snapshot_id=snapshot_id, cwd=cwd, execution_id=execution_id, completed=completed)
+        _resolve_reject(
+            folder,
+            target,
+            manifest=manifest,
+            snapshot_id=snapshot_id,
+            cwd=cwd,
+            execution_id=execution_id,
+            completed=completed,
+        )
     else:
         block = _artifact_approve_block_reason(target)
         if block:

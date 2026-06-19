@@ -1,4 +1,5 @@
 """G002 — dedicated clarity scorer + concrete-anchor detection."""
+
 from __future__ import annotations
 
 import pytest

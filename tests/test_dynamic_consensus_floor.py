@@ -1,4 +1,5 @@
 """G004 — role allocation + degradation-aware consensus floor/solo (3/2/1 transitions)."""
+
 from __future__ import annotations
 
 

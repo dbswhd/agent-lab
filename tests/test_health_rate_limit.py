@@ -33,8 +33,5 @@ def test_health_probe_query_bypasses_rate_limit(health_client: TestClient) -> No
     from app.server.health_rate_limit import reset_health_rate_limit_for_tests
 
     reset_health_rate_limit_for_tests()
-    codes = [
-        health_client.get("/api/health?probe_bridge=true&probe_preflight=true").status_code
-        for _ in range(10)
-    ]
+    codes = [health_client.get("/api/health?probe_bridge=true&probe_preflight=true").status_code for _ in range(10)]
     assert all(code == 200 for code in codes)

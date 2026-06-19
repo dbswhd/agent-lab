@@ -5,6 +5,7 @@ dedicated single-agent ambiguity scorer that is intentionally separate from the 
 Room. Anchored tasks skip CLARIFY; genuinely vague tasks are scored and held in CLARIFY until
 ambiguity drops to/below the threshold.
 """
+
 from __future__ import annotations
 
 import os
@@ -15,13 +16,13 @@ from typing import Any
 CLARITY_AMBIGUITY_THRESHOLD = 0.30
 
 _ANCHOR_PATTERNS: tuple[re.Pattern[str], ...] = (
-    re.compile(r"[\w./-]+\.[A-Za-z]{1,6}\b"),            # file path with extension
-    re.compile(r"#\d+"),                                  # issue / PR number
-    re.compile(r"\b[a-z][a-z0-9]*[A-Z][A-Za-z0-9]*\b"),   # camelCase
-    re.compile(r"\b[A-Z][a-z0-9]+[A-Z][A-Za-z0-9]*\b"),   # PascalCase
-    re.compile(r"\b[a-z0-9]+_[a-z0-9_]+\b"),              # snake_case
+    re.compile(r"[\w./-]+\.[A-Za-z]{1,6}\b"),  # file path with extension
+    re.compile(r"#\d+"),  # issue / PR number
+    re.compile(r"\b[a-z][a-z0-9]*[A-Z][A-Za-z0-9]*\b"),  # camelCase
+    re.compile(r"\b[A-Z][a-z0-9]+[A-Z][A-Za-z0-9]*\b"),  # PascalCase
+    re.compile(r"\b[a-z0-9]+_[a-z0-9_]+\b"),  # snake_case
     re.compile(r"(?i)acceptance criteria"),
-    re.compile(r"```"),                                   # code block
+    re.compile(r"```"),  # code block
 )
 
 _SCORE_SYSTEM = (

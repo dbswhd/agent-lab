@@ -1,4 +1,5 @@
 """G001 — provider_registry catalog + additive multi-account chain (get_account_chain)."""
+
 from __future__ import annotations
 
 from pathlib import Path

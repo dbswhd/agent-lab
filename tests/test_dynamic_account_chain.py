@@ -1,4 +1,5 @@
 """G002 — account_chain (auth_kind-branched) + usage_monitor (cooldown, capability-aware)."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -15,6 +16,7 @@ def cfg(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 # --- usage_monitor.should_preempt: capability-aware, honest local heuristic ---
+
 
 def test_should_preempt_only_for_usage_exposing() -> None:
     from agent_lab import usage_monitor as um
@@ -51,6 +53,7 @@ def test_provider_spent_usd_reads_ledger() -> None:
 
 # --- cooldown: only on credential failure; local exempt ---
 
+
 def test_mark_exhausted_only_on_credential_failure(cfg: Path) -> None:
     from agent_lab import credential_store as cs
     from agent_lab import usage_monitor as um
@@ -73,6 +76,7 @@ def test_local_fallback_cooldown_exempt(cfg: Path) -> None:
 
 
 # --- account_chain: auth_kind branching ---
+
 
 def test_is_rotating_by_auth_kind() -> None:
     from agent_lab import account_chain as ac

@@ -1,4 +1,5 @@
 """G005 — consensus gate: Room consensus gates DISCUSS->PLAN_GATE (plan.md) under the pipeline."""
+
 from __future__ import annotations
 
 import json
@@ -40,10 +41,13 @@ def test_discuss_advances_when_consensus_reached(tmp_path: Path, monkeypatch: py
     from agent_lab.mission_advance import maybe_advance_mission
     from agent_lab.run_meta import read_run_meta
 
-    _write(tmp_path, {
-        "mission_loop": {"enabled": True, "phase": "DISCUSS", "autonomous_segment": {"active": True}},
-        "consensus": {"status": "reached"},
-    })
+    _write(
+        tmp_path,
+        {
+            "mission_loop": {"enabled": True, "phase": "DISCUSS", "autonomous_segment": {"active": True}},
+            "consensus": {"status": "reached"},
+        },
+    )
     maybe_advance_mission(tmp_path, scheduled=True)
     assert read_run_meta(tmp_path)["mission_loop"]["phase"] == "PLAN_GATE"
 

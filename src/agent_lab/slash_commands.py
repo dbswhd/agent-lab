@@ -72,17 +72,33 @@ def _login(args: list[str]) -> dict[str, Any]:
         return provider
     kind = provider_registry.auth_kind(provider)
     if kind in ("oauth", "cli"):
-        return {"ok": True, "command": "login", "provider": provider, "auth_kind": kind,
-                "note": f"Run the {provider} CLI OAuth login; profiles are referenced, not stored as secrets."}
+        return {
+            "ok": True,
+            "command": "login",
+            "provider": provider,
+            "auth_kind": kind,
+            "note": f"Run the {provider} CLI OAuth login; profiles are referenced, not stored as secrets.",
+        }
     secret = args[1] if len(args) > 1 else ""
     if not secret:
         return _err("login", f"{provider} is an API provider; supply a key: /login {provider} <key>")
     accounts = get_provider_accounts(provider)
-    accounts.append({"label": f"account{len(accounts) + 1}", "secret_or_profile_ref": secret,
-                     "priority": len(accounts) + 1, "cooldown_until": 0.0})
+    accounts.append(
+        {
+            "label": f"account{len(accounts) + 1}",
+            "secret_or_profile_ref": secret,
+            "priority": len(accounts) + 1,
+            "cooldown_until": 0.0,
+        }
+    )
     set_provider_accounts(provider, accounts)
-    return {"ok": True, "command": "login", "provider": provider, "auth_kind": kind,
-            "accounts": _masked_accounts(provider)}
+    return {
+        "ok": True,
+        "command": "login",
+        "provider": provider,
+        "auth_kind": kind,
+        "accounts": _masked_accounts(provider),
+    }
 
 
 def _logout(args: list[str]) -> dict[str, Any]:
@@ -105,19 +121,30 @@ def _accounts(args: list[str]) -> dict[str, Any]:
             return _err("accounts", "usage: /accounts <provider> add <label> <secret>")
         label, secret = args[2], args[3]
         accounts = get_provider_accounts(provider)
-        accounts.append({"label": label, "secret_or_profile_ref": secret,
-                         "priority": len(accounts) + 1, "cooldown_until": 0.0})
+        accounts.append(
+            {"label": label, "secret_or_profile_ref": secret, "priority": len(accounts) + 1, "cooldown_until": 0.0}
+        )
         set_provider_accounts(provider, accounts)
-        return {"ok": True, "command": "accounts", "provider": provider, "added": label,
-                "accounts": _masked_accounts(provider)}
+        return {
+            "ok": True,
+            "command": "accounts",
+            "provider": provider,
+            "added": label,
+            "accounts": _masked_accounts(provider),
+        }
     if sub == "remove":
         if len(args) < 3:
             return _err("accounts", "usage: /accounts <provider> remove <label>")
         label = args[2]
         accounts = [a for a in get_provider_accounts(provider) if str(a.get("label") or "") != label]
         set_provider_accounts(provider, accounts)
-        return {"ok": True, "command": "accounts", "provider": provider, "removed": label,
-                "accounts": _masked_accounts(provider)}
+        return {
+            "ok": True,
+            "command": "accounts",
+            "provider": provider,
+            "removed": label,
+            "accounts": _masked_accounts(provider),
+        }
     return _err("accounts", f"unknown subcommand: {sub}")
 
 
@@ -130,8 +157,13 @@ def _model(args: list[str]) -> dict[str, Any]:
         composition = agent_roster.override_composition() or list(provider_registry.DEFAULT_ROSTER)
         updated_flag = False
     substitution = agent_roster.override_substitution() or list(provider_registry.DEFAULT_SUBSTITUTION_PRIORITY)
-    return {"ok": True, "command": "model", "composition": composition,
-            "substitution": substitution, "updated": updated_flag}
+    return {
+        "ok": True,
+        "command": "model",
+        "composition": composition,
+        "substitution": substitution,
+        "updated": updated_flag,
+    }
 
 
 def _usage(args: list[str]) -> dict[str, Any]:
@@ -140,9 +172,14 @@ def _usage(args: list[str]) -> dict[str, Any]:
     for pid in providers:
         for acct in get_provider_accounts(pid):
             label = str(acct.get("label") or "")
-            rows.append({"provider": pid, "label": label,
-                         "cooldown_active": usage_monitor.cooldown_active(pid, label),
-                         "usage_exposing": provider_registry.is_usage_exposing(pid)})
+            rows.append(
+                {
+                    "provider": pid,
+                    "label": label,
+                    "cooldown_active": usage_monitor.cooldown_active(pid, label),
+                    "usage_exposing": provider_registry.is_usage_exposing(pid),
+                }
+            )
     return {"ok": True, "command": "usage", "rows": rows}
 
 

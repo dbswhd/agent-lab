@@ -36,8 +36,13 @@ _REGISTRY: dict[str, ProviderSpec] = {
     "codex": ProviderSpec("codex", "Codex", "oauth", False, "primary"),
     "kimi": ProviderSpec("kimi", "KIMI", "api", True, "spare"),
     "local": ProviderSpec(
-        "local", "Local", "local", False, "local",
-        always_available=True, cooldown_exempt=True,
+        "local",
+        "Local",
+        "local",
+        False,
+        "local",
+        always_available=True,
+        cooldown_exempt=True,
     ),
 }
 

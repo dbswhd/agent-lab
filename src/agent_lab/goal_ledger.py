@@ -5,6 +5,7 @@ entries tracking pipeline goal progress. The field is leniently validated by run
 additive, so crash_recovery (which round-trips run.json through patch_run_meta/validate_run)
 tolerates it without change.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone

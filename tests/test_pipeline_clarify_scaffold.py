@@ -1,4 +1,5 @@
 """G001/G002 — AGENT_LAB_PIPELINE flag, CLARIFY phase, and clarity-gated advance."""
+
 from __future__ import annotations
 
 import json

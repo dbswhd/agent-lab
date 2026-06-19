@@ -1,4 +1,5 @@
 """G004 — optional goal_ledger in run.json (schema-valid, crash-recovery compatible)."""
+
 from __future__ import annotations
 
 import json
@@ -71,10 +72,13 @@ def test_maybe_advance_appends_ledger_when_flag_on(tmp_path: Path, monkeypatch: 
     from agent_lab.mission_advance import maybe_advance_mission
     from agent_lab.run_meta import read_run_meta
 
-    _write(tmp_path, {
-        "mission_loop": {"enabled": True, "phase": "CLARIFY", "autonomous_segment": {"active": True}},
-        "verified_loop": {"loop_goal": {"text": "make it better"}},
-    })
+    _write(
+        tmp_path,
+        {
+            "mission_loop": {"enabled": True, "phase": "CLARIFY", "autonomous_segment": {"active": True}},
+            "verified_loop": {"loop_goal": {"text": "make it better"}},
+        },
+    )
     maybe_advance_mission(tmp_path, scheduled=True)
     led = read_run_meta(tmp_path).get("goal_ledger", [])
     assert any(e.get("event") == "mode_route" and e.get("mode") == "CLARIFY" for e in led)

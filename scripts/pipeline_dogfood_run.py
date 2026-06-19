@@ -78,10 +78,7 @@ def run_pipeline_dogfood(*, sessions_root: Path, session_id: str | None = None) 
     folder = sessions_root / sid
     folder.mkdir(parents=True, exist_ok=True)
 
-    topic = (
-        "JWT validation in `src/auth.py` — agree on retry path before plan.md.\n"
-        "[cat: quick]"
-    )
+    topic = "JWT validation in `src/auth.py` — agree on retry path before plan.md.\n[cat: quick]"
     folder, _messages, _plan = room.run_room(
         topic,
         agents=["cursor", "codex", "claude"],

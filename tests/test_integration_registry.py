@@ -67,8 +67,10 @@ def test_fast_bucket_collection_budget():
     # suites (clarity scorer, mode router, goal ledger, CLARIFY scaffold).
     # 2026-06-18: raised 1200 -> 1300 for the AGENT_LAB_DYNAMIC_ROOM fast unit suites
     # (provider registry, account chain, agent roster, consensus floor, slash commands).
-    # 2026-06-19: raised 1300 -> 1320 for kimi_work P3–P4 fast suites (supervisor, session, smoke).
-    assert count <= 1320, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-06-19: raised 1300 -> 1320 for kimi_work P3-P4 fast suites (supervisor, session, smoke).
+    # 2026-06-19: raised 1320 -> 1340 for AGENT_LAB_COMMS_COMPACT token-compaction suites (pin cap + peer digest).
+    # 2026-06-19: raised 1340 -> 1360 for §1 pipeline handles (/pipeline,/clarify,/plan) + CLARIFY transition rows.
+    assert count <= 1360, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

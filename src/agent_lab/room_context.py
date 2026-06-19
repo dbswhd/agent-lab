@@ -182,8 +182,55 @@ def _parse_iso(ts: str) -> datetime | None:
         return datetime.fromisoformat(ts.replace("Z", "+00:00"))
     except ValueError:
         return None
+def _env_bool(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+
+
+def _message_chars(msgs: list[_MessageLike]) -> int:
+    return sum(len(m.content) + 64 for m in msgs)
+
+
+def compact_current_turn_pins(
+    messages: list[_MessageLike],
+    *,
+    max_chars: int,
+) -> tuple[list[_MessageLike], int]:
+    """Keep latest Human + latest reply per agent; cap by dropping oldest agent replies.
+
+    Returns (kept, dropped_count).  Never drops the human message.
+    """
+    if not messages:
+        return list(messages), 0
+    last_user = -1
+    for i, m in enumerate(messages):
+        if m.role == "user":
+            last_user = i
+    if last_user < 0:
+        return list(messages), 0
+    human = messages[last_user]
+    agents = messages[last_user + 1 :]
+    # Keep latest reply per agent (stable: first occurrence from the end)
+    seen: set[str] = set()
+    latest_per_agent: list[_MessageLike] = []
+    for m in reversed(agents):
+        key = getattr(m, "agent", None) or m.role
+        if key not in seen:
+            seen.add(key)
+            latest_per_agent.append(m)
+    latest_per_agent.reverse()
+    orig_count = len(agents) + 1  # human + agents
+    kept: list[_MessageLike] = [human] + latest_per_agent
+    dropped = orig_count - len(kept)
+    # Char cap: drop oldest agent reply first, but never the human.
+    while len(kept) > 1 and _message_chars(kept) > max_chars:
+        kept.pop(-1)
+        dropped += 1
+    return kept, dropped
 def _split_plan_sections(plan_md: str) -> dict[str, str]:
     """Map lowercased header key → body text."""
     if not plan_md.strip():
@@ -490,17 +537,32 @@ def prepare_recent_messages(
     max_turns: int | None = None,
     max_chars: int | None = None,
     efficiency_mode: bool = False,
+    compact: bool | None = None,
 ) -> tuple[list[_MessageLike], int, int, int]:
     """Turn cap → char trim with current Human turn pinned. Returns (msgs, turns_om, chars_om, pin_count)."""
     from agent_lab.context_limits import efficiency_limits
 
+    if compact is None:
+        compact = _env_bool("AGENT_LAB_COMMS_COMPACT")
     lim = agent_context_limits()
     eff = efficiency_limits() if efficiency_mode else None
     max_turns = max_turns if max_turns is not None else (eff.recent_turns if eff else lim.recent_turns)
     max_chars = max_chars if max_chars is not None else lim.max_thread_chars
     recent, turns_omitted = recent_messages_by_turns(messages, max_turns=max_turns)
     pinned = pinned_current_turn_messages(recent)
-    if eff:
+    compact_dropped = 0
+    if compact and not efficiency_mode:
+        # Cap current-turn pins even outside efficiency mode to avoid quadratic replay.
+        pin_budget = max(4096, int(max_chars * 0.25))
+        pinned, compact_dropped = compact_current_turn_pins(recent, max_chars=pin_budget)
+        # Remove collapsed same-agent replies from the recent slice so they don't
+        # reappear as "rest" messages below.
+        current_all = pinned_current_turn_messages(recent)
+        kept_ids = {id(m) for m in pinned}
+        dropped_ids = {id(m) for m in current_all if id(m) not in kept_ids}
+        if dropped_ids:
+            recent = [m for m in recent if id(m) not in dropped_ids]
+    elif eff:
         pin_budget = max(4096, int(max_chars * eff.pin_budget_pct / 100))
         pinned, _ = cap_pinned_messages(
             pinned,
@@ -542,9 +604,18 @@ def collect_peer_messages(
 def dedupe_peer_from_recent(
     recent: list[_MessageLike],
     peer_msgs: list[_MessageLike],
+    compact: bool | None = None,
 ) -> tuple[list[_MessageLike], int]:
-    """Drop agent lines from [최근 N턴] that already appear in [동료 발화]."""
+    """Drop agent lines from [최근 N턴] that already appear in [동료 발화].
+
+    When compact is on, peer lines are kept in the numbered recent thread so
+    that L{n} references in the compact digest resolve.
+    """
     if not peer_msgs:
+        return recent, 0
+    if compact is None:
+        compact = _env_bool("AGENT_LAB_COMMS_COMPACT")
+    if compact:
         return recent, 0
     peer_ids = {id(m) for m in peer_msgs}
     out: list[_MessageLike] = []
@@ -557,15 +628,49 @@ def dedupe_peer_from_recent(
     return out, removed
 
 
-def format_peer_block(peer_msgs: list[_MessageLike]) -> str:
+def _format_peer_digest(m: _MessageLike) -> str:
+    """Compact blackboard entry for a peer reply."""
+    from agent_lab.agents.registry import label
+
+    body = (m.content or "").strip()
+    excerpt = body[:140].replace("\n", " ")
+    if len(body) > 140:
+        excerpt = excerpt[:-1] + "…"
+    envelope = getattr(m, "envelope", None) or {}
+    act = str(envelope.get("act") or "").upper()
+    if not act:
+        # Fallback: detect act from body first line keywords.
+        first = body.splitlines()[0].upper() if body else ""
+        for candidate in ("ENDORSE", "AMEND", "CHALLENGE", "PROPOSE", "BLOCK", "PASS", "MESSAGE"):
+            if candidate in first:
+                act = candidate
+                break
+    if not act:
+        act = "SAY"
+    refs = envelope.get("refs") or []
+    ref_part = f" [refs: {', '.join(str(r) for r in refs)}]" if refs else ""
+    # Line numbers are not available here; L{{n}} refs are resolved via the
+    # numbered recent thread where full prose is retained (see dedupe_peer_from_recent).
+    round_n = m.parallel_round or 1
+    header = f"L{round_n} {label(m.agent)} {act}:"
+    return f"{header} {excerpt}{ref_part}"
+
+
+def format_peer_block(peer_msgs: list[_MessageLike], compact: bool | None = None) -> str:
     if not peer_msgs:
         return ""
     from agent_lab.agents.registry import label
 
+    if compact is None:
+        compact = _env_bool("AGENT_LAB_COMMS_COMPACT")
     lines = ["[이번 턴 · 동료 발화]"]
     for m in peer_msgs:
         body = (m.content or "").strip()
-        if body and m.agent:
+        if not body or not m.agent:
+            continue
+        if compact:
+            lines.append(_format_peer_digest(m))
+        else:
             lines.append(f"{label(m.agent)}:\n{body}\n")
     return "\n".join(lines).strip()
 
@@ -742,6 +847,7 @@ def build_recent_turns_block(
     turns_omitted: int,
     chars_omitted: int,
     peer_deduped: int = 0,
+    compact_dropped: int = 0,
     numbered: bool = False,
 ) -> tuple[str, str]:
     lim = agent_context_limits()
@@ -757,6 +863,8 @@ def build_recent_turns_block(
         header += f"; {chars_omitted} older message(s) trimmed by size"
     if peer_deduped:
         header += f"; {peer_deduped} peer line(s) only in [이번 턴 · 동료 발화]"
+    if compact_dropped:
+        header += f"; {compact_dropped} older same-agent reply(s) collapsed"
     header += " — full log in chat.jsonl)"
     thread = format_thread(topic, messages)
     note_parts: list[str] = []
@@ -764,6 +872,8 @@ def build_recent_turns_block(
         note_parts.append("earlier context omitted from this payload — use constraints + plan 미결")
     if peer_deduped:
         note_parts.append("peer replies in this turn appear only in [이번 턴 · 동료 발화]")
+    if compact_dropped:
+        note_parts.append(f"{compact_dropped} older same-agent reply collapsed; full text in chat.jsonl")
     note = ""
     if note_parts:
         note = "\n[Note: " + "; ".join(note_parts) + ".]\n\n"

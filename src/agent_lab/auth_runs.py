@@ -19,7 +19,6 @@ from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import urlparse
 
-from agent_lab.credential_store import public_credentials_payload
 from agent_lab.provider_registry import ProviderSpec, all_providers, get_provider
 from agent_lab.credential_store import (
     _PROVIDER_ENV,

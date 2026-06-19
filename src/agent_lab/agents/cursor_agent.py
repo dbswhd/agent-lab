@@ -51,9 +51,7 @@ def _cursor_oauth_available() -> bool:
     exe = shutil.which("cursor-agent") or shutil.which("agent")
     if exe:
         try:
-            proc = subprocess.run(
-                [exe, "status"], capture_output=True, text=True, timeout=8
-            )
+            proc = subprocess.run([exe, "status"], capture_output=True, text=True, timeout=8)
             out = f"{proc.stdout}\n{proc.stderr}".lower()
             ok = (
                 proc.returncode == 0
@@ -203,9 +201,7 @@ def _build_agent_options(
 
     key = (api_key or os.getenv("CURSOR_API_KEY", "")).strip()
     if not key and not _cursor_oauth_available():
-        raise RuntimeError(
-            "Cursor needs CURSOR_API_KEY or `cursor-agent login` (OAuth)"
-        )
+        raise RuntimeError("Cursor needs CURSOR_API_KEY or `cursor-agent login` (OAuth)")
 
     perms = normalize_agent_permissions(permissions)
     cwd_str = str(cwd) if cwd is not None else _resolve_cwd(perms)

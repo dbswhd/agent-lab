@@ -86,6 +86,7 @@ def test_execute_goal_check_command(mock_env: None, tmp_path: Path):
     assert result["ok"] is True
     assert result["kind"] == "server"
 
+
 def test_logout_command_returns_auth_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     monkeypatch.setenv("AGENT_LAB_DYNAMIC_ROOM", "0")

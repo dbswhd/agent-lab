@@ -25,6 +25,8 @@ def _emit_slash_chat_line(folder: Path, summary: str) -> None:
             f.write(line + "\n")
     except OSError:
         pass
+
+
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -314,7 +316,7 @@ def _format_dynamic_room(name: str, res: dict[str, Any]) -> str:
         if not rows:
             return "/usage: 등록된 계정 없음"
         return "/usage: " + " | ".join(
-            f"{r.get('provider')}/{r.get('label')}" + ("(cooldown)" if r.get('cooldown_active') else "") for r in rows
+            f"{r.get('provider')}/{r.get('label')}" + ("(cooldown)" if r.get("cooldown_active") else "") for r in rows
         )
     if name == "agents":
         if res.get("prompt"):
@@ -324,7 +326,6 @@ def _format_dynamic_room(name: str, res: dict[str, Any]) -> str:
         roles_s = ", ".join(f"{k}:{v}" for k, v in roles.items())
         return f"/agents roster: [{roster}] · roles: {roles_s}"
     return f"/{name} 실행됨"
-
 
 
 def execute_command(

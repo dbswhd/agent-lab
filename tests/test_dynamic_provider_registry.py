@@ -150,11 +150,7 @@ def test_oauth_only_providers_derived_from_registry() -> None:
     assert cs.OAUTH_ONLY_PROVIDERS == frozenset({"claude", "codex"})
     # equivalently: providers whose supported auth ⊆ {oauth, cli}
     secretless = frozenset({"oauth", "cli"})
-    derived = {
-        pid
-        for pid in pr.provider_ids()
-        if pr.supported_auth(pid) and pr.supported_auth(pid) <= secretless
-    }
+    derived = {pid for pid in pr.provider_ids() if pr.supported_auth(pid) and pr.supported_auth(pid) <= secretless}
     assert derived == set(cs.OAUTH_ONLY_PROVIDERS)
 
 
@@ -182,15 +178,11 @@ def test_cursor_build_options_allows_oauth_no_key(monkeypatch: pytest.MonkeyPatc
     monkeypatch.delenv("CURSOR_API_KEY", raising=False)
     monkeypatch.setattr(cursor_agent, "_cursor_oauth_available", lambda: True)
     # no key + OAuth available -> must not raise (SDK falls back to OAuth session)
-    cwd, opts = cursor_agent._build_agent_options(
-        permissions=None, cwd="/tmp", session_folder=None, inbox_mcp=False
-    )
+    cwd, opts = cursor_agent._build_agent_options(permissions=None, cwd="/tmp", session_folder=None, inbox_mcp=False)
     assert getattr(opts, "api_key", "sentinel") in (None, "")
 
     monkeypatch.setattr(cursor_agent, "_cursor_oauth_available", lambda: False)
     import pytest as _pytest
 
     with _pytest.raises(RuntimeError):
-        cursor_agent._build_agent_options(
-            permissions=None, cwd="/tmp", session_folder=None, inbox_mcp=False
-        )
+        cursor_agent._build_agent_options(permissions=None, cwd="/tmp", session_folder=None, inbox_mcp=False)

@@ -32,8 +32,7 @@ def _derive_oauth_only() -> frozenset[ProviderId]:
     return frozenset(
         cast(ProviderId, pid)
         for pid in PROVIDERS
-        if _provider_registry.supported_auth(pid)
-        and _provider_registry.supported_auth(pid) <= secretless
+        if _provider_registry.supported_auth(pid) and _provider_registry.supported_auth(pid) <= secretless
     )
 
 

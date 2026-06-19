@@ -97,6 +97,7 @@ def test_logout_clears(cfg: Path) -> None:
     assert res["cleared"] is True
     assert cs.get_provider_accounts("kimi") == []
 
+
 def test_logout_staged_provider_choices(cfg: Path) -> None:
     from agent_lab.slash_commands import dispatch
 
@@ -146,6 +147,7 @@ def test_logout_cursor_clears_api_accounts_then_oauth(cfg: Path) -> None:
     assert res["auth_kind"] == "oauth"
     assert res["cleared"] is True
     assert cs.get_provider_accounts("cursor") == []
+
 
 def test_model_view_and_set(cfg: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from agent_lab.slash_commands import dispatch

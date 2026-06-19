@@ -165,10 +165,7 @@ def _login(args: list[str]) -> dict[str, Any]:
             "prompt": "로그인 방식 선택",
             "choices": {
                 "kind": "auth_method",
-                "options": [
-                    {"value": m, "label": _AUTH_METHOD_LABELS.get(m, m)}
-                    for m in _login_methods()
-                ],
+                "options": [{"value": m, "label": _AUTH_METHOD_LABELS.get(m, m)} for m in _login_methods()],
             },
         }
     head = args[0].lower()
@@ -218,7 +215,9 @@ def _logout(args: list[str]) -> dict[str, Any]:
     had_accounts = bool(accounts)
     set_provider_accounts(provider, [])
 
-    supports_oauth = provider_registry.supports_auth(provider, "oauth") or provider_registry.supports_auth(provider, "cli")
+    supports_oauth = provider_registry.supports_auth(provider, "oauth") or provider_registry.supports_auth(
+        provider, "cli"
+    )
     if supports_oauth:
         return {
             "ok": True,

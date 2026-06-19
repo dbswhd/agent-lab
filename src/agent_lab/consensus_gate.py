@@ -140,8 +140,13 @@ def allocate_roles(agents: list[str]) -> dict[str, str]:
 def effective_consensus(agents: list[str]) -> dict[str, Any]:
     """Consensus mode for the current (possibly degraded) live roster.
 
-    size >= 2 -> consensus enabled, floor 2 (required endorsements = min(floor, size)).
-    size == 1 -> solo mode: consensus disabled, the single agent's output is accepted.
+    Mirrors the runtime model in room_consensus_rounds: the anchor author does
+    not self-endorse, so reachable endorsements top out at ``size - 1``; a turn
+    reaches consensus once all non-authors endorse OR the floor is met,
+    whichever comes first. Required endorsements therefore are:
+
+    size >= 2 -> ``min(size - 1, floor)`` (e.g. 2 agents -> 1, 3+ -> floor 2).
+    size == 1 -> solo mode: consensus disabled, the single agent's output is accepted (0).
     size == 0 -> none (should not occur once the local fallback floor is wired, G006).
     """
     from agent_lab.consensus_policy import default_consensus_policy
@@ -169,5 +174,5 @@ def effective_consensus(agents: list[str]) -> dict[str, Any]:
         "mode": "consensus",
         "consensus_enabled": True,
         "floor": floor,
-        "required_endorsements": min(floor, n),
+        "required_endorsements": min(n - 1, floor),
     }

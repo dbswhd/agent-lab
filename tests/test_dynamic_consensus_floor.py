@@ -55,7 +55,8 @@ def test_effective_consensus_two_floor() -> None:
 
     eff = effective_consensus(["codex", "claude"])
     assert eff["mode"] == "consensus"
-    assert eff["required_endorsements"] == 2  # both must endorse at the floor
+    # anchor author does not self-endorse → max reachable = n-1 = 1 (matches runtime)
+    assert eff["required_endorsements"] == 1
 
 
 def test_effective_consensus_one_solo() -> None:

@@ -1,0 +1,219 @@
+{
+  "version": 1,
+  "brief": "Dynamic Resilient Multi-Agent Room for agent-lab. Approved ralplan plan: .gjc/plans/ralplan/2026-06-18-dynamic-resilient-room/pending-approval.md. Spec: .gjc/specs/deep-interview-dynamic-resilient-agent-room.md.\n\nSHARED CONSTRAINTS (apply to every story):\n- Additive & flag-gated behind AGENT_LAB_DYNAMIC_ROOM; OFF (flag unset) == current [\"cursor\",\"codex\",\"claude\"] behavior byte-stable.\n- Reuse/extend existing modules (no parallel subsystems): credential_store.py (additive accounts[] + legacy primary/fallback), consensus_gate.py, room.run_room/room_turn_flow.py, cost_ledger.py.\n- auth_kind seam: api/local providers (KIMI/cursor-API/local) get in-turn secret N-account rotation; oauth/cli (claude/codex) get ONE active CLI OAuth profile + seat-substitution failover, NO in-turn key rotation, accounts[] holds profile refs not secrets (get_credential_chain returns [] for OAUTH_ONLY).\n- Proactive usage detection = cost_ledger LOCAL budget cap / usage-header heuristic (never server-quota); OAuth/CLI reactive-only via is_credential_failure; cooldown only on confirmed credential failure; local fallback cooldown-exempt to guarantee >=1 agent.\n- Verification MOCK-ONLY (AGENT_LAB_MOCK_AGENTS=1); do not depend on live agents.\n- Conventions: from __future__ import annotations first line; routers only under app/server/routers/; run.json via patch_run_meta; run-lock via run_control.\n- Per-goal gates: make test-fast green == baseline+new, ruff clean, mypy no new errors, OFF-parity named test. Do not commit/push unless asked.\n\n@goal: Provider registry + additive N-account credential store\nAdd src/agent_lab/provider_registry.py declaring providers cursor/claude/codex/kimi/local with auth_kind (api/oauth/cli/local), usage_exposing bool, fallback_class. Extend credential_store.py additively: per-provider accounts[] (label, secret_or_profile_ref, priority, cooldown_until) in load/save while keeping legacy primary/fallback readable; get_account_chain(provider) returns ordered cooldown-filtered entries (accounts[] first, then legacy). Reuse mask_secret/_escape_toml/env mirroring. Register KIMI (api, usage_exposing=true, OpenAI-compatible) and local (local, always-available). Mock unit tests for load/save additive parsing and chain ordering.\n\n@goal: Account chain + capability-aware usage monitor with cooldown\nAdd src/agent_lab/account_chain.py (auth_kind-branched chain: api/local secret N-rotation in-turn; oauth/cli single active profile, no in-turn key rotation) and src/agent_lab/usage_monitor.py (should_preempt = cost_ledger LOCAL budget cap / usage-header heuristic, only for usage_exposing providers; mark_exhausted sets cooldown_until only on is_credential_failure; cooldown_active gate; local fallback exempt). Mock unit tests for per-auth_kind branching, cooldown skip/expiry, proactive-only-for-usage_exposing.\n\n@goal: Dynamic agent roster + room adapter (flag-gated)\nAdd src/agent_lab/agent_roster.py select_roster(): default cursor+codex+claude, substitution priority KIMI->local for empty/unavailable seats, /model override of composition + substitution priority; availability from registry is_available + non-empty account chain + not fully cooled. Wire room.run_room behind AGENT_LAB_DYNAMIC_ROOM to consult select_roster() (OFF = hardcoded current behavior). Mock tests for default composition, substitution priority, and OFF-parity named test (flag unset == [\"cursor\",\"codex\",\"claude\"]).\n\n@goal: Role reallocation + consensus floor and solo mode\nExtend consensus_gate.py: allocate_roles(agents) fill order propose->endorse->synthesize->scribe on LIVE roster ids; effective_consensus(agents) enforces floor=2; size 1 => solo mode (consensus disabled, single-agent output accepted). Reuse default_consensus_policy. Operate on live roster ids never static default names. Mock tests for 3/2/1 transitions and floor enforcement.\n\n@goal: Slash commands + Settings UI read-only\nAdd src/agent_lab/slash_commands.py + wire through app/server/routers/room.py: /login <provider>, /logout <provider>, /accounts <provider> (list/add/remove, masked via mask_secret), /model (view/switch composition + substitution priority), /usage (per-account usage + cooldown state), /agents (current roster + roles). Writes via credential_store. Reduce Settings UI credential write (patch_from_request) to read-only status (public_credentials_payload retained). Mock tests for all 6 command parses + masked output + write path.\n\n@goal: Local fallback provider + e2e resilience\nRegister local (Ollama/OpenAI-compatible) provider as always-available, cooldown-exempt, lowest substitution priority; mock adapter for tests. Endpoint/model a tunable default. E2E mock test (AGENT_LAB_MOCK_AGENTS=1): 2 of 3 providers raise quota errors -> room completes a turn with >=1 agent and valid (or solo) consensus outcome; full-cloud-exhaustion -> local fallback keeps >=1 agent.",
+  "gjcGoalMode": "aggregate",
+  "gjcObjective": "Complete the durable ultragoal plan in .gjc/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .gjc/ultragoal/ledger.jsonl as the audit trail.",
+  "goals": [
+    {
+      "id": "G001",
+      "title": "Provider registry + additive N-account credential store",
+      "objective": "Add src/agent_lab/provider_registry.py declaring providers cursor/claude/codex/kimi/local with auth_kind (api/oauth/cli/local), usage_exposing bool, fallback_class. Extend credential_store.py additively: per-provider accounts[] (label, secret_or_profile_ref, priority, cooldown_until) in load/save while keeping legacy primary/fallback readable; get_account_chain(provider) returns ordered cooldown-filtered entries (accounts[] first, then legacy). Reuse mask_secret/_escape_toml/env mirroring. Register KIMI (api, usage_exposing=true, OpenAI-compatible) and local (local, always-available). Mock unit tests for load/save additive parsing and chain ordering.",
+      "status": "complete",
+      "createdAt": "2026-06-18T12:43:26.424Z",
+      "updatedAt": "2026-06-18T13:13:42.547Z",
+      "startedAt": "2026-06-18T12:43:36.924Z",
+      "completedAt": "2026-06-18T13:13:42.547Z",
+      "evidence": "G001 Provider registry + additive N-account credential chain shipped. Verified: 7 mock tests, make test-fast 1151 (no regression), ruff clean, mypy 244==baseline. OFF-parity preserved (credentials.toml save/load untouched; accounts in sidecar accounts.toml).",
+      "completionVerification": {
+        "schemaVersion": 1,
+        "receiptId": "1dcb2b40-d8bd-4e6c-8418-61364df47513",
+        "verifiedAt": "2026-06-18T13:13:42.547Z",
+        "goalId": "G001",
+        "receiptKind": "per-goal",
+        "goalStatusBeforeCheckpoint": "active",
+        "gjcGoalMode": "aggregate",
+        "gjcObjective": "Complete the durable ultragoal plan in .gjc/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .gjc/ultragoal/ledger.jsonl as the audit trail.",
+        "qualityGateHash": "4b8f08428745f628ab9de54070012341365f114abdabb486af08ec081fcd5ed0",
+        "gjcGoalSnapshotHash": "86fa9c9021789323df293e762aa6db0cb79d5d3cb3515434038e2e0e20790018",
+        "planGeneration": "852758302675cee6fe78b32be9eb2edf86d51c9a785134b9c89aa534dd09f125",
+        "basis": {
+          "planHashBeforeCheckpoint": "68fddcf83c4749400443a2b5cdb04dc8a29bf569b4ee58f84a7e3867d048102b",
+          "latestRelevantLedgerEventIdBeforeCheckpoint": "f549f8c3-7cfe-4d8f-b225-367f9feb56c4",
+          "goalUpdatedAtBeforeCheckpoint": "2026-06-18T13:13:42.547Z",
+          "relevantGoalIdsBeforeCheckpoint": [
+            "G001"
+          ],
+          "requiredGoalSetHashBeforeCheckpoint": "66d65acae0e6e6d228d15ebdaccb8cf93d41f73a470417153d847a306057ffd0"
+        },
+        "checkpointLedgerEventId": "66e57d53-91fa-4589-a7b3-5aaf25af90a8"
+      }
+    },
+    {
+      "id": "G002",
+      "title": "Account chain + capability-aware usage monitor with cooldown",
+      "objective": "Add src/agent_lab/account_chain.py (auth_kind-branched chain: api/local secret N-rotation in-turn; oauth/cli single active profile, no in-turn key rotation) and src/agent_lab/usage_monitor.py (should_preempt = cost_ledger LOCAL budget cap / usage-header heuristic, only for usage_exposing providers; mark_exhausted sets cooldown_until only on is_credential_failure; cooldown_active gate; local fallback exempt). Mock unit tests for per-auth_kind branching, cooldown skip/expiry, proactive-only-for-usage_exposing.",
+      "status": "complete",
+      "createdAt": "2026-06-18T12:43:26.424Z",
+      "updatedAt": "2026-06-18T13:19:15.361Z",
+      "startedAt": "2026-06-18T13:13:42.551Z",
+      "completedAt": "2026-06-18T13:19:15.361Z",
+      "evidence": "G002 account_chain (auth_kind-branched: api/local in-turn rotation, oauth/cli single profile no rotation) + usage_monitor (should_preempt LOCAL budget/usage-header heuristic usage-exposing-only; mark_exhausted cooldown only on is_credential_failure; cooldown_active gate; local fallback exempt). Verified: 11 mock tests, make test-fast 1162 (no regression), ruff clean, mypy 244==baseline.",
+      "completionVerification": {
+        "schemaVersion": 1,
+        "receiptId": "4e8d237a-21b2-4060-b458-2819a7d5b722",
+        "verifiedAt": "2026-06-18T13:19:15.361Z",
+        "goalId": "G002",
+        "receiptKind": "per-goal",
+        "goalStatusBeforeCheckpoint": "active",
+        "gjcGoalMode": "aggregate",
+        "gjcObjective": "Complete the durable ultragoal plan in .gjc/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .gjc/ultragoal/ledger.jsonl as the audit trail.",
+        "qualityGateHash": "1bd870f9ef21e3a92a17400249613a5e4616054eec7b90c32c0f7d1e846ea66e",
+        "gjcGoalSnapshotHash": "dceaa1939f111af243bdb4b06da57c51e5efb62e5a6be1306d89d2038ee87f71",
+        "planGeneration": "9e698bffe0f4f4d941a91d46ff99b4bf0d6c98bd29c8cd8a8f0a64beca526dc0",
+        "basis": {
+          "planHashBeforeCheckpoint": "a906656f44dd671a54a3edcfa54b03859520eb97152c023b5dbe06ad1dbaf3f7",
+          "latestRelevantLedgerEventIdBeforeCheckpoint": "19c9b688-d990-4f17-8a45-b60f7dfcf12b",
+          "goalUpdatedAtBeforeCheckpoint": "2026-06-18T13:19:15.361Z",
+          "relevantGoalIdsBeforeCheckpoint": [
+            "G002"
+          ],
+          "requiredGoalSetHashBeforeCheckpoint": "41de586f47268d0b282e376d651922ce1944b7d2306e741608fad2f47d51f006"
+        },
+        "checkpointLedgerEventId": "906f9b89-239e-4113-976d-aa38280707ae"
+      }
+    },
+    {
+      "id": "G003",
+      "title": "Dynamic agent roster + room adapter (flag-gated)",
+      "objective": "Add src/agent_lab/agent_roster.py select_roster(): default cursor+codex+claude, substitution priority KIMI->local for empty/unavailable seats, /model override of composition + substitution priority; availability from registry is_available + non-empty account chain + not fully cooled. Wire room.run_room behind AGENT_LAB_DYNAMIC_ROOM to consult select_roster() (OFF = hardcoded current behavior). Mock tests for default composition, substitution priority, and OFF-parity named test (flag unset == [\"cursor\",\"codex\",\"claude\"]).",
+      "status": "complete",
+      "createdAt": "2026-06-18T12:43:26.424Z",
+      "updatedAt": "2026-06-18T13:41:02.502Z",
+      "startedAt": "2026-06-18T13:19:15.364Z",
+      "completedAt": "2026-06-18T13:41:02.502Z",
+      "evidence": "G003 agent_roster.py select_roster (default cursor+codex+claude, substitution KIMI->local, /model env overrides) + resolve_active_agents flag-gated seam wired into room_turn_flow (both inline sites). OFF (AGENT_LAB_DYNAMIC_ROOM unset) byte-stable; ON restricted to invokable AgentIds (kimi/local substitution live in G006). Verified: 9 tests incl. named OFF-parity, make test-fast 1171 (1162+9, room suites green), ruff clean, mypy 244==baseline.",
+      "completionVerification": {
+        "schemaVersion": 1,
+        "receiptId": "41d5e81a-cd86-4f08-9b07-686cbb6e42e6",
+        "verifiedAt": "2026-06-18T13:41:02.502Z",
+        "goalId": "G003",
+        "receiptKind": "per-goal",
+        "goalStatusBeforeCheckpoint": "active",
+        "gjcGoalMode": "aggregate",
+        "gjcObjective": "Complete the durable ultragoal plan in .gjc/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .gjc/ultragoal/ledger.jsonl as the audit trail.",
+        "qualityGateHash": "a4e3a8ad46b81a17f23b15a9e584d6177462b377b37c0096428c9d7fbd59ab5c",
+        "gjcGoalSnapshotHash": "b7696cbba0ac17d5cbaa0094c497190af9ec0e84f7acb831dde05fc897dae5c3",
+        "planGeneration": "4c1690c64ea446d934593342d6756e57a3c6080664af641d43bc450aa2f89981",
+        "basis": {
+          "planHashBeforeCheckpoint": "58dec7c8d2b9f4ea7fea10dc1113eab0756d39bf4a1004ade22096e0b71a720d",
+          "latestRelevantLedgerEventIdBeforeCheckpoint": "a9b266e9-8158-4dda-ab8a-80425e98dc55",
+          "goalUpdatedAtBeforeCheckpoint": "2026-06-18T13:41:02.502Z",
+          "relevantGoalIdsBeforeCheckpoint": [
+            "G003"
+          ],
+          "requiredGoalSetHashBeforeCheckpoint": "f7754ce6de4f3ce1c665e07b35cb8fdb9d9caf07270985e88b270745cc9b04f6"
+        },
+        "checkpointLedgerEventId": "427d3538-1f7e-49c5-b3bc-4c861e17b0be"
+      }
+    },
+    {
+      "id": "G004",
+      "title": "Role reallocation + consensus floor and solo mode",
+      "objective": "Extend consensus_gate.py: allocate_roles(agents) fill order propose->endorse->synthesize->scribe on LIVE roster ids; effective_consensus(agents) enforces floor=2; size 1 => solo mode (consensus disabled, single-agent output accepted). Reuse default_consensus_policy. Operate on live roster ids never static default names. Mock tests for 3/2/1 transitions and floor enforcement.",
+      "status": "complete",
+      "createdAt": "2026-06-18T12:43:26.424Z",
+      "updatedAt": "2026-06-18T13:46:53.921Z",
+      "startedAt": "2026-06-18T13:41:02.505Z",
+      "completedAt": "2026-06-18T13:46:53.921Z",
+      "evidence": "G004 consensus_gate.allocate_roles (propose->endorse->synthesize->scribe on LIVE roster ids; extras endorse) + effective_consensus (floor 2 for size>=2, solo at 1, none at 0; reuses default_consensus_policy). Pure additive, no change to consensus_gate_met/room flow. Verified: 9 tests (3/2/1/0 + live-id + floor), make test-fast 1180 (1171+9), ruff clean, mypy 244==baseline.",
+      "completionVerification": {
+        "schemaVersion": 1,
+        "receiptId": "08ebc263-1de5-4c6b-9be1-7345cf848e14",
+        "verifiedAt": "2026-06-18T13:46:53.921Z",
+        "goalId": "G004",
+        "receiptKind": "per-goal",
+        "goalStatusBeforeCheckpoint": "active",
+        "gjcGoalMode": "aggregate",
+        "gjcObjective": "Complete the durable ultragoal plan in .gjc/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .gjc/ultragoal/ledger.jsonl as the audit trail.",
+        "qualityGateHash": "87626c47dfe36e67475bec8fcad8dbf5ca4bbc8bd905cd312eb00850244c4278",
+        "gjcGoalSnapshotHash": "0a0101b9b9a90e589bba704f6f2ae05f82ad16fc816bb1259b1248d2472956c7",
+        "planGeneration": "f011db4049994e904695126f8d5b3fbb844d529ef58dde29b0a74452b8161254",
+        "basis": {
+          "planHashBeforeCheckpoint": "0629061d7e26bfa8dacb7dd14c13792f57d8a79bf4a6f2fef3e3dccb5658eb5e",
+          "latestRelevantLedgerEventIdBeforeCheckpoint": "14b79332-c9f1-4e12-b82e-a2f1283426f4",
+          "goalUpdatedAtBeforeCheckpoint": "2026-06-18T13:46:53.921Z",
+          "relevantGoalIdsBeforeCheckpoint": [
+            "G004"
+          ],
+          "requiredGoalSetHashBeforeCheckpoint": "c319d869acd381577db90ff7ed50f00fc344088ee26fbe1ca5605bd3c4392c0b"
+        },
+        "checkpointLedgerEventId": "786048aa-0faa-48cb-85b6-e92cc347f5f7"
+      }
+    },
+    {
+      "id": "G005",
+      "title": "Slash commands + Settings UI read-only",
+      "objective": "Add src/agent_lab/slash_commands.py + wire through app/server/routers/room.py: /login <provider>, /logout <provider>, /accounts <provider> (list/add/remove, masked via mask_secret), /model (view/switch composition + substitution priority), /usage (per-account usage + cooldown state), /agents (current roster + roles). Writes via credential_store. Reduce Settings UI credential write (patch_from_request) to read-only status (public_credentials_payload retained). Mock tests for all 6 command parses + masked output + write path.",
+      "status": "complete",
+      "createdAt": "2026-06-18T12:43:26.424Z",
+      "updatedAt": "2026-06-18T13:52:19.407Z",
+      "startedAt": "2026-06-18T13:46:53.924Z",
+      "completedAt": "2026-06-18T13:52:19.407Z",
+      "evidence": "G005 slash_commands.py (parse + dispatch for /login /logout /accounts /model /usage /agents; secrets masked via mask_secret; writes via credential_store) + POST /api/room/slash endpoint + Settings PUT read-only gate when AGENT_LAB_DYNAMIC_ROOM on (OFF-parity legacy write intact). Verified: 12 tests (6 cmds, masking, write path, settings ON/OFF), make test-fast 1192 (1180+12), ruff clean, mypy src 244==baseline. Fast-bucket cap 1200->1300 justified.",
+      "completionVerification": {
+        "schemaVersion": 1,
+        "receiptId": "40fd587b-c52d-40b2-809c-ead59ea5d05d",
+        "verifiedAt": "2026-06-18T13:52:19.407Z",
+        "goalId": "G005",
+        "receiptKind": "per-goal",
+        "goalStatusBeforeCheckpoint": "active",
+        "gjcGoalMode": "aggregate",
+        "gjcObjective": "Complete the durable ultragoal plan in .gjc/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .gjc/ultragoal/ledger.jsonl as the audit trail.",
+        "qualityGateHash": "8d461893c5b14cfa69bbac070b1edca2a4e287f19a851dada185649d6e13916a",
+        "gjcGoalSnapshotHash": "460d58db66ac4c42a9347772814d7181ecc15b4e13acb8e53b95f4590fcf8fcc",
+        "planGeneration": "e82bf7545cc79a7f1299845aaac5ed2ef8061a027206f74e2a762b7c025da87d",
+        "basis": {
+          "planHashBeforeCheckpoint": "5d9a14b5ce37d375d31e093f50c1a2090618f23317565326114a651a74492bbc",
+          "latestRelevantLedgerEventIdBeforeCheckpoint": "f44a60bb-8dae-41a1-b2a3-000ee8ad9f4d",
+          "goalUpdatedAtBeforeCheckpoint": "2026-06-18T13:52:19.407Z",
+          "relevantGoalIdsBeforeCheckpoint": [
+            "G005"
+          ],
+          "requiredGoalSetHashBeforeCheckpoint": "0ee6eeaf5085ee8faac4212dd7f51fea82354e5504a011504ebd7571e6c416a5"
+        },
+        "checkpointLedgerEventId": "d21e6032-79d8-4f0e-9228-95ee2d71fc7c"
+      }
+    },
+    {
+      "id": "G006",
+      "title": "Local fallback provider + e2e resilience",
+      "objective": "Register local (Ollama/OpenAI-compatible) provider as always-available, cooldown-exempt, lowest substitution priority; mock adapter for tests. Endpoint/model a tunable default. E2E mock test (AGENT_LAB_MOCK_AGENTS=1): 2 of 3 providers raise quota errors -> room completes a turn with >=1 agent and valid (or solo) consensus outcome; full-cloud-exhaustion -> local fallback keeps >=1 agent.",
+      "status": "complete",
+      "createdAt": "2026-06-18T12:43:26.424Z",
+      "updatedAt": "2026-06-18T14:13:24.686Z",
+      "startedAt": "2026-06-18T13:52:19.410Z",
+      "completedAt": "2026-06-18T14:13:24.686Z",
+      "evidence": "G006 local_provider.py (always-available cooldown-exempt floor; mock-safe + real OpenAI-compatible/Ollama endpoint, tunable AGENT_LAB_LOCAL_ENDPOINT/MODEL) + registry expansion (AgentId += kimi/local, AGENT_IDS stays 3 for OFF-parity, local invokable via _CALLERS/_is_ready/call branch) + agent_roster.dynamic_available_ids local floor + resolve ON includes local. E2E (mock): full cloud exhaustion -> roster ['local'] (>=1 guaranteed); 2/3 exhausted -> cloud+local; run_room completes real turns with local. Verified: 9 tests, make test-fast 1201 (1192+9, AgentId expansion no regression), ruff clean, mypy 244==baseline. Follow-ups: kimi live adapter, full AgentId-room participation breadth.",
+      "completionVerification": {
+        "schemaVersion": 1,
+        "receiptId": "935ed5e2-a54c-450b-98b1-699bfe62adc1",
+        "verifiedAt": "2026-06-18T14:13:24.686Z",
+        "goalId": "G006",
+        "receiptKind": "final-aggregate",
+        "goalStatusBeforeCheckpoint": "active",
+        "gjcGoalMode": "aggregate",
+        "gjcObjective": "Complete the durable ultragoal plan in .gjc/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .gjc/ultragoal/ledger.jsonl as the audit trail.",
+        "qualityGateHash": "7629a50b2a71301bb9f1ebb59ccd753c656148f09ec56d643190f917f26b38ae",
+        "gjcGoalSnapshotHash": "785a132f482699020ac49621fe1a231981e6b380efcfcd142c5e7062d5b1ab9e",
+        "planGeneration": "40f4d35370313e05b5114e8511ae1dd79139191bc81ab61202bb9ae6abbc217c",
+        "basis": {
+          "planHashBeforeCheckpoint": "fa6ddac19094bc472bb6ab8c31d6466c262b30dcb3d483797b276810bc4f1e59",
+          "latestRelevantLedgerEventIdBeforeCheckpoint": "9e97a785-843c-4fab-b919-619e357484aa",
+          "goalUpdatedAtBeforeCheckpoint": "2026-06-18T14:13:24.686Z",
+          "relevantGoalIdsBeforeCheckpoint": [
+            "G001",
+            "G002",
+            "G003",
+            "G004",
+            "G005",
+            "G006"
+          ],
+          "requiredGoalSetHashBeforeCheckpoint": "f870a379c3dc6a382e99acce5fe10da9a9105c3cea81acd10533ee6e11c969f4"
+        },
+        "checkpointLedgerEventId": "7664b51b-8b06-4773-8d7e-bc19f1b4dadf"
+      }
+    }
+  ],
+  "createdAt": "2026-06-18T12:43:26.424Z",
+  "updatedAt": "2026-06-18T14:13:24.686Z"
+}

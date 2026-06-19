@@ -1,0 +1,19 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.9, pytest-8.4.2, pluggy-1.5.0 -- /opt/anaconda3/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/yoonjong/Projects/agent-lab
+configfile: pyproject.toml
+plugins: anyio-4.10.0, langsmith-0.8.5
+collecting ... collected 9 items
+
+tests/test_room_context_compact.py::TestCompactCurrentTurnPins::test_latest_per_agent_kept PASSED [ 11%]
+tests/test_room_context_compact.py::TestCompactCurrentTurnPins::test_char_cap_drops_oldest PASSED [ 22%]
+tests/test_room_context_compact.py::TestCompactCurrentTurnPins::test_no_human_returns_original PASSED [ 33%]
+tests/test_room_context_compact.py::TestCompactCurrentTurnPins::test_empty PASSED [ 44%]
+tests/test_room_context_compact.py::TestPrepareRecentMessagesCompact::test_off_parity_without_flag PASSED [ 55%]
+tests/test_room_context_compact.py::TestPrepareRecentMessagesCompact::test_compact_collapses_same_agent PASSED [ 66%]
+tests/test_room_context_compact.py::TestPrepareRecentMessagesCompact::test_efficiency_mode_unchanged PASSED [ 77%]
+tests/test_room_context_compact.py::TestBuildRecentTurnsBlockNote::test_compact_dropped_note PASSED [ 88%]
+tests/test_room_context_compact.py::TestBuildRecentTurnsBlockNote::test_no_compact_no_note PASSED [100%]
+
+============================== 9 passed in 0.03s ===============================

@@ -1,0 +1,6 @@
+make test-fast — AGENT_LAB_COMMS_COMPACT token-compaction (G001/G002/G003)
+Command: make test-fast
+Result: 1312 passed, 1 skipped in ~147s
+Baseline before change: 1312 lane (fast bucket budget raised 1320->1340 in tests/test_integration_registry.py for the two new compaction suites).
+OFF-parity: AGENT_LAB_COMMS_COMPACT unset => byte-stable; all prior fast-lane tests green.
+Targeted suites: tests/test_room_context_compact.py (9), tests/test_peer_block_compact.py (6), tests/test_cost_ledger.py, tests/test_communicate_kpis.py, tests/test_dynamic_account_chain.py — 43 passed.

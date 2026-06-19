@@ -2,6 +2,7 @@ import {
   isHumanSynthesisLine,
   stripHumanSynthesisMarker,
 } from "./humanSynthesis";
+import type { TurnItem } from "./turnItems";
 
 export type AgentRole =
   | "you"
@@ -23,15 +24,6 @@ export type AgentEnvelope = {
   anchor_id?: string;
 };
 
-export type ToolRunCard = {
-  id: string;
-  tool: string;
-  args?: string;
-  output?: string;
-  startedAt?: number;
-  doneAt?: number;
-};
-
 export type ChatMessage = {
   id: string;
   role: AgentRole;
@@ -50,10 +42,7 @@ export type ChatMessage = {
   chatLineIndex?: number;
   /** When set, renders a round topology divider before this message */
   roundDivider?: number;
-  /** Live Cursor-style activity lines while the agent is running */
-  activities?: string[];
-  /** Structured tool timeline (Run log cards with duration/stdout). */
-  toolCards?: ToolRunCard[];
+  turnItems?: TurnItem[];
   /** Files sent with this user message (shown above bubble, not in composer). */
   attachments?: string[];
 };

@@ -51,7 +51,9 @@ export function SessionRailStatusChip({
         />
         <span>
           팀 상태 ·{" "}
-          <strong>{apiOk ? `${readyCount}/3 ready` : "API offline"}</strong>
+          <strong>
+            {apiOk ? `${readyCount}/${agents.length} ready` : "API offline"}
+          </strong>
         </span>
         <span className="rail-status__caret" aria-hidden>
           <svg

@@ -13,6 +13,8 @@ import {
   TranscriptIdentity,
   TranscriptMarkerStrip,
 } from "./TranscriptMessageChrome";
+import { TurnActivityGroup } from "./TurnActivityGroup";
+import type { TurnItem } from "../utils/turnItems";
 
 const AVATAR_SIZE = 24;
 
@@ -52,7 +54,7 @@ function TypingIndicator({ variant }: { variant: "bubble" | "stream" }) {
 type ReplyWaitingProps = {
   agent: AgentRole;
   label?: string;
-  activities?: string[];
+  turnItems?: readonly TurnItem[];
   /** Incremental SSE body while agent_token events arrive */
   body?: string;
 };
@@ -72,11 +74,10 @@ function useElapsedSeconds(): number {
 export function ReplyWaitingBubble({
   agent,
   label,
-  activities,
+  turnItems,
   body,
 }: ReplyWaitingProps) {
   const who = label?.trim() || agent;
-  const lines = activities?.filter(Boolean) ?? [];
   const streamText = body?.trim() ?? "";
   const streaming = streamText.length > 0;
   const elapsed = useElapsedSeconds();
@@ -93,13 +94,7 @@ export function ReplyWaitingBubble({
         </span>
       }
     >
-      {lines.length > 0 ? (
-        <ul className="agent-activity-log" aria-label="진행 중">
-          {lines.map((line, i) => (
-            <li key={`${line}-${i}`}>{line}</li>
-          ))}
-        </ul>
-      ) : null}
+      <TurnActivityGroup items={turnItems} running />
       {streaming ? (
         <div className="agent-stream-preview">
           <MessageMarkdown text={streamText} variant="transcript" />
@@ -231,6 +226,7 @@ export function ChatBubble({
           peer={message.peerChannel}
           chatLineIndex={message.chatLineIndex}
         >
+          <TurnActivityGroup items={message.turnItems} running={false} />
           {responseCard ? (
             <AgentResponseCard fields={responseCard} rawMarkdown={markdown} />
           ) : (

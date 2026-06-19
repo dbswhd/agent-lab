@@ -5,7 +5,7 @@ export type RunningAgentSlot = {
   agent: string;
   round: number;
   label: string;
-  activities?: string[];
+  activity?: string;
 };
 
 /** Live slots from typing bubbles; fallback to expected agents before first SSE. */
@@ -20,7 +20,13 @@ export function deriveRunningAgentSlots(
       agent: String(m.role),
       round: m.parallelRound ?? 1,
       label: m.label || agentLabel(String(m.role)),
-      activities: m.activities,
+      activity: [...(m.turnItems ?? [])]
+        .reverse()
+        .flatMap((item) =>
+          item.kind === "activity" || item.kind === "reasoning_summary"
+            ? [item.text]
+            : [],
+        )[0],
     }));
   }
   if (running && expectedAgents.length) {
@@ -28,7 +34,6 @@ export function deriveRunningAgentSlots(
       agent: id,
       round: 1,
       label: agentLabel(id),
-      activities: [],
     }));
   }
   return [];

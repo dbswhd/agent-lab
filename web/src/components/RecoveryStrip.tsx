@@ -20,13 +20,13 @@ type Props = {
 function severityLabel(item: RecoveryItem): string {
   switch (item.severity) {
     case "blocking_execute":
-      return "Execute blocked";
+      return "실행 차단";
     case "blocking_send":
-      return "Send blocked";
+      return "전송 차단";
     case "degraded_team":
-      return "Team degraded";
+      return "일부 기능 제한";
     case "informational":
-      return "Info";
+      return "안내";
   }
 }
 
@@ -80,7 +80,13 @@ export function RecoveryStrip({
   onRetryAction,
   onDismiss,
 }: Props) {
+  const [showAll, setShowAll] = useState(false);
+  useEffect(() => {
+    if (items.length <= 1) setShowAll(false);
+  }, [items.length]);
   if (items.length === 0 && resolvedEvents.length === 0) return null;
+
+  const visibleItems = showAll ? items : items.slice(0, 1);
 
   return (
     <section
@@ -89,9 +95,9 @@ export function RecoveryStrip({
       aria-label="복구 액션"
     >
       <header className="recovery-strip__head">
-        <strong>복구</strong>
+        <strong>{items[0]?.title ?? "정상화됨"}</strong>
         <span className="recovery-strip__count">
-          {items.length > 0 ? `${items.length}개 확인 필요` : "최근 복구 완료"}
+          {items.length > 1 ? `${items.length}개 확인 필요` : null}
         </span>
         {onDismiss ? (
           <button
@@ -101,13 +107,13 @@ export function RecoveryStrip({
             title="닫기"
             onClick={onDismiss}
           >
-            ✕
+            닫기
           </button>
         ) : null}
       </header>
       {items.length > 0 ? (
         <div className="recovery-strip__items">
-          {items.map((item) => {
+          {visibleItems.map((item) => {
             const secondaryAction = item.secondaryAction;
             const primaryBusy = busyActionId === item.primaryAction.id;
             const secondaryBusy =
@@ -121,7 +127,6 @@ export function RecoveryStrip({
                   <span className="recovery-item__badge">
                     {severityLabel(item)}
                   </span>
-                  <strong>{item.title}</strong>
                   <p>{item.reason}</p>
                   {item.details ? (
                     <details className="recovery-item__details">
@@ -157,11 +162,23 @@ export function RecoveryStrip({
               </article>
             );
           })}
+          {items.length > 1 ? (
+            <button
+              type="button"
+              className="recovery-strip__more"
+              aria-expanded={showAll}
+              onClick={() => setShowAll((value) => !value)}
+            >
+              {showAll
+                ? "나머지 상태 접기"
+                : `다른 상태 ${items.length - 1}개 보기`}
+            </button>
+          ) : null}
         </div>
       ) : null}
       {resolvedEvents.length > 0 ? (
         <div className="recovery-strip__resolved" aria-label="최근 복구 결과">
-          {resolvedEvents.slice(0, 3).map((event) => {
+          {resolvedEvents.slice(0, 1).map((event) => {
             const workEvent =
               event.kind === "oracle_fail" || event.kind === "discuss_recovery";
             const actionId: RecoveryRetryActionId =
@@ -198,3 +215,4 @@ export function RecoveryStrip({
     </section>
   );
 }
+import { useEffect, useState } from "react";

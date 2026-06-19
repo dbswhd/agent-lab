@@ -14,9 +14,7 @@ export function LiveAgentsStrip({ slots, running }: Props) {
   return (
     <div className="live-agents-strip" role="status" aria-live="polite">
       {slots.map((slot) => {
-        const activity = slot.activities?.length
-          ? slot.activities[slot.activities.length - 1]
-          : null;
+        const activity = slot.activity;
         return (
           <span
             key={`${slot.agent}-r${slot.round}`}

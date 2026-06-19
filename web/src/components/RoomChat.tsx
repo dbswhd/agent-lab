@@ -62,6 +62,7 @@ import {
   type LiveMsg,
 } from "../run/runSessionRegistry";
 import { patchTurnMessages } from "../run/runSessionSsePatch";
+import { reduceTurnItems } from "../utils/turnItems";
 import { deriveRunningAgentSlots } from "../run/runningAgents";
 import { LiveAgentsStrip } from "./LiveAgentsStrip";
 import {
@@ -214,6 +215,7 @@ import { RecoveryStrip } from "./RecoveryStrip";
 import {
   buildRecoveryItems,
   type RecoveryActionId,
+  type RecoveryFailure,
   type RecoveryItem,
 } from "../utils/recoveryItems";
 import {
@@ -247,6 +249,7 @@ const LONG_RUN_HINT_MS = Number(
 
 type Props = {
   agents: AgentOption[];
+  apiOk?: boolean;
   healthAgents?: AgentHealthRow[];
   sessionId: string | null;
   session: SessionDetail | null;
@@ -328,6 +331,7 @@ function sessionToMessages(
 
 export function RoomChat({
   agents,
+  apiOk = true,
   healthAgents = [],
   sessionId,
   session,
@@ -367,7 +371,8 @@ export function RoomChat({
   const runSessionKey = sessionId ?? liveRunSessionKey ?? PENDING_KEY;
   const { messages, running, runBusy, synthesizing, setSynthesizing } =
     useSessionRunState(runSessionKey);
-  const [error, setError] = useState<string | null>(null);
+  const [recoveryFailure, setRecoveryFailure] =
+    useState<RecoveryFailure | null>(null);
   const [planActionFocusIndex, setPlanActionFocusIndex] = useState<
     number | null
   >(null);
@@ -534,25 +539,19 @@ export function RoomChat({
     options: { value: string; label: string }[];
   } | null>(null);
   const [commandChoiceIndex, setCommandChoiceIndex] = useState(0);
-  const [commandMultiChoices, setCommandMultiChoices] = useState<
-    | {
-        command: SlashCommandRecord;
-        argsPrefix: string;
-        prompt: string;
-        current: string[];
-        options: { value: string; label: string }[];
-      }
-    | null
-  >(null);
-  const [commandScopeChoices, setCommandScopeChoices] = useState<
-    | {
-        command: SlashCommandRecord;
-        composition: string[];
-        prompt: string;
-        options: { value: string; label: string }[];
-      }
-    | null
-  >(null);
+  const [commandMultiChoices, setCommandMultiChoices] = useState<{
+    command: SlashCommandRecord;
+    argsPrefix: string;
+    prompt: string;
+    current: string[];
+    options: { value: string; label: string }[];
+  } | null>(null);
+  const [commandScopeChoices, setCommandScopeChoices] = useState<{
+    command: SlashCommandRecord;
+    composition: string[];
+    prompt: string;
+    options: { value: string; label: string }[];
+  } | null>(null);
   const [multiSelected, setMultiSelected] = useState<Set<string>>(new Set());
   useEffect(() => {
     if (!commandChoices && !commandMultiChoices && !commandScopeChoices) return;
@@ -1071,9 +1070,9 @@ export function RoomChat({
     try {
       await releaseRoomRunLock();
       setRunLockStuck(false);
-      setError(null);
+      setRecoveryFailure(null);
     } catch (e) {
-      setError(String(e));
+      setRecoveryFailure({ source: "command", message: String(e) });
     } finally {
       setReleasingLock(false);
     }
@@ -1084,6 +1083,7 @@ export function RoomChat({
     await retryAgents(sid);
     // Full session reload so the retried reply + recomputed turn status surface.
     await onSessionChange(sid);
+    setRecoveryFailure(null);
   }, [sessionId, onSessionChange]);
   const transcriptActive = true;
   const typingAgents = messages.filter(
@@ -1378,7 +1378,7 @@ export function RoomChat({
     if (sessionId !== null) return;
     setSynthesizing(false);
     setText("");
-    setError(null);
+    setRecoveryFailure(null);
     setPendingFiles([]);
   }, [sessionId, setSynthesizing]);
 
@@ -1681,7 +1681,7 @@ export function RoomChat({
       clearRunWatchdog();
       scheduleLongRunHint();
       setRunLockStuck(false);
-      setError(null);
+      setRecoveryFailure(null);
       setClarifierQuestions(null);
       let userStopped = false;
       let activeSessionId = sessionId;
@@ -1879,24 +1879,21 @@ export function RoomChat({
                   body: "",
                   typing: true,
                   parallelRound: round,
-                  activities: [],
+                  turnItems: [],
                 },
               ]);
             }
             if (t === "agent_activity" && ev.agent && ev.text) {
               const aid = String(ev.agent);
               const round = Number(ev.round ?? 1);
-              const line = String(ev.text);
               const tid = `typing-${aid}-r${round}`;
               patchTurnMessages(runKey, (m) =>
                 m.map((msg) => {
                   if (msg.id !== tid) return msg;
-                  const prev = msg.activities ?? [];
-                  const next =
-                    prev[prev.length - 1] === line
-                      ? prev
-                      : [...prev, line].slice(-12);
-                  return { ...msg, activities: next };
+                  return {
+                    ...msg,
+                    turnItems: reduceTurnItems(msg.turnItems, ev),
+                  };
                 }),
               );
             }
@@ -1920,21 +1917,13 @@ export function RoomChat({
               const aid = String(ev.agent);
               const round = Number(ev.round ?? 1);
               const tid = `typing-${aid}-r${round}`;
-              const tool = String(ev.tool ?? "tool");
-              const argsObj = ev.args as Record<string, unknown> | undefined;
-              const target =
-                typeof argsObj?.target === "string" ? argsObj.target : "";
               patchTurnMessages(runKey, (m) =>
                 m.map((msg) => {
                   if (msg.id !== tid) return msg;
-                  const cards = [...(msg.toolCards ?? [])];
-                  cards.push({
-                    id: `tool-${tool}-${Date.now()}`,
-                    tool,
-                    args: target || undefined,
-                    startedAt: Date.now(),
-                  });
-                  return { ...msg, toolCards: cards.slice(-16) };
+                  return {
+                    ...msg,
+                    turnItems: reduceTurnItems(msg.turnItems, ev),
+                  };
                 }),
               );
             }
@@ -1942,23 +1931,15 @@ export function RoomChat({
               const aid = String(ev.agent);
               const round = Number(ev.round ?? 1);
               const tid = `typing-${aid}-r${round}`;
-              const tool = String(ev.tool ?? "tool");
               const chunk = String(ev.chunk ?? "");
               if (!chunk) return;
               patchTurnMessages(runKey, (m) =>
                 m.map((msg) => {
                   if (msg.id !== tid) return msg;
-                  const cards = [...(msg.toolCards ?? [])];
-                  for (let i = cards.length - 1; i >= 0; i -= 1) {
-                    if (cards[i].tool === tool && !cards[i].doneAt) {
-                      cards[i] = {
-                        ...cards[i],
-                        output: `${cards[i].output ?? ""}${chunk}`.slice(-4000),
-                      };
-                      break;
-                    }
-                  }
-                  return { ...msg, toolCards: cards };
+                  return {
+                    ...msg,
+                    turnItems: reduceTurnItems(msg.turnItems, ev),
+                  };
                 }),
               );
             }
@@ -1966,18 +1947,13 @@ export function RoomChat({
               const aid = String(ev.agent);
               const round = Number(ev.round ?? 1);
               const tid = `typing-${aid}-r${round}`;
-              const tool = String(ev.tool ?? "tool");
               patchTurnMessages(runKey, (m) =>
                 m.map((msg) => {
                   if (msg.id !== tid) return msg;
-                  const cards = [...(msg.toolCards ?? [])];
-                  for (let i = cards.length - 1; i >= 0; i -= 1) {
-                    if (cards[i].tool === tool && !cards[i].doneAt) {
-                      cards[i] = { ...cards[i], doneAt: Date.now() };
-                      break;
-                    }
-                  }
-                  return { ...msg, toolCards: cards };
+                  return {
+                    ...msg,
+                    turnItems: reduceTurnItems(msg.turnItems, ev),
+                  };
                 }),
               );
             }
@@ -2037,8 +2013,7 @@ export function RoomChat({
                     parallelRound: round,
                     envelope,
                     envelopeParseError,
-                    activities: typing?.activities,
-                    toolCards: typing?.toolCards,
+                    turnItems: reduceTurnItems(typing?.turnItems, ev),
                   },
                 ];
               });
@@ -2048,6 +2023,17 @@ export function RoomChat({
               const round = Number(ev.round ?? 1);
               const nonParticipation = ev.non_participation === true;
               const note = typeof ev.note === "string" ? ev.note : "";
+              if (!nonParticipation) {
+                setRecoveryFailure({
+                  source: "agent",
+                  kind: "partial_turn",
+                  message:
+                    typeof ev.message === "string"
+                      ? ev.message
+                      : `${agentLabel(aid)} 응답 실패`,
+                  affectedAgentIds: [aid],
+                });
+              }
               patchTurnMessages(runKey, (m) => {
                 const tid = `typing-${aid}-r${round}`;
                 const typing = m.find((x) => x.id === tid);
@@ -2125,12 +2111,13 @@ export function RoomChat({
                 patchTurnMessages(runKey, (m) =>
                   m.map((msg) => {
                     if (msg.id !== tid) return msg;
-                    const prev = msg.activities ?? [];
-                    const next =
-                      prev[prev.length - 1] === hookLine
-                        ? prev
-                        : [...prev, hookLine].slice(-12);
-                    return { ...msg, activities: next };
+                    return {
+                      ...msg,
+                      turnItems: reduceTurnItems(msg.turnItems, {
+                        type: "agent_activity",
+                        text: hookLine,
+                      }),
+                    };
                   }),
                 );
               }
@@ -2212,6 +2199,12 @@ export function RoomChat({
               const aid = ev.agent ? String(ev.agent) : "";
               const reason = String(ev.reason ?? "agent_error");
               const detail = ev.message ? `: ${ev.message}` : "";
+              setRecoveryFailure({
+                source: "agent",
+                kind: "partial_turn",
+                message: `${reason}${detail}`,
+                affectedAgentIds: aid ? [aid] : undefined,
+              });
               patchTurnMessages(runKey, (m) => [
                 ...m,
                 {
@@ -2231,6 +2224,8 @@ export function RoomChat({
             }
             if (t === "complete" && ev.session_id) {
               activeSessionId = String(ev.session_id);
+              setRecoveryFailure(null);
+              setRunLockStuck(false);
               if (typeof ev.send_receipt === "string") {
                 lastSendReceipt = ev.send_receipt;
               }
@@ -2379,8 +2374,12 @@ export function RoomChat({
             if (t === "run_failed") {
               runFailed = true;
               const msg = String(ev.message ?? "run failed");
-              setError(msg);
-              setRunLockStuck(true);
+              setRecoveryFailure({
+                source: "run",
+                kind: "partial_turn",
+                message: msg,
+              });
+              setRunLockStuck(msg.includes("already in progress"));
               dispatchNotification(
                 {
                   tier: "P0",
@@ -2396,11 +2395,13 @@ export function RoomChat({
             if (t === "error") {
               runFailed = true;
               const msg = String(ev.message ?? "run failed");
-              setError(
-                msg.includes("already in progress")
-                  ? "이전 실행이 아직 끝나지 않았습니다. 잠시 후 다시 시도하거나 실행 잠금 해제를 눌러 주세요."
-                  : msg,
-              );
+              setRecoveryFailure({
+                source: "run",
+                kind: msg.includes("already in progress")
+                  ? "run_lock"
+                  : undefined,
+                message: msg,
+              });
               if (msg.includes("already in progress")) {
                 setRunLockStuck(true);
               }
@@ -2467,7 +2468,7 @@ export function RoomChat({
         if (runAbort.signal.aborted || msg.includes("aborted")) {
           userStopped = true;
         } else {
-          setError(msg);
+          setRecoveryFailure({ source: "transport", message: msg });
           if (
             msg.includes("already in progress") ||
             msg.includes("not ready")
@@ -2587,14 +2588,17 @@ export function RoomChat({
         runBusy: true,
         running: true,
       });
-      setError(null);
+      setRecoveryFailure(null);
       try {
         await runRoom(
           "(plan synthesis)",
           selected,
           (ev) => {
             if (String(ev.type) === "error") {
-              setError(String(ev.message ?? "plan synthesis failed"));
+              setRecoveryFailure({
+                source: "run",
+                message: String(ev.message ?? "plan synthesis failed"),
+              });
             }
           },
           {
@@ -2609,7 +2613,7 @@ export function RoomChat({
         openPlanTab();
         await onSessionChange(sessionId);
       } catch (e) {
-        setError(String(e));
+        setRecoveryFailure({ source: "transport", message: String(e) });
       } finally {
         clearRunWatchdog();
         updateSessionRun(sessionId, {
@@ -2809,12 +2813,44 @@ export function RoomChat({
         setText("");
         return;
       }
-      if (!sessionId) return;
       const parsed = rawText
         ? matchSlashCommand(rawText, slashCommands)
         : command;
       const target = parsed ?? command;
       const args = rawText ? rawText.replace(/^\/[^\s]+\s*/, "").trim() : "";
+      if (!sessionId && target.id === "model") {
+        if (args) {
+          const requested = new Set(args.split(",").map((id) => id.trim()));
+          const next = agents
+            .filter((agent) => agent.ready && requested.has(agent.id))
+            .map((agent) => agent.id);
+          if (next.length > 0) setSelected(next);
+          setText("");
+          setCommandHint(
+            next.length > 0
+              ? `첫 턴에 사용할 에이전트 ${next.length}개를 선택했습니다.`
+              : "선택 가능한 에이전트가 없습니다.",
+          );
+          return;
+        }
+        const options = agents
+          .filter((agent) => agent.ready)
+          .map((agent) => ({
+            value: agent.id,
+            label: `${agent.label} · ${agent.model || "기본 모델"}`,
+          }));
+        setCommandMultiChoices({
+          command: target,
+          argsPrefix: "",
+          prompt: "첫 턴에 참여할 에이전트와 모델",
+          current: selected,
+          options,
+        });
+        setMultiSelected(new Set(selected));
+        setText("");
+        return;
+      }
+      if (!sessionId) return;
       if (
         target.kind === "external" &&
         target.requires_human_confirm !== false
@@ -2824,12 +2860,20 @@ export function RoomChat({
       }
       await executeSlashCommand(target, args);
     },
-    [authRun, sessionId, slashCommands, executeSlashCommand, handleStop],
+    [
+      agents,
+      authRun,
+      executeSlashCommand,
+      handleStop,
+      selected,
+      sessionId,
+      slashCommands,
+    ],
   );
 
   function handleSend() {
     const msg = text.trim();
-    if (msg.startsWith("/") && sessionId) {
+    if (msg.startsWith("/")) {
       const cmd = matchSlashCommand(msg, slashCommands);
       if (cmd) {
         void runSlashCommand(cmd, msg);
@@ -2958,6 +3002,11 @@ export function RoomChat({
     if (sessionId) {
       const next = await fetchReadiness(sessionId, true);
       setReadiness(next);
+      if (next.verdict !== "blocked") {
+        setRecoveryFailure(null);
+      }
+    } else {
+      setRecoveryFailure(null);
     }
     refreshSessionMeta();
   }, [onRefreshHealth, refreshSessionMeta, sessionId]);
@@ -3020,7 +3069,10 @@ export function RoomChat({
             return;
         }
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        setRecoveryFailure({
+          source: "command",
+          message: e instanceof Error ? e.message : String(e),
+        });
       } finally {
         setRecoveryBusyAction(null);
         if (attemptId) {
@@ -3066,26 +3118,32 @@ export function RoomChat({
     [openTranscriptTab, openWorkTab],
   );
   const executeBusy = planExecute.busy;
-  const combinedError = error || planExecute.error;
+  const activeRecoveryFailure = useMemo<RecoveryFailure | null>(() => {
+    if (recoveryFailure) return recoveryFailure;
+    if (!planExecute.error) return null;
+    return { source: "execute", message: planExecute.error };
+  }, [planExecute.error, recoveryFailure]);
   const recoveryItems = useMemo(
     () =>
       buildRecoveryItems({
-        apiOk: agents.length > 0 || healthAgents.length > 0,
+        apiOk,
         agents: healthAgents,
         readiness,
-        combinedError,
+        failure: activeRecoveryFailure,
+        selectedAgentIds: selected,
         runLockStuck,
         discussRecovery,
         executions: planExecutions,
       }),
     [
-      agents.length,
-      combinedError,
+      activeRecoveryFailure,
+      apiOk,
       discussRecovery,
       healthAgents,
       planExecutions,
       readiness,
       runLockStuck,
+      selected,
     ],
   );
   useEffect(() => {
@@ -3100,6 +3158,11 @@ export function RoomChat({
       currentItems: recoveryItems,
     });
     setRecoveryResolutionEvents((current) => [event, ...current].slice(0, 3));
+    window.setTimeout(() => {
+      setRecoveryResolutionEvents((current) =>
+        current.filter((candidate) => candidate.id !== event.id),
+      );
+    }, 3000);
     setPendingRecoveryAttempt(null);
     setRecoveryCheckAttemptId(null);
     notifyRecoveryResolution(event);
@@ -3121,14 +3184,16 @@ export function RoomChat({
   const recoverySignature = useMemo(
     () =>
       [
-        ...recoveryLifecycleView.activeItems.map((i) => `${i.kind}:${i.severity}`),
+        ...recoveryLifecycleView.activeItems.map(
+          (i) => `${i.kind}:${i.severity}`,
+        ),
         ...recoveryLifecycleView.resolvedEvents.map((e) => `r:${e.id}`),
       ].join("|"),
     [recoveryLifecycleView.activeItems, recoveryLifecycleView.resolvedEvents],
   );
-  const [recoveryDismissedSig, setRecoveryDismissedSig] = useState<string | null>(
-    null,
-  );
+  const [recoveryDismissedSig, setRecoveryDismissedSig] = useState<
+    string | null
+  >(null);
   const recoveryVisible =
     recoverySignature.length > 0 && recoveryDismissedSig !== recoverySignature;
   const firstOpenBlock = useMemo<RoomObjection | null>(() => {
@@ -3496,7 +3561,7 @@ export function RoomChat({
                         key={m.id}
                         agent={m.role}
                         label={m.label}
-                        activities={m.activities}
+                        turnItems={m.turnItems}
                         body={m.body}
                       />
                     );
@@ -3517,7 +3582,6 @@ export function RoomChat({
                     key={a.id}
                     agent={a.role}
                     label={a.label}
-                    activities={[]}
                   />
                 ))}
               </div>
@@ -3537,7 +3601,7 @@ export function RoomChat({
                     agents={DEMO_PREFLIGHT_AGENTS}
                     selected={["cursor"]}
                   />
-                ) : (
+                ) : recoveryItems.length === 0 ? (
                   <>
                     <ReadinessComposerBar readiness={readiness} />
                     <ComposerPreflightBar
@@ -3545,7 +3609,7 @@ export function RoomChat({
                       selected={selected}
                     />
                   </>
-                )}
+                ) : null}
                 <div className="composer-wrap">
                   {clarifierQuestions && clarifierQuestions.length > 0 ? (
                     <div
@@ -3613,7 +3677,9 @@ export function RoomChat({
                         void handleRecoveryAction(actionId, item)
                       }
                       onRetryAction={handleRecoveryRetryAction}
-                      onDismiss={() => setRecoveryDismissedSig(recoverySignature)}
+                      onDismiss={() =>
+                        setRecoveryDismissedSig(recoverySignature)
+                      }
                     />
                   ) : null}
 
@@ -3762,6 +3828,15 @@ export function RoomChat({
                     turnHint={composerTurnHintLine}
                     locale={locale}
                     sessionId={sessionId}
+                    activeModels={selected
+                      .map((id) => agents.find((agent) => agent.id === id))
+                      .filter((agent): agent is AgentOption => Boolean(agent))}
+                    onOpenModelPicker={() => {
+                      const command = slashCommands.find(
+                        (candidate) => candidate.id === "model",
+                      );
+                      if (command) void runSlashCommand(command, command.slash);
+                    }}
                   />
 
                   {commandHint ? (
@@ -3902,7 +3977,14 @@ export function RoomChat({
                             const cmd = commandMultiChoices.command;
                             setCommandMultiChoices(null);
                             setMultiSelected(new Set());
-                            void executeSlashCommand(cmd, selected);
+                            if (!sessionId && cmd.id === "model") {
+                              setSelected(selected.split(",").filter(Boolean));
+                              setCommandHint(
+                                `첫 턴에 사용할 에이전트 ${selected ? selected.split(",").length : 0}개를 선택했습니다.`,
+                              );
+                            } else {
+                              void executeSlashCommand(cmd, selected);
+                            }
                           }}
                         >
                           적용

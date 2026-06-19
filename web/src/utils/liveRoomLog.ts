@@ -1,4 +1,5 @@
 import type { LiveMsg } from "../run/runSessionRegistry";
+import { reduceTurnItems } from "./turnItems";
 
 export type LiveRoomEvent = Record<string, unknown> & { type?: string };
 
@@ -65,8 +66,7 @@ export function replayLiveLogToMessages(
         body: "",
         typing: true,
         parallelRound: round,
-        activities: [],
-        toolCards: [],
+        turnItems: [],
       };
       typing.set(id, msg);
       out.push(msg);
@@ -84,8 +84,7 @@ export function replayLiveLogToMessages(
         body: "",
         typing: true,
         parallelRound: round,
-        activities: [],
-        toolCards: [],
+        turnItems: [],
       };
       typing.set(id, msg);
       out.push(msg);
@@ -97,55 +96,22 @@ export function replayLiveLogToMessages(
     }
 
     if (t === "agent_activity" && typeof ev.text === "string") {
-      const line = String(ev.text);
-      const prev = msg.activities ?? [];
-      msg.activities =
-        prev[prev.length - 1] === line ? prev : [...prev, line].slice(-12);
+      msg.turnItems = reduceTurnItems(msg.turnItems, ev);
       continue;
     }
 
     if (t === "tool_start") {
-      const tool = String(ev.tool ?? "tool");
-      const argsObj = ev.args as Record<string, unknown> | undefined;
-      const target = typeof argsObj?.target === "string" ? argsObj.target : "";
-      const cards = [...(msg.toolCards ?? [])];
-      cards.push({
-        id: `tool-${tool}-${cards.length}`,
-        tool,
-        args: target || undefined,
-        startedAt: Date.now(),
-      });
-      msg.toolCards = cards.slice(-16);
+      msg.turnItems = reduceTurnItems(msg.turnItems, ev);
       continue;
     }
 
     if (t === "tool_output" && typeof ev.chunk === "string" && ev.chunk) {
-      const tool = String(ev.tool ?? "tool");
-      const chunk = String(ev.chunk);
-      const cards = [...(msg.toolCards ?? [])];
-      for (let i = cards.length - 1; i >= 0; i -= 1) {
-        if (cards[i].tool === tool && !cards[i].doneAt) {
-          cards[i] = {
-            ...cards[i],
-            output: `${cards[i].output ?? ""}${chunk}`.slice(-4000),
-          };
-          break;
-        }
-      }
-      msg.toolCards = cards;
+      msg.turnItems = reduceTurnItems(msg.turnItems, ev);
       continue;
     }
 
     if (t === "tool_done") {
-      const tool = String(ev.tool ?? "tool");
-      const cards = [...(msg.toolCards ?? [])];
-      for (let i = cards.length - 1; i >= 0; i -= 1) {
-        if (cards[i].tool === tool && !cards[i].doneAt) {
-          cards[i] = { ...cards[i], doneAt: Date.now() };
-          break;
-        }
-      }
-      msg.toolCards = cards;
+      msg.turnItems = reduceTurnItems(msg.turnItems, ev);
       continue;
     }
 
@@ -163,6 +129,7 @@ export function replayLiveLogToMessages(
         body,
         envelope: ev.envelope as LiveMsg["envelope"],
         envelopeParseError: ev.envelope_parse_error === true,
+        turnItems: reduceTurnItems(msg.turnItems, ev),
       };
       if (idx >= 0) out[idx] = finalized;
       typing.delete(id);
@@ -183,6 +150,7 @@ export function replayLiveLogToMessages(
         id: `err-${aid}-r${round}-live`,
         typing: false,
         body,
+        turnItems: reduceTurnItems(msg.turnItems, ev),
       };
       if (idx >= 0) out[idx] = finalized;
       typing.delete(id);

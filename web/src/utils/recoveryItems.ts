@@ -9,6 +9,7 @@ export type RecoveryKind =
   | "auth_expired"
   | "bridge_failed"
   | "run_lock"
+  | "run_failed"
   | "partial_turn"
   | "oracle_fail"
   | "discuss_recovery";
@@ -18,6 +19,20 @@ export type RecoverySeverity =
   | "blocking_send"
   | "degraded_team"
   | "informational";
+
+export type RecoveryFailureSource =
+  | "transport"
+  | "run"
+  | "agent"
+  | "execute"
+  | "command";
+
+export type RecoveryFailure = {
+  readonly source: RecoveryFailureSource;
+  readonly message: string;
+  readonly kind?: "partial_turn" | "run_lock";
+  readonly affectedAgentIds?: readonly string[];
+};
 
 export type RecoveryActionId =
   | "open_settings"
@@ -42,6 +57,8 @@ export type RecoveryItem = {
   readonly title: string;
   readonly reason: string;
   readonly details?: string;
+  readonly source: "health" | "readiness" | "run" | "execute" | "mission";
+  readonly affectedAgentIds?: readonly string[];
   readonly primaryAction: RecoveryAction;
   readonly secondaryAction?: RecoveryAction;
 };
@@ -50,7 +67,8 @@ export type RecoveryItemsInput = {
   readonly apiOk: boolean;
   readonly agents: readonly AgentHealthRow[];
   readonly readiness: ReadinessResponse | null;
-  readonly combinedError: string | null;
+  readonly failure: RecoveryFailure | null;
+  readonly selectedAgentIds: readonly string[];
   readonly runLockStuck: boolean;
   readonly discussRecovery:
     | MissionLoopState["discuss_recovery"]
@@ -167,11 +185,36 @@ function latestOracleFailure(
   );
 }
 
-function buildRunErrorItem(error: string): RecoveryItem | null {
-  const trimmed = error.trim();
+function buildFailureItem(
+  failure: RecoveryFailure | null,
+): RecoveryItem | null {
+  if (!failure) return null;
+  const trimmed = failure.message.trim();
   if (!trimmed) return null;
   if (trimmed.includes("already in progress")) return null;
   if (textLooksAuthRelated(trimmed)) return null;
+  if (failure.kind !== "partial_turn") {
+    return {
+      kind: "run_failed",
+      severity:
+        failure.source === "execute" ? "blocking_execute" : "informational",
+      title:
+        failure.source === "execute"
+          ? "실행을 완료하지 못했습니다."
+          : "요청을 완료하지 못했습니다.",
+      reason:
+        failure.source === "transport"
+          ? "연결 상태를 확인한 뒤 다시 시도하세요."
+          : "세부 원인을 확인한 뒤 다시 시도할 수 있습니다.",
+      details: trimmed,
+      source: failure.source === "execute" ? "execute" : "run",
+      affectedAgentIds: failure.affectedAgentIds,
+      primaryAction:
+        failure.source === "execute"
+          ? { id: "open_work", label: "Work 열기" }
+          : { id: "refresh_health", label: "상태 재확인" },
+    };
+  }
   return {
     kind: "partial_turn",
     severity: "blocking_send",
@@ -179,6 +222,8 @@ function buildRunErrorItem(error: string): RecoveryItem | null {
     reason:
       "성공한 에이전트 답변은 유지됩니다. 실패 원인을 확인한 뒤 이어서 전송할 수 있습니다.",
     details: trimmed,
+    source: "run",
+    affectedAgentIds: failure.affectedAgentIds,
     primaryAction: {
       id: "retry_failed_agents",
       label: "실패한 에이전트만 재시도",
@@ -191,6 +236,10 @@ export function buildRecoveryItems(
   input: RecoveryItemsInput,
 ): readonly RecoveryItem[] {
   const items: RecoveryItem[] = [];
+  const selected = new Set(input.selectedAgentIds);
+  const relevantAgents = input.agents.filter(
+    (row) => selected.size === 0 || selected.has(row.id),
+  );
 
   if (!input.apiOk) {
     items.push({
@@ -199,25 +248,28 @@ export function buildRecoveryItems(
       title: "Agent Lab API에 연결할 수 없습니다.",
       reason:
         "세션과 에이전트 상태를 확인할 수 없어 새 턴을 시작할 수 없습니다.",
-      details: input.combinedError ?? "API(8765) 연결 상태를 확인하세요.",
+      details: input.failure?.message ?? "API(8765) 연결 상태를 확인하세요.",
+      source: "health",
       primaryAction: { id: "open_settings", label: "Settings 열기" },
       secondaryAction: { id: "refresh_health", label: "상태 재확인" },
     });
   }
 
-  for (const row of input.agents.filter(agentLooksAuthExpired)) {
+  for (const row of relevantAgents.filter(agentLooksAuthExpired)) {
     items.push({
       kind: "auth_expired",
       severity: "blocking_send",
       title: `${readableAgentName(row)} 인증이 필요합니다.`,
       reason: "이 에이전트를 포함한 Room 턴은 인증을 다시 확인해야 진행됩니다.",
       details: statusDetail(row),
+      source: "health",
+      affectedAgentIds: [row.id],
       primaryAction: authAction(row),
       secondaryAction: { id: "refresh_health", label: "상태 재확인" },
     });
   }
 
-  for (const row of failedBridgeRows(input.agents)) {
+  for (const row of failedBridgeRows(relevantAgents)) {
     items.push({
       kind: "bridge_failed",
       severity: row.ready ? "degraded_team" : "blocking_send",
@@ -226,12 +278,14 @@ export function buildRecoveryItems(
         ? "Cursor가 degraded 상태입니다. 실행 전 bridge 상태를 재확인하세요."
         : "Cursor가 준비되지 않아 Cursor 포함 턴이 막힐 수 있습니다.",
       details: statusDetail(row),
+      source: "health",
+      affectedAgentIds: [row.id],
       primaryAction: { id: "reconnect_cursor", label: "Bridge 재연결" },
       secondaryAction: { id: "open_settings", label: "Settings 열기" },
     });
   }
 
-  for (const row of failedKimiWorkBridgeRows(input.agents)) {
+  for (const row of failedKimiWorkBridgeRows(relevantAgents)) {
     items.push({
       kind: "bridge_failed",
       severity: row.ready ? "degraded_team" : "blocking_send",
@@ -240,6 +294,8 @@ export function buildRecoveryItems(
         ? "Kimi Work가 degraded 상태입니다. 실행 전 bridge 상태를 재확인하세요."
         : "Kimi Work daimon에 연결되지 않아 Kimi Work 포함 턴이 실패할 수 있습니다.",
       details: statusDetail(row),
+      source: "health",
+      affectedAgentIds: [row.id],
       primaryAction: { id: "reconnect_kimi_work", label: "Bridge 재연결" },
       secondaryAction: { id: "refresh_health", label: "상태 재확인" },
     });
@@ -251,13 +307,15 @@ export function buildRecoveryItems(
       severity: "blocking_send",
       title: "이전 실행 잠금이 남아 있습니다.",
       reason: "새 턴을 시작하기 전에 stale/orphan run lock을 해제해야 합니다.",
-      details: input.combinedError ?? "이미 실행 중이라는 응답을 받았습니다.",
+      details:
+        input.failure?.message ?? "이미 실행 중이라는 응답을 받았습니다.",
+      source: "run",
       primaryAction: { id: "release_lock", label: "실행 잠금 해제" },
       secondaryAction: { id: "refresh_health", label: "상태 재확인" },
     });
   }
 
-  const runErrorItem = buildRunErrorItem(input.combinedError ?? "");
+  const runErrorItem = buildFailureItem(input.failure);
   if (runErrorItem) items.push(runErrorItem);
 
   const oracleFailure = latestOracleFailure(input.executions);
@@ -269,6 +327,7 @@ export function buildRecoveryItems(
       reason:
         "완료로 볼 수 없습니다. Work에서 재검증 또는 repair 흐름을 선택하세요.",
       details: oracleDetail(oracleFailure),
+      source: "execute",
       primaryAction: { id: "open_work", label: "Work 열기" },
       secondaryAction: { id: "open_inbox", label: "Inbox 확인" },
     });
@@ -282,6 +341,7 @@ export function buildRecoveryItems(
       reason:
         "Verify/repair 한도에 도달했습니다. 회복 라운드로 plan을 다시 정리해야 합니다.",
       details: input.discussRecovery.reason ?? undefined,
+      source: "mission",
       primaryAction: { id: "run_discuss_recovery", label: "Recovery 실행" },
       secondaryAction: { id: "open_inbox", label: "Discuss Inbox" },
     });
@@ -301,6 +361,7 @@ export function buildRecoveryItems(
           (check) => `${check.id}: ${check.detail ?? check.next ?? "blocked"}`,
         )
         .join("\n"),
+      source: "readiness",
       primaryAction: { id: "open_settings", label: "Settings 열기" },
       secondaryAction: { id: "refresh_health", label: "상태 재확인" },
     });

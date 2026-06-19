@@ -67,6 +67,8 @@ function resolvedMessage(kind: RecoveryKind): string {
     case "bridge_failed":
     case "partial_turn":
       return "재확인 완료. Composer에서 다시 보낼 수 있습니다.";
+    case "run_failed":
+      return "상태 확인이 완료되었습니다. 요청을 다시 시도할 수 있습니다.";
     case "run_lock":
       return "잠금 해제됨. 새 턴을 시작할 수 있습니다.";
     case "oracle_fail":
@@ -85,6 +87,8 @@ function stillBlockedMessage(item: RecoveryItem): string {
       return "잠금 해제 후에도 실행 잠금이 남아 있습니다. 상태를 다시 확인하세요.";
     case "partial_turn":
       return "재확인 후에도 최근 턴 오류가 남아 있습니다. Settings 또는 composer 상태를 확인하세요.";
+    case "run_failed":
+      return "재확인 후에도 요청 오류가 남아 있습니다. 세부 원인을 확인한 뒤 다시 시도하세요.";
     case "oracle_fail":
     case "discuss_recovery":
       return "복구 액션 후에도 검증/회복 상태가 남아 있습니다. Work에서 다음 액션을 확인하세요.";

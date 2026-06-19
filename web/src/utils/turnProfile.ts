@@ -31,15 +31,15 @@ export function turnStrategyOptions(locale: "en" | "ko" = "en") {
       id: "team" as const,
       label: ko ? "팀" : "Team",
       description: ko
-        ? "3명 병렬 · R1 · plan 선택"
-        : "3 agents · R1 · optional plan",
+        ? "선택한 에이전트 병렬 · R1 · plan 선택"
+        : "Selected agents · R1 · optional plan",
     },
     {
       id: "loop" as const,
       label: ko ? "루프" : "Loop",
       description: ko
-        ? "3명 · plan 필수 · 실행/검증 게이트"
-        : "3 agents · plan required · execute/verify gates",
+        ? "선택한 에이전트 · plan 필수 · 실행/검증 게이트"
+        : "Selected agents · plan required · execute/verify gates",
     },
   ];
 }

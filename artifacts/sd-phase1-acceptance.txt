@@ -1,0 +1,14 @@
+# Phase 1 (G001) acceptance — plan_execute.py decomposition (move-only)
+## AC1 line counts
+  plan_execute.py            1578 lines
+  plan_execute_prompts.py    241 lines
+  plan_execute_status.py     266 lines
+  plan_execute_verify.py     269 lines
+  baseline plan_execute.py = 2282 lines (git HEAD)
+## AC6 constant single-home
+  '^MAX_DIFF_CHARS =' -> 1 def
+  '^MAX_VERIFY_RETRIES =' -> 1 def
+  '^PENDING_STATUS =' -> 1 def
+  '^_CANCELLABLE_EXECUTION_STATUSES =' -> 1 def
+## AC5 mypy: current=243 errors, baseline(HEAD)=243 errors -> 0 new
+## AC7 cycle: import of all 4 modules OK

@@ -1,0 +1,16 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.9, pytest-9.0.3, pluggy-1.6.0 -- /Users/yoonjong/Projects/agent-lab/.venv/bin/python
+rootdir: /Users/yoonjong/Projects/agent-lab
+configfile: pyproject.toml
+plugins: xdist-3.8.0, langsmith-0.8.5, anyio-4.13.0
+collecting ... collected 7 items
+
+tests/test_run_lock_recovery.py::test_hint_unlocked_is_releasable PASSED [ 14%]
+tests/test_run_lock_recovery.py::test_hint_locked_active_fresh_not_releasable PASSED [ 28%]
+tests/test_run_lock_recovery.py::test_hint_locked_stale_is_releasable PASSED [ 42%]
+tests/test_run_lock_recovery.py::test_hint_locked_orphan_zero_workers_is_releasable PASSED [ 57%]
+tests/test_run_lock_recovery.py::test_hint_shape_keys PASSED             [ 71%]
+tests/test_run_lock_recovery.py::test_sse_run_start_blocked_emits_run_lock_blocked_then_error PASSED [ 85%]
+tests/test_run_lock_recovery.py::test_release_lock_endpoint_still_works PASSED [100%]
+
+============================== 7 passed in 1.02s ===============================

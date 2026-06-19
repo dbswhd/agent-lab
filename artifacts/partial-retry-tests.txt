@@ -1,0 +1,28 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.9, pytest-9.0.3, pluggy-1.6.0 -- /Users/yoonjong/Projects/agent-lab/.venv/bin/python
+rootdir: /Users/yoonjong/Projects/agent-lab
+configfile: pyproject.toml
+plugins: xdist-3.8.0, langsmith-0.8.5, anyio-4.13.0
+collecting ... collected 19 items
+
+tests/test_partial_retry.py::test_is_consensus_turn[team-False] PASSED   [  5%]
+tests/test_partial_retry.py::test_is_consensus_turn[discuss-False] PASSED [ 10%]
+tests/test_partial_retry.py::test_is_consensus_turn[analyze-False] PASSED [ 15%]
+tests/test_partial_retry.py::test_is_consensus_turn[divergence-False] PASSED [ 21%]
+tests/test_partial_retry.py::test_is_consensus_turn[quick-False] PASSED  [ 26%]
+tests/test_partial_retry.py::test_is_consensus_turn[verified-True] PASSED [ 31%]
+tests/test_partial_retry.py::test_is_consensus_turn[specialist-True] PASSED [ 36%]
+tests/test_partial_retry.py::test_is_consensus_turn[loop-True] PASSED    [ 42%]
+tests/test_partial_retry.py::test_is_consensus_turn[review-True] PASSED  [ 47%]
+tests/test_partial_retry.py::test_is_consensus_turn[free-True] PASSED    [ 52%]
+tests/test_partial_retry.py::test_is_consensus_turn_loop_intent_topology PASSED [ 57%]
+tests/test_partial_retry.py::test_partial_retry_reinvokes_only_failed_and_completes PASSED [ 63%]
+tests/test_partial_retry.py::test_partial_retry_default_retries_all_failed PASSED [ 68%]
+tests/test_partial_retry.py::test_partial_retry_idempotent_noop_when_nothing_failed PASSED [ 73%]
+tests/test_partial_retry.py::test_retry_skips_already_succeeded_agent PASSED [ 78%]
+tests/test_partial_retry.py::test_retry_rejects_non_partial_turn PASSED  [ 84%]
+tests/test_partial_retry.py::test_retry_rejects_consensus_turn PASSED    [ 89%]
+tests/test_partial_retry.py::test_retried_agent_context_includes_successful_peer PASSED [ 94%]
+tests/test_partial_retry.py::test_retry_agents_endpoint PASSED           [100%]
+
+============================== 19 passed in 4.08s ==============================

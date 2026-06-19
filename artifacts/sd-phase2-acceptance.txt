@@ -1,0 +1,17 @@
+# Phase 2 (G002) acceptance — mission_loop.py decomposition (move-only)
+## AC1 line counts
+  mission_loop.py        948 lines
+  mission_notepad.py     274 lines
+  mission_advance.py     740 lines
+  baseline mission_loop.py = 1895 lines (git HEAD)
+## AC6 constant single-home (each exactly 1 def across mission_*.py)
+  MISSION_NOTEPAD_FILES -> 1 def
+  _NOTEPAD_HEADERS -> 1 def
+  _NOTEPAD_READ_ORDER -> 1 def
+  MISSION_WISDOM_INJECT_CAP -> 1 def
+  _WISDOM_SKIP_PHASES -> 1 def
+  _OPEN_EXECUTION_STATUSES -> 1 def
+  DEFAULT_MAX_REPAIR_PER_ACTION -> 1 def
+## AC5 mypy: current=243 == baseline(HEAD) 243 -> 0 new
+## migrated external import sites: mission_tick, runtime/{execute_lane,mission_lane,context}, wisdom_index, session_score, evidence_ledger, context_bundle(via runtime), scripts/mission_dogfood_{report,run}, + 5 tests
+## public FSM handlers re-exported from mission_loop (Principle 2): maybe_advance_mission, on_dry_run_complete, on_merge_confirm, on_merge_abort, on_verify_result, set_execution_phase

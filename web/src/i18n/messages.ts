@@ -163,8 +163,7 @@ const EN = {
   planApprovalPromise: "Completion promise",
   planApprovalApproveBtn: "Approve plan",
   planWorkflowPendingTitle: "Plan workflow · Approval",
-  planWorkflowPendingDetail:
-    "Review and approve plan.md in Work.",
+  planWorkflowPendingDetail: "Review and approve plan.md in Work.",
   planWorkflowPhasePending: "HUMAN PENDING",
   planWorkflowPendingOpenTasks: "Open Work · Approve",
   planWorkflowApprovedTitle: "Plan workflow · Approved",
@@ -434,8 +433,7 @@ const KO = {
   planApprovalPromise: "completion promise",
   planApprovalApproveBtn: "Plan 승인",
   planWorkflowPendingTitle: "Plan workflow · 승인",
-  planWorkflowPendingDetail:
-    "Work에서 plan.md를 확인하고 승인하세요.",
+  planWorkflowPendingDetail: "Work에서 plan.md를 확인하고 승인하세요.",
   planWorkflowPhasePending: "HUMAN PENDING",
   planWorkflowPendingOpenTasks: "Work · 승인하기",
   planWorkflowApprovedTitle: "Plan workflow · 승인됨",

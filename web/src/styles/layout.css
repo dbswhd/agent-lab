@@ -1996,7 +1996,10 @@
 }
 .first-run-agent {
   display: grid;
-  grid-template-columns: minmax(76px, 0.8fr) minmax(72px, 0.7fr) minmax(0, 1.5fr) auto auto;
+  grid-template-columns: minmax(76px, 0.8fr) minmax(72px, 0.7fr) minmax(
+      0,
+      1.5fr
+    ) auto auto;
   align-items: center;
   gap: var(--space-8);
   padding: var(--space-8) var(--space-10);
@@ -7392,7 +7395,11 @@ button.plan-doc__ref--link:hover {
   padding: var(--space-8) var(--space-10);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-hair);
-  background: color-mix(in srgb, var(--surface-card) 84%, var(--surface-sunken));
+  background: color-mix(
+    in srgb,
+    var(--surface-card) 84%,
+    var(--surface-sunken)
+  );
 }
 .recovery-resolution--resolved {
   border-color: color-mix(in srgb, var(--ok) 30%, var(--border-hair));

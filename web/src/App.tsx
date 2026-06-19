@@ -101,8 +101,8 @@ export default function App() {
     useState(() => getFirstRunOnboardingDismissed());
   const [firstRunOnboardingOpen, setFirstRunOnboardingOpen] = useState(false);
   const [firstRunSetupActive, setFirstRunSetupActive] = useState(false);
-  const [setupWorkspaceChosen, setSetupWorkspaceChosen] = useState(
-    () => Boolean(getStoredWorkspaceId("") || getStoredWorkspacePath()),
+  const [setupWorkspaceChosen, setSetupWorkspaceChosen] = useState(() =>
+    Boolean(getStoredWorkspaceId("") || getStoredWorkspacePath()),
   );
   const [bootstrapAgentIds, setBootstrapAgentIds] = useState<string[] | null>(
     null,
@@ -351,33 +351,36 @@ export default function App() {
     setFirstRunOnboardingOpen(false);
   }, []);
 
-  const handleNewSessionCreate = useCallback((params: NewSessionParams) => {
-    setStoredWorkspaceId(params.workspaceId);
-    setStoredWorkspacePath(params.workspacePath);
-    setStoredSessionTemplate(params.sessionTemplate);
-    setSetupWorkspaceChosen(true);
-    const bindings = bindingsFromAgentChoices(params.agents);
-    setStoredAgentThreadBindings(bindings);
-    setBootstrapAgentThreadBindings(bindings);
-    setBootstrapAgentIds(params.agents.map((a) => a.id));
-    setBootstrapSessionTemplate(params.sessionTemplate);
-    setBootstrapTopic(params.topic ?? null);
-    setBootstrapMissionTemplateId(params.missionTemplateId ?? null);
-    if (!firstRunOnboardingDismissed) {
-      persistFirstRunOnboardingDismissed(true);
-      setFirstRunOnboardingDismissedState(true);
-    }
-    setComposerNew(true);
-    setSelectedId(null);
-    setDetail(null);
-    setListTab("active");
-    clearLastSessionId();
-    setFirstRunSetupActive(false);
-    setFirstRunOnboardingOpen(false);
-    setNewSessionInitialTopic(null);
-    setNewSessionOpen(false);
-    setShellView("workspace");
-  }, [firstRunOnboardingDismissed]);
+  const handleNewSessionCreate = useCallback(
+    (params: NewSessionParams) => {
+      setStoredWorkspaceId(params.workspaceId);
+      setStoredWorkspacePath(params.workspacePath);
+      setStoredSessionTemplate(params.sessionTemplate);
+      setSetupWorkspaceChosen(true);
+      const bindings = bindingsFromAgentChoices(params.agents);
+      setStoredAgentThreadBindings(bindings);
+      setBootstrapAgentThreadBindings(bindings);
+      setBootstrapAgentIds(params.agents.map((a) => a.id));
+      setBootstrapSessionTemplate(params.sessionTemplate);
+      setBootstrapTopic(params.topic ?? null);
+      setBootstrapMissionTemplateId(params.missionTemplateId ?? null);
+      if (!firstRunOnboardingDismissed) {
+        persistFirstRunOnboardingDismissed(true);
+        setFirstRunOnboardingDismissedState(true);
+      }
+      setComposerNew(true);
+      setSelectedId(null);
+      setDetail(null);
+      setListTab("active");
+      clearLastSessionId();
+      setFirstRunSetupActive(false);
+      setFirstRunOnboardingOpen(false);
+      setNewSessionInitialTopic(null);
+      setNewSessionOpen(false);
+      setShellView("workspace");
+    },
+    [firstRunOnboardingDismissed],
+  );
 
   const clearBootstrapMissionTemplate = useCallback(() => {
     setBootstrapMissionTemplateId(null);

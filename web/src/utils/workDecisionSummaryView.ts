@@ -18,9 +18,7 @@ function cell(
   return { label, value: row[0], detail: row[1], state: row[2] };
 }
 
-export function workDecisionSummary(
-  draft: SummaryDraft,
-): WorkDecisionSummary {
+export function workDecisionSummary(draft: SummaryDraft): WorkDecisionSummary {
   return {
     kind: draft.kind,
     eyebrow: draft.eyebrow,

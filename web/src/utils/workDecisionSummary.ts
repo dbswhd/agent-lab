@@ -12,10 +12,11 @@ import {
   blockedWorkDecision,
   workDecisionSummary,
 } from "./workDecisionSummaryView";
-import type {
+import type { WorkDecisionSummary } from "./workDecisionTypes";
+export type {
+  WorkDecisionActionId,
   WorkDecisionSummary,
 } from "./workDecisionTypes";
-export type { WorkDecisionActionId, WorkDecisionSummary } from "./workDecisionTypes";
 
 type WorkDecisionInput = {
   readonly hasPlan: boolean;
@@ -26,7 +27,10 @@ type WorkDecisionInput = {
   readonly runtime?: RuntimeSnapshot | null;
   readonly executions: readonly PlanExecutionRecord[];
   readonly mergeChecks?: MergeChecksPayload | null;
-  readonly workHookAlert?: { readonly body: string; readonly blocked: boolean } | null;
+  readonly workHookAlert?: {
+    readonly body: string;
+    readonly blocked: boolean;
+  } | null;
   readonly roomTasks?: RoomTasksPayload | null;
 };
 
@@ -115,7 +119,8 @@ export function buildWorkDecisionSummary(
   }
 
   if (input.workHookAlert?.blocked || blockReason || runtimeBlock) {
-    const reason = input.workHookAlert?.body ?? blockReason ?? runtimeBlock ?? "";
+    const reason =
+      input.workHookAlert?.body ?? blockReason ?? runtimeBlock ?? "";
     return blockedWorkDecision({
       eyebrow: "Work blocked",
       title: "execute gate가 막혔습니다",
@@ -144,7 +149,9 @@ export function buildWorkDecisionSummary(
       "Oracle FAIL — Work에서 재검증 또는 repair 흐름을 선택하세요.";
     return blockedWorkDecision({
       eyebrow: oracleFailed ? "Verify failed" : "Merge blocked",
-      title: oracleFailed ? "검증 실패를 해결해야 합니다" : "merge check가 실패했습니다",
+      title: oracleFailed
+        ? "검증 실패를 해결해야 합니다"
+        : "merge check가 실패했습니다",
       detail: reason,
       approve: "실패 원인 수정 후 재검증",
       verified: oracleFailed ? "Oracle FAIL" : "merge check 실패",
@@ -167,14 +174,20 @@ export function buildWorkDecisionSummary(
       primaryTarget: "focus_plan_approval",
       primaryLabel: "Plan 승인 보기",
       approve: ["Plan approval", "목표와 완료 기준을 확인하세요.", "active"],
-      blocked: ["승인 대기", "승인 전 execute 전송이 잠겨 있습니다.", "blocked"],
+      blocked: [
+        "승인 대기",
+        "승인 전 execute 전송이 잠겨 있습니다.",
+        "blocked",
+      ],
       verified: ["검증 전", "승인 후 execute 결과를 검증합니다.", "idle"],
     });
   }
 
   if (active) {
     const label =
-      active.status === "review_required" ? "산출물 확인 후 승인" : "Merge 승인";
+      active.status === "review_required"
+        ? "산출물 확인 후 승인"
+        : "Merge 승인";
     return workDecisionSummary({
       kind: "approval_required",
       eyebrow: "Approval required",
@@ -225,7 +238,8 @@ export function buildWorkDecisionSummary(
       kind: "verified",
       eyebrow: "Verified",
       title: "결과가 검증됐습니다",
-      detail: latest.action_what ?? "최근 execute가 Oracle PASS로 완료됐습니다.",
+      detail:
+        latest.action_what ?? "최근 execute가 Oracle PASS로 완료됐습니다.",
       whatToApprove: "승인할 항목 없음",
       whyBlocked: "막힘 없음",
       verificationStatus: "Oracle PASS",

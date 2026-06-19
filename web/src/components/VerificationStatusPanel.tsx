@@ -117,7 +117,9 @@ export function VerificationStatusPanel({ report }: Props) {
       <div className="verification-status__head">
         <span className="verification-status__title">Verify</span>
         <span className="verification-status__meta">
-          {report?.generated_at ? ageLabel(report.generated_at) : "local report"}
+          {report?.generated_at
+            ? ageLabel(report.generated_at)
+            : "local report"}
         </span>
       </div>
       <div className="verification-status__rows">
@@ -129,7 +131,9 @@ export function VerificationStatusPanel({ report }: Props) {
               className={`verification-status__row verification-status__row--${tone}`}
             >
               <summary>
-                <span className={`dot dot--${tone === "ok" ? "ok dot--live" : "warn"}`} />
+                <span
+                  className={`dot dot--${tone === "ok" ? "ok dot--live" : "warn"}`}
+                />
                 <span className="verification-status__lane">
                   <span className="verification-status__lane-full">
                     {row.label}
@@ -138,11 +142,14 @@ export function VerificationStatusPanel({ report }: Props) {
                     {shortLaneLabel(row.lane)}
                   </span>
                 </span>
-                <span className={`badge badge--${tone === "ok" ? "ok" : tone === "fail" ? "danger" : "warn"}`}>
+                <span
+                  className={`badge badge--${tone === "ok" ? "ok" : tone === "fail" ? "danger" : "warn"}`}
+                >
                   {statusLabel(row.status)}
                 </span>
                 <span className="verification-status__summary">
-                  {ageLabel(row.finished_at)} · {durationLabel(row.duration_seconds)} · {countLabel(row)}
+                  {ageLabel(row.finished_at)} ·{" "}
+                  {durationLabel(row.duration_seconds)} · {countLabel(row)}
                 </span>
               </summary>
               <div className="verification-status__detail">
@@ -150,7 +157,9 @@ export function VerificationStatusPanel({ report }: Props) {
                 {row.marker_expression ? (
                   <span>marker: {row.marker_expression}</span>
                 ) : null}
-                {row.failure_summary ? <span>{row.failure_summary}</span> : null}
+                {row.failure_summary ? (
+                  <span>{row.failure_summary}</span>
+                ) : null}
                 {row.report_path ? <span>{row.report_path}</span> : null}
               </div>
             </details>

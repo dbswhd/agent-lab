@@ -64,7 +64,9 @@ export function onboardingSummary({
         id: "connect_agents",
         status: hasReadyAgent ? "complete" : "active",
         title: "Connect agents",
-        summary: hasReadyAgent ? `${count}/3 ready` : "연결할 agent 필요",
+        summary: hasReadyAgent
+          ? `${count}/${agents.length} ready`
+          : "연결할 agent 필요",
         why: "Room은 최소 한 에이전트가 준비되어야 plan.md를 만들 수 있습니다.",
         blockedBy: apiOk
           ? "Codex, Claude, Cursor 중 하나 이상을 연결하세요."

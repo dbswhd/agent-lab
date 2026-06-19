@@ -134,14 +134,13 @@ def test_claude_bridge_wired_in_room():
     assert "on_activity=_activity" in room_py
 
 
-def test_new_session_mission_template_picker_contract():
-    """NewSessionDialog ↔ /api/templates + apply on session bind."""
+def test_new_session_mission_template_apply_contract():
+    """NewSessionDialog now loads consolidated session-setup options; the mission-template
+    apply path survives in RoomChat (bootstrap id -> applySessionTemplate on session bind).
+    (The standalone template picker was consolidated out of NewSessionDialog/App.)"""
     ns = _read("web", "src", "components", "NewSessionDialog.tsx")
-    app = _read("web", "src", "App.tsx")
     room = _read("web", "src", "components", "RoomChat.tsx")
-    assert "fetchMissionTemplates" in ns
-    assert "missionTemplateId" in ns
-    assert "bootstrapMissionTemplateId" in app
+    assert "fetchSessionSetupOptions" in ns
     assert "applySessionTemplate" in room
     assert "bootstrapMissionTemplateId" in room
 

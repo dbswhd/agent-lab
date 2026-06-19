@@ -7,6 +7,11 @@ import { initTheme, isTauri } from "./theme";
 import { initDesktopZoom } from "./utils/desktopZoom";
 import { getLocale } from "./i18n/locale";
 
+if (import.meta.env.DEV && import.meta.env.VITE_ENABLE_REACT_DEVTOOLS === "1") {
+  void import("react-grab");
+  void import("react-scan");
+}
+
 // Design system (SSOT: ~/Downloads/Agent lab/styles/) — order matters
 import "./styles/tokens.css";
 import "./styles/base.css";

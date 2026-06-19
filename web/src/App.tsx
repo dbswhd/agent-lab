@@ -43,16 +43,10 @@ import {
   requestWorkspaceTabByIndex,
 } from "./utils/desktopShortcuts";
 import {
-  bindingsFromAgentChoices,
-  setStoredAgentThreadBindings,
-  type AgentThreadBindings,
-} from "./utils/agentThreadBindings";
-import {
   getStoredWorkspaceId,
   getStoredWorkspacePath,
   setStoredWorkspaceId,
   setStoredWorkspacePath,
-  setStoredSessionTemplate,
 } from "./utils/sessionSetup";
 import {
   clearLastSessionId,
@@ -108,15 +102,7 @@ export default function App() {
   const [bootstrapAgentIds, setBootstrapAgentIds] = useState<string[] | null>(
     null,
   );
-  const [bootstrapAgentThreadBindings, setBootstrapAgentThreadBindings] =
-    useState<AgentThreadBindings | null>(null);
-  const [bootstrapSessionTemplate, setBootstrapSessionTemplate] = useState<
-    string | null
-  >(null);
   const [bootstrapTopic, setBootstrapTopic] = useState<string | null>(null);
-  const [bootstrapMissionTemplateId, setBootstrapMissionTemplateId] = useState<
-    string | null
-  >(null);
   const [sidebarOpen, setSidebarOpenState] = useState(getSidebarOpen);
   const [sessionRailWidth, setSessionRailWidthState] =
     useState(getSessionRailWidth);
@@ -368,15 +354,11 @@ export default function App() {
     (params: NewSessionParams) => {
       setStoredWorkspaceId(params.workspaceId);
       setStoredWorkspacePath(params.workspacePath);
-      setStoredSessionTemplate(params.sessionTemplate);
       setSetupWorkspaceChosen(true);
-      const bindings = bindingsFromAgentChoices(params.agents);
-      setStoredAgentThreadBindings(bindings);
-      setBootstrapAgentThreadBindings(bindings);
-      setBootstrapAgentIds(params.agents.map((a) => a.id));
-      setBootstrapSessionTemplate(params.sessionTemplate);
+      setBootstrapAgentIds(
+        agents.filter((agent) => agent.ready).map((agent) => agent.id),
+      );
       setBootstrapTopic(params.topic ?? null);
-      setBootstrapMissionTemplateId(params.missionTemplateId ?? null);
       if (!firstRunOnboardingDismissed) {
         persistFirstRunOnboardingDismissed(true);
         setFirstRunOnboardingDismissedState(true);
@@ -392,16 +374,11 @@ export default function App() {
       setNewSessionOpen(false);
       setShellView("workspace");
     },
-    [firstRunOnboardingDismissed],
+    [agents, firstRunOnboardingDismissed],
   );
-
-  const clearBootstrapMissionTemplate = useCallback(() => {
-    setBootstrapMissionTemplateId(null);
-  }, []);
 
   const clearBootstrapAgents = useCallback(() => {
     setBootstrapAgentIds(null);
-    setBootstrapSessionTemplate(null);
     setBootstrapTopic(null);
   }, []);
 
@@ -701,6 +678,7 @@ export default function App() {
               ) : (
                 <RoomChat
                   agents={agents}
+                  apiOk={apiOk}
                   healthAgents={healthAgents}
                   sessionId={roomSessionId}
                   session={roomSessionDetail}
@@ -714,14 +692,8 @@ export default function App() {
                     reloadHealth(true).then(() => undefined)
                   }
                   bootstrapAgentIds={bootstrapAgentIds}
-                  bootstrapAgentThreadBindings={bootstrapAgentThreadBindings}
-                  bootstrapSessionTemplate={bootstrapSessionTemplate}
                   bootstrapTopic={bootstrapTopic}
-                  bootstrapMissionTemplateId={bootstrapMissionTemplateId}
                   onBootstrapAgentsApplied={clearBootstrapAgents}
-                  onBootstrapMissionTemplateApplied={
-                    clearBootstrapMissionTemplate
-                  }
                 />
               )}
             </section>
@@ -729,7 +701,6 @@ export default function App() {
         </TitlebarSlotsProvider>
         <NewSessionDialog
           open={newSessionOpen}
-          agents={agents}
           initialTopic={newSessionInitialTopic}
           onClose={() => {
             setFirstRunSetupActive(false);

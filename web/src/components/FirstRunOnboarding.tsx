@@ -215,7 +215,9 @@ export function FirstRunOnboarding({
               <span className="first-run__step-index">1</span>
               <div>
                 <strong>Connect agents</strong>
-                <span>{summary.readyAgentCount}/3 ready</span>
+                <span>
+                  {summary.readyAgentCount}/{agents.length} ready
+                </span>
               </div>
             </div>
             <div className="first-run__agents">

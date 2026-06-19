@@ -128,7 +128,9 @@ def test_agent_waiting_state_shows_activity_log_and_dots():
     layout = _read("web", "src", "styles", "layout.css")
     room = _read("web", "src", "components", "RoomChat.tsx")
 
-    assert "agent-activity-log" in bubble
+    # Activity log was refactored from an inline `agent-activity-log` list into <TurnActivityGroup>.
+    assert "TurnActivityGroup" in bubble
+    assert ".turn-activity" in layout
     assert "agent-stream-preview" in bubble
     assert "typing" in bubble
     assert ".typing span" in css

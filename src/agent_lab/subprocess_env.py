@@ -33,9 +33,11 @@ _EXACT = frozenset(
         "AGENT_LAB_SESSIONS_DIR",
         "XDG_CONFIG_HOME",
         "XDG_CACHE_HOME",
+        "KIMI_SHARE_DIR",
+        "DAIMON_CONFIG_PATH",
     }
 )
-_PREFIXES = ("AGENT_LAB_", "CLAUDE_", "CODEX_", "CURSOR_")
+_PREFIXES = ("AGENT_LAB_", "CLAUDE_", "CODEX_", "CURSOR_", "KIMI_", "DAIMON_")
 _EXCLUDE = frozenset({"ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"})
 
 

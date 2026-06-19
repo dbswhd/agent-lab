@@ -19,6 +19,7 @@ import {
   retryAgents,
   reconnectClaudeAuth,
   reconnectCursorBridge,
+  reconnectKimiWorkBridge,
   runRoom,
   runSessionCommand,
   setSessionGoal,
@@ -2994,6 +2995,10 @@ export function RoomChat({
             return;
           case "reconnect_claude":
             await reconnectClaudeAuth();
+            await refreshRecoveryReadiness();
+            return;
+          case "reconnect_kimi_work":
+            await reconnectKimiWorkBridge();
             await refreshRecoveryReadiness();
             return;
           case "release_lock":

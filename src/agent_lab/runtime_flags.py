@@ -239,6 +239,8 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
     ),
     # --- test / dev ---
     FlagDef("AGENT_LAB_MOCK_AGENTS", "test", "Mock agents, plugins, and CLI subprocesses"),
+    FlagDef("AGENT_LAB_KIMI_WORK_MODEL", "feature", "Kimi Work model id override for health label"),
+    FlagDef("KIMI_SHARE_DIR", "infra", "Kimi daimon-share directory override", mask_value=True),
     FlagDef("AGENT_LAB_MOCK_STRUCTURED_ENVELOPE", "test", "Mock structured envelope adapter output"),
     FlagDef("AGENT_LAB_MOCK_ACT_SCRIPT", "test", "Scripted mock envelope acts (JSON path)", mask_value=True),
     FlagDef("AGENT_LAB_RUN_LIVE", "test", "Enable pytest -m live suites"),

@@ -82,6 +82,22 @@ def test_cumulative_text_streamer_skips_exact_duplicate_snapshot():
     assert streamer.feed("Hello world") == []
 
 
+def test_cumulative_text_streamer_resyncs_longer_snapshot_after_prefix_drift():
+    streamer = CumulativeTextStreamer()
+    assert streamer.feed("추가") == ["추가"]
+    # Simulates corrupted buffer from an earlier append fallback.
+    streamer._buffer = "추가추가"
+    assert streamer.feed("추가 근거 수집") == [" 근거 수집"]
+    assert streamer.body == "추가 근거 수집"
+
+
+def test_cumulative_text_streamer_keeps_incremental_tail_chunks():
+    streamer = CumulativeTextStreamer()
+    assert streamer.feed("live ") == ["live "]
+    assert streamer.feed("stream") == ["stream"]
+    assert streamer.body == "live stream"
+
+
 def test_dedupe_adjacent_stream_dupes_halves_and_paragraphs():
     doubled_para = "alpha line\n\nalpha line"
     assert dedupe_adjacent_stream_dupes(doubled_para) == "alpha line"

@@ -1195,6 +1195,15 @@ export function reconnectClaudeAuth() {
   }>("/api/health/reconnect-claude", { method: "POST" });
 }
 
+export function reconnectKimiWorkBridge() {
+  return json<{
+    ok: boolean;
+    bridge: AgentHealthRow["bridge"];
+    hint?: string | null;
+    agent: AgentHealthRow;
+  }>("/api/health/reconnect-kimi-work", { method: "POST" });
+}
+
 export function fetchSessionSetupOptions() {
   return json<import("../utils/sessionSetup").SessionSetupOptions>(
     "/api/session-setup/options",

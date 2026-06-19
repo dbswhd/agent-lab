@@ -84,7 +84,8 @@ def agent_preflight_row(
     from agent_lab.agent_health import agent_health_row
 
     aid = agent_id.strip().lower()
-    if aid not in AGENT_IDS:
+    _known = set(AGENT_IDS) | {"kimi", "kimi_work", "local"}
+    if aid not in _known:
         return {
             "id": aid,
             "label": aid,
@@ -255,6 +256,20 @@ def agent_preflight_row(
         row["ready"] = True
         return row
 
+    if aid in {"kimi", "kimi_work", "local"}:
+        health = agent_health_row(aid, probe_bridge=probe_bridge)
+        row["configured"] = health.get("configured", False)
+        row["ready"] = bool(health.get("ready"))
+        row["bridge"] = health.get("bridge", row["bridge"])
+        row["hint"] = health.get("hint")
+        row["reason"] = health.get("hint") if not row["ready"] else None
+        row["detail"] = health.get("detail")
+        row["failure_code"] = health.get("failure_code")
+        row["fallback"] = health.get("fallback")
+        row["remediation"] = health.get("remediation")
+        row["degraded"] = health.get("degraded", False)
+        return row
+
     row["reason"] = "unknown agent"
     return row
 
@@ -264,7 +279,14 @@ def build_agent_preflight(
     probe_bridge: bool = True,
     probe_cli: bool = True,
 ) -> list[dict[str, Any]]:
-    return [agent_preflight_row(aid, probe_bridge=probe_bridge, probe_cli=probe_cli) for aid in AGENT_IDS]
+    ids = list(AGENT_IDS)
+    from agent_lab.agent_roster import dynamic_room_enabled
+
+    if dynamic_room_enabled():
+        for extra in ("kimi", "kimi_work", "local"):
+            if extra not in ids:
+                ids.append(extra)  # type: ignore[arg-type]
+    return [agent_preflight_row(aid, probe_bridge=probe_bridge, probe_cli=probe_cli) for aid in ids]
 
 
 def agents_not_ready(

@@ -34,6 +34,7 @@ function actionBusyLabel(actionId: RecoveryActionId): string {
   switch (actionId) {
     case "reconnect_cursor":
     case "reconnect_claude":
+    case "reconnect_kimi_work":
       return "재확인 중...";
     case "release_lock":
       return "해제 중...";

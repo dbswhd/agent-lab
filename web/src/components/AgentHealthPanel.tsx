@@ -8,6 +8,7 @@ type Props = {
   onRefresh?: () => void;
   onReconnectCursor?: () => void;
   onReconnectClaude?: () => void;
+  onReconnectKimiWork?: () => void;
   reconnecting?: boolean;
   /** Show bridge setup hint when probe_bridge=true failed for Cursor. */
   showBridgeSetupGuide?: boolean;
@@ -46,6 +47,7 @@ export function AgentHealthPanel({
   onRefresh,
   onReconnectCursor,
   onReconnectClaude,
+  onReconnectKimiWork,
   reconnecting,
   showBridgeSetupGuide,
 }: Props) {
@@ -53,11 +55,15 @@ export function AgentHealthPanel({
   const readyCount = agents.filter((a) => a.ready).length;
   const cursorRow = agents.find((a) => a.id === "cursor");
   const claudeRow = agents.find((a) => a.id === "claude");
+  const kimiWorkRow = agents.find((a) => a.id === "kimi_work");
   const showReconnect =
     Boolean(cursorRow?.configured && onReconnectCursor) &&
     (cursorRow?.bridge === "error" || !cursorRow?.ready);
   const showReconnectClaude =
     Boolean(claudeRow?.configured && onReconnectClaude) && !claudeRow?.ready;
+  const showReconnectKimiWork =
+    Boolean(kimiWorkRow?.configured && onReconnectKimiWork) &&
+    (kimiWorkRow?.bridge === "error" || !kimiWorkRow?.ready);
 
   return (
     <div
@@ -153,6 +159,16 @@ export function AgentHealthPanel({
                       className="mac-btn-secondary mac-btn-secondary--compact agent-health-row__reconnect"
                       disabled={loading || reconnecting}
                       onClick={onReconnectClaude}
+                    >
+                      {reconnecting ? "재연결…" : "재연결"}
+                    </button>
+                  ) : null}
+                  {row.id === "kimi_work" && showReconnectKimiWork ? (
+                    <button
+                      type="button"
+                      className="mac-btn-secondary mac-btn-secondary--compact agent-health-row__reconnect"
+                      disabled={loading || reconnecting}
+                      onClick={onReconnectKimiWork}
                     >
                       {reconnecting ? "재연결…" : "재연결"}
                     </button>

@@ -108,6 +108,39 @@ def reconnect_cursor_bridge(*, workspace: str | None = None) -> dict[str, Any]:
     }
 
 
+def reconnect_kimi_work_bridge() -> dict[str, Any]:
+    """Invalidate cached Kimi Work control endpoint and force headless respawn."""
+    from agent_lab.kimi_control_client import (
+        invalidate_endpoint_cache,
+        kimi_work_bridge_failure_payload,
+        probe_endpoint_ws,
+    )
+    from agent_lab.kimi_daimon_supervisor import ensure_daimon, shutdown_owned_daimon
+
+    invalidate_endpoint_cache()
+    shutdown_owned_daimon()
+    try:
+        endpoint = ensure_daimon(spawn_only=True)
+        if probe_endpoint_ws(endpoint):
+            bridge, err = "ok", None
+        else:
+            bridge, err = "error", "daimon Control WS probe 실패 — make dev 재시작 후 bridge 재연결"
+    except Exception as exc:
+        bridge, err = "error", str(exc).strip() or "Kimi Work bridge 재연결 실패"
+    row = agent_health_row("kimi_work", probe_bridge=False)
+    row["bridge"] = bridge
+    if err:
+        row["hint"] = err
+        row.update(kimi_work_bridge_failure_payload(reason=err))
+    row["ready"] = bool(row.get("configured") and bridge == "ok")
+    return {
+        "ok": bridge == "ok",
+        "bridge": bridge,
+        "hint": err,
+        "agent": row,
+    }
+
+
 def _capability_fields(agent_id: str, run_meta: dict[str, Any] | None) -> dict[str, Any]:
     from agent_lab.room_agent_capabilities import get_agent_capabilities
 
@@ -239,6 +272,27 @@ def agent_health_row(
             row["hint"] = "KIMI API 키 없음 — /login api kimi"
         return row
 
+    if aid == "kimi_work":
+        from agent_lab import kimi_work_provider
+        from agent_lab.kimi_control_client import kimi_work_bridge_failure_payload, probe_control
+
+        row["configured"] = kimi_work_provider.is_configured()
+        if not row["configured"]:
+            row["hint"] = "Kimi Work daimon-share 없음 — Kimi 앱에서 Work 로그인"
+            row["ready"] = False
+            return row
+        if probe_bridge:
+            bridge, err = probe_control()
+            row["bridge"] = bridge
+            if err:
+                row["hint"] = err
+                row.update(kimi_work_bridge_failure_payload(reason=err))
+            row["ready"] = bridge == "ok"
+        else:
+            row["bridge"] = "unknown"
+            row["ready"] = row["configured"]
+        return row
+
     if aid == "local":
         from agent_lab import local_provider
 
@@ -272,7 +326,7 @@ def build_agent_health(
     from agent_lab.agent_roster import dynamic_room_enabled
 
     if dynamic_room_enabled():
-        for extra in ("kimi", "local"):
+        for extra in ("kimi", "kimi_work", "local"):
             if extra not in ids:
                 ids.append(extra)  # type: ignore[arg-type]
     return [agent_health_row(aid, probe_bridge=probe_bridge, run_meta=run_meta) for aid in ids]

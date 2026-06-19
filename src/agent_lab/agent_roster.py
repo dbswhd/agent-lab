@@ -130,6 +130,10 @@ def dynamic_available_ids(
 
     if "kimi" not in ids and get_account_chain("kimi", now=now):
         ids.append("kimi")
+    from agent_lab import kimi_work_provider
+
+    if "kimi_work" not in ids and kimi_work_provider.is_available():
+        ids.append("kimi_work")
     if "local" not in ids:
         ids.append("local")
     return ids
@@ -162,5 +166,5 @@ def resolve_active_agents(
         session_folder=session_folder,
     )
     # Live invokable set: default cloud agents + KIMI (api substitute) + the local floor.
-    invokable = set(AGENT_IDS) | {"kimi", "local"}
+    invokable = set(AGENT_IDS) | {"kimi", "kimi_work", "local"}
     return [cast("AgentId", pid) for pid in roster if pid in invokable]

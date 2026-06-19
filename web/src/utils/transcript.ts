@@ -9,6 +9,7 @@ export type AgentRole =
   | "codex"
   | "claude"
   | "kimi"
+  | "kimi_work"
   | "local"
   | "planner"
   | "critic"
@@ -63,6 +64,7 @@ const LABELS: Record<string, string> = {
   codex: "Codex",
   claude: "Claude",
   kimi: "KIMI",
+  kimi_work: "Kimi Work",
   local: "Local",
   planner: "Planner",
   critic: "Critic",
@@ -183,6 +185,9 @@ export function parseTranscript(md: string): ChatMessage[] {
     else if (key === "cursor") role = "cursor";
     else if (key === "codex") role = "codex";
     else if (key === "claude") role = "claude";
+    else if (key === "kimi" || key === "kimi work") role = "kimi";
+    else if (key === "kimi_work") role = "kimi_work";
+    else if (key === "local") role = "local";
     messages.push({
       id: heading,
       role,
@@ -213,6 +218,7 @@ const REPLY_WAIT_ROLES = new Set<AgentRole>([
   "codex",
   "claude",
   "kimi",
+  "kimi_work",
   "local",
   "planner",
   "critic",

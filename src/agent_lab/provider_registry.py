@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-AuthKind = Literal["api", "oauth", "cli", "local"]
+AuthKind = Literal["api", "oauth", "cli", "local", "peer"]
 FallbackClass = Literal["primary", "spare", "local"]
 AccountMode = Literal["ambient", "profile_slots", "api_chain"]
 
@@ -89,6 +89,15 @@ _REGISTRY: dict[str, ProviderSpec] = {
         "spare",
         supported_auth=frozenset({"api"}),
     ),
+    "kimi_work": ProviderSpec(
+        "kimi_work",
+        "Kimi Work",
+        "peer",
+        True,
+        "spare",
+        supported_auth=frozenset({"peer"}),
+        account_mode="ambient",
+    ),
     "local": ProviderSpec(
         "local",
         "Local",
@@ -104,7 +113,7 @@ _REGISTRY: dict[str, ProviderSpec] = {
 # Default room composition stays byte-stable with the pre-dynamic behavior.
 DEFAULT_ROSTER: tuple[str, ...] = ("cursor", "codex", "claude")
 # Ordered substitution pool consulted when a default seat is unavailable.
-DEFAULT_SUBSTITUTION_PRIORITY: tuple[str, ...] = ("kimi", "local")
+DEFAULT_SUBSTITUTION_PRIORITY: tuple[str, ...] = ("kimi_work", "kimi", "local")
 
 
 def all_providers() -> list[ProviderSpec]:

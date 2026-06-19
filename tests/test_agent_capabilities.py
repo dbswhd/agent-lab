@@ -56,13 +56,10 @@ def test_cursor_tool_rules_in_bundle():
     rendered = bundle.render()
     assert agent_tool_rules("cursor")[:20] in rendered
     assert "read or search" in rendered.lower() or "read" in rendered.lower()
-    bundle = build_context_bundle(
-        "topic",
-        [],
-        "cursor",
-        permission_lines=permission_preamble({}, "cursor"),
-        permissions=normalize_cursor_permissions({}),
-    )
-    rendered = bundle.render()
-    assert agent_tool_rules("cursor")[:20] in rendered
-    assert "read or search" in rendered.lower() or "read" in rendered.lower()
+
+
+def test_permission_preamble_peer_agents_return_empty_string() -> None:
+    perms = {"_discuss_cwd": "/tmp/ws"}
+    assert permission_preamble(perms, "kimi_work") == ""
+    assert permission_preamble(perms, "kimi") == ""
+    assert permission_preamble(perms, "local") == ""

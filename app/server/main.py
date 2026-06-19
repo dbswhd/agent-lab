@@ -32,10 +32,6 @@ from agent_lab.credential_store import apply_credentials_to_env  # noqa: E402
 
 apply_credentials_to_env()
 
-from agent_lab.room_models_config import apply_default_room_models_to_env  # noqa: E402
-
-apply_default_room_models_to_env()
-
 from agent_lab.api_diagnostics import build_diagnostics_payload  # noqa: E402
 from app.server.routers import (  # noqa: E402
     agents,
@@ -77,6 +73,12 @@ def _api_startup() -> None:
     except Exception as exc:
         write_boot_line(f"auth bootstrap failed: {exc}")
     try:
+        from agent_lab.room_models_config import apply_default_room_models_to_env
+
+        apply_default_room_models_to_env()
+    except Exception as exc:
+        write_boot_line(f"default room models apply failed: {exc}")
+    try:
         payload = build_diagnostics_payload()
         write_boot_line(
             "uvicorn startup pid=%s port=%s sessions=%s" % (payload["pid"], payload["port"], payload["sessions_dir"])
@@ -109,6 +111,9 @@ def _api_startup() -> None:
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     _api_startup()
     yield
+    from agent_lab.kimi_daimon_supervisor import shutdown_owned_daimon
+
+    shutdown_owned_daimon()
 
 
 app = FastAPI(title="Agent Lab API", version="0.1.0", lifespan=lifespan)

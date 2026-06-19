@@ -12,6 +12,7 @@ type Props = {
   onRefresh?: () => void;
   onReconnectCursor?: () => void;
   onReconnectClaude?: () => void;
+  onReconnectKimiWork?: () => void;
   reconnecting?: boolean;
 };
 
@@ -28,6 +29,7 @@ export function SessionRailStatusChip({
   onRefresh,
   onReconnectCursor,
   onReconnectClaude,
+  onReconnectKimiWork,
   reconnecting,
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -78,6 +80,7 @@ export function SessionRailStatusChip({
             onRefresh={onRefresh}
             onReconnectCursor={onReconnectCursor}
             onReconnectClaude={onReconnectClaude}
+            onReconnectKimiWork={onReconnectKimiWork}
           />
           <ApiDiagnosticsBar
             apiOk={apiOk}

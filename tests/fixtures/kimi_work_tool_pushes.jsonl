@@ -1,0 +1,4 @@
+{"method":"conversations.message.snapshot","params":{"conversationKey":"probe-conv-1","parts":[{"kind":"tool-call","toolCallId":"tc-read-1","toolName":"read_file","args":"{\"path\":\"README.md\"}"}]}}
+{"method":"conversations.message.snapshot","params":{"conversationKey":"probe-conv-1","parts":[{"kind":"tool-call","toolCallId":"tc-read-1","toolName":"read_file","args":"{\"path\":\"README.md\"}"},{"kind":"tool-result","toolCallId":"tc-read-1","result":"# Agent Lab\n"}]}}
+{"method":"conversations.message.snapshot","params":{"conversationKey":"probe-conv-1","text":"Read complete.","parts":[{"kind":"tool-call","toolCallId":"tc-read-1","toolName":"read_file","args":"{\"path\":\"README.md\"}"},{"kind":"tool-result","toolCallId":"tc-read-1","result":"# Agent Lab\n"},{"kind":"text","text":"Read complete."}]}}
+{"method":"conversations.message.complete","params":{"conversationKey":"probe-conv-1","text":"Read complete."}}

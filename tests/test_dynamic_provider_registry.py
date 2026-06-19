@@ -11,7 +11,7 @@ def test_registry_catalog() -> None:
     from agent_lab import provider_registry as pr
 
     ids = set(pr.provider_ids())
-    assert {"cursor", "claude", "codex", "kimi", "local"} <= ids
+    assert {"cursor", "claude", "codex", "kimi", "kimi_work", "local"} <= ids
     # auth_kind seam
     assert pr.auth_kind("kimi") == "api"
     assert pr.auth_kind("cursor") == "api"
@@ -38,7 +38,7 @@ def test_default_roster_byte_stable() -> None:
     from agent_lab import provider_registry as pr
 
     assert pr.DEFAULT_ROSTER == ("cursor", "codex", "claude")
-    assert pr.DEFAULT_SUBSTITUTION_PRIORITY == ("kimi", "local")
+    assert pr.DEFAULT_SUBSTITUTION_PRIORITY == ("kimi_work", "kimi", "local")
 
 
 @pytest.fixture
@@ -126,6 +126,7 @@ def test_supported_auth_single_source() -> None:
         "claude": {"oauth"},
         "codex": {"oauth"},
         "kimi": {"api"},
+        "kimi_work": {"peer"},
         "local": {"local"},
     }
     for pid, methods in expected.items():

@@ -36,6 +36,29 @@ def _skip_claude_headless_probe_by_default(monkeypatch: pytest.MonkeyPatch) -> N
 
 
 @pytest.fixture(autouse=True)
+def _isolate_room_model_env() -> object:
+    """Clear room-composition env vars at setup and restore original after test.
+
+    Tests that exercise `/model` or room_models_config write
+    ``AGENT_LAB_ROOM_MODELS`` / ``AGENT_LAB_ROOM_SUBSTITUTION`` directly to
+    ``os.environ`` (production behavior). This fixture gives each test a clean
+    baseline so roster assertions don't inherit state from earlier tests.
+    """
+    import os
+
+    keys = ("AGENT_LAB_ROOM_MODELS", "AGENT_LAB_ROOM_SUBSTITUTION")
+    saved = {k: os.environ.get(k) for k in keys}
+    for k in keys:
+        os.environ.pop(k, None)
+    yield
+    for k, v in saved.items():
+        if v is None:
+            os.environ.pop(k, None)
+        else:
+            os.environ[k] = v
+
+
+@pytest.fixture(autouse=True)
 def _reset_run_control_cancel() -> None:
     """Prevent cancel flag / child registry leaking across tests."""
     from agent_lab.run_control import clear_cancel, terminate_active_children

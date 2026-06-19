@@ -9,6 +9,7 @@ from agent_lab.agent_health import (
     build_health_payload,
     reconnect_claude_auth,
     reconnect_cursor_bridge,
+    reconnect_kimi_work_bridge,
 )
 from agent_lab.agent_preflight import build_agent_preflight
 from agent_lab.readiness import build_readiness_payload
@@ -117,3 +118,8 @@ def health_reconnect_cursor() -> dict[str, Any]:
 @router.post("/health/reconnect-claude")
 def health_reconnect_claude() -> dict[str, Any]:
     return reconnect_claude_auth()
+
+
+@router.post("/health/reconnect-kimi-work")
+def health_reconnect_kimi_work() -> dict[str, Any]:
+    return reconnect_kimi_work_bridge()

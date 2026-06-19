@@ -21,6 +21,7 @@ const STREAM_ROLES = new Set<AgentRole>([
   "codex",
   "claude",
   "kimi",
+  "kimi_work",
   "local",
   "planner",
   "critic",

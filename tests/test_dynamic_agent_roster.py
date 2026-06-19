@@ -13,6 +13,7 @@ def _isolate_room_model_overrides(monkeypatch: pytest.MonkeyPatch, tmp_path: Pat
 
     monkeypatch.setattr(app_config, "config_dir", lambda: tmp_path)
     monkeypatch.delenv("AGENT_LAB_ROOM_MODELS", raising=False)
+    monkeypatch.setenv("KIMI_SHARE_DIR", str(tmp_path / "isolated-daimon-share"))
 
 
 def test_dynamic_room_flag_gate(monkeypatch: pytest.MonkeyPatch) -> None:

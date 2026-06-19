@@ -24,6 +24,7 @@ export type RecoveryActionId =
   | "refresh_health"
   | "reconnect_cursor"
   | "reconnect_claude"
+  | "reconnect_kimi_work"
   | "release_lock"
   | "retry_failed_agents"
   | "open_work"
@@ -124,6 +125,17 @@ function failedBridgeRows(agents: readonly AgentHealthRow[]): AgentHealthRow[] {
   );
 }
 
+function failedKimiWorkBridgeRows(
+  agents: readonly AgentHealthRow[],
+): AgentHealthRow[] {
+  return agents.filter(
+    (row) =>
+      row.id === "kimi_work" &&
+      row.configured &&
+      (row.bridge === "error" || row.degraded === true || !row.ready),
+  );
+}
+
 function oracleVerdict(row: PlanExecutionRecord): string {
   return String(
     row.verify_after_merge?.oracle?.verdict ??
@@ -216,6 +228,20 @@ export function buildRecoveryItems(
       details: statusDetail(row),
       primaryAction: { id: "reconnect_cursor", label: "Bridge 재연결" },
       secondaryAction: { id: "open_settings", label: "Settings 열기" },
+    });
+  }
+
+  for (const row of failedKimiWorkBridgeRows(input.agents)) {
+    items.push({
+      kind: "bridge_failed",
+      severity: row.ready ? "degraded_team" : "blocking_send",
+      title: "Kimi Work bridge 연결을 확인해야 합니다.",
+      reason: row.ready
+        ? "Kimi Work가 degraded 상태입니다. 실행 전 bridge 상태를 재확인하세요."
+        : "Kimi Work daimon에 연결되지 않아 Kimi Work 포함 턴이 실패할 수 있습니다.",
+      details: statusDetail(row),
+      primaryAction: { id: "reconnect_kimi_work", label: "Bridge 재연결" },
+      secondaryAction: { id: "refresh_health", label: "상태 재확인" },
     });
   }
 

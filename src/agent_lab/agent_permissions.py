@@ -189,3 +189,4 @@ def permission_preamble(
 
     if not perms:
         return ""
+    return ""

@@ -29,6 +29,14 @@ def chunk_text(text: str, *, chunk_size: int = 32) -> list[str]:
     return [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
 
 
+def _longest_common_prefix(a: str, b: str) -> int:
+    limit = min(len(a), len(b))
+    i = 0
+    while i < limit and a[i] == b[i]:
+        i += 1
+    return i
+
+
 class CumulativeTextStreamer:
     """Emit only new suffixes when providers send cumulative snapshots."""
 
@@ -41,14 +49,30 @@ class CumulativeTextStreamer:
         if not self._buffer:
             self._buffer = text
             return [text]
-        if len(text) > len(self._buffer) and text.startswith(self._buffer):
+        if text == self._buffer:
+            return []
+        if text.startswith(self._buffer):
             delta = text[len(self._buffer) :]
             self._buffer = text
             return [delta] if delta else []
-        if text == self._buffer:
+        if self._buffer.startswith(text) and len(text) > 1:
             return []
+        # Longer cumulative snapshot that lost prefix alignment — resync via LCP.
+        if len(text) > len(self._buffer):
+            overlap = _longest_common_prefix(self._buffer, text)
+            if overlap > 0:
+                delta = text[overlap:]
+                self._buffer = text
+                return [delta] if delta else []
+            self._buffer += text
+            return [text]
+        # Shorter incremental tail (e.g. cursor mock slices).
         self._buffer += text
         return [text]
+
+    @property
+    def body(self) -> str:
+        return self._buffer
 
     def reset(self) -> None:
         self._buffer = ""

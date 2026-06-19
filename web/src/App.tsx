@@ -7,6 +7,7 @@ import {
   fetchHealth,
   reconnectClaudeAuth,
   reconnectCursorBridge,
+  reconnectKimiWorkBridge,
   fetchSession,
   fetchSessions,
   renameSession,
@@ -240,6 +241,18 @@ export default function App() {
     setReconnecting(true);
     try {
       await reconnectClaudeAuth();
+      await reloadHealth(true);
+    } catch (e) {
+      setHealth(String(e));
+    } finally {
+      setReconnecting(false);
+    }
+  }, [reloadHealth]);
+
+  const handleReconnectKimiWork = useCallback(async () => {
+    setReconnecting(true);
+    try {
+      await reconnectKimiWorkBridge();
       await reloadHealth(true);
     } catch (e) {
       setHealth(String(e));
@@ -577,6 +590,7 @@ export default function App() {
                 onRefresh={() => void reloadHealth(true)}
                 onReconnectCursor={() => void handleReconnectCursor()}
                 onReconnectClaude={() => void handleReconnectClaude()}
+                onReconnectKimiWork={() => void handleReconnectKimiWork()}
               />
               {!apiOk && health ? (
                 <p className="chat-list-status chat-list-status--error">

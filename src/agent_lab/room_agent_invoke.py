@@ -357,6 +357,8 @@ def _call_one_agent(
 
     if aid == "cursor":
         _activity("Cursor bridge 연결 중…")
+    elif aid == "kimi_work":
+        _activity("Kimi Work bridge 연결 중…")
 
     effective_permissions = _effective_discuss_permissions(
         permissions,

@@ -7,10 +7,10 @@ from pathlib import Path
 from typing import Any, Callable, Literal
 
 from agent_lab.agents import claude_agent, codex_agent, cursor_agent
-from agent_lab import kimi_provider, local_provider
+from agent_lab import kimi_provider, kimi_work_provider, local_provider
 from agent_lab.structured_envelope_adapter import merge_structured_reply
 
-AgentId = Literal["cursor", "codex", "claude", "kimi", "local"]
+AgentId = Literal["cursor", "codex", "claude", "kimi", "kimi_work", "local"]
 
 # Default room agents (OFF-parity): the dynamic roster may add kimi/local at runtime.
 AGENT_IDS: tuple[AgentId, ...] = ("cursor", "codex", "claude")
@@ -20,6 +20,7 @@ _LABELS: dict[AgentId, str] = {
     "codex": "Codex",
     "claude": "Claude",
     "kimi": "KIMI",
+    "kimi_work": "Kimi Work",
     "local": "Local",
 }
 
@@ -49,6 +50,8 @@ def model_label(agent: AgentId) -> str:
         return local_provider.model_label()
     if agent == "kimi":
         return kimi_provider.model_label()
+    if agent == "kimi_work":
+        return kimi_work_provider.model_label()
     return ""
 
 
@@ -80,6 +83,8 @@ def _is_ready(agent: AgentId) -> bool:
         return local_provider.is_available()
     if agent == "kimi":
         return kimi_provider.is_available()
+    if agent == "kimi_work":
+        return kimi_work_provider.is_available()
     return False
 
 
@@ -220,15 +225,28 @@ def call_agent_reply(
     inbox_mcp: bool = False,
 ) -> AgentReply:
     if _mock_agents_enabled():
-        if on_activity:
-            on_activity(f"[tool · read] src/agent_lab/agents/{agent}_agent.py")
-            on_activity("[tool · grep] mock streaming")
-        text = _mock_agent_response(agent, user, scribe=scribe)
-        if on_bridge_event:
-            from agent_lab.room_sse_stream import chunk_text
+        if agent == "kimi_work" and session_folder is not None:
+            if not _is_ready(agent):
+                raise RuntimeError(f"{label(agent)} is not configured")
+            text = kimi_work_provider.respond(
+                system,
+                user,
+                permissions=permissions,
+                on_activity=on_activity,
+                on_bridge_event=on_bridge_event,
+                session_folder=session_folder,
+                request_structured_envelope=request_structured_envelope,
+            )
+        else:
+            if on_activity:
+                on_activity(f"[tool · read] src/agent_lab/agents/{agent}_agent.py")
+                on_activity("[tool · grep] mock streaming")
+            text = _mock_agent_response(agent, user, scribe=scribe)
+            if on_bridge_event:
+                from agent_lab.room_sse_stream import chunk_text
 
-            for chunk in chunk_text(text, chunk_size=24):
-                on_bridge_event("text", {"text": chunk})
+                for chunk in chunk_text(text, chunk_size=24):
+                    on_bridge_event("text", {"text": chunk})
     elif not _is_ready(agent):
         raise RuntimeError(f"{label(agent)} is not configured")
     elif agent == "cursor":
@@ -278,6 +296,16 @@ def call_agent_reply(
         text = kimi_provider.respond(
             system,
             user,
+            on_activity=on_activity,
+            on_bridge_event=on_bridge_event,
+            session_folder=session_folder,
+            request_structured_envelope=request_structured_envelope,
+        )
+    elif agent == "kimi_work":
+        text = kimi_work_provider.respond(
+            system,
+            user,
+            permissions=permissions,
             on_activity=on_activity,
             on_bridge_event=on_bridge_event,
             session_folder=session_folder,

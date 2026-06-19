@@ -152,6 +152,44 @@ _DYNAMIC_ROOM_COMMANDS: list[dict[str, Any]] = [
         "handler": "dynamic_room:agents",
     },
 ]
+
+# Pipeline (mission-loop) handles. Manual entry points for the staged
+# CLARIFY → CONSENSUS → EXECUTE pipeline that mode_router auto-routes. Names
+# follow agent-lab's own phase vocabulary (clarify/plan), not the gjc skill
+# names (deep-interview/ralplan); /clarify ≈ deep-interview, /plan ≈ ralplan.
+# Each delegates to agent_lab.slash_commands.dispatch via "pipeline:<name>".
+_PIPELINE_COMMANDS: list[dict[str, Any]] = [
+    {
+        "id": "pipeline",
+        "slash": "/pipeline",
+        "label": "파이프라인 상태",
+        "description": "/pipeline — 현재 파이프라인 단계(phase/mode) 상태 표시",
+        "scope": "session",
+        "kind": "server",
+        "agent": None,
+        "handler": "pipeline:pipeline",
+    },
+    {
+        "id": "clarify",
+        "slash": "/clarify",
+        "label": "CLARIFY 진입",
+        "description": "/clarify — 요구 명료화 단계로 진입 (deep-interview 대응)",
+        "scope": "session",
+        "kind": "server",
+        "agent": None,
+        "handler": "pipeline:clarify",
+    },
+    {
+        "id": "plan",
+        "slash": "/plan",
+        "label": "합의/플랜 진입",
+        "description": "/plan — 합의(consensus) 단계로 진입 (ralplan 대응)",
+        "scope": "session",
+        "kind": "server",
+        "agent": None,
+        "handler": "pipeline:plan",
+    },
+]
 _ACCOUNT_COMMANDS = frozenset({"login", "logout", "accounts"})
 
 
@@ -219,6 +257,17 @@ def list_commands(
     for row in _DYNAMIC_ROOM_COMMANDS:
         if dynamic_room_enabled() or row["id"] in _ACCOUNT_COMMANDS:
             commands.append({**row, "enabled": True})
+
+    from agent_lab.mission_loop import pipeline_explicitly_disabled
+
+    pipeline_off = pipeline_explicitly_disabled()
+    for row in _PIPELINE_COMMANDS:
+        # /pipeline is a read-only status view (always available); /clarify and
+        # /plan are manual stage nudges, only meaningful when the pipeline is on.
+        if row["id"] == "pipeline" or not pipeline_off:
+            commands.append({**row, "enabled": True})
+        else:
+            commands.append({**row, "enabled": False, "disabled_reason": "pipeline_disabled"})
 
     commands.extend(_plugin_as_commands(plugins, allowlist))
 
@@ -328,6 +377,13 @@ def _format_dynamic_room(name: str, res: dict[str, Any]) -> str:
     return f"/{name} 실행됨"
 
 
+def _format_pipeline(name: str, res: dict[str, Any]) -> str:
+    """Compact human-readable summary of a pipeline slash result."""
+    if name == "pipeline":
+        return f"/pipeline {res.get('pipeline', '?')} · phase={res.get('phase')} · mode={res.get('mode')}"
+    return f"/{name} → phase={res.get('phase')}"
+
+
 def execute_command(
     session_folder: Path,
     command_id: str,
@@ -363,6 +419,29 @@ def execute_command(
         result = check_session_goal(session_folder)
         _record_command_history(session_folder, {**entry, "result": result})
         return {"ok": True, "kind": "server", "result": result, "command": cmd}
+
+    if kind == "server" and str(handler or "").startswith("pipeline:"):
+        name = str(handler).split(":", 1)[1]
+        from agent_lab.slash_commands import dispatch as _slash_dispatch
+
+        text_in = str(cmd.get("slash") or f"/{name}")
+        if args:
+            text_in = f"{text_in} {args}"
+        res = _slash_dispatch(text_in, session_folder=session_folder)
+        if not res.get("ok"):
+            _record_command_history(session_folder, {**entry, "result": {"error": res.get("error")}})
+            return {"ok": False, "detail": res.get("error") or "command failed", "command": cmd}
+        summary = _format_pipeline(name, res)
+        _record_command_history(session_folder, {**entry, "result": {"summary": summary}})
+        _emit_slash_chat_line(session_folder, summary)
+        return {
+            "ok": True,
+            "kind": "server",
+            "handler": handler,
+            "text": summary,
+            "result": {**res, "summary": summary},
+            "command": cmd,
+        }
 
     if kind == "server" and str(handler or "").startswith("dynamic_room:"):
         name = str(handler).split(":", 1)[1]

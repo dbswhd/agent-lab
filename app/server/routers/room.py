@@ -566,11 +566,14 @@ def retry_room_agents(body: RetryAgentsRequest) -> dict[str, Any]:
 
 class SlashCommandRequest(BaseModel):
     text: str = Field(default="", max_length=2000)
+    session_id: str = Field(default="")
 
 
 @router.post("/room/slash")
 def room_slash_command(body: SlashCommandRequest) -> dict[str, Any]:
-    """Dispatch a /login|/logout|/accounts|/model|/usage|/agents slash command."""
+    """Dispatch a slash command (/login|/logout|/accounts|/model|/usage|/agents
+    or pipeline handles /pipeline|/clarify|/plan). Pipeline handles require session_id."""
     from agent_lab.slash_commands import dispatch
 
-    return dispatch(body.text)
+    folder = session_folder_or_404(body.session_id) if body.session_id.strip() else None
+    return dispatch(body.text, session_folder=folder)

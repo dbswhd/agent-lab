@@ -12,6 +12,8 @@ GuardKind = Literal[
     "always",
     "mission_enabled",
     "mission_define_ready",
+    "mission_define_ready_pipeline",
+    "clarity_met",
     "plan_gate_ok",
     "plan_gate_reject_under_cap",
     "plan_gate_reject_cap",
@@ -52,6 +54,27 @@ TRANSITION_TABLE: tuple[RuntimeTransition, ...] = (
         OrchestrationLane.MISSION,
         guard="mission_define_ready",
         notes="Requires verified_loop or goal ready (mission_define_ready)",
+    ),
+    # Pipeline (AGENT_LAB_PIPELINE) bootstrap: enable_mission_loop routes
+    # MISSION_DEFINE → CLARIFY first; legacy (pipeline off) goes straight to DISCUSS.
+    RuntimeTransition(
+        RuntimeEvent.MISSION_ENABLE,
+        _W({"MISSION_DEFINE"}),
+        "CLARIFY",
+        "agent_lab.mission_loop:enable_mission_loop",
+        OrchestrationLane.MISSION,
+        guard="mission_define_ready_pipeline",
+        notes="Pipeline on: enter CLARIFY before DISCUSS (pipeline_enabled)",
+    ),
+    # CLARIFY → DISCUSS once clarity threshold is met (maybe_advance_mission).
+    RuntimeTransition(
+        RuntimeEvent.MISSION_ADVANCE,
+        _W({"CLARIFY"}),
+        "DISCUSS",
+        "agent_lab.mission_loop:maybe_advance_mission",
+        OrchestrationLane.MISSION,
+        guard="clarity_met",
+        notes="CLARIFY clarity_threshold_met → DISCUSS; else holds (clarity_pending)",
     ),
     # --- Discuss → plan gate ---
     RuntimeTransition(

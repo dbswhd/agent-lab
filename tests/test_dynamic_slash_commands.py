@@ -43,7 +43,8 @@ def test_parse_command() -> None:
 def test_all_six_commands_dispatch(cfg: Path) -> None:
     from agent_lab.slash_commands import SLASH_COMMANDS, dispatch
 
-    assert set(SLASH_COMMANDS) == {"login", "logout", "accounts", "model", "usage", "agents"}
+    # Dynamic-room commands (pipeline handles pipeline/clarify/plan are a separate category).
+    assert {"login", "logout", "accounts", "model", "usage", "agents"}.issubset(set(SLASH_COMMANDS))
     for cmd in ("model", "usage", "agents"):
         res = dispatch(f"/{cmd}")
         assert res["ok"] is True and res["command"] == cmd

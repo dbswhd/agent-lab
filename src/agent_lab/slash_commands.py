@@ -21,7 +21,19 @@ from agent_lab.credential_store import (
     set_provider_accounts,
 )
 
-SLASH_COMMANDS: tuple[str, ...] = ("login", "logout", "accounts", "model", "usage", "agents")
+SLASH_COMMANDS: tuple[str, ...] = (
+    "login",
+    "logout",
+    "accounts",
+    "model",
+    "usage",
+    "agents",
+    "pipeline",
+    "clarify",
+    "plan",
+)
+# Handlers that need the session folder (mutate/read run.json).
+_SESSION_HANDLERS: frozenset[str] = frozenset({"model", "pipeline", "clarify", "plan"})
 
 
 def parse_command(text: str) -> tuple[str, list[str]] | None:
@@ -399,6 +411,61 @@ def _agents(args: list[str]) -> dict[str, Any]:
     return {"ok": True, "command": "agents", "roster": roster, "roles": allocate_roles(roster)}
 
 
+def _set_mission_phase(session_folder: Path, command: str, target_phase: str) -> dict[str, Any]:
+    from agent_lab.mission_loop import get_mission_loop
+    from agent_lab.run_meta import patch_run_meta, read_run_meta
+
+    def _set(run: dict[str, Any]) -> dict[str, Any]:
+        ml = get_mission_loop(run)
+        ml["phase"] = target_phase
+        run["mission_loop"] = ml
+        return run
+
+    patch_run_meta(session_folder, _set)
+    run = read_run_meta(session_folder)
+    phase = str(get_mission_loop(run).get("phase") or "")
+    return {"ok": True, "command": command, "phase": phase}
+
+
+def _pipeline(args: list[str], *, session_folder: Path | None = None) -> dict[str, Any]:
+    """/pipeline — show current pipeline stage (phase + auto-routed mode).
+
+    The pipeline is always on (AGENT_LAB_PIPELINE, default ON); this is a
+    read-only status view. Global opt-out is the AGENT_LAB_PIPELINE=0 env flag.
+    """
+    if session_folder is None:
+        return _err("pipeline", "no active session")
+    from agent_lab.mission_loop import pipeline_enabled
+    from agent_lab.mode_router import select_mode
+    from agent_lab.run_meta import read_run_meta
+
+    run = read_run_meta(session_folder)
+    ml = run.get("mission_loop") if isinstance(run, dict) else {}
+    phase = str((ml or {}).get("phase") or "MISSION_DEFINE")
+    mode = select_mode(run) if isinstance(run, dict) else None
+    return {
+        "ok": True,
+        "command": "pipeline",
+        "pipeline": "on" if pipeline_enabled() else "off",
+        "phase": phase,
+        "mode": mode,
+    }
+
+
+def _clarify(args: list[str], *, session_folder: Path | None = None) -> dict[str, Any]:
+    """/clarify — manually enter the CLARIFY stage (deep-interview analog)."""
+    if session_folder is None:
+        return _err("clarify", "no active session")
+    return _set_mission_phase(session_folder, "clarify", "CLARIFY")
+
+
+def _plan(args: list[str], *, session_folder: Path | None = None) -> dict[str, Any]:
+    """/plan — manually enter the consensus/plan stage (ralplan analog)."""
+    if session_folder is None:
+        return _err("plan", "no active session")
+    return _set_mission_phase(session_folder, "plan", "DISCUSS")
+
+
 _HANDLERS: dict[str, Callable[..., dict[str, Any]]] = {
     "login": _login,
     "logout": _logout,
@@ -406,6 +473,9 @@ _HANDLERS: dict[str, Callable[..., dict[str, Any]]] = {
     "model": _model,
     "usage": _usage,
     "agents": _agents,
+    "pipeline": _pipeline,
+    "clarify": _clarify,
+    "plan": _plan,
 }
 
 
@@ -417,6 +487,6 @@ def dispatch(text: str, *, session_folder: Path | None = None) -> dict[str, Any]
     handler = _HANDLERS.get(cmd)
     if handler is None:
         return _err(cmd, "unknown command")
-    if cmd == "model":
-        return _model(args, session_folder=session_folder)
+    if cmd in _SESSION_HANDLERS:
+        return handler(args, session_folder=session_folder)
     return handler(args)

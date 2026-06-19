@@ -195,10 +195,20 @@ def maybe_advance_mission(
 
         if not pipeline_enabled():
             return {"skipped": True, "reason": "pipeline_disabled", "phase": phase}
-        from agent_lab.clarity import clarity_threshold_met
+        from agent_lab.clarity import clarity_threshold_met, ensure_clarify_questions, extract_established_facts
 
+        # Harvest any answered clarifier Q&A into durable facts (injected into DISCUSS/plan).
+        extract_established_facts(folder)
         if not clarity_threshold_met(run):
-            return {"skipped": True, "reason": "clarity_pending", "phase": "CLARIFY"}
+            # Real question loop: surface dimension-targeted clarifying questions for the human.
+            interview = ensure_clarify_questions(folder)
+            pending_questions = (interview or {}).get("questions") if isinstance(interview, dict) else None
+            return {
+                "skipped": True,
+                "reason": "clarity_pending",
+                "phase": "CLARIFY",
+                "questions": pending_questions,
+            }
 
         def _clarify_to_discuss(run_in: dict[str, Any]) -> dict[str, Any]:
             m = get_mission_loop(run_in)

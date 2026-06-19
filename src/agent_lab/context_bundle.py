@@ -50,6 +50,23 @@ from agent_lab.reply_policy import (
 )
 from agent_lab.runtime.policy import PolicyEngine
 
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _format_clarity_facts(run_meta: dict[str, Any] | None) -> str:
+    """Confirmed CLARIFY facts → constraints injection (deep-interview established_facts analog)."""
+    if not isinstance(run_meta, dict):
+        return ""
+    from agent_lab.clarity import format_facts_block
+
+    return format_facts_block(run_meta)
+
+
 ARTIFACT_ONLY_RECENT_MAX_CHARS = 1200
 
 
@@ -243,6 +260,9 @@ def build_slim_consensus_bundle(
     )
     if session_guidance.strip():
         constraints = f"{constraints}\n\n{session_guidance.strip()}"
+    clarity_facts_block = _format_clarity_facts(run_meta)
+    if clarity_facts_block.strip():
+        constraints = f"{constraints}\n\n{clarity_facts_block.strip()}"
     constraints = _append_mission_track_c_blocks(constraints, run_meta=run_meta, plan_md=plan_md)
     resume_block = build_agent_thread_resume_block(agent, run_meta)
     if resume_block.strip():
@@ -325,7 +345,7 @@ def build_slim_consensus_bundle(
         "bridge": 0,
         "recent": len(recent_block),
         "peer": 0,
-        "guidance": len(guidance_block),
+        "guidance_block": len(guidance_block),
         "connect_hint": len(connect_hint),
         "claude_tools": len(tool_rules),
         "follow_up": len(follow_up),
@@ -462,7 +482,10 @@ def build_context_bundle(
     """Build layered context for one agent call (discuss / plan agent rounds)."""
     from agent_lab.context_layers import should_use_mission_slim_bundle
 
-    if should_use_mission_slim_bundle(run_meta) and not (slim_context and efficiency_mode):
+    compact = _env_bool("AGENT_LAB_COMMS_COMPACT") and str(
+        (run_meta or {}).get("turn_profile") or ""
+    ).strip().lower() not in {"divergence", "발산"}
+    if should_use_mission_slim_bundle(run_meta) and not (slim_context and efficiency_mode) and not compact:
         slim_context = True
         efficiency_mode = True
     if slim_context and efficiency_mode:
@@ -496,17 +519,18 @@ def build_context_bundle(
     artifact_only = _artifact_only_context(run_meta, agent, parallel_round)
 
     eff = efficiency_limits() if efficiency_mode else None
-    pin_before = len(pinned_current_turn_messages(messages)) if efficiency_mode else 0
+    pin_before = len(pinned_current_turn_messages(messages))
     trimmed, turns_omitted, chars_omitted, pinned_count = prepare_recent_messages(
-        messages, efficiency_mode=efficiency_mode
+        messages, efficiency_mode=efficiency_mode, compact=compact
     )
     pin_capped = efficiency_mode and pinned_count < pin_before
+    compact_dropped = (not efficiency_mode) and pinned_count < pin_before
 
     peer_msgs = collect_peer_messages(messages, agent, parallel_round)
     if artifact_only:
         recent_msgs, peer_deduped = [], 0
     else:
-        recent_msgs, peer_deduped = dedupe_peer_from_recent(trimmed, peer_msgs)
+        recent_msgs, peer_deduped = dedupe_peer_from_recent(trimmed, peer_msgs, compact=compact)
 
     agreed = extract_agreed_bullets(plan_md)
     open_bullets = extract_open_bullets(plan_md)
@@ -531,6 +555,9 @@ def build_context_bundle(
     )
     if session_guidance.strip():
         constraints = f"{constraints}\n\n{session_guidance.strip()}"
+    clarity_facts_block = _format_clarity_facts(run_meta)
+    if clarity_facts_block.strip():
+        constraints = f"{constraints}\n\n{clarity_facts_block.strip()}"
     constraints = _append_mission_track_c_blocks(constraints, run_meta=run_meta, plan_md=plan_md)
     constraints = _append_wisdom_search_block(
         constraints,
@@ -597,9 +624,10 @@ def build_context_bundle(
             turns_omitted=turns_omitted,
             chars_omitted=chars_omitted,
             peer_deduped=peer_deduped,
+            compact_dropped=compact_dropped,
             numbered=limits.numbered_context,
         )
-        peer_block = format_peer_block(peer_msgs)
+        peer_block = format_peer_block(peer_msgs, compact=compact)
 
     connect_hint = AGENT_CONNECT_HINT.get(agent, "").strip()
     profile = str((run_meta or {}).get("turn_profile") or "").strip().lower()
@@ -698,7 +726,7 @@ def build_context_bundle(
         "bridge": len(bridge_block),
         "recent": len(recent_block),
         "peer": len(peer_block),
-        "guidance": len(guidance_block),
+        "guidance_block": len(guidance_block),
         "connect_hint": len(connect_hint),
         "claude_tools": len(tool_rules),
         "follow_up": len(follow_up),

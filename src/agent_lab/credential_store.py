@@ -40,23 +40,22 @@ def _derive_oauth_only() -> frozenset[ProviderId]:
 # Room Claude/Codex use CLI OAuth only — API keys in Settings are ignored.
 OAUTH_ONLY_PROVIDERS: frozenset[ProviderId] = _derive_oauth_only()
 
-_PROVIDER_ENV: dict[ProviderId, str] = {
+_PROVIDER_ENV: dict[str, str] = {
     "cursor": "CURSOR_API_KEY",
     "claude": "ANTHROPIC_API_KEY",
     "codex": "OPENAI_API_KEY",
 }
-
-_PROVIDER_FALLBACK_ENV: dict[ProviderId, str] = {
+_PROVIDER_FALLBACK_ENV: dict[str, str] = {
     "cursor": "CURSOR_API_KEY_FALLBACK",
     "claude": "ANTHROPIC_API_KEY_FALLBACK",
     "codex": "OPENAI_API_KEY_FALLBACK",
 }
-
-_PROVIDER_LABELS: dict[ProviderId, str] = {
+_PROVIDER_LABELS: dict[str, str] = {
     "cursor": "Cursor",
     "claude": "Claude",
     "codex": "Codex",
 }
+
 
 _CREDENTIAL_FAILURE_PATTERNS = (
     r"\b401\b",

@@ -7,7 +7,7 @@ import {
   type AgentHealthRow,
   type SlashCommandRecord,
 } from "../api/client";
-import { AgentCredentialsPanel } from "./AgentCredentialsPanel";
+import { ProviderStatusPanel } from "./ProviderStatusPanel";
 import { CodexProxyPanel } from "./CodexProxyPanel";
 import { AgentSessionSettings } from "./AgentSessionSettings";
 import { ApiDiagnosticsBar } from "./ApiDiagnosticsBar";
@@ -308,13 +308,13 @@ export function SettingsPage({
           <div className="settings-section__head">
             <h2 className="settings-section__title">
               <SettingsSectionIcon name="key" />
-              API 키
+              계정 연결
             </h2>
             <span className="settings-section__sub">
-              메인 · 서브 계정 · ~/.agent-lab/credentials.toml
+              보기 전용 · 변경은 Transcript slash 명령에서
             </span>
           </div>
-          <AgentCredentialsPanel />
+          <ProviderStatusPanel />
           <CodexProxyPanel />
         </section>
 

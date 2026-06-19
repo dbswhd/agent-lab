@@ -29,25 +29,28 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
 def test_codex_oauth_probe_api(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     import agent_lab.codex_oauth as co
 
-    client.post(
+    capture = client.post(
         "/api/settings/codex-oauth/capture",
         json={"slot": "primary", "label": "메인"},
     )
+    assert capture.json()["read_only"] is True
     monkeypatch.setattr(co, "live_login_status", lambda: (True, "logged in"))
 
     res = client.post("/api/settings/codex-oauth/probe")
     assert res.status_code == 200
     body = res.json()
-    assert body["probe_ok"] is True
-    assert body["profiles"][0]["slot"] == "primary"
+    assert body["probe_ok"] is False
+    assert body["profiles"] == []
 
 
-def test_codex_oauth_capture_api(client: TestClient) -> None:
+def test_codex_oauth_capture_api_is_readonly(client: TestClient) -> None:
+    before = client.get("/api/settings/codex-oauth").json()
     res = client.post(
         "/api/settings/codex-oauth/capture",
         json={"slot": "primary", "label": "메인"},
     )
     assert res.status_code == 200
     body = res.json()
-    assert body["has_primary"] is True
-    assert body["primary_label"] == "메인"
+    assert body["read_only"] is True
+    for field in ("has_primary", "has_fallback", "primary_label", "fallback_label"):
+        assert body[field] == before[field]

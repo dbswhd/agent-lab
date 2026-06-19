@@ -141,7 +141,18 @@ def continue_room_round(
     """Append a user turn + parallel agent replies to an existing session."""
     if not folder.is_dir():
         raise FileNotFoundError(f"session not found: {folder}")
-    topic = (folder / "topic.txt").read_text(encoding="utf-8").strip()
+    topic_file = folder / "topic.txt"
+    if topic_file.is_file():
+        topic = topic_file.read_text(encoding="utf-8").strip()
+    else:
+        # Self-heal sessions created without a topic (e.g. a stub run.json with no
+        # topic.txt/chat.jsonl): adopt this turn's message as the session topic so a
+        # new turn never hard-crashes with FileNotFoundError ("Error: run failed").
+        topic = user_message.strip()
+        try:
+            topic_file.write_text(topic, encoding="utf-8")
+        except OSError:
+            pass
     messages = load_session_messages(folder)
     body = user_message.strip()
     att = describe_attachments(folder)
@@ -161,7 +172,7 @@ def continue_room_round(
 
     clear_inbox_fork_grace(run_meta)
     _bind_session_to_run_meta(run_meta, folder)
-    active_agents = resolve_active_agents(agents, available_agents)
+    active_agents = resolve_active_agents(agents, available_agents, session_folder=folder)
     mode = "plan" if synthesize else "discuss"
     review_advocate = _review_advocate(active_agents, human_turn_index) if review_mode and active_agents else None
     from agent_lab.room_team_orchestration import resolve_turn_lead
@@ -543,7 +554,7 @@ def run_room(
             topic = (folder / "topic.txt").read_text(encoding="utf-8").strip()
         messages = load_session_messages(folder) + messages
 
-    active_agents = resolve_active_agents(agents, available_agents)
+    active_agents = resolve_active_agents(agents, available_agents, session_folder=folder)
     human_turn_index = _human_turn_count(messages) - 1
     mode = "plan" if synthesize else "discuss"
     review_advocate = (

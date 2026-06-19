@@ -4,6 +4,8 @@ import { ensureDevApi } from "./scripts/ensure-dev-api.mjs";
 
 const host = process.env.TAURI_DEV_HOST;
 const isTauri = Boolean(process.env.TAURI_ENV_PLATFORM);
+const apiProxyTarget =
+  process.env.VITE_API_PROXY_TARGET ?? "http://127.0.0.1:8765";
 
 /** Start uvicorn :8765 before the dev /api proxy accepts traffic. */
 function agentLabDevApi() {
@@ -53,7 +55,7 @@ export default defineConfig({
     },
     proxy: {
       "/api": {
-        target: "http://127.0.0.1:8765",
+        target: apiProxyTarget,
         changeOrigin: true,
         ws: true,
         configure: (proxy) => {

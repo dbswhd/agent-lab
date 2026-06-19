@@ -8,6 +8,8 @@ export type AgentRole =
   | "cursor"
   | "codex"
   | "claude"
+  | "kimi"
+  | "local"
   | "planner"
   | "critic"
   | "scribe"
@@ -60,6 +62,8 @@ const LABELS: Record<string, string> = {
   cursor: "Cursor",
   codex: "Codex",
   claude: "Claude",
+  kimi: "KIMI",
+  local: "Local",
   planner: "Planner",
   critic: "Critic",
   scribe: "Scribe",
@@ -208,6 +212,8 @@ const REPLY_WAIT_ROLES = new Set<AgentRole>([
   "cursor",
   "codex",
   "claude",
+  "kimi",
+  "local",
   "planner",
   "critic",
   "scribe",

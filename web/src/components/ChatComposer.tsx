@@ -128,9 +128,10 @@ export function ChatComposer({
     el.style.height = `${Math.min(el.scrollHeight, 180)}px`;
   }, [value]);
 
+  const slashQuery = value.slice(1).split(/\s/)[0] ?? "";
   const slashFiltered = useMemo(() => {
     if (!value.startsWith("/")) return [];
-    const query = value.slice(1).split(/\s/)[0]?.toLowerCase() ?? "";
+    const query = slashQuery.toLowerCase();
     const rows = slashCommands.filter((c) => c.enabled !== false);
     if (!query) return rows;
     return rows.filter(
@@ -138,7 +139,7 @@ export function ChatComposer({
         c.slash.toLowerCase().includes(query) ||
         c.label.toLowerCase().includes(query),
     );
-  }, [slashCommands, value]);
+  }, [slashCommands, slashQuery, value]);
 
   const mentionQuery = useMemo(() => {
     if (!sessionId) return null;
@@ -305,6 +306,8 @@ export function ChatComposer({
                 value={value}
                 commands={slashCommands}
                 disabled={inputLocked}
+                highlightedIndex={slashHighlight}
+                onHighlightChange={setSlashHighlight}
                 onSelect={(slash) => onChange(slash)}
                 onExecute={(cmd) => onSlashExecute?.(cmd)}
               />
@@ -321,10 +324,12 @@ export function ChatComposer({
                 className="composer-input"
                 value={value}
                 onChange={(e) => {
-                  onChange(e.target.value);
-                  setMentionCursor(
-                    e.target.selectionStart ?? e.target.value.length,
-                  );
+                  const nextValue = e.target.value;
+                  const nextSlashQuery =
+                    nextValue.slice(1).split(/\s/)[0] ?? "";
+                  if (nextSlashQuery !== slashQuery) setSlashHighlight(0);
+                  onChange(nextValue);
+                  setMentionCursor(e.target.selectionStart ?? nextValue.length);
                 }}
                 onClick={(e) =>
                   setMentionCursor(
@@ -352,11 +357,35 @@ export function ChatComposer({
                       );
                       return;
                     }
-                    if (e.key === "Tab" && slashFiltered[slashHighlight]) {
+                    if (e.key === "PageDown") {
                       e.preventDefault();
-                      onChange(slashFiltered[slashHighlight].slash);
+                      setSlashHighlight(
+                        Math.min(slashHighlight + 10, slashFiltered.length - 1),
+                      );
                       return;
                     }
+                    if (e.key === "PageUp") {
+                      e.preventDefault();
+                      setSlashHighlight(Math.max(slashHighlight - 10, 0));
+                      return;
+                    }
+                    const slashTokenOnly = /^\/\S*$/.test(value);
+                    if (
+                      (e.key === "Tab" || e.key === "Enter") &&
+                      slashTokenOnly &&
+                      slashFiltered[slashHighlight]
+                    ) {
+                      e.preventDefault();
+                      const command = slashFiltered[slashHighlight];
+                      onChange(command.slash);
+                      if (e.key === "Enter") onSlashExecute?.(command);
+                      return;
+                    }
+                  }
+                  if (e.key === "Escape" && value.startsWith("/")) {
+                    e.preventDefault();
+                    onChange("");
+                    return;
                   }
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();

@@ -14,6 +14,7 @@ type Props = {
     actionId: RecoveryRetryActionId,
     event: RecoveryResolutionEvent,
   ) => void;
+  readonly onDismiss?: () => void;
 };
 
 function severityLabel(item: RecoveryItem): string {
@@ -76,6 +77,7 @@ export function RecoveryStrip({
   busyActionId = null,
   onAction,
   onRetryAction,
+  onDismiss,
 }: Props) {
   if (items.length === 0 && resolvedEvents.length === 0) return null;
 
@@ -86,10 +88,21 @@ export function RecoveryStrip({
       aria-label="복구 액션"
     >
       <header className="recovery-strip__head">
-        <strong>Recovery</strong>
-        <span>
+        <strong>복구</strong>
+        <span className="recovery-strip__count">
           {items.length > 0 ? `${items.length}개 확인 필요` : "최근 복구 완료"}
         </span>
+        {onDismiss ? (
+          <button
+            type="button"
+            className="recovery-strip__close"
+            aria-label="복구 알림 닫기"
+            title="닫기"
+            onClick={onDismiss}
+          >
+            ✕
+          </button>
+        ) : null}
       </header>
       {items.length > 0 ? (
         <div className="recovery-strip__items">

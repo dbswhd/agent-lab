@@ -3,6 +3,28 @@
 from __future__ import annotations
 
 import os
+import json
+
+
+def _emit_slash_chat_line(folder: Path, summary: str) -> None:
+    """Append a visible transcript entry for slash-command results (gajae-code style)."""
+    chat_path = folder / "chat.jsonl"
+    try:
+        if not chat_path.is_file():
+            chat_path.write_text("", encoding="utf-8")
+        line = json.dumps(
+            {
+                "role": "system",
+                "agent": None,
+                "content": f"[slash] {summary}",
+                "ts": datetime.now(timezone.utc).isoformat(),
+            },
+            ensure_ascii=False,
+        )
+        with chat_path.open("a", encoding="utf-8") as f:
+            f.write(line + "\n")
+    except OSError:
+        pass
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -19,6 +41,7 @@ from agent_lab.goal_loop import check_session_goal, goal_loop_enabled
 from agent_lab.agent_roster import dynamic_room_enabled
 from agent_lab.plugin_discovery import (
     discover_plugins,
+    discover_plugins_fast,
     is_plugin_enabled,
     merge_session_allowlist,
     mock_mode,
@@ -127,6 +150,7 @@ _DYNAMIC_ROOM_COMMANDS: list[dict[str, Any]] = [
         "handler": "dynamic_room:agents",
     },
 ]
+_ACCOUNT_COMMANDS = frozenset({"login", "logout", "accounts"})
 
 
 def _env_requirements_met(requires: list[str] | None) -> bool:
@@ -177,7 +201,7 @@ def list_commands(
     mock: bool | None = None,
 ) -> dict[str, Any]:
     ws = workspace or Path(os.getenv("AGENT_LAB_ROOT", Path(__file__).resolve().parents[2]))
-    discovery = discover_plugins(ws, mock=mock)
+    discovery = discover_plugins_fast(ws, mock=mock)
     plugins = discovery.get("plugins") or []
     run_meta = read_run_meta(session_folder) if session_folder else {}
     allowlist = merge_session_allowlist(run_meta, plugins)
@@ -190,8 +214,8 @@ def list_commands(
             cmd["disabled_reason"] = "env_required"
         commands.append(cmd)
 
-    if dynamic_room_enabled():
-        for row in _DYNAMIC_ROOM_COMMANDS:
+    for row in _DYNAMIC_ROOM_COMMANDS:
+        if dynamic_room_enabled() or row["id"] in _ACCOUNT_COMMANDS:
             commands.append({**row, "enabled": True})
 
     commands.extend(_plugin_as_commands(plugins, allowlist))
@@ -212,6 +236,7 @@ def list_commands(
             "registered": [r["id"] for r in load_external_tools()],
         },
         "discovery_mock": discovery.get("mock", False),
+        "discovery_refreshing": discovery.get("refreshing", False),
     }
 
 
@@ -259,7 +284,12 @@ def _format_dynamic_room(name: str, res: dict[str, Any]) -> str:
             return f"/login {prov}: {res['note']}"
         return f"/login {prov}: {_accts(res.get('accounts') or [])}"
     if name == "logout":
-        return f"/logout {res.get('provider', '')}: 계정 비움"
+        if res.get("prompt"):
+            return str(res["prompt"])
+        prov = res.get("provider", "")
+        if res.get("auth_kind") == "oauth":
+            return f"/logout {prov}: CLI 로그아웃 시작"
+        return f"/logout {prov}: 계정 비움"
     if name == "accounts":
         prov = res.get("provider", "")
         delta = ""
@@ -269,23 +299,32 @@ def _format_dynamic_room(name: str, res: dict[str, Any]) -> str:
             delta = f" (-{res['removed']})"
         return f"/accounts {prov}{delta}: {_accts(res.get('accounts') or [])}"
     if name == "model":
+        if res.get("prompt"):
+            return str(res["prompt"])
         comp = ", ".join(res.get("composition") or [])
         sub = ", ".join(res.get("substitution") or [])
+        if res.get("note"):
+            return f"/model: {res['note']}"
         verb = "변경됨" if res.get("updated") else "현재"
         return f"/model {verb}: [{comp}] · 대체 [{sub}]"
     if name == "usage":
+        if res.get("prompt"):
+            return str(res["prompt"])
         rows = res.get("rows") or []
         if not rows:
             return "/usage: 등록된 계정 없음"
         return "/usage: " + " | ".join(
-            f"{r.get('provider')}/{r.get('label')}" + ("(cooldown)" if r.get("cooldown_active") else "") for r in rows
+            f"{r.get('provider')}/{r.get('label')}" + ("(cooldown)" if r.get('cooldown_active') else "") for r in rows
         )
     if name == "agents":
+        if res.get("prompt"):
+            return str(res["prompt"])
         roster = ", ".join(res.get("roster") or [])
         roles = res.get("roles") or {}
         roles_s = ", ".join(f"{k}:{v}" for k, v in roles.items())
         return f"/agents roster: [{roster}] · roles: {roles_s}"
     return f"/{name} 실행됨"
+
 
 
 def execute_command(
@@ -310,7 +349,8 @@ def execute_command(
     handler = cmd.get("handler")
     kind = cmd.get("kind")
     now = datetime.now(timezone.utc).isoformat()
-    entry = {"at": now, "id": cmd["id"], "slash": cmd.get("slash"), "args": args}
+    history_args = "[redacted]" if command_id == "login" and args.startswith("api ") else args
+    entry = {"at": now, "id": cmd["id"], "slash": cmd.get("slash"), "args": history_args}
 
     if kind == "client":
         _record_command_history(session_folder, {**entry, "result": "client_dispatch"})
@@ -324,15 +364,15 @@ def execute_command(
         return {"ok": True, "kind": "server", "result": result, "command": cmd}
 
     if kind == "server" and str(handler or "").startswith("dynamic_room:"):
-        if not dynamic_room_enabled():
+        name = str(handler).split(":", 1)[1]
+        if not dynamic_room_enabled() and name not in _ACCOUNT_COMMANDS:
             return {"ok": False, "detail": "dynamic room disabled", "command": cmd}
         from agent_lab.slash_commands import dispatch as _slash_dispatch
 
-        name = str(handler).split(":", 1)[1]
         text_in = str(cmd.get("slash") or f"/{name}")
         if args:
             text_in = f"{text_in} {args}"
-        res = _slash_dispatch(text_in)
+        res = _slash_dispatch(text_in, session_folder=session_folder)
         if not res.get("ok"):
             _record_command_history(session_folder, {**entry, "result": {"error": res.get("error")}})
             return {
@@ -340,8 +380,31 @@ def execute_command(
                 "detail": res.get("error") or "command failed",
                 "command": cmd,
             }
+        if name == "login" and res.get("auth_kind") == "oauth" and res.get("provider"):
+            from agent_lab.auth_runs import provider_login_status, start_auth_run
+
+            try:
+                state, _ = provider_login_status(str(res["provider"]))
+                if state == "logged_in":
+                    res["note"] = f"{res['provider']}는 이미 로그인되어 있습니다."
+                else:
+                    res["auth_run"] = start_auth_run(str(res["provider"]), "login")
+                    res["note"] = "CLI 로그인을 시작했습니다."
+            except RuntimeError as exc:
+                return {"ok": False, "detail": str(exc), "command": cmd}
+        if name == "logout" and res.get("provider") and res.get("auth_kind") == "oauth":
+            from agent_lab.auth_runs import start_auth_run
+
+            try:
+                res["auth_run"] = start_auth_run(str(res["provider"]), "logout")
+            except RuntimeError as exc:
+                return {"ok": False, "detail": str(exc), "command": cmd}
         summary = _format_dynamic_room(name, res)
         _record_command_history(session_folder, {**entry, "result": {"summary": summary}})
+        # Staged picker steps (stage present) should not be written to the transcript;
+        # only final actions (login stored, model updated, usage rows, etc.) are emitted.
+        if not res.get("stage"):
+            _emit_slash_chat_line(session_folder, summary)
         return {
             "ok": True,
             "kind": "server",

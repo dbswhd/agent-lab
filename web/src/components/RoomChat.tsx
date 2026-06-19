@@ -28,6 +28,7 @@ import {
   rejectVerifiedLoop,
   autoSyncSessionPlan,
   type AgentHealthRow,
+  type AuthRunRef,
   type SlashCommandRecord,
 } from "../api/client";
 import { MacAlert } from "./MacAlert";
@@ -146,6 +147,7 @@ import { fetchRoomModes, loopCostHintLine } from "../utils/roomModes";
 import { WorkspaceFilesPanel } from "./WorkspaceFilesPanel";
 import { PreviewPanel } from "./PreviewPanel";
 import { TerminalPanel } from "./TerminalPanel";
+import { AuthFlowPanel } from "./AuthFlowPanel";
 import { BackgroundTasksPanel } from "./BackgroundTasksPanel";
 import { ExecuteQueueBar } from "./ExecuteQueueBar";
 import { ConsensusDryRunGateBar } from "./ConsensusDryRunGateBar";
@@ -517,11 +519,52 @@ export function RoomChat({
   const [readiness, setReadiness] = useState<ReadinessResponse | null>(null);
   const [slashCommands, setSlashCommands] = useState<SlashCommandRecord[]>([]);
   const [commandHint, setCommandHint] = useState<string | null>(null);
+  const [authRun, setAuthRun] = useState<AuthRunRef | null>(null);
+  const [secretCommand, setSecretCommand] = useState<{
+    command: SlashCommandRecord;
+    argsPrefix: string;
+    prompt: string;
+  } | null>(null);
+  const [secretValue, setSecretValue] = useState("");
   const [commandChoices, setCommandChoices] = useState<{
     command: SlashCommandRecord;
     argsPrefix: string;
+    prompt: string;
     options: { value: string; label: string }[];
   } | null>(null);
+  const [commandChoiceIndex, setCommandChoiceIndex] = useState(0);
+  const [commandMultiChoices, setCommandMultiChoices] = useState<
+    | {
+        command: SlashCommandRecord;
+        argsPrefix: string;
+        prompt: string;
+        current: string[];
+        options: { value: string; label: string }[];
+      }
+    | null
+  >(null);
+  const [commandScopeChoices, setCommandScopeChoices] = useState<
+    | {
+        command: SlashCommandRecord;
+        composition: string[];
+        prompt: string;
+        options: { value: string; label: string }[];
+      }
+    | null
+  >(null);
+  const [multiSelected, setMultiSelected] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!commandChoices && !commandMultiChoices && !commandScopeChoices) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setCommandChoices(null);
+        setCommandMultiChoices(null);
+        setCommandScopeChoices(null);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [commandChoices, commandMultiChoices, commandScopeChoices]);
   const [externalCommandConfirm, setExternalCommandConfirm] = useState<{
     command: SlashCommandRecord;
     args: string;
@@ -744,7 +787,16 @@ export function RoomChat({
     (overrideId?: string | null) => {
       const sid = overrideId ?? sessionId ?? activeSessionIdRef.current;
       void fetchCommands(sid)
-        .then((res) => setSlashCommands(res.commands ?? []))
+        .then((res) => {
+          setSlashCommands(res.commands ?? []);
+          if (res.discovery_refreshing) {
+            window.setTimeout(() => {
+              void fetchCommands(sid)
+                .then((refreshed) => setSlashCommands(refreshed.commands ?? []))
+                .catch(() => undefined);
+            }, 300);
+          }
+        })
         .catch(() => setSlashCommands([]));
     },
     [sessionId],
@@ -2586,6 +2638,7 @@ export function RoomChat({
       if (!sessionId) return;
       setCommandHint(null);
       setCommandChoices(null);
+      setCommandScopeChoices(null);
       try {
         const res = await runSessionCommand(sessionId, {
           command_id: command.id,
@@ -2614,18 +2667,80 @@ export function RoomChat({
         }
         const stage = res.result as
           | {
-              choices?: { options: { value: string; label: string }[] };
-              input?: { prefill?: string };
+              prompt?: string;
+              stage?: string;
+              composition?: string[];
+              choices?: {
+                kind?: string;
+                current?: string[];
+                composition?: string[];
+                options: { value: string; label: string }[];
+              };
+              input?: { kind?: string; prefill?: string };
+              auth_run?: AuthRunRef;
+              updated?: boolean;
             }
           | undefined;
-        if (stage?.choices?.options?.length) {
-          setCommandChoices({
-            command,
-            argsPrefix: args,
-            options: stage.choices.options,
-          });
+        if (stage?.auth_run) {
+          setAuthRun(stage.auth_run);
+          setCommandHint(null);
         }
-        if (stage?.input?.prefill) {
+        if (stage?.choices?.options?.length) {
+          setCommandChoiceIndex(0);
+          const kind = stage.choices.kind ?? "provider";
+          if (kind === "multi") {
+            setCommandMultiChoices({
+              command,
+              argsPrefix: args,
+              prompt: stage.prompt ?? res.text ?? "",
+              current: stage.choices.current ?? [],
+              options: stage.choices.options,
+            });
+            setMultiSelected(new Set(stage.choices.current ?? []));
+            setCommandChoices(null);
+            setCommandScopeChoices(null);
+          } else if (kind === "scope") {
+            const composition =
+              stage.composition ??
+              stage.choices.composition ??
+              args.split(",").filter(Boolean);
+            setCommandScopeChoices({
+              command,
+              composition,
+              prompt: stage.prompt ?? res.text ?? "",
+              options: stage.choices.options,
+            });
+            setCommandMultiChoices(null);
+            setCommandChoices(null);
+          } else {
+            setCommandChoices({
+              command,
+              argsPrefix: args,
+              prompt: stage.prompt ?? res.text ?? "",
+              options: stage.choices.options,
+            });
+            setCommandMultiChoices(null);
+            setCommandScopeChoices(null);
+          }
+          setCommandHint(null); // prompt is shown in the picker header instead
+        } else {
+          setCommandChoices(null);
+          setCommandMultiChoices(null);
+          setCommandScopeChoices(null);
+        }
+        if (stage?.updated && stage.composition?.length) {
+          setSelected(stage.composition);
+        }
+        if (stage?.input?.kind === "secret" && stage.input.prefill) {
+          setSecretCommand({
+            command,
+            argsPrefix: stage.input.prefill.replace(/^\/login\s+/, ""),
+            prompt: stage.prompt ?? "API 키 입력",
+          });
+          setSecretValue("");
+          setText("");
+          setCommandHint(null);
+        } else if (stage?.input?.prefill) {
           setText(stage.input.prefill);
         } else {
           setText("");
@@ -2649,9 +2764,44 @@ export function RoomChat({
     [sessionId, refreshSessionMeta],
   );
 
+  useEffect(() => {
+    if (!commandChoices) return;
+    const onChoiceKey = (event: KeyboardEvent) => {
+      const count = commandChoices.options.length;
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setCommandChoiceIndex((index) => (index + 1) % count);
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setCommandChoiceIndex((index) => (index - 1 + count) % count);
+      } else if (event.key === "PageDown") {
+        event.preventDefault();
+        setCommandChoiceIndex((index) => Math.min(index + 10, count - 1));
+      } else if (event.key === "PageUp") {
+        event.preventDefault();
+        setCommandChoiceIndex((index) => Math.max(index - 10, 0));
+      } else if (event.key === "Enter") {
+        event.preventDefault();
+        const option = commandChoices.options[commandChoiceIndex];
+        if (option) {
+          void executeSlashCommand(
+            commandChoices.command,
+            `${commandChoices.argsPrefix} ${option.value}`.trim(),
+          );
+        }
+      }
+    };
+    document.addEventListener("keydown", onChoiceKey);
+    return () => document.removeEventListener("keydown", onChoiceKey);
+  }, [commandChoiceIndex, commandChoices, executeSlashCommand]);
+
   const runSlashCommand = useCallback(
     async (command: SlashCommandRecord, rawText?: string) => {
       setCommandHint(null);
+      if (authRun && (command.id === "login" || command.id === "logout")) {
+        setCommandHint("진행 중인 인증 패널을 먼저 닫아주세요.");
+        return;
+      }
       if (command.kind === "client") {
         if (command.id === "stop") handleStop();
         if (command.id === "focus-composer") focusComposerInput();
@@ -2673,7 +2823,7 @@ export function RoomChat({
       }
       await executeSlashCommand(target, args);
     },
-    [sessionId, slashCommands, executeSlashCommand, handleStop],
+    [authRun, sessionId, slashCommands, executeSlashCommand, handleStop],
   );
 
   function handleSend() {
@@ -2963,6 +3113,19 @@ export function RoomChat({
       }),
     [composerSendLocked, recoveryItems, recoveryResolutionEvents],
   );
+  const recoverySignature = useMemo(
+    () =>
+      [
+        ...recoveryLifecycleView.activeItems.map((i) => `${i.kind}:${i.severity}`),
+        ...recoveryLifecycleView.resolvedEvents.map((e) => `r:${e.id}`),
+      ].join("|"),
+    [recoveryLifecycleView.activeItems, recoveryLifecycleView.resolvedEvents],
+  );
+  const [recoveryDismissedSig, setRecoveryDismissedSig] = useState<string | null>(
+    null,
+  );
+  const recoveryVisible =
+    recoverySignature.length > 0 && recoveryDismissedSig !== recoverySignature;
   const firstOpenBlock = useMemo<RoomObjection | null>(() => {
     const rows = roomTasks?.open_objections ?? [];
     return rows.find((o) => o.act === "BLOCK") ?? null;
@@ -3429,22 +3592,25 @@ export function RoomChat({
                     </div>
                   ) : null}
 
-                  <RecoveryStrip
-                    items={recoveryLifecycleView.activeItems}
-                    resolvedEvents={recoveryLifecycleView.resolvedEvents}
-                    canRetrySend={
-                      recoveryLifecycleView.retryState.canFocusComposer
-                    }
-                    busyActionId={
-                      recoveryBusyAction ??
-                      (releasingLock ? "release_lock" : null) ??
-                      (discussRecoveryBusy ? "run_discuss_recovery" : null)
-                    }
-                    onAction={(actionId, item) =>
-                      void handleRecoveryAction(actionId, item)
-                    }
-                    onRetryAction={handleRecoveryRetryAction}
-                  />
+                  {recoveryVisible ? (
+                    <RecoveryStrip
+                      items={recoveryLifecycleView.activeItems}
+                      resolvedEvents={recoveryLifecycleView.resolvedEvents}
+                      canRetrySend={
+                        recoveryLifecycleView.retryState.canFocusComposer
+                      }
+                      busyActionId={
+                        recoveryBusyAction ??
+                        (releasingLock ? "release_lock" : null) ??
+                        (discussRecoveryBusy ? "run_discuss_recovery" : null)
+                      }
+                      onAction={(actionId, item) =>
+                        void handleRecoveryAction(actionId, item)
+                      }
+                      onRetryAction={handleRecoveryRetryAction}
+                      onDismiss={() => setRecoveryDismissedSig(recoverySignature)}
+                    />
+                  ) : null}
 
                   {showPlanWorkflowComposerHint && planWorkflow ? (
                     <PlanWorkflowBanner
@@ -3600,21 +3766,22 @@ export function RoomChat({
                   ) : null}
                   {commandChoices ? (
                     <div
-                      className="composer-command-choices"
-                      role="group"
-                      aria-label="명령 선택지"
-                      style={{
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: "6px",
-                        marginTop: "6px",
-                      }}
+                      className="composer-picker"
+                      role="listbox"
+                      aria-label={commandChoices.prompt || "선택"}
                     >
-                      {commandChoices.options.map((opt) => (
+                      {commandChoices.prompt ? (
+                        <div className="composer-picker__head">
+                          {commandChoices.prompt}
+                        </div>
+                      ) : null}
+                      {commandChoices.options.map((opt, index) => (
                         <button
                           key={opt.value}
                           type="button"
-                          className="btn btn--sm"
+                          role="option"
+                          aria-selected={index === commandChoiceIndex}
+                          className={`composer-picker__option${index === commandChoiceIndex ? " is-active" : ""}`}
                           onClick={() =>
                             void executeSlashCommand(
                               commandChoices.command,
@@ -3622,10 +3789,184 @@ export function RoomChat({
                             )
                           }
                         >
-                          {opt.label}
+                          <span className="composer-picker__label">
+                            {opt.label}
+                          </span>
+                          <span className="composer-picker__value">
+                            {opt.value}
+                          </span>
                         </button>
                       ))}
+                      <button
+                        type="button"
+                        className="composer-picker__cancel"
+                        onClick={() => setCommandChoices(null)}
+                      >
+                        취소 (Esc)
+                      </button>
                     </div>
+                  ) : null}
+                  {commandScopeChoices ? (
+                    <div
+                      className="composer-picker"
+                      role="group"
+                      aria-label={commandScopeChoices.prompt || "적용 범위"}
+                    >
+                      {commandScopeChoices.prompt ? (
+                        <div className="composer-picker__head">
+                          {commandScopeChoices.prompt}
+                        </div>
+                      ) : null}
+                      {commandScopeChoices.options.map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          className="composer-picker__option"
+                          onClick={() => {
+                            const cmd = commandScopeChoices.command;
+                            const composition =
+                              commandScopeChoices.composition.join(",");
+                            setCommandScopeChoices(null);
+                            void executeSlashCommand(
+                              cmd,
+                              `${composition} ${opt.value}`.trim(),
+                            );
+                          }}
+                        >
+                          <span className="composer-picker__label">
+                            {opt.label}
+                          </span>
+                        </button>
+                      ))}
+                      <div className="composer-picker__actions">
+                        <button
+                          type="button"
+                          className="btn btn--sm"
+                          onClick={() => setCommandScopeChoices(null)}
+                        >
+                          취소 (Esc)
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                  {commandMultiChoices ? (
+                    <div
+                      className="composer-picker"
+                      role="group"
+                      aria-label={commandMultiChoices.prompt || "복수 선택"}
+                    >
+                      {commandMultiChoices.prompt ? (
+                        <div className="composer-picker__head">
+                          {commandMultiChoices.prompt}
+                        </div>
+                      ) : null}
+                      {commandMultiChoices.options.map((opt) => (
+                        <label
+                          key={opt.value}
+                          className={`composer-picker__option${multiSelected.has(opt.value) ? " is-active" : ""}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={multiSelected.has(opt.value)}
+                            onChange={() => {
+                              setMultiSelected((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(opt.value)) next.delete(opt.value);
+                                else next.add(opt.value);
+                                return next;
+                              });
+                            }}
+                          />
+                          <span className="composer-picker__label">
+                            {opt.label}
+                          </span>
+                          <span className="composer-picker__value">
+                            {opt.value}
+                          </span>
+                        </label>
+                      ))}
+                      <div className="composer-picker__actions">
+                        <button
+                          type="button"
+                          className="btn btn--primary btn--sm"
+                          onClick={() => {
+                            const selected = commandMultiChoices.options
+                              .filter((opt) => multiSelected.has(opt.value))
+                              .map((opt) => opt.value)
+                              .join(",");
+                            const cmd = commandMultiChoices.command;
+                            setCommandMultiChoices(null);
+                            setMultiSelected(new Set());
+                            void executeSlashCommand(cmd, selected);
+                          }}
+                        >
+                          적용
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn--sm"
+                          onClick={() => {
+                            setCommandMultiChoices(null);
+                            setMultiSelected(new Set());
+                          }}
+                        >
+                          취소 (Esc)
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                  {secretCommand ? (
+                    <form
+                      className="composer-secret"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        if (!secretValue) return;
+                        const args =
+                          `${secretCommand.argsPrefix} ${secretValue}`.trim();
+                        setSecretCommand(null);
+                        setSecretValue("");
+                        void executeSlashCommand(secretCommand.command, args);
+                      }}
+                    >
+                      <label htmlFor="provider-secret">
+                        {secretCommand.prompt}
+                      </label>
+                      <input
+                        id="provider-secret"
+                        type="password"
+                        autoComplete="off"
+                        value={secretValue}
+                        onChange={(event) => setSecretValue(event.target.value)}
+                        autoFocus
+                      />
+                      <button
+                        type="submit"
+                        className="btn btn--primary btn--sm"
+                      >
+                        저장
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn--sm"
+                        onClick={() => {
+                          setSecretCommand(null);
+                          setSecretValue("");
+                          focusComposerInput();
+                        }}
+                      >
+                        취소
+                      </button>
+                    </form>
+                  ) : null}
+                  {authRun ? (
+                    <AuthFlowPanel
+                      run={authRun}
+                      onComplete={refreshSessionMeta}
+                      onClose={() => {
+                        setAuthRun(null);
+                        focusComposerInput();
+                      }}
+                    />
                   ) : null}
                 </div>
               </>

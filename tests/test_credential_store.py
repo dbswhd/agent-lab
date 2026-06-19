@@ -113,7 +113,6 @@ def test_credentials_api(creds_home: Path, monkeypatch: pytest.MonkeyPatch) -> N
 
     from app.server.main import app
 
-    # legacy Settings credential write path = OFF-parity (dynamic room moves it to slash)
     monkeypatch.setenv("AGENT_LAB_DYNAMIC_ROOM", "0")
     client = TestClient(app)
     get_res = client.get("/api/settings/credentials")
@@ -133,7 +132,8 @@ def test_credentials_api(creds_home: Path, monkeypatch: pytest.MonkeyPatch) -> N
     )
     assert put_res.status_code == 200
     put_body = put_res.json()
-    assert put_body.get("saved") is True
+    assert put_body.get("saved") is False
+    assert put_body.get("read_only") is True
     cursor = next(a for a in put_body["agents"] if a["id"] == "cursor")
-    assert cursor["has_primary"] is True
-    assert cursor["primary_label"] == "Test"
+    cursor_before = next(a for a in body["agents"] if a["id"] == "cursor")
+    assert cursor == cursor_before

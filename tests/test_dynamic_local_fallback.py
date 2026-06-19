@@ -7,6 +7,16 @@ from pathlib import Path
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _isolate_room_model_overrides(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    import agent_lab.app_config as app_config
+    from agent_lab import credential_store as cs
+
+    monkeypatch.setattr(app_config, "config_dir", lambda: tmp_path)
+    monkeypatch.delenv("AGENT_LAB_ROOM_MODELS", raising=False)
+    cs.set_provider_accounts("kimi", [])
+
+
 def test_local_provider_always_available(monkeypatch: pytest.MonkeyPatch) -> None:
     from agent_lab import local_provider as lp
 

@@ -32,9 +32,14 @@ from agent_lab.credential_store import apply_credentials_to_env  # noqa: E402
 
 apply_credentials_to_env()
 
+from agent_lab.room_models_config import apply_default_room_models_to_env  # noqa: E402
+
+apply_default_room_models_to_env()
+
 from agent_lab.api_diagnostics import build_diagnostics_payload  # noqa: E402
 from app.server.routers import (  # noqa: E402
     agents,
+    auth,
     background_tasks,
     commands,
     context_layers,
@@ -124,6 +129,7 @@ app.add_middleware(
 
 for router in (
     health.router,
+    auth.router,
     agents.router,
     background_tasks.router,
     commands.router,

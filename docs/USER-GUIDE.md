@@ -959,6 +959,7 @@ History: `command_history` max 50.
 
 | 섹션 | 내용 |
 |------|------|
+| Accounts | Provider·CLI 설치·로그인·마스킹 계정·Codex 슬롯 상태 (보기 전용) |
 | Agents | Health + AgentSessionSettings |
 | Workspace | binding + ContextPreviewPanel |
 | Commands | PluginPanel |
@@ -1074,6 +1075,8 @@ Composer 하단 5s status (`sendReceipt.ts`) — Work 탭에선 plan receipt 숨
 
 Palette: tab open, stop, release lock, settings, focus composer, slash insert.
 
+Slash menu와 단계형 선택기는 ArrowUp/Down, PageUp/Down, Enter, Escape를 지원한다. `/login`은 인증 방식과 provider를 고른 뒤 공식 CLI OAuth를 앱 내 패널에서 실행한다. API 키는 transcript와 command history를 거치지 않는 마스킹 입력을 사용한다. 계정 변경은 `/login`, `/logout`, `/accounts`에서 수행하며 Settings는 항상 보기 전용이다.
+
 **⌘. stop:** palette hint only — global binding 없음.
 
 ### 20.2 localStorage keys
@@ -1124,6 +1127,9 @@ Palette: tab open, stop, release lock, settings, focus composer, slash insert.
 | POST | `/api/sessions/{id}/plan/approve` | merge approve |
 | GET | `/api/commands` | slash list |
 | POST | `/api/sessions/{id}/commands/run` | slash server cmd |
+| GET | `/api/auth/providers` | provider 설치·로그인·계정 상태 (read-only) |
+| WS | `/api/auth/runs/{id}` | CLI auth output·URL·progress·terminal events |
+| POST | `/api/auth/runs/{id}/codex-capture` | 완료된 Codex 로그인 profile 슬롯 저장 |
 | GET | `/api/sessions/{id}/context/preview` | context preview |
 | PATCH | `/api/sessions/{id}/agent-capabilities` | cwd/tools |
 | PATCH | `/api/sessions/{id}/agent-plugins` | plugin allowlist |

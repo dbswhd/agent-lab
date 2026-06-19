@@ -85,3 +85,12 @@ def test_execute_goal_check_command(mock_env: None, tmp_path: Path):
     result = execute_command(folder, "goal-check", workspace=Path(__file__).resolve().parents[1])
     assert result["ok"] is True
     assert result["kind"] == "server"
+
+def test_logout_command_returns_auth_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
+    monkeypatch.setenv("AGENT_LAB_DYNAMIC_ROOM", "0")
+    result = execute_command(tmp_path, "logout", args="codex")
+    assert result["ok"] is True
+    auth_run = result["result"]["auth_run"]
+    assert auth_run["provider_id"] == "codex"
+    assert auth_run["action"] == "logout"

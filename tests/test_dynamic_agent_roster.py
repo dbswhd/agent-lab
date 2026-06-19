@@ -2,7 +2,17 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
+
+
+@pytest.fixture(autouse=True)
+def _isolate_room_model_overrides(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    import agent_lab.app_config as app_config
+
+    monkeypatch.setattr(app_config, "config_dir", lambda: tmp_path)
+    monkeypatch.delenv("AGENT_LAB_ROOM_MODELS", raising=False)
 
 
 def test_dynamic_room_flag_gate(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -79,13 +89,16 @@ def test_off_parity_passthrough_explicit(monkeypatch: pytest.MonkeyPatch) -> Non
     assert ar.resolve_active_agents(["claude", "cursor"], fake_available) == ["claude", "cursor"]
 
 
-def test_resolve_on_excludes_uninvokable_kimi_keeps_local_floor() -> None:
+def test_resolve_on_excludes_uninvokable_kimi_keeps_local_floor(monkeypatch: pytest.MonkeyPatch) -> None:
     from agent_lab import agent_roster as ar
+    from agent_lab import credential_store as cs
 
-    # ON: local is the always-available floor (G006); kimi stays excluded from the
-    # live invokable set until its adapter lands. Cloud agents are preserved.
+    monkeypatch.delenv("AGENT_LAB_MOCK_AGENTS", raising=False)
+    cs.set_provider_accounts("kimi", [])
+    # ON: local is the always-available floor (G006). kimi is invokable only when
+    # its account chain is configured; without credentials it stays out of roster.
     fake_available = lambda: ["codex", "claude"]  # noqa: E731
     resolved = ar.resolve_active_agents(None, fake_available, enabled=True)
     assert "codex" in resolved and "claude" in resolved
     assert "local" in resolved  # floor guarantees >=1 and fills the open seat
-    assert "kimi" not in resolved  # uninvokable until adapter (follow-up)
+    assert "kimi" not in resolved

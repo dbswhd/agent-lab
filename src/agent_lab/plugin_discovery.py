@@ -4,8 +4,12 @@ from __future__ import annotations
 
 import os
 import subprocess
+import threading
+import time
 from pathlib import Path
 from typing import Any
+
+from agent_lab.subprocess_env import subprocess_env
 
 _AGENT_LAB_ROOT = Path(__file__).resolve().parents[2]
 
@@ -65,6 +69,7 @@ def _run_cli(cmd: list[str], *, timeout: int = 45) -> tuple[int, str]:
             text=True,
             timeout=timeout,
             cwd=_AGENT_LAB_ROOT,
+            env=subprocess_env(HOME=str(Path.home())),
         )
     except FileNotFoundError:
         return 127, f"not found: {cmd[0]}"
@@ -207,7 +212,88 @@ def _parse_codex_mcp(output: str) -> list[dict[str, Any]]:
     return rows
 
 
+_DISCOVERY_TTL_S = 60.0
+_discovery_cache: dict[tuple[str, bool], tuple[float, dict[str, Any]]] = {}
+_discovery_refreshing: set[tuple[str, bool]] = set()
+_discovery_lock = threading.Lock()
+
+
+def reset_plugin_discovery_cache() -> None:
+    """Clear the plugin-discovery cache (test helper / explicit refresh)."""
+    with _discovery_lock:
+        _discovery_cache.clear()
+        _discovery_refreshing.clear()
+
+
+def _empty_discovery(workspace: Path, *, mock: bool) -> dict[str, Any]:
+    return {
+        "workspace": str(workspace),
+        "mock": mock,
+        "agents": {"cursor": [], "codex": [], "claude": []},
+        "plugins": [],
+        "refreshing": True,
+    }
+
+
+def _refresh_discovery(workspace: Path, use_mock: bool, key: tuple[str, bool]) -> None:
+    try:
+        result = _discover_plugins_uncached(workspace, mock=use_mock)
+        with _discovery_lock:
+            _discovery_cache[key] = (time.monotonic(), result)
+    finally:
+        with _discovery_lock:
+            _discovery_refreshing.discard(key)
+
+
+def discover_plugins_fast(
+    workspace: Path,
+    *,
+    mock: bool | None = None,
+) -> dict[str, Any]:
+    use_mock = mock if mock is not None else mock_mode()
+    key = (str(workspace), use_mock)
+    now = time.monotonic()
+    with _discovery_lock:
+        hit = _discovery_cache.get(key)
+        fresh = hit is not None and now - hit[0] < _DISCOVERY_TTL_S
+        if not fresh and key not in _discovery_refreshing:
+            _discovery_refreshing.add(key)
+            threading.Thread(
+                target=_refresh_discovery,
+                args=(workspace, use_mock, key),
+                name=f"plugin-discovery-{abs(hash(key))}",
+                daemon=True,
+            ).start()
+        if hit is None:
+            return _empty_discovery(workspace, mock=use_mock)
+        payload = dict(hit[1])
+        payload["refreshing"] = not fresh
+        return payload
+
+
 def discover_plugins(
+    workspace: Path,
+    *,
+    mock: bool | None = None,
+) -> dict[str, Any]:
+    """Cached front door — plugin discovery shells out to agent CLIs (~seconds),
+    so memoize per (workspace, mock) for a short TTL. /api/commands and the slash
+    menu hit this on every call; without the cache each picker click paid the
+    full CLI-discovery cost."""
+    use_mock = mock if mock is not None else mock_mode()
+    key = (str(workspace), use_mock)
+    now = time.monotonic()
+    with _discovery_lock:
+        hit = _discovery_cache.get(key)
+    if hit is not None and now - hit[0] < _DISCOVERY_TTL_S:
+        return hit[1]
+    result = _discover_plugins_uncached(workspace, mock=use_mock)
+    with _discovery_lock:
+        _discovery_cache[key] = (now, result)
+    return result
+
+
+def _discover_plugins_uncached(
     workspace: Path,
     *,
     mock: bool | None = None,

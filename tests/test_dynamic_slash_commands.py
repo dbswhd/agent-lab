@@ -97,6 +97,55 @@ def test_logout_clears(cfg: Path) -> None:
     assert res["cleared"] is True
     assert cs.get_provider_accounts("kimi") == []
 
+def test_logout_staged_provider_choices(cfg: Path) -> None:
+    from agent_lab.slash_commands import dispatch
+
+    res = dispatch("/logout")
+    assert res["ok"] is True and res["command"] == "logout"
+    assert res["stage"] == "provider"
+    assert "로그아웃할 공급자 선택" in res["prompt"]
+    values = {opt["value"] for opt in res["choices"]["options"]}
+    assert values >= {"cursor", "claude", "codex", "kimi"}
+    assert "local" not in values
+
+
+def test_logout_unknown_provider(cfg: Path) -> None:
+    from agent_lab.slash_commands import dispatch
+
+    res = dispatch("/logout bogus")
+    assert res["ok"] is False
+    assert "unknown provider" in res["error"]
+
+
+def test_logout_local_rejected(cfg: Path) -> None:
+    from agent_lab.slash_commands import dispatch
+
+    res = dispatch("/logout local")
+    assert res["ok"] is False
+    assert "local" in res["error"].lower()
+
+
+def test_logout_oauth_provider_starts_cli_flow(cfg: Path) -> None:
+    from agent_lab.slash_commands import dispatch
+
+    res = dispatch("/logout claude")
+    assert res["ok"] is True
+    assert res["provider"] == "claude"
+    assert res["auth_kind"] == "oauth"
+    assert "CLI 로그아웃" in res["note"]
+
+
+def test_logout_cursor_clears_api_accounts_then_oauth(cfg: Path) -> None:
+    from agent_lab import credential_store as cs
+    from agent_lab.slash_commands import dispatch
+
+    dispatch("/accounts cursor add a1 sk-1")
+    res = dispatch("/logout cursor")
+    assert res["ok"] is True
+    assert res["provider"] == "cursor"
+    assert res["auth_kind"] == "oauth"
+    assert res["cleared"] is True
+    assert cs.get_provider_accounts("cursor") == []
 
 def test_model_view_and_set(cfg: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from agent_lab.slash_commands import dispatch
@@ -104,8 +153,12 @@ def test_model_view_and_set(cfg: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("AGENT_LAB_ROOM_MODELS", raising=False)
     view = dispatch("/model")
     assert view["composition"] == ["cursor", "codex", "claude"]
-    upd = dispatch("/model cursor,kimi,claude")
+    staged = dispatch("/model cursor,kimi,claude")
+    assert staged["stage"] == "persist"
+    assert staged["composition"] == ["cursor", "kimi", "claude"]
+    upd = dispatch("/model cursor,kimi,claude session")
     assert upd["updated"] is True and upd["composition"] == ["cursor", "kimi", "claude"]
+    assert upd["scope"] == "session"
 
 
 def test_usage_reports_cooldown(cfg: Path) -> None:
@@ -139,7 +192,9 @@ def test_settings_put_readonly_when_dynamic(monkeypatch: pytest.MonkeyPatch) -> 
     assert body.get("saved") is False and body.get("read_only") is True
 
 
-def test_settings_put_writes_when_off(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_settings_put_remains_readonly_when_dynamic_room_is_off(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     from fastapi.testclient import TestClient
 
     import agent_lab.app_config as app_config
@@ -148,9 +203,15 @@ def test_settings_put_writes_when_off(monkeypatch: pytest.MonkeyPatch, tmp_path:
     monkeypatch.setenv("AGENT_LAB_DYNAMIC_ROOM", "0")
     monkeypatch.setattr(app_config, "config_dir", lambda: tmp_path)
     client = TestClient(app)
+    before = client.get("/api/settings/credentials").json()
     res = client.put("/api/settings/credentials", json={"cursor": {"primary": "sk-off"}})
     assert res.status_code == 200
-    assert res.json().get("saved") is True  # OFF-parity: legacy write path intact
+    body = res.json()
+    assert body.get("saved") is False
+    assert body.get("read_only") is True
+    cursor = next(row for row in body["agents"] if row["id"] == "cursor")
+    cursor_before = next(row for row in before["agents"] if row["id"] == "cursor")
+    assert cursor == cursor_before
 
 
 # --- Composer integration: command_registry catalog + dispatch (option A) ---
@@ -160,18 +221,20 @@ def test_command_registry_gates_dynamic_room(cfg: Path, monkeypatch: pytest.Monk
     """The 6 dynamic-room commands appear in the composer catalog only when on."""
     from agent_lab.command_registry import list_commands
 
-    dyn = {"login", "logout", "accounts", "model", "usage", "agents"}
+    account_commands = {"login", "logout", "accounts"}
+    room_commands = {"model", "usage", "agents"}
 
     monkeypatch.setenv("AGENT_LAB_DYNAMIC_ROOM", "0")
     off_ids = {c["id"] for c in list_commands(cfg, workspace=cfg)["commands"]}
-    assert dyn.isdisjoint(off_ids)
+    assert account_commands <= off_ids
+    assert room_commands.isdisjoint(off_ids)
 
     monkeypatch.setenv("AGENT_LAB_DYNAMIC_ROOM", "1")
     on = list_commands(cfg, workspace=cfg)["commands"]
     on_ids = {c["id"] for c in on}
-    assert dyn <= on_ids
+    assert account_commands | room_commands <= on_ids
     for row in on:
-        if row["id"] in dyn:
+        if row["id"] in account_commands | room_commands:
             assert row["slash"] == f"/{row['id']}"
             assert row["kind"] == "server"
             assert row["enabled"] is True
@@ -188,7 +251,9 @@ def test_execute_command_dispatches_dynamic_room(cfg: Path, monkeypatch: pytest.
 
     res = execute_command(cfg, "agents", workspace=cfg)
     assert res["ok"] is True and res["kind"] == "server"
-    assert res["text"].startswith("/agents roster:")
+    # /agents without args now shows a non-expert picker prompt below the composer.
+    assert res["text"] == "현재 Room 로스터" or res["text"].startswith("/agents roster:")
+    assert res["result"].get("stage") == "roster"
     # roster is dynamically resolved when dynamic room is on; just assert wiring.
     roster = res["result"]["roster"]
     assert isinstance(roster, list) and roster
@@ -220,6 +285,14 @@ def test_execute_command_dynamic_room_blocked_when_off(cfg: Path, monkeypatch: p
     res = execute_command(cfg, "usage", workspace=cfg)
     assert res["ok"] is False
     assert "unknown command" in (res.get("detail") or "")
+
+
+def test_account_commands_remain_available_when_dynamic_room_is_off(cfg: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from agent_lab.command_registry import execute_command
+
+    monkeypatch.setenv("AGENT_LAB_DYNAMIC_ROOM", "0")
+    res = execute_command(cfg, "accounts", args="kimi list", workspace=cfg)
+    assert res["ok"] is True
 
 
 # --- Phase 3: staged /login picker (auth method -> provider -> key) ---

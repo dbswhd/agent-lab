@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef } from "react";
 import type { SlashCommandRecord } from "../api/client";
 
 type Props = {
@@ -7,6 +7,8 @@ type Props = {
   onSelect: (slash: string) => void;
   onExecute: (command: SlashCommandRecord) => void;
   disabled?: boolean;
+  highlightedIndex?: number;
+  onHighlightChange?: (index: number) => void;
 };
 
 /** Slash autocomplete — prototype `.slash-menu` / `.slash-item` (surfaces.css). */
@@ -16,10 +18,12 @@ export function SlashCommandMenu({
   onSelect,
   onExecute,
   disabled,
+  highlightedIndex,
+  onHighlightChange,
 }: Props) {
   const open = !disabled && value.startsWith("/");
   const query = value.slice(1).split(/\s/)[0]?.toLowerCase() ?? "";
-  const [hi, setHi] = useState(0);
+  const hi = highlightedIndex ?? 0;
   const listRef = useRef<HTMLDivElement>(null);
 
   const filtered = useMemo(() => {
@@ -33,10 +37,6 @@ export function SlashCommandMenu({
         (c.description ?? "").toLowerCase().includes(query),
     );
   }, [commands, open, query]);
-
-  useEffect(() => {
-    setHi(0);
-  }, [query, open]);
 
   if (!open) return null;
 
@@ -62,7 +62,7 @@ export function SlashCommandMenu({
           role="option"
           aria-selected={i === hi}
           disabled={cmd.enabled === false}
-          onMouseEnter={() => setHi(i)}
+          onMouseEnter={() => onHighlightChange?.(i)}
           onClick={() => {
             if (cmd.enabled === false) return;
             onSelect(cmd.slash);

@@ -20,6 +20,8 @@ const STREAM_ROLES = new Set<AgentRole>([
   "cursor",
   "codex",
   "claude",
+  "kimi",
+  "local",
   "planner",
   "critic",
   "scribe",

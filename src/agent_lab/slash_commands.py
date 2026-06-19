@@ -9,10 +9,12 @@ This module is the parser + dispatcher; the room router exposes it over HTTP.
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import Any, Callable
 
 from agent_lab import agent_roster, provider_registry, usage_monitor
 from agent_lab.consensus_gate import allocate_roles
+from agent_lab.agents.registry import available_agents
 from agent_lab.credential_store import (
     get_provider_accounts,
     mask_secret,
@@ -141,6 +143,7 @@ def _login_complete(method: str, provider: str, rest: list[str]) -> dict[str, An
         "command": "login",
         "provider": provider,
         "auth_kind": "api",
+        "note": f"{provider} API 키가 등록되었습니다.",
         "accounts": _masked_accounts(provider),
     }
 
@@ -181,12 +184,58 @@ def _login(args: list[str]) -> dict[str, Any]:
     return _login_complete(method, head, args[1:])
 
 
+def _logout_provider_choices() -> dict[str, Any]:
+    options: list[dict[str, Any]] = []
+    for pid in provider_registry.provider_ids():
+        if pid == "local":
+            continue
+        spec = provider_registry.get_provider(pid)
+        options.append({"value": pid, "label": spec.label if spec else pid})
+    return {
+        "ok": True,
+        "command": "logout",
+        "stage": "provider",
+        "prompt": "로그아웃할 공급자 선택",
+        "choices": {"kind": "provider", "options": options},
+    }
+
+
 def _logout(args: list[str]) -> dict[str, Any]:
-    provider = _require_provider("logout", args)
-    if isinstance(provider, dict):
-        return provider
+    """Staged logout.
+
+    /logout             -> provider choices
+    /logout <provider>  -> clear API accounts; OAuth providers also start CLI logout
+    """
+    if not args:
+        return _logout_provider_choices()
+    provider = args[0].lower()
+    if not provider_registry.is_registered(provider):
+        return _err("logout", f"unknown provider: {provider}")
+    if provider == "local":
+        return _err("logout", "local provider does not require logout")
+
+    accounts = get_provider_accounts(provider)
+    had_accounts = bool(accounts)
     set_provider_accounts(provider, [])
-    return {"ok": True, "command": "logout", "provider": provider, "cleared": True}
+
+    supports_oauth = provider_registry.supports_auth(provider, "oauth") or provider_registry.supports_auth(provider, "cli")
+    if supports_oauth:
+        return {
+            "ok": True,
+            "command": "logout",
+            "provider": provider,
+            "auth_kind": "oauth",
+            "cleared": had_accounts,
+            "note": f"{provider} CLI 로그아웃을 시작했습니다. 로컬 API 키 계정도 비워집니다.",
+        }
+    return {
+        "ok": True,
+        "command": "logout",
+        "provider": provider,
+        "auth_kind": "api",
+        "cleared": True,
+        "accounts": _masked_accounts(provider),
+    }
 
 
 def _accounts(args: list[str]) -> dict[str, Any]:
@@ -228,28 +277,95 @@ def _accounts(args: list[str]) -> dict[str, Any]:
     return _err("accounts", f"unknown subcommand: {sub}")
 
 
-def _model(args: list[str]) -> dict[str, Any]:
-    if args:
-        composition = [tok for tok in ",".join(args).split(",") if tok.strip()]
-        os.environ["AGENT_LAB_ROOM_MODELS"] = ",".join(composition)
-        updated_flag = True
+def _model(args: list[str], *, session_folder: Path | None = None) -> dict[str, Any]:
+    if not args:
+        composition = agent_roster.override_composition(session_folder=session_folder) or list(
+            provider_registry.DEFAULT_ROSTER
+        )
+        options: list[dict[str, Any]] = []
+        for pid in agent_roster.dynamic_available_ids(available_agents):
+            spec = provider_registry.get_provider(pid)
+            options.append({"value": pid, "label": spec.label if spec else pid})
+        return {
+            "ok": True,
+            "command": "model",
+            "stage": "composition",
+            "prompt": "활성화할 에이전트 선택 (복수 선택 가능)",
+            "composition": composition,
+            "choices": {"kind": "multi", "current": composition, "options": options},
+        }
+    scope: str | None = None
+    raw = list(args)
+    if raw and raw[-1] in {"session", "default"}:
+        scope = raw.pop()
+    composition = [tok for tok in ",".join(raw).split(",") if tok.strip()]
+    if not composition:
+        return _err("model", "empty composition")
+    if scope is None:
+        return {
+            "ok": True,
+            "command": "model",
+            "stage": "persist",
+            "composition": composition,
+            "prompt": f"[{', '.join(composition)}] — 적용 범위를 선택하세요",
+            "choices": {
+                "kind": "scope",
+                "composition": composition,
+                "options": [
+                    {"value": "session", "label": "이번 세션만"},
+                    {"value": "default", "label": "기본값으로 저장"},
+                ],
+            },
+        }
+    joined = ",".join(composition)
+    os.environ["AGENT_LAB_ROOM_MODELS"] = joined
+    if scope == "session" and session_folder is not None:
+        from agent_lab.run_meta import patch_run_meta
+
+        patch_run_meta(
+            session_folder,
+            lambda meta: {**meta, "room_models": composition},
+        )
+        note = f"Room 구성을 {', '.join(composition)}로 변경했습니다 (이번 세션)."
+    elif scope == "default":
+        from agent_lab.room_models_config import persist_default_room_models
+
+        persist_default_room_models(composition)
+        note = f"Room 구성을 {', '.join(composition)}로 변경했습니다 (기본값 저장)."
     else:
-        composition = agent_roster.override_composition() or list(provider_registry.DEFAULT_ROSTER)
-        updated_flag = False
+        note = f"Room 구성을 {', '.join(composition)}로 변경했습니다."
     substitution = agent_roster.override_substitution() or list(provider_registry.DEFAULT_SUBSTITUTION_PRIORITY)
     return {
         "ok": True,
         "command": "model",
         "composition": composition,
         "substitution": substitution,
-        "updated": updated_flag,
+        "updated": True,
+        "scope": scope,
+        "note": note,
     }
 
 
 def _usage(args: list[str]) -> dict[str, Any]:
+    if not args:
+        options: list[dict[str, Any]] = []
+        for pid in provider_registry.provider_ids():
+            if pid == "local":
+                continue
+            spec = provider_registry.get_provider(pid)
+            options.append({"value": pid, "label": spec.label if spec else pid})
+        return {
+            "ok": True,
+            "command": "usage",
+            "stage": "provider",
+            "prompt": "사용량을 확인할 공급자 선택",
+            "choices": {"kind": "provider", "options": options},
+        }
     providers = [args[0]] if args and provider_registry.is_registered(args[0]) else provider_registry.provider_ids()
     rows: list[dict[str, Any]] = []
     for pid in providers:
+        if pid == "local":
+            continue
         for acct in get_provider_accounts(pid):
             label = str(acct.get("label") or "")
             rows.append(
@@ -267,10 +383,24 @@ def _agents(args: list[str]) -> dict[str, Any]:
     from agent_lab.agents.registry import available_agents
 
     roster = [str(a) for a in agent_roster.resolve_active_agents(None, available_agents)]
+    if not args:
+        options: list[dict[str, Any]] = []
+        for pid in roster:
+            spec = provider_registry.get_provider(pid)
+            options.append({"value": pid, "label": spec.label if spec else pid})
+        return {
+            "ok": True,
+            "command": "agents",
+            "stage": "roster",
+            "prompt": "현재 Room 로스터",
+            "roster": roster,
+            "roles": allocate_roles(roster),
+            "choices": {"kind": "info", "options": options},
+        }
     return {"ok": True, "command": "agents", "roster": roster, "roles": allocate_roles(roster)}
 
 
-_HANDLERS: dict[str, Callable[[list[str]], dict[str, Any]]] = {
+_HANDLERS: dict[str, Callable[..., dict[str, Any]]] = {
     "login": _login,
     "logout": _logout,
     "accounts": _accounts,
@@ -280,7 +410,7 @@ _HANDLERS: dict[str, Callable[[list[str]], dict[str, Any]]] = {
 }
 
 
-def dispatch(text: str) -> dict[str, Any]:
+def dispatch(text: str, *, session_folder: Path | None = None) -> dict[str, Any]:
     parsed = parse_command(text)
     if parsed is None:
         return {"ok": False, "error": "not a slash command"}
@@ -288,4 +418,6 @@ def dispatch(text: str) -> dict[str, Any]:
     handler = _HANDLERS.get(cmd)
     if handler is None:
         return _err(cmd, "unknown command")
+    if cmd == "model":
+        return _model(args, session_folder=session_folder)
     return handler(args)

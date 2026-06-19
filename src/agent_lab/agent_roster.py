@@ -14,6 +14,7 @@ availability and goes live once their adapters land (G006).
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import TYPE_CHECKING, Callable, cast
 
 from agent_lab import provider_registry
@@ -58,9 +59,23 @@ def _parse_csv_env(name: str) -> list[str] | None:
     return ids or None
 
 
-def override_composition() -> list[str] | None:
-    """/model composition override via AGENT_LAB_ROOM_MODELS=cursor,kimi,claude."""
-    return _parse_csv_env("AGENT_LAB_ROOM_MODELS")
+def override_composition(*, session_folder: Path | None = None) -> list[str] | None:
+    """Composition override: process env → session run.json → user default file."""
+    env = _parse_csv_env("AGENT_LAB_ROOM_MODELS")
+    if env:
+        return env
+    if session_folder is not None:
+        from agent_lab.run_meta import read_run_meta
+
+        meta = read_run_meta(session_folder)
+        raw = meta.get("room_models")
+        if isinstance(raw, list):
+            ids = [str(tok).strip() for tok in raw if str(tok).strip()]
+            if ids:
+                return ids
+    from agent_lab.room_models_config import load_default_room_models
+
+    return load_default_room_models()
 
 
 def override_substitution() -> list[str] | None:
@@ -73,11 +88,18 @@ def select_roster(
     requested: list[str] | None = None,
     available_ids: list[str],
     size: int | None = None,
+    session_folder: Path | None = None,
 ) -> list[str]:
     """Choose up to ``size`` providers: composition filtered by availability,
     then empty seats filled from the substitution priority.
     """
-    composition = list(requested) if requested else (override_composition() or list(DEFAULT_ROSTER))
+    override = override_composition(session_folder=session_folder)
+    if override:
+        composition = list(override)
+    elif requested:
+        composition = list(requested)
+    else:
+        composition = list(DEFAULT_ROSTER)
     target = size if size is not None else len(composition)
     avail = set(available_ids)
 
@@ -118,6 +140,7 @@ def resolve_active_agents(
     available_fn: Callable[[], list[AgentId]],
     *,
     enabled: bool | None = None,
+    session_folder: Path | None = None,
 ) -> list[AgentId]:
     """Flag-gated active-agent resolution used by the room.
 
@@ -131,8 +154,13 @@ def resolve_active_agents(
     from agent_lab.agents.registry import AGENT_IDS
 
     available = dynamic_available_ids(available_fn)
-    requested = [str(a) for a in agents] if agents else None
-    roster = select_roster(requested=requested, available_ids=available)
+    override = override_composition(session_folder=session_folder)
+    requested = None if override else ([str(a) for a in agents] if agents else None)
+    roster = select_roster(
+        requested=requested,
+        available_ids=available,
+        session_folder=session_folder,
+    )
     # Live invokable set: default cloud agents + KIMI (api substitute) + the local floor.
     invokable = set(AGENT_IDS) | {"kimi", "local"}
     return [cast("AgentId", pid) for pid in roster if pid in invokable]

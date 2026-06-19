@@ -778,6 +778,56 @@ export type CredentialsResponse = {
   saved?: boolean;
 };
 
+export type ProviderAuthState =
+  | "logged_in"
+  | "logged_out"
+  | "unavailable"
+  | "checking"
+  | "error";
+
+export type ProviderAuthRow = {
+  id: string;
+  label: string;
+  auth_methods: string[];
+  account_mode: "ambient" | "profile_slots" | "api_chain";
+  installed: boolean;
+  state: ProviderAuthState;
+  detail?: string | null;
+  accounts?: AgentCredentialRow | null;
+  profiles?: Pick<
+    CodexOAuthResponse,
+    "has_primary" | "has_fallback" | "primary_label" | "fallback_label"
+  >;
+};
+
+export type AuthRunRef = {
+  id: string;
+  provider_id: string;
+  action: "login" | "logout";
+  status: "running" | "completed" | "failed" | "cancelled";
+};
+
+export function fetchProviderAuth() {
+  return json<{ ok: boolean; providers: ProviderAuthRow[] }>(
+    "/api/auth/providers",
+  );
+}
+
+export function captureCodexAuthRun(
+  runId: string,
+  slot: "primary" | "fallback",
+  confirm = false,
+) {
+  return json<{ ok: boolean; capture: { slot: string } }>(
+    `/api/auth/runs/${encodeURIComponent(runId)}/codex-capture`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slot, confirm }),
+    },
+  );
+}
+
 export type CredentialSlotPatch = {
   primary?: string;
   fallback?: string;
@@ -1357,6 +1407,7 @@ export function fetchCommands(sessionId?: string | null) {
     allowlist?: Record<string, string[]>;
     external_tools?: ExternalToolsMeta;
     discovery_mock?: boolean;
+    discovery_refreshing?: boolean;
   }>(`/api/commands${q}`);
 }
 
@@ -2599,4 +2650,14 @@ export function terminalWsUrl(sessionId: string): string {
     ? base.replace(/^https?/, (p) => (p === "https" ? "wss" : "ws"))
     : `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`;
   return `${wsBase}/api/sessions/${encodeURIComponent(sessionId)}/terminal`;
+}
+
+export function authRunWsUrl(runId: string): string {
+  const base = apiBase();
+  const wsBase = base
+    ? base.replace(/^https?/, (protocol) =>
+        protocol === "https" ? "wss" : "ws",
+      )
+    : API_ORIGIN.replace(/^http/, "ws");
+  return `${wsBase}/api/auth/runs/${encodeURIComponent(runId)}`;
 }

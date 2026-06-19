@@ -84,6 +84,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | RT-H6 | Runtime | Boulder/resume — `last_failure` + checkpoint snapshot | ✅ | `runtime/boulder.py`, `tests/test_runtime_boulder.py` | H6 boulder |
 | RT-H7 | Runtime | External runner — `tools.yaml` opt-in + allowlist | ✅ | `runtime/external_runner.py`, `tests/test_external_runner.py` | H7 external runner |
 | GJC-MAP | GJC | Workflow pipeline ↔ agent-lab integration map | ✅ | [GJC-WORKFLOW-PIPELINE.md](GJC-WORKFLOW-PIPELINE.md), Learn AI `notes/05-agent-lab/gajae-code-workflow-pipeline.md` | Doc only; adoption backlog AL-009…011 |
+| GJC-AUTH | Gajae-code v0.5.4 | Provider picker 기반 CLI 로그인 UX | ✅ | `provider_registry.py`, `auth_runs.py`, `routers/auth.py`, `AuthFlowPanel.tsx`, `ProviderStatusPanel.tsx`, `tests/test_auth_runs.py` | 공식 Codex·Claude·Cursor CLI credential을 source of truth로 사용 |
 
 **Planning canonical:** [MISSION-BOARD-ADOPTION.md](MISSION-BOARD-ADOPTION.md) (P1–P4 shipped).
 

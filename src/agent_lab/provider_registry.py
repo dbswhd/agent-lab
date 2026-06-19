@@ -13,6 +13,7 @@ from typing import Literal
 
 AuthKind = Literal["api", "oauth", "cli", "local"]
 FallbackClass = Literal["primary", "spare", "local"]
+AccountMode = Literal["ambient", "profile_slots", "api_chain"]
 
 
 @dataclass(frozen=True)
@@ -29,27 +30,63 @@ class ProviderSpec:
     # Auth methods this provider supports. Single source of truth for the
     # /login picker; empty means "derive {auth_kind}" via supported_auth().
     supported_auth: frozenset[AuthKind] = frozenset()
+    account_mode: AccountMode = "api_chain"
+    login_argv: tuple[str, ...] = ()
+    logout_argv: tuple[str, ...] = ()
+    status_argv: tuple[str, ...] = ()
+    browser_hosts: tuple[str, ...] = ()
 
 
 # Default catalog. cursor/claude/codex mirror the existing room agents; kimi and
 # local are the new spare/floor providers from the approved plan.
 _REGISTRY: dict[str, ProviderSpec] = {
     "cursor": ProviderSpec(
-        "cursor", "Cursor", "api", True, "primary",
+        "cursor",
+        "Cursor",
+        "api",
+        True,
+        "primary",
         # cursor-agent CLI supports both CURSOR_API_KEY and `cursor-agent login`
         # (browser OAuth). auth_kind stays "api" (default/primary path).
         supported_auth=frozenset({"api", "oauth"}),
+        account_mode="ambient",
+        login_argv=("cursor-agent", "login"),
+        logout_argv=("cursor-agent", "logout"),
+        status_argv=("cursor-agent", "status"),
+        browser_hosts=("cursor.com", "www.cursor.com", "auth.cursor.com"),
     ),
     "claude": ProviderSpec(
-        "claude", "Claude", "oauth", False, "primary",
+        "claude",
+        "Claude",
+        "oauth",
+        False,
+        "primary",
         supported_auth=frozenset({"oauth"}),
+        account_mode="ambient",
+        login_argv=("claude", "auth", "login"),
+        logout_argv=("claude", "auth", "logout"),
+        status_argv=("claude", "auth", "status"),
+        browser_hosts=("claude.ai", "console.anthropic.com", "auth.anthropic.com"),
     ),
     "codex": ProviderSpec(
-        "codex", "Codex", "oauth", False, "primary",
+        "codex",
+        "Codex",
+        "oauth",
+        False,
+        "primary",
         supported_auth=frozenset({"oauth"}),
+        account_mode="profile_slots",
+        login_argv=("codex", "login"),
+        logout_argv=("codex", "logout"),
+        status_argv=("codex", "login", "status"),
+        browser_hosts=("auth.openai.com", "chatgpt.com", "openai.com"),
     ),
     "kimi": ProviderSpec(
-        "kimi", "KIMI", "api", True, "spare",
+        "kimi",
+        "KIMI",
+        "api",
+        True,
+        "spare",
         supported_auth=frozenset({"api"}),
     ),
     "local": ProviderSpec(

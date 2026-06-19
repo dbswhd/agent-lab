@@ -230,6 +230,25 @@ def agent_health_row(
         row["ready"] = True
         return row
 
+    if aid == "kimi":
+        from agent_lab import kimi_provider
+
+        row["configured"] = kimi_provider.is_available()
+        row["ready"] = row["configured"]
+        if not row["ready"]:
+            row["hint"] = "KIMI API 키 없음 — /login api kimi"
+        return row
+
+    if aid == "local":
+        from agent_lab import local_provider
+
+        row["configured"] = True
+        row["ready"] = local_provider.is_available()
+        row["model"] = local_provider.model_label()
+        if not row["ready"]:
+            row["hint"] = "로컬 모델 사용 불가 — ollama 등 확인"
+        return row
+
     row["hint"] = "unknown agent"
     return row
 
@@ -249,7 +268,14 @@ def build_agent_health(
             row.update(_capability_fields(agent_id, run_meta))
             row.update(_model_readiness_fields(agent_id))
         return rows
-    return [agent_health_row(aid, probe_bridge=probe_bridge, run_meta=run_meta) for aid in AGENT_IDS]
+    ids = list(AGENT_IDS)
+    from agent_lab.agent_roster import dynamic_room_enabled
+
+    if dynamic_room_enabled():
+        for extra in ("kimi", "local"):
+            if extra not in ids:
+                ids.append(extra)  # type: ignore[arg-type]
+    return [agent_health_row(aid, probe_bridge=probe_bridge, run_meta=run_meta) for aid in ids]
 
 
 def build_health_payload(

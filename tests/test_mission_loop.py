@@ -489,7 +489,9 @@ def test_after_plan_scribe_runs_gate(session_folder: Path) -> None:
     assert result["status"] == "ok"
 
 
-def test_verified_approve_enables_mission(session_folder: Path) -> None:
+def test_verified_approve_enables_mission(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Legacy mission bootstrap expects DISCUSS; pipeline default-on routes via CLARIFY.
+    monkeypatch.setenv("AGENT_LAB_PIPELINE", "0")
     init_verified_loop(session_folder)
     record_proposed_goal(
         session_folder,

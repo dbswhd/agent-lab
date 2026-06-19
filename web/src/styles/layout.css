@@ -1996,10 +1996,9 @@
 }
 .first-run-agent {
   display: grid;
-  grid-template-columns: minmax(76px, 0.8fr) minmax(72px, 0.7fr) minmax(
-      0,
-      1.5fr
-    ) auto auto;
+  grid-template-columns:
+    minmax(76px, 0.8fr) minmax(72px, 0.7fr) minmax(0, 1.5fr)
+    auto auto;
   align-items: center;
   gap: var(--space-8);
   padding: var(--space-8) var(--space-10);

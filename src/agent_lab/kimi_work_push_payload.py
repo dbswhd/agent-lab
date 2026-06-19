@@ -48,6 +48,52 @@ def _visible_text_parts(payload: dict[str, Any]) -> list[str]:
     return text_parts
 
 
+def _reasoning_text_parts(payload: dict[str, Any]) -> list[str]:
+    reasoning_parts: list[str] = []
+    for item in push_message_parts(payload):
+        kind = str(item.get("kind") or item.get("type") or "").strip().lower()
+        if kind != "reasoning":
+            continue
+        for key in ("text", "content", "delta", "markdown"):
+            raw = item.get(key)
+            if isinstance(raw, str) and raw.strip():
+                reasoning_parts.append(raw.strip())
+                break
+    return reasoning_parts
+
+
+def assistant_reasoning_text(payload: dict[str, Any]) -> str:
+    """Chain-of-thought while no visible ``kind: text`` part exists yet."""
+    if _visible_text_parts(payload):
+        return ""
+    reasoning_parts = _reasoning_text_parts(payload)
+    if reasoning_parts:
+        return reasoning_parts[-1]
+    parts = push_message_parts(payload)
+    if not parts:
+        return ""
+    text = str(payload.get("text") or "").strip()
+    if text:
+        return text
+    message = payload.get("message")
+    if isinstance(message, dict):
+        for key in ("text", "content"):
+            nested = str(message.get(key) or "").strip()
+            if nested:
+                return nested
+    return ""
+
+
+def thinking_activity_line(cumulative: str, *, tail: int = 96) -> str:
+    """One-line thinking preview for the activity log (not the reply body)."""
+    flat = " ".join(cumulative.strip().split())
+    if not flat:
+        return ""
+    if len(flat) <= tail:
+        return f"[thinking] {flat}"
+    return f"[thinking] …{flat[-tail:]}"
+
+
 def assistant_reply_text(payload: dict[str, Any]) -> str:
     """Extract visible assistant reply text (``kind: text``; skips reasoning/tools)."""
     parts = push_message_parts(payload)

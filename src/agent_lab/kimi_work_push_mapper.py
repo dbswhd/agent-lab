@@ -5,9 +5,17 @@ from __future__ import annotations
 import json
 from typing import Any, Callable
 
-from agent_lab.kimi_work_push_payload import assistant_reply_text, push_message_parts
+from agent_lab.kimi_work_push_payload import (
+    assistant_reasoning_text,
+    assistant_reply_text,
+    push_message_parts,
+    thinking_activity_line,
+)
+from agent_lab.room_sse_stream import CumulativeTextStreamer
 
 BridgeEmit = Callable[[str, dict[str, Any]], None]
+
+_THINKING_EMIT_MIN_CHARS = 24
 
 
 def _tool_name(part: dict[str, Any]) -> str:
@@ -41,11 +49,15 @@ class KimiWorkPushMapper:
         self._started: set[str] = set()
         self._result_lens: dict[str, int] = {}
         self._done: set[str] = set()
+        self._reasoning_stream = CumulativeTextStreamer()
+        self._last_thinking_emit_len = 0
 
     def reset(self) -> None:
         self._started.clear()
         self._result_lens.clear()
         self._done.clear()
+        self._reasoning_stream.reset()
+        self._last_thinking_emit_len = 0
 
     def emit_push(
         self,
@@ -75,6 +87,29 @@ class KimiWorkPushMapper:
         text = assistant_reply_text(payload)
         if text:
             on_bridge_event("text", {"text": text})
+            return
+        self._emit_reasoning_activity(payload, on_bridge_event)
+
+    def _emit_reasoning_activity(self, payload: dict[str, Any], on_bridge_event: BridgeEmit) -> None:
+        raw = assistant_reasoning_text(payload)
+        if not raw:
+            return
+        grew = False
+        for delta in self._reasoning_stream.feed(raw):
+            if delta:
+                grew = True
+        if not grew:
+            return
+        cumulative = self._reasoning_stream.body
+        if len(cumulative) <= self._last_thinking_emit_len:
+            return
+        if self._last_thinking_emit_len and len(cumulative) - self._last_thinking_emit_len < _THINKING_EMIT_MIN_CHARS:
+            return
+        line = thinking_activity_line(cumulative)
+        if not line:
+            return
+        self._last_thinking_emit_len = len(cumulative)
+        on_bridge_event("activity", {"text": line})
 
     def _emit_parts(self, parts: list[Any], on_bridge_event: BridgeEmit) -> None:
         for item in parts:

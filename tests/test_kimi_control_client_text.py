@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from agent_lab.kimi_work_push_payload import assistant_reply_text, push_message_parts
+from agent_lab.kimi_work_push_payload import (
+    assistant_reasoning_text,
+    assistant_reply_text,
+    push_message_parts,
+    thinking_activity_line,
+)
 
 
 def test_push_message_parts_top_level() -> None:
@@ -82,3 +87,28 @@ def test_assistant_reply_text_cot_snapshots_until_visible_text_part() -> None:
     }
     assert assistant_reply_text(reasoning_only) == ""
     assert assistant_reply_text(with_text) == "최종 답변"
+
+
+def test_assistant_reasoning_text_from_parts_and_top_level() -> None:
+    payload = {
+        "text": "추가 근거 수집: Cursor가 주장한",
+        "message": {"parts": [{"kind": "reasoning", "text": "추가 근거 수집: Cursor가 주장한"}]},
+    }
+    assert assistant_reasoning_text(payload) == "추가 근거 수집: Cursor가 주장한"
+    assert assistant_reasoning_text(
+        {
+            "message": {
+                "parts": [
+                    {"kind": "reasoning", "text": "hidden"},
+                    {"kind": "text", "text": "visible"},
+                ],
+            },
+        },
+    ) == ""
+
+
+def test_thinking_activity_line_truncates_tail() -> None:
+    long = "A" * 120
+    line = thinking_activity_line(long, tail=20)
+    assert line.startswith("[thinking] …")
+    assert line.endswith("A" * 20)

@@ -9,7 +9,7 @@ from typing import Literal
 
 from agent_lab import agent_models
 
-AgentId = Literal["cursor", "codex", "claude"]
+AgentId = Literal["cursor", "codex", "claude", "kimi", "kimi_work", "local"]
 ProviderId = Literal["local", "openai", "anthropic"]
 Tier = Literal["low", "medium", "high"]
 
@@ -64,8 +64,11 @@ def loop_ready(profile: ModelProfile) -> bool:
 def _tier(raw: object, default: Tier) -> Tier:
     value = str(raw or default).strip().lower()
     if value in ("low", "medium", "high"):
-        return value
+        return value  # type: ignore[return-value]
     return default
+
+
+SUBSTITUTE_AGENT_IDS: frozenset[str] = frozenset({"kimi", "kimi_work", "local"})
 
 
 def _known_agent_id(agent_id: str) -> AgentId | None:
@@ -80,6 +83,33 @@ def _known_agent_id(agent_id: str) -> AgentId | None:
             return None
 
 
+def _substitute_agent_id(agent_id: str) -> AgentId | None:
+    """Recognise kimi / kimi_work / local as substitute agents (not in default profiles)."""
+    raw = agent_id.strip().lower()
+    if raw in SUBSTITUTE_AGENT_IDS:
+        return raw  # type: ignore[return-value]
+    return None
+
+
+def _substitute_profile(agent: AgentId, model_id: str) -> ModelProfile:
+    """Conservative profile for substitute agents: team-ready, NOT loop-ready.
+
+    Substitutes must earn loop-readiness via a live capability probe (stage-2).
+    """
+    provider: ProviderId = "local"
+    return ModelProfile(
+        provider=provider,
+        model_id=model_id or "default",
+        agent=agent,
+        supports_tools=False,
+        supports_inbox_mcp=False,
+        supports_json_envelope=False,
+        supports_long_context=False,
+        cost_tier="low",
+        latency_tier="medium",
+    )
+
+
 def resolve_runtime_model_id(agent_id: str) -> str:
     """Resolve configured model id for an agent (env override aware)."""
     match agent_id.strip().lower():
@@ -89,6 +119,12 @@ def resolve_runtime_model_id(agent_id: str) -> str:
             return (os.getenv("CODEX_MODEL") or agent_models.DEFAULT_CODEX_MODEL).strip()
         case "claude":
             return (os.getenv("CLAUDE_MODEL") or agent_models.DEFAULT_CLAUDE_MODEL).strip()
+        case "kimi":
+            return (os.getenv("KIMI_MODEL") or "kimi-default").strip()
+        case "kimi_work":
+            return (os.getenv("KIMI_WORK_MODEL") or "kimi-work-default").strip()
+        case "local":
+            return (os.getenv("LOCAL_MODEL") or "local-default").strip()
         case _:
             return ""
 
@@ -182,15 +218,15 @@ def load_loop_eval_registry(*, force: bool = False) -> int:
             continue
         agent = str(row.get("agent") or "").strip().lower()
         model_id = str(row.get("model_id") or "").strip()
-        if agent not in ("cursor", "codex", "claude") or not model_id:
+        if agent not in ("cursor", "codex", "claude", "kimi", "kimi_work", "local") or not model_id:
             continue
         provider = str(row.get("provider") or "local").strip().lower()
         if provider not in ("local", "openai", "anthropic"):
             provider = "local"
         profile = ModelProfile(
-            provider=provider,
+            provider=provider,  # type: ignore[arg-type]
             model_id=model_id,
-            agent=agent,
+            agent=agent,  # type: ignore[arg-type]
             supports_tools=bool(row.get("supports_tools")),
             supports_inbox_mcp=bool(row.get("supports_inbox_mcp")),
             supports_json_envelope=bool(row.get("supports_json_envelope")),
@@ -240,24 +276,40 @@ def loop_cost_tier_blocks(profile: ModelProfile) -> bool:
 def model_profile_for(agent_id: str, *, model_id: str | None = None) -> ModelProfile | None:
     _ensure_loop_eval_loaded()
     known = _known_agent_id(agent_id)
-    if known is None:
-        return None
-    mid = (model_id or resolve_runtime_model_id(agent_id)).strip()
-    if not mid:
-        return _unknown_model_profile(known, "")
-    key = _profile_registry_key(known, mid)
-    if key in _MODEL_PROFILE_REGISTRY:
-        return _MODEL_PROFILE_REGISTRY[key]
-    default = agent_model_profiles()[known]
-    if mid.lower() == default.model_id.strip().lower():
-        return default
-    from agent_lab.model_policy_probe import loop_probe_enabled, probe_loop_capabilities_cached
+    if known is not None:
+        mid = (model_id or resolve_runtime_model_id(agent_id)).strip()
+        if not mid:
+            return _unknown_model_profile(known, "")
+        key = _profile_registry_key(known, mid)
+        if key in _MODEL_PROFILE_REGISTRY:
+            return _MODEL_PROFILE_REGISTRY[key]
+        default = agent_model_profiles()[known]
+        if mid.lower() == default.model_id.strip().lower():
+            return default
+        from agent_lab.model_policy_probe import loop_probe_enabled, probe_loop_capabilities_cached
 
-    if loop_probe_enabled():
-        probed = probe_loop_capabilities_cached(agent_id, mid)
-        if probed is not None:
-            return probed
-    return _unknown_model_profile(known, mid)
+        if loop_probe_enabled():
+            probed = probe_loop_capabilities_cached(agent_id, mid)
+            if probed is not None:
+                return probed
+        return _unknown_model_profile(known, mid)
+
+    # Substitute agents (kimi, kimi_work, local) — not in default profiles.
+    sub = _substitute_agent_id(agent_id)
+    if sub is not None:
+        mid = (model_id or resolve_runtime_model_id(agent_id)).strip() or "default"
+        key = _profile_registry_key(sub, mid)
+        if key in _MODEL_PROFILE_REGISTRY:
+            return _MODEL_PROFILE_REGISTRY[key]
+        from agent_lab.model_policy_probe import loop_probe_enabled, probe_loop_capabilities_cached
+
+        if loop_probe_enabled():
+            probed = probe_loop_capabilities_cached(agent_id, mid)
+            if probed is not None:
+                return probed
+        return _substitute_profile(sub, mid)
+
+    return None
 
 
 def model_readiness(agent_id: str, *, model_id: str | None = None) -> ModelReadiness | None:
@@ -279,9 +331,12 @@ def loop_readiness_failure(agent_ids: Sequence[str]) -> LoopReadinessFailure | N
 
     not_ready: list[str] = []
     cost_blocked: list[str] = []
+    unvalidated: list[str] = []
     for agent_id in agent_ids:
         readiness = model_readiness(agent_id)
         if readiness is None:
+            # Fail-closed: unknown/unrecognised agents cannot be loop-ready.
+            unvalidated.append(agent_id.strip().lower())
             continue
         profile = model_profile_for(agent_id)
         if profile is not None and loop_cost_tier_blocks(profile):
@@ -294,9 +349,14 @@ def loop_readiness_failure(agent_ids: Sequence[str]) -> LoopReadinessFailure | N
             agents=tuple(cost_blocked),
             reason=f"model cost tier exceeds Loop ceiling ({loop_max_cost_tier()})",
         )
-    if not not_ready:
-        return None
-    return LoopReadinessFailure(
-        agents=tuple(not_ready),
-        reason="selected agent model lacks question/tool capability for Loop",
-    )
+    if not_ready:
+        return LoopReadinessFailure(
+            agents=tuple(not_ready),
+            reason="selected agent model lacks question/tool capability for Loop",
+        )
+    if unvalidated:
+        return LoopReadinessFailure(
+            agents=tuple(unvalidated),
+            reason="selected agent is not recognised or has no validated profile for Loop",
+        )
+    return None

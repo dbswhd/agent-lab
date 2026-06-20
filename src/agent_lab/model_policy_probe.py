@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -12,6 +13,8 @@ from agent_lab.model_policy import (
     ProviderId,
     Tier,
     _known_agent_id,
+    _substitute_agent_id,
+    _substitute_profile,
     _tier,
     register_model_profile,
     resolve_runtime_model_id,
@@ -23,6 +26,12 @@ _PROBE_CACHE_LOADED = False
 def loop_probe_enabled() -> bool:
     raw = (os.getenv("AGENT_LAB_LOOP_PROBE") or "1").strip().lower()
     return raw not in ("0", "false", "no", "off")
+
+
+def _live_probe_enabled() -> bool:
+    """Flag-gated live capability probe (stage-2). Default OFF for backward compat."""
+    raw = (os.getenv("AGENT_LAB_LOOP_PROBE_LIVE") or "").strip().lower()
+    return raw in ("1", "true", "yes", "on")
 
 
 def _probe_cache_path() -> Path:
@@ -88,30 +97,101 @@ def _probe_supports_json_envelope(agent: AgentId) -> bool:
     return agent in ("cursor", "codex", "claude")
 
 
+def _probe_live_capability(agent: AgentId, model_id: str) -> bool:
+    """Stage-2: make a minimal real call to verify the agent can respond and produce a structured envelope.
+
+    Returns True only if the agent responds with a non-empty reply that contains
+    a parseable JSON envelope (or valid prose when envelope is not requested).
+    """
+    if _mock_mode():
+        return True
+
+    # Only run for agents that have a real provider backend wired.
+    if agent in ("kimi", "kimi_work", "local"):
+        from agent_lab.agents import registry
+
+        if not registry._is_ready(agent):
+            return False
+        try:
+            reply = registry.call_agent_reply(
+                agent,
+                system="You are a test probe. Reply with a single JSON object containing {'status': 'ok'}.",
+                user="Probe test. Respond with JSON only.",
+                request_structured_envelope=True,
+            )
+            text = reply.text.strip()
+            if reply.structured_envelope is not None:
+                return True
+            # Fallback: try to parse JSON from text
+            try:
+                parsed = json.loads(text)
+                return isinstance(parsed, dict) and "status" in parsed
+            except (json.JSONDecodeError, ValueError):
+                return False
+        except Exception:
+            return False
+
+    # For built-in agents (cursor, codex, claude), the infra probe is sufficient
+    # unless live probe is explicitly enabled.
+    return True
+
+
 def probe_loop_capabilities(agent_id: str, model_id: str) -> ModelProfile | None:
-    """Static runtime probe (no LLM): agent bridge + inbox + envelope infrastructure."""
+    """Two-stage probe: infrastructure (stage-1) + optional live capability (stage-2)."""
     agent = _known_agent_id(agent_id)
     if agent is None:
+        agent = _substitute_agent_id(agent_id)
+    if agent is None:
         return None
+
     mid = (model_id or resolve_runtime_model_id(agent_id)).strip()
     if not mid:
         return None
-    provider: ProviderId = "local" if agent == "cursor" else ("openai" if agent == "codex" else "anthropic")
-    supports_tools = _probe_supports_tools(agent)
-    supports_inbox = _probe_supports_inbox_mcp(agent)
-    supports_envelope = _probe_supports_json_envelope(agent)
-    cost: Tier = "low" if provider == "local" else "high"
-    return ModelProfile(
-        provider=provider,
-        model_id=mid,
-        agent=agent,
-        supports_tools=supports_tools,
-        supports_inbox_mcp=supports_inbox,
-        supports_json_envelope=supports_envelope,
-        supports_long_context=provider != "local",
-        cost_tier=cost,
-        latency_tier="medium",
-    )
+
+    # Stage-1: infrastructure probe
+    if agent in ("kimi", "kimi_work", "local"):
+        # Substitutes start with a conservative profile.
+        profile = _substitute_profile(agent, mid)
+    else:
+        provider: ProviderId = "local" if agent == "cursor" else ("openai" if agent == "codex" else "anthropic")
+        supports_tools = _probe_supports_tools(agent)
+        supports_inbox = _probe_supports_inbox_mcp(agent)
+        supports_envelope = _probe_supports_json_envelope(agent)
+        cost: Tier = "low" if provider == "local" else "high"
+        profile = ModelProfile(
+            provider=provider,
+            model_id=mid,
+            agent=agent,
+            supports_tools=supports_tools,
+            supports_inbox_mcp=supports_inbox,
+            supports_json_envelope=supports_envelope,
+            supports_long_context=provider != "local",
+            cost_tier=cost,
+            latency_tier="medium",
+        )
+
+    # Stage-2: live capability probe (flag-gated, default off for built-ins, always on for substitutes)
+    if agent in ("kimi", "kimi_work", "local") or _live_probe_enabled():
+        live_ok = _probe_live_capability(agent, mid)
+        if not live_ok:
+            # Downgrade: force not-loop-ready
+            profile = replace(
+                profile,
+                supports_tools=False,
+                supports_inbox_mcp=False,
+                supports_json_envelope=False,
+            )
+        else:
+            # Upgrade substitutes to loop-ready if they pass live probe
+            if agent in ("kimi", "kimi_work", "local"):
+                profile = replace(
+                    profile,
+                    supports_tools=True,
+                    supports_inbox_mcp=True,
+                    supports_json_envelope=True,
+                )
+
+    return profile
 
 
 def _load_probe_cache() -> dict[str, Any]:
@@ -135,7 +215,7 @@ def _profile_from_cache_row(row: dict[str, Any], agent: AgentId, model_id: str) 
     if provider not in ("local", "openai", "anthropic"):
         provider = "local"
     return ModelProfile(
-        provider=provider,
+        provider=provider,  # type: ignore[arg-type]
         model_id=model_id,
         agent=agent,
         supports_tools=bool(row.get("supports_tools")),
@@ -176,10 +256,14 @@ def probe_loop_capabilities_cached(agent_id: str, model_id: str) -> ModelProfile
     """Probe once per agent:model_id; reuse disk cache when probe is disabled."""
     agent = _known_agent_id(agent_id)
     if agent is None:
+        agent = _substitute_agent_id(agent_id)
+    if agent is None:
         return None
+
     mid = (model_id or resolve_runtime_model_id(agent_id)).strip()
     if not mid:
         return None
+
     key = f"{agent}:{mid.lower()}"
     cache = _load_probe_cache()
     cached = cache.get(key)
@@ -190,6 +274,7 @@ def probe_loop_capabilities_cached(agent_id: str, model_id: str) -> ModelProfile
             return profile
     if not loop_probe_enabled():
         return None
+
     profile = probe_loop_capabilities(agent_id, mid)
     if profile is None:
         return None

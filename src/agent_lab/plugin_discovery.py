@@ -9,6 +9,10 @@ import time
 from pathlib import Path
 from typing import Any
 
+from agent_lab.code_memory_mcp_server import (
+    code_memory_cache_signature,
+    code_memory_mcp_enabled,
+)
 from agent_lab.subprocess_env import subprocess_env
 
 _AGENT_LAB_ROOT = Path(__file__).resolve().parents[2]
@@ -213,9 +217,34 @@ def _parse_codex_mcp(output: str) -> list[dict[str, Any]]:
 
 
 _DISCOVERY_TTL_S = 60.0
-_discovery_cache: dict[tuple[str, bool], tuple[float, dict[str, Any]]] = {}
-_discovery_refreshing: set[tuple[str, bool]] = set()
+_discovery_cache: dict[tuple[str, bool, tuple[bool, str]], tuple[float, dict[str, Any]]] = {}
+_discovery_refreshing: set[tuple[str, bool, tuple[bool, str]]] = set()
 _discovery_lock = threading.Lock()
+
+
+def _code_memory_mcp_rows() -> list[dict[str, Any]]:
+    if not code_memory_mcp_enabled():
+        return []
+    return [
+        {
+            "id": "claude:mcp:agent-lab-code-memory",
+            "name": "agent-lab-code-memory",
+            "agent": "claude",
+            "kind": "mcp",
+            "description": "Code-memory MCP (Phase 0 pilot)",
+            "status": "enabled",
+            "enabled_default": True,
+        },
+        {
+            "id": "codex:mcp:agent-lab-code-memory",
+            "name": "agent-lab-code-memory",
+            "agent": "codex",
+            "kind": "mcp",
+            "description": "Code-memory MCP (Phase 0 pilot)",
+            "status": "enabled",
+            "enabled_default": True,
+        },
+    ]
 
 
 def reset_plugin_discovery_cache() -> None:
@@ -235,7 +264,7 @@ def _empty_discovery(workspace: Path, *, mock: bool) -> dict[str, Any]:
     }
 
 
-def _refresh_discovery(workspace: Path, use_mock: bool, key: tuple[str, bool]) -> None:
+def _refresh_discovery(workspace: Path, use_mock: bool, key: tuple[str, bool, tuple[bool, str]]) -> None:
     try:
         result = _discover_plugins_uncached(workspace, mock=use_mock)
         with _discovery_lock:
@@ -251,7 +280,7 @@ def discover_plugins_fast(
     mock: bool | None = None,
 ) -> dict[str, Any]:
     use_mock = mock if mock is not None else mock_mode()
-    key = (str(workspace), use_mock)
+    key = (str(workspace), use_mock, code_memory_cache_signature())
     now = time.monotonic()
     with _discovery_lock:
         hit = _discovery_cache.get(key)
@@ -281,7 +310,7 @@ def discover_plugins(
     menu hit this on every call; without the cache each picker click paid the
     full CLI-discovery cost."""
     use_mock = mock if mock is not None else mock_mode()
-    key = (str(workspace), use_mock)
+    key = (str(workspace), use_mock, code_memory_cache_signature())
     now = time.monotonic()
     with _discovery_lock:
         hit = _discovery_cache.get(key)
@@ -301,6 +330,7 @@ def _discover_plugins_uncached(
     """Return grouped plugin inventory for all agents."""
     if mock if mock is not None else mock_mode():
         plugins = list(_MOCK_PLUGINS) + scan_skills(_AGENT_LAB_ROOT, workspace)
+        plugins.extend(_code_memory_mcp_rows())
         return {
             "workspace": str(workspace),
             "mock": True,
@@ -308,8 +338,9 @@ def _discover_plugins_uncached(
             "plugins": plugins,
         }
 
-    plugins: list[dict[str, Any]] = []
+    plugins = []
     plugins.extend(scan_skills(_AGENT_LAB_ROOT, workspace))
+    plugins.extend(_code_memory_mcp_rows())
     plugins.append(
         {
             "id": "cursor:ide-inherited",

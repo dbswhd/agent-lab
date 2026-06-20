@@ -146,6 +146,17 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
     FlagDef("AGENT_LAB_INBOX_POLL_SEC", "feature", "Inbox poll interval (seconds)", default="0.25"),
     FlagDef("AGENT_LAB_FACILITATOR_LIVE", "feature", "Live Claude inbox facilitator synthesis"),
     # --- feature: room / context ---
+    FlagDef(
+        "AGENT_LAB_CODE_MEMORY_MCP",
+        "feature",
+        "§5 Phase 0 code-memory MCP pilot (local, read-only, manual; default off)",
+    ),
+    FlagDef(
+        "AGENT_LAB_CODE_MEMORY_MODE",
+        "feature",
+        "Code-memory mode: mock | index (default mock when enabled)",
+        default="mock",
+    ),
     FlagDef("AGENT_LAB_CLARIFIER", "feature", "Short-topic clarifier SSE before agents"),
     FlagDef("AGENT_LAB_CLARIFIER_INTERVIEW", "feature", "Multi-turn clarifier interview mode"),
     FlagDef("AGENT_LAB_CLARIFIER_MIN_CHARS", "feature", "Clarifier topic length threshold", default="48"),

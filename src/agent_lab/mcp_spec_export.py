@@ -6,6 +6,10 @@ import json
 from pathlib import Path
 from typing import Any
 
+from agent_lab.code_memory_mcp import (
+    CODE_MEMORY_MCP_SERVER_NAME,
+    code_memory_mcp_stdio_spec,
+)
 from agent_lab.plugin_discovery import (
     discover_plugins,
     is_plugin_enabled,
@@ -118,6 +122,14 @@ def build_claude_mcp_overlay(session_folder: Path, run: dict[str, Any] | None) -
     """Write allowlist-filtered Claude MCP JSON for `--mcp-config`."""
     servers: dict[str, Any] = {}
     for name in _allowlisted_mcp_names(run, "claude"):
+        if name == CODE_MEMORY_MCP_SERVER_NAME:
+            spec = code_memory_mcp_stdio_spec(session_folder)
+            servers[name] = {
+                "command": spec["command"],
+                "args": spec["args"],
+                "env": spec["env"],
+            }
+            continue
         entry = fetch_claude_mcp_entry(name)
         if entry:
             servers[name] = entry
@@ -142,8 +154,18 @@ def codex_mcp_stdio_config_args(
         return []
     args: list[str] = []
     for name in _allowlisted_mcp_names(run, "codex"):
-        spec = fetch_codex_mcp_spec(name)
-        transport = (spec or {}).get("transport") if isinstance(spec, dict) else None
+        if name == CODE_MEMORY_MCP_SERVER_NAME:
+            spec = code_memory_mcp_stdio_spec(session_folder)
+            cm_transport = {
+                "type": "stdio",
+                "command": spec["command"],
+                "args": spec["args"],
+                "env": spec["env"],
+            }
+            args.extend(codex_transport_config_args(name, cm_transport))
+            continue
+        codex_spec = fetch_codex_mcp_spec(name)
+        transport = (codex_spec or {}).get("transport") if isinstance(codex_spec, dict) else None
         if isinstance(transport, dict) and transport.get("type"):
             args.extend(codex_transport_config_args(name, transport))
         else:

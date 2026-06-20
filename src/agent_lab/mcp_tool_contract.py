@@ -14,6 +14,9 @@ FORBIDDEN_TOOLS_GLOBAL: frozenset[str] = frozenset(
         "read_notebook",
         "read_full_backtest_json",
         "read_full_json",
+        "write_file",
+        "execute",
+        "read_full_file",
         "read_ipynb",
         "open_notebook",
     }
@@ -92,6 +95,10 @@ RESEARCH_EXCLUSIVE: frozenset[str] = frozenset(
     }
 )
 
+CODE_MEMORY_REQUIRED: frozenset[str] = frozenset({"code_memory_search"})
+CODE_MEMORY_ALLOWED: frozenset[str] = CODE_MEMORY_REQUIRED | frozenset({"code_memory_status"})
+CODE_MEMORY_EXCLUSIVE: frozenset[str] = frozenset({"code_memory_search", "code_memory_status"})
+
 _SERVER_SPECS: dict[str, dict[str, Any]] = {
     "agent-lab-research": {
         "module": "agent_lab.research_mcp_server",
@@ -106,6 +113,13 @@ _SERVER_SPECS: dict[str, dict[str, Any]] = {
         "allowed": QUANT_TRADING_ALLOWED,
         "required": QUANT_TRADING_REQUIRED,
         "exclusive": QUANT_TRADING_EXCLUSIVE,
+    },
+    "agent-lab-code-memory": {
+        "module": "agent_lab.code_memory_mcp_server",
+        "attr": "mcp",
+        "allowed": CODE_MEMORY_ALLOWED,
+        "required": CODE_MEMORY_REQUIRED,
+        "exclusive": CODE_MEMORY_EXCLUSIVE,
     },
 }
 
@@ -152,12 +166,13 @@ def validate_mcp_tool_surface(
     if missing:
         issues.append(f"missing required tools: {', '.join(missing)}")
 
-    other = "quant-trading" if server == "agent-lab-research" else "agent-lab-research"
-    other_spec = _SERVER_SPECS[other]
-    other_exclusive: frozenset[str] = other_spec["exclusive"]
-    cross = sorted(names & other_exclusive)
-    if cross:
-        issues.append(f"tools belong on {other}: {', '.join(cross)}")
+    for other, other_spec in _SERVER_SPECS.items():
+        if other == server:
+            continue
+        other_exclusive: frozenset[str] = other_spec["exclusive"]
+        cross = sorted(names & other_exclusive)
+        if cross:
+            issues.append(f"tools belong on {other}: {', '.join(cross)}")
 
     return {
         "ok": not issues,
@@ -166,6 +181,56 @@ def validate_mcp_tool_surface(
         "tools": sorted(names),
         "issues": issues,
     }
+
+
+def validate_code_memory_hit(hit: dict[str, Any]) -> list[str]:
+    """Validate one code-memory hit carries a stable source reference."""
+    issues: list[str] = []
+    for key in ("path", "start_line", "end_line", "source_ref", "snippet", "fresh"):
+        if not hit.get(key):
+            issues.append(f"missing or empty hit field: {key}")
+
+    path = hit.get("path")
+    start_line = hit.get("start_line")
+    end_line = hit.get("end_line")
+    source_ref = hit.get("source_ref")
+
+    if not isinstance(start_line, int):
+        issues.append("start_line must be an int")
+    if not isinstance(end_line, int):
+        issues.append("end_line must be an int")
+    if isinstance(start_line, int) and start_line < 1:
+        issues.append("start_line must be >= 1")
+    if isinstance(start_line, int) and isinstance(end_line, int) and end_line < start_line:
+        issues.append("end_line must be >= start_line")
+    if isinstance(path, str) and isinstance(start_line, int) and isinstance(end_line, int):
+        expected_source_ref = f"{path}:{start_line}-{end_line}"
+        if source_ref != expected_source_ref:
+            issues.append(f"source_ref must equal {expected_source_ref}")
+
+    return issues
+
+
+def validate_code_memory_search_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Validate the public code-memory search payload shape and hit source refs."""
+    issues: list[str] = []
+    required = ("ok", "enabled", "mode", "query", "hit_count", "stale_hit_count", "hits", "index")
+    for key in required:
+        if key not in payload:
+            issues.append(f"missing payload field: {key}")
+
+    hits = payload.get("hits")
+    if isinstance(hits, list):
+        for idx, hit in enumerate(hits):
+            if not isinstance(hit, dict):
+                issues.append(f"hit {idx} must be a dict")
+                continue
+            for issue in validate_code_memory_hit(hit):
+                issues.append(f"hit {idx}: {issue}")
+    elif "hits" in payload:
+        issues.append("hits must be a list")
+
+    return {"ok": not issues, "issues": issues}
 
 
 async def audit_mcp_contracts() -> dict[str, Any]:

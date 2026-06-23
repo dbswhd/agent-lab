@@ -72,7 +72,9 @@ def test_fast_bucket_collection_budget():
     # 2026-06-19: raised 1340 -> 1360 for §1 pipeline handles (/pipeline,/clarify,/plan) + CLARIFY transition rows.
     # 2026-06-19: raised 1360 -> 1380 for model-switch safety probe (substitute recognition + 2-stage live capability).
     # 2026-06-20: raised 1380 -> 1400 for §5 Phase 0 code-memory MCP pilot (server + contract + mount + off-parity + cache).
-    assert count <= 1400, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-06-21: raised 1400 -> 1430 for CLARIFY unification (clarifier_engine adapter AC1-AC15 suite).
+    # 2026-06-22: raised 1430 -> 1560 for stage-aware routing + anti-drift (phase->route resolver, RoutingDecisionLog telemetry, anti-drift A/B + fresh-eyes seat, and adversarial red-team suites).
+    assert count <= 1560, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

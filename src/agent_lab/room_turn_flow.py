@@ -121,6 +121,36 @@ def _emit_budget_status(run_meta, on_event):
         on_event("budget_exhausted", {"cumulative": action.get("cumulative")})
 
 
+def _resolve_stage_routing(
+    run_meta: dict[str, Any],
+    *,
+    turn_profile: str | None,
+    consensus_mode: bool,
+    folder: Path | None,
+) -> bool:
+    """Phase-aware single-vs-panel routing (no-op unless AGENT_LAB_STAGE_ROUTING is on).
+
+    Returns the resolved consensus_mode and records the observational RoutingDecisionLog.
+    OFF-parity: with the flag off the input consensus_mode is returned unchanged and nothing
+    is written.
+    """
+    from agent_lab.turn_modes import stage_routing_enabled
+
+    if not stage_routing_enabled():
+        return consensus_mode
+    from agent_lab.mode_router import record_routing_decision, resolve_active_phase
+    from agent_lab.turn_modes import stage_route_consensus
+
+    resolved, decision = stage_route_consensus(
+        phase=resolve_active_phase(run_meta),
+        turn_profile=turn_profile,
+        consensus_mode=consensus_mode,
+        stage_routing=True,
+    )
+    record_routing_decision(folder, decision)
+    return resolved
+
+
 def continue_room_round(
     folder: Path,
     user_message: str,
@@ -183,6 +213,11 @@ def continue_room_round(
         [str(a) for a in active_agents],
         user_message=body,
     )
+
+    consensus_mode = _resolve_stage_routing(
+        run_meta, turn_profile=turn_profile, consensus_mode=consensus_mode, folder=folder
+    )
+
     _set_active_turn_flags(
         run_meta,
         mode=mode,
@@ -234,9 +269,10 @@ def continue_room_round(
             human_message_count=human_turn_num,
             plan_mode=synthesize,
         )
-        clarifier_questions = interview_prompts(clarifier_interview)
         if clarifier_interview:
-            persist_clarifier_interview(folder, clarifier_interview)
+            persisted = persist_clarifier_interview(folder, clarifier_interview)
+            clarifier_interview = persisted.get("interview") or clarifier_interview
+        clarifier_questions = interview_prompts(clarifier_interview)
         if clarifier_questions and on_event:
             on_event(
                 "clarifier_prompt",
@@ -585,6 +621,11 @@ def run_room(
         [str(a) for a in active_agents],
         user_message=topic,
     )
+
+    consensus_mode = _resolve_stage_routing(
+        run_meta, turn_profile=turn_profile, consensus_mode=consensus_mode, folder=folder
+    )
+
     _set_active_turn_flags(
         run_meta,
         mode=mode,
@@ -635,9 +676,10 @@ def run_room(
             human_message_count=human_turn_num,
             plan_mode=synthesize,
         )
-        clarifier_questions = interview_prompts(clarifier_interview)
         if clarifier_interview and folder is not None:
-            persist_clarifier_interview(folder, clarifier_interview)
+            persisted = persist_clarifier_interview(folder, clarifier_interview)
+            clarifier_interview = persisted.get("interview") or clarifier_interview
+        clarifier_questions = interview_prompts(clarifier_interview)
         if clarifier_questions and on_event:
             on_event(
                 "clarifier_prompt",

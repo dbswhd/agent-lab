@@ -40,6 +40,14 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
     FlagDef("AGENT_LAB_BUNDLE_PYTHON", "infra", "Bundled .app Python path hint", mask_value=True),
     # --- feature: mission / execute ---
     FlagDef("AGENT_LAB_MISSION_LOOP", "feature", "Verified mission loop FSM"),
+    FlagDef(
+        "AGENT_LAB_STAGE_ROUTING", "feature", "Phase-aware single-vs-panel routing (stage-aware selective; default off)"
+    ),
+    FlagDef(
+        "AGENT_LAB_ANTIDRIFT",
+        "feature",
+        "Structural anti-drift defenses for panel turns (state re-injection, unanimity red-team, fresh-eyes critic seat; default off)",
+    ),
     FlagDef("AGENT_LAB_LOOP_PROBE", "feature", "Runtime static loop capability probe", default="1"),
     FlagDef(
         "AGENT_LAB_LOOP_PROBE_CACHE",
@@ -158,6 +166,11 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         default="mock",
     ),
     FlagDef("AGENT_LAB_CLARIFIER", "feature", "Short-topic clarifier SSE before agents"),
+    FlagDef(
+        "AGENT_LAB_CLARIFIER_ENGINE",
+        "feature",
+        "Back the server clarifier with the clarity scoring engine (default off)",
+    ),
     FlagDef("AGENT_LAB_CLARIFIER_INTERVIEW", "feature", "Multi-turn clarifier interview mode"),
     FlagDef("AGENT_LAB_CLARIFIER_MIN_CHARS", "feature", "Clarifier topic length threshold", default="48"),
     FlagDef("AGENT_LAB_EFFICIENCY", "feature", "Default efficiency mode for all room calls"),

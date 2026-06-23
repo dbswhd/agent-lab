@@ -64,3 +64,38 @@ def record_mode_route(folder: Any) -> dict[str, Any]:
             dedup_mode=True,
         )
     return captured
+
+
+def resolve_active_phase(run: dict[str, Any]) -> str:
+    """Active FSM phase for stage routing: plan_workflow phase when active, else mission_loop phase."""
+    from agent_lab.plan_workflow import is_plan_workflow_active, plan_workflow_phase
+
+    if is_plan_workflow_active(run):
+        return plan_workflow_phase(run)
+    ml = run.get("mission_loop") if isinstance(run, dict) else None
+    return str((ml or {}).get("phase") or "") if isinstance(ml, dict) else ""
+
+
+def record_routing_decision(folder: Any, decision: dict[str, Any]) -> None:
+    """Persist a stage-routing decision to run.json mission_loop.stage_route (observational).
+
+    Telemetry only: never affects fan-out. No-op without a folder so run_room's pre-bootstrap
+    discuss turns stay byte-identical.
+    """
+    if not folder:
+        return
+    from agent_lab.mission_loop import get_mission_loop
+    from agent_lab.run_meta import patch_run_meta
+
+    def _patch(run: dict[str, Any]) -> dict[str, Any]:
+        ml = get_mission_loop(run)
+        ml["stage_route"] = {
+            "phase": decision.get("phase"),
+            "consensus_mode": bool(decision.get("consensus_mode")),
+            "applied": bool(decision.get("applied")),
+            "at": datetime.now(timezone.utc).isoformat(),
+        }
+        run["mission_loop"] = ml
+        return run
+
+    patch_run_meta(folder, _patch)

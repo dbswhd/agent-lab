@@ -22,13 +22,23 @@ from agent_lab.model_policy_probe import (
 
 @pytest.fixture(autouse=True)
 def _clear_model_profile_registry(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
-    """Prevent cross-test pollution of the global profile registry."""
+    """Isolate the global profile registry from cross-test pollution.
+
+    Start each test from the clean default registry (not whatever a prior test in the same
+    xdist worker registered for kimi/local via probe/eval-load), and block lazy loop-eval
+    loading so substitute conservative behavior is deterministic. Restore afterwards.
+    """
     import agent_lab.model_policy as mp
 
     before = dict(mp._MODEL_PROFILE_REGISTRY)
+    before_loaded = mp._LOOP_EVAL_LOADED
+    mp._MODEL_PROFILE_REGISTRY.clear()
+    mp._MODEL_PROFILE_REGISTRY.update(mp._build_default_registry())
+    mp._LOOP_EVAL_LOADED = True
     yield
     mp._MODEL_PROFILE_REGISTRY.clear()
     mp._MODEL_PROFILE_REGISTRY.update(before)
+    mp._LOOP_EVAL_LOADED = before_loaded
 
 
 class TestSubstituteRecognition:

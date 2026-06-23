@@ -10,6 +10,71 @@ LoopTopology = Literal["route_auto", "specialist", "verified"]
 PlanIntent = Literal["none", "plan_only", "loop"]
 
 
+# --- Stage-aware selective routing (AGENT_LAB_STAGE_ROUTING, default off) ---
+_STAGE_ROUTING_TRUE = frozenset({"1", "true", "yes", "on"})
+_PANEL_PHASES = frozenset({"DISCUSS", "PLAN_GATE", "PLAN_REJECT", "DRAFT", "PEER_REVIEW", "REFINE"})
+_SOLO_PHASES = frozenset({"EXECUTE_QUEUE", "DRY_RUN", "MERGE_REVIEW", "VERIFY", "REPAIR"})
+
+
+def stage_routing_enabled() -> bool:
+    """AGENT_LAB_STAGE_ROUTING (default OFF): phase-aware single-vs-panel routing."""
+    return (os.getenv("AGENT_LAB_STAGE_ROUTING") or "").strip().lower() in _STAGE_ROUTING_TRUE
+
+
+def antidrift_enabled() -> bool:
+    """AGENT_LAB_ANTIDRIFT (default OFF): structural anti-drift defenses (panel state re-injection,
+    unanimity red-team, fresh-eyes audit critic seat)."""
+    return (os.getenv("AGENT_LAB_ANTIDRIFT") or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def phase_default_consensus(phase: str | None) -> bool | None:
+    """Phase->route table: True=panel, False=solo, None=defer to the clarity engine.
+
+    Panel = divergence/audit phases (DISCUSS/PLAN_GATE/PLAN_REJECT/DRAFT/PEER_REVIEW/REFINE).
+    Solo = convergence/execution phases (EXECUTE_QUEUE/DRY_RUN/MERGE_REVIEW/VERIFY/REPAIR).
+    None = CLARIFY/INTAKE/MISSION_DEFINE/unknown so stage routing never overrides the
+    clarity engine's CLARIFY decision.
+    """
+    p = (phase or "").strip().upper()
+    if p in _PANEL_PHASES:
+        return True
+    if p in _SOLO_PHASES:
+        return False
+    return None
+
+
+def stage_route_consensus(
+    *,
+    phase: str | None,
+    turn_profile: str | None,
+    consensus_mode: bool,
+    stage_routing: bool | None = None,
+) -> tuple[bool, dict[str, Any]]:
+    """Resolve panel-vs-solo for a turn (pure). Returns (consensus_mode, decision_log).
+
+    Invariants: an explicit user turn_profile always wins (phase default not applied); the
+    phase default applies only when STAGE_ROUTING is on, no explicit profile was chosen, and
+    the phase has a non-deferring default. With stage routing off the input consensus_mode is
+    returned unchanged (OFF-parity). decision_log is observational and never affects fan-out
+    beyond the returned bool.
+    """
+    if stage_routing is None:
+        stage_routing = stage_routing_enabled()
+    explicit_profile = bool((turn_profile or "").strip())
+    phase_default = phase_default_consensus(phase) if stage_routing else None
+    applied = bool(stage_routing and not explicit_profile and phase_default is not None)
+    resolved = phase_default if applied else consensus_mode
+    log: dict[str, Any] = {
+        "phase": (phase or "").strip().upper() or None,
+        "stage_routing": bool(stage_routing),
+        "explicit_profile": explicit_profile,
+        "phase_default": phase_default,
+        "applied": applied,
+        "consensus_mode": bool(resolved),
+    }
+    return bool(resolved), log
+
+
 @dataclass(frozen=True, slots=True)
 class ModeContractError(ValueError):
     detail: str

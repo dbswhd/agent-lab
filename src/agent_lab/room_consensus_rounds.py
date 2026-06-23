@@ -363,11 +363,24 @@ def run_consensus_agent_rounds(
             "category": route.category,
         }
         forced_review_rounds = 0
-        if route.quality_gate and debate_conflicts == 0 and len(active) >= 2 and calls < cap_calls:
+        from agent_lab.turn_modes import antidrift_enabled
+
+        # Anti-drift B (panel-only by construction: this path runs only under consensus_mode):
+        # immediate 0-objection unanimity forces exactly one red-team round even when the route's
+        # own quality gate is off. Respects the same caps; never touches the approval spine.
+        antidrift_redteam = antidrift_enabled() and not route.quality_gate
+        if (
+            (route.quality_gate or antidrift_redteam)
+            and debate_conflicts == 0
+            and len(active) >= 2
+            and calls < cap_calls
+        ):
             check_cancelled()
             advocate = _review_advocate(active, human_turn_index)
             quality["forced_review"] = True
             quality["advocate"] = str(advocate)
+            if antidrift_redteam:
+                quality["antidrift_redteam"] = True
             forced_review_rounds = 1
             if on_event:
                 on_event(

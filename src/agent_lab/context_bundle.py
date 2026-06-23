@@ -67,6 +67,53 @@ def _format_clarity_facts(run_meta: dict[str, Any] | None) -> str:
     return format_facts_block(run_meta)
 
 
+def _format_decision_ledger(run_meta: dict[str, Any] | None, *, max_entries: int = 6) -> str:
+    """Compact recent goal-ledger decisions for anti-drift re-grounding (run.json goal_ledger)."""
+    if not isinstance(run_meta, dict):
+        return ""
+    raw = run_meta.get("goal_ledger")
+    if not isinstance(raw, list) or not raw:
+        return ""
+    lines: list[str] = []
+    for entry in raw[-max_entries:]:
+        if not isinstance(entry, dict):
+            continue
+        event = str(entry.get("event") or "").strip()
+        if not event:
+            continue
+        suffix = " · ".join(
+            part for part in (str(entry.get("phase") or "").strip(), str(entry.get("note") or "").strip()) if part
+        )
+        lines.append(f"- {event}{(' · ' + suffix) if suffix else ''}")
+    if not lines:
+        return ""
+    return "\n".join(["[결정 로그]", *lines])
+
+
+def _format_grounding_block(run_meta: dict[str, Any] | None, *, consensus_mode: bool) -> str:
+    """Confirmed-state injection for an agent turn.
+
+    Default / solo / AGENT_LAB_ANTIDRIFT off: the plain confirmed-facts block (OFF-parity).
+    Anti-drift panel turn (flag on AND consensus_mode): a re-grounding anchor that re-injects the
+    confirmed facts plus the recent decision ledger each panel turn so the panel does not drift
+    from established conclusions.
+    """
+    facts = _format_clarity_facts(run_meta)
+    from agent_lab.turn_modes import antidrift_enabled
+
+    if not (consensus_mode and antidrift_enabled()):
+        return facts
+    ledger = _format_decision_ledger(run_meta)
+    if not facts and not ledger:
+        return ""
+    parts = ["[anti-drift · 상태 재정렬 — 아래 확정 사실/결정에서 벗어나지 말 것]"]
+    if facts:
+        parts.append(facts)
+    if ledger:
+        parts.append(ledger)
+    return "\n\n".join(parts)
+
+
 ARTIFACT_ONLY_RECENT_MAX_CHARS = 1200
 
 
@@ -260,9 +307,9 @@ def build_slim_consensus_bundle(
     )
     if session_guidance.strip():
         constraints = f"{constraints}\n\n{session_guidance.strip()}"
-    clarity_facts_block = _format_clarity_facts(run_meta)
-    if clarity_facts_block.strip():
-        constraints = f"{constraints}\n\n{clarity_facts_block.strip()}"
+    grounding_block = _format_grounding_block(run_meta, consensus_mode=consensus_mode)
+    if grounding_block.strip():
+        constraints = f"{constraints}\n\n{grounding_block.strip()}"
     constraints = _append_mission_track_c_blocks(constraints, run_meta=run_meta, plan_md=plan_md)
     resume_block = build_agent_thread_resume_block(agent, run_meta)
     if resume_block.strip():
@@ -555,9 +602,9 @@ def build_context_bundle(
     )
     if session_guidance.strip():
         constraints = f"{constraints}\n\n{session_guidance.strip()}"
-    clarity_facts_block = _format_clarity_facts(run_meta)
-    if clarity_facts_block.strip():
-        constraints = f"{constraints}\n\n{clarity_facts_block.strip()}"
+    grounding_block = _format_grounding_block(run_meta, consensus_mode=consensus_mode)
+    if grounding_block.strip():
+        constraints = f"{constraints}\n\n{grounding_block.strip()}"
     constraints = _append_mission_track_c_blocks(constraints, run_meta=run_meta, plan_md=plan_md)
     constraints = _append_wisdom_search_block(
         constraints,

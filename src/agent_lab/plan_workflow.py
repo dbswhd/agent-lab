@@ -47,9 +47,13 @@ _PLAN_PEER_PHASES = frozenset({"PEER_REVIEW"})
 class PlanWorkflowNotApproved(Exception):
     """Raised when execute/dry-run requires whole-plan Human approval first."""
 
-    def __init__(self, phase: str | None = None):
+    def __init__(
+        self,
+        phase: str | None = None,
+        reason: str = "plan_workflow_approval_required",
+    ) -> None:
         self.phase = phase
-        super().__init__("plan_workflow_approval_required")
+        super().__init__(reason)
 
 
 def _now() -> str:
@@ -284,13 +288,38 @@ PLAN_PEER_REVIEW_GUIDANCE = (
 )
 
 
+PLAN_FRESH_EYES_GUIDANCE = (
+    "[anti-drift · fresh-eyes 냉정 검토] 이전 토론 맥락 없이 plan.md만 처음 보는 외부 검토자로서 "
+    "읽으세요. 합의가 형성됐다는 가정을 버리고, 가장 위험한 가정·누락된 엣지케이스·검증 불가한 "
+    "주장 1건을 골라 CHALLENGE 또는 AMEND envelope로 제시하세요. 정말 문제가 없으면 근거를 한 줄로 "
+    "밝히고 ENDORSE 하세요. 코드 변경은 제안하지 마세요."
+)
+
+
 def ensure_plan_workflow_approved(folder: Path) -> None:
     run = read_run_meta(folder)
     if not is_plan_workflow_active(run):
         return
-    phase = plan_workflow_phase(run)
+    workflow = get_plan_workflow(run)
+    phase = str(workflow.get("phase") or "INTAKE")
     if phase != "APPROVED":
         raise PlanWorkflowNotApproved(phase)
+    plan_path = folder / "plan.md"
+    plan_md = plan_path.read_text(encoding="utf-8") if plan_path.is_file() else ""
+    approved_hash = str(workflow.get("plan_hash_at_approval") or "")
+    if approved_hash and approved_hash == plan_content_hash(plan_md):
+        return
+
+    def _invalidate(current: dict[str, Any]) -> dict[str, Any]:
+        current_workflow = get_plan_workflow(current)
+        current_workflow["phase"] = "HUMAN_PENDING"
+        current_workflow["notice"] = "plan_changed_after_approval"
+        current["plan_workflow"] = current_workflow
+        _mirror_verified_loop_status(current, current_workflow)
+        return current
+
+    patch_run_meta(folder, _invalidate)
+    raise PlanWorkflowNotApproved(phase, "plan_workflow_plan_changed")
 
 
 def approve_plan(
@@ -541,6 +570,84 @@ def _open_plan_objections(run: dict[str, Any]) -> list[dict[str, Any]]:
     return [o for o in list_objections(run) if o.get("status") == "open" and o.get("act") in {"CHALLENGE", "BLOCK"}]
 
 
+def _clarity_gate_questions(folder: Path, run: dict[str, Any]) -> dict[str, Any] | None:
+    """Engine+pipeline CLARIFY gate: surface clarity-engine questions via the Human Inbox.
+
+    Returns a hold-result dict when CLARIFY must hold on unmet clarity, or ``None`` to let the
+    legacy round-counter advance (gate inactive when ``AGENT_LAB_CLARIFIER_ENGINE`` off or
+    pipeline off, clarity already met, or no human-visible question could be created). Never
+    holds without a human-visible pending Human Inbox question (no silent deadlock).
+    """
+    from agent_lab.clarifier_engine import engine_enabled
+    from agent_lab.mission_loop import pipeline_enabled
+
+    if not (engine_enabled() and pipeline_enabled()):
+        return None
+
+    from agent_lab.clarity import _mission_clarity_text, clarity_threshold_met
+
+    if clarity_threshold_met(run):
+        return None
+
+    from agent_lab.clarifier_engine import engine_questions
+
+    text = _mission_clarity_text(run)
+    _result, questions = engine_questions(text)
+    if not questions:
+        # Clarity unmet but no targeted question to ask → do not silently hold; advance.
+        return {"phase": "CLARIFY", "clarity_pending": False, "clarity_notice": "clarity_no_questions"}
+
+    from agent_lab.inbox_harvest import harvest_clarifier_questions
+    from agent_lab.session_clarifier import persist_clarifier_interview
+
+    interview = {
+        "version": 2,
+        "plan_mode": True,
+        "status": "pending",
+        "source": "clarity_engine",
+        "human_turn": 0,
+        "questions": questions[:5],
+        "answers": {},
+        "created_at": _now(),
+    }
+    # Persist through the identity-aware arbiter and harvest from the ACTUAL persisted
+    # interview (which may be a preserved pre-existing pending one), so the Human Inbox can
+    # never diverge from run.json's clarifier_interview.
+    persisted = persist_clarifier_interview(folder, interview)
+    actual: dict[str, Any] = persisted.get("interview") or interview
+    prompts = [
+        str(q.get("prompt") or "").strip()
+        for q in (actual.get("questions") or [])
+        if str(q.get("prompt") or "").strip()
+    ]
+    if not prompts:
+        return {"phase": "CLARIFY", "clarity_pending": False, "clarity_notice": "clarity_no_questions"}
+
+    def _harvest(run_in: dict[str, Any]) -> dict[str, Any]:
+        harvest_clarifier_questions(run_in, prompts)
+        cur = get_plan_workflow(run_in)
+        cur["phase"] = "CLARIFY"
+        cur["notice"] = "clarity_pending"
+        run_in["plan_workflow"] = cur
+        _mirror_verified_loop_status(run_in, cur)
+        return run_in
+
+    patch_run_meta(folder, _harvest)
+
+    from agent_lab.human_inbox import has_pending_question
+
+    if not has_pending_question(read_run_meta(folder)):
+        # No visible pending question landed (e.g. all deduped) → advance instead of deadlocking.
+        return {"phase": "CLARIFY", "clarity_pending": False, "clarity_notice": "clarity_no_visible_question"}
+    return {
+        "phase": "CLARIFY",
+        "clarity_pending": True,
+        "clarity_notice": "clarity_pending",
+        "questions": prompts,
+        "wait_inbox": True,
+    }
+
+
 def tick_plan_workflow_after_turn(
     folder: Path,
     *,
@@ -569,6 +676,12 @@ def tick_plan_workflow_after_turn(
             out["phase"] = "CLARIFY"
             out["wait_inbox"] = True
             return out
+        clarity_hold = _clarity_gate_questions(folder, run)
+        if clarity_hold is not None and clarity_hold.get("clarity_pending"):
+            out.update(clarity_hold)
+            return out
+        if clarity_hold is not None:
+            out.update(clarity_hold)
         clarify_round = int(pw.get("clarify_round") or 0) + 1
         max_clarify = _round_cap(pw.get("max_clarify_rounds"), DEFAULT_MAX_CLARIFY_ROUNDS)
 
@@ -810,7 +923,7 @@ def run_plan_peer_review_round(
     if run_meta is not None:
         run_meta["_plan_peer_review"] = True
 
-    return run_parallel_round(
+    replies = run_parallel_round(
         topic,
         messages,
         agents=reviewers,  # type: ignore[arg-type]
@@ -821,3 +934,26 @@ def run_plan_peer_review_round(
         run_meta=run_meta,
         extra_follow_up=PLAN_PEER_REVIEW_GUIDANCE,
     )
+
+    from agent_lab.turn_modes import antidrift_enabled
+
+    # Anti-drift: fresh-eyes cold-context critic seat. When AGENT_LAB_ANTIDRIFT is on, add ONE
+    # extra critic that reviews plan.md from a cold context (goal + artifact only), reusing the
+    # ralplan fresh-spawn pattern, so a panel that has converged still gets an outside-eyes pass.
+    # Present only in PEER_REVIEW (this function) and only when the flag is on. Spine untouched.
+    if antidrift_enabled() and reviewers:
+        cold_critic = reviewers[-1]
+        cold_replies = run_parallel_round(
+            topic,
+            [],
+            agents=[cold_critic],  # type: ignore[arg-type]
+            parallel_round=1,
+            on_event=on_event,
+            permissions=permissions,
+            plan_md=plan_md,
+            run_meta=run_meta,
+            extra_follow_up=PLAN_FRESH_EYES_GUIDANCE,
+        )
+        replies.extend(cold_replies)
+
+    return replies

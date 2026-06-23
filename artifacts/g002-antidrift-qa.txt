@@ -1,0 +1,48 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.9, pytest-9.0.3, pluggy-1.6.0 -- /Users/yoonjong/Projects/agent-lab/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/yoonjong/Projects/agent-lab
+configfile: pyproject.toml
+plugins: xdist-3.8.0, langsmith-0.8.5, anyio-4.13.0
+collecting ... collected 38 items
+
+tests/test_antidrift.py::test_antidrift_off_is_plain_facts[True] PASSED  [  2%]
+tests/test_antidrift.py::test_antidrift_off_is_plain_facts[False] PASSED [  5%]
+tests/test_antidrift.py::test_antidrift_off_byte_identical_empty PASSED  [  7%]
+tests/test_antidrift.py::test_antidrift_on_panel_reinjects_facts_and_ledger PASSED [ 10%]
+tests/test_antidrift.py::test_antidrift_on_panel_without_ledger_still_reinjects_facts PASSED [ 13%]
+tests/test_antidrift.py::test_antidrift_on_solo_is_light PASSED          [ 15%]
+tests/test_antidrift.py::test_antidrift_on_panel_empty_state_returns_empty PASSED [ 18%]
+tests/test_antidrift.py::test_decision_ledger_renders_recent_events PASSED [ 21%]
+tests/test_antidrift.py::test_decision_ledger_caps_entries PASSED        [ 23%]
+tests/test_antidrift.py::test_decision_ledger_tolerates_garbage[run0] PASSED [ 26%]
+tests/test_antidrift.py::test_decision_ledger_tolerates_garbage[run1] PASSED [ 28%]
+tests/test_antidrift.py::test_decision_ledger_tolerates_garbage[run2] PASSED [ 31%]
+tests/test_antidrift.py::test_decision_ledger_tolerates_garbage[run3] PASSED [ 34%]
+tests/test_antidrift.py::test_decision_ledger_tolerates_garbage[run4] PASSED [ 36%]
+tests/test_antidrift.py::test_decision_ledger_tolerates_garbage[run5] PASSED [ 39%]
+tests/test_antidrift.py::test_antidrift_flag_not_enabled[0] PASSED       [ 42%]
+tests/test_antidrift.py::test_antidrift_flag_not_enabled[false] PASSED   [ 44%]
+tests/test_antidrift.py::test_antidrift_flag_not_enabled[no] PASSED      [ 47%]
+tests/test_antidrift.py::test_antidrift_flag_not_enabled[off] PASSED     [ 50%]
+tests/test_antidrift.py::test_antidrift_flag_not_enabled[] PASSED        [ 52%]
+tests/test_antidrift.py::test_antidrift_flag_not_enabled[  ] PASSED      [ 55%]
+tests/test_antidrift.py::test_antidrift_flag_not_enabled[maybe] PASSED   [ 57%]
+tests/test_antidrift.py::test_antidrift_flag_enabled[1] PASSED           [ 60%]
+tests/test_antidrift.py::test_antidrift_flag_enabled[true] PASSED        [ 63%]
+tests/test_antidrift.py::test_antidrift_flag_enabled[yes] PASSED         [ 65%]
+tests/test_antidrift.py::test_antidrift_flag_enabled[on] PASSED          [ 68%]
+tests/test_antidrift.py::test_antidrift_flag_enabled[TRUE] PASSED        [ 71%]
+tests/test_antidrift.py::test_antidrift_flag_enabled[On] PASSED          [ 73%]
+tests/test_antidrift.py::test_antidrift_default_off PASSED               [ 76%]
+tests/test_context_bundle.py::test_pinned_current_turn_keeps_human_under_char_trim PASSED [ 78%]
+tests/test_context_bundle.py::test_peer_dedupe_removes_duplicate_agent_lines PASSED [ 81%]
+tests/test_context_bundle.py::test_build_context_bundle_has_layers_and_meta PASSED [ 84%]
+tests/test_context_bundle.py::test_r15_bridge_on_round2 PASSED           [ 86%]
+tests/test_context_bundle.py::test_specialist_cursor_r2_uses_artifact_only_context PASSED [ 89%]
+tests/test_context_bundle.py::test_specialist_cursor_r1_keeps_full_context PASSED [ 92%]
+tests/test_context_bundle.py::test_research_mode_cursor_r2_uses_artifact_only_context PASSED [ 94%]
+tests/test_context_bundle.py::test_build_context_bundle_records_last_context_bundle PASSED [ 97%]
+tests/test_context_bundle.py::test_codex_r2_keeps_full_peer_context PASSED [100%]
+
+============================== 38 passed in 5.23s ==============================

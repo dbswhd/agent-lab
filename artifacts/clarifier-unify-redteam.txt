@@ -1,0 +1,45 @@
+$ .venv/bin/python -m pytest tests/test_clarifier_engine_redteam.py tests/test_clarifier_engine.py -v
+============================= test session starts ==============================
+platform darwin -- Python 3.13.9, pytest-9.0.3, pluggy-1.6.0 -- /Users/yoonjong/Projects/agent-lab/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/yoonjong/Projects/agent-lab
+configfile: pyproject.toml
+plugins: xdist-3.8.0, langsmith-0.8.5, anyio-4.13.0
+collecting ... collected 28 items
+
+tests/test_clarifier_engine_redteam.py::test_redteam_cross_source_pending_then_complete_allows_next PASSED [  3%]
+tests/test_clarifier_engine_redteam.py::test_redteam_engine_off_no_engine_keys_via_build_and_legacy_overwrite PASSED [  7%]
+tests/test_clarifier_engine_redteam.py::test_redteam_same_source_divergent_pending_is_preserved PASSED [ 10%]
+tests/test_clarifier_engine_redteam.py::test_redteam_plan_workflow_gate_visibility_and_approval_spine PASSED [ 14%]
+tests/test_clarifier_engine_redteam.py::test_redteam_no_visible_question_path_does_not_deadlock PASSED [ 17%]
+tests/test_clarifier_engine_redteam.py::test_redteam_import_cycle_multiple_fresh_orders PASSED [ 21%]
+tests/test_clarifier_engine_redteam.py::test_redteam_engine_questions_one_pass_with_stubbed_registry PASSED [ 25%]
+tests/test_clarifier_engine_redteam.py::test_redteam_mock_determinism_and_anchor_skip PASSED [ 28%]
+tests/test_clarifier_engine.py::test_ac15_flag_registered_default_off PASSED [ 32%]
+tests/test_clarifier_engine.py::test_engine_enabled_truthy_set PASSED    [ 35%]
+tests/test_clarifier_engine.py::test_adapter_is_pure_no_storage_no_toplevel_ac_imports PASSED [ 39%]
+tests/test_clarifier_engine.py::test_import_cycle_safe PASSED            [ 42%]
+tests/test_clarifier_engine.py::test_ac5_engine_anchor_skip PASSED       [ 46%]
+tests/test_clarifier_engine.py::test_ac6_engine_mock_deterministic PASSED [ 50%]
+tests/test_clarifier_engine.py::test_ac13_one_pass_single_panel PASSED   [ 53%]
+tests/test_clarifier_engine.py::test_ac11_category_literal_includes_criteria_context PASSED [ 57%]
+tests/test_clarifier_engine.py::test_ac2_engine_backed_build_surface PASSED [ 60%]
+tests/test_clarifier_engine.py::test_ac1_engine_off_uses_static_templates PASSED [ 64%]
+tests/test_clarifier_engine.py::test_ac9_clarifier_off_engine_on_no_static_interview PASSED [ 67%]
+tests/test_clarifier_engine.py::test_ac12_persist_returns_state_and_blocks_cross_source PASSED [ 71%]
+tests/test_clarifier_engine.py::test_ac4_completion_only_via_record_then_next_pending PASSED [ 75%]
+tests/test_clarifier_engine.py::test_ac1_persist_engine_off_legacy_overwrite PASSED [ 78%]
+tests/test_clarifier_engine.py::test_ac14_off_parity_runjson_shape_byte_stable PASSED [ 82%]
+tests/test_clarifier_engine.py::test_ac10_gate_holds_clarify_with_visible_inbox_question PASSED [ 85%]
+tests/test_clarifier_engine.py::test_ac3_gate_advances_when_clarity_met PASSED [ 89%]
+tests/test_clarifier_engine.py::test_ac8_gate_never_starts_execution PASSED [ 92%]
+tests/test_clarifier_engine.py::test_ac1_gate_off_parity_engine_off_advances PASSED [ 96%]
+tests/test_clarifier_engine.py::test_ac9_gate_reachable_with_clarifier_flag_off PASSED [100%]
+
+============================== 28 passed in 0.17s ==============================
+
+
+$ adversarial spot-check (inline python)
+spot(a) OK: cross-source and same-source divergent pending interviews preserved
+spot(b) OK: no visible inbox question path advances to DRAFT instead of silent CLARIFY hold
+spot(c) OK: engine-off real build path stores no engine-only keys in run.json

@@ -1,0 +1,47 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.9, pytest-9.0.3, pluggy-1.6.0 -- /Users/yoonjong/Projects/agent-lab/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/yoonjong/Projects/agent-lab
+configfile: pyproject.toml
+plugins: xdist-3.8.0, langsmith-0.8.5, anyio-4.13.0
+collecting ... collected 37 items
+
+tests/test_checkpoint_store.py::test_ac1_phase_change_appends_one_snapshot PASSED [  2%]
+tests/test_checkpoint_store.py::test_ac2_no_phase_change_no_snapshot PASSED [  5%]
+tests/test_checkpoint_store.py::test_ac3_roundtrip_restore PASSED        [  8%]
+tests/test_checkpoint_store.py::test_ac4_ac11_resume_stops_and_appends_nothing PASSED [ 10%]
+tests/test_checkpoint_store.py::test_ac5_off_parity_no_write PASSED      [ 13%]
+tests/test_checkpoint_store.py::test_ac5_off_parity_run_json_byte_identical PASSED [ 16%]
+tests/test_checkpoint_store.py::test_ac6_retention_cap PASSED            [ 18%]
+tests/test_checkpoint_store.py::test_ac7_snapshot_scope_fsm_subset_only PASSED [ 21%]
+tests/test_checkpoint_store.py::test_ac8_no_forbidden_cross_lane_import PASSED [ 24%]
+tests/test_checkpoint_store.py::test_ac8_crash_recovery_module_unchanged_import PASSED [ 27%]
+tests/test_checkpoint_store.py::test_ac10_phase_setters_route_through_patch_run_meta PASSED [ 29%]
+tests/test_checkpoint_store.py::test_ac10_behavioral_plan_workflow_transition_captured PASSED [ 32%]
+tests/test_checkpoint_store.py::test_n2_snapshot_and_restore_use_same_key_set PASSED [ 35%]
+tests/test_checkpoint_store.py::test_flag_not_enabled[0] PASSED          [ 37%]
+tests/test_checkpoint_store.py::test_flag_not_enabled[false] PASSED      [ 40%]
+tests/test_checkpoint_store.py::test_flag_not_enabled[no] PASSED         [ 43%]
+tests/test_checkpoint_store.py::test_flag_not_enabled[off] PASSED        [ 45%]
+tests/test_checkpoint_store.py::test_flag_not_enabled[] PASSED           [ 48%]
+tests/test_checkpoint_store.py::test_flag_not_enabled[  ] PASSED         [ 51%]
+tests/test_checkpoint_store.py::test_flag_not_enabled[maybe] PASSED      [ 54%]
+tests/test_checkpoint_store.py::test_flag_enabled[1] PASSED              [ 56%]
+tests/test_checkpoint_store.py::test_flag_enabled[true] PASSED           [ 59%]
+tests/test_checkpoint_store.py::test_flag_enabled[yes] PASSED            [ 62%]
+tests/test_checkpoint_store.py::test_flag_enabled[on] PASSED             [ 64%]
+tests/test_checkpoint_store.py::test_flag_enabled[On] PASSED             [ 67%]
+tests/test_checkpoint_store.py::test_resume_missing_checkpoint_raises PASSED [ 70%]
+tests/test_run_meta_concurrency.py::test_parallel_patch_run_meta_preserves_mission_loop PASSED [ 72%]
+tests/test_crash_recovery.py::test_reconcile_landed_merge_marks_merged PASSED [ 75%]
+tests/test_crash_recovery.py::test_rollback_when_merge_never_landed PASSED [ 78%]
+tests/test_crash_recovery.py::test_rollback_restores_prev_status_confirm PASSED [ 81%]
+tests/test_crash_recovery.py::test_quarantine_when_git_root_missing PASSED [ 83%]
+tests/test_crash_recovery.py::test_quarantine_ambiguous_noop PASSED      [ 86%]
+tests/test_crash_recovery.py::test_idempotent_double_run PASSED          [ 89%]
+tests/test_crash_recovery.py::test_no_checkpoint_rows_are_noop PASSED    [ 91%]
+tests/test_crash_recovery.py::test_pre_feature_pending_with_attempted_at_quarantines PASSED [ 94%]
+tests/test_crash_recovery.py::test_one_bad_session_does_not_abort_scan PASSED [ 97%]
+tests/test_crash_recovery.py::test_repair_merge_checkpoint_landed PASSED [100%]
+
+============================== 37 passed in 3.85s ==============================

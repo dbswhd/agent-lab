@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
@@ -81,6 +82,13 @@ def patch_run_meta(
 
     with _folder_lock(folder):
         run = read_run_meta(folder)
+        capture_checkpoint = False
+        prior_signature: tuple[str | None, str | None] = (None, None)
+        if (os.getenv("AGENT_LAB_CHECKPOINT") or "").strip().lower() in {"1", "true", "yes", "on"}:
+            from agent_lab import checkpoint_store
+
+            capture_checkpoint = True
+            prior_signature = checkpoint_store._phase_signature(run)
         updated = updater(run)
         validate_run(updated)
         payload = json.dumps(persist_run_meta(updated), indent=2, ensure_ascii=False) + "\n"
@@ -88,6 +96,10 @@ def patch_run_meta(
         tmp = path.with_suffix(".json.tmp")
         tmp.write_text(payload, encoding="utf-8")
         tmp.replace(path)
+        if capture_checkpoint:
+            from agent_lab import checkpoint_store
+
+            checkpoint_store.append_checkpoint(folder, prior_signature=prior_signature, updated_run=updated)
     return updated
 
 

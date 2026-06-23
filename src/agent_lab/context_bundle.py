@@ -498,7 +498,12 @@ def _append_mission_track_c_blocks(
     mission_wisdom = build_mission_wisdom_block(run_meta)
     if mission_wisdom.strip():
         out = f"{out}\n\n{mission_wisdom.strip()}"
-    repo_block = build_repo_tree_block(run_meta)
+    if _env_bool("AGENT_LAB_REPO_MAP"):
+        from agent_lab.repo_map import build_repo_map_block
+
+        repo_block = build_repo_map_block(run_meta, plan_md)
+    else:
+        repo_block = build_repo_tree_block(run_meta)
     if repo_block.strip():
         out = f"{out}\n\n{repo_block.strip()}"
     if PER_DIR_AGENTS_GUIDANCE_HEADER not in out:

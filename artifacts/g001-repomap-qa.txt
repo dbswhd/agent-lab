@@ -1,0 +1,47 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.9, pytest-9.0.3, pluggy-1.6.0 -- /Users/yoonjong/Projects/agent-lab/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/yoonjong/Projects/agent-lab
+configfile: pyproject.toml
+plugins: xdist-3.8.0, langsmith-0.8.5, anyio-4.13.0
+collecting ... collected 37 items
+
+tests/test_repo_map.py::test_ac1_extract_python_defs_refs PASSED         [  2%]
+tests/test_repo_map.py::test_ac1_non_python_ignored PASSED               [  5%]
+tests/test_repo_map.py::test_ac2_seed_ranking_deterministic PASSED       [  8%]
+tests/test_repo_map.py::test_ac2_empty_seed_global_fallback PASSED       [ 10%]
+tests/test_repo_map.py::test_ac3_elided_signature_tree PASSED            [ 13%]
+tests/test_repo_map.py::test_ac4_budget_drops_lowest PASSED              [ 16%]
+tests/test_repo_map.py::test_ac5_off_parity_repo_map_not_used PASSED     [ 18%]
+tests/test_repo_map.py::test_ac6_layer_off_returns_empty PASSED          [ 21%]
+tests/test_repo_map.py::test_ac6_replace_single_block PASSED             [ 24%]
+tests/test_repo_map.py::test_ac7_seed_helper_reuse_and_missing_tolerated PASSED [ 27%]
+tests/test_repo_map.py::test_ac8_no_forbidden_imports PASSED             [ 29%]
+tests/test_repo_map.py::test_ac10_unbound_workspace_empty PASSED         [ 32%]
+tests/test_repo_map.py::test_ac10_excludes_dotdirs_and_vendored PASSED   [ 35%]
+tests/test_repo_map.py::test_ac10_unparseable_skipped_not_raised PASSED  [ 37%]
+tests/test_repo_map.py::test_n2_render_within_budget PASSED              [ 40%]
+tests/test_repo_map.py::test_flag_not_enabled[0] PASSED                  [ 43%]
+tests/test_repo_map.py::test_flag_not_enabled[false] PASSED              [ 45%]
+tests/test_repo_map.py::test_flag_not_enabled[] PASSED                   [ 48%]
+tests/test_repo_map.py::test_flag_not_enabled[  ] PASSED                 [ 51%]
+tests/test_repo_map.py::test_flag_not_enabled[no] PASSED                 [ 54%]
+tests/test_repo_map.py::test_flag_not_enabled[off] PASSED                [ 56%]
+tests/test_repo_map.py::test_flag_enabled[1] PASSED                      [ 59%]
+tests/test_repo_map.py::test_flag_enabled[true] PASSED                   [ 62%]
+tests/test_repo_map.py::test_flag_enabled[yes] PASSED                    [ 64%]
+tests/test_repo_map.py::test_flag_enabled[on] PASSED                     [ 67%]
+tests/test_repo_map.py::test_flag_enabled[On] PASSED                     [ 70%]
+tests/test_repo_map.py::test_budget_default_on_garbage PASSED            [ 72%]
+tests/test_repo_map.py::test_constants_present PASSED                    [ 75%]
+tests/test_context_bundle.py::test_pinned_current_turn_keeps_human_under_char_trim PASSED [ 78%]
+tests/test_context_bundle.py::test_peer_dedupe_removes_duplicate_agent_lines PASSED [ 81%]
+tests/test_context_bundle.py::test_build_context_bundle_has_layers_and_meta PASSED [ 83%]
+tests/test_context_bundle.py::test_r15_bridge_on_round2 PASSED           [ 86%]
+tests/test_context_bundle.py::test_specialist_cursor_r2_uses_artifact_only_context PASSED [ 89%]
+tests/test_context_bundle.py::test_specialist_cursor_r1_keeps_full_context PASSED [ 91%]
+tests/test_context_bundle.py::test_research_mode_cursor_r2_uses_artifact_only_context PASSED [ 94%]
+tests/test_context_bundle.py::test_build_context_bundle_records_last_context_bundle PASSED [ 97%]
+tests/test_context_bundle.py::test_codex_r2_keeps_full_peer_context PASSED [100%]
+
+============================== 37 passed in 5.18s ==============================

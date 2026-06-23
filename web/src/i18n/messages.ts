@@ -151,6 +151,11 @@ const EN = {
   planRejectNote: "Note for agents (optional)",
   planRejectSubmit: "Request revision",
   planApprovalTitle: "Plan approval",
+  planApprovalReviewTitle: "Review the plan",
+  planApprovalReviewDetail:
+    "Confirm the approach and verification before any workspace changes begin.",
+  planApprovalStepCount: (n: number) =>
+    `${n} execution ${n === 1 ? "step" : "steps"}`,
   planApprovalPending: "Awaiting approval",
   planApprovalApproved: "Approved",
   planApprovalDetail:
@@ -162,6 +167,13 @@ const EN = {
   planApprovalCriteria: "Verification criteria",
   planApprovalPromise: "Completion promise",
   planApprovalApproveBtn: "Approve plan",
+  planApprovalApproveAndExecute: "Approve and execute",
+  planApprovalApproveOnly: "Approve only",
+  planApprovalBlockingObjections: "Resolve these blockers before approval",
+  planApprovalRevisionPlaceholder: "Describe what the agents should change…",
+  planApprovalNoExecuteHint:
+    "No ready executable action is available. Approval will lock the plan without starting work.",
+  planApprovalCancel: "Cancel",
   planWorkflowPendingTitle: "Plan workflow · Approval",
   planWorkflowPendingDetail: "Review and approve plan.md in Work.",
   planWorkflowPhasePending: "HUMAN PENDING",
@@ -421,6 +433,10 @@ const KO = {
   planRejectNote: "에이전트 메모 (선택)",
   planRejectSubmit: "수정 요청",
   planApprovalTitle: "Plan 승인",
+  planApprovalReviewTitle: "계획 검토",
+  planApprovalReviewDetail:
+    "작업 공간을 변경하기 전에 접근 방식과 검증 기준을 확인하세요.",
+  planApprovalStepCount: (n: number) => `실행 단계 ${n}개`,
   planApprovalPending: "승인 대기",
   planApprovalApproved: "승인됨",
   planApprovalDetail:
@@ -432,6 +448,13 @@ const KO = {
   planApprovalCriteria: "검증 기준",
   planApprovalPromise: "completion promise",
   planApprovalApproveBtn: "Plan 승인",
+  planApprovalApproveAndExecute: "승인하고 실행",
+  planApprovalApproveOnly: "승인만",
+  planApprovalBlockingObjections: "승인 전 해결해야 할 이의",
+  planApprovalRevisionPlaceholder: "에이전트가 수정해야 할 내용을 적어주세요…",
+  planApprovalNoExecuteHint:
+    "실행 가능한 action이 없어 Plan만 확정하며 작업은 시작하지 않습니다.",
+  planApprovalCancel: "취소",
   planWorkflowPendingTitle: "Plan workflow · 승인",
   planWorkflowPendingDetail: "Work에서 plan.md를 확인하고 승인하세요.",
   planWorkflowPhasePending: "HUMAN PENDING",

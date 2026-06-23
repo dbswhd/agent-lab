@@ -45,6 +45,7 @@ type Props = {
   onSessionUpdated: () => void;
   roomTasks: RoomTasksPayload | null;
   cursorReady: boolean;
+  executeError?: string | null;
   planWorkflow?: PlanWorkflowRecord;
   planApproval?: PlanApprovalHost | null;
   onOpenTasks?: () => void;
@@ -75,6 +76,7 @@ export function WorkToolPanel({
   onSessionUpdated,
   roomTasks,
   cursorReady,
+  executeError = null,
   planWorkflow,
   planApproval = null,
   onOpenTasks,
@@ -110,7 +112,7 @@ export function WorkToolPanel({
         planMeta,
         planStaleNotice,
         planWorkflow,
-        verifiedLoopView: planApproval?.view ?? {
+        verifiedLoopView: {
           loop: {},
           proposedGoal: "",
           completionPromise: "DONE",
@@ -128,7 +130,6 @@ export function WorkToolPanel({
     [
       executions,
       hasPlan,
-      planApproval?.view,
       planMeta,
       planStaleNotice,
       planWorkflow,
@@ -191,6 +192,35 @@ export function WorkToolPanel({
     );
   }
 
+  if (planApproval?.enabled) {
+    return (
+      <div className="work-stack work-stack--tool">
+        <div className="work-surface work-surface--chrome work-chrome">
+          <WorkStatusBar
+            phase={workPhase}
+            metaLine={workPlanMetaLine(planMeta)}
+            hasPlan={hasPlan}
+          />
+        </div>
+        {showPlanStalePanel ? (
+          <div className="work-surface work-surface--alert work-plan-stale">
+            <p className="plan-stale">{planStaleNotice}</p>
+          </div>
+        ) : null}
+        <WorkPlanApprovalSection
+          planMd={planMd}
+          approval={planApproval}
+          objections={roomTasks?.open_objections ?? []}
+          blockedReason={
+            planStaleNotice ??
+            (planMeta.pendingAgreement ? planMeta.freshnessLabel : null)
+          }
+          onFocusObjection={onFocusObjection}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="work-stack work-stack--tool">
       <div className="work-surface work-surface--chrome work-chrome">
@@ -227,13 +257,15 @@ export function WorkToolPanel({
         </div>
       ) : null}
 
-      {planApproval ? (
-        <WorkPlanApprovalSection
-          planMd={planMd}
-          approval={planApproval}
-          objections={roomTasks?.open_objections ?? []}
-          onFocusObjection={onFocusObjection}
-        />
+      {executeError ? (
+        <div className="work-surface work-surface--alert" role="alert">
+          <strong>실행을 시작하지 못했습니다.</strong>
+          <p className="plan-card__error">{executeError}</p>
+          <p className="plan-card__muted">
+            Plan 승인은 유지되었습니다. 아래 Dry-run으로 다시 실행할 수
+            있습니다.
+          </p>
+        </div>
       ) : null}
 
       <PlanExecutePanel

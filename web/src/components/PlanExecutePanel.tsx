@@ -865,10 +865,17 @@ export function PlanExecutePanel({
   const executeWorkspace =
     selectedAction?.execute_workspace ?? recommended?.execute_workspace;
 
-  const nowWithoutRecommended = useMemo(() => {
-    if (!recommended) return nowItems;
-    return nowItems.filter((item) => item.index !== recommended.index);
-  }, [nowItems, recommended]);
+  const primaryPlanItem = recommended ?? executableItems[0] ?? null;
+  const secondaryPlanItems = useMemo(() => {
+    const primaryKey = primaryPlanItem ? actionKey(primaryPlanItem) : null;
+    const seen = new Set<string>();
+    return [...nowItems, ...roadmap].filter((item) => {
+      const key = actionKey(item);
+      if (key === primaryKey || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [nowItems, primaryPlanItem, roadmap]);
 
   const actionDisabled = Boolean(disabled || busy || activePending);
 
@@ -962,21 +969,14 @@ export function PlanExecutePanel({
             </p>
           ) : (
             <>
-              {(recommended || hasNowSection) && (
+              {primaryPlanItem ? (
                 <>
                   <div className="plan-roadmap-label">추천 다음 단계</div>
                   <div className="plan-actions">
-                    {recommended
-                      ? renderPlanListItem(recommended, {
-                          recommended: true,
-                          variant: "now",
-                        })
-                      : null}
-                    {hasNowSection
-                      ? nowWithoutRecommended.map((item) =>
-                          renderPlanListItem(item, { variant: "now" }),
-                        )
-                      : null}
+                    {renderPlanListItem(primaryPlanItem, {
+                      recommended: true,
+                      variant: "now",
+                    })}
                   </div>
                   {nowHasOnlyGates ? (
                     <p className="plan-card__muted plan-card__gate-note">
@@ -985,15 +985,21 @@ export function PlanExecutePanel({
                     </p>
                   ) : null}
                 </>
-              )}
+              ) : null}
 
-              {roadmap.length > 0 ? (
-                <>
-                  <div className="plan-roadmap-label">실행 순서 (이후)</div>
+              {secondaryPlanItems.length > 0 ? (
+                <details className="plan-card__more">
+                  <summary>
+                    이후 실행 계획 {secondaryPlanItems.length}개
+                  </summary>
                   <div className="plan-actions">
-                    {roadmap.map((item) => renderPlanListItem(item))}
+                    {secondaryPlanItems.map((item) =>
+                      renderPlanListItem(item, {
+                        variant: item.kind === "now" ? "now" : "default",
+                      }),
+                    )}
                   </div>
-                </>
+                </details>
               ) : null}
             </>
           )}

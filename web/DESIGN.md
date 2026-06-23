@@ -60,6 +60,13 @@ The composer is a stable dock with this order: actionable status, mode/turn cont
 - **Behavior:** open while running and collapsed after completion. Final agent output is outside the disclosure and always visible.
 - **Accessibility:** summary reports item count and running/completed state; tool output remains selectable text.
 
+### Decision Surface
+
+- **Structure:** one current decision, its readable evidence, one primary action, secondary alternatives, optional progressive disclosure.
+- **Behavior:** plan approval, execute review, and merge review appear sequentially; never show two approval surfaces for the same decision.
+- **Language:** user-facing copy names outcomes and blockers, while workflow phases, hashes, and completion protocol stay internal.
+- **Safety:** hiding internal state never bypasses worktree isolation, objections, merge checks, or Oracle verification.
+
 ### Settings Category
 
 - **Structure:** category navigation and one focused content panel.

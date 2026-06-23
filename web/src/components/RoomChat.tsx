@@ -92,7 +92,7 @@ import { useNotificationUnread } from "../hooks/useNotificationUnread";
 import { ContextOverviewPanel } from "./ContextOverviewPanel";
 import { ContextTasksPanel } from "./ContextTasksPanel";
 import { GoalLoopBanner } from "./GoalLoopBanner";
-import type { PlanRejectPayload } from "./PlanApprovalPanel";
+import type { PlanApprovalMode, PlanRejectPayload } from "./PlanApprovalPanel";
 import { PlanWorkflowBanner } from "./PlanWorkflowBanner";
 import { VerifiedLoopBanner } from "./VerifiedLoopBanner";
 import { WorkToolPanel, type WorkFocusTarget } from "./WorkToolPanel";
@@ -2514,46 +2514,54 @@ export function RoomChat({
     ],
   );
 
-  const handleVerifiedApprove = useCallback(async () => {
-    if (!sessionId || !verifiedEditGoal.trim()) return;
-    setVerifiedLoopBusy(true);
-    setVerifiedLoopError(null);
-    try {
-      const approveFn = showPlanApproval ? approvePlan : approveVerifiedLoop;
-      const res = await approveFn(sessionId, {
-        goal: verifiedEditGoal.trim(),
-        completion_promise: verifiedEditPromise.trim() || "DONE",
-        criteria: verifiedEditCriteria.trim() || verifiedEditGoal.trim(),
-      });
-      await refreshSessionMeta();
-      const prompt =
-        "continue_prompt" in res
-          ? (res.continue_prompt as string | undefined)?.trim()
-          : undefined;
-      if (prompt && !showPlanApproval) {
-        void executeSend(
-          prompt,
-          [],
-          roomPermissions(selected),
-          "discuss",
-          "verified",
-        );
+  const handleVerifiedApprove = useCallback(
+    async (mode: PlanApprovalMode = "approve_only") => {
+      if (!sessionId || (!showPlanApproval && !verifiedEditGoal.trim())) return;
+      setVerifiedLoopBusy(true);
+      setVerifiedLoopError(null);
+      try {
+        const res = showPlanApproval
+          ? await approvePlan(sessionId)
+          : await approveVerifiedLoop(sessionId, {
+              goal: verifiedEditGoal.trim(),
+              completion_promise: verifiedEditPromise.trim() || "DONE",
+              criteria: verifiedEditCriteria.trim() || verifiedEditGoal.trim(),
+            });
+        await refreshSessionMeta();
+        if (showPlanApproval && mode === "execute") {
+          await planExecute.dryRun();
+        }
+        const prompt =
+          "continue_prompt" in res
+            ? (res.continue_prompt as string | undefined)?.trim()
+            : undefined;
+        if (prompt && !showPlanApproval) {
+          void executeSend(
+            prompt,
+            [],
+            roomPermissions(selected),
+            "discuss",
+            "verified",
+          );
+        }
+      } catch (e) {
+        setVerifiedLoopError(String(e));
+      } finally {
+        setVerifiedLoopBusy(false);
       }
-    } catch (e) {
-      setVerifiedLoopError(String(e));
-    } finally {
-      setVerifiedLoopBusy(false);
-    }
-  }, [
-    sessionId,
-    verifiedEditGoal,
-    verifiedEditCriteria,
-    verifiedEditPromise,
-    refreshSessionMeta,
-    executeSend,
-    selected,
-    showPlanApproval,
-  ]);
+    },
+    [
+      sessionId,
+      verifiedEditGoal,
+      verifiedEditCriteria,
+      verifiedEditPromise,
+      refreshSessionMeta,
+      executeSend,
+      selected,
+      showPlanApproval,
+      planExecute,
+    ],
+  );
 
   const handleVerifiedReject = useCallback(
     async (payload?: PlanRejectPayload) => {
@@ -4335,24 +4343,23 @@ export function RoomChat({
                 onSessionUpdated={refreshSessionMeta}
                 roomTasks={roomTasks}
                 cursorReady={agents.some((a) => a.id === "cursor" && a.ready)}
+                executeError={planExecute.error}
                 planWorkflow={planWorkflow}
                 planApproval={
                   showPlanApproval
                     ? {
                         enabled: true,
-                        view: verifiedLoopView,
-                        phase: planWorkflow?.phase ?? "HUMAN_PENDING",
                         workflowNotice: planWorkflow?.notice,
                         planGate: planWorkflow?.last_plan_gate ?? null,
+                        canExecute:
+                          planExecute.hasExecutableActions &&
+                          planExecute.canDryRun &&
+                          agents.some(
+                            (agent) => agent.id === "cursor" && agent.ready,
+                          ),
                         busy: verifiedLoopBusy || running || runBusy,
                         error: verifiedLoopError,
-                        editGoal: verifiedEditGoal,
-                        editCriteria: verifiedEditCriteria,
-                        editPromise: verifiedEditPromise,
-                        onEditGoalChange: setVerifiedEditGoal,
-                        onEditCriteriaChange: setVerifiedEditCriteria,
-                        onEditPromiseChange: setVerifiedEditPromise,
-                        onApprove: () => void handleVerifiedApprove(),
+                        onApprove: (mode) => void handleVerifiedApprove(mode),
                         onReject: (payload) =>
                           void handleVerifiedReject(payload),
                       }

@@ -1,243 +1,242 @@
 import { useState } from "react";
 import type { RoomObjection } from "../api/client";
-import { PlanActionCard } from "./PlanActionCard";
-import type { VerifiedLoopView } from "../utils/verifiedLoopView";
-import { parsePlanMarkdown } from "../utils/planMarkdown";
 import { useLocale } from "../i18n/useLocale";
+import { parsePlanMarkdown, renderPlanMarkdown } from "../utils/planMarkdown";
 import {
-  PLAN_REJECT_TARGETS,
   planWorkflowGateReason,
   planWorkflowNoticeLabel,
-  type PlanRejectTarget,
 } from "../utils/planWorkflowView";
 
+export type PlanApprovalMode = "execute" | "approve_only";
+
 export type PlanRejectPayload = {
-  note?: string;
-  target_phase: PlanRejectTarget;
+  readonly note?: string;
+  readonly target_phase: "REFINE";
 };
 
 type Props = {
-  view: VerifiedLoopView;
-  planMd: string;
-  phase: string;
-  workflowNotice?: string;
-  planGate?: Record<string, unknown> | null;
-  objections?: RoomObjection[];
-  busy: boolean;
-  error: string | null;
-  editGoal: string;
-  editCriteria: string;
-  editPromise: string;
-  onEditGoalChange: (value: string) => void;
-  onEditCriteriaChange: (value: string) => void;
-  onEditPromiseChange: (value: string) => void;
-  onFocusObjection?: (objectionId: string) => void;
-  onApprove: () => void;
-  onReject: (payload: PlanRejectPayload) => void;
+  readonly planMd: string;
+  readonly workflowNotice?: string;
+  readonly planGate?: Record<string, unknown> | null;
+  readonly objections?: readonly RoomObjection[];
+  readonly canExecute: boolean;
+  readonly blockedReason?: string | null;
+  readonly busy: boolean;
+  readonly error: string | null;
+  readonly onFocusObjection?: (objectionId: string) => void;
+  readonly onApprove: (mode: PlanApprovalMode) => void;
+  readonly onReject: (payload: PlanRejectPayload) => void;
 };
 
+const EMPTY_OBJECTIONS: readonly RoomObjection[] = [];
+
 export function PlanApprovalPanel({
-  view,
   planMd,
-  phase,
   workflowNotice,
   planGate = null,
-  objections = [],
+  objections = EMPTY_OBJECTIONS,
+  canExecute,
+  blockedReason = null,
   busy,
   error,
-  editGoal,
-  editCriteria,
-  editPromise,
-  onEditGoalChange,
-  onEditCriteriaChange,
-  onEditPromiseChange,
   onFocusObjection,
   onApprove,
   onReject,
 }: Props) {
   const { msg } = useLocale();
-  const [rejectTarget, setRejectTarget] = useState<PlanRejectTarget>("CLARIFY");
-  const [rejectNote, setRejectNote] = useState("");
-  const pending = phase === "HUMAN_PENDING" || view.pendingApproval;
-  const planBlocks = parsePlanMarkdown(planMd);
-  const planActions = planBlocks.filter((b) => b.type === "action");
-  const openObjections = objections.filter((o) => o.status === "open");
+  const [revisionOpen, setRevisionOpen] = useState(false);
+  const [revisionNote, setRevisionNote] = useState("");
+  const planActions = parsePlanMarkdown(planMd).filter(
+    (block) => block.type === "action",
+  );
+  const openObjections = objections.filter((row) => row.status === "open");
+  const blockingObjections = openObjections.filter(
+    (row) => row.act === "BLOCK",
+  );
+  const advisoryObjections = openObjections.filter(
+    (row) => row.act !== "BLOCK",
+  );
   const noticeLabel = planWorkflowNoticeLabel(workflowNotice, msg);
   const gateReason = planWorkflowGateReason(planGate);
+  const approvalDisabled =
+    busy || Boolean(blockedReason) || blockingObjections.length > 0;
 
   return (
     <section
-      className={`goal-loop-banner goal-loop-banner--${pending ? "open" : "achieved"}`}
+      className="plan-approval-review"
       aria-label={msg.planApprovalTitle}
     >
-      <div className="goal-loop-banner__head">
-        <strong>{msg.planApprovalTitle}</strong>
-        {pending ? (
-          <span className="goal-oracle-badge goal-oracle-badge--open">
+      <header className="plan-approval-review__header">
+        <div>
+          <p className="plan-approval-review__eyebrow">
             {msg.planApprovalPending}
-          </span>
-        ) : (
-          <span className="goal-oracle-badge goal-oracle-badge--achieved">
-            {msg.planApprovalApproved}
-          </span>
-        )}
-      </div>
-      {pending ? (
-        <>
-          <p className="goal-loop-banner__detail">{msg.planApprovalDetail}</p>
-          {noticeLabel ? (
-            <p className="plan-workflow-banner__warn">{noticeLabel}</p>
-          ) : null}
-          {gateReason ? (
-            <p className="plan-workflow-banner__warn">
-              {msg.planWorkflowGateWarn(gateReason)}
-            </p>
-          ) : null}
-          {planActions.length > 0 ? (
-            <div className="plan-approval-actions">
-              <p className="field-label">{msg.planApprovalRunNow}</p>
-              {planActions.map((block) =>
-                block.type === "action" ? (
-                  <PlanActionCard
-                    key={`plan-action-${block.n}`}
-                    n={block.n}
-                    what={block.what}
-                    where={block.where}
-                    verify={block.verify}
-                    refs={block.refs}
-                    variant="now"
-                  />
-                ) : null,
-              )}
-            </div>
-          ) : null}
-          {openObjections.length > 0 ? (
-            <div className="plan-approval-objections">
-              <p className="field-label">{msg.planApprovalPeerObjections}</p>
-              <ul className="plan-approval-objections__list">
-                {openObjections.map((obj) => (
-                  <li key={obj.id}>
-                    <button
-                      type="button"
-                      className="plan-approval-objections__item"
-                      disabled={!onFocusObjection}
-                      onClick={() => onFocusObjection?.(obj.id)}
-                    >
-                      <span className="plan-approval-objections__act">
-                        {obj.act}
-                      </span>
-                      <span className="plan-approval-objections__from">
-                        {obj.from}
-                      </span>
-                      <span className="plan-approval-objections__body">
-                        {obj.body}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-          <details className="plan-approval-preview">
-            <summary>{msg.planApprovalPlanFull}</summary>
-            <pre className="plan-approval-preview__body">
-              {planMd || "(empty)"}
-            </pre>
-          </details>
-          <label className="field-label" htmlFor="plan-approval-goal">
-            {msg.planApprovalGoalDerived}
-          </label>
-          <input
-            id="plan-approval-goal"
-            type="text"
-            className="field"
-            value={editGoal}
-            onChange={(e) => onEditGoalChange(e.target.value)}
-            disabled={busy}
+          </p>
+          <h2>{msg.planApprovalReviewTitle}</h2>
+          <p className="plan-approval-review__detail">
+            {msg.planApprovalReviewDetail}
+          </p>
+        </div>
+        <span className="plan-approval-review__count">
+          {msg.planApprovalStepCount(planActions.length)}
+        </span>
+      </header>
+
+      {noticeLabel ? (
+        <p className="plan-workflow-banner__warn">{noticeLabel}</p>
+      ) : null}
+      {gateReason ? (
+        <p className="plan-workflow-banner__warn">
+          {msg.planWorkflowGateWarn(gateReason)}
+        </p>
+      ) : null}
+
+      {blockingObjections.length > 0 ? (
+        <div className="plan-approval-review__blockers" role="alert">
+          <strong>{msg.planApprovalBlockingObjections}</strong>
+          <ObjectionList
+            objections={blockingObjections}
+            onFocusObjection={onFocusObjection}
           />
-          <label className="field-label" htmlFor="plan-approval-criteria">
-            {msg.planApprovalCriteria}
+        </div>
+      ) : null}
+      {blockedReason ? (
+        <div className="plan-approval-review__blockers" role="alert">
+          <strong>{blockedReason}</strong>
+        </div>
+      ) : null}
+
+      <div className="plan-approval-review__document">
+        {renderPlanMarkdown(planMd)}
+      </div>
+
+      {advisoryObjections.length > 0 ? (
+        <details className="plan-approval-review__advisories">
+          <summary>{msg.planApprovalPeerObjections}</summary>
+          <ObjectionList
+            objections={advisoryObjections}
+            onFocusObjection={onFocusObjection}
+          />
+        </details>
+      ) : null}
+
+      {revisionOpen ? (
+        <div className="plan-approval-review__revision">
+          <label className="field-label" htmlFor="plan-revision-note">
+            {msg.planRejectNote}
           </label>
           <textarea
-            id="plan-approval-criteria"
+            id="plan-revision-note"
             className="field"
-            rows={2}
-            value={editCriteria}
-            onChange={(e) => onEditCriteriaChange(e.target.value)}
+            rows={3}
+            autoFocus
+            value={revisionNote}
             disabled={busy}
+            placeholder={msg.planApprovalRevisionPlaceholder}
+            onChange={(event) => setRevisionNote(event.target.value)}
           />
-          <label className="field-label" htmlFor="plan-approval-promise">
-            {msg.planApprovalPromise}
-          </label>
-          <input
-            id="plan-approval-promise"
-            type="text"
-            className="field"
-            value={editPromise}
-            onChange={(e) => onEditPromiseChange(e.target.value)}
-            disabled={busy}
-          />
-          <div className="goal-loop-banner__controls">
+          <div className="plan-approval-review__actions">
             <button
               type="button"
               className="btn btn--sm btn--primary"
-              disabled={busy || !editGoal.trim()}
-              onClick={onApprove}
-            >
-              {msg.planApprovalApproveBtn}
-            </button>
-          </div>
-          <div className="plan-approval-reject">
-            <label className="field-label" htmlFor="plan-reject-target">
-              {msg.planRejectTarget}
-            </label>
-            <select
-              id="plan-reject-target"
-              className="field"
-              value={rejectTarget}
-              disabled={busy}
-              onChange={(e) =>
-                setRejectTarget(e.target.value as PlanRejectTarget)
-              }
-            >
-              {PLAN_REJECT_TARGETS.map((target) => (
-                <option key={target} value={target}>
-                  {target === "CLARIFY"
-                    ? msg.planRejectClarify
-                    : target === "DRAFT"
-                      ? msg.planRejectDraft
-                      : msg.planRejectRefine}
-                </option>
-              ))}
-            </select>
-            <label className="field-label" htmlFor="plan-reject-note">
-              {msg.planRejectNote}
-            </label>
-            <input
-              id="plan-reject-note"
-              type="text"
-              className="field"
-              value={rejectNote}
-              disabled={busy}
-              onChange={(e) => setRejectNote(e.target.value)}
-            />
-            <button
-              type="button"
-              className="btn btn--sm"
-              disabled={busy}
+              disabled={busy || !revisionNote.trim()}
               onClick={() =>
                 onReject({
-                  target_phase: rejectTarget,
-                  note: rejectNote.trim() || undefined,
+                  target_phase: "REFINE",
+                  note: revisionNote.trim(),
                 })
               }
             >
               {msg.planRejectSubmit}
             </button>
+            <button
+              type="button"
+              className="btn btn--sm btn--ghost"
+              disabled={busy}
+              onClick={() => setRevisionOpen(false)}
+            >
+              {msg.planApprovalCancel}
+            </button>
           </div>
-        </>
-      ) : null}
-      {error ? <p className="goal-loop-banner__detail">{error}</p> : null}
+        </div>
+      ) : (
+        <footer className="plan-approval-review__footer">
+          <div className="plan-approval-review__actions">
+            {canExecute ? (
+              <button
+                type="button"
+                className="btn btn--sm btn--primary"
+                disabled={approvalDisabled}
+                onClick={() => onApprove("execute")}
+              >
+                {msg.planApprovalApproveAndExecute}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn btn--sm btn--primary"
+                disabled={approvalDisabled}
+                onClick={() => onApprove("approve_only")}
+              >
+                {msg.planApprovalApproveOnly}
+              </button>
+            )}
+            {canExecute ? (
+              <button
+                type="button"
+                className="btn btn--sm"
+                disabled={approvalDisabled}
+                onClick={() => onApprove("approve_only")}
+              >
+                {msg.planApprovalApproveOnly}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="btn btn--sm btn--ghost"
+              disabled={busy}
+              onClick={() => setRevisionOpen(true)}
+            >
+              {msg.planRejectSubmit}
+            </button>
+          </div>
+          {!canExecute ? (
+            <p className="plan-approval-review__hint">
+              {msg.planApprovalNoExecuteHint}
+            </p>
+          ) : null}
+        </footer>
+      )}
+      {error ? <p className="goal-loop-banner__error">{error}</p> : null}
     </section>
+  );
+}
+
+function ObjectionList({
+  objections,
+  onFocusObjection,
+}: {
+  readonly objections: readonly RoomObjection[];
+  readonly onFocusObjection?: (objectionId: string) => void;
+}) {
+  return (
+    <ul className="plan-approval-objections__list">
+      {objections.map((objection) => (
+        <li key={objection.id}>
+          <button
+            type="button"
+            className="plan-approval-objections__item"
+            disabled={!onFocusObjection}
+            onClick={() => onFocusObjection?.(objection.id)}
+          >
+            <span className="plan-approval-objections__from">
+              {objection.from}
+            </span>
+            <span className="plan-approval-objections__body">
+              {objection.body}
+            </span>
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }

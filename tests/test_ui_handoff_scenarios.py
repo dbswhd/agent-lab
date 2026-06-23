@@ -48,7 +48,6 @@ def test_scenario_b_plan_synthesis_contract():
 
 
 def test_scenario_b2_plan_workflow_ui_contract():
-    """B2: plan workflow phase banner + reject target_phase + receipts/SSE."""
     room = _read("web", "src", "components", "RoomChat.tsx")
     banner = _read("web", "src", "components", "PlanWorkflowBanner.tsx")
     approval = _read("web", "src", "components", "PlanApprovalPanel.tsx")
@@ -66,9 +65,13 @@ def test_scenario_b2_plan_workflow_ui_contract():
     assert "APPROVED" in banner
     assert "CLARIFY" in banner
     assert "PEER_REVIEW" in banner
-    assert "plan-reject-target" in approval
+    assert "renderPlanMarkdown" in approval
+    assert 'onApprove("execute")' in approval
+    assert 'onApprove("approve_only")' in approval
+    assert "plan-reject-target" not in approval
+    assert "plan-approval-promise" not in approval
     assert "target_phase" in approval
-    assert "PLAN_REJECT_TARGETS" in approval
+    assert 'target_phase: "REFINE"' in approval
     assert "plan_pending_approval" in receipt
     assert "isPlanWorkflowSendReceipt" in receipt
     assert "planWorkflowPhaseTranscriptLine" in plan_view

@@ -1,22 +1,18 @@
 import type { RoomObjection } from "../api/client";
-import type { VerifiedLoopView } from "../utils/verifiedLoopView";
-import { PlanApprovalPanel, type PlanRejectPayload } from "./PlanApprovalPanel";
+import {
+  PlanApprovalPanel,
+  type PlanApprovalMode,
+  type PlanRejectPayload,
+} from "./PlanApprovalPanel";
 
 export type PlanApprovalHost = {
   readonly enabled: boolean;
-  readonly view: VerifiedLoopView;
-  readonly phase: string;
   readonly workflowNotice?: string;
   readonly planGate?: Record<string, unknown> | null;
+  readonly canExecute: boolean;
   readonly busy: boolean;
   readonly error: string | null;
-  readonly editGoal: string;
-  readonly editCriteria: string;
-  readonly editPromise: string;
-  readonly onEditGoalChange: (value: string) => void;
-  readonly onEditCriteriaChange: (value: string) => void;
-  readonly onEditPromiseChange: (value: string) => void;
-  readonly onApprove: () => void;
+  readonly onApprove: (mode: PlanApprovalMode) => void;
   readonly onReject: (payload: PlanRejectPayload) => void;
 };
 
@@ -24,6 +20,7 @@ type Props = {
   readonly planMd: string;
   readonly approval: PlanApprovalHost;
   readonly objections: readonly RoomObjection[];
+  readonly blockedReason?: string | null;
   readonly onFocusObjection?: (id: string) => void;
 };
 
@@ -31,26 +28,21 @@ export function WorkPlanApprovalSection({
   planMd,
   approval,
   objections,
+  blockedReason = null,
   onFocusObjection,
 }: Props) {
   if (!approval.enabled) return null;
   return (
     <div id="work-plan-approval" className="work-surface">
       <PlanApprovalPanel
-        view={approval.view}
         planMd={planMd}
-        phase={approval.phase}
         workflowNotice={approval.workflowNotice}
         planGate={approval.planGate}
         objections={[...objections]}
+        canExecute={approval.canExecute}
+        blockedReason={blockedReason}
         busy={approval.busy}
         error={approval.error}
-        editGoal={approval.editGoal}
-        editCriteria={approval.editCriteria}
-        editPromise={approval.editPromise}
-        onEditGoalChange={approval.onEditGoalChange}
-        onEditCriteriaChange={approval.onEditCriteriaChange}
-        onEditPromiseChange={approval.onEditPromiseChange}
         onFocusObjection={onFocusObjection}
         onApprove={approval.onApprove}
         onReject={approval.onReject}

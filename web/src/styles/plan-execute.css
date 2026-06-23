@@ -1764,3 +1764,152 @@
     justify-content: center;
   }
 }
+
+.plan-approval-review {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  padding: var(--space-16);
+  color: var(--label-primary);
+}
+
+.plan-approval-review__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-16);
+  padding-bottom: var(--space-12);
+  border-bottom: 1px solid var(--border-hair);
+}
+
+.plan-approval-review__header h2 {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-title2);
+  line-height: var(--leading-tight);
+  letter-spacing: -0.02em;
+}
+
+.plan-approval-review__eyebrow,
+.plan-approval-review__detail,
+.plan-approval-review__hint {
+  margin: 0;
+}
+
+.plan-approval-review__eyebrow {
+  color: var(--accent);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
+}
+
+.plan-approval-review__detail,
+.plan-approval-review__hint {
+  margin-top: var(--space-6);
+  color: var(--label-secondary);
+  font-size: var(--text-footnote);
+  line-height: var(--leading-body);
+}
+
+.plan-approval-review__count {
+  flex: 0 0 auto;
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  color: var(--label-secondary);
+  font-size: var(--text-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-approval-review__document {
+  max-width: 68ch;
+}
+
+.plan-approval-review__document .plan-doc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.plan-approval-review__document .plan-action__main,
+.plan-approval-review__document .plan-action__fields dd {
+  min-width: 0;
+}
+
+.plan-approval-review__document .plan-action__what,
+.plan-approval-review__document .plan-action__fields dd,
+.plan-approval-review__document .plan-action__fields code {
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.plan-approval-review__blockers {
+  padding: var(--space-10) var(--space-12);
+  border-left: 3px solid var(--warn);
+  border-radius: var(--radius-sm);
+  background: var(--warn-soft);
+  color: var(--label-primary);
+  font-size: var(--text-footnote);
+}
+
+.plan-approval-review__advisories {
+  padding-top: var(--space-10);
+  border-top: 1px solid var(--border-hair);
+  color: var(--label-secondary);
+  font-size: var(--text-footnote);
+}
+
+.plan-approval-review__revision {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: var(--space-12);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+
+.plan-approval-review__footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  padding-top: var(--space-12);
+  border-top: 1px solid var(--border-hair);
+  background: var(--surface-pane);
+}
+
+.plan-approval-review__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.plan-approval-review .plan-approval-objections__item {
+  grid-template-columns: auto 1fr;
+  margin-top: var(--space-6);
+}
+
+.plan-card__more {
+  margin-top: var(--space-10);
+  padding-top: var(--space-10);
+  border-top: 1px solid var(--border-hair);
+  color: var(--label-secondary);
+  font-size: var(--text-footnote);
+}
+
+.plan-card__more[open] summary {
+  margin-bottom: var(--space-8);
+}
+
+@media (max-width: 760px) {
+  .plan-approval-review {
+    padding: var(--space-12);
+  }
+
+  .plan-approval-review__header {
+    flex-direction: column;
+    gap: var(--space-8);
+  }
+
+  .plan-approval-review__actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

@@ -74,7 +74,10 @@ def test_fast_bucket_collection_budget():
     # 2026-06-20: raised 1380 -> 1400 for §5 Phase 0 code-memory MCP pilot (server + contract + mount + off-parity + cache).
     # 2026-06-21: raised 1400 -> 1430 for CLARIFY unification (clarifier_engine adapter AC1-AC15 suite).
     # 2026-06-22: raised 1430 -> 1560 for stage-aware routing + anti-drift (phase->route resolver, RoutingDecisionLog telemetry, anti-drift A/B + fresh-eyes seat, and adversarial red-team suites).
-    assert count <= 1560, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-06-23: raised 1560 -> 1600 for the P0 checkpoint/resume layer (checkpoint_store snapshot/restore + OFF-parity AC1-AC11 suite).
+    # 2026-06-23: raised 1600 -> 1640 for the P1 symbol-graph repo-map (repo_map extract/rank/render + OFF-parity AC1-AC10 suite).
+    # 2026-06-23: P2 tool-output auto-compaction (test_tool_output_compaction AC1-AC10 + N1/N2) fits under 1640; no bump needed.
+    assert count <= 1640, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

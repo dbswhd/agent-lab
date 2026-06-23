@@ -48,6 +48,33 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "feature",
         "Structural anti-drift defenses for panel turns (state re-injection, unanimity red-team, fresh-eyes critic seat; default off)",
     ),
+    FlagDef(
+        "AGENT_LAB_CHECKPOINT",
+        "feature",
+        "Snapshot run.json FSM state at each phase transition to a per-session checkpoints.jsonl for manual resume (default off)",
+    ),
+    FlagDef(
+        "AGENT_LAB_REPO_MAP",
+        "feature",
+        "Symbol-graph repo-map (ast def/ref ranking) replacing the plain repo tree in agent context (default off)",
+    ),
+    FlagDef(
+        "AGENT_LAB_REPO_MAP_TOKENS",
+        "feature",
+        "Token budget for the symbol-graph repo-map output (default 1024)",
+        default="1024",
+    ),
+    FlagDef(
+        "AGENT_LAB_COMPACT_TOOL_OUTPUT",
+        "feature",
+        "Deterministically truncate over-length code-fence tool/shell output in pre-current-turn agent messages before char-trim (default off)",
+    ),
+    FlagDef(
+        "AGENT_LAB_COMPACT_TOOL_CHARS",
+        "feature",
+        "Per-code-fence-block char cap for tool-output compaction (default 2000)",
+        default="2000",
+    ),
     FlagDef("AGENT_LAB_LOOP_PROBE", "feature", "Runtime static loop capability probe", default="1"),
     FlagDef(
         "AGENT_LAB_LOOP_PROBE_CACHE",

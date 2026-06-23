@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import os
 import re
 from datetime import datetime
@@ -182,13 +183,13 @@ def _parse_iso(ts: str) -> datetime | None:
         return datetime.fromisoformat(ts.replace("Z", "+00:00"))
     except ValueError:
         return None
+
+
 def _env_bool(name: str, default: bool = False) -> bool:
     raw = os.getenv(name)
     if raw is None:
         return default
     return raw.strip().lower() in {"1", "true", "yes", "on"}
-
-
 
 
 def _message_chars(msgs: list[_MessageLike]) -> int:
@@ -231,6 +232,8 @@ def compact_current_turn_pins(
         kept.pop(-1)
         dropped += 1
     return kept, dropped
+
+
 def _split_plan_sections(plan_md: str) -> dict[str, str]:
     """Map lowercased header key → body text."""
     if not plan_md.strip():
@@ -531,6 +534,83 @@ def trim_messages_by_chars_pinned(
     return merged, omitted
 
 
+def _compact_tool_output_enabled() -> bool:
+    return _env_bool("AGENT_LAB_COMPACT_TOOL_OUTPUT")
+
+
+def _tool_output_char_cap() -> int:
+    raw = os.getenv("AGENT_LAB_COMPACT_TOOL_CHARS")
+    if raw is None:
+        return 2000
+    try:
+        val = int(raw.strip())
+    except (TypeError, ValueError):
+        return 2000
+    return val if val > 0 else 2000
+
+
+def _truncate_fenced_blocks(content: str, cap: int) -> str:
+    """Truncate over-cap code-fence (```) blocks to head+tail+marker. Deterministic.
+
+    Splits on ``` markers; regions between an opening fence and the next fence are
+    fenced blocks (an unterminated final fence runs to end-of-content). Only blocks
+    whose inner length exceeds ``cap`` are truncated to the first ``cap//2`` chars
+    plus the last ``cap//2`` chars, joined by ``[...truncated N chars...]`` where N is
+    the exact removed inner-char count. Non-fence text and under/at-cap blocks are
+    byte-preserved.
+    """
+    if cap <= 0 or "```" not in content:
+        return content
+    parts = content.split("```")
+    # parts alternate: [outside, inside, outside, inside, ...]. Odd indices are the
+    # inner content of fenced blocks. A trailing odd index = unterminated fence.
+    head = cap // 2
+    tail = cap // 2
+    changed = False
+    for i in range(1, len(parts), 2):
+        inner = parts[i]
+        if len(inner) > cap:
+            removed = len(inner) - head - tail
+            parts[i] = inner[:head] + f"[...truncated {removed} chars...]" + inner[len(inner) - tail :]
+            changed = True
+    if not changed:
+        return content
+    return "```".join(parts)
+
+
+def _truncate_old_tool_outputs(
+    recent: list[_MessageLike],
+    pinned: list[_MessageLike],
+    *,
+    cap: int,
+) -> list[_MessageLike]:
+    """Copy-on-truncate over-length code-fence blocks in pre-current-turn agent messages.
+
+    Pinned (current-turn) messages and non-agent messages are passed through at their
+    ORIGINAL identity. Eligible agent messages are truncated via ``dataclasses.replace``
+    (copy, never in place); non-dataclass messages are passed through unchanged. Returns
+    a new list; original message objects are never mutated.
+    """
+    if cap <= 0:
+        return recent
+    pin_ids = {id(m) for m in pinned}
+    out: list[_MessageLike] = []
+    for m in recent:
+        if id(m) in pin_ids or getattr(m, "role", None) != "agent":
+            out.append(m)
+            continue
+        content = getattr(m, "content", None)
+        if not isinstance(content, str) or "```" not in content:
+            out.append(m)
+            continue
+        new_content = _truncate_fenced_blocks(content, cap)
+        if new_content == content or not dataclasses.is_dataclass(m):
+            out.append(m)
+            continue
+        out.append(dataclasses.replace(m, content=new_content))
+    return out
+
+
 def prepare_recent_messages(
     messages: list[_MessageLike],
     *,
@@ -569,6 +649,8 @@ def prepare_recent_messages(
             max_messages=eff.max_pin_messages,
             max_chars=pin_budget,
         )
+    if _compact_tool_output_enabled() and _message_chars(recent) > max_chars:
+        recent = _truncate_old_tool_outputs(recent, pinned, cap=_tool_output_char_cap())
     trimmed, chars_omitted = trim_messages_by_chars_pinned(recent, max_chars=max_chars, pinned=pinned)
     return trimmed, turns_omitted, chars_omitted, len(pinned)
 

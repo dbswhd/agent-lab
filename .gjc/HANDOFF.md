@@ -52,7 +52,7 @@
 - **P0 — 체크포인트/재개 레이어 (G1, 최우선)**: LangGraph식 phase별 스냅샷 + 재개를 mission_loop/plan FSM에 추가
   (신규 `checkpoint_store.py`, thread=session_id, time-travel/크래시 중간재개). ROI 최고.
 - **P1 — 심볼-그래프 repo-map (G2)**: `repo_tree_context`를 Aider식 PageRank repo-map으로 승격(tree-sitter 자산 활용).
-- **P2 — auto-compaction 루프 (G3)**: `context_bundle`에 토큰 임계 도달 시 tool-output 우선폐기→오래된 턴 요약(플래그+OFF-parity).
+- **P2 — tool-output auto-compaction (G3) ✅ SHIPPED (uncommitted)**: `room_context.prepare_recent_messages`에 char-trim 직전 결정론적 선처리 추가 — pre-current-turn agent 메시지의 over-cap 코드펜스(```)를 head+tail+`[...truncated N chars...]`로 `dataclasses.replace` 복사 truncate(현재턴 pin/사용자 메시지 제외, copy-on-truncate, 원본 불변). 플래그 `AGENT_LAB_COMPACT_TOOL_OUTPUT`(off) + `AGENT_LAB_COMPACT_TOOL_CHARS`(2000). 검증: `tests/test_tool_output_compaction.py` 17 passed · `make test-fast` 1600 passed/1 skipped · mypy 243/243 · ruff clean · OFF-parity 입증. ralplan stage-11~15 합의(Architect WATCH/1 HIGH→AC10→Critic OKAY). LLM 요약은 보류.
 - **P3 — edit-time linter 게이트 + 샌드박스 강화 (G4)**: SWE-agent식 edit→문법검증 거부 + 옵션 Docker 런타임 adapter.
 - **P4 — 표준 평가 하네스 연동 (G5)**: `session_score`↔SWE-bench Verified 어댑터(FAIL_TO_PASS), 모델 vs 하네스 분리측정.
 - **P5 — 통일 event bus + 구조화 메모리 store (G6/G7)**: SSE/trace/run-patch를 단일 typed event stream으로, LangGraph Store식 namespace KV.

@@ -14,6 +14,7 @@ from agent_lab.plan_pending import (
     max_tasks_per_turn,
     plan_content_hash,
 )
+from agent_lab.run_meta import read_run_meta
 from agent_lab.room_tasks import (
     list_tasks,
     mark_tasks_in_progress_for_execution,
@@ -65,6 +66,26 @@ def test_approve_snapshot_then_allows_second_check(tmp_path: Path):
     approve_pending_plan(folder, pid)
     approved = ensure_plan_snapshot_approved(folder, action, SAMPLE_PLAN)
     assert approved.get("status") == "approved"
+
+
+def test_whole_plan_approval_auto_approves_matching_action_snapshot(tmp_path: Path):
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    (folder / "plan.md").write_text(SAMPLE_PLAN, encoding="utf-8")
+    (folder / "run.json").write_text(
+        '{"plan_workflow":{"enabled":true,"phase":"APPROVED",'
+        f'"plan_hash_at_approval":"{plan_content_hash(SAMPLE_PLAN)}"}}}}\n',
+        encoding="utf-8",
+    )
+
+    action = find_dry_run_action(SAMPLE_PLAN, 1, kind="now")
+    assert action is not None
+    approved = ensure_plan_snapshot_approved(folder, action, SAMPLE_PLAN)
+
+    assert approved["status"] == "approved"
+    assert approved["approved_by"] == "whole_plan"
+    persisted = read_run_meta(folder)["pending_plans"][-1]
+    assert persisted["approved_by"] == "whole_plan"
 
 
 def test_plan_hash_changes_invalidate_approval(tmp_path: Path):

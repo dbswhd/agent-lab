@@ -8,7 +8,7 @@ from typing import Any, Literal
 
 from agent_lab.run_meta import patch_run_meta, read_run_meta
 
-ClarifierCategory = Literal["goal", "scope", "verify", "constraints", "priority"]
+ClarifierCategory = Literal["goal", "scope", "verify", "constraints", "priority", "criteria", "context"]
 
 
 def _now_iso() -> str:
@@ -170,6 +170,16 @@ def build_clarifier_interview(
     text = (topic or "").strip()
     if not text:
         return None
+    from agent_lab.clarifier_engine import build_engine_interview, engine_enabled
+
+    if engine_enabled():
+        engine_interview = build_engine_interview(
+            text,
+            human_message_count=human_message_count,
+            plan_mode=plan_mode,
+        )
+        if engine_interview is not None:
+            return engine_interview
     short = len(text) < clarifier_min_topic_chars()
     first_turn = is_new_session and human_message_count <= 1
     use_v2 = interview_v2_enabled()
@@ -242,17 +252,86 @@ def build_clarifier_questions(
     return None
 
 
-def persist_clarifier_interview(folder, interview: dict[str, Any]) -> dict[str, Any]:
+def _interview_source(interview: dict[str, Any] | None) -> str:
+    """Source tag of an interview; static server-clarifier interviews are unmarked → 'server'."""
+    src = (interview or {}).get("source")
+    return str(src) if src else "server"
+
+
+def _question_ids(interview: dict[str, Any] | None) -> set[str]:
+    questions = (interview or {}).get("questions") if isinstance(interview, dict) else None
+    if not isinstance(questions, list):
+        return set()
+    return {str(q.get("id")) for q in questions if isinstance(q, dict) and q.get("id")}
+
+
+def _persist_decision(
+    existing: dict[str, Any] | None,
+    candidate: dict[str, Any],
+    *,
+    replace: bool,
+    engine_on: bool,
+) -> tuple[bool, str]:
+    """Decide whether ``candidate`` may replace ``existing`` as the durable interview.
+
+    OFF-parity: with the clarity engine off (and no explicit replace), persistence is the
+    legacy unconditional overwrite, so engine-off behavior is byte-identical to before.
+    With the engine on, persistence is identity-aware: a pending interview from a *different*
+    source is preserved (the write-race fix), and a same-source write is allowed only when it
+    keeps every already-surfaced question (its id set is a superset) so an in-flight pending
+    interview whose questions were already harvested is never silently dropped.
+    Completion is never handled here — it stays solely in ``record_clarifier_answers``.
+    """
+    if not isinstance(existing, dict):
+        return True, "new"
+    if replace:
+        return True, "explicit_replace"
+    if not engine_on:
+        return True, "engine_off"
+    if existing.get("status") == "complete":
+        return True, "prior_complete"
+    if _interview_source(existing) == _interview_source(candidate):
+        if _question_ids(existing) <= _question_ids(candidate):
+            return True, "same_source_update"
+        return False, "same_source_divergent"
+    return False, "cross_source_pending"
+
+
+def persist_clarifier_interview(
+    folder,
+    interview: dict[str, Any],
+    *,
+    replace: bool = False,
+) -> dict[str, Any]:
+    """Persist ``interview`` to run.json with identity-aware replacement semantics.
+
+    Returns ``{"interview", "persisted", "reason"}`` where ``interview`` is the ACTUAL
+    persisted state — the candidate when written, or the preserved existing interview when a
+    cross-source pending replacement is blocked. Callers (room SSE) must render from the
+    returned ``interview``, never from the candidate they passed in.
+    """
     from pathlib import Path
 
+    from agent_lab.clarifier_engine import engine_enabled
+
     path = Path(folder)
+    engine_on = engine_enabled()
+    outcome: dict[str, Any] = {"interview": interview, "persisted": True, "reason": "new"}
 
     def _persist(run: dict[str, Any]) -> dict[str, Any]:
-        run["clarifier_interview"] = interview
+        existing = get_clarifier_interview(run)
+        persisted, reason = _persist_decision(existing, interview, replace=replace, engine_on=engine_on)
+        outcome["persisted"] = persisted
+        outcome["reason"] = reason
+        if persisted:
+            run["clarifier_interview"] = interview
+            outcome["interview"] = interview
+        else:
+            outcome["interview"] = existing
         return run
 
     patch_run_meta(path, _persist)
-    return interview
+    return outcome
 
 
 def get_clarifier_interview(run: dict[str, Any] | None) -> dict[str, Any] | None:

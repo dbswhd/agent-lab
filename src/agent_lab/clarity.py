@@ -328,14 +328,15 @@ def score_ambiguity(text: str) -> float:
     return float(score_clarity(text)["overall"])
 
 
-def lateral_questions(text: str, *, agents: list[str] | None = None, max_q: int = 3) -> list[dict[str, str]]:
-    """Dimension-targeted clarifying questions, ordered by ambiguity (weakest first).
+def lateral_questions_from_result(result: dict[str, Any], *, max_q: int = 3) -> list[dict[str, str]]:
+    """Dimension-targeted clarifying questions from an already-computed ``score_clarity`` result.
 
-    With topology on, questions target the vaguest *component* first (one question per
-    component, on that component's weakest dimension) so the human clarifies the right part.
-    Otherwise one question per global dimension above threshold. Capped at ``max_q``.
+    One-pass: callers that already hold a ``score_clarity`` result derive questions here
+    instead of re-scoring. With topology on, questions target the vaguest *component* first
+    (one question per component, on that component's weakest dimension); otherwise one question
+    per global dimension above threshold. Capped at ``max_q``. Ordering matches the historical
+    ``lateral_questions`` behavior.
     """
-    result = score_clarity(text, agents=agents)
     threshold = _threshold()
     components = result.get("components")
     if components:
@@ -374,6 +375,17 @@ def lateral_questions(text: str, *, agents: list[str] | None = None, max_q: int 
         if len(questions) >= max_q:
             break
     return questions
+
+
+def lateral_questions(text: str, *, agents: list[str] | None = None, max_q: int = 3) -> list[dict[str, str]]:
+    """Dimension-targeted clarifying questions, ordered by ambiguity (weakest first).
+
+    Scores once via ``score_clarity`` then delegates to ``lateral_questions_from_result`` so
+    there is no double scoring. With topology on, questions target the vaguest *component*
+    first; otherwise one question per global dimension above threshold. Capped at ``max_q``.
+    """
+    result = score_clarity(text, agents=agents)
+    return lateral_questions_from_result(result, max_q=max_q)
 
 
 def record_clarity_panel(folder: Any, result: dict[str, Any]) -> None:
@@ -427,7 +439,7 @@ def ensure_clarify_questions(folder: Any) -> dict[str, Any] | None:
     questions = lateral_questions(text)
     if not questions:
         return None
-    interview = {
+    interview: dict[str, Any] = {
         "version": 2,
         "plan_mode": False,
         "status": "pending",

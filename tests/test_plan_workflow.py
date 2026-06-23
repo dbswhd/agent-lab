@@ -167,6 +167,23 @@ def test_ensure_plan_workflow_approved_blocks_execute(tmp_path: Path) -> None:
         ensure_plan_workflow_approved(folder)
 
 
+def test_ensure_plan_workflow_approved_invalidates_changed_plan(tmp_path: Path) -> None:
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    (folder / "plan.md").write_text(SAMPLE_PLAN, encoding="utf-8")
+    (folder / "run.json").write_text("{}", encoding="utf-8")
+    set_plan_workflow_phase(folder, "HUMAN_PENDING")
+    approve_plan(folder)
+    (folder / "plan.md").write_text(SAMPLE_PLAN + "\nChanged after approval.\n", encoding="utf-8")
+
+    with pytest.raises(PlanWorkflowNotApproved, match="plan_workflow_plan_changed"):
+        ensure_plan_workflow_approved(folder)
+
+    workflow = get_plan_workflow(read_run_meta(folder))
+    assert workflow["phase"] == "HUMAN_PENDING"
+    assert workflow["notice"] == "plan_changed_after_approval"
+
+
 def test_reject_plan_returns_to_clarify(tmp_path: Path) -> None:
     folder = tmp_path / "sess"
     folder.mkdir()

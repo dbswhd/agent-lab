@@ -94,6 +94,17 @@ def create_pending_plan_snapshot(
     }
 
 
+def _whole_plan_approval_matches(run: dict[str, Any], plan_md: str) -> bool:
+    workflow = run.get("plan_workflow")
+    if not isinstance(workflow, dict):
+        return False
+    return (
+        workflow.get("enabled") is True
+        and workflow.get("phase") == "APPROVED"
+        and workflow.get("plan_hash_at_approval") == plan_content_hash(plan_md)
+    )
+
+
 def ensure_plan_snapshot_approved(
     folder,
     action: PlanAction,
@@ -107,6 +118,21 @@ def ensure_plan_snapshot_approved(
         return approved
 
     pending = create_pending_plan_snapshot(action, plan_md)
+    if _whole_plan_approval_matches(run, plan_md):
+        approved_at = _now()
+        pending["status"] = "approved"
+        pending["approved_at"] = approved_at
+        pending["updated_at"] = approved_at
+        pending["approved_by"] = "whole_plan"
+
+        def _record_whole_plan_approval(current: dict[str, Any]) -> dict[str, Any]:
+            plans = list_pending_plans(current)
+            plans.append(pending)
+            current[RUN_PENDING_PLANS_KEY] = plans
+            return current
+
+        patch_run_meta(folder, _record_whole_plan_approval)
+        return pending
 
     def _upsert(run: dict[str, Any]) -> dict[str, Any]:
         plans = list_pending_plans(run)
@@ -135,6 +161,7 @@ def approve_pending_plan(folder, pending_id: str) -> dict[str, Any]:
     target["status"] = "approved"
     target["approved_at"] = approved_at
     target["updated_at"] = approved_at
+    target["approved_by"] = "human"
 
     def _write(run: dict[str, Any]) -> dict[str, Any]:
         run[RUN_PENDING_PLANS_KEY] = plans

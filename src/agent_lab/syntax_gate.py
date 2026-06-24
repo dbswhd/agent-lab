@@ -74,7 +74,7 @@ def changed_python_files(execution: dict[str, Any] | None) -> list[Path]:
     return sorted(out)
 
 
-def scan_syntax(paths: list[Path], root: Path | None = None) -> tuple[str, int] | None:
+def _scan_syntax(paths: list[Path], root: Path | None = None) -> tuple[str, int] | None:
     """Return the first ``(display_path, lineno)`` whose source fails to compile.
 
     Files are scanned in the given order (changed_python_files already sorts), so
@@ -115,7 +115,7 @@ def evaluate_syntax_gate(execution: dict[str, Any] | None) -> dict[str, Any]:
     paths = changed_python_files(execution)
     if not paths:
         return {"id": "syntax_gate", "ok": True, "detail": "no changed .py"}
-    hit = scan_syntax(paths, root=root)
+    hit = _scan_syntax(paths, root=root)
     if hit is None:
         return {"id": "syntax_gate", "ok": True, "detail": f"{len(paths)} .py ok"}
     file, line = hit

@@ -96,6 +96,11 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "feature",
         "SWE-bench-style FAIL_TO_PASS/PASS_TO_PASS scorer + model-vs-harness attribution (pure; no auto-wiring; default off)",
     ),
+    FlagDef(
+        "AGENT_LAB_EVENT_MEMORY",
+        "feature",
+        "Typed event-envelope schema/validator + namespace KV memory store (pure modules; no auto-wiring; default off)",
+    ),
     FlagDef("AGENT_LAB_LOOP_PROBE", "feature", "Runtime static loop capability probe", default="1"),
     FlagDef(
         "AGENT_LAB_LOOP_PROBE_CACHE",

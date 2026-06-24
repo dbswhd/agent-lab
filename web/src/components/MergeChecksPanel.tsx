@@ -12,6 +12,7 @@ const LABELS_KO: Record<string, string> = {
   oracle_verdict: "Oracle",
   open_blocks: "Open BLOCK",
   room_tasks: "Room tasks",
+  syntax_gate: "구문 검사",
 };
 
 const LABELS_EN: Record<string, string> = {
@@ -21,6 +22,7 @@ const LABELS_EN: Record<string, string> = {
   oracle_verdict: "Oracle",
   open_blocks: "Open BLOCK",
   room_tasks: "Room tasks",
+  syntax_gate: "Syntax gate",
 };
 
 /** MB-5 — Conductor-style merge Checks SSOT. */

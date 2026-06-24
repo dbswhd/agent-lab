@@ -22,8 +22,11 @@ _VALID_RUNTIMES = frozenset({"worktree", "docker"})
 
 
 def sandbox_policy_enabled() -> bool:
-    """AGENT_LAB_SANDBOX_POLICY (default OFF): resolve a sandbox policy at the verify seam."""
-    return (os.getenv("AGENT_LAB_SANDBOX_POLICY") or "").strip().lower() in _TRUE
+    """AGENT_LAB_SANDBOX_POLICY (default ON): resolve a sandbox policy at the verify seam. Opt-out via =0."""
+    raw = os.getenv("AGENT_LAB_SANDBOX_POLICY")
+    if raw is None or raw.strip() == "":
+        return True
+    return raw.strip().lower() in _TRUE
 
 
 def _configured_runtime() -> str:

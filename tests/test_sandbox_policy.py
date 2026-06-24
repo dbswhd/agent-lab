@@ -51,7 +51,11 @@ def test_ac11_resolver_is_pure(monkeypatch):
 
 
 def test_enabled_helper(monkeypatch):
+    # default ON: absent/empty => enabled
     monkeypatch.delenv("AGENT_LAB_SANDBOX_POLICY", raising=False)
+    assert sp.sandbox_policy_enabled() is True
+    # opt-out via =0
+    monkeypatch.setenv("AGENT_LAB_SANDBOX_POLICY", "0")
     assert sp.sandbox_policy_enabled() is False
     monkeypatch.setenv("AGENT_LAB_SANDBOX_POLICY", "yes")
     assert sp.sandbox_policy_enabled() is True

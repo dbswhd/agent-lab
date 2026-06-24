@@ -21,10 +21,16 @@ def client(monkeypatch: pytest.MonkeyPatch):
 # --- eval route (P4) -------------------------------------------------------
 
 
-def test_eval_score_404_when_off(client, monkeypatch):
-    monkeypatch.delenv("AGENT_LAB_EVAL_HARNESS", raising=False)
+def test_eval_score_404_when_disabled(client, monkeypatch):
+    monkeypatch.setenv("AGENT_LAB_EVAL_HARNESS", "0")
     res = client.post("/api/eval/score", json={"instances": []})
     assert res.status_code == 404
+
+
+def test_eval_score_200_by_default(client, monkeypatch):
+    monkeypatch.delenv("AGENT_LAB_EVAL_HARNESS", raising=False)
+    res = client.post("/api/eval/score", json={"instances": []})
+    assert res.status_code == 200
 
 
 def test_eval_score_computes_when_on(client, monkeypatch):
@@ -51,10 +57,16 @@ def test_eval_score_computes_when_on(client, monkeypatch):
 # --- memory route (P5) -----------------------------------------------------
 
 
-def test_memory_eval_404_when_off(client, monkeypatch):
-    monkeypatch.delenv("AGENT_LAB_EVENT_MEMORY", raising=False)
+def test_memory_eval_404_when_disabled(client, monkeypatch):
+    monkeypatch.setenv("AGENT_LAB_EVENT_MEMORY", "0")
     res = client.post("/api/memory/eval", json={"ops": []})
     assert res.status_code == 404
+
+
+def test_memory_eval_200_by_default(client, monkeypatch):
+    monkeypatch.delenv("AGENT_LAB_EVENT_MEMORY", raising=False)
+    res = client.post("/api/memory/eval", json={"ops": []})
+    assert res.status_code == 200
 
 
 def test_memory_eval_stateless_compute_when_on(client, monkeypatch):
@@ -92,9 +104,8 @@ def test_memory_eval_unknown_op_400(client, monkeypatch):
 
 
 def test_room_event_validation_flag_path(monkeypatch):
-    """Mirror the room.py on_event gate: flag off => always append; on => drop invalid."""
-    from agent_lab.event_schema import validate_event
-    from agent_lab.memory_store import event_memory_enabled
+    """Mirror room.py on_event gate: AGENT_LAB_EVENT_VALIDATE off (default) => always append; on => drop invalid."""
+    from agent_lab.event_schema import event_validation_enabled, validate_event
 
     appended: list[tuple[str, dict]] = []
 
@@ -104,21 +115,21 @@ def test_room_event_validation_flag_path(monkeypatch):
     def on_event(folder, typ, payload):
         # replicates room.py on_event live-log branch logic
         if folder is not None:
-            if event_memory_enabled():
+            if event_validation_enabled():
                 ok, _ = validate_event({"ts": "x", "type": typ, **payload})
                 if not ok:
                     return
             fake_append(folder, typ, payload)
 
-    # flag OFF: even an unknown (invalid) type is appended (byte-identical legacy behavior;
-    # the writer itself would later drop unknowns, but on_event does not pre-filter)
-    monkeypatch.delenv("AGENT_LAB_EVENT_MEMORY", raising=False)
+    # DEFAULT (EVENT_VALIDATE unset): no drop — even an unknown type is appended
+    # (byte-identical legacy behavior; the writer itself drops unknowns later).
+    monkeypatch.delenv("AGENT_LAB_EVENT_VALIDATE", raising=False)
     on_event("f", "totally_unknown", {"a": 1})
     assert appended == [("totally_unknown", {"a": 1})]
 
     appended.clear()
-    # flag ON: a valid LIVE type passes; an unknown type is dropped before append
-    monkeypatch.setenv("AGENT_LAB_EVENT_MEMORY", "1")
+    # EVENT_VALIDATE=1: valid LIVE type passes; unknown type dropped before append.
+    monkeypatch.setenv("AGENT_LAB_EVENT_VALIDATE", "1")
     on_event("f", "agent_start", {"agent": "x"})
     on_event("f", "totally_unknown", {"a": 1})
     assert appended == [("agent_start", {"agent": "x"})]

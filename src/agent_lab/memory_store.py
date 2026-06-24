@@ -22,8 +22,11 @@ _TRUE = frozenset({"1", "true", "yes", "on"})
 
 
 def event_memory_enabled() -> bool:
-    """AGENT_LAB_EVENT_MEMORY (default OFF). Shared with event_schema; unused this increment."""
-    return (os.getenv("AGENT_LAB_EVENT_MEMORY") or "").strip().lower() in _TRUE
+    """AGENT_LAB_EVENT_MEMORY (default ON): gates the memory route. Opt-out via =0."""
+    raw = os.getenv("AGENT_LAB_EVENT_MEMORY")
+    if raw is None or raw.strip() == "":
+        return True
+    return raw.strip().lower() in _TRUE
 
 
 class MemoryStore:

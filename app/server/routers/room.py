@@ -342,9 +342,9 @@ async def create_room_run(
             if folder is not None:
                 from agent_lab.room_live_log import append_live_room_event
 
-                from agent_lab.memory_store import event_memory_enabled
+                from agent_lab.event_schema import event_validation_enabled
 
-                if event_memory_enabled():
+                if event_validation_enabled():
                     from agent_lab.event_schema import validate_event
 
                     ok, _errors = validate_event({"ts": "x", "type": typ, **payload})

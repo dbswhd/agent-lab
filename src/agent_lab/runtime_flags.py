@@ -83,7 +83,8 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
     FlagDef(
         "AGENT_LAB_SANDBOX_POLICY",
         "feature",
-        "Resolve a typed sandbox policy at the worktree verify subprocess seam (live Docker deferred; default off)",
+        "Resolve a typed sandbox policy at the worktree verify subprocess seam (default ON; worktree runtime => output identical; opt-out via =0)",
+        default="1",
     ),
     FlagDef(
         "AGENT_LAB_SANDBOX_RUNTIME",
@@ -94,12 +95,19 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
     FlagDef(
         "AGENT_LAB_EVAL_HARNESS",
         "feature",
-        "SWE-bench-style FAIL_TO_PASS/PASS_TO_PASS scorer + model-vs-harness attribution (pure; no auto-wiring; default off)",
+        "SWE-bench-style FAIL_TO_PASS/PASS_TO_PASS scorer route POST /api/eval/score (default ON; pure stateless compute; opt-out via =0)",
+        default="1",
     ),
     FlagDef(
         "AGENT_LAB_EVENT_MEMORY",
         "feature",
-        "Typed event-envelope schema/validator + namespace KV memory store (pure modules; no auto-wiring; default off)",
+        "Namespace KV memory store route POST /api/memory/eval (default ON; pure stateless compute; opt-out via =0)",
+        default="1",
+    ),
+    FlagDef(
+        "AGENT_LAB_EVENT_VALIDATE",
+        "feature",
+        "Validate + drop invalid live-log events in Room turns via event_schema (default OFF; behavior change)",
     ),
     FlagDef("AGENT_LAB_LOOP_PROBE", "feature", "Runtime static loop capability probe", default="1"),
     FlagDef(

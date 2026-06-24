@@ -162,8 +162,11 @@ def test_ac17_rate_in_unit_interval_and_resolved_implies_model():
 # --- flag + OFF-parity -----------------------------------------------------
 
 
-def test_ac13_flag_default_off(monkeypatch):
+def test_ac13_flag_default_on(monkeypatch):
+    # default ON: absent/empty => enabled; opt-out via =0
     monkeypatch.delenv("AGENT_LAB_EVAL_HARNESS", raising=False)
+    assert eh.eval_harness_enabled() is True
+    monkeypatch.setenv("AGENT_LAB_EVAL_HARNESS", "0")
     assert eh.eval_harness_enabled() is False
     monkeypatch.setenv("AGENT_LAB_EVAL_HARNESS", "1")
     assert eh.eval_harness_enabled() is True

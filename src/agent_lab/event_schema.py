@@ -33,8 +33,16 @@ EVENT_TYPES: frozenset[str] = LIVE_EVENT_TYPES | _EXTRA_EVENT_TYPES
 
 
 def event_memory_enabled() -> bool:
-    """AGENT_LAB_EVENT_MEMORY (default OFF). Exposed for future adoption; unused this increment."""
-    return (os.getenv("AGENT_LAB_EVENT_MEMORY") or "").strip().lower() in _TRUE
+    """AGENT_LAB_EVENT_MEMORY (default ON): gates the memory route. Opt-out via =0."""
+    raw = os.getenv("AGENT_LAB_EVENT_MEMORY")
+    if raw is None or raw.strip() == "":
+        return True
+    return raw.strip().lower() in _TRUE
+
+
+def event_validation_enabled() -> bool:
+    """AGENT_LAB_EVENT_VALIDATE (default OFF): validate+drop invalid live-log events in Room turns."""
+    return (os.getenv("AGENT_LAB_EVENT_VALIDATE") or "").strip().lower() in _TRUE
 
 
 def make_event(type: str, **fields: Any) -> dict[str, Any]:

@@ -32,8 +32,11 @@ AggregateReport = dict[str, Any]
 
 
 def eval_harness_enabled() -> bool:
-    """AGENT_LAB_EVAL_HARNESS (default OFF). Exposed for future wiring; unused this increment."""
-    return (os.getenv("AGENT_LAB_EVAL_HARNESS") or "").strip().lower() in _TRUE
+    """AGENT_LAB_EVAL_HARNESS (default ON). Opt-out via =0."""
+    raw = os.getenv("AGENT_LAB_EVAL_HARNESS")
+    if raw is None or raw.strip() == "":
+        return True
+    return raw.strip().lower() in _TRUE
 
 
 def _bucket_counts(ids: list[str], result_map: dict[str, str]) -> tuple[int, int, bool]:

@@ -105,7 +105,18 @@ def test_ac15_directional_no_importer_contract():
 
 
 def test_enabled_helper(monkeypatch):
+    # default ON: absent/empty => enabled; opt-out via =0
     monkeypatch.delenv("AGENT_LAB_EVENT_MEMORY", raising=False)
+    assert es.event_memory_enabled() is True
+    monkeypatch.setenv("AGENT_LAB_EVENT_MEMORY", "0")
     assert es.event_memory_enabled() is False
     monkeypatch.setenv("AGENT_LAB_EVENT_MEMORY", "1")
     assert es.event_memory_enabled() is True
+
+
+def test_event_validation_enabled_default_off(monkeypatch):
+    # behavior-change gate stays default OFF
+    monkeypatch.delenv("AGENT_LAB_EVENT_VALIDATE", raising=False)
+    assert es.event_validation_enabled() is False
+    monkeypatch.setenv("AGENT_LAB_EVENT_VALIDATE", "1")
+    assert es.event_validation_enabled() is True

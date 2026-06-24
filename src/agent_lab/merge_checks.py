@@ -202,6 +202,12 @@ def build_merge_checks(
         _room_tasks_check(run, pending),
         _diff_safety_check(pending),
     ]
+    from agent_lab.syntax_gate import syntax_gate_enabled
+
+    if syntax_gate_enabled():
+        from agent_lab.syntax_gate import evaluate_syntax_gate
+
+        checks.append(evaluate_syntax_gate(pending))
     merge_disabled = False
     reason: str | None = None
     for check in checks:

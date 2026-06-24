@@ -93,7 +93,30 @@ def find_worktree_hooks(git_root: Path | None) -> WorktreeHooksConfig | None:
     return None
 
 
+def _sandbox_intent() -> str | None:
+    """Resolve the sandbox runtime intent for this verify subprocess.
+
+    Returns None when AGENT_LAB_SANDBOX_POLICY is off (OFF-parity: no key added to
+    the result dict). When on with runtime="docker", live Docker is DEFERRED, so we
+    return "docker" as an intent marker while the caller still runs the worktree
+    subprocess (fallback). runtime="worktree" returns None (no marker needed).
+    """
+    from agent_lab.sandbox_policy import resolve_sandbox_policy, sandbox_policy_enabled
+
+    if not sandbox_policy_enabled():
+        return None
+    policy = resolve_sandbox_policy()
+    return "docker" if policy.get("runtime") == "docker" else None
+
+
 def _run_command(cmd: str, *, cwd: Path, timeout_sec: float = 600.0) -> dict[str, Any]:
+    intent = _sandbox_intent()
+
+    def _finish(row: dict[str, Any]) -> dict[str, Any]:
+        if intent is not None:
+            row["sandbox_intent"] = intent
+        return row
+
     try:
         result = subprocess.run(
             cmd,
@@ -105,34 +128,40 @@ def _run_command(cmd: str, *, cwd: Path, timeout_sec: float = 600.0) -> dict[str
             env=subprocess_env(),
         )
     except subprocess.TimeoutExpired:
-        return {
-            "cmd": cmd,
-            "exit": -1,
-            "ok": False,
-            "detail": f"timeout after {int(timeout_sec)}s",
-            "stdout": "",
-            "stderr": "",
-        }
+        return _finish(
+            {
+                "cmd": cmd,
+                "exit": -1,
+                "ok": False,
+                "detail": f"timeout after {int(timeout_sec)}s",
+                "stdout": "",
+                "stderr": "",
+            }
+        )
     except OSError as exc:
-        return {
-            "cmd": cmd,
-            "exit": -1,
-            "ok": False,
-            "detail": str(exc)[:200],
-            "stdout": "",
-            "stderr": "",
-        }
+        return _finish(
+            {
+                "cmd": cmd,
+                "exit": -1,
+                "ok": False,
+                "detail": str(exc)[:200],
+                "stdout": "",
+                "stderr": "",
+            }
+        )
     stdout = (result.stdout or "")[:2000]
     stderr = (result.stderr or "")[:2000]
     ok = result.returncode == 0
-    return {
-        "cmd": cmd,
-        "exit": int(result.returncode),
-        "ok": ok,
-        "detail": None if ok else (stderr.strip() or stdout.strip() or f"exit {result.returncode}"),
-        "stdout": stdout,
-        "stderr": stderr,
-    }
+    return _finish(
+        {
+            "cmd": cmd,
+            "exit": int(result.returncode),
+            "ok": ok,
+            "detail": None if ok else (stderr.strip() or stdout.strip() or f"exit {result.returncode}"),
+            "stdout": stdout,
+            "stderr": stderr,
+        }
+    )
 
 
 def run_hook_commands(

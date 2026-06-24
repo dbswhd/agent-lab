@@ -75,6 +75,22 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "Per-code-fence-block char cap for tool-output compaction (default 2000)",
         default="2000",
     ),
+    FlagDef(
+        "AGENT_LAB_SYNTAX_GATE",
+        "feature",
+        "Hard-block a pending execution's merge when changed *.py fails ast/py_compile (Python-only; lint non-blocking; default off)",
+    ),
+    FlagDef(
+        "AGENT_LAB_SANDBOX_POLICY",
+        "feature",
+        "Resolve a typed sandbox policy at the worktree verify subprocess seam (live Docker deferred; default off)",
+    ),
+    FlagDef(
+        "AGENT_LAB_SANDBOX_RUNTIME",
+        "feature",
+        "Sandbox runtime when AGENT_LAB_SANDBOX_POLICY is on: worktree|docker (docker falls back to worktree + records intent; default worktree)",
+        default="worktree",
+    ),
     FlagDef("AGENT_LAB_LOOP_PROBE", "feature", "Runtime static loop capability probe", default="1"),
     FlagDef(
         "AGENT_LAB_LOOP_PROBE_CACHE",

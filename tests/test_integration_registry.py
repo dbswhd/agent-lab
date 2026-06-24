@@ -77,7 +77,8 @@ def test_fast_bucket_collection_budget():
     # 2026-06-23: raised 1560 -> 1600 for the P0 checkpoint/resume layer (checkpoint_store snapshot/restore + OFF-parity AC1-AC11 suite).
     # 2026-06-23: raised 1600 -> 1640 for the P1 symbol-graph repo-map (repo_map extract/rank/render + OFF-parity AC1-AC10 suite).
     # 2026-06-23: P2 tool-output auto-compaction (test_tool_output_compaction AC1-AC10 + N1/N2) fits under 1640; no bump needed.
-    assert count <= 1640, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-06-23: raised 1640 -> 1680 for the P3 edit-time syntax gate + sandbox policy seam (test_syntax_gate AC1-AC6 + test_sandbox_policy AC7-AC12 + OFF-parity/defensive suites).
+    assert count <= 1680, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

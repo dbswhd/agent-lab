@@ -400,7 +400,7 @@ Mission evidence: `.agent-lab/missions/<id>/evidence.jsonl`
 
 | 종류 | 경로 |
 |------|------|
-| Unit/integration | `tests/` (~870 files) |
+| Unit/integration | `tests/` (~280 files) |
 | Regression baselines | `sessions/_regression/` (~40 scenarios) |
 | Benchmarks | `sessions/_benchmark/` |
 | CI reports | `sessions/_reports/` |

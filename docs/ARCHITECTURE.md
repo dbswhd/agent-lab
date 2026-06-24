@@ -38,7 +38,7 @@ flowchart TB
     end
 
     subgraph api["Backend app/server"]
-        Routers[22 FastAPI routers]
+        Routers[23 FastAPI routers]
         Deps[deps.py SSE/models]
     end
 
@@ -66,8 +66,8 @@ flowchart TB
 |------|------|------|
 | Desktop shell | `web/src-tauri/` | Tauri 2, uvicorn :8765 기동 |
 | Frontend | `web/src/` | React 18, Vite (:5173 dev) |
-| API | `app/server/` | FastAPI, ~120 endpoints |
-| Core logic | `src/agent_lab/` | Python 3.11+, 228 modules |
+| API | `app/server/` | FastAPI, ~140 endpoints |
+| Core logic | `src/agent_lab/` | Python 3.11+, ~270 modules |
 | Session data | `sessions/<id>/` | JSONL + markdown + run meta |
 | Project memory | `.agent-lab/` | PROJECT.md, PLATFORM.md, hooks |
 
@@ -205,13 +205,29 @@ flowchart TB
 
 Room이 **기본**; Classic은 레거시.
 
+### 3.14 Backend Hardening (P0–P5, default off)
+
+Additive, flag-gated layers from the LangGraph/OpenHands/Aider/SWE-agent gap analysis. Each is a pure-stdlib module with unit tests; flag OFF ⇒ byte-identical to prior behavior. **P0–P3 are wired into an existing chokepoint; P4–P5 ship as unwired pure libraries (zero call sites).**
+
+| 갭 | Core | 연결 지점 (seam) | Flag | UI |
+|----|------|------------------|------|-----|
+| P0 checkpoint/resume | `checkpoint_store.py` | `run_meta.patch_run_meta` | `AGENT_LAB_CHECKPOINT` | — (resume는 함수 호출) |
+| P1 symbol repo-map | `repo_map.py` | `context_bundle.py` (repo tree 교체) | `AGENT_LAB_REPO_MAP`(+`_TOKENS`) | — (컨텍스트 내부) |
+| P2 tool-output compaction | `room_context.py` helpers | `prepare_recent_messages` (char-trim 직전) | `AGENT_LAB_COMPACT_TOOL_OUTPUT`(+`_CHARS`) | — |
+| P3 edit-time syntax gate | `syntax_gate.py` | `merge_checks.build_merge_checks` | `AGENT_LAB_SYNTAX_GATE` | `MergeChecksPanel` (자동 표시) |
+| P3 sandbox policy | `sandbox_policy.py` | `worktree_hooks._run_command` | `AGENT_LAB_SANDBOX_POLICY`(+`_RUNTIME`) | — (live Docker deferred) |
+| P4 eval harness | `eval_harness.py` | **없음 (zero call site)** | `AGENT_LAB_EVAL_HARNESS` | — (연결 deferred) |
+| P5 event schema + KV store | `event_schema.py`, `memory_store.py` | **없음 (zero call site)** | `AGENT_LAB_EVENT_MEMORY` | — (연결 deferred) |
+
+**겹침 메모:** P1은 `build_repo_tree_block`을 flag로 교체(OFF면 기존 tree 유지); P5 `event_schema`는 `room_live_log.LIVE_EVENT_TYPES`를 상위집합으로 재사용(단방향 import). P0는 boot-time `crash_recovery`(자동)와 별개의 수동 스냅샷/resume.
+
 ---
 
 ## 4. 백엔드 상세 (`app/server/`)
 
 **패턴:** Router → `src/agent_lab/*` 직접 호출 (별도 service layer 없음)
 
-### 4.1 Router 맵 (22개)
+### 4.1 Router 맵 (23개)
 
 | 도메인 | Router file | 주요 책임 |
 |--------|-------------|-----------|

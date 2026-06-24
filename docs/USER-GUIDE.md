@@ -1141,7 +1141,7 @@ Slash menu와 단계형 선택기는 ArrowUp/Down, PageUp/Down, Enter, Escape를
 
 ## 22. 환경 변수
 
-**Discoverability:** canonical list of ~79 `AGENT_LAB_*` flags (description, default, effective value):
+**Discoverability:** canonical list of `AGENT_LAB_*` flags (description, default, effective value) — `runtime_flags.py` `FLAG_REGISTRY` is the SSOT:
 
 - CLI: `make list-flags` · `make list-flags -- --category feature --json`
 - API: `GET /api/health/flags` · `GET /api/health/flags?category=infra`
@@ -1178,6 +1178,23 @@ Path-like values are home-masked in API/CLI output. Undocumented `AGENT_LAB_*` v
 | `AGENT_LAB_CRASH_RECOVERY` | boot-time reconcile of crashed in-flight merges, G3 (default on) |
 | `AGENT_LAB_JUDGE_LIVE` | live LLM-as-judge quality eval in `score_session` (default off) |
 | `AGENT_LAB_JUDGE_MODEL` | override Claude model for the judge |
+
+### Backend hardening (P0–P5, default off)
+
+Additive, flag-gated layers; OFF ⇒ byte-identical to prior behavior. Each ships as a pure-stdlib module with unit tests.
+
+| Variable | Effect |
+|----------|--------|
+| `AGENT_LAB_CHECKPOINT` | P0: snapshot `run.json` FSM state to per-session `checkpoints.jsonl` at each phase transition; manual `resume_from_checkpoint` only (no auto re-run) |
+| `AGENT_LAB_REPO_MAP` | P1: replace the plain repo tree in agent context with an `ast` symbol-graph repo-map (def/ref 1–2 hop ranking) |
+| `AGENT_LAB_REPO_MAP_TOKENS` | P1: token budget for the repo-map output (default 1024) |
+| `AGENT_LAB_COMPACT_TOOL_OUTPUT` | P2: deterministically truncate over-length code-fence tool output in pre-current-turn agent messages before char-trim |
+| `AGENT_LAB_COMPACT_TOOL_CHARS` | P2: per-fence-block char cap for compaction (default 2000) |
+| `AGENT_LAB_SYNTAX_GATE` | P3: hard-block a pending execution's merge when a changed `*.py` fails `ast`/`py_compile` (adds a `syntax_gate` merge-check; lint stays non-blocking) |
+| `AGENT_LAB_SANDBOX_POLICY` | P3: resolve a typed sandbox policy at the worktree verify subprocess seam (live Docker deferred) |
+| `AGENT_LAB_SANDBOX_RUNTIME` | P3: `worktree`\|`docker` when `SANDBOX_POLICY` is on; `docker` falls back to worktree + records `sandbox_intent` (default `worktree`) |
+| `AGENT_LAB_EVAL_HARNESS` | P4: enable the SWE-bench-style F2P/P2P scorer + model-vs-harness attribution module (pure library; no auto-wiring this increment) |
+| `AGENT_LAB_EVENT_MEMORY` | P5: enable the typed event-envelope schema/validator + namespace KV memory store modules (pure libraries; no auto-wiring this increment) |
 
 ### Room / consensus
 

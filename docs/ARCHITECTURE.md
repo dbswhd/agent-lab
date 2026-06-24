@@ -253,6 +253,7 @@ Additive, flag-gated layers from the LangGraph/OpenHands/Aider/SWE-agent gap ana
 | Dev preview | `dev_preview.py` | dev server probe |
 | Background tasks | `background_tasks.py` | bg task CRUD |
 | Settings | `settings.py` | credentials, codex oauth |
+| Auth | `auth.py` | agent auth providers, codex capture, auth-run WS |
 
 ### 4.2 Core Python 맵 (`src/agent_lab/`)
 
@@ -268,6 +269,7 @@ Additive, flag-gated layers from the LangGraph/OpenHands/Aider/SWE-agent gap ana
 | Evidence & scoring | ~12 | `evidence_ledger.py`, `wisdom_index.py` |
 | Session & context | ~18 | `context_bundle.py`, `run_meta.py` |
 | Hooks & envelopes | ~10 | `room_hooks.py`, `reply_policy.py` |
+| Backend hardening (P0–P5) | 7 | `checkpoint_store.py`, `repo_map.py`, `syntax_gate.py`, `sandbox_policy.py`, `eval_harness.py`, `event_schema.py`, `memory_store.py` |
 | Trading extension | 28 | `trading_mission/` |
 
 ### 4.3 Startup (`main.py` lifespan)
@@ -287,11 +289,13 @@ Additive, flag-gated layers from the LangGraph/OpenHands/Aider/SWE-agent gap ana
 
 | 경로 | 파일 수 | 역할 |
 |------|---------|------|
-| `components/` | 121 | UI 컴포넌트 |
-| `utils/` | 68 | 뷰 로직, prefs, formatters |
+| `components/` | 105 | UI 컴포넌트 |
+| `utils/` | ~80 | 뷰 로직, prefs, formatters |
 | `hooks/` | 11 | Tauri, scroll, plan execute |
 | `api/client.ts` | 1 | ~100 fetch helpers |
-| `styles/` | 10 | CSS |
+| `context/` | — | React context providers |
+| `run/`, `figma/` | — | classic run view, figma assets |
+| `styles/` | 9 | CSS |
 | `i18n/` | 3 | locale |
 
 ### 5.2 컴포넌트 분류

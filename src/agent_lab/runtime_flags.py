@@ -91,6 +91,11 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "Sandbox runtime when AGENT_LAB_SANDBOX_POLICY is on: worktree|docker (docker falls back to worktree + records intent; default worktree)",
         default="worktree",
     ),
+    FlagDef(
+        "AGENT_LAB_EVAL_HARNESS",
+        "feature",
+        "SWE-bench-style FAIL_TO_PASS/PASS_TO_PASS scorer + model-vs-harness attribution (pure; no auto-wiring; default off)",
+    ),
     FlagDef("AGENT_LAB_LOOP_PROBE", "feature", "Runtime static loop capability probe", default="1"),
     FlagDef(
         "AGENT_LAB_LOOP_PROBE_CACHE",

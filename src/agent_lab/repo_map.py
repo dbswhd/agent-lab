@@ -52,6 +52,10 @@ EXCLUDE_DIRS = frozenset(
         ".eggs",
         "venv",
         "site-packages",
+        # Rust/Tauri/Maven/Gradle compiled output — can be gigabytes of copied source.
+        "target",
+        # Bundled Python runtimes shipped inside Tauri/Electron app bundles.
+        "bundled-runtime",
     }
 )
 # Hard cap on files parsed per build (cost bound). When exceeded, parsing is restricted to

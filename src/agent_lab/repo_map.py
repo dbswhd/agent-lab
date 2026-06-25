@@ -65,6 +65,14 @@ DEFAULT_REPO_MAP_TOKENS = 1024
 # Conservative chars/token estimate for budgeting the rendered block.
 _CHARS_PER_TOKEN = 4
 _ELISION = "    ..."
+# Seed-relevance increments (named so the freq tiering bound below is derived, not magic).
+_SEED_SELF = 3.0  # a seed file itself
+_SEED_HOP1 = 2.0  # file referenced by a seed (1 hop)
+_SEED_HOP2 = 0.5  # file referenced by a 1-hop file (2 hop) — smallest nonzero seed score
+_MIN_SEED_INCREMENT = _SEED_HOP2
+# Global-frequency backfill term ceiling: strictly below the smallest seed increment so any
+# seed-scored file always outranks any pure-frequency file. Derived from _MIN_SEED_INCREMENT.
+_FREQ_TIER = _MIN_SEED_INCREMENT * 0.98
 
 
 def repo_map_enabled() -> bool:
@@ -182,11 +190,13 @@ def _rank_files(
     index: dict[Path, tuple[list[tuple[str, int, str]], set[str]]],
     seeds: set[Path],
 ) -> dict[Path, float]:
-    """Zero-dependency 1-2 hop neighborhood weighting.
+    """Composite seed + damped global-frequency weighting (zero-dependency, 1-2 hop).
 
-    A file's score is its own def-by-seed reference count (how many seed files reference its
-    defined symbols) plus a 1-hop bonus, with an empty-seed fallback to global reference
-    frequency so the map is never empty when symbols exist.
+    A file's score is its seed-relevance (seed self / 1-hop / 2-hop increments) PLUS a
+    global-frequency term strictly bounded below the smallest seed increment, so any
+    seed-scored file always outranks any pure-frequency file while relevant-but-unseeded
+    files still backfill spare render budget. With no seeds, the seed term is 0 for all
+    and ranking degrades to (a monotonic transform of) pure global frequency — same order.
     """
     # symbol name -> files that define it
     def_files: dict[str, set[Path]] = defaultdict(set)
@@ -196,31 +206,36 @@ def _rank_files(
 
     scores: dict[Path, float] = {path: 0.0 for path in index}
 
+    # Seed term: 1-2 hop neighborhood weighting.
     if seeds:
-        # Files referenced by seeds (1 hop), then files referenced by those (2 hop, lighter).
         first_hop: set[Path] = set(seeds)
         for seed in seeds:
             if seed in scores:
-                scores[seed] += 3.0  # seeds themselves are highly relevant
+                scores[seed] += _SEED_SELF
             _refs = index.get(seed, ([], set()))[1]
             for name in _refs:
                 for target in def_files.get(name, ()):  # noqa: SIM118
-                    scores[target] += 2.0
+                    scores[target] += _SEED_HOP1
                     first_hop.add(target)
         for node in first_hop:
             for name in index.get(node, ([], set()))[1]:
                 for target in def_files.get(name, ()):  # noqa: SIM118
-                    scores[target] += 0.5
-        if any(v > 0 for v in scores.values()):
-            return scores
+                    scores[target] += _SEED_HOP2
 
-    # Empty-seed (or no seed signal) fallback: global reference frequency.
+    # Global-frequency backfill term, strictly damped below _MIN_SEED_INCREMENT so it can
+    # never lift a pure-frequency file above any seed-scored file. Always applied, so
+    # relevant-but-unseeded files surface in spare budget instead of being invisible.
     ref_freq: dict[str, int] = defaultdict(int)
     for _path, (_defs, refs) in index.items():
         for name in refs:
             ref_freq[name] += 1
-    for path, (defs, _refs) in index.items():
-        scores[path] = float(sum(ref_freq.get(name, 0) for name, _l, _s in defs))
+    file_freq: dict[Path, int] = {
+        path: sum(ref_freq.get(name, 0) for name, _l, _s in defs) for path, (defs, _refs) in index.items()
+    }
+    max_freq = max(file_freq.values(), default=0)
+    if max_freq > 0:
+        for path, freq in file_freq.items():
+            scores[path] += _FREQ_TIER * freq / (max_freq + 1)
     return scores
 
 

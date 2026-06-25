@@ -248,3 +248,99 @@ def test_budget_default_on_garbage(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_constants_present() -> None:
     assert MAX_FILES > 0
     assert ".venv" in EXCLUDE_DIRS and "node_modules" in EXCLUDE_DIRS
+
+
+# --- Seed-ranking backfill (stage 43-48): seeds strictly first + spare-budget freq backfill ---
+
+from pathlib import Path as _P
+
+from agent_lab.repo_map import (  # noqa: E402
+    _FREQ_TIER,
+    _MIN_SEED_INCREMENT,
+    _rank_files,
+)
+
+
+def _idx(defs_refs: dict[str, tuple[list[str], list[str]]]) -> dict:
+    """Build a _rank_files index: {Path: ([(name,1,name)], {refs})}."""
+    out: dict = {}
+    for fname, (defs, refs) in defs_refs.items():
+        out[_P(fname)] = ([(d, 1, d) for d in defs], set(refs))
+    return out
+
+
+def test_seedrank_freq_tier_invariant_below_min_seed_increment() -> None:
+    # The damped freq term must always be strictly below the smallest seed increment,
+    # for any frequency — otherwise a pure-freq file could overtake a seed file.
+    for max_freq in (1, 10, 1000, 10_000, 10**9):
+        sup = _FREQ_TIER * max_freq / (max_freq + 1)
+        assert sup < _MIN_SEED_INCREMENT
+
+
+def test_seedrank_seed_dominates_max_freq_unseeded() -> None:
+    # A min-score seed file (2-hop, S=0.5) must outrank a heavily-referenced UNSEEDED file.
+    # seed.py references hop1 symbol; hop1 references hop2 symbol (=> hop2 gets _SEED_HOP2).
+    # hot.py is defined-and-referenced by many but NOT reachable from the seed.
+    idx = _idx(
+        {
+            "seed.py": (["seed_sym"], ["hop1_sym"]),
+            "hop1.py": (["hop1_sym"], ["hop2_sym"]),
+            "hop2.py": (["hop2_sym"], []),
+            "hot.py": (["hot_sym"], []),
+            # many files reference hot_sym => high global frequency, but no seed path to it
+            **{f"u{i}.py": ([f"u{i}_sym"], ["hot_sym"]) for i in range(20)},
+        }
+    )
+    seeds = {_P("seed.py")}
+    scores = _rank_files(idx, seeds)
+    # hop2 is the weakest seed-scored file; hot is the strongest pure-freq file
+    assert scores[_P("hop2.py")] >= _MIN_SEED_INCREMENT
+    assert scores[_P("hot.py")] < _MIN_SEED_INCREMENT
+    assert scores[_P("hop2.py")] > scores[_P("hot.py")]  # seed strictly first
+
+
+def test_seedrank_backfill_surfaces_unseeded_referenced_file() -> None:
+    # An unseeded-but-referenced file (score 0 under the old early-return) now gets a
+    # nonzero backfill rank so it can appear in spare budget.
+    idx = _idx(
+        {
+            "seed.py": (["seed_sym"], []),
+            "lonely.py": (["lonely_sym"], []),
+            "ref_a.py": (["a"], ["lonely_sym"]),
+            "ref_b.py": (["b"], ["lonely_sym"]),
+        }
+    )
+    scores = _rank_files(idx, {_P("seed.py")})
+    assert scores[_P("lonely.py")] > 0.0  # previously 0 (invisible); now backfilled
+    assert scores[_P("seed.py")] > scores[_P("lonely.py")]  # seed still first
+
+
+def test_seedrank_empty_seed_order_preserved() -> None:
+    # No seeds => ranking is a monotonic transform of global frequency => same ORDER.
+    idx = _idx(
+        {
+            "high.py": (["h"], []),
+            "mid.py": (["m"], []),
+            "low.py": (["lo"], []),
+            **{f"r{i}.py": ([f"r{i}"], ["h"]) for i in range(3)},  # h freq 3
+            **{f"s{i}.py": ([f"s{i}"], ["m"]) for i in range(2)},  # m freq 2
+            "t0.py": (["t0"], ["lo"]),  # lo freq 1
+        }
+    )
+    scores = _rank_files(idx, set())
+    assert scores[_P("high.py")] > scores[_P("mid.py")] > scores[_P("low.py")]
+
+
+def test_seedrank_equal_freq_deterministic() -> None:
+    idx = _idx(
+        {
+            "a.py": (["a_sym"], []),
+            "b.py": (["b_sym"], []),
+            "r1.py": (["r1"], ["a_sym"]),
+            "r2.py": (["r2"], ["b_sym"]),
+        }
+    )
+    s1 = _rank_files(idx, set())
+    s2 = _rank_files(idx, set())
+    assert s1 == s2  # deterministic
+    assert s1[_P("a.py")] == s1[_P("b.py")]  # equal freq => equal score (path tie-break in render)

@@ -1647,29 +1647,37 @@ async function consumeSse(
   const dec = new TextDecoder();
   let buf = "";
   let sawTerminal = false;
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += dec.decode(value, { stream: true });
-    const parts = buf.split("\n\n");
-    buf = parts.pop() ?? "";
-    for (const part of parts) {
-      for (const line of part.split("\n")) {
-        if (line.startsWith("data: ")) {
-          const data = JSON.parse(line.slice(6)) as Record<string, unknown>;
-          const t = String(data.type ?? "");
-          if (
-            t === "complete" ||
-            t === "error" ||
-            t === "run_failed" ||
-            t === "run_cancelled"
-          ) {
-            sawTerminal = true;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const parts = buf.split("\n\n");
+      buf = parts.pop() ?? "";
+      for (const part of parts) {
+        for (const line of part.split("\n")) {
+          if (line.startsWith("data: ")) {
+            const data = JSON.parse(line.slice(6)) as Record<string, unknown>;
+            const t = String(data.type ?? "");
+            if (
+              t === "complete" ||
+              t === "error" ||
+              t === "run_failed" ||
+              t === "run_cancelled"
+            ) {
+              sawTerminal = true;
+            }
+            onEvent(data);
           }
-          onEvent(data);
         }
       }
     }
+  } catch (err) {
+    if (!sawTerminal) {
+      onEvent({ type: "sse_disconnected", message: String(err) });
+    }
+  } finally {
+    reader.cancel().catch(() => {});
   }
   return sawTerminal;
 }

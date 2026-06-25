@@ -31,6 +31,16 @@ class AgentReply:
     structured_envelope: dict[str, Any] | None = None
 
 
+class AgentCallError(RuntimeError):
+    """Structured error from a live agent call (non-mock path)."""
+
+    def __init__(self, agent: str, kind: str, message: str) -> None:
+        self.agent = agent
+        self.kind = kind
+        self.message = message
+        super().__init__(f"[{agent}:{kind}] {message}")
+
+
 def label(agent: AgentId) -> str:
     return _LABELS[agent]
 
@@ -249,69 +259,75 @@ def call_agent_reply(
                     on_bridge_event("text", {"text": chunk})
     elif not _is_ready(agent):
         raise RuntimeError(f"{label(agent)} is not configured")
-    elif agent == "cursor":
-        text = cursor_agent.respond(
-            system,
-            user,
-            permissions=permissions,
-            on_activity=on_activity,
-            on_bridge_event=on_bridge_event,
-            session_folder=session_folder,
-            request_structured_envelope=request_structured_envelope,
-            inbox_mcp=inbox_mcp,
-        )
-    elif agent == "codex":
-        text = codex_agent.respond(
-            system,
-            user,
-            permissions=permissions,
-            on_activity=on_activity,
-            on_bridge_event=on_bridge_event,
-            session_folder=session_folder,
-            request_structured_envelope=request_structured_envelope,
-            inbox_mcp=inbox_mcp,
-        )
-    elif agent == "claude":
-        text = claude_agent.respond(
-            system,
-            user,
-            permissions=permissions,
-            scribe=scribe,
-            on_activity=on_activity,
-            on_bridge_event=on_bridge_event,
-            session_folder=session_folder,
-            request_structured_envelope=request_structured_envelope,
-            inbox_mcp=inbox_mcp,
-        )
-    elif agent == "local":
-        text = local_provider.respond(
-            system,
-            user,
-            on_activity=on_activity,
-            on_bridge_event=on_bridge_event,
-            session_folder=session_folder,
-            request_structured_envelope=request_structured_envelope,
-        )
-    elif agent == "kimi":
-        text = kimi_provider.respond(
-            system,
-            user,
-            on_activity=on_activity,
-            on_bridge_event=on_bridge_event,
-            session_folder=session_folder,
-            request_structured_envelope=request_structured_envelope,
-        )
-    elif agent == "kimi_work":
-        text = kimi_work_provider.respond(
-            system,
-            user,
-            permissions=permissions,
-            on_activity=on_activity,
-            on_bridge_event=on_bridge_event,
-            session_folder=session_folder,
-            request_structured_envelope=request_structured_envelope,
-        )
     else:
-        raise RuntimeError(f"unknown agent: {agent}")
+        try:
+            if agent == "cursor":
+                text = cursor_agent.respond(
+                    system,
+                    user,
+                    permissions=permissions,
+                    on_activity=on_activity,
+                    on_bridge_event=on_bridge_event,
+                    session_folder=session_folder,
+                    request_structured_envelope=request_structured_envelope,
+                    inbox_mcp=inbox_mcp,
+                )
+            elif agent == "codex":
+                text = codex_agent.respond(
+                    system,
+                    user,
+                    permissions=permissions,
+                    on_activity=on_activity,
+                    on_bridge_event=on_bridge_event,
+                    session_folder=session_folder,
+                    request_structured_envelope=request_structured_envelope,
+                    inbox_mcp=inbox_mcp,
+                )
+            elif agent == "claude":
+                text = claude_agent.respond(
+                    system,
+                    user,
+                    permissions=permissions,
+                    scribe=scribe,
+                    on_activity=on_activity,
+                    on_bridge_event=on_bridge_event,
+                    session_folder=session_folder,
+                    request_structured_envelope=request_structured_envelope,
+                    inbox_mcp=inbox_mcp,
+                )
+            elif agent == "local":
+                text = local_provider.respond(
+                    system,
+                    user,
+                    on_activity=on_activity,
+                    on_bridge_event=on_bridge_event,
+                    session_folder=session_folder,
+                    request_structured_envelope=request_structured_envelope,
+                )
+            elif agent == "kimi":
+                text = kimi_provider.respond(
+                    system,
+                    user,
+                    on_activity=on_activity,
+                    on_bridge_event=on_bridge_event,
+                    session_folder=session_folder,
+                    request_structured_envelope=request_structured_envelope,
+                )
+            elif agent == "kimi_work":
+                text = kimi_work_provider.respond(
+                    system,
+                    user,
+                    permissions=permissions,
+                    on_activity=on_activity,
+                    on_bridge_event=on_bridge_event,
+                    session_folder=session_folder,
+                    request_structured_envelope=request_structured_envelope,
+                )
+            else:
+                raise AgentCallError(agent, "unknown_agent", f"unknown agent: {agent}")
+        except AgentCallError:
+            raise
+        except Exception as exc:
+            raise AgentCallError(agent, "call_error", str(exc)) from exc
     prose, structured = merge_structured_reply(text)
     return AgentReply(text=prose, structured_envelope=structured)

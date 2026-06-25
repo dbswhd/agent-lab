@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import logging
 import os
 import shutil
 import subprocess
@@ -6,6 +9,8 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
+
+_log = logging.getLogger(__name__)
 
 from agent_lab.agent_models import DEFAULT_CURSOR_MODEL
 from agent_lab.agent_permissions import normalize_agent_permissions, permission_preamble
@@ -248,18 +253,30 @@ def _build_send_options(
         for kind, data in parse_stream_update(update, from_step=from_step):
             if kind == "text":
                 if on_bridge_event:
-                    on_bridge_event("text", data)
+                    try:
+                        on_bridge_event("text", data)
+                    except Exception as exc:
+                        _log.warning("on_bridge_event('text') raised: %s", exc)
                 continue
             if kind in {"tool_start", "tool_output", "tool_done"}:
                 if on_bridge_event:
-                    on_bridge_event(kind, data)
+                    try:
+                        on_bridge_event(kind, data)
+                    except Exception as exc:
+                        _log.warning("on_bridge_event(%r) raised: %s", kind, exc)
                 continue
             if kind == "activity":
                 text = str(data.get("text") or "")
                 if on_bridge_event:
-                    on_bridge_event("activity", data)
+                    try:
+                        on_bridge_event("activity", data)
+                    except Exception as exc:
+                        _log.warning("on_bridge_event('activity') raised: %s", exc)
                 elif on_activity and text:
-                    on_activity(text)
+                    try:
+                        on_activity(text)
+                    except Exception as exc:
+                        _log.warning("on_activity raised: %s", exc)
 
     return SendOptions(
         on_delta=lambda u: _dispatch(u, from_step=False),

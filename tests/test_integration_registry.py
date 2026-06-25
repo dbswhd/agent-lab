@@ -72,7 +72,9 @@ def test_fast_bucket_collection_budget():
     # 2026-06-19: raised 1340 -> 1360 for §1 pipeline handles (/pipeline,/clarify,/plan) + CLARIFY transition rows.
     # 2026-06-19: raised 1360 -> 1380 for model-switch safety probe (substitute recognition + 2-stage live capability).
     # 2026-06-20: raised 1380 -> 1400 for §5 Phase 0 code-memory MCP pilot (server + contract + mount + off-parity + cache).
-    assert count <= 1400, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-06-25: raised 1400 -> 1600 for lazy-import fixes that unblocked previously uncollectable tests
+    # (langgraph/langchain_core imports made lazy; runner.py GraphState TYPE_CHECKING; session_paths module).
+    assert count <= 1600, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

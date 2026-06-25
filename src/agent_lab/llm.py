@@ -1,6 +1,10 @@
-import os
+from __future__ import annotations
 
-from langchain_core.language_models import BaseChatModel
+import os
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from langchain_core.language_models import BaseChatModel
 
 
 def get_llm() -> BaseChatModel:

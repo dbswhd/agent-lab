@@ -298,12 +298,15 @@ def model_profile_for(agent_id: str, *, model_id: str | None = None) -> ModelPro
     sub = _substitute_agent_id(agent_id)
     if sub is not None:
         mid = (model_id or resolve_runtime_model_id(agent_id)).strip() or "default"
-        key = _profile_registry_key(sub, mid)
-        if key in _MODEL_PROFILE_REGISTRY:
-            return _MODEL_PROFILE_REGISTRY[key]
         from agent_lab.model_policy_probe import loop_probe_enabled, probe_loop_capabilities_cached
 
+        # Registry entries for substitutes are always probe-derived, so only
+        # consult the registry when the probe gate is open (avoids stale
+        # live-probed entries being returned when probe is disabled).
         if loop_probe_enabled():
+            key = _profile_registry_key(sub, mid)
+            if key in _MODEL_PROFILE_REGISTRY:
+                return _MODEL_PROFILE_REGISTRY[key]
             probed = probe_loop_capabilities_cached(agent_id, mid)
             if probed is not None:
                 return probed

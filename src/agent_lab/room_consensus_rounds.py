@@ -75,9 +75,10 @@ def run_consensus_agent_rounds(
 
     # Expert Pool: route가 에이전트 서브셋을 제안하면 active를 좁힌다.
     # 서브셋 내 가용 에이전트가 없으면 전체 풀로 폴백 (안전 보장).
+    # 합의 루프에서는 최소 2명이 필요하므로 서브셋이 1명 이하로 줄면 적용하지 않는다.
     if route.agent_subset:
         subset_active = [a for a in active if str(a) in route.agent_subset]
-        if subset_active:
+        if len(subset_active) >= 2:
             active = subset_active
             if on_event:
                 on_event(
@@ -110,7 +111,8 @@ def run_consensus_agent_rounds(
         _filtered = agents_within_cost_tier([str(a) for a in active], _effective_tier)  # type: ignore[arg-type]
         _filtered_set = set(_filtered)
         _policy_active = [a for a in active if str(a) in _filtered_set]
-        if _policy_active and _policy_active != active:
+        # 합의 루프에서는 최소 2명이 필요하므로 1명 이하로 줄면 비용 상한을 적용하지 않는다.
+        if len(_policy_active) >= 2 and _policy_active != active:
             active = _policy_active
             if on_event:
                 on_event(

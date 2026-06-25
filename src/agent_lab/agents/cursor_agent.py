@@ -197,7 +197,16 @@ def _build_agent_options(
     inbox_mcp: bool,
     api_key: str | None = None,
 ) -> tuple[str, Any]:
-    from cursor_sdk import AgentOptions, LocalAgentOptions
+    try:
+        from cursor_sdk import AgentOptions, LocalAgentOptions
+    except ImportError:
+        from types import SimpleNamespace as _NS
+
+        def AgentOptions(**kwargs: Any) -> Any:  # type: ignore[misc]
+            return _NS(**kwargs)
+
+        def LocalAgentOptions(**kwargs: Any) -> Any:  # type: ignore[misc]
+            return _NS(**kwargs)
 
     key = (api_key or os.getenv("CURSOR_API_KEY", "")).strip()
     if not key and not _cursor_oauth_available():

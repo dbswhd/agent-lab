@@ -111,7 +111,7 @@ def test_discuss_challenge_resolved_in_consensus_loop(monkeypatch, tmp_path):
     monkeypatch.setattr(room, "model_label", lambda agent: f"{agent}-model")
 
     folder, _messages, _plan = room.run_room(
-        "이벤트 처리 경로를 정리합시다 — 직접 호출과 큐 방식 중 무엇으로 갈지 결정 필요.",
+        "이벤트 처리 경로를 정리합시다 — 직접 호출과 큐 방식 중 무엇으로 갈지 결정 필요.\n[cat: standard]",
         agents=["cursor", "codex", "claude"],
         synthesize=False,
         sessions_base=tmp_path,

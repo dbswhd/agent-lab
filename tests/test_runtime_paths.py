@@ -2,11 +2,37 @@
 
 from __future__ import annotations
 
+import glob
 import os
 import subprocess
+from pathlib import Path
+
+import pytest
+
+
+def _codex_installed() -> bool:
+    import shutil
+
+    if shutil.which("codex"):
+        return True
+    home = Path.home()
+    for p in glob.glob(str(home / ".nvm/versions/node/*/bin/codex")):
+        if Path(p).is_file():
+            return True
+    for candidate in (
+        home / ".local/bin/codex",
+        Path("/opt/homebrew/bin/codex"),
+        Path("/usr/local/bin/codex"),
+    ):
+        if candidate.is_file():
+            return True
+    return False
 
 
 def test_configure_subprocess_path_enables_codex(monkeypatch):
+    if not _codex_installed():
+        pytest.skip("codex not installed in this environment")
+
     monkeypatch.chdir("/")
     monkeypatch.setenv("PATH", "/usr/bin:/bin")
     monkeypatch.delenv("CODEX_BIN", raising=False)

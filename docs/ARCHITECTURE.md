@@ -1,13 +1,35 @@
 # Agent Lab — 시스템 아키텍처 분류
 
 > **목적:** 기능·백엔드·프론트·UX를 한눈에 보는 지도  
-> **상세 동작:** [USER-GUIDE.md](./USER-GUIDE.md) · **문서 인덱스:** [README.md](./README.md) · **shipped 증거:** [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md)
+> **플로우 설명:** [FLOW.md](./FLOW.md) · **상세 동작:** [USER-GUIDE.md](./USER-GUIDE.md) · **문서 인덱스:** [README.md](./README.md) · **shipped 증거:** [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md)
+
+---
+
+## 0. 전략적 포지션 (2026-06)
+
+> 상세: [STRATEGIC-DIRECTION-2026.md](./STRATEGIC-DIRECTION-2026.md) · 역할 오케스트레이션: [ROLE-ORCHESTRATION-PLAN.md](./ROLE-ORCHESTRATION-PLAN.md)
+
+**"신뢰 수준에 따라 자율도가 조정되는 Trusted Autonomous Mission Platform"**
+
+Fugu(ICLR 2026) 같은 완전 자율 처리나 Harness 패턴 팩토리와 경쟁하는 것이 아니라, 아래 5개 모트로 포지션을 확보한다:
+
+| 모트 | 구현 | Fugu/Harness에 없음 |
+|------|------|---------------------|
+| BLOCK → 409 | `room_objections.py` | ✓ |
+| worktree 격리 | `plan_execute_worktree.py` | ✓ |
+| Oracle + Repair | `oracle_core.py`, `verify_repair_policy.py` | ✓ |
+| run.json 감사 이력 | `run_meta.py` | ✓ |
+| Human Inbox | `human_inbox.py` | ✓ |
+
+**진행 중인 이니셔티브 (P0):** Dynamic Room · Model Policy · Code-memory MCP  
+**다음 단계 (P1):** Trust-gated Auto-approval · Room Preset System · 108 플래그 → 4 프로필  
+**역할 오케스트레이션 (P1~P8):** `topic_router` → `role_plan` → guidance seam 주입
 
 ---
 
 ## 1. 제품 정체
 
-**Human-in-the-loop Mission OS** — AI 개발 작업을 계획·승인·격리 실행·검증하는 데스크톱/웹 콘솔.
+**Trusted Autonomous Mission Platform** — AI 개발 작업을 계획·승인·격리 실행·검증하는 데스크톱/웹 콘솔.
 
 | 불변 원칙 | 구현 |
 |-----------|------|

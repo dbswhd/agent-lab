@@ -52,10 +52,10 @@ def _build_execution_dict(req: VerifyRequest) -> dict[str, Any]:
 
 def _run_oracle_mock(diff: str, claim: str) -> dict[str, Any]:
     """Fast mock oracle: PASS when diff is small and no obvious issues."""
-    from agent_lab.diff_risk import _count_changed_lines
+    from agent_lab.diff_risk import _MEDIUM_DIFF_LINES, _count_changed_lines
 
     lines = _count_changed_lines(diff)
-    if lines > 300:
+    if lines > _MEDIUM_DIFF_LINES:
         return {"verdict": "fail", "detail": f"large diff ({lines} lines) requires human review", "evidence": []}
     if any(kw in (claim or "").lower() for kw in ("delete all", "drop table", "rm -rf")):
         return {"verdict": "fail", "detail": "destructive pattern detected in claim", "evidence": []}
@@ -63,12 +63,9 @@ def _run_oracle_mock(diff: str, claim: str) -> dict[str, Any]:
 
 
 def _run_oracle_live(diff: str, claim: str, oracle_prompt: str) -> dict[str, Any]:
-    """Attempt live Oracle; fall back to mock on error."""
+    """Attempt live Oracle; fall back to mock on error. Caller must ensure oracle is live."""
     try:
-        from agent_lab.oracle_core import invoke_oracle, oracle_live_enabled, parse_oracle_response
-
-        if not oracle_live_enabled():
-            return _run_oracle_mock(diff, claim)
+        from agent_lab.oracle_core import invoke_oracle, parse_oracle_response
 
         prompt = oracle_prompt or (
             f"CLAIM: {claim}\n\nDIFF (first 2000 chars):\n{diff[:2000]}"

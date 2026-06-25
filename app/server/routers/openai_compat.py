@@ -25,16 +25,10 @@ from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/v1")
 
-_MODEL_ALIAS: dict[str, str] = {
-    "gpt-4": "agent-lab-balanced",
-    "gpt-4o": "agent-lab-balanced",
-    "gpt-3.5-turbo": "agent-lab-fast",
-    "agent-lab-fast": "agent-lab-fast",
-    "agent-lab-balanced": "agent-lab-balanced",
-    "agent-lab-thorough": "agent-lab-thorough",
-}
-
-_MODEL_TO_PRESET: dict[str, str] = {
+_MODEL_PRESET: dict[str, str] = {
+    "gpt-4": "consensus",
+    "gpt-4o": "consensus",
+    "gpt-3.5-turbo": "fast",
     "agent-lab-fast": "fast",
     "agent-lab-balanced": "consensus",
     "agent-lab-thorough": "thorough",
@@ -56,8 +50,7 @@ class ChatCompletionRequest(BaseModel):
 
 
 def _resolve_preset(model: str) -> str:
-    canonical = _MODEL_ALIAS.get(model.strip().lower(), "agent-lab-balanced")
-    return _MODEL_TO_PRESET.get(canonical, "consensus")
+    return _MODEL_PRESET.get(model.strip().lower(), "consensus")
 
 
 def _extract_topic(messages: list[_Message]) -> str:
@@ -132,7 +125,7 @@ def _chunk(completion_id: str, model: str, delta_content: str, finish: bool = Fa
 def _run_room_sync(
     topic: str,
     preset: str,
-    event_q: "queue.SimpleQueue[dict[str, Any] | None]",
+    event_q: "queue.Queue[dict[str, Any] | None]",
 ) -> tuple[str | None, str | None]:
     """Run a Room turn in a background thread, push SSE events to event_q."""
     from agent_lab.room import run_room
@@ -186,18 +179,15 @@ async def chat_completions(request: Request, body: ChatCompletionRequest) -> Any
     model_id = body.model.strip() or "agent-lab-balanced"
     preset = _resolve_preset(model_id)
     completion_id = _completion_id()
-    event_q: queue.SimpleQueue[dict[str, Any] | None] = queue.SimpleQueue()
+    event_q: queue.Queue[dict[str, Any] | None] = queue.Queue()
 
     if body.stream:
         def generate():
             session_id: list[str | None] = [None]
-            content_acc: list[str] = []
 
             def _worker():
-                sid, content = _run_room_sync(topic, preset, event_q)
+                sid, _ = _run_room_sync(topic, preset, event_q)
                 session_id[0] = sid
-                if content:
-                    content_acc.append(content)
 
             t = threading.Thread(target=_worker, daemon=True)
             t.start()
@@ -238,7 +228,10 @@ async def chat_completions(request: Request, body: ChatCompletionRequest) -> Any
         t = threading.Thread(target=_worker, daemon=True)
         t.start()
         while True:
-            ev = event_q.get()
+            try:
+                ev = event_q.get(timeout=120)
+            except queue.Empty:
+                break
             if ev is None:
                 break
         t.join(timeout=5)

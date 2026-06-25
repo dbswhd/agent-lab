@@ -151,23 +151,14 @@ _REVIEW_TASK_KEYWORDS = (
 )
 
 # 카테고리 + 작업유형 → 에이전트 서브셋 힌트 (None = 전원 참여)
-# deep/critical/trading은 항상 전원 참여 (다양성·안전성 최대화)
+# deep/critical/trading은 _resolve_agent_subset()에서 early-return None (항상 전원 참여)
 _AGENT_SUBSET_MAP: dict[tuple[Category, TaskType], tuple[str, ...] | None] = {
-    ("quick", "code"): ("cursor",),            # 단순 코드 작업: 가장 빠른 구현 에이전트
-    ("quick", "review"): ("claude",),          # 단순 리뷰: 분석에 강한 에이전트
-    ("quick", "general"): ("cursor",),         # 단순 일반: 기본 에이전트
-    ("standard", "code"): ("cursor", "codex"), # 코드 구현: 파일 편집 특화 에이전트
+    ("quick", "code"): ("cursor",),              # 단순 코드 작업: 가장 빠른 구현 에이전트
+    ("quick", "review"): ("claude",),            # 단순 리뷰: 분석에 강한 에이전트
+    ("quick", "general"): ("cursor",),           # 단순 일반: 기본 에이전트
+    ("standard", "code"): ("cursor", "codex"),   # 코드 구현: 파일 편집 특화 에이전트
     ("standard", "review"): ("claude", "codex"), # 코드 리뷰: 분석 + 코드 이해
-    ("standard", "general"): None,             # 일반 토론: 전원
-    ("trading", "code"): None,
-    ("trading", "review"): None,
-    ("trading", "general"): None,
-    ("deep", "code"): None,                    # deep 이상: 항상 전원
-    ("deep", "review"): None,
-    ("deep", "general"): None,
-    ("critical", "code"): None,
-    ("critical", "review"): None,
-    ("critical", "general"): None,
+    ("standard", "general"): None,               # 일반 토론: 전원
 }
 
 # category → 창발 예산 (debate·재조합·품질 게이트·cap·wisdom)

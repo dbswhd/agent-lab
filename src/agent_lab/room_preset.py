@@ -12,10 +12,6 @@ from typing import Any, Literal
 
 RoomPreset = Literal["fast", "consensus", "expert_pool", "producer_reviewer", "pipeline", "supervisor"]
 
-_VALID_PRESETS: frozenset[str] = frozenset(
-    {"fast", "consensus", "expert_pool", "producer_reviewer", "pipeline", "supervisor"}
-)
-
 
 @dataclass(frozen=True, slots=True)
 class RoomPresetConfig:
@@ -57,16 +53,6 @@ _PRESET_CONFIGS: dict[str, RoomPresetConfig] = {
     ),
 }
 
-_PRESET_ORDER: tuple[str, ...] = (
-    "fast",
-    "consensus",
-    "expert_pool",
-    "producer_reviewer",
-    "pipeline",
-    "supervisor",
-)
-
-
 def resolve_preset(preset: str | None) -> RoomPresetConfig | None:
     """Return the config for a preset name, or None if unknown/unset."""
     if not preset:
@@ -77,12 +63,12 @@ def resolve_preset(preset: str | None) -> RoomPresetConfig | None:
 def default_room_preset() -> str | None:
     """Return the session default preset from AGENT_LAB_ROOM_PRESET, or None."""
     raw = (os.getenv("AGENT_LAB_ROOM_PRESET") or "").strip().lower()
-    return raw if raw in _VALID_PRESETS else None
+    return raw if resolve_preset(raw) is not None else None
 
 
 def list_presets() -> list[RoomPresetConfig]:
     """Return all available room presets in a stable display order."""
-    return [_PRESET_CONFIGS[k] for k in _PRESET_ORDER]
+    return list(_PRESET_CONFIGS.values())
 
 
 def preset_turn_profile(preset: str | None, fallback: str = "discuss") -> str:

@@ -18,8 +18,6 @@ from typing import Any, Literal
 
 RunProfile = Literal["fast", "balanced", "thorough", "autonomous"]
 
-_VALID_PROFILES: frozenset[str] = frozenset({"fast", "balanced", "thorough", "autonomous"})
-
 
 @dataclass(frozen=True, slots=True)
 class RunProfileConfig:
@@ -76,9 +74,6 @@ _PROFILE_CONFIGS: dict[str, RunProfileConfig] = {
     ),
 }
 
-_PROFILE_ORDER: tuple[str, ...] = ("fast", "balanced", "thorough", "autonomous")
-
-
 def resolve_profile(profile: str | None) -> RunProfileConfig | None:
     """Return the config for a profile name, or None if unknown/unset."""
     if not profile:
@@ -89,7 +84,7 @@ def resolve_profile(profile: str | None) -> RunProfileConfig | None:
 def default_run_profile() -> str | None:
     """Return the profile name from AGENT_LAB_RUN_PROFILE env var, or None."""
     raw = (os.getenv("AGENT_LAB_RUN_PROFILE") or "").strip().lower()
-    return raw if raw in _VALID_PROFILES else None
+    return raw if resolve_profile(raw) is not None else None
 
 
 def apply_run_profile(profile: str | None, *, overwrite: bool = False) -> dict[str, str]:
@@ -114,11 +109,12 @@ def apply_run_profile(profile: str | None, *, overwrite: bool = False) -> dict[s
 
 def list_profiles() -> list[RunProfileConfig]:
     """Return all available run profiles in display order."""
-    return [_PROFILE_CONFIGS[k] for k in _PROFILE_ORDER]
+    return list(_PROFILE_CONFIGS.values())
 
 
 def profile_catalog() -> dict[str, Any]:
     """Return profile info for /api/profiles."""
+    active = default_run_profile()
     return {
         "profiles": [
             {
@@ -128,6 +124,6 @@ def profile_catalog() -> dict[str, Any]:
             }
             for cfg in list_profiles()
         ],
-        "default": default_run_profile(),
-        "active": default_run_profile(),
+        "default": active,
+        "active": active,
     }

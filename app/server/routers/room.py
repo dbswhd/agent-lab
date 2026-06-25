@@ -231,11 +231,17 @@ async def create_room_run(
     except json.JSONDecodeError:
         agent_ids = []
     agent_list = [a.strip().lower() for a in agent_ids if str(a).strip()] or None
-    # Resolve Room Preset → turn_profile when caller didn't explicitly set a profile.
+    # Resolve Room Preset → turn_profile + agent cap.
     preset_norm = (preset or "").strip().lower() or default_room_preset()
     is_default_profile = (turn_profile or "discuss").strip().lower() in ("discuss", "")
     if preset_norm and is_default_profile:
         turn_profile = preset_turn_profile(preset_norm, fallback=turn_profile)
+    if preset_norm and agent_list:
+        from agent_lab.room_preset import preset_max_agents
+
+        cap = preset_max_agents(preset_norm)
+        if cap is not None:
+            agent_list = agent_list[:cap]
     try:
         mode_contract = resolve_mode_contract(
             mode=mode_norm,

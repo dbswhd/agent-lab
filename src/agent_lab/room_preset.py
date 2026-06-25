@@ -18,6 +18,7 @@ class RoomPresetConfig:
     preset: RoomPreset
     turn_profile: str
     description: str
+    max_agents: int | None = None  # None = no cap; set for presets with fixed team sizes
 
 
 _PRESET_CONFIGS: dict[str, RoomPresetConfig] = {
@@ -25,11 +26,13 @@ _PRESET_CONFIGS: dict[str, RoomPresetConfig] = {
         preset="fast",
         turn_profile="quick",
         description="Single-agent instant response — no debate, no consensus",
+        max_agents=1,
     ),
     "consensus": RoomPresetConfig(
         preset="consensus",
         turn_profile="team",
-        description="Full multi-agent team consensus (default 3-agent)",
+        description="3-agent consensus — cursor · codex · claude discuss to agreement",
+        max_agents=3,
     ),
     "expert_pool": RoomPresetConfig(
         preset="expert_pool",
@@ -40,11 +43,13 @@ _PRESET_CONFIGS: dict[str, RoomPresetConfig] = {
         preset="producer_reviewer",
         turn_profile="verified",
         description="Produce then Oracle-verify — one agent proposes, Oracle confirms",
+        max_agents=2,
     ),
     "pipeline": RoomPresetConfig(
         preset="pipeline",
         turn_profile="specialist",
         description="Sequential specialist pipeline — R1 researcher feeds R2 author",
+        max_agents=2,
     ),
     "supervisor": RoomPresetConfig(
         preset="supervisor",
@@ -77,6 +82,12 @@ def preset_turn_profile(preset: str | None, fallback: str = "discuss") -> str:
     return cfg.turn_profile if cfg is not None else fallback
 
 
+def preset_max_agents(preset: str | None) -> int | None:
+    """Return the agent cap for a preset, or None if uncapped."""
+    cfg = resolve_preset(preset)
+    return cfg.max_agents if cfg is not None else None
+
+
 def preset_catalog() -> dict[str, Any]:
     """Return preset info for /api/room/presets."""
     return {
@@ -85,6 +96,7 @@ def preset_catalog() -> dict[str, Any]:
                 "id": cfg.preset,
                 "turn_profile": cfg.turn_profile,
                 "description": cfg.description,
+                "max_agents": cfg.max_agents,
             }
             for cfg in list_presets()
         ],

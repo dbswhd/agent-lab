@@ -63,9 +63,12 @@ def _run_oracle_mock(diff: str, claim: str) -> dict[str, Any]:
 
 
 def _run_oracle_live(diff: str, claim: str, oracle_prompt: str) -> dict[str, Any]:
-    """Attempt live Oracle; fall back to mock on error. Caller must ensure oracle is live."""
+    """Attempt live Oracle; fall back to mock on error."""
     try:
-        from agent_lab.oracle_core import invoke_oracle, parse_oracle_response
+        from agent_lab.oracle_core import invoke_oracle, oracle_live_enabled, parse_oracle_response
+
+        if not oracle_live_enabled():
+            return _run_oracle_mock(diff, claim)
 
         prompt = oracle_prompt or (
             f"CLAIM: {claim}\n\nDIFF (first 2000 chars):\n{diff[:2000]}"

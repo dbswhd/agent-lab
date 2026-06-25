@@ -157,6 +157,16 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "Code-memory mode: mock | index (default mock when enabled)",
         default="mock",
     ),
+    FlagDef(
+        "AGENT_LAB_WISDOM_MCP",
+        "feature",
+        "§5 Phase 1 cross-session Wisdom Index MCP (read+write, default off)",
+    ),
+    FlagDef(
+        "AGENT_LAB_WISDOM_PATH",
+        "feature",
+        "Override path to wisdom.jsonl (default .agent-lab/wisdom.jsonl)",
+    ),
     FlagDef("AGENT_LAB_CLARIFIER", "feature", "Short-topic clarifier SSE before agents"),
     FlagDef("AGENT_LAB_CLARIFIER_INTERVIEW", "feature", "Multi-turn clarifier interview mode"),
     FlagDef("AGENT_LAB_CLARIFIER_MIN_CHARS", "feature", "Clarifier topic length threshold", default="48"),

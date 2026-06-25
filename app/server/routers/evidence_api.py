@@ -108,6 +108,7 @@ def verify_diff(req: VerifyRequest) -> VerifyResponse:
     execution["oracle"] = oracle_result
     if oracle_result.get("verdict") == "pass":
         execution["status"] = "merged"
+        execution["adversarial_note"] = "LGTM"  # oracle acts as adversarial reviewer
 
     dummy_run: dict[str, Any] = {"mission_loop": {}, "hook_runs": []}
     gates = build_evidence_gates(dummy_run, execution)

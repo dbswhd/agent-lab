@@ -71,6 +71,14 @@ def _api_startup() -> None:
     from agent_lab.mission_scheduler import start_mission_scheduler_background
 
     try:
+        from agent_lab.run_profile import apply_run_profile, default_run_profile
+
+        applied = apply_run_profile(default_run_profile())
+        if applied:
+            write_boot_line(f"run profile applied flags: {list(applied.keys())}")
+    except Exception as exc:
+        write_boot_line(f"run profile apply failed: {exc}")
+    try:
         bootstrap_room_auth_on_startup()
     except Exception as exc:
         write_boot_line(f"auth bootstrap failed: {exc}")

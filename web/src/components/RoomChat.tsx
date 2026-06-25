@@ -3,11 +3,13 @@ import type {
   AgentOption,
   PlanActionItem,
   PlanWorkflowRecord,
+  RoomPreset,
   SessionDetail,
 } from "../api/client";
 import {
   applySessionTemplate,
   cancelRoomRun,
+  fetchRoomPresets,
   pauseMissionLoop,
   checkSessionGoal,
   fetchCommands,
@@ -398,6 +400,8 @@ export function RoomChat({
     useState<ComposerTurnProfile>(getTurnStrategy);
   const [planAfterSend, setPlanAfterSendState] = useState(getPlanAfterSend);
   const [loopMaxCostTier, setLoopMaxCostTier] = useState<string | null>(null);
+  const [roomPreset, setRoomPreset] = useState<string | null>(null);
+  const [availablePresets, setAvailablePresets] = useState<RoomPreset[]>([]);
   const composeMode: ComposeMode = planAfterSend ? "plan" : "discuss";
   const [researchMode] = useState(() => {
     try {
@@ -420,6 +424,19 @@ export function RoomChat({
       })
       .catch(() => {
         if (!cancelled) setLoopMaxCostTier(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  useEffect(() => {
+    let cancelled = false;
+    void fetchRoomPresets()
+      .then((catalog) => {
+        if (!cancelled) setAvailablePresets(catalog.presets);
+      })
+      .catch(() => {
+        if (!cancelled) setAvailablePresets([]);
       });
     return () => {
       cancelled = true;
@@ -2436,6 +2453,7 @@ export function RoomChat({
             agentCapabilities: capabilitiesForApi(agentCapabilities),
             agentThreadBindings: threadBindings,
             sessionTemplate,
+            roomPreset: roomPreset ?? undefined,
             signal: runAbort.signal,
           },
         );
@@ -2511,6 +2529,7 @@ export function RoomChat({
       runBusy,
       running,
       synthesizing,
+      roomPreset,
     ],
   );
 
@@ -3773,6 +3792,24 @@ export function RoomChat({
                     >
                       Human Inbox 대기 ({inboxPendingNonQuestions})
                     </button>
+                  ) : null}
+
+                  {availablePresets.length > 0 ? (
+                    <div className="room-preset-bar" role="group" aria-label="Room preset">
+                      {availablePresets
+                        .filter((p) => ["fast", "consensus", "supervisor"].includes(p.id))
+                        .map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            className={`taskbar__turn-lead-chip room-preset-bar__chip${roomPreset === p.id ? " is-active" : ""}`}
+                            title={p.description}
+                            onClick={() => setRoomPreset(roomPreset === p.id ? null : p.id)}
+                          >
+                            {p.id}
+                          </button>
+                        ))}
+                    </div>
                   ) : null}
 
                   <ChatComposer

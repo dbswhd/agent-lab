@@ -1210,6 +1210,18 @@ export function fetchSessionSetupOptions() {
   );
 }
 
+export type RoomPreset = {
+  id: string;
+  turn_profile: string;
+  description: string;
+};
+
+export function fetchRoomPresets() {
+  return json<{ presets: RoomPreset[]; default: string | null }>(
+    "/api/room/presets",
+  );
+}
+
 export function pickFolderViaDesktopApi(defaultPath?: string | null) {
   return json<{ available: boolean; path: string | null; cancelled: boolean }>(
     "/api/desktop/pick-folder",
@@ -1699,6 +1711,8 @@ export type RunRoomOptions = {
   agentThreadBindings?: Record<string, string>;
   /** Always general for now; workflow templates deferred. */
   sessionTemplate?: string;
+  /** Room preset id (fast | consensus | expert_pool | producer_reviewer | pipeline | supervisor). */
+  roomPreset?: string;
   /** Abort in-flight SSE (UI stop). */
   signal?: AbortSignal;
 };
@@ -1777,6 +1791,9 @@ export async function runRoom(
   form.append("efficiency_mode", String(opts?.efficiencyMode ?? false));
   form.append("turn_profile", opts?.turnProfile ?? "analyze");
   form.append("research_mode", String(opts?.researchMode ?? false));
+  if (opts?.roomPreset?.trim()) {
+    form.append("preset", opts.roomPreset.trim());
+  }
   form.append("workspace_id", opts?.workspaceId ?? "agent-lab");
   if (opts?.workspacePath?.trim()) {
     form.append("workspace_path", opts.workspacePath.trim());

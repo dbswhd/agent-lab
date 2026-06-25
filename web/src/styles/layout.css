@@ -745,6 +745,27 @@
   color: var(--label-secondary);
 }
 
+.room-preset-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-6) var(--space-12) 0;
+}
+.room-preset-bar__chip {
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+.room-preset-bar__chip:hover {
+  background: var(--surface-raised);
+  color: var(--label-primary);
+}
+.room-preset-bar__chip.is-active {
+  background: var(--accent-primary, #0a84ff);
+  color: #fff;
+  border-color: transparent;
+}
+
 .task-row__actions {
   display: inline-flex;
   align-items: center;

@@ -71,6 +71,27 @@ def run_consensus_agent_rounds(
         efficiency_mode=efficiency_mode,
     )
     cap_rounds, cap_calls = route.max_rounds, route.max_calls
+
+    # Expert Pool: route가 에이전트 서브셋을 제안하면 active를 좁힌다.
+    # 서브셋 내 가용 에이전트가 없으면 전체 풀로 폴백 (안전 보장).
+    if route.agent_subset:
+        subset_active = [a for a in active if str(a) in route.agent_subset]
+        if subset_active:
+            active = subset_active
+            if on_event:
+                on_event(
+                    "agent_subset_applied",
+                    {
+                        "subset": list(route.agent_subset),
+                        "active": [str(a) for a in active],
+                        "task_type": route.task_type,
+                        "category": route.category,
+                        "message": (
+                            f"Expert Pool — {route.task_type} 작업으로 감지: "
+                            f"{', '.join(str(a) for a in active)} 우선 참여."
+                        ),
+                    },
+                )
     from agent_lab.turn_modes import apply_loop_budget_caps, loop_token_budget_exceeded
 
     cap_rounds, cap_calls = apply_loop_budget_caps(run_meta, cap_rounds, cap_calls)
@@ -91,16 +112,25 @@ def run_consensus_agent_rounds(
         )
 
     def _maybe_escalate(batch_msgs: list[ChatMessage]) -> None:
-        """충돌 act → 카테고리 1단계 상승 (예산만 늘림, 강등 없음)."""
-        nonlocal route, cap_rounds, cap_calls
+        """충돌 act → 카테고리 1단계 상승 (예산만 늘림, 강등 없음).
+
+        에스컬레이션 시 agent_subset이 해제되어 전원이 참여하게 된다.
+        """
+        nonlocal route, cap_rounds, cap_calls, active
         act = batch_escalation_act(batch_msgs)
         if not act:
             return
+        prev_subset = route.agent_subset
         escalated = escalate_route(route, act=act, efficiency_mode=efficiency_mode)
         if escalated.category == route.category:
             return
         route = escalated
         cap_rounds, cap_calls = route.max_rounds, route.max_calls
+        # 에스컬레이션 시 subset 해제 → 전체 에이전트로 복원
+        if prev_subset and route.agent_subset is None:
+            full = list(agents or available_agents())[:MAX_AGENTS_PER_ROUND]
+            if len(full) > len(active):
+                active = full
         if run_meta is not None:
             run_meta["_turn_category"] = route.category_dict()
             from agent_lab.inbox_harvest import record_escalation_harvest_keys
@@ -113,6 +143,7 @@ def run_consensus_agent_rounds(
                     "from": route.escalated_from,
                     "to": route.category,
                     "act": route.escalation_act,
+                    "subset_released": prev_subset is not None and route.agent_subset is None,
                     "message": f"{route.escalation_act} 발생 — 토픽 카테고리를 "
                     f"{route.escalated_from}→{route.category}로 승격합니다.",
                 },

@@ -34,10 +34,47 @@ Agent Lab은 **AI 개발 작업을 계획·승인·격리 실행·검증하는 H
 | 탭 | 내용 |
 |----|------|
 | **Transcript** | append-only 대화 로그 |
-| **Plan** | `plan.md` 문서 (`PlanDocument`) |
-| **Review** | dry-run diff, 승인, `PlanExecutePanel` |
+| **Work** | plan.md + execute / review / approval (Plan + Review 통합) |
 | **Run** | 턴 topology, orchestration progress |
 | **Artifacts** | 세션 산출물 요약 |
+
+### Work 탭 내부 stepper
+
+```
+PlanDraft → ReviewNeeded → ExecutePending → MergeVerify → Done
+```
+
+| 상태 | 강조 UI |
+|------|---------|
+| PlanDraft | WorkDecisionPanel + Plan 문서 + 「지금 정리」 |
+| ReviewNeeded | WorkDecisionPanel + consensus/dry-run gate + Plan 문서 |
+| ExecutePending | WorkDecisionPanel + PlanApprovalPanel / PlanExecutePanel |
+| MergeVerify | WorkDecisionPanel + PlanExecutePanel (verify 상태) |
+| Done | WorkDecisionPanel verified 상태 + evidence |
+
+상태는 `planMd`, `consensusProposal`, `hasPendingExecution`, `session.run`에서 파생.
+
+### Plan 정보 중복 제거 원칙
+
+1. **Work 헤더 1곳** — freshness / pending agreement / review turn (`WorkStatusBar`)
+2. **Work 판단 요약 1곳** — 승인 대상 / 차단 이유 / 검증 상태 (`WorkDecisionPanel`)
+3. **Transcript** — consensus system line 1줄 (기존 SSE notice 유지)
+4. **Tasks** — full approval UI 중복 없이 Work 점프만
+5. **제거** — collapsible 「plan 알림」 패널, composer plan toggle
+
+### Work 레이아웃
+
+```
+┌─ WorkStatusBar (stepper + meta) ─────────────┐
+├─ WorkDecisionPanel (Approve/Blocked/Verified) ┤
+├─ [PlanApprovalPanel] (HUMAN_PENDING) ─────────┤
+├─ PlanTabToolbar ────────────────────────────┤
+├─ [ExecuteQueue | ConsensusGate] (조건부) ─────┤
+├─ PlanDocument ──────────────────────────────┤
+└─ PlanExecutePanel (review/execute 영역) ──────┘
+```
+
+Inspector **Tasks**는 Work와 분리 — 블로커·objection·goal loop.
 
 ## Inspector 탭
 

@@ -151,9 +151,96 @@ CI integration: `tests/test_live_tunnel_launchd_soak.py::test_tunnel_launchd_soa
 | Weekly artifact missing | `REPORT=0` skips Tier A artifact writes by design. |
 | Live merge artifact missing | Check `sessions/_reports/live-merge-YYYY-MM-DD.json`; Tier C writes only when the live script starts. |
 
+## Mission OS daemon
+
+Run Agent Lab as a 24/7 local daemon with mission scheduler, gateway notify, and hybrid relay.
+
+**Prerequisites:** Python venv at `agent-lab/.venv` · Config `~/.agent-lab/gateway.toml` · Copy `.env.example` → `.env`
+
+```bash
+make dev   # foreground API + web (dev)
+# API-only daemon:
+.venv/bin/python -m agent_lab.cli serve --daemon --host 127.0.0.1 --port 8765
+```
+
+**macOS launchd (24/7 권장):**
+```bash
+make install-serve-daemon   # ~/Library/LaunchAgents/com.agentlab.serve-daemon
+```
+Logs: `~/.agent-lab/logs/serve-daemon.{out,err}`
+
+**Health checks:**
+```bash
+curl -s http://127.0.0.1:8765/api/health/daemon | jq .
+curl -s http://127.0.0.1:8765/api/settings/gateway/ping -X POST
+```
+
+**Scheduler ops:**
+- 스케줄: `run.json` → `schedules[]` per session
+- 승인: `POST /api/sessions/{id}/schedules/{schedule_id}/approve`
+- 수동 tick: `POST /api/mission-scheduler/tick?force=true`
+
+**Troubleshooting:**
+
+| 증상 | 확인 |
+|------|------|
+| Scheduler not ticking | `AGENT_LAB_MISSION_SCHEDULER=1`, daemon `last_scheduler_tick_at` |
+| Schedule skipped | `pre_approved_at` 없음, cron/tz, `last_run_date` 동일일 |
+| Hybrid always fires | `AGENT_LAB_DAEMON_STALE_S`, `~/.agent-lab/daemon_state.json` PID |
+| Template hash mismatch | `gate_blocked` notify; 템플릿 수정 또는 plan 재승인 |
+
+Hybrid relay (daemon offline 시): `fan_out_gateway_notify` → `gateway.toml [hybrid].relay_url`. 배포: [HYBRID-RELAY-WORKER.md](HYBRID-RELAY-WORKER.md)
+
+---
+
+## Mission dogfood
+
+Mock 스모크는 FSM 스냅샷만 검증. 실 사용 품질은 한 건의 live/mock 미션을 끝까지 돌린 뒤 점검.
+
+**Mock dogfood (CI-safe):**
+```bash
+make mission-dogfood-run   # plan gate → pause/resume → verify PASS → MISSION_DONE
+```
+
+**KPI 캡처:**
+```bash
+LATEST=$(ls -t sessions | grep -v '^_' | grep -v '^dogfood' | head -1)
+make score-session SESSION=sessions/$LATEST
+python scripts/mission_dogfood_report.py sessions/$LATEST
+```
+
+**Weekly routine:**
+```bash
+make mission-dogfood-weekly       # mock dogfood + score-weekly
+make mission-dogfood-weekly SKIP_MOCK=1   # weekly rollup only
+make score-weekly                 # standalone H4 weekly ops report
+```
+
+**Live 미션 KPI 기대치:**
+
+| 항목 | 기대 |
+|------|------|
+| `mission_loop.repair_events` | verify FAIL 시만 증가; cap 미만 |
+| `mission_loop.notepad_chars` | `learnings.md` 등 회고·검증 기록 > 200 chars |
+| `mission_circuit_breaker` | 정상 완료 시 0 |
+| `mission_completed` | `MISSION_DONE` 시 100% |
+
+**Notepad 품질 (수동):**
+- [ ] `verification.md` — 마지막 verify verdict·명령 요약
+- [ ] `learnings.md` — 실패 원인·다음 시도와 중복 없음
+- [ ] `decisions.md` — Human gate·BLOCK 해소 기록
+
+**회귀:**
+```bash
+make smoke              # 32 baselines incl. mission_loop_*
+make test -k mission_loop
+```
+
+---
+
 ## Related docs
 
 - [Live Cursor worktree dry-run](LIVE-CURSOR-WORKTREE-DRY-RUN.md)
 - [Live worktree merge operator](LIVE-MERGE-OPERATOR.md)
+- [Hybrid relay worker](HYBRID-RELAY-WORKER.md)
 - [Stability notes](STABILITY.md)
-- [Execute worktree reform](EXECUTE-WORKTREE-REFORM.md)

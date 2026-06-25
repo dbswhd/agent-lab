@@ -178,6 +178,11 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "feature",
         "Override path to wisdom.jsonl (default .agent-lab/wisdom.jsonl)",
     ),
+    FlagDef(
+        "AGENT_LAB_ROOM_PRESET",
+        "feature",
+        "Default Room Preset (fast|consensus|expert_pool|producer_reviewer|pipeline|supervisor)",
+    ),
     FlagDef("AGENT_LAB_CLARIFIER", "feature", "Short-topic clarifier SSE before agents"),
     FlagDef("AGENT_LAB_CLARIFIER_INTERVIEW", "feature", "Multi-turn clarifier interview mode"),
     FlagDef("AGENT_LAB_CLARIFIER_MIN_CHARS", "feature", "Clarifier topic length threshold", default="48"),

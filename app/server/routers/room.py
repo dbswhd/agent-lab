@@ -41,6 +41,7 @@ from agent_lab.turn_modes import (
     patch_run_mode_contract,
     resolve_mode_contract,
 )
+from agent_lab.room_preset import default_room_preset, preset_catalog, preset_turn_profile, resolve_preset
 
 from app.server.deps import (
     ContextPreviewRequest,
@@ -87,6 +88,11 @@ def _loop_readiness_detail(agent_list: list[str] | None) -> dict[str, Any] | Non
 @router.get("/room/modes")
 def room_modes() -> dict[str, Any]:
     return mode_contract_catalog()
+
+
+@router.get("/room/presets")
+def room_presets() -> dict[str, Any]:
+    return preset_catalog()
 
 
 @router.post("/room/context-preview")
@@ -200,6 +206,7 @@ async def create_room_run(
     consensus_mode: bool = Form(False),
     efficiency_mode: bool = Form(False),
     turn_profile: str = Form("discuss"),
+    preset: str = Form(""),
     research_mode: bool = Form(False),
     workspace_id: str = Form("agent-lab"),
     workspace_path: str | None = Form(None),
@@ -224,6 +231,11 @@ async def create_room_run(
     except json.JSONDecodeError:
         agent_ids = []
     agent_list = [a.strip().lower() for a in agent_ids if str(a).strip()] or None
+    # Resolve Room Preset → turn_profile when caller didn't explicitly set a profile.
+    preset_norm = (preset or "").strip().lower() or default_room_preset()
+    is_default_profile = (turn_profile or "discuss").strip().lower() in ("discuss", "")
+    if preset_norm and is_default_profile:
+        turn_profile = preset_turn_profile(preset_norm, fallback=turn_profile)
     try:
         mode_contract = resolve_mode_contract(
             mode=mode_norm,
@@ -327,6 +339,14 @@ async def create_room_run(
         )
 
     saved_files = await save_uploads(folder, files)
+    if preset_norm and resolve_preset(preset_norm) is not None:
+        from agent_lab.run_meta import patch_run_meta
+
+        def _stamp_preset(run: dict[str, Any]) -> dict[str, Any]:
+            run["room_preset"] = preset_norm
+            return run
+
+        patch_run_meta(folder, _stamp_preset)
     parallel_rounds = max(1, min(mode_contract.agent_rounds, MAX_AGENT_PARALLEL_ROUNDS))
     review_mode = mode_contract.review_mode
     consensus_mode = mode_contract.consensus_mode

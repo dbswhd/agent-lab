@@ -49,6 +49,7 @@ class KimiWorkPushMapper:
         self._started: set[str] = set()
         self._result_lens: dict[str, int] = {}
         self._done: set[str] = set()
+        self._reply_stream = CumulativeTextStreamer()
         self._reasoning_stream = CumulativeTextStreamer()
         self._last_thinking_emit_len = 0
 
@@ -56,6 +57,7 @@ class KimiWorkPushMapper:
         self._started.clear()
         self._result_lens.clear()
         self._done.clear()
+        self._reply_stream.reset()
         self._reasoning_stream.reset()
         self._last_thinking_emit_len = 0
 
@@ -73,7 +75,9 @@ class KimiWorkPushMapper:
         if method == "conversations.message.complete":
             text = assistant_reply_text(payload)
             if text:
-                on_bridge_event("text", {"text": text})
+                for delta in self._reply_stream.feed(text):
+                    if delta:
+                        on_bridge_event("text", {"text": delta})
             return
         if method == "conversations.message.cancelled":
             reason = str(payload.get("message") or payload.get("reason") or "turn cancelled")
@@ -86,7 +90,9 @@ class KimiWorkPushMapper:
             self._emit_parts(parts, on_bridge_event)
         text = assistant_reply_text(payload)
         if text:
-            on_bridge_event("text", {"text": text})
+            for delta in self._reply_stream.feed(text):
+                if delta:
+                    on_bridge_event("text", {"text": delta})
             return
         self._emit_reasoning_activity(payload, on_bridge_event)
 

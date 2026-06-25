@@ -59,6 +59,38 @@ def test_cumulative_snapshot_dedupes_tool_start() -> None:
     assert starts == 1
 
 
+def test_cumulative_reply_snapshot_emits_only_delta_text() -> None:
+    mapper = KimiWorkPushMapper()
+    texts: list[str] = []
+
+    def on_bridge(kind: str, data: dict) -> None:
+        if kind == "text":
+            texts.append(str(data.get("text") or ""))
+
+    mapper.emit_push(
+        "conversations.message.snapshot",
+        {"message": {"parts": [{"kind": "text", "text": "Working tree:"}]}},
+        on_bridge,
+    )
+    mapper.emit_push(
+        "conversations.message.snapshot",
+        {"message": {"parts": [{"kind": "text", "text": "Working tree: clean"}]}},
+        on_bridge,
+    )
+    mapper.emit_push(
+        "conversations.message.snapshot",
+        {"message": {"parts": [{"kind": "text", "text": "Working tree: clean"}]}},
+        on_bridge,
+    )
+    mapper.emit_push(
+        "conversations.message.complete",
+        {"message": {"parts": [{"kind": "text", "text": "Working tree: clean"}]}},
+        on_bridge,
+    )
+
+    assert texts == ["Working tree:", " clean"]
+
+
 def test_cancelled_emits_activity() -> None:
     mapper = KimiWorkPushMapper()
     events: list[tuple[str, dict]] = []

@@ -27,8 +27,11 @@ _PATH_KEYS = (
 
 
 def syntax_gate_enabled() -> bool:
-    """AGENT_LAB_SYNTAX_GATE (default OFF): hard-block merge on changed *.py SyntaxError."""
-    return (os.getenv("AGENT_LAB_SYNTAX_GATE") or "").strip().lower() in _TRUE
+    """AGENT_LAB_SYNTAX_GATE (default ON): hard-block merge on changed *.py SyntaxError. Opt-out via =0."""
+    raw = os.getenv("AGENT_LAB_SYNTAX_GATE")
+    if raw is None or raw.strip() == "":
+        return True
+    return raw.strip().lower() in _TRUE
 
 
 def _worktree_root(execution: dict[str, Any] | None) -> Path | None:

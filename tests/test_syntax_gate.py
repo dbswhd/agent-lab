@@ -90,12 +90,12 @@ def test_changed_python_files_dedup_and_inside(tmp_path):
 
 
 def test_ac5_flag_off_gate_absent(tmp_path, monkeypatch):
-    monkeypatch.delenv("AGENT_LAB_SYNTAX_GATE", raising=False)
+    monkeypatch.setenv("AGENT_LAB_SYNTAX_GATE", "0")
     _write(tmp_path, "bad.py", "def f(:\n")
     run = {"executions": [{**_execution(tmp_path, "bad.py"), "status": "pending_approval"}]}
     payload = merge_checks.build_merge_checks(run)
     ids = [c["id"] for c in payload["checks"]]
-    assert "syntax_gate" not in ids  # OFF-parity: absent, not ok:True
+    assert "syntax_gate" not in ids  # opt-out via =0: gate absent, not ok:True
 
 
 def test_ac1_flag_on_gate_blocks_merge(tmp_path, monkeypatch):
@@ -119,7 +119,10 @@ def test_flag_on_valid_does_not_block(tmp_path, monkeypatch):
 
 
 def test_enabled_helper(monkeypatch):
+    # default ON: absent/empty => enabled; opt-out via =0
     monkeypatch.delenv("AGENT_LAB_SYNTAX_GATE", raising=False)
+    assert sg.syntax_gate_enabled() is True
+    monkeypatch.setenv("AGENT_LAB_SYNTAX_GATE", "0")
     assert sg.syntax_gate_enabled() is False
     monkeypatch.setenv("AGENT_LAB_SYNTAX_GATE", "on")
     assert sg.syntax_gate_enabled() is True

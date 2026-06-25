@@ -45,8 +45,11 @@ CHECKPOINT_FSM_KEYS: tuple[str, ...] = (
 
 
 def checkpoint_enabled() -> bool:
-    """AGENT_LAB_CHECKPOINT (default OFF): per-phase FSM snapshot + manual resume."""
-    return (os.getenv("AGENT_LAB_CHECKPOINT") or "").strip().lower() in _TRUE
+    """AGENT_LAB_CHECKPOINT (default ON): per-phase FSM snapshot + manual resume. Opt-out via =0."""
+    raw = os.getenv("AGENT_LAB_CHECKPOINT")
+    if raw is None or raw.strip() == "":
+        return True
+    return raw.strip().lower() in _TRUE
 
 
 def _now_iso() -> str:

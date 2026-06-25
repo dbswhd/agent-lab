@@ -51,7 +51,8 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
     FlagDef(
         "AGENT_LAB_CHECKPOINT",
         "feature",
-        "Snapshot run.json FSM state at each phase transition to a per-session checkpoints.jsonl for manual resume (default off)",
+        "Snapshot run.json FSM state at each phase transition to a per-session checkpoints.jsonl for manual resume (default ON; opt-out via =0)",
+        default="1",
     ),
     FlagDef(
         "AGENT_LAB_REPO_MAP",
@@ -78,7 +79,8 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
     FlagDef(
         "AGENT_LAB_SYNTAX_GATE",
         "feature",
-        "Hard-block a pending execution's merge when changed *.py fails ast/py_compile (Python-only; lint non-blocking; default off)",
+        "Hard-block a pending execution's merge when changed *.py fails ast/py_compile (Python-only; lint non-blocking; default ON; opt-out via =0)",
+        default="1",
     ),
     FlagDef(
         "AGENT_LAB_SANDBOX_POLICY",

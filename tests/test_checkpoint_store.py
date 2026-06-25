@@ -120,7 +120,7 @@ def test_ac4_ac11_resume_stops_and_appends_nothing(tmp_path: Path, monkeypatch: 
 
 
 def test_ac5_off_parity_no_write(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("AGENT_LAB_CHECKPOINT", raising=False)
+    monkeypatch.setenv("AGENT_LAB_CHECKPOINT", "0")
     folder = tmp_path / "s"
     _seed(folder, "DISCUSS")
     _set_mission_phase(folder, "EXECUTE_QUEUE")
@@ -131,7 +131,7 @@ def test_ac5_off_parity_no_write(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 def test_ac5_off_parity_run_json_byte_identical(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # The run.json content produced with the flag off must equal the flag-on content
     # (checkpoint capture is side-channel only; it never alters run.json bytes).
-    monkeypatch.delenv("AGENT_LAB_CHECKPOINT", raising=False)
+    monkeypatch.setenv("AGENT_LAB_CHECKPOINT", "0")
     off = tmp_path / "off"
     _seed(off, "DISCUSS")
     _set_mission_phase(off, "EXECUTE_QUEUE")
@@ -251,15 +251,19 @@ def test_n2_snapshot_and_restore_use_same_key_set(tmp_path: Path, monkeypatch: p
 # --- flag gate ---
 
 
-@pytest.mark.parametrize("val", ["0", "false", "no", "off", "", "  ", "maybe"])
+@pytest.mark.parametrize("val", ["0", "false", "no", "off", "maybe"])
 def test_flag_not_enabled(val: str, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_CHECKPOINT", val)
     assert checkpoint_store.checkpoint_enabled() is False
 
 
-@pytest.mark.parametrize("val", ["1", "true", "yes", "on", "On"])
+@pytest.mark.parametrize("val", ["1", "true", "yes", "on", "On", "", "  "])
 def test_flag_enabled(val: str, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("AGENT_LAB_CHECKPOINT", val)
+    # default ON: explicit truthy AND absent/empty (opt-out idiom) => enabled
+    if val.strip() == "":
+        monkeypatch.delenv("AGENT_LAB_CHECKPOINT", raising=False)
+    else:
+        monkeypatch.setenv("AGENT_LAB_CHECKPOINT", val)
     assert checkpoint_store.checkpoint_enabled() is True
 
 

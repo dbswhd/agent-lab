@@ -212,7 +212,17 @@ def capability_preamble_block(
         return ""
     profile = str((run_meta or {}).get("turn_profile") or "").strip().lower()
     parts = [f"[Capability · {agent}]", cap.get("label") or ""]
-    if profile == "specialist":
+
+    # role_plan 페르소나 주입 — specialist 하드코딩보다 우선
+    turn_roles = (run_meta or {}).get("_turn_roles") or {}
+    if turn_roles:
+        from agent_lab.role_plan import persona_for_agent
+
+        role_text = persona_for_agent(turn_roles, agent)
+        if role_text:
+            parts.append(role_text)
+    elif profile == "specialist":
+        # role_plan 없을 때만 specialist 폴백 텍스트 사용
         if parallel_round == 1 and agent in ("cursor",):
             parts.append("이번 라운드(R1)에는 Codex·Claude만 발화 — 대기.")
         elif parallel_round == 2 and agent in ("codex", "claude"):

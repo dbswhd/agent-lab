@@ -52,6 +52,7 @@ _EPHEMERAL_RUN_KEYS = frozenset(
         "_active_synthesize",
         "_active_consensus",
         "_turn_category",
+        "_turn_roles",
         "_escalation_harvest_keys",
     }
 )

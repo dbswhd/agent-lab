@@ -74,8 +74,17 @@ def run_consensus_agent_rounds(
     from agent_lab.turn_modes import apply_loop_budget_caps, loop_token_budget_exceeded
 
     cap_rounds, cap_calls = apply_loop_budget_caps(run_meta, cap_rounds, cap_calls)
+
+    # Expert Pool: route 기반 에이전트 풀 필터
+    from agent_lab.role_plan import agent_subset_for_route, resolve_role_plan
+
+    subset = agent_subset_for_route(route, active)
+    if subset:
+        active = subset
+
     if run_meta is not None:
         run_meta["_turn_category"] = route.category_dict()
+        run_meta["_turn_roles"] = resolve_role_plan(route=route, agents=active)
 
     def _harvest_discuss_objections(thread: list[ChatMessage]) -> None:
         """충돌을 상태로 — discuss CHALLENGE/BLOCK을 run.json objections에 등록 (P3)."""
@@ -103,6 +112,7 @@ def run_consensus_agent_rounds(
         cap_rounds, cap_calls = route.max_rounds, route.max_calls
         if run_meta is not None:
             run_meta["_turn_category"] = route.category_dict()
+            run_meta["_turn_roles"] = {}  # 에스컬레이션 시 역할 해제 — 새 카테고리에서 재배정
             from agent_lab.inbox_harvest import record_escalation_harvest_keys
 
             record_escalation_harvest_keys(run_meta, batch_msgs, act=act)
@@ -113,6 +123,7 @@ def run_consensus_agent_rounds(
                     "from": route.escalated_from,
                     "to": route.category,
                     "act": route.escalation_act,
+                    "roles_released": True,
                     "message": f"{route.escalation_act} 발생 — 토픽 카테고리를 "
                     f"{route.escalated_from}→{route.category}로 승격합니다.",
                 },

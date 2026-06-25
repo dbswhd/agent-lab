@@ -167,3 +167,17 @@ export function buildPlanMetaView(
 }
 
 export { agreementPlanSyncedLabel };
+
+/** 최신 consensus 턴의 역할 배정 (agent → role_id). 없으면 빈 객체. */
+export function latestTurnRoles(
+  run: Record<string, unknown> | undefined,
+): Record<string, string> {
+  const turns = (run?.turns as Record<string, unknown>[] | undefined) ?? [];
+  for (let i = turns.length - 1; i >= 0; i--) {
+    const roles = turns[i].roles;
+    if (roles && typeof roles === "object" && !Array.isArray(roles)) {
+      return roles as Record<string, string>;
+    }
+  }
+  return {};
+}

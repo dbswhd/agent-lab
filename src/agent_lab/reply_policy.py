@@ -158,6 +158,11 @@ def build_guidance_parts(
 
         if str(agent).strip().lower() == team_lead(run_meta):
             parts.append(DISPATCH_LEAD_GUIDANCE)
+        from agent_lab.role_plan import persona_for_agent
+
+        role_text = persona_for_agent(run_meta.get("_turn_roles"), agent)
+        if role_text:
+            parts.append(role_text)
     if run_meta and inbox_pause_grace_pending(run_meta):
         parts.append(inbox_pause_grace_guidance(run_meta))
     if policy.inject_analysis and policy.turn_profile in ("analyze", "discuss"):

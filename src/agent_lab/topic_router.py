@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import os
 import re
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from typing import Any, Literal
 
 from agent_lab.room_consensus import (
@@ -163,6 +163,8 @@ class CategoryRoute:
     signals: tuple[str, ...] = ()
     escalated_from: Category | None = None
     escalation_act: str | None = None
+    agent_subset: tuple[str, ...] = ()       # 빈 tuple = 전체 사용 (Expert Pool)
+    role_plan: dict[str, str] = field(default_factory=dict)  # agent → role_id
 
     def category_dict(self) -> dict[str, Any]:
         """turns[].category 영속용 (additive run.json 필드)."""
@@ -175,6 +177,8 @@ class CategoryRoute:
             out["escalated_from"] = self.escalated_from
         if self.escalation_act:
             out["escalation_act"] = self.escalation_act
+        if self.role_plan:
+            out["role_plan"] = dict(self.role_plan)
         return out
 
 

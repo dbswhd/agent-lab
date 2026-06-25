@@ -2694,3 +2694,23 @@ export function authRunWsUrl(runId: string): string {
     : API_ORIGIN.replace(/^http/, "ws");
   return `${wsBase}/api/auth/runs/${encodeURIComponent(runId)}`;
 }
+
+// ── Role orchestration ────────────────────────────────────────────────────────
+
+export type RoleSpec = { id: string; label: string };
+
+export function fetchRoles() {
+  return json<{ roles: RoleSpec[] }>("/api/room/roles");
+}
+
+export type RoomPreset = {
+  id: string;
+  label: string;
+  description: string;
+  role_policy: "auto" | "force" | "off";
+  category_hint?: string | null;
+};
+
+export function fetchRoomPresets() {
+  return json<{ presets: RoomPreset[] }>("/api/room/presets");
+}

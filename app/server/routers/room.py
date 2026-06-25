@@ -89,6 +89,20 @@ def room_modes() -> dict[str, Any]:
     return mode_contract_catalog()
 
 
+@router.get("/room/roles")
+def room_roles() -> dict[str, Any]:
+    from agent_lab.role_plan import role_catalog
+
+    return {"roles": role_catalog()}
+
+
+@router.get("/room/presets")
+def room_presets() -> dict[str, Any]:
+    from agent_lab.room_preset import preset_catalog
+
+    return {"presets": preset_catalog()}
+
+
 @router.post("/room/context-preview")
 def room_context_preview(body: ContextPreviewRequest) -> dict[str, Any]:
     folder = session_folder_or_404(body.session_id)

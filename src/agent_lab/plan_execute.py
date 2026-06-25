@@ -64,6 +64,7 @@ from agent_lab.plan_execute_status import (
     _artifact_approve_block_reason,
     _paths_outside_expected,
     _pending_execution,
+    _find_execution,
     _update_execution_row,
     _mark_rejected_tasks,
     _mark_approved_effects,
@@ -313,6 +314,197 @@ def list_plan_actions(
         "roadmap": sections["roadmap"],
         "actions": sections["actions"],
     }
+
+
+def _build_execution_record(
+    *,
+    exec_id: str,
+    action: PlanAction,
+    action_key: str,
+    executor_id: str,
+    isolation_decision: Any,
+    isolation_effective: str,
+    isolation_override: dict[str, Any] | None,
+    exec_worktree: ExecWorktree | None,
+    worktree_commit_sha: str | None,
+    cwd: Path,
+    workspace_info: dict[str, Any],
+    verification_artifacts: dict[str, Any],
+    raw_source_paths: list[str],
+    raw_verification_paths: list[str],
+    raw_monitored_paths: list[str],
+    snapshot_paths: list[str],
+    source_snapshot: list[str],
+    artifact_snapshot: list[str],
+    existed_before: int,
+    source_touched: list[str],
+    artifact_touched: list[str],
+    empty_source_diff: bool,
+    needs_artifact_review: bool,
+    touched: list[str],
+    outside: list[str],
+    agent_response: str,
+    activity_log: list[str],
+    diff_stat: str,
+    diff: str,
+    started: str,
+    worktree_hooks_block: dict[str, Any],
+    supersedes_execution_id: str | None,
+    revise_request: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Assemble the execution record dict from dry-run results. Pure data, no I/O."""
+    execution: dict[str, Any] = {
+        "schema_version": 2,
+        "id": exec_id,
+        "action_id": action.action_id,
+        "action_index": action.index,
+        "action_kind": action.kind,
+        "action_key": action_key,
+        "action_what": action.what,
+        "action_where": action.where,
+        "action_verify": action.verify,
+        "executor": executor_id,
+        "executor_label": executor_id.title(),
+        "status": PENDING_STATUS,
+        "isolation_requested": isolation_decision.isolation_source,
+        "isolation_source": isolation_decision.isolation_source,
+        "isolation_effective": isolation_effective,
+        "isolation_override": isolation_override,
+        "isolation_override_by": "human" if isolation_override else None,
+        "action_git_context": isolation_decision.to_dict(),
+        "isolation_decision": isolation_decision.to_dict(),
+        "git_root": str(exec_worktree.git_root)
+        if exec_worktree
+        else (str(isolation_decision.git_root) if isolation_decision.git_root else None),
+        "base_branch": exec_worktree.base_branch if exec_worktree else isolation_decision.base_branch,
+        "base_sha": exec_worktree.base_sha if exec_worktree else None,
+        "exec_branch": exec_worktree.branch if exec_worktree else None,
+        "exec_commit_sha": worktree_commit_sha,
+        "worktree_path": str(exec_worktree.worktree_path) if exec_worktree else None,
+        "snapshot_id": exec_id,
+        "workspace_root": str(cwd),
+        "workspace_label": workspace_label(cwd),
+        "execute_workspace_info": workspace_info,
+        "merge": {
+            "status": "pending" if exec_worktree else None,
+            "strategy": "merge" if exec_worktree else None,
+            "commit_sha": None,
+            "conflict_files": [],
+            "attempted_at": None,
+            "completed_at": None,
+        },
+        "verification_artifacts": verification_artifacts,
+        "snapshotted_paths": raw_monitored_paths,
+        "expected_paths": raw_source_paths,
+        "verification_paths": raw_verification_paths,
+        "monitored_paths": raw_monitored_paths,
+        "snapshot_paths": snapshot_paths,
+        "source_snapshot_paths": source_snapshot,
+        "artifact_snapshot_paths": artifact_snapshot,
+        "existed_before": existed_before,
+        "source_touched_paths": source_touched,
+        "artifact_touched_paths": artifact_touched,
+        "empty_source_diff": empty_source_diff,
+        "needs_artifact_review": needs_artifact_review,
+        "touched_paths": touched,
+        "paths_outside_expected": outside,
+        "draft_summary": _extract_draft_summary(agent_response),
+        "agent_response": (agent_response or "").strip(),
+        "agent_log": activity_log,
+        "diff_stat": diff_stat,
+        "diff": diff,
+        "started_at": started,
+        "completed_at": None,
+        "pre_verify": {},
+    }
+    if worktree_hooks_block:
+        execution["worktree_hooks"] = worktree_hooks_block
+    from agent_lab.diff_safety import diff_safety_enabled, scan_diff
+
+    if diff_safety_enabled():
+        execution["safety_scan"] = scan_diff(diff)
+    if supersedes_execution_id:
+        execution["revision_of"] = supersedes_execution_id
+    if revise_request:
+        execution["revise_requested"] = True
+        execution["revise_note"] = str(revise_request.get("comment") or "")
+        execution["revise_chunk_ref"] = revise_request.get("chunk_ref")
+    adv = adversarial_review(
+        action_what=action.what,
+        action_verify=action.verify,
+        diff=diff,
+    )
+    execution["adversarial_note"] = adv.get("note")
+    execution["adversarial_source"] = adv.get("source")
+    return execution
+
+
+def _finalize_dry_run(
+    folder: Path,
+    *,
+    execution: dict[str, Any],
+    action: PlanAction,
+    exec_id: str,
+) -> None:
+    """Append execution to run.json, mark tasks in-progress, emit events."""
+
+    def _append(run: dict[str, Any]) -> dict[str, Any]:
+        actions = list(run.get("actions") or [])
+        if not any(a.get("action_id") == action.action_id for a in actions):
+            actions.append(
+                {
+                    "action_id": action.action_id,
+                    "index": action.index,
+                    "kind": action.kind,
+                    "what": action.what,
+                    "where": action.where,
+                    "verify": action.verify,
+                    "refs": list(action.refs),
+                }
+            )
+        executions = list(run.get("executions") or [])
+        replaced = False
+        for i, row in enumerate(executions):
+            if row.get("id") == exec_id:
+                executions[i] = execution
+                replaced = True
+                break
+        if not replaced:
+            executions.append(execution)
+        run["actions"] = actions
+        run["executions"] = executions
+        return run
+
+    patch_run_meta(folder, _append)
+
+    def _mark_tasks(run: dict[str, Any]) -> dict[str, Any]:
+        from agent_lab.room_tasks import mark_tasks_in_progress_for_execution
+
+        mark_tasks_in_progress_for_execution(
+            run,
+            action_index=action.index,
+            action_id=action.action_id,
+            execution_id=exec_id,
+        )
+        return run
+
+    patch_run_meta(folder, _mark_tasks)
+
+    from agent_lab.evidence_sync import on_dry_run_recorded
+
+    on_dry_run_recorded(folder, execution, action_index=action.index)
+
+    from agent_lab.runtime.events import RuntimeEvent
+    from agent_lab.runtime.runtime import dispatch
+
+    dispatch(folder, RuntimeEvent.EXECUTE_DRY_RUN_COMPLETE, {"execution": execution})
+    if str(execution.get("status") or "") == PENDING_STATUS:
+        try:
+            from agent_lab.gateway.notify_helpers import notify_merge_ready
+
+            notify_merge_ready(folder, execution)
+        except Exception:
+            pass
 
 
 def run_dry_run(
@@ -667,148 +859,42 @@ def run_dry_run(
             discard_exec_worktree(exec_worktree, folder, exec_id)
             raise RuntimeError(f"Cursor execute git commit failed: {e}") from e
 
-    pre_verify: dict[str, Any] = {}
-    execution = {
-        "schema_version": 2,
-        "id": exec_id,
-        "action_id": action.action_id,
-        "action_index": action.index,
-        "action_kind": action.kind,
-        "action_key": action_key,
-        "action_what": action.what,
-        "action_where": action.where,
-        "action_verify": action.verify,
-        "executor": executor_id,
-        "executor_label": executor_id.title(),
-        "status": PENDING_STATUS,
-        "isolation_requested": isolation_decision.isolation_source,
-        "isolation_source": isolation_decision.isolation_source,
-        "isolation_effective": isolation_effective,
-        "isolation_override": isolation_override,
-        "isolation_override_by": "human" if isolation_override else None,
-        "action_git_context": isolation_decision.to_dict(),
-        "isolation_decision": isolation_decision.to_dict(),
-        "git_root": str(exec_worktree.git_root)
-        if exec_worktree
-        else (str(isolation_decision.git_root) if isolation_decision.git_root else None),
-        "base_branch": exec_worktree.base_branch if exec_worktree else isolation_decision.base_branch,
-        "base_sha": exec_worktree.base_sha if exec_worktree else None,
-        "exec_branch": exec_worktree.branch if exec_worktree else None,
-        "exec_commit_sha": worktree_commit_sha,
-        "worktree_path": str(exec_worktree.worktree_path) if exec_worktree else None,
-        "snapshot_id": exec_id,
-        "workspace_root": str(cwd),
-        "workspace_label": workspace_label(cwd),
-        "execute_workspace_info": workspace_info,
-        "merge": {
-            "status": "pending" if exec_worktree else None,
-            "strategy": "merge" if exec_worktree else None,
-            "commit_sha": None,
-            "conflict_files": [],
-            "attempted_at": None,
-            "completed_at": None,
-        },
-        "verification_artifacts": verification_artifacts,
-        "snapshotted_paths": raw_monitored_paths,
-        "expected_paths": raw_source_paths,
-        "verification_paths": raw_verification_paths,
-        "monitored_paths": raw_monitored_paths,
-        "snapshot_paths": snapshot_paths,
-        "source_snapshot_paths": source_snapshot,
-        "artifact_snapshot_paths": artifact_snapshot,
-        "existed_before": existed_before,
-        "source_touched_paths": source_touched,
-        "artifact_touched_paths": artifact_touched,
-        "empty_source_diff": empty_source_diff,
-        "needs_artifact_review": needs_artifact_review,
-        "touched_paths": touched,
-        "paths_outside_expected": outside,
-        "draft_summary": _extract_draft_summary(agent_response),
-        "agent_response": (agent_response or "").strip(),
-        "agent_log": activity_log,
-        "diff_stat": diff_stat,
-        "diff": diff,
-        "started_at": started,
-        "completed_at": None,
-        "pre_verify": pre_verify,
-    }
-    if worktree_hooks_block:
-        execution["worktree_hooks"] = worktree_hooks_block
-    from agent_lab.diff_safety import diff_safety_enabled, scan_diff
-
-    if diff_safety_enabled():
-        execution["safety_scan"] = scan_diff(diff)
-    if supersedes_execution_id:
-        execution["revision_of"] = supersedes_execution_id
-    if revise_request:
-        execution["revise_requested"] = True
-        execution["revise_note"] = str(revise_request.get("comment") or "")
-        execution["revise_chunk_ref"] = revise_request.get("chunk_ref")
-    adv = adversarial_review(
-        action_what=action.what,
-        action_verify=action.verify,
+    execution = _build_execution_record(
+        exec_id=exec_id,
+        action=action,
+        action_key=action_key,
+        executor_id=executor_id,
+        isolation_decision=isolation_decision,
+        isolation_effective=isolation_effective,
+        isolation_override=isolation_override,
+        exec_worktree=exec_worktree,
+        worktree_commit_sha=worktree_commit_sha,
+        cwd=cwd,
+        workspace_info=workspace_info,
+        verification_artifacts=verification_artifacts,
+        raw_source_paths=raw_source_paths,
+        raw_verification_paths=raw_verification_paths,
+        raw_monitored_paths=raw_monitored_paths,
+        snapshot_paths=snapshot_paths,
+        source_snapshot=source_snapshot,
+        artifact_snapshot=artifact_snapshot,
+        existed_before=existed_before,
+        source_touched=source_touched,
+        artifact_touched=artifact_touched,
+        empty_source_diff=empty_source_diff,
+        needs_artifact_review=needs_artifact_review,
+        touched=touched,
+        outside=outside,
+        agent_response=agent_response,
+        activity_log=activity_log,
+        diff_stat=diff_stat,
         diff=diff,
+        started=started,
+        worktree_hooks_block=worktree_hooks_block,
+        supersedes_execution_id=supersedes_execution_id,
+        revise_request=revise_request,
     )
-    execution["adversarial_note"] = adv.get("note")
-    execution["adversarial_source"] = adv.get("source")
-
-    def _append(run: dict[str, Any]) -> dict[str, Any]:
-        actions = list(run.get("actions") or [])
-        if not any(a.get("action_id") == action.action_id for a in actions):
-            actions.append(
-                {
-                    "action_id": action.action_id,
-                    "index": action.index,
-                    "kind": action.kind,
-                    "what": action.what,
-                    "where": action.where,
-                    "verify": action.verify,
-                    "refs": list(action.refs),
-                }
-            )
-        executions = list(run.get("executions") or [])
-        replaced = False
-        for i, row in enumerate(executions):
-            if row.get("id") == exec_id:
-                executions[i] = execution
-                replaced = True
-                break
-        if not replaced:
-            executions.append(execution)
-        run["actions"] = actions
-        run["executions"] = executions
-        return run
-
-    patch_run_meta(folder, _append)
-
-    def _mark_tasks(run: dict[str, Any]) -> dict[str, Any]:
-        from agent_lab.room_tasks import mark_tasks_in_progress_for_execution
-
-        mark_tasks_in_progress_for_execution(
-            run,
-            action_index=action.index,
-            action_id=action.action_id,
-            execution_id=exec_id,
-        )
-        return run
-
-    patch_run_meta(folder, _mark_tasks)
-
-    from agent_lab.evidence_sync import on_dry_run_recorded
-
-    on_dry_run_recorded(folder, execution, action_index=action.index)
-
-    from agent_lab.runtime.events import RuntimeEvent
-    from agent_lab.runtime.runtime import dispatch
-
-    dispatch(folder, RuntimeEvent.EXECUTE_DRY_RUN_COMPLETE, {"execution": execution})
-    if str(execution.get("status") or "") == PENDING_STATUS:
-        try:
-            from agent_lab.gateway.notify_helpers import notify_merge_ready
-
-            notify_merge_ready(folder, execution)
-        except Exception:
-            pass
+    _finalize_dry_run(folder, execution=execution, action=action, exec_id=exec_id)
     run_after = read_run_meta(folder)
     for row in run_after.get("executions") or []:
         if isinstance(row, dict) and row.get("id") == exec_id:
@@ -832,10 +918,7 @@ def run_isolation_override(
         raise ValueError("confirmation must include snapshot_override or 비격리")
 
     run = read_run_meta(folder)
-    target = next(
-        (row for row in run.get("executions") or [] if row.get("id") == execution_id),
-        None,
-    )
+    target = _find_execution(run, execution_id)
     if target is None:
         raise ValueError("execution not found")
     if target.get("status") != "blocked_isolation":
@@ -884,8 +967,7 @@ def revise_pending_execution(
         raise ValueError("line_end must be greater than or equal to line_start")
 
     run = read_run_meta(folder)
-    executions = list(run.get("executions") or [])
-    target = next((row for row in executions if row.get("id") == execution_id), None)
+    target = _find_execution(run, execution_id)
     if target is None:
         raise ValueError("pending execution not found")
     if target.get("status") != PENDING_STATUS:
@@ -987,7 +1069,7 @@ def cancel_open_execution(
     executions = list(run.get("executions") or [])
     target: dict[str, Any] | None = None
     if execution_id:
-        target = next((row for row in executions if row.get("id") == execution_id), None)
+        target = _find_execution(run, execution_id)
     else:
         for row in reversed(executions):
             if str(row.get("status") or "") in _CANCELLABLE_EXECUTION_STATUSES:
@@ -1064,6 +1146,52 @@ def _resolve_snapshot_paths(target: dict[str, Any], cwd: Any) -> tuple[list[str]
     return snapshot_paths, source_snapshot, artifact_snapshot, snapshot_id
 
 
+def _do_worktree_merge(
+    folder: Path,
+    execution_id: str,
+    target: dict[str, Any],
+    completed: str,
+) -> None:
+    """worktree merge 시도. target을 in-place 변경(status, merge, completed_at)."""
+    merge = dict(target.get("merge") or {})
+    merge["attempted_at"] = completed
+    _arm_merge_checkpoint(folder, execution_id=execution_id, target=target, op="merge")
+    try:
+        merge_result = merge_exec_branch(
+            _exec_worktree_from_execution(target),
+            session_folder=folder,
+            exec_id=execution_id,
+            message=_merge_commit_message(target, session_id=folder.name),
+        )
+    except MergeConflict as e:
+        merge["status"] = "conflict"
+        merge["conflict_files"] = e.conflict_files
+        merge["completed_at"] = _now()
+        target["merge"] = merge
+        target["status"] = "merge_conflict"
+        target["completed_at"] = merge["completed_at"]
+        _clear_merge_checkpoint(target)
+        _notify_merge_conflict_mission(folder, target)
+    else:
+        merge.update(merge_result.to_dict())
+        merge["completed_at"] = _now()
+        target["merge"] = merge
+        target["status"] = "merged"
+        target["completed_at"] = merge["completed_at"]
+        _clear_merge_checkpoint(target)
+        from agent_lab.evidence_sync import on_merge_approved
+
+        on_merge_approved(
+            folder,
+            execution_id,
+            commit_sha=str(merge.get("commit_sha") or "") or None,
+        )
+        _record_verify_after_merge(folder, target)
+        snapshot_id = str(target.get("snapshot_id") or target.get("id") or "")
+        if snapshot_id:
+            delete_snapshot(folder, snapshot_id)
+
+
 def resolve_execution(
     folder: Path,
     *,
@@ -1078,8 +1206,7 @@ def resolve_execution(
         raise ValueError("vote must be approve or reject")
 
     run = read_run_meta(folder)
-    executions = list(run.get("executions") or [])
-    target = next((row for row in executions if row.get("id") == execution_id), None)
+    target = _find_execution(run, execution_id)
     if target is None:
         raise ValueError("execution not found")
     status = target.get("status")
@@ -1123,44 +1250,7 @@ def resolve_execution(
             raise ValueError(block)
         _worktree_hooks_verify_before_merge(target, execution_id=execution_id)
         if retry_merge and target.get("isolation_effective") == "worktree":
-            merge = dict(target.get("merge") or {})
-            merge["attempted_at"] = completed
-            _arm_merge_checkpoint(folder, execution_id=execution_id, target=target, op="merge")
-            try:
-                merge_result = merge_exec_branch(
-                    _exec_worktree_from_execution(target),
-                    session_folder=folder,
-                    exec_id=execution_id,
-                    message=_merge_commit_message(target, session_id=folder.name),
-                )
-            except MergeConflict as e:
-                merge["status"] = "conflict"
-                merge["conflict_files"] = e.conflict_files
-                merge["completed_at"] = _now()
-                target["merge"] = merge
-                target["status"] = "merge_conflict"
-                target["completed_at"] = merge["completed_at"]
-                _clear_merge_checkpoint(target)
-                _notify_merge_conflict_mission(folder, target)
-            else:
-                merge.update(merge_result.to_dict())
-                merge["completed_at"] = _now()
-                target["merge"] = merge
-                target["status"] = "merged"
-                target["completed_at"] = merge["completed_at"]
-                _clear_merge_checkpoint(target)
-                from agent_lab.evidence_sync import on_merge_approved
-
-                on_merge_approved(
-                    folder,
-                    execution_id,
-                    commit_sha=str(merge.get("commit_sha") or "") or None,
-                )
-                _record_verify_after_merge(folder, target)
-                snapshot_id = str(target.get("snapshot_id") or target.get("id") or "")
-                if snapshot_id:
-                    delete_snapshot(folder, snapshot_id)
-
+            _do_worktree_merge(folder, execution_id, target, completed)
             if vote_norm == "approve" and approved_by == "auto":
                 auto_meta = _finalize_auto_merge_meta(
                     folder,
@@ -1219,42 +1309,7 @@ def resolve_execution(
                 draft_summary=str(target.get("draft_summary") or ""),
             )
         if target.get("isolation_effective") == "worktree":
-            merge = dict(target.get("merge") or {})
-            merge["attempted_at"] = completed
-            _arm_merge_checkpoint(folder, execution_id=execution_id, target=target, op="merge")
-            try:
-                merge_result = merge_exec_branch(
-                    _exec_worktree_from_execution(target),
-                    session_folder=folder,
-                    exec_id=execution_id,
-                    message=_merge_commit_message(target, session_id=folder.name),
-                )
-            except MergeConflict as e:
-                merge["status"] = "conflict"
-                merge["conflict_files"] = e.conflict_files
-                merge["completed_at"] = _now()
-                target["merge"] = merge
-                target["status"] = "merge_conflict"
-                target["completed_at"] = merge["completed_at"]
-                _clear_merge_checkpoint(target)
-                _notify_merge_conflict_mission(folder, target)
-            else:
-                merge.update(merge_result.to_dict())
-                merge["completed_at"] = _now()
-                target["merge"] = merge
-                target["status"] = "merged"
-                target["completed_at"] = merge["completed_at"]
-                _clear_merge_checkpoint(target)
-                from agent_lab.evidence_sync import on_merge_approved
-
-                on_merge_approved(
-                    folder,
-                    execution_id,
-                    commit_sha=str(merge.get("commit_sha") or "") or None,
-                )
-                _record_verify_after_merge(folder, target)
-                if snapshot_id:
-                    delete_snapshot(folder, snapshot_id)
+            _do_worktree_merge(folder, execution_id, target, completed)
         else:
             if snapshot_id:
                 delete_snapshot(folder, snapshot_id)
@@ -1345,8 +1400,7 @@ def _merge_conflict_execution(
     execution_id: str,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     run = read_run_meta(folder)
-    executions = list(run.get("executions") or [])
-    target = next((row for row in executions if row.get("id") == execution_id), None)
+    target = _find_execution(run, execution_id)
     if target is None:
         raise ValueError("execution not found")
     merge = target.get("merge") if isinstance(target.get("merge"), dict) else {}
@@ -1443,8 +1497,7 @@ def reverify_merged_execution(
     executor: str | None = None,
 ) -> dict[str, Any]:
     run = read_run_meta(folder)
-    executions = list(run.get("executions") or [])
-    target = next((row for row in executions if row.get("id") == execution_id), None)
+    target = _find_execution(run, execution_id)
     if target is None:
         raise ValueError("execution not found")
     if target.get("status") != "merged":

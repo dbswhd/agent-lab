@@ -140,6 +140,8 @@ export type SessionDetail = {
   transcript_md: string;
   meta: Record<string, unknown>;
   chat?: ChatLine[];
+  /** Total number of lines in chat.jsonl (regardless of chat_limit/chat_offset). */
+  chat_total?: number;
   /** Append-only SSE replay when turn did not finish (chat.jsonl missing). */
   live_log?: Array<Record<string, unknown>>;
   run?: Record<string, unknown>;
@@ -1223,9 +1225,13 @@ export function pickFolderViaDesktopApi(defaultPath?: string | null) {
   );
 }
 
-export function fetchSessions(archived = false) {
-  const q = archived ? "?archived=true" : "";
-  return json<{ sessions: SessionSummary[] }>(`/api/sessions${q}`);
+export function fetchSessions(archived = false, limit?: number, offset?: number) {
+  const params = new URLSearchParams();
+  if (archived) params.set("archived", "true");
+  if (limit !== undefined) params.set("limit", String(limit));
+  if (offset !== undefined && offset > 0) params.set("offset", String(offset));
+  const q = params.size > 0 ? `?${params}` : "";
+  return json<{ sessions: SessionSummary[]; total: number }>(`/api/sessions${q}`);
 }
 
 export function archiveSession(id: string) {
@@ -1242,8 +1248,12 @@ export function unarchiveSession(id: string) {
   );
 }
 
-export function fetchSession(id: string) {
-  return json<SessionDetail>(`/api/sessions/${encodeURIComponent(id)}`);
+export function fetchSession(id: string, opts?: { chatLimit?: number; chatOffset?: number }) {
+  const params = new URLSearchParams();
+  if (opts?.chatLimit !== undefined) params.set("chat_limit", String(opts.chatLimit));
+  if (opts?.chatOffset !== undefined && opts.chatOffset > 0) params.set("chat_offset", String(opts.chatOffset));
+  const q = params.size > 0 ? `?${params}` : "";
+  return json<SessionDetail>(`/api/sessions/${encodeURIComponent(id)}${q}`);
 }
 
 export function autoSyncSessionPlan(id: string) {
@@ -1477,6 +1487,20 @@ export function runSessionCommand(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+  });
+}
+
+export function runRoomSlash(text: string, sessionId = "") {
+  return json<{
+    ok: boolean;
+    stage?: string;
+    note?: string;
+    composition?: string[];
+    updated?: boolean;
+  }>(`/api/room/slash`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text, session_id: sessionId }),
   });
 }
 

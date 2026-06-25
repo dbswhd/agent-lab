@@ -9,9 +9,7 @@ import {
   applySessionTemplate,
   cancelRoomRun,
   pauseMissionLoop,
-  checkSessionGoal,
   fetchCommands,
-  fetchInboxSummary,
   fetchSessionInbox,
   postMissionDiscussRecovery,
   matchSlashCommand,
@@ -22,7 +20,7 @@ import {
   reconnectKimiWorkBridge,
   runRoom,
   runSessionCommand,
-  setSessionGoal,
+  runRoomSlash,
   approveVerifiedLoop,
   approvePlan,
   rejectPlan,
@@ -32,6 +30,8 @@ import {
   type AuthRunRef,
   type SlashCommandRecord,
 } from "../api/client";
+import { useInboxState } from "../hooks/useInboxState";
+import { useGoalLoop } from "../hooks/useGoalLoop";
 import { MacAlert } from "./MacAlert";
 import {
   mergeAgentReplyBody,
@@ -128,7 +128,6 @@ import { executionApprovalGate } from "../utils/executeApprovalGate";
 import { notifyDesktop } from "../utils/desktopNotify";
 import { buildPlanMetaView, composerPlanStaleNotice } from "../utils/planMeta";
 import { buildGoalLoopView } from "../utils/goalLoopView";
-import { buildVerifiedLoopView } from "../utils/verifiedLoopView";
 import { activateInboxRef } from "../utils/inboxRefNavigation";
 import {
   isPlanWorkflowPhaseBanner,
@@ -477,16 +476,6 @@ export function RoomChat({
   const [recoveryResolutionEvents, setRecoveryResolutionEvents] = useState<
     RecoveryResolutionEvent[]
   >([]);
-  const [goalText, setGoalText] = useState("");
-  const [goalBusy, setGoalBusy] = useState(false);
-  const [goalError, setGoalError] = useState<string | null>(null);
-  const [verifiedEditGoal, setVerifiedEditGoal] = useState("");
-  const [verifiedEditCriteria, setVerifiedEditCriteria] = useState("");
-  const [verifiedEditPromise, setVerifiedEditPromise] = useState("DONE");
-  const [verifiedLoopBusy, setVerifiedLoopBusy] = useState(false);
-  const [verifiedLoopError, setVerifiedLoopError] = useState<string | null>(
-    null,
-  );
   const [highlightChatLine, setHighlightChatLine] = useState<number | null>(
     null,
   );
@@ -498,20 +487,10 @@ export function RoomChat({
   const [sendReceipt, setSendReceipt] = useState<string | null>(null);
   const [sendReceiptRaw, setSendReceiptRaw] = useState<string | undefined>();
   const [hideApprovedPlanBanner, setHideApprovedPlanBanner] = useState(false);
-  const [inboxPendingCount, setInboxPendingCount] = useState(0);
-  const [inboxPendingQuestions, setInboxPendingQuestions] = useState(0);
-  const [inboxPendingBuilds, setInboxPendingBuilds] = useState(0);
-  const [inboxPendingSkillDrafts, setInboxPendingSkillDrafts] = useState(0);
-  const [globalInboxPending, setGlobalInboxPending] = useState(0);
-  const [inboxReloadKey, setInboxReloadKey] = useState(0);
   const [discussRecoveryBusy, setDiscussRecoveryBusy] = useState(false);
-  const [inboxSegment, setInboxSegment] = useState<
-    "all" | "discuss" | "activity" | "questions" | "build" | "skills"
-  >("all");
   const [discussPaused, setDiscussPaused] = useState(false);
   const [humanDecisionBannerVisible, setHumanDecisionBannerVisible] =
     useState(false);
-  const [showInboxPopup, setShowInboxPopup] = useState(false);
   const [workFocus, setWorkFocus] = useState<WorkFocusTarget | null>(null);
   const prevExecPendingIdRef = useRef<string | null>(null);
   const sendReceiptTimerRef = useRef<number | null>(null);
@@ -818,6 +797,42 @@ export function RoomChat({
     refreshCommands(sid);
   }, [onSessionMetaRefresh, onSessionChange, refreshTasks, refreshCommands]);
 
+  const {
+    inboxPendingCount,
+    inboxPendingQuestions,
+    inboxPendingBuilds,
+    inboxReloadKey,
+    setInboxReloadKey,
+    inboxSegment,
+    setInboxSegment,
+    showInboxPopup,
+    setShowInboxPopup,
+    refreshInboxPending,
+    inboxPendingNonQuestions,
+    titlebarInboxPending,
+  } = useInboxState(sessionId);
+
+  const {
+    goalText,
+    setGoalText,
+    goalBusy,
+    goalError,
+    setGoalError,
+    verifiedEditGoal,
+    setVerifiedEditGoal,
+    verifiedEditCriteria,
+    setVerifiedEditCriteria,
+    verifiedEditPromise,
+    setVerifiedEditPromise,
+    verifiedLoopBusy,
+    setVerifiedLoopBusy,
+    verifiedLoopError,
+    setVerifiedLoopError,
+    verifiedLoopView,
+    handleGoalSave,
+    handleGoalCheck,
+  } = useGoalLoop(sessionId, session?.run, refreshSessionMeta);
+
   useEffect(() => {
     refreshTasks();
   }, [
@@ -901,28 +916,6 @@ export function RoomChat({
       );
     }
   }, [openReviewTab, refreshSessionMeta, sessionId, pushMacNotification]);
-
-  const refreshInboxPending = useCallback(async () => {
-    if (!sessionId) {
-      setInboxPendingCount(0);
-      setInboxPendingQuestions(0);
-      setInboxPendingBuilds(0);
-      setInboxPendingSkillDrafts(0);
-      return;
-    }
-    try {
-      const payload = await fetchSessionInbox(sessionId);
-      setInboxPendingCount(payload.pending_count ?? 0);
-      setInboxPendingQuestions(payload.pending_questions ?? 0);
-      setInboxPendingBuilds(payload.pending_builds ?? 0);
-      setInboxPendingSkillDrafts(payload.pending_skill_drafts ?? 0);
-    } catch {
-      setInboxPendingCount(0);
-      setInboxPendingQuestions(0);
-      setInboxPendingBuilds(0);
-      setInboxPendingSkillDrafts(0);
-    }
-  }, [sessionId]);
 
   const handleInboxResolved = useCallback(() => {
     void refreshInboxPending();
@@ -1124,53 +1117,9 @@ export function RoomChat({
     return n > 0 ? n : undefined;
   }, [roomTasks?.open_objection_count]);
 
-  const inboxPendingNonQuestions = useMemo(() => {
-    const typedCount = inboxPendingBuilds + inboxPendingSkillDrafts;
-    return Math.max(0, typedCount || inboxPendingCount - inboxPendingQuestions);
-  }, [
-    inboxPendingBuilds,
-    inboxPendingCount,
-    inboxPendingQuestions,
-    inboxPendingSkillDrafts,
-  ]);
-
   const inspectorInboxBadge = useMemo(() => {
     return inboxPendingNonQuestions > 0 ? inboxPendingNonQuestions : undefined;
   }, [inboxPendingNonQuestions]);
-
-  const titlebarInboxPending = useMemo(() => {
-    if (inboxPendingNonQuestions > 0) return inboxPendingNonQuestions;
-    return globalInboxPending > 0 ? globalInboxPending : undefined;
-  }, [globalInboxPending, inboxPendingNonQuestions]);
-
-  useEffect(() => {
-    void refreshInboxPending();
-  }, [refreshInboxPending, inboxReloadKey]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const loadSummary = () => {
-      void fetchInboxSummary()
-        .then((payload) => {
-          if (cancelled) return;
-          setGlobalInboxPending(
-            Math.max(
-              0,
-              (payload.total_pending ?? 0) - (payload.pending_questions ?? 0),
-            ),
-          );
-        })
-        .catch(() => {
-          if (!cancelled) setGlobalInboxPending(0);
-        });
-    };
-    loadSummary();
-    const timer = window.setInterval(loadSummary, 30_000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
-  }, [sessionId, inboxReloadKey, inboxPendingCount]);
 
   const toggleInspector = useCallback(() => {
     setInspectorOpenState((current) => {
@@ -1196,11 +1145,6 @@ export function RoomChat({
 
   const goalView = useMemo(
     () => buildGoalLoopView(session?.run),
-    [session?.run],
-  );
-
-  const verifiedLoopView = useMemo(
-    () => buildVerifiedLoopView(session?.run),
     [session?.run],
   );
 
@@ -1248,47 +1192,6 @@ export function RoomChat({
     (turnProfile === "loop" || Boolean(session?.run?.verified_loop));
 
   const showGoalLoop = !planWorkflowActive && !showVerifiedLoop;
-
-  useEffect(() => {
-    setVerifiedEditGoal(verifiedLoopView.proposedGoal);
-    setVerifiedEditCriteria(verifiedLoopView.criteria);
-    setVerifiedEditPromise(verifiedLoopView.completionPromise || "DONE");
-    setVerifiedLoopError(null);
-  }, [
-    sessionId,
-    verifiedLoopView.proposedGoal,
-    verifiedLoopView.criteria,
-    verifiedLoopView.completionPromise,
-  ]);
-
-  const handleGoalSave = useCallback(async () => {
-    if (!sessionId || !goalText.trim()) return;
-    setGoalBusy(true);
-    setGoalError(null);
-    try {
-      await setSessionGoal(sessionId, { text: goalText.trim() });
-      await refreshSessionMeta();
-    } catch (e) {
-      setGoalError(String(e));
-    } finally {
-      setGoalBusy(false);
-    }
-  }, [sessionId, goalText, refreshSessionMeta]);
-
-  const handleGoalCheck = useCallback(async () => {
-    if (!sessionId) return;
-    setGoalBusy(true);
-    setGoalError(null);
-    try {
-      const res = await checkSessionGoal(sessionId);
-      if (res.reason) setGoalError(res.reason);
-      await refreshSessionMeta();
-    } catch (e) {
-      setGoalError(String(e));
-    } finally {
-      setGoalBusy(false);
-    }
-  }, [sessionId, refreshSessionMeta]);
 
   const handleGoalContinueDiscuss = useCallback(
     (prefill: string) => {
@@ -2237,22 +2140,6 @@ export function RoomChat({
                     const pending = (payload.human_inbox ?? []).filter(
                       (item) => item.status === "pending",
                     );
-                    const pendingQuestions =
-                      payload.pending_questions ??
-                      pending.filter((item) => item.kind === "question").length;
-                    const pendingBuilds =
-                      payload.pending_builds ??
-                      pending.filter((item) => item.kind === "build").length;
-                    const pendingSkillDrafts =
-                      payload.pending_skill_drafts ??
-                      pending.filter((item) => item.kind === "skill_draft")
-                        .length;
-                    setInboxPendingCount(
-                      payload.pending_count ?? pending.length,
-                    );
-                    setInboxPendingQuestions(pendingQuestions);
-                    setInboxPendingBuilds(pendingBuilds);
-                    setInboxPendingSkillDrafts(pendingSkillDrafts);
                     const question = pending.find(
                       (item) => item.kind === "question",
                     );
@@ -2307,10 +2194,7 @@ export function RoomChat({
                     }
                   })
                   .catch(() => {
-                    setInboxPendingCount(1);
-                    setInboxPendingQuestions(0);
-                    setInboxPendingBuilds(0);
-                    setInboxPendingSkillDrafts(0);
+                    /* hook refreshes inbox state via inboxReloadKey */
                   });
               }
               if (ev.verified_loop_pending === true) {
@@ -3912,13 +3796,30 @@ export function RoomChat({
                           className="composer-picker__option"
                           onClick={() => {
                             const cmd = commandScopeChoices.command;
-                            const composition =
-                              commandScopeChoices.composition.join(",");
+                            const comp = commandScopeChoices.composition;
+                            const composition = comp.join(",");
                             setCommandScopeChoices(null);
-                            void executeSlashCommand(
-                              cmd,
-                              `${composition} ${opt.value}`.trim(),
-                            );
+                            if (!sessionId && cmd.id === "model") {
+                              setSelected(comp);
+                              if (opt.value === "default") {
+                                void runRoomSlash(
+                                  `/model ${composition} default`,
+                                ).then(() => {
+                                  setCommandHint(
+                                    `기본값으로 저장했습니다 (${composition}).`,
+                                  );
+                                });
+                              } else {
+                                setCommandHint(
+                                  `이번 세션에 사용할 에이전트 ${comp.length}개를 선택했습니다.`,
+                                );
+                              }
+                            } else {
+                              void executeSlashCommand(
+                                cmd,
+                                `${composition} ${opt.value}`.trim(),
+                              );
+                            }
                           }}
                         >
                           <span className="composer-picker__label">
@@ -3986,10 +3887,24 @@ export function RoomChat({
                             setCommandMultiChoices(null);
                             setMultiSelected(new Set());
                             if (!sessionId && cmd.id === "model") {
-                              setSelected(selected.split(",").filter(Boolean));
-                              setCommandHint(
-                                `첫 턴에 사용할 에이전트 ${selected ? selected.split(",").length : 0}개를 선택했습니다.`,
-                              );
+                              const comp = selected
+                                .split(",")
+                                .filter(Boolean);
+                              setCommandScopeChoices({
+                                command: cmd,
+                                composition: comp,
+                                prompt: `[${comp.join(", ")}] — 적용 범위를 선택하세요`,
+                                options: [
+                                  {
+                                    value: "session",
+                                    label: "이번 세션만",
+                                  },
+                                  {
+                                    value: "default",
+                                    label: "기본값으로 저장",
+                                  },
+                                ],
+                              });
                             } else {
                               void executeSlashCommand(cmd, selected);
                             }

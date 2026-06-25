@@ -130,6 +130,13 @@ def _pending_execution(run: dict[str, Any]) -> dict[str, Any] | None:
     return None
 
 
+def _find_execution(run: dict[str, Any], execution_id: str) -> dict[str, Any] | None:
+    return next(
+        (row for row in run.get("executions") or [] if row.get("id") == execution_id),
+        None,
+    )
+
+
 def _update_execution_row(
     folder: Path,
     *,

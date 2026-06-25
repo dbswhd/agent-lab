@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from agent_lab.run_meta import write_run_meta
+
 from fastapi import APIRouter, HTTPException
 
 from app.server.deps import (
@@ -36,12 +38,7 @@ def resolve_session_objection(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
-    from agent_lab.run_meta import persist_run_meta
-
-    (folder / "run.json").write_text(
-        json.dumps(persist_run_meta(run_meta), indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
+    write_run_meta(folder, run_meta)
     return {"ok": True, "objection": row, **tasks_public_payload(run_meta)}
 
 
@@ -73,15 +70,11 @@ def patch_session_agent_capabilities(
         capabilities_public_payload,
         write_agent_capabilities,
     )
-    from agent_lab.run_meta import persist_run_meta
 
     _plan_md, run_meta = room_session_context(folder)
     caps_in = body.capabilities if isinstance(body.capabilities, dict) else {}
     write_agent_capabilities(run_meta, caps_in, mark_custom=True)
-    (folder / "run.json").write_text(
-        json.dumps(persist_run_meta(run_meta), indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
+    write_run_meta(folder, run_meta)
     return {"ok": True, **capabilities_public_payload(run_meta)}
 
 
@@ -95,8 +88,5 @@ def set_session_team_lead(
 
     _plan_md, run_meta = room_session_context(folder)
     lead = set_team_lead_agent(run_meta, body.agent.strip().lower())
-    (folder / "run.json").write_text(
-        json.dumps(run_meta, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
+    write_run_meta(folder, run_meta)
     return {"ok": True, "team_lead": lead, **tasks_public_payload(run_meta)}

@@ -39,8 +39,13 @@ class ResponseContractPatchRequest(BaseModel):
 
 
 @router.get("/sessions")
-def sessions(archived: bool = False) -> dict[str, Any]:
-    return {"sessions": list_sessions(archived=archived)}
+def sessions(
+    archived: bool = False,
+    limit: int | None = None,
+    offset: int = 0,
+) -> dict[str, Any]:
+    items, total = list_sessions(archived=archived, limit=limit, offset=offset)
+    return {"sessions": items, "total": total}
 
 
 @router.post("/sessions/{session_id}/archive")
@@ -61,21 +66,29 @@ def unarchive_session(session_id: str) -> dict[str, Any]:
 
 
 @router.get("/sessions/{session_id}")
-def session(session_id: str) -> dict[str, Any]:
+def session(
+    session_id: str,
+    chat_limit: int | None = None,
+    chat_offset: int = 0,
+) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
     from agent_lab.room import ensure_session_plan_pipeline
 
     ensure_session_plan_pipeline(folder)
-    return session_detail(session_id)
+    return session_detail(session_id, chat_limit=chat_limit, chat_offset=chat_offset)
 
 
 @router.post("/sessions/{session_id}/plan/auto-sync")
-def auto_sync_session_plan(session_id: str) -> dict[str, Any]:
+def auto_sync_session_plan(
+    session_id: str,
+    chat_limit: int | None = None,
+    chat_offset: int = 0,
+) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
     from agent_lab.room import ensure_session_plan_pipeline
 
     synced = ensure_session_plan_pipeline(folder)
-    detail = session_detail(session_id)
+    detail = session_detail(session_id, chat_limit=chat_limit, chat_offset=chat_offset)
     return {"ok": True, "synced": synced, **detail}
 
 

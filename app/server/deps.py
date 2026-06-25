@@ -205,18 +205,35 @@ def write_meta(folder: Path, meta: dict[str, Any]) -> None:
     )
 
 
-def list_sessions(*, archived: bool = False) -> list[dict[str, Any]]:
+def list_sessions(
+    *,
+    archived: bool = False,
+    limit: int | None = None,
+    offset: int = 0,
+) -> tuple[list[dict[str, Any]], int]:
     root = SESSIONS_DIR
     if not root.is_dir():
-        return []
-    items: list[dict[str, Any]] = []
+        return [], 0
+
+    # Phase 1: walk all dirs, read only meta.json to check archived status.
+    # topic.txt and run.json are deferred to Phase 3 to avoid N+1 I/O.
+    candidates: list[tuple[Path, dict[str, Any]]] = []
     for path in sorted(root.iterdir(), reverse=True):
         if not path.is_dir() or path.name.startswith("."):
             continue
         meta = read_meta(path)
-        is_archived = bool(meta.get("archived"))
-        if is_archived != archived:
+        if bool(meta.get("archived")) != archived:
             continue
+        candidates.append((path, meta))
+
+    total = len(candidates)
+
+    # Phase 2: apply pagination.
+    page = candidates[offset : offset + limit] if limit is not None else candidates[offset:]
+
+    # Phase 3: read topic.txt and run.json only for the requested page.
+    items: list[dict[str, Any]] = []
+    for path, meta in page:
         topic_file = path / "topic.txt"
         topic = topic_file.read_text(encoding="utf-8").strip() if topic_file.is_file() else meta.get("topic", path.name)
         agents: list[str] = []
@@ -243,7 +260,7 @@ def list_sessions(*, archived: bool = False) -> list[dict[str, Any]]:
                 "topic": topic,
                 "created_at": meta.get("created_at"),
                 "model": meta.get("model"),
-                "archived": is_archived,
+                "archived": bool(meta.get("archived")),
                 "workflow": meta.get("workflow"),
                 "workspace_preset": meta.get("workspace_preset"),
                 "session_template": meta.get("session_template"),
@@ -253,10 +270,15 @@ def list_sessions(*, archived: bool = False) -> list[dict[str, Any]]:
                 "path": str(path),
             }
         )
-    return items
+    return items, total
 
 
-def session_detail(session_id: str) -> dict[str, Any]:
+def session_detail(
+    session_id: str,
+    *,
+    chat_limit: int | None = None,
+    chat_offset: int = 0,
+) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
 
     def read(name: str) -> str:
@@ -266,12 +288,14 @@ def session_detail(session_id: str) -> dict[str, Any]:
     meta = read_meta(folder)
 
     chat: list[dict[str, Any]] = []
+    chat_total = 0
     chat_path = folder / "chat.jsonl"
     if chat_path.is_file():
-        for line in chat_path.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if line:
-                chat.append(json.loads(line))
+        # Read lines as text first — cheap. Parse JSON only for the requested page.
+        all_lines = [ln for ln in chat_path.read_text(encoding="utf-8").splitlines() if ln.strip()]
+        chat_total = len(all_lines)
+        page_lines = all_lines[chat_offset : chat_offset + chat_limit] if chat_limit is not None else all_lines[chat_offset:]
+        chat = [json.loads(ln) for ln in page_lines]
 
     run_json: dict[str, Any] = {}
     if (folder / "run.json").is_file():
@@ -296,6 +320,7 @@ def session_detail(session_id: str) -> dict[str, Any]:
         "transcript_md": read("transcript.md"),
         "meta": meta,
         "chat": chat,
+        "chat_total": chat_total,
         "live_log": live_log,
         "run": run_json,
         "cost": cost,

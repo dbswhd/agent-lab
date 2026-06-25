@@ -809,6 +809,23 @@ def run_dry_run(
             notify_merge_ready(folder, execution)
         except Exception:
             pass
+        # Trust-gated Auto-approval: evaluate gate and stamp eligibility if applicable.
+        from agent_lab.auto_approve_gate import evaluate_auto_approve, mark_auto_approve_eligible
+
+        _gate = evaluate_auto_approve(execution, read_run_meta(folder))
+        if _gate.eligible:
+            mark_auto_approve_eligible(execution, _gate)
+
+            def _stamp_auto(run: dict[str, Any]) -> dict[str, Any]:
+                rows = list(run.get("executions") or [])
+                for _i, _row in enumerate(rows):
+                    if _row.get("id") == exec_id:
+                        rows[_i] = execution
+                        break
+                run["executions"] = rows
+                return run
+
+            patch_run_meta(folder, _stamp_auto)
     run_after = read_run_meta(folder)
     for row in run_after.get("executions") or []:
         if isinstance(row, dict) and row.get("id") == exec_id:

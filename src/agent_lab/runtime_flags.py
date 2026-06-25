@@ -158,6 +158,17 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         default="mock",
     ),
     FlagDef(
+        "AGENT_LAB_AUTO_APPROVE_THRESHOLD",
+        "feature",
+        "Trust-gated auto-approval max risk tier: low | medium (disabled if unset)",
+    ),
+    FlagDef(
+        "AGENT_LAB_AUTO_APPROVE_TIMEOUT_SEC",
+        "feature",
+        "Human override window before auto-approval fires (default 30s; 0=immediate)",
+        default="30",
+    ),
+    FlagDef(
         "AGENT_LAB_WISDOM_MCP",
         "feature",
         "§5 Phase 1 cross-session Wisdom Index MCP (read+write, default off)",

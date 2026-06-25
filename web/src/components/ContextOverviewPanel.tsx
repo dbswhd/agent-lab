@@ -216,6 +216,12 @@ export function ContextOverviewPanel({
             {planStatusLine ? (
               <span className="ctx-plan-status__meta">{planStatusLine}</span>
             ) : null}
+            {planMeta.reviewTurnLabel ? (
+              <span className="ctx-plan-status__meta">{planMeta.reviewTurnLabel}</span>
+            ) : null}
+            {planMeta.turnRolesLabel ? (
+              <span className="ctx-plan-status__meta">{planMeta.turnRolesLabel}</span>
+            ) : null}
           </div>
         </section>
       ) : null}

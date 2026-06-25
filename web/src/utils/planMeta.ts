@@ -33,6 +33,7 @@ export type PlanMetaView = {
   agentsLabel: string;
   freshnessLabel: string;
   reviewTurnLabel: string | null;
+  turnRolesLabel: string | null;
   pendingAgreement: ConsensusAgreementRow | null;
   chatLineLabel: string | null;
 };
@@ -98,6 +99,21 @@ export function composerPlanStaleNotice(
     return agreementPlanSyncFailedLabel(excerpt, "plan.md 자동 정리 중…");
   }
   return null;
+}
+
+const ROLE_LABELS: Record<string, string> = {
+  proposer: "제안자",
+  critic: "검토자",
+  synthesizer: "합성자",
+  executor: "실행자",
+};
+
+function formatTurnRoles(roles: Record<string, string>): string | null {
+  const entries = Object.entries(roles).filter(([, role]) => role);
+  if (entries.length === 0) return null;
+  return entries
+    .map(([agent, role]) => `${agentLabel(agent)}: ${ROLE_LABELS[role] ?? role}`)
+    .join(" · ");
 }
 
 /** Extract role assignments from the latest turn snapshot, or {} if none. */
@@ -175,6 +191,7 @@ export function buildPlanMetaView(
     agentsLabel,
     freshnessLabel,
     reviewTurnLabel: reviewTurnLabel(run),
+    turnRolesLabel: formatTurnRoles(latestTurnRoles(run)),
     pendingAgreement,
     chatLineLabel,
   };

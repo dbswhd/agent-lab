@@ -326,6 +326,38 @@ def model_readiness(agent_id: str, *, model_id: str | None = None) -> ModelReadi
     )
 
 
+def preferred_cost_tier_for_category(category: str) -> Tier | None:
+    """CategoryRoute 카테고리에 따른 에이전트 비용 티어 상한.
+
+    quick → low만 허용 (빠른 단순 작업에 고비용 에이전트 낭비 방지).
+    그 외 → None (제약 없음, 전원 참여).
+    """
+    if category == "quick":
+        return "low"
+    return None
+
+
+def agents_within_cost_tier(
+    agent_ids: list[str],
+    max_tier: Tier,
+) -> list[str]:
+    """max_tier 이하 비용 에이전트만 반환. 전원 필터되면 원본 반환(폴백).
+
+    cost_tier가 없는 에이전트(프로필 미등록)는 포함시킨다.
+    """
+    rank: dict[Tier, int] = {"low": 0, "medium": 1, "high": 2}
+    cap = rank.get(max_tier, 2)
+    filtered: list[str] = []
+    for aid in agent_ids:
+        profile = model_profile_for(aid)
+        if profile is None:
+            filtered.append(aid)
+            continue
+        if rank.get(profile.cost_tier, 2) <= cap:
+            filtered.append(aid)
+    return filtered if filtered else list(agent_ids)
+
+
 def loop_readiness_failure(agent_ids: Sequence[str]) -> LoopReadinessFailure | None:
     from agent_lab.turn_modes import loop_max_cost_tier
 

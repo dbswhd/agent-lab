@@ -92,6 +92,40 @@ def run_consensus_agent_rounds(
                         ),
                     },
                 )
+    # Model Policy: 카테고리 비용 상한과 신뢰 예산 소진 상한 중 더 엄격한 티어를 적용.
+    # agents_within_cost_tier는 전원 필터될 때 원본을 반환하므로 안전하다.
+    from agent_lab.model_policy import agents_within_cost_tier, preferred_cost_tier_for_category
+    from agent_lab.trust_budget import budget_agent_tier_cap
+
+    _category_tier = preferred_cost_tier_for_category(route.category)
+    _budget_tier = budget_agent_tier_cap(run_meta)
+    _tier_rank: dict[str, int] = {"low": 0, "medium": 1, "high": 2}
+    _effective_tier: str | None = None
+    for _t in (_category_tier, _budget_tier):
+        if _t is not None:
+            if _effective_tier is None or _tier_rank.get(_t, 2) < _tier_rank.get(_effective_tier, 2):
+                _effective_tier = _t
+    if _effective_tier is not None:
+        _filtered = agents_within_cost_tier([str(a) for a in active], _effective_tier)  # type: ignore[arg-type]
+        _filtered_set = set(_filtered)
+        _policy_active = [a for a in active if str(a) in _filtered_set]
+        if _policy_active and _policy_active != active:
+            active = _policy_active
+            if on_event:
+                on_event(
+                    "model_policy_applied",
+                    {
+                        "effective_tier": _effective_tier,
+                        "category_tier": _category_tier,
+                        "budget_tier": _budget_tier,
+                        "active": [str(a) for a in active],
+                        "message": (
+                            f"Model Policy — 비용 상한 {_effective_tier}: "
+                            f"{', '.join(str(a) for a in active)} 참여."
+                        ),
+                    },
+                )
+
     from agent_lab.turn_modes import apply_loop_budget_caps, loop_token_budget_exceeded
 
     cap_rounds, cap_calls = apply_loop_budget_caps(run_meta, cap_rounds, cap_calls)

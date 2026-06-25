@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import os
 import re
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from typing import Any, Literal
 
 from agent_lab.room_consensus import (
@@ -229,6 +229,8 @@ class CategoryRoute:
     # 에스컬레이션 시 None으로 리셋되어 자동으로 전원 참여로 복원됨
     agent_subset: tuple[str, ...] | None = None
     task_type: TaskType = "general"
+    # 역할 배정: {agent_id: role_id}, 호출측에서 active 확정 후 채워진다 (진단용 스냅샷)
+    role_plan: dict[str, str] = field(default_factory=dict)
 
     def category_dict(self) -> dict[str, Any]:
         """turns[].category 영속용 (additive run.json 필드)."""
@@ -244,6 +246,8 @@ class CategoryRoute:
             out["escalation_act"] = self.escalation_act
         if self.agent_subset:
             out["agent_subset"] = list(self.agent_subset)
+        if self.role_plan:
+            out["role_plan"] = dict(self.role_plan)
         return out
 
 

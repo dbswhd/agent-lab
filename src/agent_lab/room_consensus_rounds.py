@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any
 
 from agent_lab.agents.registry import AgentId, available_agents, label
@@ -130,6 +131,12 @@ def run_consensus_agent_rounds(
 
     cap_rounds, cap_calls = apply_loop_budget_caps(run_meta, cap_rounds, cap_calls)
     if run_meta is not None:
+        from agent_lab.role_plan import resolve_role_plan
+
+        _role_plan = resolve_role_plan(route=route, agents=[str(a) for a in active])
+        run_meta["_turn_roles"] = _role_plan
+        if _role_plan:
+            route = replace(route, role_plan=_role_plan)
         run_meta["_turn_category"] = route.category_dict()
 
     def _harvest_discuss_objections(thread: list[ChatMessage]) -> None:
@@ -148,13 +155,14 @@ def run_consensus_agent_rounds(
     def _maybe_escalate(batch_msgs: list[ChatMessage]) -> None:
         """충돌 act → 카테고리 1단계 상승 (예산만 늘림, 강등 없음).
 
-        에스컬레이션 시 agent_subset이 해제되어 전원이 참여하게 된다.
+        에스컬레이션 시 agent_subset과 _turn_roles가 해제되어 전원 자유토론으로 복귀한다.
         """
         nonlocal route, cap_rounds, cap_calls, active
         act = batch_escalation_act(batch_msgs)
         if not act:
             return
         prev_subset = route.agent_subset
+        prev_roles = dict((run_meta or {}).get("_turn_roles") or {})
         escalated = escalate_route(route, act=act, efficiency_mode=efficiency_mode)
         if escalated.category == route.category:
             return
@@ -166,6 +174,7 @@ def run_consensus_agent_rounds(
             if len(full) > len(active):
                 active = full
         if run_meta is not None:
+            run_meta["_turn_roles"] = {}  # 역할 해제 → 자유토론 복귀
             run_meta["_turn_category"] = route.category_dict()
             from agent_lab.inbox_harvest import record_escalation_harvest_keys
 
@@ -178,6 +187,7 @@ def run_consensus_agent_rounds(
                     "to": route.category,
                     "act": route.escalation_act,
                     "subset_released": prev_subset is not None and route.agent_subset is None,
+                    "roles_released": bool(prev_roles),
                     "message": f"{route.escalation_act} 발생 — 토픽 카테고리를 "
                     f"{route.escalated_from}→{route.category}로 승격합니다.",
                 },

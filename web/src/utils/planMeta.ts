@@ -100,6 +100,20 @@ export function composerPlanStaleNotice(
   return null;
 }
 
+/** Extract role assignments from the latest turn snapshot, or {} if none. */
+export function latestTurnRoles(
+  run: Record<string, unknown> | undefined,
+): Record<string, string> {
+  const turns = (run?.turns as Record<string, unknown>[] | undefined) ?? [];
+  for (let i = turns.length - 1; i >= 0; i--) {
+    const roles = turns[i]?.roles;
+    if (roles && typeof roles === "object") {
+      return roles as Record<string, string>;
+    }
+  }
+  return {};
+}
+
 export function workPlanMetaLine(meta: PlanMetaView): string | null {
   if (!meta.lastUpdate) return null;
   if (meta.pendingAgreement) return null;

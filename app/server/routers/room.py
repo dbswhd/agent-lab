@@ -95,6 +95,12 @@ def room_presets() -> dict[str, Any]:
     return preset_catalog()
 
 
+@router.get("/room/roles")
+def room_roles() -> dict[str, Any]:
+    from agent_lab.role_plan import role_catalog
+    return role_catalog()
+
+
 @router.post("/room/context-preview")
 def room_context_preview(body: ContextPreviewRequest) -> dict[str, Any]:
     folder = session_folder_or_404(body.session_id)

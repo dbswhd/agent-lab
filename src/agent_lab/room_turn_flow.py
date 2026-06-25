@@ -435,6 +435,7 @@ def continue_room_round(
             plan_trigger=plan_trigger,
             communicate_meta=communicate_meta,
             category=run_meta.get("_turn_category"),
+            roles=run_meta.get("_turn_roles") or None,
         ),
         run_meta_patch=_delegate_run_meta_patch(run_meta),
         clarifier_questions=clarifier_questions,
@@ -827,6 +828,7 @@ def run_room(
         plan_trigger=plan_trigger,
         communicate_meta=communicate_meta,
         category=run_meta.get("_turn_category"),
+        roles=run_meta.get("_turn_roles") or None,
     )
 
     from agent_lab.goal_loop import (

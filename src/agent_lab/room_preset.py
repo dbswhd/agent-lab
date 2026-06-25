@@ -19,6 +19,7 @@ class RoomPresetConfig:
     turn_profile: str
     description: str
     max_agents: int | None = None  # None = no cap; set for presets with fixed team sizes
+    role_policy: str = "auto"  # force | auto | off — when to activate role assignments
 
 
 _PRESET_CONFIGS: dict[str, RoomPresetConfig] = {
@@ -42,8 +43,9 @@ _PRESET_CONFIGS: dict[str, RoomPresetConfig] = {
     "producer_reviewer": RoomPresetConfig(
         preset="producer_reviewer",
         turn_profile="verified",
-        description="Produce then Oracle-verify — one agent proposes, Oracle confirms",
+        description="Producer 제안 → Reviewer 검증 → 재조합 합성 → Oracle 검증",
         max_agents=2,
+        role_policy="force",
     ),
     "pipeline": RoomPresetConfig(
         preset="pipeline",
@@ -97,6 +99,7 @@ def preset_catalog() -> dict[str, Any]:
                 "turn_profile": cfg.turn_profile,
                 "description": cfg.description,
                 "max_agents": cfg.max_agents,
+                "role_policy": cfg.role_policy,
             }
             for cfg in list_presets()
         ],

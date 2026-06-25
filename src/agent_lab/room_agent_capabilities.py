@@ -212,7 +212,10 @@ def capability_preamble_block(
         return ""
     profile = str((run_meta or {}).get("turn_profile") or "").strip().lower()
     parts = [f"[Capability · {agent}]", cap.get("label") or ""]
-    if profile == "specialist":
+    turn_roles = (run_meta or {}).get("_turn_roles") if run_meta else None
+    if not turn_roles and profile == "specialist":
+        # When role orchestration is active, role_plan.persona_for_agent (injected via
+        # build_guidance_parts) generalises these specialist-specific round hints.
         if parallel_round == 1 and agent in ("cursor",):
             parts.append("이번 라운드(R1)에는 Codex·Claude만 발화 — 대기.")
         elif parallel_round == 2 and agent in ("codex", "claude"):

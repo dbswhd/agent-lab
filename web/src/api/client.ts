@@ -1214,12 +1214,23 @@ export type RoomPreset = {
   id: string;
   turn_profile: string;
   description: string;
+  role_policy?: string;
+};
+
+export type RoomRole = {
+  id: string;
+  label: string;
+  persona_preview: string;
 };
 
 export function fetchRoomPresets() {
   return json<{ presets: RoomPreset[]; default: string | null }>(
     "/api/room/presets",
   );
+}
+
+export function fetchRoomRoles() {
+  return json<{ roles: RoomRole[] }>("/api/room/roles");
 }
 
 export function pickFolderViaDesktopApi(defaultPath?: string | null) {

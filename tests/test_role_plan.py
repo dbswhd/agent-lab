@@ -249,3 +249,75 @@ def test_preset_catalog_has_role_policy():
     assert presets["producer_reviewer"]["role_policy"] == "force"
     # other presets should have auto by default
     assert presets["consensus"].get("role_policy") == "auto"
+
+
+# ---------------------------------------------------------------------------
+# P7c — producer_reviewer E2E mock 테스트
+# ---------------------------------------------------------------------------
+
+
+def _clear_router_env(monkeypatch) -> None:
+    for key in (
+        "AGENT_LAB_TOPIC_ROUTER",
+        "AGENT_LAB_DISCUSS_OBJECTIONS",
+        "AGENT_LAB_DEBATE_ROUNDS",
+        "AGENT_LAB_MAX_CONSENSUS_ROUNDS",
+        "AGENT_LAB_MAX_CONSENSUS_CALLS",
+        "AGENT_LAB_CLARIFIER_MIN_CHARS",
+    ):
+        monkeypatch.delenv(key, raising=False)
+
+
+def _envelope_reply(act: str, body: str, refs: list[str] | None = None) -> str:
+    import json as _json
+
+    env = _json.dumps({"act": act, "refs": refs or [], "confidence": 0.9})
+    return f"```agent-envelope\n{env}\n```\n{body}"
+
+
+def test_producer_reviewer_e2e_mock(monkeypatch, tmp_path):
+    """code 토픽 역할 배정 E2E 검증:
+    1. cursor=proposer, claude=critic 역할 배정
+    2. consensus 루프 완주
+    3. run.json turn["roles"] 기록 확인
+    """
+    import json
+    from agent_lab import room
+    from agent_mocks import patch_call_agent_reply
+
+    _clear_router_env(monkeypatch)
+    monkeypatch.delenv("AGENT_LAB_CLARIFIER", raising=False)
+
+    per_agent: dict[str, int] = {}
+
+    def fake_call_agent(agent, _system, user, **kwargs):
+        if kwargs.get("scribe"):
+            return "## Plan\n\n- mock\n"
+        n = per_agent.get(agent, 0) + 1
+        per_agent[agent] = n
+        if agent == "cursor" and n == 1:
+            return _envelope_reply("PROPOSE", "API를 직접 구현합니다.")
+        return _envelope_reply("ENDORSE", "이의 없습니다")
+
+    patch_call_agent_reply(monkeypatch, fake_call_agent)
+    monkeypatch.setattr(room, "model_label", lambda a: f"{a}-model")
+
+    folder, _msgs, _plan = room.run_room(
+        "API 직접 구현 방식 결정.\n[cat: standard]",
+        agents=["cursor", "claude"],
+        synthesize=False,
+        sessions_base=tmp_path,
+        consensus_mode=True,
+    )
+    run = json.loads((folder / "run.json").read_text(encoding="utf-8"))
+    turn = run["turns"][0]
+
+    # 역할 배정 확인 (신규 기능)
+    assert "roles" in turn, "run.json turn에 roles 필드 필요"
+    assert turn["roles"].get("cursor") == "proposer", f"cursor should be proposer: {turn['roles']}"
+    assert turn["roles"].get("claude") == "critic", f"claude should be critic: {turn['roles']}"
+
+    # 합의 완료 확인
+    assert turn["consensus"]["status"] == "reached"
+    # 재조합 구조 확인 (단일 제안자 → skipped 기록)
+    assert "recombination" in turn["consensus"]

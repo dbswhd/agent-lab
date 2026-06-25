@@ -1658,14 +1658,18 @@ export function RoomChat({
     ) => {
       if (mode === "execute") return;
       if (runBusy || running || synthesizing) return;
+      const effectiveProfile: ComposerTurnProfile = roomPreset
+        ? ((availablePresets.find((p) => p.id === roomPreset)?.turn_profile ??
+            profile) as ComposerTurnProfile)
+        : profile;
       const roomMode =
-        mode === "plan" || profile === "loop" ? "plan" : "discuss";
+        mode === "plan" || effectiveProfile === "loop" ? "plan" : "discuss";
       const {
         agents,
         agentRounds,
         reviewMode: useReviewMode,
         consensusMode: useConsensusMode,
-      } = resolveTurnSend(profile, selected);
+      } = resolveTurnSend(effectiveProfile, selected);
       if (agents.length === 0) return;
 
       const sendText =
@@ -2443,8 +2447,8 @@ export function RoomChat({
             permissions,
             reviewMode: useReviewMode,
             consensusMode: useConsensusMode,
-            turnProfile: profile,
-            researchMode: researchMode || profile === "specialist",
+            turnProfile: effectiveProfile,
+            researchMode: researchMode || effectiveProfile === "specialist",
             workspaceId: sessionId ? undefined : workspaceId,
             workspacePath:
               sessionId || workspaceId !== CUSTOM_WORKSPACE_ID
@@ -2530,6 +2534,7 @@ export function RoomChat({
       running,
       synthesizing,
       roomPreset,
+      availablePresets,
     ],
   );
 

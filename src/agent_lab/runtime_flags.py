@@ -183,6 +183,11 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "feature",
         "Default Room Preset (fast|consensus|expert_pool|producer_reviewer|pipeline|supervisor)",
     ),
+    FlagDef(
+        "AGENT_LAB_RUN_PROFILE",
+        "feature",
+        "Operational profile that sets flag defaults (fast|balanced|thorough|autonomous)",
+    ),
     FlagDef("AGENT_LAB_CLARIFIER", "feature", "Short-topic clarifier SSE before agents"),
     FlagDef("AGENT_LAB_CLARIFIER_INTERVIEW", "feature", "Multi-turn clarifier interview mode"),
     FlagDef("AGENT_LAB_CLARIFIER_MIN_CHARS", "feature", "Clarifier topic length threshold", default="48"),

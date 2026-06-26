@@ -21,7 +21,7 @@ from agent_lab.attachments import (
     attachments_dir,
 )
 from agent_lab.run_meta import read_run_meta
-from agent_lab.session import SESSIONS_DIR
+from agent_lab.session_paths import SESSIONS_DIR
 from agent_lab.workspace_roots import resolve_workspace_roots, workspace_label
 
 # Directory/file names hidden from the tree everywhere (vcs/build/cache noise).

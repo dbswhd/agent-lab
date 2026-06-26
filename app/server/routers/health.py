@@ -15,6 +15,7 @@ from agent_lab.agent_preflight import build_agent_preflight
 from agent_lab.readiness import build_readiness_payload
 from agent_lab.api_diagnostics import build_diagnostics_payload
 from agent_lab.runtime_flags import build_flags_payload
+from agent_lab.run_profile import profile_catalog
 from agent_lab.native_folder_picker import pick_folder_native
 from agent_lab.session import SESSIONS_DIR
 from agent_lab.session_setup import session_setup_options
@@ -80,6 +81,12 @@ def health_codex_proxy() -> dict[str, Any]:
 def health_flags(category: str | None = None) -> dict[str, Any]:
     """AGENT_LAB_* env flag registry with active values (discoverability)."""
     return build_flags_payload(category=category)
+
+
+@router.get("/profiles")
+def run_profiles() -> dict[str, Any]:
+    """Run profile catalog — four named flag presets (fast|balanced|thorough|autonomous)."""
+    return profile_catalog()
 
 
 @router.get("/health/readiness")

@@ -228,6 +228,37 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "Code-memory mode: mock | index (default mock when enabled)",
         default="mock",
     ),
+    FlagDef(
+        "AGENT_LAB_AUTO_APPROVE_THRESHOLD",
+        "feature",
+        "Trust-gated auto-approval max risk tier: low | medium (disabled if unset)",
+    ),
+    FlagDef(
+        "AGENT_LAB_AUTO_APPROVE_TIMEOUT_SEC",
+        "feature",
+        "Human override window before auto-approval fires (default 30s; 0=immediate)",
+        default="30",
+    ),
+    FlagDef(
+        "AGENT_LAB_WISDOM_MCP",
+        "feature",
+        "§5 Phase 1 cross-session Wisdom Index MCP (read+write, default off)",
+    ),
+    FlagDef(
+        "AGENT_LAB_WISDOM_PATH",
+        "feature",
+        "Override path to wisdom.jsonl (default .agent-lab/wisdom.jsonl)",
+    ),
+    FlagDef(
+        "AGENT_LAB_ROOM_PRESET",
+        "feature",
+        "Default Room Preset (fast|consensus|expert_pool|producer_reviewer|pipeline|supervisor)",
+    ),
+    FlagDef(
+        "AGENT_LAB_RUN_PROFILE",
+        "feature",
+        "Operational profile that sets flag defaults (fast|balanced|thorough|autonomous)",
+    ),
     FlagDef("AGENT_LAB_CLARIFIER", "feature", "Short-topic clarifier SSE before agents"),
     FlagDef(
         "AGENT_LAB_CLARIFIER_ENGINE",

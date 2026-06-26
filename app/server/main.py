@@ -41,11 +41,13 @@ from app.server.routers import (  # noqa: E402
     context_layers,
     dev_preview,
     eval_memory,
+    evidence_api,
     gateway,
     health,
     human_inbox,
     mission_loop,
     mission_os,
+    openai_compat,
     plan_execute,
     plan_workflow,
     room,
@@ -69,6 +71,14 @@ def _api_startup() -> None:
     from agent_lab.daemon_state import mark_daemon_started
     from agent_lab.mission_scheduler import start_mission_scheduler_background
 
+    try:
+        from agent_lab.run_profile import apply_run_profile, default_run_profile
+
+        applied = apply_run_profile(default_run_profile())
+        if applied:
+            write_boot_line(f"run profile applied flags: {list(applied.keys())}")
+    except Exception as exc:
+        write_boot_line(f"run profile apply failed: {exc}")
     try:
         bootstrap_room_auth_on_startup()
     except Exception as exc:
@@ -142,6 +152,7 @@ for router in (
     context_layers.router,
     dev_preview.router,
     eval_memory.router,
+    evidence_api.router,
     gateway.router,
     sessions.router,
     session_tasks.router,
@@ -149,6 +160,7 @@ for router in (
     human_inbox.router,
     mission_loop.router,
     mission_os.router,
+    openai_compat.router,
     plan_execute.router,
     plan_workflow.router,
     skill_drafts.router,

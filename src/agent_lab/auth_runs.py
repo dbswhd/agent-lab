@@ -103,7 +103,10 @@ def _watch_run(run: AuthRun, spec: ProviderSpec) -> None:
         try:
             ready, _, _ = select.select([run.fd], [], [], 0.1)
             if ready:
-                chunk = os.read(run.fd, 4096).decode("utf-8", errors="replace")
+                try:
+                    chunk = os.read(run.fd, 4096).decode("utf-8", errors="replace")
+                except OSError:
+                    chunk = ""  # EIO when PTY slave closes
                 if chunk:
                     chunks.append(chunk)
                     _append_event(run, {"type": "output", "data": chunk})
@@ -111,9 +114,12 @@ def _watch_run(run: AuthRun, spec: ProviderSpec) -> None:
                         safe_url = _safe_auth_url(spec, raw_url)
                         if safe_url:
                             _append_event(run, {"type": "auth_url", "url": safe_url})
+        except OSError:
+            pass  # select failure; fall through to waitpid
+        try:
             pid, status = os.waitpid(run.pid, os.WNOHANG)
         except OSError:
-            pid, status = run.pid, 1
+            pid, status = run.pid, 0  # ECHILD: already reaped, assume success
         if pid == 0:
             continue
         with run.lock:

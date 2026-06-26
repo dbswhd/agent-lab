@@ -505,6 +505,23 @@ def _finalize_dry_run(
             notify_merge_ready(folder, execution)
         except Exception:
             pass
+        from agent_lab.auto_approve_gate import evaluate_auto_approve, mark_auto_approve_eligible
+
+        _gate = evaluate_auto_approve(execution, read_run_meta(folder))
+        if _gate.eligible:
+            mark_auto_approve_eligible(execution, _gate)
+            _exec_id = execution.get("id", "")
+
+            def _stamp_auto(run: dict[str, Any]) -> dict[str, Any]:
+                rows = list(run.get("executions") or [])
+                for _i, _row in enumerate(rows):
+                    if _row.get("id") == _exec_id:
+                        rows[_i] = execution
+                        break
+                run["executions"] = rows
+                return run
+
+            patch_run_meta(folder, _stamp_auto)
 
 
 def run_dry_run(

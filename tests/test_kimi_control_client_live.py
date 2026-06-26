@@ -76,6 +76,7 @@ async def _fake_ws_handler(websocket: Any) -> None:
 
 @pytest.fixture
 def fake_ws_server() -> ControlEndpoint:
+    pytest.importorskip("websockets")
     import websockets
 
     ready = threading.Event()
@@ -200,6 +201,7 @@ async def _fake_ws_handler_complete_without_text(websocket: Any) -> None:
 
 @pytest.fixture
 def fake_ws_server_snapshot_body() -> ControlEndpoint:
+    pytest.importorskip("websockets")
     import websockets
 
     ready = threading.Event()

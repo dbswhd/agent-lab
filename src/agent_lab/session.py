@@ -1,18 +1,16 @@
+from __future__ import annotations
+
 import json
 import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from agent_lab.graph import GraphState
-from agent_lab.invoke import model_name
+if TYPE_CHECKING:
+    from agent_lab.graph import GraphState
 
-from agent_lab.app_config import apply_config_env, resolve_sessions_dir  # noqa: E402
-
-apply_config_env()
-
-_DEFAULT_SESSIONS = resolve_sessions_dir()
-SESSIONS_DIR = Path(os.getenv("AGENT_LAB_SESSIONS_DIR", _DEFAULT_SESSIONS))
+from agent_lab.session_paths import SESSIONS_DIR  # noqa: F401
 
 
 def slugify(topic: str) -> str:
@@ -48,6 +46,8 @@ def build_transcript(state: GraphState) -> str:
 
 
 def save_session(state: GraphState, base: Path | None = None) -> Path:
+    from agent_lab.invoke import model_name
+
     folder = session_dir(state["topic"], base=base)
     now = datetime.now(timezone.utc).isoformat()
 

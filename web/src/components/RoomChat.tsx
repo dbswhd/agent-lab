@@ -3729,7 +3729,7 @@ export function RoomChat({
                   {availablePresets.length > 0 ? (
                     <div className="room-preset-bar" role="group" aria-label="Room preset">
                       {availablePresets
-                        .filter((p) => ["fast", "consensus", "supervisor"].includes(p.id))
+                        .filter((p) => ["fast", "supervisor"].includes(p.id))
                         .map((p) => (
                           <button
                             key={p.id}

@@ -252,7 +252,7 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
     FlagDef(
         "AGENT_LAB_ROOM_PRESET",
         "feature",
-        "Default Room Preset (fast|consensus|expert_pool|producer_reviewer|pipeline|supervisor)",
+        "Default Room Preset (fast|supervisor)",
     ),
     FlagDef(
         "AGENT_LAB_RUN_PROFILE",

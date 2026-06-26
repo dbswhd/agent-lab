@@ -8,9 +8,12 @@ from agent_lab.room_preset import (
     RoomPresetConfig,
     default_room_preset,
     list_presets,
+    normalize_role_policy,
     preset_catalog,
+    preset_role_policy,
     preset_turn_profile,
     resolve_preset,
+    resolve_role_policy,
 )
 
 _VALID_TURN_PROFILES = frozenset(
@@ -23,36 +26,19 @@ def test_resolve_preset_fast() -> None:
     assert cfg is not None
     assert cfg.preset == "fast"
     assert cfg.turn_profile == "quick"
-
-
-def test_resolve_preset_consensus() -> None:
-    cfg = resolve_preset("consensus")
-    assert cfg is not None
-    assert cfg.turn_profile == "team"
-
-
-def test_resolve_preset_pipeline_maps_to_specialist() -> None:
-    cfg = resolve_preset("pipeline")
-    assert cfg is not None
-    assert cfg.turn_profile == "specialist"
-
-
-def test_resolve_preset_producer_reviewer_maps_to_verified() -> None:
-    cfg = resolve_preset("producer_reviewer")
-    assert cfg is not None
-    assert cfg.turn_profile == "verified"
+    assert cfg.role_policy == "off"
 
 
 def test_resolve_preset_supervisor_maps_to_loop() -> None:
     cfg = resolve_preset("supervisor")
     assert cfg is not None
     assert cfg.turn_profile == "loop"
+    assert cfg.role_policy == "auto"
 
 
-def test_resolve_preset_expert_pool_maps_to_team() -> None:
-    cfg = resolve_preset("expert_pool")
-    assert cfg is not None
-    assert cfg.turn_profile == "team"
+def test_removed_presets_return_none() -> None:
+    for legacy in ("consensus", "expert_pool", "producer_reviewer", "pipeline"):
+        assert resolve_preset(legacy) is None
 
 
 def test_resolve_preset_unknown_returns_none() -> None:
@@ -67,7 +53,6 @@ def test_resolve_preset_none_returns_none() -> None:
 def test_resolve_preset_case_insensitive() -> None:
     assert resolve_preset("FAST") is not None
     assert resolve_preset("Supervisor") is not None
-    assert resolve_preset("PIPELINE") is not None
 
 
 def test_default_room_preset_unset(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -81,23 +66,23 @@ def test_default_room_preset_valid(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_default_room_preset_invalid(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("AGENT_LAB_ROOM_PRESET", "ultra")
+    monkeypatch.setenv("AGENT_LAB_ROOM_PRESET", "consensus")
     assert default_room_preset() is None
 
 
 def test_default_room_preset_case_normalized(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("AGENT_LAB_ROOM_PRESET", "CONSENSUS")
-    assert default_room_preset() == "consensus"
+    monkeypatch.setenv("AGENT_LAB_ROOM_PRESET", "SUPERVISOR")
+    assert default_room_preset() == "supervisor"
 
 
 def test_list_presets_count() -> None:
     presets = list_presets()
-    assert len(presets) == 6
+    assert len(presets) == 2
 
 
 def test_list_presets_stable_order() -> None:
     ids = [cfg.preset for cfg in list_presets()]
-    assert ids == ["fast", "consensus", "expert_pool", "producer_reviewer", "pipeline", "supervisor"]
+    assert ids == ["fast", "supervisor"]
 
 
 def test_list_presets_all_configs() -> None:
@@ -109,7 +94,8 @@ def test_list_presets_all_configs() -> None:
 
 def test_preset_turn_profile_resolves_known() -> None:
     assert preset_turn_profile("fast") == "quick"
-    assert preset_turn_profile("pipeline") == "specialist"
+    assert preset_turn_profile("supervisor") == "loop"
+    assert preset_turn_profile("consensus", fallback="discuss") == "discuss"
 
 
 def test_preset_turn_profile_fallback_on_unknown() -> None:
@@ -120,11 +106,32 @@ def test_preset_turn_profile_fallback_on_none() -> None:
     assert preset_turn_profile(None, fallback="team") == "team"
 
 
+def test_preset_role_policy() -> None:
+    assert preset_role_policy("fast") == "off"
+    assert preset_role_policy("supervisor") == "auto"
+    assert preset_role_policy("consensus") == "auto"
+
+
+def test_normalize_role_policy() -> None:
+    assert normalize_role_policy("force") == "force"
+    assert normalize_role_policy("OFF") == "off"
+    assert normalize_role_policy("bogus") == "auto"
+
+
+def test_resolve_role_policy_explicit_run_meta() -> None:
+    assert resolve_role_policy({"role_policy": "force"}) == "force"
+
+
+def test_resolve_role_policy_from_room_preset() -> None:
+    assert resolve_role_policy({"room_preset": "supervisor"}) == "auto"
+    assert resolve_role_policy({"room_preset": "fast"}) == "off"
+
+
 def test_preset_catalog_shape() -> None:
     cat = preset_catalog()
     assert "presets" in cat
     assert "default" in cat
-    assert len(cat["presets"]) == 6
+    assert len(cat["presets"]) == 2
 
 
 def test_preset_catalog_preset_fields() -> None:
@@ -133,6 +140,7 @@ def test_preset_catalog_preset_fields() -> None:
         assert "id" in row
         assert "turn_profile" in row
         assert "description" in row
+        assert "role_policy" in row
         assert row["turn_profile"] in _VALID_TURN_PROFILES
 
 

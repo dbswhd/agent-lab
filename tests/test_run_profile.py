@@ -105,6 +105,19 @@ def test_autonomous_profile_has_mission_loop() -> None:
     assert cfg is not None
     assert cfg.flags.get("AGENT_LAB_MISSION_LOOP") == "1"
     assert cfg.flags.get("AGENT_LAB_AUTO_APPROVE_THRESHOLD") == "medium"
+    assert cfg.flags.get("AGENT_LAB_ROOM_PRESET") == "supervisor"
+
+
+def test_balanced_profile_uses_supervisor_preset() -> None:
+    cfg = resolve_profile("balanced")
+    assert cfg is not None
+    assert cfg.flags.get("AGENT_LAB_ROOM_PRESET") == "supervisor"
+
+
+def test_thorough_profile_uses_supervisor_preset() -> None:
+    cfg = resolve_profile("thorough")
+    assert cfg is not None
+    assert cfg.flags.get("AGENT_LAB_ROOM_PRESET") == "supervisor"
 
 
 def test_thorough_profile_has_adversarial_and_judge() -> None:

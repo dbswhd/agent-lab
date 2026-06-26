@@ -158,7 +158,16 @@ def run_consensus_agent_rounds(
             cat_dict["advisor_source"] = _hint.source
             cat_dict["advisor_combo_id"] = getattr(_hint, "combo_id", "") or ""
         run_meta["_turn_category"] = cat_dict
-        run_meta["_turn_roles"] = resolve_role_plan(route=route, agents=active, hint=_hint)
+        from agent_lab.room_preset import resolve_role_policy
+
+        _role_policy = resolve_role_policy(run_meta)
+        run_meta["role_policy"] = _role_policy
+        run_meta["_turn_roles"] = resolve_role_plan(
+            route=route,
+            agents=active,
+            hint=_hint,
+            policy=_role_policy,
+        )
 
     def _harvest_discuss_objections(thread: list[ChatMessage]) -> None:
         """충돌을 상태로 — discuss CHALLENGE/BLOCK을 run.json objections에 등록 (P3)."""

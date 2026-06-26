@@ -9,10 +9,12 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
     from agent_lab.topic_router import CategoryRoute
+
+RolePolicy = Literal["auto", "force", "off"]
 
 _FALSE = frozenset({"0", "false", "no", "off"})
 
@@ -78,31 +80,17 @@ _CWD_ROLE_TO_ROLE: dict[str, str] = {
 }
 
 
-def resolve_role_plan(
-    *,
-    route: CategoryRoute,
-    agents: list[str],
-    hint: Any | None = None,
-) -> dict[str, str]:
-    """카테고리·에이전트 강점 기반 역할 배정.
+def _apply_hint_overrides(result: dict[str, str], agents: list[str], hint: Any | None) -> dict[str, str]:
+    if hint is None:
+        return result
+    overrides: dict[str, str] = getattr(hint, "role_overrides", {}) or {}
+    for agent, role_id in overrides.items():
+        if agent in agents and role_id in _ROLES:
+            result[agent] = role_id
+    return result
 
-    - quick/trading → {} (역할 배정 없음)
-    - standard → cwd_role 기반 기본 배정
-    - deep → codex를 critic으로 격상 (deeper analysis)
-    - critical → codex=critic + claude=synthesizer (cross-proposal synthesis)
-    Kill switch: AGENT_LAB_ROOM_ROLES=0 → 항상 {}
 
-    hint: optional SetupHint from feedback_advisor (Phase B).
-    hint.role_overrides가 있으면 기본 배정을 agent 단위로 override.
-    기존 무인자 호출부 동작 불변.
-    """
-    if not _roles_enabled():
-        return {}
-
-    category = route.category
-    if category in ("quick", "trading"):
-        return {}
-
+def _cwd_role_plan(agents: list[str]) -> dict[str, str]:
     from agent_lab.room_agent_capabilities import DEFAULT_CAPABILITIES
 
     result: dict[str, str] = {}
@@ -112,6 +100,51 @@ def resolve_role_plan(
         role = _CWD_ROLE_TO_ROLE.get(cwd_role)
         if role:
             result[agent] = role
+    return result
+
+
+def _force_role_plan(agents: list[str], hint: Any | None = None) -> dict[str, str]:
+    """Proposer/Critic (etc.) from cwd_role — ignores quick/trading category skips."""
+    result = _cwd_role_plan(agents)
+    if len(agents) >= 2 and "proposer" not in result.values():
+        result.setdefault(agents[0], "proposer")
+        for agent in agents[1:]:
+            if agent not in result:
+                result[agent] = "critic"
+                break
+    return _apply_hint_overrides(result, agents, hint)
+
+
+def resolve_role_plan(
+    *,
+    route: CategoryRoute,
+    agents: list[str],
+    hint: Any | None = None,
+    policy: RolePolicy | str = "auto",
+) -> dict[str, str]:
+    """카테고리·에이전트 강점 기반 역할 배정.
+
+    policy:
+    - auto: category + cwd_role + advisor (quick/trading → {})
+    - force: cwd_role Proposer/Critic always (category skip ignored)
+    - off: always {}
+
+    Kill switch: AGENT_LAB_ROOM_ROLES=0 → always {}
+
+    hint: optional SetupHint from feedback_advisor (Phase B).
+    hint.role_overrides가 있으면 기본 배정을 agent 단위로 override.
+    """
+    policy_norm = str(policy or "auto").strip().lower()
+    if policy_norm == "off" or not _roles_enabled():
+        return {}
+    if policy_norm == "force":
+        return _force_role_plan(agents, hint=hint)
+
+    category = route.category
+    if category in ("quick", "trading"):
+        return {}
+
+    result = _cwd_role_plan(agents)
 
     if category in ("deep", "critical") and "codex" in result:
         result["codex"] = "critic"
@@ -119,14 +152,7 @@ def resolve_role_plan(
     if category == "critical" and "claude" in result:
         result["claude"] = "synthesizer"
 
-    # Phase B: advisor hint overrides (per-agent, skip unknown agents/roles)
-    if hint is not None:
-        overrides: dict[str, str] = getattr(hint, "role_overrides", {}) or {}
-        for agent, role_id in overrides.items():
-            if agent in agents and role_id in _ROLES:
-                result[agent] = role_id
-
-    return result
+    return _apply_hint_overrides(result, agents, hint)
 
 
 def agent_subset_for_route(

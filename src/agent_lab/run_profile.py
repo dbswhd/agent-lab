@@ -5,8 +5,8 @@ always take precedence over profile defaults (profiles only fill in unset flags)
 
 Profiles:
   fast        — single agent, auto-approve low-risk, Oracle mock
-  balanced    — 3-agent consensus, human gate, Oracle live (default)
-  thorough    — 3-agent + adversarial + live judge, human gate, Oracle live
+  balanced    — supervisor preset, human gate, Oracle live (default)
+  thorough    — supervisor + adversarial + live judge, human gate, Oracle live
   autonomous  — mission loop + auto-approve medium-risk, Oracle live
 """
 
@@ -41,9 +41,9 @@ _PROFILE_CONFIGS: dict[str, RunProfileConfig] = {
     ),
     "balanced": RunProfileConfig(
         profile="balanced",
-        description="3-agent consensus, human gate on every change, Oracle live — safe default",
+        description="Supervisor preset, human gate on every change, Oracle live — safe default",
         flags={
-            "AGENT_LAB_ROOM_PRESET": "consensus",
+            "AGENT_LAB_ROOM_PRESET": "supervisor",
             "AGENT_LAB_ORACLE_LIVE": "1",
             "AGENT_LAB_ADVERSARIAL_LIVE": "",
             "AGENT_LAB_JUDGE_LIVE": "",
@@ -51,9 +51,9 @@ _PROFILE_CONFIGS: dict[str, RunProfileConfig] = {
     ),
     "thorough": RunProfileConfig(
         profile="thorough",
-        description="3-agent + adversarial gate + live judge, human gate — maximum verification",
+        description="Supervisor + adversarial gate + live judge — maximum verification",
         flags={
-            "AGENT_LAB_ROOM_PRESET": "consensus",
+            "AGENT_LAB_ROOM_PRESET": "supervisor",
             "AGENT_LAB_ORACLE_LIVE": "1",
             "AGENT_LAB_ADVERSARIAL_LIVE": "1",
             "AGENT_LAB_JUDGE_LIVE": "1",

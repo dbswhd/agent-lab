@@ -26,11 +26,16 @@ from pydantic import BaseModel, Field
 router = APIRouter(prefix="/v1")
 
 _MODEL_PRESET: dict[str, str] = {
-    "gpt-4": "consensus",
-    "gpt-4o": "consensus",
+    "gpt-4": "supervisor",
+    "gpt-4o": "supervisor",
     "gpt-3.5-turbo": "fast",
     "agent-lab-fast": "fast",
-    "agent-lab-balanced": "consensus",
+    "agent-lab-balanced": "supervisor",
+    "agent-lab-thorough": "supervisor",
+}
+
+_RUN_PROFILE_FOR_MODEL: dict[str, str] = {
+    "agent-lab-balanced": "balanced",
     "agent-lab-thorough": "thorough",
 }
 
@@ -50,7 +55,7 @@ class ChatCompletionRequest(BaseModel):
 
 
 def _resolve_preset(model: str) -> str:
-    return _MODEL_PRESET.get(model.strip().lower(), "consensus")
+    return _MODEL_PRESET.get(model.strip().lower(), "supervisor")
 
 
 def _extract_topic(messages: list[_Message]) -> str:
@@ -126,12 +131,20 @@ def _run_room_sync(
     topic: str,
     preset: str,
     event_q: "queue.Queue[dict[str, Any] | None]",
+    *,
+    model_id: str = "",
 ) -> tuple[str | None, str | None]:
     """Run a Room turn in a background thread, push SSE events to event_q."""
     from agent_lab.room import run_room
     from agent_lab.room_preset import preset_turn_profile
+    from agent_lab.run_profile import apply_run_profile
 
-    turn_profile = preset_turn_profile(preset, fallback="quick")
+    profile_name = _RUN_PROFILE_FOR_MODEL.get(model_id.strip().lower())
+    if profile_name:
+        apply_run_profile(profile_name, overwrite=False)
+
+    turn_profile = preset_turn_profile(preset, fallback="supervisor")
+    consensus_mode = turn_profile in {"loop", "free", "review", "verified", "specialist"}
     session_id: str | None = None
     synthesized: str | None = None
 
@@ -146,6 +159,7 @@ def _run_room_sync(
             topic,
             synthesize=False,
             turn_profile=turn_profile,
+            consensus_mode=consensus_mode,
             on_event=on_event,
         )
         session_id = folder.name
@@ -186,7 +200,7 @@ async def chat_completions(request: Request, body: ChatCompletionRequest) -> Any
             session_id: list[str | None] = [None]
 
             def _worker():
-                sid, _ = _run_room_sync(topic, preset, event_q)
+                sid, _ = _run_room_sync(topic, preset, event_q, model_id=model_id)
                 session_id[0] = sid
 
             t = threading.Thread(target=_worker, daemon=True)
@@ -221,7 +235,7 @@ async def chat_completions(request: Request, body: ChatCompletionRequest) -> Any
         content_holder: list[str | None] = [None]
 
         def _worker():
-            sid, content = _run_room_sync(topic, preset, event_q)
+            sid, content = _run_room_sync(topic, preset, event_q, model_id=model_id)
             session_id_holder[0] = sid
             content_holder[0] = content
 
@@ -253,8 +267,8 @@ async def list_models() -> dict[str, Any]:
         {"id": "agent-lab-fast", "object": "model", "created": now, "owned_by": "agent-lab",
          "description": "Single-agent fast response (fast preset)"},
         {"id": "agent-lab-balanced", "object": "model", "created": now, "owned_by": "agent-lab",
-         "description": "3-agent consensus (consensus preset)"},
+         "description": "Supervisor preset — multi-agent consensus + mission loop"},
         {"id": "agent-lab-thorough", "object": "model", "created": now, "owned_by": "agent-lab",
-         "description": "3-agent + adversarial + live judge (thorough preset)"},
+         "description": "Supervisor + adversarial + live judge (thorough run profile)"},
     ]
     return {"object": "list", "data": models}

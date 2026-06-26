@@ -78,6 +78,20 @@ class TestResolveRolePlan:
         assert resolve_role_plan(route=_route("standard"), agents=[]) == {}
 
 
+class TestRolePolicy:
+    def test_force_assigns_on_quick(self):
+        roles = resolve_role_plan(route=_route("quick"), agents=AGENTS, policy="force")
+        assert roles.get("cursor") == "proposer"
+        assert roles.get("claude") == "critic"
+
+    def test_off_returns_empty_even_for_standard(self):
+        assert resolve_role_plan(route=_route("standard"), agents=AGENTS, policy="off") == {}
+
+    def test_force_respects_kill_switch(self, monkeypatch):
+        monkeypatch.setenv("AGENT_LAB_ROOM_ROLES", "0")
+        assert resolve_role_plan(route=_route("standard"), agents=AGENTS, policy="force") == {}
+
+
 # ── 2. agent_subset_for_route ─────────────────────────────────────────────────
 
 class TestAgentSubsetForRoute:

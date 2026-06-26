@@ -1,7 +1,6 @@
 """Room Preset System (P1-5) — named configurations mapping to Harness team patterns.
 
-Six presets cover the spectrum from single-shot to full mission loop, each resolving
-to an existing turn_profile without adding new execution infrastructure.
+Two presets: fast (single-agent Q&A) and supervisor (multi-agent consensus + mission loop).
 """
 
 from __future__ import annotations
@@ -10,7 +9,10 @@ import os
 from dataclasses import dataclass
 from typing import Any, Literal
 
-RoomPreset = Literal["fast", "consensus", "expert_pool", "producer_reviewer", "pipeline", "supervisor"]
+RoomPreset = Literal["fast", "supervisor"]
+RolePolicy = Literal["auto", "force", "off"]
+
+_VALID_ROLE_POLICIES = frozenset({"auto", "force", "off"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -19,7 +21,7 @@ class RoomPresetConfig:
     turn_profile: str
     description: str
     max_agents: int | None = None  # None = no cap; set for presets with fixed team sizes
-    role_policy: str = "auto"  # force | auto | off — when to activate role assignments
+    role_policy: RolePolicy = "auto"  # force | auto | off — role assignment policy
 
 
 _PRESET_CONFIGS: dict[str, RoomPresetConfig] = {
@@ -28,37 +30,23 @@ _PRESET_CONFIGS: dict[str, RoomPresetConfig] = {
         turn_profile="quick",
         description="Single-agent instant response — no debate, no consensus",
         max_agents=1,
-    ),
-    "consensus": RoomPresetConfig(
-        preset="consensus",
-        turn_profile="team",
-        description="3-agent consensus — cursor · codex · claude discuss to agreement",
-        max_agents=3,
-    ),
-    "expert_pool": RoomPresetConfig(
-        preset="expert_pool",
-        turn_profile="team",
-        description="Expert-subset routing — task-matched agents selected from the pool",
-    ),
-    "producer_reviewer": RoomPresetConfig(
-        preset="producer_reviewer",
-        turn_profile="verified",
-        description="Producer 제안 → Reviewer 검증 → 재조합 합성 → Oracle 검증",
-        max_agents=2,
-        role_policy="force",
-    ),
-    "pipeline": RoomPresetConfig(
-        preset="pipeline",
-        turn_profile="specialist",
-        description="Sequential specialist pipeline — R1 researcher feeds R2 author",
-        max_agents=2,
+        role_policy="off",
     ),
     "supervisor": RoomPresetConfig(
         preset="supervisor",
         turn_profile="loop",
-        description="Mission Loop with human-gated plan — full autonomous execute cycle",
+        description="Multi-agent consensus, plan, verify, and mission loop execute",
+        role_policy="auto",
     ),
 }
+
+
+def normalize_role_policy(raw: str | None) -> RolePolicy:
+    policy = (raw or "auto").strip().lower()
+    if policy in _VALID_ROLE_POLICIES:
+        return policy  # type: ignore[return-value]
+    return "auto"
+
 
 def resolve_preset(preset: str | None) -> RoomPresetConfig | None:
     """Return the config for a preset name, or None if unknown/unset."""
@@ -88,6 +76,24 @@ def preset_max_agents(preset: str | None) -> int | None:
     """Return the agent cap for a preset, or None if uncapped."""
     cfg = resolve_preset(preset)
     return cfg.max_agents if cfg is not None else None
+
+
+def preset_role_policy(preset: str | None) -> RolePolicy:
+    """Return role_policy for a preset name, defaulting to auto when unknown."""
+    cfg = resolve_preset(preset)
+    return cfg.role_policy if cfg is not None else "auto"
+
+
+def resolve_role_policy(run_meta: dict[str, Any] | None) -> RolePolicy:
+    """Session role policy: explicit run_meta.role_policy wins, else room_preset default."""
+    if isinstance(run_meta, dict):
+        raw = str(run_meta.get("role_policy") or "").strip().lower()
+        if raw in _VALID_ROLE_POLICIES:
+            return raw  # type: ignore[return-value]
+        preset = str(run_meta.get("room_preset") or "").strip().lower()
+        if preset:
+            return preset_role_policy(preset)
+    return "auto"
 
 
 def preset_catalog() -> dict[str, Any]:

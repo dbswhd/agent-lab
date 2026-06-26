@@ -1754,8 +1754,10 @@ export type RunRoomOptions = {
   agentThreadBindings?: Record<string, string>;
   /** Always general for now; workflow templates deferred. */
   sessionTemplate?: string;
-  /** Room preset id (fast | consensus | expert_pool | producer_reviewer | pipeline | supervisor). */
+  /** Room preset id (fast | supervisor). */
   roomPreset?: string;
+  /** Role assignment policy override (auto | force | off). */
+  rolePolicy?: string;
   /** Abort in-flight SSE (UI stop). */
   signal?: AbortSignal;
 };
@@ -1836,6 +1838,9 @@ export async function runRoom(
   form.append("research_mode", String(opts?.researchMode ?? false));
   if (opts?.roomPreset?.trim()) {
     form.append("preset", opts.roomPreset.trim());
+  }
+  if (opts?.rolePolicy?.trim()) {
+    form.append("role_policy", opts.rolePolicy.trim());
   }
   form.append("workspace_id", opts?.workspaceId ?? "agent-lab");
   if (opts?.workspacePath?.trim()) {

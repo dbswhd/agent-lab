@@ -49,12 +49,12 @@ def test_extract_system_absent() -> None:
     assert _extract_system(msgs) is None
 
 
-def test_resolve_preset_gpt4_maps_to_consensus() -> None:
-    assert _resolve_preset("gpt-4") == "consensus"
+def test_resolve_preset_gpt4_maps_to_supervisor() -> None:
+    assert _resolve_preset("gpt-4") == "supervisor"
 
 
-def test_resolve_preset_gpt4o_maps_to_consensus() -> None:
-    assert _resolve_preset("gpt-4o") == "consensus"
+def test_resolve_preset_gpt4o_maps_to_supervisor() -> None:
+    assert _resolve_preset("gpt-4o") == "supervisor"
 
 
 def test_resolve_preset_gpt35_maps_to_fast() -> None:
@@ -66,11 +66,11 @@ def test_resolve_preset_agent_lab_fast() -> None:
 
 
 def test_resolve_preset_agent_lab_thorough() -> None:
-    assert _resolve_preset("agent-lab-thorough") == "thorough"
+    assert _resolve_preset("agent-lab-thorough") == "supervisor"
 
 
-def test_resolve_preset_unknown_defaults_to_consensus() -> None:
-    assert _resolve_preset("unknown-model") == "consensus"
+def test_resolve_preset_unknown_defaults_to_supervisor() -> None:
+    assert _resolve_preset("unknown-model") == "supervisor"
 
 
 def test_build_completion_shape() -> None:

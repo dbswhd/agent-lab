@@ -41,7 +41,13 @@ from agent_lab.turn_modes import (
     patch_run_mode_contract,
     resolve_mode_contract,
 )
-from agent_lab.room_preset import default_room_preset, preset_catalog, preset_turn_profile, resolve_preset
+from agent_lab.room_preset import (
+    default_room_preset,
+    preset_catalog,
+    preset_role_policy,
+    preset_turn_profile,
+    resolve_preset,
+)
 
 from app.server.deps import (
     ContextPreviewRequest,
@@ -216,6 +222,7 @@ async def create_room_run(
     efficiency_mode: bool = Form(False),
     turn_profile: str = Form("discuss"),
     preset: str = Form(""),
+    role_policy: str = Form(""),
     research_mode: bool = Form(False),
     workspace_id: str = Form("agent-lab"),
     workspace_path: str | None = Form(None),
@@ -359,6 +366,11 @@ async def create_room_run(
 
         def _stamp_preset(run: dict[str, Any]) -> dict[str, Any]:
             run["room_preset"] = preset_norm
+            explicit = (role_policy or "").strip().lower()
+            if explicit in ("auto", "force", "off"):
+                run["role_policy"] = explicit
+            else:
+                run["role_policy"] = preset_role_policy(preset_norm)
             return run
 
         patch_run_meta(folder, _stamp_preset)

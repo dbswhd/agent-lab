@@ -14,10 +14,6 @@ from agent_lab.consensus_agreements import (
     pending_consensus_agreements,
 )
 
-# Backward-compatible module-level defaults (prefer agent_context_limits() at runtime).
-RECENT_TURNS = agent_context_limits().recent_turns
-MAX_THREAD_CHARS = agent_context_limits().max_thread_chars
-
 _STATUS_TAG_PREFIXES = ("[PROPOSED:", "[CONFIRMED-BY-HUMAN:")
 
 _AGREED_HEADERS = (
@@ -52,6 +48,16 @@ ANALYSIS_TURN_GUIDANCE = """\
 - `[PROPOSED:]` / 구현·수정 제안 / 반박 / 「이의 없습니다」는 **이 턴에서 쓰지 마세요**.
 - 동료와 겹치면 짧게 — 같은 파일을 반복 탐색하지 말고, 각자 다른 각도(구조·리스크·데이터)를 보세요.
 - 모르면 「확인 필요: …」 한 줄로 남기세요.
+"""
+
+FAST_TURN_GUIDANCE = """\
+[Fast — solo agent · direct answer]
+- **You are the only agent this turn.** Answer the Human directly; do not wait for peers or team consensus.
+- Do **not** use `[PROPOSED:]` tables, ENDORSE/AMEND workflows, or "동료 의견을 기다립니다" / "제안에 대한 동료들의 의견".
+- Do **not** ask the Human to approve a plan.md team workflow unless they explicitly requested a plan.
+- Use workspace tools to verify repo claims, then give one **complete** reply (findings + recommendation).
+- Human Inbox tools are off — if blocked, ask briefly in chat with concrete options, not orchestration theater.
+- No envelope speech acts (ENDORSE/BLOCK/CHALLENGE) unless Human explicitly switched to Supervisor/consensus.
 """
 
 EFFICIENCY_RESPONSE_GUIDANCE = """\
@@ -139,8 +145,20 @@ KIMI_WORK_TOOL_RULES = """\
 - Coordinate with Cursor/Codex/Claude per [Multi-agent coordination]; cite peer envelope acts when responding.
 """
 
+KIMI_WORK_FAST_TOOL_RULES = """\
+[Kimi Work · Fast solo turn]
+- Read/search the workspace, then answer the Human in one complete reply.
+- No `[PROPOSED:]`, ENDORSE/AMEND, plan.md team tables, or waiting for peer reactions.
+- No Human Inbox tools — state direction questions in plain chat if truly blocked.
+- Do not claim execute/patch completion; verification and recommendations only unless Human asked to implement.
+"""
 
-def agent_tool_rules(agent: str) -> str:
+
+def agent_tool_rules(agent: str, run_meta: dict[str, Any] | None = None) -> str:
+    from agent_lab.room_preset import is_fast_room_session
+
+    if agent == "kimi_work" and is_fast_room_session(run_meta):
+        return KIMI_WORK_FAST_TOOL_RULES
     if agent == "claude":
         return CLAUDE_TOOL_RULES
     if agent == "cursor":
@@ -454,9 +472,11 @@ def _split_human_turns(messages: list[_MessageLike]) -> list[list[_MessageLike]]
 def recent_messages_by_turns(
     messages: list[_MessageLike],
     *,
-    max_turns: int = RECENT_TURNS,
+    max_turns: int | None = None,
 ) -> tuple[list[_MessageLike], int]:
     """Keep messages from the last N human turns (each turn = user + agent replies)."""
+    if max_turns is None:
+        max_turns = agent_context_limits().recent_turns
     if not messages or max_turns <= 0:
         return messages, 0
     turns = _split_human_turns(messages)
@@ -470,8 +490,10 @@ def recent_messages_by_turns(
 def trim_messages_by_chars(
     messages: list[_MessageLike],
     *,
-    max_chars: int = MAX_THREAD_CHARS,
+    max_chars: int | None = None,
 ) -> tuple[list[_MessageLike], int]:
+    if max_chars is None:
+        max_chars = agent_context_limits().max_thread_chars
     if not messages:
         return messages, 0
     total = 0
@@ -533,10 +555,12 @@ def pinned_current_turn_messages(messages: list[_MessageLike]) -> list[_MessageL
 def trim_messages_by_chars_pinned(
     messages: list[_MessageLike],
     *,
-    max_chars: int = MAX_THREAD_CHARS,
+    max_chars: int | None = None,
     pinned: list[_MessageLike] | None = None,
 ) -> tuple[list[_MessageLike], int]:
     """Char trim from the oldest side; `pinned` messages are always kept in order."""
+    if max_chars is None:
+        max_chars = agent_context_limits().max_thread_chars
     if not messages:
         return messages, 0
     pin = pinned if pinned is not None else pinned_current_turn_messages(messages)

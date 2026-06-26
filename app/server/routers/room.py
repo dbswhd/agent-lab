@@ -1,12 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import json
-import queue
-import threading
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -25,14 +24,18 @@ from agent_lab.room import (
 from agent_lab.run_control import (
     end_run,
     force_reset_run_lock,
+    is_cancelled,
     maybe_release_orphaned_run_lock,
     request_cancel,
+    reset_run_session_id,
     run_lock_recovery_hint,
     run_lock_status,
+    set_run_session_id,
     try_begin_run,
 )
 from agent_lab.runner import provider_override, run_topic_with_progress
-from agent_lab.session import SESSIONS_DIR, session_dir
+from agent_lab.session import session_dir
+from agent_lab.session_paths import active_sessions_dir
 from agent_lab.session_setup import merge_setup_permissions, seed_session_setup
 from agent_lab.agent_thread_catalog import normalize_agent_thread_bindings
 from agent_lab.turn_modes import (
@@ -59,7 +62,51 @@ from app.server.deps import (
 )
 
 router = APIRouter(prefix="/api")
-_active_run = False
+
+
+def _run_with_lock(
+    *,
+    session_id: str | None,
+    on_event: Any,
+    run_body: Any,
+    result: dict[str, Any],
+    event_q: asyncio.Queue[dict[str, Any] | None],
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    """Acquire run lock, execute sync room work, release lock (single lifecycle)."""
+    session_token = set_run_session_id(session_id)
+
+    def _emit(item: dict[str, Any] | None) -> None:
+        loop.call_soon_threadsafe(event_q.put_nowait, item)
+
+    if not try_begin_run():
+        maybe_release_orphaned_run_lock()
+        if not try_begin_run():
+            lock_msg = "a run is already in progress"
+            lock_hint = run_lock_recovery_hint()
+            result["error"] = lock_msg
+            result["run_lock"] = lock_hint
+            _emit({"type": "run_lock_blocked", **lock_hint})
+            _emit({"type": "error", "message": lock_msg})
+            _emit(None)
+            reset_run_session_id(session_token)
+            return
+
+    try:
+        run_body(on_event)
+    except Exception as e:
+        from agent_lab.run_control import RoomRunCancelled
+
+        if isinstance(e, RoomRunCancelled) or is_cancelled(session_id):
+            result["cancelled"] = True
+        else:
+            result["error"] = e
+    finally:
+        if is_cancelled(session_id):
+            _emit({"type": "run_cancelled", "message": "답변 중지됨"})
+        end_run()
+        reset_run_session_id(session_token)
+        _emit(None)
 
 
 def _agents_not_ready(agent_list: list[str]) -> list[dict[str, Any]]:
@@ -146,13 +193,11 @@ def room_context_preview(body: ContextPreviewRequest) -> dict[str, Any]:
 
 @router.post("/runs")
 def create_run(body: RunRequest) -> StreamingResponse:
-    global _active_run
     topic = body.topic.strip()
     if not topic:
         raise HTTPException(status_code=400, detail="topic required")
 
     def generate():
-        global _active_run
         if not try_begin_run():
             maybe_release_orphaned_run_lock()
             if not try_begin_run():
@@ -160,7 +205,6 @@ def create_run(body: RunRequest) -> StreamingResponse:
                 yield sse({"type": "error", "message": "a run is already in progress"})
                 return
 
-        _active_run = True
         events: list[dict[str, Any]] = []
 
         def on_step(node: str, status: str, extra: dict | None = None):
@@ -196,7 +240,6 @@ def create_run(body: RunRequest) -> StreamingResponse:
         except Exception as e:
             yield sse({"type": "error", "message": str(e), "events": events})
         finally:
-            _active_run = False
             end_run()
 
     return StreamingResponse(
@@ -208,6 +251,7 @@ def create_run(body: RunRequest) -> StreamingResponse:
 
 @router.post("/room/runs")
 async def create_room_run(
+    request: Request,
     topic: str = Form(...),
     agents: str = Form("[]"),
     synthesize: bool | None = Form(None),
@@ -322,7 +366,7 @@ async def create_room_run(
 
     folder: Path | None = None
     if session_id:
-        folder = SESSIONS_DIR / session_id
+        folder = active_sessions_dir() / session_id
         if not folder.is_dir():
             raise HTTPException(status_code=404, detail="session not found")
         if _session_hard_cap_exhausted(folder):
@@ -334,7 +378,7 @@ async def create_room_run(
                 },
             )
     else:
-        folder = session_dir(topic, base=SESSIONS_DIR)
+        folder = session_dir(topic, base=active_sessions_dir())
         (folder / "topic.txt").write_text(topic + "\n", encoding="utf-8")
         try:
             seed_session_setup(
@@ -387,12 +431,26 @@ async def create_room_run(
     use_efficiency = bool(efficiency_mode)
     profile_norm = mode_contract.runtime_turn_profile
 
-    def generate():
-        event_q: queue.SimpleQueue[dict[str, Any] | None] = queue.SimpleQueue()
+    run_session_id = folder.name if folder else None
+
+    def _cancel_on_client_disconnect() -> None:
+        request_cancel(run_session_id)
+        if folder is not None:
+            from agent_lab.mission_loop import on_global_run_cancel
+
+            try:
+                on_global_run_cancel(folder)
+            except Exception:
+                pass
+
+    async def generate():
+        event_q: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
         result: dict[str, Any] = {}
+        disconnected = False
+        loop = asyncio.get_running_loop()
 
         def on_event(typ: str, payload: dict[str, Any]) -> None:
-            event_q.put({"type": typ, **payload})
+            loop.call_soon_threadsafe(event_q.put_nowait, {"type": typ, **payload})
             if folder is not None:
                 from agent_lab.room_live_log import append_live_room_event
 
@@ -406,89 +464,63 @@ async def create_room_run(
                         return
                 append_live_room_event(folder, typ, payload)
 
-        def worker() -> None:
-            if not try_begin_run():
-                maybe_release_orphaned_run_lock()
-                if not try_begin_run():
-                    lock_msg = "a run is already in progress"
-                    lock_hint = run_lock_recovery_hint()
-                    result["error"] = lock_msg
-                    result["run_lock"] = lock_hint
-                    event_q.put({"type": "run_lock_blocked", **lock_hint})
-                    event_q.put(
-                        {
-                            "type": "error",
-                            "message": lock_msg,
-                        }
-                    )
-                    event_q.put(None)
-                    return
+        def run_body(on_event_cb: Any) -> None:
             if folder is not None:
                 from agent_lab.room_live_log import clear_live_room_log
 
                 clear_live_room_log(folder)
-            try:
-                if folder is not None:
-                    patch_run_mode_contract(folder, mode_contract)
-                if synthesize_only and session_id:
-                    plan_md, _summary = synthesize_session_plan(
-                        folder,  # type: ignore[arg-type]
-                        on_event=on_event,
-                        permissions=perm_obj,
-                        request_id=(request_id or "").strip() or None,
-                    )
-                    result["folder"] = folder
-                    result["plan_md"] = plan_md
-                elif session_id:
-                    _messages, plan_md = continue_room_round(
-                        folder,  # type: ignore[arg-type]
-                        topic,
-                        agents=agent_list,  # type: ignore[arg-type]
-                        synthesize=synthesize,
-                        parallel_rounds=parallel_rounds,
-                        on_event=on_event,
-                        permissions=perm_obj,
-                        review_mode=review_mode,
-                        consensus_mode=consensus_mode,
-                        efficiency_mode=use_efficiency,
-                        turn_profile=profile_norm,
-                        research_mode=research_mode,
-                    )
-                    result["folder"] = folder
-                    result["plan_md"] = plan_md
-                else:
-                    f, _messages, plan_md = run_room(
-                        topic,
-                        agents=agent_list,  # type: ignore[arg-type]
-                        synthesize=synthesize,
-                        parallel_rounds=parallel_rounds,
-                        on_event=on_event,
-                        session_folder=folder,
-                        permissions=perm_obj,
-                        review_mode=review_mode,
-                        consensus_mode=consensus_mode,
-                        efficiency_mode=use_efficiency,
-                        turn_profile=profile_norm,
-                        research_mode=research_mode,
-                    )
-                    result["folder"] = f
-                    result["plan_md"] = plan_md
-            except Exception as e:
-                result["error"] = e
-            finally:
-                from agent_lab.run_control import is_cancelled
-
-                if is_cancelled():
-                    event_q.put({"type": "run_cancelled", "message": "답변 중지됨"})
-                end_run()
-                event_q.put(None)
+            if folder is not None:
+                patch_run_mode_contract(folder, mode_contract)
+            if synthesize_only and session_id:
+                plan_md, _summary = synthesize_session_plan(
+                    folder,  # type: ignore[arg-type]
+                    on_event=on_event_cb,
+                    permissions=perm_obj,
+                    request_id=(request_id or "").strip() or None,
+                )
+                result["folder"] = folder
+                result["plan_md"] = plan_md
+            elif session_id:
+                _messages, plan_md = continue_room_round(
+                    folder,  # type: ignore[arg-type]
+                    topic,
+                    agents=agent_list,  # type: ignore[arg-type]
+                    synthesize=synthesize,
+                    parallel_rounds=parallel_rounds,
+                    on_event=on_event_cb,
+                    permissions=perm_obj,
+                    review_mode=review_mode,
+                    consensus_mode=consensus_mode,
+                    efficiency_mode=use_efficiency,
+                    turn_profile=profile_norm,
+                    research_mode=research_mode,
+                )
+                result["folder"] = folder
+                result["plan_md"] = plan_md
+            else:
+                f, _messages, plan_md = run_room(
+                    topic,
+                    agents=agent_list,  # type: ignore[arg-type]
+                    synthesize=synthesize,
+                    parallel_rounds=parallel_rounds,
+                    on_event=on_event_cb,
+                    session_folder=folder,
+                    permissions=perm_obj,
+                    review_mode=review_mode,
+                    consensus_mode=consensus_mode,
+                    efficiency_mode=use_efficiency,
+                    turn_profile=profile_norm,
+                    research_mode=research_mode,
+                )
+                result["folder"] = f
+                result["plan_md"] = plan_md
 
         try:
             yield sse(
                 {
                     "type": "start",
                     "topic": topic,
-                    "session_id": folder.name if folder else None,
+                    "session_id": run_session_id,
                     "workflow": "room.parallel",
                     "mode": mode_norm,
                     "synthesize": synthesize,
@@ -504,15 +536,36 @@ async def create_room_run(
                     "attachments": saved_files,
                 }
             )
-            threading.Thread(target=worker, daemon=True).start()
+            worker = loop.run_in_executor(
+                None,
+                lambda: _run_with_lock(
+                    session_id=run_session_id,
+                    on_event=on_event,
+                    run_body=run_body,
+                    result=result,
+                    event_q=event_q,
+                    loop=loop,
+                ),
+            )
             while True:
-                ev = event_q.get()
+                if await request.is_disconnected():
+                    if not disconnected:
+                        disconnected = True
+                        _cancel_on_client_disconnect()
+                try:
+                    ev = await asyncio.wait_for(event_q.get(), timeout=0.25)
+                except asyncio.TimeoutError:
+                    continue
                 if ev is None:
                     break
                 if ev.get("type") == "complete":
                     result["complete_event"] = ev
                     continue
                 yield sse(ev)
+            await worker
+            if result.get("cancelled") or is_cancelled(run_session_id):
+                yield sse({"type": "run_cancelled", "message": "답변 중지됨"})
+                return
             if "error" in result:
                 err = result["error"]
                 yield sse({"type": "run_failed", "message": str(err)})
@@ -568,12 +621,11 @@ class RoomRunCancelRequest(BaseModel):
 
 @router.post("/room/runs/cancel")
 def cancel_room_run(body: RoomRunCancelRequest | None = None) -> dict[str, Any]:
-    children_terminated = request_cancel()
+    session_id = (body.session_id if body else None) or None
+    children_terminated = request_cancel(session_id)
     released = maybe_release_orphaned_run_lock()
     mission_pause: dict[str, Any] | None = None
-    session_id = (body.session_id if body else None) or None
     if session_id:
-        from app.server.deps import session_folder_or_404
         from agent_lab.mission_loop import on_global_run_cancel
 
         folder = session_folder_or_404(session_id)

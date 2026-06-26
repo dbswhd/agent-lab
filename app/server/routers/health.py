@@ -17,7 +17,7 @@ from agent_lab.api_diagnostics import build_diagnostics_payload
 from agent_lab.runtime_flags import build_flags_payload
 from agent_lab.run_profile import profile_catalog
 from agent_lab.native_folder_picker import pick_folder_native
-from agent_lab.session import SESSIONS_DIR
+from agent_lab.session_paths import active_sessions_dir
 from agent_lab.session_setup import session_setup_options
 
 from app.server.deps import room_session_context
@@ -59,7 +59,7 @@ def health(
     run_meta: dict[str, Any] | None = None
     session_folder = None
     if session_id:
-        folder = SESSIONS_DIR / session_id
+        folder = active_sessions_dir() / session_id
         if folder.is_dir():
             session_folder = folder
             _plan_md, run_meta = room_session_context(folder)

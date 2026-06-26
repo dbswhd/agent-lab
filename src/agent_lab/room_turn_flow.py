@@ -169,6 +169,9 @@ def continue_room_round(
     _verified_loop_depth: int = 0,
 ) -> tuple[list[ChatMessage], str]:
     """Append a user turn + parallel agent replies to an existing session."""
+    from agent_lab.run_control import check_cancelled
+
+    check_cancelled()
     if not folder.is_dir():
         raise FileNotFoundError(f"session not found: {folder}")
     topic_file = folder / "topic.txt"
@@ -578,7 +581,9 @@ def run_room(
 ) -> tuple[Path, list[ChatMessage], str]:
     """Full room flow: user message → parallel agents → optional plan synthesis."""
     from agent_lab.agent_permissions import normalize_agent_permissions
+    from agent_lab.run_control import check_cancelled
 
+    check_cancelled()
     permissions = normalize_agent_permissions(permissions)
     body = topic.strip()
     if session_folder and session_folder.is_dir():

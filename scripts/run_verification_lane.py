@@ -15,7 +15,7 @@ ROOT: Final = Path(__file__).resolve().parents[1]
 if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
-from agent_lab.session import SESSIONS_DIR  # noqa: E402
+from agent_lab.session_paths import sessions_dir  # noqa: E402
 from agent_lab.subprocess_env import subprocess_env  # noqa: E402
 from agent_lab.verification_report import (  # noqa: E402
     LANE_MARKER_EXPRESSIONS,
@@ -121,7 +121,7 @@ def main() -> int:
     finished_at = utc_now()
     duration_seconds = time.monotonic() - started
     update_verification_report(
-        sessions_dir=SESSIONS_DIR,
+        sessions_dir=sessions_dir(),
         lane=lane,
         command=args.command,
         marker_expression=marker_expression,

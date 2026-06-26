@@ -46,4 +46,20 @@ describe("turn item reducer", () => {
     expect(line.split(" · ")).toHaveLength(6);
     expect(line).toContain("provider/model-with-a-long-name-5");
   });
+
+  it("replaces in-place thinking activity lines", () => {
+    let items = reduceTurnItems([], {
+      type: "agent_activity",
+      text: "[thinking] alpha",
+    });
+    items = reduceTurnItems(items, {
+      type: "agent_activity",
+      text: "[thinking] alpha beta",
+    });
+    const thinking = items.filter(
+      (item) => item.kind === "activity" && item.text.startsWith("[thinking]"),
+    );
+    expect(thinking).toHaveLength(1);
+    expect(thinking[0]?.text).toBe("[thinking] alpha beta");
+  });
 });

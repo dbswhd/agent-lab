@@ -362,7 +362,7 @@ def build_slim_consensus_bundle(
     guidance_block = "---\n" + "\n".join(guidance_parts) + f"\n---\nRespond as {label(agent)} only."
     follow_up = envelope_follow_up_block(reply_policy, context="consensus")
     connect_hint = AGENT_CONNECT_HINT.get(agent, "").strip()
-    tool_rules = agent_tool_rules(agent)
+    tool_rules = agent_tool_rules(agent, run_meta)
     meta = ContextBundleMeta(
         agent=agent,
         parallel_round=2,
@@ -739,7 +739,7 @@ def build_context_bundle(
                 "빨리 합의하는 것이 목표가 아닙니다 — 결과를 바꾸는 이견이 가치입니다."
             )
 
-    tool_rules = agent_tool_rules(agent)
+    tool_rules = agent_tool_rules(agent, run_meta)
 
     meta = ContextBundleMeta(
         agent=agent,

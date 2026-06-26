@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import sys
 from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
@@ -37,6 +38,18 @@ def setup_app_logging(*, log_dir: Path | None = None) -> Path:
         logger = logging.getLogger(name)
         logger.handlers.clear()
         logger.propagate = True
+
+    # cursor-sdk bridge ping — very chatty at INFO ("HTTP Request: POST …/Ping").
+    for name in ("httpx", "httpcore", "cursor_sdk"):
+        logging.getLogger(name).setLevel(logging.WARNING)
+
+    if (os.getenv("AGENT_LAB_QUIET_ACCESS_LOG") or "1").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }:
+        logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
     _CONFIGURED = True
     logging.getLogger("agent_lab.bootstrap").info(

@@ -296,8 +296,8 @@ def _call_one_agent(
             piece = str(data.get("text") or "")
             if not piece:
                 return
-            # Claude text_delta is incremental; Codex/Cursor often send cumulative snapshots.
-            if aid == "claude":
+            # Claude text_delta is incremental; Kimi mapper already dedupes cumulative snapshots.
+            if aid in ("claude", "kimi_work"):
                 chunks = [piece]
             else:
                 chunks = text_stream.feed(piece)

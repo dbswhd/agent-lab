@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-import os
 from collections.abc import Callable
 from contextlib import contextmanager
-from typing import Any
-
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from agent_lab import roles
-from agent_lab.invoke import invoke_role, model_name, provider
+from agent_lab.invoke import invoke_role, model_name, provider, reset_provider_override, set_provider_override
 from agent_lab.session import save_session
 
 if TYPE_CHECKING:
@@ -25,16 +22,11 @@ def provider_override(name: str | None):
     if not name:
         yield
         return
-    key = "AGENT_LAB_PROVIDER"
-    prev = os.environ.get(key)
-    os.environ[key] = name.strip().lower()
+    token = set_provider_override(name.strip().lower())
     try:
         yield
     finally:
-        if prev is None:
-            os.environ.pop(key, None)
-        else:
-            os.environ[key] = prev
+        reset_provider_override(token)
 
 
 def run_topic_with_progress(

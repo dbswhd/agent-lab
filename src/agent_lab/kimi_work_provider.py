@@ -56,7 +56,28 @@ def respond(
     inbox_mcp: bool = False,
     **_kwargs: Any,
 ) -> str:
+    folder = session_folder
+    if folder is None:
+        raise KimiWorkBridgeUnavailable(
+            "Kimi Work requires session_folder for conversation mapping",
+            code="kimi_work_session_required",
+        )
+    folder_path = Path(folder)
+
+    from agent_lab.run_meta import read_run_meta
+    from agent_lab.room_preset import is_fast_room_session
+
+    use_inbox_mcp = inbox_mcp and not is_fast_room_session(read_run_meta(folder_path))
+
     base_system = (system or KIMI_WORK_ROOM).strip()
+    if is_fast_room_session(read_run_meta(folder_path)):
+        base_system = (
+            f"{base_system}\n\n"
+            "[Fast preset — solo turn]\n"
+            "- Answer the Human directly in one reply. No peer ENDORSE/AMEND, no `[PROPOSED:]` plan tables, "
+            "no waiting for colleagues.\n"
+            "- Verify with tools first, then summarize findings and a clear recommendation."
+        )
     if request_structured_envelope:
         from agent_lab.agent_envelope import ENVELOPE_FORMAT_GUIDANCE_SHORT
         from agent_lab.structured_envelope_adapter import structured_envelope_system_addon
@@ -64,7 +85,7 @@ def respond(
         addon = structured_envelope_system_addon(compact=True)
         mirror = f"{ENVELOPE_FORMAT_GUIDANCE_SHORT}\n(Context: Loop consensus envelope)"
         base_system = f"{base_system}\n\n{addon}\n\n{mirror}"
-    if inbox_mcp:
+    if use_inbox_mcp:
         from agent_lab.kimi_work_inbox_bridge import inbox_mcp_system_addon
 
         inbox_addon = inbox_mcp_system_addon(compact=True)
@@ -73,21 +94,18 @@ def respond(
     if on_activity:
         on_activity(f"[net] {model_label()} daimon/conversations.send")
 
-    folder = session_folder
-    if folder is None:
-        raise KimiWorkBridgeUnavailable(
-            "Kimi Work requires session_folder for conversation mapping",
-            code="kimi_work_session_required",
-        )
+    from agent_lab.run_control import check_cancelled
+
+    check_cancelled()
 
     from agent_lab.kimi_work_session import ensure_kimi_work_session
     from agent_lab.kimi_work_workspace import resolve_workspace_path
 
-    workspace = resolve_workspace_path(permissions, folder)
+    workspace = resolve_workspace_path(permissions, folder_path)
     conversation_key = ensure_kimi_work_session(
-        folder,
+        folder_path,
         workspace_path=workspace,
-        title=Path(str(folder)).name,
+        title=folder_path.name,
     )
     if on_activity:
         from agent_lab.room_sse_stream import format_tool_activity_line
@@ -100,11 +118,11 @@ def respond(
         _push_mapper.emit_push(method, payload, on_bridge_event)
 
     push_handler: Callable[[str, dict[str, Any]], None] = _on_push
-    if inbox_mcp:
+    if use_inbox_mcp:
         from agent_lab.kimi_work_inbox_bridge import KimiWorkInboxBridge
 
         inbox_bridge = KimiWorkInboxBridge(
-            session_folder=folder,
+            session_folder=folder_path,
             conversation_key=conversation_key,
             on_bridge_event=on_bridge_event,
             on_activity=on_activity,
@@ -122,7 +140,7 @@ def respond(
                 completed.append(body)
         push_handler(method, payload)
 
-    if inbox_mcp:
+    if use_inbox_mcp:
         inbox_bridge.set_submit_push(_capture_push)
 
     body = send_turn(

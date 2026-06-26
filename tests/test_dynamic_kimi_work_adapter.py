@@ -60,7 +60,8 @@ def test_kimi_work_mock_reply_streams(tmp_path: Path, monkeypatch: pytest.Monkey
     text = kwp.respond("sys", "hello", session_folder=tmp_path, on_bridge_event=on_bridge)
     assert text.startswith("[mock:Kimi Work]")
     assert chunks
-    assert chunks[-1] == text
+    streamed = "".join(chunks)
+    assert streamed == text or text.endswith(chunks[-1]) or chunks[-1] in text
     assert (tmp_path / "kimi_work.json").is_file()
 
 

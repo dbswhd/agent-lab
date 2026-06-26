@@ -159,7 +159,7 @@ def test_developer_console_doc_is_source_of_truth():
     doc = _read("docs", "developer-agent-console.md")
     assert "Human-in-the-loop Agent Development Console" in doc
     assert "Transcript" in doc
-    deprecated = _read("docs", "02-ui-ux-handoff.md")
+    deprecated = _read("docs", "archive", "legacy", "02-ui-ux-handoff.md")
     lowered = deprecated.lower()
     assert "deprecated" in lowered or "legacy" in lowered
 
@@ -370,7 +370,7 @@ def test_claude_stream_bridge_in_cli():
 
 
 def test_settings_page_and_work_ia_docs():
-    doc = _read("docs", "WORK-TAB-IA.md")
+    doc = _read("docs", "archive", "legacy", "WORK-TAB-IA.md")
     assert "Work" in doc
     assert "SettingsPage" in _read("web", "src", "components", "SettingsPage.tsx")
 

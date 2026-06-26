@@ -6,6 +6,7 @@ from agent_lab.kimi_work_push_payload import (
     assistant_reasoning_text,
     assistant_reply_text,
     push_message_parts,
+    thinking_activity_delta,
     thinking_activity_line,
 )
 
@@ -112,3 +113,12 @@ def test_thinking_activity_line_truncates_tail() -> None:
     line = thinking_activity_line(long, tail=20)
     assert line.startswith("[thinking] …")
     assert line.endswith("A" * 20)
+
+
+def test_thinking_activity_delta_emits_suffix_only() -> None:
+    prev = "사용자는 src"
+    cumulative = "사용자는 src/agent_lab 또는 app/server"
+    line = thinking_activity_delta(prev, cumulative, tail=40)
+    assert line.startswith("[thinking]")
+    assert "/agent_lab" in line
+    assert "app/server" in line

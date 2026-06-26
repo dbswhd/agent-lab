@@ -666,6 +666,10 @@ def run_mission_discuss_recovery(
     on_event: Any = None,
 ) -> dict[str, Any]:
     """Phase 4: R1 specialist round + partial scribe + plan gate."""
+    from agent_lab.run_control import is_cancelled
+
+    if is_cancelled():
+        return {"skipped": True, "reason": "run_cancelled"}
     run = read_run_meta(folder)
     ml = get_mission_loop(run)
     if not ml.get("enabled"):

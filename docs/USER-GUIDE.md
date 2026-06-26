@@ -402,6 +402,9 @@ Composer 모드는 **빠른 / 팀 / 루프** 3분할이 아니라 **Room preset*
 - 세션 `run.json`의 `room_preset` · 전송 시 `preset` form 필드로 유지
 - `quick` / `team` / `loop`는 **런타임 내부 프로필** — Composer segmented picker는 제거됨 (`roomPresets.ts`)
 
+**Fast + Human Inbox:** discuss lane orchestrator harvest·inbox MCP는 스킵, execute lane GO는 유지.  
+가정·향후 execute plan-workflow·트리거별 설명 → [05-room-agent-roles.md §Fast preset — orchestrator Inbox skip](./05-room-agent-roles.md) · [FLOW.md §2.1](./FLOW.md)
+
 ### 6.3 응답 방식 (turn profile, 런타임)
 
 | Profile | 라벨 (내부) | R1 | consensus | plan |

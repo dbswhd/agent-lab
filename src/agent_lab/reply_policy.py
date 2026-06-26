@@ -121,6 +121,11 @@ def resolve_reply_policy(
     inject_conversation = tier != "minimal"
     inject_coordination = tier in ("standard", "debug")
     inject_peer = tier in ("standard", "debug")
+    if profile == "quick":
+        inject_conversation = False
+        inject_coordination = False
+        inject_peer = False
+        inject_analysis = False
 
     return ReplyPolicy(
         parallel_round=max(1, parallel_round),
@@ -146,6 +151,8 @@ def build_guidance_parts(
     run_meta: dict[str, Any] | None = None,
     agent: str = "",
 ) -> list[str]:
+    from agent_lab.room_preset import is_fast_room_session
+
     parts: list[str] = []
     if run_meta:
         from agent_lab.response_contracts import response_contract_guidance
@@ -167,6 +174,11 @@ def build_guidance_parts(
         parts.append(inbox_pause_grace_guidance(run_meta))
     if policy.inject_analysis and policy.turn_profile in ("analyze", "discuss"):
         parts.append(ANALYSIS_TURN_GUIDANCE.strip())
+    if run_meta and is_fast_room_session(run_meta):
+        from agent_lab.room_context import FAST_TURN_GUIDANCE
+
+        if FAST_TURN_GUIDANCE.strip() not in parts:
+            parts.insert(0, FAST_TURN_GUIDANCE.strip())
     if policy.turn_profile == "specialist":
         parts.append("[Specialist turn · R1 Codex+Claude → R2 Cursor patch. Stay in your capability lane.]")
     if policy.turn_profile == "verified":

@@ -127,6 +127,16 @@ def test_resolve_role_policy_from_room_preset() -> None:
     assert resolve_role_policy({"room_preset": "fast"}) == "off"
 
 
+def test_is_fast_room_session() -> None:
+    from agent_lab.room_preset import is_fast_room_session
+
+    assert is_fast_room_session({"room_preset": "fast"}) is True
+    assert is_fast_room_session({"room_preset": "supervisor"}) is False
+    assert is_fast_room_session({"user_mode": "quick", "plan_intent": "none"}) is True
+    assert is_fast_room_session({"user_mode": "quick", "plan_intent": "loop"}) is False
+    assert is_fast_room_session(None) is False
+
+
 def test_preset_catalog_shape() -> None:
     cat = preset_catalog()
     assert "presets" in cat

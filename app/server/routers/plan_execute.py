@@ -15,16 +15,11 @@ from agent_lab.plan_execute import (
     run_dry_run,
     run_isolation_override,
 )
-from agent_lab.plan_execute_worktree import WorktreeUnavailable
 from agent_lab.plan_pending import (
-    PlanSnapshotRequired,
     approve_pending_plan,
     pending_plans_public_payload,
     reject_pending_plan,
 )
-from agent_lab.room_hooks import PreExecuteBlocked
-from agent_lab.room_objections import ObjectionBlocksExecute
-from agent_lab.run_meta import read_run_meta
 
 from app.server.deps import (
     ClarifierAnswersRequest,
@@ -40,17 +35,6 @@ from app.server.deps import (
 )
 
 router = APIRouter(prefix="/api")
-
-
-def _notify_execute_gate_blocked(folder, *, source: str) -> None:
-    try:
-        from agent_lab.gateway.notify_helpers import notify_gate_blocked
-        from agent_lab.runtime.policy import PolicyEngine
-
-        snap = PolicyEngine.gate_snapshot(read_run_meta(folder))
-        notify_gate_blocked(folder, snap, source=source)
-    except Exception:
-        pass
 
 
 @router.get("/sessions/{session_id}/evidence")
@@ -292,16 +276,6 @@ def session_revise_pending_execution(
             permissions=body.permissions,
             executor=body.executor,
         )
-    except WorktreeUnavailable as e:
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "code": e.reason,
-                "message": str(e),
-                "execution_id": e.execution_id,
-                "remediation": ["fix_git_worktree_and_retry"],
-            },
-        ) from e
     except ValueError as e:
         raise HTTPException(status_code=409, detail=str(e)) from e
     except RuntimeError as e:
@@ -322,51 +296,12 @@ def session_execute_dry_run(
             action_kind=body.action_kind,
             permissions=body.permissions,
         )
-    except PlanSnapshotRequired as e:
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "code": "plan_snapshot_required",
-                "message": "plan 스냅샷 승인 후 dry-run 할 수 있습니다.",
-                "pending_plan": e.pending_plan,
-            },
-        ) from e
-    except WorktreeUnavailable as e:
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "code": e.reason,
-                "message": str(e),
-                "execution_id": e.execution_id,
-                "remediation": ["fix_git_worktree_and_retry"],
-            },
-        ) from e
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e)) from e
-    except ObjectionBlocksExecute as e:
-        _notify_execute_gate_blocked(folder, source="execute_api_objection")
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "code": "open_objection",
-                "message": str(e),
-                "objections": e.objections,
-            },
-        ) from e
-    except PreExecuteBlocked as e:
-        _notify_execute_gate_blocked(folder, source="execute_api_pre_verify")
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "code": "pre_execute_blocked",
-                "message": str(e),
-                "pre_verify": e.pre_verify,
-            },
-        ) from e
     return {"ok": True, "execution": execution}
 
 

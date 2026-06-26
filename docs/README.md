@@ -17,6 +17,7 @@
 | 기능·동작·API·UI 상세 | [USER-GUIDE.md](./USER-GUIDE.md) |
 | shipped / partial / future | [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md) |
 | Room 합의 / execute / mission 루프 | [FLOW.md](./FLOW.md) §3–7 · [MISSION-LOOP-C-OMO.md](./MISSION-LOOP-C-OMO.md) |
+| Fast preset Inbox skip (discuss vs execute) | [05-room-agent-roles.md §Fast preset](./05-room-agent-roles.md) · [FLOW.md §2.1](./FLOW.md) |
 | Plan FSM 플래그 상세 | [FLOW.md](./FLOW.md) §4 · `AGENT_LAB_PLAN_WORKFLOW` flag |
 | 프론트 컴포넌트·IA·Work 탭 | [developer-agent-console.md](./developer-agent-console.md) · ARCHITECTURE §5–6 |
 | UX productization 로드맵 | [CONSOLE-PRODUCTIZATION.md](./CONSOLE-PRODUCTIZATION.md) · [UI-IA-ROADMAP.md](./UI-IA-ROADMAP.md) |

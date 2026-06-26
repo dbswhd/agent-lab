@@ -13,7 +13,7 @@ if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
 from agent_lab.plan_execute_worktree import list_orphan_worktrees  # noqa: E402
-from agent_lab.session import SESSIONS_DIR  # noqa: E402
+from agent_lab.session_paths import sessions_dir  # noqa: E402
 
 TERMINAL_STATUSES = {"merged", "rejected"}
 
@@ -44,11 +44,12 @@ def _terminal_stale_worktrees(folder: Path, run: dict[str, Any]) -> list[Path]:
     return out
 
 
-def find_stale_worktrees(sessions_dir: Path = SESSIONS_DIR) -> list[str]:
-    if not sessions_dir.is_dir():
+def find_stale_worktrees(sessions_root: Path | None = None) -> list[str]:
+    root = sessions_root if sessions_root is not None else sessions_dir()
+    if not root.is_dir():
         return []
     stale: list[str] = []
-    for folder in sorted(p for p in sessions_dir.iterdir() if p.is_dir()):
+    for folder in sorted(p for p in root.iterdir() if p.is_dir()):
         if folder.name.startswith("."):
             continue
         run = _load_run(folder)

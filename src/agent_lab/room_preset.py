@@ -99,6 +99,30 @@ def resolve_role_policy(run_meta: dict[str, Any] | None) -> RolePolicy:
     return "auto"
 
 
+def is_fast_room_session(run_meta: dict[str, Any] | None) -> bool:
+    """True for Fast preset / quick user_mode without loop plan intent.
+
+    Orchestrator inbox harvest and discuss-lane inbox MCP are skipped so Fast
+    stays instant Q&A; Human gates remain on execute lane and manual inbox.
+
+    Product assumption (2026-06-26): Fast does not use clarify→plan→execute on
+    the discuss lane. If execute later adopts plan-workflow, revisit this gate —
+    discuss skips may stay; execute/plan CLARIFY inbox may need to re-enable.
+
+    Docs: docs/05-room-agent-roles.md §Fast preset — orchestrator Inbox skip
+    """
+    if not isinstance(run_meta, dict):
+        return False
+    preset = str(run_meta.get("room_preset") or "").strip().lower()
+    if preset == "fast":
+        return True
+    user_mode = str(run_meta.get("user_mode") or "").strip().lower()
+    if user_mode != "quick":
+        return False
+    plan_intent = str(run_meta.get("plan_intent") or "none").strip().lower()
+    return plan_intent in ("", "none")
+
+
 def preset_catalog() -> dict[str, Any]:
     """Return preset info for /api/room/presets."""
     return {

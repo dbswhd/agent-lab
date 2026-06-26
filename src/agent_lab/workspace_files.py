@@ -21,7 +21,7 @@ from agent_lab.attachments import (
     attachments_dir,
 )
 from agent_lab.run_meta import read_run_meta
-from agent_lab.session_paths import SESSIONS_DIR
+from agent_lab.session_paths import SESSIONS_DIR, active_sessions_dir  # noqa: F401
 from agent_lab.workspace_roots import resolve_workspace_roots, workspace_label
 
 # Directory/file names hidden from the tree everywhere (vcs/build/cache noise).
@@ -74,7 +74,7 @@ class RootInfo:
 
 
 def _session_folder(session_id: str) -> Path:
-    folder = SESSIONS_DIR / session_id
+    folder = active_sessions_dir() / session_id
     if not folder.is_dir():
         raise RootNotFound(f"session not found: {session_id}")
     return folder
@@ -197,7 +197,7 @@ def _is_excluded(entry: Path) -> bool:
     if entry.name.startswith("."):
         return True
     # Never leak other sessions when browsing the agent-lab repo root.
-    if entry.is_dir() and entry.resolve() == SESSIONS_DIR.resolve():
+    if entry.is_dir() and entry.resolve() == active_sessions_dir().resolve():
         return True
     return False
 

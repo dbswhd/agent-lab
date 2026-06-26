@@ -99,7 +99,6 @@ import { ShellPortal } from "./ShellPortal";
 import { NotificationCenter } from "./NotificationCenter";
 import { useNotificationUnread } from "../hooks/useNotificationUnread";
 import { ContextOverviewPanel } from "./ContextOverviewPanel";
-import { ContextTasksPanel } from "./ContextTasksPanel";
 import { GoalLoopBanner } from "./GoalLoopBanner";
 import type { PlanApprovalMode, PlanRejectPayload } from "./PlanApprovalPanel";
 import { PlanWorkflowBanner } from "./PlanWorkflowBanner";
@@ -2514,6 +2513,12 @@ export function RoomChat({
         if (runAbortRef.current === runAbort) {
           runAbortRef.current = null;
         }
+        if (runAbort.signal.aborted) {
+          userStopped = true;
+          void cancelRoomRun(activeSessionId ?? sessionId ?? undefined).catch(
+            () => {},
+          );
+        }
         if (userStopped) {
           finalizeCancelledTyping(runKey);
         }
@@ -3449,31 +3454,6 @@ export function RoomChat({
         <div className="pane-main workspace-main">
           <div className="workspace-body">
             <div className="workspace-scroll scroll-y" ref={scrollRef}>
-              {!isNew && sessionId ? (
-                <div className="taskbar-dock">
-                  <RoomTaskBar
-                    sessionId={sessionId}
-                    payload={roomTasks}
-                    context={taskBarContext}
-                    loading={tasksLoading}
-                    executions={planExecutions}
-                    focusObjection={taskBarFocusObjection}
-                    humanInboxPendingCount={inboxPendingNonQuestions}
-                    inboxReloadKey={inboxReloadKey}
-                    planRevision={currentPlanRevision}
-                    humanInboxDisabled={running || synthesizing || runBusy}
-                    onHumanInboxResolved={handleInboxResolved}
-                    onHumanInboxBuildStarted={handleInboxBuildStarted}
-                    onHumanInboxRefClick={handleInboxRefClick}
-                    onOpenInspectorInbox={openHumanInbox}
-                    onRefresh={refreshTasks}
-                    onFocusPlanAction={focusPlanAction}
-                    onFocusTask={focusTask}
-                    onRequestComposerPrefill={requestComposerPrefill}
-                  />
-                </div>
-              ) : null}
-
               {showExecuteQueueStrip && execPendingForBar ? (
                 <div className="workspace-event-strip workspace-event-strip--review">
                   <ExecuteQueueBar
@@ -4335,18 +4315,24 @@ export function RoomChat({
                     />
                   ) : null}
                 </HumanGatePanel>
-                <ContextTasksPanel
-                  sessionId={sessionId ?? ""}
-                  tasks={[
-                    ...(roomTasks?.tasks ?? []),
-                    ...(roomTasks?.claimable ?? []),
-                  ]}
-                  objections={roomTasks?.objections ?? []}
-                  disabled={running || synthesizing || runBusy}
-                  onChanged={refreshTasks}
-                  onFocusTask={focusTask}
-                  onFocusObjection={focusObjection}
-                />
+                {sessionId ? (
+                  <RoomTaskBar
+                    sessionId={sessionId}
+                    payload={roomTasks}
+                    context={taskBarContext}
+                    placement="inspector"
+                    hideHumanGate
+                    loading={tasksLoading}
+                    executions={planExecutions}
+                    focusObjection={taskBarFocusObjection}
+                    humanInboxPendingCount={inboxPendingNonQuestions}
+                    humanInboxDisabled={running || synthesizing || runBusy}
+                    onRefresh={refreshTasks}
+                    onFocusPlanAction={focusPlanAction}
+                    onFocusTask={focusTask}
+                    onRequestComposerPrefill={requestComposerPrefill}
+                  />
+                ) : null}
               </>
             ) : null}
             {rightPanelMode === "inbox" ? (

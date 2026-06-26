@@ -48,6 +48,20 @@ export function reduceTurnItems(
     const kind =
       type === "reasoning_summary" ? "reasoning_summary" : "activity";
     const text = event.text.trim();
+    if (kind === "activity" && text.startsWith("[thinking]")) {
+      for (let index = items.length - 1; index >= 0; index -= 1) {
+        const item = items[index];
+        if (
+          item?.kind === "activity" &&
+          "text" in item &&
+          item.text.startsWith("[thinking]")
+        ) {
+          if (item.text === text) return items;
+          items[index] = { ...item, text, status: "running" };
+          return items;
+        }
+      }
+    }
     const last = items.at(-1);
     if (last?.kind === kind && "text" in last && last.text === text)
       return items;

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -10,7 +9,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from agent_lab.graph import GraphState
 
-from agent_lab.session_paths import SESSIONS_DIR  # noqa: F401
+from agent_lab.session_paths import SESSIONS_DIR, active_sessions_dir, sessions_dir  # noqa: F401
 
 
 def slugify(topic: str) -> str:
@@ -20,8 +19,14 @@ def slugify(topic: str) -> str:
     return (s[:48] or "topic").rstrip("-")
 
 
+def _sessions_root(base: Path | None = None) -> Path:
+    if base is not None:
+        return base
+    return active_sessions_dir()
+
+
 def session_dir(topic: str, base: Path | None = None) -> Path:
-    root = base or SESSIONS_DIR
+    root = _sessions_root(base)
     day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     name = f"{day}-{slugify(topic)}"
     path = root / name

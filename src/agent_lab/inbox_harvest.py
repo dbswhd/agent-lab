@@ -236,6 +236,10 @@ def harvest_clarifier_questions(
     human_turn: int | None = None,
 ) -> list[dict[str, Any]]:
     """M2b: clarifier gate → Inbox question items (T-Q0, freeform)."""
+    from agent_lab.room_preset import is_fast_room_session
+
+    if is_fast_room_session(run_meta):
+        return []
     if not questions:
         return []
     existing = _existing_harvest_keys(run_meta)
@@ -289,6 +293,10 @@ def harvest_discuss_questions(
 
     Returns the items created this call.
     """
+    from agent_lab.room_preset import is_fast_room_session
+
+    if is_fast_room_session(run_meta):
+        return []
     if mode != "discuss":
         return []
     candidates = harvest_question_candidates(messages, plan_md=plan_md)
@@ -367,6 +375,10 @@ def harvest_build_proposal(
     The dry-run endpoint re-checks the full gates (objection, pre_execute,
     snapshot), so this surfaces optimistically; GO is the authoritative gate.
     """
+    from agent_lab.room_preset import is_fast_room_session
+
+    if is_fast_room_session(run_meta):
+        return None
     if mode != "discuss":
         return None
     if has_pending_question(run_meta):  # §3.2 ordering — question precedes build

@@ -551,6 +551,15 @@ Discuss의 Build item은 **execute GO 예고**이며, 실제 dry-run은 execute 
 
 Build Inbox = **“실행할까?”** · Review diff = **“이 diff merge할까?”** (기존 PlanExecute 유지).
 
+#### Fast preset — orchestrator harvest/MCP skip
+
+`room_preset=fast` (또는 `user_mode=quick` + `plan_intent=none`)에서는 discuss lane **build/discuss harvest**와 **discuss/plan CLARIFY inbox MCP**를 스킵한다. Execute lane `propose_build`·merge gate는 유지.
+
+- **제품 가정:** Fast는 discuss에서 clarify→plan→execute 오케스트레이션을 쓰지 않음.
+- **향후:** Execute에서 plan-workflow를 켤 수 있음 → 스킵 범위 재검토 필요.
+
+상세 표·코드 SSOT: [05-room-agent-roles.md §Fast preset — orchestrator Inbox skip](./05-room-agent-roles.md) · [FLOW.md §2.1](./FLOW.md)
+
 ### 5.5 Harvest · Facilitator · FORK (discuss 품질 파이프라인)
 
 ```mermaid

@@ -6,7 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 TRACEABILITY = ROOT / "docs" / "EXTERNAL-REFS-TRACEABILITY.md"
-PLAN = ROOT / "docs" / "EXTERNAL-REFS-PLAN.md"
+PLAN = ROOT / "docs" / "archive" / "rfcs" / "EXTERNAL-REFS-PLAN.md"
 
 SHIPPED_ROWS: list[tuple[str, list[str]]] = [
     ("L1", ["src/agent_lab/cli_retry.py"]),

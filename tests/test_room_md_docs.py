@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-ROOM = ROOT / "docs" / "ROOM-REINFORCEMENT.md"
-MD_SYSTEM = ROOT / "docs" / "MD-SYSTEM-DESIGN.md"
+ROOM = ROOT / "docs" / "archive" / "rfcs" / "ROOM-REINFORCEMENT.md"
+MD_SYSTEM = ROOT / "docs" / "archive" / "legacy" / "MD-SYSTEM-DESIGN.md"
 
 
 def _read(path: Path) -> str:

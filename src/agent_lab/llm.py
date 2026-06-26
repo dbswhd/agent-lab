@@ -3,18 +3,20 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING
 
+from agent_lab.invoke import provider as resolve_provider
+
 if TYPE_CHECKING:
     from langchain_core.language_models import BaseChatModel
 
 
 def get_llm() -> BaseChatModel:
-    provider = (os.getenv("AGENT_LAB_PROVIDER") or "").strip().lower()
+    p = resolve_provider()
     has_openai = bool(os.getenv("OPENAI_API_KEY"))
     has_anthropic = bool(os.getenv("ANTHROPIC_API_KEY"))
 
-    if provider == "openai" and has_openai:
+    if p == "openai" and has_openai:
         return _openai()
-    if provider == "anthropic" and has_anthropic:
+    if p == "anthropic" and has_anthropic:
         return _anthropic()
     if has_openai:
         return _openai()
@@ -25,8 +27,8 @@ def get_llm() -> BaseChatModel:
 
 
 def model_name() -> str:
-    provider = (os.getenv("AGENT_LAB_PROVIDER") or "").strip().lower()
-    if provider == "anthropic" or (not os.getenv("OPENAI_API_KEY") and os.getenv("ANTHROPIC_API_KEY")):
+    p = resolve_provider()
+    if p == "anthropic" or (not os.getenv("OPENAI_API_KEY") and os.getenv("ANTHROPIC_API_KEY")):
         return os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
     return os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 

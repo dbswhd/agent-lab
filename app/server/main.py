@@ -2,67 +2,17 @@
 
 from __future__ import annotations
 
-import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-_ROOT = Path(os.getenv("AGENT_LAB_ROOT", Path(__file__).resolve().parents[2]))
-_home = Path.home()
+from agent_lab.app_logging import setup_app_logging
+from app.server.bootstrap import bootstrap_environment, project_root
 
-from agent_lab.app_config import apply_config_env  # noqa: E402
-from agent_lab.app_logging import setup_app_logging  # noqa: E402
-
-apply_config_env()
-
-for _env_file in (
-    Path(os.getenv("DOTENV_PATH", "")),
-    _ROOT / ".env",
-    _home / "Projects/agent-lab/.env",
-    _home / ".agent-lab/.env",
-):
-    if _env_file.is_file():
-        load_dotenv(_env_file)
-
-from agent_lab.credential_store import apply_credentials_to_env  # noqa: E402
-
-apply_credentials_to_env()
-
-from agent_lab.api_diagnostics import build_diagnostics_payload  # noqa: E402
-from app.server.routers import (  # noqa: E402
-    agents,
-    auth,
-    background_tasks,
-    commands,
-    context_layers,
-    dev_preview,
-    eval_memory,
-    evidence_api,
-    gateway,
-    health,
-    human_inbox,
-    mission_loop,
-    mission_os,
-    openai_compat,
-    plan_execute,
-    plan_workflow,
-    room,
-    runtime,
-    session_governance,
-    session_tasks,
-    sessions,
-    settings,
-    skill_drafts,
-    terminal,
-    verified_loop,
-    workspace_files,
-)
-
-setup_app_logging()
+_ROOT = project_root()
 
 
 def _api_startup() -> None:
@@ -90,6 +40,8 @@ def _api_startup() -> None:
     except Exception as exc:
         write_boot_line(f"default room models apply failed: {exc}")
     try:
+        from agent_lab.api_diagnostics import build_diagnostics_payload
+
         payload = build_diagnostics_payload()
         write_boot_line(
             "uvicorn startup pid=%s port=%s sessions=%s" % (payload["pid"], payload["port"], payload["sessions_dir"])
@@ -121,11 +73,14 @@ def _api_startup() -> None:
         write_boot_line(f"uvicorn startup diagnostics failed: {exc}")
 
 
-@asynccontextmanager
-async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    _api_startup()
-    yield
+def _api_shutdown() -> None:
+    from agent_lab.background_tasks import get_manager
     from agent_lab.kimi_daimon_supervisor import _keep_daimon_on_api_shutdown, detach_owned_daimon, shutdown_owned_daimon
+
+    try:
+        get_manager().shutdown()
+    except Exception:
+        pass
 
     if _keep_daimon_on_api_shutdown():
         detach_owned_daimon()
@@ -133,54 +88,106 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         shutdown_owned_daimon()
 
 
-app = FastAPI(title="Agent Lab API", version="0.1.0", lifespan=lifespan)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://127.0.0.1:5173",
-        "http://localhost:5173",
-        "http://127.0.0.1:1420",
-        "http://localhost:1420",
-        "tauri://localhost",
-        "https://tauri.localhost",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    bootstrap_environment(root=_ROOT)
+    _api_startup()
+    yield
+    _api_shutdown()
 
-for router in (
-    health.router,
-    auth.router,
-    agents.router,
-    background_tasks.router,
-    commands.router,
-    context_layers.router,
-    dev_preview.router,
-    eval_memory.router,
-    evidence_api.router,
-    gateway.router,
-    sessions.router,
-    session_tasks.router,
-    session_governance.router,
-    human_inbox.router,
-    mission_loop.router,
-    mission_os.router,
-    openai_compat.router,
-    plan_execute.router,
-    plan_workflow.router,
-    skill_drafts.router,
-    runtime.router,
-    room.router,
-    settings.router,
-    terminal.router,
-    verified_loop.router,
-    workspace_files.router,
-):
-    app.include_router(router)
 
-_WEB_DIST = _ROOT / "web" / "dist"
-if _WEB_DIST.is_dir():
-    from fastapi.staticfiles import StaticFiles
+def create_app(*, bootstrap: bool = False) -> FastAPI:
+    """Factory for the FastAPI app. Pass bootstrap=True to apply env before serving."""
+    if bootstrap:
+        bootstrap_environment(root=_ROOT)
 
-    app.mount("/", StaticFiles(directory=str(_WEB_DIST), html=True), name="web")
+    setup_app_logging()
+
+    from app.server.routers import (
+        agents,
+        auth,
+        background_tasks,
+        commands,
+        context_layers,
+        dev_preview,
+        eval_memory,
+        evidence_api,
+        gateway,
+        health,
+        human_inbox,
+        mission_loop,
+        mission_os,
+        openai_compat,
+        plan_execute,
+        plan_workflow,
+        room,
+        runtime,
+        session_governance,
+        session_tasks,
+        sessions,
+        settings,
+        skill_drafts,
+        terminal,
+        verified_loop,
+        workspace_files,
+    )
+    from app.server.exceptions import register_exception_handlers
+
+    application = FastAPI(title="Agent Lab API", version="0.1.0", lifespan=lifespan)
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "http://127.0.0.1:5173",
+            "http://localhost:5173",
+            "http://127.0.0.1:1420",
+            "http://localhost:1420",
+            "tauri://localhost",
+            "https://tauri.localhost",
+        ],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    register_exception_handlers(application)
+
+    for router in (
+        health.router,
+        auth.router,
+        agents.router,
+        background_tasks.router,
+        commands.router,
+        context_layers.router,
+        dev_preview.router,
+        eval_memory.router,
+        evidence_api.router,
+        gateway.router,
+        sessions.router,
+        session_tasks.router,
+        session_governance.router,
+        human_inbox.router,
+        mission_loop.router,
+        mission_os.router,
+        openai_compat.router,
+        plan_execute.router,
+        plan_workflow.router,
+        skill_drafts.router,
+        runtime.router,
+        room.router,
+        settings.router,
+        terminal.router,
+        verified_loop.router,
+        workspace_files.router,
+    ):
+        application.include_router(router)
+
+    web_dist = _ROOT / "web" / "dist"
+    if web_dist.is_dir():
+        from fastapi.staticfiles import StaticFiles
+
+        application.mount("/", StaticFiles(directory=str(web_dist), html=True), name="web")
+
+    return application
+
+
+app = create_app()

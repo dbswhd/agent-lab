@@ -113,9 +113,16 @@ class TaskManager:
         if proc is not None:
             try:
                 proc.kill()
-            except OSError:
-                pass
+                proc.wait(timeout=5)
+            except (OSError, subprocess.TimeoutExpired):
+                try:
+                    proc.kill()
+                except OSError:
+                    pass
         return True
+
+    def shutdown(self, wait: bool = True, cancel_futures: bool = False) -> None:
+        self._pool.shutdown(wait=wait, cancel_futures=cancel_futures)
 
     def read_log(self, session_folder: Path, task_id: str, offset: int = 0) -> list[dict[str, Any]]:
         log_path = _log_path(session_folder, task_id)

@@ -588,6 +588,13 @@
   box-shadow: var(--shadow-2);
   overflow: hidden;
 }
+.taskbar--inspector {
+  width: 100%;
+  margin: 0;
+  border-radius: var(--radius-md);
+  box-shadow: none;
+  background: var(--surface-card);
+}
 .taskbar__summary {
   display: flex;
   align-items: center;

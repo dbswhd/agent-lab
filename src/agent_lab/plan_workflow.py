@@ -157,6 +157,10 @@ def plan_workflow_phase(run: dict[str, Any] | None) -> str:
 
 
 def plan_workflow_wants_inbox_mcp(run: dict[str, Any] | None) -> bool:
+    from agent_lab.room_preset import is_fast_room_session
+
+    if is_fast_room_session(run):
+        return False
     if not is_plan_workflow_active(run):
         return False
     return plan_workflow_phase(run) in _PLAN_CLARIFY_PHASES

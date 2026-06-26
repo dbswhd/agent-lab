@@ -29,7 +29,13 @@ def discuss_inbox_mcp_enabled(run_meta: dict[str, Any] | None = None) -> bool:
 
     - plan-workflow CLARIFY turns (via ``plan_workflow_wants_inbox_mcp``)
     - Loop discuss lane uses the same gate from ``room_agent_invoke`` (execute lane excluded)
+
+    Fast / quick sessions skip discuss-lane inbox MCP (orchestrator harvest also skipped).
     """
+    from agent_lab.room_preset import is_fast_room_session
+
+    if run_meta and is_fast_room_session(run_meta):
+        return False
     from agent_lab.plan_workflow import plan_workflow_wants_inbox_mcp
 
     if run_meta and plan_workflow_wants_inbox_mcp(run_meta):

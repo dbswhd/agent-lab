@@ -106,6 +106,20 @@ def test_cancelled_emits_activity() -> None:
     assert events == [("activity", {"text": "[system] user cancelled"})]
 
 
+def test_merge_multiple_text_parts_cumulative() -> None:
+    from agent_lab.kimi_work_push_payload import assistant_reply_text
+
+    payload = {
+        "message": {
+            "parts": [
+                {"kind": "text", "text": "Hello"},
+                {"kind": "text", "text": "Hello world"},
+            ],
+        },
+    }
+    assert assistant_reply_text(payload) == "Hello world"
+
+
 def test_reasoning_snapshot_emits_thinking_activity_not_text() -> None:
     mapper = KimiWorkPushMapper()
     events: list[tuple[str, dict]] = []
@@ -156,10 +170,25 @@ def test_reasoning_activity_throttles_small_growth() -> None:
         {
             "message": {
                 "parts": [
-                    {"kind": "reasoning", "text": "A" + ("x" * 30)},
+                    {"kind": "reasoning", "text": "A" + ("x" * 55)},
                 ],
             },
         },
         on_bridge,
     )
     assert len(activities) == 2
+    assert activities[1].startswith("[thinking]")
+
+
+def test_reasoning_delta_parts_merge() -> None:
+    from agent_lab.kimi_work_push_payload import assistant_reasoning_text
+
+    payload = {
+        "message": {
+            "parts": [
+                {"kind": "reasoning", "text": "사용자는 "},
+                {"kind": "reasoning", "text": "src/agent_lab"},
+            ],
+        },
+    }
+    assert assistant_reasoning_text(payload) == "사용자는 src/agent_lab"

@@ -265,7 +265,7 @@ export default function App() {
         const ok = await reloadHealth(false);
         if (ok) {
           await reloadSessions();
-          void reloadHealth(true, true);
+          void reloadHealth(true, false);
           return;
         }
         await new Promise((r) => window.setTimeout(r, 400));

@@ -57,9 +57,32 @@ def _reasoning_text_parts(payload: dict[str, Any]) -> list[str]:
         for key in ("text", "content", "delta", "markdown"):
             raw = item.get(key)
             if isinstance(raw, str) and raw.strip():
-                reasoning_parts.append(raw.strip())
+                reasoning_parts.append(raw.lstrip("\n\r\t"))
                 break
     return reasoning_parts
+
+
+def _merge_reasoning_parts(parts: list[str]) -> str:
+    """Merge reasoning parts — cumulative last wins, else concatenate deltas."""
+    if not parts:
+        return ""
+    if len(parts) == 1:
+        return parts[0]
+    merged = parts[0]
+    for piece in parts[1:]:
+        if not piece:
+            continue
+        if piece.startswith(merged):
+            merged = piece
+        elif merged.startswith(piece):
+            continue
+        elif piece in merged:
+            continue
+        else:
+            if merged and piece and not merged.endswith((" ", "\n")) and not piece.startswith((" ", "\n", "/", ".", ",", ":", ";", ")", "]", "}")):
+                merged += " "
+            merged += piece
+    return merged
 
 
 def assistant_reasoning_text(payload: dict[str, Any]) -> str:
@@ -68,7 +91,7 @@ def assistant_reasoning_text(payload: dict[str, Any]) -> str:
         return ""
     reasoning_parts = _reasoning_text_parts(payload)
     if reasoning_parts:
-        return reasoning_parts[-1]
+        return _merge_reasoning_parts(reasoning_parts)
     parts = push_message_parts(payload)
     if not parts:
         return ""
@@ -94,12 +117,37 @@ def thinking_activity_line(cumulative: str, *, tail: int = 96) -> str:
     return f"[thinking] …{flat[-tail:]}"
 
 
+def thinking_activity_delta(
+    previous_flat: str,
+    cumulative: str,
+    *,
+    tail: int = 72,
+) -> str:
+    """Emit only newly grown reasoning text (avoids overlapping tail spam)."""
+    flat = " ".join(cumulative.strip().split())
+    prev = " ".join(previous_flat.strip().split())
+    if not flat or flat == prev:
+        return ""
+    if flat.startswith(prev):
+        delta = flat[len(prev) :].strip()
+    else:
+        # Provider resync — show the latest tail only.
+        delta = flat[-tail:] if len(flat) > tail else flat
+        if delta and not delta.startswith("…"):
+            delta = f"…{delta}" if len(flat) > tail else delta
+    if not delta:
+        return ""
+    if len(delta) > tail:
+        delta = f"…{delta[-tail:]}"
+    return f"[thinking] {delta}"
+
+
 def assistant_reply_text(payload: dict[str, Any]) -> str:
     """Extract visible assistant reply text (``kind: text``; skips reasoning/tools)."""
     parts = push_message_parts(payload)
     text_parts = _visible_text_parts(payload)
     if text_parts:
-        return text_parts[-1]
+        return _merge_reasoning_parts(text_parts)
     # When live daimon sends ``parts`` (incl. reasoning), ignore top-level ``text`` /
     # ``message.text`` — those fields often carry chain-of-thought, not the final reply.
     if parts:

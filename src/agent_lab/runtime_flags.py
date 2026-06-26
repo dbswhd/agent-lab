@@ -453,6 +453,12 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "Leave headless daimon running when API stops (faster reopen)",
         default="1",
     ),
+    FlagDef(
+        "AGENT_LAB_QUIET_ACCESS_LOG",
+        "feature",
+        "Suppress uvicorn access lines in dev (default on); set 0 to see every GET/POST",
+        default="1",
+    ),
     FlagDef("KIMI_SHARE_DIR", "infra", "Kimi daimon-share directory override", mask_value=True),
     FlagDef("AGENT_LAB_MOCK_STRUCTURED_ENVELOPE", "test", "Mock structured envelope adapter output"),
     FlagDef("AGENT_LAB_MOCK_ACT_SCRIPT", "test", "Scripted mock envelope acts (JSON path)", mask_value=True),

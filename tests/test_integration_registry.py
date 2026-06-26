@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+import importlib.util
 import inspect
 import shutil
 import subprocess
 from pathlib import Path
 
-import tests.conftest as conftest
-
 ROOT = Path(__file__).resolve().parents[1]
+_CONFTEST_PATH = ROOT / "tests" / "conftest.py"
+_spec = importlib.util.spec_from_file_location("tests_conftest", _CONFTEST_PATH)
+assert _spec and _spec.loader
+conftest = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(conftest)
 
 
 def _resolve_pytest() -> str:
@@ -83,7 +87,8 @@ def test_fast_bucket_collection_budget():
     # 2026-06-26: raised 1800 -> 1810 for S1 Phase A feedback loop suites (test_turn_metrics + test_s1_loop_closure_e2e: turn_metrics rollup, outcome ledger append/flag-gating, loop-closure E2E + OFF-parity).
     # 2026-06-26: raised 1810 -> 1830 for S1 Phase B feedback_advisor suites (test_feedback_advisor: score/filter/combo-selection/flag-gating/available-agent-filter).
     # 2026-06-26: raised 1830 -> 1960 for PR#57 merge — auto_approve_gate, diff_risk, evidence_api, openai_compat, room_preset, run_profile, wisdom_store suites.
-    assert count <= 1960, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-06-27: raised 1960 -> 2050 for API bootstrap/smoke + session-scoped cancel + provider contextvars fast suites.
+    assert count <= 2050, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

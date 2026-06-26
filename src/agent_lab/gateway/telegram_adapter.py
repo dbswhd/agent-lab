@@ -81,9 +81,9 @@ def send_telegram_message(
 
 
 def _session_folder(session_id: str) -> Path | None:
-    from agent_lab.session import SESSIONS_DIR
+    from agent_lab.session_paths import active_sessions_dir
 
-    folder = SESSIONS_DIR / session_id
+    folder = active_sessions_dir() / session_id
     return folder if folder.is_dir() else None
 
 

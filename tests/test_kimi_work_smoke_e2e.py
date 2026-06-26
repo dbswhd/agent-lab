@@ -66,7 +66,9 @@ def test_mock_discuss_kimi_work_roster(tmp_path: Path) -> None:
 
 def test_mock_consensus_kimi_work_envelope(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from agent_lab import kimi_work_provider as kwp
-    from agent_lab import room
+    from agent_lab.room_parallel_rounds import run_agent_rounds
+    from agent_lab.room_messages import ChatMessage
+    from agent_lab.room_session_persist import load_session_messages
 
     envelope_flags: list[bool] = []
     orig_respond = kwp.respond
@@ -76,24 +78,39 @@ def test_mock_consensus_kimi_work_envelope(tmp_path: Path, monkeypatch: pytest.M
         return orig_respond(*args, **kwargs)
 
     monkeypatch.setattr(kwp, "respond", _wrap_respond)
+    monkeypatch.setattr("agent_lab.agents.registry.kimi_work_provider.respond", _wrap_respond)
+    monkeypatch.setenv("AGENT_LAB_STRUCTURED_ENVELOPE", "1")
 
     folder = tmp_path / "sess-kimi-consensus"
     agents = ["kimi_work", "cursor", "codex"]
     _seed_session(folder, agents=agents)
 
-    messages, _plan = room.continue_room_round(
-        folder,
-        "Pick JWT middleware path — consensus check.",
+    topic = (folder / "topic.txt").read_text(encoding="utf-8").strip()
+    messages = load_session_messages(folder)
+    messages.append(
+        ChatMessage(
+            role="user",
+            agent=None,
+            content="Pick JWT middleware path — consensus check.",
+        )
+    )
+    run_meta = json.loads((folder / "run.json").read_text(encoding="utf-8"))
+    run_meta["_active_consensus"] = True
+    run_meta["_session_id"] = folder.name
+    run_meta["_session_folder"] = str(folder.resolve())
+
+    replies = run_agent_rounds(
+        topic,
+        messages,
         agents=agents,
-        synthesize=False,
         parallel_rounds=2,
-        consensus_mode=True,
+        run_meta=run_meta,
     )
     kimi_msgs = [
         m
-        for m in messages
+        for m in replies
         if m.role == "agent" and m.agent == "kimi_work" and (m.content or "").strip()
     ]
     assert kimi_msgs, "expected kimi_work consensus reply"
     assert any(envelope_flags), "expected structured envelope on kimi_work R2+ consensus turn"
-    assert "Kimi Work" in kimi_msgs[0].content
+    assert "Kimi Work" in kimi_msgs[-1].content

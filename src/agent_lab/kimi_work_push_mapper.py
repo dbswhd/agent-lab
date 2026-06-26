@@ -9,13 +9,13 @@ from agent_lab.kimi_work_push_payload import (
     assistant_reasoning_text,
     assistant_reply_text,
     push_message_parts,
-    thinking_activity_line,
+    thinking_activity_delta,
 )
 from agent_lab.room_sse_stream import CumulativeTextStreamer
 
 BridgeEmit = Callable[[str, dict[str, Any]], None]
 
-_THINKING_EMIT_MIN_CHARS = 24
+_THINKING_EMIT_MIN_CHARS = 48
 
 
 def _tool_name(part: dict[str, Any]) -> str:
@@ -51,7 +51,7 @@ class KimiWorkPushMapper:
         self._done: set[str] = set()
         self._reply_stream = CumulativeTextStreamer()
         self._reasoning_stream = CumulativeTextStreamer()
-        self._last_thinking_emit_len = 0
+        self._last_thinking_flat = ""
 
     def reset(self) -> None:
         self._started.clear()
@@ -59,7 +59,7 @@ class KimiWorkPushMapper:
         self._done.clear()
         self._reply_stream.reset()
         self._reasoning_stream.reset()
-        self._last_thinking_emit_len = 0
+        self._last_thinking_flat = ""
 
     def emit_push(
         self,
@@ -107,14 +107,16 @@ class KimiWorkPushMapper:
         if not grew:
             return
         cumulative = self._reasoning_stream.body
-        if len(cumulative) <= self._last_thinking_emit_len:
+        flat = " ".join(cumulative.strip().split())
+        if not flat or flat == self._last_thinking_flat:
             return
-        if self._last_thinking_emit_len and len(cumulative) - self._last_thinking_emit_len < _THINKING_EMIT_MIN_CHARS:
+        growth = len(flat) - len(self._last_thinking_flat)
+        if self._last_thinking_flat and growth < _THINKING_EMIT_MIN_CHARS:
             return
-        line = thinking_activity_line(cumulative)
+        line = thinking_activity_delta(self._last_thinking_flat, cumulative)
         if not line:
             return
-        self._last_thinking_emit_len = len(cumulative)
+        self._last_thinking_flat = flat
         on_bridge_event("activity", {"text": line})
 
     def _emit_parts(self, parts: list[Any], on_bridge_event: BridgeEmit) -> None:

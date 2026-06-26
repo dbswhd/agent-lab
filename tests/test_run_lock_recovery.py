@@ -61,8 +61,7 @@ def test_hint_locked_stale_is_releasable():
 
 def test_hint_locked_orphan_zero_workers_is_releasable():
     # crashed worker: lock held but no active worker counted
-    acquired = rc._run_lock.acquire(blocking=False)
-    assert acquired is True
+    assert rc.try_begin_run() is True
     rc._run_active = 0
     rc._run_started_at = time.time()
     try:

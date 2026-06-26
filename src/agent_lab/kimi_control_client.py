@@ -575,17 +575,26 @@ async def _ws_rpc_batch_loop(
 ) -> list[Any]:
     import websockets
 
+    from agent_lab.run_control import RoomRunCancelled, is_cancelled
+
     if not calls:
         return []
     headers = {"Authorization": f"Bearer {endpoint.token}"}
     results: list[Any] = []
     async with websockets.connect(endpoint.url, additional_headers=headers) as ws:
         for req_id, (method, params) in enumerate(calls, start=1):
+            if is_cancelled():
+                raise RoomRunCancelled("run cancelled by user")
             await ws.send(
                 json.dumps({"jsonrpc": "2.0", "id": req_id, "method": method, "params": params}),
             )
             while True:
-                raw = await asyncio.wait_for(ws.recv(), timeout=timeout_s)
+                if is_cancelled():
+                    raise RoomRunCancelled("run cancelled by user")
+                try:
+                    raw = await asyncio.wait_for(ws.recv(), timeout=0.5)
+                except asyncio.TimeoutError:
+                    continue
                 msg = json.loads(raw)
                 push_method = msg.get("method")
                 if isinstance(push_method, str) and push_method in _PUSH_METHODS:
@@ -647,6 +656,8 @@ async def _ws_rpc_loop(
 ) -> Any:
     import websockets
 
+    from agent_lab.run_control import RoomRunCancelled, is_cancelled
+
     headers = {"Authorization": f"Bearer {endpoint.token}"}
     final_text = ""
     from agent_lab.room_sse_stream import CumulativeTextStreamer
@@ -659,7 +670,12 @@ async def _ws_rpc_loop(
         )
         result: Any = None
         while True:
-            raw = await asyncio.wait_for(ws.recv(), timeout=timeout_s)
+            if is_cancelled():
+                raise RoomRunCancelled("run cancelled by user")
+            try:
+                raw = await asyncio.wait_for(ws.recv(), timeout=0.5)
+            except asyncio.TimeoutError:
+                continue
             msg = json.loads(raw)
             push_method = msg.get("method")
             if isinstance(push_method, str) and push_method in _PUSH_METHODS:

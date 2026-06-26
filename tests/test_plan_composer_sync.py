@@ -19,7 +19,8 @@ def test_room_chat_blocks_send_during_human_pending():
     room = _read("web", "src", "components", "RoomChat.tsx")
     assert "planWorkflowAwaitingApproval" in room
     assert "planWorkflowComposerBlocked" in room
-    assert 'planWorkflowAwaitingApproval || turnProfile === "loop"' in room
+    assert "planWorkflowAwaitingApproval ||" in room
+    assert '(turnProfile === "loop" && !roomPreset)' in room
 
 
 def test_compose_mode_per_session_plan_toggle():
@@ -30,5 +31,9 @@ def test_compose_mode_per_session_plan_toggle():
 
 
 def test_side_discuss_hint_in_mode_chip():
+    workflow_view = _read("web", "src", "utils", "planWorkflowView.ts")
+    messages = _read("web", "src", "i18n", "messages.ts")
     room = _read("web", "src", "components", "RoomChat.tsx")
-    assert "planWorkflowSideDiscussHint" in room
+    assert "isPlanWorkflowComposerHint" in workflow_view
+    assert "planWorkflowSideDiscussHint" in messages
+    assert "showPlanWorkflowComposerHint" in room

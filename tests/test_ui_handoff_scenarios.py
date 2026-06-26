@@ -149,16 +149,17 @@ def test_new_session_mission_template_apply_contract():
 
 
 def test_taskbar_human_inbox_integration_contract():
-    """L5: Human gate resolve in Taskbar; peer mail renamed from 받은함."""
+    """Human gate resolve: Inbox / Workbench (not transcript taskbar). Team tasks in inspector."""
     taskbar = _read("web", "src", "components", "RoomTaskBar.tsx")
     inbox = _read("web", "src", "components", "HumanInboxPanel.tsx")
     room = _read("web", "src", "components", "RoomChat.tsx")
-    assert 'presentation="taskbar"' in taskbar
-    assert 'id: "human"' in taskbar
+    assert 'placement="inspector"' in room
+    assert "hideHumanGate" in room
+    assert "taskbar-dock" not in room
     assert 'id: "peer"' in taskbar
     assert "humanInboxPendingCount" in taskbar
     assert '"taskbar"' in inbox
-    assert "onOpenInspectorInbox={openHumanInbox}" in room
+    assert "openHumanInbox" in room
     assert "humanInboxPendingCount={inboxPendingNonQuestions}" in room
 
 

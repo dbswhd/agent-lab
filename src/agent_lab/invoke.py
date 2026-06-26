@@ -3,11 +3,25 @@
 from __future__ import annotations
 
 import os
+from contextvars import ContextVar, Token
 
 from agent_lab import codex_cli
 
+_provider_ctx: ContextVar[str | None] = ContextVar("agent_lab_provider", default=None)
+
+
+def set_provider_override(name: str | None) -> Token[str | None]:
+    return _provider_ctx.set(name)
+
+
+def reset_provider_override(token: Token[str | None]) -> None:
+    _provider_ctx.reset(token)
+
 
 def provider() -> str:
+    override = _provider_ctx.get()
+    if override in ("codex", "openai", "anthropic"):
+        return override
     explicit = (os.getenv("AGENT_LAB_PROVIDER") or "").strip().lower()
     if explicit in ("codex", "openai", "anthropic"):
         return explicit

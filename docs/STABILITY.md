@@ -36,10 +36,18 @@ Applied in this order (explicit `os.environ` values win and are not overwritten)
 
 1. `~/.agent-lab/.env` — API keys, `CODEX_BIN`, `CLAUDE_BIN`, `CURSOR_SDK_BRIDGE_BIN`, optional `AGENT_LAB_SESSIONS_DIR`
 2. `~/.agent-lab/config.toml` — `[paths]`, `[api]`, `[logging]` (see `app_config.py`)
-3. Repo `.env` or `DOTENV_PATH` — developer machine overrides (`app/server/main.py` after `apply_config_env()`)
+3. Repo `.env` or `DOTENV_PATH` — developer machine overrides (`app/server/bootstrap.py`, invoked from FastAPI lifespan — **not** at import time)
 4. `runtime_paths.configure_subprocess_path()` — PATH and bridge auto-fill when bins unset
 
+**Bootstrap:** `bootstrap_environment()` runs once per API process in the FastAPI lifespan hook (and optionally via `create_app(bootstrap=True)`). Importing `app.server.main` alone does not load dotenv or credentials.
+
 **Sessions directory intent:** one shared folder for Tauri dev, Tauri release, and CLI. Set explicitly with `AGENT_LAB_SESSIONS_DIR` or `paths.sessions` in config.toml; otherwise derived from `paths.agent_lab` or repo defaults.
+
+## Run lock (cross-process)
+
+Room/classic runs use a **fcntl file lock** at `~/.agent-lab/run.lock` so uvicorn multi-worker (`--workers N`) enforces single-flight across processes. In-process worker accounting and stale/orphan recovery APIs are unchanged (`GET /api/room/run-lock`, `POST /api/room/runs/release-lock`).
+
+Cancel is **session-scoped** when `session_id` is provided to `POST /api/room/runs/cancel` or on SSE client disconnect; global cancel (no session_id) remains for emergency stop.
 
 **Git:** Live runs under `sessions/*` are gitignored; only `sessions/_regression/` fixtures are tracked. Turn-state envelope sample lives in `tests/fixtures/`.
 

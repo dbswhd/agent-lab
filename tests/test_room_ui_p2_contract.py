@@ -37,7 +37,7 @@ def test_room_task_bar_has_tauri_minimum_width_layout():
 
 
 def test_room_figma_mapping_uses_code_tokens():
-    room_doc = _read("docs/04-multi-agent-room.md")
+    room_doc = _read("docs/archive/legacy/04-multi-agent-room.md")
 
     for token in (
         "--color-bubble-sent",

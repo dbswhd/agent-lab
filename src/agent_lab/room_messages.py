@@ -239,10 +239,6 @@ def build_agent_context_bundle(
     )
 
 
-OnAgentEvent = Callable[[str, dict[str, Any]], None]
-# event types: agent_start, agent_activity, agent_done, agent_error, turn_failed
-
-
 def _effective_discuss_permissions(
     permissions: dict | None,
     *,

@@ -32,6 +32,7 @@ def test_live_room_log_clear(tmp_path: Path) -> None:
 
 def test_session_detail_includes_live_log(tmp_path: Path, monkeypatch) -> None:
     from app.server import deps
+    from app.server import session_helpers
 
     folder = tmp_path / "2026-test-live"
     folder.mkdir()
@@ -40,7 +41,8 @@ def test_session_detail_includes_live_log(tmp_path: Path, monkeypatch) -> None:
     append_live_room_event(folder, "agent_token", {"agent": "claude", "text": "x"})
 
     monkeypatch.setattr(deps, "SESSIONS_DIR", tmp_path)
-    monkeypatch.setattr(deps, "gc_stale_worktrees", lambda *_a, **_k: None)
+    monkeypatch.setattr(session_helpers, "SESSIONS_DIR", tmp_path)
+    monkeypatch.setattr(session_helpers, "gc_stale_worktrees", lambda *_a, **_k: None)
     detail = deps.session_detail(folder.name)
     assert detail["live_log"]
     assert detail["live_log"][0]["text"] == "x"

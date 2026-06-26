@@ -21,9 +21,18 @@ def session_folder(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     home = tmp_path / "home"
     home.mkdir()
     monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
-    folder = tmp_path / "sess-ev"
+    sessions_root = tmp_path / "sessions"
+    sessions_root.mkdir()
+    folder = sessions_root / "sess-ev"
     folder.mkdir()
     (folder / "run.json").write_text("{}", encoding="utf-8")
+    import agent_lab.session as session_mod
+    import agent_lab.session_paths as sp_mod
+    import app.server.deps as deps_mod
+
+    monkeypatch.setattr(session_mod, "SESSIONS_DIR", sessions_root)
+    monkeypatch.setattr(deps_mod, "SESSIONS_DIR", sessions_root)
+    monkeypatch.setattr(sp_mod, "SESSIONS_DIR", sessions_root)
     return folder
 
 
@@ -104,16 +113,9 @@ def test_merge_checks_ready_without_pending(session_folder: Path) -> None:
 
 def test_evidence_api(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
-    from agent_lab.session import SESSIONS_DIR
 
     sid = session_folder.name
-    target = SESSIONS_DIR / sid
-    if target != session_folder:
-        import shutil
-
-        if target.exists():
-            shutil.rmtree(target)
-        shutil.copytree(session_folder, target)
+    target = session_folder
     append_evidence(target, {"phase": "VERIFY", "kind": "oracle", "exit": 0})
 
     from app.server.main import app
@@ -129,10 +131,9 @@ def test_evidence_api(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> 
 def test_merge_checks_api(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     from agent_lab.run_meta import write_run_meta
-    from agent_lab.session import SESSIONS_DIR
 
     sid = session_folder.name
-    target = SESSIONS_DIR / sid
+    target = session_folder
     write_run_meta(target, {"executions": [], "objections": []})
 
     from app.server.main import app

@@ -55,6 +55,12 @@ def test_build_proposal_happy_path():
     assert item.get("plan_revision", "").startswith("plan-")
 
 
+def test_fast_room_skips_build_harvest():
+    run_meta: dict[str, Any] = {"room_preset": "fast"}
+    assert harvest_build_proposal(run_meta, plan_md=_PLAN_WITH_ACTION) is None
+    assert "human_inbox" not in run_meta
+
+
 def test_build_plan_revision_uses_last_plan_update_ts():
     run_meta: dict[str, Any] = {
         "last_plan_update": {"ts": "2026-06-06T12:00:00+00:00"},

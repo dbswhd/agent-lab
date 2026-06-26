@@ -60,12 +60,12 @@ def build_readiness_payload(
 ) -> dict[str, Any]:
     from agent_lab.agent_preflight import agent_preflight_row
     from agent_lab.run_meta import read_run_meta
-    from agent_lab.session import SESSIONS_DIR
+    from agent_lab.session_paths import active_sessions_dir
 
     folder: Path | None = None
     run: dict[str, Any] = {}
     if session_id:
-        candidate = SESSIONS_DIR / session_id.strip()
+        candidate = active_sessions_dir() / session_id.strip()
         if candidate.is_dir():
             folder = candidate
             run = read_run_meta(candidate)

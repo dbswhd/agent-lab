@@ -51,6 +51,9 @@ type Props = {
   sessionId: string;
   payload: RoomTasksPayload | null;
   context: TaskBarContext;
+  /** Inspector sidebar — always expanded; Human gate lives in Inbox / Workbench. */
+  placement?: "inspector";
+  hideHumanGate?: boolean;
   loading?: boolean;
   executions?: PlanExecutionRecord[];
   focusObjection?: { id: string; nonce: number } | null;
@@ -183,6 +186,8 @@ export function RoomTaskBar({
   sessionId,
   payload,
   context,
+  placement,
+  hideHumanGate = false,
   loading,
   executions,
   focusObjection,
@@ -199,10 +204,14 @@ export function RoomTaskBar({
   onFocusTask,
   onRequestComposerPrefill,
 }: Props) {
+  const inInspector = placement === "inspector";
+  const skipHumanGate = hideHumanGate || inInspector;
   const [leadBusy, setLeadBusy] = useState(false);
   const [leadError, setLeadError] = useState<string | null>(null);
   const [section, setSection] = useState<TaskSection>("tasks");
-  const [collapsed, setCollapsed] = useState(() => getTaskBarCollapsed());
+  const [collapsed, setCollapsed] = useState(() =>
+    inInspector ? true : getTaskBarCollapsed(),
+  );
   const [blockerCompleteBusy, setBlockerCompleteBusy] = useState(false);
   const [blockerCompleteError, setBlockerCompleteError] = useState<
     string | null
@@ -216,6 +225,7 @@ export function RoomTaskBar({
 
   useEffect(() => {
     if (
+      !skipHumanGate &&
       humanInboxPendingCount > prevHumanPending.current &&
       humanInboxPendingCount > 0
     ) {
@@ -223,11 +233,12 @@ export function RoomTaskBar({
       setSection("human");
     }
     prevHumanPending.current = humanInboxPendingCount;
-  }, [humanInboxPendingCount]);
+  }, [humanInboxPendingCount, skipHumanGate]);
 
   useEffect(() => {
+    if (inInspector) return;
     setTaskBarCollapsed(collapsed);
-  }, [collapsed]);
+  }, [collapsed, inInspector]);
 
   useEffect(() => {
     if (!focusObjection?.id) return;
@@ -241,7 +252,7 @@ export function RoomTaskBar({
       node?.scrollIntoView({ behavior: "smooth", block: "nearest" });
       node?.focus({ preventScroll: true });
     }, 80);
-  }, [focusObjection]);
+  }, [focusObjection, inInspector]);
 
   const tasks = payload?.tasks ?? [];
   const claimable = payload?.claimable ?? [];
@@ -316,7 +327,7 @@ export function RoomTaskBar({
     tasks.length === 0 &&
     claimableCount === 0 &&
     openObjectionCount === 0 &&
-    humanInboxPendingCount === 0 &&
+    (skipHumanGate || humanInboxPendingCount === 0) &&
     unreadTotal === 0 &&
     artifacts.length === 0 &&
     !loading
@@ -356,8 +367,8 @@ export function RoomTaskBar({
   const hasTaskbarAlert =
     openObjections.length > 0 ||
     taskBlockedCount > 0 ||
-    humanInboxPendingCount > 0;
-  const isOpen = !collapsed;
+    (!skipHumanGate && humanInboxPendingCount > 0);
+  const isOpen = inInspector || !collapsed;
 
   const sections: {
     id: TaskSection;
@@ -381,13 +392,17 @@ export function RoomTaskBar({
       count: openObjections.length,
       danger: openObjections.length > 0,
     },
-    {
-      id: "human",
-      icon: "alert",
-      label: "Human gate",
-      count: humanInboxPendingCount,
-      danger: humanInboxPendingCount > 0,
-    },
+    ...(skipHumanGate
+      ? []
+      : [
+          {
+            id: "human" as const,
+            icon: "alert" as const,
+            label: "Human gate",
+            count: humanInboxPendingCount,
+            danger: humanInboxPendingCount > 0,
+          },
+        ]),
     {
       id: "peer",
       icon: "mail",
@@ -464,6 +479,7 @@ export function RoomTaskBar({
     <div
       className={[
         "taskbar",
+        inInspector ? "taskbar--inspector" : "",
         isOpen ? "is-open" : "",
         hasTaskbarAlert ? "taskbar--alert" : "",
       ]
@@ -472,53 +488,55 @@ export function RoomTaskBar({
       role="region"
       aria-label="팀 할 일 목록"
     >
-      <button
-        type="button"
-        className="taskbar__summary"
-        aria-expanded={isOpen}
-        onClick={() => setCollapsed((v) => !v)}
-      >
-        <span className="taskbar__title">
-          <TaskbarListIcon />
-          Room tasks
-        </span>
-        <span className="taskbar__counts">
-          {taskOpenCount > 0 ? (
-            <span className="badge badge--accent">{taskOpenCount} open</span>
-          ) : null}
-          {taskDoneCount > 0 ? (
-            <span className="badge badge--ok">{taskDoneCount} done</span>
-          ) : null}
-          {taskBlockedCount > 0 ? (
-            <span className="badge badge--danger">
-              {taskBlockedCount} blocked
-            </span>
-          ) : null}
-          {openObjections.length > 0 ? (
-            <span className="badge badge--danger">
-              <TabIcon name="alert" /> {openObjections.length}
-            </span>
-          ) : null}
-          {humanInboxPendingCount > 0 ? (
-            <span className="badge badge--danger">
-              Human {humanInboxPendingCount}
-            </span>
-          ) : null}
-          {unreadTotal > 0 ? (
-            <span className="badge badge--accent">
-              <TabIcon name="mail" /> {unreadTotal}
-            </span>
-          ) : null}
-          {artifacts.length > 0 ? (
-            <span className="badge">
-              <TabIcon name="doc" /> {artifacts.length}
-            </span>
-          ) : null}
-          <span className="taskbar__caret" aria-hidden>
-            <TaskbarChevronIcon />
+      {inInspector ? null : (
+        <button
+          type="button"
+          className="taskbar__summary"
+          aria-expanded={isOpen}
+          onClick={() => setCollapsed((v) => !v)}
+        >
+          <span className="taskbar__title">
+            <TaskbarListIcon />
+            Room tasks
           </span>
-        </span>
-      </button>
+          <span className="taskbar__counts">
+            {taskOpenCount > 0 ? (
+              <span className="badge badge--accent">{taskOpenCount} open</span>
+            ) : null}
+            {taskDoneCount > 0 ? (
+              <span className="badge badge--ok">{taskDoneCount} done</span>
+            ) : null}
+            {taskBlockedCount > 0 ? (
+              <span className="badge badge--danger">
+                {taskBlockedCount} blocked
+              </span>
+            ) : null}
+            {openObjections.length > 0 ? (
+              <span className="badge badge--danger">
+                <TabIcon name="alert" /> {openObjections.length}
+              </span>
+            ) : null}
+            {humanInboxPendingCount > 0 && !skipHumanGate ? (
+              <span className="badge badge--danger">
+                Human {humanInboxPendingCount}
+              </span>
+            ) : null}
+            {unreadTotal > 0 ? (
+              <span className="badge badge--accent">
+                <TabIcon name="mail" /> {unreadTotal}
+              </span>
+            ) : null}
+            {artifacts.length > 0 ? (
+              <span className="badge">
+                <TabIcon name="doc" /> {artifacts.length}
+              </span>
+            ) : null}
+            <span className="taskbar__caret" aria-hidden>
+              <TaskbarChevronIcon />
+            </span>
+          </span>
+        </button>
+      )}
 
       {isOpen ? (
         <div className="taskbar__body">
@@ -859,7 +877,7 @@ export function RoomTaskBar({
               </>
             ) : null}
 
-            {section === "human" ? (
+            {section === "human" && !skipHumanGate ? (
               <HumanInboxPanel
                 sessionId={sessionId}
                 presentation="taskbar"

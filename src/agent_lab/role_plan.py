@@ -78,7 +78,12 @@ _CWD_ROLE_TO_ROLE: dict[str, str] = {
 }
 
 
-def resolve_role_plan(*, route: CategoryRoute, agents: list[str]) -> dict[str, str]:
+def resolve_role_plan(
+    *,
+    route: CategoryRoute,
+    agents: list[str],
+    hint: Any | None = None,
+) -> dict[str, str]:
     """카테고리·에이전트 강점 기반 역할 배정.
 
     - quick/trading → {} (역할 배정 없음)
@@ -86,6 +91,10 @@ def resolve_role_plan(*, route: CategoryRoute, agents: list[str]) -> dict[str, s
     - deep → codex를 critic으로 격상 (deeper analysis)
     - critical → codex=critic + claude=synthesizer (cross-proposal synthesis)
     Kill switch: AGENT_LAB_ROOM_ROLES=0 → 항상 {}
+
+    hint: optional SetupHint from feedback_advisor (Phase B).
+    hint.role_overrides가 있으면 기본 배정을 agent 단위로 override.
+    기존 무인자 호출부 동작 불변.
     """
     if not _roles_enabled():
         return {}
@@ -110,17 +119,41 @@ def resolve_role_plan(*, route: CategoryRoute, agents: list[str]) -> dict[str, s
     if category == "critical" and "claude" in result:
         result["claude"] = "synthesizer"
 
+    # Phase B: advisor hint overrides (per-agent, skip unknown agents/roles)
+    if hint is not None:
+        overrides: dict[str, str] = getattr(hint, "role_overrides", {}) or {}
+        for agent, role_id in overrides.items():
+            if agent in agents and role_id in _ROLES:
+                result[agent] = role_id
+
     return result
 
 
-def agent_subset_for_route(route: CategoryRoute, available: list[str]) -> list[str]:
+def agent_subset_for_route(
+    route: CategoryRoute,
+    available: list[str],
+    hint: Any | None = None,
+) -> list[str]:
     """토픽 카테고리별 참여 에이전트 풀.
 
     빈 리스트 반환 = 필터 없음 (전체 사용).
     quick만 단일 에이전트로 축소.
+
+    hint: optional SetupHint (Phase B). hint.suggested_subset이 비어 있지
+    않으면 해당 에이전트들을 available 교집합으로 반환.
+    현재 advisor는 항상 빈 tuple을 반환하므로 기존 동작과 동일.
     """
     if not _roles_enabled():
         return []
+
+    # Phase B: advisor subset hint
+    if hint is not None:
+        suggested: tuple[str, ...] = getattr(hint, "suggested_subset", ()) or ()
+        if suggested:
+            filtered = [a for a in suggested if a in available]
+            if filtered:
+                return filtered
+
     if route.category == "quick" and available:
         return available[:1]
     return []

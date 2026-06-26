@@ -318,6 +318,17 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "feature",
         "S1 Phase A: append per-turn outcome rows to .agent-lab/outcomes.jsonl for session-to-session learning (default off)",
     ),
+    FlagDef(
+        "AGENT_LAB_FEEDBACK_ADVISOR",
+        "feature",
+        "S1 Phase B: feedback advisor reads outcomes.jsonl and adjusts role/agent setup via SetupHint (default off; requires TURN_METRICS+OUTCOME_LEDGER)",
+    ),
+    FlagDef(
+        "AGENT_LAB_FEEDBACK_MIN_SAMPLE",
+        "feature",
+        "S1 Phase B: minimum prior outcomes required before advisor applies overrides (default 3)",
+        default="3",
+    ),
     FlagDef("AGENT_LAB_NATIVE_HOOKS", "feature", "Stage session agent-hooks into workspace cwd"),
     FlagDef("AGENT_LAB_HOOK_TIMEOUT_S", "feature", "Room hook subprocess timeout (seconds)", default="30"),
     # --- feature: resilience ---

@@ -78,13 +78,25 @@ def run_consensus_agent_rounds(
     # Expert Pool: route 기반 에이전트 풀 필터
     from agent_lab.role_plan import agent_subset_for_route, resolve_role_plan
 
-    subset = agent_subset_for_route(route, active)
+    # Phase B: cross-session learning advisor — fail-open, no side effects on error
+    from agent_lab.feedback_advisor import SetupHint, advise_setup
+
+    _hint: SetupHint = advise_setup(
+        topic,
+        route.category,
+        active,
+    )
+
+    subset = agent_subset_for_route(route, active, hint=_hint)
     if subset:
         active = subset
 
     if run_meta is not None:
-        run_meta["_turn_category"] = route.category_dict()
-        run_meta["_turn_roles"] = resolve_role_plan(route=route, agents=active)
+        cat_dict = route.category_dict()
+        if _hint.source == "history":
+            cat_dict["advisor_rationale"] = _hint.rationale
+        run_meta["_turn_category"] = cat_dict
+        run_meta["_turn_roles"] = resolve_role_plan(route=route, agents=active, hint=_hint)
 
     def _harvest_discuss_objections(thread: list[ChatMessage]) -> None:
         """충돌을 상태로 — discuss CHALLENGE/BLOCK을 run.json objections에 등록 (P3)."""

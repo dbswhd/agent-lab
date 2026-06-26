@@ -94,6 +94,6 @@ def build_turn_metrics(
         "synthesized": bool(turn.get("synthesize")),
         "latency_ms": int(turn.get("latency_ms") or 0),
         "oracle_rollup": _oracle_rollup(executions),
-        "advisor_rationale": None,  # filled by Phase B feedback_advisor
+        "advisor_rationale": category.get("advisor_rationale"),  # set by feedback_advisor (Phase B)
     }
     return metrics

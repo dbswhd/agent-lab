@@ -54,6 +54,18 @@ function isDiscussHarvest(item: HumanInboxItem): boolean {
   return (item.source ?? "").toLowerCase() === "orchestrator";
 }
 
+function isMcpSource(item: HumanInboxItem): boolean {
+  const src = (item.source ?? "").toLowerCase();
+  return src.startsWith("mcp_") || src.includes("mcp");
+}
+
+function inboxSourceBadge(item: HumanInboxItem, ko: boolean): string | null {
+  if (isDiscussHarvest(item)) return ko ? "Harvest" : "Harvest";
+  if (isMcpSource(item)) return "MCP";
+  const src = (item.source ?? "").trim();
+  return src || null;
+}
+
 function inboxLaneLabel(item: HumanInboxItem, ko: boolean): string {
   if (isDiscussHarvest(item)) return ko ? "Discuss" : "Discuss";
   const src = (item.source ?? "").toLowerCase();
@@ -141,6 +153,7 @@ function InboxRow({
   const busy = disabled || busyId === item.id;
   const forkRow = item.kind === "question" && (item.options?.length ?? 0) >= 2;
   const lane = inboxLaneLabel(item, ko);
+  const sourceBadge = inboxSourceBadge(item, ko);
   const trigger = triggerBadge(item.trigger, ko);
 
   return (
@@ -160,6 +173,21 @@ function InboxRow({
         <Avatar role={inboxAgent(item)} size={20} />
         <span className="inbox-row__subject">{subject}</span>
         <span className="inbox-row__badges">
+          {sourceBadge ? (
+            <span
+              className={[
+                "inbox-row__source-badge",
+                isMcpSource(item) ? "inbox-row__source-badge--mcp" : "",
+                isDiscussHarvest(item)
+                  ? "inbox-row__source-badge--harvest"
+                  : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+            >
+              {sourceBadge}
+            </span>
+          ) : null}
           <span className="inbox-row__lane-badge">{lane}</span>
           {trigger ? (
             <span className="inbox-row__trigger-badge">{trigger}</span>

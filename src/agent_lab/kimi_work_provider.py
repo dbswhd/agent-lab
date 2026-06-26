@@ -66,11 +66,16 @@ def respond(
 
     from agent_lab.run_meta import read_run_meta
     from agent_lab.room_preset import is_fast_room_session
+    from agent_lab.cursor_inbox_mcp import discuss_inbox_mcp_enabled
 
-    use_inbox_mcp = inbox_mcp and not is_fast_room_session(read_run_meta(folder_path))
+    run_meta = read_run_meta(folder_path)
+    use_inbox_mcp = inbox_mcp and discuss_inbox_mcp_enabled(
+        run_meta,
+        agent_id="kimi_work",
+    )
 
     base_system = (system or KIMI_WORK_ROOM).strip()
-    if is_fast_room_session(read_run_meta(folder_path)):
+    if is_fast_room_session(run_meta):
         base_system = (
             f"{base_system}\n\n"
             "[Fast preset — solo turn]\n"

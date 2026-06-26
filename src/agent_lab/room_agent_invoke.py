@@ -470,12 +470,16 @@ def _call_one_agent(
         from agent_lab.cursor_inbox_mcp import discuss_inbox_mcp_enabled
 
         # Loop discuss + plan-workflow CLARIFY share discuss_inbox_mcp_enabled (not execute).
-        use_inbox_mcp = discuss_inbox_mcp_enabled(run_meta)
+        use_inbox_mcp = discuss_inbox_mcp_enabled(run_meta, agent_id=str(aid))
+        perms = dict(effective_permissions or {})
+        if use_inbox_mcp:
+            perms["_inbox_caller_agent"] = str(aid)
+            perms["_inbox_policy_lane"] = "discuss"
         agent_reply = call_agent_reply(
             aid,
             "",
             payload,
-            permissions=effective_permissions,
+            permissions=perms,
             on_activity=_activity,
             on_bridge_event=_bridge_event,
             session_folder=folder,

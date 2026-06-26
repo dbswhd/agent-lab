@@ -86,6 +86,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | GJC-MAP | GJC | Workflow pipeline ↔ agent-lab integration map | ✅ | [GJC-WORKFLOW-PIPELINE.md](GJC-WORKFLOW-PIPELINE.md), Learn AI `notes/05-agent-lab/gajae-code-workflow-pipeline.md` | Doc only; adoption backlog AL-009…011 |
 | GJC-AUTH | Gajae-code v0.5.4 | Provider picker 기반 CLI 로그인 UX | ✅ | `provider_registry.py`, `auth_runs.py`, `routers/auth.py`, `AuthFlowPanel.tsx`, `ProviderStatusPanel.tsx`, `tests/test_auth_runs.py` | 공식 Codex·Claude·Cursor CLI credential을 source of truth로 사용 |
 | PLAN-UX | Gajae Code · Cursor · Claude Code · Codex | 단일 Plan 검토·승인 surface | ✅ | `PlanApprovalPanel.tsx`, `WorkToolPanel.tsx`, `plan_pending.py`, `web/e2e/plan-approval.spec.ts` | HUMAN_PENDING에서 primary CTA 하나; whole-plan hash로 action snapshot 중복 승인 제거; execute·merge·Oracle gate 유지 |
+| MCP-INBOX | Human Inbox MCP-first (harvest off, lead/single-flight, source badge) | ✅ | [MCP-FIRST-INBOX.md](MCP-FIRST-INBOX.md), `inbox_mcp_policy.py`, `HumanInboxPanel.tsx`, `tests/test_mcp_first_inbox.py` | Phase A–E; legacy `AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST=1` |
 
 **Planning canonical:** [MISSION-BOARD-ADOPTION.md](MISSION-BOARD-ADOPTION.md) (P1–P4 shipped).
 
@@ -93,9 +94,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 
 ## Partial
 
-| ID | Item | Status | Design doc | Notes |
-|----|------|--------|------------|-------|
-| MCP-INBOX | MCP-first inbox — orchestrator harvest deprecate, lead/single-flight | 🔶 | [MCP-FIRST-INBOX.md](MCP-FIRST-INBOX.md) | Phase A+B **shipped** (`AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST=0` default); Phase C–E planned |
+_(none — MCP-INBOX Phase A–E shipped; see §Shipped.)_
 
 ---
 

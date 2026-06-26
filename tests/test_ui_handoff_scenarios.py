@@ -155,6 +155,7 @@ def test_taskbar_human_inbox_integration_contract():
     room = _read("web", "src", "components", "RoomChat.tsx")
     assert "taskbar--inspector" in taskbar
     assert "HumanInboxPanel" not in taskbar
+    assert "inbox-row__source-badge" in inbox
     assert "taskbar-dock" not in room
     assert 'id: "peer"' in taskbar
     assert '"taskbar"' in inbox

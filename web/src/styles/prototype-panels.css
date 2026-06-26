@@ -432,6 +432,7 @@
 }
 
 .inbox-row__lane-badge,
+.inbox-row__source-badge,
 .inbox-row__trigger-badge,
 .inbox-row__fork-badge {
   padding: 1px var(--space-6);
@@ -440,6 +441,16 @@
   letter-spacing: 0.02em;
 }
 
+.inbox-row__source-badge--mcp {
+  color: var(--color-accent);
+  border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+}
+.inbox-row__source-badge--harvest {
+  color: var(--label-secondary);
+  border-color: var(--border-soft);
+  background: color-mix(in srgb, var(--surface-muted) 80%, transparent);
+}
 .inbox-row__lane-badge {
   background: var(--surface-sunken);
   color: var(--text-secondary);

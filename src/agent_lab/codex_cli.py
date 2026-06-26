@@ -698,9 +698,15 @@ def invoke(
 
     config_overrides: list[str] | None = None
     if use_inbox_mcp and session_folder is not None:
-        from agent_lab.cursor_inbox_mcp import build_codex_inbox_mcp_config_args
+        from agent_lab.cursor_inbox_mcp import (
+            build_codex_inbox_mcp_config_args,
+            inbox_mcp_build_kwargs,
+        )
 
-        config_overrides = build_codex_inbox_mcp_config_args(Path(session_folder))
+        config_overrides = build_codex_inbox_mcp_config_args(
+            Path(session_folder),
+            **inbox_mcp_build_kwargs(permissions),
+        )
     if execute_plugins and session_folder is not None:
         from agent_lab.session_plugin_runtime import merge_codex_execute_config_overrides
 

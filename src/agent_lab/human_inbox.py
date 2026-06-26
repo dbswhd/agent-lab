@@ -536,7 +536,16 @@ def create_mcp_question_and_wait(
     multi_select: bool = False,
     context_ref: str | None = None,
     mcp_call_id: str | None = None,
+    caller_agent: str | None = None,
+    policy_lane: str | None = None,
 ) -> dict[str, Any]:
+    from agent_lab.inbox_mcp_policy import enforce_mcp_ask_human_policy
+
+    enforce_mcp_ask_human_policy(
+        folder,
+        caller_agent=caller_agent,
+        policy_lane=policy_lane,
+    )
     if len(options) < 2:
         raise ValueError("ask_human requires at least 2 options")
     item = create_inbox_item(

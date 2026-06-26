@@ -98,7 +98,7 @@ Fast(`room_preset=fast` 또는 `user_mode=quick` + `plan_intent=none`)는 discus
 
 ---
 
-## 6. 3-agent MCP 조율 (planned)
+## 6. 3-agent MCP 조율 (shipped — Phase C)
 
 전담 gate 에이전트 **없이** Codex/Claude/Cursor식 역할 분담:
 
@@ -107,14 +107,15 @@ Fast(`room_preset=fast` 또는 `user_mode=quick` + `plan_intent=none`)는 discus
 | **Lead** (Codex 등) | `ask_human` 주력 |
 | **Critic** (Claude) | objection/envelope; Human 필요 시 lead 위임 |
 | **Cursor** | discuss MCP OFF; execute에서 `propose_build` |
-| **Kimi Work** | peer; lead-only ask 권장 |
+| **Kimi Work** | peer; inbox gate owner만 |
 
-**런타임 규칙 (planned):**
+**런타임 규칙 (shipped):**
 
-- `has_pending_question` → 두 번째 `ask_human` 거부 ([`human_inbox.create_mcp_question_and_wait`](../src/agent_lab/human_inbox.py) 확장)
-- (선택) `inbox_gate_owner` = turn lead
+- `has_pending_question` → 두 번째 `ask_human` 거부 — [`inbox_mcp_policy.enforce_mcp_ask_human_policy`](../src/agent_lab/inbox_mcp_policy.py)
+- `inbox_gate_owner` — team lead가 `cursor`이면 `codex` → `claude` → `kimi_work` 폴백
+- discuss MCP는 gate owner만 (`discuss_inbox_mcp_enabled(..., agent_id=)`)
 
-**Supervisor 턴 순서 (planned):**
+**Supervisor 턴 순서 (target):**
 
 ```
 R1 → R2 → pending ask? → pause → resolve → Scribe → lead propose_build
@@ -165,9 +166,9 @@ Discuss Build T-B* orchestrator surfacing은 MCP-first에서 **planned deprecati
 |-------|------|------|
 | **A** | Fast skip — `is_fast_room_session`, tests `test_fast_inbox_skip.py` | **shipped** |
 | **B** | harvest flag OFF (default); supervisor discuss MCP ON | **shipped** |
-| **C** | lead-only + single-flight guard | **planned** |
-| **D** | UI source badge (`mcp_*` vs `orchestrator`) | **planned** |
-| **E** | harvest test → MCP E2E migration | **planned** |
+| **C** | lead-only + single-flight guard | **shipped** |
+| **D** | UI source badge (`mcp_*` vs `orchestrator`) | **shipped** |
+| **E** | harvest test → MCP E2E migration | **shipped** (`tests/test_mcp_first_inbox.py`) |
 
 ---
 
@@ -176,7 +177,7 @@ Discuss Build T-B* orchestrator surfacing은 MCP-first에서 **planned deprecati
 | Concern | File |
 |---------|------|
 | Fast gate | `room_preset.py`, `inbox_harvest.py`, `cursor_inbox_mcp.py`, `kimi_work_provider.py` |
-| MCP tools | `inbox_mcp_server.py`, `kimi_work_inbox_bridge.py` |
+| MCP tools | `inbox_mcp_server.py`, `kimi_work_inbox_bridge.py`, `inbox_mcp_policy.py` |
 | Scribe / plan | `room_plan_scribe.py`, `room_scribe_enrichment.py`, `room_turn_meta.py` |
 | Persist harvest call site | `room_session_persist.py` (~L433–453) |
 

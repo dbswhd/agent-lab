@@ -227,7 +227,12 @@ def _build_agent_options(
         )
 
         if mount_inbox_mcp_when_requested(inbox_mcp):
-            mcp_servers = build_inbox_mcp_servers(Path(session_folder))
+            from agent_lab.cursor_inbox_mcp import inbox_mcp_build_kwargs
+
+            mcp_servers = build_inbox_mcp_servers(
+                Path(session_folder),
+                **inbox_mcp_build_kwargs(perms),
+            )
 
     agent_opts = AgentOptions(
         # None lets the SDK fall back to the cursor-agent OAuth session.

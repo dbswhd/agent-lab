@@ -23,16 +23,26 @@ def test_orchestrator_harvest_disabled_by_default() -> None:
     assert orchestrator_inbox_harvest_enabled() is False
 
 
-def test_discuss_mcp_on_supervisor_when_harvest_off(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_discuss_mcp_gate_owner_on_supervisor_when_harvest_off(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.delenv("AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST", raising=False)
-    assert discuss_inbox_mcp_enabled({"room_preset": "supervisor"}) is True
+    run: dict[str, Any] = {
+        "room_preset": "supervisor",
+        "team_lead": "cursor",
+        "agents": ["cursor", "codex", "claude"],
+    }
+    assert discuss_inbox_mcp_enabled(run, agent_id="codex") is True
+    assert discuss_inbox_mcp_enabled(run, agent_id="cursor") is False
 
 
 def test_discuss_mcp_off_supervisor_when_legacy_harvest_on(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST", "1")
-    assert discuss_inbox_mcp_enabled({"room_preset": "supervisor"}) is False
+    run: dict[str, Any] = {"room_preset": "supervisor", "team_lead": "codex"}
+    assert discuss_inbox_mcp_enabled(run, agent_id="codex") is False
+    assert discuss_inbox_mcp_enabled(run, agent_id="claude") is False
 
 
 def test_plan_workflow_inbox_mcp_disabled_for_fast() -> None:

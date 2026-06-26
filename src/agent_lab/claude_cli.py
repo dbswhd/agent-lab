@@ -376,9 +376,17 @@ def _resolve_claude_mcp_config(
     """Merge inbox MCP + execute-plugin overlays for Claude ``--mcp-config``."""
     paths: list[Path] = []
     if inbox_mcp and session_folder is not None:
-        from agent_lab.cursor_inbox_mcp import build_claude_inbox_mcp_overlay
+        from agent_lab.cursor_inbox_mcp import (
+            build_claude_inbox_mcp_overlay,
+            inbox_mcp_build_kwargs,
+        )
 
-        paths.append(build_claude_inbox_mcp_overlay(session_folder))
+        paths.append(
+            build_claude_inbox_mcp_overlay(
+                session_folder,
+                **inbox_mcp_build_kwargs(permissions),
+            )
+        )
     if (permissions or {}).get("_execute_plugins") and session_folder is not None:
         from agent_lab.session_plugin_runtime import resolve_claude_mcp_config_path
 

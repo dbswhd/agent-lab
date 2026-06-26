@@ -24,29 +24,28 @@ def plan_inbox_mcp_enabled() -> bool:
     return execute_inbox_mcp_enabled()
 
 
-def discuss_inbox_mcp_enabled(run_meta: dict[str, Any] | None = None) -> bool:
+def discuss_inbox_mcp_enabled(
+    run_meta: dict[str, Any] | None = None,
+    *,
+    agent_id: str | None = None,
+) -> bool:
     """True when Room should pass ``inbox_mcp=True`` to agent invoke.
 
     - plan-workflow CLARIFY turns (via ``plan_workflow_wants_inbox_mcp``)
-    - Loop discuss lane uses the same gate from ``room_agent_invoke`` (execute lane excluded)
+    - MCP-first discuss: inbox gate owner only (cursor excluded)
 
     Fast / quick sessions skip discuss-lane inbox MCP (orchestrator harvest also skipped).
     When ``AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST=0`` (default), supervisor discuss uses
     peer ``ask_human`` MCP instead of post-turn harvest.
     """
-    from agent_lab.room_preset import is_fast_room_session
+    from agent_lab.inbox_mcp_policy import (
+        discuss_inbox_mcp_agent_allowed,
+        discuss_inbox_mcp_lane_enabled,
+    )
 
-    if run_meta and is_fast_room_session(run_meta):
-        return False
-    from agent_lab.plan_workflow import plan_workflow_wants_inbox_mcp
-
-    if run_meta and plan_workflow_wants_inbox_mcp(run_meta):
-        return plan_inbox_mcp_enabled()
-    from agent_lab.inbox_harvest import orchestrator_inbox_harvest_enabled
-
-    if run_meta and not orchestrator_inbox_harvest_enabled():
-        return execute_inbox_mcp_enabled()
-    return False
+    if agent_id is not None:
+        return discuss_inbox_mcp_agent_allowed(run_meta, agent_id)
+    return discuss_inbox_mcp_lane_enabled(run_meta)
 
 
 def mount_inbox_mcp_when_requested(inbox_mcp: bool) -> bool:
@@ -66,10 +65,18 @@ def _execute_inbox_mcp_enabled() -> bool:
     return execute_inbox_mcp_enabled()
 
 
-def inbox_mcp_stdio_spec(session_folder: Path) -> dict[str, Any]:
+def inbox_mcp_stdio_spec(
+    session_folder: Path,
+    *,
+    caller_agent: str | None = None,
+    policy_lane: str | None = None,
+) -> dict[str, Any]:
+    from agent_lab.inbox_mcp_policy import inbox_mcp_env_overrides
+
     env = {
         **os.environ,
         "AGENT_LAB_SESSION_FOLDER": str(session_folder.resolve()),
+        **inbox_mcp_env_overrides(caller_agent=caller_agent, policy_lane=policy_lane),
     }
     return {
         "command": sys.executable,
@@ -78,7 +85,22 @@ def inbox_mcp_stdio_spec(session_folder: Path) -> dict[str, Any]:
     }
 
 
-def build_inbox_mcp_servers(session_folder: Path) -> dict[str, Any]:
+def inbox_mcp_build_kwargs(permissions: dict[str, Any] | None) -> dict[str, str | None]:
+    perms = permissions or {}
+    caller = str(perms.get("_inbox_caller_agent") or "").strip().lower()
+    lane = str(perms.get("_inbox_policy_lane") or "").strip().lower()
+    return {
+        "caller_agent": caller or None,
+        "policy_lane": lane or None,
+    }
+
+
+def build_inbox_mcp_servers(
+    session_folder: Path,
+    *,
+    caller_agent: str | None = None,
+    policy_lane: str | None = None,
+) -> dict[str, Any]:
     try:
         from cursor_sdk.types import StdioMcpServerConfig
     except ImportError:
@@ -90,7 +112,11 @@ def build_inbox_mcp_servers(session_folder: Path) -> dict[str, Any]:
             args: list
             env: dict
 
-    spec = inbox_mcp_stdio_spec(session_folder)
+    spec = inbox_mcp_stdio_spec(
+        session_folder,
+        caller_agent=caller_agent,
+        policy_lane=policy_lane,
+    )
     return {
         INBOX_MCP_SERVER_NAME: StdioMcpServerConfig(
             command=spec["command"],
@@ -102,6 +128,8 @@ def build_inbox_mcp_servers(session_folder: Path) -> dict[str, Any]:
 
 _CODEX_INBOX_ENV_KEYS = (
     "AGENT_LAB_SESSION_FOLDER",
+    "AGENT_LAB_INBOX_CALLER_AGENT",
+    "AGENT_LAB_INBOX_POLICY_LANE",
     "AGENT_LAB_INBOX_TIMEOUT_SEC",
     "AGENT_LAB_INBOX_POLL_SEC",
     "AGENT_LAB_ROOT",
@@ -112,9 +140,18 @@ _CODEX_INBOX_ENV_KEYS = (
 )
 
 
-def build_codex_inbox_mcp_config_args(session_folder: Path) -> list[str]:
+def build_codex_inbox_mcp_config_args(
+    session_folder: Path,
+    *,
+    caller_agent: str | None = None,
+    policy_lane: str | None = None,
+) -> list[str]:
     """Codex `exec -c` overrides for the stdio Human Inbox MCP server."""
-    spec = inbox_mcp_stdio_spec(session_folder)
+    spec = inbox_mcp_stdio_spec(
+        session_folder,
+        caller_agent=caller_agent,
+        policy_lane=policy_lane,
+    )
     server = INBOX_MCP_SERVER_NAME
     prefix = f'mcp_servers."{server}"'
     args: list[str] = [
@@ -132,9 +169,18 @@ def build_codex_inbox_mcp_config_args(session_folder: Path) -> list[str]:
     return args
 
 
-def build_claude_inbox_mcp_overlay(session_folder: Path) -> Path:
+def build_claude_inbox_mcp_overlay(
+    session_folder: Path,
+    *,
+    caller_agent: str | None = None,
+    policy_lane: str | None = None,
+) -> Path:
     """Write Claude `--mcp-config` JSON for the stdio Human Inbox MCP server."""
-    spec = inbox_mcp_stdio_spec(session_folder)
+    spec = inbox_mcp_stdio_spec(
+        session_folder,
+        caller_agent=caller_agent,
+        policy_lane=policy_lane,
+    )
     overlay_dir = session_folder / ".agent-lab"
     overlay_dir.mkdir(parents=True, exist_ok=True)
     overlay = overlay_dir / "claude-inbox-mcp.json"

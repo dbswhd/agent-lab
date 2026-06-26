@@ -126,6 +126,8 @@ def _execute_inbox_tool(
             multi_select=bool(args.get("multiSelect") or args.get("multi_select")),
             context_ref=str(args.get("context_ref") or "").strip() or None,
             mcp_call_id=mcp_call_id,
+            caller_agent="kimi_work",
+            policy_lane="discuss",
         )
     summary = str(args.get("summary") or args.get("prompt") or "").strip()
     action_ref = str(args.get("action_ref") or args.get("actionRef") or "").strip()

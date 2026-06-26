@@ -782,6 +782,11 @@ def run_dry_run(
 
     use_inbox_mcp = executor_id in EXECUTE_AGENT_IDS and execute_inbox_mcp_enabled()
 
+    exec_permissions = dict(effective_permissions or {})
+    if use_inbox_mcp:
+        exec_permissions["_inbox_caller_agent"] = str(executor_id)
+        exec_permissions["_inbox_policy_lane"] = "execute"
+
     from agent_lab.run_control import RoomRunCancelled, check_cancelled
 
     try:
@@ -795,7 +800,7 @@ def run_dry_run(
                 revise_request=revise_request,
                 inbox_mcp=use_inbox_mcp,
             ),
-            permissions=effective_permissions,
+            permissions=exec_permissions,
             cwd=cwd,
             on_activity=_on_activity,
             verify=verify_for_agent,

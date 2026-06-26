@@ -77,6 +77,33 @@
   border-radius: var(--radius-pill);
 }
 
+/* S1 advisor hint — compact turn-setup rationale shown after user message */
+.advisor-hint {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-6);
+  align-self: flex-end;
+  margin-top: calc(var(--space-4) * -1);
+  margin-bottom: var(--space-4);
+  max-width: 80%;
+  overflow: hidden;
+}
+.advisor-hint__label {
+  flex-shrink: 0;
+  font-size: var(--text-micro);
+  font-weight: var(--weight-semibold);
+  color: var(--label-quaternary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.advisor-hint__text {
+  font-size: var(--text-micro);
+  color: var(--label-quaternary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ---- CONSOLE presentation -------------------------------- */
 .transcript--console .turn {
   display: flex;

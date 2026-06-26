@@ -23,3 +23,8 @@
 - `RoomChat.tsx` — Room 대화 · Workbench shell
 - `WorkToolPanel.tsx` — Tools > Plan (execute-focused)
 - `WorkPanel.tsx` — mission stepper strip (WorkStatusBar host)
+
+## UI skill (Codex / Claude Code)
+- `/agent-lab-ui` — tokens, IA, migration gaps (`docs/archive/legacy/UI-MIGRATION-GAPS.md`)
+- `/impeccable polish …` · `/emil-design-eng` · `/review-animations` — 설치: `docs/UI-SKILLS.md`
+- Design SSOT: `web/DESIGN.md` · `web/src/styles/tokens.css`

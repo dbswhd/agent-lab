@@ -46,6 +46,18 @@
 - `.claude/rules/react-frontend.md` — `web/src/`
 
 ## Claude Code skills (CC-skills)
+
+### Project (git tracked)
+- `/agent-lab-ui` — Mission OS UI: tokens, IA, migration gaps, verify commands
 - `/smoke-and-score` — E2E smoke + `make score-session`
 - `/regression-check` — pytest + failure analysis
 - `/init-project-memory` — PROJECT.md + AGENTS.md + SHARED_CONTEXT.md bootstrap
+
+### UI craft (local — `npx skills add`, see `docs/UI-SKILLS.md`)
+- `/impeccable` — audit, polish, animate (reads `PRODUCT.md`, `web/DESIGN.md`)
+- `/emil-design-eng` — UI polish & motion taste
+- `/review-animations` — motion code review (manual invoke)
+- `/fixing-motion-performance` — jank / GPU animation fixes
+- `/frontend-design` — anti–AI-slop direction before build
+
+Design context: `PRODUCT.md` · `web/DESIGN.md` · `docs/UI-SKILLS.md`

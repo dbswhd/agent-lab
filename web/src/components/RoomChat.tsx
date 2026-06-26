@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   AgentOption,
   PlanActionItem,
@@ -1033,6 +1033,18 @@ export function RoomChat({
     if (showPeerChannel) return messages;
     return messages.filter((m) => !m.peerChannel);
   }, [messages, showPeerChannel, showHumanSynthesis]);
+
+  // S1 Phase D: advisor rationale per completed turn (0-based, mirrors run.turns order)
+  const advisorRationales = useMemo(() => {
+    const turns = session?.run?.turns;
+    if (!Array.isArray(turns)) return [] as (string | null)[];
+    return (turns as Array<Record<string, unknown>>).map((t) => {
+      const tm = t?.turn_metrics;
+      if (!tm || typeof tm !== "object") return null;
+      const rat = (tm as Record<string, unknown>).advisor_rationale;
+      return typeof rat === "string" && rat ? rat : null;
+    });
+  }, [session?.run?.turns]);
 
   function clearRunWatchdog() {
     if (runWatchdogRef.current != null) {
@@ -3431,44 +3443,67 @@ export function RoomChat({
                     </span>
                   </div>
                 ) : null}
-                {visibleMessages.map((m) => {
-                  if (m.roundDivider) {
-                    const roundLabel =
-                      locale === "ko"
-                        ? `라운드 ${m.roundDivider}`
-                        : `Round ${m.roundDivider}`;
+                {(() => {
+                  let userTurnIdx = 0;
+                  return visibleMessages.map((m) => {
+                    if (m.roundDivider) {
+                      const roundLabel =
+                        locale === "ko"
+                          ? `라운드 ${m.roundDivider}`
+                          : `Round ${m.roundDivider}`;
+                      return (
+                        <div
+                          key={m.id}
+                          className="round-divider"
+                          aria-label={m.body}
+                        >
+                          {roundLabel}
+                        </div>
+                      );
+                    }
+                    if (m.typing && isReplyWaitRole(m.role)) {
+                      return (
+                        <ReplyWaitingBubble
+                          key={m.id}
+                          agent={m.role}
+                          label={m.label}
+                          turnItems={m.turnItems}
+                          body={m.body}
+                        />
+                      );
+                    }
+                    const highlighted = highlightChatLine === m.chatLineIndex;
+                    if (m.sent && !m.typing) {
+                      const rationale = advisorRationales[userTurnIdx] ?? null;
+                      userTurnIdx++;
+                      return (
+                        <Fragment key={m.id}>
+                          <ChatBubble
+                            message={m}
+                            typing={m.typing}
+                            highlighted={highlighted}
+                            presentation="console"
+                          />
+                          {rationale ? (
+                            <div className="advisor-hint" title={rationale}>
+                              <span className="advisor-hint__label">advisor</span>
+                              <span className="advisor-hint__text">{rationale}</span>
+                            </div>
+                          ) : null}
+                        </Fragment>
+                      );
+                    }
                     return (
-                      <div
+                      <ChatBubble
                         key={m.id}
-                        className="round-divider"
-                        aria-label={m.body}
-                      >
-                        {roundLabel}
-                      </div>
-                    );
-                  }
-                  if (m.typing && isReplyWaitRole(m.role)) {
-                    return (
-                      <ReplyWaitingBubble
-                        key={m.id}
-                        agent={m.role}
-                        label={m.label}
-                        turnItems={m.turnItems}
-                        body={m.body}
+                        message={m}
+                        typing={m.typing}
+                        highlighted={highlighted}
+                        presentation="console"
                       />
                     );
-                  }
-                  const highlighted = highlightChatLine === m.chatLineIndex;
-                  return (
-                    <ChatBubble
-                      key={m.id}
-                      message={m}
-                      typing={m.typing}
-                      highlighted={highlighted}
-                      presentation="console"
-                    />
-                  );
-                })}
+                  });
+                })()}
                 {pendingReplyAgents.map((a) => (
                   <ReplyWaitingBubble
                     key={a.id}

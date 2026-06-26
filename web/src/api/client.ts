@@ -1064,6 +1064,11 @@ export type RuntimeSnapshot = {
     models?: string[];
     next?: string;
   };
+  external?: {
+    runner_enabled?: boolean;
+    allowlist?: string[];
+    registered_count?: number;
+  };
 };
 
 export function fetchSessionRuntime(sessionId: string) {

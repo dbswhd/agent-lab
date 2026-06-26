@@ -105,6 +105,24 @@ def _round_cap(raw: object, default: int) -> int:
     return int(raw)
 
 
+def resolved_max_peer_review_rounds() -> int:
+    """Env override for plan peer-review ITERATE cap (``AGENT_LAB_MAX_PEER_REVIEW_ROUNDS``)."""
+    raw = (os.getenv("AGENT_LAB_MAX_PEER_REVIEW_ROUNDS") or "").strip()
+    if raw:
+        try:
+            return max(0, int(raw))
+        except ValueError:
+            pass
+    return DEFAULT_MAX_PEER_REVIEW_ROUNDS
+
+
+def effective_max_peer_review_rounds(pw: dict[str, Any]) -> int:
+    env_raw = (os.getenv("AGENT_LAB_MAX_PEER_REVIEW_ROUNDS") or "").strip()
+    if env_raw:
+        return resolved_max_peer_review_rounds()
+    return _round_cap(pw.get("max_peer_review_rounds"), DEFAULT_MAX_PEER_REVIEW_ROUNDS)
+
+
 def default_plan_workflow() -> dict[str, Any]:
     return {
         "enabled": False,
@@ -112,7 +130,8 @@ def default_plan_workflow() -> dict[str, Any]:
         "clarify_round": 0,
         "max_clarify_rounds": DEFAULT_MAX_CLARIFY_ROUNDS,
         "peer_review_round": 0,
-        "max_peer_review_rounds": DEFAULT_MAX_PEER_REVIEW_ROUNDS,
+        "max_peer_review_rounds": resolved_max_peer_review_rounds(),
+        "last_peer_verdict": None,
         "plan_hash_at_approval": None,
         "approved_at": None,
         "approved_by": None,
@@ -199,6 +218,7 @@ def init_plan_workflow_on_plan_send(folder: Path) -> dict[str, Any]:
         if pw.get("enabled") and pw.get("phase") == "APPROVED":
             return run
         pw["enabled"] = True
+        pw["max_peer_review_rounds"] = resolved_max_peer_review_rounds()
         if pw.get("phase") not in _PLAN_PRE_APPROVAL and pw.get("phase") != "APPROVED":
             pw["phase"] = "CLARIFY"
         elif pw.get("phase") == "INTAKE":
@@ -292,6 +312,20 @@ PLAN_PEER_REVIEW_GUIDANCE = (
     "Plan peer review: read plan.md only. Do not propose code changes. "
     "Use envelope CHALLENGE or ENDORSE on specific plan actions or sections. "
     "Reference plan_action:N in refs when applicable."
+)
+
+PLAN_ARCHITECT_REVIEW_GUIDANCE = (
+    "Plan architect review (ralplan architect seat): read plan.md only. "
+    "Evaluate structure, dependencies, scope boundaries, and whether each action has "
+    "a testable verify criterion. CHALLENGE architectural gaps; ENDORSE when the plan "
+    "is coherent. No code changes."
+)
+
+PLAN_CRITIC_REVIEW_GUIDANCE = (
+    "Plan critic review (ralplan critic seat): adversarial read of plan.md only. "
+    "Find the weakest assumption, missing edge case, or unverifiable claim. "
+    "CHALLENGE or AMEND one concrete issue; ENDORSE only with a one-line rationale. "
+    "No code changes."
 )
 
 
@@ -723,11 +757,14 @@ def tick_plan_workflow_after_turn(
     if phase == "PEER_REVIEW":
         objections = _open_plan_objections(read_run_meta(folder))
         peer_round = int(pw.get("peer_review_round") or 0)
-        max_peer = _round_cap(pw.get("max_peer_review_rounds"), DEFAULT_MAX_PEER_REVIEW_ROUNDS)
-        if objections and peer_round < max_peer:
+        max_peer = effective_max_peer_review_rounds(pw)
+        last_verdict = str(pw.get("last_peer_verdict") or "")
+        iterate_requested = last_verdict in {"iterate", "reject"}
+        if (objections or iterate_requested) and peer_round < max_peer:
             set_plan_workflow_phase(folder, "REFINE")
             out["phase"] = "REFINE"
             out["advance"] = "REFINE"
+            out["peer_iterate"] = last_verdict or "objections"
             return out
         evaluation = _evaluate_plan_for_human_pending(folder, plan_md)
         if evaluation.get("status") == "reject" and peer_round < max_peer:
@@ -783,6 +820,7 @@ def tick_plan_workflow_after_turn(
                 cur["peer_review_round"] = int(cur.get("peer_review_round") or 0) + 1
                 cur["phase"] = "PEER_REVIEW"
                 cur.pop("last_plan_gate", None)
+                cur.pop("last_peer_verdict", None)
                 run_in["plan_workflow"] = cur
                 _mirror_verified_loop_status(run_in, cur)
                 return run_in
@@ -915,50 +953,92 @@ def run_plan_peer_review_round(
 ) -> list[Any]:
     """Read-only peer review of plan.md by non-scribe agents."""
     from agent_lab.agents.registry import AGENT_IDS, available_agents
+    from agent_lab.plan_peer_seats import (
+        plan_cold_critic_enabled,
+        plan_peer_review_seats,
+        plan_peer_review_uses_role_lanes,
+        plan_scribe_agent,
+    )
     from agent_lab.room import run_parallel_round
 
-    scribe_raw = (os.getenv("ROOM_SCRIBE_AGENT") or "claude").strip().lower()
+    scribe_raw = plan_scribe_agent(run_meta=run_meta)
     active = [a for a in (agents or available_agents()) if a in AGENT_IDS]
-    reviewers = [a for a in active if str(a) != scribe_raw][:2]
-    if not reviewers:
-        reviewers = [a for a in active if a in AGENT_IDS][:2]
+    reviewers = plan_peer_review_seats(active, run_meta=run_meta)
     if not reviewers:
         return []
 
     if run_meta is not None:
         run_meta["_plan_peer_review"] = True
+        run_meta["_plan_scribe_agent"] = scribe_raw
 
-    replies = run_parallel_round(
-        topic,
-        messages,
-        agents=reviewers,  # type: ignore[arg-type]
-        parallel_round=1,
-        on_event=on_event,
-        permissions=permissions,
-        plan_md=plan_md,
-        run_meta=run_meta,
-        extra_follow_up=PLAN_PEER_REVIEW_GUIDANCE,
-    )
-
-    from agent_lab.turn_modes import antidrift_enabled
-
-    # Anti-drift: fresh-eyes cold-context critic seat. When AGENT_LAB_ANTIDRIFT is on, add ONE
-    # extra critic that reviews plan.md from a cold context (goal + artifact only), reusing the
-    # ralplan fresh-spawn pattern, so a panel that has converged still gets an outside-eyes pass.
-    # Present only in PEER_REVIEW (this function) and only when the flag is on. Spine untouched.
-    if antidrift_enabled() and reviewers:
-        cold_critic = reviewers[-1]
-        cold_replies = run_parallel_round(
-            topic,
-            [],
-            agents=[cold_critic],  # type: ignore[arg-type]
-            parallel_round=1,
-            on_event=on_event,
-            permissions=permissions,
-            plan_md=plan_md,
-            run_meta=run_meta,
-            extra_follow_up=PLAN_FRESH_EYES_GUIDANCE,
+    replies: list[Any] = []
+    if plan_peer_review_uses_role_lanes(run_meta=run_meta) and len(reviewers) >= 2:
+        architect, critic = reviewers[0], reviewers[1]
+        replies.extend(
+            run_parallel_round(
+                topic,
+                messages,
+                agents=[architect],  # type: ignore[arg-type]
+                parallel_round=1,
+                on_event=on_event,
+                permissions=permissions,
+                plan_md=plan_md,
+                run_meta=run_meta,
+                extra_follow_up=PLAN_ARCHITECT_REVIEW_GUIDANCE,
+            )
         )
-        replies.extend(cold_replies)
+        replies.extend(
+            run_parallel_round(
+                topic,
+                messages + replies,
+                agents=[critic],  # type: ignore[arg-type]
+                parallel_round=1,
+                on_event=on_event,
+                permissions=permissions,
+                plan_md=plan_md,
+                run_meta=run_meta,
+                extra_follow_up=PLAN_CRITIC_REVIEW_GUIDANCE,
+            )
+        )
+    else:
+        replies.extend(
+            run_parallel_round(
+                topic,
+                messages,
+                agents=reviewers,  # type: ignore[arg-type]
+                parallel_round=1,
+                on_event=on_event,
+                permissions=permissions,
+                plan_md=plan_md,
+                run_meta=run_meta,
+                extra_follow_up=PLAN_PEER_REVIEW_GUIDANCE,
+            )
+        )
+
+    if plan_cold_critic_enabled(run_meta=run_meta) and reviewers:
+        cold_critic = reviewers[-1]
+        replies.extend(
+            run_parallel_round(
+                topic,
+                [],
+                agents=[cold_critic],  # type: ignore[arg-type]
+                parallel_round=1,
+                on_event=on_event,
+                permissions=permissions,
+                plan_md=plan_md,
+                run_meta=run_meta,
+                extra_follow_up=PLAN_FRESH_EYES_GUIDANCE,
+            )
+        )
+
+    from agent_lab.plan_peer_iterate import finalize_plan_peer_review_round
+
+    human_turn = int((run_meta or {}).get("human_turn") or 0)
+    finalize_plan_peer_review_round(
+        folder,
+        run_meta=run_meta,
+        replies=replies,
+        human_turn=human_turn,
+    )
 
     return replies

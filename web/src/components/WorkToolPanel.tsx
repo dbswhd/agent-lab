@@ -24,6 +24,12 @@ import {
   type PlanApprovalHost,
 } from "./WorkPlanApprovalSection";
 import { WorkStatusBar } from "./WorkStatusBar";
+import { GjcPipelineBar } from "./GjcPipelineBar";
+import { GjcExternalHandoffStrip } from "./GjcExternalHandoffStrip";
+import {
+  gjcPipelineMetaLine,
+  resolveGjcPipelinePhase,
+} from "../utils/gjcPipelinePhase";
 
 export type { WorkFocusTarget } from "../utils/workFocusTargets";
 
@@ -96,6 +102,14 @@ export function WorkToolPanel({
   const latestExecution = executions.length
     ? executions[executions.length - 1]
     : null;
+  const gjcPhase = resolveGjcPipelinePhase({
+    planWorkflow,
+    runtime,
+    latestExecution,
+    hasPlan,
+  });
+  const gjcMeta = gjcPipelineMetaLine(gjcPhase, planWorkflow?.notice);
+  const externalRunnerEnabled = Boolean(runtime?.external?.runner_enabled);
   const workPhase =
     runtime?.work_phase ??
     resolveWorkPhase({
@@ -196,11 +210,17 @@ export function WorkToolPanel({
     return (
       <div className="work-stack work-stack--tool">
         <div className="work-surface work-surface--chrome work-chrome">
+          <GjcPipelineBar
+            phase={gjcPhase}
+            metaLine={gjcMeta}
+            externalRunnerEnabled={externalRunnerEnabled}
+          />
           <WorkStatusBar
             phase={workPhase}
             metaLine={workPlanMetaLine(planMeta)}
             hasPlan={hasPlan}
           />
+          <GjcExternalHandoffStrip execution={latestExecution} />
         </div>
         {showPlanStalePanel ? (
           <div className="work-surface work-surface--alert work-plan-stale">
@@ -224,11 +244,17 @@ export function WorkToolPanel({
   return (
     <div className="work-stack work-stack--tool">
       <div className="work-surface work-surface--chrome work-chrome">
+        <GjcPipelineBar
+          phase={gjcPhase}
+          metaLine={gjcMeta}
+          externalRunnerEnabled={externalRunnerEnabled}
+        />
         <WorkStatusBar
           phase={workPhase}
           metaLine={workPlanMetaLine(planMeta)}
           hasPlan={hasPlan}
         />
+        <GjcExternalHandoffStrip execution={latestExecution} />
         <WorkDecisionPanel
           summary={decisionSummary}
           onAction={handleDecisionAction}

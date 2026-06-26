@@ -155,6 +155,33 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
     FlagDef("AGENT_LAB_GOAL_AUTO_CONTINUE", "feature", "One extra discuss round after goal FAIL"),
     FlagDef("AGENT_LAB_ORACLE_LIVE", "feature", "Live Claude oracle for execute verify"),
     FlagDef(
+        "AGENT_LAB_ORACLE_MODEL",
+        "feature",
+        "Claude model id for live execute oracle (empty = CLAUDE_SCRIBE_MODEL)",
+    ),
+    FlagDef(
+        "AGENT_LAB_GOAL_ORACLE_MODEL",
+        "feature",
+        "Claude model id for live goal oracle (empty = ORACLE_MODEL / scribe default)",
+    ),
+    FlagDef(
+        "AGENT_LAB_PLAN_COLD_CRITIC",
+        "feature",
+        "Fresh-eyes cold plan critic in PEER_REVIEW (supervisor preset default-on)",
+    ),
+    FlagDef(
+        "AGENT_LAB_MAX_PEER_REVIEW_ROUNDS",
+        "feature",
+        "Plan peer-review ITERATE cap (default 2)",
+        default="2",
+    ),
+    FlagDef(
+        "SUPERVISOR_DELEGATOR",
+        "feature",
+        "Supervisor preset delegator seat agent id (default codex)",
+        default="codex",
+    ),
+    FlagDef(
         "AGENT_LAB_DIFF_SAFETY",
         "feature",
         "Pre-merge diff secret/danger scanner (gates merge on findings)",

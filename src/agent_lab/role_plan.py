@@ -70,6 +70,18 @@ _ROLES: dict[str, RoleSpec] = {
             "토론 결과를 실행 가능한 단위로 번역하는 것이 당신의 역할입니다."
         ),
     ),
+    "delegator": RoleSpec(
+        id="delegator",
+        label="위임자",
+        persona=(
+            "[Delegator · supervisor preset]\n"
+            "Harness Supervisor seat: 턴 리드로 phase/GO를 제안하고, "
+            "peer에게 scoped review를 위임하세요. execute는 cursor에, "
+            "decompose/verify는 codex에, blind-spot review는 claude에 맡기세요. "
+            "Human gate·fork·BLOCK은 Human에게만 올리세요. "
+            "동료 위임 시 envelope `act: MESSAGE`, `to: <agent>`를 사용하세요."
+        ),
+    ),
 }
 
 # DEFAULT_CAPABILITIES cwd_role → 기본 역할 매핑
@@ -153,6 +165,41 @@ def resolve_role_plan(
         result["claude"] = "synthesizer"
 
     return _apply_hint_overrides(result, agents, hint)
+
+
+def resolve_delegator_agent(
+    agents: list[str],
+    *,
+    run_meta: dict[str, Any] | None = None,
+) -> str:
+    """Supervisor preset delegator seat (default codex)."""
+    _ = run_meta
+    raw = (os.getenv("SUPERVISOR_DELEGATOR") or "codex").strip().lower()
+    pool = [str(a).strip().lower() for a in agents if str(a).strip()]
+    if raw in pool:
+        return raw
+    for fallback in ("codex", "cursor", "claude"):
+        if fallback in pool:
+            return fallback
+    return pool[0] if pool else "codex"
+
+
+def apply_preset_role_overrides(
+    run_meta: dict[str, Any],
+    roles: dict[str, str],
+    agents: list[str],
+) -> dict[str, str]:
+    """Stamp supervisor delegator + team_lead without adding a new agent id."""
+    preset = str(run_meta.get("room_preset") or "").strip().lower()
+    if preset != "supervisor":
+        return roles
+    delegator = resolve_delegator_agent(agents, run_meta=run_meta)
+    run_meta["team_lead"] = delegator
+    if not _roles_enabled():
+        return roles
+    result = dict(roles)
+    result[delegator] = "delegator"
+    return result
 
 
 def agent_subset_for_route(

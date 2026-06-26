@@ -371,6 +371,13 @@ async def create_room_run(
                 run["role_policy"] = explicit
             else:
                 run["role_policy"] = preset_role_policy(preset_norm)
+            if preset_norm == "supervisor":
+                from agent_lab.role_plan import resolve_delegator_agent
+
+                run["team_lead"] = resolve_delegator_agent(
+                    ["cursor", "codex", "claude"],
+                    run_meta=run,
+                )
             return run
 
         patch_run_meta(folder, _stamp_preset)

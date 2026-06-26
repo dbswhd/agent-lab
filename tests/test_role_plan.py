@@ -10,7 +10,9 @@ from agent_lab.role_plan import (
     RoleSpec,
     _ROLES,
     agent_subset_for_route,
+    apply_preset_role_overrides,
     persona_for_agent,
+    resolve_delegator_agent,
     resolve_role_plan,
     role_catalog,
 )
@@ -239,9 +241,9 @@ class TestEscalationRoleReset:
 # ── 6. role_catalog ───────────────────────────────────────────────────────────
 
 class TestRoleCatalog:
-    def test_catalog_has_four_roles(self):
+    def test_catalog_has_five_roles(self):
         catalog = role_catalog()
-        assert len(catalog) == 4
+        assert len(catalog) == 5
 
     def test_catalog_has_required_keys(self):
         for entry in role_catalog():
@@ -250,14 +252,39 @@ class TestRoleCatalog:
 
     def test_catalog_includes_all_role_ids(self):
         ids = {e["id"] for e in role_catalog()}
-        assert ids == {"proposer", "critic", "synthesizer", "executor"}
+        assert ids == {"proposer", "critic", "synthesizer", "executor", "delegator"}
 
     def test_all_roles_have_non_empty_labels(self):
         for entry in role_catalog():
             assert entry["label"]
 
 
-# ── 7. CategoryRoute new fields ───────────────────────────────────────────────
+# ── 7. Supervisor delegator (P2-a) ───────────────────────────────────────────
+
+
+class TestSupervisorDelegator:
+    def test_resolve_delegator_defaults_to_codex(self):
+        assert resolve_delegator_agent(AGENTS) == "codex"
+
+    def test_resolve_delegator_env_override(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("SUPERVISOR_DELEGATOR", "claude")
+        assert resolve_delegator_agent(AGENTS) == "claude"
+
+    def test_apply_preset_role_overrides_supervisor(self):
+        run_meta = {"room_preset": "supervisor"}
+        roles = apply_preset_role_overrides(run_meta, {}, AGENTS)
+        assert roles.get("codex") == "delegator"
+        assert run_meta["team_lead"] == "codex"
+        assert "Delegator" in persona_for_agent(roles, "codex")
+
+    def test_apply_preset_skips_fast(self):
+        run_meta = {"room_preset": "fast"}
+        roles = apply_preset_role_overrides(run_meta, {"cursor": "proposer"}, AGENTS)
+        assert roles == {"cursor": "proposer"}
+        assert run_meta.get("team_lead") is None
+
+
+# ── 8. CategoryRoute new fields ───────────────────────────────────────────────
 
 class TestCategoryRouteFields:
     def test_agent_subset_default_none(self):

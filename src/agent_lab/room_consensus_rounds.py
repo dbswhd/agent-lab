@@ -134,7 +134,7 @@ def run_consensus_agent_rounds(
     cap_rounds, cap_calls = apply_loop_budget_caps(run_meta, cap_rounds, cap_calls)
 
     # Expert Pool: route 기반 에이전트 풀 필터
-    from agent_lab.role_plan import agent_subset_for_route, resolve_role_plan
+    from agent_lab.role_plan import agent_subset_for_route, apply_preset_role_overrides, resolve_role_plan
 
     # Phase B: cross-session learning advisor — fail-open, no side effects on error
     from agent_lab.feedback_advisor import SetupHint, advise_setup
@@ -162,11 +162,15 @@ def run_consensus_agent_rounds(
 
         _role_policy = resolve_role_policy(run_meta)
         run_meta["role_policy"] = _role_policy
-        run_meta["_turn_roles"] = resolve_role_plan(
-            route=route,
-            agents=active,
-            hint=_hint,
-            policy=_role_policy,
+        run_meta["_turn_roles"] = apply_preset_role_overrides(
+            run_meta,
+            resolve_role_plan(
+                route=route,
+                agents=active,
+                hint=_hint,
+                policy=_role_policy,
+            ),
+            active,
         )
 
     def _harvest_discuss_objections(thread: list[ChatMessage]) -> None:

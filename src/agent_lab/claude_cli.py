@@ -411,6 +411,7 @@ def invoke(
     permissions: dict | None = None,
     scribe: bool = False,
     room_turn: bool = True,
+    model: str | None = None,
     on_activity: Callable[[str], None] | None = None,
     on_bridge_event: Callable[[str, dict[str, Any]], None] | None = None,
     session_folder: str | Path | None = None,
@@ -488,10 +489,14 @@ def invoke(
         cmd.extend(claude_execute_extra_args(perms))
 
     if scribe:
-        model = os.getenv("CLAUDE_SCRIBE_MODEL") or os.getenv("CLAUDE_MODEL", DEFAULT_CLAUDE_MODEL)
+        resolved_model = (
+            (model or "").strip()
+            or os.getenv("CLAUDE_SCRIBE_MODEL")
+            or os.getenv("CLAUDE_MODEL", DEFAULT_CLAUDE_MODEL)
+        )
     else:
-        model = os.getenv("CLAUDE_MODEL", DEFAULT_CLAUDE_MODEL)
-    cmd.extend(["--model", model])
+        resolved_model = (model or "").strip() or os.getenv("CLAUDE_MODEL", DEFAULT_CLAUDE_MODEL)
+    cmd.extend(["--model", resolved_model])
 
     effort = os.getenv("CLAUDE_SCRIBE_REASONING_EFFORT") if scribe else None
     if not effort:

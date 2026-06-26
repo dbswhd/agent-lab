@@ -652,6 +652,77 @@
   line-height: 1.45;
 }
 
+.gjc-pipeline-bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding-bottom: var(--space-6);
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: var(--space-6);
+}
+
+.gjc-pipeline-bar__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.gjc-pipeline-bar__title {
+  font-size: var(--text-micro);
+  font-weight: var(--weight-semibold);
+  color: var(--label-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.gjc-pipeline-bar__badge {
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-semibold);
+  color: var(--accent);
+  background: var(--accent-softer);
+}
+
+.gjc-pipeline-bar__done {
+  font-size: var(--text-micro);
+  font-weight: var(--weight-semibold);
+  color: var(--success);
+}
+
+.gjc-handoff-strip {
+  margin-top: var(--space-6);
+  padding: var(--space-8) var(--space-10);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-secondary);
+}
+
+.gjc-handoff-strip--warn {
+  border-color: var(--warn);
+  background: var(--warn-soft);
+}
+
+.gjc-handoff-strip__badge {
+  font-size: var(--text-micro);
+  font-weight: var(--weight-semibold);
+  color: var(--label-secondary);
+}
+
+.gjc-handoff-strip__summary {
+  margin: var(--space-4) 0 0;
+  font-size: var(--text-caption);
+  color: var(--label-primary);
+  line-height: 1.45;
+}
+
+.gjc-handoff-strip__files {
+  margin: var(--space-4) 0 0;
+  font-size: var(--text-micro);
+  color: var(--label-tertiary);
+}
+
 .plan-meta-bar {
   display: flex;
   flex-wrap: wrap;

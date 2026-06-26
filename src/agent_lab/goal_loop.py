@@ -83,6 +83,7 @@ def goal_oracle_check(
         invoke_oracle,
         mock_goal_oracle_response,
         oracle_live_enabled,
+        resolved_oracle_model,
         session_oracle_context,
     )
     from agent_lab.run_meta import read_run_meta
@@ -122,6 +123,7 @@ def goal_oracle_check(
         source=source,
         kind="goal",
         goal_text=goal_text,
+        model=resolved_oracle_model("goal") if source == "live" else None,
     )
     result["at"] = _now()
     return result

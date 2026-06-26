@@ -10,7 +10,7 @@ from typing import Any, Literal
 
 OracleKind = Literal["execute", "goal"]
 
-PROMPT_VERSION = "2026-06-08"
+PROMPT_VERSION = "2026-06-26"
 _TRUE = {"1", "true", "yes", "on"}
 _BACKTICK_LITERAL = re.compile(r"`([^`\n]+)`")
 _WORD = re.compile(r"[A-Za-z0-9_가-힣-]{2,}")
@@ -36,6 +36,36 @@ _GOAL_STOPWORDS = {
 
 def _env_true(key: str) -> bool:
     return os.getenv(key, "").strip().lower() in _TRUE
+
+
+ORACLE_SYSTEM_EXECUTE = (
+    "You are the Agent Lab Execute Oracle — an independent verification judge.\n"
+    "You are NOT a Room discuss agent, planner, or implementer.\n"
+    "Do not propose fixes, rewrite code, or negotiate with agents.\n"
+    "Judge only from the evidence bundle in the user message.\n"
+    "Reply exactly in the VERDICT / REASON / EVIDENCE format requested."
+)
+
+ORACLE_SYSTEM_GOAL = (
+    "You are the Agent Lab Session-Goal Oracle — an independent completion judge.\n"
+    "You are NOT a Room discuss agent or coach.\n"
+    "Decide whether the transcript demonstrates the Human goal is achieved.\n"
+    "Prefer concrete backtick literals when the goal specifies them.\n"
+    "Reply exactly in the VERDICT / REASON / EVIDENCE format requested."
+)
+
+
+def oracle_system_prompt(kind: OracleKind) -> str:
+    return ORACLE_SYSTEM_GOAL if kind == "goal" else ORACLE_SYSTEM_EXECUTE
+
+
+def resolved_oracle_model(kind: OracleKind) -> str | None:
+    """Live oracle model override (falls back to scribe model in ``claude_cli`` when unset)."""
+    if kind == "goal":
+        raw = (os.getenv("AGENT_LAB_GOAL_ORACLE_MODEL") or os.getenv("AGENT_LAB_ORACLE_MODEL") or "").strip()
+    else:
+        raw = (os.getenv("AGENT_LAB_ORACLE_MODEL") or "").strip()
+    return raw or None
 
 
 def oracle_live_enabled(*, goal: bool = False) -> bool:
@@ -171,8 +201,6 @@ def build_execute_oracle_prompt(
     if commands:
         cmd_block = "Suggested commands from criterion:\n" + "\n".join(f"- `{cmd}`" for cmd in commands)
     return (
-        "You are an independent verification Oracle. Do not trust agent claims without "
-        "checking the evidence bundle.\n\n"
         f"Verification criterion:\n{verify}\n\n"
         f"Merged file snippets:\n{files_block}\n\n"
         f"{cmd_block}\n\n"
@@ -193,9 +221,6 @@ def build_goal_oracle_prompt(
 ) -> str:
     extras = "\n\n".join(extra_evidence or []) or ""
     return (
-        "You are the independent session-goal Oracle. Decide whether the transcript "
-        "demonstrates the Human-defined goal is achieved. Prefer concrete literals in "
-        "backticks when present.\n\n"
         f"Goal:\n{goal_text}\n\n"
         f"Transcript (recent):\n{transcript[-12000:] or '(empty)'}\n\n"
         f"{extras}\n\n"
@@ -275,7 +300,14 @@ def invoke_oracle(
     if oracle_live_enabled(goal=kind == "goal"):
         from agent_lab import claude_cli
 
-        raw = claude_cli.invoke("oracle", prompt, scribe=True)
+        model = resolved_oracle_model(kind)
+        raw = claude_cli.invoke(
+            oracle_system_prompt(kind),
+            prompt,
+            scribe=True,
+            room_turn=False,
+            model=model,
+        )
         return str(raw or "").strip(), "live"
     if kind == "execute":
         return "", "mock"
@@ -290,6 +322,7 @@ def build_oracle_result(
     verify_criterion: str = "",
     checked_paths: list[str] | None = None,
     goal_text: str = "",
+    model: str | None = None,
 ) -> dict[str, Any]:
     if source == "mock" and not raw.strip():
         if kind == "execute":
@@ -305,6 +338,10 @@ def build_oracle_result(
         "source": source,
         "prompt_version": PROMPT_VERSION,
     }
+    if source == "live":
+        live_model = model or resolved_oracle_model(kind)
+        if live_model:
+            result["model"] = live_model
     if kind == "execute":
         result["verify_criterion"] = verify_criterion
         result["checked_paths"] = list(checked_paths or [])

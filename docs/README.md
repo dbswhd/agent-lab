@@ -23,6 +23,7 @@
 | Gateway · scheduler · Mission OS | [MISSION-OS-DIRECTION.md](./MISSION-OS-DIRECTION.md) · OPS-RUNBOOK §daemon |
 | Human Inbox · MCP | [HUMAN-INBOX.md](./HUMAN-INBOX.md) · [HUMAN-INBOX-CLAUDE-HANDOFF.md](./HUMAN-INBOX-CLAUDE-HANDOFF.md) |
 | Runtime harness · dispatch | [RUNTIME-HARNESS-PLAN.md](./RUNTIME-HARNESS-PLAN.md) · [ROOM-DISPATCH-PROTOCOL.md](./ROOM-DISPATCH-PROTOCOL.md) |
+| GJC external pipeline entry | [GJC-ENTRY.md](./GJC-ENTRY.md) · Work tab Pipeline stepper |
 | CI · regression · live ops · daemon dogfood | [STABILITY.md](./STABILITY.md) · [OPS-RUNBOOK.md](./OPS-RUNBOOK.md) |
 | Trading extension | [extensions/QUANT-TRADING.md](./extensions/QUANT-TRADING.md) · [trading-mission/](./trading-mission/) |
 
@@ -59,6 +60,7 @@
 | [MISSION-LOOP-C-OMO.md](./MISSION-LOOP-C-OMO.md) | **Shipped** — Layer 6 FSM + Track B/C/D |
 | [MISSION-BOARD-ADOPTION.md](./MISSION-BOARD-ADOPTION.md) | **Shipped** — Mission Board MB-9…MB-11 (P1~P4); P5 backlog |
 | [RUNTIME-HARNESS-PLAN.md](./RUNTIME-HARNESS-PLAN.md) | **H0–H7 shipped** — runtime contract, dispatch lanes, PolicyEngine |
+| [GJC-ENTRY.md](./GJC-ENTRY.md) | **GJC external entry** — Room vs gjc, tools.yaml, Work pipeline stepper |
 | [PLUGIN-DISCOVERY.md](./PLUGIN-DISCOVERY.md) | Slash commands + plugins **shipped** |
 | [NOTIFICATION-TAXONOMY.md](./NOTIFICATION-TAXONOMY.md) | Toast / Activity notification 분류 |
 | [ROOM-DISPATCH-PROTOCOL.md](./ROOM-DISPATCH-PROTOCOL.md) | DELEGATE / parallel dispatch protocol **shipped** |

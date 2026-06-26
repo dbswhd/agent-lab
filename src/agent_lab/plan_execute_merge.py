@@ -66,6 +66,7 @@ def oracle_verify(
         build_oracle_result,
         invoke_oracle,
         mock_execute_oracle_response,
+        resolved_oracle_model,
         session_oracle_context,
     )
 
@@ -110,6 +111,7 @@ def oracle_verify(
         kind="execute",
         verify_criterion=verify,
         checked_paths=checked_paths,
+        model=resolved_oracle_model("execute") if source == "live" else None,
     )
 
 

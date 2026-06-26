@@ -65,6 +65,48 @@ def test_turn_writes_metrics_and_ledger(monkeypatch: pytest.MonkeyPatch, tmp_pat
     assert rows[0]["topic_hash"].startswith("sha1:")
 
 
+def test_roles_survive_plan_workflow_reload(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Regression: the plan-FSM run_meta reload (synthesize=True) must not drop the
+    ephemeral _turn_category/_turn_roles set by consensus rounds, or turn_metrics
+    (and the outcome ledger) record empty roles and the advisor can never learn.
+
+    Before the room_plan_scribe fix, turns[-1].roles/category were null here.
+    """
+    from agent_lab import room
+
+    monkeypatch.setenv("AGENT_LAB_TURN_METRICS", "1")
+    monkeypatch.setenv("AGENT_LAB_OUTCOME_LEDGER", "1")
+    root = tmp_path / "root"
+    root.mkdir()
+    monkeypatch.setattr("agent_lab.workspace_roots.project_root", lambda: root)
+
+    patch_call_agent_reply(monkeypatch, _fake_call_agent({}))
+
+    # "deep" route (아키텍처/트레이드오프) → resolve_role_plan assigns roles.
+    folder, _messages, _plan = room.run_room(
+        "deep 아키텍처 트레이드오프를 비교하고 합의까지 진행해 주세요.",
+        agents=["cursor", "codex", "claude"],
+        synthesize=True,
+        sessions_base=tmp_path,
+        consensus_mode=True,
+        turn_profile="free",
+    )
+
+    run = json.loads((folder / "run.json").read_text(encoding="utf-8"))
+    # The consensus turn (not necessarily turns[-1]; plan-pipeline may append more)
+    # must carry the route category + role plan through the plan-FSM reload.
+    deep_turns = [t for t in run["turns"] if (t.get("category") or {}).get("value") == "deep"]
+    assert deep_turns, "no turn recorded category=deep — _turn_category dropped"
+    assert any(t.get("roles") for t in deep_turns), "roles dropped by plan-workflow reload"
+
+    # Ground truth: the outcome ledger (what the advisor reads) carries roles.
+    ledger = root / ".agent-lab" / "outcomes.jsonl"
+    rows = [json.loads(line) for line in ledger.read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert any(r.get("category") == "deep" and r.get("roles") for r in rows), (
+        "no outcome row with deep category + roles — APPLY→MEASURE→RECORD bridge broken"
+    )
+
+
 def test_flags_off_is_inert(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     from agent_lab import room
 

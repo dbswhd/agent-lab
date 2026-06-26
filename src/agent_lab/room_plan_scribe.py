@@ -174,6 +174,15 @@ def _plan_workflow_post_agent_turn(
     )
     from agent_lab.run_meta import read_run_meta
 
+    # S1 fix: the plan-FSM reloads below (_session_context / read_run_meta) return
+    # a fresh run_meta from disk, dropping ephemeral turn keys that were never
+    # persisted (_turn_category / _turn_roles set by run_consensus_agent_rounds).
+    # Capture them now and carry forward so the turn snapshot still records the
+    # route category + role plan (feeds turn_metrics → outcomes ledger).
+    _ephemeral_turn = {
+        k: run_meta.get(k) for k in ("_turn_category", "_turn_roles") if run_meta.get(k) is not None
+    }
+
     plan_md = plan_before
     pw_force_scribe = False
     pw_active = is_plan_workflow_active(run_meta)
@@ -250,6 +259,9 @@ def _plan_workflow_post_agent_turn(
             phase_before,
             plan_workflow_phase(run_meta),
         )
+    # Restore ephemeral turn keys lost to the disk reloads above (S1 fix).
+    for key, value in _ephemeral_turn.items():
+        run_meta.setdefault(key, value)
     return plan_md, scribe_applied, run_meta
 
 

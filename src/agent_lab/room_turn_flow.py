@@ -379,7 +379,6 @@ def continue_room_round(
         on_event=on_event,
         consensus_mode=consensus_mode,
     )
-    _finalize_durable_turn(folder, human_turn_num, turn_status)
     existing_meta: dict[str, Any] = {}
     meta_path = folder / "meta.json"
     if meta_path.is_file():
@@ -476,6 +475,9 @@ def continue_room_round(
         run_meta_patch=_delegate_run_meta_patch(run_meta),
         clarifier_questions=clarifier_questions,
     )
+    # S1 Phase A: run AFTER _write_session_files so run.json has the current turn's
+    # snapshot (category, roles, advisor_rationale) before record_turn_outcome reads it.
+    _finalize_durable_turn(folder, human_turn_num, turn_status)
     if verified_continue and _verified_loop_depth < 3:
         return continue_room_round(
             folder,

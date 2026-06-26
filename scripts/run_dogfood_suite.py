@@ -682,6 +682,40 @@ def run_mock(rows: list[dict[str, Any]], sessions_base: Path | None) -> int:
     return 1 if failed else 0
 
 
+def run_feedback(rows: list[dict[str, Any]], sessions_base: Path | None, repeat: int) -> int:
+    """S1.5 — drive the mock suite N times with the feedback loop ON, into an
+    isolated outcomes ledger, then print the effect report.
+
+    Isolation: AGENT_LAB_OUTCOMES_ROOT points the ledger at a temp dir so the
+    real ``.agent-lab/outcomes.jsonl`` is never touched. Repeating the same
+    topics lets the advisor cross MIN_SAMPLE and flip ``source`` to "history".
+    """
+    outcomes_root = Path(tempfile.mkdtemp(prefix="dogfood-feedback-root-"))
+    os.environ["AGENT_LAB_OUTCOMES_ROOT"] = str(outcomes_root)
+    os.environ["AGENT_LAB_TURN_METRICS"] = "1"
+    os.environ["AGENT_LAB_OUTCOME_LEDGER"] = "1"
+    os.environ["AGENT_LAB_FEEDBACK_ADVISOR"] = "1"
+
+    base = sessions_base or Path(tempfile.mkdtemp(prefix="dogfood-feedback-"))
+    rc = 0
+    for i in range(max(1, repeat)):
+        print(f"\n=== feedback accumulation pass {i + 1}/{repeat} ===")
+        rc |= run_mock(rows, base / f"pass{i + 1}")
+
+    from agent_lab.feedback_report import build_feedback_report, render_feedback_report
+
+    report = build_feedback_report(outcomes_root)
+    print("\n" + render_feedback_report(report))
+    ledger = outcomes_root / ".agent-lab" / "outcomes.jsonl"
+    print(f"\noutcomes ledger: {ledger} ({report['total']} rows)")
+    history_n = report["by_source"]["history"]["n"]
+    explore_n = report["by_source"]["explore"]["n"]
+    print(f"loop closure: advisor used history on {history_n} turn(s), explored on {explore_n}.")
+    if history_n == 0:
+        print("  (no history-source turns yet — raise --repeat or lower AGENT_LAB_FEEDBACK_MIN_SAMPLE)")
+    return rc
+
+
 def run_checklist(rows: list[dict[str, Any]]) -> int:
     print("# Dogfood live 체크리스트 — docs/EVAL-PROGRAM.md §3 매트릭스 순서 권장\n")
     for entry in rows:
@@ -808,6 +842,12 @@ def main() -> int:
     parser.add_argument("--only", help="필터: 쉼표 구분 topic id (예: M4,A3)")
     parser.add_argument("--log", help="aggregate 입력 suite-log.json 경로")
     parser.add_argument("--sessions-base", help="mock 세션 폴더 (기본 임시 디렉토리)")
+    parser.add_argument(
+        "--feedback",
+        action="store_true",
+        help="S1.5: --mode mock과 함께 — 피드백 루프 ON으로 N회 반복 누적 + 효과 리포트",
+    )
+    parser.add_argument("--repeat", type=int, default=4, help="--feedback 반복 횟수 (기본 4, MIN_SAMPLE 통과용)")
     args = parser.parse_args()
 
     topics_path = Path(args.topics) if args.topics else DEFAULT_TOPICS
@@ -822,6 +862,8 @@ def main() -> int:
 
     if args.mode == "mock":
         base = Path(args.sessions_base) if args.sessions_base else None
+        if args.feedback:
+            return run_feedback(rows, base, args.repeat)
         return run_mock(rows, base)
     if args.mode == "aggregate":
         if not args.log:

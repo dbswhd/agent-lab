@@ -95,5 +95,7 @@ def build_turn_metrics(
         "latency_ms": int(turn.get("latency_ms") or 0),
         "oracle_rollup": _oracle_rollup(executions),
         "advisor_rationale": category.get("advisor_rationale"),  # set by feedback_advisor (Phase B)
+        "advisor_source": category.get("advisor_source"),  # "history"|"explore" (S1.5)
+        "advisor_combo_id": category.get("advisor_combo_id"),  # role-combo key (S1.5)
     }
     return metrics

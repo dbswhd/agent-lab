@@ -9,6 +9,9 @@ import pytest
 
 from agent_lab.feedback_advisor import (
     _DEFAULT_HINT,
+    _combo_key,
+    _explore_decision,
+    _mutate_combo,
     _score_outcome,
     advise_setup,
 )
@@ -196,3 +199,59 @@ def test_wisdom_note_in_rationale(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     if hint.source == "history":
         assert "wisdom:" in hint.rationale
         assert "병렬 에이전트" in hint.rationale
+
+
+# ---------------------------------------------------------------------------
+# S1.5: ε-greedy exploration
+# ---------------------------------------------------------------------------
+
+def test_explore_decision_deterministic_and_bounds() -> None:
+    # ε=0 never explores; ε>=1 always explores; same inputs → same output.
+    assert _explore_decision("topic", 5, 0.0) is False
+    assert _explore_decision("topic", 5, 1.0) is True
+    a = _explore_decision("topic", 5, 0.5)
+    b = _explore_decision("topic", 5, 0.5)
+    assert a == b  # reproducible (no global RNG)
+
+
+def test_mutate_combo_changes_one_role_to_valid() -> None:
+    from agent_lab.role_plan import _ROLES
+
+    base = {"cursor": "proposer", "codex": "executor", "claude": "critic"}
+    mutated = _mutate_combo(base)
+    assert mutated != base  # something changed
+    assert set(mutated) == set(base)  # same agents
+    assert all(r in _ROLES for r in mutated.values())  # only valid roles
+
+
+def test_explore_off_parity_matches_exploit(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # ε unset (default 0) → advise_setup returns the exploit (history) combo, not explore.
+    monkeypatch.setenv("AGENT_LAB_FEEDBACK_ADVISOR", "1")
+    monkeypatch.setenv("AGENT_LAB_FEEDBACK_MIN_SAMPLE", "2")
+    monkeypatch.delenv("AGENT_LAB_FEEDBACK_EXPLORE_RATE", raising=False)
+    ledger = tmp_path / ".agent-lab" / "outcomes.jsonl"
+    _write_ledger(ledger, [_row()] * 4)
+    monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: ledger)
+
+    hint = advise_setup("pipeline verify", "standard", ["cursor", "codex", "claude"])
+    assert hint.source == "history"
+    assert hint.combo_id  # exploit combo carries its id
+
+
+def test_explore_rate_one_forces_explore(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AGENT_LAB_FEEDBACK_ADVISOR", "1")
+    monkeypatch.setenv("AGENT_LAB_FEEDBACK_MIN_SAMPLE", "2")
+    monkeypatch.setenv("AGENT_LAB_FEEDBACK_EXPLORE_RATE", "1.0")
+    ledger = tmp_path / ".agent-lab" / "outcomes.jsonl"
+    # Two distinct combos so explore can pick the least-sampled one.
+    combo_a = {"cursor": "proposer", "codex": "executor", "claude": "critic"}
+    combo_b = {"cursor": "critic", "codex": "executor", "claude": "proposer"}
+    _write_ledger(ledger, [_row(roles=combo_a)] * 3 + [_row(roles=combo_b)])
+    monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: ledger)
+
+    hint = advise_setup("pipeline verify", "standard", ["cursor", "codex", "claude"])
+    assert hint.source == "explore"
+    assert hint.combo_id
+    assert hint.role_overrides
+    # least-sampled combo is combo_b (n=1)
+    assert hint.combo_id == _combo_key(combo_b)

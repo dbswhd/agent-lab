@@ -1,6 +1,6 @@
 # 설계: S1 내부 피드백 루프 (Session-to-Session Learning)
 
-> **상태**: 설계 (구현 전)
+> **상태**: Phase A~D 구현 완료 + S1.5(검증·탐색) 구현 완료 (2026-06-26)
 > **기준일**: 2026-06-26
 > **북극성 근거**: [`docs/STRATEGIC-DIRECTION-2026.md`](STRATEGIC-DIRECTION-2026.md) "북극성" 섹션 — S1(내부 루프 폐쇄) → S2(팀 자기조정) → S3(외부 통합)
 > **범위**: P0(Dynamic Room · Model Policy · Code-memory MCP) + Session-to-session learning를 **단일 내부 피드백 회로(S1)** 로 통합
@@ -200,3 +200,45 @@ class SetupHint:
 | D | UI 근거 노출 + health flags + 가드레일 | — | A~C |
 
 > **착수 순서**: A(관측) → 며칠 데이터 축적 → B(폐루프) → C/D. A 없이 B를 켜면 표본이 없어 항상 default 힌트가 나오므로 관측이 반드시 선행.
+
+---
+
+## 8. S1.5 — 루프 검증 + 탐색 씨앗 (S1→S2 브리지, 구현 완료)
+
+S1 A~D는 코드만 완성됐고 한 번도 가동되지 않았다. S1.5는 루프를 실제로 돌려 검증하고, S2(팀 자기조정)의 두 전제(탐색·효과측정)를 깐다.
+
+### 8.1 핵심 버그 수정 — APPLY→MEASURE 단절 (S1 자체 결함)
+
+`run_consensus_agent_rounds`가 계산한 `_turn_category`/`_turn_roles`(ephemeral)가 **plan-FSM 리로드에서 유실**됐다. `_plan_workflow_post_agent_turn`(`room_plan_scribe.py`)이 `_session_context()`/`read_run_meta()`로 run_meta를 디스크에서 새로 읽으면서, 미영속 ephemeral 키가 사라짐 → 턴 스냅샷의 `category`/`roles`가 null → `turn_metrics.roles` 빈 값 → outcomes에 역할 조합이 안 실림 → **advisor가 영원히 학습 불가**. (`synthesize=True` 경로에서만 발생.)
+
+**수정**: `_plan_workflow_post_agent_turn` 진입 시 ephemeral 턴 키를 캡처, 리턴 직전 복원(`setdefault`). 부수효과로 기존 dogfood `router=absent` 단언 실패도 해소. 회귀 가드: `tests/test_s1_loop_closure_e2e.py::test_roles_survive_plan_workflow_reload`.
+
+### 8.2 탐색 (ε-greedy + variant 태깅)
+
+`advise_setup`는 순수 exploitation(`max(combo_scores)`)이라 최초 우승 조합에 고착 → 창발 불가. `feedback_advisor`에 ε-greedy 추가:
+- 플래그 `AGENT_LAB_FEEDBACK_EXPLORE_RATE`(default `0` → OFF-parity, 기존과 100% 동일).
+- `_explore_decision`: `sha1(topic:n)` 결정론적 의사난수 < ε (전역 RNG 미사용, 테스트 재현).
+- `_explore_combo`: 알려진 조합 ≥2면 표본 최소(UCB 정신), 1개면 `_mutate_combo`로 신규 조합 변이.
+- `SetupHint.source="explore"` + `combo_id` 태깅.
+
+### 8.3 효과 측정 (귀속 + 리포트)
+
+- outcome row / turn_metrics에 `advisor_source`("default"|"history"|"explore") + `combo_id` 추가(additive, 구버전 row는 "default"로 fold). 전파 경로는 `advisor_rationale`와 동일(`cat_dict→category→turn_metrics→outcome`).
+- `feedback_report.py`: `build_feedback_report(root)` — source×category 버킷별 clean-pass/repair/BLOCK rate + `advisor_lift`(history/explore − default baseline). `_score_outcome` 재사용.
+
+### 8.4 가동 & 검증 도구
+
+- `make dogfood-feedback-mock` (`run_dogfood_suite.py --feedback --repeat N`): 피드백 플래그 ON + 격리 ledger(`AGENT_LAB_OUTCOMES_ROOT`)로 mock 토픽 N회 반복 → outcomes 누적 → advisor `source` 전환 → 리포트 출력.
+- `make feedback-report ROOT=<dir>`: 누적된 ledger 효과 리포트.
+- **검증 결과**: role-bearing(free/deep·critical) 토픽 4회 반복 시 default(6) → **history(10)** 전환 확인 = 루프 폐쇄 증명. ε=1.0이면 explore(9) 태깅 확인.
+
+### 8.5 신규 플래그
+
+| 플래그 | 기본 | 역할 |
+|---|---|---|
+| `AGENT_LAB_FEEDBACK_EXPLORE_RATE` | `0` | ε-greedy 탐색률 [0,1] (0=순수 exploit, OFF-parity) |
+| `AGENT_LAB_OUTCOMES_ROOT` | (unset) | outcomes.jsonl root 격리 (dogfood 누적용) |
+
+### 8.6 다음 (S2)
+
+per-agent attribution(개별 에이전트 성공률) + bandit 수렴 + agent pool 동적 promote/demote. S1.5가 깐 탐색·효과측정 위에서 진행.

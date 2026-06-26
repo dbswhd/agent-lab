@@ -93,8 +93,12 @@ def run_consensus_agent_rounds(
 
     if run_meta is not None:
         cat_dict = route.category_dict()
-        if _hint.source == "history":
+        # S1.5: tag advisor attribution only when the advisor actually acted
+        # (history/explore). Default-source turns write nothing → OFF-parity.
+        if _hint.source in ("history", "explore"):
             cat_dict["advisor_rationale"] = _hint.rationale
+            cat_dict["advisor_source"] = _hint.source
+            cat_dict["advisor_combo_id"] = getattr(_hint, "combo_id", "") or ""
         run_meta["_turn_category"] = cat_dict
         run_meta["_turn_roles"] = resolve_role_plan(route=route, agents=active, hint=_hint)
 

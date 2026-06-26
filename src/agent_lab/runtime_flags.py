@@ -329,6 +329,17 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "S1 Phase B: minimum prior outcomes required before advisor applies overrides (default 3)",
         default="3",
     ),
+    FlagDef(
+        "AGENT_LAB_FEEDBACK_EXPLORE_RATE",
+        "feature",
+        "S1.5: advisor ε-greedy exploration rate [0,1] — fraction of advised turns that try a non-best/novel role combo (default 0 = pure exploitation, OFF-parity)",
+        default="0",
+    ),
+    FlagDef(
+        "AGENT_LAB_OUTCOMES_ROOT",
+        "feature",
+        "S1.5: override project root for .agent-lab/outcomes.jsonl (used by dogfood accumulation to isolate the ledger; unset = project root)",
+    ),
     FlagDef("AGENT_LAB_NATIVE_HOOKS", "feature", "Stage session agent-hooks into workspace cwd"),
     FlagDef("AGENT_LAB_HOOK_TIMEOUT_S", "feature", "Room hook subprocess timeout (seconds)", default="30"),
     # --- feature: resilience ---

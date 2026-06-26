@@ -53,11 +53,19 @@ def _path_lock(path: Path) -> threading.Lock:
 
 
 def outcomes_path(root: Path | None = None) -> Path:
-    """Resolve ``.agent-lab/outcomes.jsonl`` under the project root."""
-    if root is None:
-        from agent_lab.workspace_roots import project_root
+    """Resolve ``.agent-lab/outcomes.jsonl`` under the project root.
 
-        root = project_root()
+    Resolution order: explicit ``root`` arg → ``AGENT_LAB_OUTCOMES_ROOT`` env
+    (S1.5 dogfood isolation) → workspace project root.
+    """
+    if root is None:
+        env_root = (os.getenv("AGENT_LAB_OUTCOMES_ROOT") or "").strip()
+        if env_root:
+            root = Path(env_root)
+        else:
+            from agent_lab.workspace_roots import project_root
+
+            root = project_root()
     return root / _OUTCOMES_RELPATH
 
 
@@ -97,6 +105,9 @@ def build_outcome_record(folder: Path, topic: str, metrics: dict[str, Any]) -> d
         "objection_summary": metrics.get("objection_summary") or {},
         "consensus_reached": bool(metrics.get("consensus_reached")),
         "latency_ms": metrics.get("latency_ms") or 0,
+        # S1.5 — advisor attribution (absent/"default" = baseline bucket in reports)
+        "advisor_source": metrics.get("advisor_source") or "default",
+        "combo_id": metrics.get("advisor_combo_id") or "",
     }
 
 

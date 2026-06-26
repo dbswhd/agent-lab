@@ -15,6 +15,7 @@ See docs/DESIGN-S1-FEEDBACK-LOOP.md (Phase B).
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -36,11 +37,12 @@ _TOKEN_OVERLAP_MIN = 1  # min shared topic tokens to include a prior outcome
 
 @dataclass(frozen=True)
 class SetupHint:
-    source: str  # "history" | "default"
+    source: str  # "history" | "explore" | "default"
     sample_size: int  # number of prior outcomes used
     role_overrides: dict[str, str]  # agent -> role_id (empty = no change)
     suggested_subset: tuple[str, ...]  # empty = no change
     rationale: str  # human-readable reason (logged + stored in turn_metrics)
+    combo_id: str = ""  # role-combo key "agent:role|..." (S1.5 attribution)
 
 
 _DEFAULT_HINT = SetupHint(
@@ -102,6 +104,73 @@ def _score_outcome(outcome: dict[str, Any]) -> float:
     blocks = int((outcome.get("objection_summary") or {}).get("BLOCK", 0))
     score -= blocks * 1.0
     return score
+
+
+def _combo_key(roles: dict[str, str]) -> str:
+    """Stable role-combo key: ``agent:role|agent:role`` sorted by agent."""
+    return "|".join(f"{a}:{r}" for a, r in sorted(roles.items()))
+
+
+def _explore_rate() -> float:
+    """ε in [0,1] for ε-greedy exploration; 0 (default) = pure exploitation."""
+    raw = (os.getenv("AGENT_LAB_FEEDBACK_EXPLORE_RATE") or "0").strip()
+    try:
+        return max(0.0, min(1.0, float(raw)))
+    except ValueError:
+        return 0.0
+
+
+def _explore_decision(topic: str, n: int, epsilon: float) -> bool:
+    """Deterministic ε-greedy gate — no global RNG (reproducible in tests).
+
+    Maps a stable hash of (topic, sample count) into [0,1); explores when that
+    value falls below ε. ε<=0 never explores (OFF-parity); ε>=1 always explores.
+    """
+    if epsilon <= 0.0:
+        return False
+    if epsilon >= 1.0:
+        return True
+    digest = hashlib.sha1(f"{topic}:{n}".encode("utf-8")).hexdigest()
+    bucket = int(digest[:8], 16) / float(0x100000000)
+    return bucket < epsilon
+
+
+def _mutate_combo(roles: dict[str, str]) -> dict[str, str]:
+    """Produce a novel combo by reassigning one agent to a different role.
+
+    Deterministic: targets the alphabetically-first agent, prefers an unused
+    role (max diversity), else any role != current.
+    """
+    if not roles:
+        return {}
+    from agent_lab.role_plan import _ROLES
+
+    target = sorted(roles)[0]
+    current = roles[target]
+    used = set(roles.values())
+    candidates = [r for r in sorted(_ROLES) if r not in used] or [r for r in sorted(_ROLES) if r != current]
+    if not candidates:
+        return dict(roles)
+    mutated = dict(roles)
+    mutated[target] = candidates[0]
+    return mutated
+
+
+def _explore_combo(
+    combo_scores: dict[str, list[float]],
+    combo_roles: dict[str, dict[str, str]],
+) -> tuple[dict[str, str], str]:
+    """Pick an exploration target: least-sampled known combo, or a mutation.
+
+    ≥2 known combos → least-sampled (UCB spirit, deterministic tie-break by key).
+    1 known combo  → mutate it into a fresh combo so the space actually widens.
+    """
+    if len(combo_scores) >= 2:
+        key = min(sorted(combo_scores), key=lambda k: len(combo_scores[k]))
+        return dict(combo_roles[key]), key
+    only_key = next(iter(combo_roles))
+    mutated = _mutate_combo(combo_roles[only_key])
+    return mutated, _combo_key(mutated)
 
 
 def advise_setup(
@@ -191,7 +260,7 @@ def _advise_inner(
         filtered_roles = {a: r for a, r in roles.items() if a in available_agents and r}
         if not filtered_roles:
             continue
-        key = "|".join(f"{a}:{r}" for a, r in sorted(filtered_roles.items()))
+        key = _combo_key(filtered_roles)
         combo_scores[key].append(_score_outcome(outcome))
         combo_roles[key] = filtered_roles
 
@@ -204,15 +273,35 @@ def _advise_inner(
             rationale="no_role_combos_for_available_agents",
         )
 
-    # Pick the highest average-score combo
+    # Phase C: augment rationale with cross-session [LEARNED:] wisdom snippets.
+    # Role decisions are NOT affected — wisdom is context-injection only.
+    wisdom_note = _wisdom_note(topic)
+    wisdom_suffix = f" | wisdom:{wisdom_note}" if wisdom_note else ""
+
+    # S1.5: ε-greedy — occasionally try a non-best/novel combo so the loop can
+    # discover better setups instead of locking onto the first winner. ε=0
+    # (default) skips this entirely → identical to pure exploitation (OFF-parity).
+    if _explore_decision(topic, len(relevant), _explore_rate()):
+        explore_roles, explore_key = _explore_combo(combo_scores, combo_roles)
+        if explore_roles:
+            return SetupHint(
+                source="explore",
+                sample_size=len(relevant),
+                role_overrides=dict(explore_roles),
+                suggested_subset=(),
+                rationale=(
+                    f"explore(combo={explore_key}):"
+                    + ",".join(f"{a}→{r}" for a, r in sorted(explore_roles.items()))
+                    + wisdom_suffix
+                ),
+                combo_id=explore_key,
+            )
+
+    # Exploit: pick the highest average-score combo
     best_key = max(combo_scores, key=lambda k: sum(combo_scores[k]) / len(combo_scores[k]))
     best_roles = combo_roles[best_key]
     best_n = len(combo_scores[best_key])
     best_avg = sum(combo_scores[best_key]) / best_n
-
-    # Phase C: augment rationale with cross-session [LEARNED:] wisdom snippets.
-    # Role decisions are NOT affected — wisdom is context-injection only.
-    wisdom_note = _wisdom_note(topic)
 
     return SetupHint(
         source="history",
@@ -222,6 +311,7 @@ def _advise_inner(
         rationale=(
             f"best_combo(n={best_n},avg_score={best_avg:.2f}):"
             + ",".join(f"{a}→{r}" for a, r in sorted(best_roles.items()))
-            + (f" | wisdom:{wisdom_note}" if wisdom_note else "")
+            + wisdom_suffix
         ),
+        combo_id=best_key,
     )

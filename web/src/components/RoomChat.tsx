@@ -339,12 +339,6 @@ function sessionToMessages(
 
 const ACTIVE_ROOM_PRESET_IDS = ["fast", "supervisor"] as const;
 
-function roomPresetDisplayLabel(id: string, locale: "en" | "ko"): string {
-  if (id === "fast") return locale === "ko" ? "빠른" : "Quick";
-  if (id === "supervisor") return locale === "ko" ? "감독" : "Supervisor";
-  return id;
-}
-
 export function RoomChat({
   agents,
   apiOk = true,
@@ -3764,33 +3758,6 @@ export function RoomChat({
                     </button>
                   ) : null}
 
-                  {visiblePresets.length > 0 ? (
-                    <div
-                      className="room-preset-bar"
-                      role="radiogroup"
-                      aria-label={
-                        locale === "ko" ? "Room preset" : "Room preset"
-                      }
-                    >
-                      <span className="room-preset-bar__label">
-                        {locale === "ko" ? "프리셋" : "Preset"}
-                      </span>
-                      {visiblePresets.map((p) => (
-                        <button
-                          key={p.id}
-                          type="button"
-                          role="radio"
-                          aria-checked={roomPreset === p.id}
-                          className={`taskbar__turn-lead-chip room-preset-bar__chip${roomPreset === p.id ? " is-active" : ""}`}
-                          title={p.description}
-                          onClick={() => selectRoomPreset(p.id)}
-                        >
-                          {roomPresetDisplayLabel(p.id, locale)}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-
                   <ChatComposer
                     className={
                       [
@@ -3833,7 +3800,16 @@ export function RoomChat({
                       setPendingFiles((f) => f.filter((x) => x.id !== id))
                     }
                     turnProfile={turnProfile}
-                    onTurnProfileChange={changeTurnProfile}
+                    onTurnProfileChange={
+                      visiblePresets.length > 0 ? undefined : changeTurnProfile
+                    }
+                    roomPresets={
+                      visiblePresets.length > 0 ? visiblePresets : undefined
+                    }
+                    roomPreset={roomPreset}
+                    onRoomPresetSelect={
+                      visiblePresets.length > 0 ? selectRoomPreset : undefined
+                    }
                     planAfterSend={planAfterSend}
                     onPlanAfterSendChange={changePlanAfterSend}
                     planToggleDisabled={

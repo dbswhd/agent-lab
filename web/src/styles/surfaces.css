@@ -654,6 +654,17 @@
   border-color: color-mix(in srgb, var(--agent-codex) 35%, var(--border-hair));
 }
 
+/* ---- Composer preset (fast / supervisor) ------------------- */
+.composer-preset-row {
+  padding: 0 var(--composer-pad-x, var(--space-12));
+}
+.composer-preset-row__head {
+  width: 100%;
+}
+.composer-preset-seg button.is-active[data-preset="supervisor"] {
+  color: var(--agent-codex);
+}
+
 /* ---- Turn picker ----------------------------------------- */
 .turn-row {
   display: flex;

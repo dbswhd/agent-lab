@@ -7,7 +7,7 @@ import {
   useComposerMentionPaths,
 } from "../hooks/useComposerMentionPaths";
 import { SlashCommandMenu } from "./SlashCommandMenu";
-import type { SlashCommandRecord } from "../api/client";
+import type { SlashCommandRecord, RoomPreset } from "../api/client";
 import type { ComposerTurnProfile } from "../utils/turnProfile";
 import type { Locale } from "../i18n/locale";
 import { useLocale } from "../i18n/useLocale";
@@ -73,6 +73,10 @@ type Props = {
     ready?: boolean;
   }[];
   onOpenModelPicker?: () => void;
+  /** Room preset (fast / supervisor) — replaces turn strategy picker when set. */
+  roomPresets?: RoomPreset[];
+  roomPreset?: string | null;
+  onRoomPresetSelect?: (id: string) => void;
 };
 
 /**
@@ -118,6 +122,9 @@ export function ChatComposer({
   sessionId = null,
   activeModels = [],
   onOpenModelPicker,
+  roomPresets,
+  roomPreset = null,
+  onRoomPresetSelect,
 }: Props) {
   const { msg: localeMsg } = useLocale();
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -233,7 +240,56 @@ export function ChatComposer({
         </div>
       ) : null}
 
-      {turnProfile && onTurnProfileChange ? (
+      {roomPresets && roomPresets.length > 0 && onRoomPresetSelect ? (
+        <div
+          className="turn-row composer-preset-row"
+          role="radiogroup"
+          aria-label={locale === "ko" ? "Room preset" : "Room preset"}
+          aria-describedby={
+            turnHint?.trim() ? "composer-preset-desc" : undefined
+          }
+        >
+          <div className="turn-picker__head composer-preset-row__head">
+            <div className="turn-seg composer-preset-seg">
+              {roomPresets.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={roomPreset === p.id}
+                  className={roomPreset === p.id ? "is-active" : ""}
+                  data-preset={p.id}
+                  disabled={inputLocked}
+                  title={p.description}
+                  onClick={() => onRoomPresetSelect(p.id)}
+                >
+                  {p.id}
+                </button>
+              ))}
+            </div>
+            {onPlanAfterSendChange ? (
+              <div className="turn-picker__trailing">
+                <ComposerPlanToggle
+                  checked={planAfterSend}
+                  onChange={onPlanAfterSendChange}
+                  disabled={inputLocked || planToggleDisabled}
+                  label={localeMsg.modePlan}
+                  title={
+                    planToggleDisabled
+                      ? localeMsg.planWorkflowComposerBlocked
+                      : localeMsg.modePlanHint
+                  }
+                />
+              </div>
+            ) : null}
+          </div>
+          {turnHint?.trim() ? (
+            <p id="composer-preset-desc" className="turn-hint">
+              {turnHint}
+            </p>
+          ) : null}
+        </div>
+      ) : turnProfile && onTurnProfileChange ? (
         <ComposerTurnPicker
           value={turnProfile}
           onChange={onTurnProfileChange}

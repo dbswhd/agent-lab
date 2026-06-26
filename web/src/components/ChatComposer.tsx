@@ -245,9 +245,6 @@ export function ChatComposer({
           className="turn-row composer-preset-row"
           role="radiogroup"
           aria-label={locale === "ko" ? "Room preset" : "Room preset"}
-          aria-describedby={
-            turnHint?.trim() ? "composer-preset-desc" : undefined
-          }
         >
           <div className="turn-picker__head composer-preset-row__head">
             <div className="turn-seg composer-preset-seg">
@@ -270,24 +267,38 @@ export function ChatComposer({
             {onPlanAfterSendChange ? (
               <div className="turn-picker__trailing">
                 <ComposerPlanToggle
-                  checked={planAfterSend}
+                  checked={
+                    roomPreset === "fast"
+                      ? false
+                      : roomPreset === "supervisor"
+                        ? true
+                        : planAfterSend
+                  }
                   onChange={onPlanAfterSendChange}
-                  disabled={inputLocked || planToggleDisabled}
+                  disabled={
+                    inputLocked ||
+                    planToggleDisabled ||
+                    roomPreset === "fast" ||
+                    roomPreset === "supervisor"
+                  }
                   label={localeMsg.modePlan}
                   title={
-                    planToggleDisabled
-                      ? localeMsg.planWorkflowComposerBlocked
-                      : localeMsg.modePlanHint
+                    roomPreset === "fast"
+                      ? locale === "ko"
+                        ? "fast 프리셋: discuss만 (plan 끔)"
+                        : "Fast preset: discuss only (plan off)"
+                      : roomPreset === "supervisor"
+                        ? locale === "ko"
+                          ? "supervisor 프리셋: plan 항상 켜짐"
+                          : "Supervisor preset: plan always on"
+                        : planToggleDisabled
+                          ? localeMsg.planWorkflowComposerBlocked
+                          : localeMsg.modePlanHint
                   }
                 />
               </div>
             ) : null}
           </div>
-          {turnHint?.trim() ? (
-            <p id="composer-preset-desc" className="turn-hint">
-              {turnHint}
-            </p>
-          ) : null}
         </div>
       ) : turnProfile && onTurnProfileChange ? (
         <ComposerTurnPicker

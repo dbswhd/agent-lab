@@ -359,6 +359,16 @@ textarea {
 .switch input:checked + .switch__track::after {
   transform: translate(14px, -50%);
 }
+.switch.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.switch.is-disabled .switch__track {
+  background: var(--border-strong);
+}
+.switch.is-disabled input:checked + .switch__track {
+  background: var(--label-tertiary);
+}
 
 /* button variant: role="switch" (aria-checked) */
 .switch__btn {

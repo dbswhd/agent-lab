@@ -728,6 +728,9 @@ export function RoomChat({
   }
 
   function changePlanAfterSend(on: boolean) {
+    if (roomPreset === "supervisor" || roomPreset === "fast") {
+      return;
+    }
     if (turnProfile === "loop" && !on) {
       setPlanAfterSendState(true);
       setPlanAfterSendForSession(sessionId ?? activeSessionIdRef.current, true);
@@ -748,17 +751,42 @@ export function RoomChat({
   function selectRoomPreset(id: string) {
     const next = roomPreset === id ? null : id;
     setRoomPreset(next);
+    const sid = sessionId ?? activeSessionIdRef.current;
     if (next === "fast") {
       changeTurnProfile("quick");
+      setPlanAfterSendState(false);
+      setPlanAfterSendForSession(sid, false);
     } else if (next === "supervisor") {
       changeTurnProfile("loop");
-      changePlanAfterSend(true);
+      setPlanAfterSendState(true);
+      setPlanAfterSendForSession(sid, true);
     }
   }
 
   const planToggleSyncedRef = useRef<string | null>(null);
 
   useEffect(() => {
+    if (roomPreset === "fast") {
+      if (planAfterSend) {
+        setPlanAfterSendState(false);
+        setPlanAfterSendForSession(
+          sessionId ?? activeSessionIdRef.current,
+          false,
+        );
+      }
+      return;
+    }
+    if (roomPreset === "supervisor") {
+      const wf = session?.run?.plan_workflow as PlanWorkflowRecord | undefined;
+      if (!isPlanWorkflowAwaitingApproval(wf) && !planAfterSend) {
+        setPlanAfterSendState(true);
+        setPlanAfterSendForSession(
+          sessionId ?? activeSessionIdRef.current,
+          true,
+        );
+      }
+      return;
+    }
     if (!sessionId) {
       if (turnProfile === "loop" && !planAfterSend) {
         setPlanAfterSendState(true);
@@ -789,7 +817,13 @@ export function RoomChat({
     } else {
       setPlanAfterSendState(getPlanAfterSendForSession(sessionId));
     }
-  }, [sessionId, session?.run?.plan_workflow, turnProfile, planAfterSend]);
+  }, [
+    sessionId,
+    session?.run?.plan_workflow,
+    turnProfile,
+    planAfterSend,
+    roomPreset,
+  ]);
 
   const refreshTasks = useCallback(
     (overrideId?: string | null) => {
@@ -1606,7 +1640,13 @@ export function RoomChat({
             profile) as ComposerTurnProfile)
         : profile;
       const roomMode =
-        mode === "plan" || effectiveProfile === "loop" ? "plan" : "discuss";
+        roomPreset === "fast"
+          ? "discuss"
+          : roomPreset === "supervisor"
+            ? "plan"
+            : mode === "plan" || effectiveProfile === "loop"
+              ? "plan"
+              : "discuss";
       const {
         agents,
         agentRounds,
@@ -3789,9 +3829,17 @@ export function RoomChat({
                     sendDisabled={composerSendLocked}
                     placeholder={composerPlaceholder}
                     showModeChipHint={false}
-                    modeChip={modeChipCopy.label}
-                    modeChipVariant={composerModeVariant}
-                    modeChipHint={modeChipCopy.hint}
+                    modeChip={
+                      visiblePresets.length > 0 ? undefined : modeChipCopy.label
+                    }
+                    modeChipVariant={
+                      visiblePresets.length > 0
+                        ? undefined
+                        : composerModeVariant
+                    }
+                    modeChipHint={
+                      visiblePresets.length > 0 ? undefined : modeChipCopy.hint
+                    }
                     running={running}
                     onStop={handleStop}
                     files={pendingFiles}
@@ -3813,7 +3861,9 @@ export function RoomChat({
                     planAfterSend={planAfterSend}
                     onPlanAfterSendChange={changePlanAfterSend}
                     planToggleDisabled={
-                      planWorkflowAwaitingApproval || turnProfile === "loop"
+                      planWorkflowAwaitingApproval ||
+                      (turnProfile === "loop" && !roomPreset) ||
+                      roomPreset === "supervisor"
                     }
                     objectionNotice={composerObjectionNotice}
                     onFocusObjection={focusObjection}

@@ -125,6 +125,25 @@ def advise_setup(
         return _DEFAULT_HINT
 
 
+def _wisdom_note(topic: str, *, limit: int = 3) -> str:
+    """Return a compact note from cross-session [LEARNED:] wisdom hits, or ''.
+
+    Uses the existing AGENT_LAB_WISDOM_CROSS_SESSION flag — returns '' when off.
+    Role decisions are NOT affected; this is context annotation only.
+    """
+    try:
+        from agent_lab.wisdom_index import search_wisdom_cross_sessions
+
+        hits = search_wisdom_cross_sessions(topic, limit=limit)
+        if not hits:
+            return ""
+        snippets = [str(h.get("snippet") or h.get("title") or "").strip()[:120] for h in hits if h]
+        snippets = [s for s in snippets if s]
+        return "; ".join(snippets[:limit]) if snippets else ""
+    except Exception:
+        return ""
+
+
 def _advise_inner(
     topic: str,
     category: str,
@@ -191,6 +210,10 @@ def _advise_inner(
     best_n = len(combo_scores[best_key])
     best_avg = sum(combo_scores[best_key]) / best_n
 
+    # Phase C: augment rationale with cross-session [LEARNED:] wisdom snippets.
+    # Role decisions are NOT affected — wisdom is context-injection only.
+    wisdom_note = _wisdom_note(topic)
+
     return SetupHint(
         source="history",
         sample_size=len(relevant),
@@ -199,5 +222,6 @@ def _advise_inner(
         rationale=(
             f"best_combo(n={best_n},avg_score={best_avg:.2f}):"
             + ",".join(f"{a}→{r}" for a, r in sorted(best_roles.items()))
+            + (f" | wisdom:{wisdom_note}" if wisdom_note else "")
         ),
     )

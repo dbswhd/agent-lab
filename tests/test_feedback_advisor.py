@@ -155,3 +155,44 @@ def test_advise_setup_filters_unavailable_agents(tmp_path: Path, monkeypatch: py
     hint = advise_setup("pipeline verify", "standard", ["cursor", "codex"])
     # kimi_work not in available → filtered from role_overrides
     assert "kimi_work" not in (hint.role_overrides or {})
+
+
+# ---------------------------------------------------------------------------
+# Phase C: wisdom cross-session note injected into rationale
+# ---------------------------------------------------------------------------
+
+def test_wisdom_note_appended_when_hits_exist(monkeypatch: pytest.MonkeyPatch) -> None:
+    from agent_lab.feedback_advisor import _wisdom_note
+
+    fake_hits = [
+        {"snippet": "캐시 무효화 전략은 TTL 기반이 더 안정적", "title": "learning-1"},
+        {"snippet": "Oracle pass 후 repair_history 확인 필수", "title": "learning-2"},
+    ]
+    monkeypatch.setattr("agent_lab.wisdom_index.search_wisdom_cross_sessions", lambda q, limit=3: fake_hits)
+    note = _wisdom_note("pipeline verify")
+    assert "캐시 무효화" in note
+    assert "Oracle pass" in note
+
+
+def test_wisdom_note_empty_when_no_hits(monkeypatch: pytest.MonkeyPatch) -> None:
+    from agent_lab.feedback_advisor import _wisdom_note
+
+    monkeypatch.setattr("agent_lab.wisdom_index.search_wisdom_cross_sessions", lambda q, limit=3: [])
+    assert _wisdom_note("pipeline verify") == ""
+
+
+def test_wisdom_note_in_rationale(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AGENT_LAB_FEEDBACK_ADVISOR", "1")
+    monkeypatch.setenv("AGENT_LAB_FEEDBACK_MIN_SAMPLE", "2")
+    ledger = tmp_path / ".agent-lab" / "outcomes.jsonl"
+    _write_ledger(ledger, [_row()] * 4)
+    monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: ledger)
+    monkeypatch.setattr(
+        "agent_lab.wisdom_index.search_wisdom_cross_sessions",
+        lambda q, limit=3: [{"snippet": "학습내용: 병렬 에이전트 순서 고정 필요"}],
+    )
+
+    hint = advise_setup("pipeline verify", "standard", ["cursor", "codex", "claude"])
+    if hint.source == "history":
+        assert "wisdom:" in hint.rationale
+        assert "병렬 에이전트" in hint.rationale

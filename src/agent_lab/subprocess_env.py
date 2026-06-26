@@ -9,6 +9,7 @@ from collections.abc import Iterator
 _EXACT = frozenset(
     {
         "PATH",
+        "PYTHONPATH",
         "HOME",
         "TMPDIR",
         "TMP",

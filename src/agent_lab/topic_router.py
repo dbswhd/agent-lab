@@ -1,10 +1,13 @@
-"""Topic category routing — 합의 강도(창발 예산)를 토픽 성격에 맞게 라우팅.
+"""Topic category routing — 합의 강도(창발 예산)와 에이전트 풀을 토픽 성격에 맞게 라우팅.
 
 LazyCodex(OmO) category routing 참고, Agent Lab 형태로 재설계:
-라우팅 대상은 워커(에이전트 수·모델)가 아니라 **합의 기계의 깊이**다.
-3-agent 구조는 불변, 카테고리는 debate 라운드·재조합·품질 게이트·cap을 조절한다.
-오분류는 자가 치유된다 — quick/standard 턴에서 CHALLENGE/BLOCK/AMEND가 나오면
-한 단계 에스컬레이션하므로 라우팅이 충돌(창발)을 억압할 수 없다.
+기본 라우팅 대상은 합의 기계의 깊이(debate 라운드·재조합·품질 게이트·cap)이나,
+Harness Expert Pool 패턴을 참고해 작업 유형별 에이전트 서브셋도 제안한다.
+- code 작업 (구현/수정/버그): cursor + codex 우선
+- review 작업 (검토/분석/평가): claude + codex 우선
+- deep/critical: 서브셋 없음 (전원 참여, 다양성 최대화)
+서브셋은 힌트(hint)이며 가용 에이전트가 없으면 전체 풀로 폴백한다.
+오분류는 자가 치유된다 — CHALLENGE/BLOCK/AMEND 시 에스컬레이션되고 서브셋이 해제된다.
 """
 
 from __future__ import annotations
@@ -20,6 +23,7 @@ from agent_lab.room_consensus import (
 
 Category = Literal["quick", "standard", "trading", "deep", "critical"]
 Recombination = Literal["on", "auto", "off"]
+TaskType = Literal["code", "review", "general"]
 
 CATEGORY_ORDER: tuple[Category, ...] = ("quick", "standard", "trading", "deep", "critical")
 ESCALATION_ACTS = frozenset({"CHALLENGE", "BLOCK", "AMEND"})
@@ -99,6 +103,64 @@ _QUICK_KEYWORDS = (
     "어디에 있",
 )
 
+# 작업 유형 키워드 — code: 구현·수정 중심, review: 분석·검토 중심
+_CODE_TASK_KEYWORDS = (
+    "구현",
+    "implement",
+    "작성해",
+    "만들어",
+    "추가해",
+    "수정해",
+    "fix",
+    "build",
+    "개발",
+    "develop",
+    "버그",
+    "bug",
+    "패치",
+    "patch",
+    "코딩",
+    "coding",
+    "함수",
+    "function",
+    "클래스",
+    "class",
+    "테스트 작성",
+    "write test",
+)
+
+_REVIEW_TASK_KEYWORDS = (
+    "리뷰",
+    "review",
+    "검토해",
+    "분석해",
+    "analyze",
+    "평가해",
+    "evaluate",
+    "피드백",
+    "feedback",
+    "읽어봐",
+    "봐줘",
+    "어때?",
+    "어떻게 생각",
+    "의견",
+    "opinion",
+    "이해해줘",
+    "explain",
+    "설명해줘",
+)
+
+# 카테고리 + 작업유형 → 에이전트 서브셋 힌트 (None = 전원 참여)
+# deep/critical/trading은 _resolve_agent_subset()에서 early-return None (항상 전원 참여)
+_AGENT_SUBSET_MAP: dict[tuple[Category, TaskType], tuple[str, ...] | None] = {
+    ("quick", "code"): ("cursor",),              # 단순 코드 작업: 가장 빠른 구현 에이전트
+    ("quick", "review"): ("claude",),            # 단순 리뷰: 분석에 강한 에이전트
+    ("quick", "general"): ("cursor",),           # 단순 일반: 기본 에이전트
+    ("standard", "code"): ("cursor", "codex"),   # 코드 구현: 파일 편집 특화 에이전트
+    ("standard", "review"): ("claude", "codex"), # 코드 리뷰: 분석 + 코드 이해
+    ("standard", "general"): None,               # 일반 토론: 전원
+}
+
 # category → 창발 예산 (debate·재조합·품질 게이트·cap·wisdom)
 _ROUTE_TABLE: dict[Category, dict[str, Any]] = {
     "quick": {
@@ -163,8 +225,12 @@ class CategoryRoute:
     signals: tuple[str, ...] = ()
     escalated_from: Category | None = None
     escalation_act: str | None = None
-    agent_subset: tuple[str, ...] = ()       # 빈 tuple = 전체 사용 (Expert Pool)
-    role_plan: dict[str, str] = field(default_factory=dict)  # agent → role_id
+    # Expert Pool 힌트: None이면 전원 참여, 값이 있으면 해당 에이전트 우선 선택
+    # 에스컬레이션 시 None으로 리셋되어 자동으로 전원 참여로 복원됨
+    agent_subset: tuple[str, ...] | None = None
+    task_type: TaskType = "general"
+    # 역할 배정: {agent_id: role_id}, 호출측에서 active 확정 후 채워진다 (진단용 스냅샷)
+    role_plan: dict[str, str] = field(default_factory=dict)
 
     def category_dict(self) -> dict[str, Any]:
         """turns[].category 영속용 (additive run.json 필드)."""
@@ -172,11 +238,14 @@ class CategoryRoute:
             "value": self.category,
             "source": self.source,
             "signals": list(self.signals),
+            "task_type": self.task_type,
         }
         if self.escalated_from:
             out["escalated_from"] = self.escalated_from
         if self.escalation_act:
             out["escalation_act"] = self.escalation_act
+        if self.agent_subset:
+            out["agent_subset"] = list(self.agent_subset)
         if self.role_plan:
             out["role_plan"] = dict(self.role_plan)
         return out
@@ -204,6 +273,31 @@ def _trading_discuss_rounds() -> int:
         return 2
 
 
+def detect_task_type(topic: str) -> TaskType:
+    """토픽 텍스트에서 작업 유형을 감지 — code > review > general."""
+    lower = (topic or "").lower()
+    if _keyword_hits(lower, _CODE_TASK_KEYWORDS):
+        return "code"
+    if _keyword_hits(lower, _REVIEW_TASK_KEYWORDS):
+        return "review"
+    return "general"
+
+
+def _resolve_agent_subset(
+    category: Category,
+    task_type: TaskType,
+    *,
+    escalated: bool = False,
+) -> tuple[str, ...] | None:
+    """카테고리 + 작업유형 → 에이전트 서브셋 힌트.
+
+    에스컬레이션된 경우 또는 deep/critical에서는 항상 None(전원 참여)을 반환한다.
+    """
+    if escalated or category in ("deep", "critical", "trading"):
+        return None
+    return _AGENT_SUBSET_MAP.get((category, task_type))
+
+
 def _build_route(
     category: Category,
     *,
@@ -212,6 +306,7 @@ def _build_route(
     efficiency_mode: bool = False,
     escalated_from: Category | None = None,
     escalation_act: str | None = None,
+    task_type: TaskType = "general",
 ) -> CategoryRoute:
     base = _ROUTE_TABLE[category]
     debate_rounds = int(base["debate_rounds"])
@@ -239,6 +334,10 @@ def _build_route(
         max_calls = min(max_calls, eff.max_consensus_calls)
         debate_rounds = min(debate_rounds, 2)
 
+    agent_subset = _resolve_agent_subset(
+        category, task_type, escalated=escalated_from is not None
+    )
+
     return CategoryRoute(
         category=category,
         debate_rounds=debate_rounds,
@@ -252,6 +351,8 @@ def _build_route(
         signals=signals,
         escalated_from=escalated_from,
         escalation_act=escalation_act,
+        agent_subset=agent_subset,
+        task_type=task_type,
     )
 
 
@@ -270,6 +371,8 @@ def _legacy_route(*, efficiency_mode: bool = False) -> CategoryRoute:
         wisdom_in_context=False,
         suggest_verified=False,
         source="disabled",
+        agent_subset=None,
+        task_type="general",
     )
 
 
@@ -328,9 +431,14 @@ def resolve_topic_route(
     session_template: str = "",
     efficiency_mode: bool = False,
 ) -> CategoryRoute:
-    """marker > session template > profile 함의 > 휴리스틱 순으로 카테고리를 정하고 창발 예산을 매핑."""
+    """marker > session template > profile 함의 > 휴리스틱 순으로 카테고리를 정하고 창발 예산을 매핑.
+
+    또한 토픽에서 작업 유형(code/review/general)을 감지해 Expert Pool 에이전트 서브셋 힌트를 포함한다.
+    """
     if not topic_router_enabled():
         return _legacy_route(efficiency_mode=efficiency_mode)
+
+    task_type = detect_task_type(topic)
 
     marker = parse_category_marker(topic)
     if marker:
@@ -339,6 +447,7 @@ def resolve_topic_route(
             source="marker",
             signals=(f"marker:{marker}",),
             efficiency_mode=efficiency_mode,
+            task_type=task_type,
         )
 
     template = (session_template or "").strip().lower()
@@ -348,6 +457,7 @@ def resolve_topic_route(
             source="session_template",
             signals=("template:trading-mission",),
             efficiency_mode=efficiency_mode,
+            task_type=task_type,
         )
 
     profile = (turn_profile or "").strip().lower()
@@ -358,6 +468,7 @@ def resolve_topic_route(
             source="profile",
             signals=(f"profile:{profile}",),
             efficiency_mode=efficiency_mode,
+            task_type=task_type,
         )
 
     category, signals = classify_topic(topic)
@@ -366,6 +477,7 @@ def resolve_topic_route(
         source="heuristic",
         signals=signals,
         efficiency_mode=efficiency_mode,
+        task_type=task_type,
     )
 
 
@@ -382,7 +494,10 @@ def escalate_route(
     act: str,
     efficiency_mode: bool = False,
 ) -> CategoryRoute:
-    """충돌 act가 라우팅을 교정 — quick→standard→deep 1단계 상승, 강등 없음."""
+    """충돌 act가 라우팅을 교정 — quick→standard→deep 1단계 상승, 강등 없음.
+
+    에스컬레이션 시 agent_subset을 None으로 리셋해 전원이 참여하도록 한다.
+    """
     if route.source == "disabled":
         return route
     if route.category in ("deep", "critical"):
@@ -395,6 +510,7 @@ def escalate_route(
         efficiency_mode=efficiency_mode,
         escalated_from=route.escalated_from or route.category,
         escalation_act=str(act).upper(),
+        task_type=route.task_type,
     )
     # 에스컬레이션은 예산을 늘릴 수만 있다 (전역 cap 안에서)
     if escalated.max_rounds < route.max_rounds or escalated.max_calls < route.max_calls:

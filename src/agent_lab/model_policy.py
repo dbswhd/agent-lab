@@ -298,12 +298,15 @@ def model_profile_for(agent_id: str, *, model_id: str | None = None) -> ModelPro
     sub = _substitute_agent_id(agent_id)
     if sub is not None:
         mid = (model_id or resolve_runtime_model_id(agent_id)).strip() or "default"
-        key = _profile_registry_key(sub, mid)
-        if key in _MODEL_PROFILE_REGISTRY:
-            return _MODEL_PROFILE_REGISTRY[key]
         from agent_lab.model_policy_probe import loop_probe_enabled, probe_loop_capabilities_cached
 
+        # Registry entries for substitutes are always probe-derived, so only
+        # consult the registry when the probe gate is open (avoids stale
+        # live-probed entries being returned when probe is disabled).
         if loop_probe_enabled():
+            key = _profile_registry_key(sub, mid)
+            if key in _MODEL_PROFILE_REGISTRY:
+                return _MODEL_PROFILE_REGISTRY[key]
             probed = probe_loop_capabilities_cached(agent_id, mid)
             if probed is not None:
                 return probed
@@ -324,6 +327,38 @@ def model_readiness(agent_id: str, *, model_id: str | None = None) -> ModelReadi
         loop_ready=not blockers,
         loop_blockers=blockers,
     )
+
+
+def preferred_cost_tier_for_category(category: str) -> Tier | None:
+    """CategoryRoute 카테고리에 따른 에이전트 비용 티어 상한.
+
+    quick → low만 허용 (빠른 단순 작업에 고비용 에이전트 낭비 방지).
+    그 외 → None (제약 없음, 전원 참여).
+    """
+    if category == "quick":
+        return "low"
+    return None
+
+
+def agents_within_cost_tier(
+    agent_ids: list[str],
+    max_tier: Tier,
+) -> list[str]:
+    """max_tier 이하 비용 에이전트만 반환. 전원 필터되면 원본 반환(폴백).
+
+    cost_tier가 없는 에이전트(프로필 미등록)는 포함시킨다.
+    """
+    rank: dict[Tier, int] = {"low": 0, "medium": 1, "high": 2}
+    cap = rank.get(max_tier, 2)
+    filtered: list[str] = []
+    for aid in agent_ids:
+        profile = model_profile_for(aid)
+        if profile is None:
+            filtered.append(aid)
+            continue
+        if rank.get(profile.cost_tier, 2) <= cap:
+            filtered.append(aid)
+    return filtered if filtered else list(agent_ids)
 
 
 def loop_readiness_failure(agent_ids: Sequence[str]) -> LoopReadinessFailure | None:

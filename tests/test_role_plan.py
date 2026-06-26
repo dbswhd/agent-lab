@@ -246,9 +246,10 @@ class TestRoleCatalog:
 # ── 7. CategoryRoute new fields ───────────────────────────────────────────────
 
 class TestCategoryRouteFields:
-    def test_agent_subset_default_empty(self):
-        r = resolve_topic_route("아무 토픽")
-        assert r.agent_subset == ()
+    def test_agent_subset_default_none(self):
+        # standard 카테고리 → subset 없음(None). quick은 ('cursor',) 반환.
+        r = resolve_topic_route("이번 스프린트 아키텍처 설계를 어떻게 진행할지 토론합시다")
+        assert r.agent_subset is None
 
     def test_role_plan_default_empty(self):
         r = resolve_topic_route("아무 토픽")

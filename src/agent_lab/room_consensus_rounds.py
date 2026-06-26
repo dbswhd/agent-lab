@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any
 
 from agent_lab.agents.registry import AgentId, available_agents, label
@@ -71,6 +72,63 @@ def run_consensus_agent_rounds(
         efficiency_mode=efficiency_mode,
     )
     cap_rounds, cap_calls = route.max_rounds, route.max_calls
+
+    # Expert Pool: route가 에이전트 서브셋을 제안하면 active를 좁힌다.
+    # 서브셋 내 가용 에이전트가 없으면 전체 풀로 폴백 (안전 보장).
+    # 합의 루프에서는 최소 2명이 필요하므로 서브셋이 1명 이하로 줄면 적용하지 않는다.
+    if route.agent_subset:
+        subset_active = [a for a in active if str(a) in route.agent_subset]
+        if len(subset_active) >= 2:
+            active = subset_active
+            if on_event:
+                on_event(
+                    "agent_subset_applied",
+                    {
+                        "subset": list(route.agent_subset),
+                        "active": [str(a) for a in active],
+                        "task_type": route.task_type,
+                        "category": route.category,
+                        "message": (
+                            f"Expert Pool — {route.task_type} 작업으로 감지: "
+                            f"{', '.join(str(a) for a in active)} 우선 참여."
+                        ),
+                    },
+                )
+    # Model Policy: 카테고리 비용 상한과 신뢰 예산 소진 상한 중 더 엄격한 티어를 적용.
+    # agents_within_cost_tier는 전원 필터될 때 원본을 반환하므로 안전하다.
+    from agent_lab.model_policy import agents_within_cost_tier, preferred_cost_tier_for_category
+    from agent_lab.trust_budget import budget_agent_tier_cap
+
+    _category_tier = preferred_cost_tier_for_category(route.category)
+    _budget_tier = budget_agent_tier_cap(run_meta)
+    _tier_rank: dict[str, int] = {"low": 0, "medium": 1, "high": 2}
+    _effective_tier: str | None = None
+    for _t in (_category_tier, _budget_tier):
+        if _t is not None:
+            if _effective_tier is None or _tier_rank.get(_t, 2) < _tier_rank.get(_effective_tier, 2):
+                _effective_tier = _t
+    if _effective_tier is not None:
+        _filtered = agents_within_cost_tier([str(a) for a in active], _effective_tier)  # type: ignore[arg-type]
+        _filtered_set = set(_filtered)
+        _policy_active = [a for a in active if str(a) in _filtered_set]
+        # 합의 루프에서는 최소 2명이 필요하므로 1명 이하로 줄면 비용 상한을 적용하지 않는다.
+        if len(_policy_active) >= 2 and _policy_active != active:
+            active = _policy_active
+            if on_event:
+                on_event(
+                    "model_policy_applied",
+                    {
+                        "effective_tier": _effective_tier,
+                        "category_tier": _category_tier,
+                        "budget_tier": _budget_tier,
+                        "active": [str(a) for a in active],
+                        "message": (
+                            f"Model Policy — 비용 상한 {_effective_tier}: "
+                            f"{', '.join(str(a) for a in active)} 참여."
+                        ),
+                    },
+                )
+
     from agent_lab.turn_modes import apply_loop_budget_caps, loop_token_budget_exceeded
 
     cap_rounds, cap_calls = apply_loop_budget_caps(run_meta, cap_rounds, cap_calls)
@@ -116,17 +174,28 @@ def run_consensus_agent_rounds(
         )
 
     def _maybe_escalate(batch_msgs: list[ChatMessage]) -> None:
-        """충돌 act → 카테고리 1단계 상승 (예산만 늘림, 강등 없음)."""
-        nonlocal route, cap_rounds, cap_calls
+        """충돌 act → 카테고리 1단계 상승 (예산만 늘림, 강등 없음).
+
+        에스컬레이션 시 agent_subset과 _turn_roles가 해제되어 전원 자유토론으로 복귀한다.
+        """
+        nonlocal route, cap_rounds, cap_calls, active
         act = batch_escalation_act(batch_msgs)
         if not act:
             return
+        prev_subset = route.agent_subset
+        prev_roles = dict((run_meta or {}).get("_turn_roles") or {})
         escalated = escalate_route(route, act=act, efficiency_mode=efficiency_mode)
         if escalated.category == route.category:
             return
         route = escalated
         cap_rounds, cap_calls = route.max_rounds, route.max_calls
+        # 에스컬레이션 시 subset 해제 → 전체 에이전트로 복원
+        if prev_subset and route.agent_subset is None:
+            full = list(agents or available_agents())[:MAX_AGENTS_PER_ROUND]
+            if len(full) > len(active):
+                active = full
         if run_meta is not None:
+            run_meta["_turn_roles"] = {}  # 역할 해제 → 자유토론 복귀
             run_meta["_turn_category"] = route.category_dict()
             run_meta["_turn_roles"] = {}  # 에스컬레이션 시 역할 해제 — 새 카테고리에서 재배정
             from agent_lab.inbox_harvest import record_escalation_harvest_keys
@@ -139,7 +208,8 @@ def run_consensus_agent_rounds(
                     "from": route.escalated_from,
                     "to": route.category,
                     "act": route.escalation_act,
-                    "roles_released": True,
+                    "subset_released": prev_subset is not None and route.agent_subset is None,
+                    "roles_released": bool(prev_roles),
                     "message": f"{route.escalation_act} 발생 — 토픽 카테고리를 "
                     f"{route.escalated_from}→{route.category}로 승격합니다.",
                 },
@@ -428,8 +498,8 @@ def run_consensus_agent_rounds(
                 thread=working,
                 parallel_round=last_debate + 1 + recomb_rounds,
                 permissions=permissions,
-                review_mode=False,
-                review_advocate=None,
+                review_mode=True,
+                review_advocate=advocate,
                 plan_md=plan_md,
                 run_meta=run_meta,
                 on_event=on_event,

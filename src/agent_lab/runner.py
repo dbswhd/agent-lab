@@ -7,10 +7,14 @@ from collections.abc import Callable
 from contextlib import contextmanager
 from typing import Any
 
+from typing import TYPE_CHECKING
+
 from agent_lab import roles
-from agent_lab.graph import GraphState
 from agent_lab.invoke import invoke_role, model_name, provider
 from agent_lab.session import save_session
+
+if TYPE_CHECKING:
+    from agent_lab.graph import GraphState
 
 StepCallback = Callable[[str, str, dict[str, Any] | None], None]
 # (node, status, extra) — status: running | done | error

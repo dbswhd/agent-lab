@@ -127,21 +127,17 @@ def test_ws_echo_command(tmp_path: Path) -> None:
         received: list[str] = []
         with client.websocket_connect(f"/api/sessions/{session_id}/terminal") as ws:
             ws.send_json({"type": "resize", "rows": 24, "cols": 80})
-            time.sleep(0.8)  # let shell finish initialising
+            time.sleep(1.0)  # let shell finish initialising
 
-            # Drain startup noise with a short timeout per message.
-            for _ in range(15):
-                msg = _recv_timeout(ws, timeout=0.3)
-                if msg is None:
-                    break
-
-            # Send our command.
+            # Send our command.  Do NOT drain first — draining creates orphan
+            # threads that block on receive_json() and steal the echo response.
             ws.send_json({"type": "input", "data": "echo WSHELLO\n"})
 
-            # Collect output for up to 5 s.
-            deadline = time.monotonic() + 5.0
+            # Collect output for up to 8 s.  Startup-noise messages are already
+            # queued and processed first; the echo response follows right after.
+            deadline = time.monotonic() + 8.0
             while time.monotonic() < deadline:
-                msg = _recv_timeout(ws, timeout=0.5)
+                msg = _recv_timeout(ws, timeout=1.0)
                 if msg is None:
                     continue
                 if msg.get("type") == "output":

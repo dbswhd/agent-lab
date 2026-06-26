@@ -33,6 +33,7 @@ export type PlanMetaView = {
   agentsLabel: string;
   freshnessLabel: string;
   reviewTurnLabel: string | null;
+  turnRolesLabel: string | null;
   pendingAgreement: ConsensusAgreementRow | null;
   chatLineLabel: string | null;
 };
@@ -100,6 +101,35 @@ export function composerPlanStaleNotice(
   return null;
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  proposer: "제안자",
+  critic: "검토자",
+  synthesizer: "합성자",
+  executor: "실행자",
+};
+
+function formatTurnRoles(roles: Record<string, string>): string | null {
+  const entries = Object.entries(roles).filter(([, role]) => role);
+  if (entries.length === 0) return null;
+  return entries
+    .map(([agent, role]) => `${agentLabel(agent)}: ${ROLE_LABELS[role] ?? role}`)
+    .join(" · ");
+}
+
+/** Extract role assignments from the latest turn snapshot, or {} if none. */
+export function latestTurnRoles(
+  run: Record<string, unknown> | undefined,
+): Record<string, string> {
+  const turns = (run?.turns as Record<string, unknown>[] | undefined) ?? [];
+  for (let i = turns.length - 1; i >= 0; i--) {
+    const roles = turns[i]?.roles;
+    if (roles && typeof roles === "object") {
+      return roles as Record<string, string>;
+    }
+  }
+  return {};
+}
+
 export function workPlanMetaLine(meta: PlanMetaView): string | null {
   if (!meta.lastUpdate) return null;
   if (meta.pendingAgreement) return null;
@@ -161,6 +191,7 @@ export function buildPlanMetaView(
     agentsLabel,
     freshnessLabel,
     reviewTurnLabel: reviewTurnLabel(run),
+    turnRolesLabel: formatTurnRoles(latestTurnRoles(run)),
     pendingAgreement,
     chatLineLabel,
   };

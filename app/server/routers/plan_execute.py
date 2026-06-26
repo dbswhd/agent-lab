@@ -191,7 +191,11 @@ def session_auto_merge_eligibility(
     execution_id: str | None = None,
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
+    from agent_lab.auto_approve_gate import try_auto_approve
     from agent_lab.auto_merge import evaluate_auto_merge_eligibility
+
+    if execution_id:
+        try_auto_approve(folder, execution_id.strip())
 
     payload = evaluate_auto_merge_eligibility(folder, execution_id=execution_id)
     return {"ok": True, "session_id": session_id, **payload}

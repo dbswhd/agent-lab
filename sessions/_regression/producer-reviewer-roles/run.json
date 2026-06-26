@@ -1,0 +1,66 @@
+{
+  "workflow_id": "room.parallel",
+  "run_schema_version": 1,
+  "plan_format_version": 1,
+  "topic": "regression baseline: producer-reviewer role orchestration",
+  "created_at": "2026-06-25T00:00:00+00:00",
+  "agents": [
+    "cursor",
+    "claude"
+  ],
+  "status": "completed",
+  "message_count": 3,
+  "agent_parallel_rounds": 2,
+  "turns": [
+    {
+      "mode": "discuss",
+      "consensus_mode": true,
+      "status": "completed",
+      "ts": "2026-06-25T00:00:01+00:00",
+      "roles": {
+        "cursor": "proposer",
+        "claude": "critic"
+      },
+      "category": {
+        "value": "standard",
+        "source": "heuristic",
+        "signals": [],
+        "task_type": "code",
+        "role_plan": {
+          "cursor": "proposer",
+          "claude": "critic"
+        }
+      },
+      "consensus": {
+        "status": "reached",
+        "anchor": {
+          "agent": "cursor",
+          "excerpt": "API를 직접 구현합니다.",
+          "parallel_round": 1,
+          "id": "a1-1"
+        },
+        "rounds": 2,
+        "agents_consented": ["claude"],
+        "calls": 2,
+        "quality": {
+          "debate_challenges": 0,
+          "forced_review": false,
+          "category": "standard"
+        },
+        "recombination": {
+          "skipped": "single_proposer"
+        },
+        "anchor_lineage": [
+          {
+            "id": "a1-1",
+            "agent": "cursor",
+            "parallel_round": 1
+          }
+        ]
+      }
+    }
+  ],
+  "actions": [],
+  "approvals": [],
+  "executions": []
+}

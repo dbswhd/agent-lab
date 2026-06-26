@@ -1212,6 +1212,29 @@ export function fetchSessionSetupOptions() {
   );
 }
 
+export type RoomPreset = {
+  id: string;
+  turn_profile: string;
+  description: string;
+  role_policy?: string;
+};
+
+export type RoomRole = {
+  id: string;
+  label: string;
+  persona_preview: string;
+};
+
+export function fetchRoomPresets() {
+  return json<{ presets: RoomPreset[]; default: string | null }>(
+    "/api/room/presets",
+  );
+}
+
+export function fetchRoomRoles() {
+  return json<{ roles: RoomRole[] }>("/api/room/roles");
+}
+
 export function pickFolderViaDesktopApi(defaultPath?: string | null) {
   return json<{ available: boolean; path: string | null; cancelled: boolean }>(
     "/api/desktop/pick-folder",
@@ -1648,29 +1671,37 @@ async function consumeSse(
   const dec = new TextDecoder();
   let buf = "";
   let sawTerminal = false;
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += dec.decode(value, { stream: true });
-    const parts = buf.split("\n\n");
-    buf = parts.pop() ?? "";
-    for (const part of parts) {
-      for (const line of part.split("\n")) {
-        if (line.startsWith("data: ")) {
-          const data = JSON.parse(line.slice(6)) as Record<string, unknown>;
-          const t = String(data.type ?? "");
-          if (
-            t === "complete" ||
-            t === "error" ||
-            t === "run_failed" ||
-            t === "run_cancelled"
-          ) {
-            sawTerminal = true;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const parts = buf.split("\n\n");
+      buf = parts.pop() ?? "";
+      for (const part of parts) {
+        for (const line of part.split("\n")) {
+          if (line.startsWith("data: ")) {
+            const data = JSON.parse(line.slice(6)) as Record<string, unknown>;
+            const t = String(data.type ?? "");
+            if (
+              t === "complete" ||
+              t === "error" ||
+              t === "run_failed" ||
+              t === "run_cancelled"
+            ) {
+              sawTerminal = true;
+            }
+            onEvent(data);
           }
-          onEvent(data);
         }
       }
     }
+  } catch (err) {
+    if (!sawTerminal) {
+      onEvent({ type: "sse_disconnected", message: String(err) });
+    }
+  } finally {
+    reader.cancel().catch(() => {});
   }
   return sawTerminal;
 }
@@ -1723,6 +1754,8 @@ export type RunRoomOptions = {
   agentThreadBindings?: Record<string, string>;
   /** Always general for now; workflow templates deferred. */
   sessionTemplate?: string;
+  /** Room preset id (fast | consensus | expert_pool | producer_reviewer | pipeline | supervisor). */
+  roomPreset?: string;
   /** Abort in-flight SSE (UI stop). */
   signal?: AbortSignal;
 };
@@ -1801,6 +1834,9 @@ export async function runRoom(
   form.append("efficiency_mode", String(opts?.efficiencyMode ?? false));
   form.append("turn_profile", opts?.turnProfile ?? "analyze");
   form.append("research_mode", String(opts?.researchMode ?? false));
+  if (opts?.roomPreset?.trim()) {
+    form.append("preset", opts.roomPreset.trim());
+  }
   form.append("workspace_id", opts?.workspaceId ?? "agent-lab");
   if (opts?.workspacePath?.trim()) {
     form.append("workspace_path", opts.workspacePath.trim());

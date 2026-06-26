@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import os
 
-from langchain_core.messages import HumanMessage, SystemMessage
-
 from agent_lab import codex_cli
 
 
@@ -53,6 +51,7 @@ def invoke_role(system: str, user: str) -> str:
     if p == "codex":
         return codex_cli.invoke(system, user)
     from agent_lab.llm import get_llm
+    from langchain_core.messages import HumanMessage, SystemMessage
 
     llm = get_llm()
     msg = llm.invoke(

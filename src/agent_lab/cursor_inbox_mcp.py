@@ -62,7 +62,16 @@ def inbox_mcp_stdio_spec(session_folder: Path) -> dict[str, Any]:
 
 
 def build_inbox_mcp_servers(session_folder: Path) -> dict[str, Any]:
-    from cursor_sdk.types import StdioMcpServerConfig
+    try:
+        from cursor_sdk.types import StdioMcpServerConfig
+    except ImportError:
+        from dataclasses import dataclass as _dc
+
+        @_dc
+        class StdioMcpServerConfig:  # type: ignore[no-redef]
+            command: str
+            args: list
+            env: dict
 
     spec = inbox_mcp_stdio_spec(session_folder)
     return {

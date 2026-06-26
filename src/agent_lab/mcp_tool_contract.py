@@ -99,6 +99,11 @@ CODE_MEMORY_REQUIRED: frozenset[str] = frozenset({"code_memory_search"})
 CODE_MEMORY_ALLOWED: frozenset[str] = CODE_MEMORY_REQUIRED | frozenset({"code_memory_status"})
 CODE_MEMORY_EXCLUSIVE: frozenset[str] = frozenset({"code_memory_search", "code_memory_status"})
 
+# agent-lab-wisdom MCP — cross-session read+write Wisdom Index.
+WISDOM_REQUIRED: frozenset[str] = frozenset({"wisdom_recall", "wisdom_record"})
+WISDOM_ALLOWED: frozenset[str] = WISDOM_REQUIRED | frozenset({"wisdom_list", "wisdom_index_status"})
+WISDOM_EXCLUSIVE: frozenset[str] = frozenset({"wisdom_recall", "wisdom_record", "wisdom_list", "wisdom_index_status"})
+
 _SERVER_SPECS: dict[str, dict[str, Any]] = {
     "agent-lab-research": {
         "module": "agent_lab.research_mcp_server",
@@ -120,6 +125,13 @@ _SERVER_SPECS: dict[str, dict[str, Any]] = {
         "allowed": CODE_MEMORY_ALLOWED,
         "required": CODE_MEMORY_REQUIRED,
         "exclusive": CODE_MEMORY_EXCLUSIVE,
+    },
+    "agent-lab-wisdom": {
+        "module": "agent_lab.wisdom_mcp_server",
+        "attr": "mcp",
+        "allowed": WISDOM_ALLOWED,
+        "required": WISDOM_REQUIRED,
+        "exclusive": WISDOM_EXCLUSIVE,
     },
 }
 

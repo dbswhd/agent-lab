@@ -3,11 +3,13 @@ import type {
   AgentOption,
   PlanActionItem,
   PlanWorkflowRecord,
+  RoomPreset,
   SessionDetail,
 } from "../api/client";
 import {
   applySessionTemplate,
   cancelRoomRun,
+  fetchRoomPresets,
   pauseMissionLoop,
   fetchCommands,
   fetchSessionInbox,
@@ -397,6 +399,8 @@ export function RoomChat({
     useState<ComposerTurnProfile>(getTurnStrategy);
   const [planAfterSend, setPlanAfterSendState] = useState(getPlanAfterSend);
   const [loopMaxCostTier, setLoopMaxCostTier] = useState<string | null>(null);
+  const [roomPreset, setRoomPreset] = useState<string | null>(null);
+  const [availablePresets, setAvailablePresets] = useState<RoomPreset[]>([]);
   const composeMode: ComposeMode = planAfterSend ? "plan" : "discuss";
   const [researchMode] = useState(() => {
     try {
@@ -419,6 +423,19 @@ export function RoomChat({
       })
       .catch(() => {
         if (!cancelled) setLoopMaxCostTier(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  useEffect(() => {
+    let cancelled = false;
+    void fetchRoomPresets()
+      .then((catalog) => {
+        if (!cancelled) setAvailablePresets(catalog.presets);
+      })
+      .catch(() => {
+        if (!cancelled) setAvailablePresets([]);
       });
     return () => {
       cancelled = true;
@@ -1556,14 +1573,18 @@ export function RoomChat({
     ) => {
       if (mode === "execute") return;
       if (runBusy || running || synthesizing) return;
+      const effectiveProfile: ComposerTurnProfile = roomPreset
+        ? ((availablePresets.find((p) => p.id === roomPreset)?.turn_profile ??
+            profile) as ComposerTurnProfile)
+        : profile;
       const roomMode =
-        mode === "plan" || profile === "loop" ? "plan" : "discuss";
+        mode === "plan" || effectiveProfile === "loop" ? "plan" : "discuss";
       const {
         agents,
         agentRounds,
         reviewMode: useReviewMode,
         consensusMode: useConsensusMode,
-      } = resolveTurnSend(profile, selected);
+      } = resolveTurnSend(effectiveProfile, selected);
       if (agents.length === 0) return;
 
       const sendText =
@@ -2322,8 +2343,8 @@ export function RoomChat({
             permissions,
             reviewMode: useReviewMode,
             consensusMode: useConsensusMode,
-            turnProfile: profile,
-            researchMode: researchMode || profile === "specialist",
+            turnProfile: effectiveProfile,
+            researchMode: researchMode || effectiveProfile === "specialist",
             workspaceId: sessionId ? undefined : workspaceId,
             workspacePath:
               sessionId || workspaceId !== CUSTOM_WORKSPACE_ID
@@ -2332,6 +2353,7 @@ export function RoomChat({
             agentCapabilities: capabilitiesForApi(agentCapabilities),
             agentThreadBindings: threadBindings,
             sessionTemplate,
+            roomPreset: roomPreset ?? undefined,
             signal: runAbort.signal,
           },
         );
@@ -2407,6 +2429,8 @@ export function RoomChat({
       runBusy,
       running,
       synthesizing,
+      roomPreset,
+      availablePresets,
     ],
   );
 
@@ -3700,6 +3724,24 @@ export function RoomChat({
                     >
                       Human Inbox 대기 ({inboxPendingNonQuestions})
                     </button>
+                  ) : null}
+
+                  {availablePresets.length > 0 ? (
+                    <div className="room-preset-bar" role="group" aria-label="Room preset">
+                      {availablePresets
+                        .filter((p) => ["fast", "consensus", "supervisor"].includes(p.id))
+                        .map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            className={`taskbar__turn-lead-chip room-preset-bar__chip${roomPreset === p.id ? " is-active" : ""}`}
+                            title={p.description}
+                            onClick={() => setRoomPreset(roomPreset === p.id ? null : p.id)}
+                          >
+                            {p.id}
+                          </button>
+                        ))}
+                    </div>
                   ) : null}
 
                   <ChatComposer

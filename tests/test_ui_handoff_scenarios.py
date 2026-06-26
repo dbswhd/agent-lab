@@ -162,17 +162,17 @@ def test_taskbar_human_inbox_integration_contract():
     assert "openHumanInbox" in room
 
 
-def test_discuss_inbox_panel_contract():
-    """M3–M4: Discuss segment + popup + inbox_pause wiring."""
+def test_inbox_segments_contract():
+    """Inbox collapsed to Inbox/Activity; discuss recovery folded into Inbox;
+    popup + inbox_pause wiring preserved; kind is the primary row distinction."""
     room = _read("web", "src", "components", "RoomChat.tsx")
-    discuss = _read("web", "src", "components", "DiscussInboxPanel.tsx")
     inbox = _read("web", "src", "components", "HumanInboxPanel.tsx")
-    assert "DiscussInboxPanel" in room
-    assert 'inboxSegment === "discuss"' in room
+    assert "DiscussRecoveryBanner" in room
+    assert 'inboxSegment === "inbox"' in room
     assert 't === "inbox_pause"' in room
     assert 'presentation="popup"' in room
-    assert "discussOnly" in discuss
     assert "inbox-row--fork" in inbox
+    assert "inbox-row__kind-badge" in inbox
 
 
 def test_composer_question_inbox_is_separate_from_generic_pending_hint():
@@ -209,15 +209,12 @@ def test_m6_work_exec_classes_only_in_plan_execute_panel():
 def test_human_decision_banner_contract():
     """D: unified Human decision banner from runtime gates."""
     room = _read("web", "src", "components", "RoomChat.tsx")
-    discuss = _read("web", "src", "components", "DiscussInboxPanel.tsx")
     banner = _read("web", "src", "components", "HumanDecisionBanner.tsx")
     view = _read("web", "src", "utils", "humanDecisionView.ts")
     css = _read("web", "src", "styles", "prototype-panels.css")
 
     assert "HumanDecisionBanner" in room
     assert "workspace-discuss-pause-banner" not in room
-    assert "HumanDecisionBanner" in discuss
-    assert "GateProfileChips" not in discuss
     assert "shouldShowHumanDecisionBanner" in view
     assert "buildHumanDecisionLanes" in banner
     assert "humanDecisionTitle" in banner
@@ -238,7 +235,6 @@ def test_remaining_gaps_slack_inbox_ref_recovery_contract():
     """Slack settings, inbox ref jump, discuss recovery banner."""
     room = _read("web", "src", "components", "RoomChat.tsx")
     gateway = _read("web", "src", "components", "GatewaySettingsPanel.tsx")
-    discuss = _read("web", "src", "components", "DiscussInboxPanel.tsx")
     recovery = _read("web", "src", "components", "RecoveryStrip.tsx")
     ref_nav = _read("web", "src", "utils", "inboxRefNavigation.ts")
     client = _read("web", "src", "api", "client.ts")
@@ -250,7 +246,7 @@ def test_remaining_gaps_slack_inbox_ref_recovery_contract():
     assert "onRefClick={handleInboxRefClick}" in room
     assert "RecoveryStrip" in room
     assert "postMissionDiscussRecovery" in room
-    assert "DiscussRecoveryBanner" in discuss
+    assert "DiscussRecoveryBanner" in room
     assert "run_discuss_recovery" in recovery
     assert "recovery-strip" in recovery
     assert "parseInboxRef" in ref_nav

@@ -1,13 +1,9 @@
 import { type Dispatch, type SetStateAction, useCallback, useEffect, useMemo, useState } from "react";
 import { fetchInboxSummary, fetchSessionInbox } from "../api/client";
 
-export type InboxSegment =
-  | "all"
-  | "discuss"
-  | "activity"
-  | "questions"
-  | "build"
-  | "skills";
+// Two real modes the human cares about: items to act on, and the activity feed.
+// (Former kind/discuss sub-filters are now conveyed by per-row badges.)
+export type InboxSegment = "inbox" | "activity";
 
 export interface InboxState {
   inboxPendingCount: number;
@@ -34,7 +30,7 @@ export function useInboxState(sessionId: string | null): InboxState {
   const [inboxPendingSkillDrafts, setInboxPendingSkillDrafts] = useState(0);
   const [globalInboxPending, setGlobalInboxPending] = useState(0);
   const [inboxReloadKey, setInboxReloadKey] = useState(0);
-  const [inboxSegment, setInboxSegment] = useState<InboxSegment>("all");
+  const [inboxSegment, setInboxSegment] = useState<InboxSegment>("inbox");
   const [showInboxPopup, setShowInboxPopup] = useState(false);
 
   const refreshInboxPending = useCallback(async () => {

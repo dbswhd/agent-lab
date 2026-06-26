@@ -66,12 +66,10 @@ function inboxSourceBadge(item: HumanInboxItem, ko: boolean): string | null {
   return src || null;
 }
 
-function inboxLaneLabel(item: HumanInboxItem, ko: boolean): string {
-  if (isDiscussHarvest(item)) return ko ? "Discuss" : "Discuss";
-  const src = (item.source ?? "").toLowerCase();
-  if (src.includes("mcp") || src.includes("execute"))
-    return ko ? "Execute" : "Execute";
-  return src || (ko ? "Human" : "Human");
+function inboxKindLabel(item: HumanInboxItem, ko: boolean): string {
+  if (item.kind === "build") return ko ? "실행" : "Build";
+  if (item.kind === "skill_draft") return ko ? "스킬" : "Skill";
+  return ko ? "질문" : "Question";
 }
 
 function triggerBadge(
@@ -152,9 +150,11 @@ function InboxRow({
     item.plan_revision !== planRevision;
   const busy = disabled || busyId === item.id;
   const forkRow = item.kind === "question" && (item.options?.length ?? 0) >= 2;
-  const lane = inboxLaneLabel(item, ko);
   const sourceBadge = inboxSourceBadge(item, ko);
+  const kindLabel = inboxKindLabel(item, ko);
   const trigger = triggerBadge(item.trigger, ko);
+  // "Why this gate fired" — demoted from competing badges to one quiet sub-label.
+  const why = [trigger, forkRow ? "FORK" : null].filter(Boolean).join(" · ");
 
   return (
     <div
@@ -171,8 +171,16 @@ function InboxRow({
     >
       <div className="inbox-row__head">
         <Avatar role={inboxAgent(item)} size={20} />
-        <span className="inbox-row__subject">{subject}</span>
+        <div className="inbox-row__headline">
+          <span className="inbox-row__subject">{subject}</span>
+          {why ? <span className="inbox-row__why">{why}</span> : null}
+        </div>
         <span className="inbox-row__badges">
+          <span
+            className={`inbox-row__kind-badge inbox-row__kind-badge--${item.kind}`}
+          >
+            {kindLabel}
+          </span>
           {sourceBadge ? (
             <span
               className={[
@@ -186,15 +194,6 @@ function InboxRow({
                 .join(" ")}
             >
               {sourceBadge}
-            </span>
-          ) : null}
-          <span className="inbox-row__lane-badge">{lane}</span>
-          {trigger ? (
-            <span className="inbox-row__trigger-badge">{trigger}</span>
-          ) : null}
-          {forkRow ? (
-            <span className="inbox-row__fork-badge">
-              {ko ? "FORK" : "FORK"}
             </span>
           ) : null}
         </span>
@@ -279,7 +278,7 @@ function InboxRow({
           ) : null}
           <button
             type="button"
-            className="btn btn--sm"
+            className="btn btn--sm btn--ghost"
             disabled={busy}
             onClick={() => void onDefer(item)}
           >
@@ -317,7 +316,7 @@ function InboxRow({
           </button>
           <button
             type="button"
-            className="btn btn--sm"
+            className="btn btn--sm btn--ghost"
             disabled={busy}
             onClick={() => void onBuild(item, "defer")}
           >

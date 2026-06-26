@@ -157,7 +157,7 @@ flowchart TB
 | 기능 | Core | API | UI |
 |------|------|-----|-----|
 | Execute-time 질문 | `human_inbox.py` | `human_inbox` router | `HumanInboxPanel` |
-| Discuss inbox | `inbox_facilitator.py` | — | `DiscussInboxPanel` |
+| Discuss inbox | `inbox_facilitator.py` | — | `HumanInboxPanel` (Harvest 배지) + `DiscussRecoveryBanner` |
 | MCP server | `inbox_mcp_server.py` | — | — |
 
 ### 3.7 Runtime Harness

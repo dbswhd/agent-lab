@@ -257,7 +257,7 @@ Plan → Review → Execute → Verify → Done
 
 | ID | 라벨 | 역할 |
 |----|------|------|
-| `overview` | Overview | ContextOverviewPanel — session · goal · plan meta |
+| `overview` | Overview | ContextOverviewPanel — mission · plan meta · context-layer 토글 · 진단 드로어 |
 | `tasks` | Tasks | Goal loop · HumanGate · plan approval |
 | `inbox` | Inbox | Human Inbox · Discuss Inbox · notifications |
 | `tools` | Tools | Workbench tool modes (`plan`, `diff`, `files`, …) |
@@ -1005,7 +1005,7 @@ Boot: 90× retry + 45s interval refresh.
 
 ### 18.1 Overview
 
-`ContextOverviewPanel` — session meta, goal loop, plan summary.
+`ContextOverviewPanel` — mission headline, plan summary, context-layer toggles, diagnostics drawer (goal/team are shown in `GoalLoopBanner` / rail).
 
 ### 18.2 Tasks
 
@@ -1015,7 +1015,7 @@ Blocker 시 auto-focus tasks tab.
 
 ### 18.3 Inbox
 
-`HumanInboxPanel`, `DiscussInboxPanel`, `NotificationCenter` (P0/P1/P2 — [NOTIFICATION-TAXONOMY.md](./NOTIFICATION-TAXONOMY.md)).
+`HumanInboxPanel`, `NotificationCenter` (P0/P1/P2 — [NOTIFICATION-TAXONOMY.md](./NOTIFICATION-TAXONOMY.md)). Inbox는 `Inbox | Activity` 2개 segment — kind(질문·실행·스킬)와 provenance(MCP·Harvest)는 행 배지로 구분. Discuss recovery는 `DiscussRecoveryBanner`로 Inbox에 fold.
 
 ### 18.4 Tools
 

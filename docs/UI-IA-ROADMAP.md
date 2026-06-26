@@ -92,7 +92,7 @@
 
 | 목표 탭 | 넣을 내용 (기존 컴포넌트) | 데이터 소스 |
 |---------|---------------------------|-------------|
-| **Overview** | Goal (`goal-loop-banner` 요약만) · Next plan step (`plan.recommended`) · Context layers **읽기 전용** (`ContextPreviewPanel` 축약) · Team health (`AgentHealthPanel` mini) | `session`, `planMd`, `fetchContextPreview`, `healthAgents` |
+| **Overview** | Mission 헤드라인 · plan 상태 · Context layer **토글**(미션메모·저장소트리) · 접힌 **진단 드로어**(turn budget·trim·레이어 상태). Goal은 `GoalLoopBanner`, Team health는 `SessionRailStatusChip`로 이전(중복 제거) | `session`, `planMeta` |
 | **Tasks** | Open objections 목록 · Task rows (요약) · consensus gate CTA | `fetchSessionTasks`, `resolveSessionObjection` |
 | **Inbox** | `HumanInboxPanel` · `NotificationCenter` (읽지 않음 badge) | inbox API, `notificationStore` |
 
@@ -185,9 +185,9 @@
 ├─ .context-sidebar__head       "Context"
 ├─ .ctx-tabs                    Overview | Tasks | Inbox
 └─ .context-sidebar__body
-   ├─ [overview] ctx-goal, ctx-plan, ctx-layers (read-only), ctx-team
+   ├─ [overview] mission, ctx-plan, ctx-layers (toggles), ctx-diagnostics (drawer)
    ├─ [tasks]    ctx-objection*, task-row (summary)
-   └─ [inbox]    HumanInboxPanel + NotificationCenter
+   └─ [inbox]    Inbox | Activity (HumanInboxPanel · NotificationCenter)
 ```
 
 ### 4.4 Shell (App)
@@ -219,7 +219,7 @@
 
 - [x] Inspector 3탭: Overview / Tasks / Inbox — 프로토타입 `ContextSidebar`와 동일 라벨
 - [x] RoomTaskBar가 Transcript·Work **본문 sticky**에만 존재 (Inspector Tasks는 jump 가능한 요약 queue만 유지)
-- [x] Inbox가 단일 피드 + segment (`All | Activity | Questions | Build`)로 Human Inbox와 Activity를 흡수
+- [x] Inbox가 2개 segment (`Inbox | Activity`)로 Human Inbox와 Activity를 흡수 — kind(질문·실행·스킬)는 행 배지로 구분, questions/build/skills/discuss 하위필터는 제거 (중복)
 - [ ] ⌘N → New Session modal (또는 명시적 product decision 문서화)
 - [x] Classic / `RunPanel` / `SessionViewer` / `mode` state **없음**
 - [x] `main.tsx` CSS import 8개: tokens, base, layout, surfaces, plan-execute, overlays, tweaks, prototype-panels (orphan `app.css` 체인 0)

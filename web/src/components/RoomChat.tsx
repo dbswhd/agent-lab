@@ -92,7 +92,7 @@ import {
 import { TranscriptViewOptions } from "./TranscriptViewOptions";
 import { ChatBubble, ReplyWaitingBubble } from "./ChatBubble";
 import { HumanInboxPanel } from "./HumanInboxPanel";
-import { DiscussInboxPanel } from "./DiscussInboxPanel";
+import { DiscussRecoveryBanner } from "./DiscussRecoveryBanner";
 import { HumanDecisionBanner } from "./HumanDecisionBanner";
 import { ChatComposer, type PendingFile } from "./ChatComposer";
 import { ShellPortal } from "./ShellPortal";
@@ -2271,7 +2271,7 @@ export function RoomChat({
               setInboxReloadKey((k) => k + 1);
               void refreshInboxPending();
               openHumanInbox();
-              setInboxSegment("discuss");
+              setInboxSegment("inbox");
             }
             if (t === "complete" && ev.session_id) {
               activeSessionId = String(ev.session_id);
@@ -3123,7 +3123,7 @@ export function RoomChat({
             setWorkFocus("execute");
             return;
           case "open_inbox":
-            setInboxSegment("discuss");
+            setInboxSegment("inbox");
             openHumanInbox();
             return;
           case "run_discuss_recovery":
@@ -3784,7 +3784,7 @@ export function RoomChat({
                       discussPaused={discussPaused}
                       onVisibleChange={setHumanDecisionBannerVisible}
                       onOpenInbox={() => {
-                        setInboxSegment("discuss");
+                        setInboxSegment("inbox");
                         openHumanInbox();
                       }}
                     />
@@ -3801,7 +3801,7 @@ export function RoomChat({
                         presentation="composer"
                         kindFilter="question"
                         onOpenInbox={() => {
-                          setInboxSegment("questions");
+                          setInboxSegment("inbox");
                           openHumanInbox();
                         }}
                         onRefClick={handleInboxRefClick}
@@ -3822,7 +3822,7 @@ export function RoomChat({
                       onDismiss={() => setShowInboxPopup(false)}
                       onOpenInbox={() => {
                         setShowInboxPopup(false);
-                        setInboxSegment("build");
+                        setInboxSegment("inbox");
                         openHumanInbox();
                       }}
                       onRefClick={handleInboxRefClick}
@@ -4336,18 +4336,9 @@ export function RoomChat({
                 <div
                   className="ctx-segmented"
                   role="tablist"
-                  aria-label="Inbox filter"
+                  aria-label="Inbox"
                 >
-                  {(
-                    [
-                      "all",
-                      "discuss",
-                      "activity",
-                      "questions",
-                      "build",
-                      "skills",
-                    ] as const
-                  ).map((segment) => (
+                  {(["inbox", "activity"] as const).map((segment) => (
                     <button
                       key={segment}
                       type="button"
@@ -4356,60 +4347,34 @@ export function RoomChat({
                       className={inboxSegment === segment ? "is-active" : ""}
                       onClick={() => setInboxSegment(segment)}
                     >
-                      {segment === "all"
-                        ? localeMsg.inboxAll
-                        : segment === "discuss"
-                          ? localeMsg.inboxDiscuss
-                          : segment === "activity"
-                            ? localeMsg.inboxActivity
-                            : segment === "questions"
-                              ? localeMsg.inboxQuestions
-                              : segment === "build"
-                                ? localeMsg.inboxBuild
-                                : localeMsg.inboxSkills}
+                      {segment === "inbox"
+                        ? localeMsg.inboxInbox
+                        : localeMsg.inboxActivity}
                     </button>
                   ))}
                 </div>
-                {inboxSegment === "discuss" ? (
-                  <DiscussInboxPanel
-                    sessionId={sessionId}
-                    reloadKey={inboxReloadKey}
-                    planRevision={currentPlanRevision}
-                    discussPaused={discussPaused}
-                    discussRecovery={discussRecovery}
-                    discussRecoveryBusy={discussRecoveryBusy}
-                    onRunDiscussRecovery={() => void handleDiscussRecoveryRun()}
-                    onResolved={handleInboxResolved}
-                    onBuildStarted={handleInboxBuildStarted}
-                    disabled={running || synthesizing || runBusy}
-                    onOpenInbox={openHumanInbox}
-                    onRefClick={handleInboxRefClick}
-                  />
-                ) : null}
-                {inboxSegment !== "activity" && inboxSegment !== "discuss" ? (
-                  <HumanInboxPanel
-                    sessionId={sessionId}
-                    reloadKey={inboxReloadKey}
-                    planRevision={currentPlanRevision}
-                    onResolved={handleInboxResolved}
-                    onBuildStarted={handleInboxBuildStarted}
-                    disabled={running || synthesizing || runBusy}
-                    presentation="inspector"
-                    onRefClick={handleInboxRefClick}
-                    kindFilter={
-                      inboxSegment === "questions"
-                        ? "question"
-                        : inboxSegment === "build"
-                          ? "build"
-                          : inboxSegment === "skills"
-                            ? "skill_draft"
-                            : undefined
-                    }
-                  />
-                ) : null}
-                {inboxSegment === "all" || inboxSegment === "activity" ? (
+                {inboxSegment === "inbox" ? (
+                  <>
+                    <DiscussRecoveryBanner
+                      recovery={discussRecovery}
+                      busy={discussRecoveryBusy}
+                      onRunRecovery={() => void handleDiscussRecoveryRun()}
+                      onOpenDiscussInbox={openHumanInbox}
+                    />
+                    <HumanInboxPanel
+                      sessionId={sessionId}
+                      reloadKey={inboxReloadKey}
+                      planRevision={currentPlanRevision}
+                      onResolved={handleInboxResolved}
+                      onBuildStarted={handleInboxBuildStarted}
+                      disabled={running || synthesizing || runBusy}
+                      presentation="inspector"
+                      onRefClick={handleInboxRefClick}
+                    />
+                  </>
+                ) : (
                   <NotificationCenter onOpen={handleNotificationOpen} />
-                ) : null}
+                )}
               </>
             ) : null}
             {rightPanelMode === "plan" && sessionId ? (

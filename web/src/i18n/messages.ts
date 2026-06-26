@@ -203,10 +203,8 @@ const EN = {
     "Plan awaiting approval — use Work to approve or reject before sending",
   hooksPlanWorkflowHint:
     "Plan workflow is active: response contract presets shape agent replies during CLARIFY/PEER. They complement (not replace) the plan FSM — use evidence_first during clarify and plan_ready before peer review if helpful.",
-  inboxAll: "All",
+  inboxInbox: "Inbox",
   inboxActivity: "Activity",
-  inboxQuestions: "Questions",
-  inboxBuild: "Build",
   liveAgentsResponding: "Responding…",
   workHookAlert: "Execution hook",
   save: "Save",
@@ -257,10 +255,7 @@ const EN = {
   humanDecisionReason: (reason: string) => reason.replace(/_/g, " "),
   humanDecisionOpenInbox: "Open Inbox",
   humanDecisionProfile: (profile: string) => `Gate profile: ${profile}`,
-  inboxSkills: "Skills",
   inboxDiscuss: "Discuss",
-  inboxDiscussHint:
-    "Harvested direction questions from Room discuss (M3–M4). FORK rows show ref-anchored facilitator options.",
   inboxDiscussPausedBanner:
     "Discuss paused — answer the pending Human Inbox question to resume.",
   inboxPopupDismiss: "Dismiss",
@@ -485,10 +480,8 @@ const KO = {
     "Plan 승인 대기 — 전송 전 Work에서 승인 또는 반려하세요",
   hooksPlanWorkflowHint:
     "Plan workflow 활성: response contract preset은 CLARIFY/PEER 단계 에이전트 답변 형식을 조정합니다. Plan FSM을 대체하지 않고 보조합니다 — clarify에는 evidence_first, peer 전 plan_ready를 고려하세요.",
-  inboxAll: "전체",
+  inboxInbox: "받은함",
   inboxActivity: "활동",
-  inboxQuestions: "질문",
-  inboxBuild: "빌드",
   liveAgentsResponding: "응답 중…",
   workHookAlert: "실행 훅",
   save: "저장",
@@ -539,10 +532,7 @@ const KO = {
   humanDecisionReason: (reason: string) => reason.replace(/_/g, " "),
   humanDecisionOpenInbox: "Inbox 열기",
   humanDecisionProfile: (profile: string) => `Gate profile: ${profile}`,
-  inboxSkills: "스킬",
   inboxDiscuss: "Discuss",
-  inboxDiscussHint:
-    "Room discuss에서 수확한 방향 질문(M3–M4). FORK 행은 ref 기반 Facilitator 옵션입니다.",
   inboxDiscussPausedBanner:
     "Discuss 일시 중단 — Inbox 질문에 답하면 재개됩니다.",
   inboxPopupDismiss: "닫기",

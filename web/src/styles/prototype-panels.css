@@ -393,9 +393,9 @@
 
 .human-inbox--taskbar .inbox-row {
   padding: var(--space-8) var(--space-10);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-hair);
   border-radius: var(--radius-md);
-  background: var(--surface-raised);
+  background: var(--surface-card);
 }
 
 .human-inbox--taskbar .human-inbox__taskbar-footer {
@@ -408,22 +408,6 @@
   margin: 0;
 }
 
-.discuss-inbox-panel__pause,
-.workspace-discuss-pause-banner {
-  padding: var(--space-8) var(--space-10);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--warn) 12%, var(--surface-raised));
-  border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
-  color: var(--text-primary);
-  font-size: var(--text-caption);
-}
-
-.discuss-inbox-panel__hint {
-  margin: 0 0 var(--space-8);
-  color: var(--text-secondary);
-  font-size: var(--text-caption);
-}
-
 .inbox-row__badges {
   display: inline-flex;
   gap: var(--space-4);
@@ -431,43 +415,58 @@
   margin-right: var(--space-6);
 }
 
-.inbox-row__lane-badge,
-.inbox-row__source-badge,
-.inbox-row__trigger-badge,
-.inbox-row__fork-badge {
+.inbox-row__kind-badge,
+.inbox-row__source-badge {
+  display: inline-flex;
+  align-items: center;
   padding: 1px var(--space-6);
-  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
   font-size: var(--text-micro);
+  font-weight: var(--weight-medium);
   letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
-.inbox-row__source-badge--mcp {
-  color: var(--color-accent);
-  border-color: color-mix(in srgb, var(--color-accent) 35%, transparent);
-  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
-}
-.inbox-row__source-badge--harvest {
+/* Primary distinction — the human only ever answers a Question or approves a
+   Build (skill_draft is the rare promote). Everything else is sub-label. */
+.inbox-row__kind-badge {
   color: var(--label-secondary);
-  border-color: var(--border-soft);
-  background: color-mix(in srgb, var(--surface-muted) 80%, transparent);
-}
-.inbox-row__lane-badge {
   background: var(--surface-sunken);
-  color: var(--text-secondary);
+  border-color: var(--border-hair);
 }
-
-.inbox-row__trigger-badge {
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
-  color: var(--accent);
+.inbox-row__kind-badge--build {
+  color: var(--ok);
+  background: var(--ok-soft);
+  border-color: color-mix(in srgb, var(--ok) 28%, transparent);
 }
-
-.inbox-row__fork-badge {
-  background: color-mix(in srgb, var(--warn) 18%, transparent);
+.inbox-row__kind-badge--skill_draft {
   color: var(--warn);
+  background: var(--warn-soft);
+  border-color: color-mix(in srgb, var(--warn) 28%, transparent);
+}
+
+/* Provenance — MCP is the canonical Human-gate source (MCP-first SSOT) */
+.inbox-row__source-badge--mcp {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 28%, transparent);
+  background: var(--accent-soft);
+}
+/* Provenance — orchestrator harvest is the deprecated legacy path */
+.inbox-row__source-badge--harvest {
+  color: var(--label-tertiary);
+  border-style: dashed;
+  border-color: var(--border-soft);
+  background: var(--surface-sunken);
 }
 
 .inbox-row--fork {
-  border-left: 3px solid var(--warn);
+  border-left: 2px solid color-mix(in srgb, var(--warn) 55%, transparent);
+}
+
+/* Deprecated harvest rows read quieter than canonical MCP rows */
+.inbox-row--discuss:not(.inbox-row--fork) {
+  border-left: 2px solid var(--border-soft);
 }
 
 .inbox-row__option-block {
@@ -478,7 +477,7 @@
 
 .inbox-row__option-desc {
   margin: 0;
-  color: var(--text-secondary);
+  color: var(--label-secondary);
   font-size: var(--text-caption);
 }
 
@@ -489,16 +488,32 @@
 .inbox-row__ref-link {
   margin: 0 0.35rem 0.15rem 0;
   padding: 0.05rem 0.35rem;
-  border: 1px solid var(--border-subtle, rgba(127, 127, 127, 0.35));
-  border-radius: 4px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-xs);
   background: transparent;
-  color: var(--accent, #4a9eff);
+  color: var(--accent);
   font: inherit;
   cursor: pointer;
+  transition: background var(--transition);
 }
 
 .inbox-row__ref-link:hover {
-  background: var(--surface-hover, rgba(127, 127, 127, 0.12));
+  background: var(--surface-hover);
+}
+
+.inbox-row__ref-link:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* DESIGN.md §6 — non-essential motion is disabled under reduced-motion.
+   Scoped to the Human-gate / notification surfaces touched in this pass. */
+@media (prefers-reduced-motion: reduce) {
+  .inbox-row__ref-link,
+  .notification-center__item,
+  .notification-center__open {
+    transition: none;
+  }
 }
 
 .discuss-recovery-banner {
@@ -508,9 +523,9 @@
   gap: 0.75rem;
   margin: 0.5rem 0 0.75rem;
   padding: 0.55rem 0.75rem;
-  border: 1px solid var(--warn-border, rgba(255, 180, 0, 0.45));
-  border-radius: 8px;
-  background: var(--warn-bg, rgba(255, 180, 0, 0.08));
+  border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+  border-radius: var(--radius-md);
+  background: var(--warn-soft);
   font-size: var(--text-caption);
 }
 
@@ -521,7 +536,7 @@
 }
 
 .discuss-recovery-banner__detail {
-  color: var(--text-secondary);
+  color: var(--label-secondary);
 }
 
 .discuss-recovery-banner__actions {
@@ -549,9 +564,9 @@
   gap: 0.75rem;
   margin: 0.5rem 0 0.75rem;
   padding: 0.55rem 0.75rem;
-  border: 1px solid var(--warn-border, rgba(255, 180, 0, 0.45));
-  border-radius: 8px;
-  background: var(--warn-bg, rgba(255, 180, 0, 0.08));
+  border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+  border-radius: var(--radius-md);
+  background: var(--warn-soft);
   font-size: var(--text-caption);
 }
 
@@ -569,7 +584,7 @@
 
 .human-decision-banner__hint {
   margin: 0;
-  color: var(--text-secondary);
+  color: var(--label-secondary);
 }
 
 .human-decision-banner__lanes {
@@ -593,17 +608,17 @@
 }
 
 .human-decision-banner__lane-state {
-  color: var(--warn-fg, #b8860b);
+  color: var(--warn);
   text-transform: lowercase;
 }
 
 .human-decision-banner__lane-reason {
-  color: var(--text-secondary);
+  color: var(--label-secondary);
   font-family: var(--font-mono, ui-monospace, monospace);
 }
 
 .human-decision-banner__profile {
-  color: var(--text-secondary);
+  color: var(--label-secondary);
   font-size: 0.92em;
 }
 

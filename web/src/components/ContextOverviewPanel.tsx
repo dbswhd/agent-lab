@@ -7,9 +7,7 @@ import {
   type SessionDetail,
   type TurnBudgetPayload,
 } from "../api/client";
-import { Avatar } from "./Avatar";
 import { useLocale } from "../i18n/useLocale";
-import type { AgentRole } from "../utils/transcript";
 import { agentLabel } from "../utils/transcript";
 import {
   parseLastTurnContext,
@@ -28,29 +26,18 @@ import { GateProfileChips } from "./GateProfileChips";
 type Props = {
   session: SessionDetail | null;
   sessionId: string | null;
+  // healthAgents/goalView are accepted for API compatibility but rendered
+  // elsewhere now (SessionRailStatusChip / GoalLoopBanner) — see Overview de-dup.
   healthAgents: AgentHealthRow[];
   goalView: GoalLoopView;
   planMeta: PlanMetaView;
   onFocusObjection?: (id: string, actionIndex?: number) => void;
 };
 
-function OracleStatusBadge({ loop }: { loop: GoalLoopView["loop"] }) {
-  if (!loop.status) return null;
-  const achieved = loop.status === "achieved";
-  const failed = loop.last_check?.verdict === "fail";
-  const cls = achieved ? "ok" : failed ? "fail" : "progress";
-  const label = achieved ? "목표 달성" : failed ? "Oracle FAIL" : "진행 중";
-  return (
-    <span className={`ctx-oracle-badge ctx-oracle-badge--${cls}`}>{label}</span>
-  );
-}
-
 /** Context sidebar — Overview tab (prototype `ContextSidebar`). */
 export function ContextOverviewPanel({
   session,
   sessionId,
-  healthAgents,
-  goalView,
   planMeta,
   onFocusObjection,
 }: Props) {
@@ -115,38 +102,38 @@ export function ContextOverviewPanel({
 
   const lastTurnCtx = parseLastTurnContext(session?.run);
   const topAgent = lastTurnCtx?.agents?.[0] ?? null;
-  const hasGoal = Boolean(goalView.goal.text);
   const planStatusLine = [planMeta.triggerLabel, planMeta.timeLabel]
     .filter(Boolean)
     .join(" · ");
 
-  const LAYERS = [
+  // Layers the human actually controls (kept in the main panel).
+  const LAYER_TOGGLES = [
     {
-      id: "mission_wisdom",
+      id: "mission_wisdom" as const,
       label: ko ? "미션 메모" : "Mission wisdom",
-      meta: ko ? "notepad" : "notepad",
+      meta: "notepad",
       on: layerToggles.mission_wisdom,
-      toggle: true as const,
     },
     {
-      id: "repo_tree",
+      id: "repo_tree" as const,
       label: ko ? "저장소 트리" : "Repo tree",
-      meta: ko ? "workspace" : "workspace",
+      meta: "workspace",
       on: layerToggles.repo_tree,
-      toggle: true as const,
     },
+  ];
+
+  // Derived "is it included" status — diagnostic, not user-managed.
+  const LAYER_STATUS = [
     {
       id: "plan",
       label: "plan.md",
-      meta: ko ? "plan" : "plan",
+      meta: "plan",
       on: Boolean(session?.plan_md?.trim()),
     },
     {
       id: "chat",
       label: "chat.jsonl",
-      meta: ko
-        ? `${session?.chat?.length ?? 0} 턴`
-        : `${session?.chat?.length ?? 0} turns`,
+      meta: `${session?.chat?.length ?? 0} ${ko ? "턴" : "turns"}`,
       on: (session?.chat?.length ?? 0) > 0,
     },
     {
@@ -174,35 +161,6 @@ export function ContextOverviewPanel({
         }
         ko={ko}
       />
-      <TurnBudgetSection
-        budget={
-          (session?.run?.turn_budget as TurnBudgetPayload | undefined) ?? null
-        }
-        ko={ko}
-      />
-
-      <section className="ctx-section">
-        <div className="ctx-section__label">
-          {ko ? "세션 목표" : "Session goal"}
-        </div>
-        <div className="ctx-overview__goal-row">
-          {hasGoal ? (
-            <p className="ctx-goal">{goalView.goal.text}</p>
-          ) : (
-            <p className="ctx-overview__empty">
-              {ko
-                ? "목표 미설정 — Tasks 탭에서 설정"
-                : "No goal — set in Tasks tab"}
-            </p>
-          )}
-          <OracleStatusBadge loop={goalView.loop} />
-        </div>
-        {goalView.loop.last_check?.detail ? (
-          <p className="ctx-overview__detail">
-            {goalView.loop.last_check.detail}
-          </p>
-        ) : null}
-      </section>
 
       {planMeta.lastUpdate ? (
         <section className="ctx-section">
@@ -217,10 +175,14 @@ export function ContextOverviewPanel({
               <span className="ctx-plan-status__meta">{planStatusLine}</span>
             ) : null}
             {planMeta.reviewTurnLabel ? (
-              <span className="ctx-plan-status__meta">{planMeta.reviewTurnLabel}</span>
+              <span className="ctx-plan-status__meta">
+                {planMeta.reviewTurnLabel}
+              </span>
             ) : null}
             {planMeta.turnRolesLabel ? (
-              <span className="ctx-plan-status__meta">{planMeta.turnRolesLabel}</span>
+              <span className="ctx-plan-status__meta">
+                {planMeta.turnRolesLabel}
+              </span>
             ) : null}
           </div>
         </section>
@@ -231,85 +193,83 @@ export function ContextOverviewPanel({
           {ko ? "컨텍스트 레이어" : "Context layers"}
         </div>
         <ul className="ctx-layers">
-          {LAYERS.map((layer) => (
+          {LAYER_TOGGLES.map((layer) => (
             <li key={layer.id} className="ctx-layers__row">
               <span className="ctx-layers__name">{layer.label}</span>
               <span className="ctx-layers__meta">{layer.meta}</span>
-              {"toggle" in layer && layer.toggle && sessionId ? (
-                <button
-                  type="button"
-                  className={`ctx-layers__toggle${layer.on ? " is-on" : ""}`}
-                  disabled={layerBusy}
-                  aria-pressed={layer.on}
-                  onClick={() =>
-                    void toggleLayer(layer.id as "mission_wisdom" | "repo_tree")
-                  }
-                >
-                  {layer.on ? "ON" : "OFF"}
-                </button>
-              ) : (
-                <span
-                  className={`ctx-layers__state${layer.on ? " is-on" : ""}`}
-                  aria-label={layer.on ? "included" : "empty"}
-                >
-                  {layer.on ? "ON" : "—"}
-                </span>
-              )}
+              <button
+                type="button"
+                className={`ctx-layers__toggle${layer.on ? " is-on" : ""}`}
+                disabled={layerBusy || !sessionId}
+                aria-pressed={layer.on}
+                onClick={() => void toggleLayer(layer.id)}
+              >
+                {layer.on ? "ON" : "OFF"}
+              </button>
             </li>
           ))}
         </ul>
       </section>
 
-      {topAgent?.layer_chars ? (
-        <section className="ctx-section">
-          <div className="ctx-section__label">
-            {ko ? "마지막 턴 컨텍스트" : "Last turn context"}
-            <span className="ctx-section__label-meta">
-              {agentLabel(topAgent.agent)} · R{topAgent.parallel_round ?? 1}
-            </span>
-          </div>
-          <p className="ctx-overview__budget">
-            <span
-              className={`context-trim-badge context-trim-badge--${topAgent.trim_level ?? "ok"}`}
-            >
-              {trimLevelLabel(topAgent.trim_level)}
-            </span>
-            {" · "}
-            {formatBudgetLine(topAgent)}
-          </p>
-          <ContextLayerBars
-            layerChars={topAgent.layer_chars}
-            budgetPct={topAgent.budget_pct}
-            trimLevel={topAgent.trim_level}
-          />
-        </section>
-      ) : null}
+      <details className="ctx-diagnostics">
+        <summary className="ctx-diagnostics__summary">
+          {ko ? "진단" : "Diagnostics"}
+        </summary>
+        <div className="ctx-diagnostics__body">
+          <section className="ctx-section">
+            <div className="ctx-section__label">
+              {ko ? "포함된 컨텍스트" : "Included context"}
+            </div>
+            <ul className="ctx-layers">
+              {LAYER_STATUS.map((layer) => (
+                <li key={layer.id} className="ctx-layers__row">
+                  <span className="ctx-layers__name">{layer.label}</span>
+                  <span className="ctx-layers__meta">{layer.meta}</span>
+                  <span
+                    className={`ctx-layers__state${layer.on ? " is-on" : ""}`}
+                    aria-label={layer.on ? "included" : "empty"}
+                  >
+                    {layer.on ? "ON" : "—"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
 
-      {healthAgents.length > 0 ? (
-        <section className="ctx-section">
-          <div className="ctx-section__label">{ko ? "팀" : "Team"}</div>
-          <div className="ctx-team">
-            {healthAgents.map((h) => (
-              <div key={h.id} className="ctx-agent">
-                <Avatar role={h.id as AgentRole} label={h.label} size={20} />
-                <span className="ctx-agent__name">{h.label}</span>
-                {h.model ? (
-                  <span className="ctx-agent__model">{h.model}</span>
-                ) : null}
-                <span
-                  className={`dot dot--${h.ready ? "ok" : "warn"}`}
-                  aria-hidden
-                />
-                <span
-                  className={`ctx-agent__status ctx-agent__status--${h.ready ? "ok" : "warn"}`}
-                >
-                  {h.ready ? "Ready" : ko ? "오프라인" : "Offline"}
+          {topAgent?.layer_chars ? (
+            <section className="ctx-section">
+              <div className="ctx-section__label">
+                {ko ? "마지막 턴 컨텍스트" : "Last turn context"}
+                <span className="ctx-section__label-meta">
+                  {agentLabel(topAgent.agent)} · R{topAgent.parallel_round ?? 1}
                 </span>
               </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
+              <p className="ctx-overview__budget">
+                <span
+                  className={`context-trim-badge context-trim-badge--${topAgent.trim_level ?? "ok"}`}
+                >
+                  {trimLevelLabel(topAgent.trim_level)}
+                </span>
+                {" · "}
+                {formatBudgetLine(topAgent)}
+              </p>
+              <ContextLayerBars
+                layerChars={topAgent.layer_chars}
+                budgetPct={topAgent.budget_pct}
+                trimLevel={topAgent.trim_level}
+              />
+            </section>
+          ) : null}
+
+          <TurnBudgetSection
+            budget={
+              (session?.run?.turn_budget as TurnBudgetPayload | undefined) ??
+              null
+            }
+            ko={ko}
+          />
+        </div>
+      </details>
     </div>
   );
 }

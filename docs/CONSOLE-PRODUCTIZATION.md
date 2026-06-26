@@ -20,13 +20,13 @@
 |---------|--------------|--------------|------------------|
 | Transcript | Conversation consumption and Human popup entry | Agent response cards, raw response disclosure, Question/Build popups, Human decision events | Hook settings, merge approval, diagnostics |
 | Work | Execution judgment | Action candidates, dry-run diff, approve/reject/revise, merge conflict, oracle/verify, execution-relevant hook results | General agent chatter |
-| Inspector Overview | Current session state | Mission/goal, plan status, context layers, team health | Deep settings |
+| Inspector Overview | Current session state | Mission headline, plan status, context-layer toggles, diagnostics drawer | Goal (GoalLoopBanner), team health (rail), deep settings |
 | Inspector Tasks | Persistent work queue | Open objections, task summaries, jump actions | Full duplicate TaskBar |
 | Inspector Inbox | Human/action feed | Human Inbox + Activity segments | Separate Activity tab |
 | Settings | Policy and operations configuration | Agents, workspace, commands, diagnostics, Hooks & Response Contracts | Per-turn approve/merge controls |
 | Composer | Input only | message, turn profile, slash command, attachments, cost hint | Build approval, Question resolution, settings |
 
-**Decision:** Activity is **not** a fourth Inspector tab. It lives inside **Inbox** as a segmented feed: `All | Activity | Questions | Build`.
+**Decision:** Activity is **not** a fourth Inspector tab. It lives inside **Inbox** as a two-segment feed: `Inbox | Activity`. Kind (Question / Build / Skill) and provenance (MCP / Harvest) are per-row badges, not segments.
 
 ---
 
@@ -44,7 +44,7 @@
 **Remaining / acceptance:**
 
 - [x] Inspector Tasks is a jumpable summary queue, not a full TaskBar duplicate.
-- [x] Inbox uses segments: `All | Activity | Questions | Build`.
+- [x] Inbox uses segments: `Inbox | Activity` (kind/provenance are per-row badges, not segments).
 - [ ] Goal/verified controls in Tasks are reviewed for overlap with the TaskBar; keep only Human action controls there.
 - [ ] Composer visual treatment is documented as docked input, not floating decision surface.
 - [ ] `UI-IA-ROADMAP.md` checklist matches code.

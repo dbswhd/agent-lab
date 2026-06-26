@@ -1211,6 +1211,57 @@
   gap: var(--space-16);
   min-width: 0;
 }
+
+/* Diagnostics drawer — telemetry the human reads, not manages.
+   Collapsed by default per DESIGN.md progressive disclosure. */
+.ctx-diagnostics {
+  border-top: 1px solid var(--border-hair);
+  padding-top: var(--space-12);
+}
+.ctx-diagnostics__summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  cursor: pointer;
+  list-style: none;
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  color: var(--label-tertiary);
+  user-select: none;
+}
+.ctx-diagnostics__summary::-webkit-details-marker {
+  display: none;
+}
+.ctx-diagnostics__summary::before {
+  content: "›";
+  display: inline-block;
+  font-size: var(--text-body);
+  line-height: 1;
+  color: var(--label-quaternary);
+  transition: transform var(--transition);
+}
+.ctx-diagnostics[open] .ctx-diagnostics__summary::before {
+  transform: rotate(90deg);
+}
+.ctx-diagnostics__summary:hover {
+  color: var(--label-secondary);
+}
+.ctx-diagnostics__summary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-xs);
+}
+.ctx-diagnostics__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  margin-top: var(--space-12);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ctx-diagnostics__summary::before {
+    transition: none;
+  }
+}
 .ctx-overview__goal-row {
   display: flex;
   flex-direction: column;
@@ -3415,11 +3466,24 @@
   align-items: center;
   gap: var(--space-8);
 }
+.inbox-row__headline {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
 .inbox-row__subject {
   font-size: var(--text-caption);
   font-weight: var(--weight-medium);
   color: var(--label-primary);
   flex: 1;
+}
+/* "Why this gate fired" — quiet sub-label under the subject (trigger · FORK) */
+.inbox-row__why {
+  font-size: var(--text-micro);
+  color: var(--label-tertiary);
+  letter-spacing: 0.02em;
 }
 .inbox-row__time {
   font-size: var(--text-micro);
@@ -6127,10 +6191,53 @@
   padding: var(--space-8) var(--space-10);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-hair);
+  border-left: 2px solid var(--border-soft);
   background: var(--surface-card);
+  transition: opacity var(--transition);
 }
 .notification-center__item.is-read {
-  opacity: 0.72;
+  opacity: 0.66;
+}
+
+/* Tier stripe — taxonomy: P0 blocker / P1 action / P2 info / P3 debug.
+   Color supplements the title text; it is never the only signal. */
+.notification-center__item--p0 {
+  border-left-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 5%, var(--surface-card));
+}
+.notification-center__item--p1 {
+  border-left-color: var(--warn);
+}
+.notification-center__item--p2 {
+  border-left-color: var(--border-soft);
+}
+.notification-center__item--p3 {
+  border-left-color: var(--border-hair);
+  opacity: 0.8;
+}
+/* Unread blocker keeps full weight even before it is read */
+.notification-center__item--p0:not(.is-read) .notification-center__title {
+  color: var(--danger);
+}
+.notification-center__open {
+  align-self: flex-start;
+  margin-top: var(--space-2);
+  padding: 1px var(--space-6);
+  border: none;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--accent);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.notification-center__open:hover {
+  background: var(--surface-hover);
+}
+.notification-center__open:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 .notification-center__body {
   font-size: var(--text-micro);

@@ -4,6 +4,8 @@
 > **Canonical index:** [docs/README.md](./README.md) · **Shipped evidence:** [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md)  
 > **관련:** [USER-GUIDE.md](./USER-GUIDE.md) · [NOTIFICATION-TAXONOMY.md](./NOTIFICATION-TAXONOMY.md)
 
+> **Design direction (2026-06-26):** Human gate SSOT는 **에이전트 MCP**(`ask_human` / `propose_build`). Orchestrator harvest는 레거시·축소 대상; `plan.md`는 Scribe 별도 파이프라인. 전체 방향·Phase 로드맵 → **[MCP-FIRST-INBOX.md](./MCP-FIRST-INBOX.md)** (본 문서 = 도구·API 스펙).
+
 | Area | Shipped | Gap |
 |------|---------|-----|
 | `human_inbox.py` + `run.json` `human_inbox[]` | ✅ | — |
@@ -539,6 +541,8 @@ Question/Build는 **매 턴 자동**이 아니다.
 | **T-Q5** | Human 수동 (`/question`, Inbox “질문 요청”) | anytime |
 
 #### Build (실행 제안 — discuss 측)
+
+> **MCP-first (planned):** discuss T-B* orchestrator harvest → lead `propose_build` after Scribe. 매핑·Phase B → [MCP-FIRST-INBOX.md §7](./MCP-FIRST-INBOX.md).
 
 Discuss의 Build item은 **execute GO 예고**이며, 실제 dry-run은 execute lane(MCP `propose_build` 또는 PlanExecutePanel)에서 처리.
 

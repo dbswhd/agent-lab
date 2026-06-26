@@ -332,7 +332,7 @@ Additive, flag-gated layers from the LangGraph/OpenHands/Aider/SWE-agent gap ana
 `WorkToolPanel`, `WorkPanel`, `WorkStatusBar`, `PlanExecutePanel` (~1.5k), `PlanDocument`, `PlanApprovalPanel`, `SideBySideDiff`, `MergeChecksPanel`, `ExecuteQueueBar`
 
 #### Workbench (우측 레일)
-`WorkbenchPanel`, `ContextOverviewPanel`, `ContextTasksPanel`, `HumanInboxPanel`, `HumanGatePanel`, `MissionOverviewSection`
+`WorkbenchPanel`, `ContextOverviewPanel`, `HumanInboxPanel`, `HumanGatePanel`, `MissionOverviewSection`
 
 #### Mission / Evidence
 `EvidenceTimeline`, `EvidenceGatesPanel`, `WisdomSearchPanel`, `MissionBoardStrip`, `GoalLoopBanner`, `VerifiedLoopBanner`, `DiscussRecoveryBanner`

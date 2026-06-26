@@ -93,7 +93,9 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 
 ## Partial
 
-_(none — runtime harness RT-H0–H7 shipped; see §Shipped.)_
+| ID | Item | Status | Design doc | Notes |
+|----|------|--------|------------|-------|
+| MCP-INBOX | MCP-first inbox — orchestrator harvest deprecate, lead/single-flight | 🔶 | [MCP-FIRST-INBOX.md](MCP-FIRST-INBOX.md) | Phase A Fast skip **shipped**; Phase B harvest flag OFF **not implemented** |
 
 ---
 

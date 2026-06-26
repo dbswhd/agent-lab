@@ -149,18 +149,16 @@ def test_new_session_mission_template_apply_contract():
 
 
 def test_taskbar_human_inbox_integration_contract():
-    """Human gate resolve: Inbox / Workbench (not transcript taskbar). Team tasks in inspector."""
+    """Human gate resolve: Inbox / Workbench. Team tasks in inspector RoomTaskBar."""
     taskbar = _read("web", "src", "components", "RoomTaskBar.tsx")
     inbox = _read("web", "src", "components", "HumanInboxPanel.tsx")
     room = _read("web", "src", "components", "RoomChat.tsx")
-    assert 'placement="inspector"' in room
-    assert "hideHumanGate" in room
+    assert "taskbar--inspector" in taskbar
+    assert "HumanInboxPanel" not in taskbar
     assert "taskbar-dock" not in room
     assert 'id: "peer"' in taskbar
-    assert "humanInboxPendingCount" in taskbar
     assert '"taskbar"' in inbox
     assert "openHumanInbox" in room
-    assert "humanInboxPendingCount={inboxPendingNonQuestions}" in room
 
 
 def test_discuss_inbox_panel_contract():
@@ -183,7 +181,7 @@ def test_composer_question_inbox_is_separate_from_generic_pending_hint():
     assert 'kindFilter="question"' in room
     assert "inboxPendingNonQuestions > 0" in room
     assert "Human Inbox 대기 ({inboxPendingNonQuestions})" in room
-    assert 'excludeKind="question"' in _read("web", "src", "components", "RoomTaskBar.tsx")
+    assert 'excludeKind="question"' not in _read("web", "src", "components", "RoomTaskBar.tsx")
     assert "visiblePending.map" in inbox
     assert "visiblePending[0]?.kind" in inbox
 

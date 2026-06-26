@@ -569,14 +569,7 @@
 /* ============================================================
    Floating Room Task Bar
    ============================================================ */
-/* ---- Floating Room Task Bar (sticky dock) ---------------- */
-.taskbar-dock {
-  position: sticky;
-  top: var(--space-4);
-  z-index: 8;
-  padding: var(--space-4) 0 var(--space-6);
-  margin-bottom: var(--space-2);
-}
+/* ---- Room Task Bar (Inspector Tasks tab) ---------------- */
 .taskbar {
   margin: 0 auto;
   width: min(100% - 32px, var(--composer-max));

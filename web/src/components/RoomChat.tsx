@@ -4320,13 +4320,9 @@ export function RoomChat({
                     sessionId={sessionId}
                     payload={roomTasks}
                     context={taskBarContext}
-                    placement="inspector"
-                    hideHumanGate
                     loading={tasksLoading}
                     executions={planExecutions}
                     focusObjection={taskBarFocusObjection}
-                    humanInboxPendingCount={inboxPendingNonQuestions}
-                    humanInboxDisabled={running || synthesizing || runBusy}
                     onRefresh={refreshTasks}
                     onFocusPlanAction={focusPlanAction}
                     onFocusTask={focusTask}

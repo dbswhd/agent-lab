@@ -18,8 +18,9 @@
 - **plan** — Scribe가 `plan.md` 갱신. execute 섹션은 Human gate 이후.
 - constraints에 정책이 이미 있음 — **「discuss/plan 모드입니다」 같은 메타 선언 금지**, 바로 답변.
 
-## Room preset
+## Room preset · Inbox
 - **fast** (`quick`) — 리드 1명, plan OFF; discuss orchestrator Inbox harvest/MCP **스킵** (execute GO 유지) — [docs/05-room-agent-roles.md §Fast preset](./docs/05-room-agent-roles.md)
+- **MCP-first Inbox** — Human gate SSOT = agent MCP; harvest 축소·Scribe/plan 분리 — [docs/MCP-FIRST-INBOX.md](./docs/MCP-FIRST-INBOX.md)
 - **supervisor** (`loop`) — 전원, consensus ON, plan ON
 
 ## 환경

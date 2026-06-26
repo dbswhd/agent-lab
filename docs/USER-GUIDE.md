@@ -403,7 +403,8 @@ Composer 모드는 **빠른 / 팀 / 루프** 3분할이 아니라 **Room preset*
 - `quick` / `team` / `loop`는 **런타임 내부 프로필** — Composer segmented picker는 제거됨 (`roomPresets.ts`)
 
 **Fast + Human Inbox:** discuss lane orchestrator harvest·inbox MCP는 스킵, execute lane GO는 유지.  
-가정·향후 execute plan-workflow·트리거별 설명 → [05-room-agent-roles.md §Fast preset — orchestrator Inbox skip](./05-room-agent-roles.md) · [FLOW.md §2.1](./FLOW.md)
+가정·향후 execute plan-workflow·트리거별 설명 → [05-room-agent-roles.md §Fast preset — orchestrator Inbox skip](./05-room-agent-roles.md) · [FLOW.md §2.1](./FLOW.md)  
+**MCP-first 방향** (agent MCP SSOT, harvest deprecate, Phase A–E) → [MCP-FIRST-INBOX.md](./MCP-FIRST-INBOX.md)
 
 ### 6.3 응답 방식 (turn profile, 런타임)
 

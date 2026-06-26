@@ -18,6 +18,7 @@
 | shipped / partial / future | [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md) |
 | Room 합의 / execute / mission 루프 | [FLOW.md](./FLOW.md) §3–7 · [MISSION-LOOP-C-OMO.md](./MISSION-LOOP-C-OMO.md) |
 | Fast preset Inbox skip (discuss vs execute) | [05-room-agent-roles.md §Fast preset](./05-room-agent-roles.md) · [FLOW.md §2.1](./FLOW.md) |
+| MCP-first Inbox · 선다형 `ask_human` · harvest deprecate | [MCP-FIRST-INBOX.md](./MCP-FIRST-INBOX.md) |
 | Plan FSM 플래그 상세 | [FLOW.md](./FLOW.md) §4 · `AGENT_LAB_PLAN_WORKFLOW` flag |
 | 프론트 컴포넌트·IA·Work 탭 | [developer-agent-console.md](./developer-agent-console.md) · ARCHITECTURE §5–6 |
 | UX productization 로드맵 | [CONSOLE-PRODUCTIZATION.md](./CONSOLE-PRODUCTIZATION.md) · [UI-IA-ROADMAP.md](./UI-IA-ROADMAP.md) |
@@ -56,6 +57,7 @@
 | [HOOK-COMMUNICATE-REFORM.md](./HOOK-COMMUNICATE-REFORM.md) | Phase 0–5 **shipped** incl. `LEGACY_ENDORSE` default off |
 | [MISSION-OS-DIRECTION.md](./MISSION-OS-DIRECTION.md) | **Mission OS SSOT** — gate_profile, Human Gates 1–5, Gateway 로드맵 |
 | [HUMAN-INBOX.md](./HUMAN-INBOX.md) | Execute MCP + API **shipped**; M1~M6 완료 |
+| [MCP-FIRST-INBOX.md](./MCP-FIRST-INBOX.md) | **MCP-first 방향** — agent MCP SSOT, harvest 축소, Scribe/plan 분리; Phase A **shipped**, B–E **planned** |
 | [HUMAN-INBOX-CLAUDE-HANDOFF.md](./HUMAN-INBOX-CLAUDE-HANDOFF.md) | Inbox handoff 노트 (M3+) — 구현 단계별 AC |
 | [LIVE-ORACLE.md](./LIVE-ORACLE.md) | Oracle prompts, evidence, env 플래그 (mock-first default) |
 | [MISSION-LOOP-C-OMO.md](./MISSION-LOOP-C-OMO.md) | **Shipped** — Layer 6 FSM + Track B/C/D |

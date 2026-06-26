@@ -308,6 +308,16 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "AGENT_LAB_WISDOM_IN_CONTEXT", "feature", "Wisdom hits in R1 context: auto (route) | 0 | 1", default="auto"
     ),
     FlagDef("AGENT_LAB_AGENT_LEARNINGS", "feature", "Harvest [LEARNED:] markers into learnings.md", default="1"),
+    FlagDef(
+        "AGENT_LAB_TURN_METRICS",
+        "feature",
+        "S1 Phase A: persist per-turn turn_metrics (roles/oracle/objection rollup) into run.json (default off)",
+    ),
+    FlagDef(
+        "AGENT_LAB_OUTCOME_LEDGER",
+        "feature",
+        "S1 Phase A: append per-turn outcome rows to .agent-lab/outcomes.jsonl for session-to-session learning (default off)",
+    ),
     FlagDef("AGENT_LAB_NATIVE_HOOKS", "feature", "Stage session agent-hooks into workspace cwd"),
     FlagDef("AGENT_LAB_HOOK_TIMEOUT_S", "feature", "Room hook subprocess timeout (seconds)", default="30"),
     # --- feature: resilience ---

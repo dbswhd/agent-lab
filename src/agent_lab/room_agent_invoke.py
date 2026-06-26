@@ -176,6 +176,12 @@ def _finalize_durable_turn(folder: Path, human_turn_num: int, turn_status: str) 
 
     clear_completed_steps_for_human_turn(folder, human_turn_num)
 
+    # S1 Phase A: persist turn_metrics + append cross-session outcome ledger
+    # (flag-gated, fail-open — never blocks turn completion).
+    from agent_lab.outcome_harvester import record_turn_outcome
+
+    record_turn_outcome(folder, human_turn_num)
+
 
 def _bind_session_to_run_meta(
     run_meta: dict[str, Any] | None,

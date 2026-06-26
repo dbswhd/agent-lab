@@ -11,6 +11,8 @@ web/src-tauri/target/
 web/src-tauri/bundled-runtime/
 # Runtime loop-capability probe cache (not source)
 .agent-lab/loop_probe_cache.json
+# S1 cross-session outcome ledger (runtime data, not source)
+.agent-lab/outcomes.jsonl
 # Local design dry-run artifact (not session plan.md)
 /plan.md
 # Local room runs (regression fixtures stay in repo)
@@ -36,7 +38,16 @@ data/turn_profile_bandit.json
 !.claude/rules/
 !.claude/rules/**
 !.claude/skills/
-!.claude/skills/**
+!.claude/skills/init-project-memory/
+!.claude/skills/init-project-memory/**
+!.claude/skills/regression-check/
+!.claude/skills/regression-check/**
+!.claude/skills/smoke-and-score/
+!.claude/skills/smoke-and-score/**
+!.claude/skills/agent-lab-ui/
+!.claude/skills/agent-lab-ui/**
+# Third-party skills (npx skills add) — reinstall via docs/UI-SKILLS.md
+.agents/
 
 # GJC runtime state (dogfood plans/specs under .gjc/ stay tracked)
 .gjc/state/

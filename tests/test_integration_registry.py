@@ -80,7 +80,8 @@ def test_fast_bucket_collection_budget():
     # 2026-06-23: raised 1640 -> 1680 for the P3 edit-time syntax gate + sandbox policy seam (test_syntax_gate AC1-AC6 + test_sandbox_policy AC7-AC12 + OFF-parity/defensive suites).
     # 2026-06-24: P4/P5 fit under 1680 (test_eval_harness/event_schema/memory_store). Raised 1680 -> 1720 for the P4/P5 consumer wiring (test_eval_memory_routes: /api/eval/score + /api/memory/eval + room.py flag-path).
     # 2026-06-25: raised 1720 -> 1800 for room_context + room_turn_flow unit suites (63 tests: is_pass_response, is_no_objection, split_plan_sections, trim/compact/pin helpers, emit_budget_status, stage_routing flag-off parity).
-    assert count <= 1800, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-06-26: raised 1800 -> 1810 for S1 Phase A feedback loop suites (test_turn_metrics + test_s1_loop_closure_e2e: turn_metrics rollup, outcome ledger append/flag-gating, loop-closure E2E + OFF-parity).
+    assert count <= 1810, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

@@ -31,6 +31,8 @@ def discuss_inbox_mcp_enabled(run_meta: dict[str, Any] | None = None) -> bool:
     - Loop discuss lane uses the same gate from ``room_agent_invoke`` (execute lane excluded)
 
     Fast / quick sessions skip discuss-lane inbox MCP (orchestrator harvest also skipped).
+    When ``AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST=0`` (default), supervisor discuss uses
+    peer ``ask_human`` MCP instead of post-turn harvest.
     """
     from agent_lab.room_preset import is_fast_room_session
 
@@ -40,6 +42,10 @@ def discuss_inbox_mcp_enabled(run_meta: dict[str, Any] | None = None) -> bool:
 
     if run_meta and plan_workflow_wants_inbox_mcp(run_meta):
         return plan_inbox_mcp_enabled()
+    from agent_lab.inbox_harvest import orchestrator_inbox_harvest_enabled
+
+    if run_meta and not orchestrator_inbox_harvest_enabled():
+        return execute_inbox_mcp_enabled()
     return False
 
 

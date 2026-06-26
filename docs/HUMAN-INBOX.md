@@ -14,7 +14,7 @@
 | Plan-first → Build GO gate (`execute_inbox_build_go`) | ✅ | — |
 | Taskbar **peer mailbox** UI | ✅ | Peer channel, not Human decision resolve |
 | Dedicated Human Inbox resolve panel | 🔶 | API exists; full UI polish in [UI-MIGRATION-GAPS.md](./UI-MIGRATION-GAPS.md) |
-| Discuss deterministic harvest → Inbox | ✅ | M3 shipped — `inbox_harvest.py` + gateway notify on harvest |
+| Discuss deterministic harvest → Inbox | 🔶 | MCP-first default **off** — `AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST=1` restores legacy; [MCP-FIRST-INBOX.md](./MCP-FIRST-INBOX.md) |
 | Discuss sync-pause (`should_pause_discuss`) | ✅ | sync-only default; `HumanDecisionBanner` + grace round (FORK · T-Q2) |
 | FORK / Facilitator | ✅ | `inbox_facilitator.py` — ref-anchored options; live opt-in `AGENT_LAB_FACILITATOR_LIVE` |
 | Inbox `skill_draft` row (Mission OS Phase 4) | ✅ | Web Inbox skills segment + promote/reject |

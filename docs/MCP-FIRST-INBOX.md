@@ -23,8 +23,8 @@ Inbox API·MCP 계약·트리거 ID는 [HUMAN-INBOX.md](./HUMAN-INBOX.md)가 can
 
 | 경로 | 지금 | MCP-first 목표 | 구현 상태 |
 |------|------|----------------|-----------|
-| 선다형 질문 | harvest T-Q* + `ask_human` MCP | `ask_human` only | harvest: supervisor **ON** · Fast skip **shipped** |
-| build GO 예고 | harvest T-B1 + `propose_build` MCP | `propose_build` only | **planned** (harvest deprecate) |
+| 선다형 질문 | harvest T-Q* + `ask_human` MCP | `ask_human` only | harvest: **off by default** · discuss MCP **on** (supervisor) · Fast skip **shipped** |
+| build GO 예고 | harvest T-B1 + `propose_build` MCP | `propose_build` only | harvest: **off by default** · legacy flag `AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST=1` |
 | `plan.md` | Scribe ([`room_plan_scribe.py`](../src/agent_lab/room_plan_scribe.py)) | 유지 | **shipped** |
 | Facilitator | FORK→options (optional Claude 1-call) | 축소·lead가 options 작성 | **partial** |
 
@@ -131,7 +131,7 @@ R1 → R2 → pending ask? → pause → resolve → Scribe → lead propose_bui
 | `harvest_clarifier_questions` T-Q0 | clarity → lead ask or Scribe-only |
 | Facilitator live | agent-written options + deterministic merge only |
 
-**플래그 제안 (Phase B):** `AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST` — default `0` when Phase B ships.
+**플래그 (Phase B shipped):** `AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST` — default **`0`**. Legacy harvest: `=1`.
 
 Discuss Build T-B* orchestrator surfacing은 MCP-first에서 **planned deprecation** — [HUMAN-INBOX.md §5.4](./HUMAN-INBOX.md).
 
@@ -164,7 +164,7 @@ Discuss Build T-B* orchestrator surfacing은 MCP-first에서 **planned deprecati
 | Phase | 내용 | 상태 |
 |-------|------|------|
 | **A** | Fast skip — `is_fast_room_session`, tests `test_fast_inbox_skip.py` | **shipped** |
-| **B** | harvest flag OFF (supervisor); discuss MCP ON | **planned** |
+| **B** | harvest flag OFF (default); supervisor discuss MCP ON | **shipped** |
 | **C** | lead-only + single-flight guard | **planned** |
 | **D** | UI source badge (`mcp_*` vs `orchestrator`) | **planned** |
 | **E** | harvest test → MCP E2E migration | **planned** |

@@ -95,7 +95,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 
 | ID | Item | Status | Design doc | Notes |
 |----|------|--------|------------|-------|
-| MCP-INBOX | MCP-first inbox — orchestrator harvest deprecate, lead/single-flight | 🔶 | [MCP-FIRST-INBOX.md](MCP-FIRST-INBOX.md) | Phase A Fast skip **shipped**; Phase B harvest flag OFF **not implemented** |
+| MCP-INBOX | MCP-first inbox — orchestrator harvest deprecate, lead/single-flight | 🔶 | [MCP-FIRST-INBOX.md](MCP-FIRST-INBOX.md) | Phase A+B **shipped** (`AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST=0` default); Phase C–E planned |
 
 ---
 

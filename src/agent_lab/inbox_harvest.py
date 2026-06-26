@@ -29,6 +29,25 @@ _EXCERPT_CHARS = 240
 _PROMPT_CHARS = 160
 
 
+def orchestrator_inbox_harvest_enabled() -> bool:
+    """Legacy post-turn Python harvest → Inbox (``source=orchestrator``).
+
+    MCP-first default is **off**; peers use ``ask_human`` / ``propose_build`` MCP.
+    Set ``AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST=1`` to restore supervisor harvest.
+    """
+    raw = os.getenv("AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST", "0").strip().lower()
+    return raw in ("1", "true", "yes", "on")
+
+
+def orchestrator_inbox_harvest_allowed(run_meta: dict[str, Any] | None) -> bool:
+    """True when orchestrator may run discuss/build/clarifier harvest for this session."""
+    from agent_lab.room_preset import is_fast_room_session
+
+    if run_meta and is_fast_room_session(run_meta):
+        return False
+    return orchestrator_inbox_harvest_enabled()
+
+
 @dataclass(frozen=True)
 class InboxQuestionCandidate:
     """A deterministic harvest hit — prompt + refs/excerpt.
@@ -236,9 +255,7 @@ def harvest_clarifier_questions(
     human_turn: int | None = None,
 ) -> list[dict[str, Any]]:
     """M2b: clarifier gate → Inbox question items (T-Q0, freeform)."""
-    from agent_lab.room_preset import is_fast_room_session
-
-    if is_fast_room_session(run_meta):
+    if not orchestrator_inbox_harvest_allowed(run_meta):
         return []
     if not questions:
         return []
@@ -293,9 +310,7 @@ def harvest_discuss_questions(
 
     Returns the items created this call.
     """
-    from agent_lab.room_preset import is_fast_room_session
-
-    if is_fast_room_session(run_meta):
+    if not orchestrator_inbox_harvest_allowed(run_meta):
         return []
     if mode != "discuss":
         return []
@@ -375,9 +390,7 @@ def harvest_build_proposal(
     The dry-run endpoint re-checks the full gates (objection, pre_execute,
     snapshot), so this surfaces optimistically; GO is the authoritative gate.
     """
-    from agent_lab.room_preset import is_fast_room_session
-
-    if is_fast_room_session(run_meta):
+    if not orchestrator_inbox_harvest_allowed(run_meta):
         return None
     if mode != "discuss":
         return None
@@ -607,6 +620,8 @@ def harvest_and_check_pause(
     FORK (T-Q1 + options) and T-Q2 (plan OPEN) each get one grace debate round
     for peer ENDORSE/AMEND before ``should_pause_discuss`` stops further auto rounds.
     """
+    if not orchestrator_inbox_harvest_allowed(run_meta):
+        return False
     had_pause = has_pending_discuss_pause_question(run_meta)
     created = harvest_discuss_questions(
         run_meta,

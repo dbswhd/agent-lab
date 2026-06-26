@@ -223,6 +223,12 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
     FlagDef("AGENT_LAB_EXECUTE_INBOX", "feature", "Cursor execute inbox MCP", default="1"),
     FlagDef("AGENT_LAB_INBOX_MODE", "feature", "Inbox harvest: sync | soft", default="sync"),
     FlagDef(
+        "AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST",
+        "feature",
+        "Post-turn orchestrator harvest → Inbox (0=MCP-first default)",
+        default="0",
+    ),
+    FlagDef(
         "AGENT_LAB_GATE_SCOPE",
         "feature",
         "Lane-aware gate_scope for discuss pause (1=on, 0=legacy INBOX_MODE only)",

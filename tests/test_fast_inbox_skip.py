@@ -4,15 +4,35 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
+
 from agent_lab.cursor_inbox_mcp import discuss_inbox_mcp_enabled
-from agent_lab.inbox_harvest import harvest_discuss_questions
+from agent_lab.inbox_harvest import (
+    harvest_discuss_questions,
+    orchestrator_inbox_harvest_enabled,
+)
 from agent_lab.plan_workflow import plan_workflow_wants_inbox_mcp
 
 
 def test_discuss_inbox_mcp_disabled_for_fast_preset() -> None:
     assert discuss_inbox_mcp_enabled({"room_preset": "fast"}) is False
-    assert discuss_inbox_mcp_enabled({"room_preset": "supervisor"}) is False
     assert discuss_inbox_mcp_enabled({"user_mode": "quick", "plan_intent": "none"}) is False
+
+
+def test_orchestrator_harvest_disabled_by_default() -> None:
+    assert orchestrator_inbox_harvest_enabled() is False
+
+
+def test_discuss_mcp_on_supervisor_when_harvest_off(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST", raising=False)
+    assert discuss_inbox_mcp_enabled({"room_preset": "supervisor"}) is True
+
+
+def test_discuss_mcp_off_supervisor_when_legacy_harvest_on(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST", "1")
+    assert discuss_inbox_mcp_enabled({"room_preset": "supervisor"}) is False
 
 
 def test_plan_workflow_inbox_mcp_disabled_for_fast() -> None:
@@ -33,3 +53,27 @@ def test_harvest_discuss_skipped_for_fast() -> None:
     )
     assert created == []
     assert "human_inbox" not in run_meta
+
+
+def test_harvest_discuss_skipped_by_default_supervisor() -> None:
+    run_meta: dict[str, Any] = {"room_preset": "supervisor"}
+    created = harvest_discuss_questions(
+        run_meta,
+        [],
+        plan_md="## 쟁점 / 미결정\n- open item",
+        mode="discuss",
+    )
+    assert created == []
+    assert "human_inbox" not in run_meta
+
+
+def test_harvest_discuss_runs_when_legacy_flag_on(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST", "1")
+    run_meta: dict[str, Any] = {"room_preset": "supervisor"}
+    created = harvest_discuss_questions(
+        run_meta,
+        [],
+        plan_md="## 쟁점 / 미결정\n- open item",
+        mode="discuss",
+    )
+    assert len(created) == 1

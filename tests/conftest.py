@@ -70,6 +70,22 @@ def _reset_run_control_cancel() -> None:
     terminate_active_children()
 
 
+@pytest.fixture(autouse=True)
+def _legacy_orchestrator_harvest_for_harvest_tests(
+    monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest
+) -> None:
+    """Harvest unit tests target legacy orchestrator path (flag default is off)."""
+    module = request.module.__name__.rsplit(".", 1)[-1]
+    if module in {
+        "test_inbox_harvest",
+        "test_inbox_build",
+        "test_inbox_facilitator",
+        "test_inbox_pause",
+        "test_session_clarifier",
+    }:
+        monkeypatch.setenv("AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST", "1")
+
+
 _INTEGRATION_MODULES = frozenset(
     {
         # Subprocess / WS / multi-step API

@@ -1,4 +1,11 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type {
   AgentOption,
   PlanActionItem,
@@ -328,6 +335,14 @@ function sessionToMessages(
     topicAsUserMessage(session.topic || session.id),
     ...parseTranscript(session.transcript_md || ""),
   ];
+}
+
+const ACTIVE_ROOM_PRESET_IDS = ["fast", "supervisor"] as const;
+
+function roomPresetDisplayLabel(id: string, locale: "en" | "ko"): string {
+  if (id === "fast") return locale === "ko" ? "빠른" : "Quick";
+  if (id === "supervisor") return locale === "ko" ? "감독" : "Supervisor";
+  return id;
 }
 
 export function RoomChat({
@@ -726,6 +741,25 @@ export function RoomChat({
     }
     setPlanAfterSendState(on);
     setPlanAfterSendForSession(sessionId ?? activeSessionIdRef.current, on);
+  }
+
+  const visiblePresets = useMemo(
+    () =>
+      availablePresets.filter((p) =>
+        (ACTIVE_ROOM_PRESET_IDS as readonly string[]).includes(p.id),
+      ),
+    [availablePresets],
+  );
+
+  function selectRoomPreset(id: string) {
+    const next = roomPreset === id ? null : id;
+    setRoomPreset(next);
+    if (next === "fast") {
+      changeTurnProfile("quick");
+    } else if (next === "supervisor") {
+      changeTurnProfile("loop");
+      changePlanAfterSend(true);
+    }
   }
 
   const planToggleSyncedRef = useRef<string | null>(null);
@@ -3510,8 +3544,12 @@ export function RoomChat({
                           />
                           {rationale ? (
                             <div className="advisor-hint" title={rationale}>
-                              <span className="advisor-hint__label">advisor</span>
-                              <span className="advisor-hint__text">{rationale}</span>
+                              <span className="advisor-hint__label">
+                                advisor
+                              </span>
+                              <span className="advisor-hint__text">
+                                {rationale}
+                              </span>
                             </div>
                           ) : null}
                         </Fragment>
@@ -3726,21 +3764,30 @@ export function RoomChat({
                     </button>
                   ) : null}
 
-                  {availablePresets.length > 0 ? (
-                    <div className="room-preset-bar" role="group" aria-label="Room preset">
-                      {availablePresets
-                        .filter((p) => ["fast", "supervisor"].includes(p.id))
-                        .map((p) => (
-                          <button
-                            key={p.id}
-                            type="button"
-                            className={`taskbar__turn-lead-chip room-preset-bar__chip${roomPreset === p.id ? " is-active" : ""}`}
-                            title={p.description}
-                            onClick={() => setRoomPreset(roomPreset === p.id ? null : p.id)}
-                          >
-                            {p.id}
-                          </button>
-                        ))}
+                  {visiblePresets.length > 0 ? (
+                    <div
+                      className="room-preset-bar"
+                      role="radiogroup"
+                      aria-label={
+                        locale === "ko" ? "Room preset" : "Room preset"
+                      }
+                    >
+                      <span className="room-preset-bar__label">
+                        {locale === "ko" ? "프리셋" : "Preset"}
+                      </span>
+                      {visiblePresets.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={roomPreset === p.id}
+                          className={`taskbar__turn-lead-chip room-preset-bar__chip${roomPreset === p.id ? " is-active" : ""}`}
+                          title={p.description}
+                          onClick={() => selectRoomPreset(p.id)}
+                        >
+                          {roomPresetDisplayLabel(p.id, locale)}
+                        </button>
+                      ))}
                     </div>
                   ) : null}
 
@@ -3964,9 +4011,7 @@ export function RoomChat({
                             setCommandMultiChoices(null);
                             setMultiSelected(new Set());
                             if (!sessionId && cmd.id === "model") {
-                              const comp = selected
-                                .split(",")
-                                .filter(Boolean);
+                              const comp = selected.split(",").filter(Boolean);
                               setCommandScopeChoices({
                                 command: cmd,
                                 composition: comp,

@@ -34,7 +34,7 @@ def test_pipeline_status_reflects_env_off(tmp_path: Path, monkeypatch: pytest.Mo
 
     _write_run(tmp_path, {"enabled": True, "phase": "DISCUSS"})
     res = dispatch("/pipeline", session_folder=tmp_path)
-    assert res["ok"] and res["pipeline"] == "off"
+    assert res["ok"] and res["pipeline"] == "on"
 
 
 def test_pipeline_handle_requires_session() -> None:
@@ -68,8 +68,7 @@ def test_plan_handle_sets_phase(tmp_path: Path) -> None:
 # --- catalog registration ------------------------------------------------------
 
 
-def test_catalog_lists_pipeline_handles(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("AGENT_LAB_PIPELINE", "1")
+def test_catalog_lists_pipeline_handles(tmp_path: Path) -> None:
     from agent_lab.command_registry import list_commands
 
     catalog = list_commands(session_folder=tmp_path, workspace=tmp_path)
@@ -79,22 +78,17 @@ def test_catalog_lists_pipeline_handles(tmp_path: Path, monkeypatch: pytest.Monk
         assert by_id[cid]["enabled"] is True
 
 
-def test_catalog_gates_clarify_plan_when_pipeline_off(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_catalog_pipeline_commands_always_enabled(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_PIPELINE", "0")
     from agent_lab.command_registry import list_commands
 
     catalog = list_commands(session_folder=tmp_path, workspace=tmp_path)
     by_id = {c["id"]: c for c in catalog["commands"]}
-    # /pipeline stays available to turn it back on
-    assert by_id["pipeline"]["enabled"] is True
-    # /clarify and /plan disabled when explicitly off
-    assert by_id["clarify"]["enabled"] is False
-    assert by_id["plan"]["enabled"] is False
-    assert by_id["clarify"]["disabled_reason"] == "pipeline_disabled"
+    for cid in ("pipeline", "clarify", "plan"):
+        assert by_id[cid]["enabled"] is True
 
 
-def test_execute_command_routes_pipeline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("AGENT_LAB_PIPELINE", "1")
+def test_execute_command_routes_pipeline(tmp_path: Path) -> None:
     from agent_lab.command_registry import execute_command
 
     _write_run(tmp_path, {"enabled": True, "phase": "DISCUSS"})

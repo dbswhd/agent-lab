@@ -55,8 +55,7 @@ TRANSITION_TABLE: tuple[RuntimeTransition, ...] = (
         guard="mission_define_ready",
         notes="Requires verified_loop or goal ready (mission_define_ready)",
     ),
-    # Pipeline (AGENT_LAB_PIPELINE) bootstrap: enable_mission_loop routes
-    # MISSION_DEFINE → CLARIFY first; legacy (pipeline off) goes straight to DISCUSS.
+    # Pipeline bootstrap: enable_mission_loop routes MISSION_DEFINE via mode_router.
     RuntimeTransition(
         RuntimeEvent.MISSION_ENABLE,
         _W({"MISSION_DEFINE"}),
@@ -64,7 +63,7 @@ TRANSITION_TABLE: tuple[RuntimeTransition, ...] = (
         "agent_lab.mission_loop:enable_mission_loop",
         OrchestrationLane.MISSION,
         guard="mission_define_ready_pipeline",
-        notes="Pipeline on + plan_workflow still in CLARIFY/INTAKE → CLARIFY; else DISCUSS",
+        notes="Bootstrap via resolve_mission_bootstrap_phase (clarity + plan_workflow dedup)",
     ),
     # CLARIFY → DISCUSS once clarity threshold is met (maybe_advance_mission).
     RuntimeTransition(

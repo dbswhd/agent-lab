@@ -84,12 +84,18 @@ def test_maybe_advance_appends_ledger_when_flag_on(tmp_path: Path, monkeypatch: 
     assert any(e.get("event") == "mode_route" and e.get("mode") == "CLARIFY" for e in led)
 
 
-def test_maybe_advance_no_ledger_when_flag_off(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    # G006 default-on: explicit opt-out required to test legacy behavior
-    monkeypatch.setenv("AGENT_LAB_PIPELINE", "0")
+def test_maybe_advance_records_mode_route_ledger(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     from agent_lab.mission_advance import maybe_advance_mission
     from agent_lab.run_meta import read_run_meta
 
-    _write(tmp_path, {"mission_loop": {"enabled": True, "phase": "DISCUSS", "autonomous_segment": {"active": True}}})
+    _write(
+        tmp_path,
+        {
+            "mission_loop": {"enabled": True, "phase": "DISCUSS", "autonomous_segment": {"active": True}},
+            "verified_loop": {"loop_goal": {"text": "fix JWT validation in src/auth.py"}},
+        },
+    )
     maybe_advance_mission(tmp_path, scheduled=True)
-    assert "goal_ledger" not in read_run_meta(tmp_path)
+    led = read_run_meta(tmp_path).get("goal_ledger", [])
+    assert any(e.get("event") == "mode_route" for e in led)

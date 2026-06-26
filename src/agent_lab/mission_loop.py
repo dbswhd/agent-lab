@@ -83,20 +83,16 @@ def mission_loop_env_enabled() -> bool:
 
 
 def pipeline_enabled() -> bool:
-    """AGENT_LAB_PIPELINE: gate the staged deep-interview->ralplan->ultragoal orchestration (additive).
+    """Staged CLARIFY→CONSENSUS→EXECUTE orchestration (always on).
 
-    Default is ON (production dogfood). Set AGENT_LAB_PIPELINE=0 to fall back to legacy behavior.
+    ``AGENT_LAB_PIPELINE=0`` is deprecated and ignored; kept for call-site compatibility.
     """
-    val = os.getenv("AGENT_LAB_PIPELINE", "1").strip().lower()
-    if val in {"0", "false", "no", "off"}:
-        return False
-    # default-on: empty, "", or any truthy token all enable the pipeline
     return True
 
 
 def pipeline_explicitly_disabled() -> bool:
-    """True only when the user explicitly opted out of the pipeline."""
-    return os.getenv("AGENT_LAB_PIPELINE", "1").strip().lower() in {"0", "false", "no", "off"}
+    """Deprecated — pipeline orchestration is always enabled."""
+    return False
 
 
 def default_mission_loop() -> dict[str, Any]:
@@ -195,7 +191,9 @@ def sync_mission_phase_from_run(run: dict[str, Any]) -> dict[str, Any]:
         return ml
     phase = str(ml.get("phase") or "MISSION_DEFINE")
     if phase == "MISSION_DEFINE" and mission_define_ready(run):
-        ml["phase"] = "DISCUSS"
+        from agent_lab.mode_router import resolve_mission_bootstrap_phase
+
+        ml["phase"] = resolve_mission_bootstrap_phase(run)
     if isinstance(run.get("verified_loop"), dict) and run["verified_loop"].get("circuit_breaker"):
         ml["circuit_breaker"] = True
         ml["circuit_breaker_reason"] = ml.get("circuit_breaker_reason") or "verified_loop"
@@ -403,12 +401,9 @@ def enable_mission_loop(
         ml["enabled"] = True
         ml["iteration"] = int(ml.get("iteration") or 0)
         if ml.get("phase") == "MISSION_DEFINE" and mission_define_ready(run):
-            from agent_lab.plan_workflow import plan_workflow_completed_clarify
+            from agent_lab.mode_router import resolve_mission_bootstrap_phase
 
-            if pipeline_enabled() and not plan_workflow_completed_clarify(run):
-                ml["phase"] = "CLARIFY"
-            else:
-                ml["phase"] = "DISCUSS"
+            ml["phase"] = resolve_mission_bootstrap_phase(run)
         if start_autonomous:
             ml["autonomous_segment"] = {
                 "active": True,

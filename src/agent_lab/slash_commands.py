@@ -428,14 +428,9 @@ def _set_mission_phase(session_folder: Path, command: str, target_phase: str) ->
 
 
 def _pipeline(args: list[str], *, session_folder: Path | None = None) -> dict[str, Any]:
-    """/pipeline — show current pipeline stage (phase + auto-routed mode).
-
-    The pipeline is always on (AGENT_LAB_PIPELINE, default ON); this is a
-    read-only status view. Global opt-out is the AGENT_LAB_PIPELINE=0 env flag.
-    """
+    """/pipeline — show current pipeline stage (phase + auto-routed mode)."""
     if session_folder is None:
         return _err("pipeline", "no active session")
-    from agent_lab.mission_loop import pipeline_enabled
     from agent_lab.mode_router import select_mode
     from agent_lab.run_meta import read_run_meta
 
@@ -446,7 +441,7 @@ def _pipeline(args: list[str], *, session_folder: Path | None = None) -> dict[st
     return {
         "ok": True,
         "command": "pipeline",
-        "pipeline": "on" if pipeline_enabled() else "off",
+        "pipeline": "on",
         "phase": phase,
         "mode": mode,
     }

@@ -751,6 +751,14 @@
   gap: var(--space-6);
   padding: var(--space-6) var(--space-12) 0;
 }
+.room-preset-bar__label {
+  font-size: var(--text-micro);
+  font-weight: 600;
+  color: var(--label-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: var(--space-2);
+}
 .room-preset-bar__chip {
   cursor: pointer;
   border: 1px solid transparent;

@@ -114,8 +114,6 @@ def test_verified_mission_loop_mock_e2e_full_fsm(
 ) -> None:
     """Room discuss → scribe/plan gate → dry-run → merge verify → MISSION_DONE (mock-only)."""
     disable_execute_inbox_mcp(monkeypatch)
-    # Legacy FSM path: pipeline default-on inserts CLARIFY before DISCUSS.
-    monkeypatch.setenv("AGENT_LAB_PIPELINE", "0")
     folder = mission_e2e_session
     git_repo = _init_repo(tmp_path / "git-root")
 
@@ -160,7 +158,7 @@ def test_verified_mission_loop_mock_e2e_full_fsm(
     record_proposed_goal(
         folder,
         {
-            "goal": "Ship JWT auth fix with AUTH_OK marker",
+            "goal": "Fix JWT validation in src/app.py with AUTH_OK marker",
             "completion_promise": "MISSION_DONE",
             "criteria": "AUTH_OK in src/app.py",
         },

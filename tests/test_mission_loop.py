@@ -531,12 +531,11 @@ def test_enable_mission_loop_uses_clarify_without_plan_workflow(
 
 
 def test_verified_approve_enables_mission(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    # Legacy mission bootstrap expects DISCUSS; pipeline default-on routes via CLARIFY.
-    monkeypatch.setenv("AGENT_LAB_PIPELINE", "0")
+    monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     init_verified_loop(session_folder)
     record_proposed_goal(
         session_folder,
-        {"goal": "Ship feature X", "completion_promise": "DONE", "criteria": "tests pass"},
+        {"goal": "Fix JWT validation in src/auth.py", "completion_promise": "DONE", "criteria": "tests pass"},
         source="test",
     )
 

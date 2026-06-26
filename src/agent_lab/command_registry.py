@@ -258,16 +258,8 @@ def list_commands(
         if dynamic_room_enabled() or row["id"] in _ACCOUNT_COMMANDS:
             commands.append({**row, "enabled": True})
 
-    from agent_lab.mission_loop import pipeline_explicitly_disabled
-
-    pipeline_off = pipeline_explicitly_disabled()
     for row in _PIPELINE_COMMANDS:
-        # /pipeline is a read-only status view (always available); /clarify and
-        # /plan are manual stage nudges, only meaningful when the pipeline is on.
-        if row["id"] == "pipeline" or not pipeline_off:
-            commands.append({**row, "enabled": True})
-        else:
-            commands.append({**row, "enabled": False, "disabled_reason": "pipeline_disabled"})
+        commands.append({**row, "enabled": True})
 
     commands.extend(_plugin_as_commands(plugins, allowlist))
 

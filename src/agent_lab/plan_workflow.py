@@ -586,9 +586,7 @@ def _clarity_gate_questions(folder: Path, run: dict[str, Any]) -> dict[str, Any]
     holds without a human-visible pending Human Inbox question (no silent deadlock).
     """
     from agent_lab.clarifier_engine import engine_enabled
-    from agent_lab.mission_loop import pipeline_enabled
-
-    if not (engine_enabled() and pipeline_enabled()):
+    if not engine_enabled():
         return None
 
     from agent_lab.clarity import _mission_clarity_text, clarity_threshold_met

@@ -182,42 +182,13 @@ def maybe_advance_mission(
     if not _scheduled_autorun_allowed(run, ml, scheduled=scheduled):
         return {"skipped": True, "reason": "autorun_off"}
 
-    from agent_lab.mission_loop import pipeline_enabled
+    from agent_lab.mode_router import apply_mission_mode_route
 
-    if pipeline_enabled():
-        from agent_lab.mode_router import record_mode_route
+    mode_result = apply_mission_mode_route(folder)
+    if mode_result is not None:
+        return mode_result
 
-        record_mode_route(folder)
-
-    phase = str(ml.get("phase") or "")
-    if phase == "CLARIFY":
-        from agent_lab.mission_loop import pipeline_enabled
-
-        if not pipeline_enabled():
-            return {"skipped": True, "reason": "pipeline_disabled", "phase": phase}
-        from agent_lab.clarity import clarity_threshold_met, ensure_clarify_questions, extract_established_facts
-
-        # Harvest any answered clarifier Q&A into durable facts (injected into DISCUSS/plan).
-        extract_established_facts(folder)
-        if not clarity_threshold_met(run):
-            # Real question loop: surface dimension-targeted clarifying questions for the human.
-            interview = ensure_clarify_questions(folder)
-            pending_questions = (interview or {}).get("questions") if isinstance(interview, dict) else None
-            return {
-                "skipped": True,
-                "reason": "clarity_pending",
-                "phase": "CLARIFY",
-                "questions": pending_questions,
-            }
-
-        def _clarify_to_discuss(run_in: dict[str, Any]) -> dict[str, Any]:
-            m = get_mission_loop(run_in)
-            m["phase"] = "DISCUSS"
-            run_in["mission_loop"] = m
-            return run_in
-
-        patch_run_meta(folder, _clarify_to_discuss)
-        return {"status": "forwarded", "phase": "DISCUSS", "reason": "clarity_met"}
+    phase = str(get_mission_loop(read_run_meta(folder)).get("phase") or "")
     if phase == "EXECUTE_QUEUE":
         return _advance_execute_queue(folder, permissions=permissions, executor=executor)
     if phase == "REPAIR":
@@ -233,27 +204,6 @@ def maybe_advance_mission(
             "mission.discuss_recovery",
             {"permissions": permissions, "on_event": on_event},
         )
-    if phase == "DISCUSS":
-        from agent_lab.mission_loop import pipeline_enabled
-
-        if pipeline_enabled():
-            from agent_lab.consensus_gate import consensus_gate_met
-
-            if not consensus_gate_met(run):
-                return {"skipped": True, "reason": "consensus_pending", "phase": "DISCUSS"}
-
-        def _to_plan(run_in: dict[str, Any]) -> dict[str, Any]:
-            m = get_mission_loop(run_in)
-            m["phase"] = "PLAN_GATE"
-            run_in["mission_loop"] = m
-            return run_in
-
-        patch_run_meta(folder, _to_plan)
-        ml_out = get_mission_loop(read_run_meta(folder))
-        return {
-            "status": "forwarded",
-            "phase": ml_out.get("phase"),
-        }
     return {"skipped": True, "reason": "wrong_phase", "phase": phase}
 
 

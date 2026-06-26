@@ -39,6 +39,29 @@ def test_record_mode_route_persists(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     assert persisted.get("at")
 
 
+def test_apply_mission_mode_route_forwards_discuss_to_plan_gate(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
+    from agent_lab.mode_router import apply_mission_mode_route
+    from agent_lab.run_meta import read_run_meta
+
+    (tmp_path / "run.json").write_text(
+        json.dumps(
+            {
+                "mission_loop": {"enabled": True, "phase": "DISCUSS", "autonomous_segment": {"active": True}},
+                "consensus": {"status": "reached"},
+                "verified_loop": {"loop_goal": {"text": "fix JWT validation in src/auth.py"}},
+            }
+        ),
+        encoding="utf-8",
+    )
+    out = apply_mission_mode_route(tmp_path)
+    assert out is not None and out.get("status") == "forwarded"
+    assert read_run_meta(tmp_path)["mission_loop"]["phase"] == "PLAN_GATE"
+
+
 def test_maybe_advance_records_route_when_flag_on(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_PIPELINE", "1")
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
@@ -59,16 +82,21 @@ def test_maybe_advance_records_route_when_flag_on(tmp_path: Path, monkeypatch: p
     assert route.get("mode") == "CLARIFY"  # vague + CLARIFY phase
 
 
-def test_maybe_advance_no_route_when_flag_off(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    # G006 default-on: explicit opt-out required to test legacy behavior
-    monkeypatch.setenv("AGENT_LAB_PIPELINE", "0")
+def test_maybe_advance_always_records_mode_route(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     from agent_lab.mission_advance import maybe_advance_mission
     from agent_lab.run_meta import read_run_meta
 
     (tmp_path / "run.json").write_text(
-        json.dumps({"mission_loop": {"enabled": True, "phase": "DISCUSS", "autonomous_segment": {"active": True}}}),
+        json.dumps(
+            {
+                "mission_loop": {"enabled": True, "phase": "DISCUSS", "autonomous_segment": {"active": True}},
+                "verified_loop": {"loop_goal": {"text": "fix JWT validation in src/auth.py"}},
+            }
+        ),
         encoding="utf-8",
     )
     maybe_advance_mission(tmp_path, scheduled=True)
     ml = read_run_meta(tmp_path).get("mission_loop", {})
-    assert "mode_route" not in ml  # OFF-parity: router not invoked
+    assert isinstance(ml.get("mode_route"), dict)
+    assert ml["mode_route"].get("mode") == "CONSENSUS"

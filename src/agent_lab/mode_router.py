@@ -1,20 +1,21 @@
-"""Autonomous mode router for AGENT_LAB_PIPELINE.
+"""Autonomous mode router — CLARIFY / CONSENSUS / EXECUTE orchestration.
 
-Classifies the current mission into CLARIFY / CONSENSUS / EXECUTE from run.json signals and
-records the decision to run.json (observable). The router only *classifies* — it never bypasses
-Human approval gates (HITL preserved): EXECUTE classification still flows through the existing
-plan-approval and merge-approval gates.
+Classifies mission mode from run.json, records telemetry, and applies phase transitions
+for the staged clarify → discuss → plan-gate path. Human approval gates (plan approve,
+merge review) are never bypassed.
 """
 
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Literal
 
 Mode = Literal["CLARIFY", "CONSENSUS", "EXECUTE"]
 
 _EXECUTE_PHASES = frozenset({"EXECUTE_QUEUE", "DRY_RUN", "MERGE_REVIEW", "VERIFY", "REPAIR"})
 _CONSENSUS_PHASES = frozenset({"DISCUSS", "PLAN_GATE", "PLAN_REJECT"})
+_MODE_ENTRY_PHASES = frozenset({"MISSION_DEFINE", "DISCUSS"})
 
 
 def select_mode(run: dict[str, Any]) -> Mode:
@@ -26,10 +27,20 @@ def select_mode(run: dict[str, Any]) -> Mode:
         return "EXECUTE"
     if phase in _CONSENSUS_PHASES:
         return "CONSENSUS"
-    # CLARIFY / MISSION_DEFINE / other pre-discuss: gate on clarity signals.
     from agent_lab.clarity import clarity_threshold_met
 
     return "CONSENSUS" if clarity_threshold_met(run) else "CLARIFY"
+
+
+def resolve_mission_bootstrap_phase(run: dict[str, Any]) -> str:
+    """Initial mission_loop phase after MISSION_DEFINE when goal is ready."""
+    from agent_lab.plan_workflow import plan_workflow_completed_clarify
+
+    if plan_workflow_completed_clarify(run):
+        return "DISCUSS"
+    from agent_lab.clarity import clarity_threshold_met
+
+    return "DISCUSS" if clarity_threshold_met(run) else "CLARIFY"
 
 
 def record_mode_route(folder: Any) -> dict[str, Any]:
@@ -64,6 +75,110 @@ def record_mode_route(folder: Any) -> dict[str, Any]:
             dedup_mode=True,
         )
     return captured
+
+
+def _enter_clarify_if_needed(folder: Path, run: dict[str, Any], phase: str) -> tuple[dict[str, Any], str]:
+    """Auto-enter CLARIFY when clarity is unmet and plan_workflow does not own clarify."""
+    from agent_lab.clarity import clarity_threshold_met
+    from agent_lab.mission_loop import get_mission_loop
+    from agent_lab.plan_workflow import plan_workflow_completed_clarify
+    from agent_lab.run_meta import patch_run_meta, read_run_meta
+
+    if plan_workflow_completed_clarify(run) or clarity_threshold_met(run):
+        return run, phase
+    if phase not in _MODE_ENTRY_PHASES and phase != "CLARIFY":
+        return run, phase
+
+    def _enter(run_in: dict[str, Any]) -> dict[str, Any]:
+        m = get_mission_loop(run_in)
+        m["phase"] = "CLARIFY"
+        run_in["mission_loop"] = m
+        return run_in
+
+    patch_run_meta(folder, _enter)
+    run = read_run_meta(folder)
+    return run, "CLARIFY"
+
+
+def apply_mission_mode_route(folder: Path) -> dict[str, Any] | None:
+    """Apply CLARIFY/CONSENSUS transitions from the active mode.
+
+    Returns a result dict when this tick is fully handled (forwarded or waiting),
+    or None when the caller should continue with execute/repair/verify phases.
+    """
+    from agent_lab.mission_loop import get_mission_loop
+    from agent_lab.run_meta import patch_run_meta, read_run_meta
+
+    record_mode_route(folder)
+    run = read_run_meta(folder)
+    ml = get_mission_loop(run)
+    if not ml.get("enabled"):
+        return None
+
+    phase = str(ml.get("phase") or "")
+    if phase == "MISSION_DEFINE":
+        from agent_lab.mission_loop import mission_define_ready
+
+        if mission_define_ready(run):
+            bootstrap = resolve_mission_bootstrap_phase(run)
+            if bootstrap != phase:
+
+                def _bootstrap(run_in: dict[str, Any]) -> dict[str, Any]:
+                    m = get_mission_loop(run_in)
+                    m["phase"] = bootstrap
+                    run_in["mission_loop"] = m
+                    return run_in
+
+                patch_run_meta(folder, _bootstrap)
+                run = read_run_meta(folder)
+                phase = bootstrap
+
+    run, phase = _enter_clarify_if_needed(folder, run, phase)
+    ml = get_mission_loop(run)
+
+    if phase == "CLARIFY":
+        from agent_lab.clarity import clarity_threshold_met, ensure_clarify_questions, extract_established_facts
+
+        extract_established_facts(folder)
+        if not clarity_threshold_met(run):
+            interview = ensure_clarify_questions(folder)
+            pending_questions = (interview or {}).get("questions") if isinstance(interview, dict) else None
+            return {
+                "skipped": True,
+                "reason": "clarity_pending",
+                "phase": "CLARIFY",
+                "questions": pending_questions,
+            }
+
+        def _clarify_to_discuss(run_in: dict[str, Any]) -> dict[str, Any]:
+            m = get_mission_loop(run_in)
+            m["phase"] = "DISCUSS"
+            run_in["mission_loop"] = m
+            return run_in
+
+        patch_run_meta(folder, _clarify_to_discuss)
+        return {"status": "forwarded", "phase": "DISCUSS", "reason": "clarity_met"}
+
+    if phase == "DISCUSS":
+        from agent_lab.consensus_gate import consensus_gate_met
+
+        if not consensus_gate_met(run):
+            return {"skipped": True, "reason": "consensus_pending", "phase": "DISCUSS"}
+
+        def _to_plan(run_in: dict[str, Any]) -> dict[str, Any]:
+            m = get_mission_loop(run_in)
+            m["phase"] = "PLAN_GATE"
+            run_in["mission_loop"] = m
+            return run_in
+
+        patch_run_meta(folder, _to_plan)
+        ml_out = get_mission_loop(read_run_meta(folder))
+        return {
+            "status": "forwarded",
+            "phase": ml_out.get("phase"),
+        }
+
+    return None
 
 
 def resolve_active_phase(run: dict[str, Any]) -> str:

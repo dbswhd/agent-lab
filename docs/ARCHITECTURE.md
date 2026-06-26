@@ -106,7 +106,7 @@ flowchart TB
 | Scribe | `plan.md` 합성 | `room_plan_scribe.py` | (room SSE) | `PlanDocument.tsx` |
 | Clarifier | Socratic 요구사항 명확화 | `session_clarifier.py` | `plan_execute` clarifier | `RoomChat` interview UI |
 | Dispatch | worker delegate, parallel fan-out | `room_dispatch.py` | room router | `LiveAgentsStrip` |
-| Topic routing | quick/standard/deep/critical | `topic_router.py` | — | `ComposerTurnPicker` |
+| Topic routing | quick/standard/deep/critical | `topic_router.py` | — | Room preset (`roomPresets.ts`) |
 
 ### 3.2 Plan (계약)
 
@@ -326,7 +326,7 @@ Additive, flag-gated layers from the LangGraph/OpenHands/Aider/SWE-agent gap ana
 `SessionRail`, `SessionList`, `MacTitlebar`, `ShellPortal`, `NewSessionDialog`, `FirstRunOnboarding`
 
 #### Room / Transcript (핵심 UX)
-`RoomChat` (~3.7k lines), `ChatComposer`, `ChatBubble`, `ComposerTurnPicker`, `ComposerPreflightBar`, `RoomTaskBar`, `RoomRunStatusBar`, `TurnProgressStrip`
+`RoomChat` (~3.7k lines), `ChatComposer`, `ChatBubble`, `ComposerPreflightBar`, `RoomTaskBar`, `RoomRunStatusBar`, `TurnProgressStrip` — Composer mode: **fast / supervisor** presets (`roomPresets.ts`), not quick/team/loop segmented picker.
 
 #### Work / Plan / Execute
 `WorkToolPanel`, `WorkPanel`, `WorkStatusBar`, `PlanExecutePanel` (~1.5k), `PlanDocument`, `PlanApprovalPanel`, `SideBySideDiff`, `MergeChecksPanel`, `ExecuteQueueBar`

@@ -84,6 +84,68 @@ def extract_conversation_key(created: Any) -> str:
     raise RuntimeError("conversations.create returned no conversationKey")
 
 
+def ensure_kimi_work_session(
+    session_folder: str | Path,
+    *,
+    workspace_path: str | Path,
+    title: str | None = None,
+) -> str:
+    """Bind workspace + conversation; batch prep RPCs on one WS when both are needed."""
+    folder = session_folder
+    resolved = Path(workspace_path).expanduser().resolve()
+    existing_key = get_conversation_key(folder)
+    existing_ws = get_workspace_path(folder)
+    need_open = existing_ws != resolved
+    need_create = existing_key is None
+    if not need_open and not need_create:
+        return existing_key  # type: ignore[return-value]
+
+    from agent_lab.kimi_control_client import KimiWorkBridgeUnavailable, rpc, rpc_batch
+
+    if need_open and need_create:
+        try:
+            results = rpc_batch(
+                [
+                    ("workspace.openProject", {"path": str(resolved)}),
+                    (
+                        "conversations.create",
+                        {"sessionKey": "main", "title": title or "agent-lab"},
+                    ),
+                ],
+            )
+        except KimiWorkBridgeUnavailable:
+            from agent_lab.kimi_work_workspace import open_workspace
+
+            open_workspace(resolved)
+            created = rpc(
+                "conversations.create",
+                {"sessionKey": "main", "title": title or "agent-lab"},
+            )
+            set_workspace_path(folder, resolved)
+            key = extract_conversation_key(created)
+            set_conversation_key(folder, key)
+            return key
+        set_workspace_path(folder, resolved)
+        key = extract_conversation_key(results[-1])
+        set_conversation_key(folder, key)
+        return key
+
+    if need_open:
+        from agent_lab.kimi_work_workspace import open_workspace
+
+        open_workspace(resolved)
+        set_workspace_path(folder, resolved)
+    if need_create:
+        created = rpc(
+            "conversations.create",
+            {"sessionKey": "main", "title": title or "agent-lab"},
+        )
+        key = extract_conversation_key(created)
+        set_conversation_key(folder, key)
+        return key
+    return existing_key  # type: ignore[return-value]
+
+
 def get_or_create_conversation(session_folder: str | Path, *, title: str | None = None) -> str:
     existing = get_conversation_key(session_folder)
     if existing:

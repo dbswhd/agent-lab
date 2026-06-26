@@ -16,6 +16,18 @@ from agent_lab.agent_preflight import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _isolate_room_models_for_health(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    import agent_lab.app_config as app_config
+
+    monkeypatch.setattr(app_config, "config_dir", lambda: tmp_path)
+    monkeypatch.delenv("AGENT_LAB_ROOM_MODELS", raising=False)
+    yield
+    import os
+
+    os.environ.pop("AGENT_LAB_ROOM_MODELS", None)
+
+
 def test_format_codex_os_error_2():
     msg = format_codex_exec_error("Error: No such file or directory (os error 2)")
     assert "os error 2" in msg
@@ -195,6 +207,7 @@ def test_health_probe_preflight_flag(monkeypatch):
     )
     payload = build_health_payload(probe_preflight=True)
     assert payload["preflight"] is True
+    assert payload["room_composition"] == ["cursor", "codex", "claude"]
     assert len(payload["agents"]) == 3
     cursor = next(row for row in payload["agents"] if row["id"] == "cursor")
     assert cursor["team_ready"] is True
@@ -208,6 +221,9 @@ def test_health_payload_includes_model_readiness() -> None:
     payload = build_health_payload()
     rows = {row["id"]: row for row in payload["agents"]}
 
+    assert payload["room_composition"] == ["cursor", "codex", "claude"]
+    assert set(rows) == {"cursor", "codex", "claude"}
+    assert len(payload["agents_all"]) >= len(payload["agents"])
     assert rows["cursor"]["team_ready"] is True
     assert rows["cursor"]["loop_ready"] is True
     assert rows["cursor"]["model_provider"] == "local"
@@ -215,6 +231,24 @@ def test_health_payload_includes_model_readiness() -> None:
     assert rows["cursor"]["model_cost_tier"] == "low"
     assert rows["cursor"]["loop_cost_blocked"] is False
     assert rows["codex"]["loop_ready"] is True
+
+
+def test_health_payload_filters_to_kimi_work_composition(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import agent_lab.app_config as app_config
+    from agent_lab import room_models_config as rmc
+    from agent_lab.agent_health import build_health_payload
+
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    monkeypatch.setattr(app_config, "config_dir", lambda: cfg)
+    rmc.persist_default_room_models(["kimi_work"])
+
+    payload = build_health_payload()
+    assert payload["room_composition"] == ["kimi_work"]
+    assert [row["id"] for row in payload["agents"]] == ["kimi_work"]
+    assert len(payload["agents_all"]) >= 1
 
 
 def test_agents_not_ready_subset():

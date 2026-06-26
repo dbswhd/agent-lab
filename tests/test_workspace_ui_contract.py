@@ -36,7 +36,8 @@ def test_agent_health_panel_shows_model_readiness_lane():
     client = _read("web", "src", "api", "client.ts")
     panel = _read("web", "src", "components", "AgentHealthPanel.tsx")
     room_modes = _read("web", "src", "utils", "roomModes.ts")
-    picker = _read("web", "src", "components", "ComposerTurnPicker.tsx")
+    presets = _read("web", "src", "utils", "roomPresets.ts")
+    composer = _read("web", "src", "components", "ChatComposer.tsx")
 
     assert "team_ready?: boolean" in client
     assert "loop_ready?: boolean" in client
@@ -45,7 +46,8 @@ def test_agent_health_panel_shows_model_readiness_lane():
     assert "loop_cost_blocked?: boolean" in client
     assert "fetchRoomModes" in room_modes
     assert "loopCostHintLine" in room_modes
-    assert "fetchRoomModes" in picker
+    assert "resolveRoomPresets" in presets
+    assert "composer-preset-row" in composer
     assert "model_provider?: string" in client
     assert "Team-ready" in panel
     assert "Loop-ready" in panel

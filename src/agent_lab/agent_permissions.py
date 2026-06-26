@@ -5,8 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from typing import Any
-
 AgentId = str
 
 
@@ -143,8 +141,8 @@ def kimi_work_runtime_block(
     )
     if discuss:
         block += (
-            "\n- **Discuss mode:** read-only — verify with tools; "
-            "propose edits as `[PROPOSED:]` text; file writes belong to Cursor execute."
+            "\n- **Discuss 턴:** 읽기·검증만 — 도구로 확인 후 답할 것; "
+            "파일 수정·execute 완료 주장 금지; 실행 제안은 `[PROPOSED:]` 텍스트."
         )
     return block
 
@@ -202,8 +200,8 @@ def permission_preamble(
         block = claude_runtime_block(perms, mcp_allowed=mcp_allowed)
         if discuss:
             block += (
-                "\n- **Discuss mode:** read-only — use Read/Grep to verify; "
-                "do not Edit/write files or claim you patched the repo."
+                "\n- **Discuss 턴:** 읽기·검증만 — Read/Grep으로 확인; "
+                "Edit/write·패치 완료 주장 금지."
             )
         return block
     if agent == "cursor":
@@ -212,8 +210,8 @@ def permission_preamble(
         block = codex_runtime_block(perms)
         if discuss:
             block += (
-                "\n- **Discuss mode:** read-only sandbox — verify with read/grep/shell; "
-                "propose edits as `[PROPOSED:]` text; file writes belong to Cursor execute."
+                "\n- **Discuss 턴:** read-only sandbox — read/grep/shell로 검증; "
+                "수정은 `[PROPOSED:]` 텍스트; 파일 쓰기는 Cursor execute."
             )
         return block
     if agent == "kimi_work":

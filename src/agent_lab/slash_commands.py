@@ -301,13 +301,20 @@ def _accounts(args: list[str]) -> dict[str, Any]:
 
 def _model(args: list[str], *, session_folder: Path | None = None) -> dict[str, Any]:
     if not args:
-        composition = agent_roster.override_composition(session_folder=session_folder) or list(
-            provider_registry.DEFAULT_ROSTER
-        )
+        composition = agent_roster.effective_room_composition(session_folder=session_folder)
+        available = set(agent_roster.dynamic_available_ids(available_agents))
         options: list[dict[str, Any]] = []
-        for pid in agent_roster.dynamic_available_ids(available_agents):
+        for pid in provider_registry.provider_picker_order():
             spec = provider_registry.get_provider(pid)
-            options.append({"value": pid, "label": spec.label if spec else pid})
+            if spec is None:
+                continue
+            options.append(
+                {
+                    "value": pid,
+                    "label": spec.label,
+                    "ready": pid in available,
+                }
+            )
         return {
             "ok": True,
             "command": "model",
@@ -320,7 +327,9 @@ def _model(args: list[str], *, session_folder: Path | None = None) -> dict[str, 
     raw = list(args)
     if raw and raw[-1] in {"session", "default"}:
         scope = raw.pop()
-    composition = [tok for tok in ",".join(raw).split(",") if tok.strip()]
+    composition = agent_roster.normalize_composition_order(
+        [tok for tok in ",".join(raw).split(",") if tok.strip()]
+    )
     if not composition:
         return _err("model", "empty composition")
     if scope is None:
@@ -340,8 +349,9 @@ def _model(args: list[str], *, session_folder: Path | None = None) -> dict[str, 
             },
         }
     joined = ",".join(composition)
-    os.environ["AGENT_LAB_ROOM_MODELS"] = joined
-    if scope == "session" and session_folder is not None:
+    if scope == "session":
+        if session_folder is None:
+            return _err("model", "session scope requires an active session")
         from agent_lab.run_meta import patch_run_meta
 
         patch_run_meta(
@@ -353,8 +363,10 @@ def _model(args: list[str], *, session_folder: Path | None = None) -> dict[str, 
         from agent_lab.room_models_config import persist_default_room_models
 
         persist_default_room_models(composition)
+        os.environ["AGENT_LAB_ROOM_MODELS"] = joined
         note = f"Room 구성을 {', '.join(composition)}로 변경했습니다 (기본값 저장)."
     else:
+        os.environ["AGENT_LAB_ROOM_MODELS"] = joined
         note = f"Room 구성을 {', '.join(composition)}로 변경했습니다."
     substitution = agent_roster.override_substitution() or list(provider_registry.DEFAULT_SUBSTITUTION_PRIORITY)
     return {

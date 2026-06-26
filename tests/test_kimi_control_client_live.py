@@ -15,7 +15,9 @@ from agent_lab.kimi_control_client import (
     _live_rpc,
     discover_endpoint,
     invalidate_endpoint_cache,
+    mark_probe_ok,
     probe_control,
+    rpc_batch,
     send_turn,
 )
 
@@ -65,6 +67,16 @@ async def _fake_ws_handler(websocket: Any) -> None:
                         "jsonrpc": "2.0",
                         "id": req_id,
                         "result": {"status": "opened", "project": {"path": path}},
+                    },
+                ),
+            )
+        elif method == "conversations.create":
+            await websocket.send(
+                json.dumps(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": req_id,
+                        "result": {"conversationKey": "main:conversation:batch-test"},
                     },
                 ),
             )
@@ -271,6 +283,50 @@ def test_live_rpc_works_under_running_event_loop(fake_ws_server: ControlEndpoint
 
     payload = asyncio.run(_call_under_loop())
     assert "conversations.send" in payload.get("features", [])
+
+
+def test_probe_control_skips_resolve_when_recent(
+    monkeypatch: pytest.MonkeyPatch,
+    fake_ws_server: ControlEndpoint,
+) -> None:
+    monkeypatch.delenv("AGENT_LAB_MOCK_AGENTS", raising=False)
+    calls = {"n": 0}
+
+    def _resolve() -> ControlEndpoint:
+        calls["n"] += 1
+        return fake_ws_server
+
+    invalidate_endpoint_cache()
+    monkeypatch.setattr("agent_lab.kimi_control_client.is_share_configured", lambda: True)
+    monkeypatch.setattr("agent_lab.kimi_control_client._resolve_live_endpoint", _resolve)
+    bridge, err = probe_control()
+    assert bridge == "ok"
+    assert err is None
+    assert calls["n"] == 1
+    bridge2, err2 = probe_control()
+    assert bridge2 == "ok"
+    assert err2 is None
+    assert calls["n"] == 1
+
+
+def test_rpc_batch_single_ws(
+    monkeypatch: pytest.MonkeyPatch,
+    fake_ws_server: ControlEndpoint,
+) -> None:
+    monkeypatch.delenv("AGENT_LAB_MOCK_AGENTS", raising=False)
+    invalidate_endpoint_cache()
+    monkeypatch.setattr(
+        "agent_lab.kimi_control_client._get_endpoint",
+        lambda: fake_ws_server,
+    )
+    results = rpc_batch(
+        [
+            ("workspace.openProject", {"path": "/tmp/proj"}),
+            ("conversations.create", {"sessionKey": "main", "title": "t"}),
+        ],
+    )
+    assert results[0]["project"]["path"] == "/tmp/proj"
+    assert results[1]["conversationKey"] == "main:conversation:batch-test"
 
 
 def test_send_turn_retries_after_transient_error(monkeypatch: pytest.MonkeyPatch, fake_ws_server: ControlEndpoint) -> None:

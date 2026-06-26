@@ -20,6 +20,7 @@ class RoomPresetConfig:
     preset: RoomPreset
     turn_profile: str
     description: str
+    label: str
     max_agents: int | None = None  # None = no cap; set for presets with fixed team sizes
     role_policy: RolePolicy = "auto"  # force | auto | off — role assignment policy
 
@@ -28,6 +29,7 @@ _PRESET_CONFIGS: dict[str, RoomPresetConfig] = {
     "fast": RoomPresetConfig(
         preset="fast",
         turn_profile="quick",
+        label="Fast",
         description="Single-agent instant response — no debate, no consensus",
         max_agents=1,
         role_policy="off",
@@ -35,6 +37,7 @@ _PRESET_CONFIGS: dict[str, RoomPresetConfig] = {
     "supervisor": RoomPresetConfig(
         preset="supervisor",
         turn_profile="loop",
+        label="Supervisor",
         description="Multi-agent consensus, plan, verify, and mission loop execute",
         role_policy="auto",
     ),
@@ -102,6 +105,7 @@ def preset_catalog() -> dict[str, Any]:
         "presets": [
             {
                 "id": cfg.preset,
+                "label": cfg.label,
                 "turn_profile": cfg.turn_profile,
                 "description": cfg.description,
                 "max_agents": cfg.max_agents,

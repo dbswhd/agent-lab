@@ -68,6 +68,7 @@ CONVERSATION_GUIDANCE = """\
 - Write for a Human reader: clear stance, concrete reasoning, and what you did or would do next.
 - Peer lines are already in your context ([이번 턴 · 동료 발화] / peer digest) — **do not** echo that header; name peers only when citing something new.
 - Prefer short paragraphs after tool work; do not repeat the whole thread or re-introduce yourself.
+- Do **not** open with turn-mode meta ("discuss/plan 모드입니다", "이 턴은 discuss…") — policy is already in [고정 constraints]; answer substantively.
 - If you truly add nothing new, say so briefly (e.g. PASS or "앞선 의견과 동일").
 - In **자유 토론** consensus rounds: if you have **no** objection and **nothing new** to add, use `act: ENDORSE` in the envelope (body: `이의 없습니다` one line) or legacy first-line `이의 없습니다` only.
 - If you agree **but** want to add risks, steps, or new work items, use `act: AMEND` / `PROPOSE` — do **not** lead with `이의 없습니다`.
@@ -133,7 +134,8 @@ KIMI_WORK_TOOL_RULES = """\
 [Kimi Work tools — this turn]
 - Workspace-bound daimon tools first: read/search/verify before debating repo facts.
 - Human Inbox (`ask_human` / `propose_build`) for direction blockers and GO — never ask forks in prose when inbox is on.
-- Discuss mode: verify and propose only — no execute/patch claims; tag actionable work as `[PROPOSED: …]`.
+- Discuss 턴: 검증·제안만 — 패치/execute 주장 금지; 실행 제안은 `[PROPOSED: …]`.
+- 턴 모드("discuss/plan")를 답변 첫 줄에 선언하지 말 것 — [고정 constraints]를 따름.
 - Coordinate with Cursor/Codex/Claude per [Multi-agent coordination]; cite peer envelope acts when responding.
 """
 

@@ -33,7 +33,14 @@ def test_agent_health_cursor_without_key(monkeypatch):
 
 def test_build_agent_health_three_agents():
     rows = build_agent_health(probe_bridge=False)
-    assert [r["id"] for r in rows] == ["cursor", "codex", "claude", "kimi", "kimi_work", "local"]
+    assert [r["id"] for r in rows] == [
+        "cursor",
+        "codex",
+        "claude",
+        "kimi_work",
+        "kimi",
+        "local",
+    ]
 
 
 def test_reconnect_cursor_bridge_invalidates(monkeypatch):

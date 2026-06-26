@@ -11,6 +11,7 @@ import json
 import os
 import sys
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
@@ -67,6 +68,28 @@ _endpoint_cache: ControlEndpoint | None = None
 _cache_lock = threading.Lock()
 _rpc_lock = threading.Lock()
 _async_loop_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="kimi-ws-rpc")
+_probe_ok_at: float | None = None
+_capabilities_cache: tuple[float, dict[str, Any]] | None = None
+_CAPABILITIES_TTL_S = 300.0
+
+
+def _probe_ttl_s() -> float:
+    raw = (os.getenv("AGENT_LAB_KIMI_WORK_PROBE_TTL_S") or "60").strip()
+    try:
+        return max(5.0, float(raw))
+    except ValueError:
+        return 60.0
+
+
+def mark_probe_ok() -> None:
+    global _probe_ok_at
+    _probe_ok_at = time.monotonic()
+
+
+def probe_recently_ok() -> bool:
+    if _probe_ok_at is None:
+        return False
+    return (time.monotonic() - _probe_ok_at) < _probe_ttl_s()
 
 
 def _mock_enabled() -> bool:
@@ -133,10 +156,20 @@ def kimi_work_bridge_failure_payload(
     }
 
 
-def invalidate_endpoint_cache() -> None:
-    global _endpoint_cache
+def invalidate_endpoint_cache_only() -> None:
+    """Drop cached endpoint URL/token without clearing recent probe freshness."""
+    global _endpoint_cache, _capabilities_cache
     with _cache_lock:
         _endpoint_cache = None
+        _capabilities_cache = None
+
+
+def invalidate_endpoint_cache() -> None:
+    global _endpoint_cache, _probe_ok_at, _capabilities_cache
+    with _cache_lock:
+        _endpoint_cache = None
+        _probe_ok_at = None
+        _capabilities_cache = None
 
 
 def _refresh_bridge_on_probe_failure() -> None:
@@ -161,7 +194,9 @@ def _resolve_live_endpoint() -> ControlEndpoint:
     last_exc: KimiWorkBridgeUnavailable | None = None
     for attempt in range(_WS_RESOLVE_ATTEMPTS):
         try:
-            return ensure_daimon()
+            endpoint = ensure_daimon()
+            mark_probe_ok()
+            return endpoint
         except KimiWorkBridgeUnavailable as exc:
             last_exc = exc
             invalidate_endpoint_cache()
@@ -194,22 +229,31 @@ def _probe_endpoint_ws(endpoint: ControlEndpoint) -> bool:
     features = result.get("features")
     if not isinstance(features, list):
         return False
-    return "conversations.send" in features
+    ok = "conversations.send" in features
+    if ok:
+        _store_capabilities(result)
+        mark_probe_ok()
+    return ok
 
 
-def probe_control() -> tuple[str, str | None]:
+def probe_control(*, force: bool = False) -> tuple[str, str | None]:
     """Return (bridge_status, error_hint) for health rows."""
+    global _endpoint_cache
     if _mock_enabled():
         return "ok", None
     if not is_share_configured():
         return "error", "Kimi Work daimon-share config 없음 — Kimi 앱에서 Work 최초 로그인"
+    if not force and probe_recently_ok():
+        with _cache_lock:
+            if _endpoint_cache is not None:
+                return "ok", None
     try:
         endpoint = _resolve_live_endpoint()
     except KimiWorkBridgeUnavailable as exc:
         return "error", str(exc)
-    global _endpoint_cache
     with _cache_lock:
         _endpoint_cache = endpoint
+    mark_probe_ok()
     return "ok", None
 
 
@@ -226,6 +270,45 @@ def _get_endpoint() -> ControlEndpoint:
         if _endpoint_cache is None:
             _endpoint_cache = endpoint
         return _endpoint_cache
+
+
+def _store_capabilities(payload: dict[str, Any]) -> None:
+    global _capabilities_cache
+    _capabilities_cache = (time.monotonic(), payload)
+
+
+def _cached_capabilities() -> dict[str, Any] | None:
+    cached = _capabilities_cache
+    if cached is None:
+        return None
+    cached_at, payload = cached
+    if (time.monotonic() - cached_at) > _CAPABILITIES_TTL_S:
+        return None
+    return payload
+
+
+def warm_bridge(*, background: bool = False) -> None:
+    """Pre-connect daimon on API startup so first turn avoids cold spawn/probe."""
+    if _mock_enabled() or not is_share_configured():
+        return
+    if (os.getenv("AGENT_LAB_KIMI_WORK_WARM_ON_STARTUP") or "1").strip().lower() in {
+        "0",
+        "false",
+        "off",
+        "no",
+    }:
+        return
+
+    def _run() -> None:
+        try:
+            probe_control(force=False)
+        except Exception:
+            pass
+
+    if background:
+        threading.Thread(target=_run, daemon=True, name="kimi-work-warm").start()
+    else:
+        _run()
 
 
 def _mock_capabilities_get() -> dict[str, Any]:
@@ -392,15 +475,55 @@ def _mock_submit_tool_result(
     return {"status": "submitted", "toolCallId": tool_call_id}
 
 
+def _mock_rpc(method: str, params: dict[str, Any], *, on_push: Callable[[str, dict[str, Any]], None] | None = None) -> Any:
+    if method == "capabilities.get":
+        return _mock_capabilities_get()
+    if method == "conversations.create":
+        return {"conversationKey": _mock_conversations_create(title=str(params.get("title") or ""))}
+    if method == "conversations.send":
+        return _mock_send_turn(
+            conversation_key=str(params.get("conversationKey") or ""),
+            text=str(params.get("text") or ""),
+            system=str(params.get("system") or "") or None,
+            on_push=on_push,
+        )
+    if method == "conversations.submitToolResult":
+        raw_result = params.get("result")
+        if not isinstance(raw_result, dict):
+            raw_result = {}
+        return _mock_submit_tool_result(
+            conversation_key=str(params.get("conversationKey") or ""),
+            tool_call_id=str(params.get("toolCallId") or ""),
+            result=raw_result,
+            on_push=on_push,
+        )
+    if method == "workspace.openProject":
+        path = str(params.get("path") or "")
+        if path.endswith("/openProject-fail"):
+            raise KimiWorkBridgeUnavailable("mock openProject failure")
+        return _mock_open_project(path)
+    if method == "workspace.addEntry":
+        return _mock_add_entry(str(params.get("path") or ""))
+    raise KimiWorkBridgeUnavailable(f"unsupported mock RPC method: {method}")
+
+
 def _daimon_submit_tool_result_supported() -> bool:
     if _mock_enabled():
         return True
-    try:
-        caps = rpc("capabilities.get", {})
-        features = caps.get("features") if isinstance(caps, dict) else None
+    cached = _cached_capabilities()
+    if isinstance(cached, dict):
+        features = cached.get("features")
         if isinstance(features, list):
             normalized = {str(item).strip() for item in features if str(item).strip()}
             return "conversations.submitToolResult" in normalized
+    try:
+        caps = rpc("capabilities.get", {})
+        if isinstance(caps, dict):
+            _store_capabilities(caps)
+            features = caps.get("features")
+            if isinstance(features, list):
+                normalized = {str(item).strip() for item in features if str(item).strip()}
+                return "conversations.submitToolResult" in normalized
     except Exception:
         pass
     return False
@@ -442,6 +565,75 @@ def submit_conversation_tool_result(
 
 
 from agent_lab.kimi_work_push_payload import assistant_reply_text, push_message_parts
+
+
+async def _ws_rpc_batch_loop(
+    endpoint: ControlEndpoint,
+    calls: list[tuple[str, dict[str, Any]]],
+    *,
+    timeout_s: float,
+) -> list[Any]:
+    import websockets
+
+    if not calls:
+        return []
+    headers = {"Authorization": f"Bearer {endpoint.token}"}
+    results: list[Any] = []
+    async with websockets.connect(endpoint.url, additional_headers=headers) as ws:
+        for req_id, (method, params) in enumerate(calls, start=1):
+            await ws.send(
+                json.dumps({"jsonrpc": "2.0", "id": req_id, "method": method, "params": params}),
+            )
+            while True:
+                raw = await asyncio.wait_for(ws.recv(), timeout=timeout_s)
+                msg = json.loads(raw)
+                push_method = msg.get("method")
+                if isinstance(push_method, str) and push_method in _PUSH_METHODS:
+                    continue
+                if msg.get("id") == req_id:
+                    if msg.get("error"):
+                        err = msg["error"]
+                        if isinstance(err, dict):
+                            raise KimiWorkBridgeUnavailable(str(err.get("message") or err))
+                        raise KimiWorkBridgeUnavailable(str(err))
+                    results.append(msg.get("result"))
+                    if method == "capabilities.get" and isinstance(msg.get("result"), dict):
+                        _store_capabilities(msg["result"])
+                    break
+    return results
+
+
+def _live_rpc_batch(
+    endpoint: ControlEndpoint,
+    calls: list[tuple[str, dict[str, Any]]],
+    *,
+    timeout_s: float = 30.0,
+) -> list[Any]:
+    def _run_in_fresh_loop() -> list[Any]:
+        return asyncio.run(_ws_rpc_batch_loop(endpoint, calls, timeout_s=timeout_s))
+
+    with _rpc_lock:
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return _run_in_fresh_loop()
+        return _async_loop_executor.submit(_run_in_fresh_loop).result()
+
+
+def rpc_batch(calls: list[tuple[str, dict[str, Any]]], *, timeout_s: float = 30.0) -> list[Any]:
+    """Run multiple non-streaming RPCs on one WebSocket (prep latency saver)."""
+    if _mock_enabled():
+        return [_mock_rpc(method, params or {}) for method, params in calls]
+    endpoint = _get_endpoint()
+    try:
+        return _live_rpc_batch(endpoint, calls, timeout_s=timeout_s)
+    except Exception as exc:
+        if not is_transient_bridge_error(exc):
+            raise
+        invalidate_endpoint_cache_only()
+        _refresh_bridge_on_probe_failure()
+        endpoint = _get_endpoint()
+        return _live_rpc_batch(endpoint, calls, timeout_s=timeout_s)
 
 
 async def _ws_rpc_loop(
@@ -540,47 +732,26 @@ def rpc(
 ) -> Any:
     """Dispatch a control RPC (mock or live WS)."""
     if _mock_enabled():
-        params = params or {}
-        if method == "capabilities.get":
-            return _mock_capabilities_get()
-        if method == "conversations.create":
-            return {"conversationKey": _mock_conversations_create(title=str(params.get("title") or ""))}
-        if method == "conversations.send":
-            return _mock_send_turn(
-                conversation_key=str(params.get("conversationKey") or ""),
-                text=str(params.get("text") or ""),
-                system=str(params.get("system") or "") or None,
-                on_push=on_push,
-            )
-        if method == "conversations.submitToolResult":
-            raw_result = params.get("result")
-            if not isinstance(raw_result, dict):
-                raw_result = {}
-            return _mock_submit_tool_result(
-                conversation_key=str(params.get("conversationKey") or ""),
-                tool_call_id=str(params.get("toolCallId") or ""),
-                result=raw_result,
-                on_push=on_push,
-            )
-        if method == "workspace.openProject":
-            path = str(params.get("path") or "")
-            if path.endswith("/openProject-fail"):
-                raise KimiWorkBridgeUnavailable("mock openProject failure")
-            return _mock_open_project(path)
-        if method == "workspace.addEntry":
-            return _mock_add_entry(str(params.get("path") or ""))
-        raise KimiWorkBridgeUnavailable(f"unsupported mock RPC method: {method}")
+        return _mock_rpc(method, params or {}, on_push=on_push)
 
     endpoint = _get_endpoint()
     try:
-        return _live_rpc(endpoint, method, params or {}, on_push=on_push)
+        result = _live_rpc(endpoint, method, params or {}, on_push=on_push)
+        if method == "capabilities.get" and isinstance(result, dict):
+            _store_capabilities(result)
+        mark_probe_ok()
+        return result
     except Exception as exc:
         if not is_transient_bridge_error(exc):
             raise
-        invalidate_endpoint_cache()
+        invalidate_endpoint_cache_only()
         _refresh_bridge_on_probe_failure()
         endpoint = _get_endpoint()
-        return _live_rpc(endpoint, method, params or {}, on_push=on_push)
+        result = _live_rpc(endpoint, method, params or {}, on_push=on_push)
+        if method == "capabilities.get" and isinstance(result, dict):
+            _store_capabilities(result)
+        mark_probe_ok()
+        return result
 
 
 def send_turn(

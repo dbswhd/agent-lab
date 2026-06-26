@@ -138,6 +138,7 @@ def test_preset_catalog_preset_fields() -> None:
     cat = preset_catalog()
     for row in cat["presets"]:
         assert "id" in row
+        assert "label" in row
         assert "turn_profile" in row
         assert "description" in row
         assert "role_policy" in row

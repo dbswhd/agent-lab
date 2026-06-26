@@ -80,17 +80,19 @@ def respond(
             code="kimi_work_session_required",
         )
 
-    from agent_lab.kimi_work_session import get_or_create_conversation
-    from agent_lab.kimi_work_workspace import ensure_workspace_bound, resolve_workspace_path
+    from agent_lab.kimi_work_session import ensure_kimi_work_session
+    from agent_lab.kimi_work_workspace import resolve_workspace_path
 
     workspace = resolve_workspace_path(permissions, folder)
-    ensure_workspace_bound(folder, workspace)
+    conversation_key = ensure_kimi_work_session(
+        folder,
+        workspace_path=workspace,
+        title=Path(str(folder)).name,
+    )
     if on_activity:
         from agent_lab.room_sse_stream import format_tool_activity_line
 
         on_activity(format_tool_activity_line(tool="workspace", args=str(workspace)))
-
-    conversation_key = get_or_create_conversation(folder, title=Path(str(folder)).name)
 
     _push_mapper.reset()
 

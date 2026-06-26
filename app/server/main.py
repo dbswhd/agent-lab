@@ -114,6 +114,9 @@ def _api_startup() -> None:
             record_last_recovery(rec)
         if start_mission_scheduler_background():
             write_boot_line("mission scheduler background thread started")
+        from agent_lab.kimi_control_client import warm_bridge
+
+        warm_bridge(background=True)
     except Exception as exc:
         write_boot_line(f"uvicorn startup diagnostics failed: {exc}")
 
@@ -122,9 +125,12 @@ def _api_startup() -> None:
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     _api_startup()
     yield
-    from agent_lab.kimi_daimon_supervisor import shutdown_owned_daimon
+    from agent_lab.kimi_daimon_supervisor import _keep_daimon_on_api_shutdown, detach_owned_daimon, shutdown_owned_daimon
 
-    shutdown_owned_daimon()
+    if _keep_daimon_on_api_shutdown():
+        detach_owned_daimon()
+    else:
+        shutdown_owned_daimon()
 
 
 app = FastAPI(title="Agent Lab API", version="0.1.0", lifespan=lifespan)

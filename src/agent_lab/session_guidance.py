@@ -102,9 +102,10 @@ CONTENT_ROUND_GUIDANCE = """\
 
 SINGLE_EXECUTOR_GUIDANCE = """\
 [SINGLE_EXECUTOR — discuss vs execute]
-- **Discuss (this room turn):** Codex + Claude = read-only review, checklists, `[PROPOSED:]` — **no file edits** and do not claim you edited files.
+- **Discuss (this room turn):** Codex + Claude + Kimi Work = read-only review, checklists, `[PROPOSED:]` — **no file edits** and do not claim you edited files.
 - **File/build edits:** Cursor only, via plan execute (thin execute) or explicit Human GO to Cursor.
 - Codex: verify with read/grep/shell read-only; propose patches as text, not writes.
+- Do not announce "discuss mode" in prose — constraints already state policy.
 """
 
 VERIFICATION_ARTIFACT_GUIDANCE = """\

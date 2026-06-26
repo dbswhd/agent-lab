@@ -18,6 +18,7 @@ import {
   type SessionSummary,
 } from "./api/client";
 import { healthToAgentOptions } from "./utils/agentHealthOptions";
+import { sortByAgentId } from "./utils/agentOrder";
 import { RoomChat } from "./components/RoomChat";
 import { SettingsPage } from "./components/SettingsPage";
 import { getTurnStrategy } from "./utils/composeMode";
@@ -72,6 +73,9 @@ export default function App() {
   const [listTab, setListTab] = useState<ListTab>("active");
   const [health, setHealth] = useState("");
   const [healthAgents, setHealthAgents] = useState<AgentHealthRow[]>([]);
+  const [teamHealthAgents, setTeamHealthAgents] = useState<AgentHealthRow[]>(
+    [],
+  );
   const [apiOk, setApiOk] = useState(true);
   const [healthLoading, setHealthLoading] = useState(false);
   const [reconnecting, setReconnecting] = useState(false);
@@ -169,18 +173,21 @@ export default function App() {
   }, []);
 
   const reloadHealth = useCallback(
-    async (probeBridge = false): Promise<boolean> => {
+    async (probeBridge = false, probePreflight?: boolean): Promise<boolean> => {
       setHealthLoading(true);
       try {
-        const h = await fetchHealth(probeBridge, probeBridge);
+        const sessionForHealth = composerNew ? null : selectedId;
+        const preflight = probePreflight ?? probeBridge;
+        const h = await fetchHealth(probeBridge, preflight, sessionForHealth);
         const ok = Boolean(h.ok && h.api?.ok !== false);
         setApiOk(ok);
         apiOkRef.current = ok;
         setSessionsDir(
           typeof h.sessions_dir === "string" ? h.sessions_dir : null,
         );
-        const rows = h.agents ?? [];
+        const rows = sortByAgentId(h.agents_all ?? h.agents ?? []);
         setHealthAgents(rows);
+        setTeamHealthAgents(h.agents ?? []);
         const cursor = rows.find((a) => a.id === "cursor");
         setBridgeProbeFailed(
           Boolean(
@@ -192,7 +199,10 @@ export default function App() {
         );
         const opts = healthToAgentOptions(rows);
         setAgents(opts);
-        setHealth(formatRoomModelLine(opts) || "backend");
+        const teamOpts = healthToAgentOptions(sortByAgentId(h.agents ?? []));
+        setHealth(
+          formatRoomModelLine(teamOpts.length ? teamOpts : opts) || "backend",
+        );
         return ok;
       } catch (e) {
         const msg = String(e);
@@ -208,7 +218,7 @@ export default function App() {
         setHealthLoading(false);
       }
     },
-    [],
+    [composerNew, selectedId],
   );
 
   const handleReconnectCursor = useCallback(async () => {
@@ -252,9 +262,10 @@ export default function App() {
     (async () => {
       for (let attempt = 0; attempt < 90; attempt += 1) {
         if (cancelled) return;
-        const ok = await reloadHealth(true);
+        const ok = await reloadHealth(false);
         if (ok) {
           await reloadSessions();
+          void reloadHealth(true, true);
           return;
         }
         await new Promise((r) => window.setTimeout(r, 400));
@@ -264,6 +275,10 @@ export default function App() {
       cancelled = true;
     };
   }, [reloadHealth, reloadSessions]);
+
+  useEffect(() => {
+    void reloadHealth(false);
+  }, [selectedId, composerNew, reloadHealth]);
 
   useEffect(() => {
     void ensureDesktopNotifyPermission();
@@ -559,7 +574,7 @@ export default function App() {
               </div>
               <SessionRailStatusChip
                 apiOk={apiOk}
-                agents={healthAgents}
+                agents={teamHealthAgents}
                 loading={healthLoading}
                 reconnecting={reconnecting}
                 sessionsDir={sessionsDir}
@@ -680,6 +695,7 @@ export default function App() {
                   agents={agents}
                   apiOk={apiOk}
                   healthAgents={healthAgents}
+                  teamHealthAgents={teamHealthAgents}
                   sessionId={roomSessionId}
                   session={roomSessionDetail}
                   loading={roomSessionLoading}

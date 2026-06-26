@@ -18,13 +18,13 @@ def test_kimi_work_connect_hint_and_tool_rules() -> None:
     assert "Work peer" in AGENT_CONNECT_HINT["kimi_work"]
     rules = agent_tool_rules("kimi_work")
     assert "ask_human" in rules
-    assert "Discuss mode" in rules
+    assert "Discuss 턴" in rules
 
 
 def test_kimi_work_permission_preamble_discuss() -> None:
     block = permission_preamble({"_discuss_mode": True}, "kimi_work")
     assert "Kimi Work runtime" in block
-    assert "Discuss mode" in block
+    assert "Discuss 턴" in block
 
 
 def test_context_bundle_includes_kimi_work_hints() -> None:

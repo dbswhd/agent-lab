@@ -22,6 +22,7 @@ def _restore_room_models() -> object:
     import os
 
     prev = os.environ.get("AGENT_LAB_ROOM_MODELS")
+    os.environ.pop("AGENT_LAB_ROOM_MODELS", None)
     yield
     if prev is None:
         os.environ.pop("AGENT_LAB_ROOM_MODELS", None)
@@ -165,18 +166,35 @@ def test_login_cursor_without_key_starts_oauth(cfg: Path) -> None:
     assert res["auth_kind"] == "oauth"
 
 
-def test_model_view_and_set(cfg: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_model_view_and_set(cfg: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from agent_lab.slash_commands import dispatch
 
     monkeypatch.delenv("AGENT_LAB_ROOM_MODELS", raising=False)
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    (folder / "run.json").write_text("{}", encoding="utf-8")
     view = dispatch("/model")
     assert view["composition"] == ["cursor", "codex", "claude"]
     staged = dispatch("/model cursor,kimi,claude")
     assert staged["stage"] == "persist"
-    assert staged["composition"] == ["cursor", "kimi", "claude"]
-    upd = dispatch("/model cursor,kimi,claude session")
-    assert upd["updated"] is True and upd["composition"] == ["cursor", "kimi", "claude"]
+    assert staged["composition"] == ["cursor", "claude", "kimi"]
+    upd = dispatch("/model cursor,kimi,claude session", session_folder=folder)
+    assert upd["updated"] is True and upd["composition"] == ["cursor", "claude", "kimi"]
     assert upd["scope"] == "session"
+
+
+def test_model_session_scope_does_not_set_process_env(cfg: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from agent_lab.slash_commands import dispatch
+
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    (folder / "run.json").write_text("{}", encoding="utf-8")
+    monkeypatch.delenv("AGENT_LAB_ROOM_MODELS", raising=False)
+    res = dispatch("/model kimi_work session", session_folder=folder)
+    assert res["ok"] is True and res["scope"] == "session"
+    import os
+
+    assert os.environ.get("AGENT_LAB_ROOM_MODELS") is None
 
 
 def test_usage_reports_cooldown(cfg: Path) -> None:

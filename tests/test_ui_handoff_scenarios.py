@@ -187,16 +187,16 @@ def test_composer_question_inbox_is_separate_from_generic_pending_hint():
     assert "visiblePending[0]?.kind" in inbox
 
 
-def test_turn_picker_uses_quick_team_loop_contract():
-    turn = _read("web", "src", "utils", "turnProfile.ts")
-    compose = _read("web", "src", "utils", "composeMode.ts")
-    assert 'id: "team"' in turn
-    assert 'id: "loop"' in turn
-    assert 'label: ko ? "팀" : "Team"' in turn
-    assert '"verified") return "loop"' in turn
-    assert 'id === "specialist"' not in turn
-    assert 'label: "♾️"' not in turn
-    assert "TEAM_PLAN_ALLOWED" in compose
+def test_room_preset_picker_replaces_turn_strategy_ui():
+    composer = _read("web", "src", "components", "ChatComposer.tsx")
+    presets = _read("web", "src", "utils", "roomPresets.ts")
+    room = _read("web", "src", "components", "RoomChat.tsx")
+    assert "ComposerTurnPicker" not in composer
+    assert "resolveRoomPresets" in presets
+    assert "presetDisplayLabel" in presets
+    assert "resolveRoomPresets" in room
+    assert "onRoomPresetSelect={selectRoomPreset}" in room
+    assert "ACTIVE_ROOM_PRESET_IDS" not in room
 
 
 def test_m6_work_exec_classes_only_in_plan_execute_panel():

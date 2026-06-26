@@ -223,8 +223,10 @@ def _owned_endpoint_live() -> ControlEndpoint | None:
     cached = owned_endpoint()
     if cached is None:
         return None
-    from agent_lab.kimi_control_client import probe_endpoint_ws
+    from agent_lab.kimi_control_client import probe_endpoint_ws, probe_recently_ok, mark_probe_ok
 
+    if probe_recently_ok():
+        return cached
     if probe_endpoint_ws(cached):
         return cached
     shutdown_owned_daimon()
@@ -269,6 +271,26 @@ def shutdown_owned_daimon() -> None:
             os.kill(pid, signal.SIGTERM)
         except OSError:
             pass
+
+
+def detach_owned_daimon() -> None:
+    """Drop in-process ownership without terminating headless daimon (faster API restart)."""
+    with _supervisor_lock:
+        _clear_owned()
+    from agent_lab.kimi_control_client import invalidate_endpoint_cache_only
+
+    invalidate_endpoint_cache_only()
+
+
+def _keep_daimon_on_api_shutdown() -> bool:
+    import os
+
+    return (os.getenv("AGENT_LAB_KIMI_WORK_KEEP_DAIMON_ON_SHUTDOWN") or "1").strip().lower() not in {
+        "0",
+        "false",
+        "off",
+        "no",
+    }
 
 
 def _wait_for_endpoint(
@@ -416,6 +438,11 @@ def ensure_daimon(*, spawn_only: bool = False) -> ControlEndpoint:
             "Kimi Work credentials 없음 — Kimi 앱에서 Work 최초 로그인 필요",
             code="kimi_work_not_configured",
         )
+
+    if not spawn_only:
+        attached = _try_attach_external(share_dir)
+        if attached is not None:
+            return attached
 
     cached = _owned_endpoint_live()
     if cached is not None:

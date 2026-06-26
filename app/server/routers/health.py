@@ -57,14 +57,17 @@ def health(
     _: None = Depends(enforce_health_burst_limit),
 ) -> dict[str, Any]:
     run_meta: dict[str, Any] | None = None
+    session_folder = None
     if session_id:
         folder = SESSIONS_DIR / session_id
         if folder.is_dir():
+            session_folder = folder
             _plan_md, run_meta = room_session_context(folder)
     return build_health_payload(
         probe_bridge=probe_bridge,
         probe_preflight=probe_preflight,
         run_meta=run_meta,
+        session_folder=session_folder,
     )
 
 

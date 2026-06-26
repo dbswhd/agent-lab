@@ -1,6 +1,7 @@
 import { apiBase } from "../api/client";
 import type { AgentHealthRow } from "../api/client";
 import { normalizeTurnProfile, type ComposerTurnProfile } from "./turnProfile";
+import { TURN_MODE_ORDER } from "./agentOrder";
 
 export type RoomModeRow = {
   id: string;
@@ -70,8 +71,13 @@ export function turnStrategyFromCatalog(
     team: { en: "Team", ko: "팀" },
     loop: { en: "Loop", ko: "루프" },
   };
-  return catalog.modes
-    .filter((m) => m.id === "quick" || m.id === "team" || m.id === "loop")
+  const byId = new Map(
+    catalog.modes
+      .filter((m) => TURN_MODE_ORDER.includes(m.id as (typeof TURN_MODE_ORDER)[number]))
+      .map((mode) => [mode.id, mode] as const),
+  );
+  return TURN_MODE_ORDER.map((id) => byId.get(id))
+    .filter((mode): mode is RoomModeRow => Boolean(mode))
     .map((mode) => {
       const id = mode.id as "quick" | "team" | "loop";
       return {

@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from agent_lab.app_config import config_dir
-
 
 def default_room_models_path() -> Path:
+    from agent_lab.app_config import config_dir
+
     return config_dir() / "room_models"
 
 

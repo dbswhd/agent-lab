@@ -654,15 +654,24 @@
   border-color: color-mix(in srgb, var(--agent-codex) 35%, var(--border-hair));
 }
 
-/* ---- Composer preset (fast / supervisor) ------------------- */
+/* ---- Composer preset (fast / supervisor) + aligned control rows ---- */
+.composer-control-row {
+  width: 100%;
+  box-sizing: border-box;
+  padding-left: var(--composer-pad-x, var(--space-12));
+  padding-right: var(--composer-pad-x, var(--space-12));
+}
 .composer-preset-row {
-  padding: 0 var(--composer-pad-x, var(--space-12));
+  gap: var(--space-4);
 }
 .composer-preset-row__head {
   width: 100%;
 }
 .composer-preset-seg button.is-active[data-preset="supervisor"] {
   color: var(--agent-codex);
+}
+.composer-preset-seg button.is-active[data-preset="fast"] {
+  color: var(--accent);
 }
 
 /* ---- Turn picker ----------------------------------------- */

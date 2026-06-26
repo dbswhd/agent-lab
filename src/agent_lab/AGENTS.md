@@ -7,11 +7,19 @@
 - execute gate 우회 금지
 
 ## 핵심 모듈 요약
-- `room.py` — Room 오케스트레이션 (3-agent Discuss, BLOCK/CHALLENGE)
+- `room.py` — Room 오케스트레이션 (multi-agent discuss, BLOCK/CHALLENGE)
+- `kimi_work_provider.py` / `kimi_control_client.py` — Kimi Work daimon peer
+- `room_preset.py` — fast / supervisor preset catalog
+- `agent_permissions.py` — discuss overlay + runtime blocks in `[고정 constraints]`
 - `plan_execute*.py` — worktree dry-run → merge gate
 - `mission_loop.py` — Layer 6 FSM (DISCUSS↔EXECUTE↔VERIFY)
-- `run_meta.py` — `run.json` 헬퍼 (patch_run_meta, read_run_meta)
-- `session_guidance.py` — 에이전트 context bundle 조립
+- `run_meta.py` — `run.json` 헬퍼
+- `session_guidance.py` — 에이전트 context bundle + `.agent-lab/PROJECT.md` 주입
+
+## Discuss vs plan
+- `apply_discuss_executor_policy()` sets `_discuss_mode` → read-only preamble for codex/claude/kimi_work
+- Pure discuss: scribe skip (E2b), tasks harvest without pre-claim
+- Agents must not meta-announce mode — policy is in constraints (`permission_preamble`, `KIMI_WORK_TOOL_RULES`)
 
 ## 파일 첫 줄
 `from __future__ import annotations` 필수

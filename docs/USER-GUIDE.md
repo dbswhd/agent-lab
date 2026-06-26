@@ -58,7 +58,7 @@
 
 ### 1.1 Agent Lab이란
 
-**Agent Lab**은 AI 개발 작업을 계획·승인·격리 실행·검증하는 **Human-in-the-loop 에이전트 개발 콘솔**이다. Cursor · Codex · Claude가 Room에서 협업하고, 대화를 **`plan.md` 계약**으로 정리하며, 필요 시 코드 변경을 **worktree 실행 → Human 승인 → merge → Oracle 검증**까지 이어간다.
+**Agent Lab**은 AI 개발 작업을 계획·승인·격리 실행·검증하는 **Human-in-the-loop 에이전트 개발 콘솔**이다. Cursor · Codex · Claude(·선택 Kimi Work)가 Room에서 협업하고, 대화를 **`plan.md` 계약**으로 정리하며, 필요 시 코드 변경을 **worktree 실행 → Human 승인 → merge → Oracle 검증**까지 이어간다.
 
 1차 타깃은 AI-native 개발팀과 내부 플랫폼팀의 tech lead·maintainer다. 일반 챗봇이나 범용 AI 오케스트레이션 대시보드가 아니라, 코드 변경을 안전하고 감사 가능한 실행 단위로 묶는 작업 도구다.
 
@@ -70,13 +70,16 @@
 | **실행** | plan `## 지금 실행` → worktree dry-run → diff 승인 |
 | **추적** | Tasks · endorsements · objections · executions |
 
-### 1.2 세 에이전트 역할
+### 1.2 Room 에이전트 역할
 
 | 에이전트 | 한 줄 역할 | 잘 맡기는 일 |
 |----------|------------|--------------|
 | **Cursor** | 레포를 직접 보고 **파일·UI·빌드·패치** | “이 버그 왜?” “패치 방법” execute |
 | **Codex** | **쪼개기·순서·검증·완료 기준** | 테스트 플랜, 원인 추적, decompose |
 | **Claude** | **맹점·리스크·설명** — 두 번째 의견 | 설계 검토, 요약, Oracle(선택) |
+| **Kimi Work** | **Work quota daimon peer** — 레포 검증·대안 | Loop/supervisor에서 peer, envelope 합의 |
+
+**Discuss 턴** (plan 갱신 OFF): Codex·Claude·Kimi Work는 read-only — 도구로 검증하고 실행 제안은 `[PROPOSED:]` 텍스트만. 에이전트는 「discuss 모드입니다」처럼 **모드를 반복 선언하지 않음** (payload `[고정 constraints]`에 이미 명시).
 
 역할 프롬프트: `src/agent_lab/agents/prompts.py`  
 상세: [05-room-agent-roles.md](./05-room-agent-roles.md)
@@ -98,7 +101,7 @@
 | **Session** | 주제 하나 = 디스크 폴더 하나 |
 | **Turn / 턴** | Human 메시지 1회 + 그에 대한 에이전트 라운드 전체 |
 | **Round / 라운드** | 같은 턴 안 에이전트 웨이브 (R1, R2, …) |
-| **Room** | Cursor + Codex + Claude 병렬·순차 토론 (기본 워크플로) |
+| **Room** | 선택 에이전트 병렬·순차 토론 (기본 cursor+codex+claude, optional kimi_work) |
 | **Work** | plan 문서 + execute/review/approval **단일 surface** |
 | **Scribe** | `plan.md`를 쓰는 정리 에이전트 (기본 Claude) |
 | **Gate** | 조건 충족 전 다음 단계 진행 불가 |
@@ -114,7 +117,7 @@
 | Desktop | Tauri 2 + Rust (`web/src-tauri/`) |
 | Frontend | React 18 + Vite (dev **5173**) |
 | Backend | FastAPI + uvicorn (**8765**) |
-| 에이전트 | Cursor SDK / Codex CLI / Claude CLI |
+| 에이전트 | Cursor SDK / Codex CLI / Claude CLI / Kimi Work daimon |
 
 ### 2.2 실행 형태
 
@@ -162,6 +165,7 @@ Tauri/GUI는 PATH가 짧으므로 `CODEX_BIN`, `CLAUDE_BIN` 등 **절대 경로*
 | Codex | `codex login` |
 | Claude | `claude login` |
 | Cursor | `CURSOR_API_KEY` + `pip install -e ".[cursor]"` |
+| Kimi Work | Kimi 앱 Work 로그인 · `daimon-share/config.json` (macOS) |
 
 ### 3.2 최초 설치
 
@@ -386,20 +390,31 @@ sessions/2026-06-02-my-topic/
 
 **plan 갱신 UI는 Composer에 없음** — Work 탭 `PlanTabToolbar`만.
 
-### 6.2 응답 방식 (turn profile)
+### 6.2 Room preset (Composer UI)
 
-| Profile | 라벨 | R1 | R2+ | consensus | plan |
-|---------|------|----|-----|-----------|------|
-| **quick** | 빠른 | 선택 1명 | — | off | 유지 |
-| **analyze** | 분석 | 선택 전원 병렬 | — | off | 유지 |
-| **specialist** | 분업 | Codex+Claude | Cursor | off | 유지; `research_mode` |
-| **free** | ♾️ | 전원 | debate+anchor | **on** | 합의 후 auto-scribe 시도 |
+Composer 모드는 **빠른 / 팀 / 루프** 3분할이 아니라 **Room preset** 2개로 고정된다 (`GET /api/room/presets`).
 
-레거시: `discuss`→analyze, `review`→free.
+| Preset | UI 라벨 | 런타임 `turn_profile` | plan |
+|--------|---------|-------------------------|------|
+| **fast** | 빠른 | `quick` (1 lead) | OFF (토글 잠금) |
+| **supervisor** | 감독 | `loop` (합의·검증) | ON (토글 잠금) |
 
-**UI 저장:** `localStorage` `agent-lab-turn-profile`
+- 세션 `run.json`의 `room_preset` · 전송 시 `preset` form 필드로 유지
+- `quick` / `team` / `loop`는 **런타임 내부 프로필** — Composer segmented picker는 제거됨 (`roomPresets.ts`)
 
-### 6.3 Compose mode (plan 갱신 여부)
+### 6.3 응답 방식 (turn profile, 런타임)
+
+| Profile | 라벨 (내부) | R1 | consensus | plan |
+|---------|-------------|----|-----------|------|
+| **quick** | 빠른 | 선택 1명 | off | preset fast 시 OFF |
+| **team** | 팀 | 선택 전원 병렬 | off | 선택 |
+| **loop** | 루프 | 선택 전원 | on | preset supervisor 시 ON |
+
+레거시: `discuss`→team, `review`/`free`→loop. Composer UI에서는 preset이 profile을 결정한다.
+
+**UI 저장:** preset은 세션·전송 payload; `turn_profile`은 `localStorage` `agent-lab-turn-profile` (preset 변경 시 동기화).
+
+### 6.4 Compose mode (plan 갱신 여부)
 
 | mode | 설정 | 턴 후 Scribe |
 |------|------|--------------|
@@ -409,13 +424,13 @@ sessions/2026-06-02-my-topic/
 
 「**지금 정리**」: 새 Human 메시지 없이 `synthesize_only` SSE run.
 
-### 6.4 전송 API body (요약)
+### 6.5 전송 API body (요약)
 
 `POST /api/room/runs` → SSE
 
 주요 필드: `topic`, `agents[]`, `mode` (discuss|plan), `consensus_mode`, `turn_profile`, `efficiency_mode`, `permissions`, `workspace`, `agent_capabilities`, `files`, `synthesize_only`.
 
-### 6.5 전송 게이트 (`composerSendLocked`)
+### 6.6 전송 게이트 (`composerSendLocked`)
 
 다음이면 전송 불가:
 
@@ -426,7 +441,7 @@ sessions/2026-06-02-my-topic/
 - 본문·첨부 모두 비어 있음
 - 미해결 BLOCK objection 시 placeholder만 (execute 쪽)
 
-### 6.6 권한 (permissions)
+### 6.7 권한 (permissions)
 
 기본 (`agent_permissions.roomPermissions`):
 
@@ -435,14 +450,15 @@ sessions/2026-06-02-my-topic/
 | Cursor | tools, local_agent_lab, local_pipeline |
 | Codex | cli |
 | Claude | tools, write, local paths |
+| Kimi Work | daimon workspace tools · inbox bridge (turn-time) |
 
-**Discuss overlay:** Claude write off; Codex/Claude read-only preamble.
+**Discuss overlay:** Claude write off; Codex/Claude/Kimi Work read-only preamble in `[고정 constraints]`. Kimi Work는 discuss/plan 모두 execute·patch **주장 금지** — `[PROPOSED:]`만.
 
 **현재:** `AgentPermissionAlert` UI 있으나 send path는 full defaults 사용 (모달 bypass).
 
 첫 전송 시 capabilities → `run.json` `agent_capabilities`.
 
-### 6.7 Clarifier
+### 6.8 Clarifier
 
 `AGENT_LAB_CLARIFIER=1` 일 때:
 
@@ -453,7 +469,7 @@ sessions/2026-06-02-my-topic/
 
 plan 모드 첫 synthesize 턴은 plan 맥락 질문 세트.
 
-### 6.8 슬래시 명령
+### 6.9 슬래시 명령
 
 Composer `/` 또는 palette에서 삽입.
 

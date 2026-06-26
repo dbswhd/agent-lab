@@ -118,15 +118,29 @@ def reconnect_kimi_work_bridge() -> dict[str, Any]:
     from agent_lab.kimi_daimon_supervisor import ensure_daimon, shutdown_owned_daimon
 
     invalidate_endpoint_cache()
-    shutdown_owned_daimon()
     try:
-        endpoint = ensure_daimon(spawn_only=True)
+        endpoint = ensure_daimon(spawn_only=False)
         if probe_endpoint_ws(endpoint):
             bridge, err = "ok", None
         else:
-            bridge, err = "error", "daimon Control WS probe 실패 — make dev 재시작 후 bridge 재연결"
+            shutdown_owned_daimon()
+            endpoint = ensure_daimon(spawn_only=True)
+            bridge, err = (
+                ("ok", None)
+                if probe_endpoint_ws(endpoint)
+                else ("error", "daimon Control WS probe 실패 — make dev 재시작 후 bridge 재연결")
+            )
     except Exception as exc:
-        bridge, err = "error", str(exc).strip() or "Kimi Work bridge 재연결 실패"
+        shutdown_owned_daimon()
+        try:
+            endpoint = ensure_daimon(spawn_only=True)
+            bridge, err = (
+                ("ok", None)
+                if probe_endpoint_ws(endpoint)
+                else ("error", "daimon Control WS probe 실패 — make dev 재시작 후 bridge 재연결")
+            )
+        except Exception as retry_exc:
+            bridge, err = "error", str(retry_exc).strip() or str(exc).strip() or "Kimi Work bridge 재연결 실패"
     row = agent_health_row("kimi_work", probe_bridge=False)
     row["bridge"] = bridge
     if err:
@@ -325,13 +339,13 @@ def build_agent_health(
             row.update(_capability_fields(agent_id, run_meta))
             row.update(_model_readiness_fields(agent_id))
         return rows
-    ids = list(AGENT_IDS)
     from agent_lab.agent_roster import dynamic_room_enabled
+    from agent_lab.provider_registry import provider_picker_order
 
     if dynamic_room_enabled():
-        for extra in ("kimi", "kimi_work", "local"):
-            if extra not in ids:
-                ids.append(extra)  # type: ignore[arg-type]
+        ids = provider_picker_order()
+    else:
+        ids = list(AGENT_IDS)
     return [agent_health_row(aid, probe_bridge=probe_bridge, run_meta=run_meta) for aid in ids]
 
 
@@ -340,19 +354,26 @@ def build_health_payload(
     probe_bridge: bool = False,
     probe_preflight: bool = False,
     run_meta: dict[str, Any] | None = None,
+    session_folder: Path | None = None,
 ) -> dict[str, Any]:
     from agent_lab import claude_cli, codex_cli
+    from agent_lab.agent_roster import effective_room_composition
     from agent_lab.context_limits import all_limits_for_api, efficiency_mode_default
     from agent_lab.invoke import model_name, provider
     from agent_lab.room import DEFAULT_AGENT_PARALLEL_ROUNDS, MAX_AGENT_PARALLEL_ROUNDS
     from agent_lab.room_consensus import max_consensus_calls, max_consensus_rounds
     from agent_lab.session import SESSIONS_DIR
 
-    agents = build_agent_health(
+    composition = effective_room_composition(session_folder=session_folder)
+    agents_all = build_agent_health(
         probe_bridge=probe_bridge,
         probe_preflight=probe_preflight,
         run_meta=run_meta,
     )
+    by_id = {
+        str(row.get("id") or "").strip().lower(): row for row in agents_all
+    }
+    agents = [by_id[pid] for pid in composition if pid in by_id]
     ready_ids = [a["id"] for a in agents if a.get("ready")]
 
     return {
@@ -363,7 +384,9 @@ def build_health_payload(
         "model": model_name() if provider() else None,
         "codex_cli": codex_cli.is_available(),
         "claude_cli": claude_cli.is_available(),
+        "room_composition": composition,
         "agents": agents,
+        "agents_all": agents_all,
         "agents_ready": ready_ids,
         "sessions_dir": str(SESSIONS_DIR),
         "efficiency_mode_default": efficiency_mode_default(),

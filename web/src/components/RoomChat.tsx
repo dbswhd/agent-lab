@@ -148,12 +148,14 @@ import {
   roundDividerLabel,
 } from "../utils/roundTopology";
 import {
-  composerTurnHint,
   resolveTurnSend,
   setTurnProfile,
   type ComposerTurnProfile,
 } from "../utils/turnProfile";
+import { sortAgentIds, sortAgentPickerOptions } from "../utils/agentOrder";
 import { fetchRoomModes, loopCostHintLine } from "../utils/roomModes";
+import { presetHintLine, resolveRoomPresets } from "../utils/roomPresets";
+import { formatAgentModelName } from "../utils/roomModels";
 import { WorkspaceFilesPanel } from "./WorkspaceFilesPanel";
 import { PreviewPanel } from "./PreviewPanel";
 import { TerminalPanel } from "./TerminalPanel";
@@ -259,6 +261,8 @@ type Props = {
   agents: AgentOption[];
   apiOk?: boolean;
   healthAgents?: AgentHealthRow[];
+  /** Configured room composition subset (for default agent selection). */
+  teamHealthAgents?: AgentHealthRow[];
   sessionId: string | null;
   session: SessionDetail | null;
   loading?: boolean;
@@ -337,12 +341,11 @@ function sessionToMessages(
   ];
 }
 
-const ACTIVE_ROOM_PRESET_IDS = ["fast", "supervisor"] as const;
-
 export function RoomChat({
   agents,
   apiOk = true,
   healthAgents = [],
+  teamHealthAgents = [],
   sessionId,
   session,
   loading,
@@ -410,6 +413,11 @@ export function RoomChat({
   const [loopMaxCostTier, setLoopMaxCostTier] = useState<string | null>(null);
   const [roomPreset, setRoomPreset] = useState<string | null>(null);
   const [availablePresets, setAvailablePresets] = useState<RoomPreset[]>([]);
+  const presetBootRef = useRef(false);
+  const resolvedRoomPresets = useMemo(
+    () => resolveRoomPresets(availablePresets),
+    [availablePresets],
+  );
   const composeMode: ComposeMode = planAfterSend ? "plan" : "discuss";
   const [researchMode] = useState(() => {
     try {
@@ -441,7 +449,26 @@ export function RoomChat({
     let cancelled = false;
     void fetchRoomPresets()
       .then((catalog) => {
-        if (!cancelled) setAvailablePresets(catalog.presets);
+        if (cancelled) return;
+        setAvailablePresets(catalog.presets);
+        const def = catalog.default?.trim().toLowerCase();
+        if (def && !presetBootRef.current) {
+          presetBootRef.current = true;
+          setRoomPreset(def);
+          if (def === "fast") {
+            setTurnProfileState("quick");
+            setTurnStrategy("quick");
+            setTurnProfile("quick");
+            setPlanAfterSendState(false);
+            setPlanAfterSendForSession(sessionId, false);
+          } else if (def === "supervisor") {
+            setTurnProfileState("loop");
+            setTurnStrategy("loop");
+            setTurnProfile("loop");
+            setPlanAfterSendState(true);
+            setPlanAfterSendForSession(sessionId, true);
+          }
+        }
       })
       .catch(() => {
         if (!cancelled) setAvailablePresets([]);
@@ -450,6 +477,32 @@ export function RoomChat({
       cancelled = true;
     };
   }, []);
+  useEffect(() => {
+    if (presetBootRef.current || roomPreset !== null) return;
+    const fallback =
+      resolvedRoomPresets.find((p) => p.id === "supervisor") ??
+      resolvedRoomPresets[0];
+    if (!fallback) return;
+    presetBootRef.current = true;
+    setRoomPreset(fallback.id);
+    if (fallback.id === "fast") {
+      setTurnProfileState("quick");
+      setTurnStrategy("quick");
+      setTurnProfile("quick");
+    } else if (fallback.id === "supervisor") {
+      setTurnProfileState("loop");
+      setTurnStrategy("loop");
+      setTurnProfile("loop");
+    }
+  }, [resolvedRoomPresets, roomPreset]);
+  useEffect(() => {
+    const raw = session?.run?.room_preset;
+    if (typeof raw !== "string" || !raw.trim()) return;
+    const id = raw.trim().toLowerCase();
+    if (!resolvedRoomPresets.some((p) => p.id === id)) return;
+    setRoomPreset(id);
+    presetBootRef.current = true;
+  }, [session?.run?.room_preset, resolvedRoomPresets]);
   const composerModeVariant = useMemo((): "discuss" | "plan" | "consensus" => {
     const profile = resolveTurnSend(turnProfile, selected);
     if (profile.consensusMode) return "consensus";
@@ -457,36 +510,29 @@ export function RoomChat({
     return "discuss";
   }, [turnProfile, selected, planAfterSend]);
   const composerTurnHintLine = useMemo(() => {
-    const base = composerTurnHint(turnProfile, selected, locale);
-    const costLine = loopCostHintLine(
-      healthAgents,
-      selected,
-      turnProfile,
-      locale,
-      loopMaxCostTier ?? undefined,
-    );
-    return [base, costLine].filter(Boolean).join(" · ");
-  }, [turnProfile, selected, locale, healthAgents, loopMaxCostTier]);
-  const modeChipCopy = useMemo(() => {
-    const wf = session?.run?.plan_workflow as PlanWorkflowRecord | undefined;
-    const wfActive = Boolean(wf?.enabled);
-    if (composerModeVariant === "plan") {
-      return { label: localeMsg.modePlan, hint: localeMsg.modePlanHint };
-    }
-    if (composerModeVariant === "consensus") {
-      return {
-        label: localeMsg.modeConsensus,
-        hint: localeMsg.modeConsensusHint,
-      };
-    }
-    if (wfActive && wf?.phase && wf.phase !== "APPROVED") {
-      return {
-        label: localeMsg.modeDiscuss,
-        hint: localeMsg.planWorkflowSideDiscussHint(wf.phase),
-      };
-    }
-    return { label: localeMsg.modeDiscuss, hint: localeMsg.modeDiscussHint };
-  }, [composerModeVariant, localeMsg, session?.run?.plan_workflow]);
+    const activePreset = resolvedRoomPresets.find((p) => p.id === roomPreset);
+    const presetLine = presetHintLine(activePreset, locale);
+    const costLine =
+      roomPreset === "supervisor" || turnProfile === "loop"
+        ? loopCostHintLine(
+            healthAgents,
+            selected,
+            "loop",
+            locale,
+            loopMaxCostTier ?? undefined,
+          )
+        : null;
+    return [presetLine, costLine].filter(Boolean).join(" · ");
+  }, [
+    resolvedRoomPresets,
+    roomPreset,
+    locale,
+    healthAgents,
+    selected,
+    turnProfile,
+    loopMaxCostTier,
+  ]);
+
   const [pendingSend, setPendingSend] = useState<{
     text: string;
     files: PendingFile[];
@@ -740,13 +786,7 @@ export function RoomChat({
     setPlanAfterSendForSession(sessionId ?? activeSessionIdRef.current, on);
   }
 
-  const visiblePresets = useMemo(
-    () =>
-      availablePresets.filter((p) =>
-        (ACTIVE_ROOM_PRESET_IDS as readonly string[]).includes(p.id),
-      ),
-    [availablePresets],
-  );
+  const visiblePresets = resolvedRoomPresets;
 
   function selectRoomPreset(id: string) {
     const next = roomPreset === id ? null : id;
@@ -1319,21 +1359,29 @@ export function RoomChat({
   );
 
   useEffect(() => {
-    const ready = agents.filter((a) => a.ready).map((a) => a.id);
+    const rosterPool =
+      teamHealthAgents.length > 0
+        ? teamHealthAgents
+        : healthAgents.length > 0
+          ? healthAgents
+          : agents;
+    const ready = rosterPool.filter((a) => a.ready).map((a) => a.id);
     if (ready.length === 0) return;
     setSelected((prev) => {
       if (bootstrapAgentIds?.length) {
-        const picked = bootstrapAgentIds.filter((id) => ready.includes(id));
+        const picked = sortAgentIds(
+          bootstrapAgentIds.filter((id) => ready.includes(id)),
+        );
         if (picked.length > 0) return picked;
       }
       if (!agentsPickerInitRef.current || prev.length === 0) {
         agentsPickerInitRef.current = true;
-        return ready;
+        return sortAgentIds(ready);
       }
-      const kept = prev.filter((id) => ready.includes(id));
-      return kept.length > 0 ? kept : ready;
+      const kept = sortAgentIds(prev.filter((id) => ready.includes(id)));
+      return kept.length > 0 ? kept : sortAgentIds(ready);
     });
-  }, [agents, bootstrapAgentIds]);
+  }, [agents, bootstrapAgentIds, healthAgents, teamHealthAgents]);
 
   useEffect(() => {
     if (!sessionId && bootstrapAgentIds?.length) {
@@ -1636,8 +1684,8 @@ export function RoomChat({
       if (mode === "execute") return;
       if (runBusy || running || synthesizing) return;
       const effectiveProfile: ComposerTurnProfile = roomPreset
-        ? ((availablePresets.find((p) => p.id === roomPreset)?.turn_profile ??
-            profile) as ComposerTurnProfile)
+        ? ((resolvedRoomPresets.find((p) => p.id === roomPreset)
+            ?.turn_profile ?? profile) as ComposerTurnProfile)
         : profile;
       const roomMode =
         roomPreset === "fast"
@@ -2498,7 +2546,7 @@ export function RoomChat({
       running,
       synthesizing,
       roomPreset,
-      availablePresets,
+      resolvedRoomPresets,
     ],
   );
 
@@ -2694,10 +2742,12 @@ export function RoomChat({
               command,
               argsPrefix: args,
               prompt: stage.prompt ?? res.text ?? "",
-              current: stage.choices.current ?? [],
-              options: stage.choices.options,
+              current: sortAgentIds(stage.choices.current ?? []),
+              options: sortAgentPickerOptions(stage.choices.options),
             });
-            setMultiSelected(new Set(stage.choices.current ?? []));
+            setMultiSelected(
+              new Set(sortAgentIds(stage.choices.current ?? [])),
+            );
             setCommandChoices(null);
             setCommandScopeChoices(null);
           } else if (kind === "scope") {
@@ -2730,7 +2780,7 @@ export function RoomChat({
           setCommandScopeChoices(null);
         }
         if (stage?.updated && stage.composition?.length) {
-          setSelected(stage.composition);
+          setSelected(sortAgentIds(stage.composition));
         }
         if (stage?.input?.kind === "secret" && stage.input.prefill) {
           setSecretCommand({
@@ -2817,9 +2867,11 @@ export function RoomChat({
       if (!sessionId && target.id === "model") {
         if (args) {
           const requested = new Set(args.split(",").map((id) => id.trim()));
-          const next = agents
-            .filter((agent) => agent.ready && requested.has(agent.id))
-            .map((agent) => agent.id);
+          const next = sortAgentIds(
+            agents
+              .filter((agent) => requested.has(agent.id))
+              .map((agent) => agent.id),
+          );
           if (next.length > 0) setSelected(next);
           setText("");
           setCommandHint(
@@ -2829,20 +2881,27 @@ export function RoomChat({
           );
           return;
         }
-        const options = agents
-          .filter((agent) => agent.ready)
-          .map((agent) => ({
+        const options = sortAgentPickerOptions(
+          agents.map((agent) => ({
             value: agent.id,
-            label: `${agent.label} · ${agent.model || "기본 모델"}`,
-          }));
+            label: `${agent.label} · ${formatAgentModelName(agent.model, agent.id)}`,
+          })),
+        );
+        const currentComposition = sortAgentIds(
+          teamHealthAgents.length > 0
+            ? teamHealthAgents.map((agent) => agent.id)
+            : healthAgents.length > 0
+              ? healthAgents.map((agent) => agent.id)
+              : selected,
+        );
         setCommandMultiChoices({
           command: target,
           argsPrefix: "",
-          prompt: "첫 턴에 참여할 에이전트와 모델",
-          current: selected,
+          prompt: "활성화할 에이전트 선택 (복수 선택 가능)",
+          current: currentComposition,
           options,
         });
-        setMultiSelected(new Set(selected));
+        setMultiSelected(new Set(currentComposition));
         setText("");
         return;
       }
@@ -2861,6 +2920,8 @@ export function RoomChat({
       authRun,
       executeSlashCommand,
       handleStop,
+      healthAgents,
+      teamHealthAgents,
       selected,
       sessionId,
       slashCommands,
@@ -3829,34 +3890,12 @@ export function RoomChat({
                     sendDisabled={composerSendLocked}
                     placeholder={composerPlaceholder}
                     showModeChipHint={false}
-                    modeChip={
-                      visiblePresets.length > 0 ? undefined : modeChipCopy.label
-                    }
-                    modeChipVariant={
-                      visiblePresets.length > 0
-                        ? undefined
-                        : composerModeVariant
-                    }
-                    modeChipHint={
-                      visiblePresets.length > 0 ? undefined : modeChipCopy.hint
-                    }
                     running={running}
                     onStop={handleStop}
                     files={pendingFiles}
                     onFilesAdd={addFiles}
                     onFileRemove={(id) =>
                       setPendingFiles((f) => f.filter((x) => x.id !== id))
-                    }
-                    turnProfile={turnProfile}
-                    onTurnProfileChange={
-                      visiblePresets.length > 0 ? undefined : changeTurnProfile
-                    }
-                    roomPresets={
-                      visiblePresets.length > 0 ? visiblePresets : undefined
-                    }
-                    roomPreset={roomPreset}
-                    onRoomPresetSelect={
-                      visiblePresets.length > 0 ? selectRoomPreset : undefined
                     }
                     planAfterSend={planAfterSend}
                     onPlanAfterSendChange={changePlanAfterSend}
@@ -3870,7 +3909,10 @@ export function RoomChat({
                     turnHint={composerTurnHintLine}
                     locale={locale}
                     sessionId={sessionId}
-                    activeModels={selected
+                    roomPresets={visiblePresets}
+                    roomPreset={roomPreset}
+                    onRoomPresetSelect={selectRoomPreset}
+                    activeModels={sortAgentIds(selected)
                       .map((id) => agents.find((agent) => agent.id === id))
                       .filter((agent): agent is AgentOption => Boolean(agent))}
                     onOpenModelPicker={() => {
@@ -3950,7 +3992,7 @@ export function RoomChat({
                             const composition = comp.join(",");
                             setCommandScopeChoices(null);
                             if (!sessionId && cmd.id === "model") {
-                              setSelected(comp);
+                              setSelected(sortAgentIds(comp));
                               if (opt.value === "default") {
                                 void runRoomSlash(
                                   `/model ${composition} default`,
@@ -4029,10 +4071,11 @@ export function RoomChat({
                           type="button"
                           className="btn btn--primary btn--sm"
                           onClick={() => {
-                            const selected = commandMultiChoices.options
-                              .filter((opt) => multiSelected.has(opt.value))
-                              .map((opt) => opt.value)
-                              .join(",");
+                            const selected = sortAgentIds(
+                              commandMultiChoices.options
+                                .filter((opt) => multiSelected.has(opt.value))
+                                .map((opt) => opt.value),
+                            ).join(",");
                             const cmd = commandMultiChoices.command;
                             setCommandMultiChoices(null);
                             setMultiSelected(new Set());

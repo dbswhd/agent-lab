@@ -21,8 +21,8 @@ type Props = {
 };
 
 /**
- * Rebuilt turn-strategy picker. Prop signature + turn strategies preserved.
- * New class system: `.turn-seg` segmented + `.turn-hint`.
+ * @deprecated Composer uses Room presets (fast / supervisor) via `roomPresets.ts`.
+ * Runtime turn profiles (quick / team / loop) remain internal — not shown in UI.
  */
 export function ComposerTurnPicker({
   value,

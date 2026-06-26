@@ -59,23 +59,51 @@ def _parse_csv_env(name: str) -> list[str] | None:
     return ids or None
 
 
+def normalize_composition_order(composition: list[str]) -> list[str]:
+    """Sort agent ids for stable UI and room roster (cursor → codex → claude → spares)."""
+    from agent_lab.provider_registry import provider_picker_order
+
+    rank = {pid: index for index, pid in enumerate(provider_picker_order())}
+    seen: set[str] = set()
+    out: list[str] = []
+    for pid in composition:
+        key = str(pid).strip().lower()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        out.append(key)
+    out.sort(key=lambda pid: rank.get(pid, len(rank)))
+    return out
+
+
 def override_composition(*, session_folder: Path | None = None) -> list[str] | None:
-    """Composition override: process env → session run.json → user default file."""
-    env = _parse_csv_env("AGENT_LAB_ROOM_MODELS")
-    if env:
-        return env
+    """Explicit composition override: session run.json → default file → process env."""
     if session_folder is not None:
         from agent_lab.run_meta import read_run_meta
 
         meta = read_run_meta(session_folder)
         raw = meta.get("room_models")
         if isinstance(raw, list):
-            ids = [str(tok).strip() for tok in raw if str(tok).strip()]
+            ids = normalize_composition_order([str(tok) for tok in raw if str(tok).strip()])
             if ids:
                 return ids
     from agent_lab.room_models_config import load_default_room_models
 
-    return load_default_room_models()
+    default = load_default_room_models()
+    if default:
+        return normalize_composition_order(default)
+    env = _parse_csv_env("AGENT_LAB_ROOM_MODELS")
+    if env:
+        return normalize_composition_order(env)
+    return None
+
+
+def effective_room_composition(*, session_folder: Path | None = None) -> list[str]:
+    """Resolved Room model composition for health UI (includes DEFAULT_ROSTER fallback)."""
+    override = override_composition(session_folder=session_folder)
+    if override:
+        return list(override)
+    return list(DEFAULT_ROSTER)
 
 
 def override_substitution() -> list[str] | None:

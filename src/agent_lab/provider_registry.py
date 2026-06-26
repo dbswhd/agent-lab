@@ -116,6 +116,21 @@ DEFAULT_ROSTER: tuple[str, ...] = ("cursor", "codex", "claude")
 DEFAULT_SUBSTITUTION_PRIORITY: tuple[str, ...] = ("kimi_work", "kimi", "local")
 
 
+def provider_picker_order() -> list[str]:
+    """Stable UI / roster order: default seats, then substitution pool, then any extras."""
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for pid in (*DEFAULT_ROSTER, *DEFAULT_SUBSTITUTION_PRIORITY):
+        if pid not in seen:
+            seen.add(pid)
+            ordered.append(pid)
+    for pid in _REGISTRY:
+        if pid not in seen:
+            seen.add(pid)
+            ordered.append(pid)
+    return ordered
+
+
 def all_providers() -> list[ProviderSpec]:
     return list(_REGISTRY.values())
 

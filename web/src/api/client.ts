@@ -297,7 +297,9 @@ export type HealthResponse = {
   api?: { ok: boolean; port?: number };
   provider?: string;
   model?: string;
+  room_composition?: string[];
   agents: AgentHealthRow[];
+  agents_all?: AgentHealthRow[];
   agents_ready?: string[];
   sessions_dir?: string;
 };
@@ -323,10 +325,15 @@ export type HealthFlagsResponse = {
   undocumented_count?: number;
 };
 
-export function fetchHealth(probeBridge = false, probePreflight = false) {
+export function fetchHealth(
+  probeBridge = false,
+  probePreflight = false,
+  sessionId?: string | null,
+) {
   const params = new URLSearchParams();
   if (probeBridge) params.set("probe_bridge", "true");
   if (probePreflight) params.set("probe_preflight", "true");
+  if (sessionId) params.set("session_id", sessionId);
   const q = params.toString() ? `?${params.toString()}` : "";
   return json<HealthResponse>(`/api/health${q}`);
 }
@@ -1219,9 +1226,11 @@ export function fetchSessionSetupOptions() {
 
 export type RoomPreset = {
   id: string;
+  label?: string;
   turn_profile: string;
   description: string;
   role_policy?: string;
+  max_agents?: number | null;
 };
 
 export type RoomRole = {

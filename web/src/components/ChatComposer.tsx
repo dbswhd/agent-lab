@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState, useEffect, type ReactNode } from "react";
 import { ComposerPlanToggle } from "./ComposerPlanToggle";
-import { ComposerTurnPicker } from "./ComposerTurnPicker";
 import { ComposerMentionMenu } from "./ComposerMentionMenu";
+import { presetDisplayLabel, presetHintLine } from "../utils/roomPresets";
+import { formatAgentModelName } from "../utils/roomModels";
 import {
   mentionQueryAtCursor,
   useComposerMentionPaths,
@@ -34,7 +35,9 @@ type Props = {
   showAttach?: boolean;
   toolbar?: ReactNode;
   className?: string;
+  /** @deprecated Runtime turn profile only — UI uses room presets (fast / supervisor). */
   turnProfile?: ComposerTurnProfile;
+  /** @deprecated Use room presets instead of quick / team / loop picker. */
   onTurnProfileChange?: (profile: ComposerTurnProfile) => void;
   planAfterSend?: boolean;
   onPlanAfterSendChange?: (on: boolean) => void;
@@ -73,7 +76,7 @@ type Props = {
     ready?: boolean;
   }[];
   onOpenModelPicker?: () => void;
-  /** Room preset (fast / supervisor) — replaces turn strategy picker when set. */
+  /** Room preset (fast / supervisor) — primary composer mode control. */
   roomPresets?: RoomPreset[];
   roomPreset?: string | null;
   onRoomPresetSelect?: (id: string) => void;
@@ -98,8 +101,8 @@ export function ChatComposer({
   showAttach = true,
   toolbar,
   className,
-  turnProfile,
-  onTurnProfileChange,
+  turnProfile: _turnProfile,
+  onTurnProfileChange: _onTurnProfileChange,
   planAfterSend = false,
   onPlanAfterSendChange,
   planToggleDisabled = false,
@@ -188,6 +191,9 @@ export function ChatComposer({
   const rootClass = ["composer", className].filter(Boolean).join(" ");
   const inputLocked = disabled;
   const sendLocked = sendDisabled ?? disabled;
+  const activePreset = roomPresets?.find((p) => p.id === roomPreset) ?? null;
+  const presetHint =
+    turnHint?.trim() || presetHintLine(activePreset, locale) || null;
 
   return (
     <div className={rootClass}>
@@ -242,9 +248,10 @@ export function ChatComposer({
 
       {roomPresets && roomPresets.length > 0 && onRoomPresetSelect ? (
         <div
-          className="turn-row composer-preset-row"
+          className="turn-row composer-control-row composer-preset-row"
           role="radiogroup"
-          aria-label={locale === "ko" ? "Room preset" : "Room preset"}
+          aria-label={locale === "ko" ? "Room 프리셋" : "Room preset"}
+          aria-describedby={presetHint ? "composer-preset-desc" : undefined}
         >
           <div className="turn-picker__head composer-preset-row__head">
             <div className="turn-seg composer-preset-seg">
@@ -257,10 +264,10 @@ export function ChatComposer({
                   className={roomPreset === p.id ? "is-active" : ""}
                   data-preset={p.id}
                   disabled={inputLocked}
-                  title={p.description}
+                  title={presetHintLine(p, locale) ?? p.description}
                   onClick={() => onRoomPresetSelect(p.id)}
                 >
-                  {p.id}
+                  {presetDisplayLabel(p, locale)}
                 </button>
               ))}
             </div>
@@ -285,11 +292,11 @@ export function ChatComposer({
                   title={
                     roomPreset === "fast"
                       ? locale === "ko"
-                        ? "fast 프리셋: discuss만 (plan 끔)"
+                        ? "fast: discuss만 (plan 끔)"
                         : "Fast preset: discuss only (plan off)"
                       : roomPreset === "supervisor"
                         ? locale === "ko"
-                          ? "supervisor 프리셋: plan 항상 켜짐"
+                          ? "supervisor: plan 항상 켜짐"
                           : "Supervisor preset: plan always on"
                         : planToggleDisabled
                           ? localeMsg.planWorkflowComposerBlocked
@@ -299,36 +306,19 @@ export function ChatComposer({
               </div>
             ) : null}
           </div>
+          {presetHint ? (
+            <p id="composer-preset-desc" className="turn-hint">
+              {presetHint}
+            </p>
+          ) : null}
         </div>
-      ) : turnProfile && onTurnProfileChange ? (
-        <ComposerTurnPicker
-          value={turnProfile}
-          onChange={onTurnProfileChange}
-          disabled={inputLocked}
-          locale={locale}
-          hint={turnHint}
-          trailing={
-            <>
-              {onPlanAfterSendChange ? (
-                <ComposerPlanToggle
-                  checked={planAfterSend}
-                  onChange={onPlanAfterSendChange}
-                  disabled={inputLocked || planToggleDisabled}
-                  label={localeMsg.modePlan}
-                  title={
-                    planToggleDisabled
-                      ? localeMsg.planWorkflowComposerBlocked
-                      : localeMsg.modePlanHint
-                  }
-                />
-              ) : null}
-            </>
-          }
-        />
       ) : null}
 
       {activeModels.length > 0 ? (
-        <div className="composer-models" aria-label="현재 에이전트와 모델">
+        <div
+          className="composer-models composer-control-row"
+          aria-label="현재 에이전트와 모델"
+        >
           <div className="composer-models__scroll">
             {activeModels.slice(0, 5).map((agent) => (
               <button
@@ -337,11 +327,11 @@ export function ChatComposer({
                 className="composer-model-chip"
                 onClick={onOpenModelPicker}
                 disabled={!onOpenModelPicker}
-                title={`${agent.label} · ${agent.model || "기본 모델"}`}
+                title={`${agent.label} · ${formatAgentModelName(agent.model, agent.id)}`}
               >
                 <span>{agent.label}</span>
                 <span aria-hidden="true">·</span>
-                <strong>{agent.model || "기본 모델"}</strong>
+                <strong>{formatAgentModelName(agent.model, agent.id)}</strong>
               </button>
             ))}
             {activeModels.length > 5 ? (

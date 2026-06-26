@@ -403,7 +403,12 @@ def enable_mission_loop(
         ml["enabled"] = True
         ml["iteration"] = int(ml.get("iteration") or 0)
         if ml.get("phase") == "MISSION_DEFINE" and mission_define_ready(run):
-            ml["phase"] = "CLARIFY" if pipeline_enabled() else "DISCUSS"
+            from agent_lab.plan_workflow import plan_workflow_completed_clarify
+
+            if pipeline_enabled() and not plan_workflow_completed_clarify(run):
+                ml["phase"] = "CLARIFY"
+            else:
+                ml["phase"] = "DISCUSS"
         if start_autonomous:
             ml["autonomous_segment"] = {
                 "active": True,

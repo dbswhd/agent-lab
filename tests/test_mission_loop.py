@@ -489,6 +489,47 @@ def test_after_plan_scribe_runs_gate(session_folder: Path) -> None:
     assert result["status"] == "ok"
 
 
+def test_enable_mission_loop_skips_clarify_when_plan_workflow_past_clarify(
+    session_folder: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AGENT_LAB_PIPELINE", "1")
+    monkeypatch.setenv("AGENT_LAB_MISSION_LOOP", "1")
+    patch_run_meta(
+        session_folder,
+        lambda run: {
+            **run,
+            "plan_workflow": {"enabled": True, "phase": "APPROVED"},
+            "verified_loop": {
+                "status": "running",
+                "loop_goal": {"text": "Ship feature X"},
+            },
+        },
+    )
+    ml = enable_mission_loop(session_folder)
+    assert ml["phase"] == "DISCUSS"
+
+
+def test_enable_mission_loop_uses_clarify_without_plan_workflow(
+    session_folder: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AGENT_LAB_PIPELINE", "1")
+    monkeypatch.setenv("AGENT_LAB_MISSION_LOOP", "1")
+    patch_run_meta(
+        session_folder,
+        lambda run: {
+            **run,
+            "verified_loop": {
+                "status": "running",
+                "loop_goal": {"text": "Ship feature X"},
+            },
+        },
+    )
+    ml = enable_mission_loop(session_folder)
+    assert ml["phase"] == "CLARIFY"
+
+
 def test_verified_approve_enables_mission(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # Legacy mission bootstrap expects DISCUSS; pipeline default-on routes via CLARIFY.
     monkeypatch.setenv("AGENT_LAB_PIPELINE", "0")

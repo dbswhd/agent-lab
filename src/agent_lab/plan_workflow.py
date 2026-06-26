@@ -186,6 +186,13 @@ def plan_workflow_skips_server_clarifier(run: dict[str, Any] | None) -> bool:
     return is_plan_workflow_active(run)
 
 
+def plan_workflow_completed_clarify(run: dict[str, Any] | None) -> bool:
+    """True when plan_workflow already passed CLARIFY (single clarify owner)."""
+    if not is_plan_workflow_active(run):
+        return False
+    return plan_workflow_phase(run) not in _PLAN_CLARIFY_PHASES
+
+
 def init_plan_workflow_on_plan_send(folder: Path) -> dict[str, Any]:
     def _init(run: dict[str, Any]) -> dict[str, Any]:
         pw = get_plan_workflow(run)

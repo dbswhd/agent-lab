@@ -64,7 +64,7 @@ TRANSITION_TABLE: tuple[RuntimeTransition, ...] = (
         "agent_lab.mission_loop:enable_mission_loop",
         OrchestrationLane.MISSION,
         guard="mission_define_ready_pipeline",
-        notes="Pipeline on: enter CLARIFY before DISCUSS (pipeline_enabled)",
+        notes="Pipeline on + plan_workflow still in CLARIFY/INTAKE → CLARIFY; else DISCUSS",
     ),
     # CLARIFY → DISCUSS once clarity threshold is met (maybe_advance_mission).
     RuntimeTransition(

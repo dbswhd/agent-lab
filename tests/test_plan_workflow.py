@@ -14,6 +14,7 @@ from agent_lab.plan_workflow import (
     ensure_plan_workflow_approved,
     get_plan_workflow,
     init_plan_workflow_on_plan_send,
+    plan_workflow_completed_clarify,
     plan_workflow_public,
     plan_workflow_should_advance_on_turn,
     reject_plan,
@@ -156,6 +157,33 @@ def test_approve_plan_execute_loop_gated_by_plan_intent(
     assert team_run.get("session_goal") is None
     assert team_run.get("verified_loop", {}).get("status") != "running"
     ensure_plan_workflow_approved(folder)
+
+
+def test_approve_plan_skips_mission_clarify_when_pipeline_on(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AGENT_LAB_PIPELINE", "1")
+    monkeypatch.setenv("AGENT_LAB_MISSION_LOOP", "1")
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    (folder / "plan.md").write_text(SAMPLE_PLAN, encoding="utf-8")
+    (folder / "run.json").write_text(
+        '{"plan_intent":"loop","user_mode":"loop"}',
+        encoding="utf-8",
+    )
+    set_plan_workflow_phase(folder, "HUMAN_PENDING")
+    approve_plan(folder)
+    ml = read_run_meta(folder)["mission_loop"]
+    assert ml["enabled"] is True
+    assert ml["phase"] != "CLARIFY"
+
+
+def test_plan_workflow_completed_clarify() -> None:
+    assert plan_workflow_completed_clarify(None) is False
+    assert plan_workflow_completed_clarify({"plan_workflow": {"enabled": True, "phase": "CLARIFY"}}) is False
+    assert plan_workflow_completed_clarify({"plan_workflow": {"enabled": True, "phase": "DRAFT"}}) is True
+    assert plan_workflow_completed_clarify({"plan_workflow": {"enabled": True, "phase": "APPROVED"}}) is True
 
 
 def test_ensure_plan_workflow_approved_blocks_execute(tmp_path: Path) -> None:

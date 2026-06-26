@@ -105,6 +105,28 @@ def test_non_lead_cannot_ask_on_discuss(tmp_path: Path) -> None:
         )
 
 
+def test_fast_lead_cursor_may_ask_human(tmp_path: Path) -> None:
+    folder = tmp_path / "sess-fast-cursor"
+    folder.mkdir()
+    patch_run_meta(
+        folder,
+        lambda run: {
+            **run,
+            "room_preset": "fast",
+            "team_lead": "cursor",
+            "agents": ["cursor"],
+        },
+    )
+
+    from agent_lab.inbox_mcp_policy import enforce_mcp_ask_human_policy
+
+    enforce_mcp_ask_human_policy(
+        folder,
+        caller_agent="cursor",
+        policy_lane="discuss",
+    )
+
+
 def test_mcp_path_replaces_harvest_for_plan_open(tmp_path: Path) -> None:
     folder = tmp_path / "sess-path"
     folder.mkdir()

@@ -23,7 +23,7 @@ Inbox API·MCP 계약·트리거 ID는 [HUMAN-INBOX.md](./HUMAN-INBOX.md)가 can
 
 | 경로 | 지금 | MCP-first 목표 | 구현 상태 |
 |------|------|----------------|-----------|
-| 선다형 질문 | harvest T-Q* + `ask_human` MCP | `ask_human` only | harvest: **off by default** · discuss MCP **on** (supervisor) · Fast skip **shipped** |
+| 선다형 질문 | harvest T-Q* + `ask_human` MCP | `ask_human` only | harvest: **off by default** · discuss MCP **on** (team lead; Fast 포함) |
 | build GO 예고 | harvest T-B1 + `propose_build` MCP | `propose_build` only | harvest: **off by default** · legacy flag `AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST=1` |
 | `plan.md` | Scribe ([`room_plan_scribe.py`](../src/agent_lab/room_plan_scribe.py)) | 유지 | **shipped** |
 | Facilitator | FORK→options (optional Claude 1-call) | 축소·lead가 options 작성 | **partial** |
@@ -88,7 +88,8 @@ flowchart TB
 
 ## 5. Fast preset (shipped)
 
-Fast(`room_preset=fast` 또는 `user_mode=quick` + `plan_intent=none`)는 discuss lane에서 orchestrator harvest·discuss inbox MCP·plan CLARIFY inbox를 **스킵**한다. Execute lane inbox MCP(GO)는 **유지**.
+Fast(`room_preset=fast` 또는 `user_mode=quick` + `plan_intent=none`)는 discuss lane에서 **orchestrator harvest**·plan CLARIFY inbox만 **스킵**한다.  
+Team lead의 ``ask_human`` / ``propose_build`` MCP는 **유지**. Execute lane inbox MCP(GO)도 **유지**.
 
 **판별 SSOT:** [`room_preset.is_fast_room_session`](../src/agent_lab/room_preset.py)
 

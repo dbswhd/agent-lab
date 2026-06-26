@@ -35,11 +35,10 @@ def inbox_gate_owner(run_meta: dict[str, Any] | None) -> str:
 
 
 def discuss_inbox_mcp_lane_enabled(run_meta: dict[str, Any] | None) -> bool:
-    """Lane-level discuss inbox MCP (before per-agent policy)."""
-    from agent_lab.room_preset import is_fast_room_session
+    """Lane-level discuss inbox MCP (before per-agent policy).
 
-    if run_meta and is_fast_room_session(run_meta):
-        return False
+    Orchestrator harvest stays off on Fast; peer ``ask_human`` / ``propose_build`` MCP is allowed.
+    """
     from agent_lab.plan_workflow import plan_workflow_wants_inbox_mcp
 
     if run_meta and plan_workflow_wants_inbox_mcp(run_meta):
@@ -60,6 +59,11 @@ def discuss_inbox_mcp_agent_allowed(run_meta: dict[str, Any] | None, agent_id: s
     if not mcp_first_inbox_policy_active():
         return True
     agent = str(agent_id or "").strip().lower()
+    from agent_lab.room_preset import is_fast_room_session
+    from agent_lab.room_tasks import team_lead
+
+    if run_meta and is_fast_room_session(run_meta):
+        return agent == team_lead(run_meta)
     if agent == "cursor":
         return False
     owner = inbox_gate_owner(run_meta)
@@ -105,6 +109,14 @@ def enforce_mcp_ask_human_policy(
 
     agent = _caller_agent_from_env(caller_agent)
     if not agent:
+        return
+
+    from agent_lab.room_preset import is_fast_room_session
+    from agent_lab.room_tasks import team_lead
+
+    if is_fast_room_session(run):
+        if agent != team_lead(run):
+            raise ValueError(f"only team lead ({team_lead(run)}) may call ask_human on Fast")
         return
 
     if agent == "cursor":

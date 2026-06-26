@@ -60,12 +60,13 @@
 
 | | **supervisor** | **fast** |
 |---|----------------|----------|
-| Discuss | 합의·Scribe·Inbox harvest 가능 | 즉답 Q&A, orchestrator Inbox harvest **OFF** |
+| Discuss | 합의·Scribe·Inbox harvest 가능 | 즉답 Q&A, harvest **OFF**, team lead MCP **ON** |
 | Plan FSM | clarify → peer → Human approve | **사용 안 함** (plan OFF) |
 | Execute | worktree · Inbox GO | worktree · Inbox GO **유지** |
 
 Fast는 **오늘** discuss lane에서 `clarify → plan → execute` 오케스트레이션을 전제하지 않는다.  
-Discuss 종료 시 build/discuss harvest·discuss inbox MCP·plan CLARIFY inbox는 `is_fast_room_session()`으로 스킵한다.
+Discuss 종료 시 build/discuss harvest·plan CLARIFY inbox는 `is_fast_room_session()`으로 스킵한다.  
+Team lead의 discuss inbox MCP(`ask_human` / `propose_build`)는 Fast에서도 **유지**.
 
 **향후:** Execute 단계에서 plan-workflow를 Fast에도 열 수 있다. 그때 discuss 스킵과 execute/plan inbox를 **분리**해 재설계할 것 — 상세·트리거별 표는 [05-room-agent-roles.md §Fast preset — orchestrator Inbox skip](./05-room-agent-roles.md).
 

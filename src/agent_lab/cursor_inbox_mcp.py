@@ -34,9 +34,8 @@ def discuss_inbox_mcp_enabled(
     - plan-workflow CLARIFY turns (via ``plan_workflow_wants_inbox_mcp``)
     - MCP-first discuss: inbox gate owner only (cursor excluded)
 
-    Fast / quick sessions skip discuss-lane inbox MCP (orchestrator harvest also skipped).
-    When ``AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST=0`` (default), supervisor discuss uses
-    peer ``ask_human`` MCP instead of post-turn harvest.
+    Orchestrator harvest stays off on Fast; peer ``ask_human`` / ``propose_build`` MCP is allowed
+    for the session team lead. Plan-workflow CLARIFY inbox remains off on Fast.
     """
     from agent_lab.inbox_mcp_policy import (
         discuss_inbox_mcp_agent_allowed,

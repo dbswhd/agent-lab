@@ -1,4 +1,4 @@
-"""Fast preset skips orchestrator inbox harvest and discuss inbox MCP."""
+"""Fast preset — orchestrator harvest off; agent inbox MCP on for team lead."""
 
 from __future__ import annotations
 
@@ -14,9 +14,28 @@ from agent_lab.inbox_harvest import (
 from agent_lab.plan_workflow import plan_workflow_wants_inbox_mcp
 
 
-def test_discuss_inbox_mcp_disabled_for_fast_preset() -> None:
-    assert discuss_inbox_mcp_enabled({"room_preset": "fast"}) is False
-    assert discuss_inbox_mcp_enabled({"user_mode": "quick", "plan_intent": "none"}) is False
+def test_discuss_inbox_mcp_enabled_for_fast_lead() -> None:
+    run: dict[str, Any] = {"room_preset": "fast", "team_lead": "codex"}
+    assert discuss_inbox_mcp_enabled(run, agent_id="codex") is True
+    assert discuss_inbox_mcp_enabled(run, agent_id="claude") is False
+
+
+def test_discuss_inbox_mcp_fast_cursor_lead() -> None:
+    run: dict[str, Any] = {
+        "room_preset": "fast",
+        "team_lead": "cursor",
+        "agents": ["cursor"],
+    }
+    assert discuss_inbox_mcp_enabled(run, agent_id="cursor") is True
+
+
+def test_discuss_inbox_mcp_quick_mode_lead() -> None:
+    run: dict[str, Any] = {
+        "user_mode": "quick",
+        "plan_intent": "none",
+        "team_lead": "codex",
+    }
+    assert discuss_inbox_mcp_enabled(run, agent_id="codex") is True
 
 
 def test_orchestrator_harvest_disabled_by_default() -> None:

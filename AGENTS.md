@@ -19,7 +19,7 @@
 - constraints에 정책이 이미 있음 — **「discuss/plan 모드입니다」 같은 메타 선언 금지**, 바로 답변.
 
 ## Room preset · Inbox
-- **fast** (`quick`) — 리드 1명, plan OFF; discuss orchestrator Inbox harvest/MCP **스킵** (execute GO 유지) — [docs/05-room-agent-roles.md §Fast preset](./docs/05-room-agent-roles.md)
+- **fast** (`quick`) — 리드 1명, plan OFF; orchestrator harvest 스킵, **team lead MCP**(`ask_human` / `propose_build`) 유지 — [docs/05-room-agent-roles.md §Fast preset](./docs/05-room-agent-roles.md)
 - **MCP-first Inbox** — Human gate SSOT = agent MCP; orchestrator harvest default **off** (`AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST=0`) — [docs/MCP-FIRST-INBOX.md](./docs/MCP-FIRST-INBOX.md)
 - **supervisor** (`loop`) — 전원, consensus ON, plan ON
 

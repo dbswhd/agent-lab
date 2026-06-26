@@ -102,12 +102,11 @@ def resolve_role_policy(run_meta: dict[str, Any] | None) -> RolePolicy:
 def is_fast_room_session(run_meta: dict[str, Any] | None) -> bool:
     """True for Fast preset / quick user_mode without loop plan intent.
 
-    Orchestrator inbox harvest and discuss-lane inbox MCP are skipped so Fast
-    stays instant Q&A; Human gates remain on execute lane and manual inbox.
+    Orchestrator inbox harvest stays off on Fast; discuss-lane ``ask_human`` /
+    ``propose_build`` MCP is allowed for the team lead. Execute lane inbox MCP unchanged.
 
-    Product assumption (2026-06-26): Fast does not use clarify→plan→execute on
-    the discuss lane. If execute later adopts plan-workflow, revisit this gate —
-    discuss skips may stay; execute/plan CLARIFY inbox may need to re-enable.
+    Product assumption (2026-06-26): Fast does not use clarify→plan→execute orchestration
+    on the discuss lane. Plan-workflow CLARIFY inbox remains skipped.
 
     Docs: docs/05-room-agent-roles.md §Fast preset — orchestrator Inbox skip
     """

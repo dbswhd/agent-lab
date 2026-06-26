@@ -102,6 +102,10 @@ AGENT_CONNECT_HINT: dict[str, str] = {
     ),
     "codex": ("이번 턴 각도: 쪼개기·검증 순서·완료 기준. 동료의 사실·경로는 인용하고, 같은 분해만 다시 쓰지 말 것."),
     "claude": ("이번 턴 각도: 맹점·리스크·머지 전 확인. 동료는 이름으로 짚고, 새 근거·반론·질문만 추가."),
+    "kimi_work": (
+        "이번 턴 각도: Work peer — 레포 검증·대안 시각·약한 가정 도전. "
+        "도구로 확인한 뒤 답할 것. 동료 ENDORSE/CHALLENGE를 인용하고 겹치는 체크리스트는 생략."
+    ),
 }
 
 CLAUDE_TOOL_RULES = """\
@@ -125,6 +129,14 @@ CODEX_TOOL_RULES = """\
 - Coordinate with Cursor/Claude: see [Multi-agent coordination]; do not overwrite a peer's edit without reading first.
 """
 
+KIMI_WORK_TOOL_RULES = """\
+[Kimi Work tools — this turn]
+- Workspace-bound daimon tools first: read/search/verify before debating repo facts.
+- Human Inbox (`ask_human` / `propose_build`) for direction blockers and GO — never ask forks in prose when inbox is on.
+- Discuss mode: verify and propose only — no execute/patch claims; tag actionable work as `[PROPOSED: …]`.
+- Coordinate with Cursor/Codex/Claude per [Multi-agent coordination]; cite peer envelope acts when responding.
+"""
+
 
 def agent_tool_rules(agent: str) -> str:
     if agent == "claude":
@@ -133,6 +145,8 @@ def agent_tool_rules(agent: str) -> str:
         return CURSOR_TOOL_RULES
     if agent == "codex":
         return CODEX_TOOL_RULES
+    if agent == "kimi_work":
+        return KIMI_WORK_TOOL_RULES
     return ""
 
 

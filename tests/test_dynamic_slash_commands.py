@@ -142,12 +142,27 @@ def test_logout_cursor_clears_api_accounts_then_oauth(cfg: Path) -> None:
     from agent_lab.slash_commands import dispatch
 
     dispatch("/accounts cursor add a1 sk-1")
+    data = cs.load_credentials(create_default=False)
+    data["cursor"]["primary"] = "crsr_test_key"
+    cs.save_credentials(data)
     res = dispatch("/logout cursor")
     assert res["ok"] is True
     assert res["provider"] == "cursor"
     assert res["auth_kind"] == "oauth"
     assert res["cleared"] is True
+    assert res["cleared_credentials"] is True
     assert cs.get_provider_accounts("cursor") == []
+    after = cs.load_credentials(create_default=False)
+    assert not str(after["cursor"].get("primary") or "").strip()
+
+
+def test_login_cursor_without_key_starts_oauth(cfg: Path) -> None:
+    from agent_lab.slash_commands import dispatch
+
+    res = dispatch("/login cursor")
+    assert res["ok"] is True
+    assert res["provider"] == "cursor"
+    assert res["auth_kind"] == "oauth"
 
 
 def test_model_view_and_set(cfg: Path, monkeypatch: pytest.MonkeyPatch) -> None:

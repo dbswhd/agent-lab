@@ -18,6 +18,21 @@ def test_specialist_round_agents():
     assert specialist_round_agents(pool, 2) == ["cursor"]
 
 
+def test_specialist_round_r1_includes_kimi_work_without_codex_claude():
+    pool = ["cursor", "kimi_work"]
+    assert specialist_round_agents(pool, 1) == ["kimi_work"]
+    assert specialist_round_agents(pool, 2) == ["cursor"]
+
+
+def test_kimi_work_default_capabilities():
+    from agent_lab.room_agent_capabilities import DEFAULT_CAPABILITIES, get_agent_capabilities
+
+    cap = DEFAULT_CAPABILITIES["kimi_work"]
+    assert cap["cwd_role"] == "review"
+    assert "daimon_tools" in cap["tools"]
+    assert "kimi_work" in get_agent_capabilities(None)
+
+
 def test_asymmetric_workspace_lines(tmp_path, monkeypatch):
     monkeypatch.setattr(
         "agent_lab.workspace_roots.pipeline_root",

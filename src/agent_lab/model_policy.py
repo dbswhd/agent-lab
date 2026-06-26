@@ -54,6 +54,11 @@ def loop_blockers(profile: ModelProfile) -> tuple[str, ...]:
         blockers.append("supports_inbox_mcp")
     if not profile.supports_json_envelope:
         blockers.append("supports_json_envelope")
+    if profile.agent == "kimi_work":
+        from agent_lab.kimi_work_loop import kimi_work_loop_waives_inbox_mcp
+
+        if kimi_work_loop_waives_inbox_mcp():
+            blockers = [b for b in blockers if b != "supports_inbox_mcp"]
     return tuple(blockers)
 
 

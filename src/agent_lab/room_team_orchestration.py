@@ -9,7 +9,7 @@ from agent_lab.room_tasks import RUN_TEAM_LEAD_KEY, ensure_team_lead, team_lead
 
 RUN_TURN_LEADS_KEY = "turn_leads"
 _GO_LEAD_RE = re.compile(
-    r"(?:^|\n)\s*(?:GO|리드|lead)\s*(?:[:：]\s*|\s+)(cursor|codex|claude)\b",
+    r"(?:^|\n)\s*(?:GO|리드|lead)\s*(?:[:：]\s*|\s+)(cursor|codex|claude|kimi_work)\b",
     re.I,
 )
 _SYNTHESIS_MARKER = "[human synthesis — 턴 요약]"

@@ -417,6 +417,24 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
     # --- test / dev ---
     FlagDef("AGENT_LAB_MOCK_AGENTS", "test", "Mock agents, plugins, and CLI subprocesses"),
     FlagDef("AGENT_LAB_KIMI_WORK_MODEL", "feature", "Kimi Work model id override for health label"),
+    FlagDef(
+        "AGENT_LAB_KIMI_WORK_LOOP_PHASE",
+        "feature",
+        "Kimi Work Loop gate phase (1=waive inbox, 2=inbox required)",
+        default="2",
+    ),
+    FlagDef(
+        "AGENT_LAB_KIMI_WORK_INBOX_BRIDGE",
+        "feature",
+        "Agent Lab Human Inbox bridge for Kimi Work daimon tool calls",
+        default="1",
+    ),
+    FlagDef(
+        "AGENT_LAB_KIMI_WORK_ENVELOPE_STRICT",
+        "feature",
+        "Fail-closed live envelope probe for kimi_work (supports_json_envelope=False on fail)",
+        default="0",
+    ),
     FlagDef("KIMI_SHARE_DIR", "infra", "Kimi daimon-share directory override", mask_value=True),
     FlagDef("AGENT_LAB_MOCK_STRUCTURED_ENVELOPE", "test", "Mock structured envelope adapter output"),
     FlagDef("AGENT_LAB_MOCK_ACT_SCRIPT", "test", "Scripted mock envelope acts (JSON path)", mask_value=True),

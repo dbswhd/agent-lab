@@ -229,15 +229,17 @@ def _get_endpoint() -> ControlEndpoint:
 
 
 def _mock_capabilities_get() -> dict[str, Any]:
-    return {
-        "features": [
-            "capabilities.get",
-            "conversations.create",
-            "conversations.send",
-            "workspace.openProject",
-            "workspace.addEntry",
-        ],
-    }
+    features = [
+        "capabilities.get",
+        "conversations.create",
+        "conversations.send",
+        "conversations.submitToolResult",
+        "workspace.openProject",
+        "workspace.addEntry",
+        "inbox.askHuman",
+        "inbox.proposeBuild",
+    ]
+    return {"features": features}
 
 
 def _mock_open_project(path: str) -> dict[str, Any]:
@@ -260,8 +262,20 @@ def _mock_send_turn(
     system: str | None,
     on_push: Callable[[str, dict[str, Any]], None] | None,
 ) -> str:
-    if on_push and "[mock-tools]" in text:
-        on_push(
+    final_holder: list[str] = []
+
+    def _emit(method: str, payload: dict[str, Any]) -> None:
+        if method == "conversations.message.complete":
+            from agent_lab.kimi_work_push_payload import assistant_reply_text
+
+            body = assistant_reply_text(payload) or str(payload.get("text") or "").strip()
+            if body:
+                final_holder.append(body)
+        if on_push is not None:
+            on_push(method, payload)
+
+    if "[mock-tools]" in text:
+        _emit(
             "conversations.message.snapshot",
             {
                 "conversationKey": conversation_key,
@@ -275,7 +289,7 @@ def _mock_send_turn(
                 ],
             },
         )
-        on_push(
+        _emit(
             "conversations.message.snapshot",
             {
                 "conversationKey": conversation_key,
@@ -295,18 +309,41 @@ def _mock_send_turn(
             },
         )
         body = "Tool turn complete."
-        on_push(
-            "conversations.message.snapshot",
-            {"conversationKey": conversation_key, "text": body},
-        )
-        on_push(
-            "conversations.message.complete",
-            {"conversationKey": conversation_key, "text": body},
-        )
+        _emit("conversations.message.snapshot", {"conversationKey": conversation_key, "text": body})
+        _emit("conversations.message.complete", {"conversationKey": conversation_key, "text": body})
         return body
+
+    if "[mock-inbox-ask]" in text:
+        call_id = "mock-inbox-ask-1"
+        _emit(
+            "conversations.message.snapshot",
+            {
+                "conversationKey": conversation_key,
+                "parts": [
+                    {
+                        "kind": "tool-call",
+                        "toolCallId": call_id,
+                        "toolName": "ask_human",
+                        "args": json.dumps(
+                            {
+                                "question": "Which scope for this Loop step?",
+                                "options": [
+                                    {"id": "narrow", "label": "Minimal change"},
+                                    {"id": "broad", "label": "Broader refactor"},
+                                ],
+                            },
+                            ensure_ascii=False,
+                        ),
+                    },
+                ],
+            },
+        )
+        return final_holder[-1] if final_holder else ""
 
     snippet = " ".join((text or "").strip().split())[:100]
     body = f"[mock:Kimi Work] ACK — {snippet or '(empty)'}"
+    if system and ("Structured envelope" in system or "Loop consensus envelope" in system):
+        body = '{"act":"ENDORSE","refs":[],"confidence":0.9}\n' + body
     if system and system.strip():
         body = f"{body}\n(system: {system.strip()[:60]}…)" if len(system.strip()) > 60 else f"{body}\n(system: {system.strip()})"
     if on_push:
@@ -315,12 +352,93 @@ def _mock_send_turn(
         acc = ""
         for chunk in chunk_text(body, chunk_size=16):
             acc += chunk
-            on_push("conversations.message.snapshot", {"conversationKey": conversation_key, "text": acc})
+            _emit("conversations.message.snapshot", {"conversationKey": conversation_key, "text": acc})
+        _emit("conversations.message.complete", {"conversationKey": conversation_key, "text": body})
+    return body
+
+
+def _mock_submit_tool_result(
+    *,
+    conversation_key: str,
+    tool_call_id: str,
+    result: dict[str, Any],
+    on_push: Callable[[str, dict[str, Any]], None] | None,
+) -> dict[str, Any]:
+    payload_text = json.dumps(result, ensure_ascii=False)
+    if on_push:
+        on_push(
+            "conversations.message.snapshot",
+            {
+                "conversationKey": conversation_key,
+                "parts": [
+                    {
+                        "kind": "tool-result",
+                        "toolCallId": tool_call_id,
+                        "result": payload_text,
+                    },
+                ],
+            },
+        )
+        summary = result.get("selected") or result.get("decision") or result.get("status") or "ok"
+        body = f"Inbox resolved ({summary})."
+        on_push(
+            "conversations.message.snapshot",
+            {"conversationKey": conversation_key, "text": body},
+        )
         on_push(
             "conversations.message.complete",
             {"conversationKey": conversation_key, "text": body},
         )
-    return body
+    return {"status": "submitted", "toolCallId": tool_call_id}
+
+
+def _daimon_submit_tool_result_supported() -> bool:
+    if _mock_enabled():
+        return True
+    try:
+        caps = rpc("capabilities.get", {})
+        features = caps.get("features") if isinstance(caps, dict) else None
+        if isinstance(features, list):
+            normalized = {str(item).strip() for item in features if str(item).strip()}
+            return "conversations.submitToolResult" in normalized
+    except Exception:
+        pass
+    return False
+
+
+def submit_conversation_tool_result(
+    *,
+    conversation_key: str,
+    tool_call_id: str,
+    result: dict[str, Any],
+    on_push: Callable[[str, dict[str, Any]], None] | None = None,
+) -> dict[str, Any]:
+    """Return inbox tool result to daimon so the Kimi Work turn can continue."""
+    params = {
+        "conversationKey": conversation_key,
+        "toolCallId": tool_call_id,
+        "result": result,
+    }
+    if _mock_enabled():
+        return _mock_submit_tool_result(
+            conversation_key=conversation_key,
+            tool_call_id=tool_call_id,
+            result=result,
+            on_push=on_push,
+        )
+    if not _daimon_submit_tool_result_supported():
+        follow_up = (
+            f"[tool_result {tool_call_id}]\n{json.dumps(result, ensure_ascii=False)}\n"
+            "Continue using this Human Inbox result."
+        )
+        send_turn(
+            conversation_key=conversation_key,
+            text=follow_up,
+            system=None,
+            on_push=on_push,
+        )
+        return {"status": "fallback_send", "toolCallId": tool_call_id}
+    return rpc("conversations.submitToolResult", params, on_push=on_push)
 
 
 from agent_lab.kimi_work_push_payload import assistant_reply_text, push_message_parts
@@ -432,6 +550,16 @@ def rpc(
                 conversation_key=str(params.get("conversationKey") or ""),
                 text=str(params.get("text") or ""),
                 system=str(params.get("system") or "") or None,
+                on_push=on_push,
+            )
+        if method == "conversations.submitToolResult":
+            raw_result = params.get("result")
+            if not isinstance(raw_result, dict):
+                raw_result = {}
+            return _mock_submit_tool_result(
+                conversation_key=str(params.get("conversationKey") or ""),
+                tool_call_id=str(params.get("toolCallId") or ""),
+                result=raw_result,
                 on_push=on_push,
             )
         if method == "workspace.openProject":

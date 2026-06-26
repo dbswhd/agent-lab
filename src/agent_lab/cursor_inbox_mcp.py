@@ -25,6 +25,11 @@ def plan_inbox_mcp_enabled() -> bool:
 
 
 def discuss_inbox_mcp_enabled(run_meta: dict[str, Any] | None = None) -> bool:
+    """True when Room should pass ``inbox_mcp=True`` to agent invoke.
+
+    - plan-workflow CLARIFY turns (via ``plan_workflow_wants_inbox_mcp``)
+    - Loop discuss lane uses the same gate from ``room_agent_invoke`` (execute lane excluded)
+    """
     from agent_lab.plan_workflow import plan_workflow_wants_inbox_mcp
 
     if run_meta and plan_workflow_wants_inbox_mcp(run_meta):

@@ -47,6 +47,14 @@ def _mock_mode() -> bool:
     return os.getenv("AGENT_LAB_MOCK_AGENTS", "").strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _probe_session_folder(agent: AgentId) -> Path:
+    from agent_lab.workspace_roots import project_root
+
+    folder = project_root() / ".agent-lab" / "loop-probe-sessions" / agent
+    folder.mkdir(parents=True, exist_ok=True)
+    return folder
+
+
 def _probe_supports_tools(agent: AgentId) -> bool:
     if _mock_mode():
         return True
@@ -97,43 +105,112 @@ def _probe_supports_json_envelope(agent: AgentId) -> bool:
     return agent in ("cursor", "codex", "claude")
 
 
-def _probe_live_capability(agent: AgentId, model_id: str) -> bool:
-    """Stage-2: make a minimal real call to verify the agent can respond and produce a structured envelope.
-
-    Returns True only if the agent responds with a non-empty reply that contains
-    a parseable JSON envelope (or valid prose when envelope is not requested).
-    """
+def _probe_kimi_work_tools() -> bool:
     if _mock_mode():
         return True
+    from agent_lab.kimi_control_client import probe_control, rpc
+    from agent_lab.kimi_work_loop import kimi_work_loop_tool_features_ok
+    from agent_lab.kimi_work_provider import is_configured
 
-    # Only run for agents that have a real provider backend wired.
-    if agent in ("kimi", "kimi_work", "local"):
-        from agent_lab.agents import registry
+    if not is_configured():
+        return False
+    bridge, _err = probe_control()
+    if bridge != "ok":
+        return False
+    try:
+        caps = rpc("capabilities.get", {})
+        features = caps.get("features") if isinstance(caps, dict) else None
+        return kimi_work_loop_tool_features_ok(features)
+    except Exception:
+        return False
 
-        if not registry._is_ready(agent):
-            return False
-        try:
-            reply = registry.call_agent_reply(
-                agent,
-                system="You are a test probe. Reply with a single JSON object containing {'status': 'ok'}.",
-                user="Probe test. Respond with JSON only.",
-                request_structured_envelope=True,
-            )
-            text = reply.text.strip()
-            if reply.structured_envelope is not None:
-                return True
-            # Fallback: try to parse JSON from text
-            try:
-                parsed = json.loads(text)
-                return isinstance(parsed, dict) and "status" in parsed
-            except (json.JSONDecodeError, ValueError):
-                return False
-        except Exception:
-            return False
 
-    # For built-in agents (cursor, codex, claude), the infra probe is sufficient
-    # unless live probe is explicitly enabled.
+def _probe_kimi_work_inbox() -> bool:
+    from agent_lab.kimi_work_inbox_bridge import kimi_work_inbox_bridge_ready
+    from agent_lab.kimi_work_loop import kimi_work_loop_inbox_features_ok, kimi_work_loop_phase
+
+    if kimi_work_loop_phase() < 2:
+        return False
+    if not kimi_work_inbox_bridge_ready():
+        return False
+    if _mock_mode():
+        return True
+    from agent_lab.kimi_control_client import probe_control, rpc
+    from agent_lab.kimi_work_provider import is_configured
+
+    if not is_configured():
+        return False
+    bridge, _err = probe_control()
+    if bridge != "ok":
+        return False
+    try:
+        caps = rpc("capabilities.get", {})
+        features = caps.get("features") if isinstance(caps, dict) else None
+        if isinstance(features, list) and kimi_work_loop_inbox_features_ok(features):
+            return True
+    except Exception:
+        pass
+    # Agent Lab-side bridge is sufficient for Loop phase 2 even before daimon advertises inbox.*.
     return True
+
+
+def _envelope_reply_valid(reply: Any) -> bool:
+    """True when reply parses to a valid Loop consensus speech act."""
+    from agent_lab.agent_envelope import VALID_ACTS, parse_agent_response_v2
+
+    structured = getattr(reply, "structured_envelope", None)
+    parsed = parse_agent_response_v2(reply.text, structured=structured)
+    if parsed.envelope is not None:
+        act = str(parsed.envelope.act or "").strip()
+        return act in VALID_ACTS
+    try:
+        first = reply.text.strip().splitlines()[0].strip()
+        data = json.loads(first)
+    except (IndexError, json.JSONDecodeError, ValueError):
+        return False
+    if not isinstance(data, dict):
+        return False
+    act = str(data.get("act") or "").strip()
+    return act in VALID_ACTS
+
+
+def _probe_substitute_envelope(agent: AgentId, model_id: str) -> bool:
+    """Verify structured speech-act output (Loop consensus lane)."""
+    from agent_lab.agents import registry
+    from agent_lab.loop_probe_eval import _LOOP_EVAL_SYSTEM, _LOOP_EVAL_USER
+
+    if not registry._is_ready(agent):
+        return False
+
+    folder = _probe_session_folder(agent) if agent == "kimi_work" else None
+    try:
+        reply = registry.call_agent_reply(
+            agent,
+            system=_LOOP_EVAL_SYSTEM,
+            user=_LOOP_EVAL_USER,
+            request_structured_envelope=True,
+            session_folder=folder,
+        )
+    except Exception:
+        return False
+
+    return _envelope_reply_valid(reply)
+
+
+def _probe_substitute_loop_flags(agent: AgentId, model_id: str) -> tuple[bool, bool, bool]:
+    """Return (supports_tools, supports_inbox_mcp, supports_json_envelope) for substitutes."""
+    if agent == "kimi_work":
+        tools = _probe_kimi_work_tools()
+        envelope = _probe_substitute_envelope(agent, model_id) if tools else False
+        inbox = _probe_kimi_work_inbox()
+        return tools, inbox, envelope
+
+    if _mock_mode():
+        return True, True, True
+    live_ok = _probe_substitute_envelope(agent, model_id)
+    if live_ok:
+        return True, True, True
+    return False, False, False
 
 
 def probe_loop_capabilities(agent_id: str, model_id: str) -> ModelProfile | None:
@@ -170,26 +247,22 @@ def probe_loop_capabilities(agent_id: str, model_id: str) -> ModelProfile | None
             latency_tier="medium",
         )
 
-    # Stage-2: live capability probe (flag-gated, default off for built-ins, always on for substitutes)
-    if agent in ("kimi", "kimi_work", "local") or _live_probe_enabled():
-        live_ok = _probe_live_capability(agent, mid)
-        if not live_ok:
-            # Downgrade: force not-loop-ready
-            profile = replace(
-                profile,
-                supports_tools=False,
-                supports_inbox_mcp=False,
-                supports_json_envelope=False,
-            )
-        else:
-            # Upgrade substitutes to loop-ready if they pass live probe
-            if agent in ("kimi", "kimi_work", "local"):
-                profile = replace(
-                    profile,
-                    supports_tools=True,
-                    supports_inbox_mcp=True,
-                    supports_json_envelope=True,
-                )
+    # Stage-2: per-capability probe for substitutes; built-ins only when live flag on.
+    if agent in ("kimi", "kimi_work", "local"):
+        tools, inbox, envelope = _probe_substitute_loop_flags(agent, mid)
+        profile = replace(
+            profile,
+            supports_tools=tools,
+            supports_inbox_mcp=inbox,
+            supports_json_envelope=envelope,
+        )
+    elif _live_probe_enabled() and not _probe_substitute_envelope(agent, mid):
+        profile = replace(
+            profile,
+            supports_tools=False,
+            supports_inbox_mcp=False,
+            supports_json_envelope=False,
+        )
 
     return profile
 

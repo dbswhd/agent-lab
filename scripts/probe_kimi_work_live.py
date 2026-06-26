@@ -40,6 +40,11 @@ def main() -> int:
         action="store_true",
         help="Emit machine-readable JSON summary on stdout",
     )
+    parser.add_argument(
+        "--envelope-probe",
+        action="store_true",
+        help="Run Loop envelope readiness probe (structured speech act) after turn probe",
+    )
     args = parser.parse_args()
 
     if os.getenv("AGENT_LAB_MOCK_AGENTS", "").strip().lower() in {"1", "true", "yes", "on"}:
@@ -92,6 +97,14 @@ def main() -> int:
         "push_count": len(pushes),
         "pushes": pushes[:20],
     }
+
+    if args.envelope_probe:
+        from agent_lab.model_policy_probe import _probe_substitute_envelope
+
+        summary["envelope_probe_ok"] = _probe_substitute_envelope("kimi_work", "k2p6")
+        if not summary["envelope_probe_ok"]:
+            print("envelope probe FAILED", file=sys.stderr)
+            return 1
 
     if args.json:
         print(json.dumps(summary, ensure_ascii=False, indent=2))

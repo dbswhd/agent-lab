@@ -291,6 +291,9 @@ def agent_health_row(
         else:
             row["bridge"] = "unknown"
             row["ready"] = row["configured"]
+        from agent_lab.kimi_work_loop import kimi_work_loop_phase
+
+        row["loop_phase"] = kimi_work_loop_phase()
         return row
 
     if aid == "local":

@@ -62,3 +62,38 @@ def test_mock_discuss_kimi_work_roster(tmp_path: Path) -> None:
     assert agent_replies, "expected kimi_work/local mock replies"
     assert any(m.agent == "kimi_work" for m in agent_replies)
     assert (folder / "kimi_work.json").is_file()
+
+
+def test_mock_consensus_kimi_work_envelope(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from agent_lab import kimi_work_provider as kwp
+    from agent_lab import room
+
+    envelope_flags: list[bool] = []
+    orig_respond = kwp.respond
+
+    def _wrap_respond(*args: object, **kwargs: object) -> str:
+        envelope_flags.append(bool(kwargs.get("request_structured_envelope")))
+        return orig_respond(*args, **kwargs)
+
+    monkeypatch.setattr(kwp, "respond", _wrap_respond)
+
+    folder = tmp_path / "sess-kimi-consensus"
+    agents = ["kimi_work", "cursor", "codex"]
+    _seed_session(folder, agents=agents)
+
+    messages, _plan = room.continue_room_round(
+        folder,
+        "Pick JWT middleware path — consensus check.",
+        agents=agents,
+        synthesize=False,
+        parallel_rounds=2,
+        consensus_mode=True,
+    )
+    kimi_msgs = [
+        m
+        for m in messages
+        if m.role == "agent" and m.agent == "kimi_work" and (m.content or "").strip()
+    ]
+    assert kimi_msgs, "expected kimi_work consensus reply"
+    assert any(envelope_flags), "expected structured envelope on kimi_work R2+ consensus turn"
+    assert "Kimi Work" in kimi_msgs[0].content

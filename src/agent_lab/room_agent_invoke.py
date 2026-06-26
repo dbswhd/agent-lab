@@ -469,6 +469,7 @@ def _call_one_agent(
         from agent_lab.agents.registry import call_agent_reply
         from agent_lab.cursor_inbox_mcp import discuss_inbox_mcp_enabled
 
+        # Loop discuss + plan-workflow CLARIFY share discuss_inbox_mcp_enabled (not execute).
         use_inbox_mcp = discuss_inbox_mcp_enabled(run_meta)
         agent_reply = call_agent_reply(
             aid,

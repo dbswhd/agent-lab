@@ -13,6 +13,7 @@ from agent_lab.kimi_control_client import (
     send_turn,
 )
 from agent_lab.kimi_work_push_mapper import KimiWorkPushMapper
+from agent_lab.agents.prompts import KIMI_WORK_ROOM
 
 DEFAULT_MODEL = "k2p6"
 _push_mapper = KimiWorkPushMapper()
@@ -51,8 +52,24 @@ def respond(
     on_activity: Callable[[str], None] | None = None,
     on_bridge_event: Callable[[str, dict[str, Any]], None] | None = None,
     session_folder: str | Path | None = None,
+    request_structured_envelope: bool = False,
+    inbox_mcp: bool = False,
     **_kwargs: Any,
 ) -> str:
+    base_system = (system or KIMI_WORK_ROOM).strip()
+    if request_structured_envelope:
+        from agent_lab.agent_envelope import ENVELOPE_FORMAT_GUIDANCE_SHORT
+        from agent_lab.structured_envelope_adapter import structured_envelope_system_addon
+
+        addon = structured_envelope_system_addon(compact=True)
+        mirror = f"{ENVELOPE_FORMAT_GUIDANCE_SHORT}\n(Context: Loop consensus envelope)"
+        base_system = f"{base_system}\n\n{addon}\n\n{mirror}"
+    if inbox_mcp:
+        from agent_lab.kimi_work_inbox_bridge import inbox_mcp_system_addon
+
+        inbox_addon = inbox_mcp_system_addon(compact=True)
+        base_system = f"{base_system}\n\n{inbox_addon}" if base_system else inbox_addon
+    system = base_system
     if on_activity:
         on_activity(f"[net] {model_label()} daimon/conversations.send")
 
@@ -80,9 +97,36 @@ def respond(
     def _on_push(method: str, payload: dict[str, Any]) -> None:
         _push_mapper.emit_push(method, payload, on_bridge_event)
 
-    return send_turn(
+    push_handler: Callable[[str, dict[str, Any]], None] = _on_push
+    if inbox_mcp:
+        from agent_lab.kimi_work_inbox_bridge import KimiWorkInboxBridge
+
+        inbox_bridge = KimiWorkInboxBridge(
+            session_folder=folder,
+            conversation_key=conversation_key,
+            on_bridge_event=on_bridge_event,
+            on_activity=on_activity,
+        )
+        push_handler = inbox_bridge.wrap_push_handler(_on_push)
+
+    completed: list[str] = []
+
+    def _capture_push(method: str, payload: dict[str, Any]) -> None:
+        if method == "conversations.message.complete":
+            from agent_lab.kimi_work_push_payload import assistant_reply_text
+
+            body = assistant_reply_text(payload) or str(payload.get("text") or "").strip()
+            if body:
+                completed.append(body)
+        push_handler(method, payload)
+
+    if inbox_mcp:
+        inbox_bridge.set_submit_push(_capture_push)
+
+    body = send_turn(
         conversation_key=conversation_key,
         text=user,
         system=system,
-        on_push=_on_push,
+        on_push=_capture_push,
     )
+    return body or (completed[-1] if completed else "")

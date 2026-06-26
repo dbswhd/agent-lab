@@ -117,9 +117,17 @@ def _cwd_role_plan(agents: list[str]) -> dict[str, str]:
 
 def _force_role_plan(agents: list[str], hint: Any | None = None) -> dict[str, str]:
     """Proposer/Critic (etc.) from cwd_role — ignores quick/trading category skips."""
+    from agent_lab.room_agent_capabilities import DEFAULT_CAPABILITIES
+
     result = _cwd_role_plan(agents)
     if len(agents) >= 2 and "proposer" not in result.values():
-        result.setdefault(agents[0], "proposer")
+        for agent in agents:
+            cap = DEFAULT_CAPABILITIES.get(agent, {})
+            if str(cap.get("cwd_role") or "").strip().lower() == "primary":
+                result.setdefault(agent, "proposer")
+                break
+        else:
+            result.setdefault(agents[0], "proposer")
         for agent in agents[1:]:
             if agent not in result:
                 result[agent] = "critic"

@@ -19,6 +19,7 @@ from agent_lab.room_team_orchestration import (
 def test_parse_go_lead_from_message():
     assert parse_go_lead_from_message("GO codex\nplease review") == "codex"
     assert parse_go_lead_from_message("리드: claude") == "claude"
+    assert parse_go_lead_from_message("GO kimi_work") == "kimi_work"
     assert parse_go_lead_from_message("hello") is None
 
 

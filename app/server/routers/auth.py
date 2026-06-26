@@ -50,10 +50,7 @@ async def auth_run_ws(ws: WebSocket, run_id: str) -> None:
             for event in drain_auth_events(run):
                 await ws.send_json(event)
             if run.status != "running":
-                with anyio.move_on_after(0.25) as terminal_scope:
-                    await ws.receive_json()
-                if terminal_scope.cancel_called:
-                    await ws.close(code=1000)
+                await ws.close(code=1000)
                 return
             with anyio.move_on_after(0.08) as scope:
                 message = await ws.receive_json()

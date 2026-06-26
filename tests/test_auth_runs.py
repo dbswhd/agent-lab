@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import subprocess
 import sys
 import threading
 import time
@@ -32,6 +33,38 @@ def test_auth_run_streams_output_and_completion() -> None:
     events = drain_auth_events(run)
     assert any(event["type"] == "output" for event in events)
     assert events[-1]["type"] == "completed"
+
+
+def test_format_auth_slash_summary_extracts_cli_phrase() -> None:
+    from agent_lab.auth_runs import format_auth_slash_summary
+
+    summary = format_auth_slash_summary(
+        "claude",
+        "login",
+        terminal="completed",
+        output="Opening browser…\nLogin successful\n",
+    )
+    assert summary == "/login claude: Login successful"
+
+
+def test_auth_run_emits_slash_result_to_session(tmp_path: Path) -> None:
+    import json
+
+    from agent_lab.auth_runs import get_auth_run, start_auth_run
+
+    chat = tmp_path / "chat.jsonl"
+    chat.write_text("", encoding="utf-8")
+    reference = start_auth_run("codex", "login", session_folder=tmp_path)
+    run = get_auth_run(reference["id"])
+    assert run is not None
+    _wait_for_terminal(run)
+    lines = chat.read_text(encoding="utf-8").strip().splitlines()
+    assert len(lines) == 1
+    payload = json.loads(lines[0])
+    assert payload["role"] == "system"
+    assert "/login codex:" in payload["content"]
+    assert "시작" not in payload["content"]
+    assert "complete" in payload["content"].lower()
 
 
 def test_auth_run_rejects_unknown_provider() -> None:
@@ -104,11 +137,19 @@ def test_login_command_returns_auth_run(tmp_path: Path, monkeypatch: pytest.Monk
 
     monkeypatch.setenv("AGENT_LAB_DYNAMIC_ROOM", "0")
     monkeypatch.setattr(auth_runs, "provider_login_status", lambda _pid: ("logged_out", None))
+    chat = tmp_path / "chat.jsonl"
+    chat.write_text("", encoding="utf-8")
     result = execute_command(tmp_path, "login", args="oauth codex", workspace=tmp_path)
     assert result["ok"] is True
     auth_run = result["result"]["auth_run"]
     assert auth_run["provider_id"] == "codex"
     assert auth_run["action"] == "login"
+    assert chat.read_text(encoding="utf-8").strip() == ""
+    run = auth_runs.get_auth_run(auth_run["id"])
+    assert run is not None
+    _wait_for_terminal(run)
+    assert "/login codex:" in chat.read_text(encoding="utf-8")
+    assert "시작" not in chat.read_text(encoding="utf-8")
 
 
 def test_login_command_skips_when_already_logged_in(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -251,3 +292,51 @@ def test_status_revalidation_discards_probe_started_before_login(
     time.sleep(0.02)
     with auth_runs._status_lock:
         assert auth_runs._status_cache["codex"][1:] == ("logged_in", "current")
+
+
+def test_interpret_cursor_status_not_logged_in(monkeypatch: pytest.MonkeyPatch) -> None:
+    import agent_lab.auth_runs as auth_runs
+    from agent_lab.provider_registry import get_provider
+
+    monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "0")
+    spec = get_provider("cursor")
+    assert spec is not None
+    result = subprocess.CompletedProcess(
+        args=["cursor-agent", "status"],
+        returncode=0,
+        stdout="Not logged in\n",
+        stderr="",
+    )
+    state, detail = auth_runs._interpret_cli_status(spec, result)
+    assert state == "logged_out"
+    assert "Not logged in" in (detail or "")
+
+
+def test_interpret_claude_status_logged_out_with_zero_exit(monkeypatch: pytest.MonkeyPatch) -> None:
+    import agent_lab.auth_runs as auth_runs
+    from agent_lab.provider_registry import get_provider
+
+    monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "0")
+    spec = get_provider("claude")
+    assert spec is not None
+    result = subprocess.CompletedProcess(
+        args=["claude", "auth", "status"],
+        returncode=0,
+        stdout='{"loggedIn": false, "authMethod": "none"}\n',
+        stderr="",
+    )
+    state, _ = auth_runs._interpret_cli_status(spec, result)
+    assert state == "logged_out"
+
+
+def test_provider_login_status_cursor_not_logged_in(monkeypatch: pytest.MonkeyPatch) -> None:
+    import agent_lab.auth_runs as auth_runs
+
+    monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "0")
+
+    def fake_run(argv, **kwargs):  # type: ignore[no-untyped-def]
+        return subprocess.CompletedProcess(argv, 0, stdout="Not logged in\n", stderr="")
+
+    monkeypatch.setattr(auth_runs.subprocess, "run", fake_run)
+    state, _ = auth_runs.provider_login_status("cursor")
+    assert state == "logged_out"

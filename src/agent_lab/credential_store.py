@@ -198,6 +198,24 @@ def apply_credentials_to_env() -> None:
     _sync_primary_env_from_store(data)
 
 
+def clear_provider_api_credentials(provider: str) -> bool:
+    """Clear credentials.toml primary/fallback for a typed provider."""
+    pid = provider.strip().lower()
+    if pid not in PROVIDERS:
+        return False
+    data = load_credentials(create_default=False)
+    block = data.get(pid) if isinstance(data.get(pid), dict) else {}
+    had = bool(str(block.get("primary") or "").strip() or str(block.get("fallback") or "").strip())
+    if not had:
+        return False
+    block = dict(block)
+    block["primary"] = ""
+    block["fallback"] = ""
+    data[pid] = block
+    save_credentials(data)
+    return True
+
+
 def mask_secret(value: str) -> str | None:
     text = (value or "").strip()
     if not text:

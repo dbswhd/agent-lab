@@ -49,6 +49,14 @@ class TestResolveRolePlan:
         roles = resolve_role_plan(route=_route("standard"), agents=AGENTS)
         assert roles.get("claude") == "critic"
 
+    def test_kimi_work_maps_to_critic(self):
+        roles = resolve_role_plan(
+            route=_route("standard"),
+            agents=["cursor", "kimi_work", "claude"],
+        )
+        assert roles.get("kimi_work") == "critic"
+        assert roles.get("cursor") == "proposer"
+
     def test_deep_codex_is_critic(self):
         roles = resolve_role_plan(route=_route("deep"), agents=AGENTS)
         assert roles.get("codex") == "critic"

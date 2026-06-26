@@ -188,8 +188,14 @@ def _login(args: list[str]) -> dict[str, Any]:
     # Legacy positional form: /login <provider> [key]
     if not provider_registry.is_registered(head):
         return _err("login", f"unknown provider: {head}")
-    kind = provider_registry.auth_kind(head) or "api"
-    method = "oauth" if kind in ("oauth", "cli") else "api"
+    if len(args) > 1:
+        kind = provider_registry.auth_kind(head) or "api"
+        method = "oauth" if kind in ("oauth", "cli") else "api"
+    elif provider_registry.supports_auth(head, "oauth"):
+        method = "oauth"
+    else:
+        kind = provider_registry.auth_kind(head) or "api"
+        method = "oauth" if kind in ("oauth", "cli") else "api"
     return _login_complete(method, head, args[1:])
 
 
@@ -227,6 +233,10 @@ def _logout(args: list[str]) -> dict[str, Any]:
     had_accounts = bool(accounts)
     set_provider_accounts(provider, [])
 
+    from agent_lab.credential_store import clear_provider_api_credentials
+
+    cleared_credentials = clear_provider_api_credentials(provider)
+
     supports_oauth = provider_registry.supports_auth(provider, "oauth") or provider_registry.supports_auth(
         provider, "cli"
     )
@@ -236,7 +246,8 @@ def _logout(args: list[str]) -> dict[str, Any]:
             "command": "logout",
             "provider": provider,
             "auth_kind": "oauth",
-            "cleared": had_accounts,
+            "cleared": had_accounts or cleared_credentials,
+            "cleared_credentials": cleared_credentials,
             "note": f"{provider} CLI 로그아웃을 시작했습니다. 로컬 API 키 계정도 비워집니다.",
         }
     return {

@@ -1654,11 +1654,37 @@ function parseRoomRunHttpError(text: string): string {
     const body = JSON.parse(text) as {
       detail?:
         | string
-        | { message?: string; agents?: { id: string; reason: string }[] };
+        | {
+            message?: string;
+            reason?: string;
+            agents?: Array<string | { id?: string; reason?: string }>;
+          };
     };
     const detail = body.detail;
     if (detail && typeof detail === "object" && Array.isArray(detail.agents)) {
-      return detail.agents.map((a) => `${a.id}: ${a.reason}`).join("; ");
+      const sharedReason =
+        typeof detail.reason === "string" ? detail.reason.trim() : "";
+      const lines = detail.agents.map((agent) => {
+        if (typeof agent === "string") {
+          return sharedReason ? `${agent}: ${sharedReason}` : agent;
+        }
+        const id = agent.id ?? "agent";
+        const reason = agent.reason ?? sharedReason ?? "not ready";
+        return `${id}: ${reason}`;
+      });
+      if (lines.length > 0) return lines.join("; ");
+    }
+    if (
+      detail &&
+      typeof detail === "object" &&
+      typeof detail.reason === "string" &&
+      detail.reason.trim()
+    ) {
+      const message =
+        typeof detail.message === "string" ? detail.message.trim() : "";
+      return message && message !== detail.reason
+        ? `${message}: ${detail.reason}`
+        : detail.reason;
     }
     if (typeof detail === "string") return detail;
   } catch {
@@ -2737,7 +2763,7 @@ export function authRunWsUrl(runId: string): string {
     ? base.replace(/^https?/, (protocol) =>
         protocol === "https" ? "wss" : "ws",
       )
-    : API_ORIGIN.replace(/^http/, "ws");
+    : `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`;
   return `${wsBase}/api/auth/runs/${encodeURIComponent(runId)}`;
 }
 

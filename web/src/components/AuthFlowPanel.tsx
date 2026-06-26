@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import {
   authRunWsUrl,
   captureCodexAuthRun,
-  fetchProviderAuth,
   type AuthRunRef,
 } from "../api/client";
+import { stripTerminalControlSequences } from "../utils/ttySanitize";
 
 type Props = {
   run: AuthRunRef;
@@ -13,32 +13,62 @@ type Props = {
   onComplete: () => void;
 };
 
-type FlowStatus = "running" | "completed" | "failed" | "cancelled";
+type FlowStatus = "running" | "failed" | "cancelled";
 
-const STATUS_LABELS: Record<FlowStatus, string> = {
-  running: "진행 중",
-  completed: "완료",
-  failed: "실패",
-  cancelled: "취소됨",
-};
+const AUTH_CLI_SUCCESS_RE =
+  /Login successful|Logout successful|Successfully logged out|✓ Logout successful|logged in using/i;
+
+function authOutputLooksSuccessful(output: string): boolean {
+  return AUTH_CLI_SUCCESS_RE.test(output);
+}
 
 export function AuthFlowPanel({ run, onClose, onComplete }: Props) {
   const [status, setStatus] = useState<FlowStatus>("running");
-  const [output, setOutput] = useState("");
+  const [errorOutput, setErrorOutput] = useState("");
   const [authUrl, setAuthUrl] = useState<string | null>(null);
   const [input, setInput] = useState("");
-  const [captureHint, setCaptureHint] = useState<string | null>(null);
   const flowLabel = run.action === "logout" ? "로그아웃" : "로그인";
-  const [codexSlots, setCodexSlots] = useState<{
-    hasPrimary: boolean;
-    hasFallback: boolean;
-  } | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const outputRef = useRef("");
+  const onCloseRef = useRef(onClose);
+  const onCompleteRef = useRef(onComplete);
+
+  onCloseRef.current = onClose;
+  onCompleteRef.current = onComplete;
+
+  const finishSuccess = useCallback(async () => {
+    if (run.provider_id === "codex" && run.action === "login") {
+      try {
+        await captureCodexAuthRun(run.id, "primary");
+      } catch {
+        /* live ~/.codex/auth.json is already updated after CLI login */
+      }
+    }
+    onCompleteRef.current();
+    onCloseRef.current();
+  }, [run.action, run.id, run.provider_id]);
+
+  const finishFailure = useCallback((next: FlowStatus, message?: string) => {
+    setStatus(next);
+    setErrorOutput(
+      (message ?? outputRef.current).trim() ||
+        "인증 연결이 끊어졌습니다. CLI 출력을 확인하세요.",
+    );
+  }, []);
 
   useEffect(() => {
-    const wsUrl = authRunWsUrl(run.id);
-    const ws = new WebSocket(wsUrl);
+    const ws = new WebSocket(authRunWsUrl(run.id));
     wsRef.current = ws;
+    outputRef.current = "";
+    let disposed = false;
+    let terminal = false;
+
+    const markCompleted = () => {
+      if (terminal) return;
+      terminal = true;
+      void finishSuccess();
+    };
+
     ws.onmessage = (message) => {
       let event: {
         type: string;
@@ -52,45 +82,48 @@ export function AuthFlowPanel({ run, onClose, onComplete }: Props) {
         return;
       }
       if (event.type === "output" && event.data) {
-        setOutput((current) => `${current}${event.data}`.slice(-8000));
+        const chunk = stripTerminalControlSequences(event.data);
+        if (!chunk) return;
+        outputRef.current = `${outputRef.current}${chunk}`.slice(-8000);
       } else if (event.type === "auth_url" && event.url) {
         setAuthUrl(event.url);
         void openUrl(event.url).catch(() => undefined);
-      } else if (
-        event.type === "completed" ||
-        event.type === "failed" ||
-        event.type === "cancelled"
-      ) {
-        setStatus(event.type);
-        if (event.detail) setOutput((current) => `${current}\n${event.detail}`);
-        if (event.type === "completed") {
-          onComplete();
-          if (run.provider_id === "codex") {
-            void fetchProviderAuth()
-              .then((payload) => {
-                const codex = payload.providers.find(
-                  (provider) => provider.id === "codex",
-                );
-                setCodexSlots({
-                  hasPrimary: codex?.profiles?.has_primary ?? false,
-                  hasFallback: codex?.profiles?.has_fallback ?? false,
-                });
-              })
-              .catch(() => undefined);
-          }
+      } else if (event.type === "completed") {
+        if (event.detail) {
+          outputRef.current = `${outputRef.current}\n${event.detail}`.slice(
+            -8000,
+          );
         }
+        markCompleted();
+        ws.close(1000);
+      } else if (event.type === "failed" || event.type === "cancelled") {
+        if (event.detail) {
+          outputRef.current = `${outputRef.current}\n${event.detail}`.slice(
+            -8000,
+          );
+        }
+        terminal = true;
+        finishFailure(
+          event.type,
+          outputRef.current || event.detail || undefined,
+        );
         ws.close(1000);
       }
     };
-    ws.onerror = () => {
-      setStatus((current) => (current === "running" ? "failed" : current));
-      setOutput((current) => current || `인증 연결 실패: ${wsUrl}`);
+    ws.onclose = () => {
+      if (disposed || terminal) return;
+      if (authOutputLooksSuccessful(outputRef.current)) {
+        markCompleted();
+        return;
+      }
+      finishFailure("failed");
     };
     return () => {
+      disposed = true;
       ws.close();
       wsRef.current = null;
     };
-  }, [onComplete, run.id, run.provider_id]);
+  }, [finishFailure, finishSuccess, run.id]);
 
   const submitInput = () => {
     if (!input || wsRef.current?.readyState !== WebSocket.OPEN) return;
@@ -98,46 +131,59 @@ export function AuthFlowPanel({ run, onClose, onComplete }: Props) {
     setInput("");
   };
 
-  const capture = async (slot: "primary" | "fallback") => {
-    try {
-      await captureCodexAuthRun(run.id, slot);
-      setCaptureHint(`${slot === "primary" ? "메인" : "서브"} 프로필로 저장됨`);
-    } catch (cause) {
-      const message = cause instanceof Error ? cause.message : String(cause);
-      if (!/already exists|이미 존재|교체/i.test(message)) {
-        setCaptureHint(`저장 실패: ${message}`);
-        return;
-      }
-      if (!window.confirm("기존 프로필을 교체할까요?")) return;
-      try {
-        await captureCodexAuthRun(run.id, slot, true);
-        setCaptureHint(`${slot === "primary" ? "메인" : "서브"} 프로필 교체됨`);
-      } catch (replacementCause) {
-        const replacementMessage =
-          replacementCause instanceof Error
-            ? replacementCause.message
-            : String(replacementCause);
-        setCaptureHint(`교체 실패: ${replacementMessage}`);
-      }
-    }
-  };
+  const providerLabel =
+    run.provider_id === "claude"
+      ? "Claude"
+      : run.provider_id === "codex"
+        ? "Codex"
+        : run.provider_id === "cursor"
+          ? "Cursor"
+          : run.provider_id;
+
+  if (status !== "running") {
+    return (
+      <section
+        className="auth-flow auth-flow--error"
+        aria-label={`${providerLabel} ${flowLabel} 실패`}
+      >
+        <div className="auth-flow__head">
+          <strong>
+            {providerLabel} {flowLabel} 실패
+          </strong>
+          <span className={`auth-flow__status auth-flow__status--${status}`}>
+            {status === "cancelled" ? "취소됨" : "실패"}
+          </span>
+        </div>
+        <pre className="auth-flow__output" aria-live="polite">
+          {errorOutput}
+        </pre>
+        <div className="auth-flow__input-row">
+          <button type="button" className="btn btn--sm" onClick={onClose}>
+            닫기
+          </button>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section
-      className="auth-flow"
-      aria-label={`${run.provider_id} CLI ${flowLabel}`}
+      className="auth-flow auth-flow--running"
+      aria-label={`${providerLabel} ${flowLabel}`}
     >
       <div className="auth-flow__head">
         <strong>
-          {run.provider_id} CLI {flowLabel}
+          {providerLabel} {flowLabel}
         </strong>
-        <span className={`auth-flow__status auth-flow__status--${status}`}>
-          {STATUS_LABELS[status]}
-        </span>
+        <span className="auth-flow__status">진행 중</span>
       </div>
-      <pre className="auth-flow__output" aria-live="polite">
-        {output || `${flowLabel} 명령을 시작하는 중…`}
-      </pre>
+      <p className="auth-flow__hint">
+        {run.action === "logout"
+          ? "CLI 로그아웃을 실행 중입니다."
+          : run.provider_id === "claude"
+            ? "브라우저에서 승인한 뒤, 코드가 표시되면 아래에 붙여넣으세요."
+            : "브라우저에서 승인하면 자동으로 완료됩니다."}
+      </p>
       {authUrl ? (
         <button
           type="button"
@@ -147,67 +193,33 @@ export function AuthFlowPanel({ run, onClose, onComplete }: Props) {
           브라우저에서 계속
         </button>
       ) : null}
-      {status === "running" ? (
-        <>
-          <div className="auth-flow__input-row">
+      <div className="auth-flow__input-row">
+        {run.action === "login" ? (
+          <>
             <input
               value={input}
               onChange={(event) => setInput(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter") submitInput();
               }}
-              placeholder="브라우저에 표시된 인증 코드를 붙여넣으세요"
+              placeholder="인증 코드 (필요할 때만)"
               aria-label="인증 코드 입력"
             />
             <button type="button" className="btn btn--sm" onClick={submitInput}>
               입력
             </button>
-            <button
-              type="button"
-              className="btn btn--danger btn--sm"
-              onClick={() =>
-                wsRef.current?.send(JSON.stringify({ type: "cancel" }))
-              }
-            >
-              취소
-            </button>
-          </div>
-          <p className="auth-flow__hint">
-            {run.provider_id === "claude"
-              ? "Claude는 브라우저 승인 후 표시되는 코드를 요청합니다. 코드를 복사해 위에 붙여넣고 Enter를 누르세요."
-              : "브라우저에서 승인하면 CLI가 자동으로 완료됩니다. 코드를 요청하면 붙여넣고 Enter를 누르세요."}
-          </p>
-        </>
-      ) : (
-        <div className="auth-flow__input-row">
-          {status === "completed" &&
-          run.provider_id === "codex" &&
-          run.action === "login" ? (
-            <>
-              <button
-                type="button"
-                className="btn btn--primary btn--sm"
-                onClick={() => void capture("primary")}
-              >
-                {codexSlots?.hasPrimary ? "메인 교체" : "메인으로 저장"}
-              </button>
-              <button
-                type="button"
-                className="btn btn--sm"
-                onClick={() => void capture("fallback")}
-              >
-                {codexSlots?.hasFallback ? "서브 교체" : "서브로 저장"}
-              </button>
-            </>
-          ) : null}
-          <button type="button" className="btn btn--sm" onClick={onClose}>
-            닫기
-          </button>
-          {captureHint ? (
-            <span className="settings-save-hint">{captureHint}</span>
-          ) : null}
-        </div>
-      )}
+          </>
+        ) : null}
+        <button
+          type="button"
+          className="btn btn--danger btn--sm"
+          onClick={() =>
+            wsRef.current?.send(JSON.stringify({ type: "cancel" }))
+          }
+        >
+          취소
+        </button>
+      </div>
     </section>
   );
 }

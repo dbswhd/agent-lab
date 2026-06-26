@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+from typing import Any
+
 from typing import Any
 
 AgentId = str
@@ -119,6 +122,33 @@ def cursor_runtime_block(permissions: dict[str, Any] | None) -> str:
     )
 
 
+def kimi_work_runtime_block(
+    permissions: dict[str, Any] | None,
+    *,
+    discuss: bool = False,
+) -> str:
+    """Explicit Kimi Work daimon runtime for [고정 constraints]."""
+    from agent_lab.workspace_roots import discuss_primary_workspace, project_root
+
+    if permissions:
+        workspace = discuss_primary_workspace(permissions).resolve()
+    else:
+        root = project_root()
+        workspace = root.resolve() if root is not None else Path.cwd()
+    block = (
+        "Kimi Work runtime (Agent Lab — daimon Control WS + session conversation):\n"
+        f"- Workspace root: {workspace}\n"
+        "- Use daimon workspace tools to read/verify before claiming repo facts.\n"
+        "- Human Inbox bridge: `ask_human` / `propose_build` when inbox MCP is enabled this turn."
+    )
+    if discuss:
+        block += (
+            "\n- **Discuss mode:** read-only — verify with tools; "
+            "propose edits as `[PROPOSED:]` text; file writes belong to Cursor execute."
+        )
+    return block
+
+
 def codex_runtime_block(permissions: dict[str, Any] | None) -> str:
     """Explicit Codex CLI runtime for [고정 constraints]."""
     from agent_lab.workspace_roots import resolve_workspace_roots
@@ -186,6 +216,8 @@ def permission_preamble(
                 "propose edits as `[PROPOSED:]` text; file writes belong to Cursor execute."
             )
         return block
+    if agent == "kimi_work":
+        return kimi_work_runtime_block(perms, discuss=discuss)
 
     if not perms:
         return ""

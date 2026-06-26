@@ -24,7 +24,14 @@ DEFAULT_CAPABILITIES: dict[str, dict[str, Any]] = {
         "cwd_role": "review",
         "label": "risk · read-only review",
     },
+    "kimi_work": {
+        "tools": ["daimon_tools", "human_inbox"],
+        "cwd_role": "review",
+        "label": "Work peer · verify · alternate view",
+    },
 }
+
+_CAPABILITY_AGENTS = ("cursor", "codex", "claude", "kimi_work")
 
 SPECIALIST_CAPABILITIES: dict[str, dict[str, Any]] = {
     "cursor": {
@@ -74,7 +81,7 @@ def get_agent_capabilities(run_meta: dict[str, Any] | None) -> dict[str, dict[st
     if not isinstance(raw, dict):
         return {k: normalize_capability(v) for k, v in DEFAULT_CAPABILITIES.items()}
     out: dict[str, dict[str, Any]] = {}
-    for agent in ("cursor", "codex", "claude"):
+    for agent in _CAPABILITY_AGENTS:
         block = raw.get(agent)
         if isinstance(block, dict):
             out[agent] = normalize_capability(block)
@@ -224,7 +231,7 @@ def capability_preamble_block(
     elif profile == "specialist":
         # role_plan 없을 때만 specialist 폴백 텍스트 사용
         if parallel_round == 1 and agent in ("cursor",):
-            parts.append("이번 라운드(R1)에는 Codex·Claude만 발화 — 대기.")
+            parts.append("이번 라운드(R1)에는 Codex·Claude·Kimi Work만 발화 — 대기.")
         elif parallel_round == 2 and agent in ("codex", "claude"):
             parts.append("R1 완료 — R2는 Cursor 패치 검토만.")
         elif parallel_round == 2 and agent == "cursor":
@@ -264,7 +271,7 @@ def specialist_round_agents(
     """F3: R1 codex+claude parallel; R2 cursor sequential."""
     pool = {str(a).strip().lower() for a in agents if str(a).strip()}
     if parallel_round == 1:
-        ordered = [a for a in ("codex", "claude") if a in pool]
+        ordered = [a for a in ("codex", "claude", "kimi_work") if a in pool]
         return ordered or [a for a in agents if str(a).strip()][:2]
     if parallel_round == 2:
         ordered = [a for a in ("cursor",) if a in pool]

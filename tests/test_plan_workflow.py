@@ -58,6 +58,17 @@ def test_tick_clarify_to_draft_when_inbox_clear(tmp_path: Path) -> None:
     folder = tmp_path / "sess"
     folder.mkdir()
     init_plan_workflow_on_plan_send(folder)
+    # Seed an anchored goal so the clarity gate short-circuits via regex (no LLM call needed).
+    patch_run_meta(
+        folder,
+        lambda r: {
+            **r,
+            "verified_loop": {
+                **(r.get("verified_loop") or {}),
+                "loop_goal": {"text": "fix src/agent_lab/run_meta.py null check"},
+            },
+        },
+    )
     tick = tick_plan_workflow_after_turn(
         folder,
         synthesize=True,
@@ -85,6 +96,56 @@ def test_tick_clarify_discuss_send_does_not_advance(tmp_path: Path) -> None:
     assert tick.get("discuss_only") is True
     assert tick.get("advance") is None
     assert get_plan_workflow(read_run_meta(folder))["phase"] == "CLARIFY"
+
+
+def test_tick_draft_to_peer_review_when_plan_changed(tmp_path: Path) -> None:
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    init_plan_workflow_on_plan_send(folder)
+    set_plan_workflow_phase(folder, "DRAFT")
+    tick = tick_plan_workflow_after_turn(
+        folder,
+        synthesize=True,
+        cancelled=False,
+        plan_md=SAMPLE_PLAN,
+        plan_before="",
+        has_pending_inbox_question=False,
+    )
+    assert tick.get("advance") == "PEER_REVIEW"
+    assert get_plan_workflow(read_run_meta(folder))["phase"] == "PEER_REVIEW"
+
+
+def test_tick_draft_no_advance_when_plan_unchanged(tmp_path: Path) -> None:
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    init_plan_workflow_on_plan_send(folder)
+    set_plan_workflow_phase(folder, "DRAFT")
+    tick = tick_plan_workflow_after_turn(
+        folder,
+        synthesize=True,
+        cancelled=False,
+        plan_md=SAMPLE_PLAN,
+        plan_before=SAMPLE_PLAN,
+        has_pending_inbox_question=False,
+    )
+    assert tick.get("advance") is None
+    assert get_plan_workflow(read_run_meta(folder))["phase"] == "DRAFT"
+
+
+def test_clarify_slash_initializes_plan_workflow(tmp_path: Path) -> None:
+    """Feature B parity: /clarify bootstraps plan_workflow just like /plan."""
+    from agent_lab.slash_commands import dispatch
+
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    (folder / "run.json").write_text("{}", encoding="utf-8")
+
+    result = dispatch("/clarify", session_folder=folder)
+    assert result["ok"] is True
+    pw = get_plan_workflow(read_run_meta(folder))
+    assert pw["enabled"] is True
+    assert pw["phase"] == "CLARIFY"
+    assert result.get("plan_workflow_initialized") is True
 
 
 def test_plan_workflow_should_advance_only_on_plan_send(tmp_path: Path) -> None:

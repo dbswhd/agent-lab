@@ -474,14 +474,30 @@ def _clarify(args: list[str], *, session_folder: Path | None = None) -> dict[str
     """/clarify — manually enter the CLARIFY stage (deep-interview analog)."""
     if session_folder is None:
         return _err("clarify", "no active session")
-    return _set_mission_phase(session_folder, "clarify", "CLARIFY")
+    result = _set_mission_phase(session_folder, "clarify", "CLARIFY")
+    from agent_lab.plan_workflow import get_plan_workflow, init_plan_workflow_on_plan_send
+    from agent_lab.run_meta import read_run_meta
+
+    run = read_run_meta(session_folder)
+    if not get_plan_workflow(run).get("enabled"):
+        init_plan_workflow_on_plan_send(session_folder)
+        result["plan_workflow_initialized"] = True
+    return result
 
 
 def _plan(args: list[str], *, session_folder: Path | None = None) -> dict[str, Any]:
     """/plan — manually enter the consensus/plan stage (ralplan analog)."""
     if session_folder is None:
         return _err("plan", "no active session")
-    return _set_mission_phase(session_folder, "plan", "DISCUSS")
+    result = _set_mission_phase(session_folder, "plan", "DISCUSS")
+    from agent_lab.plan_workflow import get_plan_workflow, init_plan_workflow_on_plan_send
+    from agent_lab.run_meta import read_run_meta
+
+    run = read_run_meta(session_folder)
+    if not get_plan_workflow(run).get("enabled"):
+        init_plan_workflow_on_plan_send(session_folder)
+        result["plan_workflow_initialized"] = True
+    return result
 
 
 _HANDLERS: dict[str, Callable[..., dict[str, Any]]] = {

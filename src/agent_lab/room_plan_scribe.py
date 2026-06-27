@@ -143,7 +143,7 @@ def _bootstrap_session_folder_for_plan_workflow(
     (folder / "topic.txt").write_text(topic.strip() + "\n", encoding="utf-8")
     from agent_lab.run_meta import write_run_meta
 
-    write_run_meta(folder, {})
+    write_run_meta(folder, {"topic": topic})
     init_plan_workflow_on_plan_send(folder)
     return folder
 
@@ -230,14 +230,23 @@ def _plan_workflow_post_agent_turn(
             session_folder=folder,
             plan_trigger="plan_turn" if synthesize else "auto_turn",
         )
-    if pw_advance and is_plan_workflow_active(run_meta) and not cancelled and scribe_applied:
+    # Auto-advance: if plan_workflow is already in DRAFT and scribe changed plan.md,
+    # drive PEER_REVIEW without requiring synthesize=True (user turn not needed).
+    _auto_draft_advance = (
+        not pw_advance
+        and scribe_applied
+        and plan_md != plan_before
+        and is_plan_workflow_active(run_meta)
+        and plan_workflow_phase(read_run_meta(folder)) == "DRAFT"
+    )
+    if (pw_advance or _auto_draft_advance) and is_plan_workflow_active(run_meta) and not cancelled and scribe_applied:
         plan_md, pw_replies, pw_meta = orchestrate_plan_workflow_pipeline(
             folder,
             topic=topic,
             messages=messages,
             plan_md=plan_md,
             plan_before=plan_before,
-            synthesize=synthesize,
+            synthesize=synthesize or _auto_draft_advance,
             cancelled=cancelled,
             agents=[str(a) for a in active_agents],
             permissions=permissions,

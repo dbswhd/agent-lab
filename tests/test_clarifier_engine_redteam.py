@@ -63,7 +63,6 @@ def _panel(source: str, qid: str, prompt: str = "Q?") -> dict:
 def test_redteam_cross_source_pending_then_complete_allows_next(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    monkeypatch.setenv("AGENT_LAB_CLARIFIER_ENGINE", "1")
     folder = _sess(tmp_path)
 
     from agent_lab.session_clarifier import (
@@ -90,38 +89,31 @@ def test_redteam_cross_source_pending_then_complete_allows_next(
     assert get_clarifier_interview(read_run_meta(folder))["source"] == "server"
 
 
-def test_redteam_engine_off_no_engine_keys_via_build_and_legacy_overwrite(
+def test_redteam_engine_always_on_build_carries_source_and_cross_source_blocked(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
+    """Engine always on: vague build → source marker present; cross-source pending is always blocked."""
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     monkeypatch.setenv("AGENT_LAB_CLARIFIER", "1")
-    monkeypatch.delenv("AGENT_LAB_CLARIFIER_ENGINE", raising=False)
     folder = _sess(tmp_path)
 
     from agent_lab.session_clarifier import build_clarifier_interview, persist_clarifier_interview
 
-    # Reachable OFF-parity: with the engine off, the only producer feeding persist is the
-    # static build path, which emits no engine-only keys — so run.json stays clean.
     built = build_clarifier_interview("hi", is_new_session=True, human_message_count=1)
     assert built is not None
-    assert not ({"source", "weakest"} & set(built)), built
-    persist_clarifier_interview(folder, built)
-    stored = json.loads((folder / "run.json").read_text(encoding="utf-8"))["clarifier_interview"]
-    assert not ({"source", "weakest"} & set(stored)), stored
+    assert built.get("source") == "clarity_engine", "engine always on → source marker present"
 
-    # Legacy unconditional overwrite preserved when the engine is off.
     first = _panel("clarify_panel", "q1", "Panel?")
     second = _panel("server", "q2", "Server?")
     persist_clarifier_interview(folder, first)
     result = persist_clarifier_interview(folder, second)
-    assert result["persisted"] is True
-    assert result["reason"] == "engine_off"
-    assert result["interview"]["questions"] == second["questions"]
+    assert result["persisted"] is False
+    assert result["reason"] == "cross_source_pending"
+    assert result["interview"]["questions"] == first["questions"]  # preserved
 
 
 def test_redteam_same_source_divergent_pending_is_preserved(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """Engine on: a same-source write that would DROP an already-pending question is blocked."""
-    monkeypatch.setenv("AGENT_LAB_CLARIFIER_ENGINE", "1")
+    """A same-source write that would DROP an already-pending question is blocked."""
     folder = _sess(tmp_path)
 
     from agent_lab.session_clarifier import get_clarifier_interview, persist_clarifier_interview
@@ -154,7 +146,7 @@ def test_redteam_plan_workflow_gate_visibility_and_approval_spine(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
-    monkeypatch.setenv("AGENT_LAB_CLARIFIER_ENGINE", "1")
+    monkeypatch.setenv("AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST", "1")
     monkeypatch.delenv("AGENT_LAB_PIPELINE", raising=False)
 
     from agent_lab.human_inbox import has_pending_question
@@ -178,20 +170,10 @@ def test_redteam_plan_workflow_gate_visibility_and_approval_spine(
     _seed_goal(anchored, "fix src/agent_lab/run_meta.py null check")
     assert _tick(anchored).get("advance") == "DRAFT"
 
-    monkeypatch.delenv("AGENT_LAB_CLARIFIER_ENGINE", raising=False)
-    off = tmp_path / "off"
-    off.mkdir()
-    (off / "run.json").write_text("{}", encoding="utf-8")
-    _init_plan_workflow(off)
-    _seed_goal(off, "make the whole thing better somehow")
-    off_tick = _tick(off)
-    assert off_tick.get("advance") == "DRAFT"
-    assert has_pending_question(read_run_meta(off)) is False
-
 
 def test_redteam_no_visible_question_path_does_not_deadlock(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
-    monkeypatch.setenv("AGENT_LAB_CLARIFIER_ENGINE", "1")
+    monkeypatch.setenv("AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST", "1")  # harvest enabled → dedup path
     monkeypatch.delenv("AGENT_LAB_PIPELINE", raising=False)
 
     import agent_lab.inbox_harvest as inbox_harvest

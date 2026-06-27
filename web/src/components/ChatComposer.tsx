@@ -51,6 +51,8 @@ type Props = {
   onFocusObjection?: (objectionId: string, actionIndex?: number) => void;
   /** When set, replaces joined description + costHint (prototype one-liner). */
   turnHint?: string | null;
+  /** Cost / loop ceiling line (shown after preset description). */
+  costHint?: string | null;
   locale?: Locale;
   /** Hide textarea/send (mode picker stays visible). */
   inputHidden?: boolean;
@@ -111,6 +113,7 @@ export function ChatComposer({
   objectionNotice,
   onFocusObjection,
   turnHint,
+  costHint,
   locale = "en",
   inputHidden = false,
   showModeChipHint = false,
@@ -192,8 +195,104 @@ export function ChatComposer({
   const inputLocked = disabled;
   const sendLocked = sendDisabled ?? disabled;
   const activePreset = roomPresets?.find((p) => p.id === roomPreset) ?? null;
-  const presetHint =
+  const presetDescription =
     turnHint?.trim() || presetHintLine(activePreset, locale) || null;
+  const presetCostLine = costHint?.trim() || null;
+  const primaryModel = activeModels[0] ?? null;
+  const hiddenModelCount = Math.max(activeModels.length - 1, 0);
+
+  function openMentionStart() {
+    if (inputLocked || !sessionId) return;
+    const needsSpace = value.length > 0 && !/\s$/.test(value);
+    const nextValue = `${value}${needsSpace ? " " : ""}@`;
+    onChange(nextValue);
+    void ensureLoaded();
+    requestAnimationFrame(() => {
+      const next = inputRef.current;
+      if (!next) return;
+      next.focus();
+      const pos = nextValue.length;
+      next.setSelectionRange(pos, pos);
+      setMentionCursor(pos);
+    });
+  }
+
+  function openSlashStart() {
+    if (inputLocked) return;
+    const nextValue = value.trim().length === 0 ? "/" : `${value} /`;
+    onChange(nextValue);
+    requestAnimationFrame(() => {
+      const next = inputRef.current;
+      if (!next) return;
+      next.focus();
+      const pos = nextValue.length;
+      next.setSelectionRange(pos, pos);
+      setMentionCursor(pos);
+    });
+  }
+
+  const presetControls =
+    roomPresets && roomPresets.length > 0 && onRoomPresetSelect ? (
+      <div
+        className="composer-prompt-head"
+        role="radiogroup"
+        aria-label={locale === "ko" ? "Room 프리셋" : "Room preset"}
+      >
+        <div className="composer-prompt-head__row">
+          <div className="turn-seg composer-preset-seg">
+            {roomPresets.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                role="radio"
+                aria-checked={roomPreset === p.id}
+                className={roomPreset === p.id ? "is-active" : ""}
+                data-preset={p.id}
+                disabled={inputLocked}
+                title={presetHintLine(p, locale) ?? p.description}
+                onClick={() => onRoomPresetSelect(p.id)}
+              >
+                {presetDisplayLabel(p, locale)}
+              </button>
+            ))}
+          </div>
+          {onPlanAfterSendChange ? (
+            <div className="composer-prompt-head__trailing">
+              <ComposerPlanToggle
+                checked={
+                  roomPreset === "fast"
+                    ? false
+                    : roomPreset === "supervisor"
+                      ? true
+                      : planAfterSend
+                }
+                onChange={onPlanAfterSendChange}
+                disabled={
+                  inputLocked ||
+                  planToggleDisabled ||
+                  roomPreset === "fast" ||
+                  roomPreset === "supervisor"
+                }
+                label={localeMsg.modePlan}
+                title={
+                  roomPreset === "fast"
+                    ? locale === "ko"
+                      ? "fast: discuss만 (plan 끔)"
+                      : "Fast preset: discuss only (plan off)"
+                    : roomPreset === "supervisor"
+                      ? locale === "ko"
+                        ? "supervisor: plan 항상 켜짐"
+                        : "Supervisor preset: plan always on"
+                      : planToggleDisabled
+                        ? localeMsg.planWorkflowComposerBlocked
+                        : localeMsg.modePlanHint
+                }
+              />
+            </div>
+          ) : null}
+        </div>
+      </div>
+    ) : null;
 
   return (
     <div className={rootClass}>
@@ -246,110 +345,6 @@ export function ChatComposer({
         </div>
       ) : null}
 
-      {roomPresets && roomPresets.length > 0 && onRoomPresetSelect ? (
-        <div
-          className="turn-row composer-control-row composer-preset-row"
-          role="radiogroup"
-          aria-label={locale === "ko" ? "Room 프리셋" : "Room preset"}
-          aria-describedby={presetHint ? "composer-preset-desc" : undefined}
-        >
-          <div className="turn-picker__head composer-preset-row__head">
-            <div className="turn-seg composer-preset-seg">
-              {roomPresets.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={roomPreset === p.id}
-                  className={roomPreset === p.id ? "is-active" : ""}
-                  data-preset={p.id}
-                  disabled={inputLocked}
-                  title={presetHintLine(p, locale) ?? p.description}
-                  onClick={() => onRoomPresetSelect(p.id)}
-                >
-                  {presetDisplayLabel(p, locale)}
-                </button>
-              ))}
-            </div>
-            {onPlanAfterSendChange ? (
-              <div className="turn-picker__trailing">
-                <ComposerPlanToggle
-                  checked={
-                    roomPreset === "fast"
-                      ? false
-                      : roomPreset === "supervisor"
-                        ? true
-                        : planAfterSend
-                  }
-                  onChange={onPlanAfterSendChange}
-                  disabled={
-                    inputLocked ||
-                    planToggleDisabled ||
-                    roomPreset === "fast" ||
-                    roomPreset === "supervisor"
-                  }
-                  label={localeMsg.modePlan}
-                  title={
-                    roomPreset === "fast"
-                      ? locale === "ko"
-                        ? "fast: discuss만 (plan 끔)"
-                        : "Fast preset: discuss only (plan off)"
-                      : roomPreset === "supervisor"
-                        ? locale === "ko"
-                          ? "supervisor: plan 항상 켜짐"
-                          : "Supervisor preset: plan always on"
-                        : planToggleDisabled
-                          ? localeMsg.planWorkflowComposerBlocked
-                          : localeMsg.modePlanHint
-                  }
-                />
-              </div>
-            ) : null}
-          </div>
-          {presetHint ? (
-            <p id="composer-preset-desc" className="turn-hint">
-              {presetHint}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-
-      {activeModels.length > 0 ? (
-        <div
-          className="composer-models composer-control-row"
-          aria-label="현재 에이전트와 모델"
-        >
-          <div className="composer-models__scroll">
-            {activeModels.slice(0, 5).map((agent) => (
-              <button
-                key={agent.id}
-                type="button"
-                className="composer-model-chip"
-                onClick={onOpenModelPicker}
-                disabled={!onOpenModelPicker}
-                title={`${agent.label} · ${formatAgentModelName(agent.model, agent.id)}`}
-              >
-                <span>{agent.label}</span>
-                <span aria-hidden="true">·</span>
-                <strong>{formatAgentModelName(agent.model, agent.id)}</strong>
-              </button>
-            ))}
-            {activeModels.length > 5 ? (
-              <button
-                type="button"
-                className="composer-model-chip composer-model-chip--more"
-                onClick={onOpenModelPicker}
-                disabled={!onOpenModelPicker}
-                aria-label={`에이전트 ${activeModels.length - 5}개 더 보기`}
-              >
-                +{activeModels.length - 5}
-              </button>
-            ) : null}
-          </div>
-          <span className="composer-models__hint">/model</span>
-        </div>
-      ) : null}
-
       {objectionNotice ? (
         <div className="objection-alert" role="alert">
           <span className="objection-alert__icon" aria-hidden>
@@ -374,148 +369,236 @@ export function ChatComposer({
       ) : null}
 
       {!inputHidden ? (
-        <div className="composer-row">
-          <div className="composer-capsule">
-            {showAttach && (
-              <>
+        <div
+          className={[
+            "composer-row",
+            presetControls ? "composer-row--stacked" : undefined,
+          ]
+            .filter(Boolean)
+            .join(" ")}
+        >
+          {presetControls ? (
+            <div className="composer-prompt-status">{presetControls}</div>
+          ) : null}
+          <div
+            className={[
+              "composer-capsule",
+              presetControls ? "composer-capsule--stacked" : undefined,
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          >
+            <div className="composer-content">
+              <div className="composer-field">
+                <SlashCommandMenu
+                  value={value}
+                  commands={slashCommands}
+                  disabled={inputLocked}
+                  highlightedIndex={slashHighlight}
+                  onHighlightChange={setSlashHighlight}
+                  onSelect={(slash) => onChange(slash)}
+                  onExecute={(cmd) => onSlashExecute?.(cmd)}
+                />
+                {mentionQuery != null ? (
+                  <ComposerMentionMenu
+                    query={mentionQuery}
+                    paths={mentionPaths}
+                    loading={mentionLoading}
+                    onPick={applyMention}
+                  />
+                ) : null}
+                <textarea
+                  ref={inputRef}
+                  className="composer-input"
+                  value={value}
+                  onChange={(e) => {
+                    const nextValue = e.target.value;
+                    const nextSlashQuery =
+                      nextValue.slice(1).split(/\s/)[0] ?? "";
+                    if (nextSlashQuery !== slashQuery) setSlashHighlight(0);
+                    onChange(nextValue);
+                    setMentionCursor(
+                      e.target.selectionStart ?? nextValue.length,
+                    );
+                  }}
+                  onClick={(e) =>
+                    setMentionCursor(
+                      (e.target as HTMLTextAreaElement).selectionStart ??
+                        value.length,
+                    )
+                  }
+                  placeholder={placeholder}
+                  disabled={inputLocked}
+                  rows={1}
+                  onKeyDown={(e) => {
+                    if (value.startsWith("/") && slashFiltered.length > 0) {
+                      if (e.key === "ArrowDown") {
+                        e.preventDefault();
+                        setSlashHighlight(
+                          (slashHighlight + 1) % slashFiltered.length,
+                        );
+                        return;
+                      }
+                      if (e.key === "ArrowUp") {
+                        e.preventDefault();
+                        setSlashHighlight(
+                          (slashHighlight - 1 + slashFiltered.length) %
+                            slashFiltered.length,
+                        );
+                        return;
+                      }
+                      if (e.key === "PageDown") {
+                        e.preventDefault();
+                        setSlashHighlight(
+                          Math.min(
+                            slashHighlight + 10,
+                            slashFiltered.length - 1,
+                          ),
+                        );
+                        return;
+                      }
+                      if (e.key === "PageUp") {
+                        e.preventDefault();
+                        setSlashHighlight(Math.max(slashHighlight - 10, 0));
+                        return;
+                      }
+                      const slashTokenOnly = /^\/\S*$/.test(value);
+                      if (
+                        (e.key === "Tab" || e.key === "Enter") &&
+                        slashTokenOnly &&
+                        slashFiltered[slashHighlight]
+                      ) {
+                        e.preventDefault();
+                        const command = slashFiltered[slashHighlight];
+                        onChange(command.slash);
+                        if (e.key === "Enter") onSlashExecute?.(command);
+                        return;
+                      }
+                    }
+                    if (e.key === "Escape" && value.startsWith("/")) {
+                      e.preventDefault();
+                      onChange("");
+                      return;
+                    }
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      onSend();
+                    }
+                  }}
+                />
+                {toolbar && <div className="composer-toolbar">{toolbar}</div>}
+              </div>
+            </div>
+            <div className="composer-action-row">
+              <div className="composer-action-row__start">
+                {showAttach && (
+                  <>
+                    <button
+                      type="button"
+                      className="btn-attach"
+                      disabled={inputLocked}
+                      onClick={() => fileInputRef.current?.click()}
+                      aria-label="파일 첨부"
+                      title="파일 첨부"
+                    >
+                      <PaperclipIcon />
+                    </button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      multiple
+                      className="sr-only"
+                      onChange={(e) => {
+                        if (e.target.files?.length) onFilesAdd(e.target.files);
+                        e.target.value = "";
+                      }}
+                    />
+                  </>
+                )}
                 <button
                   type="button"
                   className="btn-attach"
-                  disabled={inputLocked}
-                  onClick={() => fileInputRef.current?.click()}
-                  aria-label="파일 첨부"
-                  title="파일 첨부"
+                  disabled={inputLocked || !sessionId}
+                  onClick={openMentionStart}
+                  aria-label="파일 멘션"
+                  title="파일 멘션"
                 >
-                  <PaperclipIcon />
+                  <AtIcon />
                 </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  className="sr-only"
-                  onChange={(e) => {
-                    if (e.target.files?.length) onFilesAdd(e.target.files);
-                    e.target.value = "";
-                  }}
-                />
-              </>
-            )}
-            <div className="composer-field">
-              <SlashCommandMenu
-                value={value}
-                commands={slashCommands}
-                disabled={inputLocked}
-                highlightedIndex={slashHighlight}
-                onHighlightChange={setSlashHighlight}
-                onSelect={(slash) => onChange(slash)}
-                onExecute={(cmd) => onSlashExecute?.(cmd)}
-              />
-              {mentionQuery != null ? (
-                <ComposerMentionMenu
-                  query={mentionQuery}
-                  paths={mentionPaths}
-                  loading={mentionLoading}
-                  onPick={applyMention}
-                />
-              ) : null}
-              <textarea
-                ref={inputRef}
-                className="composer-input"
-                value={value}
-                onChange={(e) => {
-                  const nextValue = e.target.value;
-                  const nextSlashQuery =
-                    nextValue.slice(1).split(/\s/)[0] ?? "";
-                  if (nextSlashQuery !== slashQuery) setSlashHighlight(0);
-                  onChange(nextValue);
-                  setMentionCursor(e.target.selectionStart ?? nextValue.length);
-                }}
-                onClick={(e) =>
-                  setMentionCursor(
-                    (e.target as HTMLTextAreaElement).selectionStart ??
-                      value.length,
-                  )
-                }
-                placeholder={placeholder}
-                disabled={inputLocked}
-                rows={1}
-                onKeyDown={(e) => {
-                  if (value.startsWith("/") && slashFiltered.length > 0) {
-                    if (e.key === "ArrowDown") {
-                      e.preventDefault();
-                      setSlashHighlight(
-                        (slashHighlight + 1) % slashFiltered.length,
-                      );
-                      return;
-                    }
-                    if (e.key === "ArrowUp") {
-                      e.preventDefault();
-                      setSlashHighlight(
-                        (slashHighlight - 1 + slashFiltered.length) %
-                          slashFiltered.length,
-                      );
-                      return;
-                    }
-                    if (e.key === "PageDown") {
-                      e.preventDefault();
-                      setSlashHighlight(
-                        Math.min(slashHighlight + 10, slashFiltered.length - 1),
-                      );
-                      return;
-                    }
-                    if (e.key === "PageUp") {
-                      e.preventDefault();
-                      setSlashHighlight(Math.max(slashHighlight - 10, 0));
-                      return;
-                    }
-                    const slashTokenOnly = /^\/\S*$/.test(value);
-                    if (
-                      (e.key === "Tab" || e.key === "Enter") &&
-                      slashTokenOnly &&
-                      slashFiltered[slashHighlight]
-                    ) {
-                      e.preventDefault();
-                      const command = slashFiltered[slashHighlight];
-                      onChange(command.slash);
-                      if (e.key === "Enter") onSlashExecute?.(command);
-                      return;
-                    }
-                  }
-                  if (e.key === "Escape" && value.startsWith("/")) {
-                    e.preventDefault();
-                    onChange("");
-                    return;
-                  }
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    onSend();
-                  }
-                }}
-              />
-              {toolbar && <div className="composer-toolbar">{toolbar}</div>}
+                <button
+                  type="button"
+                  className="composer-command-shortcut"
+                  disabled={inputLocked}
+                  onClick={openSlashStart}
+                  aria-label="Slash command"
+                  title="Slash command"
+                >
+                  <span className="shortcut-key">/</span>
+                  <span>commands</span>
+                </button>
+              </div>
+              <div className="composer-action-row__end">
+                {primaryModel ? (
+                  <button
+                    type="button"
+                    className="composer-model-select"
+                    onClick={onOpenModelPicker}
+                    disabled={!onOpenModelPicker}
+                    title={`${primaryModel.label} · ${formatAgentModelName(
+                      primaryModel.model,
+                      primaryModel.id,
+                    )}`}
+                  >
+                    <span className="composer-model-select__agent">
+                      {primaryModel.label}
+                    </span>
+                    <strong>
+                      {formatAgentModelName(
+                        primaryModel.model,
+                        primaryModel.id,
+                      )}
+                    </strong>
+                    {hiddenModelCount > 0 ? (
+                      <span className="composer-model-select__more">
+                        +{hiddenModelCount}
+                      </span>
+                    ) : null}
+                    <span
+                      className="composer-model-select__chevron"
+                      aria-hidden
+                    >
+                      ▾
+                    </span>
+                  </button>
+                ) : null}
+                {running && onStop ? (
+                  <button
+                    type="button"
+                    className="btn-stop"
+                    onClick={onStop}
+                    aria-label="답변 중지"
+                    title="답변 중지"
+                  >
+                    <span className="btn-stop__square" aria-hidden />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn-send"
+                    disabled={sendLocked || !value.trim()}
+                    onClick={onSend}
+                    aria-label="전송"
+                  >
+                    <SendIcon />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-          {running && onStop ? (
-            <button
-              type="button"
-              className="btn-stop"
-              onClick={onStop}
-              aria-label="답변 중지"
-              title="답변 중지"
-            >
-              <span className="btn-stop__square" aria-hidden />
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="btn-send"
-              disabled={sendLocked || !value.trim()}
-              onClick={onSend}
-              aria-label="전송"
-            >
-              <SendIcon />
-            </button>
-          )}
+        </div>
+      ) : presetControls ? (
+        <div className="composer-row composer-row--stacked">
+          <div className="composer-prompt-status">{presetControls}</div>
         </div>
       ) : null}
     </div>
@@ -579,16 +662,16 @@ function SendIcon() {
   return (
     <svg
       viewBox="0 0 24 24"
-      width="18"
-      height="18"
+      width="20"
+      height="20"
       fill="none"
       stroke="currentColor"
-      strokeWidth={1.7}
+      strokeWidth={2.5}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
     >
-      <path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z" />
+      <path d="M12 19V5M5 12l7-7 7 7" />
     </svg>
   );
 }
@@ -615,6 +698,24 @@ function PaperclipIcon() {
   return (
     <svg
       viewBox="0 0 24 24"
+      width="20"
+      height="20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+    </svg>
+  );
+}
+
+function AtIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
       strokeWidth={1.7}
@@ -622,7 +723,8 @@ function PaperclipIcon() {
       strokeLinejoin="round"
       aria-hidden
     >
-      <path d="m16 6-8.5 8.5a2.12 2.12 0 1 0 3 3L19 9a3.12 3.12 0 1 0-4.4-4.4L9.3 14.3a4.62 4.62 0 1 0 6.5 6.5" />
+      <circle cx="12" cy="12" r="4" />
+      <path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8" />
     </svg>
   );
 }

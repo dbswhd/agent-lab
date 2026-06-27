@@ -21,7 +21,7 @@ def test_inbox_bridge_executes_ask_human_mock(tmp_path: Path) -> None:
 
     folder = tmp_path / "sess"
     folder.mkdir()
-    (folder / "run.json").write_text('{"human_inbox": []}', encoding="utf-8")
+    (folder / "run.json").write_text('{"human_inbox": [], "team_lead": "kimi_work"}', encoding="utf-8")
 
     def _resolve() -> None:
         time.sleep(0.05)
@@ -46,7 +46,7 @@ def test_inbox_bridge_adds_system_addon(tmp_path: Path, monkeypatch: pytest.Monk
 
     folder = tmp_path / "sess2"
     folder.mkdir()
-    (folder / "run.json").write_text('{"human_inbox": []}', encoding="utf-8")
+    (folder / "run.json").write_text('{"human_inbox": [], "team_lead": "kimi_work"}', encoding="utf-8")
 
     captured: dict[str, str] = {}
 

@@ -121,7 +121,11 @@ def test_orchestrate_pipeline_peer_refine_human_pending(
 def test_inbox_resolve_advances_clarify_to_draft(tmp_path: Path) -> None:
     folder = tmp_path / "sess"
     folder.mkdir()
-    (folder / "run.json").write_text("{}", encoding="utf-8")
+    # Anchored goal so clarity gate short-circuits; scope question is for another reason.
+    (folder / "run.json").write_text(
+        '{"verified_loop": {"loop_goal": {"text": "fix src/agent_lab/run_meta.py null check"}}}',
+        encoding="utf-8",
+    )
     init_plan_workflow_on_plan_send(folder)
     assert get_plan_workflow(read_run_meta(folder))["phase"] == "CLARIFY"
 
@@ -143,7 +147,11 @@ def test_e2e_clarify_draft_approve_execute_gate(tmp_path: Path, monkeypatch: pyt
     monkeypatch.setenv("AGENT_LAB_MISSION_LOOP", "1")
     folder = tmp_path / "sess"
     folder.mkdir()
-    (folder / "run.json").write_text("{}", encoding="utf-8")
+    # Anchored goal so clarity gate short-circuits via regex (no LLM call, no mock dependency).
+    (folder / "run.json").write_text(
+        '{"verified_loop": {"loop_goal": {"text": "fix src/agent_lab/run_meta.py null check"}}}',
+        encoding="utf-8",
+    )
     init_plan_workflow_on_plan_send(folder)
 
     tick = tick_plan_workflow_after_turn(
@@ -247,7 +255,7 @@ def test_run_room_plan_send_reaches_human_pending(
     from agent_lab import room
 
     folder, _messages, plan_md = room.run_room(
-        "Build widget feature with peer review",
+        "fix src/agent_lab/room.py plan_workflow peer review",  # anchored → clarity gate passes
         synthesize=True,
         sessions_base=tmp_path,
         parallel_rounds=1,

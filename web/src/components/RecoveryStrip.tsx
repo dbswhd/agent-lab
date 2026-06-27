@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { RecoveryActionId, RecoveryItem } from "../utils/recoveryItems";
 import type {
   RecoveryResolutionEvent,
@@ -20,11 +21,11 @@ type Props = {
 function severityLabel(item: RecoveryItem): string {
   switch (item.severity) {
     case "blocking_execute":
-      return "실행 차단";
+      return "실행";
     case "blocking_send":
-      return "전송 차단";
+      return "전송";
     case "degraded_team":
-      return "일부 기능 제한";
+      return "제한";
     case "informational":
       return "안내";
   }
@@ -54,11 +55,23 @@ function actionBusyLabel(actionId: RecoveryActionId): string {
 function resolutionLabel(event: RecoveryResolutionEvent): string {
   switch (event.status) {
     case "checking":
-      return "Checking";
+      return "확인 중";
     case "resolved":
-      return "Resolved";
+      return "해결됨";
     case "still_blocked":
-      return "Still blocked";
+      return "아직 차단됨";
+  }
+}
+
+function severityTone(item: RecoveryItem): string {
+  switch (item.severity) {
+    case "blocking_execute":
+    case "blocking_send":
+      return "차단";
+    case "degraded_team":
+      return "주의";
+    case "informational":
+      return "안내";
   }
 }
 
@@ -95,10 +108,17 @@ export function RecoveryStrip({
       aria-label="복구 액션"
     >
       <header className="recovery-strip__head">
-        <strong>{items[0]?.title ?? "정상화됨"}</strong>
-        <span className="recovery-strip__count">
-          {items.length > 1 ? `${items.length}개 확인 필요` : null}
-        </span>
+        <div className="recovery-strip__title-group">
+          <span className="recovery-strip__eyebrow">
+            {items[0] ? severityTone(items[0]) : "복구 완료"}
+          </span>
+          <strong>{items[0]?.title ?? "정상화됨"}</strong>
+        </div>
+        {items.length > 1 ? (
+          <span className="recovery-strip__count">
+            {items.length}개 확인 필요
+          </span>
+        ) : null}
         {onDismiss ? (
           <button
             type="button"
@@ -107,7 +127,20 @@ export function RecoveryStrip({
             title="닫기"
             onClick={onDismiss}
           >
-            닫기
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              aria-hidden="true"
+            >
+              <path
+                d="M3.2 3.2 10.8 10.8M10.8 3.2 3.2 10.8"
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeWidth="1.6"
+              />
+            </svg>
           </button>
         ) : null}
       </header>
@@ -130,7 +163,7 @@ export function RecoveryStrip({
                   <p>{item.reason}</p>
                   {item.details ? (
                     <details className="recovery-item__details">
-                      <summary>details</summary>
+                      <summary>진단 정보</summary>
                       <pre>{item.details}</pre>
                     </details>
                   ) : null}
@@ -215,4 +248,3 @@ export function RecoveryStrip({
     </section>
   );
 }
-import { useEffect, useState } from "react";

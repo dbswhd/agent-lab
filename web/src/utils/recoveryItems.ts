@@ -352,7 +352,7 @@ export function buildRecoveryItems(
     items.push({
       kind: "partial_turn",
       severity: "blocking_send",
-      title: "Room readiness가 blocked 상태입니다.",
+      title: "전송 전에 연결 확인이 필요합니다.",
       reason:
         input.readiness?.next_actions[0] ?? "준비 상태를 확인해야 합니다.",
       details: input.readiness?.checks

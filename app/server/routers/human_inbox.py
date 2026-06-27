@@ -30,9 +30,9 @@ class InboxSettingsPatch(BaseModel):
 
 @router.get("/inbox/summary")
 def get_inbox_summary(include_archived: bool = False) -> dict[str, Any]:
-    from agent_lab.session import SESSIONS_DIR
+    from agent_lab.session_paths import active_sessions_dir
 
-    summary = build_inbox_summary(SESSIONS_DIR, include_archived=include_archived)
+    summary = build_inbox_summary(active_sessions_dir(), include_archived=include_archived)
     return {"ok": True, **summary}
 
 

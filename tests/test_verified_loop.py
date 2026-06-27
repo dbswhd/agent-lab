@@ -415,6 +415,7 @@ def test_detect_completion_promise_since_iso_filters_messages() -> None:
 
 
 def test_maybe_auto_scribe_after_verified_loop_harvests_inbox(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST", "1")
     from agent_lab.room import maybe_auto_scribe_after_verified_loop
 
     folder = _session(tmp_path)

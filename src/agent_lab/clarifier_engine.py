@@ -8,9 +8,8 @@ This module is intentionally a *thin, pure* adapter:
   imported lazily inside functions, so the A → adapter → C edge can never form an import cycle
   (C never imports this module at top level either).
 
-Behind ``AGENT_LAB_CLARIFIER_ENGINE`` (default off), ``build_clarifier_interview`` consults
-this adapter to source clarity-engine questions while keeping A's exact v2 interview shape and
-all of A's UI/HTTP/SSE/inbox wiring untouched. With the flag off, this module is inert.
+The clarity engine is always active: vague topics hold CLARIFY; anchored topics pass immediately
+(regex short-circuit, no LLM call). ``AGENT_LAB_CLARIFIER_ENGINE`` is no longer read.
 """
 
 from __future__ import annotations
@@ -18,8 +17,6 @@ from __future__ import annotations
 import os
 from datetime import datetime, timezone
 from typing import Any
-
-_TRUE = {"1", "true", "yes", "on"}
 
 #: Marks interviews built by the clarity engine so identity-aware persistence can tell
 #: engine-sourced interviews apart from the static server-clarifier templates ("server").
@@ -31,11 +28,6 @@ def _now_iso() -> str:
     if os.getenv("AGENT_LAB_MOCK_AGENTS"):
         return "1970-01-01T00:00:00+00:00"
     return datetime.now(timezone.utc).isoformat()
-
-
-def engine_enabled() -> bool:
-    """True when the clarity-engine backing for the server clarifier is opted in."""
-    return (os.getenv("AGENT_LAB_CLARIFIER_ENGINE") or "").strip().lower() in _TRUE
 
 
 def engine_questions(

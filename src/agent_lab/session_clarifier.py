@@ -170,16 +170,15 @@ def build_clarifier_interview(
     text = (topic or "").strip()
     if not text:
         return None
-    from agent_lab.clarifier_engine import build_engine_interview, engine_enabled
+    from agent_lab.clarifier_engine import build_engine_interview
 
-    if engine_enabled():
-        engine_interview = build_engine_interview(
-            text,
-            human_message_count=human_message_count,
-            plan_mode=plan_mode,
-        )
-        if engine_interview is not None:
-            return engine_interview
+    engine_interview = build_engine_interview(
+        text,
+        human_message_count=human_message_count,
+        plan_mode=plan_mode,
+    )
+    if engine_interview is not None:
+        return engine_interview
     short = len(text) < clarifier_min_topic_chars()
     first_turn = is_new_session and human_message_count <= 1
     use_v2 = interview_v2_enabled()
@@ -270,24 +269,17 @@ def _persist_decision(
     candidate: dict[str, Any],
     *,
     replace: bool,
-    engine_on: bool,
 ) -> tuple[bool, str]:
     """Decide whether ``candidate`` may replace ``existing`` as the durable interview.
 
-    OFF-parity: with the clarity engine off (and no explicit replace), persistence is the
-    legacy unconditional overwrite, so engine-off behavior is byte-identical to before.
-    With the engine on, persistence is identity-aware: a pending interview from a *different*
-    source is preserved (the write-race fix), and a same-source write is allowed only when it
-    keeps every already-surfaced question (its id set is a superset) so an in-flight pending
-    interview whose questions were already harvested is never silently dropped.
-    Completion is never handled here — it stays solely in ``record_clarifier_answers``.
+    Identity-aware: a pending interview from a different source is preserved (write-race fix);
+    a same-source write is allowed only when its question id set is a superset of the existing
+    one so in-flight pending questions are never silently dropped.
     """
     if not isinstance(existing, dict):
         return True, "new"
     if replace:
         return True, "explicit_replace"
-    if not engine_on:
-        return True, "engine_off"
     if existing.get("status") == "complete":
         return True, "prior_complete"
     if _interview_source(existing) == _interview_source(candidate):
@@ -312,15 +304,12 @@ def persist_clarifier_interview(
     """
     from pathlib import Path
 
-    from agent_lab.clarifier_engine import engine_enabled
-
     path = Path(folder)
-    engine_on = engine_enabled()
     outcome: dict[str, Any] = {"interview": interview, "persisted": True, "reason": "new"}
 
     def _persist(run: dict[str, Any]) -> dict[str, Any]:
         existing = get_clarifier_interview(run)
-        persisted, reason = _persist_decision(existing, interview, replace=replace, engine_on=engine_on)
+        persisted, reason = _persist_decision(existing, interview, replace=replace)
         outcome["persisted"] = persisted
         outcome["reason"] = reason
         if persisted:

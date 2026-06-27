@@ -25,6 +25,8 @@ def test_room_task_bar_and_banners_have_accessible_names():
     assert "room-partial-banner" not in room_chat
     assert 'role={items.length > 0 ? "alert" : "status"}' in recovery
     assert 'aria-label="복구 액션"' in recovery
+    assert "진단 정보" in recovery
+    assert "<summary>details</summary>" not in recovery
     assert 'aria-label="에이전트 준비 상태"' in readiness
 
 

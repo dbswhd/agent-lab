@@ -618,15 +618,10 @@ def _open_plan_objections(run: dict[str, Any]) -> list[dict[str, Any]]:
 def _clarity_gate_questions(folder: Path, run: dict[str, Any]) -> dict[str, Any] | None:
     """Engine+pipeline CLARIFY gate: surface clarity-engine questions via the Human Inbox.
 
-    Returns a hold-result dict when CLARIFY must hold on unmet clarity, or ``None`` to let the
-    legacy round-counter advance (gate inactive when ``AGENT_LAB_CLARIFIER_ENGINE`` off or
-    pipeline off, clarity already met, or no human-visible question could be created). Never
-    holds without a human-visible pending Human Inbox question (no silent deadlock).
+    Returns a hold-result dict when CLARIFY must hold on unmet clarity, or ``None`` when clarity
+    is already met or no human-visible question could be created (no silent deadlock). Anchored
+    tasks (regex short-circuit) pass immediately without an LLM call.
     """
-    from agent_lab.clarifier_engine import engine_enabled
-    if not engine_enabled():
-        return None
-
     from agent_lab.clarity import _mission_clarity_text, clarity_threshold_met
 
     if clarity_threshold_met(run):
@@ -680,8 +675,20 @@ def _clarity_gate_questions(folder: Path, run: dict[str, Any]) -> dict[str, Any]
     from agent_lab.human_inbox import has_pending_question
 
     if not has_pending_question(read_run_meta(folder)):
-        # No visible pending question landed (e.g. all deduped) → advance instead of deadlocking.
-        return {"phase": "CLARIFY", "clarity_pending": False, "clarity_notice": "clarity_no_visible_question"}
+        from agent_lab.inbox_harvest import orchestrator_inbox_harvest_enabled
+
+        if orchestrator_inbox_harvest_enabled():
+            # Harvest was enabled but questions were all deduped → advance to avoid deadlock.
+            return {"phase": "CLARIFY", "clarity_pending": False, "clarity_notice": "clarity_no_visible_question"}
+        # MCP-first: harvest off, questions live in clarifier_interview. Agents surface them
+        # via ask_human or room context; round cap (max_clarify_rounds) guards against infinite wait.
+        return {
+            "phase": "CLARIFY",
+            "clarity_pending": True,
+            "clarity_notice": "clarity_mcp_first_hold",
+            "questions": prompts,
+            "wait_inbox": False,
+        }
     return {
         "phase": "CLARIFY",
         "clarity_pending": True,
@@ -719,14 +726,16 @@ def tick_plan_workflow_after_turn(
             out["phase"] = "CLARIFY"
             out["wait_inbox"] = True
             return out
-        clarity_hold = _clarity_gate_questions(folder, run)
-        if clarity_hold is not None and clarity_hold.get("clarity_pending"):
-            out.update(clarity_hold)
-            return out
-        if clarity_hold is not None:
-            out.update(clarity_hold)
         clarify_round = int(pw.get("clarify_round") or 0) + 1
         max_clarify = _round_cap(pw.get("max_clarify_rounds"), DEFAULT_MAX_CLARIFY_ROUNDS)
+        # Round cap takes precedence: exhausted cap → advance unconditionally (no clarity gate).
+        if clarify_round <= max_clarify:
+            clarity_hold = _clarity_gate_questions(folder, run)
+            if clarity_hold is not None and clarity_hold.get("clarity_pending"):
+                out.update(clarity_hold)
+                return out
+            if clarity_hold is not None:
+                out.update(clarity_hold)
 
         def _clarify_done(run_in: dict[str, Any]) -> dict[str, Any]:
             cur = get_plan_workflow(run_in)

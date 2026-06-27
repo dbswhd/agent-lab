@@ -73,6 +73,36 @@ describe("buildRecoveryItems", () => {
     expect(items).toEqual([]);
   });
 
+  it("uses direct readiness copy when send is blocked", () => {
+    const items = buildRecoveryItems(
+      input({
+        readiness: {
+          verdict: "blocked",
+          session_id: "s1",
+          agents: ["claude"],
+          next_actions: [
+            "터미널에서 `claude logout` 후 `claude login` (Claude Code OAuth — Room은 API 키 미사용)",
+          ],
+          checks: [
+            {
+              id: "claude_auth",
+              agent: "claude",
+              ok: false,
+              detail: "auth expired",
+              next: "터미널: claude login",
+            },
+          ],
+        },
+      }),
+    );
+
+    expect(items[0]?.severity).toBe("blocking_send");
+    expect(items[0]?.title).toBe("전송 전에 연결 확인이 필요합니다.");
+    expect(items[0]?.title).not.toContain("blocked");
+    expect(items[0]?.primaryAction.label).toBe("Settings 열기");
+    expect(items[0]?.secondaryAction?.label).toBe("상태 재확인");
+  });
+
   it("resolves after health or retry removes the source state", () => {
     const [item] = buildRecoveryItems(
       input({

@@ -1,8 +1,8 @@
-"""CLARIFY unification (Opt-B) — AC1..AC15.
+"""CLARIFY engine always-on — AC1..AC15.
 
-C (clarity engine) backs A (server clarifier) behind AGENT_LAB_CLARIFIER_ENGINE while B
-(plan_workflow) gates on clarity and delivers questions through the Human Inbox. OFF-parity
-for each flag independently is the primary invariant.
+Clarity engine is always active: vague topics hold CLARIFY; anchored topics pass immediately
+via regex short-circuit (no LLM call). Identity-aware persistence is always in effect.
+AGENT_LAB_CLARIFIER_ENGINE is removed; AGENT_LAB_CLARIFIER still gates the A-surface.
 """
 
 from __future__ import annotations
@@ -37,27 +37,11 @@ def _seed_goal(folder: Path, text: str) -> None:
 # ---------------------------------------------------------------- AC15 / registry
 
 
-def test_ac15_flag_registered_default_off(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("AGENT_LAB_CLARIFIER_ENGINE", raising=False)
-    from agent_lab.clarifier_engine import engine_enabled
-    from agent_lab.runtime_flags import FLAG_REGISTRY, _resolve_row
+def test_ac15_clarifier_engine_flag_removed_from_registry() -> None:
+    from agent_lab.runtime_flags import FLAG_REGISTRY
 
-    row = next((f for f in FLAG_REGISTRY if f.name == "AGENT_LAB_CLARIFIER_ENGINE"), None)
-    assert row is not None, "AGENT_LAB_CLARIFIER_ENGINE must be in the flag registry"
-    assert row.default in ("", "0", "off", "false")
-    # /api/health/flags is driven by _resolve_row → effective must read "off" by default.
-    assert _resolve_row(row)["effective"] == "off"
-    assert engine_enabled() is False
-
-
-def test_engine_enabled_truthy_set(monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab.clarifier_engine import engine_enabled
-
-    for value in ("1", "true", "on", "yes"):
-        monkeypatch.setenv("AGENT_LAB_CLARIFIER_ENGINE", value)
-        assert engine_enabled() is True
-    monkeypatch.setenv("AGENT_LAB_CLARIFIER_ENGINE", "0")
-    assert engine_enabled() is False
+    names = {f.name for f in FLAG_REGISTRY}
+    assert "AGENT_LAB_CLARIFIER_ENGINE" not in names, "flag must be removed — engine is always on"
 
 
 # ---------------------------------------------------------------- adapter purity / cycle
@@ -164,7 +148,6 @@ def test_ac11_category_literal_includes_criteria_context() -> None:
 def test_ac2_engine_backed_build_surface(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     monkeypatch.setenv("AGENT_LAB_CLARIFIER", "1")
-    monkeypatch.setenv("AGENT_LAB_CLARIFIER_ENGINE", "1")
     from agent_lab.session_clarifier import build_clarifier_interview
 
     interview = build_clarifier_interview(
@@ -178,24 +161,23 @@ def test_ac2_engine_backed_build_surface(monkeypatch: pytest.MonkeyPatch) -> Non
     assert categories, "engine-backed surface must carry clarity-engine categories"
 
 
-def test_ac1_engine_off_uses_static_templates(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_ac1_vague_topic_uses_engine_interview(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Engine always on: vague short topic → engine interview with source marker."""
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     monkeypatch.setenv("AGENT_LAB_CLARIFIER", "1")
-    monkeypatch.delenv("AGENT_LAB_CLARIFIER_ENGINE", raising=False)
     from agent_lab.session_clarifier import build_clarifier_interview
 
     interview = build_clarifier_interview("hi", is_new_session=True, human_message_count=1)
     assert interview is not None
-    assert "source" not in interview, "engine-off static interviews carry no source marker"
+    assert interview["source"] == "clarity_engine", "engine always on → source marker present"
 
 
 def test_ac9_clarifier_off_engine_on_no_static_interview(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     monkeypatch.delenv("AGENT_LAB_CLARIFIER", raising=False)
-    monkeypatch.setenv("AGENT_LAB_CLARIFIER_ENGINE", "1")
     from agent_lab.session_clarifier import build_clarifier_interview
 
-    # A's surface still requires AGENT_LAB_CLARIFIER; engine flag alone does not strand it.
+    # A's surface still requires AGENT_LAB_CLARIFIER; engine alone does not enable it.
     assert build_clarifier_interview("make it better", is_new_session=True, human_message_count=1) is None
 
 
@@ -203,7 +185,6 @@ def test_ac9_clarifier_off_engine_on_no_static_interview(monkeypatch: pytest.Mon
 
 
 def test_ac12_persist_returns_state_and_blocks_cross_source(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    monkeypatch.setenv("AGENT_LAB_CLARIFIER_ENGINE", "1")
     folder = _sess(tmp_path)
     from agent_lab.session_clarifier import get_clarifier_interview, persist_clarifier_interview
 
@@ -241,7 +222,6 @@ def test_ac12_persist_returns_state_and_blocks_cross_source(monkeypatch: pytest.
 
 
 def test_ac4_completion_only_via_record_then_next_pending(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    monkeypatch.setenv("AGENT_LAB_CLARIFIER_ENGINE", "1")
     folder = _sess(tmp_path)
     from agent_lab.session_clarifier import persist_clarifier_interview, record_clarifier_answers
 
@@ -267,8 +247,8 @@ def test_ac4_completion_only_via_record_then_next_pending(monkeypatch: pytest.Mo
     assert r["persisted"] is True and r["reason"] == "prior_complete"
 
 
-def test_ac1_persist_engine_off_legacy_overwrite(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    monkeypatch.delenv("AGENT_LAB_CLARIFIER_ENGINE", raising=False)
+def test_ac1_persist_cross_source_pending_always_blocked(tmp_path: Path) -> None:
+    """Identity-aware persistence always on: cross-source pending write is blocked."""
     folder = _sess(tmp_path)
     from agent_lab.session_clarifier import get_clarifier_interview, persist_clarifier_interview
 
@@ -288,13 +268,13 @@ def test_ac1_persist_engine_off_legacy_overwrite(monkeypatch: pytest.MonkeyPatch
         "answers": {},
     }
     r = persist_clarifier_interview(folder, b)
-    assert r["persisted"] is True and r["reason"] == "engine_off"
-    # Legacy unconditional overwrite preserved when engine off (OFF-parity).
-    assert get_clarifier_interview(read_run_meta(folder))["source"] == "server"
+    assert r["persisted"] is False and r["reason"] == "cross_source_pending"
+    # Existing panel interview is preserved.
+    assert get_clarifier_interview(read_run_meta(folder))["source"] == "clarify_panel"
 
 
-def test_ac14_off_parity_runjson_shape_byte_stable(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    monkeypatch.delenv("AGENT_LAB_CLARIFIER_ENGINE", raising=False)
+def test_ac14_persist_stores_candidate_verbatim(tmp_path: Path) -> None:
+    """persist_clarifier_interview does not inject extra keys into run.json."""
     folder = _sess(tmp_path)
     from agent_lab.session_clarifier import get_clarifier_interview, persist_clarifier_interview
 
@@ -306,7 +286,6 @@ def test_ac14_off_parity_runjson_shape_byte_stable(monkeypatch: pytest.MonkeyPat
     }
     persist_clarifier_interview(folder, candidate)
     stored = get_clarifier_interview(read_run_meta(folder))
-    # No engine-only keys injected into run.json when the engine is off.
     assert stored == candidate
 
 
@@ -334,7 +313,7 @@ def _tick(folder: Path) -> dict:
 
 def test_ac10_gate_holds_clarify_with_visible_inbox_question(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
-    monkeypatch.setenv("AGENT_LAB_CLARIFIER_ENGINE", "1")
+    monkeypatch.setenv("AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST", "1")
     monkeypatch.delenv("AGENT_LAB_PIPELINE", raising=False)  # default ON
     from agent_lab.human_inbox import has_pending_question
     from agent_lab.plan_workflow import get_plan_workflow
@@ -353,7 +332,6 @@ def test_ac10_gate_holds_clarify_with_visible_inbox_question(monkeypatch: pytest
 
 def test_ac3_gate_advances_when_clarity_met(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
-    monkeypatch.setenv("AGENT_LAB_CLARIFIER_ENGINE", "1")
     monkeypatch.delenv("AGENT_LAB_PIPELINE", raising=False)
     folder = _sess(tmp_path)
     _init_plan_workflow(folder)
@@ -365,7 +343,7 @@ def test_ac3_gate_advances_when_clarity_met(monkeypatch: pytest.MonkeyPatch, tmp
 
 def test_ac8_gate_never_starts_execution(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
-    monkeypatch.setenv("AGENT_LAB_CLARIFIER_ENGINE", "1")
+    monkeypatch.setenv("AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST", "1")
     monkeypatch.delenv("AGENT_LAB_PIPELINE", raising=False)
     from agent_lab.plan_workflow import get_plan_workflow
 
@@ -380,27 +358,26 @@ def test_ac8_gate_never_starts_execution(monkeypatch: pytest.MonkeyPatch, tmp_pa
     assert (run.get("verified_loop") or {}).get("status") != "running"
 
 
-def test_ac1_gate_off_parity_engine_off_advances(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_ac1_gate_anchored_topic_advances_to_draft(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Engine always on: anchored topic (regex short-circuit) → advances to DRAFT immediately."""
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
-    monkeypatch.delenv("AGENT_LAB_CLARIFIER_ENGINE", raising=False)  # engine OFF
     monkeypatch.delenv("AGENT_LAB_PIPELINE", raising=False)
     from agent_lab.human_inbox import has_pending_question
 
     folder = _sess(tmp_path)
     _init_plan_workflow(folder)
-    _seed_goal(folder, "make the whole thing better somehow")  # vague
+    _seed_goal(folder, "fix src/agent_lab/run_meta.py null check")  # anchored → clarity met
 
     tick = _tick(folder)
-    # Legacy round-counter behavior: advances to DRAFT despite vagueness; no inbox question.
     assert tick.get("advance") == "DRAFT"
     assert has_pending_question(read_run_meta(folder)) is False
 
 
 def test_ac9_gate_reachable_with_clarifier_flag_off(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """CLARIFIER=0 + ENGINE=1 + PIPELINE=1: B still delivers via Human Inbox (A flag-independent)."""
+    """CLARIFIER=0 + PIPELINE=1: B still delivers via Human Inbox (A flag-independent)."""
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     monkeypatch.delenv("AGENT_LAB_CLARIFIER", raising=False)  # A surface flag OFF
-    monkeypatch.setenv("AGENT_LAB_CLARIFIER_ENGINE", "1")
+    monkeypatch.setenv("AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST", "1")
     monkeypatch.delenv("AGENT_LAB_PIPELINE", raising=False)
     from agent_lab.human_inbox import has_pending_question
 
@@ -411,3 +388,24 @@ def test_ac9_gate_reachable_with_clarifier_flag_off(monkeypatch: pytest.MonkeyPa
     tick = _tick(folder)
     assert tick.get("clarity_pending") is True
     assert has_pending_question(read_run_meta(folder)) is True
+
+
+def test_ac10b_mcp_first_engine_on_holds_clarify(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """AC10b: MCP-first (harvest off default) → CLARIFY holds without inbox item."""
+    monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
+    monkeypatch.delenv("AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST", raising=False)  # default 0 = MCP-first
+    monkeypatch.delenv("AGENT_LAB_PIPELINE", raising=False)
+    from agent_lab.human_inbox import has_pending_question
+    from agent_lab.plan_workflow import get_plan_workflow
+
+    folder = _sess(tmp_path)
+    _init_plan_workflow(folder)
+    _seed_goal(folder, "make the whole thing better somehow")  # vague → clarity unmet
+
+    tick = _tick(folder)
+    assert tick["phase"] == "CLARIFY"
+    assert tick.get("clarity_pending") is True
+    assert tick.get("clarity_notice") == "clarity_mcp_first_hold"
+    # MCP-first: no inbox item, but CLARIFY holds (agents surface via ask_human/chat).
+    assert has_pending_question(read_run_meta(folder)) is False
+    assert get_plan_workflow(read_run_meta(folder))["phase"] == "CLARIFY"

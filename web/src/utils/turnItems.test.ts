@@ -60,6 +60,6 @@ describe("turn item reducer", () => {
       (item) => item.kind === "activity" && item.text.startsWith("[thinking]"),
     );
     expect(thinking).toHaveLength(1);
-    expect(thinking[0]?.text).toBe("[thinking] alpha beta");
+    expect(thinking[0]).toMatchObject({ text: "[thinking] alpha beta" });
   });
 });

@@ -137,16 +137,17 @@ textarea {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-6);
-  height: 30px;
+  gap: var(--space-4);
+  height: 32px;
   padding: 0 var(--space-12);
   border-radius: var(--radius-sm);
-  font-size: var(--text-footnote);
-  font-weight: var(--weight-medium);
+  font-size: var(--text-callout);
+  line-height: 20px;
+  font-weight: var(--weight-regular);
   color: var(--label-primary);
   background: var(--surface-card);
-  border: 1px solid var(--border-soft);
-  box-shadow: var(--shadow-1);
+  border: 1px solid var(--composer-border-subtle);
+  box-shadow: none;
   transition:
     background var(--transition),
     border-color var(--transition),
@@ -158,20 +159,20 @@ textarea {
   border-color: var(--border-strong);
 }
 .btn:active:not(:disabled) {
-  transform: translateY(0.5px);
+  transform: scale(0.98);
 }
 .btn:disabled {
   opacity: 0.45;
 }
 
 .btn--primary {
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--label-primary);
+  color: var(--surface-card);
   border-color: transparent;
-  box-shadow: 0 1px 2px var(--accent-ring);
+  box-shadow: none;
 }
 .btn--primary:hover:not(:disabled) {
-  background: var(--accent-hover);
+  background: color-mix(in srgb, var(--label-primary) 88%, var(--surface-card));
   border-color: transparent;
 }
 .btn--accent {
@@ -200,8 +201,8 @@ textarea {
   background: var(--danger-soft);
 }
 .btn--sm {
-  height: 26px;
-  padding: 0 var(--space-10);
+  height: 28px;
+  padding: 0 var(--space-8);
   font-size: var(--text-caption);
 }
 .btn--block {
@@ -213,25 +214,30 @@ textarea {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: var(--radius-sm);
-  color: var(--label-secondary);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--composer-border-subtle);
+  background: var(--surface-card);
+  color: var(--label-primary);
   transition:
+    border-color var(--transition),
     background var(--transition),
     color var(--transition);
 }
 .icon-btn:hover:not(:disabled) {
   background: var(--surface-hover);
+  border-color: var(--composer-border);
   color: var(--label-primary);
 }
 .icon-btn.is-active {
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: var(--surface-card);
+  border-color: var(--composer-border);
+  color: var(--label-primary);
 }
 .icon-btn svg {
-  width: 17px;
-  height: 17px;
+  width: 20px;
+  height: 20px;
 }
 
 /* ---- Segmented control ----------------------------------- */
@@ -321,7 +327,7 @@ textarea {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: var(--space-8);
+  gap: var(--space-6);
   cursor: pointer;
   font-size: var(--text-caption);
   color: var(--label-secondary);
@@ -333,8 +339,8 @@ textarea {
   pointer-events: none;
 }
 .switch__track {
-  width: 34px;
-  height: 20px;
+  width: 30px;
+  height: 18px;
   border-radius: var(--radius-pill);
   background: var(--border-strong);
   transition: background var(--transition);
@@ -346,8 +352,8 @@ textarea {
   left: 2px;
   top: 50%;
   transform: translateY(-50%);
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: #fff;
   box-shadow: var(--shadow-1);
@@ -357,7 +363,7 @@ textarea {
   background: var(--accent);
 }
 .switch input:checked + .switch__track::after {
-  transform: translate(14px, -50%);
+  transform: translate(12px, -50%);
 }
 .switch.is-disabled {
   opacity: 0.45;

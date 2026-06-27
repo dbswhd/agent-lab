@@ -54,6 +54,12 @@ The composer is a stable dock with this order: actionable status, mode/turn cont
 - **Variants:** ready, unavailable, overflow summary.
 - **Behavior:** opens or focuses the `/model` selection flow; the row scrolls horizontally rather than wrapping the composer taller.
 
+### Prompt Composer
+
+- **Structure:** one raised prompt box with a text area region and a bottom action row. Start actions hold attachment, mention, and slash-command shortcut controls; end actions hold model selection and send/stop.
+- **Controls:** icon actions are 32px controls. Keyboard shortcuts use a 20px keycap with mono text, a hairline border, and no semantic color unless they are focused or active.
+- **Behavior:** model selection remains inside the composer instead of becoming a separate metadata row. Slash and mention shortcuts insert their trigger into the focused text area.
+
 ### Activity Group
 
 - **Structure:** a native disclosure summary followed by reasoning summaries, activity rows, command/tool runs, and errors.
@@ -72,6 +78,13 @@ The composer is a stable dock with this order: actionable status, mode/turn cont
 - **Structure:** category navigation and one focused content panel.
 - **Behavior:** desktop vertical navigation; mobile select. The selected category persists for the current app session.
 - **Depth:** sections use dividers and tonal shifts rather than nested card stacks.
+
+### Oreo-Inspired Primitives
+
+- **Button:** 32px default height, 8px-ish radius, hairline border for secondary actions, neutral filled primary action, and scale/tonal hover feedback.
+- **Loading:** compact inline activity indicators use small neutral dots or a 16-20px loader footprint; loading labels must remain readable text beside the indicator.
+- **Popup:** modal and command surfaces use one raised white/neutral card, a single hairline border, compact body padding, and an action row separated by a divider instead of a tinted footer.
+- **Navigation/Sidebar:** top bars and sidebars avoid decorative fills. Active rows use a raised card or underline, while metadata stays tertiary and compact.
 
 ## 6. Motion & Interaction
 

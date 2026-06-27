@@ -2,7 +2,6 @@ import type { RightPanelMode } from "../utils/workspaceTabs";
 import type { Locale } from "../i18n/locale";
 import { openCommandPalette } from "../utils/desktopShortcuts";
 import { SidebarToggle } from "./SidebarToggle";
-import { TitlebarInboxButton } from "./TitlebarInboxButton";
 import { WorkbenchModeMenu } from "./WorkbenchModeMenu";
 
 type Props = {
@@ -12,13 +11,11 @@ type Props = {
   readonly rightPanelOpen: boolean;
   readonly rightPanelMode: RightPanelMode;
   readonly locale: Locale;
-  readonly inboxPendingCount: number;
   readonly panelBadgeCount: number;
   readonly running: boolean;
   readonly onToggleSidebar: () => void;
   readonly onToggleRightPanel: () => void;
   readonly onSelectRightPanelMode: (mode: RightPanelMode) => void;
-  readonly onOpenInbox: () => void;
   readonly onOpenSettings?: () => void;
   readonly onStop: () => void;
 };
@@ -34,13 +31,11 @@ export function WorkspaceChrome({
   rightPanelOpen,
   rightPanelMode,
   locale,
-  inboxPendingCount,
   panelBadgeCount,
   running,
   onToggleSidebar,
   onToggleRightPanel,
   onSelectRightPanelMode,
-  onOpenInbox,
   onOpenSettings: _onOpenSettings,
   onStop,
 }: Props) {
@@ -96,12 +91,6 @@ export function WorkspaceChrome({
           >
             running
           </button>
-        ) : null}
-        {inboxPendingCount > 0 ? (
-          <TitlebarInboxButton
-            pendingCount={inboxPendingCount}
-            onClick={onOpenInbox}
-          />
         ) : null}
         <button
           type="button"

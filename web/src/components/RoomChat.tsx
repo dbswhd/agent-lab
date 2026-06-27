@@ -508,27 +508,25 @@ export function RoomChat({
     if (planAfterSend) return "plan";
     return "discuss";
   }, [turnProfile, selected, planAfterSend]);
-  const composerTurnHintLine = useMemo(() => {
+  const composerPresetHint = useMemo(() => {
     const activePreset = resolvedRoomPresets.find((p) => p.id === roomPreset);
-    const presetLine = presetHintLine(activePreset, locale);
-    const costLine =
-      roomPreset === "supervisor" || turnProfile === "loop"
-        ? loopCostHintLine(
-            healthAgents,
-            selected,
-            "loop",
-            locale,
-            loopMaxCostTier ?? undefined,
-          )
-        : null;
-    return [presetLine, costLine].filter(Boolean).join(" · ");
+    return presetHintLine(activePreset, locale);
+  }, [resolvedRoomPresets, roomPreset, locale]);
+  const composerCostHint = useMemo(() => {
+    if (roomPreset !== "supervisor" && turnProfile !== "loop") return null;
+    return loopCostHintLine(
+      healthAgents,
+      selected,
+      "loop",
+      locale,
+      loopMaxCostTier ?? undefined,
+    );
   }, [
-    resolvedRoomPresets,
     roomPreset,
-    locale,
+    turnProfile,
     healthAgents,
     selected,
-    turnProfile,
+    locale,
     loopMaxCostTier,
   ]);
 
@@ -927,7 +925,6 @@ export function RoomChat({
     setShowInboxPopup,
     refreshInboxPending,
     inboxPendingNonQuestions,
-    titlebarInboxPending,
   } = useInboxState(sessionId);
 
   const {
@@ -3428,7 +3425,6 @@ export function RoomChat({
         rightPanelOpen={inspectorOpen}
         rightPanelMode={rightPanelMode}
         locale={locale}
-        inboxPendingCount={!isNew ? (titlebarInboxPending ?? 0) : 0}
         panelBadgeCount={
           !isNew
             ? notificationUnread +
@@ -3440,7 +3436,6 @@ export function RoomChat({
         onToggleSidebar={_onToggleSidebar}
         onToggleRightPanel={toggleInspector}
         onSelectRightPanelMode={setRightPanelMode}
-        onOpenInbox={openHumanInbox}
         onOpenSettings={onOpenSettings}
         onStop={handleStop}
       />
@@ -3886,7 +3881,8 @@ export function RoomChat({
                     }
                     objectionNotice={composerObjectionNotice}
                     onFocusObjection={focusObjection}
-                    turnHint={composerTurnHintLine}
+                    turnHint={composerPresetHint}
+                    costHint={composerCostHint}
                     locale={locale}
                     sessionId={sessionId}
                     roomPresets={visiblePresets}

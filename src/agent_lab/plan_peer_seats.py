@@ -6,9 +6,19 @@ import os
 from typing import Any
 
 from agent_lab.agents.registry import AGENT_IDS
+from agent_lab import provider_registry
 
 _FALSE = frozenset({"0", "false", "no", "off"})
 _TRUE = frozenset({"1", "true", "yes", "on"})
+
+# Preference order when no ROOM_SCRIBE_AGENT env is set and multiple agents are available.
+# New agents not listed here fall through to first-in-active order.
+_SCRIBE_PREFERENCE: tuple[str, ...] = ("claude", "codex", "cursor")
+
+
+def _valid_agent_ids() -> frozenset[str]:
+    """All registered provider IDs — superset of AGENT_IDS, includes kimi/kimi_work/local."""
+    return frozenset(provider_registry.provider_ids()) | frozenset(AGENT_IDS)
 
 
 def _env_true(key: str) -> bool:
@@ -19,11 +29,37 @@ def session_room_preset(run_meta: dict[str, Any] | None) -> str:
     return str((run_meta or {}).get("room_preset") or "").strip().lower()
 
 
-def plan_scribe_agent(*, run_meta: dict[str, Any] | None = None) -> str:
-    """Scribe seat for plan.md (``ROOM_SCRIBE_AGENT``, default claude)."""
+def plan_scribe_agent(
+    *,
+    run_meta: dict[str, Any] | None = None,
+    active: list[str] | None = None,
+) -> str:
+    """Scribe seat for plan.md, resolved from the active roster.
+
+    Resolution order:
+    1. ROOM_SCRIBE_AGENT env — honoured when the value is a registered agent and
+       present in *active* (or when *active* is not provided).
+    2. First agent in *active* that matches _SCRIBE_PREFERENCE.
+    3. First agent in *active* (any registered id).
+    4. "claude" — last-resort when no active roster is supplied.
+    """
     _ = run_meta
-    raw = (os.getenv("ROOM_SCRIBE_AGENT") or "claude").strip().lower()
-    return raw if raw in AGENT_IDS else "claude"
+    valid = _valid_agent_ids()
+    raw = os.getenv("ROOM_SCRIBE_AGENT", "").strip().lower()
+    if raw and raw in valid:
+        if active is None:
+            return raw
+        pool = [str(a).strip().lower() for a in active]
+        if raw in pool:
+            return raw
+    if active:
+        pool = [str(a).strip().lower() for a in active if str(a).strip().lower() in valid]
+        for candidate in _SCRIBE_PREFERENCE:
+            if candidate in pool:
+                return candidate
+        if pool:
+            return pool[0]
+    return "claude"
 
 
 def plan_peer_review_seats(
@@ -31,20 +67,18 @@ def plan_peer_review_seats(
     *,
     run_meta: dict[str, Any] | None = None,
 ) -> list[str]:
-    """Ordered peer reviewer ids (exclude scribe). Supervisor → codex architect, claude critic."""
-    scribe = plan_scribe_agent(run_meta=run_meta)
-    pool = [str(a).strip().lower() for a in active if str(a).strip().lower() in AGENT_IDS]
-    if session_room_preset(run_meta) == "supervisor":
-        seats: list[str] = []
-        for agent_id in ("codex", "claude"):
-            if agent_id in pool and agent_id != scribe and agent_id not in seats:
-                seats.append(agent_id)
-        if seats:
-            return seats[:2]
+    """Ordered peer reviewer ids — non-scribe agents from the active roster, up to 2.
+
+    Role-lane ordering (architect first, critic second) is preserved: whoever
+    appears first in *active* after the scribe is removed becomes the architect,
+    the next becomes the critic.  No agent name is hardcoded — kimi_work, cursor,
+    or any future provider participates as long as it is in the active roster.
+    """
+    scribe = plan_scribe_agent(run_meta=run_meta, active=active)
+    valid = _valid_agent_ids()
+    pool = [str(a).strip().lower() for a in active if str(a).strip().lower() in valid]
     reviewers = [a for a in pool if a != scribe][:2]
-    if reviewers:
-        return reviewers
-    return pool[:2]
+    return reviewers if reviewers else pool[:2]
 
 
 def plan_cold_critic_enabled(*, run_meta: dict[str, Any] | None = None) -> bool:

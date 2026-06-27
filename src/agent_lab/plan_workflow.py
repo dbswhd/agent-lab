@@ -974,8 +974,8 @@ def run_plan_peer_review_round(
     )
     from agent_lab.room import run_parallel_round
 
-    scribe_raw = plan_scribe_agent(run_meta=run_meta)
     active = [a for a in (agents or available_agents()) if a in AGENT_IDS]
+    scribe_raw = plan_scribe_agent(run_meta=run_meta, active=active)
     reviewers = plan_peer_review_seats(active, run_meta=run_meta)
     if not reviewers:
         return []

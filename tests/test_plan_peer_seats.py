@@ -34,16 +34,53 @@ def test_supervisor_peer_seats_codex_claude_exclude_scribe(
 
 
 def test_supervisor_peer_seats_when_scribe_codex(monkeypatch: pytest.MonkeyPatch) -> None:
+    # All non-scribe agents in active become reviewers (no hardcoded name filter).
     monkeypatch.setenv("ROOM_SCRIBE_AGENT", "codex")
     run_meta = {"room_preset": "supervisor"}
     seats = plan_peer_review_seats(["codex", "claude", "cursor"], run_meta=run_meta)
-    assert seats == ["claude"]
+    assert seats == ["claude", "cursor"]
 
 
 def test_non_supervisor_excludes_scribe_only(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ROOM_SCRIBE_AGENT", "claude")
     seats = plan_peer_review_seats(["codex", "claude", "cursor"], run_meta={})
     assert seats == ["codex", "cursor"]
+
+
+def test_scribe_picked_from_active_by_preference(monkeypatch: pytest.MonkeyPatch) -> None:
+    """No env override → scribe is first _SCRIBE_PREFERENCE match in active."""
+    monkeypatch.delenv("ROOM_SCRIBE_AGENT", raising=False)
+    assert plan_scribe_agent(active=["cursor", "codex", "claude"]) == "claude"
+    assert plan_scribe_agent(active=["cursor", "codex"]) == "codex"
+    assert plan_scribe_agent(active=["cursor"]) == "cursor"
+
+
+def test_scribe_env_ignored_when_not_in_active(monkeypatch: pytest.MonkeyPatch) -> None:
+    """ROOM_SCRIBE_AGENT is skipped when the agent is absent from active."""
+    monkeypatch.setenv("ROOM_SCRIBE_AGENT", "claude")
+    result = plan_scribe_agent(active=["cursor", "codex"])
+    assert result == "codex"
+
+
+def test_kimi_work_as_scribe_and_reviewer(monkeypatch: pytest.MonkeyPatch) -> None:
+    """kimi_work participates in role assignment without any hardcoded name check."""
+    monkeypatch.delenv("ROOM_SCRIBE_AGENT", raising=False)
+    # cursor is in _SCRIBE_PREFERENCE; kimi_work is not → cursor wins scribe
+    scribe = plan_scribe_agent(active=["kimi_work", "cursor"])
+    assert scribe == "cursor"
+    # kimi_work becomes the reviewer (non-scribe, registered provider)
+    seats = plan_peer_review_seats(["kimi_work", "cursor"], run_meta={})
+    assert seats == ["kimi_work"]
+
+
+def test_kimi_work_only_active(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Single-agent roster: kimi_work is both scribe and falls back to pool."""
+    monkeypatch.delenv("ROOM_SCRIBE_AGENT", raising=False)
+    scribe = plan_scribe_agent(active=["kimi_work"])
+    assert scribe == "kimi_work"
+    # No non-scribe agents → fallback is pool itself (scribe acts as reviewer)
+    seats = plan_peer_review_seats(["kimi_work"], run_meta={})
+    assert seats == ["kimi_work"]
 
 
 def test_cold_critic_on_for_supervisor_without_antidrift(monkeypatch: pytest.MonkeyPatch) -> None:

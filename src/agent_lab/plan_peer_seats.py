@@ -11,14 +11,19 @@ from agent_lab import provider_registry
 _FALSE = frozenset({"0", "false", "no", "off"})
 _TRUE = frozenset({"1", "true", "yes", "on"})
 
-# Preference order when no ROOM_SCRIBE_AGENT env is set and multiple agents are available.
-# New agents not listed here fall through to first-in-active order.
-_SCRIBE_PREFERENCE: tuple[str, ...] = ("claude", "codex", "cursor")
-
 
 def _valid_agent_ids() -> frozenset[str]:
     """All registered provider IDs — superset of AGENT_IDS, includes kimi/kimi_work/local."""
     return frozenset(provider_registry.provider_ids()) | frozenset(AGENT_IDS)
+
+
+def _scribe_preference() -> tuple[str, ...]:
+    """Scribe preference order from ProviderSpec.scribe_priority (ascending).
+
+    No hardcoded name list: registering a new ProviderSpec with an explicit
+    scribe_priority automatically places it without touching this file.
+    """
+    return tuple(provider_registry.scribe_priority_order())
 
 
 def _env_true(key: str) -> bool:
@@ -54,7 +59,7 @@ def plan_scribe_agent(
             return raw
     if active:
         pool = [str(a).strip().lower() for a in active if str(a).strip().lower() in valid]
-        for candidate in _SCRIBE_PREFERENCE:
+        for candidate in _scribe_preference():
             if candidate in pool:
                 return candidate
         if pool:

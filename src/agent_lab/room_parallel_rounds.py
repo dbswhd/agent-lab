@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from concurrent.futures import Future, ThreadPoolExecutor, wait, FIRST_COMPLETED
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
+
+# Tasks where agents should run sequentially even in round 1.
+# peer_review: architect → critic ordering is intentional (critic reads architect).
+# cold_critic: single fresh-eyes agent; parallelism is meaningless.
+TaskType = Literal["consensus", "peer_review", "discuss", "cold_critic"]
+_SEQUENTIAL_TASK_TYPES: frozenset[str] = frozenset({"peer_review", "cold_critic"})
 
 from agent_lab.agents.registry import AgentId, available_agents
 from agent_lab.room_turn_state import sync_run_meta_turn_state
@@ -71,8 +77,15 @@ def run_parallel_round(
     context_log: list[dict[str, Any]] | None = None,
     efficiency_mode: bool = False,
     extra_follow_up: str = "",
+    task_type: str | None = None,
 ) -> list[ChatMessage]:
-    """Call selected agents for one round (round 1 parallel; round 2+ sequential for all modes)."""
+    """Call selected agents for one round.
+
+    Parallel vs sequential decision:
+    - round >= 2 → always sequential (agents build on each other's replies)
+    - task_type in _SEQUENTIAL_TASK_TYPES → sequential regardless of round number
+    - otherwise round 1 → parallel (consensus, general discuss)
+    """
     active = agents or available_agents()
     if not active:
         raise RuntimeError("No agents available. Configure CURSOR_API_KEY, codex login, or claude login.")
@@ -87,15 +100,21 @@ def run_parallel_round(
 
     check_cancelled()
     replies: list[ChatMessage] = []
-    sequential = parallel_round >= 2
+    sequential = parallel_round >= 2 or bool(task_type and task_type in _SEQUENTIAL_TASK_TYPES)
     from agent_lab.room_team_orchestration import team_r1_split
 
     parallel_batch, lead_tail = (
         team_r1_split([str(a) for a in ordered], run_meta)
-        if parallel_round == 1 and not review_mode and run_meta
+        if not sequential and parallel_round == 1 and not review_mode and run_meta
         else ([str(a) for a in ordered], [])
     )
-    use_lead_last_r1 = parallel_round == 1 and not review_mode and lead_tail and len(parallel_batch) < len(ordered)
+    use_lead_last_r1 = (
+        not sequential
+        and parallel_round == 1
+        and not review_mode
+        and lead_tail
+        and len(parallel_batch) < len(ordered)
+    )
 
     if use_lead_last_r1:
         check_cancelled()

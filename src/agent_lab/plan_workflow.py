@@ -998,6 +998,7 @@ def run_plan_peer_review_round(
                 plan_md=plan_md,
                 run_meta=run_meta,
                 extra_follow_up=PLAN_ARCHITECT_REVIEW_GUIDANCE,
+                task_type="peer_review",
             )
         )
         replies.extend(
@@ -1011,6 +1012,7 @@ def run_plan_peer_review_round(
                 plan_md=plan_md,
                 run_meta=run_meta,
                 extra_follow_up=PLAN_CRITIC_REVIEW_GUIDANCE,
+                task_type="peer_review",
             )
         )
     else:
@@ -1025,6 +1027,7 @@ def run_plan_peer_review_round(
                 plan_md=plan_md,
                 run_meta=run_meta,
                 extra_follow_up=PLAN_PEER_REVIEW_GUIDANCE,
+                task_type="peer_review",
             )
         )
 
@@ -1041,6 +1044,7 @@ def run_plan_peer_review_round(
                 plan_md=plan_md,
                 run_meta=run_meta,
                 extra_follow_up=PLAN_FRESH_EYES_GUIDANCE,
+                task_type="cold_critic",
             )
         )
 

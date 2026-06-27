@@ -35,6 +35,10 @@ class ProviderSpec:
     logout_argv: tuple[str, ...] = ()
     status_argv: tuple[str, ...] = ()
     browser_hosts: tuple[str, ...] = ()
+    # Role preference for plan scribe assignment. Lower = preferred scribe.
+    # New providers declare their priority here; plan_peer_seats reads this
+    # at runtime so no hardcoded name lists are needed there.
+    scribe_priority: int = 99
 
 
 # Default catalog. cursor/claude/codex mirror the existing room agents; kimi and
@@ -54,6 +58,7 @@ _REGISTRY: dict[str, ProviderSpec] = {
         logout_argv=("cursor-agent", "logout"),
         status_argv=("cursor-agent", "status"),
         browser_hosts=("cursor.com", "www.cursor.com", "auth.cursor.com"),
+        scribe_priority=3,
     ),
     "claude": ProviderSpec(
         "claude",
@@ -67,6 +72,7 @@ _REGISTRY: dict[str, ProviderSpec] = {
         logout_argv=("claude", "auth", "logout"),
         status_argv=("claude", "auth", "status"),
         browser_hosts=("claude.ai", "console.anthropic.com", "auth.anthropic.com"),
+        scribe_priority=1,
     ),
     "codex": ProviderSpec(
         "codex",
@@ -80,6 +86,7 @@ _REGISTRY: dict[str, ProviderSpec] = {
         logout_argv=("codex", "logout"),
         status_argv=("codex", "login", "status"),
         browser_hosts=("auth.openai.com", "chatgpt.com", "openai.com"),
+        scribe_priority=2,
     ),
     "kimi": ProviderSpec(
         "kimi",
@@ -88,6 +95,7 @@ _REGISTRY: dict[str, ProviderSpec] = {
         True,
         "spare",
         supported_auth=frozenset({"api"}),
+        scribe_priority=10,
     ),
     "kimi_work": ProviderSpec(
         "kimi_work",
@@ -97,6 +105,7 @@ _REGISTRY: dict[str, ProviderSpec] = {
         "spare",
         supported_auth=frozenset({"peer"}),
         account_mode="ambient",
+        scribe_priority=10,
     ),
     "local": ProviderSpec(
         "local",
@@ -107,6 +116,7 @@ _REGISTRY: dict[str, ProviderSpec] = {
         always_available=True,
         cooldown_exempt=True,
         supported_auth=frozenset({"local"}),
+        scribe_priority=20,
     ),
 }
 
@@ -114,6 +124,16 @@ _REGISTRY: dict[str, ProviderSpec] = {
 DEFAULT_ROSTER: tuple[str, ...] = ("cursor", "codex", "claude")
 # Ordered substitution pool consulted when a default seat is unavailable.
 DEFAULT_SUBSTITUTION_PRIORITY: tuple[str, ...] = ("kimi_work", "kimi", "local")
+
+
+def scribe_priority_order() -> list[str]:
+    """Registered provider IDs sorted by scribe_priority (ascending).
+
+    plan_peer_seats reads this at runtime — adding a new ProviderSpec with
+    an explicit scribe_priority automatically places it in the right position
+    without touching any name lists elsewhere.
+    """
+    return [s.id for s in sorted(_REGISTRY.values(), key=lambda s: (s.scribe_priority, s.id))]
 
 
 def provider_picker_order() -> list[str]:

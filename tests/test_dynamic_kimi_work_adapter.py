@@ -140,3 +140,38 @@ def test_provider_registry_kimi_work_peer() -> None:
     assert pr.is_usage_exposing("kimi_work") is True
     assert pr.supports_inturn_key_rotation("kimi_work") is False
     assert pr.DEFAULT_SUBSTITUTION_PRIORITY == ("kimi_work", "kimi", "local")
+
+
+def test_scribe_priority_order_primary_before_spare() -> None:
+    """Primary providers (claude/codex/cursor) precede spares in scribe_priority_order."""
+    from agent_lab import provider_registry as pr
+
+    order = pr.scribe_priority_order()
+    primaries = {"claude", "codex", "cursor"}
+    spares = {"kimi", "kimi_work", "local"}
+    last_primary_idx = max(order.index(p) for p in primaries if p in order)
+    first_spare_idx = min(order.index(s) for s in spares if s in order)
+    assert last_primary_idx < first_spare_idx, (
+        f"primary agent at index {last_primary_idx} should come before spare at {first_spare_idx}"
+    )
+
+
+def test_scribe_priority_order_claude_first() -> None:
+    """claude has the lowest scribe_priority and appears first."""
+    from agent_lab import provider_registry as pr
+
+    order = pr.scribe_priority_order()
+    assert order[0] == "claude"
+
+
+def test_scribe_priority_drives_plan_scribe_agent(monkeypatch: pytest.MonkeyPatch) -> None:
+    """plan_scribe_agent uses registry priority; no hardcoded name needed."""
+    from agent_lab.plan_peer_seats import plan_scribe_agent
+
+    monkeypatch.delenv("ROOM_SCRIBE_AGENT", raising=False)
+    # claude preferred even when last in active list
+    assert plan_scribe_agent(active=["cursor", "codex", "claude"]) == "claude"
+    # without claude, codex is next
+    assert plan_scribe_agent(active=["cursor", "codex"]) == "codex"
+    # kimi_work alone → falls through to first active (kimi_work itself)
+    assert plan_scribe_agent(active=["kimi_work"]) == "kimi_work"

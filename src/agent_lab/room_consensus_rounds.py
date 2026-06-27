@@ -252,6 +252,7 @@ def run_consensus_agent_rounds(
             run_meta=run_meta,
             context_log=context_log,
             efficiency_mode=efficiency_mode,
+            task_type="consensus",
         )
         all_replies.extend(batch)
         calls += len(batch)

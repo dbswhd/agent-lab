@@ -6,8 +6,10 @@ import os
 import json
 
 
-def _emit_slash_chat_line(folder: Path, summary: str) -> None:
+def _emit_slash_chat_line(folder: Path | None, summary: str) -> None:
     """Append a visible transcript entry for slash-command results (gajae-code style)."""
+    if folder is None:
+        return
     chat_path = folder / "chat.jsonl"
     try:
         if not chat_path.is_file():
@@ -190,7 +192,8 @@ _PIPELINE_COMMANDS: list[dict[str, Any]] = [
         "handler": "pipeline:plan",
     },
 ]
-_ACCOUNT_COMMANDS = frozenset({"login", "logout", "accounts"})
+ACCOUNT_COMMAND_IDS = frozenset({"login", "logout", "accounts"})
+_ACCOUNT_COMMANDS = ACCOUNT_COMMAND_IDS
 
 
 def _env_requirements_met(requires: list[str] | None) -> bool:
@@ -303,7 +306,9 @@ def find_command(catalog: dict[str, Any], slash_or_name: str) -> dict[str, Any] 
     return None
 
 
-def _record_command_history(folder: Path, entry: dict[str, Any]) -> None:
+def _record_command_history(folder: Path | None, entry: dict[str, Any]) -> None:
+    if folder is None:
+        return
     def _append(run: dict[str, Any]) -> dict[str, Any]:
         history = list(run.get("command_history") or [])
         history.append(entry)
@@ -377,7 +382,7 @@ def _format_pipeline(name: str, res: dict[str, Any]) -> str:
 
 
 def execute_command(
-    session_folder: Path,
+    session_folder: Path | None,
     command_id: str,
     *,
     args: str = "",
@@ -546,7 +551,7 @@ def execute_command(
 
 
 def invoke_tool(
-    session_folder: Path,
+    session_folder: Path | None,
     tool_id: str,
     *,
     args: str = "",

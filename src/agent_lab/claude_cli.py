@@ -155,6 +155,22 @@ def invalidate_claude_auth_cache() -> None:
     _AUTH_STATUS_CACHE = None
 
 
+def format_claude_auth_status_detail(raw: str, *, logged_in: bool) -> str:
+    """Human-readable summary of ``claude auth status`` JSON for UI surfaces."""
+    payload: dict[str, Any] | None = None
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        payload = None
+    if logged_in:
+        if isinstance(payload, dict):
+            email = str(payload.get("email") or "").strip()
+            if email:
+                return f"OAuth 연결됨 ({email})"
+        return "OAuth 연결됨"
+    return "OAuth 미로그인 — /login 또는 claude auth login"
+
+
 def _is_auth_failure(detail: str) -> bool:
     low = detail.lower()
     return "401" in detail or "authenticate" in low or "credit balance" in low
@@ -217,7 +233,7 @@ def claude_auth_logged_in(*, use_cache: bool = True) -> tuple[bool, str | None]:
         _AUTH_STATUS_CACHE = (now, True, None)
         return True, None
 
-    detail = "Not logged in — run: claude auth login"
+    detail = format_claude_auth_status_detail(raw, logged_in=False)
     _AUTH_STATUS_CACHE = (now, False, detail)
     return False, detail
 

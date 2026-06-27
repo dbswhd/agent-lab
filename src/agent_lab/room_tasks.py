@@ -300,6 +300,10 @@ def add_task(
             "parallel_round": parallel_round,
         }
     )
+    # 제안자는 자기 작업에 암묵 동의 — 별도 ENDORSE refs 없이도 합의 정족수에 포함.
+    # (Human이 "동의해 주세요"를 직접 칠 필요를 없앤다.)
+    if owner_agent and str(owner_agent).strip():
+        record_task_endorsement(task, str(owner_agent))
     tasks.append(task)
     write_tasks(run_meta, tasks)
     return task
@@ -337,6 +341,7 @@ def sync_tasks_from_messages(
         if getattr(m, "role", None) != "agent":
             continue
         pr = getattr(m, "parallel_round", None) or 1
+        proposer = str(getattr(m, "agent", "") or "").strip().lower() or None
         for title in extract_proposed_titles(getattr(m, "content", "") or ""):
             if len(created) >= cap:
                 break
@@ -344,6 +349,7 @@ def sync_tasks_from_messages(
                 run_meta,
                 title,
                 source="proposed",
+                owner_agent=proposer,
                 human_turn=human_turn,
                 parallel_round=int(pr),
             )
@@ -579,6 +585,36 @@ def build_consensus_gate(
         "active_agent_count": len(active) if active else 3,
         "blocked_tasks": blocked,
     }
+
+
+def agents_missing_task_endorse(
+    run_meta: dict[str, Any] | None,
+    active_agents: list[str],
+) -> list[str]:
+    """Active agents who still owe an ENDORSE on at least one under-endorsed open task.
+
+    Drives the auto ENDORSE round so the Human doesn't have to manually nudge the
+    team — we re-prompt exactly the agents whose endorsement is missing.
+    """
+    open_tasks = open_tasks_for_consensus(run_meta)
+    if not open_tasks:
+        return []
+    active = [a.strip().lower() for a in active_agents if str(a).strip()]
+    if not active:
+        return []
+    min_endorsements = max(1, len(active) - 1)
+    missing: list[str] = []
+    for aid in active:
+        for task in open_tasks:
+            end = task.get("endorsements")
+            if not isinstance(end, dict):
+                end = {}
+            if len(end) >= min_endorsements:
+                continue
+            if aid not in end:
+                missing.append(aid)
+                break
+    return missing
 
 
 def consensus_tasks_ready(

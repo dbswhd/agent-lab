@@ -1527,6 +1527,32 @@ export function runSessionCommand(
   });
 }
 
+export const SESSIONLESS_ACCOUNT_COMMAND_IDS = new Set([
+  "login",
+  "logout",
+  "accounts",
+]);
+
+export function runGlobalCommand(body: {
+  command_id: string;
+  args?: string;
+  confirm?: boolean;
+}) {
+  return json<{
+    ok: boolean;
+    kind: string;
+    handler?: string;
+    text?: string;
+    detail?: string;
+    result?: unknown;
+    command?: SlashCommandRecord;
+  }>("/api/commands/run", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
 export function runRoomSlash(text: string, sessionId = "") {
   return json<{
     ok: boolean;

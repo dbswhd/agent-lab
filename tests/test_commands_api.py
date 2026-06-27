@@ -126,3 +126,20 @@ def test_patch_external_tools_allowlist(
     )
     assert run.status_code == 200
     assert run.json()["kind"] == "external"
+
+
+def test_global_logout_staged_without_session(client: TestClient, mock_env: None):
+    res = client.post("/api/commands/run", json={"command_id": "logout"})
+    assert res.status_code == 200
+    body = res.json()
+    assert body["ok"] is True
+    stage = body["result"]
+    assert stage["stage"] == "provider"
+    assert "로그아웃할 공급자 선택" in stage["prompt"]
+    assert stage["choices"]["options"]
+
+
+def test_global_command_rejects_session_scoped(client: TestClient, mock_env: None):
+    res = client.post("/api/commands/run", json={"command_id": "goal-check"})
+    assert res.status_code == 422
+    assert "session" in res.json()["detail"].lower()

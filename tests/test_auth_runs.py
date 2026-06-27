@@ -322,11 +322,56 @@ def test_interpret_claude_status_logged_out_with_zero_exit(monkeypatch: pytest.M
     result = subprocess.CompletedProcess(
         args=["claude", "auth", "status"],
         returncode=0,
-        stdout='{"loggedIn": false, "authMethod": "none"}\n',
+        stdout='{"loggedIn": false, "authMethod": "none", "apiProvider": "firstParty"}\n',
         stderr="",
     )
-    state, _ = auth_runs._interpret_cli_status(spec, result)
+    state, detail = auth_runs._interpret_cli_status(spec, result)
     assert state == "logged_out"
+    assert detail == "OAuth 미로그인 — /login 또는 claude auth login"
+    assert "loggedIn" not in (detail or "")
+
+
+def test_format_claude_auth_status_detail() -> None:
+    from agent_lab.claude_cli import format_claude_auth_status_detail
+
+    logged_out = '{"loggedIn": false, "authMethod": "none", "apiProvider": "firstParty"}'
+    assert "OAuth 미로그인" in format_claude_auth_status_detail(logged_out, logged_in=False)
+    logged_in = '{"loggedIn": true, "email": "user@example.com"}'
+    assert format_claude_auth_status_detail(logged_in, logged_in=True) == "OAuth 연결됨 (user@example.com)"
+
+
+def test_revalidate_claude_invalidates_auth_cache(monkeypatch: pytest.MonkeyPatch) -> None:
+    import agent_lab.auth_runs as auth_runs
+    import agent_lab.claude_cli as claude_cli
+
+    monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "0")
+    claude_cli._AUTH_STATUS_CACHE = (0.0, False, "stale")
+    auth_runs.revalidate_provider_status("claude")
+    assert claude_cli._AUTH_STATUS_CACHE is None
+
+
+def test_probe_claude_status_uses_claude_bin(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    import agent_lab.auth_runs as auth_runs
+    from agent_lab.provider_registry import get_provider
+
+    monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "0")
+    fake_bin = tmp_path / "claude"
+    fake_bin.write_text("#!/bin/sh\necho '{\"loggedIn\": false, \"authMethod\": \"none\"}'\n", encoding="utf-8")
+    fake_bin.chmod(0o755)
+    monkeypatch.setenv("CLAUDE_BIN", str(fake_bin))
+
+    seen: list[list[str]] = []
+
+    def fake_run(argv, **kwargs):  # type: ignore[no-untyped-def]
+        seen.append(list(argv))
+        return subprocess.CompletedProcess(argv, 0, stdout='{"loggedIn": false}\n', stderr="")
+
+    monkeypatch.setattr(auth_runs.subprocess, "run", fake_run)
+    spec = get_provider("claude")
+    assert spec is not None
+    state, _ = auth_runs._probe_provider_status(spec)
+    assert state == "logged_out"
+    assert seen and seen[0][0] == str(fake_bin.resolve())
 
 
 def test_provider_login_status_cursor_not_logged_in(monkeypatch: pytest.MonkeyPatch) -> None:

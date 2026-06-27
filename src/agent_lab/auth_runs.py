@@ -21,6 +21,7 @@ from typing import Any, Literal
 from urllib.parse import urlparse
 
 from agent_lab.provider_registry import ProviderSpec, all_providers, get_provider
+from agent_lab.command_registry import _emit_slash_chat_line
 from agent_lab.credential_store import (
     _PROVIDER_ENV,
     _PROVIDER_FALLBACK_ENV,
@@ -70,6 +71,33 @@ def _argv(spec: ProviderSpec, action: AuthAction) -> tuple[str, ...]:
     return spec.login_argv if action == "login" else spec.logout_argv
 
 
+def _resolve_provider_executable(spec: ProviderSpec) -> str | None:
+    if spec.id == "claude":
+        from agent_lab.claude_cli import resolve_claude_bin
+
+        return resolve_claude_bin()
+    if spec.id == "codex":
+        from agent_lab.codex_cli import resolve_codex_bin
+
+        return resolve_codex_bin()
+    argv = spec.login_argv or spec.status_argv or ()
+    if not argv:
+        return None
+    return shutil.which(argv[0])
+
+
+def _provider_subprocess_env(spec: ProviderSpec) -> dict[str, str]:
+    if spec.id == "claude":
+        from agent_lab.claude_cli import _claude_env
+
+        return _claude_env()
+    if spec.id == "codex":
+        from agent_lab.codex_cli import _codex_env
+
+        return _codex_env()
+    return subprocess_env(TERM="xterm-256color", HOME=str(Path.home()))
+
+
 def _resolved_argv(spec: ProviderSpec, action: AuthAction) -> list[str]:
     if os.getenv("AGENT_LAB_MOCK_AGENTS", "").strip().lower() in {"1", "true", "yes", "on"}:
         try:
@@ -85,7 +113,7 @@ def _resolved_argv(spec: ProviderSpec, action: AuthAction) -> list[str]:
     argv = _argv(spec, action)
     if not argv:
         raise RuntimeError(f"{spec.id} does not support {action}")
-    executable = shutil.which(argv[0])
+    executable = _resolve_provider_executable(spec) or shutil.which(argv[0])
     if executable is None:
         raise RuntimeError(f"{argv[0]} CLI not found")
     return [executable, *argv[1:]]
@@ -147,7 +175,6 @@ def format_auth_slash_summary(
 def _emit_auth_slash_result(run: AuthRun, terminal: AuthRunStatus, output: str) -> None:
     if run.session_folder is None or terminal == "running":
         return
-    from agent_lab.command_registry import _emit_slash_chat_line
 
     summary = format_auth_slash_summary(
         run.provider_id,
@@ -226,7 +253,7 @@ def start_auth_run(
         raise RuntimeError(f"unknown provider: {provider_id}")
     argv = _resolved_argv(spec, action)
     master_fd, slave_fd = pty.openpty()
-    env = subprocess_env(TERM="xterm-256color", HOME=str(Path.home()))
+    env = _provider_subprocess_env(spec)
     process = subprocess.Popen(
         argv,
         stdin=slave_fd,
@@ -322,6 +349,9 @@ def _interpret_cli_status(spec: ProviderSpec, result: subprocess.CompletedProces
             logged_in = bool(payload.get("loggedIn"))
         except json.JSONDecodeError:
             logged_in = '"loggedIn": true' in raw or '"loggedIn":true' in raw
+        from agent_lab.claude_cli import format_claude_auth_status_detail
+
+        detail = format_claude_auth_status_detail(raw, logged_in=logged_in)
         return ("logged_in", detail) if logged_in else ("logged_out", detail)
     if spec.id == "codex":
         out = detail.lower()
@@ -340,7 +370,7 @@ def _probe_provider_status(spec: ProviderSpec) -> tuple[str, str | None]:
         return "logged_in", "mock"
     if not spec.status_argv:
         return ("logged_in", "local") if spec.always_available else ("logged_out", None)
-    executable = shutil.which(spec.status_argv[0])
+    executable = _resolve_provider_executable(spec)
     if executable is None:
         return "unavailable", f"{spec.status_argv[0]} CLI not found"
     try:
@@ -350,7 +380,7 @@ def _probe_provider_status(spec: ProviderSpec) -> tuple[str, str | None]:
             text=True,
             timeout=8,
             cwd=Path.home(),
-            env=subprocess_env(HOME=str(Path.home())),
+            env=_provider_subprocess_env(spec),
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
         return "error", str(exc)[:200]
@@ -391,6 +421,10 @@ def revalidate_provider_status(provider_id: str) -> None:
         from agent_lab.agents.cursor_agent import reset_cursor_oauth_cache
 
         reset_cursor_oauth_cache()
+    if provider_id == "claude":
+        from agent_lab.claude_cli import invalidate_claude_auth_cache
+
+        invalidate_claude_auth_cache()
     with _status_lock:
         generation = _status_generation.get(provider_id, 0) + 1
         _status_generation[provider_id] = generation

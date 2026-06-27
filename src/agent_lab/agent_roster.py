@@ -76,17 +76,28 @@ def normalize_composition_order(composition: list[str]) -> list[str]:
     return out
 
 
-def override_composition(*, session_folder: Path | None = None) -> list[str] | None:
-    """Explicit composition override: session run.json → default file → process env."""
-    if session_folder is not None:
-        from agent_lab.run_meta import read_run_meta
+def session_composition_override(*, session_folder: Path | None = None) -> list[str] | None:
+    """Composition pinned to THIS session (run.json room_models) — excludes global default.
 
-        meta = read_run_meta(session_folder)
-        raw = meta.get("room_models")
-        if isinstance(raw, list):
-            ids = normalize_composition_order([str(tok) for tok in raw if str(tok).strip()])
-            if ids:
-                return ids
+    This is the only override that should outrank an explicit per-call agent selection:
+    the user fixed the roster for this session on purpose. The global default file is a
+    fallback for when nothing was selected, not a veto over the current pick.
+    """
+    if session_folder is None:
+        return None
+    from agent_lab.run_meta import read_run_meta
+
+    meta = read_run_meta(session_folder)
+    raw = meta.get("room_models")
+    if isinstance(raw, list):
+        ids = normalize_composition_order([str(tok) for tok in raw if str(tok).strip()])
+        if ids:
+            return ids
+    return None
+
+
+def global_composition_default() -> list[str] | None:
+    """Global default composition: ~/.agent-lab/room_models → AGENT_LAB_ROOM_MODELS env."""
     from agent_lab.room_models_config import load_default_room_models
 
     default = load_default_room_models()
@@ -96,6 +107,16 @@ def override_composition(*, session_folder: Path | None = None) -> list[str] | N
     if env:
         return normalize_composition_order(env)
     return None
+
+
+def override_composition(*, session_folder: Path | None = None) -> list[str] | None:
+    """Explicit composition override: session run.json → default file → process env.
+
+    Kept for requested-less callers (health UI, slash status) that just want the
+    resolved "forced" composition. Roster selection uses select_roster(), which
+    applies the correct precedence: session override > requested > global default.
+    """
+    return session_composition_override(session_folder=session_folder) or global_composition_default()
 
 
 def effective_room_composition(*, session_folder: Path | None = None) -> list[str]:
@@ -121,13 +142,16 @@ def select_roster(
     """Choose up to ``size`` providers: composition filtered by availability,
     then empty seats filled from the substitution priority.
     """
-    override = override_composition(session_folder=session_folder)
-    if override:
-        composition = list(override)
+    # Precedence: session-pinned roster > this call's explicit request > global default.
+    # The global default is a fallback for an empty request, never a veto over it —
+    # otherwise a saved default (e.g. kimi_work) silently overrides what the user just picked.
+    session_override = session_composition_override(session_folder=session_folder)
+    if session_override:
+        composition = list(session_override)
     elif requested:
         composition = list(requested)
     else:
-        composition = list(DEFAULT_ROSTER)
+        composition = global_composition_default() or list(DEFAULT_ROSTER)
     target = size if size is not None else len(composition)
     avail = set(available_ids)
 
@@ -186,8 +210,10 @@ def resolve_active_agents(
     from agent_lab.agents.registry import AGENT_IDS
 
     available = dynamic_available_ids(available_fn)
-    override = override_composition(session_folder=session_folder)
-    requested = None if override else ([str(a) for a in agents] if agents else None)
+    # Only a session-pinned roster suppresses the explicit request; the global default
+    # must not (select_roster applies it as a fallback when requested is empty).
+    session_override = session_composition_override(session_folder=session_folder)
+    requested = None if session_override else ([str(a) for a in agents] if agents else None)
     roster = select_roster(
         requested=requested,
         available_ids=available,

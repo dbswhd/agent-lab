@@ -35,6 +35,35 @@ def get_conversation_key(session_folder: str | Path) -> str | None:
     return str(key).strip() if key else None
 
 
+def is_live_conversation_key(conversation_key: str | None) -> bool:
+    """True for daimon-issued keys (``main:conversation:<uuid>``)."""
+    key = str(conversation_key or "").strip()
+    return key.startswith("main:conversation:")
+
+
+def is_usable_conversation_key(conversation_key: str | None) -> bool:
+    """Persisted key is valid for the current runtime (live daimon vs mock)."""
+    key = str(conversation_key or "").strip()
+    if not key:
+        return False
+    if is_live_conversation_key(key):
+        return True
+    if key.startswith("mock-conv-"):
+        import os
+
+        return os.getenv("AGENT_LAB_MOCK_AGENTS", "").strip().lower() in {"1", "true", "yes", "on"}
+    return bool(key)
+
+
+def clear_conversation_key(session_folder: str | Path) -> None:
+    state = read_state(session_folder)
+    if "conversationKey" not in state:
+        return
+    state = dict(state)
+    state.pop("conversationKey", None)
+    write_state(session_folder, state)
+
+
 def get_workspace_path(session_folder: str | Path) -> Path | None:
     raw = read_state(session_folder).get("workspacePath")
     if not raw:
@@ -94,6 +123,9 @@ def ensure_kimi_work_session(
     folder = session_folder
     resolved = Path(workspace_path).expanduser().resolve()
     existing_key = get_conversation_key(folder)
+    if existing_key and not is_usable_conversation_key(existing_key):
+        clear_conversation_key(folder)
+        existing_key = None
     existing_ws = get_workspace_path(folder)
     need_open = existing_ws != resolved
     need_create = existing_key is None

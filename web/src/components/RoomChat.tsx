@@ -29,6 +29,8 @@ import {
   reconnectKimiWorkBridge,
   runRoom,
   runSessionCommand,
+  runGlobalCommand,
+  SESSIONLESS_ACCOUNT_COMMAND_IDS,
   runRoomSlash,
   approveVerifiedLoop,
   approvePlan,
@@ -152,6 +154,10 @@ import {
   type ComposerTurnProfile,
 } from "../utils/turnProfile";
 import { sortAgentIds, sortAgentPickerOptions } from "../utils/agentOrder";
+import {
+  parseModelSlashArgs,
+  readSessionRoomModels,
+} from "../utils/modelSlash";
 import { fetchRoomModes, loopCostHintLine } from "../utils/roomModes";
 import { presetHintLine, resolveRoomPresets } from "../utils/roomPresets";
 import { formatAgentModelName } from "../utils/roomModels";
@@ -372,6 +378,7 @@ export function RoomChat({
       pendingMissionTemplateRef.current = bootstrapMissionTemplateId;
     }
   }, [bootstrapMissionTemplateId]);
+  const pendingSessionRoomModelsRef = useRef<string[] | null>(null);
   const tweaks = useTweaksDemoOptional() ?? TWEAKS_DEMO_OFF;
   const [selected, setSelected] = useState<string[]>([]);
   const [text, setText] = useState("");
@@ -716,7 +723,53 @@ export function RoomChat({
     setResolvedAgentCwd({});
     agentCapsDirtyRef.current = false;
     agentsPickerInitRef.current = false;
+    pendingSessionRoomModelsRef.current = null;
   }, [sessionId]);
+
+  const sessionRoomModelsKey = useMemo(() => {
+    const models = readSessionRoomModels(
+      session?.run as Record<string, unknown> | undefined,
+    );
+    return models ? models.join(",") : null;
+  }, [session?.run]);
+
+  useEffect(() => {
+    if (!sessionId || !sessionRoomModelsKey) return;
+    const models = readSessionRoomModels(
+      session?.run as Record<string, unknown> | undefined,
+    );
+    if (!models) return;
+    setSelected((prev) => {
+      const next = sortAgentIds(models);
+      return prev.join(",") === next.join(",") ? prev : next;
+    });
+    agentsPickerInitRef.current = true;
+  }, [session?.run, sessionId, sessionRoomModelsKey]);
+
+  const applySessionScopedModels = useCallback((composition: string[]) => {
+    const comp = sortAgentIds(composition);
+    if (comp.length === 0) return;
+    pendingSessionRoomModelsRef.current = comp;
+    setSelected(comp);
+    setCommandHint(`이 세션 동안 ${comp.join(", ")} 에이전트를 사용합니다.`);
+  }, []);
+
+  const persistPendingSessionRoomModels = useCallback(
+    async (boundSessionId: string) => {
+      const pending = pendingSessionRoomModelsRef.current;
+      if (!pending?.length) return;
+      pendingSessionRoomModelsRef.current = null;
+      try {
+        await runRoomSlash(
+          `/model ${pending.join(",")} session`,
+          boundSessionId,
+        );
+      } catch {
+        pendingSessionRoomModelsRef.current = pending;
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!sessionId) {
@@ -912,6 +965,52 @@ export function RoomChat({
     refreshTasks(sid);
     refreshCommands(sid);
   }, [onSessionMetaRefresh, onSessionChange, refreshTasks, refreshCommands]);
+
+  const handleAuthRunComplete = useCallback(async () => {
+    if (!authRun) return;
+    const providerLabel =
+      authRun.provider_id === "claude"
+        ? "Claude"
+        : authRun.provider_id === "codex"
+          ? "Codex"
+          : authRun.provider_id === "cursor"
+            ? "Cursor"
+            : authRun.provider_id;
+    const actionLabel = authRun.action === "logout" ? "로그아웃" : "로그인";
+    if (authRun.provider_id === "claude" && authRun.action === "login") {
+      try {
+        const res = await reconnectClaudeAuth();
+        if (!sessionId) {
+          setCommandHint(
+            res.ok
+              ? `${providerLabel} ${actionLabel} 완료`
+              : (res.hint ?? `${providerLabel} ${actionLabel} 확인 필요`),
+          );
+          void fetchCommands(null)
+            .then((payload) => setSlashCommands(payload.commands ?? []))
+            .catch(() => undefined);
+          void onRefreshHealth?.();
+          return;
+        }
+        refreshSessionMeta();
+        if (!res.ok && res.hint) {
+          setCommandHint(res.hint);
+        }
+        return;
+      } catch {
+        /* fall through to generic completion hint */
+      }
+    }
+    if (!sessionId) {
+      setCommandHint(`${providerLabel} ${actionLabel} 완료`);
+      void fetchCommands(null)
+        .then((payload) => setSlashCommands(payload.commands ?? []))
+        .catch(() => undefined);
+      void onRefreshHealth?.();
+      return;
+    }
+    refreshSessionMeta();
+  }, [authRun, onRefreshHealth, refreshSessionMeta, sessionId]);
 
   const {
     inboxPendingCount,
@@ -1765,6 +1864,7 @@ export function RoomChat({
               if (!sessionId && onSessionMetaRefresh) {
                 void onSessionMetaRefresh(activeSessionIdRef.current);
               }
+              void persistPendingSessionRoomModels(boundSessionId);
               const pendingTemplateId = pendingMissionTemplateRef.current;
               if (!sessionId && pendingTemplateId && boundSessionId) {
                 pendingMissionTemplateRef.current = null;
@@ -2544,6 +2644,7 @@ export function RoomChat({
       bootstrapAgentThreadBindings,
       bootstrapSessionTemplate,
       refreshSessionMeta,
+      persistPendingSessionRoomModels,
       runBusy,
       running,
       synthesizing,
@@ -2686,18 +2787,30 @@ export function RoomChat({
 
   const executeSlashCommand = useCallback(
     async (command: SlashCommandRecord, args: string, confirm = false) => {
-      if (!sessionId) return;
+      const isGlobal =
+        !sessionId && SESSIONLESS_ACCOUNT_COMMAND_IDS.has(command.id);
+      if (!sessionId && !isGlobal) return;
       setCommandHint(null);
       setCommandChoices(null);
       setCommandScopeChoices(null);
       try {
-        const res = await runSessionCommand(sessionId, {
-          command_id: command.id,
-          args,
-          confirm,
-        });
+        const res = isGlobal
+          ? await runGlobalCommand({
+              command_id: command.id,
+              args,
+              confirm,
+            })
+          : await runSessionCommand(sessionId!, {
+              command_id: command.id,
+              args,
+              confirm,
+            });
         if (res.kind === "server") {
-          refreshSessionMeta();
+          if (sessionId) {
+            refreshSessionMeta();
+          } else if (isGlobal) {
+            void onRefreshHealth?.();
+          }
           setCommandHint(res.text ?? "명령 실행 완료");
         } else if (res.kind === "external") {
           const payload = res.result as
@@ -2798,7 +2911,7 @@ export function RoomChat({
         } else {
           setText("");
         }
-        void fetchCommands(sessionId)
+        void fetchCommands(isGlobal ? null : sessionId)
           .then((payload) => setSlashCommands(payload.commands ?? []))
           .catch(() => undefined);
       } catch (e) {
@@ -2814,7 +2927,7 @@ export function RoomChat({
         setCommandHint(message);
       }
     },
-    [sessionId, refreshSessionMeta],
+    [sessionId, refreshSessionMeta, onRefreshHealth],
   );
 
   useEffect(() => {
@@ -2866,48 +2979,76 @@ export function RoomChat({
         : command;
       const target = parsed ?? command;
       const args = rawText ? rawText.replace(/^\/[^\s]+\s*/, "").trim() : "";
-      if (!sessionId && target.id === "model") {
-        if (args) {
-          const requested = new Set(args.split(",").map((id) => id.trim()));
-          const next = sortAgentIds(
-            agents
-              .filter((agent) => requested.has(agent.id))
-              .map((agent) => agent.id),
+      if (!sessionId) {
+        if (target.id === "model") {
+          const filterReadyComposition = (ids: string[]) =>
+            sortAgentIds(
+              ids.filter((id) => agents.some((agent) => agent.id === id)),
+            );
+          if (args) {
+            const parsed = parseModelSlashArgs(args);
+            const next = filterReadyComposition(parsed.composition);
+            if (next.length === 0) {
+              setText("");
+              setCommandHint("선택 가능한 에이전트가 없습니다.");
+              return;
+            }
+            if (parsed.scope === "default") {
+              setText("");
+              void runRoomSlash(`/model ${next.join(",")} default`).then(() => {
+                setCommandHint(`기본값으로 저장했습니다 (${next.join(", ")}).`);
+              });
+              return;
+            }
+            if (parsed.scope === "session") {
+              setText("");
+              applySessionScopedModels(next);
+              return;
+            }
+            setCommandScopeChoices({
+              command: target,
+              composition: next,
+              prompt: `[${next.join(", ")}] — 적용 범위를 선택하세요`,
+              options: [
+                {
+                  value: "session",
+                  label: "이번 세션만 (세션 동안 유지)",
+                },
+                {
+                  value: "default",
+                  label: "기본값으로 저장",
+                },
+              ],
+            });
+            setText("");
+            return;
+          }
+          const options = sortAgentPickerOptions(
+            agents.map((agent) => ({
+              value: agent.id,
+              label: `${agent.label} · ${formatAgentModelName(agent.model, agent.id)}`,
+            })),
           );
-          if (next.length > 0) setSelected(next);
+          const currentComposition = sortAgentIds(
+            teamHealthAgents.length > 0
+              ? teamHealthAgents.map((agent) => agent.id)
+              : healthAgents.length > 0
+                ? healthAgents.map((agent) => agent.id)
+                : selected,
+          );
+          setCommandMultiChoices({
+            command: target,
+            argsPrefix: "",
+            prompt: "활성화할 에이전트 선택 (복수 선택 가능)",
+            current: currentComposition,
+            options,
+          });
+          setMultiSelected(new Set(currentComposition));
           setText("");
-          setCommandHint(
-            next.length > 0
-              ? `첫 턴에 사용할 에이전트 ${next.length}개를 선택했습니다.`
-              : "선택 가능한 에이전트가 없습니다.",
-          );
           return;
         }
-        const options = sortAgentPickerOptions(
-          agents.map((agent) => ({
-            value: agent.id,
-            label: `${agent.label} · ${formatAgentModelName(agent.model, agent.id)}`,
-          })),
-        );
-        const currentComposition = sortAgentIds(
-          teamHealthAgents.length > 0
-            ? teamHealthAgents.map((agent) => agent.id)
-            : healthAgents.length > 0
-              ? healthAgents.map((agent) => agent.id)
-              : selected,
-        );
-        setCommandMultiChoices({
-          command: target,
-          argsPrefix: "",
-          prompt: "활성화할 에이전트 선택 (복수 선택 가능)",
-          current: currentComposition,
-          options,
-        });
-        setMultiSelected(new Set(currentComposition));
-        setText("");
-        return;
+        if (!SESSIONLESS_ACCOUNT_COMMAND_IDS.has(target.id)) return;
       }
-      if (!sessionId) return;
       if (
         target.kind === "external" &&
         target.requires_human_confirm !== false
@@ -2920,6 +3061,7 @@ export function RoomChat({
     [
       agents,
       authRun,
+      applySessionScopedModels,
       executeSlashCommand,
       handleStop,
       healthAgents,
@@ -3968,7 +4110,6 @@ export function RoomChat({
                             const composition = comp.join(",");
                             setCommandScopeChoices(null);
                             if (!sessionId && cmd.id === "model") {
-                              setSelected(sortAgentIds(comp));
                               if (opt.value === "default") {
                                 void runRoomSlash(
                                   `/model ${composition} default`,
@@ -3978,9 +4119,7 @@ export function RoomChat({
                                   );
                                 });
                               } else {
-                                setCommandHint(
-                                  `이번 세션에 사용할 에이전트 ${comp.length}개를 선택했습니다.`,
-                                );
+                                applySessionScopedModels(comp);
                               }
                             } else {
                               void executeSlashCommand(
@@ -4064,7 +4203,7 @@ export function RoomChat({
                                 options: [
                                   {
                                     value: "session",
-                                    label: "이번 세션만",
+                                    label: "이번 세션만 (세션 동안 유지)",
                                   },
                                   {
                                     value: "default",
@@ -4138,7 +4277,7 @@ export function RoomChat({
                   {authRun ? (
                     <AuthFlowPanel
                       run={authRun}
-                      onComplete={refreshSessionMeta}
+                      onComplete={handleAuthRunComplete}
                       onClose={() => {
                         setAuthRun(null);
                         focusComposerInput();

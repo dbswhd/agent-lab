@@ -392,7 +392,7 @@ export function AgentCredentialsPanel() {
         <OAuthAgentCard
           id="claude"
           title="Claude"
-          loginHint="claude auth login --claudeai"
+          loginHint="claude auth login"
         />
         <CodexOAuthCard />
         <fieldset

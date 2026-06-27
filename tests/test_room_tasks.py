@@ -8,6 +8,7 @@ from agent_lab.room import ChatMessage, _append_peer_turn_digest
 from agent_lab.room_chat_channels import message_visibility
 from agent_lab.room_tasks import (
     add_task,
+    agents_missing_task_endorse,
     assign_tasks_to_agents,
     auto_claim_tasks_from_turn,
     build_team_task_block,
@@ -230,6 +231,60 @@ def test_harvest_task_endorsements_and_consensus_gate():
     harvest_task_endorsements(run_meta, msgs, ["codex", "claude", "cursor"])
     ready2, _ = consensus_tasks_ready(run_meta, ["cursor", "codex", "claude"])
     assert ready2
+
+
+def test_proposer_auto_endorses_own_task():
+    """제안자는 자기 작업에 암묵 동의 — 별도 ENDORSE refs 없이 카운트에 포함."""
+    run_meta: dict = {"tasks": [], "agents": ["codex", "claude", "kimi_work"]}
+    task = add_task(run_meta, "Ship X", source="proposed", owner_agent="codex")
+    end = task.get("endorsements") or {}
+    assert "codex" in end
+
+
+def test_solo_agent_task_ready_via_proposer_endorse():
+    """단독 에이전트 세션: 제안자 자동 동의만으로 합의 정족수(1) 충족."""
+    run_meta: dict = {"tasks": [], "agents": ["kimi_work"]}
+    msgs = [
+        _Msg(
+            "user",
+            "topic",
+        ),
+        _Msg(
+            "agent",
+            "[PROPOSED: 3개 트랙으로 쪼갭니다]",
+            agent="kimi_work",
+            parallel_round=1,
+        ),
+    ]
+    sync_tasks_from_messages(run_meta, msgs, human_turn=1)
+    ready, blockers = consensus_tasks_ready(run_meta, ["kimi_work"])
+    assert ready
+    assert not blockers
+
+
+def test_agents_missing_task_endorse_targets_only_pending():
+    """자동 ENDORSE 라운드는 아직 동의 안 한 에이전트만 재요청 대상으로 잡는다."""
+    run_meta: dict = {"tasks": [], "agents": ["codex", "claude", "kimi_work"]}
+    add_task(run_meta, "Track work", source="proposed", owner_agent="codex")
+    active = ["codex", "claude", "kimi_work"]
+    # 정족수 2 (3-1). 제안자 codex만 동의 상태 → claude, kimi_work가 미동의.
+    missing = agents_missing_task_endorse(run_meta, active)
+    assert "codex" not in missing
+    assert set(missing) == {"claude", "kimi_work"}
+    # claude가 동의하면 정족수 충족 → 더 이상 미동의 없음.
+    harvest_task_endorsements(
+        run_meta,
+        [
+            _Msg(
+                "agent",
+                "ok",
+                agent="claude",
+                envelope={"act": "ENDORSE", "refs": [list_tasks(run_meta)[0]["id"]]},
+            )
+        ],
+        active,
+    )
+    assert agents_missing_task_endorse(run_meta, active) == []
 
 
 def test_tasks_public_payload_includes_consensus_gate():

@@ -281,3 +281,36 @@ def test_quick_route_has_no_recombination(monkeypatch, tmp_path):
     consensus = run["turns"][0]["consensus"]
     assert consensus["status"] == "reached"
     assert "recombination" not in consensus
+
+
+def test_explicit_multi_select_survives_quick_route(monkeypatch, tmp_path):
+    """사용자가 여러 에이전트를 명시 선택하면 quick 카테고리 단일 축소를 건너뛰고
+    선택한 plugin 전원이 실제로 호출된다 (run.json agents도 마지막 1명으로 줄지 않음)."""
+    from agent_lab import room
+
+    _clear_router_env(monkeypatch)
+    monkeypatch.delenv("AGENT_LAB_CLARIFIER", raising=False)
+    spoke: set[str] = set()
+
+    def fake_call_agent(agent, _system, user, **kwargs):
+        if kwargs.get("scribe"):
+            return "## Plan\n\n- mock\n"
+        spoke.add(agent)
+        if agent == "cursor":
+            return _envelope_reply("PROPOSE", "단답: 머지 완료 상태입니다.")
+        return _envelope_reply("ENDORSE", "이의 없습니다")
+
+    patch_call_agent_reply(monkeypatch, fake_call_agent)
+    monkeypatch.setattr(room, "model_label", lambda agent: f"{agent}-model")
+
+    folder, _messages, _plan = room.run_room(
+        "이거 머지됐어?\n[cat: quick]",
+        agents=["cursor", "codex", "claude"],
+        synthesize=False,
+        sessions_base=tmp_path,
+        consensus_mode=True,
+    )
+    # quick 단일 축소가 적용됐다면 cursor 1명만 발화했을 것 — 명시 선택 3명 전원이 발화해야 한다.
+    assert spoke == {"cursor", "codex", "claude"}
+    run = json.loads((folder / "run.json").read_text(encoding="utf-8"))
+    assert set(run["agents"]) == {"cursor", "codex", "claude"}

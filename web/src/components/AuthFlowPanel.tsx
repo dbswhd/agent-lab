@@ -10,7 +10,7 @@ import { stripTerminalControlSequences } from "../utils/ttySanitize";
 type Props = {
   run: AuthRunRef;
   onClose: () => void;
-  onComplete: () => void;
+  onComplete: () => void | Promise<void>;
 };
 
 type FlowStatus = "running" | "failed" | "cancelled";
@@ -18,8 +18,42 @@ type FlowStatus = "running" | "failed" | "cancelled";
 const AUTH_CLI_SUCCESS_RE =
   /Login successful|Logout successful|Successfully logged out|✓ Logout successful|logged in using/i;
 
+/** OAuth CLI providers complete via browser approval + localhost callback (no code paste). */
+const BROWSER_OAUTH_PROVIDERS = new Set(["claude", "codex", "cursor"]);
+
 function authOutputLooksSuccessful(output: string): boolean {
   return AUTH_CLI_SUCCESS_RE.test(output);
+}
+
+function humanizeClaudeAuthStatusOutput(output: string): string {
+  const trimmed = output.trim();
+  if (!trimmed.includes('"loggedIn"')) return output;
+  try {
+    const payload = JSON.parse(trimmed) as {
+      loggedIn?: boolean;
+      email?: string;
+    };
+    if (payload.loggedIn) {
+      return payload.email ? `OAuth 연결됨 (${payload.email})` : "OAuth 연결됨";
+    }
+    return "OAuth 미로그인 — /login 또는 claude auth login";
+  } catch {
+    return output;
+  }
+}
+
+function formatAuthFailureOutput(output: string): string {
+  const lines = output
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.length === 0) return output;
+  const normalized = lines.map((line) =>
+    line.startsWith("{") && line.includes('"loggedIn"')
+      ? humanizeClaudeAuthStatusOutput(line)
+      : line,
+  );
+  return normalized.join("\n");
 }
 
 export function AuthFlowPanel({ run, onClose, onComplete }: Props) {
@@ -44,14 +78,15 @@ export function AuthFlowPanel({ run, onClose, onComplete }: Props) {
         /* live ~/.codex/auth.json is already updated after CLI login */
       }
     }
-    onCompleteRef.current();
+    await onCompleteRef.current();
     onCloseRef.current();
   }, [run.action, run.id, run.provider_id]);
 
   const finishFailure = useCallback((next: FlowStatus, message?: string) => {
     setStatus(next);
+    const raw = (message ?? outputRef.current).trim();
     setErrorOutput(
-      (message ?? outputRef.current).trim() ||
+      formatAuthFailureOutput(raw) ||
         "인증 연결이 끊어졌습니다. CLI 출력을 확인하세요.",
     );
   }, []);
@@ -139,6 +174,8 @@ export function AuthFlowPanel({ run, onClose, onComplete }: Props) {
         : run.provider_id === "cursor"
           ? "Cursor"
           : run.provider_id;
+  const browserOAuthLogin =
+    run.action === "login" && BROWSER_OAUTH_PROVIDERS.has(run.provider_id);
 
   if (status !== "running") {
     return (
@@ -180,9 +217,9 @@ export function AuthFlowPanel({ run, onClose, onComplete }: Props) {
       <p className="auth-flow__hint">
         {run.action === "logout"
           ? "CLI 로그아웃을 실행 중입니다."
-          : run.provider_id === "claude"
-            ? "브라우저에서 승인한 뒤, 코드가 표시되면 아래에 붙여넣으세요."
-            : "브라우저에서 승인하면 자동으로 완료됩니다."}
+          : browserOAuthLogin
+            ? "브라우저에서 승인하면 자동으로 완료됩니다."
+            : "브라우저에서 승인한 뒤, 코드가 표시되면 아래에 붙여넣으세요."}
       </p>
       {authUrl ? (
         <button
@@ -194,7 +231,7 @@ export function AuthFlowPanel({ run, onClose, onComplete }: Props) {
         </button>
       ) : null}
       <div className="auth-flow__input-row">
-        {run.action === "login" ? (
+        {run.action === "login" && !browserOAuthLogin ? (
           <>
             <input
               value={input}

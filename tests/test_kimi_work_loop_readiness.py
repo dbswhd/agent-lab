@@ -111,6 +111,13 @@ def test_kimi_work_tool_features_contract() -> None:
 
     assert kimi_work_loop_tool_features_ok(
         [
+            "conversations.create",
+            "conversations.send",
+            "workspace.openProject",
+        ]
+    )
+    assert kimi_work_loop_tool_features_ok(
+        [
             "capabilities.get",
             "conversations.create",
             "conversations.send",
@@ -118,6 +125,90 @@ def test_kimi_work_tool_features_contract() -> None:
         ]
     )
     assert not kimi_work_loop_tool_features_ok(["conversations.send"])
+
+
+def test_kimi_work_tool_features_ok_for_daimon_advertised_list() -> None:
+    from agent_lab.kimi_work_loop import kimi_work_loop_tool_features_ok
+
+    daimon_features = [
+        "conversations.create",
+        "conversations.send",
+        "workspace.openProject",
+        "workspace.listProjects",
+        "runtime.status",
+    ]
+    assert kimi_work_loop_tool_features_ok(daimon_features)
+
+
+def test_probe_kimi_work_tools_accepts_daimon_feature_list(monkeypatch: pytest.MonkeyPatch) -> None:
+    from agent_lab.model_policy_probe import _probe_kimi_work_tools
+
+    monkeypatch.delenv("AGENT_LAB_MOCK_AGENTS", raising=False)
+
+    def _fake_rpc(method: str, params: dict[str, object]) -> dict[str, object]:
+        assert method == "capabilities.get"
+        return {
+            "features": [
+                "conversations.create",
+                "conversations.send",
+                "workspace.openProject",
+            ]
+        }
+
+    monkeypatch.setattr(
+        "agent_lab.kimi_work_provider.is_configured",
+        lambda: True,
+    )
+    monkeypatch.setattr(
+        "agent_lab.kimi_control_client.probe_control",
+        lambda: ("ok", None),
+    )
+    monkeypatch.setattr("agent_lab.kimi_control_client.rpc", _fake_rpc)
+    assert _probe_kimi_work_tools() is True
+
+
+def test_is_usable_conversation_key_mock_only_in_mock_mode(monkeypatch: pytest.MonkeyPatch) -> None:
+    from agent_lab.kimi_work_session import is_usable_conversation_key
+
+    monkeypatch.delenv("AGENT_LAB_MOCK_AGENTS", raising=False)
+    assert is_usable_conversation_key("mock-conv-loop-probe") is False
+    assert is_usable_conversation_key("main:conversation:abc-123") is True
+
+    monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
+    assert is_usable_conversation_key("mock-conv-loop-probe") is True
+
+
+def test_ensure_kimi_work_session_drops_stale_mock_key(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from agent_lab.kimi_work_session import ensure_kimi_work_session, write_state
+
+    monkeypatch.delenv("AGENT_LAB_MOCK_AGENTS", raising=False)
+    write_state(
+        tmp_path,
+        {
+            "workspacePath": str(tmp_path),
+            "conversationKey": "mock-conv-loop-probe",
+        },
+    )
+
+    created: list[str] = []
+
+    def _fake_rpc(method: str, params: dict[str, object]) -> dict[str, str]:
+        if method == "workspace.openProject":
+            return {"status": "opened"}
+        if method == "conversations.create":
+            key = "main:conversation:probe-123"
+            created.append(key)
+            return {"conversationKey": key}
+        raise AssertionError(method)
+
+    monkeypatch.setattr("agent_lab.kimi_control_client.rpc", _fake_rpc)
+    monkeypatch.setattr("agent_lab.kimi_control_client.rpc_batch", lambda calls: [_fake_rpc(m, p) for m, p in calls])
+
+    key = ensure_kimi_work_session(tmp_path, workspace_path=tmp_path, title="loop-probe")
+    assert key == "main:conversation:probe-123"
+    assert created == ["main:conversation:probe-123"]
 
 
 def test_probe_kimi_work_envelope_validates_speech_act(

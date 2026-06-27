@@ -10,10 +10,10 @@ from __future__ import annotations
 
 import os
 
-# Daimon ``capabilities.get`` features required for Loop phase 1 (discuss/consensus lane).
+# Daimon features advertised for Loop phase 1 (discuss/consensus lane).
+# ``capabilities.get`` is the RPC used to fetch this list — not a feature name daimon lists.
 KIMI_WORK_LOOP_PHASE1_FEATURES: frozenset[str] = frozenset(
     {
-        "capabilities.get",
         "conversations.create",
         "conversations.send",
         "workspace.openProject",

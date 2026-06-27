@@ -89,7 +89,8 @@ def test_fast_bucket_collection_budget():
     # 2026-06-26: raised 1830 -> 1960 for PR#57 merge — auto_approve_gate, diff_risk, evidence_api, openai_compat, room_preset, run_profile, wisdom_store suites.
     # 2026-06-27: raised 1960 -> 2050 for API bootstrap/smoke + session-scoped cancel + provider contextvars fast suites.
     # 2026-06-27: raised 2050 -> 2060 for DRAFT→PEER_REVIEW auto-advance tests + clarifier harvest fixes.
-    assert count <= 2060, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-06-28: raised 2060 -> 2075 for consensus task-endorse automation (proposer auto-endorse + auto ENDORSE round) and roster precedence fix (explicit selection > global default room_models).
+    assert count <= 2075, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

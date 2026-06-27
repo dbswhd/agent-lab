@@ -106,10 +106,18 @@ def session_clarifier_answers(
         answers=body.answers,
         mark_complete=body.mark_complete,
     )
+    # Auto-advance CLARIFY→DRAFT when the interview is now complete, so the user doesn't
+    # need to send an extra chat turn after submitting answers.
+    updated = interview or public_clarifier_interview(read_run_meta(folder))
+    if updated and updated.get("status") == "complete":
+        from agent_lab.plan_workflow import tick_plan_workflow_after_inbox_resolve
+
+        tick_plan_workflow_after_inbox_resolve(folder)
     return {
         "ok": True,
         "session_id": session_id,
-        "interview": interview or public_clarifier_interview(read_run_meta(folder)),
+        "interview": updated,
+        "plan_workflow": read_run_meta(folder).get("plan_workflow"),
     }
 
 

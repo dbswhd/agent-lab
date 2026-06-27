@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from agent_lab.human_inbox import create_inbox_item, resolve_inbox_item
+from agent_lab.session_clarifier import record_clarifier_answers
 from agent_lab.plan_workflow import (
     PlanWorkflowNotApproved,
     approve_plan,
@@ -266,3 +267,104 @@ def test_run_room_plan_send_reaches_human_pending(
     assert plan_md.strip()
     loop = read_run_meta(folder).get("verified_loop") or {}
     assert loop.get("status") == "pending_approval"
+
+
+def test_e2e_qa_loop_clarify_to_approve(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Full E2E: vague topic → CLARIFY Q&A hold → concrete answer → DRAFT → PEER_REVIEW → APPROVE.
+
+    This is the integration path that was previously untested: clarity engine generates
+    questions for a vague topic, the user answers with a concrete file-path anchor, answers
+    fold into _mission_clarity_text, clarity threshold is met, and the workflow advances
+    all the way to APPROVED without any manual phase override.
+    """
+    monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
+    monkeypatch.setenv("AGENT_LAB_CLARIFIER", "1")
+    monkeypatch.setenv("ROOM_SCRIBE_AGENT", "claude")
+
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    # Vague topic with no file-path anchors → mock score 0.8 > threshold 0.30 → questions generated
+    (folder / "run.json").write_text('{"topic": "Build a new widget"}', encoding="utf-8")
+
+    # ── Phase 1: CLARIFY hold ────────────────────────────────────────────────
+    init_plan_workflow_on_plan_send(folder)
+    assert get_plan_workflow(read_run_meta(folder))["phase"] == "CLARIFY"
+
+    tick1 = tick_plan_workflow_after_turn(
+        folder,
+        synthesize=True,
+        cancelled=False,
+        plan_md="",
+        plan_before="",
+        has_pending_inbox_question=False,
+    )
+    assert tick1.get("clarity_pending") is True, f"Expected CLARIFY hold, got: {tick1}"
+
+    interview = read_run_meta(folder).get("clarifier_interview")
+    assert interview is not None
+    questions = interview.get("questions") or []
+    assert questions, "Clarity engine must generate at least one question for vague topic"
+
+    # ── Phase 2: User answers → clarity anchor detected → DRAFT ─────────────
+    # Answer contains a file path (src/agent_lab/room.py) → detect_concrete_anchors → True
+    qid = str(questions[0]["id"])
+    record_clarifier_answers(
+        folder,
+        answers={qid: "Add retry logic to src/agent_lab/room.py when response is None"},
+        mark_complete=False,
+    )
+
+    tick2 = tick_plan_workflow_after_turn(
+        folder,
+        synthesize=True,
+        cancelled=False,
+        plan_md="",
+        plan_before="",
+        has_pending_inbox_question=False,
+    )
+    assert tick2.get("advance") == "DRAFT", f"Expected DRAFT after anchored answer, got: {tick2}"
+    assert get_plan_workflow(read_run_meta(folder))["phase"] == "DRAFT"
+
+    # ── Phase 3: plan.md → pipeline → PEER_REVIEW → HUMAN_PENDING ───────────
+    (folder / "plan.md").write_text(SAMPLE_PLAN, encoding="utf-8")
+
+    peer_calls: dict[str, int] = {"n": 0}
+
+    def _fake_peer_review(folder: Path, *_args: object, **_kwargs: object) -> list[object]:
+        peer_calls["n"] += 1
+        return []  # no challenges → immediate HUMAN_PENDING
+
+    def _fake_synthesize_plan(_topic: str, _messages: object, **_kwargs: object) -> str:
+        return SAMPLE_PLAN
+
+    monkeypatch.setattr("agent_lab.plan_workflow.run_plan_peer_review_round", _fake_peer_review)
+    monkeypatch.setattr("agent_lab.room.synthesize_plan", _fake_synthesize_plan)
+
+    run_meta = read_run_meta(folder)
+    run_meta["_session_folder"] = str(folder)
+    _plan_md, _replies, tick3 = orchestrate_plan_workflow_pipeline(
+        folder,
+        topic="Build a new widget",
+        messages=[],
+        plan_md=SAMPLE_PLAN,
+        plan_before="",
+        synthesize=True,
+        cancelled=False,
+        agents=["claude"],
+        permissions={},
+        run_meta=run_meta,
+    )
+
+    pw = get_plan_workflow(read_run_meta(folder))
+    assert peer_calls["n"] >= 1
+    assert pw["phase"] == "HUMAN_PENDING"
+    assert tick3.get("pending_approval") is True
+
+    # ── Phase 4: Approve → execute gate open ────────────────────────────────
+    approve_plan(folder)
+    pw_final = get_plan_workflow(read_run_meta(folder))
+    assert pw_final["phase"] == "APPROVED"
+    ensure_plan_workflow_approved(folder)  # must not raise

@@ -9,7 +9,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from agent_lab.command_registry import list_commands
+from agent_lab.command_registry import ACCOUNT_COMMAND_IDS, invoke_tool, list_commands
 from agent_lab.plugin_discovery import (
     discover_plugins,
     merge_session_allowlist,
@@ -101,6 +101,28 @@ def patch_session_agent_plugins(
     }
 
 
+@router.post("/commands/run")
+def post_global_command_run(body: CommandRunRequest) -> dict[str, Any]:
+    """Run account slash commands before a session exists (New session composer)."""
+    command_id = body.command_id.strip().lower()
+    if command_id not in ACCOUNT_COMMAND_IDS:
+        raise HTTPException(status_code=422, detail="command requires an active session")
+    ws = Path(os.getenv("AGENT_LAB_ROOT", Path(__file__).resolve().parents[3]))
+    tr = invoke_tool(
+        None,
+        command_id,
+        args=body.args,
+        confirm=body.confirm,
+        workspace=ws,
+    )
+    if not tr.ok:
+        detail = tr.error
+        if not detail and isinstance(tr.raw.get("result"), dict):
+            detail = tr.raw["result"].get("detail")
+        raise HTTPException(status_code=409, detail=detail or "command failed")
+    return {"ok": True, **tr.raw, "envelope": tr.to_dict()}
+
+
 @router.post("/sessions/{session_id}/commands/run")
 def post_session_command_run(
     session_id: str,
@@ -108,7 +130,6 @@ def post_session_command_run(
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
     ws = _workspace_for_session(folder)
-    from agent_lab.command_registry import invoke_tool
 
     tr = invoke_tool(
         folder,

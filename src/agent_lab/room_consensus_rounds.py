@@ -145,8 +145,12 @@ def run_consensus_agent_rounds(
         active,
     )
 
+    # 사용자가 2명 이상을 명시적으로 선택했으면 자동 카테고리 축소(quick → 단일 에이전트)가
+    # 그 선택을 1명으로 덮어쓰지 않게 한다. expert pool·model policy subset의 len>=2 보호와
+    # 동일 취지 — 명시 선택은 비용 최적화보다 우선한다 (선택한 plugin이 실제로 호출되어야 함).
+    user_selected_multi = agents is not None and len([a for a in agents if str(a).strip()]) >= 2
     subset = agent_subset_for_route(route, active, hint=_hint)
-    if subset:
+    if subset and not (user_selected_multi and len(subset) < len(active)):
         active = subset
 
     if run_meta is not None:
@@ -804,6 +808,69 @@ def run_consensus_agent_rounds(
                             },
                         )
                     return all_replies, meta
+                # 자동 ENDORSE 라운드 — 앵커는 합의됐지만 일부 작업에 팀 ENDORSE가
+                # 부족할 때, Human이 "동의해 주세요"를 직접 칠 필요 없이 미동의
+                # 에이전트에게 1회 재요청한다. cap_rounds/cap_calls가 상위 가드.
+                if not tasks_ready and task_blockers and parallel_round < cap_rounds and calls < cap_calls:
+                    from agent_lab.room_tasks import agents_missing_task_endorse
+                    from agent_lab.room_consensus import (
+                        consensus_task_endorse_follow_up,
+                    )
+
+                    need = [
+                        a
+                        for a in active
+                        if str(a).strip().lower()
+                        in set(agents_missing_task_endorse(run_meta, [str(x) for x in active]))
+                    ]
+                    if need:
+                        parallel_round += 1
+                        if on_event:
+                            on_event(
+                                "agent_round_start",
+                                {
+                                    "round": parallel_round,
+                                    "total": cap_rounds,
+                                    "consensus": True,
+                                },
+                            )
+                        endorse_follow = consensus_task_endorse_follow_up(task_blockers)
+                        endorse_thread = list(messages) + list(all_replies)
+                        for aid in need:
+                            if calls >= cap_calls:
+                                break
+                            check_cancelled()
+                            msg = _invoke_agent_for_round(
+                                aid,
+                                topic=topic,
+                                thread=endorse_thread,
+                                parallel_round=parallel_round,
+                                permissions=permissions,
+                                review_mode=False,
+                                review_advocate=None,
+                                plan_md=plan_md,
+                                run_meta=run_meta,
+                                on_event=on_event,
+                                context_log=context_log,
+                                extra_follow_up=endorse_follow,
+                                efficiency_mode=efficiency_mode,
+                                slim_context=efficiency_mode,
+                                human_turn_index=human_turn_index,
+                            )
+                            all_replies.append(msg)
+                            endorse_thread.append(msg)
+                            calls += 1
+                        thread_all = list(messages) + list(all_replies)
+                        harvest_task_endorsements(
+                            run_meta,
+                            thread_all,
+                            [str(a) for a in active],
+                        )
+                        tasks_ready, task_blockers = consensus_tasks_ready(
+                            run_meta, [str(a) for a in active]
+                        )
+                        max_r = max((m.parallel_round or 1) for m in all_replies)
+
                 if not tasks_ready:
                     meta = {
                         "status": "incomplete",

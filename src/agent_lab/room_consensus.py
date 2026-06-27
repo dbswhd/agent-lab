@@ -190,6 +190,22 @@ def consensus_follow_up(
     return body
 
 
+def consensus_task_endorse_follow_up(open_task_titles: list[str]) -> str:
+    """Explicit task-ENDORSE re-prompt for the auto endorsement round.
+
+    Stronger than the task_line hint inside consensus_follow_up(): the anchor is
+    already agreed, so the only thing left is to endorse (or AMEND) the open tasks.
+    """
+    joined = ", ".join(t for t in open_task_titles[:8] if str(t).strip())
+    return (
+        "[자유 토론 · 작업 동의 확인]\n"
+        f"앵커 합의는 끝났지만 다음 **열린 작업**에 팀 ENDORSE가 부족합니다: {joined}\n"
+        "동의하면 envelope `act: ENDORSE`, `refs`에 작업 id 또는 제목을 넣으세요. "
+        "동의할 수 없으면 `act: AMEND` 로 수정안을 제시하세요 (새 앵커 라운드). "
+        "본문은 1줄로 짧게 (fence JSON 필수)."
+    )
+
+
 def recombination_follow_up() -> str:
     """P4 재조합 라운드 — 유전 알고리즘 crossover에 해당하는 명시적 합성 지시."""
     return (

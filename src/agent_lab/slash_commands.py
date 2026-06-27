@@ -343,7 +343,7 @@ def _model(args: list[str], *, session_folder: Path | None = None) -> dict[str, 
                 "kind": "scope",
                 "composition": composition,
                 "options": [
-                    {"value": "session", "label": "이번 세션만"},
+                    {"value": "session", "label": "이번 세션만 (세션 동안 유지)"},
                     {"value": "default", "label": "기본값으로 저장"},
                 ],
             },
@@ -358,7 +358,7 @@ def _model(args: list[str], *, session_folder: Path | None = None) -> dict[str, 
             session_folder,
             lambda meta: {**meta, "room_models": composition},
         )
-        note = f"Room 구성을 {', '.join(composition)}로 변경했습니다 (이번 세션)."
+        note = f"Room 구성을 {', '.join(composition)}로 변경했습니다 (이 세션 동안 유지)."
     elif scope == "default":
         from agent_lab.room_models_config import persist_default_room_models
 

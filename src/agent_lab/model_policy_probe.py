@@ -55,6 +55,35 @@ def _probe_session_folder(agent: AgentId) -> Path:
     return folder
 
 
+def _prepare_kimi_work_probe_session(folder: Path) -> bool:
+    """Bind a live daimon conversation for loop envelope probe; no-op in mock mode."""
+    if _mock_mode():
+        return True
+    from agent_lab.kimi_work_provider import is_configured
+    from agent_lab.kimi_work_session import (
+        clear_conversation_key,
+        ensure_kimi_work_session,
+        get_conversation_key,
+        is_usable_conversation_key,
+    )
+    from agent_lab.workspace_roots import project_root
+
+    if not is_configured():
+        return False
+    key = get_conversation_key(folder)
+    if key and not is_usable_conversation_key(key):
+        clear_conversation_key(folder)
+    try:
+        ensure_kimi_work_session(
+            folder,
+            workspace_path=project_root(),
+            title="loop-probe",
+        )
+    except Exception:
+        return False
+    return is_usable_conversation_key(get_conversation_key(folder))
+
+
 def _probe_supports_tools(agent: AgentId) -> bool:
     if _mock_mode():
         return True
@@ -182,7 +211,11 @@ def _probe_substitute_envelope(agent: AgentId, model_id: str) -> bool:
     if not registry._is_ready(agent):
         return False
 
-    folder = _probe_session_folder(agent) if agent == "kimi_work" else None
+    folder: Path | None = None
+    if agent == "kimi_work":
+        folder = _probe_session_folder(agent)
+        if not _prepare_kimi_work_probe_session(folder):
+            return False
     try:
         reply = registry.call_agent_reply(
             agent,

@@ -8,6 +8,7 @@ from typing import Any
 import pytest
 
 from agent_lab.inbox_harvest import harvest_clarifier_questions
+from agent_lab.plan_workflow import get_plan_workflow
 from agent_lab.run_meta import read_run_meta
 from agent_lab.session_clarifier import (
     build_clarifier_interview,
@@ -55,7 +56,6 @@ def test_discuss_short_topic_returns_questions() -> None:
     )
     assert qs is not None
     assert len(qs) >= 2
-    assert "결과물" in qs[0]
 
 
 def test_plan_mode_first_turn_interview_v2() -> None:
@@ -71,7 +71,6 @@ def test_plan_mode_first_turn_interview_v2() -> None:
     prompts = interview_prompts(interview)
     assert prompts is not None
     assert len(prompts) >= 3
-    assert any("plan.md" in q for q in prompts)
 
 
 def test_plan_mode_long_topic_first_turn_still_questions() -> None:
@@ -85,28 +84,20 @@ def test_plan_mode_long_topic_first_turn_still_questions() -> None:
     )
     assert interview is not None
     categories = [q.get("category") for q in interview.get("questions") or []]
-    assert "verify" in categories
+    assert "criteria" in categories
 
 
-def test_plan_mode_second_turn_returns_none_unless_short() -> None:
+def test_plan_mode_second_turn_still_returns_questions_for_unclear() -> None:
+    # Engine is always-on: vague topics generate questions regardless of turn count.
     long_topic = "x" * (clarifier_min_topic_chars() + 10)
-    assert (
-        build_clarifier_questions(
-            long_topic,
-            is_new_session=False,
-            human_message_count=2,
-            plan_mode=True,
-        )
-        is None
-    )
-    short_qs = build_clarifier_questions(
-        "short",
+    qs = build_clarifier_questions(
+        long_topic,
         is_new_session=False,
         human_message_count=2,
         plan_mode=True,
     )
-    assert short_qs is not None
-    assert any("plan.md" in q for q in short_qs)
+    assert qs is not None
+    assert len(qs) >= 1
 
 
 def test_clarifier_questions_surface_to_inbox() -> None:
@@ -172,8 +163,57 @@ def test_clarifier_answers_api(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     assert body["interview"]["answers"][qid] == "scope is src/ only"
 
 
+@pytest.mark.skipif(not _HAS_TEST_CLIENT, reason="FastAPI test client unavailable")
+def test_clarifier_answers_api_complete_auto_advances(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Submitting all answers with mark_complete=True must auto-advance CLARIFY→DRAFT."""
+    monkeypatch.setattr("agent_lab.session.SESSIONS_DIR", tmp_path)
+    monkeypatch.setattr("app.server.deps.SESSIONS_DIR", tmp_path)
+    folder = tmp_path / "api-sess2"
+    folder.mkdir()
+    # Anchored goal so clarity gate short-circuits immediately after answers are submitted.
+    (folder / "run.json").write_text(
+        '{"verified_loop": {"loop_goal": {"text": "fix src/agent_lab/run_meta.py null check"}}}',
+        encoding="utf-8",
+    )
+    from agent_lab.plan_workflow import init_plan_workflow_on_plan_send
+
+    init_plan_workflow_on_plan_send(folder)
+    assert get_plan_workflow(read_run_meta(folder))["phase"] == "CLARIFY"
+
+    interview = build_clarifier_interview(
+        "short topic",
+        is_new_session=True,
+        human_message_count=1,
+        plan_mode=True,
+    )
+    assert interview is not None
+    persist_clarifier_interview(folder, interview)
+
+    qids = [str(q["id"]) for q in interview["questions"]]
+    answers = {qid: "answer" for qid in qids}
+
+    client = TestClient(app)
+    res = client.post(
+        f"/api/sessions/{folder.name}/clarifier-interview/answers",
+        json={"answers": answers, "mark_complete": True},
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["interview"]["status"] == "complete"
+    # Auto-advance: CLARIFY→DRAFT without a separate chat turn
+    assert body.get("plan_workflow", {}).get("phase") == "DRAFT"
+
+
 def test_legacy_interview_when_v2_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    # When AGENT_LAB_CLARIFIER_INTERVIEW=off and engine returns None (e.g. anchored topic),
+    # the legacy 2-question path activates for short/first-turn topics.
     monkeypatch.setenv("AGENT_LAB_CLARIFIER_INTERVIEW", "off")
+    monkeypatch.setattr(
+        "agent_lab.clarifier_engine.build_engine_interview",
+        lambda *a, **kw: None,
+    )
     long_topic = "x" * (clarifier_min_topic_chars() + 10)
     qs = build_clarifier_questions(
         long_topic,

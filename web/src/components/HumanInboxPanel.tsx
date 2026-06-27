@@ -559,8 +559,8 @@ export function HumanInboxPanel({
   const title =
     presentation === "composer"
       ? ko
-        ? "에이전트 질문"
-        : "Agent questions"
+        ? "지금 할 일"
+        : "Action needed"
       : presentation === "popup"
         ? visiblePending[0]?.kind === "build"
           ? ko

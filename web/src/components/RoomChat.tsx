@@ -1014,14 +1014,10 @@ export function RoomChat({
 
   const {
     inboxPendingCount,
-    inboxPendingQuestions,
-    inboxPendingBuilds,
     inboxReloadKey,
     setInboxReloadKey,
     inboxSegment,
     setInboxSegment,
-    showInboxPopup,
-    setShowInboxPopup,
     refreshInboxPending,
     inboxPendingNonQuestions,
   } = useInboxState(sessionId);
@@ -1135,7 +1131,6 @@ export function RoomChat({
     void refreshInboxPending();
     refreshSessionMeta();
     setDiscussPaused(false);
-    setShowInboxPopup(false);
   }, [refreshInboxPending, refreshSessionMeta]);
 
   const openHumanInbox = useCallback(() => {
@@ -2430,12 +2425,6 @@ export function RoomChat({
                         pushMacNotification,
                         notifyDesktop,
                       );
-                    }
-                    const hasBuildGate = pending.some(
-                      (item) => item.kind === "build",
-                    );
-                    if (hasBuildGate) {
-                      setShowInboxPopup(true);
                     }
                   })
                   .catch(() => {
@@ -3914,7 +3903,7 @@ export function RoomChat({
                     </div>
                   ) : null}
 
-                  {!isNew && sessionId ? (
+                  {!isNew && sessionId && inboxPendingCount === 0 ? (
                     <HumanDecisionBanner
                       sessionId={sessionId}
                       reloadKey={inboxReloadKey}
@@ -3927,16 +3916,16 @@ export function RoomChat({
                     />
                   ) : null}
 
-                  {sessionId && inboxPendingQuestions > 0 ? (
+                  {sessionId && inboxPendingCount > 0 ? (
                     <div className="composer-question-surface">
                       <HumanInboxPanel
                         sessionId={sessionId}
                         reloadKey={inboxReloadKey}
                         planRevision={currentPlanRevision}
                         onResolved={handleInboxResolved}
+                        onBuildStarted={handleInboxBuildStarted}
                         disabled={running || synthesizing || runBusy}
                         presentation="composer"
-                        kindFilter="question"
                         onOpenInbox={() => {
                           setInboxSegment("inbox");
                           openHumanInbox();
@@ -3944,36 +3933,6 @@ export function RoomChat({
                         onRefClick={handleInboxRefClick}
                       />
                     </div>
-                  ) : null}
-
-                  {showInboxPopup && sessionId && inboxPendingBuilds > 0 ? (
-                    <HumanInboxPanel
-                      sessionId={sessionId}
-                      reloadKey={inboxReloadKey}
-                      planRevision={currentPlanRevision}
-                      onResolved={handleInboxResolved}
-                      onBuildStarted={handleInboxBuildStarted}
-                      disabled={running || synthesizing || runBusy}
-                      presentation="popup"
-                      kindFilter="build"
-                      onDismiss={() => setShowInboxPopup(false)}
-                      onOpenInbox={() => {
-                        setShowInboxPopup(false);
-                        setInboxSegment("inbox");
-                        openHumanInbox();
-                      }}
-                      onRefClick={handleInboxRefClick}
-                    />
-                  ) : null}
-
-                  {inboxPendingNonQuestions > 0 ? (
-                    <button
-                      type="button"
-                      className="composer-inbox-pending"
-                      onClick={openHumanInbox}
-                    >
-                      Human Inbox 대기 ({inboxPendingNonQuestions})
-                    </button>
                   ) : null}
 
                   <ChatComposer

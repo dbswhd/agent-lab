@@ -61,11 +61,13 @@ import { useWorkspaceTabs } from "../hooks/useWorkspaceTabs";
 import { useSessionRunState } from "../hooks/useSessionRunState";
 import {
   PENDING_KEY,
+  clearBackgroundRun,
   finishSessionRun,
   finalizeCancelledTyping,
   getRunningSessionIds,
   hydrateSessionMessages,
   isSessionRunActive,
+  markBackgroundRun,
   migratePendingSessionRun,
   resetTurnRun,
   resolveRunSessionKey,
@@ -76,6 +78,7 @@ import { patchTurnMessages } from "../run/runSessionSsePatch";
 import { reduceTurnItems } from "../utils/turnItems";
 import { deriveRunningAgentSlots } from "../run/runningAgents";
 import { LiveAgentsStrip } from "./LiveAgentsStrip";
+import { BackgroundRunStrip } from "./BackgroundRunStrip";
 import {
   getInspectorOpen,
   getLastRightPanelMode,
@@ -384,8 +387,14 @@ export function RoomChat({
     null,
   );
   const runSessionKey = sessionId ?? liveRunSessionKey ?? PENDING_KEY;
-  const { messages, running, runBusy, synthesizing, setSynthesizing } =
-    useSessionRunState(runSessionKey);
+  const {
+    messages,
+    running,
+    runBusy,
+    synthesizing,
+    backgroundRun,
+    setSynthesizing,
+  } = useSessionRunState(runSessionKey);
   const [recoveryFailure, setRecoveryFailure] =
     useState<RecoveryFailure | null>(null);
   const [planActionFocusIndex, setPlanActionFocusIndex] = useState<
@@ -1284,10 +1293,17 @@ export function RoomChat({
   const handleRetryFailedAgents = useCallback(async () => {
     const sid = sessionId ?? activeSessionIdRef.current;
     if (!sid) return;
-    await retryAgents(sid);
-    // Full session reload so the retried reply + recomputed turn status surface.
-    await onSessionChange(sid);
-    setRecoveryFailure(null);
+    markBackgroundRun(sid, {
+      runKind: "retry",
+      label: "Retry failed agents",
+    });
+    try {
+      await retryAgents(sid);
+      await onSessionChange(sid);
+      setRecoveryFailure(null);
+    } finally {
+      clearBackgroundRun(sid, "retry");
+    }
   }, [sessionId, onSessionChange]);
   const transcriptActive = true;
   const typingAgents = messages.filter(
@@ -3544,10 +3560,14 @@ export function RoomChat({
         onStop={handleStop}
       />
 
-      <LiveAgentsStrip
-        slots={runningAgentSlots}
-        running={running || synthesizing || runBusy}
-      />
+      {backgroundRun ? (
+        <BackgroundRunStrip info={backgroundRun} onStop={handleStop} />
+      ) : (
+        <LiveAgentsStrip
+          slots={runningAgentSlots}
+          running={running || synthesizing || runBusy}
+        />
+      )}
 
       <div className="pane-row">
         <div className="pane-main workspace-main">

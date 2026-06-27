@@ -1972,6 +1972,20 @@ export function releaseRoomRunLock() {
   }>("/api/room/runs/release-lock", { method: "POST" });
 }
 
+export type RoomRunLockStatus = {
+  ok: boolean;
+  locked: boolean;
+  active_workers: number;
+  age_sec?: number | null;
+  session_id?: string | null;
+  run_kind?: string | null;
+  label?: string | null;
+};
+
+export function fetchRoomRunLock() {
+  return json<RoomRunLockStatus>("/api/room/run-lock");
+}
+
 export function retryAgents(sessionId: string, agents?: string[]) {
   return json<{
     ok: boolean;

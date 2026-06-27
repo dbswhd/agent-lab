@@ -100,7 +100,7 @@ def oracle_verify(
     if oracle_call is not None:
         raw, source = invoke_oracle("execute", prompt, oracle_call=oracle_call)
     elif os.getenv("AGENT_LAB_ORACLE_LIVE", "").strip().lower() in {"1", "true", "yes"}:
-        raw, source = invoke_oracle("execute", prompt)
+        raw, source = invoke_oracle("execute", prompt, session_folder=session_folder)
     else:
         raw = mock_execute_oracle_response(verify, snippets)
         source = "mock"

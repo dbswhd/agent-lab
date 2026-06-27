@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRunningSessionIds } from "./hooks/useRunningSessionIds";
+import { useRunLockSync } from "./hooks/useRunLockSync";
 import { useTauriFullscreen } from "./hooks/useTauriFullscreen";
 import {
   archiveSession,
@@ -114,6 +115,7 @@ export default function App() {
   const [shellView, setShellView] = useState<ShellView>("workspace");
 
   const runningSessionIds = useRunningSessionIds();
+  useRunLockSync(true);
 
   const toggleSidebar = useCallback(() => {
     setSidebarOpenState((current) => {

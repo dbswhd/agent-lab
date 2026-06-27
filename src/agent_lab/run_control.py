@@ -10,6 +10,8 @@ import subprocess
 import threading
 import time
 import weakref
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -29,12 +31,26 @@ _active_cursor_runs: list[weakref.ReferenceType[Any]] = []
 _run_lock = threading.Lock()
 _run_active = 0
 _run_started_at: float | None = None
+_run_context_lock = threading.Lock()
+_run_context: dict[str, Any] = {}
 
 # Cross-process file lock (~/.agent-lab/run.lock). Future: AGENT_LAB_RUN_LOCK_BACKEND=redis.
 _lock_fd: int | None = None
 _lock_meta_path: Path | None = None
 
 RUN_LOCK_STALE_SEC = 600
+
+_RUN_KIND_LABELS = {
+    "room": "Room turn",
+    "retry": "Retry agents",
+    "execute": "Plan execute",
+    "mission": "Mission loop",
+    "classic": "Classic run",
+}
+
+
+def _default_run_label(run_kind: str) -> str:
+    return _RUN_KIND_LABELS.get(run_kind, run_kind.replace("_", " ").title() or "Run")
 
 
 class RoomRunCancelled(Exception):
@@ -109,7 +125,17 @@ def _try_acquire_file_lock() -> bool:
             return False
     _lock_fd = fd
     _lock_meta_path = meta_path
-    _write_lock_meta({"pid": os.getpid(), "started_at": time.time()})
+    meta_payload = {"pid": os.getpid(), "started_at": time.time()}
+    with _run_context_lock:
+        if _run_context:
+            meta_payload.update(
+                {
+                    "session_id": _run_context.get("session_id"),
+                    "run_kind": _run_context.get("run_kind"),
+                    "label": _run_context.get("label"),
+                }
+            )
+    _write_lock_meta(meta_payload)
     return True
 
 
@@ -297,10 +323,19 @@ def run_lock_status() -> dict[str, object]:
     age_sec: float | None = None
     if locked and _run_started_at is not None:
         age_sec = round(time.time() - _run_started_at, 1)
+    with _run_context_lock:
+        ctx = dict(_run_context)
+    meta = _read_lock_meta() if locked else {}
+    session_id = ctx.get("session_id") or meta.get("session_id")
+    run_kind = str(ctx.get("run_kind") or meta.get("run_kind") or "room")
+    label = str(ctx.get("label") or meta.get("label") or _default_run_label(run_kind))
     return {
         "locked": locked,
         "active_workers": _run_active,
         "age_sec": age_sec,
+        "session_id": session_id,
+        "run_kind": run_kind,
+        "label": label,
     }
 
 
@@ -308,6 +343,8 @@ def force_reset_run_lock() -> None:
     global _run_active, _run_started_at
     _run_active = 0
     _run_started_at = None
+    with _run_context_lock:
+        _run_context.clear()
     while _run_lock.locked():
         try:
             _run_lock.release()
@@ -350,17 +387,35 @@ def room_run_in_progress() -> bool:
     return _run_active > 0
 
 
-def try_begin_run() -> bool:
+def try_begin_run(
+    *,
+    session_id: str | None = None,
+    run_kind: str = "room",
+    label: str | None = None,
+) -> bool:
     """Acquire the global single-flight run lock (worker thread only)."""
     global _run_active, _run_started_at
     maybe_release_stale_run_lock()
     if not _run_lock.acquire(blocking=False):
         return False
     try:
+        with _run_context_lock:
+            _run_context.clear()
+            _run_context.update(
+                {
+                    "session_id": session_id,
+                    "run_kind": run_kind,
+                    "label": label or _default_run_label(run_kind),
+                }
+            )
         if not _try_acquire_file_lock():
+            with _run_context_lock:
+                _run_context.clear()
             _run_lock.release()
             return False
     except Exception:
+        with _run_context_lock:
+            _run_context.clear()
         _run_lock.release()
         return False
     _run_active += 1
@@ -375,8 +430,30 @@ def end_run() -> None:
     _run_active = max(0, _run_active - 1)
     if _run_active == 0:
         _run_started_at = None
+        with _run_context_lock:
+            _run_context.clear()
         _release_file_lock()
     try:
         _run_lock.release()
     except RuntimeError:
         force_reset_run_lock()
+
+
+@contextmanager
+def run_guard(
+    *,
+    session_id: str | None = None,
+    run_kind: str = "room",
+    label: str | None = None,
+) -> Iterator[bool]:
+    """Acquire run lock for background paths (execute / mission / retry)."""
+    acquired = try_begin_run(session_id=session_id, run_kind=run_kind, label=label)
+    if not acquired:
+        yield False
+        return
+    token = set_run_session_id(session_id)
+    try:
+        yield True
+    finally:
+        reset_run_session_id(token)
+        end_run()

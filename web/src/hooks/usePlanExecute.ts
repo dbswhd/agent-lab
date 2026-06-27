@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  markBackgroundRun,
+  clearBackgroundRun,
+} from "../run/runSessionRegistry";
+import {
   fetchPlanActions,
   PlanExecuteDryRunError,
   resolvePlanExecution,
@@ -225,9 +229,11 @@ export function usePlanExecute({ sessionId, run, onUpdated }: Options) {
       if (!sessionId || key == null || activePending) return false;
       const parsed = parsePlanActionKey(key);
       if (!parsed) return false;
+      const executeLabel = `Execute action #${parsed.index}`;
       setBusy(true);
       setError(null);
       setOpenObjectionBlock(null);
+      markBackgroundRun(sessionId, { runKind: "execute", label: executeLabel });
       try {
         const res = await runPlanDryRun(sessionId, {
           actionIndex: parsed.index,
@@ -254,6 +260,7 @@ export function usePlanExecute({ sessionId, run, onUpdated }: Options) {
         return false;
       } finally {
         setBusy(false);
+        clearBackgroundRun(sessionId, "execute");
       }
     },
     [sessionId, selectedKey, activePending, onUpdated],

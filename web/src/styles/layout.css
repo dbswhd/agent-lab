@@ -7373,6 +7373,13 @@ button.plan-doc__ref--link:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.live-agents-strip--background .live-agents-strip__chip--background {
+  border-color: var(--accent-border, var(--border-hair));
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface-card));
+}
+.live-agents-strip__stop {
+  margin-left: var(--space-4);
+}
 
 /* scroll panels */
 .messages-scroll {

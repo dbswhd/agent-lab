@@ -113,7 +113,7 @@ def goal_oracle_check(
     if oracle_call is not None:
         raw, source = invoke_oracle("goal", prompt, oracle_call=oracle_call)
     elif oracle_live_enabled(goal=True):
-        raw, source = invoke_oracle("goal", prompt)
+        raw, source = invoke_oracle("goal", prompt, session_folder=session_folder)
     else:
         raw = mock_goal_oracle_response(goal_text, transcript)
         source = "mock"

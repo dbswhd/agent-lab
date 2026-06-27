@@ -718,6 +718,7 @@ def run_mission_discuss_recovery(
 
     from agent_lab.agents.registry import available_agents
     from agent_lab.runtime.invoke_discuss import continue_room_round
+    from agent_lab.run_control import run_guard
 
     ready = set(available_agents())
     agents = [a for a in ("codex", "claude") if a in ready]
@@ -726,21 +727,28 @@ def run_mission_discuss_recovery(
     if not agents:
         return {"skipped": True, "reason": "no_agents"}
 
-    try:
-        messages, plan_md = continue_room_round(
-            folder,
-            prompt,
-            agents=agents,  # type: ignore[arg-type]
-            synthesize=True,
-            parallel_rounds=2,
-            permissions=permissions,
-            turn_profile="specialist",
-            research_mode=True,
-            on_event=on_event,
-        )
-    except Exception as exc:
-        messages, plan_md = [], ""
-        append_wisdom_note(folder, line=f"discuss recovery round failed: {exc}")
+    with run_guard(
+        session_id=folder.name,
+        run_kind="mission",
+        label="Discuss recovery",
+    ) as acquired:
+        if not acquired:
+            return {"skipped": True, "reason": "run_in_progress"}
+        try:
+            messages, plan_md = continue_room_round(
+                folder,
+                prompt,
+                agents=agents,  # type: ignore[arg-type]
+                synthesize=True,
+                parallel_rounds=2,
+                permissions=permissions,
+                turn_profile="specialist",
+                research_mode=True,
+                on_event=on_event,
+            )
+        except Exception as exc:
+            messages, plan_md = [], ""
+            append_wisdom_note(folder, line=f"discuss recovery round failed: {exc}")
 
     fallback_plan = folder / "plan.md"
     if not (plan_md or "").strip() and fallback_plan.is_file():

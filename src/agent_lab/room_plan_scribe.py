@@ -77,6 +77,24 @@ def synthesize_plan(
         if clarify_block.strip():
             user = f"{user}\n\n---\n\n{clarify_block.strip()}"
     room = __import__("agent_lab.room", fromlist=["call_agent"])
+    folder_raw = (run_meta or {}).get("_session_folder")
+    folder = Path(str(folder_raw)) if folder_raw else None
+    if folder is not None and folder.is_dir():
+        from agent_lab.agents.registry import call_agent_reply
+        from agent_lab.sidecar_accounting import tracked_agent_call
+
+        return tracked_agent_call(
+            folder,
+            str(agent),
+            kind="scribe",
+            fn=lambda bridge: call_agent_reply(
+                agent,
+                room_scribe_prompt(run_meta),
+                user,
+                scribe=True,
+                on_bridge_event=bridge,
+            ),
+        )
     return room.call_agent(agent, room_scribe_prompt(run_meta), user, scribe=True)
 
 

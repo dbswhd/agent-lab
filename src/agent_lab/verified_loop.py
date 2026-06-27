@@ -346,8 +346,24 @@ def run_verified_oracle(
         source = "inject"
     else:
         from agent_lab import claude_cli
+        from agent_lab.sidecar_accounting import tracked_agent_call
 
-        raw = claude_cli.invoke(system, prompt, scribe=True, room_turn=False)
+        def _invoke_oracle(on_bridge: Any) -> str:
+            return claude_cli.invoke(
+                system,
+                prompt,
+                scribe=True,
+                room_turn=False,
+                on_bridge_event=on_bridge,
+                session_folder=session_folder,
+            )
+
+        raw = tracked_agent_call(
+            session_folder,
+            "claude",
+            kind="oracle",
+            fn=_invoke_oracle,
+        )
         source = "live"
 
     detail = str(raw or "").strip()

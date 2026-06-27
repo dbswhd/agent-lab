@@ -53,6 +53,20 @@ def test_force_reset_run_lock_preserves_cancel_flag() -> None:
     clear_cancel()
 
 
+def test_run_lock_status_includes_session_context() -> None:
+    from agent_lab.run_control import end_run, run_lock_status, try_begin_run
+
+    assert try_begin_run(session_id="sess-a", run_kind="execute", label="Execute #1") is True
+    try:
+        status = run_lock_status()
+        assert status["locked"] is True
+        assert status["session_id"] == "sess-a"
+        assert status["run_kind"] == "execute"
+        assert status["label"] == "Execute #1"
+    finally:
+        end_run()
+
+
 def test_request_cancel_cancels_cursor_run() -> None:
     clear_cancel()
 

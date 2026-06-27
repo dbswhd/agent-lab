@@ -213,6 +213,58 @@ def record_tool_span(
     that don't flow through the Room event stream / ``TraceRecorder``. Never
     raises — tracing must not break a tool call.
     """
+    _append_standalone_span(
+        folder,
+        kind="tool",
+        name=name,
+        dur_ms=dur_ms,
+        status=status,
+        data=data,
+        trace_id="tools",
+    )
+
+
+def record_agent_span(
+    folder: Path | None,
+    *,
+    name: str,
+    agent_id: str,
+    dur_ms: float | None,
+    status: str,
+    tokens_in: int = 0,
+    tokens_out: int = 0,
+    usd: float = 0.0,
+    data: dict[str, Any] | None = None,
+) -> None:
+    """Append a standalone ``kind:"agent"`` span for oracle/scribe/execute sidecars."""
+    payload = {"agent": agent_id, **(data or {})}
+    _append_standalone_span(
+        folder,
+        kind="agent",
+        name=name,
+        dur_ms=dur_ms,
+        status=status,
+        data=payload,
+        trace_id="sidecar",
+        tokens_in=tokens_in,
+        tokens_out=tokens_out,
+        usd=usd,
+    )
+
+
+def _append_standalone_span(
+    folder: Path | None,
+    *,
+    kind: str,
+    name: str,
+    dur_ms: float | None,
+    status: str,
+    trace_id: str,
+    data: dict[str, Any] | None = None,
+    tokens_in: int = 0,
+    tokens_out: int = 0,
+    usd: float = 0.0,
+) -> None:
     if not trace_enabled() or folder is None:
         return
     try:
@@ -220,15 +272,20 @@ def record_tool_span(
 
         _, wall = _now()
         span: dict[str, Any] = {
-            "trace_id": "tools",
+            "trace_id": trace_id,
             "span_id": f"x{uuid.uuid4().hex[:8]}",
             "parent_id": None,
-            "kind": "tool",
+            "kind": kind,
             "name": name,
             "end": wall,
             "dur_ms": round(dur_ms, 1) if dur_ms is not None else None,
             "status": status,
         }
+        if tokens_in or tokens_out:
+            span["tokens_in"] = tokens_in
+            span["tokens_out"] = tokens_out
+        if usd:
+            span["usd"] = round(usd, 6)
         if data:
             span["data"] = data
         with (folder / "trace.jsonl").open("a", encoding="utf-8") as f:

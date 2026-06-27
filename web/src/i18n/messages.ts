@@ -206,6 +206,21 @@ const EN = {
   inboxInbox: "Inbox",
   inboxActivity: "Activity",
   liveAgentsResponding: "Responding…",
+  backgroundRunStop: "Stop",
+  backgroundRunKind: (kind: string) => {
+    switch (kind) {
+      case "execute":
+        return "Execute";
+      case "mission":
+        return "Mission";
+      case "retry":
+        return "Retry";
+      case "classic":
+        return "Classic run";
+      default:
+        return "Background run";
+    }
+  },
   workHookAlert: "Execution hook",
   save: "Save",
   saved: "Saved",
@@ -483,6 +498,21 @@ const KO = {
   inboxInbox: "받은함",
   inboxActivity: "활동",
   liveAgentsResponding: "응답 중…",
+  backgroundRunStop: "중지",
+  backgroundRunKind: (kind: string) => {
+    switch (kind) {
+      case "execute":
+        return "Execute";
+      case "mission":
+        return "Mission";
+      case "retry":
+        return "Retry";
+      case "classic":
+        return "Classic run";
+      default:
+        return "백그라운드 실행";
+    }
+  },
   workHookAlert: "실행 훅",
   save: "저장",
   saved: "저장됨",

@@ -79,9 +79,9 @@ def _run_with_lock(
     def _emit(item: dict[str, Any] | None) -> None:
         loop.call_soon_threadsafe(event_q.put_nowait, item)
 
-    if not try_begin_run():
+    if not try_begin_run(session_id=session_id, run_kind="room"):
         maybe_release_orphaned_run_lock()
-        if not try_begin_run():
+        if not try_begin_run(session_id=session_id, run_kind="room"):
             lock_msg = "a run is already in progress"
             lock_hint = run_lock_recovery_hint()
             result["error"] = lock_msg
@@ -198,9 +198,9 @@ def create_run(body: RunRequest) -> StreamingResponse:
         raise HTTPException(status_code=400, detail="topic required")
 
     def generate():
-        if not try_begin_run():
+        if not try_begin_run(run_kind="classic"):
             maybe_release_orphaned_run_lock()
-            if not try_begin_run():
+            if not try_begin_run(run_kind="classic"):
                 yield sse({"type": "run_lock_blocked", **run_lock_recovery_hint()})
                 yield sse({"type": "error", "message": "a run is already in progress"})
                 return
@@ -662,9 +662,9 @@ def retry_room_agents(body: RetryAgentsRequest) -> dict[str, Any]:
     from agent_lab.room_retry import RetryError, retry_failed_agents
 
     folder = session_folder_or_404(body.session_id)
-    if not try_begin_run():
+    if not try_begin_run(session_id=body.session_id, run_kind="retry", label="Retry failed agents"):
         maybe_release_orphaned_run_lock()
-        if not try_begin_run():
+        if not try_begin_run(session_id=body.session_id, run_kind="retry", label="Retry failed agents"):
             raise HTTPException(
                 status_code=409,
                 detail={"message": "a run is already in progress", **run_lock_recovery_hint()},

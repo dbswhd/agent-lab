@@ -293,21 +293,33 @@ def invoke_oracle(
     prompt: str,
     *,
     oracle_call: Callable[[str], str] | None = None,
+    session_folder: Path | None = None,
 ) -> tuple[str, str]:
     """Return (raw_response, source)."""
     if oracle_call is not None:
         return str(oracle_call(prompt) or "").strip(), "live"
     if oracle_live_enabled(goal=kind == "goal"):
         from agent_lab import claude_cli
+        from agent_lab.sidecar_accounting import tracked_agent_call
 
         model = resolved_oracle_model(kind)
-        raw = claude_cli.invoke(
-            oracle_system_prompt(kind),
-            prompt,
-            scribe=True,
-            room_turn=False,
-            model=model,
-        )
+        system = oracle_system_prompt(kind)
+
+        def _invoke(on_bridge: Callable[[str, dict[str, Any]], None] | None) -> str:
+            return claude_cli.invoke(
+                system,
+                prompt,
+                scribe=True,
+                room_turn=False,
+                model=model,
+                on_bridge_event=on_bridge,
+                session_folder=session_folder,
+            )
+
+        if session_folder is not None and session_folder.is_dir():
+            raw = tracked_agent_call(session_folder, "claude", kind="oracle", fn=_invoke)
+        else:
+            raw = _invoke(None)
         return str(raw or "").strip(), "live"
     if kind == "execute":
         return "", "mock"

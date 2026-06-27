@@ -2,6 +2,11 @@ import type { ChatMessage } from "../utils/transcript";
 
 export type LiveMsg = ChatMessage & { typing?: boolean };
 
+export type BackgroundRunInfo = {
+  runKind: string;
+  label: string;
+};
+
 export type SessionRunSnapshot = {
   sessionId: string;
   messages: LiveMsg[];
@@ -11,6 +16,8 @@ export type SessionRunSnapshot = {
   synthesizing: boolean;
   topologyDone: Set<string>;
   topologyActive: { agent: string; round: number } | null;
+  /** Server-held run lock while local SSE is idle (mission/execute/retry/orphan). */
+  backgroundRun: BackgroundRunInfo | null;
 };
 
 const PENDING_KEY = "__pending__";
@@ -29,6 +36,7 @@ function emptySnapshot(sessionId: string): SessionRunSnapshot {
     synthesizing: false,
     topologyDone: new Set(),
     topologyActive: null,
+    backgroundRun: null,
   };
 }
 
@@ -77,7 +85,89 @@ export function getRunningSessionIds(): string[] {
 
 export function isSessionRunActive(sessionId: string): boolean {
   const snap = registry.get(sessionId);
-  return Boolean(snap?.running || snap?.runBusy);
+  return Boolean(snap?.running || snap?.runBusy || snap?.backgroundRun);
+}
+
+export function clearAllBackgroundRuns(): void {
+  for (const [id, snap] of registry.entries()) {
+    if (snap.backgroundRun) {
+      registry.set(id, { ...snap, backgroundRun: null });
+      notifySession(id);
+    }
+  }
+}
+
+export function syncSessionFromServerLock(
+  lock: {
+    locked: boolean;
+    session_id?: string | null;
+    run_kind?: string | null;
+    label?: string | null;
+  } | null,
+): void {
+  if (!lock?.locked) {
+    clearAllBackgroundRuns();
+    return;
+  }
+  const sid = lock.session_id?.trim();
+  if (!sid) return;
+  const snap = getSessionRunSnapshot(sid);
+  if (snap.running || snap.runBusy || snap.synthesizing) {
+    if (snap.backgroundRun) {
+      updateSessionRun(sid, { backgroundRun: null });
+    }
+    return;
+  }
+  const next: BackgroundRunInfo = {
+    runKind: String(lock.run_kind ?? "room"),
+    label: String(lock.label ?? "Running"),
+  };
+  const prev = snap.backgroundRun;
+  if (
+    prev?.runKind === next.runKind &&
+    prev?.label === next.label &&
+    !snap.running &&
+    !snap.runBusy
+  ) {
+    return;
+  }
+  updateSessionRun(sid, {
+    backgroundRun: next,
+    running: true,
+    runBusy: true,
+  });
+}
+
+/** Optimistic UI before run-lock poll catches up (execute / retry). */
+export function markBackgroundRun(
+  sessionId: string,
+  info: BackgroundRunInfo,
+): void {
+  updateSessionRun(sessionId, {
+    running: true,
+    runBusy: true,
+    backgroundRun: info,
+  });
+}
+
+/** Clear client background run; optional kind avoids clobbering another path. */
+export function clearBackgroundRun(
+  sessionId: string,
+  runKind?: string,
+): void {
+  updateSessionRun(sessionId, (snap) => {
+    if (runKind && snap.backgroundRun?.runKind !== runKind) {
+      return {};
+    }
+    if (!snap.backgroundRun && snap.messages.some((m) => m.typing)) {
+      return {};
+    }
+    return {
+      running: false,
+      runBusy: false,
+      backgroundRun: null,
+    };
+  });
 }
 
 export function updateSessionRun(
@@ -161,6 +251,7 @@ export function resetTurnRun(sessionKey: string, userMsg: LiveMsg): void {
     topologyActive: null,
     running: true,
     runBusy: true,
+    backgroundRun: null,
   }));
 }
 
@@ -186,6 +277,7 @@ export function finalizeCancelledTyping(sessionKey: string): void {
     runBusy: false,
     synthesizing: false,
     topologyActive: null,
+    backgroundRun: null,
   }));
 }
 
@@ -205,6 +297,7 @@ export function finishSessionRun(
     runBusy: false,
     synthesizing: false,
     topologyActive: null,
+    backgroundRun: null,
   }));
 }
 

@@ -16,6 +16,7 @@ const EMPTY: SessionRunSnapshot = {
   synthesizing: false,
   topologyDone: new Set(),
   topologyActive: null,
+  backgroundRun: null,
 };
 
 export function useSessionRunState(sessionId: string | null) {
@@ -107,6 +108,7 @@ export function useSessionRunState(sessionId: string | null) {
     synthesizing: snap.synthesizing,
     topologyDone: snap.topologyDone,
     topologyActive: snap.topologyActive,
+    backgroundRun: snap.backgroundRun,
     setRunning,
     setRunBusy,
     setSynthesizing,

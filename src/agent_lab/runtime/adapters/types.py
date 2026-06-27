@@ -23,6 +23,7 @@ class ExecuteInvokeRequest:
     cwd: Path
     verify_follow_ups: list[str] = field(default_factory=list)
     on_activity: Any | None = None
+    on_bridge_event: Any | None = None
     session_folder: Path | None = None
     inbox_mcp: bool = False
     # Inbox MCP session path (Cursor plan → build GO → implement).

@@ -210,7 +210,39 @@ def _call_execute_agent(
         )
         req.inbox_gate = lambda: execute_inbox_build_go(session_folder)
 
-    return invoke_execute(_normalize_execute_agent(agent_id), req)
+    bridge = None
+    run_meta: dict[str, Any] | None = None
+    started_at = 0.0
+    status = "ok"
+    if session_folder is not None:
+        import time
+
+        from agent_lab.sidecar_accounting import sidecar_bridge_handler
+
+        bridge, run_meta = sidecar_bridge_handler(
+            session_folder,
+            agent_id,
+            kind="execute",
+        )
+        req.on_bridge_event = bridge
+        started_at = time.monotonic()
+    try:
+        return invoke_execute(_normalize_execute_agent(agent_id), req)
+    except Exception:
+        status = "error"
+        raise
+    finally:
+        if session_folder is not None and bridge is not None and run_meta is not None:
+            from agent_lab.sidecar_accounting import flush_sidecar_call
+
+            flush_sidecar_call(
+                session_folder,
+                run_meta,
+                kind="execute",
+                agent_id=agent_id,
+                started_at=started_at,
+                status=status,
+            )
 
 
 def _selected_revision_diff(

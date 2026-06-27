@@ -787,49 +787,56 @@ def run_dry_run(
         exec_permissions["_inbox_caller_agent"] = str(executor_id)
         exec_permissions["_inbox_policy_lane"] = "execute"
 
-    from agent_lab.run_control import RoomRunCancelled, check_cancelled
+    from agent_lab.run_control import RoomRunCancelled, check_cancelled, run_guard
 
-    try:
-        check_cancelled()
-        agent_response = _call_execute_agent(
-            executor_id,
-            user=_cursor_execute_prompt(
-                action,
-                expected_paths=source_path_inputs,
+    with run_guard(
+        session_id=folder.name,
+        run_kind="execute",
+        label=f"Execute action #{action.index}",
+    ) as acquired:
+        if not acquired:
+            raise RuntimeError("a run is already in progress")
+        try:
+            check_cancelled()
+            agent_response = _call_execute_agent(
+                executor_id,
+                user=_cursor_execute_prompt(
+                    action,
+                    expected_paths=source_path_inputs,
+                    verify=verify_for_agent,
+                    revise_request=revise_request,
+                    inbox_mcp=use_inbox_mcp,
+                ),
+                permissions=exec_permissions,
+                cwd=cwd,
+                on_activity=_on_activity,
                 verify=verify_for_agent,
-                revise_request=revise_request,
+                session_folder=folder,
                 inbox_mcp=use_inbox_mcp,
-            ),
-            permissions=exec_permissions,
-            cwd=cwd,
-            on_activity=_on_activity,
-            verify=verify_for_agent,
-            session_folder=folder,
-            inbox_mcp=use_inbox_mcp,
-            action=action,
-            expected_paths=source_path_inputs,
-            revise_request=revise_request,
-        )
-    except RoomRunCancelled:
-        restore_snapshot(folder, exec_id=exec_id, cwd=cwd, manifest=manifest)
-        delete_snapshot(folder, exec_id)
-        if exec_worktree is not None:
-            discard_exec_worktree(exec_worktree, folder, exec_id)
-        from agent_lab.runtime.events import RuntimeEvent
-        from agent_lab.runtime.runtime import dispatch
+                action=action,
+                expected_paths=source_path_inputs,
+                revise_request=revise_request,
+            )
+        except RoomRunCancelled:
+            restore_snapshot(folder, exec_id=exec_id, cwd=cwd, manifest=manifest)
+            delete_snapshot(folder, exec_id)
+            if exec_worktree is not None:
+                discard_exec_worktree(exec_worktree, folder, exec_id)
+            from agent_lab.runtime.events import RuntimeEvent
+            from agent_lab.runtime.runtime import dispatch
 
-        dispatch(
-            folder,
-            RuntimeEvent.EXECUTE_DRY_RUN_CANCEL,
-            {"reason": "dry_run_cancelled", "cleanup_executions": False},
-        )
-        raise
-    except Exception as e:
-        restore_snapshot(folder, exec_id=exec_id, cwd=cwd, manifest=manifest)
-        delete_snapshot(folder, exec_id)
-        if exec_worktree is not None:
-            discard_exec_worktree(exec_worktree, folder, exec_id)
-        raise RuntimeError(f"Cursor execute failed: {e}") from e
+            dispatch(
+                folder,
+                RuntimeEvent.EXECUTE_DRY_RUN_CANCEL,
+                {"reason": "dry_run_cancelled", "cleanup_executions": False},
+            )
+            raise
+        except Exception as e:
+            restore_snapshot(folder, exec_id=exec_id, cwd=cwd, manifest=manifest)
+            delete_snapshot(folder, exec_id)
+            if exec_worktree is not None:
+                discard_exec_worktree(exec_worktree, folder, exec_id)
+            raise RuntimeError(f"Cursor execute failed: {e}") from e
 
     touched = compute_touched_paths(
         folder,

@@ -24,6 +24,9 @@ type Props = {
   discussOnly?: boolean;
   hideInspectorLabel?: boolean;
   onRefClick?: (ref: string) => void;
+  /** When true, pending rows are read-only (actions live in composer). */
+  readOnly?: boolean;
+  onFocusComposer?: () => void;
 };
 
 function pendingItems(items: HumanInboxItem[]): HumanInboxItem[] {
@@ -121,6 +124,7 @@ type InboxRowProps = {
   onDefer: (item: HumanInboxItem) => void;
   locale: "en" | "ko";
   onRefClick?: (ref: string) => void;
+  readOnly?: boolean;
 };
 
 function InboxRow({
@@ -137,6 +141,7 @@ function InboxRow({
   onDefer,
   locale,
   onRefClick,
+  readOnly = false,
 }: InboxRowProps) {
   const ko = locale === "ko";
   const subject =
@@ -230,7 +235,11 @@ function InboxRow({
           )}
         </p>
       ) : null}
-      {item.kind === "question" ? (
+      {readOnly ? (
+        <p className="inbox-row__body inbox-row__meta inbox-row__readonly-hint">
+          {ko ? "Composer에서 처리" : "Handle in composer"}
+        </p>
+      ) : item.kind === "question" ? (
         <div className="inbox-row__options">
           {(item.options ?? []).map((opt, index) => {
             const optionId = opt.id ?? opt.value ?? opt.label;
@@ -351,6 +360,8 @@ export function HumanInboxPanel({
   discussOnly = false,
   hideInspectorLabel = false,
   onRefClick,
+  readOnly = false,
+  onFocusComposer,
 }: Props) {
   const { locale } = useLocale();
   const ko = locale === "ko";
@@ -534,6 +545,8 @@ export function HumanInboxPanel({
         onDefer={handleDefer}
         hideLabel={hideInspectorLabel}
         onRefClick={onRefClick}
+        readOnly={readOnly}
+        onFocusComposer={onFocusComposer}
       />
     );
   }
@@ -674,6 +687,8 @@ type InspectorInboxProps = {
   onDefer: (item: HumanInboxItem) => void;
   hideLabel?: boolean;
   onRefClick?: (ref: string) => void;
+  readOnly?: boolean;
+  onFocusComposer?: () => void;
 };
 
 function InspectorInboxView({
@@ -691,8 +706,11 @@ function InspectorInboxView({
   onDefer,
   hideLabel = false,
   onRefClick,
+  readOnly = false,
+  onFocusComposer,
 }: InspectorInboxProps) {
   const { msg, locale } = useLocale();
+  const ko = locale === "ko";
 
   return (
     <section
@@ -703,6 +721,24 @@ function InspectorInboxView({
       {hideLabel ? null : (
         <div className="ctx-section__label">{msg.humanInbox}</div>
       )}
+      {readOnly ? (
+        <div className="inbox-readonly-banner" role="status">
+          <p className="inbox-readonly-banner__text">
+            {ko
+              ? "대기 중인 항목은 Composer에서 처리합니다. 여기서는 기록만 확인합니다."
+              : "Pending items are handled in the composer. This view is history only."}
+          </p>
+          {onFocusComposer ? (
+            <button
+              type="button"
+              className="btn btn--sm btn--primary"
+              onClick={onFocusComposer}
+            >
+              {ko ? "Composer로 이동" : "Go to composer"}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       {error ? <div className="ctx-empty">{error}</div> : null}
       {items.length === 0 ? (
         <div className="ctx-empty">{msg.inboxEmpty}</div>
@@ -742,6 +778,7 @@ function InspectorInboxView({
               onDefer={onDefer}
               locale={locale}
               onRefClick={onRefClick}
+              readOnly={readOnly}
             />
           );
         })

@@ -1,17 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
-import { fetchSessionRuntime, type RuntimeSnapshot } from "../api/client";
+import { useEffect } from "react";
+import type { RuntimeSnapshot } from "../api/client";
 import { useLocale } from "../i18n/useLocale";
-import {
-  buildHumanDecisionLanes,
-  humanDecisionBlockedLanes,
-  shouldShowHumanDecisionBanner,
-} from "../utils/humanDecisionView";
+import { useHumanDecisionRuntime } from "../hooks/useHumanDecisionRuntime";
+import type { HumanDecisionLane } from "../utils/humanDecisionView";
 
 type Props = {
   sessionId: string | null;
   reloadKey?: number;
   discussPaused?: boolean;
   compact?: boolean;
+  headline?: string;
+  detail?: string;
   onOpenInbox?: () => void;
   onVisibleChange?: (visible: boolean) => void;
 };
@@ -21,80 +20,105 @@ export function HumanDecisionBanner({
   reloadKey = 0,
   discussPaused = false,
   compact = false,
+  headline,
+  detail,
   onOpenInbox,
   onVisibleChange,
 }: Props) {
   const { msg } = useLocale();
-  const [runtime, setRuntime] = useState<RuntimeSnapshot | null>(null);
-
-  useEffect(() => {
-    if (!sessionId) {
-      setRuntime(null);
-      return;
-    }
-    let cancelled = false;
-    void fetchSessionRuntime(sessionId)
-      .then((snap) => {
-        if (!cancelled) setRuntime(snap);
-      })
-      .catch(() => {
-        if (!cancelled) setRuntime(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [sessionId, reloadKey, discussPaused]);
-
-  const lanes = useMemo(
-    () => buildHumanDecisionLanes(runtime, discussPaused),
-    [runtime, discussPaused],
+  const { runtime, blocked, visible } = useHumanDecisionRuntime(
+    sessionId,
+    reloadKey,
+    discussPaused,
   );
-  const blocked = useMemo(() => humanDecisionBlockedLanes(lanes), [lanes]);
-  const visible = shouldShowHumanDecisionBanner(runtime, discussPaused);
-  const showing = visible && blocked.length > 0;
 
   useEffect(() => {
-    onVisibleChange?.(showing);
-  }, [onVisibleChange, showing]);
+    onVisibleChange?.(visible);
+  }, [onVisibleChange, visible]);
 
-  if (!showing) return null;
+  if (!visible) return null;
 
+  return (
+    <HumanDecisionBannerView
+      runtime={runtime}
+      blocked={blocked}
+      compact={compact}
+      headline={headline}
+      detail={detail}
+      onOpenInbox={onOpenInbox}
+      msg={msg}
+    />
+  );
+}
+
+function HumanDecisionBannerView({
+  runtime,
+  blocked,
+  compact,
+  headline,
+  detail,
+  onOpenInbox,
+  msg,
+}: {
+  runtime: RuntimeSnapshot | null;
+  blocked: HumanDecisionLane[];
+  compact?: boolean;
+  headline?: string;
+  detail?: string;
+  onOpenInbox?: () => void;
+  msg: ReturnType<typeof useLocale>["msg"];
+}) {
   const profile = runtime?.gates?.gate_profile;
+  const useCompactCopy = Boolean(headline);
 
   return (
     <div
       className={[
         "human-decision-banner",
         compact ? "human-decision-banner--compact" : undefined,
+        useCompactCopy ? "human-decision-banner--headline" : undefined,
       ]
         .filter(Boolean)
         .join(" ")}
       role="status"
     >
       <div className="human-decision-banner__body">
-        <strong>{msg.humanDecisionTitle}</strong>
-        <p className="human-decision-banner__hint">{msg.humanDecisionHint}</p>
-        <ul className="human-decision-banner__lanes">
-          {blocked.map((lane) => (
-            <li key={lane.id}>
-              <span className="human-decision-banner__lane-label">
-                {lane.id === "discuss"
-                  ? msg.humanDecisionLaneDiscuss
-                  : lane.id === "plan"
-                    ? msg.humanDecisionLanePlan
-                    : msg.humanDecisionLaneExecute}
-              </span>
-              <span className="human-decision-banner__lane-state">
-                {msg.humanDecisionBlocked}
-              </span>
-              {lane.reason ? (
-                <span className="human-decision-banner__lane-reason">
-                  {msg.humanDecisionReason(lane.reason)}
-                </span>
-              ) : null}
-            </li>
-          ))}
-        </ul>
+        {useCompactCopy ? (
+          <>
+            <strong>{headline}</strong>
+            {detail ? (
+              <p className="human-decision-banner__hint">{detail}</p>
+            ) : null}
+          </>
+        ) : (
+          <>
+            <strong>{msg.humanDecisionTitle}</strong>
+            <p className="human-decision-banner__hint">
+              {msg.humanDecisionHint}
+            </p>
+            <ul className="human-decision-banner__lanes">
+              {blocked.map((lane) => (
+                <li key={lane.id}>
+                  <span className="human-decision-banner__lane-label">
+                    {lane.id === "discuss"
+                      ? msg.humanDecisionLaneDiscuss
+                      : lane.id === "plan"
+                        ? msg.humanDecisionLanePlan
+                        : msg.humanDecisionLaneExecute}
+                  </span>
+                  <span className="human-decision-banner__lane-state">
+                    {msg.humanDecisionBlocked}
+                  </span>
+                  {lane.reason ? (
+                    <span className="human-decision-banner__lane-reason">
+                      {msg.humanDecisionReason(lane.reason)}
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
         {profile ? (
           <span className="human-decision-banner__profile">
             {msg.humanDecisionProfile(profile)}

@@ -149,15 +149,18 @@ def test_new_session_mission_template_apply_contract():
 
 
 def test_taskbar_human_inbox_integration_contract():
-    """Human gate resolve: Inbox / Workbench. Team tasks in inspector RoomTaskBar."""
+    """Human gate resolve: Inbox / Workbench. Team queue in Workbench Tasks summary."""
     taskbar = _read("web", "src", "components", "RoomTaskBar.tsx")
     inbox = _read("web", "src", "components", "HumanInboxPanel.tsx")
     room = _read("web", "src", "components", "RoomChat.tsx")
-    assert "taskbar--inspector" in taskbar
+    assert "taskbar--dock" in taskbar
     assert "HumanInboxPanel" not in taskbar
     assert "inbox-row__source-badge" in inbox
     assert "taskbar-dock" not in room
-    assert 'id: "peer"' in taskbar
+    assert "RoomTaskBar" not in room
+    assert "InspectorTasksSummary" in room
+    assert "taskbar__queue-block" in taskbar
+    assert 'id: "peer"' not in taskbar
     assert '"taskbar"' in inbox
     assert "openHumanInbox" in room
 
@@ -170,7 +173,7 @@ def test_inbox_segments_contract():
     assert "DiscussRecoveryBanner" in room
     assert 'inboxSegment === "inbox"' in room
     assert 't === "inbox_pause"' in room
-    assert 'presentation="popup"' in room
+    assert 'presentation="composer"' in room
     assert "inbox-row--fork" in inbox
     assert "inbox-row__kind-badge" in inbox
 
@@ -178,10 +181,9 @@ def test_inbox_segments_contract():
 def test_composer_question_inbox_is_separate_from_generic_pending_hint():
     room = _read("web", "src", "components", "RoomChat.tsx")
     inbox = _read("web", "src", "components", "HumanInboxPanel.tsx")
-    assert "inboxPendingQuestions > 0" in room
-    assert 'kindFilter="question"' in room
+    assert "inboxPendingCount > 0" in room
+    assert 'presentation="composer"' in room
     assert "inboxPendingNonQuestions > 0" in room
-    assert "Human Inbox 대기 ({inboxPendingNonQuestions})" in room
     assert 'excludeKind="question"' not in _read("web", "src", "components", "RoomTaskBar.tsx")
     assert "visiblePending.map" in inbox
     assert "visiblePending[0]?.kind" in inbox
@@ -207,28 +209,31 @@ def test_m6_work_exec_classes_only_in_plan_execute_panel():
 
 
 def test_human_decision_banner_contract():
-    """D: unified Human decision banner from runtime gates."""
-    room = _read("web", "src", "components", "RoomChat.tsx")
+    """D: unified Human decision surface from runtime gates."""
+    surface = _read("web", "src", "components", "ComposerDecisionSurface.tsx")
     banner = _read("web", "src", "components", "HumanDecisionBanner.tsx")
     view = _read("web", "src", "utils", "humanDecisionView.ts")
+    hook = _read("web", "src", "hooks", "useHumanDecisionRuntime.ts")
     css = _read("web", "src", "styles", "prototype-panels.css")
 
-    assert "HumanDecisionBanner" in room
-    assert "workspace-discuss-pause-banner" not in room
+    assert "ComposerNoticeCard" in surface
+    assert "human_gate" in surface
+    assert "workspace-discuss-pause-banner" not in surface
     assert "shouldShowHumanDecisionBanner" in view
-    assert "buildHumanDecisionLanes" in banner
+    assert "useHumanDecisionRuntime" in hook
     assert "humanDecisionTitle" in banner
-    assert "human-decision-banner" in css
+    assert "composer-notice-card" in css
 
 
 def test_plan_workflow_banner_hides_inbox_when_human_decision_visible():
-    """Plan workflow inbox CTA defers to HumanDecisionBanner."""
+    """Plan workflow inbox CTA defers when human gate is active."""
     banner = _read("web", "src", "components", "PlanWorkflowBanner.tsx")
-    room = _read("web", "src", "components", "RoomChat.tsx")
+    surface = _read("web", "src", "components", "ComposerDecisionSurface.tsx")
+    priority = _read("web", "src", "utils", "composerDecisionPriority.ts")
     assert "hideInboxButton" in banner
-    assert "humanDecisionBannerVisible" in room
-    assert "hideInboxButton={humanDecisionBannerVisible}" in room
-    assert "onVisibleChange={setHumanDecisionBannerVisible}" in room
+    assert "showHumanGate" in surface
+    assert '"human_gate"' in priority
+    assert "pickComposerDecisionTier" in surface
 
 
 def test_remaining_gaps_slack_inbox_ref_recovery_contract():
@@ -244,7 +249,8 @@ def test_remaining_gaps_slack_inbox_ref_recovery_contract():
     assert "activateInboxRef" in room
     assert "handleInboxRefClick" in room
     assert "onRefClick={handleInboxRefClick}" in room
-    assert "RecoveryStrip" in room
+    assert "ComposerDecisionSurface" in room
+    assert "RecoveryStrip" in recovery
     assert "postMissionDiscussRecovery" in room
     assert "DiscussRecoveryBanner" in room
     assert "run_discuss_recovery" in recovery

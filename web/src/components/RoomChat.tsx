@@ -95,18 +95,17 @@ import { TranscriptViewOptions } from "./TranscriptViewOptions";
 import { ChatBubble, ReplyWaitingBubble } from "./ChatBubble";
 import { HumanInboxPanel } from "./HumanInboxPanel";
 import { DiscussRecoveryBanner } from "./DiscussRecoveryBanner";
-import { HumanDecisionBanner } from "./HumanDecisionBanner";
+import { ComposerDecisionSurface } from "./ComposerDecisionSurface";
+import { InspectorTasksSummary } from "./InspectorTasksSummary";
+import { useHumanDecisionRuntime } from "../hooks/useHumanDecisionRuntime";
+import { buildDecisionBlockedHeadline } from "../utils/decisionBlockedHeadline";
 import { ChatComposer, type PendingFile } from "./ChatComposer";
 import { ShellPortal } from "./ShellPortal";
 import { NotificationCenter } from "./NotificationCenter";
 import { useNotificationUnread } from "../hooks/useNotificationUnread";
 import { ContextOverviewPanel } from "./ContextOverviewPanel";
-import { GoalLoopBanner } from "./GoalLoopBanner";
 import type { PlanApprovalMode, PlanRejectPayload } from "./PlanApprovalPanel";
-import { PlanWorkflowBanner } from "./PlanWorkflowBanner";
-import { VerifiedLoopBanner } from "./VerifiedLoopBanner";
 import { WorkToolPanel, type WorkFocusTarget } from "./WorkToolPanel";
-import { HumanGatePanel } from "./HumanGatePanel";
 import { AgentPermissionAlert } from "./AgentPermissionAlert";
 import { useMacNotifications } from "../hooks/useMacNotifications";
 import type { AgentPermissions } from "../utils/agentPermissions";
@@ -198,11 +197,9 @@ import {
   parseAgentCapabilities,
   type AgentCapabilitiesMap,
 } from "../utils/agentCapabilities";
-import { RoomTaskBar } from "./RoomTaskBar";
 import {
   findChatLineIndexForTask,
   focusComposerInput,
-  lastTurnHadConsensusMode,
   messageMentionsTask,
 } from "../utils/taskBarCopy";
 import type { WorkspacePreset } from "../utils/sessionSetup";
@@ -226,7 +223,6 @@ import {
 import { ComposerPreflightBar } from "./ComposerPreflightBar";
 import { ReadinessComposerBar } from "./ReadinessComposerBar";
 import { fetchReadiness, type ReadinessResponse } from "../api/client";
-import { RecoveryStrip } from "./RecoveryStrip";
 import {
   buildRecoveryItems,
   type RecoveryActionId,
@@ -410,7 +406,6 @@ export function RoomChat({
     getWorkbenchPanelWidth,
   );
   const [roomTasks, setRoomTasks] = useState<RoomTasksPayload | null>(null);
-  const [tasksLoading, setTasksLoading] = useState(false);
   const [planMd, setPlanMd] = useState("");
   const [permOpen, setPermOpen] = useState(false);
   const [turnProfile, setTurnProfileState] =
@@ -555,18 +550,12 @@ export function RoomChat({
   const [highlightChatLine, setHighlightChatLine] = useState<number | null>(
     null,
   );
-  const [taskBarFocusObjection, setTaskBarFocusObjection] = useState<{
-    id: string;
-    nonce: number;
-  } | null>(null);
   const highlightTimerRef = useRef<number | null>(null);
   const [sendReceipt, setSendReceipt] = useState<string | null>(null);
   const [sendReceiptRaw, setSendReceiptRaw] = useState<string | undefined>();
   const [hideApprovedPlanBanner, setHideApprovedPlanBanner] = useState(false);
   const [discussRecoveryBusy, setDiscussRecoveryBusy] = useState(false);
   const [discussPaused, setDiscussPaused] = useState(false);
-  const [humanDecisionBannerVisible, setHumanDecisionBannerVisible] =
-    useState(false);
   const [workFocus, setWorkFocus] = useState<WorkFocusTarget | null>(null);
   const prevExecPendingIdRef = useRef<string | null>(null);
   const sendReceiptTimerRef = useRef<number | null>(null);
@@ -922,11 +911,9 @@ export function RoomChat({
         setRoomTasks(null);
         return;
       }
-      setTasksLoading(true);
       void fetchSessionTasks(sid)
         .then(setRoomTasks)
-        .catch(() => setRoomTasks(null))
-        .finally(() => setTasksLoading(false));
+        .catch(() => setRoomTasks(null));
     },
     [sessionId],
   );
@@ -1023,25 +1010,23 @@ export function RoomChat({
   } = useInboxState(sessionId);
 
   const {
-    goalText,
     setGoalText,
-    goalBusy,
-    goalError,
     setGoalError,
     verifiedEditGoal,
-    setVerifiedEditGoal,
     verifiedEditCriteria,
-    setVerifiedEditCriteria,
     verifiedEditPromise,
-    setVerifiedEditPromise,
     verifiedLoopBusy,
     setVerifiedLoopBusy,
     verifiedLoopError,
     setVerifiedLoopError,
     verifiedLoopView,
-    handleGoalSave,
-    handleGoalCheck,
   } = useGoalLoop(sessionId, session?.run, refreshSessionMeta);
+
+  const { runtime: decisionRuntime } = useHumanDecisionRuntime(
+    sessionId,
+    inboxReloadKey,
+    discussPaused,
+  );
 
   useEffect(() => {
     refreshTasks();
@@ -1066,6 +1051,11 @@ export function RoomChat({
     ((roomTasks.consensus_task_blockers ?? []).length > 0 ||
       roomTasks.consensus_tasks_ready === false ||
       (roomTasks.open_objection_count ?? 0) > 0),
+  );
+  const consensusBlocked = Boolean(
+    roomTasks &&
+    ((roomTasks.consensus_task_blockers ?? []).length > 0 ||
+      roomTasks.consensus_tasks_ready === false),
   );
 
   const openInspectorPane = useCallback(() => {
@@ -1407,21 +1397,6 @@ export function RoomChat({
     );
     return () => window.clearTimeout(timer);
   }, [sessionId, planWorkflow?.phase]);
-
-  const showVerifiedLoop =
-    !planWorkflowActive &&
-    (turnProfile === "loop" || Boolean(session?.run?.verified_loop));
-
-  const showGoalLoop = !planWorkflowActive && !showVerifiedLoop;
-
-  const handleGoalContinueDiscuss = useCallback(
-    (prefill: string) => {
-      setText(prefill);
-      openTranscriptTab();
-      focusComposerInput();
-    },
-    [openTranscriptTab],
-  );
 
   const waitingForSession = Boolean(sessionId && !session && loading);
   const composerInputLocked = waitingForSession;
@@ -3104,14 +3079,9 @@ export function RoomChat({
     setText("");
   }
 
-  const focusPlanAction = (actionIndex: number) => {
-    setPlanActionFocusIndex(actionIndex);
-    openReviewTab();
-  };
   const focusObjection = useCallback(
-    (objectionId: string) => {
+    (_objectionId: string) => {
       setRightPanelMode("tasks");
-      setTaskBarFocusObjection({ id: objectionId, nonce: Date.now() });
     },
     [setRightPanelMode],
   );
@@ -3284,14 +3254,6 @@ export function RoomChat({
     ],
   );
 
-  const requestComposerPrefill = useCallback(
-    (prefill: string) => {
-      openTranscriptTab();
-      setText(prefill);
-      focusComposerInput();
-    },
-    [openTranscriptTab],
-  );
   const handleRecoveryRetryAction = useCallback(
     (actionId: RecoveryRetryActionId, event: RecoveryResolutionEvent): void => {
       if (event.kind === "oracle_fail" || event.kind === "discuss_recovery") {
@@ -3390,6 +3352,31 @@ export function RoomChat({
     const rows = roomTasks?.open_objections ?? [];
     return rows.find((o) => o.act === "BLOCK") ?? null;
   }, [roomTasks?.open_objections]);
+  const decisionBlockedHeadline = useMemo(
+    () =>
+      buildDecisionBlockedHeadline({
+        locale,
+        inboxPendingCount,
+        discussPaused,
+        runtime: decisionRuntime,
+        showPlanApproval,
+        verifiedLoopPendingApproval: verifiedLoopView.pendingApproval,
+        firstOpenBlock,
+        consensusBlocked,
+        planWorkflow,
+      }),
+    [
+      locale,
+      inboxPendingCount,
+      discussPaused,
+      decisionRuntime,
+      showPlanApproval,
+      verifiedLoopView.pendingApproval,
+      firstOpenBlock,
+      consensusBlocked,
+      planWorkflow,
+    ],
+  );
   const planExecuteObjection = planExecute.openObjectionBlock?.objections[0];
   const composerObjectionNotice = tweaks.objectionDemo
     ? DEMO_OBJECTION_NOTICE
@@ -3458,20 +3445,6 @@ export function RoomChat({
   const currentPlanRevision =
     planMeta.lastUpdate?.completed_at || planMeta.lastUpdate?.ts || null;
   const turnResolved = resolveTurnSend(turnProfile, selected);
-  const taskBarContext = useMemo(
-    () => ({
-      composerVariant: composerModeVariant,
-      turnProfile,
-      lastTurnHadConsensus: lastTurnHadConsensusMode(session?.run),
-      selectedAgentCount: turnResolved.agents.length,
-    }),
-    [
-      composerModeVariant,
-      turnProfile,
-      session?.run,
-      turnResolved.agents.length,
-    ],
-  );
   const pendingReplyAgents =
     running && typingAgents.length === 0
       ? turnResolved.agents.map((id) => ({
@@ -3851,68 +3824,45 @@ export function RoomChat({
                     </div>
                   ) : null}
 
-                  {recoveryVisible ? (
-                    <RecoveryStrip
-                      items={recoveryLifecycleView.activeItems}
-                      resolvedEvents={recoveryLifecycleView.resolvedEvents}
-                      canRetrySend={
+                  {!isNew && sessionId ? (
+                    <ComposerDecisionSurface
+                      sessionId={sessionId}
+                      inboxPendingCount={inboxPendingCount}
+                      inboxReloadKey={inboxReloadKey}
+                      discussPaused={discussPaused}
+                      blockedHeadline={decisionBlockedHeadline}
+                      recoveryVisible={recoveryVisible}
+                      recoveryItems={recoveryLifecycleView.activeItems}
+                      recoveryResolvedEvents={
+                        recoveryLifecycleView.resolvedEvents
+                      }
+                      recoveryCanRetrySend={
                         recoveryLifecycleView.retryState.canFocusComposer
                       }
-                      busyActionId={
+                      recoveryBusyActionId={
                         recoveryBusyAction ??
                         (releasingLock ? "release_lock" : null) ??
                         (discussRecoveryBusy ? "run_discuss_recovery" : null)
                       }
-                      onAction={(actionId, item) =>
-                        void handleRecoveryAction(actionId, item)
+                      showPlanApproval={showPlanApproval}
+                      showPlanWorkflowBanner={showPlanWorkflowBanner}
+                      showPlanWorkflowComposerHint={
+                        showPlanWorkflowComposerHint
                       }
-                      onRetryAction={handleRecoveryRetryAction}
-                      onDismiss={() =>
-                        setRecoveryDismissedSig(recoverySignature)
-                      }
-                    />
-                  ) : null}
-
-                  {showPlanWorkflowComposerHint && planWorkflow ? (
-                    <PlanWorkflowBanner
-                      workflow={planWorkflow}
-                      planIntent={planWorkflowPlanIntent}
-                      variant="compact"
-                      onOpenTasks={openWorkApproval}
-                    />
-                  ) : null}
-
-                  {showPlanWorkflowBanner && planWorkflow ? (
-                    <PlanWorkflowBanner
-                      workflow={planWorkflow}
-                      planIntent={planWorkflowPlanIntent}
-                      inboxPendingCount={inboxPendingCount}
-                      running={running || runBusy || synthesizing}
-                      hideInboxButton={humanDecisionBannerVisible}
-                      onOpenInbox={openHumanInbox}
-                    />
-                  ) : null}
-
-                  {sendReceipt &&
-                  shouldShowSendReceiptOnChatTab(
-                    sendReceipt,
-                    sendReceiptRaw,
-                  ) ? (
-                    <div className="composer-send-receipt" role="status">
-                      {sendReceipt}
-                    </div>
-                  ) : null}
-
-                  {!isNew && sessionId && inboxPendingCount === 0 ? (
-                    <HumanDecisionBanner
-                      sessionId={sessionId}
-                      reloadKey={inboxReloadKey}
-                      discussPaused={discussPaused}
-                      onVisibleChange={setHumanDecisionBannerVisible}
+                      planWorkflow={planWorkflow}
+                      planWorkflowPlanIntent={planWorkflowPlanIntent}
                       onOpenInbox={() => {
                         setInboxSegment("inbox");
                         openHumanInbox();
                       }}
+                      onOpenWork={openWorkApproval}
+                      onRecoveryAction={(actionId, item) =>
+                        void handleRecoveryAction(actionId, item)
+                      }
+                      onRecoveryRetryAction={handleRecoveryRetryAction}
+                      onRecoveryDismiss={() =>
+                        setRecoveryDismissedSig(recoverySignature)
+                      }
                     />
                   ) : null}
 
@@ -3932,6 +3882,16 @@ export function RoomChat({
                         }}
                         onRefClick={handleInboxRefClick}
                       />
+                    </div>
+                  ) : null}
+
+                  {sendReceipt &&
+                  shouldShowSendReceiptOnChatTab(
+                    sendReceipt,
+                    sendReceiptRaw,
+                  ) ? (
+                    <div className="composer-send-receipt" role="status">
+                      {sendReceipt}
                     </div>
                   ) : null}
 
@@ -4344,86 +4304,25 @@ export function RoomChat({
               />
             ) : null}
             {rightPanelMode === "tasks" ? (
-              <>
-                <HumanGatePanel>
-                  {sessionId && showPlanWorkflowBanner && planWorkflow ? (
-                    <PlanWorkflowBanner
-                      workflow={planWorkflow}
-                      planIntent={planWorkflowPlanIntent}
-                      inboxPendingCount={inboxPendingCount}
-                      running={running || runBusy || synthesizing}
-                      hideInboxButton={humanDecisionBannerVisible}
-                      onOpenInbox={openHumanInbox}
-                      onOpenTasks={openWorkApproval}
-                    />
-                  ) : null}
-                  {sessionId && showPlanApproval ? (
-                    <div
-                      className="goal-loop-banner goal-loop-banner--open"
-                      role="region"
-                      aria-label="Work approval handoff"
-                    >
-                      <div className="goal-loop-banner__head">
-                        <strong>Plan approval</strong>
-                        <span className="goal-oracle-badge goal-oracle-badge--open">
-                          Work
-                        </span>
-                      </div>
-                      <p className="goal-loop-banner__detail">
-                        Plan 승인과 execute 판단은 Work에서 처리합니다.
-                      </p>
-                      <div className="goal-loop-banner__controls">
-                        <button
-                          type="button"
-                          className="btn btn--sm btn--primary"
-                          onClick={openWorkApproval}
-                        >
-                          Work · 승인하기
-                        </button>
-                      </div>
-                    </div>
-                  ) : sessionId && showVerifiedLoop ? (
-                    <VerifiedLoopBanner
-                      view={verifiedLoopView}
-                      busy={verifiedLoopBusy || running || runBusy}
-                      error={verifiedLoopError}
-                      editGoal={verifiedEditGoal}
-                      editCriteria={verifiedEditCriteria}
-                      editPromise={verifiedEditPromise}
-                      onEditGoalChange={setVerifiedEditGoal}
-                      onEditCriteriaChange={setVerifiedEditCriteria}
-                      onEditPromiseChange={setVerifiedEditPromise}
-                      onApprove={() => void handleVerifiedApprove()}
-                      onReject={() => void handleVerifiedReject()}
-                    />
-                  ) : sessionId && showGoalLoop ? (
-                    <GoalLoopBanner
-                      goalView={goalView}
-                      goalText={goalText}
-                      goalBusy={goalBusy}
-                      goalError={goalError}
-                      onGoalTextChange={setGoalText}
-                      onSave={() => void handleGoalSave()}
-                      onCheck={() => void handleGoalCheck()}
-                      onContinueDiscuss={handleGoalContinueDiscuss}
-                    />
-                  ) : null}
-                </HumanGatePanel>
-                {sessionId ? (
-                  <RoomTaskBar
-                    sessionId={sessionId}
-                    payload={roomTasks}
-                    context={taskBarContext}
-                    loading={tasksLoading}
-                    executions={planExecutions}
-                    focusObjection={taskBarFocusObjection}
-                    onRefresh={refreshTasks}
-                    onFocusPlanAction={focusPlanAction}
-                    onFocusTask={focusTask}
-                    onRequestComposerPrefill={requestComposerPrefill}
-                  />
-                ) : null}
-              </>
+              sessionId ? (
+                <InspectorTasksSummary
+                  roomTasks={roomTasks}
+                  inboxPendingCount={inboxPendingCount}
+                  discussPaused={discussPaused}
+                  runtime={decisionRuntime}
+                  showPlanApproval={showPlanApproval}
+                  verifiedLoopPendingApproval={verifiedLoopView.pendingApproval}
+                  firstOpenBlock={firstOpenBlock}
+                  planWorkflow={planWorkflow}
+                  consensusBlocked={consensusBlocked}
+                  onOpenWork={openWorkApproval}
+                  onOpenInbox={() => {
+                    setInboxSegment("inbox");
+                    openHumanInbox();
+                  }}
+                  onFocusComposer={focusComposerInput}
+                />
+              ) : null
             ) : null}
             {rightPanelMode === "inbox" ? (
               <>
@@ -4463,6 +4362,8 @@ export function RoomChat({
                       onBuildStarted={handleInboxBuildStarted}
                       disabled={running || synthesizing || runBusy}
                       presentation="inspector"
+                      readOnly={inboxPendingCount > 0}
+                      onFocusComposer={focusComposerInput}
                       onRefClick={handleInboxRefClick}
                     />
                   </>

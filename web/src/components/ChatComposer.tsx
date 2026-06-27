@@ -112,8 +112,8 @@ export function ChatComposer({
   pendingExecuteCount: _pendingExecuteCount,
   objectionNotice,
   onFocusObjection,
-  turnHint,
-  costHint,
+  turnHint: _turnHint,
+  costHint: _costHint,
   locale = "en",
   inputHidden = false,
   showModeChipHint = false,
@@ -194,10 +194,6 @@ export function ChatComposer({
   const rootClass = ["composer", className].filter(Boolean).join(" ");
   const inputLocked = disabled;
   const sendLocked = sendDisabled ?? disabled;
-  const activePreset = roomPresets?.find((p) => p.id === roomPreset) ?? null;
-  const presetDescription =
-    turnHint?.trim() || presetHintLine(activePreset, locale) || null;
-  const presetCostLine = costHint?.trim() || null;
   const primaryModel = activeModels[0] ?? null;
   const hiddenModelCount = Math.max(activeModels.length - 1, 0);
 

@@ -385,11 +385,16 @@
 .composer-wrap > .composer-send-receipt,
 .composer-wrap > .composer-inbox-pending,
 .composer-wrap > .composer-question-surface,
-.composer-wrap > .composer-command-hint {
+.composer-wrap > .composer-command-hint,
+.composer-wrap > .composer-notice-card {
   max-width: var(--composer-max);
   margin-left: auto;
   margin-right: auto;
   width: 100%;
+}
+.composer-wrap > .composer-notice-card,
+.composer-wrap > .composer-question-surface {
+  max-width: var(--composer-notice-max);
 }
 
 /* Slash-command interactive picker — card panel below the composer (gajaecode-style) */

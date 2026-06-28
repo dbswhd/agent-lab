@@ -1,8 +1,4 @@
-"""Pure syntax scan for merge gate — no execution dict / env (Track 2.0b seam).
-
-Future PyO3 target: :func:`scan_python_syntax` only; path resolution stays in
-``syntax_gate.py``.
-"""
+"""Pure syntax scan for merge gate — no execution dict / env (Track 2.0b seam)."""
 
 from __future__ import annotations
 

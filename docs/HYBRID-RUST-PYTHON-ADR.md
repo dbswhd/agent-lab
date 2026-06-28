@@ -110,6 +110,14 @@ HTTP `:8765` stays canonical. UDS / named pipe only if port conflicts or securit
 
 ## Track 2 — Conditional native (may never start)
 
+> **AMENDMENT 2026-06-28 — Track 2 native CLOSED. Both candidates rejected; `crates/agent_lab_native` removed.**
+>
+> - **syntax_gate**: micro-bench gate **FAIL** (Phase 2.2). CPython `compile()` is already a C fast path; relief ceiling ~0.078% of a mock turn — structurally below the 5% gate regardless of Rust speed.
+> - **repo_map**: the ~98% context-build share / ~800 ms reported in Phase 2.0 below was a **Python over-scan bug**, not an inherent hot path. `bound_python_files` only pruned above `MAX_FILES=2000`, so a 842-file repo parsed the whole tree to fill a 1 KB budget. Fixed in Python — seed + import-hop-1 bounding in [`repo_map_core.py`](../src/agent_lab/repo_map_core.py): **780 ms → 134 ms (5.8×)** on this repo, output richer. No native ROI remains.
+> - **Disposition**: the Rust crate, `AGENT_LAB_SYNTAX_GATE_RUST` flag + shim, `make native-dev/native-test`, the `AGENT_LAB_BUNDLE_NATIVE` guard, and the native micro-bench script/tests are **deleted**. Kept: the decision record ([TRACK2-NATIVE-GATE.md](./TRACK2-NATIVE-GATE.md)) and the Python `*_core` seams — the durable win.
+> - **Durable lesson**: the first optimization is the Python algorithm (over-scan; `compile`→`ast`), never Rust. Re-open only on the documented scan-volume trigger (≥100× file count) — and re-measure the Python path first.
+> - Phase 2.0 / 2.1 / 2.2 below are retained as the historical record that led here.
+
 ### Policy
 
 Track 2 is **not scheduled work**. It opens only when **all** gates pass:
@@ -172,7 +180,7 @@ def build_repo_map_core(root: Path, files: list[Path], seeds: set[Path], budget_
 
 - Parsing uses CPython `ast` (C extension). Rust must re-walk + PyO3 boundary + large `str` return.
 - Call frequency: once per context bundle build per agent invoke — not inner tight loop.
-- Bench on this repo (`scripts/bench_feature_flags.py`): plain tree ~0.2 ms vs `AGENT_LAB_REPO_MAP=1` ~800 ms — meaningful **per turn** when flag ON, but usually dwarfed by agent subprocess/LLM unless profile proves otherwise.
+- Bench on this repo (`scripts/bench_feature_flags.py`): plain tree ~0.2 ms vs `AGENT_LAB_REPO_MAP=1` ~800 ms — **⚠️ later found to be an over-scan bug, not inherent cost; now ~134 ms in pure Python (see AMENDMENT above).** Even pre-fix, usually dwarfed by agent subprocess/LLM.
 - **±20% micro-bench win is noise** if share of mission &lt; N%.
 
 **Gate belongs before maturin scaffold**, not after a 4-week port.
@@ -196,11 +204,11 @@ Script: [`scripts/profile_track2_gate.py`](../scripts/profile_track2_gate.py) ·
 
 | Metric | Value | Gate (5%) |
 |--------|-------|-----------|
-| repo_map share of 3-agent context (`REPO_MAP=1`) | ~98% | PASS |
-| repo_map + syntax vs mock turn (+30s stub) | ~7.6% | PASS |
+| repo_map share of 3-agent context (`REPO_MAP=1`) | ~98% | ~~PASS~~ **RETRACTED — over-scan artifact (see AMENDMENT); real share ≪5% after Python fix** |
+| repo_map + syntax vs mock turn (+30s stub) | ~7.6% | ~~PASS~~ **same over-scan inflation** |
 | codex context (`REPO_MAP=0`, default-off) | ~1.7 ms | — |
 
-**Decision:** Gate **PASS** — Track 2.0b may proceed **when platform gate passes**.
+**Decision (superseded):** read as PASS at the time; the AMENDMENT above retracts it — the high share was a Python over-scan, fixed in Python, so no native candidate survived.
 
 **Caveats (mandatory):**
 
@@ -217,18 +225,48 @@ Script: [`scripts/profile_track2_gate.py`](../scripts/profile_track2_gate.py) ·
 
 Tests: `tests/test_syntax_gate_core.py`, `tests/test_repo_map_core.py` (+ existing AC suites unchanged).
 
-**Next:** Track 2.1 dev-only PyO3 POC on `syntax_gate_core` **only after** platform gate — not started.
+**Next:** Track 2.2 bundled native / micro-bench gate — not started.
 
-### Phase 2.1 — Native POC (only if 2.0 + 2.0b + platform gate pass)
+### Phase 2.1 — Native POC — ~~shipped (dev-only)~~ **REMOVED 2026-06-28 (see AMENDMENT)**
 
-1. `crates/agent_lab_native/` + maturin **dev-only** first (`maturin develop` in repo venv — **not** bundled `.app`)
-2. First target: **`syntax_gate` core** (not repo_map)
-3. Flag: `AGENT_LAB_SYNTAX_GATE_RUST=1` default off; ImportError → Python fallback
-4. Micro-bench + mock-turn profile: must beat Python core by **≥20%** *and* reduce mock-turn share by **≥N%** (same N as 2.0)
+The crate and flag below were deleted after Phase 2.2 FAIL + the repo_map over-scan fix left no native candidate. Table retained for history.
 
-Bundled `.app` integration is **Phase 2.2+** separate gate (signing, notarization, CI matrix).
 
-**Exit:** POC in dev venv only; CI optional job; bundled runtime unchanged until 2.2 gate.
+| Item | Location |
+|------|----------|
+| Crate | [`crates/agent_lab_native/`](../crates/agent_lab_native/) — `scan_python_syntax` via `rustpython-parser` |
+| Dev install | `make native-dev` (`maturin develop` into `.venv`) |
+| Rust unit tests | `make native-test` |
+| Python flag | `AGENT_LAB_SYNTAX_GATE_RUST=1` (default off) → [`syntax_gate_core.py`](../src/agent_lab/syntax_gate_core.py); ImportError → `compile()` fallback |
+| Parity tests | `tests/test_syntax_gate_rust.py` (skips when extension not built) |
+
+**Build note:** `make native-dev` / `native-test` use a sanitized cargo env (minimal `PATH`, unset Qt plugin paths) to avoid `libm` build-script UTF-8 panics on machines with PySide/Qt in `PATH` / `QML2_IMPORT_PATH`.
+
+**Not in scope:** bundled `.app` maturin, micro-bench ≥20% gate (deferred to 2.2).
+
+**Next:** Track 2 closed for `syntax_gate` bundled native — see [TRACK2-NATIVE-GATE.md](./TRACK2-NATIVE-GATE.md). Optional future: `repo_map_core` only if product enables `REPO_MAP=1`.
+
+### Phase 2.2 — Native micro-bench + bundled gate — **shipped (gate FAIL)**
+
+Script: [`scripts/profile_track2_native_gate.py`](../scripts/profile_track2_native_gate.py) · Report: [TRACK2-NATIVE-GATE.md](./TRACK2-NATIVE-GATE.md) · Baseline: [`tests/fixtures/track2-native-gate-report.json`](../tests/fixtures/track2-native-gate-report.json)
+
+**Result (2026-06-28, agent-lab repo, ~40 `.py` files):**
+
+| Gate | Threshold | Result |
+|------|-----------|--------|
+| Speed (Rust vs Python core) | ≥ 20% faster | **FAIL** — Rust ~190 ms vs Python ~25 ms |
+| Mock-turn relief | ≥ 5% of profile denominator | **FAIL** — negative (Rust slower) |
+| **Decision** | Both required | **FAIL** — **do not bundle** `agent_lab_native` |
+
+**Shipped infrastructure:**
+
+| Item | Location |
+|------|----------|
+| Micro-bench script | `make profile-track2-native-gate` |
+| Bundled opt-in | ~~`AGENT_LAB_BUNDLE_NATIVE=1`~~ — guard and crate **removed 2026-06-28** |
+| Dev POC | ~~Track 2.1 remains~~ — crate, flag, and `make native-*` **removed** (see AMENDMENT) |
+
+**Exit:** Python SSOT for syntax gate; bundled `.app` unchanged (no maturin in default build). Native path fully removed; only this decision record remains.
 
 ---
 
@@ -288,6 +326,8 @@ No fixed calendar for Track 2 beyond profile — **t2b/t2c may not happen**.
 
 | Date | Change |
 |------|--------|
+| 2026-06-28 | Phase 2.2 gate FAIL: Rust syntax scan slower than compile(); bundled native blocked |
+| 2026-06-28 | Phase 2.1 shipped: agent_lab_native PyO3 POC + AGENT_LAB_SYNTAX_GATE_RUST dev flag |
 | 2026-06-28 | Phase 2.0b shipped: syntax_gate_core + repo_map_core seams |
 | 2026-06-28 | Phase 2.0 shipped: profile gate PASS (~98% context w/ REPO_MAP=1, ~7.6% mock turn); see TRACK2-PROFILE.md |
 | 2026-06-28 | Phase 1.3 shipped: cross-platform port reclaim, release sessions_dir reclaim, log paths |

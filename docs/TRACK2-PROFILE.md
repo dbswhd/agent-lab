@@ -16,9 +16,11 @@ Gate **N = 5%** — pass if either metric ≥ N.
 
 ## Latest result (agent-lab repo)
 
+> **⚠️ SUPERSEDED 2026-06-28:** the ~810 ms / ~98% `repo_map_block` figures below were an **over-scan bug** (full-tree parse below `MAX_FILES=2000`), not inherent cost. Fixed in Python — seed-bounding: **~134 ms (5.8×)**. Native candidacy retracted. See ADR AMENDMENT + [TRACK2-NATIVE-GATE.md](./TRACK2-NATIVE-GATE.md).
+
 | Segment | ms (best-of 3) |
 |---------|----------------|
-| `repo_map_block` | ~810 |
+| `repo_map_block` | ~810 ⚠️ over-scan (now ~134) |
 | `repo_tree_block` | ~0.3 |
 | `context_bundle` ×3 | ~2468 total |
 | `syntax_gate` | ~29 |
@@ -32,10 +34,9 @@ Gate **N = 5%** — pass if either metric ≥ N.
 
 ## Interpretation
 
-1. **`AGENT_LAB_REPO_MAP` default OFF** — typical Room turn context build is **~2ms/agent**, not ~800ms. Track 2 native acceleration matters **only when the flag is on**.
-2. **`syntax_gate`** (~29ms / merge) is small vs context or agent stub; **first PyO3 POC target** remains syntax_gate (seam simpler), repo_map only if product enables map by default.
-3. **Platform gate** still open — `make tauri-check-windows` before bundled maturin.
-4. **Next step:** Track **2.1** dev-only PyO3 POC (`syntax_gate_core`) after platform gate — seams in `syntax_gate_core.py` / `repo_map_core.py`.
+1. **`AGENT_LAB_REPO_MAP` default OFF** — typical Room turn context build is **~2ms/agent**. The ~800ms flag-on figure was an over-scan bug, now ~134ms (Python seed-bounding).
+2. **`syntax_gate`** (~25ms / merge) is small vs context or agent stub — too small for any native relief.
+3. **Outcome:** both Track 2 native candidates closed; `agent_lab_native` removed. See ADR AMENDMENT + [TRACK2-NATIVE-GATE.md](./TRACK2-NATIVE-GATE.md) (CLOSED record).
 
 ## Re-run
 

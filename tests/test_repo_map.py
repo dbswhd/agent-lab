@@ -344,3 +344,65 @@ def test_seedrank_equal_freq_deterministic() -> None:
     s2 = _rank_files(idx, set())
     assert s1 == s2  # deterministic
     assert s1[_P("a.py")] == s1[_P("b.py")]  # equal freq => equal score (path tie-break in render)
+
+
+# --- Seed-bounding (Option A): parse the seed neighborhood, not the whole tree ---
+
+from agent_lab.repo_map_core import (  # noqa: E402
+    bound_python_files,
+    _seed_import_neighbors,
+)
+
+
+def _multidir_workspace(tmp_path: Path) -> Path:
+    """src/-layout tree: entry imports lib.util across dirs; far/ is unrelated."""
+    root = (tmp_path / "ws").resolve()
+    (root / "src" / "pkg").mkdir(parents=True)
+    (root / "src" / "lib").mkdir()
+    (root / "src" / "far").mkdir()
+    (root / "src" / "pkg" / "entry.py").write_text(
+        "from lib.util import compute\n\n\ndef start():\n    return compute(1)\n", encoding="utf-8"
+    )
+    (root / "src" / "lib" / "util.py").write_text(
+        "def compute(x):\n    return x * 2\n", encoding="utf-8"
+    )
+    (root / "src" / "far" / "unrelated.py").write_text(
+        "def noise():\n    return 0\n", encoding="utf-8"
+    )
+    return root
+
+
+def test_seed_import_neighbors_resolves_cross_dir_suffix(tmp_path: Path) -> None:
+    root = _multidir_workspace(tmp_path)
+    files = _iter_python_files(root)
+    seeds = {(root / "src" / "pkg" / "entry.py").resolve()}
+    neighbors = _seed_import_neighbors(files, seeds)
+    names = {f.name for f in neighbors}
+    assert "util.py" in names  # `from lib.util import compute` resolved by suffix
+    assert "unrelated.py" not in names  # not imported
+
+
+def test_bound_python_files_seeded_prunes_far_dir(tmp_path: Path) -> None:
+    root = _multidir_workspace(tmp_path)
+    files = _iter_python_files(root)
+    seeds = {(root / "src" / "pkg" / "entry.py").resolve()}
+    bounded = {f.name for f in bound_python_files(root, files, seeds)}
+    assert "entry.py" in bounded  # the seed itself
+    assert "util.py" in bounded  # cross-dir import hop-1
+    assert "unrelated.py" not in bounded  # far dir parsed no longer
+
+
+def test_bound_python_files_empty_seed_keeps_global_set(tmp_path: Path) -> None:
+    # No seeds => full set (frequency fallback needs every file); nothing pruned.
+    root = _multidir_workspace(tmp_path)
+    files = _iter_python_files(root)
+    assert bound_python_files(root, files, set()) == files
+
+
+def test_seed_bounding_block_excludes_far_dir(tmp_path: Path) -> None:
+    # End-to-end: a seeded plan renders the import neighbor but not the unrelated dir.
+    root = _multidir_workspace(tmp_path)
+    block = build_repo_map_block(_run_meta(root), plan_md="entry point is `src/pkg/entry.py`")
+    assert "entry.py" in block
+    assert "util.py" in block  # surfaced via import hop-1
+    assert "unrelated.py" not in block  # pruned before render

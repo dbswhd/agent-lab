@@ -55,13 +55,55 @@ def iter_python_files(root: Path) -> list[Path]:
     return files
 
 
+def _seed_import_neighbors(files: list[Path], seeds: set[Path]) -> set[Path]:
+    """In-tree files imported by the seeds — cross-directory hop-1.
+
+    Resolves ``from a.b import c`` / ``import a.b`` to files by path suffix, so
+    the seed neighborhood spans packages (incl. ``src/`` layout) without parsing
+    the whole tree. Match is separator-anchored so ``io.py`` never matches
+    ``audio.py``. Relative imports are left to the same-directory sibling rule.
+    """
+    suffixes: set[str] = set()
+    for seed in seeds:
+        try:
+            tree = ast.parse(seed.read_text(encoding="utf-8"))
+        except (OSError, SyntaxError, ValueError):
+            continue
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom):
+                if node.level or not node.module:
+                    continue
+                mods = [node.module, *(f"{node.module}.{a.name}" for a in node.names)]
+            elif isinstance(node, ast.Import):
+                mods = [a.name for a in node.names]
+            else:
+                continue
+            for mod in mods:
+                rel = mod.replace(".", "/")
+                suffixes.add(f"/{rel}.py")
+                suffixes.add(f"/{rel}/__init__.py")
+    if not suffixes:
+        return set()
+    return {f for f in files if any(f.as_posix().endswith(suf) for suf in suffixes)}
+
+
 def bound_python_files(root: Path, files: list[Path], seeds: set[Path], *, max_files: int = MAX_FILES) -> list[Path]:
-    """Apply MAX_FILES cap — seed files + sibling dirs when the tree is huge."""
-    if len(files) <= max_files:
-        return files
+    """Restrict the parse set to the seed neighborhood.
+
+    With resolvable seeds, parse only the seeds, their import targets (cross-dir
+    hop-1) and same-directory siblings — not the whole tree. This keeps repo-map
+    build cost proportional to the relevant subgraph instead of repo size. With
+    no seeds, keep the global set (the frequency fallback ranking needs it).
+    Both paths cap at ``max_files``.
+    """
+    if not seeds:
+        return files if len(files) <= max_files else files[:max_files]
     seed_dirs = {s.parent for s in seeds}
-    bounded = [f for f in files if f in seeds or f.parent in seed_dirs]
-    return bounded[:max_files] if bounded else files[:max_files]
+    neighbors = _seed_import_neighbors(files, seeds)
+    bounded = [f for f in files if f in seeds or f.parent in seed_dirs or f in neighbors]
+    if not bounded:
+        bounded = files
+    return bounded[:max_files]
 
 
 class _SymbolVisitor(ast.NodeVisitor):

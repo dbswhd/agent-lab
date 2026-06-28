@@ -79,7 +79,7 @@ def claude_runtime_block(
     mcp_allowed: bool = False,
 ) -> str:
     """Explicit Claude Code CLI runtime for [고정 constraints] — matches claude_cli.invoke."""
-    from agent_lab.claude_cli import resolve_claude_roots
+    from agent_lab.claude.cli import resolve_claude_roots
 
     perms = normalize_claude_permissions(permissions)
     block = perms.get("claude") or {}

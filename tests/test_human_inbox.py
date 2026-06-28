@@ -179,7 +179,7 @@ def test_inbox_api_resolve(client: TestClient, session_folder: Path):
 
 
 def test_build_inbox_mcp_servers(session_folder: Path):
-    from agent_lab.cursor_inbox_mcp import build_inbox_mcp_servers
+    from agent_lab.cursor.inbox_mcp import build_inbox_mcp_servers
 
     servers = build_inbox_mcp_servers(session_folder)
     assert "agent-lab-inbox" in servers
@@ -192,7 +192,7 @@ def test_build_inbox_mcp_servers(session_folder: Path):
 def test_build_codex_inbox_mcp_config_args(session_folder: Path):
     import sys
 
-    from agent_lab.cursor_inbox_mcp import (
+    from agent_lab.cursor.inbox_mcp import (
         INBOX_MCP_SERVER_NAME,
         build_codex_inbox_mcp_config_args,
     )
@@ -209,7 +209,7 @@ def test_build_codex_inbox_mcp_config_args(session_folder: Path):
 def test_build_claude_inbox_mcp_overlay(session_folder: Path):
     import json
 
-    from agent_lab.cursor_inbox_mcp import (
+    from agent_lab.cursor.inbox_mcp import (
         INBOX_MCP_SERVER_NAME,
         build_claude_inbox_mcp_overlay,
     )
@@ -224,8 +224,8 @@ def test_build_claude_inbox_mcp_overlay(session_folder: Path):
 def test_resolve_claude_mcp_config_inbox_overlay(tmp_path: Path):
     import json
 
-    from agent_lab.claude_cli import _resolve_claude_mcp_config
-    from agent_lab.cursor_inbox_mcp import INBOX_MCP_SERVER_NAME
+    from agent_lab.claude.cli import _resolve_claude_mcp_config
+    from agent_lab.cursor.inbox_mcp import INBOX_MCP_SERVER_NAME
 
     sess = tmp_path / "sess"
     sess.mkdir()
@@ -254,7 +254,7 @@ def test_call_agent_reply_passes_inbox_mcp_to_claude(
 
 
 def test_execute_inbox_mcp_enabled_env(monkeypatch: pytest.MonkeyPatch):
-    from agent_lab.cursor_inbox_mcp import execute_inbox_mcp_enabled
+    from agent_lab.cursor.inbox_mcp import execute_inbox_mcp_enabled
 
     monkeypatch.delenv("AGENT_LAB_EXECUTE_INBOX", raising=False)
     assert execute_inbox_mcp_enabled() is True
@@ -265,7 +265,7 @@ def test_execute_inbox_mcp_enabled_env(monkeypatch: pytest.MonkeyPatch):
 def test_mount_inbox_mcp_plan_lane_when_execute_off(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from agent_lab.cursor_inbox_mcp import mount_inbox_mcp_when_requested
+    from agent_lab.cursor.inbox_mcp import mount_inbox_mcp_when_requested
 
     monkeypatch.setenv("AGENT_LAB_EXECUTE_INBOX", "0")
     monkeypatch.setenv("AGENT_LAB_PLAN_INBOX", "1")
@@ -284,7 +284,7 @@ def test_codex_invoke_uses_plan_inbox_when_execute_off(
     out_path = tmp_path / "codex-out.txt"
     captured: dict[str, object] = {}
 
-    monkeypatch.setattr("agent_lab.codex_cli.tempfile.mktemp", lambda **_k: str(out_path))
+    monkeypatch.setattr("agent_lab.codex.cli.tempfile.mktemp", lambda **_k: str(out_path))
 
     def _fake_build_cmd(**kwargs):
         captured["config_overrides"] = kwargs.get("config_overrides")
@@ -292,13 +292,13 @@ def test_codex_invoke_uses_plan_inbox_when_execute_off(
 
     def _fake_run_codex(_cmd, _prompt, **_kwargs):
         out_path.write_text("done", encoding="utf-8")
-        from agent_lab.codex_cli import CodexRunOutcome
+        from agent_lab.codex.cli import CodexRunOutcome
 
         return CodexRunOutcome()
 
-    monkeypatch.setattr("agent_lab.codex_cli._build_cmd", _fake_build_cmd)
-    monkeypatch.setattr("agent_lab.codex_cli._run_codex", _fake_run_codex)
-    monkeypatch.setattr("agent_lab.codex_cli.resolve_codex_bin", lambda: "/bin/codex")
+    monkeypatch.setattr("agent_lab.codex.cli._build_cmd", _fake_build_cmd)
+    monkeypatch.setattr("agent_lab.codex.cli._run_codex", _fake_run_codex)
+    monkeypatch.setattr("agent_lab.codex.cli.resolve_codex_bin", lambda: "/bin/codex")
     monkeypatch.setattr(
         "agent_lab.runtime.adapters.codex.can_route_codex_proxy",
         lambda **_k: False,
@@ -308,7 +308,7 @@ def test_codex_invoke_uses_plan_inbox_when_execute_off(
         lambda *_a, **_k: __import__("contextlib").nullcontext(),
     )
 
-    from agent_lab.codex_cli import invoke
+    from agent_lab.codex.cli import invoke
 
     text = invoke("sys", "user", session_folder=tmp_path, inbox_mcp=True, room_turn=True)
     assert text == "done"

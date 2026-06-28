@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from agent_lab.bridge_stdout_parser import parse_interaction_update, parse_stream_update
+from agent_lab.agent.stream_parser import parse_interaction_update, parse_stream_update
 
 
 def test_text_delta_emits_token_chunks():
@@ -64,7 +64,7 @@ def test_cursor_assistant_message_step_streams_text():
         type="assistantMessage",
         message=SimpleNamespace(text="Cursor says hi"),
     )
-    from agent_lab.bridge_stdout_parser import parse_conversation_step
+    from agent_lab.agent.stream_parser import parse_conversation_step
 
     events = parse_conversation_step(step)
     assert events
@@ -76,7 +76,7 @@ def test_codex_item_updated_streams_partial_message():
         "type": "item.updated",
         "item": {"type": "agent_message", "text": "Partial codex"},
     }
-    from agent_lab.bridge_stdout_parser import parse_codex_json_event
+    from agent_lab.agent.stream_parser import parse_codex_json_event
 
     events = parse_codex_json_event(event)
     assert events
@@ -108,7 +108,7 @@ def test_codex_command_started_emits_tool_start():
         "type": "item.started",
         "item": {"type": "command_execution", "command": "npm test"},
     }
-    from agent_lab.bridge_stdout_parser import parse_codex_json_event
+    from agent_lab.agent.stream_parser import parse_codex_json_event
 
     events = parse_codex_json_event(event)
     assert events[0][0] == "tool_start"
@@ -120,7 +120,7 @@ def test_claude_stream_event_text_delta():
         "type": "stream_event",
         "event": {"delta": {"type": "text_delta", "text": "Hi"}},
     }
-    from agent_lab.bridge_stdout_parser import parse_claude_json_event
+    from agent_lab.agent.stream_parser import parse_claude_json_event
 
     assert parse_claude_json_event(event) == [("text", {"text": "Hi"})]
 
@@ -134,7 +134,7 @@ def test_claude_stream_event_tool_use():
             ],
         },
     }
-    from agent_lab.bridge_stdout_parser import parse_claude_json_event
+    from agent_lab.agent.stream_parser import parse_claude_json_event
 
     events = parse_claude_json_event(event)
     assert events[0][0] == "tool_start"
@@ -150,7 +150,7 @@ def test_claude_assistant_text_block_emits_live_tokens():
             ],
         },
     }
-    from agent_lab.bridge_stdout_parser import parse_claude_json_event
+    from agent_lab.agent.stream_parser import parse_claude_json_event
 
     events = parse_claude_json_event(event)
     assert events
@@ -163,7 +163,7 @@ def test_codex_agent_message_emits_text_chunks():
         "type": "item.completed",
         "item": {"type": "agent_message", "text": "Hello from Codex"},
     }
-    from agent_lab.bridge_stdout_parser import parse_codex_json_event
+    from agent_lab.agent.stream_parser import parse_codex_json_event
 
     events = parse_codex_json_event(event)
     assert events

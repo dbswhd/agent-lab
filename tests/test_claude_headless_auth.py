@@ -14,11 +14,11 @@ def test_agent_preflight_claude_runs_headless_probe_by_default(monkeypatch) -> N
     probes: list[dict[str, object]] = []
 
     monkeypatch.setattr(
-        "agent_lab.claude_cli.resolve_claude_bin",
+        "agent_lab.claude.cli.resolve_claude_bin",
         lambda: "/tmp/claude",
     )
     monkeypatch.setattr(
-        "agent_lab.claude_cli.claude_auth_logged_in",
+        "agent_lab.claude.cli.claude_auth_logged_in",
         lambda **kw: (True, None),
     )
 
@@ -26,7 +26,7 @@ def test_agent_preflight_claude_runs_headless_probe_by_default(monkeypatch) -> N
         probes.append(kw)
         return True, None
 
-    monkeypatch.setattr("agent_lab.claude_cli.probe_auth", _probe)
+    monkeypatch.setattr("agent_lab.claude.cli.probe_auth", _probe)
     monkeypatch.setattr(
         "agent_lab.agent.preflight._probe_cli_version",
         lambda *_args, **_kwargs: (True, "2.1.50"),
@@ -42,15 +42,15 @@ def test_agent_preflight_claude_runs_headless_probe_by_default(monkeypatch) -> N
 def test_agent_preflight_claude_headless_probe_failure(monkeypatch) -> None:
     monkeypatch.delenv("AGENT_LAB_CLAUDE_SKIP_HEADLESS_PROBE", raising=False)
     monkeypatch.setattr(
-        "agent_lab.claude_cli.resolve_claude_bin",
+        "agent_lab.claude.cli.resolve_claude_bin",
         lambda: "/tmp/claude",
     )
     monkeypatch.setattr(
-        "agent_lab.claude_cli.claude_auth_logged_in",
+        "agent_lab.claude.cli.claude_auth_logged_in",
         lambda **kw: (True, None),
     )
     monkeypatch.setattr(
-        "agent_lab.claude_cli.probe_auth",
+        "agent_lab.claude.cli.probe_auth",
         lambda **kw: (False, "401 Invalid authentication credentials"),
     )
     monkeypatch.setattr(
@@ -66,11 +66,11 @@ def test_agent_preflight_claude_headless_probe_failure(monkeypatch) -> None:
 
 
 def test_ensure_claude_headless_ready_raises_on_probe_failure(monkeypatch) -> None:
-    from agent_lab.claude_cli import ensure_claude_headless_ready
+    from agent_lab.claude.cli import ensure_claude_headless_ready
 
     monkeypatch.delenv("AGENT_LAB_CLAUDE_SKIP_HEADLESS_PROBE", raising=False)
     monkeypatch.setattr(
-        "agent_lab.claude_cli.probe_auth",
+        "agent_lab.claude.cli.probe_auth",
         lambda **kw: (False, "401 Invalid authentication credentials"),
     )
 

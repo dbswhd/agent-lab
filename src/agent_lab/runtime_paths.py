@@ -95,7 +95,8 @@ def _set_cursor_bridge_bin() -> None:
 
 
 def _set_cli_bins() -> None:
-    from agent_lab import claude_cli, codex_cli
+    from agent_lab.claude import cli as claude_cli
+    from agent_lab.codex import cli as codex_cli
 
     if not (os.getenv("CODEX_BIN") or "").strip():
         codex = codex_cli.resolve_codex_bin()

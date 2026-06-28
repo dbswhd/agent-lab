@@ -1,4 +1,4 @@
-.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test test-fast test-integration test-bridge test-duration-report lint typecheck typecheck-room-ratchet structure-metrics structure-metrics-check audit-room-imports audit-plan-imports audit-session-imports audit-kimi-imports audit-mission-imports audit-agent-imports audit-quant-imports audit-wisdom-imports audit-inbox-imports audit-context-imports audit-run-imports audit-workspace-imports audit-research-imports typecheck-plan-ratchet typecheck-session-ratchet typecheck-kimi-ratchet typecheck-mission-ratchet typecheck-agent-ratchet typecheck-quant-ratchet typecheck-wisdom-ratchet typecheck-inbox-ratchet typecheck-context-ratchet typecheck-run-ratchet typecheck-workspace-ratchet typecheck-research-ratchet ci ci-full check-worktrees smoke smoke-e2e smoke-web-ui smoke-tauri-ui validate-quant verify-quant-workspace verify-trading-v1 verify-mcp-contract build-research-cards offline-lane thin-runtime-status verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate dogfood-feedback-mock feedback-report
+.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test test-fast test-integration test-bridge test-duration-report lint typecheck typecheck-room-ratchet structure-metrics structure-metrics-check audit-room-imports audit-plan-imports audit-session-imports audit-kimi-imports audit-mission-imports audit-agent-imports audit-quant-imports audit-wisdom-imports audit-inbox-imports audit-context-imports audit-run-imports audit-workspace-imports audit-research-imports audit-vendor-imports typecheck-plan-ratchet typecheck-session-ratchet typecheck-kimi-ratchet typecheck-mission-ratchet typecheck-agent-ratchet typecheck-quant-ratchet typecheck-wisdom-ratchet typecheck-inbox-ratchet typecheck-context-ratchet typecheck-run-ratchet typecheck-workspace-ratchet typecheck-research-ratchet typecheck-cursor-ratchet typecheck-codex-ratchet typecheck-claude-ratchet typecheck-local-ratchet ci ci-full check-worktrees smoke smoke-e2e smoke-web-ui smoke-tauri-ui validate-quant verify-quant-workspace verify-trading-v1 verify-mcp-contract build-research-cards offline-lane thin-runtime-status verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate dogfood-feedback-mock feedback-report
 
 install:
 	python3 -m venv .venv
@@ -150,6 +150,18 @@ typecheck-workspace-ratchet:
 typecheck-research-ratchet:
 	.venv/bin/python scripts/mypy_research_ratchet.py --check
 
+typecheck-cursor-ratchet:
+	.venv/bin/python scripts/mypy_vendor_ratchet.py --package cursor --check
+
+typecheck-codex-ratchet:
+	.venv/bin/python scripts/mypy_vendor_ratchet.py --package codex --check
+
+typecheck-claude-ratchet:
+	.venv/bin/python scripts/mypy_vendor_ratchet.py --package claude --check
+
+typecheck-local-ratchet:
+	.venv/bin/python scripts/mypy_vendor_ratchet.py --package local --check
+
 structure-metrics:
 	.venv/bin/python scripts/structure_metrics.py
 
@@ -195,10 +207,13 @@ audit-workspace-imports:
 audit-research-imports:
 	.venv/bin/python scripts/audit_research_legacy_imports.py
 
-ci: lint format-check typecheck-ratchet typecheck-room-ratchet typecheck-plan-ratchet typecheck-session-ratchet typecheck-kimi-ratchet typecheck-mission-ratchet typecheck-agent-ratchet typecheck-quant-ratchet typecheck-wisdom-ratchet typecheck-inbox-ratchet typecheck-context-ratchet typecheck-run-ratchet typecheck-workspace-ratchet typecheck-research-ratchet test-fast smoke
+audit-vendor-imports:
+	.venv/bin/python scripts/audit_vendor_legacy_imports.py
+
+ci: lint format-check typecheck-ratchet typecheck-room-ratchet typecheck-plan-ratchet typecheck-session-ratchet typecheck-kimi-ratchet typecheck-mission-ratchet typecheck-agent-ratchet typecheck-quant-ratchet typecheck-wisdom-ratchet typecheck-inbox-ratchet typecheck-context-ratchet typecheck-run-ratchet typecheck-workspace-ratchet typecheck-research-ratchet typecheck-cursor-ratchet typecheck-codex-ratchet typecheck-claude-ratchet typecheck-local-ratchet test-fast smoke
 
 ci-full: check-worktrees
-	.venv/bin/python scripts/run_verification_lane.py --lane ci_full -- sh -c 'make lint format-check typecheck-ratchet typecheck-room-ratchet typecheck-plan-ratchet typecheck-session-ratchet typecheck-kimi-ratchet typecheck-mission-ratchet typecheck-agent-ratchet typecheck-quant-ratchet typecheck-wisdom-ratchet typecheck-inbox-ratchet typecheck-context-ratchet typecheck-run-ratchet typecheck-workspace-ratchet typecheck-research-ratchet test-fast test-integration test-bridge smoke score-regression-fixtures'
+	.venv/bin/python scripts/run_verification_lane.py --lane ci_full -- sh -c 'make lint format-check typecheck-ratchet typecheck-room-ratchet typecheck-plan-ratchet typecheck-session-ratchet typecheck-kimi-ratchet typecheck-mission-ratchet typecheck-agent-ratchet typecheck-quant-ratchet typecheck-wisdom-ratchet typecheck-inbox-ratchet typecheck-context-ratchet typecheck-run-ratchet typecheck-workspace-ratchet typecheck-research-ratchet typecheck-cursor-ratchet typecheck-codex-ratchet typecheck-claude-ratchet typecheck-local-ratchet test-fast test-integration test-bridge smoke score-regression-fixtures'
 
 init-project-memory:
 	@test -n "$(WORKSPACE)" || WORKSPACE=.; \

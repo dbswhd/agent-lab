@@ -130,7 +130,7 @@ def test_m6_taskbar_no_legacy_room_task_bar_classes():
 
 
 def test_claude_bridge_wired_in_room():
-    room_py = _read("src", "agent_lab", "room_agent_invoke.py")
+    room_py = _read("src", "agent_lab", "room", "agent_invoke.py")
     # Phase 2: bridge/activity wired for every agent (incl. kimi/local substitutes),
     # not gated to the static cloud trio.
     assert "on_bridge_event=_bridge_event" in room_py

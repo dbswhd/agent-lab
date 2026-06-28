@@ -42,11 +42,11 @@ def discuss_inbox_mcp_lane_enabled(run_meta: dict[str, Any] | None) -> bool:
     from agent_lab.plan.workflow import plan_workflow_wants_inbox_mcp
 
     if run_meta and plan_workflow_wants_inbox_mcp(run_meta):
-        from agent_lab.cursor_inbox_mcp import plan_inbox_mcp_enabled
+        from agent_lab.cursor.inbox_mcp import plan_inbox_mcp_enabled
 
         return plan_inbox_mcp_enabled()
     if run_meta and mcp_first_inbox_policy_active():
-        from agent_lab.cursor_inbox_mcp import execute_inbox_mcp_enabled
+        from agent_lab.cursor.inbox_mcp import execute_inbox_mcp_enabled
 
         return execute_inbox_mcp_enabled()
     return False

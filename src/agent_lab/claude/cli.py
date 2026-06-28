@@ -36,17 +36,17 @@ def resolve_claude_bin() -> str | None:
 
     home = Path.home()
     nvm_glob = str(home / ".nvm/versions/node/*/bin/claude")
-    for candidate in sorted(glob.glob(nvm_glob), reverse=True):
-        if Path(candidate).is_file():
-            return candidate
+    for bin_path in sorted(glob.glob(nvm_glob), reverse=True):
+        if Path(bin_path).is_file():
+            return bin_path
 
-    for candidate in (
+    for path_candidate in (
         home / ".local/bin/claude",
         Path("/opt/homebrew/bin/claude"),
         Path("/usr/local/bin/claude"),
     ):
-        if candidate.is_file():
-            return str(candidate)
+        if path_candidate.is_file():
+            return str(path_candidate)
 
     return None
 
@@ -409,7 +409,7 @@ def _resolve_claude_mcp_config(
     """Merge inbox MCP + execute-plugin overlays for Claude ``--mcp-config``."""
     paths: list[Path] = []
     if inbox_mcp and session_folder is not None:
-        from agent_lab.cursor_inbox_mcp import (
+        from agent_lab.cursor.inbox_mcp import (
             build_claude_inbox_mcp_overlay,
             inbox_mcp_build_kwargs,
         )
@@ -430,6 +430,7 @@ def _resolve_claude_mcp_config(
         return None
     if len(paths) == 1:
         return str(paths[0].resolve())
+    assert session_folder is not None
     servers: dict[str, Any] = {}
     for path in paths:
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -533,11 +534,12 @@ def invoke(
         resolved_model = (
             (model or "").strip()
             or os.getenv("CLAUDE_SCRIBE_MODEL")
-            or os.getenv("CLAUDE_MODEL", DEFAULT_CLAUDE_MODEL)
+            or os.getenv("CLAUDE_MODEL")
+            or DEFAULT_CLAUDE_MODEL
         )
     else:
-        resolved_model = (model or "").strip() or os.getenv("CLAUDE_MODEL", DEFAULT_CLAUDE_MODEL)
-    cmd.extend(["--model", resolved_model])
+        resolved_model = (model or "").strip() or os.getenv("CLAUDE_MODEL") or DEFAULT_CLAUDE_MODEL
+    cmd.extend(["--model", str(resolved_model)])
 
     effort = os.getenv("CLAUDE_SCRIBE_REASONING_EFFORT") if scribe else None
     if not effort:
@@ -557,6 +559,7 @@ def invoke(
 
     def _run_once(api_key: str | None) -> str:
         if use_stream:
+            assert on_bridge_event is not None
             return _run_claude_stream(
                 cmd,
                 on_bridge_event=on_bridge_event,
@@ -660,7 +663,10 @@ def _emit_claude_usage(
     """
     if on_bridge_event is None:
         return
-    usage = event.get("usage") if isinstance(event.get("usage"), Mapping) else {}
+    usage: dict[str, Any] = {}
+    raw_usage = event.get("usage")
+    if isinstance(raw_usage, Mapping):
+        usage = dict(raw_usage)
     cost = event.get("total_cost_usd")
     if not usage and cost is None:
         return
@@ -692,7 +698,7 @@ def _run_claude_stream(
     import select
     import time
 
-    from agent_lab.bridge_stdout_parser import parse_claude_json_event
+    from agent_lab.agent.stream_parser import parse_claude_json_event
     from agent_lab.run.control import (
         RoomRunCancelled,
         is_cancelled,
@@ -788,8 +794,10 @@ def _run_claude_stream(
                 continue
             evt_type = str(event.get("type") or "")
             if evt_type == "stream_event":
-                inner = event.get("event") if isinstance(event.get("event"), Mapping) else {}
-                delta = inner.get("delta") if isinstance(inner.get("delta"), Mapping) else {}
+                inner_raw = event.get("event")
+                inner: dict[str, Any] = inner_raw if isinstance(inner_raw, dict) else {}
+                delta_raw = inner.get("delta")
+                delta: dict[str, Any] = delta_raw if isinstance(delta_raw, dict) else {}
                 if str(delta.get("type") or "") == "text_delta" and str(delta.get("text") or ""):
                     seen_text_delta = True
                     response_started = True

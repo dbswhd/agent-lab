@@ -7,18 +7,18 @@ from pathlib import Path
 import pytest
 
 
-from agent_lab.codex_cli import codex_event_label
+from agent_lab.codex.cli import codex_event_label
 
 
 def test_sandbox_mode_room_defaults_read_only():
-    from agent_lab.codex_cli import _sandbox_mode
+    from agent_lab.codex.cli import _sandbox_mode
 
     assert _sandbox_mode(allow_tools=True, room_turn=True) == "read-only"
     assert _sandbox_mode(allow_tools=True, room_turn=False) == "workspace-write"
 
 
 def test_room_timeout_default(monkeypatch):
-    from agent_lab.codex_cli import (
+    from agent_lab.codex.cli import (
         _idle_timeout_sec,
         _room_max_commands,
         _timeout_sec,
@@ -65,7 +65,7 @@ def test_peer_decision_in_bundle():
 
 
 def test_extract_agent_message_from_stream_event():
-    from agent_lab.codex_cli import _extract_agent_message, _process_codex_event, CodexRunOutcome
+    from agent_lab.codex.cli import _extract_agent_message, _process_codex_event, CodexRunOutcome
 
     item = {"type": "agent_message", "text": "  hello room  "}
     assert _extract_agent_message(item) == "hello room"
@@ -153,8 +153,8 @@ def test_codex_mcp_tool_call_event_labels():
 
 
 def test_build_cmd_includes_inbox_mcp_overrides(tmp_path: Path):
-    from agent_lab.codex_cli import _build_cmd
-    from agent_lab.cursor_inbox_mcp import build_codex_inbox_mcp_config_args
+    from agent_lab.codex.cli import _build_cmd
+    from agent_lab.cursor.inbox_mcp import build_codex_inbox_mcp_config_args
 
     session_folder = tmp_path / "sess"
     session_folder.mkdir()
@@ -173,7 +173,7 @@ def test_build_cmd_includes_inbox_mcp_overrides(tmp_path: Path):
 
 
 def test_run_codex_idle_timeout(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    from agent_lab import codex_cli
+    from agent_lab.codex import cli as codex_cli
 
     hang = tmp_path / "hang.sh"
     hang.write_text("#!/bin/sh\nsleep 120\n", encoding="utf-8")
@@ -200,7 +200,7 @@ def test_run_codex_idle_timeout(monkeypatch: pytest.MonkeyPatch, tmp_path: Path)
 
 
 def test_run_codex_drains_stderr_while_waiting(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    from agent_lab import codex_cli
+    from agent_lab.codex import cli as codex_cli
 
     script = tmp_path / "stderr_flood.sh"
     script.write_text(

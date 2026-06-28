@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab import codex_oauth as co
+from agent_lab.codex import oauth as co
 from agent_lab.credential_store import get_credential_chain, load_credentials, save_credentials
 
 

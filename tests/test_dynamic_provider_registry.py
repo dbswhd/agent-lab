@@ -160,30 +160,32 @@ def test_oauth_only_providers_derived_from_registry() -> None:
 
 def test_cursor_oauth_ready_without_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
     from agent_lab import credential_store
-    from agent_lab.agents import cursor_agent
+    from agent_lab.cursor import provider as cursor_provider
 
     # isolate: no api key (env or stored) so only OAuth decides readiness
     monkeypatch.delenv("CURSOR_API_KEY", raising=False)
     monkeypatch.setattr(credential_store, "provider_has_credentials", lambda p: False)
-    monkeypatch.setattr(cursor_agent, "_sdk_installed", lambda: True)
-    monkeypatch.setattr(cursor_agent, "_cursor_oauth_available", lambda: True)
-    assert cursor_agent.is_available() is True  # OAuth session, no key needed
+    monkeypatch.setattr(cursor_provider, "_sdk_installed", lambda: True)
+    monkeypatch.setattr(cursor_provider, "_cursor_oauth_available", lambda: True)
+    assert cursor_provider.is_available() is True  # OAuth session, no key needed
 
-    monkeypatch.setattr(cursor_agent, "_cursor_oauth_available", lambda: False)
-    assert cursor_agent.is_available() is False  # neither key nor OAuth
+    monkeypatch.setattr(cursor_provider, "_cursor_oauth_available", lambda: False)
+    assert cursor_provider.is_available() is False  # neither key nor OAuth
 
 
 def test_cursor_build_options_allows_oauth_no_key(monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab.agents import cursor_agent
+    from agent_lab.cursor import provider as cursor_provider
 
     monkeypatch.delenv("CURSOR_API_KEY", raising=False)
-    monkeypatch.setattr(cursor_agent, "_cursor_oauth_available", lambda: True)
+    monkeypatch.setattr(cursor_provider, "_cursor_oauth_available", lambda: True)
     # no key + OAuth available -> must not raise (SDK falls back to OAuth session)
-    cwd, opts = cursor_agent._build_agent_options(permissions=None, cwd="/tmp", session_folder=None, inbox_mcp=False)
+    cwd, opts = cursor_provider._build_agent_options(
+        permissions=None, cwd="/tmp", session_folder=None, inbox_mcp=False
+    )
     assert getattr(opts, "api_key", "sentinel") in (None, "")
 
-    monkeypatch.setattr(cursor_agent, "_cursor_oauth_available", lambda: False)
+    monkeypatch.setattr(cursor_provider, "_cursor_oauth_available", lambda: False)
     import pytest as _pytest
 
     with _pytest.raises(RuntimeError):
-        cursor_agent._build_agent_options(permissions=None, cwd="/tmp", session_folder=None, inbox_mcp=False)
+        cursor_provider._build_agent_options(permissions=None, cwd="/tmp", session_folder=None, inbox_mcp=False)

@@ -1,14 +1,18 @@
 {
   "version": 1,
-  "agent_lab_root_py_files": 116,
+  "agent_lab_root_py_files": 107,
   "agent_lab_subpackages": [
     "agent",
     "agents",
+    "claude",
+    "codex",
     "context",
+    "cursor",
     "extensions",
     "gateway",
     "inbox",
     "kimi",
+    "local",
     "mission",
     "plan",
     "quant",
@@ -35,11 +39,14 @@
     "workspace_": 0,
     "research_": 0,
     "hook_": 0,
-    "quant_": 0
+    "quant_": 0,
+    "cursor_": 0,
+    "codex_": 0,
+    "claude_": 0
   },
   "tracked_pycache_files": 0,
-  "makefile_lines": 420,
-  "makefile_targets": 100,
+  "makefile_lines": 435,
+  "makefile_targets": 105,
   "large_tsx_files": [
     {
       "path": "web/src/components/RoomChat.tsx",

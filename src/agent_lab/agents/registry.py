@@ -6,24 +6,29 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Literal
 
-from agent_lab.agents import claude_agent, codex_agent, cursor_agent
-from agent_lab.kimi import provider as kimi_provider, work_provider as kimi_work_provider
-from agent_lab import local_provider
+from agent_lab.agents.plugins import (
+    AGENT_IDS,
+    AgentId,
+    call_plugin_respond,
+    get_plugin,
+    label,
+    plugins,
+)
+from agent_lab.kimi import work_provider as kimi_work_provider
 from agent_lab.structured_envelope_adapter import merge_structured_reply
 
-AgentId = Literal["cursor", "codex", "claude", "kimi", "kimi_work", "local"]
-
-# Default room agents (OFF-parity): the dynamic roster may add kimi/local at runtime.
-AGENT_IDS: tuple[AgentId, ...] = ("cursor", "codex", "claude")
-
-_LABELS: dict[AgentId, str] = {
-    "cursor": "Cursor",
-    "codex": "Codex",
-    "claude": "Claude",
-    "kimi": "KIMI",
-    "kimi_work": "Kimi Work",
-    "local": "Local",
-}
+__all__ = [
+    "AGENT_IDS",
+    "AgentCallError",
+    "AgentId",
+    "AgentReply",
+    "available_agents",
+    "call_agent",
+    "call_agent_reply",
+    "label",
+    "model_label",
+    "reset_mock_act_script_cursors",
+]
 
 
 @dataclass(frozen=True)
@@ -42,28 +47,8 @@ class AgentCallError(RuntimeError):
         super().__init__(f"[{agent}:{kind}] {message}")
 
 
-def label(agent: AgentId) -> str:
-    return _LABELS[agent]
-
-
 def model_label(agent: AgentId) -> str:
-    if agent == "codex":
-        from agent_lab import codex_cli
-
-        return codex_cli.model_label()
-    if agent == "claude":
-        from agent_lab import claude_cli
-
-        return claude_cli.model_label()
-    if agent == "cursor":
-        return cursor_agent.model_label()
-    if agent == "local":
-        return local_provider.model_label()
-    if agent == "kimi":
-        return kimi_provider.model_label()
-    if agent == "kimi_work":
-        return kimi_work_provider.model_label()
-    return ""
+    return get_plugin(agent).model_label()
 
 
 def available_agents() -> list[AgentId]:
@@ -80,23 +65,7 @@ def available_agents() -> list[AgentId]:
 
 
 def _is_ready(agent: AgentId) -> bool:
-    if agent == "codex":
-        from agent_lab import codex_cli
-
-        return codex_cli.is_available()
-    if agent == "claude":
-        from agent_lab import claude_cli
-
-        return claude_cli.is_available()
-    if agent == "cursor":
-        return cursor_agent.is_available()
-    if agent == "local":
-        return local_provider.is_available()
-    if agent == "kimi":
-        return kimi_provider.is_available()
-    if agent == "kimi_work":
-        return kimi_work_provider.is_available()
-    return False
+    return get_plugin(agent).is_available()
 
 
 def _mock_agents_enabled() -> bool:
@@ -235,6 +204,9 @@ def call_agent_reply(
     request_structured_envelope: bool = False,
     inbox_mcp: bool = False,
 ) -> AgentReply:
+    if agent not in plugins():
+        raise AgentCallError(agent, "unknown_agent", f"unknown agent: {agent}")
+
     if _mock_agents_enabled():
         if agent == "kimi_work" and session_folder is not None:
             if not _is_ready(agent):
@@ -251,7 +223,7 @@ def call_agent_reply(
             )
         else:
             if on_activity:
-                on_activity(f"[tool · read] src/agent_lab/agents/{agent}_agent.py")
+                on_activity(f"[tool · read] src/agent_lab/{agent}/provider.py")
                 on_activity("[tool · grep] mock streaming")
             text = _mock_agent_response(agent, user, scribe=scribe)
             if on_bridge_event:
@@ -263,71 +235,18 @@ def call_agent_reply(
         raise RuntimeError(f"{label(agent)} is not configured")
     else:
         try:
-            if agent == "cursor":
-                text = cursor_agent.respond(
-                    system,
-                    user,
-                    permissions=permissions,
-                    on_activity=on_activity,
-                    on_bridge_event=on_bridge_event,
-                    session_folder=session_folder,
-                    request_structured_envelope=request_structured_envelope,
-                    inbox_mcp=inbox_mcp,
-                )
-            elif agent == "codex":
-                text = codex_agent.respond(
-                    system,
-                    user,
-                    permissions=permissions,
-                    on_activity=on_activity,
-                    on_bridge_event=on_bridge_event,
-                    session_folder=session_folder,
-                    request_structured_envelope=request_structured_envelope,
-                    inbox_mcp=inbox_mcp,
-                )
-            elif agent == "claude":
-                text = claude_agent.respond(
-                    system,
-                    user,
-                    permissions=permissions,
-                    scribe=scribe,
-                    on_activity=on_activity,
-                    on_bridge_event=on_bridge_event,
-                    session_folder=session_folder,
-                    request_structured_envelope=request_structured_envelope,
-                    inbox_mcp=inbox_mcp,
-                )
-            elif agent == "local":
-                text = local_provider.respond(
-                    system,
-                    user,
-                    on_activity=on_activity,
-                    on_bridge_event=on_bridge_event,
-                    session_folder=session_folder,
-                    request_structured_envelope=request_structured_envelope,
-                )
-            elif agent == "kimi":
-                text = kimi_provider.respond(
-                    system,
-                    user,
-                    on_activity=on_activity,
-                    on_bridge_event=on_bridge_event,
-                    session_folder=session_folder,
-                    request_structured_envelope=request_structured_envelope,
-                )
-            elif agent == "kimi_work":
-                text = kimi_work_provider.respond(
-                    system,
-                    user,
-                    permissions=permissions,
-                    on_activity=on_activity,
-                    on_bridge_event=on_bridge_event,
-                    session_folder=session_folder,
-                    request_structured_envelope=request_structured_envelope,
-                    inbox_mcp=inbox_mcp,
-                )
-            else:
-                raise AgentCallError(agent, "unknown_agent", f"unknown agent: {agent}")
+            text = call_plugin_respond(
+                agent,
+                system,
+                user,
+                permissions=permissions,
+                scribe=scribe,
+                on_activity=on_activity,
+                on_bridge_event=on_bridge_event,
+                session_folder=session_folder,
+                request_structured_envelope=request_structured_envelope,
+                inbox_mcp=inbox_mcp,
+            )
         except AgentCallError:
             raise
         except Exception as exc:

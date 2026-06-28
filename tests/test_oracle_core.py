@@ -155,7 +155,7 @@ def test_invoke_oracle_live_uses_isolated_invoke(monkeypatch: pytest.MonkeyPatch
         captured["kwargs"] = kwargs
         return "VERDICT: pass\nREASON: ok\nEVIDENCE:\n- checked"
 
-    monkeypatch.setattr("agent_lab.claude_cli.invoke", _fake_invoke)
+    monkeypatch.setattr("agent_lab.claude.cli.invoke", _fake_invoke)
     raw, source = oracle_core.invoke_oracle("execute", "criterion block")
     assert source == "live"
     assert "Execute Oracle" in captured["system"]

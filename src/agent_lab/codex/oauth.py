@@ -40,13 +40,13 @@ def profile_auth_path(slot: CodexOAuthSlot) -> Path:
 
 
 def _resolve_codex_bin() -> str | None:
-    from agent_lab.codex_cli import resolve_codex_bin
+    from agent_lab.codex.cli import resolve_codex_bin
 
     return resolve_codex_bin()
 
 
 def _codex_env() -> dict[str, str]:
-    from agent_lab.codex_cli import _codex_env
+    from agent_lab.codex.cli import _codex_env
 
     return _codex_env(api_key=None)
 

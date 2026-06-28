@@ -17,13 +17,13 @@ def bridge_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 def test_register_and_audit_round_trip(bridge_home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab.bridge_registry import audit_bridge_processes, load_records, register_bridge
+    from agent_lab.cursor.registry import audit_bridge_processes, load_records, register_bridge
 
     monkeypatch.setattr(
-        "agent_lab.bridge_registry.list_live_bridge_processes",
+        "agent_lab.cursor.registry.list_live_bridge_processes",
         lambda: [{"pid": 4242, "command": "cursor-sdk-bridge", "alive": True}],
     )
-    monkeypatch.setattr("agent_lab.bridge_registry._pid_alive", lambda pid: pid == 4242)
+    monkeypatch.setattr("agent_lab.cursor.registry._pid_alive", lambda pid: pid == 4242)
 
     register_bridge("/tmp/ws", pid=4242, mode="auto")
     audit = audit_bridge_processes(stale_after_hours=9999)
@@ -33,7 +33,7 @@ def test_register_and_audit_round_trip(bridge_home: Path, monkeypatch: pytest.Mo
 
 
 def test_cleanup_prunes_stale_registry_rows(bridge_home: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab import bridge_registry as br
+    from agent_lab.cursor import registry as br
 
     br.save_records(
         [

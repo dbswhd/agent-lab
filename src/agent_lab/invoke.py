@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from contextvars import ContextVar, Token
 
-from agent_lab import codex_cli
+from agent_lab.codex import cli as codex_cli
 
 _provider_ctx: ContextVar[str | None] = ContextVar("agent_lab_provider", default=None)
 

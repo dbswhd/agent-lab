@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from agent_lab.cursor_inbox_mcp import discuss_inbox_mcp_enabled
+from agent_lab.cursor.inbox_mcp import discuss_inbox_mcp_enabled
 from agent_lab.inbox.harvest import (
     harvest_discuss_questions,
     orchestrator_inbox_harvest_enabled,

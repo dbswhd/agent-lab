@@ -73,7 +73,7 @@ def persist_tool_bins_from_env() -> list[str]:
 
 def sync_codex_oauth_on_startup() -> dict[str, Any]:
     """Apply captured Codex OAuth primary to live session; drop stale fallback profile."""
-    from agent_lab.codex_oauth import (
+    from agent_lab.codex.oauth import (
         _profile_auth_fingerprint,
         apply_profile,
         clear_profile,
@@ -109,7 +109,7 @@ def sync_codex_oauth_on_startup() -> dict[str, Any]:
 
 def warm_claude_auth_cache() -> dict[str, Any]:
     """Light `claude auth status` — no headless -p probe at startup."""
-    from agent_lab import claude_cli
+    from agent_lab.claude import cli as claude_cli
 
     claude_cli.invalidate_claude_auth_cache()
     ok, detail = claude_cli.claude_auth_logged_in(use_cache=False)

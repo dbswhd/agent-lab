@@ -345,7 +345,7 @@ def run_verified_oracle(
         raw = oracle_call(f"{system}\n\n{prompt}")
         source = "inject"
     else:
-        from agent_lab import claude_cli
+        from agent_lab.claude import cli as claude_cli
         from agent_lab.sidecar_accounting import tracked_agent_call
 
         def _invoke_oracle(on_bridge: Any) -> str:

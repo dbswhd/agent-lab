@@ -45,7 +45,7 @@ def test_adversarial_review_live_env_uses_invoke(monkeypatch):
         calls.append(role)
         return "LGTM"
 
-    monkeypatch.setattr("agent_lab.claude_cli.invoke", _fake_invoke)
+    monkeypatch.setattr("agent_lab.claude.cli.invoke", _fake_invoke)
     out = adversarial_review(
         action_what="change",
         action_verify="pytest",

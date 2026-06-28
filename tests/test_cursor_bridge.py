@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent_lab.cursor_bridge import (
+from agent_lab.cursor.bridge import (
     CursorBridgeUnavailable,
     cursor_bridge_failure_payload,
     cursor_sdk_client,
@@ -46,8 +46,8 @@ def test_external_bridge_failure_does_not_auto_launch(monkeypatch, tmp_path):
     def fake_launch(_workspace: str) -> object:
         raise AssertionError("external bridge failure must not auto-launch")
 
-    monkeypatch.setattr("agent_lab.cursor_bridge._external_client", fake_external_client)
-    monkeypatch.setattr("agent_lab.cursor_bridge._get_or_launch", fake_launch)
+    monkeypatch.setattr("agent_lab.cursor.bridge._external_client", fake_external_client)
+    monkeypatch.setattr("agent_lab.cursor.bridge._get_or_launch", fake_launch)
 
     with pytest.raises(CursorBridgeUnavailable) as excinfo:
         with cursor_sdk_client(str(tmp_path)):
@@ -65,7 +65,7 @@ def test_auto_bridge_failure_is_structured(monkeypatch, tmp_path):
     def fake_launch(_workspace: str) -> object:
         raise RuntimeError("bridge binary missing")
 
-    monkeypatch.setattr("agent_lab.cursor_bridge._get_or_launch", fake_launch)
+    monkeypatch.setattr("agent_lab.cursor.bridge._get_or_launch", fake_launch)
 
     with pytest.raises(CursorBridgeUnavailable) as excinfo:
         with cursor_sdk_client(str(tmp_path)):

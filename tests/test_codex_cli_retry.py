@@ -10,13 +10,13 @@ def _disable_codex_proxy(monkeypatch) -> None:
         lambda **kwargs: False,
     )
     monkeypatch.setattr(
-        "agent_lab.codex_oauth.call_with_codex_oauth_fallback",
+        "agent_lab.codex.oauth.call_with_codex_oauth_fallback",
         lambda fn, **kwargs: fn(None),
     )
 
 
 def test_codex_cli_retries_transient_subprocess_failure(monkeypatch, tmp_path):
-    from agent_lab import codex_cli
+    from agent_lab.codex import cli as codex_cli
 
     _disable_codex_proxy(monkeypatch)
     fake_bin = tmp_path / "codex"
@@ -53,7 +53,7 @@ def test_codex_cli_retries_transient_subprocess_failure(monkeypatch, tmp_path):
 
 
 def test_codex_cli_room_only_retry_env_skips_non_room_retry(monkeypatch, tmp_path):
-    from agent_lab import codex_cli
+    from agent_lab.codex import cli as codex_cli
 
     _disable_codex_proxy(monkeypatch)
     fake_bin = tmp_path / "codex"

@@ -20,7 +20,7 @@ def _isolate_room_model_overrides(monkeypatch: pytest.MonkeyPatch, tmp_path: Pat
 
 
 def test_local_provider_always_available(monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab import local_provider as lp
+    from agent_lab.local import provider as lp
 
     assert lp.is_available() is True
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
@@ -29,7 +29,7 @@ def test_local_provider_always_available(monkeypatch: pytest.MonkeyPatch) -> Non
 
 
 def test_local_provider_tunable_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab import local_provider as lp
+    from agent_lab.local import provider as lp
 
     monkeypatch.delenv("AGENT_LAB_LOCAL_MODEL", raising=False)
     assert lp.local_model() == "llama3.2"
@@ -125,7 +125,7 @@ def test_e2e_room_completes_with_degraded_roster(tmp_path: Path, monkeypatch: py
 
 def test_local_first_class_streams_and_emits_activity(monkeypatch: pytest.MonkeyPatch) -> None:
     """Phase 2: local is a first-class room substitute (activity + streaming)."""
-    from agent_lab import local_provider as lp
+    from agent_lab.local import provider as lp
 
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     acts: list[str] = []

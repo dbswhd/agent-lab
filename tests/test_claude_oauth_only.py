@@ -37,13 +37,13 @@ def _patch_claude_popen(monkeypatch) -> None:
     )
     monkeypatch.setattr("agent_lab.run.control.is_cancelled", lambda: False)
     monkeypatch.setattr(
-        "agent_lab.claude_cli.ensure_claude_headless_ready",
+        "agent_lab.claude.cli.ensure_claude_headless_ready",
         lambda **_kw: None,
     )
 
 
 def test_claude_auth_logged_in_parses_status_json(monkeypatch, tmp_path) -> None:
-    from agent_lab import claude_cli
+    from agent_lab.claude import cli as claude_cli
 
     fake_bin = tmp_path / "claude"
     fake_bin.write_text("#!/bin/sh\n", encoding="utf-8")
@@ -68,7 +68,7 @@ def test_claude_auth_logged_in_parses_status_json(monkeypatch, tmp_path) -> None
 
 
 def test_claude_invoke_never_injects_api_key(monkeypatch, tmp_path) -> None:
-    from agent_lab import claude_cli
+    from agent_lab.claude import cli as claude_cli
 
     fake_bin = tmp_path / "claude"
     fake_bin.write_text("#!/bin/sh\n", encoding="utf-8")
@@ -102,7 +102,7 @@ def test_claude_invoke_never_injects_api_key(monkeypatch, tmp_path) -> None:
 
 
 def test_invalidate_claude_auth_cache_clears_status(monkeypatch, tmp_path) -> None:
-    from agent_lab import claude_cli
+    from agent_lab.claude import cli as claude_cli
 
     fake_bin = tmp_path / "claude"
     fake_bin.write_text("#!/bin/sh\n", encoding="utf-8")
@@ -120,7 +120,7 @@ def test_invalidate_claude_auth_cache_clears_status(monkeypatch, tmp_path) -> No
 
 
 def test_invoke_invalidates_auth_cache_on_401(monkeypatch, tmp_path) -> None:
-    from agent_lab import claude_cli
+    from agent_lab.claude import cli as claude_cli
 
     fake_bin = tmp_path / "claude"
     fake_bin.write_text("#!/bin/sh\n", encoding="utf-8")

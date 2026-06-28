@@ -126,7 +126,7 @@ def test_codex_cli_routes_to_proxy(monkeypatch: pytest.MonkeyPatch) -> None:
         "agent_lab.runtime.adapters.codex.invoke_codex_proxy",
         _proxy,
     )
-    from agent_lab.codex_cli import invoke
+    from agent_lab.codex.cli import invoke
 
     assert invoke("sys", "user", room_turn=True) == "via-proxy"
     assert "sys" in called["system"]

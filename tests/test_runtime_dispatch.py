@@ -23,7 +23,7 @@ def session_folder(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 def test_plan_execute_does_not_import_mission_loop() -> None:
-    path = Path(__file__).resolve().parents[1] / "src/agent_lab/plan_execute.py"
+    path = Path(__file__).resolve().parents[1] / "src/agent_lab/plan/execute.py"
     tree = ast.parse(path.read_text(encoding="utf-8"))
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom) and node.module == "agent_lab.mission.loop":

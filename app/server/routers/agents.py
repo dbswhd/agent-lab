@@ -5,7 +5,8 @@ from typing import Any
 
 from fastapi import APIRouter
 
-from agent_lab import claude_cli, codex_cli
+from agent_lab.claude import cli as claude_cli
+from agent_lab.codex import cli as codex_cli
 from agent_lab.agents.registry import (
     available_agents,
     label as agent_label,

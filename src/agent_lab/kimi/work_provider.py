@@ -66,7 +66,7 @@ def respond(
 
     from agent_lab.run.meta import read_run_meta
     from agent_lab.room.preset import is_fast_room_session
-    from agent_lab.cursor_inbox_mcp import discuss_inbox_mcp_enabled
+    from agent_lab.cursor.inbox_mcp import discuss_inbox_mcp_enabled
 
     run_meta = read_run_meta(folder_path)
     use_inbox_mcp = inbox_mcp and discuss_inbox_mcp_enabled(

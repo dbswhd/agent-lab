@@ -44,7 +44,7 @@ class _NullCtx:
 
 
 def test_claude_invoke_stream_json_emits_bridge_events(monkeypatch, tmp_path):
-    from agent_lab import claude_cli
+    from agent_lab.claude import cli as claude_cli
 
     fake_bin = tmp_path / "claude"
     fake_bin.write_text("#!/bin/sh\n", encoding="utf-8")
@@ -65,7 +65,7 @@ def test_claude_invoke_stream_json_emits_bridge_events(monkeypatch, tmp_path):
     )
     monkeypatch.setattr("agent_lab.run.control.is_cancelled", lambda: False)
     monkeypatch.setattr(
-        "agent_lab.claude_cli.ensure_claude_headless_ready",
+        "agent_lab.claude.cli.ensure_claude_headless_ready",
         lambda **_kw: None,
     )
     monkeypatch.setattr(
@@ -113,7 +113,7 @@ def test_claude_invoke_stream_json_emits_bridge_events(monkeypatch, tmp_path):
 
 
 def test_claude_stream_skips_assistant_text_after_text_delta(monkeypatch, tmp_path):
-    from agent_lab import claude_cli
+    from agent_lab.claude import cli as claude_cli
 
     fake_bin = tmp_path / "claude"
     fake_bin.write_text("#!/bin/sh\n", encoding="utf-8")
@@ -134,7 +134,7 @@ def test_claude_stream_skips_assistant_text_after_text_delta(monkeypatch, tmp_pa
     )
     monkeypatch.setattr("agent_lab.run.control.is_cancelled", lambda: False)
     monkeypatch.setattr(
-        "agent_lab.claude_cli.ensure_claude_headless_ready",
+        "agent_lab.claude.cli.ensure_claude_headless_ready",
         lambda **_kw: None,
     )
     monkeypatch.setattr(
@@ -185,7 +185,7 @@ def test_claude_stream_skips_assistant_text_after_text_delta(monkeypatch, tmp_pa
 
 
 def test_claude_stream_raises_cancelled_when_killed_after_cancel(monkeypatch, tmp_path):
-    from agent_lab import claude_cli
+    from agent_lab.claude import cli as claude_cli
 
     fake_bin = tmp_path / "claude"
     fake_bin.write_text("#!/bin/sh\n", encoding="utf-8")
@@ -205,7 +205,7 @@ def test_claude_stream_raises_cancelled_when_killed_after_cancel(monkeypatch, tm
         lambda _proc: None,
     )
     monkeypatch.setattr(
-        "agent_lab.claude_cli.ensure_claude_headless_ready",
+        "agent_lab.claude.cli.ensure_claude_headless_ready",
         lambda **_kw: None,
     )
     monkeypatch.setattr(
@@ -266,7 +266,7 @@ class _EofSpinProc:
 
 
 def test_claude_stream_fails_fast_on_stderr_usage_limit(monkeypatch, tmp_path):
-    from agent_lab import claude_cli
+    from agent_lab.claude import cli as claude_cli
 
     fake_bin = tmp_path / "claude"
     fake_bin.write_text("#!/bin/sh\n", encoding="utf-8")
@@ -288,7 +288,7 @@ def test_claude_stream_fails_fast_on_stderr_usage_limit(monkeypatch, tmp_path):
     )
     monkeypatch.setattr("agent_lab.run.control.is_cancelled", lambda: False)
     monkeypatch.setattr(
-        "agent_lab.claude_cli.ensure_claude_headless_ready",
+        "agent_lab.claude.cli.ensure_claude_headless_ready",
         lambda **_kw: None,
     )
     monkeypatch.setattr(
@@ -320,7 +320,7 @@ def test_claude_stream_fails_fast_on_stderr_usage_limit(monkeypatch, tmp_path):
 
 def test_claude_stream_exits_when_child_eof_without_result(monkeypatch, tmp_path):
     """Avoid busy-loop when claude exits but stdout stays select-readable."""
-    from agent_lab import claude_cli
+    from agent_lab.claude import cli as claude_cli
 
     fake_bin = tmp_path / "claude"
     fake_bin.write_text("#!/bin/sh\n", encoding="utf-8")
@@ -341,7 +341,7 @@ def test_claude_stream_exits_when_child_eof_without_result(monkeypatch, tmp_path
     )
     monkeypatch.setattr("agent_lab.run.control.is_cancelled", lambda: False)
     monkeypatch.setattr(
-        "agent_lab.claude_cli.ensure_claude_headless_ready",
+        "agent_lab.claude.cli.ensure_claude_headless_ready",
         lambda **_kw: None,
     )
     monkeypatch.setattr(

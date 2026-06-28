@@ -63,7 +63,7 @@ def adversarial_review(
         "true",
         "yes",
     }:
-        from agent_lab import claude_cli
+        from agent_lab.claude import cli as claude_cli
 
         raw = claude_cli.invoke("adversarial-reviewer", prompt, scribe=True)
         source = "live"

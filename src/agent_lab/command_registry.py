@@ -512,7 +512,7 @@ def execute_command(
     if kind in {"agent_invoke", "plugin"}:
         agent = str(cmd.get("agent") or "claude").lower()
         if agent == "claude" and cmd.get("source") == "skill":
-            from agent_lab import claude_cli
+            from agent_lab.claude import cli as claude_cli
 
             skill_name = str(cmd.get("slash") or "").lstrip("/") or args
             prompt = f"/{skill_name}"

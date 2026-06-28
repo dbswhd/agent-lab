@@ -6,7 +6,7 @@ import os
 import threading
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Iterator
+from typing import Any, Iterator
 
 CURSOR_BRIDGE_FALLBACK = "Cursor 제외 후 Codex/Claude 로컬 CLI로 전송하거나 Cursor bridge 재연결 후 재시도"
 CURSOR_BRIDGE_REMEDIATION = (
@@ -95,7 +95,7 @@ def cursor_bridge_failure_payload(
     exc: BaseException | None = None,
     *,
     reason: str | None = None,
-) -> dict[str, object]:
+) -> dict[str, Any]:
     """User-facing degraded-state fields shared by health/preflight clients."""
     if isinstance(exc, CursorBridgeUnavailable):
         msg = str(exc).strip()
@@ -162,7 +162,7 @@ def invalidate_workspace(workspace: str) -> None:
     except Exception:
         pass
     try:
-        from agent_lab.bridge_registry import remove_workspace
+        from agent_lab.cursor.registry import remove_workspace
 
         remove_workspace(ws)
     except Exception:
@@ -186,7 +186,7 @@ def _get_or_launch(workspace: str) -> _BridgeEntry:
 
         client = _launch_client(ws)
         try:
-            from agent_lab.bridge_registry import guess_bridge_pid, register_bridge
+            from agent_lab.cursor.registry import guess_bridge_pid, register_bridge
 
             register_bridge(ws, pid=guess_bridge_pid(), mode="auto")
         except Exception:
@@ -226,7 +226,7 @@ def cursor_sdk_client(workspace: str) -> Iterator[object]:
 def format_cursor_connect_error(exc: BaseException) -> str:
     if isinstance(exc, CursorBridgeUnavailable):
         payload = cursor_bridge_failure_payload(exc)
-        remediation = "; ".join(str(x) for x in payload["remediation"])
+        remediation = "; ".join(str(x) for x in list(payload["remediation"]))
         return f"{payload['reason']}\nfallback: {payload['fallback']}\nremediation: {remediation}"
     msg = str(exc).strip() or exc.__class__.__name__
     if _connection_refused(exc):

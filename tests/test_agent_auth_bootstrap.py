@@ -29,7 +29,7 @@ def test_persist_cursor_api_key_from_env(agent_lab_home: Path) -> None:
 
 
 def test_sync_codex_applies_primary_when_live_stale(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab import codex_oauth as co
+    from agent_lab.codex import oauth as co
     from agent_lab.agent.auth_bootstrap import sync_codex_oauth_on_startup
 
     cfg = tmp_path / ".agent-lab"

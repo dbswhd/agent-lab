@@ -13,7 +13,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     cfg.mkdir()
     monkeypatch.setattr("agent_lab.app_config.config_dir", lambda: cfg)
     monkeypatch.setattr(
-        "agent_lab.codex_oauth.live_auth_path",
+        "agent_lab.codex.oauth.live_auth_path",
         lambda: tmp_path / ".codex" / "auth.json",
     )
     (tmp_path / ".codex").mkdir()
@@ -27,7 +27,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
 
 
 def test_codex_oauth_probe_api(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
-    import agent_lab.codex_oauth as co
+    import agent_lab.codex.oauth as co
 
     capture = client.post(
         "/api/settings/codex-oauth/capture",

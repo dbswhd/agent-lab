@@ -14,7 +14,7 @@ if str(ROOT) not in sys.path:
 
 
 def main() -> int:
-    from agent_lab.bridge_registry import audit_bridge_processes, cleanup_stale_bridges
+    from agent_lab.cursor.registry import audit_bridge_processes, cleanup_stale_bridges
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(

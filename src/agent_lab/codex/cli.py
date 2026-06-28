@@ -74,17 +74,17 @@ def resolve_codex_bin() -> str | None:
     home = Path.home()
     nvm_glob = str(home / ".nvm/versions/node/*/bin/codex")
     nvm_matches = sorted(glob.glob(nvm_glob), reverse=True)
-    for candidate in nvm_matches:
-        if Path(candidate).is_file():
-            return candidate
+    for bin_path in nvm_matches:
+        if Path(bin_path).is_file():
+            return bin_path
 
-    for candidate in (
+    for path_candidate in (
         home / ".local/bin/codex",
         Path("/opt/homebrew/bin/codex"),
         Path("/usr/local/bin/codex"),
     ):
-        if candidate.is_file():
-            return str(candidate)
+        if path_candidate.is_file():
+            return str(path_candidate)
 
     return None
 
@@ -115,7 +115,7 @@ def _format_exec_error(stderr: str, stdout: str) -> str:
         )
     low = detail.lower()
     if "401" in detail or "token_invalidated" in low or "authentication token has been invalidated" in low:
-        from agent_lab.codex_oauth import codex_auth_failure_remediation
+        from agent_lab.codex.oauth import codex_auth_failure_remediation
 
         hint = codex_auth_failure_remediation(detail)[0]
         return f"{format_codex_exec_error(detail[:600])} — {hint}"
@@ -289,7 +289,8 @@ def _codex_mcp_tool_label(item: dict[str, Any], *, started: bool) -> str | None:
 def codex_event_label(event: dict[str, Any]) -> str | None:
     """Map Codex `--json` JSONL events to short UI activity lines."""
     typ = event.get("type")
-    item = event.get("item") if isinstance(event.get("item"), dict) else {}
+    item_raw = event.get("item")
+    item: dict[str, Any] = item_raw if isinstance(item_raw, dict) else {}
     item_type = _codex_item_type(item)
 
     if typ == "turn.started":
@@ -332,7 +333,7 @@ def _process_codex_event(
 ) -> float | None:
     """Update outcome from one Codex `--json` event. Returns new limit_hit_at."""
     if on_bridge_event:
-        from agent_lab.bridge_stdout_parser import parse_codex_json_event
+        from agent_lab.agent.stream_parser import parse_codex_json_event
 
         for kind, data in parse_codex_json_event(event):
             on_bridge_event(kind, data)
@@ -342,7 +343,8 @@ def _process_codex_event(
         on_activity(label)
 
     typ = event.get("type")
-    item = event.get("item") if isinstance(event.get("item"), dict) else {}
+    item_raw = event.get("item")
+    item: dict[str, Any] = item_raw if isinstance(item_raw, dict) else {}
     item_type = item.get("type")
 
     # Any response item (reasoning / message / command) means the turn has begun
@@ -666,7 +668,7 @@ def invoke(
     execute_plugins = bool((permissions or {}).get("_execute_plugins"))
     use_inbox_mcp = False
     if inbox_mcp and session_folder is not None:
-        from agent_lab.cursor_inbox_mcp import mount_inbox_mcp_when_requested
+        from agent_lab.cursor.inbox_mcp import mount_inbox_mcp_when_requested
 
         use_inbox_mcp = mount_inbox_mcp_when_requested(inbox_mcp)
 
@@ -698,7 +700,7 @@ def invoke(
 
     config_overrides: list[str] | None = None
     if use_inbox_mcp and session_folder is not None:
-        from agent_lab.cursor_inbox_mcp import (
+        from agent_lab.cursor.inbox_mcp import (
             build_codex_inbox_mcp_config_args,
             inbox_mcp_build_kwargs,
         )
@@ -774,9 +776,9 @@ def invoke(
 
     try:
         from agent_lab.agent.hooks_materializer import native_agent_hooks_overlay
-        from agent_lab.codex_oauth import call_with_codex_oauth_fallback
+        from agent_lab.codex.oauth import call_with_codex_oauth_fallback
 
-        def _run_for_oauth_slot(_slot) -> str:
+        def _run_for_oauth_slot(_slot: object) -> str:
             def _run_with_hooks() -> str:
                 with native_agent_hooks_overlay("codex", session_folder, cwd):
                     return _run_once(None)
@@ -788,7 +790,7 @@ def invoke(
                 on_retry_label=_on_retry,
             )
 
-        def _on_oauth_switch(label: str, _slot) -> None:
+        def _on_oauth_switch(label: str, _slot: object) -> None:
             if on_activity:
                 on_activity(f"Codex OAuth → {label} 계정")
 

@@ -130,7 +130,7 @@ def facilitate(
 
     call = facilitator_call
     if call is None and _live_enabled():
-        from agent_lab import claude_cli
+        from agent_lab.claude import cli as claude_cli
 
         call = lambda prompt: claude_cli.invoke("inbox-facilitator", prompt, scribe=True)  # noqa: E731
 

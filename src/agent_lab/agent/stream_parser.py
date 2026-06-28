@@ -1,11 +1,15 @@
-"""Normalize live Cursor bridge SDK stream events for Room SSE."""
+"""Shared agent bridge stdout / JSONL stream parsing for Room SSE.
+
+Vendor CLIs (Cursor SDK deltas, Codex ``--json``, Claude ``stream-json``) normalize
+here into ``(event_kind, payload)`` tuples consumed by ``on_bridge_event``.
+"""
 
 from __future__ import annotations
 
 from collections.abc import Mapping
 from typing import Any
 
-from agent_lab.cursor_activity import (
+from agent_lab.cursor.activity import (
     activity_from_tool_call,
     format_conversation_step,
     format_interaction_update,
@@ -140,9 +144,9 @@ def parse_conversation_step(step: Any) -> list[StreamEvent]:
                 ("tool_start", {"tool": tool, "args": args}),
                 ("activity", {"text": label or f"[tool · {tool}]"}),
             ]
-    label = format_conversation_step(step)
-    if label:
-        return [("activity", {"text": label})]
+    step_label = format_conversation_step(step)
+    if step_label:
+        return [("activity", {"text": step_label})]
     return []
 
 
@@ -179,10 +183,11 @@ def _codex_item_text_events(item: Mapping[str, Any]) -> list[StreamEvent]:
 
 def parse_codex_json_event(event: Mapping[str, Any]) -> list[StreamEvent]:
     """Map Codex CLI ``--json`` JSONL events to Room bridge stream events."""
-    from agent_lab.codex_cli import codex_event_label
+    from agent_lab.codex.cli import codex_event_label
 
     typ = event.get("type")
-    item = event.get("item") if isinstance(event.get("item"), Mapping) else {}
+    item_raw = event.get("item")
+    item: dict[str, Any] = dict(item_raw) if isinstance(item_raw, Mapping) else {}
     item_type = item.get("type")
 
     if typ == "item.started" and item_type == "command_execution":
@@ -236,8 +241,10 @@ def parse_claude_json_event(event: Mapping[str, Any]) -> list[StreamEvent]:
     typ = event.get("type")
 
     if typ == "stream_event":
-        inner = event.get("event") if isinstance(event.get("event"), Mapping) else {}
-        delta = inner.get("delta") if isinstance(inner.get("delta"), Mapping) else {}
+        inner_raw = event.get("event")
+        inner: dict[str, Any] = dict(inner_raw) if isinstance(inner_raw, Mapping) else {}
+        delta_raw = inner.get("delta")
+        delta: dict[str, Any] = dict(delta_raw) if isinstance(delta_raw, Mapping) else {}
         delta_type = str(delta.get("type") or "")
         if delta_type == "text_delta":
             text = str(delta.get("text") or "")
@@ -250,13 +257,15 @@ def parse_claude_json_event(event: Mapping[str, Any]) -> list[StreamEvent]:
         return []
 
     if typ == "assistant":
-        message = event.get("message") if isinstance(event.get("message"), Mapping) else {}
+        message_raw = event.get("message")
+        message: dict[str, Any] = dict(message_raw) if isinstance(message_raw, Mapping) else {}
         events: list[StreamEvent] = []
         for block in _claude_content_blocks(message):
             btyp = str(block.get("type") or "")
             if btyp == "tool_use":
                 tool = str(block.get("name") or "tool")
-                inp = block.get("input") if isinstance(block.get("input"), Mapping) else {}
+                inp_raw = block.get("input")
+                inp: dict[str, Any] = dict(inp_raw) if isinstance(inp_raw, Mapping) else {}
                 target = _claude_tool_target(inp)
                 events.append(
                     ("tool_start", {"tool": tool, "args": {"target": target} if target else {}}),
@@ -271,8 +280,9 @@ def parse_claude_json_event(event: Mapping[str, Any]) -> list[StreamEvent]:
         return events
 
     if typ == "user":
-        message = event.get("message") if isinstance(event.get("message"), Mapping) else {}
-        for block in _claude_content_blocks(message):
+        user_message_raw = event.get("message")
+        user_message: dict[str, Any] = dict(user_message_raw) if isinstance(user_message_raw, Mapping) else {}
+        for block in _claude_content_blocks(user_message):
             if block.get("type") != "tool_result":
                 continue
             raw = block.get("content")

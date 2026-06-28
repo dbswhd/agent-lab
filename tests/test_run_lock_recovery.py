@@ -14,7 +14,7 @@ import pytest
 
 os.environ.setdefault("AGENT_LAB_MOCK_AGENTS", "1")
 
-from agent_lab import run_control as rc
+from agent_lab.run import control as rc
 
 
 @pytest.fixture(autouse=True)

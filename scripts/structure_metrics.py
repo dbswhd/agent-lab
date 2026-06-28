@@ -38,6 +38,9 @@ TRACK_PREFIXES = (
     "research_",
     "hook_",
     "quant_",
+    "cursor_",
+    "codex_",
+    "claude_",
 )
 
 

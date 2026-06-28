@@ -83,7 +83,8 @@ def resolved_config_paths() -> dict[str, str | None]:
 
 
 def agent_tool_paths() -> dict[str, str | None]:
-    from agent_lab import claude_cli, codex_cli
+    from agent_lab.claude import cli as claude_cli
+    from agent_lab.codex import cli as codex_cli
 
     codex = codex_cli.resolve_codex_bin()
     claude = claude_cli.resolve_claude_bin()
@@ -126,7 +127,7 @@ def build_diagnostics_payload() -> dict[str, Any]:
 
     bridge_audit: dict[str, Any] = {}
     try:
-        from agent_lab.bridge_registry import audit_bridge_processes
+        from agent_lab.cursor.registry import audit_bridge_processes
 
         bridge_audit = audit_bridge_processes()
     except Exception as exc:

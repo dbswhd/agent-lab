@@ -7,7 +7,7 @@ from typing import Any, Literal
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-from agent_lab.codex_oauth import probe_captured_profiles, public_codex_oauth_payload
+from agent_lab.codex.oauth import probe_captured_profiles, public_codex_oauth_payload
 from agent_lab.credential_store import (
     public_credentials_payload,
 )

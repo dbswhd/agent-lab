@@ -26,7 +26,7 @@ def _bridge_bin_path() -> Path | None:
 
 
 def _mark_cursor_bridge_degraded(row: dict[str, Any], reason: str) -> None:
-    from agent_lab.cursor_bridge import cursor_bridge_failure_payload
+    from agent_lab.cursor.bridge import cursor_bridge_failure_payload
 
     row.update(cursor_bridge_failure_payload(reason=reason))
     row["hint"] = reason
@@ -80,7 +80,8 @@ def agent_preflight_row(
     probe_cli: bool = True,
 ) -> dict[str, Any]:
     """One agent readiness row: { id, ready, reason, ... }."""
-    from agent_lab import claude_cli, codex_cli
+    from agent_lab.claude import cli as claude_cli
+    from agent_lab.codex import cli as codex_cli
     from agent_lab.agent.health import agent_health_row
 
     aid = agent_id.strip().lower()
@@ -182,7 +183,7 @@ def agent_preflight_row(
                 return row
             if ver:
                 row["detail"] = ver
-            from agent_lab.codex_oauth import codex_oauth_ready
+            from agent_lab.codex.oauth import codex_oauth_ready
 
             auth_ok, auth_detail = codex_oauth_ready()
             if not auth_ok:
@@ -195,7 +196,7 @@ def agent_preflight_row(
                     "한도 초과 시 서브 계정으로 자동 전환",
                 ]
                 return row
-            from agent_lab.codex_oauth import probe_captured_profiles
+            from agent_lab.codex.oauth import probe_captured_profiles
 
             profiles = probe_captured_profiles()
             if profiles:

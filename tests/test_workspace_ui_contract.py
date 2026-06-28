@@ -362,8 +362,8 @@ def test_m6_room_chat_canonical_shell_only():
 
 
 def test_claude_stream_bridge_in_cli():
-    cli = _read("src", "agent_lab", "claude_cli.py")
-    parser = _read("src", "agent_lab", "bridge_stdout_parser.py")
+    cli = _read("src", "agent_lab", "claude", "cli.py")
+    parser = _read("src", "agent_lab", "agent", "stream_parser.py")
     assert "_run_claude_stream" in cli
     assert "parse_claude_json_event" in parser
     assert "stream-json" in cli

@@ -96,12 +96,13 @@ def test_ac15_directional_no_importer_contract():
             offenders.append(py.name)
     assert offenders == [], f"unexpected importers of new modules: {offenders}"
 
-    # (ii) room_live_log must NOT import either new module (reverse edge)
-    rll = _imported_modules(_SRC / "room_live_log.py")
-    assert not (rll & new_modules), f"room_live_log imports new modules: {rll & new_modules}"
+    # (ii) room live_log must NOT import either new module (reverse edge)
+    rll = _imported_modules(_SRC / "room" / "live_log.py")
+    assert not (rll & new_modules), f"room.live_log imports new modules: {rll & new_modules}"
 
-    # (i) event_schema MAY import room_live_log (the one allowed edge) — and does
-    assert "room_live_log" in _imported_modules(_SRC / "event_schema.py")
+    # (i) event_schema MAY import room.live_log (the one allowed edge) — and does
+    es_text = (_SRC / "event_schema.py").read_text(encoding="utf-8")
+    assert "agent_lab.room.live_log" in es_text
 
 
 def test_enabled_helper(monkeypatch):

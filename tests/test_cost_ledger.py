@@ -106,7 +106,7 @@ def test_budget_status_invalid_limit_is_unlimited(monkeypatch: pytest.MonkeyPatc
 
 
 def test_claude_cli_emits_usage_from_result_event() -> None:
-    from agent_lab.claude_cli import _emit_claude_usage
+    from agent_lab.claude.cli import _emit_claude_usage
 
     events: list[tuple[str, dict[str, Any]]] = []
     result_event = {
@@ -133,7 +133,7 @@ def test_claude_cli_emits_usage_from_result_event() -> None:
 
 
 def test_claude_cli_usage_noop_without_signal() -> None:
-    from agent_lab.claude_cli import _emit_claude_usage
+    from agent_lab.claude.cli import _emit_claude_usage
 
     events: list[Any] = []
     _emit_claude_usage({"type": "result", "result": "x"}, lambda k, d: events.append((k, d)))

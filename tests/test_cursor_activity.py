@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from agent_lab.cursor_activity import format_conversation_step
+from agent_lab.cursor.activity import format_conversation_step
 
 
 def test_thinking_message_never_leaks_raw_text():

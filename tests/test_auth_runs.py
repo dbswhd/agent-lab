@@ -332,7 +332,7 @@ def test_interpret_claude_status_logged_out_with_zero_exit(monkeypatch: pytest.M
 
 
 def test_format_claude_auth_status_detail() -> None:
-    from agent_lab.claude_cli import format_claude_auth_status_detail
+    from agent_lab.claude.cli import format_claude_auth_status_detail
 
     logged_out = '{"loggedIn": false, "authMethod": "none", "apiProvider": "firstParty"}'
     assert "OAuth 미로그인" in format_claude_auth_status_detail(logged_out, logged_in=False)
@@ -342,7 +342,7 @@ def test_format_claude_auth_status_detail() -> None:
 
 def test_revalidate_claude_invalidates_auth_cache(monkeypatch: pytest.MonkeyPatch) -> None:
     import agent_lab.auth_runs as auth_runs
-    import agent_lab.claude_cli as claude_cli
+    import agent_lab.claude.cli as claude_cli
 
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "0")
     claude_cli._AUTH_STATUS_CACHE = (0.0, False, "stale")

@@ -23,7 +23,7 @@ _BRIDGE_RETRY_BACKOFF_S = 0.35
 
 
 def _check_cursor_bridge_once(workspace: str) -> tuple[str, str | None]:
-    from agent_lab.cursor_bridge import cursor_sdk_client, format_cursor_connect_error
+    from agent_lab.cursor.bridge import cursor_sdk_client, format_cursor_connect_error
 
     try:
         with cursor_sdk_client(workspace) as client:
@@ -56,7 +56,7 @@ def _check_cursor_bridge(
 
 def reconnect_claude_auth() -> dict[str, Any]:
     """Invalidate cached Claude OAuth checks and re-probe (health panel reconnect)."""
-    from agent_lab import claude_cli
+    from agent_lab.claude import cli as claude_cli
 
     claude_cli.invalidate_claude_auth_cache()
     auth_ok, auth_detail = claude_cli.claude_auth_logged_in(use_cache=False)
@@ -90,7 +90,7 @@ def reconnect_claude_auth() -> dict[str, Any]:
 
 def reconnect_cursor_bridge(*, workspace: str | None = None) -> dict[str, Any]:
     """Invalidate cached bridge and probe with retries (health panel reconnect)."""
-    from agent_lab.cursor_bridge import cursor_bridge_failure_payload, invalidate_workspace
+    from agent_lab.cursor.bridge import cursor_bridge_failure_payload, invalidate_workspace
 
     ws = str(workspace or project_root())
     invalidate_workspace(ws)
@@ -211,7 +211,7 @@ def agent_health_row(
 
     if aid == "cursor":
         from agent_lab.credential_store import provider_has_credentials
-        from agent_lab.cursor_bridge import cursor_bridge_failure_payload
+        from agent_lab.cursor.bridge import cursor_bridge_failure_payload
 
         has_key = provider_has_credentials("cursor")
         sdk = _cursor_sdk_installed()
@@ -233,8 +233,8 @@ def agent_health_row(
         return row
 
     if aid == "codex":
-        from agent_lab import codex_cli
-        from agent_lab.codex_oauth import codex_oauth_ready
+        from agent_lab.codex import cli as codex_cli
+        from agent_lab.codex.oauth import codex_oauth_ready
 
         bin_path = codex_cli.resolve_codex_bin()
         row["configured"] = bin_path is not None
@@ -256,7 +256,7 @@ def agent_health_row(
         return row
 
     if aid == "claude":
-        from agent_lab import claude_cli
+        from agent_lab.claude import cli as claude_cli
 
         bin_path = claude_cli.resolve_claude_bin()
         row["configured"] = bin_path is not None
@@ -312,7 +312,7 @@ def agent_health_row(
         return row
 
     if aid == "local":
-        from agent_lab import local_provider
+        from agent_lab.local import provider as local_provider
 
         row["configured"] = True
         row["ready"] = local_provider.is_available()
@@ -357,7 +357,8 @@ def build_health_payload(
     run_meta: dict[str, Any] | None = None,
     session_folder: Path | None = None,
 ) -> dict[str, Any]:
-    from agent_lab import claude_cli, codex_cli
+    from agent_lab.claude import cli as claude_cli
+    from agent_lab.codex import cli as codex_cli
     from agent_lab.agent.roster import effective_room_composition
     from agent_lab.context.limits import all_limits_for_api, efficiency_mode_default
     from agent_lab.invoke import model_name, provider

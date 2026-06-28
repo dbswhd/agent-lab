@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.cursor_inbox_mcp import discuss_inbox_mcp_enabled
+from agent_lab.cursor.inbox_mcp import discuss_inbox_mcp_enabled
 from agent_lab.human_inbox import (
     create_inbox_item,
     create_mcp_question_and_wait,

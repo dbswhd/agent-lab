@@ -73,11 +73,11 @@ def _argv(spec: ProviderSpec, action: AuthAction) -> tuple[str, ...]:
 
 def _resolve_provider_executable(spec: ProviderSpec) -> str | None:
     if spec.id == "claude":
-        from agent_lab.claude_cli import resolve_claude_bin
+        from agent_lab.claude.cli import resolve_claude_bin
 
         return resolve_claude_bin()
     if spec.id == "codex":
-        from agent_lab.codex_cli import resolve_codex_bin
+        from agent_lab.codex.cli import resolve_codex_bin
 
         return resolve_codex_bin()
     argv = spec.login_argv or spec.status_argv or ()
@@ -88,11 +88,11 @@ def _resolve_provider_executable(spec: ProviderSpec) -> str | None:
 
 def _provider_subprocess_env(spec: ProviderSpec) -> dict[str, str]:
     if spec.id == "claude":
-        from agent_lab.claude_cli import _claude_env
+        from agent_lab.claude.cli import _claude_env
 
         return _claude_env()
     if spec.id == "codex":
-        from agent_lab.codex_cli import _codex_env
+        from agent_lab.codex.cli import _codex_env
 
         return _codex_env()
     return subprocess_env(TERM="xterm-256color", HOME=str(Path.home()))
@@ -349,7 +349,7 @@ def _interpret_cli_status(spec: ProviderSpec, result: subprocess.CompletedProces
             logged_in = bool(payload.get("loggedIn"))
         except json.JSONDecodeError:
             logged_in = '"loggedIn": true' in raw or '"loggedIn":true' in raw
-        from agent_lab.claude_cli import format_claude_auth_status_detail
+        from agent_lab.claude.cli import format_claude_auth_status_detail
 
         detail = format_claude_auth_status_detail(raw, logged_in=logged_in)
         return ("logged_in", detail) if logged_in else ("logged_out", detail)
@@ -422,7 +422,7 @@ def revalidate_provider_status(provider_id: str) -> None:
 
         reset_cursor_oauth_cache()
     if provider_id == "claude":
-        from agent_lab.claude_cli import invalidate_claude_auth_cache
+        from agent_lab.claude.cli import invalidate_claude_auth_cache
 
         invalidate_claude_auth_cache()
     with _status_lock:
@@ -504,7 +504,7 @@ def provider_status_payload() -> dict[str, Any]:
                 "accounts": credential,
             }
         )
-    from agent_lab.codex_oauth import load_meta, profile_exists
+    from agent_lab.codex.oauth import load_meta, profile_exists
 
     codex = next((row for row in rows if row["id"] == "codex"), None)
     if codex is not None:
@@ -522,7 +522,7 @@ def capture_codex_run(run_id: str, slot: Literal["primary", "fallback"], *, conf
     run = get_auth_run(run_id)
     if run is None or run.provider_id != "codex" or run.status != "completed":
         raise RuntimeError("completed Codex login run required")
-    from agent_lab.codex_oauth import capture_profile, profile_exists
+    from agent_lab.codex.oauth import capture_profile, profile_exists
 
     if profile_exists(slot) and not confirm:
         raise RuntimeError(f"{slot} profile already exists; confirm replacement")

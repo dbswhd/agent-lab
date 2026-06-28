@@ -257,7 +257,7 @@ def review_proposal_thesis(
         "yes",
         "on",
     }:
-        from agent_lab import claude_cli
+        from agent_lab.claude import cli as claude_cli
 
         raw = claude_cli.invoke(
             "proposal-critic",

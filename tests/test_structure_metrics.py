@@ -235,6 +235,61 @@ def test_audit_research_legacy_imports_passes() -> None:
     assert proc.returncode == 0, proc.stderr or proc.stdout
 
 
+def test_audit_vendor_legacy_imports_passes() -> None:
+    proc = subprocess.run(
+        [sys.executable, "scripts/audit_vendor_legacy_imports.py"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+
+
+def test_mypy_cursor_ratchet_check_passes() -> None:
+    proc = subprocess.run(
+        [sys.executable, "scripts/mypy_vendor_ratchet.py", "--package", "cursor", "--check"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+
+
+def test_mypy_codex_ratchet_check_passes() -> None:
+    proc = subprocess.run(
+        [sys.executable, "scripts/mypy_vendor_ratchet.py", "--package", "codex", "--check"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+
+
+def test_mypy_claude_ratchet_check_passes() -> None:
+    proc = subprocess.run(
+        [sys.executable, "scripts/mypy_vendor_ratchet.py", "--package", "claude", "--check"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+
+
+def test_mypy_local_ratchet_check_passes() -> None:
+    proc = subprocess.run(
+        [sys.executable, "scripts/mypy_vendor_ratchet.py", "--package", "local", "--check"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+
+
 def test_mypy_kimi_ratchet_check_passes() -> None:
     proc = subprocess.run(
         [sys.executable, "scripts/mypy_kimi_ratchet.py", "--check"],

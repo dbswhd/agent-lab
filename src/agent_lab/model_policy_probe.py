@@ -101,7 +101,7 @@ def _probe_supports_tools(agent: AgentId) -> bool:
             if (os.getenv("OPENAI_API_KEY") or os.getenv("CODEX_API_KEY") or "").strip():
                 return True
             try:
-                from agent_lab.codex_oauth import codex_oauth_ready
+                from agent_lab.codex.oauth import codex_oauth_ready
 
                 ok, _ = codex_oauth_ready()
                 return bool(ok)
@@ -109,7 +109,7 @@ def _probe_supports_tools(agent: AgentId) -> bool:
                 return False
         case "claude":
             try:
-                from agent_lab import claude_cli
+                from agent_lab.claude import cli as claude_cli
 
                 ok, _ = claude_cli.claude_auth_logged_in()
                 return bool(ok)
@@ -119,7 +119,7 @@ def _probe_supports_tools(agent: AgentId) -> bool:
 
 
 def _probe_supports_inbox_mcp(agent: AgentId) -> bool:
-    from agent_lab.cursor_inbox_mcp import execute_inbox_mcp_enabled, plan_inbox_mcp_enabled
+    from agent_lab.cursor.inbox_mcp import execute_inbox_mcp_enabled, plan_inbox_mcp_enabled
 
     if not execute_inbox_mcp_enabled() and not plan_inbox_mcp_enabled():
         return False

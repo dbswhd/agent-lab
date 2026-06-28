@@ -499,7 +499,7 @@ def _call_one_agent(
 
     def _invoke_agent(payload: str) -> tuple[str, Any, dict[str, Any] | None, str, Any]:
         from agent_lab.agents.registry import call_agent_reply
-        from agent_lab.cursor_inbox_mcp import discuss_inbox_mcp_enabled
+        from agent_lab.cursor.inbox_mcp import discuss_inbox_mcp_enabled
 
         # Loop discuss + plan-workflow CLARIFY share discuss_inbox_mcp_enabled (not execute).
         use_inbox_mcp = discuss_inbox_mcp_enabled(run_meta, agent_id=str(aid))

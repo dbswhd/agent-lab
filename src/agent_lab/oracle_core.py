@@ -299,7 +299,7 @@ def invoke_oracle(
     if oracle_call is not None:
         return str(oracle_call(prompt) or "").strip(), "live"
     if oracle_live_enabled(goal=kind == "goal"):
-        from agent_lab import claude_cli
+        from agent_lab.claude import cli as claude_cli
         from agent_lab.sidecar_accounting import tracked_agent_call
 
         model = resolved_oracle_model(kind)

@@ -778,7 +778,7 @@ def run_dry_run(
         if label and (not activity_log or activity_log[-1] != label):
             activity_log.append(label)
 
-    from agent_lab.cursor_inbox_mcp import execute_inbox_mcp_enabled
+    from agent_lab.cursor.inbox_mcp import execute_inbox_mcp_enabled
 
     use_inbox_mcp = executor_id in EXECUTE_AGENT_IDS and execute_inbox_mcp_enabled()
 

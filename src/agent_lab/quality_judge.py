@@ -146,7 +146,7 @@ def invoke_judge(
     if judge_call is not None:
         return str(judge_call(prompt) or "").strip(), "live"
     if judge_live_enabled():
-        from agent_lab import claude_cli
+        from agent_lab.claude import cli as claude_cli
 
         model = _judge_model()
         if model:

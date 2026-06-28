@@ -37,15 +37,15 @@ def test_format_codex_os_error_2():
 def test_agent_preflight_claude_auth_failure(monkeypatch):
     monkeypatch.setenv("CLAUDE_SKIP_AUTH_PROBE", "0")
     monkeypatch.setattr(
-        "agent_lab.claude_cli.resolve_claude_bin",
+        "agent_lab.claude.cli.resolve_claude_bin",
         lambda: "/tmp/claude",
     )
     monkeypatch.setattr(
-        "agent_lab.claude_cli.claude_auth_logged_in",
+        "agent_lab.claude.cli.claude_auth_logged_in",
         lambda **kw: (False, "401 Invalid authentication credentials"),
     )
     monkeypatch.setattr(
-        "agent_lab.claude_cli.probe_auth",
+        "agent_lab.claude.cli.probe_auth",
         lambda **kw: (False, "401 Invalid authentication credentials"),
     )
     monkeypatch.setattr(
@@ -61,11 +61,11 @@ def test_agent_preflight_claude_auth_failure(monkeypatch):
 
 def test_agent_preflight_codex_cli_probe(monkeypatch):
     monkeypatch.setattr(
-        "agent_lab.codex_cli.resolve_codex_bin",
+        "agent_lab.codex.cli.resolve_codex_bin",
         lambda: "/tmp/codex",
     )
     monkeypatch.setattr(
-        "agent_lab.codex_oauth.codex_oauth_ready",
+        "agent_lab.codex.oauth.codex_oauth_ready",
         lambda: (True, "logged in"),
     )
     monkeypatch.setattr(
@@ -73,7 +73,7 @@ def test_agent_preflight_codex_cli_probe(monkeypatch):
         lambda *_args, **_kwargs: (True, "codex 1.2.3"),
     )
     monkeypatch.setattr(
-        "agent_lab.codex_oauth.probe_captured_profiles",
+        "agent_lab.codex.oauth.probe_captured_profiles",
         lambda: [],
     )
     row = agent_preflight_row("codex", probe_bridge=False, probe_cli=True)
@@ -82,7 +82,7 @@ def test_agent_preflight_codex_cli_probe(monkeypatch):
 
 def test_agent_preflight_codex_missing_bin(monkeypatch):
     monkeypatch.setattr(
-        "agent_lab.codex_cli.resolve_codex_bin",
+        "agent_lab.codex.cli.resolve_codex_bin",
         lambda: None,
     )
     row = agent_preflight_row("codex", probe_cli=False)
@@ -147,19 +147,19 @@ def test_reconnect_claude_auth_invalidates_cache(monkeypatch):
         invalidated.append("yes")
 
     monkeypatch.setattr(
-        "agent_lab.claude_cli.invalidate_claude_auth_cache",
+        "agent_lab.claude.cli.invalidate_claude_auth_cache",
         fake_invalidate,
     )
     monkeypatch.setattr(
-        "agent_lab.claude_cli.resolve_claude_bin",
+        "agent_lab.claude.cli.resolve_claude_bin",
         lambda: "/tmp/claude",
     )
     monkeypatch.setattr(
-        "agent_lab.claude_cli.claude_auth_logged_in",
+        "agent_lab.claude.cli.claude_auth_logged_in",
         lambda **kw: (True, None) if not kw.get("use_cache", True) else (False, "stale"),
     )
     monkeypatch.setattr(
-        "agent_lab.claude_cli.probe_auth",
+        "agent_lab.claude.cli.probe_auth",
         lambda **kw: (True, None),
     )
 
@@ -175,13 +175,13 @@ def test_reconnect_claude_auth_invalidates_cache(monkeypatch):
 def test_reconnect_claude_auth_failure_has_remediation(monkeypatch):
     from agent_lab.agent.health import reconnect_claude_auth
 
-    monkeypatch.setattr("agent_lab.claude_cli.invalidate_claude_auth_cache", lambda: None)
+    monkeypatch.setattr("agent_lab.claude.cli.invalidate_claude_auth_cache", lambda: None)
     monkeypatch.setattr(
-        "agent_lab.claude_cli.resolve_claude_bin",
+        "agent_lab.claude.cli.resolve_claude_bin",
         lambda: "/tmp/claude",
     )
     monkeypatch.setattr(
-        "agent_lab.claude_cli.claude_auth_logged_in",
+        "agent_lab.claude.cli.claude_auth_logged_in",
         lambda **kw: (False, "Not logged in — run: claude auth login"),
     )
 

@@ -7,7 +7,7 @@ from agent_lab.agent.health import agent_health_row, build_agent_health, reconne
 
 def test_agent_health_codex_when_bin_missing(monkeypatch):
     monkeypatch.setattr(
-        "agent_lab.codex_cli.resolve_codex_bin",
+        "agent_lab.codex.cli.resolve_codex_bin",
         lambda: None,
     )
     row = agent_health_row("codex")
@@ -50,7 +50,7 @@ def test_reconnect_cursor_bridge_invalidates(monkeypatch):
         calls.append(workspace)
 
     monkeypatch.setattr(
-        "agent_lab.cursor_bridge.invalidate_workspace",
+        "agent_lab.cursor.bridge.invalidate_workspace",
         fake_invalidate,
     )
     monkeypatch.setattr(
@@ -93,7 +93,7 @@ def test_reconnect_cursor_bridge_failure_has_fallback(monkeypatch):
         "agent_lab.agent.health._cursor_sdk_installed",
         lambda: True,
     )
-    monkeypatch.setattr("agent_lab.cursor_bridge.invalidate_workspace", lambda _ws: None)
+    monkeypatch.setattr("agent_lab.cursor.bridge.invalidate_workspace", lambda _ws: None)
     monkeypatch.setattr(
         "agent_lab.agent.health._check_cursor_bridge",
         lambda _ws, retries=3: ("error", "bridge ping 실패"),

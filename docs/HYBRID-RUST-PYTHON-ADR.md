@@ -73,7 +73,9 @@ Users should not manually manage `:8765`. Desktop shell supervises API lifecycle
 |------|----------|-------|
 | Dev API lifecycle | [`web/scripts/ensure-dev-api.mjs`](../web/scripts/ensure-dev-api.mjs), [`web/vite.config.ts`](../web/vite.config.ts) | watchdog, reload grace, port reclaim (macOS) |
 | Prod spawn + supervisor | [`web/src-tauri/src/lib.rs`](../web/src-tauri/src/lib.rs) | 4s loop, health probe |
-| HTTP diagnostics UI | [`web/src/components/ApiDiagnosticsBar.tsx`](../web/src/components/ApiDiagnosticsBar.tsx) | offline banner, 8s poll, sessions dir, boot log tail, copy JSON |
+| HTTP diagnostics UI | [`web/src/components/ApiDiagnosticsBar.tsx`](../web/src/components/ApiDiagnosticsBar.tsx) | offline banner, 8s poll, sessions dir, boot log tail, copy JSON, **API 재시작** (release) |
+| Tauri invoke | `lib.rs` + [`web/src/utils/tauriApiShell.ts`](../web/src/utils/tauriApiShell.ts) | `api_restart`, `api_shell_status`; ACL `allow-api-shell` |
+| Release boot failure dialog | `lib.rs` `show_api_boot_error` | native error on spawn failure |
 | sessions_dir mismatch detect | `lib.rs` `api_health_sessions_dir()` | **log + reuse** — does not block yet |
 | Bundled Python venv | [`scripts/prepare_bundled_runtime.sh`](../scripts/prepare_bundled_runtime.sh) | no native extensions |
 
@@ -84,30 +86,21 @@ Users should not manually manage `:8765`. Desktop shell supervises API lifecycle
 
 **Exit:** merged; team agrees Track 2 is conditional.
 
-### Phase 1.2 — Tauri `invoke` (minimal scope)
+### Phase 1.2 — Tauri `invoke` — **shipped** (`dc044854`)
 
-**Gap (actual):** HTTP diagnostics exist; UI cannot ask the shell to **restart uvicorn**.
-
-| Command | Purpose | Avoid duplicating |
-|---------|---------|-------------------|
-| `api_restart` | Supervisor graceful restart | — |
-| `api_boot_failed` | Optional: surface spawn error to native dialog | HTTP `/api/diagnostics` already covers runtime state |
-
-**Do not build:** full `api_status` mirror of `/api/diagnostics` unless a field is unreachable over HTTP.
-
-**UI:** [`ApiDiagnosticsBar.tsx`](../web/src/components/ApiDiagnosticsBar.tsx) — “API 재시작” button when `isTauri()`; keep HTTP poll as primary.
-
-**Tests:** Rust unit tests for restart path; Vitest no-op when not Tauri.
-
-**Exit:** Tauri release/dev can restart API without terminal; `make test-fast` + smoke green.
+- `api_restart` — stop child + reclaim `:8765` + `start_api` (release only)
+- `api_shell_status` — `tauri_owns_api` / `skip_tauri_api` / `health_ok` for UI gating
+- Dev `tauri-dev`: button disabled (`AGENT_LAB_SKIP_TAURI_API=1`); invoke returns clear error
+- Tests: Rust `skip_tauri_api_reads_env`; Vitest `tauriApiShell.test.ts`
 
 ### Phase 1.3 — Supervisor hardening (real gaps only)
 
 | Gap | Action |
 |-----|--------|
 | Cross-platform port reclaim | `cfg(target_os)` — macOS `lsof`; Windows stub + compile CI; Linux as needed |
-| Boot failure UX | Native dialog on spawn failure (HTTP offline banner remains) |
 | sessions_dir mismatch | **Enhancement:** optional block reuse or user confirm via invoke — detection already exists |
+
+**Shipped in 1.2:** boot failure native dialog (release spawn error).
 
 **Not in scope:** re-implement sessions_dir parsing (already in `lib.rs`).
 

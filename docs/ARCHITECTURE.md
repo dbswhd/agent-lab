@@ -429,7 +429,7 @@ Mission evidence: `.agent-lab/missions/<id>/evidence.jsonl`
 | Regression baselines | `sessions/_regression/` (~40 scenarios) |
 | Benchmarks | `sessions/_benchmark/` |
 | CI reports | `sessions/_reports/` |
-| Smoke | `scripts/smoke_room.py`, `make verify-hooks` |
+| Smoke | `scripts/smoke_room.py`, `make verify-hooks` (37 regression baselines) |
 
 → [STABILITY.md](./STABILITY.md)
 

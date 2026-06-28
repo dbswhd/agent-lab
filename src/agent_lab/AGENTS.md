@@ -7,11 +7,11 @@
 - execute gate 우회 금지
 
 ## 핵심 모듈 요약
-- `room.py` — Room 오케스트레이션 (multi-agent discuss, BLOCK/CHALLENGE)
+- `room/` — Room 오케스트레이션 facade (`agent_lab.room`; `turn_flow`, `objections`, …)
 - `kimi_work_provider.py` / `kimi_control_client.py` — Kimi Work daimon peer
-- `room_preset.py` — fast / supervisor preset catalog
+- `room/preset.py` — fast / supervisor preset catalog (shim: `room_preset.py`)
 - `agent_permissions.py` — discuss overlay + runtime blocks in `[고정 constraints]`
-- `plan_execute*.py` — worktree dry-run → merge gate
+- `plan/` — execute gate, worktree dry-run → merge (shim: `plan_execute*.py`)
 - `mission/loop.py` — Layer 6 FSM (DISCUSS↔EXECUTE↔VERIFY)
 - `run_meta.py` — `run.json` 헬퍼
 - `session_guidance.py` — 에이전트 context bundle + `.agent-lab/PROJECT.md` 주입

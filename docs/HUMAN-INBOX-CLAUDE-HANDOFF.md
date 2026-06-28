@@ -1,7 +1,8 @@
 # Human Inbox — Claude Code 인수인계 (M3+)
 
 > **Handoff doc** — complements [HUMAN-INBOX.md](./HUMAN-INBOX.md). **Index:** [README.md](./README.md)  
-> **전제:** M1·M2 execute path shipped on `main`. **설계 RFC:** [HUMAN-INBOX.md](./HUMAN-INBOX.md) §3.4, §4.6.
+> **전제:** M1·M2 execute path shipped on `main`. **설계 RFC:** [HUMAN-INBOX.md](./HUMAN-INBOX.md) §3.4, §4.6.  
+> **경로 (2026-06):** 본문 `room.py` / `plan_execute.py` → **`room/turn_flow.py`** (`continue_room_round`), **`plan/execute.py`**. Living SSOT: [PACKAGING-BASELINE.md](./PACKAGING-BASELINE.md).
 
 ---
 
@@ -12,10 +13,10 @@
 | Inbox core | `src/agent_lab/human_inbox.py` | `human_inbox[]`, resolve, supersede, wait, tool result builders |
 | MCP stdio | `src/agent_lab/inbox_mcp_server.py` | `ask_human`, `propose_build` → blocking poll |
 | Cursor wiring | `src/agent_lab/cursor_inbox_mcp.py`, `agents/cursor_agent.py` | `AgentOptions.mcp_servers` |
-| Execute | `plan_execute.py` | Cursor dry-run: `inbox_mcp=True`, plan-first prompt |
+| Execute | `plan/execute.py` (shim: `plan_execute.py`) | Cursor dry-run: `inbox_mcp=True`, plan-first prompt |
 | API | `app/server/routers/human_inbox.py` | GET inbox, POST items, POST resolve, POST supersede |
 | UI | `web/src/components/HumanInboxPanel.tsx`, `RoomChat.tsx` | Composer 위 Inbox, polling |
-| Discuss supersede | `room.py` `continue_room_round` | 새 Human send → pending supersede |
+| Discuss supersede | `room/turn_flow.py` `continue_room_round` | 새 Human send → pending supersede |
 | Tests | `tests/test_human_inbox.py` | 6 tests |
 
 **Env**

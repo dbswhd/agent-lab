@@ -123,9 +123,9 @@
 
 | 명령 | URL / 결과 |
 |------|------------|
-| `make dev` | UI `http://127.0.0.1:5173` · API `8765` |
+| `make dev` | UI `http://127.0.0.1:5173` · API `8765` (Vite proxy) |
 | `make prod` | UI+API 통합 `http://127.0.0.1:8765` |
-| `make tauri-dev` | 네이티브 창 (내부 API spawn) |
+| `make tauri-dev` | 네이티브 창 · UI `:1420` · API `8765` (`ensure-dev-api.mjs`, Tauri는 spawn 안 함) |
 | `python -m agent_lab run "주제"` | CLI — 같은 `sessions/` 사용 |
 
 ### 2.3 데이터 흐름 (한 턴)
@@ -133,7 +133,7 @@
 ```text
 Human Composer 전송
     → POST /api/room/runs (SSE)
-    → room.py: clarifier? → agent rounds → consensus? → scribe?
+    → agent_lab.room (`room/turn_flow.py`): clarifier? → agent rounds → consensus? → scribe?
     → chat.jsonl + run.json + plan.md 갱신
     → SSE events → web UI (Transcript / Run / Work / Tasks)
 ```
@@ -488,7 +488,7 @@ Composer `/` 또는 palette에서 삽입.
 
 ## 7. Room 턴 오케스트레이션
 
-> 소스: `room.py`, `room_consensus.py`, `room_team_orchestration.py`
+> 소스: `room/turn_flow.py`, `room/consensus.py`, `room/team_orchestration.py` (legacy shims: `room_*.py`)
 
 ### 7.1 턴 파이프라인
 
@@ -697,8 +697,8 @@ plan ## 지금 실행
 | Gate | 모듈 | 실패 시 |
 |------|------|---------|
 | **Plan snapshot** | `plan_pending` | 첫 dry-run per action+hash → Human 승인 필요 |
-| **Objection BLOCK** | `room_objections` | HTTP 409 |
-| **pre_execute hooks** | `room_hooks` | `.agent-lab/hooks.toml` exit 2 |
+| **Objection BLOCK** | `room/objections.py` | HTTP 409 |
+| **pre_execute hooks** | `room/hooks.py` | `.agent-lab/hooks.toml` exit 2 |
 | **Worktree** | `plan_execute_worktree` | dirty base / no git |
 | **Human diff** | Review UI | pending_approval |
 | **Execute Oracle** | `plan_execute_merge` | PASS/FAIL badge |
@@ -1373,7 +1373,7 @@ Context 사이드바 **Overview**에도 동일 mission 메타(phase, BLOCK, next
 ### 회귀·dogfood
 
 ```bash
-python scripts/smoke_room.py   # 32 baselines — mission_loop_execute_queue | paused | circuit_breaker
+python scripts/smoke_room.py   # 37 baselines — mission_loop_execute_queue | paused | circuit_breaker
 make score-session SESSION=sessions/<id>   # mission_loop.* KPI
 ```
 
@@ -1424,4 +1424,4 @@ Live 품질 체크: [MISSION-DOGFOOD.md](./MISSION-DOGFOOD.md).
 
 ---
 
-*코드 기준: `web/src/utils/workspaceTabs.ts`, `web/src/components/RoomChat.tsx`, `web/src/components/WorkToolPanel.tsx`, `web/src/components/WorkPanel.tsx`, `src/agent_lab/room.py`, `src/agent_lab/room_tasks.py`, `src/agent_lab/room_team_orchestration.py`. Shipped status: TRACEABILITY + tests.*
+*코드 기준: `web/src/utils/workspaceTabs.ts`, `web/src/components/RoomChat.tsx`, `web/src/components/WorkToolPanel.tsx`, `web/src/components/WorkPanel.tsx`, `src/agent_lab/room/`, `src/agent_lab/room/tasks.py`, `src/agent_lab/room/team_orchestration.py`. Shipped status: TRACEABILITY + tests.*

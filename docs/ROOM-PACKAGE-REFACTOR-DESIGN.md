@@ -1,5 +1,7 @@
 # Room package refactor design
 
+> **Status (2026-06-28):** **Shipped** — facade = [`src/agent_lab/room/__init__.py`](../src/agent_lab/room/__init__.py); root `room.py` removed; `room_*.py` shims retained for legacy imports. Living layout: **현재 § Proposed layout** below. Wave-1-only wording below is **historical**; prefer Living SSOT in [PACKAGING-BASELINE.md](./PACKAGING-BASELINE.md).
+
 Design artifact for wave 1. **No file moves in this wave** — import graph, public API, and shim strategy only.
 
 Target: move `room_*.py` → `src/agent_lab/room/` following the `runtime/` subpackage pattern, while keeping existing import paths working.
@@ -19,13 +21,12 @@ python scripts/room_import_graph.py
 python scripts/room_import_graph.py --json
 ```
 
-## Proposed layout (wave 2)
+## Proposed layout (wave 2 — **current**)
 
 ```
 src/agent_lab/
-  room.py                    # public facade (unchanged path)
   room/
-    __init__.py              # optional: re-exports for agent_lab.room.* subpaths
+    __init__.py              # public facade (agent_lab.room)
     messages.py              # was room_messages.py
     turn_flow.py             # was room_turn_flow.py
     ...

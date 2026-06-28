@@ -31,6 +31,8 @@ cp .env.example .env   # AGENT_LAB_PROVIDER=codex + codex login
 make tauri-dev         # native window (dev)
 ```
 
+**Dev API ownership:** `make tauri-dev` sets `AGENT_LAB_SKIP_TAURI_API=1` — Vite [`ensure-dev-api.mjs`](../web/scripts/ensure-dev-api.mjs) spawns uvicorn on `:8765`; UI on `:1420` with `/api` proxy. Release `.app` uses Tauri `lib.rs` supervisor instead.
+
 **Build `.app` / `.dmg` (macOS):**
 
 ```bash

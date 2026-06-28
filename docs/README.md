@@ -135,11 +135,11 @@
 
 ```bash
 make dev                          # API(:8765) + web(:5173)
-make test-fast                    # pytest ~870 tests (~1분)
+make test-fast                    # pytest ~2130 tests (~1–2분)
 make test                         # full pytest (not live)
 make verify-hooks                 # Hook · Communicate suite
 make ci                           # test + smoke + score fixtures
-python scripts/smoke_room.py      # 36 regression baselines
+python scripts/smoke_room.py      # 37 regression baselines
 make list-flags                   # AGENT_LAB_* 플래그 레지스트리
 make mission-dogfood-run          # Mission loop mock dogfood
 make mission-dogfood-weekly       # 주간 KPI rollup

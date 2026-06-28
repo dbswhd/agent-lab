@@ -300,7 +300,7 @@ General discuss/plan turns now store `status: partial` when at least one agent s
 | **Release confidence** | fast + integration + bridge + smoke + score | `make ci-full` |
 | Unit / API | `tests/test_*.py` | `make test` / `pytest tests/ -q -m "not live"` — no live LLM, no secrets |
 | Tauri paths | `tests/test_tauri_config.py` | `frontendDist` → `web/dist`; bundle `resources` → `runtime/web/dist`, `runtime/venv` |
-| Room fixtures | `sessions/_regression/*` (32 smoke baselines via `scripts/smoke_room.py`) | `tests/test_regression_baselines.py`, `tests/test_smoke_room_governance.py`, `tests/test_mb_smoke_fixtures.py`, `scripts/smoke_room.py` |
+| Room fixtures | `sessions/_regression/*` (37 smoke baselines via `scripts/smoke_room.py`) | `tests/test_regression_baselines.py`, `tests/test_smoke_room_governance.py`, `tests/test_mb_smoke_fixtures.py`, `scripts/smoke_room.py` |
 | Score / guards | regression fixtures + execute worktrees | `scripts/score_session.py --json`, `scripts/check_worktree_orphans.py` |
 | Mock E2E | `scripts/smoke_room_e2e.py` | `tests/test_smoke_room_e2e.py`, `AGENT_LAB_MOCK_AGENTS=1` |
 
@@ -315,7 +315,7 @@ General discuss/plan turns now store `status: partial` when at least one agent s
 - `pip install -e ".[cursor,test]"` → fast, integration, and bridge pytest lanes in order; use `make ci-full` locally for release / verify-ops confidence.
 - `make test-duration-report` — slowest 20 tests in the test-fast bucket
 - Live spike only: `AGENT_LAB_RUN_LIVE=1 make test-live` (`tests/test_live_execute_spike.py`)
-- `scripts/smoke_room.py` (32 regression baselines), `scripts/check_worktree_orphans.py`, `scripts/score_session.py --json` on regression fixtures
+- `scripts/smoke_room.py` (37 regression baselines), `scripts/check_worktree_orphans.py`, `scripts/score_session.py --json` on regression fixtures
 - `cd web && npm ci && npm run build`
 - `cd web/src-tauri && cargo check`
 

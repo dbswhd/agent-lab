@@ -311,8 +311,8 @@ sessions/<session-id>/
 
 ```bash
 make dev                                    # API(:8765) + web(:5173)
-make test-fast                              # pytest ~870 tests, ~1분
-python scripts/smoke_room.py                # 36 regression baselines
+make test-fast                              # pytest ~2130 tests, ~1–2분
+python scripts/smoke_room.py                # 37 regression baselines
 AGENT_LAB_ROOM_PRESET=producer_reviewer \
   python scripts/smoke_room.py             # producer_reviewer 검증
 make list-flags                             # 플래그 레지스트리

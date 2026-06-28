@@ -4,7 +4,43 @@
 > 문제 발생 시 이 커밋/태그로 돌아와 parity·packaging·dev lifecycle을 비교한다.
 
 **Baseline tag:** `baseline/pre-hybrid-rust-2026-06-28`  
+**Baseline doc commit:** `9a1c7d48`  
 **Parent code commit (dev API lifecycle):** `09e03c73` — `fix(dev): auto-manage API lifecycle and close hygiene gaps`
+
+### 문서 충돌 시 원칙
+
+| 구분 | 처리 |
+|------|------|
+| **Frozen @ tag** (아래 §) | 태그 시점의 pytest/smoke 수·known failures — **역사 기록**, 덮어쓰지 않음 |
+| **Living SSOT** (아래 §) | Tier-1 docs·코드·`make test-fast` — **현재 버전으로 갱신** |
+| **Archive / handoff RFC** | 본문·AC 유지; 상단 **경로 매핑** 배너만 추가 |
+| **제품 불변식** | BLOCK→409, worktree, Oracle, Human gate — 초기/현재 관계없이 유지 |
+
+---
+
+## Living SSOT (현재 구조 — baseline 이후 갱신)
+
+Tier-1 문서·에이전트 가이드는 아래를 canonical로 둔다. hybrid 작업 중 표현이 어긋나면 **이 절 + code**가 우선.
+
+| 항목 | 현재 (2026-06-28+) |
+|------|---------------------|
+| Room facade | `src/agent_lab/room/__init__.py` (`import agent_lab.room`) — root `room.py` **삭제됨** |
+| Room modules | `src/agent_lab/room/*.py` + root `room_*.py` **shim** (legacy import 호환) |
+| Plan | `src/agent_lab/plan/` 패키지 |
+| `make test-fast` | ~2130 tests (`not live and not integration`) |
+| Smoke | `python scripts/smoke_room.py` → **37** regression baselines |
+| Tauri dev API | `ensure-dev-api.mjs` + `AGENT_LAB_SKIP_TAURI_API=1` — Rust spawn **아님** |
+| Tauri dev UI | Vite **:1420** + `/api` proxy |
+| Browser dev | `make dev` — Vite **:5173** + proxy |
+
+**경로 매핑 (구 표현 → 현재):**
+
+| 구 문서 | 현재 |
+|---------|------|
+| `room.py` | `agent_lab.room` / `room/turn_flow.py` |
+| `room_consensus.py` | `room/consensus.py` (shim: `room_consensus.py`) |
+| `room_team_orchestration.py` | `room/team_orchestration.py` |
+| `plan_execute*.py` (flat) | `plan/execute*.py` |
 
 ---
 
@@ -147,11 +183,11 @@ hybrid 작업과 **무관** — room/package refactor·UI contract drift. 돌아
 
 ---
 
-## Room 코어 상태 (참고)
+## Room 코어 상태 @ tag (frozen)
 
-- `src/agent_lab/room/` 패키지화 진행 (`room.py` 삭제, shim `room_*.py` 유지)
+- Tag 시점: `room/` 패키지 + root shim 전환 **완료**, `room.py` 삭제
 - 불변식: BLOCK→409, worktree 격리, Oracle verify, Human inbox — **Python SSOT**
-- 상세: [`ARCHITECTURE.md`](./ARCHITECTURE.md) §0, [`ROOM-PACKAGE-REFACTOR-DESIGN.md`](./ROOM-PACKAGE-REFACTOR-DESIGN.md)
+- **현재 레이아웃:** 위 Living SSOT · [`ROOM-PACKAGE-REFACTOR-DESIGN.md`](./ROOM-PACKAGE-REFACTOR-DESIGN.md) status banner
 
 ---
 

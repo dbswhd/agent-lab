@@ -180,7 +180,7 @@ class SetupHint:
 ## 6. 검증 (Verification)
 
 1. **단위** — `build_turn_metrics()`, `advise_setup()` 순수 함수 테스트. 합성 `outcomes.jsonl` 픽스처로 "표본<MIN → 빈 힌트", "성공 조합 우세 → override" 케이스. mock-only(`AGENT_LAB_MOCK_AGENTS=1`).
-2. **회귀** — `make test-fast`(~870) 통과. **모든 신규 플래그 OFF 시 결과 불변**이 핵심(기존 스냅샷 미손상). `python scripts/smoke_room.py` 36 baseline 유지.
+2. **회귀** — `make test-fast`(~2130) 통과. **모든 신규 플래그 OFF 시 결과 불변**이 핵심(기존 스락샷 미손상). `python scripts/smoke_room.py` 37 baseline 유지.
 3. **루프 폐쇄 E2E** — `AGENT_LAB_MOCK_AGENTS=1`로 같은 토픽 2회 실행:
    - 1회차: `outcomes.jsonl`에 1줄 생성 확인.
    - 2회차: advisor가 1회차 결과를 읽어 `turn_metrics.advisor_rationale`에 `source="history"`가 찍히는지 확인.

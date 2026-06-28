@@ -212,7 +212,7 @@ export default function App() {
         apiOkRef.current = false;
         setHealth(
           msg.includes("Load failed") || msg.includes("Failed to fetch")
-            ? "API(8765) 연결 실패 — make dev / tauri-dev 재시작"
+            ? "API(8765) 연결 실패 — 자동 재연결 중…"
             : msg,
         );
         return false;
@@ -287,16 +287,28 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const id = window.setInterval(() => {
-      void (async () => {
-        const wasOk = apiOkRef.current;
-        const ok = await reloadHealth(false);
-        if (ok && !wasOk) {
-          await reloadSessions();
-        }
-      })();
-    }, 45_000);
-    return () => window.clearInterval(id);
+    let cancelled = false;
+    let timer: number | undefined;
+
+    const tick = async () => {
+      if (cancelled) return;
+      const wasOk = apiOkRef.current;
+      const ok = await reloadHealth(false);
+      if (ok && !wasOk) {
+        await reloadSessions();
+      }
+      if (cancelled) return;
+      timer = window.setTimeout(
+        () => void tick(),
+        apiOkRef.current ? 45_000 : 5_000,
+      );
+    };
+
+    void tick();
+    return () => {
+      cancelled = true;
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
   }, [reloadHealth, reloadSessions]);
 
   useEffect(() => {

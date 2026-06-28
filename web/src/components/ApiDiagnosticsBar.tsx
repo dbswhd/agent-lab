@@ -78,7 +78,7 @@ export function ApiDiagnosticsBar({
 
       {!apiOk ? (
         <p className="diag-bar__offline">
-          API 연결 끊김 — <code>make dev</code> 또는 앱 재시작 후 ↻ 새로고침
+          API 연결 끊김 — 백엔드가 자동 재시작 중입니다. 잠시 후 ↻ 새로고침
         </p>
       ) : null}
 

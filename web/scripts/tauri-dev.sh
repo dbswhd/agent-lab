@@ -20,7 +20,22 @@ stop_stale_port() {
   fi
 }
 
-stop_stale_port "${VITE_PORT}"
+stop_stale_api_port() {
+  if ! lsof -ti "tcp:8765" >/dev/null 2>&1; then
+    return 0
+  fi
+  if curl -sf --max-time 2 "http://127.0.0.1:8765/api/health" >/dev/null 2>&1; then
+    echo "[agent-lab] API already healthy on :8765"
+    return 0
+  fi
+  echo "[agent-lab] Port 8765 is open but API unhealthy — stopping stale listener"
+  lsof -ti "tcp:8765" | xargs kill -9 2>/dev/null || true
+  pkill -9 -f "uvicorn app.server.main:app" 2>/dev/null || true
+  sleep 0.5
+}
 
-echo "Vite → http://127.0.0.1:${VITE_PORT} (API auto-starts on :8765 via vite plugin)"
+stop_stale_port "${VITE_PORT}"
+stop_stale_api_port
+
+echo "Vite → http://127.0.0.1:${VITE_PORT} (API auto-starts on :8765 before Vite is ready)"
 exec npx vite --port "${VITE_PORT}" --strictPort --host 127.0.0.1

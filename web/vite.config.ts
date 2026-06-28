@@ -11,11 +11,9 @@ const apiProxyTarget =
 function agentLabDevApi() {
   return {
     name: "agent-lab-dev-api",
-    configureServer() {
-      return async () => {
-        if (process.env.VITEST || process.env.VITE_SKIP_API) return;
-        await ensureDevApi();
-      };
+    async configureServer() {
+      if (process.env.VITEST || process.env.VITE_SKIP_API) return;
+      await ensureDevApi();
     },
   };
 }
@@ -58,7 +56,21 @@ export default defineConfig({
         target: apiProxyTarget,
         changeOrigin: true,
         ws: true,
+        timeout: 120_000,
+        proxyTimeout: 120_000,
         configure: (proxy) => {
+          proxy.on("error", (err, _req, res) => {
+            if (!res || res.headersSent) return;
+            res.writeHead(503, { "Content-Type": "application/json" });
+            res.end(
+              JSON.stringify({
+                ok: false,
+                error: "api_offline",
+                message: "API(8765) reconnecting — retry shortly",
+                detail: String(err?.message ?? err),
+              }),
+            );
+          });
           proxy.on("proxyRes", (proxyRes) => {
             const ct = String(proxyRes.headers["content-type"] ?? "");
             if (ct.includes("text/event-stream")) {

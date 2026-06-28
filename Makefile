@@ -1,4 +1,4 @@
-.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test test-fast test-integration test-bridge test-duration-report lint typecheck typecheck-room-ratchet structure-metrics structure-metrics-check audit-room-imports audit-plan-imports audit-session-imports audit-kimi-imports audit-mission-imports audit-agent-imports audit-quant-imports audit-wisdom-imports audit-inbox-imports audit-context-imports audit-run-imports audit-workspace-imports audit-research-imports audit-vendor-imports typecheck-plan-ratchet typecheck-session-ratchet typecheck-kimi-ratchet typecheck-mission-ratchet typecheck-agent-ratchet typecheck-quant-ratchet typecheck-wisdom-ratchet typecheck-inbox-ratchet typecheck-context-ratchet typecheck-run-ratchet typecheck-workspace-ratchet typecheck-research-ratchet typecheck-cursor-ratchet typecheck-codex-ratchet typecheck-claude-ratchet typecheck-local-ratchet ci ci-full check-worktrees smoke smoke-e2e smoke-web-ui smoke-tauri-ui validate-quant verify-quant-workspace verify-trading-v1 verify-mcp-contract build-research-cards offline-lane thin-runtime-status verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate dogfood-feedback-mock feedback-report
+.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build clean test test-fast test-integration test-bridge test-duration-report lint typecheck typecheck-room-ratchet structure-metrics structure-metrics-check audit-room-imports audit-plan-imports audit-session-imports audit-kimi-imports audit-mission-imports audit-agent-imports audit-quant-imports audit-wisdom-imports audit-inbox-imports audit-context-imports audit-run-imports audit-workspace-imports audit-research-imports audit-vendor-imports typecheck-plan-ratchet typecheck-session-ratchet typecheck-kimi-ratchet typecheck-mission-ratchet typecheck-agent-ratchet typecheck-quant-ratchet typecheck-wisdom-ratchet typecheck-inbox-ratchet typecheck-context-ratchet typecheck-run-ratchet typecheck-workspace-ratchet typecheck-research-ratchet typecheck-cursor-ratchet typecheck-codex-ratchet typecheck-claude-ratchet typecheck-local-ratchet ci ci-full check-worktrees smoke smoke-e2e smoke-web-ui smoke-tauri-ui validate-quant verify-quant-workspace verify-trading-v1 verify-mcp-contract build-research-cards offline-lane thin-runtime-status verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate dogfood-feedback-mock feedback-report
 
 install:
 	python3 -m venv .venv
@@ -21,6 +21,19 @@ prod:
 api:
 	.venv/bin/uvicorn app.server.main:app --reload --host 127.0.0.1 --port 8765 \
 		--reload-dir app --reload-dir src --reload-dir tests
+
+clean:
+	@for pass in 1 2 3; do \
+		find . \( -path './.venv' -o -path './web/node_modules' -o -path './web/src-tauri/target' \) -prune -o -depth -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true; \
+		remaining=$$(find . \( -path './.venv' -o -path './web/node_modules' -o -path './web/src-tauri/target' \) -prune -o -type d -name '__pycache__' -print 2>/dev/null | wc -l | tr -d ' '); \
+		[ "$$remaining" = "0" ] && break; \
+	done; \
+	if [ "$$remaining" != "0" ]; then \
+		echo "clean: $$remaining __pycache__ dirs remain (outside .venv/node_modules)"; \
+		exit 1; \
+	fi
+	@find . \( -path './.venv' -o -path './web/node_modules' \) -prune -o -type f -name '*.py[co]' -delete 2>/dev/null || true
+	@echo "clean: __pycache__ cleared"
 
 web-lint:
 	cd web && npm run lint

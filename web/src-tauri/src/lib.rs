@@ -424,6 +424,50 @@ fn stop_api(state: &ApiServer) {
     }
 }
 
+fn spawn_api_supervisor(app: tauri::AppHandle) {
+    thread::spawn(move || {
+        let mut unhealthy_streak = 0u8;
+        loop {
+            thread::sleep(Duration::from_secs(4));
+            if skip_tauri_api() {
+                continue;
+            }
+            let api_state = app.state::<ApiServer>();
+            let child_exited = {
+                let mut guard = api_state.0.lock().unwrap();
+                match guard.as_mut() {
+                    Some(child) => child
+                        .try_wait()
+                        .map(|opt| opt.is_some())
+                        .unwrap_or(true),
+                    None => true,
+                }
+            };
+            if api_health_ok() {
+                unhealthy_streak = 0;
+                continue;
+            }
+            if child_exited {
+                append_boot("supervisor: API exited — restarting");
+                unhealthy_streak = 0;
+                if let Err(e) = start_api(&app, &api_state) {
+                    append_boot(&format!("supervisor: restart failed: {e}"));
+                }
+                continue;
+            }
+            unhealthy_streak += 1;
+            if unhealthy_streak >= 3 {
+                append_boot("supervisor: API unhealthy — restarting");
+                stop_api(&api_state);
+                unhealthy_streak = 0;
+                if let Err(e) = start_api(&app, &api_state) {
+                    append_boot(&format!("supervisor: restart failed: {e}"));
+                }
+            }
+        }
+    });
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run_app() {
     tauri::Builder::default()
@@ -442,10 +486,11 @@ pub fn run_app() {
                     } else {
                         // Fallback when launching the debug binary without Vite.
                         let api_state = handle.state::<ApiServer>();
-                        if let Err(e) = start_api(&handle, &api_state) {
-                            append_boot(&format!(
+                        match start_api(&handle, &api_state) {
+                            Ok(()) => spawn_api_supervisor(handle.clone()),
+                            Err(e) => append_boot(&format!(
                                 "dev: API not auto-started ({e}); run `make api`"
-                            ));
+                            )),
                         }
                     }
                     let _ = navigate_main_to_api_origin(&handle);
@@ -454,6 +499,7 @@ pub fn run_app() {
                 let api_state = handle.state::<ApiServer>();
                 match start_api(&handle, &api_state) {
                     Ok(()) => {
+                        spawn_api_supervisor(handle.clone());
                         if let Err(e) = navigate_main_to_api_origin(&handle) {
                             append_boot(&format!("UI navigate failed: {e}"));
                             eprintln!("{e}");

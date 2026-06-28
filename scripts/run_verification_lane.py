@@ -15,7 +15,7 @@ ROOT: Final = Path(__file__).resolve().parents[1]
 if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
-from agent_lab.session_paths import sessions_dir  # noqa: E402
+from agent_lab.session.paths import sessions_dir  # noqa: E402
 from agent_lab.subprocess_env import subprocess_env  # noqa: E402
 from agent_lab.verification_report import (  # noqa: E402
     LANE_MARKER_EXPRESSIONS,

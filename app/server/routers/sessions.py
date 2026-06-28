@@ -123,8 +123,8 @@ def patch_session_goal(
     body: SessionGoalPatchRequest,
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.plan_workflow import is_plan_workflow_active
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.plan.workflow import is_plan_workflow_active
+    from agent_lab.run.meta import read_run_meta
 
     if is_plan_workflow_active(read_run_meta(folder)):
         raise HTTPException(

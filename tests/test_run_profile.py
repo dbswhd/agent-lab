@@ -6,7 +6,7 @@ import os
 
 import pytest
 
-from agent_lab.run_profile import (
+from agent_lab.run.profile import (
     RunProfileConfig,
     apply_run_profile,
     default_run_profile,

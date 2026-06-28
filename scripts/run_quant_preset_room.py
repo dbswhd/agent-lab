@@ -42,12 +42,12 @@ TOPIC = (
 def main() -> int:
     _bootstrap_env()
 
-    from agent_lab.agent_health import reconnect_cursor_bridge
+    from agent_lab.agent.health import reconnect_cursor_bridge
     from agent_lab.agents.registry import AGENT_IDS, available_agents
-    from agent_lab.quant_utility_validation import detect_pipeline_root
+    from agent_lab.quant.utility_validation import detect_pipeline_root
     from agent_lab.room import run_room
     from agent_lab.session import session_dir, SESSIONS_DIR
-    from agent_lab.session_setup import merge_setup_permissions, seed_session_setup
+    from agent_lab.session.setup import merge_setup_permissions, seed_session_setup
 
     pipeline = detect_pipeline_root()
     if pipeline is None:

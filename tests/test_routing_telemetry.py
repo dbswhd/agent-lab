@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from agent_lab.mode_router import record_routing_decision
-from agent_lab.run_meta import read_run_meta
+from agent_lab.run.meta import read_run_meta
 
 # AC11: RoutingDecisionLog is observation-only. It records the stage-routing decision but
 # never affects fan-out, and the room layer only calls it when STAGE_ROUTING is on, so the

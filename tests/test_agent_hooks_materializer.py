@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from agent_lab.agent_hooks_materializer import materialize_agent_hooks
+from agent_lab.agent.hooks_materializer import materialize_agent_hooks
 
 
 def test_materialize_writes_manifest(tmp_path):

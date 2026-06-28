@@ -10,10 +10,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from agent_lab.plan_actions import find_dry_run_action
-from agent_lab.plan_execute import resolve_execution, run_dry_run
-from agent_lab.plan_execute_git import detect_git_root
-from agent_lab.plan_pending import PlanSnapshotRequired, approve_pending_plan
+from agent_lab.plan.actions import find_dry_run_action
+from agent_lab.plan.execute import resolve_execution, run_dry_run
+from agent_lab.plan.execute_git import detect_git_root
+from agent_lab.plan.pending import PlanSnapshotRequired, approve_pending_plan
 
 SPIKE_MARKER = "LIVE_M0_OK"
 SPIKE_REL_PATH = "src/spike.txt"
@@ -60,7 +60,7 @@ def _seed_plan_snapshot(session: Path, plan_md: str) -> None:
     action = find_dry_run_action(plan_md, 1, kind="now")
     if action is None:
         raise ValueError("plan action 1 not found")
-    from agent_lab.plan_pending import ensure_plan_snapshot_approved
+    from agent_lab.plan.pending import ensure_plan_snapshot_approved
 
     try:
         ensure_plan_snapshot_approved(session, action, plan_md)
@@ -69,7 +69,7 @@ def _seed_plan_snapshot(session: Path, plan_md: str) -> None:
 
 
 def _preflight_cursor() -> dict[str, Any]:
-    from agent_lab.agent_preflight import agent_preflight_row
+    from agent_lab.agent.preflight import agent_preflight_row
     from agent_lab.agents.cursor_agent import is_available
 
     row = agent_preflight_row("cursor", probe_bridge=True, probe_cli=False)
@@ -135,7 +135,7 @@ def run_live_worktree_spike(
         "topic": "live M0 worktree spike",
         "created_at": _now(),
     }
-    from agent_lab.run_meta import write_run_meta
+    from agent_lab.run.meta import write_run_meta
 
     write_run_meta(session, run_meta)
 
@@ -262,7 +262,7 @@ def run_live_worktree_merge_spike(
         "topic": "live worktree merge spike",
         "created_at": _now(),
     }
-    from agent_lab.run_meta import write_run_meta
+    from agent_lab.run.meta import write_run_meta
 
     write_run_meta(session, run_meta)
 

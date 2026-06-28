@@ -17,7 +17,7 @@ import pytest
 
 os.environ.setdefault("AGENT_LAB_MOCK_AGENTS", "1")
 
-from agent_lab.room_retry import RetryError, _is_consensus_turn, retry_failed_agents
+from agent_lab.room.retry import RetryError, _is_consensus_turn, retry_failed_agents
 
 
 def _write_session(folder: Path, *, turn_profile: str = "team", lines: list[dict] | None = None) -> None:
@@ -148,8 +148,8 @@ def test_retry_rejects_consensus_turn(tmp_path):
 
 
 def test_retried_agent_context_includes_successful_peer(tmp_path):
-    from agent_lab.context_bundle import build_context_bundle
-    from agent_lab.room_session_persist import load_session_messages
+    from agent_lab.context.bundle import build_context_bundle
+    from agent_lab.room.session_persist import load_session_messages
 
     _write_session(tmp_path)
     messages = load_session_messages(tmp_path)

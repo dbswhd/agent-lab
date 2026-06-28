@@ -14,7 +14,7 @@ from agent_lab.pipeline_market_read import (
     resolve_freshness_python,
     run_data_freshness,
 )
-from agent_lab.quant_utility_validation import detect_pipeline_root
+from agent_lab.quant.utility_validation import detect_pipeline_root
 from agent_lab.trading_mission.artifact_cards import cards_snapshot_fields, ensure_research_cards
 
 _KST = timezone(timedelta(hours=9))

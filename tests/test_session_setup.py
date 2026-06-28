@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from agent_lab.session_setup import (
+from agent_lab.session.setup import (
     CUSTOM_WORKSPACE_ID,
     build_setup_run_meta,
     list_session_templates,
@@ -100,7 +100,7 @@ def test_template_guidance_general_empty():
 def test_resolve_workspace_preset_missing_quant_returns_none(tmp_path, monkeypatch):
     monkeypatch.setenv("AGENT_LAB_ROOT", str(tmp_path))
     monkeypatch.setattr(
-        "agent_lab.session_setup.pipeline_root",
+        "agent_lab.session.setup.pipeline_root",
         lambda: None,
     )
     assert resolve_workspace_preset("quant-pipeline") is None
@@ -155,9 +155,9 @@ def test_pipeline_root_falls_back_to_desktop_pipeline(tmp_path, monkeypatch):
     desktop = tmp_path / "Desktop" / "pipeline"
     desktop.mkdir(parents=True)
     monkeypatch.setattr(
-        "agent_lab.workspace_roots.Path.home",
+        "agent_lab.workspace.roots.Path.home",
         lambda: tmp_path,
     )
-    from agent_lab.workspace_roots import pipeline_root
+    from agent_lab.workspace.roots import pipeline_root
 
     assert pipeline_root() == desktop.resolve()

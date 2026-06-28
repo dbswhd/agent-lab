@@ -12,7 +12,8 @@ import os
 from pathlib import Path
 from typing import Any, Callable
 
-from agent_lab import agent_roster, provider_registry, usage_monitor
+from agent_lab.agent import roster as agent_roster
+from agent_lab import provider_registry, usage_monitor
 from agent_lab.consensus_gate import allocate_roles
 from agent_lab.agents.registry import available_agents
 from agent_lab.credential_store import (
@@ -352,7 +353,7 @@ def _model(args: list[str], *, session_folder: Path | None = None) -> dict[str, 
     if scope == "session":
         if session_folder is None:
             return _err("model", "session scope requires an active session")
-        from agent_lab.run_meta import patch_run_meta
+        from agent_lab.run.meta import patch_run_meta
 
         patch_run_meta(
             session_folder,
@@ -360,7 +361,7 @@ def _model(args: list[str], *, session_folder: Path | None = None) -> dict[str, 
         )
         note = f"Room 구성을 {', '.join(composition)}로 변경했습니다 (이 세션 동안 유지)."
     elif scope == "default":
-        from agent_lab.room_models_config import persist_default_room_models
+        from agent_lab.room.models_config import persist_default_room_models
 
         persist_default_room_models(composition)
         os.environ["AGENT_LAB_ROOM_MODELS"] = joined
@@ -435,8 +436,8 @@ def _agents(args: list[str]) -> dict[str, Any]:
 
 
 def _set_mission_phase(session_folder: Path, command: str, target_phase: str) -> dict[str, Any]:
-    from agent_lab.mission_loop import get_mission_loop
-    from agent_lab.run_meta import patch_run_meta, read_run_meta
+    from agent_lab.mission.loop import get_mission_loop
+    from agent_lab.run.meta import patch_run_meta, read_run_meta
 
     def _set(run: dict[str, Any]) -> dict[str, Any]:
         ml = get_mission_loop(run)
@@ -455,7 +456,7 @@ def _pipeline(args: list[str], *, session_folder: Path | None = None) -> dict[st
     if session_folder is None:
         return _err("pipeline", "no active session")
     from agent_lab.mode_router import select_mode
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.run.meta import read_run_meta
 
     run = read_run_meta(session_folder)
     ml = run.get("mission_loop") if isinstance(run, dict) else {}
@@ -475,8 +476,8 @@ def _clarify(args: list[str], *, session_folder: Path | None = None) -> dict[str
     if session_folder is None:
         return _err("clarify", "no active session")
     result = _set_mission_phase(session_folder, "clarify", "CLARIFY")
-    from agent_lab.plan_workflow import get_plan_workflow, init_plan_workflow_on_plan_send
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.plan.workflow import get_plan_workflow, init_plan_workflow_on_plan_send
+    from agent_lab.run.meta import read_run_meta
 
     run = read_run_meta(session_folder)
     if not get_plan_workflow(run).get("enabled"):
@@ -490,8 +491,8 @@ def _plan(args: list[str], *, session_folder: Path | None = None) -> dict[str, A
     if session_folder is None:
         return _err("plan", "no active session")
     result = _set_mission_phase(session_folder, "plan", "DISCUSS")
-    from agent_lab.plan_workflow import get_plan_workflow, init_plan_workflow_on_plan_send
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.plan.workflow import get_plan_workflow, init_plan_workflow_on_plan_send
+    from agent_lab.run.meta import read_run_meta
 
     run = read_run_meta(session_folder)
     if not get_plan_workflow(run).get("enabled"):

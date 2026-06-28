@@ -16,13 +16,13 @@ _ROOT = project_root()
 
 
 def _api_startup() -> None:
-    from agent_lab.agent_auth_bootstrap import bootstrap_room_auth_on_startup
+    from agent_lab.agent.auth_bootstrap import bootstrap_room_auth_on_startup
     from agent_lab.app_logging import write_boot_line
     from agent_lab.daemon_state import mark_daemon_started
-    from agent_lab.mission_scheduler import start_mission_scheduler_background
+    from agent_lab.mission.scheduler import start_mission_scheduler_background
 
     try:
-        from agent_lab.run_profile import apply_run_profile, default_run_profile
+        from agent_lab.run.profile import apply_run_profile, default_run_profile
 
         applied = apply_run_profile(default_run_profile())
         if applied:
@@ -34,7 +34,7 @@ def _api_startup() -> None:
     except Exception as exc:
         write_boot_line(f"auth bootstrap failed: {exc}")
     try:
-        from agent_lab.room_models_config import apply_default_room_models_to_env
+        from agent_lab.room.models_config import apply_default_room_models_to_env
 
         apply_default_room_models_to_env()
     except Exception as exc:
@@ -66,7 +66,7 @@ def _api_startup() -> None:
             record_last_recovery(rec)
         if start_mission_scheduler_background():
             write_boot_line("mission scheduler background thread started")
-        from agent_lab.kimi_control_client import warm_bridge
+        from agent_lab.kimi.control_client import warm_bridge
 
         warm_bridge(background=True)
     except Exception as exc:
@@ -75,7 +75,7 @@ def _api_startup() -> None:
 
 def _api_shutdown() -> None:
     from agent_lab.background_tasks import get_manager
-    from agent_lab.kimi_daimon_supervisor import _keep_daimon_on_api_shutdown, detach_owned_daimon, shutdown_owned_daimon
+    from agent_lab.kimi.daimon_supervisor import _keep_daimon_on_api_shutdown, detach_owned_daimon, shutdown_owned_daimon
 
     try:
         get_manager().shutdown()

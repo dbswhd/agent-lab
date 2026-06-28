@@ -200,9 +200,15 @@ If the topic shifted (e.g. from greeting to trading research), the summary must 
 Max ~600 words. No secrets."""
 
 TRADING_MISSION_SCRIBE_ADDENDUM = """
-[Trading Mission — required plan.md extras]
-Always include these sections in addition to standard room sections:
+[Trading Mission — extension plan file]
+Do NOT put trading-mission-only sections (ingest_ready, active_strategies, freshness, proposal_batch, kr_kospi_v1, etc.) in plan.md.
+Write those to `artifacts/plans/trading-mission.md` instead.
 
+plan.md must stay the core session execution contract (논의/합의/지금 실행/실행 순서 only).
+In plan.md you may add one bullet under ## 합의된 점 linking the extension plan:
+- Trading mission detail → `artifacts/plans/trading-mission.md`
+
+In `artifacts/plans/trading-mission.md`, include:
 ## 합의
 - ingest_ready: true | false
 - blocking_reason: (empty if none)
@@ -211,15 +217,16 @@ Always include these sections in addition to standard room sections:
 
 If proposals were agreed, note that Codex should validate `artifacts/proposals_draft.json`.
 Playbook content should also appear in `artifacts/playbook.md` under 「오늘 장중 행동」.
-
-Under ## 지금 실행, prefer actions that seal snapshot, write proposals_draft/playbook, or run:
-`python -m agent_lab.trading_mission.verify --check goal`
 """
 
 
 def room_scribe_prompt(run_meta: dict | None) -> str:
-    """Scribe system prompt; trading-mission template gets extra sections."""
+    """Scribe system prompt; trading-mission template gets extension-plan guidance."""
     if run_meta and str(run_meta.get("session_template") or "") == "trading-mission":
+        return ROOM_SCRIBE + TRADING_MISSION_SCRIBE_ADDENDUM
+    from agent_lab.plan.paths import is_trading_mission_run
+
+    if is_trading_mission_run(run_meta):
         return ROOM_SCRIBE + TRADING_MISSION_SCRIBE_ADDENDUM
     return ROOM_SCRIBE
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from agent_lab.kimi_work_push_mapper import KimiWorkPushMapper
+from agent_lab.kimi.work_push_mapper import KimiWorkPushMapper
 
 _FIXTURE = Path(__file__).resolve().parent / "fixtures" / "kimi_work_tool_pushes.jsonl"
 
@@ -107,7 +107,7 @@ def test_cancelled_emits_activity() -> None:
 
 
 def test_merge_multiple_text_parts_cumulative() -> None:
-    from agent_lab.kimi_work_push_payload import assistant_reply_text
+    from agent_lab.kimi.work_push_payload import assistant_reply_text
 
     payload = {
         "message": {
@@ -181,7 +181,7 @@ def test_reasoning_activity_throttles_small_growth() -> None:
 
 
 def test_reasoning_delta_parts_merge() -> None:
-    from agent_lab.kimi_work_push_payload import assistant_reasoning_text
+    from agent_lab.kimi.work_push_payload import assistant_reasoning_text
 
     payload = {
         "message": {

@@ -121,7 +121,7 @@ def test_judge_session_never_raises(tmp_path: Path) -> None:
 
 def test_score_session_includes_judge_block(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("AGENT_LAB_JUDGE_LIVE", raising=False)
-    from agent_lab.session_score import score_session
+    from agent_lab.session.score import score_session
 
     report = score_session(_session(tmp_path))
     assert "judge" in report

@@ -149,7 +149,7 @@ def auto_approve_deadline_passed(execution: dict[str, Any]) -> bool:
 
 def try_auto_approve(folder: Any, execution_id: str) -> dict[str, Any] | None:
     """Attempt auto-approval if deadline has passed. Returns resolve result or None."""
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.run.meta import read_run_meta
 
     run = read_run_meta(folder)
     target = next(
@@ -163,7 +163,7 @@ def try_auto_approve(folder: Any, execution_id: str) -> dict[str, Any] | None:
     if target.get("status") != "pending_approval":
         return None
 
-    from agent_lab.plan_execute import resolve_execution
+    from agent_lab.plan.execute import resolve_execution
 
     meta = {
         "risk_level": target.get("auto_approve_risk_level"),

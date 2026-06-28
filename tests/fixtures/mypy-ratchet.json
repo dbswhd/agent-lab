@@ -1,9 +1,24 @@
 {
   "version": 1,
   "exclude_files": [
-    "src/agent_lab/room.py"
+    "src/agent_lab/room/__init__.py"
   ],
-  "max_ratchet_errors": 243,
-  "total_errors_snapshot": 243,
-  "note": "Ratchet applies to errors outside exclude_files. Lower max_ratchet_errors when fixing types."
+  "exclude_prefixes": [
+    "src/agent_lab/room/",
+    "src/agent_lab/plan/",
+    "src/agent_lab/session/",
+    "src/agent_lab/kimi/",
+    "src/agent_lab/mission/",
+    "src/agent_lab/agent/",
+    "src/agent_lab/quant/",
+    "src/agent_lab/wisdom/",
+    "src/agent_lab/inbox/",
+    "src/agent_lab/context/",
+    "src/agent_lab/run/",
+    "src/agent_lab/workspace/",
+    "src/agent_lab/research/"
+  ],
+  "max_ratchet_errors": 237,
+  "total_errors_snapshot": 309,
+  "note": "Ratchet applies outside exclude_files and exclude_prefixes. Package strict debt: mypy_*_ratchet.py scripts."
 }

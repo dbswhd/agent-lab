@@ -8,9 +8,9 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.agent_envelope import classify_consensus_reply
+from agent_lab.agent.envelope import classify_consensus_reply
 from agent_lab.reply_policy import legacy_endorse_enabled
-from agent_lab.session_score import score_session
+from agent_lab.session.score import score_session
 
 ROOT = Path(__file__).resolve().parents[1]
 REGRESSION = ROOT / "sessions" / "_regression"

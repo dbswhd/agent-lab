@@ -175,7 +175,7 @@ def test_format_divergence_options_accepts_dicts():
 
 def test_divergence_instruction_injected_only_under_divergence():
     from agent_lab.agents.prompts import DIVERGENCE_INSTRUCTION
-    from agent_lab.context_bundle import build_context_bundle
+    from agent_lab.context.bundle import build_context_bundle
 
     div = build_context_bundle("topic", [], "cursor", run_meta={"turn_profile": "발산"}).render()
     team = build_context_bundle("topic", [], "cursor", run_meta={"turn_profile": "team"}).render()
@@ -190,7 +190,7 @@ def test_divergence_instruction_injected_only_under_divergence():
 
 
 def test_emit_divergence_options_only_for_divergence():
-    from agent_lab.room_turn_flow import _emit_divergence_options
+    from agent_lab.room.turn_flow import _emit_divergence_options
 
     events: list[tuple[str, dict]] = []
 

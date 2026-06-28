@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Sequence
 from typing import Literal
 
-from agent_lab import agent_models
+from agent_lab.agent import models as agent_models
 
 AgentId = Literal["cursor", "codex", "claude", "kimi", "kimi_work", "local"]
 ProviderId = Literal["local", "openai", "anthropic"]
@@ -55,7 +55,7 @@ def loop_blockers(profile: ModelProfile) -> tuple[str, ...]:
     if not profile.supports_json_envelope:
         blockers.append("supports_json_envelope")
     if profile.agent == "kimi_work":
-        from agent_lab.kimi_work_loop import kimi_work_loop_waives_inbox_mcp
+        from agent_lab.kimi.work_loop import kimi_work_loop_waives_inbox_mcp
 
         if kimi_work_loop_waives_inbox_mcp():
             blockers = [b for b in blockers if b != "supports_inbox_mcp"]
@@ -191,7 +191,7 @@ _LOOP_EVAL_LOADED = False
 
 
 def _loop_eval_registry_path() -> Path:
-    from agent_lab.workspace_roots import project_root
+    from agent_lab.workspace.roots import project_root
 
     override = (os.getenv("AGENT_LAB_LOOP_EVAL_REGISTRY") or "").strip()
     if override:

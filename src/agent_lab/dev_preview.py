@@ -12,7 +12,7 @@ import socket
 from pathlib import Path
 from typing import Any
 
-from agent_lab.run_meta import patch_run_meta, read_run_meta
+from agent_lab.run.meta import patch_run_meta, read_run_meta
 
 PORT_MIN = 1024
 PORT_MAX = 65534

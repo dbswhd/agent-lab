@@ -7,10 +7,10 @@ from typing import Any
 
 import pytest
 
-from agent_lab.inbox_harvest import harvest_clarifier_questions
-from agent_lab.plan_workflow import get_plan_workflow
-from agent_lab.run_meta import read_run_meta
-from agent_lab.session_clarifier import (
+from agent_lab.inbox.harvest import harvest_clarifier_questions
+from agent_lab.plan.workflow import get_plan_workflow
+from agent_lab.run.meta import read_run_meta
+from agent_lab.session.clarifier import (
     build_clarifier_interview,
     build_clarifier_questions,
     clarifier_min_topic_chars,
@@ -177,7 +177,7 @@ def test_clarifier_answers_api_complete_auto_advances(
         '{"verified_loop": {"loop_goal": {"text": "fix src/agent_lab/run_meta.py null check"}}}',
         encoding="utf-8",
     )
-    from agent_lab.plan_workflow import init_plan_workflow_on_plan_send
+    from agent_lab.plan.workflow import init_plan_workflow_on_plan_send
 
     init_plan_workflow_on_plan_send(folder)
     assert get_plan_workflow(read_run_meta(folder))["phase"] == "CLARIFY"

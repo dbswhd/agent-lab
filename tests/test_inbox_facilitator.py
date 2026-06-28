@@ -5,9 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from agent_lab.agent_envelope import parse_decision_forks
-from agent_lab.inbox_facilitator import facilitate, merge_forks
-from agent_lab.inbox_harvest import harvest_discuss_questions, harvest_question_candidates
+from agent_lab.agent.envelope import parse_decision_forks
+from agent_lab.inbox.facilitator import facilitate, merge_forks
+from agent_lab.inbox.harvest import harvest_discuss_questions, harvest_question_candidates
 
 
 def _fork_block(topic: str, options: list[tuple[str, list[str]]]) -> str:

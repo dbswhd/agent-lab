@@ -7,17 +7,17 @@ from typing import Any
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from agent_lab.plan_execute_worktree import WorktreeUnavailable
-from agent_lab.plan_pending import PlanSnapshotRequired
-from agent_lab.room_hooks import PreExecuteBlocked
-from agent_lab.room_objections import ObjectionBlocksExecute
+from agent_lab.plan.execute_worktree import WorktreeUnavailable
+from agent_lab.plan.pending import PlanSnapshotRequired
+from agent_lab.room.hooks import PreExecuteBlocked
+from agent_lab.room.objections import ObjectionBlocksExecute
 
 
 def _notify_execute_gate_blocked(folder, *, source: str) -> None:
     try:
         from agent_lab.gateway.notify_helpers import notify_gate_blocked
         from agent_lab.runtime.policy import PolicyEngine
-        from agent_lab.run_meta import read_run_meta
+        from agent_lab.run.meta import read_run_meta
 
         snap = PolicyEngine.gate_snapshot(read_run_meta(folder))
         notify_gate_blocked(folder, snap, source=source)

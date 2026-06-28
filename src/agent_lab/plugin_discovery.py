@@ -13,7 +13,7 @@ from agent_lab.code_memory_mcp_server import (
     code_memory_cache_signature,
     code_memory_mcp_enabled,
 )
-from agent_lab.wisdom_store import wisdom_cache_signature, wisdom_mcp_enabled
+from agent_lab.wisdom.store import wisdom_cache_signature, wisdom_mcp_enabled
 from agent_lab.subprocess_env import subprocess_env
 
 _AGENT_LAB_ROOT = Path(__file__).resolve().parents[2]

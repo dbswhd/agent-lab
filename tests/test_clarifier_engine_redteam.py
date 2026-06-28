@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.run_meta import patch_run_meta, read_run_meta
+from agent_lab.run.meta import patch_run_meta, read_run_meta
 
 
 def _sess(tmp_path: Path) -> Path:
@@ -30,13 +30,13 @@ def _seed_goal(folder: Path, text: str) -> None:
 
 
 def _init_plan_workflow(folder: Path) -> None:
-    from agent_lab.plan_workflow import init_plan_workflow_on_plan_send
+    from agent_lab.plan.workflow import init_plan_workflow_on_plan_send
 
     init_plan_workflow_on_plan_send(folder)
 
 
 def _tick(folder: Path) -> dict:
-    from agent_lab.plan_workflow import tick_plan_workflow_after_turn
+    from agent_lab.plan.workflow import tick_plan_workflow_after_turn
 
     return tick_plan_workflow_after_turn(
         folder,
@@ -65,7 +65,7 @@ def test_redteam_cross_source_pending_then_complete_allows_next(
 ) -> None:
     folder = _sess(tmp_path)
 
-    from agent_lab.session_clarifier import (
+    from agent_lab.session.clarifier import (
         get_clarifier_interview,
         persist_clarifier_interview,
         record_clarifier_answers,
@@ -97,7 +97,7 @@ def test_redteam_engine_always_on_build_carries_source_and_cross_source_blocked(
     monkeypatch.setenv("AGENT_LAB_CLARIFIER", "1")
     folder = _sess(tmp_path)
 
-    from agent_lab.session_clarifier import build_clarifier_interview, persist_clarifier_interview
+    from agent_lab.session.clarifier import build_clarifier_interview, persist_clarifier_interview
 
     built = build_clarifier_interview("hi", is_new_session=True, human_message_count=1)
     assert built is not None
@@ -116,7 +116,7 @@ def test_redteam_same_source_divergent_pending_is_preserved(monkeypatch: pytest.
     """A same-source write that would DROP an already-pending question is blocked."""
     folder = _sess(tmp_path)
 
-    from agent_lab.session_clarifier import get_clarifier_interview, persist_clarifier_interview
+    from agent_lab.session.clarifier import get_clarifier_interview, persist_clarifier_interview
 
     first = _panel("clarity_engine", "q1", "First?")
     assert persist_clarifier_interview(folder, first)["persisted"] is True
@@ -150,7 +150,7 @@ def test_redteam_plan_workflow_gate_visibility_and_approval_spine(
     monkeypatch.delenv("AGENT_LAB_PIPELINE", raising=False)
 
     from agent_lab.human_inbox import has_pending_question
-    from agent_lab.plan_workflow import get_plan_workflow
+    from agent_lab.plan.workflow import get_plan_workflow
 
     vague = _sess(tmp_path)
     _init_plan_workflow(vague)
@@ -176,9 +176,9 @@ def test_redteam_no_visible_question_path_does_not_deadlock(monkeypatch: pytest.
     monkeypatch.setenv("AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST", "1")  # harvest enabled → dedup path
     monkeypatch.delenv("AGENT_LAB_PIPELINE", raising=False)
 
-    import agent_lab.inbox_harvest as inbox_harvest
+    import agent_lab.inbox.harvest as inbox_harvest
     from agent_lab.human_inbox import has_pending_question
-    from agent_lab.plan_workflow import get_plan_workflow
+    from agent_lab.plan.workflow import get_plan_workflow
 
     monkeypatch.setattr(inbox_harvest, "harvest_clarifier_questions", lambda run, prompts: None)
 
@@ -196,9 +196,9 @@ def test_redteam_no_visible_question_path_does_not_deadlock(monkeypatch: pytest.
 
 def test_redteam_import_cycle_multiple_fresh_orders() -> None:
     orders = [
-        ["agent_lab.clarity", "agent_lab.clarifier_engine", "agent_lab.session_clarifier"],
-        ["agent_lab.session_clarifier", "agent_lab.clarity", "agent_lab.clarifier_engine"],
-        ["agent_lab.clarifier_engine", "agent_lab.session_clarifier", "agent_lab.clarity"],
+        ["agent_lab.clarity", "agent_lab.clarifier_engine", "agent_lab.session.clarifier"],
+        ["agent_lab.session.clarifier", "agent_lab.clarity", "agent_lab.clarifier_engine"],
+        ["agent_lab.clarifier_engine", "agent_lab.session.clarifier", "agent_lab.clarity"],
     ]
     for order in orders:
         code = "import importlib\n" + "\n".join(f"importlib.import_module({name!r})" for name in order)

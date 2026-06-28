@@ -11,7 +11,7 @@ from agent_lab.sidecar_accounting import (
     sidecar_bridge_handler,
     tracked_agent_call,
 )
-from agent_lab.run_meta import read_run_meta
+from agent_lab.run.meta import read_run_meta
 
 def test_sidecar_bridge_records_usage(tmp_path: Path) -> None:
     folder = tmp_path / "sess-1"

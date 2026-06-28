@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.run_meta import patch_run_meta, read_run_meta
+from agent_lab.run.meta import patch_run_meta, read_run_meta
 
 
 def _sess(tmp_path: Path) -> Path:
@@ -79,7 +79,7 @@ def test_adapter_is_pure_no_storage_no_toplevel_ac_imports() -> None:
 def test_import_cycle_safe() -> None:
     import importlib
 
-    for mod in ("agent_lab.clarity", "agent_lab.clarifier_engine", "agent_lab.session_clarifier"):
+    for mod in ("agent_lab.clarity", "agent_lab.clarifier_engine", "agent_lab.session.clarifier"):
         importlib.import_module(mod)
 
 
@@ -136,7 +136,7 @@ def test_ac13_one_pass_single_panel(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_ac11_category_literal_includes_criteria_context() -> None:
-    from agent_lab.session_clarifier import ClarifierCategory
+    from agent_lab.session.clarifier import ClarifierCategory
 
     args = set(typing.get_args(ClarifierCategory))
     assert {"goal", "scope", "verify", "constraints", "priority", "criteria", "context"} <= args
@@ -148,7 +148,7 @@ def test_ac11_category_literal_includes_criteria_context() -> None:
 def test_ac2_engine_backed_build_surface(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     monkeypatch.setenv("AGENT_LAB_CLARIFIER", "1")
-    from agent_lab.session_clarifier import build_clarifier_interview
+    from agent_lab.session.clarifier import build_clarifier_interview
 
     interview = build_clarifier_interview(
         "make the whole thing better somehow", is_new_session=True, human_message_count=1
@@ -165,7 +165,7 @@ def test_ac1_vague_topic_uses_engine_interview(monkeypatch: pytest.MonkeyPatch) 
     """Engine always on: vague short topic → engine interview with source marker."""
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     monkeypatch.setenv("AGENT_LAB_CLARIFIER", "1")
-    from agent_lab.session_clarifier import build_clarifier_interview
+    from agent_lab.session.clarifier import build_clarifier_interview
 
     interview = build_clarifier_interview("hi", is_new_session=True, human_message_count=1)
     assert interview is not None
@@ -175,7 +175,7 @@ def test_ac1_vague_topic_uses_engine_interview(monkeypatch: pytest.MonkeyPatch) 
 def test_ac9_clarifier_off_engine_on_no_static_interview(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     monkeypatch.delenv("AGENT_LAB_CLARIFIER", raising=False)
-    from agent_lab.session_clarifier import build_clarifier_interview
+    from agent_lab.session.clarifier import build_clarifier_interview
 
     # A's surface still requires AGENT_LAB_CLARIFIER; engine alone does not enable it.
     assert build_clarifier_interview("make it better", is_new_session=True, human_message_count=1) is None
@@ -186,7 +186,7 @@ def test_ac9_clarifier_off_engine_on_no_static_interview(monkeypatch: pytest.Mon
 
 def test_ac12_persist_returns_state_and_blocks_cross_source(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     folder = _sess(tmp_path)
-    from agent_lab.session_clarifier import get_clarifier_interview, persist_clarifier_interview
+    from agent_lab.session.clarifier import get_clarifier_interview, persist_clarifier_interview
 
     panel = {
         "version": 2,
@@ -223,7 +223,7 @@ def test_ac12_persist_returns_state_and_blocks_cross_source(monkeypatch: pytest.
 
 def test_ac4_completion_only_via_record_then_next_pending(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     folder = _sess(tmp_path)
-    from agent_lab.session_clarifier import persist_clarifier_interview, record_clarifier_answers
+    from agent_lab.session.clarifier import persist_clarifier_interview, record_clarifier_answers
 
     interview = {
         "version": 2,
@@ -250,7 +250,7 @@ def test_ac4_completion_only_via_record_then_next_pending(monkeypatch: pytest.Mo
 def test_ac1_persist_cross_source_pending_always_blocked(tmp_path: Path) -> None:
     """Identity-aware persistence always on: cross-source pending write is blocked."""
     folder = _sess(tmp_path)
-    from agent_lab.session_clarifier import get_clarifier_interview, persist_clarifier_interview
+    from agent_lab.session.clarifier import get_clarifier_interview, persist_clarifier_interview
 
     a = {
         "version": 2,
@@ -276,7 +276,7 @@ def test_ac1_persist_cross_source_pending_always_blocked(tmp_path: Path) -> None
 def test_ac14_persist_stores_candidate_verbatim(tmp_path: Path) -> None:
     """persist_clarifier_interview does not inject extra keys into run.json."""
     folder = _sess(tmp_path)
-    from agent_lab.session_clarifier import get_clarifier_interview, persist_clarifier_interview
+    from agent_lab.session.clarifier import get_clarifier_interview, persist_clarifier_interview
 
     candidate = {
         "version": 2,
@@ -293,13 +293,13 @@ def test_ac14_persist_stores_candidate_verbatim(tmp_path: Path) -> None:
 
 
 def _init_plan_workflow(folder: Path) -> None:
-    from agent_lab.plan_workflow import init_plan_workflow_on_plan_send
+    from agent_lab.plan.workflow import init_plan_workflow_on_plan_send
 
     init_plan_workflow_on_plan_send(folder)
 
 
 def _tick(folder: Path) -> dict:
-    from agent_lab.plan_workflow import tick_plan_workflow_after_turn
+    from agent_lab.plan.workflow import tick_plan_workflow_after_turn
 
     return tick_plan_workflow_after_turn(
         folder,
@@ -316,7 +316,7 @@ def test_ac10_gate_holds_clarify_with_visible_inbox_question(monkeypatch: pytest
     monkeypatch.setenv("AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST", "1")
     monkeypatch.delenv("AGENT_LAB_PIPELINE", raising=False)  # default ON
     from agent_lab.human_inbox import has_pending_question
-    from agent_lab.plan_workflow import get_plan_workflow
+    from agent_lab.plan.workflow import get_plan_workflow
 
     folder = _sess(tmp_path)
     _init_plan_workflow(folder)
@@ -345,7 +345,7 @@ def test_ac8_gate_never_starts_execution(monkeypatch: pytest.MonkeyPatch, tmp_pa
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     monkeypatch.setenv("AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST", "1")
     monkeypatch.delenv("AGENT_LAB_PIPELINE", raising=False)
-    from agent_lab.plan_workflow import get_plan_workflow
+    from agent_lab.plan.workflow import get_plan_workflow
 
     folder = _sess(tmp_path)
     _init_plan_workflow(folder)
@@ -396,7 +396,7 @@ def test_ac10b_mcp_first_engine_on_holds_clarify(monkeypatch: pytest.MonkeyPatch
     monkeypatch.delenv("AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST", raising=False)  # default 0 = MCP-first
     monkeypatch.delenv("AGENT_LAB_PIPELINE", raising=False)
     from agent_lab.human_inbox import has_pending_question
-    from agent_lab.plan_workflow import get_plan_workflow
+    from agent_lab.plan.workflow import get_plan_workflow
 
     folder = _sess(tmp_path)
     _init_plan_workflow(folder)

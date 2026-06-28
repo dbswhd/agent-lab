@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 
-from agent_lab.session_score import score_session
-from agent_lab.session_score_weekly import (
+from agent_lab.session.score import score_session
+from agent_lab.session.score_weekly import (
     aggregate_rates,
     build_weekly_report,
     discover_sessions,

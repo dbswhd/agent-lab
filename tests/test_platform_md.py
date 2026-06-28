@@ -24,7 +24,7 @@ def test_platform_injection_cap():
 
 
 def test_session_guidance_includes_platform():
-    from agent_lab.session_guidance import build_session_guidance_block
+    from agent_lab.session.guidance import build_session_guidance_block
 
     block = build_session_guidance_block({})
     assert "PLATFORM.md" in block

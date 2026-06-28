@@ -25,7 +25,7 @@ def test_adversarial_review_mock_and_injected():
 
 
 def test_read_project_md_in_guidance(tmp_path):
-    from agent_lab.session_guidance import build_session_guidance_block
+    from agent_lab.session.guidance import build_session_guidance_block
 
     ws = tmp_path / "proj"
     (ws / ".agent-lab").mkdir(parents=True)

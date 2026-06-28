@@ -24,7 +24,7 @@ def test_regression_baselines_pass():
 
 
 def test_regression_run_meta_write_import():
-    mod = importlib.import_module("agent_lab.run_meta")
+    mod = importlib.import_module("agent_lab.run.meta")
     assert hasattr(mod, "write_run_meta")
     assert hasattr(mod, "patch_run_meta")
     assert callable(mod.write_run_meta)
@@ -32,7 +32,7 @@ def test_regression_run_meta_write_import():
 
 
 def test_regression_run_schema_validation():
-    mod = importlib.import_module("agent_lab.run_schema")
+    mod = importlib.import_module("agent_lab.run.schema")
     assert hasattr(mod, "validate_run")
     bad = {"phase": "BAD", "executions": [{"status": "BAD"}], "pending_action_indices": "not-a-list"}
     raised = False

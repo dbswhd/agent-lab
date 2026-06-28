@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from agent_lab.extensions.quant_runtime import load_quant_module
-from agent_lab.research_artifact_card import build_card_from_full_json
+from agent_lab.research.artifact_card import build_card_from_full_json
 from agent_lab.trading_mission.effective_confidence import effective_confidence
 
 

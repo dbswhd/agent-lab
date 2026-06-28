@@ -21,7 +21,7 @@ def _skipped(result: Any) -> DispatchResult:
 
 
 def handle_mission_enable(folder: Path, payload: dict[str, Any]) -> DispatchResult:
-    from agent_lab.mission_loop import enable_mission_loop
+    from agent_lab.mission.loop import enable_mission_loop
 
     ml = enable_mission_loop(
         folder,
@@ -35,7 +35,7 @@ def handle_mission_enable(folder: Path, payload: dict[str, Any]) -> DispatchResu
 
 
 def handle_mission_plan_gate(folder: Path, payload: dict[str, Any]) -> DispatchResult:
-    from agent_lab.mission_loop import run_plan_gate
+    from agent_lab.mission.loop import run_plan_gate
 
     plan_md = payload.get("plan_md")
     if not isinstance(plan_md, str):
@@ -48,7 +48,7 @@ def handle_mission_plan_gate(folder: Path, payload: dict[str, Any]) -> DispatchR
 
 
 def handle_mission_advance(folder: Path, payload: dict[str, Any]) -> DispatchResult:
-    from agent_lab.mission_advance import maybe_advance_mission
+    from agent_lab.mission.advance import maybe_advance_mission
 
     executor_raw = payload.get("executor")
     result = maybe_advance_mission(
@@ -63,7 +63,7 @@ def handle_mission_advance(folder: Path, payload: dict[str, Any]) -> DispatchRes
 
 
 def handle_mission_pause(folder: Path, payload: dict[str, Any]) -> DispatchResult:
-    from agent_lab.mission_loop import pause_mission_loop
+    from agent_lab.mission.loop import pause_mission_loop
 
     result = pause_mission_loop(
         folder,
@@ -77,7 +77,7 @@ def handle_mission_pause(folder: Path, payload: dict[str, Any]) -> DispatchResul
 
 
 def handle_mission_resume(folder: Path, payload: dict[str, Any]) -> DispatchResult:
-    from agent_lab.mission_loop import resume_mission_loop
+    from agent_lab.mission.loop import resume_mission_loop
 
     resume_phase = payload.get("resume_phase")
     phase_arg = str(resume_phase).strip() if resume_phase is not None else None
@@ -89,7 +89,7 @@ def handle_mission_resume(folder: Path, payload: dict[str, Any]) -> DispatchResu
 
 
 def handle_mission_circuit_breaker(folder: Path, payload: dict[str, Any]) -> DispatchResult:
-    from agent_lab.mission_loop import trigger_circuit_breaker
+    from agent_lab.mission.loop import trigger_circuit_breaker
 
     reason = str(payload.get("reason") or "").strip()
     if not reason:
@@ -108,7 +108,7 @@ def handle_mission_circuit_breaker(folder: Path, payload: dict[str, Any]) -> Dis
 
 
 def handle_mission_circuit_clear(folder: Path, payload: dict[str, Any]) -> DispatchResult:
-    from agent_lab.mission_loop import clear_circuit_breaker
+    from agent_lab.mission.loop import clear_circuit_breaker
 
     resume_phase = str(payload.get("resume_phase") or "DISCUSS").strip()
     ml = clear_circuit_breaker(folder, resume_phase=resume_phase)
@@ -120,7 +120,7 @@ def handle_mission_circuit_clear(folder: Path, payload: dict[str, Any]) -> Dispa
 
 
 def handle_mission_discuss_recovery(folder: Path, payload: dict[str, Any]) -> DispatchResult:
-    from agent_lab.mission_loop import run_mission_discuss_recovery
+    from agent_lab.mission.loop import run_mission_discuss_recovery
 
     result = run_mission_discuss_recovery(
         folder,
@@ -134,7 +134,7 @@ def handle_mission_discuss_recovery(folder: Path, payload: dict[str, Any]) -> Di
 
 
 def handle_run_cancel(folder: Path, payload: dict[str, Any]) -> DispatchResult:
-    from agent_lab.mission_loop import pause_mission_loop
+    from agent_lab.mission.loop import pause_mission_loop
 
     result = pause_mission_loop(
         folder,

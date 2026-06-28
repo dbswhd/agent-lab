@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from agent_lab.plan_advance import advance_plan_after_approval, advance_plan_md
+from agent_lab.plan.advance import advance_plan_after_approval, advance_plan_md
 
 
 SAMPLE = """## 합의된 점

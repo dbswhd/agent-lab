@@ -53,7 +53,7 @@ def _dispatch_or_http(
 @router.get("/sessions/{session_id}/mission-loop")
 def get_mission_loop_state(session_id: str) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.mission_loop import public_mission_payload
+    from agent_lab.mission.loop import public_mission_payload
 
     return public_mission_payload(folder)
 
@@ -64,7 +64,7 @@ def post_mission_loop_enable(
     body: MissionEnableRequest,
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.mission_loop import public_mission_payload
+    from agent_lab.mission.loop import public_mission_payload
 
     _dispatch_or_http(
         folder,
@@ -101,7 +101,7 @@ def post_mission_advance(
     body: MissionAdvanceRequest,
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.mission_loop import public_mission_payload
+    from agent_lab.mission.loop import public_mission_payload
 
     advance = _dispatch_or_http(
         folder,
@@ -121,7 +121,7 @@ def post_mission_pause(
     body: MissionPauseRequest,
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.mission_loop import public_mission_payload
+    from agent_lab.mission.loop import public_mission_payload
 
     result = _dispatch_or_http(
         folder,
@@ -141,7 +141,7 @@ def post_mission_resume(
     body: MissionResumeRequest,
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.mission_loop import public_mission_payload
+    from agent_lab.mission.loop import public_mission_payload
 
     result = _dispatch_or_http(
         folder,
@@ -158,7 +158,7 @@ def post_clear_circuit_breaker(
     body: MissionResumeRequest,
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.mission_loop import public_mission_payload
+    from agent_lab.mission.loop import public_mission_payload
 
     _dispatch_or_http(
         folder,
@@ -171,7 +171,7 @@ def post_clear_circuit_breaker(
 @router.post("/sessions/{session_id}/mission-loop/discuss-recovery")
 def post_mission_discuss_recovery(session_id: str) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.mission_loop import public_mission_payload
+    from agent_lab.mission.loop import public_mission_payload
 
     result = _dispatch_or_http(folder, RuntimeEvent.MISSION_DISCUSS_RECOVERY, {})
     payload = public_mission_payload(folder)

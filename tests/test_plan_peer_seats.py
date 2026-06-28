@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from agent_lab.plan_peer_seats import (
+from agent_lab.plan.peer_seats import (
     plan_cold_critic_enabled,
     plan_peer_review_seats,
     plan_peer_review_uses_role_lanes,
@@ -105,7 +105,7 @@ def test_supervisor_peer_review_rounds_include_cold_critic(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Any,
 ) -> None:
-    import agent_lab.plan_workflow as pw
+    import agent_lab.plan.workflow as pw
 
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     monkeypatch.setenv("ROOM_SCRIBE_AGENT", "cursor")

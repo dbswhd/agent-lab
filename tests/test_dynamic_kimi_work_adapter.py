@@ -26,7 +26,7 @@ def cfg(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 def test_extract_conversation_key_live_shape() -> None:
-    from agent_lab.kimi_work_session import extract_conversation_key
+    from agent_lab.kimi.work_session import extract_conversation_key
 
     created = {
         "activeConversationKey": "main:conversation:abc-123",
@@ -36,7 +36,7 @@ def test_extract_conversation_key_live_shape() -> None:
 
 
 def test_build_agent_preflight_includes_kimi_work_when_dynamic(monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab.agent_preflight import build_agent_preflight
+    from agent_lab.agent.preflight import build_agent_preflight
 
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     monkeypatch.setenv("AGENT_LAB_DYNAMIC_ROOM", "1")
@@ -49,7 +49,7 @@ def test_build_agent_preflight_includes_kimi_work_when_dynamic(monkeypatch: pyte
 
 def test_kimi_work_mock_reply_streams(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
-    from agent_lab import kimi_work_provider as kwp
+    from agent_lab.kimi import work_provider as kwp
 
     chunks: list[str] = []
 
@@ -66,7 +66,7 @@ def test_kimi_work_mock_reply_streams(tmp_path: Path, monkeypatch: pytest.Monkey
 
 
 def test_kimi_work_tunable_model(monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab import kimi_work_provider as kwp
+    from agent_lab.kimi import work_provider as kwp
 
     monkeypatch.delenv("AGENT_LAB_KIMI_WORK_MODEL", raising=False)
     assert kwp.kimi_work_model() == "k2p6"
@@ -75,7 +75,7 @@ def test_kimi_work_tunable_model(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_kimi_work_availability_mock_vs_live(cfg: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab import kimi_work_provider as kwp
+    from agent_lab.kimi import work_provider as kwp
 
     assert kwp.is_configured() is False
     assert kwp.is_available() is False
@@ -104,7 +104,7 @@ def test_agent_ids_off_parity() -> None:
 
 def test_agent_health_kimi_work_ready_when_mock(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
-    from agent_lab.agent_health import agent_health_row
+    from agent_lab.agent.health import agent_health_row
 
     row = agent_health_row("kimi_work", probe_bridge=True)
     assert row["configured"] is True
@@ -114,7 +114,7 @@ def test_agent_health_kimi_work_ready_when_mock(monkeypatch: pytest.MonkeyPatch)
 
 def test_dynamic_available_includes_kimi_work_when_mock(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
-    from agent_lab import agent_roster as ar
+    from agent_lab.agent import roster as ar
 
     ids = ar.dynamic_available_ids(lambda: ["claude"])
     assert "kimi_work" in ids and "local" in ids
@@ -122,7 +122,7 @@ def test_dynamic_available_includes_kimi_work_when_mock(monkeypatch: pytest.Monk
 
 def test_resolve_substitutes_kimi_work_before_kimi(cfg: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
-    from agent_lab import agent_roster as ar
+    from agent_lab.agent import roster as ar
     from agent_lab import credential_store as cs
 
     cs.set_provider_accounts("kimi", [{"label": "k1", "secret_or_profile_ref": "sk-1", "priority": 1}])
@@ -166,7 +166,7 @@ def test_scribe_priority_order_claude_first() -> None:
 
 def test_scribe_priority_drives_plan_scribe_agent(monkeypatch: pytest.MonkeyPatch) -> None:
     """plan_scribe_agent uses registry priority; no hardcoded name needed."""
-    from agent_lab.plan_peer_seats import plan_scribe_agent
+    from agent_lab.plan.peer_seats import plan_scribe_agent
 
     monkeypatch.delenv("ROOM_SCRIBE_AGENT", raising=False)
     # claude preferred even when last in active list

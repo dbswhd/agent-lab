@@ -119,7 +119,7 @@ def test_mission_wake_hook_triggers_scheduler_tick(
     monkeypatch.setenv("AGENT_LAB_SCHEDULER_HOOK_TOKEN", "wake-me")
     tick = {"ok": True, "runs": [{"schedule_id": "daily"}]}
     mock_tick = MagicMock(return_value=tick)
-    monkeypatch.setattr("agent_lab.mission_scheduler.scheduler_tick", mock_tick)
+    monkeypatch.setattr("agent_lab.mission.scheduler.scheduler_tick", mock_tick)
 
     r = client.post(
         "/api/hooks/mission-wake",

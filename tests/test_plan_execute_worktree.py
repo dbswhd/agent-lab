@@ -10,8 +10,8 @@ import pytest
 
 from agent_mocks import disable_execute_inbox_mcp
 
-from agent_lab.plan_actions import find_dry_run_action
-from agent_lab.plan_execute import (
+from agent_lab.plan.actions import find_dry_run_action
+from agent_lab.plan.execute import (
     abort_merge_execution,
     confirm_merge_execution,
     reverify_merged_execution,
@@ -19,19 +19,19 @@ from agent_lab.plan_execute import (
     run_dry_run,
     run_isolation_override,
 )
-from agent_lab.plan_pending import (
+from agent_lab.plan.pending import (
     PlanSnapshotRequired,
     approve_pending_plan,
     ensure_plan_snapshot_approved,
 )
-from agent_lab.plan_execute_git import (
+from agent_lab.plan.execute_git import (
     detect_git_root,
     git_root_for_paths,
     resolve_action_git_context,
 )
-from agent_lab.plan_execute_merge import MergeConflict, merge_exec_branch
-from agent_lab.plan_execute_snapshot import snapshot_dir_for
-from agent_lab.plan_execute_worktree import (
+from agent_lab.plan.execute_merge import MergeConflict, merge_exec_branch
+from agent_lab.plan.execute_snapshot import snapshot_dir_for
+from agent_lab.plan.execute_worktree import (
     WorktreeUnavailable,
     create_exec_worktree,
     discard_exec_worktree,
@@ -90,7 +90,7 @@ def test_detect_git_root(git_repo: Path):
 
 
 def test_rewrite_git_paths_in_text(git_repo: Path):
-    from agent_lab.plan_execute import _rewrite_git_paths_in_text
+    from agent_lab.plan.execute import _rewrite_git_paths_in_text
 
     app = git_repo / "src" / "app.py"
     raw = f"edit `{app}` and check {app.resolve()}"
@@ -341,7 +341,7 @@ def test_run_dry_run_worktree_cwd_and_record(
     monkeypatch.setattr("agent_lab.agents.cursor_agent.is_available", lambda: True)
     monkeypatch.setattr("agent_lab.agents.cursor_agent.respond", _respond)
     monkeypatch.setattr(
-        "agent_lab.plan_execute.resolve_execute_workspace",
+        "agent_lab.plan.execute.resolve_execute_workspace",
         lambda _permissions=None, _expected=None: (git_repo, {}),
     )
 
@@ -395,7 +395,7 @@ def test_run_dry_run_worktree_setup_hooks(
     monkeypatch.setattr("agent_lab.agents.cursor_agent.is_available", lambda: True)
     monkeypatch.setattr("agent_lab.agents.cursor_agent.respond", _respond)
     monkeypatch.setattr(
-        "agent_lab.plan_execute.resolve_execute_workspace",
+        "agent_lab.plan.execute.resolve_execute_workspace",
         lambda _permissions=None, _expected=None: (git_repo, {}),
     )
 
@@ -439,7 +439,7 @@ def test_resolve_approve_merges_worktree_execution(
 
     monkeypatch.setattr("agent_lab.agents.cursor_agent.respond", _respond_merge)
     monkeypatch.setattr(
-        "agent_lab.plan_execute.resolve_execute_workspace",
+        "agent_lab.plan.execute.resolve_execute_workspace",
         lambda _permissions=None, _expected=None: (git_repo, {}),
     )
 
@@ -499,7 +499,7 @@ def test_resolve_reject_discards_worktree_execution(
 
     monkeypatch.setattr("agent_lab.agents.cursor_agent.respond", _respond_reject)
     monkeypatch.setattr(
-        "agent_lab.plan_execute.resolve_execute_workspace",
+        "agent_lab.plan.execute.resolve_execute_workspace",
         lambda _permissions=None, _expected=None: (git_repo, {}),
     )
 
@@ -535,7 +535,7 @@ def test_dry_run_worktree_failure_records_blocked_no_snapshot_degrade(
 
     monkeypatch.setattr("agent_lab.agents.cursor_agent.is_available", lambda: True)
     monkeypatch.setattr(
-        "agent_lab.plan_execute.resolve_execute_workspace",
+        "agent_lab.plan.execute.resolve_execute_workspace",
         lambda _permissions=None, _expected=None: (git_repo, {}),
     )
 
@@ -569,7 +569,7 @@ def test_isolation_override_runs_in_place_after_blocked_worktree(
 
     monkeypatch.setattr("agent_lab.agents.cursor_agent.is_available", lambda: True)
     monkeypatch.setattr(
-        "agent_lab.plan_execute.resolve_execute_workspace",
+        "agent_lab.plan.execute.resolve_execute_workspace",
         lambda _permissions=None, _expected=None: (git_repo, {}),
     )
     with pytest.raises(WorktreeUnavailable) as exc:

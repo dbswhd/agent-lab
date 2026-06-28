@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.kimi_work_workspace import ensure_workspace_bound, resolve_workspace_path
+from agent_lab.kimi.work_workspace import ensure_workspace_bound, resolve_workspace_path
 
 
 @pytest.fixture(autouse=True)
@@ -35,7 +35,7 @@ def test_ensure_workspace_bound_calls_open_once(tmp_path: Path, monkeypatch: pyt
         calls.append(str(path))
         return {"status": "opened"}
 
-    monkeypatch.setattr("agent_lab.kimi_work_workspace.open_workspace", _fake_open)
+    monkeypatch.setattr("agent_lab.kimi.work_workspace.open_workspace", _fake_open)
     ensure_workspace_bound(session, ws)
     ensure_workspace_bound(session, ws)
     assert len(calls) == 1
@@ -45,7 +45,7 @@ def test_ensure_workspace_bound_calls_open_once(tmp_path: Path, monkeypatch: pyt
 
 
 def test_open_workspace_falls_back_to_add_entry(tmp_path: Path) -> None:
-    from agent_lab.kimi_work_workspace import open_workspace
+    from agent_lab.kimi.work_workspace import open_workspace
 
     ws = tmp_path / "openProject-fail"
     ws.mkdir()
@@ -67,7 +67,7 @@ def test_ensure_workspace_bound_reopen_on_path_change(tmp_path: Path, monkeypatc
         calls.append(str(path))
         return {"status": "opened"}
 
-    monkeypatch.setattr("agent_lab.kimi_work_workspace.open_workspace", _fake_open)
+    monkeypatch.setattr("agent_lab.kimi.work_workspace.open_workspace", _fake_open)
     ensure_workspace_bound(session, ws1)
     ensure_workspace_bound(session, ws2)
     assert calls == [str(ws1.resolve()), str(ws2.resolve())]

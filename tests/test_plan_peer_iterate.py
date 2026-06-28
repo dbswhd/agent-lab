@@ -7,8 +7,8 @@ from typing import Any
 
 import pytest
 
-from agent_lab.plan_peer_iterate import parse_plan_peer_verdict
-from agent_lab.plan_workflow import (
+from agent_lab.plan.peer_iterate import parse_plan_peer_verdict
+from agent_lab.plan.workflow import (
     effective_max_peer_review_rounds,
     get_plan_workflow,
     init_plan_workflow_on_plan_send,
@@ -16,7 +16,7 @@ from agent_lab.plan_workflow import (
     set_plan_workflow_phase,
     tick_plan_workflow_after_turn,
 )
-from agent_lab.run_meta import patch_run_meta, read_run_meta
+from agent_lab.run.meta import patch_run_meta, read_run_meta
 
 
 def test_resolved_max_peer_review_rounds_default() -> None:

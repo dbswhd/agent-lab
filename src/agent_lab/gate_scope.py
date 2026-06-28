@@ -49,7 +49,7 @@ def _pending_by_kind(run_meta: dict[str, Any]) -> dict[str, list[dict[str, Any]]
 
 def compute_gate_scope(run_meta: dict[str, Any] | None) -> GateScope:
     """Policy table: dev=discuss pause on Human-direction inbox; assistant=soft discuss."""
-    from agent_lab.inbox_harvest import has_pending_discuss_pause_question
+    from agent_lab.inbox.harvest import has_pending_discuss_pause_question
 
     profile = get_gate_profile(run_meta)
     pending = _pending_by_kind(run_meta or {})
@@ -77,7 +77,7 @@ def should_pause_discuss_for_profile(run_meta: dict[str, Any]) -> bool:
     import os
 
     if os.getenv("AGENT_LAB_GATE_SCOPE", "1").strip().lower() in ("0", "false", "no"):
-        from agent_lab.inbox_harvest import should_pause_discuss
+        from agent_lab.inbox.harvest import should_pause_discuss
 
         return should_pause_discuss(run_meta)
     scope = compute_gate_scope(run_meta)
@@ -118,7 +118,7 @@ def public_gate_scope_payload(run_meta: dict[str, Any] | None) -> dict[str, Any]
 
 
 def set_gate_profile(folder: Path, profile: GateProfile) -> dict[str, Any]:
-    from agent_lab.run_meta import patch_run_meta
+    from agent_lab.run.meta import patch_run_meta
 
     def _patch(run: dict[str, Any]) -> dict[str, Any]:
         run["gate_profile"] = profile

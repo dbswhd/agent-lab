@@ -11,14 +11,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from agent_lab.session_score import score_session  # noqa: E402
+from agent_lab.session.score import score_session  # noqa: E402
 
 _NOTEPAD_FILES = ("verification.md", "learnings.md", "decisions.md")
 _MIN_NOTEPAD_CHARS = 200
 
 
 def _notepad_report(folder: Path) -> tuple[int, list[str]]:
-    from agent_lab.mission_notepad import mission_notepad_dir
+    from agent_lab.mission.notepad import mission_notepad_dir
 
     lines: list[str] = []
     total = 0

@@ -15,7 +15,7 @@ def _isolate_share(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
 
 
 def test_provider_mock_tools_via_mapper(tmp_path: Path) -> None:
-    from agent_lab import kimi_work_provider as kwp
+    from agent_lab.kimi import work_provider as kwp
 
     events: list[tuple[str, dict]] = []
 

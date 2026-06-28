@@ -39,7 +39,7 @@ def bootstrap_environment(*, root: Path | None = None) -> None:
 
     apply_credentials_to_env()
 
-    from agent_lab.session_paths import refresh_sessions_dir
+    from agent_lab.session.paths import refresh_sessions_dir
 
     refresh_sessions_dir()
 

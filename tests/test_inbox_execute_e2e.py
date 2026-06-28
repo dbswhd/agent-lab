@@ -15,7 +15,7 @@ from agent_lab.human_inbox import (
     execute_inbox_build_go,
     resolve_inbox_item,
 )
-from agent_lab.run_meta import read_run_meta
+from agent_lab.run.meta import read_run_meta
 
 
 @pytest.fixture
@@ -88,8 +88,8 @@ def test_execute_inbox_build_go_false_without_go(session_folder: Path):
 
 
 def test_plan_execute_inbox_gate_skips_implement(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    from agent_lab.plan_actions import PlanAction
-    from agent_lab.plan_execute import _call_execute_agent
+    from agent_lab.plan.actions import PlanAction
+    from agent_lab.plan.execute import _call_execute_agent
 
     session = tmp_path / "sess"
     session.mkdir()
@@ -135,8 +135,8 @@ def test_plan_execute_inbox_gate_skips_implement(tmp_path: Path, monkeypatch: py
 
 def test_plan_execute_inbox_gate_runs_implement_after_go(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     from agent_lab.human_inbox import create_inbox_item, resolve_inbox_item
-    from agent_lab.plan_actions import PlanAction
-    from agent_lab.plan_execute import _call_execute_agent
+    from agent_lab.plan.actions import PlanAction
+    from agent_lab.plan.execute import _call_execute_agent
 
     session = tmp_path / "sess"
     session.mkdir()

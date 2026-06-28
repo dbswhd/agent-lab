@@ -141,7 +141,7 @@ def resolve_sessions_dir(cfg: dict[str, Any] | None = None) -> Path:
     if home_repo.is_dir():
         return home_repo.resolve()
 
-    from agent_lab.workspace_roots import project_root
+    from agent_lab.workspace.roots import project_root
 
     return (project_root() / "sessions").resolve()
 
@@ -167,7 +167,7 @@ def apply_config_env(cfg: dict[str, Any] | None = None) -> dict[str, Any]:
                 os.environ["AGENT_LAB_ROOT"] = str(lab)
         runtime = (os.getenv("AGENT_LAB_ROOT") or "").strip()
         if runtime:
-            from agent_lab.workspace_roots import is_bundled_app_runtime
+            from agent_lab.workspace.roots import is_bundled_app_runtime
 
             if is_bundled_app_runtime(runtime) and not os.getenv("AGENT_LAB_DEV_ROOT"):
                 dev = _expand_path(str(paths.get("agent_lab") or ""))

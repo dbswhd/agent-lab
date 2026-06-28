@@ -15,7 +15,7 @@ import pytest
 os.environ.setdefault("AGENT_LAB_MOCK_AGENTS", "1")
 
 from agent_lab.cost_ledger import session_budget_action
-from agent_lab.room_turn_flow import (
+from agent_lab.room.turn_flow import (
     _emit_budget_status,
     _session_hard_cap_enabled,
 )
@@ -147,7 +147,7 @@ def test_session_hard_cap_enabled_env(clean_budget_env):
 
 
 def test_run_json_roundtrip_persists_budget_keys(clean_budget_env, tmp_path: Path):
-    from agent_lab.run_meta import persist_run_meta, read_run_meta, write_run_meta
+    from agent_lab.run.meta import persist_run_meta, read_run_meta, write_run_meta
 
     run = {"adaptive_efficiency": True, "budget_exhausted": True, "budget_status": {"over": True}}
     write_run_meta(tmp_path, persist_run_meta(run))

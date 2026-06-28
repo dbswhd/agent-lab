@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from agent_lab.trading_mission.ingest_bridge import detect_control_plane_db
-from agent_lab.research_mcp_read import (
+from agent_lab.research.mcp_read import (
     read_pending_batch_summary,
     read_playbook_summary,
     resolve_session_folder,

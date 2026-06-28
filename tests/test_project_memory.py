@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from agent_lab.project_memory import PROJECT_MD_CAP, bootstrap_project_md, project_md_path
-from agent_lab.session_guidance import build_session_guidance_block
+from agent_lab.session.guidance import build_session_guidance_block
 
 
 def test_bootstrap_creates_project_md(tmp_path: Path):

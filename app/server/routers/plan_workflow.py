@@ -26,8 +26,8 @@ class PlanRejectRequest(BaseModel):
 @router.get("/sessions/{session_id}/plan/workflow")
 def get_plan_workflow(session_id: str) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.plan_workflow import plan_workflow_public
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.plan.workflow import plan_workflow_public
+    from agent_lab.run.meta import read_run_meta
 
     run = read_run_meta(folder)
     plan_md = ""
@@ -48,7 +48,7 @@ def post_plan_approve(
     body: PlanApproveRequest,
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.plan_workflow import approve_plan
+    from agent_lab.plan.workflow import approve_plan
 
     try:
         result = approve_plan(
@@ -68,7 +68,7 @@ def post_plan_reject(
     body: PlanRejectRequest,
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.plan_workflow import reject_plan
+    from agent_lab.plan.workflow import reject_plan
 
     phase = body.target_phase.strip().upper() or "CLARIFY"
     if phase not in {"CLARIFY", "REFINE", "DRAFT"}:

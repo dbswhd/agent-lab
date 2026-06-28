@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from agent_lab.quant_utility_validation import detect_pipeline_root
+from agent_lab.quant.utility_validation import detect_pipeline_root
 from agent_lab.trading_mission.preflight import build_market_snapshot
 
 _KST = timezone(timedelta(hours=9))

@@ -14,7 +14,7 @@ def run_dry_run(
     executor: str | None = None,
     **kwargs: Any,
 ) -> dict[str, Any]:
-    from agent_lab.plan_execute import run_dry_run as _run_dry_run
+    from agent_lab.plan.execute import run_dry_run as _run_dry_run
 
     return _run_dry_run(
         folder,
@@ -33,7 +33,7 @@ def reverify_merged_execution(
     executor: str | None = None,
     **kwargs: Any,
 ) -> dict[str, Any]:
-    from agent_lab.plan_execute import reverify_merged_execution as _reverify
+    from agent_lab.plan.execute import reverify_merged_execution as _reverify
 
     return _reverify(
         folder,
@@ -50,7 +50,7 @@ def cancel_open_execution(
     execution_id: str | None = None,
     reason: str = "user_cancel",
 ) -> dict[str, Any]:
-    from agent_lab.plan_execute import cancel_open_execution as _cancel
+    from agent_lab.plan.execute import cancel_open_execution as _cancel
 
     return _cancel(folder, execution_id=execution_id, reason=reason)
 
@@ -60,12 +60,12 @@ def list_plan_actions(
     *,
     permissions: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    from agent_lab.plan_execute import list_plan_actions as _list
+    from agent_lab.plan.execute import list_plan_actions as _list
 
     return _list(folder, permissions=permissions)
 
 
 def execution_allows_task_complete(execution: dict[str, Any]) -> bool:
-    from agent_lab.plan_execute import execution_allows_task_complete as _allows
+    from agent_lab.plan.execute import execution_allows_task_complete as _allows
 
     return _allows(execution)

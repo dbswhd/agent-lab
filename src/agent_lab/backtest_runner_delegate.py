@@ -13,7 +13,7 @@ from agent_lab.pipeline_research_read import (
     index_latest_full_json,
     resolve_pipeline_root,
 )
-from agent_lab.research_artifact_card import build_card_from_full_json, write_card_cache
+from agent_lab.research.artifact_card import build_card_from_full_json, write_card_cache
 
 # ref slug → pipeline-relative script (module main).
 BACKTEST_RUNNERS: dict[str, str] = {

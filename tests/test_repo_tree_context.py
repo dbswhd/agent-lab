@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from agent_lab.context_bundle import build_context_bundle
+from agent_lab.context.bundle import build_context_bundle
 from agent_lab.repo_tree_context import (
     _collect_per_dir_agents_files,
     build_per_dir_agents_block,

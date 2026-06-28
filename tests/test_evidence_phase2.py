@@ -27,7 +27,7 @@ def session_folder(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     folder.mkdir()
     (folder / "run.json").write_text("{}", encoding="utf-8")
     import agent_lab.session as session_mod
-    import agent_lab.session_paths as sp_mod
+    import agent_lab.session.paths as sp_mod
     import app.server.deps as deps_mod
 
     monkeypatch.setattr(session_mod, "SESSIONS_DIR", sessions_root)
@@ -130,7 +130,7 @@ def test_evidence_api(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> 
 
 def test_merge_checks_api(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
-    from agent_lab.run_meta import write_run_meta
+    from agent_lab.run.meta import write_run_meta
 
     sid = session_folder.name
     target = session_folder
@@ -146,11 +146,11 @@ def test_merge_checks_api(session_folder: Path, monkeypatch: pytest.MonkeyPatch)
 
 def test_on_dry_run_recorded_integration(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        "agent_lab.plan_execute._call_execute_agent",
+        "agent_lab.plan.execute._call_execute_agent",
         lambda *a, **k: "done",
     )
     monkeypatch.setattr(
-        "agent_lab.plan_execute._execute_agent_available",
+        "agent_lab.plan.execute._execute_agent_available",
         lambda _id: True,
     )
     plan = """# Plan
@@ -163,7 +163,7 @@ def test_on_dry_run_recorded_integration(session_folder: Path, monkeypatch: pyte
    - 검증: `make test`
 """
     (session_folder / "plan.md").write_text(plan, encoding="utf-8")
-    from agent_lab.plan_execute import run_dry_run
+    from agent_lab.plan.execute import run_dry_run
 
     try:
         run_dry_run(session_folder, action_index=1, permissions={})

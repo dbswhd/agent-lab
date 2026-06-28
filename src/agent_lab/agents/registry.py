@@ -7,7 +7,8 @@ from pathlib import Path
 from typing import Any, Callable, Literal
 
 from agent_lab.agents import claude_agent, codex_agent, cursor_agent
-from agent_lab import kimi_provider, kimi_work_provider, local_provider
+from agent_lab.kimi import provider as kimi_provider, work_provider as kimi_work_provider
+from agent_lab import local_provider
 from agent_lab.structured_envelope_adapter import merge_structured_reply
 
 AgentId = Literal["cursor", "codex", "claude", "kimi", "kimi_work", "local"]
@@ -254,7 +255,7 @@ def call_agent_reply(
                 on_activity("[tool · grep] mock streaming")
             text = _mock_agent_response(agent, user, scribe=scribe)
             if on_bridge_event:
-                from agent_lab.room_sse_stream import chunk_text
+                from agent_lab.room.sse_stream import chunk_text
 
                 for chunk in chunk_text(text, chunk_size=24):
                     on_bridge_event("text", {"text": chunk})

@@ -6,7 +6,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from agent_lab.room_messages import MAX_AGENT_PARALLEL_ROUNDS
+from agent_lab.room.messages import MAX_AGENT_PARALLEL_ROUNDS
 
 TURN_PROFILES = frozenset(
     {"quick", "team", "loop", "analyze", "discuss", "review", "free", "specialist", "verified", "divergence", "발산"}

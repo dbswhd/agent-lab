@@ -10,7 +10,7 @@ from agent_lab.runtime.events import RuntimeEvent
 
 
 def handle_scribe_complete(folder: Path, payload: dict[str, Any]) -> DispatchResult:
-    from agent_lab.mission_loop import after_plan_scribe
+    from agent_lab.mission.loop import after_plan_scribe
 
     plan_md = payload.get("plan_md")
     if not isinstance(plan_md, str):

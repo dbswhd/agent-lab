@@ -18,8 +18,11 @@ SRC = ROOT / "src"
 
 
 def _source_path(source_module: str) -> Path:
-    rel = source_module.replace(".", "/") + ".py"
-    return SRC / rel
+    rel = source_module.replace(".", "/")
+    direct = SRC / f"{rel}.py"
+    if direct.is_file():
+        return direct
+    return SRC / rel / "__init__.py"
 
 
 def _module_imports(path: Path) -> set[tuple[str, str]]:
@@ -52,8 +55,8 @@ def main() -> int:
     scan_modules: set[str] = set()
     orchestration_targets = {
         "agent_lab.room",
-        "agent_lab.mission_loop",
-        "agent_lab.plan_execute",
+        "agent_lab.mission.loop",
+        "agent_lab.plan.execute",
     }
     for row in CROSS_LANE_IMPORTS:
         contract.add((row.source_module, row.target_module, row.symbol))
@@ -87,11 +90,11 @@ def main() -> int:
             print(f"  {src} → {tgt}.{sym}")
 
     forbidden_modules = {
-        "agent_lab.plan_execute",
+        "agent_lab.plan.execute",
         "agent_lab.room",
-        "agent_lab.mission_loop",
-        "agent_lab.context_bundle",
-        "agent_lab.room_tasks",
+        "agent_lab.mission.loop",
+        "agent_lab.context.bundle",
+        "agent_lab.room.tasks",
     }
     forbidden_hits: list[tuple[str, str, str]] = []
     for source_module in sorted(forbidden_modules):

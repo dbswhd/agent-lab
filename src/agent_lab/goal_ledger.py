@@ -24,7 +24,7 @@ def append_goal_event(
     dedup_mode: bool = False,
 ) -> dict[str, Any]:
     """Append a goal-progress entry to run.json goal_ledger (capped, optional dedup on mode)."""
-    from agent_lab.run_meta import patch_run_meta
+    from agent_lab.run.meta import patch_run_meta
 
     entry: dict[str, Any] = {"at": datetime.now(timezone.utc).isoformat(), "event": event}
     if mode is not None:

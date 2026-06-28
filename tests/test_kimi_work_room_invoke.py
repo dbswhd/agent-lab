@@ -16,7 +16,7 @@ def _mock_kimi_work(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
 
 def test_call_one_agent_kimi_work_emits_tool_sse(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     from agent_lab import room
-    from agent_lab.run_meta import write_run_meta
+    from agent_lab.run.meta import write_run_meta
 
     folder = tmp_path / "sess"
     folder.mkdir()

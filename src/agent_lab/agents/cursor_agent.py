@@ -12,8 +12,8 @@ from typing import Any
 
 _log = logging.getLogger(__name__)
 
-from agent_lab.agent_models import DEFAULT_CURSOR_MODEL
-from agent_lab.agent_permissions import normalize_agent_permissions, permission_preamble
+from agent_lab.agent.models import DEFAULT_CURSOR_MODEL
+from agent_lab.agent.permissions import normalize_agent_permissions, permission_preamble
 from agent_lab.cursor_bridge import (
     cursor_sdk_client,
     format_cursor_connect_error,
@@ -91,14 +91,14 @@ def model_label() -> str:
 
 
 def _resolve_cwd(permissions: dict[str, Any] | None) -> str:
-    from agent_lab.workspace_roots import discuss_primary_workspace
+    from agent_lab.workspace.roots import discuss_primary_workspace
 
     return str(discuss_primary_workspace(permissions))
 
 
 def _wait_cursor_run(run: Any) -> None:
     """Block on SDK run.wait() but honour global cooperative cancel."""
-    from agent_lab.run_control import RoomRunCancelled, is_cancelled
+    from agent_lab.run.control import RoomRunCancelled, is_cancelled
 
     with ThreadPoolExecutor(max_workers=1) as pool:
         fut = pool.submit(run.wait)
@@ -131,7 +131,7 @@ def _run_cursor_session(
 ) -> str:
     from cursor_sdk import Agent, CursorAgentError
 
-    from agent_lab.run_control import (
+    from agent_lab.run.control import (
         RoomRunCancelled,
         is_cancelled,
         register_cursor_run,
@@ -337,7 +337,7 @@ def respond_session(
         addon = structured_envelope_system_addon(compact=True)
         if prepared:
             prepared[0] = f"{prepared[0]}\n\n{addon}"
-    from agent_lab.agent_hooks_materializer import native_cursor_hooks_overlay
+    from agent_lab.agent.hooks_materializer import native_cursor_hooks_overlay
     from agent_lab.credential_store import call_with_credential_fallback
 
     def _run(api_key: str | None) -> str:

@@ -8,9 +8,9 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from agent_lab.context_bundle import build_context_bundle
+from agent_lab.context.bundle import build_context_bundle
 from agent_lab.human_inbox import pending_inbox_items
-from agent_lab.run_meta import read_run_meta
+from agent_lab.run.meta import read_run_meta
 from agent_lab.skill_drafts import (
     build_session_skills_block,
     maybe_create_skill_draft_from_verify,

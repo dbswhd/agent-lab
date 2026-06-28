@@ -7,9 +7,9 @@ from typing import Any, Literal
 
 from agent_lab.consensus_agreements import pending_consensus_agreements
 from agent_lab.human_inbox import public_inbox_payload
-from agent_lab.mission_loop import sync_mission_phase_from_run
+from agent_lab.mission.loop import sync_mission_phase_from_run
 from agent_lab.runtime.policy import PolicyEngine
-from agent_lab.run_meta import read_run_meta
+from agent_lab.run.meta import read_run_meta
 
 _PENDING_EXECUTION_STATUS = "pending_approval"
 from agent_lab.runtime.boulder import boulder_state, last_failure
@@ -18,7 +18,7 @@ from agent_lab.external_tools import load_external_tools
 from agent_lab.runtime.phases import SessionMode
 from agent_lab.evidence_ledger import public_evidence_payload
 from agent_lab.merge_checks import public_merge_checks_payload
-from agent_lab.mission_board import (
+from agent_lab.mission.board import (
     public_mission_board_payload,
     public_turn_budget_payload,
 )
@@ -127,7 +127,7 @@ def build_runtime_snapshot(
 
     gate_scope = public_gate_scope_payload(run)
 
-    from agent_lab.plan_workflow import get_plan_workflow, is_plan_workflow_active
+    from agent_lab.plan.workflow import get_plan_workflow, is_plan_workflow_active
 
     pw = get_plan_workflow(run)
     plan_workflow_enabled = is_plan_workflow_active(run)
@@ -157,6 +157,14 @@ def build_runtime_snapshot(
         "mode": mode,
         "has_plan": has_plan,
         "work_phase": work_phase,
+        "plan_workflow": {
+            "enabled": plan_workflow_enabled,
+            "phase": plan_workflow_phase,
+            "notice": pw.get("notice") if isinstance(pw, dict) else None,
+            "round": pw.get("round") if isinstance(pw, dict) else None,
+        }
+        if plan_workflow_enabled
+        else None,
         "mission": {
             "enabled": mission_enabled,
             "phase": mission_phase,
@@ -226,7 +234,7 @@ def build_runtime_snapshot(
 
 
 def _public_wisdom_index(folder: Path) -> dict[str, Any]:
-    from agent_lab.wisdom_index import public_wisdom_index_status
+    from agent_lab.wisdom.index import public_wisdom_index_status
 
     return public_wisdom_index_status(folder, run=read_run_meta(folder))
 
@@ -238,7 +246,7 @@ def _public_codex_proxy() -> dict[str, Any]:
 
 
 def _public_clarifier_interview(run: dict[str, Any]) -> dict[str, Any] | None:
-    from agent_lab.session_clarifier import public_clarifier_interview
+    from agent_lab.session.clarifier import public_clarifier_interview
 
     return public_clarifier_interview(run)
 

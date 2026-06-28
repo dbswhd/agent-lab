@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from agent_lab.context_bundle import build_context_bundle
-from agent_lab.room_context import ANALYSIS_TURN_GUIDANCE
+from agent_lab.context.bundle import build_context_bundle
+from agent_lab.room.context import ANALYSIS_TURN_GUIDANCE
 
 
 class _Msg:

@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from agent_lab.room_agent_capabilities import (
+from agent_lab.room.agent_capabilities import (
     agent_capability_cwd,
     agent_workspace_lines,
     ensure_specialist_capabilities,
     specialist_round_agents,
 )
-from agent_lab.context_bundle import build_context_bundle
+from agent_lab.context.bundle import build_context_bundle
 from agent_lab.room import ChatMessage
 
 
@@ -25,7 +25,7 @@ def test_specialist_round_r1_includes_kimi_work_without_codex_claude():
 
 
 def test_kimi_work_default_capabilities():
-    from agent_lab.room_agent_capabilities import DEFAULT_CAPABILITIES, get_agent_capabilities
+    from agent_lab.room.agent_capabilities import DEFAULT_CAPABILITIES, get_agent_capabilities
 
     cap = DEFAULT_CAPABILITIES["kimi_work"]
     assert cap["cwd_role"] == "review"
@@ -35,7 +35,7 @@ def test_kimi_work_default_capabilities():
 
 def test_asymmetric_workspace_lines(tmp_path, monkeypatch):
     monkeypatch.setattr(
-        "agent_lab.workspace_roots.pipeline_root",
+        "agent_lab.workspace.roots.pipeline_root",
         lambda: tmp_path / "pipe",
     )
     (tmp_path / "pipe").mkdir()
@@ -87,8 +87,8 @@ def test_context_meta_records_asymmetric_capability_cwd(tmp_path, monkeypatch):
     for path in (repo, review, execute):
         path.mkdir()
 
-    monkeypatch.setattr("agent_lab.workspace_roots.pipeline_root", lambda: repo)
-    monkeypatch.setattr("agent_lab.workspace_roots.project_root", lambda: review)
+    monkeypatch.setattr("agent_lab.workspace.roots.pipeline_root", lambda: repo)
+    monkeypatch.setattr("agent_lab.workspace.roots.project_root", lambda: review)
 
     meta: dict = {
         "turn_profile": "specialist",

@@ -16,8 +16,8 @@ from agent_lab.plugin_discovery import (
     patch_agent_plugins,
 )
 from agent_lab.runtime.external_runner import patch_external_tools_allowlist
-from agent_lab.run_meta import patch_run_meta, read_run_meta
-from agent_lab.workspace_roots import discuss_primary_workspace
+from agent_lab.run.meta import patch_run_meta, read_run_meta
+from agent_lab.workspace.roots import discuss_primary_workspace
 from app.server.deps import session_folder_or_404
 
 router = APIRouter(prefix="/api")

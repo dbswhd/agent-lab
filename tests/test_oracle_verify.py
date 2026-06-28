@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from agent_lab.plan_actions import PlanAction
-from agent_lab.plan_execute_merge import oracle_verify, verify_after_merge
+from agent_lab.plan.actions import PlanAction
+from agent_lab.plan.execute_merge import oracle_verify, verify_after_merge
 
 
 def _action(verify: str) -> PlanAction:

@@ -6,15 +6,15 @@ import json
 from pathlib import Path
 
 from agent_lab.goal_loop import goal_oracle_check
-from agent_lab.mission_loop import evaluate_plan_gate
-from agent_lab.session_setup import session_setup_options
+from agent_lab.mission.loop import evaluate_plan_gate
+from agent_lab.session.setup import session_setup_options
 from agent_lab.trading_mission.plan_gate import trading_plan_gate_issues
 from agent_lab.trading_mission.trading_goal_oracle import (
     evaluate_trading_goal,
     is_trading_mission_run,
     mock_trading_goal_oracle_response,
 )
-from agent_lab.wisdom_index import build_wisdom_index
+from agent_lab.wisdom.index import build_wisdom_index
 
 
 def _ready_session(tmp_path: Path) -> Path:

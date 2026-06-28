@@ -10,7 +10,7 @@ from agent_lab.code_memory_mcp import (
     CODE_MEMORY_MCP_SERVER_NAME,
     code_memory_mcp_stdio_spec,
 )
-from agent_lab.wisdom_mcp import (
+from agent_lab.wisdom.mcp import (
     WISDOM_MCP_SERVER_NAME,
     wisdom_mcp_stdio_spec,
 )

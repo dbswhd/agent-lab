@@ -41,7 +41,7 @@ def _gate(
 
 
 def _plan_reread_gate(run: dict[str, Any]) -> dict[str, Any]:
-    from agent_lab.mission_loop import get_mission_loop
+    from agent_lab.mission.loop import get_mission_loop
 
     ml = get_mission_loop(run)
     if not ml.get("enabled"):
@@ -176,7 +176,7 @@ def patch_execution_gates(
 ) -> dict[str, Any] | None:
     from pathlib import Path
 
-    from agent_lab.run_meta import patch_run_meta, read_run_meta
+    from agent_lab.run.meta import patch_run_meta, read_run_meta
 
     path = Path(folder)
 

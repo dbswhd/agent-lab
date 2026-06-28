@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from agent_lab.kimi_work_push_payload import (
+from agent_lab.kimi.work_push_payload import (
     assistant_reasoning_text,
     assistant_reply_text,
     push_message_parts,

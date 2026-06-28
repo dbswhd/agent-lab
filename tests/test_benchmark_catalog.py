@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from agent_lab.plan_actions import parse_plan_action_sections
-from agent_lab.session_score import score_session
+from agent_lab.plan.actions import parse_plan_action_sections
+from agent_lab.session.score import score_session
 
 ROOT = Path(__file__).resolve().parents[1]
 BENCH = ROOT / "sessions" / "_benchmark"

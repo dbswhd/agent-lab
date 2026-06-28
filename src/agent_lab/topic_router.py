@@ -17,7 +17,7 @@ import re
 from dataclasses import dataclass, field, replace
 from typing import Any, Literal
 
-from agent_lab.room_consensus import (
+from agent_lab.room.consensus import (
     max_debate_round_count,
 )
 
@@ -327,7 +327,7 @@ def _build_route(
         max_calls = env_calls
 
     if efficiency_mode:
-        from agent_lab.context_limits import efficiency_limits
+        from agent_lab.context.limits import efficiency_limits
 
         eff = efficiency_limits()
         max_rounds = min(max_rounds, eff.max_consensus_rounds)
@@ -358,7 +358,7 @@ def _build_route(
 
 def _legacy_route(*, efficiency_mode: bool = False) -> CategoryRoute:
     """라우터 off — 현행 전역 env 동작 그대로 미러 (안전 롤백 경로)."""
-    from agent_lab.room_consensus import consensus_caps
+    from agent_lab.room.consensus import consensus_caps
 
     cap_rounds, cap_calls = consensus_caps(efficiency_mode=efficiency_mode)
     return CategoryRoute(
@@ -408,7 +408,7 @@ def classify_topic(topic: str) -> tuple[Category, tuple[str, ...]]:
     if quick_hits:
         return "quick", tuple(f"kw:{k}" for k in quick_hits[:4])
 
-    from agent_lab.session_clarifier import clarifier_min_topic_chars
+    from agent_lab.session.clarifier import clarifier_min_topic_chars
 
     if len(text) < clarifier_min_topic_chars():
         return "quick", (f"len:{len(text)}",)

@@ -56,7 +56,7 @@ def compute_gate_snapshot(run_meta: dict[str, Any] | None) -> dict[str, Any]:
     except Exception:
         pass
 
-    from agent_lab.room_objections import open_objections
+    from agent_lab.room.objections import open_objections
 
     open_objs = open_objections(meta)
     block_objs = [o for o in open_objs if o.get("act") == "BLOCK"]

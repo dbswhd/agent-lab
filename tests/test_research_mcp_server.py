@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.research_mcp_read import read_pending_batch_summary, read_playbook_summary
+from agent_lab.research.mcp_read import read_pending_batch_summary, read_playbook_summary
 
 
 def _write_trading_session(session: Path) -> None:
@@ -121,7 +121,7 @@ def test_mcp_tools_with_session_folder(tmp_path: Path, monkeypatch: pytest.Monke
     _write_trading_session(session)
     monkeypatch.setenv("AGENT_LAB_SESSION_FOLDER", str(session))
 
-    from agent_lab.research_mcp_server import get_pending_batch, get_playbook, wisdom_search
+    from agent_lab.research.mcp_server import get_pending_batch, get_playbook, wisdom_search
 
     playbook = get_playbook()
     assert playbook["ok"] is True
@@ -145,7 +145,7 @@ def test_mcp_tools_with_session_folder(tmp_path: Path, monkeypatch: pytest.Monke
 def test_mcp_research_card_tools(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     pytest.importorskip("mcp")
     from agent_lab.pipeline_research_read import sync_research_cards
-    from agent_lab.research_artifact_card import build_card_from_full_json
+    from agent_lab.research.artifact_card import build_card_from_full_json
 
     pipeline = tmp_path / "pipeline"
     results = pipeline / "research" / "kr" / "results" / "overlay"
@@ -168,7 +168,7 @@ def test_mcp_research_card_tools(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     (cards_dir / "kospi_v1.json").write_text(json.dumps(write_card), encoding="utf-8")
     monkeypatch.setenv("QUANT_PIPELINE_ROOT", str(pipeline))
 
-    from agent_lab.research_mcp_server import (
+    from agent_lab.research.mcp_server import (
         get_backtest_card,
         get_strategy_verdict,
         list_wireup_candidates,
@@ -204,7 +204,7 @@ def test_mcp_market_tools(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.setenv("QUANT_PIPELINE_ROOT", str(pipeline))
     monkeypatch.setenv("AGENT_LAB_QUOTE_MODE", "mock")
 
-    from agent_lab.research_mcp_server import (
+    from agent_lab.research.mcp_server import (
         get_data_freshness,
         get_portfolio_snapshot,
         get_quote,

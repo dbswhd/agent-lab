@@ -8,7 +8,7 @@
 
 | Server | Module | 역할 |
 |--------|--------|------|
-| `agent-lab-research` | `agent_lab.research_mcp_server` | playbook, batch, cards, critic, wisdom (장전·장중 read) |
+| `agent-lab-research` | `agent_lab.research.mcp_server` | playbook, batch, cards, critic, wisdom (장전·장중 read) |
 | `quant-trading` | `quant_pipeline.agentic_trading.mcp_server` | control plane read + **create_trade_proposal** write |
 
 배치 ingest(`proposal_batch.json` → SQLite)는 **MCP가 아닌 CLI/internal** 경로입니다.

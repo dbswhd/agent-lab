@@ -11,7 +11,7 @@ _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(_ROOT / "src"))
 
-from agent_lab.session_score_weekly import (  # noqa: E402
+from agent_lab.session.score_weekly import (  # noqa: E402
     build_weekly_report,
     default_sessions_root,
     format_weekly_report_markdown,

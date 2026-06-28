@@ -1,0 +1,725 @@
+"""Aggregate offline session KPIs into a weekly real-usage report (H4 / M4)."""
+
+from __future__ import annotations
+
+import json
+import re
+from dataclasses import dataclass
+from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
+from typing import Any
+
+from agent_lab.app_config import resolve_sessions_dir
+from agent_lab.session.score import score_session
+
+_FOLDER_DATE_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})")
+_LIVE_REPORT_RE = re.compile(r"^live-(worktree|merge)-(\d{4}-\d{2}-\d{2})\.json$")
+
+# ROOM-REINFORCEMENT.md M4 (H track)
+M4_OBJECTION_RESOLUTION_MIN = 0.80
+M4_EXECUTE_RETRY_RATE_MAX = 0.30
+
+
+@dataclass(frozen=True)
+class WeeklyDiscovery:
+    folder: Path
+    anchor_date: date
+
+
+def _parse_iso_date(value: str) -> date | None:
+    raw = (value or "").strip()
+    if not raw:
+        return None
+    try:
+        if raw.endswith("Z"):
+            raw = raw[:-1] + "+00:00"
+        return datetime.fromisoformat(raw).date()
+    except ValueError:
+        return None
+
+
+def session_anchor_date(folder: Path) -> date | None:
+    """Best-effort session date from folder name or run.json created_at."""
+    match = _FOLDER_DATE_RE.match(folder.name)
+    if match:
+        try:
+            return date.fromisoformat(match.group(1))
+        except ValueError:
+            pass
+    run_path = folder / "run.json"
+    if run_path.is_file():
+        try:
+            data = json.loads(run_path.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                parsed = _parse_iso_date(str(data.get("created_at") or ""))
+                if parsed:
+                    return parsed
+        except (OSError, json.JSONDecodeError):
+            pass
+    meta_path = folder / "meta.json"
+    if meta_path.is_file():
+        try:
+            data = json.loads(meta_path.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                parsed = _parse_iso_date(str(data.get("created_at") or ""))
+                if parsed:
+                    return parsed
+        except (OSError, json.JSONDecodeError):
+            pass
+    return None
+
+
+def _parse_iso_datetime(value: str) -> datetime | None:
+    raw = (value or "").strip()
+    if not raw:
+        return None
+    try:
+        if raw.endswith("Z"):
+            raw = raw[:-1] + "+00:00"
+        parsed = datetime.fromisoformat(raw)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed
+    except ValueError:
+        return None
+
+
+def is_scorable_session_folder(folder: Path, *, include_fixtures: bool) -> bool:
+    if not folder.is_dir():
+        return False
+    name = folder.name
+    if name.startswith("."):
+        return False
+    if name.startswith("_") and not include_fixtures:
+        return False
+    return (folder / "run.json").is_file()
+
+
+def _iter_session_candidates(
+    root: Path,
+    *,
+    include_fixtures: bool,
+) -> list[Path]:
+    if not root.is_dir():
+        return []
+    candidates: list[Path] = []
+    for child in sorted(root.iterdir()):
+        if child.name in ("_regression", "_benchmark") and include_fixtures and child.is_dir():
+            candidates.extend(
+                sorted(p for p in child.iterdir() if is_scorable_session_folder(p, include_fixtures=True))
+            )
+            continue
+        if is_scorable_session_folder(child, include_fixtures=include_fixtures):
+            candidates.append(child)
+    return candidates
+
+
+def discover_sessions(
+    root: Path,
+    *,
+    days: int = 7,
+    include_fixtures: bool = False,
+    as_of: date | None = None,
+) -> list[WeeklyDiscovery]:
+    """List session folders with run.json in the last `days` (inclusive window)."""
+    root = root.expanduser().resolve()
+    end = as_of or datetime.now(timezone.utc).date()
+    start = end - timedelta(days=max(days - 1, 0))
+    out: list[WeeklyDiscovery] = []
+    for child in _iter_session_candidates(root, include_fixtures=include_fixtures):
+        anchor = session_anchor_date(child)
+        if anchor is None or anchor < start or anchor > end:
+            continue
+        out.append(WeeklyDiscovery(folder=child, anchor_date=anchor))
+    return out
+
+
+def _pool_objection_counts(reports: list[dict[str, Any]]) -> dict[str, int]:
+    total = resolved = open_n = 0
+    for report in reports:
+        counts = (report.get("counts") or {}).get("objections") or {}
+        total += int(counts.get("total") or 0)
+        resolved += int(counts.get("resolved") or 0)
+        open_n += int(counts.get("open") or 0)
+    return {"total": total, "resolved": resolved, "open": open_n}
+
+
+def _pool_execute_counts(reports: list[dict[str, Any]]) -> dict[str, int]:
+    terminal = first_try = retried = 0
+    for report in reports:
+        counts = (report.get("counts") or {}).get("executions") or {}
+        terminal += int(counts.get("terminal") or 0)
+        first_try += int(counts.get("first_try") or 0)
+        retried += int(counts.get("retried") or 0)
+    return {
+        "terminal": terminal,
+        "first_try": first_try,
+        "retried": retried,
+    }
+
+
+def _pool_merge_counts(reports: list[dict[str, Any]]) -> dict[str, int]:
+    keys = (
+        "total",
+        "gitish",
+        "worktree",
+        "snapshot_override",
+        "worktree_terminal",
+        "merge_first_success",
+        "merge_conflict",
+    )
+    pooled = {k: 0 for k in keys}
+    for report in reports:
+        counts = (report.get("counts") or {}).get("execute_merge") or {}
+        for key in keys:
+            pooled[key] += int(counts.get(key) or 0)
+    return pooled
+
+
+def _pool_turn_counts(reports: list[dict[str, Any]]) -> dict[str, int]:
+    total = partial = failed = completed = 0
+    for report in reports:
+        counts = (report.get("counts") or {}).get("turns") or {}
+        total += int(counts.get("total") or 0)
+        partial += int(counts.get("partial") or 0)
+        failed += int(counts.get("failed") or 0)
+        completed += int(counts.get("completed") or 0)
+    return {
+        "total": total,
+        "partial": partial,
+        "failed": failed,
+        "completed": completed,
+    }
+
+
+def _pool_capability_cwd_counts(reports: list[dict[str, Any]]) -> dict[str, int]:
+    specialist_contexts = recorded = asymmetric = agent_count = distinct_cwd = 0
+    for report in reports:
+        counts = (report.get("counts") or {}).get("capability_cwd") or {}
+        specialist_contexts += int(counts.get("specialist_contexts") or 0)
+        recorded += int(counts.get("recorded") or 0)
+        asymmetric += int(counts.get("asymmetric") or 0)
+        agent_count += int(counts.get("agent_count") or 0)
+        distinct_cwd += int(counts.get("distinct_cwd") or 0)
+    return {
+        "specialist_contexts": specialist_contexts,
+        "recorded": recorded,
+        "asymmetric": asymmetric,
+        "agent_count": agent_count,
+        "distinct_cwd": distinct_cwd,
+    }
+
+
+def _pool_communicate_counts(reports: list[dict[str, Any]]) -> dict[str, int]:
+    keys = (
+        "agent_replies",
+        "envelope_parse_errors",
+        "legacy_endorse_count",
+        "guidance_chars_total",
+        "communicate_turns",
+        "envelope_strict_turns",
+        "hook_runs",
+        "hook_blocked",
+        "hook_envelope_invalid",
+    )
+    pooled = {k: 0 for k in keys}
+    for report in reports:
+        counts = (report.get("counts") or {}).get("communicate") or {}
+        for key in keys:
+            pooled[key] += int(counts.get(key) or 0)
+    return pooled
+
+
+def _pool_emergence_counts(reports: list[dict[str, Any]]) -> dict[str, int]:
+    pooled = {
+        "ref_bullets": 0,
+        "hybrid_bullets": 0,
+        "challenge_total": 0,
+        "challenge_accepted": 0,
+        "amend_total": 0,
+    }
+    for report in reports:
+        counts = (report.get("counts") or {}).get("emergence") or {}
+        hybrid = counts.get("hybrid") or {}
+        challenge = counts.get("challenge") or {}
+        amend = counts.get("amend") or {}
+        pooled["ref_bullets"] += int(hybrid.get("ref_bullets") or 0)
+        pooled["hybrid_bullets"] += int(hybrid.get("hybrid_bullets") or 0)
+        pooled["challenge_total"] += int(challenge.get("total") or 0)
+        pooled["challenge_accepted"] += int(challenge.get("resolved_accepted") or 0)
+        pooled["amend_total"] += int(amend.get("amend_total") or 0)
+    return pooled
+
+
+def aggregate_rates(
+    reports: list[dict[str, Any]],
+) -> tuple[dict[str, float | None], dict[str, dict[str, int]]]:
+    """Pooled weekly rates across session reports."""
+    obj = _pool_objection_counts(reports)
+    exe = _pool_execute_counts(reports)
+    merge = _pool_merge_counts(reports)
+    turns = _pool_turn_counts(reports)
+    capability_cwd = _pool_capability_cwd_counts(reports)
+    communicate = _pool_communicate_counts(reports)
+    emergence = _pool_emergence_counts(reports)
+
+    objection_rate = obj["resolved"] / obj["total"] if obj["total"] else None
+    first_try_rate = exe["first_try"] / exe["terminal"] if exe["terminal"] else None
+    retry_rate = exe["retried"] / exe["terminal"] if exe["terminal"] else None
+    partial_rate = turns["partial"] / turns["total"] if turns["total"] else None
+
+    scores: dict[str, float | None] = {
+        "objection_resolution_rate": objection_rate,
+        "execute_first_try_rate": first_try_rate,
+        "execute_retry_rate": retry_rate,
+        "partial_turn_rate": partial_rate,
+        "worktree_usage_rate": (merge["worktree"] / merge["gitish"] if merge["gitish"] else None),
+        "snapshot_override_rate": (merge["snapshot_override"] / merge["total"] if merge["total"] else None),
+        "merge_first_success_rate": (
+            merge["merge_first_success"] / merge["worktree_terminal"] if merge["worktree_terminal"] else None
+        ),
+        "merge_conflict_rate": (merge["merge_conflict"] / merge["worktree"] if merge["worktree"] else None),
+        "asymmetric_capability_cwd_rate": (
+            capability_cwd["asymmetric"] / capability_cwd["specialist_contexts"]
+            if capability_cwd["specialist_contexts"]
+            else None
+        ),
+        "specialist_context_recorded_rate": (
+            capability_cwd["recorded"] / capability_cwd["specialist_contexts"]
+            if capability_cwd["specialist_contexts"]
+            else None
+        ),
+        "envelope_parse_success_rate": (
+            (communicate["agent_replies"] - communicate["envelope_parse_errors"]) / communicate["agent_replies"]
+            if communicate["agent_replies"]
+            else None
+        ),
+        "legacy_endorse_rate": (
+            communicate["legacy_endorse_count"] / communicate["agent_replies"] if communicate["agent_replies"] else None
+        ),
+        "hook_block_rate": (
+            communicate["hook_blocked"] / communicate["hook_runs"] if communicate["hook_runs"] else None
+        ),
+        "hybrid_action_rate": (
+            emergence["hybrid_bullets"] / emergence["ref_bullets"] if emergence["ref_bullets"] else None
+        ),
+        "challenge_yield": (
+            emergence["challenge_accepted"] / emergence["challenge_total"] if emergence["challenge_total"] else None
+        ),
+    }
+    counts = {
+        "objections": obj,
+        "executions": exe,
+        "execute_merge": merge,
+        "turns": turns,
+        "capability_cwd": capability_cwd,
+        "communicate": communicate,
+        "emergence": emergence,
+    }
+    return scores, counts
+
+
+def evaluate_m4_milestones(
+    scores: dict[str, float | None],
+    counts: dict[str, dict[str, int]],
+) -> dict[str, Any]:
+    """M4 gates: objection resolution ≥80%, execute retry <30% (when data exists)."""
+    obj_total = int((counts.get("objections") or {}).get("total") or 0)
+    exe_terminal = int((counts.get("executions") or {}).get("terminal") or 0)
+    obj_rate = scores.get("objection_resolution_rate")
+    retry_rate = scores.get("execute_retry_rate")
+
+    objection = {
+        "metric": "objection_resolution_rate",
+        "target": f">={M4_OBJECTION_RESOLUTION_MIN:.0%}",
+        "applicable": obj_total > 0,
+        "value": obj_rate,
+        "pass": (obj_rate is not None and obj_rate >= M4_OBJECTION_RESOLUTION_MIN if obj_total > 0 else None),
+    }
+    execute_retry = {
+        "metric": "execute_retry_rate",
+        "target": f"<{M4_EXECUTE_RETRY_RATE_MAX:.0%}",
+        "applicable": exe_terminal > 0,
+        "value": retry_rate,
+        "pass": (retry_rate is not None and retry_rate < M4_EXECUTE_RETRY_RATE_MAX if exe_terminal > 0 else None),
+    }
+    applicable = [m for m in (objection, execute_retry) if m["applicable"]]
+    passes = [m for m in applicable if m["pass"] is True]
+    fails = [m for m in applicable if m["pass"] is False]
+    overall = None
+    if applicable:
+        overall = len(fails) == 0
+    return {
+        "objection_resolution": objection,
+        "execute_retry": execute_retry,
+        "applicable_count": len(applicable),
+        "pass_count": len(passes),
+        "fail_count": len(fails),
+        "overall_pass": overall,
+    }
+
+
+def _pct(value: float | None) -> str:
+    if value is None:
+        return "n/a"
+    return f"{value * 100:.0f}%"
+
+
+def _status(value: bool | None) -> str:
+    if value is True:
+        return "PASS"
+    if value is False:
+        return "FAIL"
+    return "n/a"
+
+
+def _milestone_line(name: str, row: dict[str, Any]) -> str:
+    if not row.get("applicable"):
+        return f"  {name}: n/a (no data this window)"
+    status = "PASS" if row.get("pass") else "FAIL"
+    return f"  {name}: {_pct(row.get('value'))} — M4 {status} ({row.get('target')})"
+
+
+def weekly_report_artifact_paths(end_date: str, base_dir: Path) -> dict[str, Path]:
+    """Default JSON/Markdown artifact paths for a weekly report end date."""
+    base = base_dir.expanduser()
+    stem = f"weekly-{end_date}"
+    return {
+        "json": base / f"{stem}.json",
+        "md": base / f"{stem}.md",
+    }
+
+
+def _live_report_kind(path: Path, data: dict[str, Any]) -> str | None:
+    match = _LIVE_REPORT_RE.match(path.name)
+    if match:
+        return match.group(1)
+    kind = str(data.get("kind") or "")
+    if kind == "live_cursor_worktree_dry_run":
+        return "worktree"
+    if kind == "live_cursor_worktree_merge":
+        return "merge"
+    return None
+
+
+def _live_report_date(path: Path, data: dict[str, Any]) -> str | None:
+    for key in ("finished_at", "started_at"):
+        parsed = _parse_iso_datetime(str(data.get(key) or ""))
+        if parsed:
+            return parsed.date().isoformat()
+    match = _LIVE_REPORT_RE.match(path.name)
+    if match:
+        return match.group(2)
+    return None
+
+
+def _live_report_sort_key(path: Path, data: dict[str, Any]) -> tuple[datetime, str]:
+    for key in ("finished_at", "started_at"):
+        parsed = _parse_iso_datetime(str(data.get(key) or ""))
+        if parsed:
+            return parsed, path.name
+    match = _LIVE_REPORT_RE.match(path.name)
+    if match:
+        try:
+            parsed_date = date.fromisoformat(match.group(2))
+            return (
+                datetime(
+                    parsed_date.year,
+                    parsed_date.month,
+                    parsed_date.day,
+                    tzinfo=timezone.utc,
+                ),
+                path.name,
+            )
+        except ValueError:
+            pass
+    return datetime.fromtimestamp(path.stat().st_mtime, timezone.utc), path.name
+
+
+def discover_live_ops_reports(report_dir: Path) -> dict[str, dict[str, Any] | None]:
+    """Return latest Tier B/C live report summaries from a report directory."""
+    base = report_dir.expanduser()
+    latest: dict[str, tuple[tuple[datetime, str], dict[str, Any]]] = {}
+    if not base.is_dir():
+        return {"worktree": None, "merge": None}
+
+    candidates = sorted(list(base.glob("live-worktree-*.json")) + list(base.glob("live-merge-*.json")))
+    for path in candidates:
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(data, dict):
+            continue
+        kind = _live_report_kind(path, data)
+        if kind not in {"worktree", "merge"}:
+            continue
+        row: dict[str, Any] = {
+            "kind": kind,
+            "path": str(path),
+            "file": path.name,
+            "date": _live_report_date(path, data),
+            "status": data.get("status"),
+            "finished_at": data.get("finished_at"),
+            "started_at": data.get("started_at"),
+            "preflight": data.get("preflight") if isinstance(data.get("preflight"), dict) else {},
+        }
+        sort_key = _live_report_sort_key(path, data)
+        previous = latest.get(kind)
+        if previous is None or sort_key > previous[0]:
+            latest[kind] = (sort_key, row)
+
+    return {
+        "worktree": latest.get("worktree", (None, None))[1],
+        "merge": latest.get("merge", (None, None))[1],
+    }
+
+
+def _live_status(row: dict[str, Any] | None) -> str:
+    if not row:
+        return "n/a"
+    status = str(row.get("status") or "").strip()
+    if not status:
+        return "n/a"
+    return status.upper()
+
+
+def _live_table_status(row: dict[str, Any] | None) -> str:
+    if not row:
+        return "—"
+    return _live_status(row)
+
+
+def _live_date(row: dict[str, Any] | None) -> str:
+    if not row:
+        return "n/a"
+    return str(row.get("date") or "n/a")
+
+
+def _live_file(row: dict[str, Any] | None) -> str:
+    if not row:
+        return "—"
+    return str(row.get("file") or "—")
+
+
+def _last_live_summary(live: dict[str, Any]) -> str:
+    worktree = live.get("worktree")
+    merge = live.get("merge")
+    return (
+        "Last live: "
+        f"worktree {_live_status(worktree)} ({_live_date(worktree)}), "
+        f"merge {_live_status(merge)} ({_live_date(merge)})"
+    )
+
+
+def format_weekly_report_markdown(report: dict[str, Any]) -> str:
+    """Render a compact operations report for weekly KPI review."""
+    period = report.get("period") or {}
+    aggregate = report.get("aggregate") or {}
+    scores = aggregate.get("scores") or {}
+    counts = aggregate.get("counts") or {}
+    m4 = report.get("m4_milestones") or {}
+    capability = counts.get("capability_cwd") or {}
+    sessions = report.get("sessions") or []
+    errors = report.get("errors") or []
+
+    lines = [
+        "# Agent Lab Weekly Ops Report",
+        "",
+        "## Period",
+        "",
+        f"- Window: {period.get('start', 'n/a')} .. {period.get('end', 'n/a')} ({period.get('days', 'n/a')} days)",
+        f"- Sessions dir: `{report.get('sessions_dir', 'n/a')}`",
+        f"- Sessions scored: {len(sessions)}",
+        f"- Include fixtures: {bool(report.get('include_fixtures'))}",
+        "",
+        "## M4 Milestones",
+        "",
+        "| Gate | Value | Target | Status |",
+        "|------|-------|--------|--------|",
+    ]
+    for label, key in (
+        ("Objection resolution", "objection_resolution"),
+        ("Execute retry", "execute_retry"),
+    ):
+        row = m4.get(key) or {}
+        lines.append(
+            f"| {label} | {_pct(row.get('value'))} | {row.get('target', 'n/a')} | {_status(row.get('pass'))} |"
+        )
+    lines.extend(
+        [
+            f"| Overall | - | applicable gates: {m4.get('applicable_count', 0)} | {_status(m4.get('overall_pass'))} |",
+            "",
+            "## F-R3 Ops",
+            "",
+            "| Metric | Value | Count |",
+            "|--------|-------|-------|",
+            (
+                "| Specialist context recorded | "
+                f"{_pct(scores.get('specialist_context_recorded_rate'))} | "
+                f"{capability.get('recorded', 0)}/{capability.get('specialist_contexts', 0)} contexts |"
+            ),
+            (
+                "| Capability cwd asymmetry | "
+                f"{_pct(scores.get('asymmetric_capability_cwd_rate'))} | "
+                f"{capability.get('asymmetric', 0)}/{capability.get('specialist_contexts', 0)} contexts |"
+            ),
+            "",
+            "## Hook · Communicate",
+            "",
+            "| Metric | Value | Count |",
+            "|--------|-------|-------|",
+        ]
+    )
+    comm = counts.get("communicate") or {}
+    lines.extend(
+        [
+            (
+                "| Envelope parse success | "
+                f"{_pct(scores.get('envelope_parse_success_rate'))} | "
+                f"{comm.get('agent_replies', 0) - comm.get('envelope_parse_errors', 0)}"
+                f"/{comm.get('agent_replies', 0)} replies |"
+            ),
+            (
+                "| Legacy phrase endorse | "
+                f"{_pct(scores.get('legacy_endorse_rate'))} | "
+                f"{comm.get('legacy_endorse_count', 0)} hits |"
+            ),
+            (
+                "| Hook block rate | "
+                f"{_pct(scores.get('hook_block_rate'))} | "
+                f"{comm.get('hook_blocked', 0)}/{comm.get('hook_runs', 0)} runs |"
+            ),
+            (
+                "| Guidance chars (total) | — | "
+                f"{comm.get('guidance_chars_total', 0)} across "
+                f"{comm.get('communicate_turns', 0)} turns |"
+            ),
+            "",
+            "## Last live checks",
+            "",
+            "| Check | Date | Status | Report |",
+            "|-------|------|--------|--------|",
+        ]
+    )
+    live_ops = report.get("live_ops_summary") or {}
+    for label, key in (("Tier B worktree", "worktree"), ("Tier C merge", "merge")):
+        row = live_ops.get(key)
+        report_file = _live_file(row)
+        if report_file != "—":
+            report_file = f"`{report_file}`"
+        lines.append(f"| {label} | {_live_date(row)} | {_live_table_status(row)} | {report_file} |")
+    lines.extend(
+        [
+            "",
+            "## Per Session",
+            "",
+            "| Session | Objection | Retry | cwd asymmetric | cwd recorded |",
+            "|---------|-----------|-------|----------------|--------------|",
+        ]
+    )
+    for row in sessions:
+        score_row = row.get("scores") or {}
+        lines.append(
+            "| "
+            f"`{row.get('session_id', '')}` | "
+            f"{_pct(score_row.get('objection_resolution_rate'))} | "
+            f"{_pct(score_row.get('execute_retry_rate'))} | "
+            f"{_pct(score_row.get('asymmetric_capability_cwd'))} | "
+            f"{_pct(score_row.get('specialist_context_recorded'))} |"
+        )
+    if errors:
+        lines.extend(["", "## Errors", ""])
+        for err in errors:
+            lines.append(f"- {err}")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def build_weekly_report(
+    root: Path,
+    *,
+    days: int = 7,
+    include_fixtures: bool = False,
+    as_of: date | None = None,
+    report_dir: Path | None = None,
+) -> dict[str, Any]:
+    end = as_of or datetime.now(timezone.utc).date()
+    start = end - timedelta(days=max(days - 1, 0))
+    discovered = discover_sessions(
+        root,
+        days=days,
+        include_fixtures=include_fixtures,
+        as_of=end,
+    )
+    session_reports: list[dict[str, Any]] = []
+    errors: list[str] = []
+    for item in discovered:
+        try:
+            session_reports.append(score_session(item.folder))
+        except Exception as exc:  # noqa: BLE001 — batch report should continue
+            errors.append(f"{item.folder.name}: {exc}")
+
+    aggregate_scores, aggregate_counts = aggregate_rates(session_reports)
+    m4 = evaluate_m4_milestones(aggregate_scores, aggregate_counts)
+    live_report_dir = report_dir or (root / "_reports")
+    live_ops_summary = discover_live_ops_reports(live_report_dir)
+
+    summary_lines = [
+        f"Weekly KPI ({start.isoformat()} .. {end.isoformat()})",
+        f"  sessions_dir: {root}",
+        f"  sessions scored: {len(session_reports)} (discovered {len(discovered)})",
+        f"  aggregate objection resolution: {_pct(aggregate_scores['objection_resolution_rate'])} "
+        f"({aggregate_counts['objections']['resolved']}/"
+        f"{aggregate_counts['objections']['total']} resolved)",
+        f"  aggregate execute retry: {_pct(aggregate_scores['execute_retry_rate'])} "
+        f"({aggregate_counts['executions']['retried']}/"
+        f"{aggregate_counts['executions']['terminal']} terminal)",
+        f"  aggregate partial turns: {_pct(aggregate_scores['partial_turn_rate'])} "
+        f"({aggregate_counts['turns']['partial']}/{aggregate_counts['turns']['total']} turns)",
+        f"  aggregate merge first-success: {_pct(aggregate_scores['merge_first_success_rate'])} "
+        f"({aggregate_counts['execute_merge']['merge_first_success']}/"
+        f"{aggregate_counts['execute_merge']['worktree_terminal']} worktree terminal)",
+        f"  aggregate specialist cwd asymmetry: {_pct(aggregate_scores['asymmetric_capability_cwd_rate'])} "
+        f"({aggregate_counts['capability_cwd']['asymmetric']}/"
+        f"{aggregate_counts['capability_cwd']['specialist_contexts']} specialist contexts)",
+        f"  communicate envelope parse: {_pct(aggregate_scores.get('envelope_parse_success_rate'))} "
+        f"({aggregate_counts['communicate']['agent_replies'] - aggregate_counts['communicate']['envelope_parse_errors']}/"
+        f"{aggregate_counts['communicate']['agent_replies']} replies)",
+        f"  {_last_live_summary(live_ops_summary)}",
+        "M4 milestones:",
+        _milestone_line("objection resolution", m4["objection_resolution"]),
+        _milestone_line("execute retry", m4["execute_retry"]),
+    ]
+    if m4["overall_pass"] is True:
+        summary_lines.append("  overall M4: PASS")
+    elif m4["overall_pass"] is False:
+        summary_lines.append("  overall M4: FAIL")
+    else:
+        summary_lines.append("  overall M4: n/a (insufficient data)")
+
+    if errors:
+        summary_lines.append(f"  errors: {len(errors)}")
+
+    return {
+        "period": {"start": start.isoformat(), "end": end.isoformat(), "days": days},
+        "sessions_dir": str(root),
+        "include_fixtures": include_fixtures,
+        "sessions": [
+            {
+                "session_id": r["session_id"],
+                "folder": r["folder"],
+                "scores": r["scores"],
+            }
+            for r in session_reports
+        ],
+        "aggregate": {"scores": aggregate_scores, "counts": aggregate_counts},
+        "live_ops_summary": live_ops_summary,
+        "m4_milestones": m4,
+        "errors": errors,
+        "summary_lines": summary_lines,
+    }
+
+
+def default_sessions_root() -> Path:
+    return resolve_sessions_dir()

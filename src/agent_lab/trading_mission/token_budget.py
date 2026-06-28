@@ -7,8 +7,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-from agent_lab.mission_board import get_turn_budget, refresh_turn_budget
-from agent_lab.run_meta import patch_run_meta, read_run_meta
+from agent_lab.mission.board import get_turn_budget, refresh_turn_budget
+from agent_lab.run.meta import patch_run_meta, read_run_meta
 
 
 def _int_env(key: str, default: int) -> int:

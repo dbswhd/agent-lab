@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from agent_lab.agent_preflight import (
+from agent_lab.agent.preflight import (
     agent_preflight_row,
     agents_not_ready,
     format_codex_exec_error,
@@ -49,7 +49,7 @@ def test_agent_preflight_claude_auth_failure(monkeypatch):
         lambda **kw: (False, "401 Invalid authentication credentials"),
     )
     monkeypatch.setattr(
-        "agent_lab.agent_preflight._probe_cli_version",
+        "agent_lab.agent.preflight._probe_cli_version",
         lambda *_args, **_kwargs: (True, "2.1.147"),
     )
     row = agent_preflight_row("claude", probe_bridge=False, probe_cli=True)
@@ -69,7 +69,7 @@ def test_agent_preflight_codex_cli_probe(monkeypatch):
         lambda: (True, "logged in"),
     )
     monkeypatch.setattr(
-        "agent_lab.agent_preflight._probe_cli_version",
+        "agent_lab.agent.preflight._probe_cli_version",
         lambda *_args, **_kwargs: (True, "codex 1.2.3"),
     )
     monkeypatch.setattr(
@@ -92,7 +92,7 @@ def test_agent_preflight_codex_missing_bin(monkeypatch):
 
 def test_validate_agents_for_run_raises(monkeypatch):
     monkeypatch.setattr(
-        "agent_lab.agent_preflight.agent_preflight_row",
+        "agent_lab.agent.preflight.agent_preflight_row",
         lambda aid, **kw: {
             "id": aid,
             "ready": aid == "cursor",
@@ -107,7 +107,7 @@ def test_room_run_blocked_when_agent_not_ready(monkeypatch):
     from app.server.main import app
 
     monkeypatch.setattr(
-        "agent_lab.agent_preflight.agents_not_ready",
+        "agent_lab.agent.preflight.agents_not_ready",
         lambda ids, **kw: [{"id": "codex", "ready": False, "reason": "codex CLI 없음"}],
     )
     client = TestClient(app)
@@ -125,7 +125,7 @@ def test_room_run_blocked_when_agent_not_ready(monkeypatch):
 
 
 def test_release_room_run_lock_endpoint():
-    from agent_lab.run_control import try_begin_run
+    from agent_lab.run.control import try_begin_run
     from app.server.main import app
 
     assert try_begin_run()
@@ -139,7 +139,7 @@ def test_release_room_run_lock_endpoint():
 
 
 def test_reconnect_claude_auth_invalidates_cache(monkeypatch):
-    from agent_lab.agent_health import reconnect_claude_auth
+    from agent_lab.agent.health import reconnect_claude_auth
 
     invalidated: list[str] = []
 
@@ -173,7 +173,7 @@ def test_reconnect_claude_auth_invalidates_cache(monkeypatch):
 
 
 def test_reconnect_claude_auth_failure_has_remediation(monkeypatch):
-    from agent_lab.agent_health import reconnect_claude_auth
+    from agent_lab.agent.health import reconnect_claude_auth
 
     monkeypatch.setattr("agent_lab.claude_cli.invalidate_claude_auth_cache", lambda: None)
     monkeypatch.setattr(
@@ -195,10 +195,10 @@ def test_reconnect_claude_auth_failure_has_remediation(monkeypatch):
 
 
 def test_health_probe_preflight_flag(monkeypatch):
-    from agent_lab.agent_health import build_health_payload
+    from agent_lab.agent.health import build_health_payload
 
     monkeypatch.setattr(
-        "agent_lab.agent_preflight.build_agent_preflight",
+        "agent_lab.agent.preflight.build_agent_preflight",
         lambda **kw: [
             {"id": "cursor", "ready": True, "reason": None},
             {"id": "codex", "ready": False, "reason": "x"},
@@ -216,7 +216,7 @@ def test_health_probe_preflight_flag(monkeypatch):
 
 @pytest.mark.integration
 def test_health_payload_includes_model_readiness() -> None:
-    from agent_lab.agent_health import build_health_payload
+    from agent_lab.agent.health import build_health_payload
 
     payload = build_health_payload()
     rows = {row["id"]: row for row in payload["agents"]}
@@ -237,8 +237,8 @@ def test_health_payload_filters_to_kimi_work_composition(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import agent_lab.app_config as app_config
-    from agent_lab import room_models_config as rmc
-    from agent_lab.agent_health import build_health_payload
+    from agent_lab.room import models_config as rmc
+    from agent_lab.agent.health import build_health_payload
 
     cfg = tmp_path / "cfg"
     cfg.mkdir()
@@ -259,15 +259,15 @@ def test_agents_not_ready_subset():
 def test_cursor_bridge_preflight_keeps_fallback(monkeypatch):
     monkeypatch.setenv("CURSOR_API_KEY", "test-key")
     monkeypatch.setattr(
-        "agent_lab.agent_health._cursor_sdk_installed",
+        "agent_lab.agent.health._cursor_sdk_installed",
         lambda: True,
     )
     monkeypatch.setattr(
-        "agent_lab.agent_preflight._bridge_bin_path",
+        "agent_lab.agent.preflight._bridge_bin_path",
         lambda: object(),
     )
     monkeypatch.setattr(
-        "agent_lab.agent_health._check_cursor_bridge",
+        "agent_lab.agent.health._check_cursor_bridge",
         lambda _ws: ("error", "Cursor bridge 연결 실패 (auto): dead"),
     )
 
@@ -296,18 +296,18 @@ def test_health_api_cursor_bridge_degraded_matches_fixture(monkeypatch):
 
     monkeypatch.setenv("CURSOR_API_KEY", "test-key")
     monkeypatch.setattr(
-        "agent_lab.agent_health._cursor_sdk_installed",
+        "agent_lab.agent.health._cursor_sdk_installed",
         lambda: True,
     )
     monkeypatch.setattr(
-        "agent_lab.agent_preflight._bridge_bin_path",
+        "agent_lab.agent.preflight._bridge_bin_path",
         lambda: object(),
     )
 
     def fake_bridge_check(*_args, **_kwargs):
         return "error", expected_cursor["reason"]
 
-    monkeypatch.setattr("agent_lab.agent_health._check_cursor_bridge", fake_bridge_check)
+    monkeypatch.setattr("agent_lab.agent.health._check_cursor_bridge", fake_bridge_check)
 
     client = TestClient(app)
     res = client.get("/api/health?probe_bridge=true&probe_preflight=true")

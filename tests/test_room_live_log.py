@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from agent_lab.room_live_log import (
+from agent_lab.room.live_log import (
     append_live_room_event,
     clear_live_room_log,
     read_live_room_log,

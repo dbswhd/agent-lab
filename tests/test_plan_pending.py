@@ -6,16 +6,16 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.plan_actions import find_dry_run_action
-from agent_lab.plan_pending import (
+from agent_lab.plan.actions import find_dry_run_action
+from agent_lab.plan.pending import (
     PlanSnapshotRequired,
     approve_pending_plan,
     ensure_plan_snapshot_approved,
     max_tasks_per_turn,
     plan_content_hash,
 )
-from agent_lab.run_meta import read_run_meta
-from agent_lab.room_tasks import (
+from agent_lab.run.meta import read_run_meta
+from agent_lab.room.tasks import (
     list_tasks,
     mark_tasks_in_progress_for_execution,
     revert_tasks_for_rejected_execution,
@@ -118,13 +118,13 @@ def test_max_tasks_per_turn_cap(monkeypatch):
 
 def test_task_in_progress_and_revert_on_reject():
     run_meta: dict = {"tasks": []}
-    from agent_lab.room_tasks import add_task
+    from agent_lab.room.tasks import add_task
 
     add_task(run_meta, "Add feature flag", source="test")
     tasks = list_tasks(run_meta)
     tasks[0]["plan_action_index"] = 1
     tasks[0]["plan_action_id"] = "plan-action-now-1"
-    from agent_lab.room_tasks import write_tasks
+    from agent_lab.room.tasks import write_tasks
 
     write_tasks(run_meta, tasks)
     mark_tasks_in_progress_for_execution(

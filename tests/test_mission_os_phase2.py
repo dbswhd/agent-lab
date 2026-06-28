@@ -15,8 +15,8 @@ from agent_lab.gate_scope import (
 from agent_lab.gateway.router import route_inbound
 from agent_lab.gateway.telegram_adapter import handle_gateway_command
 from agent_lab.human_inbox import create_inbox_item
-from agent_lab.inbox_harvest import should_pause_discuss
-from agent_lab.run_meta import read_run_meta
+from agent_lab.inbox.harvest import should_pause_discuss
+from agent_lab.run.meta import read_run_meta
 from app.server.main import app
 
 

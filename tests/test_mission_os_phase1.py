@@ -13,14 +13,14 @@ from fastapi.testclient import TestClient
 
 from agent_lab.gateway.config import gateway_config_path, load_gateway_config, save_gateway_config
 from agent_lab.gateway.outbound import deliver_outbound_event
-from agent_lab.mission_scheduler import cron_matches, schedule_due, scheduler_tick
-from agent_lab.mission_templates import (
+from agent_lab.mission.scheduler import cron_matches, schedule_due, scheduler_tick
+from agent_lab.mission.templates import (
     init_plan_workflow_from_template,
     sign_template_pre_approval,
     templates_root,
 )
-from agent_lab.plan_workflow import get_plan_workflow
-from agent_lab.run_meta import patch_run_meta, read_run_meta
+from agent_lab.plan.workflow import get_plan_workflow
+from agent_lab.run.meta import patch_run_meta, read_run_meta
 from app.server.main import app
 
 
@@ -31,8 +31,8 @@ def client() -> TestClient:
 
 @pytest.fixture
 def sessions_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    import agent_lab.mission_scheduler as sched_mod
-    import agent_lab.mission_templates as tmpl_mod
+    import agent_lab.mission.scheduler as sched_mod
+    import agent_lab.mission.templates as tmpl_mod
     import agent_lab.session as session_mod
     import app.server.deps as deps_mod
 
@@ -261,7 +261,7 @@ def test_scheduler_applies_template_assistant(sessions_env: Path, gateway_config
         },
     )
     save_gateway_config({"outbound": {"enabled": False}})
-    from agent_lab.mission_scheduler import run_schedule_entry
+    from agent_lab.mission.scheduler import run_schedule_entry
 
     result = run_schedule_entry(
         folder.name, read_run_meta(folder)["schedules"][0], sessions_dir=sessions_env, force=True
@@ -279,8 +279,8 @@ def test_scheduler_applies_template_assistant(sessions_env: Path, gateway_config
 
 def test_scheduler_templateless_sandbox_runs_conductor_tick(sessions_env: Path, gateway_config: Path) -> None:
     """Template-less assistant schedule still runs sandbox mission conductor."""
-    from agent_lab.mission_loop import enable_mission_loop
-    from agent_lab.mission_scheduler import run_schedule_entry
+    from agent_lab.mission.loop import enable_mission_loop
+    from agent_lab.mission.scheduler import run_schedule_entry
 
     folder = sessions_env / "sched-no-tmpl-sandbox"
     folder.mkdir()
@@ -328,8 +328,8 @@ def test_scheduler_templateless_non_sandbox_runs_mission_tick(
     sessions_env: Path, gateway_config: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Template-less non-sandbox schedule advances mission_loop conductor."""
-    from agent_lab.mission_loop import enable_mission_loop
-    from agent_lab.mission_scheduler import run_schedule_entry
+    from agent_lab.mission.loop import enable_mission_loop
+    from agent_lab.mission.scheduler import run_schedule_entry
 
     folder = sessions_env / "sched-no-tmpl-live"
     folder.mkdir()
@@ -380,7 +380,7 @@ def test_scheduler_templateless_non_sandbox_runs_mission_tick(
         "status": "pending_approval",
     }
     monkeypatch.setattr(
-        "agent_lab.plan_execute.run_dry_run",
+        "agent_lab.plan.execute.run_dry_run",
         lambda *a, **k: fake_exec,
     )
 
@@ -421,7 +421,7 @@ def test_scheduled_mission_tick_sandbox_skips_execute_queue(sessions_env: Path) 
 
     patch_run_meta(folder, _patch)
 
-    from agent_lab.mission_tick import run_scheduled_mission_tick
+    from agent_lab.mission.tick import run_scheduled_mission_tick
 
     result = run_scheduled_mission_tick(folder, schedule_id="s-sandbox", sandbox=True)
     assert result["ok"] is True
@@ -433,8 +433,8 @@ def test_scheduled_mission_tick_sandbox_skips_execute_queue(sessions_env: Path) 
 def test_scheduled_mission_tick_non_sandbox_advances_execute(
     sessions_env: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from agent_lab.mission_loop import enable_mission_loop
-    from agent_lab.mission_tick import run_scheduled_mission_tick
+    from agent_lab.mission.loop import enable_mission_loop
+    from agent_lab.mission.tick import run_scheduled_mission_tick
 
     folder = sessions_env / "live-exec"
     folder.mkdir()
@@ -472,7 +472,7 @@ def test_scheduled_mission_tick_non_sandbox_advances_execute(
         "status": "pending_approval",
     }
     monkeypatch.setattr(
-        "agent_lab.plan_execute.run_dry_run",
+        "agent_lab.plan.execute.run_dry_run",
         lambda *a, **k: fake_exec,
     )
 
@@ -533,11 +533,11 @@ def test_scheduler_non_sandbox_runs_mission_tick(
         "status": "pending_approval",
     }
     monkeypatch.setattr(
-        "agent_lab.plan_execute.run_dry_run",
+        "agent_lab.plan.execute.run_dry_run",
         lambda *a, **k: fake_exec,
     )
 
-    from agent_lab.mission_scheduler import run_schedule_entry
+    from agent_lab.mission.scheduler import run_schedule_entry
 
     result = run_schedule_entry(
         folder.name,
@@ -554,8 +554,8 @@ def test_scheduler_non_sandbox_runs_mission_tick(
 
 def test_scheduled_autorun_without_active_segment(sessions_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Scheduled assistant tick advances execute even after dry-run cleared autorun."""
-    from agent_lab.mission_loop import enable_mission_loop
-    from agent_lab.mission_tick import run_scheduled_mission_tick
+    from agent_lab.mission.loop import enable_mission_loop
+    from agent_lab.mission.tick import run_scheduled_mission_tick
 
     folder = sessions_env / "sched-autorun-off"
     folder.mkdir()
@@ -578,7 +578,7 @@ def test_scheduled_autorun_without_active_segment(sessions_env: Path, monkeypatc
 
     patch_run_meta(folder, _queue)
     monkeypatch.setattr(
-        "agent_lab.plan_execute.run_dry_run",
+        "agent_lab.plan.execute.run_dry_run",
         lambda *a, **k: {
             "id": "exec-no-seg",
             "action_index": 1,
@@ -592,9 +592,9 @@ def test_scheduled_autorun_without_active_segment(sessions_env: Path, monkeypatc
 
 
 def test_scheduled_conductor_auto_merge_and_next_action(sessions_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab.mission_loop import enable_mission_loop
-    from agent_lab.mission_advance import on_verify_result
-    from agent_lab.mission_tick import run_scheduled_mission_tick
+    from agent_lab.mission.loop import enable_mission_loop
+    from agent_lab.mission.advance import on_verify_result
+    from agent_lab.mission.tick import run_scheduled_mission_tick
     from agent_lab.trust_budget import set_trust_budget
 
     folder = sessions_env / "conductor-chain"
@@ -672,7 +672,7 @@ def test_scheduled_conductor_auto_merge_and_next_action(sessions_env: Path, monk
         patch_run_meta(folder_arg, _mark_merged)
         return {"auto_merge": {"eligible": True}, "execution": {"id": execution_id}}
 
-    monkeypatch.setattr("agent_lab.plan_execute.run_dry_run", _fake_dry_run)
+    monkeypatch.setattr("agent_lab.plan.execute.run_dry_run", _fake_dry_run)
     monkeypatch.setattr("agent_lab.auto_merge.resolve_auto_merge", _fake_auto_merge)
 
     result = run_scheduled_mission_tick(folder, schedule_id="s-chain", sandbox=False)
@@ -687,8 +687,8 @@ def test_scheduled_conductor_auto_merge_and_next_action(sessions_env: Path, monk
 
 
 def test_maybe_advance_scheduled_merge_review(sessions_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab.mission_loop import enable_mission_loop
-    from agent_lab.mission_advance import maybe_advance_mission, on_verify_result
+    from agent_lab.mission.loop import enable_mission_loop
+    from agent_lab.mission.advance import maybe_advance_mission, on_verify_result
     from agent_lab.trust_budget import set_trust_budget
 
     folder = sessions_env / "merge-review"
@@ -770,7 +770,7 @@ def test_scheduler_hash_mismatch_blocked(sessions_env: Path, gateway_config: Pat
     patch_run_meta(folder, lambda run: {**run, "schedules": [entry]})
     save_gateway_config({"outbound": {"enabled": False}})
 
-    from agent_lab.mission_scheduler import run_schedule_entry
+    from agent_lab.mission.scheduler import run_schedule_entry
 
     result = run_schedule_entry(folder.name, entry, sessions_dir=sessions_env, force=True)
     assert result["ok"] is False
@@ -795,7 +795,7 @@ def test_schedule_sandbox_blocks_execute(sessions_env: Path) -> None:
 
 
 def test_validate_cron_unit() -> None:
-    from agent_lab.mission_scheduler import validate_cron
+    from agent_lab.mission.scheduler import validate_cron
 
     assert validate_cron("0 9 * * 1-5")
     assert validate_cron("*/15 0-6 1 1 *")
@@ -908,7 +908,7 @@ def test_delete_schedule(client: TestClient, sessions_env: Path) -> None:
 def test_scheduler_tick_isolates_failing_schedule(
     sessions_env: Path, gateway_config: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import agent_lab.mission_scheduler as sched_mod
+    import agent_lab.mission.scheduler as sched_mod
 
     for sid in ("good", "bad"):
         folder = sessions_env / f"iso-{sid}"

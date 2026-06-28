@@ -15,13 +15,13 @@ from agent_lab.gateway.config import (
     save_gateway_config,
 )
 from agent_lab.gateway.outbound import ping_outbound
-from agent_lab.mission_scheduler import scheduler_tick, validate_cron
-from agent_lab.mission_templates import (
+from agent_lab.mission.scheduler import scheduler_tick, validate_cron
+from agent_lab.mission.templates import (
     get_template_detail,
     init_plan_workflow_from_template,
     list_mission_templates,
 )
-from agent_lab.run_meta import patch_run_meta, read_run_meta
+from agent_lab.run.meta import patch_run_meta, read_run_meta
 
 from app.server.deps import session_folder_or_404
 

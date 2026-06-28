@@ -11,7 +11,7 @@ from typing import Any
 
 import pytest
 
-from agent_lab.context_bundle import (
+from agent_lab.context.bundle import (
     _format_clarity_facts,
     _format_decision_ledger,
     _format_grounding_block,
@@ -166,7 +166,7 @@ def test_antidrift_default_off(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def _peer_reviewer_count(monkeypatch: pytest.MonkeyPatch, tmp_path: Any, *, antidrift: bool) -> int:
     """Run the PEER_REVIEW round under mock agents and count reviewer invocations."""
-    import agent_lab.plan_workflow as pw
+    import agent_lab.plan.workflow as pw
 
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     if antidrift:
@@ -206,14 +206,14 @@ def test_fresh_eyes_seat_added_on_antidrift(monkeypatch: pytest.MonkeyPatch, tmp
 
 
 def test_fresh_eyes_guidance_is_cold_context() -> None:
-    from agent_lab.plan_workflow import PLAN_FRESH_EYES_GUIDANCE
+    from agent_lab.plan.workflow import PLAN_FRESH_EYES_GUIDANCE
 
     assert "fresh-eyes" in PLAN_FRESH_EYES_GUIDANCE
     assert "이전 토론 맥락 없이" in PLAN_FRESH_EYES_GUIDANCE
 
 
 def test_fresh_eyes_cold_round_uses_empty_history(monkeypatch: pytest.MonkeyPatch, tmp_path: Any) -> None:
-    import agent_lab.plan_workflow as pw
+    import agent_lab.plan.workflow as pw
 
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     monkeypatch.setenv("AGENT_LAB_ANTIDRIFT", "1")
@@ -284,9 +284,9 @@ def test_redteam_predicate_matches_source() -> None:
     # Guard against drift between this predicate mirror and the real condition string.
     import inspect
 
-    from agent_lab import room_consensus_rounds
+    from agent_lab.room import consensus_rounds
 
-    src = inspect.getsource(room_consensus_rounds.run_consensus_agent_rounds)
+    src = inspect.getsource(consensus_rounds.run_consensus_agent_rounds)
     assert "antidrift_redteam = antidrift_enabled() and not route.quality_gate" in src
     assert "route.quality_gate or antidrift_redteam" in src
     assert "debate_conflicts == 0" in src

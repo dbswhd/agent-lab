@@ -5,7 +5,7 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from agent_lab.run_meta import patch_run_meta, read_run_meta, write_run_meta
+from agent_lab.run.meta import patch_run_meta, read_run_meta, write_run_meta
 
 
 def test_parallel_patch_run_meta_preserves_mission_loop(tmp_path: Path) -> None:

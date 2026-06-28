@@ -7,9 +7,9 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
-from agent_lab.mission_loop import evaluate_plan_gate
+from agent_lab.mission.loop import evaluate_plan_gate
 from agent_lab.trading_mission.plan_gate import trading_plan_gate_issues
-from agent_lab.research_mcp_read import (
+from agent_lab.research.mcp_read import (
     read_pending_batch_summary,
     read_playbook_summary,
 )

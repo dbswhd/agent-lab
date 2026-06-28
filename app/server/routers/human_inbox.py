@@ -12,7 +12,7 @@ from agent_lab.human_inbox import (
     supersede_pending_inbox,
 )
 from agent_lab.room import ensure_session_plan_pipeline
-from agent_lab.run_meta import patch_run_meta, read_run_meta
+from agent_lab.run.meta import patch_run_meta, read_run_meta
 
 from app.server.deps import (
     HumanInboxCreateRequest,
@@ -30,7 +30,7 @@ class InboxSettingsPatch(BaseModel):
 
 @router.get("/inbox/summary")
 def get_inbox_summary(include_archived: bool = False) -> dict[str, Any]:
-    from agent_lab.session_paths import active_sessions_dir
+    from agent_lab.session.paths import active_sessions_dir
 
     summary = build_inbox_summary(active_sessions_dir(), include_archived=include_archived)
     return {"ok": True, **summary}
@@ -41,7 +41,7 @@ def get_session_inbox(session_id: str) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
     ensure_session_plan_pipeline(folder)
     run = read_run_meta(folder)
-    from agent_lab.inbox_harvest import inbox_mode_for_run
+    from agent_lab.inbox.harvest import inbox_mode_for_run
 
     return {
         "ok": True,
@@ -55,7 +55,7 @@ def get_session_inbox(session_id: str) -> dict[str, Any]:
 def get_session_inbox_settings(session_id: str) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
     run = read_run_meta(folder)
-    from agent_lab.inbox_harvest import inbox_mode_for_run
+    from agent_lab.inbox.harvest import inbox_mode_for_run
 
     return {
         "ok": True,
@@ -74,7 +74,7 @@ def patch_session_inbox_settings(session_id: str, body: InboxSettingsPatch) -> d
         return run
 
     updated = patch_run_meta(folder, _patch)
-    from agent_lab.inbox_harvest import inbox_mode_for_run
+    from agent_lab.inbox.harvest import inbox_mode_for_run
 
     return {
         "ok": True,

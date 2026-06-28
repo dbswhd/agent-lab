@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from agent_lab.agent_health import agent_health_row, build_agent_health, reconnect_cursor_bridge
+from agent_lab.agent.health import agent_health_row, build_agent_health, reconnect_cursor_bridge
 
 
 def test_agent_health_codex_when_bin_missing(monkeypatch):
@@ -19,7 +19,7 @@ def test_agent_health_codex_when_bin_missing(monkeypatch):
 def test_agent_health_cursor_without_key(monkeypatch):
     monkeypatch.delenv("CURSOR_API_KEY", raising=False)
     monkeypatch.setattr(
-        "agent_lab.agent_health._cursor_sdk_installed",
+        "agent_lab.agent.health._cursor_sdk_installed",
         lambda: True,
     )
     monkeypatch.setattr(
@@ -54,12 +54,12 @@ def test_reconnect_cursor_bridge_invalidates(monkeypatch):
         fake_invalidate,
     )
     monkeypatch.setattr(
-        "agent_lab.agent_health._check_cursor_bridge",
+        "agent_lab.agent.health._check_cursor_bridge",
         lambda _ws, retries=3: ("ok", None),
     )
     monkeypatch.setenv("CURSOR_API_KEY", "test-key")
     monkeypatch.setattr(
-        "agent_lab.agent_health._cursor_sdk_installed",
+        "agent_lab.agent.health._cursor_sdk_installed",
         lambda: True,
     )
     out = reconnect_cursor_bridge(workspace="/tmp/ws")
@@ -71,11 +71,11 @@ def test_reconnect_cursor_bridge_invalidates(monkeypatch):
 def test_agent_health_cursor_bridge_failure_has_fallback(monkeypatch):
     monkeypatch.setenv("CURSOR_API_KEY", "test-key")
     monkeypatch.setattr(
-        "agent_lab.agent_health._cursor_sdk_installed",
+        "agent_lab.agent.health._cursor_sdk_installed",
         lambda: True,
     )
     monkeypatch.setattr(
-        "agent_lab.agent_health._check_cursor_bridge",
+        "agent_lab.agent.health._check_cursor_bridge",
         lambda _ws, retries=3: ("error", "Cursor bridge 연결 실패 (external): dead"),
     )
 
@@ -90,12 +90,12 @@ def test_agent_health_cursor_bridge_failure_has_fallback(monkeypatch):
 def test_reconnect_cursor_bridge_failure_has_fallback(monkeypatch):
     monkeypatch.setenv("CURSOR_API_KEY", "test-key")
     monkeypatch.setattr(
-        "agent_lab.agent_health._cursor_sdk_installed",
+        "agent_lab.agent.health._cursor_sdk_installed",
         lambda: True,
     )
     monkeypatch.setattr("agent_lab.cursor_bridge.invalidate_workspace", lambda _ws: None)
     monkeypatch.setattr(
-        "agent_lab.agent_health._check_cursor_bridge",
+        "agent_lab.agent.health._check_cursor_bridge",
         lambda _ws, retries=3: ("error", "bridge ping 실패"),
     )
 

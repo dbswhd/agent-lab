@@ -28,7 +28,7 @@ def _make_session(tmp_path: Path) -> Generator[tuple[TestClient, str], None, Non
 
     with (
         patch("app.server.deps.SESSIONS_DIR", sessions_dir),
-        patch("agent_lab.workspace_files.SESSIONS_DIR", sessions_dir),
+        patch("agent_lab.workspace.files.SESSIONS_DIR", sessions_dir),
     ):
         from app.server.main import app
 
@@ -43,7 +43,7 @@ def test_probe_listening_ports_skips_blocked() -> None:
 
 
 def test_auto_probe_persists_first_listener(tmp_path: Path) -> None:
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.run.meta import read_run_meta
 
     folder = tmp_path / "sess"
     folder.mkdir()

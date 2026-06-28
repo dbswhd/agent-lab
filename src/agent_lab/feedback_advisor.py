@@ -24,7 +24,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from agent_lab.wisdom_index import _tokenize
+from agent_lab.wisdom.index import _tokenize
 
 log = logging.getLogger(__name__)
 
@@ -201,7 +201,7 @@ def _wisdom_note(topic: str, *, limit: int = 3) -> str:
     Role decisions are NOT affected; this is context annotation only.
     """
     try:
-        from agent_lab.wisdom_index import search_wisdom_cross_sessions
+        from agent_lab.wisdom.index import search_wisdom_cross_sessions
 
         hits = search_wisdom_cross_sessions(topic, limit=limit)
         if not hits:

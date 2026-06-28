@@ -17,7 +17,7 @@ from agent_lab.human_inbox import (
     supersede_pending_inbox,
     wait_for_inbox_item,
 )
-from agent_lab.run_meta import read_run_meta
+from agent_lab.run.meta import read_run_meta
 from app.server.main import app
 
 
@@ -185,7 +185,7 @@ def test_build_inbox_mcp_servers(session_folder: Path):
     assert "agent-lab-inbox" in servers
     cfg = servers["agent-lab-inbox"]
     assert "-m" in cfg.args
-    assert "agent_lab.inbox_mcp_server" in cfg.args
+    assert "agent_lab.inbox.mcp_server" in cfg.args
     assert cfg.env.get("AGENT_LAB_SESSION_FOLDER") == str(session_folder.resolve())
 
 
@@ -201,7 +201,7 @@ def test_build_codex_inbox_mcp_config_args(session_folder: Path):
     assert args.count("-c") >= 4
     joined = " ".join(args)
     assert INBOX_MCP_SERVER_NAME in joined
-    assert "agent_lab.inbox_mcp_server" in joined
+    assert "agent_lab.inbox.mcp_server" in joined
     assert sys.executable in joined
     assert str(session_folder.resolve()) in joined
 
@@ -217,7 +217,7 @@ def test_build_claude_inbox_mcp_overlay(session_folder: Path):
     overlay = build_claude_inbox_mcp_overlay(session_folder)
     data = json.loads(overlay.read_text(encoding="utf-8"))
     entry = data["mcpServers"][INBOX_MCP_SERVER_NAME]
-    assert "agent_lab.inbox_mcp_server" in entry["args"]
+    assert "agent_lab.inbox.mcp_server" in entry["args"]
     assert entry["env"]["AGENT_LAB_SESSION_FOLDER"] == str(session_folder.resolve())
 
 
@@ -304,7 +304,7 @@ def test_codex_invoke_uses_plan_inbox_when_execute_off(
         lambda **_k: False,
     )
     monkeypatch.setattr(
-        "agent_lab.agent_hooks_materializer.native_agent_hooks_overlay",
+        "agent_lab.agent.hooks_materializer.native_agent_hooks_overlay",
         lambda *_a, **_k: __import__("contextlib").nullcontext(),
     )
 
@@ -316,7 +316,7 @@ def test_codex_invoke_uses_plan_inbox_when_execute_off(
 
 
 def test_call_execute_agent_passes_inbox_mcp_to_codex(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    from agent_lab.plan_execute import _call_execute_agent
+    from agent_lab.plan.execute import _call_execute_agent
 
     captured: dict[str, object] = {}
 

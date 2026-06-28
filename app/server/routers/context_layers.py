@@ -20,7 +20,7 @@ class ContextLayersPatchRequest(BaseModel):
 @router.get("/sessions/{session_id}/context-layers")
 def get_session_context_layers(session_id: str) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.context_layers import public_context_layers_payload
+    from agent_lab.context.layers import public_context_layers_payload
 
     return {"session_id": session_id, **public_context_layers_payload(folder)}
 
@@ -31,7 +31,7 @@ def patch_session_context_layers(
     body: ContextLayersPatchRequest,
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.context_layers import patch_context_layers, public_context_layers_payload
+    from agent_lab.context.layers import patch_context_layers, public_context_layers_payload
 
     updates = body.model_dump(exclude_none=True)
     patch_context_layers(folder, updates)

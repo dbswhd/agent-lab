@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from agent_lab.context_bundle import build_context_bundle
-from agent_lab.context_limits import agent_context_limits, trim_level
-from agent_lab.context_meta import summarize_turn_context
+from agent_lab.context.bundle import build_context_bundle
+from agent_lab.context.limits import agent_context_limits, trim_level
+from agent_lab.context.meta import summarize_turn_context
 
 
 @dataclass

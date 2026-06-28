@@ -68,7 +68,7 @@ def test_h2_h3_forbidden_cross_imports_absent_from_graph() -> None:
     for forbidden in FORBIDDEN_CROSS_IMPORTS:
         assert forbidden not in pairs
     assert ("agent_lab.room", "agent_lab.runtime.runtime") in pairs
-    assert ("agent_lab.mission_loop", "agent_lab.runtime.invoke_discuss") in pairs
+    assert ("agent_lab.mission.loop", "agent_lab.runtime.invoke_discuss") in pairs
 
 
 def test_transition_table_minimum_coverage() -> None:

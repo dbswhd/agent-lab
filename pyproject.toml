@@ -57,3 +57,120 @@ ignore = ["E402"]
 python_version = "3.11"
 ignore_missing_imports = true
 files = ["src/agent_lab"]
+
+# Wave 3: room package strict ratchet (see scripts/mypy_room_ratchet.py).
+[[tool.mypy.overrides]]
+module = "agent_lab.room.*"
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_return_any = true
+
+# Plan package strict ratchet (see scripts/mypy_plan_ratchet.py).
+[[tool.mypy.overrides]]
+module = "agent_lab.plan.*"
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_return_any = true
+
+# Session package strict ratchet (see scripts/mypy_session_ratchet.py).
+[[tool.mypy.overrides]]
+module = "agent_lab.session.*"
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_return_any = true
+
+# Kimi package strict ratchet (see scripts/mypy_kimi_ratchet.py).
+[[tool.mypy.overrides]]
+module = "agent_lab.kimi.*"
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_return_any = true
+
+# Mission package strict ratchet (see scripts/mypy_mission_ratchet.py).
+[[tool.mypy.overrides]]
+module = "agent_lab.mission.*"
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_return_any = true
+
+# Agent package strict ratchet (see scripts/mypy_agent_ratchet.py).
+[[tool.mypy.overrides]]
+module = "agent_lab.agent.*"
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_return_any = true
+
+# Quant package strict ratchet (see scripts/mypy_quant_ratchet.py).
+[[tool.mypy.overrides]]
+module = "agent_lab.quant.*"
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_return_any = true
+
+# Wisdom package strict ratchet (see scripts/mypy_wisdom_ratchet.py).
+[[tool.mypy.overrides]]
+module = "agent_lab.wisdom.*"
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_return_any = true
+
+# Inbox package strict ratchet (see scripts/mypy_inbox_ratchet.py).
+[[tool.mypy.overrides]]
+module = "agent_lab.inbox.*"
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_return_any = true
+
+# Context package strict ratchet (see scripts/mypy_context_ratchet.py).
+[[tool.mypy.overrides]]
+module = "agent_lab.context.*"
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_return_any = true
+
+# Run package strict ratchet (see scripts/mypy_run_ratchet.py).
+[[tool.mypy.overrides]]
+module = "agent_lab.run.*"
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_return_any = true
+
+# Workspace package strict ratchet (see scripts/mypy_workspace_ratchet.py).
+[[tool.mypy.overrides]]
+module = "agent_lab.workspace.*"
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_return_any = true
+
+# Research package strict ratchet (see scripts/mypy_research_ratchet.py).
+[[tool.mypy.overrides]]
+module = "agent_lab.research.*"
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_return_any = true

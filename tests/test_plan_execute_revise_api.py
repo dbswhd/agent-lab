@@ -8,9 +8,9 @@ from fastapi.testclient import TestClient
 
 from agent_mocks import disable_execute_inbox_mcp
 
-from agent_lab.plan_actions import find_dry_run_action
-from agent_lab.plan_execute import run_dry_run
-from agent_lab.plan_pending import (
+from agent_lab.plan.actions import find_dry_run_action
+from agent_lab.plan.execute import run_dry_run
+from agent_lab.plan.pending import (
     PlanSnapshotRequired,
     approve_pending_plan,
     ensure_plan_snapshot_approved,
@@ -69,7 +69,7 @@ def test_revise_pending_execution_replaces_diff_and_remains_approvable(
 
     monkeypatch.setattr("agent_lab.agents.cursor_agent.is_available", lambda: True)
     monkeypatch.setattr(
-        "agent_lab.plan_execute.resolve_execute_workspace",
+        "agent_lab.plan.execute.resolve_execute_workspace",
         lambda _permissions=None, _expected=None: (repo, {}),
     )
 

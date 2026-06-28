@@ -18,7 +18,7 @@ def agent_lab_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 def test_persist_cursor_api_key_from_env(agent_lab_home: Path) -> None:
-    from agent_lab.agent_auth_bootstrap import persist_cursor_api_key_from_env
+    from agent_lab.agent.auth_bootstrap import persist_cursor_api_key_from_env
     from agent_lab.credential_store import load_credentials
 
     assert persist_cursor_api_key_from_env() is True
@@ -30,7 +30,7 @@ def test_persist_cursor_api_key_from_env(agent_lab_home: Path) -> None:
 
 def test_sync_codex_applies_primary_when_live_stale(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from agent_lab import codex_oauth as co
-    from agent_lab.agent_auth_bootstrap import sync_codex_oauth_on_startup
+    from agent_lab.agent.auth_bootstrap import sync_codex_oauth_on_startup
 
     cfg = tmp_path / ".agent-lab"
     cfg.mkdir()
@@ -60,7 +60,7 @@ def test_sync_codex_applies_primary_when_live_stale(tmp_path: Path, monkeypatch:
 
 
 def test_bootstrap_skipped_when_flag_set(monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab.agent_auth_bootstrap import bootstrap_room_auth_on_startup
+    from agent_lab.agent.auth_bootstrap import bootstrap_room_auth_on_startup
 
     monkeypatch.setenv("AGENT_LAB_SKIP_AUTH_BOOTSTRAP", "1")
     assert bootstrap_room_auth_on_startup() == {"skipped": True}

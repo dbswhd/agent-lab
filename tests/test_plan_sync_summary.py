@@ -1,4 +1,4 @@
-from agent_lab.plan_sync_summary import summarize_plan_changes
+from agent_lab.plan.sync_summary import summarize_plan_changes
 
 
 def test_summarize_new_plan():

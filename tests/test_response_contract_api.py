@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from agent_lab.reply_policy import build_guidance_parts, resolve_reply_policy
-from agent_lab.run_meta import read_run_meta
+from agent_lab.run.meta import read_run_meta
 
 
 def _session(sessions_dir: Path) -> Path:

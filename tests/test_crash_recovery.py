@@ -9,8 +9,8 @@ from pathlib import Path
 import pytest
 
 from agent_lab.crash_recovery import reconcile_crashed_merges
-from agent_lab.plan_execute_merge import merge_exec_branch
-from agent_lab.plan_execute_worktree import create_exec_worktree
+from agent_lab.plan.execute_merge import merge_exec_branch
+from agent_lab.plan.execute_worktree import create_exec_worktree
 
 
 def _git(cwd: Path, *args: str, check: bool = True) -> str:

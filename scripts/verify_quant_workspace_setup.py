@@ -18,10 +18,10 @@ def main() -> int:
         sys.path.insert(0, str(ROOT))
 
     from agent_lab.project_memory import project_md_path
-    from agent_lab.quant_utility_validation import detect_pipeline_root
+    from agent_lab.quant.utility_validation import detect_pipeline_root
     from agent_lab.room import continue_room_round
-    from agent_lab.session_guidance import build_session_guidance_block
-    from agent_lab.session_setup import merge_setup_permissions, seed_session_setup
+    from agent_lab.session.guidance import build_session_guidance_block
+    from agent_lab.session.setup import merge_setup_permissions, seed_session_setup
 
     pipeline = detect_pipeline_root()
     if pipeline is None:

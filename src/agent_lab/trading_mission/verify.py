@@ -7,6 +7,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from agent_lab.plan.paths import read_trading_plan_md, trading_mission_plan_path
 from agent_lab.trading_mission.artifact_cards import proposal_uses_fail_ref
 
 _PLAYBOOK_HEADER = re.compile(r"오늘\s*장중\s*행동", re.IGNORECASE)
@@ -108,11 +109,18 @@ def trading_mission_goal_ok(session_folder: Path) -> dict[str, Any]:
     snap_path = artifacts / "market_snapshot.json"
     batch_path = artifacts / "proposal_batch.json"
     playbook_path = artifacts / "playbook.md"
-    plan_path = session_folder / "plan.md"
+    plan_path = trading_mission_plan_path(session_folder)
+    legacy_plan = session_folder / "plan.md"
 
-    for path in (snap_path, batch_path, playbook_path, plan_path):
+    for path in (snap_path, batch_path, playbook_path):
         if not path.is_file():
             missing.append(path.name)
+
+    if not plan_path.is_file():
+        if legacy_plan.is_file() and read_trading_plan_md(session_folder):
+            pass
+        else:
+            missing.append(plan_path.name)
 
     if missing:
         return {"ok": False, "detail": "missing: " + ", ".join(missing)}
@@ -125,9 +133,9 @@ def trading_mission_goal_ok(session_folder: Path) -> dict[str, Any]:
         if isinstance(proposal, dict) and proposal_uses_fail_ref(proposal, snapshot=snapshot):
             return {"ok": False, "detail": "FAIL backtest_ref in proposals"}
 
-    plan_md = plan_path.read_text(encoding="utf-8", errors="replace")
+    plan_md = read_trading_plan_md(session_folder)
     if "ingest_ready" not in plan_md.lower():
-        return {"ok": False, "detail": "plan.md missing ingest_ready in ## 합의"}
+        return {"ok": False, "detail": "trading plan missing ingest_ready in ## 합의"}
 
     playbook = playbook_path.read_text(encoding="utf-8", errors="replace")
     if not _PLAYBOOK_HEADER.search(playbook):

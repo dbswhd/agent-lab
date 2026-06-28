@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from agent_lab.run_meta import patch_run_meta
+from agent_lab.run.meta import patch_run_meta
 from agent_lab.trading_mission.topic import mission_id_from_date
 
 _DISCUSS_ROUNDS_RE = re.compile(r"discuss_rounds_used:\s*(\d+)", re.IGNORECASE)

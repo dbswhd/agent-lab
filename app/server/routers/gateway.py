@@ -119,7 +119,7 @@ def post_inbound_hook(
     """CI / external wake — routes to session via routes.toml."""
     if hook_id == "mission-wake":
         from agent_lab.gateway.hybrid_relay import verify_wake_request
-        from agent_lab.mission_scheduler import scheduler_tick
+        from agent_lab.mission.scheduler import scheduler_tick
 
         headers = {k: v for k, v in request.headers.items()}
         if not verify_wake_request(headers, body=b"{}"):

@@ -6,7 +6,7 @@ import time
 
 import pytest
 
-from agent_lab.agent_preflight import agent_preflight_row
+from agent_lab.agent.preflight import agent_preflight_row
 
 
 def test_agent_preflight_claude_runs_headless_probe_by_default(monkeypatch) -> None:
@@ -28,7 +28,7 @@ def test_agent_preflight_claude_runs_headless_probe_by_default(monkeypatch) -> N
 
     monkeypatch.setattr("agent_lab.claude_cli.probe_auth", _probe)
     monkeypatch.setattr(
-        "agent_lab.agent_preflight._probe_cli_version",
+        "agent_lab.agent.preflight._probe_cli_version",
         lambda *_args, **_kwargs: (True, "2.1.50"),
     )
 
@@ -54,7 +54,7 @@ def test_agent_preflight_claude_headless_probe_failure(monkeypatch) -> None:
         lambda **kw: (False, "401 Invalid authentication credentials"),
     )
     monkeypatch.setattr(
-        "agent_lab.agent_preflight._probe_cli_version",
+        "agent_lab.agent.preflight._probe_cli_version",
         lambda *_args, **_kwargs: (True, "2.1.50"),
     )
 
@@ -81,8 +81,8 @@ def test_ensure_claude_headless_ready_raises_on_probe_failure(monkeypatch) -> No
 def test_collect_parallel_futures_returns_quickly_on_cancel() -> None:
     from concurrent.futures import ThreadPoolExecutor
 
-    from agent_lab.room_parallel_rounds import _collect_parallel_futures
-    from agent_lab.run_control import RoomRunCancelled, clear_cancel, request_cancel
+    from agent_lab.room.parallel_rounds import _collect_parallel_futures
+    from agent_lab.run.control import RoomRunCancelled, clear_cancel, request_cancel
 
     clear_cancel()
     executor = ThreadPoolExecutor(max_workers=1)

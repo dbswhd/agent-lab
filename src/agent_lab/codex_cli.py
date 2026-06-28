@@ -15,8 +15,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from agent_lab.agent_permissions import codex_cli_allowed
-from agent_lab.agent_models import (  # noqa: E402
+from agent_lab.agent.permissions import codex_cli_allowed
+from agent_lab.agent.models import (  # noqa: E402
     DEFAULT_CODEX_MODEL,
     DEFAULT_CODEX_REASONING_EFFORT,
     DEFAULT_CODEX_ROOM_IDLE_TIMEOUT_SEC,
@@ -95,7 +95,7 @@ def is_available() -> bool:
 
 def _format_exec_error(stderr: str, stdout: str) -> str:
     """Surface Codex ERROR lines; stderr often includes a long session banner first."""
-    from agent_lab.agent_preflight import format_codex_exec_error
+    from agent_lab.agent.preflight import format_codex_exec_error
 
     combined = f"{stderr or ''}\n{stdout or ''}"
     errors = [ln.strip() for ln in combined.splitlines() if ln.strip().startswith("ERROR:")]
@@ -456,7 +456,7 @@ def _run_codex(
             raise RuntimeError(f"codex exec failed (exit {result.returncode})" + (f": {detail}" if detail else ""))
         return outcome
 
-    from agent_lab.run_control import (
+    from agent_lab.run.control import (
         RoomRunCancelled,
         is_cancelled,
         register_child_process,
@@ -661,7 +661,7 @@ def invoke(
     inbox_mcp: bool = False,
     request_structured_envelope: bool = False,
 ) -> str:
-    from agent_lab.workspace_roots import discuss_primary_workspace
+    from agent_lab.workspace.roots import discuss_primary_workspace
 
     execute_plugins = bool((permissions or {}).get("_execute_plugins"))
     use_inbox_mcp = False
@@ -708,7 +708,7 @@ def invoke(
             **inbox_mcp_build_kwargs(permissions),
         )
     if execute_plugins and session_folder is not None:
-        from agent_lab.session_plugin_runtime import merge_codex_execute_config_overrides
+        from agent_lab.session.plugin_runtime import merge_codex_execute_config_overrides
 
         config_overrides = merge_codex_execute_config_overrides(
             Path(session_folder),
@@ -773,7 +773,7 @@ def invoke(
             on_activity(f"재시도 {attempt}/{max_attempts} — Codex CLI 일시 오류")
 
     try:
-        from agent_lab.agent_hooks_materializer import native_agent_hooks_overlay
+        from agent_lab.agent.hooks_materializer import native_agent_hooks_overlay
         from agent_lab.codex_oauth import call_with_codex_oauth_fallback
 
         def _run_for_oauth_slot(_slot) -> str:

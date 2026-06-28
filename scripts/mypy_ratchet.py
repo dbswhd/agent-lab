@@ -53,9 +53,17 @@ def write_baseline(payload: dict) -> None:
     BASELINE_PATH.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
-def ratchet_count(counts: dict[str, int], exclude_files: list[str]) -> int:
+def ratchet_count(counts: dict[str, int], exclude_files: list[str], exclude_prefixes: list[str] | None = None) -> int:
     excluded = set(exclude_files)
-    return sum(n for path, n in counts.items() if path not in excluded)
+    prefixes = tuple(exclude_prefixes or ())
+    total = 0
+    for path, n in counts.items():
+        if path in excluded:
+            continue
+        if any(path.startswith(prefix) for prefix in prefixes):
+            continue
+        total += n
+    return total
 
 
 def main() -> int:
@@ -71,11 +79,21 @@ def main() -> int:
     total = sum(counts.values())
     baseline = load_baseline() if BASELINE_PATH.is_file() else {}
     exclude = list(baseline.get("exclude_files", []))
-    ratchet = ratchet_count(counts, exclude)
+    exclude_prefixes = list(baseline.get("exclude_prefixes", []))
+    if args.update and not exclude_prefixes:
+        exclude_prefixes = [
+            "src/agent_lab/room/",
+            "src/agent_lab/plan/",
+            "src/agent_lab/session/",
+            "src/agent_lab/kimi/",
+            "src/agent_lab/mission/",
+            "src/agent_lab/agent/",
+        ]
+    ratchet = ratchet_count(counts, exclude, exclude_prefixes)
 
     if args.print:
         excluded_counts = {path: counts.get(path, 0) for path in exclude}
-        print(f"total={total} ratchet={ratchet} excluded={exclude}")
+        print(f"total={total} ratchet={ratchet} excluded={exclude} exclude_prefixes={exclude_prefixes}")
         for path, n in excluded_counts.items():
             print(f"  {path}: {n} errors (notes ignored — grep 'room.py:' over-counts)")
         print(f"baseline max_ratchet_errors={baseline.get('max_ratchet_errors', '?')}")
@@ -84,10 +102,19 @@ def main() -> int:
     if args.update:
         payload = {
             "version": 1,
-            "exclude_files": exclude or ["src/agent_lab/room.py"],
+            "exclude_files": exclude or ["src/agent_lab/room/__init__.py"],
+            "exclude_prefixes": exclude_prefixes
+            or [
+                "src/agent_lab/room/",
+                "src/agent_lab/plan/",
+                "src/agent_lab/session/",
+                "src/agent_lab/kimi/",
+                "src/agent_lab/mission/",
+                "src/agent_lab/agent/",
+            ],
             "max_ratchet_errors": ratchet,
             "total_errors_snapshot": total,
-            "note": "Ratchet applies to errors outside exclude_files. Lower max_ratchet_errors when fixing types.",
+            "note": "Ratchet applies outside exclude_files and exclude_prefixes. Package strict debt: mypy_*_ratchet.py scripts.",
         }
         write_baseline(payload)
         print(f"Updated {BASELINE_PATH.relative_to(ROOT)}: max_ratchet_errors={ratchet} total={total}")

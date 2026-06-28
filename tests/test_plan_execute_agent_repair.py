@@ -6,13 +6,13 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.plan_execute import (
+from agent_lab.plan.execute import (
     MAX_VERIFY_RETRIES,
     abort_merge_execution,
     execution_allows_task_complete,
     reverify_merged_execution,
 )
-from agent_lab.plan_execute_worktree import list_orphan_worktrees
+from agent_lab.plan.execute_worktree import list_orphan_worktrees
 
 
 def _git(cwd: Path, *args: str, check: bool = True) -> str:

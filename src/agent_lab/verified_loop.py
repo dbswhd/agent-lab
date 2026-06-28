@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from agent_lab.run_meta import patch_run_meta, read_run_meta
+from agent_lab.run.meta import patch_run_meta, read_run_meta
 
 MAX_VERIFICATION_ATTEMPTS = 3
 MAX_ITERATIONS = 100
@@ -48,7 +48,7 @@ ORACLE_SYSTEM_PROMPT = (
 
 
 def normalize_verified_profile(profile: str | None) -> bool:
-    from agent_lab.room_team_orchestration import normalize_turn_profile
+    from agent_lab.room.team_orchestration import normalize_turn_profile
 
     return normalize_turn_profile(profile) == "verified"
 

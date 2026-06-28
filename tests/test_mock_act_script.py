@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from agent_lab.agent_envelope import parse_agent_response_v2
+from agent_lab.agent.envelope import parse_agent_response_v2
 from agent_lab.agents.registry import (
     call_agent,
     call_agent_reply,

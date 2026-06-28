@@ -10,15 +10,15 @@ import pytest
 
 from agent_mocks import disable_execute_inbox_mcp
 
-from agent_lab.plan_actions import (
+from agent_lab.plan.actions import (
     find_dry_run_action,
     parse_plan_action_sections,
     parse_plan_actions,
 )
-from agent_lab.plan_execute import list_plan_actions, resolve_execution, run_dry_run
-from agent_lab.plan_pending import PlanSnapshotRequired, approve_pending_plan, ensure_plan_snapshot_approved
-from agent_lab.plan_execute_paths import paths_relative_to_workspace
-from agent_lab.plan_execute_snapshot import (
+from agent_lab.plan.execute import list_plan_actions, resolve_execution, run_dry_run
+from agent_lab.plan.pending import PlanSnapshotRequired, approve_pending_plan, ensure_plan_snapshot_approved
+from agent_lab.plan.execute_paths import paths_relative_to_workspace
+from agent_lab.plan.execute_snapshot import (
     build_diff,
     compute_touched_paths,
     create_snapshot,
@@ -86,7 +86,7 @@ def _write_pending_consensus(
     excerpt: str = "topic",
     message_count: int = 1,
 ) -> None:
-    from agent_lab.run_meta import write_run_meta
+    from agent_lab.run.meta import write_run_meta
 
     write_run_meta(
         folder,
@@ -270,7 +270,7 @@ def test_approve_empty_source_diff_with_verification_paths_is_review_required(tm
         encoding="utf-8",
     )
     monkeypatch.setattr(
-        "agent_lab.plan_execute.resolve_execute_workspace",
+        "agent_lab.plan.execute.resolve_execute_workspace",
         lambda _permissions=None, _expected=None: (workspace, {}),
     )
 
@@ -308,7 +308,7 @@ def test_approve_blocks_without_verification_artifacts(tmp_path: Path, monkeypat
         encoding="utf-8",
     )
     monkeypatch.setattr(
-        "agent_lab.plan_execute.resolve_execute_workspace",
+        "agent_lab.plan.execute.resolve_execute_workspace",
         lambda _permissions=None, _expected=None: (workspace, {}),
     )
     with pytest.raises(ValueError, match="PDF"):
@@ -338,11 +338,11 @@ def test_dry_run_rejects_when_expected_paths_missing(tmp_path: Path, monkeypatch
 
     monkeypatch.setattr("agent_lab.agents.cursor_agent.is_available", lambda: True)
     monkeypatch.setattr(
-        "agent_lab.plan_execute.resolve_execute_workspace",
+        "agent_lab.plan.execute.resolve_execute_workspace",
         lambda _permissions=None, _expected=None: (workspace, {}),
     )
     monkeypatch.setattr(
-        "agent_lab.plan_execute.workspace_path_info",
+        "agent_lab.plan.execute.workspace_path_info",
         lambda cwd, _expected: {
             "path": str(cwd),
             "label": "workspace",
@@ -377,7 +377,7 @@ def test_dry_run_allows_new_file_under_workspace(tmp_path: Path, monkeypatch):
 
     monkeypatch.setattr("agent_lab.agents.cursor_agent.is_available", lambda: True)
     monkeypatch.setattr(
-        "agent_lab.plan_execute.resolve_execute_workspace",
+        "agent_lab.plan.execute.resolve_execute_workspace",
         lambda _permissions=None, _expected=None: (workspace, {}),
     )
     monkeypatch.setattr(
@@ -537,7 +537,7 @@ def test_maybe_auto_scribe_idempotent_when_already_synced(tmp_path: Path):
     folder = tmp_path / "sess"
     folder.mkdir()
     (folder / "plan.md").write_text("## synced plan\n", encoding="utf-8")
-    from agent_lab.run_meta import write_run_meta
+    from agent_lab.run.meta import write_run_meta
 
     write_run_meta(
         folder,
@@ -627,8 +627,9 @@ def test_maybe_auto_scribe_emits_dry_run_proposal(tmp_path: Path):
 
 
 def test_consensus_auto_scribe_harvests_inbox(tmp_path: Path, monkeypatch) -> None:
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.run.meta import read_run_meta
 
+    monkeypatch.setenv("AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST", "1")
     folder = tmp_path / "sess-consensus-harvest"
     folder.mkdir()
     (folder / "run.json").write_text("{}\n", encoding="utf-8")
@@ -653,7 +654,7 @@ def test_consensus_auto_scribe_harvests_inbox(tmp_path: Path, monkeypatch) -> No
 
 def test_ensure_consensus_plan_sync_backfill(tmp_path: Path, monkeypatch) -> None:
     from agent_lab.room import ensure_consensus_plan_sync
-    from agent_lab.run_meta import read_run_meta, write_run_meta
+    from agent_lab.run.meta import read_run_meta, write_run_meta
 
     folder = tmp_path / "sess-backfill"
     folder.mkdir()
@@ -820,7 +821,7 @@ def test_dry_run_failure_restores_snapshot(tmp_path: Path, monkeypatch):
     monkeypatch.setattr("agent_lab.agents.cursor_agent.is_available", lambda: True)
     monkeypatch.setattr("agent_lab.agents.cursor_agent.respond", _fail)
     monkeypatch.setattr(
-        "agent_lab.plan_execute.resolve_execute_workspace",
+        "agent_lab.plan.execute.resolve_execute_workspace",
         lambda _permissions=None, _expected=None: (workspace, {}),
     )
 
@@ -873,7 +874,7 @@ def test_resolve_reject_restores_files(tmp_path: Path, monkeypatch):
         encoding="utf-8",
     )
     monkeypatch.setattr(
-        "agent_lab.plan_execute.resolve_execute_workspace",
+        "agent_lab.plan.execute.resolve_execute_workspace",
         lambda _permissions=None, _expected=None: (workspace, {}),
     )
 
@@ -889,8 +890,8 @@ def test_resolve_reject_restores_files(tmp_path: Path, monkeypatch):
 
 
 def test_resolve_execution_apply_isolation_records_verify(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab.mission_loop import enable_mission_loop
-    from agent_lab.run_meta import patch_run_meta, read_run_meta
+    from agent_lab.mission.loop import enable_mission_loop
+    from agent_lab.run.meta import patch_run_meta, read_run_meta
     from agent_lab.trust_budget import set_trust_budget
 
     workspace = tmp_path / "workspace"
@@ -926,11 +927,11 @@ def test_resolve_execution_apply_isolation_records_verify(tmp_path: Path, monkey
 
     patch_run_meta(session, _merge_review)
     monkeypatch.setattr(
-        "agent_lab.plan_execute.resolve_execute_workspace",
+        "agent_lab.plan.execute.resolve_execute_workspace",
         lambda _permissions=None, _expected=None: (workspace, {}),
     )
     monkeypatch.setattr(
-        "agent_lab.plan_execute.verify_after_merge",
+        "agent_lab.plan.execute.verify_after_merge",
         lambda *a, **k: {
             "status": "passed",
             "oracle": {"verdict": "pass", "detail": "mock ok"},

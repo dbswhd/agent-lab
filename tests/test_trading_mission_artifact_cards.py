@@ -17,7 +17,7 @@ from agent_lab.trading_mission.artifact_cards import (
 from agent_lab.trading_mission.export_batch import build_proposal_batch
 from agent_lab.trading_mission.preflight import build_market_snapshot
 from agent_lab.trading_mission.verify import check_artifacts
-from agent_lab.research_artifact_card import build_card_from_full_json, write_card_cache
+from agent_lab.research.artifact_card import build_card_from_full_json, write_card_cache
 
 
 def _freshness_pipeline(tmp_path: Path) -> Path:

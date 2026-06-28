@@ -85,7 +85,7 @@ def _run_session(
     consensus: bool,
 ) -> dict[str, Any]:
     from agent_lab import room
-    from agent_lab.session_score import score_session
+    from agent_lab.session.score import score_session
 
     folder, _messages, _plan = room.run_room(
         topic,
@@ -111,7 +111,7 @@ def _run_dispatch_arm(
 ) -> dict[str, Any]:
     """Opt-in 4th arm — Room + DISPATCH parallel (CMD-fanout bench)."""
     from agent_lab import room
-    from agent_lab.session_score import score_session
+    from agent_lab.session.score import score_session
 
     pair = agents[:2]
     folder, _messages, _plan = room.run_room(

@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.mission_loop import enable_mission_loop, pause_mission_loop, resume_mission_loop
-from agent_lab.mission_advance import on_verify_result
-from agent_lab.run_meta import patch_run_meta, read_run_meta
+from agent_lab.mission.loop import enable_mission_loop, pause_mission_loop, resume_mission_loop
+from agent_lab.mission.advance import on_verify_result
+from agent_lab.run.meta import patch_run_meta, read_run_meta
 from agent_lab.runtime.boulder import (
     boulder_state,
     clear_boulder,

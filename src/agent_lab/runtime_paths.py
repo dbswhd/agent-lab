@@ -23,7 +23,7 @@ def _candidate_venv_bins() -> list[Path]:
         if raw:
             roots.append(Path(raw).expanduser())
     try:
-        from agent_lab.workspace_roots import project_root, user_agent_lab_root
+        from agent_lab.workspace.roots import project_root, user_agent_lab_root
 
         roots.append(user_agent_lab_root())
         roots.append(project_root())

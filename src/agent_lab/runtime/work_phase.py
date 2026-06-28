@@ -90,7 +90,7 @@ def resolve_work_phase(
     latest_execution: dict[str, Any] | None,
 ) -> WorkPhase:
     if plan_workflow_enabled:
-        from agent_lab.plan_workflow import resolve_work_phase_from_plan_workflow
+        from agent_lab.plan.workflow import resolve_work_phase_from_plan_workflow
 
         from_plan = resolve_work_phase_from_plan_workflow(plan_workflow_phase)
         if from_plan is not None and from_plan != "execute_pending":
@@ -103,7 +103,7 @@ def resolve_work_phase(
         if from_mission is not None:
             return from_mission
     if plan_workflow_enabled:
-        from agent_lab.plan_workflow import resolve_work_phase_from_plan_workflow
+        from agent_lab.plan.workflow import resolve_work_phase_from_plan_workflow
 
         from_plan = resolve_work_phase_from_plan_workflow(plan_workflow_phase)
         if from_plan == "execute_pending":

@@ -25,8 +25,8 @@ def test_consensus_gate_met_signals() -> None:
 def test_discuss_gates_on_consensus_when_flag_on(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_PIPELINE", "1")
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
-    from agent_lab.mission_advance import maybe_advance_mission
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.mission.advance import maybe_advance_mission
+    from agent_lab.run.meta import read_run_meta
 
     # No consensus signal => plan.md stays gated at DISCUSS (anchored goal keeps DISCUSS).
     _write(
@@ -44,8 +44,8 @@ def test_discuss_gates_on_consensus_when_flag_on(tmp_path: Path, monkeypatch: py
 def test_discuss_advances_when_consensus_reached(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_PIPELINE", "1")
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
-    from agent_lab.mission_advance import maybe_advance_mission
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.mission.advance import maybe_advance_mission
+    from agent_lab.run.meta import read_run_meta
 
     _write(
         tmp_path,

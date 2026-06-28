@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from agent_lab.session_score_weekly import (
+from agent_lab.session.score_weekly import (
     format_weekly_report_markdown,
     weekly_report_artifact_paths,
 )

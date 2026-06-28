@@ -21,7 +21,7 @@ def _isolate_room_model_overrides(monkeypatch: pytest.MonkeyPatch, tmp_path: Pat
 
 
 def test_dynamic_room_flag_gate(monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab import agent_roster as ar
+    from agent_lab.agent import roster as ar
 
     monkeypatch.delenv("AGENT_LAB_DYNAMIC_ROOM", raising=False)
     assert ar.dynamic_room_enabled() is True  # default-on (production dogfood)
@@ -34,14 +34,14 @@ def test_dynamic_room_flag_gate(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_select_roster_default_composition() -> None:
-    from agent_lab import agent_roster as ar
+    from agent_lab.agent import roster as ar
 
     roster = ar.select_roster(available_ids=["cursor", "codex", "claude", "kimi", "local"])
     assert roster == ["cursor", "codex", "claude"]
 
 
 def test_select_roster_substitution_priority() -> None:
-    from agent_lab import agent_roster as ar
+    from agent_lab.agent import roster as ar
 
     # cursor seat unavailable -> fill from substitution priority (kimi before local)
     roster = ar.select_roster(available_ids=["codex", "claude", "kimi", "local"])
@@ -49,7 +49,7 @@ def test_select_roster_substitution_priority() -> None:
 
 
 def test_select_roster_falls_through_to_local() -> None:
-    from agent_lab import agent_roster as ar
+    from agent_lab.agent import roster as ar
 
     # only one default available + local floor -> substitution adds local last
     roster = ar.select_roster(available_ids=["claude", "local"])
@@ -57,7 +57,7 @@ def test_select_roster_falls_through_to_local() -> None:
 
 
 def test_select_roster_model_override(monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab import agent_roster as ar
+    from agent_lab.agent import roster as ar
 
     monkeypatch.setenv("AGENT_LAB_ROOM_MODELS", "cursor,kimi,claude")
     roster = ar.select_roster(available_ids=["cursor", "kimi", "claude", "codex"])
@@ -67,8 +67,8 @@ def test_select_roster_model_override(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_override_composition_session_beats_env(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from agent_lab import agent_roster as ar
-    from agent_lab.run_meta import patch_run_meta
+    from agent_lab.agent import roster as ar
+    from agent_lab.run.meta import patch_run_meta
 
     folder = tmp_path / "sess"
     folder.mkdir()
@@ -81,8 +81,8 @@ def test_override_composition_session_beats_env(
 
 def test_override_composition_default_beats_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import agent_lab.app_config as app_config
-    from agent_lab import agent_roster as ar
-    from agent_lab import room_models_config as rmc
+    from agent_lab.agent import roster as ar
+    from agent_lab.room import models_config as rmc
 
     monkeypatch.setattr(app_config, "config_dir", lambda: tmp_path)
     rmc.persist_default_room_models(["kimi_work"])
@@ -95,9 +95,9 @@ def test_model_default_persists_without_session_env_pollution(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import agent_lab.app_config as app_config
-    from agent_lab import agent_roster as ar
-    from agent_lab import room_models_config as rmc
-    from agent_lab.run_meta import patch_run_meta
+    from agent_lab.agent import roster as ar
+    from agent_lab.room import models_config as rmc
+    from agent_lab.run.meta import patch_run_meta
     from agent_lab.slash_commands import dispatch
 
     cfg = tmp_path / "cfg"
@@ -122,7 +122,7 @@ def test_model_default_persists_without_session_env_pollution(
 
 
 def test_normalize_composition_order() -> None:
-    from agent_lab.agent_roster import normalize_composition_order
+    from agent_lab.agent.roster import normalize_composition_order
 
     assert normalize_composition_order(["kimi_work", "claude", "cursor"]) == [
         "cursor",
@@ -146,7 +146,7 @@ def test_provider_picker_order() -> None:
 
 def test_model_picker_options_sorted(monkeypatch: pytest.MonkeyPatch) -> None:
     from agent_lab.provider_registry import provider_picker_order
-    from agent_lab.room_models_config import persist_default_room_models
+    from agent_lab.room.models_config import persist_default_room_models
     from agent_lab.slash_commands import dispatch
 
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
@@ -160,7 +160,7 @@ def test_model_picker_options_sorted(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_select_roster_substitution_override(monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab import agent_roster as ar
+    from agent_lab.agent import roster as ar
 
     monkeypatch.setenv("AGENT_LAB_ROOM_SUBSTITUTION", "local,kimi")
     roster = ar.select_roster(available_ids=["codex", "claude", "kimi", "local"])
@@ -172,7 +172,7 @@ def test_off_parity_default_roster(monkeypatch: pytest.MonkeyPatch) -> None:
     """Flag unset == current ["cursor","codex","claude"] behavior, byte-stable."""
     monkeypatch.delenv("AGENT_LAB_DYNAMIC_ROOM", raising=False)
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
-    from agent_lab import agent_roster as ar
+    from agent_lab.agent import roster as ar
     from agent_lab.agents.registry import available_agents
 
     resolved = ar.resolve_active_agents(None, available_agents)
@@ -183,14 +183,14 @@ def test_off_parity_default_roster(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_off_parity_passthrough_explicit(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("AGENT_LAB_DYNAMIC_ROOM", raising=False)
-    from agent_lab import agent_roster as ar
+    from agent_lab.agent import roster as ar
 
     fake_available = lambda: ["cursor", "codex", "claude"]  # noqa: E731
     assert ar.resolve_active_agents(["claude", "cursor"], fake_available) == ["claude", "cursor"]
 
 
 def test_resolve_on_excludes_uninvokable_kimi_keeps_local_floor(monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab import agent_roster as ar
+    from agent_lab.agent import roster as ar
     from agent_lab import credential_store as cs
 
     monkeypatch.delenv("AGENT_LAB_MOCK_AGENTS", raising=False)

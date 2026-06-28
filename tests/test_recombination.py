@@ -6,7 +6,7 @@ import json
 
 from agent_mocks import patch_call_agent_reply
 
-from agent_lab.room_consensus import (
+from agent_lab.room.consensus import (
     ConsensusAnchor,
     consensus_follow_up,
     pick_anchor,

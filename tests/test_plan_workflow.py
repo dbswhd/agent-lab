@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.plan_workflow import (
+from agent_lab.plan.workflow import (
     PlanWorkflowNotApproved,
     apply_legacy_verified_turn_profile,
     approve_plan,
@@ -22,7 +22,7 @@ from agent_lab.plan_workflow import (
     should_enable_plan_workflow,
     tick_plan_workflow_after_turn,
 )
-from agent_lab.run_meta import patch_run_meta, read_run_meta
+from agent_lab.run.meta import patch_run_meta, read_run_meta
 
 SAMPLE_PLAN = """# Demo feature
 
@@ -159,7 +159,7 @@ def test_plan_workflow_should_advance_only_on_plan_send(tmp_path: Path) -> None:
 
 
 def test_plan_workflow_scribe_requires_plan_send_when_active() -> None:
-    from agent_lab.plan_workflow import plan_workflow_allows_scribe
+    from agent_lab.plan.workflow import plan_workflow_allows_scribe
 
     draft_run = {"plan_workflow": {"enabled": True, "phase": "DRAFT"}}
     refine_run = {"plan_workflow": {"enabled": True, "phase": "REFINE"}}
@@ -329,7 +329,7 @@ def test_verified_loop_approve_delegates_with_deprecation_header(
     from fastapi.testclient import TestClient
 
     import agent_lab.session as session_mod
-    from agent_lab.plan_workflow import set_plan_workflow_phase
+    from agent_lab.plan.workflow import set_plan_workflow_phase
 
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     monkeypatch.setenv("AGENT_LAB_MISSION_LOOP", "1")
@@ -355,7 +355,7 @@ def test_verified_loop_approve_delegates_with_deprecation_header(
 
 
 def test_plan_workflow_send_receipt_mapping() -> None:
-    from agent_lab.plan_workflow import plan_workflow_send_receipt
+    from agent_lab.plan.workflow import plan_workflow_send_receipt
 
     assert plan_workflow_send_receipt("CLARIFY") == "plan_clarify"
     assert plan_workflow_send_receipt("HUMAN_PENDING") == "plan_pending_approval"
@@ -389,7 +389,7 @@ def test_clarify_cap_sets_notice(tmp_path: Path) -> None:
 
 
 def test_plan_workflow_complete_payload_includes_notice(tmp_path: Path) -> None:
-    from agent_lab.plan_workflow import plan_workflow_complete_payload
+    from agent_lab.plan.workflow import plan_workflow_complete_payload
 
     folder = tmp_path / "sess"
     folder.mkdir()

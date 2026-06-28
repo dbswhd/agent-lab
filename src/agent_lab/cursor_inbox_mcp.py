@@ -37,7 +37,7 @@ def discuss_inbox_mcp_enabled(
     Orchestrator harvest stays off on Fast; peer ``ask_human`` / ``propose_build`` MCP is allowed
     for the session team lead. Plan-workflow CLARIFY inbox remains off on Fast.
     """
-    from agent_lab.inbox_mcp_policy import (
+    from agent_lab.inbox.mcp_policy import (
         discuss_inbox_mcp_agent_allowed,
         discuss_inbox_mcp_lane_enabled,
     )
@@ -70,7 +70,7 @@ def inbox_mcp_stdio_spec(
     caller_agent: str | None = None,
     policy_lane: str | None = None,
 ) -> dict[str, Any]:
-    from agent_lab.inbox_mcp_policy import inbox_mcp_env_overrides
+    from agent_lab.inbox.mcp_policy import inbox_mcp_env_overrides
 
     env = {
         **os.environ,
@@ -79,7 +79,7 @@ def inbox_mcp_stdio_spec(
     }
     return {
         "command": sys.executable,
-        "args": ["-m", "agent_lab.inbox_mcp_server"],
+        "args": ["-m", "agent_lab.inbox.mcp_server"],
         "env": env,
     }
 

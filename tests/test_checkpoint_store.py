@@ -20,7 +20,7 @@ from agent_lab.checkpoint_store import (
     list_checkpoints,
     resume_from_checkpoint,
 )
-from agent_lab.run_meta import patch_run_meta, read_run_meta, write_run_meta
+from agent_lab.run.meta import patch_run_meta, read_run_meta, write_run_meta
 
 
 def _seed(folder: Path, phase: str = "DISCUSS") -> None:
@@ -194,7 +194,7 @@ def test_ac8_no_forbidden_cross_lane_import() -> None:
     import inspect
 
     src = inspect.getsource(checkpoint_store)
-    for banned in ("agent_lab.room", "agent_lab.mission_loop", "agent_lab.plan_execute", "agent_lab.runtime"):
+    for banned in ("agent_lab.room", "agent_lab.mission.loop", "agent_lab.plan.execute", "agent_lab.runtime"):
         # allow the lazy run_meta import only; banned lanes must be absent entirely
         assert banned not in src, f"checkpoint_store must not import {banned}"
 
@@ -214,7 +214,7 @@ def test_ac10_phase_setters_route_through_patch_run_meta() -> None:
     # write_run_meta), so the chokepoint sees plan-workflow transitions.
     import inspect
 
-    from agent_lab import plan_workflow
+    from agent_lab.plan import workflow as plan_workflow
 
     src = inspect.getsource(plan_workflow.set_plan_workflow_phase)
     assert "patch_run_meta" in src
@@ -223,7 +223,7 @@ def test_ac10_phase_setters_route_through_patch_run_meta() -> None:
 
 def test_ac10_behavioral_plan_workflow_transition_captured(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_CHECKPOINT", "1")
-    from agent_lab.plan_workflow import set_plan_workflow_phase
+    from agent_lab.plan.workflow import set_plan_workflow_phase
 
     folder = tmp_path / "s"
     _seed(folder, "DISCUSS")

@@ -1,4 +1,4 @@
-.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test test-fast test-integration test-bridge test-duration-report lint typecheck ci ci-full check-worktrees smoke smoke-e2e smoke-web-ui smoke-tauri-ui validate-quant verify-quant-workspace verify-trading-v1 verify-mcp-contract build-research-cards offline-lane thin-runtime-status verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate dogfood-feedback-mock feedback-report
+.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build test test-fast test-integration test-bridge test-duration-report lint typecheck typecheck-room-ratchet structure-metrics structure-metrics-check audit-room-imports audit-plan-imports audit-session-imports audit-kimi-imports audit-mission-imports audit-agent-imports audit-quant-imports audit-wisdom-imports audit-inbox-imports audit-context-imports audit-run-imports audit-workspace-imports audit-research-imports typecheck-plan-ratchet typecheck-session-ratchet typecheck-kimi-ratchet typecheck-mission-ratchet typecheck-agent-ratchet typecheck-quant-ratchet typecheck-wisdom-ratchet typecheck-inbox-ratchet typecheck-context-ratchet typecheck-run-ratchet typecheck-workspace-ratchet typecheck-research-ratchet ci ci-full check-worktrees smoke smoke-e2e smoke-web-ui smoke-tauri-ui validate-quant verify-quant-workspace verify-trading-v1 verify-mcp-contract build-research-cards offline-lane thin-runtime-status verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate dogfood-feedback-mock feedback-report
 
 install:
 	python3 -m venv .venv
@@ -111,10 +111,94 @@ typecheck:
 typecheck-ratchet:
 	.venv/bin/python scripts/mypy_ratchet.py --check
 
-ci: lint format-check typecheck-ratchet test-fast smoke
+typecheck-room-ratchet:
+	.venv/bin/python scripts/mypy_room_ratchet.py --check
+
+typecheck-plan-ratchet:
+	.venv/bin/python scripts/mypy_plan_ratchet.py --check
+
+typecheck-session-ratchet:
+	.venv/bin/python scripts/mypy_session_ratchet.py --check
+
+typecheck-kimi-ratchet:
+	.venv/bin/python scripts/mypy_kimi_ratchet.py --check
+
+typecheck-mission-ratchet:
+	.venv/bin/python scripts/mypy_mission_ratchet.py --check
+
+typecheck-agent-ratchet:
+	.venv/bin/python scripts/mypy_agent_ratchet.py --check
+
+typecheck-quant-ratchet:
+	.venv/bin/python scripts/mypy_quant_ratchet.py --check
+
+typecheck-wisdom-ratchet:
+	.venv/bin/python scripts/mypy_wisdom_ratchet.py --check
+
+typecheck-inbox-ratchet:
+	.venv/bin/python scripts/mypy_inbox_ratchet.py --check
+
+typecheck-context-ratchet:
+	.venv/bin/python scripts/mypy_context_ratchet.py --check
+
+typecheck-run-ratchet:
+	.venv/bin/python scripts/mypy_run_ratchet.py --check
+
+typecheck-workspace-ratchet:
+	.venv/bin/python scripts/mypy_workspace_ratchet.py --check
+
+typecheck-research-ratchet:
+	.venv/bin/python scripts/mypy_research_ratchet.py --check
+
+structure-metrics:
+	.venv/bin/python scripts/structure_metrics.py
+
+structure-metrics-check:
+	.venv/bin/python scripts/structure_metrics.py --check
+
+audit-room-imports:
+	.venv/bin/python scripts/audit_room_legacy_imports.py
+
+audit-plan-imports:
+	.venv/bin/python scripts/audit_plan_legacy_imports.py
+
+audit-session-imports:
+	.venv/bin/python scripts/audit_session_legacy_imports.py
+
+audit-kimi-imports:
+	.venv/bin/python scripts/audit_kimi_legacy_imports.py
+
+audit-mission-imports:
+	.venv/bin/python scripts/audit_mission_legacy_imports.py
+
+audit-agent-imports:
+	.venv/bin/python scripts/audit_agent_legacy_imports.py
+
+audit-quant-imports:
+	.venv/bin/python scripts/audit_quant_legacy_imports.py
+
+audit-wisdom-imports:
+	.venv/bin/python scripts/audit_wisdom_legacy_imports.py
+
+audit-inbox-imports:
+	.venv/bin/python scripts/audit_inbox_legacy_imports.py
+
+audit-context-imports:
+	.venv/bin/python scripts/audit_context_legacy_imports.py
+
+audit-run-imports:
+	.venv/bin/python scripts/audit_run_legacy_imports.py
+
+audit-workspace-imports:
+	.venv/bin/python scripts/audit_workspace_legacy_imports.py
+
+audit-research-imports:
+	.venv/bin/python scripts/audit_research_legacy_imports.py
+
+ci: lint format-check typecheck-ratchet typecheck-room-ratchet typecheck-plan-ratchet typecheck-session-ratchet typecheck-kimi-ratchet typecheck-mission-ratchet typecheck-agent-ratchet typecheck-quant-ratchet typecheck-wisdom-ratchet typecheck-inbox-ratchet typecheck-context-ratchet typecheck-run-ratchet typecheck-workspace-ratchet typecheck-research-ratchet test-fast smoke
 
 ci-full: check-worktrees
-	.venv/bin/python scripts/run_verification_lane.py --lane ci_full -- sh -c 'make lint format-check typecheck-ratchet test-fast test-integration test-bridge smoke score-regression-fixtures'
+	.venv/bin/python scripts/run_verification_lane.py --lane ci_full -- sh -c 'make lint format-check typecheck-ratchet typecheck-room-ratchet typecheck-plan-ratchet typecheck-session-ratchet typecheck-kimi-ratchet typecheck-mission-ratchet typecheck-agent-ratchet typecheck-quant-ratchet typecheck-wisdom-ratchet typecheck-inbox-ratchet typecheck-context-ratchet typecheck-run-ratchet typecheck-workspace-ratchet typecheck-research-ratchet test-fast test-integration test-bridge smoke score-regression-fixtures'
 
 init-project-memory:
 	@test -n "$(WORKSPACE)" || WORKSPACE=.; \

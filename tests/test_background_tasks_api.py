@@ -35,8 +35,8 @@ def _make_session(tmp_path: Path) -> Generator[tuple[TestClient, str], None, Non
     with (
         patch("app.server.deps.SESSIONS_DIR", sessions_dir),
         patch("app.server.session_helpers.SESSIONS_DIR", sessions_dir),
-        patch("agent_lab.session_paths.SESSIONS_DIR", sessions_dir),
-        patch("agent_lab.workspace_files.SESSIONS_DIR", sessions_dir),
+        patch("agent_lab.session.paths.SESSIONS_DIR", sessions_dir),
+        patch("agent_lab.workspace.files.SESSIONS_DIR", sessions_dir),
     ):
         from app.server.main import app
 

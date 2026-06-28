@@ -10,7 +10,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from agent_lab.agents.registry import AGENT_IDS
-from agent_lab.context_limits import all_limits_for_api
+from agent_lab.context.limits import all_limits_for_api
 from agent_lab.invoke import ensure_ready
 from agent_lab.model_policy import loop_readiness_failure
 from agent_lab.room import (
@@ -21,7 +21,7 @@ from agent_lab.room import (
     run_room,
     synthesize_session_plan,
 )
-from agent_lab.run_control import (
+from agent_lab.run.control import (
     end_run,
     force_reset_run_lock,
     is_cancelled,
@@ -35,16 +35,16 @@ from agent_lab.run_control import (
 )
 from agent_lab.runner import provider_override, run_topic_with_progress
 from agent_lab.session import session_dir
-from agent_lab.session_paths import active_sessions_dir
-from agent_lab.session_setup import merge_setup_permissions, seed_session_setup
-from agent_lab.agent_thread_catalog import normalize_agent_thread_bindings
+from agent_lab.session.paths import active_sessions_dir
+from agent_lab.session.setup import merge_setup_permissions, seed_session_setup
+from agent_lab.agent.thread_catalog import normalize_agent_thread_bindings
 from agent_lab.turn_modes import (
     ModeContractError,
     mode_contract_catalog,
     patch_run_mode_contract,
     resolve_mode_contract,
 )
-from agent_lab.room_preset import (
+from agent_lab.room.preset import (
     default_room_preset,
     preset_catalog,
     preset_role_policy,
@@ -95,7 +95,7 @@ def _run_with_lock(
     try:
         run_body(on_event)
     except Exception as e:
-        from agent_lab.run_control import RoomRunCancelled
+        from agent_lab.run.control import RoomRunCancelled
 
         if isinstance(e, RoomRunCancelled) or is_cancelled(session_id):
             result["cancelled"] = True
@@ -110,7 +110,7 @@ def _run_with_lock(
 
 
 def _agents_not_ready(agent_list: list[str]) -> list[dict[str, Any]]:
-    from agent_lab.agent_preflight import agents_not_ready
+    from agent_lab.agent.preflight import agents_not_ready
 
     return agents_not_ready(agent_list)
 
@@ -121,7 +121,7 @@ def _session_hard_cap_exhausted(folder: Path) -> bool:
 
     if (os.getenv("AGENT_LAB_SESSION_HARD_CAP") or "").strip().lower() not in ("1", "true", "yes", "on"):
         return False
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.run.meta import read_run_meta
 
     return bool(read_run_meta(folder).get("budget_exhausted"))
 
@@ -145,7 +145,7 @@ def room_modes() -> dict[str, Any]:
 
 @router.get("/room/presets")
 def room_presets() -> dict[str, Any]:
-    from agent_lab.room_preset import preset_catalog
+    from agent_lab.room.preset import preset_catalog
 
     return preset_catalog()
 
@@ -297,7 +297,7 @@ async def create_room_run(
     if preset_norm and is_default_profile:
         turn_profile = preset_turn_profile(preset_norm, fallback=turn_profile)
     if preset_norm and agent_list:
-        from agent_lab.room_preset import preset_max_agents
+        from agent_lab.room.preset import preset_max_agents
 
         cap = preset_max_agents(preset_norm)
         if cap is not None:
@@ -393,11 +393,11 @@ async def create_room_run(
             raise HTTPException(status_code=400, detail=str(e)) from e
 
     if caps_obj:
-        from agent_lab.room_agent_capabilities import write_agent_capabilities
+        from agent_lab.room.agent_capabilities import write_agent_capabilities
 
         _plan_md, run_meta = room_session_context(folder)
         write_agent_capabilities(run_meta, caps_obj, mark_custom=True)
-        from agent_lab.run_meta import persist_run_meta
+        from agent_lab.run.meta import persist_run_meta
 
         (folder / "run.json").write_text(
             json.dumps(persist_run_meta(run_meta), indent=2, ensure_ascii=False) + "\n",
@@ -406,7 +406,7 @@ async def create_room_run(
 
     saved_files = await save_uploads(folder, files)
     if preset_norm and resolve_preset(preset_norm) is not None:
-        from agent_lab.run_meta import patch_run_meta
+        from agent_lab.run.meta import patch_run_meta
 
         def _stamp_preset(run: dict[str, Any]) -> dict[str, Any]:
             run["room_preset"] = preset_norm
@@ -436,7 +436,7 @@ async def create_room_run(
     def _cancel_on_client_disconnect() -> None:
         request_cancel(run_session_id)
         if folder is not None:
-            from agent_lab.mission_loop import on_global_run_cancel
+            from agent_lab.mission.loop import on_global_run_cancel
 
             try:
                 on_global_run_cancel(folder)
@@ -452,7 +452,7 @@ async def create_room_run(
         def on_event(typ: str, payload: dict[str, Any]) -> None:
             loop.call_soon_threadsafe(event_q.put_nowait, {"type": typ, **payload})
             if folder is not None:
-                from agent_lab.room_live_log import append_live_room_event
+                from agent_lab.room.live_log import append_live_room_event
 
                 from agent_lab.event_schema import event_validation_enabled
 
@@ -466,7 +466,7 @@ async def create_room_run(
 
         def run_body(on_event_cb: Any) -> None:
             if folder is not None:
-                from agent_lab.room_live_log import clear_live_room_log
+                from agent_lab.room.live_log import clear_live_room_log
 
                 clear_live_room_log(folder)
             if folder is not None:
@@ -626,7 +626,7 @@ def cancel_room_run(body: RoomRunCancelRequest | None = None) -> dict[str, Any]:
     released = maybe_release_orphaned_run_lock()
     mission_pause: dict[str, Any] | None = None
     if session_id:
-        from agent_lab.mission_loop import on_global_run_cancel
+        from agent_lab.mission.loop import on_global_run_cancel
 
         folder = session_folder_or_404(session_id)
         mission_pause = on_global_run_cancel(folder)
@@ -659,7 +659,7 @@ class RetryAgentsRequest(BaseModel):
 def retry_room_agents(body: RetryAgentsRequest) -> dict[str, Any]:
     """Re-invoke only the failed agents of the last partial turn (same human turn)."""
     from app.server.deps import session_folder_or_404
-    from agent_lab.room_retry import RetryError, retry_failed_agents
+    from agent_lab.room.retry import RetryError, retry_failed_agents
 
     folder = session_folder_or_404(body.session_id)
     if not try_begin_run(session_id=body.session_id, run_kind="retry", label="Retry failed agents"):

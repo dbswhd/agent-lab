@@ -34,7 +34,7 @@ def select_mode(run: dict[str, Any]) -> Mode:
 
 def resolve_mission_bootstrap_phase(run: dict[str, Any]) -> str:
     """Initial mission_loop phase after MISSION_DEFINE when goal is ready."""
-    from agent_lab.plan_workflow import plan_workflow_completed_clarify
+    from agent_lab.plan.workflow import plan_workflow_completed_clarify
 
     if plan_workflow_completed_clarify(run):
         return "DISCUSS"
@@ -45,8 +45,8 @@ def resolve_mission_bootstrap_phase(run: dict[str, Any]) -> str:
 
 def record_mode_route(folder: Any) -> dict[str, Any]:
     """Persist the current mode decision to run.json mission_loop.mode_route (observable)."""
-    from agent_lab.mission_loop import get_mission_loop
-    from agent_lab.run_meta import patch_run_meta
+    from agent_lab.mission.loop import get_mission_loop
+    from agent_lab.run.meta import patch_run_meta
 
     captured: dict[str, Any] = {}
 
@@ -80,9 +80,9 @@ def record_mode_route(folder: Any) -> dict[str, Any]:
 def _enter_clarify_if_needed(folder: Path, run: dict[str, Any], phase: str) -> tuple[dict[str, Any], str]:
     """Auto-enter CLARIFY when clarity is unmet and plan_workflow does not own clarify."""
     from agent_lab.clarity import clarity_threshold_met
-    from agent_lab.mission_loop import get_mission_loop
-    from agent_lab.plan_workflow import plan_workflow_completed_clarify
-    from agent_lab.run_meta import patch_run_meta, read_run_meta
+    from agent_lab.mission.loop import get_mission_loop
+    from agent_lab.plan.workflow import plan_workflow_completed_clarify
+    from agent_lab.run.meta import patch_run_meta, read_run_meta
 
     if plan_workflow_completed_clarify(run) or clarity_threshold_met(run):
         return run, phase
@@ -106,8 +106,8 @@ def apply_mission_mode_route(folder: Path) -> dict[str, Any] | None:
     Returns a result dict when this tick is fully handled (forwarded or waiting),
     or None when the caller should continue with execute/repair/verify phases.
     """
-    from agent_lab.mission_loop import get_mission_loop
-    from agent_lab.run_meta import patch_run_meta, read_run_meta
+    from agent_lab.mission.loop import get_mission_loop
+    from agent_lab.run.meta import patch_run_meta, read_run_meta
 
     record_mode_route(folder)
     run = read_run_meta(folder)
@@ -117,7 +117,7 @@ def apply_mission_mode_route(folder: Path) -> dict[str, Any] | None:
 
     phase = str(ml.get("phase") or "")
     if phase == "MISSION_DEFINE":
-        from agent_lab.mission_loop import mission_define_ready
+        from agent_lab.mission.loop import mission_define_ready
 
         if mission_define_ready(run):
             bootstrap = resolve_mission_bootstrap_phase(run)
@@ -183,7 +183,7 @@ def apply_mission_mode_route(folder: Path) -> dict[str, Any] | None:
 
 def resolve_active_phase(run: dict[str, Any]) -> str:
     """Active FSM phase for stage routing: plan_workflow phase when active, else mission_loop phase."""
-    from agent_lab.plan_workflow import is_plan_workflow_active, plan_workflow_phase
+    from agent_lab.plan.workflow import is_plan_workflow_active, plan_workflow_phase
 
     if is_plan_workflow_active(run):
         return plan_workflow_phase(run)
@@ -199,8 +199,8 @@ def record_routing_decision(folder: Any, decision: dict[str, Any]) -> None:
     """
     if not folder:
         return
-    from agent_lab.mission_loop import get_mission_loop
-    from agent_lab.run_meta import patch_run_meta
+    from agent_lab.mission.loop import get_mission_loop
+    from agent_lab.run.meta import patch_run_meta
 
     def _patch(run: dict[str, Any]) -> dict[str, Any]:
         ml = get_mission_loop(run)

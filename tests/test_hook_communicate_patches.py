@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from agent_lab.room import _delegate_run_meta_patch
-from agent_lab.room_consensus import ConsensusAnchor, consensus_follow_up
-from agent_lab.run_meta import append_hook_run, read_run_meta
-from agent_lab.session_guidance import preserve_session_meta_from_prev
+from agent_lab.room.consensus import ConsensusAnchor, consensus_follow_up
+from agent_lab.run.meta import append_hook_run, read_run_meta
+from agent_lab.session.guidance import preserve_session_meta_from_prev
 
 
 def test_consensus_follow_up_omits_envelope_protocol():

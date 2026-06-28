@@ -11,7 +11,7 @@ from agent_lab.pipeline_research_read import (
     load_all_cached_cards,
     sync_research_cards_if_stale,
 )
-from agent_lab.research_artifact_card import build_card_from_full_json
+from agent_lab.research.artifact_card import build_card_from_full_json
 
 
 def ensure_research_cards(

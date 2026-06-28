@@ -42,7 +42,7 @@ def _make_session(
     monkeypatch.setenv("AGENT_LAB_DEV_ROOT", str(repo))
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     monkeypatch.setattr("app.server.deps.SESSIONS_DIR", sessions_dir)
-    monkeypatch.setattr("agent_lab.workspace_files.SESSIONS_DIR", sessions_dir)
+    monkeypatch.setattr("agent_lab.workspace.files.SESSIONS_DIR", sessions_dir)
 
     from app.server.main import app
 
@@ -199,7 +199,7 @@ def test_raw_rejects_traversal(tmp_path, monkeypatch):
 
 def test_label_collision_disambiguated():
     """Same-label roots get a path suffix; root_ids stay unique."""
-    from agent_lab.workspace_files import RootInfo, _disambiguate_labels
+    from agent_lab.workspace.files import RootInfo, _disambiguate_labels
 
     roots = [
         RootInfo("session", "session", "session", Path("/s"), False, False),

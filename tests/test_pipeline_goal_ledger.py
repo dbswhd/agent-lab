@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from agent_lab import goal_ledger
-from agent_lab.run_schema import RuntimeValidationError, validate_run
+from agent_lab.run.schema import RuntimeValidationError, validate_run
 
 
 def _write(folder: Path, run: dict) -> None:
@@ -16,7 +16,7 @@ def _write(folder: Path, run: dict) -> None:
 
 
 def test_append_goal_event_persists(tmp_path: Path) -> None:
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.run.meta import read_run_meta
 
     _write(tmp_path, {"mission_loop": {"phase": "DISCUSS"}})
     goal_ledger.append_goal_event(tmp_path, "mode_route", mode="CONSENSUS", phase="DISCUSS")
@@ -26,7 +26,7 @@ def test_append_goal_event_persists(tmp_path: Path) -> None:
 
 
 def test_append_goal_event_dedup(tmp_path: Path) -> None:
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.run.meta import read_run_meta
 
     _write(tmp_path, {})
     goal_ledger.append_goal_event(tmp_path, "mode_route", mode="CLARIFY", dedup_mode=True)
@@ -37,7 +37,7 @@ def test_append_goal_event_dedup(tmp_path: Path) -> None:
 
 
 def test_append_goal_event_capped(tmp_path: Path) -> None:
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.run.meta import read_run_meta
 
     _write(tmp_path, {})
     for i in range(goal_ledger.GOAL_LEDGER_CAP + 25):
@@ -57,7 +57,7 @@ def test_validate_run_goal_ledger() -> None:
 
 
 def test_crash_recovery_roundtrip_compat(tmp_path: Path) -> None:
-    from agent_lab.run_meta import patch_run_meta, read_run_meta
+    from agent_lab.run.meta import patch_run_meta, read_run_meta
 
     _write(tmp_path, {"mission_loop": {"phase": "VERIFY"}, "goal_ledger": [{"event": "mode_route", "mode": "EXECUTE"}]})
     run = read_run_meta(tmp_path)  # validates on read
@@ -69,8 +69,8 @@ def test_crash_recovery_roundtrip_compat(tmp_path: Path) -> None:
 def test_maybe_advance_appends_ledger_when_flag_on(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_PIPELINE", "1")
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
-    from agent_lab.mission_advance import maybe_advance_mission
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.mission.advance import maybe_advance_mission
+    from agent_lab.run.meta import read_run_meta
 
     _write(
         tmp_path,
@@ -86,8 +86,8 @@ def test_maybe_advance_appends_ledger_when_flag_on(tmp_path: Path, monkeypatch: 
 
 def test_maybe_advance_records_mode_route_ledger(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
-    from agent_lab.mission_advance import maybe_advance_mission
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.mission.advance import maybe_advance_mission
+    from agent_lab.run.meta import read_run_meta
 
     _write(
         tmp_path,

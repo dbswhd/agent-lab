@@ -12,9 +12,9 @@ from agent_lab.human_inbox import (
     create_mcp_question_and_wait,
     has_pending_question,
 )
-from agent_lab.inbox_harvest import harvest_discuss_questions, orchestrator_inbox_harvest_enabled
-from agent_lab.inbox_mcp_policy import inbox_gate_owner, mcp_first_inbox_policy_active
-from agent_lab.run_meta import patch_run_meta, read_run_meta
+from agent_lab.inbox.harvest import harvest_discuss_questions, orchestrator_inbox_harvest_enabled
+from agent_lab.inbox.mcp_policy import inbox_gate_owner, mcp_first_inbox_policy_active
+from agent_lab.run.meta import patch_run_meta, read_run_meta
 
 
 def _supervisor_run(*, lead: str = "cursor") -> dict:
@@ -118,7 +118,7 @@ def test_fast_lead_cursor_may_ask_human(tmp_path: Path) -> None:
         },
     )
 
-    from agent_lab.inbox_mcp_policy import enforce_mcp_ask_human_policy
+    from agent_lab.inbox.mcp_policy import enforce_mcp_ask_human_policy
 
     enforce_mcp_ask_human_policy(
         folder,

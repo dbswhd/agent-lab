@@ -42,7 +42,7 @@ from agent_lab.runtime.external_runner import (
     run_external_command,
 )
 from agent_lab.goal_loop import check_session_goal, goal_loop_enabled
-from agent_lab.agent_roster import dynamic_room_enabled
+from agent_lab.agent.roster import dynamic_room_enabled
 from agent_lab.plugin_discovery import (
     discover_plugins,
     discover_plugins_fast,
@@ -50,7 +50,7 @@ from agent_lab.plugin_discovery import (
     merge_session_allowlist,
     mock_mode,
 )
-from agent_lab.run_meta import patch_run_meta, read_run_meta
+from agent_lab.run.meta import patch_run_meta, read_run_meta
 
 _SLASH_RE = re.compile(r"^/([a-zA-Z0-9_-]+)(?:\s+(.*))?$", re.DOTALL)
 

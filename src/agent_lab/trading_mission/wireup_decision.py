@@ -15,7 +15,7 @@ from agent_lab.pipeline_research_read import (
     resolve_pipeline_root,
     sync_research_cards,
 )
-from agent_lab.quant_utility_validation import detect_pipeline_root
+from agent_lab.quant.utility_validation import detect_pipeline_root
 
 _KST = timezone(timedelta(hours=9))
 

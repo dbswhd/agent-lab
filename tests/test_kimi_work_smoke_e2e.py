@@ -65,10 +65,10 @@ def test_mock_discuss_kimi_work_roster(tmp_path: Path) -> None:
 
 
 def test_mock_consensus_kimi_work_envelope(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab import kimi_work_provider as kwp
-    from agent_lab.room_parallel_rounds import run_agent_rounds
-    from agent_lab.room_messages import ChatMessage
-    from agent_lab.room_session_persist import load_session_messages
+    from agent_lab.kimi import work_provider as kwp
+    from agent_lab.room.parallel_rounds import run_agent_rounds
+    from agent_lab.room.messages import ChatMessage
+    from agent_lab.room.session_persist import load_session_messages
 
     envelope_flags: list[bool] = []
     orig_respond = kwp.respond

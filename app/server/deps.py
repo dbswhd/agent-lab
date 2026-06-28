@@ -36,7 +36,7 @@ from app.server.session_helpers import (
     sse,
     write_meta,
 )
-from agent_lab.session_paths import SESSIONS_DIR
+from agent_lab.session.paths import SESSIONS_DIR
 
 __all__ = [
     "TURN_PROFILES",

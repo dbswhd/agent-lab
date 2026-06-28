@@ -105,12 +105,12 @@ def main() -> int:
     if args.mock_room:
         os.environ["AGENT_LAB_MOCK_AGENTS"] = "1"
 
-    from agent_lab.agent_health import reconnect_cursor_bridge
+    from agent_lab.agent.health import reconnect_cursor_bridge
     from agent_lab.agents.registry import AGENT_IDS, available_agents
-    from agent_lab.quant_utility_validation import detect_pipeline_root
+    from agent_lab.quant.utility_validation import detect_pipeline_root
     from agent_lab.room import run_room
     from agent_lab.session import SESSIONS_DIR, session_dir
-    from agent_lab.session_setup import merge_setup_permissions, seed_session_setup
+    from agent_lab.session.setup import merge_setup_permissions, seed_session_setup
     from agent_lab.trading_mission.blocked import write_blocked_artifacts
     from agent_lab.trading_mission.export_batch import build_proposal_batch, write_proposal_batch
     from agent_lab.trading_mission.preflight import build_market_snapshot, write_market_snapshot

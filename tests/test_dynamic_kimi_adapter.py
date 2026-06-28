@@ -26,14 +26,14 @@ def cfg(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 def test_kimi_mock_reply(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
-    from agent_lab import kimi_provider as kp
+    from agent_lab.kimi import provider as kp
 
     assert kp.is_available() is True
     assert kp.respond("sys", "hello").startswith("[mock:KIMI]")
 
 
 def test_kimi_tunable_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab import kimi_provider as kp
+    from agent_lab.kimi import provider as kp
 
     monkeypatch.delenv("AGENT_LAB_KIMI_MODEL", raising=False)
     assert kp.kimi_model() == "kimi-k2"
@@ -44,7 +44,7 @@ def test_kimi_tunable_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_kimi_availability_requires_chain_when_live(cfg: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("AGENT_LAB_MOCK_AGENTS", raising=False)
     from agent_lab import credential_store as cs
-    from agent_lab import kimi_provider as kp
+    from agent_lab.kimi import provider as kp
 
     assert kp.is_available() is False  # no accounts yet
     cs.set_provider_accounts("kimi", [{"label": "k1", "secret_or_profile_ref": "sk-1", "priority": 1}])
@@ -61,7 +61,7 @@ def test_registry_kimi_invokable(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_dynamic_available_includes_kimi_when_keyed(cfg: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("AGENT_LAB_MOCK_AGENTS", raising=False)
-    from agent_lab import agent_roster as ar
+    from agent_lab.agent import roster as ar
     from agent_lab import credential_store as cs
 
     # no kimi accounts -> not in dynamic availability
@@ -73,7 +73,7 @@ def test_dynamic_available_includes_kimi_when_keyed(cfg: Path, monkeypatch: pyte
 
 def test_resolve_substitutes_kimi_before_local(cfg: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("AGENT_LAB_MOCK_AGENTS", raising=False)
-    from agent_lab import agent_roster as ar
+    from agent_lab.agent import roster as ar
     from agent_lab import credential_store as cs
 
     cs.set_provider_accounts("kimi", [{"label": "k1", "secret_or_profile_ref": "sk-1", "priority": 1}])
@@ -85,7 +85,7 @@ def test_resolve_substitutes_kimi_before_local(cfg: Path, monkeypatch: pytest.Mo
 
 def test_resolve_falls_to_local_without_kimi_chain(cfg: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("AGENT_LAB_MOCK_AGENTS", raising=False)
-    from agent_lab import agent_roster as ar
+    from agent_lab.agent import roster as ar
 
     # kimi has no chain -> excluded; local floor still fills
     roster = ar.resolve_active_agents(None, lambda: ["claude"], enabled=True)
@@ -98,7 +98,7 @@ def test_kimi_first_class_streams_and_emits_activity(cfg: Path) -> None:
 
     os.environ["AGENT_LAB_MOCK_AGENTS"] = "1"
     try:
-        from agent_lab import kimi_provider as kp
+        from agent_lab.kimi import provider as kp
 
         acts: list[str] = []
         chunks: list[tuple[str, str]] = []

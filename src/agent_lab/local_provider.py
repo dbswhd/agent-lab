@@ -66,7 +66,7 @@ def respond(
 def _stream(on_bridge_event: Callable[[str, dict[str, Any]], None] | None, text: str) -> None:
     if not on_bridge_event or not text:
         return
-    from agent_lab.room_sse_stream import chunk_text
+    from agent_lab.room.sse_stream import chunk_text
 
     for chunk in chunk_text(text, chunk_size=24):
         on_bridge_event("text", {"text": chunk})

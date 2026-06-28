@@ -52,24 +52,24 @@ def test_claude_invoke_stream_json_emits_bridge_events(monkeypatch, tmp_path):
     monkeypatch.setenv("CLAUDE_BIN", str(fake_bin))
     monkeypatch.setattr(claude_cli, "resolve_claude_roots", lambda _perms: [])
     monkeypatch.setattr(
-        "agent_lab.workspace_roots.discuss_primary_workspace",
+        "agent_lab.workspace.roots.discuss_primary_workspace",
         lambda _perms: tmp_path,
     )
     monkeypatch.setattr(
-        "agent_lab.run_control.register_child_process",
+        "agent_lab.run.control.register_child_process",
         lambda _proc: None,
     )
     monkeypatch.setattr(
-        "agent_lab.run_control.unregister_child_process",
+        "agent_lab.run.control.unregister_child_process",
         lambda _proc: None,
     )
-    monkeypatch.setattr("agent_lab.run_control.is_cancelled", lambda: False)
+    monkeypatch.setattr("agent_lab.run.control.is_cancelled", lambda: False)
     monkeypatch.setattr(
         "agent_lab.claude_cli.ensure_claude_headless_ready",
         lambda **_kw: None,
     )
     monkeypatch.setattr(
-        "agent_lab.agent_hooks_materializer.native_claude_hooks_overlay",
+        "agent_lab.agent.hooks_materializer.native_claude_hooks_overlay",
         lambda *_a, **_k: _NullCtx(),
     )
 
@@ -121,24 +121,24 @@ def test_claude_stream_skips_assistant_text_after_text_delta(monkeypatch, tmp_pa
     monkeypatch.setenv("CLAUDE_BIN", str(fake_bin))
     monkeypatch.setattr(claude_cli, "resolve_claude_roots", lambda _perms: [])
     monkeypatch.setattr(
-        "agent_lab.workspace_roots.discuss_primary_workspace",
+        "agent_lab.workspace.roots.discuss_primary_workspace",
         lambda _perms: tmp_path,
     )
     monkeypatch.setattr(
-        "agent_lab.run_control.register_child_process",
+        "agent_lab.run.control.register_child_process",
         lambda _proc: None,
     )
     monkeypatch.setattr(
-        "agent_lab.run_control.unregister_child_process",
+        "agent_lab.run.control.unregister_child_process",
         lambda _proc: None,
     )
-    monkeypatch.setattr("agent_lab.run_control.is_cancelled", lambda: False)
+    monkeypatch.setattr("agent_lab.run.control.is_cancelled", lambda: False)
     monkeypatch.setattr(
         "agent_lab.claude_cli.ensure_claude_headless_ready",
         lambda **_kw: None,
     )
     monkeypatch.setattr(
-        "agent_lab.agent_hooks_materializer.native_claude_hooks_overlay",
+        "agent_lab.agent.hooks_materializer.native_claude_hooks_overlay",
         lambda *_a, **_k: _NullCtx(),
     )
 
@@ -193,15 +193,15 @@ def test_claude_stream_raises_cancelled_when_killed_after_cancel(monkeypatch, tm
     monkeypatch.setenv("CLAUDE_BIN", str(fake_bin))
     monkeypatch.setattr(claude_cli, "resolve_claude_roots", lambda _perms: [])
     monkeypatch.setattr(
-        "agent_lab.workspace_roots.discuss_primary_workspace",
+        "agent_lab.workspace.roots.discuss_primary_workspace",
         lambda _perms: tmp_path,
     )
     monkeypatch.setattr(
-        "agent_lab.run_control.register_child_process",
+        "agent_lab.run.control.register_child_process",
         lambda _proc: None,
     )
     monkeypatch.setattr(
-        "agent_lab.run_control.unregister_child_process",
+        "agent_lab.run.control.unregister_child_process",
         lambda _proc: None,
     )
     monkeypatch.setattr(
@@ -209,7 +209,7 @@ def test_claude_stream_raises_cancelled_when_killed_after_cancel(monkeypatch, tm
         lambda **_kw: None,
     )
     monkeypatch.setattr(
-        "agent_lab.agent_hooks_materializer.native_claude_hooks_overlay",
+        "agent_lab.agent.hooks_materializer.native_claude_hooks_overlay",
         lambda *_a, **_k: _NullCtx(),
     )
 
@@ -222,7 +222,7 @@ def test_claude_stream_raises_cancelled_when_killed_after_cancel(monkeypatch, tm
         return _KilledProc([])
 
     def fake_select(rlist, wlist, xlist, timeout):
-        from agent_lab.run_control import request_cancel
+        from agent_lab.run.control import request_cancel
 
         request_cancel()
         return (rlist, [], [])
@@ -231,7 +231,7 @@ def test_claude_stream_raises_cancelled_when_killed_after_cancel(monkeypatch, tm
     monkeypatch.setattr(subprocess, "Popen", fake_popen)
 
     import pytest
-    from agent_lab.run_control import RoomRunCancelled, clear_cancel
+    from agent_lab.run.control import RoomRunCancelled, clear_cancel
 
     clear_cancel()
     with pytest.raises(RoomRunCancelled):
@@ -265,6 +265,59 @@ class _EofSpinProc:
             self.returncode = -9
 
 
+def test_claude_stream_fails_fast_on_stderr_usage_limit(monkeypatch, tmp_path):
+    from agent_lab import claude_cli
+
+    fake_bin = tmp_path / "claude"
+    fake_bin.write_text("#!/bin/sh\n", encoding="utf-8")
+    fake_bin.chmod(0o755)
+    monkeypatch.setenv("CLAUDE_BIN", str(fake_bin))
+    monkeypatch.setenv("CLAUDE_ROOM_IDLE_TIMEOUT_SEC", "1")
+    monkeypatch.setattr(claude_cli, "resolve_claude_roots", lambda _perms: [])
+    monkeypatch.setattr(
+        "agent_lab.workspace.roots.discuss_primary_workspace",
+        lambda _perms: tmp_path,
+    )
+    monkeypatch.setattr(
+        "agent_lab.run.control.register_child_process",
+        lambda _proc: None,
+    )
+    monkeypatch.setattr(
+        "agent_lab.run.control.unregister_child_process",
+        lambda _proc: None,
+    )
+    monkeypatch.setattr("agent_lab.run.control.is_cancelled", lambda: False)
+    monkeypatch.setattr(
+        "agent_lab.claude_cli.ensure_claude_headless_ready",
+        lambda **_kw: None,
+    )
+    monkeypatch.setattr(
+        "agent_lab.agent.hooks_materializer.native_claude_hooks_overlay",
+        lambda *_a, **_k: _NullCtx(),
+    )
+
+    class _LimitProc(_StreamProc):
+        def __init__(self) -> None:
+            super().__init__([], returncode=1)
+            self.stderr = SimpleNamespace(read=lambda: "ERROR: usage limit reached\n")
+
+    def fake_popen(cmd, **_kwargs):
+        return _LimitProc()
+
+    def fake_select(rlist, wlist, xlist, timeout):
+        if rlist and getattr(rlist[0], "stderr", None) is not None:
+            return (rlist, [], [])
+        return ([], [], [])
+
+    monkeypatch.setattr("select.select", fake_select)
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+
+    import pytest
+
+    with pytest.raises(RuntimeError, match="usage limit"):
+        claude_cli.invoke("sys", "user", on_bridge_event=lambda _k, _d: None)
+
+
 def test_claude_stream_exits_when_child_eof_without_result(monkeypatch, tmp_path):
     """Avoid busy-loop when claude exits but stdout stays select-readable."""
     from agent_lab import claude_cli
@@ -275,24 +328,24 @@ def test_claude_stream_exits_when_child_eof_without_result(monkeypatch, tmp_path
     monkeypatch.setenv("CLAUDE_BIN", str(fake_bin))
     monkeypatch.setattr(claude_cli, "resolve_claude_roots", lambda _perms: [])
     monkeypatch.setattr(
-        "agent_lab.workspace_roots.discuss_primary_workspace",
+        "agent_lab.workspace.roots.discuss_primary_workspace",
         lambda _perms: tmp_path,
     )
     monkeypatch.setattr(
-        "agent_lab.run_control.register_child_process",
+        "agent_lab.run.control.register_child_process",
         lambda _proc: None,
     )
     monkeypatch.setattr(
-        "agent_lab.run_control.unregister_child_process",
+        "agent_lab.run.control.unregister_child_process",
         lambda _proc: None,
     )
-    monkeypatch.setattr("agent_lab.run_control.is_cancelled", lambda: False)
+    monkeypatch.setattr("agent_lab.run.control.is_cancelled", lambda: False)
     monkeypatch.setattr(
         "agent_lab.claude_cli.ensure_claude_headless_ready",
         lambda **_kw: None,
     )
     monkeypatch.setattr(
-        "agent_lab.agent_hooks_materializer.native_claude_hooks_overlay",
+        "agent_lab.agent.hooks_materializer.native_claude_hooks_overlay",
         lambda *_a, **_k: _NullCtx(),
     )
 

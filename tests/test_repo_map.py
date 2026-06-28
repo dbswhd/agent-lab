@@ -122,7 +122,7 @@ def test_ac5_off_parity_repo_map_not_used(tmp_path: Path, monkeypatch: pytest.Mo
     monkeypatch.delenv("AGENT_LAB_REPO_MAP", raising=False)
     assert repo_map_enabled() is False
     # build_context_bundle's off path must call build_repo_tree_block, not repo_map.
-    import agent_lab.context_bundle as cb
+    import agent_lab.context.bundle as cb
 
     src = inspect.getsource(cb)
     # the import is inside the flag-on branch only (guarded), never at module top
@@ -141,7 +141,7 @@ def test_ac6_layer_off_returns_empty(tmp_path: Path) -> None:
 def test_ac6_replace_single_block(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     root = _workspace(tmp_path)
     monkeypatch.setenv("AGENT_LAB_REPO_MAP", "1")
-    from agent_lab.context_bundle import _format_clarity_facts  # ensure module imports cleanly
+    from agent_lab.context.bundle import _format_clarity_facts  # ensure module imports cleanly
 
     _ = _format_clarity_facts  # touch to keep import meaningful
     block = build_repo_map_block(_run_meta(root), plan_md="`app.py`")
@@ -174,7 +174,7 @@ def test_ac8_no_forbidden_imports() -> None:
             imported.add(node.module)
     for banned in ("tree_sitter", "networkx"):
         assert not any(mod == banned or mod.startswith(banned + ".") for mod in imported)
-    for lane in ("agent_lab.room", "agent_lab.mission_loop", "agent_lab.plan_execute", "agent_lab.runtime"):
+    for lane in ("agent_lab.room", "agent_lab.mission.loop", "agent_lab.plan.execute", "agent_lab.runtime"):
         assert not any(mod == lane or mod.startswith(lane + ".") for mod in imported)
 
 

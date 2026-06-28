@@ -58,9 +58,9 @@ def build_readiness_payload(
     probe_bridge: bool = True,
     probe_cli: bool = True,
 ) -> dict[str, Any]:
-    from agent_lab.agent_preflight import agent_preflight_row
-    from agent_lab.run_meta import read_run_meta
-    from agent_lab.session_paths import active_sessions_dir
+    from agent_lab.agent.preflight import agent_preflight_row
+    from agent_lab.run.meta import read_run_meta
+    from agent_lab.session.paths import active_sessions_dir
 
     folder: Path | None = None
     run: dict[str, Any] = {}
@@ -70,7 +70,7 @@ def build_readiness_payload(
             folder = candidate
             run = read_run_meta(candidate)
 
-    from agent_lab.run_control import room_run_in_progress
+    from agent_lab.run.control import room_run_in_progress
 
     if room_run_in_progress():
         # Avoid OAuth/profile probes and headless CLI pings during an active turn.

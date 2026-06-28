@@ -48,7 +48,7 @@ def test_registry_local_ready_and_callable(monkeypatch: pytest.MonkeyPatch) -> N
 
 
 def test_dynamic_available_ids_includes_local_floor() -> None:
-    from agent_lab import agent_roster as ar
+    from agent_lab.agent import roster as ar
 
     ids = ar.dynamic_available_ids(lambda: ["cursor", "codex", "claude"])
     assert "local" in ids
@@ -57,14 +57,14 @@ def test_dynamic_available_ids_includes_local_floor() -> None:
 
 
 def test_resolve_full_cloud_exhaustion_keeps_one(monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab import agent_roster as ar
+    from agent_lab.agent import roster as ar
 
     roster = ar.resolve_active_agents(None, lambda: [], enabled=True)
     assert roster == ["local"]  # >=1 agent guaranteed by the local floor
 
 
 def test_resolve_two_cloud_exhausted_substitutes_local(monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab import agent_roster as ar
+    from agent_lab.agent import roster as ar
 
     # only claude survives -> seat filled by local substitution
     roster = ar.resolve_active_agents(None, lambda: ["claude"], enabled=True)

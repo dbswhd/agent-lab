@@ -3,8 +3,8 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from agent_lab.plan_actions import find_dry_run_action
-from agent_lab.plan_execute_isolation import resolve_action_isolation
+from agent_lab.plan.actions import find_dry_run_action
+from agent_lab.plan.execute_isolation import resolve_action_isolation
 
 
 def _git(cwd: Path, *args: str, check: bool = True) -> str:

@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from agent_lab.mission_loop import enable_mission_loop
-from agent_lab.run_meta import patch_run_meta, read_run_meta
+from agent_lab.mission.loop import enable_mission_loop
+from agent_lab.run.meta import patch_run_meta, read_run_meta
 from agent_lab.runtime.snapshot import build_runtime_snapshot
 from agent_lab.runtime.work_phase import (
     resolve_work_phase,

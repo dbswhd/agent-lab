@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from agent_lab.run_meta import patch_run_meta, read_run_meta
+from agent_lab.run.meta import patch_run_meta, read_run_meta
 
 DEFAULT_MAX_CHECKS = 5
 MAX_MAX_CHECKS = 20
@@ -86,7 +86,7 @@ def goal_oracle_check(
         resolved_oracle_model,
         session_oracle_context,
     )
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.run.meta import read_run_meta
     from agent_lab.trading_mission.trading_goal_oracle import (
         is_trading_mission_run,
         mock_trading_goal_oracle_response,

@@ -51,8 +51,8 @@ def main() -> int:
         print("ERROR: unset AGENT_LAB_MOCK_AGENTS for live probe", file=sys.stderr)
         return 2
 
-    from agent_lab.kimi_control_client import probe_control, rpc, send_turn
-    from agent_lab.kimi_work_workspace import open_workspace
+    from agent_lab.kimi.control_client import probe_control, rpc, send_turn
+    from agent_lab.kimi.work_workspace import open_workspace
 
     bridge, err = probe_control()
     if bridge != "ok":
@@ -66,7 +66,7 @@ def main() -> int:
 
     open_result = open_workspace(ws)
     caps = rpc("capabilities.get", {})
-    from agent_lab.kimi_work_session import extract_conversation_key
+    from agent_lab.kimi.work_session import extract_conversation_key
 
     created = rpc(
         "conversations.create",

@@ -36,7 +36,7 @@ def test_health_readiness_endpoint(client: TestClient, monkeypatch: pytest.Monke
 
 def test_build_readiness_blocked_when_agent_fails(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
-        "agent_lab.agent_preflight.agent_preflight_row",
+        "agent_lab.agent.preflight.agent_preflight_row",
         lambda aid, **kw: {
             "id": aid,
             "ready": aid == "cursor",
@@ -55,7 +55,7 @@ def test_build_readiness_blocked_when_agent_fails(monkeypatch: pytest.MonkeyPatc
 
 def test_build_readiness_ready_all_agents(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
-        "agent_lab.agent_preflight.agent_preflight_row",
+        "agent_lab.agent.preflight.agent_preflight_row",
         lambda aid, **kw: {"id": aid, "ready": True},
     )
     from agent_lab.readiness import build_readiness_payload
@@ -72,8 +72,8 @@ def test_build_readiness_skips_probes_during_active_run(monkeypatch: pytest.Monk
         seen.append((probe_bridge, probe_cli))
         return {"id": aid, "ready": True}
 
-    monkeypatch.setattr("agent_lab.agent_preflight.agent_preflight_row", _row)
-    monkeypatch.setattr("agent_lab.run_control.room_run_in_progress", lambda: True)
+    monkeypatch.setattr("agent_lab.agent.preflight.agent_preflight_row", _row)
+    monkeypatch.setattr("agent_lab.run.control.room_run_in_progress", lambda: True)
     from agent_lab.readiness import build_readiness_payload
 
     payload = build_readiness_payload(agent_ids=["cursor", "codex"])

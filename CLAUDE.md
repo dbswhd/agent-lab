@@ -10,8 +10,8 @@
 - `make list-flags` → `AGENT_LAB_*` registry (or `GET /api/health/flags`)
 
 ## 핵심 모듈
-- `src/agent_lab/room.py` — 멀티에이전트 Room
-- `src/agent_lab/plan_execute*.py` — execute gate + worktree + merge + verify
+- `src/agent_lab/room/` — 멀티에이전트 Room (`agent_lab.room` facade)
+- `src/agent_lab/plan/` — execute gate + worktree + merge + verify
 - `src/agent_lab/run_meta.py` — `run.json` helpers + `completed_steps`
 - `app/server/routers/` — FastAPI routes (`main.py` 조립만)
 - `web/src/components/PlanExecutePanel.tsx` — execute UI

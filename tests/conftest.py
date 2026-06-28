@@ -61,7 +61,7 @@ def _isolate_room_model_env() -> object:
 @pytest.fixture(autouse=True)
 def _reset_run_control_cancel() -> None:
     """Prevent cancel flag / child registry leaking across tests."""
-    from agent_lab.run_control import clear_cancel, terminate_active_children
+    from agent_lab.run.control import clear_cancel, terminate_active_children
 
     clear_cancel()
     terminate_active_children()

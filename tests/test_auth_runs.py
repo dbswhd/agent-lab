@@ -213,7 +213,7 @@ def test_auth_run_websocket_sends_normal_close() -> None:
 def test_api_login_secret_is_redacted_from_command_history(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import agent_lab.app_config as app_config
     from agent_lab.command_registry import execute_command
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.run.meta import read_run_meta
 
     monkeypatch.setattr(app_config, "config_dir", lambda: tmp_path / "config")
     secret = "sk-masked-history-1234"

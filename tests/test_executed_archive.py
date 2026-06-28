@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from agent_lab.plan_execute_merge import archive_executed_diff
+from agent_lab.plan.execute_merge import archive_executed_diff
 
 
 def test_archive_executed_diff_writes_once(tmp_path: Path):

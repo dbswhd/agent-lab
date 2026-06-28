@@ -14,7 +14,7 @@ from agent_lab.emergence_kpis import (
     load_chat_speakers,
     routing_kpis,
 )
-from agent_lab.session_score import score_session
+from agent_lab.session.score import score_session
 
 
 def _write_chat(folder: Path, rows: list[dict]) -> None:

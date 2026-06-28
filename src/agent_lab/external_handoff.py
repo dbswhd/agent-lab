@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from agent_lab.run_meta import patch_run_meta, read_run_meta
+from agent_lab.run.meta import patch_run_meta, read_run_meta
 
 _PENDING_EXECUTION_STATUSES = frozenset({"pending_approval", "pending", "review_required", "merge_conflict"})
 

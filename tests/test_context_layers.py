@@ -4,17 +4,17 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.context_bundle import build_context_bundle
-from agent_lab.context_layers import (
+from agent_lab.context.bundle import build_context_bundle
+from agent_lab.context.layers import (
     get_context_layers,
     mission_wisdom_layer_enabled,
     patch_context_layers,
     repo_tree_layer_enabled,
     should_use_mission_slim_bundle,
 )
-from agent_lab.mission_loop import append_wisdom_note, enable_mission_loop
-from agent_lab.mission_notepad import build_mission_wisdom_block
-from agent_lab.run_meta import read_run_meta
+from agent_lab.mission.loop import append_wisdom_note, enable_mission_loop
+from agent_lab.mission.notepad import build_mission_wisdom_block
+from agent_lab.run.meta import read_run_meta
 
 
 @pytest.fixture

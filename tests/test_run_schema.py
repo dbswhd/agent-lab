@@ -1,10 +1,10 @@
-"""Tests for agent_lab.run_schema."""
+"""Tests for agent_lab.run.schema."""
 
 from __future__ import annotations
 
 import pytest
 
-from agent_lab.run_schema import RuntimeValidationError, validate_run
+from agent_lab.run.schema import RuntimeValidationError, validate_run
 
 
 def test_validate_run_rejects_invalid_mission_phase() -> None:

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from agent_lab.context_bundle import build_context_bundle
-from agent_lab.room_context import (
+from agent_lab.context.bundle import build_context_bundle
+from agent_lab.room.context import (
     collect_peer_messages,
     dedupe_peer_from_recent,
     prepare_recent_messages,

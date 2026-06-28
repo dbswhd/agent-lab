@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from agent_lab.quant_utility_validation import main
+from agent_lab.quant.utility_validation import main
 
 if __name__ == "__main__":
     raise SystemExit(main())

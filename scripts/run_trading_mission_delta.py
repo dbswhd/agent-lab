@@ -53,9 +53,9 @@ def main() -> int:
 
     budget = apply_trading_mission_budget_env()
 
-    from agent_lab.quant_utility_validation import detect_pipeline_root
+    from agent_lab.quant.utility_validation import detect_pipeline_root
     from agent_lab.session import SESSIONS_DIR, session_dir
-    from agent_lab.session_setup import seed_session_setup
+    from agent_lab.session.setup import seed_session_setup
     from agent_lab.trading_mission.delta_export import (
         build_proposal_delta,
         render_delta_topic,
@@ -109,7 +109,7 @@ def main() -> int:
     else:
         from agent_lab.agents.registry import AGENT_IDS, available_agents
         from agent_lab.room import run_room
-        from agent_lab.session_setup import merge_setup_permissions
+        from agent_lab.session.setup import merge_setup_permissions
 
         agents = [a for a in AGENT_IDS if a in available_agents()]
         if len(agents) < 3:

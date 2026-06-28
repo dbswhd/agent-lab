@@ -6,14 +6,14 @@ import os
 from dataclasses import dataclass, replace
 from typing import Any
 
-from agent_lab.agent_envelope import (
+from agent_lab.agent.envelope import (
     ENVELOPE_FORMAT_GUIDANCE,
     envelope_act,
     envelope_protocol_block,
     is_endorse_reply,
 )
-from agent_lab.inbox_harvest import inbox_pause_grace_guidance, inbox_pause_grace_pending
-from agent_lab.room_context import (
+from agent_lab.inbox.harvest import inbox_pause_grace_guidance, inbox_pause_grace_pending
+from agent_lab.room.context import (
     ANALYSIS_TURN_GUIDANCE,
     CONVERSATION_GUIDANCE,
     EFFICIENCY_RESPONSE_GUIDANCE,
@@ -151,7 +151,7 @@ def build_guidance_parts(
     run_meta: dict[str, Any] | None = None,
     agent: str = "",
 ) -> list[str]:
-    from agent_lab.room_preset import is_fast_room_session
+    from agent_lab.room.preset import is_fast_room_session
 
     parts: list[str] = []
     if run_meta:
@@ -161,7 +161,7 @@ def build_guidance_parts(
         if contract_guidance:
             parts.append(contract_guidance)
     if run_meta and agent:
-        from agent_lab.room_tasks import team_lead
+        from agent_lab.room.tasks import team_lead
 
         if str(agent).strip().lower() == team_lead(run_meta):
             parts.append(DISPATCH_LEAD_GUIDANCE)
@@ -175,7 +175,7 @@ def build_guidance_parts(
     if policy.inject_analysis and policy.turn_profile in ("analyze", "discuss"):
         parts.append(ANALYSIS_TURN_GUIDANCE.strip())
     if run_meta and is_fast_room_session(run_meta):
-        from agent_lab.room_context import FAST_TURN_GUIDANCE
+        from agent_lab.room.context import FAST_TURN_GUIDANCE
 
         if FAST_TURN_GUIDANCE.strip() not in parts:
             parts.insert(0, FAST_TURN_GUIDANCE.strip())
@@ -221,7 +221,7 @@ def envelope_follow_up_block(policy: ReplyPolicy, *, context: str = "discuss") -
     if policy.inject_decision_fork:
         return envelope_protocol_block(context=context, compact=compact)
     if compact:
-        from agent_lab.agent_envelope import ENVELOPE_FORMAT_GUIDANCE_SHORT
+        from agent_lab.agent.envelope import ENVELOPE_FORMAT_GUIDANCE_SHORT
 
         return f"{ENVELOPE_FORMAT_GUIDANCE_SHORT}\n(Context: {label})"
     return f"{ENVELOPE_FORMAT_GUIDANCE}\n(Context: {label})"

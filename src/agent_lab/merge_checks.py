@@ -120,7 +120,7 @@ def _oracle_check(execution: dict[str, Any] | None) -> dict[str, Any]:
 
 
 def _open_blocks_check(run: dict[str, Any]) -> dict[str, Any]:
-    from agent_lab.room_objections import open_objections
+    from agent_lab.room.objections import open_objections
 
     blocks = [o for o in open_objections(run) if o.get("act") == "BLOCK"]
     count = len(blocks)

@@ -236,17 +236,17 @@ def ensure_worktree_usable(
         return True, {"ok": True, "skipped": "healthy"}
 
     if mode != "recreate":
-        from agent_lab.plan_execute_worktree import discard_exec_worktree
+        from agent_lab.plan.execute_worktree import discard_exec_worktree
 
         discard_exec_worktree(ew, folder, exec_id)
         return False, {"action": "discarded", "exec_id": exec_id}
 
     try:
-        from agent_lab.plan_execute_worktree import (
+        from agent_lab.plan.execute_worktree import (
             create_exec_worktree,
             discard_exec_worktree,
         )
-        from agent_lab.plan_actions import action_key as plan_action_key  # noqa: F401
+        from agent_lab.plan.actions import action_key as plan_action_key  # noqa: F401
     except Exception as exc:  # pragma: no cover - defensive import guard
         discard_exec_worktree(ew, folder, exec_id)
         return False, {"action": "discarded", "exec_id": exec_id, "recreate_error": str(exc)}
@@ -292,7 +292,7 @@ def _execution_worktree(execution: dict[str, Any]) -> Any | None:
     if not all(execution.get(key) for key in required):
         return None
     try:
-        from agent_lab.plan_execute_worktree import ExecWorktree
+        from agent_lab.plan.execute_worktree import ExecWorktree
     except Exception:
         return None
     return ExecWorktree(

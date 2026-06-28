@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from agent_lab.room import ChatMessage, _append_human_turn_synthesis, _round_agent_order
-from agent_lab.room_team_orchestration import (
+from agent_lab.room.team_orchestration import (
     build_human_turn_synthesis,
     is_discuss_only_turn,
     parse_go_lead_from_message,

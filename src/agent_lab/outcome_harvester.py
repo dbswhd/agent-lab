@@ -20,9 +20,9 @@ from pathlib import Path
 from typing import Any
 from weakref import WeakValueDictionary
 
-from agent_lab.run_meta import patch_run_meta, read_run_meta
+from agent_lab.run.meta import patch_run_meta, read_run_meta
 from agent_lab.turn_metrics import build_turn_metrics
-from agent_lab.wisdom_index import _tokenize
+from agent_lab.wisdom.index import _tokenize
 
 log = logging.getLogger(__name__)
 
@@ -63,7 +63,7 @@ def outcomes_path(root: Path | None = None) -> Path:
         if env_root:
             root = Path(env_root)
         else:
-            from agent_lab.workspace_roots import project_root
+            from agent_lab.workspace.roots import project_root
 
             root = project_root()
     return root / _OUTCOMES_RELPATH

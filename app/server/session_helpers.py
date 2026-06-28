@@ -15,9 +15,9 @@ from agent_lab.attachments import (
     attachments_dir,
     list_attachment_names,
 )
-from agent_lab.plan_execute_worktree import gc_stale_worktrees
-from agent_lab.run_observability import observability_snapshot
-from agent_lab.session_paths import SESSIONS_DIR, sessions_dir
+from agent_lab.plan.execute_worktree import gc_stale_worktrees
+from agent_lab.run.observability import observability_snapshot
+from agent_lab.session.paths import SESSIONS_DIR, sessions_dir
 
 
 def room_session_context(folder: Path | None) -> tuple[str, dict[str, Any]]:
@@ -28,7 +28,7 @@ def room_session_context(folder: Path | None) -> tuple[str, dict[str, Any]]:
 
 
 def _sessions_root() -> Path:
-    from agent_lab.session_paths import active_sessions_dir
+    from agent_lab.session.paths import active_sessions_dir
 
     return active_sessions_dir()
 
@@ -170,7 +170,7 @@ def session_detail(
         run_json = json.loads((folder / "run.json").read_text(encoding="utf-8"))
         gc_stale_worktrees(folder, run_json)
 
-    from agent_lab.room_live_log import read_live_room_log
+    from agent_lab.room.live_log import read_live_room_log
 
     live_log = read_live_room_log(folder)
 

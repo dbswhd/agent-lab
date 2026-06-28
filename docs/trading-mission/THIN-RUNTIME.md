@@ -33,7 +33,7 @@ cd ~/Projects/agent-lab
   "mcpServers": {
     "agent-lab-research": {
       "command": "/Users/yoonjong/Projects/agent-lab/.venv/bin/python",
-      "args": ["-m", "agent_lab.research_mcp_server"],
+      "args": ["-m", "agent_lab.research.mcp_server"],
       "env": {
         "QUANT_PIPELINE_ROOT": "/Users/yoonjong/Desktop/pipeline",
         "AGENTIC_TRADING_DB": "/Users/yoonjong/Documents/New project/data/agentic_trading/control_plane.sqlite3",

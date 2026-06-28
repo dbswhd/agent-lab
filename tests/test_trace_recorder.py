@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 
-from agent_lab.run_observability import observability_snapshot, trace_tail
+from agent_lab.run.observability import observability_snapshot, trace_tail
 from agent_lab.trace_recorder import TraceRecorder, install_tracer
 
 

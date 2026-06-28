@@ -20,8 +20,8 @@ from agent_lab.live_execute_spike import (
     format_report_lines,
     _now,
 )
-from agent_lab.plan_execute import run_dry_run
-from agent_lab.run_meta import patch_run_meta, read_run_meta
+from agent_lab.plan.execute import run_dry_run
+from agent_lab.run.meta import patch_run_meta, read_run_meta
 
 SOAK_TELEGRAM_CHAT_ID = 900_001
 
@@ -208,7 +208,7 @@ def run_live_telegram_merge_ingress_soak(
         "topic": "live telegram merge ingress soak",
         "created_at": _now(),
     }
-    from agent_lab.run_meta import write_run_meta
+    from agent_lab.run.meta import write_run_meta
 
     write_run_meta(session, run_meta)
 

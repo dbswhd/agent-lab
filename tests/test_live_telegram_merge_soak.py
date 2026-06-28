@@ -18,11 +18,11 @@ from agent_lab.live_telegram_merge_soak import (
     _write_soak_routes_config,
     run_live_telegram_merge_ingress_soak,
 )
-from agent_lab.plan_actions import find_dry_run_action
-from agent_lab.plan_execute import run_dry_run
-from agent_lab.plan_execute_git import detect_git_root
-from agent_lab.plan_pending import PlanSnapshotRequired, approve_pending_plan, ensure_plan_snapshot_approved
-from agent_lab.run_meta import read_run_meta
+from agent_lab.plan.actions import find_dry_run_action
+from agent_lab.plan.execute import run_dry_run
+from agent_lab.plan.execute_git import detect_git_root
+from agent_lab.plan.pending import PlanSnapshotRequired, approve_pending_plan, ensure_plan_snapshot_approved
+from agent_lab.run.meta import read_run_meta
 from app.server.main import app
 
 
@@ -102,7 +102,7 @@ def test_telegram_merge_ingress_webhook_integration(
     monkeypatch.setattr("agent_lab.agents.cursor_agent.is_available", lambda: True)
     monkeypatch.setattr("agent_lab.agents.cursor_agent.respond", _respond)
     monkeypatch.setattr(
-        "agent_lab.plan_execute.resolve_execute_workspace",
+        "agent_lab.plan.execute.resolve_execute_workspace",
         lambda _permissions=None, _expected=None: (repo, {}),
     )
 

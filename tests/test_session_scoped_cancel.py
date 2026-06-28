@@ -6,7 +6,7 @@ import subprocess
 import sys
 import time
 
-from agent_lab.run_control import (
+from agent_lab.run.control import (
     clear_cancel,
     is_cancelled,
     register_child_process,
@@ -46,7 +46,7 @@ def test_session_cancel_does_not_affect_other_session() -> None:
         unregister_child_process(proc_a)
         unregister_child_process(proc_b)
         clear_cancel()
-        from agent_lab.run_control import reset_run_session_id
+        from agent_lab.run.control import reset_run_session_id
 
         reset_run_session_id(token_b)
         reset_run_session_id(token_a)

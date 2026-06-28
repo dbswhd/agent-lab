@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-import agent_lab.wisdom_mcp_server as wm
-from agent_lab.wisdom_store import wisdom_load
+import agent_lab.wisdom.mcp_server as wm
+from agent_lab.wisdom.store import wisdom_load
 
 
 def test_wisdom_recall_returns_hits(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

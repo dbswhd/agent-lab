@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from agent_lab.quant_utility_validation import build_report, detect_pipeline_root
+from agent_lab.quant.utility_validation import build_report, detect_pipeline_root
 
 
 def test_quant_utility_validation_mock(tmp_path, monkeypatch):

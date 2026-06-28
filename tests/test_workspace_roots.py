@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from agent_lab.workspace_roots import (
+from agent_lab.workspace.roots import (
     discuss_primary_workspace,
     execute_workspace_info,
     lecture_script_root,

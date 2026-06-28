@@ -75,9 +75,9 @@ def run_mission(
     from agent_lab import room
     from agent_lab.clarity import clarity_threshold_met, score_ambiguity
     from agent_lab.consensus_gate import consensus_gate_met
-    from agent_lab.mission_advance import maybe_advance_mission
-    from agent_lab.mission_loop import enable_mission_loop, get_mission_loop, pipeline_enabled
-    from agent_lab.run_meta import patch_run_meta, read_run_meta
+    from agent_lab.mission.advance import maybe_advance_mission
+    from agent_lab.mission.loop import enable_mission_loop, get_mission_loop, pipeline_enabled
+    from agent_lab.run.meta import patch_run_meta, read_run_meta
     from agent_lab.verified_loop import approve_verified_loop, init_verified_loop, record_proposed_goal
 
     sid = session_id or f"pipeline-mission-{spec.name}-{_utc_slug()}"

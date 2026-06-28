@@ -8,7 +8,7 @@ import urllib.error
 import urllib.request
 from typing import Any, Callable
 
-from agent_lab.agent_models import DEFAULT_CODEX_MODEL
+from agent_lab.agent.models import DEFAULT_CODEX_MODEL
 
 
 def codex_proxy_enabled() -> bool:
@@ -115,7 +115,7 @@ def invoke_codex_proxy(
         method="POST",
         headers={"Content-Type": "application/json"},
     )
-    from agent_lab.room_sse_stream import CumulativeTextStreamer
+    from agent_lab.room.sse_stream import CumulativeTextStreamer
 
     streamer = CumulativeTextStreamer()
     parts: list[str] = []
@@ -193,7 +193,7 @@ def invoke_codex_proxy(
         if on_activity:
             on_activity("Codex proxy 응답")
         if on_bridge_event:
-            from agent_lab.room_sse_stream import chunk_text
+            from agent_lab.room.sse_stream import chunk_text
 
             for piece in chunk_text(fallback.strip(), chunk_size=32):
                 on_bridge_event("text", {"text": piece})

@@ -4,7 +4,7 @@ import subprocess
 import sys
 import time
 
-from agent_lab.run_control import (
+from agent_lab.run.control import (
     clear_cancel,
     is_cancelled,
     register_child_process,
@@ -41,7 +41,7 @@ def test_terminate_active_children_noop_when_empty() -> None:
 
 
 def test_force_reset_run_lock_preserves_cancel_flag() -> None:
-    from agent_lab.run_control import end_run, force_reset_run_lock, try_begin_run
+    from agent_lab.run.control import end_run, force_reset_run_lock, try_begin_run
 
     clear_cancel()
     assert try_begin_run() is True
@@ -54,7 +54,7 @@ def test_force_reset_run_lock_preserves_cancel_flag() -> None:
 
 
 def test_run_lock_status_includes_session_context() -> None:
-    from agent_lab.run_control import end_run, run_lock_status, try_begin_run
+    from agent_lab.run.control import end_run, run_lock_status, try_begin_run
 
     assert try_begin_run(session_id="sess-a", run_kind="execute", label="Execute #1") is True
     try:

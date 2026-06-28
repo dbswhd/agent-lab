@@ -102,7 +102,7 @@ def _seed_wisdom_note(session_folder: Path, decision: dict[str, Any]) -> Path | 
         encoding="utf-8",
     )
     try:
-        from agent_lab.wisdom_index import build_wisdom_index
+        from agent_lab.wisdom.index import build_wisdom_index
 
         build_wisdom_index(session_folder, force=True)
     except Exception:

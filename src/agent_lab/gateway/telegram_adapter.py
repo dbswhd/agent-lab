@@ -19,8 +19,8 @@ from agent_lab.human_inbox import (
     public_inbox_payload,
     resolve_inbox_item,
 )
-from agent_lab.plan_workflow import approve_plan, get_plan_workflow, plan_workflow_phase
-from agent_lab.run_meta import read_run_meta
+from agent_lab.plan.workflow import approve_plan, get_plan_workflow, plan_workflow_phase
+from agent_lab.run.meta import read_run_meta
 
 _log = logging.getLogger(__name__)
 
@@ -81,7 +81,7 @@ def send_telegram_message(
 
 
 def _session_folder(session_id: str) -> Path | None:
-    from agent_lab.session_paths import active_sessions_dir
+    from agent_lab.session.paths import active_sessions_dir
 
     folder = active_sessions_dir() / session_id
     return folder if folder.is_dir() else None
@@ -133,7 +133,7 @@ def handle_gateway_command(
         return {"ok": True, "reply": f"plan approved → {phase}", "result": result}
 
     if lower.startswith("/approve merge") or lower == "approve merge":
-        from agent_lab.plan_execute import confirm_merge_execution, resolve_execution
+        from agent_lab.plan.execute import confirm_merge_execution, resolve_execution
         from agent_lab.runtime.snapshot import pending_execution
 
         run = read_run_meta(folder)

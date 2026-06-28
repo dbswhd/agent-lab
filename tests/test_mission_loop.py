@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.mission_loop import (
+from agent_lab.mission.loop import (
     after_plan_scribe,
     append_wisdom_note,
     clear_circuit_breaker,
@@ -19,20 +19,20 @@ from agent_lab.mission_loop import (
     run_mission_discuss_recovery,
     run_plan_gate,
 )
-from agent_lab.mission_notepad import (
+from agent_lab.mission.notepad import (
     MISSION_NOTEPAD_FILES,
     build_mission_wisdom_block,
     inject_wisdom_into_prompt,
     mission_notepad_dir,
 )
-from agent_lab.mission_advance import (
+from agent_lab.mission.advance import (
     maybe_advance_mission,
     on_dry_run_complete,
     on_merge_abort,
     on_merge_confirm,
     on_verify_result,
 )
-from agent_lab.run_meta import patch_run_meta, read_run_meta
+from agent_lab.run.meta import patch_run_meta, read_run_meta
 from agent_lab.verified_loop import approve_verified_loop, init_verified_loop, record_proposed_goal
 
 
@@ -158,7 +158,7 @@ def test_enable_and_plan_gate_enqueue(session_folder: Path) -> None:
 
 
 def test_open_block_prevents_execute_enqueue(session_folder: Path) -> None:
-    from agent_lab.room_objections import append_objection
+    from agent_lab.room.objections import append_objection
 
     enable_mission_loop(session_folder)
     run = read_run_meta(session_folder)
@@ -315,7 +315,7 @@ def test_verify_fail_repair_cap_non_structural_schedules_recovery(
         return run_plan_gate(folder, _good_plan())
 
     monkeypatch.setattr(
-        "agent_lab.mission_loop.run_mission_discuss_recovery",
+        "agent_lab.mission.loop.run_mission_discuss_recovery",
         lambda folder, **kw: {
             "status": "discuss_recovery_complete",
             "plan_gate": _fake_recovery(folder),
@@ -606,7 +606,7 @@ def test_maybe_advance_dry_run_mock(session_folder: Path, monkeypatch: pytest.Mo
     }
 
     monkeypatch.setattr(
-        "agent_lab.plan_execute.run_dry_run",
+        "agent_lab.plan.execute.run_dry_run",
         lambda *a, **k: fake_exec,
     )
 
@@ -790,7 +790,7 @@ def test_discuss_recovery_api(session_folder: Path, monkeypatch: pytest.MonkeyPa
 
     patch_run_meta(session_folder, _pending)
     monkeypatch.setattr(
-        "agent_lab.mission_loop.run_mission_discuss_recovery",
+        "agent_lab.mission.loop.run_mission_discuss_recovery",
         lambda folder, **kw: {
             "status": "discuss_recovery_complete",
             "phase": "EXECUTE_QUEUE",

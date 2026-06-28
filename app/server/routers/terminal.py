@@ -8,7 +8,7 @@ from pathlib import Path
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from agent_lab import terminal as term
-from agent_lab.run_meta import read_run_meta
+from agent_lab.run.meta import read_run_meta
 from app.server.deps import session_folder_or_404
 
 router = APIRouter(prefix="/api")

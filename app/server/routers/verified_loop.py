@@ -36,10 +36,10 @@ def post_verified_loop_approve(
     response: Response,
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.plan_workflow import approve_plan, get_plan_workflow, is_plan_workflow_active
+    from agent_lab.plan.workflow import approve_plan, get_plan_workflow, is_plan_workflow_active
     from agent_lab.verified_loop import approve_verified_loop
 
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.run.meta import read_run_meta
 
     run_meta = read_run_meta(folder)
     if is_plan_workflow_active(run_meta) and get_plan_workflow(run_meta).get("phase") == "HUMAN_PENDING":
@@ -79,8 +79,8 @@ def post_verified_loop_reject(
     response: Response,
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.plan_workflow import get_plan_workflow, is_plan_workflow_active, reject_plan
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.plan.workflow import get_plan_workflow, is_plan_workflow_active, reject_plan
+    from agent_lab.run.meta import read_run_meta
     from agent_lab.verified_loop import reject_verified_loop
 
     run_meta = read_run_meta(folder)

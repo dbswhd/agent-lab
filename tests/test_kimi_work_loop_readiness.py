@@ -26,7 +26,7 @@ def _clear_model_profile_registry(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_kimi_work_respond_honors_structured_envelope_mock(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from agent_lab import kimi_work_provider as kwp
+    from agent_lab.kimi import work_provider as kwp
 
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     text = kwp.respond(
@@ -107,7 +107,7 @@ def test_probe_kimi_work_cached_registers_loop_ready(
 
 
 def test_kimi_work_tool_features_contract() -> None:
-    from agent_lab.kimi_work_loop import kimi_work_loop_tool_features_ok
+    from agent_lab.kimi.work_loop import kimi_work_loop_tool_features_ok
 
     assert kimi_work_loop_tool_features_ok(
         [
@@ -128,7 +128,7 @@ def test_kimi_work_tool_features_contract() -> None:
 
 
 def test_kimi_work_tool_features_ok_for_daimon_advertised_list() -> None:
-    from agent_lab.kimi_work_loop import kimi_work_loop_tool_features_ok
+    from agent_lab.kimi.work_loop import kimi_work_loop_tool_features_ok
 
     daimon_features = [
         "conversations.create",
@@ -156,19 +156,19 @@ def test_probe_kimi_work_tools_accepts_daimon_feature_list(monkeypatch: pytest.M
         }
 
     monkeypatch.setattr(
-        "agent_lab.kimi_work_provider.is_configured",
+        "agent_lab.kimi.work_provider.is_configured",
         lambda: True,
     )
     monkeypatch.setattr(
-        "agent_lab.kimi_control_client.probe_control",
+        "agent_lab.kimi.control_client.probe_control",
         lambda: ("ok", None),
     )
-    monkeypatch.setattr("agent_lab.kimi_control_client.rpc", _fake_rpc)
+    monkeypatch.setattr("agent_lab.kimi.control_client.rpc", _fake_rpc)
     assert _probe_kimi_work_tools() is True
 
 
 def test_is_usable_conversation_key_mock_only_in_mock_mode(monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab.kimi_work_session import is_usable_conversation_key
+    from agent_lab.kimi.work_session import is_usable_conversation_key
 
     monkeypatch.delenv("AGENT_LAB_MOCK_AGENTS", raising=False)
     assert is_usable_conversation_key("mock-conv-loop-probe") is False
@@ -181,7 +181,7 @@ def test_is_usable_conversation_key_mock_only_in_mock_mode(monkeypatch: pytest.M
 def test_ensure_kimi_work_session_drops_stale_mock_key(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from agent_lab.kimi_work_session import ensure_kimi_work_session, write_state
+    from agent_lab.kimi.work_session import ensure_kimi_work_session, write_state
 
     monkeypatch.delenv("AGENT_LAB_MOCK_AGENTS", raising=False)
     write_state(
@@ -203,8 +203,8 @@ def test_ensure_kimi_work_session_drops_stale_mock_key(
             return {"conversationKey": key}
         raise AssertionError(method)
 
-    monkeypatch.setattr("agent_lab.kimi_control_client.rpc", _fake_rpc)
-    monkeypatch.setattr("agent_lab.kimi_control_client.rpc_batch", lambda calls: [_fake_rpc(m, p) for m, p in calls])
+    monkeypatch.setattr("agent_lab.kimi.control_client.rpc", _fake_rpc)
+    monkeypatch.setattr("agent_lab.kimi.control_client.rpc_batch", lambda calls: [_fake_rpc(m, p) for m, p in calls])
 
     key = ensure_kimi_work_session(tmp_path, workspace_path=tmp_path, title="loop-probe")
     assert key == "main:conversation:probe-123"
@@ -223,7 +223,7 @@ def test_probe_kimi_work_envelope_validates_speech_act(
 def test_probe_kimi_work_envelope_rejects_invalid_act(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from agent_lab import kimi_work_provider as kwp
+    from agent_lab.kimi import work_provider as kwp
     from agent_lab.model_policy_probe import _probe_substitute_envelope
 
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
@@ -236,7 +236,7 @@ def test_probe_kimi_work_envelope_rejects_invalid_act(
 
 
 def test_kimi_work_envelope_strict_flag(monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab.kimi_work_loop import kimi_work_envelope_strict
+    from agent_lab.kimi.work_loop import kimi_work_envelope_strict
 
     monkeypatch.delenv("AGENT_LAB_KIMI_WORK_ENVELOPE_STRICT", raising=False)
     assert kimi_work_envelope_strict() is False

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from agent_lab.run_meta import write_run_meta
+from agent_lab.run.meta import write_run_meta
 
 from fastapi import APIRouter, HTTPException
 
@@ -25,8 +25,8 @@ def resolve_session_objection(
     body: ObjectionResolveRequest,
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.room_objections import resolve_objection
-    from agent_lab.room_tasks import tasks_public_payload
+    from agent_lab.room.objections import resolve_objection
+    from agent_lab.room.tasks import tasks_public_payload
 
     _plan_md, run_meta = room_session_context(folder)
     try:
@@ -55,7 +55,7 @@ def get_session_agent_capabilities(
             perm_obj = json.loads(permissions)
         except json.JSONDecodeError:
             perm_obj = {}
-    from agent_lab.room_agent_capabilities import capabilities_public_payload
+    from agent_lab.room.agent_capabilities import capabilities_public_payload
 
     return {"ok": True, **capabilities_public_payload(run_meta, perm_obj)}
 
@@ -66,7 +66,7 @@ def patch_session_agent_capabilities(
     body: AgentCapabilitiesPatchRequest,
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.room_agent_capabilities import (
+    from agent_lab.room.agent_capabilities import (
         capabilities_public_payload,
         write_agent_capabilities,
     )
@@ -84,7 +84,7 @@ def set_session_team_lead(
     body: TeamLeadRequest,
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.room_tasks import set_team_lead_agent, tasks_public_payload
+    from agent_lab.room.tasks import set_team_lead_agent, tasks_public_payload
 
     _plan_md, run_meta = room_session_context(folder)
     lead = set_team_lead_agent(run_meta, body.agent.strip().lower())

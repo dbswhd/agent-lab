@@ -19,7 +19,7 @@ router = APIRouter(prefix="/api")
 def session_tasks(session_id: str) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
     _plan_md, run_meta = room_session_context(folder)
-    from agent_lab.room_tasks import tasks_public_payload
+    from agent_lab.room.tasks import tasks_public_payload
 
     return tasks_public_payload(run_meta)
 
@@ -31,7 +31,7 @@ def claim_session_task(
     body: TaskClaimRequest,
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.room_tasks import claim_task, tasks_public_payload
+    from agent_lab.room.tasks import claim_task, tasks_public_payload
 
     _plan_md, run_meta = room_session_context(folder)
     try:
@@ -52,7 +52,7 @@ def complete_session_task(
     body: TaskCompleteRequest | None = None,
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.room_tasks import complete_task, tasks_public_payload
+    from agent_lab.room.tasks import complete_task, tasks_public_payload
 
     _plan_md, run_meta = room_session_context(folder)
     run_meta["_session_folder"] = str(folder.resolve())
@@ -64,7 +64,7 @@ def complete_session_task(
         msg = str(e)
         status = 409 if "승인" in msg or "검증" in msg or "실행" in msg else 400
         raise HTTPException(status_code=status, detail=msg) from e
-    from agent_lab.run_meta import persist_run_meta
+    from agent_lab.run.meta import persist_run_meta
 
     (folder / "run.json").write_text(
         json.dumps(persist_run_meta(run_meta), indent=2, ensure_ascii=False) + "\n",

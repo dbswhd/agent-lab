@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from agent_lab.session_score_weekly import (  # noqa: E402
+from agent_lab.session.score_weekly import (  # noqa: E402
     build_weekly_report,
     default_sessions_root,
     format_weekly_report_markdown,

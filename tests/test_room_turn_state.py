@@ -6,9 +6,9 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from agent_lab.agent_envelope import ENVELOPE_FORMAT_GUIDANCE
-from agent_lab.context_bundle import build_context_bundle
-from agent_lab.room_turn_state import (
+from agent_lab.agent.envelope import ENVELOPE_FORMAT_GUIDANCE
+from agent_lab.context.bundle import build_context_bundle
+from agent_lab.room.turn_state import (
     current_turn_slice,
     derive_turn_state,
     render_turn_state_block,

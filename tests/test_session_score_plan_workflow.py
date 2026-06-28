@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from agent_lab.plan_workflow import approve_plan, init_plan_workflow_on_plan_send, set_plan_workflow_phase
-from agent_lab.run_meta import patch_run_meta
-from agent_lab.session_score import score_session
+from agent_lab.plan.workflow import approve_plan, init_plan_workflow_on_plan_send, set_plan_workflow_phase
+from agent_lab.run.meta import patch_run_meta
+from agent_lab.session.score import score_session
 
 SAMPLE_PLAN = """# Demo
 

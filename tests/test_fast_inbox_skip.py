@@ -7,11 +7,11 @@ from typing import Any
 import pytest
 
 from agent_lab.cursor_inbox_mcp import discuss_inbox_mcp_enabled
-from agent_lab.inbox_harvest import (
+from agent_lab.inbox.harvest import (
     harvest_discuss_questions,
     orchestrator_inbox_harvest_enabled,
 )
-from agent_lab.plan_workflow import plan_workflow_wants_inbox_mcp
+from agent_lab.plan.workflow import plan_workflow_wants_inbox_mcp
 
 
 def test_discuss_inbox_mcp_enabled_for_fast_lead() -> None:

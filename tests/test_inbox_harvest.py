@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 
-from agent_lab.inbox_harvest import (
+from agent_lab.inbox.harvest import (
     clarifier_harvest_key,
     escalation_harvest_keys_from_batch,
     harvest_clarifier_questions,
@@ -16,7 +16,7 @@ from agent_lab.inbox_harvest import (
     harvest_question_candidates,
     record_escalation_harvest_keys,
 )
-from agent_lab.session_clarifier import build_clarifier_questions
+from agent_lab.session.clarifier import build_clarifier_questions
 
 
 @dataclass

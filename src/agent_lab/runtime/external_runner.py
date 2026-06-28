@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from agent_lab.external_tools import load_external_tools, run_external_tool
-from agent_lab.run_meta import read_run_meta
+from agent_lab.run.meta import read_run_meta
 from agent_lab.runtime.boulder import clear_last_failure, record_last_failure
 
 

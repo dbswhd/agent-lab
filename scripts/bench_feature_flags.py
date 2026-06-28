@@ -68,7 +68,7 @@ def bench_repo_map() -> dict[str, Any]:
 def bench_compaction() -> dict[str, Any]:
     from dataclasses import dataclass, field
 
-    from agent_lab.room_context import _truncate_old_tool_outputs
+    from agent_lab.room.context import _truncate_old_tool_outputs
 
     @dataclass
     class _Msg:

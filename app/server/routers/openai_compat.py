@@ -136,8 +136,8 @@ def _run_room_sync(
 ) -> tuple[str | None, str | None]:
     """Run a Room turn in a background thread, push SSE events to event_q."""
     from agent_lab.room import run_room
-    from agent_lab.room_preset import preset_turn_profile
-    from agent_lab.run_profile import apply_run_profile
+    from agent_lab.room.preset import preset_turn_profile
+    from agent_lab.run.profile import apply_run_profile
 
     profile_name = _RUN_PROFILE_FOR_MODEL.get(model_id.strip().lower())
     if profile_name:

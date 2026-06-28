@@ -10,7 +10,7 @@ PLAN = ROOT / "docs" / "archive" / "rfcs" / "EXTERNAL-REFS-PLAN.md"
 
 SHIPPED_ROWS: list[tuple[str, list[str]]] = [
     ("L1", ["src/agent_lab/cli_retry.py"]),
-    ("L2", ["src/agent_lab/room_consensus.py"]),
+    ("L2", ["src/agent_lab/room/consensus.py"]),
     ("LC-oracle", ["tests/test_oracle_verify.py", "src/agent_lab/plan_execute_merge.py"]),
     (
         "LC-L3",
@@ -31,7 +31,7 @@ SHIPPED_ROWS: list[tuple[str, list[str]]] = [
     ),
     ("LC-L5", ["src/agent_lab/goal_loop.py", "sessions/_regression/goal_loop_achieved", "tests/test_goal_loop.py"]),
     ("MD-PLATFORM", [".agent-lab/PLATFORM.md", "src/agent_lab/platform_md.py", "tests/test_platform_md.py"]),
-    ("LC-clarifier", ["src/agent_lab/session_clarifier.py", "tests/test_session_clarifier.py"]),
+    ("LC-clarifier", ["src/agent_lab/session/clarifier.py", "tests/test_session_clarifier.py"]),
     ("CC-hooks", [".claude/settings.json", ".claude/hooks/stop-pytest.sh", "tests/test_claude_hooks.py"]),
     ("CC-rules", [".claude/rules/python-backend.md", ".claude/rules/react-frontend.md", "tests/test_claude_rules.py"]),
     (
@@ -63,7 +63,7 @@ SHIPPED_ROWS: list[tuple[str, list[str]]] = [
     ),
     (
         "MB-10",
-        ["src/agent_lab/wisdom_index.py", "sessions/_regression/wisdom_index_built"],
+        ["src/agent_lab/wisdom/index.py", "sessions/_regression/wisdom_index_built"],
     ),
     ("F-R3", ["sessions/_benchmark/specialist_asymmetric_cwd"]),
     ("H-P1", ["tests/test_session_score_ci.py"]),

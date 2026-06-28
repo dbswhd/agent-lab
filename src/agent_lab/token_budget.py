@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from agent_lab.context_limits import agent_context_limits
-from agent_lab.context_meta import summarize_turn_context
+from agent_lab.context.limits import agent_context_limits
+from agent_lab.context.meta import summarize_turn_context
 
 
 def _build_entry(

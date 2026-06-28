@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from agent_lab.agent_envelope import AgentEnvelope
-from agent_lab.room_mailbox import (
+from agent_lab.agent.envelope import AgentEnvelope
+from agent_lab.room.mailbox import (
     append_mailbox_message,
     build_mailbox_block,
     harvest_mailbox_from_turn,

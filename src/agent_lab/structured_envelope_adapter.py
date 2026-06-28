@@ -6,7 +6,7 @@ import json
 import os
 from typing import Any
 
-from agent_lab.agent_envelope import split_structured_envelope_prefix
+from agent_lab.agent.envelope import split_structured_envelope_prefix
 from agent_lab.reply_policy import ReplyPolicy
 
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from agent_mocks import patch_call_agent_reply
 
-from agent_lab.room_sse_stream import (
+from agent_lab.room.sse_stream import (
     choose_agent_reply_body,
     chunk_text,
     dedupe_adjacent_stream_dupes,
@@ -119,7 +119,7 @@ def test_call_one_agent_persists_streamed_body_over_short_result(monkeypatch, tm
 
     folder = tmp_path / "sess"
     folder.mkdir()
-    from agent_lab.run_meta import write_run_meta
+    from agent_lab.run.meta import write_run_meta
 
     write_run_meta(folder, {})
     long_report = "Z" * 3000 + "\n\n**axis** 3/5"
@@ -177,7 +177,7 @@ def test_call_one_agent_emits_live_bridge_tokens_before_done(monkeypatch, tmp_pa
 
     folder = tmp_path / "sess"
     folder.mkdir()
-    from agent_lab.run_meta import write_run_meta
+    from agent_lab.run.meta import write_run_meta
 
     write_run_meta(folder, {})
 
@@ -232,7 +232,7 @@ def test_call_one_agent_emits_agent_token_before_done(monkeypatch, tmp_path):
 
     folder = tmp_path / "sess"
     folder.mkdir()
-    from agent_lab.run_meta import write_run_meta
+    from agent_lab.run.meta import write_run_meta
 
     write_run_meta(folder, {})
 

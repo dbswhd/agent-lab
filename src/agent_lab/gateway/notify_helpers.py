@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from agent_lab.gate_scope import get_gate_profile
-from agent_lab.run_meta import read_run_meta
+from agent_lab.run.meta import read_run_meta
 
 
 def _safe_fan_out(event: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -100,7 +100,7 @@ def notify_auto_merge_blocked(
             run_in["mission_schedule"] = ms
             return run_in
 
-        from agent_lab.run_meta import patch_run_meta
+        from agent_lab.run.meta import patch_run_meta
 
         patch_run_meta(folder, _mark)
 

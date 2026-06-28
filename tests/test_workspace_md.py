@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from agent_lab.project_memory import bootstrap_workspace_memory
-from agent_lab.session_guidance import build_session_guidance_block
+from agent_lab.session.guidance import build_session_guidance_block
 
 
 def test_workspace_md_injection_order(tmp_path: Path):

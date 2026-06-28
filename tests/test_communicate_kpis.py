@@ -6,7 +6,7 @@ from pathlib import Path
 
 from agent_lab.communicate_kpis import communicate_counts, communicate_scores
 from agent_lab.reply_policy import envelope_follow_up_block, resolve_reply_policy
-from agent_lab.room_hooks import (
+from agent_lab.room.hooks import (
     HookResult,
     _builtin_post_agent_reply_envelope_check,
     run_pre_scribe_hooks,
@@ -126,7 +126,7 @@ def test_pre_scribe_hook_no_commands(tmp_path: Path):
 
 
 def test_weekly_report_includes_communicate_section():
-    from agent_lab.session_score_weekly import format_weekly_report_markdown
+    from agent_lab.session.score_weekly import format_weekly_report_markdown
 
     md = format_weekly_report_markdown(
         {

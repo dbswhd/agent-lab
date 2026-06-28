@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from agent_lab.room_hooks import PreExecuteBlocked
+from agent_lab.room.hooks import PreExecuteBlocked
 
 
 @dataclass(slots=True)
@@ -52,7 +52,7 @@ class PolicyEngine:
         action_index: int,
         action_kind: Any = None,
     ) -> PolicyResult:
-        from agent_lab.room_objections import execute_block_reason_for_action
+        from agent_lab.room.objections import execute_block_reason_for_action
 
         snap = PolicyEngine.gate_snapshot(run_meta)
         if run_meta and run_meta.get("schedule_sandbox"):
@@ -89,13 +89,13 @@ class PolicyEngine:
         if not gate.allowed:
             if gate.source == "schedule_sandbox":
                 raise RuntimeError(gate.reason or "schedule_sandbox_read_only")
-            from agent_lab.room_objections import ObjectionBlocksExecute
+            from agent_lab.room.objections import ObjectionBlocksExecute
 
             raise ObjectionBlocksExecute(
                 gate.reason or "execute blocked",
                 objections=[],
             )
-        from agent_lab.room_objections import assert_execute_allowed as _assert
+        from agent_lab.room.objections import assert_execute_allowed as _assert
 
         _assert(run_meta, action_index, action_kind)
         return PolicyResult(allowed=True, gate_snapshot=gate.gate_snapshot)
@@ -108,7 +108,7 @@ class PolicyEngine:
         session_folder: Path | None = None,
         session_id: str = "",
     ) -> PolicyResult:
-        from agent_lab.room_hooks import run_pre_execute_hooks
+        from agent_lab.room.hooks import run_pre_execute_hooks
 
         pre = run_pre_execute_hooks(
             run_meta,
@@ -156,7 +156,7 @@ class PolicyEngine:
         session_folder: Path | None = None,
         session_id: str = "",
     ) -> PolicyResult:
-        from agent_lab.room_hooks import run_task_completed_hooks
+        from agent_lab.room.hooks import run_task_completed_hooks
 
         block_msg = run_task_completed_hooks(
             run_meta,

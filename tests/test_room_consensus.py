@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from agent_lab.room_consensus import (
+from agent_lab.room.consensus import (
     NO_OBJECTION_LINE,
     is_substantive_reply,
     pick_anchor,
 )
-from agent_lab.room_context import is_no_objection_response
+from agent_lab.room.context import is_no_objection_response
 
 
 @dataclass
@@ -37,7 +37,7 @@ def test_substantive_vs_pass_and_no_objection():
 
 
 def test_debate_round_phases():
-    from agent_lab.room_consensus import (
+    from agent_lab.room.consensus import (
         debate_review_round,
         debate_round_last,
         max_debate_round_count,

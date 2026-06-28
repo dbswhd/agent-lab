@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 
-from agent_lab import room_context as rc
+from agent_lab.room import context as rc
 
 
 @dataclass

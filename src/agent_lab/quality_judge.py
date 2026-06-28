@@ -209,11 +209,11 @@ def judge_session(
         if judge_call is None and not judge_live_enabled():
             return {"enabled": False, "reason": "AGENT_LAB_JUDGE_LIVE off"}
         if run_meta is None:
-            from agent_lab.run_meta import read_run_meta
+            from agent_lab.run.meta import read_run_meta
 
             run_meta = read_run_meta(folder)
         if messages is None:
-            from agent_lab.session_score import _load_chat_messages
+            from agent_lab.session.score import _load_chat_messages
 
             messages = _load_chat_messages(folder)
         plan_path = folder / "plan.md"

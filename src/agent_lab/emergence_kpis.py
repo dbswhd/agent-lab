@@ -6,8 +6,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-from agent_lab.plan_refs import REF_BLOCK_PATTERN, extract_ref_line_numbers
-from agent_lab.room_objections import list_objections
+from agent_lab.plan.refs import REF_BLOCK_PATTERN, extract_ref_line_numbers
+from agent_lab.room.objections import list_objections
 
 CONFLICT_ACTS = frozenset({"CHALLENGE", "BLOCK"})
 

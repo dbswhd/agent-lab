@@ -107,7 +107,7 @@ def test_mcp_review_tool(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Non
     _write_pass_card(pipeline, "kospi_v1")
     monkeypatch.setenv("QUANT_PIPELINE_ROOT", str(pipeline))
 
-    from agent_lab.research_mcp_server import review_proposal_thesis as mcp_review
+    from agent_lab.research.mcp_server import review_proposal_thesis as mcp_review
 
     payload = mcp_review(
         thesis="Rebalance 069500 100k on overlay PASS signal",

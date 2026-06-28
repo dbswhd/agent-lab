@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from agent_lab.reply_policy import build_guidance_parts, resolve_reply_policy
-from agent_lab.room_context import FAST_TURN_GUIDANCE, agent_tool_rules
+from agent_lab.room.context import FAST_TURN_GUIDANCE, agent_tool_rules
 
 
 def test_quick_profile_skips_peer_coordination_guidance() -> None:

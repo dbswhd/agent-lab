@@ -35,7 +35,7 @@ def _live_probe_enabled() -> bool:
 
 
 def _probe_cache_path() -> Path:
-    from agent_lab.workspace_roots import project_root
+    from agent_lab.workspace.roots import project_root
 
     override = (os.getenv("AGENT_LAB_LOOP_PROBE_CACHE") or "").strip()
     if override:
@@ -48,7 +48,7 @@ def _mock_mode() -> bool:
 
 
 def _probe_session_folder(agent: AgentId) -> Path:
-    from agent_lab.workspace_roots import project_root
+    from agent_lab.workspace.roots import project_root
 
     folder = project_root() / ".agent-lab" / "loop-probe-sessions" / agent
     folder.mkdir(parents=True, exist_ok=True)
@@ -59,14 +59,14 @@ def _prepare_kimi_work_probe_session(folder: Path) -> bool:
     """Bind a live daimon conversation for loop envelope probe; no-op in mock mode."""
     if _mock_mode():
         return True
-    from agent_lab.kimi_work_provider import is_configured
-    from agent_lab.kimi_work_session import (
+    from agent_lab.kimi.work_provider import is_configured
+    from agent_lab.kimi.work_session import (
         clear_conversation_key,
         ensure_kimi_work_session,
         get_conversation_key,
         is_usable_conversation_key,
     )
-    from agent_lab.workspace_roots import project_root
+    from agent_lab.workspace.roots import project_root
 
     if not is_configured():
         return False
@@ -137,9 +137,9 @@ def _probe_supports_json_envelope(agent: AgentId) -> bool:
 def _probe_kimi_work_tools() -> bool:
     if _mock_mode():
         return True
-    from agent_lab.kimi_control_client import probe_control, rpc
-    from agent_lab.kimi_work_loop import kimi_work_loop_tool_features_ok
-    from agent_lab.kimi_work_provider import is_configured
+    from agent_lab.kimi.control_client import probe_control, rpc
+    from agent_lab.kimi.work_loop import kimi_work_loop_tool_features_ok
+    from agent_lab.kimi.work_provider import is_configured
 
     if not is_configured():
         return False
@@ -155,8 +155,8 @@ def _probe_kimi_work_tools() -> bool:
 
 
 def _probe_kimi_work_inbox() -> bool:
-    from agent_lab.kimi_work_inbox_bridge import kimi_work_inbox_bridge_ready
-    from agent_lab.kimi_work_loop import kimi_work_loop_inbox_features_ok, kimi_work_loop_phase
+    from agent_lab.kimi.work_inbox_bridge import kimi_work_inbox_bridge_ready
+    from agent_lab.kimi.work_loop import kimi_work_loop_inbox_features_ok, kimi_work_loop_phase
 
     if kimi_work_loop_phase() < 2:
         return False
@@ -164,8 +164,8 @@ def _probe_kimi_work_inbox() -> bool:
         return False
     if _mock_mode():
         return True
-    from agent_lab.kimi_control_client import probe_control, rpc
-    from agent_lab.kimi_work_provider import is_configured
+    from agent_lab.kimi.control_client import probe_control, rpc
+    from agent_lab.kimi.work_provider import is_configured
 
     if not is_configured():
         return False
@@ -185,7 +185,7 @@ def _probe_kimi_work_inbox() -> bool:
 
 def _envelope_reply_valid(reply: Any) -> bool:
     """True when reply parses to a valid Loop consensus speech act."""
-    from agent_lab.agent_envelope import VALID_ACTS, parse_agent_response_v2
+    from agent_lab.agent.envelope import VALID_ACTS, parse_agent_response_v2
 
     structured = getattr(reply, "structured_envelope", None)
     parsed = parse_agent_response_v2(reply.text, structured=structured)

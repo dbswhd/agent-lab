@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.agent_envelope import extract_learned_notes
-from agent_lab.context_bundle import (
+from agent_lab.agent.envelope import extract_learned_notes
+from agent_lab.context.bundle import (
     _append_wisdom_search_block,
     wisdom_in_context_mode,
 )
@@ -36,8 +36,8 @@ def test_harvest_agent_learnings_dedupe(tmp_path, monkeypatch, request):
     import shutil
     import uuid
 
-    from agent_lab.mission_notepad import ensure_mission_notepads, mission_notepad_dir
-    from agent_lab.wisdom_index import harvest_agent_learnings
+    from agent_lab.mission.notepad import ensure_mission_notepads, mission_notepad_dir
+    from agent_lab.wisdom.index import harvest_agent_learnings
 
     monkeypatch.delenv("AGENT_LAB_AGENT_LEARNINGS", raising=False)
     # mission notepad는 ~/.agent-lab/missions/<폴더이름> 전역 경로 —
@@ -65,7 +65,7 @@ def test_harvest_agent_learnings_dedupe(tmp_path, monkeypatch, request):
 
 
 def test_harvest_agent_learnings_flag_off(tmp_path, monkeypatch):
-    from agent_lab.wisdom_index import harvest_agent_learnings
+    from agent_lab.wisdom.index import harvest_agent_learnings
 
     monkeypatch.setenv("AGENT_LAB_AGENT_LEARNINGS", "0")
     msgs = [_Msg("user"), _Msg("agent", "codex", "[LEARNED: x]")]
@@ -81,8 +81,8 @@ def wisdom_session(tmp_path: Path):
     import shutil
     import uuid
 
-    from agent_lab.mission_loop import append_wisdom_note, ensure_mission_notepads
-    from agent_lab.mission_notepad import mission_notepad_dir
+    from agent_lab.mission.loop import append_wisdom_note, ensure_mission_notepads
+    from agent_lab.mission.notepad import mission_notepad_dir
 
     folder = tmp_path / f"sess-{uuid.uuid4().hex[:10]}"
     folder.mkdir()
@@ -149,7 +149,7 @@ def test_mcp_wisdom_search_tool(wisdom_session, monkeypatch):
     monkeypatch.setenv("AGENT_LAB_WISDOM_INDEX", "1")
     folder = wisdom_session
     monkeypatch.setenv("AGENT_LAB_SESSION_FOLDER", str(folder))
-    from agent_lab.inbox_mcp_server import wisdom_search
+    from agent_lab.inbox.mcp_server import wisdom_search
 
     payload = wisdom_search("outbox 재시도", k=3)
     assert payload["enabled"] is True

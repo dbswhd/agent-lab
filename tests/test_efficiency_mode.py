@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from agent_lab.context_bundle import build_context_bundle, build_slim_consensus_bundle
-from agent_lab.context_limits import efficiency_limits
-from agent_lab.room_context import cap_pinned_messages, prepare_recent_messages
+from agent_lab.context.bundle import build_context_bundle, build_slim_consensus_bundle
+from agent_lab.context.limits import efficiency_limits
+from agent_lab.room.context import cap_pinned_messages, prepare_recent_messages
 
 
 @dataclass

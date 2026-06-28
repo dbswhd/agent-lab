@@ -46,7 +46,7 @@ def test_pipeline_handle_requires_session() -> None:
 
 
 def test_clarify_handle_sets_phase(tmp_path: Path) -> None:
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.run.meta import read_run_meta
     from agent_lab.slash_commands import dispatch
 
     _write_run(tmp_path, {"enabled": True, "phase": "DISCUSS"})
@@ -56,7 +56,7 @@ def test_clarify_handle_sets_phase(tmp_path: Path) -> None:
 
 
 def test_plan_handle_sets_phase(tmp_path: Path) -> None:
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.run.meta import read_run_meta
     from agent_lab.slash_commands import dispatch
 
     _write_run(tmp_path, {"enabled": True, "phase": "CLARIFY"})

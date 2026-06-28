@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from agent_lab.mission_advance import maybe_advance_mission
+from agent_lab.mission.advance import maybe_advance_mission
 
 
 def _make_run(tmp_path: Path, *, phase: str = "DISCUSS", pending: bool = False):
@@ -49,8 +49,8 @@ def test_maybe_advance_mission_autoforwards_discuss(monkeypatch, tmp_path):
     def fake_mission_dispatch(folder, topic, payload):
         calls.append(("dispatch", topic, payload))
 
-    import agent_lab.mission_board as mb
-    import agent_lab.mission_loop as ml
+    import agent_lab.mission.board as mb
+    import agent_lab.mission.loop as ml
 
     monkeypatch.setattr(mb, "record_autorun_tick", fake_record)
     monkeypatch.setattr(mb, "sync_turn_budget_from_mission", fake_sync)
@@ -112,10 +112,10 @@ def test_on_verify_result_does_not_double_count(monkeypatch, tmp_path):
     def fake_append_wisdom(*args, **kwargs):
         return None
 
-    import agent_lab.mission_board as mb
-    import agent_lab.mission_loop as ml
-    import agent_lab.mission_advance as ma
-    import agent_lab.mission_notepad as mn
+    import agent_lab.mission.board as mb
+    import agent_lab.mission.loop as ml
+    import agent_lab.mission.advance as ma
+    import agent_lab.mission.notepad as mn
     import agent_lab.runtime.boulder as boulder
 
     monkeypatch.setattr(mb, "record_autorun_tick", fake_record_autorun)

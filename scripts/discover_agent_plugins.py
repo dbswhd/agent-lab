@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from agent_lab.plugin_discovery import discover_plugins  # noqa: E402
-from agent_lab.workspace_roots import discuss_primary_workspace  # noqa: E402
+from agent_lab.workspace.roots import discuss_primary_workspace  # noqa: E402
 
 
 def main() -> int:

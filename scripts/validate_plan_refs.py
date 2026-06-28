@@ -10,7 +10,7 @@ _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(_ROOT / "src"))
 
-from agent_lab.plan_refs import (  # noqa: E402
+from agent_lab.plan.refs import (  # noqa: E402
     validate_plan_ref_meaning,
     validate_plan_refs,
 )

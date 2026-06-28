@@ -97,7 +97,7 @@ def agent_tool_paths() -> dict[str, str | None]:
 
 def build_diagnostics_payload() -> dict[str, Any]:
     from agent_lab.app_config import log_dir
-    from agent_lab.session_paths import active_sessions_dir
+    from agent_lab.session.paths import active_sessions_dir
     from agent_lab.verification_report import build_verification_report
 
     sessions_root = active_sessions_dir()

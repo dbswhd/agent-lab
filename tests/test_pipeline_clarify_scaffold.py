@@ -16,7 +16,7 @@ def _write_run(folder: Path, ml: dict, *, goal_text: str | None = None) -> None:
 
 
 def test_pipeline_always_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab.mission_loop import pipeline_enabled, pipeline_explicitly_disabled
+    from agent_lab.mission.loop import pipeline_enabled, pipeline_explicitly_disabled
 
     for val in (None, "0", "false", "no", "off", "1"):
         if val is None:
@@ -28,7 +28,7 @@ def test_pipeline_always_enabled(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_clarify_in_phase_vocab() -> None:
-    from agent_lab.run_schema import _VALID_MISSION_PHASES
+    from agent_lab.run.schema import _VALID_MISSION_PHASES
     from agent_lab.runtime.phases import MISSION_PHASES
 
     assert "CLARIFY" in MISSION_PHASES
@@ -37,8 +37,8 @@ def test_clarify_in_phase_vocab() -> None:
 
 def test_clarify_advances_when_anchored(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
-    from agent_lab.mission_advance import maybe_advance_mission
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.mission.advance import maybe_advance_mission
+    from agent_lab.run.meta import read_run_meta
 
     _write_run(
         tmp_path,
@@ -52,8 +52,8 @@ def test_clarify_advances_when_anchored(tmp_path: Path, monkeypatch: pytest.Monk
 
 def test_clarify_stays_when_vague(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
-    from agent_lab.mission_advance import maybe_advance_mission
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.mission.advance import maybe_advance_mission
+    from agent_lab.run.meta import read_run_meta
 
     _write_run(
         tmp_path,
@@ -72,7 +72,7 @@ def test_mode_router_enters_clarify_from_discuss_when_vague(
 ) -> None:
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     from agent_lab.mode_router import apply_mission_mode_route
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.run.meta import read_run_meta
 
     _write_run(
         tmp_path,

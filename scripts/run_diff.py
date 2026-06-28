@@ -13,7 +13,7 @@ _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(_ROOT / "src"))
 
-from agent_lab.plan_refs import validate_plan_refs  # noqa: E402
+from agent_lab.plan.refs import validate_plan_refs  # noqa: E402
 
 
 def _load_run(folder: Path) -> dict[str, Any]:

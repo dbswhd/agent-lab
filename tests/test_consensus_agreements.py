@@ -10,7 +10,7 @@ from agent_lab.consensus_agreements import (
     record_consensus_agreement,
     short_excerpt,
 )
-from agent_lab.room_context import plan_stale_banner
+from agent_lab.room.context import plan_stale_banner
 
 
 def test_record_and_sync_consensus_agreement():

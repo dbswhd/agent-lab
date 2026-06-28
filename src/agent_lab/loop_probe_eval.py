@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
-from agent_lab.agent_envelope import AgentEnvelope, parse_agent_response
+from agent_lab.agent.envelope import AgentEnvelope, parse_agent_response
 from agent_lab.model_policy import (
     AgentId,
     ModelProfile,

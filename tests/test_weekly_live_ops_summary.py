@@ -6,7 +6,7 @@ import json
 from datetime import date
 from pathlib import Path
 
-from agent_lab.session_score_weekly import (
+from agent_lab.session.score_weekly import (
     build_weekly_report,
     discover_live_ops_reports,
     format_weekly_report_markdown,

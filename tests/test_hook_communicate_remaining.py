@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.agent_envelope import parse_agent_response_v2, split_structured_envelope_prefix
-from agent_lab.agent_hooks_materializer import (
+from agent_lab.agent.envelope import parse_agent_response_v2, split_structured_envelope_prefix
+from agent_lab.agent.hooks_materializer import (
     ensure_session_agent_hooks_from_config,
     native_claude_hooks_overlay,
     native_codex_hooks_overlay,
@@ -20,8 +20,8 @@ from agent_lab.structured_envelope_adapter import (
     should_request_structured_envelope,
 )
 from agent_lab.reply_policy import resolve_reply_policy
-from agent_lab.run_observability import observability_snapshot
-from agent_lab.room_hooks import clear_hooks_config_cache
+from agent_lab.run.observability import observability_snapshot
+from agent_lab.room.hooks import clear_hooks_config_cache
 
 
 def test_split_structured_envelope_prefix():

@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "exclude_files": [],
+  "max_ratchet_errors": 0,
+  "total_errors_snapshot": 0,
+  "note": "Strict overrides: pyproject.toml [[tool.mypy.overrides]] agent_lab.research.*"
+}

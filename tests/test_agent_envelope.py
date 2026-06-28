@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent_lab.agent_envelope import (
+from agent_lab.agent.envelope import (
     classify_consensus_reply,
     envelope_act,
     envelope_protocol_block,

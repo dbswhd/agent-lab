@@ -80,7 +80,7 @@ tools:
     def _allow(run: dict) -> dict:
         return patch_external_tools_allowlist(run, ["external:echo"])
 
-    from agent_lab.run_meta import patch_run_meta
+    from agent_lab.run.meta import patch_run_meta
 
     patch_run_meta(session_folder, _allow)
 
@@ -140,7 +140,7 @@ def test_execute_external_via_registry(
     )
     monkeypatch.setenv("AGENT_LAB_EXTERNAL_TOOLS", "1")
 
-    from agent_lab.run_meta import patch_run_meta
+    from agent_lab.run.meta import patch_run_meta
 
     patch_run_meta(
         session_folder,

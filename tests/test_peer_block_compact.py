@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from agent_lab import room_context as rc
+from agent_lab.room import context as rc
 
 
 @dataclass

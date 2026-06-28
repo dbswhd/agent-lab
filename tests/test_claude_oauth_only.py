@@ -28,14 +28,14 @@ class _FakeProc:
 def _patch_claude_popen(monkeypatch) -> None:
     monkeypatch.setattr(time, "sleep", lambda _delay: None)
     monkeypatch.setattr(
-        "agent_lab.run_control.register_child_process",
+        "agent_lab.run.control.register_child_process",
         lambda _proc: None,
     )
     monkeypatch.setattr(
-        "agent_lab.run_control.unregister_child_process",
+        "agent_lab.run.control.unregister_child_process",
         lambda _proc: None,
     )
-    monkeypatch.setattr("agent_lab.run_control.is_cancelled", lambda: False)
+    monkeypatch.setattr("agent_lab.run.control.is_cancelled", lambda: False)
     monkeypatch.setattr(
         "agent_lab.claude_cli.ensure_claude_headless_ready",
         lambda **_kw: None,
@@ -77,7 +77,7 @@ def test_claude_invoke_never_injects_api_key(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-should-not-reach-child")
     monkeypatch.setattr(claude_cli, "resolve_claude_roots", lambda _perms: [])
     monkeypatch.setattr(
-        "agent_lab.workspace_roots.discuss_primary_workspace",
+        "agent_lab.workspace.roots.discuss_primary_workspace",
         lambda _perms: tmp_path,
     )
 
@@ -128,7 +128,7 @@ def test_invoke_invalidates_auth_cache_on_401(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("CLAUDE_BIN", str(fake_bin))
     monkeypatch.setattr(claude_cli, "resolve_claude_roots", lambda _perms: [])
     monkeypatch.setattr(
-        "agent_lab.workspace_roots.discuss_primary_workspace",
+        "agent_lab.workspace.roots.discuss_primary_workspace",
         lambda _perms: tmp_path,
     )
 

@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.session_setup import list_session_templates, template_guidance_block
+from agent_lab.session.setup import list_session_templates, template_guidance_block
 from agent_lab.trading_mission.thin_runtime import (
     find_latest_trading_session,
     resolve_thin_session_folder,
@@ -87,7 +87,7 @@ def test_get_intraday_status_mcp_tool(tmp_path: Path, monkeypatch: pytest.Monkey
     )
     monkeypatch.setenv("AGENT_LAB_SESSION_FOLDER", str(session))
 
-    from agent_lab.research_mcp_server import get_intraday_status as mcp_status
+    from agent_lab.research.mcp_server import get_intraday_status as mcp_status
 
     payload = mcp_status()
     assert payload.get("ok") is True

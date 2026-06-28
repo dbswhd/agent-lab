@@ -26,14 +26,14 @@ class _FakeProc:
 def _patch_claude_popen(monkeypatch) -> None:
     monkeypatch.setattr(time, "sleep", lambda _delay: None)
     monkeypatch.setattr(
-        "agent_lab.run_control.register_child_process",
+        "agent_lab.run.control.register_child_process",
         lambda _proc: None,
     )
     monkeypatch.setattr(
-        "agent_lab.run_control.unregister_child_process",
+        "agent_lab.run.control.unregister_child_process",
         lambda _proc: None,
     )
-    monkeypatch.setattr("agent_lab.run_control.is_cancelled", lambda: False)
+    monkeypatch.setattr("agent_lab.run.control.is_cancelled", lambda: False)
     monkeypatch.setattr(
         "agent_lab.claude_cli.ensure_claude_headless_ready",
         lambda **_kw: None,
@@ -52,7 +52,7 @@ def test_claude_cli_retries_transient_subprocess_failure(monkeypatch, tmp_path):
     monkeypatch.setattr("agent_lab.cli_retry.time.sleep", lambda _delay: None)
     monkeypatch.setattr(claude_cli, "resolve_claude_roots", lambda _perms: [])
     monkeypatch.setattr(
-        "agent_lab.workspace_roots.discuss_primary_workspace",
+        "agent_lab.workspace.roots.discuss_primary_workspace",
         lambda _perms: tmp_path,
     )
     calls = 0
@@ -83,7 +83,7 @@ def test_claude_cli_does_not_retry_empty_output(monkeypatch, tmp_path):
     monkeypatch.setenv("AGENT_LAB_CLI_RETRY_MAX", "3")
     monkeypatch.setattr(claude_cli, "resolve_claude_roots", lambda _perms: [])
     monkeypatch.setattr(
-        "agent_lab.workspace_roots.discuss_primary_workspace",
+        "agent_lab.workspace.roots.discuss_primary_workspace",
         lambda _perms: tmp_path,
     )
     calls = 0

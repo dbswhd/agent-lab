@@ -9,8 +9,8 @@ import time
 
 import pytest
 
-from agent_lab.kimi_control_client import ControlEndpoint, KimiWorkBridgeUnavailable
-from agent_lab.kimi_daimon_supervisor import (
+from agent_lab.kimi.control_client import ControlEndpoint, KimiWorkBridgeUnavailable
+from agent_lab.kimi.daimon_supervisor import (
     endpoint_from_runner_state,
     ensure_daimon,
     is_owned_pid,
@@ -85,8 +85,8 @@ def test_attaches_external_daimon_when_ws_probe_ok(
     def _fake_alive(pid: int) -> bool:
         return pid == 999999
 
-    monkeypatch.setattr("agent_lab.kimi_daimon_supervisor._pid_alive", _fake_alive)
-    monkeypatch.setattr("agent_lab.kimi_control_client.probe_endpoint_ws", lambda _ep: True)
+    monkeypatch.setattr("agent_lab.kimi.daimon_supervisor._pid_alive", _fake_alive)
+    monkeypatch.setattr("agent_lab.kimi.control_client.probe_endpoint_ws", lambda _ep: True)
     ep = ensure_daimon()
     assert ep == fake
 
@@ -109,10 +109,10 @@ def test_external_daimon_ws_probe_fails(tmp_path: Path, monkeypatch: pytest.Monk
     def _fake_alive(pid: int) -> bool:
         return pid == 999999
 
-    monkeypatch.setattr("agent_lab.kimi_daimon_supervisor._pid_alive", _fake_alive)
-    monkeypatch.setattr("agent_lab.kimi_control_client.probe_endpoint_ws", lambda _ep: False)
+    monkeypatch.setattr("agent_lab.kimi.daimon_supervisor._pid_alive", _fake_alive)
+    monkeypatch.setattr("agent_lab.kimi.control_client.probe_endpoint_ws", lambda _ep: False)
     monkeypatch.setattr(
-        "agent_lab.kimi_daimon_supervisor._wait_for_external_attach",
+        "agent_lab.kimi.daimon_supervisor._wait_for_external_attach",
         lambda _share: None,
     )
     with pytest.raises(KimiWorkBridgeUnavailable) as exc:
@@ -123,7 +123,7 @@ def test_external_daimon_ws_probe_fails(tmp_path: Path, monkeypatch: pytest.Monk
 def test_is_owned_pid_tracks_spawned(monkeypatch: pytest.MonkeyPatch) -> None:
     shutdown_owned_daimon()
     assert is_owned_pid(12345) is False
-    import agent_lab.kimi_daimon_supervisor as sup
+    import agent_lab.kimi.daimon_supervisor as sup
 
     monkeypatch.setattr(sup, "_pid_alive", lambda pid: pid == 4242)
     sup._owned_pid = 4242  # noqa: SLF001
@@ -136,7 +136,7 @@ def test_is_owned_pid_tracks_spawned(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_wait_for_endpoint_stdout_only(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab.kimi_daimon_supervisor import _wait_for_endpoint
+    from agent_lab.kimi.daimon_supervisor import _wait_for_endpoint
 
     monkeypatch.setenv("KIMI_SHARE_DIR", str(tmp_path))
     main = tmp_path / "daimon" / "agents" / "main"

@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from agent_lab.attachments import MAX_FILE_BYTES
-from agent_lab.workspace_files import (
+from agent_lab.workspace.files import (
     PathNotAllowed,
     RootNotFound,
     WriteNotAllowed,

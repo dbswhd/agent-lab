@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.mission_loop import enable_mission_loop, get_mission_loop, run_plan_gate
-from agent_lab.run_meta import patch_run_meta, read_run_meta
+from agent_lab.mission.loop import enable_mission_loop, get_mission_loop, run_plan_gate
+from agent_lab.run.meta import patch_run_meta, read_run_meta
 from agent_lab.runtime.events import RuntimeEvent
 from agent_lab.runtime.runtime import dispatch
 

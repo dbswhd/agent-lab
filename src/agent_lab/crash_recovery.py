@@ -137,7 +137,7 @@ def _apply_decision(
     action: str,
     info: str | None,
 ) -> None:
-    from agent_lab.run_meta import patch_run_meta
+    from agent_lab.run.meta import patch_run_meta
 
     ts = _now()
 
@@ -181,7 +181,7 @@ def _apply_decision(
     # Filesystem cleanup AFTER the atomic run.json write (idempotent, best-effort).
     if action == "merged":
         try:
-            from agent_lab.plan_execute_worktree import remove_exec_worktree
+            from agent_lab.plan.execute_worktree import remove_exec_worktree
 
             remove_exec_worktree(
                 folder,
@@ -195,7 +195,7 @@ def _apply_decision(
         snap = str(cp.get("snapshot_id") or "")
         if snap:
             try:
-                from agent_lab.plan_execute_snapshot import delete_snapshot
+                from agent_lab.plan.execute_snapshot import delete_snapshot
 
                 delete_snapshot(folder, snap)
             except Exception:
@@ -222,7 +222,7 @@ def _crashed_rows(run: dict[str, Any]) -> list[tuple[dict[str, Any], dict[str, A
 
 
 def _reconcile_session(folder: Path) -> dict[str, int]:
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.run.meta import read_run_meta
 
     counts = {"reconciled_merged": 0, "rolled_back": 0, "quarantined": 0}
     run = read_run_meta(folder)

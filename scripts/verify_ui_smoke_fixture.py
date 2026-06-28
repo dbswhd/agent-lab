@@ -16,7 +16,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from agent_lab.plan_actions import parse_plan_action_sections
+from agent_lab.plan.actions import parse_plan_action_sections
 
 FIXTURE_ID = "ui_pending_diff"
 FIXTURE = ROOT / "sessions" / "_regression" / FIXTURE_ID

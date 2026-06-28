@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, TypeVar
 
 from agent_lab.cost_ledger import record_agent_usage, usage_from_bridge
-from agent_lab.run_meta import patch_run_meta, read_run_meta
+from agent_lab.run.meta import patch_run_meta, read_run_meta
 from agent_lab.trace_recorder import record_agent_span
 
 T = TypeVar("T")

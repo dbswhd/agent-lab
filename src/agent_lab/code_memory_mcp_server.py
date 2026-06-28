@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from mcp.server.fastmcp import FastMCP
-from agent_lab.workspace_roots import project_root
+from agent_lab.workspace.roots import project_root
 
 mcp = FastMCP("agent-lab-code-memory")
 _TRUE = {"1", "true", "yes", "on"}

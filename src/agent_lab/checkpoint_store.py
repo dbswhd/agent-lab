@@ -151,7 +151,7 @@ def resume_from_checkpoint(folder: Path, n: int) -> dict[str, Any]:
     dispatch, or re-execution — the operator reviews and advances manually. Raises
     ``KeyError`` when no checkpoint matches ``n``.
     """
-    from agent_lab.run_meta import read_run_meta, write_run_meta
+    from agent_lab.run.meta import read_run_meta, write_run_meta
 
     records = _read_checkpoints(folder)
     match = next((r for r in records if r.get("n") == n), None)

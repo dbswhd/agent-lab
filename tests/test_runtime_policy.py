@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.run_meta import patch_run_meta
+from agent_lab.run.meta import patch_run_meta
 from agent_lab.runtime.policy import PolicyEngine
-from agent_lab.room_hooks import PreExecuteBlocked
+from agent_lab.room.hooks import PreExecuteBlocked
 
 
 @pytest.fixture
@@ -36,7 +36,7 @@ def test_execute_block_reason_from_objection(session_folder: Path) -> None:
         return run
 
     patch_run_meta(session_folder, _block)
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.run.meta import read_run_meta
 
     reason = PolicyEngine.execute_block_reason(read_run_meta(session_folder))
     assert reason is not None
@@ -44,10 +44,10 @@ def test_execute_block_reason_from_objection(session_folder: Path) -> None:
 
 
 def test_pre_execute_hook_blocks(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab import room_hooks
+    from agent_lab.room import hooks
 
     def _fake_pre_execute(*_a, **_k):
-        from agent_lab.room_hooks import HookResult
+        from agent_lab.room.hooks import HookResult
 
         return HookResult(
             blocked=True,
@@ -56,8 +56,8 @@ def test_pre_execute_hook_blocks(session_folder: Path, monkeypatch: pytest.Monke
             event="pre_execute",
         )
 
-    monkeypatch.setattr(room_hooks, "run_hook", _fake_pre_execute)
-    from agent_lab.run_meta import read_run_meta
+    monkeypatch.setattr(hooks, "run_hook", _fake_pre_execute)
+    from agent_lab.run.meta import read_run_meta
 
     run = read_run_meta(session_folder)
     with pytest.raises(PreExecuteBlocked, match="policy test block"):

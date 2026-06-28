@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.mission_board import (
+from agent_lab.mission.board import (
     begin_human_turn,
     build_goal_chain,
     checkout_lane,
@@ -144,7 +144,7 @@ def test_record_autorun_tick_hourly_window(tmp_path: Path, monkeypatch: pytest.M
         },
     )
     monkeypatch.setattr(
-        "agent_lab.mission_board._hour_bucket",
+        "agent_lab.mission.board._hour_bucket",
         lambda: "2026-06-09T10",
     )
     tb1 = record_autorun_tick(folder)
@@ -160,7 +160,7 @@ def test_public_turn_budget_payload_budget_pct():
             "counters": {"agent_calls_per_human_turn": 5},
         }
     }
-    from agent_lab.mission_board import refresh_turn_budget
+    from agent_lab.mission.board import refresh_turn_budget
 
     refresh_turn_budget(run)
     payload = public_turn_budget_payload(run)

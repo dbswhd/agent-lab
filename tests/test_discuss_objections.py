@@ -7,7 +7,7 @@ import json
 
 from agent_mocks import patch_call_agent_reply
 
-from agent_lab.room_objections import (
+from agent_lab.room.objections import (
     append_objection,
     list_objections,
     open_objections,

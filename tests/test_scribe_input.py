@@ -5,7 +5,7 @@ from __future__ import annotations
 from unittest.mock import patch
 
 from agent_lab.room import ChatMessage, synthesize_plan
-from agent_lab.room_scribe_enrichment import (
+from agent_lab.room.scribe_enrichment import (
     extract_agent_turn_summaries,
     format_scribe_agent_summaries_block,
 )

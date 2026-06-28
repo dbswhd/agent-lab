@@ -11,7 +11,7 @@ from agent_lab.goal_loop import (
     maybe_check_session_goal_after_turn,
     set_session_goal,
 )
-from agent_lab.run_meta import read_run_meta
+from agent_lab.run.meta import read_run_meta
 
 
 def _session(tmp_path: Path) -> Path:

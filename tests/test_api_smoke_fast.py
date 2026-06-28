@@ -19,7 +19,7 @@ def api_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     (session_dir / "run.json").write_text("{}", encoding="utf-8")
     (session_dir / "topic.txt").write_text("smoke\n", encoding="utf-8")
 
-    import agent_lab.session_paths as sp
+    import agent_lab.session.paths as sp
 
     monkeypatch.setattr(sp, "SESSIONS_DIR", sessions_dir)
     monkeypatch.setattr("app.server.deps.SESSIONS_DIR", sessions_dir)

@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.room_dispatch import (
+from agent_lab.room.dispatch import (
     dispatch_max_fanout,
     dispatch_run_meta_patch,
     parse_dispatch_from_message,
@@ -143,7 +143,7 @@ def test_parallel_fanout_two_agents(monkeypatch: pytest.MonkeyPatch, tmp_path: P
 
 def test_pre_dispatch_hook_blocks(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     from agent_lab import room
-    from agent_lab.room_hooks import clear_hooks_config_cache
+    from agent_lab.room.hooks import clear_hooks_config_cache
 
     folder = tmp_path / "dispatch-blocked"
     folder.mkdir()
@@ -201,9 +201,9 @@ def test_dispatch_run_meta_patch_includes_ledger():
 
 
 def test_envelope_dispatch_intent_harvest():
-    from agent_lab.agent_envelope import AgentEnvelope
+    from agent_lab.agent.envelope import AgentEnvelope
     from agent_lab.room import ChatMessage
-    from agent_lab.room_dispatch_intents import harvest_dispatch_intents_from_turn
+    from agent_lab.room.dispatch_intents import harvest_dispatch_intents_from_turn
 
     run_meta: dict = {}
     msgs = [

@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from agent_lab.context_layers import repo_tree_layer_enabled
+from agent_lab.context.layers import repo_tree_layer_enabled
 
 _PATH_HINT_RE = re.compile(
     r"`([^`]+\.(?:py|ts|tsx|js|md|json|yaml|yml|rs|go))`|"
@@ -90,7 +90,7 @@ def _agents_md_chain(root: Path, hint: Path) -> list[Path]:
 def _plan_action_path_hints(plan_md: str) -> list[Path]:
     """Structured paths from parsed plan actions (stage-2 per-dir memory)."""
     try:
-        from agent_lab.plan_actions import parse_plan_actions
+        from agent_lab.plan.actions import parse_plan_actions
     except ImportError:
         return []
     hints: list[Path] = []

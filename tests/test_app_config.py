@@ -65,7 +65,7 @@ def test_user_agent_lab_root_ignores_bundled_runtime(tmp_path, monkeypatch):
     user_lab.mkdir(parents=True)
     monkeypatch.setenv("AGENT_LAB_ROOT", str(bundled))
     monkeypatch.setenv("AGENT_LAB_DEV_ROOT", str(user_lab))
-    from agent_lab.workspace_roots import is_bundled_app_runtime, user_agent_lab_root
+    from agent_lab.workspace.roots import is_bundled_app_runtime, user_agent_lab_root
 
     assert is_bundled_app_runtime(bundled)
     assert user_agent_lab_root() == user_lab.resolve()
@@ -79,14 +79,14 @@ def test_list_workspace_presets_uses_dev_root_not_bundled(tmp_path, monkeypatch)
     monkeypatch.setenv("AGENT_LAB_ROOT", str(bundled))
     monkeypatch.setenv("AGENT_LAB_DEV_ROOT", str(user_lab))
     monkeypatch.setattr(
-        "agent_lab.session_setup.pipeline_root",
+        "agent_lab.session.setup.pipeline_root",
         lambda: None,
     )
     monkeypatch.setattr(
-        "agent_lab.session_setup.lecture_script_root",
+        "agent_lab.session.setup.lecture_script_root",
         lambda: None,
     )
-    from agent_lab.session_setup import list_workspace_presets
+    from agent_lab.session.setup import list_workspace_presets
 
     presets = list_workspace_presets()
     agent = next(p for p in presets if p["id"] == "agent-lab")

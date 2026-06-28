@@ -55,12 +55,12 @@ def _install_consensus_mock() -> None:
 
 
 def run_pipeline_dogfood(*, sessions_root: Path, session_id: str | None = None) -> tuple[Path, list[dict[str, object]]]:
-    from agent_lab.mission_loop import get_mission_loop, pipeline_enabled
+    from agent_lab.mission.loop import get_mission_loop, pipeline_enabled
     from agent_lab.clarity import clarity_threshold_met, score_ambiguity
     from agent_lab.consensus_gate import consensus_gate_met
-    from agent_lab.mission_advance import maybe_advance_mission
-    from agent_lab.mission_loop import enable_mission_loop
-    from agent_lab.run_meta import patch_run_meta, read_run_meta
+    from agent_lab.mission.advance import maybe_advance_mission
+    from agent_lab.mission.loop import enable_mission_loop
+    from agent_lab.run.meta import patch_run_meta, read_run_meta
 
     checks: list[dict[str, object]] = []
 

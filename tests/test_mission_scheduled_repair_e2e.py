@@ -6,16 +6,16 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.mission_loop import enable_mission_loop
-from agent_lab.mission_advance import maybe_advance_mission, on_verify_result
-from agent_lab.mission_tick import run_scheduled_mission_tick
-from agent_lab.run_meta import patch_run_meta, read_run_meta
+from agent_lab.mission.loop import enable_mission_loop
+from agent_lab.mission.advance import maybe_advance_mission, on_verify_result
+from agent_lab.mission.tick import run_scheduled_mission_tick
+from agent_lab.run.meta import patch_run_meta, read_run_meta
 from agent_lab.trust_budget import set_trust_budget
 
 
 @pytest.fixture
 def sessions_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    import agent_lab.mission_scheduler as sched_mod
+    import agent_lab.mission.scheduler as sched_mod
     import agent_lab.session as session_mod
     import app.server.deps as deps_mod
 
@@ -80,7 +80,7 @@ def test_scheduled_tick_repair_passes_to_mission_done(sessions_env: Path, monkey
         }
 
     monkeypatch.setattr(
-        "agent_lab.plan_execute.reverify_merged_execution",
+        "agent_lab.plan.execute.reverify_merged_execution",
         _fake_reverify,
     )
 
@@ -103,7 +103,7 @@ def test_maybe_advance_scheduled_repair(sessions_env: Path, monkeypatch: pytest.
     patch_run_meta(folder, _repair_state)
 
     monkeypatch.setattr(
-        "agent_lab.plan_execute.reverify_merged_execution",
+        "agent_lab.plan.execute.reverify_merged_execution",
         lambda folder_arg, execution_id, **kwargs: (
             on_verify_result(folder_arg, action_index=1, verdict="pass"),
             {
@@ -181,7 +181,7 @@ def test_scheduled_conductor_merge_fail_repair_pass_chain(sessions_env: Path, mo
 
     monkeypatch.setattr("agent_lab.auto_merge.resolve_auto_merge", _fake_auto_merge)
     monkeypatch.setattr(
-        "agent_lab.plan_execute.reverify_merged_execution",
+        "agent_lab.plan.execute.reverify_merged_execution",
         _fake_reverify,
     )
 
@@ -270,10 +270,10 @@ def test_scheduled_conductor_execute_merge_fail_repair_pass(
             "repair": {"status": "merged", "attempt": 1},
         }
 
-    monkeypatch.setattr("agent_lab.plan_execute.run_dry_run", _fake_dry_run)
+    monkeypatch.setattr("agent_lab.plan.execute.run_dry_run", _fake_dry_run)
     monkeypatch.setattr("agent_lab.auto_merge.resolve_auto_merge", _fake_auto_merge)
     monkeypatch.setattr(
-        "agent_lab.plan_execute.reverify_merged_execution",
+        "agent_lab.plan.execute.reverify_merged_execution",
         _fake_reverify,
     )
 

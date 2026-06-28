@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from agent_lab.auto_merge import evaluate_auto_merge_eligibility, resolve_auto_merge
 from agent_lab.gateway.telegram_adapter import handle_gateway_command
 from agent_lab.merge_classifier import classify_source_paths
-from agent_lab.run_meta import read_run_meta
+from agent_lab.run.meta import read_run_meta
 from agent_lab.trust_budget import consume_auto_merge_budget, get_trust_budget, set_trust_budget
 from app.server.main import app
 
@@ -168,7 +168,7 @@ def test_resolve_auto_merge_records_audit(session_folder: Path, monkeypatch: pyt
     )
 
     def _fake_resolve(folder, *, execution_id, vote, permissions=None, approved_by="human", auto_merge_meta=None):
-        from agent_lab.run_meta import patch_run_meta
+        from agent_lab.run.meta import patch_run_meta
 
         def _mark(run):
             for row in run.get("executions") or []:
@@ -195,7 +195,7 @@ def test_resolve_auto_merge_records_audit(session_folder: Path, monkeypatch: pyt
             "approval": approval,
         }
 
-    monkeypatch.setattr("agent_lab.plan_execute.resolve_execution", _fake_resolve)
+    monkeypatch.setattr("agent_lab.plan.execute.resolve_execution", _fake_resolve)
 
     result = resolve_auto_merge(session_folder, execution_id="exec-docs")
     assert result["auto_merge"]["budget_before"] == 1
@@ -215,7 +215,7 @@ def test_telegram_approve_merge_pending_apply(session_folder: Path, monkeypatch:
     def _resolve(folder, *, execution_id, vote, permissions=None, approved_by="human", auto_merge_meta=None):
         return {"execution": {"id": execution_id, "status": "completed"}}
 
-    monkeypatch.setattr("agent_lab.plan_execute.resolve_execution", _resolve)
+    monkeypatch.setattr("agent_lab.plan.execute.resolve_execution", _resolve)
     result = handle_gateway_command(
         session_id=session_folder.name,
         text="/approve merge",

@@ -55,7 +55,7 @@ CROSS_LANE_IMPORTS: tuple[CrossLaneImport, ...] = (
         "done",
     ),
     CrossLaneImport(
-        "agent_lab.mission_loop",
+        "agent_lab.mission.loop",
         "agent_lab.runtime.invoke_discuss",
         "continue_room_round",
         OrchestrationLane.MISSION,
@@ -64,7 +64,7 @@ CROSS_LANE_IMPORTS: tuple[CrossLaneImport, ...] = (
         "done",
     ),
     CrossLaneImport(
-        "agent_lab.context_bundle",
+        "agent_lab.context.bundle",
         "agent_lab.runtime.context",
         "build_mission_wisdom_block",
         OrchestrationLane.CONTEXT,
@@ -73,7 +73,7 @@ CROSS_LANE_IMPORTS: tuple[CrossLaneImport, ...] = (
         "done",
     ),
     CrossLaneImport(
-        "agent_lab.room_tasks",
+        "agent_lab.room.tasks",
         "agent_lab.runtime.invoke_execute",
         "execution_allows_task_complete",
         OrchestrationLane.DISCUSS,
@@ -83,7 +83,7 @@ CROSS_LANE_IMPORTS: tuple[CrossLaneImport, ...] = (
     ),
     # --- Execute → runtime (H2) ---
     CrossLaneImport(
-        "agent_lab.mission_loop",
+        "agent_lab.mission.loop",
         "agent_lab.runtime.invoke_execute",
         "run_dry_run",
         OrchestrationLane.MISSION,
@@ -92,7 +92,7 @@ CROSS_LANE_IMPORTS: tuple[CrossLaneImport, ...] = (
         "done",
     ),
     CrossLaneImport(
-        "agent_lab.mission_loop",
+        "agent_lab.mission.loop",
         "agent_lab.runtime.invoke_execute",
         "reverify_merged_execution",
         OrchestrationLane.MISSION,
@@ -101,7 +101,7 @@ CROSS_LANE_IMPORTS: tuple[CrossLaneImport, ...] = (
         "done",
     ),
     CrossLaneImport(
-        "agent_lab.mission_loop",
+        "agent_lab.mission.loop",
         "agent_lab.runtime.invoke_execute",
         "cancel_open_execution",
         OrchestrationLane.MISSION,
@@ -110,7 +110,7 @@ CROSS_LANE_IMPORTS: tuple[CrossLaneImport, ...] = (
         "done",
     ),
     CrossLaneImport(
-        "agent_lab.plan_execute",
+        "agent_lab.plan.execute",
         "agent_lab.runtime.runtime",
         "dispatch",
         OrchestrationLane.EXECUTE,
@@ -119,7 +119,7 @@ CROSS_LANE_IMPORTS: tuple[CrossLaneImport, ...] = (
         "done",
     ),
     CrossLaneImport(
-        "agent_lab.plan_execute",
+        "agent_lab.plan.execute",
         "agent_lab.runtime.runtime",
         "dispatch_verify_result",
         OrchestrationLane.EXECUTE,
@@ -128,7 +128,7 @@ CROSS_LANE_IMPORTS: tuple[CrossLaneImport, ...] = (
         "done",
     ),
     CrossLaneImport(
-        "agent_lab.plan_execute",
+        "agent_lab.plan.execute",
         "agent_lab.runtime.context",
         "enrich_execute_prompt",
         OrchestrationLane.EXECUTE,
@@ -138,7 +138,7 @@ CROSS_LANE_IMPORTS: tuple[CrossLaneImport, ...] = (
     ),
     CrossLaneImport(
         "agent_lab.verified_loop",
-        "agent_lab.mission_loop",
+        "agent_lab.mission.loop",
         "enable_mission_loop",
         OrchestrationLane.MISSION,
         OrchestrationLane.MISSION,
@@ -147,7 +147,7 @@ CROSS_LANE_IMPORTS: tuple[CrossLaneImport, ...] = (
     ),
     # --- Policy layer (H4) ---
     CrossLaneImport(
-        "agent_lab.plan_execute",
+        "agent_lab.plan.execute",
         "agent_lab.runtime.policy",
         "PolicyEngine",
         OrchestrationLane.EXECUTE,
@@ -165,7 +165,7 @@ CROSS_LANE_IMPORTS: tuple[CrossLaneImport, ...] = (
         "done",
     ),
     CrossLaneImport(
-        "agent_lab.context_bundle",
+        "agent_lab.context.bundle",
         "agent_lab.runtime.policy",
         "PolicyEngine",
         OrchestrationLane.CONTEXT,
@@ -174,7 +174,7 @@ CROSS_LANE_IMPORTS: tuple[CrossLaneImport, ...] = (
         "done",
     ),
     CrossLaneImport(
-        "agent_lab.room_tasks",
+        "agent_lab.room.tasks",
         "agent_lab.runtime.policy",
         "PolicyEngine",
         OrchestrationLane.DISCUSS,
@@ -183,7 +183,7 @@ CROSS_LANE_IMPORTS: tuple[CrossLaneImport, ...] = (
         "done",
     ),
     CrossLaneImport(
-        "agent_lab.room_hooks",
+        "agent_lab.room.hooks",
         "agent_lab.runtime.policy",
         "PolicyEngine",
         OrchestrationLane.DISCUSS,
@@ -192,7 +192,7 @@ CROSS_LANE_IMPORTS: tuple[CrossLaneImport, ...] = (
         "done",
     ),
     CrossLaneImport(
-        "agent_lab.mission_loop",
+        "agent_lab.mission.loop",
         "agent_lab.runtime.policy",
         "PolicyEngine",
         OrchestrationLane.MISSION,
@@ -204,15 +204,15 @@ CROSS_LANE_IMPORTS: tuple[CrossLaneImport, ...] = (
 
 FORBIDDEN_CROSS_IMPORTS: frozenset[tuple[str, str]] = frozenset(
     {
-        ("agent_lab.plan_execute", "agent_lab.mission_loop"),
-        ("agent_lab.mission_loop", "agent_lab.plan_execute"),
-        ("agent_lab.room", "agent_lab.mission_loop"),
-        ("agent_lab.room", "agent_lab.plan_execute"),
-        ("agent_lab.mission_loop", "agent_lab.room"),
-        ("agent_lab.context_bundle", "agent_lab.mission_loop"),
-        ("agent_lab.room_tasks", "agent_lab.plan_execute"),
+        ("agent_lab.plan.execute", "agent_lab.mission.loop"),
+        ("agent_lab.mission.loop", "agent_lab.plan.execute"),
+        ("agent_lab.room", "agent_lab.mission.loop"),
+        ("agent_lab.room", "agent_lab.plan.execute"),
+        ("agent_lab.mission.loop", "agent_lab.room"),
+        ("agent_lab.context.bundle", "agent_lab.mission.loop"),
+        ("agent_lab.room.tasks", "agent_lab.plan.execute"),
     }
 )
 
 # Backward-compatible alias (H2 tests).
-FORBIDDEN_EXECUTE_IMPORTS = frozenset({pair for pair in FORBIDDEN_CROSS_IMPORTS if pair[0] == "agent_lab.plan_execute"})
+FORBIDDEN_EXECUTE_IMPORTS = frozenset({pair for pair in FORBIDDEN_CROSS_IMPORTS if pair[0] == "agent_lab.plan.execute"})

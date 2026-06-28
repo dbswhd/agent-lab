@@ -99,7 +99,7 @@ def _reset_act_cursors() -> None:
 def _run_topic_session(entry: dict[str, Any], sessions_base: Path) -> tuple[Path, dict[str, Any]]:
     """run_room + score_session — emergence_bench와 동일 패턴."""
     from agent_lab import room
-    from agent_lab.session_score import score_session
+    from agent_lab.session.score import score_session
 
     profile = str(entry.get("profile") or "analyze")
     folder, _messages, _plan = room.run_room(
@@ -125,7 +125,7 @@ def _router_value(folder: Path) -> dict[str, Any]:
     top-level ``_turn_category``는 턴 처리 중 in-memory 전용이므로 run.json에
     남지 않는다 (room.py: turns[].category로만 직렬화).
     """
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.run.meta import read_run_meta
 
     run = read_run_meta(folder)
     for turn in reversed(run.get("turns") or []):
@@ -146,8 +146,8 @@ def scenario_block_objection(entry: dict[str, Any], base: Path) -> dict[str, Any
 
     409 응답 자체는 ``objection_blocks_execute`` smoke baseline이 고정한다.
     """
-    from agent_lab.room_objections import open_objections
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.room.objections import open_objections
+    from agent_lab.run.meta import read_run_meta
 
     script = _write_act_script(
         base,
@@ -214,8 +214,8 @@ def scenario_challenge_amend(entry: dict[str, Any], base: Path) -> dict[str, Any
 
 def _scenario_dispatch(entry: dict[str, Any], base: Path, *, agents_csv: str, max_agents: int) -> dict[str, Any]:
     from agent_lab import room
-    from agent_lab.run_meta import read_run_meta
-    from agent_lab.session_score import score_session
+    from agent_lab.run.meta import read_run_meta
+    from agent_lab.session.score import score_session
 
     folder, _messages, _plan = room.run_room(
         "dogfood dispatch 시나리오 준비 턴",
@@ -262,7 +262,7 @@ def scenario_escalation(entry: dict[str, Any], base: Path) -> dict[str, Any]:
     시작시킨다 (resolve_topic_route: profile "quick" → category quick).
     """
     from agent_lab import room
-    from agent_lab.session_score import score_session
+    from agent_lab.session.score import score_session
 
     script = _write_act_script(
         base,
@@ -301,8 +301,8 @@ def scenario_escalation(entry: dict[str, Any], base: Path) -> dict[str, Any]:
 
 def scenario_plan_workflow_init(entry: dict[str, Any], base: Path) -> dict[str, Any]:
     """Plan mode send enables plan_workflow FSM (PW1)."""
-    from agent_lab.plan_workflow import get_plan_workflow
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.plan.workflow import get_plan_workflow
+    from agent_lab.run.meta import read_run_meta
 
     folder, report = _run_topic_session(entry, base)
     pw = get_plan_workflow(read_run_meta(folder))
@@ -325,14 +325,14 @@ def scenario_plan_workflow_init(entry: dict[str, Any], base: Path) -> dict[str, 
 
 def scenario_plan_fsm_human_pending(entry: dict[str, Any], base: Path) -> dict[str, Any]:
     """Peer → refine → second peer → HUMAN_PENDING (PW2 mock arm)."""
-    from agent_lab.plan_workflow import (
+    from agent_lab.plan.workflow import (
         get_plan_workflow,
         init_plan_workflow_on_plan_send,
         orchestrate_plan_workflow_pipeline,
         set_plan_workflow_phase,
     )
-    from agent_lab.run_meta import patch_run_meta, read_run_meta
-    from agent_lab.session_score import score_session
+    from agent_lab.run.meta import patch_run_meta, read_run_meta
+    from agent_lab.session.score import score_session
 
     folder = base / ("plan_workflow_pw5_latency" if str(entry.get("id")) == "PW5" else f"pw-fsm-{entry.get('id', 'x')}")
     folder.mkdir(parents=True, exist_ok=True)
@@ -374,7 +374,7 @@ def scenario_plan_fsm_human_pending(entry: dict[str, Any], base: Path) -> dict[s
             patch_run_meta(folder, _clear)
         return []
 
-    import agent_lab.plan_workflow as pw_mod
+    import agent_lab.plan.workflow as pw_mod
     import agent_lab.room as room_mod
 
     orig_peer = pw_mod.run_plan_peer_review_round
@@ -413,13 +413,13 @@ def scenario_plan_fsm_human_pending(entry: dict[str, Any], base: Path) -> dict[s
 
 def scenario_plan_clarify_cap(entry: dict[str, Any], base: Path) -> dict[str, Any]:
     """Clarify round cap sets notice and advances to DRAFT (PW3)."""
-    from agent_lab.plan_workflow import (
+    from agent_lab.plan.workflow import (
         get_plan_workflow,
         init_plan_workflow_on_plan_send,
         tick_plan_workflow_after_turn,
     )
-    from agent_lab.run_meta import patch_run_meta, read_run_meta
-    from agent_lab.session_score import score_session
+    from agent_lab.run.meta import patch_run_meta, read_run_meta
+    from agent_lab.session.score import score_session
 
     folder = base / f"pw-clarify-cap-{entry.get('id', 'x')}"
     folder.mkdir(parents=True, exist_ok=True)
@@ -427,7 +427,7 @@ def scenario_plan_clarify_cap(entry: dict[str, Any], base: Path) -> dict[str, An
     init_plan_workflow_on_plan_send(folder)
 
     def _cap(run: dict[str, Any]) -> dict[str, Any]:
-        from agent_lab.plan_workflow import get_plan_workflow as _gpw
+        from agent_lab.plan.workflow import get_plan_workflow as _gpw
 
         pw = _gpw(run)
         pw["max_clarify_rounds"] = 0
@@ -456,14 +456,14 @@ def scenario_plan_clarify_cap(entry: dict[str, Any], base: Path) -> dict[str, An
 
 def scenario_plan_peer_cap(entry: dict[str, Any], base: Path) -> dict[str, Any]:
     """Peer cap with open objections → HUMAN_PENDING + peer_review_cap_reached (PW4)."""
-    from agent_lab.plan_workflow import (
+    from agent_lab.plan.workflow import (
         get_plan_workflow,
         init_plan_workflow_on_plan_send,
         set_plan_workflow_phase,
         tick_plan_workflow_after_turn,
     )
-    from agent_lab.run_meta import patch_run_meta, read_run_meta
-    from agent_lab.session_score import score_session
+    from agent_lab.run.meta import patch_run_meta, read_run_meta
+    from agent_lab.session.score import score_session
 
     folder = base / f"pw-peer-cap-{entry.get('id', 'x')}"
     folder.mkdir(parents=True, exist_ok=True)
@@ -473,7 +473,7 @@ def scenario_plan_peer_cap(entry: dict[str, Any], base: Path) -> dict[str, Any]:
     (folder / "plan.md").write_text(_DOGFOOD_SAMPLE_PLAN, encoding="utf-8")
 
     def _patch(run: dict[str, Any]) -> dict[str, Any]:
-        from agent_lab.plan_workflow import get_plan_workflow as _gpw
+        from agent_lab.plan.workflow import get_plan_workflow as _gpw
 
         pw = _gpw(run)
         pw["max_peer_review_rounds"] = 0
@@ -520,13 +520,13 @@ def scenario_plan_approve_latency(entry: dict[str, Any], base: Path) -> dict[str
     """HUMAN_PENDING → approve → APPROVED; measure approval latency (PW5)."""
     from datetime import datetime, timedelta, timezone
 
-    from agent_lab.plan_workflow import (
+    from agent_lab.plan.workflow import (
         approve_plan,
         ensure_plan_workflow_approved,
         get_plan_workflow,
     )
-    from agent_lab.run_meta import patch_run_meta, read_run_meta
-    from agent_lab.session_score import score_session
+    from agent_lab.run.meta import patch_run_meta, read_run_meta
+    from agent_lab.session.score import score_session
 
     pending = scenario_plan_fsm_human_pending(entry, base)
     if not pending.get("ok"):
@@ -749,7 +749,7 @@ def _median(values: list[float]) -> float | None:
 
 
 def run_aggregate(rows: list[dict[str, Any]], log_path: Path) -> int:
-    from agent_lab.session_score import score_session
+    from agent_lab.session.score import score_session
 
     log_rows = json.loads(log_path.read_text(encoding="utf-8"))
     by_id = {str(r.get("id")): r for r in rows}

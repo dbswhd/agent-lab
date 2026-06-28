@@ -13,7 +13,7 @@ from agent_lab.extensions.quant_trading import (
     quant_pipeline_available,
 )
 from agent_lab.pipeline_market_read import get_data_freshness, get_quote
-from agent_lab.session_setup import TRADING_TEMPLATE_IDS, list_session_templates
+from agent_lab.session.setup import TRADING_TEMPLATE_IDS, list_session_templates
 
 
 def test_core_mock_quote_without_pipeline(monkeypatch: pytest.MonkeyPatch):

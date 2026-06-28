@@ -12,7 +12,7 @@
 - `room_preset.py` — fast / supervisor preset catalog
 - `agent_permissions.py` — discuss overlay + runtime blocks in `[고정 constraints]`
 - `plan_execute*.py` — worktree dry-run → merge gate
-- `mission_loop.py` — Layer 6 FSM (DISCUSS↔EXECUTE↔VERIFY)
+- `mission/loop.py` — Layer 6 FSM (DISCUSS↔EXECUTE↔VERIFY)
 - `run_meta.py` — `run.json` 헬퍼
 - `session_guidance.py` — 에이전트 context bundle + `.agent-lab/PROJECT.md` 주입
 

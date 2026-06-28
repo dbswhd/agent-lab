@@ -12,7 +12,7 @@ from typing import Any
 import pytest
 
 from agent_lab.mode_router import record_routing_decision, resolve_active_phase
-from agent_lab.run_meta import read_run_meta
+from agent_lab.run.meta import read_run_meta
 from agent_lab.turn_modes import (
     phase_default_consensus,
     stage_route_consensus,

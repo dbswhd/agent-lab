@@ -295,7 +295,7 @@ def loop_token_budget_exceeded(
     max_est = budget.get("max_token_estimate")
     if not max_est:
         return False
-    from agent_lab.context_meta import summarize_turn_context
+    from agent_lab.context.meta import summarize_turn_context
 
     summary = summarize_turn_context(context_log)
     chars = int(summary.get("payload_chars_total") or 0)
@@ -371,7 +371,7 @@ def mode_contract_catalog() -> dict[str, Any]:
 
 def patch_run_mode_contract(folder: Path, contract: ModeContract) -> None:
     """Persist user-facing mode contract on the session for approval gating."""
-    from agent_lab.run_meta import patch_run_meta
+    from agent_lab.run.meta import patch_run_meta
 
     def _patch(run: dict[str, Any]) -> dict[str, Any]:
         run["user_mode"] = contract.user_mode

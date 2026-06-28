@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from agent_lab.mission_notepad import mission_notepad_dir
+from agent_lab.mission.notepad import mission_notepad_dir
 
 DEFAULT_TAIL_LIMIT = 50
 
@@ -36,8 +36,8 @@ def append_evidence(
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(row, ensure_ascii=False) + "\n")
     try:
-        from agent_lab.run_meta import read_run_meta
-        from agent_lab.wisdom_index import build_wisdom_index, wisdom_index_enabled
+        from agent_lab.run.meta import read_run_meta
+        from agent_lab.wisdom.index import build_wisdom_index, wisdom_index_enabled
 
         if wisdom_index_enabled(read_run_meta(folder)):
             build_wisdom_index(folder, force=True)

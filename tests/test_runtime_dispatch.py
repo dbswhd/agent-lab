@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.mission_loop import enable_mission_loop, get_mission_loop
-from agent_lab.run_meta import patch_run_meta, read_run_meta
+from agent_lab.mission.loop import enable_mission_loop, get_mission_loop
+from agent_lab.run.meta import patch_run_meta, read_run_meta
 from agent_lab.runtime.events import RuntimeEvent
 from agent_lab.runtime.runtime import dispatch, dispatch_verify_result
 
@@ -26,8 +26,8 @@ def test_plan_execute_does_not_import_mission_loop() -> None:
     path = Path(__file__).resolve().parents[1] / "src/agent_lab/plan_execute.py"
     tree = ast.parse(path.read_text(encoding="utf-8"))
     for node in ast.walk(tree):
-        if isinstance(node, ast.ImportFrom) and node.module == "agent_lab.mission_loop":
-            raise AssertionError("plan_execute must not import agent_lab.mission_loop (H2)")
+        if isinstance(node, ast.ImportFrom) and node.module == "agent_lab.mission.loop":
+            raise AssertionError("plan_execute must not import agent_lab.mission.loop (H2)")
 
 
 def test_dispatch_dry_run_start_sets_phase(session_folder: Path) -> None:

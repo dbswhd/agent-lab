@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from agent_lab.agent_permissions import (
+from agent_lab.agent.permissions import (
     cursor_runtime_block,
     normalize_agent_permissions,
     normalize_cursor_permissions,
     permission_preamble,
 )
-from agent_lab.context_bundle import build_context_bundle
-from agent_lab.room_context import agent_tool_rules
+from agent_lab.context.bundle import build_context_bundle
+from agent_lab.room.context import agent_tool_rules
 
 
 def test_full_agent_permissions_normalize():

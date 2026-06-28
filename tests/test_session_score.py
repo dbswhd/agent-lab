@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from agent_lab.session_score import score_session
+from agent_lab.session.score import score_session
 
 ROOT = Path(__file__).resolve().parents[1]
 REGRESSION = ROOT / "sessions" / "_regression"

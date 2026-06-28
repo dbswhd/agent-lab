@@ -10,7 +10,7 @@ import re
 from pathlib import Path
 
 from agent_lab import event_schema as es
-from agent_lab.room_live_log import LIVE_EVENT_TYPES
+from agent_lab.room.live_log import LIVE_EVENT_TYPES
 
 _SRC = Path(__file__).resolve().parent.parent / "src" / "agent_lab"
 

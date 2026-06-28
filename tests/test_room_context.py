@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 import pytest
 
-import agent_lab.room_context as rc
+import agent_lab.room.context as rc
 
 
 @dataclass

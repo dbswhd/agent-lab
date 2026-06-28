@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from agent_lab.human_inbox import resolve_inbox_item
-from agent_lab.run_meta import read_run_meta
+from agent_lab.run.meta import read_run_meta
 
 
 @pytest.fixture(autouse=True)
@@ -17,7 +17,7 @@ def _mock_agents(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_inbox_bridge_executes_ask_human_mock(tmp_path: Path) -> None:
-    from agent_lab import kimi_work_provider as kwp
+    from agent_lab.kimi import work_provider as kwp
 
     folder = tmp_path / "sess"
     folder.mkdir()
@@ -42,7 +42,7 @@ def test_inbox_bridge_executes_ask_human_mock(tmp_path: Path) -> None:
 
 
 def test_inbox_bridge_adds_system_addon(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab import kimi_work_provider as kwp
+    from agent_lab.kimi import work_provider as kwp
 
     folder = tmp_path / "sess2"
     folder.mkdir()
@@ -77,14 +77,14 @@ def test_kimi_work_loop_phase2_requires_inbox_capability(tmp_path: Path, monkeyp
 
 
 def test_normalize_inbox_tool_names() -> None:
-    from agent_lab.kimi_work_inbox_bridge import _normalize_tool_name
+    from agent_lab.kimi.work_inbox_bridge import _normalize_tool_name
 
     assert _normalize_tool_name("inbox.askHuman") == "ask_human"
     assert _normalize_tool_name("inbox.proposeBuild") == "propose_build"
 
 
 def test_inbox_bridge_logs_unrecognized_inbox_tool_call() -> None:
-    from agent_lab.kimi_work_inbox_bridge import KimiWorkInboxBridge
+    from agent_lab.kimi.work_inbox_bridge import KimiWorkInboxBridge
 
     activity: list[str] = []
     bridge = KimiWorkInboxBridge(

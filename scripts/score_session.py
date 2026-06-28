@@ -11,7 +11,7 @@ _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(_ROOT / "src"))
 
-from agent_lab.session_score import score_session  # noqa: E402
+from agent_lab.session.score import score_session  # noqa: E402
 
 
 def main() -> int:

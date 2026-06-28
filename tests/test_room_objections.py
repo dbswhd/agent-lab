@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from agent_lab.agent_envelope import AgentEnvelope
-from agent_lab.plan_execute import run_dry_run
-from agent_lab.room_objections import (
+from agent_lab.agent.envelope import AgentEnvelope
+from agent_lab.plan.execute import run_dry_run
+from agent_lab.room.objections import (
     ObjectionBlocksExecute,
     append_objection,
     assert_execute_allowed,
@@ -15,7 +15,7 @@ from agent_lab.room_objections import (
     open_objections,
     resolve_objection,
 )
-from agent_lab.room_tasks import list_tasks, normalize_task
+from agent_lab.room.tasks import list_tasks, normalize_task
 
 
 class _Msg:
@@ -106,7 +106,7 @@ def test_challenge_blocks_task():
         human_turn=1,
         refs=["t-abc1234567"],
     )
-    from agent_lab.room_objections import apply_challenge_task_blocks
+    from agent_lab.room.objections import apply_challenge_task_blocks
 
     apply_challenge_task_blocks(meta)
     tasks = list_tasks(meta)
@@ -114,8 +114,8 @@ def test_challenge_blocks_task():
 
 
 def test_dry_run_blocked_by_objection(tmp_path, monkeypatch):
-    from agent_lab.plan_actions import find_dry_run_action
-    from agent_lab.plan_pending import PlanSnapshotRequired, approve_pending_plan, ensure_plan_snapshot_approved
+    from agent_lab.plan.actions import find_dry_run_action
+    from agent_lab.plan.pending import PlanSnapshotRequired, approve_pending_plan, ensure_plan_snapshot_approved
 
     folder = tmp_path / "sess"
     folder.mkdir()

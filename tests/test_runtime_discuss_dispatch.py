@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.mission_loop import enable_mission_loop, get_mission_loop
-from agent_lab.run_meta import read_run_meta
+from agent_lab.mission.loop import enable_mission_loop, get_mission_loop
+from agent_lab.run.meta import read_run_meta
 from agent_lab.runtime.events import RuntimeEvent
 from agent_lab.runtime.runtime import dispatch
 
@@ -35,9 +35,19 @@ def session_folder(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return folder
 
 
+def _module_source_path(module: str) -> Path:
+    base = Path(__file__).resolve().parents[1] / "src" / module.replace(".", "/")
+    direct = base.with_suffix(".py")
+    if direct.is_file():
+        return direct
+    init = base / "__init__.py"
+    if init.is_file():
+        return init
+    raise FileNotFoundError(module)
+
+
 def _forbidden_imports(module: str, forbidden_target: str) -> list[str]:
-    path = Path(__file__).resolve().parents[1] / "src" / module.replace(".", "/")
-    path = path.with_suffix(".py")
+    path = _module_source_path(module)
     tree = ast.parse(path.read_text(encoding="utf-8"))
     hits: list[str] = []
     for node in ast.walk(tree):
@@ -48,20 +58,20 @@ def _forbidden_imports(module: str, forbidden_target: str) -> list[str]:
 
 
 def test_room_does_not_import_mission_or_execute() -> None:
-    assert _forbidden_imports("agent_lab.room", "agent_lab.mission_loop") == []
-    assert _forbidden_imports("agent_lab.room", "agent_lab.plan_execute") == []
+    assert _forbidden_imports("agent_lab.room", "agent_lab.mission.loop") == []
+    assert _forbidden_imports("agent_lab.room", "agent_lab.plan.execute") == []
 
 
 def test_mission_loop_does_not_import_room() -> None:
-    assert _forbidden_imports("agent_lab.mission_loop", "agent_lab.room") == []
+    assert _forbidden_imports("agent_lab.mission.loop", "agent_lab.room") == []
 
 
 def test_context_bundle_does_not_import_mission_loop() -> None:
-    assert _forbidden_imports("agent_lab.context_bundle", "agent_lab.mission_loop") == []
+    assert _forbidden_imports("agent_lab.context.bundle", "agent_lab.mission.loop") == []
 
 
 def test_room_tasks_does_not_import_plan_execute() -> None:
-    assert _forbidden_imports("agent_lab.room_tasks", "agent_lab.plan_execute") == []
+    assert _forbidden_imports("agent_lab.room.tasks", "agent_lab.plan.execute") == []
 
 
 def test_dispatch_scribe_complete_runs_plan_gate(session_folder: Path) -> None:

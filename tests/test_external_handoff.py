@@ -15,7 +15,7 @@ from agent_lab.external_handoff import (
     validate_external_handoff,
 )
 from agent_lab.runtime.external_runner import run_external_command
-from agent_lab.run_meta import patch_run_meta, read_run_meta
+from agent_lab.run.meta import patch_run_meta, read_run_meta
 
 
 def _session_with_execution(folder: Path, execution_id: str = "exec-1") -> None:

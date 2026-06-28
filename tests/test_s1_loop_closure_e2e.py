@@ -36,7 +36,7 @@ def test_turn_writes_metrics_and_ledger(monkeypatch: pytest.MonkeyPatch, tmp_pat
     monkeypatch.setenv("AGENT_LAB_OUTCOME_LEDGER", "1")
     root = tmp_path / "root"
     root.mkdir()
-    monkeypatch.setattr("agent_lab.workspace_roots.project_root", lambda: root)
+    monkeypatch.setattr("agent_lab.workspace.roots.project_root", lambda: root)
 
     patch_call_agent_reply(monkeypatch, _fake_call_agent({}))
 
@@ -78,7 +78,7 @@ def test_roles_survive_plan_workflow_reload(monkeypatch: pytest.MonkeyPatch, tmp
     monkeypatch.setenv("AGENT_LAB_OUTCOME_LEDGER", "1")
     root = tmp_path / "root"
     root.mkdir()
-    monkeypatch.setattr("agent_lab.workspace_roots.project_root", lambda: root)
+    monkeypatch.setattr("agent_lab.workspace.roots.project_root", lambda: root)
 
     patch_call_agent_reply(monkeypatch, _fake_call_agent({}))
 
@@ -114,7 +114,7 @@ def test_flags_off_is_inert(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> 
     monkeypatch.delenv("AGENT_LAB_OUTCOME_LEDGER", raising=False)
     root = tmp_path / "root"
     root.mkdir()
-    monkeypatch.setattr("agent_lab.workspace_roots.project_root", lambda: root)
+    monkeypatch.setattr("agent_lab.workspace.roots.project_root", lambda: root)
 
     patch_call_agent_reply(monkeypatch, _fake_call_agent({}))
 

@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.room_hooks import PreExecuteBlocked, clear_hooks_config_cache, run_pre_execute_hooks
+from agent_lab.room.hooks import PreExecuteBlocked, clear_hooks_config_cache, run_pre_execute_hooks
 
 
 def test_pre_execute_hook_passes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):

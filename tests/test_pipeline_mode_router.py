@@ -28,7 +28,7 @@ def test_select_mode_clarify_by_clarity(monkeypatch: pytest.MonkeyPatch) -> None
 
 def test_record_mode_route_persists(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.run.meta import read_run_meta
 
     (tmp_path / "run.json").write_text(json.dumps({"mission_loop": {"phase": "DISCUSS"}}), encoding="utf-8")
     route = mode_router.record_mode_route(tmp_path)
@@ -45,7 +45,7 @@ def test_apply_mission_mode_route_forwards_discuss_to_plan_gate(
 ) -> None:
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     from agent_lab.mode_router import apply_mission_mode_route
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.run.meta import read_run_meta
 
     (tmp_path / "run.json").write_text(
         json.dumps(
@@ -65,8 +65,8 @@ def test_apply_mission_mode_route_forwards_discuss_to_plan_gate(
 def test_maybe_advance_records_route_when_flag_on(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_PIPELINE", "1")
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
-    from agent_lab.mission_advance import maybe_advance_mission
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.mission.advance import maybe_advance_mission
+    from agent_lab.run.meta import read_run_meta
 
     (tmp_path / "run.json").write_text(
         json.dumps(
@@ -84,8 +84,8 @@ def test_maybe_advance_records_route_when_flag_on(tmp_path: Path, monkeypatch: p
 
 def test_maybe_advance_always_records_mode_route(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
-    from agent_lab.mission_advance import maybe_advance_mission
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.mission.advance import maybe_advance_mission
+    from agent_lab.run.meta import read_run_meta
 
     (tmp_path / "run.json").write_text(
         json.dumps(

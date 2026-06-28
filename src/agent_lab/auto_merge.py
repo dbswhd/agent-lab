@@ -8,7 +8,7 @@ from typing import Any
 from agent_lab.gate_scope import get_gate_profile
 from agent_lab.merge_checks import build_merge_checks
 from agent_lab.merge_classifier import public_classifier_preview
-from agent_lab.run_meta import read_run_meta
+from agent_lab.run.meta import read_run_meta
 from agent_lab.trust_budget import get_trust_budget
 
 
@@ -86,7 +86,7 @@ def evaluate_auto_merge_eligibility(
 
 def resolve_auto_merge(folder: Path, *, execution_id: str) -> dict[str, Any]:
     """Auto-merge when eligible; consumes trust budget on successful merge."""
-    from agent_lab.plan_execute import resolve_execution
+    from agent_lab.plan.execute import resolve_execution
 
     elig = evaluate_auto_merge_eligibility(folder, execution_id=execution_id)
     if not elig.get("eligible"):

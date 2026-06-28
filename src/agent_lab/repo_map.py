@@ -25,7 +25,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-from agent_lab.context_layers import repo_tree_layer_enabled
+from agent_lab.context.layers import repo_tree_layer_enabled
 from agent_lab.repo_tree_context import (
     _plan_action_path_hints,
     _plan_path_hints,

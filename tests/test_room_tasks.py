@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 
 from agent_lab.room import ChatMessage, _append_peer_turn_digest
-from agent_lab.room_chat_channels import message_visibility
-from agent_lab.room_tasks import (
+from agent_lab.room.chat_channels import message_visibility
+from agent_lab.room.tasks import (
     add_task,
     agents_missing_task_endorse,
     assign_tasks_to_agents,
@@ -93,7 +93,7 @@ def test_message_visibility_peer_echo():
 
 
 def test_strip_peer_header_echo_keeps_real_content_human_visible():
-    from agent_lab.room_chat_channels import strip_peer_header_echo
+    from agent_lab.room.chat_channels import strip_peer_header_echo
 
     # Real reply that merely *prepends* the echoed header must stay visible.
     body = "[이번 턴 · 동료 발화] Claude TS 선택에 동의합니다. 다음 수정은…"
@@ -288,7 +288,7 @@ def test_agents_missing_task_endorse_targets_only_pending():
 
 
 def test_tasks_public_payload_includes_consensus_gate():
-    from agent_lab.room_tasks import add_task, tasks_public_payload
+    from agent_lab.room.tasks import add_task, tasks_public_payload
 
     run_meta: dict = {"tasks": [], "agents": ["cursor", "codex", "claude"]}
     add_task(run_meta, "Next check", source="test")

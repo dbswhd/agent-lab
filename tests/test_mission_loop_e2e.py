@@ -11,12 +11,12 @@ import pytest
 
 from agent_mocks import disable_execute_inbox_mcp
 
-from agent_lab.mission_loop import get_mission_loop
-from agent_lab.plan_actions import find_dry_run_action
-from agent_lab.plan_execute import resolve_execution
-from agent_lab.plan_pending import PlanSnapshotRequired, approve_pending_plan, ensure_plan_snapshot_approved
+from agent_lab.mission.loop import get_mission_loop
+from agent_lab.plan.actions import find_dry_run_action
+from agent_lab.plan.execute import resolve_execution
+from agent_lab.plan.pending import PlanSnapshotRequired, approve_pending_plan, ensure_plan_snapshot_approved
 from agent_lab.room import continue_room_round
-from agent_lab.run_meta import patch_run_meta, read_run_meta
+from agent_lab.run.meta import patch_run_meta, read_run_meta
 from agent_lab.runtime.events import RuntimeEvent
 import agent_lab.runtime.runtime as runtime_module
 from agent_lab.verified_loop import (
@@ -142,7 +142,7 @@ def test_verified_mission_loop_mock_e2e_full_fsm(
 
     monkeypatch.setattr("agent_lab.agents.cursor_agent.respond", _mock_execute)
     monkeypatch.setattr(
-        "agent_lab.plan_execute.resolve_execute_workspace",
+        "agent_lab.plan.execute.resolve_execute_workspace",
         lambda _permissions=None, _expected=None: (git_repo, {}),
     )
 

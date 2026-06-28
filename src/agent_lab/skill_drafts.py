@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from agent_lab.gate_scope import get_gate_profile
-from agent_lab.run_meta import patch_run_meta, read_run_meta
+from agent_lab.run.meta import patch_run_meta, read_run_meta
 
 DraftStatus = Literal["pending_promote", "promoted", "rejected", "session_only"]
 
@@ -40,7 +40,7 @@ def session_drafts_root(folder: Path) -> Path:
 
 
 def workspace_skills_root() -> Path:
-    from agent_lab.workspace_roots import user_agent_lab_root
+    from agent_lab.workspace.roots import user_agent_lab_root
 
     return user_agent_lab_root() / ".agent-lab" / "skills"
 

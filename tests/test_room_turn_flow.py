@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-import agent_lab.room_turn_flow as rtf
+import agent_lab.room.turn_flow as rtf
 
 
 # ---------------------------------------------------------------------------

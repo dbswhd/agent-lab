@@ -392,7 +392,7 @@ def record_clarity_panel(folder: Any, result: dict[str, Any]) -> None:
     """Persist the latest panel score to run.json mission_loop.clarity (observability)."""
     from pathlib import Path
 
-    from agent_lab.run_meta import patch_run_meta
+    from agent_lab.run.meta import patch_run_meta
 
     def _record(run: dict[str, Any]) -> dict[str, Any]:
         ml = run.get("mission_loop")
@@ -420,8 +420,8 @@ def ensure_clarify_questions(folder: Any) -> dict[str, Any] | None:
     """
     from pathlib import Path
 
-    from agent_lab.run_meta import read_run_meta
-    from agent_lab.session_clarifier import (
+    from agent_lab.run.meta import read_run_meta
+    from agent_lab.session.clarifier import (
         get_clarifier_interview,
         persist_clarifier_interview,
         public_clarifier_interview,
@@ -483,8 +483,8 @@ def extract_established_facts(folder: Any) -> list[dict[str, Any]]:
     """
     from pathlib import Path
 
-    from agent_lab.run_meta import patch_run_meta, read_run_meta
-    from agent_lab.session_clarifier import get_clarifier_interview
+    from agent_lab.run.meta import patch_run_meta, read_run_meta
+    from agent_lab.session.clarifier import get_clarifier_interview
 
     path = Path(folder)
     run = read_run_meta(path)

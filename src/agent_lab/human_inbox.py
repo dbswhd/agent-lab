@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
-from agent_lab.run_meta import patch_run_meta, read_run_meta
+from agent_lab.run.meta import patch_run_meta, read_run_meta
 
 InboxKind = Literal["question", "build", "skill_draft"]
 InboxStatus = Literal["pending", "resolved", "deferred", "superseded", "rejected", "timeout"]
@@ -374,7 +374,7 @@ def resolve_inbox_item(
 
         run["human_inbox"] = inbox_items(run)
         updated = dict(item)
-        from agent_lab.inbox_harvest import clear_inbox_fork_grace
+        from agent_lab.inbox.harvest import clear_inbox_fork_grace
 
         clear_inbox_fork_grace(run)
         return _sync_inbox_flag(run)
@@ -399,7 +399,7 @@ def resolve_inbox_item(
         except ValueError:
             pass
 
-    from agent_lab.plan_workflow import tick_plan_workflow_after_inbox_resolve
+    from agent_lab.plan.workflow import tick_plan_workflow_after_inbox_resolve
 
     tick_plan_workflow_after_inbox_resolve(folder)
 
@@ -539,7 +539,7 @@ def create_mcp_question_and_wait(
     caller_agent: str | None = None,
     policy_lane: str | None = None,
 ) -> dict[str, Any]:
-    from agent_lab.inbox_mcp_policy import enforce_mcp_ask_human_policy
+    from agent_lab.inbox.mcp_policy import enforce_mcp_ask_human_policy
 
     enforce_mcp_ask_human_policy(
         folder,

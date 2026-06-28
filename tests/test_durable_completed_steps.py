@@ -9,7 +9,7 @@ from agent_mocks import patch_call_agent_reply
 
 
 def test_completed_step_key_and_record(tmp_path):
-    from agent_lab.run_meta import (
+    from agent_lab.run.meta import (
         completed_step_key,
         get_completed_step,
         record_completed_step,
@@ -37,7 +37,7 @@ def test_completed_step_key_and_record(tmp_path):
 
 
 def test_clear_completed_steps_for_human_turn(tmp_path):
-    from agent_lab.run_meta import (
+    from agent_lab.run.meta import (
         clear_completed_steps_for_human_turn,
         read_run_meta,
         record_completed_step,
@@ -68,7 +68,7 @@ def test_clear_completed_steps_for_human_turn(tmp_path):
 
 def test_run_parallel_round_skips_completed_agent(monkeypatch, tmp_path):
     from agent_lab import room
-    from agent_lab.run_meta import record_completed_step, write_run_meta
+    from agent_lab.run.meta import record_completed_step, write_run_meta
 
     folder = tmp_path / "sess"
     folder.mkdir()
@@ -115,7 +115,7 @@ def test_run_parallel_round_skips_completed_agent(monkeypatch, tmp_path):
 
 def test_call_one_agent_records_completed_step(monkeypatch, tmp_path):
     from agent_lab import room
-    from agent_lab.run_meta import get_completed_step, read_run_meta, write_run_meta
+    from agent_lab.run.meta import get_completed_step, read_run_meta, write_run_meta
 
     folder = tmp_path / "sess"
     folder.mkdir()

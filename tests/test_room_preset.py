@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent_lab.room_preset import (
+from agent_lab.room.preset import (
     RoomPresetConfig,
     default_room_preset,
     list_presets,
@@ -128,7 +128,7 @@ def test_resolve_role_policy_from_room_preset() -> None:
 
 
 def test_is_fast_room_session() -> None:
-    from agent_lab.room_preset import is_fast_room_session
+    from agent_lab.room.preset import is_fast_room_session
 
     assert is_fast_room_session({"room_preset": "fast"}) is True
     assert is_fast_room_session({"room_preset": "supervisor"}) is False

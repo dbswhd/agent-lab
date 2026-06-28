@@ -27,7 +27,7 @@ def test_codex_cli_retries_transient_subprocess_failure(monkeypatch, tmp_path):
     monkeypatch.setenv("AGENT_LAB_CLI_RETRY_BASE_SEC", "0")
     monkeypatch.setattr("agent_lab.cli_retry.time.sleep", lambda _delay: None)
     monkeypatch.setattr(
-        "agent_lab.workspace_roots.discuss_primary_workspace",
+        "agent_lab.workspace.roots.discuss_primary_workspace",
         lambda _perms: tmp_path,
     )
     calls = 0
@@ -63,7 +63,7 @@ def test_codex_cli_room_only_retry_env_skips_non_room_retry(monkeypatch, tmp_pat
     monkeypatch.setenv("AGENT_LAB_CLI_RETRY_MAX", "3")
     monkeypatch.setenv("AGENT_LAB_CLI_RETRY_ROOM_ONLY", "1")
     monkeypatch.setattr(
-        "agent_lab.workspace_roots.discuss_primary_workspace",
+        "agent_lab.workspace.roots.discuss_primary_workspace",
         lambda _perms: tmp_path,
     )
     calls = 0

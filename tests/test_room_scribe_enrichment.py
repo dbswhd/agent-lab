@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from agent_lab.room_objections import append_objection
-from agent_lab.room_scribe_enrichment import (
+from agent_lab.room.objections import append_objection
+from agent_lab.room.scribe_enrichment import (
     agent_contributions_section,
     build_scribe_enrichment,
     extract_agent_turn_summaries,

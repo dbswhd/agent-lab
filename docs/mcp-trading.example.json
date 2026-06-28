@@ -2,7 +2,7 @@
   "mcpServers": {
     "agent-lab-research": {
       "command": "$HOME/Projects/agent-lab/.venv/bin/python",
-      "args": ["-m", "agent_lab.research_mcp_server"],
+      "args": ["-m", "agent_lab.research.mcp_server"],
       "env": {
         "QUANT_PIPELINE_ROOT": "$HOME/Desktop/pipeline",
         "AGENTIC_TRADING_DB": "$HOME/Projects/quant-agentic-trading/data/agentic_trading/control_plane.sqlite3",

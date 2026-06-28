@@ -15,7 +15,7 @@ from agent_lab.pipeline_research_read import (
     list_wireup_candidates,
     sync_research_cards,
 )
-from agent_lab.research_artifact_card import (
+from agent_lab.research.artifact_card import (
     build_card_from_full_json,
     slug_from_full_path,
 )
@@ -78,7 +78,7 @@ def test_build_card_pass_eligible(tmp_path: Path):
     assert card["verdict"] == "PASS"
     assert card["eligible_for_proposal"] is True
     assert card["oos_sharpe"] == 2.1
-    from agent_lab.research_artifact_card import CARD_MAX_BYTES
+    from agent_lab.research.artifact_card import CARD_MAX_BYTES
 
     assert card["size_bytes"] <= CARD_MAX_BYTES
 

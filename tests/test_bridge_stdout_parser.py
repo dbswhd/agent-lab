@@ -84,7 +84,7 @@ def test_codex_item_updated_streams_partial_message():
 
 
 def test_cumulative_text_streamer_dedupes_snapshots():
-    from agent_lab.room_sse_stream import CumulativeTextStreamer
+    from agent_lab.room.sse_stream import CumulativeTextStreamer
 
     streamer = CumulativeTextStreamer()
     assert streamer.feed("Hello") == ["Hello"]
@@ -93,7 +93,7 @@ def test_cumulative_text_streamer_dedupes_snapshots():
 
 
 def test_cumulative_text_streamer_appends_incremental_slices():
-    from agent_lab.room_sse_stream import CumulativeTextStreamer
+    from agent_lab.room.sse_stream import CumulativeTextStreamer
 
     streamer = CumulativeTextStreamer()
     full = "".join(chr(65 + (i % 26)) for i in range(100))

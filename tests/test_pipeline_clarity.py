@@ -121,8 +121,8 @@ def test_question_loop_generates_then_answer_advances(tmp_path, monkeypatch: pyt
     """Full loop: vague => questions persisted; concrete answer => threshold met."""
     import json
 
-    from agent_lab.run_meta import read_run_meta
-    from agent_lab.session_clarifier import record_clarifier_answers
+    from agent_lab.run.meta import read_run_meta
+    from agent_lab.session.clarifier import record_clarifier_answers
 
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     (tmp_path / "run.json").write_text(
@@ -234,8 +234,8 @@ def _seed_clarify_run(tmp_path, goal: str = "make it better") -> None:
 
 
 def test_established_facts_extract_and_persist(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab.run_meta import read_run_meta
-    from agent_lab.session_clarifier import record_clarifier_answers
+    from agent_lab.run.meta import read_run_meta
+    from agent_lab.session.clarifier import record_clarifier_answers
 
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     _seed_clarify_run(tmp_path)
@@ -280,9 +280,9 @@ def test_format_facts_block() -> None:
 
 
 def test_facts_injected_into_context_constraints(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab.context_bundle import build_context_bundle
-    from agent_lab.run_meta import read_run_meta
-    from agent_lab.session_clarifier import record_clarifier_answers
+    from agent_lab.context.bundle import build_context_bundle
+    from agent_lab.run.meta import read_run_meta
+    from agent_lab.session.clarifier import record_clarifier_answers
 
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     _seed_clarify_run(tmp_path)

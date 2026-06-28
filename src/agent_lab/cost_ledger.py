@@ -17,7 +17,7 @@ import os
 from dataclasses import dataclass
 from typing import Any
 
-from agent_lab.agent_models import estimate_cost_usd
+from agent_lab.agent.models import estimate_cost_usd
 
 
 @dataclass

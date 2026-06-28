@@ -19,7 +19,7 @@ from agent_mocks import patch_call_agent_reply
 
 
 def _make_run_meta(tmp_path: Any) -> dict[str, Any]:
-    from agent_lab.run_meta import write_run_meta
+    from agent_lab.run.meta import write_run_meta
 
     folder = tmp_path / "sess"
     folder.mkdir()
@@ -46,7 +46,7 @@ def _run_with_split_counter(
 ) -> int:
     """Run one round and return the number of team_r1_split calls."""
     from agent_lab import room
-    from agent_lab.room_team_orchestration import team_r1_split as _real_split
+    from agent_lab.room.team_orchestration import team_r1_split as _real_split
 
     run_meta = _make_run_meta(tmp_path)
     split_calls: list[Any] = []
@@ -56,7 +56,7 @@ def _run_with_split_counter(
         return _real_split(agent_list, meta)  # real fn captured before patching
 
     monkeypatch.setattr(
-        "agent_lab.room_team_orchestration.team_r1_split",
+        "agent_lab.room.team_orchestration.team_r1_split",
         counting_split,
     )
     patch_call_agent_reply(monkeypatch, _fake_agent_fn)
@@ -76,7 +76,7 @@ def _run_with_split_counter(
 
 def test_sequential_task_types_constant() -> None:
     """peer_review and cold_critic are sequential; consensus and discuss are not."""
-    from agent_lab.room_parallel_rounds import _SEQUENTIAL_TASK_TYPES
+    from agent_lab.room.parallel_rounds import _SEQUENTIAL_TASK_TYPES
 
     assert "peer_review" in _SEQUENTIAL_TASK_TYPES
     assert "cold_critic" in _SEQUENTIAL_TASK_TYPES

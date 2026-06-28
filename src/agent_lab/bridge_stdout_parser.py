@@ -10,7 +10,7 @@ from agent_lab.cursor_activity import (
     format_conversation_step,
     format_interaction_update,
 )
-from agent_lab.room_sse_stream import chunk_text, format_tool_activity_line
+from agent_lab.room.sse_stream import chunk_text, format_tool_activity_line
 
 StreamEvent = tuple[str, dict[str, Any]]
 

@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from agent_lab.run_meta import read_run_meta
-from agent_lab.session_guidance import SESSION_META_KEYS, preserve_session_meta_from_prev
+from agent_lab.run.meta import read_run_meta
+from agent_lab.session.guidance import SESSION_META_KEYS, preserve_session_meta_from_prev
 from agent_lab.verified_loop import (
     approve_verified_loop,
     detect_completion_promise,

@@ -1,6 +1,6 @@
 """Plan provenance ref extraction."""
 
-from agent_lab.plan_provenance import extract_plan_provenance, validate_plan_refs
+from agent_lab.plan.provenance import extract_plan_provenance, validate_plan_refs
 
 
 def test_extract_plan_provenance_sections():

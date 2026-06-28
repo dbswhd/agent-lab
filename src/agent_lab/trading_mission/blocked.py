@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.plan.paths import write_trading_plan_md
 from agent_lab.trading_mission.export_batch import write_proposal_batch
 from agent_lab.trading_mission.topic import mission_id_from_date
 
@@ -26,7 +27,7 @@ def write_blocked_artifacts(
     artifacts = session_folder / "artifacts"
     artifacts.mkdir(parents=True, exist_ok=True)
 
-    plan_md = f"""# plan — Trading Mission (blocked)
+    plan_md = f"""# Trading Mission plan (blocked)
 
 ## 합의
 - ingest_ready: false
@@ -44,7 +45,7 @@ def write_blocked_artifacts(
 ## 에이전트별 핵심
 - **PREFLIGHT:** snapshot only
 """
-    (session_folder / "plan.md").write_text(plan_md, encoding="utf-8")
+    write_trading_plan_md(session_folder, plan_md)
 
     playbook = f"""# 오늘 장중 행동 — {datetime.now(_KST).strftime("%Y-%m-%d")}
 

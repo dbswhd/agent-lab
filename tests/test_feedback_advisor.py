@@ -171,7 +171,7 @@ def test_wisdom_note_appended_when_hits_exist(monkeypatch: pytest.MonkeyPatch) -
         {"snippet": "캐시 무효화 전략은 TTL 기반이 더 안정적", "title": "learning-1"},
         {"snippet": "Oracle pass 후 repair_history 확인 필수", "title": "learning-2"},
     ]
-    monkeypatch.setattr("agent_lab.wisdom_index.search_wisdom_cross_sessions", lambda q, limit=3: fake_hits)
+    monkeypatch.setattr("agent_lab.wisdom.index.search_wisdom_cross_sessions", lambda q, limit=3: fake_hits)
     note = _wisdom_note("pipeline verify")
     assert "캐시 무효화" in note
     assert "Oracle pass" in note
@@ -180,7 +180,7 @@ def test_wisdom_note_appended_when_hits_exist(monkeypatch: pytest.MonkeyPatch) -
 def test_wisdom_note_empty_when_no_hits(monkeypatch: pytest.MonkeyPatch) -> None:
     from agent_lab.feedback_advisor import _wisdom_note
 
-    monkeypatch.setattr("agent_lab.wisdom_index.search_wisdom_cross_sessions", lambda q, limit=3: [])
+    monkeypatch.setattr("agent_lab.wisdom.index.search_wisdom_cross_sessions", lambda q, limit=3: [])
     assert _wisdom_note("pipeline verify") == ""
 
 
@@ -191,7 +191,7 @@ def test_wisdom_note_in_rationale(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     _write_ledger(ledger, [_row()] * 4)
     monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: ledger)
     monkeypatch.setattr(
-        "agent_lab.wisdom_index.search_wisdom_cross_sessions",
+        "agent_lab.wisdom.index.search_wisdom_cross_sessions",
         lambda q, limit=3: [{"snippet": "학습내용: 병렬 에이전트 순서 고정 필요"}],
     )
 

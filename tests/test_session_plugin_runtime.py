@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.run_meta import patch_run_meta
-from agent_lab.session_plugin_runtime import (
+from agent_lab.run.meta import patch_run_meta
+from agent_lab.session.plugin_runtime import (
     claude_execute_extra_args,
     codex_execute_plugin_config_args,
     enrich_execute_permissions,
@@ -88,7 +88,7 @@ def test_codex_execute_plugin_config_args_enables_allowlisted_mcp(
     def stub(*_a, **_k):
         return {"plugins": fake_plugins}
 
-    monkeypatch.setattr("agent_lab.session_plugin_runtime.discover_plugins", stub)
+    monkeypatch.setattr("agent_lab.session.plugin_runtime.discover_plugins", stub)
     monkeypatch.setattr("agent_lab.command_registry.discover_plugins", stub)
     monkeypatch.setattr("agent_lab.mcp_spec_export.discover_plugins", stub)
     monkeypatch.setattr(

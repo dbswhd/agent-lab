@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from agent_lab.inbox_harvest import (
+from agent_lab.inbox.harvest import (
     _supersede_legacy_verified_build_items,
     harvest_build_proposal,
     harvest_post_plan_inbox,
 )
-from agent_lab.room_objections import append_objection
+from agent_lab.room.objections import append_objection
 
 _PLAN_WITH_ACTION = """\
 ## 합의

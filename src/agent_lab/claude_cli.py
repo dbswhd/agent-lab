@@ -13,7 +13,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Mapping
 
-from agent_lab.agent_models import (  # noqa: E402
+from agent_lab.agent.models import (  # noqa: E402
     DEFAULT_CLAUDE_MODEL,
     DEFAULT_CLAUDE_REASONING_EFFORT,
 )
@@ -64,8 +64,8 @@ def _project_root() -> Path:
 
 def resolve_claude_roots(permissions: dict[str, Any] | None) -> list[Path]:
     """Directories Claude Code may access via --add-dir."""
-    from agent_lab.agent_permissions import normalize_claude_permissions
-    from agent_lab.workspace_roots import resolve_workspace_roots
+    from agent_lab.agent.permissions import normalize_claude_permissions
+    from agent_lab.workspace.roots import resolve_workspace_roots
 
     return resolve_workspace_roots(normalize_claude_permissions(permissions))
 
@@ -146,6 +146,7 @@ _AUTH_STATUS_CACHE: tuple[float, bool, str | None] | None = None
 _AUTH_STATUS_TTL_SEC = 60.0
 _DEFAULT_PROBE_TIMEOUT_SEC = 25.0
 _DEFAULT_ROOM_TIMEOUT_SEC = 900
+_DEFAULT_ROOM_IDLE_TIMEOUT_SEC = 45.0
 
 
 def invalidate_claude_auth_cache() -> None:
@@ -174,6 +175,22 @@ def format_claude_auth_status_detail(raw: str, *, logged_in: bool) -> str:
 def _is_auth_failure(detail: str) -> bool:
     low = detail.lower()
     return "401" in detail or "authenticate" in low or "credit balance" in low
+
+
+def _is_usage_limit_detail(detail: str) -> bool:
+    from agent_lab.agent.availability import is_usage_limit_error
+
+    return is_usage_limit_error(detail)
+
+
+def _room_idle_timeout_sec() -> float:
+    raw = (os.getenv("CLAUDE_ROOM_IDLE_TIMEOUT_SEC") or "").strip()
+    if raw:
+        try:
+            return max(5.0, float(raw))
+        except ValueError:
+            pass
+    return _DEFAULT_ROOM_IDLE_TIMEOUT_SEC
 
 
 def claude_auth_logged_in(*, use_cache: bool = True) -> tuple[bool, str | None]:
@@ -404,7 +421,7 @@ def _resolve_claude_mcp_config(
             )
         )
     if (permissions or {}).get("_execute_plugins") and session_folder is not None:
-        from agent_lab.session_plugin_runtime import resolve_claude_mcp_config_path
+        from agent_lab.session.plugin_runtime import resolve_claude_mcp_config_path
 
         cfg = resolve_claude_mcp_config_path(session_folder)
         if cfg:
@@ -442,7 +459,7 @@ def invoke(
     request_structured_envelope: bool = False,
     inbox_mcp: bool = False,
 ) -> str:
-    from agent_lab.agent_permissions import normalize_claude_permissions
+    from agent_lab.agent.permissions import normalize_claude_permissions
 
     claude = resolve_claude_bin()
     if not claude:
@@ -454,7 +471,7 @@ def invoke(
         )
 
     perms = normalize_claude_permissions(permissions)
-    from agent_lab.workspace_roots import discuss_primary_workspace
+    from agent_lab.workspace.roots import discuss_primary_workspace
 
     cwd = os.getenv("CLAUDE_CWD") or str(discuss_primary_workspace(perms))
     permission_mode = _permission_mode()
@@ -508,7 +525,7 @@ def invoke(
     if mcp_cfg:
         cmd.extend(["--mcp-config", mcp_cfg])
     elif perms.get("_execute_plugins"):
-        from agent_lab.session_plugin_runtime import claude_execute_extra_args
+        from agent_lab.session.plugin_runtime import claude_execute_extra_args
 
         cmd.extend(claude_execute_extra_args(perms))
 
@@ -550,7 +567,7 @@ def invoke(
             )
         import time
 
-        from agent_lab.run_control import (
+        from agent_lab.run.control import (
             RoomRunCancelled,
             is_cancelled,
             register_child_process,
@@ -611,7 +628,7 @@ def invoke(
             on_activity(f"재시도 {attempt}/{max_attempts} — Claude CLI 일시 오류")
 
     try:
-        from agent_lab.agent_hooks_materializer import native_claude_hooks_overlay
+        from agent_lab.agent.hooks_materializer import native_claude_hooks_overlay
 
         def _run_oauth_only() -> str:
             def _run_with_hooks() -> str:
@@ -676,7 +693,7 @@ def _run_claude_stream(
     import time
 
     from agent_lab.bridge_stdout_parser import parse_claude_json_event
-    from agent_lab.run_control import (
+    from agent_lab.run.control import (
         RoomRunCancelled,
         is_cancelled,
         register_child_process,
@@ -700,17 +717,35 @@ def _run_claude_stream(
     stderr_parts: list[str] = []
     result_text = ""
     seen_text_delta = False
+    response_started = False
     started = time.monotonic()
+    last_activity_at = started
+    idle_timeout = _room_idle_timeout_sec() if timeout is not None else None
     try:
         while True:
             if is_cancelled():
                 proc.kill()
                 proc.wait(timeout=5)
                 raise RoomRunCancelled("run cancelled by user")
-            if timeout is not None and time.monotonic() - started >= timeout:
+            now = time.monotonic()
+            if timeout is not None and not response_started and now - started >= timeout:
                 proc.kill()
                 proc.wait(timeout=5)
                 raise subprocess.TimeoutExpired(cmd, timeout)
+            if (
+                idle_timeout is not None
+                and not response_started
+                and now - last_activity_at >= idle_timeout
+            ):
+                combined = "".join(stderr_parts)
+                if _is_usage_limit_detail(combined):
+                    proc.kill()
+                    proc.wait(timeout=5)
+                    detail = _format_exec_error(combined, result_text)
+                    raise RuntimeError(
+                        "claude -p failed (usage limit)"
+                        + (f": {detail}" if detail else "")
+                    )
             if proc.poll() is not None:
                 if not select.select([stdout, stderr], [], [], 0)[0]:
                     break
@@ -719,10 +754,19 @@ def _run_claude_stream(
                 err_chunk = stderr.read()
                 if err_chunk:
                     stderr_parts.append(err_chunk)
+                    combined = "".join(stderr_parts)
+                    if _is_usage_limit_detail(combined):
+                        proc.kill()
+                        proc.wait(timeout=5)
+                        detail = _format_exec_error(combined, result_text)
+                        raise RuntimeError(
+                            "claude -p failed (usage limit)"
+                            + (f": {detail}" if detail else "")
+                        )
                     if _is_auth_failure(err_chunk):
                         proc.kill()
                         proc.wait(timeout=5)
-                        detail = _format_exec_error("".join(stderr_parts), result_text)
+                        detail = _format_exec_error(combined, result_text)
                         invalidate_claude_auth_cache()
                         raise RuntimeError("claude -p failed (auth)" + (f": {detail}" if detail else ""))
             if stdout not in ready:
@@ -748,6 +792,11 @@ def _run_claude_stream(
                 delta = inner.get("delta") if isinstance(inner.get("delta"), Mapping) else {}
                 if str(delta.get("type") or "") == "text_delta" and str(delta.get("text") or ""):
                     seen_text_delta = True
+                    response_started = True
+                    last_activity_at = time.monotonic()
+            if evt_type in {"stream_event", "assistant"}:
+                response_started = True
+                last_activity_at = time.monotonic()
             for kind, data in parse_claude_json_event(event):
                 if kind == "text" and evt_type == "assistant" and seen_text_delta:
                     continue

@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.room_hooks import clear_hooks_config_cache, run_hook
-from agent_lab.room_tasks import complete_task, normalize_task
+from agent_lab.room.hooks import clear_hooks_config_cache, run_hook
+from agent_lab.room.tasks import complete_task, normalize_task
 
 
 def test_run_hook_exit_2_blocks(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
@@ -66,7 +66,7 @@ def test_load_hooks_config_cached(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     monkeypatch.setenv("AGENT_LAB_HOOKS_PATH", str(cfg))
     clear_hooks_config_cache()
 
-    from agent_lab.room_hooks import load_hooks_config
+    from agent_lab.room.hooks import load_hooks_config
 
     first = load_hooks_config()
     second = load_hooks_config()

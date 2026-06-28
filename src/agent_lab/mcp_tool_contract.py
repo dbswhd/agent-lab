@@ -106,7 +106,7 @@ WISDOM_EXCLUSIVE: frozenset[str] = frozenset({"wisdom_recall", "wisdom_record", 
 
 _SERVER_SPECS: dict[str, dict[str, Any]] = {
     "agent-lab-research": {
-        "module": "agent_lab.research_mcp_server",
+        "module": "agent_lab.research.mcp_server",
         "attr": "mcp",
         "allowed": RESEARCH_ALLOWED,
         "required": RESEARCH_REQUIRED,
@@ -127,7 +127,7 @@ _SERVER_SPECS: dict[str, dict[str, Any]] = {
         "exclusive": CODE_MEMORY_EXCLUSIVE,
     },
     "agent-lab-wisdom": {
-        "module": "agent_lab.wisdom_mcp_server",
+        "module": "agent_lab.wisdom.mcp_server",
         "attr": "mcp",
         "allowed": WISDOM_ALLOWED,
         "required": WISDOM_REQUIRED,

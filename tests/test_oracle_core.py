@@ -17,8 +17,8 @@ from agent_lab.oracle_core import (
     parse_oracle_response,
     verify_literals,
 )
-from agent_lab.plan_execute_merge import oracle_verify
-from agent_lab.plan_actions import PlanAction
+from agent_lab.plan.execute_merge import oracle_verify
+from agent_lab.plan.actions import PlanAction
 
 
 def test_parse_structured_oracle_response():

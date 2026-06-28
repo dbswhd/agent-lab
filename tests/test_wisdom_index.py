@@ -8,8 +8,8 @@ from pathlib import Path
 import pytest
 
 from agent_lab.evidence_ledger import append_evidence
-from agent_lab.mission_loop import append_wisdom_note, ensure_mission_notepads
-from agent_lab.wisdom_index import (
+from agent_lab.mission.loop import append_wisdom_note, ensure_mission_notepads
+from agent_lab.wisdom.index import (
     build_wisdom_index,
     public_wisdom_search_payload,
     search_wisdom_index,
@@ -53,7 +53,7 @@ def test_index_rebuild_on_evidence_append(tmp_path: Path, wisdom_on: None) -> No
     folder.mkdir()
     (folder / "run.json").write_text("{}", encoding="utf-8")
     append_evidence(folder, {"event": "merge", "detail": "approved by human"})
-    from agent_lab.wisdom_index import index_path
+    from agent_lab.wisdom.index import index_path
 
     path = index_path(folder)
     assert path.is_file()

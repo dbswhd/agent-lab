@@ -5,20 +5,20 @@ from typing import Any
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
-from agent_lab.agent_health import (
+from agent_lab.agent.health import (
     build_health_payload,
     reconnect_claude_auth,
     reconnect_cursor_bridge,
     reconnect_kimi_work_bridge,
 )
-from agent_lab.agent_preflight import build_agent_preflight
+from agent_lab.agent.preflight import build_agent_preflight
 from agent_lab.readiness import build_readiness_payload
 from agent_lab.api_diagnostics import build_diagnostics_payload
 from agent_lab.runtime_flags import build_flags_payload
-from agent_lab.run_profile import profile_catalog
+from agent_lab.run.profile import profile_catalog
 from agent_lab.native_folder_picker import pick_folder_native
-from agent_lab.session_paths import active_sessions_dir
-from agent_lab.session_setup import session_setup_options
+from agent_lab.session.paths import active_sessions_dir
+from agent_lab.session.setup import session_setup_options
 
 from app.server.deps import room_session_context
 from app.server.health_rate_limit import enforce_health_burst_limit

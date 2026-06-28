@@ -5,7 +5,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
-from agent_lab.plan_execute import (
+from agent_lab.plan.execute import (
     abort_merge_execution,
     confirm_merge_execution,
     list_plan_actions,
@@ -15,7 +15,7 @@ from agent_lab.plan_execute import (
     run_dry_run,
     run_isolation_override,
 )
-from agent_lab.plan_pending import (
+from agent_lab.plan.pending import (
     approve_pending_plan,
     pending_plans_public_payload,
     reject_pending_plan,
@@ -57,7 +57,7 @@ def session_wisdom_search(
     cross_session: bool = False,
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.wisdom_index import public_wisdom_search_payload
+    from agent_lab.wisdom.index import public_wisdom_search_payload
 
     return {
         "ok": True,
@@ -74,7 +74,7 @@ def session_wisdom_search(
 @router.post("/sessions/{session_id}/wisdom-index/rebuild")
 def session_wisdom_index_rebuild(session_id: str) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.wisdom_index import build_wisdom_index, public_wisdom_index_status, wisdom_index_enabled
+    from agent_lab.wisdom.index import build_wisdom_index, public_wisdom_index_status, wisdom_index_enabled
 
     if not wisdom_index_enabled():
         raise HTTPException(
@@ -95,11 +95,11 @@ def session_clarifier_answers(
     body: ClarifierAnswersRequest,
 ) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.session_clarifier import public_clarifier_interview, record_clarifier_answers
+    from agent_lab.session.clarifier import public_clarifier_interview, record_clarifier_answers
 
     if not body.answers:
         raise HTTPException(status_code=400, detail="answers required")
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.run.meta import read_run_meta
 
     interview = record_clarifier_answers(
         folder,
@@ -110,7 +110,7 @@ def session_clarifier_answers(
     # need to send an extra chat turn after submitting answers.
     updated = interview or public_clarifier_interview(read_run_meta(folder))
     if updated and updated.get("status") == "complete":
-        from agent_lab.plan_workflow import tick_plan_workflow_after_inbox_resolve
+        from agent_lab.plan.workflow import tick_plan_workflow_after_inbox_resolve
 
         tick_plan_workflow_after_inbox_resolve(folder)
     return {
@@ -124,8 +124,8 @@ def session_clarifier_answers(
 @router.get("/sessions/{session_id}/clarifier-interview")
 def session_clarifier_interview(session_id: str) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.run_meta import read_run_meta
-    from agent_lab.session_clarifier import public_clarifier_interview
+    from agent_lab.run.meta import read_run_meta
+    from agent_lab.session.clarifier import public_clarifier_interview
 
     run = read_run_meta(folder)
     interview = public_clarifier_interview(run)
@@ -141,7 +141,7 @@ def session_clarifier_interview(session_id: str) -> dict[str, Any]:
 def session_merge_checks(session_id: str) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
     from agent_lab.merge_checks import public_merge_checks_payload
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.run.meta import read_run_meta
 
     return {
         "ok": True,
@@ -153,7 +153,7 @@ def session_merge_checks(session_id: str) -> dict[str, Any]:
 @router.get("/sessions/{session_id}/trust-budget")
 def session_trust_budget(session_id: str) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.run.meta import read_run_meta
     from agent_lab.trust_budget import get_trust_budget
 
     run = read_run_meta(folder)

@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
-from agent_lab.run_meta import patch_run_meta
+from agent_lab.run.meta import patch_run_meta
 
 ResponseContractPreset = Literal[
     "concise",

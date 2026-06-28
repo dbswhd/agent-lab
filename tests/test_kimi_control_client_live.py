@@ -10,7 +10,7 @@ from typing import Any
 
 import pytest
 
-from agent_lab.kimi_control_client import (
+from agent_lab.kimi.control_client import (
     ControlEndpoint,
     _live_rpc,
     discover_endpoint,
@@ -143,7 +143,7 @@ def test_discover_endpoint_with_mocked_supervisor(
     (share / "daimon" / "config.json").write_text("{}", encoding="utf-8")
 
     monkeypatch.setattr(
-        "agent_lab.kimi_daimon_supervisor.ensure_daimon",
+        "agent_lab.kimi.daimon_supervisor.ensure_daimon",
         lambda: fake_ws_server,
     )
     invalidate_endpoint_cache()
@@ -155,11 +155,11 @@ def test_discover_endpoint_with_mocked_supervisor(
 def test_probe_control_ok(monkeypatch: pytest.MonkeyPatch, fake_ws_server: ControlEndpoint) -> None:
     monkeypatch.delenv("AGENT_LAB_MOCK_AGENTS", raising=False)
     monkeypatch.setattr(
-        "agent_lab.kimi_daimon_supervisor.ensure_daimon",
+        "agent_lab.kimi.daimon_supervisor.ensure_daimon",
         lambda: fake_ws_server,
     )
     share = Path("/tmp/unused")
-    monkeypatch.setattr("agent_lab.kimi_control_client.is_share_configured", lambda: True)
+    monkeypatch.setattr("agent_lab.kimi.control_client.is_share_configured", lambda: True)
     bridge, err = probe_control()
     assert bridge == "ok"
     assert err is None
@@ -168,12 +168,12 @@ def test_probe_control_ok(monkeypatch: pytest.MonkeyPatch, fake_ws_server: Contr
 def test_send_turn_live_path(monkeypatch: pytest.MonkeyPatch, fake_ws_server: ControlEndpoint) -> None:
     monkeypatch.delenv("AGENT_LAB_MOCK_AGENTS", raising=False)
     monkeypatch.setattr(
-        "agent_lab.kimi_daimon_supervisor.ensure_daimon",
+        "agent_lab.kimi.daimon_supervisor.ensure_daimon",
         lambda: fake_ws_server,
     )
     invalidate_endpoint_cache()
     monkeypatch.setattr(
-        "agent_lab.kimi_control_client._get_endpoint",
+        "agent_lab.kimi.control_client._get_endpoint",
         lambda: fake_ws_server,
     )
     out = send_turn(conversation_key="c1", text="ping")
@@ -244,7 +244,7 @@ def test_send_turn_uses_snapshot_when_complete_text_empty(
 ) -> None:
     monkeypatch.delenv("AGENT_LAB_MOCK_AGENTS", raising=False)
     monkeypatch.setattr(
-        "agent_lab.kimi_control_client._get_endpoint",
+        "agent_lab.kimi.control_client._get_endpoint",
         lambda: fake_ws_server_snapshot_body,
     )
     out = send_turn(conversation_key="main:conversation:abc", text="ping")
@@ -255,7 +255,7 @@ def test_get_endpoint_reuses_warm_cache(
     monkeypatch: pytest.MonkeyPatch,
     fake_ws_server: ControlEndpoint,
 ) -> None:
-    from agent_lab.kimi_control_client import _get_endpoint, invalidate_endpoint_cache
+    from agent_lab.kimi.control_client import _get_endpoint, invalidate_endpoint_cache
 
     monkeypatch.delenv("AGENT_LAB_MOCK_AGENTS", raising=False)
     calls = {"n": 0}
@@ -265,7 +265,7 @@ def test_get_endpoint_reuses_warm_cache(
         return fake_ws_server
 
     invalidate_endpoint_cache()
-    monkeypatch.setattr("agent_lab.kimi_control_client._resolve_live_endpoint", _resolve)
+    monkeypatch.setattr("agent_lab.kimi.control_client._resolve_live_endpoint", _resolve)
     ep1 = _get_endpoint()
     ep2 = _get_endpoint()
     assert ep1.url == fake_ws_server.url
@@ -274,7 +274,7 @@ def test_get_endpoint_reuses_warm_cache(
 
 
 def test_live_rpc_works_under_running_event_loop(fake_ws_server: ControlEndpoint) -> None:
-    from agent_lab.kimi_control_client import _live_rpc
+    from agent_lab.kimi.control_client import _live_rpc
 
     async def _call_under_loop() -> dict[str, Any]:
         result = _live_rpc(fake_ws_server, "capabilities.get", {}, on_push=None, timeout_s=5.0)
@@ -297,8 +297,8 @@ def test_probe_control_skips_resolve_when_recent(
         return fake_ws_server
 
     invalidate_endpoint_cache()
-    monkeypatch.setattr("agent_lab.kimi_control_client.is_share_configured", lambda: True)
-    monkeypatch.setattr("agent_lab.kimi_control_client._resolve_live_endpoint", _resolve)
+    monkeypatch.setattr("agent_lab.kimi.control_client.is_share_configured", lambda: True)
+    monkeypatch.setattr("agent_lab.kimi.control_client._resolve_live_endpoint", _resolve)
     bridge, err = probe_control()
     assert bridge == "ok"
     assert err is None
@@ -316,7 +316,7 @@ def test_rpc_batch_single_ws(
     monkeypatch.delenv("AGENT_LAB_MOCK_AGENTS", raising=False)
     invalidate_endpoint_cache()
     monkeypatch.setattr(
-        "agent_lab.kimi_control_client._get_endpoint",
+        "agent_lab.kimi.control_client._get_endpoint",
         lambda: fake_ws_server,
     )
     results = rpc_batch(
@@ -340,13 +340,13 @@ def test_send_turn_retries_after_transient_error(monkeypatch: pytest.MonkeyPatch
             raise ConnectionError("connection refused")
         return "live:retry"
 
-    monkeypatch.setattr("agent_lab.kimi_control_client._live_rpc", _live_rpc)
-    monkeypatch.setattr("agent_lab.kimi_control_client._get_endpoint", lambda: fake_ws_server)
+    monkeypatch.setattr("agent_lab.kimi.control_client._live_rpc", _live_rpc)
+    monkeypatch.setattr("agent_lab.kimi.control_client._get_endpoint", lambda: fake_ws_server)
 
     def _refresh() -> None:
         shutdowns.append("yes")
 
-    monkeypatch.setattr("agent_lab.kimi_control_client._refresh_bridge_on_probe_failure", _refresh)
+    monkeypatch.setattr("agent_lab.kimi.control_client._refresh_bridge_on_probe_failure", _refresh)
     invalidate_endpoint_cache()
     out = send_turn(conversation_key="c1", text="retry")
     assert out == "live:retry"

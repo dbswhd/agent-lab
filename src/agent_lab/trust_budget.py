@@ -8,7 +8,7 @@ from typing import Any, Literal
 Tier = Literal["low", "medium", "high"]
 
 from agent_lab.gate_scope import GateProfile, get_gate_profile
-from agent_lab.run_meta import patch_run_meta
+from agent_lab.run.meta import patch_run_meta
 
 ClassifierAllow = Literal["docs_only", "test_only", "single_file"]
 

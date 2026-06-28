@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.wisdom_store import (
+from agent_lab.wisdom.store import (
     WisdomEntry,
     wisdom_append,
     wisdom_cache_signature,

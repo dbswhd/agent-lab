@@ -6,11 +6,11 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.agent_permissions import permission_preamble
+from agent_lab.agent.permissions import permission_preamble
 from agent_lab.agents.prompts import KIMI_WORK_ROOM
-from agent_lab.context_bundle import build_context_bundle
+from agent_lab.context.bundle import build_context_bundle
 from agent_lab.room import ChatMessage
-from agent_lab.room_context import AGENT_CONNECT_HINT, agent_tool_rules
+from agent_lab.room.context import AGENT_CONNECT_HINT, agent_tool_rules
 
 
 def test_kimi_work_connect_hint_and_tool_rules() -> None:
@@ -28,7 +28,7 @@ def test_kimi_work_permission_preamble_discuss() -> None:
 
 
 def test_context_bundle_includes_kimi_work_hints() -> None:
-    from agent_lab.agent_permissions import permission_preamble
+    from agent_lab.agent.permissions import permission_preamble
 
     bundle = build_context_bundle(
         "topic",
@@ -45,7 +45,7 @@ def test_context_bundle_includes_kimi_work_hints() -> None:
 
 
 def test_kimi_work_provider_uses_room_system(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab import kimi_work_provider as kwp
+    from agent_lab.kimi import work_provider as kwp
 
     captured: dict[str, str] = {}
 
@@ -61,7 +61,7 @@ def test_kimi_work_provider_uses_room_system(tmp_path: Path, monkeypatch: pytest
 
 
 def test_kimi_work_provider_envelope_mirror_on_system(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from agent_lab import kimi_work_provider as kwp
+    from agent_lab.kimi import work_provider as kwp
 
     captured: dict[str, str] = {}
 

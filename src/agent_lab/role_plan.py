@@ -103,7 +103,7 @@ def _apply_hint_overrides(result: dict[str, str], agents: list[str], hint: Any |
 
 
 def _cwd_role_plan(agents: list[str]) -> dict[str, str]:
-    from agent_lab.room_agent_capabilities import DEFAULT_CAPABILITIES
+    from agent_lab.room.agent_capabilities import DEFAULT_CAPABILITIES
 
     result: dict[str, str] = {}
     for agent in agents:
@@ -117,7 +117,7 @@ def _cwd_role_plan(agents: list[str]) -> dict[str, str]:
 
 def _force_role_plan(agents: list[str], hint: Any | None = None) -> dict[str, str]:
     """Proposer/Critic (etc.) from cwd_role — ignores quick/trading category skips."""
-    from agent_lab.room_agent_capabilities import DEFAULT_CAPABILITIES
+    from agent_lab.room.agent_capabilities import DEFAULT_CAPABILITIES
 
     result = _cwd_role_plan(agents)
     if len(agents) >= 2 and "proposer" not in result.values():
@@ -248,7 +248,7 @@ def persona_for_agent(turn_roles: dict | None, agent: str) -> str:
     if not role_id:
         return ""
     if role_id == "synthesizer":
-        from agent_lab.room_consensus import recombination_follow_up
+        from agent_lab.room.consensus import recombination_follow_up
 
         return recombination_follow_up()
     spec = _ROLES.get(role_id)

@@ -7,8 +7,8 @@ from pathlib import Path
 import pytest
 
 from agent_lab.human_inbox import create_inbox_item, resolve_inbox_item
-from agent_lab.session_clarifier import record_clarifier_answers
-from agent_lab.plan_workflow import (
+from agent_lab.session.clarifier import record_clarifier_answers
+from agent_lab.plan.workflow import (
     PlanWorkflowNotApproved,
     approve_plan,
     ensure_plan_workflow_approved,
@@ -18,7 +18,7 @@ from agent_lab.plan_workflow import (
     set_plan_workflow_phase,
     tick_plan_workflow_after_turn,
 )
-from agent_lab.run_meta import patch_run_meta, read_run_meta
+from agent_lab.run.meta import patch_run_meta, read_run_meta
 
 SAMPLE_PLAN = """# Demo feature
 
@@ -88,7 +88,7 @@ def test_orchestrate_pipeline_peer_refine_human_pending(
         return REFINED_PLAN
 
     monkeypatch.setattr(
-        "agent_lab.plan_workflow.run_plan_peer_review_round",
+        "agent_lab.plan.workflow.run_plan_peer_review_round",
         _fake_peer_review,
     )
     monkeypatch.setattr(
@@ -248,7 +248,7 @@ def test_run_room_plan_send_reaches_human_pending(
         return SAMPLE_PLAN if peer_calls["n"] == 0 else REFINED_PLAN
 
     monkeypatch.setattr(
-        "agent_lab.plan_workflow.run_plan_peer_review_round",
+        "agent_lab.plan.workflow.run_plan_peer_review_round",
         _fake_peer_review,
     )
     monkeypatch.setattr("agent_lab.room.synthesize_plan", _fake_synthesize_plan)
@@ -340,7 +340,7 @@ def test_e2e_qa_loop_clarify_to_approve(
     def _fake_synthesize_plan(_topic: str, _messages: object, **_kwargs: object) -> str:
         return SAMPLE_PLAN
 
-    monkeypatch.setattr("agent_lab.plan_workflow.run_plan_peer_review_round", _fake_peer_review)
+    monkeypatch.setattr("agent_lab.plan.workflow.run_plan_peer_review_round", _fake_peer_review)
     monkeypatch.setattr("agent_lab.room.synthesize_plan", _fake_synthesize_plan)
 
     run_meta = read_run_meta(folder)

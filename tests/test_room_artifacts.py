@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from agent_lab.room_artifacts import (
+from agent_lab.room.artifacts import (
     append_artifact,
     artifacts_public_payload,
     build_artifacts_block,

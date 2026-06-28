@@ -8,7 +8,7 @@ from typing import Any
 
 import pytest
 
-from agent_lab.inbox_harvest import (
+from agent_lab.inbox.harvest import (
     harvest_and_check_pause,
     inbox_mode,
     should_pause_discuss,
@@ -175,7 +175,7 @@ def test_harvest_and_check_pause_plan_mode_noop(monkeypatch: pytest.MonkeyPatch)
 
 
 def test_session_inbox_mode_overrides_env_sync(monkeypatch: pytest.MonkeyPatch):
-    from agent_lab.inbox_harvest import inbox_mode_for_run, should_pause_discuss
+    from agent_lab.inbox.harvest import inbox_mode_for_run, should_pause_discuss
 
     monkeypatch.delenv("AGENT_LAB_INBOX_MODE", raising=False)
     run_meta = {
@@ -187,7 +187,7 @@ def test_session_inbox_mode_overrides_env_sync(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_session_inbox_mode_overrides_env_soft(monkeypatch: pytest.MonkeyPatch):
-    from agent_lab.inbox_harvest import inbox_mode_for_run, should_pause_discuss
+    from agent_lab.inbox.harvest import inbox_mode_for_run, should_pause_discuss
 
     monkeypatch.setenv("AGENT_LAB_INBOX_MODE", "soft")
     run_meta = {

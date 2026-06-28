@@ -20,7 +20,7 @@ import os
 from datetime import datetime, timezone
 from typing import Any
 
-from agent_lab.room_live_log import LIVE_EVENT_TYPES
+from agent_lab.room.live_log import LIVE_EVENT_TYPES
 
 _TRUE = frozenset({"1", "true", "yes", "on"})
 

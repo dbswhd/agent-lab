@@ -50,8 +50,8 @@ def test_room_timeout_default(monkeypatch):
 
 
 def test_peer_decision_in_bundle():
-    from agent_lab.agent_permissions import normalize_agent_permissions
-    from agent_lab.context_bundle import build_context_bundle
+    from agent_lab.agent.permissions import normalize_agent_permissions
+    from agent_lab.context.bundle import build_context_bundle
 
     bundle = build_context_bundle(
         "topic",
@@ -169,7 +169,7 @@ def test_build_cmd_includes_inbox_mcp_overrides(tmp_path: Path):
         config_overrides=overrides,
     )
     assert "--json" in cmd
-    assert "agent_lab.inbox_mcp_server" in " ".join(cmd)
+    assert "agent_lab.inbox.mcp_server" in " ".join(cmd)
 
 
 def test_run_codex_idle_timeout(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -180,14 +180,14 @@ def test_run_codex_idle_timeout(monkeypatch: pytest.MonkeyPatch, tmp_path: Path)
     hang.chmod(0o755)
     monkeypatch.setenv("CODEX_ROOM_IDLE_TIMEOUT_SEC", "2")
     monkeypatch.setattr(
-        "agent_lab.run_control.register_child_process",
+        "agent_lab.run.control.register_child_process",
         lambda _proc: None,
     )
     monkeypatch.setattr(
-        "agent_lab.run_control.unregister_child_process",
+        "agent_lab.run.control.unregister_child_process",
         lambda _proc: None,
     )
-    monkeypatch.setattr("agent_lab.run_control.is_cancelled", lambda: False)
+    monkeypatch.setattr("agent_lab.run.control.is_cancelled", lambda: False)
 
     with pytest.raises(RuntimeError, match="no JSONL/stderr activity"):
         codex_cli._run_codex(
@@ -216,14 +216,14 @@ def test_run_codex_drains_stderr_while_waiting(monkeypatch: pytest.MonkeyPatch, 
     script.chmod(0o755)
     monkeypatch.setenv("CODEX_ROOM_IDLE_TIMEOUT_SEC", "30")
     monkeypatch.setattr(
-        "agent_lab.run_control.register_child_process",
+        "agent_lab.run.control.register_child_process",
         lambda _proc: None,
     )
     monkeypatch.setattr(
-        "agent_lab.run_control.unregister_child_process",
+        "agent_lab.run.control.unregister_child_process",
         lambda _proc: None,
     )
-    monkeypatch.setattr("agent_lab.run_control.is_cancelled", lambda: False)
+    monkeypatch.setattr("agent_lab.run.control.is_cancelled", lambda: False)
 
     outcome = codex_cli._run_codex(
         [str(script), "-"],

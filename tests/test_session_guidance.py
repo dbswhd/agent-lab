@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from agent_lab.session_guidance import (
+from agent_lab.session.guidance import (
     apply_discuss_workspace,
     build_session_guidance_block,
     detect_layout_freeze,
@@ -13,7 +13,7 @@ from agent_lab.session_guidance import (
     sync_session_meta,
     verify_execution_artifacts,
 )
-from agent_lab.workspace_roots import discuss_primary_workspace
+from agent_lab.workspace.roots import discuss_primary_workspace
 
 
 class _Msg:

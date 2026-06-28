@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from agent_lab.room_hooks import clear_hooks_config_cache, run_hook_for_agent
+from agent_lab.room.hooks import clear_hooks_config_cache, run_hook_for_agent
 
 
 def test_per_agent_post_agent_reply_routing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):

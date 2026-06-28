@@ -16,7 +16,7 @@ from agent_lab.role_plan import (
     resolve_role_plan,
     role_catalog,
 )
-from agent_lab.room_consensus import recombination_follow_up
+from agent_lab.room.consensus import recombination_follow_up
 from agent_lab.topic_router import CategoryRoute, resolve_topic_route
 
 
@@ -220,7 +220,7 @@ class TestEscalationRoleReset:
         """_maybe_escalate가 _turn_roles를 {} 로 리셋하는지 확인."""
         from unittest.mock import MagicMock
 
-        from agent_lab.room_consensus_rounds import run_consensus_agent_rounds
+        from agent_lab.room.consensus_rounds import run_consensus_agent_rounds
 
         os.environ["AGENT_LAB_MOCK_AGENTS"] = "1"
         try:
@@ -310,6 +310,6 @@ class TestCategoryRouteFields:
         assert "role_plan" not in d
 
     def test_run_meta_ephemeral_excludes_turn_roles(self):
-        from agent_lab.run_meta import _EPHEMERAL_RUN_KEYS
+        from agent_lab.run.meta import _EPHEMERAL_RUN_KEYS
 
         assert "_turn_roles" in _EPHEMERAL_RUN_KEYS

@@ -237,7 +237,7 @@ def bench_p2_compaction_quality() -> dict[str, Any]:
     sys.stdout.write("  [P2] Building compacted vs full context…\n")
     sys.stdout.flush()
 
-    from agent_lab.room_context import _truncate_old_tool_outputs
+    from agent_lab.room.context import _truncate_old_tool_outputs
 
     msgs = _build_conversation_with_needles()
     pinned = msgs[-2:]  # last user + last agent = current turn
@@ -458,7 +458,7 @@ def self_eval_p2() -> dict[str, Any]:
     """Evaluate P2 compaction retention using needle-position experiments (no LLM call)."""
     import dataclasses as _dc
 
-    from agent_lab.room_context import _truncate_old_tool_outputs
+    from agent_lab.room.context import _truncate_old_tool_outputs
 
     @_dc.dataclass
     class _Msg:

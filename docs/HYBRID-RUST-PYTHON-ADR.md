@@ -93,18 +93,14 @@ Users should not manually manage `:8765`. Desktop shell supervises API lifecycle
 - Dev `tauri-dev`: button disabled (`AGENT_LAB_SKIP_TAURI_API=1`); invoke returns clear error
 - Tests: Rust `skip_tauri_api_reads_env`; Vitest `tauriApiShell.test.ts`
 
-### Phase 1.3 — Supervisor hardening (real gaps only)
+### Phase 1.3 — Supervisor hardening — **shipped**
 
-| Gap | Action |
-|-----|--------|
-| Cross-platform port reclaim | `cfg(target_os)` — macOS `lsof`; Windows stub + compile CI; Linux as needed |
-| sessions_dir mismatch | **Enhancement:** optional block reuse or user confirm via invoke — detection already exists |
-
-**Shipped in 1.2:** boot failure native dialog (release spawn error).
-
-**Not in scope:** re-implement sessions_dir parsing (already in `lib.rs`).
-
-**Exit:** `make tauri-build` green on macOS; Windows **compiles**; documented port-reclaim behavior per OS.
+| Item | Implementation |
+|------|----------------|
+| Cross-platform port reclaim | [`port_reclaim.rs`](../web/src-tauri/src/port_reclaim.rs) — unix `lsof`/`kill`, Windows `netstat`/`taskkill` + unit tests |
+| Windows compile CI hook | `make tauri-check-windows` (`cargo check --target x86_64-pc-windows-msvc`) |
+| Cross-platform log dirs | `agent_log_dir()` — macOS / Windows `%LOCALAPPDATA%` / Linux `~/.local/share` |
+| sessions_dir mismatch | **Release:** reclaim + respawn; **dev:** warn + reuse; `api_shell_status` + diagnostics UI |
 
 ### Phase 1.4 — IPC contract (deferred)
 
@@ -286,5 +282,6 @@ No fixed calendar for Track 2 beyond profile — **t2b/t2c may not happen**.
 
 | Date | Change |
 |------|--------|
+| 2026-06-28 | Phase 1.3 shipped: cross-platform port reclaim, release sessions_dir reclaim, log paths |
 | 2026-06-28 | Phase 1.2 shipped: `api_restart`, `api_shell_status`, ApiDiagnosticsBar button, release boot dialog |
 | 2026-06-28 | Initial ADR: Track 2 conditional; repo_map seam-first; shrink Track 1.2/1.3; remove scheduled repo_map Rust |

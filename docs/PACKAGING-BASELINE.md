@@ -174,15 +174,13 @@ hybrid 작업과 **무관** — room/package refactor·UI contract drift. 돌아
 
 Rollout plan: **[HYBRID-RUST-PYTHON-ADR.md](./HYBRID-RUST-PYTHON-ADR.md)** — Track 1 packaging **proceed**; Track 2 native **conditional** (profile gate).
 
-### Track 1 — not yet done
+### Track 1 — shipped (Phase 1.2–1.3)
 
-- Cross-platform port reclaim (Windows compile/run path)
-
-### Track 1 — shipped (Phase 1.2)
-
-- Tauri `invoke`: **`api_restart`**, **`api_shell_status`**
-- [`ApiDiagnosticsBar.tsx`](../web/src/components/ApiDiagnosticsBar.tsx) — **API 재시작** (release only; dev disabled)
+- Tauri `invoke`: **`api_restart`**, **`api_shell_status`** (incl. `sessions_dir_mismatch`)
+- [`ApiDiagnosticsBar.tsx`](../web/src/components/ApiDiagnosticsBar.tsx) — **API 재시작**, mismatch hint
 - Release API spawn failure — native dialog
+- Cross-platform port reclaim — [`port_reclaim.rs`](../web/src-tauri/src/port_reclaim.rs)
+- `make tauri-check-windows` — Windows compile check
 
 ### Track 2 — gated (not scheduled)
 

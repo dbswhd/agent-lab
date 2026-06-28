@@ -8,11 +8,13 @@ Operational notes for API lifecycle, configuration, plan/execute validation, roo
 - **Preflight:** `GET /api/agents/preflight` — same structured `agents: [{ id, ready, reason, bridge_mode, … }]`.
 - **Diagnostics:** `GET /api/diagnostics` — PID, uptime, port 8765 probe, resolved config paths, masked tool bins, last ~20 lines of boot log.
 
-Boot log path (macOS, matches Tauri `web/src-tauri/src/lib.rs`):
+Boot log path (matches Tauri `web/src-tauri/src/lib.rs`):
 
-`~/Library/Logs/Agent Lab/agent-lab-boot.log`
-
-API log: same directory, `agent-lab-api.log`.
+| OS | Boot log | API log |
+|----|----------|---------|
+| macOS | `~/Library/Logs/Agent Lab/agent-lab-boot.log` | same dir, `agent-lab-api.log` |
+| Windows | `%LOCALAPPDATA%/Agent Lab/Logs/agent-lab-boot.log` | same dir, `agent-lab-api.log` |
+| Linux | `~/.local/share/agent-lab/logs/agent-lab-boot.log` | same dir, `agent-lab-api.log` |
 
 API startup uses FastAPI lifespan hooks. Startup diagnostics keep the same boot log behavior; shutdown is currently a no-op. Session detail loads still run stale worktree GC after reading `run.json`.
 
@@ -22,11 +24,14 @@ When the UI shows **API offline**, open diagnostics (sidebar) or call `/api/diag
 
 ## Port 8765 policy (stale listener)
 
+Port reclaim implementation: `web/src-tauri/src/port_reclaim.rs` (`unix`: `lsof` + `kill`; `windows`: `netstat` + `taskkill`).
+
 | Mode | Behavior |
 |------|----------|
-| **Dev** (`debug_assertions`) | If port 8765 is in use but `/api/health` fails, **do not** kill foreign processes. Stop the stale listener manually: `kill $(lsof -ti:8765)` then restart dev. |
-| **Release** (Tauri) | If port is in use and health fails, Tauri may **stop only its own stale child** via `stop_process_on_port` before spawning a new uvicorn. |
+| **Dev** (`debug_assertions`) | If port 8765 is in use but `/api/health` fails, **do not** kill foreign processes. Stop manually — macOS/Linux: `kill $(lsof -ti tcp:8765)`; Windows: `netstat -ano -p tcp` + `taskkill /F /PID <pid>`. |
+| **Release** (Tauri) | If port is in use and health fails, reclaim listener via `stop_process_on_port` then spawn uvicorn. |
 | **Healthy reuse** | If health OK and `sessions_dir` matches, reuse the existing API (no second spawn). |
+| **sessions_dir mismatch** | **Release:** reclaim port and spawn with expected `sessions_dir`. **Dev:** log warning and reuse (Vite may own API). UI: diagnostics bar shows mismatch + **API 재시작** when Tauri owns API. |
 
 Never assume port 8765 belongs to Agent Lab without a successful health check.
 

@@ -116,6 +116,25 @@ export function ApiDiagnosticsBar({
         </p>
       ) : null}
 
+      {shellStatus?.sessions_dir_mismatch ? (
+        <p className="diag-bar__hint" role="alert">
+          세션 경로 불일치 — 실행 중 API:{" "}
+          <code title={shellStatus.remote_sessions_dir ?? ""}>
+            {shellStatus.remote_sessions_dir}
+          </code>
+          {" · "}이 앱 기대:{" "}
+          <code title={shellStatus.expected_sessions_dir}>
+            {shellStatus.expected_sessions_dir}
+          </code>
+          {shellStatus.tauri_owns_api ? (
+            <>
+              {" "}
+              — <strong>API 재시작</strong>으로 교체하세요.
+            </>
+          ) : null}
+        </p>
+      ) : null}
+
       {restartError ? (
         <p className="diag-bar__hint" role="alert">
           API 재시작 실패: {restartError}

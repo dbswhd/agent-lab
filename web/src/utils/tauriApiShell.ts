@@ -6,6 +6,9 @@ export type ApiShellStatus = {
   tauri_owns_api: boolean;
   skip_tauri_api: boolean;
   health_ok: boolean;
+  sessions_dir_mismatch: boolean;
+  expected_sessions_dir: string;
+  remote_sessions_dir: string | null;
 };
 
 export async function fetchApiShellStatus(): Promise<ApiShellStatus | null> {

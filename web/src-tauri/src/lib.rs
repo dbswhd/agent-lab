@@ -10,6 +10,9 @@ use std::{thread, time::SystemTime};
 use tauri::{Manager, RunEvent, State};
 use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
 
+mod port_reclaim;
+use port_reclaim::{port_conflict_hint, stop_process_on_port};
+
 const API_PORT: u16 = 8765;
 
 struct ApiServer(Mutex<Option<Child>>);
@@ -82,6 +85,15 @@ fn api_health_sessions_dir() -> Option<PathBuf> {
         .map(PathBuf::from)
 }
 
+fn sessions_dirs_match(expected: &Path, remote: &Path) -> bool {
+    remote
+        .canonicalize()
+        .ok()
+        .zip(expected.canonicalize().ok())
+        .map(|(a, b)| a == b)
+        .unwrap_or(false)
+}
+
 fn wait_for_api(max_wait_ms: u64, child: &mut Option<Child>) -> bool {
     let steps = max_wait_ms / 200;
     for _ in 0..steps {
@@ -97,12 +109,6 @@ fn wait_for_api(max_wait_ms: u64, child: &mut Option<Child>) -> bool {
         thread::sleep(Duration::from_millis(200));
     }
     false
-}
-
-fn stop_process_on_port(port: u16) {
-    let script = format!("lsof -ti tcp:{port} 2>/dev/null | xargs kill -9 2>/dev/null || true");
-    let _ = Command::new("/bin/sh").arg("-c").arg(&script).status();
-    thread::sleep(Duration::from_millis(400));
 }
 
 fn python_can_import_app(python: &Path, root: &Path) -> bool {
@@ -122,17 +128,37 @@ fn repo_root() -> PathBuf {
 }
 
 fn dirs_home() -> PathBuf {
-    std::env::var("HOME")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("/Users/yoonjong"))
+    if let Ok(h) = std::env::var("HOME") {
+        let trimmed = h.trim();
+        if !trimmed.is_empty() {
+            return PathBuf::from(trimmed);
+        }
+    }
+    if let Ok(h) = std::env::var("USERPROFILE") {
+        let trimmed = h.trim();
+        if !trimmed.is_empty() {
+            return PathBuf::from(trimmed);
+        }
+    }
+    PathBuf::from("/Users/yoonjong")
+}
+
+fn agent_log_dir() -> PathBuf {
+    let home = dirs_home();
+    if cfg!(target_os = "macos") {
+        return home.join("Library/Logs/Agent Lab");
+    }
+    if cfg!(target_os = "windows") {
+        let base = std::env::var("LOCALAPPDATA")
+            .map(PathBuf::from)
+            .unwrap_or(home);
+        return base.join("Agent Lab").join("Logs");
+    }
+    home.join(".local/share/agent-lab/logs")
 }
 
 fn agent_config_dir() -> PathBuf {
     dirs_home().join(".agent-lab")
-}
-
-fn agent_log_dir() -> PathBuf {
-    dirs_home().join("Library/Logs/Agent Lab")
 }
 
 fn append_boot(message: &str) {
@@ -273,30 +299,35 @@ fn start_api(app: &tauri::AppHandle, state: &ApiServer) -> Result<(), String> {
     if port_in_use(API_PORT) {
         if api_health_ok() {
             if let Some(remote) = api_health_sessions_dir() {
-                let same = remote
-                    .canonicalize()
-                    .ok()
-                    .zip(expected_sessions.canonicalize().ok())
-                    .map(|(a, b)| a == b)
-                    .unwrap_or(false);
-                if !same {
+                if !sessions_dirs_match(&expected_sessions, &remote) {
+                    let hint = port_conflict_hint(API_PORT);
                     let msg = format!(
-                        "Agent Lab: port {API_PORT} uses sessions {} but this app expects {}. \
-                         Stop stale API: kill $(lsof -ti:{API_PORT}) then restart.",
+                        "port {API_PORT} API uses sessions {} but this app expects {}. Recovery: {hint}",
                         remote.display(),
                         expected_sessions.display()
                     );
                     append_boot(&msg);
-                    eprintln!("{msg}");
+                    eprintln!("Agent Lab: {msg}");
+                    if cfg!(debug_assertions) {
+                        append_boot("dev: reusing API despite sessions_dir mismatch");
+                        return Ok(());
+                    }
+                    append_boot("release: reclaiming port due to sessions_dir mismatch");
+                    stop_process_on_port(API_PORT);
+                    thread::sleep(Duration::from_millis(500));
+                } else {
+                    append_boot(&format!("reusing API already listening on {API_PORT}"));
+                    return Ok(());
                 }
+            } else {
+                append_boot(&format!("reusing API already listening on {API_PORT}"));
+                return Ok(());
             }
-            append_boot(&format!("reusing API already listening on {API_PORT}"));
-            return Ok(());
         }
         if cfg!(debug_assertions) {
+            let hint = port_conflict_hint(API_PORT);
             let msg = format!(
-                "port {API_PORT} in use but /api/health failed (dev). \
-                 Stop the stale process: kill $(lsof -ti:{API_PORT})"
+                "port {API_PORT} in use but /api/health failed (dev). Stop the stale process: {hint}"
             );
             append_boot(&msg);
             return Err(msg);
@@ -453,14 +484,27 @@ struct ApiShellStatus {
     tauri_owns_api: bool,
     skip_tauri_api: bool,
     health_ok: bool,
+    sessions_dir_mismatch: bool,
+    expected_sessions_dir: String,
+    remote_sessions_dir: Option<String>,
 }
 
 #[tauri::command]
-fn api_shell_status() -> ApiShellStatus {
+fn api_shell_status(app: tauri::AppHandle) -> ApiShellStatus {
+    let root = resolve_project_root(&app);
+    let expected = sessions_dir(&app, &root);
+    let remote = api_health_sessions_dir();
+    let sessions_dir_mismatch = remote
+        .as_ref()
+        .map(|r| !sessions_dirs_match(&expected, r))
+        .unwrap_or(false);
     ApiShellStatus {
         tauri_owns_api: !skip_tauri_api(),
         skip_tauri_api: skip_tauri_api(),
         health_ok: api_health_ok(),
+        sessions_dir_mismatch,
+        expected_sessions_dir: expected.to_string_lossy().into_owned(),
+        remote_sessions_dir: remote.map(|p| p.to_string_lossy().into_owned()),
     }
 }
 

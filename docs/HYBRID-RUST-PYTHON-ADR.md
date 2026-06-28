@@ -208,18 +208,16 @@ Script: [`scripts/profile_track2_gate.py`](../scripts/profile_track2_gate.py) ·
 - **`syntax_gate`** first in 2.0b (simpler seam); `repo_map_core` second.
 - Platform gate (`make tauri-check-windows`) still required before any PyO3 POC.
 
-### Phase 2.0b — Python seam extract (only if 2.0 pass + platform gate)
+### Phase 2.0b — Python seam extract — **shipped**
 
-| Module | Seam priority | Notes |
-|--------|---------------|-------|
-| `syntax_gate` | **First** | worktree paths + `ast.parse`; fewer policy imports |
-| `repo_map` | Second | requires `build_repo_map_core` extract above |
-| `gate_snapshot` | **Defer** | policy SSOT — Python only unless pure JSON core extracted |
-| `wisdom/index`, session list | Defer | I/O or low test coverage |
+| Module | Core | Wrapper (policy / I/O) |
+|--------|------|------------------------|
+| `syntax_gate` | [`syntax_gate_core.py`](../src/agent_lab/syntax_gate_core.py) — `scan_python_syntax`, `merge_result_for_syntax_scan` | [`syntax_gate.py`](../src/agent_lab/syntax_gate.py) — `changed_python_files`, env flag |
+| `repo_map` | [`repo_map_core.py`](../src/agent_lab/repo_map_core.py) — `build_repo_map_core` | [`repo_map.py`](../src/agent_lab/repo_map.py) — layers, seeds, env budget |
 
-Golden tests must pass with wrapper unchanged; core tested in isolation.
+Tests: `tests/test_syntax_gate_core.py`, `tests/test_repo_map_core.py` (+ existing AC suites unchanged).
 
-**Exit:** `make test-fast` + existing module tests green; no behavior change flag-off.
+**Next:** Track 2.1 dev-only PyO3 POC on `syntax_gate_core` **only after** platform gate — not started.
 
 ### Phase 2.1 — Native POC (only if 2.0 + 2.0b + platform gate pass)
 
@@ -290,6 +288,7 @@ No fixed calendar for Track 2 beyond profile — **t2b/t2c may not happen**.
 
 | Date | Change |
 |------|--------|
+| 2026-06-28 | Phase 2.0b shipped: syntax_gate_core + repo_map_core seams |
 | 2026-06-28 | Phase 2.0 shipped: profile gate PASS (~98% context w/ REPO_MAP=1, ~7.6% mock turn); see TRACK2-PROFILE.md |
 | 2026-06-28 | Phase 1.3 shipped: cross-platform port reclaim, release sessions_dir reclaim, log paths |
 | 2026-06-28 | Phase 1.2 shipped: `api_restart`, `api_shell_status`, ApiDiagnosticsBar button, release boot dialog |

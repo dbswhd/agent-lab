@@ -5,6 +5,8 @@ Pure stdlib (ast/py_compile). Default OFF via AGENT_LAB_SYNTAX_GATE: when off, t
 byte-identical to today (OFF-parity). Python-only; lint stays non-blocking evidence
 elsewhere. Defensive: missing / unreadable / out-of-worktree / non-.py paths are
 skipped (treated as not-scanned), never raising.
+
+Scan logic lives in :mod:`syntax_gate_core` (Track 2.0b seam for optional PyO3).
 """
 
 from __future__ import annotations
@@ -13,10 +15,10 @@ import os
 from pathlib import Path
 from typing import Any
 
+from agent_lab.syntax_gate_core import merge_result_for_syntax_scan, scan_python_syntax
+
 _TRUE = frozenset({"1", "true", "yes", "on"})
 
-# Pending-execution path fields that may name changed files (mirrors
-# plan_execute_verify._merged_verify_paths key order for determinism).
 _PATH_KEYS = (
     "source_touched_paths",
     "touched_paths",
@@ -47,12 +49,7 @@ def _worktree_root(execution: dict[str, Any] | None) -> Path | None:
 
 
 def changed_python_files(execution: dict[str, Any] | None) -> list[Path]:
-    """Resolve changed *.py files inside the pending execution's worktree.
-
-    Deterministic, deduplicated, sorted. Skips non-.py names and any path that
-    resolves outside the worktree root. Existence/readability is checked at scan
-    time, not here.
-    """
+    """Resolve changed *.py files inside the pending execution's worktree."""
     root = _worktree_root(execution)
     if execution is None or root is None:
         return []
@@ -65,7 +62,6 @@ def changed_python_files(execution: dict[str, Any] | None) -> list[Path]:
                 continue
             candidate = Path(name)
             resolved = (candidate if candidate.is_absolute() else (root / candidate)).resolve()
-            # Stay inside the worktree.
             try:
                 resolved.relative_to(root)
             except ValueError:
@@ -77,49 +73,11 @@ def changed_python_files(execution: dict[str, Any] | None) -> list[Path]:
     return sorted(out)
 
 
-def _scan_syntax(paths: list[Path], root: Path | None = None) -> tuple[str, int] | None:
-    """Return the first ``(display_path, lineno)`` whose source fails to compile.
-
-    Files are scanned in the given order (changed_python_files already sorts), so
-    the first error is deterministic. Missing or unreadable files are skipped.
-    Returns None when every readable file parses.
-    """
-    for path in paths:
-        try:
-            source = path.read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError):
-            continue
-        try:
-            compile(source, str(path), "exec")
-        except SyntaxError as exc:
-            display = path
-            if root is not None:
-                try:
-                    display = path.relative_to(root)
-                except ValueError:
-                    display = path
-            return (str(display), exc.lineno or 0)
-        except ValueError:
-            # e.g. source contains null bytes — not a SyntaxError; skip defensively.
-            continue
-    return None
-
-
 def evaluate_syntax_gate(execution: dict[str, Any] | None) -> dict[str, Any]:
-    """Produce the ``{id, ok, detail}`` merge-check result for the syntax gate.
-
-    Always returns ok:True when there is no pending execution, no changed *.py,
-    or all changed *.py parse. Returns ok:False with ``detail="file:line"`` on the
-    first SyntaxError.
-    """
+    """Produce the ``{id, ok, detail}`` merge-check result for the syntax gate."""
     if execution is None:
         return {"id": "syntax_gate", "ok": True, "detail": "no pending execution"}
     root = _worktree_root(execution)
     paths = changed_python_files(execution)
-    if not paths:
-        return {"id": "syntax_gate", "ok": True, "detail": "no changed .py"}
-    hit = _scan_syntax(paths, root=root)
-    if hit is None:
-        return {"id": "syntax_gate", "ok": True, "detail": f"{len(paths)} .py ok"}
-    file, line = hit
-    return {"id": "syntax_gate", "ok": False, "detail": f"{file}:{line}"}
+    hit = scan_python_syntax(paths, root=root)
+    return merge_result_for_syntax_scan(paths, hit)

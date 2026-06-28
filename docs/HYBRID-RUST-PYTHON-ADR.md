@@ -225,30 +225,30 @@ Script: [`scripts/profile_track2_gate.py`](../scripts/profile_track2_gate.py) ·
 
 Tests: `tests/test_syntax_gate_core.py`, `tests/test_repo_map_core.py` (+ existing AC suites unchanged).
 
-**Next:** Track 2.2 bundled native / micro-bench gate — not started.
+**Next:** ~~Track 2.2 bundled native / micro-bench gate~~ **CLOSED 2026-06-28** (see AMENDMENT).
 
 ### Phase 2.1 — Native POC — ~~shipped (dev-only)~~ **REMOVED 2026-06-28 (see AMENDMENT)**
 
-The crate and flag below were deleted after Phase 2.2 FAIL + the repo_map over-scan fix left no native candidate. Table retained for history.
+The crate and flag below were deleted after Phase 2.2 FAIL + the repo_map over-scan fix left no native candidate. Table retained for history (paths were never merged to `main`).
 
 
-| Item | Location |
-|------|----------|
-| Crate | [`crates/agent_lab_native/`](../crates/agent_lab_native/) — `scan_python_syntax` via `rustpython-parser` |
+| Item | Location (removed) |
+|------|---------------------|
+| Crate | `crates/agent_lab_native/` — `scan_python_syntax` via `rustpython-parser` |
 | Dev install | `make native-dev` (`maturin develop` into `.venv`) |
 | Rust unit tests | `make native-test` |
-| Python flag | `AGENT_LAB_SYNTAX_GATE_RUST=1` (default off) → [`syntax_gate_core.py`](../src/agent_lab/syntax_gate_core.py); ImportError → `compile()` fallback |
-| Parity tests | `tests/test_syntax_gate_rust.py` (skips when extension not built) |
+| Python flag | `AGENT_LAB_SYNTAX_GATE_RUST=1` → `syntax_gate_core.py` Rust shim |
+| Parity tests | `tests/test_syntax_gate_rust.py` |
 
-**Build note:** `make native-dev` / `native-test` use a sanitized cargo env (minimal `PATH`, unset Qt plugin paths) to avoid `libm` build-script UTF-8 panics on machines with PySide/Qt in `PATH` / `QML2_IMPORT_PATH`.
+**Build note (historical):** sanitized cargo env for Qt/PySide UTF-8 panics in `libm` build scripts.
 
-**Not in scope:** bundled `.app` maturin, micro-bench ≥20% gate (deferred to 2.2).
+**Not in scope:** bundled `.app` maturin (never shipped).
 
-**Next:** Track 2 closed for `syntax_gate` bundled native — see [TRACK2-NATIVE-GATE.md](./TRACK2-NATIVE-GATE.md). Optional future: `repo_map_core` only if product enables `REPO_MAP=1`.
+**Outcome:** Track 2 closed — see [TRACK2-NATIVE-GATE.md](./TRACK2-NATIVE-GATE.md).
 
-### Phase 2.2 — Native micro-bench + bundled gate — **shipped (gate FAIL)**
+### Phase 2.2 — Native micro-bench + bundled gate — **CLOSED (gate FAIL, 2026-06-28)**
 
-Script: [`scripts/profile_track2_native_gate.py`](../scripts/profile_track2_native_gate.py) · Report: [TRACK2-NATIVE-GATE.md](./TRACK2-NATIVE-GATE.md) · Baseline: [`tests/fixtures/track2-native-gate-report.json`](../tests/fixtures/track2-native-gate-report.json)
+Decision record: [TRACK2-NATIVE-GATE.md](./TRACK2-NATIVE-GATE.md) (script, baseline JSON, and crate **removed**).
 
 **Result (2026-06-28, agent-lab repo, ~40 `.py` files):**
 
@@ -326,10 +326,10 @@ No fixed calendar for Track 2 beyond profile — **t2b/t2c may not happen**.
 
 | Date | Change |
 |------|--------|
-| 2026-06-28 | Phase 2.2 gate FAIL: Rust syntax scan slower than compile(); bundled native blocked |
-| 2026-06-28 | Phase 2.1 shipped: agent_lab_native PyO3 POC + AGENT_LAB_SYNTAX_GATE_RUST dev flag |
-| 2026-06-28 | Phase 2.0b shipped: syntax_gate_core + repo_map_core seams |
-| 2026-06-28 | Phase 2.0 shipped: profile gate PASS (~98% context w/ REPO_MAP=1, ~7.6% mock turn); see TRACK2-PROFILE.md |
+| 2026-06-28 | **Track 2 CLOSED:** both native candidates rejected; repo_map over-scan fixed in Python (5.8×); crate/scripts removed |
+| 2026-06-28 | Phase 2.2 gate FAIL: Rust syntax scan slower than `compile()`; bundled native blocked |
+| 2026-06-28 | Phase 2.1 ~~shipped~~ **REMOVED** (dev POC never merged; deleted after gate FAIL) |
+| 2026-06-28 | Phase 2.0 ~~PASS~~ **RETRACTED** — ~98% share was over-scan artifact; see AMENDMENT |
 | 2026-06-28 | Phase 1.3 shipped: cross-platform port reclaim, release sessions_dir reclaim, log paths |
 | 2026-06-28 | Phase 1.2 shipped: `api_restart`, `api_shell_status`, ApiDiagnosticsBar button, release boot dialog |
 | 2026-06-28 | Initial ADR: Track 2 conditional; repo_map seam-first; shrink Track 1.2/1.3; remove scheduled repo_map Rust |

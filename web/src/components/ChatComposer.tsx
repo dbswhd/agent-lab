@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState, useEffect, type ReactNode } from "react";
 import { ComposerMentionMenu } from "./ComposerMentionMenu";
+import { ComposerPlanToggle } from "./ComposerPlanToggle";
 import { ComposerAgentStack } from "./ComposerAgentStack";
 import { presetDisplayLabel, presetHintLine } from "../utils/roomPresets";
 import { formatAgentModelName } from "../utils/roomModels";
@@ -105,8 +106,8 @@ export function ChatComposer({
   turnProfile: _turnProfile,
   onTurnProfileChange: _onTurnProfileChange,
   planAfterSend = false,
-  onPlanAfterSendChange: _onPlanAfterSendChange,
-  planToggleDisabled: _planToggleDisabled,
+  onPlanAfterSendChange,
+  planToggleDisabled,
   executeDisabled: _executeDisabled,
   pendingExecuteCount: _pendingExecuteCount,
   objectionNotice,
@@ -234,6 +235,13 @@ export function ChatComposer({
       >
         <div className="composer-prompt-head__row">
           <ComposerAgentStack agents={activeModels} max={4} size={32} />
+          {onPlanAfterSendChange ? (
+            <ComposerPlanToggle
+              checked={planAfterSend}
+              onChange={onPlanAfterSendChange}
+              disabled={inputLocked || planToggleDisabled}
+            />
+          ) : null}
           <div className="turn-seg composer-preset-seg composer-preset-seg--end">
             {roomPresets.map((p) => (
               <button

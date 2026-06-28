@@ -154,19 +154,15 @@ flowchart LR
 
 | Check | 명령 | baseline 기대 |
 |-------|------|---------------|
-| Fast tests | `make test-fast` | 2108 passed, **3 known failures** (아래) |
-| Smoke | `python scripts/smoke_room.py` | 36 baselines green |
-| Structure | `make structure-metrics-check` | **drift** (room package refactor 진행 중) |
+| Fast tests | `make test-fast` | **2122 passed** (2026-06-28 post-hybrid close) |
+| Smoke | `python scripts/smoke_room.py` | 37 baselines green |
+| Structure | `make structure-metrics-check` | pass (`room/` package shipped; shims removed) |
 | Dev desktop | `make tauri-dev` | API auto-start, proxy OK |
 | Dev browser | `make dev` | :5173 + :8765 |
 
-### Known failures @ baseline (수정 전 hybrid 착수 OK)
+### Known failures @ baseline (historical — resolved 2026-06-28)
 
-hybrid 작업과 **무관** — room/package refactor·UI contract drift. 돌아온 뒤 회귀면 이 3개부터 확인:
-
-1. `tests/test_integration_registry.py::test_fast_bucket_collection_budget`
-2. `tests/test_structure_metrics.py::test_structure_metrics_check_passes` — `tests/fixtures/structure-metrics-baseline.json` 미동기
-3. `tests/test_workspace_ui_contract.py::test_phase0_composer_plan_toggle_beside_turn_picker`
+~~hybrid 작업과 **무관** — room/package refactor·UI contract drift~~ — fixed: structure-metrics baseline sync, fast-bucket ratchet 2143, `ComposerPlanToggle` re-wired in `ChatComposer`.
 
 ---
 
@@ -182,9 +178,9 @@ Rollout plan: **[HYBRID-RUST-PYTHON-ADR.md](./HYBRID-RUST-PYTHON-ADR.md)** — T
 - Cross-platform port reclaim — [`port_reclaim.rs`](../web/src-tauri/src/port_reclaim.rs)
 - `make tauri-check-windows` — Windows compile check
 
-### Track 2 — gated (not scheduled)
+### Track 2 — **closed** (2026-06-28)
 
-Opens only if profile shows native candidates ≥ **N%** of mock-turn/context-build time **and** Windows path verified. Steps: **profile → Python seam extract → optional dev-only PyO3 POC** (`syntax_gate` before `repo_map`).
+Native rejected; Python `repo_map_core` seed-bounding is the durable win. See [HYBRID-RUST-PYTHON-ADR.md](./HYBRID-RUST-PYTHON-ADR.md) AMENDMENT + [TRACK2-NATIVE-GATE.md](./TRACK2-NATIVE-GATE.md).
 
 ### Permanent non-goals
 

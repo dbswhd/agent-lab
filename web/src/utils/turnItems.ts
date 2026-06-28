@@ -33,6 +33,45 @@ export type TurnItemEvent = Record<string, unknown> & {
   readonly type?: string;
 };
 
+function normalizeActivity(
+  text: string,
+): { kind: "reasoning_summary" | "activity"; text: string } {
+  const trimmed = text.trim();
+  if (trimmed.startsWith("[thinking]")) {
+    const body = trimmed.slice("[thinking]".length).trim();
+    return { kind: "reasoning_summary", text: body || trimmed };
+  }
+  return { kind: "activity", text: trimmed };
+}
+
+function toolFingerprint(tool: string, args?: string): string {
+  return `${tool}|${(args ?? "").trim()}`;
+}
+
+function upsertReasoning(
+  items: TurnItem[],
+  text: string,
+  now: number,
+): TurnItem[] {
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    const item = items[index];
+    if (item?.kind === "reasoning_summary") {
+      if (item.text === text) return items;
+      items[index] = { ...item, text, status: "running" };
+      return items;
+    }
+  }
+  return [
+    ...items,
+    {
+      id: `reasoning-${now}-${items.length}`,
+      kind: "reasoning_summary",
+      text,
+      status: "running",
+    },
+  ].slice(-24) as TurnItem[];
+}
+
 export function reduceTurnItems(
   current: readonly TurnItem[] | undefined,
   event: TurnItemEvent,
@@ -45,35 +84,44 @@ export function reduceTurnItems(
     typeof event.text === "string" &&
     event.text.trim()
   ) {
-    const kind =
-      type === "reasoning_summary" ? "reasoning_summary" : "activity";
-    const text = event.text.trim();
-    if (kind === "activity" && text.startsWith("[thinking]")) {
-      for (let index = items.length - 1; index >= 0; index -= 1) {
-        const item = items[index];
-        if (
-          item?.kind === "activity" &&
-          "text" in item &&
-          item.text.startsWith("[thinking]")
-        ) {
-          if (item.text === text) return items;
-          items[index] = { ...item, text, status: "running" };
-          return items;
-        }
-      }
+    const normalized =
+      type === "reasoning_summary"
+        ? { kind: "reasoning_summary" as const, text: event.text.trim() }
+        : normalizeActivity(event.text);
+    if (normalized.kind === "reasoning_summary") {
+      return upsertReasoning(items, normalized.text, now);
     }
     const last = items.at(-1);
-    if (last?.kind === kind && "text" in last && last.text === text)
+    if (
+      last?.kind === normalized.kind &&
+      "text" in last &&
+      last.text === normalized.text
+    ) {
       return items;
+    }
     return [
       ...items,
-      { id: `${kind}-${now}-${items.length}`, kind, text, status: "running" },
-    ].slice(-20) as TurnItem[];
+      {
+        id: `${normalized.kind}-${now}-${items.length}`,
+        kind: normalized.kind,
+        text: normalized.text,
+        status: "running",
+      },
+    ].slice(-24) as TurnItem[];
   }
   if (type === "tool_start") {
     const tool = String(event.tool ?? "tool");
-    const args = event.args as Record<string, unknown> | undefined;
-    const target = typeof args?.target === "string" ? args.target : undefined;
+    const argsObj = event.args as Record<string, unknown> | undefined;
+    const target =
+      typeof argsObj?.target === "string" ? argsObj.target : undefined;
+    const fp = toolFingerprint(tool, target);
+    for (let index = items.length - 1; index >= 0; index -= 1) {
+      const item = items[index];
+      if (item?.kind === "tool" && !item.doneAt) {
+        if (toolFingerprint(item.tool, item.args) === fp) return items;
+        break;
+      }
+    }
     return [
       ...items,
       {
@@ -83,7 +131,7 @@ export function reduceTurnItems(
         args: target,
         startedAt: now,
       },
-    ].slice(-20) as TurnItem[];
+    ].slice(-24) as TurnItem[];
   }
   if (type === "tool_output") {
     const tool = String(event.tool ?? "tool");

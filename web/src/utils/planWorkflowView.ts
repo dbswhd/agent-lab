@@ -24,6 +24,55 @@ export function isPlanWorkflowComposerHint(phase: string | undefined): boolean {
   return p === "HUMAN_PENDING" || p === "APPROVED";
 }
 
+type ClarifierInterviewLike = {
+  readonly questions?: readonly {
+    readonly prompt?: string;
+    readonly answered?: boolean;
+  }[];
+};
+
+export function pendingClarifierQuestionCount(
+  interview: ClarifierInterviewLike | null | undefined,
+): number {
+  const questions = interview?.questions ?? [];
+  return questions.filter((q) => q.prompt?.trim() && !q.answered).length;
+}
+
+/** CLARIFY/INTAKE only — inbox, open questions, or workflow notice. */
+export function hasPlanWorkflowClarifySurface(input: {
+  readonly phase?: string;
+  readonly inboxPendingCount: number;
+  readonly notice?: string;
+  readonly clarifierInterview?: ClarifierInterviewLike | null;
+}): boolean {
+  const phase = (input.phase ?? "").toUpperCase();
+  if (phase !== "CLARIFY" && phase !== "INTAKE") return false;
+  if (input.inboxPendingCount > 0) return true;
+  if (input.notice?.trim()) return true;
+  return pendingClarifierQuestionCount(input.clarifierInterview) > 0;
+}
+
+export function shouldShowPlanWorkflowComposerNotice(input: {
+  readonly showBanner: boolean;
+  readonly showHint: boolean;
+  readonly phase?: string;
+  readonly inboxPendingCount: number;
+  readonly notice?: string;
+  readonly clarifierInterview?: ClarifierInterviewLike | null;
+}): boolean {
+  if (!input.showBanner && !input.showHint) return false;
+  const phase = (input.phase ?? "").toUpperCase();
+  if (phase === "CLARIFY" || phase === "INTAKE") {
+    return hasPlanWorkflowClarifySurface({
+      phase,
+      inboxPendingCount: input.inboxPendingCount,
+      notice: input.notice,
+      clarifierInterview: input.clarifierInterview,
+    });
+  }
+  return true;
+}
+
 export function planWorkflowNoticeLabel(
   notice: string | undefined,
   msg: ReturnType<typeof useLocale>["msg"],

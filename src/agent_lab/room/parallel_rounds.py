@@ -56,6 +56,13 @@ def _collect_parallel_futures(executor: ThreadPoolExecutor, futures: set[Future[
         return results
     except RoomRunCancelled:
         terminate_active_children()
+        for fut in list(pending):
+            if not fut.done():
+                continue
+            try:
+                results.append(fut.result())
+            except Exception:
+                pass
         raise
     finally:
         if is_cancelled():

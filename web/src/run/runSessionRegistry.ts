@@ -255,16 +255,36 @@ export function resetTurnRun(sessionKey: string, userMsg: LiveMsg): void {
   }));
 }
 
+export function findAgentTurnMessage(
+  msgs: LiveMsg[],
+  agentId: string,
+  round: number,
+): LiveMsg | undefined {
+  const tid = `typing-${agentId}-r${round}`;
+  return (
+    msgs.find((m) => m.id === tid) ??
+    msgs.find(
+      (m) =>
+        m.role === agentId &&
+        (m.parallelRound ?? 1) === round &&
+        (m.typing || m.id.startsWith("typing-") || m.id.startsWith("cancel-")),
+    )
+  );
+}
+
 function finalizeTypingAsCancelled(msgs: LiveMsg[]): LiveMsg[] {
-  return msgs.map((m) => {
-    if (!m.typing) return m;
+  return msgs.flatMap((m) => {
+    if (!m.typing) return [m];
     const partial = (m.body ?? "").trim();
-    return {
-      ...m,
-      id: m.id.replace(/^typing-/, "cancel-"),
-      typing: false,
-      body: partial ? `${partial}\n\n_(취소됨)_` : "_(취소됨)_",
-    };
+    const hasTurnItems = (m.turnItems?.length ?? 0) > 0;
+    if (!partial && !hasTurnItems) return [];
+    return [
+      {
+        ...m,
+        typing: false,
+        body: partial ? `${partial}\n\n_(취소됨)_` : "_(취소됨)_",
+      },
+    ];
   });
 }
 

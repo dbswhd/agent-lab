@@ -46,7 +46,7 @@ export function ConsoleTurn({
       {...(chatLineIndex != null ? { "data-chat-line": chatLineIndex } : {})}
     >
       <div className="turn__head">
-        <Avatar role={role} label={label} size={20} />
+        <Avatar role={role} label={label} size={32} variant="orb" />
         <span className="turn__author">{author}</span>
         {meta}
       </div>

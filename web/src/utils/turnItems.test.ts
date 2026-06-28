@@ -56,10 +56,22 @@ describe("turn item reducer", () => {
       type: "agent_activity",
       text: "[thinking] alpha beta",
     });
-    const thinking = items.filter(
-      (item) => item.kind === "activity" && item.text.startsWith("[thinking]"),
-    );
+    const thinking = items.filter((item) => item.kind === "reasoning_summary");
     expect(thinking).toHaveLength(1);
-    expect(thinking[0]).toMatchObject({ text: "[thinking] alpha beta" });
+    expect(thinking[0]).toMatchObject({ text: "alpha beta", status: "running" });
+  });
+
+  it("dedupes repeated tool_start for the same command", () => {
+    let items = reduceTurnItems([], {
+      type: "tool_start",
+      tool: "bash",
+      args: { target: "git status" },
+    });
+    items = reduceTurnItems(items, {
+      type: "tool_start",
+      tool: "bash",
+      args: { target: "git status" },
+    });
+    expect(items.filter((item) => item.kind === "tool")).toHaveLength(1);
   });
 });

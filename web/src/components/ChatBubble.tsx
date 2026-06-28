@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
 import { Avatar } from "./Avatar";
-import { AgentResponseCard } from "./AgentResponseCard";
 import { ConsoleTurn } from "./ConsoleTurn";
 import { HumanSynthesisBubble } from "./HumanSynthesisBubble";
 import type { ChatMessage, AgentRole } from "../utils/transcript";
 import { parseUserMessageContent } from "../utils/transcript";
 import { MessageMarkdown } from "../utils/messageMarkdown";
-import { buildAgentResponseCard } from "../utils/agentResponseCard";
+import { stripAgentReplyBody } from "../utils/agentResponseCard";
 import { getTranscriptMarkers } from "../utils/transcriptMessageMarkers";
 import {
   TranscriptAuthorLine,
@@ -14,6 +13,8 @@ import {
   TranscriptMarkerStrip,
 } from "./TranscriptMessageChrome";
 import { TurnActivityGroup } from "./TurnActivityGroup";
+import { DraftResponseDetails } from "./DraftResponseDetails";
+import { formatWorkedDuration } from "../utils/turnTimeline";
 import type { TurnItem } from "../utils/turnItems";
 
 const AVATAR_SIZE = 24;
@@ -36,6 +37,8 @@ type Props = {
   highlighted?: boolean;
   /** console = flat transcript log; messenger = legacy iMessage bubbles */
   presentation?: "console" | "messenger";
+  /** Default open state for Draft response (user toggles are remembered). */
+  draftDefaultOpen?: boolean;
 };
 
 function TypingIndicator({ variant }: { variant: "bubble" | "stream" }) {
@@ -89,9 +92,9 @@ export function ReplyWaitingBubble({
       roleAttr="status"
       ariaLabel={`${who} 답장 중`}
       meta={
-        <span className="turn__meta">
-          {streaming ? "스트리밍" : "작업 중"} · {elapsed}s
-        </span>
+        (turnItems?.length ?? 0) > 0 ? undefined : (
+          <span className="turn__meta">{formatWorkedDuration(elapsed)}</span>
+        )
       }
     >
       <TurnActivityGroup items={turnItems} running />
@@ -114,6 +117,7 @@ export function ChatBubble({
   typing,
   highlighted,
   presentation = "console",
+  draftDefaultOpen = false,
 }: Props) {
   const sent = message.sent ?? message.role === "you";
   const role = message.role;
@@ -212,11 +216,8 @@ export function ChatBubble({
   if (STREAM_ROLES.has(role)) {
     if (typing) return null;
     const who = message.label?.trim() || role;
-    const responseCard = consoleMode ? buildAgentResponseCard(message) : null;
+    const draftBody = stripAgentReplyBody(message.body);
     if (consoleMode) {
-      const markdown = (
-        <MessageMarkdown text={message.body} variant="transcript" />
-      );
       return (
         <ConsoleTurn
           role={role}
@@ -227,11 +228,13 @@ export function ChatBubble({
           chatLineIndex={message.chatLineIndex}
         >
           <TurnActivityGroup items={message.turnItems} running={false} />
-          {responseCard ? (
-            <AgentResponseCard fields={responseCard} rawMarkdown={markdown} />
-          ) : (
-            markdown
-          )}
+          {draftBody ? (
+            <DraftResponseDetails
+              messageId={message.id}
+              body={draftBody}
+              defaultOpen={draftDefaultOpen}
+            />
+          ) : null}
         </ConsoleTurn>
       );
     }

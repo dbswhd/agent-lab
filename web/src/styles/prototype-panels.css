@@ -656,98 +656,92 @@
 
 .composer-notice-card {
   width: 100%;
-  max-width: var(--composer-notice-max);
-  margin: 0 auto var(--space-8);
+  max-width: 320px;
+  margin: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border-radius: 16px;
+  border-radius: 14px;
   background: var(--surface-card);
+  border: 1px solid color-mix(in srgb, var(--label-primary) 8%, transparent);
   box-shadow:
-    0 4px 24px rgba(0, 0, 0, 0.08),
-    0 0 1px rgba(0, 0, 0, 0.24);
+    0 10px 28px rgba(0, 0, 0, 0.08),
+    0 1px 0 rgba(255, 255, 255, 0.65) inset;
 }
 
 .composer-notice-card--alert {
-  box-shadow:
-    0 4px 24px rgba(0, 0, 0, 0.1),
-    0 0 0 1px color-mix(in srgb, var(--warn) 24%, transparent);
+  border-color: color-mix(in srgb, var(--warn) 22%, transparent);
 }
 
-.composer-notice-card__visual {
-  min-height: 72px;
-  padding: var(--space-16) var(--space-20);
+.composer-notice-card__head {
   display: flex;
   align-items: center;
-  justify-content: center;
-  background: var(--surface-sunken);
-  border-bottom: 0.5px solid color-mix(in srgb, var(--label-primary) 12%, transparent);
+  justify-content: space-between;
+  gap: var(--space-8);
+  padding: 10px 12px 0;
 }
 
-.composer-notice-card__status-chip {
+.composer-notice-card__badge {
   display: inline-flex;
   align-items: center;
-  padding: 4px 10px;
-  border-radius: var(--radius-pill);
-  font-size: var(--text-caption);
-  font-weight: var(--weight-semibold);
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  background: color-mix(in srgb, var(--accent) 12%, var(--surface-card));
-  color: var(--accent);
+  gap: 6px;
+  font-size: 12px;
+  font-weight: var(--weight-medium);
+  color: var(--label-secondary);
 }
 
-.composer-notice-card__status-chip--muted {
-  background: color-mix(in srgb, var(--label-tertiary) 12%, var(--surface-card));
+.composer-notice-card__dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  color: var(--label-tertiary);
+}
+
+.composer-notice-card__dismiss:hover {
+  background: var(--surface-hover);
   color: var(--label-secondary);
 }
 
 .composer-notice-card__body {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  gap: var(--space-20);
-  padding: var(--space-16) var(--space-20) var(--space-20);
-}
-
-.composer-notice-card__copy {
-  align-self: stretch;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
-}
-
-.composer-notice-card__title {
-  margin: 0;
-  font-size: 17px;
-  font-weight: var(--weight-semibold);
-  line-height: 21px;
-  color: var(--label-primary);
+  align-items: stretch;
+  gap: var(--space-10);
+  padding: 8px 12px 12px;
 }
 
 .composer-notice-card__description {
   margin: 0;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 13px;
+  line-height: 1.45;
   color: var(--label-secondary);
+}
+
+.composer-notice-card__lead {
+  color: var(--label-primary);
+  font-weight: var(--weight-semibold);
 }
 
 .composer-notice-card__actions {
   display: flex;
   flex-direction: row;
-  align-items: flex-start;
-  gap: var(--space-16);
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-8);
 }
 
 .composer-notice-card__btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 6px 12px;
+  padding: 5px 10px;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: var(--weight-medium);
-  line-height: 20px;
+  line-height: 1.2;
   cursor: pointer;
 }
 

@@ -114,6 +114,28 @@
   --leading-snug: 1.4;
   --leading-body: 1.5;
 
+  /* Oreo type ramp — Body/Label/Code (14px · 20px leading baseline) */
+  --type-body-medium-size: 14px;
+  --type-body-medium-leading: 20px;
+  --type-body-reading-leading: 22px;
+  --type-label-medium-size: 14px;
+  --type-label-medium-leading: 20px;
+  --type-body-small-size: 12px;
+  --type-body-small-leading: 16px;
+  --type-label-small-size: 12px;
+  --type-label-small-leading: 16px;
+  --type-code-medium-size: 14px;
+  --type-code-medium-leading: 20px;
+  --type-code-small-size: 12px;
+  --type-code-small-leading: 16px;
+  --type-code-block-leading: 18px;
+  /* Prose block rhythm (≠ UI card 4px gaps — longer agent replies) */
+  --transcript-prose-gap: var(--space-12);
+  --transcript-block-gap: var(--space-10);
+
+  /* Transcript scroll well above composer fade */
+  --transcript-composer-clearance: 64px;
+
   /* ---- Effects -------------------------------------------- */
   --shadow-hair: 0 1px 0 rgba(28, 27, 22, 0.06);
   --shadow-1:

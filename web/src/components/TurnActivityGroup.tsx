@@ -1,48 +1,109 @@
 import type { TurnItem } from "../utils/turnItems";
+import {
+  activityStepSummary,
+  formatTurnActivitySummary,
+  reasoningStepSummary,
+  stepDetailsOpen,
+  summarizeTurnItems,
+  toolStepSummary,
+} from "../utils/turnTimeline";
 
 type Props = {
   readonly items?: readonly TurnItem[];
   readonly running: boolean;
 };
 
-function itemLabel(item: TurnItem): string {
-  if (item.kind === "tool")
-    return item.doneAt ? `${item.tool} 완료` : `${item.tool} 실행 중`;
-  if (item.kind === "error") return "오류";
-  if (item.kind === "reasoning_summary") return "생각 요약";
-  if (item.kind === "command") return "명령";
-  if (item.kind === "file_change") return "파일 변경";
-  if (item.kind === "activity") return "수행";
-  return "최종 답변";
+function TurnStep({ item, running }: { item: TurnItem; running: boolean }) {
+  if (item.kind === "error") {
+    return (
+      <details className="turn-step turn-step--error" open>
+        <summary>{item.text}</summary>
+      </details>
+    );
+  }
+
+  if (item.kind === "tool") {
+    const summary = toolStepSummary(item);
+    return (
+      <details
+        className="turn-step turn-step--tool"
+        open={stepDetailsOpen(item, running) || undefined}
+      >
+        <summary>{summary}</summary>
+        {(item.args || item.output) && (
+          <div className="turn-step__body">
+            {item.args ? (
+              <code className="turn-step__cmd">{item.args}</code>
+            ) : null}
+            {item.output ? <pre>{item.output}</pre> : null}
+          </div>
+        )}
+      </details>
+    );
+  }
+
+  if (item.kind === "reasoning_summary") {
+    const summary = reasoningStepSummary(item);
+    return (
+      <details
+        className="turn-step turn-step--thought"
+        open={stepDetailsOpen(item, running) || undefined}
+      >
+        <summary>{summary}</summary>
+        <div className="turn-step__body turn-step__body--prose">
+          {item.text}
+        </div>
+      </details>
+    );
+  }
+
+  if (item.kind === "activity") {
+    const summary = activityStepSummary(item);
+    return (
+      <details
+        className="turn-step turn-step--thought"
+        open={stepDetailsOpen(item, running) || undefined}
+      >
+        <summary>{summary}</summary>
+        <div className="turn-step__body turn-step__body--prose">
+          {item.text}
+        </div>
+      </details>
+    );
+  }
+
+  return null;
 }
 
 export function TurnActivityGroup({ items = [], running }: Props) {
-  const activityItems = items.filter((item) => item.kind !== "final_output");
-  if (activityItems.length === 0) return null;
+  const steps = items.filter((item) => item.kind !== "final_output");
+  if (steps.length === 0 && !running) return null;
+
+  const stats = summarizeTurnItems(steps, running);
+  const summary = formatTurnActivitySummary(stats, running);
+
   return (
-    <details className="turn-activity" open={running || undefined}>
-      <summary>
-        <span>{running ? "수행 중" : "수행 기록"}</span>
-        <span>{activityItems.length}</span>
+    <details className="turn-timeline" open={running || undefined}>
+      <summary className="turn-timeline__summary">
+        <span className="turn-timeline__label">{summary}</span>
+        {stats.linesAdded > 0 || stats.linesRemoved > 0 ? (
+          <span className="turn-timeline__diff" aria-label="Diff stat">
+            {stats.linesAdded > 0 ? (
+              <span className="turn-timeline__add">+{stats.linesAdded}</span>
+            ) : null}
+            {stats.linesRemoved > 0 ? (
+              <span className="turn-timeline__del">-{stats.linesRemoved}</span>
+            ) : null}
+          </span>
+        ) : null}
       </summary>
-      <div className="turn-activity__items">
-        {activityItems.map((item) => (
-          <div
-            key={item.id}
-            className={`turn-activity__item turn-activity__item--${item.kind}`}
-          >
-            <span className="turn-activity__kind">{itemLabel(item)}</span>
-            {item.kind === "tool" ? (
-              <div>
-                {item.args ? <code>{item.args}</code> : null}
-                {item.output ? <pre>{item.output}</pre> : null}
-              </div>
-            ) : (
-              <span>{item.text}</span>
-            )}
-          </div>
-        ))}
-      </div>
+      {steps.length > 0 ? (
+        <div className="turn-timeline__steps">
+          {steps.map((item) => (
+            <TurnStep key={item.id} item={item} running={running} />
+          ))}
+        </div>
+      ) : null}
     </details>
   );
 }

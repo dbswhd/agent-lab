@@ -3,6 +3,15 @@ import { reduceTurnItems } from "./turnItems";
 
 export type LiveRoomEvent = Record<string, unknown> & { type?: string };
 
+export function dedupeStreamAppend(current: string, chunk: string): string {
+  if (!chunk) return current;
+  if (!current) return chunk;
+  if (current.endsWith(chunk)) return current;
+  if (chunk.startsWith(current) && chunk.length > current.length) return chunk;
+  if (current.startsWith(chunk)) return current;
+  return `${current}${chunk}`;
+}
+
 /** Drop back-to-back repeated paragraphs and exact halved duplicates. */
 export function dedupeAdjacentStreamDupes(text: string): string {
   const t = text.trim();

@@ -10,6 +10,37 @@
   width: 100%;
 }
 
+.work-clarify__head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.work-clarify__title {
+  margin: 0;
+  font-size: 1rem;
+}
+.work-clarify__detail,
+.work-clarify__stat {
+  margin: 0 0 0.75rem;
+  color: var(--text-secondary, #666);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+.work-clarify-questions__title {
+  margin: 0 0 0.5rem;
+  font-size: 0.875rem;
+}
+.work-clarify-questions__list {
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.work-clarify-questions__list li + li {
+  margin-top: 0.5rem;
+}
+
 .work-surface--chrome {
   padding-bottom: var(--space-16);
 }

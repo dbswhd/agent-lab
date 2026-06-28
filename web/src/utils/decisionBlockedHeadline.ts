@@ -147,12 +147,17 @@ export function buildDecisionBlockedHeadline(
 
   const phase = (input.planWorkflow?.phase ?? "").toUpperCase();
   if (phase && phase !== "APPROVED" && phase !== "IDLE") {
+    const clarify = phase === "CLARIFY";
     return {
       source: "plan_workflow",
       headline: ko ? `Plan workflow · ${phase}` : `Plan workflow · ${phase}`,
-      detail: ko
-        ? "진행 상태는 Composer 또는 Work에서 확인하세요."
-        : "Track progress in the composer or Work.",
+      detail: clarify
+        ? ko
+          ? "Clarify 질문·답변은 Composer Human Inbox 또는 Work Clarify에서 확인하세요."
+          : "Track clarify Q&A in the composer Human Inbox or Work · Clarify."
+        : ko
+          ? "진행 상태는 Composer 또는 Work에서 확인하세요."
+          : "Track progress in the composer or Work.",
     };
   }
 

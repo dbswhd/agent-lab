@@ -1076,6 +1076,22 @@ export type RuntimeSnapshot = {
     allowlist?: string[];
     registered_count?: number;
   };
+  plan_workflow?: {
+    enabled?: boolean;
+    phase?: string | null;
+    notice?: string | null;
+    round?: number | null;
+  } | null;
+  clarifier_interview?: {
+    questions?: Array<{
+      id?: string;
+      prompt?: string;
+      category?: string;
+      answered?: boolean;
+    }>;
+    complete?: boolean;
+    source?: string;
+  } | null;
 };
 
 export function fetchSessionRuntime(sessionId: string) {

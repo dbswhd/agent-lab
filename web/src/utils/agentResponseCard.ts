@@ -4,6 +4,10 @@ import { actLabel, normalizeAct } from "./agentEnvelope";
 const ENVELOPE_FENCE = /^\s*```agent-envelope\s*\n[\s\S]*?\n```\s*/i;
 const PROPOSED_RE = /\[PROPOSED:\s*([^\]]+)\]/gi;
 
+export function stripAgentReplyBody(body: string): string {
+  return body.replace(ENVELOPE_FENCE, "").trim();
+}
+
 export type AgentResponseCardFields = {
   status: string;
   summary?: string;
@@ -13,7 +17,7 @@ export type AgentResponseCardFields = {
 };
 
 function stripEnvelopeFence(body: string): string {
-  return body.replace(ENVELOPE_FENCE, "").trim();
+  return stripAgentReplyBody(body);
 }
 
 function firstParagraph(text: string): string {

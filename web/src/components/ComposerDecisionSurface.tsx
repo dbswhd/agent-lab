@@ -61,7 +61,7 @@ export function ComposerDecisionSurface({
 }: Props) {
   const { locale, msg } = useLocale();
   const ko = locale === "ko";
-  const { visible: showHumanGate } = useHumanDecisionRuntime(
+  const { visible: showHumanGate, runtime } = useHumanDecisionRuntime(
     sessionId,
     inboxReloadKey,
     discussPaused,
@@ -74,6 +74,9 @@ export function ComposerDecisionSurface({
     showHumanGate,
     showPlanWorkflowBanner,
     showPlanWorkflowComposerHint,
+    planWorkflowPhase: planWorkflow?.phase,
+    planWorkflowNotice: planWorkflow?.notice,
+    clarifierInterview: runtime?.clarifier_interview ?? null,
   });
 
   if (!tier) return null;
@@ -133,8 +136,7 @@ export function ComposerDecisionSurface({
           ? msg.planWorkflowApprovedTeamDetail
           : msg.planWorkflowApprovedDetail
         : blockedHeadline.detail);
-    const needsInbox =
-      (phase === "CLARIFY" || phase === "INTAKE") && inboxPendingCount > 0;
+    const clarifyPhase = phase === "CLARIFY" || phase === "INTAKE";
 
     return (
       <ComposerNoticeCard
@@ -143,8 +145,8 @@ export function ComposerDecisionSurface({
         primaryLabel={
           phase === "HUMAN_PENDING"
             ? msg.planWorkflowPendingOpenTasks
-            : needsInbox
-              ? msg.planWorkflowOpenInbox(inboxPendingCount)
+            : clarifyPhase
+              ? msg.humanDecisionOpenInbox
               : ko
                 ? "Work 열기"
                 : "Open Work"
@@ -152,7 +154,7 @@ export function ComposerDecisionSurface({
         onPrimary={
           phase === "HUMAN_PENDING"
             ? onOpenWork
-            : needsInbox
+            : clarifyPhase
               ? onOpenInbox
               : onOpenWork
         }

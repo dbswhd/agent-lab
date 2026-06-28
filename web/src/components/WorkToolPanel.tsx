@@ -17,7 +17,9 @@ import {
   type WorkFocusTarget,
 } from "../utils/workFocusTargets";
 import { resolveWorkPhase } from "../utils/workStatusPhase";
+import { hasPlanWorkflowClarifySurface } from "../utils/planWorkflowView";
 import { PlanExecutePanel } from "./PlanExecutePanel";
+import { WorkClarifyPanel } from "./WorkClarifyPanel";
 import { WorkDecisionPanel } from "./WorkDecisionPanel";
 import {
   WorkPlanApprovalSection,
@@ -55,6 +57,8 @@ type Props = {
   planWorkflow?: PlanWorkflowRecord;
   planApproval?: PlanApprovalHost | null;
   onOpenTasks?: () => void;
+  onOpenInbox?: () => void;
+  inboxPendingCount?: number;
   workHookAlert?: {
     readonly event: string;
     readonly body: string;
@@ -86,6 +90,8 @@ export function WorkToolPanel({
   planWorkflow,
   planApproval = null,
   onOpenTasks,
+  onOpenInbox,
+  inboxPendingCount = 0,
   workHookAlert = null,
   onDismissWorkHookAlert,
 }: Props) {
@@ -192,6 +198,32 @@ export function WorkToolPanel({
     },
     [onOpenTasks],
   );
+
+  const workflowPhase = (
+    planWorkflow?.phase ??
+    runtime?.plan_workflow?.phase ??
+    ""
+  ).toUpperCase();
+  const showClarifyWork =
+    (workflowPhase === "CLARIFY" || workflowPhase === "INTAKE") &&
+    hasPlanWorkflowClarifySurface({
+      phase: workflowPhase,
+      inboxPendingCount,
+      notice:
+        planWorkflow?.notice ?? runtime?.plan_workflow?.notice ?? undefined,
+      clarifierInterview: runtime?.clarifier_interview ?? null,
+    });
+
+  if (showClarifyWork && !hasPlan && !planApproval?.enabled) {
+    return (
+      <WorkClarifyPanel
+        planWorkflow={planWorkflow}
+        runtime={runtime}
+        inboxPendingCount={inboxPendingCount}
+        onOpenInbox={onOpenInbox}
+      />
+    );
+  }
 
   if (!hasPlan) {
     return (

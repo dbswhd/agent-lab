@@ -15,6 +15,41 @@ type Props = {
   readonly children?: ReactNode;
 };
 
+function NoticeIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="14"
+      height="14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      aria-hidden
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 8v5" />
+      <circle cx="12" cy="16.5" r="0.8" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function CollapseIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="14"
+      height="14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      aria-hidden
+    >
+      <path d="m8 14 4-4 4 4" />
+    </svg>
+  );
+}
+
 export function ComposerNoticeCard({
   title,
   description,
@@ -26,9 +61,11 @@ export function ComposerNoticeCard({
   dismissLabel = "Dismiss",
   busy = false,
   variant = "default",
-  visual,
+  visual: _visual,
   children,
 }: Props) {
+  const headline = title.trim() || "Notice";
+
   return (
     <article
       className={[
@@ -36,16 +73,30 @@ export function ComposerNoticeCard({
         `composer-notice-card--${variant}`,
       ].join(" ")}
       role={variant === "alert" ? "alert" : "region"}
-      aria-label={title}
+      aria-label={headline}
     >
-      {visual ? (
-        <div className="composer-notice-card__visual">{visual}</div>
-      ) : null}
+      <header className="composer-notice-card__head">
+        <span className="composer-notice-card__badge">
+          <NoticeIcon />
+          Notice
+        </span>
+        {onDismiss ? (
+          <button
+            type="button"
+            className="composer-notice-card__dismiss"
+            onClick={onDismiss}
+            aria-label={dismissLabel}
+            title={dismissLabel}
+          >
+            <CollapseIcon />
+          </button>
+        ) : null}
+      </header>
       <div className="composer-notice-card__body">
-        <div className="composer-notice-card__copy">
-          <h3 className="composer-notice-card__title">{title}</h3>
-          <p className="composer-notice-card__description">{description}</p>
-        </div>
+        <p className="composer-notice-card__description">
+          <strong className="composer-notice-card__lead">{headline}</strong>
+          {description.trim() ? ` ${description.trim()}` : null}
+        </p>
         {children}
         <div className="composer-notice-card__actions">
           {onDismiss ? (

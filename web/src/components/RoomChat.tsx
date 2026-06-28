@@ -46,6 +46,7 @@ import { useGoalLoop } from "../hooks/useGoalLoop";
 import { MacAlert } from "./MacAlert";
 import {
   mergeAgentReplyBody,
+  dedupeStreamAppend,
   replayLiveLogToMessages,
 } from "../utils/liveRoomLog";
 import {
@@ -64,7 +65,9 @@ import {
   clearBackgroundRun,
   finishSessionRun,
   finalizeCancelledTyping,
+  findAgentTurnMessage,
   getRunningSessionIds,
+  getSessionRunSnapshot,
   hydrateSessionMessages,
   isSessionRunActive,
   markBackgroundRun,
@@ -76,6 +79,8 @@ import {
 } from "../run/runSessionRegistry";
 import { patchTurnMessages } from "../run/runSessionSsePatch";
 import { reduceTurnItems } from "../utils/turnItems";
+import { latestDraftMessageIdsByAgent } from "../utils/draftResponsePrefs";
+import { stripAgentReplyBody } from "../utils/agentResponseCard";
 import { deriveRunningAgentSlots } from "../run/runningAgents";
 import { LiveAgentsStrip } from "./LiveAgentsStrip";
 import { BackgroundRunStrip } from "./BackgroundRunStrip";
@@ -88,9 +93,7 @@ import {
   setWorkbenchPanelWidth,
 } from "../utils/inspectorPanePrefs";
 import {
-  getShowHumanSynthesis,
   getShowPeerChannel,
-  setShowHumanSynthesis,
   setShowPeerChannel,
   TRANSCRIPT_VIEW_PREFS_EVENT,
 } from "../utils/transcriptViewPrefs";
@@ -402,9 +405,6 @@ export function RoomChat({
   >(null);
   const [showPeerChannel, setShowPeerChannelState] =
     useState(getShowPeerChannel);
-  const [showHumanSynthesis, setShowHumanSynthesisState] = useState(
-    getShowHumanSynthesis,
-  );
   const [workHookAlert, setWorkHookAlert] = useState<{
     event: string;
     body: string;
@@ -673,7 +673,6 @@ export function RoomChat({
 
   useEffect(() => {
     const onPrefs = () => {
-      setShowHumanSynthesisState(getShowHumanSynthesis());
       setShowPeerChannelState(getShowPeerChannel());
     };
     window.addEventListener(TRANSCRIPT_VIEW_PREFS_EVENT, onPrefs);
@@ -1233,14 +1232,20 @@ export function RoomChat({
         consensusProposal != null));
 
   const visibleMessages = useMemo(() => {
-    if (showHumanSynthesis) {
-      return messages.filter(
-        (m) => m.role === "you" || Boolean(m.humanSynthesis),
-      );
-    }
-    if (showPeerChannel) return messages;
-    return messages.filter((m) => !m.peerChannel);
-  }, [messages, showPeerChannel, showHumanSynthesis]);
+    const rows = messages.filter((m) => !m.humanSynthesis);
+    if (showPeerChannel) return rows;
+    return rows.filter((m) => !m.peerChannel);
+  }, [messages, showPeerChannel]);
+
+  const openDraftMessageIds = useMemo(
+    () =>
+      latestDraftMessageIdsByAgent(
+        visibleMessages,
+        (role) => isReplyWaitRole(role as LiveMsg["role"]),
+        (body) => Boolean(stripAgentReplyBody(body ?? "").trim()),
+      ),
+    [visibleMessages],
+  );
 
   // S1 Phase D: advisor rationale per completed turn (0-based, mirrors run.turns order)
   const advisorRationales = useMemo(() => {
@@ -1519,11 +1524,15 @@ export function RoomChat({
 
     const fp = chatFingerprint(session);
     if (fp !== syncedChatRef.current) {
+      const local = getSessionRunSnapshot(sessionId);
+      const serverMsgs = sessionToMessages(session, sessionReviewMode);
+      // Cancelled or stuck turns can outpace server chat.json — do not clobber partials.
+      if (local.messages.length > serverMsgs.length) {
+        syncedChatRef.current = fp;
+        return;
+      }
       syncedChatRef.current = fp;
-      hydrateSessionMessages(
-        sessionId,
-        sessionToMessages(session, sessionReviewMode),
-      );
+      hydrateSessionMessages(sessionId, serverMsgs);
     }
     setPlanMd(session.plan_md || "");
   }, [session, sessionId, sessionReviewMode]);
@@ -1885,6 +1894,7 @@ export function RoomChat({
             }
             if (t === "run_cancelled") {
               userStopped = true;
+              finalizeCancelledTyping(runKey);
             }
             if (t === "agent_round_start" && Number(ev.round) > 1) {
               const round = Number(ev.round);
@@ -2043,7 +2053,10 @@ export function RoomChat({
               patchTurnMessages(runKey, (m) =>
                 m.map((msg) => {
                   if (msg.id !== tid) return msg;
-                  return { ...msg, body: `${msg.body ?? ""}${chunk}` };
+                  return {
+                    ...msg,
+                    body: dedupeStreamAppend(msg.body ?? "", chunk),
+                  };
                 }),
               );
             }
@@ -2130,8 +2143,8 @@ export function RoomChat({
                 return { topologyActive: next, topologyDone: n };
               });
               patchTurnMessages(runKey, (m) => {
-                const tid = `typing-${aid}-r${round}`;
-                const typing = m.find((x) => x.id === tid);
+                const typing = findAgentTurnMessage(m, aid, round);
+                const tid = typing?.id ?? `typing-${aid}-r${round}`;
                 const streamed = typing?.body ?? "";
                 const body = mergeAgentReplyBody(
                   streamed,
@@ -2169,8 +2182,8 @@ export function RoomChat({
                 });
               }
               patchTurnMessages(runKey, (m) => {
-                const tid = `typing-${aid}-r${round}`;
-                const typing = m.find((x) => x.id === tid);
+                const typing = findAgentTurnMessage(m, aid, round);
+                const tid = typing?.id ?? `typing-${aid}-r${round}`;
                 const streamedBody = typing?.body ?? "";
                 const err = typeof ev.message === "string" ? ev.message : "";
                 const resolvedBody =
@@ -3572,6 +3585,45 @@ export function RoomChat({
       <div className="pane-row">
         <div className="pane-main workspace-main">
           <div className="workspace-body">
+            {!isNew && sessionId ? (
+              <div className="composer-notice-floating">
+                <ComposerDecisionSurface
+                  sessionId={sessionId}
+                  inboxPendingCount={inboxPendingCount}
+                  inboxReloadKey={inboxReloadKey}
+                  discussPaused={discussPaused}
+                  blockedHeadline={decisionBlockedHeadline}
+                  recoveryVisible={recoveryVisible}
+                  recoveryItems={recoveryLifecycleView.activeItems}
+                  recoveryResolvedEvents={recoveryLifecycleView.resolvedEvents}
+                  recoveryCanRetrySend={
+                    recoveryLifecycleView.retryState.canFocusComposer
+                  }
+                  recoveryBusyActionId={
+                    recoveryBusyAction ??
+                    (releasingLock ? "release_lock" : null) ??
+                    (discussRecoveryBusy ? "run_discuss_recovery" : null)
+                  }
+                  showPlanApproval={showPlanApproval}
+                  showPlanWorkflowBanner={showPlanWorkflowBanner}
+                  showPlanWorkflowComposerHint={showPlanWorkflowComposerHint}
+                  planWorkflow={planWorkflow}
+                  planWorkflowPlanIntent={planWorkflowPlanIntent}
+                  onOpenInbox={() => {
+                    setInboxSegment("inbox");
+                    openHumanInbox();
+                  }}
+                  onOpenWork={openWorkApproval}
+                  onRecoveryAction={(actionId, item) =>
+                    void handleRecoveryAction(actionId, item)
+                  }
+                  onRecoveryRetryAction={handleRecoveryRetryAction}
+                  onRecoveryDismiss={() =>
+                    setRecoveryDismissedSig(recoverySignature)
+                  }
+                />
+              </div>
+            ) : null}
             <div className="workspace-scroll scroll-y" ref={scrollRef}>
               {showExecuteQueueStrip && execPendingForBar ? (
                 <div className="workspace-event-strip workspace-event-strip--review">
@@ -3636,16 +3688,7 @@ export function RoomChat({
               <div className="transcript transcript--console">
                 {!isNew && sessionId ? (
                   <TranscriptViewOptions
-                    showHumanSynthesis={showHumanSynthesis}
                     showPeerChannel={showPeerChannel}
-                    onHumanSynthesisChange={(on) => {
-                      setShowHumanSynthesis(on);
-                      setShowHumanSynthesisState(on);
-                      if (on) {
-                        setShowPeerChannel(false);
-                        setShowPeerChannelState(false);
-                      }
-                    }}
                     onPeerChannelChange={(on) => {
                       setShowPeerChannel(on);
                       setShowPeerChannelState(on);
@@ -3735,6 +3778,7 @@ export function RoomChat({
                             typing={m.typing}
                             highlighted={highlighted}
                             presentation="console"
+                            draftDefaultOpen={openDraftMessageIds.has(m.id)}
                           />
                           {rationale ? (
                             <div className="advisor-hint" title={rationale}>
@@ -3756,6 +3800,7 @@ export function RoomChat({
                         typing={m.typing}
                         highlighted={highlighted}
                         presentation="console"
+                        draftDefaultOpen={openDraftMessageIds.has(m.id)}
                       />
                     );
                   });
@@ -3842,48 +3887,6 @@ export function RoomChat({
                         답변 중지
                       </button>
                     </div>
-                  ) : null}
-
-                  {!isNew && sessionId ? (
-                    <ComposerDecisionSurface
-                      sessionId={sessionId}
-                      inboxPendingCount={inboxPendingCount}
-                      inboxReloadKey={inboxReloadKey}
-                      discussPaused={discussPaused}
-                      blockedHeadline={decisionBlockedHeadline}
-                      recoveryVisible={recoveryVisible}
-                      recoveryItems={recoveryLifecycleView.activeItems}
-                      recoveryResolvedEvents={
-                        recoveryLifecycleView.resolvedEvents
-                      }
-                      recoveryCanRetrySend={
-                        recoveryLifecycleView.retryState.canFocusComposer
-                      }
-                      recoveryBusyActionId={
-                        recoveryBusyAction ??
-                        (releasingLock ? "release_lock" : null) ??
-                        (discussRecoveryBusy ? "run_discuss_recovery" : null)
-                      }
-                      showPlanApproval={showPlanApproval}
-                      showPlanWorkflowBanner={showPlanWorkflowBanner}
-                      showPlanWorkflowComposerHint={
-                        showPlanWorkflowComposerHint
-                      }
-                      planWorkflow={planWorkflow}
-                      planWorkflowPlanIntent={planWorkflowPlanIntent}
-                      onOpenInbox={() => {
-                        setInboxSegment("inbox");
-                        openHumanInbox();
-                      }}
-                      onOpenWork={openWorkApproval}
-                      onRecoveryAction={(actionId, item) =>
-                        void handleRecoveryAction(actionId, item)
-                      }
-                      onRecoveryRetryAction={handleRecoveryRetryAction}
-                      onRecoveryDismiss={() =>
-                        setRecoveryDismissedSig(recoverySignature)
-                      }
-                    />
                   ) : null}
 
                   {sessionId && inboxPendingCount > 0 ? (
@@ -4434,6 +4437,8 @@ export function RoomChat({
                     : null
                 }
                 onOpenTasks={openTasksInspector}
+                onOpenInbox={openHumanInbox}
+                inboxPendingCount={inboxPendingCount}
                 workHookAlert={workHookAlert}
                 onDismissWorkHookAlert={() => setWorkHookAlert(null)}
               />

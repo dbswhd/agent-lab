@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, useEffect, type ReactNode } from "react";
-import { ComposerPlanToggle } from "./ComposerPlanToggle";
 import { ComposerMentionMenu } from "./ComposerMentionMenu";
+import { ComposerAgentStack } from "./ComposerAgentStack";
 import { presetDisplayLabel, presetHintLine } from "../utils/roomPresets";
 import { formatAgentModelName } from "../utils/roomModels";
 import {
@@ -11,7 +11,6 @@ import { SlashCommandMenu } from "./SlashCommandMenu";
 import type { SlashCommandRecord, RoomPreset } from "../api/client";
 import type { ComposerTurnProfile } from "../utils/turnProfile";
 import type { Locale } from "../i18n/locale";
-import { useLocale } from "../i18n/useLocale";
 
 export type PendingFile = { id: string; file: File };
 
@@ -106,8 +105,8 @@ export function ChatComposer({
   turnProfile: _turnProfile,
   onTurnProfileChange: _onTurnProfileChange,
   planAfterSend = false,
-  onPlanAfterSendChange,
-  planToggleDisabled = false,
+  onPlanAfterSendChange: _onPlanAfterSendChange,
+  planToggleDisabled: _planToggleDisabled,
   executeDisabled: _executeDisabled,
   pendingExecuteCount: _pendingExecuteCount,
   objectionNotice,
@@ -132,7 +131,6 @@ export function ChatComposer({
   roomPreset = null,
   onRoomPresetSelect,
 }: Props) {
-  const { msg: localeMsg } = useLocale();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [slashHighlight, setSlashHighlight] = useState(0);
@@ -235,7 +233,8 @@ export function ChatComposer({
         aria-label={locale === "ko" ? "Room 프리셋" : "Room preset"}
       >
         <div className="composer-prompt-head__row">
-          <div className="turn-seg composer-preset-seg">
+          <ComposerAgentStack agents={activeModels} max={4} size={32} />
+          <div className="turn-seg composer-preset-seg composer-preset-seg--end">
             {roomPresets.map((p) => (
               <button
                 key={p.id}
@@ -252,41 +251,11 @@ export function ChatComposer({
               </button>
             ))}
           </div>
-          {onPlanAfterSendChange ? (
-            <div className="composer-prompt-head__trailing">
-              <ComposerPlanToggle
-                checked={
-                  roomPreset === "fast"
-                    ? false
-                    : roomPreset === "supervisor"
-                      ? true
-                      : planAfterSend
-                }
-                onChange={onPlanAfterSendChange}
-                disabled={
-                  inputLocked ||
-                  planToggleDisabled ||
-                  roomPreset === "fast" ||
-                  roomPreset === "supervisor"
-                }
-                label={localeMsg.modePlan}
-                title={
-                  roomPreset === "fast"
-                    ? locale === "ko"
-                      ? "fast: discuss만 (plan 끔)"
-                      : "Fast preset: discuss only (plan off)"
-                    : roomPreset === "supervisor"
-                      ? locale === "ko"
-                        ? "supervisor: plan 항상 켜짐"
-                        : "Supervisor preset: plan always on"
-                      : planToggleDisabled
-                        ? localeMsg.planWorkflowComposerBlocked
-                        : localeMsg.modePlanHint
-                }
-              />
-            </div>
-          ) : null}
         </div>
+      </div>
+    ) : activeModels.length > 0 ? (
+      <div className="composer-prompt-head">
+        <ComposerAgentStack agents={activeModels} max={4} size={32} />
       </div>
     ) : null;
 

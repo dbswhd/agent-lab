@@ -188,19 +188,27 @@ Adding PyO3 to `.app` implies:
 
 **Platform gate:** Track 2 POC only after Track 1.3 Windows compile/run path exists. Do not add native deps while Windows supervisor is unverified.
 
-### Phase 2.0 — Profile (first Track 2 step)
+### Phase 2.0 — Profile — **shipped**
 
-**Not** `crates/agent_lab_native/` scaffold.
+Script: [`scripts/profile_track2_gate.py`](../scripts/profile_track2_gate.py) · Report: [TRACK2-PROFILE.md](./TRACK2-PROFILE.md) · Baseline: [`tests/fixtures/track2-profile-report.json`](../tests/fixtures/track2-profile-report.json)
 
-Deliverables:
+**Result (2026-06-28, agent-lab repo):**
 
-1. Script or doc’d recipe: mock Room turn (or replay `_regression` session) with `cProfile` / `py-spy` on context bundle build
-2. Report: wall time share of `repo_map`, `syntax_gate`, `build_repo_tree_block`, rest of turn
-3. ADR amendment: pass/fail vs N%; if fail → **Track 2 closed**
+| Metric | Value | Gate (5%) |
+|--------|-------|-----------|
+| repo_map share of 3-agent context (`REPO_MAP=1`) | ~98% | PASS |
+| repo_map + syntax vs mock turn (+30s stub) | ~7.6% | PASS |
+| codex context (`REPO_MAP=0`, default-off) | ~1.7 ms | — |
 
-**Exit:** written numbers in PR; explicit go/no-go on Track 2.
+**Decision:** Gate **PASS** — Track 2.0b may proceed **when platform gate passes**.
 
-### Phase 2.0b — Python seam extract (only if 2.0 pass)
+**Caveats (mandatory):**
+
+- Native ROI applies to **`AGENT_LAB_REPO_MAP=1`** (default **OFF**). Default Room path stays Python; no maturin until product commits to map-on-by-default or measured user pain.
+- **`syntax_gate`** first in 2.0b (simpler seam); `repo_map_core` second.
+- Platform gate (`make tauri-check-windows`) still required before any PyO3 POC.
+
+### Phase 2.0b — Python seam extract (only if 2.0 pass + platform gate)
 
 | Module | Seam priority | Notes |
 |--------|---------------|-------|
@@ -282,6 +290,7 @@ No fixed calendar for Track 2 beyond profile — **t2b/t2c may not happen**.
 
 | Date | Change |
 |------|--------|
+| 2026-06-28 | Phase 2.0 shipped: profile gate PASS (~98% context w/ REPO_MAP=1, ~7.6% mock turn); see TRACK2-PROFILE.md |
 | 2026-06-28 | Phase 1.3 shipped: cross-platform port reclaim, release sessions_dir reclaim, log paths |
 | 2026-06-28 | Phase 1.2 shipped: `api_restart`, `api_shell_status`, ApiDiagnosticsBar button, release boot dialog |
 | 2026-06-28 | Initial ADR: Track 2 conditional; repo_map seam-first; shrink Track 1.2/1.3; remove scheduled repo_map Rust |

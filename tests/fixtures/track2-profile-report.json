@@ -1,0 +1,62 @@
+{
+  "repo_root": "/Users/yoonjong/Projects/agent-lab",
+  "gate_threshold_pct": 5.0,
+  "agent_stub_ms": 30000.0,
+  "segments": [
+    {
+      "name": "repo_map_block",
+      "ms": 810.4294579970883,
+      "repeat": 3
+    },
+    {
+      "name": "repo_tree_block",
+      "ms": 0.3300829994259402,
+      "repeat": 3
+    },
+    {
+      "name": "context_bundle_codex",
+      "ms": 839.0842079970753,
+      "repeat": 3
+    },
+    {
+      "name": "context_bundle_claude",
+      "ms": 823.9432919945102,
+      "repeat": 3
+    },
+    {
+      "name": "context_bundle_cursor",
+      "ms": 805.3297919977922,
+      "repeat": 3
+    },
+    {
+      "name": "syntax_gate",
+      "ms": 29.25162500469014,
+      "repeat": 3
+    },
+    {
+      "name": "merge_checks",
+      "ms": 31.278583002858795,
+      "repeat": 3
+    },
+    {
+      "name": "context_bundle_codex_repo_tree",
+      "ms": 1.6852919943630695,
+      "repeat": 3
+    }
+  ],
+  "context_build_total_ms": 2468.357,
+  "repo_map_per_agent_ms": 810.429,
+  "repo_tree_per_agent_ms": 0.33,
+  "syntax_gate_ms": 29.252,
+  "merge_checks_ms": 31.279,
+  "native_candidates_ms": 2460.54,
+  "share_of_context_build_pct": 98.498,
+  "share_of_mock_turn_pct": 7.571,
+  "gate_passed": true,
+  "recommendation": "Gate PASSED \u2014 profile shows native candidates meet threshold on at least one metric. Proceed to Track 2.0b (Python seam extract) when platform gate also passes.",
+  "notes": [
+    "REPO_MAP=1: repo_map ~98.5% of 3-agent context build; REPO_MAP=0 codex bundle ~1.7ms (typical default-off path)",
+    "repo_map 810.4ms vs repo_tree 0.3ms \u2014 flag-on context cost driver",
+    "mock turn uses 30000ms agent stub (no real LLM/subprocess)"
+  ]
+}

@@ -394,7 +394,7 @@ SSOT: `work_phase` from runtime API — UI와 백엔드 동기화.
 | Dev browser | `make dev` — Vite :5173 + `/api` proxy |
 | Dev desktop | `make tauri-dev` — Vite :1420 + same proxy |
 | Bundled runtime | `scripts/prepare_bundled_runtime.sh` → `.app` embedded venv |
-| **Baseline (pre hybrid Rust)** | Tag `baseline/pre-hybrid-rust-2026-06-28` · [PACKAGING-BASELINE.md](./PACKAGING-BASELINE.md) |
+| **Baseline (pre hybrid Rust)** | Tag `baseline/pre-hybrid-rust-2026-06-28` · [PACKAGING-BASELINE.md](./PACKAGING-BASELINE.md) · [HYBRID-RUST-PYTHON-ADR.md](./HYBRID-RUST-PYTHON-ADR.md) |
 
 ### 6.6 알려진 UI gap
 

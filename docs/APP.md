@@ -5,6 +5,7 @@ Desktop + web UI for AI development work → Cursor/Codex/Claude Room → `plan.
 ## Baseline before hybrid Rust work
 
 Packaging snapshot and rollback instructions: [PACKAGING-BASELINE.md](./PACKAGING-BASELINE.md)  
+Hybrid rollout (Track 1 proceed / Track 2 conditional): [HYBRID-RUST-PYTHON-ADR.md](./HYBRID-RUST-PYTHON-ADR.md)  
 Git tag: `baseline/pre-hybrid-rust-2026-06-28`
 
 ## Stack (vs quant-control)

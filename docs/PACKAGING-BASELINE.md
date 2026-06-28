@@ -170,16 +170,30 @@ hybrid 작업과 **무관** — room/package refactor·UI contract drift. 돌아
 
 ---
 
-## 아직 없는 것 (hybrid plan scope)
+## Hybrid work (see ADR)
 
-다음은 **의도적으로 없음** — hybrid rollout plan (Track 1 packaging + Track 2 PyO3)에서 추가 예정:
+Rollout plan: **[HYBRID-RUST-PYTHON-ADR.md](./HYBRID-RUST-PYTHON-ADR.md)** — Track 1 packaging **proceed**; Track 2 native **conditional** (profile gate).
 
-- Tauri `invoke` (`api_status`, `api_restart`, …)
-- `crates/agent_lab_native/` (PyO3)
-- `repo_map` / `syntax_gate` Rust ports
-- UDS / named-pipe IPC
-- Tauri official `externalBin` sidecar
-- Room / plan_execute Python → Rust 이식
+### Track 1 — not yet done
+
+- Tauri `invoke`: **`api_restart`** (+ optional boot-failure dialog)
+- Cross-platform port reclaim (Windows compile/run path)
+
+### Track 2 — gated (not scheduled)
+
+Opens only if profile shows native candidates ≥ **N%** of mock-turn/context-build time **and** Windows path verified. Steps: **profile → Python seam extract → optional dev-only PyO3 POC** (`syntax_gate` before `repo_map`).
+
+### Permanent non-goals
+
+- Room / plan_execute Rust rewrite
+- UDS IPC, Tauri `externalBin`, bundled maturin until separate release gate
+- `api_status` duplicating `/api/diagnostics`
+
+### Already shipped (baseline — do not redo)
+
+- [`ApiDiagnosticsBar.tsx`](../web/src/components/ApiDiagnosticsBar.tsx) HTTP diagnostics
+- `lib.rs` `api_health_sessions_dir()` mismatch **log**
+- Dev API supervisor [`ensure-dev-api.mjs`](../web/scripts/ensure-dev-api.mjs)
 
 ---
 

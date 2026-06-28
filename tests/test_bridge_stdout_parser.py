@@ -17,14 +17,15 @@ def test_token_delta_is_ignored():
     assert parse_interaction_update(update) == []
 
 
-def test_tool_call_started_emits_tool_start_and_activity():
+def test_tool_call_started_emits_tool_start_only_when_target_present():
     update = SimpleNamespace(
         type="tool-call-started",
         tool_call={"name": "read", "args": {"path": "src/room.py"}},
     )
     events = parse_interaction_update(update)
-    assert events[0] == ("tool_start", {"tool": "read", "args": {"target": "src/room.py"}})
-    assert events[1][0] == "activity"
+    assert events == [
+        ("tool_start", {"tool": "read", "args": {"target": "src/room.py"}}),
+    ]
 
 
 def test_tool_call_completed_emits_output_and_done():

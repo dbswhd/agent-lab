@@ -134,7 +134,7 @@
   --transcript-block-gap: var(--space-10);
 
   /* Transcript scroll well above composer fade */
-  --transcript-composer-clearance: 64px;
+  --transcript-composer-clearance: 80px;
 
   /* ---- Effects -------------------------------------------- */
   --shadow-hair: 0 1px 0 rgba(28, 27, 22, 0.06);
@@ -151,16 +151,22 @@
   /* ---- Layout metrics ------------------------------------- */
   --titlebar-h: 44px;
   --rail-w: 272px;
-  --composer-max: 860px;
+  --composer-max: 960px;
   --composer-notice-max: 600px;
   --composer-radius: 16px;
   --composer-pad: 12px;
-  --composer-gap: 16px;
-  --composer-inner-gap: 8px;
-  --composer-shadow: 0 4px 16px rgba(28, 27, 22, 0.04);
+  --composer-gap: 10px;
+  --composer-inner-gap: 0px;
+  --composer-stack-overlap: 20px;
+  --composer-stack-status-pad: 10px;
+  --composer-stack-status-pad-end: 24px;
+  --composer-stack-capsule-min-height: 130px;
+  --composer-stack-capsule-pad-bottom: 14px;
+  --composer-stack-inner-gap: 16px;
+  --composer-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
   --composer-border: rgba(0, 0, 0, 0.12);         /* Oreo Border/Default */
   --composer-border-subtle: rgba(0, 0, 0, 0.09);  /* Oreo Border/Subtle  */
-  --composer-status-bg: #f9f9f8;
+  --composer-status-bg: #f9f9f9;
   --composer-send-disabled-bg: #f9f9f8;
   --composer-send-disabled-icon: #bbbbbb;          /* Oreo Text/Disabled  */
   --surface-sent: rgba(0, 0, 0, 0.05);            /* sent bubble — Oreo Bg/Subtle */

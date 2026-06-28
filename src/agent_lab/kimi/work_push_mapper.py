@@ -42,6 +42,35 @@ def _tool_args(part: dict[str, Any]) -> dict[str, Any]:
     return {}
 
 
+def _tool_target(args: dict[str, Any]) -> str:
+    for key in (
+        "command",
+        "cmd",
+        "script",
+        "path",
+        "file",
+        "pattern",
+        "query",
+        "glob_pattern",
+        "globPattern",
+    ):
+        val = args.get(key)
+        if isinstance(val, str) and val.strip():
+            return val.strip()[:240]
+    raw = args.get("raw")
+    if isinstance(raw, str) and raw.strip():
+        return raw.strip()[:240]
+    return ""
+
+
+def _tool_start_args(part: dict[str, Any]) -> dict[str, Any]:
+    args = _tool_args(part)
+    target = _tool_target(args)
+    if target:
+        return {"target": target}
+    return args
+
+
 class KimiWorkPushMapper:
     """Stateful mapper — snapshots are cumulative; dedupe tool_start per toolCallId."""
 
@@ -130,7 +159,7 @@ class KimiWorkPushMapper:
                     self._started.add(call_id)
                     on_bridge_event(
                         "tool_start",
-                        {"tool": _tool_name(item), "args": _tool_args(item)},
+                        {"tool": _tool_name(item), "args": _tool_start_args(item)},
                     )
                 continue
             if kind == "tool-result":
@@ -161,5 +190,5 @@ class KimiWorkPushMapper:
                     self._started.add(call_id)
                     on_bridge_event(
                         "tool_start",
-                        {"tool": _tool_name(item), "args": _tool_args(item)},
+                        {"tool": _tool_name(item), "args": _tool_start_args(item)},
                     )

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   hasPlanWorkflowClarifySurface,
+  isComposerPlanWorkflowNotice,
   pendingClarifierQuestionCount,
   shouldShowPlanWorkflowComposerNotice,
 } from "./planWorkflowView";
@@ -47,5 +48,19 @@ describe("planWorkflowView clarify surfaces", () => {
         },
       }),
     ).toBe(true);
+  });
+
+  it("ignores internal clarity_pending notice when inbox is empty", () => {
+    expect(isComposerPlanWorkflowNotice("clarity_pending")).toBe(false);
+    expect(
+      shouldShowPlanWorkflowComposerNotice({
+        showBanner: true,
+        showHint: false,
+        phase: "CLARIFY",
+        inboxPendingCount: 0,
+        notice: "clarity_pending",
+        clarifierInterview: { questions: [] },
+      }),
+    ).toBe(false);
   });
 });

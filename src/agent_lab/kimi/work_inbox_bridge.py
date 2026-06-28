@@ -207,11 +207,14 @@ class KimiWorkInboxBridge:
             handled_any = True
             args = _tool_args(part)
             if self._on_bridge_event:
-                self._on_bridge_event("tool_start", {"tool": tool, "args": args})
-            if self._on_activity:
-                from agent_lab.room.sse_stream import format_tool_activity_line
-
-                self._on_activity(format_tool_activity_line(tool=tool, args=json.dumps(args, ensure_ascii=False)[:120]))
+                target = ""
+                for key in ("command", "cmd", "script", "path", "file", "pattern", "query"):
+                    val = args.get(key)
+                    if isinstance(val, str) and val.strip():
+                        target = val.strip()[:240]
+                        break
+                bridge_args: dict[str, Any] = {"target": target} if target else args
+                self._on_bridge_event("tool_start", {"tool": tool, "args": bridge_args})
             try:
                 result = _execute_inbox_tool(self._folder, tool, args, mcp_call_id=call_id)
             except Exception as exc:

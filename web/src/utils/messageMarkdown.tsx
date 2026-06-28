@@ -52,6 +52,7 @@ type Block =
   | { type: "ol"; items: string[] }
   | { type: "code"; text: string }
   | { type: "quote"; lines: string[] }
+  | { type: "table"; header: string[]; rows: string[][] }
   | { type: "hr" };
 
 type MarkdownVariant = "bubble" | "transcript";
@@ -83,6 +84,25 @@ function mdClasses(variant: MarkdownVariant) {
     hr: "bubble-md__hr",
     inlineCode: "bubble-inline-code",
   };
+}
+
+function isTableDivider(line: string): boolean {
+  const trimmed = line.trim();
+  if (!trimmed.includes("|")) return false;
+  return trimmed.replace(/\|/g, "").replace(/[\s:-]/g, "") === "";
+}
+
+function isTableRow(line: string): boolean {
+  const trimmed = line.trim();
+  if (!trimmed.includes("|")) return false;
+  return trimmed.startsWith("|") || /\|.+\|/.test(trimmed);
+}
+
+function splitTableCells(line: string): string[] {
+  let trimmed = line.trim();
+  if (trimmed.startsWith("|")) trimmed = trimmed.slice(1);
+  if (trimmed.endsWith("|")) trimmed = trimmed.slice(0, -1);
+  return trimmed.split("|").map((cell) => cell.trim());
 }
 
 function parseBlocks(text: string): Block[] {
@@ -157,6 +177,25 @@ function parseBlocks(text: string): Block[] {
       continue;
     }
 
+    if (isTableRow(line) && !isTableDivider(line)) {
+      const header = splitTableCells(line);
+      i += 1;
+      if (i < lines.length && isTableDivider(lines[i])) {
+        i += 1;
+      }
+      const rows: string[][] = [];
+      while (
+        i < lines.length &&
+        isTableRow(lines[i]) &&
+        !isTableDivider(lines[i])
+      ) {
+        rows.push(splitTableCells(lines[i]));
+        i += 1;
+      }
+      blocks.push({ type: "table", header, rows });
+      continue;
+    }
+
     const paraLines: string[] = [line];
     i += 1;
     while (
@@ -181,7 +220,8 @@ function isBlockStart(line: string): boolean {
     /^\d+\.\s+/.test(line) ||
     /^>\s?/.test(line) ||
     /^---+$/.test(line.trim()) ||
-    /^\*\*\*+$/.test(line.trim())
+    /^\*\*\*+$/.test(line.trim()) ||
+    isTableRow(line)
   );
 }
 
@@ -241,6 +281,31 @@ function renderBlock(
       );
     case "hr":
       return <hr key={key} className={c.hr || undefined} />;
+    case "table":
+      return (
+        <div key={key} className="md-table-wrap">
+          <table className="md-table">
+            <thead>
+              <tr>
+                {block.header.map((cell, j) => (
+                  <th key={`${key}-h${j}`}>{inline(cell, `${key}-h${j}`)}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {block.rows.map((row, rowIndex) => (
+                <tr key={`${key}-r${rowIndex}`}>
+                  {row.map((cell, cellIndex) => (
+                    <td key={`${key}-r${rowIndex}c${cellIndex}`}>
+                      {inline(cell, `${key}-r${rowIndex}c${cellIndex}`)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
     case "paragraph":
       return (
         <p key={key} className={c.p || undefined}>

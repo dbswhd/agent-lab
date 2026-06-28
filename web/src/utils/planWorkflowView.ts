@@ -38,6 +38,19 @@ export function pendingClarifierQuestionCount(
   return questions.filter((q) => q.prompt?.trim() && !q.answered).length;
 }
 
+/** User-visible plan workflow notices (internal flags like clarity_pending excluded). */
+export const COMPOSER_PLAN_WORKFLOW_NOTICES = new Set([
+  "clarify_cap_reached",
+  "peer_review_cap_reached",
+  "plan_gate_cap_reached",
+  "plan_changed_after_approval",
+]);
+
+export function isComposerPlanWorkflowNotice(notice: string | undefined): boolean {
+  const normalized = notice?.trim();
+  return Boolean(normalized && COMPOSER_PLAN_WORKFLOW_NOTICES.has(normalized));
+}
+
 /** CLARIFY/INTAKE only — inbox, open questions, or workflow notice. */
 export function hasPlanWorkflowClarifySurface(input: {
   readonly phase?: string;
@@ -48,7 +61,7 @@ export function hasPlanWorkflowClarifySurface(input: {
   const phase = (input.phase ?? "").toUpperCase();
   if (phase !== "CLARIFY" && phase !== "INTAKE") return false;
   if (input.inboxPendingCount > 0) return true;
-  if (input.notice?.trim()) return true;
+  if (isComposerPlanWorkflowNotice(input.notice)) return true;
   return pendingClarifierQuestionCount(input.clarifierInterview) > 0;
 }
 

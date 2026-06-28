@@ -301,13 +301,17 @@ def _call_one_agent(
             parallel_round=parallel_round,
         )
 
-    def _activity(line: str) -> None:
-        from agent_lab.room.sse_stream import maybe_emit_tool_events
-
+    def _emit_activity_line(line: str) -> None:
         _emit(
             "agent_activity",
             {"agent": aid, "round": parallel_round, "text": line},
         )
+
+    def _activity(line: str) -> None:
+        """Legacy on_activity strings — may embed ``[tool · …]`` lines to parse."""
+        from agent_lab.room.sse_stream import maybe_emit_tool_events
+
+        _emit_activity_line(line)
         maybe_emit_tool_events(
             _emit,
             agent=str(aid),
@@ -391,7 +395,9 @@ def _call_one_agent(
         if kind == "activity":
             line = str(data.get("text") or "")
             if line:
-                _activity(line)
+                # Structured bridge already emits tool_* — do not re-parse activity lines.
+                _emit_activity_line(line)
+            return
 
     if aid == "cursor":
         _activity("Cursor bridge 연결 중…")

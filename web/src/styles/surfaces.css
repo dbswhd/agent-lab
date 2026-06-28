@@ -307,6 +307,37 @@
   background: var(--surface-sunken);
   border-radius: var(--radius-sm);
 }
+.transcript--console .turn__content .md-table-wrap {
+  overflow-x: auto;
+  width: 100%;
+}
+.transcript--console .turn__content .md-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--type-body-small-size);
+  line-height: var(--type-code-block-leading);
+}
+.transcript--console .turn__content .md-table th,
+.transcript--console .turn__content .md-table td {
+  border: 1px solid var(--border-hair);
+  padding: var(--space-6) var(--space-8);
+  text-align: left;
+  vertical-align: top;
+}
+.transcript--console .turn__content .md-table th {
+  font-weight: var(--weight-medium);
+  color: var(--label-primary);
+  background: var(--surface-sunken);
+}
+.transcript--console .turn__content .md-table td {
+  color: var(--label-primary);
+}
+.transcript--console .turn__content .md-table td code {
+  font-size: inherit;
+  line-height: inherit;
+  background: transparent;
+  padding: 0;
+}
 .transcript--console .turn--peer {
   opacity: 0.78;
 }
@@ -536,7 +567,7 @@
   /* No separate panel background/border — the composer shares the transcript
      surface (Cursor / Claude Code style); the input capsule provides its own
      border + shadow for separation. */
-  padding: 0 var(--space-16) var(--space-14);
+  padding: 0 var(--space-16) var(--space-16);
   background: transparent;
   border-top: none;
 }
@@ -849,6 +880,10 @@
 .composer--consensus-mode .composer-turn-picker {
   border-color: color-mix(in srgb, var(--agent-codex) 35%, var(--border-hair));
 }
+/* Slightly more breathing room below the consensus-mode composer */
+.composer--free.composer--consensus-mode {
+  margin-bottom: var(--space-6);
+}
 
 /* ---- Composer preset (fast / supervisor) + aligned control rows ---- */
 .composer-control-row {
@@ -966,14 +1001,18 @@
 .composer-row--stacked {
   flex-direction: column;
   align-items: stretch;
-  gap: var(--composer-inner-gap);
+  gap: 0;
+  border: none;
+  box-shadow: none;
+  overflow: visible;
+  background: transparent;
 }
 .composer-prompt-status {
   box-sizing: border-box;
   width: 100%;
-  padding: 10px var(--composer-pad);
+  padding: var(--composer-pad) var(--composer-pad);
   background: var(--composer-status-bg);
-  border: 1px solid var(--composer-border-subtle);
+  border: 0.5px solid var(--composer-border-subtle);
   border-radius: var(--composer-radius) var(--composer-radius) 0 0;
   box-shadow: var(--composer-shadow);
   margin-bottom: calc(-1 * var(--composer-gap));
@@ -981,28 +1020,77 @@
   z-index: 1;
   display: flex;
   align-items: center;
-  min-height: 48px;
+  min-height: 44px;
+}
+.composer-row--stacked .composer-prompt-status {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  margin-bottom: calc(-1 * var(--composer-stack-overlap));
+  padding: calc(var(--composer-stack-status-pad) - 0.5px) var(--composer-pad)
+    calc(var(--composer-stack-status-pad-end) - 0.5px);
+  min-height: 0;
+  background: var(--composer-status-bg);
+  border: 0.5px solid var(--composer-border-subtle);
+  border-radius: var(--composer-radius) var(--composer-radius) 0 0;
+  box-shadow: var(--composer-shadow);
+}
+.composer-row--stacked .composer-prompt-head__row {
+  align-items: center;
+}
+/* Center the prompt head vertically within the visible gray strip — the part of
+   the status box that protrudes above the white capsule (status top → capsule
+   top). position:relative offsets it visually without changing box sizes, and
+   keeps it from overlapping the capsule below. */
+.composer-row--stacked .composer-prompt-status .composer-prompt-head {
+  position: relative;
+  top: -3px;
 }
 .composer-capsule {
+  box-sizing: border-box;
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: var(--composer-gap);
-  min-height: 132px;
+  min-height: 116px;
   padding: var(--composer-pad);
   background: var(--surface-card);
-  border: 1px solid var(--composer-border);
+  border: 0.5px solid var(--composer-border);
   border-radius: var(--composer-radius);
   box-shadow: var(--composer-shadow);
   transition:
     border-color var(--transition),
     box-shadow var(--transition);
 }
-.composer-capsule--stacked {
+.composer-row--stacked .composer-capsule,
+.composer-row--stacked .composer-capsule--stacked {
   position: relative;
   z-index: 2;
+  min-height: var(--composer-stack-capsule-min-height);
+  gap: var(--composer-stack-inner-gap);
+  padding: var(--composer-pad);
+  padding-bottom: var(--composer-stack-capsule-pad-bottom);
   margin-top: 0;
+  border: 0.5px solid var(--composer-border);
+  border-radius: var(--composer-radius);
+  box-shadow: var(--composer-shadow);
+  background: var(--surface-card);
+}
+.composer-row--stacked .composer-content {
+  gap: var(--composer-stack-inner-gap);
+}
+.composer-row--stacked:focus-within .composer-prompt-status {
+  border-color: var(--composer-border-subtle);
+  box-shadow: var(--composer-shadow);
+}
+.composer-row--stacked:focus-within .composer-capsule,
+.composer-row--stacked .composer-capsule:focus-within {
+  border-color: var(--composer-border);
+  box-shadow: var(--composer-shadow);
 }
 .composer-capsule:focus-within {
   border-color: var(--composer-border);
@@ -1028,7 +1116,7 @@
   gap: var(--space-12);
   flex-wrap: nowrap;
   width: 100%;
-  min-height: 32px;
+  min-height: 28px;
 }
 .composer-preset-seg--end {
   margin-left: auto;
@@ -1077,11 +1165,14 @@
   background: color-mix(in srgb, var(--surface-card) 72%, transparent);
   border-color: var(--composer-border-subtle);
   align-self: center;
+  padding: 1px;
+  gap: 1px;
 }
 .composer-prompt-status .turn-seg button {
-  height: 32px;
-  min-width: 52px;
-  padding: 0 var(--space-12);
+  height: 24px;
+  min-width: 40px;
+  padding: 0 8px;
+  font-size: 10px;
 }
 .composer-prompt-status .turn-seg button.is-active {
   background: var(--surface-card);
@@ -1139,10 +1230,10 @@
   border: none;
   background: none;
   resize: none;
-  font-size: var(--text-callout);
-  line-height: 20px;
+  font-size: var(--text-title3);
+  line-height: 22px;
   color: var(--label-primary);
-  min-height: 20px;
+  min-height: 22px;
   padding: 0;
   max-height: 160px;
 }

@@ -85,10 +85,8 @@ def parse_interaction_update(update: Any) -> list[StreamEvent]:
             ("tool_start", {"tool": tool, "args": args}),
         ]
         label = activity_from_tool_call(tool_call)
-        if label:
-            events.append(
-                ("activity", {"text": format_tool_activity_line(tool=tool, args=args.get("target", "")) or label})
-            )
+        if label and not args.get("target"):
+            events.append(("activity", {"text": label}))
         return events
 
     if utype == "tool-call-completed":
@@ -142,7 +140,6 @@ def parse_conversation_step(step: Any) -> list[StreamEvent]:
             )
             return [
                 ("tool_start", {"tool": tool, "args": args}),
-                ("activity", {"text": label or f"[tool · {tool}]"}),
             ]
     step_label = format_conversation_step(step)
     if step_label:
@@ -193,12 +190,9 @@ def parse_codex_json_event(event: Mapping[str, Any]) -> list[StreamEvent]:
     if typ == "item.started" and item_type == "command_execution":
         cmd = str(item.get("command") or "").strip()
         target = cmd[:120] if cmd else ""
-        events: list[StreamEvent] = [
+        return [
             ("tool_start", {"tool": "shell", "args": {"target": target} if target else {}}),
         ]
-        line = format_tool_activity_line(tool="shell", args=target) if target else "shell 실행 중"
-        events.append(("activity", {"text": line}))
-        return events
 
     if typ == "item.completed" and item_type == "command_execution":
         code = item.get("exit_code")
@@ -253,8 +247,8 @@ def parse_claude_json_event(event: Mapping[str, Any]) -> list[StreamEvent]:
         if delta_type == "thinking_delta":
             text = str(delta.get("thinking") or "")
             if text:
-                return [("activity", {"text": text[:500]})]
-        return []
+                return [("activity", {"text": f"[thinking] {text[:500]}"})]
+            return []
 
     if typ == "assistant":
         message_raw = event.get("message")
@@ -270,8 +264,6 @@ def parse_claude_json_event(event: Mapping[str, Any]) -> list[StreamEvent]:
                 events.append(
                     ("tool_start", {"tool": tool, "args": {"target": target} if target else {}}),
                 )
-                line = format_tool_activity_line(tool=tool, args=target) or f"[tool · {tool}]"
-                events.append(("activity", {"text": line}))
                 continue
             if btyp == "text":
                 text = str(block.get("text") or "")

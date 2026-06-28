@@ -602,6 +602,29 @@ def _write_session_files(
     )
 
 
+def persist_chat_checkpoint(
+    folder: Path,
+    messages: list[ChatMessage],
+    *,
+    topic: str | None = None,
+) -> None:
+    """Durably write in-flight chat so cancel/crash does not lose the turn."""
+    if topic is not None:
+        (folder / "topic.txt").write_text(topic.strip() + "\n", encoding="utf-8")
+    rows = _append_peer_turn_digest(list(messages))
+    chat_path = folder / "chat.jsonl"
+    with chat_path.open("w", encoding="utf-8") as f:
+        for m in rows:
+            f.write(json.dumps(m.to_dict(), ensure_ascii=False) + "\n")
+    from agent_lab.run.meta import patch_run_meta
+
+    def _patch(run: dict[str, Any]) -> dict[str, Any]:
+        run["message_count"] = len(rows)
+        return run
+
+    patch_run_meta(folder, _patch)
+
+
 def save_room_session(
     topic: str,
     messages: list[ChatMessage],

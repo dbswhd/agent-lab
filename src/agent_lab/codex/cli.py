@@ -36,7 +36,7 @@ _ROOM_TURN_SUFFIX = """\
 """
 
 DEFAULT_CODEX_ROOM_LIMIT_GRACE_SEC = 25
-DEFAULT_CODEX_ROOM_HEARTBEAT_SEC = 60
+DEFAULT_CODEX_ROOM_HEARTBEAT_SEC = 15
 
 
 @dataclass
@@ -474,6 +474,8 @@ def _run_codex(
         env=env,
     )
     register_child_process(proc)
+    if on_activity and room_turn:
+        on_activity("Codex exec 프로세스 시작")
     assert proc.stdin is not None
     proc.stdin.write(prompt)
     proc.stdin.close()
@@ -549,6 +551,16 @@ def _run_codex(
             if on_activity and heartbeat_sec and room_turn and now - last_heartbeat_at >= heartbeat_sec:
                 idle_for = int(now - last_activity_at)
                 on_activity(f"Codex 대기 중… ({idle_for}s, events={outcome.json_events})")
+                last_heartbeat_at = now
+            elif (
+                on_activity
+                and room_turn
+                and not outcome.response_started
+                and now - started_at >= 8
+                and last_heartbeat_at == started_at
+            ):
+                idle_for = int(now - last_activity_at)
+                on_activity(f"Codex 응답 대기… ({idle_for}s, events={outcome.json_events})")
                 last_heartbeat_at = now
 
             if _should_stop_after_limit(outcome, limit_hit_at, grace_sec=grace_sec):

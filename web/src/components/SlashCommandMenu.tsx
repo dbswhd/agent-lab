@@ -1,11 +1,15 @@
-import { useMemo, useRef } from "react";
+import { useMemo, type RefObject } from "react";
 import type { SlashCommandRecord } from "../api/client";
+import { useDismissOnPointerDownOutside } from "../hooks/useDismissOnPointerDownOutside";
 
 type Props = {
   value: string;
   commands: SlashCommandRecord[];
   onSelect: (slash: string) => void;
   onExecute: (command: SlashCommandRecord) => void;
+  onDismiss?: () => void;
+  /** Clicks inside this region (composer capsule) do not dismiss the menu. */
+  insideRef?: RefObject<Node | null>;
   disabled?: boolean;
   highlightedIndex?: number;
   onHighlightChange?: (index: number) => void;
@@ -17,6 +21,8 @@ export function SlashCommandMenu({
   commands,
   onSelect,
   onExecute,
+  onDismiss,
+  insideRef,
   disabled,
   highlightedIndex,
   onHighlightChange,
@@ -24,7 +30,12 @@ export function SlashCommandMenu({
   const open = !disabled && value.startsWith("/");
   const query = value.slice(1).split(/\s/)[0]?.toLowerCase() ?? "";
   const hi = highlightedIndex ?? 0;
-  const listRef = useRef<HTMLDivElement>(null);
+  const menuRef = useDismissOnPointerDownOutside(
+    open && !!onDismiss,
+    onDismiss ?? (() => {}),
+    undefined,
+    insideRef,
+  );
 
   const filtered = useMemo(() => {
     if (!open) return [];
@@ -43,7 +54,7 @@ export function SlashCommandMenu({
   return (
     <div
       className="slash-menu"
-      ref={listRef}
+      ref={menuRef}
       data-testid="slash-command-menu"
       role="listbox"
       aria-label="slash commands"

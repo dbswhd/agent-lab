@@ -300,7 +300,76 @@ def _accounts(args: list[str]) -> dict[str, Any]:
     return _err("accounts", f"unknown subcommand: {sub}")
 
 
-def _model(args: list[str], *, session_folder: Path | None = None) -> dict[str, Any]:
+def _model_provider_picker() -> dict[str, Any]:
+    from agent_lab.agent import model_prefs as mp
+
+    return {
+        "ok": True,
+        "command": "model",
+        "stage": "provider",
+        "auto": mp.load_auto_multi_model(),
+        "choices": {"kind": "model_provider", "options": mp.provider_picker_options()},
+    }
+
+
+def _model_preset_picker(provider: str) -> dict[str, Any]:
+    from agent_lab.agent import model_prefs as mp
+
+    if not mp.provider_has_model_picker(provider):
+        return _err("model", f"unknown provider: {provider}")
+    return {
+        "ok": True,
+        "command": "model",
+        "stage": "preset",
+        "provider": provider,
+        "prompt": mp.provider_display_label(provider),
+        "choices": {
+            "kind": "model_preset",
+            "provider": provider,
+            "options": mp.preset_picker_options(provider),
+        },
+    }
+
+
+def _model_apply_preset(provider: str, preset_value: str) -> dict[str, Any]:
+    from agent_lab.agent import model_prefs as mp
+
+    if not provider_registry.is_registered(provider):
+        return _err("model", f"unknown provider: {provider}")
+    try:
+        label = mp.apply_preset(provider, preset_value)
+    except ValueError as exc:
+        return _err("model", str(exc))
+    return {
+        "ok": True,
+        "command": "model",
+        "provider": provider,
+        "model_updated": True,
+        "note": f"{mp.provider_display_label(provider)} 모델을 {label}(으)로 설정했습니다.",
+    }
+
+
+def _model_set_auto(enabled: bool) -> dict[str, Any]:
+    from agent_lab.agent import model_prefs as mp
+
+    mp.persist_auto_multi_model(enabled)
+    return {
+        "ok": True,
+        "command": "model",
+        "auto": enabled,
+        "note": "여러 모델 사용" if enabled else "단일 모델 선택",
+    }
+
+
+def _looks_like_composition_args(args: list[str]) -> bool:
+    if not args:
+        return False
+    if args[-1] in {"session", "default"}:
+        return True
+    return "," in " ".join(args)
+
+
+def _model_compose(args: list[str], *, session_folder: Path | None = None) -> dict[str, Any]:
     if not args:
         composition = agent_roster.effective_room_composition(session_folder=session_folder)
         available = set(agent_roster.dynamic_available_ids(available_agents))
@@ -379,6 +448,41 @@ def _model(args: list[str], *, session_folder: Path | None = None) -> dict[str, 
         "scope": scope,
         "note": note,
     }
+
+
+def _model(args: list[str], *, session_folder: Path | None = None) -> dict[str, Any]:
+    """Model picker + room composition.
+
+    /model                         -> provider picker (OpenAI / Anthropic / …)
+    /model <provider>              -> preset picker for that provider
+    /model <provider> <preset>     -> apply preset (e.g. opus|high)
+    /model auto on|off             -> toggle multi-model (compose) mode
+    /model compose …               -> room agent composition
+    /model cursor,codex session    -> legacy composition shorthand
+    """
+    if not args:
+        return _model_provider_picker()
+    head = args[0].lower()
+    if head == "auto":
+        token = (args[1] if len(args) > 1 else "").lower()
+        if token not in {"on", "off", "1", "0"}:
+            return _err("model", "usage: /model auto on|off")
+        return _model_set_auto(token in {"on", "1"})
+    if head == "compose":
+        return _model_compose(args[1:], session_folder=session_folder)
+    if _looks_like_composition_args(args):
+        return _model_compose(args, session_folder=session_folder)
+    if len(args) == 1 and provider_registry.is_registered(head):
+        from agent_lab.agent import model_prefs as mp
+
+        if mp.provider_has_model_picker(head):
+            return _model_preset_picker(head)
+    if len(args) >= 2 and provider_registry.is_registered(head):
+        from agent_lab.agent import model_prefs as mp
+
+        if mp.provider_has_model_picker(head):
+            return _model_apply_preset(head, args[1])
+    return _model_compose(args, session_folder=session_folder)
 
 
 def _usage(args: list[str]) -> dict[str, Any]:

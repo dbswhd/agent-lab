@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -56,7 +57,6 @@ def test_login_api_provider_masked(cfg: Path) -> None:
 
     res = dispatch("/login kimi sk-supersecret-1234")
     assert res["ok"] is True and res["provider"] == "kimi"
-    # secret never echoed in clear
     masked = res["accounts"][0]["masked"]
     assert masked is not None and "sk-supersecret-1234" not in str(res)
     assert masked.endswith("1234")
@@ -173,9 +173,10 @@ def test_model_view_and_set(cfg: Path, tmp_path: Path, monkeypatch: pytest.Monke
     folder = tmp_path / "sess"
     folder.mkdir()
     (folder / "run.json").write_text("{}", encoding="utf-8")
-    view = dispatch("/model")
+    view = dispatch("/model compose")
+    assert view["stage"] == "composition"
     assert view["composition"] == ["cursor", "codex", "claude"]
-    staged = dispatch("/model cursor,kimi,claude")
+    staged = dispatch("/model compose cursor,kimi,claude")
     assert staged["stage"] == "persist"
     assert staged["composition"] == ["cursor", "claude", "kimi"]
     upd = dispatch("/model cursor,kimi,claude session", session_folder=folder)
@@ -379,3 +380,23 @@ def test_login_legacy_positional_still_works(cfg: Path) -> None:
 
     assert dispatch("/login codex")["auth_kind"] == "oauth"
     assert dispatch("/login kimi sk-legacy-2222")["accounts"][-1]["masked"].endswith("2222")
+
+
+def test_model_provider_and_preset_picker(cfg: Path) -> None:
+    from agent_lab.slash_commands import dispatch
+
+    root = dispatch("/model")
+    assert root["stage"] == "provider"
+    assert root["choices"]["kind"] == "model_provider"
+    labels = {o["label"] for o in root["choices"]["options"]}
+    assert labels >= {"OpenAI", "Anthropic", "Cursor", "Kimi"}
+
+    claude = dispatch("/model claude")
+    assert claude["stage"] == "preset"
+    assert claude["choices"]["kind"] == "model_preset"
+    assert any(o["value"] == "opus|high" for o in claude["choices"]["options"])
+
+    applied = dispatch("/model claude sonnet|medium")
+    assert applied.get("model_updated") is True
+    assert os.getenv("CLAUDE_MODEL") == "sonnet"
+    assert os.getenv("CLAUDE_REASONING_EFFORT") == "medium"

@@ -1547,6 +1547,7 @@ export const SESSIONLESS_ACCOUNT_COMMAND_IDS = new Set([
   "login",
   "logout",
   "accounts",
+  "model",
 ]);
 
 export function runGlobalCommand(body: {

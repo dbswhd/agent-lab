@@ -192,7 +192,7 @@ _PIPELINE_COMMANDS: list[dict[str, Any]] = [
         "handler": "pipeline:plan",
     },
 ]
-ACCOUNT_COMMAND_IDS = frozenset({"login", "logout", "accounts"})
+ACCOUNT_COMMAND_IDS = frozenset({"login", "logout", "accounts", "model"})
 _ACCOUNT_COMMANDS = ACCOUNT_COMMAND_IDS
 
 

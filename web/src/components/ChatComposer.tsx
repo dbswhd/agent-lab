@@ -82,6 +82,10 @@ type Props = {
   roomPresets?: RoomPreset[];
   roomPreset?: string | null;
   onRoomPresetSelect?: (id: string) => void;
+  /** Floating slash-command choice popover (login / logout / scope). */
+  choicePopover?: ReactNode;
+  /** /model picker — anchored to the model button. */
+  modelPopover?: ReactNode;
 };
 
 /**
@@ -131,8 +135,11 @@ export function ChatComposer({
   roomPresets,
   roomPreset = null,
   onRoomPresetSelect,
+  choicePopover,
+  modelPopover,
 }: Props) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const composerCapsuleRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [slashHighlight, setSlashHighlight] = useState(0);
   const [mentionCursor, setMentionCursor] = useState(0);
@@ -354,6 +361,7 @@ export function ChatComposer({
             <div className="composer-prompt-status">{presetControls}</div>
           ) : null}
           <div
+            ref={composerCapsuleRef}
             className={[
               "composer-capsule",
               presetControls ? "composer-capsule--stacked" : undefined,
@@ -361,8 +369,10 @@ export function ChatComposer({
               .filter(Boolean)
               .join(" ")}
           >
+            {modelPopover}
             <div className="composer-content">
               <div className="composer-field">
+                {choicePopover}
                 <SlashCommandMenu
                   value={value}
                   commands={slashCommands}
@@ -371,6 +381,10 @@ export function ChatComposer({
                   onHighlightChange={setSlashHighlight}
                   onSelect={(slash) => onChange(slash)}
                   onExecute={(cmd) => onSlashExecute?.(cmd)}
+                  insideRef={composerCapsuleRef}
+                  onDismiss={() => {
+                    if (value.startsWith("/")) onChange("");
+                  }}
                 />
                 {mentionQuery != null ? (
                   <ComposerMentionMenu
@@ -512,37 +526,39 @@ export function ChatComposer({
               </div>
               <div className="composer-action-row__end">
                 {primaryModel ? (
-                  <button
-                    type="button"
-                    className="composer-model-select"
-                    onClick={onOpenModelPicker}
-                    disabled={!onOpenModelPicker}
-                    title={`${primaryModel.label} · ${formatAgentModelName(
-                      primaryModel.model,
-                      primaryModel.id,
-                    )}`}
-                  >
-                    <span className="composer-model-select__agent">
-                      {primaryModel.label}
-                    </span>
-                    <strong>
-                      {formatAgentModelName(
+                  <div className="composer-model-select-wrap">
+                    <button
+                      type="button"
+                      className="composer-model-select"
+                      onClick={onOpenModelPicker}
+                      disabled={!onOpenModelPicker}
+                      title={`${primaryModel.label} · ${formatAgentModelName(
                         primaryModel.model,
                         primaryModel.id,
-                      )}
-                    </strong>
-                    {hiddenModelCount > 0 ? (
-                      <span className="composer-model-select__more">
-                        +{hiddenModelCount}
-                      </span>
-                    ) : null}
-                    <span
-                      className="composer-model-select__chevron"
-                      aria-hidden
+                      )}`}
                     >
-                      ▾
-                    </span>
-                  </button>
+                      <span className="composer-model-select__agent">
+                        {primaryModel.label}
+                      </span>
+                      <strong>
+                        {formatAgentModelName(
+                          primaryModel.model,
+                          primaryModel.id,
+                        )}
+                      </strong>
+                      {hiddenModelCount > 0 ? (
+                        <span className="composer-model-select__more">
+                          +{hiddenModelCount}
+                        </span>
+                      ) : null}
+                      <span
+                        className="composer-model-select__chevron"
+                        aria-hidden
+                      >
+                        ▾
+                      </span>
+                    </button>
+                  </div>
                 ) : null}
                 {running && onStop ? (
                   <button

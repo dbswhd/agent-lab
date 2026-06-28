@@ -45,6 +45,7 @@ from agent_lab.room.session_persist import (
     _sse_inbox_pending,
     _write_session_files,
     load_session_messages,
+    persist_chat_checkpoint,
     save_room_session,
 )
 
@@ -62,6 +63,17 @@ from agent_lab.room.turn_meta import (
     maybe_auto_scribe_after_consensus,
     maybe_auto_scribe_after_verified_loop,
 )
+
+
+def _checkpoint_chat(
+    folder: Path | None,
+    messages: list[ChatMessage],
+    *,
+    topic: str,
+) -> None:
+    if folder is None:
+        return
+    persist_chat_checkpoint(folder, messages, topic=topic)
 
 
 def _emit_divergence_options(
@@ -199,6 +211,7 @@ def continue_room_round(
     human_turn_index = _human_turn_count(messages)
     messages.append(ChatMessage(role="user", agent=None, content=body))
     human_turn_num = _human_turn_count(messages)
+    _checkpoint_chat(folder, messages, topic=topic)
     from agent_lab.human_inbox import supersede_pending_inbox
     from agent_lab.mission.board import begin_human_turn
 
@@ -364,6 +377,7 @@ def continue_room_round(
         if on_event:
             on_event("run_cancelled", {"message": "답변 중지됨"})
     messages.extend(replies)
+    _checkpoint_chat(folder, messages, topic=topic)
     _emit_divergence_options(run_meta, replies, on_event, cancelled)
     _emit_budget_status(run_meta, on_event)
     plan_md, scribe_applied, run_meta = _plan_workflow_post_agent_turn(
@@ -379,6 +393,7 @@ def continue_room_round(
         permissions=permissions,
         on_event=on_event,
     )
+    _checkpoint_chat(folder, messages, topic=topic)
     plan_trigger = _plan_trigger_for_turn(synthesize=synthesize, scribe_applied=scribe_applied)
     latency_ms = int((time.perf_counter() - t0) * 1000)
     turn_summary = _agent_turn_summary(replies)
@@ -637,6 +652,7 @@ def run_room(
             folder = boot
             plan_md, run_meta = _session_context(folder)
             _bind_session_to_run_meta(run_meta, folder)
+    _checkpoint_chat(folder, messages, topic=topic)
     from agent_lab.trace_recorder import install_tracer
 
     on_event = install_tracer(folder, run_meta, on_event, human_turn=human_turn_num)
@@ -784,6 +800,7 @@ def run_room(
         if on_event:
             on_event("run_cancelled", {"message": "답변 중지됨"})
     messages.extend(replies)
+    _checkpoint_chat(folder, messages, topic=topic)
     _emit_divergence_options(run_meta, replies, on_event, cancelled)
     _emit_budget_status(run_meta, on_event)
 
@@ -805,6 +822,7 @@ def run_room(
         )
         if synthesize and scribe_applied and not plan_md:
             plan_md = "## Plan synthesis failed\n\nunknown error"
+        _checkpoint_chat(folder, messages, topic=topic)
     else:
         scribe_applied = _should_scribe_plan_after_turn(synthesize=synthesize, cancelled=cancelled)
         if scribe_applied:

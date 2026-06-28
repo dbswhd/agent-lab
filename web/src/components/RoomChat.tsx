@@ -50,6 +50,10 @@ import {
   replayLiveLogToMessages,
 } from "../utils/liveRoomLog";
 import {
+  mergePersistedChatWithLiveLog,
+  preferRicherChatMessages,
+} from "../utils/sessionChatMerge";
+import {
   agentLabel,
   chatLineToMessage,
   isReplyWaitRole,
@@ -165,7 +169,6 @@ import {
 } from "../utils/modelSlash";
 import { fetchRoomModes, loopCostHintLine } from "../utils/roomModes";
 import { presetHintLine, resolveRoomPresets } from "../utils/roomPresets";
-import { formatAgentModelName } from "../utils/roomModels";
 import { WorkspaceFilesPanel } from "./WorkspaceFilesPanel";
 import { PreviewPanel } from "./PreviewPanel";
 import { TerminalPanel } from "./TerminalPanel";
@@ -259,6 +262,12 @@ import { useMessagesScroll } from "../hooks/useMessagesScroll";
 import { WorkbenchPanel } from "./WorkbenchPanel";
 import { WorkspaceChrome } from "./WorkspaceChrome";
 import { DiffToolPanel } from "./DiffToolPanel";
+import { ComposerChoicePopover } from "./ComposerChoicePopover";
+import {
+  ComposerModelPopover,
+  type ModelPopoverAgent,
+  type ModelPopoverSidePanel,
+} from "./ComposerModelPopover";
 
 const LONG_RUN_HINT_MS = Number(
   import.meta.env.VITE_ROOM_LONG_RUN_HINT_MS || "180000",
@@ -312,8 +321,9 @@ function sessionToMessages(
   session: SessionDetail,
   reviewModeHint = false,
 ): LiveMsg[] {
+  let out: LiveMsg[];
   if (session.chat && session.chat.length > 0) {
-    const out: LiveMsg[] = [];
+    out = [];
     let lastRound = 0;
     for (let i = 0; i < session.chat.length; i++) {
       const line = session.chat[i];
@@ -333,19 +343,18 @@ function sessionToMessages(
       }
       out.push(chatLineToMessage(line, i));
     }
-    return out;
-  }
-  const live = session.live_log;
-  if (live && live.length > 0) {
-    return [
+  } else if (session.live_log && session.live_log.length > 0) {
+    out = [
       topicAsUserMessage(session.topic || session.id),
-      ...replayLiveLogToMessages(live, agentLabel),
+      ...replayLiveLogToMessages(session.live_log, agentLabel),
+    ];
+  } else {
+    out = [
+      topicAsUserMessage(session.topic || session.id),
+      ...parseTranscript(session.transcript_md || ""),
     ];
   }
-  return [
-    topicAsUserMessage(session.topic || session.id),
-    ...parseTranscript(session.transcript_md || ""),
-  ];
+  return mergePersistedChatWithLiveLog(out, session.live_log, agentLabel);
 }
 
 export function RoomChat({
@@ -606,18 +615,31 @@ export function RoomChat({
     options: { value: string; label: string }[];
   } | null>(null);
   const [multiSelected, setMultiSelected] = useState<Set<string>>(new Set());
+  const [modelPopover, setModelPopover] = useState<{
+    command: SlashCommandRecord;
+    autoEnabled: boolean;
+    agents: ModelPopoverAgent[];
+    sidePanel: ModelPopoverSidePanel | null;
+  } | null>(null);
   useEffect(() => {
-    if (!commandChoices && !commandMultiChoices && !commandScopeChoices) return;
+    if (
+      !commandChoices &&
+      !commandMultiChoices &&
+      !commandScopeChoices &&
+      !modelPopover
+    )
+      return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setCommandChoices(null);
         setCommandMultiChoices(null);
         setCommandScopeChoices(null);
+        setModelPopover(null);
       }
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [commandChoices, commandMultiChoices, commandScopeChoices]);
+  }, [commandChoices, commandMultiChoices, commandScopeChoices, modelPopover]);
   const [externalCommandConfirm, setExternalCommandConfirm] = useState<{
     command: SlashCommandRecord;
     args: string;
@@ -960,52 +982,6 @@ export function RoomChat({
     refreshTasks(sid);
     refreshCommands(sid);
   }, [onSessionMetaRefresh, onSessionChange, refreshTasks, refreshCommands]);
-
-  const handleAuthRunComplete = useCallback(async () => {
-    if (!authRun) return;
-    const providerLabel =
-      authRun.provider_id === "claude"
-        ? "Claude"
-        : authRun.provider_id === "codex"
-          ? "Codex"
-          : authRun.provider_id === "cursor"
-            ? "Cursor"
-            : authRun.provider_id;
-    const actionLabel = authRun.action === "logout" ? "로그아웃" : "로그인";
-    if (authRun.provider_id === "claude" && authRun.action === "login") {
-      try {
-        const res = await reconnectClaudeAuth();
-        if (!sessionId) {
-          setCommandHint(
-            res.ok
-              ? `${providerLabel} ${actionLabel} 완료`
-              : (res.hint ?? `${providerLabel} ${actionLabel} 확인 필요`),
-          );
-          void fetchCommands(null)
-            .then((payload) => setSlashCommands(payload.commands ?? []))
-            .catch(() => undefined);
-          void onRefreshHealth?.();
-          return;
-        }
-        refreshSessionMeta();
-        if (!res.ok && res.hint) {
-          setCommandHint(res.hint);
-        }
-        return;
-      } catch {
-        /* fall through to generic completion hint */
-      }
-    }
-    if (!sessionId) {
-      setCommandHint(`${providerLabel} ${actionLabel} 완료`);
-      void fetchCommands(null)
-        .then((payload) => setSlashCommands(payload.commands ?? []))
-        .catch(() => undefined);
-      void onRefreshHealth?.();
-      return;
-    }
-    refreshSessionMeta();
-  }, [authRun, onRefreshHealth, refreshSessionMeta, sessionId]);
 
   const {
     inboxPendingCount,
@@ -1526,13 +1502,9 @@ export function RoomChat({
     if (fp !== syncedChatRef.current) {
       const local = getSessionRunSnapshot(sessionId);
       const serverMsgs = sessionToMessages(session, sessionReviewMode);
-      // Cancelled or stuck turns can outpace server chat.json — do not clobber partials.
-      if (local.messages.length > serverMsgs.length) {
-        syncedChatRef.current = fp;
-        return;
-      }
+      const merged = preferRicherChatMessages(local.messages, serverMsgs);
       syncedChatRef.current = fp;
-      hydrateSessionMessages(sessionId, serverMsgs);
+      hydrateSessionMessages(sessionId, merged);
     }
     setPlanMd(session.plan_md || "");
   }, [session, sessionId, sessionReviewMode]);
@@ -1607,6 +1579,9 @@ export function RoomChat({
     void (async () => {
       try {
         await cancelRoomRun(primaryId ?? undefined);
+        if (primaryId && onSessionMetaRefresh) {
+          await onSessionMetaRefresh(primaryId);
+        }
       } catch {
         /* still abort local SSE */
       }
@@ -1619,7 +1594,7 @@ export function RoomChat({
       }
       runWatchdogRef.current = null;
     }, 8_000);
-  }, [sessionId]);
+  }, [sessionId, onSessionMetaRefresh]);
 
   useEffect(() => {
     if (isNew) return;
@@ -2011,6 +1986,7 @@ export function RoomChat({
             if (t === "agent_start" && ev.agent) {
               const aid = String(ev.agent);
               const round = Number(ev.round ?? 1);
+              const bootLine = `${agentLabel(aid)} 연결 중…`;
               updateSessionRun(runKey, {
                 topologyActive: { agent: aid, round },
               });
@@ -2023,7 +1999,11 @@ export function RoomChat({
                   body: "",
                   typing: true,
                   parallelRound: round,
-                  turnItems: [],
+                  turnItems: reduceTurnItems([], {
+                    type: "agent_activity",
+                    text: bootLine,
+                    agent: aid,
+                  }),
                 },
               ]);
             }
@@ -2780,12 +2760,15 @@ export function RoomChat({
 
   const executeSlashCommand = useCallback(
     async (command: SlashCommandRecord, args: string, confirm = false) => {
-      const isGlobal =
-        !sessionId && SESSIONLESS_ACCOUNT_COMMAND_IDS.has(command.id);
-      if (!sessionId && !isGlobal) return;
+      const sid = sessionId ?? activeSessionIdRef.current;
+      const isGlobal = !sid && SESSIONLESS_ACCOUNT_COMMAND_IDS.has(command.id);
+      if (!sid && !isGlobal) return;
       setCommandHint(null);
       setCommandChoices(null);
       setCommandScopeChoices(null);
+      if (command.id !== "model") {
+        setModelPopover(null);
+      }
       try {
         const res = isGlobal
           ? await runGlobalCommand({
@@ -2793,13 +2776,13 @@ export function RoomChat({
               args,
               confirm,
             })
-          : await runSessionCommand(sessionId!, {
+          : await runSessionCommand(sid!, {
               command_id: command.id,
               args,
               confirm,
             });
         if (res.kind === "server") {
-          if (sessionId) {
+          if (sid) {
             refreshSessionMeta();
           } else if (isGlobal) {
             void onRefreshHealth?.();
@@ -2827,15 +2810,25 @@ export function RoomChat({
               prompt?: string;
               stage?: string;
               composition?: string[];
+              auto?: boolean;
+              provider?: string;
               choices?: {
                 kind?: string;
+                provider?: string;
                 current?: string[];
                 composition?: string[];
-                options: { value: string; label: string }[];
+                options: {
+                  value: string;
+                  label: string;
+                  sublabel?: string;
+                  selected?: boolean;
+                  ready?: boolean;
+                }[];
               };
               input?: { kind?: string; prefill?: string };
               auth_run?: AuthRunRef;
               updated?: boolean;
+              model_updated?: boolean;
             }
           | undefined;
         if (stage?.auth_run) {
@@ -2844,20 +2837,77 @@ export function RoomChat({
         }
         if (stage?.choices?.options?.length) {
           setCommandChoiceIndex(0);
-          const kind = stage.choices.kind ?? "provider";
-          if (kind === "multi") {
-            setCommandMultiChoices({
+          const choices = stage.choices;
+          const kind = choices.kind ?? "provider";
+          if (kind === "model_provider") {
+            setModelPopover((prev) => ({
               command,
-              argsPrefix: args,
-              prompt: stage.prompt ?? res.text ?? "",
-              current: sortAgentIds(stage.choices.current ?? []),
-              options: sortAgentPickerOptions(stage.choices.options),
-            });
-            setMultiSelected(
-              new Set(sortAgentIds(stage.choices.current ?? [])),
-            );
+              autoEnabled: Boolean(stage.auto ?? prev?.autoEnabled),
+              agents: prev?.agents ?? [],
+              sidePanel: prev?.sidePanel ?? null,
+            }));
             setCommandChoices(null);
+            setCommandMultiChoices(null);
             setCommandScopeChoices(null);
+            void executeSlashCommand(command, "compose");
+          } else if (kind === "model_preset") {
+            const providerId = stage.provider ?? choices.provider ?? "";
+            const providerLabel = stage.prompt ?? "";
+            const presets = choices.options.map((opt) => ({
+              value: opt.value,
+              label: opt.label,
+              selected: opt.selected,
+            }));
+            setModelPopover((prev) => {
+              if (prev) {
+                return {
+                  ...prev,
+                  autoEnabled: Boolean(stage.auto ?? prev.autoEnabled),
+                  sidePanel: { providerId, providerLabel, presets },
+                };
+              }
+              return {
+                command,
+                autoEnabled: Boolean(stage.auto),
+                agents: [],
+                sidePanel: { providerId, providerLabel, presets },
+              };
+            });
+            setCommandChoices(null);
+            setCommandMultiChoices(null);
+            setCommandScopeChoices(null);
+          } else if (kind === "multi") {
+            if (command.id === "model") {
+              const agents: ModelPopoverAgent[] = sortAgentPickerOptions(
+                choices.options,
+              ).map((opt) => ({
+                value: opt.value,
+                label: opt.label,
+                ready: opt.ready,
+              }));
+              setMultiSelected(new Set(sortAgentIds(choices.current ?? [])));
+              setModelPopover((prev) => ({
+                command,
+                autoEnabled: prev?.autoEnabled ?? false,
+                agents,
+                sidePanel: prev?.sidePanel ?? null,
+              }));
+              setCommandChoices(null);
+              setCommandScopeChoices(null);
+            } else {
+              setCommandMultiChoices({
+                command,
+                argsPrefix: args,
+                prompt: stage.prompt ?? res.text ?? "",
+                current: sortAgentIds(stage.choices.current ?? []),
+                options: sortAgentPickerOptions(stage.choices.options),
+              });
+              setMultiSelected(
+                new Set(sortAgentIds(stage.choices.current ?? [])),
+              );
+              setCommandChoices(null);
+              setCommandScopeChoices(null);
+            }
           } else if (kind === "scope") {
             const composition =
               stage.composition ??
@@ -2890,6 +2940,10 @@ export function RoomChat({
         if (stage?.updated && stage.composition?.length) {
           setSelected(sortAgentIds(stage.composition));
         }
+        if (stage?.model_updated) {
+          setModelPopover(null);
+          void onRefreshHealth?.();
+        }
         if (stage?.input?.kind === "secret" && stage.input.prefill) {
           setSecretCommand({
             command,
@@ -2904,7 +2958,7 @@ export function RoomChat({
         } else {
           setText("");
         }
-        void fetchCommands(isGlobal ? null : sessionId)
+        void fetchCommands(isGlobal ? null : sid)
           .then((payload) => setSlashCommands(payload.commands ?? []))
           .catch(() => undefined);
       } catch (e) {
@@ -2922,6 +2976,52 @@ export function RoomChat({
     },
     [sessionId, refreshSessionMeta, onRefreshHealth],
   );
+
+  const handleAuthRunComplete = useCallback(async () => {
+    if (!authRun) return;
+    const providerLabel =
+      authRun.provider_id === "claude"
+        ? "Claude"
+        : authRun.provider_id === "codex"
+          ? "Codex"
+          : authRun.provider_id === "cursor"
+            ? "Cursor"
+            : authRun.provider_id;
+    const actionLabel = authRun.action === "logout" ? "로그아웃" : "로그인";
+    if (authRun.provider_id === "claude" && authRun.action === "login") {
+      try {
+        const res = await reconnectClaudeAuth();
+        if (!sessionId) {
+          setCommandHint(
+            res.ok
+              ? `${providerLabel} ${actionLabel} 완료`
+              : (res.hint ?? `${providerLabel} ${actionLabel} 확인 필요`),
+          );
+          void fetchCommands(null)
+            .then((payload) => setSlashCommands(payload.commands ?? []))
+            .catch(() => undefined);
+          void onRefreshHealth?.();
+          return;
+        }
+        refreshSessionMeta();
+        if (!res.ok && res.hint) {
+          setCommandHint(res.hint);
+        }
+        return;
+      } catch {
+        /* fall through to generic completion hint */
+      }
+    }
+    if (!sessionId) {
+      setCommandHint(`${providerLabel} ${actionLabel} 완료`);
+      void fetchCommands(null)
+        .then((payload) => setSlashCommands(payload.commands ?? []))
+        .catch(() => undefined);
+      void onRefreshHealth?.();
+      return;
+    }
+    refreshSessionMeta();
+  }, [authRun, onRefreshHealth, refreshSessionMeta, sessionId]);
 
   useEffect(() => {
     if (!commandChoices) return;
@@ -2974,70 +3074,63 @@ export function RoomChat({
       const args = rawText ? rawText.replace(/^\/[^\s]+\s*/, "").trim() : "";
       if (!sessionId) {
         if (target.id === "model") {
-          const filterReadyComposition = (ids: string[]) =>
-            sortAgentIds(
-              ids.filter((id) => agents.some((agent) => agent.id === id)),
-            );
           if (args) {
             const parsed = parseModelSlashArgs(args);
-            const next = filterReadyComposition(parsed.composition);
-            if (next.length === 0) {
-              setText("");
-              setCommandHint("선택 가능한 에이전트가 없습니다.");
-              return;
-            }
-            if (parsed.scope === "default") {
-              setText("");
-              void runRoomSlash(`/model ${next.join(",")} default`).then(() => {
-                setCommandHint(`기본값으로 저장했습니다 (${next.join(", ")}).`);
+            const hasComposition =
+              args.includes(",") ||
+              parsed.scope != null ||
+              (parsed.composition.length > 0 &&
+                !["claude", "codex", "cursor", "kimi"].includes(
+                  parsed.composition[0]?.split("|")[0] ?? "",
+                ));
+            if (hasComposition) {
+              const next = sortAgentIds(
+                parsed.composition.filter((id) =>
+                  agents.some((agent) => agent.id === id),
+                ),
+              );
+              if (next.length === 0) {
+                setText("");
+                setCommandHint("선택 가능한 에이전트가 없습니다.");
+                return;
+              }
+              if (parsed.scope === "default") {
+                setText("");
+                void runRoomSlash(
+                  `/model compose ${next.join(",")} default`,
+                ).then(() => {
+                  setCommandHint(
+                    `기본값으로 저장했습니다 (${next.join(", ")}).`,
+                  );
+                });
+                return;
+              }
+              if (parsed.scope === "session") {
+                setText("");
+                applySessionScopedModels(next);
+                return;
+              }
+              setCommandScopeChoices({
+                command: target,
+                composition: next,
+                prompt: `[${next.join(", ")}] — 적용 범위를 선택하세요`,
+                options: [
+                  {
+                    value: "session",
+                    label: "이번 세션만 (세션 동안 유지)",
+                  },
+                  {
+                    value: "default",
+                    label: "기본값으로 저장",
+                  },
+                ],
               });
-              return;
-            }
-            if (parsed.scope === "session") {
               setText("");
-              applySessionScopedModels(next);
               return;
             }
-            setCommandScopeChoices({
-              command: target,
-              composition: next,
-              prompt: `[${next.join(", ")}] — 적용 범위를 선택하세요`,
-              options: [
-                {
-                  value: "session",
-                  label: "이번 세션만 (세션 동안 유지)",
-                },
-                {
-                  value: "default",
-                  label: "기본값으로 저장",
-                },
-              ],
-            });
-            setText("");
-            return;
           }
-          const options = sortAgentPickerOptions(
-            agents.map((agent) => ({
-              value: agent.id,
-              label: `${agent.label} · ${formatAgentModelName(agent.model, agent.id)}`,
-            })),
-          );
-          const currentComposition = sortAgentIds(
-            teamHealthAgents.length > 0
-              ? teamHealthAgents.map((agent) => agent.id)
-              : healthAgents.length > 0
-                ? healthAgents.map((agent) => agent.id)
-                : selected,
-          );
-          setCommandMultiChoices({
-            command: target,
-            argsPrefix: "",
-            prompt: "활성화할 에이전트 선택 (복수 선택 가능)",
-            current: currentComposition,
-            options,
-          });
-          setMultiSelected(new Set(currentComposition));
           setText("");
+          await executeSlashCommand(target, args);
           return;
         }
         if (!SESSIONLESS_ACCOUNT_COMMAND_IDS.has(target.id)) return;
@@ -3425,6 +3518,187 @@ export function RoomChat({
         ? `plan #${firstOpenBlock.plan_action_index} BLOCK 해결 후 execute`
         : `Resolve plan #${firstOpenBlock.plan_action_index} BLOCK before execute`
       : localeMsg.composerPlaceholder;
+
+  const modelPopoverNode = useMemo(() => {
+    if (!modelPopover) return null;
+    return (
+      <ComposerModelPopover
+        command={modelPopover.command}
+        autoEnabled={modelPopover.autoEnabled}
+        agents={modelPopover.agents}
+        sidePanel={modelPopover.sidePanel}
+        selectedAgents={multiSelected}
+        onProviderDrill={(providerId) => {
+          void executeSlashCommand(modelPopover.command, providerId);
+        }}
+        onSidePresetSelect={(providerId, value) => {
+          void executeSlashCommand(
+            modelPopover.command,
+            `${providerId} ${value}`.trim(),
+          );
+        }}
+        onSideClose={() =>
+          setModelPopover((prev) =>
+            prev ? { ...prev, sidePanel: null } : prev,
+          )
+        }
+        onAgentToggle={(value) => {
+          setMultiSelected((prev) => {
+            const next = new Set(prev);
+            if (next.has(value)) next.delete(value);
+            else next.add(value);
+            return next;
+          });
+        }}
+        onAgentsApply={() => {
+          const selected = sortAgentIds(
+            modelPopover.agents
+              .filter((opt) => multiSelected.has(opt.value))
+              .map((opt) => opt.value),
+          ).join(",");
+          const cmd = modelPopover.command;
+          setModelPopover(null);
+          setMultiSelected(new Set());
+          if (!sessionId) {
+            const next = sortAgentIds(selected.split(",").filter(Boolean));
+            if (next.length === 0) return;
+            setCommandScopeChoices({
+              command: cmd,
+              composition: next,
+              prompt: `[${next.join(", ")}] — 적용 범위를 선택하세요`,
+              options: [
+                {
+                  value: "session",
+                  label: "이번 세션만 (세션 동안 유지)",
+                },
+                {
+                  value: "default",
+                  label: "기본값으로 저장",
+                },
+              ],
+            });
+            return;
+          }
+          void executeSlashCommand(cmd, `compose ${selected}`.trim());
+        }}
+        onCancel={() => setModelPopover(null)}
+      />
+    );
+  }, [executeSlashCommand, modelPopover, multiSelected, sessionId]);
+
+  const choicePopover = useMemo(() => {
+    if (commandChoices) {
+      return (
+        <ComposerChoicePopover
+          variant="single"
+          command={commandChoices.command}
+          prompt={commandChoices.prompt}
+          options={commandChoices.options}
+          highlightedIndex={commandChoiceIndex}
+          onHighlight={setCommandChoiceIndex}
+          onSelect={(value) =>
+            void executeSlashCommand(
+              commandChoices.command,
+              `${commandChoices.argsPrefix} ${value}`.trim(),
+            )
+          }
+          onCancel={() => setCommandChoices(null)}
+        />
+      );
+    }
+    if (commandScopeChoices) {
+      return (
+        <ComposerChoicePopover
+          variant="scope"
+          command={commandScopeChoices.command}
+          prompt={commandScopeChoices.prompt}
+          options={commandScopeChoices.options}
+          onSelect={(value) => {
+            const cmd = commandScopeChoices.command;
+            const comp = commandScopeChoices.composition;
+            const composition = comp.join(",");
+            setCommandScopeChoices(null);
+            if (!sessionId && cmd.id === "model") {
+              if (value === "default") {
+                void runRoomSlash(`/model compose ${composition} default`).then(
+                  () => {
+                    setCommandHint(`기본값으로 저장했습니다 (${composition}).`);
+                  },
+                );
+              } else {
+                applySessionScopedModels(comp);
+              }
+            } else {
+              void executeSlashCommand(cmd, `${composition} ${value}`.trim());
+            }
+          }}
+          onCancel={() => setCommandScopeChoices(null)}
+        />
+      );
+    }
+    if (commandMultiChoices) {
+      return (
+        <ComposerChoicePopover
+          variant="multi"
+          command={commandMultiChoices.command}
+          prompt={commandMultiChoices.prompt}
+          options={commandMultiChoices.options}
+          selected={multiSelected}
+          onToggle={(value) => {
+            setMultiSelected((prev) => {
+              const next = new Set(prev);
+              if (next.has(value)) next.delete(value);
+              else next.add(value);
+              return next;
+            });
+          }}
+          onApply={() => {
+            const selected = sortAgentIds(
+              commandMultiChoices.options
+                .filter((opt) => multiSelected.has(opt.value))
+                .map((opt) => opt.value),
+            ).join(",");
+            const cmd = commandMultiChoices.command;
+            setCommandMultiChoices(null);
+            setMultiSelected(new Set());
+            if (!sessionId && cmd.id === "model") {
+              const comp = selected.split(",").filter(Boolean);
+              setCommandScopeChoices({
+                command: cmd,
+                composition: comp,
+                prompt: `[${comp.join(", ")}] — 적용 범위를 선택하세요`,
+                options: [
+                  {
+                    value: "session",
+                    label: "이번 세션만 (세션 동안 유지)",
+                  },
+                  {
+                    value: "default",
+                    label: "기본값으로 저장",
+                  },
+                ],
+              });
+            } else {
+              void executeSlashCommand(cmd, selected);
+            }
+          }}
+          onCancel={() => {
+            setCommandMultiChoices(null);
+            setMultiSelected(new Set());
+          }}
+        />
+      );
+    }
+    return null;
+  }, [
+    applySessionScopedModels,
+    commandChoiceIndex,
+    commandChoices,
+    commandMultiChoices,
+    commandScopeChoices,
+    executeSlashCommand,
+    sessionId,
+  ]);
 
   const title = isNew ? "Session" : session?.topic || sessionId || "Session";
   const titleMeta =
@@ -3979,199 +4253,16 @@ export function RoomChat({
                       const command = slashCommands.find(
                         (candidate) => candidate.id === "model",
                       );
-                      if (command) void runSlashCommand(command, command.slash);
+                      if (command) void executeSlashCommand(command, "");
                     }}
+                    choicePopover={choicePopover}
+                    modelPopover={modelPopoverNode}
                   />
 
                   {commandHint ? (
                     <p className="composer-command-hint" role="status">
                       {commandHint}
                     </p>
-                  ) : null}
-                  {commandChoices ? (
-                    <div
-                      className="composer-picker"
-                      role="listbox"
-                      aria-label={commandChoices.prompt || "선택"}
-                    >
-                      {commandChoices.prompt ? (
-                        <div className="composer-picker__head">
-                          {commandChoices.prompt}
-                        </div>
-                      ) : null}
-                      {commandChoices.options.map((opt, index) => (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          role="option"
-                          aria-selected={index === commandChoiceIndex}
-                          className={`composer-picker__option${index === commandChoiceIndex ? " is-active" : ""}`}
-                          onClick={() =>
-                            void executeSlashCommand(
-                              commandChoices.command,
-                              `${commandChoices.argsPrefix} ${opt.value}`.trim(),
-                            )
-                          }
-                        >
-                          <span className="composer-picker__label">
-                            {opt.label}
-                          </span>
-                          <span className="composer-picker__value">
-                            {opt.value}
-                          </span>
-                        </button>
-                      ))}
-                      <button
-                        type="button"
-                        className="composer-picker__cancel"
-                        onClick={() => setCommandChoices(null)}
-                      >
-                        취소 (Esc)
-                      </button>
-                    </div>
-                  ) : null}
-                  {commandScopeChoices ? (
-                    <div
-                      className="composer-picker"
-                      role="group"
-                      aria-label={commandScopeChoices.prompt || "적용 범위"}
-                    >
-                      {commandScopeChoices.prompt ? (
-                        <div className="composer-picker__head">
-                          {commandScopeChoices.prompt}
-                        </div>
-                      ) : null}
-                      {commandScopeChoices.options.map((opt) => (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          className="composer-picker__option"
-                          onClick={() => {
-                            const cmd = commandScopeChoices.command;
-                            const comp = commandScopeChoices.composition;
-                            const composition = comp.join(",");
-                            setCommandScopeChoices(null);
-                            if (!sessionId && cmd.id === "model") {
-                              if (opt.value === "default") {
-                                void runRoomSlash(
-                                  `/model ${composition} default`,
-                                ).then(() => {
-                                  setCommandHint(
-                                    `기본값으로 저장했습니다 (${composition}).`,
-                                  );
-                                });
-                              } else {
-                                applySessionScopedModels(comp);
-                              }
-                            } else {
-                              void executeSlashCommand(
-                                cmd,
-                                `${composition} ${opt.value}`.trim(),
-                              );
-                            }
-                          }}
-                        >
-                          <span className="composer-picker__label">
-                            {opt.label}
-                          </span>
-                        </button>
-                      ))}
-                      <div className="composer-picker__actions">
-                        <button
-                          type="button"
-                          className="btn btn--sm"
-                          onClick={() => setCommandScopeChoices(null)}
-                        >
-                          취소 (Esc)
-                        </button>
-                      </div>
-                    </div>
-                  ) : null}
-                  {commandMultiChoices ? (
-                    <div
-                      className="composer-picker"
-                      role="group"
-                      aria-label={commandMultiChoices.prompt || "복수 선택"}
-                    >
-                      {commandMultiChoices.prompt ? (
-                        <div className="composer-picker__head">
-                          {commandMultiChoices.prompt}
-                        </div>
-                      ) : null}
-                      {commandMultiChoices.options.map((opt) => (
-                        <label
-                          key={opt.value}
-                          className={`composer-picker__option${multiSelected.has(opt.value) ? " is-active" : ""}`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={multiSelected.has(opt.value)}
-                            onChange={() => {
-                              setMultiSelected((prev) => {
-                                const next = new Set(prev);
-                                if (next.has(opt.value)) next.delete(opt.value);
-                                else next.add(opt.value);
-                                return next;
-                              });
-                            }}
-                          />
-                          <span className="composer-picker__label">
-                            {opt.label}
-                          </span>
-                          <span className="composer-picker__value">
-                            {opt.value}
-                          </span>
-                        </label>
-                      ))}
-                      <div className="composer-picker__actions">
-                        <button
-                          type="button"
-                          className="btn btn--primary btn--sm"
-                          onClick={() => {
-                            const selected = sortAgentIds(
-                              commandMultiChoices.options
-                                .filter((opt) => multiSelected.has(opt.value))
-                                .map((opt) => opt.value),
-                            ).join(",");
-                            const cmd = commandMultiChoices.command;
-                            setCommandMultiChoices(null);
-                            setMultiSelected(new Set());
-                            if (!sessionId && cmd.id === "model") {
-                              const comp = selected.split(",").filter(Boolean);
-                              setCommandScopeChoices({
-                                command: cmd,
-                                composition: comp,
-                                prompt: `[${comp.join(", ")}] — 적용 범위를 선택하세요`,
-                                options: [
-                                  {
-                                    value: "session",
-                                    label: "이번 세션만 (세션 동안 유지)",
-                                  },
-                                  {
-                                    value: "default",
-                                    label: "기본값으로 저장",
-                                  },
-                                ],
-                              });
-                            } else {
-                              void executeSlashCommand(cmd, selected);
-                            }
-                          }}
-                        >
-                          적용
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn--sm"
-                          onClick={() => {
-                            setCommandMultiChoices(null);
-                            setMultiSelected(new Set());
-                          }}
-                        >
-                          취소 (Esc)
-                        </button>
-                      </div>
-                    </div>
                   ) : null}
                   {secretCommand ? (
                     <form

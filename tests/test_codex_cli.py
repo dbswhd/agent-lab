@@ -172,6 +172,37 @@ def test_build_cmd_includes_inbox_mcp_overrides(tmp_path: Path):
     assert "agent_lab.inbox.mcp_server" in " ".join(cmd)
 
 
+def test_run_codex_emits_proc_start_activity(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    from agent_lab.codex import cli as codex_cli
+
+    hang = tmp_path / "hang.sh"
+    hang.write_text("#!/bin/sh\nsleep 120\n", encoding="utf-8")
+    hang.chmod(0o755)
+    monkeypatch.setenv("CODEX_ROOM_IDLE_TIMEOUT_SEC", "2")
+    monkeypatch.setattr(
+        "agent_lab.run.control.register_child_process",
+        lambda _proc: None,
+    )
+    monkeypatch.setattr(
+        "agent_lab.run.control.unregister_child_process",
+        lambda _proc: None,
+    )
+    monkeypatch.setattr("agent_lab.run.control.is_cancelled", lambda: False)
+
+    lines: list[str] = []
+
+    with pytest.raises(RuntimeError, match="no JSONL/stderr activity"):
+        codex_cli._run_codex(
+            [str(hang), "-"],
+            "prompt",
+            on_activity=lines.append,
+            timeout=None,
+            room_turn=True,
+        )
+    assert lines
+    assert lines[0] == "Codex exec 프로세스 시작"
+
+
 def test_run_codex_idle_timeout(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     from agent_lab.codex import cli as codex_cli
 

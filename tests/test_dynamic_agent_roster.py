@@ -152,7 +152,7 @@ def test_model_picker_options_sorted(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     monkeypatch.delenv("AGENT_LAB_ROOM_MODELS", raising=False)
     persist_default_room_models(["kimi_work"])
-    res = dispatch("/model")
+    res = dispatch("/model compose")
     values = [opt["value"] for opt in res["choices"]["options"]]
     assert values == list(provider_picker_order())
     assert res["composition"] == ["kimi_work"]

@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import type { AgentRole } from "../utils/transcript";
+import { agentLogoSrc } from "../utils/agentLogos";
 
 type Props = {
   role: AgentRole;
@@ -8,14 +9,14 @@ type Props = {
   variant?: "flat" | "orb";
 };
 
-const ICON_ROLES: Partial<Record<AgentRole, string>> = {
-  cursor: "/icons/cursor.png",
-  codex: "/icons/vendor/codex-app.png",
-  claude: "/icons/vendor/claude-app.png",
-};
-
-/** Full-color vendor marks on a white round tile (not inverted orb glyphs). */
-const BRAND_LOGO_ROLES = new Set<AgentRole>(["cursor", "codex", "claude"]);
+/** Full-color vendor marks on a rounded tile (not gradient orb glyphs). */
+const BRAND_LOGO_ROLES = new Set<AgentRole>([
+  "cursor",
+  "codex",
+  "claude",
+  "kimi",
+  "kimi_work",
+]);
 
 const SHORT: Partial<Record<AgentRole, string>> = {
   you: "나",
@@ -42,9 +43,9 @@ export function Avatar({ role, label, size = 28, variant = "orb" }: Props) {
   const sm = size <= 22 ? " avatar--sm" : "";
   const title = label ?? role;
   const boxStyle = avatarBoxStyle(size);
-  const icon = ICON_ROLES[role];
+  const icon = agentLogoSrc(role);
 
-  if (variant === "orb" && icon && BRAND_LOGO_ROLES.has(role)) {
+  if (icon && (variant === "orb" ? BRAND_LOGO_ROLES.has(role) : true)) {
     return (
       <span
         className={`avatar avatar--logo avatar--${role}${sm}`}
@@ -65,19 +66,6 @@ export function Avatar({ role, label, size = 28, variant = "orb" }: Props) {
         title={title}
         aria-hidden
       />
-    );
-  }
-
-  if (icon) {
-    return (
-      <span
-        className={`avatar avatar--logo avatar--${role}${sm}`}
-        style={boxStyle}
-        title={title}
-        aria-hidden
-      >
-        <img src={icon} alt="" aria-hidden />
-      </span>
     );
   }
 

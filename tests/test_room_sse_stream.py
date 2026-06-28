@@ -285,3 +285,55 @@ def test_call_one_agent_emits_agent_token_before_done(monkeypatch, tmp_path):
     done = next(e for e in events if e[0] == "agent_done")
     assert streamed == done[1]["content"]
     assert "streaming body" in streamed
+
+
+def test_call_one_agent_codex_emits_startup_activity(monkeypatch, tmp_path):
+    from agent_lab import room
+
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    from agent_lab.run.meta import write_run_meta
+
+    write_run_meta(folder, {})
+
+    patch_call_agent_reply(
+        monkeypatch,
+        lambda *_a, **_k: "[mock:codex] ok",
+    )
+    monkeypatch.setattr(room, "model_label", lambda agent: agent)
+    monkeypatch.setattr(
+        room,
+        "build_agent_context_bundle",
+        lambda *a, **k: type(
+            "B",
+            (),
+            {
+                "render": lambda self: "payload",
+                "meta": type("M", (), {"to_dict": lambda self: {}})(),
+            },
+        )(),
+    )
+
+    events: list[tuple[str, dict]] = []
+
+    def on_event(typ: str, payload: dict) -> None:
+        events.append((typ, payload))
+
+    room._call_one_agent(
+        "codex",
+        topic="t",
+        thread=[],
+        parallel_round=1,
+        permissions=None,
+        review_mode=False,
+        review_advocate=None,
+        plan_md="",
+        run_meta={"_session_folder": str(folder)},
+        on_event=on_event,
+        human_turn_index=0,
+    )
+    activities = [e[1]["text"] for e in events if e[0] == "agent_activity"]
+    assert activities
+    assert activities[0] == "Codex CLI 연결 중…"
+    assert events[0][0] == "agent_start"
+    assert events[1][0] == "agent_activity"

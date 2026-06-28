@@ -403,6 +403,10 @@ def _call_one_agent(
         _activity("Cursor bridge 연결 중…")
     elif aid == "kimi_work":
         _activity("Kimi Work bridge 연결 중…")
+    elif aid == "codex":
+        _activity("Codex CLI 연결 중…")
+    elif aid == "claude":
+        _activity("Claude CLI 연결 중…")
 
     effective_permissions = _effective_discuss_permissions(
         permissions,

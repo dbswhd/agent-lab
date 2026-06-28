@@ -564,7 +564,21 @@ async def create_room_run(
                 yield sse(ev)
             await worker
             if result.get("cancelled") or is_cancelled(run_session_id):
+                complete = result.get("complete_event") or {}
                 yield sse({"type": "run_cancelled", "message": "답변 중지됨"})
+                yield sse(
+                    {
+                        "type": "complete",
+                        "session_id": complete.get("session_id") or run_session_id,
+                        "plan_preview": "",
+                        "status": complete.get("status") or "partial",
+                        "failed_agents": complete.get("failed_agents") or [],
+                        "succeeded_agents": complete.get("succeeded_agents") or [],
+                        "send_receipt": complete.get("send_receipt"),
+                        "turn_index": complete.get("turn_index"),
+                        "cancelled": True,
+                    }
+                )
                 return
             if "error" in result:
                 err = result["error"]

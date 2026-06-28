@@ -437,9 +437,18 @@ async function spawnManagedApi() {
         "--reload-dir",
         "app",
         "--reload-dir",
-        "src",
+        "src/agent_lab",
         "--reload-dir",
         "tests",
+        // Volatile runtime paths must not trigger reloads (loop-probe cache,
+        // build metadata, bytecode). Watching bare `src` caught src/.agent-lab/
+        // cache writes → reload storm → watchdog false "hung" → restart thrash.
+        "--reload-exclude",
+        "*/.agent-lab/*",
+        "--reload-exclude",
+        "*.egg-info/*",
+        "--reload-exclude",
+        "*/__pycache__/*",
       ],
       {
         cwd: ROOT,

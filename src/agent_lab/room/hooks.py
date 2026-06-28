@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
+from agent_lab.subprocess_env import subprocess_env
+
 HOOK_EXIT_BLOCK = 2
 DEFAULT_HOOK_TIMEOUT_S = 30
 
@@ -307,6 +309,7 @@ def run_hook(
                 text=True,
                 timeout=timeout,
                 cwd=str(cwd_path) if cwd_path and cwd_path.is_dir() else None,
+                env=subprocess_env(),
             )
         except subprocess.TimeoutExpired:
             last_exit = -1

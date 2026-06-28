@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import stat
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
-from agent_lab.room.hooks import PreExecuteBlocked, clear_hooks_config_cache, run_pre_execute_hooks
+from agent_lab.room.hooks import PreExecuteBlocked, clear_hooks_config_cache, run_hook, run_pre_execute_hooks
+from agent_lab.subprocess_env import subprocess_env
 
 
 def test_pre_execute_hook_passes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
@@ -43,3 +45,25 @@ def test_pre_execute_blocked_exception_carries_payload():
     pv = {"blocked": True, "feedback": "nope"}
     exc = PreExecuteBlocked("nope", pre_verify=pv)
     assert exc.pre_verify == pv
+
+
+def test_run_hook_subprocess_uses_filtered_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    cfg = tmp_path / "hooks.toml"
+    cfg.write_text('[hooks]\npre_execute = ["echo ok"]\n', encoding="utf-8")
+    monkeypatch.setenv("AGENT_LAB_HOOKS_PATH", str(cfg))
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "secret-hook-leak-test")
+    clear_hooks_config_cache()
+
+    captured: dict[str, object] = {}
+
+    def _fake_run(*args: object, **kwargs: object) -> object:
+        captured["env"] = kwargs.get("env")
+        return type("P", (), {"returncode": 0, "stdout": "", "stderr": ""})()
+
+    with patch("agent_lab.room.hooks.subprocess.run", side_effect=_fake_run):
+        run_hook("pre_execute", {"workspace": str(tmp_path)})
+
+    env = captured.get("env")
+    assert isinstance(env, dict)
+    assert env == subprocess_env()
+    assert "ANTHROPIC_API_KEY" not in env

@@ -40,3 +40,20 @@ def test_build_repo_map_core_matches_wrapper(tmp_path: Path) -> None:
     wrapper_block = build_repo_map_block(_run_meta(root), plan_md=plan_md)
     assert core_block == wrapper_block
     assert "core.py" in core_block
+
+
+def test_build_repo_map_core_respects_budget(tmp_path: Path) -> None:
+    root = _workspace(tmp_path)
+    for i in range(8):
+        (root / f"extra_{i}.py").write_text(f"def fn_{i}():\n    return {i}\n", encoding="utf-8")
+    files = iter_python_files(root)
+    seeds = {root / "app.py"}
+    full = build_repo_map_core(root, files, seeds, budget_chars=80_000)
+    trimmed = build_repo_map_core(root, files, seeds, budget_chars=220)
+    assert full
+    assert len(trimmed) < len(full)
+    assert trimmed.count(".py:") < full.count(".py:")
+
+
+def test_build_repo_map_core_empty_files() -> None:
+    assert build_repo_map_core(Path("/tmp/unused"), [], set(), budget_chars=1024) == ""

@@ -2,6 +2,11 @@
 
 Desktop + web UI for AI development work → Cursor/Codex/Claude Room → `plan.md` → Human approval → worktree execute/merge → Oracle verify.
 
+## Baseline before hybrid Rust work
+
+Packaging snapshot and rollback instructions: [PACKAGING-BASELINE.md](./PACKAGING-BASELINE.md)  
+Git tag: `baseline/pre-hybrid-rust-2026-06-28`
+
 ## Stack (vs quant-control)
 
 | | quant-control | Agent Lab |

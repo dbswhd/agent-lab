@@ -388,10 +388,13 @@ SSOT: `work_phase` from runtime API — UI와 백엔드 동기화.
 | 항목 | 내용 |
 |------|------|
 | Rust entry | `web/src-tauri/src/lib.rs` |
-| API 기동 | uvicorn :8765 자동 spawn |
-| Prod | webview → `http://127.0.0.1:8765/` |
-| Dev | Vite :5173 + API proxy |
-| Plugins | opener, dialog, notification |
+| API 기동 | uvicorn :8765 — **prod:** Tauri spawn + 4s supervisor · **dev:** `ensure-dev-api.mjs` (`AGENT_LAB_SKIP_TAURI_API=1`) |
+| IPC | HTTP `:8765` only (no custom Tauri `invoke`; plugins: opener, dialog, notification) |
+| Prod | webview → `http://127.0.0.1:8765/` (mixed-content workaround) |
+| Dev browser | `make dev` — Vite :5173 + `/api` proxy |
+| Dev desktop | `make tauri-dev` — Vite :1420 + same proxy |
+| Bundled runtime | `scripts/prepare_bundled_runtime.sh` → `.app` embedded venv |
+| **Baseline (pre hybrid Rust)** | Tag `baseline/pre-hybrid-rust-2026-06-28` · [PACKAGING-BASELINE.md](./PACKAGING-BASELINE.md) |
 
 ### 6.6 알려진 UI gap
 

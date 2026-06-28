@@ -1,0 +1,177 @@
+# Packaging baseline — pre hybrid Rust work
+
+> **목적:** Python core + Tauri sidecar + (미래) selective PyO3 작업 **시작 전** 스냅샷.  
+> 문제 발생 시 이 커밋/태그로 돌아와 parity·packaging·dev lifecycle을 비교한다.
+
+**Baseline tag:** `baseline/pre-hybrid-rust-2026-06-28`  
+**Parent code commit (dev API lifecycle):** `09e03c73` — `fix(dev): auto-manage API lifecycle and close hygiene gaps`
+
+---
+
+## 이 baseline으로 돌아오기
+
+```bash
+cd ~/Projects/agent-lab
+
+# 방법 1 — annotated tag (권장)
+git fetch --tags origin   # remote에 push한 경우
+git checkout baseline/pre-hybrid-rust-2026-06-28
+
+# 방법 2 — 코드만 (baseline 문서 없이)
+git checkout 09e03c73
+
+# 방법 3 — hybrid 작업 브랜치에서 비교
+git diff baseline/pre-hybrid-rust-2026-06-28...HEAD -- web/src-tauri/ docs/
+```
+
+**새 브랜치에서 실험:**
+
+```bash
+git checkout -b experiment/hybrid-rust baseline/pre-hybrid-rust-2026-06-28
+```
+
+**되돌릴 때 확인:**
+
+```bash
+git rev-parse HEAD
+git describe --tags --always
+make test-fast
+python scripts/smoke_room.py
+make tauri-dev   # 또는 make dev
+```
+
+---
+
+## 아키텍처 스냅샷 (2026-06-28)
+
+### SSOT
+
+| 계층 | 경로 | 역할 |
+|------|------|------|
+| Room / plan / mission | `src/agent_lab/` (Python) | 제품 불변식 — 합의·격리·Oracle·Human gate |
+| API | `app/server/` (FastAPI, :8765) | REST + SSE |
+| UI | `web/src/` (React 18 + Vite) | Mission OS console |
+| Desktop shell | `web/src-tauri/` (Rust, Tauri 2) | 창 + uvicorn spawn/supervise |
+
+**PyO3 / native extension:** 없음. Rust는 Tauri shell만.
+
+### IPC 모델 (현재)
+
+- **Primary bus:** HTTP `127.0.0.1:8765` (`web/src/api/client.ts`)
+- **Tauri plugins:** dialog, notification, opener (custom `invoke` command 없음)
+- **Dev API owner:** Vite plugin → `web/scripts/ensure-dev-api.mjs` (`AGENT_LAB_SKIP_TAURI_API=1`)
+- **Prod API owner:** `web/src-tauri/src/lib.rs` → `start_api()` + 4s supervisor loop
+
+```mermaid
+flowchart LR
+  subgraph dev [Dev tauri-dev]
+    Vite[Vite :1420]
+    Ensure[ensure-dev-api.mjs]
+    Uvicorn[uvicorn :8765 reload]
+    Vite --> Ensure --> Uvicorn
+    Vite -->|"/api proxy"| Uvicorn
+  end
+
+  subgraph prod [Release .app]
+    Tauri[Tauri lib.rs]
+    UvicornP[uvicorn :8765]
+    WebView[WebView to :8765]
+    Tauri --> UvicornP
+    Tauri --> WebView --> UvicornP
+  end
+```
+
+### Dev vs prod
+
+| Mode | 명령 | API owner | UI origin |
+|------|------|-----------|-----------|
+| Browser dev | `make dev` | `scripts/dev.sh` | `:5173` + proxy |
+| Tauri dev | `make tauri-dev` | `ensure-dev-api.mjs` | `:1420` + proxy |
+| Release | `make tauri-build` | `lib.rs` supervisor | webview → `:8765` |
+| API only | `make prod` | manual uvicorn | StaticFiles from API |
+
+### 핵심 파일
+
+| 파일 | 내용 |
+|------|------|
+| [`web/src-tauri/src/lib.rs`](../web/src-tauri/src/lib.rs) | spawn, health, supervisor, prod navigation |
+| [`web/scripts/ensure-dev-api.mjs`](../web/scripts/ensure-dev-api.mjs) | dev watchdog, port reclaim, reload grace |
+| [`web/vite.config.ts`](../web/vite.config.ts) | `await ensureDevApi()`, `/api` proxy |
+| [`web/scripts/tauri-dev.sh`](../web/scripts/tauri-dev.sh) | stale :8765 cleanup, `SKIP_TAURI_API` |
+| [`scripts/prepare_bundled_runtime.sh`](../scripts/prepare_bundled_runtime.sh) | `.app` bundled venv |
+| [`app/server/main.py`](../app/server/main.py) | StaticFiles + routers |
+| [`docs/APP.md`](./APP.md) | Desktop install / config paths |
+
+### Env / 플래그 (packaging)
+
+| Variable | 의미 |
+|----------|------|
+| `AGENT_LAB_SKIP_TAURI_API=1` | Tauri가 API spawn 안 함 — dev에서 Vite/Node가 소유 |
+| `AGENT_LAB_ROOT` | Repo or bundled `runtime/` root |
+| `AGENT_LAB_PYTHON` | Override Python binary |
+| `VITE_SKIP_API=1` | Browser dev: Vite가 API spawn 안 함 |
+| `VITE_API_PROXY_TARGET` | Proxy upstream (default `http://127.0.0.1:8765`) |
+
+---
+
+## 검증 체크리스트 (baseline 시점)
+
+| Check | 명령 | baseline 기대 |
+|-------|------|---------------|
+| Fast tests | `make test-fast` | 2108 passed, **3 known failures** (아래) |
+| Smoke | `python scripts/smoke_room.py` | 36 baselines green |
+| Structure | `make structure-metrics-check` | **drift** (room package refactor 진행 중) |
+| Dev desktop | `make tauri-dev` | API auto-start, proxy OK |
+| Dev browser | `make dev` | :5173 + :8765 |
+
+### Known failures @ baseline (수정 전 hybrid 착수 OK)
+
+hybrid 작업과 **무관** — room/package refactor·UI contract drift. 돌아온 뒤 회귀면 이 3개부터 확인:
+
+1. `tests/test_integration_registry.py::test_fast_bucket_collection_budget`
+2. `tests/test_structure_metrics.py::test_structure_metrics_check_passes` — `tests/fixtures/structure-metrics-baseline.json` 미동기
+3. `tests/test_workspace_ui_contract.py::test_phase0_composer_plan_toggle_beside_turn_picker`
+
+---
+
+## 아직 없는 것 (hybrid plan scope)
+
+다음은 **의도적으로 없음** — hybrid rollout plan (Track 1 packaging + Track 2 PyO3)에서 추가 예정:
+
+- Tauri `invoke` (`api_status`, `api_restart`, …)
+- `crates/agent_lab_native/` (PyO3)
+- `repo_map` / `syntax_gate` Rust ports
+- UDS / named-pipe IPC
+- Tauri official `externalBin` sidecar
+- Room / plan_execute Python → Rust 이식
+
+---
+
+## Room 코어 상태 (참고)
+
+- `src/agent_lab/room/` 패키지화 진행 (`room.py` 삭제, shim `room_*.py` 유지)
+- 불변식: BLOCK→409, worktree 격리, Oracle verify, Human inbox — **Python SSOT**
+- 상세: [`ARCHITECTURE.md`](./ARCHITECTURE.md) §0, [`ROOM-PACKAGE-REFACTOR-DESIGN.md`](./ROOM-PACKAGE-REFACTOR-DESIGN.md)
+
+---
+
+## 문제 발생 시 디버그 순서
+
+1. **API :8765** — `curl -s http://127.0.0.1:8765/api/health | head`
+2. **Dev owner** — `echo $AGENT_LAB_SKIP_TAURI_API`; Tauri dev면 `1` 기대
+3. **Port conflict** — `lsof -i tcp:8765` (macOS)
+4. **Boot log** — `~/Library/Logs/Agent Lab/agent-lab-api.log`
+5. **Supervisor loop** — dev: `ensure-dev-api.mjs` watchdog; prod: `lib.rs` 4s interval
+6. **Mixed content** — release webview는 `:8765` origin으로 navigate (`navigate_main_to_api_origin`)
+
+---
+
+## 관련 문서
+
+| 문서 | 용도 |
+|------|------|
+| [ARCHITECTURE.md §6.5](./ARCHITECTURE.md) | Desktop 요약 |
+| [APP.md](./APP.md) | `.app` 빌드·설정 |
+| [STABILITY.md](./STABILITY.md) | smoke / regression |
+
+**규칙:** hybrid PR은 이 baseline 대비 **무엇이 바뀌었는지** PR 본문에 적고, Room pytest + smoke green을 gate로 둔다.

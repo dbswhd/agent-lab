@@ -1,6 +1,6 @@
 # Agent Lab documentation index
 
-> **Updated:** 2026-06-26 · **Tests:** `pytest -m "not live"` · **Smoke:** `python scripts/smoke_room.py` · **Hook/communicate:** `make verify-hooks`
+> **Updated:** 2026-06-28 · **Tests:** `pytest -m "not live"` · **Smoke:** `python scripts/smoke_room.py` · **Hook/communicate:** `make verify-hooks` · **Packaging baseline:** tag `baseline/pre-hybrid-rust-2026-06-28`
 
 이 페이지에서 질문에 맞는 **하나의 canonical doc**을 찾는다. `archive/`로 이동된 문서는 shipped 상태 판단에 사용 금지.
 
@@ -12,6 +12,7 @@
 |------|------|
 | **현재 구조 · 플로우 (첫 진입점)** | [FLOW.md](./FLOW.md) |
 | 시스템 전체 모듈·레이어 지도 | [ARCHITECTURE.md](./ARCHITECTURE.md) |
+| Desktop packaging baseline · hybrid 전 복귀점 | [PACKAGING-BASELINE.md](./PACKAGING-BASELINE.md) |
 | 전략 방향 (Fugu/Harness 대비 포지션) | [STRATEGIC-DIRECTION-2026.md](./STRATEGIC-DIRECTION-2026.md) |
 | 역할 오케스트레이션 설계 (P1~P8) | [ROLE-ORCHESTRATION-PLAN.md](./ROLE-ORCHESTRATION-PLAN.md) |
 | 기능·동작·API·UI 상세 | [USER-GUIDE.md](./USER-GUIDE.md) |

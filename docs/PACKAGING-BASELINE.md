@@ -176,8 +176,13 @@ Rollout plan: **[HYBRID-RUST-PYTHON-ADR.md](./HYBRID-RUST-PYTHON-ADR.md)** — T
 
 ### Track 1 — not yet done
 
-- Tauri `invoke`: **`api_restart`** (+ optional boot-failure dialog)
 - Cross-platform port reclaim (Windows compile/run path)
+
+### Track 1 — shipped (Phase 1.2)
+
+- Tauri `invoke`: **`api_restart`**, **`api_shell_status`**
+- [`ApiDiagnosticsBar.tsx`](../web/src/components/ApiDiagnosticsBar.tsx) — **API 재시작** (release only; dev disabled)
+- Release API spawn failure — native dialog
 
 ### Track 2 — gated (not scheduled)
 
@@ -191,7 +196,8 @@ Opens only if profile shows native candidates ≥ **N%** of mock-turn/context-bu
 
 ### Already shipped (baseline — do not redo)
 
-- [`ApiDiagnosticsBar.tsx`](../web/src/components/ApiDiagnosticsBar.tsx) HTTP diagnostics
+- [`ApiDiagnosticsBar.tsx`](../web/src/components/ApiDiagnosticsBar.tsx) HTTP diagnostics + **Tauri API 재시작** (release)
+- `lib.rs` `api_restart` / `api_shell_status` invoke
 - `lib.rs` `api_health_sessions_dir()` mismatch **log**
 - Dev API supervisor [`ensure-dev-api.mjs`](../web/scripts/ensure-dev-api.mjs)
 

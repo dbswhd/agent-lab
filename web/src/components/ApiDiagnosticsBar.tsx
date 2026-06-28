@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import type { DiagnosticsResponse } from "../api/client";
 import { fetchDiagnostics } from "../api/client";
+import { isTauri } from "../theme";
+import {
+  fetchApiShellStatus,
+  restartTauriApi,
+  type ApiShellStatus,
+} from "../utils/tauriApiShell";
 import { VerificationStatusPanel } from "./VerificationStatusPanel";
 
 type Props = {
@@ -21,7 +27,7 @@ type Props = {
  *  - Offline banner when apiOk === false
  *  - Cursor bridge failure hint
  *  - Sessions dir display
- *  - Expandable "진단 도구" section: refresh · copy JSON
+ *  - Expandable "진단 도구" section: refresh · copy JSON · Tauri API restart
  *  - Boot log tail (collapsible <details>)
  *
  *  Polls every 8 s when offline; stops polling when back online.
@@ -34,6 +40,10 @@ export function ApiDiagnosticsBar({
   const [diag, setDiag] = useState<DiagnosticsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [shellStatus, setShellStatus] = useState<ApiShellStatus | null>(null);
+  const [restarting, setRestarting] = useState(false);
+  const [restartError, setRestartError] = useState<string | null>(null);
+  const inTauri = isTauri();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -52,6 +62,24 @@ export function ApiDiagnosticsBar({
     const id = window.setInterval(() => void load(), 8_000);
     return () => window.clearInterval(id);
   }, [apiOk, load]);
+
+  useEffect(() => {
+    if (!inTauri) return;
+    void fetchApiShellStatus().then(setShellStatus);
+  }, [inTauri, apiOk]);
+
+  const onRestartApi = useCallback(async () => {
+    setRestarting(true);
+    setRestartError(null);
+    const result = await restartTauriApi();
+    setRestarting(false);
+    if (!result.ok) {
+      setRestartError(result.error);
+      return;
+    }
+    setShellStatus(await fetchApiShellStatus());
+    void load();
+  }, [load]);
 
   async function copyJson() {
     if (!diag) return;
@@ -79,6 +107,18 @@ export function ApiDiagnosticsBar({
       {!apiOk ? (
         <p className="diag-bar__offline">
           API 연결 끊김 — 백엔드가 자동 재시작 중입니다. 잠시 후 ↻ 새로고침
+          {inTauri && shellStatus?.tauri_owns_api ? (
+            <>
+              {" "}
+              또는 아래 <strong>API 재시작</strong>을 사용하세요.
+            </>
+          ) : null}
+        </p>
+      ) : null}
+
+      {restartError ? (
+        <p className="diag-bar__hint" role="alert">
+          API 재시작 실패: {restartError}
         </p>
       ) : null}
 
@@ -94,6 +134,21 @@ export function ApiDiagnosticsBar({
         <summary>진단 도구</summary>
 
         <div className="diag-bar__actions">
+          {inTauri ? (
+            <button
+              type="button"
+              className="btn btn--sm"
+              disabled={restarting || !shellStatus?.tauri_owns_api}
+              title={
+                shellStatus?.skip_tauri_api
+                  ? "tauri dev: API는 Vite(ensure-dev-api)가 관리합니다"
+                  : "Tauri supervisor가 uvicorn을 재시작합니다"
+              }
+              onClick={() => void onRestartApi()}
+            >
+              {restarting ? "…" : "API 재시작"}
+            </button>
+          ) : null}
           <button
             type="button"
             className="btn btn--sm"

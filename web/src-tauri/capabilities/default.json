@@ -9,6 +9,7 @@
     "core:webview:allow-set-webview-zoom",
     "opener:default",
     "dialog:default",
-    "notification:default"
+    "notification:default",
+    "allow-api-shell"
   ]
 }

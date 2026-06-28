@@ -7,7 +7,8 @@ use std::sync::Mutex;
 use std::time::Duration;
 use std::{thread, time::SystemTime};
 
-use tauri::{Manager, RunEvent};
+use tauri::{Manager, RunEvent, State};
+use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
 
 const API_PORT: u16 = 8765;
 
@@ -424,6 +425,50 @@ fn stop_api(state: &ApiServer) {
     }
 }
 
+fn restart_api(app: &tauri::AppHandle, state: &ApiServer) -> Result<(), String> {
+    if skip_tauri_api() {
+        return Err(
+            "Tauri dev: API is owned by Vite (ensure-dev-api). Close and reopen the window or restart `make tauri-dev`.".into(),
+        );
+    }
+    append_boot("api_restart requested via invoke");
+    stop_api(state);
+    if port_in_use(API_PORT) {
+        stop_process_on_port(API_PORT);
+        thread::sleep(Duration::from_millis(500));
+    }
+    start_api(app, state)
+}
+
+fn show_api_boot_error(app: &tauri::AppHandle, message: &str) {
+    app.dialog()
+        .message(message)
+        .title("Agent Lab — API start failed")
+        .kind(MessageDialogKind::Error)
+        .blocking_show();
+}
+
+#[derive(serde::Serialize)]
+struct ApiShellStatus {
+    tauri_owns_api: bool,
+    skip_tauri_api: bool,
+    health_ok: bool,
+}
+
+#[tauri::command]
+fn api_shell_status() -> ApiShellStatus {
+    ApiShellStatus {
+        tauri_owns_api: !skip_tauri_api(),
+        skip_tauri_api: skip_tauri_api(),
+        health_ok: api_health_ok(),
+    }
+}
+
+#[tauri::command]
+fn api_restart(app: tauri::AppHandle, state: State<'_, ApiServer>) -> Result<(), String> {
+    restart_api(&app, &state)
+}
+
 fn spawn_api_supervisor(app: tauri::AppHandle) {
     thread::spawn(move || {
         let mut unhealthy_streak = 0u8;
@@ -475,6 +520,7 @@ pub fn run_app() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .manage(ApiServer(Mutex::new(None)))
+        .invoke_handler(tauri::generate_handler![api_restart, api_shell_status])
         .setup(|app| {
             let handle = app.handle().clone();
             // Start API in background so a slow/failed uvicorn boot never blocks the webview.
@@ -510,6 +556,7 @@ pub fn run_app() {
                         let msg = format!("API start failed: {e}");
                         append_boot(&msg);
                         eprintln!("{msg}");
+                        show_api_boot_error(&handle, &msg);
                         show_main_window(&handle);
                     }
                 }
@@ -529,7 +576,7 @@ pub fn run_app() {
 
 #[cfg(test)]
 mod tests {
-    use super::http_response_body;
+    use super::{http_response_body, skip_tauri_api};
 
     #[test]
     fn http_response_body_parses_nested_health_json() {
@@ -543,5 +590,13 @@ mod tests {
         let body = http_response_body(raw).expect("body");
         assert!(body.contains(r#""ok":true"#));
         assert!(body.contains("default_agent_parallel_rounds"));
+    }
+
+    #[test]
+    fn skip_tauri_api_reads_env() {
+        std::env::set_var("AGENT_LAB_SKIP_TAURI_API", "1");
+        assert!(skip_tauri_api());
+        std::env::remove_var("AGENT_LAB_SKIP_TAURI_API");
+        assert!(!skip_tauri_api());
     }
 }

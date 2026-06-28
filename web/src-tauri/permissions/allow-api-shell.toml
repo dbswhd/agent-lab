@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-api-shell"
+description = "Restart embedded FastAPI and read shell API ownership status."
+commands.allow = ["api_restart", "api_shell_status"]

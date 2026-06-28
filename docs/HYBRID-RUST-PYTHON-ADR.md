@@ -293,4 +293,5 @@ No fixed calendar for Track 2 beyond profile — **t2b/t2c may not happen**.
 
 | Date | Change |
 |------|--------|
+| 2026-06-28 | Phase 1.2 shipped: `api_restart`, `api_shell_status`, ApiDiagnosticsBar button, release boot dialog |
 | 2026-06-28 | Initial ADR: Track 2 conditional; repo_map seam-first; shrink Track 1.2/1.3; remove scheduled repo_map Rust |

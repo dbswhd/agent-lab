@@ -15,6 +15,8 @@ import {
   WORKSPACE_TAB_SHORTCUT_EVENT,
   type ContentTab,
 } from "../utils/desktopShortcuts";
+import { focusComposerStack } from "../utils/composerStackFocus";
+import type { WorkFocusTarget } from "../components/WorkToolPanel";
 
 type Options = {
   sessionKey: string;
@@ -29,7 +31,7 @@ function isToolPanelTab(tab: WorkspaceTab): tab is ToolPanelTab {
 }
 
 function rightPanelModeFromInspectorTab(tab: InspectorTab): RightPanelMode {
-  return tab === "tools" ? "plan" : tab;
+  return tab === "tools" ? "diff" : "overview";
 }
 
 export function useWorkspaceTabs({
@@ -83,8 +85,8 @@ export function useWorkspaceTabs({
       setWorkspaceTabPinned(true);
       setWorkspaceTabState("transcript");
       setRightPanelModeState(mode);
-      if (mode === "overview" || mode === "tasks" || mode === "inbox") {
-        setInspectorTabState(mode);
+      if (mode === "overview") {
+        setInspectorTabState("overview");
       } else {
         setInspectorTabState("tools");
       }
@@ -107,13 +109,17 @@ export function useWorkspaceTabs({
     [setRightPanelMode],
   );
 
+  const focusWorkStack = useCallback((focus?: WorkFocusTarget) => {
+    setWorkspaceTabState("transcript");
+    focusComposerStack(focus);
+  }, []);
+
   useEffect(() => {
     const prevSessionKey = prevSessionKeyRef.current;
     prevSessionKeyRef.current = sessionKey;
     const boundFromComposer = prevSessionKey === "new" && sessionKey !== "new";
 
     if (boundFromComposer) {
-      // First message bound a session id — keep Transcript visible while SSE streams.
       setWorkspaceTabState("transcript");
       setInspectorTabState("overview");
       setRightPanelModeState("overview");
@@ -132,7 +138,7 @@ export function useWorkspaceTabs({
       setRightPanelModeState("overview");
       return;
     }
-    setWorkspaceTabState("transcript");
+    setWorkspaceTabState(resolveDefaultWorkspaceTab(autoContext));
     const defaultInspector = resolveDefaultInspectorTab(autoContext);
     setInspectorTabState(defaultInspector);
     setRightPanelModeState(rightPanelModeFromInspectorTab(defaultInspector));
@@ -199,11 +205,7 @@ export function useWorkspaceTabs({
     workspaceTab,
     inspectorTab,
     toolPanelTab:
-      rightPanelMode === "overview" ||
-      rightPanelMode === "tasks" ||
-      rightPanelMode === "inbox"
-        ? "plan"
-        : rightPanelMode,
+      rightPanelMode === "overview" ? "diff" : rightPanelMode,
     rightPanelMode,
     suggestedWorkspaceTab,
     workspaceTabPinned,
@@ -212,9 +214,12 @@ export function useWorkspaceTabs({
     setToolPanelTab,
     setRightPanelMode,
     openRightPanelMode,
-    openWorkTab: () => setWorkspaceTab("plan"),
-    openPlanTab: () => setWorkspaceTab("plan"),
-    openReviewTab: () => setWorkspaceTab("plan"),
+    openWorkTab: () => focusWorkStack("execute"),
+    openPlanTab: () => focusWorkStack("plan"),
+    openReviewTab: () => focusWorkStack("execute"),
     openTranscriptTab: () => setWorkspaceTab("transcript"),
+    openDiffTab: () => setToolPanelTab("diff"),
+    openFilesTab: () => setToolPanelTab("files"),
+    focusWorkStack,
   };
 }

@@ -2018,3 +2018,56 @@
     justify-content: center;
   }
 }
+
+/* Compact composer strip — plan body lives in Files tab */
+.plan-approval-strip {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+  padding: var(--space-12) var(--space-14);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-soft);
+  background: var(--surface-card);
+}
+
+.plan-approval-strip__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-10);
+}
+
+.plan-approval-strip__eyebrow {
+  margin: 0;
+  font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.plan-approval-strip__detail {
+  margin: var(--space-4) 0 0;
+  font-size: var(--text-footnote);
+  color: var(--label-secondary);
+}
+
+.plan-approval-strip__footer,
+.plan-approval-strip__revision {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.plan-approval-strip__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.plan-approval-strip__blockers {
+  padding: var(--space-8) var(--space-10);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--danger) 8%, var(--surface-card));
+  font-size: var(--text-footnote);
+}

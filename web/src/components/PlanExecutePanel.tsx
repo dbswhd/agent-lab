@@ -12,6 +12,7 @@ import {
   revisePendingPlan,
   resolvePlanExecution,
   runPlanDryRun,
+  resolveSessionObjection,
   type PendingPlanRecord,
   type PlanActionItem,
   type PlanExecutionRecord,
@@ -67,6 +68,10 @@ type Props = {
   evidenceEntries?: EvidenceEntry[];
   workHookAlert?: { event: string; body: string; blocked: boolean } | null;
   onDismissWorkHookAlert?: () => void;
+  onOpenDiff?: () => void;
+  onOpenFiles?: () => void;
+  sessionIdForObjections?: string;
+  onObjectionResolved?: () => void;
 };
 
 function linkedTaskForAction(
@@ -436,12 +441,36 @@ function PlanObjectionAlert({
   message,
   objections,
   onFocusObjection,
+  sessionIdForObjections,
+  onObjectionResolved,
 }: {
   title: string;
   message?: string;
   objections: RoomObjection[];
   onFocusObjection?: (objectionId: string, actionIndex?: number) => void;
+  sessionIdForObjections?: string;
+  onObjectionResolved?: () => void;
 }) {
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  async function resolveObjection(
+    objection: RoomObjection,
+    verdict: "accepted" | "wontfix",
+  ) {
+    if (!sessionIdForObjections) return;
+    setBusyId(objection.id);
+    try {
+      await resolveSessionObjection(
+        sessionIdForObjections,
+        objection.id,
+        verdict,
+      );
+      onObjectionResolved?.();
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   if (!objections.length) return null;
   return (
     <div className="work-exec-objection-alert" role="alert">
@@ -457,7 +486,26 @@ function PlanObjectionAlert({
                 : ""}
             </span>
             <span>{o.body}</span>
-            {onFocusObjection ? (
+            {sessionIdForObjections && o.status === "open" ? (
+              <>
+                <button
+                  type="button"
+                  className="plan-btn"
+                  disabled={busyId === o.id}
+                  onClick={() => void resolveObjection(o, "accepted")}
+                >
+                  수용
+                </button>
+                <button
+                  type="button"
+                  className="plan-btn plan-btn--ghost"
+                  disabled={busyId === o.id}
+                  onClick={() => void resolveObjection(o, "wontfix")}
+                >
+                  기각
+                </button>
+              </>
+            ) : onFocusObjection ? (
               <button
                 type="button"
                 className="plan-btn"
@@ -488,6 +536,10 @@ export function PlanExecutePanel({
   evidenceEntries = [],
   workHookAlert = null,
   onDismissWorkHookAlert,
+  onOpenDiff,
+  onOpenFiles,
+  sessionIdForObjections,
+  onObjectionResolved,
 }: Props) {
   const [recommended, setRecommended] = useState<PlanActionItem | null>(null);
   const [nowItems, setNowItems] = useState<PlanActionItem[]>([]);
@@ -1012,9 +1064,11 @@ export function PlanExecutePanel({
           {selectedOpenBlocks.length ? (
             <PlanObjectionAlert
               title="이 action은 미해결 BLOCK으로 execute가 차단됩니다"
-              message="TaskBar에서 이의를 수용하거나 기각한 뒤 dry-run 하세요."
+              message="이의를 수용하거나 기각한 뒤 dry-run 하세요."
               objections={selectedOpenBlocks}
               onFocusObjection={onFocusObjection}
+              sessionIdForObjections={sessionIdForObjections ?? sessionId}
+              onObjectionResolved={onObjectionResolved ?? onUpdated}
             />
           ) : null}
 
@@ -1024,6 +1078,8 @@ export function PlanExecutePanel({
               message={objectionBlock.message}
               objections={objectionBlock.objections}
               onFocusObjection={onFocusObjection}
+              sessionIdForObjections={sessionIdForObjections ?? sessionId}
+              onObjectionResolved={onObjectionResolved ?? onUpdated}
             />
           ) : null}
 
@@ -1317,6 +1373,24 @@ export function PlanExecutePanel({
                 <div className="exec-diff__head">
                   <WorkPlanIcon name="gitMerge" size={14} />
                   Diff preview
+                  {onOpenDiff ? (
+                    <button
+                      type="button"
+                      className="plan-btn plan-btn--ghost"
+                      onClick={onOpenDiff}
+                    >
+                      Diff 탭
+                    </button>
+                  ) : null}
+                  {onOpenFiles ? (
+                    <button
+                      type="button"
+                      className="plan-btn plan-btn--ghost"
+                      onClick={onOpenFiles}
+                    >
+                      Files
+                    </button>
+                  ) : null}
                 </div>
                 <SideBySideDiff
                   diff={activePending.diff}

@@ -66,7 +66,7 @@ export function SessionRail({
         .join(" ")}
       aria-label="Sessions"
       aria-hidden={!open}
-      style={{ "--rail-width": `${width}px` } as React.CSSProperties}
+      style={{ "--rail-width": `${open ? width : 0}px` } as React.CSSProperties}
     >
       {open ? (
         <div

@@ -43,18 +43,19 @@ def test_turn_policy_workspace_binding_kept():
 
 
 def test_scenario_b_plan_synthesis_contract():
-    """B: plan after send → plan chip + Workbench/Plan surface."""
+    """B: plan after send → composer event stack + execute surface."""
     room = _read("web", "src", "components", "RoomChat.tsx")
+    stack = _read("web", "src", "components", "ComposerEventStack.tsx")
     work = _read("web", "src", "components", "WorkToolPanel.tsx")
     plan = _read("web", "src", "components", "PlanExecutePanel.tsx")
 
     assert "planComposeActive" in room or "composerModeVariant" in room
     assert "modePlan" in room or "plan_updated" in _read("web", "src", "utils", "sendReceipt.ts")
-    assert "openPlanTab" in room
-    assert 'rightPanelMode === "plan"' in room
+    assert "ComposerEventStack" in room
+    assert "focusComposerStack" in room
     assert "WorkbenchPanel" in room
     assert "PlanExecutePanel" in work
-    assert "MissionOverviewSection" not in work
+    assert "WorkPlanApprovalSection" in stack
     assert "plan-card" in plan
     assert "지금 실행" in plan or "nowItems" in plan
 
@@ -62,22 +63,17 @@ def test_scenario_b_plan_synthesis_contract():
 def test_scenario_b2_plan_workflow_ui_contract():
     room = _read("web", "src", "components", "RoomChat.tsx")
     sse = _read("web", "src", "hooks", "useRoomSseHandler.ts")
-    banner = _read("web", "src", "components", "PlanWorkflowBanner.tsx")
     approval = _read("web", "src", "components", "PlanApprovalPanel.tsx")
     receipt = _read("web", "src", "utils", "sendReceipt.ts")
     plan_view = _read("web", "src", "utils", "planWorkflowView.ts")
 
-    assert "PlanWorkflowBanner" in room
+    assert "ComposerDecisionSurface" in room
     assert "showPlanWorkflowBanner" in room
     assert "showPlanWorkflowComposerHint" in room
     assert "plan_workflow_phase" in sse
     assert "plan_workflow_pending" in sse
     assert "sendReceiptRaw" in room
-    assert "plan-workflow-banner" in banner
-    assert "HUMAN_PENDING" in banner
-    assert "APPROVED" in banner
-    assert "CLARIFY" in banner
-    assert "PEER_REVIEW" in banner
+    assert "HUMAN_PENDING" in room or "showPlanApproval" in room
     assert "renderPlanMarkdown" in approval
     assert 'onApprove("execute")' in approval
     assert 'onApprove("approve_only")' in approval
@@ -163,43 +159,44 @@ def test_new_session_mission_template_apply_contract():
 
 
 def test_taskbar_human_inbox_integration_contract():
-    """Human gate resolve: Inbox / Workbench. Team queue in Workbench Tasks summary."""
+    """Human gate resolve: composer event stack. RoomTaskBar remains unmounted."""
     taskbar = _read("web", "src", "components", "RoomTaskBar.tsx")
-    inbox = _read("web", "src", "components", "HumanInboxPanel.tsx")
+    stack = _read("web", "src", "components", "ComposerEventStack.tsx")
     room = _read("web", "src", "components", "RoomChat.tsx")
     assert "taskbar--dock" in taskbar
-    assert "HumanInboxPanel" not in taskbar
-    assert "inbox-row__source-badge" in inbox
+    assert "HumanInboxPanel" in stack
     assert "taskbar-dock" not in room
     assert "RoomTaskBar" not in room
-    assert "InspectorTasksSummary" in room
-    assert "taskbar__queue-block" in taskbar
-    assert 'id: "peer"' not in taskbar
-    assert '"taskbar"' in inbox
+    assert "InspectorTasksSummary" not in room
+    assert "ComposerEventStack" in room
     assert "openHumanInbox" in room
 
 
 def test_inbox_segments_contract():
-    """Inbox collapsed to Inbox/Activity; discuss recovery folded into Inbox;
-    popup + inbox_pause wiring preserved; kind is the primary row distinction."""
+    """Activity inline in transcript; Human Inbox in composer stack."""
     room = _read("web", "src", "components", "RoomChat.tsx")
+    transcript = _read("web", "src", "components", "RoomTranscriptPanel.tsx")
     sse = _read("web", "src", "hooks", "useRoomSseHandler.ts")
-    inbox = _read("web", "src", "components", "HumanInboxPanel.tsx")
-    assert "DiscussRecoveryBanner" in room
-    assert 'inboxSegment === "inbox"' in room
+    stack = _read("web", "src", "components", "ComposerEventStack.tsx")
+    assert "TranscriptActivityDivider" in transcript
+    assert "appendTranscriptActivity" in _read(
+        "web", "src", "utils", "pushNotification.ts"
+    )
+    assert 'inboxSegment === "inbox"' not in room
     assert 't === "inbox_pause"' in sse
-    assert 'presentation="composer"' in room
+    assert 'presentation="composer"' in stack
+    inbox = _read("web", "src", "components", "HumanInboxPanel.tsx")
     assert "inbox-row--fork" in inbox
     assert "inbox-row__kind-badge" in inbox
 
 
 def test_composer_question_inbox_is_separate_from_generic_pending_hint():
     room = _read("web", "src", "components", "RoomChat.tsx")
+    stack = _read("web", "src", "components", "ComposerEventStack.tsx")
     inbox = _read("web", "src", "components", "HumanInboxPanel.tsx")
-    assert "inboxPendingCount > 0" in room
-    assert 'presentation="composer"' in room
-    assert "inboxPendingNonQuestions > 0" in room
-    assert 'excludeKind="question"' not in _read("web", "src", "components", "RoomTaskBar.tsx")
+    assert "inboxPendingCount" in room
+    assert 'presentation="composer"' in stack
+    assert "ComposerEventStack" in room
     assert "visiblePending.map" in inbox
     assert "visiblePending[0]?.kind" in inbox
 
@@ -263,11 +260,13 @@ def test_remaining_gaps_slack_inbox_ref_recovery_contract():
     assert "missionOsSlackSigningSecret" in gateway or "slackSigningSecret" in gateway
     assert "activateInboxRef" in room
     assert "handleInboxRefClick" in room
-    assert "onRefClick={handleInboxRefClick}" in room
+    assert "onInboxRefClick={handleInboxRefClick}" in room
     assert "ComposerDecisionSurface" in room
     assert "RecoveryStrip" in recovery
     assert "postMissionDiscussRecovery" in room
-    assert "DiscussRecoveryBanner" in room
+    assert "DiscussRecoveryBanner" in _read(
+        "web", "src", "components", "DiscussRecoveryBanner.tsx"
+    )
     assert "run_discuss_recovery" in recovery
     assert "recovery-strip" in recovery
     assert "parseInboxRef" in ref_nav

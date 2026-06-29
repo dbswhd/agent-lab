@@ -280,15 +280,18 @@ def _plan_content_normalized(plan_md: str) -> str:
     return plan_md.rstrip("\n") + "\n"
 
 
-def _write_plan_if_changed(folder: Path, plan_md: str) -> bool:
-    """Write plan.md only when content changes. Returns True if file was updated."""
-    plan_path = folder / "plan.md"
-    new_content = _plan_content_normalized(plan_md)
-    if plan_path.is_file():
-        existing = plan_path.read_text(encoding="utf-8")
-        if existing == new_content:
-            return False
-    plan_path.write_text(new_content, encoding="utf-8")
+def _write_plan_if_changed(folder: Path, plan_md: str, *, run_meta: dict[str, Any]) -> bool:
+    """Write active session plan only when content changes."""
+    from agent_lab.plan.paths import extract_plan_path_directive, read_session_plan_md, write_session_plan_md
+
+    if not (plan_md or "").strip():
+        return False
+    existing = read_session_plan_md(folder, run_meta)
+    _, body = extract_plan_path_directive(plan_md)
+    new_content = _plan_content_normalized(body or plan_md)
+    if existing.rstrip() + "\n" == new_content or existing == new_content.rstrip():
+        return False
+    write_session_plan_md(folder, plan_md, run_meta)
     return True
 
 
@@ -318,7 +321,8 @@ def _write_session_files(
     clarifier_questions: list[str] | None = None,
 ) -> None:
     (folder / "topic.txt").write_text(topic.strip() + "\n", encoding="utf-8")
-    plan_changed = _write_plan_if_changed(folder, plan_md)
+    prev_run = _read_run_meta(folder)
+    plan_changed = _write_plan_if_changed(folder, plan_md, run_meta=prev_run)
 
     from agent_lab.room.chat_channels import is_peer_visibility
 
@@ -334,7 +338,6 @@ def _write_session_files(
             transcript_lines.append(f"## System\n\n{m.content}")
     (folder / "transcript.md").write_text("\n\n".join(transcript_lines) + "\n", encoding="utf-8")
 
-    prev_run = _read_run_meta(folder)
     messages_to_store = _append_peer_turn_digest(list(messages))
     messages_to_store = _append_human_turn_synthesis(messages_to_store, prev_run, turn_meta=turn_meta)
     chat_path = folder / "chat.jsonl"
@@ -378,6 +381,10 @@ def _write_session_files(
         "consensus_agreements": agreements,
     }
     preserve_session_meta_from_prev(run_meta, prev_run)
+    if prev_run.get("active_plan_relpath"):
+        run_meta["active_plan_relpath"] = prev_run["active_plan_relpath"]
+    if prev_run.get("plan_cycles"):
+        run_meta["plan_cycles"] = prev_run["plan_cycles"]
     if prev_run.get("human_inbox"):
         from agent_lab.human_inbox import compute_inbox_pending
 

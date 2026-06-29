@@ -56,8 +56,9 @@ type Props = {
   executeError?: string | null;
   planWorkflow?: PlanWorkflowRecord;
   planApproval?: PlanApprovalHost | null;
-  onOpenTasks?: () => void;
-  onOpenInbox?: () => void;
+  onOpenDiff?: () => void;
+  onOpenFiles?: () => void;
+  variant?: "tool" | "composer";
   inboxPendingCount?: number;
   workHookAlert?: {
     readonly event: string;
@@ -89,8 +90,9 @@ export function WorkToolPanel({
   executeError = null,
   planWorkflow,
   planApproval = null,
-  onOpenTasks,
-  onOpenInbox,
+  onOpenDiff,
+  onOpenFiles,
+  variant = "tool",
   inboxPendingCount = 0,
   workHookAlert = null,
   onDismissWorkHookAlert,
@@ -187,7 +189,7 @@ export function WorkToolPanel({
   const handleDecisionAction = useCallback(
     (actionId: WorkDecisionActionId) => {
       if (actionId === "open_tasks") {
-        onOpenTasks?.();
+        onOpenFiles?.();
         return;
       }
       const id = workDecisionActionElementId(actionId);
@@ -196,7 +198,7 @@ export function WorkToolPanel({
         block: "start",
       });
     },
-    [onOpenTasks],
+    [onOpenFiles],
   );
 
   const workflowPhase = (
@@ -220,12 +222,12 @@ export function WorkToolPanel({
         planWorkflow={planWorkflow}
         runtime={runtime}
         inboxPendingCount={inboxPendingCount}
-        onOpenInbox={onOpenInbox}
       />
     );
   }
 
   if (!hasPlan) {
+    if (variant === "composer") return null;
     return (
       <div className="work-surface tools-work-empty">
         <div className="empty-state">
@@ -241,19 +243,21 @@ export function WorkToolPanel({
   if (planApproval?.enabled) {
     return (
       <div className="work-stack work-stack--tool">
-        <div className="work-surface work-surface--chrome work-chrome">
-          <GjcPipelineBar
-            phase={gjcPhase}
-            metaLine={gjcMeta}
-            externalRunnerEnabled={externalRunnerEnabled}
-          />
-          <WorkStatusBar
-            phase={workPhase}
-            metaLine={workPlanMetaLine(planMeta)}
-            hasPlan={hasPlan}
-          />
-          <GjcExternalHandoffStrip execution={latestExecution} />
-        </div>
+        {variant === "tool" ? (
+          <div className="work-surface work-surface--chrome work-chrome">
+            <GjcPipelineBar
+              phase={gjcPhase}
+              metaLine={gjcMeta}
+              externalRunnerEnabled={externalRunnerEnabled}
+            />
+            <WorkStatusBar
+              phase={workPhase}
+              metaLine={workPlanMetaLine(planMeta)}
+              hasPlan={hasPlan}
+            />
+            <GjcExternalHandoffStrip execution={latestExecution} />
+          </div>
+        ) : null}
         {showPlanStalePanel ? (
           <div className="work-surface work-surface--alert work-plan-stale">
             <p className="plan-stale">{planStaleNotice}</p>
@@ -275,23 +279,25 @@ export function WorkToolPanel({
 
   return (
     <div className="work-stack work-stack--tool">
-      <div className="work-surface work-surface--chrome work-chrome">
-        <GjcPipelineBar
-          phase={gjcPhase}
-          metaLine={gjcMeta}
-          externalRunnerEnabled={externalRunnerEnabled}
-        />
-        <WorkStatusBar
-          phase={workPhase}
-          metaLine={workPlanMetaLine(planMeta)}
-          hasPlan={hasPlan}
-        />
-        <GjcExternalHandoffStrip execution={latestExecution} />
-        <WorkDecisionPanel
-          summary={decisionSummary}
-          onAction={handleDecisionAction}
-        />
-      </div>
+      {variant === "tool" ? (
+        <div className="work-surface work-surface--chrome work-chrome">
+          <GjcPipelineBar
+            phase={gjcPhase}
+            metaLine={gjcMeta}
+            externalRunnerEnabled={externalRunnerEnabled}
+          />
+          <WorkStatusBar
+            phase={workPhase}
+            metaLine={workPlanMetaLine(planMeta)}
+            hasPlan={hasPlan}
+          />
+          <GjcExternalHandoffStrip execution={latestExecution} />
+          <WorkDecisionPanel
+            summary={decisionSummary}
+            onAction={handleDecisionAction}
+          />
+        </div>
+      ) : null}
 
       {showPlanStalePanel ? (
         <div className="work-surface work-surface--alert work-plan-stale">
@@ -341,6 +347,10 @@ export function WorkToolPanel({
         onUpdated={onSessionUpdated}
         workHookAlert={workHookAlert}
         onDismissWorkHookAlert={onDismissWorkHookAlert}
+        onOpenDiff={onOpenDiff}
+        onOpenFiles={onOpenFiles}
+        sessionIdForObjections={sessionId}
+        onObjectionResolved={onSessionUpdated}
       />
     </div>
   );

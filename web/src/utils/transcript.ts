@@ -4,6 +4,16 @@ import {
 } from "./humanSynthesis";
 import type { TurnItem } from "./turnItems";
 
+export type TranscriptActivityMarker = {
+  id: string;
+  tier: "P0" | "P1" | "P2" | "P3";
+  title: string;
+  body?: string;
+  kind: string;
+  createdAt: number;
+  read: boolean;
+};
+
 export type AgentRole =
   | "you"
   | "cursor"
@@ -42,6 +52,8 @@ export type ChatMessage = {
   chatLineIndex?: number;
   /** When set, renders a round topology divider before this message */
   roundDivider?: number;
+  /** Session activity / notification marker (P0–P3) inline in transcript */
+  activityMarker?: TranscriptActivityMarker;
   turnItems?: TurnItem[];
   /** Files sent with this user message (shown above bubble, not in composer). */
   attachments?: string[];

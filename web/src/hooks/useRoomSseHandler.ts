@@ -5,7 +5,6 @@ import type {
   MutableRefObject,
   SetStateAction,
 } from "react";
-import type { InboxSegment } from "./useInboxState";
 import type { RecoveryFailure } from "../utils/recoveryItems";
 import {
   applySessionTemplate,
@@ -87,7 +86,6 @@ export type RoomRunSseDeps = {
   refreshSessionMeta: () => void;
   refreshInboxPending: () => void;
   openHumanInbox: () => void;
-  setInboxSegment: Dispatch<SetStateAction<InboxSegment>>;
   openWorkTab: () => void;
 };
 
@@ -157,7 +155,6 @@ export function createRoomRunEventHandler(
     refreshSessionMeta,
     refreshInboxPending,
     openHumanInbox,
-    setInboxSegment,
     openWorkTab,
     localeMsg,
   } = deps;
@@ -628,7 +625,7 @@ export function createRoomRunEventHandler(
           body: localeMsg.planWorkflowPendingDetail,
           sessionId: scope.activeSessionId ?? sessionId ?? undefined,
           kind: "plan_workflow_pending",
-          toastAction: { type: "inspector", tab: "tasks" },
+          toastAction: { type: "inspector", tab: "overview" },
           toastActionLabel: localeMsg.planWorkflowPendingOpenTasks,
         },
         pushMacNotification,
@@ -660,7 +657,6 @@ export function createRoomRunEventHandler(
       setInboxReloadKey((k) => k + 1);
       void refreshInboxPending();
       openHumanInbox();
-      setInboxSegment("inbox");
     }
     if (t === "complete" && ev.session_id) {
       scope.activeSessionId = String(ev.session_id);
@@ -688,7 +684,7 @@ export function createRoomRunEventHandler(
                   sessionId: sid,
                   kind: "human_inbox_build",
                   entityId: build.id,
-                  toastAction: { type: "work", focus: "plan" },
+                  toastAction: { type: "composer", focus: "plan" },
                 },
                 pushMacNotification,
                 notifyDesktop,
@@ -702,7 +698,7 @@ export function createRoomRunEventHandler(
                   sessionId: sid,
                   kind: "human_inbox_question",
                   entityId: question.id,
-                  toastAction: { type: "inbox" },
+                  toastAction: { type: "composer", focus: "inbox" },
                 },
                 pushMacNotification,
                 notifyDesktop,
@@ -739,7 +735,7 @@ export function createRoomRunEventHandler(
             body: goalHint,
             sessionId: scope.activeSessionId,
             kind: "verified_loop_pending",
-            toastAction: { type: "inspector", tab: "tasks" },
+            toastAction: { type: "inspector", tab: "overview" },
             toastActionLabel: "승인하기",
           },
           pushMacNotification,

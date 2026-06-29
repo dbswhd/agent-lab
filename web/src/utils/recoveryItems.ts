@@ -293,10 +293,7 @@ function buildFailureItem(
         failure.source === "execute"
           ? "실행을 완료하지 못했습니다."
           : "요청을 완료하지 못했습니다.",
-      reason:
-        failure.source === "transport"
-          ? "연결 상태를 확인한 뒤 다시 시도하세요."
-          : "세부 원인을 확인한 뒤 다시 시도할 수 있습니다.",
+      reason: "세부 원인을 확인한 뒤 다시 시도할 수 있습니다.",
       details: trimmed,
       source: failure.source === "execute" ? "execute" : "run",
       affectedAgentIds: failure.affectedAgentIds,

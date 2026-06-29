@@ -141,7 +141,11 @@ def claude_handoff_block() -> str:
     return CLAUDE_API_HANDOFF_SHORT
 
 
-ROOM_SCRIBE = """You are the room Scribe. Write plan.md from the FULL conversation (all human messages and agent replies).
+ROOM_SCRIBE = """You are the room Scribe. Write a session plan markdown from the FULL conversation (all human messages and agent replies).
+
+First line MUST be a path directive the runtime uses for the file name (content-based slug):
+<!-- plan-path: artifacts/plans/your-short-descriptive-name.md -->
+Pick a short English kebab-case filename that matches the plan topic (not always plan.md).
 
 Write in Korean. Be specific to what was actually discussed — not generic advice.
 

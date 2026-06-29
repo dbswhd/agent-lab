@@ -8,7 +8,6 @@ import type { DecisionBlockedHeadline } from "../utils/decisionBlockedHeadline";
 import { pickComposerDecisionTier } from "../utils/composerDecisionPriority";
 import { useHumanDecisionRuntime } from "../hooks/useHumanDecisionRuntime";
 import { useLocale } from "../i18n/useLocale";
-import { planWorkflowNoticeLabel } from "../utils/planWorkflowView";
 import { ComposerNoticeCard } from "./ComposerNoticeCard";
 
 type Props = {
@@ -27,6 +26,7 @@ type Props = {
   readonly showPlanWorkflowComposerHint: boolean;
   readonly planWorkflow: PlanWorkflowRecord | undefined;
   readonly planWorkflowPlanIntent: string | null;
+  readonly dismissedKey?: string | null;
   readonly onOpenInbox: () => void;
   readonly onOpenWork: () => void;
   readonly onRecoveryAction: (
@@ -38,6 +38,7 @@ type Props = {
     event: RecoveryResolutionEvent,
   ) => void;
   readonly onRecoveryDismiss: () => void;
+  readonly onDismissNotice?: (key: string) => void;
 };
 
 export function ComposerDecisionSurface({
@@ -53,13 +54,13 @@ export function ComposerDecisionSurface({
   showPlanWorkflowBanner,
   showPlanWorkflowComposerHint,
   planWorkflow,
-  planWorkflowPlanIntent,
+  dismissedKey = null,
   onOpenInbox,
-  onOpenWork,
   onRecoveryAction,
   onRecoveryDismiss,
+  onDismissNotice,
 }: Props) {
-  const { locale, msg } = useLocale();
+  const { locale, msg: _msg } = useLocale();
   const ko = locale === "ko";
   const { visible: showHumanGate, runtime } = useHumanDecisionRuntime(
     sessionId,
@@ -80,6 +81,7 @@ export function ComposerDecisionSurface({
   });
 
   if (!tier) return null;
+  if (dismissedKey === tier) return null;
 
   if (tier === "recovery" && recoveryItems[0]) {
     const item = recoveryItems[0];
@@ -90,7 +92,13 @@ export function ComposerDecisionSurface({
         variant="alert"
         title={item.title}
         description={item.reason}
-        primaryLabel={primaryBusy ? msg.running : item.primaryAction.label}
+        primaryLabel={
+          primaryBusy
+            ? ko
+              ? "처리 중…"
+              : "Working…"
+            : item.primaryAction.label
+        }
         onPrimary={() => onRecoveryAction(item.primaryAction.id, item)}
         secondaryLabel={secondary?.label}
         onSecondary={
@@ -103,61 +111,16 @@ export function ComposerDecisionSurface({
     );
   }
 
-  if (tier === "plan_approval") {
-    return (
-      <ComposerNoticeCard
-        title={blockedHeadline.headline}
-        description={blockedHeadline.detail}
-        primaryLabel={msg.planWorkflowPendingOpenTasks}
-        onPrimary={onOpenWork}
-      />
-    );
-  }
-
   if (tier === "human_gate") {
     return (
       <ComposerNoticeCard
         variant="alert"
         title={blockedHeadline.headline}
         description={blockedHeadline.detail}
-        primaryLabel={msg.humanDecisionOpenInbox}
+        primaryLabel={ko ? "Composer에서 확인" : "View in composer"}
         onPrimary={onOpenInbox}
-      />
-    );
-  }
-
-  if (tier === "plan_workflow" && planWorkflow) {
-    const phase = (planWorkflow.phase ?? "").toUpperCase();
-    const notice = planWorkflowNoticeLabel(planWorkflow.notice, msg);
-    const detail =
-      notice ??
-      (phase === "APPROVED"
-        ? planWorkflowPlanIntent === "plan_only"
-          ? msg.planWorkflowApprovedTeamDetail
-          : msg.planWorkflowApprovedDetail
-        : blockedHeadline.detail);
-    const clarifyPhase = phase === "CLARIFY" || phase === "INTAKE";
-
-    return (
-      <ComposerNoticeCard
-        title={blockedHeadline.headline}
-        description={detail}
-        primaryLabel={
-          phase === "HUMAN_PENDING"
-            ? msg.planWorkflowPendingOpenTasks
-            : clarifyPhase
-              ? msg.humanDecisionOpenInbox
-              : ko
-                ? "Work 열기"
-                : "Open Work"
-        }
-        onPrimary={
-          phase === "HUMAN_PENDING"
-            ? onOpenWork
-            : clarifyPhase
-              ? onOpenInbox
-              : onOpenWork
-        }
+        onDismiss={() => onDismissNotice?.("human_gate")}
+        dismissLabel={ko ? "닫기" : "Dismiss"}
       />
     );
   }

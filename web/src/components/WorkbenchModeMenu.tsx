@@ -14,14 +14,9 @@ const PRIMARY_ITEMS: readonly MenuItem[] = [
   { mode: "terminal", shortcut: "^`" },
   { mode: "files", shortcut: "⇧⌘F" },
   { mode: "background" },
-  { mode: "plan" },
 ] as const;
 
-const SECONDARY_ITEMS: readonly MenuItem[] = [
-  { mode: "overview" },
-  { mode: "tasks" },
-  { mode: "inbox" },
-] as const;
+const SECONDARY_ITEMS: readonly MenuItem[] = [{ mode: "overview" }] as const;
 
 type Props = {
   readonly active: RightPanelMode;
@@ -30,6 +25,7 @@ type Props = {
   readonly badgeCount?: number;
   readonly onSelect: (mode: RightPanelMode) => void;
   readonly onToggleOpen: () => void;
+  readonly onMenuOpenChange?: (open: boolean) => void;
 };
 
 function modeIcon(mode: RightPanelMode) {
@@ -67,26 +63,8 @@ function modeIcon(mode: RightPanelMode) {
           <path d="m16.3 16.3 2.1 2.1" />
         </>
       );
-    case "plan":
-      return (
-        <>
-          <path d="M5 7h14" />
-          <path d="M5 12h10" />
-          <path d="M5 17h6" />
-        </>
-      );
     case "overview":
       return <path d="M4 5h16v14H4Z" />;
-    case "tasks":
-      return (
-        <>
-          <path d="m4 7 2 2 4-4" />
-          <path d="M12 8h8" />
-          <path d="M4 16h16" />
-        </>
-      );
-    case "inbox":
-      return <path d="M4 5h16l-2 10H6Z" />;
   }
 }
 
@@ -96,9 +74,14 @@ export function WorkbenchModeMenu({
   locale,
   badgeCount = 0,
   onSelect,
+  onMenuOpenChange,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    onMenuOpenChange?.(menuOpen);
+  }, [menuOpen, onMenuOpenChange]);
 
   useEffect(() => {
     if (!menuOpen) return;

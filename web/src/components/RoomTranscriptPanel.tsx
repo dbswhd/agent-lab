@@ -1,8 +1,10 @@
 import { Fragment } from "react";
+import type { AppNotification } from "../utils/notificationStore";
 import type { LiveMsg } from "../run/runSessionRegistry";
 import { ChatBubble, ReplyWaitingBubble } from "./ChatBubble";
 import { ScrollToBottomButton } from "./ScrollToBottomButton";
 import { TranscriptViewOptions } from "./TranscriptViewOptions";
+import { TranscriptActivityDivider } from "./TranscriptActivityDivider";
 import { isReplyWaitRole } from "../utils/transcript";
 
 export type PendingReplyAgent = {
@@ -31,6 +33,7 @@ type Props = {
   forceScrollButton?: boolean;
   scrollToBottom: () => void;
   transcriptActive?: boolean;
+  onActivityOpen?: (note: AppNotification) => void;
 };
 
 export function RoomTranscriptPanel({
@@ -53,6 +56,7 @@ export function RoomTranscriptPanel({
   forceScrollButton,
   scrollToBottom,
   transcriptActive = true,
+  onActivityOpen,
 }: Props) {
   return (
     <>
@@ -100,6 +104,16 @@ export function RoomTranscriptPanel({
         {(() => {
           let userTurnIdx = 0;
           return visibleMessages.map((m) => {
+            if (m.activityMarker) {
+              return (
+                <TranscriptActivityDivider
+                  key={m.id}
+                  marker={m.activityMarker}
+                  locale={locale}
+                  onOpen={onActivityOpen}
+                />
+              );
+            }
             if (m.roundDivider) {
               const roundLabel =
                 locale === "ko"

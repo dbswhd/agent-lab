@@ -67,6 +67,13 @@ def synthesize_plan(
         f"---\n\nLatest human message:\n{latest_human or '(none)'}\n\n"
         f"---\n\n{agent_input}\n\n---\n\nWrite the final plan.md content."
     )
+    cycles = (run_meta or {}).get("plan_cycles") or []
+    if cycles:
+        user = (
+            f"{user}\n\n"
+            "This is a new plan cycle — write a fresh plan scoped to the current "
+            "human topic only. Do not carry forward sections from archived prior plans."
+        )
     enrichment = build_scribe_enrichment(run_meta, messages)
     if enrichment.strip():
         user = f"{user}\n\n---\n\n{enrichment.strip()}"
@@ -140,10 +147,10 @@ def _plan_trigger_for_turn(*, synthesize: bool, scribe_applied: bool) -> str | N
 def _read_plan_before(folder: Path | None) -> str:
     if folder is None:
         return ""
-    plan_path = folder / "plan.md"
-    if not plan_path.is_file():
-        return ""
-    return plan_path.read_text(encoding="utf-8")
+    from agent_lab.plan.paths import read_session_plan_md
+    from agent_lab.run.meta import read_run_meta
+
+    return read_session_plan_md(folder, read_run_meta(folder))
 
 
 def _bootstrap_session_folder_for_plan_workflow(

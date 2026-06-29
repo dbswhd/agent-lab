@@ -97,7 +97,7 @@ export function FilesMonacoEditor({
         theme="vs-dark"
         options={{
           minimap: { enabled: false },
-          fontSize: 13,
+          fontSize: 15,
           fontFamily: "var(--font-mono, ui-monospace, monospace)",
           wordWrap: "on",
           scrollBeyondLastLine: false,

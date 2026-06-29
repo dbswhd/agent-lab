@@ -222,11 +222,49 @@ def plan_workflow_completed_clarify(run: dict[str, Any] | None) -> bool:
     return plan_workflow_phase(run) not in _PLAN_CLARIFY_PHASES
 
 
+def _reset_plan_workflow_state(pw: dict[str, Any]) -> dict[str, Any]:
+    pw = dict(pw)
+    pw["enabled"] = True
+    pw["phase"] = "CLARIFY"
+    pw["clarify_round"] = 0
+    pw["peer_review_round"] = 0
+    pw["max_peer_review_rounds"] = resolved_max_peer_review_rounds()
+    for key in (
+        "plan_hash_at_approval",
+        "approved_at",
+        "approved_by",
+        "notice",
+        "last_plan_gate",
+    ):
+        pw.pop(key, None)
+    return pw
+
+
 def init_plan_workflow_on_plan_send(folder: Path) -> dict[str, Any]:
+    from agent_lab.plan.paths import begin_session_plan_cycle
+
     def _init(run: dict[str, Any]) -> dict[str, Any]:
         pw = get_plan_workflow(run)
-        if pw.get("enabled") and pw.get("phase") == "APPROVED":
+        phase = str(pw.get("phase") or "")
+
+        if pw.get("enabled") and phase == "APPROVED":
+            begin_session_plan_cycle(folder, run)
+            pw = _reset_plan_workflow_state(get_plan_workflow(run))
+            run["plan_workflow"] = pw
+            _mirror_verified_loop_status(run, pw)
             return run
+
+        if pw.get("enabled") and phase in _PLAN_PRE_APPROVAL:
+            pw["enabled"] = True
+            pw.setdefault("max_peer_review_rounds", resolved_max_peer_review_rounds())
+            run["plan_workflow"] = pw
+            _mirror_verified_loop_status(run, pw)
+            return run
+
+        if not pw.get("enabled"):
+            begin_session_plan_cycle(folder, run)
+
+        pw = get_plan_workflow(run)
         pw["enabled"] = True
         pw["max_peer_review_rounds"] = resolved_max_peer_review_rounds()
         if pw.get("phase") not in _PLAN_PRE_APPROVAL and pw.get("phase") != "APPROVED":
@@ -945,7 +983,18 @@ def orchestrate_plan_workflow_pipeline(
             refined = synthesize_plan(topic, messages + extra_messages, run_meta=run_meta)
             if refined.strip():
                 plan_md_current = refined
-                (folder / "plan.md").write_text(refined, encoding="utf-8")
+                from agent_lab.plan.paths import write_session_plan_md
+
+                run_snapshot = read_run_meta(folder)
+                write_session_plan_md(folder, refined, run_snapshot)
+                from agent_lab.run.meta import patch_run_meta
+
+                def _persist_active(run_in: dict[str, Any]) -> dict[str, Any]:
+                    if run_snapshot.get("active_plan_relpath"):
+                        run_in["active_plan_relpath"] = run_snapshot["active_plan_relpath"]
+                    return run_in
+
+                patch_run_meta(folder, _persist_active)
             tick = tick_plan_workflow_after_turn(
                 folder,
                 synthesize=synthesize,

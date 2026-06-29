@@ -18,15 +18,14 @@
 
 | Surface | Product role | Must contain | Must not contain |
 |---------|--------------|--------------|------------------|
-| Transcript | Conversation consumption and Human popup entry | Agent response cards, raw response disclosure, Question/Build popups, Human decision events | Hook settings, merge approval, diagnostics |
-| Work | Execution judgment | Action candidates, dry-run diff, approve/reject/revise, merge conflict, oracle/verify, execution-relevant hook results | General agent chatter |
-| Inspector Overview | Current session state | Mission headline, plan status, context-layer toggles, diagnostics drawer | Goal (GoalLoopBanner), team health (rail), deep settings |
-| Inspector Tasks | Persistent work queue | Open objections, task summaries, jump actions | Full duplicate TaskBar |
-| Inspector Inbox | Human/action feed | Human Inbox + Activity segments | Separate Activity tab |
-| Settings | Policy and operations configuration | Agents, workspace, commands, diagnostics, Hooks & Response Contracts | Per-turn approve/merge controls |
-| Composer | Input only | message, turn profile, slash command, attachments, cost hint | Build approval, Question resolution, settings |
+| Transcript | Conversation consumption | Agent response cards, synthesis, peer digest | approve/merge buttons |
+| ComposerEventStack | Human action SSOT | inbox resolve, plan approve, execute approve, consensus gate, PlanExecutePanel | settings, hook config |
+| ComposerNoticeCard | Read-only alerts | recovery, connection errors, hook info | interactive resolve |
+| Diff / Files | Artifacts | SideBySideDiff, plan.md, touched paths | execute judgment |
+| Overview | Session state | mission, context layers, diagnostics | task board |
+| Composer input | Input only | message, preset, Plan toggle, attachments | Build approval UI |
 
-**Decision:** Activity is **not** a fourth Inspector tab. It lives inside **Inbox** as a two-segment feed: `Inbox | Activity`. Kind (Question / Build / Skill) and provenance (MCP / Harvest) are per-row badges, not segments.
+**Removed (2026-06):** Inspector Work / Inbox / Tasks tabs — folded into composer stack + Overview + Activity panel.
 
 ---
 

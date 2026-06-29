@@ -10,17 +10,16 @@ export const COMMAND_PALETTE_EVENT = "agent-lab:command-palette";
 
 const LEGACY_TO_WORKSPACE: Record<ContentTab, WorkspaceTab> = {
   chat: "transcript",
-  plan: "plan",
+  plan: "transcript",
 };
 
 const SHORTCUT_INDEX: Record<string, WorkspaceTab> = {
   "1": "transcript",
-  "2": "plan",
+  "2": "diff",
   "3": "background",
-  "4": "diff",
-  "5": "files",
-  "6": "preview",
-  "7": "terminal",
+  "4": "files",
+  "5": "preview",
+  "6": "terminal",
 };
 
 export function requestWorkspaceTab(tab: WorkspaceTab): void {

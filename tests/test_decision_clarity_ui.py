@@ -1,4 +1,4 @@
-"""Decision clarity P0 — composer priority + inspector tasks summary."""
+"""Decision clarity P0 — composer priority + event stack."""
 
 from __future__ import annotations
 
@@ -22,30 +22,31 @@ def test_composer_decision_surface_replaces_stacked_banners():
     assert "<RecoveryStrip" not in room
     assert "taskbar-dock" not in room
     assert "RoomTaskBar" not in room
-    assert "InspectorTasksSummary" in room
+    assert "ComposerEventStack" in room
+    assert "InspectorTasksSummary" not in room
     assert "pickComposerDecisionTier" in priority
     assert '"human_gate"' in priority
+    assert "showPlanApproval" in priority
 
 
-def test_inspector_tasks_summary_replaces_workbench_approval_dupes():
+def test_composer_event_stack_hosts_inbox_and_execute():
     room = _read("web", "src", "components", "RoomChat.tsx")
-    summary = _read("web", "src", "components", "InspectorTasksSummary.tsx")
-    assert "InspectorTasksSummary" in room
-    assert "HumanGatePanel" not in room
-    assert "<PlanWorkflowBanner" not in room
-    assert "VerifiedLoopBanner" not in room
-    assert "GoalLoopBanner" not in room
-    assert 'rightPanelMode === "tasks"' in room
-    assert "Work · 승인하기" not in room
-    assert "buildInspectorTasksSummaryView" in summary
+    stack = _read("web", "src", "components", "ComposerEventStack.tsx")
+    assert "HumanInboxPanel" in stack
+    assert "ExecuteQueueBar" in stack
+    assert "WorkPlanApprovalSection" in stack
+    assert "PlanExecutePanel" in _read("web", "src", "components", "WorkToolPanel.tsx")
+    assert 'rightPanelMode === "inbox"' not in room
+    assert 'rightPanelMode === "tasks"' not in room
+    assert 'rightPanelMode === "plan"' not in room
 
 
-def test_workbench_inbox_readonly_when_composer_pending():
+def test_human_inbox_composer_only():
     room = _read("web", "src", "components", "RoomChat.tsx")
-    inbox = _read("web", "src", "components", "HumanInboxPanel.tsx")
-    assert "readOnly={inboxPendingCount > 0}" in room
-    assert "readOnly" in inbox
-    assert "inbox-readonly-banner" in inbox
+    assert "presentation=\"composer\"" in _read(
+        "web", "src", "components", "ComposerEventStack.tsx"
+    )
+    assert "readOnly={inboxPendingCount > 0}" not in room
 
 
 def test_decision_blocked_headline_ssot():

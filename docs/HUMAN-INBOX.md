@@ -19,7 +19,7 @@
 | FORK / Facilitator | ✅ | `inbox_facilitator.py` — ref-anchored options; live opt-in `AGENT_LAB_FACILITATOR_LIVE` |
 | Inbox `skill_draft` row (Mission OS Phase 4) | ✅ | Web Inbox skills segment + promote/reject |
 
-Claude Code(`AskUserQuestion`, `ExitPlanMode`)와 Cursor(`ask-follow-up`, plan→build)가 수렴하는 **레퍼런스 메커니즘**을 execute 경로에 맞추고, discuss Room은 Agent Lab 고유 오케스트레이션으로 분리한다. **확정 흐름:** discuss에서 합의 → execute **plan phase** → **Build GO** → implement (§3.4). Human Inbox는 두 경로 모두에서 Human이 답하는 **단일 UI surface**다.
+**Human Inbox는 별도 Workbench 탭이 아니라 composer 위 `ComposerEventStack`이 SSOT입니다.** Question/Build/Skill resolve는 `HumanInboxPanel` (`presentation="composer"`). Activity feed는 `ComposerActivityPanel`.
 
 ---
 

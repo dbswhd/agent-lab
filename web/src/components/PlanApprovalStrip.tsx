@@ -1,21 +1,13 @@
 import { useState } from "react";
 import { resolveSessionObjection, type RoomObjection } from "../api/client";
 import { useLocale } from "../i18n/useLocale";
-import { parsePlanMarkdown, renderPlanMarkdown } from "../utils/planMarkdown";
 import {
   planWorkflowGateReason,
   planWorkflowNoticeLabel,
 } from "../utils/planWorkflowView";
-
-export type PlanApprovalMode = "execute" | "approve_only";
-
-export type PlanRejectPayload = {
-  readonly note?: string;
-  readonly target_phase: "REFINE";
-};
+import type { PlanApprovalMode, PlanRejectPayload } from "./PlanApprovalPanel";
 
 type Props = {
-  readonly planMd: string;
   readonly workflowNotice?: string;
   readonly planGate?: Record<string, unknown> | null;
   readonly objections?: readonly RoomObjection[];
@@ -28,12 +20,13 @@ type Props = {
   readonly onReject: (payload: PlanRejectPayload) => void;
   readonly sessionId?: string;
   readonly onObjectionResolved?: () => void;
+  readonly onOpenFiles?: () => void;
+  readonly planFileLabel?: string;
 };
 
 const EMPTY_OBJECTIONS: readonly RoomObjection[] = [];
 
-export function PlanApprovalPanel({
-  planMd,
+export function PlanApprovalStrip({
   workflowNotice,
   planGate = null,
   objections = EMPTY_OBJECTIONS,
@@ -46,20 +39,16 @@ export function PlanApprovalPanel({
   onReject,
   sessionId,
   onObjectionResolved,
+  onOpenFiles,
+  planFileLabel = "plan.md",
 }: Props) {
   const { msg } = useLocale();
   const [revisionOpen, setRevisionOpen] = useState(false);
   const [revisionNote, setRevisionNote] = useState("");
   const [objectionBusyId, setObjectionBusyId] = useState<string | null>(null);
-  const planActions = parsePlanMarkdown(planMd).filter(
-    (block) => block.type === "action",
-  );
   const openObjections = objections.filter((row) => row.status === "open");
   const blockingObjections = openObjections.filter(
     (row) => row.act === "BLOCK",
-  );
-  const advisoryObjections = openObjections.filter(
-    (row) => row.act !== "BLOCK",
   );
   const noticeLabel = planWorkflowNoticeLabel(workflowNotice, msg);
   const gateReason = planWorkflowGateReason(planGate);
@@ -67,23 +56,25 @@ export function PlanApprovalPanel({
     busy || Boolean(blockedReason) || blockingObjections.length > 0;
 
   return (
-    <section
-      className="plan-approval-review"
-      aria-label={msg.planApprovalTitle}
-    >
-      <header className="plan-approval-review__header">
+    <section className="plan-approval-strip" aria-label={msg.planApprovalTitle}>
+      <header className="plan-approval-strip__head">
         <div>
-          <p className="plan-approval-review__eyebrow">
+          <p className="plan-approval-strip__eyebrow">
             {msg.planApprovalPending}
           </p>
-          <h2>{msg.planApprovalReviewTitle}</h2>
-          <p className="plan-approval-review__detail">
+          <p className="plan-approval-strip__detail">
             {msg.planApprovalReviewDetail}
           </p>
         </div>
-        <span className="plan-approval-review__count">
-          {msg.planApprovalStepCount(planActions.length)}
-        </span>
+        {onOpenFiles ? (
+          <button
+            type="button"
+            className="btn btn--sm btn--ghost plan-approval-strip__files"
+            onClick={onOpenFiles}
+          >
+            {planFileLabel.split("/").pop()}
+          </button>
+        ) : null}
       </header>
 
       {noticeLabel ? (
@@ -96,7 +87,7 @@ export function PlanApprovalPanel({
       ) : null}
 
       {blockingObjections.length > 0 ? (
-        <div className="plan-approval-review__blockers" role="alert">
+        <div className="plan-approval-strip__blockers" role="alert">
           <strong>{msg.planApprovalBlockingObjections}</strong>
           <ObjectionList
             objections={blockingObjections}
@@ -117,44 +108,18 @@ export function PlanApprovalPanel({
         </div>
       ) : null}
       {blockedReason ? (
-        <div className="plan-approval-review__blockers" role="alert">
+        <div className="plan-approval-strip__blockers" role="alert">
           <strong>{blockedReason}</strong>
         </div>
       ) : null}
 
-      <div className="plan-approval-review__document">
-        {renderPlanMarkdown(planMd)}
-      </div>
-
-      {advisoryObjections.length > 0 ? (
-        <details className="plan-approval-review__advisories">
-          <summary>{msg.planApprovalPeerObjections}</summary>
-          <ObjectionList
-            objections={advisoryObjections}
-            onFocusObjection={onFocusObjection}
-            sessionId={sessionId}
-            objectionBusyId={objectionBusyId}
-            onResolve={async (objection, verdict) => {
-              if (!sessionId) return;
-              setObjectionBusyId(objection.id);
-              try {
-                await resolveSessionObjection(sessionId, objection.id, verdict);
-                onObjectionResolved?.();
-              } finally {
-                setObjectionBusyId(null);
-              }
-            }}
-          />
-        </details>
-      ) : null}
-
       {revisionOpen ? (
-        <div className="plan-approval-review__revision">
-          <label className="field-label" htmlFor="plan-revision-note">
+        <div className="plan-approval-strip__revision">
+          <label className="field-label" htmlFor="plan-revision-note-strip">
             {msg.planRejectNote}
           </label>
           <textarea
-            id="plan-revision-note"
+            id="plan-revision-note-strip"
             className="field"
             rows={3}
             autoFocus
@@ -163,7 +128,7 @@ export function PlanApprovalPanel({
             placeholder={msg.planApprovalRevisionPlaceholder}
             onChange={(event) => setRevisionNote(event.target.value)}
           />
-          <div className="plan-approval-review__actions">
+          <div className="plan-approval-strip__actions">
             <button
               type="button"
               className="btn btn--sm btn--primary"
@@ -188,8 +153,8 @@ export function PlanApprovalPanel({
           </div>
         </div>
       ) : (
-        <footer className="plan-approval-review__footer">
-          <div className="plan-approval-review__actions">
+        <footer className="plan-approval-strip__footer">
+          <div className="plan-approval-strip__actions">
             {canExecute ? (
               <button
                 type="button"
@@ -209,16 +174,6 @@ export function PlanApprovalPanel({
                 {msg.planApprovalApproveOnly}
               </button>
             )}
-            {canExecute ? (
-              <button
-                type="button"
-                className="btn btn--sm"
-                disabled={approvalDisabled}
-                onClick={() => onApprove("approve_only")}
-              >
-                {msg.planApprovalApproveOnly}
-              </button>
-            ) : null}
             <button
               type="button"
               className="btn btn--sm btn--ghost"
@@ -228,11 +183,6 @@ export function PlanApprovalPanel({
               {msg.planRejectSubmit}
             </button>
           </div>
-          {!canExecute ? (
-            <p className="plan-approval-review__hint">
-              {msg.planApprovalNoExecuteHint}
-            </p>
-          ) : null}
         </footer>
       )}
       {error ? <p className="goal-loop-banner__error">{error}</p> : null}

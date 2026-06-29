@@ -134,6 +134,9 @@ export function ChatComposer({
   const composerCapsuleRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [slashHighlight, setSlashHighlight] = useState(0);
+  const [slashVisibleCommands, setSlashVisibleCommands] = useState<
+    SlashCommandRecord[]
+  >([]);
   const [mentionCursor, setMentionCursor] = useState(0);
   const {
     paths: mentionPaths,
@@ -149,17 +152,16 @@ export function ChatComposer({
   }, [value]);
 
   const slashQuery = value.slice(1).split(/\s/)[0] ?? "";
-  const slashFiltered = useMemo(() => {
-    if (!value.startsWith("/")) return [];
-    const query = slashQuery.toLowerCase();
-    const rows = slashCommands.filter((c) => c.enabled !== false);
-    if (!query) return rows;
-    return rows.filter(
-      (c) =>
-        c.slash.toLowerCase().includes(query) ||
-        c.label.toLowerCase().includes(query),
-    );
-  }, [slashCommands, slashQuery, value]);
+
+  useEffect(() => {
+    if (slashVisibleCommands.length === 0) {
+      setSlashHighlight(0);
+      return;
+    }
+    if (slashHighlight >= slashVisibleCommands.length) {
+      setSlashHighlight(slashVisibleCommands.length - 1);
+    }
+  }, [slashHighlight, slashVisibleCommands.length]);
 
   const mentionQuery = useMemo(() => {
     if (!sessionId) return null;
@@ -365,8 +367,8 @@ export function ChatComposer({
                   highlightedIndex={slashHighlight}
                   onHighlightChange={setSlashHighlight}
                   onSelect={(slash) => onChange(slash)}
-                  onExecute={(cmd) => onSlashExecute?.(cmd)}
                   insideRef={composerCapsuleRef}
+                  onVisibleCommandsChange={setSlashVisibleCommands}
                   onDismiss={() => {
                     if (value.startsWith("/")) onChange("");
                   }}
@@ -403,19 +405,22 @@ export function ChatComposer({
                   disabled={inputLocked}
                   rows={1}
                   onKeyDown={(e) => {
-                    if (value.startsWith("/") && slashFiltered.length > 0) {
+                    if (
+                      value.startsWith("/") &&
+                      slashVisibleCommands.length > 0
+                    ) {
                       if (e.key === "ArrowDown") {
                         e.preventDefault();
                         setSlashHighlight(
-                          (slashHighlight + 1) % slashFiltered.length,
+                          (slashHighlight + 1) % slashVisibleCommands.length,
                         );
                         return;
                       }
                       if (e.key === "ArrowUp") {
                         e.preventDefault();
                         setSlashHighlight(
-                          (slashHighlight - 1 + slashFiltered.length) %
-                            slashFiltered.length,
+                          (slashHighlight - 1 + slashVisibleCommands.length) %
+                            slashVisibleCommands.length,
                         );
                         return;
                       }
@@ -424,7 +429,7 @@ export function ChatComposer({
                         setSlashHighlight(
                           Math.min(
                             slashHighlight + 10,
-                            slashFiltered.length - 1,
+                            slashVisibleCommands.length - 1,
                           ),
                         );
                         return;
@@ -438,10 +443,10 @@ export function ChatComposer({
                       if (
                         (e.key === "Tab" || e.key === "Enter") &&
                         slashTokenOnly &&
-                        slashFiltered[slashHighlight]
+                        slashVisibleCommands[slashHighlight]
                       ) {
                         e.preventDefault();
-                        const command = slashFiltered[slashHighlight];
+                        const command = slashVisibleCommands[slashHighlight];
                         onChange(command.slash);
                         if (e.key === "Enter") onSlashExecute?.(command);
                         return;

@@ -10,12 +10,6 @@ export function workbenchModeLabel(
   switch (mode) {
     case "overview":
       return msg.ctxOverview;
-    case "tasks":
-      return msg.ctxTasks;
-    case "inbox":
-      return msg.ctxInbox;
-    case "plan":
-      return msg.work;
     case "preview":
       return msg.preview;
     case "files":

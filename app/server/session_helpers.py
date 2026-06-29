@@ -181,10 +181,15 @@ def session_detail(
         "budget": budget_status(run_json),
     }
 
+    def _read_plan_md(session_folder: Path) -> str:
+        from agent_lab.plan.paths import read_session_plan_md
+
+        return read_session_plan_md(session_folder, run_json)
+
     return {
         "id": session_id,
         "topic": read("topic.txt") or meta.get("topic", ""),
-        "plan_md": read("plan.md"),
+        "plan_md": _read_plan_md(folder),
         "transcript_md": read("transcript.md"),
         "meta": meta,
         "chat": chat,

@@ -2,6 +2,7 @@ import {
   pushAppNotification,
   type NotificationTier,
 } from "./notificationStore";
+import { appendTranscriptActivity } from "./transcriptActivity";
 import {
   defaultActionLabel,
   type NotificationAction,
@@ -63,6 +64,9 @@ export function dispatchNotification(
 ): void {
   const note = pushAppNotification(input);
   if (!note) return;
+  if (input.sessionId) {
+    appendTranscriptActivity(input.sessionId, note);
+  }
 
   if (!shouldToastNotification(input)) return;
 

@@ -41,6 +41,11 @@ export function markAllNotificationsRead(): void {
   notify();
 }
 
+export function markNotificationRead(id: string): void {
+  items = items.map((n) => (n.id === id ? { ...n, read: true } : n));
+  notify();
+}
+
 export function pushAppNotification(input: {
   tier: NotificationTier;
   title: string;

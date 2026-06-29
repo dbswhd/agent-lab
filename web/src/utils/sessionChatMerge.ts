@@ -1,5 +1,6 @@
 import type { LiveMsg } from "../run/runSessionRegistry";
 import { replayLiveLogToMessages } from "./liveRoomLog";
+import { mergeActivityMarkersFromLocal } from "./transcriptActivity";
 
 export function agentTurnKey(role: string, round?: number): string {
   return `${role}:r${round ?? 1}`;
@@ -42,10 +43,14 @@ export function preferRicherChatMessages(
   local: LiveMsg[],
   server: LiveMsg[],
 ): LiveMsg[] {
-  if (local.length > server.length) return local;
-  if (server.length > local.length) return server;
-  if (!local.length) return server;
-  const localChars = local.reduce((n, m) => n + (m.body?.length ?? 0), 0);
-  const serverChars = server.reduce((n, m) => n + (m.body?.length ?? 0), 0);
-  return serverChars >= localChars ? server : local;
+  let base: LiveMsg[];
+  if (local.length > server.length) base = local;
+  else if (server.length > local.length) base = server;
+  else if (!local.length) base = server;
+  else {
+    const localChars = local.reduce((n, m) => n + (m.body?.length ?? 0), 0);
+    const serverChars = server.reduce((n, m) => n + (m.body?.length ?? 0), 0);
+    base = serverChars >= localChars ? server : local;
+  }
+  return mergeActivityMarkersFromLocal(base, local);
 }

@@ -89,7 +89,4 @@ def files_write(session_id: str, body: WriteFileRequest) -> dict[str, Any]:
     except PathNotAllowed as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except WriteNotAllowed as exc:
-        raise HTTPException(
-            status_code=409,
-            detail={"message": str(exc), "route_to_execute": True},
-        ) from exc
+        raise HTTPException(status_code=409, detail=str(exc)) from exc

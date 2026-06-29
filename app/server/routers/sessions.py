@@ -45,7 +45,7 @@ def sessions(
     offset: int = 0,
 ) -> dict[str, Any]:
     items, total = list_sessions(archived=archived, limit=limit, offset=offset)
-    return {"sessions": items, "total": total}
+    return {"ok": True, "sessions": items, "total": total}
 
 
 @router.post("/sessions/{session_id}/archive")
@@ -89,7 +89,7 @@ def auto_sync_session_plan(
 
     synced = ensure_session_plan_pipeline(folder)
     detail = session_detail(session_id, chat_limit=chat_limit, chat_offset=chat_offset)
-    return {"ok": True, "synced": synced, **detail}
+    return {**detail, "ok": True, "synced": synced}
 
 
 @router.patch("/sessions/{session_id}")

@@ -172,7 +172,7 @@ def patch_session_trust_budget(session_id: str, body: dict[str, Any]) -> dict[st
     allowed = {"auto_merge_remaining", "auto_merge_total", "classifier_allow"}
     patch = {k: v for k, v in body.items() if k in allowed}
     if not patch:
-        raise HTTPException(status_code=400, detail="trust_budget patch required")
+        raise HTTPException(status_code=422, detail="trust_budget patch required")
     budget = set_trust_budget(folder, patch)
     return {"ok": True, "session_id": session_id, "trust_budget": budget}
 

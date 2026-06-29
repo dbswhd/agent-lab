@@ -2223,7 +2223,7 @@ export function RoomChat({
           setCommandHint(null);
         } else if (stage?.input?.prefill) {
           setText(stage.input.prefill);
-        } else {
+        } else if (command.id !== "model") {
           setText("");
         }
         void fetchCommands(isGlobal ? null : sid)

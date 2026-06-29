@@ -1,4 +1,5 @@
 import { isTauri } from "@tauri-apps/api/core";
+import { parseApiErrorDetail } from "../utils/apiError";
 
 export type BackendOption = { id: string; label: string; ready: boolean };
 
@@ -261,7 +262,7 @@ async function json<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(apiUrl(path), init);
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(text || res.statusText);
+    throw new Error(parseApiErrorDetail(text) || res.statusText);
   }
   return res.json() as Promise<T>;
 }
@@ -1288,7 +1289,7 @@ export function fetchSessions(
   if (limit !== undefined) params.set("limit", String(limit));
   if (offset !== undefined && offset > 0) params.set("offset", String(offset));
   const q = params.size > 0 ? `?${params}` : "";
-  return json<{ sessions: SessionSummary[]; total: number }>(
+  return json<{ ok: boolean; sessions: SessionSummary[]; total: number }>(
     `/api/sessions${q}`,
   );
 }

@@ -74,6 +74,7 @@ export function WorkbenchPanel({
   return (
     <aside
       className={[
+        "workbench-tile",
         "context-sidebar",
         "workbench-panel",
         open ? "" : "context-sidebar--collapsed",

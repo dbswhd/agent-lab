@@ -530,7 +530,7 @@ export default function App() {
             >
               <div className="rail__header">
                 <div className="rail__title-row">
-                  <h1 className="rail__title">Agent Lab</h1>
+                  <h1 className="rail__title">agent lab</h1>
                 </div>
                 <label className="rail__search">
                   <svg
@@ -669,64 +669,68 @@ export default function App() {
               ) : null}
             </SessionRail>
 
-            <section className="pane workspace-pane" aria-label="Workspace">
-              {shellView === "settings" ? (
-                <SettingsPage
-                  sessionId={roomSessionId}
-                  session={roomSessionDetail}
-                  selectedAgents={agents
-                    .filter((a) => a.ready)
-                    .map((a) => a.id)}
-                  turnProfile={getTurnStrategy()}
-                  apiOk={apiOk}
-                  healthAgents={healthAgents}
-                  healthLoading={healthLoading}
-                  reconnecting={reconnecting}
-                  sessionsDir={sessionsDir}
-                  probeBridgeFailed={bridgeProbeFailed}
-                  onRefreshDiagnostics={() => void reloadHealth(true)}
-                  onReconnectCursor={() => void handleReconnectCursor()}
-                  onBack={() => setShellView("workspace")}
-                />
-              ) : showFirstRunOnboarding ? (
-                <FirstRunOnboarding
-                  apiOk={apiOk}
-                  healthText={health}
-                  agents={healthAgents}
-                  loading={healthLoading}
-                  sessionsDir={sessionsDir}
-                  hasWorkspace={setupWorkspaceChosen}
-                  onRefresh={() => void reloadHealth(true)}
-                  onOpenSettings={() => setShellView("settings")}
-                  onReconnectCursor={() => void handleReconnectCursor()}
-                  onReconnectClaude={() => void handleReconnectClaude()}
-                  onChooseWorkspace={startNew}
-                  onStartSample={startOnboardingSample}
-                  onSkip={dismissFirstRunOnboarding}
-                />
-              ) : (
-                <RoomChat
-                  agents={agents}
-                  apiOk={apiOk}
-                  healthAgents={healthAgents}
-                  teamHealthAgents={teamHealthAgents}
-                  sessionId={roomSessionId}
-                  session={roomSessionDetail}
-                  loading={roomSessionLoading}
-                  onSessionChange={onRoomSessionChange}
-                  onSessionMetaRefresh={refreshSessionRun}
-                  sidebarOpen={sidebarOpen}
-                  onToggleSidebar={toggleSidebar}
-                  onOpenSettings={() => setShellView("settings")}
-                  onRefreshHealth={() =>
-                    reloadHealth(true).then(() => undefined)
-                  }
-                  bootstrapAgentIds={bootstrapAgentIds}
-                  bootstrapTopic={bootstrapTopic}
-                  onBootstrapAgentsApplied={clearBootstrapAgents}
-                />
-              )}
-            </section>
+            <div className="workspace-canvas">
+              <div className="workspace-tile">
+                <section className="pane workspace-pane" aria-label="Workspace">
+                  {shellView === "settings" ? (
+                    <SettingsPage
+                      sessionId={roomSessionId}
+                      session={roomSessionDetail}
+                      selectedAgents={agents
+                        .filter((a) => a.ready)
+                        .map((a) => a.id)}
+                      turnProfile={getTurnStrategy()}
+                      apiOk={apiOk}
+                      healthAgents={healthAgents}
+                      healthLoading={healthLoading}
+                      reconnecting={reconnecting}
+                      sessionsDir={sessionsDir}
+                      probeBridgeFailed={bridgeProbeFailed}
+                      onRefreshDiagnostics={() => void reloadHealth(true)}
+                      onReconnectCursor={() => void handleReconnectCursor()}
+                      onBack={() => setShellView("workspace")}
+                    />
+                  ) : showFirstRunOnboarding ? (
+                    <FirstRunOnboarding
+                      apiOk={apiOk}
+                      healthText={health}
+                      agents={healthAgents}
+                      loading={healthLoading}
+                      sessionsDir={sessionsDir}
+                      hasWorkspace={setupWorkspaceChosen}
+                      onRefresh={() => void reloadHealth(true)}
+                      onOpenSettings={() => setShellView("settings")}
+                      onReconnectCursor={() => void handleReconnectCursor()}
+                      onReconnectClaude={() => void handleReconnectClaude()}
+                      onChooseWorkspace={startNew}
+                      onStartSample={startOnboardingSample}
+                      onSkip={dismissFirstRunOnboarding}
+                    />
+                  ) : (
+                    <RoomChat
+                      agents={agents}
+                      apiOk={apiOk}
+                      healthAgents={healthAgents}
+                      teamHealthAgents={teamHealthAgents}
+                      sessionId={roomSessionId}
+                      session={roomSessionDetail}
+                      loading={roomSessionLoading}
+                      onSessionChange={onRoomSessionChange}
+                      onSessionMetaRefresh={refreshSessionRun}
+                      sidebarOpen={sidebarOpen}
+                      onToggleSidebar={toggleSidebar}
+                      onOpenSettings={() => setShellView("settings")}
+                      onRefreshHealth={() =>
+                        reloadHealth(true).then(() => undefined)
+                      }
+                      bootstrapAgentIds={bootstrapAgentIds}
+                      bootstrapTopic={bootstrapTopic}
+                      onBootstrapAgentsApplied={clearBootstrapAgents}
+                    />
+                  )}
+                </section>
+              </div>
+            </div>
           </div>
         </TitlebarSlotsProvider>
         <NewSessionDialog

@@ -7,6 +7,7 @@ import { WorkbenchModeMenu } from "./WorkbenchModeMenu";
 type Props = {
   readonly title: string;
   readonly meta?: string;
+  readonly origin?: string;
   readonly sidebarOpen: boolean;
   readonly rightPanelOpen: boolean;
   readonly rightPanelMode: RightPanelMode;
@@ -18,6 +19,7 @@ type Props = {
   readonly onSelectRightPanelMode: (mode: RightPanelMode) => void;
   readonly onOpenSettings?: () => void;
   readonly onStop: () => void;
+  readonly onWorkbenchMenuOpenChange?: (open: boolean) => void;
 };
 
 function isTauriApp(): boolean {
@@ -27,6 +29,7 @@ function isTauriApp(): boolean {
 export function WorkspaceChrome({
   title,
   meta,
+  origin = "agent-lab",
   sidebarOpen,
   rightPanelOpen,
   rightPanelMode,
@@ -38,6 +41,7 @@ export function WorkspaceChrome({
   onSelectRightPanelMode,
   onOpenSettings: _onOpenSettings,
   onStop,
+  onWorkbenchMenuOpenChange,
 }: Props) {
   const tauri = isTauriApp();
 
@@ -60,68 +64,84 @@ export function WorkspaceChrome({
       data-tauri-drag-region={tauri ? "" : undefined}
       onMouseDown={startWindowDrag}
     >
-      <div className="workspace-chrome__leading">
-        <SidebarToggle
-          open={sidebarOpen}
-          onToggle={onToggleSidebar}
-          variant="panel"
-          className="icon-btn"
-        />
+      <div className="workspace-chrome__bar">
         <div
-          className="workspace-chrome__title"
+          className="workspace-chrome__drag"
+          aria-hidden
           data-tauri-drag-region={tauri ? "" : undefined}
-        >
-          <span className="workspace-chrome__topic" title={title}>
-            {title}
+        />
+        <div className="workspace-chrome__lead">
+          <span className="workspace-chrome__gutter">
+            <SidebarToggle
+              open={sidebarOpen}
+              onToggle={onToggleSidebar}
+              variant="panel"
+            />
           </span>
-          {meta ? <span className="workspace-chrome__meta">{meta}</span> : null}
+          <span className="workspace-chrome__lead-row">
+            <span className="workspace-chrome__title-wrap">
+              <button
+                type="button"
+                className="workspace-chrome__topic-btn"
+                title={title}
+                data-tauri-drag-region={tauri ? "" : undefined}
+              >
+                {title}
+              </button>
+            </span>
+            <span className="workspace-chrome__pills">
+              <span className="workspace-chrome__pill">{origin}</span>
+              {meta ? (
+                <span className="workspace-chrome__pill workspace-chrome__pill--meta">
+                  {meta}
+                </span>
+              ) : null}
+            </span>
+          </span>
         </div>
-      </div>
-      <div
-        className="workspace-chrome__spacer"
-        data-tauri-drag-region={tauri ? "" : undefined}
-      />
-      <div className="workspace-chrome__actions">
-        {running ? (
+        <div className="workspace-chrome__actions">
+          {running ? (
+            <button
+              type="button"
+              className="workspace-chrome__run-badge"
+              onClick={onStop}
+              title="Stop run (⌘.)"
+            >
+              running
+            </button>
+          ) : null}
           <button
             type="button"
-            className="workspace-chrome__run-badge"
-            onClick={onStop}
-            title="Stop run (⌘.)"
+            className="workspace-chrome__icon-btn"
+            title="⌘K"
+            aria-label="명령 팔레트"
+            onClick={openCommandPalette}
           >
-            running
+            <svg
+              viewBox="0 0 24 24"
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.7}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
           </button>
-        ) : null}
-        <button
-          type="button"
-          className="icon-btn"
-          title="⌘K"
-          aria-label="명령 팔레트"
-          onClick={openCommandPalette}
-        >
-          <svg
-            viewBox="0 0 24 24"
-            width="17"
-            height="17"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1.7}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden
-          >
-            <circle cx="11" cy="11" r="7" />
-            <path d="m21 21-4.3-4.3" />
-          </svg>
-        </button>
-        <WorkbenchModeMenu
-          active={rightPanelMode}
-          open={rightPanelOpen}
-          locale={locale}
-          badgeCount={panelBadgeCount}
-          onSelect={onSelectRightPanelMode}
-          onToggleOpen={onToggleRightPanel}
-        />
+          <WorkbenchModeMenu
+            active={rightPanelMode}
+            open={rightPanelOpen}
+            locale={locale}
+            badgeCount={panelBadgeCount}
+            onSelect={onSelectRightPanelMode}
+            onToggleOpen={onToggleRightPanel}
+            onMenuOpenChange={onWorkbenchMenuOpenChange}
+          />
+        </div>
       </div>
     </header>
   );

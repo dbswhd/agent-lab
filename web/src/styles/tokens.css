@@ -9,7 +9,7 @@
 :root {
   /* ---- Surfaces — Oreo Bg hierarchy (light) -------------- */
   --surface-app: #f9f9f9;   /* Oreo Bg/Elevated — app shell    */
-  --surface-rail: #f9f9f9;  /* Oreo Bg/Elevated — session rail */
+  --surface-rail: #ffffff;  /* Oreo Bg/Base — session rail      */
   --surface-pane: #ffffff;  /* Oreo Bg/Base — main workspace   */
   --surface-card: #ffffff;  /* Oreo Bg/Base — cards, composer  */
   --surface-sunken: #f4f4f4; /* inset wells, code, inputs       */
@@ -120,6 +120,8 @@
   --type-body-reading-leading: 22px;
   --type-label-medium-size: 14px;
   --type-label-medium-leading: 20px;
+  --type-label-large-size: 15px;
+  --type-label-large-leading: 20px;
   --type-body-small-size: 12px;
   --type-body-small-leading: 16px;
   --type-label-small-size: 12px;
@@ -129,6 +131,53 @@
   --type-code-small-size: 12px;
   --type-code-small-leading: 16px;
   --type-code-block-leading: 18px;
+
+  /* Session rail — anchored to transcript body (14px); UI one step down */
+  --rail-type-session-size: var(--text-body); /* 13px — sidebar row, below transcript */
+  --rail-type-session-leading: 18px;
+  --rail-type-ui-size: var(--type-label-small-size); /* 12px — search, tabs, chip */
+  --rail-type-ui-leading: var(--type-label-small-leading);
+  --rail-type-meta-size: var(--text-caption); /* 11px — group label, app title */
+  --rail-type-meta-leading: 14px;
+
+  /* Session rail row fills — Oreo Interaction + Border/Subtle pill */
+  --rail-item-hover: var(--surface-hover); /* Interaction/Hover 2% */
+  --rail-item-active: rgba(0, 0, 0, 0.09); /* Border/Subtle — neutral gray pill */
+  --rail-edge-shadow:
+    1px 0 0 rgba(0, 0, 0, 0.04), 8px 0 24px -6px rgba(0, 0, 0, 0.08);
+  --workbench-edge-shadow:
+    -1px 0 0 rgba(0, 0, 0, 0.04), -8px 0 24px -6px rgba(0, 0, 0, 0.08);
+  --workbench-island-gap: 10px;
+  --workbench-island-inset: 10px;
+  --workbench-island-radius: 12px;
+  --workbench-island-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.04), 0 4px 14px rgba(28, 27, 22, 0.09),
+    0 1px 3px rgba(28, 27, 22, 0.06);
+  --panel-edge-z: 20;
+  --workspace-fade-z: 1;
+  --panel-edge-shadow-spread: 14px;
+  --tile-padding: 8px;
+  --tile-gap: 12px;
+  --tile-radius: 12px;
+  --tile-shadow:
+    0 1px 2px rgba(28, 27, 22, 0.06), 0 1px 1px rgba(28, 27, 22, 0.04),
+    0 0 0 1px rgba(0, 0, 0, 0.04);
+  --composer-fade-height: 88px;
+  --surface-fade-to-pane: linear-gradient(
+    180deg,
+    transparent 0%,
+    color-mix(in srgb, var(--surface-pane) 30%, transparent) 38%,
+    color-mix(in srgb, var(--surface-pane) 78%, transparent) 68%,
+    var(--surface-pane) 100%
+  );
+  --surface-fade-from-pane: linear-gradient(
+    180deg,
+    var(--surface-pane) 0%,
+    color-mix(in srgb, var(--surface-pane) 78%, transparent) 32%,
+    color-mix(in srgb, var(--surface-pane) 30%, transparent) 62%,
+    transparent 100%
+  );
+
   /* Prose block rhythm (≠ UI card 4px gaps — longer agent replies) */
   --transcript-prose-gap: var(--space-12);
   --transcript-block-gap: var(--space-10);
@@ -150,8 +199,12 @@
 
   /* ---- Layout metrics ------------------------------------- */
   --titlebar-h: 44px;
+  --workspace-chrome-h: 32px;
+  --chat-gutter-start: 32px;
+  --workspace-top-fade-h: 40px;
   --rail-w: 272px;
-  --composer-max: 960px;
+  --composer-max-cap: 1100px;
+  --composer-max: 1100px;
   --composer-notice-max: 600px;
   --composer-radius: 16px;
   --composer-pad: 12px;
@@ -185,6 +238,17 @@
   --surface-sunken: #191919; /* inset wells, same as pane level   */
   --surface-hover: rgba(255, 255, 255, 0.06);   /* Oreo Dark Interaction/Hover  */
   --surface-active: rgba(255, 255, 255, 0.10);  /* Oreo Dark Interaction/Press  */
+  --rail-item-hover: var(--surface-hover);
+  --rail-item-active: rgba(255, 255, 255, 0.11); /* Dark Border/Subtle pill */
+  --rail-edge-shadow:
+    1px 0 0 rgba(255, 255, 255, 0.06), 8px 0 28px -6px rgba(0, 0, 0, 0.45);
+  --workbench-edge-shadow:
+    -1px 0 0 rgba(255, 255, 255, 0.06), -8px 0 28px -6px rgba(0, 0, 0, 0.45);
+  --workbench-island-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06), 0 4px 16px rgba(0, 0, 0, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.28);
+  --tile-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.24), 0 0 0 1px rgba(255, 255, 255, 0.06);
   --surface-scrim: rgba(0, 0, 0, 0.58);
 
   --border-hair: rgba(255, 255, 255, 0.11);  /* Oreo Dark Border/Subtle  */

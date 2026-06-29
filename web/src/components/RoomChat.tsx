@@ -39,6 +39,7 @@ import {
   mergePersistedChatWithLiveLog,
   preferRicherChatMessages,
 } from "../utils/sessionChatMerge";
+import { syncSessionActivityMarkers } from "../utils/transcriptActivity";
 import {
   agentLabel,
   chatLineToMessage,
@@ -72,12 +73,12 @@ import { deriveRunningAgentSlots } from "../run/runningAgents";
 import { LiveAgentsStrip } from "./LiveAgentsStrip";
 import { BackgroundRunStrip } from "./BackgroundRunStrip";
 import {
+  clampWorkbenchPanelWidth,
   getInspectorOpen,
   getLastRightPanelMode,
-  getWorkbenchPanelWidth,
+  resolveDefaultWorkbenchWidth,
   setInspectorOpen,
   setLastRightPanelMode,
-  setWorkbenchPanelWidth,
 } from "../utils/inspectorPanePrefs";
 import {
   getShowPeerChannel,
@@ -85,19 +86,16 @@ import {
   TRANSCRIPT_VIEW_PREFS_EVENT,
 } from "../utils/transcriptViewPrefs";
 import { RoomTranscriptPanel } from "./RoomTranscriptPanel";
-import { HumanInboxPanel } from "./HumanInboxPanel";
-import { DiscussRecoveryBanner } from "./DiscussRecoveryBanner";
 import { ComposerDecisionSurface } from "./ComposerDecisionSurface";
-import { InspectorTasksSummary } from "./InspectorTasksSummary";
+import { ComposerEventStack } from "./ComposerEventStack";
 import { useHumanDecisionRuntime } from "../hooks/useHumanDecisionRuntime";
 import { buildDecisionBlockedHeadline } from "../utils/decisionBlockedHeadline";
 import { ChatComposer, type PendingFile } from "./ChatComposer";
 import { ShellPortal } from "./ShellPortal";
-import { NotificationCenter } from "./NotificationCenter";
 import { useNotificationUnread } from "../hooks/useNotificationUnread";
 import { ContextOverviewPanel } from "./ContextOverviewPanel";
 import type { PlanApprovalMode, PlanRejectPayload } from "./PlanApprovalPanel";
-import { WorkToolPanel, type WorkFocusTarget } from "./WorkToolPanel";
+import { type WorkFocusTarget } from "./WorkToolPanel";
 import { AgentPermissionAlert } from "./AgentPermissionAlert";
 import { useMacNotifications } from "../hooks/useMacNotifications";
 import type { AgentPermissions } from "../utils/agentPermissions";
@@ -123,6 +121,7 @@ import { notifyDesktop } from "../utils/desktopNotify";
 import { buildPlanMetaView, composerPlanStaleNotice } from "../utils/planMeta";
 import { buildGoalLoopView } from "../utils/goalLoopView";
 import { activateInboxRef } from "../utils/inboxRefNavigation";
+import { focusComposerStack } from "../utils/composerStackFocus";
 import {
   isPlanWorkflowPhaseBanner,
   isPlanWorkflowComposerHint,
@@ -149,8 +148,6 @@ import { PreviewPanel } from "./PreviewPanel";
 import { TerminalPanel } from "./TerminalPanel";
 import { AuthFlowPanel } from "./AuthFlowPanel";
 import { BackgroundTasksPanel } from "./BackgroundTasksPanel";
-import { ExecuteQueueBar } from "./ExecuteQueueBar";
-import { ConsensusDryRunGateBar } from "./ConsensusDryRunGateBar";
 import type { ConsensusDryRunProposal } from "./ConsensusDryRunGateBar";
 import {
   setTurnStrategy,
@@ -389,9 +386,15 @@ export function RoomChat({
     blocked: boolean;
   } | null>(null);
   const [inspectorOpen, setInspectorOpenState] = useState(getInspectorOpen);
-  const [workbenchPanelWidth, setWorkbenchPanelWidthState] = useState(
-    getWorkbenchPanelWidth,
+  const [workbenchMenuOpen, setWorkbenchMenuOpen] = useState(false);
+  const [filesFocusRevision, setFilesFocusRevision] = useState(0);
+  const [composerNoticeDismissed, setComposerNoticeDismissed] = useState<
+    string | null
+  >(null);
+  const [workbenchPanelWidth, setWorkbenchPanelWidthState] = useState(() =>
+    resolveDefaultWorkbenchWidth(getLastRightPanelMode()),
   );
+  const workbenchWidthUserAdjustedRef = useRef(false);
   const [roomTasks, setRoomTasks] = useState<RoomTasksPayload | null>(null);
   const [planMd, setPlanMd] = useState("");
   const [permOpen, setPermOpen] = useState(false);
@@ -877,10 +880,7 @@ export function RoomChat({
     inboxPendingCount,
     inboxReloadKey,
     setInboxReloadKey,
-    inboxSegment,
-    setInboxSegment,
     refreshInboxPending,
-    inboxPendingNonQuestions,
   } = useInboxState(sessionId);
 
   const {
@@ -942,9 +942,11 @@ export function RoomChat({
     setWorkspaceTab,
     setRightPanelMode,
     openWorkTab,
-    openReviewTab,
     openPlanTab,
     openTranscriptTab,
+    openDiffTab,
+    openFilesTab,
+    focusWorkStack,
   } = useWorkspaceTabs({
     sessionKey: sessionId ?? "new",
     isNew: !sessionId,
@@ -963,33 +965,79 @@ export function RoomChat({
     setLastRightPanelMode(rightPanelMode);
   }, [rightPanelMode]);
 
-  const openTasksInspector = useCallback(() => {
-    setRightPanelMode("tasks");
-    openInspectorPane();
-  }, [setRightPanelMode, openInspectorPane]);
+  const applyDefaultWorkbenchWidth = useCallback(
+    (mode: typeof rightPanelMode = rightPanelMode) => {
+      const apply = () => {
+        setWorkbenchPanelWidthState(resolveDefaultWorkbenchWidth(mode));
+      };
+      if (typeof requestAnimationFrame === "function") {
+        requestAnimationFrame(apply);
+      } else {
+        apply();
+      }
+    },
+    [rightPanelMode],
+  );
+
+  const handleSelectRightPanelMode = useCallback(
+    (mode: typeof rightPanelMode) => {
+      workbenchWidthUserAdjustedRef.current = false;
+      setRightPanelMode(mode);
+      applyDefaultWorkbenchWidth(mode);
+    },
+    [applyDefaultWorkbenchWidth, setRightPanelMode],
+  );
+
+  useEffect(() => {
+    if (!inspectorOpen) {
+      workbenchWidthUserAdjustedRef.current = false;
+      return;
+    }
+    workbenchWidthUserAdjustedRef.current = false;
+    applyDefaultWorkbenchWidth();
+  }, [inspectorOpen, rightPanelMode, applyDefaultWorkbenchWidth]);
+
+  useEffect(() => {
+    if (!inspectorOpen || workbenchWidthUserAdjustedRef.current) return;
+    const canvas = document.querySelector(".workspace-canvas");
+    if (!canvas) return;
+
+    const refit = () => applyDefaultWorkbenchWidth();
+    const observer = new ResizeObserver(refit);
+    observer.observe(canvas);
+    window.addEventListener("resize", refit);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", refit);
+    };
+  }, [inspectorOpen, applyDefaultWorkbenchWidth]);
+
+  const openHumanInbox = useCallback(() => {
+    focusComposerStack("inbox");
+  }, []);
+
   const openWorkApproval = useCallback(() => {
-    openWorkTab();
-    setWorkFocus("plan_approval");
-  }, [openWorkTab]);
+    focusWorkStack("plan_approval");
+  }, [focusWorkStack]);
 
   const handleInboxBuildStarted = useCallback(() => {
-    openReviewTab();
+    focusWorkStack("execute");
     refreshSessionMeta();
     if (sessionId) {
       dispatchNotification(
         {
           tier: "P2",
           title: "Build 실행 시작",
-          body: "Work 탭에서 진행 상황을 확인하세요.",
+          body: "Composer에서 진행 상황을 확인하세요.",
           sessionId,
           kind: "human_inbox_build",
-          toastAction: { type: "work", focus: "plan" },
+          toastAction: { type: "composer", focus: "plan" },
         },
         pushMacNotification,
         notifyDesktop,
       );
     }
-  }, [openReviewTab, refreshSessionMeta, sessionId, pushMacNotification]);
+  }, [focusWorkStack, refreshSessionMeta, sessionId, pushMacNotification]);
 
   const handleInboxResolved = useCallback(() => {
     void refreshInboxPending();
@@ -997,59 +1045,57 @@ export function RoomChat({
     setDiscussPaused(false);
   }, [refreshInboxPending, refreshSessionMeta]);
 
-  const openHumanInbox = useCallback(() => {
-    setRightPanelMode("inbox");
-  }, [setRightPanelMode]);
-
   const handleNotificationOpen = useCallback(
     (note: AppNotification) => {
       const action = notificationActionForKind(note.kind);
       if (!action) return;
-      if (action.type === "inbox") {
-        openHumanInbox();
+      if (action.type === "composer") {
+        focusComposerStack(action.focus ?? "inbox");
+        return;
+      }
+      if (action.type === "work") {
+        focusWorkStack(action.focus === "execute" ? "execute" : "plan");
         return;
       }
       if (action.type === "inspector") {
-        setRightPanelMode(action.tab ?? "tasks");
+        setRightPanelMode("overview");
         return;
       }
       if (action.type === "settings") {
         onOpenSettings?.();
         return;
       }
-      openWorkTab();
-      setWorkFocus(action.focus ?? "plan");
     },
-    [onOpenSettings, openHumanInbox, openWorkTab, setRightPanelMode],
+    [focusWorkStack, onOpenSettings, setRightPanelMode],
   );
 
   useEffect(() => {
     return subscribeNotificationActions((action) => {
-      if (action.type === "inbox") {
-        openHumanInbox();
+      if (action.type === "composer") {
+        focusComposerStack(action.focus ?? "inbox");
+        return;
+      }
+      if (action.type === "work") {
+        focusWorkStack(action.focus === "execute" ? "execute" : "plan");
         return;
       }
       if (action.type === "inspector") {
-        setRightPanelMode(action.tab ?? "tasks");
+        setRightPanelMode("overview");
         return;
       }
       if (action.type === "settings") {
         onOpenSettings?.();
         return;
       }
-      openWorkTab();
-      setWorkFocus(action.focus ?? "plan");
     });
-  }, [onOpenSettings, openHumanInbox, openWorkTab, setRightPanelMode]);
+  }, [focusWorkStack, onOpenSettings, setRightPanelMode]);
 
   const showExecuteQueueStrip =
     tweaks.execQueueDemo === "hidden"
       ? false
       : tweaks.execQueueDemo === "normal" || tweaks.execQueueDemo === "blocked"
         ? true
-        : Boolean(sessionId) &&
-          !(inspectorOpen && rightPanelMode === "plan") &&
-          hasPendingExecution;
+        : Boolean(sessionId) && hasPendingExecution;
   const demoExecPending =
     tweaks.execQueueDemo === "blocked"
       ? DEMO_EXEC_PENDING_BLOCKED
@@ -1078,7 +1124,7 @@ export function RoomChat({
         sessionId,
         kind: gate.blocked ? "execute_blocked" : "execute_pending",
         entityId: pending.id,
-        toastAction: { type: "work", focus: "execute" },
+        toastAction: { type: "composer", focus: "execute" },
       },
       pushMacNotification,
       notifyDesktop,
@@ -1093,9 +1139,7 @@ export function RoomChat({
   const showConsensusDryRunGate =
     !showExecuteQueueStrip &&
     (tweaks.consensusGateDemo ||
-      (Boolean(sessionId) &&
-        !(inspectorOpen && rightPanelMode === "plan") &&
-        consensusProposal != null));
+      (Boolean(sessionId) && consensusProposal != null));
 
   const visibleMessages = useMemo(() => {
     const rows = messages.filter((m) => !m.humanSynthesis);
@@ -1194,30 +1238,18 @@ export function RoomChat({
   const planExecutions = planExecute.executions;
 
   useEffect(() => {
-    if (rightPanelMode !== "plan" || planActionFocusIndex == null) {
+    if (planActionFocusIndex == null) {
       return;
     }
-    const index = planActionFocusIndex;
+    focusWorkStack("plan");
     const timer = window.setTimeout(() => {
-      const root = scrollElRef.current;
-      const el = root?.querySelector(`[data-plan-action-index="${index}"]`);
-      el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
       setPlanActionFocusIndex(null);
     }, 80);
     return () => window.clearTimeout(timer);
-  }, [rightPanelMode, planActionFocusIndex, scrollElRef]);
+  }, [planActionFocusIndex, focusWorkStack]);
 
   const isNew = !sessionId;
   const notificationUnread = useNotificationUnread();
-
-  const inspectorTasksBadge = useMemo(() => {
-    const n = roomTasks?.open_objection_count ?? 0;
-    return n > 0 ? n : undefined;
-  }, [roomTasks?.open_objection_count]);
-
-  const inspectorInboxBadge = useMemo(() => {
-    return inboxPendingNonQuestions > 0 ? inboxPendingNonQuestions : undefined;
-  }, [inboxPendingNonQuestions]);
 
   const toggleInspector = useCallback(() => {
     setInspectorOpenState((current) => {
@@ -1228,11 +1260,12 @@ export function RoomChat({
   }, []);
 
   const setActiveWorkbenchWidth = useCallback((width: number) => {
-    setWorkbenchPanelWidthState(width);
+    workbenchWidthUserAdjustedRef.current = true;
+    setWorkbenchPanelWidthState(clampWorkbenchPanelWidth(width));
   }, []);
   const commitWorkbenchWidth = useCallback((width: number) => {
-    setWorkbenchPanelWidthState(width);
-    setWorkbenchPanelWidth(width);
+    workbenchWidthUserAdjustedRef.current = true;
+    setWorkbenchPanelWidthState(clampWorkbenchPanelWidth(width));
   }, []);
 
   useEffect(() => {
@@ -1284,6 +1317,20 @@ export function RoomChat({
     );
     return () => window.clearTimeout(timer);
   }, [sessionId, planWorkflow?.phase]);
+
+  useEffect(() => {
+    if (!showPlanApproval || !sessionId) return;
+    setFilesFocusRevision((n) => n + 1);
+    openFilesTab();
+  }, [showPlanApproval, sessionId, planMd, openFilesTab]);
+
+  const activePlanRelpath =
+    typeof session?.run?.active_plan_relpath === "string" &&
+    session.run.active_plan_relpath.trim()
+      ? session.run.active_plan_relpath.trim()
+      : "plan.md";
+
+  const avoidWorkbenchNotice = inspectorOpen || workbenchMenuOpen;
 
   const waitingForSession = Boolean(sessionId && !session && loading);
   const composerInputLocked = waitingForSession;
@@ -1395,9 +1442,15 @@ export function RoomChat({
       const merged = preferRicherChatMessages(local.messages, serverMsgs);
       syncedChatRef.current = fp;
       hydrateSessionMessages(sessionId, merged);
+      syncSessionActivityMarkers(sessionId);
     }
     setPlanMd(session.plan_md || "");
   }, [session, sessionId, sessionReviewMode]);
+
+  useEffect(() => {
+    if (!sessionId) return;
+    syncSessionActivityMarkers(sessionId);
+  }, [sessionId]);
 
   useEffect(() => {
     if (sessionId !== null) return;
@@ -1520,7 +1573,7 @@ export function RoomChat({
         kind: proposal.recommended ? "consensus_complete" : "plan_sync",
         entityId: proposal.action_key ?? proposal.excerpt,
         toastAction: freeConsensus
-          ? { type: "work", focus: "plan" }
+          ? { type: "composer", focus: "plan" }
           : undefined,
       },
       pushMacNotification,
@@ -1583,7 +1636,7 @@ export function RoomChat({
           entityId: event.key,
           toastAction:
             event.status === "resolved" && workRecovery
-              ? { type: "work", focus: "execute" }
+              ? { type: "composer", focus: "execute" }
               : undefined,
         },
         pushMacNotification,
@@ -1707,7 +1760,6 @@ export function RoomChat({
         refreshSessionMeta,
         refreshInboxPending,
         openHumanInbox,
-        setInboxSegment,
         openWorkTab,
       });
 
@@ -2418,14 +2470,14 @@ export function RoomChat({
 
   const focusObjection = useCallback(
     (_objectionId: string) => {
-      setRightPanelMode("tasks");
+      focusWorkStack("plan_approval");
     },
-    [setRightPanelMode],
+    [focusWorkStack],
   );
   const focusTask = useCallback(
     (taskId: string) => {
       openTranscriptTab();
-      setRightPanelMode("tasks");
+      focusWorkStack("plan");
       const task =
         roomTasks?.tasks?.find((t) => t.id === taskId) ??
         roomTasks?.claimable?.find((t) => t.id === taskId);
@@ -2453,7 +2505,7 @@ export function RoomChat({
           ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
       }, 60);
     },
-    [roomTasks, session?.chat, messages, openTranscriptTab, setRightPanelMode],
+    [roomTasks, session?.chat, messages, openTranscriptTab, focusWorkStack],
   );
 
   const handleInboxRefClick = useCallback(
@@ -2461,13 +2513,13 @@ export function RoomChat({
       activateInboxRef(ref, {
         onChatLine: handlePlanRefClick,
         onOpenPlan: () => {
-          openWorkTab();
-          setWorkFocus("plan");
+          openFilesTab();
+          focusWorkStack("plan");
         },
         onFocusTask: focusTask,
       });
     },
-    [focusTask, handlePlanRefClick, openWorkTab],
+    [focusTask, handlePlanRefClick, openFilesTab, focusWorkStack],
   );
 
   const discussRecovery = useMemo(() => {
@@ -2558,7 +2610,6 @@ export function RoomChat({
             setWorkFocus("execute");
             return;
           case "open_inbox":
-            setInboxSegment("inbox");
             openHumanInbox();
             return;
           case "run_discuss_recovery":
@@ -2685,6 +2736,11 @@ export function RoomChat({
   >(null);
   const recoveryVisible =
     recoverySignature.length > 0 && recoveryDismissedSig !== recoverySignature;
+
+  useEffect(() => {
+    setComposerNoticeDismissed(null);
+  }, [sessionId, recoverySignature, planWorkflow?.phase, inboxPendingCount]);
+
   const firstOpenBlock = useMemo<RoomObjection | null>(() => {
     const rows = roomTasks?.open_objections ?? [];
     return rows.find((o) => o.act === "BLOCK") ?? null;
@@ -3047,19 +3103,14 @@ export function RoomChat({
         rightPanelOpen={inspectorOpen}
         rightPanelMode={rightPanelMode}
         locale={locale}
-        panelBadgeCount={
-          !isNew
-            ? notificationUnread +
-              (inspectorTasksBadge ?? 0) +
-              (inspectorInboxBadge ?? 0)
-            : 0
-        }
+        panelBadgeCount={!isNew ? notificationUnread : 0}
         running={running || synthesizing || runBusy}
         onToggleSidebar={_onToggleSidebar}
         onToggleRightPanel={toggleInspector}
-        onSelectRightPanelMode={setRightPanelMode}
+        onSelectRightPanelMode={handleSelectRightPanelMode}
         onOpenSettings={onOpenSettings}
         onStop={handleStop}
+        onWorkbenchMenuOpenChange={setWorkbenchMenuOpen}
       />
 
       {backgroundRun ? (
@@ -3075,7 +3126,11 @@ export function RoomChat({
         <div className="pane-main workspace-main">
           <div className="workspace-body">
             {!isNew && sessionId ? (
-              <div className="composer-notice-floating">
+              <div
+                className={`composer-notice-floating${
+                  avoidWorkbenchNotice ? " composer-notice-floating--left" : ""
+                }`}
+              >
                 <ComposerDecisionSurface
                   sessionId={sessionId}
                   inboxPendingCount={inboxPendingCount}
@@ -3098,11 +3153,15 @@ export function RoomChat({
                   showPlanWorkflowComposerHint={showPlanWorkflowComposerHint}
                   planWorkflow={planWorkflow}
                   planWorkflowPlanIntent={planWorkflowPlanIntent}
+                  dismissedKey={composerNoticeDismissed}
                   onOpenInbox={() => {
-                    setInboxSegment("inbox");
+                    setComposerNoticeDismissed("human_gate");
                     openHumanInbox();
                   }}
-                  onOpenWork={openWorkApproval}
+                  onOpenWork={() => {
+                    setComposerNoticeDismissed("plan_workflow");
+                    openWorkApproval();
+                  }}
                   onRecoveryAction={(actionId, item) =>
                     void handleRecoveryAction(actionId, item)
                   }
@@ -3110,70 +3169,11 @@ export function RoomChat({
                   onRecoveryDismiss={() =>
                     setRecoveryDismissedSig(recoverySignature)
                   }
+                  onDismissNotice={setComposerNoticeDismissed}
                 />
               </div>
             ) : null}
             <div className="workspace-scroll scroll-y" ref={scrollRef}>
-              {showExecuteQueueStrip && execPendingForBar ? (
-                <div className="workspace-event-strip workspace-event-strip--review">
-                  <ExecuteQueueBar
-                    pending={execPendingForBar}
-                    storedActions={
-                      (session?.run?.actions as StoredPlanAction[]) ?? []
-                    }
-                    busy={executeBusy}
-                    disabled={running || synthesizing || runBusy}
-                    compact
-                    onApprove={() => {
-                      if (demoExecPending) {
-                        pushMacNotification({
-                          title: "Execute (demo)",
-                          body: "승인 시뮬레이트",
-                        });
-                        return;
-                      }
-                      void planExecute.approve();
-                    }}
-                    onReject={() => {
-                      if (demoExecPending) {
-                        pushMacNotification({
-                          title: "Execute (demo)",
-                          body: "거부 시뮬레이트",
-                        });
-                        return;
-                      }
-                      void planExecute.reject();
-                    }}
-                    onOpenPlan={openWorkTab}
-                  />
-                </div>
-              ) : null}
-
-              {showConsensusDryRunGate && consensusForBar ? (
-                <div className="workspace-event-strip workspace-event-strip--review">
-                  <ConsensusDryRunGateBar
-                    proposal={consensusForBar}
-                    busy={consensusGateBusy || executeBusy}
-                    disabled={running || synthesizing || runBusy}
-                    onDryRun={
-                      tweaks.consensusGateDemo
-                        ? () =>
-                            pushMacNotification({
-                              title: "Consensus (demo)",
-                              body: "Dry-run 시뮬레이트",
-                            })
-                        : handleConsensusDryRun
-                    }
-                    onOpenPlan={openWorkTab}
-                    onDismiss={
-                      tweaks.consensusGateDemo
-                        ? () => tweaks.setConsensusGateDemo(false)
-                        : dismissConsensusProposal
-                    }
-                  />
-                </div>
-              ) : null}
-
               <RoomTranscriptPanel
                 sessionId={sessionId}
                 isNew={isNew}
@@ -3197,6 +3197,7 @@ export function RoomChat({
                 forceScrollButton={tweaks.forceScrollButton}
                 scrollToBottom={scrollToBottom}
                 transcriptActive={transcriptActive}
+                onActivityOpen={handleNotificationOpen}
               />
             </div>
 
@@ -3267,23 +3268,106 @@ export function RoomChat({
                     </div>
                   ) : null}
 
-                  {sessionId && inboxPendingCount > 0 ? (
-                    <div className="composer-question-surface">
-                      <HumanInboxPanel
-                        sessionId={sessionId}
-                        reloadKey={inboxReloadKey}
-                        planRevision={currentPlanRevision}
-                        onResolved={handleInboxResolved}
-                        onBuildStarted={handleInboxBuildStarted}
-                        disabled={running || synthesizing || runBusy}
-                        presentation="composer"
-                        onOpenInbox={() => {
-                          setInboxSegment("inbox");
-                          openHumanInbox();
-                        }}
-                        onRefClick={handleInboxRefClick}
-                      />
-                    </div>
+                  {sessionId ? (
+                    <ComposerEventStack
+                      sessionId={sessionId}
+                      session={session}
+                      planMd={planMd}
+                      planMeta={planMeta}
+                      planStaleNotice={workPlanStaleNotice}
+                      workFocus={workFocus}
+                      onWorkFocusHandled={() => setWorkFocus(null)}
+                      synthesizing={synthesizing}
+                      running={running}
+                      runBusy={runBusy}
+                      executeBusy={executeBusy}
+                      onSynthesizeNow={handleSynthesizeNow}
+                      onPlanRefClick={handlePlanRefClick}
+                      onFocusTask={focusTask}
+                      onFocusObjection={focusObjection}
+                      onSessionUpdated={refreshSessionMeta}
+                      roomTasks={roomTasks}
+                      cursorReady={agents.some(
+                        (a) => a.id === "cursor" && a.ready,
+                      )}
+                      executeError={planExecute.error}
+                      planWorkflow={planWorkflow}
+                      planApproval={
+                        showPlanApproval
+                          ? {
+                              enabled: true,
+                              workflowNotice: planWorkflow?.notice,
+                              planGate: planWorkflow?.last_plan_gate ?? null,
+                              canExecute:
+                                planExecute.hasExecutableActions &&
+                                planExecute.canDryRun &&
+                                agents.some(
+                                  (agent) =>
+                                    agent.id === "cursor" && agent.ready,
+                                ),
+                              busy: verifiedLoopBusy || running || runBusy,
+                              error: verifiedLoopError,
+                              onApprove: (mode) =>
+                                void handleVerifiedApprove(mode),
+                              onReject: (payload) =>
+                                void handleVerifiedReject(payload),
+                            }
+                          : null
+                      }
+                      workHookAlert={workHookAlert}
+                      onDismissWorkHookAlert={() => setWorkHookAlert(null)}
+                      inboxPendingCount={inboxPendingCount}
+                      inboxReloadKey={inboxReloadKey}
+                      currentPlanRevision={currentPlanRevision}
+                      onInboxResolved={handleInboxResolved}
+                      onInboxBuildStarted={handleInboxBuildStarted}
+                      onInboxRefClick={handleInboxRefClick}
+                      execPending={execPendingForBar}
+                      storedActions={
+                        (session?.run?.actions as StoredPlanAction[]) ?? []
+                      }
+                      onExecuteApprove={() => {
+                        if (demoExecPending) {
+                          pushMacNotification({
+                            title: "Execute (demo)",
+                            body: "승인 시뮬레이트",
+                          });
+                          return;
+                        }
+                        void planExecute.approve();
+                      }}
+                      onExecuteReject={() => {
+                        if (demoExecPending) {
+                          pushMacNotification({
+                            title: "Execute (demo)",
+                            body: "거부 시뮬레이트",
+                          });
+                          return;
+                        }
+                        void planExecute.reject();
+                      }}
+                      showExecuteQueue={showExecuteQueueStrip}
+                      consensusProposal={consensusForBar}
+                      showConsensusGate={showConsensusDryRunGate}
+                      consensusGateBusy={consensusGateBusy}
+                      onConsensusDryRun={
+                        tweaks.consensusGateDemo
+                          ? () =>
+                              pushMacNotification({
+                                title: "Consensus (demo)",
+                                body: "Dry-run 시뮬레이트",
+                              })
+                          : handleConsensusDryRun
+                      }
+                      onConsensusDismiss={
+                        tweaks.consensusGateDemo
+                          ? () => tweaks.setConsensusGateDemo(false)
+                          : dismissConsensusProposal
+                      }
+                      onOpenDiff={openDiffTab}
+                      onOpenFiles={openFilesTab}
+                      disabled={running || synthesizing || runBusy}
+                    />
                   ) : null}
 
                   {sendReceipt &&
@@ -3511,123 +3595,6 @@ export function RoomChat({
                 onFocusObjection={focusObjection}
               />
             ) : null}
-            {rightPanelMode === "tasks" ? (
-              sessionId ? (
-                <InspectorTasksSummary
-                  roomTasks={roomTasks}
-                  inboxPendingCount={inboxPendingCount}
-                  discussPaused={discussPaused}
-                  runtime={decisionRuntime}
-                  showPlanApproval={showPlanApproval}
-                  verifiedLoopPendingApproval={verifiedLoopView.pendingApproval}
-                  firstOpenBlock={firstOpenBlock}
-                  planWorkflow={planWorkflow}
-                  consensusBlocked={consensusBlocked}
-                  onOpenWork={openWorkApproval}
-                  onOpenInbox={() => {
-                    setInboxSegment("inbox");
-                    openHumanInbox();
-                  }}
-                  onFocusComposer={focusComposerInput}
-                />
-              ) : null
-            ) : null}
-            {rightPanelMode === "inbox" ? (
-              <>
-                <div
-                  className="ctx-segmented"
-                  role="tablist"
-                  aria-label="Inbox"
-                >
-                  {(["inbox", "activity"] as const).map((segment) => (
-                    <button
-                      key={segment}
-                      type="button"
-                      role="tab"
-                      aria-selected={inboxSegment === segment}
-                      className={inboxSegment === segment ? "is-active" : ""}
-                      onClick={() => setInboxSegment(segment)}
-                    >
-                      {segment === "inbox"
-                        ? localeMsg.inboxInbox
-                        : localeMsg.inboxActivity}
-                    </button>
-                  ))}
-                </div>
-                {inboxSegment === "inbox" ? (
-                  <>
-                    <DiscussRecoveryBanner
-                      recovery={discussRecovery}
-                      busy={discussRecoveryBusy}
-                      onRunRecovery={() => void handleDiscussRecoveryRun()}
-                      onOpenDiscussInbox={openHumanInbox}
-                    />
-                    <HumanInboxPanel
-                      sessionId={sessionId}
-                      reloadKey={inboxReloadKey}
-                      planRevision={currentPlanRevision}
-                      onResolved={handleInboxResolved}
-                      onBuildStarted={handleInboxBuildStarted}
-                      disabled={running || synthesizing || runBusy}
-                      presentation="inspector"
-                      readOnly={inboxPendingCount > 0}
-                      onFocusComposer={focusComposerInput}
-                      onRefClick={handleInboxRefClick}
-                    />
-                  </>
-                ) : (
-                  <NotificationCenter onOpen={handleNotificationOpen} />
-                )}
-              </>
-            ) : null}
-            {rightPanelMode === "plan" && sessionId ? (
-              <WorkToolPanel
-                sessionId={sessionId}
-                session={session}
-                planMd={planMd}
-                planMeta={planMeta}
-                planStaleNotice={workPlanStaleNotice}
-                workFocus={workFocus}
-                onWorkFocusHandled={() => setWorkFocus(null)}
-                synthesizing={synthesizing}
-                running={running}
-                runBusy={runBusy}
-                onSynthesizeNow={handleSynthesizeNow}
-                onPlanRefClick={handlePlanRefClick}
-                onFocusTask={focusTask}
-                onFocusObjection={focusObjection}
-                onSessionUpdated={refreshSessionMeta}
-                roomTasks={roomTasks}
-                cursorReady={agents.some((a) => a.id === "cursor" && a.ready)}
-                executeError={planExecute.error}
-                planWorkflow={planWorkflow}
-                planApproval={
-                  showPlanApproval
-                    ? {
-                        enabled: true,
-                        workflowNotice: planWorkflow?.notice,
-                        planGate: planWorkflow?.last_plan_gate ?? null,
-                        canExecute:
-                          planExecute.hasExecutableActions &&
-                          planExecute.canDryRun &&
-                          agents.some(
-                            (agent) => agent.id === "cursor" && agent.ready,
-                          ),
-                        busy: verifiedLoopBusy || running || runBusy,
-                        error: verifiedLoopError,
-                        onApprove: (mode) => void handleVerifiedApprove(mode),
-                        onReject: (payload) =>
-                          void handleVerifiedReject(payload),
-                      }
-                    : null
-                }
-                onOpenTasks={openTasksInspector}
-                onOpenInbox={openHumanInbox}
-                inboxPendingCount={inboxPendingCount}
-                workHookAlert={workHookAlert}
-                onDismissWorkHookAlert={() => setWorkHookAlert(null)}
-              />
-            ) : null}
             {rightPanelMode === "background" && sessionId ? (
               <BackgroundTasksPanel sessionId={sessionId} />
             ) : null}
@@ -3635,7 +3602,11 @@ export function RoomChat({
               <DiffToolPanel executions={planExecutions} />
             ) : null}
             {rightPanelMode === "files" && sessionId ? (
-              <WorkspaceFilesPanel sessionId={sessionId} />
+              <WorkspaceFilesPanel
+                sessionId={sessionId}
+                focusPath={showPlanApproval ? activePlanRelpath : null}
+                focusRevision={filesFocusRevision}
+              />
             ) : null}
             {rightPanelMode === "preview" && sessionId ? (
               <PreviewPanel sessionId={sessionId} />

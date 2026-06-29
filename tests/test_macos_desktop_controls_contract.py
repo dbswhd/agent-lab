@@ -68,15 +68,20 @@ def test_context_tools_and_workbench_width_preferences_are_separate():
 
     assert 'WIDTH_KEY = "agent-lab-inspector-width"' in prefs
     assert 'TOOLS_WIDTH_KEY = "agent-lab-tools-inspector-width"' in prefs
-    assert 'WORKBENCH_WIDTH_KEY = "agent-lab-workbench-panel-width"' in prefs
+    assert "WORKBENCH_WIDTH_CONTENT_RATIO" in prefs
+    assert "workbenchContentWidth" in prefs
+    assert "resolveDefaultWorkbenchWidth" in prefs
+    assert "Main column flexes via --composer-max" in prefs
     assert "TOOLS_INSPECTOR_DEFAULT_WIDTH = 420" in prefs
     assert "TOOLS_INSPECTOR_MIN_WIDTH = 320" in prefs
     assert "TOOLS_INSPECTOR_MAX_WIDTH = 760" in prefs
     assert "WORKBENCH_PANEL_DEFAULT_WIDTH = 520" in prefs
     assert "WORKBENCH_PANEL_MIN_WIDTH = 360" in prefs
-    assert "WORKBENCH_PANEL_MAX_WIDTH = 860" in prefs
-    assert "getWorkbenchPanelWidth" in room
-    assert "setWorkbenchPanelWidth" in room
+    assert "WORKBENCH_PANEL_MAX_WIDTH = 1600" in prefs
+    assert "maxWorkbenchPanelWidth" in prefs
+    assert "handleSelectRightPanelMode" in room
+    assert "clampWorkbenchPanelWidth" in room
+    assert "workbenchWidthUserAdjustedRef" in room
 
 
 def test_workspace_chrome_replaces_web_traffic_lights_and_titlebar_logo():

@@ -75,20 +75,24 @@ def test_use_workspace_tabs_pins_transcript_on_session_bind():
 
 def test_workspace_tab_enum_in_utils():
     tabs = _read("web", "src", "utils", "workspaceTabs.ts")
-    for slug in ("transcript", "work", "run", "artifacts"):
+    for slug in ("transcript", "diff", "files", "background"):
         assert f'"{slug}"' in tabs
-    for slug in ("overview", "tasks", "inbox"):
+    for slug in ("overview", "tools"):
         assert f'"{slug}"' in tabs
+    assert 'id: "plan"' not in tabs
+    assert '"tasks"' not in tabs
+    assert 'id: "inbox"' not in tabs
 
 
-def test_plan_execute_routed_to_work_workspace():
+def test_plan_execute_routed_to_composer_event_stack():
     room = _read("web", "src", "components", "RoomChat.tsx")
     hook = _read("web", "src", "hooks", "useWorkspaceTabs.ts")
+    stack = _read("web", "src", "components", "ComposerEventStack.tsx")
     work_tool = _read("web", "src", "components", "WorkToolPanel.tsx")
-    assert 'rightPanelMode === "plan"' in room
-    assert "WorkToolPanel" in room
+    assert "ComposerEventStack" in room
     assert "PlanExecutePanel" in work_tool
-    assert 'openWorkTab: () => setWorkspaceTab("plan")' in hook
+    assert "focusComposerStack" in hook
+    assert "ExecuteQueueBar" in stack
     assert "reviewScrollRef" not in room
 
 
@@ -190,6 +194,7 @@ def test_workspace_panels_have_distinct_document_wrappers():
 
     assert "transcript--console" in transcript
     assert "WorkbenchPanel" in room
+    assert "ComposerEventStack" in room
     assert "plan-card" in plan_exec
     assert "exec-card" in plan_exec
     assert "plan-actions-bar" in plan_exec
@@ -270,12 +275,19 @@ def test_m3_preview_auto_probe_and_presets():
 def test_m3_files_monaco_editor_lazy():
     files = _read("web", "src", "components", "WorkspaceFilesPanel.tsx")
     monaco = _read("web", "src", "components", "FilesMonacoEditor.tsx")
+    prefs = _read("web", "src", "utils", "filesRootPrefs.ts")
+    layout = _read("web", "src", "styles", "layout.css")
     assert "FilesMonacoEditor" in files
     assert "lazy(" in files
     assert "@monaco-editor/react" in monaco
+    assert "FilesRootsEditor" in files
+    assert "getVisibleRootIds" in prefs
+    assert "--files-explorer-size" in layout
+    assert "--files-viewer-content-size" in layout
+    assert "files-roots-edit" in layout
 
 
-def test_m3_side_by_side_diff_in_work():
+def test_m3_side_by_side_diff_in_execute_panel():
     plan = _read("web", "src", "components", "PlanExecutePanel.tsx")
     diff = _read("web", "src", "components", "SideBySideDiff.tsx")
     util = _read("web", "src", "utils", "sideBySideDiff.ts")
@@ -298,6 +310,7 @@ def test_m5_i18n_panels_use_locale():
     terminal = _read("web", "src", "components", "TerminalPanel.tsx")
     live = _read("web", "src", "components", "LiveAgentsStrip.tsx")
     room = _read("web", "src", "components", "RoomChat.tsx")
+    transcript = _read("web", "src", "components", "RoomTranscriptPanel.tsx")
     plan_refs = _read("web", "src", "utils", "PlanDocRefs.tsx")
     layout = _read("web", "src", "styles", "layout.css")
 
@@ -305,7 +318,8 @@ def test_m5_i18n_panels_use_locale():
     assert "msg.bgtaskTitle" in bgtask
     assert "msg.terminalHint" in terminal
     assert "msg.liveAgentsResponding" in live
-    assert "localeMsg.inboxActivity" in room
+    assert "RoomTranscriptPanel" in room
+    assert "TranscriptActivityDivider" in transcript
     assert "msg.planRefGoToChat" in plan_refs
     assert ".plan-doc__ref--link" in layout
 
@@ -321,7 +335,15 @@ def test_session_list_shows_running_indicator():
     list_tsx = _read("web", "src", "components", "SessionList.tsx")
     app = _read("web", "src", "App.tsx")
     assert "runningSessionIds" in list_tsx
-    assert "session-item__running" in list_tsx
+    assert "session-item--running" in list_tsx
+    assert "rail-type-session-size" in _read("web", "src", "styles", "tokens.css")
+    assert "var(--rail-type-session-size)" in _read("web", "src", "styles", "layout.css")
+    assert "ctx-menu--session" in _read("web", "src", "components", "SessionContextMenu.tsx")
+    assert "ctx-menu__sep--section" in _read("web", "src", "styles", "overlays.css")
+    assert "groupSessionsForList" in list_tsx
+    assert "draggable={dragEnabled}" in list_tsx
+    assert "session-item--draggable" in list_tsx
+    assert "SessionContextMenu" in list_tsx
     assert "useRunningSessionIds" in app
 
 

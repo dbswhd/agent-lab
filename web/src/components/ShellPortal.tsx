@@ -1,14 +1,14 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
-/** Render children as a direct child of `.shell` (3rd grid column for context sidebar). */
+/** Render children inside `.workspace-canvas` (workbench tile beside main workspace). */
 export function ShellPortal({ children }: { children: ReactNode }) {
-  const [shell, setShell] = useState<Element | null>(null);
+  const [host, setHost] = useState<Element | null>(null);
 
   useEffect(() => {
-    setShell(document.querySelector(".shell"));
+    setHost(document.querySelector(".workspace-canvas"));
   }, []);
 
-  if (!shell) return null;
-  return createPortal(children, shell);
+  if (!host) return null;
+  return createPortal(children, host);
 }

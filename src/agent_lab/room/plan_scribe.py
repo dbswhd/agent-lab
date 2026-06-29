@@ -209,7 +209,12 @@ def _plan_workflow_post_agent_turn(
     pw_active = is_plan_workflow_active(run_meta)
     pw_advance = plan_workflow_should_advance_on_turn(run_meta, synthesize=synthesize)
     phase_before = plan_workflow_phase(run_meta) if pw_active else None
-    if pw_active and pw_advance and not cancelled:
+    from agent_lab.room.turn_policy import turn_policy_enabled
+
+    if turn_policy_enabled():
+        plan_md = plan_before
+        scribe_applied = False
+    elif pw_active and pw_advance and not cancelled:
         from agent_lab.room.agent_invoke import _bind_session_to_run_meta
         from agent_lab.room.session_persist import _session_context
 
@@ -228,29 +233,32 @@ def _plan_workflow_post_agent_turn(
         plan_md, run_meta = _session_context(folder)
         _bind_session_to_run_meta(run_meta, folder)
 
-    scribe_applied = (
-        _should_scribe_plan_after_turn(
-            synthesize=synthesize,
-            cancelled=cancelled,
-            run_meta=run_meta,
-            user_plan_send=synthesize,
+    if not turn_policy_enabled():
+        scribe_applied = (
+            _should_scribe_plan_after_turn(
+                synthesize=synthesize,
+                cancelled=cancelled,
+                run_meta=run_meta,
+                user_plan_send=synthesize,
+            )
+            or pw_force_scribe
         )
-        or pw_force_scribe
-    )
-    if scribe_applied:
-        plan_md = _apply_scribe_after_turn(
-            topic=topic,
-            messages=messages,
-            run_meta=run_meta,
-            plan_before=plan_before,
-            mode=mode,
-            scribe=True,
-            user_plan_send=synthesize,
-            cancelled=cancelled,
-            on_event=on_event,
-            session_folder=folder,
-            plan_trigger="plan_turn" if synthesize else "auto_turn",
-        )
+        if scribe_applied:
+            plan_md = _apply_scribe_after_turn(
+                topic=topic,
+                messages=messages,
+                run_meta=run_meta,
+                plan_before=plan_before,
+                mode=mode,
+                scribe=True,
+                user_plan_send=synthesize,
+                cancelled=cancelled,
+                on_event=on_event,
+                session_folder=folder,
+                plan_trigger="plan_turn" if synthesize else "auto_turn",
+            )
+    elif pw_force_scribe:
+        scribe_applied = False
     # Auto-advance: if plan_workflow is already in DRAFT and scribe changed plan.md,
     # drive PEER_REVIEW without requiring synthesize=True (user turn not needed).
     _auto_draft_advance = (

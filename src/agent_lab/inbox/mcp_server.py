@@ -42,6 +42,8 @@ def _normalize_options(options: Any) -> list[dict[str, Any]]:
         desc = row.get("description")
         if desc:
             entry["description"] = str(desc)
+        if row.get("recommended"):
+            entry["recommended"] = True
         out.append(entry)
     return out
 
@@ -53,7 +55,11 @@ def ask_human(
     multiSelect: bool = False,
     context_ref: str | None = None,
 ) -> dict[str, Any]:
-    """Human에게 구조화된 방향 결정을 요청한다. prose 질문 금지 — 이 tool만 사용."""
+    """Human에게 구조화된 방향 결정을 요청한다. prose 질문 금지 — 이 tool만 사용.
+
+    각 option: ``{"id", "label", "description"?, "recommended"?}``.
+    추천하는 선택지에 ``"recommended": true``를 주면 Human에게 추천 배지로 표시된다.
+    """
     from agent_lab.human_inbox import create_mcp_question_and_wait
 
     folder = _session_folder()

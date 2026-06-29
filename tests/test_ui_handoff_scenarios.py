@@ -15,6 +15,7 @@ def _read(*parts: str) -> str:
 def test_scenario_a_discuss_only_contract():
     """A: discuss mode, receipt, human synthesis, peer channel, claimable."""
     room = _read("web", "src", "components", "RoomChat.tsx")
+    transcript_panel = _read("web", "src", "components", "RoomTranscriptPanel.tsx")
     _read("web", "src", "components", "ChatComposer.tsx")
     taskbar = _read("web", "src", "components", "RoomTaskBar.tsx")
     receipt = _read("web", "src", "utils", "sendReceipt.ts")
@@ -24,10 +25,21 @@ def test_scenario_a_discuss_only_contract():
     assert 'composerModeVariant === "discuss"' in room or "modeDiscuss" in room
     assert "sendReceiptLabel" in room
     assert "discuss_saved" in receipt
-    assert "TranscriptViewOptions" in room or "showHumanSynthesis" in room
-    assert "showPeerChannel" in room or "PEER_CHANNEL_KEY" in transcript
+    assert "TranscriptViewOptions" in transcript_panel or "showHumanSynthesis" in transcript_panel
+    assert "showPeerChannel" in transcript_panel or "PEER_CHANNEL_KEY" in transcript
     assert "task-row--claimable" in taskbar
     assert "claimableIds" in taskbar
+
+
+def test_turn_policy_workspace_binding_kept():
+    """F2: Room permissions SSOT keeps session workspace binding without discuss overlay."""
+    messages = _read("src", "agent_lab", "room", "messages.py")
+    assert "effective_agent_permissions" in messages
+    assert "apply_discuss_workspace" in messages
+    assert "_effective_room_permissions" in messages
+    turn_policy = _read("src", "agent_lab", "room", "turn_policy.py")
+    assert "turn_policy_enabled" in turn_policy
+    assert "apply_turn_effects" in turn_policy
 
 
 def test_scenario_b_plan_synthesis_contract():
@@ -36,7 +48,7 @@ def test_scenario_b_plan_synthesis_contract():
     work = _read("web", "src", "components", "WorkToolPanel.tsx")
     plan = _read("web", "src", "components", "PlanExecutePanel.tsx")
 
-    assert "planAfterSend" in room
+    assert "planComposeActive" in room or "composerModeVariant" in room
     assert "modePlan" in room or "plan_updated" in _read("web", "src", "utils", "sendReceipt.ts")
     assert "openPlanTab" in room
     assert 'rightPanelMode === "plan"' in room
@@ -49,6 +61,7 @@ def test_scenario_b_plan_synthesis_contract():
 
 def test_scenario_b2_plan_workflow_ui_contract():
     room = _read("web", "src", "components", "RoomChat.tsx")
+    sse = _read("web", "src", "hooks", "useRoomSseHandler.ts")
     banner = _read("web", "src", "components", "PlanWorkflowBanner.tsx")
     approval = _read("web", "src", "components", "PlanApprovalPanel.tsx")
     receipt = _read("web", "src", "utils", "sendReceipt.ts")
@@ -57,8 +70,8 @@ def test_scenario_b2_plan_workflow_ui_contract():
     assert "PlanWorkflowBanner" in room
     assert "showPlanWorkflowBanner" in room
     assert "showPlanWorkflowComposerHint" in room
-    assert "plan_workflow_phase" in room
-    assert "plan_workflow_pending" in room
+    assert "plan_workflow_phase" in sse
+    assert "plan_workflow_pending" in sse
     assert "sendReceiptRaw" in room
     assert "plan-workflow-banner" in banner
     assert "HUMAN_PENDING" in banner
@@ -139,13 +152,14 @@ def test_claude_bridge_wired_in_room():
 
 def test_new_session_mission_template_apply_contract():
     """NewSessionDialog now loads consolidated session-setup options; the mission-template
-    apply path survives in RoomChat (bootstrap id -> applySessionTemplate on session bind).
+    apply path survives in RoomChat SSE handler (bootstrap id -> applySessionTemplate on session bind).
     (The standalone template picker was consolidated out of NewSessionDialog/App.)"""
     ns = _read("web", "src", "components", "NewSessionDialog.tsx")
     room = _read("web", "src", "components", "RoomChat.tsx")
+    sse = _read("web", "src", "hooks", "useRoomSseHandler.ts")
     assert "fetchSessionSetupOptions" in ns
-    assert "applySessionTemplate" in room
-    assert "bootstrapMissionTemplateId" in room
+    assert "applySessionTemplate" in sse
+    assert "bootstrapMissionTemplateId" in room or "pendingMissionTemplateRef" in sse
 
 
 def test_taskbar_human_inbox_integration_contract():
@@ -169,10 +183,11 @@ def test_inbox_segments_contract():
     """Inbox collapsed to Inbox/Activity; discuss recovery folded into Inbox;
     popup + inbox_pause wiring preserved; kind is the primary row distinction."""
     room = _read("web", "src", "components", "RoomChat.tsx")
+    sse = _read("web", "src", "hooks", "useRoomSseHandler.ts")
     inbox = _read("web", "src", "components", "HumanInboxPanel.tsx")
     assert "DiscussRecoveryBanner" in room
     assert 'inboxSegment === "inbox"' in room
-    assert 't === "inbox_pause"' in room
+    assert 't === "inbox_pause"' in sse
     assert 'presentation="composer"' in room
     assert "inbox-row--fork" in inbox
     assert "inbox-row__kind-badge" in inbox

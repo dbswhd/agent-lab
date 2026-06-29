@@ -364,7 +364,6 @@ def build_health_payload(
     from agent_lab.invoke import model_name, provider
     from agent_lab.room import DEFAULT_AGENT_PARALLEL_ROUNDS, MAX_AGENT_PARALLEL_ROUNDS
     from agent_lab.room.consensus import max_consensus_calls, max_consensus_rounds
-    from agent_lab.session import SESSIONS_DIR
 
     composition = effective_room_composition(session_folder=session_folder)
     agents_all = build_agent_health(
@@ -378,6 +377,10 @@ def build_health_payload(
     agents = [by_id[pid] for pid in composition if pid in by_id]
     ready_ids = [a["id"] for a in agents if a.get("ready")]
 
+    from agent_lab.session.paths import active_sessions_dir
+
+    sessions_root = str(active_sessions_dir())
+
     return {
         "ok": True,
         "preflight": probe_preflight,
@@ -390,7 +393,7 @@ def build_health_payload(
         "agents": agents,
         "agents_all": agents_all,
         "agents_ready": ready_ids,
-        "sessions_dir": str(SESSIONS_DIR),
+        "sessions_dir": sessions_root,
         "efficiency_mode_default": efficiency_mode_default(),
         "room": {
             "default_agent_parallel_rounds": DEFAULT_AGENT_PARALLEL_ROUNDS,

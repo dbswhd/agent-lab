@@ -27,12 +27,67 @@ export type RecoveryFailureSource =
   | "execute"
   | "command";
 
+export type RecoveryFailureKind =
+  | "partial_turn"
+  | "run_lock"
+  | "api_validation"
+  | "api_offline";
+
 export type RecoveryFailure = {
   readonly source: RecoveryFailureSource;
   readonly message: string;
-  readonly kind?: "partial_turn" | "run_lock";
+  readonly kind?: RecoveryFailureKind;
   readonly affectedAgentIds?: readonly string[];
 };
+
+/** Classify send failures — 422 validation vs run lock vs offline vs generic run. */
+export function classifySendFailure(message: string): {
+  source: RecoveryFailureSource;
+  kind?: RecoveryFailureKind;
+} {
+  const detail = message.trim();
+  const lower = detail.toLowerCase();
+  if (
+    lower.includes("already in progress") ||
+    lower.includes("run lock") ||
+    lower.includes("run_lock")
+  ) {
+    return { source: "run", kind: "run_lock" };
+  }
+  if (
+    lower.includes("loop requires plan") ||
+    lower.includes("agents not ready") ||
+    /\b422\b/.test(lower) ||
+    lower.includes("validation error") ||
+    lower.includes("unprocessable")
+  ) {
+    return { source: "run", kind: "api_validation" };
+  }
+  if (isTransportFailure(detail)) {
+    return { source: "transport", kind: "api_offline" };
+  }
+  return { source: "run" };
+}
+
+/** True only for network/proxy failures — not HTTP 4xx validation from the API. */
+export function isTransportFailure(message: string): boolean {
+  const m = message.trim().toLowerCase();
+  if (!m) return true;
+  if (m.includes("loop requires plan") || m.includes("agents not ready")) {
+    return false;
+  }
+  return (
+    m.includes("failed to fetch") ||
+    m.includes("networkerror") ||
+    m.includes("network request failed") ||
+    m.includes("load failed") ||
+    m.includes("api(8765) reconnecting") ||
+    m.includes("api_offline") ||
+    m.includes("etimedout") ||
+    m.includes("econnrefused") ||
+    m.includes("sse 연결")
+  );
+}
 
 export type RecoveryActionId =
   | "open_settings"
@@ -193,6 +248,42 @@ function buildFailureItem(
   if (!trimmed) return null;
   if (trimmed.includes("already in progress")) return null;
   if (textLooksAuthRelated(trimmed)) return null;
+  if (failure.kind === "run_lock") {
+    return {
+      kind: "run_lock",
+      severity: "blocking_send",
+      title: "이전 실행 잠금이 남아 있습니다.",
+      reason: "새 턴을 시작하기 전에 stale/orphan run lock을 해제해야 합니다.",
+      details: trimmed,
+      source: "run",
+      primaryAction: { id: "release_lock", label: "실행 잠금 해제" },
+      secondaryAction: { id: "refresh_health", label: "상태 재확인" },
+    };
+  }
+  if (failure.kind === "api_validation") {
+    return {
+      kind: "run_failed",
+      severity: "blocking_send",
+      title: "요청 형식이 서버에서 거부되었습니다.",
+      reason:
+        "Room preset·모드 조합이 API 규칙과 맞지 않을 수 있습니다. 메시지를 확인하거나 preset을 바꿔 보세요.",
+      details: trimmed,
+      source: "run",
+      primaryAction: { id: "refresh_health", label: "상태 재확인" },
+    };
+  }
+  if (failure.kind === "api_offline" || failure.source === "transport") {
+    return {
+      kind: "run_failed",
+      severity: "blocking_send",
+      title: "Agent Lab API에 연결할 수 없습니다.",
+      reason: "API(8765) 또는 dev proxy 상태를 확인한 뒤 다시 시도하세요.",
+      details: trimmed,
+      source: "run",
+      primaryAction: { id: "refresh_health", label: "상태 재확인" },
+      secondaryAction: { id: "open_settings", label: "Settings 열기" },
+    };
+  }
   if (failure.kind !== "partial_turn") {
     return {
       kind: "run_failed",

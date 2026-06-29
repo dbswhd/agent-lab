@@ -74,4 +74,25 @@ describe("turn item reducer", () => {
     });
     expect(items.filter((item) => item.kind === "tool")).toHaveLength(1);
   });
+
+  it("upserts Codex heartbeat activity instead of stacking duplicates", () => {
+    let items = reduceTurnItems([], {
+      type: "agent_activity",
+      text: "Codex CLI 실행 중…",
+    });
+    items = reduceTurnItems(items, {
+      type: "agent_activity",
+      text: "Codex 대기 중… (0s, events=0)",
+    });
+    items = reduceTurnItems(items, {
+      type: "agent_activity",
+      text: "Codex 대기 중… (15s, events=0)",
+    });
+    const activities = items.filter((item) => item.kind === "activity");
+    expect(activities).toHaveLength(2);
+    expect(activities[1]).toMatchObject({
+      text: "Codex 대기 중… (15s, events=0)",
+      status: "running",
+    });
+  });
 });

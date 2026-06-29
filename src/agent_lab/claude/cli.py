@@ -420,6 +420,14 @@ def _resolve_claude_mcp_config(
                 **inbox_mcp_build_kwargs(permissions),
             )
         )
+    if session_folder is not None:
+        from agent_lab.cursor.session_metrics_mcp import (
+            build_claude_session_metrics_overlay,
+            session_metrics_mcp_enabled,
+        )
+
+        if session_metrics_mcp_enabled():
+            paths.append(build_claude_session_metrics_overlay(session_folder))
     if (permissions or {}).get("_execute_plugins") and session_folder is not None:
         from agent_lab.session.plugin_runtime import resolve_claude_mcp_config_path
 

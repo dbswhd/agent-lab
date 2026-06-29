@@ -14,7 +14,7 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\"",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "AGENT_LAB_SKIP_TAURI_API=1 tauri"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",

@@ -127,6 +127,25 @@ def test_fast_lead_cursor_may_ask_human(tmp_path: Path) -> None:
     )
 
 
+def test_ask_human_options_preserve_description_and_recommended() -> None:
+    from agent_lab.inbox.mcp_server import _normalize_options
+
+    out = _normalize_options(
+        [
+            {"id": "a", "label": "A안", "description": "MCP 먼저", "recommended": True},
+            {"id": "b", "label": "B안"},
+        ]
+    )
+    assert out[0] == {
+        "id": "a",
+        "label": "A안",
+        "description": "MCP 먼저",
+        "recommended": True,
+    }
+    # Falsy / absent recommended must not leak a key — UI only badges true.
+    assert "recommended" not in out[1]
+
+
 def test_mcp_path_replaces_harvest_for_plan_open(tmp_path: Path) -> None:
     folder = tmp_path / "sess-path"
     folder.mkdir()

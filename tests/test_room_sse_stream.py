@@ -287,7 +287,8 @@ def test_call_one_agent_emits_agent_token_before_done(monkeypatch, tmp_path):
     assert "streaming body" in streamed
 
 
-def test_call_one_agent_codex_emits_startup_activity(monkeypatch, tmp_path):
+def test_call_one_agent_codex_no_redundant_connect_activity(monkeypatch, tmp_path):
+    """agent_start covers connect UX — no duplicate Codex CLI 연결 중 agent_activity."""
     from agent_lab import room
 
     folder = tmp_path / "sess"
@@ -333,7 +334,5 @@ def test_call_one_agent_codex_emits_startup_activity(monkeypatch, tmp_path):
         human_turn_index=0,
     )
     activities = [e[1]["text"] for e in events if e[0] == "agent_activity"]
-    assert activities
-    assert activities[0] == "Codex CLI 연결 중…"
+    assert all("연결 중" not in text for text in activities)
     assert events[0][0] == "agent_start"
-    assert events[1][0] == "agent_activity"

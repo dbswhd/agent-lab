@@ -17,7 +17,6 @@ from agent_lab.run.control import RoomRunCancelled, is_cancelled
 from agent_lab.room.messages import (
     ChatMessage,
     OnAgentEvent,
-    _effective_discuss_permissions,
     _human_turn_number,
     build_agent_context_bundle,
 )
@@ -399,16 +398,9 @@ def _call_one_agent(
                 _emit_activity_line(line)
             return
 
-    if aid == "cursor":
-        _activity("Cursor bridge 연결 중…")
-    elif aid == "kimi_work":
-        _activity("Kimi Work bridge 연결 중…")
-    elif aid == "codex":
-        _activity("Codex CLI 연결 중…")
-    elif aid == "claude":
-        _activity("Claude CLI 연결 중…")
+    from agent_lab.room.messages import effective_agent_permissions
 
-    effective_permissions = _effective_discuss_permissions(
+    effective_permissions = effective_agent_permissions(
         permissions,
         topic=topic,
         plan_md=plan_md,
@@ -416,6 +408,12 @@ def _call_one_agent(
     )
 
     from agent_lab.room.team_orchestration import is_discuss_only_turn, lead_discuss_role_block
+    from agent_lab.room.turn_policy import (
+        TurnPolicyEngine,
+        TurnSignals,
+        assign_task_owners_from_run_meta,
+        turn_policy_enabled,
+    )
 
     consensus_mode = bool(run_meta and run_meta.get("_active_consensus"))
     review_mode_active = review_mode
@@ -491,7 +489,18 @@ def _call_one_agent(
     )
 
     lead_block = ""
-    if run_meta and is_discuss_only_turn(
+    if run_meta and turn_policy_enabled():
+        assign = assign_task_owners_from_run_meta(run_meta)
+        if assign is None:
+            tp_signals = TurnSignals.from_run_meta(
+                run_meta,
+                consensus_meta={"status": "reached"} if consensus_mode else None,
+                supervisor_first_turn=human_turn <= 1,
+            )
+            assign = TurnPolicyEngine.resolve(tp_signals).assign_task_owners
+        if not assign and not consensus_mode:
+            lead_block = lead_discuss_role_block(aid, run_meta)
+    elif run_meta and is_discuss_only_turn(
         mode=str(run_meta.get("_active_turn_mode") or "discuss"),
         synthesize=bool(run_meta.get("_active_synthesize")),
         consensus_mode=consensus_mode,
@@ -608,12 +617,14 @@ def _call_one_agent(
         from agent_lab.room.chat_channels import (
             message_visibility,
             strip_peer_header_echo,
+            strip_sdk_internal_monologue,
         )
 
         # Some agents (often the lead, which sees the most peer context) prepend
         # the "[이번 턴 · 동료 발화]" header to their reply; left in, the whole
         # message is classified peer-only and vanishes from the transcript.
         body = strip_peer_header_echo(body)
+        body = strip_sdk_internal_monologue(body)
         if streamed_live and streamed_parts:
             from agent_lab.room.sse_stream import choose_agent_reply_body
 

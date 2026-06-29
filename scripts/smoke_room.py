@@ -765,7 +765,14 @@ SCENARIOS: dict[str, dict[str, Any]] = {
     "plan": {
         "label": "지금 정리",
         "check": lambda run: any(
-            t.get("mode") == "plan" and t.get("synthesize") is True for t in run.get("turns") or []
+            t.get("synthesize_only") is True
+            or t.get("plan_trigger") == "synthesize_only"
+            or (
+                isinstance(t.get("turn_policy"), dict)
+                and t["turn_policy"].get("scribe_trigger") == "synthesize_only"
+            )
+            or (t.get("mode") == "plan" and t.get("synthesize") is True)
+            for t in run.get("turns") or []
         ),
     },
     "objection_blocks_execute": {

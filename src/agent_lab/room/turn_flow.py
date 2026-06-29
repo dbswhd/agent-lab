@@ -10,7 +10,7 @@ from typing import Any
 from agent_lab.agents.registry import AgentId, available_agents
 from agent_lab.agent.roster import resolve_active_agents
 from agent_lab.attachments import describe_attachments
-from agent_lab.run.control import RoomRunCancelled, is_cancelled
+from agent_lab.run.control import is_cancelled
 from agent_lab.room.messages import (
     ChatMessage,
     DEFAULT_AGENT_PARALLEL_ROUNDS,
@@ -40,12 +40,9 @@ from agent_lab.room.plan_scribe import (
 
 from agent_lab.room.session_persist import (
     _prepare_team_coordination_before_round,
-    _read_run_meta,
     _session_context,
-    _sse_inbox_pending,
     _write_session_files,
     load_session_messages,
-    persist_chat_checkpoint,
     save_room_session,
 )
 
@@ -58,114 +55,80 @@ from agent_lab.room.turn_meta import (
     _peer_metrics_for_messages,
     _try_delegate_turn,
     _turn_snapshot,
-    _verified_loop_complete_payload,
     _verified_loop_continue_message,
-    maybe_auto_scribe_after_consensus,
-    maybe_auto_scribe_after_verified_loop,
 )
 
 
-def _checkpoint_chat(
-    folder: Path | None,
-    messages: list[ChatMessage],
+from agent_lab.room.turn_flow_finalize import apply_post_turn_auto_scribe, emit_turn_complete_event
+from agent_lab.room.turn_flow_rounds import run_turn_agent_rounds
+from agent_lab.room.turn_flow_setup import apply_turn_profile_flags, prepare_clarifier_for_turn
+from agent_lab.room.turn_flow_support import (
+    _checkpoint_chat,
+    _emit_budget_status,
+    _emit_divergence_options,
+    _resolve_stage_routing,
+    _session_hard_cap_enabled,
+    after_agent_replies_checkpoint,
+)
+
+
+def _post_agent_turn_plan(
+    folder: Path,
     *,
     topic: str,
-) -> None:
-    if folder is None:
-        return
-    persist_chat_checkpoint(folder, messages, topic=topic)
-
-
-def _emit_divergence_options(
-    run_meta: dict[str, Any] | None,
-    replies: list[ChatMessage],
-    on_event: OnAgentEvent | None,
-    cancelled: bool,
-) -> None:
-    """Emit the divergence options list as the terminal artifact of a 발산 run.
-
-    No-op unless run_meta selects a divergence turn profile. Divergence stops
-    here: this emits the options for human selection and never triggers execute.
-    """
-    from agent_lab.divergence import format_divergence_options, is_divergence_profile
-
-    profile = str((run_meta or {}).get("turn_profile") or "")
-    if cancelled or not on_event or not replies or not is_divergence_profile(profile):
-        return
-    options = format_divergence_options(replies)
-    if options:
-        on_event("divergence_options", {"options": options, "count": len(options)})
-
-
-def _session_hard_cap_enabled() -> bool:
-    import os
-
-    return (os.getenv("AGENT_LAB_SESSION_HARD_CAP") or "").strip().lower() in ("1", "true", "yes", "on")
-
-
-def _emit_budget_status(run_meta: dict[str, Any] | None, on_event: OnAgentEvent | None) -> None:
-    """Surface cumulative session cost each turn and trip adaptive efficiency on over.
-
-    Always emits a budget_status event (cost is visible even with no budget set).
-    On the first over-transition, enables adaptive efficiency for subsequent turns
-    and announces it once; mission/loop circuit-breakers are untouched.
-    """
-    if not on_event or not isinstance(run_meta, dict):
-        return
-    from agent_lab.cost_ledger import session_budget_action
-
-    action = session_budget_action(run_meta)
-    run_meta["budget_status"] = {
-        "warn": action["warn"],
-        "over": action["over"],
-        "budget_set": action["budget_set"],
-        "cumulative": action["cumulative"],
-    }
-    on_event("budget_status", action)
-    if action.get("over") and not run_meta.get("adaptive_efficiency"):
-        run_meta["adaptive_efficiency"] = True
-        on_event(
-            "efficiency_auto_enabled",
-            {
-                "reason": "session_budget_over",
-                "cumulative": action.get("cumulative"),
-                "usd_limit": action.get("usd_limit"),
-                "token_limit": action.get("token_limit"),
-            },
-        )
-    if action.get("over") and _session_hard_cap_enabled() and not run_meta.get("budget_exhausted"):
-        run_meta["budget_exhausted"] = True
-        on_event("budget_exhausted", {"cumulative": action.get("cumulative")})
-
-
-def _resolve_stage_routing(
+    messages: list[ChatMessage],
     run_meta: dict[str, Any],
-    *,
-    turn_profile: str | None,
-    consensus_mode: bool,
-    folder: Path | None,
-) -> bool:
-    """Phase-aware single-vs-panel routing (no-op unless AGENT_LAB_STAGE_ROUTING is on).
+    plan_before: str,
+    mode: str,
+    synthesize: bool,
+    cancelled: bool,
+    active_agents: list[Any],
+    permissions: dict | None,
+    on_event: OnAgentEvent | None,
+    consensus_meta: dict[str, Any] | None,
+    human_turn_num: int,
+) -> tuple[str, bool, dict[str, Any], str | None]:
+    from agent_lab.room.turn_policy import TurnSignals, apply_turn_effects, turn_policy_enabled
 
-    Returns the resolved consensus_mode and records the observational RoutingDecisionLog.
-    OFF-parity: with the flag off the input consensus_mode is returned unchanged and nothing
-    is written.
-    """
-    from agent_lab.turn_modes import stage_routing_enabled
+    if turn_policy_enabled():
+        result = apply_turn_effects(
+            signals=TurnSignals.from_run_meta(
+                run_meta,
+                consensus_meta=consensus_meta,
+                legacy_synthesize_hint=synthesize,
+                cancelled=cancelled,
+            ),
+            folder=folder,
+            topic=topic,
+            messages=messages,
+            run_meta=run_meta,
+            plan_before=plan_before,
+            mode=mode,
+            legacy_synthesize=synthesize,
+            cancelled=cancelled,
+            active_agents=active_agents,
+            permissions=permissions,
+            on_event=on_event,
+            consensus_meta=consensus_meta,
+            human_turn=human_turn_num,
+        )
+        return result.plan_md, result.scribe_applied, result.run_meta, result.plan_trigger
 
-    if not stage_routing_enabled():
-        return consensus_mode
-    from agent_lab.mode_router import record_routing_decision, resolve_active_phase
-    from agent_lab.turn_modes import stage_route_consensus
-
-    resolved, decision = stage_route_consensus(
-        phase=resolve_active_phase(run_meta),
-        turn_profile=turn_profile,
-        consensus_mode=consensus_mode,
-        stage_routing=True,
+    plan_md, scribe_applied, run_meta = _plan_workflow_post_agent_turn(
+        folder,
+        topic=topic,
+        messages=messages,
+        run_meta=run_meta,
+        plan_before=plan_before,
+        mode=mode,
+        synthesize=synthesize,
+        cancelled=cancelled,
+        active_agents=active_agents,
+        permissions=permissions,
+        on_event=on_event,
     )
-    record_routing_decision(folder, decision)
-    return resolved
+    plan_trigger = _plan_trigger_for_turn(synthesize=synthesize, scribe_applied=scribe_applied)
+    return plan_md, scribe_applied, run_meta, plan_trigger
 
 
 def continue_room_round(
@@ -191,6 +154,9 @@ def continue_room_round(
     check_cancelled()
     if not folder.is_dir():
         raise FileNotFoundError(f"session not found: {folder}")
+    from agent_lab.cursor.session_metrics_mcp import ensure_session_metrics_mcp_overlays
+
+    ensure_session_metrics_mcp_overlays(folder)
     topic_file = folder / "topic.txt"
     if topic_file.is_file():
         topic = topic_file.read_text(encoding="utf-8").strip()
@@ -257,55 +223,45 @@ def continue_room_round(
         plan_workflow_skips_server_clarifier,
         should_enable_plan_workflow,
     )
+    from agent_lab.room.turn_policy import prepare_turn_policy_before_agent_round, turn_policy_enabled
 
-    if should_enable_plan_workflow(synthesize=synthesize):
+    if turn_policy_enabled():
+        run_meta, _tp_pre = prepare_turn_policy_before_agent_round(
+            folder,
+            run_meta,
+            synthesize=synthesize,
+            human_turn=human_turn_num,
+        )
+        plan_md, run_meta = _session_context(folder)
+        _bind_session_to_run_meta(run_meta, folder)
+    elif should_enable_plan_workflow(synthesize=synthesize):
         init_plan_workflow_on_plan_send(folder)
         plan_md, run_meta = _session_context(folder)
         _bind_session_to_run_meta(run_meta, folder)
     from agent_lab.trace_recorder import install_tracer
 
     on_event = install_tracer(folder, run_meta, on_event, human_turn=human_turn_num)
-    if turn_profile:
-        tp = (turn_profile or "analyze").strip().lower()
-        run_meta["turn_profile"] = "analyze" if tp == "discuss" else tp
-        if run_meta["turn_profile"] == "specialist":
-            from agent_lab.room.agent_capabilities import ensure_specialist_capabilities
-
-            if not run_meta.get("agent_capabilities_custom"):
-                ensure_specialist_capabilities(run_meta)
-            parallel_rounds = max(parallel_rounds, 2)
-        from agent_lab.plan.workflow import apply_legacy_verified_turn_profile
-
-        apply_legacy_verified_turn_profile(folder, run_meta, synthesize=synthesize)
-    if research_mode or run_meta.get("turn_profile") == "specialist":
-        run_meta["research_mode"] = True
-    from agent_lab.session.clarifier import (
-        build_clarifier_interview,
-        interview_prompts,
-        persist_clarifier_interview,
-        sync_clarifier_answers_from_inbox,
+    parallel_rounds = apply_turn_profile_flags(
+        run_meta,
+        turn_profile,
+        synthesize=synthesize,
+        folder=folder,
+        parallel_rounds=parallel_rounds,
+        research_mode=research_mode,
     )
+    from agent_lab.session.clarifier import sync_clarifier_answers_from_inbox
 
     sync_clarifier_answers_from_inbox(folder)
     skip_server_clarifier = plan_workflow_skips_server_clarifier(run_meta)
-    clarifier_interview = None
-    clarifier_questions: list[str] | None = None
-    if not skip_server_clarifier:
-        clarifier_interview = build_clarifier_interview(
-            body,
-            is_new_session=False,
-            human_message_count=human_turn_num,
-            plan_mode=synthesize,
-        )
-        if clarifier_interview:
-            persisted = persist_clarifier_interview(folder, clarifier_interview)
-            clarifier_interview = persisted.get("interview") or clarifier_interview
-        clarifier_questions = interview_prompts(clarifier_interview)
-        if clarifier_questions and on_event:
-            on_event(
-                "clarifier_prompt",
-                {"questions": clarifier_questions, "interview": clarifier_interview},
-            )
+    clarifier_questions = prepare_clarifier_for_turn(
+        folder,
+        body,
+        is_new_session=False,
+        human_turn_num=human_turn_num,
+        synthesize=synthesize,
+        skip_server_clarifier=skip_server_clarifier,
+        on_event=on_event,
+    )
     t0 = time.perf_counter()
     context_log: list[dict[str, Any]] = []
     _prepare_team_coordination_before_round(
@@ -317,8 +273,6 @@ def continue_room_round(
         consensus_mode=consensus_mode,
     )
     consensus_meta: dict[str, Any] | None = None
-    replies: list[ChatMessage] = []
-    cancelled = False
     plan_before = (folder / "plan.md").read_text(encoding="utf-8") if (folder / "plan.md").is_file() else ""
     delegate_replies = _try_delegate_turn(
         body=body,
@@ -331,56 +285,34 @@ def continue_room_round(
         clarifier_questions=clarifier_questions,
         human_turn_num=human_turn_num,
     )
-    try:
-        if clarifier_questions:
-            replies = []
-        elif delegate_replies is not None:
-            replies = delegate_replies
-            parallel_rounds = 1
-        elif consensus_mode:
-            room = __import__("agent_lab.room", fromlist=["run_consensus_agent_rounds"])
-            replies, consensus_meta = room.run_consensus_agent_rounds(
-                topic,
-                messages,
-                agents=agents,
-                on_event=on_event,
-                permissions=permissions,
-                human_turn_index=human_turn_index,
-                plan_md=plan_md,
-                run_meta=run_meta,
-                context_log=context_log,
-                efficiency_mode=efficiency_mode,
-            )
-            parallel_rounds = consensus_meta.get("rounds", 1) if consensus_meta else 1
-            if consensus_meta is not None and run_meta.get("_turn_category"):
-                consensus_meta.setdefault("category", run_meta["_turn_category"])
-        else:
-            room = __import__("agent_lab.room", fromlist=["run_agent_rounds"])
-            replies = room.run_agent_rounds(
-                topic,
-                messages,
-                agents=agents,
-                parallel_rounds=parallel_rounds,
-                on_event=on_event,
-                permissions=permissions,
-                review_mode=review_mode,
-                human_turn_index=human_turn_index,
-                plan_md=plan_md,
-                run_meta=run_meta,
-                context_log=context_log,
-                efficiency_mode=efficiency_mode,
-            )
-    except RoomRunCancelled:
-        cancelled = True
-    if cancelled or is_cancelled():
-        cancelled = True
-        if on_event:
-            on_event("run_cancelled", {"message": "답변 중지됨"})
+    replies, consensus_meta, parallel_rounds, cancelled = run_turn_agent_rounds(
+        topic=topic,
+        messages=messages,
+        agents=agents,
+        clarifier_questions=clarifier_questions,
+        delegate_replies=delegate_replies,
+        consensus_mode=consensus_mode,
+        parallel_rounds=parallel_rounds,
+        on_event=on_event,
+        permissions=permissions,
+        human_turn_index=human_turn_index,
+        plan_md=plan_md,
+        run_meta=run_meta,
+        context_log=context_log,
+        efficiency_mode=efficiency_mode,
+        review_mode=review_mode,
+    )
     messages.extend(replies)
-    _checkpoint_chat(folder, messages, topic=topic)
-    _emit_divergence_options(run_meta, replies, on_event, cancelled)
-    _emit_budget_status(run_meta, on_event)
-    plan_md, scribe_applied, run_meta = _plan_workflow_post_agent_turn(
+    after_agent_replies_checkpoint(
+        folder,
+        messages,
+        topic=topic,
+        run_meta=run_meta,
+        replies=replies,
+        on_event=on_event,
+        cancelled=cancelled,
+    )
+    plan_md, scribe_applied, run_meta, plan_trigger = _post_agent_turn_plan(
         folder,
         topic=topic,
         messages=messages,
@@ -392,9 +324,10 @@ def continue_room_round(
         active_agents=active_agents,
         permissions=permissions,
         on_event=on_event,
+        consensus_meta=consensus_meta,
+        human_turn_num=human_turn_num,
     )
     _checkpoint_chat(folder, messages, topic=topic)
-    plan_trigger = _plan_trigger_for_turn(synthesize=synthesize, scribe_applied=scribe_applied)
     latency_ms = int((time.perf_counter() - t0) * 1000)
     turn_summary = _agent_turn_summary(replies)
     turn_status = _turn_status_from_replies(
@@ -418,7 +351,7 @@ def continue_room_round(
             pass
     from agent_lab.room.tasks import team_lead
     from agent_lab.room.team_orchestration import resolve_send_receipt, turn_leads_map
-    from agent_lab.plan.workflow import is_plan_workflow_active, plan_workflow_complete_payload, plan_workflow_phase
+    from agent_lab.plan.workflow import is_plan_workflow_active, plan_workflow_phase
 
     plan_updated = bool(not cancelled and scribe_applied and plan_md and plan_md != plan_before)
     pw_phase = plan_workflow_phase(run_meta) if is_plan_workflow_active(run_meta) else None
@@ -431,6 +364,8 @@ def continue_room_round(
         plan_updated=plan_updated,
         status=turn_status,
         plan_workflow_phase=pw_phase,
+        turn_policy=run_meta.get("turn_policy") if isinstance(run_meta.get("turn_policy"), dict) else None,
+        turn_kind=str(run_meta.get("turn_kind") or "") or None,
     )
     communicate_meta = _communicate_meta_for_turn(
         replies,
@@ -501,6 +436,8 @@ def continue_room_round(
             communicate_meta=communicate_meta,
             category=run_meta.get("_turn_category"),
             roles=run_meta.get("_turn_roles") or None,
+            turn_policy=run_meta.get("turn_policy") if isinstance(run_meta.get("turn_policy"), dict) else None,
+            turn_kind=str(run_meta.get("turn_kind") or "") or None,
         ),
         run_meta_patch=_delegate_run_meta_patch(run_meta),
         clarifier_questions=clarifier_questions,
@@ -547,46 +484,26 @@ def continue_room_round(
             _goal_auto_continue_depth=1,
             _verified_loop_depth=_verified_loop_depth,
         )
-    auto_plan = maybe_auto_scribe_after_verified_loop(
+    plan_md = apply_post_turn_auto_scribe(
         folder,
         verified_result=verified_result,
+        consensus_meta=consensus_meta,
+        active_profile=active_profile,
+        synthesize=synthesize,
         cancelled=cancelled,
         on_event=on_event,
         permissions=permissions,
+        plan_md=plan_md,
     )
-    if auto_plan is not None:
-        plan_md = auto_plan
-    elif not normalize_verified_profile(active_profile):
-        auto_plan = maybe_auto_scribe_after_consensus(
-            folder,
-            consensus_meta=consensus_meta,
-            synthesize=synthesize,
-            cancelled=cancelled,
-            on_event=on_event,
-            permissions=permissions,
-        )
-        if auto_plan is not None:
-            plan_md = auto_plan
-    if on_event:
-        on_event(
-            "complete",
-            {
-                "session_id": folder.name,
-                "path": str(folder),
-                "cancelled": cancelled,
-                "status": turn_status,
-                "failed_agents": turn_summary["failed_agents"],
-                "succeeded_agents": turn_summary["succeeded_agents"],
-                "send_receipt": send_receipt_val,
-                "inbox_pending": _sse_inbox_pending(folder),
-                "turn_index": max(
-                    0,
-                    len((_read_run_meta(folder).get("turns") or [])) - 1,
-                ),
-                **_verified_loop_complete_payload(verified_result),
-                **plan_workflow_complete_payload(folder),
-            },
-        )
+    emit_turn_complete_event(
+        folder,
+        on_event=on_event,
+        cancelled=cancelled,
+        turn_status=turn_status,
+        turn_summary=turn_summary,
+        send_receipt_val=send_receipt_val,
+        verified_result=verified_result,
+    )
     return messages, plan_md
 
 
@@ -680,54 +597,44 @@ def run_room(
         plan_workflow_skips_server_clarifier,
         should_enable_plan_workflow,
     )
+    from agent_lab.room.turn_policy import prepare_turn_policy_before_agent_round, turn_policy_enabled
 
-    if folder is not None and should_enable_plan_workflow(synthesize=synthesize):
+    if folder is not None and turn_policy_enabled():
+        run_meta, _tp_pre = prepare_turn_policy_before_agent_round(
+            folder,
+            run_meta,
+            synthesize=synthesize,
+            human_turn=human_turn_num,
+        )
+        plan_md, run_meta = _session_context(folder)
+        _bind_session_to_run_meta(run_meta, folder)
+    elif folder is not None and should_enable_plan_workflow(synthesize=synthesize):
         init_plan_workflow_on_plan_send(folder)
         plan_md, run_meta = _session_context(folder)
         _bind_session_to_run_meta(run_meta, folder)
-    if turn_profile:
-        tp = (turn_profile or "analyze").strip().lower()
-        run_meta["turn_profile"] = "analyze" if tp == "discuss" else tp
-        if run_meta["turn_profile"] == "specialist":
-            from agent_lab.room.agent_capabilities import ensure_specialist_capabilities
-
-            if not run_meta.get("agent_capabilities_custom"):
-                ensure_specialist_capabilities(run_meta)
-            parallel_rounds = max(parallel_rounds, 2)
-        from agent_lab.plan.workflow import apply_legacy_verified_turn_profile
-
-        apply_legacy_verified_turn_profile(folder, run_meta, synthesize=synthesize)
-    if research_mode or run_meta.get("turn_profile") == "specialist":
-        run_meta["research_mode"] = True
-    from agent_lab.session.clarifier import (
-        build_clarifier_interview,
-        interview_prompts,
-        persist_clarifier_interview,
-        sync_clarifier_answers_from_inbox,
+    parallel_rounds = apply_turn_profile_flags(
+        run_meta,
+        turn_profile,
+        synthesize=synthesize,
+        folder=folder,
+        parallel_rounds=parallel_rounds,
+        research_mode=research_mode,
     )
+    from agent_lab.session.clarifier import sync_clarifier_answers_from_inbox
 
     is_new = folder is None or not (folder / "chat.jsonl").is_file()
     if folder is not None:
         sync_clarifier_answers_from_inbox(folder)
     skip_server_clarifier = plan_workflow_skips_server_clarifier(run_meta)
-    clarifier_interview = None
-    clarifier_questions: list[str] | None = None
-    if not skip_server_clarifier:
-        clarifier_interview = build_clarifier_interview(
-            body,
-            is_new_session=is_new,
-            human_message_count=human_turn_num,
-            plan_mode=synthesize,
-        )
-        if clarifier_interview and folder is not None:
-            persisted = persist_clarifier_interview(folder, clarifier_interview)
-            clarifier_interview = persisted.get("interview") or clarifier_interview
-        clarifier_questions = interview_prompts(clarifier_interview)
-        if clarifier_questions and on_event:
-            on_event(
-                "clarifier_prompt",
-                {"questions": clarifier_questions, "interview": clarifier_interview},
-            )
+    clarifier_questions = prepare_clarifier_for_turn(
+        folder,
+        body,
+        is_new_session=is_new,
+        human_turn_num=human_turn_num,
+        synthesize=synthesize,
+        skip_server_clarifier=skip_server_clarifier,
+        on_event=on_event,
+    )
     t0 = time.perf_counter()
     context_log: list[dict[str, Any]] = []
     _prepare_team_coordination_before_round(
@@ -739,8 +646,6 @@ def run_room(
         consensus_mode=consensus_mode,
     )
     consensus_meta: dict[str, Any] | None = None
-    replies: list[ChatMessage] = []
-    cancelled = False
     delegate_replies = None
     if folder is not None:
         delegate_replies = _try_delegate_turn(
@@ -754,60 +659,38 @@ def run_room(
             clarifier_questions=clarifier_questions,
             human_turn_num=human_turn_num,
         )
-    try:
-        if clarifier_questions:
-            replies = []
-        elif delegate_replies is not None:
-            replies = delegate_replies
-            parallel_rounds = 1
-        elif consensus_mode:
-            room = __import__("agent_lab.room", fromlist=["run_consensus_agent_rounds"])
-            replies, consensus_meta = room.run_consensus_agent_rounds(
-                topic,
-                messages,
-                agents=agents,
-                on_event=on_event,
-                permissions=permissions,
-                human_turn_index=max(0, human_turn_index),
-                plan_md=plan_md,
-                run_meta=run_meta,
-                context_log=context_log,
-                efficiency_mode=efficiency_mode,
-            )
-            parallel_rounds = consensus_meta.get("rounds", 1) if consensus_meta else 1
-            if consensus_meta is not None and run_meta.get("_turn_category"):
-                consensus_meta.setdefault("category", run_meta["_turn_category"])
-        else:
-            room = __import__("agent_lab.room", fromlist=["run_agent_rounds"])
-            replies = room.run_agent_rounds(
-                topic,
-                messages,
-                agents=agents,
-                parallel_rounds=parallel_rounds,
-                on_event=on_event,
-                permissions=permissions,
-                review_mode=review_mode,
-                human_turn_index=max(0, human_turn_index),
-                plan_md=plan_md,
-                run_meta=run_meta,
-                context_log=context_log,
-                efficiency_mode=efficiency_mode,
-            )
-    except RoomRunCancelled:
-        cancelled = True
-    if cancelled or is_cancelled():
-        cancelled = True
-        if on_event:
-            on_event("run_cancelled", {"message": "답변 중지됨"})
+    replies, consensus_meta, parallel_rounds, cancelled = run_turn_agent_rounds(
+        topic=topic,
+        messages=messages,
+        agents=agents,
+        clarifier_questions=clarifier_questions,
+        delegate_replies=delegate_replies,
+        consensus_mode=consensus_mode,
+        parallel_rounds=parallel_rounds,
+        on_event=on_event,
+        permissions=permissions,
+        human_turn_index=max(0, human_turn_index),
+        plan_md=plan_md,
+        run_meta=run_meta,
+        context_log=context_log,
+        efficiency_mode=efficiency_mode,
+        review_mode=review_mode,
+    )
     messages.extend(replies)
-    _checkpoint_chat(folder, messages, topic=topic)
-    _emit_divergence_options(run_meta, replies, on_event, cancelled)
-    _emit_budget_status(run_meta, on_event)
+    after_agent_replies_checkpoint(
+        folder,
+        messages,
+        topic=topic,
+        run_meta=run_meta,
+        replies=replies,
+        on_event=on_event,
+        cancelled=cancelled,
+    )
 
     plan_before = _read_plan_before(folder)
     plan_md = plan_before
     if folder is not None:
-        plan_md, scribe_applied, run_meta = _plan_workflow_post_agent_turn(
+        plan_md, scribe_applied, run_meta, plan_trigger = _post_agent_turn_plan(
             folder,
             topic=topic,
             messages=messages,
@@ -819,12 +702,15 @@ def run_room(
             active_agents=active_agents,
             permissions=permissions,
             on_event=on_event,
+            consensus_meta=consensus_meta,
+            human_turn_num=human_turn_num,
         )
         if synthesize and scribe_applied and not plan_md:
             plan_md = "## Plan synthesis failed\n\nunknown error"
         _checkpoint_chat(folder, messages, topic=topic)
     else:
         scribe_applied = _should_scribe_plan_after_turn(synthesize=synthesize, cancelled=cancelled)
+        plan_trigger = None
         if scribe_applied:
             plan_md = _apply_scribe_after_turn(
                 topic=topic,
@@ -839,9 +725,11 @@ def run_room(
                 session_folder=folder,
                 plan_trigger="plan_turn" if synthesize else "auto_turn",
             )
+            plan_trigger = "plan_turn" if synthesize else "auto_turn"
             if synthesize and not plan_md:
                 plan_md = "## Plan synthesis failed\n\nunknown error"
-    plan_trigger = _plan_trigger_for_turn(synthesize=synthesize, scribe_applied=scribe_applied)
+        else:
+            plan_trigger = _plan_trigger_for_turn(synthesize=synthesize, scribe_applied=False)
 
     latency_ms = int((time.perf_counter() - t0) * 1000)
     turn_summary = _agent_turn_summary(replies)
@@ -859,7 +747,7 @@ def run_room(
     )
     from agent_lab.room.tasks import team_lead
     from agent_lab.room.team_orchestration import resolve_send_receipt, turn_leads_map
-    from agent_lab.plan.workflow import is_plan_workflow_active, plan_workflow_complete_payload, plan_workflow_phase
+    from agent_lab.plan.workflow import is_plan_workflow_active, plan_workflow_phase
 
     peer = _peer_metrics_for_messages(messages)
     pw_phase = plan_workflow_phase(run_meta) if is_plan_workflow_active(run_meta) else None
@@ -871,6 +759,8 @@ def run_room(
         plan_updated=bool(scribe_applied and not cancelled and plan_md and plan_md != plan_before),
         status=turn_status,
         plan_workflow_phase=pw_phase,
+        turn_policy=run_meta.get("turn_policy") if isinstance(run_meta.get("turn_policy"), dict) else None,
+        turn_kind=str(run_meta.get("turn_kind") or "") or None,
     )
     communicate_meta = _communicate_meta_for_turn(
         replies,
@@ -915,6 +805,8 @@ def run_room(
         communicate_meta=communicate_meta,
         category=run_meta.get("_turn_category"),
         roles=run_meta.get("_turn_roles") or None,
+        turn_policy=run_meta.get("turn_policy") if isinstance(run_meta.get("turn_policy"), dict) else None,
+        turn_kind=str(run_meta.get("turn_kind") or "") or None,
     )
 
     from agent_lab.goal_loop import (
@@ -939,6 +831,9 @@ def run_room(
     # after ⌘. (issue E).
     verified_continue = None if (cancelled or is_cancelled()) else _verified_loop_continue_message(verified_result)
 
+    from agent_lab.plan.workflow import init_plan_workflow_on_plan_send, should_enable_plan_workflow
+    from agent_lab.room.turn_policy import turn_policy_enabled
+
     if folder is None:
         folder = save_room_session(
             topic,
@@ -949,7 +844,7 @@ def run_room(
             turn_meta=turn_meta,
             clarifier_questions=clarifier_questions,
         )
-        if should_enable_plan_workflow(synthesize=synthesize):
+        if not turn_policy_enabled() and should_enable_plan_workflow(synthesize=synthesize):
             init_plan_workflow_on_plan_send(folder)
     else:
         existing_meta: dict[str, Any] = {}
@@ -1009,44 +904,24 @@ def run_room(
             _goal_auto_continue_depth=1,
         )
         return folder, auto_messages, auto_plan_md
-    auto_plan = maybe_auto_scribe_after_verified_loop(
+    plan_md = apply_post_turn_auto_scribe(
         folder,
         verified_result=verified_result,
+        consensus_meta=consensus_meta,
+        active_profile=active_profile,
+        synthesize=synthesize,
         cancelled=cancelled,
         on_event=on_event,
         permissions=permissions,
+        plan_md=plan_md,
     )
-    if auto_plan is not None:
-        plan_md = auto_plan
-    elif not normalize_verified_profile(active_profile):
-        auto_plan = maybe_auto_scribe_after_consensus(
-            folder,
-            consensus_meta=consensus_meta,
-            synthesize=synthesize,
-            cancelled=cancelled,
-            on_event=on_event,
-            permissions=permissions,
-        )
-        if auto_plan is not None:
-            plan_md = auto_plan
-    if on_event:
-        on_event(
-            "complete",
-            {
-                "session_id": folder.name,
-                "path": str(folder),
-                "cancelled": cancelled,
-                "status": turn_status,
-                "failed_agents": turn_summary["failed_agents"],
-                "succeeded_agents": turn_summary["succeeded_agents"],
-                "send_receipt": send_receipt_val,
-                "inbox_pending": _sse_inbox_pending(folder),
-                "turn_index": max(
-                    0,
-                    len((_read_run_meta(folder).get("turns") or [])) - 1,
-                ),
-                **_verified_loop_complete_payload(verified_result),
-                **plan_workflow_complete_payload(folder),
-            },
-        )
+    emit_turn_complete_event(
+        folder,
+        on_event=on_event,
+        cancelled=cancelled,
+        turn_status=turn_status,
+        turn_summary=turn_summary,
+        send_receipt_val=send_receipt_val,
+        verified_result=verified_result,
+    )
     return folder, messages, plan_md

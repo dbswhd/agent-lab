@@ -26,7 +26,7 @@ export const COMPOSE_MODE_OPTIONS: {
   {
     id: "discuss",
     label: "토론",
-    title: "에이전트 토론 — 턴 종료 시 plan.md 자동 갱신",
+    title: "Plan toggle OFF — Scribe skip, read-only peer overlay",
   },
   {
     id: "plan",

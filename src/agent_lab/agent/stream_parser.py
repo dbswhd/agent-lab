@@ -204,7 +204,7 @@ def parse_codex_json_event(event: Mapping[str, Any]) -> list[StreamEvent]:
             )
         return events
 
-    if typ in ("item.completed", "item.updated"):
+    if typ in ("item.started", "item.updated", "item.completed"):
         text_events = _codex_item_text_events(item)
         if text_events:
             return text_events

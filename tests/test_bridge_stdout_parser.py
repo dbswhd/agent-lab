@@ -72,6 +72,19 @@ def test_cursor_assistant_message_step_streams_text():
     assert "".join(e[1]["text"] for e in events if e[0] == "text") == "Cursor says hi"
 
 
+def test_codex_item_started_streams_partial_message():
+    event = {
+        "type": "item.started",
+        "item": {"type": "agent_message", "text": "Early codex"},
+    }
+    from agent_lab.agent.stream_parser import parse_codex_json_event
+
+    events = parse_codex_json_event(event)
+    assert events
+    assert all(e[0] == "text" for e in events)
+    assert "".join(e[1]["text"] for e in events if e[0] == "text") == "Early codex"
+
+
 def test_codex_item_updated_streams_partial_message():
     event = {
         "type": "item.updated",

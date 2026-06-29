@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  emergenceHintLine,
   FALLBACK_ROOM_PRESETS,
   presetDisplayLabel,
   presetHintLine,
@@ -18,6 +19,17 @@ describe("roomPresets", () => {
 
   it("returns localized hint lines", () => {
     expect(presetHintLine(FALLBACK_ROOM_PRESETS[0], "ko")).toContain("에이전트 1명");
-    expect(presetHintLine(FALLBACK_ROOM_PRESETS[1], "en")).toContain("consensus");
+    expect(presetHintLine(FALLBACK_ROOM_PRESETS[1], "en")).toContain("Emergence");
+  });
+
+  it("shows recombination skip in emergence hint", () => {
+    const hint = emergenceHintLine(
+      {
+        room_preset: "supervisor",
+        consensus: { recombination: { skipped: "efficiency" } },
+      },
+      "ko",
+    );
+    expect(hint).toContain("재조합");
   });
 });

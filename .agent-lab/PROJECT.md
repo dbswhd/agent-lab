@@ -8,10 +8,10 @@ AI 개발 작업을 계획·승인·격리 실행·검증하는 Human-in-the-loo
 **불변:** 합의=Room · 격리=worktree · 완료=Oracle verified · Human gate 유지
 
 ## Room (2026-06)
-- **Preset:** fast (quick, plan OFF) · supervisor (loop, plan + consensus ON)
-- **에이전트:** cursor, codex, claude, kimi_work (+ kimi/local 폴백). `/model`로 composition
-- **Discuss 턴:** plan 갱신 없음 — Codex/Claude/Kimi Work read-only, `[PROPOSED:]`만. 모드 메타 멘트 금지
-- **Kimi Work:** daimon bridge, session conversation 매핑, Loop envelope peer
+- **Preset:** fast (`quick`, Plan 잠금 OFF) · supervisor (`loop`, Plan 잠금 ON, consensus ON)
+- **Plan toggle:** Composer checkbox — OFF=Scribe skip/read-only overlay, ON=plan.md 갱신 — [TURN-MODES.md](../docs/TURN-MODES.md)
+- **에이전트:** cursor, codex, claude, kimi_work (+ kimi/local). `/model`로 composition
+- **Kimi Work:** daimon bridge, Loop envelope peer
 
 ## 핵심 모듈
 - `src/agent_lab` — Python Room·execute 코어

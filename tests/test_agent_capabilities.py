@@ -60,6 +60,6 @@ def test_cursor_tool_rules_in_bundle():
 
 def test_permission_preamble_peer_agents_return_empty_string() -> None:
     perms = {"_discuss_cwd": "/tmp/ws"}
-    assert permission_preamble(perms, "kimi_work") == ""
+    assert "daimon" in permission_preamble(perms, "kimi_work").lower()
     assert permission_preamble(perms, "kimi") == ""
     assert permission_preamble(perms, "local") == ""

@@ -552,6 +552,7 @@ async def create_room_run(
                     if not disconnected:
                         disconnected = True
                         _cancel_on_client_disconnect()
+                    break
                 try:
                     ev = await asyncio.wait_for(event_q.get(), timeout=0.25)
                 except asyncio.TimeoutError:
@@ -562,6 +563,12 @@ async def create_room_run(
                     result["complete_event"] = ev
                     continue
                 yield sse(ev)
+            if disconnected:
+                try:
+                    await asyncio.wait_for(worker, timeout=8.0)
+                except asyncio.TimeoutError:
+                    pass
+                return
             await worker
             if result.get("cancelled") or is_cancelled(run_session_id):
                 complete = result.get("complete_event") or {}

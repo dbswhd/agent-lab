@@ -11,11 +11,13 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(_ROOT / "src"))
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
 
 from dotenv import load_dotenv
 
 from agent_lab.app_config import apply_config_env
-from agent_lab.live_execute_spike import (
+from scripts.soak.live_execute_spike import (
     format_report_lines,
     run_live_worktree_merge_spike,
 )

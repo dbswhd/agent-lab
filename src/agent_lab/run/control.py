@@ -387,6 +387,11 @@ def maybe_release_orphaned_run_lock() -> bool:
     if _run_active == 0:
         force_reset_run_lock()
         return True
+    meta = _read_lock_meta()
+    holder_pid = int(meta.get("pid") or 0)
+    if holder_pid and not _pid_alive(holder_pid):
+        force_reset_run_lock()
+        return True
     return maybe_release_stale_run_lock(max_age_sec=90)
 
 
@@ -403,6 +408,7 @@ def try_begin_run(
 ) -> bool:
     """Acquire the global single-flight run lock (worker thread only)."""
     global _run_active, _run_started_at
+    maybe_release_orphaned_run_lock()
     maybe_release_stale_run_lock()
     if not _run_lock.acquire(blocking=False):
         return False

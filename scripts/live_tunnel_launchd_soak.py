@@ -87,7 +87,7 @@ def main() -> int:
         return 1
 
     _load_env()
-    from agent_lab.live_tunnel_launchd_soak import (
+    from scripts.soak.live_tunnel_launchd_soak import (
         format_tunnel_soak_lines,
         run_live_tunnel_launchd_soak,
     )

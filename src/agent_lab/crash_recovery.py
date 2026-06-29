@@ -259,9 +259,9 @@ def reconcile_crashed_merges(*, sessions_root: Path | None = None) -> dict[str, 
         "sessions": [],
     }
     if sessions_root is None:
-        from agent_lab.session import SESSIONS_DIR
+        from agent_lab.session.paths import active_sessions_dir
 
-        sessions_root = SESSIONS_DIR
+        sessions_root = active_sessions_dir()
     if not sessions_root.is_dir():
         return summary
     for folder in sorted(sessions_root.iterdir()):

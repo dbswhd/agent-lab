@@ -475,7 +475,7 @@ def _run_codex(
     )
     register_child_process(proc)
     if on_activity and room_turn:
-        on_activity("Codex exec 프로세스 시작")
+        on_activity("Codex CLI 실행 중…")
     assert proc.stdin is not None
     proc.stdin.write(prompt)
     proc.stdin.close()
@@ -721,6 +721,15 @@ def invoke(
             Path(session_folder),
             **inbox_mcp_build_kwargs(permissions),
         )
+    if session_folder is not None:
+        from agent_lab.cursor.session_metrics_mcp import (
+            build_codex_session_metrics_config_args,
+            session_metrics_mcp_enabled,
+        )
+
+        if session_metrics_mcp_enabled():
+            metrics_args = build_codex_session_metrics_config_args(Path(session_folder))
+            config_overrides = (config_overrides or []) + metrics_args
     if execute_plugins and session_folder is not None:
         from agent_lab.session.plugin_runtime import merge_codex_execute_config_overrides
 

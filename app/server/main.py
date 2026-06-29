@@ -40,6 +40,13 @@ def _api_startup() -> None:
     except Exception as exc:
         write_boot_line(f"default room models apply failed: {exc}")
     try:
+        from agent_lab.run.control import maybe_release_orphaned_run_lock
+
+        if maybe_release_orphaned_run_lock():
+            write_boot_line("startup: released orphaned run lock")
+    except Exception as exc:
+        write_boot_line(f"startup: run lock cleanup failed: {exc}")
+    try:
         from agent_lab.api_diagnostics import build_diagnostics_payload
 
         payload = build_diagnostics_payload()

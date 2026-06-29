@@ -43,14 +43,19 @@ function parseActionRef(
   return { kind, index };
 }
 
-function hasQuestionOptions(item: HumanInboxItem): boolean {
-  return (item.options?.length ?? 0) > 0;
-}
-
 function inboxAgent(item: HumanInboxItem): AgentRole {
   const src = (item.source ?? "cursor").toLowerCase();
   if (src === "codex" || src === "claude" || src === "cursor") return src;
+  // Harvest/orchestrator items are synthesis, not a coding agent — show the
+  // neutral scribe mark instead of falling back to the cursor brand logo.
+  if (src === "orchestrator") return "scribe";
   return "cursor";
+}
+
+/** "Action needed" already implies these are unresolved — strip the noise
+ *  prefix some harvest prompts carry so the real question leads. */
+function cleanSubject(text: string): string {
+  return text.replace(/^\s*미결\s*[:：]?\s*/, "").trim() || text;
 }
 
 function isDiscussHarvest(item: HumanInboxItem): boolean {
@@ -117,6 +122,10 @@ type InboxRowProps = {
   setFreeformDraft: React.Dispatch<
     React.SetStateAction<Record<string, string>>
   >;
+  selectedDraft: Record<string, string>;
+  setSelectedDraft: React.Dispatch<
+    React.SetStateAction<Record<string, string>>
+  >;
   onQuestion: (item: HumanInboxItem, optionId: string) => void;
   onFreeform: (item: HumanInboxItem) => void;
   onBuild: (item: HumanInboxItem, decision: "go" | "defer" | "reject") => void;
@@ -134,6 +143,8 @@ function InboxRow({
   busyId,
   freeformDraft,
   setFreeformDraft,
+  selectedDraft,
+  setSelectedDraft,
   onQuestion,
   onFreeform,
   onBuild,
@@ -144,10 +155,12 @@ function InboxRow({
   readOnly = false,
 }: InboxRowProps) {
   const ko = locale === "ko";
-  const subject =
+  const rawSubject =
     item.kind === "build" ? (item.summary ?? item.prompt) : item.prompt;
+  const subject =
+    item.kind === "question" ? cleanSubject(rawSubject) : rawSubject;
   const body =
-    item.kind === "build" && item.prompt !== subject ? item.prompt : null;
+    item.kind === "build" && item.prompt !== rawSubject ? item.prompt : null;
   const planStale =
     item.kind === "build" &&
     item.plan_revision &&
@@ -160,6 +173,37 @@ function InboxRow({
   const trigger = triggerBadge(item.trigger, ko);
   // "Why this gate fired" — demoted from competing badges to one quiet sub-label.
   const why = [trigger, forkRow ? "FORK" : null].filter(Boolean).join(" · ");
+
+  // Question answering — select an option, or type your own; submit confirms.
+  const options = item.options ?? [];
+  const draft = freeformDraft[item.id] ?? "";
+  const selected = selectedDraft[item.id] ?? null;
+  const canSubmit = !busy && (draft.trim().length > 0 || selected !== null);
+  const pickOption = (optionId: string) => {
+    setSelectedDraft((prev) => ({ ...prev, [item.id]: optionId }));
+    // Selecting a choice and typing a custom answer are mutually exclusive.
+    setFreeformDraft((prev) => {
+      if (!prev[item.id]) return prev;
+      const next = { ...prev };
+      delete next[item.id];
+      return next;
+    });
+  };
+  const editDraft = (value: string) => {
+    setFreeformDraft((prev) => ({ ...prev, [item.id]: value }));
+    if (value && selected !== null) {
+      setSelectedDraft((prev) => {
+        const next = { ...prev };
+        delete next[item.id];
+        return next;
+      });
+    }
+  };
+  const submitAnswer = () => {
+    if (!canSubmit) return;
+    if (draft.trim().length > 0) void onFreeform(item);
+    else if (selected !== null) void onQuestion(item, selected);
+  };
 
   return (
     <div
@@ -181,12 +225,18 @@ function InboxRow({
           {why ? <span className="inbox-row__why">{why}</span> : null}
         </div>
         <span className="inbox-row__badges">
-          <span
-            className={`inbox-row__kind-badge inbox-row__kind-badge--${item.kind}`}
-          >
-            {kindLabel}
-          </span>
-          {sourceBadge ? (
+          {/* "Question" is implied by the answer affordance + panel header, so
+              the kind badge only earns its place for build / skill rows. */}
+          {item.kind !== "question" ? (
+            <span
+              className={`inbox-row__kind-badge inbox-row__kind-badge--${item.kind}`}
+            >
+              {kindLabel}
+            </span>
+          ) : null}
+          {/* Provenance + timestamp are noise while answering — kept only on
+              build / skill rows where the human is approving prior work. */}
+          {item.kind !== "question" && sourceBadge ? (
             <span
               className={[
                 "inbox-row__source-badge",
@@ -202,9 +252,11 @@ function InboxRow({
             </span>
           ) : null}
         </span>
-        <span className="inbox-row__time">
-          {formatInboxTime(item.created_at)}
-        </span>
+        {item.kind !== "question" ? (
+          <span className="inbox-row__time">
+            {formatInboxTime(item.created_at)}
+          </span>
+        ) : null}
       </div>
       {body ? <p className="inbox-row__body">{body}</p> : null}
       {item.action_ref ? (
@@ -217,6 +269,7 @@ function InboxRow({
       ) : null}
       {item.refs && item.refs.length > 0 ? (
         <p className="inbox-row__body inbox-row__meta inbox-row__refs">
+          <span className="inbox-row__refs-label">{ko ? "관련" : "Refs"}</span>
           {item.refs.map((ref) =>
             onRefClick ? (
               <button
@@ -240,59 +293,116 @@ function InboxRow({
           {ko ? "Composer에서 처리" : "Handle in composer"}
         </p>
       ) : item.kind === "question" ? (
-        <div className="inbox-row__options">
-          {(item.options ?? []).map((opt, index) => {
-            const optionId = opt.id ?? opt.value ?? opt.label;
-            const optionKey = `${item.id}:${optionId}:${index}`;
-            return (
-              <div key={optionKey} className="inbox-row__option-block">
-                <button
-                  type="button"
-                  className="btn btn--sm"
-                  disabled={busy}
-                  onClick={() => void onQuestion(item, optionId)}
-                >
-                  {opt.label}
-                </button>
-                {opt.description ? (
-                  <p className="inbox-row__option-desc">{opt.description}</p>
-                ) : null}
-              </div>
-            );
-          })}
-          {!hasQuestionOptions(item) ? (
-            <>
-              <textarea
-                className="inbox-row__input"
-                rows={2}
-                placeholder={ko ? "방향을 입력…" : "Reply…"}
-                value={freeformDraft[item.id] ?? ""}
-                disabled={busy}
-                onChange={(e) =>
-                  setFreeformDraft((prev) => ({
-                    ...prev,
-                    [item.id]: e.target.value,
-                  }))
-                }
-              />
+        <div
+          className="inbox-row__answer"
+          onKeyDown={(e) => {
+            if (e.key === "Escape" && !busy) {
+              e.preventDefault();
+              void onDefer(item);
+            }
+          }}
+        >
+          {options.length > 0 ? (
+            <ul className="inbox-choices" role="listbox" aria-label={subject}>
+              {options.map((opt, index) => {
+                const optionId = opt.id ?? opt.value ?? opt.label;
+                const optionKey = `${item.id}:${optionId}:${index}`;
+                const isSelected = selected === optionId;
+                return (
+                  <li key={optionKey} className="inbox-choices__item">
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={isSelected}
+                      className={[
+                        "inbox-choice",
+                        isSelected ? "inbox-choice--selected" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      disabled={busy}
+                      onClick={() => pickOption(optionId)}
+                    >
+                      <span className="inbox-choice__index" aria-hidden>
+                        {index < 9 ? index + 1 : "•"}
+                      </span>
+                      <span className="inbox-choice__body">
+                        <span className="inbox-choice__label">
+                          {opt.label}
+                          {opt.recommended ? (
+                            <span className="inbox-choice__rec">
+                              {ko ? "추천" : "Recommended"}
+                            </span>
+                          ) : null}
+                        </span>
+                        {opt.description ? (
+                          <span className="inbox-choice__desc">
+                            {opt.description}
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className="inbox-choice__check" aria-hidden>
+                        ✓
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
+          <textarea
+            className="inbox-row__input"
+            rows={options.length > 0 ? 1 : 2}
+            aria-label={ko ? "직접 답변 입력" : "Type your own answer"}
+            placeholder={
+              options.length > 0
+                ? ko
+                  ? "기타 — 직접 입력…"
+                  : "Other — type your own…"
+                : ko
+                  ? "여기에 답변을 입력하세요"
+                  : "Type your answer…"
+            }
+            value={draft}
+            disabled={busy}
+            onChange={(e) => editDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                e.preventDefault();
+                submitAnswer();
+              }
+            }}
+          />
+          <div className="inbox-row__footer">
+            <span className="inbox-row__footer-actions">
               <button
                 type="button"
-                className="btn btn--sm btn--ok"
-                disabled={busy || !(freeformDraft[item.id] ?? "").trim()}
-                onClick={() => void onFreeform(item)}
+                className="btn btn--sm btn--ghost"
+                disabled={busy}
+                onClick={() => void onDefer(item)}
               >
-                {ko ? "답하기" : "Send"}
+                {ko ? "건너뛰기" : "Skip"}
+                <kbd className="inbox-row__kbd">Esc</kbd>
               </button>
-            </>
-          ) : null}
-          <button
-            type="button"
-            className="btn btn--sm btn--ghost"
-            disabled={busy}
-            onClick={() => void onDefer(item)}
-          >
-            {ko ? "건너뛰기" : "Skip"}
-          </button>
+              <button
+                type="button"
+                className="btn btn--sm btn--primary"
+                disabled={!canSubmit}
+                aria-disabled={!canSubmit}
+                title={
+                  canSubmit
+                    ? undefined
+                    : ko
+                      ? "선택지를 고르거나 답변을 입력하세요"
+                      : "Pick an option or type an answer"
+                }
+                onClick={submitAnswer}
+              >
+                {ko ? "제출" : "Submit"}
+                <kbd className="inbox-row__kbd">⌘↵</kbd>
+              </button>
+            </span>
+          </div>
         </div>
       ) : item.kind === "skill_draft" ? (
         <div className="inbox-row__options inbox-row__options--build">
@@ -369,6 +479,9 @@ export function HumanInboxPanel({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [freeformDraft, setFreeformDraft] = useState<Record<string, string>>(
+    {},
+  );
+  const [selectedDraft, setSelectedDraft] = useState<Record<string, string>>(
     {},
   );
 
@@ -538,6 +651,8 @@ export function HumanInboxPanel({
         planRevision={planRevision}
         freeformDraft={freeformDraft}
         setFreeformDraft={setFreeformDraft}
+        selectedDraft={selectedDraft}
+        setSelectedDraft={setSelectedDraft}
         onQuestion={handleQuestion}
         onFreeform={handleFreeform}
         onBuild={handleBuild}
@@ -590,6 +705,8 @@ export function HumanInboxPanel({
     busyId,
     freeformDraft,
     setFreeformDraft,
+    selectedDraft,
+    setSelectedDraft,
     onQuestion: handleQuestion,
     onFreeform: handleFreeform,
     onBuild: handleBuild,
@@ -680,6 +797,10 @@ type InspectorInboxProps = {
   setFreeformDraft: React.Dispatch<
     React.SetStateAction<Record<string, string>>
   >;
+  selectedDraft: Record<string, string>;
+  setSelectedDraft: React.Dispatch<
+    React.SetStateAction<Record<string, string>>
+  >;
   onQuestion: (item: HumanInboxItem, optionId: string) => void;
   onFreeform: (item: HumanInboxItem) => void;
   onBuild: (item: HumanInboxItem, decision: "go" | "defer" | "reject") => void;
@@ -699,6 +820,8 @@ function InspectorInboxView({
   planRevision,
   freeformDraft,
   setFreeformDraft,
+  selectedDraft,
+  setSelectedDraft,
   onQuestion,
   onFreeform,
   onBuild,
@@ -771,6 +894,8 @@ function InspectorInboxView({
               busyId={busyId}
               freeformDraft={freeformDraft}
               setFreeformDraft={setFreeformDraft}
+              selectedDraft={selectedDraft}
+              setSelectedDraft={setSelectedDraft}
               onQuestion={onQuestion}
               onFreeform={onFreeform}
               onBuild={onBuild}

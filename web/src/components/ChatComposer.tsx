@@ -1,6 +1,5 @@
 import { useMemo, useRef, useState, useEffect, type ReactNode } from "react";
 import { ComposerMentionMenu } from "./ComposerMentionMenu";
-import { ComposerPlanToggle } from "./ComposerPlanToggle";
 import { ComposerAgentStack } from "./ComposerAgentStack";
 import { presetDisplayLabel, presetHintLine } from "../utils/roomPresets";
 import { formatAgentModelName } from "../utils/roomModels";
@@ -39,10 +38,6 @@ type Props = {
   turnProfile?: ComposerTurnProfile;
   /** @deprecated Use room presets instead of quick / team / loop picker. */
   onTurnProfileChange?: (profile: ComposerTurnProfile) => void;
-  planAfterSend?: boolean;
-  onPlanAfterSendChange?: (on: boolean) => void;
-  /** Lock Plan toggle (e.g. HUMAN_PENDING — approve/reject first). */
-  planToggleDisabled?: boolean;
   executeDisabled?: boolean;
   pendingExecuteCount?: number;
   /** @deprecated Plan stale notices live on the Work tab. */
@@ -109,9 +104,6 @@ export function ChatComposer({
   className,
   turnProfile: _turnProfile,
   onTurnProfileChange: _onTurnProfileChange,
-  planAfterSend = false,
-  onPlanAfterSendChange,
-  planToggleDisabled,
   executeDisabled: _executeDisabled,
   pendingExecuteCount: _pendingExecuteCount,
   objectionNotice,
@@ -242,13 +234,6 @@ export function ChatComposer({
       >
         <div className="composer-prompt-head__row">
           <ComposerAgentStack agents={activeModels} max={4} size={32} />
-          {onPlanAfterSendChange ? (
-            <ComposerPlanToggle
-              checked={planAfterSend}
-              onChange={onPlanAfterSendChange}
-              disabled={inputLocked || planToggleDisabled}
-            />
-          ) : null}
           <div className="turn-seg composer-preset-seg composer-preset-seg--end">
             {roomPresets.map((p) => (
               <button
@@ -317,9 +302,9 @@ export function ChatComposer({
             <span className="mode-chip__hint">
               모든 턴 후 plan.md 자동 갱신
             </span>
-          ) : showModeChipHint && planAfterSend ? (
+          ) : showModeChipHint && modeChipVariant === "plan" ? (
             <span className="mode-chip__hint">
-              전송 시 plan.md 갱신 (plan 탭에서 끌 수 있음)
+              Supervisor — plan.md는 TurnPolicy로 갱신
             </span>
           ) : null}
         </div>

@@ -1278,13 +1278,19 @@ export function pickFolderViaDesktopApi(defaultPath?: string | null) {
   );
 }
 
-export function fetchSessions(archived = false, limit?: number, offset?: number) {
+export function fetchSessions(
+  archived = false,
+  limit?: number,
+  offset?: number,
+) {
   const params = new URLSearchParams();
   if (archived) params.set("archived", "true");
   if (limit !== undefined) params.set("limit", String(limit));
   if (offset !== undefined && offset > 0) params.set("offset", String(offset));
   const q = params.size > 0 ? `?${params}` : "";
-  return json<{ sessions: SessionSummary[]; total: number }>(`/api/sessions${q}`);
+  return json<{ sessions: SessionSummary[]; total: number }>(
+    `/api/sessions${q}`,
+  );
 }
 
 export function archiveSession(id: string) {
@@ -1301,10 +1307,15 @@ export function unarchiveSession(id: string) {
   );
 }
 
-export function fetchSession(id: string, opts?: { chatLimit?: number; chatOffset?: number }) {
+export function fetchSession(
+  id: string,
+  opts?: { chatLimit?: number; chatOffset?: number },
+) {
   const params = new URLSearchParams();
-  if (opts?.chatLimit !== undefined) params.set("chat_limit", String(opts.chatLimit));
-  if (opts?.chatOffset !== undefined && opts.chatOffset > 0) params.set("chat_offset", String(opts.chatOffset));
+  if (opts?.chatLimit !== undefined)
+    params.set("chat_limit", String(opts.chatLimit));
+  if (opts?.chatOffset !== undefined && opts.chatOffset > 0)
+    params.set("chat_offset", String(opts.chatOffset));
   const q = params.size > 0 ? `?${params}` : "";
   return json<SessionDetail>(`/api/sessions/${encodeURIComponent(id)}${q}`);
 }
@@ -1711,7 +1722,13 @@ function parseRoomRunHttpError(text: string): string {
             reason?: string;
             agents?: Array<string | { id?: string; reason?: string }>;
           };
+      message?: string;
+      error?: string;
     };
+    if (body.error === "api_offline") {
+      const msg = typeof body.message === "string" ? body.message.trim() : "";
+      return msg || "API(8765) reconnecting — retry shortly";
+    }
     const detail = body.detail;
     if (detail && typeof detail === "object" && Array.isArray(detail.agents)) {
       const sharedReason =
@@ -1905,14 +1922,13 @@ export async function runRoom(
   onEvent: (data: Record<string, unknown>) => void,
   opts?: RunRoomOptions,
 ): Promise<void> {
-  const mode = opts?.mode ?? (opts?.synthesize ? "plan" : "discuss");
-  const synthesize = opts?.synthesize ?? mode === "plan";
+  const synthesizeOnly = opts?.synthesizeOnly ?? false;
   const form = new FormData();
   form.append("topic", topic);
   form.append("agents", JSON.stringify(agents));
-  form.append("mode", mode);
-  form.append("synthesize", String(synthesize));
-  form.append("synthesize_only", String(opts?.synthesizeOnly ?? false));
+  form.append("mode", synthesizeOnly ? "plan" : "discuss");
+  form.append("synthesize", synthesizeOnly ? "true" : "false");
+  form.append("synthesize_only", String(synthesizeOnly));
   form.append("agent_rounds", String(opts?.agentRounds ?? 1));
   form.append("review_mode", String(opts?.reviewMode ?? false));
   form.append("consensus_mode", String(opts?.consensusMode ?? false));
@@ -1959,7 +1975,8 @@ export async function runRoom(
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(parseRoomRunHttpError(text));
+    const parsed = parseRoomRunHttpError(text);
+    throw new Error(parsed);
   }
   const sawTerminal = await consumeSse(res, onEvent);
   if (!sawTerminal) {
@@ -2508,6 +2525,8 @@ export type HumanInboxOption = {
   value?: string;
   label: string;
   description?: string;
+  /** When true, the option is surfaced as the suggested default. */
+  recommended?: boolean;
 };
 
 export type HumanInboxItem = {
@@ -2832,4 +2851,3 @@ export function authRunWsUrl(runId: string): string {
     : `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`;
   return `${wsBase}/api/auth/runs/${encodeURIComponent(runId)}`;
 }
-

@@ -15,13 +15,15 @@ def _read(path: str) -> str:
 def test_room_send_keeps_transcript_visible_during_session_bind():
     app = _read("web/src/App.tsx")
     room = _read("web/src/components/RoomChat.tsx")
+    transcript = _read("web/src/components/RoomTranscriptPanel.tsx")
 
     assert "detail != null" in app
     assert "boundFromComposer" in _read("web/src/hooks/useWorkspaceTabs.ts")
-    assert "loading &&" in room
-    assert "!isNew &&" in room
-    assert "!running &&" in room
-    assert "visibleMessages.length === 0" in room
+    assert "loading &&" in transcript
+    assert "!isNew &&" in transcript
+    assert "!running &&" in transcript
+    assert "visibleMessages.length === 0" in transcript
+    assert "RoomTranscriptPanel" in room
 
 
 def test_session_rows_are_keyboard_controls_and_searchable():

@@ -157,6 +157,13 @@ def _plan_intent(
             return "plan_only" if wants_plan else "none"
         case "loop":
             if not wants_plan:
+                try:
+                    from agent_lab.room.turn_policy import turn_policy_enabled
+
+                    if turn_policy_enabled():
+                        return "loop"
+                except ImportError:
+                    pass
                 raise ModeContractError("loop requires plan")
             return "loop"
 

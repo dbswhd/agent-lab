@@ -9,6 +9,12 @@ ChatVisibility = Literal["human", "peer"]
 
 PEER_HEADER_ECHO = re.compile(r"^\[이번 턴\s*·\s*동료 발화\]", re.I)
 
+_SDK_DEBUG_LINE = re.compile(
+    r"(?:prepare_turn_policy|assign_task_owners|TurnPolicyEngine\.resolve)",
+    re.I,
+)
+_SDK_BOILERPLATE = re.compile(r"^\s*I am ready to act\b", re.I)
+
 DEFAULT_VISIBILITY: ChatVisibility = "human"
 
 
@@ -51,6 +57,24 @@ def strip_peer_header_echo(content: str) -> str:
         return content
     rest = text.lstrip()[match.end() :].lstrip(" :·\t").lstrip()
     return rest if rest.strip() else content
+
+
+def strip_sdk_internal_monologue(content: str) -> str:
+    """Remove Cursor/SDK debug monologue lines leaked into human transcript."""
+    text = content or ""
+    if not text.strip():
+        return content
+    kept: list[str] = []
+    for line in text.splitlines():
+        if _SDK_DEBUG_LINE.search(line):
+            continue
+        if _SDK_BOILERPLATE.match(line.strip()):
+            continue
+        kept.append(line)
+    result = "\n".join(kept).strip()
+    if not result and _SDK_BOILERPLATE.search(text):
+        return ""
+    return result if result else content
 
 
 def filter_messages_for_human(

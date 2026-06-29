@@ -220,6 +220,7 @@ def _build_agent_options(
     perms = normalize_agent_permissions(permissions)
     cwd_str = str(cwd) if cwd is not None else _resolve_cwd(perms)
     mcp_servers = None
+    merged: dict[str, Any] = {}
     if inbox_mcp and session_folder is not None:
         from agent_lab.cursor.inbox_mcp import (
             build_inbox_mcp_servers,
@@ -229,10 +230,22 @@ def _build_agent_options(
         if mount_inbox_mcp_when_requested(inbox_mcp):
             from agent_lab.cursor.inbox_mcp import inbox_mcp_build_kwargs
 
-            mcp_servers = build_inbox_mcp_servers(
-                Path(session_folder),
-                **inbox_mcp_build_kwargs(perms),
+            merged.update(
+                build_inbox_mcp_servers(
+                    Path(session_folder),
+                    **inbox_mcp_build_kwargs(perms),
+                )
             )
+    if session_folder is not None:
+        from agent_lab.cursor.session_metrics_mcp import (
+            build_session_metrics_mcp_servers,
+            session_metrics_mcp_enabled,
+        )
+
+        if session_metrics_mcp_enabled():
+            merged.update(build_session_metrics_mcp_servers(Path(session_folder)))
+    if merged:
+        mcp_servers = merged
 
     agent_opts = AgentOptions(
         # None lets the SDK fall back to the cursor-agent OAuth session.

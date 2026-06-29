@@ -72,6 +72,34 @@ function upsertReasoning(
   ].slice(-24) as TurnItem[];
 }
 
+function upsertStatusActivity(
+  items: TurnItem[],
+  text: string,
+): TurnItem[] | null {
+  const prefixes = [
+    "Codex 대기 중…",
+    "Codex 응답 대기…",
+    "Codex exec",
+    "Codex turn",
+    "Codex OAuth",
+    "Codex proxy",
+    "Codex stderr",
+  ];
+  if (!prefixes.some((prefix) => text.startsWith(prefix))) {
+    return null;
+  }
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    const item = items[index];
+    if (item?.kind !== "activity") continue;
+    if (!prefixes.some((prefix) => item.text.startsWith(prefix))) continue;
+    if (item.text === text) return items;
+    const next = [...items];
+    next[index] = { ...item, text, status: "running" };
+    return next;
+  }
+  return null;
+}
+
 export function reduceTurnItems(
   current: readonly TurnItem[] | undefined,
   event: TurnItemEvent,
@@ -90,6 +118,10 @@ export function reduceTurnItems(
         : normalizeActivity(event.text);
     if (normalized.kind === "reasoning_summary") {
       return upsertReasoning(items, normalized.text, now);
+    }
+    const upserted = upsertStatusActivity(items, normalized.text);
+    if (upserted) {
+      return upserted.slice(-24) as TurnItem[];
     }
     const last = items.at(-1);
     if (

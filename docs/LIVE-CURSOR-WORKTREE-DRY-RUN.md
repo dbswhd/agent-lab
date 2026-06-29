@@ -75,5 +75,5 @@ Agent may or may not edit `src/spike.txt`; Go/No-Go is **mechanical isolation**,
 ## Related
 
 - Design: `docs/EXECUTE-WORKTREE-REFORM.md` §11 M0
-- Code: `src/agent_lab/live_execute_spike.py`, `scripts/live_cursor_worktree_dry_run.py`
+- Code: `scripts/soak/live_execute_spike.py` (shim: `src/agent_lab/live_execute_spike.py`), `scripts/live_cursor_worktree_dry_run.py`
 - Tier C merge: `docs/LIVE-MERGE-OPERATOR.md`, `scripts/live_cursor_worktree_merge_run.py`

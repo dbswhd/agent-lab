@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AgentHealthRow } from "../api/client";
-import { buildRecoveryItems, type RecoveryItemsInput } from "./recoveryItems";
+import { buildRecoveryItems, classifySendFailure, type RecoveryItemsInput } from "./recoveryItems";
 import {
   createRecoveryAttempt,
   resolveRecoveryAttempt,
@@ -32,12 +32,43 @@ function input(overrides: Partial<RecoveryItemsInput>): RecoveryItemsInput {
 }
 
 describe("buildRecoveryItems", () => {
+  it("classifies API validation errors separately from transport", () => {
+    const classified = classifySendFailure("loop requires plan");
+    expect(classified.kind).toBe("api_validation");
+    expect(classified.source).toBe("run");
+
+    const items = buildRecoveryItems(
+      input({
+        failure: {
+          source: "run",
+          kind: "api_validation",
+          message: "loop requires plan",
+        },
+      }),
+    );
+    expect(items[0]?.title).toBe("요청 형식이 서버에서 거부되었습니다.");
+  });
+
+  it("classifies run lock separately", () => {
+    const items = buildRecoveryItems(
+      input({
+        failure: {
+          source: "run",
+          kind: "run_lock",
+          message: "run lock orphan (133s)",
+        },
+      }),
+    );
+    expect(items[0]?.kind).toBe("run_lock");
+    expect(items[0]?.primaryAction.id).toBe("release_lock");
+  });
+
   it("does not describe a general API failure as an incomplete turn", () => {
     const items = buildRecoveryItems(
       input({ failure: { source: "transport", message: "HTTP 502" } }),
     );
     expect(items[0]?.kind).toBe("run_failed");
-    expect(items[0]?.title).toBe("요청을 완료하지 못했습니다.");
+    expect(items[0]?.title).toBe("Agent Lab API에 연결할 수 없습니다.");
     expect(items[0]?.title).not.toContain("턴");
   });
 

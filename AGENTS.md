@@ -11,17 +11,25 @@
 | **Claude** | 맹점·리스크·설명·Oracle(선택) |
 | **Kimi Work** | daimon peer — 레포 검증·대안·Loop envelope |
 
-프롬프트: `src/agent_lab/agents/prompts.py` · 상세: `docs/05-room-agent-roles.md` · UI: `docs/USER-GUIDE.md` §1.2 · §6
+프롬프트: `src/agent_lab/agents/prompts.py` · 턴 모드 SSOT: [docs/TURN-MODES.md](./docs/TURN-MODES.md) · 역할: [docs/05-room-agent-roles.md](./docs/05-room-agent-roles.md)
 
-## 턴 모드 (에이전트 payload)
-- **discuss** — plan 갱신 OFF. Codex/Claude/Kimi Work read-only overlay. `[PROPOSED:]`로 실행 제안만.
-- **plan** — Scribe가 `plan.md` 갱신. execute 섹션은 Human gate 이후.
-- constraints에 정책이 이미 있음 — **「discuss/plan 모드입니다」 같은 메타 선언 금지**, 바로 답변.
+## 턴 제어 (현재 UI — 2026-06)
+
+Composer는 **두 축**만 노출한다. 레거시 segmented picker (`discuss` / `analyze` / `review` / `free` / ♾️)는 **제거됨**.
+
+| 축 | UI | 값 |
+|----|-----|-----|
+| **Room preset** | 빠른 / 감독 | `fast` → `quick` · `supervisor` → `loop` |
+| **Plan toggle** | Composer **Plan** 체크 | OFF → API `discuss` · ON → API `plan` |
+
+**Plan OFF:** Scribe skip, Codex/Claude/Kimi read-only overlay, `[PROPOSED:]`만.  
+**Plan ON:** Scribe가 `plan.md` 갱신; execute는 Human gate 이후.  
+constraints에 정책이 이미 있음 — **「discuss/plan 모드입니다」 메타 선언 금지**.
 
 ## Room preset · Inbox
-- **fast** (`quick`) — 리드 1명, plan OFF; orchestrator harvest 스킵, **team lead MCP**(`ask_human` / `propose_build`) 유지 — [docs/05-room-agent-roles.md §Fast preset](./docs/05-room-agent-roles.md)
-- **MCP-first Inbox** — Human gate SSOT = agent MCP; orchestrator harvest default **off** (`AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST=0`) — [docs/MCP-FIRST-INBOX.md](./docs/MCP-FIRST-INBOX.md)
-- **supervisor** (`loop`) — 전원, consensus ON, plan ON
+- **fast** — 1 lead, Plan **잠금 OFF**, orchestrator harvest 스킵; **team lead MCP** 유지 — [05-room-agent-roles.md §Fast preset](./docs/05-room-agent-roles.md)
+- **supervisor** — team + consensus, Plan **잠금 ON**
+- **MCP-first Inbox** — Human gate SSOT = agent MCP; harvest default **off** — [MCP-FIRST-INBOX.md](./docs/MCP-FIRST-INBOX.md)
 
 ## 환경
 - 개발: `make dev` · CI: `make ci` · 테스트: `make test-fast`

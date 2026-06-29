@@ -89,9 +89,27 @@ def resolve_send_receipt(
     plan_updated: bool = False,
     status: str = "completed",
     plan_workflow_phase: str | None = None,
+    turn_policy: dict[str, Any] | None = None,
+    turn_kind: str | None = None,
 ) -> str:
     """Turn outcome label for UI receipts and run.json turn snapshots."""
     if status == "cancelled":
+        return "discuss_saved"
+    from agent_lab.room.turn_policy import turn_policy_enabled
+
+    if turn_policy_enabled() and isinstance(turn_policy, dict):
+        trigger = str(turn_policy.get("scribe_trigger") or "")
+        if consensus_mode and consensus and consensus.get("status") == "reached":
+            return "consensus_done"
+        from agent_lab.plan.workflow import plan_workflow_send_receipt
+
+        pw_receipt = plan_workflow_send_receipt(plan_workflow_phase)
+        if pw_receipt:
+            return pw_receipt
+        if turn_kind == "plan_side_effect" or trigger == "synthesize_only":
+            return "plan_updated"
+        if turn_policy.get("run_scribe") or plan_updated:
+            return "plan_updated"
         return "discuss_saved"
     if consensus_mode and consensus and consensus.get("status") == "reached":
         return "consensus_done"

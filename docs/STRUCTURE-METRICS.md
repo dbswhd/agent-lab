@@ -118,7 +118,7 @@ Tracked TSX files ≥500 lines (top entries):
 | 703 | `web/src/components/RoomTaskBar.tsx` |
 | 595 | `web/src/components/SettingsPage.tsx` |
 
-Frontend extraction is a **separate wave** from Python package moves.
+Frontend extraction is a **separate wave** from Python package moves. Active execute plan: [STRUCTURE-REFACTOR-WAVE.md](STRUCTURE-REFACTOR-WAVE.md).
 
 ## Related
 

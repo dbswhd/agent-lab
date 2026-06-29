@@ -107,6 +107,7 @@ fn parse_pid_list(text: &str) -> Vec<u32> {
 }
 
 /// Parse `netstat -ano -p tcp` output for LISTENING sockets on `port`.
+#[cfg(target_os = "windows")]
 pub fn parse_netstat_listen_pids(text: &str, port: u16) -> Vec<u32> {
     let port_token = format!(":{port}");
     let mut pids = Vec::new();

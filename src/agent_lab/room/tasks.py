@@ -681,10 +681,14 @@ def sync_tasks_after_turn(
 ) -> dict[str, Any]:
     """Run after each room turn write: team lead default + task harvest."""
     from agent_lab.room.team_orchestration import is_discuss_only_turn
+    from agent_lab.room.turn_policy import is_discuss_only_for_run_meta, turn_policy_enabled
 
     ensure_team_lead(run_meta)
     from_proposed = sync_tasks_from_messages(run_meta, messages, human_turn=human_turn)
-    discuss_only = is_discuss_only_turn(mode=mode, synthesize=synthesize, consensus_mode=consensus_mode)
+    if turn_policy_enabled():
+        discuss_only = is_discuss_only_for_run_meta(run_meta)
+    else:
+        discuss_only = is_discuss_only_turn(mode=mode, synthesize=synthesize, consensus_mode=consensus_mode)
     from_state = sync_tasks_from_turn_state(run_meta) if not discuss_only else []
     harvest_task_endorsements(
         run_meta,

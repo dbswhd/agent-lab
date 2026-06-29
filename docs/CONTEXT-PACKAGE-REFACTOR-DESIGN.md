@@ -9,7 +9,7 @@ Moved `context_*.py` → `src/agent_lab/context/`.
 | `context_layers.py` | `context/layers.py` |
 | `context_meta.py` | `context/meta.py` |
 
-Note: `room/context.py` is Room-specific turn assembly — unchanged.
+Note: `room/context/` package (wave B) — constraints · peer_digest · plan_excerpt · message_trim; repo tree stays in `repo_tree_context.py`. See [STRUCTURE-REFACTOR-WAVE.md](STRUCTURE-REFACTOR-WAVE.md).
 
 ```bash
 make audit-context-imports

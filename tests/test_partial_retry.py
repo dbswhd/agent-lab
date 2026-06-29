@@ -164,15 +164,17 @@ def test_retried_agent_context_includes_successful_peer(tmp_path):
 
 
 @pytest.mark.integration
-def test_retry_agents_endpoint(tmp_path):
+def test_retry_agents_endpoint(tmp_path, monkeypatch):
     pytest.importorskip("fastapi")
     from fastapi.testclient import TestClient
 
-    from agent_lab.session import SESSIONS_DIR
+    import agent_lab.session as session_mod
+
+    monkeypatch.setattr(session_mod, "SESSIONS_DIR", tmp_path)
     from app.server.main import app
 
     sid = f"test-partial-retry-{uuid.uuid4().hex[:8]}"
-    folder = SESSIONS_DIR / sid
+    folder = tmp_path / sid
     _write_session(folder)
     try:
         client = TestClient(app)

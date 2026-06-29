@@ -662,4 +662,7 @@ def dispatch_run_meta_patch(run_meta: dict[str, Any]) -> dict[str, Any] | None:
         patch["hook_runs"] = list(run_meta.get("hook_runs") or [])
     if run_meta.get("agent_hooks_manifest"):
         patch["agent_hooks_manifest"] = dict(run_meta["agent_hooks_manifest"])
+    for key in ("turn_policy", "turn_kind", "room_preset"):
+        if run_meta.get(key) is not None:
+            patch[key] = run_meta[key]
     return patch or None

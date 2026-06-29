@@ -421,34 +421,37 @@ async function spawnManagedApi() {
     console.log(`[agent-lab] Starting API → http://127.0.0.1:${API_PORT}`);
     process.env.AGENT_LAB_SKIP_TAURI_API = "1";
 
+    const useReload = process.env.AGENT_LAB_API_RELOAD === "1";
+    const reloadArgs = useReload
+      ? [
+          "--reload",
+          "--reload-delay",
+          "1",
+          "--reload-dir",
+          "app",
+          "--reload-dir",
+          "src/agent_lab",
+          // Do not watch tests/ — bulk test edits reload API mid-boot (health hang on :8765).
+          "--reload-exclude",
+          "*/.agent-lab/*",
+          "--reload-exclude",
+          "*.egg-info/*",
+          "--reload-exclude",
+          "*/__pycache__/*",
+        ]
+      : [];
+
     child = spawn(
       PYTHON,
       [
         "-m",
         "uvicorn",
         "app.server.main:app",
-        "--reload",
-        "--reload-delay",
-        "1",
+        ...reloadArgs,
         "--host",
         "127.0.0.1",
         "--port",
         String(API_PORT),
-        "--reload-dir",
-        "app",
-        "--reload-dir",
-        "src/agent_lab",
-        "--reload-dir",
-        "tests",
-        // Volatile runtime paths must not trigger reloads (loop-probe cache,
-        // build metadata, bytecode). Watching bare `src` caught src/.agent-lab/
-        // cache writes → reload storm → watchdog false "hung" → restart thrash.
-        "--reload-exclude",
-        "*/.agent-lab/*",
-        "--reload-exclude",
-        "*.egg-info/*",
-        "--reload-exclude",
-        "*/__pycache__/*",
       ],
       {
         cwd: ROOT,

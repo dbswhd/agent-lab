@@ -1,25 +1,15 @@
-import {
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   AgentOption,
-  PlanActionItem,
   PlanWorkflowRecord,
   RoomPreset,
   SessionDetail,
 } from "../api/client";
 import {
-  applySessionTemplate,
   cancelRoomRun,
   fetchRoomPresets,
   pauseMissionLoop,
   fetchCommands,
-  fetchSessionInbox,
   postMissionDiscussRecovery,
   matchSlashCommand,
   releaseRoomRunLock,
@@ -44,11 +34,7 @@ import {
 import { useInboxState } from "../hooks/useInboxState";
 import { useGoalLoop } from "../hooks/useGoalLoop";
 import { MacAlert } from "./MacAlert";
-import {
-  mergeAgentReplyBody,
-  dedupeStreamAppend,
-  replayLiveLogToMessages,
-} from "../utils/liveRoomLog";
+import { replayLiveLogToMessages } from "../utils/liveRoomLog";
 import {
   mergePersistedChatWithLiveLog,
   preferRicherChatMessages,
@@ -69,20 +55,17 @@ import {
   clearBackgroundRun,
   finishSessionRun,
   finalizeCancelledTyping,
-  findAgentTurnMessage,
   getRunningSessionIds,
   getSessionRunSnapshot,
   hydrateSessionMessages,
   isSessionRunActive,
   markBackgroundRun,
-  migratePendingSessionRun,
   resetTurnRun,
   resolveRunSessionKey,
   updateSessionRun,
   type LiveMsg,
 } from "../run/runSessionRegistry";
-import { patchTurnMessages } from "../run/runSessionSsePatch";
-import { reduceTurnItems } from "../utils/turnItems";
+import { createRoomRunEventHandler } from "../hooks/useRoomSseHandler";
 import { latestDraftMessageIdsByAgent } from "../utils/draftResponsePrefs";
 import { stripAgentReplyBody } from "../utils/agentResponseCard";
 import { deriveRunningAgentSlots } from "../run/runningAgents";
@@ -101,8 +84,7 @@ import {
   setShowPeerChannel,
   TRANSCRIPT_VIEW_PREFS_EVENT,
 } from "../utils/transcriptViewPrefs";
-import { TranscriptViewOptions } from "./TranscriptViewOptions";
-import { ChatBubble, ReplyWaitingBubble } from "./ChatBubble";
+import { RoomTranscriptPanel } from "./RoomTranscriptPanel";
 import { HumanInboxPanel } from "./HumanInboxPanel";
 import { DiscussRecoveryBanner } from "./DiscussRecoveryBanner";
 import { ComposerDecisionSurface } from "./ComposerDecisionSurface";
@@ -125,19 +107,12 @@ import {
   roomPermissions,
 } from "../utils/agentPermissions";
 import {
-  agreementPlanSyncedLabel,
   agreementPlanSyncFailedLabel,
   consensusDryRunNotifyBody,
   consensusDryRunNotifyTitle,
   latestPendingConsensusAgreement,
 } from "../utils/consensusAgreement";
 import { dispatchNotification } from "../utils/pushNotification";
-import {
-  formatDispatchActivityLine,
-  formatEnvelopeActivityLine,
-  formatHookActivityLine,
-  isExecutionRelevantHook,
-} from "../utils/hookActivity";
 import {
   notificationActionForKind,
   subscribeNotificationActions,
@@ -151,12 +126,8 @@ import { activateInboxRef } from "../utils/inboxRefNavigation";
 import {
   isPlanWorkflowPhaseBanner,
   isPlanWorkflowComposerHint,
-  planWorkflowPhaseTranscriptLine,
 } from "../utils/planWorkflowView";
-import {
-  consensusIncompleteLabel,
-  roundDividerLabel,
-} from "../utils/roundTopology";
+import { roundDividerLabel } from "../utils/roundTopology";
 import {
   resolveTurnSend,
   setTurnProfile,
@@ -168,7 +139,11 @@ import {
   readSessionRoomModels,
 } from "../utils/modelSlash";
 import { fetchRoomModes, loopCostHintLine } from "../utils/roomModes";
-import { presetHintLine, resolveRoomPresets } from "../utils/roomPresets";
+import {
+  presetHintLine,
+  resolveRoomPresets,
+  emergenceHintLine,
+} from "../utils/roomPresets";
 import { WorkspaceFilesPanel } from "./WorkspaceFilesPanel";
 import { PreviewPanel } from "./PreviewPanel";
 import { TerminalPanel } from "./TerminalPanel";
@@ -178,17 +153,11 @@ import { ExecuteQueueBar } from "./ExecuteQueueBar";
 import { ConsensusDryRunGateBar } from "./ConsensusDryRunGateBar";
 import type { ConsensusDryRunProposal } from "./ConsensusDryRunGateBar";
 import {
-  getPlanAfterSend,
-  getPlanAfterSendForSession,
-  setPlanAfterSendForSession,
   setTurnStrategy,
   getTurnStrategy,
   type ComposeMode,
 } from "../utils/composeMode";
-import {
-  isPlanWorkflowAwaitingApproval,
-  suggestPlanToggleForWorkflow,
-} from "../utils/planComposerSync";
+import { isPlanWorkflowAwaitingApproval } from "../utils/planComposerSync";
 import { usePlanExecute } from "../hooks/usePlanExecute";
 import { useLocale } from "../i18n/useLocale";
 import { type StoredPlanAction } from "../utils/planExecuteHistory";
@@ -234,6 +203,7 @@ import { ReadinessComposerBar } from "./ReadinessComposerBar";
 import { fetchReadiness, type ReadinessResponse } from "../api/client";
 import {
   buildRecoveryItems,
+  classifySendFailure,
   type RecoveryActionId,
   type RecoveryFailure,
   type RecoveryItem,
@@ -257,7 +227,6 @@ import {
   DEMO_PLAN_STALE_NOTICE,
   DEMO_PREFLIGHT_AGENTS,
 } from "../utils/tweaksDemoFixtures";
-import { ScrollToBottomButton } from "./ScrollToBottomButton";
 import { useMessagesScroll } from "../hooks/useMessagesScroll";
 import { WorkbenchPanel } from "./WorkbenchPanel";
 import { WorkspaceChrome } from "./WorkspaceChrome";
@@ -428,7 +397,6 @@ export function RoomChat({
   const [permOpen, setPermOpen] = useState(false);
   const [turnProfile, setTurnProfileState] =
     useState<ComposerTurnProfile>(getTurnStrategy);
-  const [planAfterSend, setPlanAfterSendState] = useState(getPlanAfterSend);
   const [loopMaxCostTier, setLoopMaxCostTier] = useState<string | null>(null);
   const [roomPreset, setRoomPreset] = useState<string | null>(null);
   const [availablePresets, setAvailablePresets] = useState<RoomPreset[]>([]);
@@ -437,7 +405,11 @@ export function RoomChat({
     () => resolveRoomPresets(availablePresets),
     [availablePresets],
   );
-  const composeMode: ComposeMode = planAfterSend ? "plan" : "discuss";
+  const planComposeActive = useMemo(
+    () => roomPreset === "supervisor" || turnProfile === "loop",
+    [roomPreset, turnProfile],
+  );
+  const composeMode: ComposeMode = planComposeActive ? "plan" : "discuss";
   const [researchMode] = useState(() => {
     try {
       return localStorage.getItem("agent-lab-research-mode") === "1";
@@ -478,14 +450,10 @@ export function RoomChat({
             setTurnProfileState("quick");
             setTurnStrategy("quick");
             setTurnProfile("quick");
-            setPlanAfterSendState(false);
-            setPlanAfterSendForSession(sessionId, false);
           } else if (def === "supervisor") {
             setTurnProfileState("loop");
             setTurnStrategy("loop");
             setTurnProfile("loop");
-            setPlanAfterSendState(true);
-            setPlanAfterSendForSession(sessionId, true);
           }
         }
       })
@@ -525,13 +493,20 @@ export function RoomChat({
   const composerModeVariant = useMemo((): "discuss" | "plan" | "consensus" => {
     const profile = resolveTurnSend(turnProfile, selected);
     if (profile.consensusMode) return "consensus";
-    if (planAfterSend) return "plan";
+    if (planComposeActive) return "plan";
     return "discuss";
-  }, [turnProfile, selected, planAfterSend]);
+  }, [turnProfile, selected, planComposeActive]);
   const composerPresetHint = useMemo(() => {
     const activePreset = resolvedRoomPresets.find((p) => p.id === roomPreset);
     return presetHintLine(activePreset, locale);
   }, [resolvedRoomPresets, roomPreset, locale]);
+  const composerEmergenceHint = useMemo(() => {
+    if (roomPreset !== "supervisor" && turnProfile !== "loop") return null;
+    return emergenceHintLine(
+      session?.run as Record<string, unknown> | undefined,
+      locale,
+    );
+  }, [roomPreset, turnProfile, session?.run, locale]);
   const composerCostHint = useMemo(() => {
     if (roomPreset !== "supervisor" && turnProfile !== "loop") return null;
     return loopCostHintLine(
@@ -554,7 +529,6 @@ export function RoomChat({
     text: string;
     files: PendingFile[];
     turnProfile: ComposerTurnProfile;
-    planAfterSend: boolean;
   } | null>(null);
   const lastPlainSendTextRef = useRef<string | null>(null);
   const [pendingRecoveryAttempt, setPendingRecoveryAttempt] =
@@ -836,23 +810,6 @@ export function RoomChat({
     setTurnProfileState(profile);
     setTurnStrategy(profile);
     setTurnProfile(profile);
-    if (profile === "loop" && !planAfterSend) {
-      setPlanAfterSendState(true);
-      setPlanAfterSendForSession(sessionId ?? activeSessionIdRef.current, true);
-    }
-  }
-
-  function changePlanAfterSend(on: boolean) {
-    if (roomPreset === "supervisor" || roomPreset === "fast") {
-      return;
-    }
-    if (turnProfile === "loop" && !on) {
-      setPlanAfterSendState(true);
-      setPlanAfterSendForSession(sessionId ?? activeSessionIdRef.current, true);
-      return;
-    }
-    setPlanAfterSendState(on);
-    setPlanAfterSendForSession(sessionId ?? activeSessionIdRef.current, on);
   }
 
   const visiblePresets = resolvedRoomPresets;
@@ -860,79 +817,12 @@ export function RoomChat({
   function selectRoomPreset(id: string) {
     const next = roomPreset === id ? null : id;
     setRoomPreset(next);
-    const sid = sessionId ?? activeSessionIdRef.current;
     if (next === "fast") {
       changeTurnProfile("quick");
-      setPlanAfterSendState(false);
-      setPlanAfterSendForSession(sid, false);
     } else if (next === "supervisor") {
       changeTurnProfile("loop");
-      setPlanAfterSendState(true);
-      setPlanAfterSendForSession(sid, true);
     }
   }
-
-  const planToggleSyncedRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (roomPreset === "fast") {
-      if (planAfterSend) {
-        setPlanAfterSendState(false);
-        setPlanAfterSendForSession(
-          sessionId ?? activeSessionIdRef.current,
-          false,
-        );
-      }
-      return;
-    }
-    if (roomPreset === "supervisor") {
-      const wf = session?.run?.plan_workflow as PlanWorkflowRecord | undefined;
-      if (!isPlanWorkflowAwaitingApproval(wf) && !planAfterSend) {
-        setPlanAfterSendState(true);
-        setPlanAfterSendForSession(
-          sessionId ?? activeSessionIdRef.current,
-          true,
-        );
-      }
-      return;
-    }
-    if (!sessionId) {
-      if (turnProfile === "loop" && !planAfterSend) {
-        setPlanAfterSendState(true);
-        setPlanAfterSendForSession(activeSessionIdRef.current, true);
-        return;
-      }
-      setPlanAfterSendState(getPlanAfterSend());
-      return;
-    }
-    const wf = session?.run?.plan_workflow as PlanWorkflowRecord | undefined;
-    if (isPlanWorkflowAwaitingApproval(wf)) {
-      setPlanAfterSendState(false);
-      setPlanAfterSendForSession(sessionId, false);
-      return;
-    }
-    if (turnProfile === "loop" && !planAfterSend) {
-      setPlanAfterSendState(true);
-      setPlanAfterSendForSession(sessionId, true);
-      return;
-    }
-    const syncKey = `${sessionId}:${(wf?.phase ?? "none").toUpperCase()}:${wf?.enabled ? "1" : "0"}`;
-    if (planToggleSyncedRef.current === syncKey) return;
-    planToggleSyncedRef.current = syncKey;
-    const suggested = suggestPlanToggleForWorkflow(wf);
-    if (suggested !== null) {
-      setPlanAfterSendState(suggested);
-      setPlanAfterSendForSession(sessionId, suggested);
-    } else {
-      setPlanAfterSendState(getPlanAfterSendForSession(sessionId));
-    }
-  }, [
-    sessionId,
-    session?.run?.plan_workflow,
-    turnProfile,
-    planAfterSend,
-    roomPreset,
-  ]);
 
   const refreshTasks = useCallback(
     (overrideId?: string | null) => {
@@ -1614,23 +1504,6 @@ export function RoomChat({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [isNew, toggleInspector, running, handleStop]);
 
-  function parseConsensusDryRunProposal(
-    ev: Record<string, unknown>,
-  ): ConsensusDryRunProposal {
-    const recommended = ev.recommended as PlanActionItem | null | undefined;
-    return {
-      excerpt: typeof ev.excerpt === "string" ? ev.excerpt : undefined,
-      summary: typeof ev.summary === "string" ? ev.summary : undefined,
-      notice: typeof ev.notice === "string" ? ev.notice : undefined,
-      recommended: recommended ?? null,
-      has_executable: ev.has_executable === true,
-      action_key:
-        typeof ev.action_key === "string"
-          ? ev.action_key
-          : (recommended?.action_key ?? null),
-    };
-  }
-
   function notifyConsensusSync(proposal: ConsensusDryRunProposal) {
     const title = consensusDryRunNotifyTitle(proposal.excerpt);
     const body = consensusDryRunNotifyBody(
@@ -1752,14 +1625,7 @@ export function RoomChat({
         ? ((resolvedRoomPresets.find((p) => p.id === roomPreset)
             ?.turn_profile ?? profile) as ComposerTurnProfile)
         : profile;
-      const roomMode =
-        roomPreset === "fast"
-          ? "discuss"
-          : roomPreset === "supervisor"
-            ? "plan"
-            : mode === "plan" || effectiveProfile === "loop"
-              ? "plan"
-              : "discuss";
+      const roomMode = "discuss" as const;
       const {
         agents,
         agentRounds,
@@ -1800,764 +1666,101 @@ export function RoomChat({
       setRunLockStuck(false);
       setRecoveryFailure(null);
       setClarifierQuestions(null);
-      let userStopped = false;
-      let activeSessionId = sessionId;
-      let lastSendReceipt: string | undefined;
+      const runScope = {
+        runKey,
+        activeSessionId: sessionId,
+        userStopped: false,
+        runFailed: false,
+        lastSendReceipt: undefined as string | undefined,
+      };
       runAbortRef.current?.abort();
       const runAbort = new AbortController();
       runAbortRef.current = runAbort;
 
+      const onRoomEvent = createRoomRunEventHandler(runScope, {
+        sessionId,
+        profile: effectiveProfile,
+        selected,
+        mode,
+        localeMsg,
+        activeSessionIdRef,
+        navigatedToSessionRef,
+        pendingMissionTemplateRef,
+        onSessionBind,
+        onSessionChange,
+        onSessionMetaRefresh,
+        onBootstrapMissionTemplateApplied,
+        setLiveRunSessionKey,
+        persistPendingSessionRoomModels,
+        openPlanTab,
+        setRecoveryFailure,
+        setRunLockStuck,
+        setClarifierQuestions,
+        setClarifierInterview,
+        setDiscussPaused,
+        setInboxReloadKey,
+        setWorkHookAlert,
+        setConsensusProposal,
+        notifyConsensusSync,
+        notifyConsensusFailure,
+        pushMacNotification,
+        refreshSessionMeta,
+        refreshInboxPending,
+        openHumanInbox,
+        setInboxSegment,
+        openWorkTab,
+      });
+
       try {
-        let runFailed = false;
-        await runRoom(
-          sendText,
-          agents,
-          (ev) => {
-            const t = String(ev.type);
-            if (t === "start" && ev.session_id) {
-              const boundSessionId = String(ev.session_id);
-              activeSessionIdRef.current = boundSessionId;
-              activeSessionId = boundSessionId;
-              if (runKey === PENDING_KEY || runKey !== boundSessionId) {
-                migratePendingSessionRun(boundSessionId);
-                runKey = boundSessionId;
-              }
-              setLiveRunSessionKey(boundSessionId);
-              if (!sessionId && !navigatedToSessionRef.current) {
-                navigatedToSessionRef.current = true;
-                if (onSessionBind) {
-                  onSessionBind(boundSessionId);
-                } else {
-                  void onSessionChange(boundSessionId);
-                }
-              }
-              if (!sessionId && onSessionMetaRefresh) {
-                void onSessionMetaRefresh(activeSessionIdRef.current);
-              }
-              void persistPendingSessionRoomModels(boundSessionId);
-              const pendingTemplateId = pendingMissionTemplateRef.current;
-              if (!sessionId && pendingTemplateId && boundSessionId) {
-                pendingMissionTemplateRef.current = null;
-                void applySessionTemplate(boundSessionId, pendingTemplateId)
-                  .then((res) => {
-                    onBootstrapMissionTemplateApplied?.();
-                    if (onSessionMetaRefresh) {
-                      void onSessionMetaRefresh(boundSessionId);
-                    }
-                    if (res.fast_path) {
-                      openPlanTab();
-                    }
-                  })
-                  .catch(() => {
-                    /* template apply is best-effort; room run continues */
-                  });
-              }
-              if (Array.isArray(ev.attachments) && ev.attachments.length) {
-                const saved = ev.attachments as string[];
-                patchTurnMessages(runKey, (m) => {
-                  for (let i = m.length - 1; i >= 0; i--) {
-                    const row = m[i];
-                    if (row.role === "you" && row.sent) {
-                      const next = [...m];
-                      next[i] = { ...row, attachments: saved };
-                      return next;
-                    }
-                  }
-                  return m;
-                });
-              }
-            }
-            if (t === "run_cancelled") {
-              userStopped = true;
-              finalizeCancelledTyping(runKey);
-            }
-            if (t === "agent_round_start" && Number(ev.round) > 1) {
-              const round = Number(ev.round);
-              updateSessionRun(runKey, { topologyActive: null });
-              patchTurnMessages(runKey, (m) => {
-                const rid = `round-divider-live-${round}`;
-                return [
-                  ...m.filter((x) => x.id !== rid),
-                  {
-                    id: rid,
-                    role: "system",
-                    label: "",
-                    body: roundDividerLabel(
-                      round,
-                      Boolean(ev.review_mode),
-                      resolveTurnSend(profile, selected).consensusMode,
-                      Boolean(ev.debate),
-                    ),
-                    roundDivider: round,
-                  },
-                ];
-              });
-            }
-            if (t === "consensus_plan_synced" || t === "verified_plan_synced") {
-              const excerpt =
-                typeof ev.excerpt === "string" ? ev.excerpt : undefined;
-              const summary =
-                typeof ev.summary === "string" ? ev.summary : undefined;
-              const notice =
-                typeof ev.notice === "string"
-                  ? ev.notice
-                  : agreementPlanSyncedLabel(excerpt, summary);
-              patchTurnMessages(runKey, (m) => [
-                ...m,
-                {
-                  id: `consensus-sync-${Date.now()}`,
-                  role: "system",
-                  label: "",
-                  body: notice,
-                },
-              ]);
-              refreshSessionMeta();
-              setInboxReloadKey((k) => k + 1);
-              const partialProposal = {
-                excerpt,
-                summary,
-                notice,
-              };
-              setConsensusProposal((prev) => ({
-                ...partialProposal,
-                recommended: prev?.recommended,
-                has_executable: prev?.has_executable ?? false,
-                action_key: prev?.action_key,
-              }));
-              notifyConsensusSync(partialProposal);
-            }
-            if (t === "consensus_dry_run_proposal") {
-              const proposal = parseConsensusDryRunProposal(ev);
-              refreshSessionMeta();
-              setConsensusProposal(proposal);
-              notifyConsensusSync(proposal);
-            }
-            if (
-              t === "consensus_plan_sync_failed" ||
-              t === "verified_plan_sync_failed"
-            ) {
-              const excerpt =
-                typeof ev.excerpt === "string" ? ev.excerpt : undefined;
-              const message =
-                typeof ev.message === "string" ? ev.message : undefined;
-              patchTurnMessages(runKey, (m) => [
-                ...m,
-                {
-                  id: `consensus-sync-fail-${Date.now()}`,
-                  role: "system",
-                  label: "",
-                  body: agreementPlanSyncFailedLabel(excerpt, message),
-                },
-              ]);
-              notifyConsensusFailure(excerpt, message);
-            }
-            if (t === "clarifier_prompt" && Array.isArray(ev.questions)) {
-              setClarifierQuestions(
-                (ev.questions as unknown[])
-                  .map((q) => String(q))
-                  .filter(Boolean),
-              );
-              if (ev.interview && typeof ev.interview === "object") {
-                setClarifierInterview(
-                  ev.interview as {
-                    questions?: {
-                      id?: string;
-                      category?: string;
-                      prompt?: string;
-                    }[];
-                    plan_mode?: boolean;
-                  },
-                );
-              }
-            }
-            if (t === "consensus_incomplete") {
-              patchTurnMessages(runKey, (m) => [
-                ...m,
-                {
-                  id: `consensus-inc-${Date.now()}`,
-                  role: "system",
-                  label: "",
-                  body: consensusIncompleteLabel(
-                    typeof ev.message === "string" ? ev.message : undefined,
-                  ),
-                },
-              ]);
-            }
-            if (t === "agent_start" && ev.agent) {
-              const aid = String(ev.agent);
-              const round = Number(ev.round ?? 1);
-              const bootLine = `${agentLabel(aid)} 연결 중…`;
-              updateSessionRun(runKey, {
-                topologyActive: { agent: aid, round },
-              });
-              patchTurnMessages(runKey, (m) => [
-                ...m.filter((x) => x.id !== `typing-${aid}-r${round}`),
-                {
-                  id: `typing-${aid}-r${round}`,
-                  role: aid as LiveMsg["role"],
-                  label: agentLabel(aid),
-                  body: "",
-                  typing: true,
-                  parallelRound: round,
-                  turnItems: reduceTurnItems([], {
-                    type: "agent_activity",
-                    text: bootLine,
-                    agent: aid,
-                  }),
-                },
-              ]);
-            }
-            if (t === "agent_activity" && ev.agent && ev.text) {
-              const aid = String(ev.agent);
-              const round = Number(ev.round ?? 1);
-              const tid = `typing-${aid}-r${round}`;
-              patchTurnMessages(runKey, (m) =>
-                m.map((msg) => {
-                  if (msg.id !== tid) return msg;
-                  return {
-                    ...msg,
-                    turnItems: reduceTurnItems(msg.turnItems, ev),
-                  };
-                }),
-              );
-            }
-            if (
-              t === "agent_token" &&
-              ev.agent &&
-              typeof ev.text === "string"
-            ) {
-              const aid = String(ev.agent);
-              const round = Number(ev.round ?? 1);
-              const tid = `typing-${aid}-r${round}`;
-              const chunk = String(ev.text);
-              patchTurnMessages(runKey, (m) =>
-                m.map((msg) => {
-                  if (msg.id !== tid) return msg;
-                  return {
-                    ...msg,
-                    body: dedupeStreamAppend(msg.body ?? "", chunk),
-                  };
-                }),
-              );
-            }
-            if (t === "tool_start" && ev.agent) {
-              const aid = String(ev.agent);
-              const round = Number(ev.round ?? 1);
-              const tid = `typing-${aid}-r${round}`;
-              patchTurnMessages(runKey, (m) =>
-                m.map((msg) => {
-                  if (msg.id !== tid) return msg;
-                  return {
-                    ...msg,
-                    turnItems: reduceTurnItems(msg.turnItems, ev),
-                  };
-                }),
-              );
-            }
-            if (t === "tool_output" && ev.agent) {
-              const aid = String(ev.agent);
-              const round = Number(ev.round ?? 1);
-              const tid = `typing-${aid}-r${round}`;
-              const chunk = String(ev.chunk ?? "");
-              if (!chunk) return;
-              patchTurnMessages(runKey, (m) =>
-                m.map((msg) => {
-                  if (msg.id !== tid) return msg;
-                  return {
-                    ...msg,
-                    turnItems: reduceTurnItems(msg.turnItems, ev),
-                  };
-                }),
-              );
-            }
-            if (t === "tool_done" && ev.agent) {
-              const aid = String(ev.agent);
-              const round = Number(ev.round ?? 1);
-              const tid = `typing-${aid}-r${round}`;
-              patchTurnMessages(runKey, (m) =>
-                m.map((msg) => {
-                  if (msg.id !== tid) return msg;
-                  return {
-                    ...msg,
-                    turnItems: reduceTurnItems(msg.turnItems, ev),
-                  };
-                }),
-              );
-            }
-            if (t === "agent_done" && ev.agent) {
-              const aid = String(ev.agent);
-              const round = Number(ev.round ?? 1);
-              const envelopeParseError = ev.envelope_parse_error === true;
-              const envelope = ev.envelope as LiveMsg["envelope"];
-              const envelopeLine = formatEnvelopeActivityLine(round, {
-                hasAct: Boolean(envelope?.act),
-                parseError: envelopeParseError,
-              });
-              if (envelopeLine) {
-                dispatchNotification(
-                  {
-                    tier: "P2",
-                    title: `Envelope · ${aid}`,
-                    body: envelopeLine,
-                    sessionId: activeSessionId ?? undefined,
-                    kind: "envelope_warn",
-                    entityId: `${aid}:r${round}`,
-                  },
-                  pushMacNotification,
-                  notifyDesktop,
-                );
-              }
-              updateSessionRun(runKey, (snap) => {
-                const n = new Set(snap.topologyDone);
-                n.add(`${aid}:${round}`);
-                const stillTyping = snap.turnMessages.filter(
-                  (m) => m.typing && isReplyWaitRole(m.role),
-                );
-                const next =
-                  stillTyping.length > 0
-                    ? {
-                        agent: String(stillTyping[0].role),
-                        round: stillTyping[0].parallelRound ?? round,
-                      }
-                    : null;
-                return { topologyActive: next, topologyDone: n };
-              });
-              patchTurnMessages(runKey, (m) => {
-                const typing = findAgentTurnMessage(m, aid, round);
-                const tid = typing?.id ?? `typing-${aid}-r${round}`;
-                const streamed = typing?.body ?? "";
-                const body = mergeAgentReplyBody(
-                  streamed,
-                  typeof ev.content === "string" ? ev.content : "",
-                );
-                return [
-                  ...m.filter((x) => x.id !== tid),
-                  {
-                    id: `msg-${aid}-r${round}-${Date.now()}`,
-                    role: aid as LiveMsg["role"],
-                    label: agentLabel(aid),
-                    body,
-                    parallelRound: round,
-                    envelope,
-                    envelopeParseError,
-                    turnItems: reduceTurnItems(typing?.turnItems, ev),
-                  },
-                ];
-              });
-            }
-            if (t === "agent_error" && ev.agent) {
-              const aid = String(ev.agent);
-              const round = Number(ev.round ?? 1);
-              const nonParticipation = ev.non_participation === true;
-              const note = typeof ev.note === "string" ? ev.note : "";
-              if (!nonParticipation) {
-                setRecoveryFailure({
-                  source: "agent",
-                  kind: "partial_turn",
-                  message:
-                    typeof ev.message === "string"
-                      ? ev.message
-                      : `${agentLabel(aid)} 응답 실패`,
-                  affectedAgentIds: [aid],
-                });
-              }
-              patchTurnMessages(runKey, (m) => {
-                const typing = findAgentTurnMessage(m, aid, round);
-                const tid = typing?.id ?? `typing-${aid}-r${round}`;
-                const streamedBody = typing?.body ?? "";
-                const err = typeof ev.message === "string" ? ev.message : "";
-                const resolvedBody =
-                  nonParticipation && note
-                    ? note
-                    : streamedBody.trim() && err
-                      ? `${streamedBody}\n\n—\n[${agentLabel(aid)}] ${err}`
-                      : err
-                        ? `[${agentLabel(aid)}] ${err}`
-                        : streamedBody || "agent error";
-                if (typing && streamedBody.trim()) {
-                  return m.map((msg) =>
-                    msg.id === tid
-                      ? {
-                          ...msg,
-                          id: `err-${aid}-r${round}-${Date.now()}`,
-                          role: "system" as const,
-                          label: nonParticipation ? "알림" : agentLabel(aid),
-                          body: resolvedBody,
-                          typing: false,
-                        }
-                      : msg,
-                  );
-                }
-                return [
-                  ...m.filter((x) => x.id !== tid),
-                  {
-                    id: `err-${aid}-r${round}-${Date.now()}`,
-                    role: "system",
-                    label: nonParticipation ? "알림" : "시스템",
-                    body: resolvedBody,
-                  },
-                ];
-              });
-            }
-            if (
-              (t === "dispatch_start" || t === "dispatch_done") &&
-              ev.dispatch_id
-            ) {
-              const dispatchLine = formatDispatchActivityLine(
-                ev as Record<string, unknown>,
-              );
-              patchTurnMessages(runKey, (m) => [
-                ...m,
-                {
-                  id: `${t}-${String(ev.dispatch_id)}-${Date.now()}`,
-                  role: "system",
-                  label: "dispatch",
-                  body: dispatchLine,
-                },
-              ]);
-            }
-            if (t === "hook_event" && ev.event) {
-              const sid = activeSessionId ?? undefined;
-              const agentName = ev.agent ? agentLabel(String(ev.agent)) : "";
-              const eventName = String(ev.event);
-              const blocked = ev.blocked === true;
-              const feedback =
-                typeof ev.feedback === "string" ? ev.feedback.trim() : "";
-              const subReason =
-                typeof ev.sub_reason === "string" ? ev.sub_reason : "";
-              const round = Number(ev.round ?? 1);
-              const aid = ev.agent ? String(ev.agent) : "";
-              if (aid) {
-                const tid = `typing-${aid}-r${round}`;
-                const hookLine = formatHookActivityLine({
-                  event: eventName,
-                  blocked,
-                  feedback,
-                  sub_reason: subReason,
-                });
-                patchTurnMessages(runKey, (m) =>
-                  m.map((msg) => {
-                    if (msg.id !== tid) return msg;
-                    return {
-                      ...msg,
-                      turnItems: reduceTurnItems(msg.turnItems, {
-                        type: "agent_activity",
-                        text: hookLine,
-                      }),
-                    };
-                  }),
-                );
-              }
-              if (blocked || feedback) {
-                if (
-                  isExecutionRelevantHook(
-                    eventName,
-                    blocked,
-                    feedback || subReason,
-                  )
-                ) {
-                  setWorkHookAlert({
-                    event: eventName,
-                    body:
-                      feedback ||
-                      subReason ||
-                      (blocked ? "Execution blocked by hook" : eventName),
-                    blocked,
-                  });
-                  openWorkTab();
-                }
-                dispatchNotification(
-                  {
-                    tier: blocked ? "P1" : "P2",
-                    title: blocked
-                      ? `Hook blocked · ${eventName}`
-                      : `Hook · ${eventName}`,
-                    body:
-                      feedback ||
-                      (agentName
-                        ? `${agentName}${subReason ? ` (${subReason})` : ""}`
-                        : subReason),
-                    sessionId: sid,
-                    kind: blocked ? "hook_blocked" : "hook_warn",
-                    entityId: `${eventName}:${String(ev.agent ?? "")}`,
-                    forceToast: blocked,
-                  },
-                  pushMacNotification,
-                  notifyDesktop,
-                );
-              }
-            }
-            if (t === "plan_workflow_phase" && ev.phase) {
-              const phase = String(ev.phase);
-              const notice =
-                typeof ev.notice === "string" ? ev.notice : undefined;
-              patchTurnMessages(runKey, (m) => [
-                ...m,
-                {
-                  id: `plan-workflow-${phase}-${Date.now()}`,
-                  role: "system",
-                  label: "",
-                  body: planWorkflowPhaseTranscriptLine(
-                    phase,
-                    localeMsg,
-                    notice,
-                  ),
-                },
-              ]);
-              refreshSessionMeta();
-            }
-            if (t === "plan_workflow_pending") {
-              void refreshSessionMeta();
-              dispatchNotification(
-                {
-                  tier: "P1",
-                  title: localeMsg.planWorkflowPendingTitle,
-                  body: localeMsg.planWorkflowPendingDetail,
-                  sessionId: activeSessionId ?? sessionId ?? undefined,
-                  kind: "plan_workflow_pending",
-                  toastAction: { type: "inspector", tab: "tasks" },
-                  toastActionLabel: localeMsg.planWorkflowPendingOpenTasks,
-                },
-                pushMacNotification,
-                notifyDesktop,
-              );
-            }
-            if (t === "turn_failed") {
-              const aid = ev.agent ? String(ev.agent) : "";
-              const reason = String(ev.reason ?? "agent_error");
-              const detail = ev.message ? `: ${ev.message}` : "";
-              setRecoveryFailure({
-                source: "agent",
-                kind: "partial_turn",
-                message: `${reason}${detail}`,
-                affectedAgentIds: aid ? [aid] : undefined,
-              });
-              patchTurnMessages(runKey, (m) => [
-                ...m,
-                {
-                  id: `turn-failed-${Date.now()}`,
-                  role: "system",
-                  label: "시스템",
-                  body: `[턴 실패${aid ? ` · ${agentLabel(aid)}` : ""}] ${reason}${detail}`,
-                },
-              ]);
-            }
-            if (t === "inbox_pause") {
-              setDiscussPaused(true);
-              setInboxReloadKey((k) => k + 1);
-              void refreshInboxPending();
-              openHumanInbox();
-              setInboxSegment("inbox");
-            }
-            if (t === "complete" && ev.session_id) {
-              activeSessionId = String(ev.session_id);
-              setRecoveryFailure(null);
-              setRunLockStuck(false);
-              if (typeof ev.send_receipt === "string") {
-                lastSendReceipt = ev.send_receipt;
-              }
-              if (ev.inbox_pending === true) {
-                setInboxReloadKey((k) => k + 1);
-                void fetchSessionInbox(activeSessionId)
-                  .then((payload) => {
-                    const sid = activeSessionId ?? undefined;
-                    const pending = (payload.human_inbox ?? []).filter(
-                      (item) => item.status === "pending",
-                    );
-                    const question = pending.find(
-                      (item) => item.kind === "question",
-                    );
-                    const build = pending.find((item) => item.kind === "build");
-                    if (build) {
-                      dispatchNotification(
-                        {
-                          tier: "P1",
-                          title: "Build 승인 필요",
-                          body: build.summary ?? build.prompt,
-                          sessionId: sid,
-                          kind: "human_inbox_build",
-                          entityId: build.id,
-                          toastAction: { type: "work", focus: "plan" },
-                        },
-                        pushMacNotification,
-                        notifyDesktop,
-                      );
-                    } else if (question) {
-                      dispatchNotification(
-                        {
-                          tier: "P1",
-                          title: "에이전트 질문",
-                          body: question.prompt,
-                          sessionId: sid,
-                          kind: "human_inbox_question",
-                          entityId: question.id,
-                          toastAction: { type: "inbox" },
-                        },
-                        pushMacNotification,
-                        notifyDesktop,
-                      );
-                    } else if (pending.length > 0) {
-                      dispatchNotification(
-                        {
-                          tier: "P2",
-                          title: "Human Inbox",
-                          body: `${pending.length}건 대기`,
-                          sessionId: sid,
-                          kind: "human_inbox",
-                          entityId: pending[0]?.id,
-                        },
-                        pushMacNotification,
-                        notifyDesktop,
-                      );
-                    }
-                  })
-                  .catch(() => {
-                    /* hook refreshes inbox state via inboxReloadKey */
-                  });
-              }
-              if (ev.verified_loop_pending === true) {
-                void refreshSessionMeta();
-                const loop = ev.verified_loop as
-                  | { proposed?: { goal?: string } }
-                  | undefined;
-                const goalHint = loop?.proposed?.goal ?? "에이전트 목표 제안";
-                dispatchNotification(
-                  {
-                    tier: "P1",
-                    title: "Verified loop 승인",
-                    body: goalHint,
-                    sessionId: activeSessionId,
-                    kind: "verified_loop_pending",
-                    toastAction: { type: "inspector", tab: "tasks" },
-                    toastActionLabel: "승인하기",
-                  },
-                  pushMacNotification,
-                  notifyDesktop,
-                );
-              } else if (ev.verified_loop_status === "done") {
-                dispatchNotification(
-                  {
-                    tier: "P1",
-                    title: "Oracle VERIFIED",
-                    body: "Verified loop 목표 달성",
-                    sessionId: activeSessionId,
-                    kind: "verified_loop_done",
-                    forceToast: true,
-                  },
-                  pushMacNotification,
-                  notifyDesktop,
-                );
-              } else if (ev.verified_loop_circuit_breaker === true) {
-                dispatchNotification(
-                  {
-                    tier: "P0",
-                    title: "Verified loop 중단",
-                    body: "Oracle 검증 한도 초과",
-                    sessionId: activeSessionId,
-                    kind: "verified_loop_failed",
-                    forceToast: true,
-                  },
-                  pushMacNotification,
-                  notifyDesktop,
-                );
-              }
-              dispatchNotification(
-                {
-                  tier: "P2",
-                  title: userStopped ? "턴 중지됨" : "턴 완료",
-                  body: lastSendReceipt,
-                  sessionId: activeSessionId,
-                  kind: "turn_complete",
-                },
-                pushMacNotification,
-                notifyDesktop,
-              );
-            }
-            if (t === "run_failed") {
-              runFailed = true;
-              const msg = String(ev.message ?? "run failed");
-              setRecoveryFailure({
-                source: "run",
-                kind: "partial_turn",
-                message: msg,
-              });
-              setRunLockStuck(msg.includes("already in progress"));
-              dispatchNotification(
-                {
-                  tier: "P0",
-                  title: "Agent run failed",
-                  body: msg,
-                  sessionId: sessionId ?? undefined,
-                  kind: "run_failed",
-                },
-                pushMacNotification,
-                notifyDesktop,
-              );
-            }
-            if (t === "error") {
-              runFailed = true;
-              const msg = String(ev.message ?? "run failed");
-              setRecoveryFailure({
-                source: "run",
-                kind: msg.includes("already in progress")
-                  ? "run_lock"
-                  : undefined,
-                message: msg,
-              });
-              if (msg.includes("already in progress")) {
-                setRunLockStuck(true);
-              }
-              dispatchNotification(
-                {
-                  tier: "P0",
-                  title: "Room error",
-                  body: msg,
-                  sessionId: sessionId ?? undefined,
-                  kind: "run_failed",
-                },
-                pushMacNotification,
-                notifyDesktop,
-              );
-            }
-          },
-          {
-            sessionId: sessionId ?? undefined,
-            files: filesToSend.map((p) => p.file),
-            mode: roomMode,
-            agentRounds,
-            permissions,
-            reviewMode: useReviewMode,
-            consensusMode: useConsensusMode,
-            turnProfile: effectiveProfile,
-            researchMode: researchMode || effectiveProfile === "specialist",
-            workspaceId: sessionId ? undefined : workspaceId,
-            workspacePath:
-              sessionId || workspaceId !== CUSTOM_WORKSPACE_ID
-                ? undefined
-                : (workspacePath ?? undefined),
-            agentCapabilities: capabilitiesForApi(agentCapabilities),
-            agentThreadBindings: threadBindings,
-            sessionTemplate,
-            roomPreset: roomPreset ?? undefined,
-            signal: runAbort.signal,
-          },
-        );
-        if (runFailed) {
-          throw new Error("run failed");
+        await runRoom(sendText, agents, onRoomEvent, {
+          sessionId: sessionId ?? undefined,
+          files: filesToSend.map((p) => p.file),
+          mode: roomMode,
+          agentRounds,
+          permissions,
+          reviewMode: useReviewMode,
+          consensusMode: useConsensusMode,
+          turnProfile: effectiveProfile,
+          researchMode: researchMode || effectiveProfile === "specialist",
+          workspaceId: sessionId ? undefined : workspaceId,
+          workspacePath:
+            sessionId || workspaceId !== CUSTOM_WORKSPACE_ID
+              ? undefined
+              : (workspacePath ?? undefined),
+          agentCapabilities: capabilitiesForApi(agentCapabilities),
+          agentThreadBindings: threadBindings,
+          sessionTemplate,
+          roomPreset: roomPreset ?? undefined,
+          signal: runAbort.signal,
+        });
+        if (runScope.runFailed) {
+          return;
         }
         if (!sessionId) {
           clearStoredAgentThreadBindings();
         }
-        if (activeSessionId && !navigatedToSessionRef.current && !sessionId) {
-          activeSessionIdRef.current = activeSessionId;
-          onSessionChange(activeSessionId);
+        if (
+          runScope.activeSessionId &&
+          !navigatedToSessionRef.current &&
+          !sessionId
+        ) {
+          activeSessionIdRef.current = runScope.activeSessionId;
+          onSessionChange(runScope.activeSessionId);
         }
-        if (mode === "plan" && (activeSessionId ?? sessionId)) {
+        if (
+          (planComposeActive || runScope.lastSendReceipt === "plan_updated") &&
+          (runScope.activeSessionId ?? sessionId)
+        ) {
           openPlanTab();
         }
-        setSendReceiptRaw(lastSendReceipt);
+        setSendReceiptRaw(runScope.lastSendReceipt);
         setSendReceipt(
-          sendReceiptLabel(lastSendReceipt, mode, userStopped, locale),
+          sendReceiptLabel(
+            runScope.lastSendReceipt,
+            mode,
+            runScope.userStopped,
+            locale,
+          ),
         );
         if (sendReceiptTimerRef.current != null) {
           window.clearTimeout(sendReceiptTimerRef.current);
@@ -2569,10 +1772,20 @@ export function RoomChat({
       } catch (e) {
         const msg = String(e);
         if (runAbort.signal.aborted || msg.includes("aborted")) {
-          userStopped = true;
+          runScope.userStopped = true;
+        } else if (runScope.runFailed) {
+          // SSE handler already set recovery (run lock / agent failure).
         } else {
-          setRecoveryFailure({ source: "transport", message: msg });
-          if (
+          const detail = msg.replace(/^Error:\s*/, "");
+          const classified = classifySendFailure(detail);
+          setRecoveryFailure({
+            source: classified.source,
+            kind: classified.kind,
+            message: detail,
+          });
+          if (classified.kind === "run_lock") {
+            setRunLockStuck(true);
+          } else if (
             msg.includes("already in progress") ||
             msg.includes("not ready")
           ) {
@@ -2584,18 +1797,21 @@ export function RoomChat({
           runAbortRef.current = null;
         }
         if (runAbort.signal.aborted) {
-          userStopped = true;
-          void cancelRoomRun(activeSessionId ?? sessionId ?? undefined).catch(
-            () => {},
-          );
+          runScope.userStopped = true;
+          void cancelRoomRun(
+            runScope.activeSessionId ?? sessionId ?? undefined,
+          ).catch(() => {});
         }
-        if (userStopped) {
-          finalizeCancelledTyping(runKey);
+        if (runScope.userStopped) {
+          finalizeCancelledTyping(runScope.runKey);
         }
         clearRunWatchdog();
         clearLongRunHint();
-        finishSessionRun(runKey, activeSessionId ?? undefined);
-        const boundSid = activeSessionId ?? sessionId;
+        finishSessionRun(
+          runScope.runKey,
+          runScope.activeSessionId ?? undefined,
+        );
+        const boundSid = runScope.activeSessionId ?? sessionId;
         if (boundSid && onSessionMetaRefresh) {
           void onSessionMetaRefresh(boundSid);
         }
@@ -3192,7 +2408,6 @@ export function RoomChat({
         text: msg,
         files: pendingFiles,
         turnProfile,
-        planAfterSend,
       });
       setPermOpen(true);
       return;
@@ -3959,141 +3174,30 @@ export function RoomChat({
                 </div>
               ) : null}
 
-              <div className="transcript transcript--console">
-                {!isNew && sessionId ? (
-                  <TranscriptViewOptions
-                    showPeerChannel={showPeerChannel}
-                    onPeerChannelChange={(on) => {
-                      setShowPeerChannel(on);
-                      setShowPeerChannelState(on);
-                    }}
-                  />
-                ) : null}
-                {loading &&
-                !isNew &&
-                !running &&
-                visibleMessages.length === 0 ? (
-                  <div className="empty-state">
-                    <span className="empty-state__icon" aria-hidden>
-                      <svg
-                        viewBox="0 0 24 24"
-                        width="24"
-                        height="24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth={1.5}
-                      >
-                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                      </svg>
-                    </span>
-                    <span className="empty-state__title">
-                      {localeMsg.transcriptLoading}
-                    </span>
-                  </div>
-                ) : visibleMessages.length === 0 && !running ? (
-                  <div className="empty-state">
-                    <span className="empty-state__icon" aria-hidden>
-                      <svg
-                        viewBox="0 0 24 24"
-                        width="24"
-                        height="24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth={1.5}
-                      >
-                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                      </svg>
-                    </span>
-                    <span className="empty-state__title">
-                      {localeMsg.transcriptEmpty}
-                    </span>
-                    <span className="empty-state__hint">
-                      {localeMsg.transcriptEmptyHint}
-                    </span>
-                  </div>
-                ) : null}
-                {(() => {
-                  let userTurnIdx = 0;
-                  return visibleMessages.map((m) => {
-                    if (m.roundDivider) {
-                      const roundLabel =
-                        locale === "ko"
-                          ? `라운드 ${m.roundDivider}`
-                          : `Round ${m.roundDivider}`;
-                      return (
-                        <div
-                          key={m.id}
-                          className="round-divider"
-                          aria-label={m.body}
-                        >
-                          {roundLabel}
-                        </div>
-                      );
-                    }
-                    if (m.typing && isReplyWaitRole(m.role)) {
-                      return (
-                        <ReplyWaitingBubble
-                          key={m.id}
-                          agent={m.role}
-                          label={m.label}
-                          turnItems={m.turnItems}
-                          body={m.body}
-                        />
-                      );
-                    }
-                    const highlighted = highlightChatLine === m.chatLineIndex;
-                    if (m.sent && !m.typing) {
-                      const rationale = advisorRationales[userTurnIdx] ?? null;
-                      userTurnIdx++;
-                      return (
-                        <Fragment key={m.id}>
-                          <ChatBubble
-                            message={m}
-                            typing={m.typing}
-                            highlighted={highlighted}
-                            presentation="console"
-                            draftDefaultOpen={openDraftMessageIds.has(m.id)}
-                          />
-                          {rationale ? (
-                            <div className="advisor-hint" title={rationale}>
-                              <span className="advisor-hint__label">
-                                advisor
-                              </span>
-                              <span className="advisor-hint__text">
-                                {rationale}
-                              </span>
-                            </div>
-                          ) : null}
-                        </Fragment>
-                      );
-                    }
-                    return (
-                      <ChatBubble
-                        key={m.id}
-                        message={m}
-                        typing={m.typing}
-                        highlighted={highlighted}
-                        presentation="console"
-                        draftDefaultOpen={openDraftMessageIds.has(m.id)}
-                      />
-                    );
-                  });
-                })()}
-                {pendingReplyAgents.map((a) => (
-                  <ReplyWaitingBubble
-                    key={a.id}
-                    agent={a.role}
-                    label={a.label}
-                  />
-                ))}
-              </div>
-
-              {transcriptActive && (
-                <ScrollToBottomButton
-                  visible={showJumpButton || tweaks.forceScrollButton}
-                  onClick={scrollToBottom}
-                />
-              )}
+              <RoomTranscriptPanel
+                sessionId={sessionId}
+                isNew={isNew}
+                loading={loading ?? false}
+                running={running}
+                showPeerChannel={showPeerChannel}
+                onPeerChannelChange={(on) => {
+                  setShowPeerChannel(on);
+                  setShowPeerChannelState(on);
+                }}
+                visibleMessages={visibleMessages}
+                advisorRationales={advisorRationales}
+                openDraftMessageIds={openDraftMessageIds}
+                pendingReplyAgents={pendingReplyAgents}
+                highlightChatLine={highlightChatLine}
+                locale={locale}
+                transcriptLoading={localeMsg.transcriptLoading}
+                transcriptEmpty={localeMsg.transcriptEmpty}
+                transcriptEmptyHint={localeMsg.transcriptEmptyHint}
+                showJumpButton={showJumpButton}
+                forceScrollButton={tweaks.forceScrollButton}
+                scrollToBottom={scrollToBottom}
+                transcriptActive={transcriptActive}
+              />
             </div>
 
             {isNew || transcriptActive ? (
@@ -4230,16 +3334,9 @@ export function RoomChat({
                     onFileRemove={(id) =>
                       setPendingFiles((f) => f.filter((x) => x.id !== id))
                     }
-                    planAfterSend={planAfterSend}
-                    onPlanAfterSendChange={changePlanAfterSend}
-                    planToggleDisabled={
-                      planWorkflowAwaitingApproval ||
-                      (turnProfile === "loop" && !roomPreset) ||
-                      roomPreset === "supervisor"
-                    }
                     objectionNotice={composerObjectionNotice}
                     onFocusObjection={focusObjection}
-                    turnHint={composerPresetHint}
+                    turnHint={composerEmergenceHint ?? composerPresetHint}
                     costHint={composerCostHint}
                     locale={locale}
                     sessionId={sessionId}
@@ -4378,10 +3475,7 @@ export function RoomChat({
                     pendingSend.text,
                     pendingSend.files,
                     permissions,
-                    pendingSend.planAfterSend ||
-                      pendingSend.turnProfile === "loop"
-                      ? "plan"
-                      : "discuss",
+                    composeMode,
                     pendingSend.turnProfile,
                   );
                   setPendingSend(null);

@@ -73,7 +73,7 @@ def test_resolved_objection_not_recreated_by_reharvest():
 
 
 def test_convergence_prompt_rewards_dissent():
-    from agent_lab import context_bundle
+    from agent_lab.context import bundle as context_bundle
 
     src = inspect.getsource(context_bundle)
     assert "새 쟁점을 열기보다" not in src

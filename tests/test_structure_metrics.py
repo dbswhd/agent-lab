@@ -402,7 +402,7 @@ def test_room_import_graph_collects_modules() -> None:
     )
     assert proc.returncode == 0, proc.stderr
     payload = json.loads(proc.stdout)
-    assert payload["room_module_count"] == 29
+    assert payload["room_module_count"] == 33
     assert "room.delegate" in payload["modules"]
     hub_modules = {row["module"] for row in payload["hub_modules"]}
     assert "room.session_persist" in hub_modules

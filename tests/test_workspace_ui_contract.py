@@ -47,7 +47,7 @@ def test_agent_health_panel_shows_model_readiness_lane():
     assert "fetchRoomModes" in room_modes
     assert "loopCostHintLine" in room_modes
     assert "resolveRoomPresets" in presets
-    assert "composer-preset-row" in composer
+    assert "composer-preset-seg" in composer
     assert "model_provider?: string" in client
     assert "Team-ready" in panel
     assert "Loop-ready" in panel
@@ -93,8 +93,8 @@ def test_plan_execute_routed_to_work_workspace():
 
 
 def test_transcript_uses_console_presentation():
-    room = _read("web", "src", "components", "RoomChat.tsx")
-    assert 'presentation="console"' in room
+    transcript = _read("web", "src", "components", "RoomTranscriptPanel.tsx")
+    assert 'presentation="console"' in transcript
     bubble = _read("web", "src", "components", "ChatBubble.tsx")
     assert 'presentation?: "console" | "messenger"' in bubble
 
@@ -113,12 +113,12 @@ def test_transcript_agent_rows_use_role_cards_with_initial_avatars():
 
 def test_human_transcript_message_is_right_aligned_without_label_chrome():
     bubble = _read("web", "src", "components", "ChatBubble.tsx")
-    room = _read("web", "src", "components", "RoomChat.tsx")
+    transcript = _read("web", "src", "components", "RoomTranscriptPanel.tsx")
     css = _read("web", "src", "styles", "surfaces.css")
 
     assert "chat-turn__head" in bubble
     assert 'message={{ ...message, label: message.label ?? "Human" }}' not in bubble
-    assert "transcript transcript--console" in room
+    assert "transcript transcript--console" in transcript
     assert "bubble-row bubble-row--sent" in bubble
     assert ".transcript--console .bubble-row--sent" in css
     assert "margin-left: auto;" in css
@@ -128,7 +128,7 @@ def test_agent_waiting_state_shows_activity_log_and_dots():
     bubble = _read("web", "src", "components", "ChatBubble.tsx")
     css = _read("web", "src", "styles", "surfaces.css")
     layout = _read("web", "src", "styles", "layout.css")
-    room = _read("web", "src", "components", "RoomChat.tsx")
+    sse = _read("web", "src", "hooks", "useRoomSseHandler.ts")
 
     # Activity log was refactored from an inline `agent-activity-log` list into <TurnActivityGroup>.
     assert "TurnActivityGroup" in bubble
@@ -137,7 +137,7 @@ def test_agent_waiting_state_shows_activity_log_and_dots():
     assert "typing" in bubble
     assert ".typing span" in css
     assert ".agent-stream-preview" in layout
-    assert 't === "agent_token"' in room
+    assert 't === "agent_token"' in sse
 
 
 def test_transcript_has_review_aware_inline_markers():
@@ -186,7 +186,9 @@ def test_workspace_panels_have_distinct_document_wrappers():
     assert "cursor-ide-mcp-hint" in plugin
     plan_exec = _read("web", "src", "components", "PlanExecutePanel.tsx")
 
-    assert "transcript--console" in room
+    transcript = _read("web", "src", "components", "RoomTranscriptPanel.tsx")
+
+    assert "transcript--console" in transcript
     assert "WorkbenchPanel" in room
     assert "plan-card" in plan_exec
     assert "exec-card" in plan_exec
@@ -207,13 +209,12 @@ def test_inspector_matches_prototype_context_sidebar_body():
     assert ".context-sidebar__head" in layout
 
 
-def test_phase0_composer_plan_toggle_beside_turn_picker():
+def test_phase0_composer_plan_toggle_removed():
     composer = _read("web", "src", "components", "ChatComposer.tsx")
     room = _read("web", "src", "components", "RoomChat.tsx")
-    assert "ComposerPlanToggle" in composer
-    assert "onPlanAfterSendChange" in composer
-    assert "onPlanAfterSendChange" in room
-    assert "changePlanAfterSend" in room
+    assert "ComposerPlanToggle" not in composer
+    assert "onPlanAfterSendChange" not in room
+    assert "planComposeActive" in room
     assert "ComposerEfficiencyToggle" not in composer
     assert "efficiencyOn" not in room
 
@@ -244,8 +245,10 @@ def test_run_session_registry_module_exists():
 
 
 def test_room_patches_turn_messages():
+    sse = _read("web", "src", "hooks", "useRoomSseHandler.ts")
+    assert "patchTurnMessages" in sse
     room = _read("web", "src", "components", "RoomChat.tsx")
-    assert "patchTurnMessages" in room
+    assert "createRoomRunEventHandler" in room
 
 
 def test_m3_terminal_uses_xterm():
@@ -349,6 +352,7 @@ def test_m6_chat_turn_no_dual_class_root():
 
 def test_m6_room_chat_canonical_shell_only():
     room = _read("web", "src", "components", "RoomChat.tsx")
+    transcript = _read("web", "src", "components", "RoomTranscriptPanel.tsx")
     layout = _read("web", "src", "styles", "layout.css")
     assert "room-workspace-shell" not in room
     assert "view-options-btn" not in room
@@ -356,7 +360,8 @@ def test_m6_room_chat_canonical_shell_only():
     assert "pane-row" in room
     assert "pane-main" in room
     assert "workspace-main" in room
-    assert "TranscriptViewOptions" in room
+    assert "RoomTranscriptPanel" in room
+    assert "TranscriptViewOptions" in transcript
     assert "transcript-view-options" in _read("web", "src", "components", "TranscriptViewOptions.tsx")
     assert "legacy `.room-workspace-shell`" in layout
 

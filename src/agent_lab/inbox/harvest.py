@@ -40,7 +40,13 @@ def orchestrator_inbox_harvest_enabled() -> bool:
 
 
 def orchestrator_inbox_harvest_allowed(run_meta: dict[str, Any] | None) -> bool:
-    """True when orchestrator may run discuss/build/clarifier harvest for this session."""
+    """True when orchestrator may run discuss/build harvest for this session.
+
+    MCP-first: legacy question harvest is off by default. Plan-workflow CLARIFY no
+    longer force-enables it — plan.md OPEN bullets and forks surface via the peer
+    ``ask_human`` MCP path, not the orchestrator scrape. Build harvest stays gated
+    on the explicit ``AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST`` opt-in.
+    """
     from agent_lab.room.preset import is_fast_room_session
 
     if run_meta and is_fast_room_session(run_meta):

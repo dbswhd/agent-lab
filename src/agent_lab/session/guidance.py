@@ -82,6 +82,9 @@ SESSION_META_KEYS = (
     "mission_loop",
     "mission_board",
     "turn_budget",
+    "room_preset",
+    "turn_policy",
+    "turn_kind",
     "hook_runs",
     "agent_hooks_manifest",
 )

@@ -1,4 +1,4 @@
-"""Plan composer toggle ↔ workflow FSM alignment (UI contract)."""
+"""Plan composer ↔ workflow FSM alignment (UI contract, Wave F TurnPolicy)."""
 
 from __future__ import annotations
 
@@ -9,9 +9,8 @@ def _read(*parts: str) -> str:
     return Path(__file__).resolve().parents[1].joinpath(*parts).read_text(encoding="utf-8")
 
 
-def test_plan_toggle_sync_utils_exist():
+def test_plan_workflow_sync_utils_exist():
     sync = _read("web", "src", "utils", "planComposerSync.ts")
-    assert "suggestPlanToggleForWorkflow" in sync
     assert "isPlanWorkflowAwaitingApproval" in sync
 
 
@@ -20,14 +19,13 @@ def test_room_chat_blocks_send_during_human_pending():
     assert "planWorkflowAwaitingApproval" in room
     assert "planWorkflowComposerBlocked" in room
     assert "planWorkflowAwaitingApproval ||" in room
-    assert '(turnProfile === "loop" && !roomPreset)' in room
+    assert "planComposeActive" in room
 
 
-def test_compose_mode_per_session_plan_toggle():
-    compose = _read("web", "src", "utils", "composeMode.ts")
-    assert "getPlanAfterSendForSession" in compose
-    assert "setPlanAfterSendForSession" in compose
-    assert "agent-lab-plan-after-send:" in compose
+def test_compose_mode_derived_from_preset():
+    room = _read("web", "src", "components", "RoomChat.tsx")
+    assert 'roomPreset === "supervisor"' in room
+    assert "planComposeActive" in room
 
 
 def test_side_discuss_hint_in_mode_chip():

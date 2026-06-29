@@ -89,8 +89,10 @@ def test_fast_bucket_collection_budget():
     # 2026-06-26: raised 1830 -> 1960 for PR#57 merge — auto_approve_gate, diff_risk, evidence_api, openai_compat, room_preset, run_profile, wisdom_store suites.
     # 2026-06-27: raised 1960 -> 2050 for API bootstrap/smoke + session-scoped cancel + provider contextvars fast suites.
     # 2026-06-27: raised 2050 -> 2060 for DRAFT→PEER_REVIEW auto-advance tests + clarifier harvest fixes.
-    # 2026-06-28: raised 2130 -> 2143 for repo_map seed-bounding + track2 profile gate smoke + hybrid close docs tests.
-    assert count <= 2143, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-06-29: raised 2143 -> 2170 for TurnPolicy Wave F (test_turn_policy + UI handoff updates).
+    # 2026-06-29: raised 2170 -> 2174 for TurnPolicy C3-C5 regression tests.
+    # 2026-06-29: raised 2174 -> 2195 for MCP-first harvest tests, turn_flow split, session metrics MCP.
+    assert count <= 2195, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

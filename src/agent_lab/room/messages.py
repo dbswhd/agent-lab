@@ -10,7 +10,10 @@ from typing import Any, Callable, cast
 
 from agent_lab.context.bundle import ContextBundle
 from agent_lab.agents.registry import AgentId
-from agent_lab.agent.permissions import apply_discuss_executor_policy
+from agent_lab.agent.permissions import (
+    apply_discuss_executor_policy,
+    normalize_agent_permissions,
+)
 from agent_lab.session.guidance import (
     apply_discuss_workspace,
     resolve_session_workspace_binding,
@@ -242,6 +245,24 @@ def build_agent_context_bundle(
     )
 
 
+def _effective_room_permissions(
+    permissions: dict | None,
+    *,
+    topic: str,
+    plan_md: str,
+    run_meta: dict[str, Any] | None,
+) -> dict:
+    """Permissions SSOT for Room turns — workspace binding only (no discuss overlay)."""
+    binding = resolve_session_workspace_binding(
+        permissions,
+        topic=topic,
+        plan_md=plan_md,
+        run_meta=run_meta,
+    )
+    perms = normalize_agent_permissions(permissions)
+    return apply_discuss_workspace(perms, binding)
+
+
 def _effective_discuss_permissions(
     permissions: dict | None,
     *,
@@ -257,6 +278,31 @@ def _effective_discuss_permissions(
     )
     perms = apply_discuss_executor_policy(permissions, discuss=True)
     return apply_discuss_workspace(perms, binding)
+
+
+def effective_agent_permissions(
+    permissions: dict | None,
+    *,
+    topic: str,
+    plan_md: str,
+    run_meta: dict[str, Any] | None,
+) -> dict:
+    """Room invoke permissions — TurnPolicy ON uses SSOT; legacy uses discuss overlay."""
+    from agent_lab.room.turn_policy import turn_policy_enabled
+
+    if turn_policy_enabled():
+        return _effective_room_permissions(
+            permissions,
+            topic=topic,
+            plan_md=plan_md,
+            run_meta=run_meta,
+        )
+    return _effective_discuss_permissions(
+        permissions,
+        topic=topic,
+        plan_md=plan_md,
+        run_meta=run_meta,
+    )
 
 
 def _agent_turn_failed(replies: list[ChatMessage]) -> bool:

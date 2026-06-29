@@ -298,6 +298,18 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
     FlagDef("AGENT_LAB_EFFICIENCY", "feature", "Default efficiency mode for all room calls"),
     FlagDef("AGENT_LAB_R15", "feature", "R1 summary bridge before round 2+"),
     FlagDef("AGENT_LAB_AUTO_PLAN_SCRIBE", "feature", "Re-scribe plan.md after every turn", default="1"),
+    FlagDef(
+        "AGENT_LAB_TURN_POLICY",
+        "feature",
+        "Signal-driven TurnPolicy (Scribe/FSM/tasks); replaces Plan toggle",
+        default="1",
+    ),
+    FlagDef(
+        "AGENT_LAB_SESSION_METRICS_MCP",
+        "feature",
+        "Read-only session_metrics MCP for Room agents (S1 self-observation)",
+        default="1",
+    ),
     FlagDef("AGENT_LAB_F2_ARTIFACT_ONLY", "feature", "Specialist R2 artifact-only context", default="1"),
     FlagDef("AGENT_LAB_RECENT_TURNS", "feature", "Recent turns in agent payload", default="8"),
     FlagDef("AGENT_LAB_MAX_THREAD_CHARS", "feature", "Max numbered thread chars", default="96000"),

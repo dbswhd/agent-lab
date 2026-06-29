@@ -712,6 +712,7 @@ def tick_plan_workflow_after_turn(
     plan_md: str,
     plan_before: str,
     has_pending_inbox_question: bool,
+    turn_policy_advance: bool = False,
 ) -> dict[str, Any]:
     """Advance FSM after a room turn; returns hints for follow-up automation."""
     run = read_run_meta(folder)
@@ -722,7 +723,7 @@ def tick_plan_workflow_after_turn(
     phase = str(pw.get("phase") or "CLARIFY")
     out: dict[str, Any] = {"handled": True, "phase": phase}
 
-    if not synthesize:
+    if not synthesize and not turn_policy_advance:
         out["discuss_only"] = True
         return out
 

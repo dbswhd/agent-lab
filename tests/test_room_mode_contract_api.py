@@ -17,6 +17,7 @@ def test_room_run_rejects_loop_without_plan_before_session_creation(
 
     monkeypatch.setattr(session_mod, "SESSIONS_DIR", tmp_path)
     monkeypatch.setattr(deps_mod, "SESSIONS_DIR", tmp_path)
+    monkeypatch.setenv("AGENT_LAB_TURN_POLICY", "0")
 
     from app.server.main import app
 

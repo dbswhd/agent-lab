@@ -66,7 +66,7 @@ def main() -> int:
         return 1
 
     _load_env()
-    from agent_lab.live_telegram_merge_soak import (
+    from scripts.soak.live_telegram_merge_soak import (
         format_telegram_soak_lines,
         run_live_telegram_merge_ingress_soak,
     )

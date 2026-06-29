@@ -1,6 +1,7 @@
 # Agent Lab — 현재 구조 및 플로우
 
-> **최종 업데이트:** 2026-06-26  
+> **최종 업데이트:** 2026-06-29  
+> **Turn modes (preset · Plan toggle):** [TURN-MODES.md](./TURN-MODES.md)
 > **관련 문서:** [ARCHITECTURE.md](./ARCHITECTURE.md) (모듈·컴포넌트 맵) · [USER-GUIDE.md](./USER-GUIDE.md) (기능 상세) · [STRATEGIC-DIRECTION-2026.md](./STRATEGIC-DIRECTION-2026.md) (방향성)
 
 ---
@@ -22,7 +23,7 @@
       │
       ▼
 ┌─────────────────────────────────────────────┐
-│  DISCUSS (Room)                             │
+│  DISCUSS (Room — Plan toggle OFF or debate phase)           │
 │  topic_router → agent_subset + role_plan    │
 │  3-agent 합의 루프 (R1 → R2 → anchor)       │
 │  consensus / BLOCK / CHALLENGE / AMEND      │

@@ -722,7 +722,7 @@ def test_cancel_room_run_pauses_mission(
     from app.server.main import app
 
     monkeypatch.setattr(
-        "app.server.deps.session_folder_or_404",
+        "app.server.routers.room.session_folder_or_404",
         lambda _sid: session_folder,
     )
     enable_mission_loop(session_folder)

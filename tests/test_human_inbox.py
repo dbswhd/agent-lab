@@ -366,6 +366,7 @@ def test_complete_sse_inbox_pending_on_clarifier(monkeypatch, tmp_path):
     from agent_lab import room
 
     monkeypatch.setenv("AGENT_LAB_CLARIFIER", "1")
+    monkeypatch.setenv("AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST", "1")
     events: list[tuple[str, dict]] = []
 
     folder, _messages, _plan_md = room.run_room(

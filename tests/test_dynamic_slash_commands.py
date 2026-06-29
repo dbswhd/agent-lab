@@ -258,20 +258,20 @@ def test_command_registry_gates_dynamic_room(cfg: Path, monkeypatch: pytest.Monk
     """The 6 dynamic-room commands appear in the composer catalog only when on."""
     from agent_lab.command_registry import list_commands
 
-    account_commands = {"login", "logout", "accounts"}
-    room_commands = {"model", "usage", "agents"}
+    account_commands = {"login", "logout", "accounts", "model"}
+    room_only_commands = {"usage", "agents"}
 
     monkeypatch.setenv("AGENT_LAB_DYNAMIC_ROOM", "0")
     off_ids = {c["id"] for c in list_commands(cfg, workspace=cfg)["commands"]}
     assert account_commands <= off_ids
-    assert room_commands.isdisjoint(off_ids)
+    assert room_only_commands.isdisjoint(off_ids)
 
     monkeypatch.setenv("AGENT_LAB_DYNAMIC_ROOM", "1")
     on = list_commands(cfg, workspace=cfg)["commands"]
     on_ids = {c["id"] for c in on}
-    assert account_commands | room_commands <= on_ids
+    assert account_commands | room_only_commands <= on_ids
     for row in on:
-        if row["id"] in account_commands | room_commands:
+        if row["id"] in account_commands | room_only_commands:
             assert row["slash"] == f"/{row['id']}"
             assert row["kind"] == "server"
             assert row["enabled"] is True

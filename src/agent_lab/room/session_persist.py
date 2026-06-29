@@ -111,6 +111,7 @@ def _append_human_turn_synthesis(
         build_human_turn_synthesis,
         is_human_synthesis_message,
         should_emit_human_turn_synthesis,
+        turn_leads_map,
     )
     from agent_lab.room.tasks import team_lead
 
@@ -153,7 +154,7 @@ def _append_human_turn_synthesis(
     ):
         return messages
     human_excerpt = messages[last_user].content or ""
-    lead = team_lead(run_meta)
+    lead = _synthesis_lead_for_turn(run_meta, turn_meta=turn_meta)
     body = build_human_turn_synthesis(
         turn_slice,
         lead=lead,
@@ -172,6 +173,32 @@ def _append_human_turn_synthesis(
             parallel_round=max_pr,
         )
     ]
+
+
+def _synthesis_lead_for_turn(
+    run_meta: dict[str, Any] | None,
+    *,
+    turn_meta: dict[str, Any] | None = None,
+) -> str:
+    from agent_lab.room.tasks import team_lead
+    from agent_lab.room.team_orchestration import turn_leads_map
+
+    if turn_meta:
+        raw = turn_meta.get("turn_lead")
+        if isinstance(raw, str) and raw.strip():
+            return raw.strip().lower()
+    if run_meta:
+        leads = turn_leads_map(run_meta)
+        human_turn_key: str | None = None
+        if turn_meta and turn_meta.get("human_turn") is not None:
+            human_turn_key = str(turn_meta["human_turn"])
+        if human_turn_key is None:
+            turns = run_meta.get("turns") or []
+            if turns and isinstance(turns[-1], dict) and turns[-1].get("human_turn") is not None:
+                human_turn_key = str(turns[-1]["human_turn"])
+        if human_turn_key and human_turn_key in leads:
+            return str(leads[human_turn_key])
+    return team_lead(run_meta)
 
 
 def _read_run_meta(folder: Path) -> dict[str, Any]:
@@ -233,11 +260,16 @@ def _prepare_team_coordination_before_round(
     """Round-robin assign claimable tasks; persist run.json when session exists."""
     from agent_lab.room.tasks import assign_tasks_to_agents, ensure_team_lead
     from agent_lab.room.team_orchestration import should_assign_tasks_on_turn
+    from agent_lab.room.turn_policy import should_assign_tasks_for_run_meta, turn_policy_enabled
     from agent_lab.run.meta import write_run_meta
 
     ensure_team_lead(run_meta)
     assigned: list[dict[str, Any]] = []
-    if should_assign_tasks_on_turn(mode=mode, synthesize=synthesize, consensus_mode=consensus_mode):
+    if turn_policy_enabled():
+        assign = should_assign_tasks_for_run_meta(run_meta)
+    else:
+        assign = should_assign_tasks_on_turn(mode=mode, synthesize=synthesize, consensus_mode=consensus_mode)
+    if assign:
         assigned = assign_tasks_to_agents(run_meta, [str(a) for a in active_agents])
     if folder and folder.is_dir():
         write_run_meta(folder, run_meta)

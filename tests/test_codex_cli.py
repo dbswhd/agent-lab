@@ -200,7 +200,7 @@ def test_run_codex_emits_proc_start_activity(monkeypatch: pytest.MonkeyPatch, tm
             room_turn=True,
         )
     assert lines
-    assert lines[0] == "Codex exec 프로세스 시작"
+    assert lines[0] == "Codex CLI 실행 중…"
 
 
 def test_run_codex_idle_timeout(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

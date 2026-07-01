@@ -26,16 +26,33 @@ export function isPlanWorkflowComposerHint(phase: string | undefined): boolean {
 
 type ClarifierInterviewLike = {
   readonly questions?: readonly {
+    readonly id?: string;
     readonly prompt?: string;
-    readonly answered?: boolean;
   }[];
+  readonly answers?: Readonly<Record<string, string>>;
+  readonly pending_count?: number;
 };
+
+export function clarifierQuestionAnswered(
+  question: { readonly id?: string },
+  answers: Readonly<Record<string, string>> | undefined,
+): boolean {
+  const id = String(question.id ?? "").trim();
+  if (!id) return false;
+  return Boolean(String(answers?.[id] ?? "").trim());
+}
 
 export function pendingClarifierQuestionCount(
   interview: ClarifierInterviewLike | null | undefined,
 ): number {
+  if (typeof interview?.pending_count === "number") {
+    return interview.pending_count;
+  }
+  const answers = interview?.answers ?? {};
   const questions = interview?.questions ?? [];
-  return questions.filter((q) => q.prompt?.trim() && !q.answered).length;
+  return questions.filter(
+    (q) => q.prompt?.trim() && !clarifierQuestionAnswered(q, answers),
+  ).length;
 }
 
 /** User-visible plan workflow notices (internal flags like clarity_pending excluded). */
@@ -51,18 +68,26 @@ export function isComposerPlanWorkflowNotice(notice: string | undefined): boolea
   return Boolean(normalized && COMPOSER_PLAN_WORKFLOW_NOTICES.has(normalized));
 }
 
-/** CLARIFY/INTAKE only — inbox, open questions, or workflow notice. */
+/** CLARIFY/INTAKE only — Human Inbox pending or workflow notice (not static clarifier scaffold). */
 export function hasPlanWorkflowClarifySurface(input: {
   readonly phase?: string;
   readonly inboxPendingCount: number;
   readonly notice?: string;
-  readonly clarifierInterview?: ClarifierInterviewLike | null;
 }): boolean {
   const phase = (input.phase ?? "").toUpperCase();
   if (phase !== "CLARIFY" && phase !== "INTAKE") return false;
   if (input.inboxPendingCount > 0) return true;
-  if (isComposerPlanWorkflowNotice(input.notice)) return true;
-  return pendingClarifierQuestionCount(input.clarifierInterview) > 0;
+  return isComposerPlanWorkflowNotice(input.notice);
+}
+
+/** Composer clarify lane — cap/notice banners only (questions live in Human Inbox). */
+export function hasPlanWorkflowClarifyNotice(input: {
+  readonly phase?: string;
+  readonly notice?: string;
+}): boolean {
+  const phase = (input.phase ?? "").toUpperCase();
+  if (phase !== "CLARIFY" && phase !== "INTAKE") return false;
+  return isComposerPlanWorkflowNotice(input.notice);
 }
 
 export function shouldShowPlanWorkflowComposerNotice(input: {
@@ -71,7 +96,6 @@ export function shouldShowPlanWorkflowComposerNotice(input: {
   readonly phase?: string;
   readonly inboxPendingCount: number;
   readonly notice?: string;
-  readonly clarifierInterview?: ClarifierInterviewLike | null;
 }): boolean {
   if (!input.showBanner && !input.showHint) return false;
   const phase = (input.phase ?? "").toUpperCase();
@@ -80,7 +104,6 @@ export function shouldShowPlanWorkflowComposerNotice(input: {
       phase,
       inboxPendingCount: input.inboxPendingCount,
       notice: input.notice,
-      clarifierInterview: input.clarifierInterview,
     });
   }
   return true;

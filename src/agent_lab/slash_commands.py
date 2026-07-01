@@ -317,6 +317,7 @@ def _model_preset_picker(provider: str) -> dict[str, Any]:
 
     if not mp.provider_has_model_picker(provider):
         return _err("model", f"unknown provider: {provider}")
+    panel = mp.model_panel_options(provider)
     return {
         "ok": True,
         "command": "model",
@@ -324,9 +325,12 @@ def _model_preset_picker(provider: str) -> dict[str, Any]:
         "provider": provider,
         "prompt": mp.provider_display_label(provider),
         "choices": {
-            "kind": "model_preset",
+            "kind": "model_panel",
             "provider": provider,
-            "options": mp.preset_picker_options(provider),
+            "options": panel.get("options") or [],
+            "efforts": panel.get("efforts") or [],
+            "selected_model": panel.get("selected_model"),
+            "selected_effort": panel.get("selected_effort"),
         },
     }
 
@@ -340,12 +344,26 @@ def _model_apply_preset(provider: str, preset_value: str) -> dict[str, Any]:
         label = mp.apply_preset(provider, preset_value)
     except ValueError as exc:
         return _err("model", str(exc))
+    # Carry a fresh panel snapshot so the frontend can redraw the still-open
+    # side panel (model list + effort control) in place — model and effort
+    # picks both land here, and neither should force the popover shut.
+    panel = mp.model_panel_options(provider)
     return {
         "ok": True,
         "command": "model",
+        "stage": "preset",
         "provider": provider,
+        "prompt": mp.provider_display_label(provider),
         "model_updated": True,
         "note": f"{mp.provider_display_label(provider)} 모델을 {label}(으)로 설정했습니다.",
+        "choices": {
+            "kind": "model_panel",
+            "provider": provider,
+            "options": panel.get("options") or [],
+            "efforts": panel.get("efforts") or [],
+            "selected_model": panel.get("selected_model"),
+            "selected_effort": panel.get("selected_effort"),
+        },
     }
 
 
@@ -481,7 +499,10 @@ def _model(args: list[str], *, session_folder: Path | None = None) -> dict[str, 
         from agent_lab.agent import model_prefs as mp
 
         if mp.provider_has_model_picker(head):
-            return _model_apply_preset(head, args[1])
+            token = args[1].strip()
+            if len(args) >= 3 and args[1].lower() == "effort":
+                return _model_apply_preset(head, f"effort:{args[2]}")
+            return _model_apply_preset(head, token)
     return _model_compose(args, session_folder=session_folder)
 
 

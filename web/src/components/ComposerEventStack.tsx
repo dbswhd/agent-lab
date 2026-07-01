@@ -17,17 +17,25 @@ import {
   WorkPlanApprovalSection,
   type PlanApprovalHost,
 } from "./WorkPlanApprovalSection";
-import { WorkClarifyPanel } from "./WorkClarifyPanel";
 import { fetchSessionRuntime, type RuntimeSnapshot } from "../api/client";
 import { useState } from "react";
 import { resolveWorkPhase } from "../utils/workStatusPhase";
 import { workPlanMetaLine } from "../utils/planMeta";
-import { hasPlanWorkflowClarifySurface } from "../utils/planWorkflowView";
+import {
+  hasPlanWorkflowClarifyNotice,
+  hasPlanWorkflowClarifySurface,
+  planWorkflowNoticeLabel,
+} from "../utils/planWorkflowView";
 import {
   COMPOSER_STACK_FOCUS_EVENT,
   type ComposerStackFocus,
 } from "../utils/composerStackFocus";
 import { workFocusElementId } from "../utils/workFocusTargets";
+import {
+  pendingComposerStackLanes,
+  resolveActiveComposerStackLane,
+} from "../utils/composerStackLane";
+import { useLocale } from "../i18n/useLocale";
 
 type Props = {
   readonly sessionId: string;
@@ -75,10 +83,27 @@ type Props = {
   readonly onConsensusDismiss: () => void;
   readonly onOpenDiff: () => void;
   readonly onOpenFiles: () => void;
+  readonly onOpenFile: (path: string) => void;
   readonly disabled: boolean;
 };
 
-/** Human action SSOT above the composer — inbox, plan approval, execute, consensus. */
+const LANE_LABEL_KO: Record<string, string> = {
+  plan_approval: "Plan 승인",
+  clarify: "명료화",
+  execute_queue: "실행 승인",
+  consensus: "합의 dry-run",
+  work: "할 일",
+};
+
+const LANE_LABEL_EN: Record<string, string> = {
+  plan_approval: "Plan approval",
+  clarify: "Clarify",
+  execute_queue: "Execute approval",
+  consensus: "Consensus dry-run",
+  work: "To-dos",
+};
+
+/** Human action SSOT above the composer — one lane at a time by precedence. */
 export function ComposerEventStack({
   sessionId,
   session,
@@ -121,8 +146,11 @@ export function ComposerEventStack({
   onConsensusDismiss,
   onOpenDiff,
   onOpenFiles,
+  onOpenFile,
   disabled,
 }: Props) {
+  const { locale, msg } = useLocale();
+  const ko = locale === "ko";
   const rootRef = useRef<HTMLDivElement>(null);
   const hasPlan = Boolean(planMd.trim());
   const [runtime, setRuntime] = useState<RuntimeSnapshot | null>(null);
@@ -176,24 +204,30 @@ export function ComposerEventStack({
     ""
   ).toUpperCase();
 
+  const workflowNotice =
+    planWorkflow?.notice ?? runtime?.plan_workflow?.notice ?? undefined;
+
   const showClarifyWork = useMemo(
     () =>
       (workflowPhase === "CLARIFY" || workflowPhase === "INTAKE") &&
       hasPlanWorkflowClarifySurface({
         phase: workflowPhase,
         inboxPendingCount,
-        notice:
-          planWorkflow?.notice ?? runtime?.plan_workflow?.notice ?? undefined,
-        clarifierInterview: runtime?.clarifier_interview ?? null,
+        notice: workflowNotice,
       }),
-    [
-      inboxPendingCount,
-      planWorkflow?.notice,
-      runtime?.clarifier_interview,
-      runtime?.plan_workflow?.notice,
-      workflowPhase,
-    ],
+    [inboxPendingCount, workflowNotice, workflowPhase],
   );
+
+  const showClarifyNotice = useMemo(
+    () =>
+      hasPlanWorkflowClarifyNotice({
+        phase: workflowPhase,
+        notice: workflowNotice,
+      }),
+    [workflowNotice, workflowPhase],
+  );
+
+  const clarifyNoticeLabel = planWorkflowNoticeLabel(workflowNotice, msg);
 
   const workPhase = useMemo(() => {
     const executions =
@@ -220,124 +254,175 @@ export function ComposerEventStack({
     showClarifyWork ||
     Boolean(execPending);
 
+  const laneInput = useMemo(
+    () => ({
+      inboxPendingCount,
+      planApprovalEnabled: Boolean(planApproval?.enabled),
+      showClarifyNotice,
+      hasPlan,
+      showExecuteQueue,
+      execPending: Boolean(execPending),
+      showConsensusGate,
+      consensusProposal,
+      showWorkSurface,
+    }),
+    [
+      consensusProposal,
+      execPending,
+      hasPlan,
+      inboxPendingCount,
+      planApproval?.enabled,
+      showClarifyNotice,
+      showConsensusGate,
+      showExecuteQueue,
+      showWorkSurface,
+    ],
+  );
+
+  const pendingLanes = useMemo(
+    () => pendingComposerStackLanes(laneInput),
+    [laneInput],
+  );
+  const activeLane = useMemo(
+    () => resolveActiveComposerStackLane(laneInput),
+    [laneInput],
+  );
+  const queuedLanes = pendingLanes.slice(1);
+
+  if (!activeLane) {
+    return null;
+  }
+
+  const planFileLabel =
+    typeof session?.run?.active_plan_relpath === "string"
+      ? session.run.active_plan_relpath
+      : "plan.md";
+
   return (
-    <div className="composer-event-stack" ref={rootRef}>
-      {inboxPendingCount > 0 ? (
-        <div className="composer-event-stack__section composer-question-surface">
-          <HumanInboxPanel
-            sessionId={sessionId}
-            reloadKey={inboxReloadKey}
-            planRevision={currentPlanRevision}
-            onResolved={onInboxResolved}
-            onBuildStarted={onInboxBuildStarted}
-            disabled={disabled}
-            presentation="composer"
-            onRefClick={onInboxRefClick}
-          />
-        </div>
-      ) : null}
+    <div className="composer-stack-scroll" ref={rootRef}>
+      <div className="composer-event-stack" data-composer-lane={activeLane}>
+        {activeLane === "inbox" ? (
+          <div className="composer-event-stack__section composer-question-surface">
+            <HumanInboxPanel
+              sessionId={sessionId}
+              reloadKey={inboxReloadKey}
+              planRevision={currentPlanRevision}
+              onResolved={onInboxResolved}
+              onBuildStarted={onInboxBuildStarted}
+              disabled={false}
+              presentation="composer"
+              onRefClick={onInboxRefClick}
+            />
+          </div>
+        ) : null}
 
-      {showClarifyWork && !hasPlan && !planApproval?.enabled ? (
-        <div className="composer-event-stack__section">
-          <WorkClarifyPanel
-            planWorkflow={planWorkflow}
-            runtime={runtime}
-            inboxPendingCount={inboxPendingCount}
-          />
-        </div>
-      ) : null}
+        {activeLane === "clarify" && clarifyNoticeLabel ? (
+          <div className="composer-event-stack__section workspace-event-strip">
+            <p className="plan-workflow-banner__notice">{clarifyNoticeLabel}</p>
+          </div>
+        ) : null}
 
-      {planApproval?.enabled ? (
-        <div className="composer-event-stack__section">
-          <WorkPlanApprovalSection
-            planMd={planMd}
-            approval={planApproval}
-            objections={roomTasks?.open_objections ?? []}
-            blockedReason={
-              planStaleNotice ??
-              (planMeta.pendingAgreement ? planMeta.freshnessLabel : null)
-            }
-            onFocusObjection={onFocusObjection}
-            sessionId={sessionId}
-            onObjectionResolved={onSessionUpdated}
-            variant="strip"
-            onOpenFiles={onOpenFiles}
-            planFileLabel={
-              typeof session?.run?.active_plan_relpath === "string"
-                ? session.run.active_plan_relpath
-                : "plan.md"
-            }
-          />
-        </div>
-      ) : null}
+        {activeLane === "plan_approval" && planApproval?.enabled ? (
+          <div className="composer-event-stack__section">
+            <WorkPlanApprovalSection
+              planMd={planMd}
+              approval={planApproval}
+              objections={roomTasks?.open_objections ?? []}
+              blockedReason={
+                planStaleNotice ??
+                (planMeta.pendingAgreement ? planMeta.freshnessLabel : null)
+              }
+              onFocusObjection={onFocusObjection}
+              sessionId={sessionId}
+              onObjectionResolved={onSessionUpdated}
+              variant="strip"
+              onOpenFiles={onOpenFiles}
+              planFileLabel={planFileLabel}
+            />
+          </div>
+        ) : null}
 
-      {showExecuteQueue && execPending ? (
-        <div className="composer-event-stack__section workspace-event-strip workspace-event-strip--review">
-          <ExecuteQueueBar
-            pending={execPending}
-            storedActions={storedActions}
-            busy={executeBusy}
-            disabled={disabled}
-            compact
-            onApprove={onExecuteApprove}
-            onReject={onExecuteReject}
-            onOpenPlan={onOpenDiff}
-          />
-        </div>
-      ) : null}
+        {activeLane === "execute_queue" && execPending ? (
+          <div className="composer-event-stack__section workspace-event-strip workspace-event-strip--review">
+            <ExecuteQueueBar
+              pending={execPending}
+              storedActions={storedActions}
+              busy={executeBusy}
+              disabled={disabled}
+              compact
+              onApprove={onExecuteApprove}
+              onReject={onExecuteReject}
+              onOpenPlan={onOpenDiff}
+            />
+          </div>
+        ) : null}
 
-      {showConsensusGate && consensusProposal ? (
-        <div className="composer-event-stack__section workspace-event-strip workspace-event-strip--review">
-          <ConsensusDryRunGateBar
-            proposal={consensusProposal}
-            busy={consensusGateBusy || executeBusy}
-            disabled={disabled}
-            onDryRun={onConsensusDryRun}
-            onOpenPlan={onOpenDiff}
-            onDismiss={onConsensusDismiss}
-          />
-        </div>
-      ) : null}
+        {activeLane === "consensus" && consensusProposal ? (
+          <div className="composer-event-stack__section workspace-event-strip workspace-event-strip--review">
+            <ConsensusDryRunGateBar
+              proposal={consensusProposal}
+              busy={consensusGateBusy || executeBusy}
+              disabled={disabled}
+              onDryRun={onConsensusDryRun}
+              onOpenPlan={onOpenDiff}
+              onDismiss={onConsensusDismiss}
+            />
+          </div>
+        ) : null}
 
-      {showWorkSurface && !planApproval?.enabled ? (
-        <div className="composer-event-stack__section composer-event-stack__work">
-          <WorkToolPanel
-            sessionId={sessionId}
-            session={session}
-            planMd={planMd}
-            planMeta={planMeta}
-            planStaleNotice={planStaleNotice}
-            workFocus={workFocus}
-            onWorkFocusHandled={onWorkFocusHandled}
-            synthesizing={synthesizing}
-            running={running}
-            runBusy={runBusy}
-            onSynthesizeNow={onSynthesizeNow}
-            onPlanRefClick={onPlanRefClick}
-            onFocusTask={onFocusTask}
-            onFocusObjection={onFocusObjection}
-            onSessionUpdated={onSessionUpdated}
-            roomTasks={roomTasks}
-            cursorReady={cursorReady}
-            executeError={executeError}
-            planWorkflow={planWorkflow}
-            planApproval={null}
-            inboxPendingCount={inboxPendingCount}
-            workHookAlert={workHookAlert}
-            onDismissWorkHookAlert={onDismissWorkHookAlert}
-            onOpenDiff={onOpenDiff}
-            onOpenFiles={onOpenFiles}
-            variant="composer"
-          />
-        </div>
-      ) : null}
+        {activeLane === "work" ? (
+          <div className="composer-event-stack__section composer-event-stack__work">
+            <WorkToolPanel
+              sessionId={sessionId}
+              session={session}
+              planMd={planMd}
+              planMeta={planMeta}
+              planStaleNotice={planStaleNotice}
+              workFocus={workFocus}
+              onWorkFocusHandled={onWorkFocusHandled}
+              synthesizing={synthesizing}
+              running={running}
+              runBusy={runBusy}
+              onSynthesizeNow={onSynthesizeNow}
+              onPlanRefClick={onPlanRefClick}
+              onFocusTask={onFocusTask}
+              onFocusObjection={onFocusObjection}
+              onSessionUpdated={onSessionUpdated}
+              roomTasks={roomTasks}
+              cursorReady={cursorReady}
+              executeError={executeError}
+              planWorkflow={planWorkflow}
+              planApproval={null}
+              inboxPendingCount={inboxPendingCount}
+              workHookAlert={workHookAlert}
+              onDismissWorkHookAlert={onDismissWorkHookAlert}
+              onOpenDiff={onOpenDiff}
+              onOpenFiles={onOpenFiles}
+              onOpenFile={onOpenFile}
+              variant="composer"
+            />
+            {hasPlan &&
+            (!planWorkflow?.enabled || workflowPhase === "APPROVED") ? (
+              <WorkPhaseChip
+                phase={workPhase}
+                metaLine={workPlanMetaLine(planMeta)}
+              />
+            ) : null}
+          </div>
+        ) : null}
 
-      {hasPlan && (!planWorkflow?.enabled || workflowPhase === "APPROVED") ? (
-        <WorkPhaseChip
-          phase={workPhase}
-          metaLine={workPlanMetaLine(planMeta)}
-        />
-      ) : null}
+        {queuedLanes.length > 0 ? (
+          <p className="composer-stack-queue-hint" role="status">
+            {ko
+              ? `다음: ${queuedLanes
+                  .map((lane) => LANE_LABEL_KO[lane] ?? lane)
+                  .join(" → ")}`
+              : `Next: ${queuedLanes
+                  .map((lane) => LANE_LABEL_EN[lane] ?? lane)
+                  .join(" → ")}`}
+          </p>
+        ) : null}
+      </div>
     </div>
   );
 }

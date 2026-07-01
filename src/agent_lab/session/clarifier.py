@@ -205,6 +205,9 @@ def build_clarifier_interview(
 
     if len(questions) < 1:
         return None
+    from agent_lab.plan.clarify_options import attach_options_to_questions
+
+    questions = attach_options_to_questions(questions[:5], topic=text)
     return {
         "version": 2,
         "plan_mode": plan_mode,
@@ -384,6 +387,18 @@ def record_clarifier_answers(
     return public_clarifier_interview(read_run_meta(path))
 
 
+def _inbox_choice_label(item: dict[str, Any], choice_id: str) -> str:
+    choice_id = str(choice_id or "").strip()
+    if not choice_id or choice_id == "freeform":
+        return str(item.get("resolved_note") or "").strip()
+    for opt in item.get("options") or []:
+        if not isinstance(opt, dict):
+            continue
+        if str(opt.get("id") or "") == choice_id:
+            return str(opt.get("label") or choice_id).strip()
+    return choice_id
+
+
 def sync_clarifier_answers_from_inbox(folder: Path) -> dict[str, Any] | None:
     """Harvest resolved clarifier inbox items into interview answers."""
     from pathlib import Path
@@ -405,13 +420,25 @@ def sync_clarifier_answers_from_inbox(folder: Path) -> dict[str, Any] | None:
         qid = str(q.get("id") or "")
         key = clarifier_harvest_key(prompt)
         for item in inbox_items(run):
-            if item.get("harvest_key") != key:
-                continue
             if item.get("status") != "resolved":
                 continue
-            note = str(item.get("resolved_note") or item.get("resolved_choice") or "").strip()
-            if note:
-                answers[qid] = note
+            item_prompt = str(item.get("prompt") or "").strip()
+            key_match = item.get("harvest_key") == key
+            prompt_match = item_prompt == prompt.strip()
+            if not key_match and not prompt_match:
+                continue
+            note = str(item.get("resolved_note") or "").strip()
+            choice = item.get("resolved_choice")
+            selected = item.get("resolved_selected")
+            answer = note
+            if not answer and choice:
+                answer = _inbox_choice_label(item, str(choice))
+            elif not answer and selected:
+                parts = selected if isinstance(selected, list) else [selected]
+                answer = ", ".join(_inbox_choice_label(item, str(p)) for p in parts if p)
+            if answer:
+                answers[qid] = answer
+                break
     if not answers:
         return public_clarifier_interview(run)
     return record_clarifier_answers(path, answers=answers)

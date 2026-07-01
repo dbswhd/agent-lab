@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from agent_lab.room._typing import agent_label, as_agent_ids
+from agent_lab.room._typing import agent_label, as_agent_id, as_agent_ids
 from typing import Any
 
 from agent_lab.agents.registry import AgentId, available_agents
@@ -52,6 +52,7 @@ def run_consensus_agent_rounds(
 ) -> tuple[list[ChatMessage], dict[str, Any] | None]:
     """자유 토론: R1 병렬 후 앵커 제안에 전원 「이의 없습니다」까지 순차 반복."""
     policy = consensus_policy or default_consensus_policy()
+    from agent_lab.room.agent_mentions import effective_invoke_agents
     from agent_lab.topic_router import (
         batch_escalation_act,
         escalate_route,
@@ -59,7 +60,12 @@ def run_consensus_agent_rounds(
         route_debate_last,
     )
 
-    active: list[AgentId] = list((agents or available_agents())[:MAX_AGENTS_PER_ROUND])
+    invoke_ids = effective_invoke_agents(
+        [str(a) for a in (agents or [])],
+        run_meta,
+        fallback=[str(a) for a in available_agents()],
+    )[:MAX_AGENTS_PER_ROUND]
+    active: list[AgentId] = [as_agent_id(a) for a in invoke_ids]
     if not active:
         raise RuntimeError("No agents available.")
 
@@ -331,6 +337,47 @@ def run_consensus_agent_rounds(
                 active_agents=active,
                 plan_md=plan_md,
             )
+            if r >= 2:
+                from agent_lab.debate_convergence import (
+                    debate_convergence_gate_enabled,
+                    record_debate_convergence,
+                    score_debate_convergence,
+                    should_advance_debate,
+                )
+
+                if debate_convergence_gate_enabled():
+                    conv = score_debate_convergence(
+                        working,
+                        active_agents=[str(a) for a in active],
+                        run_meta=run_meta,
+                        human_turn=_human_turn_number(human_turn_index),
+                        phase="debate",
+                    )
+                    record_debate_convergence(run_meta, conv)
+                    advance, advance_reason = should_advance_debate(
+                        conv,
+                        run_meta,
+                        human_turn=_human_turn_number(human_turn_index),
+                        debate_round=r,
+                    )
+                    if advance:
+                        if on_event:
+                            on_event(
+                                "debate_convergence",
+                                {
+                                    "round": r,
+                                    "convergence": conv.get("convergence"),
+                                    "threshold": conv.get("threshold"),
+                                    "weakest": conv.get("weakest"),
+                                    "reason": advance_reason,
+                                    "message": (
+                                        f"Debate 수렴 {conv.get('convergence')} "
+                                        f"(≥ {conv.get('threshold')}) — 토론 라운드 조기 종료."
+                                    ),
+                                },
+                            )
+                        last_debate = r
+                        break
             if _agent_turn_failed(batch):
                 if on_event:
                     on_event(
@@ -477,6 +524,8 @@ def run_consensus_agent_rounds(
             "forced_review": False,
             "category": route.category,
         }
+        if run_meta is not None and run_meta.get("_debate_convergence"):
+            quality["debate_convergence"] = run_meta.get("_debate_convergence")
         forced_review_rounds = 0
         from agent_lab.turn_modes import antidrift_enabled
 
@@ -735,6 +784,26 @@ def run_consensus_agent_rounds(
                     pending_agents=sorted(pending),
                 )
 
+            from agent_lab.debate_convergence import (
+                debate_convergence_gate_enabled,
+                record_debate_convergence,
+                score_debate_convergence,
+            )
+
+            convergence_result = None
+            if debate_convergence_gate_enabled():
+                thread_for_score = list(messages) + list(all_replies)
+                convergence_result = score_debate_convergence(
+                    thread_for_score,
+                    active_agents=[str(a) for a in active],
+                    run_meta=run_meta,
+                    human_turn=human_turn_no,
+                    phase="endorse",
+                    consented=consented,
+                    pending={str(a) for a in pending},
+                )
+                record_debate_convergence(run_meta, convergence_result)
+
             _, endorse_exit_reason = policy.should_exit_round(
                 consensus_status=None,
                 endorse_count=len(consented),
@@ -743,8 +812,11 @@ def run_consensus_agent_rounds(
                 max_calls=cap_calls,
                 rounds=parallel_round,
                 max_rounds=cap_rounds,
+                convergence_result=convergence_result,
+                run_meta=run_meta,
+                human_turn=human_turn_no,
             )
-            if endorse_exit_reason == "endorse_threshold" and pending:
+            if endorse_exit_reason in {"endorse_threshold", "convergence_threshold"} and pending:
                 pending.clear()
 
             if not pending:

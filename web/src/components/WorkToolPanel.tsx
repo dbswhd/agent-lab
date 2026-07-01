@@ -19,7 +19,6 @@ import {
 import { resolveWorkPhase } from "../utils/workStatusPhase";
 import { hasPlanWorkflowClarifySurface } from "../utils/planWorkflowView";
 import { PlanExecutePanel } from "./PlanExecutePanel";
-import { WorkClarifyPanel } from "./WorkClarifyPanel";
 import { WorkDecisionPanel } from "./WorkDecisionPanel";
 import {
   WorkPlanApprovalSection,
@@ -58,6 +57,7 @@ type Props = {
   planApproval?: PlanApprovalHost | null;
   onOpenDiff?: () => void;
   onOpenFiles?: () => void;
+  onOpenFile?: (path: string) => void;
   variant?: "tool" | "composer";
   inboxPendingCount?: number;
   workHookAlert?: {
@@ -92,6 +92,7 @@ export function WorkToolPanel({
   planApproval = null,
   onOpenDiff,
   onOpenFiles,
+  onOpenFile,
   variant = "tool",
   inboxPendingCount = 0,
   workHookAlert = null,
@@ -213,16 +214,23 @@ export function WorkToolPanel({
       inboxPendingCount,
       notice:
         planWorkflow?.notice ?? runtime?.plan_workflow?.notice ?? undefined,
-      clarifierInterview: runtime?.clarifier_interview ?? null,
     });
 
   if (showClarifyWork && !hasPlan && !planApproval?.enabled) {
+    if (variant === "composer") return null;
     return (
-      <WorkClarifyPanel
-        planWorkflow={planWorkflow}
-        runtime={runtime}
-        inboxPendingCount={inboxPendingCount}
-      />
+      <div className="work-surface tools-work-empty">
+        <div className="empty-state">
+          <span className="empty-state__title">
+            {inboxPendingCount > 0 ? "Clarify 질문 대기" : "Clarify 진행 중"}
+          </span>
+          <span className="empty-state__hint">
+            {inboxPendingCount > 0
+              ? "Composer Human Inbox에서 에이전트 질문에 답하세요."
+              : "에이전트가 Inbox에 질문을 올릴 때까지 기다리세요."}
+          </span>
+        </div>
+      </div>
     );
   }
 
@@ -349,8 +357,15 @@ export function WorkToolPanel({
         onDismissWorkHookAlert={onDismissWorkHookAlert}
         onOpenDiff={onOpenDiff}
         onOpenFiles={onOpenFiles}
+        onOpenFile={onOpenFile}
         sessionIdForObjections={sessionId}
         onObjectionResolved={onSessionUpdated}
+        variant={variant}
+        planFileLabel={
+          typeof session?.run?.active_plan_relpath === "string"
+            ? session.run.active_plan_relpath
+            : "plan.md"
+        }
       />
     </div>
   );

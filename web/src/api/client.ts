@@ -1088,12 +1088,36 @@ export type RuntimeSnapshot = {
       id?: string;
       prompt?: string;
       category?: string;
-      answered?: boolean;
     }>;
-    complete?: boolean;
+    answers?: Record<string, string>;
+    pending_count?: number;
+    status?: string;
     source?: string;
   } | null;
 };
+
+export type ClarifierInterviewRecord = NonNullable<
+  RuntimeSnapshot["clarifier_interview"]
+>;
+
+export function submitClarifierInterviewAnswers(
+  sessionId: string,
+  body: { answers: Record<string, string>; mark_complete?: boolean },
+) {
+  return json<{
+    ok: boolean;
+    session_id: string;
+    interview: ClarifierInterviewRecord | null;
+    plan_workflow?: PlanWorkflowRecord;
+  }>(`/api/sessions/${encodeURIComponent(sessionId)}/clarifier-interview/answers`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      answers: body.answers,
+      mark_complete: body.mark_complete ?? true,
+    }),
+  });
+}
 
 export function fetchSessionRuntime(sessionId: string) {
   return json<RuntimeSnapshot>(
@@ -2534,6 +2558,7 @@ export type HumanInboxItem = {
   id: string;
   kind: "question" | "build" | "skill_draft";
   source?: string;
+  caller_agent?: string | null;
   status:
     | "pending"
     | "resolved"

@@ -1,5 +1,8 @@
 import { useMemo, useRef, useState, useEffect, type ReactNode } from "react";
-import { ComposerMentionMenu } from "./ComposerMentionMenu";
+import {
+  ComposerMentionMenu,
+  type MentionMenuOption,
+} from "./ComposerMentionMenu";
 import { ComposerAgentStack } from "./ComposerAgentStack";
 import { presetDisplayLabel, presetHintLine } from "../utils/roomPresets";
 import { formatAgentModelName } from "../utils/roomModels";
@@ -7,6 +10,8 @@ import {
   mentionQueryAtCursor,
   useComposerMentionPaths,
 } from "../hooks/useComposerMentionPaths";
+import { buildComposerHighlightNodes } from "../utils/composerInputHighlight";
+import { bestSlashHighlightIndex } from "../utils/slashCommandMenuGroups";
 import { SlashCommandMenu } from "./SlashCommandMenu";
 import type { SlashCommandRecord, RoomPreset } from "../api/client";
 import type { ComposerTurnProfile } from "../utils/turnProfile";
@@ -131,9 +136,14 @@ export function ChatComposer({
   modelPopover,
 }: Props) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const mirrorRef = useRef<HTMLDivElement>(null);
   const composerCapsuleRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [slashHighlight, setSlashHighlight] = useState(0);
+  const [mentionHighlight, setMentionHighlight] = useState(0);
+  const [mentionVisibleOptions, setMentionVisibleOptions] = useState<
+    MentionMenuOption[]
+  >([]);
   const [slashVisibleCommands, setSlashVisibleCommands] = useState<
     SlashCommandRecord[]
   >([]);
@@ -149,19 +159,27 @@ export function ChatComposer({
     if (!el) return;
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, 180)}px`;
+    syncInputMirrorScroll();
   }, [value]);
 
   const slashQuery = value.slice(1).split(/\s/)[0] ?? "";
 
   useEffect(() => {
-    if (slashVisibleCommands.length === 0) {
-      setSlashHighlight(0);
-      return;
-    }
-    if (slashHighlight >= slashVisibleCommands.length) {
-      setSlashHighlight(slashVisibleCommands.length - 1);
-    }
-  }, [slashHighlight, slashVisibleCommands.length]);
+    setSlashHighlight(bestSlashHighlightIndex(slashVisibleCommands, slashQuery));
+  }, [slashQuery, slashVisibleCommands]);
+
+  const highlightNodes = useMemo(
+    () => buildComposerHighlightNodes(value),
+    [value],
+  );
+
+  function syncInputMirrorScroll() {
+    const input = inputRef.current;
+    const mirror = mirrorRef.current;
+    if (!input || !mirror) return;
+    mirror.scrollTop = input.scrollTop;
+    mirror.scrollLeft = input.scrollLeft;
+  }
 
   const mentionQuery = useMemo(() => {
     if (!sessionId) return null;
@@ -172,13 +190,27 @@ export function ChatComposer({
     if (mentionQuery != null) void ensureLoaded();
   }, [mentionQuery, ensureLoaded]);
 
-  function applyMention(path: string) {
+  useEffect(() => {
+    if (mentionQuery != null) setMentionHighlight(0);
+  }, [mentionQuery]);
+
+  useEffect(() => {
+    if (mentionVisibleOptions.length === 0) {
+      setMentionHighlight(0);
+      return;
+    }
+    if (mentionHighlight >= mentionVisibleOptions.length) {
+      setMentionHighlight(mentionVisibleOptions.length - 1);
+    }
+  }, [mentionHighlight, mentionVisibleOptions.length]);
+
+  function applyMention(token: string) {
     const el = inputRef.current;
     const cursor = el?.selectionStart ?? value.length;
     const head = value.slice(0, cursor);
     const tail = value.slice(cursor);
-    const replaced = head.replace(/(?:^|\s)@([^\s@]*)$/, (m) =>
-      m.startsWith(" ") ? ` @${path} ` : `@${path} `,
+    const replaced = head.replace(/(?<![A-Za-z0-9_-])@([^\s@]*)$/, (m) =>
+      m.startsWith("@") ? `@${token} ` : ` @${token} `,
     );
     onChange(`${replaced}${tail}`);
     requestAnimationFrame(() => {
@@ -198,11 +230,11 @@ export function ChatComposer({
   const hiddenModelCount = Math.max(activeModels.length - 1, 0);
 
   function openMentionStart() {
-    if (inputLocked || !sessionId) return;
+    if (inputLocked) return;
     const needsSpace = value.length > 0 && !/\s$/.test(value);
     const nextValue = `${value}${needsSpace ? " " : ""}@`;
     onChange(nextValue);
-    void ensureLoaded();
+    if (sessionId) void ensureLoaded();
     requestAnimationFrame(() => {
       const next = inputRef.current;
       if (!next) return;
@@ -377,92 +409,137 @@ export function ChatComposer({
                   <ComposerMentionMenu
                     query={mentionQuery}
                     paths={mentionPaths}
+                    agents={activeModels}
                     loading={mentionLoading}
-                    onPick={applyMention}
+                    onPickPath={applyMention}
+                    onPickAgent={applyMention}
+                    highlightedIndex={mentionHighlight}
+                    onHighlightChange={setMentionHighlight}
+                    onOptionsChange={setMentionVisibleOptions}
                   />
                 ) : null}
-                <textarea
-                  ref={inputRef}
-                  className="composer-input"
-                  value={value}
-                  onChange={(e) => {
-                    const nextValue = e.target.value;
-                    const nextSlashQuery =
-                      nextValue.slice(1).split(/\s/)[0] ?? "";
-                    if (nextSlashQuery !== slashQuery) setSlashHighlight(0);
-                    onChange(nextValue);
-                    setMentionCursor(
-                      e.target.selectionStart ?? nextValue.length,
-                    );
-                  }}
-                  onClick={(e) =>
-                    setMentionCursor(
-                      (e.target as HTMLTextAreaElement).selectionStart ??
-                        value.length,
-                    )
-                  }
-                  placeholder={placeholder}
-                  disabled={inputLocked}
-                  rows={1}
-                  onKeyDown={(e) => {
-                    if (
-                      value.startsWith("/") &&
-                      slashVisibleCommands.length > 0
-                    ) {
-                      if (e.key === "ArrowDown") {
-                        e.preventDefault();
-                        setSlashHighlight(
-                          (slashHighlight + 1) % slashVisibleCommands.length,
-                        );
-                        return;
-                      }
-                      if (e.key === "ArrowUp") {
-                        e.preventDefault();
-                        setSlashHighlight(
-                          (slashHighlight - 1 + slashVisibleCommands.length) %
-                            slashVisibleCommands.length,
-                        );
-                        return;
-                      }
-                      if (e.key === "PageDown") {
-                        e.preventDefault();
-                        setSlashHighlight(
-                          Math.min(
-                            slashHighlight + 10,
-                            slashVisibleCommands.length - 1,
-                          ),
-                        );
-                        return;
-                      }
-                      if (e.key === "PageUp") {
-                        e.preventDefault();
-                        setSlashHighlight(Math.max(slashHighlight - 10, 0));
-                        return;
-                      }
-                      const slashTokenOnly = /^\/\S*$/.test(value);
+                <div className="composer-input-stack">
+                  <div
+                    ref={mirrorRef}
+                    className="composer-input-mirror"
+                    aria-hidden="true"
+                  >
+                    {highlightNodes}
+                  </div>
+                  <textarea
+                    ref={inputRef}
+                    className="composer-input composer-input--overlay"
+                    value={value}
+                    onChange={(e) => {
+                      const nextValue = e.target.value;
+                      const nextSlashQuery =
+                        nextValue.slice(1).split(/\s/)[0] ?? "";
+                      if (nextSlashQuery !== slashQuery) setSlashHighlight(0);
+                      onChange(nextValue);
+                      setMentionCursor(
+                        e.target.selectionStart ?? nextValue.length,
+                      );
+                    }}
+                    onScroll={syncInputMirrorScroll}
+                    onClick={(e) => {
+                      setMentionCursor(
+                        (e.target as HTMLTextAreaElement).selectionStart ??
+                          value.length,
+                      );
+                      syncInputMirrorScroll();
+                    }}
+                    placeholder={placeholder}
+                    disabled={inputLocked}
+                    rows={1}
+                    onKeyDown={(e) => {
                       if (
-                        (e.key === "Tab" || e.key === "Enter") &&
-                        slashTokenOnly &&
-                        slashVisibleCommands[slashHighlight]
+                        mentionQuery != null &&
+                        mentionVisibleOptions.length > 0
                       ) {
+                        if (e.key === "ArrowDown") {
+                          e.preventDefault();
+                          setMentionHighlight(
+                            (mentionHighlight + 1) %
+                              mentionVisibleOptions.length,
+                          );
+                          return;
+                        }
+                        if (e.key === "ArrowUp") {
+                          e.preventDefault();
+                          setMentionHighlight(
+                            (mentionHighlight -
+                              1 +
+                              mentionVisibleOptions.length) %
+                              mentionVisibleOptions.length,
+                          );
+                          return;
+                        }
+                        if (e.key === "Tab" || e.key === "Enter") {
+                          e.preventDefault();
+                          const option =
+                            mentionVisibleOptions[mentionHighlight];
+                          if (option) applyMention(option.token);
+                          return;
+                        }
+                      }
+                      if (
+                        value.startsWith("/") &&
+                        slashVisibleCommands.length > 0
+                      ) {
+                        if (e.key === "ArrowDown") {
+                          e.preventDefault();
+                          setSlashHighlight(
+                            (slashHighlight + 1) % slashVisibleCommands.length,
+                          );
+                          return;
+                        }
+                        if (e.key === "ArrowUp") {
+                          e.preventDefault();
+                          setSlashHighlight(
+                            (slashHighlight - 1 + slashVisibleCommands.length) %
+                              slashVisibleCommands.length,
+                          );
+                          return;
+                        }
+                        if (e.key === "PageDown") {
+                          e.preventDefault();
+                          setSlashHighlight(
+                            Math.min(
+                              slashHighlight + 10,
+                              slashVisibleCommands.length - 1,
+                            ),
+                          );
+                          return;
+                        }
+                        if (e.key === "PageUp") {
+                          e.preventDefault();
+                          setSlashHighlight(Math.max(slashHighlight - 10, 0));
+                          return;
+                        }
+                        const slashTokenOnly = /^\/\S*$/.test(value);
+                        if (
+                          (e.key === "Tab" || e.key === "Enter") &&
+                          slashTokenOnly &&
+                          slashVisibleCommands[slashHighlight]
+                        ) {
+                          e.preventDefault();
+                          const command = slashVisibleCommands[slashHighlight];
+                          onChange(command.slash);
+                          return;
+                        }
+                      }
+                      if (e.key === "Escape" && value.startsWith("/")) {
                         e.preventDefault();
-                        const command = slashVisibleCommands[slashHighlight];
-                        onChange(command.slash);
-                        if (e.key === "Enter") onSlashExecute?.(command);
+                        onChange("");
                         return;
                       }
-                    }
-                    if (e.key === "Escape" && value.startsWith("/")) {
-                      e.preventDefault();
-                      onChange("");
-                      return;
-                    }
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      onSend();
-                    }
-                  }}
-                />
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        onSend();
+                      }
+                    }}
+                  />
+                </div>
                 {toolbar && <div className="composer-toolbar">{toolbar}</div>}
               </div>
             </div>
@@ -495,10 +572,10 @@ export function ChatComposer({
                 <button
                   type="button"
                   className="btn-attach"
-                  disabled={inputLocked || !sessionId}
+                  disabled={inputLocked}
                   onClick={openMentionStart}
-                  aria-label="파일 멘션"
-                  title="파일 멘션"
+                  aria-label="멘션"
+                  title="에이전트 또는 파일 멘션 (@)"
                 >
                   <AtIcon />
                 </button>
@@ -529,6 +606,9 @@ export function ChatComposer({
                     >
                       <span className="composer-model-select__agent">
                         {primaryModel.label}
+                      </span>
+                      <span className="composer-model-select__sep" aria-hidden>
+                        ·
                       </span>
                       <strong>
                         {formatAgentModelName(

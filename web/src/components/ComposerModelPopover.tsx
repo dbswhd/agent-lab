@@ -5,6 +5,7 @@ import { useDismissOnPointerDownOutside } from "../hooks/useDismissOnPointerDown
 import { agentLogoSrc } from "../utils/agentLogos";
 import type { AgentRole } from "../utils/transcript";
 import { Avatar } from "./Avatar";
+import { ModelEffortSlider } from "./ModelEffortSlider";
 
 export type ModelPopoverAgent = {
   value: string;
@@ -18,12 +19,17 @@ export type ModelPopoverPreset = {
   value: string;
   label: string;
   selected?: boolean;
+  available?: boolean;
+  comingSoonNote?: string;
 };
 
 export type ModelPopoverSidePanel = {
   providerId: string;
   providerLabel: string;
   presets: ModelPopoverPreset[];
+  efforts?: string[];
+  selectedModel?: string;
+  selectedEffort?: string;
 };
 
 export type ComposerModelPopoverProps = {
@@ -34,6 +40,7 @@ export type ComposerModelPopoverProps = {
   selectedAgents: Set<string>;
   onProviderDrill: (providerId: string) => void;
   onSidePresetSelect: (providerId: string, value: string) => void;
+  onSideEffortSelect?: (providerId: string, effort: string) => void;
   onSideClose: () => void;
   onAgentToggle: (value: string) => void;
   onAgentsApply: () => void;
@@ -137,6 +144,7 @@ export function ComposerModelPopover({
   selectedAgents,
   onProviderDrill,
   onSidePresetSelect,
+  onSideEffortSelect,
   onSideClose,
   onAgentToggle,
   onAgentsApply,
@@ -202,27 +210,60 @@ export function ComposerModelPopover({
               role="listbox"
               aria-label={`${sidePanel.providerLabel} models`}
             >
-              {sidePanel.presets.map((preset) => (
-                <button
-                  key={preset.value}
-                  type="button"
-                  role="option"
-                  aria-selected={preset.selected}
-                  className={[
-                    "composer-model-popover__preset",
-                    preset.selected ? "is-selected" : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                  onClick={() =>
-                    onSidePresetSelect(sidePanel.providerId, preset.value)
-                  }
-                >
-                  <span>{preset.label}</span>
-                  {preset.selected ? <CheckIcon /> : null}
-                </button>
-              ))}
+              {sidePanel.presets.map((preset) => {
+                const unavailable = preset.available === false;
+                return (
+                  <button
+                    key={preset.value}
+                    type="button"
+                    role="option"
+                    aria-selected={preset.selected}
+                    disabled={unavailable}
+                    className={[
+                      "composer-model-popover__preset",
+                      preset.selected ? "is-selected" : "",
+                      unavailable ? "is-disabled" : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    title={preset.comingSoonNote ?? undefined}
+                    onClick={() => {
+                      if (unavailable) return;
+                      onSidePresetSelect(sidePanel.providerId, preset.value);
+                    }}
+                  >
+                    <span>
+                      {preset.label}
+                      {preset.comingSoonNote ? (
+                        <span className="composer-model-popover__soon">
+                          {preset.comingSoonNote}
+                        </span>
+                      ) : null}
+                    </span>
+                    {preset.selected ? <CheckIcon /> : null}
+                  </button>
+                );
+              })}
             </div>
+            {sidePanel.efforts && sidePanel.efforts.length > 0 ? (
+              <>
+                <div
+                  className="composer-model-popover__divider"
+                  role="separator"
+                />
+                <ModelEffortSlider
+                  efforts={sidePanel.efforts}
+                  value={
+                    sidePanel.selectedEffort ??
+                    sidePanel.efforts[sidePanel.efforts.length - 1] ??
+                    "high"
+                  }
+                  onChange={(effort) =>
+                    onSideEffortSelect?.(sidePanel.providerId, effort)
+                  }
+                />
+              </>
+            ) : null}
           </div>,
           document.body,
         )

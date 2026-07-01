@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
+import logging
 import time
 from pathlib import Path
 from typing import Any
+
+log = logging.getLogger(__name__)
 
 from agent_lab.agents.registry import AgentId, available_agents
 from agent_lab.agent.roster import resolve_active_agents
@@ -168,21 +171,12 @@ def continue_room_round(
         try:
             topic_file.write_text(topic, encoding="utf-8")
         except OSError:
-            pass
+            log.warning("failed to self-heal topic.txt for session %s", folder, exc_info=True)
     messages = load_session_messages(folder)
-    body = user_message.strip()
+    user_text = user_message.strip()
     att = describe_attachments(folder)
-    if att:
-        body = f"{body}\n\n---\n\n{att}"
     human_turn_index = _human_turn_count(messages)
-    messages.append(ChatMessage(role="user", agent=None, content=body))
-    human_turn_num = _human_turn_count(messages)
-    _checkpoint_chat(folder, messages, topic=topic)
-    from agent_lab.human_inbox import supersede_pending_inbox
-    from agent_lab.mission.board import begin_human_turn
-
-    begin_human_turn(folder, human_turn=human_turn_num)
-    supersede_pending_inbox(folder, human_turn_id=human_turn_num)
+    human_turn_num = _human_turn_count(messages) + 1
     plan_md, run_meta = _session_context(folder)
     efficiency_mode = efficiency_mode or bool((run_meta or {}).get("adaptive_efficiency"))
     from agent_lab.inbox.harvest import clear_inbox_fork_grace
@@ -197,6 +191,20 @@ def continue_room_round(
         run_meta=run_meta,
         available_fn=available_agents,
     )
+    from agent_lab.room.turn_flow_support import apply_turn_agent_mentions
+
+    user_text, active_agents, _ = apply_turn_agent_mentions(user_text, active_agents, run_meta)
+    body = user_text
+    if att:
+        body = f"{body}\n\n---\n\n{att}" if body else att
+    messages.append(ChatMessage(role="user", agent=None, content=body))
+    _checkpoint_chat(folder, messages, topic=topic)
+    from agent_lab.human_inbox import supersede_pending_inbox
+    from agent_lab.mission.board import begin_human_turn
+
+    begin_human_turn(folder, human_turn=human_turn_num)
+    supersede_pending_inbox(folder, human_turn_id=human_turn_num)
+    run_meta["agents"] = [str(a) for a in active_agents]
     mode = "plan" if synthesize else "discuss"
     review_advocate = _review_advocate(active_agents, human_turn_index) if review_mode and active_agents else None
     from agent_lab.room.team_orchestration import resolve_turn_lead
@@ -221,6 +229,7 @@ def continue_room_round(
     from agent_lab.plan.workflow import (
         init_plan_workflow_on_plan_send,
         plan_workflow_skips_server_clarifier,
+        plan_workflow_wants_inbox_mcp,
         should_enable_plan_workflow,
     )
     from agent_lab.room.turn_policy import prepare_turn_policy_before_agent_round, turn_policy_enabled
@@ -252,6 +261,11 @@ def continue_room_round(
     from agent_lab.session.clarifier import sync_clarifier_answers_from_inbox
 
     sync_clarifier_answers_from_inbox(folder)
+    if folder is not None and plan_workflow_wants_inbox_mcp(run_meta):
+        from agent_lab.plan.workflow import ensure_plan_clarify_interview, ensure_plan_clarify_inbox_question
+
+        ensure_plan_clarify_interview(folder)
+        ensure_plan_clarify_inbox_question(folder)
     skip_server_clarifier = plan_workflow_skips_server_clarifier(run_meta)
     clarifier_questions = prepare_clarifier_for_turn(
         folder,
@@ -288,7 +302,7 @@ def continue_room_round(
     replies, consensus_meta, parallel_rounds, cancelled = run_turn_agent_rounds(
         topic=topic,
         messages=messages,
-        agents=agents,
+        agents=active_agents,
         clarifier_questions=clarifier_questions,
         delegate_replies=delegate_replies,
         consensus_mode=consensus_mode,
@@ -375,6 +389,7 @@ def continue_room_round(
         consensus_mode=consensus_mode,
         turn_profile=turn_profile or str(run_meta.get("turn_profile") or ""),
         efficiency_mode=efficiency_mode,
+        run_meta=run_meta,
     )
     from agent_lab.goal_loop import (
         goal_auto_continue_enabled,
@@ -529,18 +544,15 @@ def run_room(
 
     check_cancelled()
     permissions = normalize_agent_permissions(permissions)
-    body = topic.strip()
+    user_text = topic.strip()
+    att = ""
     if session_folder and session_folder.is_dir():
         att = describe_attachments(session_folder)
-        if att:
-            body = f"{body}\n\n---\n\n{att}"
-    messages: list[ChatMessage] = [ChatMessage(role="user", agent=None, content=body)]
     folder: Path | None = None
     if session_folder and session_folder.is_dir():
         folder = session_folder
         if (folder / "topic.txt").is_file():
             topic = (folder / "topic.txt").read_text(encoding="utf-8").strip()
-        messages = load_session_messages(folder) + messages
 
     plan_md, run_meta = _session_context(folder)
     _bind_session_to_run_meta(run_meta, folder)
@@ -552,6 +564,16 @@ def run_room(
         run_meta=run_meta,
         available_fn=available_agents,
     )
+    from agent_lab.room.turn_flow_support import apply_turn_agent_mentions
+
+    user_text, active_agents, _ = apply_turn_agent_mentions(user_text, active_agents, run_meta)
+    body = user_text
+    if att:
+        body = f"{body}\n\n---\n\n{att}" if body else att
+    messages: list[ChatMessage] = [ChatMessage(role="user", agent=None, content=body)]
+    if folder is not None:
+        messages = load_session_messages(folder) + messages
+    run_meta["agents"] = [str(a) for a in active_agents]
     human_turn_index = _human_turn_count(messages) - 1
     mode = "plan" if synthesize else "discuss"
     review_advocate = (
@@ -579,7 +601,7 @@ def run_room(
         run_meta,
         human_turn_num,
         [str(a) for a in active_agents],
-        user_message=topic,
+        user_message=body,
     )
 
     consensus_mode = _resolve_stage_routing(
@@ -595,6 +617,7 @@ def run_room(
     from agent_lab.plan.workflow import (
         init_plan_workflow_on_plan_send,
         plan_workflow_skips_server_clarifier,
+        plan_workflow_wants_inbox_mcp,
         should_enable_plan_workflow,
     )
     from agent_lab.room.turn_policy import prepare_turn_policy_before_agent_round, turn_policy_enabled
@@ -625,6 +648,11 @@ def run_room(
     is_new = folder is None or not (folder / "chat.jsonl").is_file()
     if folder is not None:
         sync_clarifier_answers_from_inbox(folder)
+        if plan_workflow_wants_inbox_mcp(run_meta):
+            from agent_lab.plan.workflow import ensure_plan_clarify_interview, ensure_plan_clarify_inbox_question
+
+            ensure_plan_clarify_interview(folder)
+            ensure_plan_clarify_inbox_question(folder)
     skip_server_clarifier = plan_workflow_skips_server_clarifier(run_meta)
     clarifier_questions = prepare_clarifier_for_turn(
         folder,
@@ -662,7 +690,7 @@ def run_room(
     replies, consensus_meta, parallel_rounds, cancelled = run_turn_agent_rounds(
         topic=topic,
         messages=messages,
-        agents=agents,
+        agents=active_agents,
         clarifier_questions=clarifier_questions,
         delegate_replies=delegate_replies,
         consensus_mode=consensus_mode,
@@ -770,6 +798,7 @@ def run_room(
         consensus_mode=consensus_mode,
         turn_profile=turn_profile or str(run_meta.get("turn_profile") or ""),
         efficiency_mode=efficiency_mode,
+        run_meta=run_meta,
     )
     turn_meta = _turn_snapshot(
         mode=mode,

@@ -54,6 +54,18 @@ def orchestrator_inbox_harvest_allowed(run_meta: dict[str, Any] | None) -> bool:
     return orchestrator_inbox_harvest_enabled()
 
 
+def discuss_fork_harvest_allowed(run_meta: dict[str, Any] | None) -> bool:
+    """Harvest ``decision-fork`` blocks from agent replies into Inbox (T-Q1).
+
+    MCP-first still prefers ``ask_human`` from the gate owner, but R2+ reply_policy
+    continues to inject ```decision-fork``` fences — bridge those into the Question
+    widget without re-enabling full orchestrator harvest (plan OPEN / clarifier).
+    """
+    from agent_lab.room.preset import is_fast_room_session
+
+    return not (run_meta and is_fast_room_session(run_meta))
+
+
 @dataclass(frozen=True)
 class InboxQuestionCandidate:
     """A deterministic harvest hit — prompt + refs/excerpt.
@@ -230,12 +242,18 @@ def harvest_question_candidates(
     messages: list[Any],
     *,
     plan_md: str = "",
+    include_forks: bool = True,
+    include_plan_open: bool = True,
 ) -> list[InboxQuestionCandidate]:
     """Pure deterministic harvest — no I/O, no LLM synthesis. Deduped + capped.
 
     FORK (ref-anchored options) and plan OPEN only — not envelope CHALLENGE/AMEND.
     """
-    raw = _fork_candidates(messages) + _plan_open_candidates(plan_md)
+    raw: list[InboxQuestionCandidate] = []
+    if include_forks:
+        raw.extend(_fork_candidates(messages))
+    if include_plan_open:
+        raw.extend(_plan_open_candidates(plan_md))
     seen: set[str] = set()
     out: list[InboxQuestionCandidate] = []
     for c in raw:
@@ -259,12 +277,21 @@ def harvest_clarifier_questions(
     questions: list[str],
     *,
     human_turn: int | None = None,
+    question_rows: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
-    """M2b: clarifier gate → Inbox question items (T-Q0, freeform)."""
+    """M2b: clarifier gate → Inbox question items (T-Q0, multiple choice when available)."""
     if not orchestrator_inbox_harvest_allowed(run_meta):
         return []
     if not questions:
         return []
+    from agent_lab.plan.clarify_options import options_for_clarifier_question
+
+    rows_by_prompt: dict[str, dict[str, Any]] = {}
+    for row in question_rows or []:
+        if isinstance(row, dict):
+            prompt = str(row.get("prompt") or "").strip()
+            if prompt:
+                rows_by_prompt[prompt] = row
     existing = _existing_harvest_keys(run_meta)
     created: list[dict[str, Any]] = []
     for q in questions:
@@ -274,11 +301,13 @@ def harvest_clarifier_questions(
         key = clarifier_harvest_key(text)
         if key in existing:
             continue
+        row = rows_by_prompt.get(text) or {"prompt": text}
+        options = options_for_clarifier_question(row)
         item = new_inbox_item(
             kind="question",
             source="orchestrator",
             prompt=text,
-            options=[],
+            options=options,
             trigger="T-Q0",
             harvest_key=key,
             human_turn_id=human_turn,
@@ -316,11 +345,18 @@ def harvest_discuss_questions(
 
     Returns the items created this call.
     """
-    if not orchestrator_inbox_harvest_allowed(run_meta):
+    fork_ok = discuss_fork_harvest_allowed(run_meta)
+    orch_ok = orchestrator_inbox_harvest_allowed(run_meta)
+    if not fork_ok and not orch_ok:
         return []
     if mode != "discuss":
         return []
-    candidates = harvest_question_candidates(messages, plan_md=plan_md)
+    candidates = harvest_question_candidates(
+        messages,
+        plan_md=plan_md,
+        include_forks=fork_ok,
+        include_plan_open=orch_ok,
+    )
     if not candidates:
         return []
     skip_escalation = {str(k) for k in (run_meta.get("_escalation_harvest_keys") or []) if k}
@@ -495,7 +531,9 @@ def _now_iso_verified_supersede() -> str:
 # --- sync pause (M4) — pending Human-direction question pauses debate rounds ----
 
 DISCUSS_PAUSE_TRIGGERS = frozenset({"T-Q0", "T-Q2"})
-_HUMAN_QUESTION_SOURCES = frozenset({"manual", "mission_circuit_break", "mcp_ask_human", "gateway"})
+_HUMAN_QUESTION_SOURCES = frozenset(
+    {"manual", "mission_circuit_break", "mcp_ask_human", "gateway"}
+)
 
 
 def inbox_question_pauses_discuss(item: dict[str, Any]) -> bool:
@@ -629,7 +667,7 @@ def harvest_and_check_pause(
     FORK (T-Q1 + options) and T-Q2 (plan OPEN) each get one grace debate round
     for peer ENDORSE/AMEND before ``should_pause_discuss`` stops further auto rounds.
     """
-    if not orchestrator_inbox_harvest_allowed(run_meta):
+    if not discuss_fork_harvest_allowed(run_meta) and not orchestrator_inbox_harvest_allowed(run_meta):
         return False
     had_pause = has_pending_discuss_pause_question(run_meta)
     created = harvest_discuss_questions(

@@ -393,10 +393,19 @@ def test_model_provider_and_preset_picker(cfg: Path) -> None:
 
     claude = dispatch("/model claude")
     assert claude["stage"] == "preset"
-    assert claude["choices"]["kind"] == "model_preset"
-    assert any(o["value"] == "opus|high" for o in claude["choices"]["options"])
+    assert claude["choices"]["kind"] == "model_panel"
+    opts = claude["choices"]["options"]
+    labels = {o["label"] for o in opts}
+    assert "Opus 4.8" in labels
+    assert "Sonnet 5.0" in labels
+    assert claude["choices"]["efforts"] == ["low", "medium", "high", "xhigh", "max"]
 
-    applied = dispatch("/model claude sonnet|medium")
+    os.environ["CLAUDE_REASONING_EFFORT"] = "high"
+    applied = dispatch("/model claude sonnet")
     assert applied.get("model_updated") is True
     assert os.getenv("CLAUDE_MODEL") == "sonnet"
+    assert os.getenv("CLAUDE_REASONING_EFFORT") == "high"
+
+    effort = dispatch("/model claude effort medium")
+    assert effort.get("model_updated") is True
     assert os.getenv("CLAUDE_REASONING_EFFORT") == "medium"

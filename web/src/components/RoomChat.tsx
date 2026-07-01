@@ -69,9 +69,6 @@ import {
 import { createRoomRunEventHandler } from "../hooks/useRoomSseHandler";
 import { latestDraftMessageIdsByAgent } from "../utils/draftResponsePrefs";
 import { stripAgentReplyBody } from "../utils/agentResponseCard";
-import { deriveRunningAgentSlots } from "../run/runningAgents";
-import { LiveAgentsStrip } from "./LiveAgentsStrip";
-import { BackgroundRunStrip } from "./BackgroundRunStrip";
 import {
   clampWorkbenchPanelWidth,
   getInspectorOpen,
@@ -310,10 +307,17 @@ function sessionToMessages(
       out.push(chatLineToMessage(line, i));
     }
   } else if (session.live_log && session.live_log.length > 0) {
-    out = [
-      topicAsUserMessage(session.topic || session.id),
-      ...replayLiveLogToMessages(session.live_log, agentLabel),
-    ];
+    const persisted =
+      session.chat_total != null && session.chat_total > 0
+        ? parseTranscript(session.transcript_md || "")
+        : [];
+    out =
+      persisted.length > 0
+        ? persisted
+        : [
+            topicAsUserMessage(session.topic || session.id),
+            ...replayLiveLogToMessages(session.live_log, agentLabel),
+          ];
   } else {
     out = [
       topicAsUserMessage(session.topic || session.id),
@@ -365,14 +369,8 @@ export function RoomChat({
     null,
   );
   const runSessionKey = sessionId ?? liveRunSessionKey ?? PENDING_KEY;
-  const {
-    messages,
-    running,
-    runBusy,
-    synthesizing,
-    backgroundRun,
-    setSynthesizing,
-  } = useSessionRunState(runSessionKey);
+  const { messages, running, runBusy, synthesizing, setSynthesizing } =
+    useSessionRunState(runSessionKey);
   const [recoveryFailure, setRecoveryFailure] =
     useState<RecoveryFailure | null>(null);
   const [planActionFocusIndex, setPlanActionFocusIndex] = useState<
@@ -388,6 +386,7 @@ export function RoomChat({
   const [inspectorOpen, setInspectorOpenState] = useState(getInspectorOpen);
   const [workbenchMenuOpen, setWorkbenchMenuOpen] = useState(false);
   const [filesFocusRevision, setFilesFocusRevision] = useState(0);
+  const [filesFocusPath, setFilesFocusPath] = useState<string | null>(null);
   const [composerNoticeDismissed, setComposerNoticeDismissed] = useState<
     string | null
   >(null);
@@ -881,6 +880,7 @@ export function RoomChat({
     inboxReloadKey,
     setInboxReloadKey,
     refreshInboxPending,
+    syncInboxPendingCount,
   } = useInboxState(sessionId);
 
   const {
@@ -1039,11 +1039,17 @@ export function RoomChat({
     }
   }, [focusWorkStack, refreshSessionMeta, sessionId, pushMacNotification]);
 
-  const handleInboxResolved = useCallback(() => {
-    void refreshInboxPending();
-    refreshSessionMeta();
-    setDiscussPaused(false);
-  }, [refreshInboxPending, refreshSessionMeta]);
+  const handleInboxResolved = useCallback(
+    (detail?: { pendingCount?: number }) => {
+      if (typeof detail?.pendingCount === "number") {
+        syncInboxPendingCount(detail.pendingCount);
+      }
+      void refreshInboxPending();
+      refreshSessionMeta();
+      setDiscussPaused(false);
+    },
+    [refreshInboxPending, refreshSessionMeta, syncInboxPendingCount],
+  );
 
   const handleNotificationOpen = useCallback(
     (note: AppNotification) => {
@@ -1318,17 +1324,29 @@ export function RoomChat({
     return () => window.clearTimeout(timer);
   }, [sessionId, planWorkflow?.phase]);
 
-  useEffect(() => {
-    if (!showPlanApproval || !sessionId) return;
-    setFilesFocusRevision((n) => n + 1);
-    openFilesTab();
-  }, [showPlanApproval, sessionId, planMd, openFilesTab]);
-
   const activePlanRelpath =
     typeof session?.run?.active_plan_relpath === "string" &&
     session.run.active_plan_relpath.trim()
       ? session.run.active_plan_relpath.trim()
       : "plan.md";
+
+  const openFileInWorkbench = useCallback(
+    (path: string) => {
+      const trimmed = path.trim();
+      if (!trimmed) return;
+      setFilesFocusPath(trimmed);
+      setFilesFocusRevision((n) => n + 1);
+      openFilesTab();
+    },
+    [openFilesTab],
+  );
+
+  useEffect(() => {
+    if (!showPlanApproval || !sessionId) return;
+    setFilesFocusPath(activePlanRelpath);
+    setFilesFocusRevision((n) => n + 1);
+    openFilesTab();
+  }, [showPlanApproval, sessionId, planMd, openFilesTab, activePlanRelpath]);
 
   const avoidWorkbenchNotice = inspectorOpen || workbenchMenuOpen;
 
@@ -1433,11 +1451,12 @@ export function RoomChat({
 
   useEffect(() => {
     if (!sessionId || !session) return;
-    if (isSessionRunActive(sessionId)) return;
+    const local = getSessionRunSnapshot(sessionId);
+    const runActive = isSessionRunActive(sessionId);
+    if (runActive && local.messages.length > 0) return;
 
     const fp = chatFingerprint(session);
     if (fp !== syncedChatRef.current) {
-      const local = getSessionRunSnapshot(sessionId);
       const serverMsgs = sessionToMessages(session, sessionReviewMode);
       const merged = preferRicherChatMessages(local.messages, serverMsgs);
       syncedChatRef.current = fp;
@@ -2118,27 +2137,49 @@ export function RoomChat({
             setCommandMultiChoices(null);
             setCommandScopeChoices(null);
             void executeSlashCommand(command, "compose");
-          } else if (kind === "model_preset") {
+          } else if (kind === "model_preset" || kind === "model_panel") {
             const providerId = stage.provider ?? choices.provider ?? "";
             const providerLabel = stage.prompt ?? "";
-            const presets = choices.options.map((opt) => ({
+            const panelChoices = choices as {
+              options: {
+                value: string;
+                label: string;
+                selected?: boolean;
+                available?: boolean;
+                coming_soon_note?: string;
+              }[];
+              efforts?: string[];
+              selected_model?: string;
+              selected_effort?: string;
+            };
+            const presets = panelChoices.options.map((opt) => ({
               value: opt.value,
               label: opt.label,
               selected: opt.selected,
+              available: opt.available,
+              comingSoonNote: opt.coming_soon_note,
             }));
             setModelPopover((prev) => {
+              const sidePanel: ModelPopoverSidePanel = {
+                providerId,
+                providerLabel,
+                presets,
+                efforts: panelChoices.efforts,
+                selectedModel: panelChoices.selected_model,
+                selectedEffort: panelChoices.selected_effort,
+              };
               if (prev) {
                 return {
                   ...prev,
                   autoEnabled: Boolean(stage.auto ?? prev.autoEnabled),
-                  sidePanel: { providerId, providerLabel, presets },
+                  sidePanel,
                 };
               }
               return {
                 command,
                 autoEnabled: Boolean(stage.auto),
                 agents: [],
-                sidePanel: { providerId, providerLabel, presets },
+                sidePanel,
               };
             });
             setCommandChoices(null);
@@ -2209,7 +2250,9 @@ export function RoomChat({
           setSelected(sortAgentIds(stage.composition));
         }
         if (stage?.model_updated) {
-          setModelPopover(null);
+          // Model/effort picks apply in place — the panel stays open (its
+          // choices block above already refreshed it); only 적용 or an
+          // outside click should dismiss the popover now.
           void onRefreshHealth?.();
         }
         if (stage?.input?.kind === "secret" && stage.input.prefill) {
@@ -2808,6 +2851,12 @@ export function RoomChat({
             `${providerId} ${value}`.trim(),
           );
         }}
+        onSideEffortSelect={(providerId, effort) => {
+          void executeSlashCommand(
+            modelPopover.command,
+            `${providerId} effort ${effort}`.trim(),
+          );
+        }}
         onSideClose={() =>
           setModelPopover((prev) =>
             prev ? { ...prev, sidePanel: null } : prev,
@@ -2973,7 +3022,9 @@ export function RoomChat({
 
   const title = isNew ? "Session" : session?.topic || sessionId || "Session";
   const titleMeta =
-    !isNew || selected.length > 0 ? `${selected.length} agents` : undefined;
+    !isNew || selected.length > 0
+      ? `${selected.length} ${selected.length === 1 ? "agent" : "agents"}`
+      : undefined;
 
   const planMeta = buildPlanMetaView(session?.run);
   const composerPlanStale = composerPlanStaleNotice(session?.run);
@@ -3027,15 +3078,6 @@ export function RoomChat({
           label: agentLabel(id),
         }))
       : [];
-
-  const runningAgentSlots = useMemo(
-    () =>
-      deriveRunningAgentSlots(messages, {
-        running: running || synthesizing || runBusy,
-        expectedAgents: turnResolved.agents,
-      }),
-    [messages, running, synthesizing, runBusy, turnResolved.agents],
-  );
 
   const paletteActions = useMemo(() => {
     const commandActions = slashCommands
@@ -3104,23 +3146,12 @@ export function RoomChat({
         rightPanelMode={rightPanelMode}
         locale={locale}
         panelBadgeCount={!isNew ? notificationUnread : 0}
-        running={running || synthesizing || runBusy}
         onToggleSidebar={_onToggleSidebar}
         onToggleRightPanel={toggleInspector}
         onSelectRightPanelMode={handleSelectRightPanelMode}
         onOpenSettings={onOpenSettings}
-        onStop={handleStop}
         onWorkbenchMenuOpenChange={setWorkbenchMenuOpen}
       />
-
-      {backgroundRun ? (
-        <BackgroundRunStrip info={backgroundRun} onStop={handleStop} />
-      ) : (
-        <LiveAgentsStrip
-          slots={runningAgentSlots}
-          running={running || synthesizing || runBusy}
-        />
-      )}
 
       <div className="pane-row">
         <div className="pane-main workspace-main">
@@ -3218,7 +3249,13 @@ export function RoomChat({
                   </>
                 ) : null}
                 <div className="composer-wrap">
-                  {clarifierQuestions && clarifierQuestions.length > 0 ? (
+                  {clarifierQuestions &&
+                  clarifierQuestions.length > 0 &&
+                  !(
+                    planWorkflowActive &&
+                    (planWorkflow?.phase === "CLARIFY" ||
+                      planWorkflow?.phase === "INTAKE")
+                  ) ? (
                     <div
                       className="clarifier-banner"
                       role="region"
@@ -3366,6 +3403,7 @@ export function RoomChat({
                       }
                       onOpenDiff={openDiffTab}
                       onOpenFiles={openFilesTab}
+                      onOpenFile={openFileInWorkbench}
                       disabled={running || synthesizing || runBusy}
                     />
                   ) : null}
@@ -3604,7 +3642,7 @@ export function RoomChat({
             {rightPanelMode === "files" && sessionId ? (
               <WorkspaceFilesPanel
                 sessionId={sessionId}
-                focusPath={showPlanApproval ? activePlanRelpath : null}
+                focusPath={filesFocusPath}
                 focusRevision={filesFocusRevision}
               />
             ) : null}

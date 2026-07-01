@@ -22,6 +22,7 @@ LIVE_EVENT_TYPES = frozenset(
         "hook_event",
         "run_cancelled",
         "run_failed",
+        "inbox_pending",
     }
 )
 

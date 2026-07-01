@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from concurrent.futures import Future, ThreadPoolExecutor, wait, FIRST_COMPLETED
 from pathlib import Path
 from typing import Any, Literal
@@ -55,7 +56,16 @@ def _collect_parallel_futures(executor: ThreadPoolExecutor, futures: set[Future[
                 results.append(fut.result())
         return results
     except RoomRunCancelled:
-        terminate_active_children()
+        # Wait for in-flight agents to finish cooperative cancel (partial ChatMessage)
+        # before killing subprocesses — otherwise streamed reply text is lost (issue D).
+        deadline = time.monotonic() + 3.0
+        while pending and time.monotonic() < deadline:
+            done, pending = wait(pending, timeout=0.25, return_when=FIRST_COMPLETED)
+            for fut in done:
+                try:
+                    results.append(fut.result())
+                except Exception:
+                    pass
         for fut in list(pending):
             if not fut.done():
                 continue
@@ -63,7 +73,8 @@ def _collect_parallel_futures(executor: ThreadPoolExecutor, futures: set[Future[
                 results.append(fut.result())
             except Exception:
                 pass
-        raise
+        terminate_active_children()
+        return results
     finally:
         if is_cancelled():
             executor.shutdown(wait=False, cancel_futures=True)
@@ -95,7 +106,14 @@ def run_parallel_round(
     - task_type in _SEQUENTIAL_TASK_TYPES → sequential regardless of round number
     - otherwise round 1 → parallel (consensus, general discuss)
     """
-    active = agents or available_agents()
+    from agent_lab.room.agent_mentions import effective_invoke_agents
+
+    invoke_ids = effective_invoke_agents(
+        [str(a) for a in (agents or [])],
+        run_meta,
+        fallback=[str(a) for a in available_agents()],
+    )
+    active: list[AgentId] = [as_agent_id(a) for a in invoke_ids]
     if not active:
         raise RuntimeError("No agents available. Configure CURSOR_API_KEY, codex login, or claude login.")
     active = active[:MAX_AGENTS_PER_ROUND]
@@ -282,6 +300,7 @@ def run_agent_rounds(
     efficiency_mode: bool = False,
 ) -> list[ChatMessage]:
     """Run multiple parallel waves; later waves see earlier agents' replies in the thread."""
+    from agent_lab.room.agent_mentions import effective_invoke_agents
     from agent_lab.room.team_orchestration import normalize_turn_profile
 
     profile = normalize_turn_profile(run_meta.get("turn_profile") if run_meta else None)
@@ -312,7 +331,11 @@ def run_agent_rounds(
             sync_run_meta_turn_state(
                 run_meta,
                 messages + all_replies,
-                active_agents=list(agents or available_agents())[:MAX_AGENTS_PER_ROUND],
+                active_agents=effective_invoke_agents(
+                    [str(a) for a in (agents or [])],
+                    run_meta,
+                    fallback=[str(a) for a in available_agents()],
+                )[:MAX_AGENTS_PER_ROUND],
                 plan_md=plan_md,
             )
     except RoomRunCancelled:

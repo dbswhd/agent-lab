@@ -13,7 +13,7 @@ type Props = {
   sessionId: string | null;
   reloadKey?: number;
   planRevision?: string | null;
-  onResolved?: () => void;
+  onResolved?: (detail?: { pendingCount: number }) => void;
   onBuildStarted?: () => void;
   onDismiss?: () => void;
   onOpenInbox?: () => void;
@@ -44,11 +44,21 @@ function parseActionRef(
 }
 
 function inboxAgent(item: HumanInboxItem): AgentRole {
+  const caller = (item.caller_agent ?? "").trim().toLowerCase();
+  if (
+    caller === "codex" ||
+    caller === "claude" ||
+    caller === "cursor" ||
+    caller === "kimi_work"
+  ) {
+    return caller as AgentRole;
+  }
   const src = (item.source ?? "cursor").toLowerCase();
   if (src === "codex" || src === "claude" || src === "cursor") return src;
   // Harvest/orchestrator items are synthesis, not a coding agent — show the
   // neutral scribe mark instead of falling back to the cursor brand logo.
   if (src === "orchestrator") return "scribe";
+  if (isMcpSource(item)) return "scribe";
   return "cursor";
 }
 
@@ -134,6 +144,8 @@ type InboxRowProps = {
   locale: "en" | "ko";
   onRefClick?: (ref: string) => void;
   readOnly?: boolean;
+  hideHead?: boolean;
+  flat?: boolean;
 };
 
 function InboxRow({
@@ -153,6 +165,8 @@ function InboxRow({
   locale,
   onRefClick,
   readOnly = false,
+  hideHead = false,
+  flat = false,
 }: InboxRowProps) {
   const ko = locale === "ko";
   const rawSubject =
@@ -211,6 +225,7 @@ function InboxRow({
         "inbox-row",
         `inbox-row--${item.kind}`,
         forkRow ? "inbox-row--fork" : "",
+        flat ? "inbox-row--flat" : "",
         isDiscussHarvest(item)
           ? "inbox-row--discuss"
           : "inbox-row--execute-lane",
@@ -218,46 +233,48 @@ function InboxRow({
         .filter(Boolean)
         .join(" ")}
     >
-      <div className="inbox-row__head">
-        <Avatar role={inboxAgent(item)} size={20} />
-        <div className="inbox-row__headline">
-          <span className="inbox-row__subject">{subject}</span>
-          {why ? <span className="inbox-row__why">{why}</span> : null}
-        </div>
-        <span className="inbox-row__badges">
-          {/* "Question" is implied by the answer affordance + panel header, so
+      {hideHead ? null : (
+        <div className="inbox-row__head">
+          <Avatar role={inboxAgent(item)} size={20} />
+          <div className="inbox-row__headline">
+            <span className="inbox-row__subject">{subject}</span>
+            {why ? <span className="inbox-row__why">{why}</span> : null}
+          </div>
+          <span className="inbox-row__badges">
+            {/* "Question" is implied by the answer affordance + panel header, so
               the kind badge only earns its place for build / skill rows. */}
-          {item.kind !== "question" ? (
-            <span
-              className={`inbox-row__kind-badge inbox-row__kind-badge--${item.kind}`}
-            >
-              {kindLabel}
-            </span>
-          ) : null}
-          {/* Provenance + timestamp are noise while answering — kept only on
+            {item.kind !== "question" ? (
+              <span
+                className={`inbox-row__kind-badge inbox-row__kind-badge--${item.kind}`}
+              >
+                {kindLabel}
+              </span>
+            ) : null}
+            {/* Provenance + timestamp are noise while answering — kept only on
               build / skill rows where the human is approving prior work. */}
-          {item.kind !== "question" && sourceBadge ? (
-            <span
-              className={[
-                "inbox-row__source-badge",
-                isMcpSource(item) ? "inbox-row__source-badge--mcp" : "",
-                isDiscussHarvest(item)
-                  ? "inbox-row__source-badge--harvest"
-                  : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-            >
-              {sourceBadge}
+            {item.kind !== "question" && sourceBadge ? (
+              <span
+                className={[
+                  "inbox-row__source-badge",
+                  isMcpSource(item) ? "inbox-row__source-badge--mcp" : "",
+                  isDiscussHarvest(item)
+                    ? "inbox-row__source-badge--harvest"
+                    : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+              >
+                {sourceBadge}
+              </span>
+            ) : null}
+          </span>
+          {item.kind !== "question" ? (
+            <span className="inbox-row__time">
+              {formatInboxTime(item.created_at)}
             </span>
           ) : null}
-        </span>
-        {item.kind !== "question" ? (
-          <span className="inbox-row__time">
-            {formatInboxTime(item.created_at)}
-          </span>
-        ) : null}
-      </div>
+        </div>
+      )}
       {body ? <p className="inbox-row__body">{body}</p> : null}
       {item.action_ref ? (
         <p className="inbox-row__body inbox-row__meta">{item.action_ref}</p>
@@ -484,18 +501,22 @@ export function HumanInboxPanel({
   const [selectedDraft, setSelectedDraft] = useState<Record<string, string>>(
     {},
   );
+  const [composerExpanded, setComposerExpanded] = useState(true);
 
-  const reload = useCallback(async () => {
+  const reload = useCallback(async (): Promise<number> => {
     if (!sessionId) {
       setItems([]);
-      return;
+      return 0;
     }
     try {
       const payload = await fetchSessionInbox(sessionId);
-      setItems(payload.human_inbox ?? []);
+      const rows = payload.human_inbox ?? [];
+      setItems(rows);
       setError(null);
+      return pendingItems(rows).length;
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      throw e;
     }
   }, [sessionId]);
 
@@ -536,8 +557,8 @@ export function HumanInboxPanel({
       setBusyId(item.id);
       try {
         await resolveInboxItem(sessionId, item.id, { selected: [optionId] });
-        await reload();
-        onResolved?.();
+        const remaining = await reload();
+        onResolved?.({ pendingCount: remaining });
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       } finally {
@@ -560,8 +581,8 @@ export function HumanInboxPanel({
           delete next[item.id];
           return next;
         });
-        await reload();
-        onResolved?.();
+        const remaining = await reload();
+        onResolved?.({ pendingCount: remaining });
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       } finally {
@@ -579,8 +600,8 @@ export function HumanInboxPanel({
         await resolveInboxItem(sessionId, item.id, {
           selected: decision === "approve" ? ["approve"] : ["reject"],
         });
-        await reload();
-        onResolved?.();
+        const remaining = await reload();
+        onResolved?.({ pendingCount: remaining });
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       } finally {
@@ -605,8 +626,8 @@ export function HumanInboxPanel({
           }
         }
         await resolveInboxItem(sessionId, item.id, { decision });
-        await reload();
-        onResolved?.();
+        const remaining = await reload();
+        onResolved?.({ pendingCount: remaining });
         if (decision === "go") onBuildStarted?.();
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
@@ -626,8 +647,8 @@ export function HumanInboxPanel({
           status: "deferred",
           decision: "defer",
         });
-        await reload();
-        onResolved?.();
+        const remaining = await reload();
+        onResolved?.({ pendingCount: remaining });
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       } finally {
@@ -714,6 +735,78 @@ export function HumanInboxPanel({
     onDefer: handleDefer,
     locale,
   };
+
+  if (presentation === "composer") {
+    const lead = visiblePending[0];
+    const leadSubject = lead
+      ? lead.kind === "question"
+        ? cleanSubject(lead.prompt)
+        : (lead.summary ?? lead.prompt)
+      : "";
+    const multi = visiblePending.length > 1;
+
+    return (
+      <div
+        className={[
+          "human-inbox human-inbox--composer human-inbox--composer-flat composer-dock-card composer-dock-card--composer",
+          composerExpanded
+            ? ""
+            : "human-inbox--composer-collapsed composer-dock-card--collapsed",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        role="region"
+        aria-label={ko ? "Human gate" : "Human gate"}
+      >
+        <button
+          type="button"
+          className="human-inbox__composer-toggle"
+          aria-expanded={composerExpanded}
+          onClick={() => setComposerExpanded((open) => !open)}
+        >
+          {lead ? <Avatar role={inboxAgent(lead)} size={20} /> : null}
+          <span className="human-inbox__composer-headline composer-dock-card__headline">
+            <span className="human-inbox__composer-subject composer-dock-card__subject">
+              {leadSubject}
+            </span>
+            {!composerExpanded && multi ? (
+              <span className="human-inbox__composer-meta composer-dock-card__meta">
+                {ko
+                  ? `외 ${visiblePending.length - 1}건`
+                  : `+${visiblePending.length - 1} more`}
+              </span>
+            ) : null}
+          </span>
+          <span
+            className={[
+              "human-inbox__chevron",
+              composerExpanded ? "human-inbox__chevron--open" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            aria-hidden
+          />
+        </button>
+        {composerExpanded ? (
+          <>
+            {error ? <div className="human-inbox__error">{error}</div> : null}
+            <div className="human-inbox__items composer-dock-card__body">
+              {visiblePending.map((item) => (
+                <InboxRow
+                  key={item.id}
+                  item={item}
+                  {...rowProps}
+                  onRefClick={onRefClick}
+                  hideHead={!multi && item.kind === "question"}
+                  flat
+                />
+              ))}
+            </div>
+          </>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div

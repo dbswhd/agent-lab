@@ -203,6 +203,7 @@ def new_inbox_item(
     refs: list[str] | None = None,
     harvest_key: str | None = None,
     plan_revision: str | None = None,
+    caller_agent: str | None = None,
 ) -> dict[str, Any]:
     """Build a pending inbox item dict (no I/O).
 
@@ -228,6 +229,7 @@ def new_inbox_item(
         "mcp_call_id": mcp_call_id,
         "session_id": session_id,
         "human_turn_id": human_turn_id,
+        "caller_agent": str(caller_agent).strip().lower() if caller_agent else None,
         "created_at": _now_iso(),
         "resolved_at": None,
         "resolved_choice": None,
@@ -263,6 +265,7 @@ def create_inbox_item(
     trigger: str | None = None,
     refs: list[str] | None = None,
     harvest_key: str | None = None,
+    caller_agent: str | None = None,
 ) -> dict[str, Any]:
     if kind == "build" and has_pending_question(read_run_meta(folder)):
         raise ValueError("pending question blocks build item creation")
@@ -283,8 +286,19 @@ def create_inbox_item(
         trigger=trigger,
         refs=refs,
         harvest_key=harvest_key,
+        caller_agent=caller_agent,
     )
     patch_run_meta(folder, lambda run: append_inbox_item(run, item))
+    try:
+        from agent_lab.room.live_log import append_live_room_event
+
+        append_live_room_event(
+            folder,
+            "inbox_pending",
+            {"item_id": item["id"], "kind": kind, "source": source},
+        )
+    except Exception:
+        pass
     try:
         from agent_lab.gateway.adapters import fan_out_gateway_notify
 
@@ -401,6 +415,12 @@ def resolve_inbox_item(
 
     from agent_lab.plan.workflow import tick_plan_workflow_after_inbox_resolve
 
+    from agent_lab.session.clarifier import sync_clarifier_answers_from_inbox
+
+    sync_clarifier_answers_from_inbox(folder)
+    from agent_lab.plan.workflow import ensure_plan_clarify_inbox_question
+
+    ensure_plan_clarify_inbox_question(folder)
     tick_plan_workflow_after_inbox_resolve(folder)
 
     return updated
@@ -548,6 +568,9 @@ def create_mcp_question_and_wait(
     )
     if len(options) < 2:
         raise ValueError("ask_human requires at least 2 options")
+    from agent_lab.inbox.mcp_policy import _caller_agent_from_env
+
+    resolved_caller = _caller_agent_from_env(caller_agent) or None
     item = create_inbox_item(
         folder,
         kind="question",
@@ -557,6 +580,7 @@ def create_mcp_question_and_wait(
         multi_select=multi_select,
         context_ref=context_ref,
         mcp_call_id=mcp_call_id,
+        caller_agent=resolved_caller,
     )
     return wait_for_inbox_item(folder, item["id"])
 

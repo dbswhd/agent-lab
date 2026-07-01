@@ -30,6 +30,13 @@
 .work-clarify__stat--muted {
   color: var(--label-tertiary, #8d8d8d);
 }
+.work-clarify-questions {
+  padding: var(--space-14) var(--space-16);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-1);
+}
 .work-clarify-questions__title {
   margin: 0 0 0.5rem;
   font-size: 0.875rem;
@@ -43,6 +50,21 @@
 .work-clarify-questions__list li + li {
   margin-top: 0.5rem;
 }
+.work-clarify-questions__cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+}
+.work-clarify-question__answer {
+  margin: 0;
+  color: var(--label-secondary);
+}
+.work-clarify-questions__done {
+  margin: var(--space-10) 0 0;
+}
+.work-clarify-questions .work-clarify-question.inbox-row--flat {
+  margin: 0;
+}
 
 .work-surface--chrome {
   padding-bottom: var(--space-16);
@@ -50,6 +72,11 @@
 
 .work-chrome {
   gap: var(--space-12);
+  padding: var(--space-14) var(--space-16);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-1);
 }
 
 .work-alert {
@@ -791,6 +818,12 @@
   gap: var(--space-16);
 }
 
+.work-surface--composer {
+  max-width: none;
+  padding: 0;
+  gap: var(--space-8);
+}
+
 /* ---- Plan card ------------------------------------------- */
 .plan-card {
   background: var(--surface-card);
@@ -899,6 +932,316 @@
   font-size: var(--text-caption);
   color: var(--label-tertiary);
   margin-right: auto;
+}
+
+/* ---- Plan todo surface (Cursor To-dos + Codex collapsed strip) ---- */
+.plan-todo-surface {
+  border: none;
+  box-shadow: var(--shadow-1);
+}
+
+.plan-todo-surface__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-10);
+  padding: var(--space-14) var(--space-16);
+  border-bottom: 1px solid var(--border-hair);
+}
+
+.plan-todo-surface--collapsed .plan-todo-surface__head {
+  border-bottom: none;
+}
+
+.plan-todo-surface__toggle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-10);
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.plan-todo-surface__toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+.plan-todo-surface__head-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.plan-todo-surface__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  font-size: var(--text-footnote);
+  font-weight: var(--weight-semibold);
+  color: var(--label-primary);
+}
+
+.plan-todo-surface__title {
+  line-height: 1.2;
+}
+
+.plan-todo-surface__count {
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  color: var(--label-tertiary);
+}
+
+.plan-todo-surface__summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-6);
+  font-size: var(--text-caption);
+  color: var(--label-secondary);
+  line-height: 1.35;
+}
+
+.plan-todo-surface__summary-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-todo-surface__add {
+  color: var(--ok);
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-todo-surface__del {
+  color: var(--danger);
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-todo-surface__spinner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, var(--accent) 24%, transparent);
+  border-top-color: var(--accent);
+  animation: plan-todo-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes plan-todo-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.plan-todo-surface__chevron {
+  width: 8px;
+  height: 8px;
+  border-right: 1.5px solid var(--label-tertiary);
+  border-bottom: 1.5px solid var(--label-tertiary);
+  transform: rotate(-45deg);
+  transition: transform var(--transition);
+  flex-shrink: 0;
+  margin-top: -2px;
+}
+
+.plan-todo-surface__chevron--open {
+  transform: rotate(45deg);
+  margin-top: 2px;
+}
+
+.plan-todo-surface__plan-link,
+.plan-todo-surface__plan-label {
+  flex-shrink: 0;
+  font-size: var(--text-caption);
+  color: var(--label-tertiary);
+}
+
+.plan-todo-surface__plan-link {
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-pill, 999px);
+  border: 1px solid var(--border-hair);
+  background: var(--surface-sunken);
+  cursor: pointer;
+}
+
+.plan-todo-surface__plan-link:hover {
+  color: var(--label-secondary);
+  border-color: var(--border-soft);
+}
+
+.plan-todo-surface__plan-link:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.plan-todo-surface__body {
+  padding: var(--space-12) var(--space-16) var(--space-16);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+}
+
+.plan-todo-surface__body[hidden] {
+  display: none !important;
+}
+
+.plan-todo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.plan-todo-item {
+  margin: 0;
+}
+
+.plan-todo-item__button {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-10);
+  padding: var(--space-8) var(--space-10);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background var(--transition),
+    border-color var(--transition);
+}
+
+.plan-todo-item__button:hover:not(:disabled) {
+  background: var(--surface-sunken);
+}
+
+.plan-todo-item__button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.plan-todo-item__button--selected,
+.plan-todo-item__button--active {
+  background: var(--surface-sunken);
+  border-color: var(--border-soft);
+}
+
+.plan-todo-item__button--done .plan-todo-item__label {
+  color: var(--label-tertiary);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--label-tertiary) 70%, transparent);
+}
+
+.plan-todo-item__button--disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.plan-todo-item--gate {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-10);
+  padding: var(--space-8) var(--space-10);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--warn) 8%, var(--surface-card));
+}
+
+.plan-todo-item__check {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  border-radius: 50%;
+  border: 1.5px dashed var(--label-tertiary);
+  background: transparent;
+  position: relative;
+}
+
+.plan-todo-item__check--active {
+  border-style: solid;
+  border-color: var(--label-primary);
+  background: var(--label-primary);
+}
+
+.plan-todo-item__check--done {
+  border-style: solid;
+  border-color: var(--label-tertiary);
+  background: var(--surface-card);
+}
+
+.plan-todo-item__check--done::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 5px;
+  height: 8px;
+  border-right: 1.5px solid var(--label-secondary);
+  border-bottom: 1.5px solid var(--label-secondary);
+  transform: rotate(45deg);
+}
+
+.plan-todo-item__check--gate {
+  border-color: color-mix(in srgb, var(--warn) 55%, var(--border-hair));
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+}
+
+.plan-todo-item__content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.plan-todo-item__label {
+  font-size: var(--text-footnote);
+  line-height: 1.45;
+  color: var(--label-primary);
+}
+
+.plan-todo-item__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.plan-todo-item__where,
+.plan-todo-item__verify {
+  font-size: var(--text-caption);
+  color: var(--label-tertiary);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-todo-item__where {
+  font-family: var(--font-mono);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plan-todo-surface__chevron,
+  .plan-todo-item__button,
+  .plan-todo-surface__spinner {
+    animation: none;
+    transition: none;
+  }
 }
 
 /* ---- Plan action list ------------------------------------ */
@@ -1204,6 +1547,9 @@
   flex-wrap: wrap;
   gap: var(--space-8);
   align-items: center;
+}
+.plan-actions-bar .plan-btn--execute {
+  margin-left: auto;
 }
 .plan-actions-bar__spacer {
   flex: 1;

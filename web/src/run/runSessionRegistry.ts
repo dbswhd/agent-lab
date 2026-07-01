@@ -325,10 +325,11 @@ export function hydrateSessionMessages(
   sessionId: string,
   messages: LiveMsg[],
 ): void {
-  if (isSessionRunActive(sessionId)) return;
+  const snap = getSessionRunSnapshot(sessionId);
+  if (isSessionRunActive(sessionId) && snap.messages.length > 0) return;
   updateSessionRun(sessionId, {
     messages,
-    turnMessages: [],
+    turnMessages: isSessionRunActive(sessionId) ? snap.turnMessages : [],
   });
 }
 

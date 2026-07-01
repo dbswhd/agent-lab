@@ -19,6 +19,7 @@ export interface InboxState {
   showInboxPopup: boolean;
   setShowInboxPopup: Dispatch<SetStateAction<boolean>>;
   refreshInboxPending: () => Promise<void>;
+  syncInboxPendingCount: (count: number) => void;
   inboxPendingNonQuestions: number;
   titlebarInboxPending: number | undefined;
 }
@@ -54,6 +55,10 @@ export function useInboxState(sessionId: string | null): InboxState {
       setInboxPendingSkillDrafts(0);
     }
   }, [sessionId]);
+
+  const syncInboxPendingCount = useCallback((count: number) => {
+    setInboxPendingCount(Math.max(0, count));
+  }, []);
 
   useEffect(() => {
     void refreshInboxPending();
@@ -113,6 +118,7 @@ export function useInboxState(sessionId: string | null): InboxState {
     showInboxPopup,
     setShowInboxPopup,
     refreshInboxPending,
+    syncInboxPendingCount,
     inboxPendingNonQuestions,
     titlebarInboxPending,
   };

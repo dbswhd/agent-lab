@@ -5,8 +5,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from agent_lab.agent import model_catalog
 from agent_lab.agent import models as agent_models
-from agent_lab.agent.auth_bootstrap import _append_dotenv_line
 from agent_lab import provider_registry
 
 ModelPreset = dict[str, str | None]
@@ -34,30 +34,6 @@ _PROVIDER_DISPLAY: dict[str, str] = {
 
 _PROVIDER_PICKER_ORDER: tuple[str, ...] = ("codex", "claude", "cursor", "kimi")
 
-_PRESETS: dict[str, list[ModelPreset]] = {
-    "claude": [
-        {"value": "opus|high", "label": "Opus 4.6 · high", "model": "opus", "effort": "high"},
-        {"value": "opus|medium", "label": "Opus 4.6 · medium", "model": "opus", "effort": "medium"},
-        {"value": "opus|low", "label": "Opus 4.6 · low", "model": "opus", "effort": "low"},
-        {"value": "sonnet|high", "label": "Sonnet 4.6 · high", "model": "sonnet", "effort": "high"},
-        {"value": "sonnet|medium", "label": "Sonnet 4.6 · medium", "model": "sonnet", "effort": "medium"},
-        {"value": "haiku|high", "label": "Haiku 4.5 · high", "model": "haiku", "effort": "high"},
-    ],
-    "codex": [
-        {"value": "gpt-5.5|high", "label": "GPT-5.5 · high", "model": "gpt-5.5", "effort": "high"},
-        {"value": "gpt-5.5|medium", "label": "GPT-5.5 · medium", "model": "gpt-5.5", "effort": "medium"},
-        {"value": "gpt-5.5|low", "label": "GPT-5.5 · low", "model": "gpt-5.5", "effort": "low"},
-        {"value": "gpt-5|high", "label": "GPT-5 · high", "model": "gpt-5", "effort": "high"},
-        {"value": "gpt-5|medium", "label": "GPT-5 · medium", "model": "gpt-5", "effort": "medium"},
-    ],
-    "cursor": [
-        {"value": "default", "label": "기본 (default)", "model": "default", "effort": None},
-    ],
-    "kimi": [
-        {"value": "kimi-k2", "label": "Kimi K2", "model": "kimi-k2", "effort": None},
-    ],
-}
-
 
 def _auto_pref_path() -> Path:
     from agent_lab.app_config import config_dir
@@ -82,7 +58,7 @@ def persist_auto_multi_model(enabled: bool) -> None:
 
 
 def provider_has_model_picker(provider: str) -> bool:
-    return provider in _PRESETS
+    return model_catalog.provider_catalog(provider) is not None
 
 
 def provider_label(provider: str) -> str:
@@ -98,24 +74,39 @@ def provider_picker_order() -> tuple[str, ...]:
     return _PROVIDER_PICKER_ORDER
 
 
-def current_preset_value(provider: str) -> str | None:
+def current_model_id(provider: str) -> str:
     keys = _PROVIDER_ENV.get(provider)
     if not keys:
-        return None
+        return ""
     model = os.getenv(keys["model"], "").strip()
-    effort = os.getenv(keys.get("effort", ""), "").strip() if "effort" in keys else ""
     if provider == "claude":
-        model = model or agent_models.DEFAULT_CLAUDE_MODEL
-        effort = effort or agent_models.DEFAULT_CLAUDE_REASONING_EFFORT
-        return f"{model}|{effort}"
+        return model or agent_models.DEFAULT_CLAUDE_MODEL
     if provider == "codex":
-        model = model or agent_models.DEFAULT_CODEX_MODEL
-        effort = effort or agent_models.DEFAULT_CODEX_REASONING_EFFORT
-        return f"{model}|{effort}"
+        return model or agent_models.DEFAULT_CODEX_MODEL
     if provider == "cursor":
         return model or agent_models.DEFAULT_CURSOR_MODEL
     if provider == "kimi":
         return model or "kimi-k2"
+    return model
+
+
+def current_effort(provider: str) -> str | None:
+    keys = _PROVIDER_ENV.get(provider)
+    if not keys or "effort" not in keys:
+        return None
+    effort = os.getenv(keys["effort"], "").strip()
+    if provider == "claude":
+        return effort or agent_models.DEFAULT_CLAUDE_REASONING_EFFORT
+    if provider == "codex":
+        return effort or agent_models.DEFAULT_CODEX_REASONING_EFFORT
+    return effort or None
+
+
+def current_preset_value(provider: str) -> str | None:
+    model = current_model_id(provider)
+    effort = current_effort(provider)
+    if effort:
+        return f"{model}|{effort}"
     return model or None
 
 
@@ -136,63 +127,121 @@ def provider_picker_options() -> list[dict[str, str | bool]]:
 
 
 def preset_picker_options(provider: str) -> list[dict[str, str | bool]]:
+    """Legacy flat list (model · effort) — kept for API compatibility."""
+    panel = model_panel_options(provider)
     active = current_preset_value(provider)
     rows: list[dict[str, str | bool]] = []
-    for preset in _PRESETS.get(provider, []):
-        value = str(preset["value"])
-        rows.append(
-            {
-                "value": value,
-                "label": str(preset["label"]),
-                "selected": value == active,
-            }
-        )
+    efforts = panel.get("efforts") or []
+    for opt in panel.get("options") or []:
+        mid = str(opt.get("value") or "")
+        label = str(opt.get("label") or mid)
+        if efforts:
+            for effort in efforts:
+                value = f"{mid}|{effort}"
+                rows.append(
+                    {
+                        "value": value,
+                        "label": f"{label} · {effort}",
+                        "selected": value == active,
+                    }
+                )
+        else:
+            rows.append(
+                {
+                    "value": mid,
+                    "label": label,
+                    "selected": mid == active,
+                    "available": opt.get("available", True),
+                }
+            )
     return rows
 
 
-def _preset_map(provider: str) -> dict[str, ModelPreset]:
-    return {str(p["value"]): p for p in _PRESETS.get(provider, [])}
+def model_panel_options(provider: str) -> dict[str, object]:
+    """Model list + effort slider for the composer side panel."""
+    return model_catalog.model_panel_payload(
+        provider,
+        active_model=current_model_id(provider),
+        active_effort=current_effort(provider),
+    )
 
 
-def apply_preset(provider: str, preset_value: str) -> str:
-    preset = _preset_map(provider).get(preset_value)
-    if preset is None:
-        raise ValueError(f"unknown model preset: {preset_value}")
+def _write_env(key: str, value: str) -> None:
+    from agent_lab.agent.auth_bootstrap import _append_dotenv_line
+
+    os.environ[key] = value
+    _append_dotenv_line(key, value)
+    try:
+        from agent_lab.workspace.roots import project_root
+
+        repo_env = project_root() / ".env"
+        if repo_env.is_file():
+            _append_dotenv_line(key, value, path=repo_env)
+    except OSError:
+        pass
+
+
+def apply_model_only(provider: str, model_id: str) -> str:
     keys = _PROVIDER_ENV.get(provider)
     if not keys:
         raise ValueError(f"provider {provider} has no model settings")
-    model = str(preset.get("model") or "").strip()
-    effort = preset.get("effort")
-    if model:
-        env_key = keys["model"]
-        os.environ[env_key] = model
-        _append_dotenv_line(env_key, model)
-    if effort and "effort" in keys:
-        env_key = keys["effort"]
-        os.environ[env_key] = str(effort)
-        _append_dotenv_line(env_key, str(effort))
-        if provider == "codex" and "room_effort" in keys:
-            room_key = keys["room_effort"]
-            os.environ[room_key] = str(effort)
-            _append_dotenv_line(room_key, str(effort))
-    return str(preset["label"])
+    model = str(model_id or "").strip()
+    if not model:
+        raise ValueError("model id required")
+    visible = {str(m.get("id")) for m in model_catalog.visible_models(provider)}
+    if visible and model not in visible:
+        raise ValueError(f"unknown model for {provider}: {model}")
+    for row in model_catalog.visible_models(provider):
+        if str(row.get("id")) == model and row.get("available") is False:
+            note = row.get("coming_soon_note") or "not available yet"
+            raise ValueError(f"model unavailable: {model} ({note})")
+    _write_env(keys["model"], model)
+    label = model
+    for row in model_catalog.visible_models(provider):
+        if str(row.get("id")) == model:
+            label = str(row.get("label") or model)
+            break
+    effort = current_effort(provider)
+    if effort:
+        return f"{label} · {effort}"
+    return label
+
+
+def apply_effort_only(provider: str, effort: str) -> str:
+    keys = _PROVIDER_ENV.get(provider)
+    if not keys or "effort" not in keys:
+        raise ValueError(f"provider {provider} has no effort setting")
+    level = str(effort or "").strip().lower()
+    allowed = model_catalog.effort_levels(provider)
+    if allowed and level not in allowed:
+        raise ValueError(f"unknown effort: {effort}")
+    _write_env(keys["effort"], level)
+    if provider == "codex" and "room_effort" in keys:
+        _write_env(keys["room_effort"], level)
+    model = current_model_id(provider)
+    return f"{model} · {level}"
+
+
+def apply_preset(provider: str, preset_value: str) -> str:
+    """Apply model, effort, or ``model|effort`` preset."""
+    raw = str(preset_value or "").strip()
+    if not raw:
+        raise ValueError("preset value required")
+    if raw.startswith("effort:"):
+        return apply_effort_only(provider, raw.split(":", 1)[1])
+    if "|" in raw:
+        model_id, effort = raw.split("|", 1)
+        apply_model_only(provider, model_id)
+        return apply_effort_only(provider, effort)
+    efforts = model_catalog.effort_levels(provider)
+    if efforts and raw in efforts:
+        return apply_effort_only(provider, raw)
+    return apply_model_only(provider, raw)
 
 
 def default_model_summary(provider: str) -> str:
-    keys = _PROVIDER_ENV.get(provider)
-    if not keys:
-        return ""
-    model = os.getenv(keys["model"], "")
-    if provider == "claude":
-        model = model or agent_models.DEFAULT_CLAUDE_MODEL
-        effort = os.getenv(keys.get("effort", ""), agent_models.DEFAULT_CLAUDE_REASONING_EFFORT)
+    model = current_model_id(provider)
+    effort = current_effort(provider)
+    if effort:
         return f"{model} · {effort}"
-    if provider == "codex":
-        model = model or agent_models.DEFAULT_CODEX_MODEL
-        effort = os.getenv(keys.get("effort", ""), agent_models.DEFAULT_CODEX_REASONING_EFFORT)
-        return f"{model} · {effort}"
-    if provider == "cursor":
-        return model or agent_models.DEFAULT_CURSOR_MODEL
-    if provider == "kimi":
-        return model or "kimi-k2"
     return model

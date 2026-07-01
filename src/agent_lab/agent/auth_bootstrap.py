@@ -17,20 +17,20 @@ def _env_truthy(name: str, default: bool = False) -> bool:
     return raw in {"1", "true", "yes", "on"}
 
 
-def _append_dotenv_line(key: str, value: str) -> None:
+def _append_dotenv_line(key: str, value: str, *, path: Path | None = None) -> None:
     from agent_lab.app_config import config_dir
 
-    path = config_dir() / ".env"
+    target = path or (config_dir() / ".env")
     prefix = f"{key}="
     lines: list[str] = []
-    if path.is_file():
-        lines = path.read_text(encoding="utf-8").splitlines()
+    if target.is_file():
+        lines = target.read_text(encoding="utf-8").splitlines()
     kept = [ln for ln in lines if not ln.strip().startswith(prefix)]
     while kept and not kept[-1].strip():
         kept.pop()
     kept.append(f"{key}={value}")
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("\n".join(kept) + "\n", encoding="utf-8")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("\n".join(kept) + "\n", encoding="utf-8")
 
 
 def persist_cursor_api_key_from_env() -> bool:

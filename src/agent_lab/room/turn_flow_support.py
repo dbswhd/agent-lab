@@ -20,6 +20,29 @@ def checkpoint_chat(
     persist_chat_checkpoint(folder, messages, topic=topic)
 
 
+def apply_turn_agent_mentions(
+    user_text: str,
+    active_agents: list[Any],
+    run_meta: dict[str, Any],
+) -> tuple[str, list[Any], list[str]]:
+    """When Human @-targets agents, shrink roster and strip tokens from user text."""
+    from agent_lab.room.agent_mentions import apply_agent_mention_filter
+
+    filtered, stripped, targets = apply_agent_mention_filter(
+        user_text,
+        [str(a) for a in active_agents],
+    )
+    if not targets:
+        run_meta.pop("_turn_target_agents", None)
+        return user_text, active_agents, []
+    new_agents = [a for a in active_agents if str(a).strip().lower() in {t.lower() for t in targets}]
+    if not new_agents:
+        return user_text, active_agents, []
+    run_meta["_turn_target_agents"] = targets
+    run_meta["agents"] = [str(a) for a in new_agents]
+    return stripped, new_agents, targets
+
+
 def emit_divergence_options(
     run_meta: dict[str, Any] | None,
     replies: list[ChatMessage],

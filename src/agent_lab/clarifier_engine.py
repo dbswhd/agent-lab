@@ -70,6 +70,9 @@ def build_engine_interview(
     result, questions = engine_questions(text, agents=agents, max_q=max_q)
     if not questions:
         return None
+    from agent_lab.plan.clarify_options import attach_options_to_questions
+
+    questions = attach_options_to_questions(questions[:max_q], topic=text)
     return {
         "version": 2,
         "plan_mode": plan_mode,

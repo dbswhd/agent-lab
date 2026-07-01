@@ -360,6 +360,15 @@ export function createRoomRunEventHandler(
       );
     }
     if (t === "tool_start" && ev.agent) {
+      const toolName = String(ev.tool ?? "").toLowerCase();
+      if (
+        toolName.includes("ask_human") ||
+        toolName.includes("propose_build")
+      ) {
+        setInboxReloadKey((k) => k + 1);
+        void refreshInboxPending();
+        openHumanInbox();
+      }
       const aid = String(ev.agent);
       const round = Number(ev.round ?? 1);
       const tid = `typing-${aid}-r${round}`;

@@ -269,6 +269,8 @@ def _call_one_agent(
 
     _emit("agent_start", {"agent": aid, "round": parallel_round})
 
+    folder = _session_folder_from_run_meta(run_meta)
+
     from agent_lab.agent.availability import (
         agent_pause_until,
         record_usage_limit_pause,
@@ -319,6 +321,7 @@ def _call_one_agent(
         )
 
     streamed_live = False
+    usage_recorded = False
     # Accumulate streamed text so a cancel can preserve the partial reply (issue D).
     streamed_parts: list[str] = []
     from agent_lab.room.sse_stream import CumulativeTextStreamer
@@ -326,7 +329,7 @@ def _call_one_agent(
     text_stream = CumulativeTextStreamer()
 
     def _bridge_event(kind: str, data: dict[str, Any]) -> None:
-        nonlocal streamed_live
+        nonlocal streamed_live, usage_recorded
         if kind == "text":
             piece = str(data.get("text") or "")
             if not piece:
@@ -352,6 +355,7 @@ def _call_one_agent(
 
                 usage = usage_from_bridge(data)
                 if usage is not None:
+                    usage_recorded = True
                     record_agent_usage(
                         run_meta,
                         str(aid),
@@ -418,7 +422,6 @@ def _call_one_agent(
     consensus_mode = bool(run_meta and run_meta.get("_active_consensus"))
     review_mode_active = review_mode
     turn_profile = str((run_meta or {}).get("turn_profile") or "").strip()
-    folder = _session_folder_from_run_meta(run_meta)
     session_id = str((run_meta or {}).get("_session_id") or "")
     human_turn = _human_turn_number(human_turn_index)
 
@@ -507,11 +510,18 @@ def _call_one_agent(
     ):
         lead_block = lead_discuss_role_block(aid, run_meta)
     hook_prepend = pre_hook.feedback.strip()
-    from agent_lab.plan.workflow import PLAN_CLARIFY_GUIDANCE, plan_workflow_wants_inbox_mcp
+    from agent_lab.plan.workflow import PLAN_CLARIFY_GUIDANCE, build_plan_clarify_agent_block, plan_workflow_wants_inbox_mcp
 
     plan_clarify = ""
     if run_meta and plan_workflow_wants_inbox_mcp(run_meta):
-        plan_clarify = PLAN_CLARIFY_GUIDANCE
+        plan_clarify = "\n\n".join(
+            x
+            for x in (
+                PLAN_CLARIFY_GUIDANCE,
+                build_plan_clarify_agent_block(folder, agent_id=str(aid), run_meta=run_meta),
+            )
+            if x and x.strip()
+        )
     combined_follow = "\n\n".join(
         x for x in (lead_block, hook_prepend, plan_clarify, extra_follow_up) if x and x.strip()
     )
@@ -692,6 +702,28 @@ def _call_one_agent(
                 agent=str(aid),
                 run_meta=run_meta,
             )
+            if run_meta is not None:
+                from agent_lab.cost_ledger import (
+                    estimate_usage_from_text,
+                    persist_cost_ledger,
+                    record_agent_usage,
+                )
+
+                if not usage_recorded:
+                    model = str(context_meta.get("model") or "") or None
+                    est = estimate_usage_from_text(
+                        input_chars=len(payload),
+                        output_chars=len(body),
+                        model=model,
+                    )
+                    if est.tokens_in or est.tokens_out:
+                        record_agent_usage(
+                            run_meta,
+                            str(aid),
+                            est,
+                            turn=human_turn,
+                        )
+                persist_cost_ledger(folder, run_meta)
         return msg
     except Exception as e:
         if isinstance(e, RoomRunCancelled) or is_cancelled():

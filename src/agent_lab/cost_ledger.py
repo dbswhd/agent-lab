@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from agent_lab.agent.models import estimate_cost_usd
@@ -30,6 +31,7 @@ class AgentUsage:
     cache_creation: int = 0
     usd: float | None = None  # provider-reported cost; None → estimate via pricing
     model: str | None = None
+    source: str = "provider"  # provider | estimated
 
     def resolved_usd(self) -> float:
         if self.usd is not None:
@@ -69,6 +71,7 @@ def usage_from_bridge(data: dict[str, Any] | None) -> AgentUsage | None:
         cache_creation=_as_int(data.get("cache_creation") or data.get("cache_creation_input_tokens")),
         usd=float(usd_raw) if usd_raw is not None else None,
         model=(str(data["model"]) if data.get("model") else None),
+        source=str(data.get("usage_source") or data.get("source") or "provider"),
     )
     if not any(
         (
@@ -83,9 +86,65 @@ def usage_from_bridge(data: dict[str, Any] | None) -> AgentUsage | None:
     return usage
 
 
+_DEFAULT_CHARS_PER_TOKEN = 2.0
+
+
+def _chars_per_token() -> float:
+    raw = os.getenv("AGENT_LAB_CHARS_PER_TOKEN")
+    if raw is None:
+        return _DEFAULT_CHARS_PER_TOKEN
+    try:
+        val = float(raw.strip())
+    except (TypeError, ValueError):
+        return _DEFAULT_CHARS_PER_TOKEN
+    return val if val > 0 else _DEFAULT_CHARS_PER_TOKEN
+
+
+def chars_to_tokens(chars: int) -> int:
+    """Heuristic for KR/EN mixed agent payloads when provider usage is absent."""
+    return max(0, int(float(chars) / _chars_per_token()))
+
+
+def estimate_usage_from_text(
+    *,
+    input_chars: int = 0,
+    output_chars: int = 0,
+    model: str | None = None,
+) -> AgentUsage:
+    """Fallback usage from rendered context + reply body (OAuth / opaque bridges)."""
+    tokens_in = chars_to_tokens(input_chars)
+    tokens_out = chars_to_tokens(output_chars)
+    if not tokens_in and not tokens_out:
+        return AgentUsage(model=model, source="estimated")
+    return AgentUsage(
+        tokens_in=tokens_in,
+        tokens_out=tokens_out,
+        model=model,
+        source="estimated",
+    )
+
+
+def persist_cost_ledger(folder: Path | None, run_meta: dict[str, Any] | None) -> None:
+    """Write in-memory ``cost_ledger`` to run.json without clobbering other fields."""
+    if folder is None or not isinstance(run_meta, dict):
+        return
+    ledger = run_meta.get("cost_ledger")
+    if not isinstance(ledger, dict):
+        return
+    from agent_lab.run.meta import patch_run_meta
+
+    def _patch(run: dict[str, Any]) -> dict[str, Any]:
+        run["cost_ledger"] = ledger
+        return run
+
+    patch_run_meta(folder, _patch)
+
+
 def _empty_agent_entry() -> dict[str, Any]:
     return {
         "calls": 0,
+        "provider_calls": 0,
+        "estimated_calls": 0,
         "tokens_in": 0,
         "tokens_out": 0,
         "cache_read": 0,
@@ -116,6 +175,7 @@ def record_agent_usage(
     usage: AgentUsage | None,
     *,
     turn: int | None = None,
+    source: str | None = None,
 ) -> dict[str, Any] | None:
     """Accumulate one agent call's usage into ``run_meta['cost_ledger']``.
 
@@ -132,6 +192,11 @@ def record_agent_usage(
     if not isinstance(entry, dict):
         entry = _empty_agent_entry()
     entry["calls"] = entry.get("calls", 0) + 1
+    usage_source = source or usage.source or "provider"
+    if usage_source == "estimated":
+        entry["estimated_calls"] = int(entry.get("estimated_calls") or 0) + 1
+    else:
+        entry["provider_calls"] = int(entry.get("provider_calls") or 0) + 1
     entry["tokens_in"] = entry.get("tokens_in", 0) + usage.tokens_in
     entry["tokens_out"] = entry.get("tokens_out", 0) + usage.tokens_out
     entry["cache_read"] = entry.get("cache_read", 0) + usage.cache_read

@@ -80,6 +80,44 @@ def challenge_yield(run_meta: dict[str, Any]) -> tuple[float | None, dict[str, i
     return counts["resolved_accepted"] / counts["total"], counts
 
 
+def pure_challenge_yield_from_resolution(
+    objection_resolution: dict[str, Any],
+) -> tuple[float | None, dict[str, int]]:
+    """CHALLENGE-only yield from ledger ``objection_resolution`` rollup."""
+    challenge = (objection_resolution or {}).get("CHALLENGE") or {}
+    accepted = int(challenge.get("accepted") or 0)
+    wontfix = int(challenge.get("wontfix") or 0)
+    open_n = int(challenge.get("open") or 0)
+    total = accepted + wontfix + open_n
+    counts = {
+        "total": total,
+        "resolved_accepted": accepted,
+        "resolved_wontfix": wontfix,
+        "open": open_n,
+    }
+    if total == 0:
+        return None, counts
+    return accepted / total, counts
+
+
+def pure_challenge_yield(run_meta: dict[str, Any]) -> tuple[float | None, dict[str, int]]:
+    """CHALLENGE-only objections that were accepted — excludes BLOCK from denominator."""
+    rows = [
+        o
+        for o in list_objections(run_meta)
+        if str(o.get("act") or "").strip().upper() == "CHALLENGE"
+    ]
+    counts = {
+        "total": len(rows),
+        "resolved_accepted": sum(1 for o in rows if o.get("status") == "resolved_accepted"),
+        "resolved_wontfix": sum(1 for o in rows if o.get("status") == "resolved_wontfix"),
+        "open": sum(1 for o in rows if o.get("status") == "open"),
+    }
+    if counts["total"] == 0:
+        return None, counts
+    return counts["resolved_accepted"] / counts["total"], counts
+
+
 def amend_chain_depth(messages: list[dict[str, Any]]) -> tuple[float | None, dict[str, int]]:
     """Max AMEND acts within one human turn — each AMEND re-anchors, so N AMENDs = chain of N.
 
@@ -244,6 +282,7 @@ def emergence_kpis(
     """Bundle emergence scores + counts for score_session."""
     hybrid_rate, hybrid_counts = hybrid_action_rate(folder)
     yield_rate, challenge_counts = challenge_yield(run_meta)
+    pure_rate, pure_counts = pure_challenge_yield(run_meta)
     chain_depth, amend_counts = amend_chain_depth(messages)
     # P4: anchor 계보가 있으면 실제 재앵커 체인으로 업그레이드 (v1 휴리스틱 대체).
     lineage_depth, lineage_counts = anchor_chain_depth(run_meta)
@@ -256,6 +295,7 @@ def emergence_kpis(
     scores: dict[str, float | None] = {
         "hybrid_action_rate": hybrid_rate,
         "challenge_yield": yield_rate,
+        "pure_challenge_yield": pure_rate,
         "amend_chain_depth_max": chain_depth,
         "recombination_validity_rate": recomb_rate,
         "dispatch_fanout_rate": fanout_rate,
@@ -264,6 +304,7 @@ def emergence_kpis(
     counts: dict[str, Any] = {
         "hybrid": hybrid_counts,
         "challenge": challenge_counts,
+        "pure_challenge": pure_counts,
         "amend": amend_counts,
         "acts": act_distribution(messages),
         "recombination": recomb_counts,

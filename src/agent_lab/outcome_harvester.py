@@ -103,6 +103,7 @@ def build_outcome_record(folder: Path, topic: str, metrics: dict[str, Any]) -> d
         "final_verdict": rollup.get("final_verdict"),
         "repair_attempts": rollup.get("repair_attempts") or 0,
         "objection_summary": metrics.get("objection_summary") or {},
+        "objection_resolution": metrics.get("objection_resolution") or {},
         "consensus_reached": bool(metrics.get("consensus_reached")),
         "latency_ms": metrics.get("latency_ms") or 0,
         # S1.5 — advisor attribution (absent/"default" = baseline bucket in reports)

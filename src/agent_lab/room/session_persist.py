@@ -26,6 +26,15 @@ from agent_lab.room.messages import (
 )
 
 
+def _atomic_write_text(path: Path, content: str) -> None:
+    """Write text via a tmp-file + rename so a crash mid-write can't leave
+    a truncated file behind (same idiom as ``run/meta.py``'s run.json writes).
+    """
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(content, encoding="utf-8")
+    tmp.replace(path)
+
+
 def load_session_messages(folder: Path) -> list[ChatMessage]:
     from agent_lab.room.chat_channels import message_visibility
 
@@ -259,11 +268,12 @@ def _prepare_team_coordination_before_round(
 ) -> list[dict[str, Any]]:
     """Round-robin assign claimable tasks; persist run.json when session exists."""
     from agent_lab.room.tasks import assign_tasks_to_agents, ensure_team_lead
-    from agent_lab.room.team_orchestration import should_assign_tasks_on_turn
+    from agent_lab.room.team_orchestration import reconcile_team_lead, should_assign_tasks_on_turn
     from agent_lab.room.turn_policy import should_assign_tasks_for_run_meta, turn_policy_enabled
     from agent_lab.run.meta import write_run_meta
 
     ensure_team_lead(run_meta)
+    reconcile_team_lead(run_meta, [str(a) for a in active_agents])
     assigned: list[dict[str, Any]] = []
     if turn_policy_enabled():
         assign = should_assign_tasks_for_run_meta(run_meta)
@@ -320,7 +330,7 @@ def _write_session_files(
     run_meta_patch: dict[str, Any] | None = None,
     clarifier_questions: list[str] | None = None,
 ) -> None:
-    (folder / "topic.txt").write_text(topic.strip() + "\n", encoding="utf-8")
+    _atomic_write_text(folder / "topic.txt", topic.strip() + "\n")
     prev_run = _read_run_meta(folder)
     plan_changed = _write_plan_if_changed(folder, plan_md, run_meta=prev_run)
 
@@ -336,7 +346,7 @@ def _write_session_files(
             transcript_lines.append(f"## {agent_label(m.agent)}\n\n{m.content}")
         else:
             transcript_lines.append(f"## System\n\n{m.content}")
-    (folder / "transcript.md").write_text("\n\n".join(transcript_lines) + "\n", encoding="utf-8")
+    _atomic_write_text(folder / "transcript.md", "\n\n".join(transcript_lines) + "\n")
 
     messages_to_store = _append_peer_turn_digest(list(messages))
     messages_to_store = _append_human_turn_synthesis(messages_to_store, prev_run, turn_meta=turn_meta)
@@ -635,10 +645,7 @@ def _write_session_files(
         meta["workspace_label"] = binding["label"]
     if merge_meta:
         meta = {**merge_meta, **meta, "topic": topic, "agents": run_meta["agents"]}
-    (folder / "meta.json").write_text(
-        json.dumps(meta, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
+    _atomic_write_text(folder / "meta.json", json.dumps(meta, indent=2, ensure_ascii=False) + "\n")
 
 
 def persist_chat_checkpoint(
@@ -649,7 +656,7 @@ def persist_chat_checkpoint(
 ) -> None:
     """Durably write in-flight chat so cancel/crash does not lose the turn."""
     if topic is not None:
-        (folder / "topic.txt").write_text(topic.strip() + "\n", encoding="utf-8")
+        _atomic_write_text(folder / "topic.txt", topic.strip() + "\n")
     rows = _append_peer_turn_digest(list(messages))
     chat_path = folder / "chat.jsonl"
     with chat_path.open("w", encoding="utf-8") as f:

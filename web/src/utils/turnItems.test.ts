@@ -95,4 +95,31 @@ describe("turn item reducer", () => {
       status: "running",
     });
   });
+
+  it("upserts Claude heartbeat activity instead of stacking duplicates", () => {
+    let items = reduceTurnItems([], {
+      type: "agent_activity",
+      text: "[claude · working…]",
+    });
+    items = reduceTurnItems(items, {
+      type: "agent_activity",
+      text: "[claude · working…]",
+    });
+    const activities = items.filter((item) => item.kind === "activity");
+    expect(activities).toHaveLength(1);
+  });
+
+  it("upserts Kimi Work net activity instead of stacking duplicates", () => {
+    let items = reduceTurnItems([], {
+      type: "agent_activity",
+      text: "[net] Kimi Work daimon/conversations.send",
+    });
+    items = reduceTurnItems(items, {
+      type: "agent_activity",
+      text: "[net] Kimi Work daimon/conversations.send (retry)",
+    });
+    const activities = items.filter((item) => item.kind === "activity");
+    expect(activities).toHaveLength(1);
+    expect(activities[0]?.text).toContain("daimon/conversations.send");
+  });
 });

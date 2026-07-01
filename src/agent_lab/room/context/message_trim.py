@@ -235,6 +235,53 @@ def _truncate_old_tool_outputs(
     return out
 
 
+def _ephemeral_system_max_keep() -> int:
+    raw = os.getenv("AGENT_LAB_EPHEMERAL_SYSTEM_MAX_KEEP")
+    if raw is None:
+        return 3
+    try:
+        val = int(raw.strip())
+    except (TypeError, ValueError):
+        return 3
+    return max(0, val)
+
+
+def _is_ephemeral_peer_digest(m: MessageLike) -> bool:
+    if m.role != "system":
+        return False
+    return "peer digest" in (m.content or "").lower()
+
+
+def _is_ephemeral_synthesis(m: MessageLike) -> bool:
+    if m.role != "system":
+        return False
+    from agent_lab.room.team_orchestration import is_human_synthesis_message
+
+    visibility = getattr(m, "visibility", None)
+    return is_human_synthesis_message(m.content or "", visibility)
+
+
+def cap_ephemeral_system_messages(
+    messages: list[MessageLike],
+    *,
+    max_keep: int | None = None,
+) -> list[MessageLike]:
+    """Keep only the newest N peer-digest and synthesis system messages."""
+    if max_keep is None:
+        max_keep = _ephemeral_system_max_keep()
+    if max_keep <= 0 or not messages:
+        return list(messages)
+
+    drop: set[int] = set()
+    for predicate in (_is_ephemeral_peer_digest, _is_ephemeral_synthesis):
+        indices = [i for i, m in enumerate(messages) if predicate(m)]
+        if len(indices) > max_keep:
+            drop.update(indices[: len(indices) - max_keep])
+    if not drop:
+        return list(messages)
+    return [m for i, m in enumerate(messages) if i not in drop]
+
+
 def prepare_recent_messages(
     messages: list[MessageLike],
     *,
@@ -243,7 +290,7 @@ def prepare_recent_messages(
     efficiency_mode: bool = False,
     compact: bool | None = None,
 ) -> tuple[list[MessageLike], int, int, int]:
-    """Turn cap → char trim with current Human turn pinned."""
+    """Turn cap → ephemeral system cap → char trim with current Human turn pinned."""
     from agent_lab.context.limits import efficiency_limits
 
     if compact is None:
@@ -253,6 +300,7 @@ def prepare_recent_messages(
     max_turns = max_turns if max_turns is not None else (eff.recent_turns if eff else lim.recent_turns)
     max_chars = max_chars if max_chars is not None else lim.max_thread_chars
     recent, turns_omitted = recent_messages_by_turns(messages, max_turns=max_turns)
+    recent = cap_ephemeral_system_messages(recent)
     pinned = pinned_current_turn_messages(recent)
     compact_dropped = 0
     if compact and not efficiency_mode:
@@ -283,21 +331,27 @@ def format_thread_numbered_slice(
     """Numbered thread preserving chat.jsonl L indices for a message slice."""
     if not slice_messages:
         return "", 0, 0
-    try:
-        start = all_messages.index(slice_messages[0])
-    except ValueError:
+    line_numbers: list[int] = []
+    for m in slice_messages:
+        try:
+            line_numbers.append(all_messages.index(m) + 1)
+        except ValueError:
+            line_numbers.append(0)
+    if line_numbers and line_numbers[0] > 0:
+        start = line_numbers[0] - 1
+    else:
         start = max(0, len(all_messages) - len(slice_messages))
+        line_numbers = [start + offset + 1 for offset in range(len(slice_messages))]
     lines: list[str] = []
-    for offset, m in enumerate(slice_messages):
-        line_no = start + offset + 1
+    for line_no, m in zip(line_numbers, slice_messages, strict=True):
         if m.role == "user":
             lines.append(f"L{line_no} Human:\n{m.content}\n")
         elif m.role == "agent" and m.agent:
             lines.append(f"L{line_no} {agent_label(m.agent)}:\n{m.content}\n")
         else:
             lines.append(f"L{line_no} System:\n{m.content}\n")
-    first_l = start + 1
-    last_l = start + len(slice_messages)
+    first_l = line_numbers[0] if line_numbers else 0
+    last_l = line_numbers[-1] if line_numbers else 0
     return "\n".join(lines), first_l, last_l
 
 

@@ -96,6 +96,31 @@ export function flattenSlashMenuSections(
   return sections.flatMap((section) => section.items);
 }
 
+/** Index of the best default-highlighted command for a query.
+ *
+ * `filterSlashCommands` matches on description text too (so e.g. "model"
+ * surfaces "mcp-builder" via its "Model Context Protocol" description), and
+ * skills always render before commands. Without this, the exact command a
+ * user typed could sit lower in the list while an unrelated description hit
+ * keeps the default (index 0) highlight — Enter would launch the wrong item.
+ * Prefers an exact name match, then a name that starts with the query, else 0.
+ */
+export function bestSlashHighlightIndex(
+  visibleCommands: SlashCommandRecord[],
+  query: string,
+): number {
+  if (!query) return 0;
+  const q = query.toLowerCase();
+  const exact = visibleCommands.findIndex(
+    (cmd) => slashMenuDisplayName(cmd).toLowerCase() === q,
+  );
+  if (exact >= 0) return exact;
+  const prefix = visibleCommands.findIndex((cmd) =>
+    slashMenuDisplayName(cmd).toLowerCase().startsWith(q),
+  );
+  return prefix >= 0 ? prefix : 0;
+}
+
 export function defaultSlashMenuExpanded(
   groups: Record<SlashMenuGroupKey, SlashCommandRecord[]>,
 ): Record<SlashMenuGroupKey, boolean> {

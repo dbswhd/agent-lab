@@ -17,6 +17,7 @@ from agent_lab.agent.models import (  # noqa: E402
     DEFAULT_CLAUDE_MODEL,
     DEFAULT_CLAUDE_REASONING_EFFORT,
 )
+from agent_lab.cost_ledger import chars_to_tokens
 from agent_lab.cli_retry import retry_base_delay_sec, retry_call, retry_max_attempts
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -659,25 +660,21 @@ def invoke(
         Path(system_path).unlink(missing_ok=True)
 
 
-def _emit_claude_usage(
-    event: dict[str, Any],
-    on_bridge_event: Callable[[str, dict[str, Any]], None] | None,
-) -> None:
-    """Surface authoritative token/cost from a stream-json ``result`` event.
-
-    The Claude Code CLI ``result`` event carries top-level ``usage`` and
-    ``total_cost_usd``; relay them as a ``usage`` bridge event so the Room layer
-    can record them into the cost ledger (G1).
-    """
-    if on_bridge_event is None:
-        return
+def _claude_usage_payload_from_event(event: dict[str, Any]) -> dict[str, Any] | None:
+    """Extract provider usage from a stream-json ``result`` event (shape varies by CLI version)."""
     usage: dict[str, Any] = {}
     raw_usage = event.get("usage")
     if isinstance(raw_usage, Mapping):
         usage = dict(raw_usage)
+    elif isinstance(event.get("message"), Mapping):
+        msg_usage = event["message"].get("usage")
+        if isinstance(msg_usage, Mapping):
+            usage = dict(msg_usage)
     cost = event.get("total_cost_usd")
+    if cost is None:
+        cost = event.get("cost_usd")
     if not usage and cost is None:
-        return
+        return None
     payload: dict[str, Any] = {
         "input_tokens": usage.get("input_tokens"),
         "output_tokens": usage.get("output_tokens"),
@@ -685,7 +682,41 @@ def _emit_claude_usage(
         "cache_creation_input_tokens": usage.get("cache_creation_input_tokens"),
         "total_cost_usd": cost,
         "model": event.get("model") or os.getenv("CLAUDE_MODEL", DEFAULT_CLAUDE_MODEL),
+        "usage_source": "provider",
     }
+    if not any(
+        payload.get(k)
+        for k in (
+            "input_tokens",
+            "output_tokens",
+            "cache_read_input_tokens",
+            "cache_creation_input_tokens",
+            "total_cost_usd",
+        )
+    ):
+        return None
+    return payload
+
+
+def _emit_claude_usage(
+    event: dict[str, Any],
+    on_bridge_event: Callable[[str, dict[str, Any]], None] | None,
+    *,
+    result_text: str = "",
+) -> None:
+    """Surface token/cost from a stream-json ``result`` event into the Room bridge."""
+    if on_bridge_event is None:
+        return
+    payload = _claude_usage_payload_from_event(event)
+    if payload is None and result_text.strip():
+        payload = {
+            "input_tokens": 0,
+            "output_tokens": max(1, chars_to_tokens(len(result_text))),
+            "model": event.get("model") or os.getenv("CLAUDE_MODEL", DEFAULT_CLAUDE_MODEL),
+            "usage_source": "estimated",
+        }
+    if payload is None:
+        return
     try:
         on_bridge_event("usage", payload)
     except Exception:
@@ -734,6 +765,8 @@ def _run_claude_stream(
     response_started = False
     started = time.monotonic()
     last_activity_at = started
+    last_heartbeat_at = started
+    heartbeat_interval = 8.0
     idle_timeout = _room_idle_timeout_sec() if timeout is not None else None
     try:
         while True:
@@ -760,6 +793,12 @@ def _run_claude_stream(
                         "claude -p failed (usage limit)"
                         + (f": {detail}" if detail else "")
                     )
+            if on_activity and now - last_heartbeat_at >= heartbeat_interval:
+                idle_for = now - last_activity_at
+                if not response_started or idle_for >= heartbeat_interval:
+                    on_activity("[claude · working…]")
+                    last_heartbeat_at = now
+                    last_activity_at = now
             if proc.poll() is not None:
                 if not select.select([stdout, stderr], [], [], 0)[0]:
                     break
@@ -816,12 +855,14 @@ def _run_claude_stream(
             for kind, data in parse_claude_json_event(event):
                 if kind == "text" and evt_type == "assistant" and seen_text_delta:
                     continue
+                if kind in {"tool_start", "activity", "text"}:
+                    last_activity_at = time.monotonic()
                 on_bridge_event(kind, data)
             if event.get("type") == "result":
                 res = event.get("result")
                 if isinstance(res, str) and res.strip():
                     result_text = res.strip()
-                _emit_claude_usage(event, on_bridge_event)
+                _emit_claude_usage(event, on_bridge_event, result_text=result_text)
     finally:
         unregister_child_process(proc)
     if proc.stderr:

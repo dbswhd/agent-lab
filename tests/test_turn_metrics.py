@@ -23,8 +23,8 @@ _TURN = {
 }
 
 _OBJECTIONS = [
-    {"act": "CHALLENGE", "turn": 1},
-    {"act": "CHALLENGE", "turn": 1},
+    {"act": "CHALLENGE", "turn": 1, "status": "resolved_accepted"},
+    {"act": "CHALLENGE", "turn": 1, "status": "open"},
     {"act": "AMEND", "turn": 1},
     {"act": "BLOCK", "turn": 2},  # different turn → excluded
 ]
@@ -46,6 +46,9 @@ def test_build_turn_metrics_rolls_up_signals() -> None:
     assert metrics["synthesized"] is True
     # objections filtered to human_turn=1
     assert metrics["objection_summary"] == {"CHALLENGE": 2, "AMEND": 1}
+    assert metrics["objection_resolution"] == {
+        "CHALLENGE": {"accepted": 1, "wontfix": 0, "open": 1},
+    }
     roll = metrics["oracle_rollup"]
     assert roll["verify_pass"] == 1
     assert roll["verify_fail"] == 1
@@ -58,6 +61,7 @@ def test_build_turn_metrics_empty_inputs() -> None:
     metrics = build_turn_metrics({}, objections=[], executions=[], human_turn=1)
     assert metrics["category"] == ""
     assert metrics["objection_summary"] == {}
+    assert metrics["objection_resolution"] == {}
     assert metrics["oracle_rollup"]["final_verdict"] is None
 
 
@@ -77,6 +81,9 @@ def test_append_and_record_outcome(tmp_path, monkeypatch) -> None:
     assert rec["v"] == 1
     assert "pipeline" in rec["topic_terms"]
     assert rec["topic_hash"].startswith("sha1:")
+    assert rec["objection_resolution"] == {
+        "CHALLENGE": {"accepted": 1, "wontfix": 0, "open": 1},
+    }
     append_outcome(rec, root=root)
     assert outcomes_path(root).read_text(encoding="utf-8").count("\n") == 1
 

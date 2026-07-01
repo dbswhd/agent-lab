@@ -76,6 +76,10 @@
   "calls_used": 14,
   "escalated": false,
   "objection_summary": { "CHALLENGE": 2, "BLOCK": 0, "AMEND": 1 },
+  "objection_resolution": {
+    "CHALLENGE": { "accepted": 1, "wontfix": 0, "open": 1 },
+    "BLOCK": { "accepted": 0, "wontfix": 0, "open": 0 }
+  },
   "consensus_reached": true,
   "synthesized": true,
   "latency_ms": 311418,
@@ -101,6 +105,7 @@
  "rounds_used":3,"escalated":false,
  "final_verdict":"pass","repair_attempts":0,
  "objection_summary":{"CHALLENGE":2,"BLOCK":0},
+ "objection_resolution":{"CHALLENGE":{"accepted":1,"wontfix":0,"open":1}},
  "consensus_reached":true,"latency_ms":311418}
 ```
 

@@ -11,6 +11,26 @@ SHARED_CONTEXT_CAP = 600
 
 PER_DIR_AGENTS_GUIDANCE_HEADER = "[AGENTS.md — per-dir hierarchy]"
 
+_read_cache: dict[Path, tuple[float, str]] = {}
+
+
+def _read_workspace_md_cached(path: Path) -> str:
+    if not path.is_file():
+        return ""
+    try:
+        mtime = path.stat().st_mtime
+    except OSError:
+        return ""
+    cached = _read_cache.get(path)
+    if cached is not None and cached[0] == mtime:
+        return cached[1]
+    try:
+        text = path.read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+    _read_cache[path] = (mtime, text)
+    return text
+
 
 def _workspace_root(run_meta: dict[str, Any]) -> Path | None:
     binding = run_meta.get("workspace_binding")
@@ -28,12 +48,8 @@ def read_agents_md_for_injection(run_meta: dict[str, Any]) -> str:
     if root is None:
         return ""
     path = root / "AGENTS.md"
-    if not path.is_file():
-        return ""
-    try:
-        return path.read_text(encoding="utf-8").strip()[:AGENTS_MD_CAP]
-    except OSError:
-        return ""
+    text = _read_workspace_md_cached(path)
+    return text[:AGENTS_MD_CAP] if text else ""
 
 
 def read_agents_md_hierarchy_for_injection(
@@ -73,9 +89,5 @@ def read_shared_context_for_injection(run_meta: dict[str, Any]) -> str:
     if root is None:
         return ""
     path = root / "SHARED_CONTEXT.md"
-    if not path.is_file():
-        return ""
-    try:
-        return path.read_text(encoding="utf-8").strip()[:SHARED_CONTEXT_CAP]
-    except OSError:
-        return ""
+    text = _read_workspace_md_cached(path)
+    return text[:SHARED_CONTEXT_CAP] if text else ""

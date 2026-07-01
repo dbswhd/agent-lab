@@ -8,6 +8,7 @@ import pytest
 
 from agent_lab.cursor.inbox_mcp import discuss_inbox_mcp_enabled
 from agent_lab.inbox.harvest import (
+    discuss_fork_harvest_allowed,
     harvest_discuss_questions,
     orchestrator_inbox_harvest_enabled,
 )
@@ -94,6 +95,40 @@ def test_harvest_discuss_skipped_by_default_supervisor() -> None:
     )
     assert created == []
     assert "human_inbox" not in run_meta
+
+
+def test_harvest_discuss_fork_without_legacy_orchestrator_flag() -> None:
+    import json
+
+    from dataclasses import dataclass
+
+    @dataclass
+    class _Msg:
+        role: str
+        agent: str | None = None
+        content: str = ""
+
+    payload = {
+        "topic": "eval harness 연결 우선순위",
+        "options": [
+            {"label": "pytest XML → result_map adapter 먼저", "refs": ["eval_harness.py:56-60"]},
+            {"label": "Docker sandbox 먼저 (격리 선행)", "refs": ["sandbox_policy.py:7"]},
+        ],
+    }
+    fork_body = "```decision-fork\n" + json.dumps(payload, ensure_ascii=False) + "\n```"
+
+    run_meta: dict[str, Any] = {"room_preset": "supervisor"}
+    messages = [
+        _Msg(role="user", content="topic"),
+        _Msg(role="agent", agent="claude", content=fork_body),
+    ]
+    created = harvest_discuss_questions(run_meta, messages, human_turn=1, mode="discuss")
+    assert len(created) == 1
+    item = created[0]
+    assert item["trigger"] == "T-Q1"
+    assert item["prompt"] == "eval harness 연결 우선순위"
+    assert len(item["options"]) == 2
+    assert discuss_fork_harvest_allowed(run_meta) is True
 
 
 def test_harvest_discuss_runs_when_legacy_flag_on(monkeypatch: pytest.MonkeyPatch) -> None:

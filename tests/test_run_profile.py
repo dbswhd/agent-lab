@@ -58,7 +58,7 @@ def test_resolve_profile_case_insensitive() -> None:
 
 def test_default_run_profile_unset(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("AGENT_LAB_RUN_PROFILE", raising=False)
-    assert default_run_profile() is None
+    assert default_run_profile() == "balanced"
 
 
 def test_default_run_profile_valid(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -114,6 +114,14 @@ def test_balanced_profile_uses_supervisor_preset() -> None:
     assert cfg.flags.get("AGENT_LAB_ROOM_PRESET") == "supervisor"
 
 
+def test_balanced_profile_has_s1_feedback_flags() -> None:
+    cfg = resolve_profile("balanced")
+    assert cfg is not None
+    assert cfg.flags.get("AGENT_LAB_TURN_METRICS") == "1"
+    assert cfg.flags.get("AGENT_LAB_OUTCOME_LEDGER") == "1"
+    assert cfg.flags.get("AGENT_LAB_FEEDBACK_ADVISOR") == "1"
+
+
 def test_thorough_profile_uses_supervisor_preset() -> None:
     cfg = resolve_profile("thorough")
     assert cfg is not None
@@ -166,7 +174,7 @@ def test_profile_catalog_shape(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "default" in cat
     assert "active" in cat
     assert len(cat["profiles"]) == 4
-    assert cat["default"] is None
+    assert cat["default"] == "balanced"
 
 
 def test_profile_catalog_fields() -> None:

@@ -674,6 +674,7 @@ def _communicate_meta_for_turn(
     consensus_mode: bool,
     turn_profile: str | None,
     efficiency_mode: bool,
+    run_meta: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     from agent_lab.reply_policy import resolve_reply_policy, summarize_turn_communicate_meta
 
@@ -684,7 +685,29 @@ def _communicate_meta_for_turn(
         turn_profile=turn_profile or "",
         efficiency_mode=efficiency_mode,
     )
-    return summarize_turn_communicate_meta(replies, context_log, policy=policy)
+    meta = summarize_turn_communicate_meta(replies, context_log, policy=policy)
+    if run_meta and run_meta.get("_debate_convergence"):
+        meta["convergence"] = run_meta.get("_debate_convergence")
+    elif consensus_mode:
+        from agent_lab.debate_convergence import (
+            debate_convergence_gate_enabled,
+            public_convergence_snapshot,
+            score_debate_convergence,
+        )
+
+        if debate_convergence_gate_enabled():
+            agents = run_meta.get("agents") if isinstance(run_meta, dict) else None
+            active = [str(a) for a in agents] if isinstance(agents, list) else []
+            human_turn = len([m for m in replies if m.role == "user"])
+            snap = score_debate_convergence(
+                replies,
+                active_agents=active,
+                run_meta=run_meta,
+                human_turn=human_turn,
+                phase="debate",
+            )
+            meta["convergence"] = public_convergence_snapshot(snap)
+    return meta
 
 
 def _goal_auto_continue_message(result: dict[str, Any] | None) -> str | None:

@@ -92,7 +92,9 @@ def test_fast_bucket_collection_budget():
     # 2026-06-29: raised 2143 -> 2170 for TurnPolicy Wave F (test_turn_policy + UI handoff updates).
     # 2026-06-29: raised 2170 -> 2174 for TurnPolicy C3-C5 regression tests.
     # 2026-06-29: raised 2174 -> 2195 for MCP-first harvest tests, turn_flow split, session metrics MCP.
-    assert count <= 2195, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-06-30: raised 2195 -> 2220 for S1 feedback loop waves (objection_resolution rollup,
+    # pure_challenge_yield, feedback_report accepted_challenge_rate, run_profile S1 flags).
+    assert count <= 2220, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

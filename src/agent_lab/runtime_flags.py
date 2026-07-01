@@ -49,6 +49,17 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "Structural anti-drift defenses for panel turns (state re-injection, unanimity red-team, fresh-eyes critic seat; default off)",
     ),
     FlagDef(
+        "AGENT_LAB_DEBATE_CONVERGENCE_GATE",
+        "feature",
+        "Interview-style debate convergence scoring — early-exit debate/endorse when convergence ≥ threshold (default off)",
+    ),
+    FlagDef(
+        "AGENT_LAB_DEBATE_CONVERGENCE_THRESHOLD",
+        "feature",
+        "Debate convergence advance threshold 0..1 (default 0.75)",
+        default="0.75",
+    ),
+    FlagDef(
         "AGENT_LAB_CHECKPOINT",
         "feature",
         "Snapshot run.json FSM state at each phase transition to a per-session checkpoints.jsonl for manual resume (default ON; opt-out via =0)",

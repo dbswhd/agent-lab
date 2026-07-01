@@ -1,7 +1,7 @@
 import { Fragment, type ReactNode } from "react";
 
 const INLINE_RE =
-  /(\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`|\[([^\]]+)\]\(([^)]+)\))/g;
+  /(\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`|\[([^\]]+)\]\(([^)]+)\)|(?<![\w*])_([^_\n]+)_(?![\w*]))/g;
 
 function renderInline(
   text: string,
@@ -23,6 +23,8 @@ function renderInline(
       nodes.push(<strong key={key}>{m[2]}</strong>);
     } else if (m[3]) {
       nodes.push(<em key={key}>{m[3]}</em>);
+    } else if (m[7]) {
+      nodes.push(<em key={key}>{m[7]}</em>);
     } else if (m[4]) {
       nodes.push(
         <code key={key} className={inlineCodeClass || undefined}>

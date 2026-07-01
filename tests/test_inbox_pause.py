@@ -79,6 +79,24 @@ def test_should_pause_sync_with_pending(monkeypatch: pytest.MonkeyPatch):
     assert should_pause_discuss(run_meta) is True
 
 
+def test_turn_budget_inbox_does_not_pause_discuss(monkeypatch: pytest.MonkeyPatch):
+    """Turn budget overflow surfaces inbox items but must not hard-stop debate."""
+    monkeypatch.delenv("AGENT_LAB_INBOX_MODE", raising=False)
+    run_meta = {
+        "human_inbox": [
+            {
+                "id": "q-budget",
+                "kind": "question",
+                "status": "pending",
+                "source": "turn_budget",
+                "prompt": "Turn budget exceeded",
+                "options": [{"id": "continue", "label": "Acknowledge"}],
+            }
+        ],
+    }
+    assert should_pause_discuss(run_meta) is False
+
+
 def test_should_not_pause_without_pending(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.delenv("AGENT_LAB_INBOX_MODE", raising=False)
     run_meta = {

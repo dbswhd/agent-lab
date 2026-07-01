@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -21,9 +22,24 @@ class ConsensusPolicy:
         max_calls: int,
         rounds: int,
         max_rounds: int,
+        convergence_result: dict[str, Any] | None = None,
+        run_meta: dict[str, Any] | None = None,
+        human_turn: int = 0,
     ) -> tuple[bool, str | None]:
         if consensus_status == "reached":
             return True, "consensus_reached"
+        from agent_lab.debate_convergence import should_advance_endorse
+
+        ok, reason = should_advance_endorse(
+            convergence_result or {},
+            run_meta,
+            human_turn=human_turn,
+            endorse_count=endorse_count,
+            active_agents=active_agents,
+            min_endorse_agents=self.min_endorse_agents,
+        )
+        if ok and reason:
+            return True, reason
         if endorse_count >= self.min_endorse_agents:
             return True, "endorse_threshold"
         if rounds >= max_rounds:

@@ -12,6 +12,8 @@ from agent_lab.emergence_kpis import (
     emergence_kpis,
     hybrid_action_rate,
     load_chat_speakers,
+    pure_challenge_yield,
+    pure_challenge_yield_from_resolution,
     routing_kpis,
 )
 from agent_lab.session.score import score_session
@@ -119,6 +121,27 @@ def test_challenge_yield_none_when_no_conflict() -> None:
     rate, counts = challenge_yield({"objections": []})
     assert rate is None
     assert counts["total"] == 0
+
+
+def test_pure_challenge_yield_excludes_block() -> None:
+    run = {
+        "objections": [
+            {"id": "obj-1", "from": "codex", "act": "CHALLENGE", "status": "resolved_accepted"},
+            {"id": "obj-2", "from": "claude", "act": "BLOCK", "status": "open"},
+            {"id": "obj-3", "from": "cursor", "act": "CHALLENGE", "status": "open"},
+        ]
+    }
+    rate, counts = pure_challenge_yield(run)
+    assert counts["total"] == 2
+    assert rate == 0.5
+
+
+def test_pure_challenge_yield_from_resolution() -> None:
+    rate, counts = pure_challenge_yield_from_resolution(
+        {"CHALLENGE": {"accepted": 1, "wontfix": 0, "open": 2}}
+    )
+    assert counts["total"] == 3
+    assert rate == 1 / 3
 
 
 def test_amend_chain_depth_resets_per_turn() -> None:
@@ -247,6 +270,7 @@ def test_emergence_kpis_bundle(tmp_path: Path) -> None:
     assert scores == {
         "hybrid_action_rate": None,
         "challenge_yield": None,
+        "pure_challenge_yield": None,
         "amend_chain_depth_max": None,
         "recombination_validity_rate": None,
         "dispatch_fanout_rate": None,

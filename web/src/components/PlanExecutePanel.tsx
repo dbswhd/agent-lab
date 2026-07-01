@@ -21,7 +21,6 @@ import {
 } from "../api/client";
 import type { AgentPermissions } from "../utils/agentPermissions";
 import { fullAgentPermissions } from "../utils/agentPermissions";
-import { PlanActionCard, PlanGateLine } from "./PlanActionCard";
 import { PlanAgentResponse } from "./PlanAgentResponse";
 import { PlanDiffStat } from "./PlanDiffStat";
 import { PlanActionContext } from "./PlanActionContext";
@@ -37,7 +36,13 @@ import { executionApprovalGate } from "../utils/executeApprovalGate";
 import { formatPlanExecuteError } from "../utils/planExecuteErrors";
 import { WorkPlanIcon } from "./WorkPlanIcon";
 import { SideBySideDiff } from "./SideBySideDiff";
-import { PlanProvenanceFooter } from "./PlanProvenanceFooter";
+import { PlanTodoList } from "./PlanTodoList";
+import { useLocale } from "../i18n/useLocale";
+import {
+  buildPlanTodoRows,
+  planTodoProgress,
+  resolvePlanDiffRollup,
+} from "../utils/planTodoView";
 import { MergeChecksPanel } from "./MergeChecksPanel";
 import { TrustAutoMergeBar } from "./TrustAutoMergeBar";
 import { EvidenceGatesPanel } from "./EvidenceGatesPanel";
@@ -70,8 +75,11 @@ type Props = {
   onDismissWorkHookAlert?: () => void;
   onOpenDiff?: () => void;
   onOpenFiles?: () => void;
+  onOpenFile?: (path: string) => void;
   sessionIdForObjections?: string;
   onObjectionResolved?: () => void;
+  variant?: "tool" | "composer";
+  planFileLabel?: string;
 };
 
 function linkedTaskForAction(
@@ -117,13 +125,6 @@ function formatPathList(paths: string[] | undefined, max = 3): string {
   if (paths.length <= max) return paths.join(", ");
   const head = paths.slice(0, max).join(", ");
   return `${head} +${paths.length - max} more`;
-}
-
-function roadmapLabel(item: PlanActionItem): string {
-  if (item.executable === false) {
-    return item.summary || item.what;
-  }
-  return item.what;
 }
 
 function executePermissions(): AgentPermissions {
@@ -523,7 +524,7 @@ function PlanObjectionAlert({
 
 export function PlanExecutePanel({
   sessionId,
-  planMd = "",
+  planMd: _planMd = "",
   run,
   linkedTasks,
   cursorReady,
@@ -538,9 +539,13 @@ export function PlanExecutePanel({
   onDismissWorkHookAlert,
   onOpenDiff,
   onOpenFiles,
+  onOpenFile,
   sessionIdForObjections,
   onObjectionResolved,
+  variant = "tool",
+  planFileLabel = "plan.md",
 }: Props) {
+  const { locale } = useLocale();
   const [recommended, setRecommended] = useState<PlanActionItem | null>(null);
   const [nowItems, setNowItems] = useState<PlanActionItem[]>([]);
   const [roadmap, setRoadmap] = useState<PlanActionItem[]>([]);
@@ -917,59 +922,30 @@ export function PlanExecutePanel({
   const executeWorkspace =
     selectedAction?.execute_workspace ?? recommended?.execute_workspace;
 
-  const primaryPlanItem = recommended ?? executableItems[0] ?? null;
-  const secondaryPlanItems = useMemo(() => {
-    const primaryKey = primaryPlanItem ? actionKey(primaryPlanItem) : null;
-    const seen = new Set<string>();
-    return [...nowItems, ...roadmap].filter((item) => {
-      const key = actionKey(item);
-      if (key === primaryKey || seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-  }, [nowItems, primaryPlanItem, roadmap]);
+  const todoRows = useMemo(
+    () =>
+      buildPlanTodoRows({
+        recommended,
+        nowItems,
+        roadmap,
+        selectedKey,
+        executions,
+        activePending,
+      }),
+    [recommended, nowItems, roadmap, selectedKey, executions, activePending],
+  );
+
+  const todoProgress = useMemo(
+    () => planTodoProgress(todoRows, activePending),
+    [todoRows, activePending],
+  );
+
+  const todoDiffRollup = useMemo(
+    () => resolvePlanDiffRollup({ activePending, executions }),
+    [activePending, executions],
+  );
 
   const actionDisabled = Boolean(disabled || busy || activePending);
-
-  const renderPlanListItem = (
-    item: PlanActionItem,
-    opts?: { recommended?: boolean; variant?: "now" | "default" },
-  ) => {
-    const key = actionKey(item);
-    if (item.executable !== false) {
-      return (
-        <PlanActionCard
-          key={key}
-          n={item.index}
-          what={item.what}
-          where={item.where}
-          verify={item.verify}
-          onRefClick={onChatRefClick}
-          variant={opts?.variant ?? "default"}
-          recommended={opts?.recommended ?? item.recommended}
-          selectable
-          radioName="plan-action"
-          checked={selectedKey === key}
-          selected={selectedKey === key}
-          disabled={actionDisabled}
-          onSelect={() => setSelectedKey(key)}
-        />
-      );
-    }
-    return (
-      <PlanGateLine
-        key={key}
-        n={item.index}
-        text={
-          opts?.variant === "now"
-            ? item.summary || item.what
-            : roadmapLabel(item)
-        }
-        onRefClick={onChatRefClick}
-        variant={opts?.variant}
-      />
-    );
-  };
 
   if (!cursorReady) {
     return (
@@ -982,7 +958,15 @@ export function PlanExecutePanel({
   }
 
   return (
-    <div className="work-surface" aria-label="plan 실행">
+    <div
+      className={[
+        "work-surface",
+        variant === "composer" ? "work-surface--composer" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      aria-label="plan 실행"
+    >
       {workHookAlert ? (
         <div
           className={`work-hook-alert${workHookAlert.blocked ? " work-hook-alert--blocked" : ""}`}
@@ -1001,199 +985,165 @@ export function PlanExecutePanel({
           ) : null}
         </div>
       ) : null}
-      <div className="plan-card" id="work-plan-review">
-        <div className="plan-card__head">
-          <span className="plan-card__title">
-            <WorkPlanIcon name="list" size={16} />
-            실행 계획
-          </span>
-          <span className="plan-card__sub">토론에서 정리됨 · plan.md</span>
-        </div>
-        <div className="plan-card__body">
-          {loadingActions ? (
-            <p className="plan-card__muted">액션 불러오는 중…</p>
-          ) : !hasNowSection && !hasDryRun && !recommended ? (
-            <p className="plan-card__muted">
-              plan.md에 실행 액션이 없습니다. 토론·분석만 있으면{" "}
-              <code>## 지금 실행</code> 섹션이 비어 있을 수 있습니다.
-              Transcript에서 구현 항목을 합의한 뒤 다음 턴 plan 갱신을
-              확인하세요.
-            </p>
-          ) : (
-            <>
-              {primaryPlanItem ? (
-                <>
-                  <div className="plan-roadmap-label">추천 다음 단계</div>
-                  <div className="plan-actions">
-                    {renderPlanListItem(primaryPlanItem, {
-                      recommended: true,
-                      variant: "now",
-                    })}
-                  </div>
-                  {nowHasOnlyGates ? (
-                    <p className="plan-card__muted plan-card__gate-note">
-                      Human 확인 항목만 있습니다. Cursor dry-run은{" "}
-                      <strong>무엇을 / 어디서 / 검증</strong> 3필드 액션 필요.
-                    </p>
-                  ) : null}
-                </>
-              ) : null}
+      <PlanTodoList
+        rows={todoRows}
+        progress={todoProgress}
+        diffRollup={todoDiffRollup}
+        locale={locale}
+        variant={variant}
+        loading={loadingActions}
+        busy={busy}
+        selectedKey={selectedKey}
+        disabled={actionDisabled}
+        planFileLabel={planFileLabel}
+        onSelect={setSelectedKey}
+        onRefClick={onChatRefClick}
+        onPlanFileClick={() => {
+          if (onOpenFile) onOpenFile(planFileLabel);
+          else onOpenFiles?.();
+        }}
+        defaultExpanded={!activePending && !busy}
+      >
+        {!loadingActions && !hasNowSection && !hasDryRun && !recommended ? (
+          <p className="plan-card__muted">
+            plan.md에 실행 액션이 없습니다. 토론·분석만 있으면{" "}
+            <code>## 지금 실행</code> 섹션이 비어 있을 수 있습니다.
+            Transcript에서 구현 항목을 합의한 뒤 다음 턴 plan 갱신을 확인하세요.
+          </p>
+        ) : null}
 
-              {secondaryPlanItems.length > 0 ? (
-                <details className="plan-card__more">
-                  <summary>
-                    이후 실행 계획 {secondaryPlanItems.length}개
-                  </summary>
-                  <div className="plan-actions">
-                    {secondaryPlanItems.map((item) =>
-                      renderPlanListItem(item, {
-                        variant: item.kind === "now" ? "now" : "default",
-                      }),
-                    )}
-                  </div>
-                </details>
-              ) : null}
-            </>
-          )}
+        {nowHasOnlyGates ? (
+          <p className="plan-card__muted plan-card__gate-note">
+            Human 확인 항목만 있습니다. Cursor dry-run은{" "}
+            <strong>무엇을 / 어디서 / 검증</strong> 3필드 액션 필요.
+          </p>
+        ) : null}
 
-          <PlanLinkedTaskLine
-            task={linkedForSelected}
-            onFocusTask={onFocusTask}
+        <PlanLinkedTaskLine
+          task={linkedForSelected}
+          onFocusTask={onFocusTask}
+        />
+
+        {selectedOpenBlocks.length ? (
+          <PlanObjectionAlert
+            title="이 action은 미해결 BLOCK으로 execute가 차단됩니다"
+            message="이의를 수용하거나 기각한 뒤 dry-run 하세요."
+            objections={selectedOpenBlocks}
+            onFocusObjection={onFocusObjection}
+            sessionIdForObjections={sessionIdForObjections ?? sessionId}
+            onObjectionResolved={onObjectionResolved ?? onUpdated}
           />
+        ) : null}
 
-          {selectedOpenBlocks.length ? (
-            <PlanObjectionAlert
-              title="이 action은 미해결 BLOCK으로 execute가 차단됩니다"
-              message="이의를 수용하거나 기각한 뒤 dry-run 하세요."
-              objections={selectedOpenBlocks}
-              onFocusObjection={onFocusObjection}
-              sessionIdForObjections={sessionIdForObjections ?? sessionId}
-              onObjectionResolved={onObjectionResolved ?? onUpdated}
-            />
-          ) : null}
+        {objectionBlock?.objections?.length ? (
+          <PlanObjectionAlert
+            title="dry-run이 미해결 이의로 차단됐습니다"
+            message={objectionBlock.message}
+            objections={objectionBlock.objections}
+            onFocusObjection={onFocusObjection}
+            sessionIdForObjections={sessionIdForObjections ?? sessionId}
+            onObjectionResolved={onObjectionResolved ?? onUpdated}
+          />
+        ) : null}
 
-          {objectionBlock?.objections?.length ? (
-            <PlanObjectionAlert
-              title="dry-run이 미해결 이의로 차단됐습니다"
-              message={objectionBlock.message}
-              objections={objectionBlock.objections}
-              onFocusObjection={onFocusObjection}
-              sessionIdForObjections={sessionIdForObjections ?? sessionId}
-              onObjectionResolved={onObjectionResolved ?? onUpdated}
-            />
-          ) : null}
-
-          {planSnapshot ? (
-            <div
-              className="work-exec-plan-snapshot"
-              role="region"
-              aria-label="plan 스냅샷 승인"
-            >
-              <p className="work-exec-plan-snapshot__lead">
-                dry-run 전에 아래 plan 실행 항목을 확인·승인하세요 (스냅샷).
-              </p>
-              <pre className="work-exec-plan-snapshot__body">
-                {planSnapshot.snapshot_text ||
-                  `${planSnapshot.action_what}\n${planSnapshot.action_where}\n${planSnapshot.action_verify}`}
-              </pre>
-              <div className="work-exec-plan-snapshot__actions">
-                <button
-                  type="button"
-                  className="plan-btn plan-btn--primary"
-                  disabled={disabled || busy}
-                  onClick={() => void handleApprovePlanSnapshot()}
-                >
-                  {busy ? "처리 중…" : "스냅샷 승인 → dry-run"}
-                </button>
-                <button
-                  type="button"
-                  className="plan-btn"
-                  disabled={busy}
-                  onClick={() => void handleRejectPlanSnapshot()}
-                >
-                  거부
-                </button>
-              </div>
-            </div>
-          ) : null}
-
-          {isolationBlock ? (
-            <div className="work-exec-isolation-modal" role="alertdialog">
-              <p className="work-exec-isolation-modal__title">
-                격리 worktree를 만들 수 없습니다
-              </p>
-              <p className="work-exec-isolation-modal__reason">
-                {isolationBlock.code}: {isolationBlock.message}
-              </p>
-              {isolationBlock.remediation?.length ? (
-                <p className="work-exec-isolation-modal__hint">
-                  {isolationBlock.remediation.join(" · ")}
-                </p>
-              ) : null}
-              <div className="work-exec-isolation-modal__actions">
-                <button
-                  type="button"
-                  className="plan-btn plan-btn--primary"
-                  disabled={disabled || busy}
-                  onClick={() => {
-                    setIsolationBlock(null);
-                    void handleDryRun();
-                  }}
-                >
-                  修復 후 재시도
-                </button>
-                <button
-                  type="button"
-                  className="plan-btn"
-                  disabled={disabled || busy || !isolationBlock.executionId}
-                  onClick={() => void handleIsolationOverride()}
-                >
-                  이번만 비격리 실행…
-                </button>
-                <button
-                  type="button"
-                  className="plan-btn"
-                  disabled={busy}
-                  onClick={() => setIsolationBlock(null)}
-                >
-                  취소
-                </button>
-              </div>
-            </div>
-          ) : null}
-
-          {!activePending && hasDryRun && !planSnapshot ? (
-            <div className="plan-actions-bar">
-              {executeWorkspace?.label ? (
-                <span className="plan-card__workspace">
-                  {executeWorkspace.label}
-                </span>
-              ) : null}
-              <button
-                type="button"
-                className="plan-btn"
-                disabled={disabled || busy || selectedKey == null}
-                onClick={() => void handleDryRun()}
-              >
-                <WorkPlanIcon name="flask" size={15} />
-                {busy ? "Cursor 실행 중…" : "Dry-run"}
-              </button>
-              <span className="plan-actions-bar__spacer" />
+        {planSnapshot ? (
+          <div
+            className="work-exec-plan-snapshot"
+            role="region"
+            aria-label="plan 스냅샷 승인"
+          >
+            <p className="work-exec-plan-snapshot__lead">
+              dry-run 전에 아래 plan 실행 항목을 확인·승인하세요 (스냅샷).
+            </p>
+            <pre className="work-exec-plan-snapshot__body">
+              {planSnapshot.snapshot_text ||
+                `${planSnapshot.action_what}\n${planSnapshot.action_where}\n${planSnapshot.action_verify}`}
+            </pre>
+            <div className="work-exec-plan-snapshot__actions">
               <button
                 type="button"
                 className="plan-btn plan-btn--primary"
-                disabled={disabled || busy || selectedKey == null}
-                onClick={() => void handleDryRun()}
+                disabled={disabled || busy}
+                onClick={() => void handleApprovePlanSnapshot()}
               >
-                <WorkPlanIcon name="play" size={14} />
-                Execute
+                {busy ? "처리 중…" : "스냅샷 승인 → dry-run"}
+              </button>
+              <button
+                type="button"
+                className="plan-btn"
+                disabled={busy}
+                onClick={() => void handleRejectPlanSnapshot()}
+              >
+                거부
               </button>
             </div>
-          ) : null}
+          </div>
+        ) : null}
 
-          <PlanProvenanceFooter planMd={planMd} onRefClick={onChatRefClick} />
-        </div>
-      </div>
+        {isolationBlock ? (
+          <div className="work-exec-isolation-modal" role="alertdialog">
+            <p className="work-exec-isolation-modal__title">
+              격리 worktree를 만들 수 없습니다
+            </p>
+            <p className="work-exec-isolation-modal__reason">
+              {isolationBlock.code}: {isolationBlock.message}
+            </p>
+            {isolationBlock.remediation?.length ? (
+              <p className="work-exec-isolation-modal__hint">
+                {isolationBlock.remediation.join(" · ")}
+              </p>
+            ) : null}
+            <div className="work-exec-isolation-modal__actions">
+              <button
+                type="button"
+                className="plan-btn plan-btn--primary"
+                disabled={disabled || busy}
+                onClick={() => {
+                  setIsolationBlock(null);
+                  void handleDryRun();
+                }}
+              >
+                修復 후 재시도
+              </button>
+              <button
+                type="button"
+                className="plan-btn"
+                disabled={disabled || busy || !isolationBlock.executionId}
+                onClick={() => void handleIsolationOverride()}
+              >
+                이번만 비격리 실행…
+              </button>
+              <button
+                type="button"
+                className="plan-btn"
+                disabled={busy}
+                onClick={() => setIsolationBlock(null)}
+              >
+                취소
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {!activePending && hasDryRun && !planSnapshot ? (
+          <div className="plan-actions-bar">
+            {executeWorkspace?.label ? (
+              <span className="plan-card__workspace">
+                {executeWorkspace.label}
+              </span>
+            ) : null}
+            <button
+              type="button"
+              className="plan-btn plan-btn--primary plan-btn--execute"
+              disabled={disabled || busy || selectedKey == null}
+              onClick={() => void handleDryRun()}
+            >
+              <WorkPlanIcon name="play" size={14} />
+              {busy ? "Cursor 실행 중…" : "Execute"}
+            </button>
+          </div>
+        ) : null}
+      </PlanTodoList>
       {activePending ? (
         <div
           className="exec-card"

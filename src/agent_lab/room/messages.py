@@ -24,8 +24,8 @@ MAX_AGENT_PARALLEL_ROUNDS = 4  # per human message
 DEFAULT_AGENT_PARALLEL_ROUNDS = 1  # discuss default; use 2+ for review / peer debate
 RUN_SCHEMA_VERSION = 1
 PLAN_FORMAT_VERSION = 1  # 지금 실행 + 실행 순서 sections
-# Review round 2+: sequential pipeline (matches web ROOM_MODEL_AGENT_ORDER).
-REVIEW_ROUND2_ORDER: tuple[AgentId, ...] = ("claude", "codex", "cursor")
+# Review round 2+: sequential pipeline (review → verify → execute; roster-filtered).
+REVIEW_ROUND2_ORDER: tuple[AgentId, ...] = ("claude", "kimi_work", "codex", "cursor")
 
 OnAgentEvent = Callable[[str, dict[str, Any]], None]
 # event types: agent_start, agent_activity, agent_done, agent_error, turn_failed
@@ -165,7 +165,10 @@ def _round_agent_order(
             pool = {str(a).lower(): a for a in agents}
             return [pool[k] for k in ordered if k in pool]
     if review_mode and parallel_round >= 2:
-        return [a for a in REVIEW_ROUND2_ORDER if a in agents]
+        from agent_lab.room.roster_context import review_round2_order
+
+        pool = {str(a).lower(): a for a in agents}
+        return [pool[k] for k in review_round2_order([str(a) for a in agents]) if k in pool]
     if parallel_round == 1 and run_meta and not review_mode:
         from agent_lab.room.team_orchestration import team_r1_split
 

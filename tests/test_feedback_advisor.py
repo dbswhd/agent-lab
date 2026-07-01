@@ -35,9 +35,11 @@ def _row(
     verdict: str = "pass",
     repair: int = 0,
     blocks: int = 0,
+    accepted_challenges: int = 0,
+    challenge_resolution: dict | None = None,
     consensus: bool = True,
 ) -> dict:
-    return {
+    row = {
         "v": 1,
         "category": category,
         "topic_terms": topic_terms or ["pipeline", "verify"],
@@ -49,6 +51,13 @@ def _row(
         "consensus_reached": consensus,
         "latency_ms": 10000,
     }
+    if challenge_resolution is not None:
+        row["objection_resolution"] = {"CHALLENGE": challenge_resolution}
+    elif accepted_challenges:
+        row["objection_resolution"] = {
+            "CHALLENGE": {"accepted": accepted_challenges, "wontfix": 0, "open": 0},
+        }
+    return row
 
 
 # ---------------------------------------------------------------------------
@@ -66,6 +75,55 @@ def test_score_fail() -> None:
 
 def test_score_block_penalty() -> None:
     assert _score_outcome(_row(verdict="pass", repair=0, blocks=2)) == 0.5  # 2.5 - 2×1.0
+
+
+def test_score_accepted_challenge_bonus() -> None:
+    assert _score_outcome(_row(verdict="pass", repair=0, accepted_challenges=2)) == 3.5  # 2.5 + 2×0.5
+
+
+def test_score_low_pure_yield_penalizes_missing_critic() -> None:
+    no_critic = {"cursor": "proposer", "codex": "executor", "claude": "proposer"}
+    base = _score_outcome(
+        _row(
+            roles=no_critic,
+            verdict="pass",
+            repair=0,
+            challenge_resolution={"accepted": 0, "wontfix": 0, "open": 2},
+        )
+    )
+    with_critic = _score_outcome(
+        _row(
+            verdict="pass",
+            repair=0,
+            challenge_resolution={"accepted": 0, "wontfix": 0, "open": 2},
+        )
+    )
+    assert with_critic > base
+
+
+def test_advise_setup_prefers_critic_when_history_low_pure_yield(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AGENT_LAB_FEEDBACK_ADVISOR", "1")
+    monkeypatch.setenv("AGENT_LAB_FEEDBACK_MIN_SAMPLE", "2")
+    ledger = tmp_path / ".agent-lab" / "outcomes.jsonl"
+
+    combo_no_critic = {"cursor": "proposer", "codex": "executor", "claude": "proposer"}
+    combo_with_critic = {"cursor": "proposer", "codex": "executor", "claude": "critic"}
+    low_yield = {"accepted": 0, "wontfix": 0, "open": 2}
+
+    rows = [
+        _row(roles=combo_no_critic, verdict="pass", challenge_resolution=low_yield),
+        _row(roles=combo_no_critic, verdict="pass", challenge_resolution=low_yield),
+        _row(roles=combo_with_critic, verdict="pass", challenge_resolution=low_yield),
+        _row(roles=combo_with_critic, verdict="pass", challenge_resolution=low_yield),
+    ]
+    _write_ledger(ledger, rows)
+    monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: ledger)
+
+    hint = advise_setup("pipeline verify", "standard", ["cursor", "codex", "claude"])
+    assert hint.source == "history"
+    assert hint.role_overrides.get("claude") == "critic"
 
 
 # ---------------------------------------------------------------------------

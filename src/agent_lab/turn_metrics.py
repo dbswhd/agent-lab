@@ -13,6 +13,8 @@ from typing import Any
 
 TURN_METRICS_SCHEMA_VERSION = 1
 
+_RESOLUTION_BUCKETS = ("accepted", "wontfix", "open")
+
 
 def _objection_summary(objections: list[dict[str, Any]], *, human_turn: int) -> dict[str, int]:
     """Count objection acts (CHALLENGE/BLOCK/AMEND/...) raised on this human turn."""
@@ -29,6 +31,31 @@ def _objection_summary(objections: list[dict[str, Any]], *, human_turn: int) -> 
         if not act:
             continue
         summary[act] = summary.get(act, 0) + 1
+    return summary
+
+
+def _objection_resolution_summary(
+    objections: list[dict[str, Any]], *, human_turn: int
+) -> dict[str, dict[str, int]]:
+    """Per-act resolution counts for objections raised on this human turn."""
+    summary: dict[str, dict[str, int]] = {}
+    for obj in objections:
+        if not isinstance(obj, dict):
+            continue
+        try:
+            if int(obj.get("turn") or 0) != human_turn:
+                continue
+        except (TypeError, ValueError):
+            continue
+        act = str(obj.get("act") or "").strip().upper()
+        if act not in {"CHALLENGE", "BLOCK"}:
+            continue
+        status = str(obj.get("status") or "open").strip().lower()
+        bucket = "accepted" if status == "resolved_accepted" else "wontfix" if status == "resolved_wontfix" else "open"
+        if bucket not in _RESOLUTION_BUCKETS:
+            bucket = "open"
+        act_counts = summary.setdefault(act, {k: 0 for k in _RESOLUTION_BUCKETS})
+        act_counts[bucket] = act_counts.get(bucket, 0) + 1
     return summary
 
 
@@ -90,6 +117,7 @@ def build_turn_metrics(
         "rounds_used": int(turn.get("agent_parallel_rounds") or 0),
         "escalated": bool(category.get("escalated_from")),
         "objection_summary": _objection_summary(objections, human_turn=human_turn),
+        "objection_resolution": _objection_resolution_summary(objections, human_turn=human_turn),
         "consensus_reached": str(consensus.get("status") or "") == "reached",
         "synthesized": bool(turn.get("synthesize")),
         "latency_ms": int(turn.get("latency_ms") or 0),

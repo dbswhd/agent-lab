@@ -117,7 +117,7 @@ def test_fork_candidate_has_options():
 
 
 def test_harvest_creates_question_with_fork_options():
-    run_meta: dict[str, Any] = {}
+    run_meta: dict[str, Any] = {"room_preset": "supervisor"}
     messages = [
         _Msg(role="user", content="topic"),
         _Msg(

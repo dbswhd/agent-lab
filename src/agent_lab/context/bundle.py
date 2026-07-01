@@ -291,12 +291,18 @@ def build_slim_consensus_bundle(
             permissions=permissions,
         )
     session_guidance = build_session_guidance_block(run_meta, plan_md=plan_md)
+    from agent_lab.room.roster_context import active_agents_from_run_meta
+    from agent_lab.room.tasks import team_lead as session_team_lead
+
+    active_roster = active_agents_from_run_meta(run_meta)
     constraints = build_constraints_block(
         permission_lines=permission_lines,
         human_gates=extract_human_gates(messages, topic),
         agreed_bullets=agreed,
         status_tags=extract_status_tags(messages)[: limits.max_status_tags],
         workspace_lines=_workspace_lines_for_agent(agent, permissions, run_meta),
+        active_agents=active_roster,
+        team_lead=session_team_lead(run_meta) if run_meta else None,
     )
     if session_guidance.strip():
         constraints = f"{constraints}\n\n{session_guidance.strip()}"
@@ -346,7 +352,7 @@ def build_slim_consensus_bundle(
         ),
         run_meta,
     )
-    guidance_parts = build_guidance_parts(reply_policy, run_meta=run_meta, agent=agent)
+    guidance_parts = build_guidance_parts(reply_policy, run_meta=run_meta, agent=agent, active_agents=active_roster)
     from agent_lab.room.dispatch_intents import build_dispatch_intent_block
 
     dispatch_block = build_dispatch_intent_block(run_meta, agent)
@@ -355,7 +361,7 @@ def build_slim_consensus_bundle(
     guidance_block = "---\n" + "\n".join(guidance_parts) + f"\n---\nRespond as {label(cast(AgentId, agent))} only."
     follow_up = envelope_follow_up_block(reply_policy, context="consensus")
     connect_hint = AGENT_CONNECT_HINT.get(agent, "").strip()
-    tool_rules = agent_tool_rules(agent, run_meta)
+    tool_rules = agent_tool_rules(agent, run_meta, active_agents=active_roster)
     meta = ContextBundleMeta(
         agent=agent,
         parallel_round=2,
@@ -592,12 +598,18 @@ def build_context_bundle(
             permissions=permissions,
         )
     session_guidance = build_session_guidance_block(run_meta, plan_md=plan_md)
+    from agent_lab.room.roster_context import active_agents_from_run_meta
+    from agent_lab.room.tasks import team_lead as session_team_lead
+
+    active_roster = active_agents_from_run_meta(run_meta)
     constraints = build_constraints_block(
         permission_lines=permission_lines,
         human_gates=extract_human_gates(messages, topic),
         agreed_bullets=agreed,
         status_tags=extract_status_tags(trimmed),
         workspace_lines=_workspace_lines_for_agent(agent, permissions, run_meta),
+        active_agents=active_roster,
+        team_lead=session_team_lead(run_meta) if run_meta else None,
     )
     if session_guidance.strip():
         constraints = f"{constraints}\n\n{session_guidance.strip()}"
@@ -687,7 +699,7 @@ def build_context_bundle(
         ),
         run_meta,
     )
-    guidance_parts = build_guidance_parts(reply_policy, run_meta=run_meta, agent=agent)
+    guidance_parts = build_guidance_parts(reply_policy, run_meta=run_meta, agent=agent, active_agents=active_roster)
     if profile == "analyze":
         guidance_parts.insert(
             0,
@@ -733,7 +745,7 @@ def build_context_bundle(
                 "빨리 합의하는 것이 목표가 아닙니다 — 결과를 바꾸는 이견이 가치입니다."
             )
 
-    tool_rules = agent_tool_rules(agent, run_meta)
+    tool_rules = agent_tool_rules(agent, run_meta, active_agents=active_roster)
 
     meta = ContextBundleMeta(
         agent=agent,

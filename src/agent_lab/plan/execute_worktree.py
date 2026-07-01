@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -13,6 +14,22 @@ from agent_lab.plan.execute_git import (
     exec_branch_name,
     is_working_tree_clean,
 )
+
+log = logging.getLogger(__name__)
+
+
+def _rmtree_best_effort(path: Path) -> None:
+    """Remove a worktree directory; log (don't raise) on failure.
+
+    Callers treat worktree cleanup as fail-open so a stuck directory never
+    blocks a room turn or execute action, but a silent ``ignore_errors=True``
+    lets orphaned worktrees accumulate with no way to notice. Logging keeps
+    the fail-open behavior while making repeated failures observable.
+    """
+    try:
+        shutil.rmtree(path)
+    except OSError:
+        log.warning("failed to remove worktree directory %s", path, exc_info=True)
 
 
 class WorktreeUnavailable(Exception):
@@ -83,7 +100,7 @@ def create_exec_worktree(
     wt_path = worktree_dir(session_folder, exec_id)
 
     if wt_path.exists():
-        shutil.rmtree(wt_path, ignore_errors=True)
+        _rmtree_best_effort(wt_path)
 
     wt_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -115,7 +132,7 @@ def remove_exec_worktree(
     if wt.is_dir():
         _run_git(root, "worktree", "remove", "--force", str(wt.resolve()), check=False)
         if wt.exists():
-            shutil.rmtree(wt, ignore_errors=True)
+            _rmtree_best_effort(wt)
     _run_git(root, "worktree", "prune", check=False)
     _run_git(root, "branch", "-D", branch, check=False)
 
@@ -172,7 +189,7 @@ def _remove_unknown_worktree(path: Path, *, prune_roots: set[Path]) -> None:
         prune_roots.add(root)
         _run_git(root, "worktree", "remove", "--force", str(path.resolve()), check=False)
     if path.exists():
-        shutil.rmtree(path, ignore_errors=True)
+        _rmtree_best_effort(path)
 
 
 def list_orphan_worktrees(

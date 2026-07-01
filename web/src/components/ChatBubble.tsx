@@ -137,13 +137,15 @@ export function ChatBubble({
     if (consoleMode) {
       return (
         <div className="transcript-system" role="status">
-          {message.body}
+          <MessageMarkdown text={message.body} variant="transcript" />
         </div>
       );
     }
     return (
       <div className="bubble-row bubble-row--system">
-        <span className="bubble bubble--system">{message.body}</span>
+        <span className="bubble bubble--system">
+          <MessageMarkdown text={message.body} variant="transcript" />
+        </span>
       </div>
     );
   }

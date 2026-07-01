@@ -72,26 +72,43 @@ function upsertReasoning(
   ].slice(-24) as TurnItem[];
 }
 
+function statusPrefixGroup(text: string): string[] | null {
+  const groups: readonly (readonly string[])[] = [
+    ["Codex 대기 중…", "Codex 응답 대기…"],
+    [
+      "Codex exec",
+      "Codex turn",
+      "Codex OAuth",
+      "Codex proxy",
+      "Codex stderr",
+      "Codex CLI",
+    ],
+    ["[claude · working", "[claude ·"],
+    ["Cursor SDK", "Worked for"],
+    ["[net]"],
+    ["[tool · workspace]"],
+    ["[inbox ·"],
+  ];
+  for (const group of groups) {
+    if (group.some((prefix) => text.startsWith(prefix))) {
+      return [...group];
+    }
+  }
+  return null;
+}
+
 function upsertStatusActivity(
   items: TurnItem[],
   text: string,
 ): TurnItem[] | null {
-  const prefixes = [
-    "Codex 대기 중…",
-    "Codex 응답 대기…",
-    "Codex exec",
-    "Codex turn",
-    "Codex OAuth",
-    "Codex proxy",
-    "Codex stderr",
-  ];
-  if (!prefixes.some((prefix) => text.startsWith(prefix))) {
+  const group = statusPrefixGroup(text);
+  if (!group) {
     return null;
   }
   for (let index = items.length - 1; index >= 0; index -= 1) {
     const item = items[index];
     if (item?.kind !== "activity") continue;
-    if (!prefixes.some((prefix) => item.text.startsWith(prefix))) continue;
+    if (!group.some((prefix) => item.text.startsWith(prefix))) continue;
     if (item.text === text) return items;
     const next = [...items];
     next[index] = { ...item, text, status: "running" };

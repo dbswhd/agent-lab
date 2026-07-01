@@ -240,7 +240,7 @@ def agent_subset_for_route(
     return []
 
 
-def persona_for_agent(turn_roles: dict | None, agent: str) -> str:
+def persona_for_agent(turn_roles: dict | None, agent: str, *, run_meta: dict[str, Any] | None = None) -> str:
     """turn_roles에서 에이전트 역할 페르소나 텍스트 반환. 역할 없으면 빈 문자열."""
     if not turn_roles or not agent:
         return ""
@@ -251,6 +251,10 @@ def persona_for_agent(turn_roles: dict | None, agent: str) -> str:
         from agent_lab.room.consensus import recombination_follow_up
 
         return recombination_follow_up()
+    if role_id == "delegator":
+        from agent_lab.room.roster_context import active_agents_from_run_meta, delegator_persona
+
+        return delegator_persona(active_agents_from_run_meta(run_meta))
     spec = _ROLES.get(role_id)
     return spec.persona if spec else ""
 

@@ -58,6 +58,11 @@ def _blocks(row: dict[str, Any]) -> int:
     return int((row.get("objection_summary") or {}).get("BLOCK", 0))
 
 
+def _accepted_challenges(row: dict[str, Any]) -> int:
+    res = (row.get("objection_resolution") or {}).get("CHALLENGE") or {}
+    return int(res.get("accepted") or 0)
+
+
 def _bucket_stats(rows: list[dict[str, Any]]) -> dict[str, Any]:
     """Aggregate quality signals for one bucket of outcome rows."""
     n = len(rows)
@@ -67,17 +72,20 @@ def _bucket_stats(rows: list[dict[str, Any]]) -> dict[str, Any]:
             "clean_pass_rate": 0.0,
             "repair_rate": 0.0,
             "block_rate": 0.0,
+            "accepted_challenge_rate": 0.0,
             "avg_score": 0.0,
         }
     clean = sum(1 for r in rows if _is_clean_pass(r))
     repaired = sum(1 for r in rows if int(r.get("repair_attempts") or 0) > 0)
     blocked = sum(1 for r in rows if _blocks(r) > 0)
+    challenged = sum(1 for r in rows if _accepted_challenges(r) > 0)
     total_score = sum(_score_outcome(r) for r in rows)
     return {
         "n": n,
         "clean_pass_rate": round(clean / n, 4),
         "repair_rate": round(repaired / n, 4),
         "block_rate": round(blocked / n, 4),
+        "accepted_challenge_rate": round(challenged / n, 4),
         "avg_score": round(total_score / n, 4),
     }
 

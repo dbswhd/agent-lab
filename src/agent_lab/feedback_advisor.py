@@ -20,7 +20,7 @@ import json
 import logging
 import os
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -31,6 +31,8 @@ log = logging.getLogger(__name__)
 _TRUE = frozenset({"1", "true", "yes", "on"})
 
 MIN_SAMPLE = int(os.getenv("AGENT_LAB_FEEDBACK_MIN_SAMPLE") or "3")
+_PURE_CHALLENGE_YIELD_LOW = 0.3
+_CRITIC_YIELD_BOOST = 0.25
 _LEDGER_TAIL = 200  # max rows to read from outcomes.jsonl tail
 _TOKEN_OVERLAP_MIN = 1  # min shared topic tokens to include a prior outcome
 
@@ -87,9 +89,12 @@ def _load_tail(path: Path, n: int) -> list[dict[str, Any]]:
 def _score_outcome(outcome: dict[str, Any]) -> float:
     """Score a single prior outcome for role-combo quality.
 
-    Positive signals: clean pass, no repairs, consensus reached.
+    Positive signals: clean pass, no repairs, consensus reached, accepted CHALLENGE.
     Negative signals: BLOCK objections (indicates role didn't resolve conflict).
+    Low pure CHALLENGE yield without a critic role → penalize the combo.
     """
+    from agent_lab.emergence_kpis import pure_challenge_yield_from_resolution
+
     score = 0.0
     verdict = str(outcome.get("final_verdict") or "").lower()
     repair = int(outcome.get("repair_attempts") or 0)
@@ -103,6 +108,20 @@ def _score_outcome(outcome: dict[str, Any]) -> float:
         score += 0.5
     blocks = int((outcome.get("objection_summary") or {}).get("BLOCK", 0))
     score -= blocks * 1.0
+    challenge_res = (outcome.get("objection_resolution") or {}).get("CHALLENGE") or {}
+    accepted_challenges = int(challenge_res.get("accepted") or 0)
+    score += accepted_challenges * 0.5
+    pure_rate, pure_counts = pure_challenge_yield_from_resolution(outcome.get("objection_resolution") or {})
+    if (
+        pure_rate is not None
+        and pure_rate < _PURE_CHALLENGE_YIELD_LOW
+        and int(pure_counts.get("total") or 0) >= 1
+    ):
+        roles = outcome.get("roles") or {}
+        if any(str(r) == "critic" for r in roles.values()):
+            score += _CRITIC_YIELD_BOOST
+        else:
+            score -= _CRITIC_YIELD_BOOST
     return score
 
 
@@ -190,8 +209,10 @@ def advise_setup(
     try:
         return _advise_inner(topic, category, available_agents, root=root)
     except Exception:
+        # Distinct rationale from _DEFAULT_HINT's "no_history" so feedback_report
+        # can tell a genuine cold-start apart from an advisor bug swallowed here.
         log.warning("advise_setup failed", exc_info=True)
-        return _DEFAULT_HINT
+        return replace(_DEFAULT_HINT, rationale="advisor_error")
 
 
 def _wisdom_note(topic: str, *, limit: int = 3) -> str:

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { SlashCommandRecord } from "../api/client";
 import {
+  bestSlashHighlightIndex,
   buildSlashMenuSections,
   filterSlashCommands,
+  flattenSlashMenuSections,
   groupSlashMenuCommands,
   slashMenuGroupKey,
 } from "./slashCommandMenuGroups";
@@ -74,5 +76,45 @@ describe("slashCommandMenuGroups", () => {
       { ...plugin, id: "b", slash: "/alpha", label: "Alpha", kind: "plugin" },
     ]);
     expect(groups.commands.map((row) => row.slash)).toEqual(["/alpha", "/zebra"]);
+  });
+
+  it("defaults highlight to an exact name match even if it renders after a description-only hit", () => {
+    // A skill whose description happens to contain the query renders first
+    // (skills section is always before commands), but "/model" is an exact
+    // command match and must win the default highlight.
+    const mcpBuilder: SlashCommandRecord = {
+      id: "skill:mcp-builder",
+      slash: "/mcp-builder",
+      label: "mcp-builder",
+      description: "Guide for building Model Context Protocol servers.",
+      kind: "agent_invoke",
+      source: "skill",
+    };
+    const modelCmd: SlashCommandRecord = {
+      id: "cmd:model",
+      slash: "/model",
+      label: "model",
+      description: "Switch the active model.",
+      kind: "plugin",
+    };
+    const commands = [mcpBuilder, modelCmd];
+    const sections = buildSlashMenuSections(commands, "model", {
+      skills: true,
+      commands: true,
+      modes: true,
+    });
+    const visible = flattenSlashMenuSections(sections);
+    expect(visible.map((row) => row.slash)).toEqual(["/mcp-builder", "/model"]);
+    expect(bestSlashHighlightIndex(visible, "model")).toBe(1);
+  });
+
+  it("falls back to a prefix match, then index 0, when there is no exact match", () => {
+    const rows = [
+      { ...plugin, slash: "/code-review", label: "code-review" },
+      { ...plugin, id: "b", slash: "/codex", label: "codex" },
+    ];
+    expect(bestSlashHighlightIndex(rows, "code")).toBe(0);
+    expect(bestSlashHighlightIndex(rows, "xyz")).toBe(0);
+    expect(bestSlashHighlightIndex(rows, "")).toBe(0);
   });
 });

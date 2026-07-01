@@ -1078,3 +1078,11 @@
   font-size: var(--text-caption);
   color: var(--warn);
 }
+
+/* @ mention picker — slash menu list only (no aside) */
+.composer-field .slash-command-menu.composer-mention-menu {
+  z-index: 30;
+}
+.composer-field .slash-command-menu.composer-mention-menu .slash-command-menu__main {
+  border-right: none;
+}

@@ -82,14 +82,50 @@ def test_collect_parallel_futures_returns_quickly_on_cancel() -> None:
     from concurrent.futures import ThreadPoolExecutor
 
     from agent_lab.room.parallel_rounds import _collect_parallel_futures
-    from agent_lab.run.control import RoomRunCancelled, clear_cancel, request_cancel
+    from agent_lab.run.control import clear_cancel, is_cancelled, request_cancel
 
     clear_cancel()
     executor = ThreadPoolExecutor(max_workers=1)
     futures = {executor.submit(lambda: "ok")}
     request_cancel()
     t0 = time.monotonic()
-    with pytest.raises(RoomRunCancelled):
-        _collect_parallel_futures(executor, futures)
+    _collect_parallel_futures(executor, futures)
     assert time.monotonic() - t0 < 1.0
+    assert is_cancelled()
+    clear_cancel()
+
+
+def test_collect_parallel_futures_waits_for_partial_on_cancel() -> None:
+    import threading
+
+    from concurrent.futures import ThreadPoolExecutor
+
+    from agent_lab.room.messages import ChatMessage
+    from agent_lab.room.parallel_rounds import _collect_parallel_futures
+    from agent_lab.run.control import clear_cancel, is_cancelled, request_cancel
+
+    clear_cancel()
+    partial = ChatMessage(
+        role="agent",
+        agent="claude",
+        content="partial analysis\n\n_(취소됨)_",
+        parallel_round=2,
+    )
+
+    def slow_agent() -> ChatMessage:
+        time.sleep(1.0)
+        return partial
+
+    executor = ThreadPoolExecutor(max_workers=1)
+    futures = {executor.submit(slow_agent)}
+
+    def cancel_soon() -> None:
+        time.sleep(0.15)
+        request_cancel()
+
+    threading.Thread(target=cancel_soon, daemon=True).start()
+    results = _collect_parallel_futures(executor, futures)
+    assert len(results) == 1
+    assert results[0].content == partial.content
+    assert is_cancelled()
     clear_cancel()

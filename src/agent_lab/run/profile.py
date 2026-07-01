@@ -47,6 +47,9 @@ _PROFILE_CONFIGS: dict[str, RunProfileConfig] = {
             "AGENT_LAB_ORACLE_LIVE": "1",
             "AGENT_LAB_ADVERSARIAL_LIVE": "",
             "AGENT_LAB_JUDGE_LIVE": "",
+            "AGENT_LAB_TURN_METRICS": "1",
+            "AGENT_LAB_OUTCOME_LEDGER": "1",
+            "AGENT_LAB_FEEDBACK_ADVISOR": "1",
         },
     ),
     "thorough": RunProfileConfig(
@@ -82,9 +85,13 @@ def resolve_profile(profile: str | None) -> RunProfileConfig | None:
 
 
 def default_run_profile() -> str | None:
-    """Return the profile name from AGENT_LAB_RUN_PROFILE env var, or None."""
+    """Return the profile name from AGENT_LAB_RUN_PROFILE env var, or ``balanced``."""
     raw = (os.getenv("AGENT_LAB_RUN_PROFILE") or "").strip().lower()
-    return raw if resolve_profile(raw) is not None else None
+    if resolve_profile(raw) is not None:
+        return raw
+    if not raw:
+        return "balanced"
+    return None
 
 
 def apply_run_profile(profile: str | None, *, overwrite: bool = False) -> dict[str, str]:

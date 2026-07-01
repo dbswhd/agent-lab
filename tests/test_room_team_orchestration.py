@@ -7,6 +7,7 @@ from agent_lab.room.team_orchestration import (
     build_human_turn_synthesis,
     is_discuss_only_turn,
     parse_go_lead_from_message,
+    reconcile_team_lead,
     resolve_send_receipt,
     resolve_turn_lead,
     should_assign_tasks_on_turn,
@@ -31,6 +32,13 @@ def test_resolve_turn_lead_explicit_and_rotate():
     assert resolve_turn_lead(meta, 2, agents) == "codex"
     assert turn_leads_map(meta)["2"] == "codex"
     assert resolve_turn_lead(meta, 3, agents) == "claude"
+
+
+def test_reconcile_team_lead_when_lead_not_in_roster():
+    meta: dict = {"team_lead": "codex"}
+    agents = ["cursor", "claude"]
+    assert reconcile_team_lead(meta, agents) == "cursor"
+    assert meta["team_lead"] == "cursor"
 
 
 def test_resolve_send_receipt():
@@ -103,6 +111,25 @@ def test_round_agent_order_r1_lead_last():
         run_meta=meta,
     )
     assert [str(a) for a in order] == ["codex", "claude", "cursor"]
+
+
+def test_round_agent_order_r2_includes_kimi_work():
+    order = _round_agent_order(
+        ["cursor", "claude", "kimi_work"],
+        review_mode=True,
+        parallel_round=2,
+        run_meta={"team_lead": "cursor"},
+    )
+    assert [str(a) for a in order] == ["claude", "kimi_work", "cursor"]
+
+
+def test_round_agent_order_r2_classic_unchanged():
+    order = _round_agent_order(
+        ["cursor", "codex", "claude"],
+        review_mode=True,
+        parallel_round=2,
+    )
+    assert [str(a) for a in order] == ["claude", "codex", "cursor"]
 
 
 def test_build_human_turn_synthesis_skips_peer():

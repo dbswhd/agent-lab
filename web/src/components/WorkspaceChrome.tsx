@@ -13,12 +13,10 @@ type Props = {
   readonly rightPanelMode: RightPanelMode;
   readonly locale: Locale;
   readonly panelBadgeCount: number;
-  readonly running: boolean;
   readonly onToggleSidebar: () => void;
   readonly onToggleRightPanel: () => void;
   readonly onSelectRightPanelMode: (mode: RightPanelMode) => void;
   readonly onOpenSettings?: () => void;
-  readonly onStop: () => void;
   readonly onWorkbenchMenuOpenChange?: (open: boolean) => void;
 };
 
@@ -35,12 +33,10 @@ export function WorkspaceChrome({
   rightPanelMode,
   locale,
   panelBadgeCount,
-  running,
   onToggleSidebar,
   onToggleRightPanel,
   onSelectRightPanelMode,
   onOpenSettings: _onOpenSettings,
-  onStop,
   onWorkbenchMenuOpenChange,
 }: Props) {
   const tauri = isTauriApp();
@@ -100,16 +96,6 @@ export function WorkspaceChrome({
           </span>
         </div>
         <div className="workspace-chrome__actions">
-          {running ? (
-            <button
-              type="button"
-              className="workspace-chrome__run-badge"
-              onClick={onStop}
-              title="Stop run (⌘.)"
-            >
-              running
-            </button>
-          ) : null}
           <button
             type="button"
             className="workspace-chrome__icon-btn"

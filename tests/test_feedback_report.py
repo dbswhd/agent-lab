@@ -17,13 +17,24 @@ def _write_ledger(path: Path, rows: list[dict]) -> None:
             fh.write(json.dumps(row) + "\n")
 
 
-def _row(source: str | None, *, verdict: str = "pass", repair: int = 0, blocks: int = 0) -> dict:
+def _row(
+    source: str | None,
+    *,
+    verdict: str = "pass",
+    repair: int = 0,
+    blocks: int = 0,
+    accepted_challenges: int = 0,
+) -> dict:
     row = {
         "category": "standard",
         "final_verdict": verdict,
         "repair_attempts": repair,
         "objection_summary": {"BLOCK": blocks} if blocks else {},
     }
+    if accepted_challenges:
+        row["objection_resolution"] = {
+            "CHALLENGE": {"accepted": accepted_challenges, "wontfix": 0, "open": 0},
+        }
     if source is not None:
         row["advisor_source"] = source
     return row
@@ -68,3 +79,20 @@ def test_legacy_rows_without_source_fold_into_default(tmp_path: Path, monkeypatc
     rep = build_feedback_report(tmp_path)
     assert rep["by_source"]["default"]["n"] == 2
     assert rep["by_source"]["history"]["n"] == 0
+
+
+def test_accepted_challenge_rate_bucket(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    ledger = tmp_path / ".agent-lab" / "outcomes.jsonl"
+    _write_ledger(
+        ledger,
+        [
+            _row("history", accepted_challenges=1),
+            _row("history"),
+            _row("default", accepted_challenges=2),
+        ],
+    )
+    monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: ledger)
+
+    rep = build_feedback_report(tmp_path)
+    assert rep["by_source"]["history"]["accepted_challenge_rate"] == 0.5
+    assert rep["by_source"]["default"]["accepted_challenge_rate"] == 1.0

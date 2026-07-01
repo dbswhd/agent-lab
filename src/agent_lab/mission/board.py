@@ -8,11 +8,12 @@ from datetime import datetime, timezone
 from typing import Any, Callable, Literal
 
 from agent_lab.plan.actions import find_dry_run_action, parse_plan_actions
+from agent_lab.provider_registry import DEFAULT_ROSTER
 from agent_lab.run.meta import patch_run_meta, read_run_meta
 
 LaneId = Literal["discuss", "execute", "verify", "human"]
 
-DEFAULT_DISCUSS_ROLES: tuple[str, ...] = ("cursor", "codex", "claude")
+DEFAULT_DISCUSS_ROLES: tuple[str, ...] = DEFAULT_ROSTER
 
 DEFAULT_TURN_BUDGET_CAPS: dict[str, Any] = {
     "agent_calls_per_human_turn": 9,
@@ -343,6 +344,10 @@ def record_agent_call(
     if run_meta is not None:
         run_meta["turn_budget"] = updated.get("turn_budget")
         run_meta["mission_board"] = updated.get("mission_board")
+        run_meta["human_inbox"] = updated.get("human_inbox")
+        from agent_lab.human_inbox import compute_inbox_pending
+
+        run_meta["inbox_pending"] = compute_inbox_pending(updated)
     return get_turn_budget(updated)
 
 
@@ -387,6 +392,31 @@ def sync_turn_budget_from_mission(folder: Path) -> dict[str, Any]:
     return get_turn_budget(updated)
 
 
+def turn_budget_agent_invoke_blocked(run: dict[str, Any] | None) -> tuple[bool, str | None]:
+    """True when the next agent call must wait for Human (budget cap or pending inbox)."""
+    if not isinstance(run, dict):
+        return False, None
+    tb = get_turn_budget(run)
+    counters = tb["counters"]
+    caps = tb["caps"]
+    agent_used = int(counters.get("agent_calls_per_human_turn") or 0)
+    agent_cap = int(caps.get("agent_calls_per_human_turn") or 9)
+    if agent_cap > 0 and agent_used >= agent_cap:
+        return True, f"agent calls per human turn ({agent_used}/{agent_cap})"
+    key, msg = _check_overflow(run)
+    if key == "agent_calls_per_human_turn":
+        return True, msg
+    from agent_lab.human_inbox import inbox_items
+
+    for item in inbox_items(run):
+        if item.get("status") != "pending":
+            continue
+        if str(item.get("source") or "").strip().lower() == "turn_budget":
+            summary = str(item.get("summary") or item.get("prompt") or "turn budget exceeded")
+            return True, summary[:200]
+    return False, None
+
+
 def _apply_overflow(
     run: dict[str, Any],
     *,
@@ -401,7 +431,16 @@ def _apply_overflow(
     ml = get_mission_loop(run)
     if ml.get("enabled") and key in {"autorun_ticks_per_hour", "mission_iterations"}:
         return run
-    from agent_lab.human_inbox import append_inbox_item, new_inbox_item
+    from agent_lab.human_inbox import append_inbox_item, inbox_items, new_inbox_item
+
+    for item in inbox_items(run):
+        if (
+            item.get("status") == "pending"
+            and str(item.get("source") or "").strip().lower() == "turn_budget"
+            and str(item.get("summary") or "").endswith(key)
+        ):
+            run["inbox_pending"] = True
+            return run
 
     item = new_inbox_item(
         kind="question",
@@ -413,7 +452,11 @@ def _apply_overflow(
             {"id": "pause", "label": "Pause mission"},
         ],
     )
-    return append_inbox_item(run, item)
+    updated = append_inbox_item(run, item)
+    from agent_lab.human_inbox import compute_inbox_pending
+
+    updated["inbox_pending"] = compute_inbox_pending(updated)
+    return updated
 
 
 def handle_turn_budget_overflow(folder: Path, *, key: str, message: str) -> None:

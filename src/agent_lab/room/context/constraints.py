@@ -137,19 +137,37 @@ KIMI_WORK_FAST_TOOL_RULES = """\
 REPLY_FORMAT_RULES = CONVERSATION_GUIDANCE
 
 
-def agent_tool_rules(agent: str, run_meta: dict[str, Any] | None = None) -> str:
+def agent_tool_rules(
+    agent: str,
+    run_meta: dict[str, Any] | None = None,
+    *,
+    active_agents: list[str] | None = None,
+) -> str:
     from agent_lab.room.preset import is_fast_room_session
+    from agent_lab.room.roster_context import active_agents_from_run_meta, peer_coordination_hint
 
+    active = active_agents if active_agents is not None else active_agents_from_run_meta(run_meta)
+    peer_hint = peer_coordination_hint(active, agent)
+    peer_line = f"\n- In-room peers this turn: {peer_hint}."
     if agent == "kimi_work" and is_fast_room_session(run_meta):
         return KIMI_WORK_FAST_TOOL_RULES
     if agent == "claude":
-        return CLAUDE_TOOL_RULES
+        return CLAUDE_TOOL_RULES + peer_line
     if agent == "cursor":
-        return CURSOR_TOOL_RULES
+        return CURSOR_TOOL_RULES.replace(
+            "coordinate with Codex/Claude per [Multi-agent coordination]",
+            f"coordinate with in-room peers ({peer_hint}) per [Multi-agent coordination]",
+        )
     if agent == "codex":
-        return CODEX_TOOL_RULES
+        return CODEX_TOOL_RULES.replace(
+            "Coordinate with Cursor/Claude: see [Multi-agent coordination]",
+            f"Coordinate with in-room peers ({peer_hint}): see [Multi-agent coordination]",
+        )
     if agent == "kimi_work":
-        return KIMI_WORK_TOOL_RULES
+        return KIMI_WORK_TOOL_RULES.replace(
+            "Coordinate with Cursor/Codex/Claude per [Multi-agent coordination]",
+            f"Coordinate with in-room peers ({peer_hint}) per [Multi-agent coordination]",
+        )
     return ""
 
 
@@ -249,10 +267,18 @@ def build_constraints_block(
     agreed_bullets: list[str],
     status_tags: list[str] | None = None,
     workspace_lines: str = "",
+    active_agents: list[str] | None = None,
+    team_lead: str | None = None,
 ) -> str:
     parts: list[str] = ["[고정 constraints]"]
     if workspace_lines.strip():
         parts.append(workspace_lines.strip())
+    if active_agents:
+        from agent_lab.room.roster_context import build_active_roster_block
+
+        roster = build_active_roster_block(active_agents, team_lead=team_lead)
+        if roster.strip():
+            parts.append(roster.strip())
     if permission_lines.strip():
         parts.append(permission_lines.strip())
     if human_gates:

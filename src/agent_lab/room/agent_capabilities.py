@@ -225,7 +225,7 @@ def capability_preamble_block(
     if turn_roles:
         from agent_lab.role_plan import persona_for_agent
 
-        role_text = persona_for_agent(turn_roles, agent)
+        role_text = persona_for_agent(turn_roles, agent, run_meta=run_meta)
         if role_text:
             parts.append(role_text)
     elif profile == "specialist":

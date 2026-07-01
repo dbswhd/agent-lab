@@ -17,8 +17,11 @@ from agent_lab.room.context import (
     ANALYSIS_TURN_GUIDANCE,
     CONVERSATION_GUIDANCE,
     EFFICIENCY_RESPONSE_GUIDANCE,
-    MULTI_AGENT_COORDINATION,
-    PEER_DECISION_GUIDANCE,
+)
+from agent_lab.room.roster_context import (
+    active_agents_from_run_meta,
+    build_multi_agent_coordination,
+    build_peer_decision_guidance,
 )
 
 DISPATCH_LEAD_GUIDANCE = (
@@ -150,9 +153,11 @@ def build_guidance_parts(
     *,
     run_meta: dict[str, Any] | None = None,
     agent: str = "",
+    active_agents: list[str] | None = None,
 ) -> list[str]:
     from agent_lab.room.preset import is_fast_room_session
 
+    roster = active_agents if active_agents is not None else active_agents_from_run_meta(run_meta)
     parts: list[str] = []
     if run_meta:
         from agent_lab.response_contracts import response_contract_guidance
@@ -167,7 +172,7 @@ def build_guidance_parts(
             parts.append(DISPATCH_LEAD_GUIDANCE)
         from agent_lab.role_plan import persona_for_agent
 
-        role_text = persona_for_agent(run_meta.get("_turn_roles"), agent)
+        role_text = persona_for_agent(run_meta.get("_turn_roles"), agent, run_meta=run_meta)
         if role_text:
             parts.append(role_text)
     if run_meta and inbox_pause_grace_pending(run_meta):
@@ -187,10 +192,10 @@ def build_guidance_parts(
         parts.append(VERIFIED_LOOP_GUIDANCE)
     if policy.inject_conversation:
         parts.append(CONVERSATION_GUIDANCE)
-    if policy.inject_coordination:
-        parts.append(MULTI_AGENT_COORDINATION)
-    if policy.inject_peer_decision:
-        parts.append(PEER_DECISION_GUIDANCE)
+    if policy.inject_coordination and roster:
+        parts.append(build_multi_agent_coordination(roster))
+    if policy.inject_peer_decision and roster:
+        parts.append(build_peer_decision_guidance(roster))
     if policy.inject_efficiency:
         parts.append(EFFICIENCY_RESPONSE_GUIDANCE)
     return parts

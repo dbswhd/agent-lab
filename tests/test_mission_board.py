@@ -19,6 +19,7 @@ from agent_lab.mission.board import (
     record_agent_call,
     record_autorun_tick,
     sync_mission_board,
+    turn_budget_agent_invoke_blocked,
 )
 
 
@@ -93,6 +94,61 @@ def test_record_agent_call_increments_and_overflow_inbox(tmp_path: Path):
     assert run["turn_budget"]["overflow"]["key"] == "agent_calls_per_human_turn"
     inbox = run.get("human_inbox") or []
     assert any(item.get("source") == "turn_budget" for item in inbox)
+
+
+def test_turn_budget_overflow_inbox_deduped(tmp_path: Path):
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    _write_run(
+        folder,
+        {
+            "turn_budget": {
+                "caps": {"agent_calls_per_human_turn": 1},
+                "counters": {"agent_calls_per_human_turn": 0, "human_turn": 1},
+            }
+        },
+    )
+    record_agent_call(folder, human_turn=1, agent="cursor")
+    record_agent_call(folder, human_turn=1, agent="codex")
+    run = json.loads((folder / "run.json").read_text(encoding="utf-8"))
+    pending = [
+        item
+        for item in (run.get("human_inbox") or [])
+        if item.get("source") == "turn_budget" and item.get("status") == "pending"
+    ]
+    assert len(pending) == 1
+
+
+def test_turn_budget_agent_invoke_blocked_at_cap():
+    run = {
+        "turn_budget": {
+            "caps": {"agent_calls_per_human_turn": 9},
+            "counters": {"agent_calls_per_human_turn": 9, "human_turn": 1},
+        }
+    }
+    blocked, reason = turn_budget_agent_invoke_blocked(run)
+    assert blocked is True
+    assert "9/9" in (reason or "")
+
+
+def test_turn_budget_agent_invoke_blocked_on_pending_inbox():
+    run = {
+        "turn_budget": {
+            "caps": {"agent_calls_per_human_turn": 9},
+            "counters": {"agent_calls_per_human_turn": 5, "human_turn": 1},
+        },
+        "human_inbox": [
+            {
+                "id": "q-budget",
+                "kind": "question",
+                "status": "pending",
+                "source": "turn_budget",
+                "summary": "turn_budget: agent_calls_per_human_turn",
+            }
+        ],
+    }
+    blocked, _reason = turn_budget_agent_invoke_blocked(run)
+    assert blocked is True
 
 
 def test_checkout_lane_and_clear(tmp_path: Path):

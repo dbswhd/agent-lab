@@ -6,11 +6,13 @@ from agent_lab.room._typing import agent_label
 import re
 from typing import Any
 
+from agent_lab import provider_registry
 from agent_lab.room.tasks import RUN_TEAM_LEAD_KEY, ensure_team_lead, team_lead
 
 RUN_TURN_LEADS_KEY = "turn_leads"
+_GO_LEAD_AGENT_IDS = "|".join(re.escape(pid) for pid in provider_registry.provider_ids())
 _GO_LEAD_RE = re.compile(
-    r"(?:^|\n)\s*(?:GO|리드|lead)\s*(?:[:：]\s*|\s+)(cursor|codex|claude|kimi_work)\b",
+    rf"(?:^|\n)\s*(?:GO|리드|lead)\s*(?:[:：]\s*|\s+)({_GO_LEAD_AGENT_IDS})\b",
     re.I,
 )
 _SYNTHESIS_MARKER = "[human synthesis — 턴 요약]"
@@ -45,6 +47,18 @@ def record_turn_lead(
     return lead
 
 
+def reconcile_team_lead(run_meta: dict[str, Any], active_agents: list[str]) -> str:
+    """Ensure team_lead references an agent in the active roster (model-flexible)."""
+    pool = [str(a).strip().lower() for a in active_agents if str(a).strip()]
+    lead = team_lead(run_meta)
+    if lead in pool:
+        return lead
+    if pool:
+        run_meta[RUN_TEAM_LEAD_KEY] = pool[0]
+        return pool[0]
+    return ensure_team_lead(run_meta)
+
+
 def resolve_turn_lead(
     run_meta: dict[str, Any],
     human_turn: int,
@@ -56,19 +70,21 @@ def resolve_turn_lead(
     ensure_team_lead(run_meta)
     parsed = parse_go_lead_from_message(user_message)
     if parsed and parsed in {a.lower() for a in active_agents}:
-        return record_turn_lead(run_meta, human_turn, parsed)
+        record_turn_lead(run_meta, human_turn, parsed)
+        return reconcile_team_lead(run_meta, active_agents)
 
     leads = turn_leads_map(run_meta)
     existing = leads.get(str(human_turn))
     if existing and existing in {a.lower() for a in active_agents}:
         run_meta[RUN_TEAM_LEAD_KEY] = existing
-        return existing
+        return reconcile_team_lead(run_meta, active_agents)
 
     pool = [a.strip().lower() for a in active_agents if str(a).strip()]
     if not pool:
         return ensure_team_lead(run_meta)
     idx = max(0, human_turn - 1) % len(pool)
-    return record_turn_lead(run_meta, human_turn, pool[idx])
+    record_turn_lead(run_meta, human_turn, pool[idx])
+    return reconcile_team_lead(run_meta, active_agents)
 
 
 def is_discuss_only_turn(

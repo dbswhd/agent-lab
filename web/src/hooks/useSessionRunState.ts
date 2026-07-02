@@ -17,6 +17,7 @@ const EMPTY: SessionRunSnapshot = {
   topologyDone: new Set(),
   topologyActive: null,
   backgroundRun: null,
+  localSseRun: false,
 };
 
 export function useSessionRunState(sessionId: string | null) {

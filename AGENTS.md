@@ -28,8 +28,12 @@ constraints에 정책이 이미 있음 — **「discuss/plan 모드입니다」 
 
 ## Room preset · Inbox
 - **fast** — 1 lead, Plan **잠금 OFF**, orchestrator harvest 스킵; **team lead MCP** 유지 — [05-room-agent-roles.md §Fast preset](./docs/05-room-agent-roles.md)
-- **supervisor** — team + consensus, Plan **잠금 ON**
+- **supervisor** — team + consensus, Plan **잠금 ON** · **실작업(dogfood) preset** — S1 trio implicit ON ([DESIGN-S1-FEEDBACK-LOOP.md](./docs/DESIGN-S1-FEEDBACK-LOOP.md))
 - **MCP-first Inbox** — Human gate SSOT = agent MCP; harvest default **off** — [MCP-FIRST-INBOX.md](./docs/MCP-FIRST-INBOX.md)
+
+## Dogfood · cleanup (2026-07)
+- **운영:** supervisor로 매일 사용 · S1 D3 “닫힘” 의식 없음 — [docs/CLEANUP-SSOT-2026-07.md](docs/CLEANUP-SSOT-2026-07.md)
+- **Room UI 버그:** [ROOM-TRANSCRIPT-CONTRACT.md](./docs/ROOM-TRANSCRIPT-CONTRACT.md) · Phase 1a blocker 우선
 
 ## 환경
 - 개발: `make dev` · CI: `make ci` · 테스트: `make test-fast`

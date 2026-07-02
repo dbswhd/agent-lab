@@ -170,9 +170,9 @@ def session_detail(
         run_json = json.loads((folder / "run.json").read_text(encoding="utf-8"))
         gc_stale_worktrees(folder, run_json)
 
-    from agent_lab.room.live_log import read_live_room_log
+    from agent_lab.room.live_log import read_session_live_log
 
-    live_log = read_live_room_log(folder)
+    live_log = read_session_live_log(folder)
 
     from agent_lab.cost_ledger import budget_status
 

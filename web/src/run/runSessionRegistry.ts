@@ -18,6 +18,8 @@ export type SessionRunSnapshot = {
   topologyActive: { agent: string; round: number } | null;
   /** Server-held run lock while local SSE is idle (mission/execute/retry/orphan). */
   backgroundRun: BackgroundRunInfo | null;
+  /** Local Room SSE turn — survives transient gaps before the run lock is held. */
+  localSseRun: boolean;
 };
 
 const PENDING_KEY = "__pending__";
@@ -37,6 +39,7 @@ function emptySnapshot(sessionId: string): SessionRunSnapshot {
     topologyDone: new Set(),
     topologyActive: null,
     backgroundRun: null,
+    localSseRun: false,
   };
 }
 
@@ -85,7 +88,9 @@ export function getRunningSessionIds(): string[] {
 
 export function isSessionRunActive(sessionId: string): boolean {
   const snap = registry.get(sessionId);
-  return Boolean(snap?.running || snap?.runBusy || snap?.backgroundRun);
+  return Boolean(
+    snap?.running || snap?.runBusy || snap?.backgroundRun || snap?.localSseRun,
+  );
 }
 
 export function clearAllBackgroundRuns(): void {
@@ -107,6 +112,9 @@ export function syncSessionFromServerLock(
 ): void {
   if (!lock?.locked) {
     clearAllBackgroundRuns();
+    for (const [id] of registry.entries()) {
+      clearOrphanedRunState(id);
+    }
     return;
   }
   const sid = lock.session_id?.trim();
@@ -252,6 +260,7 @@ export function resetTurnRun(sessionKey: string, userMsg: LiveMsg): void {
     running: true,
     runBusy: true,
     backgroundRun: null,
+    localSseRun: true,
   }));
 }
 
@@ -288,6 +297,33 @@ function finalizeTypingAsCancelled(msgs: LiveMsg[]): LiveMsg[] {
   });
 }
 
+/** Drop or finalize typing shells when the server run is no longer active. */
+export function stripStaleTypingMessages(msgs: LiveMsg[]): LiveMsg[] {
+  return msgs.flatMap((m) => {
+    if (!m.typing) return [m];
+    const partial = (m.body ?? "").trim();
+    const hasTurnItems = (m.turnItems?.length ?? 0) > 0;
+    if (!partial && !hasTurnItems) return [];
+    return [{ ...m, typing: false }];
+  });
+}
+
+function clearOrphanedRunState(sessionId: string): void {
+  updateSessionRun(sessionId, (snap) => {
+    if (!snap.running && !snap.runBusy && !snap.backgroundRun) return {};
+    if (snap.localSseRun) return {};
+    return {
+      messages: stripStaleTypingMessages(snap.messages),
+      turnMessages: stripStaleTypingMessages(snap.turnMessages),
+      running: false,
+      runBusy: false,
+      synthesizing: false,
+      topologyActive: null,
+      backgroundRun: null,
+    };
+  });
+}
+
 /** User stop: keep streamed partials, drop empty typing shells. */
 export function finalizeCancelledTyping(sessionKey: string): void {
   updateSessionRun(sessionKey, (snap) => ({
@@ -298,6 +334,7 @@ export function finalizeCancelledTyping(sessionKey: string): void {
     synthesizing: false,
     topologyActive: null,
     backgroundRun: null,
+    localSseRun: false,
   }));
 }
 
@@ -318,6 +355,7 @@ export function finishSessionRun(
     synthesizing: false,
     topologyActive: null,
     backgroundRun: null,
+    localSseRun: false,
   }));
 }
 
@@ -327,9 +365,11 @@ export function hydrateSessionMessages(
 ): void {
   const snap = getSessionRunSnapshot(sessionId);
   if (isSessionRunActive(sessionId) && snap.messages.length > 0) return;
+  const runActive = isSessionRunActive(sessionId);
+  const finalized = runActive ? messages : stripStaleTypingMessages(messages);
   updateSessionRun(sessionId, {
-    messages,
-    turnMessages: isSessionRunActive(sessionId) ? snap.turnMessages : [],
+    messages: finalized,
+    turnMessages: runActive ? snap.turnMessages : [],
   });
 }
 

@@ -6,8 +6,11 @@ from pathlib import Path
 
 from agent_lab.room.live_log import (
     append_live_room_event,
+    archive_live_room_log,
     clear_live_room_log,
+    read_archived_live_room_logs,
     read_live_room_log,
+    read_session_live_log,
 )
 
 
@@ -28,6 +31,26 @@ def test_live_room_log_clear(tmp_path: Path) -> None:
     append_live_room_event(folder, "agent_start", {"agent": "codex", "round": 1})
     clear_live_room_log(folder)
     assert read_live_room_log(folder) == []
+
+
+def test_live_room_log_archive_and_read_session(tmp_path: Path) -> None:
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    append_live_room_event(folder, "agent_start", {"agent": "codex", "round": 1})
+    append_live_room_event(
+        folder,
+        "agent_activity",
+        {"agent": "codex", "round": 1, "text": "thinking"},
+    )
+    archive_live_room_log(folder, 1)
+    assert read_live_room_log(folder) == []
+    archived = read_archived_live_room_logs(folder)
+    assert len(archived) == 2
+    assert archived[0]["type"] == "agent_start"
+    append_live_room_event(folder, "agent_start", {"agent": "claude", "round": 1})
+    merged = read_session_live_log(folder)
+    assert len(merged) == 3
+    assert merged[-1]["agent"] == "claude"
 
 
 def test_session_detail_includes_live_log(tmp_path: Path, monkeypatch) -> None:

@@ -224,3 +224,16 @@ export function stepDetailsOpen(item: TurnItem, running: boolean): boolean {
   if ("status" in item) return item.status === "running" && running;
   return false;
 }
+
+/** One-line description of the most recent step, for the collapsed timeline summary. */
+export function latestStepSummary(
+  steps: readonly TurnItem[],
+): string | null {
+  const last = steps.at(-1);
+  if (!last) return null;
+  if (last.kind === "tool") return toolStepSummary(last);
+  if (last.kind === "reasoning_summary") return reasoningStepSummary(last);
+  if (last.kind === "activity") return activityStepSummary(last);
+  if (last.kind === "error") return last.text;
+  return null;
+}

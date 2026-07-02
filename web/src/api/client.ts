@@ -1965,6 +1965,8 @@ export type RunRoomOptions = {
   roomPreset?: string;
   /** Role assignment policy override (auto | force | off). */
   rolePolicy?: string;
+  /** Pin session roster in run.json before the first turn (new sessions). */
+  roomModels?: string[];
   /** Abort in-flight SSE (UI stop). */
   signal?: AbortSignal;
 };
@@ -2047,6 +2049,9 @@ export async function runRoom(
   }
   if (opts?.rolePolicy?.trim()) {
     form.append("role_policy", opts.rolePolicy.trim());
+  }
+  if (opts?.roomModels?.length) {
+    form.append("room_models", JSON.stringify(opts.roomModels));
   }
   form.append("workspace_id", opts?.workspaceId ?? "agent-lab");
   if (opts?.workspacePath?.trim()) {

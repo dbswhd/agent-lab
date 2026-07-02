@@ -20,6 +20,7 @@
 - Python: `from __future__ import annotations` 첫 줄
 - API 라우터: `app/server/routers/`에 추가 (`main.py` 직접 추가 금지)
 - `run.json`: `patch_run_meta()` 경유
+- **run_meta (F4):** 합의/턴 진행 중 in-memory `run_meta` 변경은 턴 종료 `_write_session_files` replay 경유로만 디스크에 반영 — 중간 `read_run_meta()`로 dict 재적재 후 patch 금지
 - subprocess: `subprocess_env.subprocess_env()` (env 전체 상속 금지)
 - 테스트: mock-only (`AGENT_LAB_MOCK_AGENTS=1`), 실 LLM CI 금지
 

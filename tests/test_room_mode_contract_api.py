@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -137,3 +138,47 @@ def test_room_run_loop_allows_ready_primary_when_substitute_not_loop_ready(
 
     assert res.status_code == 200
     assert captured["agents"] == ["claude"]
+
+
+def test_room_run_seeds_room_models_before_first_turn(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
+    import agent_lab.session as session_mod
+    import app.server.deps as deps_mod
+    import app.server.routers.room as room_router
+
+    monkeypatch.setattr(session_mod, "SESSIONS_DIR", tmp_path)
+    monkeypatch.setattr(deps_mod, "SESSIONS_DIR", tmp_path)
+    monkeypatch.setattr(room_router, "_agents_not_ready", lambda _agents: [])
+
+    captured: dict[str, object] = {}
+
+    def _fake_run_room(topic: str, **kwargs: object) -> tuple[Path, list[object], str]:
+        folder = kwargs["session_folder"]
+        captured["folder"] = folder
+        return folder, [], ""
+
+    monkeypatch.setattr(room_router, "run_room", _fake_run_room)
+
+    from app.server.main import app
+
+    client = TestClient(app)
+    res = client.post(
+        "/api/room/runs",
+        data={
+            "topic": "pin roster before bind",
+            "agents": '["claude", "kimi_work"]',
+            "mode": "discuss",
+            "room_models": '["kimi_work", "claude"]',
+        },
+    )
+
+    assert res.status_code == 200
+    folder = captured["folder"]
+    assert isinstance(folder, Path)
+    run_meta = json.loads((folder / "run.json").read_text(encoding="utf-8"))
+    assert run_meta["room_models"] == ["claude", "kimi_work"]

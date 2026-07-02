@@ -362,6 +362,7 @@ async def create_room_run(
     session_template: str = Form("general"),
     agent_capabilities: str = Form("{}"),
     agent_thread_bindings: str = Form("{}"),
+    room_models: str = Form(""),
     files: list[UploadFile] = File(default=[]),
 ) -> StreamingResponse:
     topic = topic.strip()
@@ -502,6 +503,21 @@ async def create_room_run(
             )
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
+
+    if room_models and folder is not None:
+        try:
+            parsed_models = json.loads(room_models)
+        except json.JSONDecodeError:
+            parsed_models = None
+        if isinstance(parsed_models, list):
+            from agent_lab.agent.roster import normalize_composition_order
+            from agent_lab.run.meta import patch_run_meta
+
+            pinned = normalize_composition_order(
+                [str(tok) for tok in parsed_models if str(tok).strip()]
+            )
+            if pinned:
+                patch_run_meta(folder, lambda meta: {**meta, "room_models": pinned})
 
     if caps_obj:
         from agent_lab.room.agent_capabilities import write_agent_capabilities

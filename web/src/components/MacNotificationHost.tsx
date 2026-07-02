@@ -31,9 +31,10 @@ function NotifyCard({
   onDismiss: (id: string) => void;
 }) {
   useEffect(() => {
+    if (item.variant === "alert") return;
     const timer = window.setTimeout(() => onDismiss(item.id), AUTO_DISMISS_MS);
     return () => window.clearTimeout(timer);
-  }, [item.id, onDismiss]);
+  }, [item.id, item.variant, onDismiss]);
 
   function handleOpen() {
     if (item.action) {

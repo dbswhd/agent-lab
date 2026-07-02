@@ -17,6 +17,8 @@
 | Track 2.0 profile gate report | [TRACK2-PROFILE.md](./TRACK2-PROFILE.md) |
 | Track 2.2 native gate — CLOSED (native rejected, crate removed) | [TRACK2-NATIVE-GATE.md](./TRACK2-NATIVE-GATE.md) |
 | **중장기 북극성 · 완성도 게이지 (슈퍼 샘플 로드맵)** | [NORTH-STAR.md](./NORTH-STAR.md) |
+| **2026-07 cleanup · dogfood-first SSOT** | [CLEANUP-SSOT-2026-07.md](./CLEANUP-SSOT-2026-07.md) · [CLEANUP-PHASE0-SCOPE-2026-07.md](./CLEANUP-PHASE0-SCOPE-2026-07.md) |
+| Room transcript UX contract (SSE · lock · activity) | [ROOM-TRANSCRIPT-CONTRACT.md](./ROOM-TRANSCRIPT-CONTRACT.md) |
 | 전략 방향 (Fugu/Harness 대비 포지션 — 배경/이력) | [STRATEGIC-DIRECTION-2026.md](./STRATEGIC-DIRECTION-2026.md) |
 | 역할 오케스트레이션 설계 (P1~P8) | [ROLE-ORCHESTRATION-PLAN.md](./ROLE-ORCHESTRATION-PLAN.md) |
 | 기능·동작·API·UI 상세 | [USER-GUIDE.md](./USER-GUIDE.md) |

@@ -367,14 +367,13 @@ def _write_session_files(
         for m in messages_to_store:
             f.write(json.dumps(m.to_dict(), ensure_ascii=False) + "\n")
 
-    from agent_lab.room.live_log import clear_live_room_log
-
-    clear_live_room_log(folder)
-
     created_at = (merge_meta or {}).get("created_at") or _now()
     round_nums = [m.parallel_round for m in messages if m.role == "agent" and m.parallel_round is not None]
     agent_parallel_rounds = max(round_nums) if round_nums else 1
     turns: list[dict[str, Any]] = list(prev_run.get("turns") or [])
+    from agent_lab.room.live_log import archive_live_room_log
+
+    archive_live_room_log(folder, len(turns) + 1)
     agreements: list[dict[str, Any]] = list(prev_run.get("consensus_agreements") or [])
     if turn_meta:
         turn_ts = str(turn_meta.get("completed_at") or turn_meta.get("ts") or _now())

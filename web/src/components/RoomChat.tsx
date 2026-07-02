@@ -66,18 +66,16 @@ import {
   updateSessionRun,
   type LiveMsg,
 } from "../run/runSessionRegistry";
-import { registerRoomEventHandler } from "../run/roomReconnectRegistry";
+import { derivePendingReplyAgents } from "../run/runningAgents";
+import { effectiveTurnAgents } from "../utils/agentMentions";
 import { createRoomRunEventHandler } from "../hooks/useRoomSseHandler";
 import { latestDraftMessageIdsByAgent } from "../utils/draftResponsePrefs";
 import { stripAgentReplyBody } from "../utils/agentResponseCard";
 import {
-  clampWorkbenchPanelWidth,
-  getInspectorOpen,
   getLastRightPanelMode,
-  resolveDefaultWorkbenchWidth,
-  setInspectorOpen,
   setLastRightPanelMode,
 } from "../utils/inspectorPanePrefs";
+import { useRoomWorkbenchLayout } from "../hooks/useRoomWorkbenchLayout";
 import {
   getShowPeerChannel,
   setShowPeerChannel,
@@ -134,7 +132,9 @@ import {
 import { sortAgentIds, sortAgentPickerOptions } from "../utils/agentOrder";
 import {
   parseModelSlashArgs,
+  readPendingRoomModels,
   readSessionRoomModels,
+  writePendingRoomModels,
 } from "../utils/modelSlash";
 import { fetchRoomModes, loopCostHintLine } from "../utils/roomModes";
 import {
@@ -373,8 +373,15 @@ export function RoomChat({
     null,
   );
   const runSessionKey = sessionId ?? liveRunSessionKey ?? PENDING_KEY;
-  const { messages, running, runBusy, synthesizing, setSynthesizing } =
-    useSessionRunState(runSessionKey);
+  const {
+    messages,
+    running,
+    runBusy,
+    synthesizing,
+    topologyActive,
+    topologyDone,
+    setSynthesizing,
+  } = useSessionRunState(runSessionKey);
   const [recoveryFailure, setRecoveryFailure] =
     useState<RecoveryFailure | null>(null);
   const [planActionFocusIndex, setPlanActionFocusIndex] = useState<
@@ -387,17 +394,10 @@ export function RoomChat({
     body: string;
     blocked: boolean;
   } | null>(null);
-  const [inspectorOpen, setInspectorOpenState] = useState(getInspectorOpen);
-  const [workbenchMenuOpen, setWorkbenchMenuOpen] = useState(false);
-  const [filesFocusRevision, setFilesFocusRevision] = useState(0);
-  const [filesFocusPath, setFilesFocusPath] = useState<string | null>(null);
   const [composerNoticeDismissed, setComposerNoticeDismissed] = useState<
     string | null
   >(null);
-  const [workbenchPanelWidth, setWorkbenchPanelWidthState] = useState(() =>
-    resolveDefaultWorkbenchWidth(getLastRightPanelMode()),
-  );
-  const workbenchWidthUserAdjustedRef = useRef(false);
+  const openInspectorRef = useRef<() => void>(() => {});
   const [roomTasks, setRoomTasks] = useState<RoomTasksPayload | null>(null);
   const [planMd, setPlanMd] = useState("");
   const [permOpen, setPermOpen] = useState(false);
@@ -734,8 +734,14 @@ export function RoomChat({
     setAgentCapabilities(cloneCapabilities(DEFAULT_AGENT_CAPABILITIES));
     setResolvedAgentCwd({});
     agentCapsDirtyRef.current = false;
-    agentsPickerInitRef.current = false;
-    pendingSessionRoomModelsRef.current = null;
+    if (!agentsPickerInitRef.current) {
+      const restored = readPendingRoomModels();
+      if (restored?.length) {
+        pendingSessionRoomModelsRef.current = restored;
+        setSelected(restored);
+        agentsPickerInitRef.current = true;
+      }
+    }
   }, [sessionId]);
 
   const sessionRoomModelsKey = useMemo(() => {
@@ -762,7 +768,9 @@ export function RoomChat({
     const comp = sortAgentIds(composition);
     if (comp.length === 0) return;
     pendingSessionRoomModelsRef.current = comp;
+    writePendingRoomModels(comp);
     setSelected(comp);
+    agentsPickerInitRef.current = true;
     setCommandHint(`이 세션 동안 ${comp.join(", ")} 에이전트를 사용합니다.`);
   }, []);
 
@@ -771,6 +779,7 @@ export function RoomChat({
       const pending = pendingSessionRoomModelsRef.current;
       if (!pending?.length) return;
       pendingSessionRoomModelsRef.current = null;
+      writePendingRoomModels(null);
       try {
         await runRoomSlash(
           `/model ${pending.join(",")} session`,
@@ -778,6 +787,7 @@ export function RoomChat({
         );
       } catch {
         pendingSessionRoomModelsRef.current = pending;
+        writePendingRoomModels(pending);
       }
     },
     [],
@@ -950,8 +960,7 @@ export function RoomChat({
   );
 
   const openInspectorPane = useCallback(() => {
-    setInspectorOpenState(true);
-    setInspectorOpen(true);
+    openInspectorRef.current();
   }, []);
 
   const {
@@ -978,56 +987,35 @@ export function RoomChat({
     },
   });
 
+  const {
+    inspectorOpen,
+    workbenchMenuOpen,
+    setWorkbenchMenuOpen,
+    filesFocusRevision,
+    setFilesFocusRevision,
+    filesFocusPath,
+    setFilesFocusPath,
+    workbenchPanelWidth,
+    openInspectorPane: openWorkbenchInspector,
+    toggleInspector,
+    setActiveWorkbenchWidth,
+    commitWorkbenchWidth,
+    resetWorkbenchWidthForMode,
+  } = useRoomWorkbenchLayout(rightPanelMode);
+
+  openInspectorRef.current = openWorkbenchInspector;
+
   useEffect(() => {
     setLastRightPanelMode(rightPanelMode);
   }, [rightPanelMode]);
 
-  const applyDefaultWorkbenchWidth = useCallback(
-    (mode: typeof rightPanelMode = rightPanelMode) => {
-      const apply = () => {
-        setWorkbenchPanelWidthState(resolveDefaultWorkbenchWidth(mode));
-      };
-      if (typeof requestAnimationFrame === "function") {
-        requestAnimationFrame(apply);
-      } else {
-        apply();
-      }
-    },
-    [rightPanelMode],
-  );
-
   const handleSelectRightPanelMode = useCallback(
     (mode: typeof rightPanelMode) => {
-      workbenchWidthUserAdjustedRef.current = false;
       setRightPanelMode(mode);
-      applyDefaultWorkbenchWidth(mode);
+      resetWorkbenchWidthForMode(mode);
     },
-    [applyDefaultWorkbenchWidth, setRightPanelMode],
+    [resetWorkbenchWidthForMode, setRightPanelMode],
   );
-
-  useEffect(() => {
-    if (!inspectorOpen) {
-      workbenchWidthUserAdjustedRef.current = false;
-      return;
-    }
-    workbenchWidthUserAdjustedRef.current = false;
-    applyDefaultWorkbenchWidth();
-  }, [inspectorOpen, rightPanelMode, applyDefaultWorkbenchWidth]);
-
-  useEffect(() => {
-    if (!inspectorOpen || workbenchWidthUserAdjustedRef.current) return;
-    const canvas = document.querySelector(".workspace-canvas");
-    if (!canvas) return;
-
-    const refit = () => applyDefaultWorkbenchWidth();
-    const observer = new ResizeObserver(refit);
-    observer.observe(canvas);
-    window.addEventListener("resize", refit);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", refit);
-    };
-  }, [inspectorOpen, applyDefaultWorkbenchWidth]);
 
   const openHumanInbox = useCallback(() => {
     focusComposerStack("inbox");
@@ -1274,23 +1262,6 @@ export function RoomChat({
   const isNew = !sessionId;
   const notificationUnread = useNotificationUnread();
 
-  const toggleInspector = useCallback(() => {
-    setInspectorOpenState((current) => {
-      const next = !current;
-      setInspectorOpen(next);
-      return next;
-    });
-  }, []);
-
-  const setActiveWorkbenchWidth = useCallback((width: number) => {
-    workbenchWidthUserAdjustedRef.current = true;
-    setWorkbenchPanelWidthState(clampWorkbenchPanelWidth(width));
-  }, []);
-  const commitWorkbenchWidth = useCallback((width: number) => {
-    workbenchWidthUserAdjustedRef.current = true;
-    setWorkbenchPanelWidthState(clampWorkbenchPanelWidth(width));
-  }, []);
-
   useEffect(() => {
     setGoalText(buildGoalLoopView(session?.run).goal.text ?? "");
     setGoalError(null);
@@ -1406,6 +1377,11 @@ export function RoomChat({
     ]);
     if (ready.length === 0 && known.size === 0) return;
     setSelected((prev) => {
+      const pending = pendingSessionRoomModelsRef.current;
+      if (pending?.length) {
+        const next = sortAgentIds(pending);
+        return prev.join(",") === next.join(",") ? prev : next;
+      }
       if (bootstrapAgentIds?.length) {
         const picked = sortAgentIds(bootstrapAgentIds);
         if (picked.length > 0) return picked;
@@ -1729,6 +1705,10 @@ export function RoomChat({
       } = resolveTurnSend(effectiveProfile, selected);
       if (agents.length === 0) return;
 
+      const pinnedRoomModels = !sessionId
+        ? (pendingSessionRoomModelsRef.current ?? sortAgentIds(selected))
+        : undefined;
+
       const sendText =
         msgText.trim() ||
         (filesToSend.length ? attachmentSendTopic(filesToSend) : "");
@@ -1836,10 +1816,15 @@ export function RoomChat({
           agentThreadBindings: threadBindings,
           sessionTemplate,
           roomPreset: roomPreset ?? undefined,
+          roomModels: pinnedRoomModels,
           signal: runAbort.signal,
         });
         if (runScope.runFailed) {
           return;
+        }
+        if (!sessionId && pinnedRoomModels?.length) {
+          pendingSessionRoomModelsRef.current = null;
+          writePendingRoomModels(null);
         }
         if (!sessionId) {
           clearStoredAgentThreadBindings();
@@ -1917,7 +1902,7 @@ export function RoomChat({
           runScope.activeSessionId ?? undefined,
         );
         const boundSid = runScope.activeSessionId ?? sessionId;
-        if (boundSid && onSessionMetaRefresh) {
+        if (boundSid && onSessionMetaRefresh && !runScope.runFailed) {
           void onSessionMetaRefresh(boundSid);
         }
         navigatedToSessionRef.current = false;
@@ -2632,11 +2617,6 @@ export function RoomChat({
     if (sessionId) {
       const next = await fetchReadiness(sessionId, true);
       setReadiness(next);
-      if (next.verdict !== "blocked") {
-        setRecoveryFailure(null);
-      }
-    } else {
-      setRecoveryFailure(null);
     }
     refreshSessionMeta();
   }, [onRefreshHealth, refreshSessionMeta, sessionId]);
@@ -3191,14 +3171,27 @@ export function RoomChat({
   const currentPlanRevision =
     planMeta.lastUpdate?.completed_at || planMeta.lastUpdate?.ts || null;
   const turnResolved = resolveTurnSend(turnProfile, selected);
-  const pendingReplyAgents =
-    running && typingAgents.length === 0
-      ? turnResolved.agents.map((id) => ({
-          id: `pending-${id}`,
-          role: id as LiveMsg["role"],
-          label: agentLabel(id),
-        }))
-      : [];
+  const turnUserBody = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      const row = messages[i];
+      if (row?.role === "you" && row.sent) return row.body ?? "";
+    }
+    return "";
+  }, [messages]);
+  const turnTargetAgents = useMemo(
+    () => effectiveTurnAgents(turnUserBody, turnResolved.agents),
+    [turnUserBody, turnResolved.agents],
+  );
+  const pendingReplyAgents = useMemo(
+    () =>
+      derivePendingReplyAgents(messages, {
+        running,
+        expectedAgents: turnTargetAgents,
+        topologyActive,
+        topologyDone,
+      }),
+    [messages, running, turnTargetAgents, topologyActive, topologyDone],
+  );
 
   const paletteActions = useMemo(() => {
     const commandActions = slashCommands

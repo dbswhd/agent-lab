@@ -176,9 +176,9 @@ def resolve_session_template(template_id: str | None) -> dict[str, Any]:
 
 def template_routing_hints(template_id: str | None) -> dict[str, Any]:
     """Optional session-template routing biases for topic_router."""
-    tpl = resolve_session_template(template_id)
-    hints = tpl.get("routing_hints")
-    return dict(hints) if isinstance(hints, dict) else {}
+    from agent_lab.session.routing_hints import template_routing_hints as _lookup
+
+    return _lookup(template_id)
 
 
 def template_guidance_block(template_id: str | None) -> str:

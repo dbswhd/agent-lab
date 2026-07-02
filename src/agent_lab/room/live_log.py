@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 LIVE_LOG_NAME = "live.jsonl"
+LIVE_ARCHIVE_DIR = "live_archives"
 
 LIVE_EVENT_TYPES = frozenset(
     {
@@ -31,8 +32,57 @@ def live_log_path(folder: Path) -> Path:
     return folder / LIVE_LOG_NAME
 
 
+def live_archive_dir(folder: Path) -> Path:
+    return folder / LIVE_ARCHIVE_DIR
+
+
 def clear_live_room_log(folder: Path) -> None:
     live_log_path(folder).unlink(missing_ok=True)
+
+
+def archive_live_room_log(folder: Path, turn_index: int) -> None:
+    """Move the in-flight log into ``live_archives/`` before the next turn."""
+    src = live_log_path(folder)
+    if not src.is_file():
+        return
+    dest_dir = live_archive_dir(folder)
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest = dest_dir / f"turn-{max(1, turn_index):04d}.jsonl"
+    if dest.exists():
+        dest.unlink()
+    src.replace(dest)
+
+
+def _read_jsonl(path: Path) -> list[dict[str, Any]]:
+    if not path.is_file():
+        return []
+    out: list[dict[str, Any]] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(row, dict):
+            out.append(row)
+    return out
+
+
+def read_archived_live_room_logs(folder: Path) -> list[dict[str, Any]]:
+    dest_dir = live_archive_dir(folder)
+    if not dest_dir.is_dir():
+        return []
+    out: list[dict[str, Any]] = []
+    for path in sorted(dest_dir.glob("turn-*.jsonl")):
+        out.extend(_read_jsonl(path))
+    return out
+
+
+def read_session_live_log(folder: Path) -> list[dict[str, Any]]:
+    """Archived turn logs plus the current in-flight log (chronological)."""
+    return read_archived_live_room_logs(folder) + read_live_room_log(folder)
 
 
 def append_live_room_event(folder: Path, typ: str, payload: dict[str, Any]) -> None:
@@ -50,18 +100,4 @@ def append_live_room_event(folder: Path, typ: str, payload: dict[str, Any]) -> N
 
 
 def read_live_room_log(folder: Path) -> list[dict[str, Any]]:
-    path = live_log_path(folder)
-    if not path.is_file():
-        return []
-    out: list[dict[str, Any]] = []
-    for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            row = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if isinstance(row, dict):
-            out.append(row)
-    return out
+    return _read_jsonl(live_log_path(folder))

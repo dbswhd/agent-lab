@@ -510,7 +510,7 @@ _PROFILE_CATEGORY: dict[str, Category] = {
 
 
 def _routing_hints_for_template(session_template: str) -> dict[str, Any]:
-    from agent_lab.session.setup import template_routing_hints
+    from agent_lab.session.routing_hints import template_routing_hints
 
     return template_routing_hints(session_template)
 

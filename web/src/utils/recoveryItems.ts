@@ -307,8 +307,7 @@ function buildFailureItem(
   if (failure.kind !== "partial_turn") {
     return {
       kind: "run_failed",
-      severity:
-        failure.source === "execute" ? "blocking_execute" : "informational",
+      severity: "blocking_send",
       title:
         failure.source === "execute"
           ? "실행을 완료하지 못했습니다."

@@ -396,9 +396,7 @@ export default function App() {
       setStoredWorkspaceId(params.workspaceId);
       setStoredWorkspacePath(params.workspacePath);
       setSetupWorkspaceChosen(true);
-      setBootstrapAgentIds(
-        agents.filter((agent) => agent.ready).map((agent) => agent.id),
-      );
+      setBootstrapAgentIds(null);
       setBootstrapTopic(params.topic ?? null);
       if (!firstRunOnboardingDismissed) {
         persistFirstRunOnboardingDismissed(true);
@@ -415,7 +413,7 @@ export default function App() {
       setNewSessionOpen(false);
       setShellView("workspace");
     },
-    [agents, firstRunOnboardingDismissed],
+    [firstRunOnboardingDismissed],
   );
 
   const clearBootstrapAgents = useCallback(() => {

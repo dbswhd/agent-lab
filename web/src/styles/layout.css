@@ -8988,6 +8988,15 @@ button.plan-doc__ref--link:hover {
   font-size: var(--type-body-small-size);
   line-height: var(--type-body-small-leading);
 }
+.turn-timeline__summary--progress {
+  color: var(--progress);
+}
+.turn-timeline__summary--done {
+  color: var(--ok);
+}
+.turn-timeline__summary--error {
+  color: var(--danger);
+}
 .turn-timeline__label {
   min-width: 0;
 }

@@ -1,5 +1,5 @@
-import type { LiveMsg } from "./runSessionRegistry";
-import { agentLabel, isReplyWaitRole } from "../utils/transcript";
+import type { LiveMsg } from "../run/runSessionRegistry";
+import { agentLabel, isReplyWaitRole, type AgentRole } from "../utils/transcript";
 
 export type RunningAgentSlot = {
   agent: string;
@@ -7,6 +7,52 @@ export type RunningAgentSlot = {
   label: string;
   activity?: string;
 };
+
+export type PendingReplyAgent = {
+  id: string;
+  role: AgentRole;
+  label: string;
+};
+
+/** Agents still expected to reply before the first typing bubble arrives. */
+export function derivePendingReplyAgents(
+  messages: LiveMsg[],
+  options: {
+    running: boolean;
+    expectedAgents: string[];
+    topologyActive: { agent: string; round: number } | null;
+    topologyDone: Set<string>;
+  },
+): PendingReplyAgent[] {
+  if (!options.running) return [];
+  const typing = messages.filter((m) => m.typing && isReplyWaitRole(m.role));
+  if (typing.length > 0) return [];
+
+  const { topologyActive, topologyDone, expectedAgents } = options;
+  if (topologyActive) {
+    const { agent, round } = topologyActive;
+    if (topologyDone.has(`${agent}:${round}`)) return [];
+    return [
+      {
+        id: `pending-${agent}-r${round}`,
+        role: agent as AgentRole,
+        label: agentLabel(agent),
+      },
+    ];
+  }
+
+  // Before the first agent_start SSE, avoid showing the whole roster as "waiting".
+  if (topologyDone.size === 0) return [];
+
+  const round = 1;
+  return expectedAgents
+    .filter((id) => !topologyDone.has(`${id}:${round}`))
+    .map((id) => ({
+      id: `pending-${id}-r${round}`,
+      role: id as AgentRole,
+      label: agentLabel(id),
+    }));
+}
 
 /** Live slots from typing bubbles; fallback to expected agents before first SSE. */
 export function deriveRunningAgentSlots(
@@ -27,13 +73,6 @@ export function deriveRunningAgentSlots(
             ? [item.text]
             : [],
         )[0],
-    }));
-  }
-  if (running && expectedAgents.length) {
-    return expectedAgents.map((id) => ({
-      agent: id,
-      round: 1,
-      label: agentLabel(id),
     }));
   }
   return [];

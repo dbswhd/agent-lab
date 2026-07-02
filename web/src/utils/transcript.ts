@@ -57,6 +57,8 @@ export type ChatMessage = {
   turnItems?: TurnItem[];
   /** Files sent with this user message (shown above bubble, not in composer). */
   attachments?: string[];
+  /** Agent attribution when a system row represents a failed/cancelled turn. */
+  sourceAgent?: AgentRole;
 };
 
 const LABELS: Record<string, string> = {
@@ -153,6 +155,21 @@ export function chatLineToMessage(
       peerChannel,
       humanSynthesis: false,
       envelope: line.envelope,
+    };
+  }
+  if (line.role === "system" && line.agent) {
+    const r = line.parallel_round ?? 1;
+    return {
+      id: `s-${i}-${line.agent}-r${r}`,
+      role: "system",
+      label: agentLabel(line.agent),
+      body: line.content,
+      sent: false,
+      parallelRound: r,
+      chatLineIndex: i,
+      peerChannel,
+      humanSynthesis: false,
+      sourceAgent: line.agent as AgentRole,
     };
   }
   return {

@@ -2,6 +2,7 @@ import type { TurnItem } from "../utils/turnItems";
 import {
   activityStepSummary,
   formatTurnActivitySummary,
+  latestStepSummary,
   reasoningStepSummary,
   stepDetailsOpen,
   summarizeTurnItems,
@@ -80,11 +81,17 @@ export function TurnActivityGroup({ items = [], running }: Props) {
   if (steps.length === 0 && !running) return null;
 
   const stats = summarizeTurnItems(steps, running);
-  const summary = formatTurnActivitySummary(stats, running);
+  const summary =
+    (running && latestStepSummary(steps)) ||
+    formatTurnActivitySummary(stats, running);
+  const hasError = steps.some((item) => item.kind === "error");
+  const state = running ? "progress" : hasError ? "error" : "done";
 
   return (
-    <details className="turn-timeline" open={running || undefined}>
-      <summary className="turn-timeline__summary">
+    <details className="turn-timeline" open={steps.length > 0 || running}>
+      <summary
+        className={`turn-timeline__summary turn-timeline__summary--${state}`}
+      >
         <span className="turn-timeline__label">{summary}</span>
         {stats.linesAdded > 0 || stats.linesRemoved > 0 ? (
           <span className="turn-timeline__diff" aria-label="Diff stat">

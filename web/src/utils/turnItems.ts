@@ -48,6 +48,25 @@ function toolFingerprint(tool: string, args?: string): string {
   return `${tool}|${(args ?? "").trim()}`;
 }
 
+/**
+ * Reasoning providers stream either cumulative resends (each event is the
+ * full thought-so-far) or bare incremental fragments (each event is just
+ * the newly-generated chunk). Replacing on every event drops the fragment
+ * case down to whatever fragment arrived last, leaving the visible "thought"
+ * a disconnected sliver instead of the whole chain-of-thought so far.
+ */
+function mergeReasoningText(prev: string, next: string): string {
+  if (!prev) return next;
+  if (next.startsWith(prev)) return next;
+  if (prev.startsWith(next) || prev.endsWith(next)) return prev;
+  const needsSpace =
+    !prev.endsWith(" ") &&
+    !prev.endsWith("\n") &&
+    !next.startsWith(" ") &&
+    !next.startsWith("\n");
+  return needsSpace ? `${prev} ${next}` : `${prev}${next}`;
+}
+
 function upsertReasoning(
   items: TurnItem[],
   text: string,
@@ -57,7 +76,9 @@ function upsertReasoning(
     const item = items[index];
     if (item?.kind === "reasoning_summary") {
       if (item.text === text) return items;
-      items[index] = { ...item, text, status: "running" };
+      const merged = mergeReasoningText(item.text, text);
+      if (merged === item.text) return items;
+      items[index] = { ...item, text: merged, status: "running" };
       return items;
     }
   }

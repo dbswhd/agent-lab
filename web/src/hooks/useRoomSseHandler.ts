@@ -54,6 +54,8 @@ export type RoomRunScope = {
   userStopped: boolean;
   runFailed: boolean;
   lastSendReceipt?: string;
+  /** Dedupe paired terminal `run_failed` + `error` SSE events. */
+  terminalRunError?: string;
 };
 
 export type RoomRunSseDeps = {
@@ -72,7 +74,9 @@ export type RoomRunSseDeps = {
   setLiveRunSessionKey: (id: string) => void;
   persistPendingSessionRoomModels: (sessionId: string) => void | Promise<void>;
   openPlanTab: () => void;
-  setRecoveryFailure: (value: RecoveryFailure | null) => void;
+  setRecoveryFailure: (
+    value: RecoveryFailure | null | ((prev: RecoveryFailure | null) => RecoveryFailure | null),
+  ) => void;
   setRunLockStuck: (value: boolean) => void;
   setClarifierQuestions: (value: string[] | null) => void;
   setClarifierInterview: (value: ClarifierInterview | null) => void;
@@ -104,6 +108,65 @@ type MacNotificationPayload = {
   title: string;
   body?: string;
 };
+
+function recoveryFailureFromRunMessage(message: string): RecoveryFailure {
+  const msg = message.trim();
+  const lower = msg.toLowerCase();
+  if (lower.includes("already in progress")) {
+    return { source: "run", kind: "run_lock", message: msg };
+  }
+  return { source: "run", kind: "partial_turn", message: msg };
+}
+
+function appendRunErrorSystemMessage(
+  scope: RoomRunScope,
+  patchTurnMessages: (
+    runKey: string,
+    updater: (messages: LiveMsg[]) => LiveMsg[],
+  ) => void,
+  title: string,
+  message: string,
+): void {
+  const body = `[${title}] ${message}`.trim();
+  patchTurnMessages(scope.runKey, (m) => {
+    if (m.some((row) => row.role === "system" && row.body === body)) {
+      return m;
+    }
+    return [
+      ...m,
+      {
+        id: `run-error-${Date.now()}`,
+        role: "system",
+        label: "시스템",
+        body,
+      },
+    ];
+  });
+}
+
+function notifyTerminalRunError(
+  scope: RoomRunScope,
+  message: string,
+  deps: Pick<
+    RoomRunSseDeps,
+    "pushMacNotification" | "notifyDesktop" | "sessionId"
+  >,
+  title: string,
+): void {
+  if (scope.terminalRunError === message) return;
+  scope.terminalRunError = message;
+  dispatchNotification(
+    {
+      tier: "P0",
+      title,
+      body: message,
+      sessionId: deps.sessionId ?? undefined,
+      kind: "run_failed",
+    },
+    deps.pushMacNotification,
+    notifyDesktop,
+  );
+}
 
 function parseConsensusDryRunProposal(
   ev: Record<string, unknown>,
@@ -525,6 +588,7 @@ export function createRoomRunEventHandler(
               : err
                 ? `[${agentLabel(aid)}] ${err}`
                 : streamedBody || "agent error";
+        const finalizedTurnItems = reduceTurnItems(typing?.turnItems, ev);
         if (typing && streamedBody.trim()) {
           return m.map((msg) =>
             msg.id === tid
@@ -535,6 +599,7 @@ export function createRoomRunEventHandler(
                   label: nonParticipation ? "알림" : agentLabel(aid),
                   body: resolvedBody,
                   typing: false,
+                  turnItems: finalizedTurnItems,
                 }
               : msg,
           );
@@ -546,6 +611,7 @@ export function createRoomRunEventHandler(
             role: "system",
             label: nonParticipation ? "알림" : "시스템",
             body: resolvedBody,
+            turnItems: finalizedTurnItems,
           },
         ];
       });
@@ -694,6 +760,14 @@ export function createRoomRunEventHandler(
       scope.activeSessionId = String(ev.session_id);
       setRecoveryFailure(null);
       setRunLockStuck(false);
+      updateSessionRun(scope.runKey, {
+        running: false,
+        runBusy: false,
+        synthesizing: false,
+        topologyActive: null,
+        localSseRun: false,
+      });
+      patchTurnMessages(scope.runKey, (m) => m.filter((x) => !x.typing));
       if (typeof ev.send_receipt === "string") {
         scope.lastSendReceipt = ev.send_receipt;
       }
@@ -826,23 +900,15 @@ export function createRoomRunEventHandler(
             : x,
         ),
       );
-      setRecoveryFailure({
-        source: "run",
-        kind: "partial_turn",
-        message: msg,
-      });
-      setRunLockStuck(msg.includes("already in progress"));
-      dispatchNotification(
-        {
-          tier: "P0",
-          title: "Agent run failed",
-          body: msg,
-          sessionId: sessionId ?? undefined,
-          kind: "run_failed",
-        },
-        pushMacNotification,
-        notifyDesktop,
+      appendRunErrorSystemMessage(
+        scope,
+        patchTurnMessages,
+        "Room run failed",
+        msg,
       );
+      setRecoveryFailure(recoveryFailureFromRunMessage(msg));
+      setRunLockStuck(msg.includes("already in progress"));
+      notifyTerminalRunError(scope, msg, deps, "Agent run failed");
     }
     if (t === "run_lock_blocked") {
       scope.runFailed = true;
@@ -863,25 +929,16 @@ export function createRoomRunEventHandler(
     if (t === "error") {
       scope.runFailed = true;
       const msg = String(ev.message ?? "run failed");
-      setRecoveryFailure({
-        source: "run",
-        kind: msg.includes("already in progress") ? "run_lock" : undefined,
-        message: msg,
-      });
+      appendRunErrorSystemMessage(scope, patchTurnMessages, "Room error", msg);
+      setRecoveryFailure((prev) =>
+        prev?.message === msg && prev.source === "run"
+          ? prev
+          : recoveryFailureFromRunMessage(msg),
+      );
       if (msg.includes("already in progress")) {
         setRunLockStuck(true);
       }
-      dispatchNotification(
-        {
-          tier: "P0",
-          title: "Room error",
-          body: msg,
-          sessionId: sessionId ?? undefined,
-          kind: "run_failed",
-        },
-        pushMacNotification,
-        notifyDesktop,
-      );
+      notifyTerminalRunError(scope, msg, deps, "Room error");
     }
   };
 }

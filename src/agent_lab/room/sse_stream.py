@@ -37,6 +37,19 @@ def _longest_common_prefix(a: str, b: str) -> int:
     return i
 
 
+def _longest_common_suffix(a: str, b: str) -> int:
+    limit = min(len(a), len(b))
+    i = 0
+    while i < limit and a[-1 - i] == b[-1 - i]:
+        i += 1
+    return i
+
+
+# Below this, a matching tail is treated as coincidental rather than a
+# genuinely stable trailing block (e.g. a finished reply body).
+_RESYNC_SUFFIX_MIN_CHARS = 24
+
+
 class CumulativeTextStreamer:
     """Emit only new suffixes when providers send cumulative snapshots."""
 
@@ -59,9 +72,25 @@ class CumulativeTextStreamer:
             return []
         # Longer cumulative snapshot that lost prefix alignment — resync via LCP.
         if len(text) > len(self._buffer):
-            overlap = _longest_common_prefix(self._buffer, text)
-            if overlap > 0:
-                delta = text[overlap:]
+            prefix_overlap = _longest_common_prefix(self._buffer, text)
+            shorter = min(len(self._buffer), len(text))
+            suffix_overlap = min(
+                _longest_common_suffix(self._buffer, text),
+                max(shorter - prefix_overlap, 0),
+            )
+            if (
+                suffix_overlap >= _RESYNC_SUFFIX_MIN_CHARS
+                and suffix_overlap >= prefix_overlap
+            ):
+                # A stable trailing block (e.g. a finished reply body) is
+                # being re-sent behind a still-revising leading segment
+                # (e.g. an in-progress envelope header). Consumers only
+                # append deltas, so re-emitting that tail would duplicate
+                # it every time the leading segment changes.
+                self._buffer = text
+                return []
+            if prefix_overlap > 0:
+                delta = text[prefix_overlap:]
                 self._buffer = text
                 return [delta] if delta else []
             self._buffer += text

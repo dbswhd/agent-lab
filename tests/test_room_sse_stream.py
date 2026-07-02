@@ -98,6 +98,27 @@ def test_cumulative_text_streamer_keeps_incremental_tail_chunks():
     assert streamer.body == "live stream"
 
 
+def test_cumulative_text_streamer_drops_duplicated_tail_on_header_revision():
+    # A revising envelope header (e.g. "act: AMEND — ...") glued in front of a
+    # stable reply body — the reply body itself doesn't change between
+    # snapshots, only the header prefix grows/mutates.
+    body = "이전 턴 분석의 일부를 정정하고, 새로운 검증 결과를 보강합니다." * 3
+    streamer = CumulativeTextStreamer()
+    emitted: list[str] = []
+    for header in [
+        "act: AMEND — 이전 턴 CH",
+        "act: AMEND — 이전 턴 CHALLEN",
+        "act: AMEND — 이전 턴 CHALLENGE",
+        'act: AMEND — 이전 턴 CHALLENGE "',
+    ]:
+        emitted.extend(streamer.feed(header + body))
+    joined = "".join(emitted)
+    # The body must never appear more than once across all emitted deltas —
+    # an append-only consumer would otherwise render it stacked N times.
+    assert joined.count(body) <= 1
+    assert streamer.body.endswith(body)
+
+
 def test_dedupe_adjacent_stream_dupes_halves_and_paragraphs():
     doubled_para = "alpha line\n\nalpha line"
     assert dedupe_adjacent_stream_dupes(doubled_para) == "alpha line"

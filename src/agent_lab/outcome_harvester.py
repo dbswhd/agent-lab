@@ -21,6 +21,7 @@ from typing import Any
 from weakref import WeakValueDictionary
 
 from agent_lab.run.meta import patch_run_meta, read_run_meta
+from agent_lab.s1_flags import s1_flag_enabled
 from agent_lab.turn_metrics import build_turn_metrics
 from agent_lab.wisdom.index import _tokenize
 
@@ -28,14 +29,9 @@ log = logging.getLogger(__name__)
 
 OUTCOME_LEDGER_SCHEMA_VERSION = 1
 _OUTCOMES_RELPATH = Path(".agent-lab") / "outcomes.jsonl"
-_TRUE = frozenset({"1", "true", "yes", "on"})
 
 _LOCK_GUARD = threading.Lock()
 _PATH_LOCKS: WeakValueDictionary[str, threading.Lock] = WeakValueDictionary()
-
-
-def _flag_on(name: str) -> bool:
-    return (os.getenv(name) or "").strip().lower() in _TRUE
 
 
 def _now_iso() -> str:
@@ -131,12 +127,12 @@ def record_turn_outcome(folder: Path | None, human_turn: int) -> None:
     """
     if folder is None:
         return
-    want_metrics = _flag_on("AGENT_LAB_TURN_METRICS")
-    want_ledger = _flag_on("AGENT_LAB_OUTCOME_LEDGER")
-    if not (want_metrics or want_ledger):
-        return
     try:
         run = read_run_meta(folder)
+        want_metrics = s1_flag_enabled("AGENT_LAB_TURN_METRICS", run_meta=run)
+        want_ledger = s1_flag_enabled("AGENT_LAB_OUTCOME_LEDGER", run_meta=run)
+        if not (want_metrics or want_ledger):
+            return
         turns = run.get("turns") or []
         if not turns:
             return

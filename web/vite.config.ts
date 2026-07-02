@@ -56,8 +56,9 @@ export default defineConfig({
         target: apiProxyTarget,
         changeOrigin: true,
         ws: true,
-        timeout: 120_000,
-        proxyTimeout: 120_000,
+        // Room SSE turns (consensus / multi-agent) can run many minutes without JSON events.
+        timeout: 1_800_000,
+        proxyTimeout: 1_800_000,
         configure: (proxy) => {
           proxy.on("error", (err, _req, res) => {
             if (!res || res.headersSent) return;

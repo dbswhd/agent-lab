@@ -733,7 +733,14 @@ def build_context_bundle(
             "[이번 턴 · 동료 발화]를 기준으로 이어서 답하고, 겹치는 내용은 짧게 넘기세요."
         )
         follow_up = "\n\n".join(x for x in (follow_up, peer_follow) if x.strip())
-        if review_mode and parallel_round >= 2 and review_advocate:
+        from agent_lab.role_plan import review_follow_up_uses_role_persona
+
+        if (
+            review_mode
+            and parallel_round >= 2
+            and review_advocate
+            and not review_follow_up_uses_role_persona(run_meta, str(review_advocate))
+        ):
             if agent == review_advocate:
                 follow_up += "\n[쟁점 검토 — 반박] 1라운드 주장 중 가장 약한 가정 하나를 골라 반박하세요."
             else:

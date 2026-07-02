@@ -184,7 +184,12 @@ def build_guidance_parts(
 
         if FAST_TURN_GUIDANCE.strip() not in parts:
             parts.insert(0, FAST_TURN_GUIDANCE.strip())
-    if policy.turn_profile == "specialist":
+    topology = str((run_meta or {}).get("_turn_topology") or "").strip().lower()
+    if topology == "producer_reviewer":
+        parts.append(
+            "[Producer-reviewer topology · R1 Codex+Claude → R2 Cursor. Stay in your capability lane.]"
+        )
+    elif policy.turn_profile == "specialist":
         parts.append("[Specialist turn · R1 Codex+Claude → R2 Cursor patch. Stay in your capability lane.]")
     if policy.turn_profile == "verified":
         from agent_lab.verified_loop import VERIFIED_LOOP_GUIDANCE

@@ -24,6 +24,7 @@ from agent_lab.room.consensus import (
 Category = Literal["quick", "standard", "trading", "deep", "critical"]
 Recombination = Literal["on", "auto", "off"]
 TaskType = Literal["code", "review", "general"]
+TopologyHint = Literal["parallel", "producer_reviewer", "pipeline"]
 
 CATEGORY_ORDER: tuple[Category, ...] = ("quick", "standard", "trading", "deep", "critical")
 ESCALATION_ACTS = frozenset({"CHALLENGE", "BLOCK", "AMEND"})
@@ -229,6 +230,7 @@ class CategoryRoute:
     # 에스컬레이션 시 None으로 리셋되어 자동으로 전원 참여로 복원됨
     agent_subset: tuple[str, ...] | None = None
     task_type: TaskType = "general"
+    topology: TopologyHint = "parallel"
     # 역할 배정: {agent_id: role_id}, 호출측에서 active 확정 후 채워진다 (진단용 스냅샷)
     role_plan: dict[str, str] = field(default_factory=dict)
 
@@ -246,6 +248,8 @@ class CategoryRoute:
             out["escalation_act"] = self.escalation_act
         if self.agent_subset:
             out["agent_subset"] = list(self.agent_subset)
+        if self.topology and self.topology != "parallel":
+            out["topology"] = self.topology
         if self.role_plan:
             out["role_plan"] = dict(self.role_plan)
         return out
@@ -298,6 +302,75 @@ def _resolve_agent_subset(
     return _AGENT_SUBSET_MAP.get((category, task_type))
 
 
+def _resolve_topology(
+    category: Category,
+    task_type: TaskType,
+    *,
+    turn_profile: str = "",
+    routing_hints: dict[str, Any] | None = None,
+) -> TopologyHint:
+    """Route-driven consensus topology (Harness pattern — not a Composer preset)."""
+    hints = routing_hints or {}
+    hint_topology = str(hints.get("topology") or "").strip().lower()
+    if hint_topology in ("parallel", "producer_reviewer", "pipeline"):
+        return hint_topology  # type: ignore[return-value]
+
+    profile = (turn_profile or "").strip().lower()
+    if profile == "specialist":
+        return "producer_reviewer"
+
+    if task_type == "review":
+        return "parallel"
+    if task_type == "code" and category in ("standard", "deep", "critical"):
+        return "producer_reviewer"
+    return "parallel"
+
+
+def resolve_active_subset(
+    route: CategoryRoute,
+    active: list[str],
+    *,
+    hint: Any | None = None,
+    min_agents: int = 1,
+) -> tuple[list[str], tuple[str, ...] | None]:
+    """Filter active agents by route subset + advisor hint (SSOT for expert pool).
+
+    Returns (filtered_active, applied_subset). applied_subset is None when no filter applied.
+    """
+    subset: tuple[str, ...] | None = route.agent_subset
+    if hint is not None:
+        suggested: tuple[str, ...] = getattr(hint, "suggested_subset", ()) or ()
+        if suggested:
+            filtered = [a for a in active if str(a) in suggested]
+            if filtered:
+                subset = tuple(filtered)
+
+    if not subset:
+        return active, None
+
+    pool = {str(a).strip().lower() for a in active if str(a).strip()}
+    subset_active = [a for a in active if str(a).strip().lower() in subset]
+    if len(subset_active) < min_agents:
+        return active, None
+    if len(subset_active) == len(active):
+        return active, None
+    return subset_active, subset
+
+
+def enrich_route_with_role_plan(
+    route: CategoryRoute,
+    agents: list[str],
+    *,
+    hint: Any | None = None,
+    policy: str = "auto",
+) -> CategoryRoute:
+    """Attach role_plan preview to route after active agents are known."""
+    from agent_lab.role_plan import resolve_role_plan
+
+    roles = resolve_role_plan(route=route, agents=agents, hint=hint, policy=policy)
+    return replace(route, role_plan=roles)
+
+
 def _build_route(
     category: Category,
     *,
@@ -307,6 +380,8 @@ def _build_route(
     escalated_from: Category | None = None,
     escalation_act: str | None = None,
     task_type: TaskType = "general",
+    turn_profile: str = "",
+    routing_hints: dict[str, Any] | None = None,
 ) -> CategoryRoute:
     base = _ROUTE_TABLE[category]
     debate_rounds = int(base["debate_rounds"])
@@ -337,6 +412,14 @@ def _build_route(
     agent_subset = _resolve_agent_subset(
         category, task_type, escalated=escalated_from is not None
     )
+    topology = _resolve_topology(
+        category,
+        task_type,
+        turn_profile=turn_profile,
+        routing_hints=routing_hints,
+    )
+    if topology == "producer_reviewer":
+        agent_subset = None
 
     return CategoryRoute(
         category=category,
@@ -353,6 +436,7 @@ def _build_route(
         escalation_act=escalation_act,
         agent_subset=agent_subset,
         task_type=task_type,
+        topology=topology,
     )
 
 
@@ -373,6 +457,7 @@ def _legacy_route(*, efficiency_mode: bool = False) -> CategoryRoute:
         source="disabled",
         agent_subset=None,
         task_type="general",
+        topology="parallel",
     )
 
 
@@ -424,6 +509,12 @@ _PROFILE_CATEGORY: dict[str, Category] = {
 }
 
 
+def _routing_hints_for_template(session_template: str) -> dict[str, Any]:
+    from agent_lab.session.setup import template_routing_hints
+
+    return template_routing_hints(session_template)
+
+
 def resolve_topic_route(
     topic: str,
     *,
@@ -439,6 +530,8 @@ def resolve_topic_route(
         return _legacy_route(efficiency_mode=efficiency_mode)
 
     task_type = detect_task_type(topic)
+    profile = (turn_profile or "").strip().lower()
+    routing_hints = _routing_hints_for_template(session_template)
 
     marker = parse_category_marker(topic)
     if marker:
@@ -448,6 +541,8 @@ def resolve_topic_route(
             signals=(f"marker:{marker}",),
             efficiency_mode=efficiency_mode,
             task_type=task_type,
+            turn_profile=profile,
+            routing_hints=routing_hints,
         )
 
     template = (session_template or "").strip().lower()
@@ -458,9 +553,10 @@ def resolve_topic_route(
             signals=("template:trading-mission",),
             efficiency_mode=efficiency_mode,
             task_type=task_type,
+            turn_profile=profile,
+            routing_hints=routing_hints,
         )
 
-    profile = (turn_profile or "").strip().lower()
     implied = _PROFILE_CATEGORY.get(profile)
     if implied:
         return _build_route(
@@ -469,6 +565,8 @@ def resolve_topic_route(
             signals=(f"profile:{profile}",),
             efficiency_mode=efficiency_mode,
             task_type=task_type,
+            turn_profile=profile,
+            routing_hints=routing_hints,
         )
 
     category, signals = classify_topic(topic)
@@ -478,6 +576,8 @@ def resolve_topic_route(
         signals=signals,
         efficiency_mode=efficiency_mode,
         task_type=task_type,
+        turn_profile=profile,
+        routing_hints=routing_hints,
     )
 
 
@@ -511,6 +611,8 @@ def escalate_route(
         escalated_from=route.escalated_from or route.category,
         escalation_act=str(act).upper(),
         task_type=route.task_type,
+        turn_profile="",
+        routing_hints={"topology": route.topology} if route.topology != "parallel" else None,
     )
     # 에스컬레이션은 예산을 늘릴 수만 있다 (전역 cap 안에서)
     if escalated.max_rounds < route.max_rounds or escalated.max_calls < route.max_calls:

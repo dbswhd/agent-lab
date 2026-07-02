@@ -21,11 +21,11 @@ def apply_turn_profile_flags(
         tp = (turn_profile or "analyze").strip().lower()
         run_meta["turn_profile"] = "analyze" if tp == "discuss" else tp
         if run_meta["turn_profile"] == "specialist":
-            from agent_lab.room.agent_capabilities import ensure_specialist_capabilities
-
-            if not run_meta.get("agent_capabilities_custom"):
-                ensure_specialist_capabilities(run_meta)
             parallel_rounds = max(parallel_rounds, 2)
+            if not run_meta.get("agent_capabilities_custom"):
+                from agent_lab.room.agent_capabilities import ensure_specialist_capabilities
+
+                ensure_specialist_capabilities(run_meta)
         from agent_lab.plan.workflow import apply_legacy_verified_turn_profile
 
         apply_legacy_verified_turn_profile(folder, run_meta, synthesize=synthesize)

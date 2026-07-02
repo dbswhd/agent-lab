@@ -32,7 +32,6 @@ const EN = {
     multi ? `Quick · ${lead} only · R1` : "Quick · R1",
   turnAnalyzeHint: (n: number, r: number) =>
     `Team · ${n} agents · plan optional · R${r}`,
-  turnSplitHint: "Loop · specialist topology",
   turnFreeHint: (n: number) => `Loop · ${n} agents · plan · execute · verify`,
   settingsLanguage: "Language",
   settingsLanguageSub: "UI copy · composer · workspace tabs",
@@ -324,7 +323,6 @@ const KO = {
   turnQuickHint: (lead: string, multi: boolean) =>
     multi ? `빠른 · ${lead}만 · R1` : "빠른 · R1",
   turnAnalyzeHint: (n: number, r: number) => `팀 · ${n}명 · plan 선택 · R${r}`,
-  turnSplitHint: "루프 · specialist topology",
   turnFreeHint: (n: number) => `루프 · ${n}명 · plan · execute · verify`,
   settingsLanguage: "언어",
   settingsLanguageSub: "UI · composer · workspace 탭",

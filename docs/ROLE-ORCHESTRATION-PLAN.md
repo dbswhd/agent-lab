@@ -1,6 +1,6 @@
 # Agent Role Orchestration — Fugu식 역할 분화를 창발 루프 위의 합성 레이어로
 
-> **상태**: 구현 계획 (P1~P8)
+> **상태**: P1–P3·P5b·P6 **shipped** (2026-07) — Settings 분업 UI 퇴출, topology/role_plan SSOT. P4 S2 bandit **partial** (`s2_role_bandit.py` interface).
 > **배경**: dogfood 중 `team` 흐름이 에이전트를 평면적 peer로만 돌림 — Fugu TRINITY(Proposer/Critic/Judge)나 Harness Producer-Reviewer의 품질 이득 없음.
 
 ---

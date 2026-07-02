@@ -310,15 +310,16 @@ def test_detect_task_type_general(monkeypatch):
 
 
 def test_agent_subset_code_standard(monkeypatch):
-    """standard 카테고리 code 작업 → cursor+codex 서브셋."""
+    """standard code → producer_reviewer topology; full team (subset cleared)."""
     _clear_router_env(monkeypatch)
     route = resolve_topic_route(
         "로그인 API 구현해줘 — FastAPI 엔드포인트와 JWT 토큰 검증 로직을 추가해야 합니다."
     )
     assert route.category == "standard"
     assert route.task_type == "code"
-    assert route.agent_subset == ("cursor", "codex")
-    assert "agent_subset" in route.category_dict()
+    assert route.topology == "producer_reviewer"
+    assert route.agent_subset is None
+    assert route.category_dict()["topology"] == "producer_reviewer"
 
 
 def test_agent_subset_review_standard(monkeypatch):
@@ -350,22 +351,17 @@ def test_agent_subset_critical_is_none(monkeypatch):
 def test_escalation_releases_subset(monkeypatch):
     """에스컬레이션 시 agent_subset이 None으로 리셋된다."""
     _clear_router_env(monkeypatch)
-    route = resolve_topic_route(
-        "캐시 모듈 버그 fix해줘 — 간헐적 타임아웃이 발생하는 원인을 파악해서 수정해야 합니다."
+    review_route = resolve_topic_route(
+        "이 PR 코드 리뷰해줘 — 유저 프로필 업데이트 모듈 변경사항에 대해 피드백 부탁드립니다."
     )
-    assert route.category in ("standard", "quick")
-    assert route.task_type == "code"
-    # standard code task → subset 있어야 함 (quick이면 cursor만)
-    code_route = resolve_topic_route(
-        "로그인 기능 구현해줘 — FastAPI 엔드포인트와 JWT 토큰 검증 로직이 필요합니다 추가해주세요."
-    )
-    assert code_route.agent_subset is not None
-    escalated = escalate_route(code_route, act="CHALLENGE")
-    assert escalated.agent_subset is None  # 에스컬레이션 후 해제
+    assert review_route.task_type == "review"
+    assert review_route.agent_subset == ("claude", "codex")
+    escalated = escalate_route(review_route, act="CHALLENGE")
+    assert escalated.agent_subset is None
 
 
 def test_agent_subset_applied_in_consensus_room(monkeypatch, tmp_path):
-    """code 작업에서 cursor+codex만 실제로 호출되는지 E2E 검증."""
+    """review 작업에서 claude+codex만 실제로 호출되는지 E2E 검증."""
     from agent_lab import room
 
     _clear_router_env(monkeypatch)
@@ -383,15 +379,39 @@ def test_agent_subset_applied_in_consensus_room(monkeypatch, tmp_path):
     patch_call_agent_reply(monkeypatch, fake_call_agent)
     monkeypatch.setattr(room, "model_label", lambda agent: f"{agent}-model")
 
-    # 충분히 긴 코드 작업 토픽 (standard 카테고리로 라우팅)
-    topic = "로그인 기능 구현해줘 — FastAPI 엔드포인트와 JWT 토큰 검증 로직을 추가해야 합니다."
+    topic = (
+        "이 PR 코드 리뷰해줘 — 유저 프로필 업데이트 모듈 변경사항에 대해 "
+        "피드백 부탁드립니다."
+    )
     room.run_room(
         topic,
-        agents=["cursor", "codex", "claude"],
         synthesize=False,
         sessions_base=tmp_path,
         consensus_mode=True,
     )
-    # claude는 코드 구현 작업 서브셋에 포함되지 않으므로 호출되지 않아야 함
-    assert "claude" not in called_agents, f"claude가 서브셋 제외 대상인데 호출됨: {called_agents}"
-    assert "cursor" in called_agents or "codex" in called_agents
+    assert "cursor" not in called_agents, f"cursor가 review 서브셋 제외인데 호출됨: {called_agents}"
+    assert "claude" in called_agents or "codex" in called_agents
+
+
+def test_topology_code_standard_is_producer_reviewer(monkeypatch):
+    _clear_router_env(monkeypatch)
+    route = resolve_topic_route(
+        "로그인 기능 구현해줘 — FastAPI 엔드포인트와 JWT 토큰 검증 로직을 추가해야 합니다."
+    )
+    assert route.task_type == "code"
+    assert route.topology == "producer_reviewer"
+
+
+def test_topology_review_is_parallel(monkeypatch):
+    _clear_router_env(monkeypatch)
+    route = resolve_topic_route(
+        "이 PR 코드 리뷰해줘 — 유저 프로필 업데이트 모듈 변경사항에 대해 피드백 부탁드립니다."
+    )
+    assert route.task_type == "review"
+    assert route.topology == "parallel"
+
+
+def test_topology_legacy_specialist_profile(monkeypatch):
+    _clear_router_env(monkeypatch)
+    route = resolve_topic_route("짧은 질문", turn_profile="specialist")
+    assert route.topology == "producer_reviewer"

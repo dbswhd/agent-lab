@@ -102,6 +102,80 @@ def _apply_hint_overrides(result: dict[str, str], agents: list[str], hint: Any |
     return result
 
 
+def _task_type_role_plan(task_type: str, agents: list[str]) -> dict[str, str]:
+    """Task-type matrix from ROLE-ORCHESTRATION-PLAN §P1."""
+    pool = [str(a).strip().lower() for a in agents if str(a).strip()]
+    result: dict[str, str] = {}
+    if task_type == "code":
+        if "cursor" in pool:
+            result["cursor"] = "executor"
+        if "claude" in pool:
+            result["claude"] = "critic"
+        if "codex" in pool:
+            result["codex"] = "proposer"
+    elif task_type == "review":
+        if "claude" in pool:
+            result["claude"] = "proposer"
+        for agent in pool:
+            if agent != "claude" and agent not in result:
+                result[agent] = "critic"
+    return result
+
+
+def _merge_role_plans(*plans: dict[str, str]) -> dict[str, str]:
+    merged: dict[str, str] = {}
+    for plan in plans:
+        merged.update(plan)
+    return merged
+
+
+def stamp_review_advocate_role(
+    run_meta: dict[str, Any],
+    agents: list[str],
+    human_turn_index: int,
+) -> str | None:
+    """Review mode: rotate devil's advocate into _turn_roles critic (P5b)."""
+    if not _roles_enabled() or not agents:
+        return None
+    advocate = str(agents[human_turn_index % len(agents)]).strip().lower()
+    roles = dict(run_meta.get("_turn_roles") or {})
+    roles[advocate] = "critic"
+    run_meta["_turn_roles"] = roles
+    return advocate
+
+
+def review_follow_up_uses_role_persona(run_meta: dict[str, Any] | None, advocate: str | None) -> bool:
+    """True when critic persona in reply_policy replaces legacy review_advocate follow-up."""
+    if not advocate or not run_meta:
+        return False
+    if not _roles_enabled():
+        return False
+    roles = run_meta.get("_turn_roles") or {}
+    return roles.get(str(advocate).strip().lower()) == "critic"
+
+
+def resolve_review_advocate(
+    agents: list[str],
+    human_turn_index: int,
+    *,
+    run_meta: dict[str, Any] | None = None,
+    review_mode: bool = False,
+) -> str | None:
+    """Legacy review_advocate seam — critic from _turn_roles when roles enabled."""
+    if not review_mode or not agents:
+        return None
+    if _roles_enabled() and run_meta:
+        roles = run_meta.get("_turn_roles") or {}
+        for agent in agents:
+            if roles.get(str(agent).strip().lower()) == "critic":
+                return str(agent).strip().lower()
+        advocate = stamp_review_advocate_role(run_meta, agents, human_turn_index)
+        return advocate
+    from agent_lab.room.messages import _review_advocate
+
+    return str(_review_advocate(agents, human_turn_index)).strip().lower()
+
+
 def _cwd_role_plan(agents: list[str]) -> dict[str, str]:
     from agent_lab.room.agent_capabilities import DEFAULT_CAPABILITIES
 
@@ -164,13 +238,17 @@ def resolve_role_plan(
     if category in ("quick", "trading"):
         return {}
 
-    result = _cwd_role_plan(agents)
+    task_type = getattr(route, "task_type", "general") or "general"
+    result = _merge_role_plans(_cwd_role_plan(agents), _task_type_role_plan(task_type, agents))
 
-    if category in ("deep", "critical") and "codex" in result:
-        result["codex"] = "critic"
-
-    if category == "critical" and "claude" in result:
-        result["claude"] = "synthesizer"
+    if category in ("deep", "critical"):
+        for agent in agents:
+            if agent not in result:
+                continue
+            if category == "critical" and agent == "claude":
+                result[agent] = "synthesizer"
+            elif agent == "codex" and result.get(agent) != "synthesizer":
+                result[agent] = "critic"
 
     return _apply_hint_overrides(result, agents, hint)
 
@@ -215,29 +293,19 @@ def agent_subset_for_route(
     available: list[str],
     hint: Any | None = None,
 ) -> list[str]:
-    """토픽 카테고리별 참여 에이전트 풀.
+    """토픽 카테고리별 참여 에이전트 풀 — topic_router.resolve_active_subset SSOT.
 
     빈 리스트 반환 = 필터 없음 (전체 사용).
-    quick만 단일 에이전트로 축소.
-
-    hint: optional SetupHint (Phase B). hint.suggested_subset이 비어 있지
-    않으면 해당 에이전트들을 available 교집합으로 반환.
-    현재 advisor는 항상 빈 tuple을 반환하므로 기존 동작과 동일.
     """
     if not _roles_enabled():
         return []
 
-    # Phase B: advisor subset hint
-    if hint is not None:
-        suggested: tuple[str, ...] = getattr(hint, "suggested_subset", ()) or ()
-        if suggested:
-            filtered = [a for a in suggested if a in available]
-            if filtered:
-                return filtered
+    from agent_lab.topic_router import resolve_active_subset
 
-    if route.category == "quick" and available:
-        return available[:1]
-    return []
+    filtered, applied = resolve_active_subset(route, available, hint=hint, min_agents=1)
+    if not applied:
+        return []
+    return filtered
 
 
 def persona_for_agent(turn_roles: dict | None, agent: str, *, run_meta: dict[str, Any] | None = None) -> str:

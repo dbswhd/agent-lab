@@ -29,6 +29,7 @@ from agent_lab.wisdom.index import _tokenize
 log = logging.getLogger(__name__)
 
 _TRUE = frozenset({"1", "true", "yes", "on"})
+_FALSE = frozenset({"0", "false", "no", "off"})
 
 MIN_SAMPLE = int(os.getenv("AGENT_LAB_FEEDBACK_MIN_SAMPLE") or "3")
 _PURE_CHALLENGE_YIELD_LOW = 0.3
@@ -192,18 +193,25 @@ def _explore_combo(
     return mutated, _combo_key(mutated)
 
 
+def _advisor_enabled(*, room_preset: str = "") -> bool:
+    from agent_lab.s1_flags import s1_flag_enabled
+
+    return s1_flag_enabled("AGENT_LAB_FEEDBACK_ADVISOR", room_preset=room_preset)
+
+
 def advise_setup(
     topic: str,
     category: str,
     available_agents: list[str],
     *,
     root: Path | None = None,
+    room_preset: str = "",
 ) -> SetupHint:
     """Read outcomes.jsonl and return a SetupHint for the current turn.
 
     Falls back to ``_DEFAULT_HINT`` on any error or insufficient history.
     """
-    if not _flag_on("AGENT_LAB_FEEDBACK_ADVISOR"):
+    if not _advisor_enabled(room_preset=room_preset):
         return _DEFAULT_HINT
 
     try:
@@ -324,11 +332,13 @@ def _advise_inner(
     best_n = len(combo_scores[best_key])
     best_avg = sum(combo_scores[best_key]) / best_n
 
+    from agent_lab.s2_role_bandit import subset_from_role_combo
+
     return SetupHint(
         source="history",
         sample_size=len(relevant),
         role_overrides=dict(best_roles),
-        suggested_subset=(),
+        suggested_subset=subset_from_role_combo(best_roles, available_agents),
         rationale=(
             f"best_combo(n={best_n},avg_score={best_avg:.2f}):"
             + ",".join(f"{a}→{r}" for a, r in sorted(best_roles.items()))

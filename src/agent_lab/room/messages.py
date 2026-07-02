@@ -158,10 +158,16 @@ def _round_agent_order(
     if run_meta:
         from agent_lab.room.team_orchestration import normalize_turn_profile
 
-        if normalize_turn_profile(run_meta.get("turn_profile")) == "specialist":
-            from agent_lab.room.agent_capabilities import specialist_round_agents
+        topology = str((run_meta or {}).get("_turn_topology") or "").strip().lower()
+        profile = normalize_turn_profile(run_meta.get("turn_profile"))
+        if topology == "producer_reviewer" or profile == "specialist":
+            from agent_lab.room.agent_capabilities import topology_round_agents
 
-            ordered = specialist_round_agents([str(a) for a in agents], parallel_round)
+            ordered = topology_round_agents(
+                [str(a) for a in agents],
+                parallel_round,
+                topology="producer_reviewer",
+            )
             pool = {str(a).lower(): a for a in agents}
             return [pool[k] for k in ordered if k in pool]
     if review_mode and parallel_round >= 2:

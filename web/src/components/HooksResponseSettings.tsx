@@ -122,10 +122,16 @@ export function HooksResponseSettings({
         </div>
       ) : null}
 
+      {embedded ? (
+        <p className="settings-hint">
+          세션별 에이전트 guidance에 반영되는 답변 형식입니다. 역할 분업과는
+          무관합니다.
+        </p>
+      ) : null}
       <div
         className={embedded ? "turn-seg" : "settings-contract-presets"}
         role="radiogroup"
-        aria-label="Response contract preset"
+        aria-label="Response contract"
       >
         {RESPONSE_CONTRACT_PRESETS.map((preset) => (
           <button

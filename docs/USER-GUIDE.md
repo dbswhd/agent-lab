@@ -952,7 +952,7 @@ Per-agent:
 
 - cwd role / path (execute, repo, review)
 - tool toggles
-- preset: 기본값 / 분업
+- **기본값** 버튼으로 per-agent cwd/도구 리셋 (역할·topology는 turn snapshot `roles` / `category.topology`에서 확인)
 
 저장: `PATCH` capabilities → `run.json`  
 첫 send 시 merge.

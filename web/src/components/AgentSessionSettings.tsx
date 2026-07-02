@@ -4,7 +4,6 @@ import {
   cloneCapabilities,
   CWD_ROLE_OPTIONS,
   DEFAULT_AGENT_CAPABILITIES,
-  SPECIALIST_AGENT_CAPABILITIES,
   TOOL_OPTIONS,
   toggleTool,
   setAgentCwdPath,
@@ -98,16 +97,6 @@ export function AgentSessionSettings({
               }
             >
               기본값
-            </button>
-            <button
-              type="button"
-              className="btn btn--sm"
-              disabled={disabled}
-              onClick={() =>
-                onChange(cloneCapabilities(SPECIALIST_AGENT_CAPABILITIES))
-              }
-            >
-              분업 프리셋
             </button>
             {onSave ? (
               <button

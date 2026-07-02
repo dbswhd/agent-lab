@@ -118,7 +118,22 @@ def capabilities_public_payload(
 
 
 def ensure_specialist_capabilities(run_meta: dict[str, Any]) -> None:
+    """Deprecated — use seed_capabilities_for_route(route, run_meta)."""
     write_agent_capabilities(run_meta, SPECIALIST_CAPABILITIES)
+
+
+def seed_capabilities_for_route(route: Any, run_meta: dict[str, Any]) -> None:
+    """Route-driven asymmetric cwd/tools (replaces manual 분업 preset)."""
+    if run_meta.get("agent_capabilities_custom"):
+        return
+    topology = getattr(route, "topology", None) or ""
+    task_type = getattr(route, "task_type", "general") or "general"
+    turn_profile = str(run_meta.get("turn_profile") or "").strip().lower()
+    if topology == "producer_reviewer" or turn_profile == "specialist":
+        if task_type in ("code", "general"):
+            write_agent_capabilities(run_meta, SPECIALIST_CAPABILITIES, mark_custom=False)
+            return
+    write_agent_capabilities(run_meta, DEFAULT_CAPABILITIES, mark_custom=False)
 
 
 def _binding_path(run_meta: dict[str, Any] | None) -> Path | None:
@@ -268,12 +283,23 @@ def specialist_round_agents(
     agents: list[str],
     parallel_round: int,
 ) -> list[str]:
-    """F3: R1 codex+claude parallel; R2 cursor sequential."""
-    pool = {str(a).strip().lower() for a in agents if str(a).strip()}
-    if parallel_round == 1:
-        ordered = [a for a in ("codex", "claude", "kimi_work") if a in pool]
-        return ordered or [a for a in agents if str(a).strip()][:2]
-    if parallel_round == 2:
-        ordered = [a for a in ("cursor",) if a in pool]
-        return ordered or [str(agents[-1]).strip().lower()] if agents else []
+    """F3 / producer_reviewer topology: R1 codex+claude parallel; R2 cursor sequential."""
+    return topology_round_agents(agents, parallel_round, topology="producer_reviewer")
+
+
+def topology_round_agents(
+    agents: list[str],
+    parallel_round: int,
+    *,
+    topology: str = "parallel",
+) -> list[str]:
+    """Route topology agent ordering per round."""
+    if topology == "producer_reviewer":
+        pool = {str(a).strip().lower() for a in agents if str(a).strip()}
+        if parallel_round == 1:
+            ordered = [a for a in ("codex", "claude", "kimi_work") if a in pool]
+            return ordered or [a for a in agents if str(a).strip()][:2]
+        if parallel_round == 2:
+            ordered = [a for a in ("cursor",) if a in pool]
+            return ordered or [str(agents[-1]).strip().lower()] if agents else []
     return [str(a).strip().lower() for a in agents if str(a).strip()]

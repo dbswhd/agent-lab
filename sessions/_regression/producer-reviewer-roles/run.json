@@ -18,7 +18,7 @@
       "status": "completed",
       "ts": "2026-06-25T00:00:01+00:00",
       "roles": {
-        "cursor": "proposer",
+        "cursor": "executor",
         "claude": "critic"
       },
       "category": {
@@ -26,8 +26,9 @@
         "source": "heuristic",
         "signals": [],
         "task_type": "code",
+        "topology": "producer_reviewer",
         "role_plan": {
-          "cursor": "proposer",
+          "cursor": "executor",
           "claude": "critic"
         }
       },

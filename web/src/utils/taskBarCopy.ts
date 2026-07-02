@@ -108,8 +108,6 @@ export function formatTaskBarModeHint(
       return "빠른 · 1명 · 할 일 제안은 가능하지만 자동 배정 없음";
     case "loop":
       return "루프 · plan/execute/verify 게이트 · 팀 동의와 검증을 기다립니다";
-    case "specialist":
-      return "분업 · R1 Codex+Claude → R2 Cursor · cwd/툴 비대칭";
     default:
       return taskCount > 0
         ? `토론 · 제안된 할 일 ${taskCount}건 · 담당 자동 배정 없음`

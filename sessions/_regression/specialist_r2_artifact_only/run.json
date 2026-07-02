@@ -15,15 +15,24 @@
       "mode": "discuss",
       "synthesize": false,
       "status": "completed",
-      "turn_profile": "specialist",
-      "agent_parallel_rounds": 2
+      "turn_profile": "analyze",
+      "agent_parallel_rounds": 2,
+      "category": {
+        "value": "standard",
+        "task_type": "code",
+        "topology": "producer_reviewer"
+      }
     }
   ],
   "last_turn": {
     "mode": "discuss",
     "synthesize": false,
     "status": "completed",
-    "turn_profile": "specialist",
+    "category": {
+      "value": "standard",
+      "task_type": "code",
+      "topology": "producer_reviewer"
+    },
     "context": {
       "agents": [
         {

@@ -26,7 +26,6 @@ from agent_lab.room.messages import (
     _human_turn_number,
     _is_agent_error_message,
     _is_valid_synthesis,
-    _review_advocate,
 )
 
 from agent_lab.room.agent_invoke import (
@@ -71,36 +70,20 @@ def run_consensus_agent_rounds(
 
     all_replies: list[ChatMessage] = []
     calls = 0
-    route = resolve_topic_route(
-        topic,
-        turn_profile=str((run_meta or {}).get("turn_profile") or ""),
-        session_template=str((run_meta or {}).get("session_template") or ""),
-        efficiency_mode=efficiency_mode,
-    )
+    if run_meta is not None:
+        from agent_lab.room.turn_routing import bootstrap_turn_route
+
+        route = bootstrap_turn_route(topic, run_meta, efficiency_mode=efficiency_mode)
+    else:
+        route = resolve_topic_route(
+            topic,
+            turn_profile="",
+            session_template="",
+            efficiency_mode=efficiency_mode,
+        )
     cap_rounds, cap_calls = route.max_rounds, route.max_calls
 
-    # Expert Pool: route가 에이전트 서브셋을 제안하면 active를 좁힌다.
-    # 서브셋 내 가용 에이전트가 없으면 전체 풀로 폴백 (안전 보장).
-    # 합의 루프에서는 최소 2명이 필요하므로 서브셋이 1명 이하로 줄면 적용하지 않는다.
-    if route.agent_subset:
-        subset_active = [a for a in active if str(a) in route.agent_subset]
-        if len(subset_active) >= 2:
-            active = subset_active
-            if on_event:
-                on_event(
-                    "agent_subset_applied",
-                    {
-                        "subset": list(route.agent_subset),
-                        "active": [str(a) for a in active],
-                        "task_type": route.task_type,
-                        "category": route.category,
-                        "message": (
-                            f"Expert Pool — {route.task_type} 작업으로 감지: "
-                            f"{', '.join(str(a) for a in active)} 우선 참여."
-                        ),
-                    },
-                )
-    # Model Policy: 카테고리 비용 상한과 신뢰 예산 소진 상한 중 더 엄격한 티어를 적용.
+    # Model Policy:
     # agents_within_cost_tier는 전원 필터될 때 원본을 반환하므로 안전하다.
     from agent_lab.model_policy import agents_within_cost_tier, preferred_cost_tier_for_category
     from agent_lab.trust_budget import budget_agent_tier_cap
@@ -139,49 +122,22 @@ def run_consensus_agent_rounds(
 
     cap_rounds, cap_calls = apply_loop_budget_caps(run_meta, cap_rounds, cap_calls)
 
-    # Expert Pool: route 기반 에이전트 풀 필터
-    from agent_lab.role_plan import agent_subset_for_route, apply_preset_role_overrides, resolve_role_plan
-
-    # Phase B: cross-session learning advisor — fail-open, no side effects on error
-    from agent_lab.feedback_advisor import SetupHint, advise_setup
-
-    _hint: SetupHint = advise_setup(
-        topic,
-        route.category,
-        [str(a) for a in active],
-    )
-
-    # 사용자가 2명 이상을 명시적으로 선택했으면 자동 카테고리 축소(quick → 단일 에이전트)가
-    # 그 선택을 1명으로 덮어쓰지 않게 한다. expert pool·model policy subset의 len>=2 보호와
-    # 동일 취지 — 명시 선택은 비용 최적화보다 우선한다 (선택한 plugin이 실제로 호출되어야 함).
-    user_selected_multi = agents is not None and len([a for a in agents if str(a).strip()]) >= 2
-    subset = agent_subset_for_route(route, [str(a) for a in active], hint=_hint)
-    if subset and not (user_selected_multi and len(subset) < len(active)):
-        active = as_agent_ids(subset)
-
+    _routing_hint = None
     if run_meta is not None:
-        cat_dict = route.category_dict()
-        # S1.5: tag advisor attribution only when the advisor actually acted
-        # (history/explore). Default-source turns write nothing → OFF-parity.
-        if _hint.source in ("history", "explore"):
-            cat_dict["advisor_rationale"] = _hint.rationale
-            cat_dict["advisor_source"] = _hint.source
-            cat_dict["advisor_combo_id"] = getattr(_hint, "combo_id", "") or ""
-        run_meta["_turn_category"] = cat_dict
-        from agent_lab.room.preset import resolve_role_policy
+        from agent_lab.room.turn_routing import finalize_turn_routing
 
-        _role_policy = resolve_role_policy(run_meta)
-        run_meta["role_policy"] = _role_policy
-        run_meta["_turn_roles"] = apply_preset_role_overrides(
+        _routing = finalize_turn_routing(
+            route,
             run_meta,
-            resolve_role_plan(
-                route=route,
-                agents=[str(a) for a in active],
-                hint=_hint,
-                policy=_role_policy,
-            ),
             [str(a) for a in active],
+            topic=topic,
+            agents=[str(a) for a in (agents or [])] if agents else None,
+            min_agents=2,
+            apply_subset=True,
+            on_event=on_event,
         )
+        route = _routing.route
+        active = as_agent_ids(_routing.active)
 
     def _harvest_discuss_objections(thread: list[ChatMessage]) -> None:
         """충돌을 상태로 — discuss CHALLENGE/BLOCK을 run.json objections에 등록 (P3)."""
@@ -218,9 +174,14 @@ def run_consensus_agent_rounds(
             if len(full) > len(active):
                 active = full
         if run_meta is not None:
-            run_meta["_turn_roles"] = {}  # 역할 해제 → 자유토론 복귀
-            run_meta["_turn_category"] = route.category_dict()
-            run_meta["_turn_roles"] = {}  # 에스컬레이션 시 역할 해제 — 새 카테고리에서 재배정
+            from agent_lab.room.turn_routing import refresh_routing_after_escalation
+
+            route = refresh_routing_after_escalation(
+                route,
+                run_meta,
+                [str(a) for a in active],
+                topic=topic,
+            )
             from agent_lab.inbox.harvest import record_escalation_harvest_keys
 
             record_escalation_harvest_keys(run_meta, batch_msgs, act=act)
@@ -540,33 +501,41 @@ def run_consensus_agent_rounds(
             and calls < cap_calls
         ):
             check_cancelled()
-            advocate = _review_advocate(active, human_turn_index)
+            from agent_lab.role_plan import resolve_review_advocate
+
+            advocate = resolve_review_advocate(
+                [str(a) for a in active],
+                human_turn_index,
+                run_meta=run_meta,
+                review_mode=True,
+            )
             quality["forced_review"] = True
-            quality["advocate"] = str(advocate)
+            quality["advocate"] = str(advocate) if advocate else ""
             if antidrift_redteam:
                 quality["antidrift_redteam"] = True
             forced_review_rounds = 1
+            advocate_id = as_agent_id(str(advocate)) if advocate else active[0]
             if on_event:
                 on_event(
                     "quality_gate_review",
                     {
-                        "agent": advocate,
+                        "agent": str(advocate_id),
                         "category": route.category,
                         "round": last_debate + 1 + recomb_rounds,
                         "message": (
-                            f"{agent_label(advocate)}에게 합의 전 강제 반론 라운드를 요청합니다 "
+                            f"{agent_label(advocate_id)}에게 합의 전 강제 반론 라운드를 요청합니다 "
                             f"(토론 무충돌 · {route.category})."
                         ),
                     },
                 )
             review_msg = _invoke_agent_for_round(
-                advocate,
+                advocate_id,
                 topic=topic,
                 thread=working,
                 parallel_round=last_debate + 1 + recomb_rounds,
                 permissions=permissions,
                 review_mode=True,
-                review_advocate=advocate,
+                review_advocate=advocate_id,
                 plan_md=plan_md,
                 run_meta=run_meta,
                 on_event=on_event,

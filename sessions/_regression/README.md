@@ -11,8 +11,9 @@ Baseline scenarios (minimal `run.json` fixtures):
 | `plan/` | 지금 정리 | `turns[]` has `mode: plan`, `synthesize: true` |
 | `objection_blocks_execute/` | open BLOCK on plan #1 | smoke validates open BLOCK linked to `plan_action` execute gate |
 | `challenge_revises_metric/` | CHALLENGE → task blocked | smoke validates open CHALLENGE linked to blocked task |
-| `specialist_asymmetric_cwd/` | 분업 preset | smoke: `turn_profile: specialist` + ≥2 distinct `cwd_role` in `agent_capabilities` |
-| `specialist_r2_artifact_only/` | 분업 Cursor R2 payload | `last_turn.context.agents[]` has Cursor R2 `context_mode: artifact_only` |
+| `producer-reviewer-roles/` | route role plan | smoke: `turns[].roles` + `category.role_plan` / topology |
+| `specialist_asymmetric_cwd/` | route topology `producer_reviewer` | smoke: asymmetric `cwd_role` in `agent_capabilities` + R1/R2 agent rounds |
+| `specialist_r2_artifact_only/` | producer_reviewer Cursor R2 | `last_turn.context.agents[]` has Cursor R2 `context_mode: artifact_only` |
 | `bridge_degraded_health/` | Cursor bridge degraded health | `expected_health.json` has cursor `degraded`, `failure_code`, `fallback`, `remediation` |
 | `mailbox_handoff/` | MESSAGE handoff | smoke: unread `mailbox[]` row + matching `mailbox_unread[target] ≥ 1` |
 | `worktree_merge_ok/` | worktree merge success | `status: merged` + worktree metadata + `merge.commit_sha` |

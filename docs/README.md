@@ -16,7 +16,8 @@
 | Hybrid Rust + Python ADR (Track 1 proceed / Track 2 conditional) | [HYBRID-RUST-PYTHON-ADR.md](./HYBRID-RUST-PYTHON-ADR.md) |
 | Track 2.0 profile gate report | [TRACK2-PROFILE.md](./TRACK2-PROFILE.md) |
 | Track 2.2 native gate — CLOSED (native rejected, crate removed) | [TRACK2-NATIVE-GATE.md](./TRACK2-NATIVE-GATE.md) |
-| 전략 방향 (Fugu/Harness 대비 포지션) | [STRATEGIC-DIRECTION-2026.md](./STRATEGIC-DIRECTION-2026.md) |
+| **중장기 북극성 · 완성도 게이지 (슈퍼 샘플 로드맵)** | [NORTH-STAR.md](./NORTH-STAR.md) |
+| 전략 방향 (Fugu/Harness 대비 포지션 — 배경/이력) | [STRATEGIC-DIRECTION-2026.md](./STRATEGIC-DIRECTION-2026.md) |
 | 역할 오케스트레이션 설계 (P1~P8) | [ROLE-ORCHESTRATION-PLAN.md](./ROLE-ORCHESTRATION-PLAN.md) |
 | 기능·동작·API·UI 상세 | [USER-GUIDE.md](./USER-GUIDE.md) |
 | **Turn preset · Plan toggle · legacy profile map** | [TURN-MODES.md](./TURN-MODES.md) |

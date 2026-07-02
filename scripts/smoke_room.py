@@ -296,8 +296,40 @@ def _check_mailbox_handoff(run: dict[str, Any]) -> bool:
     return False
 
 
-def _check_specialist_asymmetric_cwd(run: dict[str, Any]) -> bool:
-    if run.get("turn_profile") != "specialist":
+def _has_producer_reviewer_topology(run: dict[str, Any]) -> bool:
+    if run.get("turn_profile") == "specialist":
+        return True
+    if str(run.get("_turn_topology") or "") == "producer_reviewer":
+        return True
+    for key in ("last_turn",):
+        turn = run.get(key) or {}
+        if not isinstance(turn, dict):
+            continue
+        category = turn.get("category") or {}
+        if isinstance(category, dict) and category.get("topology") == "producer_reviewer":
+            return True
+    return False
+
+
+def _check_producer_reviewer_roles(run: dict[str, Any]) -> bool:
+    turns = run.get("turns") or []
+    if not isinstance(turns, list) or not turns:
+        return False
+    last = turns[-1]
+    if not isinstance(last, dict):
+        return False
+    roles = last.get("roles") or {}
+    if not isinstance(roles, dict) or len(roles) < 2:
+        return False
+    category = last.get("category") or {}
+    if not isinstance(category, dict):
+        return False
+    role_plan = category.get("role_plan") or {}
+    return bool(roles) and (category.get("topology") == "producer_reviewer" or role_plan)
+
+
+def _check_capability_cwd_asymmetric(run: dict[str, Any]) -> bool:
+    if not _has_producer_reviewer_topology(run):
         return False
     caps = run.get("agent_capabilities") or {}
     if not isinstance(caps, dict) or len(caps) < 2:
@@ -339,8 +371,19 @@ def _check_specialist_asymmetric_cwd(run: dict[str, Any]) -> bool:
     if not isinstance(turns, list) or not turns:
         return True
     return any(
-        isinstance(t, dict) and t.get("mode") == "discuss" and t.get("turn_profile") == "specialist" for t in turns
+        isinstance(t, dict)
+        and t.get("mode") == "discuss"
+        and (
+            t.get("turn_profile") == "specialist"
+            or (isinstance(t.get("category"), dict) and t["category"].get("topology") == "producer_reviewer")
+        )
+        for t in turns
     )
+
+
+def _check_specialist_asymmetric_cwd(run: dict[str, Any]) -> bool:
+    """Legacy alias — route topology asymmetric cwd KPI."""
+    return _check_capability_cwd_asymmetric(run)
 
 
 def _check_emergence_hybrid_plan(run: dict[str, Any]) -> bool:
@@ -801,16 +844,21 @@ SCENARIOS: dict[str, dict[str, Any]] = {
         ),
     },
     "specialist_asymmetric_cwd": {
-        "label": "specialist asymmetric cwd roles",
-        "check": _check_specialist_asymmetric_cwd,
+        "label": "capability cwd asymmetric (producer_reviewer)",
+        "check": _check_capability_cwd_asymmetric,
         "workflow_ids": {"room", "room.parallel"},
         "required_keys": (
             "workflow_id",
             "run_schema_version",
-            "turn_profile",
             "agent_capabilities",
             "turns",
         ),
+    },
+    "producer-reviewer-roles": {
+        "label": "producer-reviewer role plan snapshot",
+        "check": _check_producer_reviewer_roles,
+        "workflow_ids": {"room", "room.parallel"},
+        "required_keys": ("workflow_id", "run_schema_version", "turns"),
     },
     "worktree_merge_ok": {
         "label": "worktree merge ok",

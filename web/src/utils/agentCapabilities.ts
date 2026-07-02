@@ -28,6 +28,7 @@ export const DEFAULT_AGENT_CAPABILITIES: AgentCapabilitiesMap = {
   },
 };
 
+/** @deprecated UI removed — regression fixture only; use route-driven capability seed. */
 export const SPECIALIST_AGENT_CAPABILITIES: AgentCapabilitiesMap = {
   cursor: {
     tools: ["sdk_edit"],

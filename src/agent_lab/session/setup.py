@@ -120,6 +120,7 @@ def _all_session_template_defs() -> list[dict[str, Any]]:
             "label": "일반",
             "description": "코드·기획·리서치 — 기본 room 가이던스",
             "default_phase": None,
+            "routing_hints": {},
         },
         {
             "id": "book-layout",
@@ -138,6 +139,7 @@ def _all_session_template_defs() -> list[dict[str, Any]]:
             "label": "Trading Mission",
             "description": "장전/이벤트 — snapshot → discuss → proposal batch + playbook",
             "default_phase": "trading",
+            "routing_hints": {"response_contract_bias": "evidence_first"},
         },
         {
             "id": "trading-thin",
@@ -170,6 +172,13 @@ def resolve_session_template(template_id: str | None) -> dict[str, Any]:
         if tpl["id"] == tid:
             return tpl
     return list_session_templates()[0]
+
+
+def template_routing_hints(template_id: str | None) -> dict[str, Any]:
+    """Optional session-template routing biases for topic_router."""
+    tpl = resolve_session_template(template_id)
+    hints = tpl.get("routing_hints")
+    return dict(hints) if isinstance(hints, dict) else {}
 
 
 def template_guidance_block(template_id: str | None) -> str:

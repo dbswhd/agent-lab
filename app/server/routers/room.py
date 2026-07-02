@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -62,6 +64,76 @@ from app.server.deps import (
 )
 
 router = APIRouter(prefix="/api")
+
+_ROOM_SSE_KEEPALIVE_SEC = 25.0
+
+
+def _room_run_terminal_events(
+    result: dict[str, Any],
+    *,
+    run_session_id: str | None,
+) -> list[dict[str, Any]]:
+    """Terminal SSE payloads after the worker finishes (or client disconnect cleanup)."""
+    if result.get("cancelled") or is_cancelled(run_session_id):
+        complete = result.get("complete_event") or {}
+        return [
+            {"type": "run_cancelled", "message": "답변 중지됨"},
+            {
+                "type": "complete",
+                "session_id": complete.get("session_id") or run_session_id,
+                "plan_preview": "",
+                "status": complete.get("status") or "partial",
+                "failed_agents": complete.get("failed_agents") or [],
+                "succeeded_agents": complete.get("succeeded_agents") or [],
+                "send_receipt": complete.get("send_receipt"),
+                "turn_index": complete.get("turn_index"),
+                "cancelled": True,
+            },
+        ]
+    if "error" in result:
+        err = str(result["error"])
+        return [
+            {"type": "run_failed", "message": err},
+            {"type": "error", "message": err},
+        ]
+    if "folder" not in result:
+        msg = "room run ended without result"
+        return [
+            {"type": "run_failed", "message": msg},
+            {"type": "error", "message": msg},
+        ]
+    out_folder = result["folder"]
+    plan_md = result.get("plan_md", "")
+    complete = result.get("complete_event") or {}
+    return [
+        {
+            "type": "complete",
+            "session_id": complete.get("session_id") or out_folder.name,
+            "plan_preview": plan_md[:500] if plan_md else "",
+            "status": complete.get("status") or "completed",
+            "failed_agents": complete.get("failed_agents") or [],
+            "succeeded_agents": complete.get("succeeded_agents") or [],
+            "send_receipt": complete.get("send_receipt"),
+            "turn_index": complete.get("turn_index"),
+        }
+    ]
+
+
+def _drain_room_event_queue(
+    event_q: asyncio.Queue[dict[str, Any] | None],
+    result: dict[str, Any],
+) -> Iterator[dict[str, Any]]:
+    while True:
+        try:
+            ev = event_q.get_nowait()
+        except asyncio.QueueEmpty:
+            break
+        if ev is None:
+            break
+        if ev.get("type") == "complete":
+            result["complete_event"] = ev
+            continue
+        yield ev
 
 
 def _run_with_lock(
@@ -567,6 +639,7 @@ async def create_room_run(
                     loop=loop,
                 ),
             )
+            last_keepalive = time.monotonic()
             while True:
                 if await request.is_disconnected():
                     if not disconnected:
@@ -576,71 +649,38 @@ async def create_room_run(
                 try:
                     ev = await asyncio.wait_for(event_q.get(), timeout=0.25)
                 except asyncio.TimeoutError:
+                    now = time.monotonic()
+                    if now - last_keepalive >= _ROOM_SSE_KEEPALIVE_SEC:
+                        last_keepalive = now
+                        # Keep dev proxy (vite) and idle HTTP clients from closing long Room turns.
+                        yield ": keepalive\n\n"
                     continue
                 if ev is None:
                     break
                 if ev.get("type") == "complete":
                     result["complete_event"] = ev
                     continue
+                last_keepalive = time.monotonic()
                 yield sse(ev)
             if disconnected:
                 try:
                     await asyncio.wait_for(worker, timeout=8.0)
                 except asyncio.TimeoutError:
                     pass
+                for ev in _drain_room_event_queue(event_q, result):
+                    yield sse(ev)
+                for payload in _room_run_terminal_events(
+                    result,
+                    run_session_id=run_session_id,
+                ):
+                    yield sse(payload)
                 return
             await worker
-            if result.get("cancelled") or is_cancelled(run_session_id):
-                complete = result.get("complete_event") or {}
-                yield sse({"type": "run_cancelled", "message": "답변 중지됨"})
-                yield sse(
-                    {
-                        "type": "complete",
-                        "session_id": complete.get("session_id") or run_session_id,
-                        "plan_preview": "",
-                        "status": complete.get("status") or "partial",
-                        "failed_agents": complete.get("failed_agents") or [],
-                        "succeeded_agents": complete.get("succeeded_agents") or [],
-                        "send_receipt": complete.get("send_receipt"),
-                        "turn_index": complete.get("turn_index"),
-                        "cancelled": True,
-                    }
-                )
-                return
-            if "error" in result:
-                err = result["error"]
-                yield sse({"type": "run_failed", "message": str(err)})
-                yield sse({"type": "error", "message": str(err)})
-                return
-            if "folder" not in result:
-                yield sse(
-                    {
-                        "type": "run_failed",
-                        "message": "room run ended without result",
-                    }
-                )
-                yield sse(
-                    {
-                        "type": "error",
-                        "message": "room run ended without result",
-                    }
-                )
-                return
-            out_folder = result["folder"]
-            plan_md = result.get("plan_md", "")
-            complete = result.get("complete_event") or {}
-            yield sse(
-                {
-                    "type": "complete",
-                    "session_id": complete.get("session_id") or out_folder.name,
-                    "plan_preview": plan_md[:500] if plan_md else "",
-                    "status": complete.get("status") or "completed",
-                    "failed_agents": complete.get("failed_agents") or [],
-                    "succeeded_agents": complete.get("succeeded_agents") or [],
-                    "send_receipt": complete.get("send_receipt"),
-                    "turn_index": complete.get("turn_index"),
-                }
-            )
+            for payload in _room_run_terminal_events(
+                result,
+                run_session_id=run_session_id,
+            ):
+                yield sse(payload)
         except Exception as e:
             yield sse({"type": "error", "message": str(e)})
 

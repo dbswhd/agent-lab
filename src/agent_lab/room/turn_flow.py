@@ -21,9 +21,9 @@ from agent_lab.room.messages import (
     _agent_turn_summary,
     _emit_turn_terminal_status,
     _human_turn_count,
-    _review_advocate,
     _turn_status_from_replies,
 )
+from agent_lab.role_plan import resolve_review_advocate
 
 from agent_lab.room.agent_invoke import (
     _bind_session_to_run_meta,
@@ -211,7 +211,16 @@ def continue_room_round(
     supersede_pending_inbox(folder, human_turn_id=human_turn_num)
     run_meta["agents"] = [str(a) for a in active_agents]
     mode = "plan" if synthesize else "discuss"
-    review_advocate = _review_advocate(active_agents, human_turn_index) if review_mode and active_agents else None
+    review_advocate = (
+        resolve_review_advocate(
+            active_agents,
+            human_turn_index,
+            run_meta=run_meta,
+            review_mode=bool(review_mode),
+        )
+        if review_mode and active_agents
+        else None
+    )
     from agent_lab.room.team_orchestration import resolve_turn_lead
 
     resolve_turn_lead(
@@ -590,7 +599,14 @@ def run_room(
     human_turn_index = _human_turn_count(messages) - 1
     mode = "plan" if synthesize else "discuss"
     review_advocate = (
-        _review_advocate(active_agents, max(0, human_turn_index)) if review_mode and active_agents else None
+        resolve_review_advocate(
+            active_agents,
+            max(0, human_turn_index),
+            run_meta=run_meta,
+            review_mode=bool(review_mode),
+        )
+        if review_mode and active_agents
+        else None
     )
     efficiency_mode = efficiency_mode or bool((run_meta or {}).get("adaptive_efficiency"))
     human_turn_num = max(1, _human_turn_count(messages))

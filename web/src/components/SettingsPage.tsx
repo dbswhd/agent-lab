@@ -393,7 +393,13 @@ export function SettingsPage({
             </details>
           ) : null}
           <div className="settings-block">
-            <h3 className="settings-block__title">응답 preset</h3>
+            <h3 className="settings-block__title">
+              응답 형식 (Response contract)
+            </h3>
+            <p className="settings-block__hint">
+              에이전트 답변 형식입니다. 역할·관점 배정(role plan)과는
+              별개입니다.
+            </p>
             <HooksResponseSettings
               embedded
               sessionId={sessionId}

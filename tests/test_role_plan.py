@@ -87,6 +87,24 @@ class TestResolveRolePlan:
     def test_empty_agents_returns_empty(self):
         assert resolve_role_plan(route=_route("standard"), agents=[]) == {}
 
+    def test_code_task_type_roles(self):
+        from agent_lab.topic_router import _build_route
+
+        route = _build_route("standard", source="test", task_type="code")
+        roles = resolve_role_plan(route=route, agents=AGENTS)
+        assert roles.get("cursor") == "executor"
+        assert roles.get("claude") == "critic"
+        assert roles.get("codex") == "proposer"
+
+    def test_review_task_type_roles(self):
+        from agent_lab.topic_router import _build_route
+
+        route = _build_route("standard", source="test", task_type="review")
+        roles = resolve_role_plan(route=route, agents=AGENTS)
+        assert roles.get("claude") == "proposer"
+        assert roles.get("cursor") == "critic"
+        assert roles.get("codex") == "critic"
+
 
 class TestRolePolicy:
     def test_force_assigns_on_quick(self):

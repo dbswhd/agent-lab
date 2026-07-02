@@ -139,20 +139,17 @@ Fugu는 재훈련 루프로 **모델 자체**를 개선하지만, 런타임에 *
 - 구현 위치: `plan_execute_verify.py` + `verify_repair_policy.py`
 - 관련 플래그: `AGENT_LAB_ORACLE_LIVE` + 새 `AGENT_LAB_AUTO_APPROVE_THRESHOLD`
 
-**5. Harness 패턴 통합 (Room Preset System)**
-- 현재: 모든 작업이 같은 3-agent consensus 흐름
-- 목표: Harness의 6 패턴을 Agent Lab Room preset으로 구현
+**5. Harness 패턴 통합 (data-only topology)**
+- Composer preset: **fast / supervisor** 2개 유지 (Settings 분업 UI 퇴출, 2026-07)
+- Harness 6 패턴은 `topic_router.topology` + `role_plan` + capability seed로 표현 — `preset.py` id 추가 없음
 
-  | 프리셋 | 설명 |
+  | 패턴 | 구현 |
   |---|---|
-  | `quick` | 단일 에이전트 (현재 topic_router 있음) |
-  | `pipeline` | 순차 전문화 (scribe 패턴 확장) |
-  | `producer_reviewer` | 제안 → Oracle 검증 (verified loop 재활용) |
-  | `consensus` | 현행 3-agent 합의 (유지) |
-  | `supervisor` | Mission Loop의 DISCUSS→EXECUTE FSM (이미 존재) |
-
-- 구현 위치: `turn_modes.py` + `room_turn_flow.py`에 preset 파라미터 추가
-- 프론트엔드: 세션 생성 시 Room Preset 선택 UI
+  | `quick` | topic_router category + fast preset |
+  | `pipeline` | topology hint (future) |
+  | `producer_reviewer` | `topology=producer_reviewer` + asymmetric cwd seed |
+  | `consensus` | supervisor preset + consensus_mode |
+  | `parallel` | review task default topology |
 
 **6. 108개 플래그 → 4개 프로필 정리**
 - 문제: 108개 플래그는 전문가 전용 — 일반 사용자 진입 장벽

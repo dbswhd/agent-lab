@@ -30,7 +30,6 @@ from agent_lab.room.messages import (
     MAX_AGENTS_PER_ROUND,
     OnAgentEvent,
     _human_turn_count,
-    _review_advocate,
     _round_agent_order,
     build_agent_context_bundle,
 )
@@ -123,7 +122,19 @@ def run_parallel_round(
         parallel_round=parallel_round,
         run_meta=run_meta,
     )
-    review_advocate = _review_advocate(active, human_turn_index) if review_mode else None
+    from agent_lab.role_plan import resolve_review_advocate
+
+    _advocate = (
+        resolve_review_advocate(
+            [str(a) for a in ordered],
+            human_turn_index,
+            run_meta=run_meta,
+            review_mode=review_mode,
+        )
+        if review_mode
+        else None
+    )
+    review_advocate = as_agent_id(_advocate) if _advocate else None
 
     check_cancelled()
     replies: list[ChatMessage] = []
@@ -302,10 +313,29 @@ def run_agent_rounds(
     """Run multiple parallel waves; later waves see earlier agents' replies in the thread."""
     from agent_lab.room.agent_mentions import effective_invoke_agents
     from agent_lab.room.team_orchestration import normalize_turn_profile
+    from agent_lab.room.turn_routing import prepare_turn_routing
 
     profile = normalize_turn_profile(run_meta.get("turn_profile") if run_meta else None)
+    invoke_ids = effective_invoke_agents(
+        [str(a) for a in (agents or [])],
+        run_meta,
+        fallback=[str(a) for a in available_agents()],
+    )[:MAX_AGENTS_PER_ROUND]
+    if run_meta is not None and invoke_ids:
+        _routing = prepare_turn_routing(
+            topic,
+            run_meta,
+            invoke_ids,
+            agents=[str(a) for a in (agents or [])] if agents else None,
+            efficiency_mode=efficiency_mode,
+            min_agents=1,
+            apply_subset=True,
+            on_event=on_event,
+        )
+        invoke_ids = _routing.active
+        profile = normalize_turn_profile(run_meta.get("turn_profile"))
     n = max(1, min(parallel_rounds, MAX_AGENT_PARALLEL_ROUNDS))
-    if profile == "specialist":
+    if profile == "specialist" or str((run_meta or {}).get("_turn_topology") or "") == "producer_reviewer":
         n = max(n, 2)
     all_replies: list[ChatMessage] = []
     try:
@@ -363,7 +393,19 @@ def preview_agent_payload(
     active = agents or available_agents()
     active = active[:MAX_AGENTS_PER_ROUND]
     human_turn_index = max(0, _human_turn_count(messages) - 1)
-    review_advocate = _review_advocate(active, human_turn_index) if review_mode else None
+    from agent_lab.role_plan import resolve_review_advocate
+
+    _advocate = (
+        resolve_review_advocate(
+            [str(a) for a in active],
+            human_turn_index,
+            run_meta=run_meta,
+            review_mode=review_mode,
+        )
+        if review_mode
+        else None
+    )
+    review_advocate = as_agent_id(_advocate) if _advocate else None
     bundle = build_agent_context_bundle(
         topic,
         messages,

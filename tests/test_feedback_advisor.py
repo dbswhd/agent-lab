@@ -132,8 +132,39 @@ def test_advise_setup_prefers_critic_when_history_low_pure_yield(
 
 def test_advise_setup_flag_off(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("AGENT_LAB_FEEDBACK_ADVISOR", raising=False)
-    hint = advise_setup("pipeline verify", "standard", ["cursor", "codex", "claude"])
+    hint = advise_setup(
+        "pipeline verify",
+        "standard",
+        ["cursor", "codex", "claude"],
+        room_preset="fast",
+    )
     assert hint is _DEFAULT_HINT
+
+
+def test_supervisor_preset_enables_advisor_without_env(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("AGENT_LAB_FEEDBACK_ADVISOR", raising=False)
+    monkeypatch.setattr(
+        "agent_lab.outcome_harvester.outcomes_path",
+        lambda root=None: tmp_path / "missing.jsonl",
+    )
+    hint = advise_setup(
+        "pipeline verify",
+        "standard",
+        ["cursor", "codex", "claude"],
+        room_preset="supervisor",
+    )
+    assert hint.source == "default"
+    assert hint.rationale == "no_history"
+    monkeypatch.setenv("AGENT_LAB_FEEDBACK_ADVISOR", "0")
+    hint_off = advise_setup(
+        "pipeline verify",
+        "standard",
+        ["cursor", "codex", "claude"],
+        room_preset="supervisor",
+    )
+    assert hint_off is _DEFAULT_HINT
 
 
 # ---------------------------------------------------------------------------

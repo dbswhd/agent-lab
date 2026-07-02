@@ -121,7 +121,7 @@ export function RoomTranscriptPanel({
                   : `Round ${m.roundDivider}`;
               return (
                 <div key={m.id} className="round-divider" aria-label={m.body}>
-                  {roundLabel}
+                  <span className="round-divider__label">{roundLabel}</span>
                 </div>
               );
             }

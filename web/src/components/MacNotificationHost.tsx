@@ -10,6 +10,7 @@ import {
   defaultActionLabel,
   dispatchNotificationAction,
 } from "../utils/notificationActions";
+import { ComposerNoticeCard } from "./ComposerNoticeCard";
 import { MacNotificationContext } from "./macNotificationContext";
 import type { MacNotificationPayload } from "./macNotificationTypes";
 
@@ -21,13 +22,6 @@ type MacNotificationItem = MacNotificationPayload & {
 };
 
 const AUTO_DISMISS_MS = 7_000;
-
-function formatTime(ts: number): string {
-  return new Date(ts).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 function NotifyCard({
   item,
@@ -52,73 +46,15 @@ function NotifyCard({
     item.actionLabel ?? (item.action ? defaultActionLabel(item.action) : null);
 
   return (
-    <div
-      className={[
-        "notify-card",
-        item.action ? "notify-card--actionable" : undefined,
-      ]
-        .filter(Boolean)
-        .join(" ")}
-      role="status"
-      aria-live="polite"
-    >
-      <button
-        type="button"
-        className="notify-card__main"
-        disabled={!item.action}
-        onClick={item.action ? handleOpen : undefined}
-      >
-        <span className="notify-card__icon" aria-hidden="true">
-          <svg width="15" height="15" viewBox="0 0 20 20" fill="none">
-            <rect
-              width="20"
-              height="20"
-              rx="5"
-              fill="currentColor"
-              opacity=".15"
-            />
-            <text
-              x="10"
-              y="14"
-              textAnchor="middle"
-              fontSize="11"
-              fontWeight="700"
-              fill="currentColor"
-            >
-              A
-            </text>
-          </svg>
-        </span>
-        <div className="notify-card__body">
-          <div className="notify-card__title">{item.title}</div>
-          {item.body ? (
-            <div className="notify-card__desc">{item.body}</div>
-          ) : null}
-          {item.action && actionLabel ? (
-            <span className="notify-card__action-hint">{actionLabel}</span>
-          ) : null}
-        </div>
-        <time
-          className="notify-card__time"
-          dateTime={new Date(item.createdAt).toISOString()}
-        >
-          {formatTime(item.createdAt)}
-        </time>
-      </button>
-      {item.action && actionLabel ? (
-        <button type="button" className="notify-card__go" onClick={handleOpen}>
-          {actionLabel}
-        </button>
-      ) : null}
-      <button
-        type="button"
-        className="notify-card__close"
-        aria-label="알림 닫기"
-        onClick={() => onDismiss(item.id)}
-      >
-        ×
-      </button>
-    </div>
+    <ComposerNoticeCard
+      title={item.title}
+      description={item.body ?? ""}
+      variant={item.variant ?? "default"}
+      primaryLabel={actionLabel ?? undefined}
+      onPrimary={item.action ? handleOpen : undefined}
+      onDismiss={() => onDismiss(item.id)}
+      dismissLabel="닫기"
+    />
   );
 }
 

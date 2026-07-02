@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 type Props = {
   readonly title: string;
   readonly description: string;
-  readonly primaryLabel: string;
-  readonly onPrimary: () => void;
+  readonly primaryLabel?: string;
+  readonly onPrimary?: () => void;
   readonly secondaryLabel?: string;
   readonly onSecondary?: () => void;
   readonly onDismiss?: () => void;
@@ -98,8 +98,38 @@ export function ComposerNoticeCard({
           {description.trim() ? ` ${description.trim()}` : null}
         </p>
         {children}
-        <div className="composer-notice-card__actions">
-          {onDismiss ? (
+        {onPrimary && primaryLabel ? (
+          <div className="composer-notice-card__actions">
+            {onDismiss ? (
+              <button
+                type="button"
+                className="composer-notice-card__btn composer-notice-card__btn--secondary"
+                onClick={onDismiss}
+                disabled={busy}
+              >
+                {dismissLabel}
+              </button>
+            ) : onSecondary && secondaryLabel ? (
+              <button
+                type="button"
+                className="composer-notice-card__btn composer-notice-card__btn--secondary"
+                onClick={onSecondary}
+                disabled={busy}
+              >
+                {secondaryLabel}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="composer-notice-card__btn composer-notice-card__btn--primary"
+              onClick={onPrimary}
+              disabled={busy}
+            >
+              {primaryLabel}
+            </button>
+          </div>
+        ) : onDismiss ? (
+          <div className="composer-notice-card__actions">
             <button
               type="button"
               className="composer-notice-card__btn composer-notice-card__btn--secondary"
@@ -108,25 +138,8 @@ export function ComposerNoticeCard({
             >
               {dismissLabel}
             </button>
-          ) : onSecondary && secondaryLabel ? (
-            <button
-              type="button"
-              className="composer-notice-card__btn composer-notice-card__btn--secondary"
-              onClick={onSecondary}
-              disabled={busy}
-            >
-              {secondaryLabel}
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className="composer-notice-card__btn composer-notice-card__btn--primary"
-            onClick={onPrimary}
-            disabled={busy}
-          >
-            {primaryLabel}
-          </button>
-        </div>
+          </div>
+        ) : null}
       </div>
     </article>
   );

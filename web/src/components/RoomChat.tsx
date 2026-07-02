@@ -66,6 +66,7 @@ import {
   updateSessionRun,
   type LiveMsg,
 } from "../run/runSessionRegistry";
+import { registerRoomEventHandler } from "../run/roomReconnectRegistry";
 import { createRoomRunEventHandler } from "../hooks/useRoomSseHandler";
 import { latestDraftMessageIdsByAgent } from "../utils/draftResponsePrefs";
 import { stripAgentReplyBody } from "../utils/agentResponseCard";
@@ -84,6 +85,7 @@ import {
 } from "../utils/transcriptViewPrefs";
 import { RoomTranscriptPanel } from "./RoomTranscriptPanel";
 import { ComposerDecisionSurface } from "./ComposerDecisionSurface";
+import { SlashCommandDivider } from "./SlashCommandDivider";
 import { ComposerEventStack } from "./ComposerEventStack";
 import { useHumanDecisionRuntime } from "../hooks/useHumanDecisionRuntime";
 import { buildDecisionBlockedHeadline } from "../utils/decisionBlockedHeadline";
@@ -1803,8 +1805,19 @@ export function RoomChat({
         openWorkTab,
       });
 
+      const onRoomEventWithRegistry = (ev: Record<string, unknown>) => {
+        const evType = String(ev.type ?? "");
+        if (evType === "start" && typeof ev.session_id === "string") {
+          registerRoomEventHandler(ev.session_id, onRoomEventWithRegistry);
+        }
+        onRoomEvent(ev);
+      };
+      if (sessionId) {
+        registerRoomEventHandler(sessionId, onRoomEventWithRegistry);
+      }
+
       try {
-        await runRoom(sendText, agents, onRoomEvent, {
+        await runRoom(sendText, agents, onRoomEventWithRegistry, {
           sessionId: sessionId ?? undefined,
           files: filesToSend.map((p) => p.file),
           mode: roomMode,
@@ -2659,10 +2672,18 @@ export function RoomChat({
             await reconnectCursorBridge();
             await refreshRecoveryReadiness();
             return;
-          case "reconnect_claude":
+          case "reconnect_claude": {
+            const loginCmd = slashCommands.find(
+              (candidate) => candidate.id === "login",
+            );
+            if (loginCmd) {
+              await executeSlashCommand(loginCmd, "claude");
+              return;
+            }
             await reconnectClaudeAuth();
             await refreshRecoveryReadiness();
             return;
+          }
           case "reconnect_kimi_work":
             await reconnectKimiWorkBridge();
             await refreshRecoveryReadiness();
@@ -2699,6 +2720,7 @@ export function RoomChat({
       }
     },
     [
+      executeSlashCommand,
       handleDiscussRecoveryRun,
       handleReleaseRunLock,
       handleRetryFailedAgents,
@@ -2707,6 +2729,7 @@ export function RoomChat({
       openHumanInbox,
       openWorkTab,
       refreshRecoveryReadiness,
+      slashCommands,
     ],
   );
 
@@ -3579,9 +3602,10 @@ export function RoomChat({
                   />
 
                   {commandHint ? (
-                    <p className="composer-command-hint" role="status">
-                      {commandHint}
-                    </p>
+                    <SlashCommandDivider
+                      text={commandHint}
+                      className="composer-slash-divider"
+                    />
                   ) : null}
                 </div>
               </>

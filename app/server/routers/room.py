@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import time
-from collections.abc import Iterator
+from collections.abc import Awaitable, Callable, Iterator
 from pathlib import Path
 from typing import Any
 
@@ -196,6 +196,25 @@ def _session_hard_cap_exhausted(folder: Path) -> bool:
     from agent_lab.run.meta import read_run_meta
 
     return bool(read_run_meta(folder).get("budget_exhausted"))
+
+
+def _session_has_pending_human_inbox(folder: Path | None) -> bool:
+    """True when this session is legitimately waiting on a human_inbox answer.
+
+    A dropped SSE connection (tab backgrounded, laptop sleep, network blip)
+    must not kill the worker while it is mid-``ask_human`` — that wait has
+    its own generous timeout (``DEFAULT_INBOX_TIMEOUT_SEC``) precisely so a
+    human can take their time; an unconditional kill on disconnect bypassed
+    that grace period entirely.
+    """
+    if folder is None:
+        return False
+    from agent_lab.run.meta import read_run_meta
+
+    inbox = read_run_meta(folder).get("human_inbox") or []
+    if not isinstance(inbox, list):
+        return False
+    return any(isinstance(item, dict) and item.get("status") == "pending" for item in inbox)
 
 
 def _loop_readiness_detail(agent_list: list[str] | None) -> dict[str, Any] | None:
@@ -640,11 +659,17 @@ async def create_room_run(
                 ),
             )
             last_keepalive = time.monotonic()
+            detached = False
             while True:
                 if await request.is_disconnected():
                     if not disconnected:
                         disconnected = True
-                        _cancel_on_client_disconnect()
+                        if _session_has_pending_human_inbox(folder):
+                            # Human is still composing an answer to ask_human —
+                            # let the worker keep waiting instead of killing it.
+                            detached = True
+                        else:
+                            _cancel_on_client_disconnect()
                     break
                 try:
                     ev = await asyncio.wait_for(event_q.get(), timeout=0.25)
@@ -663,6 +688,11 @@ async def create_room_run(
                 last_keepalive = time.monotonic()
                 yield sse(ev)
             if disconnected:
+                if detached:
+                    # Worker is still legitimately running (e.g. mid ask_human
+                    # wait) — leave it to finish on its own thread and release
+                    # the run lock itself; don't block this dead connection on it.
+                    return
                 try:
                     await asyncio.wait_for(worker, timeout=8.0)
                 except asyncio.TimeoutError:
@@ -683,6 +713,128 @@ async def create_room_run(
                 yield sse(payload)
         except Exception as e:
             yield sse({"type": "error", "message": str(e)})
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+_ROOM_RESUME_POLL_SEC = 0.35
+
+
+def _terminal_event_from_persisted_state(
+    folder: Path,
+    run_session_id: str,
+) -> list[dict[str, Any]]:
+    """Synthesize a terminal SSE payload for a resume client attaching after
+    the worker already finished (and possibly cleared live.jsonl on persist).
+
+    Mirrors ``_room_run_terminal_events`` but reads from disk instead of the
+    request-scoped ``result`` dict, since resume runs in a fresh request that
+    never saw the original turn's in-memory state.
+    """
+    from agent_lab.run.meta import read_run_meta
+
+    run_meta = read_run_meta(folder)
+    status = str(run_meta.get("status") or "completed")
+    if status == "cancelled":
+        return [
+            {"type": "run_cancelled", "message": "답변 중지됨"},
+            {
+                "type": "complete",
+                "session_id": run_session_id,
+                "plan_preview": "",
+                "status": "partial",
+                "failed_agents": [],
+                "succeeded_agents": [],
+                "cancelled": True,
+                "resumed": True,
+            },
+        ]
+    if status == "failed":
+        msg = "room run ended with an error"
+        return [
+            {"type": "run_failed", "message": msg, "resumed": True},
+            {"type": "error", "message": msg},
+        ]
+    from agent_lab.plan.paths import read_session_plan_md
+
+    plan_md = read_session_plan_md(folder, run_meta)
+    turns = run_meta.get("turns") or []
+    last_turn = turns[-1] if turns else {}
+    return [
+        {
+            "type": "complete",
+            "session_id": run_session_id,
+            "plan_preview": plan_md[:500] if plan_md else "",
+            "status": status,
+            "failed_agents": last_turn.get("failed_agents") or [],
+            "succeeded_agents": last_turn.get("succeeded_agents") or [],
+            "resumed": True,
+        }
+    ]
+
+
+async def _room_resume_events(
+    folder: Path,
+    session_id: str,
+    *,
+    since: int,
+    is_disconnected: Callable[[], Awaitable[bool]],
+    poll_sec: float = _ROOM_RESUME_POLL_SEC,
+):
+    """Poll ``live.jsonl`` + the run lock and yield SSE-ready dict payloads.
+
+    Extracted from the route so it can be driven directly in tests without a
+    real ASGI ``Request`` (which has no cheap way to fake disconnects).
+    """
+    from agent_lab.room.live_log import read_live_room_log
+
+    cursor = max(0, since)
+    last_keepalive = time.monotonic()
+    while True:
+        if await is_disconnected():
+            return
+        live_log = read_live_room_log(folder)
+        if len(live_log) > cursor:
+            for row in live_log[cursor:]:
+                yield {k: v for k, v in row.items() if k != "ts"}
+            cursor = len(live_log)
+            last_keepalive = time.monotonic()
+        status = run_lock_status()
+        is_live = bool(status.get("locked")) and status.get("session_id") == session_id
+        if not is_live:
+            for payload in _terminal_event_from_persisted_state(folder, session_id):
+                yield payload
+            return
+        now = time.monotonic()
+        if now - last_keepalive >= _ROOM_SSE_KEEPALIVE_SEC:
+            last_keepalive = now
+            yield None  # keepalive marker
+        await asyncio.sleep(poll_sec)
+
+
+@router.get("/room/runs/{session_id}/resume")
+async def room_run_resume(session_id: str, request: Request, since: int = 0) -> StreamingResponse:
+    """Reattach to an in-flight (or just-finished) Room turn after an SSE drop.
+
+    Replays ``live.jsonl`` from ``since`` (a count of previously-consumed
+    live-log-eligible events, tracked client-side), then either tails new
+    events while the run lock still belongs to this session, or synthesizes
+    a terminal event from persisted ``run.json`` state once it doesn't.
+    """
+    folder = session_folder_or_404(session_id)
+
+    async def generate():
+        async for ev in _room_resume_events(
+            folder,
+            session_id,
+            since=since,
+            is_disconnected=request.is_disconnected,
+        ):
+            yield ": keepalive\n\n" if ev is None else sse(ev)
 
     return StreamingResponse(
         generate(),

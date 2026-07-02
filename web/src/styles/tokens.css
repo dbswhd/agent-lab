@@ -49,10 +49,12 @@
   --danger: #dc3e42;                    /* Oreo Status/Error         */
   --danger-soft: rgba(220, 62, 66, 0.12); /* Oreo Status/Error @12% */
   --info: #646464;                      /* Oreo Text/Secondary       */
+  --progress: #3e63dd;                  /* Oreo Status/Progress      */
+  --progress-soft: rgba(62, 99, 221, 0.12);
 
   /* ---- Agent identity (restrained, distinct) -------------- */
-  --agent-cursor: #3e63dd; /* Oreo Status/Progress */
-  --agent-cursor-soft: rgba(62, 99, 221, 0.12);
+  --agent-cursor: var(--progress);
+  --agent-cursor-soft: var(--progress-soft);
   --agent-codex: #12a594; /* teal — reuses success */
   --agent-codex-soft: rgba(18, 165, 148, 0.12);
   --agent-claude: #b65a3c; /* restrained clay (used sparingly) */
@@ -292,9 +294,11 @@
   --warn-soft: rgba(239, 95, 0, 0.12);
   --danger: #dc3e42;                      /* Oreo Dark Status/Error (same)      */
   --danger-soft: rgba(220, 62, 66, 0.12);
+  --progress: #3e63dd;
+  --progress-soft: rgba(62, 99, 221, 0.20);
 
-  --agent-cursor: #3e63dd;
-  --agent-cursor-soft: rgba(62, 99, 221, 0.20);
+  --agent-cursor: var(--progress);
+  --agent-cursor-soft: var(--progress-soft);
   --agent-codex: #12a594;
   --agent-codex-soft: rgba(18, 165, 148, 0.20);
   --agent-claude: #d2785a;

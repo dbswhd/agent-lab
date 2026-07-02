@@ -13,6 +13,7 @@ export type ToastPayload = {
   body?: string;
   action?: NotificationAction;
   actionLabel?: string;
+  variant?: "default" | "alert";
 };
 
 type PushInput = {
@@ -78,6 +79,7 @@ export function dispatchNotification(
     actionLabel:
       input.toastActionLabel ??
       (action ? defaultActionLabel(action) : undefined),
+    variant: input.tier === "P0" ? "alert" : "default",
   });
 
   if (input.tier === "P0" || input.tier === "P1" || input.forceToast) {

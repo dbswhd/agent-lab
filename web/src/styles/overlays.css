@@ -313,7 +313,7 @@
 }
 
 /* ============================================================
-   Notification stack / toast
+   Notification stack / toast (ComposerNoticeCard chrome)
    ============================================================ */
 .notify-stack {
   position: fixed;
@@ -324,112 +324,12 @@
   flex-direction: column;
   gap: var(--space-8);
   pointer-events: none;
-  width: 320px;
+  width: min(320px, calc(100vw - 32px));
   padding-top: var(--space-8);
 }
-
-.notify-card {
+.notify-stack .composer-notice-card {
   pointer-events: auto;
-  display: flex;
-  align-items: stretch;
-  gap: var(--space-6);
-  padding: var(--space-10);
-  background: var(--surface-card);
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-2);
   animation: notify-in var(--transition);
-}
-.notify-card--actionable {
-  border-color: color-mix(in srgb, var(--accent) 22%, var(--border-soft));
-}
-.notify-card__main {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-10);
-  padding: 0;
-  border: none;
-  background: none;
-  text-align: left;
-  color: inherit;
-}
-.notify-card--actionable .notify-card__main:not(:disabled) {
-  cursor: pointer;
-}
-.notify-card--actionable
-  .notify-card__main:not(:disabled):hover
-  .notify-card__title {
-  color: var(--accent);
-}
-.notify-card__icon {
-  width: 28px;
-  height: 28px;
-  flex: 0 0 28px;
-  border-radius: var(--radius-sm);
-  background: var(--accent-soft);
-  color: var(--accent);
-  display: grid;
-  place-items: center;
-}
-.notify-card__body {
-  flex: 1;
-  min-width: 0;
-}
-.notify-card__title {
-  font-size: var(--text-footnote);
-  font-weight: var(--weight-semibold);
-  color: var(--label-primary);
-}
-.notify-card__desc {
-  margin-top: 2px;
-  font-size: var(--text-caption);
-  color: var(--label-secondary);
-  line-height: var(--leading-snug);
-}
-.notify-card__action-hint {
-  display: inline-block;
-  margin-top: var(--space-6);
-  font-size: var(--text-micro);
-  font-weight: var(--weight-medium);
-  color: var(--accent);
-}
-.notify-card__go {
-  align-self: center;
-  flex-shrink: 0;
-  padding: var(--space-6) var(--space-10);
-  border-radius: var(--radius-sm);
-  font-size: var(--text-caption);
-  font-weight: var(--weight-medium);
-  color: var(--on-accent);
-  background: var(--accent);
-}
-.notify-card__go:hover {
-  background: var(--accent-hover);
-}
-.notify-card__time {
-  font-size: var(--text-micro);
-  color: var(--label-quaternary);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-.notify-card__close {
-  display: inline-grid;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  color: var(--label-quaternary);
-  font-size: 14px;
-  line-height: 1;
-  transition:
-    background var(--transition),
-    color var(--transition);
-}
-.notify-card__close:hover {
-  background: var(--surface-hover);
-  color: var(--label-primary);
 }
 
 /* ============================================================

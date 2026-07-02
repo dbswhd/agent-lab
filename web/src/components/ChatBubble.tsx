@@ -14,6 +14,8 @@ import {
 } from "./TranscriptMessageChrome";
 import { TurnActivityGroup } from "./TurnActivityGroup";
 import { DraftResponseDetails } from "./DraftResponseDetails";
+import { SlashCommandDivider } from "./SlashCommandDivider";
+import { ReconnectStatusCard, type ReconnectStatus } from "./ReconnectStatusCard";
 import { formatWorkedDuration } from "../utils/turnTimeline";
 import type { TurnItem } from "../utils/turnItems";
 
@@ -134,6 +136,18 @@ export function ChatBubble({
   }
 
   if (role === "system") {
+    if (message.body.trim().startsWith("[slash]")) {
+      return <SlashCommandDivider text={message.body} />;
+    }
+    if (message.body.trim().startsWith("[reconnect]:")) {
+      const [, status, sessionId] = message.body.trim().split(":");
+      return (
+        <ReconnectStatusCard
+          status={status as ReconnectStatus}
+          sessionId={sessionId || undefined}
+        />
+      );
+    }
     if (consoleMode) {
       return (
         <div className="transcript-system" role="status">

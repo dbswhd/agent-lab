@@ -6338,13 +6338,13 @@
 .chat-round-divider {
   display: flex;
   align-items: center;
-  gap: var(--space-8);
-  margin: var(--space-8) 0;
-  font-size: var(--text-micro);
-  font-weight: var(--weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--label-quaternary);
+  gap: var(--space-12);
+  margin: var(--space-10) 0;
+  color: var(--progress);
+  font-size: var(--type-label-small-size);
+  font-weight: var(--weight-medium);
+  line-height: var(--type-label-small-leading);
+  letter-spacing: -0.01em;
 }
 .chat-round-divider::before,
 .chat-round-divider::after {
@@ -6505,129 +6505,7 @@
   padding: var(--space-8) var(--space-10);
 }
 
-/* ============================================================
-   Notification stack (toast cards)
-   ============================================================ */
-.notify-stack {
-  position: fixed;
-  bottom: var(--space-20);
-  right: var(--space-20);
-  z-index: 400;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
-  pointer-events: none;
-  width: 300px;
-}
-.notify-card {
-  display: flex;
-  align-items: stretch;
-  border-radius: var(--radius-md);
-  background: var(--surface-pane);
-  border: 1px solid var(--border-soft);
-  box-shadow: var(--shadow-3);
-  overflow: hidden;
-  pointer-events: all;
-  animation: notify-slide 200ms cubic-bezier(0.32, 0.72, 0, 1);
-}
-@keyframes notify-slide {
-  from {
-    opacity: 0;
-    transform: translateY(8px) scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-.notify-card--actionable .notify-card__main {
-  cursor: pointer;
-}
-.notify-card__main {
-  flex: 1;
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-10);
-  padding: var(--space-12);
-  text-align: left;
-  background: none;
-  border: none;
-  cursor: default;
-}
-.notify-card__icon {
-  flex: 0 0 auto;
-  width: 26px;
-  height: 26px;
-  border-radius: var(--radius-sm);
-  display: grid;
-  place-items: center;
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-.notify-card__body {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-.notify-card__title {
-  font-size: var(--text-footnote);
-  font-weight: var(--weight-semibold);
-  color: var(--label-primary);
-  line-height: var(--leading-snug);
-}
-.notify-card__desc {
-  font-size: var(--text-caption);
-  color: var(--label-secondary);
-  line-height: 1.45;
-}
-.notify-card__action-hint {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-4);
-  margin-top: 2px;
-  font-size: var(--text-micro);
-  color: var(--accent);
-  font-weight: var(--weight-medium);
-}
-.notify-card__time {
-  font-size: var(--text-micro);
-  color: var(--label-quaternary);
-  font-variant-numeric: tabular-nums;
-  flex-shrink: 0;
-  margin-top: 1px;
-}
-.notify-card__go {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 var(--space-10);
-  font-size: var(--text-micro);
-  font-weight: var(--weight-semibold);
-  color: var(--accent);
-  border-left: 1px solid var(--border-hair);
-  transition: background var(--transition);
-}
-.notify-card__go:hover {
-  background: var(--accent-soft);
-}
-.notify-card__close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  font-size: 16px;
-  color: var(--label-quaternary);
-  border-left: 1px solid var(--border-hair);
-  transition:
-    color var(--transition),
-    background var(--transition);
-}
-.notify-card__close:hover {
-  color: var(--label-primary);
-  background: var(--surface-hover);
-}
+/* Notification stack styles live in overlays.css (ComposerNoticeCard chrome). */
 
 /* ============================================================
    Notification Center (inspector pane tab)
@@ -7879,12 +7757,12 @@ button.plan-doc__ref--link:hover {
   display: flex;
   align-items: center;
   gap: var(--space-12);
-  margin: var(--space-8) 0;
-  color: var(--label-tertiary);
-  font-size: var(--text-micro);
-  font-weight: var(--weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  margin: var(--space-10) 0;
+  color: var(--progress);
+  font-size: var(--type-label-small-size);
+  font-weight: var(--weight-medium);
+  line-height: var(--type-label-small-leading);
+  letter-spacing: -0.01em;
 }
 .chat-round-divider::before,
 .chat-round-divider::after {

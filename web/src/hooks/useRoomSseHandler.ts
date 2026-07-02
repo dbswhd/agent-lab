@@ -218,6 +218,29 @@ export function createRoomRunEventHandler(
       scope.userStopped = true;
       finalizeCancelledTyping(scope.runKey);
     }
+    if (t === "sse_disconnected") {
+      const rid = "reconnect-status-live";
+      patchTurnMessages(scope.runKey, (m) => {
+        const row = {
+          id: rid,
+          role: "system" as const,
+          label: "",
+          body: `[reconnect]:reconnecting:${scope.activeSessionId ?? ""}`,
+        };
+        return m.some((x) => x.id === rid)
+          ? m.map((x) => (x.id === rid ? row : x))
+          : [...m, row];
+      });
+    }
+    if (t === "sse_reconnected") {
+      patchTurnMessages(scope.runKey, (m) =>
+        m.map((x) =>
+          x.id === "reconnect-status-live"
+            ? { ...x, body: `[reconnect]:reconnected:${scope.activeSessionId ?? ""}` }
+            : x,
+        ),
+      );
+    }
     if (t === "agent_round_start" && Number(ev.round) > 1) {
       const round = Number(ev.round);
       updateSessionRun(scope.runKey, { topologyActive: null });
@@ -792,6 +815,17 @@ export function createRoomRunEventHandler(
     if (t === "run_failed") {
       scope.runFailed = true;
       const msg = String(ev.message ?? "run failed");
+      const failedSessionId =
+        typeof ev.session_id === "string" && ev.session_id
+          ? ev.session_id
+          : scope.activeSessionId;
+      patchTurnMessages(scope.runKey, (m) =>
+        m.map((x) =>
+          x.id === "reconnect-status-live"
+            ? { ...x, body: `[reconnect]:failed:${failedSessionId ?? ""}` }
+            : x,
+        ),
+      );
       setRecoveryFailure({
         source: "run",
         kind: "partial_turn",

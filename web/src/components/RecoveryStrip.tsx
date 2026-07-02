@@ -34,9 +34,10 @@ function severityLabel(item: RecoveryItem): string {
 function actionBusyLabel(actionId: RecoveryActionId): string {
   switch (actionId) {
     case "reconnect_cursor":
-    case "reconnect_claude":
     case "reconnect_kimi_work":
       return "재확인 중...";
+    case "reconnect_claude":
+      return "재로그인 중...";
     case "release_lock":
       return "해제 중...";
     case "retry_failed_agents":
@@ -127,12 +128,7 @@ export function RecoveryStrip({
             title="닫기"
             onClick={onDismiss}
           >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 14 14"
-              aria-hidden="true"
-            >
+            <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
               <path
                 d="M3.2 3.2 10.8 10.8M10.8 3.2 3.2 10.8"
                 fill="none"

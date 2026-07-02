@@ -5,6 +5,7 @@ export type MacNotificationPayload = {
   body?: string;
   action?: NotificationAction;
   actionLabel?: string;
+  variant?: "default" | "alert";
 };
 
 export type MacNotificationContextValue = {

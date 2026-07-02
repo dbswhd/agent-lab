@@ -1798,6 +1798,12 @@ function parseRoomRunHttpError(text: string): string {
   return text;
 }
 
+// A backgrounded tab / sleeping laptop can leave a stream reader hanging
+// with no error for a long time (the OS socket dies silently). Once the tab
+// is visible again, treat a read that's gone stale well past the server's
+// 25s keepalive as a dead connection instead of waiting indefinitely.
+const SSE_STALE_VISIBLE_MS = 40_000;
+
 async function consumeSse(
   res: Response,
   onEvent: (data: Record<string, unknown>) => void,
@@ -1807,10 +1813,21 @@ async function consumeSse(
   const dec = new TextDecoder();
   let buf = "";
   let sawTerminal = false;
+  let lastEventAt = Date.now();
+  const onVisibilityChange = () => {
+    if (
+      document.visibilityState === "visible" &&
+      Date.now() - lastEventAt > SSE_STALE_VISIBLE_MS
+    ) {
+      reader.cancel().catch(() => {});
+    }
+  };
+  document.addEventListener("visibilitychange", onVisibilityChange);
   try {
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
+      lastEventAt = Date.now();
       buf += dec.decode(value, { stream: true });
       const parts = buf.split("\n\n");
       buf = parts.pop() ?? "";
@@ -1837,9 +1854,63 @@ async function consumeSse(
       onEvent({ type: "sse_disconnected", message: String(err) });
     }
   } finally {
+    document.removeEventListener("visibilitychange", onVisibilityChange);
     reader.cancel().catch(() => {});
   }
   return sawTerminal;
+}
+
+// Mirrors LIVE_EVENT_TYPES in agent_lab/room/live_log.py — only these event
+// types are durably appended to live.jsonl, so the resume cursor (`since`)
+// must count exactly these to line up with the server's replay slice.
+const RESUMABLE_ROOM_EVENT_TYPES = new Set([
+  "agent_start",
+  "agent_token",
+  "agent_activity",
+  "tool_start",
+  "tool_output",
+  "tool_done",
+  "agent_done",
+  "agent_error",
+  "hook_event",
+  "run_cancelled",
+  "run_failed",
+  "inbox_pending",
+]);
+
+const ROOM_RESUME_BACKOFF_MS = [1000, 2000, 4000, 8000, 15000, 15000];
+
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    signal?.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+      { once: true },
+    );
+  });
+}
+
+// Best-effort: keep the display awake while a Room turn is in flight so a
+// laptop/tab sleep doesn't silently kill the SSE connection mid-turn (e.g.
+// while legitimately waiting many minutes on an ask_human answer).
+// `navigator.wakeLock` isn't in every TS DOM lib target yet — narrow cast.
+type WakeLockLike = { release: () => Promise<void> };
+async function acquireRoomWakeLock(): Promise<WakeLockLike | null> {
+  try {
+    const nav = navigator as Navigator & {
+      wakeLock?: { request: (type: "screen") => Promise<WakeLockLike> };
+    };
+    if (nav.wakeLock) {
+      return await nav.wakeLock.request("screen");
+    }
+  } catch {
+    /* best-effort only — unsupported or denied */
+  }
+  return null;
 }
 
 export async function runGraph(
@@ -2014,14 +2085,99 @@ export async function runRoom(
     const parsed = parseRoomRunHttpError(text);
     throw new Error(parsed);
   }
-  const sawTerminal = await consumeSse(res, onEvent);
-  if (!sawTerminal) {
+
+  let resumeSessionId = opts?.sessionId;
+  const trackingOnEvent = (data: Record<string, unknown>) => {
+    const t = String(data.type ?? "");
+    if (t === "start" && typeof data.session_id === "string") {
+      resumeSessionId = data.session_id;
+      roomResumeCursors.set(resumeSessionId, 0);
+    } else if (t === "complete" && typeof data.session_id === "string") {
+      resumeSessionId = data.session_id;
+    }
+    if (RESUMABLE_ROOM_EVENT_TYPES.has(t) && resumeSessionId) {
+      roomResumeCursors.set(
+        resumeSessionId,
+        (roomResumeCursors.get(resumeSessionId) ?? 0) + 1,
+      );
+    }
+    onEvent(data);
+  };
+
+  const wakeLock = await acquireRoomWakeLock();
+  try {
+    let sawTerminal = await consumeSse(res, trackingOnEvent);
+    if (sawTerminal || opts?.signal?.aborted) return;
+
+    if (!resumeSessionId) {
+      onEvent({
+        type: "run_failed",
+        message:
+          "SSE 연결이 끊어졌습니다. 서버 실행 상태를 확인하거나 실행 잠금 해제를 시도하세요.",
+      });
+      return;
+    }
+
+    for (const delay of ROOM_RESUME_BACKOFF_MS) {
+      if (opts?.signal?.aborted) return;
+      await sleep(delay, opts?.signal);
+      if (opts?.signal?.aborted) return;
+      try {
+        // resumeRoomRun() maintains roomResumeCursors itself — pass the raw
+        // onEvent here, not trackingOnEvent, to avoid double-counting.
+        sawTerminal = await resumeRoomRun(resumeSessionId, onEvent, {
+          signal: opts?.signal,
+        });
+        if (sawTerminal) {
+          onEvent({ type: "sse_reconnected", session_id: resumeSessionId });
+          return;
+        }
+      } catch {
+        // still offline — fall through to the next backoff attempt
+      }
+    }
     onEvent({
       type: "run_failed",
+      session_id: resumeSessionId,
       message:
         "SSE 연결이 끊어졌습니다. 서버 실행 상태를 확인하거나 실행 잠금 해제를 시도하세요.",
     });
+  } finally {
+    wakeLock?.release().catch(() => {});
   }
+}
+
+// Durable per-session cursor into live.jsonl (count of resumable events
+// already consumed) — survives past a single runRoom() call so a manual
+// retry button clicked well after automatic reconnection gave up still
+// resumes from the right offset instead of replaying the whole turn.
+const roomResumeCursors = new Map<string, number>();
+
+/** Reattach to an in-flight/just-finished Room turn from wherever this
+ * session's cursor left off. Used internally by `runRoom()`'s automatic
+ * reconnect loop, and exported for a user-triggered "다시 시도" retry after
+ * automatic reconnection has given up. */
+export async function resumeRoomRun(
+  sessionId: string,
+  onEvent: (data: Record<string, unknown>) => void,
+  opts?: { signal?: AbortSignal },
+): Promise<boolean> {
+  const since = roomResumeCursors.get(sessionId) ?? 0;
+  const trackingOnEvent = (data: Record<string, unknown>) => {
+    const t = String(data.type ?? "");
+    if (RESUMABLE_ROOM_EVENT_TYPES.has(t)) {
+      roomResumeCursors.set(sessionId, (roomResumeCursors.get(sessionId) ?? 0) + 1);
+    }
+    onEvent(data);
+  };
+  const res = await fetch(
+    apiUrl(`/api/room/runs/${encodeURIComponent(sessionId)}/resume?since=${since}`),
+    { signal: opts?.signal },
+  );
+  if (!res.ok) {
+    throw new Error(parseRoomRunHttpError(await res.text()));
+  }
+  return consumeSse(res, trackingOnEvent);
 }
 
 export async function cancelRoomRun(sessionId?: string): Promise<void> {

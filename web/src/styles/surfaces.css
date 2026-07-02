@@ -199,12 +199,12 @@
   display: flex;
   align-items: center;
   gap: var(--space-12);
-  margin: var(--space-8) 0;
-  color: var(--label-tertiary);
-  font-size: var(--text-micro);
-  font-weight: var(--weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  margin: var(--space-10) 0;
+  color: var(--label-secondary);
+  font-size: var(--type-label-small-size);
+  font-weight: var(--weight-medium);
+  line-height: var(--type-label-small-leading);
+  letter-spacing: -0.01em;
 }
 .round-divider::before,
 .round-divider::after {
@@ -213,6 +213,33 @@
   height: 1px;
   background: var(--border-hair);
 }
+.round-divider__content,
+.round-divider__label {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: var(--space-6);
+  max-width: min(520px, 90%);
+  text-align: center;
+}
+.round-divider__label {
+  color: var(--progress);
+  white-space: nowrap;
+}
+.round-divider__command {
+  font-family: var(--font-mono);
+  font-size: var(--type-code-small-size);
+  font-weight: var(--weight-regular);
+  line-height: var(--type-code-small-leading);
+  color: var(--ok);
+  white-space: nowrap;
+}
+.round-divider__detail {
+  color: var(--label-primary);
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-snug);
+}
 .transcript-system {
   align-self: center;
   font-size: var(--text-caption);
@@ -220,6 +247,49 @@
   background: var(--surface-sunken);
   padding: var(--space-4) var(--space-12);
   border-radius: var(--radius-pill);
+}
+.composer-slash-divider {
+  margin: var(--space-4) 0 var(--space-8);
+}
+
+/* Reconnect status card — inline transcript card for SSE drop / reconnect / manual retry */
+.reconnect-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-10);
+  align-self: stretch;
+  margin: var(--space-8) 0;
+  padding: var(--space-10) var(--space-12);
+  border: 1px solid var(--border-hair);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+}
+.reconnect-card__body {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.reconnect-card__title {
+  color: var(--label-primary);
+  font-size: var(--text-footnote);
+  font-weight: var(--weight-semibold);
+}
+.reconnect-card--reconnecting .reconnect-card__title,
+.reconnect-card--failed .reconnect-card__title {
+  color: var(--danger);
+}
+.reconnect-card__desc {
+  margin: 0;
+  color: var(--label-secondary);
+  font-size: var(--text-caption);
+  line-height: var(--leading-snug);
+}
+.reconnect-card__actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
 }
 
 /* S1 advisor hint — compact turn-setup rationale shown after user message */

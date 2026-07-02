@@ -191,7 +191,7 @@ function agentLooksAuthExpired(row: AgentHealthRow): boolean {
 
 function authAction(row: AgentHealthRow): RecoveryAction {
   if (row.id === "claude") {
-    return { id: "reconnect_claude", label: "Claude 재확인" };
+    return { id: "reconnect_claude", label: "Claude 재로그인" };
   }
   return { id: "open_settings", label: "Settings 열기" };
 }

@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from agent_lab.agents.registry import AGENT_IDS
 from agent_lab.context.limits import all_limits_for_api
 from agent_lab.invoke import ensure_ready
-from agent_lab.model_policy import loop_readiness_failure
+from agent_lab.model_policy import loop_readiness_failure, partition_loop_capable_agents
 from agent_lab.room import (
     DEFAULT_AGENT_PARALLEL_ROUNDS,
     MAX_AGENT_PARALLEL_ROUNDS,
@@ -127,15 +127,13 @@ def _session_hard_cap_exhausted(folder: Path) -> bool:
 
 
 def _loop_readiness_detail(agent_list: list[str] | None) -> dict[str, Any] | None:
+    from agent_lab.model_policy import loop_readiness_failure_detail
+
     effective_agents = agent_list or list(AGENT_IDS)
-    failure = loop_readiness_failure(effective_agents)
-    if failure is None:
+    detail = loop_readiness_failure_detail(effective_agents)
+    if detail is None:
         return None
-    return {
-        "message": "loop model readiness failed",
-        "agents": list(failure.agents),
-        "reason": failure.reason,
-    }
+    return dict(detail)
 
 
 @router.get("/room/modes")
@@ -291,6 +289,7 @@ async def create_room_run(
     except json.JSONDecodeError:
         agent_ids = []
     agent_list = [a.strip().lower() for a in agent_ids if str(a).strip()] or None
+    requested_roster = list(agent_list) if agent_list else None
     # Resolve Room Preset → turn_profile + agent cap.
     preset_norm = (preset or "").strip().lower() or default_room_preset()
     is_default_profile = (turn_profile or "discuss").strip().lower() in ("discuss", "")
@@ -316,6 +315,19 @@ async def create_room_run(
         raise HTTPException(status_code=422, detail=str(e)) from e
     agent_list = mode_contract.agents
 
+    topic_text = (topic or "").strip()
+    if not synthesize_only and agent_list and topic_text:
+        from agent_lab.room.agent_mentions import apply_agent_mention_filter
+
+        mention_roster = requested_roster or agent_list or []
+        narrowed, _, mention_targets = apply_agent_mention_filter(
+            topic_text,
+            agent_list,
+            roster_pool=mention_roster,
+        )
+        if mention_targets:
+            agent_list = narrowed
+
     if not synthesize_only and agent_list:
         bad = _agents_not_ready(agent_list)
         if bad:
@@ -327,10 +339,18 @@ async def create_room_run(
                 },
             )
     if not synthesize_only and mode_contract.plan_intent == "loop":
-        loop_readiness_detail = _loop_readiness_detail(agent_list)
-        if loop_readiness_detail is not None:
-            loop_readiness_detail["topology"] = mode_contract.topology
-            raise HTTPException(status_code=422, detail=loop_readiness_detail)
+        effective_loop_agents = agent_list or list(AGENT_IDS)
+        loop_capable, loop_skipped = partition_loop_capable_agents(effective_loop_agents)
+        if not loop_capable:
+            loop_readiness_detail = _loop_readiness_detail(list(loop_skipped))
+            if loop_readiness_detail is not None:
+                loop_readiness_detail["topology"] = mode_contract.topology
+                loop_readiness_detail["requested_agents"] = list(effective_loop_agents)
+                raise HTTPException(status_code=422, detail=loop_readiness_detail)
+        elif loop_skipped:
+            agent_list = list(loop_capable)
+        elif agent_list is None:
+            agent_list = list(loop_capable)
 
     try:
         perm_obj = json.loads(permissions) if permissions else {}

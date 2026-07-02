@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from agent_lab.room._typing import agent_label
 import json
+import os
 from pathlib import Path
 from typing import Any, Sequence, cast
 
@@ -41,8 +42,19 @@ def load_session_messages(folder: Path) -> list[ChatMessage]:
     chat_path = folder / "chat.jsonl"
     if not chat_path.is_file():
         return []
+    raw = os.getenv("AGENT_LAB_CHAT_JSONL_TAIL_LINES")
+    tail_lines: int | None = None
+    if raw is not None and str(raw).strip():
+        try:
+            tail_lines = max(0, int(str(raw).strip()))
+        except ValueError:
+            tail_lines = None
+    text = chat_path.read_text(encoding="utf-8")
+    lines = text.splitlines()
+    if tail_lines is not None and tail_lines > 0 and len(lines) > tail_lines:
+        lines = lines[-tail_lines:]
     messages: list[ChatMessage] = []
-    for line in chat_path.read_text(encoding="utf-8").splitlines():
+    for line in lines:
         line = line.strip()
         if not line:
             continue

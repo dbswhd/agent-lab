@@ -87,6 +87,53 @@ def test_room_run_rejects_loop_when_selected_model_is_not_loop_ready(
     assert res.status_code == 422
     detail = res.json()["detail"]
     assert detail["message"] == "loop model readiness failed"
+    assert detail["code"] == "loop_readiness_failed"
     assert detail["agents"] == ["cursor"]
     assert "question/tool capability" in detail["reason"]
+    assert detail["agent_details"][0]["id"] == "cursor"
+    assert detail["agent_details"][0]["loop_blockers"]
     assert not list(tmp_path.iterdir())
+
+
+def test_room_run_loop_allows_ready_primary_when_substitute_not_loop_ready(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pytest.importorskip("fastapi")
+    from fastapi.testclient import TestClient
+
+    import agent_lab.session as session_mod
+    import app.server.deps as deps_mod
+    import app.server.routers.room as room_router
+
+    monkeypatch.setattr(session_mod, "SESSIONS_DIR", tmp_path)
+    monkeypatch.setattr(deps_mod, "SESSIONS_DIR", tmp_path)
+    monkeypatch.setenv("AGENT_LAB_LOOP_PROBE", "0")
+    monkeypatch.setattr(room_router, "_agents_not_ready", lambda _agents: [])
+
+    captured: dict[str, object] = {}
+
+    def _fake_run_room(topic: str, **kwargs: object) -> tuple[Path, list[object], str]:
+        captured["agents"] = kwargs.get("agents")
+        folder = tmp_path / "loop-mixed"
+        folder.mkdir()
+        return folder, [], "# plan"
+
+    monkeypatch.setattr(room_router, "run_room", _fake_run_room)
+
+    from app.server.main import app
+
+    client = TestClient(app)
+    res = client.post(
+        "/api/room/runs",
+        data={
+            "topic": "loop mixed roster",
+            "agents": '["claude", "kimi_work"]',
+            "mode": "plan",
+            "synthesize": "true",
+            "turn_profile": "loop",
+        },
+    )
+
+    assert res.status_code == 200
+    assert captured["agents"] == ["claude"]

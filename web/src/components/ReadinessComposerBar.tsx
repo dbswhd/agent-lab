@@ -29,7 +29,7 @@ export function ReadinessComposerBar({ readiness }: Props) {
         </ul>
       ) : (
         <p className="preflight-bar__hint">
-          Settings에서 에이전트 연결 상태를 확인하세요.
+          왼쪽 rail 「연결」 또는 설정 → 연결을 확인하세요.
         </p>
       )}
     </div>

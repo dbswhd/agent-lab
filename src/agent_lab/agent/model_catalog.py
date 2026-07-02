@@ -1,4 +1,4 @@
-"""Dynamic model catalog — SSOT is ``model_catalog.json`` (version-sorted picker logic)."""
+"""Model catalog — bundled JSON + picker logic; refresh via ``make generate-model-catalog``."""
 
 from __future__ import annotations
 
@@ -32,13 +32,29 @@ def _version_key(entry: dict[str, Any]) -> tuple[int, ...]:
     return tuple(out)
 
 
-@lru_cache(maxsize=1)
-def load_catalog() -> dict[str, Any]:
+def _read_bundled_catalog() -> dict[str, Any]:
     try:
         payload = json.loads(_CATALOG_PATH.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return {"providers": {}}
     return payload if isinstance(payload, dict) else {"providers": {}}
+
+
+def bundled_catalog() -> dict[str, Any]:
+    """Committed ``model_catalog.json`` without runtime cache overlay."""
+    return _read_bundled_catalog()
+
+
+@lru_cache(maxsize=1)
+def load_catalog() -> dict[str, Any]:
+    from agent_lab.agent import catalog_runtime
+
+    bundled = _read_bundled_catalog()
+    cache = catalog_runtime.read_cache()
+    effective = catalog_runtime.merge_effective_catalog(bundled, cache)
+    if catalog_runtime.catalog_refresh_enabled() and catalog_runtime.cache_is_stale(cache):
+        catalog_runtime.refresh_catalog_if_stale(background=True)
+    return effective
 
 
 def reload_catalog() -> None:

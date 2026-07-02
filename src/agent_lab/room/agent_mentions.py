@@ -58,17 +58,35 @@ def strip_agent_mentions(text: str) -> str:
 def apply_agent_mention_filter(
     body: str,
     active_agents: list[str],
+    *,
+    roster_pool: list[str] | None = None,
 ) -> tuple[list[str], str, list[str]]:
-    """Filter *active_agents* when the Human message @-targets specific peers.
+    """Filter roster when the Human message @-targets specific peers.
 
     Returns ``(agents, stripped_body, mention_targets)``. When no valid mention
     is found, returns the original roster and body unchanged.
+
+    *roster_pool* is the Human-selected composition (before availability shrink).
+    Explicit @-mentions resolve against it so ``@claude`` still routes to Claude
+    when a transient health/usage filter dropped it from *active_agents*.
     """
-    pool = [str(a).strip().lower() for a in active_agents if str(a).strip()]
+    active = [str(a).strip().lower() for a in active_agents if str(a).strip()]
+    pool_source = roster_pool if roster_pool is not None else active_agents
+    pool = [str(a).strip().lower() for a in pool_source if str(a).strip()]
+    if not pool:
+        pool = active
     mentions = parse_agent_mentions(body, pool)
     if not mentions:
         return list(active_agents), body, []
-    filtered = [a for a in active_agents if str(a).strip().lower() in mentions]
+    mention_set = set(mentions)
+    filtered: list[str] = []
+    seen: set[str] = set()
+    for raw in pool_source:
+        aid = str(raw).strip().lower()
+        if not aid or aid not in mention_set or aid in seen:
+            continue
+        seen.add(aid)
+        filtered.append(aid)
     if not filtered:
         return list(active_agents), body, []
     return filtered, strip_agent_mentions(body), mentions

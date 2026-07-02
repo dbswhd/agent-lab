@@ -35,6 +35,30 @@ def enrich_bundle_meta(
     meta.numbered_context = limits.numbered_context
 
 
+def apply_invoke_follow_to_context_meta(
+    context_meta: dict[str, Any],
+    combined_follow: str,
+) -> None:
+    """Add post-render follow blocks (lead/hook/plan clarify) into budget accounting."""
+    follow_len = len(combined_follow.strip()) if combined_follow.strip() else 0
+    if follow_len <= 0:
+        return
+    layer = dict(context_meta.get("layer_chars") or {})
+    layer["combined_follow"] = follow_len
+    layer["total"] = int(layer.get("total", 0)) + follow_len
+    context_meta["layer_chars"] = layer
+    limits = agent_context_limits()
+    total = int(layer["total"])
+    budget_pct = round(100.0 * total / limits.max_thread_chars, 1) if limits.max_thread_chars > 0 else 0.0
+    context_meta["budget_pct"] = budget_pct
+    context_meta["trim_level"] = trim_level(
+        budget_pct=budget_pct,
+        turns_omitted=int(context_meta.get("turns_omitted") or 0),
+        chars_omitted=int(context_meta.get("chars_omitted") or 0),
+        limits=limits,
+    )
+
+
 def summarize_turn_context(agents_log: list[dict[str, Any]]) -> dict[str, Any]:
     """Aggregate per-agent context meta for run.json last_turn.context."""
     if not agents_log:

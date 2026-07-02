@@ -32,6 +32,27 @@ function input(overrides: Partial<RecoveryItemsInput>): RecoveryItemsInput {
 }
 
 describe("buildRecoveryItems", () => {
+  it("classifies loop readiness errors with dedicated kind", () => {
+    const message =
+      "Loop 모드 전송 차단 — 선택 agent가 Loop capability probe를 통과하지 못했습니다.\n• kimi_work";
+    const classified = classifySendFailure(message);
+    expect(classified.kind).toBe("loop_readiness");
+
+    const items = buildRecoveryItems(
+      input({
+        failure: {
+          source: "run",
+          kind: "loop_readiness",
+          message,
+          affectedAgentIds: ["kimi_work"],
+        },
+      }),
+    );
+    expect(items[0]?.title).toBe("Loop 모드 전송이 차단되었습니다.");
+    expect(items[0]?.details).toContain("kimi_work");
+    expect(items[0]?.primaryAction.id).toBe("refresh_health");
+  });
+
   it("classifies API validation errors separately from transport", () => {
     const classified = classifySendFailure("loop requires plan");
     expect(classified.kind).toBe("api_validation");

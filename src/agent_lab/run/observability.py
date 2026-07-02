@@ -78,4 +78,10 @@ def observability_snapshot(
         ),
         "trace_tail": spans,
         "trace_span_count": len(spans),
+        "token_budget": meta.get("token_budget") if isinstance(meta.get("token_budget"), dict) else None,
+        "cost_ledger_cache_hit_rate": (
+            float(meta.get("cost_ledger", {}).get("cache_hit_rate") or 0.0)
+            if isinstance(meta.get("cost_ledger"), dict)
+            else 0.0
+        ),
     }

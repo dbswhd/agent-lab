@@ -1,9 +1,8 @@
 """SWE-bench-style eval harness scorer + model-vs-harness attribution (G5).
 
-Pure stdlib, deterministic: no IO, no subprocess, no network. Default OFF via
-AGENT_LAB_EVAL_HARNESS, and intentionally NOT wired into any existing module this
-increment (zero call sites => OFF-parity is structurally guaranteed; existing
-scoring/verification are byte-identical regardless of the flag).
+Pure stdlib, deterministic: no IO, no subprocess, no network. Default ON via
+AGENT_LAB_EVAL_HARNESS. Scoring is wired through ``eval_harness_ingest`` for
+pytest JUnit → result_map ingestion; other verification paths remain unchanged.
 
 ``score_instance`` scores ONE benchmark instance from an already-parsed per-test
 result map plus the instance's declared FAIL_TO_PASS / PASS_TO_PASS test ids and an

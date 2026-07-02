@@ -23,7 +23,7 @@ export function ComposerPreflightBar({ agents, selected }: Props) {
   return (
     <div className="preflight-bar" role="alert">
       <span className="preflight-bar__title">
-        전송 불가 — 에이전트 준비 안 됨
+        에이전트 준비 안 됨 — 선택은 유지됩니다. 재연결 후 전송하세요
       </span>
       <ul className="preflight-bar__list">
         {blocked.map((row) => (

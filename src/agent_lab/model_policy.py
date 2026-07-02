@@ -66,6 +66,73 @@ def loop_ready(profile: ModelProfile) -> bool:
     return not loop_blockers(profile)
 
 
+LOOP_BLOCKER_LABELS: dict[str, str] = {
+    "supports_tools": "tools/MCP (daimon·CLI capability probe)",
+    "supports_inbox_mcp": "Human Inbox MCP (inbox bridge)",
+    "supports_json_envelope": "structured JSON envelope (Loop consensus act)",
+}
+
+
+def loop_blocker_label(code: str) -> str:
+    return LOOP_BLOCKER_LABELS.get(code.strip(), code.strip())
+
+
+def loop_readiness_agent_detail(agent_id: str) -> dict[str, object]:
+    """Per-agent Loop gate diagnostics for API 422 detail payloads."""
+    aid = agent_id.strip().lower()
+    readiness = model_readiness(aid)
+    blockers = list(readiness.loop_blockers) if readiness is not None else []
+    labels = [loop_blocker_label(code) for code in blockers]
+    if readiness is None:
+        summary = "agent profile not recognised — live loop probe did not run"
+    elif not blockers:
+        summary = "loop-ready"
+    else:
+        summary = "missing: " + ", ".join(labels)
+    return {
+        "id": aid,
+        "loop_ready": bool(readiness.loop_ready) if readiness is not None else False,
+        "loop_blockers": blockers,
+        "blocker_labels": labels,
+        "model_id": readiness.model_id if readiness is not None else None,
+        "summary": summary,
+    }
+
+
+def loop_readiness_failure_detail(agent_ids: Sequence[str]) -> dict[str, object] | None:
+    """Structured Loop readiness failure for HTTP 422 (None when all ready)."""
+    failure = loop_readiness_failure(agent_ids)
+    if failure is None:
+        return None
+    agents = list(failure.agents)
+    details = [loop_readiness_agent_detail(aid) for aid in agents]
+    hint_parts: list[str] = []
+    blocked_ids = {str(d.get("id") or "") for d in details}
+    if "kimi_work" in blocked_ids:
+        hint_parts.append(
+            "Kimi Work: rail 「연결」에서 재연결"
+        )
+        hint_parts.append(
+            "daimon inbox feature 미 advertise 시 AGENT_LAB_KIMI_WORK_LOOP_PHASE=1 로 inbox gate 완화 가능"
+        )
+    if len(agent_ids) > len(agents):
+        capable = [a for a in agent_ids if str(a).strip().lower() not in blocked_ids]
+        if capable:
+            hint_parts.append(
+                f"Loop-ready agent만 보내려면 @{' @'.join(capable)} 멘션 또는 roster에서 미준비 agent 제외"
+            )
+    elif len(agent_ids) > 1 and blocked_ids:
+        hint_parts.append("roster에서 loop_ready=false agent를 빼거나 capable agent만 @-mention 하세요")
+    return {
+        "code": "loop_readiness_failed",
+        "message": "loop model readiness failed",
+        "agents": agents,
+        "reason": failure.reason,
+        "agent_details": details,
+        "hint": " · ".join(hint_parts) if hint_parts else None,
+    }
+
+
 def _tier(raw: object, default: Tier) -> Tier:
     value = str(raw or default).strip().lower()
     if value in ("low", "medium", "high"):
@@ -127,7 +194,9 @@ def resolve_runtime_model_id(agent_id: str) -> str:
         case "kimi":
             return (os.getenv("KIMI_MODEL") or "kimi-default").strip()
         case "kimi_work":
-            return (os.getenv("KIMI_WORK_MODEL") or "kimi-work-default").strip()
+            from agent_lab.kimi.work_provider import kimi_work_model
+
+            return kimi_work_model()
         case "local":
             return (os.getenv("LOCAL_MODEL") or "local-default").strip()
         case _:
@@ -254,6 +323,15 @@ def register_model_profile(profile: ModelProfile) -> None:
     _MODEL_PROFILE_REGISTRY[_profile_registry_key(profile.agent, profile.model_id)] = profile
 
 
+def invalidate_model_profile(agent_id: str, *, model_id: str | None = None) -> None:
+    """Drop a cached in-process profile so the next readiness check re-probes."""
+    aid = agent_id.strip().lower()
+    mid = (model_id or resolve_runtime_model_id(aid)).strip()
+    if not aid or not mid:
+        return
+    _MODEL_PROFILE_REGISTRY.pop(_profile_registry_key(aid, mid), None)
+
+
 def _unknown_model_profile(agent: AgentId, model_id: str) -> ModelProfile:
     """Conservative profile for unregistered models: Team-ready, not Loop-ready."""
     provider: ProviderId = "local" if agent == "cursor" else ("openai" if agent == "codex" else "anthropic")
@@ -364,6 +442,31 @@ def agents_within_cost_tier(
         if rank.get(profile.cost_tier, 2) <= cap:
             filtered.append(aid)
     return filtered if filtered else list(agent_ids)
+
+
+def partition_loop_capable_agents(
+    agent_ids: Sequence[str],
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Split *agent_ids* into Loop-capable vs blocked agents (order preserved)."""
+    capable: list[str] = []
+    incapable: list[str] = []
+    for agent_id in agent_ids:
+        aid = str(agent_id).strip().lower()
+        if not aid:
+            continue
+        readiness = model_readiness(aid)
+        if readiness is None:
+            incapable.append(aid)
+            continue
+        profile = model_profile_for(aid)
+        if profile is not None and loop_cost_tier_blocks(profile):
+            incapable.append(aid)
+            continue
+        if not readiness.loop_ready:
+            incapable.append(aid)
+            continue
+        capable.append(aid)
+    return tuple(capable), tuple(incapable)
 
 
 def loop_readiness_failure(agent_ids: Sequence[str]) -> LoopReadinessFailure | None:

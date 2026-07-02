@@ -110,12 +110,28 @@ def reconnect_cursor_bridge(*, workspace: str | None = None) -> dict[str, Any]:
 
 
 def reconnect_kimi_work_bridge() -> dict[str, Any]:
-    """Invalidate cached Kimi Work control endpoint and force headless respawn."""
+    """Invalidate bridge + loop probe caches, respawn daimon, re-run Loop probe."""
+    from agent_lab.model_policy import invalidate_model_profile, model_readiness, resolve_runtime_model_id
+    from agent_lab.model_policy_probe import (
+        clear_kimi_work_loop_probe_session,
+        invalidate_loop_probe_cache,
+        probe_loop_capabilities_cached,
+    )
     from agent_lab.kimi.control_client import (
         invalidate_endpoint_cache,
         kimi_work_bridge_failure_payload,
         probe_endpoint_ws,
     )
+
+    mid = resolve_runtime_model_id("kimi_work")
+    from agent_lab.model_policy import _MODEL_PROFILE_REGISTRY
+
+    stale = [k for k in list(_MODEL_PROFILE_REGISTRY) if k.startswith("kimi_work:")]
+    for key in stale:
+        _MODEL_PROFILE_REGISTRY.pop(key, None)
+    invalidate_model_profile("kimi_work", model_id=mid)
+    invalidate_loop_probe_cache("kimi_work", model_id=mid)
+    clear_kimi_work_loop_probe_session()
     from agent_lab.kimi.daimon_supervisor import ensure_daimon, shutdown_owned_daimon
 
     invalidate_endpoint_cache()
@@ -129,7 +145,7 @@ def reconnect_kimi_work_bridge() -> dict[str, Any]:
             bridge, err = (
                 ("ok", None)
                 if probe_endpoint_ws(endpoint)
-                else ("error", "daimon Control WS probe 실패 — make dev 재시작 후 bridge 재연결")
+                else ("error", "daimon Control WS probe 실패 — make dev 재시작 후 다시 시도")
             )
     except Exception as exc:
         shutdown_owned_daimon()
@@ -138,20 +154,28 @@ def reconnect_kimi_work_bridge() -> dict[str, Any]:
             bridge, err = (
                 ("ok", None)
                 if probe_endpoint_ws(endpoint)
-                else ("error", "daimon Control WS probe 실패 — make dev 재시작 후 bridge 재연결")
+                else ("error", "daimon Control WS probe 실패 — make dev 재시작 후 다시 시도")
             )
         except Exception as retry_exc:
             bridge, err = "error", str(retry_exc).strip() or str(exc).strip() or "Kimi Work bridge 재연결 실패"
-    row = agent_health_row("kimi_work", probe_bridge=False)
-    row["bridge"] = bridge
-    if err:
-        row["hint"] = err
-        row.update(kimi_work_bridge_failure_payload(reason=err))
-    row["ready"] = bool(row.get("configured") and bridge == "ok")
+
+    if bridge == "ok":
+        clear_kimi_work_loop_probe_session()
+        probe_loop_capabilities_cached("kimi_work", mid)
+
+    row = agent_health_row("kimi_work", probe_bridge=True)
+    readiness = model_readiness("kimi_work", model_id=mid)
+    loop_ready = readiness.loop_ready if readiness else None
+    loop_blockers = list(readiness.loop_blockers) if readiness else []
+    hint = err
+    if bridge == "ok" and loop_ready is False and loop_blockers:
+        hint = f"Loop 미충족: {', '.join(loop_blockers)}"
     return {
-        "ok": bridge == "ok",
+        "ok": bridge == "ok" and loop_ready is not False,
         "bridge": bridge,
-        "hint": err,
+        "loop_ready": loop_ready,
+        "loop_blockers": loop_blockers,
+        "hint": hint,
         "agent": row,
     }
 

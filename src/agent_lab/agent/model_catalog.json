@@ -7,35 +7,65 @@
         {
           "id": "gpt-5.5",
           "label": "GPT-5.5",
-          "version": [5, 5, 0]
+          "version": [
+            5,
+            5,
+            0
+          ]
         },
         {
           "id": "gpt-5.4",
           "label": "GPT-5.4",
-          "version": [5, 4, 0]
+          "version": [
+            5,
+            4,
+            0
+          ]
         },
         {
           "id": "gpt-5",
           "label": "GPT-5",
-          "version": [5, 0, 0]
+          "version": [
+            5,
+            0,
+            0
+          ]
         },
         {
           "id": "gpt-4.1",
           "label": "GPT-4.1",
-          "version": [4, 1, 0]
+          "version": [
+            4,
+            1,
+            0
+          ]
         }
       ],
-      "efforts": ["minimal", "low", "medium", "high"]
+      "efforts": [
+        "minimal",
+        "low",
+        "medium",
+        "high"
+      ]
     },
     "claude": {
       "picker": "latest_per_family",
-      "family_order": ["fable", "opus", "sonnet", "haiku"],
+      "family_order": [
+        "fable",
+        "opus",
+        "sonnet",
+        "haiku"
+      ],
       "models": [
         {
           "id": "fable",
           "label": "Fable 5",
           "family": "fable",
-          "version": [5, 0, 0],
+          "version": [
+            5,
+            0,
+            0
+          ],
           "available": false,
           "coming_soon_note": "곧 사용 가능 예정"
         },
@@ -43,42 +73,80 @@
           "id": "opus",
           "label": "Opus 4.8",
           "family": "opus",
-          "version": [4, 8, 0]
+          "version": [
+            4,
+            8,
+            0
+          ]
         },
         {
           "id": "opus",
           "label": "Opus 4.6",
           "family": "opus",
-          "version": [4, 6, 0]
+          "version": [
+            4,
+            6,
+            0
+          ]
         },
         {
           "id": "sonnet",
           "label": "Sonnet 5.0",
           "family": "sonnet",
-          "version": [5, 0, 0]
+          "version": [
+            5,
+            0,
+            0
+          ]
         },
         {
           "id": "sonnet",
           "label": "Sonnet 4.6",
           "family": "sonnet",
-          "version": [4, 6, 0]
+          "version": [
+            4,
+            6,
+            0
+          ]
         },
         {
           "id": "haiku",
           "label": "Haiku 4.5",
           "family": "haiku",
-          "version": [4, 5, 0],
-          "efforts": ["low", "medium", "high"]
+          "version": [
+            4,
+            5,
+            0
+          ],
+          "efforts": [
+            "low",
+            "medium",
+            "high"
+          ]
         },
         {
           "id": "haiku",
           "label": "Haiku 4.0",
           "family": "haiku",
-          "version": [4, 0, 0],
-          "efforts": ["low", "medium", "high"]
+          "version": [
+            4,
+            0,
+            0
+          ],
+          "efforts": [
+            "low",
+            "medium",
+            "high"
+          ]
         }
       ],
-      "efforts": ["low", "medium", "high", "xhigh", "max"]
+      "efforts": [
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max"
+      ]
     },
     "cursor": {
       "picker": "all",
@@ -86,7 +154,9 @@
         {
           "id": "default",
           "label": "기본 (default)",
-          "version": [0]
+          "version": [
+            0
+          ]
         }
       ],
       "efforts": []
@@ -97,10 +167,21 @@
         {
           "id": "kimi-k2",
           "label": "Kimi K2",
-          "version": [2, 0, 0]
+          "version": [
+            2,
+            0,
+            0
+          ]
         }
       ],
       "efforts": []
     }
+  },
+  "meta": {
+    "generated_at": "2026-07-01T12:05:59+00:00",
+    "generator": "generate_model_catalog.py",
+    "sources": [
+      "bundled"
+    ]
   }
 }

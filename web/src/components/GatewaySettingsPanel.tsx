@@ -6,9 +6,12 @@ import {
   type GatewaySettingsPayload,
 } from "../api/client";
 import { useLocale } from "../i18n/useLocale";
-import { SettingsSectionIcon } from "./SettingsSectionIcon";
 
-export function GatewaySettingsPanel() {
+type Props = {
+  embedded?: boolean;
+};
+
+export function GatewaySettingsPanel({ embedded = false }: Props) {
   const { t } = useLocale();
   const [settings, setSettings] = useState<GatewaySettingsPayload | null>(null);
   const [outboundUrls, setOutboundUrls] = useState("");
@@ -93,16 +96,20 @@ export function GatewaySettingsPanel() {
   const slack = settings?.slack;
 
   return (
-    <div className="mission-os-gateway">
-      <div className="settings-section__sub-head">
-        <SettingsSectionIcon name="activity" />
-        {t("missionOsGateway")}
-      </div>
+    <div
+      className={`mission-os-gateway${embedded ? " mission-os-gateway--embedded" : ""}`}
+      data-settings-embedded={embedded || undefined}
+    >
+      {!embedded ? (
+        <div className="settings-section__sub-head">
+          {t("missionOsGateway")}
+        </div>
+      ) : null}
       <label className="settings-field">
         <span>{t("missionOsOutboundUrls")}</span>
         <textarea
           className="settings-textarea"
-          rows={3}
+          rows={embedded ? 2 : 3}
           value={outboundUrls}
           onChange={(e) => setOutboundUrls(e.target.value)}
           placeholder="https://example.com/hook"
@@ -118,63 +125,67 @@ export function GatewaySettingsPanel() {
         />
       </label>
 
-      <div className="settings-section__sub-head">{t("missionOsSlack")}</div>
-      <label className="settings-field settings-field--row">
-        <span>{t("missionOsSlackEnabled")}</span>
-        <input
-          type="checkbox"
-          checked={slackEnabled}
-          onChange={(e) => setSlackEnabled(e.target.checked)}
-        />
-      </label>
-      <label className="settings-field">
-        <span>{t("missionOsSlackWebhook")}</span>
-        <input
-          className="settings-input"
-          value={slackWebhook}
-          onChange={(e) => setSlackWebhook(e.target.value)}
-          placeholder={
-            slack?.webhook_url_set
-              ? t("missionOsSecretPlaceholder")
-              : "https://hooks.slack.com/..."
-          }
-        />
-      </label>
-      <label className="settings-field">
-        <span>{t("missionOsSlackBotToken")}</span>
-        <input
-          className="settings-input"
-          type="password"
-          autoComplete="off"
-          value={slackBotToken}
-          onChange={(e) => setSlackBotToken(e.target.value)}
-          placeholder={
-            slack?.bot_token_set ? t("missionOsSecretPlaceholder") : "xoxb-..."
-          }
-        />
-      </label>
-      <label className="settings-field">
-        <span>{t("missionOsSlackSigningSecret")}</span>
-        <input
-          className="settings-input"
-          type="password"
-          autoComplete="off"
-          value={slackSigningSecret}
-          onChange={(e) => setSlackSigningSecret(e.target.value)}
-          placeholder={
-            slack?.signing_secret_set ? t("missionOsSecretPlaceholder") : ""
-          }
-        />
-      </label>
-      <label className="settings-field">
-        <span>{t("missionOsSlackChannels")}</span>
-        <input
-          className="settings-input"
-          value={slackChannels}
-          onChange={(e) => setSlackChannels(e.target.value)}
-          placeholder="C01234567, C89ABCDEF"
-        />
-      </label>
+      <details className="settings-details">
+        <summary>{t("missionOsSlack")}</summary>
+        <label className="settings-field settings-field--row">
+          <span>{t("missionOsSlackEnabled")}</span>
+          <input
+            type="checkbox"
+            checked={slackEnabled}
+            onChange={(e) => setSlackEnabled(e.target.checked)}
+          />
+        </label>
+        <label className="settings-field">
+          <span>{t("missionOsSlackWebhook")}</span>
+          <input
+            className="settings-input"
+            value={slackWebhook}
+            onChange={(e) => setSlackWebhook(e.target.value)}
+            placeholder={
+              slack?.webhook_url_set
+                ? t("missionOsSecretPlaceholder")
+                : "https://hooks.slack.com/..."
+            }
+          />
+        </label>
+        <label className="settings-field">
+          <span>{t("missionOsSlackBotToken")}</span>
+          <input
+            className="settings-input"
+            type="password"
+            autoComplete="off"
+            value={slackBotToken}
+            onChange={(e) => setSlackBotToken(e.target.value)}
+            placeholder={
+              slack?.bot_token_set
+                ? t("missionOsSecretPlaceholder")
+                : "xoxb-..."
+            }
+          />
+        </label>
+        <label className="settings-field">
+          <span>{t("missionOsSlackSigningSecret")}</span>
+          <input
+            className="settings-input"
+            type="password"
+            autoComplete="off"
+            value={slackSigningSecret}
+            onChange={(e) => setSlackSigningSecret(e.target.value)}
+            placeholder={
+              slack?.signing_secret_set ? t("missionOsSecretPlaceholder") : ""
+            }
+          />
+        </label>
+        <label className="settings-field">
+          <span>{t("missionOsSlackChannels")}</span>
+          <input
+            className="settings-input"
+            value={slackChannels}
+            onChange={(e) => setSlackChannels(e.target.value)}
+            placeholder="C01234567, C89ABCDEF"
+          />
+        </label>
+      </details>
 
       <div className="settings-actions">
         <button
@@ -195,7 +206,7 @@ export function GatewaySettingsPanel() {
         </button>
       </div>
       {hint ? <p className="settings-hint">{hint}</p> : null}
-      {adapters.length > 0 ? (
+      {!embedded && adapters.length > 0 ? (
         <>
           <div className="settings-section__sub-head">
             {t("missionOsAdapters")}

@@ -303,10 +303,11 @@ def loop_token_budget_exceeded(
     if not max_est:
         return False
     from agent_lab.context.meta import summarize_turn_context
+    from agent_lab.cost_ledger import chars_to_tokens
 
     summary = summarize_turn_context(context_log)
     chars = int(summary.get("payload_chars_total") or 0)
-    token_est = chars // 4
+    token_est = chars_to_tokens(chars)
     return token_est >= int(max_est)
 
 

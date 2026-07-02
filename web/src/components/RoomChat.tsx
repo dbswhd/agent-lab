@@ -143,7 +143,9 @@ import {
 import { WorkspaceFilesPanel } from "./WorkspaceFilesPanel";
 import { PreviewPanel } from "./PreviewPanel";
 import { TerminalPanel } from "./TerminalPanel";
-import { AuthFlowPanel } from "./AuthFlowPanel";
+import { ComposerAuthFlowPopover } from "./ComposerAuthFlowPopover";
+import { ComposerAuthPickerPopover } from "./ComposerAuthPickerPopover";
+import { ComposerAuthSecretPopover } from "./ComposerAuthSecretPopover";
 import { BackgroundTasksPanel } from "./BackgroundTasksPanel";
 import type { ConsensusDryRunProposal } from "./ConsensusDryRunGateBar";
 import {
@@ -574,7 +576,8 @@ export function RoomChat({
     command: SlashCommandRecord;
     argsPrefix: string;
     prompt: string;
-    options: { value: string; label: string }[];
+    kind?: string;
+    options: { value: string; label: string; ready?: boolean }[];
   } | null>(null);
   const [commandChoiceIndex, setCommandChoiceIndex] = useState(0);
   const [commandMultiChoices, setCommandMultiChoices] = useState<{
@@ -602,7 +605,9 @@ export function RoomChat({
       !commandChoices &&
       !commandMultiChoices &&
       !commandScopeChoices &&
-      !modelPopover
+      !modelPopover &&
+      !authRun &&
+      !secretCommand
     )
       return;
     const onKey = (e: KeyboardEvent) => {
@@ -611,11 +616,21 @@ export function RoomChat({
         setCommandMultiChoices(null);
         setCommandScopeChoices(null);
         setModelPopover(null);
+        setSecretCommand(null);
+        setSecretValue("");
+        setAuthRun(null);
       }
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [commandChoices, commandMultiChoices, commandScopeChoices, modelPopover]);
+  }, [
+    commandChoices,
+    commandMultiChoices,
+    commandScopeChoices,
+    modelPopover,
+    authRun,
+    secretCommand,
+  ]);
   const [externalCommandConfirm, setExternalCommandConfirm] = useState<{
     command: SlashCommandRecord;
     args: string;
@@ -1383,20 +1398,26 @@ export function RoomChat({
           ? healthAgents
           : agents;
     const ready = rosterPool.filter((a) => a.ready).map((a) => a.id);
-    if (ready.length === 0) return;
+    const known = new Set([
+      ...rosterPool.map((a) => a.id),
+      ...agents.map((a) => a.id),
+    ]);
+    if (ready.length === 0 && known.size === 0) return;
     setSelected((prev) => {
       if (bootstrapAgentIds?.length) {
-        const picked = sortAgentIds(
-          bootstrapAgentIds.filter((id) => ready.includes(id)),
-        );
+        const picked = sortAgentIds(bootstrapAgentIds);
         if (picked.length > 0) return picked;
       }
       if (!agentsPickerInitRef.current || prev.length === 0) {
         agentsPickerInitRef.current = true;
-        return sortAgentIds(ready);
+        if (ready.length > 0) return sortAgentIds(ready);
+        return prev;
       }
-      const kept = sortAgentIds(prev.filter((id) => ready.includes(id)));
-      return kept.length > 0 ? kept : sortAgentIds(ready);
+      // Keep explicit user picks when health flips ready=false; only drop unknown ids.
+      const kept = sortAgentIds(prev.filter((id) => known.has(id)));
+      if (kept.length > 0) return kept;
+      if (ready.length > 0) return sortAgentIds(ready);
+      return prev;
     });
   }, [agents, bootstrapAgentIds, healthAgents, teamHealthAgents]);
 
@@ -2120,6 +2141,9 @@ export function RoomChat({
           | undefined;
         if (stage?.auth_run) {
           setAuthRun(stage.auth_run);
+          setCommandChoices(null);
+          setCommandMultiChoices(null);
+          setCommandScopeChoices(null);
           setCommandHint(null);
         }
         if (stage?.choices?.options?.length) {
@@ -2235,6 +2259,7 @@ export function RoomChat({
               command,
               argsPrefix: args,
               prompt: stage.prompt ?? res.text ?? "",
+              kind,
               options: stage.choices.options,
             });
             setCommandMultiChoices(null);
@@ -2906,8 +2931,81 @@ export function RoomChat({
     );
   }, [executeSlashCommand, modelPopover, multiSelected, sessionId]);
 
+  const authPopover = useMemo(() => {
+    if (authRun) {
+      return (
+        <ComposerAuthFlowPopover
+          run={authRun}
+          onComplete={handleAuthRunComplete}
+          onClose={() => {
+            setAuthRun(null);
+            focusComposerInput();
+          }}
+        />
+      );
+    }
+    if (secretCommand) {
+      return (
+        <ComposerAuthSecretPopover
+          prompt={secretCommand.prompt}
+          value={secretValue}
+          onChange={setSecretValue}
+          onSubmit={() => {
+            if (!secretValue.trim()) return;
+            const args = `${secretCommand.argsPrefix} ${secretValue}`.trim();
+            const cmd = secretCommand.command;
+            setSecretCommand(null);
+            setSecretValue("");
+            void executeSlashCommand(cmd, args);
+          }}
+          onCancel={() => {
+            setSecretCommand(null);
+            setSecretValue("");
+            focusComposerInput();
+          }}
+        />
+      );
+    }
+    return null;
+  }, [
+    authRun,
+    executeSlashCommand,
+    handleAuthRunComplete,
+    secretCommand,
+    secretValue,
+  ]);
+
+  const authPickerPopover = useMemo(() => {
+    if (!commandChoices) return null;
+    const cmd = commandChoices.command;
+    if (cmd.id !== "login" && cmd.id !== "logout") return null;
+    const variant =
+      commandChoices.kind === "auth_method" ? "methods" : "agents";
+    return (
+      <ComposerAuthPickerPopover
+        action={cmd.id}
+        title={commandChoices.prompt}
+        variant={variant}
+        options={commandChoices.options}
+        highlightedIndex={commandChoiceIndex}
+        onHighlight={setCommandChoiceIndex}
+        onSelect={(value) =>
+          void executeSlashCommand(
+            commandChoices.command,
+            `${commandChoices.argsPrefix} ${value}`.trim(),
+          )
+        }
+        onCancel={() => setCommandChoices(null)}
+      />
+    );
+  }, [commandChoiceIndex, commandChoices, executeSlashCommand]);
+
   const choicePopover = useMemo(() => {
     if (commandChoices) {
+      const cmd = commandChoices.command;
+      if (cmd.id === "login" || cmd.id === "logout") {
+        return null;
+      }
       return (
         <ComposerChoicePopover
           variant="single"
@@ -3475,6 +3573,8 @@ export function RoomChat({
                       if (command) void executeSlashCommand(command, "");
                     }}
                     choicePopover={choicePopover}
+                    authPopover={authPopover}
+                    authPickerPopover={authPickerPopover}
                     modelPopover={modelPopoverNode}
                   />
 
@@ -3482,59 +3582,6 @@ export function RoomChat({
                     <p className="composer-command-hint" role="status">
                       {commandHint}
                     </p>
-                  ) : null}
-                  {secretCommand ? (
-                    <form
-                      className="composer-secret"
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        if (!secretValue) return;
-                        const args =
-                          `${secretCommand.argsPrefix} ${secretValue}`.trim();
-                        setSecretCommand(null);
-                        setSecretValue("");
-                        void executeSlashCommand(secretCommand.command, args);
-                      }}
-                    >
-                      <label htmlFor="provider-secret">
-                        {secretCommand.prompt}
-                      </label>
-                      <input
-                        id="provider-secret"
-                        type="password"
-                        autoComplete="off"
-                        value={secretValue}
-                        onChange={(event) => setSecretValue(event.target.value)}
-                        autoFocus
-                      />
-                      <button
-                        type="submit"
-                        className="btn btn--primary btn--sm"
-                      >
-                        저장
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn--sm"
-                        onClick={() => {
-                          setSecretCommand(null);
-                          setSecretValue("");
-                          focusComposerInput();
-                        }}
-                      >
-                        취소
-                      </button>
-                    </form>
-                  ) : null}
-                  {authRun ? (
-                    <AuthFlowPanel
-                      run={authRun}
-                      onComplete={handleAuthRunComplete}
-                      onClose={() => {
-                        setAuthRun(null);
-                        focusComposerInput();
-                      }}
-                    />
                   ) : null}
                 </div>
               </>

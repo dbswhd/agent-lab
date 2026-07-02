@@ -1,0 +1,18 @@
+{
+  "schema": "agent-lab.task_corpus.v1",
+  "description": "Minimal SWE-bench-style task ids for eval_harness wiring (separate from sessions/_benchmark Room FSM fixtures).",
+  "instances": [
+    {
+      "id": "token-efficiency-ephemeral-cap",
+      "topic": "Ephemeral synthesis/digest cap keeps payload bounded",
+      "f2p_ids": ["tests/test_message_trim_ephemeral.py::test_cap_ephemeral_keeps_last_three_peer_digests"],
+      "p2p_ids": ["tests/test_message_trim_ephemeral.py::test_cap_ephemeral_object_identity_for_l_refs"]
+    },
+    {
+      "id": "token-efficiency-budget-meta",
+      "topic": "combined_follow included in context budget meta",
+      "f2p_ids": ["tests/test_context_bundle_budget.py::test_combined_follow_included_in_layer_chars"],
+      "p2p_ids": ["tests/test_context_bundle_budget.py::test_guidance_block_uses_mtime_cache"]
+    }
+  ]
+}

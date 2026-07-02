@@ -80,6 +80,25 @@ def health_codex_proxy() -> dict[str, Any]:
     return {"ok": True, **payload, "env_enabled": codex_proxy_enabled()}
 
 
+@router.get("/health/model-catalog")
+def health_model_catalog() -> dict[str, Any]:
+    """Model picker catalog — bundled seed, runtime cache age, refresh flags."""
+    from agent_lab.agent.catalog_runtime import build_model_catalog_health
+
+    return build_model_catalog_health()
+
+
+@router.post("/health/model-catalog/refresh")
+def health_model_catalog_refresh(
+    force: bool = False,
+    _: None = Depends(enforce_health_burst_limit),
+) -> dict[str, Any]:
+    """Force or TTL-gated Codex runtime catalog refresh (dev/operator)."""
+    from agent_lab.agent.catalog_runtime import refresh_catalog
+
+    return refresh_catalog(force=force)
+
+
 @router.get("/health/flags")
 def health_flags(category: str | None = None) -> dict[str, Any]:
     """AGENT_LAB_* env flag registry with active values (discoverability)."""

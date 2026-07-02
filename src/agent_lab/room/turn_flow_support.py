@@ -24,23 +24,24 @@ def apply_turn_agent_mentions(
     user_text: str,
     active_agents: list[Any],
     run_meta: dict[str, Any],
+    *,
+    roster_pool: list[Any] | None = None,
 ) -> tuple[str, list[Any], list[str]]:
     """When Human @-targets agents, shrink roster and strip tokens from user text."""
     from agent_lab.room.agent_mentions import apply_agent_mention_filter
 
+    pool = roster_pool if roster_pool is not None else active_agents
     filtered, stripped, targets = apply_agent_mention_filter(
         user_text,
         [str(a) for a in active_agents],
+        roster_pool=[str(a) for a in pool],
     )
     if not targets:
         run_meta.pop("_turn_target_agents", None)
         return user_text, active_agents, []
-    new_agents = [a for a in active_agents if str(a).strip().lower() in {t.lower() for t in targets}]
-    if not new_agents:
-        return user_text, active_agents, []
     run_meta["_turn_target_agents"] = targets
-    run_meta["agents"] = [str(a) for a in new_agents]
-    return stripped, new_agents, targets
+    run_meta["agents"] = [str(a) for a in filtered]
+    return stripped, filtered, targets
 
 
 def emit_divergence_options(
@@ -80,20 +81,65 @@ def emit_budget_status(run_meta: dict[str, Any] | None, on_event: OnAgentEvent |
         "cumulative": action["cumulative"],
     }
     on_event("budget_status", action)
-    if action.get("over") and not run_meta.get("adaptive_efficiency"):
-        run_meta["adaptive_efficiency"] = True
-        on_event(
-            "efficiency_auto_enabled",
-            {
-                "reason": "session_budget_over",
-                "cumulative": action.get("cumulative"),
-                "usd_limit": action.get("usd_limit"),
-                "token_limit": action.get("token_limit"),
-            },
-        )
+    _maybe_enable_adaptive_efficiency(run_meta, on_event, action)
+
+
+def _maybe_enable_adaptive_efficiency(
+    run_meta: dict[str, Any],
+    on_event: OnAgentEvent,
+    action: dict[str, Any],
+) -> None:
+    if run_meta.get("adaptive_efficiency"):
+        return
+    reason: str | None = None
+    if action.get("over"):
+        reason = "session_budget_over"
+    elif action.get("warn"):
+        reason = "session_budget_warn"
+    else:
+        token_budget = run_meta.get("token_budget")
+        if isinstance(token_budget, dict) and token_budget.get("critical"):
+            reason = "context_budget_critical"
+    if reason is None:
+        from agent_lab.room.messages import _human_turn_count
+
+        messages = run_meta.get("_checkpoint_messages")
+        human_turn = _human_turn_count(messages) if isinstance(messages, list) else 0
+        if human_turn <= 0:
+            human_turn = int(run_meta.get("human_turn") or 0)
+        if human_turn >= 5:
+            reason = "human_turn_threshold"
+    if reason is None:
+        return
+    run_meta["adaptive_efficiency"] = True
+    on_event(
+        "efficiency_auto_enabled",
+        {
+            "reason": reason,
+            "cumulative": action.get("cumulative"),
+            "usd_limit": action.get("usd_limit"),
+            "token_limit": action.get("token_limit"),
+        },
+    )
     if action.get("over") and session_hard_cap_enabled() and not run_meta.get("budget_exhausted"):
         run_meta["budget_exhausted"] = True
         on_event("budget_exhausted", {"cumulative": action.get("cumulative")})
+
+
+def ensure_adaptive_efficiency_for_turn(
+    run_meta: dict[str, Any] | None,
+    *,
+    human_turn: int,
+) -> None:
+    """Proactive efficiency when context budget is critical or session is long."""
+    if not isinstance(run_meta, dict) or run_meta.get("adaptive_efficiency"):
+        return
+    token_budget = run_meta.get("token_budget")
+    if isinstance(token_budget, dict) and token_budget.get("critical"):
+        run_meta["adaptive_efficiency"] = True
+        return
+    if human_turn >= 5:
+        run_meta["adaptive_efficiency"] = True
 
 
 def resolve_stage_routing(

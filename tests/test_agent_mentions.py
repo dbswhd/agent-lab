@@ -55,6 +55,18 @@ def test_apply_filter_noop_without_mentions():
     assert targets == []
 
 
+def test_apply_filter_honors_mention_from_roster_when_not_active():
+    pool = ["claude", "kimi_work"]
+    agents, body, targets = apply_agent_mention_filter(
+        "@claude Question 마저 올려봐",
+        ["kimi_work"],
+        roster_pool=pool,
+    )
+    assert agents == ["claude"]
+    assert body == "Question 마저 올려봐"
+    assert targets == ["claude"]
+
+
 def test_strip_agent_mentions_only():
     assert strip_agent_mentions("@claude @kimi_work  hi") == "hi"
 
@@ -67,6 +79,23 @@ def test_apply_turn_agent_mentions_updates_message_and_run_meta():
         "@claude only you",
         ["claude", "kimi_work"],
         run_meta,
+    )
+    assert agents == ["claude"]
+    assert body == "only you"
+    assert targets == ["claude"]
+    assert run_meta["_turn_target_agents"] == ["claude"]
+    assert run_meta["agents"] == ["claude"]
+
+
+def test_apply_turn_agent_mentions_uses_roster_pool():
+    from agent_lab.room.turn_flow_support import apply_turn_agent_mentions
+
+    run_meta: dict = {}
+    body, agents, targets = apply_turn_agent_mentions(
+        "@claude only you",
+        ["kimi_work"],
+        run_meta,
+        roster_pool=["claude", "kimi_work"],
     )
     assert agents == ["claude"]
     assert body == "only you"

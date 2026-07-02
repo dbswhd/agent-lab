@@ -114,6 +114,13 @@ export default function App() {
   const [sessionQuery, setSessionQuery] = useState("");
   const [shellView, setShellView] = useState<ShellView>("workspace");
 
+  const openSettings = useCallback((category?: string) => {
+    if (category) {
+      window.localStorage.setItem("agent-lab.settings-category", category);
+    }
+    setShellView("settings");
+  }, []);
+
   const runningSessionIds = useRunningSessionIds();
   useRunLockSync(true);
 
@@ -250,8 +257,13 @@ export default function App() {
   const handleReconnectKimiWork = useCallback(async () => {
     setReconnecting(true);
     try {
-      await reconnectKimiWorkBridge();
+      const res = await reconnectKimiWorkBridge();
       await reloadHealth(true);
+      if (res.hint) {
+        setHealth(res.hint);
+      } else if (res.loop_ready === false) {
+        setHealth("Kimi Work Loop 검사 실패 — 잠시 후 다시 시도");
+      }
     } catch (e) {
       setHealth(String(e));
     } finally {
@@ -597,6 +609,7 @@ export default function App() {
                 onReconnectCursor={() => void handleReconnectCursor()}
                 onReconnectClaude={() => void handleReconnectClaude()}
                 onReconnectKimiWork={() => void handleReconnectKimiWork()}
+                onOpenSettings={() => openSettings("agents")}
               />
               {!apiOk && health ? (
                 <p className="chat-list-status chat-list-status--error">
@@ -648,7 +661,7 @@ export default function App() {
                     className={`icon-btn${shellView === "settings" ? " is-active" : ""}`}
                     title="Settings"
                     aria-label="Settings"
-                    onClick={() => setShellView("settings")}
+                    onClick={() => openSettings()}
                   >
                     <svg
                       viewBox="0 0 24 24"
@@ -688,6 +701,8 @@ export default function App() {
                       probeBridgeFailed={bridgeProbeFailed}
                       onRefreshDiagnostics={() => void reloadHealth(true)}
                       onReconnectCursor={() => void handleReconnectCursor()}
+                      onReconnectClaude={() => void handleReconnectClaude()}
+                      onReconnectKimiWork={() => void handleReconnectKimiWork()}
                       onBack={() => setShellView("workspace")}
                     />
                   ) : showFirstRunOnboarding ? (
@@ -699,7 +714,7 @@ export default function App() {
                       sessionsDir={sessionsDir}
                       hasWorkspace={setupWorkspaceChosen}
                       onRefresh={() => void reloadHealth(true)}
-                      onOpenSettings={() => setShellView("settings")}
+                      onOpenSettings={() => openSettings("agents")}
                       onReconnectCursor={() => void handleReconnectCursor()}
                       onReconnectClaude={() => void handleReconnectClaude()}
                       onChooseWorkspace={startNew}
@@ -719,7 +734,7 @@ export default function App() {
                       onSessionMetaRefresh={refreshSessionRun}
                       sidebarOpen={sidebarOpen}
                       onToggleSidebar={toggleSidebar}
-                      onOpenSettings={() => setShellView("settings")}
+                      onOpenSettings={() => openSettings("agents")}
                       onRefreshHealth={() =>
                         reloadHealth(true).then(() => undefined)
                       }

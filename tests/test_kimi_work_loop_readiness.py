@@ -242,3 +242,28 @@ def test_kimi_work_envelope_strict_flag(monkeypatch: pytest.MonkeyPatch) -> None
     assert kimi_work_envelope_strict() is False
     monkeypatch.setenv("AGENT_LAB_KIMI_WORK_ENVELOPE_STRICT", "1")
     assert kimi_work_envelope_strict() is True
+
+
+def test_kimi_work_envelope_skips_live_probe_when_not_strict(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from agent_lab.model_policy_probe import _probe_substitute_loop_flags
+
+    monkeypatch.delenv("AGENT_LAB_KIMI_WORK_ENVELOPE_STRICT", raising=False)
+    monkeypatch.setattr(
+        "agent_lab.model_policy_probe._probe_kimi_work_tools",
+        lambda: True,
+    )
+    monkeypatch.setattr(
+        "agent_lab.model_policy_probe._probe_kimi_work_inbox",
+        lambda: True,
+    )
+    monkeypatch.setattr(
+        "agent_lab.model_policy_probe._probe_substitute_envelope",
+        lambda *_args, **_kwargs: False,
+    )
+
+    tools, inbox, envelope = _probe_substitute_loop_flags("kimi_work", "k2p6")
+    assert tools is True
+    assert inbox is True
+    assert envelope is True

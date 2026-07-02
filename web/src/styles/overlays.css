@@ -1086,3 +1086,156 @@
 .composer-field .slash-command-menu.composer-mention-menu .slash-command-menu__main {
   border-right: none;
 }
+
+/* Login / logout / usage slash pickers */
+.composer-field .slash-command-menu.composer-slash-choice-menu,
+.composer-field .slash-command-menu.composer-auth-flow-popover,
+.composer-field .slash-command-menu.composer-auth-secret-popover {
+  z-index: 31;
+}
+.composer-field .slash-command-menu.composer-slash-choice-menu .slash-command-menu__main,
+.composer-field .slash-command-menu.composer-auth-flow-popover .slash-command-menu__main,
+.composer-field .slash-command-menu.composer-auth-secret-popover .slash-command-menu__main {
+  border-right: none;
+  width: min(300px, calc(100vw - 32px));
+  min-width: 248px;
+}
+.composer-slash-choice__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+.composer-slash-choice__main {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-width: 0;
+}
+.composer-slash-choice__glyph {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.composer-slash-choice__meta {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--label-tertiary);
+}
+.composer-slash-choice__shortcut {
+  font-size: var(--text-caption);
+  color: var(--label-tertiary);
+  min-width: 18px;
+  text-align: center;
+}
+.composer-slash-choice__chevron {
+  color: var(--label-quaternary);
+}
+.composer-slash-choice__badge {
+  font-size: var(--text-caption);
+  color: var(--label-tertiary);
+  padding: 2px var(--space-6);
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+}
+.composer-slash-choice__footer {
+  padding: var(--space-6) var(--space-10) var(--space-10);
+  border-top: 1px solid var(--border-hair);
+}
+.composer-slash-choice__cancel,
+.composer-slash-choice__action {
+  width: 100%;
+  min-height: 32px;
+  padding: var(--space-6) var(--space-8);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-footnote);
+  color: var(--label-secondary);
+  text-align: left;
+}
+.composer-slash-choice__cancel:hover,
+.composer-slash-choice__action:hover {
+  background: var(--surface-hover);
+}
+.composer-slash-choice__action--primary {
+  color: var(--label-primary);
+  font-weight: var(--weight-semibold);
+}
+.composer-slash-choice__action--danger {
+  color: var(--danger);
+}
+.composer-auth-flow-popover__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-8);
+  padding: var(--space-10) var(--space-12) var(--space-6);
+}
+.composer-auth-flow-popover__status {
+  font-size: var(--text-caption);
+  color: var(--label-tertiary);
+}
+.composer-auth-flow-popover__status.is-error {
+  color: var(--danger);
+}
+.composer-auth-flow-popover__hint {
+  margin: 0;
+  padding: 0 var(--space-12) var(--space-8);
+  font-size: var(--text-footnote);
+  line-height: 1.45;
+  color: var(--label-secondary);
+}
+.composer-auth-flow-popover__output {
+  margin: 0 var(--space-12) var(--space-8);
+  padding: var(--space-8);
+  max-height: 120px;
+  overflow: auto;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  font-size: var(--text-caption);
+  line-height: 1.4;
+  white-space: pre-wrap;
+  color: var(--label-secondary);
+}
+.composer-auth-flow-popover__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+  padding: var(--space-6) var(--space-10) var(--space-10);
+  border-top: 1px solid var(--border-hair);
+}
+.composer-auth-flow-popover__input {
+  flex: 1 1 160px;
+  min-width: 0;
+  height: 32px;
+  padding: 0 var(--space-8);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--surface-card);
+  color: var(--label-primary);
+  font-size: var(--text-footnote);
+}
+.composer-auth-secret-popover__field {
+  padding: var(--space-6) var(--space-12) var(--space-8);
+}
+.composer-auth-secret-popover__field input {
+  width: 100%;
+  height: 36px;
+  padding: 0 var(--space-10);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--surface-card);
+  color: var(--label-primary);
+  font-size: var(--text-footnote);
+}
+.composer-auth-picker-popover .composer-model-popover__provider-main {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-width: 0;
+}
+.composer-auth-picker-popover__row.is-active {
+  background: var(--surface-hover);
+}

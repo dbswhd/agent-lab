@@ -603,6 +603,9 @@ def _call_one_agent(
             payload = f"{payload}\n\n{combined_follow.strip()}"
         context_meta = bundle.meta.to_dict()
         context_meta["model"] = __import__("agent_lab.room", fromlist=["model_label"]).model_label(aid)
+        from agent_lab.context.meta import apply_invoke_follow_to_context_meta
+
+        apply_invoke_follow_to_context_meta(context_meta, combined_follow)
         if context_log is not None:
             context_log.append(context_meta)
             if run_meta is not None:
@@ -724,6 +727,19 @@ def _call_one_agent(
                             turn=human_turn,
                         )
                 persist_cost_ledger(folder, run_meta)
+                if context_log is not None and run_meta is not None:
+                    ledger = run_meta.get("cost_ledger")
+                    if isinstance(ledger, dict):
+                        by_agent = ledger.get("by_agent")
+                        if isinstance(by_agent, dict):
+                            agent_entry = by_agent.get(str(aid))
+                            if isinstance(agent_entry, dict):
+                                context_meta["usage_cache_read"] = int(
+                                    agent_entry.get("cache_read") or 0
+                                )
+                    from agent_lab.token_budget import record_run_token_budget
+
+                    record_run_token_budget(run_meta, context_log, turn_meta=context_meta)
         return msg
     except Exception as e:
         if isinstance(e, RoomRunCancelled) or is_cancelled():

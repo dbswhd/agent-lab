@@ -84,6 +84,10 @@ type Props = {
   onRoomPresetSelect?: (id: string) => void;
   /** Floating slash-command choice popover (login / logout / scope). */
   choicePopover?: ReactNode;
+  /** OAuth CLI progress or API-key entry — anchored in composer field. */
+  authPopover?: ReactNode;
+  /** /login · /logout agent picker — anchored like model popover. */
+  authPickerPopover?: ReactNode;
   /** /model picker — anchored to the model button. */
   modelPopover?: ReactNode;
 };
@@ -133,6 +137,8 @@ export function ChatComposer({
   roomPreset = null,
   onRoomPresetSelect,
   choicePopover,
+  authPopover,
+  authPickerPopover,
   modelPopover,
 }: Props) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -165,7 +171,9 @@ export function ChatComposer({
   const slashQuery = value.slice(1).split(/\s/)[0] ?? "";
 
   useEffect(() => {
-    setSlashHighlight(bestSlashHighlightIndex(slashVisibleCommands, slashQuery));
+    setSlashHighlight(
+      bestSlashHighlightIndex(slashVisibleCommands, slashQuery),
+    );
   }, [slashQuery, slashVisibleCommands]);
 
   const highlightNodes = useMemo(
@@ -389,8 +397,10 @@ export function ChatComposer({
               .join(" ")}
           >
             {modelPopover}
+            {authPickerPopover}
             <div className="composer-content">
               <div className="composer-field">
+                {authPopover}
                 {choicePopover}
                 <SlashCommandMenu
                   value={value}

@@ -172,17 +172,18 @@ def test_ac13_flag_default_on(monkeypatch):
     assert eh.eval_harness_enabled() is True
 
 
-def test_ac13_n2_no_src_importer_off_parity():
-    # OFF-parity proof: no src module (other than eval_harness itself) imports it.
+def test_ac13_n2_wired_through_ingest_only():
     src = Path(__file__).resolve().parent.parent / "src" / "agent_lab"
     offenders = []
     for py in src.glob("*.py"):
-        if py.name == "eval_harness.py":
+        if py.name in {"eval_harness.py", "eval_harness_ingest.py"}:
             continue
         text = py.read_text(encoding="utf-8")
         if "eval_harness" in text:
             offenders.append(py.name)
     assert offenders == [], f"unexpected eval_harness importers: {offenders}"
+    ingest = (src / "eval_harness_ingest.py").read_text(encoding="utf-8")
+    assert "score_instance" in ingest
 
 
 def test_n1_reason_strings_deterministic():

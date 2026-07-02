@@ -177,7 +177,7 @@ def trim_messages_by_chars_pinned(
 
 
 def _compact_tool_output_enabled() -> bool:
-    return env_bool("AGENT_LAB_COMPACT_TOOL_OUTPUT")
+    return env_bool("AGENT_LAB_COMPACT_TOOL_OUTPUT", default=True)
 
 
 def _tool_output_char_cap() -> int:
@@ -318,7 +318,7 @@ def prepare_recent_messages(
             max_messages=eff.max_pin_messages,
             max_chars=pin_budget,
         )
-    if _compact_tool_output_enabled() and message_chars(recent) > max_chars:
+    if _compact_tool_output_enabled():
         recent = _truncate_old_tool_outputs(recent, pinned, cap=_tool_output_char_cap())
     trimmed, chars_omitted = trim_messages_by_chars_pinned(recent, max_chars=max_chars, pinned=pinned)
     return trimmed, turns_omitted, chars_omitted, len(pinned)

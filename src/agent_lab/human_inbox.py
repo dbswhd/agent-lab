@@ -520,6 +520,12 @@ def wait_for_inbox_item(
     interval = poll_sec if poll_sec is not None else INBOX_POLL_SEC
 
     while time.monotonic() < deadline:
+        from agent_lab.run.control import RoomRunCancelled, check_cancelled
+
+        try:
+            check_cancelled()
+        except RoomRunCancelled:
+            raise
         run = read_run_meta(folder)
         item = find_inbox_item(run, item_id)
         if item is None:

@@ -76,6 +76,9 @@ def _api_startup() -> None:
         from agent_lab.kimi.control_client import warm_bridge
 
         warm_bridge(background=True)
+        from agent_lab.agent.catalog_runtime import warm_catalog_on_startup
+
+        warm_catalog_on_startup(background=True)
     except Exception as exc:
         write_boot_line(f"uvicorn startup diagnostics failed: {exc}")
 

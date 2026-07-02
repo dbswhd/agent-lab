@@ -4,6 +4,7 @@ import type {
   PlanExecutionRecord,
   ReadinessResponse,
 } from "../api/client";
+import { messageLooksLikeLoopReadinessFailure } from "./roomRunErrors";
 
 export type RecoveryKind =
   | "auth_expired"
@@ -31,6 +32,7 @@ export type RecoveryFailureKind =
   | "partial_turn"
   | "run_lock"
   | "api_validation"
+  | "loop_readiness"
   | "api_offline";
 
 export type RecoveryFailure = {
@@ -57,10 +59,14 @@ export function classifySendFailure(message: string): {
   if (
     lower.includes("loop requires plan") ||
     lower.includes("agents not ready") ||
+    messageLooksLikeLoopReadinessFailure(detail) ||
     /\b422\b/.test(lower) ||
     lower.includes("validation error") ||
     lower.includes("unprocessable")
   ) {
+    if (messageLooksLikeLoopReadinessFailure(detail)) {
+      return { source: "run", kind: "loop_readiness" };
+    }
     return { source: "run", kind: "api_validation" };
   }
   if (isTransportFailure(detail)) {
@@ -260,6 +266,20 @@ function buildFailureItem(
       secondaryAction: { id: "refresh_health", label: "상태 재확인" },
     };
   }
+  if (failure.kind === "loop_readiness") {
+    return {
+      kind: "run_failed",
+      severity: "blocking_send",
+      title: "Loop 모드 전송이 차단되었습니다.",
+      reason:
+        "선택한 agent 중 Loop capability probe에 실패한 peer가 있습니다. 아래 미충족 항목과 조치를 확인하세요.",
+      details: trimmed,
+      source: "run",
+      affectedAgentIds: failure.affectedAgentIds,
+      primaryAction: { id: "refresh_health", label: "상태 재확인" },
+      secondaryAction: { id: "reconnect_kimi_work", label: "Kimi Work Bridge" },
+    };
+  }
   if (failure.kind === "api_validation") {
     return {
       kind: "run_failed",
@@ -293,7 +313,10 @@ function buildFailureItem(
         failure.source === "execute"
           ? "실행을 완료하지 못했습니다."
           : "요청을 완료하지 못했습니다.",
-      reason: "세부 원인을 확인한 뒤 다시 시도할 수 있습니다.",
+      reason:
+        trimmed && trimmed !== "run failed"
+          ? trimmed
+          : "세부 원인을 확인한 뒤 다시 시도할 수 있습니다.",
       details: trimmed,
       source: failure.source === "execute" ? "execute" : "run",
       affectedAgentIds: failure.affectedAgentIds,

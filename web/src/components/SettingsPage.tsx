@@ -9,6 +9,7 @@ import {
 } from "../api/client";
 import { ProviderStatusPanel } from "./ProviderStatusPanel";
 import { CodexProxyPanel } from "./CodexProxyPanel";
+import { AgentHealthPanel } from "./AgentHealthPanel";
 import { AgentSessionSettings } from "./AgentSessionSettings";
 import { ApiDiagnosticsBar } from "./ApiDiagnosticsBar";
 import { ContextPreviewPanel } from "./ContextPreviewPanel";
@@ -19,8 +20,6 @@ import { DaemonStatusBar } from "./DaemonStatusBar";
 import { GatewaySettingsPanel } from "./GatewaySettingsPanel";
 import { SchedulesPanel } from "./SchedulesPanel";
 import { ThemeToggle } from "./ThemeToggle";
-import { Avatar } from "./Avatar";
-import { SettingsSectionIcon } from "./SettingsSectionIcon";
 import { useTweaksDemo } from "../hooks/useTweaksDemo";
 import { useLocale } from "../i18n/useLocale";
 import { localeLabel } from "../i18n/locale";
@@ -37,7 +36,6 @@ import {
 } from "../utils/agentCapabilities";
 import type { ComposerTurnProfile } from "../utils/turnProfile";
 import { roomPermissions } from "../utils/agentPermissions";
-import type { AgentRole } from "../utils/transcript";
 
 type Props = {
   sessionId: string | null;
@@ -53,6 +51,8 @@ type Props = {
   probeBridgeFailed?: boolean;
   onRefreshDiagnostics?: () => void;
   onReconnectCursor?: () => void;
+  onReconnectClaude?: () => void;
+  onReconnectKimiWork?: () => void;
 };
 
 type SettingsCategory =
@@ -68,20 +68,33 @@ const SETTINGS_CATEGORIES: readonly {
   label: string;
 }[] = [
   { id: "general", label: "일반" },
-  { id: "agents", label: "에이전트와 모델" },
-  { id: "connections", label: "연결" },
+  { id: "agents", label: "에이전트" },
+  { id: "connections", label: "계정" },
   { id: "workspace", label: "워크스페이스" },
   { id: "automation", label: "자동화" },
-  { id: "advanced", label: "고급·진단" },
+  { id: "advanced", label: "진단" },
 ];
+
+const LEGACY_CATEGORY: Record<string, SettingsCategory> = {
+  session: "workspace",
+};
+
+function normalizeCategory(raw: string | null): SettingsCategory {
+  if (raw && SETTINGS_CATEGORIES.some((item) => item.id === raw)) {
+    return raw as SettingsCategory;
+  }
+  if (raw && raw in LEGACY_CATEGORY) {
+    return LEGACY_CATEGORY[raw]!;
+  }
+  return "general";
+}
 
 function TweaksSettingsActions({ onBack }: { onBack: () => void }) {
   const tweaks = useTweaksDemo();
-
   return (
     <button
       type="button"
-      className="btn"
+      className="btn btn--sm btn--ghost"
       onClick={() => {
         onBack();
         tweaks.setPanelOpen(true);
@@ -106,6 +119,8 @@ export function SettingsPage({
   probeBridgeFailed = false,
   onRefreshDiagnostics,
   onReconnectCursor,
+  onReconnectClaude,
+  onReconnectKimiWork,
 }: Props) {
   const { locale, setLocale, t } = useLocale();
   const [capabilities, setCapabilities] = useState<AgentCapabilitiesMap>(() =>
@@ -116,16 +131,14 @@ export function SettingsPage({
   const [saveHint, setSaveHint] = useState<string | null>(null);
   const [commands, setCommands] = useState<SlashCommandRecord[]>([]);
   const [copiedSlash, setCopiedSlash] = useState<string | null>(null);
-  const [agentSettingsOpen, setAgentSettingsOpen] = useState(false);
   const [permissionDefaultsSaved, setPermissionDefaultsSaved] = useState(
     hasSavedPermissionDefaults,
   );
-  const [category, setCategory] = useState<SettingsCategory>(() => {
-    const stored = window.localStorage.getItem("agent-lab.settings-category");
-    return SETTINGS_CATEGORIES.some((item) => item.id === stored)
-      ? (stored as SettingsCategory)
-      : "general";
-  });
+  const [category, setCategory] = useState<SettingsCategory>(() =>
+    normalizeCategory(
+      window.localStorage.getItem("agent-lab.settings-category"),
+    ),
+  );
 
   const selectCategory = (next: SettingsCategory) => {
     setCategory(next);
@@ -184,7 +197,7 @@ export function SettingsPage({
         capabilitiesForApi(capabilities),
       );
       setResolvedCwd(res.resolved_cwd ?? {});
-      setSaveHint("저장됨 ✓");
+      setSaveHint("저장됨");
     } catch (e) {
       setSaveHint(e instanceof Error ? e.message : "저장 실패");
     } finally {
@@ -202,33 +215,19 @@ export function SettingsPage({
     window.setTimeout(() => setCopiedSlash(null), 1600);
   };
 
-  const workspaceBinding =
-    session?.run?.workspace_binding &&
-    typeof session.run.workspace_binding === "object"
-      ? session.run.workspace_binding
-      : null;
-
-  const allAgentsOk =
-    healthAgents.length > 0 && healthAgents.every((h) => h.ready);
-
   return (
     <div className="settings-page" data-settings-category={category}>
       <header className="settings-page__header">
-        <button type="button" className="btn" onClick={onBack}>
-          ← 워크스페이스
+        <button type="button" className="btn btn--ghost" onClick={onBack}>
+          ← 돌아가기
         </button>
-        <div className="settings-page__heading">
-          <h1 className="settings-page__title">설정</h1>
-          <p className="settings-page__sub">
-            필요한 설정만 단계적으로 표시합니다.
-          </p>
-        </div>
+        <h1 className="settings-page__title">설정</h1>
       </header>
 
       <div className="settings-category-mobile">
-        <label htmlFor="settings-category">설정 카테고리</label>
         <select
           id="settings-category"
+          aria-label="설정 카테고리"
           value={category}
           onChange={(event) =>
             selectCategory(event.target.value as SettingsCategory)
@@ -257,288 +256,7 @@ export function SettingsPage({
       </nav>
 
       <div className="settings-page__body scroll-y">
-        <section className="settings-section settings-panel settings-panel--agents">
-          <div className="settings-section__head">
-            <h2 className="settings-section__title">
-              <SettingsSectionIcon name="users" />
-              에이전트
-            </h2>
-            <span className="settings-section__sub">
-              Health · 작업 폴더 · 도구 · 권한
-            </span>
-          </div>
-
-          <div className="settings-health">
-            {healthAgents.map((h) => (
-              <div key={h.id} className="settings-health__row">
-                <Avatar role={h.id as AgentRole} size={20} />
-                <div className="settings-health__info">
-                  <span className="settings-health__name">{h.label}</span>
-                  <span className="settings-health__model">
-                    {h.model ?? (h.configured ? "설정됨" : "미설정")}
-                  </span>
-                </div>
-                <span
-                  className={`dot dot--${h.ready ? "ok dot--live" : "warn"}`}
-                  aria-hidden
-                />
-                <span className={`badge badge--${h.ready ? "ok" : "danger"}`}>
-                  {h.ready ? "정상" : "오류"}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          {onRefreshDiagnostics || onReconnectCursor ? (
-            <div className="settings-health__actions">
-              {onRefreshDiagnostics ? (
-                <button
-                  type="button"
-                  className="btn btn--sm"
-                  disabled={healthLoading || reconnecting}
-                  onClick={onRefreshDiagnostics}
-                >
-                  {healthLoading ? "…" : "상태 새로고침"}
-                </button>
-              ) : null}
-              {onReconnectCursor ? (
-                <button
-                  type="button"
-                  className="btn btn--sm"
-                  disabled={healthLoading || reconnecting}
-                  onClick={onReconnectCursor}
-                >
-                  {reconnecting ? "재연결…" : "Cursor 재연결"}
-                </button>
-              ) : null}
-            </div>
-          ) : null}
-
-          <div className="settings-permissions">
-            <p className="settings-permissions__hint">
-              {permissionDefaultsSaved
-                ? "전송 시 권한 확인을 건너뛰는 저장된 기본값이 있습니다."
-                : "전송 시 에이전트 권한을 매번 확인합니다."}
-            </p>
-            {permissionDefaultsSaved ? (
-              <button
-                type="button"
-                className="btn btn--sm"
-                onClick={() => {
-                  clearSavedPermissionDefaults();
-                  setPermissionDefaultsSaved(false);
-                }}
-              >
-                저장된 권한 초기화
-              </button>
-            ) : null}
-          </div>
-
-          <button
-            type="button"
-            className="settings-expand-btn"
-            aria-expanded={agentSettingsOpen}
-            onClick={() => setAgentSettingsOpen((v) => !v)}
-          >
-            {agentSettingsOpen ? "▾" : "▸"} 에이전트별 세션 설정 (작업
-            폴더·도구)
-            <span className="settings-expand-btn__hint">
-              Cursor: execute · Codex: repo · Claude: review
-            </span>
-          </button>
-
-          {agentSettingsOpen ? (
-            <>
-              <AgentSessionSettings
-                capabilities={capabilities}
-                onChange={setCapabilities}
-                resolvedCwd={resolvedCwd}
-                selectedAgents={selectedAgents}
-                hideToggle
-                onSave={sessionId ? () => void saveCapabilities() : undefined}
-                saveBusy={saveBusy}
-                saveHint={saveHint ?? undefined}
-              />
-              {saveHint ? (
-                <p className="settings-save-hint">{saveHint}</p>
-              ) : null}
-            </>
-          ) : null}
-        </section>
-
-        <section className="settings-section settings-panel settings-panel--connections">
-          <div className="settings-section__head">
-            <h2 className="settings-section__title">
-              <SettingsSectionIcon name="key" />
-              계정 연결
-            </h2>
-            <span className="settings-section__sub">
-              보기 전용 · 변경은 Transcript slash 명령에서
-            </span>
-          </div>
-          <ProviderStatusPanel />
-          <CodexProxyPanel />
-        </section>
-
-        {sessionId ? (
-          <section className="settings-section settings-panel settings-panel--workspace">
-            <div className="settings-section__head">
-              <h2 className="settings-section__title">
-                <SettingsSectionIcon name="folder" />
-                워크스페이스
-              </h2>
-              <span className="settings-section__sub">
-                세션 binding · Context 미리보기
-              </span>
-            </div>
-            <dl className="settings-workspace-info">
-              <div className="settings-workspace-info__row">
-                <dt>세션</dt>
-                <dd>{session?.topic ?? sessionId}</dd>
-              </div>
-              <div className="settings-workspace-info__row">
-                <dt>바인딩</dt>
-                <dd>
-                  {workspaceBinding
-                    ? JSON.stringify(workspaceBinding)
-                    : "기본 워크스페이스 프리셋 사용"}
-                </dd>
-              </div>
-              <div className="settings-workspace-info__row">
-                <dt>Execute cwd</dt>
-                <dd>worktree 격리 가능 시 별도 worktree에서 실행됩니다.</dd>
-              </div>
-            </dl>
-            <div className="settings-section__sub-head">Context 미리보기</div>
-            <div className="ctx-preview ctx-preview--embedded">
-              <ContextPreviewPanel
-                sessionId={sessionId}
-                session={session}
-                selectedAgents={selectedAgents}
-                turnProfile={turnProfile}
-                embedded
-              />
-            </div>
-          </section>
-        ) : null}
-
-        {sessionId ? (
-          <section className="settings-section settings-panel settings-panel--advanced">
-            <div className="settings-section__head">
-              <h2 className="settings-section__title">
-                <SettingsSectionIcon name="terminal" />
-                명령 · 플러그인
-              </h2>
-              <span className="settings-section__sub">
-                슬래시 명령 · agent 소스 · 활성 상태
-              </span>
-            </div>
-            <SlashCommandGroupList
-              commands={commands}
-              onCopy={(slash) => void copySlash(slash)}
-              copiedSlash={copiedSlash}
-              maxPerAgentGroup={24}
-            />
-            <p className="settings-hint">
-              외부 명령: ~/.agent-lab/tools.yaml ·{" "}
-              <code>AGENT_LAB_EXTERNAL_TOOLS=1</code> · 플러그인 탭 External에서
-              세션 allowlist
-            </p>
-            <div className="settings-section__sub-head">플러그인</div>
-            <PluginPanel
-              sessionId={sessionId}
-              commands={commands}
-              onPrefillSlash={(slash) => void copySlash(slash)}
-            />
-          </section>
-        ) : (
-          <section className="settings-section settings-panel settings-panel--advanced">
-            <p className="settings-hint">
-              세션을 선택하면 Context 미리보기와 플러그인 설정을 사용할 수
-              있습니다.
-            </p>
-          </section>
-        )}
-
-        <div className="settings-panel settings-panel--advanced">
-          <HooksResponseSettings sessionId={sessionId} session={session} />
-        </div>
-
-        <section className="settings-section settings-panel settings-panel--automation">
-          <div className="settings-section__head">
-            <h2 className="settings-section__title">
-              <SettingsSectionIcon name="activity" />
-              {t("missionOsTitle")}
-            </h2>
-            <span className="settings-section__sub">{t("missionOsSub")}</span>
-          </div>
-          <DaemonStatusBar />
-          <GatewaySettingsPanel />
-          {sessionId ? <SchedulesPanel sessionId={sessionId} /> : null}
-        </section>
-
-        <section className="settings-section settings-panel settings-panel--advanced">
-          <div className="settings-section__head">
-            <h2 className="settings-section__title">
-              <SettingsSectionIcon name="activity" />
-              진단
-            </h2>
-            <span className="settings-section__sub">
-              API health · bridge 상태 · JSON 진단
-            </span>
-          </div>
-          <div
-            className={`diag-bar__status diag-bar__status--${apiOk && allAgentsOk ? "ok" : "fail"}`}
-          >
-            <span
-              className={`dot dot--${apiOk && allAgentsOk ? "ok dot--live" : "warn"}`}
-              aria-hidden
-            />
-            {apiOk && allAgentsOk
-              ? "API 연결됨 · 모든 에이전트 정상"
-              : "일부 연결 또는 에이전트 문제 있음"}
-          </div>
-          <ApiDiagnosticsBar
-            apiOk={apiOk}
-            sessionsDir={sessionsDir}
-            probeBridgeFailed={probeBridgeFailed}
-          />
-        </section>
-
-        <section className="settings-section settings-panel settings-panel--general">
-          <div className="settings-section__head">
-            <h2 className="settings-section__title">
-              <SettingsSectionIcon name="sun" />
-              일반
-            </h2>
-            <span className="settings-section__sub">
-              언어 · 테마 · 현재 모델 · 연결 상태
-            </span>
-          </div>
-          <div className="settings-summary-grid">
-            <div>
-              <span>연결</span>
-              <strong>{apiOk ? "API 연결됨" : "연결 확인 필요"}</strong>
-            </div>
-            <div>
-              <span>현재 모델</span>
-              <strong>
-                {healthAgents
-                  .filter((agent) => selectedAgents.includes(agent.id))
-                  .map((agent) => agent.model || agent.label)
-                  .join(" · ") || "선택된 모델 없음"}
-              </strong>
-            </div>
-          </div>
-          <div className="settings-section__head">
-            <h2 className="settings-section__title">
-              <SettingsSectionIcon name="sun" />
-              {t("appearance")}
-            </h2>
-            <span className="settings-section__sub">
-              {t("settingsLanguageSub")}
-            </span>
-          </div>
+        <section className="settings-panel settings-panel--general">
           <div className="settings-appearance">
             <div className="settings-appearance__row">
               <span className="settings-appearance__label">
@@ -568,25 +286,129 @@ export function SettingsPage({
               <ThemeToggle />
             </div>
           </div>
-          <p className="settings-hint">
-            P0/P1 상태 변화는 toast + Inspector Activity에 함께 기록됩니다.
-          </p>
         </section>
 
-        <section className="settings-section settings-panel settings-panel--advanced">
-          <div className="settings-section__head">
-            <h2 className="settings-section__title">
-              <SettingsSectionIcon name="activity" />
-              개발 · QA
-            </h2>
-            <span className="settings-section__sub">
-              오버레이 · 배너 · 알림 UI 미리보기
-            </span>
+        <section className="settings-panel settings-panel--agents">
+          <AgentHealthPanel
+            apiOk={apiOk}
+            agents={healthAgents}
+            loading={healthLoading}
+            reconnecting={reconnecting}
+            showBridgeSetupGuide={probeBridgeFailed}
+            onRefresh={onRefreshDiagnostics}
+            onReconnectCursor={onReconnectCursor}
+            onReconnectClaude={onReconnectClaude}
+            onReconnectKimiWork={onReconnectKimiWork}
+          />
+          <div className="settings-block">
+            <h3 className="settings-block__title">작업 폴더 · 도구</h3>
+            {sessionId ? (
+              <AgentSessionSettings
+                embedded
+                compact
+                capabilities={capabilities}
+                onChange={setCapabilities}
+                resolvedCwd={resolvedCwd}
+                selectedAgents={selectedAgents}
+                hideToggle
+                onSave={() => void saveCapabilities()}
+                saveBusy={saveBusy}
+                saveHint={saveHint ?? undefined}
+              />
+            ) : (
+              <p className="settings-hint">세션 선택 후 편집할 수 있습니다.</p>
+            )}
           </div>
-          <p className="settings-hint">
-            Tweaks 패널에서 Command Palette, MacAlert, toast와 execute UI를
-            시뮬레이션합니다.
-          </p>
+          {permissionDefaultsSaved ? (
+            <button
+              type="button"
+              className="btn btn--sm btn--ghost"
+              onClick={() => {
+                clearSavedPermissionDefaults();
+                setPermissionDefaultsSaved(false);
+              }}
+            >
+              저장된 권한 초기화
+            </button>
+          ) : null}
+        </section>
+
+        <section className="settings-panel settings-panel--connections">
+          <ProviderStatusPanel embedded />
+          <CodexProxyPanel embedded />
+        </section>
+
+        <section className="settings-panel settings-panel--workspace">
+          {sessionId ? (
+            <>
+              <p className="settings-inline-note">
+                {session?.topic ?? sessionId}
+              </p>
+              <details className="settings-details">
+                <summary>Context</summary>
+                <div className="ctx-preview ctx-preview--embedded">
+                  <ContextPreviewPanel
+                    sessionId={sessionId}
+                    session={session}
+                    selectedAgents={selectedAgents}
+                    turnProfile={turnProfile}
+                    embedded
+                  />
+                </div>
+              </details>
+              <details className="settings-details">
+                <summary>슬래시 명령</summary>
+                <SlashCommandGroupList
+                  commands={commands}
+                  onCopy={(slash) => void copySlash(slash)}
+                  copiedSlash={copiedSlash}
+                  maxPerAgentGroup={8}
+                />
+              </details>
+              <details className="settings-details">
+                <summary>플러그인</summary>
+                <PluginPanel
+                  compact
+                  sessionId={sessionId}
+                  commands={commands}
+                  onPrefillSlash={(slash) => void copySlash(slash)}
+                />
+              </details>
+            </>
+          ) : (
+            <p className="settings-hint">세션을 선택하면 표시됩니다.</p>
+          )}
+        </section>
+
+        <section className="settings-panel settings-panel--automation">
+          <DaemonStatusBar embedded />
+          <details className="settings-details">
+            <summary>Gateway · webhook</summary>
+            <GatewaySettingsPanel embedded />
+          </details>
+          {sessionId ? (
+            <details className="settings-details">
+              <summary>스케줄</summary>
+              <SchedulesPanel sessionId={sessionId} />
+            </details>
+          ) : null}
+          <div className="settings-block">
+            <h3 className="settings-block__title">응답 preset</h3>
+            <HooksResponseSettings
+              embedded
+              sessionId={sessionId}
+              session={session}
+            />
+          </div>
+        </section>
+
+        <section className="settings-panel settings-panel--advanced">
+          <ApiDiagnosticsBar
+            compact
+            apiOk={apiOk}
+            sessionsDir={sessionsDir}
+            probeBridgeFailed={probeBridgeFailed}
+          />
           <TweaksSettingsActions onBack={onBack} />
         </section>
       </div>

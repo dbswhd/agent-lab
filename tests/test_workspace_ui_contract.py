@@ -49,10 +49,9 @@ def test_agent_health_panel_shows_model_readiness_lane():
     assert "resolveRoomPresets" in presets
     assert "composer-preset-seg" in composer
     assert "model_provider?: string" in client
-    assert "Team-ready" in panel
-    assert "Loop-ready" in panel
-    assert "costTierLabel" in panel
-    assert "`cost ${row.model_cost_tier}`" in panel
+    assert "loop_ready" in panel
+    assert "재연결" in panel
+    assert "team-health" in panel
 
 
 def test_workspace_tabs_stay_on_transcript_while_running():

@@ -176,3 +176,11 @@ class TestTwoStageProbe:
         assert failure is not None
         assert "kimi" in failure.agents
         assert "cursor" not in failure.agents
+
+    def test_partition_loop_capable_agents_keeps_ready_primary(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from agent_lab.model_policy import partition_loop_capable_agents
+
+        monkeypatch.setenv("AGENT_LAB_LOOP_PROBE", "0")
+        capable, skipped = partition_loop_capable_agents(["claude", "kimi_work"])
+        assert capable == ("claude",)
+        assert skipped == ("kimi_work",)

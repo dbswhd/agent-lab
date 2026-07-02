@@ -10,12 +10,11 @@ import {
 import { VerificationStatusPanel } from "./VerificationStatusPanel";
 
 type Props = {
-  /** true when backend /health returned OK */
   apiOk: boolean;
-  /** sessions directory from server (overrides diag if provided) */
   sessionsDir: string | null;
-  /** true when Cursor bridge probe failed */
   probeBridgeFailed: boolean;
+  /** Settings 진단 — actions only, logs collapsed. */
+  compact?: boolean;
 };
 
 /** ApiDiagnosticsBar — expanded panel inside the rail health chip.
@@ -36,6 +35,7 @@ export function ApiDiagnosticsBar({
   apiOk,
   sessionsDir,
   probeBridgeFailed,
+  compact = false,
 }: Props) {
   const [diag, setDiag] = useState<DiagnosticsResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -97,26 +97,27 @@ export function ApiDiagnosticsBar({
   const displaySessions = sessionsDir ?? diag?.sessions_dir ?? null;
 
   return (
-    <div className="diag-bar" aria-label="API diagnostics">
+    <div
+      className={`diag-bar${compact ? " diag-bar--compact" : ""}`}
+      data-settings-embedded={compact || undefined}
+      aria-label="API diagnostics"
+    >
       {displaySessions ? (
         <p className="diag-bar__sessions" title={displaySessions}>
-          세션: {displaySessions}
+          {compact ? displaySessions : `세션: ${displaySessions}`}
         </p>
       ) : null}
 
       {!apiOk ? (
         <p className="diag-bar__offline">
-          API 연결 끊김 — 백엔드가 자동 재시작 중입니다. 잠시 후 ↻ 새로고침
-          {inTauri && shellStatus?.tauri_owns_api ? (
-            <>
-              {" "}
-              또는 아래 <strong>API 재시작</strong>을 사용하세요.
-            </>
-          ) : null}
+          API 연결 끊김
+          {!compact && inTauri && shellStatus?.tauri_owns_api
+            ? " — API 재시작 사용"
+            : null}
         </p>
       ) : null}
 
-      {shellStatus?.sessions_dir_mismatch ? (
+      {!compact && shellStatus?.sessions_dir_mismatch ? (
         <p className="diag-bar__hint" role="alert">
           세션 경로 불일치 — 실행 중 API:{" "}
           <code title={shellStatus.remote_sessions_dir ?? ""}>
@@ -135,7 +136,7 @@ export function ApiDiagnosticsBar({
         </p>
       ) : null}
 
-      {restartError ? (
+      {!compact && restartError ? (
         <p className="diag-bar__hint" role="alert">
           API 재시작 실패: {restartError}
         </p>
@@ -143,14 +144,12 @@ export function ApiDiagnosticsBar({
 
       {probeBridgeFailed ? (
         <p className="diag-bar__hint">
-          Cursor bridge 실패 — <code>~/.agent-lab/.env</code>에{" "}
-          <code>CURSOR_SDK_BRIDGE_BIN</code> 절대 경로 설정.{" "}
-          <code>docs/STABILITY.md</code> 참고.
+          Cursor bridge — <code>CURSOR_SDK_BRIDGE_BIN</code>
         </p>
       ) : null}
 
       <details className="diag-bar__detail">
-        <summary>진단 도구</summary>
+        <summary>{compact ? "로그 · JSON" : "진단 도구"}</summary>
 
         <div className="diag-bar__actions">
           {inTauri ? (
@@ -195,7 +194,7 @@ export function ApiDiagnosticsBar({
           </p>
         ) : null}
 
-        {diag?.bridge_audit ? (
+        {diag?.bridge_audit && !compact ? (
           <div className="diag-bar__bridge" role="status">
             <span className="diag-bar__bridge-title">Bridge registry</span>
             <span className="diag-bar__bridge-meta">

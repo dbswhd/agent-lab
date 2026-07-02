@@ -24,6 +24,7 @@ type Props = {
   disabled?: boolean;
   compact?: boolean;
   hideToggle?: boolean;
+  embedded?: boolean;
   onSave?: () => void | Promise<void>;
   saveBusy?: boolean;
   saveHint?: string | null;
@@ -39,6 +40,7 @@ export function AgentSessionSettings({
   disabled,
   compact = false,
   hideToggle = false,
+  embedded = false,
   onSave,
   saveBusy,
   saveHint,
@@ -66,9 +68,11 @@ export function AgentSessionSettings({
       className={[
         "agent-settings",
         compact ? "agent-settings--compact" : undefined,
+        embedded ? "agent-settings--embedded" : undefined,
       ]
         .filter(Boolean)
         .join(" ")}
+      data-settings-embedded={embedded || undefined}
     >
       {!hideToggle ? (
         <button

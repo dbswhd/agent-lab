@@ -1,5 +1,10 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { parseApiErrorDetail } from "../utils/apiError";
+import {
+  formatRoomRunErrorDetail,
+  isLoopReadinessDetail,
+  type RoomRunErrorDetail,
+} from "../utils/roomRunErrors";
 
 export type BackendOption = { id: string; label: string; ready: boolean };
 
@@ -1254,6 +1259,8 @@ export function reconnectKimiWorkBridge() {
   return json<{
     ok: boolean;
     bridge: AgentHealthRow["bridge"];
+    loop_ready?: boolean | null;
+    loop_blockers?: string[];
     hint?: string | null;
     agent: AgentHealthRow;
   }>("/api/health/reconnect-kimi-work", { method: "POST" });
@@ -1742,6 +1749,7 @@ function parseRoomRunHttpError(text: string): string {
     const body = JSON.parse(text) as {
       detail?:
         | string
+        | RoomRunErrorDetail
         | {
             message?: string;
             reason?: string;
@@ -1755,6 +1763,9 @@ function parseRoomRunHttpError(text: string): string {
       return msg || "API(8765) reconnecting — retry shortly";
     }
     const detail = body.detail;
+    if (detail && typeof detail === "object" && isLoopReadinessDetail(detail)) {
+      return formatRoomRunErrorDetail(detail);
+    }
     if (detail && typeof detail === "object" && Array.isArray(detail.agents)) {
       const sharedReason =
         typeof detail.reason === "string" ? detail.reason.trim() : "";

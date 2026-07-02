@@ -91,7 +91,11 @@ export function ComposerDecisionSurface({
       <ComposerNoticeCard
         variant="alert"
         title={item.title}
-        description={item.reason}
+        description={
+          item.details && item.details.length > (item.reason?.length ?? 0)
+            ? item.details
+            : item.reason
+        }
         primaryLabel={
           primaryBusy
             ? ko

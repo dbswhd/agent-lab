@@ -26,15 +26,31 @@ def _build_entry(
     warn = payload_budget_pct >= warn_pct
     critical = payload_budget_pct >= critical_pct
 
+    cache_read = 0
+    cache_hit_rate = 0.0
+    if isinstance(run_meta, dict):
+        ledger = run_meta.get("cost_ledger")
+        if isinstance(ledger, dict):
+            cumulative = ledger.get("cumulative")
+            if isinstance(cumulative, dict):
+                cache_read = int(cumulative.get("cache_read") or 0)
+            cache_hit_rate = float(ledger.get("cache_hit_rate") or 0.0)
+
     entry: dict[str, Any] = {
         "last_in": payload_chars_max,
         "last_out": payload_chars_total,
         "warn": warn,
         "critical": critical,
         "cumulative_chars": payload_chars_total,
+        "payload_budget_pct": payload_budget_pct,
+        "cache_read": cache_read,
+        "cache_hit_rate": cache_hit_rate,
     }
     if turn_meta:
         entry["last_trim_level"] = turn_meta.get("trim_level")
+        agent_cache = turn_meta.get("usage_cache_read")
+        if agent_cache is not None:
+            entry["last_cache_read"] = int(agent_cache)
     return entry
 
 

@@ -15,7 +15,12 @@ function compactMask(value: string): string {
   return value.length > 16 ? `••••••••${value.slice(-4)}` : value;
 }
 
-export function ProviderStatusPanel() {
+type Props = {
+  /** Settings shell — flat rows, no intro hint. */
+  embedded?: boolean;
+};
+
+export function ProviderStatusPanel({ embedded = false }: Props) {
   const [providers, setProviders] = useState<ProviderAuthRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,16 +50,25 @@ export function ProviderStatusPanel() {
   }
 
   return (
-    <div className="settings-credentials" data-testid="provider-status-panel">
-      <p className="settings-hint">
-        계정 상태는 보기 전용입니다. 변경은 Transcript에서 <code>/login</code>,{" "}
-        <code>/logout</code>, <code>/accounts</code>를 사용하세요.
-      </p>
+    <div
+      className="settings-credentials"
+      data-settings-embedded={embedded || undefined}
+      data-testid="provider-status-panel"
+    >
+      {!embedded ? (
+        <p className="settings-hint">
+          변경은 Transcript <code>/login</code> · <code>/logout</code>
+        </p>
+      ) : null}
       <div className="provider-status-list">
-        {loading ? <p className="settings-hint">계정 상태 확인 중…</p> : null}
+        {loading ? <p className="settings-hint">확인 중…</p> : null}
         {providers.map((provider) => {
           const credential = provider.accounts;
-          const codexProfiles = provider.profiles;
+          const accountLine = credential?.primary_masked
+            ? compactMask(credential.primary_masked)
+            : provider.account_mode === "ambient"
+              ? "CLI"
+              : null;
           return (
             <div className="provider-status-row" key={provider.id}>
               <Avatar
@@ -63,19 +77,12 @@ export function ProviderStatusPanel() {
                 size={20}
               />
               <div className="provider-status-row__body">
-                <div className="provider-status-row__title">
-                  <strong>{provider.label}</strong>
-                  <span>{provider.auth_methods.join(" · ") || "local"}</span>
-                </div>
-                <p>
-                  {credential?.primary_masked
-                    ? `메인 ${compactMask(credential.primary_masked)}`
-                    : provider.account_mode === "ambient"
-                      ? "CLI 계정"
-                      : "등록 계정 없음"}
-                  {codexProfiles?.has_primary ? " · 메인 프로필" : ""}
-                  {codexProfiles?.has_fallback ? " · 서브 프로필" : ""}
-                </p>
+                <strong>{provider.label}</strong>
+                {!embedded && accountLine ? (
+                  <span className="provider-status-row__meta">
+                    {accountLine}
+                  </span>
+                ) : null}
               </div>
               <span
                 className={`provider-status-row__state provider-status-row__state--${provider.state}`}

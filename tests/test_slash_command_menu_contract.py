@@ -48,10 +48,12 @@ def test_slash_picker_keyboard_contract():
 
 def test_login_secret_and_auth_panel_contract():
     room = _read("web/src/components/RoomChat.tsx")
-    auth = _read("web/src/components/AuthFlowPanel.tsx")
-    assert 'type="password"' in room
+    auth = _read("web/src/components/ComposerAuthFlowPopover.tsx")
+    secret = _read("web/src/components/ComposerAuthSecretPopover.tsx")
+    assert 'type="password"' in secret
     assert 'setSecretValue("")' in room
-    assert "AuthFlowPanel" in room
+    assert "ComposerAuthFlowPopover" in room
+    assert "ComposerAuthSecretPopover" in room
     for event in ("output", "auth_url", "completed", "failed", "cancelled"):
         assert event in auth
     assert 'type: "cancel"' in auth
@@ -62,5 +64,5 @@ def test_settings_account_surface_is_readonly():
     panel = _read("web/src/components/ProviderStatusPanel.tsx")
     assert "ProviderStatusPanel" in settings
     assert "AgentCredentialsPanel" not in settings
-    assert "보기 전용" in panel
+    assert "embedded" in settings
     assert "fetchProviderAuth" in panel

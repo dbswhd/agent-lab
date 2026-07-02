@@ -79,13 +79,30 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
     FlagDef(
         "AGENT_LAB_COMPACT_TOOL_OUTPUT",
         "feature",
-        "Deterministically truncate over-length code-fence tool/shell output in pre-current-turn agent messages before char-trim (default off)",
+        "Deterministically truncate over-length code-fence tool/shell output in pre-current-turn agent messages before char-trim (default on)",
     ),
     FlagDef(
         "AGENT_LAB_COMPACT_TOOL_CHARS",
         "feature",
         "Per-code-fence-block char cap for tool-output compaction (default 2000)",
         default="2000",
+    ),
+    FlagDef(
+        "AGENT_LAB_CHAT_JSONL_TAIL_LINES",
+        "feature",
+        "When set, load_session_messages parses only the last N chat.jsonl lines (perf; may break old L refs)",
+    ),
+    FlagDef(
+        "AGENT_LAB_CHARS_PER_TOKEN",
+        "feature",
+        "Heuristic chars-per-token for estimated usage when provider usage is absent (default 2.0)",
+        default="2.0",
+    ),
+    FlagDef(
+        "AGENT_LAB_EPHEMERAL_SYSTEM_MAX_KEEP",
+        "feature",
+        "Max peer-digest + synthesis system messages kept in prepare_recent_messages (default 3)",
+        default="3",
     ),
     FlagDef(
         "AGENT_LAB_SYNTAX_GATE",
@@ -470,6 +487,24 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "feature",
         "Background daimon warm on API startup (faster first Kimi Work turn)",
         default="1",
+    ),
+    FlagDef(
+        "AGENT_LAB_MODEL_CATALOG_REFRESH",
+        "feature",
+        "Background Codex model-catalog refresh on startup and stale reads",
+        default="0",
+    ),
+    FlagDef(
+        "AGENT_LAB_MODEL_CATALOG_REFRESH_CODEX",
+        "feature",
+        "When catalog refresh is on, fetch Codex models via OAuth backend",
+        default="1",
+    ),
+    FlagDef(
+        "AGENT_LAB_MODEL_CATALOG_TTL_S",
+        "feature",
+        "Runtime model catalog cache TTL (seconds)",
+        default="86400",
     ),
     FlagDef(
         "AGENT_LAB_KIMI_WORK_KEEP_DAIMON_ON_SHUTDOWN",

@@ -24,7 +24,7 @@ def _next_action_for_row(row: dict[str, Any]) -> str | None:
     if hint:
         agent = str(row.get("id") or "")
         if agent == "cursor":
-            return "Settings → Cursor 재연결"
+            return "왼쪽 rail 「연결」 또는 설정 → 연결에서 재연결"
         if agent == "codex":
             return "Settings → Codex OAuth → 프로필 검증"
         if agent == "claude":

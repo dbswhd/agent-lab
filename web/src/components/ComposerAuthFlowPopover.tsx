@@ -5,6 +5,7 @@ import {
   captureCodexAuthRun,
   type AuthRunRef,
 } from "../api/client";
+import { useDismissOnPointerDownOutside } from "../hooks/useDismissOnPointerDownOutside";
 import { stripTerminalControlSequences } from "../utils/ttySanitize";
 
 type Props = {
@@ -18,7 +19,6 @@ type FlowStatus = "running" | "failed" | "cancelled";
 const AUTH_CLI_SUCCESS_RE =
   /Login successful|Logout successful|Successfully logged out|✓ Logout successful|logged in using/i;
 
-/** OAuth CLI providers complete via browser approval + localhost callback (no code paste). */
 const BROWSER_OAUTH_PROVIDERS = new Set(["claude", "codex", "cursor"]);
 
 function authOutputLooksSuccessful(output: string): boolean {
@@ -56,7 +56,15 @@ function formatAuthFailureOutput(output: string): string {
   return normalized.join("\n");
 }
 
-export function AuthFlowPanel({ run, onClose, onComplete }: Props) {
+function providerLabel(providerId: string): string {
+  if (providerId === "claude") return "Claude";
+  if (providerId === "codex") return "Codex";
+  if (providerId === "cursor") return "Cursor";
+  return providerId;
+}
+
+/** OAuth CLI progress — anchored above composer (replaces bottom AuthFlowPanel). */
+export function ComposerAuthFlowPopover({ run, onClose, onComplete }: Props) {
   const [status, setStatus] = useState<FlowStatus>("running");
   const [errorOutput, setErrorOutput] = useState("");
   const [authUrl, setAuthUrl] = useState<string | null>(null);
@@ -66,6 +74,14 @@ export function AuthFlowPanel({ run, onClose, onComplete }: Props) {
   const outputRef = useRef("");
   const onCloseRef = useRef(onClose);
   const onCompleteRef = useRef(onComplete);
+  const handleDismiss = useCallback(() => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "cancel" }));
+    }
+    onClose();
+  }, [onClose]);
+
+  const popoverRef = useDismissOnPointerDownOutside(true, handleDismiss);
 
   onCloseRef.current = onClose;
   onCompleteRef.current = onComplete;
@@ -166,97 +182,104 @@ export function AuthFlowPanel({ run, onClose, onComplete }: Props) {
     setInput("");
   };
 
-  const providerLabel =
-    run.provider_id === "claude"
-      ? "Claude"
-      : run.provider_id === "codex"
-        ? "Codex"
-        : run.provider_id === "cursor"
-          ? "Cursor"
-          : run.provider_id;
+  const label = providerLabel(run.provider_id);
   const browserOAuthLogin =
     run.action === "login" && BROWSER_OAUTH_PROVIDERS.has(run.provider_id);
 
-  if (status !== "running") {
-    return (
-      <section
-        className="auth-flow auth-flow--error"
-        aria-label={`${providerLabel} ${flowLabel} 실패`}
-      >
-        <div className="auth-flow__head">
+  return (
+    <div
+      ref={popoverRef}
+      className="slash-command-menu composer-auth-flow-popover"
+      role="dialog"
+      aria-label={`${label} ${flowLabel}`}
+      data-testid="composer-auth-flow-popover"
+    >
+      <div className="slash-command-menu__main">
+        <div className="composer-auth-flow-popover__head">
           <strong>
-            {providerLabel} {flowLabel} 실패
+            {label} {flowLabel}
           </strong>
-          <span className={`auth-flow__status auth-flow__status--${status}`}>
-            {status === "cancelled" ? "취소됨" : "실패"}
+          <span
+            className={[
+              "composer-auth-flow-popover__status",
+              status !== "running" ? "is-error" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          >
+            {status === "running"
+              ? "진행 중"
+              : status === "cancelled"
+                ? "취소됨"
+                : "실패"}
           </span>
         </div>
-        <pre className="auth-flow__output" aria-live="polite">
-          {errorOutput}
-        </pre>
-        <div className="auth-flow__input-row">
-          <button type="button" className="btn btn--sm" onClick={onClose}>
-            닫기
+        {status === "running" ? (
+          <p className="composer-auth-flow-popover__hint">
+            {run.action === "logout"
+              ? "CLI 로그아웃을 실행 중입니다."
+              : browserOAuthLogin
+                ? "브라우저에서 승인하면 자동으로 완료됩니다."
+                : "브라우저에서 승인한 뒤, 코드가 표시되면 아래에 붙여넣으세요."}
+          </p>
+        ) : (
+          <pre className="composer-auth-flow-popover__output" aria-live="polite">
+            {errorOutput}
+          </pre>
+        )}
+        <div className="composer-auth-flow-popover__actions">
+          {status === "running" && authUrl ? (
+            <button
+              type="button"
+              className="composer-slash-choice__action"
+              onClick={() => void openUrl(authUrl).catch(() => undefined)}
+            >
+              브라우저에서 계속
+            </button>
+          ) : null}
+          {status === "running" &&
+          run.action === "login" &&
+          !browserOAuthLogin ? (
+            <>
+              <input
+                className="composer-auth-flow-popover__input"
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") submitInput();
+                }}
+                placeholder="인증 코드 (필요할 때만)"
+                aria-label="인증 코드 입력"
+              />
+              <button
+                type="button"
+                className="composer-slash-choice__action"
+                onClick={submitInput}
+              >
+                입력
+              </button>
+            </>
+          ) : null}
+          <button
+            type="button"
+            className={[
+              "composer-slash-choice__action",
+              status === "running" ? "composer-slash-choice__action--danger" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            onClick={() => {
+              if (status === "running") {
+                wsRef.current?.send(JSON.stringify({ type: "cancel" }));
+                return;
+              }
+              onClose();
+            }}
+          >
+            {status === "running" ? "취소" : "닫기"}
           </button>
         </div>
-      </section>
-    );
-  }
-
-  return (
-    <section
-      className="auth-flow auth-flow--running"
-      aria-label={`${providerLabel} ${flowLabel}`}
-    >
-      <div className="auth-flow__head">
-        <strong>
-          {providerLabel} {flowLabel}
-        </strong>
-        <span className="auth-flow__status">진행 중</span>
       </div>
-      <p className="auth-flow__hint">
-        {run.action === "logout"
-          ? "CLI 로그아웃을 실행 중입니다."
-          : browserOAuthLogin
-            ? "브라우저에서 승인하면 자동으로 완료됩니다."
-            : "브라우저에서 승인한 뒤, 코드가 표시되면 아래에 붙여넣으세요."}
-      </p>
-      {authUrl ? (
-        <button
-          type="button"
-          className="btn btn--sm"
-          onClick={() => void openUrl(authUrl).catch(() => undefined)}
-        >
-          브라우저에서 계속
-        </button>
-      ) : null}
-      <div className="auth-flow__input-row">
-        {run.action === "login" && !browserOAuthLogin ? (
-          <>
-            <input
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") submitInput();
-              }}
-              placeholder="인증 코드 (필요할 때만)"
-              aria-label="인증 코드 입력"
-            />
-            <button type="button" className="btn btn--sm" onClick={submitInput}>
-              입력
-            </button>
-          </>
-        ) : null}
-        <button
-          type="button"
-          className="btn btn--danger btn--sm"
-          onClick={() =>
-            wsRef.current?.send(JSON.stringify({ type: "cancel" }))
-          }
-        >
-          취소
-        </button>
-      </div>
-    </section>
+    </div>
   );
 }

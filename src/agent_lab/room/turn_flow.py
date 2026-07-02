@@ -183,17 +183,22 @@ def continue_room_round(
 
     clear_inbox_fork_grace(run_meta)
     _bind_session_to_run_meta(run_meta, folder)
-    active_agents = resolve_active_agents(agents, available_agents, session_folder=folder)
+    requested_agents = resolve_active_agents(agents, available_agents, session_folder=folder)
     from agent_lab.agent.availability import filter_agents_for_turn
 
     active_agents = filter_agents_for_turn(
-        active_agents,
+        requested_agents,
         run_meta=run_meta,
         available_fn=available_agents,
     )
     from agent_lab.room.turn_flow_support import apply_turn_agent_mentions
 
-    user_text, active_agents, _ = apply_turn_agent_mentions(user_text, active_agents, run_meta)
+    user_text, active_agents, _ = apply_turn_agent_mentions(
+        user_text,
+        active_agents,
+        run_meta,
+        roster_pool=requested_agents,
+    )
     body = user_text
     if att:
         body = f"{body}\n\n---\n\n{att}" if body else att
@@ -250,6 +255,9 @@ def continue_room_round(
     from agent_lab.trace_recorder import install_tracer
 
     on_event = install_tracer(folder, run_meta, on_event, human_turn=human_turn_num)
+    from agent_lab.room.turn_flow_support import ensure_adaptive_efficiency_for_turn
+
+    ensure_adaptive_efficiency_for_turn(run_meta, human_turn=human_turn_num)
     parallel_rounds = apply_turn_profile_flags(
         run_meta,
         turn_profile,
@@ -556,17 +564,22 @@ def run_room(
 
     plan_md, run_meta = _session_context(folder)
     _bind_session_to_run_meta(run_meta, folder)
-    active_agents = resolve_active_agents(agents, available_agents, session_folder=folder)
+    requested_agents = resolve_active_agents(agents, available_agents, session_folder=folder)
     from agent_lab.agent.availability import filter_agents_for_turn
 
     active_agents = filter_agents_for_turn(
-        active_agents,
+        requested_agents,
         run_meta=run_meta,
         available_fn=available_agents,
     )
     from agent_lab.room.turn_flow_support import apply_turn_agent_mentions
 
-    user_text, active_agents, _ = apply_turn_agent_mentions(user_text, active_agents, run_meta)
+    user_text, active_agents, _ = apply_turn_agent_mentions(
+        user_text,
+        active_agents,
+        run_meta,
+        roster_pool=requested_agents,
+    )
     body = user_text
     if att:
         body = f"{body}\n\n---\n\n{att}" if body else att
@@ -595,6 +608,9 @@ def run_room(
     from agent_lab.trace_recorder import install_tracer
 
     on_event = install_tracer(folder, run_meta, on_event, human_turn=human_turn_num)
+    from agent_lab.room.turn_flow_support import ensure_adaptive_efficiency_for_turn
+
+    ensure_adaptive_efficiency_for_turn(run_meta, human_turn=human_turn_num)
     from agent_lab.room.team_orchestration import resolve_turn_lead
 
     resolve_turn_lead(

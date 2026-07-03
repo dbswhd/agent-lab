@@ -59,3 +59,22 @@ def test_retry_call_does_not_retry_non_retryable(monkeypatch):
     assert attempts == 1
     assert getattr(exc_info.value, "agent_lab_retry_attempts") == 1
     assert getattr(exc_info.value, "agent_lab_retryable") is False
+
+
+def test_retry_call_honors_pre_marked_non_retryable_despite_retryable_wording(monkeypatch):
+    """A message can contain a retryable-looking word (e.g. "timeout") while
+    describing a decisive stall — the raiser's explicit mark must win over the
+    text-pattern guess, or a real stall gets retried for no benefit."""
+    monkeypatch.setattr("agent_lab.cli_retry.time.sleep", lambda _delay: None)
+    attempts = 0
+
+    def stalled() -> str:
+        nonlocal attempts
+        attempts += 1
+        exc = RuntimeError("wall-clock timeout after 300s")
+        exc.agent_lab_retryable = False  # type: ignore[attr-defined]
+        raise exc
+
+    with pytest.raises(RuntimeError, match="wall-clock timeout"):
+        retry_call(stalled, max_attempts=3, base_delay_sec=0, jitter=False)
+    assert attempts == 1

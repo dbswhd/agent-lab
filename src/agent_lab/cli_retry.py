@@ -108,7 +108,12 @@ def retry_call(
         try:
             return fn()
         except Exception as exc:
-            retryable = is_retryable(exc)
+            # A raiser may already know its failure is decisive (e.g. a genuine
+            # stall, not a transient rate limit) and pre-mark agent_lab_retryable —
+            # respect that instead of re-guessing from the message text, since a
+            # message can accidentally contain a retryable-looking word like
+            # "timeout" while describing a non-transient stall.
+            retryable = retryable_failure(exc)
             _mark_failure(exc, attempts=attempt, retryable=retryable)
             last_exc = exc
             if not retryable or attempt >= attempts:

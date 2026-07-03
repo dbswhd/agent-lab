@@ -571,6 +571,11 @@ def _run_codex(
                 stderr_path=stderr_path,
             )
         )
+        # Decisive, not transient: the process was killed after genuinely
+        # stalling. The message text may contain "timeout" (matches the
+        # retryable-pattern regex) even though retrying just repeats the same
+        # multi-minute wait — mark it explicitly so retry_call doesn't guess.
+        err.agent_lab_retryable = False  # type: ignore[attr-defined]
         if cause is not None:
             raise err from cause
         raise err

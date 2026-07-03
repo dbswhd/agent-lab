@@ -49,6 +49,36 @@ def parse_agent_mentions(text: str, active_pool: list[str]) -> list[str]:
     return seen
 
 
+def parse_explicit_mentions(text: str) -> list[str]:
+    """Parse ``@agent`` tokens against the full provider vocabulary (ignores roster)."""
+    active = {str(a).strip().lower() for a in AGENT_IDS if str(a).strip()}
+    seen: list[str] = []
+    for m in _MENTION_RE.finditer(text or ""):
+        raw = m.group(1).strip().lower()
+        if raw not in _MENTION_VOCAB:
+            continue
+        canon = _canonical_mention_token(raw, active=active)
+        if canon and canon not in seen:
+            seen.append(canon)
+    return seen
+
+
+def out_of_roster_mentions(text: str, roster_pool: list[str]) -> list[str]:
+    """Explicit ``@agent`` targets that are valid providers but not in *roster_pool*."""
+    pool = {str(a).strip().lower() for a in roster_pool if str(a).strip()}
+    return [m for m in parse_explicit_mentions(text) if m not in pool]
+
+
+def mention_not_in_roster_message(out_of_roster: list[str], roster_pool: list[str]) -> str:
+    """Human-readable error when @-targets are absent from the session roster."""
+    missing = ", ".join(f"@{a}" for a in out_of_roster)
+    roster = ", ".join(str(a) for a in roster_pool if str(a).strip()) or "(empty)"
+    return (
+        f"{missing} is not in this session's agent roster ({roster}). "
+        "Add them with /model or mention an active agent."
+    )
+
+
 def strip_agent_mentions(text: str) -> str:
     """Remove ``@agent`` tokens; collapse whitespace."""
     cleaned = _MENTION_RE.sub(" ", text or "")

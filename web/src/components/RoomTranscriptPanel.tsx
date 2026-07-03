@@ -24,6 +24,7 @@ type Props = {
   advisorRationales: (string | null)[];
   openDraftMessageIds: Set<string>;
   pendingReplyAgents: PendingReplyAgent[];
+  runStartedAt?: number | null;
   highlightChatLine: number | null;
   locale: string;
   transcriptLoading: string;
@@ -47,6 +48,7 @@ export function RoomTranscriptPanel({
   advisorRationales,
   openDraftMessageIds,
   pendingReplyAgents,
+  runStartedAt = null,
   highlightChatLine,
   locale,
   transcriptLoading,
@@ -133,6 +135,7 @@ export function RoomTranscriptPanel({
                   label={m.label}
                   turnItems={m.turnItems}
                   body={m.body}
+                  startedAt={runStartedAt}
                 />
               );
             }
@@ -171,7 +174,12 @@ export function RoomTranscriptPanel({
           });
         })()}
         {pendingReplyAgents.map((a) => (
-          <ReplyWaitingBubble key={a.id} agent={a.role} label={a.label} />
+          <ReplyWaitingBubble
+            key={a.id}
+            agent={a.role}
+            label={a.label}
+            startedAt={runStartedAt}
+          />
         ))}
       </div>
 

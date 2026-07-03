@@ -559,7 +559,7 @@ def invoke(
     if budget := os.getenv("CLAUDE_MAX_BUDGET_USD"):
         cmd.extend(["--max-budget-usd", budget.strip()])
 
-    cmd.append(user.strip())
+    user_text = user.strip()
 
     Path(system_path).write_text(system_text + "\n", encoding="utf-8")
 
@@ -571,6 +571,7 @@ def invoke(
             assert on_bridge_event is not None
             return _run_claude_stream(
                 cmd,
+                user_text=user_text,
                 on_bridge_event=on_bridge_event,
                 on_activity=on_activity,
                 timeout=_timeout_sec(room_turn=room_turn),
@@ -588,7 +589,7 @@ def invoke(
 
         proc = subprocess.Popen(
             cmd,
-            stdin=subprocess.DEVNULL,
+            stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
@@ -599,6 +600,12 @@ def invoke(
         deadline = _timeout_sec(room_turn=room_turn)
         started = time.monotonic()
         try:
+            assert proc.stdin is not None
+            proc.stdin.write(user_text)
+            if user_text and not user_text.endswith("\n"):
+                proc.stdin.write("\n")
+            proc.stdin.close()
+            proc.stdin = None
             while proc.poll() is None:
                 if is_cancelled():
                     proc.kill()
@@ -727,6 +734,7 @@ def _emit_claude_usage(
 def _run_claude_stream(
     cmd: list[str],
     *,
+    user_text: str,
     on_bridge_event: Callable[[str, dict[str, Any]], None],
     on_activity: Callable[[str], None] | None,
     timeout: int | None,
@@ -747,7 +755,7 @@ def _run_claude_stream(
 
     proc = subprocess.Popen(
         cmd,
-        stdin=subprocess.DEVNULL,
+        stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
@@ -755,6 +763,12 @@ def _run_claude_stream(
         cwd=cwd,
     )
     register_child_process(proc)
+    assert proc.stdin is not None
+    proc.stdin.write(user_text)
+    if user_text and not user_text.endswith("\n"):
+        proc.stdin.write("\n")
+    proc.stdin.close()
+    proc.stdin = None
     stdout = proc.stdout
     stderr = proc.stderr
     assert stdout is not None

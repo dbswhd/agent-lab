@@ -53,6 +53,7 @@ import { useWorkspaceTabs } from "../hooks/useWorkspaceTabs";
 import { useSessionRunState } from "../hooks/useSessionRunState";
 import {
   PENDING_KEY,
+  appendSessionMessages,
   clearBackgroundRun,
   finishSessionRun,
   finalizeCancelledTyping,
@@ -63,11 +64,16 @@ import {
   markBackgroundRun,
   resetTurnRun,
   resolveRunSessionKey,
+  syncRunStateFromLiveLog,
   updateSessionRun,
   type LiveMsg,
 } from "../run/runSessionRegistry";
+import { registerRoomEventHandler } from "../run/roomReconnectRegistry";
 import { derivePendingReplyAgents } from "../run/runningAgents";
-import { effectiveTurnAgents } from "../utils/agentMentions";
+import {
+  effectiveTurnAgents,
+  parseAgentMentions,
+} from "../utils/agentMentions";
 import { createRoomRunEventHandler } from "../hooks/useRoomSseHandler";
 import { latestDraftMessageIdsByAgent } from "../utils/draftResponsePrefs";
 import { stripAgentReplyBody } from "../utils/agentResponseCard";
@@ -89,7 +95,6 @@ import { useHumanDecisionRuntime } from "../hooks/useHumanDecisionRuntime";
 import { buildDecisionBlockedHeadline } from "../utils/decisionBlockedHeadline";
 import { ChatComposer, type PendingFile } from "./ChatComposer";
 import { ShellPortal } from "./ShellPortal";
-import { useNotificationUnread } from "../hooks/useNotificationUnread";
 import { ContextOverviewPanel } from "./ContextOverviewPanel";
 import type { PlanApprovalMode, PlanRejectPayload } from "./PlanApprovalPanel";
 import { type WorkFocusTarget } from "./WorkToolPanel";
@@ -378,6 +383,8 @@ export function RoomChat({
     running,
     runBusy,
     synthesizing,
+    localSseRun,
+    runStartedAt,
     topologyActive,
     topologyDone,
     setSynthesizing,
@@ -1260,7 +1267,6 @@ export function RoomChat({
   }, [planActionFocusIndex, focusWorkStack]);
 
   const isNew = !sessionId;
-  const notificationUnread = useNotificationUnread();
 
   useEffect(() => {
     setGoalText(buildGoalLoopView(session?.run).goal.text ?? "");
@@ -1460,6 +1466,7 @@ export function RoomChat({
       const merged = preferRicherChatMessages(local.messages, serverMsgs);
       syncedChatRef.current = fp;
       hydrateSessionMessages(sessionId, merged);
+      syncRunStateFromLiveLog(sessionId, session.live_log);
       syncSessionActivityMarkers(sessionId);
     }
     setPlanMd(session.plan_md || "");
@@ -2088,6 +2095,29 @@ export function RoomChat({
               confirm,
             });
         if (res.kind === "server") {
+          const resultStage = res.result as
+            | { stage?: unknown; auth_run?: unknown }
+            | undefined;
+          // Mirrors command_registry.py's _emit_slash_chat_line gate: only a
+          // final action (no staged picker, no auth_run) is ever persisted to
+          // chat.jsonl, so only that case gets a local divider. Appended here
+          // (not just via refreshSessionMeta's later hydrate) because hydrate
+          // is a no-op while a run is active — without this, sending a chat
+          // message right after a slash command renders it before the
+          // divider ever appears.
+          if (sid && res.text && !resultStage?.stage && !resultStage?.auth_run) {
+            appendSessionMessages(
+              resolveRunSessionKey(sessionId, activeSessionIdRef.current),
+              [
+                {
+                  id: `slash-divider-${crypto.randomUUID()}`,
+                  role: "system",
+                  label: "",
+                  body: `[slash] ${res.text}`,
+                },
+              ],
+            );
+          }
           if (sid) {
             refreshSessionMeta();
           } else if (isGlobal) {
@@ -2664,6 +2694,17 @@ export function RoomChat({
             await refreshRecoveryReadiness();
             return;
           }
+          case "reconnect_codex": {
+            const loginCmd = slashCommands.find(
+              (candidate) => candidate.id === "login",
+            );
+            if (loginCmd) {
+              await executeSlashCommand(loginCmd, "codex");
+              return;
+            }
+            onOpenSettings?.();
+            return;
+          }
           case "reconnect_kimi_work":
             await reconnectKimiWorkBridge();
             await refreshRecoveryReadiness();
@@ -3182,15 +3223,28 @@ export function RoomChat({
     () => effectiveTurnAgents(turnUserBody, turnResolved.agents),
     [turnUserBody, turnResolved.agents],
   );
+  const mentionFiltered = useMemo(
+    () => parseAgentMentions(turnUserBody, turnResolved.agents).length > 0,
+    [turnUserBody, turnResolved.agents],
+  );
   const pendingReplyAgents = useMemo(
     () =>
       derivePendingReplyAgents(messages, {
-        running,
+        running: running || localSseRun,
+        mentionFiltered,
         expectedAgents: turnTargetAgents,
         topologyActive,
         topologyDone,
       }),
-    [messages, running, turnTargetAgents, topologyActive, topologyDone],
+    [
+      messages,
+      running,
+      localSseRun,
+      mentionFiltered,
+      turnTargetAgents,
+      topologyActive,
+      topologyDone,
+    ],
   );
 
   const paletteActions = useMemo(() => {
@@ -3259,7 +3313,6 @@ export function RoomChat({
         rightPanelOpen={inspectorOpen}
         rightPanelMode={rightPanelMode}
         locale={locale}
-        panelBadgeCount={!isNew ? notificationUnread : 0}
         onToggleSidebar={_onToggleSidebar}
         onToggleRightPanel={toggleInspector}
         onSelectRightPanelMode={handleSelectRightPanelMode}
@@ -3333,6 +3386,7 @@ export function RoomChat({
                 advisorRationales={advisorRationales}
                 openDraftMessageIds={openDraftMessageIds}
                 pendingReplyAgents={pendingReplyAgents}
+                runStartedAt={runStartedAt}
                 highlightChatLine={highlightChatLine}
                 locale={locale}
                 transcriptLoading={localeMsg.transcriptLoading}

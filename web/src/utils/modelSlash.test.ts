@@ -1,5 +1,10 @@
-import { describe, expect, it } from "vitest";
-import { parseModelSlashArgs, readSessionRoomModels } from "./modelSlash";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  parseModelSlashArgs,
+  readPendingRoomModels,
+  readSessionRoomModels,
+  writePendingRoomModels,
+} from "./modelSlash";
 
 describe("parseModelSlashArgs", () => {
   it("splits composition and session scope", () => {
@@ -33,5 +38,30 @@ describe("readSessionRoomModels", () => {
 
   it("returns null when missing", () => {
     expect(readSessionRoomModels({})).toBeNull();
+  });
+});
+
+describe("pending room models storage", () => {
+  beforeEach(() => {
+    const store = new Map<string, string>();
+    vi.stubGlobal("sessionStorage", {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        store.set(key, value);
+      },
+      removeItem: (key: string) => {
+        store.delete(key);
+      },
+      clear: () => {
+        store.clear();
+      },
+    });
+  });
+
+  it("round-trips session-scoped picks before bind", () => {
+    writePendingRoomModels(["kimi_work", "claude"]);
+    expect(readPendingRoomModels()).toEqual(["claude", "kimi_work"]);
+    writePendingRoomModels(null);
+    expect(readPendingRoomModels()).toBeNull();
   });
 });

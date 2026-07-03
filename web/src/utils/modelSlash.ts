@@ -29,3 +29,42 @@ export function readSessionRoomModels(
   const ids = raw.map((id) => String(id).trim()).filter(Boolean);
   return ids.length > 0 ? sortAgentIds(ids) : null;
 }
+
+const PENDING_ROOM_MODELS_KEY = "agent-lab:pending-room-models";
+
+function pendingModelsStore(): Storage | null {
+  try {
+    return typeof sessionStorage !== "undefined" ? sessionStorage : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Pre-session "이번 세션만" composition — survives refresh until first bind. */
+export function readPendingRoomModels(): string[] | null {
+  const store = pendingModelsStore();
+  if (!store) return null;
+  try {
+    const raw = store.getItem(PENDING_ROOM_MODELS_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return null;
+    const ids = parsed.map((id) => String(id).trim()).filter(Boolean);
+    return ids.length > 0 ? sortAgentIds(ids) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function writePendingRoomModels(composition: string[] | null): void {
+  const store = pendingModelsStore();
+  if (!store) return;
+  if (!composition?.length) {
+    store.removeItem(PENDING_ROOM_MODELS_KEY);
+    return;
+  }
+  store.setItem(
+    PENDING_ROOM_MODELS_KEY,
+    JSON.stringify(sortAgentIds(composition)),
+  );
+}

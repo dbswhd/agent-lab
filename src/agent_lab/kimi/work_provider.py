@@ -16,7 +16,6 @@ from agent_lab.kimi.work_push_mapper import KimiWorkPushMapper
 from agent_lab.agents.prompts import KIMI_WORK_ROOM
 
 DEFAULT_MODEL = "k2p6"
-_push_mapper = KimiWorkPushMapper()
 
 
 def kimi_work_model() -> str:
@@ -117,10 +116,14 @@ def respond(
 
         on_activity(format_tool_activity_line(tool="workspace", args=str(workspace)))
 
-    _push_mapper.reset()
+    # Per-call instance — Room dispatches agents on a ThreadPoolExecutor, and a
+    # module-level singleton here would let concurrent Kimi Work turns (across
+    # sessions, or overlapping retries) interleave snapshots into the same
+    # cumulative-text buffers, corrupting each other's streamed reply/thinking.
+    push_mapper = KimiWorkPushMapper()
 
     def _on_push(method: str, payload: dict[str, Any]) -> None:
-        _push_mapper.emit_push(method, payload, on_bridge_event)
+        push_mapper.emit_push(method, payload, on_bridge_event)
 
     push_handler: Callable[[str, dict[str, Any]], None] = _on_push
     if use_inbox_mcp:

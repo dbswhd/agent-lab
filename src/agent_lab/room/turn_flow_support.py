@@ -26,22 +26,52 @@ def apply_turn_agent_mentions(
     run_meta: dict[str, Any],
     *,
     roster_pool: list[Any] | None = None,
-) -> tuple[str, list[Any], list[str]]:
+) -> tuple[str, list[Any], list[str], str | None]:
     """When Human @-targets agents, shrink roster and strip tokens from user text."""
-    from agent_lab.room.agent_mentions import apply_agent_mention_filter
+    from agent_lab.room.agent_mentions import (
+        apply_agent_mention_filter,
+        mention_not_in_roster_message,
+        out_of_roster_mentions,
+    )
 
     pool = roster_pool if roster_pool is not None else active_agents
+    pool_list = [str(a) for a in pool]
+    oor = out_of_roster_mentions(user_text, pool_list)
+    if oor:
+        run_meta.pop("_turn_target_agents", None)
+        return user_text, active_agents, [], mention_not_in_roster_message(oor, pool_list)
     filtered, stripped, targets = apply_agent_mention_filter(
         user_text,
         [str(a) for a in active_agents],
-        roster_pool=[str(a) for a in pool],
+        roster_pool=pool_list,
     )
     if not targets:
         run_meta.pop("_turn_target_agents", None)
-        return user_text, active_agents, []
+        return user_text, active_agents, [], None
     run_meta["_turn_target_agents"] = targets
     run_meta["agents"] = [str(a) for a in filtered]
-    return stripped, filtered, targets
+    return stripped, filtered, targets, None
+
+
+def emit_mention_roster_error(on_event: OnAgentEvent | None, message: str) -> None:
+    """Fail the turn immediately when @-targets are outside the session roster."""
+    if not on_event:
+        return
+    payload = {
+        "status": "failed",
+        "reason": "mention_not_in_roster",
+        "message": message,
+        "agent_reply_count": 0,
+        "failed_agents": [],
+        "succeeded_agents": [],
+    }
+    on_event("turn_failed", payload)
+    on_event("run_failed", {"message": message})
+
+
+def direct_turn_for_mention_targets(targets: list[str]) -> bool:
+    """Single explicit @-mention → one agent, one round (skip consensus loop)."""
+    return len(targets) == 1
 
 
 def emit_divergence_options(

@@ -35,6 +35,7 @@ Room UI bugs (spinners, missing activity, wrong agent count) come from breaking 
 |-------|-----|
 | `typing` bubble exists | Show `ReplyWaitingBubble` for that agent only |
 | No typing, before first `agent_start` | **No** roster-wide placeholders |
+| `@codex` in user body | Before `agent_start`, show pending for mentioned agent(s) only |
 | `topologyActive` set | At most **one** pending slot |
 | `@codex` in user body | `effectiveTurnAgents()` — pending roster matches server mention filter |
 | Some agents in `topologyDone` | Pending = not done, not typing |

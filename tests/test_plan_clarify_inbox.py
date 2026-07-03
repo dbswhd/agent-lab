@@ -4,9 +4,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from agent_lab.plan.clarify_options import options_for_clarifier_category
-from agent_lab.plan.workflow import ensure_plan_clarify_inbox_question, init_plan_workflow_on_plan_send
-from agent_lab.run.meta import read_run_meta
+from agent_lab.plan.workflow import (
+    ensure_plan_clarify_inbox_question,
+    ensure_plan_clarify_interview,
+    init_plan_workflow_on_plan_send,
+)
+from agent_lab.run.meta import patch_run_meta, read_run_meta
 from agent_lab.session.clarifier import persist_clarifier_interview
 
 
@@ -15,6 +21,19 @@ def test_clarifier_category_options_have_at_least_two_choices() -> None:
         opts = options_for_clarifier_category(cat)
         assert len(opts) >= 2
         assert all(o.get("id") and o.get("label") for o in opts)
+
+
+def test_ensure_plan_clarify_interview_skips_smoke_test_topic(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    init_plan_workflow_on_plan_send(folder)
+    patch_run_meta(folder, lambda r: {**r, "topic": "코덱스 응답 테스트 중"})
+    assert ensure_plan_clarify_interview(folder) is None
+    assert ensure_plan_clarify_inbox_question(folder) is None
 
 
 def test_ensure_plan_clarify_inbox_question_seeds_multiple_choice(tmp_path: Path) -> None:

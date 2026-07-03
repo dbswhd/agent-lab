@@ -1,4 +1,6 @@
 import type { ChatMessage } from "../utils/transcript";
+import { inferRunStateFromLiveLog } from "../utils/liveRoomLog";
+import { mergeTurnItemsIntoMessages } from "../utils/sessionChatMerge";
 
 export type LiveMsg = ChatMessage & { typing?: boolean };
 
@@ -20,6 +22,8 @@ export type SessionRunSnapshot = {
   backgroundRun: BackgroundRunInfo | null;
   /** Local Room SSE turn — survives transient gaps before the run lock is held. */
   localSseRun: boolean;
+  /** Wall-clock start of the current turn (for Worked-for duration across remounts). */
+  runStartedAt: number | null;
 };
 
 const PENDING_KEY = "__pending__";
@@ -40,6 +44,7 @@ function emptySnapshot(sessionId: string): SessionRunSnapshot {
     topologyActive: null,
     backgroundRun: null,
     localSseRun: false,
+    runStartedAt: null,
   };
 }
 
@@ -252,6 +257,7 @@ export function appendSessionMessages(
 }
 
 export function resetTurnRun(sessionKey: string, userMsg: LiveMsg): void {
+  const startedAt = Date.now();
   updateSessionRun(sessionKey, (snap) => ({
     messages: [...snap.messages, userMsg],
     turnMessages: [userMsg],
@@ -261,7 +267,26 @@ export function resetTurnRun(sessionKey: string, userMsg: LiveMsg): void {
     runBusy: true,
     backgroundRun: null,
     localSseRun: true,
+    runStartedAt: startedAt,
   }));
+}
+
+/** Restore running UI after refresh when live.jsonl still has open agent turns. */
+export function syncRunStateFromLiveLog(
+  sessionId: string,
+  liveLog: Array<Record<string, unknown>> | undefined,
+): void {
+  if (!liveLog?.length) return;
+  const snap = getSessionRunSnapshot(sessionId);
+  if (snap.localSseRun && snap.running) return;
+  const { inFlight, runStartedAt } = inferRunStateFromLiveLog(liveLog);
+  if (!inFlight) return;
+  updateSessionRun(sessionId, {
+    running: true,
+    runBusy: true,
+    localSseRun: true,
+    runStartedAt: runStartedAt ?? snap.runStartedAt ?? Date.now(),
+  });
 }
 
 export function findAgentTurnMessage(
@@ -335,6 +360,7 @@ export function finalizeCancelledTyping(sessionKey: string): void {
     topologyActive: null,
     backgroundRun: null,
     localSseRun: false,
+    runStartedAt: null,
   }));
 }
 
@@ -356,6 +382,7 @@ export function finishSessionRun(
     topologyActive: null,
     backgroundRun: null,
     localSseRun: false,
+    runStartedAt: null,
   }));
 }
 
@@ -366,7 +393,10 @@ export function hydrateSessionMessages(
   const snap = getSessionRunSnapshot(sessionId);
   if (isSessionRunActive(sessionId) && snap.messages.length > 0) return;
   const runActive = isSessionRunActive(sessionId);
-  const finalized = runActive ? messages : stripStaleTypingMessages(messages);
+  const stripped = runActive ? messages : stripStaleTypingMessages(messages);
+  const finalized = runActive
+    ? messages
+    : mergeTurnItemsIntoMessages(stripped, snap.messages);
   updateSessionRun(sessionId, {
     messages: finalized,
     turnMessages: runActive ? snap.turnMessages : [],

@@ -18,6 +18,7 @@ const EMPTY: SessionRunSnapshot = {
   topologyActive: null,
   backgroundRun: null,
   localSseRun: false,
+  runStartedAt: null,
 };
 
 export function useSessionRunState(sessionId: string | null) {
@@ -107,6 +108,8 @@ export function useSessionRunState(sessionId: string | null) {
     running: snap.running,
     runBusy: snap.runBusy,
     synthesizing: snap.synthesizing,
+    localSseRun: snap.localSseRun,
+    runStartedAt: snap.runStartedAt,
     topologyDone: snap.topologyDone,
     topologyActive: snap.topologyActive,
     backgroundRun: snap.backgroundRun,

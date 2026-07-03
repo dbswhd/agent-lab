@@ -89,9 +89,10 @@ export function ComposerAuthFlowPopover({ run, onClose, onComplete }: Props) {
   const finishSuccess = useCallback(async () => {
     if (run.provider_id === "codex" && run.action === "login") {
       try {
-        await captureCodexAuthRun(run.id, "primary");
+        await captureCodexAuthRun(run.id, "primary", true);
       } catch {
-        /* live ~/.codex/auth.json is already updated after CLI login */
+        /* capture failed — the fresh login stays live; the freshness guard in
+           apply_profile prevents the stale snapshot from stomping it */
       }
     }
     await onCompleteRef.current();

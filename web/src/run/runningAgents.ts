@@ -15,11 +15,27 @@ export type PendingReplyAgent = {
 };
 
 /** Agents still expected to reply before the first typing bubble arrives. */
+function pendingAgentsForExpected(
+  expectedAgents: string[],
+  topologyDone: Set<string>,
+  round = 1,
+): PendingReplyAgent[] {
+  return expectedAgents
+    .filter((id) => !topologyDone.has(`${id}:${round}`))
+    .map((id) => ({
+      id: `pending-${id}-r${round}`,
+      role: id as AgentRole,
+      label: agentLabel(id),
+    }));
+}
+
 export function derivePendingReplyAgents(
   messages: LiveMsg[],
   options: {
     running: boolean;
     expectedAgents: string[];
+    /** True when the user @-mentioned a subset (not the full roster). */
+    mentionFiltered?: boolean;
     topologyActive: { agent: string; round: number } | null;
     topologyDone: Set<string>;
   },
@@ -41,17 +57,16 @@ export function derivePendingReplyAgents(
     ];
   }
 
-  // Before the first agent_start SSE, avoid showing the whole roster as "waiting".
-  if (topologyDone.size === 0) return [];
+  // Before the first agent_start SSE, avoid roster-wide placeholders — but
+  // @-mention filtered turns should show the targeted agent(s) only (§5.3).
+  if (topologyDone.size === 0) {
+    if (options.mentionFiltered && expectedAgents.length > 0) {
+      return pendingAgentsForExpected(expectedAgents, topologyDone);
+    }
+    return [];
+  }
 
-  const round = 1;
-  return expectedAgents
-    .filter((id) => !topologyDone.has(`${id}:${round}`))
-    .map((id) => ({
-      id: `pending-${id}-r${round}`,
-      role: id as AgentRole,
-      label: agentLabel(id),
-    }));
+  return pendingAgentsForExpected(expectedAgents, topologyDone);
 }
 
 /** Live slots from typing bubbles; fallback to expected agents before first SSE. */

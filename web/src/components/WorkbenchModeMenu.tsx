@@ -22,7 +22,6 @@ type Props = {
   readonly active: RightPanelMode;
   readonly open: boolean;
   readonly locale: Locale;
-  readonly badgeCount?: number;
   readonly onSelect: (mode: RightPanelMode) => void;
   readonly onToggleOpen: () => void;
   readonly onMenuOpenChange?: (open: boolean) => void;
@@ -72,7 +71,6 @@ export function WorkbenchModeMenu({
   active,
   open,
   locale,
-  badgeCount = 0,
   onSelect,
   onMenuOpenChange,
 }: Props) {
@@ -127,11 +125,6 @@ export function WorkbenchModeMenu({
           <path d="M14 5v14" />
         </svg>
         <span className="workbench-mode-menu__caret">⌄</span>
-        {badgeCount > 0 ? (
-          <span className="context-sidebar-toggle__badge" aria-hidden>
-            {badgeCount}
-          </span>
-        ) : null}
       </button>
       {menuOpen ? (
         <div className="workbench-mode-menu__popover" role="menu">

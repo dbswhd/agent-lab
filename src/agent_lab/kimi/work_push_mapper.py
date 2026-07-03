@@ -9,13 +9,13 @@ from agent_lab.kimi.work_push_payload import (
     assistant_reasoning_text,
     assistant_reply_text,
     push_message_parts,
-    thinking_activity_delta,
 )
 from agent_lab.room.sse_stream import CumulativeTextStreamer
 
 BridgeEmit = Callable[[str, dict[str, Any]], None]
 
 _THINKING_EMIT_MIN_CHARS = 48
+_THINKING_MAX_CHARS = 4000
 
 
 def _tool_name(part: dict[str, Any]) -> str:
@@ -142,11 +142,13 @@ class KimiWorkPushMapper:
         growth = len(flat) - len(self._last_thinking_flat)
         if self._last_thinking_flat and growth < _THINKING_EMIT_MIN_CHARS:
             return
-        line = thinking_activity_delta(self._last_thinking_flat, cumulative)
-        if not line:
-            return
         self._last_thinking_flat = flat
-        on_bridge_event("activity", {"text": line})
+        # Full cumulative text (not a tail delta) — the frontend replaces the
+        # reasoning item's body on each update, so a delta-only payload would
+        # leave the visible "thought" as a disconnected fragment instead of
+        # the whole chain-of-thought so far.
+        body = flat if len(flat) <= _THINKING_MAX_CHARS else f"{flat[:_THINKING_MAX_CHARS]}…"
+        on_bridge_event("activity", {"text": f"[thinking] {body}"})
 
     def _emit_parts(self, parts: list[Any], on_bridge_event: BridgeEmit) -> None:
         for item in parts:

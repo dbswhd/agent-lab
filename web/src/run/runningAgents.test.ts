@@ -51,6 +51,24 @@ describe("derivePendingReplyAgents", () => {
     ).toEqual([]);
   });
 
+  it("shows @-mention targets before the first agent_start SSE", () => {
+    expect(
+      derivePendingReplyAgents([], {
+        running: true,
+        mentionFiltered: true,
+        expectedAgents: ["codex"],
+        topologyActive: null,
+        topologyDone: new Set(),
+      }),
+    ).toEqual([
+      {
+        id: "pending-codex-r1",
+        role: "codex",
+        label: "Codex",
+      },
+    ]);
+  });
+
   it("shows remaining agents once some have finished", () => {
     expect(
       derivePendingReplyAgents([], {

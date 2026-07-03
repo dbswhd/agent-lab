@@ -103,6 +103,17 @@ describe("mergePersistedChatWithLiveLog", () => {
     expect(merged).toHaveLength(1);
     expect(merged[0]?.typing).toBeUndefined();
   });
+
+  it("restores in-flight typing shells from live_log on refresh", () => {
+    const chat: LiveMsg[] = [
+      { id: "u1", role: "you", label: "You", body: "@codex ping", sent: true },
+    ];
+    const live = [{ type: "agent_start", agent: "codex", round: 1 }];
+    const merged = mergePersistedChatWithLiveLog(chat, live, label);
+    expect(merged).toHaveLength(2);
+    expect(merged[1]?.role).toBe("codex");
+    expect(merged[1]?.typing).toBe(true);
+  });
 });
 
 describe("preferRicherChatMessages", () => {

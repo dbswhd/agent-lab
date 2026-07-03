@@ -53,10 +53,12 @@ def test_peer_decision_in_bundle():
     from agent_lab.agent.permissions import normalize_agent_permissions
     from agent_lab.context.bundle import build_context_bundle
 
+    # Peer decision guidance only appears when roster is non-empty (run_meta.agents).
     bundle = build_context_bundle(
         "topic",
         [],
         "claude",
+        run_meta={"agents": ["codex"]},
         permissions=normalize_agent_permissions({}),
     )
     text = bundle.render()

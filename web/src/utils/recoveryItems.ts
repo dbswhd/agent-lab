@@ -100,6 +100,7 @@ export type RecoveryActionId =
   | "refresh_health"
   | "reconnect_cursor"
   | "reconnect_claude"
+  | "reconnect_codex"
   | "reconnect_kimi_work"
   | "release_lock"
   | "retry_failed_agents"
@@ -192,6 +193,9 @@ function agentLooksAuthExpired(row: AgentHealthRow): boolean {
 function authAction(row: AgentHealthRow): RecoveryAction {
   if (row.id === "claude") {
     return { id: "reconnect_claude", label: "Claude 재로그인" };
+  }
+  if (row.id === "codex") {
+    return { id: "reconnect_codex", label: "Codex 재로그인" };
   }
   return { id: "open_settings", label: "Settings 열기" };
 }

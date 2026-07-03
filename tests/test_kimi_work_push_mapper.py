@@ -120,6 +120,55 @@ def test_merge_multiple_text_parts_cumulative() -> None:
     assert assistant_reply_text(payload) == "Hello world"
 
 
+def test_stacked_text_parts_with_header_revision_do_not_concat() -> None:
+    """Live daimon may append each cumulative snapshot as a new text part."""
+    from agent_lab.kimi.work_push_payload import assistant_reply_text
+
+    body = (
+        "이previous 턴에서 Kimi Work는 이미 여러 CHALLENGE와 AMEND를 제시했고, "
+        "이번 턴에서는 추가 레포 검증을 통해 구체적인 근거를 보강합니다."
+    ).replace("previous", "")
+    payload = {
+        "message": {
+            "parts": [
+                {"kind": "text", "text": f"act: AMEND — 이\n{body}"},
+                {"kind": "text", "text": f'act: AMEND — 이previous 턴 CHALLENGE "링크 괴리"\n{body}'.replace("previous", "")},
+            ],
+        },
+    }
+    merged = assistant_reply_text(payload)
+    assert merged.count(body) == 1
+    assert merged.startswith('act: AMEND — 이previous 턴 CHALLENGE "링크 괴리"'.replace("previous", ""))
+
+
+def test_mapper_does_not_duplicate_reply_on_stacked_snapshots() -> None:
+    mapper = KimiWorkPushMapper()
+    texts: list[str] = []
+    body = "이previous 턴 분석의 일부를 정정하고, 새로운 검증 결과를 보강합니다.".replace("previous", "")
+
+    def on_bridge(kind: str, data: dict) -> None:
+        if kind == "text":
+            texts.append(str(data.get("text") or ""))
+
+    parts_acc: list[dict] = []
+    for header in (
+        "act: AMEND — 이",
+        "act: AMEND — 이previous",
+        'act: AMEND — 이previous 턴 CHALLENGE "링크 괴리" 철회',
+    ):
+        header = header.replace("previous", "")
+        parts_acc = parts_acc + [{"kind": "text", "text": f"{header}\n{body}"}]
+        mapper.emit_push(
+            "conversations.message.snapshot",
+            {"message": {"parts": list(parts_acc)}},
+            on_bridge,
+        )
+
+    joined = "".join(texts)
+    assert joined.count(body) == 1
+    assert joined.count("act: AMEND") == 1
+
+
 def test_reasoning_snapshot_emits_thinking_activity_not_text() -> None:
     mapper = KimiWorkPushMapper()
     events: list[tuple[str, dict]] = []

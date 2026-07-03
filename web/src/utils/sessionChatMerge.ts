@@ -29,9 +29,6 @@ export function mergePersistedChatWithLiveLog(
   }
 
   const additions = liveMsgs.flatMap((m) => {
-    if (m.typing && !(m.body ?? "").trim() && !(m.turnItems?.length ?? 0)) {
-      return [];
-    }
     const key = agentTurnKey(String(m.role), m.parallelRound);
     if (known.has(key)) return [];
     const finalized =

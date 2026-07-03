@@ -75,11 +75,12 @@ def test_apply_turn_agent_mentions_updates_message_and_run_meta():
     from agent_lab.room.turn_flow_support import apply_turn_agent_mentions
 
     run_meta: dict = {}
-    body, agents, targets = apply_turn_agent_mentions(
+    body, agents, targets, err = apply_turn_agent_mentions(
         "@claude only you",
         ["claude", "kimi_work"],
         run_meta,
     )
+    assert err is None
     assert agents == ["claude"]
     assert body == "only you"
     assert targets == ["claude"]
@@ -91,17 +92,47 @@ def test_apply_turn_agent_mentions_uses_roster_pool():
     from agent_lab.room.turn_flow_support import apply_turn_agent_mentions
 
     run_meta: dict = {}
-    body, agents, targets = apply_turn_agent_mentions(
+    body, agents, targets, err = apply_turn_agent_mentions(
         "@claude only you",
         ["kimi_work"],
         run_meta,
         roster_pool=["claude", "kimi_work"],
     )
+    assert err is None
     assert agents == ["claude"]
     assert body == "only you"
     assert targets == ["claude"]
     assert run_meta["_turn_target_agents"] == ["claude"]
     assert run_meta["agents"] == ["claude"]
+
+
+def test_apply_turn_agent_mentions_rejects_out_of_roster():
+    from agent_lab.room.agent_mentions import mention_not_in_roster_message, out_of_roster_mentions
+    from agent_lab.room.turn_flow_support import apply_turn_agent_mentions
+
+    run_meta: dict = {}
+    body, agents, targets, err = apply_turn_agent_mentions(
+        "@codex only you",
+        ["claude", "kimi_work"],
+        run_meta,
+        roster_pool=["claude", "kimi_work"],
+    )
+    assert targets == []
+    assert err == mention_not_in_roster_message(
+        out_of_roster_mentions("@codex only you", ["claude", "kimi_work"]),
+        ["claude", "kimi_work"],
+    )
+    assert agents == ["claude", "kimi_work"]
+    assert body == "@codex only you"
+    assert "_turn_target_agents" not in run_meta
+
+
+def test_direct_turn_for_single_mention():
+    from agent_lab.room.turn_flow_support import direct_turn_for_mention_targets
+
+    assert direct_turn_for_mention_targets(["codex"]) is True
+    assert direct_turn_for_mention_targets(["codex", "claude"]) is False
+    assert direct_turn_for_mention_targets([]) is False
 
 
 def test_effective_invoke_agents_respects_turn_targets():

@@ -11,6 +11,11 @@ class _FakeProc:
         self.returncode = returncode
         self._stdout = stdout
         self._stderr = stderr
+        self.stdin = type(
+            "Stdin",
+            (),
+            {"write": lambda self, _data: None, "close": lambda self: None},
+        )()
 
     def poll(self) -> int:
         return self.returncode

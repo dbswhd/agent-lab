@@ -15,6 +15,10 @@ class _StreamProc:
         self._final_rc = returncode
         self.stdout = self
         self.stderr = SimpleNamespace(read=lambda: "")
+        self.stdin = SimpleNamespace(
+            write=lambda _data: None,
+            close=lambda: None,
+        )
 
     def poll(self) -> int | None:
         return self.returncode
@@ -88,6 +92,8 @@ def test_claude_invoke_stream_json_emits_bridge_events(monkeypatch, tmp_path):
         assert "stream-json" in cmd
         assert "--verbose" in cmd
         assert "--include-partial-messages" in cmd
+        assert cmd[-1] != "user"
+        assert _kwargs.get("stdin") is subprocess.PIPE
         return _StreamProc(lines)
 
     def fake_select(rlist, wlist, xlist, timeout):
@@ -246,6 +252,10 @@ class _EofSpinProc:
         self.returncode: int | None = None
         self.stdout = self
         self.stderr = SimpleNamespace(read=lambda: "")
+        self.stdin = SimpleNamespace(
+            write=lambda _data: None,
+            close=lambda: None,
+        )
 
     def poll(self) -> int | None:
         return self.returncode

@@ -85,6 +85,21 @@ def _merge_reasoning_parts(parts: list[str]) -> str:
     return merged
 
 
+def _merge_visible_text_parts(parts: list[str]) -> str:
+    """Merge visible text parts — handles stacked cumulative snapshots safely."""
+    if not parts:
+        return ""
+    if len(parts) == 1:
+        return parts[0]
+    from agent_lab.room.sse_stream import CumulativeTextStreamer
+
+    streamer = CumulativeTextStreamer()
+    for piece in parts:
+        if piece:
+            streamer.feed(piece)
+    return streamer.body
+
+
 def assistant_reasoning_text(payload: dict[str, Any]) -> str:
     """Chain-of-thought while no visible ``kind: text`` part exists yet."""
     if _visible_text_parts(payload):
@@ -147,7 +162,7 @@ def assistant_reply_text(payload: dict[str, Any]) -> str:
     parts = push_message_parts(payload)
     text_parts = _visible_text_parts(payload)
     if text_parts:
-        return _merge_reasoning_parts(text_parts)
+        return _merge_visible_text_parts(text_parts)
     # When live daimon sends ``parts`` (incl. reasoning), ignore top-level ``text`` /
     # ``message.text`` — those fields often carry chain-of-thought, not the final reply.
     if parts:

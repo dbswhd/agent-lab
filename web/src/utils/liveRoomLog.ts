@@ -168,3 +168,31 @@ export function replayLiveLogToMessages(
 
   return out;
 }
+
+const TERMINAL_AGENT_EVENTS = new Set(["agent_done", "agent_error"]);
+
+/** Detect an in-flight turn from persisted live.jsonl (refresh / session switch). */
+export function inferRunStateFromLiveLog(
+  events: LiveRoomEvent[],
+): { inFlight: boolean; runStartedAt: number | null } {
+  const open = new Set<string>();
+  let runStartedAt: number | null = null;
+  for (const ev of events) {
+    const t = String(ev.type ?? "");
+    const aid = ev.agent != null ? String(ev.agent) : "";
+    const round = Number(ev.round ?? 1);
+    const key = `${aid}:r${round}`;
+    if (t === "agent_start" && aid) {
+      open.add(key);
+      const ts = typeof ev.ts === "string" ? Date.parse(ev.ts) : NaN;
+      if (Number.isFinite(ts) && (runStartedAt == null || ts < runStartedAt)) {
+        runStartedAt = ts;
+      }
+      continue;
+    }
+    if (TERMINAL_AGENT_EVENTS.has(t) && aid) {
+      open.delete(key);
+    }
+  }
+  return { inFlight: open.size > 0, runStartedAt };
+}

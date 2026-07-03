@@ -134,6 +134,54 @@ def _post_agent_turn_plan(
     return plan_md, scribe_applied, run_meta, plan_trigger
 
 
+def _abort_mention_roster_error(
+    folder: Path | None,
+    *,
+    topic: str,
+    messages: list[ChatMessage],
+    plan_md: str,
+    run_meta: dict[str, Any],
+    active_agents: list[Any],
+    mode: str,
+    synthesize: bool,
+    on_event: OnAgentEvent | None,
+    message: str,
+    permissions: dict | None,
+    turn_profile: str | None,
+) -> tuple[list[ChatMessage], str]:
+    """Persist a failed turn when explicit @-mentions are outside the session roster."""
+    from agent_lab.room.turn_flow_support import emit_mention_roster_error
+
+    emit_mention_roster_error(on_event, message)
+    messages.append(
+        ChatMessage(role="system", agent=None, content=message, visibility="human"),
+    )
+    _checkpoint_chat(folder, messages, topic=topic)
+    if folder is not None and folder.is_dir():
+        _write_session_files(
+            folder,
+            topic,
+            messages,
+            plan_md,
+            agents_used=[str(a) for a in active_agents],
+            merge_meta={"topic": topic},
+            turn_meta=_turn_snapshot(
+                mode=mode,
+                synthesize=synthesize,
+                agents_used=[str(a) for a in active_agents],
+                parallel_rounds=0,
+                permissions=permissions,
+                latency_ms=0,
+                status="failed",
+                turn_profile=turn_profile,
+                failed_agents=[],
+                succeeded_agents=[],
+            ),
+            run_meta_patch=_delegate_run_meta_patch(run_meta),
+        )
+    return messages, plan_md
+
+
 def continue_room_round(
     folder: Path,
     user_message: str,
@@ -191,9 +239,12 @@ def continue_room_round(
         run_meta=run_meta,
         available_fn=available_agents,
     )
-    from agent_lab.room.turn_flow_support import apply_turn_agent_mentions
+    from agent_lab.room.turn_flow_support import (
+        apply_turn_agent_mentions,
+        direct_turn_for_mention_targets,
+    )
 
-    user_text, active_agents, _ = apply_turn_agent_mentions(
+    user_text, active_agents, mention_targets, mention_error = apply_turn_agent_mentions(
         user_text,
         active_agents,
         run_meta,
@@ -204,6 +255,27 @@ def continue_room_round(
         body = f"{body}\n\n---\n\n{att}" if body else att
     messages.append(ChatMessage(role="user", agent=None, content=body))
     _checkpoint_chat(folder, messages, topic=topic)
+    from agent_lab.trace_recorder import install_tracer
+
+    on_event = install_tracer(folder, run_meta, on_event, human_turn=human_turn_num)
+    if mention_error:
+        mode = "plan" if synthesize else "discuss"
+        return _abort_mention_roster_error(
+            folder,
+            topic=topic,
+            messages=messages,
+            plan_md=plan_md,
+            run_meta=run_meta,
+            active_agents=active_agents,
+            mode=mode,
+            synthesize=synthesize,
+            on_event=on_event,
+            message=mention_error,
+            permissions=permissions,
+            turn_profile=turn_profile,
+        )
+    if direct_turn_for_mention_targets(mention_targets):
+        consensus_mode = False
     from agent_lab.human_inbox import supersede_pending_inbox
     from agent_lab.mission.board import begin_human_turn
 
@@ -261,9 +333,6 @@ def continue_room_round(
         init_plan_workflow_on_plan_send(folder)
         plan_md, run_meta = _session_context(folder)
         _bind_session_to_run_meta(run_meta, folder)
-    from agent_lab.trace_recorder import install_tracer
-
-    on_event = install_tracer(folder, run_meta, on_event, human_turn=human_turn_num)
     from agent_lab.room.turn_flow_support import ensure_adaptive_efficiency_for_turn
 
     ensure_adaptive_efficiency_for_turn(run_meta, human_turn=human_turn_num)
@@ -581,9 +650,12 @@ def run_room(
         run_meta=run_meta,
         available_fn=available_agents,
     )
-    from agent_lab.room.turn_flow_support import apply_turn_agent_mentions
+    from agent_lab.room.turn_flow_support import (
+        apply_turn_agent_mentions,
+        direct_turn_for_mention_targets,
+    )
 
-    user_text, active_agents, _ = apply_turn_agent_mentions(
+    user_text, active_agents, mention_targets, mention_error = apply_turn_agent_mentions(
         user_text,
         active_agents,
         run_meta,
@@ -624,6 +696,23 @@ def run_room(
     from agent_lab.trace_recorder import install_tracer
 
     on_event = install_tracer(folder, run_meta, on_event, human_turn=human_turn_num)
+    if mention_error:
+        return _abort_mention_roster_error(
+            folder,
+            topic=topic,
+            messages=messages,
+            plan_md=plan_md,
+            run_meta=run_meta,
+            active_agents=active_agents,
+            mode=mode,
+            synthesize=synthesize,
+            on_event=on_event,
+            message=mention_error,
+            permissions=permissions,
+            turn_profile=turn_profile,
+        )
+    if direct_turn_for_mention_targets(mention_targets):
+        consensus_mode = False
     from agent_lab.room.turn_flow_support import ensure_adaptive_efficiency_for_turn
 
     ensure_adaptive_efficiency_for_turn(run_meta, human_turn=human_turn_num)

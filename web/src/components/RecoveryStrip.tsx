@@ -37,6 +37,7 @@ function actionBusyLabel(actionId: RecoveryActionId): string {
     case "reconnect_kimi_work":
       return "재확인 중...";
     case "reconnect_claude":
+    case "reconnect_codex":
       return "재로그인 중...";
     case "release_lock":
       return "해제 중...";

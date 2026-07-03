@@ -15,7 +15,10 @@ import {
 import { TurnActivityGroup } from "./TurnActivityGroup";
 import { DraftResponseDetails } from "./DraftResponseDetails";
 import { SlashCommandDivider } from "./SlashCommandDivider";
-import { ReconnectStatusCard, type ReconnectStatus } from "./ReconnectStatusCard";
+import {
+  ReconnectStatusCard,
+  type ReconnectStatus,
+} from "./ReconnectStatusCard";
 import { formatWorkedDuration } from "../utils/turnTimeline";
 import type { TurnItem } from "../utils/turnItems";
 
@@ -62,16 +65,23 @@ type ReplyWaitingProps = {
   turnItems?: readonly TurnItem[];
   /** Incremental SSE body while agent_token events arrive */
   body?: string;
+  /** Wall-clock ms when the turn started — survives session tab switches. */
+  startedAt?: number | null;
 };
 
-/** Counts seconds up from mount, so a waiting agent never looks frozen even
- *  when its adapter can't stream tokens (e.g. Claude in structured-envelope mode). */
-function useElapsedSeconds(): number {
-  const [seconds, setSeconds] = useState(0);
+function useElapsedSeconds(startedAt?: number | null): number {
+  const anchor = startedAt ?? Date.now();
+  const [seconds, setSeconds] = useState(() =>
+    Math.max(0, Math.floor((Date.now() - anchor) / 1000)),
+  );
   useEffect(() => {
-    const timer = setInterval(() => setSeconds((s) => s + 1), 1000);
+    setSeconds(Math.max(0, Math.floor((Date.now() - anchor) / 1000)));
+    const timer = setInterval(
+      () => setSeconds(Math.max(0, Math.floor((Date.now() - anchor) / 1000))),
+      1000,
+    );
     return () => clearInterval(timer);
-  }, []);
+  }, [anchor]);
   return seconds;
 }
 
@@ -81,11 +91,23 @@ export function ReplyWaitingBubble({
   label,
   turnItems,
   body,
+  startedAt,
 }: ReplyWaitingProps) {
   const who = label?.trim() || agent;
   const streamText = body?.trim() ?? "";
   const streaming = streamText.length > 0;
-  const elapsed = useElapsedSeconds();
+  const elapsed = useElapsedSeconds(startedAt);
+  const activityItems =
+    (turnItems?.length ?? 0) > 0
+      ? turnItems
+      : ([
+          {
+            id: "waiting-for-agent",
+            kind: "activity" as const,
+            text: "Waiting for agent…",
+            status: "running" as const,
+          },
+        ] as const);
   return (
     <ConsoleTurn
       role={agent}
@@ -99,7 +121,7 @@ export function ReplyWaitingBubble({
         )
       }
     >
-      <TurnActivityGroup items={turnItems} running />
+      <TurnActivityGroup items={activityItems} running />
       {streaming ? (
         <div className="agent-stream-preview">
           <MessageMarkdown text={streamText} variant="transcript" />

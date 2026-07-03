@@ -12,7 +12,7 @@ Elevated from a single-agent float scorer to a multi-agent *lateral clarificatio
   questions are generated and persisted through ``session_clarifier``; answers are folded back
   into the clarity text and re-scored until ambiguity drops to/below the threshold.
 
-Concrete-anchor detection still short-circuits: anchored tasks skip CLARIFY entirely.
+Concrete-anchor detection and smoke/test intent still short-circuit: those tasks skip CLARIFY entirely.
 Everything is mock-safe and deterministic under ``AGENT_LAB_MOCK_AGENTS=1``.
 """
 
@@ -40,6 +40,29 @@ _ANCHOR_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"\b[a-z0-9]+_[a-z0-9_]+\b"),  # snake_case
     re.compile(r"(?i)acceptance criteria"),
     re.compile(r"```"),  # code block
+    re.compile(r"(?i)\b(?:make test(?:-fast)?|pytest|vitest)\b"),
+    re.compile(r"(?i)\btests?/[\w./-]+"),
+    re.compile(r"(?i)\btest_[\w]+\.py\b"),
+)
+
+# Operational smoke/debug — skip CLARIFY (not feature "write tests" work).
+_SMOKE_TEST_BYPASS_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"(?i)\bsmoke\s*test"),
+    re.compile(r"(?i)\bdogfood\b"),
+    re.compile(r"응답\s*테스트"),
+    re.compile(r"(?i)(response|reply)\s*test"),
+    re.compile(
+        r"(?i)(코덱스|커서|클로드|키미|codex|cursor|claude|kimi).{0,24}(테스트|test|응답)"
+    ),
+    re.compile(
+        r"(?i)(테스트|test|응답).{0,24}(코덱스|커서|클로드|키미|codex|cursor|claude|kimi)"
+    ),
+    re.compile(
+        r"(?i)(agent|room|sse|spinner|inbox|transcript).{0,32}(test|테스트|debug|디버)"
+    ),
+    re.compile(
+        r"(?i)(test|테스트|debug|디버).{0,32}(agent|room|sse|spinner|inbox|transcript)"
+    ),
 )
 
 _PANEL_SYSTEM = (
@@ -95,6 +118,16 @@ def topology_enabled() -> bool:
 def detect_concrete_anchors(text: str) -> bool:
     """True when the task carries a concrete anchor (file/symbol/issue/criteria/code block)."""
     return any(pattern.search(text or "") for pattern in _ANCHOR_PATTERNS)
+
+
+def detect_smoke_test_intent(text: str) -> bool:
+    """True for operational smoke/agent-response tests — CLARIFY goal questions are noise."""
+    return any(pattern.search(text or "") for pattern in _SMOKE_TEST_BYPASS_PATTERNS)
+
+
+def clarity_short_circuit(text: str) -> bool:
+    """Anchored or smoke/debug intent — skip CLARIFY without scoring."""
+    return detect_concrete_anchors(text) or detect_smoke_test_intent(text)
 
 
 def _mission_clarity_text(run: dict[str, Any]) -> str:
@@ -162,7 +195,7 @@ def _mock_dimension_scores(text: str) -> dict[str, float]:
     """
     if not text.strip():
         return {dim: 1.0 for dim in CLARITY_DIMENSIONS}
-    if detect_concrete_anchors(text):
+    if clarity_short_circuit(text):
         return {dim: 0.0 for dim in CLARITY_DIMENSIONS}
     scores = {dim: 0.8 for dim in CLARITY_DIMENSIONS}
     low = text.lower()
@@ -292,7 +325,7 @@ def score_clarity(text: str, *, agents: list[str] | None = None) -> dict[str, An
     text = (text or "").strip()
     if not text:
         return _build_result({dim: 1.0 for dim in CLARITY_DIMENSIONS}, {})
-    if detect_concrete_anchors(text):
+    if clarity_short_circuit(text):
         return _build_result({dim: 0.0 for dim in CLARITY_DIMENSIONS}, {})
 
     from agent_lab.agents.registry import _mock_agents_enabled
@@ -461,7 +494,7 @@ def clarity_threshold_met(run: dict[str, Any]) -> bool:
     advances the mission.
     """
     text = _mission_clarity_text(run)
-    if detect_concrete_anchors(text):
+    if clarity_short_circuit(text):
         return True
     return score_ambiguity(text) <= _threshold()
 

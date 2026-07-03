@@ -17,15 +17,53 @@ from agent_lab import clarity
         "patch user_model",
         "add login - acceptance criteria: returns 401",
         "add ```ts const x = 1 ```",
+        "run make test-fast on failure",
+        "tests/test_claude_cli_retry.py failing",
+        "pytest tests/test_room_live_log.py -q",
     ],
 )
 def test_detect_concrete_anchors_true(text: str) -> None:
     assert clarity.detect_concrete_anchors(text) is True
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        "코덱스 응답 테스트 중",
+        "커서 응답 테스트",
+        "codex response test while debugging spinner",
+        "supervisor dogfood session",
+        "smoke test room SSE lock",
+        "room transcript debug inbox",
+    ],
+)
+def test_detect_smoke_test_intent_true(text: str) -> None:
+    assert clarity.detect_smoke_test_intent(text) is True
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "make it better",
+        "improve the app",
+        "로그인 기능 테스트 코드 작성해줘",
+        "단위 테스트 추가해줘",
+    ],
+)
+def test_detect_smoke_test_intent_false(text: str) -> None:
+    assert clarity.detect_smoke_test_intent(text) is False
+
+
 @pytest.mark.parametrize("text", ["make it better", "improve the app", "do the thing", ""])
 def test_detect_concrete_anchors_false(text: str) -> None:
     assert clarity.detect_concrete_anchors(text) is False
+
+
+def test_clarity_threshold_met_smoke_bypass(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
+    smoke = {"topic": "코덱스 응답 테스트 중"}
+    assert clarity.clarity_threshold_met(smoke) is True
+    assert clarity.lateral_questions("커서 응답 테스트") == []
 
 
 def test_score_ambiguity_mock(monkeypatch: pytest.MonkeyPatch) -> None:

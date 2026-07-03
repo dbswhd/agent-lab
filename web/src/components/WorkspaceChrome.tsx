@@ -12,7 +12,6 @@ type Props = {
   readonly rightPanelOpen: boolean;
   readonly rightPanelMode: RightPanelMode;
   readonly locale: Locale;
-  readonly panelBadgeCount: number;
   readonly onToggleSidebar: () => void;
   readonly onToggleRightPanel: () => void;
   readonly onSelectRightPanelMode: (mode: RightPanelMode) => void;
@@ -32,7 +31,6 @@ export function WorkspaceChrome({
   rightPanelOpen,
   rightPanelMode,
   locale,
-  panelBadgeCount,
   onToggleSidebar,
   onToggleRightPanel,
   onSelectRightPanelMode,
@@ -122,7 +120,6 @@ export function WorkspaceChrome({
             active={rightPanelMode}
             open={rightPanelOpen}
             locale={locale}
-            badgeCount={panelBadgeCount}
             onSelect={onSelectRightPanelMode}
             onToggleOpen={onToggleRightPanel}
             onMenuOpenChange={onWorkbenchMenuOpenChange}

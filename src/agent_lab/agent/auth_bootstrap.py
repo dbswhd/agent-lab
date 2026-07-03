@@ -7,6 +7,7 @@ Does not call LLMs; only syncs stored OAuth profiles and persists API keys.
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import Any
 
 
@@ -79,11 +80,17 @@ def sync_codex_oauth_on_startup() -> dict[str, Any]:
         clear_profile,
         live_auth_path,
         live_login_status,
+        live_session_is_fresher,
         profile_exists,
         public_codex_oauth_payload,
+        sync_profile_from_live,
     )
 
-    result: dict[str, Any] = {"applied_primary": False, "cleared_fallback": False}
+    result: dict[str, Any] = {
+        "applied_primary": False,
+        "cleared_fallback": False,
+        "synced_primary_from_live": False,
+    }
     if profile_exists("primary") and profile_exists("fallback"):
         primary_fp = _profile_auth_fingerprint("primary")
         fallback_fp = _profile_auth_fingerprint("fallback")
@@ -93,16 +100,23 @@ def sync_codex_oauth_on_startup() -> dict[str, Any]:
 
     live = live_auth_path()
     if profile_exists("primary"):
-        primary_fp = _profile_auth_fingerprint("primary")
-        live_fp = None
-        if live.is_file():
-            import hashlib
+        if live_session_is_fresher("primary"):
+            # Live session is newer for the same account (re-login or token
+            # rotation while the server was down) — the snapshot's refresh
+            # token is rotated out; applying it would kill the live session.
+            sync_profile_from_live("primary")
+            result["synced_primary_from_live"] = True
+        else:
+            primary_fp = _profile_auth_fingerprint("primary")
+            live_fp = None
+            if live.is_file():
+                import hashlib
 
-            live_fp = hashlib.sha256(live.read_bytes()).hexdigest()[:16]
-        live_ok, _ = live_login_status()
-        if not live_ok or (primary_fp and live_fp and primary_fp != live_fp):
-            apply_profile("primary")
-            result["applied_primary"] = True
+                live_fp = hashlib.sha256(live.read_bytes()).hexdigest()[:16]
+            live_ok, _ = live_login_status()
+            if not live_ok or (primary_fp and live_fp and primary_fp != live_fp):
+                apply_profile("primary")
+                result["applied_primary"] = True
     result["oauth"] = public_codex_oauth_payload()
     return result
 
@@ -147,6 +161,8 @@ def bootstrap_room_auth_on_startup() -> dict[str, Any]:
         parts.append("bins=" + ",".join(summary["tool_bins_persisted"]))
     if summary["codex"].get("applied_primary"):
         parts.append("codex_oauth=synced")
+    if summary["codex"].get("synced_primary_from_live"):
+        parts.append("codex_oauth=recaptured_from_live")
     if summary["codex"].get("cleared_fallback"):
         parts.append("codex_fallback=cleared")
     claude = summary["claude"]

@@ -205,6 +205,26 @@ def _persist_codex_stderr(text: str) -> str | None:
     return str(path)
 
 
+# Decisive (non-transient) auth failure markers from the codex CLI's own
+# login manager. Deliberately narrow: a bare "401" is NOT enough — the same
+# stderr stream carries 401s from unrelated MCP servers (e.g. Linear) that
+# must not kill the turn. A revoked/invalidated refresh token never recovers
+# by retrying, so the first sighting is grounds to abort immediately instead
+# of letting the CLI spin until the idle timeout.
+_CODEX_AUTH_REVOKED_MARKERS = (
+    "refresh_token_invalidated",
+    "refresh token was revoked",
+    "authentication token has been invalidated",
+    "please log out and sign in again",
+)
+
+
+def is_codex_auth_revoked_output(text: str) -> bool:
+    """True when codex CLI output shows a dead OAuth session (re-login required)."""
+    low = text.lower()
+    return any(marker in low for marker in _CODEX_AUTH_REVOKED_MARKERS)
+
+
 def _format_codex_stall_error(
     *,
     reason: str,
@@ -454,6 +474,11 @@ def _run_codex(
             env=env,
         )
         if result.returncode != 0:
+            combined = f"{result.stderr or ''}\n{result.stdout or ''}"
+            if is_codex_auth_revoked_output(combined):
+                from agent_lab.codex.oauth import mark_codex_auth_revoked
+
+                mark_codex_auth_revoked("codex exec exited on revoked OAuth refresh token")
             detail = _format_exec_error(result.stderr or "", result.stdout or "")
             raise RuntimeError(f"codex exec failed (exit {result.returncode})" + (f": {detail}" if detail else ""))
         return outcome
@@ -500,9 +525,31 @@ def _run_codex(
             return
         stderr_parts.append(chunk)
         _touch_activity()
+        if is_codex_auth_revoked_output(chunk):
+            _raise_auth_revoked()
         line = chunk.strip().splitlines()[0] if chunk.strip() else ""
         if line and on_activity and len(line) <= 160:
             on_activity(f"Codex stderr: {line[:160]}")
+
+    def _raise_auth_revoked() -> None:
+        outcome.stderr = "".join(stderr_parts)
+        stderr_path = _persist_codex_stderr(outcome.stderr)
+        _terminate_proc(proc)
+        from agent_lab.codex.oauth import (
+            codex_auth_failure_remediation,
+            mark_codex_auth_revoked,
+        )
+
+        hint = codex_auth_failure_remediation("refresh token revoked")[0]
+        mark_codex_auth_revoked(
+            "codex exec died on revoked OAuth refresh token" + (f" (stderr_log={stderr_path})" if stderr_path else "")
+        )
+        if on_activity:
+            on_activity("Codex OAuth 세션 만료 — 즉시 중단 (재로그인 필요)")
+        msg = f"codex exec failed (auth): OAuth refresh token revoked — {hint}"
+        if stderr_path:
+            msg += f" (stderr_log={stderr_path})"
+        raise RuntimeError(msg)
 
     def _raise_stall(
         reason: str,
@@ -582,9 +629,13 @@ def _run_codex(
 
             for fd in ready:
                 if fd is stderr:
-                    chunk = stderr.read(4096)
-                    if chunk:
-                        _record_stderr(chunk)
+                    # os.read returns whatever is available; TextIOWrapper's
+                    # .read(4096) would block until 4096 chars or EOF, freezing
+                    # the whole watch loop (and its idle-timeout / fail-fast
+                    # checks) on a process that trickles stderr then hangs.
+                    raw = os.read(stderr.fileno(), 4096)
+                    if raw:
+                        _record_stderr(raw.decode("utf-8", "replace"))
                     continue
 
                 line = stdout.readline()
@@ -649,6 +700,10 @@ def _run_codex(
     if proc.returncode not in (0, None) and not outcome.limit_hit:
         if is_cancelled():
             raise RoomRunCancelled("run cancelled by user")
+        if is_codex_auth_revoked_output(outcome.stderr):
+            from agent_lab.codex.oauth import mark_codex_auth_revoked
+
+            mark_codex_auth_revoked("codex exec exited on revoked OAuth refresh token")
         detail = _format_exec_error(
             outcome.stderr,
             outcome.streamed_message or "",

@@ -354,6 +354,15 @@ def _interpret_cli_status(spec: ProviderSpec, result: subprocess.CompletedProces
         detail = format_claude_auth_status_detail(raw, logged_in=logged_in)
         return ("logged_in", detail) if logged_in else ("logged_out", detail)
     if spec.id == "codex":
+        from agent_lab.codex.oauth import codex_auth_revoked_detail
+
+        revoked = codex_auth_revoked_detail()
+        if revoked:
+            # `codex login status` reads only the local auth.json and keeps
+            # saying "Logged in" after a server-side revocation. Without this
+            # check `/login codex` answers "이미 로그인되어 있습니다" and never
+            # starts the auth run — the exact dead-end hit on 2026-07-02.
+            return "logged_out", revoked
         out = detail.lower()
         if result.returncode != 0:
             return "logged_out", detail
@@ -518,12 +527,15 @@ def provider_status_payload() -> dict[str, Any]:
     return {"ok": True, "providers": rows}
 
 
-def capture_codex_run(run_id: str, slot: Literal["primary", "fallback"], *, confirm: bool) -> dict[str, Any]:
+def capture_codex_run(run_id: str, slot: Literal["primary", "fallback"], *, confirm: bool = True) -> dict[str, Any]:
     run = get_auth_run(run_id)
     if run is None or run.provider_id != "codex" or run.status != "completed":
         raise RuntimeError("completed Codex login run required")
-    from agent_lab.codex.oauth import capture_profile, profile_exists
+    from agent_lab.codex.oauth import capture_profile
 
-    if profile_exists(slot) and not confirm:
-        raise RuntimeError(f"{slot} profile already exists; confirm replacement")
+    # A completed in-app login run is explicit consent to refresh the slot.
+    # Gating on `confirm` here made the post-/login auto-capture 409, leaving
+    # the snapshot holding a revoked token that later stomped the fresh login
+    # (refresh_token_invalidated loop). `confirm` is kept for API compatibility.
+    del confirm
     return capture_profile(slot)

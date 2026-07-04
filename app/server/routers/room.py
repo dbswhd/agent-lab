@@ -546,7 +546,7 @@ async def create_room_run(
     agent_list = mode_contract.agents
 
     topic_text = (topic or "").strip()
-    if not synthesize_only and agent_list and topic_text:
+    if agent_list and topic_text:
         from agent_lab.room.agent_mentions import apply_agent_mention_filter
 
         mention_roster = requested_roster or agent_list or []
@@ -558,7 +558,7 @@ async def create_room_run(
         if mention_targets:
             agent_list = narrowed
 
-    if not synthesize_only and agent_list:
+    if agent_list:
         bad = _agents_not_ready(agent_list)
         if bad:
             raise HTTPException(
@@ -568,7 +568,7 @@ async def create_room_run(
                     "agents": bad,
                 },
             )
-    if not synthesize_only and mode_contract.plan_intent == "loop":
+    if mode_contract.plan_intent == "loop":
         effective_loop_agents = agent_list or list(AGENT_IDS)
         loop_capable, loop_skipped = partition_loop_capable_agents(effective_loop_agents)
         if not loop_capable:

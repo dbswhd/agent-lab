@@ -20,11 +20,15 @@ def test_chat_composer_wires_slash_command_menu():
 
 def test_room_chat_fetches_commands_and_plugin_panel():
     room = _read("web/src/components/RoomChat.tsx")
+    orchestrator = _read("web/src/hooks/useRoomChat.ts")
+    slash = _read("web/src/hooks/useRoomSlashCommands.ts")
+    slash_exec = _read("web/src/hooks/useRoomSlashExecute.ts")
     settings = _read("web/src/components/SettingsPage.tsx")
-    assert "fetchCommands" in room
-    assert "matchSlashCommand" in room
+    assert "useRoomChat" in room
+    assert "fetchCommands" in slash
+    assert "matchSlashCommand" in orchestrator
     assert "PluginPanel" in settings
-    assert "runSessionCommand" in room
+    assert "runSessionCommand" in slash_exec
 
 
 def test_plugin_panel_contract():
@@ -48,12 +52,14 @@ def test_slash_picker_keyboard_contract():
 
 def test_login_secret_and_auth_panel_contract():
     room = _read("web/src/components/RoomChat.tsx")
+    popovers = _read("web/src/hooks/useRoomComposerPopovers.tsx")
     auth = _read("web/src/components/ComposerAuthFlowPopover.tsx")
     secret = _read("web/src/components/ComposerAuthSecretPopover.tsx")
     assert 'type="password"' in secret
-    assert 'setSecretValue("")' in room
-    assert "ComposerAuthFlowPopover" in room
-    assert "ComposerAuthSecretPopover" in room
+    assert 'setSecretValue("")' in popovers
+    assert "ComposerAuthFlowPopover" in popovers
+    assert "ComposerAuthSecretPopover" in popovers
+    assert "useRoomChat" in room
     for event in ("output", "auth_url", "completed", "failed", "cancelled"):
         assert event in auth
     assert 'type: "cancel"' in auth

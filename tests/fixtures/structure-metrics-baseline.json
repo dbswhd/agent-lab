@@ -49,12 +49,8 @@
   "makefile_targets": 114,
   "large_tsx_files": [
     {
-      "path": "web/src/components/RoomChat.tsx",
-      "lines": 1696
-    },
-    {
       "path": "web/src/components/PlanExecutePanel.tsx",
-      "lines": 1591
+      "lines": 1168
     },
     {
       "path": "web/src/components/HumanInboxPanel.tsx",

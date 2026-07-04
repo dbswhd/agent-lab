@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from agent_lab.room import _delegate_run_meta_patch
+from agent_lab.room.turn_meta import _delegate_run_meta_patch
 from agent_lab.room.consensus import ConsensusAnchor, consensus_follow_up
 from agent_lab.run.meta import append_hook_run, read_run_meta
 from agent_lab.session.guidance import preserve_session_meta_from_prev

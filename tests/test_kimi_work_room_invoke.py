@@ -15,7 +15,7 @@ def _mock_kimi_work(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
 
 
 def test_call_one_agent_kimi_work_emits_tool_sse(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    from agent_lab import room
+    from agent_lab.room import agent_invoke
     from agent_lab.run.meta import write_run_meta
 
     folder = tmp_path / "sess"
@@ -24,10 +24,9 @@ def test_call_one_agent_kimi_work_emits_tool_sse(monkeypatch: pytest.MonkeyPatch
     ws.mkdir()
     write_run_meta(folder, {})
 
-    monkeypatch.setattr(room, "model_label", lambda agent: agent)
+    monkeypatch.setattr("agent_lab.agents.registry.model_label", lambda agent: agent)
     monkeypatch.setattr(
-        room,
-        "build_agent_context_bundle",
+        "agent_lab.room.messages.build_agent_context_bundle",
         lambda *a, **k: type(
             "B",
             (),
@@ -43,7 +42,7 @@ def test_call_one_agent_kimi_work_emits_tool_sse(monkeypatch: pytest.MonkeyPatch
     def on_event(typ: str, payload: dict) -> None:
         events.append((typ, payload))
 
-    msg = room._call_one_agent(
+    msg = agent_invoke._call_one_agent(
         "kimi_work",
         topic="[mock-tools] probe workspace tools",
         thread=[],

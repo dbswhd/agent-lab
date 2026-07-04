@@ -77,7 +77,8 @@ def test_recombination_follow_up_requires_two_refs():
 
 
 def test_is_valid_synthesis_resolves_ref_authors():
-    from agent_lab.room import ChatMessage, _is_valid_synthesis
+    from agent_lab.room import ChatMessage
+    from agent_lab.room.messages import _is_valid_synthesis
 
     thread = [
         ChatMessage(role="user", agent=None, content="topic"),

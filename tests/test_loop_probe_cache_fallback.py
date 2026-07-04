@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -27,10 +28,11 @@ def test_live_probe_failure_falls_back_to_fresh_loop_ready_cache(
     cache_path = tmp_path / "probe.json"
     monkeypatch.setenv("AGENT_LAB_LOOP_PROBE", "1")
     monkeypatch.setenv("AGENT_LAB_LOOP_PROBE_CACHE", str(cache_path))
+    probed_at = datetime.now(timezone.utc).isoformat()
     cache_path.write_text(
-        """
-{
-  "kimi_work:k2p6": {
+        f"""
+{{
+  "kimi_work:k2p6": {{
     "provider": "local",
     "supports_tools": true,
     "supports_inbox_mcp": true,
@@ -38,18 +40,16 @@ def test_live_probe_failure_falls_back_to_fresh_loop_ready_cache(
     "supports_long_context": false,
     "cost_tier": "low",
     "latency_tier": "medium",
-    "probed_at": "2026-07-01T20:33:21.685106+00:00"
-  }
-}
+    "probed_at": "{probed_at}"
+  }}
+}}
 """.strip()
         + "\n",
         encoding="utf-8",
     )
 
     def _fail_live_probe(agent_id: str, model_id: str):
-        from agent_lab.model_policy import _substitute_profile
-
-        return _substitute_profile("kimi_work", model_id)
+        return None
 
     monkeypatch.setattr(
         "agent_lab.model_policy_probe.probe_loop_capabilities",
@@ -57,11 +57,14 @@ def test_live_probe_failure_falls_back_to_fresh_loop_ready_cache(
     )
 
     from agent_lab.kimi.work_provider import kimi_work_model
+    from agent_lab.model_policy import register_model_profile
 
     mid = kimi_work_model()
     profile = probe_loop_capabilities_cached("kimi_work", mid)
-    readiness = model_readiness("kimi_work")
     assert profile is not None
+    assert profile.supports_tools is True
+    register_model_profile(profile)
+    readiness = model_readiness("kimi_work", model_id=mid)
     assert readiness is not None
     assert readiness.loop_ready is True
 
@@ -75,10 +78,11 @@ def test_failed_live_probe_does_not_overwrite_loop_ready_cache(
     cache_path = tmp_path / "probe.json"
     monkeypatch.setenv("AGENT_LAB_LOOP_PROBE", "1")
     monkeypatch.setenv("AGENT_LAB_LOOP_PROBE_CACHE", str(cache_path))
+    probed_at = datetime.now(timezone.utc).isoformat()
     cache_path.write_text(
-        """
-{
-  "kimi_work:k2p6": {
+        f"""
+{{
+  "kimi_work:k2p6": {{
     "provider": "local",
     "supports_tools": true,
     "supports_inbox_mcp": true,
@@ -86,9 +90,9 @@ def test_failed_live_probe_does_not_overwrite_loop_ready_cache(
     "supports_long_context": false,
     "cost_tier": "low",
     "latency_tier": "medium",
-    "probed_at": "2026-07-01T20:33:21.685106+00:00"
-  }
-}
+    "probed_at": "{probed_at}"
+  }}
+}}
 """.strip()
         + "\n",
         encoding="utf-8",

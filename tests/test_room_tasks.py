@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from agent_lab.room import ChatMessage, _append_peer_turn_digest
+from agent_lab.room import ChatMessage
+from agent_lab.room.session_persist import _append_peer_turn_digest
 from agent_lab.room.chat_channels import message_visibility
 from agent_lab.room.tasks import (
     add_task,

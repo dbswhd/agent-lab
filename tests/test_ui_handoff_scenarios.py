@@ -12,6 +12,16 @@ def _read(*parts: str) -> str:
     return ROOT.joinpath(*parts).read_text(encoding="utf-8")
 
 
+def _orchestrator() -> str:
+    return _read("web", "src", "hooks", "useRoomChat.ts")
+
+
+def _composer_stack_surface() -> str:
+    return _read("web", "src", "components", "RoomChatComposerShell.tsx") + _read(
+        "web", "src", "hooks", "useRoomComposerEventStack.tsx"
+    )
+
+
 def test_scenario_a_discuss_only_contract():
     """A: discuss mode, receipt, human synthesis, peer channel, claimable."""
     room = _read("web", "src", "components", "RoomChat.tsx")
@@ -22,8 +32,11 @@ def test_scenario_a_discuss_only_contract():
     receipt = _read("web", "src", "utils", "sendReceipt.ts")
     transcript = _read("web", "src", "utils", "transcriptViewPrefs.ts")
 
-    assert "composerModeVariant" in room
-    assert 'composerModeVariant === "discuss"' in room or "modeDiscuss" in room
+    assert "composerModeVariant" in _orchestrator()
+    assert (
+        'composerModeVariant === "discuss"' in _orchestrator()
+        or "modeDiscuss" in _orchestrator()
+    )
     assert "sendReceiptLabel" in execute_send
     assert "discuss_saved" in receipt
     assert "TranscriptViewOptions" in transcript_panel or "showHumanSynthesis" in transcript_panel
@@ -51,10 +64,10 @@ def test_scenario_b_plan_synthesis_contract():
     work = _read("web", "src", "components", "WorkToolPanel.tsx")
     plan = _read("web", "src", "components", "PlanExecutePanel.tsx")
 
-    assert "composerModeVariant" in room
+    assert "composerModeVariant" in _orchestrator()
     assert "plan_updated" in _read("web", "src", "utils", "sendReceipt.ts")
-    assert "ComposerEventStack" in room
-    assert "focusComposerStack" in room
+    assert "ComposerEventStack" in _composer_stack_surface()
+    assert "focusComposerStack" in _orchestrator()
     assert "WorkbenchPanel" in inspector
     assert "PlanExecutePanel" in work
     assert "WorkPlanApprovalSection" in stack
@@ -127,7 +140,7 @@ def test_scenario_d_lead_consensus_contract():
     assert "taskbar__turn-lead-chip" in taskbar
     assert "showConsensusBlocker" in taskbar
     assert "consensus_done" in receipt
-    assert "composer--consensus-mode" in room
+    assert "composer--consensus-mode" in _orchestrator()
 
 
 def test_scenario_e_clarifier_contract():
@@ -161,7 +174,11 @@ def test_new_session_mission_template_apply_contract():
     sse = _read("web", "src", "hooks", "useRoomSseHandler.ts")
     assert "fetchSessionSetupOptions" in ns
     assert "applySessionTemplate" in sse
-    assert "bootstrapMissionTemplateId" in room or "pendingMissionTemplateRef" in sse
+    assert (
+        "bootstrapMissionTemplateId" in room
+        or "bootstrapMissionTemplateId" in _orchestrator()
+        or "pendingMissionTemplateRef" in sse
+    )
 
 
 def test_taskbar_human_inbox_integration_contract():
@@ -174,7 +191,7 @@ def test_taskbar_human_inbox_integration_contract():
     assert "taskbar-dock" not in room
     assert "RoomTaskBar" not in room
     assert "InspectorTasksSummary" not in room
-    assert "ComposerEventStack" in room
+    assert "ComposerEventStack" in _composer_stack_surface()
     assert "openHumanInbox" in room
 
 
@@ -202,7 +219,7 @@ def test_composer_question_inbox_is_separate_from_generic_pending_hint():
     inbox = _read("web", "src", "components", "HumanInboxPanel.tsx")
     assert "inboxPendingCount" in room
     assert 'presentation="composer"' in stack
-    assert "ComposerEventStack" in room
+    assert "ComposerEventStack" in _composer_stack_surface()
     assert "visiblePending.map" in inbox
     assert "visiblePending[0]?.kind" in inbox
 
@@ -222,9 +239,11 @@ def test_room_preset_picker_replaces_turn_strategy_ui():
 
 def test_m6_work_exec_classes_only_in_plan_execute_panel():
     panel = _read("web", "src", "components", "PlanExecutePanel.tsx")
-    assert "plan-execute-" not in panel
-    assert "work-exec-" in panel
-    assert "plan-card__btn" in panel
+    support = _read("web", "src", "components", "PlanExecutePanelSupport.tsx")
+    surface = panel + support
+    assert "plan-execute-" not in surface
+    assert "work-exec-" in surface
+    assert "plan-card__btn" in surface
 
 
 def test_human_decision_banner_contract():
@@ -266,8 +285,8 @@ def test_remaining_gaps_slack_inbox_ref_recovery_contract():
     css = _read("web", "src", "styles", "prototype-panels.css")
 
     assert "missionOsSlackSigningSecret" in gateway or "slackSigningSecret" in gateway
-    assert "activateInboxRef" in room
-    assert "handleInboxRefClick" in room
+    assert "activateInboxRef" in _orchestrator()
+    assert "handleInboxRefClick" in _orchestrator()
     event_stack = _read("web", "src", "hooks", "useRoomComposerEventStack.tsx")
     assert "onInboxRefClick: handleInboxRefClick" in event_stack
     main_pane = _read("web", "src", "components", "RoomChatMainPane.tsx")

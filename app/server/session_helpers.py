@@ -21,8 +21,8 @@ from agent_lab.session.paths import SESSIONS_DIR, sessions_dir
 
 
 def room_session_context(folder: Path | None) -> tuple[str, dict[str, Any]]:
-    """Lazy re-export so session_helpers stays importable without langgraph."""
-    from agent_lab.room import _session_context
+    """Session plan/run snapshot — direct submodule import (F9 facade)."""
+    from agent_lab.room.session_persist import _session_context
 
     return _session_context(folder)
 

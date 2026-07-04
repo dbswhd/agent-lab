@@ -23,7 +23,7 @@ def test_notification_store_module():
 
 def test_dispatch_notification_wires_mac_and_activity():
     push = _read("web", "src", "utils", "pushNotification.ts")
-    room = _read("web", "src", "components", "RoomChat.tsx")
+    orchestrator = _read("web", "src", "hooks", "useRoomChat.ts")
     assert "dispatchNotification" in push
-    assert "dispatchNotification" in room
+    assert "dispatchNotification" in orchestrator
     assert "NotificationCenter" in _read("web", "src", "components", "NotificationCenter.tsx")

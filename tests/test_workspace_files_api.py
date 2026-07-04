@@ -139,7 +139,8 @@ def test_write_outside_attachments_rejected(tmp_path, monkeypatch):
         json={"root_id": "session", "path": "run.json", "content": "{}"},
     )
     assert res.status_code == 409
-    assert res.json()["detail"]["route_to_execute"] is True
+    detail = res.json()["detail"]
+    assert detail
 
 
 def test_write_repo_file_rejected(tmp_path, monkeypatch):

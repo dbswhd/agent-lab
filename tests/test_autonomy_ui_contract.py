@@ -13,12 +13,14 @@ def _read(*parts: str) -> str:
 
 def test_autonomy_dial_in_session_header() -> None:
     room = _read("web", "src", "components", "RoomChat.tsx")
+    orchestrator = _read("web", "src", "hooks", "useRoomChat.ts")
     chrome = _read("web", "src", "components", "WorkspaceChrome.tsx")
     dial = _read("web", "src", "components", "AutonomyDial.tsx")
     hook = _read("web", "src", "hooks", "useAutonomySession.ts")
     layout = _read("web", "src", "styles", "layout.css")
 
-    assert "useAutonomySession" in room
+    assert "useRoomChat" in room
+    assert "useAutonomySession" in orchestrator
     assert "AutonomyDial" in room
     assert "headerExtra" in chrome
     assert "workspace-chrome__pill--autonomy" in dial
@@ -66,7 +68,7 @@ def test_autonomy_v2_human_picker_and_patch() -> None:
     layout = _read("web", "src", "styles", "layout.css")
 
     assert "setAutonomyLevel" in room
-    assert "onLevelChange={setAutonomyLevel}" in room
+    assert "onLevelChange={chat.setAutonomyLevel}" in room
     assert "autonomy-dial__popover" in dial
     assert "onLevelChange" in dial
     assert "patchSessionAutonomy" in hook

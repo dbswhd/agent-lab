@@ -182,12 +182,10 @@ def test_partial_turn_rate(tmp_path: Path):
 def test_specialist_capability_cwd_kpis_from_fixture():
     report = score_session(REGRESSION / "specialist_asymmetric_cwd")
 
-    assert report["scores"]["specialist_context_recorded"] == 1.0
-    assert report["scores"]["asymmetric_capability_cwd"] == 1.0
-    assert report["scores"]["capability_cwd_agent_count"] == 3.0
-    assert report["counts"]["capability_cwd"]["agent_count"] == 3
-    assert report["counts"]["capability_cwd"]["distinct_cwd"] == 3
-    assert any("specialist context cwd" in line for line in report["summary_lines"])
+    # Specialist turn_profile retired; cwd KPIs apply only when turn_profile=specialist.
+    assert report["scores"]["specialist_context_recorded"] is None
+    assert report["scores"]["asymmetric_capability_cwd"] is None
+    assert report["counts"]["capability_cwd"]["specialist_contexts"] == 0
 
 
 def test_specialist_capability_cwd_missing_is_recorded_false(tmp_path: Path):

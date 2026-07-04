@@ -30,7 +30,7 @@ def test_session_rows_are_keyboard_controls_and_searchable():
     session_list = _read("web/src/components/SessionList.tsx")
     app = _read("web/src/App.tsx")
 
-    assert "className={`session-item" in session_list
+    assert '"session-item"' in session_list
     assert 'type="button"' in session_list
     assert "aria-current=" in session_list
     assert 'type="search"' in app
@@ -47,11 +47,12 @@ def test_macos_shortcuts_cover_new_sidebar_and_content_tabs():
     assert 'event.ctrlKey && key === "s"' in app
     assert '"1", "2", "3", "4", "5"' in app
     assert "requestWorkspaceTabByIndex" in app
-    assert '"2": "plan"' in shortcut
+    assert '"1": "transcript"' in shortcut
+    assert '"2": "diff"' in shortcut
     assert '"3": "background"' in shortcut
-    assert '"4": "diff"' in shortcut
-    # ⌘5 must map to the Files panel (Workspace Files feature).
-    assert '"5": "files"' in shortcut
+    # ⌘4 must map to the Files panel (Workspace Files feature).
+    assert '"4": "files"' in shortcut
+    assert '"5": "preview"' in shortcut
     assert "WORKSPACE_TAB_SHORTCUT_EVENT" in shortcut
     assert "WORKSPACE_TAB_SHORTCUT_EVENT" in workspace_tabs
     assert "CONTENT_TAB_SHORTCUT_EVENT" in shortcut

@@ -114,7 +114,7 @@ def test_run_parallel_round_skips_completed_agent(monkeypatch, tmp_path):
 
 
 def test_call_one_agent_records_completed_step(monkeypatch, tmp_path):
-    from agent_lab import room
+    from agent_lab.room import agent_invoke
     from agent_lab.run.meta import get_completed_step, read_run_meta, write_run_meta
 
     folder = tmp_path / "sess"
@@ -125,10 +125,9 @@ def test_call_one_agent_records_completed_step(monkeypatch, tmp_path):
         monkeypatch,
         lambda *_a, **_k: '```agent-envelope\n{"act":"PROPOSE"}\n```\ncursor ok',
     )
-    monkeypatch.setattr(room, "model_label", lambda agent: agent)
+    monkeypatch.setattr("agent_lab.agents.registry.model_label", lambda agent: agent)
     monkeypatch.setattr(
-        room,
-        "build_agent_context_bundle",
+        "agent_lab.room.messages.build_agent_context_bundle",
         lambda *a, **k: type(
             "B",
             (),
@@ -140,7 +139,7 @@ def test_call_one_agent_records_completed_step(monkeypatch, tmp_path):
     )
 
     run_meta = {"_session_folder": str(folder)}
-    msg = room._call_one_agent(
+    msg = agent_invoke._call_one_agent(
         "cursor",
         topic="t",
         thread=[],

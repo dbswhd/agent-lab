@@ -32,6 +32,6 @@ def test_toast_stack_uses_composer_notice_card() -> None:
 
 def test_claude_recovery_action_labels_relogin() -> None:
     recovery = _read("web", "src", "utils", "recoveryItems.ts")
-    room = _read("web", "src", "components", "RoomChat.tsx")
+    recovery_handlers = _read("web", "src", "hooks", "useRoomRecoveryHandlers.ts")
     assert "Claude 재로그인" in recovery
-    assert 'executeSlashCommand(loginCmd, "claude")' in room
+    assert 'executeSlashCommand(loginCmd, "claude")' in recovery_handlers

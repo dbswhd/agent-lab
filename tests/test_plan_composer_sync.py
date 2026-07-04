@@ -16,18 +16,24 @@ def test_plan_workflow_sync_utils_exist():
 
 def test_room_chat_blocks_send_during_human_pending():
     room = _read("web", "src", "components", "RoomChat.tsx")
-    assert "planWorkflowAwaitingApproval" in room
-    assert "planWorkflowComposerBlocked" in room
-    assert "planWorkflowAwaitingApproval ||" in room
+    orchestrator = _read("web", "src", "hooks", "useRoomChat.ts")
+    shell = _read("web", "src", "hooks", "useRoomPlanShellState.ts")
+    assert "useRoomChat" in room
+    assert "useRoomPlanShellState" in orchestrator
+    assert "composerSendLocked" in room
+    assert "planWorkflowComposerBlocked" in shell
+    assert "isPlanWorkflowAwaitingApproval" in shell
 
 
 def test_compose_mode_always_discuss_for_casual_send():
     prefs = _read("web", "src", "hooks", "useRoomComposerPrefs.ts")
     room = _read("web", "src", "components", "RoomChat.tsx")
+    orchestrator = _read("web", "src", "hooks", "useRoomChat.ts")
     assert 'composeMode: ComposeMode = "discuss"' in prefs
     assert "planComposeActive" not in prefs
-    assert "useRoomComposerPrefs" in room
+    assert "useRoomComposerPrefs" in orchestrator
     assert "planComposeActive" not in room
+    assert "planComposeActive" not in orchestrator
 
 
 def test_side_discuss_hint_in_mode_chip():

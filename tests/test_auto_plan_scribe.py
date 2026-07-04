@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from agent_lab.room import (
+from agent_lab.room.plan_scribe import (
     _apply_scribe_after_turn,
     _should_scribe_plan_after_turn,
     auto_plan_scribe_enabled,

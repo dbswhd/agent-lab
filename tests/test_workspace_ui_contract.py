@@ -88,7 +88,9 @@ def test_plan_execute_routed_to_composer_event_stack():
     hook = _read("web", "src", "hooks", "useWorkspaceTabs.ts")
     stack = _read("web", "src", "components", "ComposerEventStack.tsx")
     work_tool = _read("web", "src", "components", "WorkToolPanel.tsx")
-    assert "ComposerEventStack" in room
+    composer_shell = _read("web", "src", "components", "RoomChatComposerShell.tsx")
+    assert "useRoomChat" in room
+    assert "ComposerEventStack" in composer_shell
     assert "PlanExecutePanel" in work_tool
     assert "focusComposerStack" in hook
     assert "ExecuteQueueBar" in stack
@@ -194,7 +196,9 @@ def test_workspace_panels_have_distinct_document_wrappers():
 
     assert "transcript--console" in transcript
     assert "WorkbenchPanel" in inspector
-    assert "ComposerEventStack" in room
+    assert "ComposerEventStack" in _read(
+        "web", "src", "components", "RoomChatComposerShell.tsx"
+    )
     assert "plan-card" in plan_exec
     assert "exec-card" in plan_exec
     assert "plan-actions-bar" in plan_exec

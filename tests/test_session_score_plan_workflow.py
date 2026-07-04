@@ -39,7 +39,7 @@ def test_score_session_plan_workflow_kpis(tmp_path: Path, monkeypatch) -> None:
         return run
 
     patch_run_meta(folder, _proposed)
-    approve_plan(folder)
+    approve_plan(folder, plan_md=SAMPLE_PLAN)
     report = score_session(folder)
     scores = report["scores"]
     assert scores["plan_workflow_enabled"] == 1.0

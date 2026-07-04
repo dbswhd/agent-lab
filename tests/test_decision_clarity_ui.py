@@ -24,7 +24,9 @@ def test_composer_decision_surface_replaces_stacked_banners():
     assert "<RecoveryStrip" not in room
     assert "taskbar-dock" not in room
     assert "RoomTaskBar" not in room
-    assert "ComposerEventStack" in room
+    assert "ComposerEventStack" in _read(
+        "web", "src", "components", "RoomChatComposerShell.tsx"
+    )
     assert "InspectorTasksSummary" not in room
     assert "pickComposerDecisionTier" in priority
     assert '"human_gate"' in priority

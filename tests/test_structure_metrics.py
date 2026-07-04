@@ -37,6 +37,27 @@ def test_f9_hot_path_py_caps_in_baseline() -> None:
     }
 
 
+def test_room_facade_no_underscore_exports() -> None:
+    """F9 Stage 3: room/__init__.py public facade must not re-export _-prefixed internals."""
+    init = (ROOT / "src/agent_lab/room/__init__.py").read_text(encoding="utf-8")
+    import ast
+
+    tree = ast.parse(init)
+    for node in tree.body:
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id == "__all__":
+                    names = node.value.elts  # type: ignore[attr-defined]
+                    unders = [
+                        elt.value
+                        for elt in names
+                        if isinstance(elt, ast.Constant)
+                        and isinstance(elt.value, str)
+                        and elt.value.startswith("_")
+                    ]
+                    assert unders == [], f"underscore exports remain: {unders}"
+
+
 def test_f9_hot_path_py_growth_fails_check(tmp_path: Path) -> None:
     """Simulated LOC growth on a hot-path file must fail --check."""
     import importlib.util

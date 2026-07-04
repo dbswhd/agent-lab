@@ -136,7 +136,7 @@ def test_choose_agent_reply_body_prefers_stream_when_result_is_tail_only():
 
 
 def test_call_one_agent_persists_streamed_body_over_short_result(monkeypatch, tmp_path):
-    from agent_lab import room
+    from agent_lab.room import agent_invoke
 
     folder = tmp_path / "sess"
     folder.mkdir()
@@ -154,10 +154,9 @@ def test_call_one_agent_persists_streamed_body_over_short_result(monkeypatch, tm
         return type("R", (), {"text": short_tail, "structured_envelope": None})()
 
     monkeypatch.setattr("agent_lab.agents.registry.call_agent_reply", fake_reply)
-    monkeypatch.setattr(room, "model_label", lambda agent: agent)
+    monkeypatch.setattr("agent_lab.agents.registry.model_label", lambda agent: agent)
     monkeypatch.setattr(
-        room,
-        "build_agent_context_bundle",
+        "agent_lab.room.messages.build_agent_context_bundle",
         lambda *a, **k: type(
             "B",
             (),
@@ -173,7 +172,7 @@ def test_call_one_agent_persists_streamed_body_over_short_result(monkeypatch, tm
     def on_event(typ: str, payload: dict) -> None:
         events.append((typ, payload))
 
-    msg = room._call_one_agent(
+    msg = agent_invoke._call_one_agent(
         "claude",
         topic="t",
         thread=[],
@@ -194,7 +193,7 @@ def test_call_one_agent_persists_streamed_body_over_short_result(monkeypatch, tm
 
 
 def test_call_one_agent_emits_live_bridge_tokens_before_done(monkeypatch, tmp_path):
-    from agent_lab import room
+    from agent_lab.room import agent_invoke
 
     folder = tmp_path / "sess"
     folder.mkdir()
@@ -210,10 +209,9 @@ def test_call_one_agent_emits_live_bridge_tokens_before_done(monkeypatch, tmp_pa
         return type("R", (), {"text": "live stream", "structured_envelope": None})()
 
     monkeypatch.setattr("agent_lab.agents.registry.call_agent_reply", fake_reply)
-    monkeypatch.setattr(room, "model_label", lambda agent: agent)
+    monkeypatch.setattr("agent_lab.agents.registry.model_label", lambda agent: agent)
     monkeypatch.setattr(
-        room,
-        "build_agent_context_bundle",
+        "agent_lab.room.messages.build_agent_context_bundle",
         lambda *a, **k: type(
             "B",
             (),
@@ -229,7 +227,7 @@ def test_call_one_agent_emits_live_bridge_tokens_before_done(monkeypatch, tmp_pa
     def on_event(typ: str, payload: dict) -> None:
         events.append((typ, payload))
 
-    room._call_one_agent(
+    agent_invoke._call_one_agent(
         "cursor",
         topic="t",
         thread=[],
@@ -249,7 +247,7 @@ def test_call_one_agent_emits_live_bridge_tokens_before_done(monkeypatch, tmp_pa
 
 
 def test_call_one_agent_emits_agent_token_before_done(monkeypatch, tmp_path):
-    from agent_lab import room
+    from agent_lab.room import agent_invoke
 
     folder = tmp_path / "sess"
     folder.mkdir()
@@ -261,10 +259,9 @@ def test_call_one_agent_emits_agent_token_before_done(monkeypatch, tmp_path):
         monkeypatch,
         lambda *_a, **_k: "[mock:cursor] streaming body for test",
     )
-    monkeypatch.setattr(room, "model_label", lambda agent: agent)
+    monkeypatch.setattr("agent_lab.agents.registry.model_label", lambda agent: agent)
     monkeypatch.setattr(
-        room,
-        "build_agent_context_bundle",
+        "agent_lab.room.messages.build_agent_context_bundle",
         lambda *a, **k: type(
             "B",
             (),
@@ -281,7 +278,7 @@ def test_call_one_agent_emits_agent_token_before_done(monkeypatch, tmp_path):
         events.append((typ, payload))
 
     run_meta = {"_session_folder": str(folder)}
-    msg = room._call_one_agent(
+    msg = agent_invoke._call_one_agent(
         "cursor",
         topic="t",
         thread=[],
@@ -310,7 +307,7 @@ def test_call_one_agent_emits_agent_token_before_done(monkeypatch, tmp_path):
 
 def test_call_one_agent_codex_no_redundant_connect_activity(monkeypatch, tmp_path):
     """agent_start covers connect UX — no duplicate Codex CLI 연결 중 agent_activity."""
-    from agent_lab import room
+    from agent_lab.room import agent_invoke
 
     folder = tmp_path / "sess"
     folder.mkdir()
@@ -322,10 +319,9 @@ def test_call_one_agent_codex_no_redundant_connect_activity(monkeypatch, tmp_pat
         monkeypatch,
         lambda *_a, **_k: "[mock:codex] ok",
     )
-    monkeypatch.setattr(room, "model_label", lambda agent: agent)
+    monkeypatch.setattr("agent_lab.agents.registry.model_label", lambda agent: agent)
     monkeypatch.setattr(
-        room,
-        "build_agent_context_bundle",
+        "agent_lab.room.messages.build_agent_context_bundle",
         lambda *a, **k: type(
             "B",
             (),
@@ -341,7 +337,7 @@ def test_call_one_agent_codex_no_redundant_connect_activity(monkeypatch, tmp_pat
     def on_event(typ: str, payload: dict) -> None:
         events.append((typ, payload))
 
-    room._call_one_agent(
+    agent_invoke._call_one_agent(
         "codex",
         topic="t",
         thread=[],

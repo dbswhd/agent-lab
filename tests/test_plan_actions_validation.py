@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from agent_lab.plan.actions import validate_plan_actions_format
-from agent_lab.room import _emit_plan_actions_validation
+from agent_lab.room.plan_scribe import _emit_plan_actions_validation
 
 NEW_FORMAT_PLAN = """## 지금 실행
 1.

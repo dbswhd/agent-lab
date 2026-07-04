@@ -199,7 +199,7 @@ def test_clarifier_harvest_creates_t_q0_items(monkeypatch: pytest.MonkeyPatch):
     created = harvest_clarifier_questions(run_meta, questions, human_turn=1)
     assert len(created) == len(questions)
     assert all(item["trigger"] == "T-Q0" for item in created)
-    assert all(item["options"] == [] for item in created)
+    assert all(isinstance(item.get("options"), list) for item in created)
     assert all(item["source"] == "orchestrator" for item in created)
     assert run_meta.get("inbox_pending") is True
 

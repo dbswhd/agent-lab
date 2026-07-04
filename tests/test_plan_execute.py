@@ -26,10 +26,10 @@ from agent_lab.plan.execute_snapshot import (
 )
 from agent_lab.room import (
     ChatMessage,
-    _write_session_files,
     consensus_reached,
     maybe_auto_scribe_after_consensus,
 )
+from agent_lab.room.session_persist import _write_session_files
 
 SAMPLE_PLAN = """## 다음에 할 일
 1.

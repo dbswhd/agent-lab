@@ -314,7 +314,8 @@ Additive, flag-gated layers from the LangGraph/OpenHands/Aider/SWE-agent gap ana
 | `components/` | 105 | UI 컴포넌트 |
 | `utils/` | ~80 | 뷰 로직, prefs, formatters |
 | `hooks/` | 11 | Tauri, scroll, plan execute |
-| `api/client.ts` | 1 | ~100 fetch helpers |
+| `api/client.ts` | 1 | Core session/room/plan fetch + barrel re-exports |
+| `api/http.ts` · `workspaceClient.ts` · `missionGatewayClient.ts` · `wsClient.ts` | 4 | Phase 1c domain split (transport · workspace · gateway · ws) |
 | `context/` | — | React context providers |
 | `run/`, `figma/` | — | classic run view, figma assets |
 | `styles/` | 9 | CSS |
@@ -345,7 +346,7 @@ Additive, flag-gated layers from the LangGraph/OpenHands/Aider/SWE-agent gap ana
 
 ### 5.3 API 클라이언트
 
-모든 REST 호출은 `api/client.ts`에 집중. 컴포넌트는 hook/utils 경유.
+모든 REST 호출은 `api/client.ts` barrel(및 `api/*Client.ts` 도메인 모듈) 경유. 컴포넌트는 hook/utils 경유.
 
 ---
 

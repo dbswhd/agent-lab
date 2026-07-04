@@ -37,7 +37,7 @@
 Now     supervisor dogfood · blocker fixes · F4 rule in CLAUDE.md
 1a      Room transcript contract — `make test-c1`       ← done
 1b      Wave B room/context split + F4 CI guard — **done** (`test_room_context_package`, `test_run_meta_write_discipline`)
-1c      Phase D RoomChat hooks (5/5 wired) · client.ts split ← next
+1c      Phase D ✅ (RoomChat hooks + client.ts split) · N4 next
 2w      N2 profile mapping · dead code §3.4 (1 PR each)
 1mo     N4 UI (after 1c) · F7 repo_map decision
 Q       §2.5 matrix · KPI review · N5/S2 re-eval (episode n≥30) — **no global task bandit**

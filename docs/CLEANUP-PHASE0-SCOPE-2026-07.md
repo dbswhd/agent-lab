@@ -113,7 +113,7 @@ N5–N7 구현 · Mission Gateway 확장 · trading 이전 in core PR · preset 
 - [x] Obsolete `artifacts/plans/agent-lab-*-direction.md` ×3 deleted  
 - [ ] §5 dead code grep evidence (Phase 2, per-item)  
 - [x] Phase 1a: C1 vitest + live_log archive — `make test-c1`
-- [ ] Phase 1c: Phase D hook extractions — `useRoomWorkbenchLayout` · `useRoomComposerPrefs` · `useRoomSlashCommands` · `useRoomRunWatchdog` · `useRoomRecoveryLifecycle` ✅ · next: `client.ts` split  
+- [x] Phase 1c: Phase D hook extractions + `client.ts` split (`http` · `workspaceClient` · `missionGatewayClient` · `wsClient`)  
 
 ---
 

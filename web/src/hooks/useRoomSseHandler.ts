@@ -147,10 +147,7 @@ function appendRunErrorSystemMessage(
 function notifyTerminalRunError(
   scope: RoomRunScope,
   message: string,
-  deps: Pick<
-    RoomRunSseDeps,
-    "pushMacNotification" | "notifyDesktop" | "sessionId"
-  >,
+  deps: Pick<RoomRunSseDeps, "pushMacNotification" | "sessionId">,
   title: string,
 ): void {
   if (scope.terminalRunError === message) return;

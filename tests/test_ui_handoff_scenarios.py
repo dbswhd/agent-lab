@@ -67,7 +67,10 @@ def test_scenario_b2_plan_workflow_ui_contract():
     receipt = _read("web", "src", "utils", "sendReceipt.ts")
     plan_view = _read("web", "src", "utils", "planWorkflowView.ts")
 
-    assert "ComposerDecisionSurface" in room
+    main_pane = _read("web", "src", "components", "RoomChatMainPane.tsx")
+
+    assert "RoomChatMainPane" in room
+    assert "ComposerDecisionSurface" in main_pane
     assert "showPlanWorkflowBanner" in room
     assert "showPlanWorkflowComposerHint" in room
     assert "plan_workflow_phase" in sse
@@ -260,8 +263,12 @@ def test_remaining_gaps_slack_inbox_ref_recovery_contract():
     assert "missionOsSlackSigningSecret" in gateway or "slackSigningSecret" in gateway
     assert "activateInboxRef" in room
     assert "handleInboxRefClick" in room
-    assert "onInboxRefClick={handleInboxRefClick}" in room
-    assert "ComposerDecisionSurface" in room
+    event_stack = _read("web", "src", "hooks", "useRoomComposerEventStack.tsx")
+    assert "onInboxRefClick: handleInboxRefClick" in event_stack
+    main_pane = _read("web", "src", "components", "RoomChatMainPane.tsx")
+
+    assert "RoomChatMainPane" in room
+    assert "ComposerDecisionSurface" in main_pane
     assert "RecoveryStrip" in recovery
     assert "postMissionDiscussRecovery" in room
     assert "DiscussRecoveryBanner" in _read(

@@ -13,11 +13,13 @@ def _read(*parts: str) -> str:
 
 def test_slash_command_divider_in_transcript_and_composer() -> None:
     bubble = _read("web", "src", "components", "ChatBubble.tsx")
-    room = _read("web", "src", "components", "RoomChat.tsx")
+    slash_execute = _read("web", "src", "hooks", "useRoomSlashExecute.ts")
+    composer_shell = _read("web", "src", "components", "RoomChatComposerShell.tsx")
     divider = _read("web", "src", "components", "SlashCommandDivider.tsx")
     assert "SlashCommandDivider" in bubble
     assert "[slash]" in bubble
-    assert "SlashCommandDivider" in room
+    assert "[slash]" in slash_execute
+    assert "SlashCommandDivider" in composer_shell
     assert "round-divider" in divider
     assert "SlashCommandNoticeCard" not in bubble
 

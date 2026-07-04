@@ -13,9 +13,11 @@ def _read(*parts: str) -> str:
 
 def test_composer_decision_surface_replaces_stacked_banners():
     room = _read("web", "src", "components", "RoomChat.tsx")
+    main_pane = _read("web", "src", "components", "RoomChatMainPane.tsx")
     priority = _read("web", "src", "utils", "composerDecisionPriority.ts")
     surface = _read("web", "src", "components", "ComposerDecisionSurface.tsx")
-    assert "ComposerDecisionSurface" in room
+    assert "RoomChatMainPane" in room
+    assert "ComposerDecisionSurface" in main_pane
     assert "ComposerNoticeCard" in surface
     assert "<PlanWorkflowBanner" not in room
     assert "<HumanDecisionBanner" not in room
@@ -51,10 +53,10 @@ def test_human_inbox_composer_only():
 
 def test_decision_blocked_headline_ssot():
     headline = _read("web", "src", "utils", "decisionBlockedHeadline.ts")
-    room = _read("web", "src", "components", "RoomChat.tsx")
+    main_pane = _read("web", "src", "components", "RoomChatMainPane.tsx")
     assert "buildDecisionBlockedHeadline" in headline
-    assert "decisionBlockedHeadline" in room
-    assert "blockedHeadline={decisionBlockedHeadline}" in room
+    assert "decisionBlockedHeadline" in main_pane
+    assert "blockedHeadline={decisionBlockedHeadline}" in main_pane
     assert "blockedHeadline.headline" in _read(
         "web", "src", "components", "ComposerDecisionSurface.tsx"
     )

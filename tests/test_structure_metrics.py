@@ -26,6 +26,47 @@ def test_structure_metrics_baseline_has_zero_tracked_pycache() -> None:
     assert baseline["tracked_pycache_files"] == 0
 
 
+def test_f9_hot_path_py_caps_in_baseline() -> None:
+    """F9 ratchet: hot-path Python LOC caps are pinned in structure-metrics baseline."""
+    baseline = json.loads((ROOT / "tests/fixtures/structure-metrics-baseline.json").read_text())
+    by_path = {row["path"]: row["lines"] for row in baseline["hot_path_py_files"]}
+    assert by_path == {
+        "src/agent_lab/plan/execute.py": 1691,
+        "src/agent_lab/plan/workflow.py": 1281,
+        "src/agent_lab/room/turn_flow.py": 675,
+    }
+
+
+def test_f9_hot_path_py_growth_fails_check(tmp_path: Path) -> None:
+    """Simulated LOC growth on a hot-path file must fail --check."""
+    import importlib.util
+    import sys
+
+    mod_name = "structure_metrics_f9_test"
+    spec = importlib.util.spec_from_file_location(
+        mod_name,
+        ROOT / "scripts" / "structure_metrics.py",
+    )
+    assert spec and spec.loader
+    sm = importlib.util.module_from_spec(spec)
+    sys.modules[mod_name] = sm
+    spec.loader.exec_module(sm)
+
+    metrics = sm.collect_metrics()
+    baseline = json.loads((ROOT / "tests/fixtures/structure-metrics-baseline.json").read_text())
+    mutated = json.loads(json.dumps(baseline))
+    for row in mutated["hot_path_py_files"]:
+        if row["path"] == "src/agent_lab/plan/execute.py":
+            row["lines"] = int(metrics.hot_path_py_files[0]["lines"]) - 1
+
+    fake_baseline = tmp_path / "structure-metrics-baseline.json"
+    fake_baseline.write_text(json.dumps(mutated, indent=2) + "\n", encoding="utf-8")
+    sm.BASELINE_PATH = fake_baseline
+
+    failures = sm._check_against_baseline(metrics)
+    assert any("hot_path_py_files" in f and "execute.py" in f for f in failures)
+
+
 def test_mypy_room_ratchet_check_passes() -> None:
     proc = subprocess.run(
         [sys.executable, "scripts/mypy_room_ratchet.py", "--check"],
@@ -403,7 +444,7 @@ def test_room_import_graph_collects_modules() -> None:
     )
     assert proc.returncode == 0, proc.stderr
     payload = json.loads(proc.stdout)
-    assert payload["room_module_count"] == 36
+    assert payload["room_module_count"] == 37
     assert "room.delegate" in payload["modules"]
     hub_modules = {row["module"] for row in payload["hub_modules"]}
     assert "room.session_persist" in hub_modules

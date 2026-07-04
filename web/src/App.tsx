@@ -601,7 +601,6 @@ export default function App() {
                 agents={teamHealthAgents}
                 loading={healthLoading}
                 reconnecting={reconnecting}
-                sessionsDir={sessionsDir}
                 probeBridgeFailed={bridgeProbeFailed}
                 onRefresh={() => void reloadHealth(true)}
                 onReconnectCursor={() => void handleReconnectCursor()}

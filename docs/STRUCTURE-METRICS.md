@@ -106,17 +106,31 @@ Domain split is deferred; this baseline records the starting point.
 
 ## Large frontend components
 
-Tracked TSX files ≥500 lines (top entries):
+Tracked TSX files ≥500 lines (top entries) — see `large_tsx_files` in baseline JSON.
+
+## F9 hot-path Python ratchet
+
+Pinned in `tests/fixtures/structure-metrics-baseline.json` → `hot_path_py_files`:
+
+| Lines | Path |
+|------:|------|
+| 1691 | `src/agent_lab/plan/execute.py` |
+| 1281 | `src/agent_lab/plan/workflow.py` |
+| 1084 | `src/agent_lab/room/turn_flow.py` |
+
+`make structure-metrics-check` fails on any LOC drift (growth **or** shrink without `--write-baseline`).
+After intentional refactor extraction, lower the cap:
+
+```bash
+.venv/bin/python scripts/structure_metrics.py --write-baseline
+```
+
+Legacy snapshot (2026-06-28) for comparison:
 
 | Lines | Path |
 |------:|------|
 | 4467 | `web/src/components/RoomChat.tsx` |
 | 1567 | `web/src/components/PlanExecutePanel.tsx` |
-| 788 | `web/src/components/HumanInboxPanel.tsx` |
-| 736 | `web/src/App.tsx` |
-| 726 | `web/src/components/ChatComposer.tsx` |
-| 703 | `web/src/components/RoomTaskBar.tsx` |
-| 595 | `web/src/components/SettingsPage.tsx` |
 
 Frontend extraction is a **separate wave** from Python package moves. Active execute plan: [STRUCTURE-REFACTOR-WAVE.md](STRUCTURE-REFACTOR-WAVE.md).
 

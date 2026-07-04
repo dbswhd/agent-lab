@@ -23,6 +23,13 @@ BASELINE_PATH = ROOT / "tests" / "fixtures" / "structure-metrics-baseline.json"
 MAKEFILE = ROOT / "Makefile"
 WEB_SRC = ROOT / "web" / "src"
 
+# F9 hot-path LOC ratchet — caps match NORTH-STAR §3.1 (2026-07-04 measured).
+HOT_PATH_PY_FILES: tuple[str, ...] = (
+    "src/agent_lab/plan/execute.py",
+    "src/agent_lab/plan/workflow.py",
+    "src/agent_lab/room/turn_flow.py",
+)
+
 TRACK_PREFIXES = (
     "room_",
     "plan_",
@@ -54,6 +61,7 @@ class StructureMetrics:
     makefile_lines: int
     makefile_targets: int
     large_tsx_files: list[dict[str, int | str]]
+    hot_path_py_files: list[dict[str, int | str]]
     notes: dict[str, str]
 
 
@@ -77,12 +85,29 @@ def _makefile_targets() -> tuple[int, int]:
     return len(text.splitlines()), len(targets)
 
 
+def _count_lines(path: Path) -> int:
+    return sum(1 for _ in path.open(encoding="utf-8"))
+
+
+def _hot_path_py_files() -> list[dict[str, int | str]]:
+    rows: list[dict[str, int | str]] = []
+    for rel in HOT_PATH_PY_FILES:
+        path = ROOT / rel
+        rows.append(
+            {
+                "path": rel,
+                "lines": _count_lines(path) if path.is_file() else -1,
+            }
+        )
+    return rows
+
+
 def _large_tsx_files(*, min_lines: int = 500, limit: int = 10) -> list[dict[str, int | str]]:
     rows: list[tuple[int, Path]] = []
     if not WEB_SRC.is_dir():
         return []
     for path in WEB_SRC.rglob("*.tsx"):
-        line_count = sum(1 for _ in path.open(encoding="utf-8"))
+        line_count = _count_lines(path)
         if line_count >= min_lines:
             rows.append((line_count, path))
     rows.sort(key=lambda item: item[0], reverse=True)
@@ -108,7 +133,7 @@ def collect_metrics() -> StructureMetrics:
     makefile_lines, makefile_targets = _makefile_targets()
 
     return StructureMetrics(
-        version=1,
+        version=2,
         agent_lab_root_py_files=len(root_py),
         agent_lab_subpackages=subpackages,
         prefix_counts=prefix_counts,
@@ -116,12 +141,17 @@ def collect_metrics() -> StructureMetrics:
         makefile_lines=makefile_lines,
         makefile_targets=makefile_targets,
         large_tsx_files=_large_tsx_files(),
+        hot_path_py_files=_hot_path_py_files(),
         notes={
             "pycache": (
                 "tracked_pycache_files counts git-tracked __pycache__/*.pyc only; "
                 "local __pycache__ dirs are ignored by .gitignore and are not repo debt."
             ),
             "makefile_targets": "Counted as Makefile lines matching ^target:",
+            "hot_path_py_files": (
+                "F9 ratchet: execute.py / workflow.py / turn_flow.py LOC caps; "
+                "--check fails on any drift from baseline (growth or shrink without update)."
+            ),
         },
     )
 
@@ -138,6 +168,9 @@ def _print_human(metrics: StructureMetrics) -> None:
     print(f"  Makefile: {metrics.makefile_lines} lines, {metrics.makefile_targets} targets")
     print("  large TSX (>=500 lines):")
     for row in metrics.large_tsx_files:
+        print(f"    {row['lines']:>5}  {row['path']}")
+    print("  F9 hot-path Python:")
+    for row in metrics.hot_path_py_files:
         print(f"    {row['lines']:>5}  {row['path']}")
 
 
@@ -174,6 +207,19 @@ def _check_against_baseline(metrics: StructureMetrics) -> list[str]:
             failures.append(
                 f"large_tsx_files[{path!r}]: expected {expected_lines}, got {actual_tsx[path]}"
             )
+
+    baseline_hot = {row["path"]: row["lines"] for row in baseline.get("hot_path_py_files", [])}
+    actual_hot = {row["path"]: row["lines"] for row in metrics.hot_path_py_files}
+    for path, expected_lines in baseline_hot.items():
+        if path not in actual_hot:
+            failures.append(f"hot_path_py_files missing baseline path {path!r}")
+        elif actual_hot[path] != expected_lines:
+            failures.append(
+                f"hot_path_py_files[{path!r}]: expected {expected_lines}, got {actual_hot[path]}"
+            )
+    for path in HOT_PATH_PY_FILES:
+        if path not in baseline_hot:
+            failures.append(f"hot_path_py_files missing F9 path {path!r}")
 
     return failures
 

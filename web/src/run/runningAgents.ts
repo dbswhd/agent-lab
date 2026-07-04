@@ -70,9 +70,8 @@ export function derivePendingReplyAgents(
 /** Live slots from typing bubbles; fallback to expected agents before first SSE. */
 export function deriveRunningAgentSlots(
   messages: LiveMsg[],
-  options: { running: boolean; expectedAgents: string[] },
+  _options: { running: boolean; expectedAgents: string[] },
 ): RunningAgentSlot[] {
-  const { running, expectedAgents } = options;
   const typing = messages.filter((m) => m.typing && isReplyWaitRole(m.role));
   if (typing.length) {
     return typing.map((m) => ({

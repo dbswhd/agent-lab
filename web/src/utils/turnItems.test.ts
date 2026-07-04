@@ -120,6 +120,10 @@ describe("turn item reducer", () => {
     });
     const activities = items.filter((item) => item.kind === "activity");
     expect(activities).toHaveLength(1);
-    expect(activities[0]?.text).toContain("daimon/conversations.send");
+    const activity = activities[0];
+    expect(activity?.kind).toBe("activity");
+    if (activity?.kind === "activity") {
+      expect(activity.text).toContain("daimon/conversations.send");
+    }
   });
 });

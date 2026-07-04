@@ -250,9 +250,9 @@ def test_run_session_registry_module_exists():
 
 def test_room_patches_turn_messages():
     sse = _read("web", "src", "hooks", "useRoomSseHandler.ts")
+    execute_send = _read("web", "src", "hooks", "useRoomExecuteSend.ts")
     assert "patchTurnMessages" in sse
-    room = _read("web", "src", "components", "RoomChat.tsx")
-    assert "createRoomRunEventHandler" in room
+    assert "createRoomRunEventHandler" in execute_send
 
 
 def test_m3_terminal_uses_xterm():

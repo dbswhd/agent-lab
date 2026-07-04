@@ -6,7 +6,6 @@ import type {
 } from "../api/client";
 import {
   cancelRoomRun,
-  fetchCommands,
   postMissionDiscussRecovery,
   matchSlashCommand,
   releaseRoomRunLock,
@@ -14,11 +13,7 @@ import {
   reconnectClaudeAuth,
   reconnectCursorBridge,
   reconnectKimiWorkBridge,
-  runRoom,
   runSynthesizeOnly,
-  runSessionCommand,
-  runGlobalCommand,
-  SESSIONLESS_ACCOUNT_COMMAND_IDS,
   runRoomSlash,
   approveVerifiedLoop,
   approvePlan,
@@ -27,50 +22,32 @@ import {
   pauseMissionLoop,
   autoSyncSessionPlan,
   type AgentHealthRow,
-  type AuthRunRef,
-  type SlashCommandRecord,
 } from "../api/client";
 import { useInboxState } from "../hooks/useInboxState";
 import { useGoalLoop } from "../hooks/useGoalLoop";
-import { MacAlert } from "./MacAlert";
-import { replayLiveLogToMessages } from "../utils/liveRoomLog";
-import {
-  mergePersistedChatWithLiveLog,
-  preferRicherChatMessages,
-} from "../utils/sessionChatMerge";
+import { preferRicherChatMessages } from "../utils/sessionChatMerge";
 import { syncSessionActivityMarkers } from "../utils/transcriptActivity";
-import {
-  agentLabel,
-  chatLineToMessage,
-  isReplyWaitRole,
-  parseTranscript,
-  topicAsUserMessage,
-} from "../utils/transcript";
+import { isReplyWaitRole } from "../utils/transcript";
 import { CommandPalette } from "./CommandPalette";
 import { workspacePaletteActions } from "../utils/commandPaletteActions";
 import { useWorkspaceTabs } from "../hooks/useWorkspaceTabs";
 import { useSessionRunState } from "../hooks/useSessionRunState";
 import {
   PENDING_KEY,
-  appendSessionMessages,
   clearBackgroundRun,
-  finishSessionRun,
   finalizeCancelledTyping,
   getRunningSessionIds,
   getSessionRunSnapshot,
   hydrateSessionMessages,
   isSessionRunActive,
   markBackgroundRun,
-  resetTurnRun,
   resolveRunSessionKey,
   syncRunStateFromLiveLog,
   updateSessionRun,
   type LiveMsg,
 } from "../run/runSessionRegistry";
-import { registerRoomEventHandler } from "../run/roomReconnectRegistry";
 import { derivePendingReplyAgents } from "../run/runningAgents";
 import { effectiveTurnAgents } from "../utils/agentMentions";
-import { createRoomRunEventHandler } from "../hooks/useRoomSseHandler";
 import { latestDraftMessageIdsByAgent } from "../utils/draftResponsePrefs";
 import { stripAgentReplyBody } from "../utils/agentResponseCard";
 import {
@@ -91,19 +68,11 @@ import {
   setShowPeerChannel,
   TRANSCRIPT_VIEW_PREFS_EVENT,
 } from "../utils/transcriptViewPrefs";
-import { RoomTranscriptPanel } from "./RoomTranscriptPanel";
-import { ComposerDecisionSurface } from "./ComposerDecisionSurface";
-import { AutonomyDial } from "./AutonomyDial";
-import { SlashCommandDivider } from "./SlashCommandDivider";
-import { ComposerEventStack } from "./ComposerEventStack";
 import { useHumanDecisionRuntime } from "../hooks/useHumanDecisionRuntime";
-import { buildDecisionBlockedHeadline } from "../utils/decisionBlockedHeadline";
-import { ChatComposer, type PendingFile } from "./ChatComposer";
-import { ShellPortal } from "./ShellPortal";
-import { ContextOverviewPanel } from "./ContextOverviewPanel";
+import { AutonomyDial } from "./AutonomyDial";
+import type { PendingFile } from "./ChatComposer";
 import type { PlanApprovalMode, PlanRejectPayload } from "./PlanApprovalPanel";
 import { type WorkFocusTarget } from "./WorkToolPanel";
-import { AgentPermissionAlert } from "./AgentPermissionAlert";
 import { useMacNotifications } from "../hooks/useMacNotifications";
 import type { AgentPermissions } from "../utils/agentPermissions";
 import {
@@ -133,40 +102,27 @@ import {
   isPlanWorkflowPhaseBanner,
   isPlanWorkflowComposerHint,
 } from "../utils/planWorkflowView";
-import { roundDividerLabel } from "../utils/roundTopology";
 import {
   resolveTurnSend,
   type ComposerTurnProfile,
 } from "../utils/turnProfile";
-import { sortAgentIds, sortAgentPickerOptions } from "../utils/agentOrder";
+import { sortAgentIds } from "../utils/agentOrder";
 import {
-  parseModelSlashArgs,
   readPendingRoomModels,
   readSessionRoomModels,
   writePendingRoomModels,
 } from "../utils/modelSlash";
-import { WorkspaceFilesPanel } from "./WorkspaceFilesPanel";
-import { PreviewPanel } from "./PreviewPanel";
-import { TerminalPanel } from "./TerminalPanel";
-import { ComposerAuthFlowPopover } from "./ComposerAuthFlowPopover";
-import { ComposerAuthPickerPopover } from "./ComposerAuthPickerPopover";
-import { ComposerAuthSecretPopover } from "./ComposerAuthSecretPopover";
-import { BackgroundTasksPanel } from "./BackgroundTasksPanel";
 import type { ConsensusDryRunProposal } from "./ConsensusDryRunGateBar";
-import { type ComposeMode } from "../utils/composeMode";
 import { isPlanWorkflowAwaitingApproval } from "../utils/planComposerSync";
 import { usePlanExecute } from "../hooks/usePlanExecute";
 import { useLocale } from "../i18n/useLocale";
-import { type StoredPlanAction } from "../utils/planExecuteHistory";
 import {
   fetchSessionAgentCapabilities,
-  fetchSessionSetupOptions,
   fetchSessionTasks,
   type RoomObjection,
   type RoomTasksPayload,
 } from "../api/client";
 import {
-  capabilitiesForApi,
   cloneCapabilities,
   DEFAULT_AGENT_CAPABILITIES,
   parseAgentCapabilities,
@@ -177,29 +133,21 @@ import {
   focusComposerInput,
   messageMentionsTask,
 } from "../utils/taskBarCopy";
-import type { WorkspacePreset } from "../utils/sessionSetup";
+import { CUSTOM_WORKSPACE_ID } from "../utils/sessionSetup";
+import { useRoomExecuteSend } from "../hooks/useRoomExecuteSend";
+import { useRoomComposerPopovers } from "../hooks/useRoomComposerPopovers";
+import { useRoomComposerEventStack } from "../hooks/useRoomComposerEventStack";
+import { useRoomSlashExecute } from "../hooks/useRoomSlashExecute";
+import { useRoomWorkspace } from "../hooks/useRoomWorkspace";
+import { RoomChatMainPane } from "./RoomChatMainPane";
+import { RoomChatInspector } from "./RoomChatInspector";
 import {
-  CUSTOM_WORKSPACE_ID,
-  getStoredSessionTemplate,
-  getStoredWorkspaceId,
-  getStoredWorkspacePath,
-  setStoredWorkspaceId,
-  setStoredWorkspacePath,
-} from "../utils/sessionSetup";
-import {
-  clearStoredAgentThreadBindings,
-  getStoredAgentThreadBindings,
-  type AgentThreadBindings,
-} from "../utils/agentThreadBindings";
-import {
-  sendReceiptLabel,
-  shouldShowSendReceiptOnChatTab,
-} from "../utils/sendReceipt";
-import { ComposerPreflightBar } from "./ComposerPreflightBar";
-import { ReadinessComposerBar } from "./ReadinessComposerBar";
+  chatFingerprint,
+  sessionToMessages,
+} from "../utils/roomSessionMessages";
+import { type AgentThreadBindings } from "../utils/agentThreadBindings";
 import { fetchReadiness, type ReadinessResponse } from "../api/client";
 import {
-  classifySendFailure,
   type RecoveryActionId,
   type RecoveryItem,
 } from "../utils/recoveryItems";
@@ -216,18 +164,9 @@ import {
   DEMO_EXEC_PENDING_BLOCKED,
   DEMO_OBJECTION_NOTICE,
   DEMO_PLAN_STALE_NOTICE,
-  DEMO_PREFLIGHT_AGENTS,
 } from "../utils/tweaksDemoFixtures";
 import { useMessagesScroll } from "../hooks/useMessagesScroll";
-import { WorkbenchPanel } from "./WorkbenchPanel";
 import { WorkspaceChrome } from "./WorkspaceChrome";
-import { DiffToolPanel } from "./DiffToolPanel";
-import { ComposerChoicePopover } from "./ComposerChoicePopover";
-import {
-  ComposerModelPopover,
-  type ModelPopoverAgent,
-  type ModelPopoverSidePanel,
-} from "./ComposerModelPopover";
 
 type Props = {
   agents: AgentOption[];
@@ -258,67 +197,6 @@ type Props = {
   onBootstrapAgentsApplied?: () => void;
   onBootstrapMissionTemplateApplied?: () => void;
 };
-
-function chatFingerprint(session: SessionDetail): string {
-  const chat = session.chat;
-  if (!chat?.length) {
-    return `${session.id}:t:${session.transcript_md?.length ?? 0}:${session.topic}`;
-  }
-  const last = chat[chat.length - 1];
-  return `${session.id}:${chat.length}:${last.ts ?? ""}:${last.content.length}`;
-}
-
-function attachmentSendTopic(files: PendingFile[]): string {
-  if (files.length === 1) return `[첨부] ${files[0]!.file.name}`;
-  return `[첨부] ${files.length}개 파일`;
-}
-
-function sessionToMessages(
-  session: SessionDetail,
-  reviewModeHint = false,
-): LiveMsg[] {
-  let out: LiveMsg[];
-  if (session.chat && session.chat.length > 0) {
-    out = [];
-    let lastRound = 0;
-    for (let i = 0; i < session.chat.length; i++) {
-      const line = session.chat[i];
-      if (line.role === "user") {
-        lastRound = 0;
-      }
-      const pr = line.parallel_round ?? (line.role === "agent" ? 1 : 0);
-      if (line.role === "agent" && pr >= 1 && pr !== lastRound) {
-        out.push({
-          id: `round-divider-${i}-${pr}`,
-          role: "system",
-          label: "",
-          body: roundDividerLabel(pr, reviewModeHint),
-          roundDivider: pr,
-        });
-        lastRound = pr;
-      }
-      out.push(chatLineToMessage(line, i));
-    }
-  } else if (session.live_log && session.live_log.length > 0) {
-    const persisted =
-      session.chat_total != null && session.chat_total > 0
-        ? parseTranscript(session.transcript_md || "")
-        : [];
-    out =
-      persisted.length > 0
-        ? persisted
-        : [
-            topicAsUserMessage(session.topic || session.id),
-            ...replayLiveLogToMessages(session.live_log, agentLabel),
-          ];
-  } else {
-    out = [
-      topicAsUserMessage(session.topic || session.id),
-      ...parseTranscript(session.transcript_md || ""),
-    ];
-  }
-  return mergePersistedChatWithLiveLog(out, session.live_log, agentLabel);
-}
 
 export function RoomChat({
   agents,
@@ -495,11 +373,7 @@ export function RoomChat({
   } = useRoomSlashCommands({ sessionId, activeSessionIdRef });
   const runAbortRef = useRef<AbortController | null>(null);
   const syncedChatRef = useRef("");
-  const [, setSetupWorkspaces] = useState<WorkspacePreset[]>([]);
-  const [workspaceId, setWorkspaceIdState] = useState(getStoredWorkspaceId);
-  const [workspacePath, setWorkspacePathState] = useState<string | null>(
-    getStoredWorkspacePath,
-  );
+  const { workspaceId, workspacePath } = useRoomWorkspace(sessionId);
   const [consensusProposal, setConsensusProposal] =
     useState<ConsensusDryRunProposal | null>(null);
   const [consensusGateBusy, setConsensusGateBusy] = useState(false);
@@ -512,27 +386,12 @@ export function RoomChat({
   const agentCapsDirtyRef = useRef(false);
   const agentsPickerInitRef = useRef(false);
 
-  function setWorkspaceId(id: string, path?: string | null) {
-    setWorkspaceIdState(id);
-    setStoredWorkspaceId(id);
-    if (path !== undefined) {
-      setWorkspacePathState(path);
-      setStoredWorkspacePath(path);
-    }
-  }
-
   useEffect(() => {
-    fetchSessionSetupOptions()
-      .then((opts) => {
-        setSetupWorkspaces(opts.workspaces);
-        const wsIds = new Set(opts.workspaces.map((w) => w.id));
-        if (workspaceId !== CUSTOM_WORKSPACE_ID && !wsIds.has(workspaceId)) {
-          setWorkspaceId(opts.defaults.workspace_id, null);
-        }
-      })
-      .catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate once; stored ids validated against API
-  }, []);
+    activeSessionIdRef.current = sessionId;
+    if (sessionId !== null) {
+      setLiveRunSessionKey(null);
+    }
+  }, [sessionId]);
 
   useEffect(() => {
     const onPrefs = () => {
@@ -542,19 +401,6 @@ export function RoomChat({
     return () =>
       window.removeEventListener(TRANSCRIPT_VIEW_PREFS_EVENT, onPrefs);
   }, []);
-
-  useEffect(() => {
-    if (sessionId !== null) return;
-    setWorkspaceIdState(getStoredWorkspaceId());
-    setWorkspacePathState(getStoredWorkspacePath());
-  }, [sessionId]);
-
-  useEffect(() => {
-    activeSessionIdRef.current = sessionId;
-    if (sessionId !== null) {
-      setLiveRunSessionKey(null);
-    }
-  }, [sessionId]);
 
   useEffect(() => {
     if (!sessionId) {
@@ -611,16 +457,6 @@ export function RoomChat({
     });
     agentsPickerInitRef.current = true;
   }, [session?.run, sessionId, sessionRoomModelsKey]);
-
-  const applySessionScopedModels = useCallback((composition: string[]) => {
-    const comp = sortAgentIds(composition);
-    if (comp.length === 0) return;
-    pendingSessionRoomModelsRef.current = comp;
-    writePendingRoomModels(comp);
-    setSelected(comp);
-    agentsPickerInitRef.current = true;
-    setCommandHint(`이 세션 동안 ${comp.join(", ")} 에이전트를 사용합니다.`);
-  }, []);
 
   const persistPendingSessionRoomModels = useCallback(
     async (boundSessionId: string) => {
@@ -1398,6 +1234,40 @@ export function RoomChat({
     armStopWatchdog();
   }, [armStopWatchdog, sessionId, onSessionMetaRefresh]);
 
+  const {
+    applySessionScopedModels,
+    executeSlashCommand,
+    handleAuthRunComplete,
+    runSlashCommand,
+  } = useRoomSlashExecute({
+    sessionId,
+    activeSessionIdRef,
+    agents,
+    slashCommands,
+    authRun,
+    commandChoices,
+    commandChoiceIndex,
+    setCommandHint,
+    setCommandChoices,
+    setCommandScopeChoices,
+    setCommandMultiChoices,
+    setModelPopover,
+    setMultiSelected,
+    setAuthRun,
+    setSecretCommand,
+    setSecretValue,
+    setExternalCommandConfirm,
+    setSlashCommands,
+    setCommandChoiceIndex,
+    setSelected,
+    setText,
+    pendingSessionRoomModelsRef,
+    agentsPickerInitRef,
+    refreshSessionMeta,
+    onRefreshHealth,
+    handleStop,
+  });
+
   useEffect(() => {
     if (isNew) return;
     function onKeyDown(event: KeyboardEvent) {
@@ -1491,255 +1361,61 @@ export function RoomChat({
     setConsensusProposal(null);
   }, []);
 
-  const executeSend = useCallback(
-    async (
-      msgText: string,
-      filesToSend: PendingFile[],
-      permissions: AgentPermissions,
-      mode: ComposeMode = composeMode,
-      profile: ComposerTurnProfile = turnProfile,
-    ) => {
-      if (mode === "execute") return;
-      if (runBusy || running || synthesizing) return;
-      const effectiveProfile: ComposerTurnProfile = roomPreset
-        ? ((resolvedRoomPresets.find((p) => p.id === roomPreset)
-            ?.turn_profile ?? profile) as ComposerTurnProfile)
-        : profile;
-      const roomMode = "discuss" as const;
-      const {
-        agents,
-        agentRounds,
-        reviewMode: useReviewMode,
-        consensusMode: useConsensusMode,
-      } = resolveTurnSend(effectiveProfile, selected);
-      if (agents.length === 0) return;
-
-      const pinnedRoomModels = !sessionId
-        ? (pendingSessionRoomModelsRef.current ?? sortAgentIds(selected))
-        : undefined;
-
-      const sendText =
-        msgText.trim() ||
-        (filesToSend.length ? attachmentSendTopic(filesToSend) : "");
-      if (!sendText) return;
-
-      const attachmentNames = filesToSend.map((p) => p.file.name);
-      const displayBody = msgText.trim();
-      if (displayBody && filesToSend.length === 0) {
-        lastPlainSendTextRef.current = displayBody;
-      }
-      setPendingFiles([]);
-
-      const threadBindings = !sessionId
-        ? (bootstrapAgentThreadBindings ??
-          getStoredAgentThreadBindings() ??
-          undefined)
-        : undefined;
-      const sessionTemplate = sessionId
-        ? undefined
-        : (bootstrapSessionTemplate ?? getStoredSessionTemplate());
-
-      let runKey = resolveRunSessionKey(sessionId, activeSessionIdRef.current);
-      const userMsg = topicAsUserMessage(
-        displayBody,
-        attachmentNames.length ? attachmentNames : undefined,
-      );
-      resetTurnRun(runKey, userMsg);
-      clearRunWatchdog();
-      scheduleLongRunHint();
-      setRunLockStuck(false);
-      setRecoveryFailure(null);
-      setClarifierQuestions(null);
-      const runScope = {
-        runKey,
-        activeSessionId: sessionId,
-        userStopped: false,
-        runFailed: false,
-        lastSendReceipt: undefined as string | undefined,
-      };
-      runAbortRef.current?.abort();
-      const runAbort = new AbortController();
-      runAbortRef.current = runAbort;
-
-      const onRoomEvent = createRoomRunEventHandler(runScope, {
-        sessionId,
-        profile: effectiveProfile,
-        selected,
-        mode,
-        localeMsg,
-        activeSessionIdRef,
-        navigatedToSessionRef,
-        pendingMissionTemplateRef,
-        onSessionBind,
-        onSessionChange,
-        onSessionMetaRefresh,
-        onBootstrapMissionTemplateApplied,
-        setLiveRunSessionKey,
-        persistPendingSessionRoomModels,
-        openPlanTab,
-        setRecoveryFailure,
-        setRunLockStuck,
-        setClarifierQuestions,
-        setClarifierInterview,
-        setDiscussPaused,
-        setInboxReloadKey,
-        setWorkHookAlert,
-        setConsensusProposal,
-        notifyConsensusSync,
-        notifyConsensusFailure,
-        pushMacNotification,
-        refreshSessionMeta,
-        refreshInboxPending,
-        openHumanInbox,
-        openWorkTab,
-      });
-
-      const onRoomEventWithRegistry = (ev: Record<string, unknown>) => {
-        const evType = String(ev.type ?? "");
-        if (evType === "start" && typeof ev.session_id === "string") {
-          registerRoomEventHandler(ev.session_id, onRoomEventWithRegistry);
-        }
-        onRoomEvent(ev);
-      };
-      if (sessionId) {
-        registerRoomEventHandler(sessionId, onRoomEventWithRegistry);
-      }
-
-      try {
-        await runRoom(sendText, agents, onRoomEventWithRegistry, {
-          sessionId: sessionId ?? undefined,
-          files: filesToSend.map((p) => p.file),
-          mode: roomMode,
-          agentRounds,
-          permissions,
-          reviewMode: useReviewMode,
-          consensusMode: useConsensusMode,
-          turnProfile: effectiveProfile,
-          researchMode: researchMode || effectiveProfile === "specialist",
-          workspaceId: sessionId ? undefined : workspaceId,
-          workspacePath:
-            sessionId || workspaceId !== CUSTOM_WORKSPACE_ID
-              ? undefined
-              : (workspacePath ?? undefined),
-          agentCapabilities: capabilitiesForApi(agentCapabilities),
-          agentThreadBindings: threadBindings,
-          sessionTemplate,
-          roomPreset: roomPreset ?? undefined,
-          roomModels: pinnedRoomModels,
-          signal: runAbort.signal,
-        });
-        if (runScope.runFailed) {
-          return;
-        }
-        if (!sessionId && pinnedRoomModels?.length) {
-          pendingSessionRoomModelsRef.current = null;
-          writePendingRoomModels(null);
-        }
-        if (!sessionId) {
-          clearStoredAgentThreadBindings();
-        }
-        if (
-          runScope.activeSessionId &&
-          !navigatedToSessionRef.current &&
-          !sessionId
-        ) {
-          activeSessionIdRef.current = runScope.activeSessionId;
-          onSessionChange(runScope.activeSessionId);
-        }
-        if (
-          (planComposeActive || runScope.lastSendReceipt === "plan_updated") &&
-          (runScope.activeSessionId ?? sessionId)
-        ) {
-          openPlanTab();
-        }
-        setSendReceiptRaw(runScope.lastSendReceipt);
-        setSendReceipt(
-          sendReceiptLabel(
-            runScope.lastSendReceipt,
-            mode,
-            runScope.userStopped,
-            locale,
-          ),
-        );
-        if (sendReceiptTimerRef.current != null) {
-          window.clearTimeout(sendReceiptTimerRef.current);
-        }
-        sendReceiptTimerRef.current = window.setTimeout(() => {
-          setSendReceipt(null);
-          sendReceiptTimerRef.current = null;
-        }, 5000);
-      } catch (e) {
-        const msg = String(e);
-        if (runAbort.signal.aborted || msg.includes("aborted")) {
-          runScope.userStopped = true;
-        } else if (runScope.runFailed) {
-          // SSE handler already set recovery (run lock / agent failure).
-        } else {
-          const detail = msg.replace(/^Error:\s*/, "");
-          const classified = classifySendFailure(detail);
-          setRecoveryFailure({
-            source: classified.source,
-            kind: classified.kind,
-            message: detail,
-          });
-          if (classified.kind === "run_lock") {
-            setRunLockStuck(true);
-          } else if (
-            msg.includes("already in progress") ||
-            msg.includes("not ready")
-          ) {
-            setRunLockStuck(msg.includes("already in progress"));
-          }
-        }
-      } finally {
-        if (runAbortRef.current === runAbort) {
-          runAbortRef.current = null;
-        }
-        if (runAbort.signal.aborted) {
-          runScope.userStopped = true;
-          void cancelRoomRun(
-            runScope.activeSessionId ?? sessionId ?? undefined,
-          ).catch(() => {});
-        }
-        if (runScope.userStopped) {
-          finalizeCancelledTyping(runScope.runKey);
-        }
-        clearRunWatchdog();
-        clearLongRunHint();
-        finishSessionRun(
-          runScope.runKey,
-          runScope.activeSessionId ?? undefined,
-        );
-        const boundSid = runScope.activeSessionId ?? sessionId;
-        if (boundSid && onSessionMetaRefresh && !runScope.runFailed) {
-          void onSessionMetaRefresh(boundSid);
-        }
-        navigatedToSessionRef.current = false;
-      }
-    },
-    [
-      selected,
-      sessionId,
-      onSessionChange,
-      onSessionBind,
-      onSessionMetaRefresh,
-      composeMode,
-      turnProfile,
-      researchMode,
-      workspaceId,
-      workspacePath,
-      agentCapabilities,
-      bootstrapAgentThreadBindings,
-      bootstrapSessionTemplate,
-      refreshSessionMeta,
-      persistPendingSessionRoomModels,
-      runBusy,
-      running,
-      synthesizing,
-      roomPreset,
-      resolvedRoomPresets,
-    ],
-  );
+  const { executeSend } = useRoomExecuteSend({
+    sessionId,
+    selected,
+    runBusy,
+    running,
+    synthesizing,
+    composeMode,
+    turnProfile,
+    roomPreset,
+    resolvedRoomPresets,
+    researchMode,
+    workspaceId,
+    workspacePath,
+    agentCapabilities,
+    bootstrapAgentThreadBindings,
+    bootstrapSessionTemplate,
+    locale,
+    localeMsg,
+    onSessionChange,
+    onSessionBind,
+    onSessionMetaRefresh,
+    onBootstrapMissionTemplateApplied,
+    refreshSessionMeta,
+    persistPendingSessionRoomModels,
+    clearRunWatchdog,
+    scheduleLongRunHint,
+    clearLongRunHint,
+    openPlanTab,
+    notifyConsensusSync,
+    notifyConsensusFailure,
+    pushMacNotification,
+    refreshInboxPending,
+    openHumanInbox,
+    openWorkTab,
+    planComposeActive,
+    activeSessionIdRef,
+    navigatedToSessionRef,
+    pendingMissionTemplateRef,
+    pendingSessionRoomModelsRef,
+    runAbortRef,
+    sendReceiptTimerRef,
+    lastPlainSendTextRef,
+    setPendingFiles,
+    setLiveRunSessionKey,
+    setRecoveryFailure,
+    setRunLockStuck,
+    setClarifierQuestions,
+    setClarifierInterview,
+    setDiscussPaused,
+    setInboxReloadKey,
+    setWorkHookAlert,
+    setConsensusProposal,
+    setSendReceipt,
+    setSendReceiptRaw,
+  });
 
   const handleVerifiedApprove = useCallback(
     async (mode: PlanApprovalMode = "approve_only") => {
@@ -1864,462 +1540,6 @@ export function RoomChat({
       return;
     void executeSynthesizeOnly(roomPermissions(selected));
   }
-
-  const executeSlashCommand = useCallback(
-    async (command: SlashCommandRecord, args: string, confirm = false) => {
-      const sid = sessionId ?? activeSessionIdRef.current;
-      const isGlobal = !sid && SESSIONLESS_ACCOUNT_COMMAND_IDS.has(command.id);
-      if (!sid && !isGlobal) return;
-      setCommandHint(null);
-      setCommandChoices(null);
-      setCommandScopeChoices(null);
-      if (command.id !== "model") {
-        setModelPopover(null);
-      }
-      try {
-        const res = isGlobal
-          ? await runGlobalCommand({
-              command_id: command.id,
-              args,
-              confirm,
-            })
-          : await runSessionCommand(sid!, {
-              command_id: command.id,
-              args,
-              confirm,
-            });
-        if (res.kind === "server") {
-          const resultStage = res.result as
-            | { stage?: unknown; auth_run?: unknown }
-            | undefined;
-          // Mirrors command_registry.py's _emit_slash_chat_line gate: only a
-          // final action (no staged picker, no auth_run) is ever persisted to
-          // chat.jsonl, so only that case gets a local divider. Appended here
-          // (not just via refreshSessionMeta's later hydrate) because hydrate
-          // is a no-op while a run is active — without this, sending a chat
-          // message right after a slash command renders it before the
-          // divider ever appears.
-          if (
-            sid &&
-            res.text &&
-            !resultStage?.stage &&
-            !resultStage?.auth_run
-          ) {
-            appendSessionMessages(
-              resolveRunSessionKey(sessionId, activeSessionIdRef.current),
-              [
-                {
-                  id: `slash-divider-${crypto.randomUUID()}`,
-                  role: "system",
-                  label: "",
-                  body: `[slash] ${res.text}`,
-                },
-              ],
-            );
-          }
-          if (sid) {
-            refreshSessionMeta();
-          } else if (isGlobal) {
-            void onRefreshHealth?.();
-          }
-          setCommandHint(res.text ?? "명령 실행 완료");
-        } else if (res.kind === "external") {
-          const payload = res.result as
-            | { stdout?: string; detail?: string }
-            | undefined;
-          setCommandHint(
-            (payload?.stdout ?? payload?.detail ?? "외부 명령 실행됨").slice(
-              0,
-              240,
-            ),
-          );
-        } else if (res.text) {
-          setCommandHint(res.text.slice(0, 240));
-        } else if (res.detail) {
-          setCommandHint(res.detail);
-        } else {
-          setCommandHint("명령 실행됨");
-        }
-        const stage = res.result as
-          | {
-              prompt?: string;
-              stage?: string;
-              composition?: string[];
-              auto?: boolean;
-              provider?: string;
-              choices?: {
-                kind?: string;
-                provider?: string;
-                current?: string[];
-                composition?: string[];
-                options: {
-                  value: string;
-                  label: string;
-                  sublabel?: string;
-                  selected?: boolean;
-                  ready?: boolean;
-                }[];
-              };
-              input?: { kind?: string; prefill?: string };
-              auth_run?: AuthRunRef;
-              updated?: boolean;
-              model_updated?: boolean;
-            }
-          | undefined;
-        if (stage?.auth_run) {
-          setAuthRun(stage.auth_run);
-          setCommandChoices(null);
-          setCommandMultiChoices(null);
-          setCommandScopeChoices(null);
-          setCommandHint(null);
-        }
-        if (stage?.choices?.options?.length) {
-          setCommandChoiceIndex(0);
-          const choices = stage.choices;
-          const kind = choices.kind ?? "provider";
-          if (kind === "model_provider") {
-            setModelPopover((prev) => ({
-              command,
-              autoEnabled: Boolean(stage.auto ?? prev?.autoEnabled),
-              agents: prev?.agents ?? [],
-              sidePanel: prev?.sidePanel ?? null,
-            }));
-            setCommandChoices(null);
-            setCommandMultiChoices(null);
-            setCommandScopeChoices(null);
-            void executeSlashCommand(command, "compose");
-          } else if (kind === "model_preset" || kind === "model_panel") {
-            const providerId = stage.provider ?? choices.provider ?? "";
-            const providerLabel = stage.prompt ?? "";
-            const panelChoices = choices as {
-              options: {
-                value: string;
-                label: string;
-                selected?: boolean;
-                available?: boolean;
-                coming_soon_note?: string;
-              }[];
-              efforts?: string[];
-              selected_model?: string;
-              selected_effort?: string;
-            };
-            const presets = panelChoices.options.map((opt) => ({
-              value: opt.value,
-              label: opt.label,
-              selected: opt.selected,
-              available: opt.available,
-              comingSoonNote: opt.coming_soon_note,
-            }));
-            setModelPopover((prev) => {
-              const sidePanel: ModelPopoverSidePanel = {
-                providerId,
-                providerLabel,
-                presets,
-                efforts: panelChoices.efforts,
-                selectedModel: panelChoices.selected_model,
-                selectedEffort: panelChoices.selected_effort,
-              };
-              if (prev) {
-                return {
-                  ...prev,
-                  autoEnabled: Boolean(stage.auto ?? prev.autoEnabled),
-                  sidePanel,
-                };
-              }
-              return {
-                command,
-                autoEnabled: Boolean(stage.auto),
-                agents: [],
-                sidePanel,
-              };
-            });
-            setCommandChoices(null);
-            setCommandMultiChoices(null);
-            setCommandScopeChoices(null);
-          } else if (kind === "multi") {
-            if (command.id === "model") {
-              const agents: ModelPopoverAgent[] = sortAgentPickerOptions(
-                choices.options,
-              ).map((opt) => ({
-                value: opt.value,
-                label: opt.label,
-                ready: opt.ready,
-              }));
-              setMultiSelected(new Set(sortAgentIds(choices.current ?? [])));
-              setModelPopover((prev) => ({
-                command,
-                autoEnabled: prev?.autoEnabled ?? false,
-                agents,
-                sidePanel: prev?.sidePanel ?? null,
-              }));
-              setCommandChoices(null);
-              setCommandScopeChoices(null);
-            } else {
-              setCommandMultiChoices({
-                command,
-                argsPrefix: args,
-                prompt: stage.prompt ?? res.text ?? "",
-                current: sortAgentIds(stage.choices.current ?? []),
-                options: sortAgentPickerOptions(stage.choices.options),
-              });
-              setMultiSelected(
-                new Set(sortAgentIds(stage.choices.current ?? [])),
-              );
-              setCommandChoices(null);
-              setCommandScopeChoices(null);
-            }
-          } else if (kind === "scope") {
-            const composition =
-              stage.composition ??
-              stage.choices.composition ??
-              args.split(",").filter(Boolean);
-            setCommandScopeChoices({
-              command,
-              composition,
-              prompt: stage.prompt ?? res.text ?? "",
-              options: stage.choices.options,
-            });
-            setCommandMultiChoices(null);
-            setCommandChoices(null);
-          } else {
-            setCommandChoices({
-              command,
-              argsPrefix: args,
-              prompt: stage.prompt ?? res.text ?? "",
-              kind,
-              options: stage.choices.options,
-            });
-            setCommandMultiChoices(null);
-            setCommandScopeChoices(null);
-          }
-          setCommandHint(null); // prompt is shown in the picker header instead
-        } else {
-          setCommandChoices(null);
-          setCommandMultiChoices(null);
-          setCommandScopeChoices(null);
-        }
-        if (stage?.updated && stage.composition?.length) {
-          setSelected(sortAgentIds(stage.composition));
-        }
-        if (stage?.model_updated) {
-          // Model/effort picks apply in place — the panel stays open (its
-          // choices block above already refreshed it); only 적용 or an
-          // outside click should dismiss the popover now.
-          void onRefreshHealth?.();
-        }
-        if (stage?.input?.kind === "secret" && stage.input.prefill) {
-          setSecretCommand({
-            command,
-            argsPrefix: stage.input.prefill.replace(/^\/login\s+/, ""),
-            prompt: stage.prompt ?? "API 키 입력",
-          });
-          setSecretValue("");
-          setText("");
-          setCommandHint(null);
-        } else if (stage?.input?.prefill) {
-          setText(stage.input.prefill);
-        } else if (command.id !== "model") {
-          setText("");
-        }
-        void fetchCommands(isGlobal ? null : sid)
-          .then((payload) => setSlashCommands(payload.commands ?? []))
-          .catch(() => undefined);
-      } catch (e) {
-        const message = e instanceof Error ? e.message : "명령 실패";
-        if (
-          command.kind === "external" &&
-          command.requires_human_confirm &&
-          /confirm/i.test(message)
-        ) {
-          setExternalCommandConfirm({ command, args });
-          return;
-        }
-        setCommandHint(message);
-      }
-    },
-    [sessionId, refreshSessionMeta, onRefreshHealth],
-  );
-
-  const handleAuthRunComplete = useCallback(async () => {
-    if (!authRun) return;
-    const providerLabel =
-      authRun.provider_id === "claude"
-        ? "Claude"
-        : authRun.provider_id === "codex"
-          ? "Codex"
-          : authRun.provider_id === "cursor"
-            ? "Cursor"
-            : authRun.provider_id;
-    const actionLabel = authRun.action === "logout" ? "로그아웃" : "로그인";
-    if (authRun.provider_id === "claude" && authRun.action === "login") {
-      try {
-        const res = await reconnectClaudeAuth();
-        if (!sessionId) {
-          setCommandHint(
-            res.ok
-              ? `${providerLabel} ${actionLabel} 완료`
-              : (res.hint ?? `${providerLabel} ${actionLabel} 확인 필요`),
-          );
-          void fetchCommands(null)
-            .then((payload) => setSlashCommands(payload.commands ?? []))
-            .catch(() => undefined);
-          void onRefreshHealth?.();
-          return;
-        }
-        refreshSessionMeta();
-        if (!res.ok && res.hint) {
-          setCommandHint(res.hint);
-        }
-        return;
-      } catch {
-        /* fall through to generic completion hint */
-      }
-    }
-    if (!sessionId) {
-      setCommandHint(`${providerLabel} ${actionLabel} 완료`);
-      void fetchCommands(null)
-        .then((payload) => setSlashCommands(payload.commands ?? []))
-        .catch(() => undefined);
-      void onRefreshHealth?.();
-      return;
-    }
-    refreshSessionMeta();
-  }, [authRun, onRefreshHealth, refreshSessionMeta, sessionId]);
-
-  useEffect(() => {
-    if (!commandChoices) return;
-    const onChoiceKey = (event: KeyboardEvent) => {
-      const count = commandChoices.options.length;
-      if (event.key === "ArrowDown") {
-        event.preventDefault();
-        setCommandChoiceIndex((index) => (index + 1) % count);
-      } else if (event.key === "ArrowUp") {
-        event.preventDefault();
-        setCommandChoiceIndex((index) => (index - 1 + count) % count);
-      } else if (event.key === "PageDown") {
-        event.preventDefault();
-        setCommandChoiceIndex((index) => Math.min(index + 10, count - 1));
-      } else if (event.key === "PageUp") {
-        event.preventDefault();
-        setCommandChoiceIndex((index) => Math.max(index - 10, 0));
-      } else if (event.key === "Enter") {
-        event.preventDefault();
-        const option = commandChoices.options[commandChoiceIndex];
-        if (option) {
-          void executeSlashCommand(
-            commandChoices.command,
-            `${commandChoices.argsPrefix} ${option.value}`.trim(),
-          );
-        }
-      }
-    };
-    document.addEventListener("keydown", onChoiceKey);
-    return () => document.removeEventListener("keydown", onChoiceKey);
-  }, [commandChoiceIndex, commandChoices, executeSlashCommand]);
-
-  const runSlashCommand = useCallback(
-    async (command: SlashCommandRecord, rawText?: string) => {
-      setCommandHint(null);
-      if (authRun && (command.id === "login" || command.id === "logout")) {
-        setCommandHint("진행 중인 인증 패널을 먼저 닫아주세요.");
-        return;
-      }
-      if (command.kind === "client") {
-        if (command.id === "stop") handleStop();
-        if (command.id === "focus-composer") focusComposerInput();
-        setText("");
-        return;
-      }
-      const parsed = rawText
-        ? matchSlashCommand(rawText, slashCommands)
-        : command;
-      const target = parsed ?? command;
-      const args = rawText ? rawText.replace(/^\/[^\s]+\s*/, "").trim() : "";
-      if (!sessionId) {
-        if (target.id === "model") {
-          if (args) {
-            const parsed = parseModelSlashArgs(args);
-            const hasComposition =
-              args.includes(",") ||
-              parsed.scope != null ||
-              (parsed.composition.length > 0 &&
-                !["claude", "codex", "cursor", "kimi"].includes(
-                  parsed.composition[0]?.split("|")[0] ?? "",
-                ));
-            if (hasComposition) {
-              const next = sortAgentIds(
-                parsed.composition.filter((id) =>
-                  agents.some((agent) => agent.id === id),
-                ),
-              );
-              if (next.length === 0) {
-                setText("");
-                setCommandHint("선택 가능한 에이전트가 없습니다.");
-                return;
-              }
-              if (parsed.scope === "default") {
-                setText("");
-                void runRoomSlash(
-                  `/model compose ${next.join(",")} default`,
-                ).then(() => {
-                  setCommandHint(
-                    `기본값으로 저장했습니다 (${next.join(", ")}).`,
-                  );
-                });
-                return;
-              }
-              if (parsed.scope === "session") {
-                setText("");
-                applySessionScopedModels(next);
-                return;
-              }
-              setCommandScopeChoices({
-                command: target,
-                composition: next,
-                prompt: `[${next.join(", ")}] — 적용 범위를 선택하세요`,
-                options: [
-                  {
-                    value: "session",
-                    label: "이번 세션만 (세션 동안 유지)",
-                  },
-                  {
-                    value: "default",
-                    label: "기본값으로 저장",
-                  },
-                ],
-              });
-              setText("");
-              return;
-            }
-          }
-          setText("");
-          await executeSlashCommand(target, args);
-          return;
-        }
-        if (!SESSIONLESS_ACCOUNT_COMMAND_IDS.has(target.id)) return;
-      }
-      if (
-        target.kind === "external" &&
-        target.requires_human_confirm !== false
-      ) {
-        setExternalCommandConfirm({ command: target, args });
-        return;
-      }
-      await executeSlashCommand(target, args);
-    },
-    [
-      agents,
-      authRun,
-      applySessionScopedModels,
-      executeSlashCommand,
-      handleStop,
-      healthAgents,
-      teamHealthAgents,
-      selected,
-      sessionId,
-      slashCommands,
-    ],
-  );
 
   function handleSend() {
     const msg = text.trim();
@@ -2561,31 +1781,6 @@ export function RoomChat({
     const rows = roomTasks?.open_objections ?? [];
     return rows.find((o) => o.act === "BLOCK") ?? null;
   }, [roomTasks?.open_objections]);
-  const decisionBlockedHeadline = useMemo(
-    () =>
-      buildDecisionBlockedHeadline({
-        locale,
-        inboxPendingCount,
-        discussPaused,
-        runtime: decisionRuntime,
-        showPlanApproval,
-        verifiedLoopPendingApproval: verifiedLoopView.pendingApproval,
-        firstOpenBlock,
-        consensusBlocked,
-        planWorkflow,
-      }),
-    [
-      locale,
-      inboxPendingCount,
-      discussPaused,
-      decisionRuntime,
-      showPlanApproval,
-      verifiedLoopView.pendingApproval,
-      firstOpenBlock,
-      consensusBlocked,
-      planWorkflow,
-    ],
-  );
   const planExecuteObjection = planExecute.openObjectionBlock?.objections[0];
   const composerObjectionNotice = tweaks.objectionDemo
     ? DEMO_OBJECTION_NOTICE
@@ -2606,265 +1801,32 @@ export function RoomChat({
         : `Resolve plan #${firstOpenBlock.plan_action_index} BLOCK before execute`
       : localeMsg.composerPlaceholder;
 
-  const modelPopoverNode = useMemo(() => {
-    if (!modelPopover) return null;
-    return (
-      <ComposerModelPopover
-        command={modelPopover.command}
-        autoEnabled={modelPopover.autoEnabled}
-        agents={modelPopover.agents}
-        sidePanel={modelPopover.sidePanel}
-        selectedAgents={multiSelected}
-        onProviderDrill={(providerId) => {
-          void executeSlashCommand(modelPopover.command, providerId);
-        }}
-        onSidePresetSelect={(providerId, value) => {
-          void executeSlashCommand(
-            modelPopover.command,
-            `${providerId} ${value}`.trim(),
-          );
-        }}
-        onSideEffortSelect={(providerId, effort) => {
-          void executeSlashCommand(
-            modelPopover.command,
-            `${providerId} effort ${effort}`.trim(),
-          );
-        }}
-        onSideClose={() =>
-          setModelPopover((prev) =>
-            prev ? { ...prev, sidePanel: null } : prev,
-          )
-        }
-        onAgentToggle={(value) => {
-          setMultiSelected((prev) => {
-            const next = new Set(prev);
-            if (next.has(value)) next.delete(value);
-            else next.add(value);
-            return next;
-          });
-        }}
-        onAgentsApply={() => {
-          const selected = sortAgentIds(
-            modelPopover.agents
-              .filter((opt) => multiSelected.has(opt.value))
-              .map((opt) => opt.value),
-          ).join(",");
-          const cmd = modelPopover.command;
-          setModelPopover(null);
-          setMultiSelected(new Set());
-          if (!sessionId) {
-            const next = sortAgentIds(selected.split(",").filter(Boolean));
-            if (next.length === 0) return;
-            setCommandScopeChoices({
-              command: cmd,
-              composition: next,
-              prompt: `[${next.join(", ")}] — 적용 범위를 선택하세요`,
-              options: [
-                {
-                  value: "session",
-                  label: "이번 세션만 (세션 동안 유지)",
-                },
-                {
-                  value: "default",
-                  label: "기본값으로 저장",
-                },
-              ],
-            });
-            return;
-          }
-          void executeSlashCommand(cmd, `compose ${selected}`.trim());
-        }}
-        onCancel={() => setModelPopover(null)}
-      />
-    );
-  }, [executeSlashCommand, modelPopover, multiSelected, sessionId]);
-
-  const authPopover = useMemo(() => {
-    if (authRun) {
-      return (
-        <ComposerAuthFlowPopover
-          run={authRun}
-          onComplete={handleAuthRunComplete}
-          onClose={() => {
-            setAuthRun(null);
-            focusComposerInput();
-          }}
-        />
-      );
-    }
-    if (secretCommand) {
-      return (
-        <ComposerAuthSecretPopover
-          prompt={secretCommand.prompt}
-          value={secretValue}
-          onChange={setSecretValue}
-          onSubmit={() => {
-            if (!secretValue.trim()) return;
-            const args = `${secretCommand.argsPrefix} ${secretValue}`.trim();
-            const cmd = secretCommand.command;
-            setSecretCommand(null);
-            setSecretValue("");
-            void executeSlashCommand(cmd, args);
-          }}
-          onCancel={() => {
-            setSecretCommand(null);
-            setSecretValue("");
-            focusComposerInput();
-          }}
-        />
-      );
-    }
-    return null;
-  }, [
-    authRun,
-    executeSlashCommand,
-    handleAuthRunComplete,
-    secretCommand,
-    secretValue,
-  ]);
-
-  const authPickerPopover = useMemo(() => {
-    if (!commandChoices) return null;
-    const cmd = commandChoices.command;
-    if (cmd.id !== "login" && cmd.id !== "logout") return null;
-    const variant =
-      commandChoices.kind === "auth_method" ? "methods" : "agents";
-    return (
-      <ComposerAuthPickerPopover
-        action={cmd.id}
-        title={commandChoices.prompt}
-        variant={variant}
-        options={commandChoices.options}
-        highlightedIndex={commandChoiceIndex}
-        onHighlight={setCommandChoiceIndex}
-        onSelect={(value) =>
-          void executeSlashCommand(
-            commandChoices.command,
-            `${commandChoices.argsPrefix} ${value}`.trim(),
-          )
-        }
-        onCancel={() => setCommandChoices(null)}
-      />
-    );
-  }, [commandChoiceIndex, commandChoices, executeSlashCommand]);
-
-  const choicePopover = useMemo(() => {
-    if (commandChoices) {
-      const cmd = commandChoices.command;
-      if (cmd.id === "login" || cmd.id === "logout") {
-        return null;
-      }
-      return (
-        <ComposerChoicePopover
-          variant="single"
-          command={commandChoices.command}
-          prompt={commandChoices.prompt}
-          options={commandChoices.options}
-          highlightedIndex={commandChoiceIndex}
-          onHighlight={setCommandChoiceIndex}
-          onSelect={(value) =>
-            void executeSlashCommand(
-              commandChoices.command,
-              `${commandChoices.argsPrefix} ${value}`.trim(),
-            )
-          }
-          onCancel={() => setCommandChoices(null)}
-        />
-      );
-    }
-    if (commandScopeChoices) {
-      return (
-        <ComposerChoicePopover
-          variant="scope"
-          command={commandScopeChoices.command}
-          prompt={commandScopeChoices.prompt}
-          options={commandScopeChoices.options}
-          onSelect={(value) => {
-            const cmd = commandScopeChoices.command;
-            const comp = commandScopeChoices.composition;
-            const composition = comp.join(",");
-            setCommandScopeChoices(null);
-            if (!sessionId && cmd.id === "model") {
-              if (value === "default") {
-                void runRoomSlash(`/model compose ${composition} default`).then(
-                  () => {
-                    setCommandHint(`기본값으로 저장했습니다 (${composition}).`);
-                  },
-                );
-              } else {
-                applySessionScopedModels(comp);
-              }
-            } else {
-              void executeSlashCommand(cmd, `${composition} ${value}`.trim());
-            }
-          }}
-          onCancel={() => setCommandScopeChoices(null)}
-        />
-      );
-    }
-    if (commandMultiChoices) {
-      return (
-        <ComposerChoicePopover
-          variant="multi"
-          command={commandMultiChoices.command}
-          prompt={commandMultiChoices.prompt}
-          options={commandMultiChoices.options}
-          selected={multiSelected}
-          onToggle={(value) => {
-            setMultiSelected((prev) => {
-              const next = new Set(prev);
-              if (next.has(value)) next.delete(value);
-              else next.add(value);
-              return next;
-            });
-          }}
-          onApply={() => {
-            const selected = sortAgentIds(
-              commandMultiChoices.options
-                .filter((opt) => multiSelected.has(opt.value))
-                .map((opt) => opt.value),
-            ).join(",");
-            const cmd = commandMultiChoices.command;
-            setCommandMultiChoices(null);
-            setMultiSelected(new Set());
-            if (!sessionId && cmd.id === "model") {
-              const comp = selected.split(",").filter(Boolean);
-              setCommandScopeChoices({
-                command: cmd,
-                composition: comp,
-                prompt: `[${comp.join(", ")}] — 적용 범위를 선택하세요`,
-                options: [
-                  {
-                    value: "session",
-                    label: "이번 세션만 (세션 동안 유지)",
-                  },
-                  {
-                    value: "default",
-                    label: "기본값으로 저장",
-                  },
-                ],
-              });
-            } else {
-              void executeSlashCommand(cmd, selected);
-            }
-          }}
-          onCancel={() => {
-            setCommandMultiChoices(null);
-            setMultiSelected(new Set());
-          }}
-        />
-      );
-    }
-    return null;
-  }, [
-    applySessionScopedModels,
-    commandChoiceIndex,
-    commandChoices,
-    commandMultiChoices,
-    commandScopeChoices,
-    executeSlashCommand,
-    sessionId,
-  ]);
+  const { modelPopoverNode, authPopover, authPickerPopover, choicePopover } =
+    useRoomComposerPopovers({
+      sessionId,
+      authRun,
+      setAuthRun,
+      secretCommand,
+      secretValue,
+      setSecretValue,
+      setSecretCommand,
+      commandChoices,
+      commandChoiceIndex,
+      setCommandChoiceIndex,
+      commandScopeChoices,
+      setCommandScopeChoices,
+      commandMultiChoices,
+      setCommandMultiChoices,
+      multiSelected,
+      setMultiSelected,
+      modelPopover,
+      setModelPopover,
+      setCommandChoices,
+      setCommandHint,
+      executeSlashCommand,
+      handleAuthRunComplete,
+      applySessionScopedModels,
+    });
 
   const title = isNew ? "Session" : session?.topic || sessionId || "Session";
   const {
@@ -3010,6 +1972,74 @@ export function RoomChat({
     focusComposerInput,
   ]);
 
+  const composerClassName = useMemo(
+    () =>
+      [
+        turnProfile === "review" ? "composer--review" : undefined,
+        turnProfile === "loop" ? "composer--free" : undefined,
+        composerModeVariant === "consensus"
+          ? "composer--consensus-mode"
+          : undefined,
+        composerModeVariant === "plan" ? "composer--plan-mode" : undefined,
+        composerModeVariant === "discuss"
+          ? "composer--discuss-mode"
+          : undefined,
+      ]
+        .filter(Boolean)
+        .join(" ") || undefined,
+    [turnProfile, composerModeVariant],
+  );
+
+  const composerEventStack = useRoomComposerEventStack({
+    sessionId,
+    session,
+    planMd,
+    planMeta,
+    workPlanStaleNotice,
+    workFocus,
+    setWorkFocus,
+    synthesizing,
+    running,
+    runBusy,
+    executeBusy,
+    handleSynthesizeNow,
+    handlePlanRefClick,
+    focusTask,
+    focusObjection,
+    refreshSessionMeta,
+    roomTasks,
+    agents,
+    planExecute,
+    planWorkflow,
+    showPlanApproval,
+    verifiedLoopBusy,
+    verifiedLoopError,
+    handleVerifiedApprove,
+    handleVerifiedReject,
+    workHookAlert,
+    setWorkHookAlert,
+    inboxPendingCount,
+    inboxReloadKey,
+    currentPlanRevision,
+    handleInboxResolved,
+    handleInboxBuildStarted,
+    handleInboxRefClick,
+    execPendingForBar,
+    demoExecPending,
+    showExecuteQueueStrip,
+    consensusForBar,
+    showConsensusDryRunGate,
+    consensusGateBusy,
+    consensusGateDemo: tweaks.consensusGateDemo,
+    setConsensusGateDemo: tweaks.setConsensusGateDemo,
+    handleConsensusDryRun,
+    dismissConsensusProposal,
+    openDiffTab,
+    openFilesTab,
+    openFileInWorkbench,
+    pushMacNotification,
+  });
+
   return (
     <>
       <CommandPalette actions={paletteActions} />
@@ -3041,457 +2071,182 @@ export function RoomChat({
 
       <div className="pane-row">
         <div className="pane-main workspace-main">
-          <div className="workspace-body">
-            {!isNew && sessionId ? (
-              <div
-                className={`composer-notice-floating${
-                  avoidWorkbenchNotice ? " composer-notice-floating--left" : ""
-                }`}
-              >
-                <ComposerDecisionSurface
-                  sessionId={sessionId}
-                  inboxPendingCount={inboxPendingCount}
-                  inboxReloadKey={inboxReloadKey}
-                  discussPaused={discussPaused}
-                  blockedHeadline={decisionBlockedHeadline}
-                  recoveryVisible={recoveryVisible}
-                  recoveryItems={recoveryLifecycleView.activeItems}
-                  recoveryResolvedEvents={recoveryLifecycleView.resolvedEvents}
-                  recoveryCanRetrySend={
-                    recoveryLifecycleView.retryState.canFocusComposer
-                  }
-                  recoveryBusyActionId={
-                    recoveryBusyAction ??
-                    (releasingLock ? "release_lock" : null) ??
-                    (discussRecoveryBusy ? "run_discuss_recovery" : null)
-                  }
-                  showPlanApproval={showPlanApproval}
-                  showPlanWorkflowBanner={showPlanWorkflowBanner}
-                  showPlanWorkflowComposerHint={showPlanWorkflowComposerHint}
-                  planWorkflow={planWorkflow}
-                  planWorkflowPlanIntent={planWorkflowPlanIntent}
-                  dismissedKey={composerNoticeDismissed}
-                  onOpenInbox={() => {
-                    setComposerNoticeDismissed("human_gate");
-                    openHumanInbox();
-                  }}
-                  onOpenWork={() => {
-                    setComposerNoticeDismissed("plan_workflow");
-                    openWorkApproval();
-                  }}
-                  onRecoveryAction={(actionId, item) =>
-                    void handleRecoveryAction(actionId, item)
-                  }
-                  onRecoveryRetryAction={handleRecoveryRetryAction}
-                  onRecoveryDismiss={() =>
-                    setRecoveryDismissedSig(recoverySignature)
-                  }
-                  onDismissNotice={setComposerNoticeDismissed}
-                />
-              </div>
-            ) : null}
-            <div className="workspace-scroll scroll-y" ref={scrollRef}>
-              <RoomTranscriptPanel
-                sessionId={sessionId}
-                isNew={isNew}
-                loading={loading ?? false}
-                running={running}
-                showPeerChannel={showPeerChannel}
-                onPeerChannelChange={(on) => {
-                  setShowPeerChannel(on);
-                  setShowPeerChannelState(on);
-                }}
-                visibleMessages={visibleMessages}
-                advisorRationales={advisorRationales}
-                openDraftMessageIds={openDraftMessageIds}
-                pendingReplyAgents={pendingReplyAgents}
-                runStartedAt={runStartedAt}
-                highlightChatLine={highlightChatLine}
-                locale={locale}
-                transcriptLoading={localeMsg.transcriptLoading}
-                transcriptEmpty={localeMsg.transcriptEmpty}
-                transcriptEmptyHint={localeMsg.transcriptEmptyHint}
-                showJumpButton={showJumpButton}
-                forceScrollButton={tweaks.forceScrollButton}
-                scrollToBottom={scrollToBottom}
-                transcriptActive={transcriptActive}
-                onActivityOpen={handleNotificationOpen}
-              />
-            </div>
-
-            {isNew || transcriptActive ? (
-              <>
-                {tweaks.preflightDemo ? (
-                  <ComposerPreflightBar
-                    agents={DEMO_PREFLIGHT_AGENTS}
-                    selected={["cursor"]}
-                  />
-                ) : recoveryItems.length === 0 ? (
-                  <>
-                    <ReadinessComposerBar readiness={readiness} />
-                    <ComposerPreflightBar
-                      agents={healthAgents}
-                      selected={selected}
-                    />
-                  </>
-                ) : null}
-                <div className="composer-wrap">
-                  {clarifierQuestions &&
-                  clarifierQuestions.length > 0 &&
-                  !(
-                    planWorkflowActive &&
-                    (planWorkflow?.phase === "CLARIFY" ||
-                      planWorkflow?.phase === "INTAKE")
-                  ) ? (
-                    <div
-                      className="clarifier-banner"
-                      role="region"
-                      aria-label="확인 질문"
-                    >
-                      <strong className="clarifier-banner__title">
-                        {clarifierInterview?.plan_mode
-                          ? "계획 확인 질문"
-                          : "확인 질문"}
-                      </strong>
-                      <ul>
-                        {(clarifierInterview?.questions?.length
-                          ? clarifierInterview.questions
-                          : clarifierQuestions.map((prompt) => ({
-                              id: prompt,
-                              prompt,
-                            }))
-                        ).map((q) => (
-                          <li key={q.id ?? q.prompt}>
-                            {"category" in q && q.category ? (
-                              <span className="clarifier-banner__category">
-                                {q.category}
-                              </span>
-                            ) : null}
-                            {q.prompt ?? ""}
-                          </li>
-                        ))}
-                      </ul>
-                      <p className="clarifier-banner__hint">
-                        답을 메시지에 포함해 다시 내면 에이전트가 시작됩니다.
-                      </p>
-                    </div>
-                  ) : null}
-
-                  {longRunning && running ? (
-                    <div className="room-run-status" role="status">
-                      <span className="room-run-status__hint">
-                        장시간 실행 중...
-                      </span>
-                      <button
-                        type="button"
-                        className="mac-btn-secondary mac-btn-secondary--compact"
-                        onClick={handleStop}
-                      >
-                        답변 중지
-                      </button>
-                    </div>
-                  ) : null}
-
-                  {sessionId ? (
-                    <ComposerEventStack
-                      sessionId={sessionId}
-                      session={session}
-                      planMd={planMd}
-                      planMeta={planMeta}
-                      planStaleNotice={workPlanStaleNotice}
-                      workFocus={workFocus}
-                      onWorkFocusHandled={() => setWorkFocus(null)}
-                      synthesizing={synthesizing}
-                      running={running}
-                      runBusy={runBusy}
-                      executeBusy={executeBusy}
-                      onSynthesizeNow={handleSynthesizeNow}
-                      onPlanRefClick={handlePlanRefClick}
-                      onFocusTask={focusTask}
-                      onFocusObjection={focusObjection}
-                      onSessionUpdated={refreshSessionMeta}
-                      roomTasks={roomTasks}
-                      cursorReady={agents.some(
-                        (a) => a.id === "cursor" && a.ready,
-                      )}
-                      executeError={planExecute.error}
-                      planWorkflow={planWorkflow}
-                      planApproval={
-                        showPlanApproval
-                          ? {
-                              enabled: true,
-                              workflowNotice: planWorkflow?.notice,
-                              planGate: planWorkflow?.last_plan_gate ?? null,
-                              canExecute:
-                                planExecute.hasExecutableActions &&
-                                planExecute.canDryRun &&
-                                agents.some(
-                                  (agent) =>
-                                    agent.id === "cursor" && agent.ready,
-                                ),
-                              busy: verifiedLoopBusy || running || runBusy,
-                              error: verifiedLoopError,
-                              onApprove: (mode) =>
-                                void handleVerifiedApprove(mode),
-                              onReject: (payload) =>
-                                void handleVerifiedReject(payload),
-                            }
-                          : null
-                      }
-                      workHookAlert={workHookAlert}
-                      onDismissWorkHookAlert={() => setWorkHookAlert(null)}
-                      inboxPendingCount={inboxPendingCount}
-                      inboxReloadKey={inboxReloadKey}
-                      currentPlanRevision={currentPlanRevision}
-                      onInboxResolved={handleInboxResolved}
-                      onInboxBuildStarted={handleInboxBuildStarted}
-                      onInboxRefClick={handleInboxRefClick}
-                      execPending={execPendingForBar}
-                      storedActions={
-                        (session?.run?.actions as StoredPlanAction[]) ?? []
-                      }
-                      onExecuteApprove={() => {
-                        if (demoExecPending) {
-                          pushMacNotification({
-                            title: "Execute (demo)",
-                            body: "승인 시뮬레이트",
-                          });
-                          return;
-                        }
-                        void planExecute.approve();
-                      }}
-                      onExecuteReject={() => {
-                        if (demoExecPending) {
-                          pushMacNotification({
-                            title: "Execute (demo)",
-                            body: "거부 시뮬레이트",
-                          });
-                          return;
-                        }
-                        void planExecute.reject();
-                      }}
-                      showExecuteQueue={showExecuteQueueStrip}
-                      consensusProposal={consensusForBar}
-                      showConsensusGate={showConsensusDryRunGate}
-                      consensusGateBusy={consensusGateBusy}
-                      onConsensusDryRun={
-                        tweaks.consensusGateDemo
-                          ? () =>
-                              pushMacNotification({
-                                title: "Consensus (demo)",
-                                body: "Dry-run 시뮬레이트",
-                              })
-                          : handleConsensusDryRun
-                      }
-                      onConsensusDismiss={
-                        tweaks.consensusGateDemo
-                          ? () => tweaks.setConsensusGateDemo(false)
-                          : dismissConsensusProposal
-                      }
-                      onOpenDiff={openDiffTab}
-                      onOpenFiles={openFilesTab}
-                      onOpenFile={openFileInWorkbench}
-                      disabled={running || synthesizing || runBusy}
-                    />
-                  ) : null}
-
-                  {sendReceipt &&
-                  shouldShowSendReceiptOnChatTab(
-                    sendReceipt,
-                    sendReceiptRaw,
-                  ) ? (
-                    <div className="composer-send-receipt" role="status">
-                      {sendReceipt}
-                    </div>
-                  ) : null}
-
-                  <ChatComposer
-                    className={
-                      [
-                        turnProfile === "review"
-                          ? "composer--review"
-                          : undefined,
-                        turnProfile === "loop" ? "composer--free" : undefined,
-                        composerModeVariant === "consensus"
-                          ? "composer--consensus-mode"
-                          : undefined,
-                        composerModeVariant === "plan"
-                          ? "composer--plan-mode"
-                          : undefined,
-                        composerModeVariant === "discuss"
-                          ? "composer--discuss-mode"
-                          : undefined,
-                      ]
-                        .filter(Boolean)
-                        .join(" ") || undefined
-                    }
-                    value={text}
-                    onChange={setText}
-                    onSend={handleSend}
-                    slashCommands={slashCommands}
-                    onSlashExecute={(cmd) =>
-                      void runSlashCommand(cmd, cmd.slash)
-                    }
-                    disabled={composerInputLocked}
-                    sendDisabled={composerSendLocked}
-                    placeholder={composerPlaceholder}
-                    showModeChipHint={false}
-                    running={running}
-                    onStop={handleStop}
-                    files={pendingFiles}
-                    onFilesAdd={addFiles}
-                    onFileRemove={(id) =>
-                      setPendingFiles((f) => f.filter((x) => x.id !== id))
-                    }
-                    objectionNotice={composerObjectionNotice}
-                    onFocusObjection={focusObjection}
-                    turnHint={composerEmergenceHint ?? composerPresetHint}
-                    costHint={composerCostHint}
-                    locale={locale}
-                    sessionId={sessionId}
-                    roomPresets={visiblePresets}
-                    roomPreset={roomPreset}
-                    onRoomPresetSelect={selectRoomPreset}
-                    activeModels={sortAgentIds(selected)
-                      .map((id) => agents.find((agent) => agent.id === id))
-                      .filter((agent): agent is AgentOption => Boolean(agent))}
-                    onOpenModelPicker={() => {
-                      const command = slashCommands.find(
-                        (candidate) => candidate.id === "model",
-                      );
-                      if (command) void executeSlashCommand(command, "");
-                    }}
-                    choicePopover={choicePopover}
-                    authPopover={authPopover}
-                    authPickerPopover={authPickerPopover}
-                    modelPopover={modelPopoverNode}
-                  />
-
-                  {commandHint ? (
-                    <SlashCommandDivider
-                      text={commandHint}
-                      className="composer-slash-divider"
-                    />
-                  ) : null}
-                </div>
-              </>
-            ) : null}
-
-            <MacAlert
-              open={externalCommandConfirm !== null}
-              title="외부 명령 실행"
-              message={
-                externalCommandConfirm
-                  ? `${externalCommandConfirm.command.label} (${externalCommandConfirm.command.slash}) — 로컬 subprocess를 실행합니다. Settings에서 allowlist에 포함된 명령만 실행됩니다.`
-                  : undefined
+          <RoomChatMainPane
+            isNew={isNew}
+            sessionId={sessionId}
+            avoidWorkbenchNotice={avoidWorkbenchNotice}
+            locale={locale}
+            inboxPendingCount={inboxPendingCount}
+            inboxReloadKey={inboxReloadKey}
+            discussPaused={discussPaused}
+            decisionRuntime={decisionRuntime}
+            showPlanApproval={showPlanApproval}
+            verifiedLoopPendingApproval={verifiedLoopView.pendingApproval}
+            firstOpenBlock={firstOpenBlock}
+            consensusBlocked={consensusBlocked}
+            planWorkflow={planWorkflow}
+            planWorkflowPlanIntent={planWorkflowPlanIntent}
+            showPlanWorkflowBanner={showPlanWorkflowBanner}
+            showPlanWorkflowComposerHint={showPlanWorkflowComposerHint}
+            recoveryVisible={recoveryVisible}
+            recoveryLifecycleView={recoveryLifecycleView}
+            recoveryBusyActionId={
+              recoveryBusyAction ??
+              (releasingLock ? "release_lock" : null) ??
+              (discussRecoveryBusy ? "run_discuss_recovery" : null)
+            }
+            composerNoticeDismissed={composerNoticeDismissed}
+            onOpenInbox={() => {
+              setComposerNoticeDismissed("human_gate");
+              openHumanInbox();
+            }}
+            onOpenWork={() => {
+              setComposerNoticeDismissed("plan_workflow");
+              openWorkApproval();
+            }}
+            onRecoveryAction={handleRecoveryAction}
+            onRecoveryRetryAction={handleRecoveryRetryAction}
+            onRecoveryDismiss={() => setRecoveryDismissedSig(recoverySignature)}
+            onDismissNotice={setComposerNoticeDismissed}
+            scrollRef={scrollRef}
+            transcript={{
+              sessionId,
+              isNew,
+              loading: loading ?? false,
+              running,
+              showPeerChannel,
+              onPeerChannelChange: (on) => {
+                setShowPeerChannel(on);
+                setShowPeerChannelState(on);
+              },
+              visibleMessages,
+              advisorRationales,
+              openDraftMessageIds,
+              pendingReplyAgents,
+              runStartedAt,
+              highlightChatLine,
+              locale,
+              transcriptLoading: localeMsg.transcriptLoading,
+              transcriptEmpty: localeMsg.transcriptEmpty,
+              transcriptEmptyHint: localeMsg.transcriptEmptyHint,
+              showJumpButton,
+              forceScrollButton: tweaks.forceScrollButton,
+              scrollToBottom,
+              transcriptActive,
+              onActivityOpen: handleNotificationOpen,
+            }}
+            composerShell={{
+              show: isNew || transcriptActive,
+              tweaksPreflightDemo: tweaks.preflightDemo,
+              recoveryItemsLength: recoveryItems.length,
+              readiness,
+              healthAgents,
+              selected,
+              clarifierQuestions,
+              clarifierInterview,
+              planWorkflowActive,
+              planWorkflowPhase: planWorkflow?.phase,
+              longRunning,
+              running,
+              onStop: handleStop,
+              sessionId,
+              eventStack: composerEventStack,
+              sendReceipt,
+              sendReceiptRaw,
+              composerClassName,
+              text,
+              onTextChange: setText,
+              onSend: handleSend,
+              slashCommands,
+              onSlashExecute: (cmd) => void runSlashCommand(cmd, cmd.slash),
+              composerInputLocked,
+              composerSendLocked,
+              composerPlaceholder,
+              pendingFiles,
+              onFilesAdd: addFiles,
+              onFileRemove: (id) =>
+                setPendingFiles((f) => f.filter((x) => x.id !== id)),
+              composerObjectionNotice,
+              onFocusObjection: focusObjection,
+              turnHint: composerEmergenceHint ?? composerPresetHint,
+              costHint: composerCostHint,
+              locale,
+              roomPresets: visiblePresets,
+              roomPreset,
+              onRoomPresetSelect: selectRoomPreset,
+              agents,
+              onOpenModelPicker: () => {
+                const command = slashCommands.find(
+                  (candidate) => candidate.id === "model",
+                );
+                if (command) void executeSlashCommand(command, "");
+              },
+              choicePopover,
+              authPopover,
+              authPickerPopover,
+              modelPopover: modelPopoverNode,
+              commandHint,
+            }}
+            externalCommandConfirm={externalCommandConfirm}
+            onExternalCommandDismiss={() => setExternalCommandConfirm(null)}
+            onExternalCommandExecute={(command, args) => {
+              void executeSlashCommand(command, args, true);
+            }}
+            permOpen={permOpen}
+            showPermAlert={tweaks.showPermAlert}
+            permissionSelectedAgents={
+              tweaks.showPermAlert && !permOpen
+                ? ["cursor", "claude"]
+                : selected
+            }
+            onPermissionCancel={() => {
+              tweaks.setShowPermAlert(false);
+              setPermOpen(false);
+              if (pendingSend) {
+                setText(pendingSend.text);
+                setPendingFiles(pendingSend.files);
+                setPendingSend(null);
               }
-              buttons={[
-                {
-                  label: "취소",
-                  variant: "cancel",
-                  onClick: () => setExternalCommandConfirm(null),
-                },
-                {
-                  label: "실행",
-                  variant: "primary",
-                  onClick: () => {
-                    const pending = externalCommandConfirm;
-                    setExternalCommandConfirm(null);
-                    if (pending) {
-                      void executeSlashCommand(
-                        pending.command,
-                        pending.args,
-                        true,
-                      );
-                    }
-                  },
-                },
-              ]}
-              onClose={() => setExternalCommandConfirm(null)}
-            />
-
-            <AgentPermissionAlert
-              open={permOpen || tweaks.showPermAlert}
-              selectedAgents={
-                tweaks.showPermAlert && !permOpen
-                  ? ["cursor", "claude"]
-                  : selected
+            }}
+            onPermissionConfirm={(permissions) => {
+              tweaks.setShowPermAlert(false);
+              setPermOpen(false);
+              if (pendingSend) {
+                void executeSend(
+                  pendingSend.text,
+                  pendingSend.files,
+                  permissions,
+                  composeMode,
+                  pendingSend.turnProfile,
+                );
+                setPendingSend(null);
+                setText("");
+                setPendingFiles([]);
               }
-              onCancel={() => {
-                tweaks.setShowPermAlert(false);
-                setPermOpen(false);
-                if (pendingSend) {
-                  setText(pendingSend.text);
-                  setPendingFiles(pendingSend.files);
-                  setPendingSend(null);
-                }
-              }}
-              onConfirm={(permissions) => {
-                tweaks.setShowPermAlert(false);
-                setPermOpen(false);
-                if (pendingSend) {
-                  void executeSend(
-                    pendingSend.text,
-                    pendingSend.files,
-                    permissions,
-                    composeMode,
-                    pendingSend.turnProfile,
-                  );
-                  setPendingSend(null);
-                  // Clear the composer once the send is dispatched — the
-                  // non-permission path clears in handleSend, this path didn't.
-                  setText("");
-                  setPendingFiles([]);
-                }
-              }}
-            />
-          </div>
+            }}
+          />
         </div>
       </div>
 
-      {!isNew && inspectorOpen ? (
-        <ShellPortal>
-          <WorkbenchPanel
-            mode={rightPanelMode}
-            locale={locale}
-            open={inspectorOpen}
-            width={workbenchPanelWidth}
-            onWidthChange={setActiveWorkbenchWidth}
-            onWidthCommit={commitWorkbenchWidth}
-            onClose={toggleInspector}
-          >
-            {rightPanelMode === "overview" && session ? (
-              <ContextOverviewPanel
-                session={session}
-                sessionId={sessionId}
-                healthAgents={healthAgents}
-                goalView={goalView}
-                planMeta={planMeta}
-                onFocusObjection={focusObjection}
-              />
-            ) : null}
-            {rightPanelMode === "background" && sessionId ? (
-              <BackgroundTasksPanel sessionId={sessionId} />
-            ) : null}
-            {rightPanelMode === "diff" ? (
-              <DiffToolPanel executions={planExecutions} />
-            ) : null}
-            {rightPanelMode === "files" && sessionId ? (
-              <WorkspaceFilesPanel
-                sessionId={sessionId}
-                focusPath={filesFocusPath}
-                focusRevision={filesFocusRevision}
-              />
-            ) : null}
-            {rightPanelMode === "preview" && sessionId ? (
-              <PreviewPanel sessionId={sessionId} />
-            ) : null}
-            {rightPanelMode === "terminal" && sessionId ? (
-              <TerminalPanel sessionId={sessionId} />
-            ) : null}
-          </WorkbenchPanel>
-        </ShellPortal>
-      ) : null}
+      <RoomChatInspector
+        isNew={isNew}
+        inspectorOpen={inspectorOpen}
+        rightPanelMode={rightPanelMode}
+        locale={locale}
+        workbenchPanelWidth={workbenchPanelWidth}
+        onWidthChange={setActiveWorkbenchWidth}
+        onWidthCommit={commitWorkbenchWidth}
+        onClose={toggleInspector}
+        session={session}
+        sessionId={sessionId}
+        healthAgents={healthAgents}
+        goalView={goalView}
+        planMeta={planMeta}
+        onFocusObjection={focusObjection}
+        planExecutions={planExecutions}
+        filesFocusPath={filesFocusPath}
+        filesFocusRevision={filesFocusRevision}
+      />
     </>
   );
 }

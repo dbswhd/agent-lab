@@ -129,7 +129,7 @@ export function ChatComposer({
   modeChipVariant,
   isNewSession = false,
   slashCommands = [],
-  onSlashExecute,
+  onSlashExecute: _onSlashExecute,
   sessionId = null,
   activeModels = [],
   onOpenModelPicker,

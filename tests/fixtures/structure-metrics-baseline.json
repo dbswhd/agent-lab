@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "agent_lab_root_py_files": 113,
+  "version": 2,
+  "agent_lab_root_py_files": 116,
   "agent_lab_subpackages": [
     "agent",
     "agents",
@@ -45,12 +45,12 @@
     "claude_": 0
   },
   "tracked_pycache_files": 0,
-  "makefile_lines": 466,
-  "makefile_targets": 111,
+  "makefile_lines": 481,
+  "makefile_targets": 114,
   "large_tsx_files": [
     {
       "path": "web/src/components/RoomChat.tsx",
-      "lines": 3473
+      "lines": 2252
     },
     {
       "path": "web/src/components/PlanExecutePanel.tsx",
@@ -58,7 +58,7 @@
     },
     {
       "path": "web/src/components/HumanInboxPanel.tsx",
-      "lines": 1006
+      "lines": 1011
     },
     {
       "path": "web/src/components/ChatComposer.tsx",
@@ -66,7 +66,7 @@
     },
     {
       "path": "web/src/App.tsx",
-      "lines": 765
+      "lines": 764
     },
     {
       "path": "web/src/components/WorkspaceFilesPanel.tsx",
@@ -77,8 +77,23 @@
       "lines": 703
     }
   ],
+  "hot_path_py_files": [
+    {
+      "path": "src/agent_lab/plan/execute.py",
+      "lines": 1691
+    },
+    {
+      "path": "src/agent_lab/plan/workflow.py",
+      "lines": 1281
+    },
+    {
+      "path": "src/agent_lab/room/turn_flow.py",
+      "lines": 675
+    }
+  ],
   "notes": {
     "pycache": "tracked_pycache_files counts git-tracked __pycache__/*.pyc only; local __pycache__ dirs are ignored by .gitignore and are not repo debt.",
-    "makefile_targets": "Counted as Makefile lines matching ^target:"
+    "makefile_targets": "Counted as Makefile lines matching ^target:",
+    "hot_path_py_files": "F9 ratchet: execute.py / workflow.py / turn_flow.py LOC caps; --check fails on any drift from baseline (growth or shrink without update)."
   }
 }

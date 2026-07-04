@@ -26,7 +26,8 @@
 | Turn activity | `live_log` → `live_archives/` | ROOM-TRANSCRIPT-CONTRACT | merge on refresh |
 | S1 flags | `s1_flags.py` | [DESIGN-S1-FEEDBACK-LOOP.md](./DESIGN-S1-FEEDBACK-LOOP.md) | KPI §1.4 NORTH-STAR; no D3 ceremony |
 | run.json patch | `patch_run_meta()` | CLAUDE.md F4 · `test_run_meta_write_discipline.py` | no mid-turn disk reload |
-| Structure waves | — | [STRUCTURE-REFACTOR-WAVE.md](./STRUCTURE-REFACTOR-WAVE.md) | Wave B ✅ · Phase D (1c) active |
+| Structure waves | — | [STRUCTURE-REFACTOR-WAVE.md](./STRUCTURE-REFACTOR-WAVE.md) | Wave B ✅ · Phase D (1c) ✅ |
+| Autonomy Ladder | `autonomy_ladder.py`, `useAutonomySession.ts` | NORTH-STAR N4 v1 | `/autonomy` · transition audit ✅ |
 | Shipped? | tests + smoke | TRACEABILITY | D3 language = closed only |
 
 ---
@@ -37,9 +38,9 @@
 Now     supervisor dogfood · blocker fixes · F4 rule in CLAUDE.md
 1a      Room transcript contract — `make test-c1`       ← done
 1b      Wave B room/context split + F4 CI guard — **done** (`test_room_context_package`, `test_run_meta_write_discipline`)
-1c      Phase D ✅ (RoomChat hooks + client.ts split) · N4 next
-2w      N2 profile mapping · dead code §3.4 (1 PR each)
-1mo     N4 UI (after 1c) · F7 repo_map decision
+1c      Phase D ✅ · N4 v1 ✅ (autonomy_ladder + dial + /autonomy)
+2w      N4 v2 Human level change · N2 profile mapping · dead code §3.4 (1 PR each)
+1mo     F7 repo_map decision
 Q       §2.5 matrix · KPI review · N5/S2 re-eval (episode n≥30) — **no global task bandit**
 ```
 

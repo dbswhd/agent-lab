@@ -83,6 +83,7 @@ import {
   discussRecoveryFromMissionLoop,
   useRoomRecoveryLifecycle,
 } from "../hooks/useRoomRecoveryLifecycle";
+import { useAutonomySession } from "../hooks/useAutonomySession";
 import { useRoomSlashCommands } from "../hooks/useRoomSlashCommands";
 import {
   getShowPeerChannel,
@@ -91,6 +92,7 @@ import {
 } from "../utils/transcriptViewPrefs";
 import { RoomTranscriptPanel } from "./RoomTranscriptPanel";
 import { ComposerDecisionSurface } from "./ComposerDecisionSurface";
+import { AutonomyDial } from "./AutonomyDial";
 import { SlashCommandDivider } from "./SlashCommandDivider";
 import { ComposerEventStack } from "./ComposerEventStack";
 import { useHumanDecisionRuntime } from "../hooks/useHumanDecisionRuntime";
@@ -2864,6 +2866,11 @@ export function RoomChat({
   ]);
 
   const title = isNew ? "Session" : session?.topic || sessionId || "Session";
+  const { view: autonomyView, loading: autonomyLoading } = useAutonomySession({
+    sessionId,
+    sessionRun: session?.run as Record<string, unknown> | undefined,
+    reloadKey: inboxReloadKey,
+  });
   const titleMeta =
     !isNew || selected.length > 0
       ? `${selected.length} ${selected.length === 1 ? "agent" : "agents"}`
@@ -3004,6 +3011,11 @@ export function RoomChat({
       <WorkspaceChrome
         title={title}
         meta={titleMeta}
+        headerExtra={
+          sessionId ? (
+            <AutonomyDial view={autonomyView} loading={autonomyLoading} />
+          ) : null
+        }
         sidebarOpen={_sidebarOpen}
         rightPanelOpen={inspectorOpen}
         rightPanelMode={rightPanelMode}

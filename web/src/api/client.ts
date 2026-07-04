@@ -799,6 +799,28 @@ export type RuntimeSnapshot = {
     status?: string;
     source?: string;
   } | null;
+  autonomy?: {
+    level: "L0" | "L1" | "L2" | "L3";
+    effective_level: "L0" | "L1" | "L2" | "L3";
+    display_level: "L0" | "L1" | "L2" | "L3";
+    level_name: string;
+    trust_budget: {
+      auto_merge_remaining: number;
+      auto_merge_total: number;
+    };
+    signals: {
+      auto_approve_enabled: boolean;
+      mission_loop_enabled: boolean;
+      autonomous_segment_active: boolean;
+    };
+    transitions?: Array<{
+      from?: string;
+      to?: string;
+      reason?: string;
+      trigger?: string;
+      at?: string;
+    }>;
+  };
 };
 
 export type ClarifierInterviewRecord = NonNullable<
@@ -828,6 +850,14 @@ export function fetchSessionRuntime(sessionId: string) {
   return json<RuntimeSnapshot>(
     `/api/sessions/${encodeURIComponent(sessionId)}/runtime`,
   );
+}
+
+export function fetchSessionAutonomy(sessionId: string) {
+  return json<{
+    ok: boolean;
+    session_id: string;
+    autonomy: NonNullable<RuntimeSnapshot["autonomy"]>;
+  }>(`/api/sessions/${encodeURIComponent(sessionId)}/autonomy`);
 }
 
 export function pauseMissionLoop(

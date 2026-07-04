@@ -24,3 +24,14 @@ def get_session_runtime(session_id: str) -> dict[str, Any]:
         except OSError as exc:
             raise HTTPException(status_code=500, detail=f"plan.md read failed: {exc}") from exc
     return public_runtime_payload(folder, plan_md=plan_md)
+
+
+@router.get("/sessions/{session_id}/autonomy")
+def get_session_autonomy(session_id: str) -> dict[str, Any]:
+    """N4: autonomy ladder payload (subset of runtime snapshot)."""
+    folder = session_folder_or_404(session_id)
+    from agent_lab.autonomy_ladder import public_autonomy_payload
+    from agent_lab.run.meta import read_run_meta
+
+    payload = public_autonomy_payload(read_run_meta(folder))
+    return {"ok": True, "session_id": session_id, "autonomy": payload}

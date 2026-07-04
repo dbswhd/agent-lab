@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { RightPanelMode } from "../utils/workspaceTabs";
 import type { Locale } from "../i18n/locale";
 import { openCommandPalette } from "../utils/desktopShortcuts";
@@ -7,6 +8,7 @@ import { WorkbenchModeMenu } from "./WorkbenchModeMenu";
 type Props = {
   readonly title: string;
   readonly meta?: string;
+  readonly headerExtra?: ReactNode;
   readonly origin?: string;
   readonly sidebarOpen: boolean;
   readonly rightPanelOpen: boolean;
@@ -26,6 +28,7 @@ function isTauriApp(): boolean {
 export function WorkspaceChrome({
   title,
   meta,
+  headerExtra,
   origin = "agent-lab",
   sidebarOpen,
   rightPanelOpen,
@@ -85,6 +88,7 @@ export function WorkspaceChrome({
             </span>
             <span className="workspace-chrome__pills">
               <span className="workspace-chrome__pill">{origin}</span>
+              {headerExtra}
               {meta ? (
                 <span className="workspace-chrome__pill workspace-chrome__pill--meta">
                   {meta}

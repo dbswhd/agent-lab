@@ -69,8 +69,13 @@ def set_trust_budget(folder, patch: dict[str, Any]) -> dict[str, Any]:
         run["trust_budget"] = current
         return run
 
-    updated = patch_run_meta(folder, _apply)
-    return get_trust_budget(updated)
+    patch_run_meta(folder, _apply)
+    from agent_lab.autonomy_ladder import observe_autonomy_level_change
+
+    observe_autonomy_level_change(folder, reason="trust_budget_updated")
+    from agent_lab.run.meta import read_run_meta
+
+    return get_trust_budget(read_run_meta(folder))
 
 
 def budget_agent_tier_cap(run_meta: dict[str, Any] | None) -> Tier | None:
@@ -112,4 +117,7 @@ def consume_auto_merge_budget(folder) -> tuple[int, int]:
         return run
 
     patch_run_meta(folder, _consume)
+    from agent_lab.autonomy_ladder import observe_autonomy_level_change
+
+    observe_autonomy_level_change(folder, reason="trust_budget_consumed")
     return state["before"], state["after"]

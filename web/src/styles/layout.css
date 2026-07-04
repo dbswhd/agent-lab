@@ -666,6 +666,30 @@
   color: var(--label-tertiary);
 }
 
+.workspace-chrome__pill--autonomy {
+  gap: var(--space-4);
+  color: var(--label-primary);
+  border: 1px solid var(--separator-subtle);
+}
+
+.workspace-chrome__pill--autonomy .autonomy-dial__level {
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+.workspace-chrome__pill--autonomy .autonomy-dial__label {
+  color: var(--label-secondary);
+}
+
+.workspace-chrome__pill--autonomy .autonomy-dial__budget {
+  font-variant-numeric: tabular-nums;
+  color: var(--label-tertiary);
+}
+
+.workspace-chrome__pill--l3 {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--separator-subtle));
+}
+
 .workspace-chrome__actions {
   position: relative;
   z-index: 1;

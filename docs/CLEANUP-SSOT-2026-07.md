@@ -40,14 +40,14 @@
 ## 실행 순서 (2026-07 Human 확定)
 
 ```text
-Now     supervisor dogfood · blocker fixes · F4 rule in CLAUDE.md
-1a      Room transcript contract — `make test-c1`       ← done
-1b      Wave B room/context split + F4 CI guard — **done** (`test_room_context_package`, `test_run_meta_write_discipline`)
-1c      Phase D ✅ · N4 v1/v2 ✅ · N2/F2 ✅ · F4/F5 ✅ · §3.2.1 discuss latency ✅
-2w      Phase 2 dead-code ✅ (picker/topology) · F4 allowlist −1 · S1 dogfood (optional)
-1mo     F7 protocol ready — run 7d dogfood · `make f7-dogfood-report` · ON/OFF
-Q       §2.5 matrix · KPI · F8 cap ops · N5/S2 re-eval (episode n≥30) — **no global task bandit**
+✅ 1a–1c · Phase 2 · N2/N4 · F2/F4/F5/F6 · §3.2.1 · synthesize_only · F7/F8 prep
+Now     S1 supervisor dogfood (optional) · `make feedback-report`
+1mo     F7 **run** 7d · `make f7-dogfood-report` · ON/OFF decision
+Q       §2.5 · KPI · F8 `QUARTER_BUDGET_USD` ops · N5/S2 re-eval (n≥30)
+Freeze  N5–N7 · Gateway · trading core
 ```
+
+See NORTH-STAR §3.3.1 for the full shipped table.
 
 **PR 규칙:** blocker 1개 또는 구조 1개 — S1 tuning + RoomChat refactor 같은 PR 금지.
 

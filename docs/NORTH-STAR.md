@@ -275,12 +275,12 @@ Mission OS 3-pane IA 유지 위에서:
 | S1 피드백 루프 | **55%** | D3(supervisor) / D1(global) | supervisor trio implicit ON (`s1_flags.py`). lift: §1.4 · `make feedback-report` |
 | 프로필 시스템 (N2) | **70%** | D2 | **4/4** profiles · feature 플래그 **전수 소속** (`owns`+`flags`) · `list-flags --profile`. F2 ✅ |
 | Harness topology (N3) | **70%** | D3 | `parallel`·`producer_reviewer`·`pipeline` shipped (`topic_router.py`). adversarial = LC-L4 별도 |
-| Trust-gated 자율성 (L1~L2) | **60%** | D2 | auto_approve_gate·trust_budget + **N4 v1/v2** ladder SSOT, header dial, Human ceiling PATCH, demotion inbox (T-A0). L3 자동화·KPI escalation_rate는 후속 |
+| Trust-gated 자율성 (L1~L2) | **65%** | D2 | auto_approve_gate·trust_budget + **N4 v1/v2** ladder SSOT, header dial, Human ceiling PATCH, demotion inbox (T-A0), F8 quarter demote→L0. L3 자동화·KPI escalation_rate는 후속 |
 | S2 episode 힌트 | **5%** | D0 | **동결** — 전역 bandit 목표 제외. S1.5 explore·episode lift 관측만 |
 | S3 외부 능력 통합 | **15%** | D0~D1 | plugin_discovery·mcp_tool_contract·skill_drafts 부품 존재, 루프 없음. 인터페이스 설계만 선행(N7) |
-| 컨텍스트 품질 (repo_map·compaction) | **50%** | D2 | 구현+self-eval 완료. **실세션 품질 평가 못 해 OFF에 갇힘** — LLM judge 크레딧 문제. F7 참조 |
+| 컨텍스트 품질 (repo_map·compaction) | **55%** | D2 | 구현+self-eval+F7 프로토콜/계측 완료. **실세션 7일 dogfood 실행·ON/OFF 결정**만 남음 |
 | 관측·평가 (eval harness·bench·KPI) | **70%** | D3 | 도구 풍부(emergence bench, feedback report, dogfood suite). 남은 것: 지표→의사결정 연결의 정례화 |
-| Frontend Mission OS | **70%** | D3 | Phase D ✅ · **N4 v2** Human ceiling picker + demotion transition list in dial · inbox T-A0 |
+| Frontend Mission OS | **75%** | D3 | Phase D ✅ (hooks + client split) · **N4 v2** dial/picker · synthesize_only path · §3.2.1 light discuss |
 | OpenAI-compat API (N9) | **35%** | D1 | 라우터 존재. 소비자·문서·감사 헤더 등 서사 완성 없음 |
 | 슈퍼 샘플 준비도 (Layer 3) | **20%** | D0~D1 | 내부 문서는 풍부하나 외부인용 quickstart·fork 가이드·공개 재현 리포트 없음. 패키징 baseline만 존재 |
 
@@ -291,7 +291,7 @@ Mission OS 3-pane IA 유지 위에서:
 - **F3. 문서-코드 괴리:** N2 SSOT는 **`run/profile.py`** (app_config 아님). TRACEABILITY partial vs “shipped” 과대 주의. → **처방:** 게이지가 단일 진실; §3.3 [선행] 태그; **코드 SSOT 이름 그대로** (`s1_flags.py`, `topic_router.py`, `run/profile.py`).
 - **F4. run_meta 이중 상태 함정:** ✅ 규칙+CI — CLAUDE.md / AGENTS.md · turn-end replay · `stamp_run_meta()` · `tests/test_run_meta_write_discipline.py`. **allowlist empty** (in-memory `run_meta[` writers eliminated).
 - **F5. 인프라/도메인 혼재:** ✅ 결정 — [F5-TRADING-ISOLATION.md](./F5-TRADING-ISOLATION.md). `trading_mission/`·`quant/` extension lane; 코어 PR trading delta 0; 경계 `extensions/quant_trading.py`. 물리 이동은 defer.
-- **F6. 프론트 상태 부채:** 26 useState·2,740줄 client.ts 위에 기능을 계속 얹는 중. Autonomy dial 등 N4 UI가 이 위에 못 올라간다. → **처방:** Phase D를 N4보다 먼저 (§2.4 근거).
+- **F6. 프론트 상태 부채:** ✅ Phase D — RoomChat hooks (`useRoomComposerPrefs` · `useRoomSlashCommands` · `useRoomRunWatchdog` · `useRoomRecoveryLifecycle`) + `api/client` domain split (`http` · `workspaceClient` · `missionGatewayClient` · `wsClient`). N4 dial은 그 위에 탑재됨.
 - **F7. 품질 평가의 mock 편중:** repo_map·compaction이 "실세션 평가 불가"로 OFF에 갇힘. → **처방 준비 ✅:** [F7-REPO-MAP-COMPACTION-DOGFOOD.md](./F7-REPO-MAP-COMPACTION-DOGFOOD.md) · `make f7-dogfood-env` / `make f7-dogfood-report` · `last_context_bundle`/`context_quality_log` 계측. **실행:** 7일 supervisor dogfood → ON/OFF (방치 금지).
 - **F8. 비용·크레딧 가시성 부재:** 세션 `cost_ledger`는 존재. → **처방 준비 ✅:** [F8-COST-VISIBILITY.md](./F8-COST-VISIBILITY.md) · `.agent-lab/cost_ledger_quarter.json` · `AGENT_LAB_QUARTER_BUDGET_USD` · 초과 시 autonomy **L0 demotion** · `make f8-cost-report` · runtime `cost_quarter`.
 
@@ -309,12 +309,30 @@ Mission OS 3-pane IA 유지 위에서:
 
 | 시기 | [선행] | 할 일 | 닫힘 / 관측 |
 |---|---|---|---|
-| **지금** | 1c ✅ · **N4 v1/v2** ✅ · **N2/F2** ✅ · **F4/F5** ✅ | S1 dogfood — supervisor 실사용; §1.4 KPI / `make feedback-report` **참고** | history lift·sample 관측 (formal closure 없음) |
-| **~1달** | F7 protocol ✅ | F7 **실행** — `eval "$(make f7-dogfood-env)"` · supervisor · `make f7-dogfood-report` | Decision table ON/OFF |
-| **분기** | S1 data · F8 instrumented ✅ | §2.5 매트릭스 · D3→D4 KPI · set `QUARTER_BUDGET_USD` · N5/S2 재평가 · **dogfood-first 만료**: history n≥30 → N1 closure 재검토 | D 단계 갱신 |
+| **지금** | **2026-07 code wave ✅** (아래) | S1 dogfood — supervisor 실사용; `make feedback-report` | history lift·sample (formal closure 없음) |
+| **~1달** | F7 protocol ✅ | F7 **실행** — `eval "$(make f7-dogfood-env)"` · `make f7-dogfood-report` | Decision table ON/OFF |
+| **분기** | S1 data · F8 instrumented ✅ | §2.5 매트릭스 · KPI · `QUARTER_BUDGET_USD` · N5/S2 재평가 · dogfood-first 만료 (history n≥30) | D 단계 갱신 |
 | **동결** | — | N5 전역 bandit · N6~N7 · Gateway · trading core | explicit Human OK |
 
 **의존성 요약:** N4 ← F6 필수, N2 권장 · N5 ← S1 dogfood + S1.5 D2+ (전역 bandit 없음) · N8 ← emergence-bench 프로토콜
+
+### 3.3.1 2026-07 code wave (shipped)
+
+구현 백로그(코드) — dogfood **실행**은 운영 트랙.
+
+| ID | 산출 |
+|----|------|
+| **Phase 1c / F6** | RoomChat hooks · `api/client` domain split |
+| **N4 v1/v2** | `autonomy_ladder` · `/autonomy` GET/PATCH · dial · demotion inbox T-A0 |
+| **N2 / F2** | `run/profile.py` 4 profiles · feature flag **전수** `owns`/`flags` · `list-flags --profile` |
+| **F4** | `stamp_run_meta` · write-discipline allowlist **empty** |
+| **F5** | [F5-TRADING-ISOLATION.md](./F5-TRADING-ISOLATION.md) — extension lane, core trading delta 0 |
+| **§3.2.1** | fast→supervisor roster promote · light discuss · full-parallel R1 |
+| **Phase 2** | dead-code contracts · `synthesize_only` dedicated path (`runSynthesizeOnly`) |
+| **F7 prep** | [F7-REPO-MAP-COMPACTION-DOGFOOD.md](./F7-REPO-MAP-COMPACTION-DOGFOOD.md) · `make f7-dogfood-*` |
+| **F8 prep** | [F8-COST-VISIBILITY.md](./F8-COST-VISIBILITY.md) · quarter ledger · L0 demote · `make f8-cost-report` |
+
+**남은 것 (코드 외):** supervisor/F7 **실사용** · 분기 KPI · 동결 항목.
 
 ---
 

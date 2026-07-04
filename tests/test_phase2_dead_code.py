@@ -1,0 +1,51 @@
+"""Phase 2 dead-code queue — grep evidence (CLEANUP-PHASE0-SCOPE §5).
+
+One PR may close one or more rows when evidence shows the surface is gone.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def _read(*parts: str) -> str:
+    return ROOT.joinpath(*parts).read_text(encoding="utf-8")
+
+
+def test_legacy_turn_profile_segmented_picker_absent_from_ui() -> None:
+    """Legacy discuss/analyze/review/free segmented picker removed (TURN-MODES §3)."""
+    composer = _read("web", "src", "components", "ChatComposer.tsx")
+    room = _read("web", "src", "components", "RoomChat.tsx")
+    # Primary control is room preset (fast / supervisor), not legacy segments.
+    assert "roomPresets" in composer or "roomPreset" in composer
+    assert "onRoomPresetSelect" in composer or "roomPreset" in room
+    for legacy in (
+        'aria-label="discuss"',
+        "TurnProfileSegmented",
+        "segmented-turn-profile",
+        "♾️</button>",
+    ):
+        assert legacy not in composer
+        assert legacy not in room
+
+
+def test_settings_topology_six_button_ui_absent() -> None:
+    """RO-P1: Settings must not expose a 6-topology button grid."""
+    settings = _read("web", "src", "components", "SettingsPage.tsx")
+    for token in (
+        "producer_reviewer",
+        "topology-picker",
+        "topologySix",
+        "six-topology",
+    ):
+        assert token not in settings
+
+
+def test_orchestrator_inbox_harvest_is_opt_in_only() -> None:
+    """MCP-first: harvest default off; flag remains as explicit legacy opt-in."""
+    harvest = _read("src", "agent_lab", "inbox", "harvest.py")
+    flags = _read("src", "agent_lab", "runtime_flags.py")
+    assert 'os.getenv("AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST", "0")' in harvest
+    assert "AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST" in flags

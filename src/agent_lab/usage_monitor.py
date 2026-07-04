@@ -47,7 +47,7 @@ def should_preempt(
 
 
 def provider_spent_usd(run_meta: dict[str, Any] | None, provider: str) -> float:
-    """Best-effort local spend for a provider from run_meta['cost_ledger']."""
+    """Best-effort local spend for a provider from run_meta cost_ledger."""
     if not isinstance(run_meta, dict):
         return 0.0
     ledger = run_meta.get("cost_ledger")

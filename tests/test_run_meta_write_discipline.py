@@ -49,7 +49,6 @@ _KNOWN_BASELINE = frozenset(
         "src/agent_lab/room/objections.py",
         "src/agent_lab/room/dispatch_intents.py",
         "src/agent_lab/agent/availability.py",
-        "src/agent_lab/usage_monitor.py",
         "src/agent_lab/consensus_gate.py",
     }
 )

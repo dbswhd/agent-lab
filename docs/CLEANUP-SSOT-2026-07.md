@@ -42,7 +42,7 @@ Now     supervisor dogfood · blocker fixes · F4 rule in CLAUDE.md
 1a      Room transcript contract — `make test-c1`       ← done
 1b      Wave B room/context split + F4 CI guard — **done** (`test_room_context_package`, `test_run_meta_write_discipline`)
 1c      Phase D ✅ · N4 v1/v2 ✅ · N2/F2 ✅ · F4/F5 ✅ · §3.2.1 discuss latency ✅
-2w      dead code §3.4 (1 PR each) · S1 dogfood (optional)
+2w      Phase 2 dead-code ✅ (picker/topology) · F4 allowlist −1 · S1 dogfood (optional)
 1mo     F7 repo_map decision
 Q       §2.5 matrix · KPI review · N5/S2 re-eval (episode n≥30) — **no global task bandit**
 ```

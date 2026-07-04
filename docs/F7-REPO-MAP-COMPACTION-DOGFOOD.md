@@ -1,6 +1,7 @@
 # F7 — repo_map / compaction 7-day dogfood protocol
 
-> Status: **ready to run** · NORTH-STAR F7 · decision due end of week (ON or OFF — no limbo)
+> Status: **running** · started 2026-07-05 · decision due 2026-07-12 (ON or OFF — no limbo)
+> NORTH-STAR F7
 
 ## Goal
 

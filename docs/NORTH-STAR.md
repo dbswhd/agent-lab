@@ -302,7 +302,7 @@ Mission OS 3-pane IA 유지 위에서:
 | 관찰 | 현재 동작 | 상태 |
 |------|-----------|------|
 | **Fast + 2 agents** | roster>1이면 **fast→supervisor 승격** (`resolve_preset_for_roster`); UI도 `forceRoomPreset("supervisor")`. silent truncate 제거 | ✅ §3.2.1 |
-| **Supervisor 단순 discuss** | `mode=discuss` + loop → **light discuss**: `consensus_mode=False`, `agent_rounds=1`, runtime `analyze`. plan/synthesize는 기존 합의 유지 | ✅ §3.2.1 |
+| **Supervisor 단순 discuss** | `mode=discuss` + loop → **light discuss**: `consensus_mode=False`, `agent_rounds=1`, runtime `analyze`, **`discuss_light` → lead-last OFF(전원 동시 1 wave)**. plan/합의/peer-review는 lead-last 유지 | ✅ §3.2.1 |
 
 관련: [ROOM-TRANSCRIPT-CONTRACT.md](./ROOM-TRANSCRIPT-CONTRACT.md) §3 (pending UI는 1a에서 수정) · N3 room_preset · [05-room-agent-roles.md](./05-room-agent-roles.md) §Fast preset.
 

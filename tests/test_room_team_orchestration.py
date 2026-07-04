@@ -102,6 +102,14 @@ def test_team_r1_split_lead_last():
     assert set(teammates) == {"codex", "claude"}
 
 
+def test_lead_last_disabled_for_discuss_light():
+    from agent_lab.room.team_orchestration import lead_last_r1_enabled
+
+    assert lead_last_r1_enabled({"team_lead": "cursor"}) is True
+    assert lead_last_r1_enabled({"team_lead": "cursor", "discuss_light": True}) is False
+    assert lead_last_r1_enabled(None) is True
+
+
 def test_round_agent_order_r1_lead_last():
     meta = {"team_lead": "cursor"}
     order = _round_agent_order(
@@ -111,6 +119,19 @@ def test_round_agent_order_r1_lead_last():
         run_meta=meta,
     )
     assert [str(a) for a in order] == ["codex", "claude", "cursor"]
+
+
+def test_round_agent_order_discuss_light_keeps_roster():
+    """§3.2.1: light discuss does not reorder for lead-last."""
+    meta = {"team_lead": "cursor", "discuss_light": True}
+    roster = ["cursor", "codex", "claude"]
+    order = _round_agent_order(
+        roster,
+        review_mode=False,
+        parallel_round=1,
+        run_meta=meta,
+    )
+    assert [str(a) for a in order] == roster
 
 
 def test_round_agent_order_r2_includes_kimi_work():

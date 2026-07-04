@@ -139,18 +139,23 @@ def run_parallel_round(
     check_cancelled()
     replies: list[ChatMessage] = []
     sequential = parallel_round >= 2 or bool(task_type and task_type in _SEQUENTIAL_TASK_TYPES)
-    from agent_lab.room.team_orchestration import team_r1_split
+    from agent_lab.room.team_orchestration import lead_last_r1_enabled, team_r1_split
 
-    parallel_batch, lead_tail = (
-        team_r1_split([str(a) for a in ordered], run_meta)
-        if not sequential and parallel_round == 1 and not review_mode and run_meta
-        else ([str(a) for a in ordered], [])
-    )
-    use_lead_last_r1 = (
+    want_lead_last = (
         not sequential
         and parallel_round == 1
         and not review_mode
-        and lead_tail
+        and bool(run_meta)
+        and lead_last_r1_enabled(run_meta)
+    )
+    parallel_batch, lead_tail = (
+        team_r1_split([str(a) for a in ordered], run_meta)
+        if want_lead_last
+        else ([str(a) for a in ordered], [])
+    )
+    use_lead_last_r1 = (
+        want_lead_last
+        and bool(lead_tail)
         and len(parallel_batch) < len(ordered)
     )
 

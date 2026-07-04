@@ -43,7 +43,7 @@ describe("roomPresets", () => {
   it("hints light discuss and fast promotion", () => {
     expect(
       emergenceHintLine({ room_preset: "supervisor", discuss_light: true }, "en"),
-    ).toContain("Light discuss");
+    ).toContain("full-parallel");
     expect(
       emergenceHintLine(
         { room_preset: "supervisor", room_preset_promoted_from: "fast" },

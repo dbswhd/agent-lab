@@ -165,6 +165,17 @@ def should_assign_tasks_on_turn(
     return False
 
 
+def lead_last_r1_enabled(run_meta: dict[str, Any] | None) -> bool:
+    """Whether R1 should run teammates first, then lead with peer context.
+
+    §3.2.1: light discuss (``discuss_light``) disables lead-last so all agents
+    run in one fully parallel wave. Plan / consensus / peer-review keep lead-last.
+    """
+    if not isinstance(run_meta, dict):
+        return True
+    return not bool(run_meta.get("discuss_light"))
+
+
 def team_r1_split(
     agents: list[str],
     run_meta: dict[str, Any] | None,

@@ -97,8 +97,8 @@ export function emergenceHintLine(
   }
   if (run?.discuss_light) {
     return locale === "ko"
-      ? "경량 discuss — 1라운드 병렬 · 합의 다라운드 없음"
-      : "Light discuss — 1 parallel wave, no consensus multi-round";
+      ? "경량 discuss — 전원 동시 1 wave · 합의 다라운드 없음"
+      : "Light discuss — full-parallel 1 wave, no consensus multi-round";
   }
   if (run?.room_preset_promoted_from === "fast") {
     return locale === "ko"

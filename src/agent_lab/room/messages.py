@@ -176,8 +176,11 @@ def _round_agent_order(
         pool = {str(a).lower(): a for a in agents}
         return [pool[k] for k in review_round2_order([str(a) for a in agents]) if k in pool]
     if parallel_round == 1 and run_meta and not review_mode:
-        from agent_lab.room.team_orchestration import team_r1_split
+        from agent_lab.room.team_orchestration import lead_last_r1_enabled, team_r1_split
 
+        # §3.2.1 light discuss: keep roster order (full parallel, no lead-last).
+        if not lead_last_r1_enabled(run_meta):
+            return agents
         teammates, lead_tail = team_r1_split([str(a) for a in agents], run_meta)
         if lead_tail and teammates:
             order = teammates + lead_tail

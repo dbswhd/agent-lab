@@ -2866,7 +2866,12 @@ export function RoomChat({
   ]);
 
   const title = isNew ? "Session" : session?.topic || sessionId || "Session";
-  const { view: autonomyView, loading: autonomyLoading } = useAutonomySession({
+  const {
+    view: autonomyView,
+    loading: autonomyLoading,
+    changing: autonomyChanging,
+    setLevel: setAutonomyLevel,
+  } = useAutonomySession({
     sessionId,
     sessionRun: session?.run as Record<string, unknown> | undefined,
     reloadKey: inboxReloadKey,
@@ -3013,7 +3018,13 @@ export function RoomChat({
         meta={titleMeta}
         headerExtra={
           sessionId ? (
-            <AutonomyDial view={autonomyView} loading={autonomyLoading} />
+            <AutonomyDial
+              view={autonomyView}
+              loading={autonomyLoading}
+              changing={autonomyChanging}
+              disabled={running || runBusy}
+              onLevelChange={setAutonomyLevel}
+            />
           ) : null
         }
         sidebarOpen={_sidebarOpen}

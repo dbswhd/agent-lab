@@ -29,9 +29,11 @@ def session_folder(tmp_path: Path) -> Path:
 def test_default_level_is_l0(session_folder: Path) -> None:
     run = read_run_meta(session_folder)
     assert infer_effective_autonomy_level(run) == "L0"
-    assert stored_autonomy_level(run) == "L0"
+    assert stored_autonomy_level(run) is None
     payload = public_autonomy_payload(run)
     assert payload["display_level"] == "L0"
+    assert payload["level"] == "L0"
+    assert payload["ceiling_set"] is False
     assert payload["level_name"] == "Manual"
 
 
@@ -154,3 +156,57 @@ def test_autonomy_api_endpoint(autonomy_api_client) -> None:
     assert body["ok"] is True
     assert body["autonomy"]["display_level"] == "L2"
     assert body["autonomy"]["transitions"]
+
+
+def test_patch_autonomy_api_human_level(autonomy_api_client) -> None:
+    client, folder = autonomy_api_client
+    res = client.patch(
+        f"/api/sessions/{folder.name}/autonomy",
+        json={"level": "L2", "reason": "operator_promote"},
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["autonomy"]["level"] == "L2"
+    assert body["autonomy"]["ceiling_set"] is True
+    human = [
+        row
+        for row in body["autonomy"]["transitions"]
+        if row.get("trigger") == "human"
+    ]
+    assert human
+    assert human[-1]["to"] == "L2"
+
+
+def test_demotion_creates_inbox_and_restore(session_folder: Path) -> None:
+    from agent_lab.human_inbox import inbox_items, resolve_inbox_item
+    from agent_lab.trust_budget import consume_auto_merge_budget
+
+    set_trust_budget(
+        session_folder, {"auto_merge_remaining": 1, "auto_merge_total": 1}
+    )
+    consume_auto_merge_budget(session_folder)
+    run = read_run_meta(session_folder)
+    pending = [
+        item
+        for item in inbox_items(run)
+        if item.get("kind") == "autonomy" and item.get("status") == "pending"
+    ]
+    assert pending
+    item = pending[0]
+    assert item.get("trigger") == "T-A0"
+    assert any(
+        opt.get("id", "").startswith("restore:") for opt in (item.get("options") or [])
+    )
+
+    resolve_inbox_item(
+        session_folder,
+        item["id"],
+        status="resolved",
+        selected=["restore:L2"],
+    )
+    autonomy = public_autonomy_payload(read_run_meta(session_folder))
+    assert autonomy["level"] == "L2"
+    assert autonomy["ceiling_set"] is True
+    human = [t for t in autonomy["transitions"] if t.get("trigger") == "human"]
+    assert human
+    assert human[-1]["reason"] == "inbox_restore_ceiling"

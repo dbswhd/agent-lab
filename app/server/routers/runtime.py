@@ -35,3 +35,22 @@ def get_session_autonomy(session_id: str) -> dict[str, Any]:
 
     payload = public_autonomy_payload(read_run_meta(folder))
     return {"ok": True, "session_id": session_id, "autonomy": payload}
+
+
+@router.patch("/sessions/{session_id}/autonomy")
+def patch_session_autonomy(session_id: str, body: dict[str, Any]) -> dict[str, Any]:
+    """N4 v2: Human-set autonomy ceiling (stored level + audit transition)."""
+    from agent_lab.autonomy_ladder import record_autonomy_transition
+
+    folder = session_folder_or_404(session_id)
+    level = str(body.get("level") or "").strip().upper()
+    if level not in ("L0", "L1", "L2", "L3"):
+        raise HTTPException(status_code=422, detail="level must be L0|L1|L2|L3")
+    reason = str(body.get("reason") or "human_level_change").strip() or "human_level_change"
+    payload = record_autonomy_transition(
+        folder,
+        to_level=level,  # type: ignore[arg-type]
+        reason=reason[:500],
+        trigger="human",
+    )
+    return {"ok": True, "session_id": session_id, "autonomy": payload}

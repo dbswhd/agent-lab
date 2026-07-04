@@ -55,3 +55,37 @@ def test_transition_audit_wired_in_trust_budget() -> None:
     assert "observe_autonomy_level_change" in tb
     assert "trust_budget_updated" in tb
     assert "trust_budget_consumed" in tb
+
+
+def test_autonomy_v2_human_picker_and_patch() -> None:
+    room = _read("web", "src", "components", "RoomChat.tsx")
+    dial = _read("web", "src", "components", "AutonomyDial.tsx")
+    hook = _read("web", "src", "hooks", "useAutonomySession.ts")
+    client = _read("web", "src", "api", "client.ts")
+    runtime_router = _read("app", "server", "routers", "runtime.py")
+    layout = _read("web", "src", "styles", "layout.css")
+
+    assert "setAutonomyLevel" in room
+    assert "onLevelChange={setAutonomyLevel}" in room
+    assert "autonomy-dial__popover" in dial
+    assert "onLevelChange" in dial
+    assert "patchSessionAutonomy" in hook
+    assert "setLevel" in hook
+    assert "patchSessionAutonomy" in client
+    assert "patch_session_autonomy" in runtime_router
+    assert ".autonomy-dial__popover" in layout
+
+
+def test_autonomy_inbox_linked_transitions() -> None:
+    inbox_mod = _read("src", "agent_lab", "autonomy_inbox.py")
+    human_inbox = _read("src", "agent_lab", "human_inbox.py")
+    panel = _read("web", "src", "components", "HumanInboxPanel.tsx")
+    ladder = _read("src", "agent_lab", "autonomy_ladder.py")
+
+    assert "maybe_create_autonomy_demotion_inbox" in inbox_mod
+    assert "handle_autonomy_inbox_resolve" in inbox_mod
+    assert "handle_autonomy_inbox_resolve" in human_inbox
+    assert 'kind") == "autonomy"' in human_inbox
+    assert "maybe_create_autonomy_demotion_inbox" in ladder
+    assert 'item.kind === "autonomy"' in panel
+    assert "T-A0" in panel

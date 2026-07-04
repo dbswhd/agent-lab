@@ -31,11 +31,12 @@ def _autonomy_block(run_meta: dict[str, Any] | None) -> dict[str, Any]:
     return raw if isinstance(raw, dict) else {}
 
 
-def stored_autonomy_level(run_meta: dict[str, Any] | None) -> AutonomyLevel:
+def stored_autonomy_level(run_meta: dict[str, Any] | None) -> AutonomyLevel | None:
+    """Human-set ceiling, or None when no explicit ceiling is stored."""
     level = _autonomy_block(run_meta).get("level")
     if level in _LEVEL_ORDER:
         return level  # type: ignore[return-value]
-    return "L0"
+    return None
 
 
 def infer_effective_autonomy_level(run_meta: dict[str, Any] | None) -> AutonomyLevel:
@@ -60,9 +61,11 @@ def infer_effective_autonomy_level(run_meta: dict[str, Any] | None) -> AutonomyL
 
 
 def resolve_display_autonomy_level(run_meta: dict[str, Any] | None) -> AutonomyLevel:
-    """UI level: effective signals capped by stored ceiling when set."""
-    stored = stored_autonomy_level(run_meta)
+    """UI level: effective signals, capped by Human ceiling when explicitly set."""
     effective = infer_effective_autonomy_level(run_meta)
+    stored = stored_autonomy_level(run_meta)
+    if stored is None:
+        return effective
     if _LEVEL_ORDER[effective] <= _LEVEL_ORDER[stored]:
         return effective
     return stored
@@ -74,6 +77,7 @@ def public_autonomy_payload(run_meta: dict[str, Any] | None) -> dict[str, Any]:
     budget = get_trust_budget(meta)
     effective = infer_effective_autonomy_level(meta)
     display = resolve_display_autonomy_level(meta)
+    ceiling = stored_autonomy_level(meta)
     ml = meta.get("mission_loop") if isinstance(meta.get("mission_loop"), dict) else {}
     seg = ml.get("autonomous_segment") if isinstance(ml.get("autonomous_segment"), dict) else {}
     transitions_raw = block.get("transitions")
@@ -81,10 +85,12 @@ def public_autonomy_payload(run_meta: dict[str, Any] | None) -> dict[str, Any]:
     if isinstance(transitions_raw, list):
         transitions = [row for row in transitions_raw if isinstance(row, dict)][-5:]
     return {
-        "level": stored_autonomy_level(meta),
+        # Ceiling when Human-set; otherwise operating (effective) level.
+        "level": ceiling if ceiling is not None else effective,
         "effective_level": effective,
         "display_level": display,
         "level_name": _LEVEL_NAMES.get(display, display),
+        "ceiling_set": ceiling is not None,
         "trust_budget": {
             "auto_merge_remaining": int(budget.get("auto_merge_remaining") or 0),
             "auto_merge_total": int(budget.get("auto_merge_total") or 0),
@@ -110,7 +116,8 @@ def record_autonomy_transition(
 
     def _apply(run: dict[str, Any]) -> dict[str, Any]:
         block = dict(_autonomy_block(run))
-        prev = from_level or stored_autonomy_level(run)
+        ceiling = stored_autonomy_level(run)
+        prev = from_level or ceiling or infer_effective_autonomy_level(run)
         block["level"] = to_level
         effective = infer_effective_autonomy_level(run)
         block["last_effective"] = effective
@@ -147,7 +154,8 @@ def observe_autonomy_level_change(
         if prev_raw in _LEVEL_ORDER:
             prev: AutonomyLevel = prev_raw  # type: ignore[assignment]
         else:
-            prev = stored_autonomy_level(run)
+            ceiling = stored_autonomy_level(run)
+            prev = ceiling if ceiling is not None else "L0"
 
         if effective == prev:
             if prev_raw not in _LEVEL_ORDER:
@@ -171,10 +179,26 @@ def observe_autonomy_level_change(
         )
         block["transitions"] = transitions[-20:]
         block["last_effective"] = effective
-        block["level"] = effective
+        # Demotion lowers the Human ceiling so UI stays at the reduced level
+        # until Human restores via dial or inbox.
+        if trigger == "demotion":
+            block["level"] = effective
         block["updated_at"] = _now_iso()
         run["autonomy"] = block
         return run
 
     updated = patch_run_meta(folder, _apply)
-    return public_autonomy_payload(updated)
+    payload = public_autonomy_payload(updated)
+    transitions = payload.get("transitions") or []
+    if transitions:
+        last = transitions[-1]
+        if last.get("trigger") == "demotion":
+            from agent_lab.autonomy_inbox import maybe_create_autonomy_demotion_inbox
+
+            maybe_create_autonomy_demotion_inbox(
+                folder,
+                prev=last.get("from", "L0"),  # type: ignore[arg-type]
+                effective=last.get("to", "L0"),  # type: ignore[arg-type]
+                reason=str(last.get("reason") or ""),
+            )
+    return payload

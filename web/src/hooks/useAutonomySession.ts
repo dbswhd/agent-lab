@@ -1,9 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
-import { fetchSessionRuntime, type RuntimeSnapshot } from "../api/client";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  fetchSessionRuntime,
+  patchSessionAutonomy,
+  type RuntimeSnapshot,
+} from "../api/client";
 import { useLocale } from "../i18n/useLocale";
 import {
   autonomyFromSessionRun,
   buildAutonomySessionView,
+  type AutonomyLevel,
   type AutonomySessionView,
 } from "../utils/autonomyLadder";
 
@@ -21,15 +26,18 @@ export function useAutonomySession({
 }: UseAutonomySessionArgs): {
   view: AutonomySessionView | null;
   loading: boolean;
+  changing: boolean;
   runtime: RuntimeSnapshot | null;
   refresh: () => void;
+  setLevel: (level: AutonomyLevel) => Promise<void>;
 } {
   const { locale } = useLocale();
   const [runtime, setRuntime] = useState<RuntimeSnapshot | null>(null);
   const [loading, setLoading] = useState(false);
+  const [changing, setChanging] = useState(false);
   const [tick, setTick] = useState(0);
 
-  const refresh = () => setTick((n) => n + 1);
+  const refresh = useCallback(() => setTick((n) => n + 1), []);
 
   useEffect(() => {
     if (!sessionId) {
@@ -62,5 +70,23 @@ export function useAutonomySession({
     );
   }, [locale, runtime?.autonomy, sessionRun]);
 
-  return { view, loading, runtime, refresh };
+  const setLevel = useCallback(
+    async (level: AutonomyLevel) => {
+      if (!sessionId) return;
+      setChanging(true);
+      try {
+        const res = await patchSessionAutonomy(sessionId, level);
+        setRuntime((prev) =>
+          prev
+            ? { ...prev, autonomy: res.autonomy }
+            : ({ autonomy: res.autonomy } as RuntimeSnapshot),
+        );
+      } finally {
+        setChanging(false);
+      }
+    },
+    [sessionId],
+  );
+
+  return { view, loading, changing, runtime, refresh, setLevel };
 }

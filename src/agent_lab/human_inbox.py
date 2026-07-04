@@ -12,7 +12,7 @@ from typing import Any, Literal
 
 from agent_lab.run.meta import patch_run_meta, read_run_meta
 
-InboxKind = Literal["question", "build", "skill_draft"]
+InboxKind = Literal["question", "build", "skill_draft", "autonomy"]
 InboxStatus = Literal["pending", "resolved", "deferred", "superseded", "rejected", "timeout"]
 
 DEFAULT_INBOX_TIMEOUT_SEC = int(os.getenv("AGENT_LAB_INBOX_TIMEOUT_SEC", "1800"))
@@ -93,6 +93,7 @@ def public_inbox_payload(run: dict[str, Any]) -> dict[str, Any]:
         "pending_questions": sum(1 for item in pending if item.get("kind") == "question"),
         "pending_builds": sum(1 for item in pending if item.get("kind") == "build"),
         "pending_skill_drafts": sum(1 for item in pending if item.get("kind") == "skill_draft"),
+        "pending_autonomy": sum(1 for item in pending if item.get("kind") == "autonomy"),
     }
 
 
@@ -410,6 +411,14 @@ def resolve_inbox_item(
                 selected=selected,
                 status=status,
             )
+        except ValueError:
+            pass
+
+    if updated.get("kind") == "autonomy" and status == "resolved":
+        try:
+            from agent_lab.autonomy_inbox import handle_autonomy_inbox_resolve
+
+            handle_autonomy_inbox_resolve(folder, updated, selected=selected)
         except ValueError:
             pass
 

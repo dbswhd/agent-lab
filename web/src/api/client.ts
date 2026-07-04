@@ -804,6 +804,7 @@ export type RuntimeSnapshot = {
     effective_level: "L0" | "L1" | "L2" | "L3";
     display_level: "L0" | "L1" | "L2" | "L3";
     level_name: string;
+    ceiling_set?: boolean;
     trust_budget: {
       auto_merge_remaining: number;
       auto_merge_total: number;
@@ -858,6 +859,22 @@ export function fetchSessionAutonomy(sessionId: string) {
     session_id: string;
     autonomy: NonNullable<RuntimeSnapshot["autonomy"]>;
   }>(`/api/sessions/${encodeURIComponent(sessionId)}/autonomy`);
+}
+
+export function patchSessionAutonomy(
+  sessionId: string,
+  level: "L0" | "L1" | "L2" | "L3",
+  reason = "human_level_change",
+) {
+  return json<{
+    ok: boolean;
+    session_id: string;
+    autonomy: NonNullable<RuntimeSnapshot["autonomy"]>;
+  }>(`/api/sessions/${encodeURIComponent(sessionId)}/autonomy`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ level, reason }),
+  });
 }
 
 export function pauseMissionLoop(
@@ -2458,7 +2475,7 @@ export type HumanInboxOption = {
 
 export type HumanInboxItem = {
   id: string;
-  kind: "question" | "build" | "skill_draft";
+  kind: "question" | "build" | "skill_draft" | "autonomy";
   source?: string;
   caller_agent?: string | null;
   status:

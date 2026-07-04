@@ -19,7 +19,7 @@ type Props = {
   onOpenInbox?: () => void;
   disabled?: boolean;
   presentation?: "inline" | "popup" | "inspector" | "taskbar" | "composer";
-  kindFilter?: "question" | "build" | "skill_draft";
+  kindFilter?: "question" | "build" | "skill_draft" | "autonomy";
   excludeKind?: "question" | "build" | "skill_draft";
   discussOnly?: boolean;
   hideInspectorLabel?: boolean;
@@ -87,6 +87,7 @@ function inboxSourceBadge(item: HumanInboxItem, ko: boolean): string | null {
 function inboxKindLabel(item: HumanInboxItem, ko: boolean): string {
   if (item.kind === "build") return ko ? "실행" : "Build";
   if (item.kind === "skill_draft") return ko ? "스킬" : "Skill";
+  if (item.kind === "autonomy") return ko ? "자율도" : "Autonomy";
   return ko ? "질문" : "Question";
 }
 
@@ -101,12 +102,14 @@ function triggerBadge(
         "T-Q1": "방향",
         "T-Q2": "Plan OPEN",
         "T-Q5": "수동",
+        "T-A0": "강등",
       }
     : {
         "T-Q0": "Clarifier",
         "T-Q1": "Direction",
         "T-Q2": "Plan OPEN",
         "T-Q5": "Manual",
+        "T-A0": "Demotion",
       };
   return map[trigger] ?? trigger;
 }
@@ -181,7 +184,9 @@ function InboxRow({
     planRevision &&
     item.plan_revision !== planRevision;
   const busy = disabled || busyId === item.id;
-  const forkRow = item.kind === "question" && (item.options?.length ?? 0) >= 2;
+  const forkRow =
+    (item.kind === "question" || item.kind === "autonomy") &&
+    (item.options?.length ?? 0) >= 2;
   const sourceBadge = inboxSourceBadge(item, ko);
   const kindLabel = inboxKindLabel(item, ko);
   const trigger = triggerBadge(item.trigger, ko);
@@ -309,7 +314,7 @@ function InboxRow({
         <p className="inbox-row__body inbox-row__meta inbox-row__readonly-hint">
           {ko ? "Composer에서 처리" : "Handle in composer"}
         </p>
-      ) : item.kind === "question" ? (
+      ) : item.kind === "question" || item.kind === "autonomy" ? (
         <div
           className="inbox-row__answer"
           onKeyDown={(e) => {

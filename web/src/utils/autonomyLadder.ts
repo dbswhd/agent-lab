@@ -2,6 +2,21 @@ import type { RuntimeSnapshot } from "../api/client";
 
 export type AutonomyLevel = "L0" | "L1" | "L2" | "L3";
 
+export const AUTONOMY_LEVELS: readonly AutonomyLevel[] = [
+  "L0",
+  "L1",
+  "L2",
+  "L3",
+];
+
+export type AutonomyTransition = {
+  from?: string;
+  to?: string;
+  reason?: string;
+  trigger?: string;
+  at?: string;
+};
+
 export type AutonomySessionView = {
   level: AutonomyLevel;
   effectiveLevel: AutonomyLevel;
@@ -13,6 +28,7 @@ export type AutonomySessionView = {
   missionLoopEnabled: boolean;
   autonomousSegmentActive: boolean;
   summary: string;
+  transitions: AutonomyTransition[];
 };
 
 type AutonomyPayload = NonNullable<RuntimeSnapshot["autonomy"]>;
@@ -64,6 +80,7 @@ export function buildAutonomySessionView(
     missionLoopEnabled: autonomy.signals.mission_loop_enabled,
     autonomousSegmentActive: autonomy.signals.autonomous_segment_active,
     summary,
+    transitions: (autonomy.transitions ?? []).slice(-5),
   };
 }
 
@@ -121,6 +138,9 @@ export function autonomyFromSessionRun(
       mission_loop_enabled: Boolean(sig.mission_loop_enabled),
       autonomous_segment_active: Boolean(sig.autonomous_segment_active),
     },
-    transitions: [],
+    ceiling_set: Boolean(block.ceiling_set),
+    transitions: Array.isArray(block.transitions)
+      ? (block.transitions as AutonomyTransition[]).slice(-5)
+      : [],
   };
 }

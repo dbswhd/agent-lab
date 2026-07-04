@@ -275,12 +275,12 @@ Mission OS 3-pane IA 유지 위에서:
 | S1 피드백 루프 | **55%** | D3(supervisor) / D1(global) | supervisor trio implicit ON (`s1_flags.py`). lift: §1.4 · `make feedback-report` |
 | 프로필 시스템 (N2) | **25%** | D1 | 4 profile mapping **0/4**. room_preset 2개는 **N3 설계 확정** — 결함 아님. 플래그 212개 미매핑 (F2) |
 | Harness topology (N3) | **70%** | D3 | `parallel`·`producer_reviewer`·`pipeline` shipped (`topic_router.py`). adversarial = LC-L4 별도 |
-| Trust-gated 자율성 (L1~L2) | **50%** | D1~D2 | auto_approve_gate·trust_budget 부품 + **N4 v1** `autonomy_ladder.py` + header dial. L0~L3 전환 자동화·Human 승격 UI는 후속 |
+| Trust-gated 자율성 (L1~L2) | **60%** | D2 | auto_approve_gate·trust_budget + **N4 v1/v2** ladder SSOT, header dial, Human ceiling PATCH, demotion inbox (T-A0). L3 자동화·KPI escalation_rate는 후속 |
 | S2 episode 힌트 | **5%** | D0 | **동결** — 전역 bandit 목표 제외. S1.5 explore·episode lift 관측만 |
 | S3 외부 능력 통합 | **15%** | D0~D1 | plugin_discovery·mcp_tool_contract·skill_drafts 부품 존재, 루프 없음. 인터페이스 설계만 선행(N7) |
 | 컨텍스트 품질 (repo_map·compaction) | **50%** | D2 | 구현+self-eval 완료. **실세션 품질 평가 못 해 OFF에 갇힘** — LLM judge 크레딧 문제. F7 참조 |
 | 관측·평가 (eval harness·bench·KPI) | **70%** | D3 | 도구 풍부(emergence bench, feedback report, dogfood suite). 남은 것: 지표→의사결정 연결의 정례화 |
-| Frontend Mission OS | **65%** | D3 | Phase D ✅ (RoomChat hooks + client split). **N4** Autonomy dial in session header — ladder SSOT wired |
+| Frontend Mission OS | **70%** | D3 | Phase D ✅ · **N4 v2** Human ceiling picker + demotion transition list in dial · inbox T-A0 |
 | OpenAI-compat API (N9) | **35%** | D1 | 라우터 존재. 소비자·문서·감사 헤더 등 서사 완성 없음 |
 | 슈퍼 샘플 준비도 (Layer 3) | **20%** | D0~D1 | 내부 문서는 풍부하나 외부인용 quickstart·fork 가이드·공개 재현 리포트 없음. 패키징 baseline만 존재 |
 
@@ -309,10 +309,9 @@ Mission OS 3-pane IA 유지 위에서:
 
 | 시기 | [선행] | 할 일 | 닫힘 / 관측 |
 |---|---|---|---|
-| **지금** | 1c ✅ · **N4 v1** ✅ | S1 dogfood — supervisor 실사용; §1.4 KPI / `make feedback-report` **참고** | history lift·sample 관측 (formal closure 없음) |
+| **지금** | 1c ✅ · **N4 v1/v2** ✅ | S1 dogfood — supervisor 실사용; §1.4 KPI / `make feedback-report` **참고** | history lift·sample 관측 (formal closure 없음) |
 | **지금** | — | F4 CLAUDE.md 규칙 + F5 trading 격리 결정 | 규칙 커밋 / trading delta 0 |
 | **~2주** | — | N2 프로필 4개 + F2 플래그 신규 규칙 | `make list-flags` 프로필 매핑 |
-| **~2주** | N4 v1 ✅ | N4 v2 — Human level change + demotion events in UI | inbox-linked transitions |
 | **~1달** | — | F7 7일 dogfood — repo_map/compaction | ON or OFF (방치 금지) |
 | **분기** | S1 data | §2.5 매트릭스 · D3→D4 KPI · F8 · N5/S2 재평가 · **dogfood-first 만료**: history n≥30 → N1 closure 재검토 | D 단계 갱신 |
 | **동결** | — | N5 전역 bandit · N6~N7 · Gateway · trading core | explicit Human OK |

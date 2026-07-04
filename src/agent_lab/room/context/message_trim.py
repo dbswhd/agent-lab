@@ -177,7 +177,8 @@ def trim_messages_by_chars_pinned(
 
 
 def _compact_tool_output_enabled() -> bool:
-    return env_bool("AGENT_LAB_COMPACT_TOOL_OUTPUT", default=True)
+    # F7 / runtime_flags: default OFF; dogfood week enables explicitly.
+    return env_bool("AGENT_LAB_COMPACT_TOOL_OUTPUT", default=False)
 
 
 def _tool_output_char_cap() -> int:

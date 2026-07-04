@@ -444,6 +444,17 @@ dogfood-feedback-mock:
 feedback-report:
 	.venv/bin/python scripts/feedback_report.py --root $(if $(ROOT),$(ROOT),.) $(if $(JSON),--json,)
 
+# F7 — repo_map / compaction 7-day dogfood (docs/F7-REPO-MAP-COMPACTION-DOGFOOD.md)
+f7-dogfood-env:
+	@echo 'export AGENT_LAB_REPO_MAP=1'
+	@echo 'export AGENT_LAB_COMPACT_TOOL_OUTPUT=1'
+
+f7-dogfood-report:
+	.venv/bin/python scripts/f7_dogfood_report.py \
+	  --sessions $(if $(SESSIONS),$(SESSIONS),sessions) \
+	  --days $(if $(DAYS),$(DAYS),7) \
+	  $(if $(JSON),--json,)
+
 smoke:
 	.venv/bin/python scripts/smoke_room.py
 

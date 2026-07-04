@@ -29,6 +29,7 @@
 | Structure waves | — | [STRUCTURE-REFACTOR-WAVE.md](./STRUCTURE-REFACTOR-WAVE.md) | Wave B ✅ · Phase D (1c) ✅ |
 | Autonomy Ladder | `autonomy_ladder.py`, `autonomy_inbox.py`, `useAutonomySession.ts` | NORTH-STAR N4 v1/v2 | PATCH ceiling · demotion inbox T-A0 ✅ |
 | Run profiles (N2/F2) | `run/profile.py` (`flags`+`owns`) | NORTH-STAR N2 · F2 | feature 전수 소속 · `list-flags --profile` ✅ |
+| F7 context quality | `repo_map.py` · `message_trim.py` | [F7-REPO-MAP-COMPACTION-DOGFOOD.md](./F7-REPO-MAP-COMPACTION-DOGFOOD.md) | protocol + report ready · decision pending |
 | run_meta writes (F4) | `run/meta.py` (`stamp_run_meta`) · `test_run_meta_write_discipline.py` | CLAUDE.md · AGENTS.md | allowlist **empty** ✅ |
 | Trading lane (F5) | `extensions/quant_trading.py` | [F5-TRADING-ISOLATION.md](./F5-TRADING-ISOLATION.md) | core PR trading delta 0 ✅ |
 | Shipped? | tests + smoke | TRACEABILITY | D3 language = closed only |
@@ -43,7 +44,7 @@ Now     supervisor dogfood · blocker fixes · F4 rule in CLAUDE.md
 1b      Wave B room/context split + F4 CI guard — **done** (`test_room_context_package`, `test_run_meta_write_discipline`)
 1c      Phase D ✅ · N4 v1/v2 ✅ · N2/F2 ✅ · F4/F5 ✅ · §3.2.1 discuss latency ✅
 2w      Phase 2 dead-code ✅ (picker/topology) · F4 allowlist −1 · S1 dogfood (optional)
-1mo     F7 repo_map decision
+1mo     F7 protocol ready — run 7d dogfood · `make f7-dogfood-report` · ON/OFF
 Q       §2.5 matrix · KPI review · N5/S2 re-eval (episode n≥30) — **no global task bandit**
 ```
 

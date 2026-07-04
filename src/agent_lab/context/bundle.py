@@ -821,6 +821,35 @@ def _record_context_bundle_metrics(
     row = meta.to_dict() if hasattr(meta, "to_dict") else {}
     row["agent"] = agent
     row["mode"] = mode
+    # F7 dogfood signals — env checks only (no repo_map import on OFF path).
+    repo_map_on = (os.getenv("AGENT_LAB_REPO_MAP") or "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+    compact_on = (os.getenv("AGENT_LAB_COMPACT_TOOL_OUTPUT") or "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+    row["repo_layer"] = "repo_map" if repo_map_on else "repo_tree"
+    row["repo_map_enabled"] = repo_map_on
+    row["compact_tool_output"] = compact_on
     from agent_lab.run.meta import stamp_run_meta
 
     stamp_run_meta(run_meta, last_context_bundle=row)
+    log = list(run_meta.get("context_quality_log") or [])
+    log.append(
+        {
+            "agent": agent,
+            "mode": mode,
+            "repo_layer": row["repo_layer"],
+            "budget_pct": row.get("budget_pct"),
+            "trim_level": row.get("trim_level"),
+            "chars_omitted": row.get("chars_omitted"),
+            "compact_tool_output": compact_on,
+        }
+    )
+    stamp_run_meta(run_meta, context_quality_log=log[-20:])

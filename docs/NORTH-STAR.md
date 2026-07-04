@@ -292,7 +292,7 @@ Mission OS 3-pane IA 유지 위에서:
 - **F4. run_meta 이중 상태 함정:** ✅ 규칙+CI — CLAUDE.md / AGENTS.md · turn-end replay · `stamp_run_meta()` · `tests/test_run_meta_write_discipline.py`. **allowlist empty** (in-memory `run_meta[` writers eliminated).
 - **F5. 인프라/도메인 혼재:** ✅ 결정 — [F5-TRADING-ISOLATION.md](./F5-TRADING-ISOLATION.md). `trading_mission/`·`quant/` extension lane; 코어 PR trading delta 0; 경계 `extensions/quant_trading.py`. 물리 이동은 defer.
 - **F6. 프론트 상태 부채:** 26 useState·2,740줄 client.ts 위에 기능을 계속 얹는 중. Autonomy dial 등 N4 UI가 이 위에 못 올라간다. → **처방:** Phase D를 N4보다 먼저 (§2.4 근거).
-- **F7. 품질 평가의 mock 편중:** repo_map·compaction이 "실세션 평가 불가"로 OFF에 갇힘 — 평가 수단 부재가 기능 승격의 병목이 된 상태. → **처방:** **7일** dogfood 프로토콜 (≥10 실세션, context hit rate ≥70%, compaction 품질 Human 확인) → ON 유지 or OFF. 크레딧 확보 시 LLM judge 병행.
+- **F7. 품질 평가의 mock 편중:** repo_map·compaction이 "실세션 평가 불가"로 OFF에 갇힘. → **처방 준비 ✅:** [F7-REPO-MAP-COMPACTION-DOGFOOD.md](./F7-REPO-MAP-COMPACTION-DOGFOOD.md) · `make f7-dogfood-env` / `make f7-dogfood-report` · `last_context_bundle`/`context_quality_log` 계측. **실행:** 7일 supervisor dogfood → ON/OFF (방치 금지).
 - **F8. 비용·크레딧 가시성 부재:** Room·S1~S3 전개 시 LLM 비용 추정 없음 — §2.3 원칙 1의 재무적 해석 위반. → **처방:** 분기 `cost_ledger_quarter` 상한을 N1~N9에 연결; 초과 시 L2→L1/L0 **강등** (§1 Layer 2).
 
 ### 3.2.1 Room preset · discuss 지연 — dogfood 관찰 (2026-07)
@@ -310,7 +310,7 @@ Mission OS 3-pane IA 유지 위에서:
 | 시기 | [선행] | 할 일 | 닫힘 / 관측 |
 |---|---|---|---|
 | **지금** | 1c ✅ · **N4 v1/v2** ✅ · **N2/F2** ✅ · **F4/F5** ✅ | S1 dogfood — supervisor 실사용; §1.4 KPI / `make feedback-report` **참고** | history lift·sample 관측 (formal closure 없음) |
-| **~1달** | — | F7 7일 dogfood — repo_map/compaction | ON or OFF (방치 금지) |
+| **~1달** | F7 protocol ✅ | F7 **실행** — `eval "$(make f7-dogfood-env)"` · supervisor · `make f7-dogfood-report` | Decision table ON/OFF |
 | **분기** | S1 data | §2.5 매트릭스 · D3→D4 KPI · F8 · N5/S2 재평가 · **dogfood-first 만료**: history n≥30 → N1 closure 재검토 | D 단계 갱신 |
 | **동결** | — | N5 전역 bandit · N6~N7 · Gateway · trading core | explicit Human OK |
 

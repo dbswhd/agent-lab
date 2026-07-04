@@ -99,7 +99,12 @@ def list_objections(run_meta: dict[str, Any] | None) -> list[dict[str, Any]]:
 
 
 def write_objections(run_meta: dict[str, Any], rows: list[dict[str, Any]]) -> None:
-    run_meta[RUN_OBJECTIONS_KEY] = [normalize_objection(o) for o in rows]
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(
+        run_meta,
+        **{RUN_OBJECTIONS_KEY: [normalize_objection(o) for o in rows]},
+    )
 
 
 def open_objections(run_meta: dict[str, Any] | None) -> list[dict[str, Any]]:

@@ -289,7 +289,7 @@ Mission OS 3-pane IA 유지 위에서:
 - **F1. Default-OFF 무덤:** 완성의 정의가 "코드 존재"에 머물러, 창발·S1 등 핵심 기능이 플래그 OFF로 죽어 있다. 측정 없이 쌓인 D1 코드는 자산이 아니라 재고다. → **처방:** D0~D4 사다리 채택(§1), 신규 기능은 "D3 도달 계획" 없이 착수 금지, S1 dogfood부터 소진.
 - **F2. 플래그 스프롤 가속:** ✅ feature 플래그 전수 프로필 소속 (`run/profile.py` `owns`+`flags`, `feature_flags_without_owner()==[]`). 신규 feature 플래그는 최소 1개 프로필 `owns`/`flags`에 추가 (`test_f2_every_feature_flag_has_owner`). 만료 조건(승격/제거 시점) 메타는 잔여.
 - **F3. 문서-코드 괴리:** N2 SSOT는 **`run/profile.py`** (app_config 아님). TRACEABILITY partial vs “shipped” 과대 주의. → **처방:** 게이지가 단일 진실; §3.3 [선행] 태그; **코드 SSOT 이름 그대로** (`s1_flags.py`, `topic_router.py`, `run/profile.py`).
-- **F4. run_meta 이중 상태 함정:** ✅ 규칙+CI — CLAUDE.md / AGENTS.md · turn-end replay · `tests/test_run_meta_write_discipline.py` (신규 `run_meta[` fail, baseline 축소만). allowlist 점진 축소 중 (`usage_monitor` docstring false-positive 제거).
+- **F4. run_meta 이중 상태 함정:** ✅ 규칙+CI — CLAUDE.md / AGENTS.md · turn-end replay · `stamp_run_meta()` · `tests/test_run_meta_write_discipline.py`. **allowlist empty** (in-memory `run_meta[` writers eliminated).
 - **F5. 인프라/도메인 혼재:** ✅ 결정 — [F5-TRADING-ISOLATION.md](./F5-TRADING-ISOLATION.md). `trading_mission/`·`quant/` extension lane; 코어 PR trading delta 0; 경계 `extensions/quant_trading.py`. 물리 이동은 defer.
 - **F6. 프론트 상태 부채:** 26 useState·2,740줄 client.ts 위에 기능을 계속 얹는 중. Autonomy dial 등 N4 UI가 이 위에 못 올라간다. → **처방:** Phase D를 N4보다 먼저 (§2.4 근거).
 - **F7. 품질 평가의 mock 편중:** repo_map·compaction이 "실세션 평가 불가"로 OFF에 갇힘 — 평가 수단 부재가 기능 승격의 병목이 된 상태. → **처방:** **7일** dogfood 프로토콜 (≥10 실세션, context hit rate ≥70%, compaction 품질 Human 확인) → ON 유지 or OFF. 크레딧 확보 시 LLM judge 병행.

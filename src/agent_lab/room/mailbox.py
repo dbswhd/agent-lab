@@ -58,7 +58,12 @@ def list_mailbox(run_meta: dict[str, Any] | None) -> list[dict[str, Any]]:
 
 
 def write_mailbox(run_meta: dict[str, Any], messages: list[dict[str, Any]]) -> None:
-    run_meta[RUN_MAILBOX_KEY] = [normalize_mailbox_message(m) for m in messages]
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(
+        run_meta,
+        **{RUN_MAILBOX_KEY: [normalize_mailbox_message(m) for m in messages]},
+    )
 
 
 def _parse_to_agent(envelope: dict[str, Any], refs: list[str], body: str) -> str | None:

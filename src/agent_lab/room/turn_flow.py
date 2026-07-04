@@ -281,7 +281,9 @@ def continue_room_round(
 
     begin_human_turn(folder, human_turn=human_turn_num)
     supersede_pending_inbox(folder, human_turn_id=human_turn_num)
-    run_meta["agents"] = [str(a) for a in active_agents]
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(run_meta, agents=[str(a) for a in active_agents])
     mode = "plan" if synthesize else "discuss"
     review_advocate = (
         resolve_review_advocate(
@@ -667,7 +669,9 @@ def run_room(
     messages: list[ChatMessage] = [ChatMessage(role="user", agent=None, content=body)]
     if folder is not None:
         messages = load_session_messages(folder) + messages
-    run_meta["agents"] = [str(a) for a in active_agents]
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(run_meta, agents=[str(a) for a in active_agents])
     human_turn_index = _human_turn_count(messages) - 1
     mode = "plan" if synthesize else "discuss"
     review_advocate = (

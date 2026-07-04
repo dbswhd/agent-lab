@@ -152,7 +152,9 @@ def record_escalation_harvest_keys(
         return
     prev = run_meta.get("_escalation_harvest_keys")
     merged = {str(k) for k in (prev or []) if k} | set(new_keys)
-    run_meta["_escalation_harvest_keys"] = sorted(merged)
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(run_meta, _escalation_harvest_keys=sorted(merged))
 
 
 def _challenge_amend_candidates(messages: list[Any]) -> list[InboxQuestionCandidate]:
@@ -516,10 +518,11 @@ def _supersede_legacy_verified_build_items(run_meta: dict[str, Any]) -> None:
             item["resolved_at"] = _now_iso_verified_supersede()
             changed = True
     if changed:
-        run_meta["human_inbox"] = items
         from agent_lab.human_inbox import compute_inbox_pending
+        from agent_lab.run.meta import stamp_run_meta
 
-        run_meta["inbox_pending"] = compute_inbox_pending(run_meta)
+        stamp_run_meta(run_meta, human_inbox=items)
+        stamp_run_meta(run_meta, inbox_pending=compute_inbox_pending(run_meta))
 
 
 def _now_iso_verified_supersede() -> str:
@@ -685,8 +688,13 @@ def harvest_and_check_pause(
     new_grace = [item for item in created if _item_qualifies_for_pause_grace(item)]
     if new_grace and not had_pause:
         if not inbox_pause_grace_pending(run_meta):
-            run_meta["_inbox_pause_grace_pending"] = True
-            run_meta["_inbox_pause_grace_kind"] = _pause_grace_kind_for_item(new_grace[0])
+            from agent_lab.run.meta import stamp_run_meta
+
+            stamp_run_meta(
+                run_meta,
+                _inbox_pause_grace_pending=True,
+                _inbox_pause_grace_kind=_pause_grace_kind_for_item(new_grace[0]),
+            )
             return False
     clear_inbox_pause_grace(run_meta)
     return True

@@ -29,7 +29,7 @@
 | Structure waves | — | [STRUCTURE-REFACTOR-WAVE.md](./STRUCTURE-REFACTOR-WAVE.md) | Wave B ✅ · Phase D (1c) ✅ |
 | Autonomy Ladder | `autonomy_ladder.py`, `autonomy_inbox.py`, `useAutonomySession.ts` | NORTH-STAR N4 v1/v2 | PATCH ceiling · demotion inbox T-A0 ✅ |
 | Run profiles (N2/F2) | `run/profile.py` (`flags`+`owns`) | NORTH-STAR N2 · F2 | feature 전수 소속 · `list-flags --profile` ✅ |
-| run_meta writes (F4) | `run/meta.py` · `test_run_meta_write_discipline.py` | CLAUDE.md · AGENTS.md | allowlist ratchet ✅ |
+| run_meta writes (F4) | `run/meta.py` (`stamp_run_meta`) · `test_run_meta_write_discipline.py` | CLAUDE.md · AGENTS.md | allowlist **empty** ✅ |
 | Trading lane (F5) | `extensions/quant_trading.py` | [F5-TRADING-ISOLATION.md](./F5-TRADING-ISOLATION.md) | core PR trading delta 0 ✅ |
 | Shipped? | tests + smoke | TRACEABILITY | D3 language = closed only |
 

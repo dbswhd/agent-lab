@@ -107,7 +107,9 @@ def next_dispatch_id(run_meta: dict[str, Any]) -> str:
 def append_dispatch_ledger(run_meta: dict[str, Any], entry: dict[str, Any]) -> dict[str, Any]:
     rows = list(run_meta.get("dispatch_ledger") or [])
     rows.append(entry)
-    run_meta["dispatch_ledger"] = rows[-100:]
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(run_meta, dispatch_ledger=rows[-100:])
     return entry
 
 
@@ -342,7 +344,9 @@ def run_single_delegate(
         "op": "single_delegate",
         "replaced_full_round": True,
     }
-    run_meta["last_delegate"] = meta
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(run_meta, last_delegate=meta)
     entry = append_dispatch_ledger(
         run_meta,
         {
@@ -483,14 +487,19 @@ def run_parallel_delegate(
         "workers": workers,
         "replaced_full_round": True,
     }
-    run_meta["last_delegate"] = {
-        "agent": agent_list[0] if len(agent_list) == 1 else None,
-        "agents": agent_list,
-        "prompt": prompt,
-        "artifact_ids": artifact_ids,
-        "replaced_full_round": True,
-        "dispatch_id": dispatch_id,
-    }
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(
+        run_meta,
+        last_delegate={
+            "agent": agent_list[0] if len(agent_list) == 1 else None,
+            "agents": agent_list,
+            "prompt": prompt,
+            "artifact_ids": artifact_ids,
+            "replaced_full_round": True,
+            "dispatch_id": dispatch_id,
+        },
+    )
     ledger_entry: dict[str, Any] = {
         "id": dispatch_id,
         "op": "parallel_delegate",
@@ -651,7 +660,7 @@ def try_dispatch_turn(
 def dispatch_run_meta_patch(run_meta: dict[str, Any]) -> dict[str, Any] | None:
     patch: dict[str, Any] = {}
     if run_meta.get("last_delegate"):
-        patch["last_delegate"] = run_meta["last_delegate"]
+        patch["last_delegate"] = run_meta.get("last_delegate")
     if run_meta.get("dispatch_ledger"):
         patch["dispatch_ledger"] = list(run_meta.get("dispatch_ledger") or [])
     if run_meta.get("dispatch_intents"):
@@ -660,9 +669,10 @@ def dispatch_run_meta_patch(run_meta: dict[str, Any]) -> dict[str, Any] | None:
         patch["artifacts"] = list(run_meta.get("artifacts") or [])
     if run_meta.get("hook_runs"):
         patch["hook_runs"] = list(run_meta.get("hook_runs") or [])
-    if run_meta.get("agent_hooks_manifest"):
-        patch["agent_hooks_manifest"] = dict(run_meta["agent_hooks_manifest"])
+    manifest = run_meta.get("agent_hooks_manifest")
+    if manifest:
+        patch["agent_hooks_manifest"] = dict(manifest)
     for key in ("turn_policy", "turn_kind", "room_preset"):
         if run_meta.get(key) is not None:
-            patch[key] = run_meta[key]
+            patch[key] = run_meta.get(key)
     return patch or None

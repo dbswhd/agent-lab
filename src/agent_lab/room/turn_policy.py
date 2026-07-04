@@ -292,8 +292,13 @@ def is_discuss_only_for_run_meta(run_meta: dict[str, Any] | None) -> bool:
 
 
 def persist_turn_policy_on_run_meta(run_meta: dict[str, Any], effects: TurnEffects) -> None:
-    run_meta["turn_policy"] = effects.to_turn_policy_dict()
-    run_meta["turn_kind"] = effects.turn_kind
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(
+        run_meta,
+        turn_policy=effects.to_turn_policy_dict(),
+        turn_kind=effects.turn_kind,
+    )
 
 
 def assign_task_owners_from_run_meta(run_meta: dict[str, Any] | None) -> bool | None:
@@ -319,7 +324,9 @@ def _mark_scribed(run_meta: dict[str, Any], key: str) -> None:
     applied = list(run_meta.get("_turn_policy_scribe_keys") or [])
     if key not in applied:
         applied.append(key)
-    run_meta["_turn_policy_scribe_keys"] = applied
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(run_meta, _turn_policy_scribe_keys=applied)
 
 
 def _plan_trigger_for_scribe(trigger: ScribeTrigger, *, legacy_synthesize: bool) -> str:

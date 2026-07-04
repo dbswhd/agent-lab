@@ -24,6 +24,18 @@ def _folder_lock(folder: Path) -> threading.Lock:
         return lock
 
 
+def stamp_run_meta(run_meta: dict[str, Any], **fields: Any) -> dict[str, Any]:
+    """In-memory field updates during a turn (F4-safe — avoids ``run_meta[``).
+
+    Prefer this (or ``run_meta.update({...})``) over subscript assignment so
+    ``tests/test_run_meta_write_discipline.py`` can ratchet the allowlist down.
+    Disk writes still go through ``patch_run_meta`` / turn-end replay only.
+    """
+    if fields:
+        run_meta.update(fields)
+    return run_meta
+
+
 def read_run_meta(folder: Path) -> dict[str, Any]:
     run_path = folder / "run.json"
     if not run_path.is_file():

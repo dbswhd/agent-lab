@@ -61,7 +61,9 @@ def _prune_expired_pauses(run_meta: dict[str, Any] | None, *, now: float | None 
         if isinstance(row, dict) and float(row.get("until") or 0) > base
     }
     if kept:
-        run_meta["_agent_pauses"] = kept
+        from agent_lab.run.meta import stamp_run_meta
+
+        stamp_run_meta(run_meta, _agent_pauses=kept)
     else:
         run_meta.pop("_agent_pauses", None)
 
@@ -101,7 +103,9 @@ def record_usage_limit_pause(
         "reason": "usage_limit",
         "detail": str(error)[:240],
     }
-    run_meta["_agent_pauses"] = pauses
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(run_meta, _agent_pauses=pauses)
 
     provider = agent_provider_id(agent_id)
     from agent_lab import usage_monitor
@@ -140,7 +144,7 @@ def filter_agents_for_turn(
     if isinstance(run_meta, dict) and run_meta.get("_session_folder"):
         from pathlib import Path
 
-        folder = Path(str(run_meta["_session_folder"]))
+        folder = Path(str(run_meta.get("_session_folder")))
         if folder.is_dir():
             session_folder = folder
     roster = resolve_active_agents(None, available_fn, session_folder=session_folder)

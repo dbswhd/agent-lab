@@ -1,7 +1,7 @@
 """Role orchestration — Fugu TRINITY 모티브 역할 배정 (Proposer/Critic/Synthesizer).
 
 Pure module: I/O 없음, run.json 직접 쓰기 없음.
-상태는 ephemeral run_meta["_turn_roles"] 를 통해서만 흐른다.
+상태는 ephemeral run_meta ``_turn_roles`` 를 통해서만 흐른다.
 Kill switch: AGENT_LAB_ROOM_ROLES=0
 """
 
@@ -140,7 +140,9 @@ def stamp_review_advocate_role(
     advocate = str(agents[human_turn_index % len(agents)]).strip().lower()
     roles = dict(run_meta.get("_turn_roles") or {})
     roles[advocate] = "critic"
-    run_meta["_turn_roles"] = roles
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(run_meta, _turn_roles=roles)
     return advocate
 
 
@@ -280,7 +282,9 @@ def apply_preset_role_overrides(
     if preset != "supervisor":
         return roles
     delegator = resolve_delegator_agent(agents, run_meta=run_meta)
-    run_meta["team_lead"] = delegator
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(run_meta, team_lead=delegator)
     if not _roles_enabled():
         return roles
     result = dict(roles)

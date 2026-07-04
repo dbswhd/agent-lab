@@ -108,7 +108,12 @@ def write_session_plan_md(
     """Write plan to artifacts/plans/{agent-chosen}.md; mirror plan.md for legacy readers."""
     _, body = extract_plan_path_directive(plan_md)
     if not str(run_meta.get("active_plan_relpath") or "").strip():
-        run_meta["active_plan_relpath"] = resolve_new_plan_relpath(plan_md, run_meta)
+        from agent_lab.run.meta import stamp_run_meta
+
+        stamp_run_meta(
+            run_meta,
+            active_plan_relpath=resolve_new_plan_relpath(plan_md, run_meta),
+        )
     rel = active_plan_relpath(run_meta)
     path = folder / rel
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -151,8 +156,9 @@ def _archive_plan_content(
             "source": source_rel,
         }
     )
-    run_meta["plan_cycles"] = cycles
-    run_meta["plan_cycle_seq"] = seq + 1
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(run_meta, plan_cycles=cycles, plan_cycle_seq=seq + 1)
     return rel
 
 

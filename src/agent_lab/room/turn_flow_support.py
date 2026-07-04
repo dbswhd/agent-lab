@@ -48,8 +48,13 @@ def apply_turn_agent_mentions(
     if not targets:
         run_meta.pop("_turn_target_agents", None)
         return user_text, active_agents, [], None
-    run_meta["_turn_target_agents"] = targets
-    run_meta["agents"] = [str(a) for a in filtered]
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(
+        run_meta,
+        _turn_target_agents=targets,
+        agents=[str(a) for a in filtered],
+    )
     return stripped, filtered, targets, None
 
 
@@ -104,12 +109,17 @@ def emit_budget_status(run_meta: dict[str, Any] | None, on_event: OnAgentEvent |
     from agent_lab.cost_ledger import session_budget_action
 
     action = session_budget_action(run_meta)
-    run_meta["budget_status"] = {
-        "warn": action["warn"],
-        "over": action["over"],
-        "budget_set": action["budget_set"],
-        "cumulative": action["cumulative"],
-    }
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(
+        run_meta,
+        budget_status={
+            "warn": action["warn"],
+            "over": action["over"],
+            "budget_set": action["budget_set"],
+            "cumulative": action["cumulative"],
+        },
+    )
     on_event("budget_status", action)
     _maybe_enable_adaptive_efficiency(run_meta, on_event, action)
 
@@ -141,7 +151,9 @@ def _maybe_enable_adaptive_efficiency(
             reason = "human_turn_threshold"
     if reason is None:
         return
-    run_meta["adaptive_efficiency"] = True
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(run_meta, adaptive_efficiency=True)
     on_event(
         "efficiency_auto_enabled",
         {
@@ -152,7 +164,7 @@ def _maybe_enable_adaptive_efficiency(
         },
     )
     if action.get("over") and session_hard_cap_enabled() and not run_meta.get("budget_exhausted"):
-        run_meta["budget_exhausted"] = True
+        stamp_run_meta(run_meta, budget_exhausted=True)
         on_event("budget_exhausted", {"cumulative": action.get("cumulative")})
 
 
@@ -164,12 +176,14 @@ def ensure_adaptive_efficiency_for_turn(
     """Proactive efficiency when context budget is critical or session is long."""
     if not isinstance(run_meta, dict) or run_meta.get("adaptive_efficiency"):
         return
+    from agent_lab.run.meta import stamp_run_meta
+
     token_budget = run_meta.get("token_budget")
     if isinstance(token_budget, dict) and token_budget.get("critical"):
-        run_meta["adaptive_efficiency"] = True
+        stamp_run_meta(run_meta, adaptive_efficiency=True)
         return
     if human_turn >= 5:
-        run_meta["adaptive_efficiency"] = True
+        stamp_run_meta(run_meta, adaptive_efficiency=True)
 
 
 def resolve_stage_routing(

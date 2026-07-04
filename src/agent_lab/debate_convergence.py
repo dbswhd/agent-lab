@@ -236,4 +236,6 @@ def public_convergence_snapshot(result: dict[str, Any]) -> dict[str, Any]:
 def record_debate_convergence(run_meta: dict[str, Any] | None, result: dict[str, Any]) -> None:
     if run_meta is None:
         return
-    run_meta["_debate_convergence"] = public_convergence_snapshot(result)
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(run_meta, _debate_convergence=public_convergence_snapshot(result))

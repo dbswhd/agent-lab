@@ -189,13 +189,18 @@ def _bind_session_to_run_meta(
 ) -> None:
     if not run_meta or not folder or not folder.is_dir():
         return
-    run_meta["_session_folder"] = str(folder.resolve())
-    run_meta["_session_id"] = folder.name
+    from agent_lab.run.meta import stamp_run_meta
+
+    fields: dict[str, Any] = {
+        "_session_folder": str(folder.resolve()),
+        "_session_id": folder.name,
+    }
     from agent_lab.agent.hooks_materializer import ensure_session_agent_hooks_from_config
 
     manifest = ensure_session_agent_hooks_from_config(folder)
     if manifest:
-        run_meta["agent_hooks_manifest"] = manifest
+        fields["agent_hooks_manifest"] = manifest
+    stamp_run_meta(run_meta, **fields)
 
 
 def _set_active_turn_flags(
@@ -207,9 +212,14 @@ def _set_active_turn_flags(
 ) -> None:
     if not run_meta:
         return
-    run_meta["_active_turn_mode"] = mode
-    run_meta["_active_synthesize"] = synthesize
-    run_meta["_active_consensus"] = consensus_mode
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(
+        run_meta,
+        _active_turn_mode=mode,
+        _active_synthesize=synthesize,
+        _active_consensus=consensus_mode,
+    )
 
 
 def _teammate_idle_peer_message(

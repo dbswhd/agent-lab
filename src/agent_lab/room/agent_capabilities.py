@@ -96,12 +96,17 @@ def write_agent_capabilities(
     *,
     mark_custom: bool = True,
 ) -> None:
-    run_meta[RUN_AGENT_CAPABILITIES_KEY] = {
-        agent: normalize_capability(caps.get(agent) or DEFAULT_CAPABILITIES.get(agent))
-        for agent in ("cursor", "codex", "claude")
+    from agent_lab.run.meta import stamp_run_meta
+
+    fields: dict[str, Any] = {
+        RUN_AGENT_CAPABILITIES_KEY: {
+            agent: normalize_capability(caps.get(agent) or DEFAULT_CAPABILITIES.get(agent))
+            for agent in ("cursor", "codex", "claude")
+        }
     }
     if mark_custom:
-        run_meta[RUN_AGENT_CAPABILITIES_CUSTOM_KEY] = True
+        fields[RUN_AGENT_CAPABILITIES_CUSTOM_KEY] = True
+    stamp_run_meta(run_meta, **fields)
 
 
 def capabilities_public_payload(

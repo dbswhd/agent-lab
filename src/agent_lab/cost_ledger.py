@@ -177,7 +177,7 @@ def record_agent_usage(
     turn: int | None = None,
     source: str | None = None,
 ) -> dict[str, Any] | None:
-    """Accumulate one agent call's usage into ``run_meta['cost_ledger']``.
+    """Accumulate one agent call's usage into run_meta cost_ledger.
 
     Mutates ``run_meta`` in place (see module docstring) and returns the ledger.
     No-op when ``run_meta`` or ``usage`` is missing.
@@ -206,7 +206,9 @@ def record_agent_usage(
     _recompute_cumulative(ledger)
     if turn is not None:
         ledger["updated_at_turn"] = int(turn)
-    run_meta["cost_ledger"] = ledger
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(run_meta, cost_ledger=ledger)
     return ledger
 
 

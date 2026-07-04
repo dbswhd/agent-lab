@@ -821,4 +821,6 @@ def _record_context_bundle_metrics(
     row = meta.to_dict() if hasattr(meta, "to_dict") else {}
     row["agent"] = agent
     row["mode"] = mode
-    run_meta["last_context_bundle"] = row
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(run_meta, last_context_bundle=row)

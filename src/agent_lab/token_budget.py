@@ -66,5 +66,7 @@ def record_run_token_budget(
     if isinstance(existing, dict):
         existing.update(entry)
         return existing
-    run_meta["token_budget"] = entry
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(run_meta, token_budget=entry)
     return entry

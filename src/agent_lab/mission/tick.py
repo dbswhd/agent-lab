@@ -43,11 +43,16 @@ def _notify_harvest_items(folder: Path, items: list[dict[str, Any]]) -> None:
 
 
 def _stamp_schedule_meta(run_meta: dict[str, Any], schedule_id: str) -> dict[str, Any]:
-    run_meta["mission_schedule"] = {
-        **dict(run_meta.get("mission_schedule") or {}),
-        "last_sandbox_tick_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
-        "last_schedule_id": schedule_id,
-    }
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(
+        run_meta,
+        mission_schedule={
+            **dict(run_meta.get("mission_schedule") or {}),
+            "last_sandbox_tick_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+            "last_schedule_id": schedule_id,
+        },
+    )
     return run_meta
 
 

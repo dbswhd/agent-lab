@@ -1196,8 +1196,13 @@ def run_plan_peer_review_round(
         return []
 
     if run_meta is not None:
-        run_meta["_plan_peer_review"] = True
-        run_meta["_plan_scribe_agent"] = scribe_raw
+        from agent_lab.run.meta import stamp_run_meta
+
+        stamp_run_meta(
+            run_meta,
+            _plan_peer_review=True,
+            _plan_scribe_agent=scribe_raw,
+        )
 
     replies: list[Any] = []
     if plan_peer_review_uses_role_lanes(run_meta=run_meta) and len(reviewers) >= 2:

@@ -342,12 +342,16 @@ def record_agent_call(
 
     updated = patch_run_meta(path, _record)
     if run_meta is not None:
-        run_meta["turn_budget"] = updated.get("turn_budget")
-        run_meta["mission_board"] = updated.get("mission_board")
-        run_meta["human_inbox"] = updated.get("human_inbox")
         from agent_lab.human_inbox import compute_inbox_pending
+        from agent_lab.run.meta import stamp_run_meta
 
-        run_meta["inbox_pending"] = compute_inbox_pending(updated)
+        stamp_run_meta(
+            run_meta,
+            turn_budget=updated.get("turn_budget"),
+            mission_board=updated.get("mission_board"),
+            human_inbox=updated.get("human_inbox"),
+            inbox_pending=compute_inbox_pending(updated),
+        )
     return get_turn_budget(updated)
 
 

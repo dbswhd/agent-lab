@@ -52,7 +52,7 @@ def run_turn_agent_rounds(
             )
             parallel_rounds = consensus_meta.get("rounds", 1) if consensus_meta else 1
             if consensus_meta is not None and run_meta.get("_turn_category"):
-                consensus_meta.setdefault("category", run_meta["_turn_category"])
+                consensus_meta.setdefault("category", run_meta.get("_turn_category"))
         else:
             room = __import__("agent_lab.room", fromlist=["run_agent_rounds"])
             replies = room.run_agent_rounds(

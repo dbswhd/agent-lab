@@ -39,22 +39,28 @@ def record_turn_lead(
     human_turn: int,
     agent: str,
 ) -> str:
+    from agent_lab.run.meta import stamp_run_meta
+
     lead = str(agent or "").strip().lower() or team_lead(run_meta)
     leads = turn_leads_map(run_meta)
     leads[str(human_turn)] = lead
-    run_meta[RUN_TURN_LEADS_KEY] = leads
-    run_meta[RUN_TEAM_LEAD_KEY] = lead
+    stamp_run_meta(
+        run_meta,
+        **{RUN_TURN_LEADS_KEY: leads, RUN_TEAM_LEAD_KEY: lead},
+    )
     return lead
 
 
 def reconcile_team_lead(run_meta: dict[str, Any], active_agents: list[str]) -> str:
     """Ensure team_lead references an agent in the active roster (model-flexible)."""
+    from agent_lab.run.meta import stamp_run_meta
+
     pool = [str(a).strip().lower() for a in active_agents if str(a).strip()]
     lead = team_lead(run_meta)
     if lead in pool:
         return lead
     if pool:
-        run_meta[RUN_TEAM_LEAD_KEY] = pool[0]
+        stamp_run_meta(run_meta, **{RUN_TEAM_LEAD_KEY: pool[0]})
         return pool[0]
     return ensure_team_lead(run_meta)
 
@@ -76,7 +82,9 @@ def resolve_turn_lead(
     leads = turn_leads_map(run_meta)
     existing = leads.get(str(human_turn))
     if existing and existing in {a.lower() for a in active_agents}:
-        run_meta[RUN_TEAM_LEAD_KEY] = existing
+        from agent_lab.run.meta import stamp_run_meta
+
+        stamp_run_meta(run_meta, **{RUN_TEAM_LEAD_KEY: existing})
         return reconcile_team_lead(run_meta, active_agents)
 
     pool = [a.strip().lower() for a in active_agents if str(a).strip()]

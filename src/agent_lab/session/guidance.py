@@ -516,8 +516,13 @@ def verify_execution_artifacts(
 
 
 def preserve_session_meta_from_prev(run_meta: dict[str, Any], prev_run: dict[str, Any]) -> None:
+    from agent_lab.run.meta import stamp_run_meta
+
+    fields: dict[str, Any] = {}
     for key in SESSION_META_KEYS:
         if key in prev_run and key not in run_meta:
-            run_meta[key] = prev_run[key]
+            fields[key] = prev_run.get(key)
     if prev_run.get("turn_state") and "turn_state" not in run_meta:
-        run_meta["turn_state"] = prev_run["turn_state"]
+        fields["turn_state"] = prev_run.get("turn_state")
+    if fields:
+        stamp_run_meta(run_meta, **fields)

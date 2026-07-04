@@ -17,10 +17,13 @@ def apply_turn_profile_flags(
     parallel_rounds: int,
     research_mode: bool,
 ) -> int:
+    from agent_lab.run.meta import stamp_run_meta
+
     if turn_profile:
         tp = (turn_profile or "analyze").strip().lower()
-        run_meta["turn_profile"] = "analyze" if tp == "discuss" else tp
-        if run_meta["turn_profile"] == "specialist":
+        profile = "analyze" if tp == "discuss" else tp
+        stamp_run_meta(run_meta, turn_profile=profile)
+        if profile == "specialist":
             parallel_rounds = max(parallel_rounds, 2)
             if not run_meta.get("agent_capabilities_custom"):
                 from agent_lab.room.agent_capabilities import ensure_specialist_capabilities
@@ -30,7 +33,7 @@ def apply_turn_profile_flags(
 
         apply_legacy_verified_turn_profile(folder, run_meta, synthesize=synthesize)
     if research_mode or run_meta.get("turn_profile") == "specialist":
-        run_meta["research_mode"] = True
+        stamp_run_meta(run_meta, research_mode=True)
     return parallel_rounds
 
 

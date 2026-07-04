@@ -28,7 +28,9 @@ def bootstrap_turn_route(
         session_template=str(run_meta.get("session_template") or ""),
         efficiency_mode=efficiency_mode,
     )
-    run_meta["_turn_topology"] = route.topology
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(run_meta, _turn_topology=route.topology)
     from agent_lab.room.agent_capabilities import seed_capabilities_for_route
 
     seed_capabilities_for_route(route, run_meta)
@@ -63,17 +65,22 @@ def apply_turn_role_plan(
         cat_dict["advisor_rationale"] = hint.rationale
         cat_dict["advisor_source"] = hint.source
         cat_dict["advisor_combo_id"] = getattr(hint, "combo_id", "") or ""
-    run_meta["_turn_category"] = cat_dict
-    run_meta["role_policy"] = _role_policy
-    run_meta["_turn_roles"] = apply_preset_role_overrides(
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(
         run_meta,
-        resolve_role_plan(
-            route=route,
-            agents=active,
-            hint=hint,
-            policy=_role_policy,
+        _turn_category=cat_dict,
+        role_policy=_role_policy,
+        _turn_roles=apply_preset_role_overrides(
+            run_meta,
+            resolve_role_plan(
+                route=route,
+                agents=active,
+                hint=hint,
+                policy=_role_policy,
+            ),
+            active,
         ),
-        active,
     )
     return route
 
@@ -155,7 +162,9 @@ def refresh_routing_after_escalation(
     topic: str,
 ) -> CategoryRoute:
     """Re-seed capabilities and role plan for escalated category (subset already released)."""
-    run_meta["_turn_topology"] = route.topology
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(run_meta, _turn_topology=route.topology)
     from agent_lab.room.agent_capabilities import seed_capabilities_for_route
 
     seed_capabilities_for_route(route, run_meta)

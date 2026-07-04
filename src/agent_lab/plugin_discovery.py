@@ -485,7 +485,9 @@ def patch_agent_plugins(
 ) -> dict[str, Any]:
     plugins = dict(run_meta.get("agent_plugins") or {})
     plugins[agent.lower()] = {"enabled": list(enabled_ids)}
-    run_meta["agent_plugins"] = plugins
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(run_meta, agent_plugins=plugins)
     return run_meta
 
 

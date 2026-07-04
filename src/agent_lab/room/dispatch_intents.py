@@ -43,7 +43,9 @@ def harvest_dispatch_intents_from_turn(
         return []
     existing = list(run_meta.get("dispatch_intents") or [])
     existing.extend(harvested)
-    run_meta["dispatch_intents"] = existing[-50:]
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(run_meta, dispatch_intents=existing[-50:])
     return harvested
 
 

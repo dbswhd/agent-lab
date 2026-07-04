@@ -47,11 +47,13 @@ def sync_consensus_snapshot(run_meta: dict[str, Any], *, consensus: dict[str, An
     snapshot = normalize_consensus_signal(consensus)
     if not snapshot:
         return
-    run_meta["consensus"] = snapshot
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(run_meta, consensus=snapshot)
     ml = run_meta.get("mission_loop")
     if isinstance(ml, dict):
         ml["consensus"] = dict(snapshot)
-        run_meta["mission_loop"] = ml
+        stamp_run_meta(run_meta, mission_loop=ml)
 
 
 def best_consensus_for_persist(

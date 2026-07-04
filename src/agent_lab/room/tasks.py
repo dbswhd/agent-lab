@@ -90,7 +90,9 @@ def list_tasks(run_meta: dict[str, Any] | None) -> list[dict[str, Any]]:
 
 
 def write_tasks(run_meta: dict[str, Any], tasks: list[dict[str, Any]]) -> None:
-    run_meta[RUN_TASKS_KEY] = [normalize_task(t) for t in tasks]
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(run_meta, **{RUN_TASKS_KEY: [normalize_task(t) for t in tasks]})
 
 
 def team_lead(run_meta: dict[str, Any] | None) -> str:
@@ -101,8 +103,10 @@ def team_lead(run_meta: dict[str, Any] | None) -> str:
 
 
 def ensure_team_lead(run_meta: dict[str, Any]) -> str:
+    from agent_lab.run.meta import stamp_run_meta
+
     lead = team_lead(run_meta)
-    run_meta[RUN_TEAM_LEAD_KEY] = lead
+    stamp_run_meta(run_meta, **{RUN_TEAM_LEAD_KEY: lead})
     return lead
 
 
@@ -895,6 +899,8 @@ def auto_claim_tasks_from_turn(
 
 
 def set_team_lead_agent(run_meta: dict[str, Any], agent: str) -> str:
+    from agent_lab.run.meta import stamp_run_meta
+
     lead = str(agent or "").strip().lower() or DEFAULT_TEAM_LEAD
-    run_meta[RUN_TEAM_LEAD_KEY] = lead
+    stamp_run_meta(run_meta, **{RUN_TEAM_LEAD_KEY: lead})
     return lead

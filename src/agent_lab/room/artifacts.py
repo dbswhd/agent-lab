@@ -65,7 +65,12 @@ def list_artifacts(run_meta: dict[str, Any] | None) -> list[dict[str, Any]]:
 
 
 def write_artifacts(run_meta: dict[str, Any], rows: list[dict[str, Any]]) -> None:
-    run_meta[RUN_ARTIFACTS_KEY] = [normalize_artifact(a) for a in rows]
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(
+        run_meta,
+        **{RUN_ARTIFACTS_KEY: [normalize_artifact(a) for a in rows]},
+    )
 
 
 def _artifact_dir(session_folder: Path | None) -> Path | None:

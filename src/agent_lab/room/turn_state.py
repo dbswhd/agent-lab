@@ -292,5 +292,7 @@ def sync_run_meta_turn_state(
         plan_md=plan_md,
         pending_agents=pending_agents,
     )
-    run_meta["turn_state"] = state.to_dict()
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(run_meta, turn_state=state.to_dict())
     return state

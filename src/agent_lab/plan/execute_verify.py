@@ -200,6 +200,10 @@ def _record_verify_after_merge(
             maybe_create_skill_draft_from_verify(folder, target, evidence)
     except Exception:
         pass
+
+    from agent_lab.outcome_harvester import record_execute_outcome
+
+    record_execute_outcome(folder, target)
     return evidence
 
 

@@ -102,6 +102,10 @@ def build_outcome_record(folder: Path, topic: str, metrics: dict[str, Any]) -> d
     return {
         "v": OUTCOME_LEDGER_SCHEMA_VERSION,
         "ts": _now_iso(),
+        # "turn" (Room turn close) vs "execute" (see record_execute_outcome).
+        # Absent on rows written before this field existed — readers treat
+        # missing phase as "turn" for backward compatibility.
+        "phase": "turn",
         "session_id": folder.name,
         "topic_hash": _topic_hash(topic),
         "topic_terms": sorted(_tokenize(topic))[:24],
@@ -169,3 +173,66 @@ def record_turn_outcome(folder: Path | None, human_turn: int) -> None:
             append_outcome(build_outcome_record(folder, _topic_text(folder, run), metrics))
     except Exception:  # fail-open: feedback must never block a turn
         log.warning("record_turn_outcome failed for %s", folder, exc_info=True)
+
+
+def record_execute_outcome(folder: Path | None, execution: dict[str, Any]) -> None:
+    """Persist one execute-completion outcome row (flag-gated, fail-open).
+
+    ``record_turn_outcome`` only fires when a Room turn closes, and rolls up
+    whatever ``executions`` exist in run.json *at that moment*. Oracle
+    verdicts are decided by execute/verify, which normally happens *after*
+    the turn that produced the plan has already closed its ledger row — so a
+    session with no follow-up chat turn after execute never emits a row
+    carrying the verdict, and the S1 lift signal (§1.4 KPI) stays permanently
+    empty (2026-07 diagnosis: 40/40 ledger rows had ``final_verdict: null``).
+
+    Called from ``_record_verify_after_merge`` right after one execution's
+    Oracle verdict is known, so it also fires once per repair-retry attempt.
+    Reuses the last Room turn's category/roles/agents for the S2 episode key
+    (mission x agent-subset x result, §1 S2) since execute itself has no
+    role-combo concept of its own.
+    """
+    if folder is None:
+        return
+    try:
+        run = read_run_meta(folder)
+        if not s1_flag_enabled("AGENT_LAB_OUTCOME_LEDGER", run_meta=run):
+            return
+        turns = run.get("turns") or []
+        last_turn = turns[-1] if turns and isinstance(turns[-1], dict) else {}
+        category = last_turn.get("category") if isinstance(last_turn.get("category"), dict) else {}
+        roles = last_turn.get("roles") if isinstance(last_turn.get("roles"), dict) else {}
+        consensus = last_turn.get("consensus") if isinstance(last_turn.get("consensus"), dict) else {}
+
+        oracle = execution.get("oracle") if isinstance(execution.get("oracle"), dict) else {}
+        verdict = str(oracle.get("verdict") or "").strip().lower()
+        if not verdict:
+            status = str((execution.get("verify_after_merge") or {}).get("status") or "").strip().lower()
+            verdict = {"passed": "pass", "failed": "fail"}.get(status, "")
+
+        topic = _topic_text(folder, run)
+        record = {
+            "v": OUTCOME_LEDGER_SCHEMA_VERSION,
+            "ts": _now_iso(),
+            "phase": "execute",
+            "session_id": folder.name,
+            "topic_hash": _topic_hash(topic),
+            "topic_terms": sorted(_tokenize(topic))[:24],
+            "category": str(category.get("value") or ""),
+            "roles": {str(k): str(v) for k, v in roles.items()},
+            "agents": list(last_turn.get("agents") or []),
+            "rounds_used": int(last_turn.get("agent_parallel_rounds") or 0),
+            "escalated": bool(category.get("escalated_from")),
+            "execution_id": str(execution.get("id") or ""),
+            "final_verdict": verdict or None,
+            "repair_attempts": len(execution.get("repair_history") or []),
+            "objection_summary": {},
+            "objection_resolution": {},
+            "consensus_reached": str(consensus.get("status") or "") == "reached",
+            "latency_ms": 0,
+            "advisor_source": category.get("advisor_source") or "default",
+            "combo_id": category.get("advisor_combo_id") or "",
+        }
+        append_outcome(record)
+    except Exception:  # fail-open: feedback must never block execute
+        log.warning("record_execute_outcome failed for %s", folder, exc_info=True)

@@ -455,6 +455,10 @@ f7-dogfood-report:
 	  --days $(if $(DAYS),$(DAYS),7) \
 	  $(if $(JSON),--json,)
 
+# F8 — quarterly cost visibility (docs/F8-COST-VISIBILITY.md)
+f8-cost-report:
+	.venv/bin/python scripts/f8_cost_report.py $(if $(ROOT),--root $(ROOT),) $(if $(JSON),--json,)
+
 smoke:
 	.venv/bin/python scripts/smoke_room.py
 

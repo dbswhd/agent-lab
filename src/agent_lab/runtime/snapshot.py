@@ -231,6 +231,7 @@ def build_runtime_snapshot(
         "wisdom_index": _public_wisdom_index(folder),
         "codex_proxy": _public_codex_proxy(),
         "autonomy": _public_autonomy(folder),
+        "cost_quarter": _public_cost_quarter(),
     }
 
 
@@ -238,6 +239,12 @@ def _public_autonomy(folder: Path) -> dict[str, Any]:
     from agent_lab.autonomy_ladder import public_autonomy_payload
 
     return public_autonomy_payload(read_run_meta(folder))
+
+
+def _public_cost_quarter() -> dict[str, Any]:
+    from agent_lab.cost_ledger_quarter import public_quarter_cost_payload
+
+    return public_quarter_cost_payload()
 
 
 def _public_wisdom_index(folder: Path) -> dict[str, Any]:

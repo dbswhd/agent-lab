@@ -828,6 +828,16 @@ export type RuntimeSnapshot = {
       at?: string;
     }>;
   };
+  /** F8 quarterly cost rollup. */
+  cost_quarter?: {
+    quarter?: string;
+    spent_usd?: number;
+    limit_usd?: number | null;
+    warn?: boolean;
+    over?: boolean;
+    session_count?: number;
+    updated_at?: string;
+  };
 };
 
 export type ClarifierInterviewRecord = NonNullable<

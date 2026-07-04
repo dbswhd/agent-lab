@@ -178,6 +178,22 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "Budget warning threshold percent of MISSION_BUDGET_USD",
         default="80",
     ),
+    FlagDef(
+        "AGENT_LAB_QUARTER_BUDGET_USD",
+        "feature",
+        "F8 quarterly USD ceiling across sessions (empty=unlimited)",
+    ),
+    FlagDef(
+        "AGENT_LAB_QUARTER_BUDGET_WARN_PCT",
+        "feature",
+        "Warn threshold percent of QUARTER_BUDGET_USD",
+        default="80",
+    ),
+    FlagDef(
+        "AGENT_LAB_QUARTER_BUDGET_DEMOTE",
+        "feature",
+        "When quarter budget exceeded, demote autonomy ceiling to L0 (default on if cap set)",
+    ),
     FlagDef("AGENT_LAB_GOAL_LOOP", "feature", "Session goal Oracle after Room turns"),
     FlagDef("AGENT_LAB_GOAL_ORACLE_LIVE", "feature", "Live Claude oracle for session goal"),
     FlagDef("AGENT_LAB_GOAL_AUTO_CONTINUE", "feature", "One extra discuss round after goal FAIL"),

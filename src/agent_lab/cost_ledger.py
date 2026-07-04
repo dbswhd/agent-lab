@@ -138,6 +138,13 @@ def persist_cost_ledger(folder: Path | None, run_meta: dict[str, Any] | None) ->
         return run
 
     patch_run_meta(folder, _patch)
+    # F8: roll session spend into quarterly ledger (and optional autonomy demotion).
+    try:
+        from agent_lab.cost_ledger_quarter import sync_session_to_quarter
+
+        sync_session_to_quarter(folder, run_meta)
+    except Exception:
+        pass
 
 
 def _empty_agent_entry() -> dict[str, Any]:

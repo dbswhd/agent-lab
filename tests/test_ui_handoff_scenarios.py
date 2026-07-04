@@ -15,6 +15,7 @@ def _read(*parts: str) -> str:
 def test_scenario_a_discuss_only_contract():
     """A: discuss mode, receipt, human synthesis, peer channel, claimable."""
     room = _read("web", "src", "components", "RoomChat.tsx")
+    execute_send = _read("web", "src", "hooks", "useRoomExecuteSend.ts")
     transcript_panel = _read("web", "src", "components", "RoomTranscriptPanel.tsx")
     _read("web", "src", "components", "ChatComposer.tsx")
     taskbar = _read("web", "src", "components", "RoomTaskBar.tsx")
@@ -23,7 +24,7 @@ def test_scenario_a_discuss_only_contract():
 
     assert "composerModeVariant" in room
     assert 'composerModeVariant === "discuss"' in room or "modeDiscuss" in room
-    assert "sendReceiptLabel" in room
+    assert "sendReceiptLabel" in execute_send
     assert "discuss_saved" in receipt
     assert "TranscriptViewOptions" in transcript_panel or "showHumanSynthesis" in transcript_panel
     assert "showPeerChannel" in transcript_panel or "PEER_CHANNEL_KEY" in transcript
@@ -45,6 +46,7 @@ def test_turn_policy_workspace_binding_kept():
 def test_scenario_b_plan_synthesis_contract():
     """B: plan after send → composer event stack + execute surface."""
     room = _read("web", "src", "components", "RoomChat.tsx")
+    inspector = _read("web", "src", "components", "RoomChatInspector.tsx")
     stack = _read("web", "src", "components", "ComposerEventStack.tsx")
     work = _read("web", "src", "components", "WorkToolPanel.tsx")
     plan = _read("web", "src", "components", "PlanExecutePanel.tsx")
@@ -53,7 +55,7 @@ def test_scenario_b_plan_synthesis_contract():
     assert "modePlan" in room or "plan_updated" in _read("web", "src", "utils", "sendReceipt.ts")
     assert "ComposerEventStack" in room
     assert "focusComposerStack" in room
-    assert "WorkbenchPanel" in room
+    assert "WorkbenchPanel" in inspector
     assert "PlanExecutePanel" in work
     assert "WorkPlanApprovalSection" in stack
     assert "plan-card" in plan
@@ -92,10 +94,11 @@ def test_scenario_b2_plan_workflow_ui_contract():
 def test_scenario_b_diff_tool_contract():
     """B2: workbench diff mode renders execution diffs."""
     room = _read("web", "src", "components", "RoomChat.tsx")
+    inspector = _read("web", "src", "components", "RoomChatInspector.tsx")
     diff = _read("web", "src", "components", "DiffToolPanel.tsx")
 
-    assert 'rightPanelMode === "diff"' in room
-    assert "DiffToolPanel" in room
+    assert 'rightPanelMode === "diff"' in inspector
+    assert "DiffToolPanel" in inspector
     assert "PlanDiffStat" in diff
     assert "SideBySideDiff" in diff
     assert "출력할 diff 없음" in diff
@@ -208,11 +211,12 @@ def test_room_preset_picker_replaces_turn_strategy_ui():
     composer = _read("web", "src", "components", "ChatComposer.tsx")
     presets = _read("web", "src", "utils", "roomPresets.ts")
     room = _read("web", "src", "components", "RoomChat.tsx")
+    composer_prefs = _read("web", "src", "hooks", "useRoomComposerPrefs.ts")
     assert "ComposerTurnPicker" not in composer
     assert "resolveRoomPresets" in presets
     assert "presetDisplayLabel" in presets
-    assert "resolveRoomPresets" in room
-    assert "onRoomPresetSelect={selectRoomPreset}" in room
+    assert "resolveRoomPresets" in composer_prefs
+    assert "onRoomPresetSelect" in room and "selectRoomPreset" in room
     assert "ACTIVE_ROOM_PRESET_IDS" not in room
 
 
@@ -256,6 +260,7 @@ def test_remaining_gaps_slack_inbox_ref_recovery_contract():
     room = _read("web", "src", "components", "RoomChat.tsx")
     gateway = _read("web", "src", "components", "GatewaySettingsPanel.tsx")
     recovery = _read("web", "src", "components", "RecoveryStrip.tsx")
+    recovery_handlers = _read("web", "src", "hooks", "useRoomRecoveryHandlers.ts")
     ref_nav = _read("web", "src", "utils", "inboxRefNavigation.ts")
     client = _read("web", "src", "api", "client.ts")
     css = _read("web", "src", "styles", "prototype-panels.css")
@@ -270,7 +275,7 @@ def test_remaining_gaps_slack_inbox_ref_recovery_contract():
     assert "RoomChatMainPane" in room
     assert "ComposerDecisionSurface" in main_pane
     assert "RecoveryStrip" in recovery
-    assert "postMissionDiscussRecovery" in room
+    assert "postMissionDiscussRecovery" in recovery_handlers
     assert "DiscussRecoveryBanner" in _read(
         "web", "src", "components", "DiscussRecoveryBanner.tsx"
     )

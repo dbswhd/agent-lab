@@ -323,7 +323,7 @@ Mission OS 3-pane IA 유지 위에서:
 - **F6. 프론트 상태 부채:** ✅ Phase D — RoomChat hooks (`useRoomComposerPrefs` · `useRoomSlashCommands` · `useRoomRunWatchdog` · `useRoomRecoveryLifecycle`) + `api/client` domain split (`http` · `workspaceClient` · `missionGatewayClient` · `wsClient`). N4 dial은 그 위에 탑재됨.
 - **F7. 품질 평가의 mock 편중:** repo_map·compaction이 "실세션 평가 불가"로 OFF에 갇힘. → **처방 준비 ✅:** [F7-REPO-MAP-COMPACTION-DOGFOOD.md](./F7-REPO-MAP-COMPACTION-DOGFOOD.md) · `make f7-dogfood-env` / `make f7-dogfood-report` · `last_context_bundle`/`context_quality_log` 계측. **실행:** 7일 supervisor dogfood → ON/OFF (방치 금지).
 - **F8. 비용·크레딧 가시성 부재:** 세션 `cost_ledger`는 존재. → **처방 준비 ✅:** [F8-COST-VISIBILITY.md](./F8-COST-VISIBILITY.md) · `.agent-lab/cost_ledger_quarter.json` · `AGENT_LAB_QUARTER_BUDGET_USD` · 초과 시 autonomy **L0 demotion** · `make f8-cost-report` · runtime `cost_quarter`.
-- **F9. Hot-path 갓 모듈·갓 컴포넌트:** 실측(2026-07-04) — `plan/execute.py` 1691 · `plan/workflow.py` 1281 · `room/turn_flow.py` 1084(단일 `run_room` **~471줄**, `continue_room_round` ~428줄) · `web/RoomChat.tsx` **3497줄**(useState 30·useEffect 34·useRef 16). **F6 Phase D는 훅 4개 추출 + client split에 한정** — RoomChat 본체·`run_room`은 미해소. → **ratchet 가드 ✅:** `structure_metrics.py` `hot_path_py_files` baseline(1691·1281·1084) + `large_tsx_files`(RoomChat 3497) — `make structure-metrics-check` / `tests/test_structure_metrics.py`. **잔여:** ADR §3.5 Stage 3 분해(`run_room` phase 3함수 · RoomChat 뷰·상태 분리). **모트:** Oracle·worktree 불변.
+- **F9. Hot-path 갓 모듈·갓 컴포넌트:** 실측(2026-07-04) — `plan/execute.py` 1691 · `plan/workflow.py` 1281 · `room/turn_flow.py` 1084(단일 `run_room` **~471줄**, `continue_room_round` ~428줄) · `web/RoomChat.tsx` **3497줄**(useState 30·useEffect 34·useRef 16). **F6 Phase D는 훅 4개 추출 + client split에 한정** — RoomChat 본체·`run_room`은 미해소. → **ratchet 가드 ✅:** `structure_metrics.py` `hot_path_py_files` baseline(1691·1281·1084) + `large_tsx_files`(RoomChat 3497) — `make structure-metrics-check` / `tests/test_structure_metrics.py`. **잔여:** ADR §3.5 Stage 3 분해(`run_room` phase 3함수 · RoomChat 뷰·상태 분리 — 병행 가능) · **`workflow.py`·`execute.py` 분해는 §3.5.1 P1(plan authority 확정) 선행 필수**. **모트:** Oracle·worktree 불변.
 - **F10. 플래그·레지스트리 드리프트:** 실측 `AGENT_LAB_*` **215개**(본문 "212개" 표기와 불일치), `runtime_flags` 레지스트리 157개 → **~58개가 레지스트리 밖**. 단일 참조 플래그(`EMERGENCE_BENCH_LIVE`·`SKIP_LIVE` 등) 잔존. F2는 "프로필 소속"만 강제하고 "레지스트리 등재"는 미강제 → 문서 하드코딩 수치가 굳어 **F3 재발 씨앗**. → **처방 (구현 지점):** ① 문서의 플래그 개수 하드코딩 제거 → "`make list-flags` 참조"로 치환 (본문 ✅ 2026-07-04) ② 레지스트리 = `src/agent_lab/runtime_flags.py` — grep 실측(`grep -rhoE "AGENT_LAB_[A-Z0-9_]+" src/agent_lab | sort -u`)과 레지스트리 등재분의 차집합 0 가드를 `tests/test_runtime_flags_registry.py`(신규)로 추가, 기존 예외는 명시 allowlist로 시작해 소진. **모트 중립.**
 - **F11. 상태 god-dict (타입 없는 `run_meta`):** 실측(2026-07-04) — `run.json`은 `dataclass`/`TypedDict`/`pydantic`이 아닌 자유 `dict[str, Any]`이고 `run_meta: dict[str, Any]`가 **362개 함수 시그니처**에 흐름. `run/schema.py`(78줄) `validate_run()`은 런타임 dict 검사일 뿐 타입 아님. **F4는 쓰기 규율만 잡음** — "문자열 키 가변 자루가 1급 자료구조"라는 설계 자체가 잔존 → 단일 최대 부채(루프 correctness 추론·부분 테스트·리팩터 저해). → **처방:** ADR §3.5 Stage 1 — 경계에서 `RunState` 타입으로 감싸고 안쪽부터 조임. **모트 강화**(감사·재현성). **목표:** D0(설계) → 점진 D2.
 - **F12. 레이어 순환 (매듭):** 확정된 양방향 import — `runtime` ↔ `room`(runtime→`room.hooks`/`objections`/`sse_stream`, room→`runtime.events`/`invoke_execute`/`policy`), 겹쳐서 `room`↔`plan`·`runtime`↔`mission`. **runtime/room/plan/mission = 폴더로만 쪼갠 하나의 덩어리.** Makefile 31개 `audit-*-imports`+`typecheck-*-ratchet`은 이 매듭을 순찰하는 흉터 조직 — 경계 미획정의 증거. 파사드도 샘(`room/__init__.py` 104 export 중 ~30개가 `_`-내부). → **처방:** ADR §3.5 Stage 2 — 의존성 0 `agent_lab.core`(도메인 타입 + 루프-as-data) 추출, 단방향 의존. 31 ratchet → 1개 no-cycle 가드로 대체. **모트 중립.** **목표:** D0 → D2.
@@ -424,7 +424,50 @@ Mission OS 3-pane IA 유지 위에서:
 | **2** | 순환 절단 | F12 | 신규 `src/agent_lab/core/` (import 의존 **0** — 도메인 타입 + 루프-as-data: §2.3 루프의 단계 enum + 전이 테이블). runtime↔room 공유물(`events`·`policy` 타입, `hooks`·`objections` 인터페이스)을 core로 내리고 양쪽이 단방향 참조. no-cycle 가드 = `tests/test_no_layer_cycles.py`(신규 — import 그래프 DFS, F2/F4 가드 테스트와 같은 스타일) | no-cycle 가드 green → Makefile 31개 audit/ratchet를 1개 가드로 대체 |
 | **3** | `run_room` 분해·파사드 축소 | F9 | `room/turn_flow.py::run_room`(613행~, ~471줄)을 turn phase 3함수(routing/consensus/harvest)로 분리 — §2.3 루프 화살표와 1:1 대응; `room/__init__.py` 104 export 중 `_`-prefix ~30개를 내부 import로 강등 | `structure-metrics-check` LOC 하강, 파사드 `_`-export 0 |
 
-**의존성:** Stage 2 ← Stage 1(타입 있어야 루프-as-data 안전) · Stage 3은 1·2와 병행 가능. 각 Stage는 독립 PR 단위로 쪼개고, 매 PR마다 `make test-fast` + `python scripts/smoke_room.py` green 유지 (빅뱅 금지). **모트 체크:** Stage 1은 감사·재현성 **강화**, 2·3은 **중립** — 5모트 무손상.
+**의존성:** Stage 2 ← Stage 1(타입 있어야 루프-as-data 안전) · Stage 3은 1·2와 병행 가능 — 단 **`workflow.py`·`execute.py` 분해는 §3.5.1 P1 선행** (plan authority가 흔들린 채 LOC만 쪼개면 "plan 들어감" 정의 3개가 각자 존속). 각 Stage는 독립 PR 단위로 쪼개고, 매 PR마다 `make test-fast` + `python scripts/smoke_room.py` green 유지 (빅뱅 금지). **모트 체크:** Stage 1은 감사·재현성 **강화**, 2·3은 **중립** — 5모트 무손상.
+
+### 3.5.1 Plan authority 재정의 — B(signal-only) + skill authority (2026-07-05 결정)
+
+**결정:** **B — signal-only plan.** casual send는 preset 무관 **discuss-only** (fast/supervisor 동일). plan side-effect(Scribe·FSM)는 아래 authority 신호가 있을 때만 연다. preset이 plan lane을 잠그는 형태(supervisor = 항상 plan)는 제거한다. 추가로 plan/clarity/execute 진입 authority를 **GJC식 skill-intent**로 확장한다 ([GJC-ENTRY.md](./GJC-ENTRY.md) · [TURN-POLICY.md](./TURN-POLICY.md)).
+
+**용어 (사전 지식 불필요):** *Scribe* = Room 토론 에이전트와 별개인 "대화→`plan.md` 정리" 전용 LLM 패스 (`room/plan_scribe.py`, 프롬프트 `agents/prompts.py::ROOM_SCRIBE`). 토론 4번째 멤버가 아니라 턴 종료 후 후처리.
+
+**Authority 계약 — plan side-effect를 여는 것은 이 5개뿐:**
+
+| # | Authority | 소스 (코드) | 상태 |
+|---|-----------|-------------|------|
+| 1 | FSM phase `DRAFT`/`REFINE` | `plan/workflow.py` (INTAKE→CLARIFY→DRAFT→PEER_REVIEW→REFINE→HUMAN_PENDING→APPROVED) · `tick_plan_workflow_after_turn` | ✅ 있음 |
+| 2 | 합의 도달 + pending agreements | `turn_policy.py` scribe_trigger `consensus_reached` | ✅ 있음 |
+| 3 | verified loop 종료 | scribe_trigger `verified_loop_done` | ✅ 있음 |
+| 4 | Human 「지금 정리」 | scribe_trigger `synthesize_only` (UI 버튼 — 플래그 아님) | ✅ 있음 |
+| 5 | **skill_intent (신규)** | slash/skill 호출(예: `/plan-draft`) · agent MCP `propose_build` · envelope `[PROPOSED:]` delta threshold | ⬜ P2 |
+| — | ~~`legacy_plan_send`~~ (preset/`synthesize=true` hint) | `turn_policy.py:20` — **제거 대상** | ⬜ P1 |
+
+**P1 — B 전환 (legacy plan flag 잔재 제거):**
+
+| 대상 | 작업 |
+|------|------|
+| `room/turn_policy.py` | `legacy_plan_send` trigger 제거; supervisor casual send → `run_scribe=false` (fast와 동일) |
+| `web/src/utils/roomComposerPrefs.ts:12` | `planComposeActive()` 삭제 (supervisor/loop → plan 강제 로직). 사용처 동반 정리: `useRoomComposerPrefs.ts`(58행 `composeMode` 유도·137행), `useRoomExecuteSend.ts:96`, `RoomChat.tsx` 2곳 |
+| API hint | send payload의 `composeMode: "plan"` 전송 중단 (receipt는 `turn_kind`/`scribe_trigger` 기반으로 대체) |
+| `room/turn_flow.py:285·447` | `mode = "plan" if synthesize` 분기 제거 — `synthesize` 파라미터를 synthesize_only 전용으로 축소 |
+| 가드 | turn_policy 테스트: "casual send는 어느 preset에서도 scribe_trigger 없음" · UI 계약 테스트(`test_workspace_ui_contract.py` 등) 갱신 |
+
+**P2 — skill_intent authority 배선:**
+
+| 대상 | 작업 |
+|------|------|
+| `turn_policy.py` | `TurnSignals.skill_intent` 필드 + ScribeTrigger `"skill_intent"` 행 추가 |
+| 소스 ① slash/skill | skill invocation → API로 intent 전달 → TurnSignals 주입 |
+| 소스 ② MCP | `propose_build`(`inbox/mcp_policy.py` 경로) 호출을 FSM signal로 승격 |
+| 소스 ③ envelope | `[PROPOSED:]` delta threshold 초과 시 signal (기존 objections 파이프 재사용) |
+| FSM MCP | `plan_phase_advance` tool 신설 — gate owner 에이전트만 호출 가능, `HUMAN_PENDING`·execute 409는 서버 불변 |
+
+**P3 — GJC식 이관 (clarity/execute):** phase 전환 권한을 서버 자동 tick에서 **skill/MCP 호출 우선**으로 이동, 서버 tick은 fallback + gate 검증으로 축소. clarity는 CLARIFY hold 유지하되 clarifier 질문 생성을 skill로 노출(`clarity.py` 4축 점수는 유지 — GJC deep-interview analog). execute는 `propose_build` → Human GO 흐름을 skill invocation으로 통일. **artifact 불변:** `plan.md`/`run.json` 유지, GJC `.gjc/` layout은 흡수하지 않음 (§2.5 GJC 행).
+
+**F9와의 순서:** P1 완료 = `workflow.py`(1281)·`execute.py`(1691) 분해 경계 확정 조건. P1 전에 이 둘을 쪼개면 `legacy_plan_send`/preset 잠금/FSM tick이 서로 다른 "plan 들어감" 정의를 유지한 채 파일만 나뉘고, frontend `planComposeActive` ↔ backend TurnPolicy dual-run이 고착된다. `run_room`·RoomChat 분해(Stage 3)는 P1과 병행 가능.
+
+**모트 체크:** Human gate 전부 불변 — plan approve·execute 409·Inbox·worktree·Oracle. casual send에서 Scribe가 덜 도는 것은 중립(비용 절감). skill_intent는 authority를 넓히지만 모든 side-effect는 여전히 gate 뒤에서만 실행된다.
 
 ---
 

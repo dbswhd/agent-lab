@@ -14,7 +14,7 @@ def _read(path: str) -> str:
 
 def test_room_send_keeps_transcript_visible_during_session_bind():
     app = _read("web/src/App.tsx")
-    room = _read("web/src/components/RoomChat.tsx")
+    main_pane = _read("web/src/components/RoomChatMainPane.tsx")
     transcript = _read("web/src/components/RoomTranscriptPanel.tsx")
 
     assert "detail != null" in app
@@ -23,7 +23,7 @@ def test_room_send_keeps_transcript_visible_during_session_bind():
     assert "!isNew &&" in transcript
     assert "!running &&" in transcript
     assert "visibleMessages.length === 0" in transcript
-    assert "RoomTranscriptPanel" in room
+    assert "RoomTranscriptPanel" in main_pane
 
 
 def test_session_rows_are_keyboard_controls_and_searchable():
@@ -65,6 +65,7 @@ def test_macos_shortcuts_cover_new_sidebar_and_content_tabs():
 def test_context_tools_and_workbench_width_preferences_are_separate():
     prefs = _read("web/src/utils/inspectorPanePrefs.ts")
     room = _read("web/src/components/RoomChat.tsx")
+    workbench_layout = _read("web/src/hooks/useRoomWorkbenchLayout.ts")
 
     assert 'WIDTH_KEY = "agent-lab-inspector-width"' in prefs
     assert 'TOOLS_WIDTH_KEY = "agent-lab-tools-inspector-width"' in prefs
@@ -80,8 +81,8 @@ def test_context_tools_and_workbench_width_preferences_are_separate():
     assert "WORKBENCH_PANEL_MAX_WIDTH = 1600" in prefs
     assert "maxWorkbenchPanelWidth" in prefs
     assert "handleSelectRightPanelMode" in room
-    assert "clampWorkbenchPanelWidth" in room
-    assert "workbenchWidthUserAdjustedRef" in room
+    assert "clampWorkbenchPanelWidth" in workbench_layout
+    assert "workbenchWidthUserAdjustedRef" in workbench_layout
 
 
 def test_workspace_chrome_replaces_web_traffic_lights_and_titlebar_logo():
@@ -100,13 +101,13 @@ def test_workspace_chrome_replaces_web_traffic_lights_and_titlebar_logo():
 
 def test_workbench_diff_panel_reuses_execution_diff_records():
     diff_panel = _read("web/src/components/DiffToolPanel.tsx")
-    room = _read("web/src/components/RoomChat.tsx")
+    inspector = _read("web/src/components/RoomChatInspector.tsx")
 
     assert "PlanExecutionRecord" in diff_panel
     assert "findActiveExecution" in diff_panel
     assert "PlanDiffStat" in diff_panel
     assert "SideBySideDiff" in diff_panel
-    assert "<DiffToolPanel executions={planExecutions}" in room
+    assert "<DiffToolPanel executions={planExecutions}" in inspector
 
 
 def test_tauri_titlebar_and_minimum_window_are_real_window_smoke_contracts():

@@ -176,6 +176,7 @@ def test_workspace_tabs_do_not_render_inline_status_badges():
 
 def test_workspace_panels_have_distinct_document_wrappers():
     room = _read("web", "src", "components", "RoomChat.tsx")
+    inspector = _read("web", "src", "components", "RoomChatInspector.tsx")
     surfaces = _read("web", "src", "styles", "surfaces.css")
     work_tool = _read("web", "src", "components", "WorkToolPanel.tsx")
     assert "work-surface" in work_tool or "work-stack" in work_tool
@@ -192,7 +193,7 @@ def test_workspace_panels_have_distinct_document_wrappers():
     transcript = _read("web", "src", "components", "RoomTranscriptPanel.tsx")
 
     assert "transcript--console" in transcript
-    assert "WorkbenchPanel" in room
+    assert "WorkbenchPanel" in inspector
     assert "ComposerEventStack" in room
     assert "plan-card" in plan_exec
     assert "exec-card" in plan_exec
@@ -203,10 +204,11 @@ def test_workspace_panels_have_distinct_document_wrappers():
 
 def test_inspector_matches_prototype_context_sidebar_body():
     room = _read("web", "src", "components", "RoomChat.tsx")
+    inspector = _read("web", "src", "components", "RoomChatInspector.tsx")
     overview = _read("web", "src", "components", "ContextOverviewPanel.tsx")
     layout = _read("web", "src", "styles", "layout.css")
 
-    assert "ContextOverviewPanel" in room
+    assert "ContextOverviewPanel" in inspector
     assert "MissionOverviewSection" in overview
     assert "inspector-pane__section-card" not in room
     assert ".ctx-section" in layout
@@ -308,7 +310,7 @@ def test_m5_i18n_panels_use_locale():
     bgtask = _read("web", "src", "components", "BackgroundTasksPanel.tsx")
     terminal = _read("web", "src", "components", "TerminalPanel.tsx")
     live = _read("web", "src", "components", "LiveAgentsStrip.tsx")
-    room = _read("web", "src", "components", "RoomChat.tsx")
+    main_pane = _read("web", "src", "components", "RoomChatMainPane.tsx")
     transcript = _read("web", "src", "components", "RoomTranscriptPanel.tsx")
     plan_refs = _read("web", "src", "utils", "PlanDocRefs.tsx")
     layout = _read("web", "src", "styles", "layout.css")
@@ -317,7 +319,7 @@ def test_m5_i18n_panels_use_locale():
     assert "msg.bgtaskTitle" in bgtask
     assert "msg.terminalHint" in terminal
     assert "msg.liveAgentsResponding" in live
-    assert "RoomTranscriptPanel" in room
+    assert "RoomTranscriptPanel" in main_pane
     assert "TranscriptActivityDivider" in transcript
     assert "msg.planRefGoToChat" in plan_refs
     assert ".plan-doc__ref--link" in layout
@@ -373,6 +375,7 @@ def test_m6_chat_turn_no_dual_class_root():
 
 def test_m6_room_chat_canonical_shell_only():
     room = _read("web", "src", "components", "RoomChat.tsx")
+    main_pane = _read("web", "src", "components", "RoomChatMainPane.tsx")
     transcript = _read("web", "src", "components", "RoomTranscriptPanel.tsx")
     layout = _read("web", "src", "styles", "layout.css")
     assert "room-workspace-shell" not in room
@@ -381,7 +384,7 @@ def test_m6_room_chat_canonical_shell_only():
     assert "pane-row" in room
     assert "pane-main" in room
     assert "workspace-main" in room
-    assert "RoomTranscriptPanel" in room
+    assert "RoomTranscriptPanel" in main_pane
     assert "TranscriptViewOptions" in transcript
     assert "transcript-view-options" in _read("web", "src", "components", "TranscriptViewOptions.tsx")
     assert "legacy `.room-workspace-shell`" in layout

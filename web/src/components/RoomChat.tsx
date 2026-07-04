@@ -6,21 +6,9 @@ import type {
 } from "../api/client";
 import {
   cancelRoomRun,
-  postMissionDiscussRecovery,
   matchSlashCommand,
-  releaseRoomRunLock,
-  retryAgents,
-  reconnectClaudeAuth,
-  reconnectCursorBridge,
-  reconnectKimiWorkBridge,
-  runSynthesizeOnly,
-  runRoomSlash,
-  approveVerifiedLoop,
-  approvePlan,
-  rejectPlan,
-  rejectVerifiedLoop,
   pauseMissionLoop,
-  autoSyncSessionPlan,
+  runRoomSlash,
   type AgentHealthRow,
 } from "../api/client";
 import { useInboxState } from "../hooks/useInboxState";
@@ -29,21 +17,17 @@ import { preferRicherChatMessages } from "../utils/sessionChatMerge";
 import { syncSessionActivityMarkers } from "../utils/transcriptActivity";
 import { isReplyWaitRole } from "../utils/transcript";
 import { CommandPalette } from "./CommandPalette";
-import { workspacePaletteActions } from "../utils/commandPaletteActions";
 import { useWorkspaceTabs } from "../hooks/useWorkspaceTabs";
 import { useSessionRunState } from "../hooks/useSessionRunState";
 import {
   PENDING_KEY,
-  clearBackgroundRun,
   finalizeCancelledTyping,
   getRunningSessionIds,
   getSessionRunSnapshot,
   hydrateSessionMessages,
   isSessionRunActive,
-  markBackgroundRun,
   resolveRunSessionKey,
   syncRunStateFromLiveLog,
-  updateSessionRun,
   type LiveMsg,
 } from "../run/runSessionRegistry";
 import { derivePendingReplyAgents } from "../run/runningAgents";
@@ -71,30 +55,17 @@ import {
 import { useHumanDecisionRuntime } from "../hooks/useHumanDecisionRuntime";
 import { AutonomyDial } from "./AutonomyDial";
 import type { PendingFile } from "./ChatComposer";
-import type { PlanApprovalMode, PlanRejectPayload } from "./PlanApprovalPanel";
 import { type WorkFocusTarget } from "./WorkToolPanel";
 import { useMacNotifications } from "../hooks/useMacNotifications";
-import type { AgentPermissions } from "../utils/agentPermissions";
 import {
   agentsNeedingPermissionPrompt,
   hasSavedPermissionDefaults,
   roomPermissions,
 } from "../utils/agentPermissions";
-import {
-  agreementPlanSyncFailedLabel,
-  consensusDryRunNotifyBody,
-  consensusDryRunNotifyTitle,
-  latestPendingConsensusAgreement,
-} from "../utils/consensusAgreement";
 import { dispatchNotification } from "../utils/pushNotification";
-import {
-  notificationActionForKind,
-  subscribeNotificationActions,
-} from "../utils/notificationActions";
-import type { AppNotification } from "../utils/notificationStore";
 import { executionApprovalGate } from "../utils/executeApprovalGate";
 import { notifyDesktop } from "../utils/desktopNotify";
-import { buildPlanMetaView, composerPlanStaleNotice } from "../utils/planMeta";
+import { buildPlanMetaView } from "../utils/planMeta";
 import { buildGoalLoopView } from "../utils/goalLoopView";
 import { activateInboxRef } from "../utils/inboxRefNavigation";
 import { focusComposerStack } from "../utils/composerStackFocus";
@@ -107,30 +78,17 @@ import {
   type ComposerTurnProfile,
 } from "../utils/turnProfile";
 import { sortAgentIds } from "../utils/agentOrder";
-import {
-  readPendingRoomModels,
-  readSessionRoomModels,
-  writePendingRoomModels,
-} from "../utils/modelSlash";
-import type { ConsensusDryRunProposal } from "./ConsensusDryRunGateBar";
+import { writePendingRoomModels } from "../utils/modelSlash";
 import { isPlanWorkflowAwaitingApproval } from "../utils/planComposerSync";
 import { usePlanExecute } from "../hooks/usePlanExecute";
 import { useLocale } from "../i18n/useLocale";
 import {
-  fetchSessionAgentCapabilities,
   fetchSessionTasks,
   type RoomObjection,
   type RoomTasksPayload,
 } from "../api/client";
 import {
-  cloneCapabilities,
-  DEFAULT_AGENT_CAPABILITIES,
-  parseAgentCapabilities,
-  type AgentCapabilitiesMap,
-} from "../utils/agentCapabilities";
-import {
   findChatLineIndexForTask,
-  focusComposerInput,
   messageMentionsTask,
 } from "../utils/taskBarCopy";
 import { CUSTOM_WORKSPACE_ID } from "../utils/sessionSetup";
@@ -139,6 +97,15 @@ import { useRoomComposerPopovers } from "../hooks/useRoomComposerPopovers";
 import { useRoomComposerEventStack } from "../hooks/useRoomComposerEventStack";
 import { useRoomSlashExecute } from "../hooks/useRoomSlashExecute";
 import { useRoomWorkspace } from "../hooks/useRoomWorkspace";
+import { useRoomAgentCapabilities } from "../hooks/useRoomAgentCapabilities";
+import { useRoomConsensusHandlers } from "../hooks/useRoomConsensusHandlers";
+import { useRoomVerifiedHandlers } from "../hooks/useRoomVerifiedHandlers";
+import {
+  useRoomRecoveryActions,
+  useRoomRecoveryNotifications,
+} from "../hooks/useRoomRecoveryHandlers";
+import { useRoomNotificationRouting } from "../hooks/useRoomNotificationRouting";
+import { useRoomPaletteActions } from "../hooks/useRoomPaletteActions";
 import { RoomChatMainPane } from "./RoomChatMainPane";
 import { RoomChatInspector } from "./RoomChatInspector";
 import {
@@ -147,15 +114,6 @@ import {
 } from "../utils/roomSessionMessages";
 import { type AgentThreadBindings } from "../utils/agentThreadBindings";
 import { fetchReadiness, type ReadinessResponse } from "../api/client";
-import {
-  type RecoveryActionId,
-  type RecoveryItem,
-} from "../utils/recoveryItems";
-import {
-  recoveryItemKey,
-  type RecoveryResolutionEvent,
-  type RecoveryRetryActionId,
-} from "../utils/recoveryLifecycle";
 import { useTweaksDemoOptional } from "../hooks/useTweaksDemo";
 import { TWEAKS_DEMO_OFF } from "../context/tweaksDemoStore";
 import {
@@ -374,17 +332,16 @@ export function RoomChat({
   const runAbortRef = useRef<AbortController | null>(null);
   const syncedChatRef = useRef("");
   const { workspaceId, workspacePath } = useRoomWorkspace(sessionId);
-  const [consensusProposal, setConsensusProposal] =
-    useState<ConsensusDryRunProposal | null>(null);
-  const [consensusGateBusy, setConsensusGateBusy] = useState(false);
-  const [agentCapabilities, setAgentCapabilities] =
-    useState<AgentCapabilitiesMap>(() =>
-      cloneCapabilities(DEFAULT_AGENT_CAPABILITIES),
-    );
-  const [, setResolvedAgentCwd] = useState<Record<string, string>>({});
   const navigatedToSessionRef = useRef(false);
-  const agentCapsDirtyRef = useRef(false);
   const agentsPickerInitRef = useRef(false);
+  const { agentCapabilities } = useRoomAgentCapabilities({
+    sessionId,
+    sessionRun: session?.run as Record<string, unknown> | undefined,
+    selected,
+    pendingSessionRoomModelsRef,
+    agentsPickerInitRef,
+    setSelected,
+  });
 
   useEffect(() => {
     activeSessionIdRef.current = sessionId;
@@ -423,41 +380,6 @@ export function RoomChat({
     };
   }, [sessionId, selected.join(","), running, runBusy, synthesizing]);
 
-  useEffect(() => {
-    if (sessionId !== null) return;
-    setAgentCapabilities(cloneCapabilities(DEFAULT_AGENT_CAPABILITIES));
-    setResolvedAgentCwd({});
-    agentCapsDirtyRef.current = false;
-    if (!agentsPickerInitRef.current) {
-      const restored = readPendingRoomModels();
-      if (restored?.length) {
-        pendingSessionRoomModelsRef.current = restored;
-        setSelected(restored);
-        agentsPickerInitRef.current = true;
-      }
-    }
-  }, [sessionId]);
-
-  const sessionRoomModelsKey = useMemo(() => {
-    const models = readSessionRoomModels(
-      session?.run as Record<string, unknown> | undefined,
-    );
-    return models ? models.join(",") : null;
-  }, [session?.run]);
-
-  useEffect(() => {
-    if (!sessionId || !sessionRoomModelsKey) return;
-    const models = readSessionRoomModels(
-      session?.run as Record<string, unknown> | undefined,
-    );
-    if (!models) return;
-    setSelected((prev) => {
-      const next = sortAgentIds(models);
-      return prev.join(",") === next.join(",") ? prev : next;
-    });
-    agentsPickerInitRef.current = true;
-  }, [session?.run, sessionId, sessionRoomModelsKey]);
-
   const persistPendingSessionRoomModels = useCallback(
     async (boundSessionId: string) => {
       const pending = pendingSessionRoomModelsRef.current;
@@ -476,44 +398,6 @@ export function RoomChat({
     },
     [],
   );
-
-  useEffect(() => {
-    if (!sessionId) {
-      setResolvedAgentCwd({});
-      return;
-    }
-    if (agentCapsDirtyRef.current) {
-      const perms = roomPermissions(selected);
-      void fetchSessionAgentCapabilities(
-        sessionId,
-        perms as Record<string, unknown>,
-      )
-        .then((r) => setResolvedAgentCwd(r.resolved_cwd ?? {}))
-        .catch(() => {});
-      return;
-    }
-    const raw = session?.run?.agent_capabilities;
-    if (raw && typeof raw === "object") {
-      setAgentCapabilities(parseAgentCapabilities(raw));
-    }
-    const perms = roomPermissions(selected);
-    void fetchSessionAgentCapabilities(
-      sessionId,
-      perms as Record<string, unknown>,
-    )
-      .then((r) => {
-        if (!raw && r.agent_capabilities) {
-          setAgentCapabilities(parseAgentCapabilities(r.agent_capabilities));
-        }
-        setResolvedAgentCwd(r.resolved_cwd ?? {});
-      })
-      .catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    sessionId,
-    selected.join(","),
-    JSON.stringify(session?.run?.agent_capabilities),
-  ]);
 
   function effectiveSessionId(): string | null {
     return sessionId ?? activeSessionIdRef.current;
@@ -585,6 +469,28 @@ export function RoomChat({
     sessionId,
     run: session?.run,
     onUpdated: refreshSessionMeta,
+  });
+
+  const {
+    consensusProposal,
+    setConsensusProposal,
+    consensusGateBusy,
+    notifyConsensusSync,
+    notifyConsensusFailure,
+    handleConsensusDryRun,
+    dismissConsensusProposal,
+    composerPlanStale,
+  } = useRoomConsensusHandlers({
+    sessionId,
+    sessionRun: session?.run as Record<string, unknown> | undefined,
+    turnProfile,
+    running,
+    runBusy,
+    synthesizing,
+    planExecute,
+    pushMacNotification,
+    refreshSessionMeta,
+    setInboxReloadKey,
   });
 
   const hasPendingExecution = Boolean(planExecute.activePending);
@@ -699,50 +605,11 @@ export function RoomChat({
     [refreshInboxPending, refreshSessionMeta, syncInboxPendingCount],
   );
 
-  const handleNotificationOpen = useCallback(
-    (note: AppNotification) => {
-      const action = notificationActionForKind(note.kind);
-      if (!action) return;
-      if (action.type === "composer") {
-        focusComposerStack(action.focus ?? "inbox");
-        return;
-      }
-      if (action.type === "work") {
-        focusWorkStack(action.focus === "execute" ? "execute" : "plan");
-        return;
-      }
-      if (action.type === "inspector") {
-        setRightPanelMode("overview");
-        return;
-      }
-      if (action.type === "settings") {
-        onOpenSettings?.();
-        return;
-      }
-    },
-    [focusWorkStack, onOpenSettings, setRightPanelMode],
-  );
-
-  useEffect(() => {
-    return subscribeNotificationActions((action) => {
-      if (action.type === "composer") {
-        focusComposerStack(action.focus ?? "inbox");
-        return;
-      }
-      if (action.type === "work") {
-        focusWorkStack(action.focus === "execute" ? "execute" : "plan");
-        return;
-      }
-      if (action.type === "inspector") {
-        setRightPanelMode("overview");
-        return;
-      }
-      if (action.type === "settings") {
-        onOpenSettings?.();
-        return;
-      }
-    });
-  }, [focusWorkStack, onOpenSettings, setRightPanelMode]);
+  const { handleNotificationOpen } = useRoomNotificationRouting({
+    focusWorkStack,
+    setRightPanelMode,
+    onOpenSettings,
+  });
 
   const showExecuteQueueStrip =
     tweaks.execQueueDemo === "hidden"
@@ -950,37 +817,11 @@ export function RoomChat({
     planWorkflowAwaitingApproval ||
     (!text.trim() && pendingFiles.length === 0);
 
-  const notifyRecoveryResolution = useCallback(
-    (event: RecoveryResolutionEvent) => {
-      const workRecovery =
-        event.kind === "oracle_fail" || event.kind === "discuss_recovery";
-      dispatchNotification(
-        {
-          tier: event.status === "resolved" ? "P1" : "P0",
-          title:
-            event.status === "resolved"
-              ? "Recovery resolved"
-              : "Recovery still blocked",
-          body: event.message,
-          sessionId: sessionId ?? undefined,
-          kind:
-            event.status === "resolved"
-              ? workRecovery
-                ? "recovery_resolved_work"
-                : "recovery_resolved"
-              : "recovery_still_blocked",
-          entityId: event.key,
-          toastAction:
-            event.status === "resolved" && workRecovery
-              ? { type: "composer", focus: "execute" }
-              : undefined,
-        },
-        pushMacNotification,
-        notifyDesktop,
-      );
-    },
-    [pushMacNotification, sessionId],
-  );
+  const { notifyRecoveryResolution, notifyRecoveryStarted } =
+    useRoomRecoveryNotifications({
+      sessionId,
+      pushMacNotification,
+    });
 
   const discussRecovery = useMemo(
     () => discussRecoveryFromMissionLoop(session?.run?.mission_loop),
@@ -1013,35 +854,6 @@ export function RoomChat({
     composerSendLocked,
     onResolutionNotify: notifyRecoveryResolution,
   });
-
-  const handleReleaseRunLock = useCallback(async () => {
-    setReleasingLock(true);
-    try {
-      await releaseRoomRunLock();
-      setRunLockStuck(false);
-      setRecoveryFailure(null);
-    } catch (e) {
-      setRecoveryFailure({ source: "command", message: String(e) });
-    } finally {
-      setReleasingLock(false);
-    }
-  }, [setRecoveryFailure, setReleasingLock, setRunLockStuck]);
-
-  const handleRetryFailedAgents = useCallback(async () => {
-    const sid = sessionId ?? activeSessionIdRef.current;
-    if (!sid) return;
-    markBackgroundRun(sid, {
-      runKind: "retry",
-      label: "Retry failed agents",
-    });
-    try {
-      await retryAgents(sid);
-      await onSessionChange(sid);
-      setRecoveryFailure(null);
-    } finally {
-      clearBackgroundRun(sid, "retry");
-    }
-  }, [onSessionChange, sessionId, setRecoveryFailure]);
 
   const sessionReviewMode = Boolean(
     (session?.run?.last_turn as { review_mode?: boolean } | undefined)
@@ -1109,7 +921,6 @@ export function RoomChat({
     }
 
     if (prev !== null && prev !== sessionId) {
-      agentCapsDirtyRef.current = false;
       syncedChatRef.current = "";
       setPlanMd("");
     }
@@ -1124,10 +935,6 @@ export function RoomChat({
 
   useEffect(() => {
     syncedChatRef.current = "";
-  }, [sessionId]);
-
-  useEffect(() => {
-    setConsensusProposal(null);
   }, [sessionId]);
 
   useEffect(() => {
@@ -1286,81 +1093,6 @@ export function RoomChat({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [isNew, toggleInspector, running, handleStop]);
 
-  function notifyConsensusSync(proposal: ConsensusDryRunProposal) {
-    const title = consensusDryRunNotifyTitle(proposal.excerpt);
-    const body = consensusDryRunNotifyBody(
-      proposal.summary,
-      proposal.recommended?.what,
-    );
-    const freeConsensus = turnProfile === "loop";
-    dispatchNotification(
-      {
-        tier: "P1",
-        title,
-        body,
-        sessionId: sessionId ?? undefined,
-        kind: proposal.recommended ? "consensus_complete" : "plan_sync",
-        entityId: proposal.action_key ?? proposal.excerpt,
-        toastAction: freeConsensus
-          ? { type: "composer", focus: "plan" }
-          : undefined,
-      },
-      pushMacNotification,
-      notifyDesktop,
-    );
-  }
-
-  function notifyConsensusFailure(excerpt?: string, message?: string) {
-    const title = agreementPlanSyncFailedLabel(excerpt, message);
-    dispatchNotification(
-      {
-        tier: "P0",
-        title,
-        sessionId: sessionId ?? undefined,
-        kind: "plan_sync_fail",
-        entityId: excerpt,
-      },
-      pushMacNotification,
-      notifyDesktop,
-    );
-  }
-
-  const notifyRecoveryStarted = useCallback(
-    (item: RecoveryItem, actionId: RecoveryActionId) => {
-      dispatchNotification(
-        {
-          tier: "P2",
-          title: "Recovery action started",
-          body: `${item.title} · ${actionId}`,
-          sessionId: sessionId ?? undefined,
-          kind: "recovery_started",
-          entityId: recoveryItemKey(item),
-        },
-        pushMacNotification,
-        notifyDesktop,
-      );
-    },
-    [pushMacNotification, sessionId],
-  );
-
-  const handleConsensusDryRun = useCallback(async () => {
-    const key = consensusProposal?.action_key;
-    if (!key) return;
-    setConsensusGateBusy(true);
-    try {
-      planExecute.setSelectedKey(key);
-      await planExecute.refreshActions();
-      const ok = await planExecute.dryRun(key);
-      if (ok) setConsensusProposal(null);
-    } finally {
-      setConsensusGateBusy(false);
-    }
-  }, [consensusProposal, planExecute]);
-
-  const dismissConsensusProposal = useCallback(() => {
-    setConsensusProposal(null);
-  }, []);
-
   const { executeSend } = useRoomExecuteSend({
     sessionId,
     selected,
@@ -1417,129 +1149,58 @@ export function RoomChat({
     setSendReceiptRaw,
   });
 
-  const handleVerifiedApprove = useCallback(
-    async (mode: PlanApprovalMode = "approve_only") => {
-      if (!sessionId || (!showPlanApproval && !verifiedEditGoal.trim())) return;
-      setVerifiedLoopBusy(true);
-      setVerifiedLoopError(null);
-      try {
-        const res = showPlanApproval
-          ? await approvePlan(sessionId)
-          : await approveVerifiedLoop(sessionId, {
-              goal: verifiedEditGoal.trim(),
-              completion_promise: verifiedEditPromise.trim() || "DONE",
-              criteria: verifiedEditCriteria.trim() || verifiedEditGoal.trim(),
-            });
-        await refreshSessionMeta();
-        if (showPlanApproval && mode === "execute") {
-          await planExecute.dryRun();
-        }
-        const prompt =
-          "continue_prompt" in res
-            ? (res.continue_prompt as string | undefined)?.trim()
-            : undefined;
-        if (prompt && !showPlanApproval) {
-          void executeSend(
-            prompt,
-            [],
-            roomPermissions(selected),
-            "discuss",
-            "verified",
-          );
-        }
-      } catch (e) {
-        setVerifiedLoopError(String(e));
-      } finally {
-        setVerifiedLoopBusy(false);
-      }
-    },
-    [
+  const { handleVerifiedApprove, handleVerifiedReject, handleSynthesizeNow } =
+    useRoomVerifiedHandlers({
       sessionId,
+      showPlanApproval,
       verifiedEditGoal,
       verifiedEditCriteria,
       verifiedEditPromise,
+      setVerifiedLoopBusy,
+      setVerifiedLoopError,
       refreshSessionMeta,
+      planExecute,
       executeSend,
       selected,
-      showPlanApproval,
-      planExecute,
-    ],
-  );
+      synthesizing,
+      running,
+      runBusy,
+      messages,
+      onSessionChange,
+      openPlanTab,
+      clearRunWatchdog,
+      setRecoveryFailure,
+    });
 
-  const handleVerifiedReject = useCallback(
-    async (payload?: PlanRejectPayload) => {
-      if (!sessionId) return;
-      setVerifiedLoopBusy(true);
-      setVerifiedLoopError(null);
-      try {
-        if (showPlanApproval) {
-          await rejectPlan(sessionId, {
-            note: payload?.note ?? "Human requested plan revise",
-            target_phase: payload?.target_phase ?? "CLARIFY",
-          });
-        } else {
-          await rejectVerifiedLoop(sessionId);
-        }
-        await refreshSessionMeta();
-      } catch (e) {
-        setVerifiedLoopError(String(e));
-      } finally {
-        setVerifiedLoopBusy(false);
-      }
-    },
-    [sessionId, refreshSessionMeta, showPlanApproval],
-  );
-
-  const executeSynthesizeOnly = useCallback(
-    async (permissions: AgentPermissions) => {
-      if (!sessionId || synthesizing) return;
-      const requestId = crypto.randomUUID();
-      updateSessionRun(sessionId, {
-        synthesizing: true,
-        runBusy: true,
-        running: true,
-      });
-      setRecoveryFailure(null);
-      try {
-        await runSynthesizeOnly(
-          sessionId,
-          (ev) => {
-            if (String(ev.type) === "error") {
-              setRecoveryFailure({
-                source: "run",
-                message: String(ev.message ?? "plan synthesis failed"),
-              });
-            }
-          },
-          { requestId, permissions },
-        );
-        openPlanTab();
-        await onSessionChange(sessionId);
-      } catch (e) {
-        setRecoveryFailure({ source: "transport", message: String(e) });
-      } finally {
-        clearRunWatchdog();
-        updateSessionRun(sessionId, {
-          synthesizing: false,
-          runBusy: false,
-          running: false,
-        });
-      }
-    },
-    [sessionId, synthesizing, onSessionChange, openPlanTab],
-  );
-
-  function handleSynthesizeNow() {
-    if (
-      running ||
-      runBusy ||
-      synthesizing ||
-      !sessionId ||
-      messages.length === 0
-    )
-      return;
-    void executeSynthesizeOnly(roomPermissions(selected));
-  }
+  const {
+    handleReleaseRunLock,
+    handleRecoveryAction,
+    handleRecoveryRetryAction,
+  } = useRoomRecoveryActions({
+    sessionId,
+    activeSessionIdRef,
+    lastPlainSendTextRef,
+    slashCommands,
+    onOpenSettings,
+    onRefreshHealth,
+    onSessionChange,
+    refreshSessionMeta,
+    setReadiness,
+    setReleasingLock,
+    setRunLockStuck,
+    setRecoveryFailure,
+    setDiscussRecoveryBusy,
+    setRecoveryBusyAction,
+    setText,
+    setWorkFocus,
+    beginRecoveryAttempt,
+    finishRecoveryAction,
+    executeSlashCommand,
+    notifyRecoveryStarted,
+    openWorkTab,
+    openHumanInbox,
+    openTranscriptTab,
+  });
 
   function handleSend() {
     const msg = text.trim();
@@ -1637,140 +1298,6 @@ export function RoomChat({
     [focusTask, handlePlanRefClick, openFilesTab, focusWorkStack],
   );
 
-  const handleDiscussRecoveryRun = useCallback(async () => {
-    if (!sessionId) return;
-    setDiscussRecoveryBusy(true);
-    try {
-      await postMissionDiscussRecovery(sessionId);
-      refreshSessionMeta();
-    } finally {
-      setDiscussRecoveryBusy(false);
-    }
-  }, [refreshSessionMeta, sessionId]);
-
-  const refreshRecoveryReadiness = useCallback(async () => {
-    await onRefreshHealth?.();
-    if (sessionId) {
-      const next = await fetchReadiness(sessionId, true);
-      setReadiness(next);
-    }
-    refreshSessionMeta();
-  }, [onRefreshHealth, refreshSessionMeta, sessionId]);
-
-  const handleRecoveryAction = useCallback(
-    async (actionId: RecoveryActionId, item: RecoveryItem) => {
-      const tracksResolution =
-        actionId !== "open_settings" &&
-        actionId !== "open_work" &&
-        actionId !== "open_inbox";
-      let attemptId: string | null = null;
-      if (tracksResolution) {
-        attemptId = beginRecoveryAttempt(
-          item,
-          actionId,
-          Boolean(lastPlainSendTextRef.current),
-        );
-        notifyRecoveryStarted(item, actionId);
-      }
-      setRecoveryBusyAction(actionId);
-      try {
-        switch (actionId) {
-          case "open_settings":
-            onOpenSettings?.();
-            return;
-          case "refresh_health":
-            await refreshRecoveryReadiness();
-            return;
-          case "reconnect_cursor":
-            await reconnectCursorBridge();
-            await refreshRecoveryReadiness();
-            return;
-          case "reconnect_claude": {
-            const loginCmd = slashCommands.find(
-              (candidate) => candidate.id === "login",
-            );
-            if (loginCmd) {
-              await executeSlashCommand(loginCmd, "claude");
-              return;
-            }
-            await reconnectClaudeAuth();
-            await refreshRecoveryReadiness();
-            return;
-          }
-          case "reconnect_codex": {
-            const loginCmd = slashCommands.find(
-              (candidate) => candidate.id === "login",
-            );
-            if (loginCmd) {
-              await executeSlashCommand(loginCmd, "codex");
-              return;
-            }
-            onOpenSettings?.();
-            return;
-          }
-          case "reconnect_kimi_work":
-            await reconnectKimiWorkBridge();
-            await refreshRecoveryReadiness();
-            return;
-          case "release_lock":
-            await handleReleaseRunLock();
-            return;
-          case "retry_failed_agents":
-            await handleRetryFailedAgents();
-            return;
-          case "open_work":
-            openWorkTab();
-            setWorkFocus("execute");
-            return;
-          case "open_inbox":
-            openHumanInbox();
-            return;
-          case "run_discuss_recovery":
-            await handleDiscussRecoveryRun();
-            return;
-        }
-      } catch (e) {
-        setRecoveryFailure({
-          source: "command",
-          message: e instanceof Error ? e.message : String(e),
-        });
-      } finally {
-        finishRecoveryAction(attemptId);
-      }
-    },
-    [
-      beginRecoveryAttempt,
-      executeSlashCommand,
-      finishRecoveryAction,
-      handleDiscussRecoveryRun,
-      handleReleaseRunLock,
-      handleRetryFailedAgents,
-      notifyRecoveryStarted,
-      onOpenSettings,
-      openHumanInbox,
-      openWorkTab,
-      refreshRecoveryReadiness,
-      setRecoveryBusyAction,
-      setRecoveryFailure,
-      slashCommands,
-    ],
-  );
-
-  const handleRecoveryRetryAction = useCallback(
-    (actionId: RecoveryRetryActionId, event: RecoveryResolutionEvent): void => {
-      if (event.kind === "oracle_fail" || event.kind === "discuss_recovery") {
-        openWorkTab();
-        setWorkFocus("execute");
-        return;
-      }
-      openTranscriptTab();
-      if (actionId === "restore_last_message" && lastPlainSendTextRef.current) {
-        setText(lastPlainSendTextRef.current);
-      }
-      focusComposerInput();
-    },
-    [openTranscriptTab, openWorkTab],
-  );
   const executeBusy = planExecute.busy;
 
   useEffect(() => {
@@ -1845,43 +1372,6 @@ export function RoomChat({
       : undefined;
 
   const planMeta = buildPlanMetaView(session?.run);
-  const composerPlanStale = composerPlanStaleNotice(session?.run);
-  const planAutoSyncKey = composerPlanStale
-    ? `${sessionId ?? ""}:${composerPlanStale}`
-    : null;
-  const planAutoSyncRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!sessionId || !planAutoSyncKey || running || synthesizing || runBusy) {
-      return;
-    }
-    if (planAutoSyncRef.current === planAutoSyncKey) return;
-    planAutoSyncRef.current = planAutoSyncKey;
-    void autoSyncSessionPlan(sessionId)
-      .then((detail) => {
-        const pending = latestPendingConsensusAgreement(detail.run);
-        if (pending?.excerpt) {
-          notifyConsensusFailure(
-            pending.excerpt,
-            "plan.md 자동 정리에 실패했습니다",
-          );
-          planAutoSyncRef.current = null;
-          return;
-        }
-        refreshSessionMeta();
-        setInboxReloadKey((k) => k + 1);
-      })
-      .catch(() => {
-        notifyConsensusFailure(undefined, "plan.md 자동 정리 요청 실패");
-        planAutoSyncRef.current = null;
-      });
-  }, [
-    sessionId,
-    planAutoSyncKey,
-    running,
-    synthesizing,
-    runBusy,
-    refreshSessionMeta,
-  ]);
   const workPlanStaleNotice = tweaks.planStaleDemo
     ? DEMO_PLAN_STALE_NOTICE
     : composerPlanStale;
@@ -1917,60 +1407,16 @@ export function RoomChat({
     ],
   );
 
-  const paletteActions = useMemo(() => {
-    const commandActions = slashCommands
-      .filter((cmd) => cmd.enabled !== false)
-      .map((cmd) => ({
-        id: `slash-${cmd.id}`,
-        label: `Insert ${cmd.slash}`,
-        hint: `${cmd.agent ?? cmd.kind}${
-          cmd.description ? ` · ${cmd.description}` : ""
-        }`,
-        run: () => {
-          openTranscriptTab();
-          setText(`${cmd.slash} `);
-          window.setTimeout(() => focusComposerInput(), 0);
-        },
-      }));
-    return workspacePaletteActions(setWorkspaceTab, [
-      {
-        id: "stop-run",
-        label: running ? "Stop run" : "Stop run",
-        hint: running ? "⌘." : undefined,
-        run: () => {
-          if (running) handleStop();
-        },
-      },
-      {
-        id: "release-lock",
-        label: "Release run lock",
-        run: () => void handleReleaseRunLock(),
-      },
-      {
-        id: "open-plugins",
-        label: "Open settings",
-        hint: "Agents · Workspace · Commands",
-        run: () => {
-          onOpenSettings?.();
-        },
-      },
-      {
-        id: "focus-composer",
-        label: "Focus composer",
-        run: () => focusComposerInput(),
-      },
-      ...commandActions,
-    ]);
-  }, [
+  const paletteActions = useRoomPaletteActions({
+    slashCommands,
     setWorkspaceTab,
     running,
     handleStop,
     handleReleaseRunLock,
     onOpenSettings,
-    slashCommands,
     openTranscriptTab,
-    focusComposerInput,
-  ]);
+    setText,
+  });
 
   const composerClassName = useMemo(
     () =>

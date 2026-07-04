@@ -50,7 +50,7 @@
   "large_tsx_files": [
     {
       "path": "web/src/components/RoomChat.tsx",
-      "lines": 2252
+      "lines": 1698
     },
     {
       "path": "web/src/components/PlanExecutePanel.tsx",

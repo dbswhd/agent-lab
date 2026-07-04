@@ -55,10 +55,13 @@ def test_synthesize_only_is_dedicated_path() -> None:
     """TurnPolicy Human override — not mode=plan / synthesize=true."""
     room = _read("app", "server", "routers", "room.py")
     client = _read("web", "src", "api", "client.ts")
-    chat = _read("web", "src", "components", "RoomChat.tsx")
+    verified = _read("web", "src", "hooks", "useRoomVerifiedHandlers.ts")
     assert "_stream_synthesize_only" in room
     assert 'workflow": "room.synthesize_only"' in room or "room.synthesize_only" in room
     assert "runSynthesizeOnly" in client
-    assert "runSynthesizeOnly" in chat
+    assert "runSynthesizeOnly" in verified
     # Normal agent sends no longer flip mode=plan for synthesizeOnly.
     assert 'form.append("mode", "discuss")' in client
+    # P1: TurnPolicy ON ignores deprecated mode=plan / synthesize hints on casual send.
+    assert "turn_policy_enabled()" in room
+    assert "synthesize = False" in room

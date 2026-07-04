@@ -74,6 +74,7 @@ def prepare_turn_routing_phase(
     active_agents: list[AgentId],
     mention_targets: list[str] | None,
     synthesize: bool,
+    skill_intent: str | None = None,
     consensus_mode: bool,
     parallel_rounds: int,
     turn_profile: str | None,
@@ -95,7 +96,13 @@ def prepare_turn_routing_phase(
         plan_workflow_wants_inbox_mcp,
         should_enable_plan_workflow,
     )
-    from agent_lab.room.turn_policy import prepare_turn_policy_before_agent_round, turn_policy_enabled
+    from agent_lab.room.turn_policy import (
+        normalize_skill_intent,
+        pop_pending_skill_intent,
+        prepare_turn_policy_before_agent_round,
+        stamp_active_skill_intent,
+        turn_policy_enabled,
+    )
     from agent_lab.room.team_orchestration import resolve_turn_lead
     from agent_lab.session.clarifier import sync_clarifier_answers_from_inbox
 
@@ -109,7 +116,15 @@ def prepare_turn_routing_phase(
         begin_human_turn(folder, human_turn=human_turn_num)
         supersede_pending_inbox(folder, human_turn_id=human_turn_num)
 
-    mode = "plan" if synthesize else "discuss"
+    resolved_skill = normalize_skill_intent(skill_intent) or pop_pending_skill_intent(folder, run_meta)
+    stamp_active_skill_intent(run_meta, resolved_skill)
+
+    if turn_policy_enabled():
+        mode = "discuss"
+        active_synthesize = False
+    else:
+        mode = "plan" if synthesize else "discuss"
+        active_synthesize = synthesize
     review_advocate = (
         resolve_review_advocate(
             active_agents,
@@ -138,7 +153,7 @@ def prepare_turn_routing_phase(
     _set_active_turn_flags(
         run_meta,
         mode=mode,
-        synthesize=synthesize,
+        synthesize=active_synthesize,
         consensus_mode=consensus_mode,
     )
 
@@ -147,7 +162,6 @@ def prepare_turn_routing_phase(
             run_meta, _tp_pre = prepare_turn_policy_before_agent_round(
                 folder,
                 run_meta,
-                synthesize=synthesize,
                 human_turn=human_turn_num,
             )
             plan_md, run_meta = _session_context(folder)

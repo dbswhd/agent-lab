@@ -20,7 +20,7 @@ Human gates unchanged: plan approve, execute 409, worktree, `ask_human` / `propo
 
 | Path | Legacy entry | Gate | `scribe_trigger` |
 |------|--------------|------|------------------|
-| Plan-turn | `_should_scribe_plan_after_turn` | `synthesize` OR `AGENT_LAB_AUTO_PLAN_SCRIBE` | `legacy_plan_send` / `plan_workflow_draft` |
+| Plan-turn | `_should_scribe_plan_after_turn` | FSM `DRAFT`/`REFINE` only | `plan_workflow_draft` |
 | Consensus sync | `maybe_auto_scribe_after_consensus` | `consensus.status==reached` **AND** `pending_agreements>0` | `consensus_reached` |
 | Verified loop | `maybe_auto_scribe_after_verified_loop` | `verified_loop.status==done` + idempotent sync | `verified_loop_done` |
 | Human override | `synthesize_session_plan` | API `synthesize_only` (dedicated path; ignores `mode`/`synthesize`) | `synthesize_only` |
@@ -43,7 +43,9 @@ Human gates unchanged: plan approve, execute 409, worktree, `ask_human` / `propo
 | `synthesize_only` | Work 「지금 정리」/ API |
 | `cancelled` | run control |
 | `supervisor_first_turn` | bootstrap FSM INTAKE→CLARIFY |
-| `legacy_synthesize_hint` | deprecated API `mode=plan` during compat |
+| `skill_intent` | slash `/plan` pending intent · API `skill_intent` form field (`plan` \| `plan_draft` \| `ralplan`) |
+
+**Removed (P1):** ~~`legacy_synthesize_hint`~~ — API `mode=plan` / `synthesize=true` no longer opens Scribe.
 
 **F1.5 backlog (not F0/F1):** material turn delta (`[PROPOSED:]` delta, objection resolve).
 
@@ -65,7 +67,7 @@ Helper: `TurnSignals.from_run_meta(...)` in [`turn_policy.py`](../src/agent_lab/
 
 ### `scribe_trigger` enum
 
-`none` · `synthesize_only` · `verified_loop_done` · `consensus_reached` · `plan_workflow_draft` · `legacy_plan_send`
+`none` · `synthesize_only` · `verified_loop_done` · `consensus_reached` · `plan_workflow_draft` · `skill_intent`
 
 ### Scribe priority (single winner)
 
@@ -73,9 +75,11 @@ Helper: `TurnSignals.from_run_meta(...)` in [`turn_policy.py`](../src/agent_lab/
 2. `verified_loop_done`
 3. `consensus_reached` (requires `pending_agreement_count > 0`)
 4. `plan_workflow_draft` (phase DRAFT/REFINE, not fast)
-5. `legacy_plan_send` (compat hint, not fast)
+5. `skill_intent` (explicit slash/API authority, not fast)
 
 **fast preset:** casual send → `run_scribe=false` always (absorbs `AGENT_LAB_AUTO_PLAN_SCRIBE=1` when TurnPolicy ON).
+
+**supervisor preset:** casual send → `run_scribe=false` unless FSM DRAFT/REFINE or other authority signals (same as fast for Scribe).
 
 ---
 

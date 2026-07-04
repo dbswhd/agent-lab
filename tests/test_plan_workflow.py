@@ -132,6 +132,20 @@ def test_tick_draft_no_advance_when_plan_unchanged(tmp_path: Path) -> None:
     assert get_plan_workflow(read_run_meta(folder))["phase"] == "DRAFT"
 
 
+def test_plan_slash_stamps_pending_skill_intent(tmp_path: Path) -> None:
+    from agent_lab.slash_commands import dispatch
+    from agent_lab.run.meta import read_run_meta
+
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    (folder / "run.json").write_text("{}", encoding="utf-8")
+
+    result = dispatch("/plan", session_folder=folder)
+    assert result["ok"] is True
+    assert result.get("skill_intent") == "plan"
+    assert read_run_meta(folder).get("_pending_skill_intent") == "plan"
+
+
 def test_clarify_slash_initializes_plan_workflow(tmp_path: Path) -> None:
     """Feature B parity: /clarify bootstraps plan_workflow just like /plan."""
     from agent_lab.slash_commands import dispatch

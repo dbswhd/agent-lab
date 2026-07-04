@@ -19,16 +19,15 @@ def test_room_chat_blocks_send_during_human_pending():
     assert "planWorkflowAwaitingApproval" in room
     assert "planWorkflowComposerBlocked" in room
     assert "planWorkflowAwaitingApproval ||" in room
-    assert "planComposeActive" in room
 
 
-def test_compose_mode_derived_from_preset():
-    prefs = _read("web", "src", "utils", "roomComposerPrefs.ts")
+def test_compose_mode_always_discuss_for_casual_send():
+    prefs = _read("web", "src", "hooks", "useRoomComposerPrefs.ts")
     room = _read("web", "src", "components", "RoomChat.tsx")
-    assert 'roomPreset === "supervisor"' in prefs
-    assert "planComposeActive" in prefs
+    assert 'composeMode: ComposeMode = "discuss"' in prefs
+    assert "planComposeActive" not in prefs
     assert "useRoomComposerPrefs" in room
-    assert "planComposeActive" in room
+    assert "planComposeActive" not in room
 
 
 def test_side_discuss_hint_in_mode_chip():

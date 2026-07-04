@@ -18,7 +18,7 @@ def test_fast_casual_send_no_scribe_dual_run(
     monkeypatch.setenv("AGENT_LAB_AUTO_PLAN_SCRIBE", "1")
     assert turn_policy_enabled() is (turn_policy_flag == "1")
     effects = TurnPolicyEngine.resolve(
-        TurnSignals(room_preset="fast", legacy_synthesize_hint=False),
+        TurnSignals(room_preset="fast"),
     )
     assert effects.run_scribe is False
     assert effects.scribe_trigger == "none"

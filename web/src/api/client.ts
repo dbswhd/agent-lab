@@ -1706,6 +1706,8 @@ export type RunRoomOptions = {
   synthesizeOnly?: boolean;
   /** Idempotency key for synthesize-only runs (retry / refresh safe). */
   requestId?: string;
+  /** Explicit plan authority from slash/skill (TurnPolicy P2). */
+  skillIntent?: string;
   /** Parallel agent waves per human message (2 = first replies, then peer discussion). */
   agentRounds?: number;
   permissions?: Record<string, unknown>;
@@ -1846,6 +1848,9 @@ export async function runRoom(
   form.append("mode", "discuss");
   form.append("synthesize", "false");
   form.append("synthesize_only", "false");
+  if (opts?.skillIntent?.trim()) {
+    form.append("skill_intent", opts.skillIntent.trim().toLowerCase());
+  }
   form.append("agent_rounds", String(opts?.agentRounds ?? 1));
   form.append("review_mode", String(opts?.reviewMode ?? false));
   form.append("consensus_mode", String(opts?.consensusMode ?? false));

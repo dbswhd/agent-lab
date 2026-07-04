@@ -617,12 +617,19 @@ def _plan(args: list[str], *, session_folder: Path | None = None) -> dict[str, A
         return _err("plan", "no active session")
     result = _set_mission_phase(session_folder, "plan", "DISCUSS")
     from agent_lab.plan.workflow import get_plan_workflow, init_plan_workflow_on_plan_send
-    from agent_lab.run.meta import read_run_meta
+    from agent_lab.run.meta import patch_run_meta, read_run_meta
 
     run = read_run_meta(session_folder)
     if not get_plan_workflow(run).get("enabled"):
         init_plan_workflow_on_plan_send(session_folder)
         result["plan_workflow_initialized"] = True
+
+    def _pending(run_meta: dict[str, Any]) -> dict[str, Any]:
+        run_meta["_pending_skill_intent"] = "plan"
+        return run_meta
+
+    patch_run_meta(session_folder, _pending)
+    result["skill_intent"] = "plan"
     return result
 
 

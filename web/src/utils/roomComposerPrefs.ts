@@ -8,10 +8,3 @@ export function turnProfileForRoomPreset(
   if (presetId === "supervisor") return "loop";
   return null;
 }
-
-export function planComposeActive(
-  roomPreset: string | null,
-  turnProfile: ComposerTurnProfile,
-): boolean {
-  return roomPreset === "supervisor" || turnProfile === "loop";
-}

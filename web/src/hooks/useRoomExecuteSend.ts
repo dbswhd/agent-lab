@@ -93,7 +93,6 @@ export type RoomExecuteSendOptions = {
   refreshInboxPending: () => void | Promise<void>;
   openHumanInbox: () => void;
   openWorkTab: () => void;
-  planComposeActive: boolean;
   activeSessionIdRef: MutableRefObject<string | null>;
   navigatedToSessionRef: MutableRefObject<boolean>;
   pendingMissionTemplateRef: MutableRefObject<string | null>;
@@ -168,7 +167,6 @@ export function useRoomExecuteSend(
     refreshInboxPending,
     openHumanInbox,
     openWorkTab,
-    planComposeActive,
     activeSessionIdRef,
     navigatedToSessionRef,
     pendingMissionTemplateRef,
@@ -346,7 +344,7 @@ export function useRoomExecuteSend(
           onSessionChange(runScope.activeSessionId);
         }
         if (
-          (planComposeActive || runScope.lastSendReceipt === "plan_updated") &&
+          runScope.lastSendReceipt === "plan_updated" &&
           (runScope.activeSessionId ?? sessionId)
         ) {
           openPlanTab();
@@ -437,7 +435,6 @@ export function useRoomExecuteSend(
       synthesizing,
       roomPreset,
       resolvedRoomPresets,
-      planComposeActive,
       locale,
       localeMsg,
       clearRunWatchdog,

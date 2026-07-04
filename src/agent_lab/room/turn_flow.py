@@ -9,6 +9,15 @@ from typing import Any
 
 log = logging.getLogger(__name__)
 
+
+def _casual_turn_mode(synthesize: bool) -> str:
+    from agent_lab.room.turn_policy import turn_policy_enabled
+
+    if turn_policy_enabled():
+        return "discuss"
+    return "plan" if synthesize else "discuss"
+
+
 from agent_lab.agents.registry import AgentId, available_agents
 from agent_lab.agent.roster import resolve_active_agents
 from agent_lab.attachments import describe_attachments
@@ -91,7 +100,6 @@ def _post_agent_turn_plan(
             signals=TurnSignals.from_run_meta(
                 run_meta,
                 consensus_meta=consensus_meta,
-                legacy_synthesize_hint=synthesize,
                 cancelled=cancelled,
             ),
             folder=folder,
@@ -100,7 +108,6 @@ def _post_agent_turn_plan(
             run_meta=run_meta,
             plan_before=plan_before,
             mode=mode,
-            legacy_synthesize=synthesize,
             cancelled=cancelled,
             active_agents=active_agents,
             permissions=permissions,
@@ -217,6 +224,7 @@ def continue_room_round(
     *,
     agents: list[AgentId] | None = None,
     synthesize: bool = False,
+    skill_intent: str | None = None,
     parallel_rounds: int = DEFAULT_AGENT_PARALLEL_ROUNDS,
     on_event: OnAgentEvent | None = None,
     permissions: dict | None = None,
@@ -282,7 +290,7 @@ def continue_room_round(
 
     on_event = install_tracer(folder, run_meta, on_event, human_turn=human_turn_num)
     if mention_error:
-        mode = "plan" if synthesize else "discuss"
+        mode = _casual_turn_mode(synthesize)
         return _abort_mention_roster_error(
             folder,
             topic=topic,
@@ -308,6 +316,7 @@ def continue_room_round(
         active_agents=active_agents,
         mention_targets=mention_targets,
         synthesize=synthesize,
+        skill_intent=skill_intent,
         consensus_mode=consensus_mode,
         parallel_rounds=parallel_rounds,
         turn_profile=turn_profile,
@@ -392,6 +401,7 @@ def run_room(
     *,
     agents: list[AgentId] | None = None,
     synthesize: bool = True,
+    skill_intent: str | None = None,
     parallel_rounds: int = DEFAULT_AGENT_PARALLEL_ROUNDS,
     on_event: OnAgentEvent | None = None,
     sessions_base: Path | None = None,
@@ -444,7 +454,7 @@ def run_room(
 
     stamp_run_meta(run_meta, agents=[str(a) for a in active_agents])
     human_turn_index = _human_turn_count(messages) - 1
-    mode = "plan" if synthesize else "discuss"
+    mode = _casual_turn_mode(synthesize)
     human_turn_num = max(1, _human_turn_count(messages))
     if folder is None and synthesize:
         boot = _bootstrap_session_folder_for_plan_workflow(
@@ -487,6 +497,7 @@ def run_room(
         active_agents=active_agents,
         mention_targets=mention_targets,
         synthesize=synthesize,
+        skill_intent=skill_intent,
         consensus_mode=consensus_mode,
         parallel_rounds=parallel_rounds,
         turn_profile=turn_profile,

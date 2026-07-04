@@ -13,7 +13,6 @@ import {
   resolveRoomPresets,
 } from "../utils/roomPresets";
 import {
-  planComposeActive as isPlanComposeActive,
   turnProfileForRoomPreset,
 } from "../utils/roomComposerPrefs";
 import {
@@ -50,12 +49,7 @@ export function useRoomComposerPrefs({
     [availablePresets],
   );
 
-  const planComposeActive = useMemo(
-    () => isPlanComposeActive(roomPreset, turnProfile),
-    [roomPreset, turnProfile],
-  );
-
-  const composeMode: ComposeMode = planComposeActive ? "plan" : "discuss";
+  const composeMode: ComposeMode = "discuss";
 
   const changeTurnProfile = useCallback((profile: ComposerTurnProfile) => {
     setTurnProfileState(profile);
@@ -134,9 +128,8 @@ export function useRoomComposerPrefs({
   const composerModeVariant = useMemo((): "discuss" | "plan" | "consensus" => {
     const profile = resolveTurnSend(turnProfile, selectedAgents);
     if (profile.consensusMode) return "consensus";
-    if (planComposeActive) return "plan";
     return "discuss";
-  }, [turnProfile, selectedAgents, planComposeActive]);
+  }, [turnProfile, selectedAgents]);
 
   const composerPresetHint = useMemo(() => {
     const activePreset = resolvedRoomPresets.find((p) => p.id === roomPreset);
@@ -194,7 +187,6 @@ export function useRoomComposerPrefs({
     availablePresets,
     resolvedRoomPresets,
     visiblePresets: resolvedRoomPresets,
-    planComposeActive,
     composeMode,
     composerModeVariant,
     composerPresetHint,

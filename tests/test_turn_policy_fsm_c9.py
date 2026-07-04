@@ -108,7 +108,6 @@ def test_apply_turn_effects_fsm_tick_on_supervisor_discuss(
 
     signals = TurnSignals.from_run_meta(
         run_meta,
-        legacy_synthesize_hint=False,
         supervisor_first_turn=False,
     )
     effects = TurnPolicyEngine.resolve(signals)
@@ -122,7 +121,6 @@ def test_apply_turn_effects_fsm_tick_on_supervisor_discuss(
         run_meta=run_meta,
         plan_before="",
         mode="discuss",
-        legacy_synthesize=False,
         cancelled=False,
         human_turn=2,
     )

@@ -218,9 +218,12 @@ def test_inspector_matches_prototype_context_sidebar_body():
 def test_phase0_composer_plan_toggle_removed():
     composer = _read("web", "src", "components", "ChatComposer.tsx")
     room = _read("web", "src", "components", "RoomChat.tsx")
+    prefs = _read("web", "src", "hooks", "useRoomComposerPrefs.ts")
     assert "ComposerPlanToggle" not in composer
     assert "onPlanAfterSendChange" not in room
-    assert "planComposeActive" in room
+    assert "planComposeActive" not in prefs
+    assert "planComposeActive" not in room
+    assert 'composeMode: ComposeMode = "discuss"' in prefs
     assert "ComposerEfficiencyToggle" not in composer
     assert "efficiencyOn" not in room
 

@@ -51,8 +51,8 @@ def test_scenario_b_plan_synthesis_contract():
     work = _read("web", "src", "components", "WorkToolPanel.tsx")
     plan = _read("web", "src", "components", "PlanExecutePanel.tsx")
 
-    assert "planComposeActive" in room or "composerModeVariant" in room
-    assert "modePlan" in room or "plan_updated" in _read("web", "src", "utils", "sendReceipt.ts")
+    assert "composerModeVariant" in room
+    assert "plan_updated" in _read("web", "src", "utils", "sendReceipt.ts")
     assert "ComposerEventStack" in room
     assert "focusComposerStack" in room
     assert "WorkbenchPanel" in inspector

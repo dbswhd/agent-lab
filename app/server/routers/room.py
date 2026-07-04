@@ -473,6 +473,7 @@ async def create_room_run(
     synthesize: bool | None = Form(None),
     mode: str = Form("discuss"),
     synthesize_only: bool = Form(False),
+    skill_intent: str | None = Form(None),
     agent_rounds: int = Form(DEFAULT_AGENT_PARALLEL_ROUNDS),
     session_id: str | None = Form(None),
     request_id: str | None = Form(None),
@@ -512,6 +513,12 @@ async def create_room_run(
         raise HTTPException(status_code=400, detail="mode must be discuss or plan")
     if synthesize is None:
         synthesize = mode_norm == "plan"
+    from agent_lab.room.turn_policy import turn_policy_enabled
+
+    if turn_policy_enabled():
+        synthesize = False
+        mode_norm = "discuss"
+    skill_intent_norm = (skill_intent or "").strip().lower() or None
     if not topic:
         raise HTTPException(status_code=400, detail="topic required")
 
@@ -756,6 +763,7 @@ async def create_room_run(
                     topic,
                     agents=agent_list,  # type: ignore[arg-type]
                     synthesize=synthesize,
+                    skill_intent=skill_intent_norm,
                     parallel_rounds=parallel_rounds,
                     on_event=on_event_cb,
                     permissions=perm_obj,
@@ -772,6 +780,7 @@ async def create_room_run(
                     topic,
                     agents=agent_list,  # type: ignore[arg-type]
                     synthesize=synthesize,
+                    skill_intent=skill_intent_norm,
                     parallel_rounds=parallel_rounds,
                     on_event=on_event_cb,
                     session_folder=folder,

@@ -440,10 +440,10 @@ Mission OS 3-pane IA 유지 위에서:
 | 2 | 합의 도달 + pending agreements | `turn_policy.py` scribe_trigger `consensus_reached` | ✅ 있음 |
 | 3 | verified loop 종료 | scribe_trigger `verified_loop_done` | ✅ 있음 |
 | 4 | Human 「지금 정리」 | scribe_trigger `synthesize_only` (UI 버튼 — 플래그 아님) | ✅ 있음 |
-| 5 | **skill_intent (신규)** | slash/skill 호출(예: `/plan-draft`) · agent MCP `propose_build` · envelope `[PROPOSED:]` delta threshold | ⬜ P2 |
-| — | ~~`legacy_plan_send`~~ (preset/`synthesize=true` hint) | `turn_policy.py:20` — **제거 대상** | ⬜ P1 |
+| 5 | **skill_intent** | slash `/plan` → `_pending_skill_intent` · API `skill_intent` | 🟡 P2 (① done; MCP/envelope pending) |
+| — | ~~`legacy_plan_send`~~ (preset/`synthesize=true` hint) | removed P1 | ✅ P1 |
 
-**P1 — B 전환 (legacy plan flag 잔재 제거):**
+**P1 — B 전환 (legacy plan flag 잔재 제거):** ✅ shipped 2026-07-05
 
 | 대상 | 작업 |
 |------|------|

@@ -17,7 +17,7 @@ ScribeTrigger = Literal[
     "verified_loop_done",
     "consensus_reached",
     "plan_workflow_draft",
-    "legacy_plan_send",
+    "skill_intent",
 ]
 
 TurnKind = Literal["agent_turn", "plan_side_effect"]
@@ -26,6 +26,43 @@ _PLAN_DRAFT_PHASES = frozenset({"DRAFT", "REFINE"})
 _PLAN_NO_SCRIBE_PHASES = frozenset({"HUMAN_PENDING", "APPROVED"})
 _PLAN_FSM_TICK_PHASES = frozenset({"INTAKE", "CLARIFY", "DRAFT", "PEER_REVIEW", "REFINE"})
 _TASK_ASSIGN_PHASES = frozenset({"DRAFT", "REFINE", "PEER_REVIEW"})
+_SKILL_SCRIBE_INTENTS = frozenset({"plan", "plan_draft", "ralplan"})
+
+
+def normalize_skill_intent(raw: str | None) -> str | None:
+    if raw is None:
+        return None
+    text = str(raw).strip().lower()
+    return text or None
+
+
+def skill_intent_opens_scribe(intent: str | None) -> bool:
+    return normalize_skill_intent(intent) in _SKILL_SCRIBE_INTENTS
+
+
+def pop_pending_skill_intent(folder: Path | None, run_meta: dict[str, Any]) -> str | None:
+    """Consume slash/API pending intent; clear from memory and disk."""
+    intent = normalize_skill_intent(run_meta.get("_pending_skill_intent"))
+    if not intent:
+        return None
+    from agent_lab.run.meta import patch_run_meta, stamp_run_meta
+
+    run_meta.pop("_pending_skill_intent", None)
+    stamp_run_meta(run_meta, _pending_skill_intent=None)
+    if folder is not None and folder.is_dir():
+
+        def _clear(run: dict[str, Any]) -> dict[str, Any]:
+            run.pop("_pending_skill_intent", None)
+            return run
+
+        patch_run_meta(folder, _clear)
+    return intent
+
+
+def stamp_active_skill_intent(run_meta: dict[str, Any], intent: str | None) -> None:
+    from agent_lab.run.meta import stamp_run_meta
+
+    stamp_run_meta(run_meta, _active_skill_intent=normalize_skill_intent(intent))
 
 
 def turn_policy_enabled() -> bool:
@@ -46,7 +83,7 @@ class TurnSignals:
     synthesize_only: bool = False
     cancelled: bool = False
     supervisor_first_turn: bool = False
-    legacy_synthesize_hint: bool = False
+    skill_intent: str | None = None
 
     @classmethod
     def from_run_meta(
@@ -57,9 +94,9 @@ class TurnSignals:
         consensus_meta: dict[str, Any] | None = None,
         synthesize_only: bool = False,
         cancelled: bool = False,
-        legacy_synthesize_hint: bool = False,
         verified_loop_done: bool = False,
         supervisor_first_turn: bool = False,
+        skill_intent: str | None = None,
     ) -> TurnSignals:
         from agent_lab.consensus_agreements import pending_consensus_agreements
         from agent_lab.plan.workflow import is_plan_workflow_active, plan_workflow_phase
@@ -71,6 +108,9 @@ class TurnSignals:
         consensus = consensus_meta or {}
         status = str(consensus.get("status") or run.get("consensus_status") or "").strip().lower() or None
         pending = pending_consensus_agreements(run.get("consensus_agreements"))
+        resolved_skill = normalize_skill_intent(skill_intent) or normalize_skill_intent(
+            run.get("_active_skill_intent"),
+        )
         return cls(
             room_preset=preset,
             plan_workflow_phase=phase,
@@ -82,7 +122,7 @@ class TurnSignals:
             synthesize_only=synthesize_only,
             cancelled=cancelled,
             supervisor_first_turn=supervisor_first_turn,
-            legacy_synthesize_hint=legacy_synthesize_hint,
+            skill_intent=resolved_skill,
         )
 
 
@@ -154,10 +194,6 @@ class TurnPolicyEngine:
             and not is_fast
             and (signals.plan_workflow_active or init_pw)
             and phase in _PLAN_FSM_TICK_PHASES
-        ) or bool(
-            signals.legacy_synthesize_hint
-            and signals.plan_workflow_active
-            and phase in _PLAN_FSM_TICK_PHASES
         )
 
         scribe_trigger: ScribeTrigger = "none"
@@ -177,9 +213,9 @@ class TurnPolicyEngine:
         ):
             run_scribe = True
             scribe_trigger = "plan_workflow_draft"
-        elif signals.legacy_synthesize_hint and not is_fast:
+        elif not is_fast and skill_intent_opens_scribe(signals.skill_intent):
             run_scribe = True
-            scribe_trigger = "legacy_plan_send"
+            scribe_trigger = "skill_intent"
 
         if is_fast and not signals.synthesize_only:
             run_scribe = False
@@ -210,7 +246,6 @@ def prepare_turn_policy_before_agent_round(
     folder: Path,
     run_meta: dict[str, Any],
     *,
-    synthesize: bool,
     human_turn: int,
 ) -> tuple[dict[str, Any], TurnEffects | None]:
     """Resolve and persist TurnEffects before agent round; bootstrap FSM when needed."""
@@ -224,7 +259,6 @@ def prepare_turn_policy_before_agent_round(
 
     signals = TurnSignals.from_run_meta(
         run_meta,
-        legacy_synthesize_hint=synthesize,
         supervisor_first_turn=human_turn <= 1,
     )
     room_preset_hint = signals.room_preset
@@ -236,7 +270,6 @@ def prepare_turn_policy_before_agent_round(
         signals = TurnSignals.from_run_meta(
             run_meta,
             room_preset=room_preset_hint,
-            legacy_synthesize_hint=synthesize,
             supervisor_first_turn=human_turn <= 1,
         )
         effects = TurnPolicyEngine.resolve(signals)
@@ -329,14 +362,14 @@ def _mark_scribed(run_meta: dict[str, Any], key: str) -> None:
     stamp_run_meta(run_meta, _turn_policy_scribe_keys=applied)
 
 
-def _plan_trigger_for_scribe(trigger: ScribeTrigger, *, legacy_synthesize: bool) -> str:
-    if trigger == "legacy_plan_send":
-        return "plan_turn"
+def _plan_trigger_for_scribe(trigger: ScribeTrigger) -> str:
     if trigger == "plan_workflow_draft":
         return "auto_turn"
+    if trigger == "skill_intent":
+        return "plan_turn"
     if trigger in ("consensus_reached", "verified_loop_done", "synthesize_only"):
         return trigger
-    return "plan_turn" if legacy_synthesize else "auto_turn"
+    return "auto_turn"
 
 
 def _run_fsm_tick(
@@ -393,7 +426,6 @@ def _run_turn_policy_scribe(
     plan_before: str,
     mode: str,
     effects: TurnEffects,
-    legacy_synthesize: bool,
     cancelled: bool,
     on_event: Any,
     permissions: dict | None,
@@ -423,13 +455,13 @@ def _run_turn_policy_scribe(
 
     plan_md = plan_before
     scribe_applied = False
-    plan_trigger = _plan_trigger_for_scribe(trigger, legacy_synthesize=legacy_synthesize)
+    plan_trigger = _plan_trigger_for_scribe(trigger)
 
     if trigger == "consensus_reached":
         auto = maybe_auto_scribe_after_consensus(
             folder,
             consensus_meta=consensus_meta,
-            synthesize=legacy_synthesize,
+            synthesize=False,
             cancelled=cancelled,
             on_event=on_event,
             permissions=permissions,
@@ -466,7 +498,7 @@ def _run_turn_policy_scribe(
             plan_before=plan_before,
             mode=mode,
             scribe=True,
-            user_plan_send=legacy_synthesize or trigger == "legacy_plan_send",
+            user_plan_send=False,
             cancelled=cancelled,
             on_event=on_event,
             session_folder=folder,
@@ -474,7 +506,7 @@ def _run_turn_policy_scribe(
         )
         scribe_applied = bool(plan_md and plan_md != plan_before) or trigger in (
             "plan_workflow_draft",
-            "legacy_plan_send",
+            "skill_intent",
         )
 
     if scribe_applied or (plan_md and plan_md != plan_before):
@@ -493,7 +525,6 @@ def apply_turn_effects(
     run_meta: dict[str, Any] | None = None,
     plan_before: str = "",
     mode: str = "discuss",
-    legacy_synthesize: bool = False,
     cancelled: bool = False,
     active_agents: list[Any] | None = None,
     permissions: dict | None = None,
@@ -558,7 +589,7 @@ def apply_turn_effects(
             run_meta=meta,
             plan_md=plan_md,
             plan_before=plan_before,
-            synthesize=legacy_synthesize,
+            synthesize=False,
             cancelled=cancelled,
             on_event=on_event,
         )
@@ -571,7 +602,6 @@ def apply_turn_effects(
         plan_before=plan_before,
         mode=mode,
         effects=effects,
-        legacy_synthesize=legacy_synthesize,
         cancelled=cancelled,
         on_event=on_event,
         permissions=permissions,
@@ -589,9 +619,7 @@ def apply_turn_effects(
         and active_agents
         and messages
     ):
-        from agent_lab.plan.workflow import plan_workflow_should_advance_on_turn
-
-        pw_advance = plan_workflow_should_advance_on_turn(meta, synthesize=legacy_synthesize)
+        pw_advance = bool(effects.advance_plan_workflow)
         _auto_draft_advance = (
             not pw_advance
             and plan_md != plan_before
@@ -604,7 +632,7 @@ def apply_turn_effects(
                 messages=list(messages),
                 plan_md=plan_md,
                 plan_before=plan_before,
-                synthesize=legacy_synthesize or _auto_draft_advance,
+                synthesize=_auto_draft_advance,
                 cancelled=cancelled,
                 agents=[str(a) for a in active_agents],
                 permissions=permissions,

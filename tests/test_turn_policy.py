@@ -15,7 +15,7 @@ from agent_lab.room.turn_policy import (
 def test_fast_casual_send_no_scribe_despite_auto_plan_scribe_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_AUTO_PLAN_SCRIBE", "1")
     effects = TurnPolicyEngine.resolve(
-        TurnSignals(room_preset="fast", legacy_synthesize_hint=False),
+        TurnSignals(room_preset="fast"),
     )
     assert effects.run_scribe is False
     assert effects.scribe_trigger == "none"
@@ -52,6 +52,51 @@ def test_verified_loop_done_scribe_trigger() -> None:
     )
     assert effects.run_scribe is True
     assert effects.scribe_trigger == "verified_loop_done"
+
+
+def test_supervisor_casual_send_no_scribe() -> None:
+    effects = TurnPolicyEngine.resolve(
+        TurnSignals(
+            room_preset="supervisor",
+            plan_workflow_active=True,
+            plan_workflow_phase="CLARIFY",
+        ),
+    )
+    assert effects.run_scribe is False
+    assert effects.scribe_trigger == "none"
+
+
+def test_skill_intent_plan_opens_scribe_in_clarify() -> None:
+    effects = TurnPolicyEngine.resolve(
+        TurnSignals(
+            room_preset="supervisor",
+            plan_workflow_active=True,
+            plan_workflow_phase="CLARIFY",
+            skill_intent="plan",
+        ),
+    )
+    assert effects.run_scribe is True
+    assert effects.scribe_trigger == "skill_intent"
+
+
+def test_skill_intent_ignored_on_fast_preset() -> None:
+    effects = TurnPolicyEngine.resolve(
+        TurnSignals(room_preset="fast", skill_intent="plan"),
+    )
+    assert effects.run_scribe is False
+    assert effects.scribe_trigger == "none"
+
+
+def test_pop_pending_skill_intent(tmp_path: Path) -> None:
+    from agent_lab.room.turn_policy import pop_pending_skill_intent
+    from agent_lab.run.meta import read_run_meta, write_run_meta
+
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    write_run_meta(folder, {"_pending_skill_intent": "plan"})
+    run_meta = read_run_meta(folder)
+    assert pop_pending_skill_intent(folder, run_meta) == "plan"
+    assert "_pending_skill_intent" not in read_run_meta(folder)
 
 
 def test_supervisor_first_turn_inits_plan_workflow_no_scribe() -> None:
@@ -204,11 +249,11 @@ def test_assign_task_owners_from_run_meta_snapshot() -> None:
     assert assign_task_owners_from_run_meta({"turn_policy": {"assign_task_owners": False}}) is False
 
 
-def test_prepare_turn_policy_ignores_legacy_synthesize_for_fsm_init(
+def test_prepare_turn_policy_second_turn_does_not_init_fsm(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """C4: synthesize=True must not init FSM unless TurnPolicy init_plan_workflow."""
+    """Casual supervisor send on turn 2 must not bootstrap FSM from synthesize hint."""
     from agent_lab.plan.workflow import is_plan_workflow_active
     from agent_lab.room.turn_policy import prepare_turn_policy_before_agent_round
     from agent_lab.run.meta import read_run_meta
@@ -223,7 +268,6 @@ def test_prepare_turn_policy_ignores_legacy_synthesize_for_fsm_init(
     run_meta, effects = prepare_turn_policy_before_agent_round(
         folder,
         run_meta,
-        synthesize=True,
         human_turn=2,
     )
     assert effects is not None
@@ -249,7 +293,6 @@ def test_prepare_turn_policy_supervisor_first_turn_inits_fsm(
     run_meta, effects = prepare_turn_policy_before_agent_round(
         folder,
         run_meta,
-        synthesize=False,
         human_turn=1,
     )
     assert effects is not None

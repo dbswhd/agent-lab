@@ -15,10 +15,29 @@
 | **D** | 완성 증거 사다리 D0–D4 · §3.1 **%** 구간 | §1 · §3.1 |
 | **W** | Wisdom 내부 W1–W3 | §2.2 |
 | **N** | 이니셔티브 N1–N9 | §2.1 |
-| **F** | 구조적 결함 F1–F8 | §3.2 |
+| **F** | 구조적 결함 F1–F12 | §3.2 · ADR §3.5 |
 | **Phase** | 실행 wave 1a·1b·1c | §3.3 |
 
 T(슈퍼샘플 판정)와 L(세션 자율도)는 둘 다 “신뢰”지만 **측정 대상이 다름** — 혼동 금지.
+
+### 코드 앵커 맵 (이 문서만 보고 작업 시작할 때의 진입점 — 코드가 진실)
+
+| 대상 | 경로 / 명령 |
+|---|---|
+| S1 플래그 trio | `src/agent_lab/s1_flags.py` (env 이름 = 코드 상수와 동일) |
+| Outcome ledger (W1) | `.agent-lab/outcomes.jsonl` — **repo root 고정** (`src/.agent-lab/`는 과거 CWD 버그 산물, 생기면 병합 후 삭제) |
+| W2 리포트 | `make feedback-report` → `scripts/feedback_report.py` (`JSON=1`로 기계 판독, `ROOT=<path>` 지정 가능) |
+| Autonomy Ladder (N4) | `src/agent_lab/autonomy_ladder.py` · API `/api/autonomy` GET/PATCH · demotion inbox `src/agent_lab/autonomy_inbox.py` |
+| 프로필 (N2) | `src/agent_lab/run/profile.py` (`PROFILES`·`owns`·`flags`) · `make list-flags` |
+| Topology hint (N3) | `src/agent_lab/topic_router.py::_resolve_topology` |
+| S1.5 explore | `src/agent_lab/s2_role_bandit.py` (subset 힌트만 — 전역 bandit 아님, §1 S2 재정의) |
+| S3 부품 | `src/agent_lab/plugin_discovery.py` · `mcp_tool_contract.py` · `skill_drafts.py` (전부 root 모듈) |
+| F7 dogfood | `eval "$(make f7-dogfood-env)"` = `AGENT_LAB_REPO_MAP=1` + `AGENT_LAB_COMPACT_TOOL_OUTPUT=1` · 리포트 `make f7-dogfood-report` |
+| F8 비용 | `make f8-cost-report` (`JSON=1` 가능) · ledger `.agent-lab/cost_ledger_quarter.json` · 예산 env `AGENT_LAB_QUARTER_BUDGET_USD` |
+| 구조 가드 | `make structure-metrics-check` → `scripts/structure_metrics.py` (baseline 불일치 시 fail — F9 ratchet 탑재 지점) |
+| 창발 bench | `make emergence-bench` → `scripts/emergence_bench.py` |
+| run.json 쓰기 규율 (F4) | `patch_run_meta()`·`stamp_run_meta()` (`src/agent_lab/run/meta.py`) — `run_meta[` subscript 금지, CI `tests/test_run_meta_write_discipline.py` |
+| 회귀 베이스라인 | `make test-fast` (~2130 mock) · `python scripts/smoke_room.py` (37 baselines) · `make dogfood-suite-mock` |
 
 ---
 
@@ -75,6 +94,12 @@ T2는 오픈소스 생태계 없이는 달성 불가 — N8 “슈퍼 샘플” 
 
 명시 ON: env `=1` · OFF: `=0` (explicit OFF가 supervisor default보다 우선). 사전 조건: CI `make dogfood-feedback-mock`으로 history 소스 전환 재현.
 
+**S1 관측 절차 (사전 지식 불필요 — 이대로 실행):**
+1. supervisor preset으로 실미션 1개 수행 (trio는 implicit ON — 별도 env 불필요).
+2. 종료 후 repo root `.agent-lab/outcomes.jsonl`에 episode 줄이 **추가**됐는지 확인 (안 늘었으면 ledger 경로 버그 — 코드 앵커 맵 참조).
+3. `make feedback-report JSON=1` 실행 → `by_source.history.n` (≥ `MIN_SAMPLE`=3이면 표본 충족)과 `advisor_lift.history_vs_default` (>0이면 lift 존재) 판독.
+4. 수치를 §3.3 "지금" 행의 닫힘 판정 근거로 기록 (커밋 메시지 or CLEANUP-SSOT).
+
 **순서 불변 (재확인):** S3부터 하면 도구만 늘고 창발은 안 생긴다. S1 dogfood → (선택) S1.5 explore → S2 episode 힌트 → S3.
 
 **S3의 구체화** (기존 문서에서 가장 모호했던 부분):
@@ -96,24 +121,24 @@ T2는 오픈소스 생태계 없이는 달성 불가 — N8 “슈퍼 샘플” 
 
 **불변:** 어떤 레벨에서도 BLOCK→409와 worktree 격리는 우회 불가. L3에서도 Human Inbox는 "질문 채널"로 항상 열려 있다.
 
-**레벨 전환 (제안 — 코드화는 Phase 1b 이후):**
+**레벨 전환 — 코드화 현황 (2026-07-04):** ladder SSOT·헤더 dial·Human ceiling PATCH·demotion inbox는 shipped (`autonomy_ladder.py`·`autonomy_inbox.py`, N4 v1/v2). **승격 3행은 미코드화** — 코드화 시 트리거 입력은 전부 `run.json` 기존 필드(diff_risk·oracle confidence·trust_budget)에서 취득하고, 전환 이벤트는 ladder audit trail에 기록한다.
 
-| 전환 | 트리거 | 게이트 |
-|------|--------|--------|
-| L0→L1 | `diff_risk` LOW + Oracle conf ≥ 0.85 **연속 5회** | `run.json` 자동 판정 |
-| L1→L2 | trust_budget 미소진으로 미션 10개 완주 | Human 수동 승인 |
-| L2→L3 | 미션 루프 완주율 ≥ 90%, Human escalation ≤ 5% | 분기 Human 리뷰 |
-| **강등** | Oracle fail **연속 3회** 또는 `diff_risk` HIGH | 즉시 자동 → L0 |
-| **예산 강등 (F8)** | 분기 `cost_ledger` 예산 상한 초과 | 자동 L2→L1 또는 L1→L0 |
+| 전환 | 트리거 | 게이트 | 코드화 |
+|------|--------|--------|--------|
+| L0→L1 | `diff_risk` LOW + Oracle conf ≥ 0.85 **연속 5회** | `run.json` 자동 판정 | ⬜ 미착수 |
+| L1→L2 | trust_budget 미소진으로 미션 10개 완주 | Human 수동 승인 | ⬜ 미착수 |
+| L2→L3 | 미션 루프 완주율 ≥ 90%, Human escalation ≤ 5% | 분기 Human 리뷰 | ⬜ 미착수 |
+| **강등** | Oracle fail **연속 3회** 또는 `diff_risk` HIGH | 즉시 자동 → L0 | ✅ demotion inbox (T-A0) |
+| **예산 강등 (F8)** | 분기 `cost_ledger` 예산 상한 초과 (`AGENT_LAB_QUARTER_BUDGET_USD`) | 자동 → L0 | ✅ `cost_ledger_quarter.py` |
 
 ### Layer 3 — 슈퍼 샘플 (공개·포크 가능성)
 
 내부 품질과 별개로 "외부인이 벗겨갈 수 있는가"를 독립 트랙으로 추적한다.
 
-- **재현 가능:** `git clone` → 15분 안에 mock 미션 1개 완주 (quickstart).
+- **재현 가능:** `git clone` → 15분 안에 mock 미션 1개 완주. **산출물 = `docs/QUICKSTART.md` (미존재 — N8/P2에서 작성).** 내용 후보: `make install` → `AGENT_LAB_MOCK_AGENTS=1` 세팅 → `python scripts/smoke_room.py` 또는 `make dogfood-suite-mock` 1개 topic — 작성 시 실제 clean clone에서 시간을 재서(`fork_time_minutes`) 확정한다.
 - **이해 가능:** 핵심 개념 6개(§2.2)만 알면 아키텍처 전체를 설명할 수 있는 문서 구조.
-- **분리 가능:** Oracle 검증, Room 합의, worktree execute를 각각 단독으로 fork할 수 있는 패키지 경계 (구조 리팩토링 wave가 이미 이 방향).
-- **증명 가능:** emergence bench·feedback report 결과를 공개 리포트로 재현 — "창발이 실제로 성능을 올린다"는 주장에 숫자가 붙어야 슈퍼 샘플 자격이 생긴다. **선행:** 재현 가능 벤치 프로토콜 SSOT (`make emergence-bench`) — 내부 bench 수치만으로는 Layer 3 판정 불가 (N8).
+- **분리 가능:** Oracle 검증, Room 합의, worktree execute를 각각 단독으로 fork할 수 있는 패키지 경계 — **선행: ADR §3.5 Stage 2 (`agent_lab.core` 추출·순환 절단)**. F12가 남아 있는 동안은 분리 fork 불가.
+- **증명 가능:** emergence bench·feedback report 결과를 공개 리포트로 재현 — "창발이 실제로 성능을 올린다"는 주장에 숫자가 붙어야 슈퍼 샘플 자격이 생긴다. **선행:** 재현 가능 벤치 프로토콜 SSOT (`make emergence-bench` → `scripts/emergence_bench.py` — 시드·topic 세트·판정 기준을 문서화해 타인이 같은 숫자를 얻어야 함) — 내부 bench 수치만으로는 Layer 3 판정 불가 (N8).
 
 ### 완성 정의 사다리 (D0~D4) — 이 문서의 % 산정 기준
 
@@ -156,6 +181,8 @@ T2는 오픈소스 생태계 없이는 달성 불가 — N8 “슈퍼 샘플” 
 | `concept_coverage` | 6개 어휘로 설명 가능 shipped 기능 비율 | §2.2 + 분기 Human | aspirational |
 | `cost_ledger_quarter` | 분기 LLM·Room 비용 | `cost_ledger.py` · F8 | **F8** |
 
+**판독 명령:** S1 계열 3종은 `make feedback-report JSON=1` 출력의 `by_source.*`·`advisor_lift.*` 필드에서, 비용은 `make f8-cost-report JSON=1`에서 읽는다. `fork_time_minutes`는 clean clone에서 QUICKSTART 완주 시간을 수동 측정.
+
 **N1 관측 (formal closure 아님):** `clean_pass_delta` > 0 이고 `by_source.history.n` ≥ `MIN_SAMPLE`인 episode가 dogfood 중 **지속 관측**되면 S1 루프가 살아 있다고 본다. D4·분기 리뷰 참고치 (aspirational): `clean_pass_delta` ≥ 5pp, `history_match_rate` ≥ 60% when n≥10.
 
 ---
@@ -167,14 +194,14 @@ T2는 오픈소스 생태계 없이는 달성 불가 — N8 “슈퍼 샘플” 
 | # | 이니셔티브 | 내용 | 층 | 시기 |
 |---|---|---|---|---|
 | **N1** | **S1 dogfood-active** | supervisor implicit ON, `dogfood-feedback-mock` CI, 실사용 중 `make feedback-report`로 lift·sample **관측** (§1.4). Formal D3 닫힘 의식 없음 | L1 | 지금 |
-| **N2** | **프로필 시스템** | 212개 플래그 → `fast`/`balanced`/`thorough`/`autonomous` 4개 프로필 매핑 (`run/profile.py`). 개별 override 유지. 신규 feature 플래그는 프로필 소속 권장 (`make list-flags --profile`) | L1 | ✅ v1 |
+| **N2** | **프로필 시스템** | 전체 플래그(`make list-flags`) → `fast`/`balanced`/`thorough`/`autonomous` 4개 프로필 매핑 (`run/profile.py`). 개별 override 유지. 신규 feature 플래그는 프로필 소속 권장 (`make list-flags --profile`) | L1 | ✅ v1 |
 | **N3** | **Harness topology 데이터화** | **room_preset** 2개(fast/supervisor) 유지. Topology hint **3종** — `topic_router._resolve_topology`: `parallel` · `producer_reviewer` · `pipeline` ([ROLE-ORCHESTRATION-PLAN.md](./ROLE-ORCHESTRATION-PLAN.md)). **consensus rounds·adversarial**는 LC-L4 `adversarial_gate`·debate — topology hint **아님** | L1 | **partial shipped** (topology 3/3) |
-| **N4** | **Autonomy Ladder 정식화** | [선행: F6 Phase D] L0~L3을 코드 개념으로 승격: 세션마다 현재 레벨이 run.json과 UI에 표시, 레벨 전환 이벤트 기록. N2 프로필 SSOT 권장 | L2 | 2주~1달 |
+| **N4** | **Autonomy Ladder 정식화** | v1/v2 ✅ (`autonomy_ladder.py` · `/api/autonomy` · dial · demotion inbox). **잔여:** ① 승격 트리거 3종 코드화 (§1 Layer 2 표 ⬜ 행 — 입력은 run.json 기존 필드) ② `escalation_rate_by_level` KPI 산출을 `feedback_report`에 추가 | L2 | 잔여 2건 |
 | **N5** | **S2 episode 힌트 (구 팀 bandit)** | [선행: S1 dogfood, S1.5 D2+] episode lift 관측 시 roster 힌트 — **전역 과제분류 bandit 없음**. **동결** until W2 sample 충분 | L1 | 분기 재평가 |
-| **N6** | **Self-patch meta-loop** | Room이 생성한 개선안을 agent-lab 자기 코드베이스에 적용하는 dogfood 루프의 정례화. 대상은 처음엔 화이트리스트(스킬 문서·프롬프트·preset 파라미터)로 제한, 코어 로직은 인간 gate 필수 | L3 | 1달~분기 |
-| **N7** | **S3 외부 능력 자가 통합** | §1 Layer 1의 S3a~S3d. 인터페이스(도구 카드 스키마, `[NEED-TOOL:]` 시그널)는 지금 설계, 구현은 S1/S2 닫힌 후 | L3 | 분기 |
-| **N8** | **슈퍼 샘플 트랙** | [선행: emergence-bench 프로토콜] quickstart(15분 mock 미션) → 예제 미션 3종 → 공개 재현 리포트 → fork 가이드. T1+T2 (§0.1) | — | 분기 |
-| **N9** | **검증 서비스화** | OpenAI-compat API(`openai_compat.py` 라우터 존재)에 소비자 만들기 + Oracle을 외부 결과 검증 서비스로 노출. "다른 에이전트가 만든 것을 Agent Lab이 검증한다"가 슈퍼 샘플 서사의 핵심 증거 | — | 분기 |
+| **N6** | **Self-patch meta-loop** | Room이 생성한 개선안을 agent-lab 자기 코드베이스에 적용하는 dogfood 루프의 정례화. **착수 시 첫 커밋 = 화이트리스트 파일** (`.agent-lab/self_patch_allowlist.txt` — 초기값: `.claude/skills/**`·프롬프트·preset 파라미터만). 코어 로직(`src/agent_lab/**`)은 인간 gate 필수 | L3 | 1달~분기 |
+| **N7** | **S3 외부 능력 자가 통합** | §1 Layer 1의 S3a~S3d. **지금 할 것 = 설계 문서 1개:** `docs/S3-TOOL-CARD-SPEC.md` — 도구 카드 스키마(JSON: id·source·capabilities·mount 방법) + `[NEED-TOOL:]` 시그널 문법 + Human Inbox 승인 flow. 구현은 S1/S2 닫힌 후 (부품: 코드 앵커 맵 S3 행) | L3 | 분기 |
+| **N8** | **슈퍼 샘플 트랙** | [선행: emergence-bench 프로토콜] ① `docs/QUICKSTART.md` (15분 mock 미션 — §1 Layer 3 "재현 가능" 내용 후보) ② 예제 미션 3종 (`sessions/_regression/` 스타일 fixture) ③ 공개 재현 리포트 (bench 시드·판정 포함) ④ fork 가이드. T1+T2 (§0.1) | — | 분기 |
+| **N9** | **검증 서비스화** | 라우터 = `app/server/routers/openai_compat.py` (존재). **잔여:** ① 소비자 1개 (GJC 또는 외부 에이전트가 이 API로 미션 제출) ② Oracle 검증 결과를 응답 헤더/필드로 노출 ③ API 문서. "다른 에이전트가 만든 것을 Agent Lab이 검증한다"가 슈퍼 샘플 서사의 핵심 증거 | — | 분기 |
 
 ### 2.2 Concepts — 공개 어휘 6개로 고정
 
@@ -230,8 +257,8 @@ Mission OS 3-pane IA 유지 위에서:
 1. **Autonomy dial을 1급 UI로** — 세션 헤더에 현재 레벨(L0~L3)과 trust_budget 잔량을 상시 표시. "지금 무엇이 자동이고 무엇이 인간 승인인지"가 항상 보여야 신뢰 사다리가 UX가 된다.
 2. **Inbox = 유일한 결정 표면** — plan 승인, diff 승인, NEED-TOOL 승인, BLOCK escalation을 전부 Human Inbox 한 곳으로 수렴. 결정 유형이 늘어도 표면은 안 늘린다.
 3. **Evidence-first 읽기 경로** — "에이전트가 뭐라 말했나"보다 "무엇이 검증됐나"가 먼저 보이는 화면 (EvidenceTimeline 확장). 창발 KPI(challenge_yield 등)를 세션 요약 카드에 노출해 사용자가 창발을 체감하게.
-4. **프로필 우선 온보딩** — 새 세션 = 프로필 4개 중 선택이 전부. 플래그 212개는 고급 설정 뒤로.
-5. **부채 상환 우선** — 새 표면 추가 전에 Phase D(상태 관리: RoomChat 26 useState → 훅 4개, SSE handler map, client.ts 분할)를 끝낸다. **근거:** 26 useState에서 Autonomy 레벨 변화가 N-way 전파되어 렌더 버그 위험이 높음 — `useAutonomySession` hook 1개로 수렴 후 N4 진행. 125개 컴포넌트에서 더 늘리는 것보다 통합이 먼저.
+4. **프로필 우선 온보딩** — 새 세션 = 프로필 4개 중 선택이 전부. 개별 플래그(`make list-flags`)는 고급 설정 뒤로.
+5. **부채 상환 우선** — Phase D(훅 4개 추출 + client 분할)는 ✅ (F6). **다음 부채 = F9:** RoomChat 본체(실측 3497줄·useState 30)의 뷰/상태 분리 — 새 UI 표면 추가 전에 F9 LOC 하강이 관측돼야 한다. 판정: `make structure-metrics-check`의 large_tsx baseline.
 
 ### 2.5 참고 샘플 흡수 매트릭스
 
@@ -253,11 +280,13 @@ Mission OS 3-pane IA 유지 위에서:
 | **Jules** | Async plan→execute→PR; issue label trigger; mid-flight steer | **N7/GJC 참고만** — core는 sync Room; Human gate 없는 async merge 흡수 금지 |
 | **OpenHands** | [Workspace abstraction](https://docs.openhands.dev/sdk/guides/agent-server/overview) (local/Docker/remote); event replay; opt-in sandbox | worktree 1차; `SANDBOX_RUNTIME=docker` 2차 (F5/F8 이후) |
 | **Amp** | `AGENT.md`, subagent·thread fork/compact, automation [parallel worktree](https://github.com/sourcegraph/amp-examples-and-guides) | Room shared context; single-thread oracle ≠ Room Oracle |
+| **Hermes Agent** (Nous Research, 2026-02) | [Kanban 멀티에이전트](https://hermes-agent.nousresearch.com/docs/user-guide/features/kanban): durable queue+state machine(SQLite WAL) — `tasks→task_links→task_comments→task_runs→task_events`; dispatcher `BEGIN IMMEDIATE` 원자적 claim, TTL/PID 기반 stale 재큐잉; `kanban_complete`/`kanban_block` 구조화 핸드오프(침묵 종료=프로토콜 위반); self-improving skill loop + FTS5 cross-session recall | **오케스트레이션 코어 재구축 참조** — `run_meta` god-object(F11) 대체 모델. Hermes에 없는 것(Oracle·worktree·BLOCK→409·Human Inbox)은 Agent Lab 차별점으로 유지 |
+| **Mixture-of-Agents** ([Together AI](https://docs.together.ai/docs/mixture-of-agents), arXiv:2406.04692) | Proposer 다수 병렬 응답 → aggregator 종합, 레이어 반복(무상태, fine-tune 불필요) | `topic_router` **parallel** topology 내부 옵션으로 한정 흡수(순수 품질 상승 실험) — objection/BLOCK 게이트 없는 구조라 Room 합의를 **대체 불가**; 게이트 우회 형태 흡수 금지 |
 | **관찰 목록** | OpenHands·SWE-agent(verified bench), LangGraph(orchestration API), Aider(repo-map) | 분기 §3.3 **분기** 행에서 이 표 전면 재검토 |
 
 **흡수의 규칙:** 어떤 샘플 패턴도 5모트(BLOCK→409, worktree 격리, Oracle+Repair, run.json 감사, Human Inbox)를 약화시키는 형태로는 흡수하지 않는다.
 
-**흡수 금지 (명시):** Human gate 없이 PR auto-merge(Jules/Devin Auto-Fix 그대로), fire-and-forget multi-day mission(Factory식 inbox bypass), main checkout에서 무 gate sandbox(OpenHands default를 core에 그대로).
+**흡수 금지 (명시):** Human gate 없이 PR auto-merge(Jules/Devin Auto-Fix 그대로), fire-and-forget multi-day mission(Factory식 inbox bypass), main checkout에서 무 gate sandbox(OpenHands default를 core에 그대로), 게이트 없는 MoA proposer-aggregator로 Room 합의(objection/BLOCK) 전체를 대체.
 
 ---
 
@@ -284,7 +313,7 @@ Mission OS 3-pane IA 유지 위에서:
 | OpenAI-compat API (N9) | **35%** | D1 | 라우터 존재. 소비자·문서·감사 헤더 등 서사 완성 없음 |
 | 슈퍼 샘플 준비도 (Layer 3) | **20%** | D0~D1 | 내부 문서는 풍부하나 외부인용 quickstart·fork 가이드·공개 재현 리포트 없음. 패키징 baseline만 존재 |
 
-### 3.2 구조적 결함 (F1~F8) — %가 아니라 구조가 문제인 것
+### 3.2 구조적 결함 (F1~F12) — %가 아니라 구조가 문제인 것
 
 - **F1. Default-OFF 무덤:** 완성의 정의가 "코드 존재"에 머물러, 창발·S1 등 핵심 기능이 플래그 OFF로 죽어 있다. 측정 없이 쌓인 D1 코드는 자산이 아니라 재고다. → **처방:** D0~D4 사다리 채택(§1), 신규 기능은 "D3 도달 계획" 없이 착수 금지, S1 dogfood부터 소진.
 - **F2. 플래그 스프롤 가속:** ✅ feature 플래그 전수 프로필 소속 (`run/profile.py` `owns`+`flags`, `feature_flags_without_owner()==[]`). 신규 feature 플래그는 최소 1개 프로필 `owns`/`flags`에 추가 (`test_f2_every_feature_flag_has_owner`). 만료 조건(승격/제거 시점) 메타는 잔여.
@@ -294,6 +323,10 @@ Mission OS 3-pane IA 유지 위에서:
 - **F6. 프론트 상태 부채:** ✅ Phase D — RoomChat hooks (`useRoomComposerPrefs` · `useRoomSlashCommands` · `useRoomRunWatchdog` · `useRoomRecoveryLifecycle`) + `api/client` domain split (`http` · `workspaceClient` · `missionGatewayClient` · `wsClient`). N4 dial은 그 위에 탑재됨.
 - **F7. 품질 평가의 mock 편중:** repo_map·compaction이 "실세션 평가 불가"로 OFF에 갇힘. → **처방 준비 ✅:** [F7-REPO-MAP-COMPACTION-DOGFOOD.md](./F7-REPO-MAP-COMPACTION-DOGFOOD.md) · `make f7-dogfood-env` / `make f7-dogfood-report` · `last_context_bundle`/`context_quality_log` 계측. **실행:** 7일 supervisor dogfood → ON/OFF (방치 금지).
 - **F8. 비용·크레딧 가시성 부재:** 세션 `cost_ledger`는 존재. → **처방 준비 ✅:** [F8-COST-VISIBILITY.md](./F8-COST-VISIBILITY.md) · `.agent-lab/cost_ledger_quarter.json` · `AGENT_LAB_QUARTER_BUDGET_USD` · 초과 시 autonomy **L0 demotion** · `make f8-cost-report` · runtime `cost_quarter`.
+- **F9. Hot-path 갓 모듈·갓 컴포넌트:** 실측(2026-07-04) — `plan/execute.py` 1691 · `plan/workflow.py` 1281 · `room/turn_flow.py` 1084(단일 `run_room` **~471줄**, `continue_room_round` ~428줄) · `web/RoomChat.tsx` **3497줄**(useState 30·useEffect 34·useRef 16). **F6 Phase D는 훅 4개 추출 + client split에 한정** — RoomChat 본체·`run_room`은 미해소. `run_room`은 창발 엔진(합의·턴)의 심장인데 단일 함수라 correctness 추론·테스트가 가장 어렵고, RoomChat은 fork 리더가 첫 벽에 부딪히는 지점(Layer 3 저해). → **처방 (구현 지점):** `scripts/structure_metrics.py`의 baseline dict에 py hot-path 3종 상한(1691·1281·1084)을 추가 — 기존 `large_tsx_files` baseline 비교와 같은 방식으로 `--check`가 초과 시 fail (`make structure-metrics-check`가 가드). 분해는 ADR §3.5 Stage 3. **모트:** Oracle·worktree 불변 — 순수 가독성·테스트성. **목표:** D2(ratchet 가드) → 점진 하강.
+- **F10. 플래그·레지스트리 드리프트:** 실측 `AGENT_LAB_*` **215개**(본문 "212개" 표기와 불일치), `runtime_flags` 레지스트리 157개 → **~58개가 레지스트리 밖**. 단일 참조 플래그(`EMERGENCE_BENCH_LIVE`·`SKIP_LIVE` 등) 잔존. F2는 "프로필 소속"만 강제하고 "레지스트리 등재"는 미강제 → 문서 하드코딩 수치가 굳어 **F3 재발 씨앗**. → **처방 (구현 지점):** ① 문서의 플래그 개수 하드코딩 제거 → "`make list-flags` 참조"로 치환 (본문 ✅ 2026-07-04) ② 레지스트리 = `src/agent_lab/runtime_flags.py` — grep 실측(`grep -rhoE "AGENT_LAB_[A-Z0-9_]+" src/agent_lab | sort -u`)과 레지스트리 등재분의 차집합 0 가드를 `tests/test_runtime_flags_registry.py`(신규)로 추가, 기존 예외는 명시 allowlist로 시작해 소진. **모트 중립.**
+- **F11. 상태 god-dict (타입 없는 `run_meta`):** 실측(2026-07-04) — `run.json`은 `dataclass`/`TypedDict`/`pydantic`이 아닌 자유 `dict[str, Any]`이고 `run_meta: dict[str, Any]`가 **362개 함수 시그니처**에 흐름. `run/schema.py`(78줄) `validate_run()`은 런타임 dict 검사일 뿐 타입 아님. **F4는 쓰기 규율만 잡음** — "문자열 키 가변 자루가 1급 자료구조"라는 설계 자체가 잔존 → 단일 최대 부채(루프 correctness 추론·부분 테스트·리팩터 저해). → **처방:** ADR §3.5 Stage 1 — 경계에서 `RunState` 타입으로 감싸고 안쪽부터 조임. **모트 강화**(감사·재현성). **목표:** D0(설계) → 점진 D2.
+- **F12. 레이어 순환 (매듭):** 확정된 양방향 import — `runtime` ↔ `room`(runtime→`room.hooks`/`objections`/`sse_stream`, room→`runtime.events`/`invoke_execute`/`policy`), 겹쳐서 `room`↔`plan`·`runtime`↔`mission`. **runtime/room/plan/mission = 폴더로만 쪼갠 하나의 덩어리.** Makefile 31개 `audit-*-imports`+`typecheck-*-ratchet`은 이 매듭을 순찰하는 흉터 조직 — 경계 미획정의 증거. 파사드도 샘(`room/__init__.py` 104 export 중 ~30개가 `_`-내부). → **처방:** ADR §3.5 Stage 2 — 의존성 0 `agent_lab.core`(도메인 타입 + 루프-as-data) 추출, 단방향 의존. 31 ratchet → 1개 no-cycle 가드로 대체. **모트 중립.** **목표:** D0 → D2.
 
 ### 3.2.1 Room preset · discuss 지연 — dogfood 관찰 (2026-07)
 
@@ -306,13 +339,14 @@ Mission OS 3-pane IA 유지 위에서:
 
 관련: [ROOM-TRANSCRIPT-CONTRACT.md](./ROOM-TRANSCRIPT-CONTRACT.md) §3 (pending UI는 1a에서 수정) · N3 room_preset · [05-room-agent-roles.md](./05-room-agent-roles.md) §Fast preset.
 
+### 3.3 실행 로드맵 (wave 1a·1b·1c)
 
-| 시기 | [선행] | 할 일 | 닫힘 / 관측 |
+| 시기 | [선행] | 할 일 (실행 수준) | 닫힘 / 관측 |
 |---|---|---|---|
-| **지금** | **2026-07 code wave ✅** (아래) | S1 dogfood — supervisor 실사용; `make feedback-report` | history lift·sample (formal closure 없음) |
-| **~1달** | F7 protocol ✅ | F7 **실행** — `eval "$(make f7-dogfood-env)"` · `make f7-dogfood-report` | Decision table ON/OFF |
-| **분기** | S1 data · F8 instrumented ✅ | §2.5 매트릭스 · KPI · `QUARTER_BUDGET_USD` · N5/S2 재평가 · dogfood-first 만료 (history n≥30) | D 단계 갱신 |
-| **동결** | — | N5 전역 bandit · N6~N7 · Gateway · trading core | explicit Human OK |
+| **지금** | **2026-07 code wave ✅** (아래) | S1 dogfood — §1 **S1 관측 절차** 1~4를 supervisor 실미션마다 반복 | `by_source.history.n`·`advisor_lift.history_vs_default` 기록 축적 (formal closure 없음) |
+| **~1달** | F7 protocol ✅ | F7 **실행** — ① `eval "$(make f7-dogfood-env)"` ② **시작일을 [F7-REPO-MAP-COMPACTION-DOGFOOD.md](./F7-REPO-MAP-COMPACTION-DOGFOOD.md) 상단에 1줄 커밋** (없으면 7일 만료 판정 불가) ③ 7일 후 `make f7-dogfood-report` | Decision table 기준으로 두 플래그 ON/OFF 확정 커밋 |
+| **분기** | S1 data · F8 instrumented ✅ | ① env `AGENT_LAB_QUARTER_BUDGET_USD` 실값 설정 → `make f8-cost-report` 정례화 ② §2.5 매트릭스 재검토 ③ §1.4 KPI 리뷰 ④ N5/S2 재평가 ⑤ dogfood-first 만료 검토 (`by_source.history.n` ≥ 30) | §3.1 D 단계 갱신 (판정 근거 병기) |
+| **동결** | — | N5 전역 bandit · N6~N7 · Gateway · trading core | explicit Human OK 없이 착수 금지 |
 
 **의존성 요약:** N4 ← F6 필수, N2 권장 · N5 ← S1 dogfood + S1.5 D2+ (전역 bandit 없음) · N8 ← emergence-bench 프로토콜
 
@@ -333,6 +367,64 @@ Mission OS 3-pane IA 유지 위에서:
 | **F8 prep** | [F8-COST-VISIBILITY.md](./F8-COST-VISIBILITY.md) · quarter ledger · L0 demote · `make f8-cost-report` |
 
 **남은 것 (코드 외):** supervisor/F7 **실사용** · 분기 KPI · 동결 항목.
+
+### 3.4 코드 감사 — 3축 피드백 (2026-07-04)
+
+실측 기반 감사. 수치는 `find`/`grep`/`.venv pytest`/`structure_metrics.py`로 검증. 결론: **코드 자산은 충분, 이제 병목은 코드가 아니라 (a) 소수 hot-path의 비대화, (b) 런타임 증거의 부재**다.
+
+**축 1 — 코드 구조 복잡성:** 규모는 크나(py 347파일·75k LOC·root 116모듈·subpkg 22 / tsx 302파일·27k LOC) 규율 도구는 상위권 — import audit 14종 + typecheck ratchet 17종 + `structure-metrics`. **문제는 스프롤이 아니라 국소 집중:** 상위 3개 hot-path(`execute.py`·`turn_flow.py`·`RoomChat.tsx`)가 복잡도를 독점 → **F9** 신설. Makefile 114 targets/481줄의 per-module ratchet은 좋은 방어지만 그 자체가 유지 표면 — 패키지 분리가 아직 소화되지 않았다는 신호.
+
+**축 2 — 동적 작동(정확성·효율·자율):**
+- **효율 ✅ 규명:** §3.2.1 — 지연은 Room Python 아닌 preset 토폴로지+agent CLI(supervisor 281s vs fast 54s). light discuss로 대응 완료.
+- **정확성 ⚠ 테스트성:** `run_room`(~471줄 단일 함수)이 합의·턴 correctness의 핵심인데 분해가 안 돼 회귀 표면이 큼(→ F9).
+- **자율 ⚠ 미증명:** L0~L2 코드화(N4)는 됐으나 **L3 자동화·`escalation_rate_by_level`은 후속**(§3.1). S1 루프는 supervisor scope만 ON이고 **lift 미측정** — `make feedback-report` 실행 전까지 "동적 자기발전"은 코드일 뿐 증거 없음(F1 그림자).
+
+**축 3 — 슈퍼샘플 대비 완성도·안정성·퀄리티:**
+- **안정성 ✅:** `.venv` 2824+ 테스트 수집, mock-only CI, smoke 37 — fork 리더 신뢰 기반은 견고.
+- **완성도 ⚠:** Layer 3 = 20%. `QUICKSTART`/`FORK` 가이드 **부재**, `fork_time_minutes` 계측 없음 → T1(재현 신뢰) 미달. README(237줄)는 있으나 "15분 mock 미션 완주" 경로 없음.
+- **퀄리티 갭의 본질:** 경쟁 샘플과의 차이는 **기능이 아니라 "증명 가능"** 다리(§1 Layer 3) — 창발이 성능을 올린다는 **공개 재현 리포트가 없음**. 여기에 RoomChat 3497줄이 겹쳐 "벗겨갈 만한 원본" 문턱을 낮춤.
+
+**우선순위(개선 액션 — 코드 외 실행 트랙과 정합):**
+
+| P | 액션 | 결함/이니셔티브 | 닫힘 기준 |
+|---|------|------------------|-----------|
+| **P0** | `make feedback-report` 정기 실행 → S1 lift 관측 시작 | F1 · N1 | `by_source.history.n`·`clean_pass_delta` 기록 |
+| **P0** | `eval "$(make f7-dogfood-env)"`로 7일 dogfood 시계 시작(시작일 SSOT 기록) | F7 | Decision table ON/OFF |
+| **P1** | hot-path LOC ratchet(`structure-metrics-check`) — 신규 증가 차단 | **F9** | 3개 파일 상한 가드 green |
+| **P1** | ~~문서 플래그 하드코딩 치환~~ ✅ → 잔여: 레지스트리 가드 `tests/test_runtime_flags_registry.py` | **F10** · F3 | 가드 green (예외 allowlist 소진 추적) |
+| **P2** | 15분 mock 미션 QUICKSTART + `fork_time_minutes` 계측 | N8 · Layer 3 | clone→완주 재현 |
+| **P2** | `run_room` turn phase 분리 / RoomChat 뷰·상태 분리 | **F9** | 함수·컴포넌트 하강 |
+
+**모트 체크:** P0~P2 전부 5모트를 **강화하거나 중립** — 측정(F1)·격리평가(F7)·가독성(F9)은 Oracle·worktree·Human Inbox를 약화시키지 않는다.
+
+### 3.5 ADR — 코어 상태·제어 재아키텍처 (2026-07-04)
+
+**결정:** 전면 rebuild **기각**. 코어 상태·제어 모델의 **점진적 재아키텍처(strangler-fig)** 채택. 대상 결함: **F11**(god-dict) · **F12**(레이어 순환) · F9(hot-path).
+
+**근거 (super-sample / 프레임워크 대비 실측):**
+
+| 축 | 잘된 에이전트 프레임워크 | Agent Lab 현재 | 갭 |
+|---|---|---|---|
+| 상태 | 타입 객체(LangGraph state·pydantic) | `dict[str, Any]` × 362 시그니처 | **큼** (F11) |
+| 제어 | 그래프/상태머신 = 데이터 | 471줄 명령형 `run_room` | **큼** (F9) |
+| 내구성 | 이벤트소싱·결정적 replay(Temporal류) | `completed_steps`+turn-end replay = 손제작 durable 일부 | 중간 |
+| 레이어 | core ← orchestration ← adapters (DAG) | runtime↔room↔plan↔mission 순환 | **큼** (F12) |
+| 어댑터 | 타입 노드/툴 인터페이스 | provider 관례(duck-typed); `ProviderSpec`은 frozen dataclass(메타만 타입) | 중간 |
+| **모트** | 대개 없음 | **worktree·Oracle·execute gate·run.json 감사·Human Inbox** | **Agent Lab 우위** |
+
+핵심 통찰: **이긴 칸(모트)은 손제작·실전 검증됨. 진 칸(상태·제어·레이어)은 프레임워크가 인프라로 공짜로 주는 것을 직접 구현하다 매듭이 된 것.** ⇒ 기성 엔진(LangGraph/Temporal)으로 substrate를 갈면 모트를 남의 추상화 위에 재구현해야 해 손해. **모트는 지키고 뼈대 성질(타입 상태·데이터화된 루프·DAG 레이어)만 흡수한다.**
+
+**Rebuild가 정당화되는 유일 조건:** durable execution을 손수 유지하는 대신 기성 엔진으로 substrate 교체를 **전략적으로** 택할 때. 현 모트가 손제작·검증된 이상 **비추천** — 재평가는 §3.3 분기 행.
+
+**실행 — 3-Stage strangler (전부 점진적, merge gate 아님):**
+
+| Stage | 목표 | 결함 | 방법 (구현 지점) | 닫힘 |
+|-------|------|------|------|------|
+| **1** | `RunState` 타입화 | F11 (F4·F10 뿌리) | 신규 `src/agent_lab/run/state.py`에 `RunState` (`@dataclass` 또는 pydantic — mypy ratchet 정합 우선). **첫 경계 = `read_run_meta()`** (`run/meta.py:39`) 반환을 wrapping 후 호출자부터 안쪽으로 전환; `run/schema.py::validate_run`의 dict 검사를 타입 생성자로 흡수 | 측정: `grep -rc "run_meta: dict\[str, Any\]" src/agent_lab` — **baseline 362**에서 하강 관측 |
+| **2** | 순환 절단 | F12 | 신규 `src/agent_lab/core/` (import 의존 **0** — 도메인 타입 + 루프-as-data: §2.3 루프의 단계 enum + 전이 테이블). runtime↔room 공유물(`events`·`policy` 타입, `hooks`·`objections` 인터페이스)을 core로 내리고 양쪽이 단방향 참조. no-cycle 가드 = `tests/test_no_layer_cycles.py`(신규 — import 그래프 DFS, F2/F4 가드 테스트와 같은 스타일) | no-cycle 가드 green → Makefile 31개 audit/ratchet를 1개 가드로 대체 |
+| **3** | `run_room` 분해·파사드 축소 | F9 | `room/turn_flow.py::run_room`(613행~, ~471줄)을 turn phase 3함수(routing/consensus/harvest)로 분리 — §2.3 루프 화살표와 1:1 대응; `room/__init__.py` 104 export 중 `_`-prefix ~30개를 내부 import로 강등 | `structure-metrics-check` LOC 하강, 파사드 `_`-export 0 |
+
+**의존성:** Stage 2 ← Stage 1(타입 있어야 루프-as-data 안전) · Stage 3은 1·2와 병행 가능. 각 Stage는 독립 PR 단위로 쪼개고, 매 PR마다 `make test-fast` + `python scripts/smoke_room.py` green 유지 (빅뱅 금지). **모트 체크:** Stage 1은 감사·재현성 **강화**, 2·3은 **중립** — 5모트 무손상.
 
 ---
 

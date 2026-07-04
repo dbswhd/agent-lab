@@ -95,8 +95,32 @@ export function emergenceHintLine(
     }
     return `Recombination skipped: ${skipped}`;
   }
-  if (locale === "ko") {
-    return "창발 모드 — 합의 · 재조합 · plan FSM 활성";
+  if (run?.discuss_light) {
+    return locale === "ko"
+      ? "경량 discuss — 1라운드 병렬 · 합의 다라운드 없음"
+      : "Light discuss — 1 parallel wave, no consensus multi-round";
   }
-  return "Emergence mode — consensus, recombination, plan FSM active";
+  if (run?.room_preset_promoted_from === "fast") {
+    return locale === "ko"
+      ? "빠른→감독 승격 (에이전트 2명 이상)"
+      : "Promoted fast→supervisor (roster > 1)";
+  }
+  if (locale === "ko") {
+    return "창발 모드 — discuss는 경량 1라운드 · plan 시 합의";
+  }
+  return "Emergence mode — light discuss; consensus on plan turns";
+}
+
+/** §3.2.1: fast is single-agent; roster>1 must not be silent. */
+export function fastRosterOverflow(
+  roomPreset: string | null | undefined,
+  selectedCount: number,
+): boolean {
+  return roomPreset === "fast" && selectedCount > 1;
+}
+
+export function fastRosterOverflowHint(locale: Locale = "en"): string {
+  return locale === "ko"
+    ? "빠른 모드는 에이전트 1명만 — 2명 이상이면 감독으로 전환됩니다"
+    : "Fast is single-agent — switching to supervisor for roster > 1";
 }

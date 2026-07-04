@@ -413,6 +413,7 @@ export function RoomChat({
     turnProfile,
     roomPreset,
     selectRoomPreset,
+    forceRoomPreset,
     resolvedRoomPresets,
     visiblePresets,
     planComposeActive,
@@ -431,6 +432,13 @@ export function RoomChat({
     selectedAgents: selected,
     sessionRun: session?.run as Record<string, unknown> | undefined,
   });
+
+  // §3.2.1: fast is single-agent — promote to supervisor when roster > 1 (no silent truncate).
+  useEffect(() => {
+    if (roomPreset === "fast" && selected.length > 1) {
+      forceRoomPreset("supervisor");
+    }
+  }, [forceRoomPreset, roomPreset, selected.length]);
 
   const [pendingSend, setPendingSend] = useState<{
     text: string;

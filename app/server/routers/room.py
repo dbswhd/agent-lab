@@ -382,17 +382,16 @@ async def create_room_run(
         agent_ids = []
     agent_list = [a.strip().lower() for a in agent_ids if str(a).strip()] or None
     requested_roster = list(agent_list) if agent_list else None
-    # Resolve Room Preset → turn_profile + agent cap.
-    preset_norm = (preset or "").strip().lower() or default_room_preset()
-    is_default_profile = (turn_profile or "discuss").strip().lower() in ("discuss", "")
-    if preset_norm and is_default_profile:
-        turn_profile = preset_turn_profile(preset_norm, fallback=turn_profile)
-    if preset_norm and agent_list:
-        from agent_lab.room.preset import preset_max_agents
+    # Resolve Room Preset → turn_profile. §3.2.1: roster > max_agents promotes
+    # fast → supervisor (never silent truncate).
+    from agent_lab.room.preset import resolve_preset_for_roster
 
-        cap = preset_max_agents(preset_norm)
-        if cap is not None:
-            agent_list = agent_list[:cap]
+    preset_raw = (preset or "").strip().lower() or default_room_preset()
+    roster_n = len(agent_list) if agent_list else 0
+    preset_norm, preset_promoted_from = resolve_preset_for_roster(preset_raw, roster_n)
+    is_default_profile = (turn_profile or "discuss").strip().lower() in ("discuss", "")
+    if preset_norm and (is_default_profile or preset_promoted_from):
+        turn_profile = preset_turn_profile(preset_norm, fallback=turn_profile)
     try:
         mode_contract = resolve_mode_contract(
             mode=mode_norm,
@@ -537,6 +536,20 @@ async def create_room_run(
 
         def _stamp_preset(run: dict[str, Any]) -> dict[str, Any]:
             run["room_preset"] = preset_norm
+            if preset_promoted_from:
+                run["room_preset_promoted_from"] = preset_promoted_from
+                run["room_preset_promote_reason"] = "roster_exceeds_max_agents"
+            elif "room_preset_promoted_from" in run:
+                run.pop("room_preset_promoted_from", None)
+                run.pop("room_preset_promote_reason", None)
+            # §3.2.1 light discuss under supervisor/loop when API mode is discuss.
+            run["discuss_light"] = bool(
+                mode_norm == "discuss"
+                and not synthesize
+                and not mode_contract.consensus_mode
+                and mode_contract.agent_rounds <= 1
+                and (preset_norm == "supervisor" or (turn_profile or "").lower() == "loop")
+            )
             explicit = (role_policy or "").strip().lower()
             if explicit in ("auto", "force", "off"):
                 run["role_policy"] = explicit
@@ -658,6 +671,14 @@ async def create_room_run(
                     "consensus_mode": consensus_mode,
                     "efficiency_mode": use_efficiency,
                     "turn_profile": profile_norm,
+                    "room_preset": preset_norm,
+                    "room_preset_promoted_from": preset_promoted_from,
+                    "discuss_light": bool(
+                        mode_norm == "discuss"
+                        and not synthesize
+                        and not consensus_mode
+                        and parallel_rounds <= 1
+                    ),
                     "workspace_id": workspace_norm,
                     "session_template": template_norm,
                     "attachments": saved_files,

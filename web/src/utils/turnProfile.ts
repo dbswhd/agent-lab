@@ -124,10 +124,12 @@ export const TURN_PROFILE_CONFIG: Record<
     consensusMode: false,
   },
   loop: {
+    // §3.2.1: supervisor discuss is light (1 wave, no consensus multi-round).
+    // Plan/synthesize still uses backend loop consensus when mode=plan.
     agentRounds: 1,
     reviewMode: false,
     singleAgent: false,
-    consensusMode: true,
+    consensusMode: false,
   },
   analyze: {
     agentRounds: 1,

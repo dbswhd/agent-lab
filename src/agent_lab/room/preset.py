@@ -81,6 +81,26 @@ def preset_max_agents(preset: str | None) -> int | None:
     return cfg.max_agents if cfg is not None else None
 
 
+def resolve_preset_for_roster(
+    preset: str | None,
+    roster_size: int,
+) -> tuple[str | None, str | None]:
+    """§3.2.1: when roster exceeds preset max_agents, promote instead of silent truncate.
+
+    Returns ``(effective_preset, promoted_from)``. ``promoted_from`` is set when
+    fast (max_agents=1) is upgraded to supervisor because the user selected 2+ agents.
+    """
+    cfg = resolve_preset(preset)
+    if cfg is None:
+        return (preset.strip().lower() if preset else None), None
+    cap = cfg.max_agents
+    if cap is None or roster_size <= cap:
+        return cfg.preset, None
+    if cfg.preset == "fast":
+        return "supervisor", "fast"
+    return cfg.preset, None
+
+
 def preset_role_policy(preset: str | None) -> RolePolicy:
     """Return role_policy for a preset name, defaulting to auto when unknown."""
     cfg = resolve_preset(preset)

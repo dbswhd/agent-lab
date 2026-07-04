@@ -218,6 +218,21 @@ def resolve_mode_contract(
                 plan_intent=plan_intent,
             )
         case "loop":
+            # §3.2.1: supervisor simple discuss — one parallel wave, no consensus
+            # multi-round (was forced on by topology==route_auto). Plan/synthesize
+            # keeps full loop consensus behavior.
+            discuss_only = (mode or "discuss").strip().lower() == "discuss" and not synthesize
+            if discuss_only:
+                return ModeContract(
+                    user_mode=user_mode,
+                    runtime_turn_profile="analyze",
+                    agents=agents,
+                    agent_rounds=1,
+                    review_mode=False,
+                    consensus_mode=False,
+                    topology=topology,
+                    plan_intent=plan_intent,
+                )
             loop_rounds = 2 if topology == "specialist" else max(1, agent_rounds)
             return ModeContract(
                 user_mode=user_mode,

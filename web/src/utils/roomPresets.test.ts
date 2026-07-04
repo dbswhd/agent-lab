@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   emergenceHintLine,
   FALLBACK_ROOM_PRESETS,
+  fastRosterOverflow,
   presetDisplayLabel,
   presetHintLine,
   resolveRoomPresets,
@@ -31,5 +32,23 @@ describe("roomPresets", () => {
       "ko",
     );
     expect(hint).toContain("재조합");
+  });
+
+  it("detects fast roster overflow (§3.2.1)", () => {
+    expect(fastRosterOverflow("fast", 2)).toBe(true);
+    expect(fastRosterOverflow("fast", 1)).toBe(false);
+    expect(fastRosterOverflow("supervisor", 3)).toBe(false);
+  });
+
+  it("hints light discuss and fast promotion", () => {
+    expect(
+      emergenceHintLine({ room_preset: "supervisor", discuss_light: true }, "en"),
+    ).toContain("Light discuss");
+    expect(
+      emergenceHintLine(
+        { room_preset: "supervisor", room_preset_promoted_from: "fast" },
+        "ko",
+      ),
+    ).toContain("승격");
   });
 });

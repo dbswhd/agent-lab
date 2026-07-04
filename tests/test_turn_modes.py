@@ -72,6 +72,37 @@ def test_loop_discuss_allowed_when_turn_policy_on(monkeypatch: pytest.MonkeyPatc
     assert contract.plan_intent == "loop"
 
 
+def test_loop_discuss_is_light_no_consensus(monkeypatch: pytest.MonkeyPatch) -> None:
+    """§3.2.1: supervisor discuss must not force consensus multi-round."""
+    monkeypatch.setenv("AGENT_LAB_TURN_POLICY", "1")
+    contract = resolve_mode_contract(
+        mode="discuss",
+        synthesize=False,
+        turn_profile="loop",
+        agents=["cursor", "codex"],
+        agent_rounds=3,
+        review_mode=True,
+        consensus_mode=True,
+    )
+    assert contract.consensus_mode is False
+    assert contract.agent_rounds == 1
+    assert contract.runtime_turn_profile == "analyze"
+
+
+def test_loop_plan_keeps_consensus(monkeypatch: pytest.MonkeyPatch) -> None:
+    contract = resolve_mode_contract(
+        mode="plan",
+        synthesize=True,
+        turn_profile="loop",
+        agents=["cursor", "codex"],
+        agent_rounds=1,
+        review_mode=False,
+        consensus_mode=False,
+    )
+    assert contract.consensus_mode is True
+    assert contract.plan_intent == "loop"
+
+
 def test_verified_legacy_maps_to_loop_not_team() -> None:
     contract = resolve_mode_contract(
         mode="plan",

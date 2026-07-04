@@ -175,12 +175,22 @@ export function useRoomComposerPrefs({
     [roomPreset, applyPresetTurnProfile],
   );
 
+  /** §3.2.1: force a preset (no toggle) — e.g. fast→supervisor on roster>1. */
+  const forceRoomPreset = useCallback(
+    (id: string) => {
+      setRoomPreset(id);
+      applyPresetTurnProfile(id);
+    },
+    [applyPresetTurnProfile],
+  );
+
   return {
     turnProfile,
     changeTurnProfile,
     roomPreset,
     setRoomPreset,
     selectRoomPreset,
+    forceRoomPreset,
     availablePresets,
     resolvedRoomPresets,
     visiblePresets: resolvedRoomPresets,

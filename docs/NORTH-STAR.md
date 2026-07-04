@@ -299,10 +299,10 @@ Mission OS 3-pane IA 유지 위에서:
 
 프로파일 근거: fast preset codex+cursor ~54s (codex만), supervisor 동일 조합 ~281s (3× agent invoke). SSE TTFB ~0.34s · mock preamble ~32ms — 지연은 Room Python이 아니라 **preset 토폴로지 + 실 agent CLI** 쪽.
 
-| 관찰 | 현재 동작 | 방향 (미구현 — 명시만) |
-|------|-----------|------------------------|
-| **Fast + 2 agents** | Composer에서 codex+cursor를 선택해도 fast preset `max_agents=1`이 `agent_list[:1]`로 **조용히 1명만 실행** (`app/server/routers/room.py` · `preset.py`) | UI **경고** 또는 roster>1 시 **supervisor 자동 전환** — fast는 단일-agent 의도와 explicit roster 충돌 시 숨기지 말 것 |
-| **Supervisor 단순 discuss** | 한 줄 질문에도 **cursor R1 → codex R1 → cursor R2(합의)** 등 다중 invoke (~4.7분). `team_orchestration` lead-last·consensus round가 단순 턴에도 그대로 적용 | 단순 discuss 턴에 대한 **병렬·라운드 축소** 검토 — topology hint / turn_profile / consensus 조건으로 “경량 1라운드” 경로 분기 |
+| 관찰 | 현재 동작 | 상태 |
+|------|-----------|------|
+| **Fast + 2 agents** | roster>1이면 **fast→supervisor 승격** (`resolve_preset_for_roster`); UI도 `forceRoomPreset("supervisor")`. silent truncate 제거 | ✅ §3.2.1 |
+| **Supervisor 단순 discuss** | `mode=discuss` + loop → **light discuss**: `consensus_mode=False`, `agent_rounds=1`, runtime `analyze`. plan/synthesize는 기존 합의 유지 | ✅ §3.2.1 |
 
 관련: [ROOM-TRANSCRIPT-CONTRACT.md](./ROOM-TRANSCRIPT-CONTRACT.md) §3 (pending UI는 1a에서 수정) · N3 room_preset · [05-room-agent-roles.md](./05-room-agent-roles.md) §Fast preset.
 

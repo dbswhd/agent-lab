@@ -49,6 +49,8 @@ Human gates unchanged: plan approve, execute 409, worktree, `ask_human` / `propo
 
 **MCP (P2):** `plan_phase_advance` — gate owner only; forward targets `CLARIFY`…`HUMAN_PENDING`; `APPROVED` stays Human API.
 
+**MCP (P3):** `run_clarity_interview` — gate owner; 4-axis clarity panel + Human Inbox questions. `execute_propose` — GJC-style alias for `propose_build`. Flag `AGENT_LAB_PLAN_FSM_SKILL_FIRST` default **ON** (`=0` for legacy server auto-tick): vague topics hold CLARIFY until MCP `run_clarity_interview` + `plan_phase_advance`; clarity-threshold-met and cap remain server gate validation fallbacks.
+
 **F1.5 backlog (not F0/F1):** objection-resolve material delta (separate from `[PROPOSED:]` count gate).
 
 Helper: `TurnSignals.from_run_meta(...)` in [`turn_policy.py`](../src/agent_lab/room/turn_policy.py).

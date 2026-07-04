@@ -33,6 +33,7 @@ def test_tick_plan_workflow_turn_policy_bypasses_discuss_only_gate(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("AGENT_LAB_TURN_POLICY", "1")
+    monkeypatch.setenv("AGENT_LAB_PLAN_FSM_SKILL_FIRST", "0")
     folder = tmp_path / "sess"
     folder.mkdir()
     (folder / "run.json").write_text("{}", encoding="utf-8")
@@ -69,6 +70,7 @@ def test_run_fsm_tick_advances_clarify_on_discuss_when_turn_policy_on(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("AGENT_LAB_TURN_POLICY", "1")
+    monkeypatch.setenv("AGENT_LAB_PLAN_FSM_SKILL_FIRST", "0")
     assert turn_policy_enabled()
     folder = tmp_path / "sess"
     folder.mkdir()
@@ -98,6 +100,7 @@ def test_apply_turn_effects_fsm_tick_on_supervisor_discuss(
     from agent_lab.room.turn_policy import apply_turn_effects
 
     monkeypatch.setenv("AGENT_LAB_TURN_POLICY", "1")
+    monkeypatch.setenv("AGENT_LAB_PLAN_FSM_SKILL_FIRST", "0")
     folder = tmp_path / "sess"
     folder.mkdir()
     (folder / "run.json").write_text("{}", encoding="utf-8")

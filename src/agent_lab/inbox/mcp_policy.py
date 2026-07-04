@@ -170,6 +170,29 @@ def enforce_mcp_plan_phase_advance_policy(
         raise ValueError(f"only inbox gate owner ({owner}) may call plan_phase_advance")
 
 
+def enforce_mcp_run_clarity_interview_policy(
+    folder: Path,
+    *,
+    caller_agent: str | None = None,
+) -> None:
+    """Gate owner only; CLARIFY/INTAKE phases only."""
+    from agent_lab.plan.workflow import is_plan_workflow_active, plan_workflow_phase
+    from agent_lab.run.meta import read_run_meta
+
+    run = read_run_meta(folder)
+    if not is_plan_workflow_active(run):
+        raise ValueError("plan workflow is not active")
+    phase = plan_workflow_phase(run)
+    if phase not in {"INTAKE", "CLARIFY"}:
+        raise ValueError(f"run_clarity_interview requires CLARIFY (current={phase})")
+    agent = _caller_agent_from_env(caller_agent)
+    if not agent:
+        return
+    owner = inbox_gate_owner(run)
+    if agent != owner:
+        raise ValueError(f"only inbox gate owner ({owner}) may call run_clarity_interview")
+
+
 def inbox_mcp_env_overrides(
     *,
     caller_agent: str | None = None,

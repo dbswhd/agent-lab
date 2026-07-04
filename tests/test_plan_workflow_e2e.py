@@ -20,6 +20,13 @@ from agent_lab.plan.workflow import (
 )
 from agent_lab.run.meta import patch_run_meta, read_run_meta
 
+
+@pytest.fixture(autouse=True)
+def _legacy_plan_fsm_skill_first(monkeypatch: pytest.MonkeyPatch) -> None:
+    """E2E paths here assert legacy server auto-tick CLARIFY→DRAFT."""
+    monkeypatch.setenv("AGENT_LAB_PLAN_FSM_SKILL_FIRST", "0")
+
+
 SAMPLE_PLAN = """# Demo feature
 
 ## 지금 실행
@@ -222,6 +229,8 @@ def test_run_room_plan_send_reaches_human_pending(
     """Full room plan send (mock) → scribe → peer/refine pipeline → HUMAN_PENDING."""
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     monkeypatch.setenv("AGENT_LAB_CLARIFIER", "0")
+    monkeypatch.setenv("AGENT_LAB_TURN_POLICY", "0")
+    monkeypatch.setenv("AGENT_LAB_ROOM_PRESET", "supervisor")
     monkeypatch.setenv("ROOM_SCRIBE_AGENT", "claude")
     from agent_lab import session as session_mod
 

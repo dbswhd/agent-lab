@@ -1,4 +1,4 @@
-"""stdio MCP server — ask_human / propose_build / plan_phase_advance bridge to Human Inbox."""
+"""stdio MCP server — ask_human / propose_build / plan_phase_advance / run_clarity_interview."""
 
 from __future__ import annotations
 
@@ -57,7 +57,7 @@ def ask_human(
 ) -> dict[str, Any]:
     """Human에게 구조화된 방향 결정을 요청한다. prose 질문 금지 — 이 tool만 사용.
 
-    각 option: ``{"id", "label", "description"?, "recommended"?}``.
+    Each option: ``{"id", "label", "description"?, "recommended"?}``.
     추천하는 선택지에 ``"recommended": true``를 주면 Human에게 추천 배지로 표시된다.
     """
     from agent_lab.human_inbox import create_mcp_question_and_wait
@@ -73,14 +73,12 @@ def ask_human(
     )
 
 
-@mcp.tool()
-def propose_build(
+def _propose_build_impl(
     summary: str,
     action_ref: str,
     risks: list[str] | None = None,
     estimated_scope: str | None = None,
 ) -> dict[str, Any]:
-    """Plan phase 완료 후 implement 전 Human GO를 요청한다 (Cursor Build 대응)."""
     from agent_lab.human_inbox import create_mcp_build_and_wait
 
     folder = _session_folder()
@@ -93,6 +91,28 @@ def propose_build(
         action_ref=str(action_ref or "").strip(),
         risks=[str(r) for r in (risks or []) if str(r).strip()],
     )
+
+
+@mcp.tool()
+def propose_build(
+    summary: str,
+    action_ref: str,
+    risks: list[str] | None = None,
+    estimated_scope: str | None = None,
+) -> dict[str, Any]:
+    """Plan phase 완료 후 implement 전 Human GO를 요청한다 (Cursor Build 대응)."""
+    return _propose_build_impl(summary, action_ref, risks=risks, estimated_scope=estimated_scope)
+
+
+@mcp.tool()
+def execute_propose(
+    summary: str,
+    action_ref: str,
+    risks: list[str] | None = None,
+    estimated_scope: str | None = None,
+) -> dict[str, Any]:
+    """GJC-style alias for propose_build — Human GO before implement."""
+    return _propose_build_impl(summary, action_ref, risks=risks, estimated_scope=estimated_scope)
 
 
 @mcp.tool()
@@ -113,6 +133,15 @@ def plan_phase_advance(
         target_phase=target_phase,
         reason=reason,
     )
+
+
+@mcp.tool()
+def run_clarity_interview() -> dict[str, Any]:
+    """Score 4-axis clarity panel and surface clarifier questions (CLARIFY gate owner only)."""
+    from agent_lab.plan.workflow import mcp_run_clarity_interview
+
+    folder = _session_folder()
+    return mcp_run_clarity_interview(folder)
 
 
 @mcp.tool()

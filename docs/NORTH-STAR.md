@@ -282,7 +282,7 @@ Mission OS 3-pane IA 유지 위에서:
 | **Amp** | `AGENT.md`, subagent·thread fork/compact, automation [parallel worktree](https://github.com/sourcegraph/amp-examples-and-guides) | Room shared context; single-thread oracle ≠ Room Oracle |
 | **Hermes Agent** (Nous Research, 2026-02) | [Kanban 멀티에이전트](https://hermes-agent.nousresearch.com/docs/user-guide/features/kanban): durable queue+state machine(SQLite WAL) — `tasks→task_links→task_comments→task_runs→task_events`; dispatcher `BEGIN IMMEDIATE` 원자적 claim, TTL/PID 기반 stale 재큐잉; `kanban_complete`/`kanban_block` 구조화 핸드오프(침묵 종료=프로토콜 위반); self-improving skill loop + FTS5 cross-session recall | **오케스트레이션 코어 재구축 참조** — `run_meta` god-object(F11) 대체 모델. Hermes에 없는 것(Oracle·worktree·BLOCK→409·Human Inbox)은 Agent Lab 차별점으로 유지 |
 | **Mixture-of-Agents** ([Together AI](https://docs.together.ai/docs/mixture-of-agents), arXiv:2406.04692) | Proposer 다수 병렬 응답 → aggregator 종합, 레이어 반복(무상태, fine-tune 불필요) | `topic_router` **parallel** topology 내부 옵션으로 한정 흡수(순수 품질 상승 실험) — objection/BLOCK 게이트 없는 구조라 Room 합의를 **대체 불가**; 게이트 우회 형태 흡수 금지 |
-| **관찰 목록** | OpenHands·SWE-agent(verified bench), LangGraph(orchestration API), Aider(repo-map) | 분기 §3.3 **분기** 행에서 이 표 전면 재검토 |
+| **관찰 목록** | OpenHands·SWE-agent(verified bench), LangGraph(orchestration API), Aider(repo-map), **codebase-memory-mcp·Letta·mem0·A2A → §5 부록** | 분기 §3.3 **분기** 행에서 이 표 전면 재검토 |
 
 **흡수의 규칙:** 어떤 샘플 패턴도 5모트(BLOCK→409, worktree 격리, Oracle+Repair, run.json 감사, Human Inbox)를 약화시키는 형태로는 흡수하지 않는다.
 
@@ -463,7 +463,11 @@ Mission OS 3-pane IA 유지 위에서:
 | 소스 ③ envelope | `[PROPOSED:]` delta threshold 초과 시 signal (기존 objections 파이프 재사용) |
 | FSM MCP | `plan_phase_advance` tool 신설 — gate owner 에이전트만 호출 가능, `HUMAN_PENDING`·execute 409는 서버 불변 |
 
-**P3 — GJC식 이관 (clarity/execute):** phase 전환 권한을 서버 자동 tick에서 **skill/MCP 호출 우선**으로 이동, 서버 tick은 fallback + gate 검증으로 축소. clarity는 CLARIFY hold 유지하되 clarifier 질문 생성을 skill로 노출(`clarity.py` 4축 점수는 유지 — GJC deep-interview analog). execute는 `propose_build` → Human GO 흐름을 skill invocation으로 통일. **artifact 불변:** `plan.md`/`run.json` 유지, GJC `.gjc/` layout은 흡수하지 않음 (§2.5 GJC 행).
+**P3 — GJC식 이관 (clarity/execute):** ✅ shipped 2026-07-05 — phase 전환 권한을 서버 auto-tick에서 **skill/MCP 호출 우선**으로 이동. MCP `run_clarity_interview` (4축 panel) · `execute_propose` alias. **artifact 불변:** `plan.md`/`run.json` 유지, GJC `.gjc/` layout은 흡수하지 않음 (§2.5 GJC 행).
+
+**Default 승격 (P3 scope — flag only):** `AGENT_LAB_PLAN_FSM_SKILL_FIRST` **default ON** (`runtime_flags` + `balanced`/`thorough`/`autonomous` profile flags). vague topic → CLARIFY hold + MCP advance; clarity threshold met · cap → 서버 gate validation fallback. Legacy server auto-tick: `=0`.
+
+**의도적 non-goal:** `AGENT_LAB_RUN_PROFILE=autonomous` **전역 default 승격은 하지 않음.** autonomous는 `AGENT_LAB_MISSION_LOOP` · medium-risk auto-approve · mission budget 등 **P3와 무관한 부수 효과**를 한 묶음으로 켠다. P3 dogfood는 skill-first flag default ON으로 충분; full autonomous는 Human이 프로필을 명시 선택할 때만 (N2 · L3 dogfood).
 
 **F9와의 순서:** P1 완료 = `workflow.py`(1281)·`execute.py`(1691) 분해 경계 확정 조건. P1 전에 이 둘을 쪼개면 `legacy_plan_send`/preset 잠금/FSM tick이 서로 다른 "plan 들어감" 정의를 유지한 채 파일만 나뉘고, frontend `planComposeActive` ↔ backend TurnPolicy dual-run이 고착된다. `run_room`·RoomChat 분해(Stage 3)는 P1과 병행 가능.
 
@@ -477,3 +481,54 @@ Mission OS 3-pane IA 유지 위에서:
 - **역할 분담:** 이 문서 = 방향+완성도의 단일 진실 / [STRATEGIC-DIRECTION-2026.md](./STRATEGIC-DIRECTION-2026.md) = 경쟁 분석 배경(이력) / [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md) = 기능 단위 shipped 상태.
 - **판정 언어:** "완료"라는 말은 D3 이상에만 쓴다. D1은 "코드 존재", D2는 "mock 검증"이라고 부른다.
 - **모트 체크:** 어떤 이니셔티브든 착수 전에 한 문장으로 답한다 — *"이 작업은 5모트 중 무엇을 강화하거나, 최소한 약화시키지 않는가?"*
+
+---
+
+## 5. 부록 — 소통·메모리 패턴 흡수 계획 (2026-07-05 외부 조사)
+
+> 조사 배경: MoA/오케스트레이터 슈퍼샘플의 에이전트 간 소통 방식 + [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) 검토. 소통 패턴의 §2.5 반영(MetaGPT audience → ADR Stage 2, A2A → N9)과 별개로, **당장 도입하지 않되 트리거가 오면 실행할 항목**을 여기 고정한다. 분기 리뷰(§3.3) 때 이 섹션을 §2.5 관찰 목록과 함께 재검토.
+
+### 5.1 흡수 항목 3개 (트리거·구현 지점·닫힘 기준)
+
+**A1. Impact-scoped verify — `detect_changes` 패턴 (git diff → 영향 심볼 → verify 대상)**
+
+| 항목 | 내용 |
+|---|---|
+| 출처 | codebase-memory-mcp `detect_changes` (git diff를 영향받은 심볼 집합으로 변환) |
+| 현재 갭 | execute는 `compute_touched_paths`(`plan/execute.py:24`)로 **파일 수준** touched만 안다. "이 diff가 어떤 함수/호출자에 영향을 주는가"(심볼 수준 + 1-hop 역방향 callers)는 없음 — Oracle verify 대상과 `diff_risk` 산정이 파일 목록에 의존 |
+| 구현 지점 | `repo_map_core.py`의 기존 ast 심볼 그래프 재사용: touched file → 정의된 심볼 → 1-hop 역참조 callers. 신규 모듈 `plan/impact_scope.py`(가칭), 결과를 execution evidence(`verify_after_merge` 옆)에 `impacted_symbols` 필드로 기록 |
+| 트리거 | 독립 소규모 PR — ADR Stage 3 execute 분해와 무관하게 지금 가능. tree-sitter/158언어 불필요 (py 우선, ts는 후속) |
+| 닫힘 (D2) | mock 테스트: 알려진 diff → 기대 심볼 집합 일치. run.json evidence에 `impacted_symbols` 기록 확인 |
+| 모트 | **Oracle 강화** — verify가 "무엇을 검증해야 하는지"를 더 정확히 앎 |
+
+**A2. 인덱스 아티팩트 커밋 — `graph.db.zst` 패턴**
+
+| 항목 | 내용 |
+|---|---|
+| 출처 | codebase-memory-mcp: 압축 인덱스를 repo에 커밋 → 팀원 clone 시 재인덱싱 없이 증분만 |
+| 현재 갭 | `code_memory_mcp_server.py`의 `_build_index`/`_load_index`는 로컬 캐시 전용 — fork한 외부인은 인덱스 0에서 시작 |
+| 구현 지점 | `_build_index` 결과를 `.agent-lab/code_memory_index.zst`로 export/import하는 경로 추가. `.gitignore` 예외로 이 파일만 추적 |
+| 트리거 | **N8 QUICKSTART 작성 시점과 동시** — fork 유입이 없는 지금은 가치 0이므로 선행 착수 금지 (F1 재발 방지) |
+| 닫힘 (D2) | clean clone에서 재인덱싱 없이 code_memory 질의 동작 + `fork_time_minutes` 단축 기여 측정 |
+| 모트 | 중립 |
+
+**A3. F7 플랜 B — push→pull 전환 (조건부)**
+
+| 항목 | 내용 |
+|---|---|
+| 조건 | F7 decision table(2026-07-12)에서 **OFF 판정 + 사유가 "유용하나 토큰 비용 과다"**인 경우에만. ON이거나 "유용성 자체가 없음"이면 이 항목 폐기 |
+| 경로 1 (기본) | 자체 `code_memory_mcp` 승격: 키워드 chunk 검색 → 심볼 그래프 질의(`trace` 유사)로 확장. 세션 mount 배관(`code_memory_mcp_stdio_spec`)은 이미 존재 |
+| 경로 2 (실험) | codebase-memory-mcp 외부 mount — **S3b Human-gate 흐름의 첫 실전 사례로 실행**: `[NEED-TOOL:]` 선언 → Inbox 승인 → 세션 스코프 mount → run.json 기록. S3 루프(D0~D1)를 실데이터로 D2에 올리는 부수 효과 |
+| 닫힘 | F7과 동일 지표(context hit rate ≥ 70%, §F7 문서)를 pull 방식으로 재측정 — push/pull 비교표가 남아야 함 |
+| 모트 | 경로 2는 **Human Inbox 강화** (S3b 게이트 실증) |
+
+### 5.2 유사하지만 다른 결 — 대안 판정표
+
+| 대상 | 정체 | Agent Lab과의 관계 | 판정 |
+|---|---|---|---|
+| **Letta (MemGPT)** | OS식 메모리 계층: core(=RAM, 상시 in-context) / recall(=cache, 검색 가능) / archival(=disk, 무한 외부 저장). 런타임이 접근 패턴 보고 승격·압축·회수 결정 | **W1/W2/W3와 구조 동형** — W1 episode≈recall, W2 pattern≈승격 통계, W3 memory≈archival. 벤치에서 episodic coherence("어제 X 실패했다" 기억)는 Letta 계열 우위 = S1이 노리는 축과 동일. **우리 3계층 설계가 업계 검증된 방향이라는 외부 근거** | **도입 불가** (Letta는 에이전트 런타임 전체 — Room과 충돌). 대신 분기 리뷰 때 Letta의 승격/압축 정책 문서를 **W2→W3 승격 규칙 설계**(현재 수동/암묵)에 참조 |
+| **mem0** | 대화에서 fact 추출(LLM 추출 + vector/graph 저장), 프레임워크 무관 bolt-on. multi-session recall 효율 우위 | W3 "사용자·결정 기억" 축과 겹침 — 코드 구조 메모리가 아님. outcomes.jsonl+wisdom이 이미 같은 축을 자체 구현 | **관찰만** — bolt-on 마찰은 낮으나 외부 서비스 의존이 로컬-우선·F8 비용 원칙과 상충. 자체 W3가 D3 도달 전 외부 대체 금지 (F1 원칙) |
+| **A2A 프로토콜** | Linux Foundation 표준(ACP 병합). agent card(자기 기술 JSON)로 벤더 간 에이전트 발견·통신. LangGraph는 Agent Protocol 채택, OpenAI SDK는 아직 미지원 | **N9 입구 포맷 후보** — "Oracle을 외부 검증 서비스로 노출"할 때 agent card로 자기 기술 발행 | **N9 착수 시 재평가** — 표준이 아직 유동적이고 주요 SDK 미지원. 지금 선행 구현 금지 |
+| **Aider repo-map (PageRank)** | 심볼 참조 그래프에 PageRank 가중 → 토큰 예산 내 가장 중요한 심볼 선별 | `repo_map_core`의 seed 가중(`_SEED_SELF`=3.0/`_SEED_HOP1`=2.0)과 같은 계열의 상위 호환 | **F7 ON 판정 시에만** 개선 방향으로 검토 — OFF면 push 방식 자체가 사라지므로 무의미 |
+
+**공통 원칙:** 5.1/5.2 전부 "코드 존재 = 완료" 금지(F1) — 각 항목은 명시된 트리거 전 착수하지 않고, 착수 시 D 사다리와 모트 체크를 §3.1/§3.2에 편입한다.

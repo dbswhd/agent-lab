@@ -11,6 +11,13 @@ import pytest
 from agent_lab.run.meta import patch_run_meta, read_run_meta
 
 
+@pytest.fixture(autouse=True)
+def _legacy_plan_fsm_skill_first(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+    if request.node.name == "test_ac10b_mcp_first_engine_on_holds_clarify":
+        return
+    monkeypatch.setenv("AGENT_LAB_PLAN_FSM_SKILL_FIRST", "0")
+
+
 def _sess(tmp_path: Path) -> Path:
     folder = tmp_path / "sess"
     folder.mkdir()
@@ -180,7 +187,7 @@ def test_redteam_no_visible_question_path_does_not_deadlock(monkeypatch: pytest.
     from agent_lab.human_inbox import has_pending_question
     from agent_lab.plan.workflow import get_plan_workflow
 
-    monkeypatch.setattr(inbox_harvest, "harvest_clarifier_questions", lambda run, prompts: None)
+    monkeypatch.setattr(inbox_harvest, "harvest_clarifier_questions", lambda run, prompts, **kwargs: None)
 
     folder = _sess(tmp_path)
     _init_plan_workflow(folder)

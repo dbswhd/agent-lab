@@ -81,6 +81,7 @@ _THOROUGH_OWNS: frozenset[str] = frozenset(
         "AGENT_LAB_FEEDBACK_MIN_SAMPLE",
         "AGENT_LAB_FEEDBACK_EXPLORE_RATE",
         "AGENT_LAB_OUTCOMES_ROOT",
+        "AGENT_LAB_PLAN_FSM_SKILL_FIRST",
     }
 )
 
@@ -106,10 +107,9 @@ _AUTONOMOUS_OWNS: frozenset[str] = frozenset(
         "AGENT_LAB_FEEDBACK_MIN_SAMPLE",
         "AGENT_LAB_FEEDBACK_EXPLORE_RATE",
         "AGENT_LAB_OUTCOMES_ROOT",
+        "AGENT_LAB_PLAN_FSM_SKILL_FIRST",
     }
 )
-
-# Safe-default Room / inbox / context (balanced is also the F2 fallback owner).
 _BALANCED_OWNS: frozenset[str] = frozenset(
     {
         "AGENT_LAB_RUN_PROFILE",
@@ -214,6 +214,7 @@ _PROFILE_CONFIGS: dict[str, RunProfileConfig] = {
             "AGENT_LAB_TURN_METRICS": "1",
             "AGENT_LAB_OUTCOME_LEDGER": "1",
             "AGENT_LAB_FEEDBACK_ADVISOR": "1",
+            "AGENT_LAB_PLAN_FSM_SKILL_FIRST": "1",
         },
         owns=_BALANCED_OWNS,
     ),
@@ -225,6 +226,7 @@ _PROFILE_CONFIGS: dict[str, RunProfileConfig] = {
             "AGENT_LAB_ORACLE_LIVE": "1",
             "AGENT_LAB_ADVERSARIAL_LIVE": "1",
             "AGENT_LAB_JUDGE_LIVE": "1",
+            "AGENT_LAB_PLAN_FSM_SKILL_FIRST": "1",
         },
         owns=_THOROUGH_OWNS,
     ),
@@ -239,6 +241,7 @@ _PROFILE_CONFIGS: dict[str, RunProfileConfig] = {
             "AGENT_LAB_ORACLE_LIVE": "1",
             "AGENT_LAB_ADVERSARIAL_LIVE": "",
             "AGENT_LAB_JUDGE_LIVE": "",
+            "AGENT_LAB_PLAN_FSM_SKILL_FIRST": "1",
         },
         owns=_AUTONOMOUS_OWNS,
     ),

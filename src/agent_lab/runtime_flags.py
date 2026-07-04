@@ -374,6 +374,12 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "TurnPolicy: [PROPOSED:] count in a turn that opens skill_intent scribe",
         default="3",
     ),
+    FlagDef(
+        "AGENT_LAB_PLAN_FSM_SKILL_FIRST",
+        "feature",
+        "P3: plan FSM phase/clarity via MCP first; server tick hold + cap fallback",
+        default="1",
+    ),
     FlagDef("AGENT_LAB_SCRIBE_RECENT_TURNS", "feature", "Scribe numbered thread trim", default="12"),
     FlagDef("AGENT_LAB_SCRIBE_MAX_CHARS", "feature", "Scribe thread char cap", default="120000"),
     FlagDef("AGENT_LAB_SCRIBE_FULL", "feature", "Full chat.jsonl for scribe"),

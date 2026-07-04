@@ -16,6 +16,13 @@ import pytest
 from agent_lab.run.meta import patch_run_meta, read_run_meta
 
 
+@pytest.fixture(autouse=True)
+def _legacy_plan_fsm_skill_first(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+    if request.node.name == "test_ac10b_mcp_first_engine_on_holds_clarify":
+        return
+    monkeypatch.setenv("AGENT_LAB_PLAN_FSM_SKILL_FIRST", "0")
+
+
 def _sess(tmp_path: Path) -> Path:
     folder = tmp_path / "sess"
     folder.mkdir()
@@ -391,7 +398,7 @@ def test_ac9_gate_reachable_with_clarifier_flag_off(monkeypatch: pytest.MonkeyPa
 
 
 def test_ac10b_mcp_first_engine_on_holds_clarify(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """AC10b: MCP-first (harvest off default) → CLARIFY holds without inbox item."""
+    """AC10b: skill-first default → CLARIFY holds without server clarity gate or inbox item."""
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     monkeypatch.delenv("AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST", raising=False)  # default 0 = MCP-first
     monkeypatch.delenv("AGENT_LAB_PIPELINE", raising=False)
@@ -404,8 +411,6 @@ def test_ac10b_mcp_first_engine_on_holds_clarify(monkeypatch: pytest.MonkeyPatch
 
     tick = _tick(folder)
     assert tick["phase"] == "CLARIFY"
-    assert tick.get("clarity_pending") is True
-    assert tick.get("clarity_notice") == "clarity_mcp_first_hold"
-    # MCP-first: no inbox item, but CLARIFY holds (agents surface via ask_human/chat).
+    assert tick.get("skill_first_hold") is True
     assert has_pending_question(read_run_meta(folder)) is False
     assert get_plan_workflow(read_run_meta(folder))["phase"] == "CLARIFY"

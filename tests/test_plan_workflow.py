@@ -24,6 +24,12 @@ from agent_lab.plan.workflow import (
 )
 from agent_lab.run.meta import patch_run_meta, read_run_meta
 
+
+@pytest.fixture(autouse=True)
+def _legacy_plan_fsm_skill_first(monkeypatch: pytest.MonkeyPatch) -> None:
+    """These tests assert server auto-tick CLARIFY behavior (pre-P3 default)."""
+    monkeypatch.setenv("AGENT_LAB_PLAN_FSM_SKILL_FIRST", "0")
+
 SAMPLE_PLAN = """# Demo feature
 
 ## 지금 실행

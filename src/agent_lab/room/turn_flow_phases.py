@@ -186,7 +186,10 @@ def prepare_turn_routing_phase(
     if folder is not None:
         sync_clarifier_answers_from_inbox(folder)
         if plan_workflow_wants_inbox_mcp(run_meta):
-            ensure_plan_clarify_interview(folder)
+            from agent_lab.plan.workflow import plan_fsm_skill_first_enabled
+
+            if not plan_fsm_skill_first_enabled():
+                ensure_plan_clarify_interview(folder)
             ensure_plan_clarify_inbox_question(folder)
 
     skip_server_clarifier = plan_workflow_skips_server_clarifier(run_meta)

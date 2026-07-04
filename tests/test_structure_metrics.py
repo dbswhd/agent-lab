@@ -31,9 +31,9 @@ def test_f9_hot_path_py_caps_in_baseline() -> None:
     baseline = json.loads((ROOT / "tests/fixtures/structure-metrics-baseline.json").read_text())
     by_path = {row["path"]: row["lines"] for row in baseline["hot_path_py_files"]}
     assert by_path == {
-        "src/agent_lab/plan/execute.py": 1691,
-        "src/agent_lab/plan/workflow.py": 1281,
-        "src/agent_lab/room/turn_flow.py": 675,
+        "src/agent_lab/plan/execute.py": 88,
+        "src/agent_lab/plan/workflow.py": 115,
+        "src/agent_lab/room/turn_flow.py": 21,
     }
 
 
@@ -418,7 +418,7 @@ def test_plan_import_graph_collects_modules() -> None:
     )
     assert proc.returncode == 0, proc.stderr
     payload = json.loads(proc.stdout)
-    assert payload["plan_module_count"] == 21
+    assert payload["plan_module_count"] == 30
     assert "plan.refs" in payload["modules"]
     assert "plan.execute" in payload["modules"]
 
@@ -444,7 +444,7 @@ def test_room_import_graph_collects_modules() -> None:
     )
     assert proc.returncode == 0, proc.stderr
     payload = json.loads(proc.stdout)
-    assert payload["room_module_count"] == 37
+    assert payload["room_module_count"] == 41
     assert "room.delegate" in payload["modules"]
     hub_modules = {row["module"] for row in payload["hub_modules"]}
     assert "room.session_persist" in hub_modules

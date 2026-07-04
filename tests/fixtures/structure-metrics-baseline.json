@@ -50,7 +50,7 @@
   "large_tsx_files": [
     {
       "path": "web/src/components/RoomChat.tsx",
-      "lines": 1698
+      "lines": 1696
     },
     {
       "path": "web/src/components/PlanExecutePanel.tsx",
@@ -80,15 +80,15 @@
   "hot_path_py_files": [
     {
       "path": "src/agent_lab/plan/execute.py",
-      "lines": 1691
+      "lines": 88
     },
     {
       "path": "src/agent_lab/plan/workflow.py",
-      "lines": 1281
+      "lines": 115
     },
     {
       "path": "src/agent_lab/room/turn_flow.py",
-      "lines": 675
+      "lines": 21
     }
   ],
   "notes": {

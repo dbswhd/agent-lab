@@ -440,7 +440,7 @@ Mission OS 3-pane IA 유지 위에서:
 | 2 | 합의 도달 + pending agreements | `turn_policy.py` scribe_trigger `consensus_reached` | ✅ 있음 |
 | 3 | verified loop 종료 | scribe_trigger `verified_loop_done` | ✅ 있음 |
 | 4 | Human 「지금 정리」 | scribe_trigger `synthesize_only` (UI 버튼 — 플래그 아님) | ✅ 있음 |
-| 5 | **skill_intent** | slash `/plan` → `_pending_skill_intent` · API `skill_intent` | 🟡 P2 (① done; MCP/envelope pending) |
+| 5 | **skill_intent** | slash `/plan` · API `skill_intent` · MCP `propose_build` · `[PROPOSED:]` threshold · `plan_phase_advance` | ✅ P2 |
 | — | ~~`legacy_plan_send`~~ (preset/`synthesize=true` hint) | removed P1 | ✅ P1 |
 
 **P1 — B 전환 (legacy plan flag 잔재 제거):** ✅ shipped 2026-07-05
@@ -453,7 +453,7 @@ Mission OS 3-pane IA 유지 위에서:
 | `room/turn_flow.py:285·447` | `mode = "plan" if synthesize` 분기 제거 — `synthesize` 파라미터를 synthesize_only 전용으로 축소 |
 | 가드 | turn_policy 테스트: "casual send는 어느 preset에서도 scribe_trigger 없음" · UI 계약 테스트(`test_workspace_ui_contract.py` 등) 갱신 |
 
-**P2 — skill_intent authority 배선:**
+**P2 — skill_intent authority 배선:** ✅ shipped 2026-07-05
 
 | 대상 | 작업 |
 |------|------|

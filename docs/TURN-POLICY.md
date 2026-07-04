@@ -43,11 +43,13 @@ Human gates unchanged: plan approve, execute 409, worktree, `ask_human` / `propo
 | `synthesize_only` | Work 「지금 정리」/ API |
 | `cancelled` | run control |
 | `supervisor_first_turn` | bootstrap FSM INTAKE→CLARIFY |
-| `skill_intent` | slash `/plan` pending intent · API `skill_intent` form field (`plan` \| `plan_draft` \| `ralplan`) |
+| `skill_intent` | slash `/plan` pending · API form · MCP `propose_build` stamp · `[PROPOSED:]` ≥ `AGENT_LAB_PROPOSED_SKILL_INTENT_THRESHOLD` (default 3) |
 
 **Removed (P1):** ~~`legacy_synthesize_hint`~~ — API `mode=plan` / `synthesize=true` no longer opens Scribe.
 
-**F1.5 backlog (not F0/F1):** material turn delta (`[PROPOSED:]` delta, objection resolve).
+**MCP (P2):** `plan_phase_advance` — gate owner only; forward targets `CLARIFY`…`HUMAN_PENDING`; `APPROVED` stays Human API.
+
+**F1.5 backlog (not F0/F1):** objection-resolve material delta (separate from `[PROPOSED:]` count gate).
 
 Helper: `TurnSignals.from_run_meta(...)` in [`turn_policy.py`](../src/agent_lab/room/turn_policy.py).
 
@@ -75,7 +77,7 @@ Helper: `TurnSignals.from_run_meta(...)` in [`turn_policy.py`](../src/agent_lab/
 2. `verified_loop_done`
 3. `consensus_reached` (requires `pending_agreement_count > 0`)
 4. `plan_workflow_draft` (phase DRAFT/REFINE, not fast)
-5. `skill_intent` (explicit slash/API authority, not fast)
+5. `skill_intent` (slash/API/MCP `propose_build` / `[PROPOSED:]` threshold, not fast)
 
 **fast preset:** casual send → `run_scribe=false` always (absorbs `AGENT_LAB_AUTO_PLAN_SCRIBE=1` when TurnPolicy ON).
 

@@ -93,7 +93,12 @@ def _post_agent_turn_plan(
     consensus_meta: dict[str, Any] | None,
     human_turn_num: int,
 ) -> tuple[str, bool, dict[str, Any], str | None]:
-    from agent_lab.room.turn_policy import TurnSignals, apply_turn_effects, turn_policy_enabled
+    from agent_lab.room.turn_policy import (
+        TurnSignals,
+        apply_turn_effects,
+        count_proposed_tags_in_turn,
+        turn_policy_enabled,
+    )
 
     if turn_policy_enabled():
         result = apply_turn_effects(
@@ -101,6 +106,7 @@ def _post_agent_turn_plan(
                 run_meta,
                 consensus_meta=consensus_meta,
                 cancelled=cancelled,
+                proposed_tags_count=count_proposed_tags_in_turn(messages),
             ),
             folder=folder,
             topic=topic,

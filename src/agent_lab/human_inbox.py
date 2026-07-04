@@ -607,7 +607,14 @@ def create_mcp_build_and_wait(
     action_ref: str,
     risks: list[str] | None = None,
     mcp_call_id: str | None = None,
+    caller_agent: str | None = None,
 ) -> dict[str, Any]:
+    from agent_lab.inbox.mcp_policy import enforce_mcp_propose_build_policy
+    from agent_lab.room.turn_policy import stamp_pending_skill_intent, turn_policy_enabled
+
+    enforce_mcp_propose_build_policy(folder, caller_agent=caller_agent)
+    if turn_policy_enabled():
+        stamp_pending_skill_intent(folder, "propose_build")
     item = create_inbox_item(
         folder,
         kind="build",

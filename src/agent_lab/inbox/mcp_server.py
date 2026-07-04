@@ -1,4 +1,4 @@
-"""stdio MCP server — ask_human / propose_build bridge to Human Inbox."""
+"""stdio MCP server — ask_human / propose_build / plan_phase_advance bridge to Human Inbox."""
 
 from __future__ import annotations
 
@@ -92,6 +92,26 @@ def propose_build(
         summary=text,
         action_ref=str(action_ref or "").strip(),
         risks=[str(r) for r in (risks or []) if str(r).strip()],
+    )
+
+
+@mcp.tool()
+def plan_phase_advance(
+    target_phase: str,
+    reason: str | None = None,
+) -> dict[str, Any]:
+    """Advance plan_workflow FSM toward Human approval (gate owner only).
+
+    Allowed targets: CLARIFY, DRAFT, PEER_REVIEW, REFINE, HUMAN_PENDING.
+    APPROVED requires Human plan approve API — not this tool.
+    """
+    from agent_lab.plan.workflow import mcp_advance_plan_workflow_phase
+
+    folder = _session_folder()
+    return mcp_advance_plan_workflow_phase(
+        folder,
+        target_phase=target_phase,
+        reason=reason,
     )
 
 

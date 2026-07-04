@@ -368,6 +368,12 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
     FlagDef("AGENT_LAB_MAX_CONSENSUS_CALLS", "feature", "Free discuss LLM call cap per human turn", default="30"),
     FlagDef("AGENT_LAB_DEBATE_ROUNDS", "feature", "Debate loop rounds before endorse", default="4"),
     FlagDef("AGENT_LAB_MAX_TASKS_PER_TURN", "feature", "Max plan tasks surfaced per turn", default="8"),
+    FlagDef(
+        "AGENT_LAB_PROPOSED_SKILL_INTENT_THRESHOLD",
+        "config",
+        "TurnPolicy: [PROPOSED:] count in a turn that opens skill_intent scribe",
+        default="3",
+    ),
     FlagDef("AGENT_LAB_SCRIBE_RECENT_TURNS", "feature", "Scribe numbered thread trim", default="12"),
     FlagDef("AGENT_LAB_SCRIBE_MAX_CHARS", "feature", "Scribe thread char cap", default="120000"),
     FlagDef("AGENT_LAB_SCRIBE_FULL", "feature", "Full chat.jsonl for scribe"),

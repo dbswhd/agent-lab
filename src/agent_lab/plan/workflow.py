@@ -42,6 +42,8 @@ _PLAN_PRE_APPROVAL = frozenset({"INTAKE", "CLARIFY", "DRAFT", "PEER_REVIEW", "RE
 _VERIFIED_PROPOSING = frozenset({"INTAKE", "CLARIFY", "DRAFT", "PEER_REVIEW", "REFINE"})
 _PLAN_CLARIFY_PHASES = frozenset({"INTAKE", "CLARIFY"})
 _PLAN_PEER_PHASES = frozenset({"PEER_REVIEW"})
+_PLAN_FSM_ORDER = ("INTAKE", "CLARIFY", "DRAFT", "PEER_REVIEW", "REFINE", "HUMAN_PENDING", "APPROVED")
+_MCP_ADVANCE_TARGETS = frozenset({"CLARIFY", "DRAFT", "PEER_REVIEW", "REFINE", "HUMAN_PENDING"})
 
 
 class PlanWorkflowNotApproved(Exception):
@@ -304,6 +306,46 @@ def set_plan_workflow_phase(folder: Path, phase: PlanWorkflowPhase) -> dict[str,
 
     patch_run_meta(folder, _set)
     return get_plan_workflow(read_run_meta(folder))
+
+
+def mcp_advance_plan_workflow_phase(
+    folder: Path,
+    *,
+    target_phase: str,
+    reason: str | None = None,
+    caller_agent: str | None = None,
+) -> dict[str, Any]:
+    """Skill/MCP authority — forward-only FSM advance; Human approve unchanged."""
+    from agent_lab.inbox.mcp_policy import enforce_mcp_plan_phase_advance_policy
+    from agent_lab.room.turn_policy import stamp_pending_skill_intent, turn_policy_enabled
+
+    enforce_mcp_plan_phase_advance_policy(folder, caller_agent=caller_agent)
+    target = str(target_phase or "").strip().upper()
+    if target not in _MCP_ADVANCE_TARGETS:
+        allowed = ", ".join(sorted(_MCP_ADVANCE_TARGETS))
+        raise ValueError(f"target_phase must be one of: {allowed}")
+    if target == "APPROVED":
+        raise ValueError("APPROVED requires Human plan approve — not plan_phase_advance")
+
+    run = read_run_meta(folder)
+    current = plan_workflow_phase(run)
+    order = list(_PLAN_FSM_ORDER)
+    if current not in order or target not in order:
+        raise ValueError("invalid plan workflow phase")
+    if order.index(target) <= order.index(current):
+        raise ValueError(f"forward advance only (current={current}, target={target})")
+
+    set_plan_workflow_phase(folder, target)  # type: ignore[arg-type]
+    if turn_policy_enabled() and target in {"DRAFT", "REFINE", "HUMAN_PENDING"}:
+        stamp_pending_skill_intent(folder, "plan_draft")
+    payload: dict[str, Any] = {
+        "ok": True,
+        "previous_phase": current,
+        "phase": target,
+    }
+    if reason and str(reason).strip():
+        payload["reason"] = str(reason).strip()[:500]
+    return payload
 
 
 def derive_loop_goal_from_plan(plan_md: str) -> dict[str, str]:

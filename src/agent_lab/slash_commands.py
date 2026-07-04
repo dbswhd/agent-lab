@@ -624,11 +624,9 @@ def _plan(args: list[str], *, session_folder: Path | None = None) -> dict[str, A
         init_plan_workflow_on_plan_send(session_folder)
         result["plan_workflow_initialized"] = True
 
-    def _pending(run_meta: dict[str, Any]) -> dict[str, Any]:
-        run_meta["_pending_skill_intent"] = "plan"
-        return run_meta
+    from agent_lab.room.turn_policy import stamp_pending_skill_intent
 
-    patch_run_meta(session_folder, _pending)
+    stamp_pending_skill_intent(session_folder, "plan")
     result["skill_intent"] = "plan"
     return result
 

@@ -26,7 +26,50 @@ _PLAN_DRAFT_PHASES = frozenset({"DRAFT", "REFINE"})
 _PLAN_NO_SCRIBE_PHASES = frozenset({"HUMAN_PENDING", "APPROVED"})
 _PLAN_FSM_TICK_PHASES = frozenset({"INTAKE", "CLARIFY", "DRAFT", "PEER_REVIEW", "REFINE"})
 _TASK_ASSIGN_PHASES = frozenset({"DRAFT", "REFINE", "PEER_REVIEW"})
-_SKILL_SCRIBE_INTENTS = frozenset({"plan", "plan_draft", "ralplan"})
+_SKILL_SCRIBE_INTENTS = frozenset({"plan", "plan_draft", "ralplan", "propose_build"})
+_DEFAULT_PROPOSED_SKILL_INTENT_THRESHOLD = 3
+
+
+def proposed_envelope_threshold() -> int:
+    raw = (os.getenv("AGENT_LAB_PROPOSED_SKILL_INTENT_THRESHOLD") or "").strip()
+    if not raw:
+        return _DEFAULT_PROPOSED_SKILL_INTENT_THRESHOLD
+    try:
+        return max(1, min(32, int(raw)))
+    except ValueError:
+        return _DEFAULT_PROPOSED_SKILL_INTENT_THRESHOLD
+
+
+def count_proposed_tags_in_turn(messages: list[Any]) -> int:
+    """Count distinct ``[PROPOSED:]`` tags in the latest human turn agent replies."""
+    from agent_lab.room.tasks import extract_proposed_titles
+
+    last_user = -1
+    for index, message in enumerate(messages):
+        if getattr(message, "role", None) == "user":
+            last_user = index
+    turn = messages[last_user + 1 :] if last_user >= 0 else messages
+    seen: set[str] = set()
+    for message in turn:
+        if getattr(message, "role", None) != "agent":
+            continue
+        for title in extract_proposed_titles(getattr(message, "content", "") or ""):
+            seen.add(title.strip().lower())
+    return len(seen)
+
+
+def stamp_pending_skill_intent(folder: Path, intent: str) -> None:
+    """Persist explicit plan authority for the next Room turn (slash/MCP/API)."""
+    normalized = normalize_skill_intent(intent)
+    if not normalized:
+        return
+    from agent_lab.run.meta import patch_run_meta
+
+    def _patch(run: dict[str, Any]) -> dict[str, Any]:
+        run["_pending_skill_intent"] = normalized
+        return run
+
+    patch_run_meta(folder, _patch)
 
 
 def normalize_skill_intent(raw: str | None) -> str | None:
@@ -84,6 +127,7 @@ class TurnSignals:
     cancelled: bool = False
     supervisor_first_turn: bool = False
     skill_intent: str | None = None
+    proposed_tags_count: int = 0
 
     @classmethod
     def from_run_meta(
@@ -97,6 +141,7 @@ class TurnSignals:
         verified_loop_done: bool = False,
         supervisor_first_turn: bool = False,
         skill_intent: str | None = None,
+        proposed_tags_count: int = 0,
     ) -> TurnSignals:
         from agent_lab.consensus_agreements import pending_consensus_agreements
         from agent_lab.plan.workflow import is_plan_workflow_active, plan_workflow_phase
@@ -123,6 +168,7 @@ class TurnSignals:
             cancelled=cancelled,
             supervisor_first_turn=supervisor_first_turn,
             skill_intent=resolved_skill,
+            proposed_tags_count=max(0, int(proposed_tags_count or 0)),
         )
 
 
@@ -213,7 +259,10 @@ class TurnPolicyEngine:
         ):
             run_scribe = True
             scribe_trigger = "plan_workflow_draft"
-        elif not is_fast and skill_intent_opens_scribe(signals.skill_intent):
+        elif not is_fast and (
+            skill_intent_opens_scribe(signals.skill_intent)
+            or signals.proposed_tags_count >= proposed_envelope_threshold()
+        ):
             run_scribe = True
             scribe_trigger = "skill_intent"
 

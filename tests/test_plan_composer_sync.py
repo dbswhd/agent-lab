@@ -23,8 +23,11 @@ def test_room_chat_blocks_send_during_human_pending():
 
 
 def test_compose_mode_derived_from_preset():
+    prefs = _read("web", "src", "utils", "roomComposerPrefs.ts")
     room = _read("web", "src", "components", "RoomChat.tsx")
-    assert 'roomPreset === "supervisor"' in room
+    assert 'roomPreset === "supervisor"' in prefs
+    assert "planComposeActive" in prefs
+    assert "useRoomComposerPrefs" in room
     assert "planComposeActive" in room
 
 

@@ -2,13 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   AgentOption,
   PlanWorkflowRecord,
-  RoomPreset,
   SessionDetail,
 } from "../api/client";
 import {
   cancelRoomRun,
-  fetchRoomPresets,
-  pauseMissionLoop,
   fetchCommands,
   postMissionDiscussRecovery,
   matchSlashCommand,
@@ -26,6 +23,7 @@ import {
   approvePlan,
   rejectPlan,
   rejectVerifiedLoop,
+  pauseMissionLoop,
   autoSyncSessionPlan,
   type AgentHealthRow,
   type AuthRunRef,
@@ -70,10 +68,7 @@ import {
 } from "../run/runSessionRegistry";
 import { registerRoomEventHandler } from "../run/roomReconnectRegistry";
 import { derivePendingReplyAgents } from "../run/runningAgents";
-import {
-  effectiveTurnAgents,
-  parseAgentMentions,
-} from "../utils/agentMentions";
+import { effectiveTurnAgents } from "../utils/agentMentions";
 import { createRoomRunEventHandler } from "../hooks/useRoomSseHandler";
 import { latestDraftMessageIdsByAgent } from "../utils/draftResponsePrefs";
 import { stripAgentReplyBody } from "../utils/agentResponseCard";
@@ -82,6 +77,13 @@ import {
   setLastRightPanelMode,
 } from "../utils/inspectorPanePrefs";
 import { useRoomWorkbenchLayout } from "../hooks/useRoomWorkbenchLayout";
+import { useRoomComposerPrefs } from "../hooks/useRoomComposerPrefs";
+import { useRoomRunWatchdog } from "../hooks/useRoomRunWatchdog";
+import {
+  discussRecoveryFromMissionLoop,
+  useRoomRecoveryLifecycle,
+} from "../hooks/useRoomRecoveryLifecycle";
+import { useRoomSlashCommands } from "../hooks/useRoomSlashCommands";
 import {
   getShowPeerChannel,
   setShowPeerChannel,
@@ -131,7 +133,6 @@ import {
 import { roundDividerLabel } from "../utils/roundTopology";
 import {
   resolveTurnSend,
-  setTurnProfile,
   type ComposerTurnProfile,
 } from "../utils/turnProfile";
 import { sortAgentIds, sortAgentPickerOptions } from "../utils/agentOrder";
@@ -141,12 +142,6 @@ import {
   readSessionRoomModels,
   writePendingRoomModels,
 } from "../utils/modelSlash";
-import { fetchRoomModes, loopCostHintLine } from "../utils/roomModes";
-import {
-  presetHintLine,
-  resolveRoomPresets,
-  emergenceHintLine,
-} from "../utils/roomPresets";
 import { WorkspaceFilesPanel } from "./WorkspaceFilesPanel";
 import { PreviewPanel } from "./PreviewPanel";
 import { TerminalPanel } from "./TerminalPanel";
@@ -155,11 +150,7 @@ import { ComposerAuthPickerPopover } from "./ComposerAuthPickerPopover";
 import { ComposerAuthSecretPopover } from "./ComposerAuthSecretPopover";
 import { BackgroundTasksPanel } from "./BackgroundTasksPanel";
 import type { ConsensusDryRunProposal } from "./ConsensusDryRunGateBar";
-import {
-  setTurnStrategy,
-  getTurnStrategy,
-  type ComposeMode,
-} from "../utils/composeMode";
+import { type ComposeMode } from "../utils/composeMode";
 import { isPlanWorkflowAwaitingApproval } from "../utils/planComposerSync";
 import { usePlanExecute } from "../hooks/usePlanExecute";
 import { useLocale } from "../i18n/useLocale";
@@ -205,18 +196,12 @@ import { ComposerPreflightBar } from "./ComposerPreflightBar";
 import { ReadinessComposerBar } from "./ReadinessComposerBar";
 import { fetchReadiness, type ReadinessResponse } from "../api/client";
 import {
-  buildRecoveryItems,
   classifySendFailure,
   type RecoveryActionId,
-  type RecoveryFailure,
   type RecoveryItem,
 } from "../utils/recoveryItems";
 import {
-  buildRecoveryLifecycleView,
-  createRecoveryAttempt,
   recoveryItemKey,
-  resolveRecoveryAttempt,
-  type RecoveryAttempt,
   type RecoveryResolutionEvent,
   type RecoveryRetryActionId,
 } from "../utils/recoveryLifecycle";
@@ -240,10 +225,6 @@ import {
   type ModelPopoverAgent,
   type ModelPopoverSidePanel,
 } from "./ComposerModelPopover";
-
-const LONG_RUN_HINT_MS = Number(
-  import.meta.env.VITE_ROOM_LONG_RUN_HINT_MS || "180000",
-);
 
 type Props = {
   agents: AgentOption[];
@@ -378,6 +359,7 @@ export function RoomChat({
     null,
   );
   const runSessionKey = sessionId ?? liveRunSessionKey ?? PENDING_KEY;
+  const activeSessionIdRef = useRef<string | null>(sessionId);
   const {
     messages,
     running,
@@ -389,8 +371,17 @@ export function RoomChat({
     topologyDone,
     setSynthesizing,
   } = useSessionRunState(runSessionKey);
-  const [recoveryFailure, setRecoveryFailure] =
-    useState<RecoveryFailure | null>(null);
+  const {
+    longRunning,
+    runLockStuck,
+    setRunLockStuck,
+    releasingLock,
+    setReleasingLock,
+    clearRunWatchdog,
+    clearLongRunHint,
+    scheduleLongRunHint,
+    armStopWatchdog,
+  } = useRoomRunWatchdog(sessionId);
   const [planActionFocusIndex, setPlanActionFocusIndex] = useState<
     number | null
   >(null);
@@ -408,21 +399,6 @@ export function RoomChat({
   const [roomTasks, setRoomTasks] = useState<RoomTasksPayload | null>(null);
   const [planMd, setPlanMd] = useState("");
   const [permOpen, setPermOpen] = useState(false);
-  const [turnProfile, setTurnProfileState] =
-    useState<ComposerTurnProfile>(getTurnStrategy);
-  const [loopMaxCostTier, setLoopMaxCostTier] = useState<string | null>(null);
-  const [roomPreset, setRoomPreset] = useState<string | null>(null);
-  const [availablePresets, setAvailablePresets] = useState<RoomPreset[]>([]);
-  const presetBootRef = useRef(false);
-  const resolvedRoomPresets = useMemo(
-    () => resolveRoomPresets(availablePresets),
-    [availablePresets],
-  );
-  const planComposeActive = useMemo(
-    () => roomPreset === "supervisor" || turnProfile === "loop",
-    [roomPreset, turnProfile],
-  );
-  const composeMode: ComposeMode = planComposeActive ? "plan" : "discuss";
   const [researchMode] = useState(() => {
     try {
       return localStorage.getItem("agent-lab-research-mode") === "1";
@@ -431,112 +407,28 @@ export function RoomChat({
     }
   });
   const { locale, msg: localeMsg } = useLocale();
-  useEffect(() => {
-    let cancelled = false;
-    void fetchRoomModes()
-      .then((catalog) => {
-        if (cancelled) return;
-        const loopMode = catalog.modes.find((mode) => mode.id === "loop");
-        const maxTier = loopMode?.budget?.max_cost_tier;
-        if (typeof maxTier === "string" && maxTier.trim()) {
-          setLoopMaxCostTier(maxTier.trim().toLowerCase());
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setLoopMaxCostTier(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  useEffect(() => {
-    let cancelled = false;
-    void fetchRoomPresets()
-      .then((catalog) => {
-        if (cancelled) return;
-        setAvailablePresets(catalog.presets);
-        const def = catalog.default?.trim().toLowerCase();
-        if (def && !presetBootRef.current) {
-          presetBootRef.current = true;
-          setRoomPreset(def);
-          if (def === "fast") {
-            setTurnProfileState("quick");
-            setTurnStrategy("quick");
-            setTurnProfile("quick");
-          } else if (def === "supervisor") {
-            setTurnProfileState("loop");
-            setTurnStrategy("loop");
-            setTurnProfile("loop");
-          }
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setAvailablePresets([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  useEffect(() => {
-    if (presetBootRef.current || roomPreset !== null) return;
-    const fallback =
-      resolvedRoomPresets.find((p) => p.id === "supervisor") ??
-      resolvedRoomPresets[0];
-    if (!fallback) return;
-    presetBootRef.current = true;
-    setRoomPreset(fallback.id);
-    if (fallback.id === "fast") {
-      setTurnProfileState("quick");
-      setTurnStrategy("quick");
-      setTurnProfile("quick");
-    } else if (fallback.id === "supervisor") {
-      setTurnProfileState("loop");
-      setTurnStrategy("loop");
-      setTurnProfile("loop");
-    }
-  }, [resolvedRoomPresets, roomPreset]);
-  useEffect(() => {
-    const raw = session?.run?.room_preset;
-    if (typeof raw !== "string" || !raw.trim()) return;
-    const id = raw.trim().toLowerCase();
-    if (!resolvedRoomPresets.some((p) => p.id === id)) return;
-    setRoomPreset(id);
-    presetBootRef.current = true;
-  }, [session?.run?.room_preset, resolvedRoomPresets]);
-  const composerModeVariant = useMemo((): "discuss" | "plan" | "consensus" => {
-    const profile = resolveTurnSend(turnProfile, selected);
-    if (profile.consensusMode) return "consensus";
-    if (planComposeActive) return "plan";
-    return "discuss";
-  }, [turnProfile, selected, planComposeActive]);
-  const composerPresetHint = useMemo(() => {
-    const activePreset = resolvedRoomPresets.find((p) => p.id === roomPreset);
-    return presetHintLine(activePreset, locale);
-  }, [resolvedRoomPresets, roomPreset, locale]);
-  const composerEmergenceHint = useMemo(() => {
-    if (roomPreset !== "supervisor" && turnProfile !== "loop") return null;
-    return emergenceHintLine(
-      session?.run as Record<string, unknown> | undefined,
-      locale,
-    );
-  }, [roomPreset, turnProfile, session?.run, locale]);
-  const composerCostHint = useMemo(() => {
-    if (roomPreset !== "supervisor" && turnProfile !== "loop") return null;
-    return loopCostHintLine(
-      healthAgents,
-      selected,
-      "loop",
-      locale,
-      loopMaxCostTier ?? undefined,
-    );
-  }, [
-    roomPreset,
+  const {
     turnProfile,
-    healthAgents,
-    selected,
+    roomPreset,
+    selectRoomPreset,
+    resolvedRoomPresets,
+    visiblePresets,
+    planComposeActive,
+    composeMode,
+    composerModeVariant,
+    composerPresetHint,
+    composerEmergenceHint,
+    composerCostHint,
+  } = useRoomComposerPrefs({
+    sessionRoomPreset:
+      typeof session?.run?.room_preset === "string"
+        ? session.run.room_preset
+        : null,
     locale,
-    loopMaxCostTier,
-  ]);
+    healthAgents,
+    selectedAgents: selected,
+    sessionRun: session?.run as Record<string, unknown> | undefined,
+  });
 
   const [pendingSend, setPendingSend] = useState<{
     text: string;
@@ -544,14 +436,6 @@ export function RoomChat({
     turnProfile: ComposerTurnProfile;
   } | null>(null);
   const lastPlainSendTextRef = useRef<string | null>(null);
-  const [pendingRecoveryAttempt, setPendingRecoveryAttempt] =
-    useState<RecoveryAttempt | null>(null);
-  const [recoveryCheckAttemptId, setRecoveryCheckAttemptId] = useState<
-    string | null
-  >(null);
-  const [recoveryResolutionEvents, setRecoveryResolutionEvents] = useState<
-    RecoveryResolutionEvent[]
-  >([]);
   const [highlightChatLine, setHighlightChatLine] = useState<number | null>(
     null,
   );
@@ -559,7 +443,6 @@ export function RoomChat({
   const [sendReceipt, setSendReceipt] = useState<string | null>(null);
   const [sendReceiptRaw, setSendReceiptRaw] = useState<string | undefined>();
   const [hideApprovedPlanBanner, setHideApprovedPlanBanner] = useState(false);
-  const [discussRecoveryBusy, setDiscussRecoveryBusy] = useState(false);
   const [discussPaused, setDiscussPaused] = useState(false);
   const [workFocus, setWorkFocus] = useState<WorkFocusTarget | null>(null);
   const prevExecPendingIdRef = useRef<string | null>(null);
@@ -572,79 +455,33 @@ export function RoomChat({
     plan_mode?: boolean;
   } | null>(null);
   const [readiness, setReadiness] = useState<ReadinessResponse | null>(null);
-  const [slashCommands, setSlashCommands] = useState<SlashCommandRecord[]>([]);
-  const [commandHint, setCommandHint] = useState<string | null>(null);
-  const [authRun, setAuthRun] = useState<AuthRunRef | null>(null);
-  const [secretCommand, setSecretCommand] = useState<{
-    command: SlashCommandRecord;
-    argsPrefix: string;
-    prompt: string;
-  } | null>(null);
-  const [secretValue, setSecretValue] = useState("");
-  const [commandChoices, setCommandChoices] = useState<{
-    command: SlashCommandRecord;
-    argsPrefix: string;
-    prompt: string;
-    kind?: string;
-    options: { value: string; label: string; ready?: boolean }[];
-  } | null>(null);
-  const [commandChoiceIndex, setCommandChoiceIndex] = useState(0);
-  const [commandMultiChoices, setCommandMultiChoices] = useState<{
-    command: SlashCommandRecord;
-    argsPrefix: string;
-    prompt: string;
-    current: string[];
-    options: { value: string; label: string }[];
-  } | null>(null);
-  const [commandScopeChoices, setCommandScopeChoices] = useState<{
-    command: SlashCommandRecord;
-    composition: string[];
-    prompt: string;
-    options: { value: string; label: string }[];
-  } | null>(null);
-  const [multiSelected, setMultiSelected] = useState<Set<string>>(new Set());
-  const [modelPopover, setModelPopover] = useState<{
-    command: SlashCommandRecord;
-    autoEnabled: boolean;
-    agents: ModelPopoverAgent[];
-    sidePanel: ModelPopoverSidePanel | null;
-  } | null>(null);
-  useEffect(() => {
-    if (
-      !commandChoices &&
-      !commandMultiChoices &&
-      !commandScopeChoices &&
-      !modelPopover &&
-      !authRun &&
-      !secretCommand
-    )
-      return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setCommandChoices(null);
-        setCommandMultiChoices(null);
-        setCommandScopeChoices(null);
-        setModelPopover(null);
-        setSecretCommand(null);
-        setSecretValue("");
-        setAuthRun(null);
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [
-    commandChoices,
-    commandMultiChoices,
-    commandScopeChoices,
-    modelPopover,
+  const {
+    slashCommands,
+    setSlashCommands,
+    commandHint,
+    setCommandHint,
     authRun,
+    setAuthRun,
     secretCommand,
-  ]);
-  const [externalCommandConfirm, setExternalCommandConfirm] = useState<{
-    command: SlashCommandRecord;
-    args: string;
-  } | null>(null);
-  const runWatchdogRef = useRef<number | null>(null);
+    setSecretCommand,
+    secretValue,
+    setSecretValue,
+    commandChoices,
+    setCommandChoices,
+    commandChoiceIndex,
+    setCommandChoiceIndex,
+    commandMultiChoices,
+    setCommandMultiChoices,
+    commandScopeChoices,
+    setCommandScopeChoices,
+    multiSelected,
+    setMultiSelected,
+    modelPopover,
+    setModelPopover,
+    externalCommandConfirm,
+    setExternalCommandConfirm,
+    refreshCommands,
+  } = useRoomSlashCommands({ sessionId, activeSessionIdRef });
   const runAbortRef = useRef<AbortController | null>(null);
   const syncedChatRef = useRef("");
   const [, setSetupWorkspaces] = useState<WorkspacePreset[]>([]);
@@ -655,18 +492,11 @@ export function RoomChat({
   const [consensusProposal, setConsensusProposal] =
     useState<ConsensusDryRunProposal | null>(null);
   const [consensusGateBusy, setConsensusGateBusy] = useState(false);
-  const [longRunning, setLongRunning] = useState(false);
-  const [runLockStuck, setRunLockStuck] = useState(false);
-  const [releasingLock, setReleasingLock] = useState(false);
-  const [recoveryBusyAction, setRecoveryBusyAction] =
-    useState<RecoveryActionId | null>(null);
-  const longRunHintRef = useRef<number | null>(null);
   const [agentCapabilities, setAgentCapabilities] =
     useState<AgentCapabilitiesMap>(() =>
       cloneCapabilities(DEFAULT_AGENT_CAPABILITIES),
     );
   const [, setResolvedAgentCwd] = useState<Record<string, string>>({});
-  const activeSessionIdRef = useRef<string | null>(sessionId);
   const navigatedToSessionRef = useRef(false);
   const agentCapsDirtyRef = useRef(false);
   const agentsPickerInitRef = useRef(false);
@@ -842,24 +672,6 @@ export function RoomChat({
     return sessionId ?? activeSessionIdRef.current;
   }
 
-  function changeTurnProfile(profile: ComposerTurnProfile) {
-    setTurnProfileState(profile);
-    setTurnStrategy(profile);
-    setTurnProfile(profile);
-  }
-
-  const visiblePresets = resolvedRoomPresets;
-
-  function selectRoomPreset(id: string) {
-    const next = roomPreset === id ? null : id;
-    setRoomPreset(next);
-    if (next === "fast") {
-      changeTurnProfile("quick");
-    } else if (next === "supervisor") {
-      changeTurnProfile("loop");
-    }
-  }
-
   const refreshTasks = useCallback(
     (overrideId?: string | null) => {
       const sid = overrideId ?? sessionId ?? activeSessionIdRef.current;
@@ -873,29 +685,6 @@ export function RoomChat({
     },
     [sessionId],
   );
-
-  const refreshCommands = useCallback(
-    (overrideId?: string | null) => {
-      const sid = overrideId ?? sessionId ?? activeSessionIdRef.current;
-      void fetchCommands(sid)
-        .then((res) => {
-          setSlashCommands(res.commands ?? []);
-          if (res.discovery_refreshing) {
-            window.setTimeout(() => {
-              void fetchCommands(sid)
-                .then((refreshed) => setSlashCommands(refreshed.commands ?? []))
-                .catch(() => undefined);
-            }, 300);
-          }
-        })
-        .catch(() => setSlashCommands([]));
-    },
-    [sessionId],
-  );
-
-  useEffect(() => {
-    refreshCommands();
-  }, [refreshCommands]);
 
   const refreshSessionMeta = useCallback(() => {
     const sid = effectiveSessionId();
@@ -1187,57 +976,6 @@ export function RoomChat({
     });
   }, [session?.run?.turns]);
 
-  function clearRunWatchdog() {
-    if (runWatchdogRef.current != null) {
-      window.clearTimeout(runWatchdogRef.current);
-      runWatchdogRef.current = null;
-    }
-  }
-
-  function clearLongRunHint() {
-    if (longRunHintRef.current != null) {
-      window.clearTimeout(longRunHintRef.current);
-      longRunHintRef.current = null;
-    }
-    setLongRunning(false);
-  }
-
-  function scheduleLongRunHint() {
-    clearLongRunHint();
-    if (LONG_RUN_HINT_MS <= 0) return;
-    longRunHintRef.current = window.setTimeout(() => {
-      setLongRunning(true);
-      longRunHintRef.current = null;
-    }, LONG_RUN_HINT_MS);
-  }
-
-  const handleReleaseRunLock = useCallback(async () => {
-    setReleasingLock(true);
-    try {
-      await releaseRoomRunLock();
-      setRunLockStuck(false);
-      setRecoveryFailure(null);
-    } catch (e) {
-      setRecoveryFailure({ source: "command", message: String(e) });
-    } finally {
-      setReleasingLock(false);
-    }
-  }, []);
-  const handleRetryFailedAgents = useCallback(async () => {
-    const sid = sessionId ?? activeSessionIdRef.current;
-    if (!sid) return;
-    markBackgroundRun(sid, {
-      runKind: "retry",
-      label: "Retry failed agents",
-    });
-    try {
-      await retryAgents(sid);
-      await onSessionChange(sid);
-      setRecoveryFailure(null);
-    } finally {
-      clearBackgroundRun(sid, "retry");
-    }
-  }, [sessionId, onSessionChange]);
   const transcriptActive = true;
   const typingAgents = messages.filter(
     (m) => m.typing && isReplyWaitRole(m.role),
@@ -1364,6 +1102,100 @@ export function RoomChat({
     customWorkspaceBlocked ||
     planWorkflowAwaitingApproval ||
     (!text.trim() && pendingFiles.length === 0);
+
+  const notifyRecoveryResolution = useCallback(
+    (event: RecoveryResolutionEvent) => {
+      const workRecovery =
+        event.kind === "oracle_fail" || event.kind === "discuss_recovery";
+      dispatchNotification(
+        {
+          tier: event.status === "resolved" ? "P1" : "P0",
+          title:
+            event.status === "resolved"
+              ? "Recovery resolved"
+              : "Recovery still blocked",
+          body: event.message,
+          sessionId: sessionId ?? undefined,
+          kind:
+            event.status === "resolved"
+              ? workRecovery
+                ? "recovery_resolved_work"
+                : "recovery_resolved"
+              : "recovery_still_blocked",
+          entityId: event.key,
+          toastAction:
+            event.status === "resolved" && workRecovery
+              ? { type: "composer", focus: "execute" }
+              : undefined,
+        },
+        pushMacNotification,
+        notifyDesktop,
+      );
+    },
+    [pushMacNotification, sessionId],
+  );
+
+  const discussRecovery = useMemo(
+    () => discussRecoveryFromMissionLoop(session?.run?.mission_loop),
+    [session?.run?.mission_loop],
+  );
+
+  const {
+    setRecoveryFailure,
+    recoveryItems,
+    recoveryLifecycleView,
+    recoverySignature,
+    recoveryVisible,
+    setRecoveryDismissedSig,
+    discussRecoveryBusy,
+    setDiscussRecoveryBusy,
+    recoveryBusyAction,
+    setRecoveryBusyAction,
+    beginRecoveryAttempt,
+    finishRecoveryAction,
+  } = useRoomRecoveryLifecycle({
+    sessionId,
+    apiOk,
+    healthAgents,
+    readiness,
+    selectedAgentIds: selected,
+    runLockStuck,
+    discussRecovery,
+    executeError: planExecute.error,
+    planExecutions: planExecutions,
+    composerSendLocked,
+    onResolutionNotify: notifyRecoveryResolution,
+  });
+
+  const handleReleaseRunLock = useCallback(async () => {
+    setReleasingLock(true);
+    try {
+      await releaseRoomRunLock();
+      setRunLockStuck(false);
+      setRecoveryFailure(null);
+    } catch (e) {
+      setRecoveryFailure({ source: "command", message: String(e) });
+    } finally {
+      setReleasingLock(false);
+    }
+  }, [setRecoveryFailure, setReleasingLock, setRunLockStuck]);
+
+  const handleRetryFailedAgents = useCallback(async () => {
+    const sid = sessionId ?? activeSessionIdRef.current;
+    if (!sid) return;
+    markBackgroundRun(sid, {
+      runKind: "retry",
+      label: "Retry failed agents",
+    });
+    try {
+      await retryAgents(sid);
+      await onSessionChange(sid);
+      setRecoveryFailure(null);
+    } finally {
+      clearBackgroundRun(sid, "retry");
+    }
+  }, [onSessionChange, sessionId, setRecoveryFailure]);
+
   const sessionReviewMode = Boolean(
     (session?.run?.last_turn as { review_mode?: boolean } | undefined)
       ?.review_mode,
@@ -1422,8 +1254,6 @@ export function RoomChat({
     const prev = prevSessionIdRef.current;
     prevSessionIdRef.current = sessionId;
 
-    clearRunWatchdog();
-
     if (prev === sessionId) return;
 
     if (sessionId === null) {
@@ -1442,7 +1272,6 @@ export function RoomChat({
     if (sessionId !== null) return;
     setSynthesizing(false);
     setText("");
-    setRecoveryFailure(null);
     setPendingFiles([]);
   }, [sessionId, setSynthesizing]);
 
@@ -1555,14 +1384,8 @@ export function RoomChat({
       }
       runAbortRef.current?.abort();
     })();
-    clearRunWatchdog();
-    runWatchdogRef.current = window.setTimeout(() => {
-      for (const id of getRunningSessionIds()) {
-        updateSessionRun(id, { runBusy: false, running: false });
-      }
-      runWatchdogRef.current = null;
-    }, 8_000);
-  }, [sessionId, onSessionMetaRefresh]);
+    armStopWatchdog();
+  }, [armStopWatchdog, sessionId, onSessionMetaRefresh]);
 
   useEffect(() => {
     if (isNew) return;
@@ -1631,38 +1454,6 @@ export function RoomChat({
           sessionId: sessionId ?? undefined,
           kind: "recovery_started",
           entityId: recoveryItemKey(item),
-        },
-        pushMacNotification,
-        notifyDesktop,
-      );
-    },
-    [pushMacNotification, sessionId],
-  );
-
-  const notifyRecoveryResolution = useCallback(
-    (event: RecoveryResolutionEvent) => {
-      const workRecovery =
-        event.kind === "oracle_fail" || event.kind === "discuss_recovery";
-      dispatchNotification(
-        {
-          tier: event.status === "resolved" ? "P1" : "P0",
-          title:
-            event.status === "resolved"
-              ? "Recovery resolved"
-              : "Recovery still blocked",
-          body: event.message,
-          sessionId: sessionId ?? undefined,
-          kind:
-            event.status === "resolved"
-              ? workRecovery
-                ? "recovery_resolved_work"
-                : "recovery_resolved"
-              : "recovery_still_blocked",
-          entityId: event.key,
-          toastAction:
-            event.status === "resolved" && workRecovery
-              ? { type: "composer", focus: "execute" }
-              : undefined,
         },
         pushMacNotification,
         notifyDesktop,
@@ -2105,7 +1896,12 @@ export function RoomChat({
           // is a no-op while a run is active — without this, sending a chat
           // message right after a slash command renders it before the
           // divider ever appears.
-          if (sid && res.text && !resultStage?.stage && !resultStage?.auth_run) {
+          if (
+            sid &&
+            res.text &&
+            !resultStage?.stage &&
+            !resultStage?.auth_run
+          ) {
             appendSessionMessages(
               resolveRunSessionKey(sessionId, activeSessionIdRef.current),
               [
@@ -2618,19 +2414,6 @@ export function RoomChat({
     [focusTask, handlePlanRefClick, openFilesTab, focusWorkStack],
   );
 
-  const discussRecovery = useMemo(() => {
-    const ml = session?.run?.mission_loop as
-      | {
-          discuss_recovery?: {
-            pending?: boolean;
-            reason?: string | null;
-            action_index?: number | null;
-          };
-        }
-      | undefined;
-    return ml?.discuss_recovery ?? null;
-  }, [session?.run?.mission_loop]);
-
   const handleDiscussRecoveryRun = useCallback(async () => {
     if (!sessionId) return;
     setDiscussRecoveryBusy(true);
@@ -2659,14 +2442,11 @@ export function RoomChat({
         actionId !== "open_inbox";
       let attemptId: string | null = null;
       if (tracksResolution) {
-        const attempt = createRecoveryAttempt({
+        attemptId = beginRecoveryAttempt(
           item,
           actionId,
-          canRestoreLastMessage: Boolean(lastPlainSendTextRef.current),
-        });
-        attemptId = attempt.id;
-        setPendingRecoveryAttempt(attempt);
-        setRecoveryCheckAttemptId(null);
+          Boolean(lastPlainSendTextRef.current),
+        );
         notifyRecoveryStarted(item, actionId);
       }
       setRecoveryBusyAction(actionId);
@@ -2732,16 +2512,13 @@ export function RoomChat({
           message: e instanceof Error ? e.message : String(e),
         });
       } finally {
-        setRecoveryBusyAction(null);
-        if (attemptId) {
-          window.setTimeout(() => {
-            setRecoveryCheckAttemptId(attemptId);
-          }, 250);
-        }
+        finishRecoveryAction(attemptId);
       }
     },
     [
+      beginRecoveryAttempt,
       executeSlashCommand,
+      finishRecoveryAction,
       handleDiscussRecoveryRun,
       handleReleaseRunLock,
       handleRetryFailedAgents,
@@ -2750,6 +2527,8 @@ export function RoomChat({
       openHumanInbox,
       openWorkTab,
       refreshRecoveryReadiness,
+      setRecoveryBusyAction,
+      setRecoveryFailure,
       slashCommands,
     ],
   );
@@ -2770,84 +2549,6 @@ export function RoomChat({
     [openTranscriptTab, openWorkTab],
   );
   const executeBusy = planExecute.busy;
-  const activeRecoveryFailure = useMemo<RecoveryFailure | null>(() => {
-    if (recoveryFailure) return recoveryFailure;
-    if (!planExecute.error) return null;
-    return { source: "execute", message: planExecute.error };
-  }, [planExecute.error, recoveryFailure]);
-  const recoveryItems = useMemo(
-    () =>
-      buildRecoveryItems({
-        apiOk,
-        agents: healthAgents,
-        readiness,
-        failure: activeRecoveryFailure,
-        selectedAgentIds: selected,
-        runLockStuck,
-        discussRecovery,
-        executions: planExecutions,
-      }),
-    [
-      activeRecoveryFailure,
-      apiOk,
-      discussRecovery,
-      healthAgents,
-      planExecutions,
-      readiness,
-      runLockStuck,
-      selected,
-    ],
-  );
-  useEffect(() => {
-    if (
-      !pendingRecoveryAttempt ||
-      recoveryCheckAttemptId !== pendingRecoveryAttempt.id
-    ) {
-      return;
-    }
-    const event = resolveRecoveryAttempt({
-      attempt: pendingRecoveryAttempt,
-      currentItems: recoveryItems,
-    });
-    setRecoveryResolutionEvents((current) => [event, ...current].slice(0, 3));
-    window.setTimeout(() => {
-      setRecoveryResolutionEvents((current) =>
-        current.filter((candidate) => candidate.id !== event.id),
-      );
-    }, 3000);
-    setPendingRecoveryAttempt(null);
-    setRecoveryCheckAttemptId(null);
-    notifyRecoveryResolution(event);
-  }, [
-    notifyRecoveryResolution,
-    recoveryCheckAttemptId,
-    pendingRecoveryAttempt,
-    recoveryItems,
-  ]);
-  const recoveryLifecycleView = useMemo(
-    () =>
-      buildRecoveryLifecycleView({
-        activeItems: recoveryItems,
-        resolvedEvents: recoveryResolutionEvents,
-        composerSendLocked,
-      }),
-    [composerSendLocked, recoveryItems, recoveryResolutionEvents],
-  );
-  const recoverySignature = useMemo(
-    () =>
-      [
-        ...recoveryLifecycleView.activeItems.map(
-          (i) => `${i.kind}:${i.severity}`,
-        ),
-        ...recoveryLifecycleView.resolvedEvents.map((e) => `r:${e.id}`),
-      ].join("|"),
-    [recoveryLifecycleView.activeItems, recoveryLifecycleView.resolvedEvents],
-  );
-  const [recoveryDismissedSig, setRecoveryDismissedSig] = useState<
-    string | null
-  >(null);
-  const recoveryVisible =
-    recoverySignature.length > 0 && recoveryDismissedSig !== recoverySignature;
 
   useEffect(() => {
     setComposerNoticeDismissed(null);
@@ -3223,15 +2924,10 @@ export function RoomChat({
     () => effectiveTurnAgents(turnUserBody, turnResolved.agents),
     [turnUserBody, turnResolved.agents],
   );
-  const mentionFiltered = useMemo(
-    () => parseAgentMentions(turnUserBody, turnResolved.agents).length > 0,
-    [turnUserBody, turnResolved.agents],
-  );
   const pendingReplyAgents = useMemo(
     () =>
       derivePendingReplyAgents(messages, {
         running: running || localSseRun,
-        mentionFiltered,
         expectedAgents: turnTargetAgents,
         topologyActive,
         topologyDone,
@@ -3240,7 +2936,6 @@ export function RoomChat({
       messages,
       running,
       localSseRun,
-      mentionFiltered,
       turnTargetAgents,
       topologyActive,
       topologyDone,

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import Any
 
 from agent_lab.agent import model_catalog
 from agent_lab.agent import models as agent_models
@@ -157,7 +158,7 @@ def preset_picker_options(provider: str) -> list[dict[str, str | bool]]:
     return rows
 
 
-def model_panel_options(provider: str) -> dict[str, object]:
+def model_panel_options(provider: str) -> dict[str, Any]:
     """Model list + effort slider for the composer side panel."""
     return model_catalog.model_panel_payload(
         provider,

@@ -34,10 +34,9 @@ Room UI bugs (spinners, missing activity, wrong agent count) come from breaking 
 | State | UI |
 |-------|-----|
 | `typing` bubble exists | Show `ReplyWaitingBubble` for that agent only |
-| No typing, before first `agent_start` | **No** roster-wide placeholders |
-| `@codex` in user body | Before `agent_start`, show pending for mentioned agent(s) only |
+| No typing, before first `agent_start` | Pending for **expected turn roster** (`effectiveTurnAgents`) |
+| `@codex` in user body | Expected roster = mentioned agent(s) only — same pending rules |
 | `topologyActive` set | At most **one** pending slot |
-| `@codex` in user body | `effectiveTurnAgents()` — pending roster matches server mention filter |
 | Some agents in `topologyDone` | Pending = not done, not typing |
 
 Implementation: `derivePendingReplyAgents()` in `web/src/run/runningAgents.ts`.
@@ -56,7 +55,7 @@ Implementation: `derivePendingReplyAgents()` in `web/src/run/runningAgents.ts`.
 
 1. **Lock poll during send** — `localSseRun` keeps `running` until terminal SSE.  
 2. **Refresh after turn** — `turnItems` restored from archived live log.  
-3. **`@codex` send** — single pending/typing for Codex, not full roster.  
+3. **`@codex` send** — pending/typing for Codex only (`effectiveTurnAgents`), not full roster.  
 4. **Cancelled system row** — no duplicate typing from live log replay (`sourceAgent` key).  
 5. **Complete event** — no orphaned typing dots after turn ends.
 

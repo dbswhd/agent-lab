@@ -697,7 +697,7 @@ def run_room(
 
     on_event = install_tracer(folder, run_meta, on_event, human_turn=human_turn_num)
     if mention_error:
-        return _abort_mention_roster_error(
+        abort_messages, abort_plan_md = _abort_mention_roster_error(
             folder,
             topic=topic,
             messages=messages,
@@ -711,6 +711,9 @@ def run_room(
             permissions=permissions,
             turn_profile=turn_profile,
         )
+        if folder is None:
+            raise RuntimeError("mention roster error before session folder exists")
+        return folder, abort_messages, abort_plan_md
     if direct_turn_for_mention_targets(mention_targets):
         consensus_mode = False
     from agent_lab.room.turn_flow_support import ensure_adaptive_efficiency_for_turn

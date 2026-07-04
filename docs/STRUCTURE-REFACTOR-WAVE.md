@@ -10,7 +10,7 @@ Agreed execute order for **구조 점검** scope. Items explicitly **out of scop
 
 ```text
 Wave A — RoomChat.tsx vertical split ✅
-Wave B — room/context.py concern split
+Wave B — room/context/ concern split ✅
 Wave C — live_* / pipeline_* soak & spike → scripts/
 Wave D — turn_flow.py additional thinning ✅
 ```
@@ -31,9 +31,9 @@ Split without changing UX contract:
 
 **Baseline:** `make structure-metrics-check` after intentional LOC drop.
 
-### Wave B — `room/context.py` (~1001 LOC)
+### Wave B — `room/context/` package ✅
 
-Split into submodules under `room/context/` with **`__init__.py` re-export facade** (no import churn):
+Split into submodules under `room/context/` with **`__init__.py` re-export facade** (no import churn). Monolithic `room/context.py` removed.
 
 | Module | Contents |
 |--------|----------|

@@ -107,9 +107,9 @@ def _resolve_latest_per_family(
     order = family_order or sorted(best.keys())
     out: list[dict[str, Any]] = []
     for fam in order:
-        row = best.get(fam)
-        if row is not None:
-            out.append(row)
+        fam_row = best.get(fam)
+        if fam_row is not None:
+            out.append(fam_row)
     for fam in sorted(best.keys()):
         if fam not in order:
             out.append(best[fam])

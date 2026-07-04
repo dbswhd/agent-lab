@@ -513,7 +513,7 @@ def _call_one_agent(
     from agent_lab.plan.workflow import PLAN_CLARIFY_GUIDANCE, build_plan_clarify_agent_block, plan_workflow_wants_inbox_mcp
 
     plan_clarify = ""
-    if run_meta and plan_workflow_wants_inbox_mcp(run_meta):
+    if run_meta and folder is not None and plan_workflow_wants_inbox_mcp(run_meta):
         plan_clarify = "\n\n".join(
             x
             for x in (

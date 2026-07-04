@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "agent_lab_root_py_files": 109,
+  "agent_lab_root_py_files": 113,
   "agent_lab_subpackages": [
     "agent",
     "agents",
@@ -45,36 +45,36 @@
     "claude_": 0
   },
   "tracked_pycache_files": 0,
-  "makefile_lines": 455,
-  "makefile_targets": 108,
+  "makefile_lines": 466,
+  "makefile_targets": 111,
   "large_tsx_files": [
     {
       "path": "web/src/components/RoomChat.tsx",
-      "lines": 3651
+      "lines": 3473
     },
     {
       "path": "web/src/components/PlanExecutePanel.tsx",
-      "lines": 1567
+      "lines": 1591
     },
     {
       "path": "web/src/components/HumanInboxPanel.tsx",
-      "lines": 913
-    },
-    {
-      "path": "web/src/App.tsx",
-      "lines": 748
+      "lines": 1006
     },
     {
       "path": "web/src/components/ChatComposer.tsx",
-      "lines": 704
+      "lines": 799
+    },
+    {
+      "path": "web/src/App.tsx",
+      "lines": 765
+    },
+    {
+      "path": "web/src/components/WorkspaceFilesPanel.tsx",
+      "lines": 750
     },
     {
       "path": "web/src/components/RoomTaskBar.tsx",
       "lines": 703
-    },
-    {
-      "path": "web/src/components/SettingsPage.tsx",
-      "lines": 595
     }
   ],
   "notes": {

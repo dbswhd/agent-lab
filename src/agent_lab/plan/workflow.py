@@ -359,7 +359,8 @@ def _clarifier_topic(run: dict[str, Any]) -> str:
 def _pending_clarifier_questions(interview: dict[str, Any] | None) -> list[dict[str, Any]]:
     if not interview or interview.get("status") == "complete":
         return []
-    answers = interview.get("answers") if isinstance(interview.get("answers"), dict) else {}
+    answers_raw = interview.get("answers")
+    answers: dict[str, Any] = answers_raw if isinstance(answers_raw, dict) else {}
     pending: list[dict[str, Any]] = []
     for q in interview.get("questions") or []:
         if not isinstance(q, dict):

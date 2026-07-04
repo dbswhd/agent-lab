@@ -377,7 +377,8 @@ def test_plan_import_graph_collects_modules() -> None:
     )
     assert proc.returncode == 0, proc.stderr
     payload = json.loads(proc.stdout)
-    assert payload["plan_module_count"] == 20
+    assert payload["plan_module_count"] == 21
+    assert "plan.refs" in payload["modules"]
     assert "plan.execute" in payload["modules"]
 
 
@@ -402,7 +403,7 @@ def test_room_import_graph_collects_modules() -> None:
     )
     assert proc.returncode == 0, proc.stderr
     payload = json.loads(proc.stdout)
-    assert payload["room_module_count"] == 33
+    assert payload["room_module_count"] == 36
     assert "room.delegate" in payload["modules"]
     hub_modules = {row["module"] for row in payload["hub_modules"]}
     assert "room.session_persist" in hub_modules

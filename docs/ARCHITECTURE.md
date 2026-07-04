@@ -235,7 +235,7 @@ Additive, flag-gated layers from the LangGraph/OpenHands/Aider/SWE-agent gap ana
 |----|------|------------------|------|-----|
 | P0 checkpoint/resume | `checkpoint_store.py` | `run_meta.patch_run_meta` | `AGENT_LAB_CHECKPOINT` | — (resume는 함수 호출) |
 | P1 symbol repo-map | `repo_map.py` | `context_bundle.py` (repo tree 교체) | `AGENT_LAB_REPO_MAP`(+`_TOKENS`) | — (컨텍스트 내부) |
-| P2 tool-output compaction | `room/context.py` helpers | `prepare_recent_messages` (char-trim 직전) | `AGENT_LAB_COMPACT_TOOL_OUTPUT`(+`_CHARS`) | — |
+| P2 tool-output compaction | `room/context/message_trim.py` helpers | `prepare_recent_messages` (char-trim 직전) | `AGENT_LAB_COMPACT_TOOL_OUTPUT`(+`_CHARS`) | — |
 | P3 edit-time syntax gate | `syntax_gate.py` | `merge_checks.build_merge_checks` | `AGENT_LAB_SYNTAX_GATE` | `MergeChecksPanel` (자동 표시) |
 | P3 sandbox policy | `sandbox_policy.py` | `worktree_hooks._run_command` | `AGENT_LAB_SANDBOX_POLICY`(+`_RUNTIME`) | — (live Docker deferred) |
 | P4 eval harness | `eval_harness.py` | **없음 (zero call site)** | `AGENT_LAB_EVAL_HARNESS` | — (연결 deferred) |

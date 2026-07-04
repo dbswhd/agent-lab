@@ -34,8 +34,6 @@ export function derivePendingReplyAgents(
   options: {
     running: boolean;
     expectedAgents: string[];
-    /** True when the user @-mentioned a subset (not the full roster). */
-    mentionFiltered?: boolean;
     topologyActive: { agent: string; round: number } | null;
     topologyDone: Set<string>;
   },
@@ -57,10 +55,10 @@ export function derivePendingReplyAgents(
     ];
   }
 
-  // Before the first agent_start SSE, avoid roster-wide placeholders — but
-  // @-mention filtered turns should show the targeted agent(s) only (§5.3).
+  // Before the first agent_start SSE, show the turn's expected roster so the
+  // transcript is not blank during preamble / CLI startup.
   if (topologyDone.size === 0) {
-    if (options.mentionFiltered && expectedAgents.length > 0) {
+    if (expectedAgents.length > 0) {
       return pendingAgentsForExpected(expectedAgents, topologyDone);
     }
     return [];

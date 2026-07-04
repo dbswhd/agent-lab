@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, Sequence
 
 if TYPE_CHECKING:
     from agent_lab.topic_router import CategoryRoute
@@ -155,7 +155,7 @@ def review_follow_up_uses_role_persona(run_meta: dict[str, Any] | None, advocate
 
 
 def resolve_review_advocate(
-    agents: list[str],
+    agents: Sequence[str],
     human_turn_index: int,
     *,
     run_meta: dict[str, Any] | None = None,

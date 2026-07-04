@@ -295,13 +295,23 @@ Mission OS 3-pane IA 유지 위에서:
 - **F7. 품질 평가의 mock 편중:** repo_map·compaction이 "실세션 평가 불가"로 OFF에 갇힘 — 평가 수단 부재가 기능 승격의 병목이 된 상태. → **처방:** **7일** dogfood 프로토콜 (≥10 실세션, context hit rate ≥70%, compaction 품질 Human 확인) → ON 유지 or OFF. 크레딧 확보 시 LLM judge 병행.
 - **F8. 비용·크레딧 가시성 부재:** Room·S1~S3 전개 시 LLM 비용 추정 없음 — §2.3 원칙 1의 재무적 해석 위반. → **처방:** 분기 `cost_ledger_quarter` 상한을 N1~N9에 연결; 초과 시 L2→L1/L0 **강등** (§1 Layer 2).
 
-### 3.3 실행 순서
+### 3.2.1 Room preset · discuss 지연 — dogfood 관찰 (2026-07)
+
+프로파일 근거: fast preset codex+cursor ~54s (codex만), supervisor 동일 조합 ~281s (3× agent invoke). SSE TTFB ~0.34s · mock preamble ~32ms — 지연은 Room Python이 아니라 **preset 토폴로지 + 실 agent CLI** 쪽.
+
+| 관찰 | 현재 동작 | 방향 (미구현 — 명시만) |
+|------|-----------|------------------------|
+| **Fast + 2 agents** | Composer에서 codex+cursor를 선택해도 fast preset `max_agents=1`이 `agent_list[:1]`로 **조용히 1명만 실행** (`app/server/routers/room.py` · `preset.py`) | UI **경고** 또는 roster>1 시 **supervisor 자동 전환** — fast는 단일-agent 의도와 explicit roster 충돌 시 숨기지 말 것 |
+| **Supervisor 단순 discuss** | 한 줄 질문에도 **cursor R1 → codex R1 → cursor R2(합의)** 등 다중 invoke (~4.7분). `team_orchestration` lead-last·consensus round가 단순 턴에도 그대로 적용 | 단순 discuss 턴에 대한 **병렬·라운드 축소** 검토 — topology hint / turn_profile / consensus 조건으로 “경량 1라운드” 경로 분기 |
+
+관련: [ROOM-TRANSCRIPT-CONTRACT.md](./ROOM-TRANSCRIPT-CONTRACT.md) §3 (pending UI는 1a에서 수정) · N3 room_preset · [05-room-agent-roles.md](./05-room-agent-roles.md) §Fast preset.
+
 
 | 시기 | [선행] | 할 일 | 닫힘 / 관측 |
 |---|---|---|---|
 | **지금** | — | Phase **1a** C1 transcript/SSE ([ROOM-TRANSCRIPT-CONTRACT.md](./ROOM-TRANSCRIPT-CONTRACT.md)) | vitest + 계약 |
 | **지금** | 1a | Phase **1c** F6 Phase D (`useAutonomySession`) | RoomChat state 수렴 |
-| **지금** | — | Phase **1b** F4 CI guard + run_meta allowlist 점진 축소 | `test_run_meta_write_discipline` green |
+| **지금** | — | Phase **1b** Wave B + F4 guard | **done** — `room/context/` · `test_run_meta_write_discipline` |
 | **지금** | 1a | S1 dogfood — supervisor 실사용; §1.4 KPI / `make feedback-report` **참고** | history lift·sample 관측 (formal closure 없음) |
 | **지금** | — | F4 CLAUDE.md 규칙 + F5 trading 격리 결정 | 규칙 커밋 / trading delta 0 |
 | **~2주** | — | N2 프로필 4개 + F2 플래그 신규 규칙 | `make list-flags` 프로필 매핑 |

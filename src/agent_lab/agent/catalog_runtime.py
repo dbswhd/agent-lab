@@ -258,14 +258,23 @@ def build_model_catalog_health() -> dict[str, Any]:
     sources = ["bundled"]
     if cache is not None:
         sources.append("runtime-cache")
-    bundled_meta = bundled.get("meta") if isinstance(bundled.get("meta"), dict) else {}
-    cache_meta = cache.get("meta") if isinstance(cache, dict) and isinstance(cache.get("meta"), dict) else {}
+    bundled_meta_raw = bundled.get("meta")
+    bundled_meta: dict[str, Any] = (
+        bundled_meta_raw if isinstance(bundled_meta_raw, dict) else {}
+    )
+    cache_meta: dict[str, Any] = {}
+    if isinstance(cache, dict):
+        cache_meta_raw = cache.get("meta")
+        if isinstance(cache_meta_raw, dict):
+            cache_meta = cache_meta_raw
     codex_models = 0
     providers = bundled.get("providers")
     if isinstance(providers, dict):
         codex = providers.get("codex")
-        if isinstance(codex, dict) and isinstance(codex.get("models"), list):
-            codex_models = len(codex.get("models"))
+        if isinstance(codex, dict):
+            models_list = codex.get("models")
+            if isinstance(models_list, list):
+                codex_models = len(models_list)
     return {
         "ok": True,
         "refresh_enabled": catalog_refresh_enabled(),

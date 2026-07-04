@@ -49,8 +49,8 @@
 ```text
 ✅ Phase 0   scope · SSOT · F4 · ROOM-TRANSCRIPT-CONTRACT · obsolete plans 삭제
 ✅ Phase 1a  C1 transcript contract tests — `make test-c1`
-→ Phase 1c  Phase D — RoomChat · client.ts (active: useRoomWorkbenchLayout)
-  Phase 1b  Wave B — room/context split
+✅ Phase 1b  Wave B — room/context/ split + F4 guard (`test_run_meta_write_discipline`)
+→ Phase 1c  Phase D — RoomChat hooks (useRoomRunWatchdog · useRoomRecoveryLifecycle)
   Phase 1d  Wave C pipeline_* (if needed)
   Phase 1e  F5 trading 격리 (별 PR)
   Phase 2   dead code §4 (1 PR = 1 item)
@@ -113,7 +113,7 @@ N5–N7 구현 · Mission Gateway 확장 · trading 이전 in core PR · preset 
 - [x] Obsolete `artifacts/plans/agent-lab-*-direction.md` ×3 deleted  
 - [ ] §5 dead code grep evidence (Phase 2, per-item)  
 - [x] Phase 1a: C1 vitest + live_log archive — `make test-c1`
-- [ ] Phase 1c: Phase D hook extractions (useRoomWorkbenchLayout …)  
+- [ ] Phase 1c: Phase D hook extractions — `useRoomWorkbenchLayout` · `useRoomComposerPrefs` · `useRoomSlashCommands` · `useRoomRunWatchdog` · `useRoomRecoveryLifecycle` ✅ · next: `client.ts` split  
 
 ---
 

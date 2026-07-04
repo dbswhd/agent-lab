@@ -92,7 +92,7 @@
 | ~~Legacy turn profile segmented picker~~ | ✅ `tests/test_phase2_dead_code.py` — UI absent |
 | ~~Settings topology 6-button UI~~ | ✅ same — SettingsPage has no topology grid |
 | `AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST=1` | **Keep** opt-in — default `0`, MCP-first (contract test) |
-| API deprecated `mode`/`synthesize` branches | TURN-POLICY — `synthesize_only` still live; defer |
+| ~~API deprecated `mode`/`synthesize` vs synthesize_only~~ | ✅ `synthesize_only` dedicated SSE path; normal sends always `mode=discuss`; `runSynthesizeOnly()` |
 | ~~`artifacts/plans/agent-lab-*-direction.md` ×3~~ | **Deleted** — NORTH-STAR supersedes |
 
 ---
@@ -111,7 +111,7 @@ N5–N7 구현 · Mission Gateway 확장 · trading 이전 in core PR · preset 
 - [x] F4 in CLAUDE.md  
 - [x] NORTH-STAR S1 / §3.3 aligned  
 - [x] Obsolete `artifacts/plans/agent-lab-*-direction.md` ×3 deleted  
-- [x] §5 dead code grep evidence (Phase 2) — segmented picker · topology 6-button · harvest opt-in (`test_phase2_dead_code.py`); synthesize_only defer
+- [x] §5 dead code grep evidence (Phase 2) — picker · topology · harvest · synthesize_only path
 - [x] Phase 1a: C1 vitest + live_log archive — `make test-c1`
 - [x] Phase 1c: Phase D hook extractions + `client.ts` split (`http` · `workspaceClient` · `missionGatewayClient` · `wsClient`)  
 

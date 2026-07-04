@@ -15,6 +15,7 @@ import {
   reconnectCursorBridge,
   reconnectKimiWorkBridge,
   runRoom,
+  runSynthesizeOnly,
   runSessionCommand,
   runGlobalCommand,
   SESSIONLESS_ACCOUNT_COMMAND_IDS,
@@ -1824,9 +1825,8 @@ export function RoomChat({
       });
       setRecoveryFailure(null);
       try {
-        await runRoom(
-          "(plan synthesis)",
-          selected,
+        await runSynthesizeOnly(
+          sessionId,
           (ev) => {
             if (String(ev.type) === "error") {
               setRecoveryFailure({
@@ -1835,14 +1835,7 @@ export function RoomChat({
               });
             }
           },
-          {
-            sessionId,
-            mode: "plan",
-            agentRounds: 1,
-            synthesizeOnly: true,
-            requestId,
-            permissions,
-          },
+          { requestId, permissions },
         );
         openPlanTab();
         await onSessionChange(sessionId);
@@ -1857,7 +1850,7 @@ export function RoomChat({
         });
       }
     },
-    [selected, sessionId, synthesizing, onSessionChange, openPlanTab],
+    [sessionId, synthesizing, onSessionChange, openPlanTab],
   );
 
   function handleSynthesizeNow() {

@@ -107,7 +107,7 @@ Policy is injected into constraints — agents must **not** open with meta like 
 
 ### 4.4 「지금 정리」 (synthesize-only)
 
-Work / plan toolbar can trigger **`synthesize_only`** SSE run — Scribe pass **without** a new Human message. Separate from per-send Plan toggle.
+Work / plan toolbar triggers **`synthesize_only`** via `runSynthesizeOnly()` / dedicated SSE workflow `room.synthesize_only` — Scribe pass **without** agents or a new Human message. **SSOT is `synthesize_only=true` + `session_id`**; deprecated `mode` / `synthesize` form fields are ignored on this path.
 
 ---
 

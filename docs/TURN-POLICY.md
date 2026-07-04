@@ -23,7 +23,7 @@ Human gates unchanged: plan approve, execute 409, worktree, `ask_human` / `propo
 | Plan-turn | `_should_scribe_plan_after_turn` | `synthesize` OR `AGENT_LAB_AUTO_PLAN_SCRIBE` | `legacy_plan_send` / `plan_workflow_draft` |
 | Consensus sync | `maybe_auto_scribe_after_consensus` | `consensus.status==reached` **AND** `pending_agreements>0` | `consensus_reached` |
 | Verified loop | `maybe_auto_scribe_after_verified_loop` | `verified_loop.status==done` + idempotent sync | `verified_loop_done` |
-| Human override | `synthesize_session_plan` | API `synthesize_only` | `synthesize_only` |
+| Human override | `synthesize_session_plan` | API `synthesize_only` (dedicated path; ignores `mode`/`synthesize`) | `synthesize_only` |
 
 **F1b:** all paths → **`apply_turn_effects`** once; at most one Scribe LLM call per turn.
 

@@ -338,10 +338,137 @@ def create_run(body: RunRequest) -> StreamingResponse:
     )
 
 
+async def _stream_synthesize_only(
+    request: Request,
+    *,
+    session_id: str,
+    request_id: str | None,
+    permissions: str,
+) -> StreamingResponse:
+    """TurnPolicy Human override: Scribe-only plan refresh (no agents, no mode contract).
+
+    Deprecated ``mode`` / ``synthesize`` form fields are ignored — ``synthesize_only`` is SSOT.
+    """
+    folder = active_sessions_dir() / session_id
+    if not folder.is_dir():
+        raise HTTPException(status_code=404, detail="session not found")
+    try:
+        perm_obj = json.loads(permissions) if permissions else {}
+    except json.JSONDecodeError:
+        perm_obj = {}
+    if not isinstance(perm_obj, dict):
+        perm_obj = {}
+    req_id = (request_id or "").strip() or None
+    run_session_id = folder.name
+
+    def _cancel_on_client_disconnect() -> None:
+        request_cancel(run_session_id)
+
+    async def generate():
+        event_q: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
+        result: dict[str, Any] = {}
+        loop = asyncio.get_running_loop()
+
+        def on_event(typ: str, payload: dict[str, Any]) -> None:
+            loop.call_soon_threadsafe(event_q.put_nowait, {"type": typ, **payload})
+            from agent_lab.room.live_log import append_live_room_event
+
+            append_live_room_event(folder, typ, payload)
+
+        def run_body(on_event_cb: Any) -> None:
+            from agent_lab.room.live_log import clear_live_room_log
+
+            clear_live_room_log(folder)
+            plan_md, _summary = synthesize_session_plan(
+                folder,
+                on_event=on_event_cb,
+                permissions=perm_obj,
+                request_id=req_id,
+            )
+            result["folder"] = folder
+            result["plan_md"] = plan_md
+
+        try:
+            yield sse(
+                {
+                    "type": "start",
+                    "topic": "",
+                    "session_id": run_session_id,
+                    "workflow": "room.synthesize_only",
+                    "mode": "discuss",
+                    "synthesize": False,
+                    "synthesize_only": True,
+                    "request_id": req_id,
+                    "agent_rounds": 0,
+                    "review_mode": False,
+                    "consensus_mode": False,
+                    "efficiency_mode": False,
+                    "turn_profile": "analyze",
+                    "discuss_light": False,
+                }
+            )
+            worker = loop.run_in_executor(
+                None,
+                lambda: _run_with_lock(
+                    session_id=run_session_id,
+                    on_event=on_event,
+                    run_body=run_body,
+                    result=result,
+                    event_q=event_q,
+                    loop=loop,
+                ),
+            )
+            last_keepalive = time.monotonic()
+            while True:
+                if await request.is_disconnected():
+                    _cancel_on_client_disconnect()
+                    try:
+                        await asyncio.wait_for(worker, timeout=8.0)
+                    except asyncio.TimeoutError:
+                        pass
+                    for ev in _drain_room_event_queue(event_q, result):
+                        yield sse(ev)
+                    for payload in _room_run_terminal_events(
+                        result,
+                        run_session_id=run_session_id,
+                    ):
+                        yield sse(payload)
+                    return
+                try:
+                    ev = await asyncio.wait_for(event_q.get(), timeout=0.25)
+                except asyncio.TimeoutError:
+                    now = time.monotonic()
+                    if now - last_keepalive >= _ROOM_SSE_KEEPALIVE_SEC:
+                        last_keepalive = now
+                        yield ": keepalive\n\n"
+                    continue
+                if ev is None:
+                    break
+                if ev.get("type") == "complete":
+                    result["complete_event"] = ev
+                    continue
+                last_keepalive = time.monotonic()
+                yield sse(ev)
+            await worker
+            for payload in _room_run_terminal_events(
+                result,
+                run_session_id=run_session_id,
+            ):
+                yield sse(payload)
+        except Exception as e:
+            yield sse({"type": "error", "message": str(e)})
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
 @router.post("/room/runs")
 async def create_room_run(
     request: Request,
-    topic: str = Form(...),
+    topic: str = Form(""),
     agents: str = Form("[]"),
     synthesize: bool | None = Form(None),
     mode: str = Form("discuss"),
@@ -365,15 +492,27 @@ async def create_room_run(
     room_models: str = Form(""),
     files: list[UploadFile] = File(default=[]),
 ) -> StreamingResponse:
+    # TurnPolicy Human override — dedicated path; ignores mode/synthesize/agents.
+    if synthesize_only:
+        if not session_id:
+            raise HTTPException(
+                status_code=400,
+                detail="synthesize_only requires session_id",
+            )
+        return await _stream_synthesize_only(
+            request,
+            session_id=session_id,
+            request_id=request_id,
+            permissions=permissions,
+        )
+
     topic = topic.strip()
     mode_norm = (mode or "discuss").strip().lower()
     if mode_norm not in ("discuss", "plan"):
         raise HTTPException(status_code=400, detail="mode must be discuss or plan")
     if synthesize is None:
         synthesize = mode_norm == "plan"
-    if synthesize_only and not session_id:
-        raise HTTPException(status_code=400, detail="synthesize_only requires session_id")
-    if not synthesize_only and not topic:
+    if not topic:
         raise HTTPException(status_code=400, detail="topic required")
 
     try:
@@ -611,16 +750,7 @@ async def create_room_run(
                 clear_live_room_log(folder)
             if folder is not None:
                 patch_run_mode_contract(folder, mode_contract)
-            if synthesize_only and session_id:
-                plan_md, _summary = synthesize_session_plan(
-                    folder,  # type: ignore[arg-type]
-                    on_event=on_event_cb,
-                    permissions=perm_obj,
-                    request_id=(request_id or "").strip() or None,
-                )
-                result["folder"] = folder
-                result["plan_md"] = plan_md
-            elif session_id:
+            if session_id:
                 _messages, plan_md = continue_room_round(
                     folder,  # type: ignore[arg-type]
                     topic,
@@ -664,7 +794,7 @@ async def create_room_run(
                     "workflow": "room.parallel",
                     "mode": mode_norm,
                     "synthesize": synthesize,
-                    "synthesize_only": synthesize_only,
+                    "synthesize_only": False,
                     "request_id": (request_id or "").strip() or None,
                     "agent_rounds": parallel_rounds,
                     "review_mode": review_mode,

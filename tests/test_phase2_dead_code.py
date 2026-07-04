@@ -49,3 +49,16 @@ def test_orchestrator_inbox_harvest_is_opt_in_only() -> None:
     flags = _read("src", "agent_lab", "runtime_flags.py")
     assert 'os.getenv("AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST", "0")' in harvest
     assert "AGENT_LAB_ORCHESTRATOR_INBOX_HARVEST" in flags
+
+
+def test_synthesize_only_is_dedicated_path() -> None:
+    """TurnPolicy Human override — not mode=plan / synthesize=true."""
+    room = _read("app", "server", "routers", "room.py")
+    client = _read("web", "src", "api", "client.ts")
+    chat = _read("web", "src", "components", "RoomChat.tsx")
+    assert "_stream_synthesize_only" in room
+    assert 'workflow": "room.synthesize_only"' in room or "room.synthesize_only" in room
+    assert "runSynthesizeOnly" in client
+    assert "runSynthesizeOnly" in chat
+    # Normal agent sends no longer flip mode=plan for synthesizeOnly.
+    assert 'form.append("mode", "discuss")' in client

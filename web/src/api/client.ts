@@ -1685,10 +1685,14 @@ export type RoomMode = "discuss" | "plan";
 export type RunRoomOptions = {
   sessionId?: string;
   files?: File[];
-  /** discuss = no scribe; plan = scribe after round. Overrides synthesize when set. */
+  /** @deprecated Prefer discuss sends; plan side effects use TurnPolicy. Ignored when synthesizeOnly. */
   mode?: RoomMode;
+  /** @deprecated Prefer TurnPolicy / synthesizeOnly. Ignored when synthesizeOnly. */
   synthesize?: boolean;
-  /** Re-synthesize plan.md from existing chat without a new agent round. */
+  /**
+   * @deprecated Use {@link runSynthesizeOnly} — kept for callers that still pass
+   * synthesizeOnly through runRoom.
+   */
   synthesizeOnly?: boolean;
   /** Idempotency key for synthesize-only runs (retry / refresh safe). */
   requestId?: string;
@@ -1778,19 +1782,60 @@ export function fetchContextPreview(opts: ContextPreviewOptions) {
   });
 }
 
+/** Work 「지금 정리」— Scribe-only plan refresh (TurnPolicy synthesize_only). */
+export async function runSynthesizeOnly(
+  sessionId: string,
+  onEvent: (data: Record<string, unknown>) => void,
+  opts?: {
+    requestId?: string;
+    permissions?: Record<string, unknown>;
+    signal?: AbortSignal;
+  },
+): Promise<void> {
+  const form = new FormData();
+  form.append("topic", "");
+  form.append("agents", "[]");
+  form.append("synthesize_only", "true");
+  form.append("session_id", sessionId);
+  if (opts?.requestId?.trim()) {
+    form.append("request_id", opts.requestId.trim());
+  }
+  form.append("permissions", JSON.stringify(opts?.permissions ?? {}));
+  const res = await fetch(apiUrl("/api/room/runs"), {
+    method: "POST",
+    body: form,
+    signal: opts?.signal,
+  });
+  if (!res.ok) {
+    throw new Error(parseRoomRunHttpError(await res.text()));
+  }
+  await consumeSse(res, onEvent);
+}
+
 export async function runRoom(
   topic: string,
   agents: string[],
   onEvent: (data: Record<string, unknown>) => void,
   opts?: RunRoomOptions,
 ): Promise<void> {
-  const synthesizeOnly = opts?.synthesizeOnly ?? false;
+  if (opts?.synthesizeOnly) {
+    const sid = opts.sessionId?.trim();
+    if (!sid) {
+      throw new Error("synthesizeOnly requires sessionId");
+    }
+    return runSynthesizeOnly(sid, onEvent, {
+      requestId: opts.requestId,
+      permissions: opts.permissions,
+      signal: opts.signal,
+    });
+  }
   const form = new FormData();
   form.append("topic", topic);
   form.append("agents", JSON.stringify(agents));
-  form.append("mode", synthesizeOnly ? "plan" : "discuss");
-  form.append("synthesize", synthesizeOnly ? "true" : "false");
-  form.append("synthesize_only", String(synthesizeOnly));
+  // Normal agent turns: discuss is SSOT; mode/synthesize are legacy hints only.
+  form.append("mode", "discuss");
+  form.append("synthesize", "false");
+  form.append("synthesize_only", "false");
   form.append("agent_rounds", String(opts?.agentRounds ?? 1));
   form.append("review_mode", String(opts?.reviewMode ?? false));
   form.append("consensus_mode", String(opts?.consensusMode ?? false));

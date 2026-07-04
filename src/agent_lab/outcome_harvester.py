@@ -48,21 +48,35 @@ def _path_lock(path: Path) -> threading.Lock:
         return lock
 
 
+def _default_outcomes_root() -> Path:
+    """Repo root for the outcomes ledger (not ``src/`` package root).
+
+    ``project_root()`` resolves to ``…/src`` for the in-tree package layout.
+    Outcomes are written under the git/repo root ``.agent-lab/outcomes.jsonl``.
+    """
+    env_root = (os.getenv("AGENT_LAB_OUTCOMES_ROOT") or "").strip()
+    if env_root:
+        return Path(env_root)
+    from agent_lab.workspace.roots import project_root
+
+    root = project_root()
+    # In-tree layout: src/agent_lab/… → project_root is …/src; ledger lives on parent.
+    if root.name == "src" and (root.parent / ".agent-lab").is_dir():
+        return root.parent
+    if root.name == "src" and (root.parent / "pyproject.toml").is_file():
+        return root.parent
+    return root
+
+
 def outcomes_path(root: Path | None = None) -> Path:
     """Resolve ``.agent-lab/outcomes.jsonl`` under the project root.
 
     Resolution order: explicit ``root`` arg → ``AGENT_LAB_OUTCOMES_ROOT`` env
-    (S1.5 dogfood isolation) → workspace project root.
+    (S1.5 dogfood isolation) → repo root (not ``src/``).
     """
     if root is None:
-        env_root = (os.getenv("AGENT_LAB_OUTCOMES_ROOT") or "").strip()
-        if env_root:
-            root = Path(env_root)
-        else:
-            from agent_lab.workspace.roots import project_root
-
-            root = project_root()
-    return root / _OUTCOMES_RELPATH
+        root = _default_outcomes_root()
+    return Path(root) / _OUTCOMES_RELPATH
 
 
 def _topic_text(folder: Path, run: dict[str, Any]) -> str:

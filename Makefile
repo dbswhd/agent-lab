@@ -442,7 +442,7 @@ dogfood-feedback-mock:
 	  --repeat $${REPEAT:-4} $(if $(TIER),--tier $(TIER),) $(if $(ONLY),--only $(ONLY),)
 
 feedback-report:
-	.venv/bin/python scripts/feedback_report.py $(if $(ROOT),--root $(ROOT),) $(if $(JSON),--json,)
+	.venv/bin/python scripts/feedback_report.py --root $(if $(ROOT),$(ROOT),.) $(if $(JSON),--json,)
 
 smoke:
 	.venv/bin/python scripts/smoke_room.py

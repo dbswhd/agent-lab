@@ -70,3 +70,7 @@ def test_profiles_endpoint(client: TestClient):
     assert len(body["profiles"]) == 4
     assert "flag_membership" in body
     assert "AGENT_LAB_ROOM_PRESET" in body["flag_membership"]
+    assert body["feature_flags_fallback_balanced"] == []
+    for row in body["profiles"]:
+        assert "owns" in row
+        assert row["owned_count"] >= len(row["flags"])

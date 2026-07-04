@@ -10,8 +10,11 @@ from agent_lab.run.profile import (
     RunProfileConfig,
     apply_run_profile,
     default_run_profile,
+    feature_flags_without_owner,
+    flag_profile_membership,
     list_profiles,
     profile_catalog,
+    profile_ids,
     resolve_profile,
 )
 
@@ -200,22 +203,52 @@ def test_all_profile_flags_are_registered() -> None:
     registered = {row.name for row in FLAG_REGISTRY}
     missing: list[str] = []
     for cfg in list_profiles():
-        for name in cfg.flags:
+        for name in cfg.owned_flags():
             if name not in registered:
                 missing.append(f"{cfg.profile}:{name}")
     assert not missing, f"Profile flags missing from FLAG_REGISTRY: {missing}"
 
 
 def test_four_profiles_mapped() -> None:
-    """N2 gauge: 4/4 profiles present with non-empty flag maps."""
-    from agent_lab.run.profile import flag_profile_membership, profile_ids
-
+    """N2 gauge: 4/4 profiles present with non-empty ownership."""
     assert profile_ids() == _ALL_PROFILES
     membership = flag_profile_membership()
     assert membership
     for profile in _ALL_PROFILES:
         owned = [name for name, owners in membership.items() if profile in owners]
         assert owned, f"profile {profile} owns no flags"
+
+
+def test_f2_every_feature_flag_has_owner() -> None:
+    """F2: every feature flag is owned by ≥1 profile (no balanced fallback)."""
+    from agent_lab.runtime_flags import FLAG_REGISTRY
+
+    fallback = feature_flags_without_owner()
+    assert fallback == [], f"Feature flags missing explicit owner: {fallback}"
+
+    membership = flag_profile_membership()
+    feature_names = {row.name for row in FLAG_REGISTRY if row.category == "feature"}
+    assert feature_names
+    for name in feature_names:
+        assert membership.get(name), f"{name} has no profile owner"
+
+
+def test_f2_ownership_spread_across_profiles() -> None:
+    """F2: ownership is not dumped only on balanced."""
+    counts = {pid: 0 for pid in _ALL_PROFILES}
+    for cfg in list_profiles():
+        counts[cfg.profile] = len(cfg.owned_flags())
+    assert counts["fast"] >= 20
+    assert counts["thorough"] >= 20
+    assert counts["autonomous"] >= 15
+    assert counts["balanced"] >= 40
+
+
+def test_apply_run_profile_ignores_owns_only(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Membership-only owns must not force env values."""
+    monkeypatch.delenv("AGENT_LAB_EFFICIENCY", raising=False)
+    apply_run_profile("fast")
+    assert os.environ.get("AGENT_LAB_EFFICIENCY") is None
 
 
 def test_flags_payload_includes_profile_membership() -> None:
@@ -233,6 +266,10 @@ def test_flags_payload_includes_profile_membership() -> None:
         "thorough",
         "autonomous",
     }
+    efficiency = next(
+        row for row in payload["flags"] if row["name"] == "AGENT_LAB_EFFICIENCY"
+    )
+    assert "fast" in efficiency["profiles"]
 
 
 def test_flags_payload_profile_filter() -> None:
@@ -242,3 +279,6 @@ def test_flags_payload_profile_filter() -> None:
     assert payload["profile_filter"] == "fast"
     assert payload["flags"]
     assert all("fast" in (row.get("profiles") or []) for row in payload["flags"])
+    # owns-only flags appear in filter
+    names = {row["name"] for row in payload["flags"]}
+    assert "AGENT_LAB_EFFICIENCY" in names

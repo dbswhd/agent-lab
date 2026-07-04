@@ -273,7 +273,7 @@ Mission OS 3-pane IA 유지 위에서:
 | Oracle 검증 + repair | **80%** | D3~D4 | 모트. 남은 것: live 검증 경제성 상시화, confidence 산출의 일관성 |
 | Room 합의 + 창발 파이프라인 (P1~P5) | **65%** | D2 | 코드·mock bench 완료, smoke 편입. **창발 관련 플래그 다수 default OFF → 실세션 창발 증거 없음** |
 | S1 피드백 루프 | **55%** | D3(supervisor) / D1(global) | supervisor trio implicit ON (`s1_flags.py`). lift: §1.4 · `make feedback-report` |
-| 프로필 시스템 (N2) | **55%** | D2 | **4/4** profiles in `run/profile.py` · `GET /api/profiles` · flags `profiles[]` membership · list-flags `--profile`. 전 플래그 소속은 F2 잔여 |
+| 프로필 시스템 (N2) | **70%** | D2 | **4/4** profiles · feature 플래그 **전수 소속** (`owns`+`flags`) · `list-flags --profile`. F2 ✅ |
 | Harness topology (N3) | **70%** | D3 | `parallel`·`producer_reviewer`·`pipeline` shipped (`topic_router.py`). adversarial = LC-L4 별도 |
 | Trust-gated 자율성 (L1~L2) | **60%** | D2 | auto_approve_gate·trust_budget + **N4 v1/v2** ladder SSOT, header dial, Human ceiling PATCH, demotion inbox (T-A0). L3 자동화·KPI escalation_rate는 후속 |
 | S2 episode 힌트 | **5%** | D0 | **동결** — 전역 bandit 목표 제외. S1.5 explore·episode lift 관측만 |
@@ -287,7 +287,7 @@ Mission OS 3-pane IA 유지 위에서:
 ### 3.2 구조적 결함 (F1~F8) — %가 아니라 구조가 문제인 것
 
 - **F1. Default-OFF 무덤:** 완성의 정의가 "코드 존재"에 머물러, 창발·S1 등 핵심 기능이 플래그 OFF로 죽어 있다. 측정 없이 쌓인 D1 코드는 자산이 아니라 재고다. → **처방:** D0~D4 사다리 채택(§1), 신규 기능은 "D3 도달 계획" 없이 착수 금지, S1 dogfood부터 소진.
-- **F2. 플래그 스프롤 가속:** 6월 108개 → 현재 식별자 212개. 조합 공간이 평가 능력을 초과했다. → **처방:** N2 프로필 4개 ✅; 신규 feature 플래그는 프로필 소속 권장 (`list-flags --profile`). 전수 소속·만료 조건은 잔여.
+- **F2. 플래그 스프롤 가속:** ✅ feature 플래그 전수 프로필 소속 (`run/profile.py` `owns`+`flags`, `feature_flags_without_owner()==[]`). 신규 feature 플래그는 최소 1개 프로필 `owns`/`flags`에 추가 (`test_f2_every_feature_flag_has_owner`). 만료 조건(승격/제거 시점) 메타는 잔여.
 - **F3. 문서-코드 괴리:** N2 SSOT는 **`run/profile.py`** (app_config 아님). TRACEABILITY partial vs “shipped” 과대 주의. → **처방:** 게이지가 단일 진실; §3.3 [선행] 태그; **코드 SSOT 이름 그대로** (`s1_flags.py`, `topic_router.py`, `run/profile.py`).
 - **F4. run_meta 이중 상태 함정:** ✅ 규칙+CI — CLAUDE.md / AGENTS.md · turn-end replay · `tests/test_run_meta_write_discipline.py` (신규 `run_meta[` fail, baseline 축소만). 잔여: allowlist 점진 축소.
 - **F5. 인프라/도메인 혼재:** ✅ 결정 — [F5-TRADING-ISOLATION.md](./F5-TRADING-ISOLATION.md). `trading_mission/`·`quant/` extension lane; 코어 PR trading delta 0; 경계 `extensions/quant_trading.py`. 물리 이동은 defer.
@@ -309,8 +309,7 @@ Mission OS 3-pane IA 유지 위에서:
 
 | 시기 | [선행] | 할 일 | 닫힘 / 관측 |
 |---|---|---|---|
-| **지금** | 1c ✅ · **N4 v1/v2** ✅ · **N2 v1** ✅ · **F4/F5** ✅ | S1 dogfood — supervisor 실사용; §1.4 KPI / `make feedback-report` **참고** | history lift·sample 관측 (formal closure 없음) |
-| **~2주** | — | F2 잔여 — feature 플래그 전수 프로필 소속 확대 | `make list-flags --profile` |
+| **지금** | 1c ✅ · **N4 v1/v2** ✅ · **N2/F2** ✅ · **F4/F5** ✅ | S1 dogfood — supervisor 실사용; §1.4 KPI / `make feedback-report` **참고** | history lift·sample 관측 (formal closure 없음) |
 | **~1달** | — | F7 7일 dogfood — repo_map/compaction | ON or OFF (방치 금지) |
 | **분기** | S1 data | §2.5 매트릭스 · D3→D4 KPI · F8 · N5/S2 재평가 · **dogfood-first 만료**: history n≥30 → N1 closure 재검토 | D 단계 갱신 |
 | **동결** | — | N5 전역 bandit · N6~N7 · Gateway · trading core | explicit Human OK |

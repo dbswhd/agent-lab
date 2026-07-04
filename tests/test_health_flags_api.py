@@ -50,3 +50,23 @@ def test_build_flags_payload_matches_cli():
     payload = build_flags_payload(category="test")
     assert payload["category_filter"] == "test"
     assert any(row["name"] == "AGENT_LAB_MOCK_AGENTS" for row in payload["flags"])
+
+
+def test_health_flags_profile_filter(client: TestClient):
+    res = client.get("/api/health/flags?profile=autonomous")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["profile_filter"] == "autonomous"
+    assert body["profiles"] == ["fast", "balanced", "thorough", "autonomous"]
+    assert body["flags"]
+    assert all("autonomous" in (row.get("profiles") or []) for row in body["flags"])
+
+
+def test_profiles_endpoint(client: TestClient):
+    res = client.get("/api/profiles")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["profile_count"] == 4
+    assert len(body["profiles"]) == 4
+    assert "flag_membership" in body
+    assert "AGENT_LAB_ROOM_PRESET" in body["flag_membership"]

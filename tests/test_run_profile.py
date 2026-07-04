@@ -191,3 +191,54 @@ def test_profile_catalog_active_from_env(monkeypatch: pytest.MonkeyPatch) -> Non
     cat = profile_catalog()
     assert cat["active"] == "autonomous"
     assert cat["default"] == "autonomous"
+
+
+def test_all_profile_flags_are_registered() -> None:
+    """N2: every profile-owned flag must exist in FLAG_REGISTRY."""
+    from agent_lab.runtime_flags import FLAG_REGISTRY
+
+    registered = {row.name for row in FLAG_REGISTRY}
+    missing: list[str] = []
+    for cfg in list_profiles():
+        for name in cfg.flags:
+            if name not in registered:
+                missing.append(f"{cfg.profile}:{name}")
+    assert not missing, f"Profile flags missing from FLAG_REGISTRY: {missing}"
+
+
+def test_four_profiles_mapped() -> None:
+    """N2 gauge: 4/4 profiles present with non-empty flag maps."""
+    from agent_lab.run.profile import flag_profile_membership, profile_ids
+
+    assert profile_ids() == _ALL_PROFILES
+    membership = flag_profile_membership()
+    assert membership
+    for profile in _ALL_PROFILES:
+        owned = [name for name, owners in membership.items() if profile in owners]
+        assert owned, f"profile {profile} owns no flags"
+
+
+def test_flags_payload_includes_profile_membership() -> None:
+    from agent_lab.runtime_flags import build_flags_payload
+
+    payload = build_flags_payload()
+    assert payload["profiles"] == list(_ALL_PROFILES)
+    assert payload["active_profile"] in {*_ALL_PROFILES, None}
+    room_preset = next(
+        row for row in payload["flags"] if row["name"] == "AGENT_LAB_ROOM_PRESET"
+    )
+    assert set(room_preset["profiles"]) == {
+        "fast",
+        "balanced",
+        "thorough",
+        "autonomous",
+    }
+
+
+def test_flags_payload_profile_filter() -> None:
+    from agent_lab.runtime_flags import build_flags_payload
+
+    payload = build_flags_payload(profile="fast")
+    assert payload["profile_filter"] == "fast"
+    assert payload["flags"]
+    assert all("fast" in (row.get("profiles") or []) for row in payload["flags"])

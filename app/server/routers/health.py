@@ -100,9 +100,12 @@ def health_model_catalog_refresh(
 
 
 @router.get("/health/flags")
-def health_flags(category: str | None = None) -> dict[str, Any]:
+def health_flags(
+    category: str | None = None,
+    profile: str | None = None,
+) -> dict[str, Any]:
     """AGENT_LAB_* env flag registry with active values (discoverability)."""
-    return build_flags_payload(category=category)
+    return build_flags_payload(category=category, profile=profile)
 
 
 @router.get("/profiles")

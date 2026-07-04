@@ -540,7 +540,11 @@ def _effective_bool(raw: str | None, *, default_on: bool = False) -> str:
     return "on" if str(raw).strip().lower() in _TRUE else "off"
 
 
-def _resolve_row(row: FlagDef) -> dict[str, Any]:
+def _resolve_row(
+    row: FlagDef,
+    *,
+    membership: dict[str, list[str]] | None = None,
+) -> dict[str, Any]:
     raw = os.getenv(row.name)
     is_set = raw is not None and str(raw).strip() != ""
     if is_set:
@@ -555,6 +559,7 @@ def _resolve_row(row: FlagDef) -> dict[str, Any]:
     else:
         effective = display or row.default or "(unset)"
 
+    profiles = list((membership or {}).get(row.name) or [])
     return {
         "name": row.name,
         "category": row.category,
@@ -564,6 +569,7 @@ def _resolve_row(row: FlagDef) -> dict[str, Any]:
         "effective": effective,
         "set": is_set,
         "documented": True,
+        "profiles": profiles,
     }
 
 
@@ -590,21 +596,43 @@ def _undocumented_env_flags() -> list[dict[str, Any]]:
     return rows
 
 
-def build_flags_payload(*, category: str | None = None) -> dict[str, Any]:
+def build_flags_payload(
+    *,
+    category: str | None = None,
+    profile: str | None = None,
+) -> dict[str, Any]:
     """Return active AGENT_LAB_* flags for /api/health/flags and list_flags CLI."""
+    from agent_lab.run.profile import (
+        default_run_profile,
+        flag_profile_membership,
+        profile_ids,
+        resolve_profile,
+    )
+
     cat = (category or "").strip().lower() or None
     if cat and cat not in {"feature", "infra", "test", "internal", "undocumented"}:
         cat = None
+
+    profile_filter = (profile or "").strip().lower() or None
+    if profile_filter and resolve_profile(profile_filter) is None:
+        profile_filter = None
+
+    membership = flag_profile_membership()
 
     flags: list[dict[str, Any]] = []
     for row in FLAG_REGISTRY:
         if cat and row.category != cat:
             continue
-        flags.append(_resolve_row(row))
+        resolved = _resolve_row(row, membership=membership)
+        if profile_filter and profile_filter not in resolved["profiles"]:
+            continue
+        flags.append(resolved)
 
     undocumented = _undocumented_env_flags()
-    if cat in {None, "undocumented"}:
-        flags.extend(undocumented)
+    if cat in {None, "undocumented"} and profile_filter is None:
+        for row in undocumented:
+            row = {**row, "profiles": []}
+            flags.append(row)
 
     categories = sorted({row.category for row in FLAG_REGISTRY})
     if undocumented:
@@ -616,6 +644,9 @@ def build_flags_payload(*, category: str | None = None) -> dict[str, Any]:
         "registry_count": len(FLAG_REGISTRY),
         "categories": categories,
         "category_filter": cat,
+        "profile_filter": profile_filter,
+        "active_profile": default_run_profile(),
+        "profiles": list(profile_ids()),
         "flags": flags,
         "undocumented_count": len(undocumented),
     }

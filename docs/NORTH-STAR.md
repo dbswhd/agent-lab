@@ -167,7 +167,7 @@ T2는 오픈소스 생태계 없이는 달성 불가 — N8 “슈퍼 샘플” 
 | # | 이니셔티브 | 내용 | 층 | 시기 |
 |---|---|---|---|---|
 | **N1** | **S1 dogfood-active** | supervisor implicit ON, `dogfood-feedback-mock` CI, 실사용 중 `make feedback-report`로 lift·sample **관측** (§1.4). Formal D3 닫힘 의식 없음 | L1 | 지금 |
-| **N2** | **프로필 시스템** | 212개 플래그 → `fast`/`balanced`/`thorough`/`autonomous` 4개 프로필 매핑 (`app_config.py`). 개별 override 유지. 신규 플래그는 프로필 소속 선언 없이 추가 금지 | L1 | 지금~2주 |
+| **N2** | **프로필 시스템** | 212개 플래그 → `fast`/`balanced`/`thorough`/`autonomous` 4개 프로필 매핑 (`run/profile.py`). 개별 override 유지. 신규 feature 플래그는 프로필 소속 권장 (`make list-flags --profile`) | L1 | ✅ v1 |
 | **N3** | **Harness topology 데이터화** | **room_preset** 2개(fast/supervisor) 유지. Topology hint **3종** — `topic_router._resolve_topology`: `parallel` · `producer_reviewer` · `pipeline` ([ROLE-ORCHESTRATION-PLAN.md](./ROLE-ORCHESTRATION-PLAN.md)). **consensus rounds·adversarial**는 LC-L4 `adversarial_gate`·debate — topology hint **아님** | L1 | **partial shipped** (topology 3/3) |
 | **N4** | **Autonomy Ladder 정식화** | [선행: F6 Phase D] L0~L3을 코드 개념으로 승격: 세션마다 현재 레벨이 run.json과 UI에 표시, 레벨 전환 이벤트 기록. N2 프로필 SSOT 권장 | L2 | 2주~1달 |
 | **N5** | **S2 episode 힌트 (구 팀 bandit)** | [선행: S1 dogfood, S1.5 D2+] episode lift 관측 시 roster 힌트 — **전역 과제분류 bandit 없음**. **동결** until W2 sample 충분 | L1 | 분기 재평가 |
@@ -273,7 +273,7 @@ Mission OS 3-pane IA 유지 위에서:
 | Oracle 검증 + repair | **80%** | D3~D4 | 모트. 남은 것: live 검증 경제성 상시화, confidence 산출의 일관성 |
 | Room 합의 + 창발 파이프라인 (P1~P5) | **65%** | D2 | 코드·mock bench 완료, smoke 편입. **창발 관련 플래그 다수 default OFF → 실세션 창발 증거 없음** |
 | S1 피드백 루프 | **55%** | D3(supervisor) / D1(global) | supervisor trio implicit ON (`s1_flags.py`). lift: §1.4 · `make feedback-report` |
-| 프로필 시스템 (N2) | **25%** | D1 | 4 profile mapping **0/4**. room_preset 2개는 **N3 설계 확정** — 결함 아님. 플래그 212개 미매핑 (F2) |
+| 프로필 시스템 (N2) | **55%** | D2 | **4/4** profiles in `run/profile.py` · `GET /api/profiles` · flags `profiles[]` membership · list-flags `--profile`. 전 플래그 소속은 F2 잔여 |
 | Harness topology (N3) | **70%** | D3 | `parallel`·`producer_reviewer`·`pipeline` shipped (`topic_router.py`). adversarial = LC-L4 별도 |
 | Trust-gated 자율성 (L1~L2) | **60%** | D2 | auto_approve_gate·trust_budget + **N4 v1/v2** ladder SSOT, header dial, Human ceiling PATCH, demotion inbox (T-A0). L3 자동화·KPI escalation_rate는 후속 |
 | S2 episode 힌트 | **5%** | D0 | **동결** — 전역 bandit 목표 제외. S1.5 explore·episode lift 관측만 |
@@ -287,10 +287,10 @@ Mission OS 3-pane IA 유지 위에서:
 ### 3.2 구조적 결함 (F1~F8) — %가 아니라 구조가 문제인 것
 
 - **F1. Default-OFF 무덤:** 완성의 정의가 "코드 존재"에 머물러, 창발·S1 등 핵심 기능이 플래그 OFF로 죽어 있다. 측정 없이 쌓인 D1 코드는 자산이 아니라 재고다. → **처방:** D0~D4 사다리 채택(§1), 신규 기능은 "D3 도달 계획" 없이 착수 금지, S1 dogfood부터 소진.
-- **F2. 플래그 스프롤 가속:** 6월 108개 → 현재 식별자 212개. 조합 공간이 평가 능력을 초과했다. → **처방:** N2 프로필 4개, 신규 플래그는 프로필 소속+만료 조건(승격 or 제거 시점) 선언 의무화.
-- **F3. 문서-코드 괴리:** N2 표의 4 profile vs `app_config` 매핑 0/4, TRACEABILITY partial vs “shipped” 과대, **env 플래그명 vs 본문** 같은 자기모순. 슈퍼 샘플에겐 치명적. → **처방:** 격차는 TRACEABILITY partial, 게이지가 단일 진실; §3.3 [선행] 태그; **코드 SSOT 이름 그대로** (`s1_flags.py`, `topic_router.py`).
-- **F4. run_meta 이중 상태 함정:** 턴 종료 시 디스크 run.json에서 dict를 재시작해 in-memory 변경이 유실되는 패턴으로 동종 버그 2회(emergence P3, S1 roles). `patch_run_meta()` vs `run_meta[...]` 직접 수정이 30+ 파일에 병존. → **처방:** (a) CLAUDE.md 규칙 (b) 턴 종료 replay 경유 (c) `tests/test_run_meta_write_discipline.py` — **신규** `run_meta[` writer fail, baseline 점진 축소 (d) 실패 시 PR revert + allowlist review 유지.
-- **F5. 인프라/도메인 혼재:** `src/agent_lab/trading_mission/`(+quant)이 코어와 같은 트리에 있어 north-star 작업의 가시성을 해친다. → **처방:** extensions/examples로 격리, plan 문서를 인프라 트랙 전용으로.
+- **F2. 플래그 스프롤 가속:** 6월 108개 → 현재 식별자 212개. 조합 공간이 평가 능력을 초과했다. → **처방:** N2 프로필 4개 ✅; 신규 feature 플래그는 프로필 소속 권장 (`list-flags --profile`). 전수 소속·만료 조건은 잔여.
+- **F3. 문서-코드 괴리:** N2 SSOT는 **`run/profile.py`** (app_config 아님). TRACEABILITY partial vs “shipped” 과대 주의. → **처방:** 게이지가 단일 진실; §3.3 [선행] 태그; **코드 SSOT 이름 그대로** (`s1_flags.py`, `topic_router.py`, `run/profile.py`).
+- **F4. run_meta 이중 상태 함정:** ✅ 규칙+CI — CLAUDE.md / AGENTS.md · turn-end replay · `tests/test_run_meta_write_discipline.py` (신규 `run_meta[` fail, baseline 축소만). 잔여: allowlist 점진 축소.
+- **F5. 인프라/도메인 혼재:** ✅ 결정 — [F5-TRADING-ISOLATION.md](./F5-TRADING-ISOLATION.md). `trading_mission/`·`quant/` extension lane; 코어 PR trading delta 0; 경계 `extensions/quant_trading.py`. 물리 이동은 defer.
 - **F6. 프론트 상태 부채:** 26 useState·2,740줄 client.ts 위에 기능을 계속 얹는 중. Autonomy dial 등 N4 UI가 이 위에 못 올라간다. → **처방:** Phase D를 N4보다 먼저 (§2.4 근거).
 - **F7. 품질 평가의 mock 편중:** repo_map·compaction이 "실세션 평가 불가"로 OFF에 갇힘 — 평가 수단 부재가 기능 승격의 병목이 된 상태. → **처방:** **7일** dogfood 프로토콜 (≥10 실세션, context hit rate ≥70%, compaction 품질 Human 확인) → ON 유지 or OFF. 크레딧 확보 시 LLM judge 병행.
 - **F8. 비용·크레딧 가시성 부재:** Room·S1~S3 전개 시 LLM 비용 추정 없음 — §2.3 원칙 1의 재무적 해석 위반. → **처방:** 분기 `cost_ledger_quarter` 상한을 N1~N9에 연결; 초과 시 L2→L1/L0 **강등** (§1 Layer 2).
@@ -309,9 +309,8 @@ Mission OS 3-pane IA 유지 위에서:
 
 | 시기 | [선행] | 할 일 | 닫힘 / 관측 |
 |---|---|---|---|
-| **지금** | 1c ✅ · **N4 v1/v2** ✅ | S1 dogfood — supervisor 실사용; §1.4 KPI / `make feedback-report` **참고** | history lift·sample 관측 (formal closure 없음) |
-| **지금** | — | F4 CLAUDE.md 규칙 + F5 trading 격리 결정 | 규칙 커밋 / trading delta 0 |
-| **~2주** | — | N2 프로필 4개 + F2 플래그 신규 규칙 | `make list-flags` 프로필 매핑 |
+| **지금** | 1c ✅ · **N4 v1/v2** ✅ · **N2 v1** ✅ · **F4/F5** ✅ | S1 dogfood — supervisor 실사용; §1.4 KPI / `make feedback-report` **참고** | history lift·sample 관측 (formal closure 없음) |
+| **~2주** | — | F2 잔여 — feature 플래그 전수 프로필 소속 확대 | `make list-flags --profile` |
 | **~1달** | — | F7 7일 dogfood — repo_map/compaction | ON or OFF (방치 금지) |
 | **분기** | S1 data | §2.5 매트릭스 · D3→D4 KPI · F8 · N5/S2 재평가 · **dogfood-first 만료**: history n≥30 → N1 closure 재검토 | D 단계 갱신 |
 | **동결** | — | N5 전역 bandit · N6~N7 · Gateway · trading core | explicit Human OK |

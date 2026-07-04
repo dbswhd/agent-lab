@@ -119,9 +119,23 @@ def list_profiles() -> list[RunProfileConfig]:
     return list(_PROFILE_CONFIGS.values())
 
 
+def profile_ids() -> tuple[str, ...]:
+    return tuple(cfg.profile for cfg in list_profiles())
+
+
+def flag_profile_membership() -> dict[str, list[str]]:
+    """Map flag name → profile ids that set a default for that flag (N2)."""
+    membership: dict[str, list[str]] = {}
+    for cfg in list_profiles():
+        for name in cfg.flags:
+            membership.setdefault(name, []).append(cfg.profile)
+    return membership
+
+
 def profile_catalog() -> dict[str, Any]:
     """Return profile info for /api/profiles."""
     active = default_run_profile()
+    membership = flag_profile_membership()
     return {
         "profiles": [
             {
@@ -133,4 +147,6 @@ def profile_catalog() -> dict[str, Any]:
         ],
         "default": active,
         "active": active,
+        "flag_membership": membership,
+        "profile_count": len(_PROFILE_CONFIGS),
     }

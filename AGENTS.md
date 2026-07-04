@@ -46,3 +46,10 @@ constraints에 정책이 이미 있음 — **「discuss/plan 모드입니다」 
 ## 금지
 - execute gate 우회
 - subprocess env 전체 상속
+- 턴 중 `read_run_meta()` 재적재 후 in-memory 변경 유실 (F4 — `patch_run_meta` / turn-end replay만)
+- 코어 PR에 `trading_mission/` · `quant/` 표면 확대 (F5 — extension lane)
+
+## Run profile (N2)
+- `AGENT_LAB_RUN_PROFILE`: `fast` · `balanced`(default) · `thorough` · `autonomous`
+- SSOT: `src/agent_lab/run/profile.py` · catalog: `GET /api/profiles` · flags: `make list-flags` / `GET /api/health/flags?profile=`
+- 개별 `AGENT_LAB_*` env는 프로필 기본값을 override

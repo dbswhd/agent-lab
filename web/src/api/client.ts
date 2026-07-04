@@ -290,6 +290,8 @@ export type RuntimeFlagRow = {
   effective?: string | null;
   set?: boolean;
   documented?: boolean;
+  /** N2: run profiles that set a default for this flag. */
+  profiles?: string[];
 };
 
 export type HealthFlagsResponse = {
@@ -298,6 +300,9 @@ export type HealthFlagsResponse = {
   registry_count?: number;
   categories?: string[];
   category_filter?: string | null;
+  profile_filter?: string | null;
+  active_profile?: string | null;
+  profiles?: string[];
   flags: RuntimeFlagRow[];
   undocumented_count?: number;
 };
@@ -315,9 +320,10 @@ export function fetchHealth(
   return json<HealthResponse>(`/api/health${q}`);
 }
 
-export function fetchHealthFlags(category?: string) {
+export function fetchHealthFlags(category?: string, profile?: string) {
   const params = new URLSearchParams();
   if (category) params.set("category", category);
+  if (profile) params.set("profile", profile);
   const q = params.toString() ? `?${params.toString()}` : "";
   return json<HealthFlagsResponse>(`/api/health/flags${q}`);
 }

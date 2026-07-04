@@ -20,7 +20,9 @@
 - Python: `from __future__ import annotations` 첫 줄
 - API 라우터: `app/server/routers/`에 추가 (`main.py` 직접 추가 금지)
 - `run.json`: `patch_run_meta()` 경유
-- **run_meta (F4):** 합의/턴 진행 중 in-memory `run_meta` 변경은 턴 종료 `_write_session_files` replay 경유로만 디스크에 반영 — 중간 `read_run_meta()`로 dict 재적재 후 patch 금지
+- **run_meta (F4):** 합의/턴 진행 중 in-memory `run_meta` 변경은 턴 종료 `_write_session_files` replay 경유로만 디스크에 반영 — 중간 `read_run_meta()`로 dict 재적재 후 patch 금지. 신규 `run_meta[` writer는 `tests/test_run_meta_write_discipline.py` allowlist 리뷰 필수 (baseline 축소만, 확대 금지).
+- **Run profile (N2):** `AGENT_LAB_RUN_PROFILE=fast|balanced|thorough|autonomous` — SSOT `src/agent_lab/run/profile.py`. 신규 **feature** 플래그가 기본 동작에 영향을 주면 최소 1개 프로필 `flags`에 소속시키거나, 의도적 예외면 PR에 사유를 적는다 (`make list-flags --profile …`).
+- **Trading (F5):** `trading_mission/` · `quant/` 는 extension lane. 코어 Room/plan/inbox PR에 trading 표면을 늘리지 않는다. 코어→trading 경계는 `extensions/quant_trading.py` 만.
 - subprocess: `subprocess_env.subprocess_env()` (env 전체 상속 금지)
 - 테스트: mock-only (`AGENT_LAB_MOCK_AGENTS=1`), 실 LLM CI 금지
 

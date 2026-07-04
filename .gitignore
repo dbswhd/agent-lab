@@ -13,6 +13,12 @@ web/src-tauri/bundled-runtime/
 .agent-lab/loop_probe_cache.json
 # S1 cross-session outcome ledger (runtime data, not source)
 .agent-lab/outcomes.jsonl
+# F8 quarterly cost ledger (runtime data, not source)
+.agent-lab/cost_ledger_quarter.json
+# Stray outcome ledgers written from the wrong CWD (see 24f2bd2a fix)
+src/.agent-lab/
+node_modules/
+web/test-results/
 # Local design dry-run artifact (not session plan.md)
 /plan.md
 # Local room runs (regression fixtures stay in repo)

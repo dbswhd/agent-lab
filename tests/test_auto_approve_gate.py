@@ -128,6 +128,22 @@ def test_gate_blocks_non_pending(monkeypatch: pytest.MonkeyPatch) -> None:
     assert decision.reason == "not_pending_approval"
 
 
+def test_gate_blocks_when_autonomy_l0(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AGENT_LAB_AUTO_APPROVE_THRESHOLD", "low")
+    run_meta = {"autonomy": {"level": "L0"}}
+    decision = evaluate_auto_approve(_pending(), run_meta)
+    assert not decision.eligible
+    assert decision.reason == "autonomy_below_l1"
+
+
+def test_gate_eligible_with_l1_ceiling_no_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("AGENT_LAB_AUTO_APPROVE_THRESHOLD", raising=False)
+    run_meta = {"autonomy": {"level": "L1"}}
+    decision = evaluate_auto_approve(_pending(), run_meta)
+    assert decision.eligible
+    assert decision.threshold == "low"
+
+
 def test_mark_auto_approve_eligible_stamps_fields(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_AUTO_APPROVE_TIMEOUT_SEC", "30")
     ex = _pending()

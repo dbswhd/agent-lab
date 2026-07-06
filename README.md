@@ -44,6 +44,8 @@ Agent Lab은 Cursor · Codex · Claude가 한 Room에서 토론하고, 작업을
 
 ### 설치
 
+15분 mock 미션 경로: **[docs/QUICKSTART.md](docs/QUICKSTART.md)** (N8 · `fork_time_minutes`)
+
 ```bash
 git clone <repo-url> ~/Projects/agent-lab
 cd ~/Projects/agent-lab

@@ -95,6 +95,45 @@ def test_auto_approve_env_implies_l1(session_folder: Path, monkeypatch: pytest.M
     assert payload["signals"]["auto_approve_enabled"] is True
 
 
+def test_stored_l1_ceiling_implies_l1_without_env(
+    session_folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("AGENT_LAB_AUTO_APPROVE_THRESHOLD", raising=False)
+    record_autonomy_transition(
+        session_folder,
+        to_level="L1",
+        reason="promotion",
+        trigger="auto",
+        from_level="L0",
+    )
+    run = read_run_meta(session_folder)
+    assert infer_effective_autonomy_level(run) == "L1"
+    payload = public_autonomy_payload(run)
+    assert payload["signals"]["auto_approve_enabled"] is True
+
+
+def test_l3_ceiling_activates_autonomous_segment(session_folder: Path) -> None:
+    patch_run_meta(
+        session_folder,
+        lambda run: {
+            **run,
+            "mission_loop": {"enabled": True, "phase": "EXECUTE_QUEUE"},
+        },
+    )
+    record_autonomy_transition(
+        session_folder,
+        to_level="L3",
+        reason="promotion_inbox:L2_to_L3",
+        trigger="human",
+        from_level="L2",
+    )
+    run = read_run_meta(session_folder)
+    seg = run["mission_loop"]["autonomous_segment"]
+    assert seg["active"] is True
+    assert seg.get("source") == "autonomy_l3_ceiling"
+    assert infer_effective_autonomy_level(run) == "L3"
+
+
 def test_runtime_snapshot_includes_autonomy(session_folder: Path) -> None:
     from agent_lab.runtime.snapshot import build_runtime_snapshot
 

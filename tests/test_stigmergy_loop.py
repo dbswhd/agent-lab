@@ -169,6 +169,10 @@ def test_emergence_bench_composite_and_aggregate():
     bench = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(bench)
 
+    topics = bench.load_default_topics()
+    assert len(topics) == 4
+    assert {t["category"] for t in topics} == {"quick", "standard", "deep", "critical"}
+
     assert bench.composite_score({"hybrid_action_rate": 1.0, "duplicate_speech_rate": 0.0}) == 1.0
     assert bench.composite_score({}) is None
 

@@ -25,32 +25,15 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 REPORTS = ROOT / "sessions" / "_reports"
+DEFAULT_TOPICS_PATH = ROOT / "sessions" / "_benchmark" / "topics" / "emergence-v1.json"
 
-# 카테고리 라벨된 기본 토픽 — 라우터 분류와 일치하도록 키워드 포함.
-DEFAULT_TOPICS: list[dict[str, str]] = [
-    {
-        "category": "quick",
-        "topic": "이거 머지됐어?\n[cat: quick]",
-    },
-    {
-        "category": "standard",
-        "topic": (
-            "주간 리포트 포맷을 어떻게 가져갈지 팀 차원에서 정리해 봅시다. "
-            "섹션 구성과 공유 주기, 담당 로테이션까지 함께 정하면 좋겠습니다."
-        ),
-    },
-    {
-        "category": "deep",
-        "topic": ("수집 파이프라인 아키텍처 결정: 스트리밍 vs 배치 — 트레이드오프를 비교하고 합의까지 가주세요."),
-    },
-    {
-        "category": "critical",
-        "topic": (
-            "세션 스토어 마이그레이션 절차를 결정합니다 — 프로덕션 데이터 "
-            "비가역 변경이 포함되므로 롤백 경로까지 합의가 필요합니다."
-        ),
-    },
-]
+
+def load_default_topics() -> list[dict[str, str]]:
+    """SSOT topic set — docs/EMERGENCE-BENCH.md §2."""
+    rows = json.loads(DEFAULT_TOPICS_PATH.read_text(encoding="utf-8"))
+    if not isinstance(rows, list):
+        raise SystemExit(f"topics file must be a JSON list: {DEFAULT_TOPICS_PATH}")
+    return rows
 
 # 합성 점수에 들어가는 (key, higher_is_better) — None은 제외.
 _COMPOSITE_KEYS: tuple[tuple[str, bool], ...] = (
@@ -216,7 +199,7 @@ def main() -> int:
     os.environ.setdefault("AGENT_LAB_CLARIFIER", "0")
     os.environ.setdefault("AGENT_LAB_INBOX_MODE", "soft")
 
-    topics = DEFAULT_TOPICS
+    topics = load_default_topics()
     if args.topics:
         topics = json.loads(Path(args.topics).read_text(encoding="utf-8"))
 

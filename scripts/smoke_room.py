@@ -12,6 +12,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 REGRESSION = ROOT / "sessions" / "_regression"
+EXAMPLES = ROOT / "sessions" / "_examples"
 API = "http://127.0.0.1:8765"
 
 
@@ -1147,6 +1148,71 @@ SCENARIOS: dict[str, dict[str, Any]] = {
     },
 }
 
+
+def _check_example_quick_discuss(run: dict[str, Any]) -> bool:
+    turns = run.get("turns") or []
+    return bool(turns) and turns[0].get("mode") == "discuss" and not _execs(run)
+
+
+def _check_example_plan_approved(run: dict[str, Any]) -> bool:
+    pw = run.get("plan_workflow") or {}
+    return pw.get("phase") == "APPROVED"
+
+
+def _check_example_mission_done(run: dict[str, Any]) -> bool:
+    ml = run.get("mission_loop") or {}
+    if not ml.get("enabled") or ml.get("phase") != "MISSION_DONE":
+        return False
+    return any(
+        row.get("status") == "merged"
+        and str((row.get("oracle") or {}).get("verdict") or "").lower() == "pass"
+        for row in _execs(run)
+    )
+
+
+EXAMPLE_SCENARIOS: dict[str, dict[str, Any]] = {
+    "01-quick-discuss": {
+        "label": "N8 example: quick discuss",
+        "check": _check_example_quick_discuss,
+        "requires_turns": True,
+        "required_keys": (
+            "workflow_id",
+            "run_schema_version",
+            "turns",
+            "actions",
+            "approvals",
+            "executions",
+        ),
+    },
+    "02-plan-approved": {
+        "label": "N8 example: plan workflow approved",
+        "check": _check_example_plan_approved,
+        "requires_turns": True,
+        "required_keys": (
+            "workflow_id",
+            "run_schema_version",
+            "turns",
+            "plan_workflow",
+            "actions",
+            "approvals",
+            "executions",
+        ),
+    },
+    "03-mission-done": {
+        "label": "N8 example: mission loop MISSION_DONE",
+        "check": _check_example_mission_done,
+        "requires_turns": True,
+        "required_keys": (
+            "workflow_id",
+            "run_schema_version",
+            "turns",
+            "mission_loop",
+            "executions",
+        ),
+    },
+}
+
+
 REQUIRED_RUN_KEYS = (
     "workflow_id",
     "run_schema_version",
@@ -1169,7 +1235,7 @@ def _load_run(folder: Path) -> dict[str, Any]:
 
 def validate_baseline(name: str, folder: Path) -> list[str]:
     errors: list[str] = []
-    spec = SCENARIOS.get(name)
+    spec = SCENARIOS.get(name) or EXAMPLE_SCENARIOS.get(name)
     if spec is None:
         return [f"unknown scenario folder: {name}"]
 
@@ -1258,6 +1324,25 @@ def validate_regression_fixtures() -> tuple[int, list[str]]:
     return (1 if errors else 0), errors
 
 
+def validate_example_fixtures() -> tuple[int, list[str]]:
+    if not EXAMPLES.is_dir():
+        return 1, [f"examples dir missing: {EXAMPLES}"]
+
+    errors: list[str] = []
+    checked = 0
+    for name in EXAMPLE_SCENARIOS:
+        folder = EXAMPLES / name
+        if not folder.is_dir():
+            errors.append(f"missing example folder: {folder}")
+            continue
+        checked += 1
+        errors.extend(validate_baseline(name, folder))
+
+    if checked == 0:
+        return 1, ["no example scenarios found"]
+    return (1 if errors else 0), errors
+
+
 def probe_api_health() -> tuple[int, list[str]]:
     url = f"{API}/api/health?probe_bridge=false"
     try:
@@ -1296,6 +1381,14 @@ def main() -> int:
 
     if code == 0:
         print(f"OK: {len(SCENARIOS)} regression baseline(s) in {REGRESSION}")
+
+    ex_code, ex_errors = validate_example_fixtures()
+    for err in ex_errors:
+        print(f"FAIL: {err}", file=sys.stderr)
+    code = max(code, ex_code)
+
+    if ex_code == 0:
+        print(f"OK: {len(EXAMPLE_SCENARIOS)} example mission(s) in {EXAMPLES}")
 
     if check_api:
         api_code, api_msgs = probe_api_health()

@@ -57,8 +57,10 @@ def evaluate_auto_approve(
     run_meta: dict[str, Any] | None,
 ) -> AutoApproveDecision:
     """Return whether a pending execution can be auto-approved."""
-    threshold = auto_approve_threshold()
+    from agent_lab.autonomy_ladder import effective_auto_approve_threshold, resolve_display_autonomy_level
+
     timeout = auto_approve_timeout_sec()
+    threshold = effective_auto_approve_threshold(run_meta)
 
     if threshold is None:
         return AutoApproveDecision(
@@ -66,6 +68,16 @@ def evaluate_auto_approve(
             reason="auto_approve_disabled",
             risk_level=None,
             threshold=None,
+            timeout_sec=timeout,
+        )
+
+    display = resolve_display_autonomy_level(run_meta)
+    if display == "L0":
+        return AutoApproveDecision(
+            eligible=False,
+            reason="autonomy_below_l1",
+            risk_level=None,
+            threshold=threshold,
             timeout_sec=timeout,
         )
 

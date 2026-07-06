@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Any, Literal
 
 from agent_lab.auto_approve_gate import auto_approve_threshold
+from agent_lab.diff_risk import RiskLevel
 from agent_lab.run.meta import patch_run_meta
 from agent_lab.trust_budget import get_trust_budget
 
@@ -31,6 +32,17 @@ def _autonomy_block(run_meta: dict[str, Any] | None) -> dict[str, Any]:
     return raw if isinstance(raw, dict) else {}
 
 
+def effective_auto_approve_threshold(run_meta: dict[str, Any] | None) -> RiskLevel | None:
+    """Max risk for auto-approve: env override, else L1+ Human ceiling defaults to low."""
+    explicit = auto_approve_threshold()
+    if explicit is not None:
+        return explicit
+    ceiling = stored_autonomy_level(run_meta)
+    if ceiling and _LEVEL_ORDER[ceiling] >= _LEVEL_ORDER["L1"]:
+        return "low"
+    return None
+
+
 def stored_autonomy_level(run_meta: dict[str, Any] | None) -> AutonomyLevel | None:
     """Human-set ceiling, or None when no explicit ceiling is stored."""
     level = _autonomy_block(run_meta).get("level")
@@ -54,7 +66,7 @@ def infer_effective_autonomy_level(run_meta: dict[str, Any] | None) -> AutonomyL
     if total > 0 and remaining > 0:
         return "L2"
 
-    if auto_approve_threshold() is not None:
+    if effective_auto_approve_threshold(meta) is not None:
         return "L1"
 
     return "L0"
@@ -98,7 +110,7 @@ def public_autonomy_payload(run_meta: dict[str, Any] | None) -> dict[str, Any]:
             "auto_merge_total": int(budget.get("auto_merge_total") or 0),
         },
         "signals": {
-            "auto_approve_enabled": auto_approve_threshold() is not None,
+            "auto_approve_enabled": effective_auto_approve_threshold(meta) is not None,
             "mission_loop_enabled": bool(ml.get("enabled")),
             "autonomous_segment_active": bool(seg.get("active")),
         },
@@ -141,7 +153,31 @@ def record_autonomy_transition(
         return run
 
     updated = patch_run_meta(folder, _apply)
+    if to_level == "L3":
+        apply_autonomy_level_capabilities(folder, "L3")
     return public_autonomy_payload(updated)
+
+
+def apply_autonomy_level_capabilities(folder, level: AutonomyLevel) -> None:
+    """Wire L3 ceiling to mission loop autonomous segment (N4 runtime)."""
+    if level != "L3":
+        return
+    from agent_lab.mission.loop import AUTONOMOUS_ENDS, get_mission_loop
+
+    def _activate(run: dict[str, Any]) -> dict[str, Any]:
+        ml = get_mission_loop(run)
+        if not ml.get("enabled"):
+            return run
+        ml["autonomous_segment"] = {
+            "active": True,
+            "started_at": _now_iso(),
+            "ends_on": list(AUTONOMOUS_ENDS),
+            "source": "autonomy_l3_ceiling",
+        }
+        run["mission_loop"] = ml
+        return run
+
+    patch_run_meta(folder, _activate)
 
 
 def observe_autonomy_level_change(

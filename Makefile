@@ -151,10 +151,10 @@ structure-metrics-check:
 layer-cycles-check:
 	.venv/bin/python scripts/layer_cycle_check.py --check
 
-ci: lint format-check typecheck-ratchet layer-cycles-check test-fast smoke
+ci: lint format-check typecheck-ratchet layer-cycles-check test-fast smoke emergence-bench-check
 
 ci-full: check-worktrees
-	.venv/bin/python scripts/run_verification_lane.py --lane ci_full -- sh -c 'make lint format-check typecheck-ratchet layer-cycles-check test-fast test-integration test-bridge smoke dogfood-feedback-mock score-regression-fixtures'
+	.venv/bin/python scripts/run_verification_lane.py --lane ci_full -- sh -c 'make lint format-check typecheck-ratchet layer-cycles-check test-fast test-integration test-bridge smoke quickstart-verify dogfood-feedback-mock score-regression-fixtures'
 
 init-project-memory:
 	@test -n "$(WORKSPACE)" || WORKSPACE=.; \
@@ -333,6 +333,12 @@ score-regression-fixtures:
 
 emergence-bench:
 	.venv/bin/python scripts/emergence_bench.py
+
+emergence-bench-check:
+	.venv/bin/python scripts/verify_emergence_bench_reference.py --check
+
+quickstart-verify:
+	AGENT_LAB_MOCK_AGENTS=1 .venv/bin/python scripts/verify_quickstart.py
 
 dogfood-suite-mock:
 	AGENT_LAB_MOCK_AGENTS=1 .venv/bin/python scripts/run_dogfood_suite.py --mode mock \

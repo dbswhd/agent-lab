@@ -28,6 +28,8 @@ sessions/*
 !sessions/_regression/**
 !sessions/_benchmark/
 !sessions/_benchmark/**
+!sessions/_examples/
+!sessions/_examples/**
 sessions/_benchmark/topics/suite-log.json
 
 sessions/**/raw/

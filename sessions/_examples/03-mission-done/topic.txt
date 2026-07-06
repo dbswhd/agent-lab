@@ -1,0 +1,1 @@
+Mission loop — verify PASS 후 MISSION_DONE. Oracle mock pass + merged execution.

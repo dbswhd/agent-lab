@@ -17,6 +17,9 @@
 | Track 2.0 profile gate report | [TRACK2-PROFILE.md](./TRACK2-PROFILE.md) |
 | Track 2.2 native gate — CLOSED (native rejected, crate removed) | [TRACK2-NATIVE-GATE.md](./TRACK2-NATIVE-GATE.md) |
 | **중장기 북극성 · 완성도 게이지 (슈퍼 샘플 로드맵)** | [NORTH-STAR.md](./NORTH-STAR.md) |
+| **15분 mock 미션 · fork_time_minutes (N8)** | [QUICKSTART.md](./QUICKSTART.md) |
+| **Emergence bench 프로토콜 SSOT (N8)** | [EMERGENCE-BENCH.md](./EMERGENCE-BENCH.md) · [REPRODUCTION-REPORT.md](./REPRODUCTION-REPORT.md) |
+| **Fork 가이드 (N8)** | [FORK.md](./FORK.md) · [PACKAGE-FORK-BOUNDARIES.md](./PACKAGE-FORK-BOUNDARIES.md) |
 | **2026-07 cleanup · dogfood-first SSOT** | [CLEANUP-SSOT-2026-07.md](./CLEANUP-SSOT-2026-07.md) · [CLEANUP-PHASE0-SCOPE-2026-07.md](./CLEANUP-PHASE0-SCOPE-2026-07.md) |
 | Room transcript UX contract (SSE · lock · activity) | [ROOM-TRANSCRIPT-CONTRACT.md](./ROOM-TRANSCRIPT-CONTRACT.md) |
 | 전략 방향 (Fugu/Harness 대비 포지션 — 배경/이력) | [STRATEGIC-DIRECTION-2026.md](./STRATEGIC-DIRECTION-2026.md) |
@@ -55,6 +58,10 @@
 | [STABILITY.md](./STABILITY.md) | 회귀 baseline, smoke, CI 기대치 |
 | [OPS-RUNBOOK.md](./OPS-RUNBOOK.md) | 수동 검증 Tier A~E, live ops, **Mission daemon**, **dogfood 체크리스트** |
 | [EVAL-PROGRAM.md](./EVAL-PROGRAM.md) | 라이브 dogfood 테스트 — topic 카탈로그, 주간 matrix, KPI 루프 |
+| [EMERGENCE-BENCH.md](./EMERGENCE-BENCH.md) | **창발 벤치 SSOT** — topic·시드·판정·재현 체크리스트 (N8) |
+| [QUICKSTART.md](./QUICKSTART.md) | **외부인 15분 경로** — mock 미션 · fork_time_minutes (N8) |
+| [FORK.md](./FORK.md) | Fork·upstream 동기화·안전 커스터마이즈 (N8) |
+| [PACKAGE-FORK-BOUNDARIES.md](./PACKAGE-FORK-BOUNDARIES.md) | 분리 fork 패키지 경계 (N8) |
 | [CLAUDE.md](../CLAUDE.md) | 레포 개발 퀵스타트 (root) |
 
 **규칙:** 두 문서가 충돌하면 **TRACEABILITY + code + tests**가 우선.

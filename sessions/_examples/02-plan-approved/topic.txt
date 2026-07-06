@@ -1,0 +1,1 @@
+Plan workflow — clarify/peer 후 Human이 plan.md를 승인한 상태.

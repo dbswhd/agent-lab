@@ -121,13 +121,13 @@ T2는 오픈소스 생태계 없이는 달성 불가 — N8 “슈퍼 샘플” 
 
 **불변:** 어떤 레벨에서도 BLOCK→409와 worktree 격리는 우회 불가. L3에서도 Human Inbox는 "질문 채널"로 항상 열려 있다.
 
-**레벨 전환 — 코드화 현황 (2026-07-04):** ladder SSOT·헤더 dial·Human ceiling PATCH·demotion inbox는 shipped (`autonomy_ladder.py`·`autonomy_inbox.py`, N4 v1/v2). **승격 3행은 미코드화** — 코드화 시 트리거 입력은 전부 `run.json` 기존 필드(diff_risk·oracle confidence·trust_budget)에서 취득하고, 전환 이벤트는 ladder audit trail에 기록한다.
+**레벨 전환 — 코드화 현황 (2026-07-06):** ladder SSOT·헤더 dial·Human ceiling PATCH·demotion inbox (N4 v1/v2) · **승격 3종** (`autonomy_promotion.py`) · L1↔`auto_approve_gate` 결합 (`effective_auto_approve_threshold`) · L3 ceiling → `mission_loop.autonomous_segment` · `escalation_rate_by_level` KPI (`feedback_report.py`).
 
 | 전환 | 트리거 | 게이트 | 코드화 |
 |------|--------|--------|--------|
-| L0→L1 | `diff_risk` LOW + Oracle conf ≥ 0.85 **연속 5회** | `run.json` 자동 판정 | ⬜ 미착수 |
-| L1→L2 | trust_budget 미소진으로 미션 10개 완주 | Human 수동 승인 | ⬜ 미착수 |
-| L2→L3 | 미션 루프 완주율 ≥ 90%, Human escalation ≤ 5% | 분기 Human 리뷰 | ⬜ 미착수 |
+| L0→L1 | `diff_risk` LOW + Oracle conf ≥ 0.85 **연속 5회** | `run.json` 자동 판정 | ✅ `record_l0_to_l1_sample` |
+| L1→L2 | trust_budget 미소진으로 미션 10개 완주 | Human 수동 승인 | ✅ promotion inbox (`autonomy_promotion`) |
+| L2→L3 | 미션 루프 완주율 ≥ 90%, Human escalation ≤ 5% | 분기 Human 리뷰 | ✅ promotion inbox + `autonomous_segment` |
 | **강등** | Oracle fail **연속 3회** 또는 `diff_risk` HIGH | 즉시 자동 → L0 | ✅ demotion inbox (T-A0) |
 | **예산 강등 (F8)** | 분기 `cost_ledger` 예산 상한 초과 (`AGENT_LAB_QUARTER_BUDGET_USD`) | 자동 → L0 | ✅ `cost_ledger_quarter.py` |
 
@@ -135,10 +135,10 @@ T2는 오픈소스 생태계 없이는 달성 불가 — N8 “슈퍼 샘플” 
 
 내부 품질과 별개로 "외부인이 벗겨갈 수 있는가"를 독립 트랙으로 추적한다.
 
-- **재현 가능:** `git clone` → 15분 안에 mock 미션 1개 완주. **산출물 = `docs/QUICKSTART.md` (미존재 — N8/P2에서 작성).** 내용 후보: `make install` → `AGENT_LAB_MOCK_AGENTS=1` 세팅 → `python scripts/smoke_room.py` 또는 `make dogfood-suite-mock` 1개 topic — 작성 시 실제 clean clone에서 시간을 재서(`fork_time_minutes`) 확정한다.
+- **재현 가능:** `git clone` → 15분 안에 mock 미션 1개 완주. **산출물:** [`docs/QUICKSTART.md`](./QUICKSTART.md) · `fork_time_minutes` 기준선 12 (2026-07-06).
 - **이해 가능:** 핵심 개념 6개(§2.2)만 알면 아키텍처 전체를 설명할 수 있는 문서 구조.
-- **분리 가능:** Oracle 검증, Room 합의, worktree execute를 각각 단독으로 fork할 수 있는 패키지 경계 — **선행: ADR §3.5 Stage 2 (`agent_lab.core` 추출·순환 절단)**. F12가 남아 있는 동안은 분리 fork 불가.
-- **증명 가능:** emergence bench·feedback report 결과를 공개 리포트로 재현 — "창발이 실제로 성능을 올린다"는 주장에 숫자가 붙어야 슈퍼 샘플 자격이 생긴다. **선행:** 재현 가능 벤치 프로토콜 SSOT (`make emergence-bench` → `scripts/emergence_bench.py` — 시드·topic 세트·판정 기준을 문서화해 타인이 같은 숫자를 얻어야 함) — 내부 bench 수치만으로는 Layer 3 판정 불가 (N8).
+- **분리 가능:** Oracle 검증, Room 합의, worktree execute를 각각 단독으로 fork할 수 있는 패키지 경계 — F12 `agent_lab.core` 순환 절단 ✅; 경계 SSOT [`PACKAGE-FORK-BOUNDARIES.md`](./PACKAGE-FORK-BOUNDARIES.md).
+- **증명 가능:** emergence bench·feedback report 결과를 공개 리포트로 재현 — mock reference [`REPRODUCTION-REPORT.md`](./REPRODUCTION-REPORT.md) + CI `make emergence-bench-check`. **live oracle에서 delta > 0 증명은 잔여**.
 
 ### 완성 정의 사다리 (D0~D4) — 이 문서의 % 산정 기준
 
@@ -175,15 +175,37 @@ T2는 오픈소스 생태계 없이는 달성 불가 — N8 “슈퍼 샘플” 
 | `history_match_rate` | advisor `source=history` 힌트와 clean-pass episode subset 일치 비율 | `feedback_report` · `by_source.history` | **now** |
 | `feedback_loop_latency` | RECORD→RECALL→APPLY 한 사이클 평균 턴 수 | `run.json` turn index delta | **now** (manual) |
 | `clean_pass_delta` | history vs default clean-pass율 차 | `advisor_lift.history_vs_default` | **now** |
-| `escalation_rate_by_level` | L0~L3별 Human Inbox 도달률 | inbox · mission tick | **N4 이후** (L 미코드화) |
+| `escalation_rate_by_level` | L0~L3별 Human Inbox 도달률 | `feedback_report` · outcomes ledger | **now** · **N4 D3:** §1.4.1 (n≥10/level) |
 | `trust_budget_burn_rate` | 기간당 trust_budget 소진 | `run.json` · ledger | partial |
-| `fork_time_minutes` | clone → mock 완주 | quickstart (N8) | **N8** |
+| `fork_time_minutes` | clone → mock 완주 | [QUICKSTART.md](./QUICKSTART.md) | **now** (기준선 12; 외부 재측정 권장) |
 | `concept_coverage` | 6개 어휘로 설명 가능 shipped 기능 비율 | §2.2 + 분기 Human | aspirational |
 | `cost_ledger_quarter` | 분기 LLM·Room 비용 | `cost_ledger.py` · F8 | **F8** |
 
-**판독 명령:** S1 계열 3종은 `make feedback-report JSON=1` 출력의 `by_source.*`·`advisor_lift.*` 필드에서, 비용은 `make f8-cost-report JSON=1`에서 읽는다. `fork_time_minutes`는 clean clone에서 QUICKSTART 완주 시간을 수동 측정.
+**판독 명령:** S1 계열 3종은 `make feedback-report JSON=1` 출력의 `by_source.*`·`advisor_lift.*` 필드에서, 비용은 `make f8-cost-report JSON=1`에서 읽는다. `fork_time_minutes`는 clean clone에서 QUICKSTART 완주 시간을 수동 측정. `escalation_rate_by_level`은 `make feedback-report JSON=1` → `.escalation_rate_by_level` (아래 §1.4.1).
 
 **N1 관측 (formal closure 아님):** `clean_pass_delta` > 0 이고 `by_source.history.n` ≥ `MIN_SAMPLE`인 episode가 dogfood 중 **지속 관측**되면 S1 루프가 살아 있다고 본다. D4·분기 리뷰 참고치 (aspirational): `clean_pass_delta` ≥ 5pp, `history_match_rate` ≥ 60% when n≥10.
+
+#### 1.4.1 N4 D3 dogfood 증거 — `escalation_rate_by_level`
+
+**목적:** Layer 2(N4)를 D2(코드·mock)에서 **D3(supervisor dogfood 운영 편입)** 으로 올릴 때의 **유일한 N4 전용 닫힘 기준**. merge gate 아님 — 분기 Human 리뷰용.
+
+**전제:** outcomes ledger row에 `autonomy_level`·`human_inbox_escalation` 태깅은 shipped (`outcome_harvester.py`, 2026-07). **2026-07 이전 row는 집계에서 제외**되거나 `autonomy_level` 기본 L0로 fold.
+
+| # | 닫힘 조건 | 판정 |
+|---|-----------|------|
+| 1 | **레벨별 표본** — 집계에 쓰이는 ledger row 중, 각 `autonomy_level`(L0~L3)마다 **n ≥ 10** | `make feedback-report JSON=1` → 해당 level의 rate가 `null`이 아님 (또는 raw row count ≥ 10) |
+| 2 | **수집 경로** — supervisor preset 실세션 dogfood (mock 아님) | `sessions/` live outcome이 `.agent-lab/outcomes.jsonl`에 append |
+| 3 | **기록** — 분기 1회 이상 리포트 스냅샷 보관 | `make feedback-report JSON=1` 출력을 이슈·`sessions/_benchmark/reports/` 또는 팀 노트에 날짜·`git rev`와 함께 저장 |
+| 4 | **해석** — L2→L3 승격용 in-session `escalation_rate ≤ 5%`와 **별개** | 본 KPI는 **관측·추세**만; D3 닫힘에 rate 목표치 강제 없음 (D4에서 목표 검토) |
+
+**판독 명령:**
+
+```bash
+make feedback-report JSON=1 | jq '.escalation_rate_by_level, .total'
+# 레벨별 null → 해당 level n < 10 (또는 tagged row 없음)
+```
+
+**F11과 분리:** D3 닫힘은 **`RunState` 타입화(F11 · ADR §3.5 Stage 1)를 기다리지 않는다.** F11은 N4와 **병행 별도 스테이지** — 승격·KPI는 `dict` `run_meta` 위에서 이미 D2 검증됨; RunState 전환은 타입 안전·리팩터용이며 N4 dogfood 증거의 선행조건이 **아님**.
 
 ---
 
@@ -196,11 +218,11 @@ T2는 오픈소스 생태계 없이는 달성 불가 — N8 “슈퍼 샘플” 
 | **N1** | **S1 dogfood-active** | supervisor implicit ON, `dogfood-feedback-mock` CI, 실사용 중 `make feedback-report`로 lift·sample **관측** (§1.4). Formal D3 닫힘 의식 없음 | L1 | 지금 |
 | **N2** | **프로필 시스템** | 전체 플래그(`make list-flags`) → `fast`/`balanced`/`thorough`/`autonomous` 4개 프로필 매핑 (`run/profile.py`). 개별 override 유지. 신규 feature 플래그는 프로필 소속 권장 (`make list-flags --profile`) | L1 | ✅ v1 |
 | **N3** | **Harness topology 데이터화** | **room_preset** 2개(fast/supervisor) 유지. Topology hint **3종** — `topic_router._resolve_topology`: `parallel` · `producer_reviewer` · `pipeline` ([ROLE-ORCHESTRATION-PLAN.md](./ROLE-ORCHESTRATION-PLAN.md)). **consensus rounds·adversarial**는 LC-L4 `adversarial_gate`·debate — topology hint **아님** | L1 | **partial shipped** (topology 3/3) |
-| **N4** | **Autonomy Ladder 정식화** | v1/v2 ✅ (`autonomy_ladder.py` · `/api/autonomy` · dial · demotion inbox). **잔여:** ① 승격 트리거 3종 코드화 (§1 Layer 2 표 ⬜ 행 — 입력은 run.json 기존 필드) ② `escalation_rate_by_level` KPI 산출을 `feedback_report`에 추가 | L2 | 잔여 2건 |
+| **N4** | **Autonomy Ladder 정식화** | v1/v2 ✅ + 승격 3종 + `escalation_rate_by_level` + L1 gate + L3 segment. **D3 닫힘:** §1.4.1 (`n≥10`/level). **F11 RunState:** ADR §3.5 Stage 1 별도 트랙 (N4 비선행) | L2 | **D2** → D3 dogfood |
 | **N5** | **S2 episode 힌트 (구 팀 bandit)** | [선행: S1 dogfood, S1.5 D2+] episode lift 관측 시 roster 힌트 — **전역 과제분류 bandit 없음**. **동결** until W2 sample 충분 | L1 | 분기 재평가 |
 | **N6** | **Self-patch meta-loop** | Room이 생성한 개선안을 agent-lab 자기 코드베이스에 적용하는 dogfood 루프의 정례화. **착수 시 첫 커밋 = 화이트리스트 파일** (`.agent-lab/self_patch_allowlist.txt` — 초기값: `.claude/skills/**`·프롬프트·preset 파라미터만). 코어 로직(`src/agent_lab/**`)은 인간 gate 필수 | L3 | 1달~분기 |
 | **N7** | **S3 외부 능력 자가 통합** | §1 Layer 1의 S3a~S3d. **지금 할 것 = 설계 문서 1개:** `docs/S3-TOOL-CARD-SPEC.md` — 도구 카드 스키마(JSON: id·source·capabilities·mount 방법) + `[NEED-TOOL:]` 시그널 문법 + Human Inbox 승인 flow. 구현은 S1/S2 닫힌 후 (부품: 코드 앵커 맵 S3 행) | L3 | 분기 |
-| **N8** | **슈퍼 샘플 트랙** | [선행: emergence-bench 프로토콜] ① `docs/QUICKSTART.md` (15분 mock 미션 — §1 Layer 3 "재현 가능" 내용 후보) ② 예제 미션 3종 (`sessions/_regression/` 스타일 fixture) ③ 공개 재현 리포트 (bench 시드·판정 포함) ④ fork 가이드. T1+T2 (§0.1) | — | 분기 |
+| **N8** | **슈퍼 샘플 트랙** | ✅ SSOT·QUICKSTART·예제 3종·mock 재현·FORK·`quickstart-verify`·`emergence-bench-check`·[PACKAGE-FORK-BOUNDARIES](./PACKAGE-FORK-BOUNDARIES.md). **잔여:** live emergence · T2(외부 fork/PR) | — | **D2** |
 | **N9** | **검증 서비스화** | 라우터 = `app/server/routers/openai_compat.py` (존재). **잔여:** ① 소비자 1개 (GJC 또는 외부 에이전트가 이 API로 미션 제출) ② Oracle 검증 결과를 응답 헤더/필드로 노출 ③ API 문서. "다른 에이전트가 만든 것을 Agent Lab이 검증한다"가 슈퍼 샘플 서사의 핵심 증거 | — | 분기 |
 
 ### 2.2 Concepts — 공개 어휘 6개로 고정
@@ -304,14 +326,14 @@ Mission OS 3-pane IA 유지 위에서:
 | S1 피드백 루프 | **55%** | D3(supervisor) / D1(global) | supervisor trio implicit ON (`s1_flags.py`). lift: §1.4 · `make feedback-report` |
 | 프로필 시스템 (N2) | **70%** | D2 | **4/4** profiles · feature 플래그 **전수 소속** (`owns`+`flags`) · `list-flags --profile`. F2 ✅ |
 | Harness topology (N3) | **70%** | D3 | `parallel`·`producer_reviewer`·`pipeline` shipped (`topic_router.py`). adversarial = LC-L4 별도 |
-| Trust-gated 자율성 (L1~L2) | **65%** | D2 | auto_approve_gate·trust_budget + **N4 v1/v2** ladder SSOT, header dial, Human ceiling PATCH, demotion inbox (T-A0), F8 quarter demote→L0. L3 자동화·KPI escalation_rate는 후속 |
+| Trust-gated 자율성 (L1~L3) | **75%** | D2 | 코드·mock ✅. **D3:** §1.4.1 `escalation_rate_by_level` n≥10/level (dogfood 누적) |
 | S2 episode 힌트 | **5%** | D0 | **동결** — 전역 bandit 목표 제외. S1.5 explore·episode lift 관측만 |
 | S3 외부 능력 통합 | **15%** | D0~D1 | plugin_discovery·mcp_tool_contract·skill_drafts 부품 존재, 루프 없음. 인터페이스 설계만 선행(N7) |
 | 컨텍스트 품질 (repo_map·compaction) | **55%** | D2 | 구현+self-eval+F7 프로토콜/계측 완료. **실세션 7일 dogfood 실행·ON/OFF 결정**만 남음 |
 | 관측·평가 (eval harness·bench·KPI) | **70%** | D3 | 도구 풍부(emergence bench, feedback report, dogfood suite). 남은 것: 지표→의사결정 연결의 정례화 |
 | Frontend Mission OS | **75%** | D3 | Phase D ✅ (hooks + client split) · **N4 v2** dial/picker · synthesize_only path · §3.2.1 light discuss |
 | OpenAI-compat API (N9) | **35%** | D1 | 라우터 존재. 소비자·문서·감사 헤더 등 서사 완성 없음 |
-| 슈퍼 샘플 준비도 (Layer 3) | **20%** | D0~D1 | 내부 문서는 풍부하나 외부인용 quickstart·fork 가이드·공개 재현 리포트 없음. 패키징 baseline만 존재 |
+| 슈퍼 샘플 준비도 (Layer 3) | **60%** | D2 | QUICKSTART·FORK·bench SSOT·CI verify ✅. **잔여:** live 증명 · T2 |
 
 ### 3.2 구조적 결함 (F1~F12) — %가 아니라 구조가 문제인 것
 
@@ -325,7 +347,7 @@ Mission OS 3-pane IA 유지 위에서:
 - **F8. 비용·크레딧 가시성 부재:** 세션 `cost_ledger`는 존재. → **처방 준비 ✅:** [F8-COST-VISIBILITY.md](./F8-COST-VISIBILITY.md) · `.agent-lab/cost_ledger_quarter.json` · `AGENT_LAB_QUARTER_BUDGET_USD` · 초과 시 autonomy **L0 demotion** · `make f8-cost-report` · runtime `cost_quarter`.
 - **F9. Hot-path 갓 모듈·갓 컴포넌트:** 실측(2026-07-04) — `plan/execute.py` 1691 · `plan/workflow.py` 1281 · `room/turn_flow.py` 1084(단일 `run_room` **~471줄**, `continue_room_round` ~428줄) · `web/RoomChat.tsx` **3497줄**(useState 30·useEffect 34·useRef 16). **F6 Phase D는 훅 4개 추출 + client split에 한정** — RoomChat 본체·`run_room`은 미해소. → **ratchet 가드 ✅:** `structure_metrics.py` `hot_path_py_files` baseline(1691·1281·1084) + `large_tsx_files`(RoomChat 3497) — `make structure-metrics-check` / `tests/test_structure_metrics.py`. **잔여:** ADR §3.5 Stage 3 분해(`run_room` phase 3함수 · RoomChat 뷰·상태 분리 — 병행 가능) · **`workflow.py`·`execute.py` 분해는 §3.5.1 P1(plan authority 확정) 선행 필수**. **모트:** Oracle·worktree 불변.
 - **F10. 플래그·레지스트리 드리프트:** 실측 `AGENT_LAB_*` **215개**(본문 "212개" 표기와 불일치), `runtime_flags` 레지스트리 157개 → **~58개가 레지스트리 밖**. 단일 참조 플래그(`EMERGENCE_BENCH_LIVE`·`SKIP_LIVE` 등) 잔존. F2는 "프로필 소속"만 강제하고 "레지스트리 등재"는 미강제 → 문서 하드코딩 수치가 굳어 **F3 재발 씨앗**. → **처방 (구현 지점):** ① 문서의 플래그 개수 하드코딩 제거 → "`make list-flags` 참조"로 치환 (본문 ✅ 2026-07-04) ② 레지스트리 = `src/agent_lab/runtime_flags.py` — grep 실측(`grep -rhoE "AGENT_LAB_[A-Z0-9_]+" src/agent_lab | sort -u`)과 레지스트리 등재분의 차집합 0 가드를 `tests/test_runtime_flags_registry.py`(신규)로 추가, 기존 예외는 명시 allowlist로 시작해 소진. **모트 중립.**
-- **F11. 상태 god-dict (타입 없는 `run_meta`):** 실측(2026-07-04) — `run.json`은 `dataclass`/`TypedDict`/`pydantic`이 아닌 자유 `dict[str, Any]`이고 `run_meta: dict[str, Any]`가 **362개 함수 시그니처**에 흐름. `run/schema.py`(78줄) `validate_run()`은 런타임 dict 검사일 뿐 타입 아님. **F4는 쓰기 규율만 잡음** — "문자열 키 가변 자루가 1급 자료구조"라는 설계 자체가 잔존 → 단일 최대 부채(루프 correctness 추론·부분 테스트·리팩터 저해). → **처방:** ADR §3.5 Stage 1 — 경계에서 `RunState` 타입으로 감싸고 안쪽부터 조임. **모트 강화**(감사·재현성). **목표:** D0(설계) → 점진 D2.
+- **F11. 상태 god-dict (타입 없는 `run_meta`):** 실측(2026-07-04) — `run.json`은 `dataclass`/`TypedDict`/`pydantic`이 아닌 자유 `dict[str, Any]`이고 `run_meta: dict[str, Any]`가 **362개 함수 시그니처**에 흐름. `run/schema.py`(78줄) `validate_run()`은 런타임 dict 검사일 뿐 타입 아님. **F4는 쓰기 규율만 잡음** — "문자열 키 가변 자루가 1급 자료구조"라는 설계 자체가 잔존 → 단일 최대 부채(루프 correctness 추론·부분 테스트·리팩터 저해). → **처방:** ADR §3.5 **Stage 1** — 경계에서 `RunState` 타입으로 감싸고 안쪽부터 조임. **N4·N8과 별도 스테이지**(병행 착수); N4 D3(§1.4.1)은 F11 **비선행**. **모트 강화**(감사·재현성). **목표:** D0(설계) → 점진 D2.
 - **F12. 레이어 순환 (매듭):** 확정된 양방향 import — `runtime` ↔ `room`(runtime→`room.hooks`/`objections`/`sse_stream`, room→`runtime.events`/`invoke_execute`/`policy`), 겹쳐서 `room`↔`plan`·`runtime`↔`mission`. **runtime/room/plan/mission = 폴더로만 쪼갠 하나의 덩어리.** Makefile 31개 `audit-*-imports`+`typecheck-*-ratchet`은 이 매듭을 순찰하는 흉터 조직 — 경계 미획정의 증거. 파사드도 샘(`room/__init__.py` 104 export 중 ~30개가 `_`-내부). → **처방:** ADR §3.5 Stage 2 — 의존성 0 `agent_lab.core`(도메인 타입 + 루프-as-data) 추출, 단방향 의존. 31 ratchet → 1개 no-cycle 가드로 대체. **모트 중립.** **목표:** D0 → D2.
 
 ### 3.2.1 Room preset · discuss 지연 — dogfood 관찰 (2026-07)
@@ -348,7 +370,7 @@ Mission OS 3-pane IA 유지 위에서:
 | **분기** | S1 data · F8 instrumented ✅ | ① env `AGENT_LAB_QUARTER_BUDGET_USD` 실값 설정 → `make f8-cost-report` 정례화 ② §2.5 매트릭스 재검토 ③ §1.4 KPI 리뷰 ④ N5/S2 재평가 ⑤ dogfood-first 만료 검토 (`by_source.history.n` ≥ 30) | §3.1 D 단계 갱신 (판정 근거 병기) |
 | **동결** | — | N5 전역 bandit · N6~N7 · Gateway · trading core | explicit Human OK 없이 착수 금지 |
 
-**의존성 요약:** N4 ← F6 필수, N2 권장 · N5 ← S1 dogfood + S1.5 D2+ (전역 bandit 없음) · N8 ← emergence-bench 프로토콜
+**의존성 요약:** N4 D3 ← §1.4.1 dogfood 표본 (F11 **비선행**) · N5 ← S1 dogfood + S1.5 D2+ · N8 D2 (잔여: live 증명·T2) · **F11** ← F4 (ADR §3.5 Stage 1, N4와 병행)
 
 ### 3.3.1 2026-07 code wave (shipped)
 
@@ -377,11 +399,11 @@ Mission OS 3-pane IA 유지 위에서:
 **축 2 — 동적 작동(정확성·효율·자율):**
 - **효율 ✅ 규명:** §3.2.1 — 지연은 Room Python 아닌 preset 토폴로지+agent CLI(supervisor 281s vs fast 54s). light discuss로 대응 완료.
 - **정확성 ⚠ 테스트성:** `run_room`(~471줄 단일 함수)이 합의·턴 correctness의 핵심인데 분해가 안 돼 회귀 표면이 큼(→ F9).
-- **자율 ⚠ 미증명:** L0~L2 코드화(N4)는 됐으나 **L3 자동화·`escalation_rate_by_level`은 후속**(§3.1). S1 루프는 supervisor scope만 ON이고 **lift 미측정** — `make feedback-report` 실행 전까지 "동적 자기발전"은 코드일 뿐 증거 없음(F1 그림자).
+- **자율 ⚠ 미증명:** L0~L3 코드화(N4) + gate 결합 ✅. **D3 증거**는 §1.4.1 — supervisor dogfood로 `escalation_rate_by_level` 레벨별 **n≥10** 누적 전. `make feedback-report JSON=1` 정기 실행 권장.
 
 **축 3 — 슈퍼샘플 대비 완성도·안정성·퀄리티:**
 - **안정성 ✅:** `.venv` 2824+ 테스트 수집, mock-only CI, smoke 37 — fork 리더 신뢰 기반은 견고.
-- **완성도 ⚠:** Layer 3 = 20%. `QUICKSTART`/`FORK` 가이드 **부재**, `fork_time_minutes` 계측 없음 → T1(재현 신뢰) 미달. README(237줄)는 있으나 "15분 mock 미션 완주" 경로 없음.
+- **완성도 ⚠:** Layer 3 = **45% (D2)**. QUICKSTART·FORK·mock 재현 ✅. **잔여:** clean-clone `fork_time` 자동화 · live emergence · T2.
 - **퀄리티 갭의 본질:** 경쟁 샘플과의 차이는 **기능이 아니라 "증명 가능"** 다리(§1 Layer 3) — 창발이 성능을 올린다는 **공개 재현 리포트가 없음**. 여기에 RoomChat 3497줄이 겹쳐 "벗겨갈 만한 원본" 문턱을 낮춤.
 
 **우선순위(개선 액션 — 코드 외 실행 트랙과 정합):**
@@ -392,7 +414,7 @@ Mission OS 3-pane IA 유지 위에서:
 | **P0** | `eval "$(make f7-dogfood-env)"`로 7일 dogfood 시계 시작(시작일 SSOT 기록) | F7 | Decision table ON/OFF |
 | **P1** | ~~hot-path LOC ratchet(`structure-metrics-check`)~~ ✅ — `hot_path_py_files` 3종 + RoomChat `large_tsx_files` | **F9** | 가드 green (`test_structure_metrics_check_passes`) |
 | **P1** | ~~문서 플래그 하드코딩 치환~~ ✅ → 잔여: 레지스트리 가드 `tests/test_runtime_flags_registry.py` | **F10** · F3 | 가드 green (예외 allowlist 소진 추적) |
-| **P2** | 15분 mock 미션 QUICKSTART + `fork_time_minutes` 계측 | N8 · Layer 3 | clone→완주 재현 |
+| **P2** | ~~15분 mock 미션 QUICKSTART + `fork_time_minutes` 계측~~ ✅ | N8 · Layer 3 | [QUICKSTART.md](./QUICKSTART.md) |
 | **P2** | RoomChat shell 분리 ✅ (`SlashExecute` · `MainPane` · `EventStack` · popovers · inspector) | **F9** | `turn_flow` **675** · `RoomChat` **2252** |
 
 **모트 체크:** P0~P2 전부 5모트를 **강화하거나 중립** — 측정(F1)·격리평가(F7)·가독성(F9)은 Oracle·worktree·Human Inbox를 약화시키지 않는다.
@@ -420,7 +442,7 @@ Mission OS 3-pane IA 유지 위에서:
 
 | Stage | 목표 | 결함 | 방법 (구현 지점) | 닫힘 |
 |-------|------|------|------|------|
-| **1** | `RunState` 타입화 | F11 (F4·F10 뿌리) | 신규 `src/agent_lab/run/state.py`에 `RunState` (`@dataclass` 또는 pydantic — mypy ratchet 정합 우선). **첫 경계 = `read_run_meta()`** (`run/meta.py:39`) 반환을 wrapping 후 호출자부터 안쪽으로 전환; `run/schema.py::validate_run`의 dict 검사를 타입 생성자로 흡수 | 측정: `grep -rc "run_meta: dict\[str, Any\]" src/agent_lab` — **baseline 362**에서 하강 관측 |
+| **1** | `RunState` 타입화 | F11 (F4·F10 뿌리) | 신규 `src/agent_lab/run/state.py`에 `RunState` (`@dataclass` 또는 pydantic — mypy ratchet 정합 우선). **첫 경계 = `read_run_meta()`** 반환 wrapping 후 호출자부터 전환. **N4 D3(§1.4.1)은 Stage 1 비선행** — 승격·KPI는 dict `run_meta` 위 D2 완료 | 측정: `grep -rc "run_meta: dict\[str, Any\]" src/agent_lab` — **baseline 362**에서 하강 관측 |
 | **2** | 순환 절단 | F12 | 신규 `src/agent_lab/core/` (import 의존 **0** — 도메인 타입 + 루프-as-data: §2.3 루프의 단계 enum + 전이 테이블). runtime↔room 공유물(`events`·`policy` 타입, `hooks`·`objections` 인터페이스)을 core로 내리고 양쪽이 단방향 참조. no-cycle 가드 = `tests/test_no_layer_cycles.py`(신규 — import 그래프 DFS, F2/F4 가드 테스트와 같은 스타일) | no-cycle 가드 green → Makefile 31개 audit/ratchet를 1개 가드로 대체 |
 | **3** | `run_room` 분해·파사드 축소 | F9 | `room/turn_flow.py::run_room`(613행~, ~471줄)을 turn phase 3함수(routing/consensus/harvest)로 분리 — §2.3 루프 화살표와 1:1 대응; `room/__init__.py` 104 export 중 `_`-prefix ~30개를 내부 import로 강등 | `structure-metrics-check` LOC 하강, 파사드 `_`-export 0 |
 

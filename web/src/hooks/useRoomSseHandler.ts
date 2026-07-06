@@ -18,6 +18,7 @@ import {
   finalizeCancelledTyping,
   findAgentTurnMessage,
   migratePendingSessionRun,
+  stripStaleTypingMessages,
   updateSessionRun,
   type LiveMsg,
 } from "../run/runSessionRegistry";
@@ -180,6 +181,39 @@ function parseConsensusDryRunProposal(
         ? ev.action_key
         : (recommended?.action_key ?? null),
   };
+}
+
+function createAgentTypingMessage(
+  agentId: string,
+  round: number,
+  existing?: LiveMsg,
+): LiveMsg {
+  return {
+    id: `typing-${agentId}-r${round}`,
+    role: agentId as LiveMsg["role"],
+    label: agentLabel(agentId),
+    body: existing?.body ?? "",
+    typing: true,
+    parallelRound: round,
+    turnItems: existing?.turnItems ?? [],
+  };
+}
+
+function upsertAgentTypingMessage(
+  messages: LiveMsg[],
+  agentId: string,
+  round: number,
+  update: (message: LiveMsg) => LiveMsg,
+): LiveMsg[] {
+  const tid = `typing-${agentId}-r${round}`;
+  let matched = false;
+  const next = messages.map((msg) => {
+    if (msg.id !== tid) return msg;
+    matched = true;
+    return update(createAgentTypingMessage(agentId, round, msg));
+  });
+  if (matched) return next;
+  return [...messages, update(createAgentTypingMessage(agentId, round))];
 }
 
 /** Room SSE event handler for `runRoom()` — session bind, patchTurnMessages, notifications. */
@@ -397,29 +431,23 @@ export function createRoomRunEventHandler(
     if (t === "agent_start" && ev.agent) {
       const aid = String(ev.agent);
       const round = Number(ev.round ?? 1);
+      const tid = `typing-${aid}-r${round}`;
       updateSessionRun(scope.runKey, {
         topologyActive: { agent: aid, round },
       });
-      patchTurnMessages(scope.runKey, (m) => [
-        ...m.filter((x) => x.id !== `typing-${aid}-r${round}`),
-        {
-          id: `typing-${aid}-r${round}`,
-          role: aid as LiveMsg["role"],
-          label: agentLabel(aid),
-          body: "",
-          typing: true,
-          parallelRound: round,
-          turnItems: [],
-        },
-      ]);
+      patchTurnMessages(scope.runKey, (m) => {
+        const existing = findAgentTurnMessage(m, aid, round);
+        return [
+          ...m.filter((x) => x.id !== (existing?.id ?? tid)),
+          createAgentTypingMessage(aid, round, existing),
+        ];
+      });
     }
     if (t === "agent_activity" && ev.agent && ev.text) {
       const aid = String(ev.agent);
       const round = Number(ev.round ?? 1);
-      const tid = `typing-${aid}-r${round}`;
       patchTurnMessages(scope.runKey, (m) =>
-        m.map((msg) => {
-          if (msg.id !== tid) return msg;
+        upsertAgentTypingMessage(m, aid, round, (msg) => {
           return {
             ...msg,
             turnItems: reduceTurnItems(msg.turnItems, ev),
@@ -430,11 +458,9 @@ export function createRoomRunEventHandler(
     if (t === "agent_token" && ev.agent && typeof ev.text === "string") {
       const aid = String(ev.agent);
       const round = Number(ev.round ?? 1);
-      const tid = `typing-${aid}-r${round}`;
       const chunk = String(ev.text);
       patchTurnMessages(scope.runKey, (m) =>
-        m.map((msg) => {
-          if (msg.id !== tid) return msg;
+        upsertAgentTypingMessage(m, aid, round, (msg) => {
           return {
             ...msg,
             body: dedupeStreamAppend(msg.body ?? "", chunk),
@@ -454,10 +480,8 @@ export function createRoomRunEventHandler(
       }
       const aid = String(ev.agent);
       const round = Number(ev.round ?? 1);
-      const tid = `typing-${aid}-r${round}`;
       patchTurnMessages(scope.runKey, (m) =>
-        m.map((msg) => {
-          if (msg.id !== tid) return msg;
+        upsertAgentTypingMessage(m, aid, round, (msg) => {
           return {
             ...msg,
             turnItems: reduceTurnItems(msg.turnItems, ev),
@@ -468,12 +492,10 @@ export function createRoomRunEventHandler(
     if (t === "tool_output" && ev.agent) {
       const aid = String(ev.agent);
       const round = Number(ev.round ?? 1);
-      const tid = `typing-${aid}-r${round}`;
       const chunk = String(ev.chunk ?? "");
       if (!chunk) return;
       patchTurnMessages(scope.runKey, (m) =>
-        m.map((msg) => {
-          if (msg.id !== tid) return msg;
+        upsertAgentTypingMessage(m, aid, round, (msg) => {
           return {
             ...msg,
             turnItems: reduceTurnItems(msg.turnItems, ev),
@@ -484,10 +506,8 @@ export function createRoomRunEventHandler(
     if (t === "tool_done" && ev.agent) {
       const aid = String(ev.agent);
       const round = Number(ev.round ?? 1);
-      const tid = `typing-${aid}-r${round}`;
       patchTurnMessages(scope.runKey, (m) =>
-        m.map((msg) => {
-          if (msg.id !== tid) return msg;
+        upsertAgentTypingMessage(m, aid, round, (msg) => {
           return {
             ...msg,
             turnItems: reduceTurnItems(msg.turnItems, ev),
@@ -642,7 +662,6 @@ export function createRoomRunEventHandler(
       const round = Number(ev.round ?? 1);
       const aid = ev.agent ? String(ev.agent) : "";
       if (aid) {
-        const tid = `typing-${aid}-r${round}`;
         const hookLine = formatHookActivityLine({
           event: eventName,
           blocked,
@@ -650,8 +669,7 @@ export function createRoomRunEventHandler(
           sub_reason: subReason,
         });
         patchTurnMessages(scope.runKey, (m) =>
-          m.map((msg) => {
-            if (msg.id !== tid) return msg;
+          upsertAgentTypingMessage(m, aid, round, (msg) => {
             return {
               ...msg,
               turnItems: reduceTurnItems(msg.turnItems, {
@@ -764,7 +782,7 @@ export function createRoomRunEventHandler(
         topologyActive: null,
         localSseRun: false,
       });
-      patchTurnMessages(scope.runKey, (m) => m.filter((x) => !x.typing));
+      patchTurnMessages(scope.runKey, stripStaleTypingMessages);
       if (typeof ev.send_receipt === "string") {
         scope.lastSendReceipt = ev.send_receipt;
       }

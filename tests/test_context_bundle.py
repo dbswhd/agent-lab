@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import pytest
+
 from agent_lab.context.bundle import build_context_bundle
 from agent_lab.room.context import (
     collect_peer_messages,
@@ -216,6 +218,23 @@ def test_build_context_bundle_records_last_context_bundle():
     snap = run_meta.get("last_context_bundle") or {}
     assert snap.get("agent") == "claude"
     assert (snap.get("layer_chars") or {}).get("total", 0) > 0
+
+
+def test_build_context_bundle_context_meta_includes_f7_fields(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("AGENT_LAB_REPO_MAP", "1")
+    monkeypatch.setenv("AGENT_LAB_COMPACT_TOOL_OUTPUT", "1")
+    messages = [_Msg("user", None, "topic question")]
+    bundle = build_context_bundle(
+        "topic",
+        messages,
+        "claude",
+        format_thread=_format_thread,
+        run_meta={},
+    )
+    context_meta = bundle.meta.to_dict()
+    assert context_meta["repo_layer"] == "repo_map"
+    assert context_meta["repo_map_enabled"] is True
+    assert context_meta["compact_tool_output"] is True
 
 
 def test_codex_r2_keeps_full_peer_context():

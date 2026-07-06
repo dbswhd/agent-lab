@@ -372,6 +372,8 @@ f7-dogfood-report:
 	.venv/bin/python scripts/f7_dogfood_report.py \
 	  --sessions $(if $(SESSIONS),$(SESSIONS),sessions) \
 	  --days $(if $(DAYS),$(DAYS),7) \
+	  --write \
+	  --out-dir $(if $(REPORT_DIR),$(REPORT_DIR),sessions/_reports) \
 	  $(if $(JSON),--json,)
 
 # F8 — quarterly cost visibility (docs/F8-COST-VISIBILITY.md)

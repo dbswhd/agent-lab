@@ -74,8 +74,10 @@ export function subscribeSessionRun(
   }
   set.add(listener);
   return () => {
-    set!.delete(listener);
-    if (set!.size === 0) sessionListeners.delete(sessionId);
+    const listeners = sessionListeners.get(sessionId);
+    if (!listeners) return;
+    listeners.delete(listener);
+    if (listeners.size === 0) sessionListeners.delete(sessionId);
   };
 }
 
@@ -221,7 +223,7 @@ export function migratePendingSessionRun(realSessionId: string): void {
       realSet = new Set();
       sessionListeners.set(realSessionId, realSet);
     }
-    pendingListeners.forEach((fn) => realSet!.add(fn));
+    pendingListeners.forEach((fn) => realSet.add(fn));
   }
   notifySession(PENDING_KEY);
   notifySession(realSessionId);
@@ -374,8 +376,8 @@ export function finishSessionRun(
     migratePendingSessionRun(realSessionId);
   }
   updateSessionRun(key, (snap) => ({
-    messages: snap.messages.filter((x) => !x.typing),
-    turnMessages: snap.turnMessages.filter((x) => !x.typing),
+    messages: stripStaleTypingMessages(snap.messages),
+    turnMessages: stripStaleTypingMessages(snap.turnMessages),
     running: false,
     runBusy: false,
     synthesizing: false,

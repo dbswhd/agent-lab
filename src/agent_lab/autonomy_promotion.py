@@ -6,20 +6,15 @@ trust_budget, mission_loop, inbox). Promotion audit events append to autonomy.tr
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
-from agent_lab.autonomy_ladder import (
-    AutonomyLevel,
-    infer_effective_autonomy_level,
-    record_autonomy_transition,
-    stored_autonomy_level,
-)
+from agent_lab.autonomy_ladder import infer_effective_autonomy_level, record_autonomy_transition, stored_autonomy_level
 from agent_lab.diff_risk import assess_diff_risk
 from agent_lab.run.meta import patch_run_meta, read_run_meta
-from agent_lab.run.state import RunStateLike
+from agent_lab.run.state import RunState, RunStateLike
 from agent_lab.trust_budget import get_trust_budget
 
 PromotionTransition = Literal["L0_to_L1", "L1_to_L2", "L2_to_L3"]
@@ -62,12 +57,12 @@ def execution_diff_risk_level(execution: Mapping[str, Any]) -> str:
     return level
 
 
-def _autonomy_block(run_meta: Mapping[str, Any] | None) -> dict[str, Any]:
+def _autonomy_block(run_meta: RunStateLike | None) -> dict[str, Any]:
     raw = (run_meta or {}).get("autonomy")
     return dict(raw) if isinstance(raw, dict) else {}
 
 
-def _promotion_block(run_meta: Mapping[str, Any] | None) -> dict[str, Any]:
+def _promotion_block(run_meta: RunStateLike | None) -> dict[str, Any]:
     raw = _autonomy_block(run_meta).get("promotion")
     return dict(raw) if isinstance(raw, dict) else {}
 
@@ -85,7 +80,7 @@ def _default_promotion_progress() -> dict[str, Any]:
     }
 
 
-def promotion_progress(run_meta: Mapping[str, Any] | None) -> dict[str, Any]:
+def promotion_progress(run_meta: RunStateLike | None) -> dict[str, Any]:
     base = _default_promotion_progress()
     block = _promotion_block(run_meta)
     for key in base:
@@ -95,11 +90,11 @@ def promotion_progress(run_meta: Mapping[str, Any] | None) -> dict[str, Any]:
     return base
 
 
-def evaluate_l0_to_l1(run_meta: Mapping[str, Any] | None) -> dict[str, Any]:
+def evaluate_l0_to_l1(run_meta: RunStateLike | None) -> dict[str, Any]:
     progress = promotion_progress(run_meta)
     streak = int(progress["l0_to_l1"].get("streak") or 0)
-    ceiling = stored_autonomy_level(run_meta)  # type: ignore[arg-type]
-    current = ceiling or infer_effective_autonomy_level(run_meta)  # type: ignore[arg-type]
+    ceiling = stored_autonomy_level(run_meta)
+    current = ceiling or infer_effective_autonomy_level(run_meta)
     eligible = streak >= L0_TO_L1_STREAK and _LEVEL_ORDER[current] < _LEVEL_ORDER["L1"]
     return {
         "transition": "L0_to_L1",
@@ -111,15 +106,15 @@ def evaluate_l0_to_l1(run_meta: Mapping[str, Any] | None) -> dict[str, Any]:
     }
 
 
-def evaluate_l1_to_l2(run_meta: Mapping[str, Any] | None) -> dict[str, Any]:
+def evaluate_l1_to_l2(run_meta: RunStateLike | None) -> dict[str, Any]:
     progress = promotion_progress(run_meta)
     missions = int(progress["l1_to_l2"].get("missions_completed") or 0)
-    budget = get_trust_budget(run_meta)  # type: ignore[arg-type]
+    budget = get_trust_budget(run_meta)
     remaining = int(budget.get("auto_merge_remaining") or 0)
     total = int(budget.get("auto_merge_total") or 0)
     budget_ok = total > 0 and remaining > 0
-    ceiling = stored_autonomy_level(run_meta)  # type: ignore[arg-type]
-    current = ceiling or infer_effective_autonomy_level(run_meta)  # type: ignore[arg-type]
+    ceiling = stored_autonomy_level(run_meta)
+    current = ceiling or infer_effective_autonomy_level(run_meta)
     eligible = missions >= L1_TO_L2_MISSIONS and budget_ok and _LEVEL_ORDER[current] < _LEVEL_ORDER["L2"]
     return {
         "transition": "L1_to_L2",
@@ -132,7 +127,7 @@ def evaluate_l1_to_l2(run_meta: Mapping[str, Any] | None) -> dict[str, Any]:
     }
 
 
-def evaluate_l2_to_l3(run_meta: Mapping[str, Any] | None) -> dict[str, Any]:
+def evaluate_l2_to_l3(run_meta: RunStateLike | None) -> dict[str, Any]:
     progress = promotion_progress(run_meta)
     l23 = progress["l2_to_l3"]
     total = int(l23.get("missions_total") or 0)
@@ -140,8 +135,8 @@ def evaluate_l2_to_l3(run_meta: Mapping[str, Any] | None) -> dict[str, Any]:
     escalations = int(l23.get("inbox_escalations") or 0)
     completion_rate = (done / total) if total else 0.0
     escalation_rate = (escalations / total) if total else 0.0
-    ceiling = stored_autonomy_level(run_meta)  # type: ignore[arg-type]
-    current = ceiling or infer_effective_autonomy_level(run_meta)  # type: ignore[arg-type]
+    ceiling = stored_autonomy_level(run_meta)
+    current = ceiling or infer_effective_autonomy_level(run_meta)
     eligible = (
         total >= L2_TO_L3_MIN_MISSIONS
         and completion_rate >= L2_TO_L3_COMPLETION_RATE
@@ -161,7 +156,7 @@ def evaluate_l2_to_l3(run_meta: Mapping[str, Any] | None) -> dict[str, Any]:
     }
 
 
-def evaluate_promotions(run_meta: Mapping[str, Any] | None) -> dict[str, Any]:
+def evaluate_promotions(run_meta: RunStateLike | None) -> dict[str, Any]:
     return {
         "l0_to_l1": evaluate_l0_to_l1(run_meta),
         "l1_to_l2": evaluate_l1_to_l2(run_meta),
@@ -169,8 +164,8 @@ def evaluate_promotions(run_meta: Mapping[str, Any] | None) -> dict[str, Any]:
     }
 
 
-def _patch_promotion(folder: Path, mutator) -> dict[str, Any]:
-    def _apply(run: RunStateLike) -> RunStateLike:
+def _patch_promotion(folder: Path, mutator: Callable[[dict[str, Any]], None]) -> dict[str, Any]:
+    def _apply(run: RunState) -> RunState:
         block = dict(_autonomy_block(run))
         promo = promotion_progress(run)
         mutator(promo)
@@ -261,43 +256,9 @@ def _promotion_harvest_key(transition: PromotionTransition) -> str:
 
 def maybe_create_promotion_inbox(folder: Path, *, transition: PromotionTransition) -> dict[str, Any] | None:
     """Human gate for L1→L2 and L2→L3 promotions."""
-    from agent_lab.human_inbox import create_inbox_item, inbox_items
+    from agent_lab.autonomy_promotion_inbox import maybe_create_promotion_inbox as _create
 
-    target: AutonomyLevel = "L2" if transition == "L1_to_L2" else "L3"
-    key = _promotion_harvest_key(transition)
-    run = read_run_meta(folder)
-    for item in inbox_items(run):
-        if item.get("kind") != "autonomy" or item.get("status") != "pending":
-            continue
-        if item.get("harvest_key") == key:
-            return None
-
-    eval_row = evaluate_l1_to_l2(run) if transition == "L1_to_L2" else evaluate_l2_to_l3(run)
-    if not eval_row.get("eligible"):
-        return None
-
-    detail = (
-        f"Promotion {transition} eligible — missions={eval_row.get('missions_completed')}"
-        if transition == "L1_to_L2"
-        else (
-            f"Promotion {transition} eligible — completion={eval_row.get('completion_rate')}, "
-            f"escalation={eval_row.get('escalation_rate')}"
-        )
-    )
-    return create_inbox_item(
-        folder,
-        kind="autonomy",
-        source="autonomy_promotion",
-        prompt=f"Approve autonomy ceiling raise to {target}? {detail}",
-        summary=f"Promote → {target}",
-        options=[
-            {"id": f"promote:{target}", "label": f"Approve {target}"},
-            {"id": "defer", "label": "Defer"},
-        ],
-        trigger="T-A1",
-        refs=[key],
-        harvest_key=key,
-    )
+    return _create(folder, transition=transition)
 
 
 def handle_autonomy_promotion_resolve(
@@ -307,16 +268,6 @@ def handle_autonomy_promotion_resolve(
     selected: list[str] | None = None,
 ) -> None:
     """Apply Human approval for a promotion inbox item."""
-    choice = str((selected or [""])[0] or item.get("resolved_choice") or "defer")
-    if not choice.startswith("promote:"):
-        return
-    level = choice.split(":", 1)[1].strip().upper()
-    if level not in _LEVEL_ORDER:
-        return
-    transition = str(item.get("harvest_key") or "").split(":")[-1]
-    record_autonomy_transition(
-        folder,
-        to_level=level,  # type: ignore[arg-type]
-        reason=f"promotion_inbox:{transition}",
-        trigger="human",
-    )
+    from agent_lab.autonomy_promotion_inbox import handle_autonomy_promotion_resolve as _resolve
+
+    _resolve(folder, item, selected=selected)

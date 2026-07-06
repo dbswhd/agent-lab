@@ -3,7 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import os
 from typing import Any
+
+_TRUE = frozenset({"1", "true", "yes", "on"})
+
+
+def _env_on(name: str) -> bool:
+    return (os.getenv(name) or "").strip().lower() in _TRUE
 
 
 @dataclass
@@ -32,6 +39,9 @@ class ContextBundleMeta:
     context_mode: str = "full"
     recent_max_chars: int | None = None
     peer_suppressed: bool = False
+    repo_layer: str | None = None
+    repo_map_enabled: bool | None = None
+    compact_tool_output: bool | None = None
 
     def to_dict(self) -> dict[str, Any]:
         row = {
@@ -63,6 +73,15 @@ class ContextBundleMeta:
             row["recent_max_chars"] = self.recent_max_chars
         if self.peer_suppressed:
             row["peer_suppressed"] = True
+        repo_map_enabled = self.repo_map_enabled
+        if repo_map_enabled is None:
+            repo_map_enabled = _env_on("AGENT_LAB_REPO_MAP")
+        compact_tool_output = self.compact_tool_output
+        if compact_tool_output is None:
+            compact_tool_output = _env_on("AGENT_LAB_COMPACT_TOOL_OUTPUT")
+        row["repo_layer"] = self.repo_layer or ("repo_map" if repo_map_enabled else "repo_tree")
+        row["repo_map_enabled"] = repo_map_enabled
+        row["compact_tool_output"] = compact_tool_output
         return row
 
 

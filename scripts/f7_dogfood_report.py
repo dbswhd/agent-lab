@@ -69,12 +69,17 @@ def collect_sessions(
             continue
         bundle = run.get("last_context_bundle")
         log = run.get("context_quality_log")
-        if not isinstance(bundle, dict) and not isinstance(log, list):
+        last_turn = run.get("last_turn")
+        turn_context = last_turn.get("context") if isinstance(last_turn, dict) else None
+        turn_agents = turn_context.get("agents") if isinstance(turn_context, dict) else None
+        if not isinstance(bundle, dict) and not isinstance(log, list) and not isinstance(turn_agents, list):
             continue
         if not isinstance(bundle, dict):
             bundle = {}
         if not isinstance(log, list):
             log = []
+        if not isinstance(turn_agents, list):
+            turn_agents = []
         budget_vals = [
             float(row.get("budget_pct"))
             for row in log
@@ -82,22 +87,32 @@ def collect_sessions(
         ]
         if isinstance(bundle.get("budget_pct"), (int, float)):
             budget_vals.append(float(bundle["budget_pct"]))
+        budget_vals.extend(
+            float(row.get("budget_pct"))
+            for row in turn_agents
+            if isinstance(row, dict) and isinstance(row.get("budget_pct"), (int, float))
+        )
+        f7_rows = [r for r in [bundle, *log, *turn_agents] if isinstance(r, dict)]
+        repo_layer = next(
+            (str(r["repo_layer"]) for r in reversed(f7_rows) if isinstance(r.get("repo_layer"), str)),
+            None,
+        )
+        repo_map_enabled = any(r.get("repo_map_enabled") is True or r.get("repo_layer") == "repo_map" for r in f7_rows)
+        compact_tool_output = any(r.get("compact_tool_output") is True for r in f7_rows)
+        f7_instrumented = any(
+            "repo_layer" in r or "repo_map_enabled" in r or "compact_tool_output" in r for r in f7_rows
+        )
         rows.append(
             {
                 "session_id": folder.name,
-                "repo_layer": bundle.get("repo_layer")
-                or (log[-1].get("repo_layer") if log and isinstance(log[-1], dict) else None),
-                "repo_map_enabled": bool(
-                    bundle.get("repo_map_enabled")
-                    or any(isinstance(r, dict) and r.get("repo_layer") == "repo_map" for r in log)
-                ),
-                "compact_tool_output": bool(
-                    bundle.get("compact_tool_output")
-                    or any(isinstance(r, dict) and r.get("compact_tool_output") for r in log)
-                ),
+                "repo_layer": repo_layer,
+                "repo_map_enabled": repo_map_enabled,
+                "compact_tool_output": compact_tool_output,
+                "f7_instrumented": f7_instrumented,
                 "budget_pct_median": median(budget_vals) if budget_vals else None,
                 "trim_level": bundle.get("trim_level"),
                 "log_n": len(log),
+                "turn_context_agents": len(turn_agents),
             }
         )
     return rows
@@ -107,17 +122,24 @@ def build_report(rows: list[dict[str, Any]]) -> dict[str, Any]:
     n = len(rows)
     repo_map_n = sum(1 for r in rows if r.get("repo_layer") == "repo_map" or r.get("repo_map_enabled"))
     compact_n = sum(1 for r in rows if r.get("compact_tool_output"))
+    instrumented_n = sum(1 for r in rows if r.get("f7_instrumented"))
+    missing_n = n - instrumented_n
     budgets = [float(r["budget_pct_median"]) for r in rows if isinstance(r.get("budget_pct_median"), (int, float))]
     coverage = round(100.0 * repo_map_n / n, 1) if n else 0.0
+    instrumented_coverage = round(100.0 * repo_map_n / instrumented_n, 1) if instrumented_n else 0.0
     gates = {
         "min_sessions": n >= 10,
-        "repo_map_coverage_70": coverage >= 70.0,
+        "f7_instrumented_sessions": instrumented_n >= 10,
+        "repo_map_coverage_70": instrumented_coverage >= 70.0,
         "budget_median_under_90": (median(budgets) < 90.0) if budgets else False,
     }
     return {
         "sessions": n,
+        "f7_instrumented_sessions": instrumented_n,
+        "missing_f7_instrumentation_sessions": missing_n,
         "repo_map_sessions": repo_map_n,
-        "repo_map_coverage_pct": coverage,
+        "repo_map_coverage_pct": instrumented_coverage,
+        "repo_map_coverage_all_context_pct": coverage,
         "compact_sessions": compact_n,
         "median_budget_pct": round(median(budgets), 1) if budgets else None,
         "gates": gates,
@@ -134,7 +156,10 @@ def render_report(report: dict[str, Any]) -> str:
     lines = [
         "F7 repo_map / compaction dogfood report",
         f"sessions with context metrics: {report['sessions']}",
-        f"repo_map coverage: {report['repo_map_coverage_pct']}% ({report['repo_map_sessions']}/{report['sessions']})",
+        f"F7-instrumented sessions: {report['f7_instrumented_sessions']} "
+        f"(missing {report['missing_f7_instrumentation_sessions']})",
+        f"repo_map coverage: {report['repo_map_coverage_pct']}% "
+        f"({report['repo_map_sessions']}/{report['f7_instrumented_sessions']})",
         f"compact_tool_output seen: {report['compact_sessions']}",
         f"median budget_pct: {report['median_budget_pct']}",
         "",
@@ -155,6 +180,34 @@ def render_report(report: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def render_report_markdown(report: dict[str, Any]) -> str:
+    lines = [f"# {render_report(report).splitlines()[0]}", ""]
+    lines.extend(render_report(report).splitlines()[1:])
+    lines.append("")
+    lines.append("## Sessions")
+    for row in report.get("rows") or []:
+        if not isinstance(row, dict):
+            continue
+        session_id = row.get("session_id")
+        f7_state = "instrumented" if row.get("f7_instrumented") else "missing F7 fields"
+        lines.append(
+            f"- `{session_id}`: {f7_state}, "
+            f"repo_layer={row.get('repo_layer') or 'unknown'}, "
+            f"budget_pct_median={row.get('budget_pct_median')}"
+        )
+    return "\n".join(lines) + "\n"
+
+
+def write_report_artifacts(report: dict[str, Any], report_dir: Path) -> dict[str, str]:
+    report_dir.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    json_path = report_dir / f"f7-dogfood-{stamp}.json"
+    md_path = report_dir / f"f7-dogfood-{stamp}.md"
+    json_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    md_path.write_text(render_report_markdown(report), encoding="utf-8")
+    return {"json": str(json_path), "markdown": str(md_path)}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="F7 dogfood coverage report")
     parser.add_argument(
@@ -165,17 +218,30 @@ def main() -> int:
     )
     parser.add_argument("--days", type=int, default=7, help="lookback days (default 7)")
     parser.add_argument("--json", action="store_true", help="emit JSON")
+    parser.add_argument("--write", action="store_true", help="write JSON and Markdown artifacts")
+    parser.add_argument("--out-dir", type=str, default="", help="report artifact directory")
     args = parser.parse_args()
 
-    rows = collect_sessions(Path(args.sessions), days=args.days)
+    sessions_dir = Path(args.sessions)
+    rows = collect_sessions(sessions_dir, days=args.days)
     report = build_report(rows)
+    artifact_paths: dict[str, str] = {}
+    if args.write:
+        report_dir = Path(args.out_dir) if args.out_dir else sessions_dir / "_reports"
+        artifact_paths = write_report_artifacts(report, report_dir)
     if args.json:
         # omit full rows unless small
         payload = {k: v for k, v in report.items() if k != "rows"}
         payload["session_ids"] = [r["session_id"] for r in rows]
+        if artifact_paths:
+            payload["artifact_paths"] = artifact_paths
         print(json.dumps(payload, ensure_ascii=False, indent=2))
     else:
         print(render_report(report))
+        if artifact_paths:
+            print("")
+            print(f"report_json: {artifact_paths['json']}")
+            print(f"report_markdown: {artifact_paths['markdown']}")
     return 0
 
 

@@ -94,6 +94,24 @@ def test_record_execute_outcome_flag_gated(tmp_path, monkeypatch) -> None:
     assert not outcomes_path().exists()
 
 
+def test_outcomes_root_env_isolates_turn_and_execute_ledgers(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("AGENT_LAB_OUTCOME_LEDGER", "1")
+    isolated_root = tmp_path / "isolated-outcomes"
+    monkeypatch.setenv("AGENT_LAB_OUTCOMES_ROOT", str(isolated_root))
+
+    folder = tmp_path / "sess-isolated"
+    _write_run(folder)
+
+    record_turn_outcome(folder, 1)
+    record_execute_outcome(folder, {"id": "exec-isolated", "oracle": {"verdict": "pass"}})
+
+    ledger = isolated_root / ".agent-lab" / "outcomes.jsonl"
+    rows = [json.loads(line) for line in ledger.read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert outcomes_path() == ledger
+    assert [row["phase"] for row in rows] == ["turn", "execute"]
+    assert not (tmp_path / ".agent-lab" / "outcomes.jsonl").exists()
+
+
 def test_execute_after_turn_close_no_longer_loses_the_verdict(tmp_path, monkeypatch) -> None:
     """End-to-end shape of the real 2026-07 bug: a turn closes (no executions
     yet) *then* execute/verify resolves. Before this fix, the ledger's only

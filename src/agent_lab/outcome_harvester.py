@@ -80,7 +80,7 @@ def outcomes_path(root: Path | None = None) -> Path:
     return Path(root) / _OUTCOMES_RELPATH
 
 
-def _topic_text(folder: Path, run: dict[str, Any]) -> str:
+def _topic_text(folder: Path, run: RunStateLike) -> str:
     topic = str(run.get("topic") or "").strip()
     if topic:
         return topic
@@ -173,7 +173,7 @@ def record_turn_outcome(folder: Path | None, human_turn: int) -> None:
         )
         if want_metrics:
 
-            def _patch(current: dict[str, Any]) -> dict[str, Any]:
+            def _patch(current: RunStateLike) -> RunStateLike:
                 rows = current.get("turns")
                 if isinstance(rows, list) and rows and isinstance(rows[-1], dict):
                     rows[-1]["turn_metrics"] = metrics

@@ -73,8 +73,72 @@ def test_f7_report_gates(tmp_path: Path, monkeypatch) -> None:
     rows = mod.collect_sessions(sessions, days=30)
     report = mod.build_report(rows)
     assert report["sessions"] == 10
+    assert report["f7_instrumented_sessions"] == 10
     assert report["repo_map_coverage_pct"] == 100.0
     assert report["ready_for_decision"] is True
+
+
+def test_f7_report_surfaces_legacy_context_sessions(tmp_path: Path) -> None:
+    import importlib.util
+
+    sessions = tmp_path / "sessions"
+    folder = sessions / "legacy-context"
+    folder.mkdir(parents=True)
+    (folder / "run.json").write_text(
+        json.dumps(
+            {
+                "last_turn": {
+                    "context": {
+                        "agents": [
+                            {
+                                "agent": "codex",
+                                "budget_pct": 12.0,
+                                "trim_level": "ok",
+                            }
+                        ],
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    path = Path(__file__).resolve().parents[1] / "scripts" / "f7_dogfood_report.py"
+    spec = importlib.util.spec_from_file_location("f7_dogfood_report", path)
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    rows = mod.collect_sessions(sessions, days=30)
+    report = mod.build_report(rows)
+    assert report["sessions"] == 1
+    assert report["f7_instrumented_sessions"] == 0
+    assert report["missing_f7_instrumentation_sessions"] == 1
+    assert report["median_budget_pct"] == 12.0
+
+
+def test_f7_report_writes_json_and_markdown_artifacts(tmp_path: Path) -> None:
+    import importlib.util
+
+    path = Path(__file__).resolve().parents[1] / "scripts" / "f7_dogfood_report.py"
+    spec = importlib.util.spec_from_file_location("f7_dogfood_report", path)
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    report = mod.build_report(
+        [
+            {
+                "session_id": "sess-1",
+                "repo_layer": "repo_map",
+                "repo_map_enabled": True,
+                "compact_tool_output": True,
+                "f7_instrumented": True,
+                "budget_pct_median": 22.0,
+            }
+        ]
+    )
+    paths = mod.write_report_artifacts(report, tmp_path)
+    assert Path(paths["json"]).is_file()
+    assert Path(paths["markdown"]).is_file()
+    assert "sess-1" in Path(paths["markdown"]).read_text(encoding="utf-8")
 
 
 def test_compact_tool_output_default_off(monkeypatch) -> None:

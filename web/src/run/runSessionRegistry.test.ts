@@ -1,11 +1,13 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import {
   getSessionRunSnapshot,
+  finishSessionRun,
   hydrateSessionMessages,
   resetTurnRun,
   syncSessionFromServerLock,
   syncRunStateFromLiveLog,
   updateSessionRun,
+  type LiveMsg,
 } from "./runSessionRegistry";
 
 describe("runSessionRegistry localSseRun", () => {
@@ -62,6 +64,12 @@ describe("runSessionRegistry localSseRun", () => {
 describe("hydrateSessionMessages", () => {
   const sid = "test-hydrate-turn-items";
 
+  function firstTurnItemText(message: LiveMsg | undefined): string | undefined {
+    const item = message?.turnItems?.[0];
+    if (!item || item.kind === "tool") return undefined;
+    return item.text;
+  }
+
   beforeEach(() => {
     updateSessionRun(sid, {
       messages: [],
@@ -103,6 +111,48 @@ describe("hydrateSessionMessages", () => {
     ]);
     const codex = getSessionRunSnapshot(sid).messages.find((m) => m.role === "codex");
     expect(codex?.turnItems?.some((item) => item.kind === "activity")).toBe(true);
+  });
+
+  it("clears typing on finish without deleting activity-only rows", () => {
+    updateSessionRun(sid, {
+      messages: [
+        {
+          id: "typing-codex-r1",
+          role: "codex",
+          label: "Codex",
+          body: "",
+          typing: true,
+          parallelRound: 1,
+          turnItems: [
+            { id: "t1", kind: "activity", text: "Reading repo", status: "done" },
+          ],
+        },
+      ],
+      turnMessages: [
+        {
+          id: "typing-codex-r1",
+          role: "codex",
+          label: "Codex",
+          body: "",
+          typing: true,
+          parallelRound: 1,
+          turnItems: [
+            { id: "t1", kind: "activity", text: "Reading repo", status: "done" },
+          ],
+        },
+      ],
+      running: true,
+      runBusy: true,
+      localSseRun: true,
+    });
+
+    finishSessionRun(sid);
+
+    const snap = getSessionRunSnapshot(sid);
+    const codex = snap.messages.find((m) => m.role === "codex");
+    expect(snap.running).toBe(false);
+    expect(codex?.typing).toBe(false);
+    expect(firstTurnItemText(codex)).toBe("Reading repo");
   });
 });
 

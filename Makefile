@@ -340,6 +340,9 @@ emergence-bench-check:
 quickstart-verify:
 	AGENT_LAB_MOCK_AGENTS=1 .venv/bin/python scripts/verify_quickstart.py
 
+n9-verify-consumer:
+	.venv/bin/python scripts/n9_verify_consumer.py --handoff sessions/_examples/n9-gjc-handoff.json
+
 dogfood-suite-mock:
 	AGENT_LAB_MOCK_AGENTS=1 .venv/bin/python scripts/run_dogfood_suite.py --mode mock \
 	  $(if $(TIER),--tier $(TIER),) $(if $(ONLY),--only $(ONLY),)

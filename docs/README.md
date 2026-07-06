@@ -20,6 +20,7 @@
 | **15분 mock 미션 · fork_time_minutes (N8)** | [QUICKSTART.md](./QUICKSTART.md) |
 | **Emergence bench 프로토콜 SSOT (N8)** | [EMERGENCE-BENCH.md](./EMERGENCE-BENCH.md) · [REPRODUCTION-REPORT.md](./REPRODUCTION-REPORT.md) |
 | **Fork 가이드 (N8)** | [FORK.md](./FORK.md) · [PACKAGE-FORK-BOUNDARIES.md](./PACKAGE-FORK-BOUNDARIES.md) |
+| **외부 검증 API (N9)** | [VERIFY-API.md](./VERIFY-API.md) · `make n9-verify-consumer` |
 | **2026-07 cleanup · dogfood-first SSOT** | [CLEANUP-SSOT-2026-07.md](./CLEANUP-SSOT-2026-07.md) · [CLEANUP-PHASE0-SCOPE-2026-07.md](./CLEANUP-PHASE0-SCOPE-2026-07.md) |
 | Room transcript UX contract (SSE · lock · activity) | [ROOM-TRANSCRIPT-CONTRACT.md](./ROOM-TRANSCRIPT-CONTRACT.md) |
 | 전략 방향 (Fugu/Harness 대비 포지션 — 배경/이력) | [STRATEGIC-DIRECTION-2026.md](./STRATEGIC-DIRECTION-2026.md) |
@@ -38,7 +39,7 @@
 | Gateway · scheduler · Mission OS | [MISSION-OS-DIRECTION.md](./MISSION-OS-DIRECTION.md) · OPS-RUNBOOK §daemon |
 | Human Inbox · MCP | [HUMAN-INBOX.md](./HUMAN-INBOX.md) · [HUMAN-INBOX-CLAUDE-HANDOFF.md](./HUMAN-INBOX-CLAUDE-HANDOFF.md) |
 | Runtime harness · dispatch | [RUNTIME-HARNESS-PLAN.md](./RUNTIME-HARNESS-PLAN.md) · [ROOM-DISPATCH-PROTOCOL.md](./ROOM-DISPATCH-PROTOCOL.md) |
-| GJC external pipeline entry | [GJC-ENTRY.md](./GJC-ENTRY.md) · Work tab Pipeline stepper |
+| GJC external pipeline entry | [GJC-ENTRY.md](./GJC-ENTRY.md) · [VERIFY-API.md](./VERIFY-API.md) · Work tab Pipeline stepper |
 | CI · regression · live ops · daemon dogfood | [STABILITY.md](./STABILITY.md) · [OPS-RUNBOOK.md](./OPS-RUNBOOK.md) |
 | Repo structure metrics · package refactors | [STRUCTURE-METRICS.md](./STRUCTURE-METRICS.md) · [STRUCTURE-REFACTOR-WAVE.md](./STRUCTURE-REFACTOR-WAVE.md) · [PROVIDER-LANE](./PROVIDER-LANE-DESIGN.md) · [ROOM](./ROOM-PACKAGE-REFACTOR-DESIGN.md) · [PLAN](./PLAN-PACKAGE-REFACTOR-DESIGN.md) · [SESSION](./SESSION-PACKAGE-REFACTOR-DESIGN.md) · [KIMI](./KIMI-PACKAGE-REFACTOR-DESIGN.md) · [MISSION](./MISSION-PACKAGE-REFACTOR-DESIGN.md) · [AGENT](./AGENT-PACKAGE-REFACTOR-DESIGN.md) · [QUANT](./QUANT-PACKAGE-REFACTOR-DESIGN.md) · [WISDOM](./WISDOM-PACKAGE-REFACTOR-DESIGN.md) · [INBOX](./INBOX-PACKAGE-REFACTOR-DESIGN.md) · [CONTEXT](./CONTEXT-PACKAGE-REFACTOR-DESIGN.md) · [RUN](./RUN-PACKAGE-REFACTOR-DESIGN.md) · [WORKSPACE](./WORKSPACE-PACKAGE-REFACTOR-DESIGN.md) · [RESEARCH](./RESEARCH-PACKAGE-REFACTOR-DESIGN.md) |
 | Trading extension | [extensions/QUANT-TRADING.md](./extensions/QUANT-TRADING.md) · [trading-mission/](./trading-mission/) |
@@ -60,6 +61,7 @@
 | [EVAL-PROGRAM.md](./EVAL-PROGRAM.md) | 라이브 dogfood 테스트 — topic 카탈로그, 주간 matrix, KPI 루프 |
 | [EMERGENCE-BENCH.md](./EMERGENCE-BENCH.md) | **창발 벤치 SSOT** — topic·시드·판정·재현 체크리스트 (N8) |
 | [QUICKSTART.md](./QUICKSTART.md) | **외부인 15분 경로** — mock 미션 · fork_time_minutes (N8) |
+| [VERIFY-API.md](./VERIFY-API.md) | **외부 검증 API (N9)** — `/v1/verify` · audit headers · GJC consumer |
 | [FORK.md](./FORK.md) | Fork·upstream 동기화·안전 커스터마이즈 (N8) |
 | [PACKAGE-FORK-BOUNDARIES.md](./PACKAGE-FORK-BOUNDARIES.md) | 분리 fork 패키지 경계 (N8) |
 | [CLAUDE.md](../CLAUDE.md) | 레포 개발 퀵스타트 (root) |

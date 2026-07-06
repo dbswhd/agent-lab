@@ -1,0 +1,7 @@
+{
+  "stopped_cleanly": true,
+  "changed_files": ["src/example.py"],
+  "checks": [{"cmd": "make test-fast", "exit": 0}],
+  "evidence_summary": "GJC ralplan approved; tests green",
+  "risks": []
+}

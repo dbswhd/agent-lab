@@ -2,13 +2,21 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from app.server.routers.evidence_api import (
     VerifyRequest,
     _build_execution_dict,
     _run_oracle_mock,
+    verify_diff,
 )
+
+
+def _verify_body(req: VerifyRequest) -> dict:
+    raw = verify_diff(req)
+    return json.loads(raw.body)
 
 
 def test_build_execution_dict_defaults() -> None:
@@ -55,15 +63,15 @@ def test_mock_oracle_rm_rf_claim_fails() -> None:
 def test_verify_endpoint_low_risk(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("AGENT_LAB_AUTO_APPROVE_THRESHOLD", raising=False)
     monkeypatch.delenv("AGENT_LAB_ORACLE_LIVE", raising=False)
-    from app.server.routers.evidence_api import verify_diff
 
     req = VerifyRequest(diff="+minor fix", touched_paths=["src/utils.py"])
-    resp = verify_diff(req)
-    assert resp.verdict in ("pass", "fail")
-    assert resp.risk_level in ("low", "medium", "high")
-    assert isinstance(resp.risk_reasons, list)
-    assert isinstance(resp.evidence_gates, list)
-    assert len(resp.evidence_gates) == 5
+    resp = _verify_body(req)
+    assert resp["verdict"] in ("pass", "fail")
+    assert resp["risk_level"] in ("low", "medium", "high")
+    assert isinstance(resp["risk_reasons"], list)
+    assert isinstance(resp["evidence_gates"], list)
+    assert len(resp["evidence_gates"]) == 5
+    assert resp["agentlab"]["service"] == "verify"
 
 
 def test_verify_endpoint_returns_auto_approve_eligible_when_threshold_set(
@@ -71,24 +79,22 @@ def test_verify_endpoint_returns_auto_approve_eligible_when_threshold_set(
 ) -> None:
     monkeypatch.setenv("AGENT_LAB_AUTO_APPROVE_THRESHOLD", "low")
     monkeypatch.delenv("AGENT_LAB_ORACLE_LIVE", raising=False)
-    from app.server.routers.evidence_api import verify_diff
 
     req = VerifyRequest(diff="+minor fix", touched_paths=["src/utils.py"])
-    resp = verify_diff(req)
-    assert resp.auto_approve_eligible is True
-    assert resp.auto_approve_reason == "eligible"
+    resp = _verify_body(req)
+    assert resp["auto_approve_eligible"] is True
+    assert resp["auto_approve_reason"] == "eligible"
 
 
 def test_verify_endpoint_high_risk_not_auto_eligible(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_AUTO_APPROVE_THRESHOLD", "low")
     monkeypatch.delenv("AGENT_LAB_ORACLE_LIVE", raising=False)
-    from app.server.routers.evidence_api import verify_diff
 
     big_diff = "\n".join(f"+line {i}" for i in range(350))
     req = VerifyRequest(diff=big_diff)
-    resp = verify_diff(req)
-    assert resp.risk_level == "high"
-    assert resp.auto_approve_eligible is False
+    resp = _verify_body(req)
+    assert resp["risk_level"] == "high"
+    assert resp["auto_approve_eligible"] is False
 
 
 def test_verify_status_shape(monkeypatch: pytest.MonkeyPatch) -> None:

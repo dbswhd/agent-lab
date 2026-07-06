@@ -12,7 +12,10 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+
+from app.server.verify_audit import agentlab_extension, new_request_id, oracle_audit_headers
 
 router = APIRouter(prefix="/v1")
 
@@ -25,6 +28,7 @@ class VerifyRequest(BaseModel):
     paths_outside_expected: bool = False
     needs_artifact_review: bool = False
     oracle_prompt: str = ""
+    external_handoff: dict[str, Any] | None = None
 
 
 class VerifyResponse(BaseModel):
@@ -83,8 +87,8 @@ def _run_oracle_live(diff: str, claim: str, oracle_prompt: str) -> dict[str, Any
         return {"verdict": "fail", "detail": f"oracle invocation error: {exc}", "evidence": []}
 
 
-@router.post("/verify", response_model=VerifyResponse)
-def verify_diff(req: VerifyRequest) -> VerifyResponse:
+@router.post("/verify")
+def verify_diff(req: VerifyRequest) -> JSONResponse:
     """Assess a diff for risk and run Oracle verification.
 
     External agent systems can post their diffs here to get an independent
@@ -93,17 +97,23 @@ def verify_diff(req: VerifyRequest) -> VerifyResponse:
     from agent_lab.auto_approve_gate import evaluate_auto_approve
     from agent_lab.diff_risk import assess_diff_risk
     from agent_lab.evidence_gates import build_evidence_gates
+    from agent_lab.oracle_core import oracle_live_enabled
 
     execution = _build_execution_dict(req)
+    if req.external_handoff:
+        execution["external_handoff"] = req.external_handoff
 
     risk_level, risk_reasons = assess_diff_risk(execution)
 
-    from agent_lab.oracle_core import oracle_live_enabled
+    claim = req.claim
+    if not claim and req.external_handoff:
+        claim = str(req.external_handoff.get("evidence_summary") or "")
 
-    if oracle_live_enabled():
-        oracle_result = _run_oracle_live(req.diff, req.claim, req.oracle_prompt)
+    oracle_mode = "live" if oracle_live_enabled() else "mock"
+    if oracle_mode == "live":
+        oracle_result = _run_oracle_live(req.diff, claim, req.oracle_prompt)
     else:
-        oracle_result = _run_oracle_mock(req.diff, req.claim)
+        oracle_result = _run_oracle_mock(req.diff, claim)
 
     execution["oracle"] = oracle_result
     if oracle_result.get("verdict") == "pass":
@@ -118,15 +128,31 @@ def verify_diff(req: VerifyRequest) -> VerifyResponse:
         run_meta=None,
     )
 
-    return VerifyResponse(
-        verdict=oracle_result.get("verdict", "fail"),
+    verdict = str(oracle_result.get("verdict") or "fail")
+    request_id = new_request_id("verify")
+    body = VerifyResponse(
+        verdict=verdict,
         risk_level=risk_level,
         risk_reasons=risk_reasons,
         oracle=oracle_result,
         evidence_gates=gates,
         auto_approve_eligible=gate_decision.eligible,
         auto_approve_reason=gate_decision.reason,
+    ).model_dump()
+    body["agentlab"] = agentlab_extension(
+        service="verify",
+        request_id=request_id,
+        oracle_mode=oracle_mode,
+        extra={"consumer": "external"} if req.external_handoff else None,
     )
+    headers = oracle_audit_headers(
+        service="verify",
+        request_id=request_id,
+        verdict=verdict,
+        risk_level=risk_level,
+        oracle_mode=oracle_mode,
+    )
+    return JSONResponse(body, headers=headers)
 
 
 @router.get("/verify/status")

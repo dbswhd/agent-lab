@@ -19,3 +19,7 @@ python scripts/run_diff.py sessions/_examples/01-quick-discuss sessions/<your-se
 [QUICKSTART.md](../../docs/QUICKSTART.md) — `make dogfood-suite-mock ONLY=S1` (quick와 유사).
 
 Regression 전체: `AGENT_LAB_MOCK_AGENTS=1 python scripts/smoke_room.py`
+
+## N9 verify handoff fixture
+
+`sessions/_examples/n9-gjc-handoff.json` — MB-8 handoff sample for `POST /v1/verify`. See [VERIFY-API.md](../../docs/VERIFY-API.md) · `make n9-verify-consumer`.

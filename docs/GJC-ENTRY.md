@@ -12,7 +12,7 @@
 | Daily dev mission with Human gates | **Agent Lab Room** (`fast` / `supervisor` preset) | Discuss → plan.md → approve → worktree → Oracle — all in-session |
 | Lightweight clarify + plan FSM | **Room + plan_workflow** | In-app clarifier + peer review (ralplan-*like*, not identical artifacts) |
 | Full GJC skill FSM (deep-interview → ralplan → ultragoal) | **External `gjc` via slash** | Preserved `.gjc/` artifacts, skill-native phases, tmux team |
-| Verify only | **Room execute + Oracle** | `AGENT_LAB_ORACLE_LIVE=1` or mock Oracle on merge |
+| Verify only | **Room execute + Oracle** or **`POST /v1/verify`** | In-session: `AGENT_LAB_ORACLE_LIVE=1` or mock Oracle on merge. External: [VERIFY-API.md](./VERIFY-API.md) + GJC handoff |
 
 **Rule:** Do not expect Room `plan.md` to equal GJC `ralplan` stage files — similar gates, different layout ([GJC-WORKFLOW-PIPELINE](./archive/rfcs/GJC-WORKFLOW-PIPELINE.md) §Implementation notes).
 
@@ -104,6 +104,8 @@ Requires `confirm: true` when `human_approve` is set. stdout or `external_handof
 ```
 
 Attach manually: `POST /api/sessions/{id}/executions/{exec_id}/external-handoff`
+
+**External verify (N9):** post diff + handoff to `POST /v1/verify` — see [VERIFY-API.md](./VERIFY-API.md) · `make n9-verify-consumer` · fixture `sessions/_examples/n9-gjc-handoff.json`
 
 ---
 

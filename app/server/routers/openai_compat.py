@@ -127,6 +127,49 @@ def _chunk(completion_id: str, model: str, delta_content: str, finish: bool = Fa
     return f"data: {json.dumps(payload)}\n\n"
 
 
+def _latest_session_oracle(session_id: str) -> dict[str, str] | None:
+    """Return the latest execution oracle snapshot for a session, if any."""
+    from agent_lab.run_meta import read_run_meta
+    from agent_lab.session.paths import active_sessions_dir
+
+    folder = active_sessions_dir() / session_id
+    if not folder.is_dir():
+        return None
+    run = read_run_meta(folder)
+    for ex in reversed(run.get("executions") or []):
+        if not isinstance(ex, dict):
+            continue
+        oracle = ex.get("oracle")
+        if not isinstance(oracle, dict):
+            continue
+        return {
+            "verdict": str(oracle.get("verdict") or ""),
+            "risk_level": str(ex.get("auto_approve_risk_level") or ex.get("risk_level") or ""),
+        }
+    return None
+
+
+def _chat_audit_headers(
+    *,
+    request_id: str,
+    session_id: str | None,
+    oracle_mode: str,
+    oracle_snapshot: dict[str, str] | None,
+) -> dict[str, str]:
+    from app.server.verify_audit import oracle_audit_headers
+
+    verdict = (oracle_snapshot or {}).get("verdict") or "pending"
+    risk_level = (oracle_snapshot or {}).get("risk_level") or ""
+    return oracle_audit_headers(
+        service="chat",
+        request_id=request_id,
+        verdict=verdict,
+        risk_level=risk_level,
+        oracle_mode=oracle_mode,
+        session_id=session_id,
+    )
+
+
 def _run_room_sync(
     topic: str,
     preset: str,
@@ -252,10 +295,30 @@ async def chat_completions(request: Request, body: ChatCompletionRequest) -> Any
 
         content = content_holder[0] or ""
         session_id = session_id_holder[0]
+        from agent_lab.oracle_core import oracle_live_enabled
+
+        oracle_mode = "live" if oracle_live_enabled() else "mock"
+        request_id = "chat-" + uuid.uuid4().hex[:12]
+        oracle_snapshot = _latest_session_oracle(session_id) if session_id else None
         resp = _build_completion(completion_id, model_id, content, session_id=session_id)
-        headers = {}
-        if session_id:
-            headers["X-AgentLab-RunId"] = session_id
+        agentlab = dict(resp.get("agentlab") or {})
+        agentlab.update(
+            {
+                "service": "chat",
+                "request_id": request_id,
+                "oracle_mode": oracle_mode,
+            }
+        )
+        if oracle_snapshot:
+            agentlab["oracle"] = oracle_snapshot
+        resp["agentlab"] = agentlab
+        headers = _chat_audit_headers(
+            request_id=request_id,
+            session_id=session_id,
+            oracle_mode=oracle_mode,
+            oracle_snapshot=oracle_snapshot,
+        )
+        headers["X-AgentLab-Preset"] = preset
         return JSONResponse(resp, headers=headers)
 
 

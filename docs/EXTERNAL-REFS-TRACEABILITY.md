@@ -39,6 +39,7 @@ This document is the hub for **plan vs reality**. It does not explain *why* an i
 | ops-P2 | Platform | Router split | ✅ | `app/server/routers/*`, `app/server/main.py` | |
 | ops-verify | Platform | Manual ops routine | ✅ | `make verify-ops`, `tests/test_verify_ops_makefile.py`, `docs/OPS-RUNBOOK.md` | Tier A |
 | ops-flags | Platform | AGENT_LAB_* flag discoverability | ✅ | `runtime_flags.py`, `GET /api/health/flags`, `scripts/list_flags.py`, `make list-flags`, `tests/test_health_flags_api.py` | 79 registry entries; path values masked |
+| N9-verify | Platform | External verify API service | ✅ | `app/server/routers/evidence_api.py`, `app/server/verify_audit.py`, `docs/VERIFY-API.md`, `scripts/n9_verify_consumer.py`, `tests/test_n9_verify_api.py`, `sessions/_examples/n9-gjc-handoff.json` | `POST /v1/verify` audit headers; GJC handoff consumer |
 | R-P0 | Room | Partial turn | ✅ | `src/agent_lab/room.py`, `docs/STABILITY.md` | |
 | R-P1 | Room | F2 artifact-only R2 | ✅ | `sessions/_regression/specialist_r2_artifact_only/`, `context_bundle.py` | |
 | HOOK-COMM | Hook · Communicate reform | ✅ | `reply_policy.py`, `room_hooks.py`, `gate_snapshot.py`, `communicate_kpis.py`, `sessions/_regression/envelope_consensus_endorse/`, `make verify-hooks`, USER-GUIDE §9.8 | `LEGACY_ENDORSE` default **off** (2026-06-08) — [HOOK-COMMUNICATE-REFORM.md](./HOOK-COMMUNICATE-REFORM.md) |

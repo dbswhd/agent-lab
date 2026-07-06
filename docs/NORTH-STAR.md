@@ -223,7 +223,7 @@ make feedback-report JSON=1 | jq '.escalation_rate_by_level, .total'
 | **N6** | **Self-patch meta-loop** | Room이 생성한 개선안을 agent-lab 자기 코드베이스에 적용하는 dogfood 루프의 정례화. **착수 시 첫 커밋 = 화이트리스트 파일** (`.agent-lab/self_patch_allowlist.txt` — 초기값: `.claude/skills/**`·프롬프트·preset 파라미터만). 코어 로직(`src/agent_lab/**`)은 인간 gate 필수 | L3 | 1달~분기 |
 | **N7** | **S3 외부 능력 자가 통합** | §1 Layer 1의 S3a~S3d. **지금 할 것 = 설계 문서 1개:** `docs/S3-TOOL-CARD-SPEC.md` — 도구 카드 스키마(JSON: id·source·capabilities·mount 방법) + `[NEED-TOOL:]` 시그널 문법 + Human Inbox 승인 flow. 구현은 S1/S2 닫힌 후 (부품: 코드 앵커 맵 S3 행) | L3 | 분기 |
 | **N8** | **슈퍼 샘플 트랙** | ✅ SSOT·QUICKSTART·예제 3종·mock 재현·FORK·`quickstart-verify`·`emergence-bench-check`·[PACKAGE-FORK-BOUNDARIES](./PACKAGE-FORK-BOUNDARIES.md). **잔여:** live emergence · T2(외부 fork/PR) | — | **D2** |
-| **N9** | **검증 서비스화** | 라우터 = `app/server/routers/openai_compat.py` (존재). **잔여:** ① 소비자 1개 (GJC 또는 외부 에이전트가 이 API로 미션 제출) ② Oracle 검증 결과를 응답 헤더/필드로 노출 ③ API 문서. "다른 에이전트가 만든 것을 Agent Lab이 검증한다"가 슈퍼 샘플 서사의 핵심 증거 | — | 분기 |
+| **N9** | **검증 서비스화** | `POST /v1/verify` + OpenAI-compat chat · [VERIFY-API.md](./VERIFY-API.md). ✅ 소비자(`scripts/n9_verify_consumer.py`) · Oracle 감사 헤더 · GJC handoff 경로. **잔여:** live 외부 에이전트 dogfood 증거 | — | **D2** |
 
 ### 2.2 Concepts — 공개 어휘 6개로 고정
 
@@ -332,7 +332,7 @@ Mission OS 3-pane IA 유지 위에서:
 | 컨텍스트 품질 (repo_map·compaction) | **55%** | D2 | 구현+self-eval+F7 프로토콜/계측 완료. **실세션 7일 dogfood 실행·ON/OFF 결정**만 남음 |
 | 관측·평가 (eval harness·bench·KPI) | **70%** | D3 | 도구 풍부(emergence bench, feedback report, dogfood suite). 남은 것: 지표→의사결정 연결의 정례화 |
 | Frontend Mission OS | **75%** | D3 | Phase D ✅ (hooks + client split) · **N4 v2** dial/picker · synthesize_only path · §3.2.1 light discuss |
-| OpenAI-compat API (N9) | **35%** | D1 | 라우터 존재. 소비자·문서·감사 헤더 등 서사 완성 없음 |
+| OpenAI-compat API (N9) | **65%** | D2 | verify + chat audit headers · [VERIFY-API.md](./VERIFY-API.md) · `n9_verify_consumer.py`. **잔여:** live 외부 dogfood |
 | 슈퍼 샘플 준비도 (Layer 3) | **60%** | D2 | QUICKSTART·FORK·bench SSOT·CI verify ✅. **잔여:** live 증명 · T2 |
 
 ### 3.2 구조적 결함 (F1~F12) — %가 아니라 구조가 문제인 것

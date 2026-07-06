@@ -7,7 +7,7 @@ from typing import Any
 
 from agent_lab.run.state import RunStateLike
 
-from agent_lab.context.limits import agent_context_limits
+from agent_lab.core.limits import agent_context_limits
 from agent_lab.room.context._shared import MessageLike
 
 _STATUS_TAG_PREFIXES = ("[PROPOSED:", "[CONFIRMED-BY-HUMAN:")

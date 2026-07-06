@@ -37,6 +37,17 @@ def test_f9_hot_path_py_caps_in_baseline() -> None:
     }
 
 
+def test_layer_cycle_check_passes() -> None:
+    proc = subprocess.run(
+        [sys.executable, "scripts/layer_cycle_check.py", "--check"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr or proc.stdout
+
+
 def test_f11_run_meta_dict_signature_baseline() -> None:
     """F11 ratchet: run_meta: dict[str, Any] signature count must not grow."""
     import subprocess

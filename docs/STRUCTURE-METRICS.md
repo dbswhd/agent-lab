@@ -8,37 +8,9 @@ Use these before and after each refactor wave to confirm scope and catch acciden
 ```bash
 make structure-metrics          # human-readable summary
 make structure-metrics-check    # fail on baseline drift (CI-friendly)
-make audit-room-imports         # fail on legacy agent_lab.room_* imports
-make audit-plan-imports
-make audit-session-imports
-make audit-kimi-imports
-make audit-mission-imports
-make audit-agent-imports
-make audit-quant-imports
-make audit-wisdom-imports
-make audit-inbox-imports
-make audit-context-imports
-make audit-run-imports
-make audit-workspace-imports
-make audit-research-imports
-make typecheck-room-ratchet     # strict mypy ratchet for src/agent_lab/room
-make typecheck-plan-ratchet     # strict mypy ratchet for src/agent_lab/plan
-make typecheck-session-ratchet  # strict mypy ratchet for src/agent_lab/session
-make typecheck-kimi-ratchet     # strict mypy ratchet for src/agent_lab/kimi
-make typecheck-mission-ratchet  # strict mypy ratchet for src/agent_lab/mission
-make typecheck-agent-ratchet    # strict mypy ratchet for src/agent_lab/agent
-make typecheck-quant-ratchet    # strict mypy ratchet for src/agent_lab/quant
-make typecheck-wisdom-ratchet   # strict mypy ratchet for src/agent_lab/wisdom
-make typecheck-inbox-ratchet    # strict mypy ratchet for src/agent_lab/inbox
-make typecheck-context-ratchet  # strict mypy ratchet for src/agent_lab/context
-make typecheck-run-ratchet      # strict mypy ratchet for src/agent_lab/run
-make typecheck-workspace-ratchet  # strict mypy ratchet for src/agent_lab/workspace
-make typecheck-research-ratchet   # strict mypy ratchet for src/agent_lab/research
-python scripts/mypy_room_ratchet.py --print
-python scripts/mypy_plan_ratchet.py --print
+make layer-cycles-check         # F12 orchestration import 2-cycle guard (replaces 31 audit/typecheck ratchets)
+python scripts/layer_cycle_check.py --json
 python scripts/room_import_graph.py
-python scripts/audit_room_legacy_imports.py
-python scripts/audit_plan_legacy_imports.py
 ```
 
 ## Current snapshot (2026-06-28)

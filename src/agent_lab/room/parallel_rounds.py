@@ -15,7 +15,7 @@ from agent_lab.run.state import RunStateLike
 TaskType = Literal["consensus", "peer_review", "discuss", "cold_critic"]
 _SEQUENTIAL_TASK_TYPES: frozenset[str] = frozenset({"peer_review", "cold_critic"})
 
-from agent_lab.context.bundle import ContextBundle
+from agent_lab.core.context_bundle import ContextBundle
 from agent_lab.room._typing import as_agent_id
 from agent_lab.agents.registry import AgentId, available_agents
 from agent_lab.room.turn_state import sync_run_meta_turn_state

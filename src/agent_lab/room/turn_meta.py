@@ -10,7 +10,7 @@ from typing import Any, Sequence, cast
 from agent_lab.run.state import RunStateLike
 
 from agent_lab.agents.registry import available_agents
-from agent_lab.context.meta import summarize_turn_context
+from agent_lab.core.context_meta import summarize_turn_context
 from agent_lab.consensus_agreements import (
     mark_agreements_plan_synced,
 )

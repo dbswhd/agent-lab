@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "module_level_edges": 23,
+  "two_cycles": [],
+  "notes": {
+    "module_level_edges": "Module-level import edges among orchestration packages only (lazy imports excluded).",
+    "two_cycles": "Undirected 2-cycles ratchet — must not grow; shrink when refactoring. F12 Stage 2 target: 0."
+  }
+}

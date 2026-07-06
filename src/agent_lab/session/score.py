@@ -7,11 +7,11 @@ import re
 from pathlib import Path
 from typing import Any
 
-from agent_lab.plan.refs import validate_plan_refs
+from agent_lab.core.mission_loop import get_mission_loop
+from agent_lab.core.objections import list_objections
+from agent_lab.core.plan_refs import validate_plan_refs
 from agent_lab.communicate_kpis import communicate_counts, communicate_scores
 from agent_lab.emergence_kpis import emergence_kpis
-from agent_lab.room.objections import list_objections
-from agent_lab.mission.loop import get_mission_loop
 from agent_lab.run.meta import read_run_meta
 
 _MISSION_NOTEPAD_FILES = ("learnings.md", "verification.md", "decisions.md")
@@ -283,7 +283,6 @@ def _duplicate_speech_rate(
 
 
 def _mission_notepad_chars(folder: Path, run_meta: dict[str, Any]) -> int:
-    from agent_lab.mission.loop import get_mission_loop
     from agent_lab.mission.notepad import mission_notepad_dir
 
     ml = get_mission_loop(run_meta)

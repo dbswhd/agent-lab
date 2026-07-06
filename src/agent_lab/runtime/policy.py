@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from agent_lab.room.hooks import PreExecuteBlocked
+from agent_lab.core.exceptions import PreExecuteBlocked
 
 
 @dataclass(slots=True)
@@ -89,7 +89,7 @@ class PolicyEngine:
         if not gate.allowed:
             if gate.source == "schedule_sandbox":
                 raise RuntimeError(gate.reason or "schedule_sandbox_read_only")
-            from agent_lab.room.objections import ObjectionBlocksExecute
+            from agent_lab.core.exceptions import ObjectionBlocksExecute
 
             raise ObjectionBlocksExecute(
                 gate.reason or "execute blocked",

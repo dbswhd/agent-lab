@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from agent_lab.emergence_kpis import emergence_kpis
-from agent_lab.room.session_persist import load_session_messages
+from agent_lab.session.chat_io import load_chat_dicts
 from agent_lab.run.meta import read_run_meta
 
 
@@ -33,7 +33,7 @@ def _plan_phase(run: dict[str, Any]) -> str:
 def build_emergence_kpis_payload(folder: Path) -> dict[str, Any]:
     folder = folder.expanduser().resolve()
     run_meta = read_run_meta(folder)
-    messages = [m.to_dict() for m in load_session_messages(folder)]
+    messages = load_chat_dicts(folder)
     scores, counts = emergence_kpis(folder, run_meta, messages)
     return {
         "session_id": folder.name,

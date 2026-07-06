@@ -6,7 +6,7 @@ import dataclasses
 import os
 from typing import Any
 
-from agent_lab.context.limits import agent_context_limits, scribe_context_limits
+from agent_lab.core.limits import agent_context_limits, scribe_context_limits
 from agent_lab.room._typing import agent_label
 from agent_lab.room.context._shared import MessageLike, env_bool, message_chars
 
@@ -292,7 +292,7 @@ def prepare_recent_messages(
     compact: bool | None = None,
 ) -> tuple[list[MessageLike], int, int, int]:
     """Turn cap → ephemeral system cap → char trim with current Human turn pinned."""
-    from agent_lab.context.limits import efficiency_limits
+    from agent_lab.core.limits import efficiency_limits
 
     if compact is None:
         compact = env_bool("AGENT_LAB_COMMS_COMPACT")

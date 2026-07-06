@@ -15,6 +15,14 @@ from agent_lab.mission.notepad import (
     append_wisdom_note,
 )
 
+from agent_lab.core.mission_loop import (
+    AUTONOMOUS_ENDS,
+    DEFAULT_MAX_MISSION_ITERATIONS,
+    DEFAULT_MAX_MOMUS_ROUNDS,
+    DEFAULT_MAX_REPAIR_PER_ACTION,
+    default_mission_loop,
+    get_mission_loop,
+)
 from agent_lab.mission.advance import (  # noqa: F401  public FSM handlers re-exported (defined in mission_advance)
     maybe_advance_mission,
     on_dry_run_complete,
@@ -38,17 +46,6 @@ MissionPhase = Literal[
     "REPAIR",
     "MISSION_DONE",
 ]
-
-DEFAULT_MAX_MOMUS_ROUNDS = 3
-DEFAULT_MAX_REPAIR_PER_ACTION = 2
-DEFAULT_MAX_MISSION_ITERATIONS = 20
-_AUTONOMOUS_ENDS = (
-    "merge_review",
-    "circuit_breaker",
-    "mission_done",
-    "inbox_escalate",
-)
-
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -93,68 +90,6 @@ def pipeline_enabled() -> bool:
 def pipeline_explicitly_disabled() -> bool:
     """Deprecated — pipeline orchestration is always enabled."""
     return False
-
-
-def default_mission_loop() -> dict[str, Any]:
-    return {
-        "enabled": False,
-        "phase": "MISSION_DEFINE",
-        "iteration": 0,
-        "max_mission_iterations": DEFAULT_MAX_MISSION_ITERATIONS,
-        "pending_action_indices": [],
-        "current_action_index": None,
-        "action_repair_counts": {},
-        "max_repair_per_action": DEFAULT_MAX_REPAIR_PER_ACTION,
-        "last_verify": None,
-        "last_execution_id": None,
-        "plan_gate": {
-            "status": "pending",
-            "momus_round": 0,
-            "max_momus_rounds": DEFAULT_MAX_MOMUS_ROUNDS,
-            "last_reject_reason": None,
-            "failures": [],
-        },
-        "wisdom_refs": [],
-        "discuss_recovery": {
-            "pending": False,
-            "reason": None,
-            "action_index": None,
-            "started_at": None,
-            "completed_at": None,
-        },
-        "autonomous_segment": {
-            "active": False,
-            "started_at": None,
-            "ends_on": list(_AUTONOMOUS_ENDS),
-        },
-        "circuit_breaker": False,
-        "circuit_breaker_reason": None,
-        "pause_reason": None,
-        "last_partial": None,
-    }
-
-
-def get_mission_loop(run: dict[str, Any] | None) -> dict[str, Any]:
-    raw = (run or {}).get("mission_loop")
-    if not isinstance(raw, dict):
-        return default_mission_loop()
-    base = default_mission_loop()
-    for key, val in raw.items():
-        if key == "plan_gate" and isinstance(val, dict):
-            gate = dict(base["plan_gate"])
-            gate.update(val)
-            base["plan_gate"] = gate
-        elif key == "autonomous_segment" and isinstance(val, dict):
-            seg = dict(base["autonomous_segment"])
-            seg.update(val)
-            base["autonomous_segment"] = seg
-        elif key == "discuss_recovery" and isinstance(val, dict):
-            rec = dict(base["discuss_recovery"])
-            rec.update(val)
-            base["discuss_recovery"] = rec
-        else:
-            base[key] = val
-    return base
 
 
 def _verified_loop_goal(run: dict[str, Any]) -> dict[str, Any] | None:
@@ -408,7 +343,7 @@ def enable_mission_loop(
             ml["autonomous_segment"] = {
                 "active": True,
                 "started_at": _now_iso(),
-                "ends_on": list(_AUTONOMOUS_ENDS),
+                "ends_on": list(AUTONOMOUS_ENDS),
             }
         run["mission_loop"] = ml
         return run

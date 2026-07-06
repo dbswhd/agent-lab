@@ -7,6 +7,7 @@
     "claude",
     "codex",
     "context",
+    "core",
     "cursor",
     "extensions",
     "gateway",
@@ -45,8 +46,8 @@
     "claude_": 0
   },
   "tracked_pycache_files": 0,
-  "makefile_lines": 481,
-  "makefile_targets": 114,
+  "makefile_lines": 391,
+  "makefile_targets": 84,
   "large_tsx_files": [
     {
       "path": "web/src/components/PlanExecutePanel.tsx",

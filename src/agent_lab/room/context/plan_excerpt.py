@@ -11,7 +11,7 @@ from agent_lab.consensus_agreements import (
     agreement_sync_failed_notice,
     pending_consensus_agreements,
 )
-from agent_lab.context.limits import agent_context_limits
+from agent_lab.core.limits import agent_context_limits
 
 _AGREED_HEADERS = (
     "합의된 점",

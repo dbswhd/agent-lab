@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
+from agent_lab.core.exceptions import PreExecuteBlocked
 from agent_lab.run.state import RunStateLike
 
 from agent_lab.subprocess_env import subprocess_env
@@ -684,14 +685,6 @@ def _workspace_for_hooks(run_meta: RunStateLike | None, session_folder: Path | N
     if not isinstance(perms, dict):
         perms = None
     return str(primary_workspace(perms))
-
-
-class PreExecuteBlocked(Exception):
-    """pre_execute hook blocked dry-run."""
-
-    def __init__(self, message: str, *, pre_verify: dict[str, Any] | None = None):
-        super().__init__(message)
-        self.pre_verify = pre_verify or {}
 
 
 def run_pre_execute_hooks(

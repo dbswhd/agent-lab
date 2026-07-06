@@ -96,7 +96,8 @@ def test_fast_bucket_collection_budget():
     # pure_challenge_yield, feedback_report accepted_challenge_rate, run_profile S1 flags).
     # 2026-07-05: raised 2220 -> 2460 for F9 Stage 3 (RoomChat hooks, room facade guard, plan panel support).
     # 2026-07-05: raised 2460 -> 2470 for F11 Stage 1 RunState boundary + F11 ratchet guard.
-    assert count <= 2470, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-06: raised 2470 -> 2480 for F12 Stage 2 core + layer-cycle guard.
+    assert count <= 2480, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

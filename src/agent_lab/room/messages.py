@@ -10,7 +10,7 @@ from typing import Any, Callable, cast
 
 from agent_lab.run.state import RunStateLike
 
-from agent_lab.context.bundle import ContextBundle
+from agent_lab.core.context_bundle import ContextBundle
 from agent_lab.agents.registry import AgentId
 from agent_lab.agent.permissions import (
     apply_discuss_executor_policy,

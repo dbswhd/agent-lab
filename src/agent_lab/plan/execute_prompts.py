@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from agent_lab.run.state import RunState, RunStateLike
+from agent_lab.run.state import RunStateLike
 
 from agent_lab.plan.actions import PlanAction
 from agent_lab.runtime.adapters import (

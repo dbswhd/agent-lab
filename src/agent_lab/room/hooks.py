@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
-from agent_lab.core.exceptions import PreExecuteBlocked
+from agent_lab.core.exceptions import PreExecuteBlocked  # noqa: F401 — public re-export
 from agent_lab.run.state import RunStateLike
 
 from agent_lab.subprocess_env import subprocess_env

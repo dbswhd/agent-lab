@@ -21,6 +21,7 @@ from agent_lab.feedback_advisor import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _write_ledger(path: Path, rows: list[dict]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as fh:
@@ -64,14 +65,18 @@ def _row(
 # _score_outcome
 # ---------------------------------------------------------------------------
 
+
 def test_score_clean_pass() -> None:
     assert _score_outcome(_row(verdict="pass", repair=0)) == 2.5  # +2 pass+0repair, +0.5 consensus
+
 
 def test_score_pass_with_repair() -> None:
     assert _score_outcome(_row(verdict="pass", repair=2)) == 1.5  # +1 pass, +0.5 consensus
 
+
 def test_score_fail() -> None:
     assert _score_outcome(_row(verdict="fail", consensus=False)) == -1.0
+
 
 def test_score_block_penalty() -> None:
     assert _score_outcome(_row(verdict="pass", repair=0, blocks=2)) == 0.5  # 2.5 - 2×1.0
@@ -130,6 +135,7 @@ def test_advise_setup_prefers_critic_when_history_low_pure_yield(
 # advise_setup — flag off → default hint
 # ---------------------------------------------------------------------------
 
+
 def test_advise_setup_flag_off(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("AGENT_LAB_FEEDBACK_ADVISOR", raising=False)
     hint = advise_setup(
@@ -141,9 +147,7 @@ def test_advise_setup_flag_off(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     assert hint is _DEFAULT_HINT
 
 
-def test_supervisor_preset_enables_advisor_without_env(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_supervisor_preset_enables_advisor_without_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("AGENT_LAB_FEEDBACK_ADVISOR", raising=False)
     monkeypatch.setattr(
         "agent_lab.outcome_harvester.outcomes_path",
@@ -171,6 +175,7 @@ def test_supervisor_preset_enables_advisor_without_env(
 # advise_setup — insufficient history → default hint
 # ---------------------------------------------------------------------------
 
+
 def test_advise_setup_no_ledger(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_FEEDBACK_ADVISOR", "1")
     monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: tmp_path / "missing.jsonl")
@@ -194,6 +199,7 @@ def test_advise_setup_below_min_sample(tmp_path: Path, monkeypatch: pytest.Monke
 # advise_setup — category mismatch filtered out
 # ---------------------------------------------------------------------------
 
+
 def test_advise_setup_category_filter(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_FEEDBACK_ADVISOR", "1")
     monkeypatch.setenv("AGENT_LAB_FEEDBACK_MIN_SAMPLE", "1")
@@ -207,6 +213,7 @@ def test_advise_setup_category_filter(tmp_path: Path, monkeypatch: pytest.Monkey
 # ---------------------------------------------------------------------------
 # advise_setup — happy path: history override
 # ---------------------------------------------------------------------------
+
 
 def test_advise_setup_returns_best_combo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_FEEDBACK_ADVISOR", "1")
@@ -253,6 +260,7 @@ def test_advise_setup_filters_unavailable_agents(tmp_path: Path, monkeypatch: py
 # Phase C: wisdom cross-session note injected into rationale
 # ---------------------------------------------------------------------------
 
+
 def test_wisdom_note_appended_when_hits_exist(monkeypatch: pytest.MonkeyPatch) -> None:
     from agent_lab.feedback_advisor import _wisdom_note
 
@@ -293,6 +301,7 @@ def test_wisdom_note_in_rationale(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
 # ---------------------------------------------------------------------------
 # S1.5: ε-greedy exploration
 # ---------------------------------------------------------------------------
+
 
 def test_explore_decision_deterministic_and_bounds() -> None:
     # ε=0 never explores; ε>=1 always explores; same inputs → same output.

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import time
 
 from agent_lab.agent.availability import (
     agent_pause_until,
@@ -10,7 +9,6 @@ from agent_lab.agent.availability import (
     is_usage_limit_error,
     record_usage_limit_pause,
 )
-from agent_lab.agents.registry import AgentId
 
 
 def test_is_usage_limit_error() -> None:

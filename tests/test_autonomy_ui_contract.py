@@ -36,7 +36,7 @@ def test_autonomy_api_client_and_runtime_type() -> None:
     ladder = _read("web", "src", "utils", "autonomyLadder.ts")
 
     assert "fetchSessionAutonomy" in client
-    assert 'autonomy?: {' in client
+    assert "autonomy?: {" in client
     assert "display_level" in client
     assert "/autonomy" in runtime_router
     assert "get_session_autonomy" in runtime_router

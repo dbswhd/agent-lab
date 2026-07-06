@@ -111,10 +111,7 @@ def _large_tsx_files(*, min_lines: int = 500, limit: int = 10) -> list[dict[str,
         if line_count >= min_lines:
             rows.append((line_count, path))
     rows.sort(key=lambda item: item[0], reverse=True)
-    return [
-        {"path": str(path.relative_to(ROOT)), "lines": line_count}
-        for line_count, path in rows[:limit]
-    ]
+    return [{"path": str(path.relative_to(ROOT)), "lines": line_count} for line_count, path in rows[:limit]]
 
 
 def collect_metrics() -> StructureMetrics:
@@ -126,9 +123,7 @@ def collect_metrics() -> StructureMetrics:
                 prefix_counts[prefix] += 1
 
     subpackages = sorted(
-        child.name
-        for child in AGENT_LAB.iterdir()
-        if child.is_dir() and (child / "__init__.py").is_file()
+        child.name for child in AGENT_LAB.iterdir() if child.is_dir() and (child / "__init__.py").is_file()
     )
     makefile_lines, makefile_targets = _makefile_targets()
 
@@ -208,9 +203,7 @@ def _check_against_baseline(metrics: StructureMetrics) -> list[str]:
         if path not in actual_tsx:
             failures.append(f"large_tsx_files missing baseline path {path!r}")
         elif actual_tsx[path] != expected_lines:
-            failures.append(
-                f"large_tsx_files[{path!r}]: expected {expected_lines}, got {actual_tsx[path]}"
-            )
+            failures.append(f"large_tsx_files[{path!r}]: expected {expected_lines}, got {actual_tsx[path]}")
 
     baseline_hot = {row["path"]: row["lines"] for row in baseline.get("hot_path_py_files", [])}
     actual_hot = {row["path"]: row["lines"] for row in metrics.hot_path_py_files}
@@ -218,9 +211,7 @@ def _check_against_baseline(metrics: StructureMetrics) -> list[str]:
         if path not in actual_hot:
             failures.append(f"hot_path_py_files missing baseline path {path!r}")
         elif actual_hot[path] != expected_lines:
-            failures.append(
-                f"hot_path_py_files[{path!r}]: expected {expected_lines}, got {actual_hot[path]}"
-            )
+            failures.append(f"hot_path_py_files[{path!r}]: expected {expected_lines}, got {actual_hot[path]}")
     for path in HOT_PATH_PY_FILES:
         if path not in baseline_hot:
             failures.append(f"hot_path_py_files missing F9 path {path!r}")

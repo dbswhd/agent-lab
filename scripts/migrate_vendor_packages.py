@@ -18,8 +18,14 @@ IMPORT_REWRITES = (
     (re.compile(r"\bagent_lab\.codex_oauth\b"), "agent_lab.codex.oauth"),
     (re.compile(r"\bagent_lab\.codex_cli\b"), "agent_lab.codex.cli"),
     (re.compile(r"\bagent_lab\.claude_cli\b"), "agent_lab.claude.cli"),
-    (re.compile(r"\bfrom agent_lab import claude_cli, codex_cli\b"), "from agent_lab.claude import cli as claude_cli\nfrom agent_lab.codex import cli as codex_cli"),
-    (re.compile(r"\bfrom agent_lab import codex_cli, claude_cli\b"), "from agent_lab.codex import cli as codex_cli\nfrom agent_lab.claude import cli as claude_cli"),
+    (
+        re.compile(r"\bfrom agent_lab import claude_cli, codex_cli\b"),
+        "from agent_lab.claude import cli as claude_cli\nfrom agent_lab.codex import cli as codex_cli",
+    ),
+    (
+        re.compile(r"\bfrom agent_lab import codex_cli, claude_cli\b"),
+        "from agent_lab.codex import cli as codex_cli\nfrom agent_lab.claude import cli as claude_cli",
+    ),
     (re.compile(r"\bimport agent_lab\.codex_cli\b"), "import agent_lab.codex.cli as codex_cli"),
     (re.compile(r"\bimport agent_lab\.claude_cli\b"), "import agent_lab.claude.cli as claude_cli"),
 )

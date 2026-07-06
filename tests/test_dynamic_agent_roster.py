@@ -64,9 +64,7 @@ def test_select_roster_model_override(monkeypatch: pytest.MonkeyPatch) -> None:
     assert roster == ["cursor", "claude", "kimi"]
 
 
-def test_override_composition_session_beats_env(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_override_composition_session_beats_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from agent_lab.agent import roster as ar
     from agent_lab.run.meta import patch_run_meta
 
@@ -91,12 +89,9 @@ def test_override_composition_default_beats_env(tmp_path: Path, monkeypatch: pyt
     assert ar.effective_room_composition() == ["kimi_work"]
 
 
-def test_model_default_persists_without_session_env_pollution(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_model_default_persists_without_session_env_pollution(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import agent_lab.app_config as app_config
     from agent_lab.agent import roster as ar
-    from agent_lab.room import models_config as rmc
     from agent_lab.run.meta import patch_run_meta
     from agent_lab.slash_commands import dispatch
 

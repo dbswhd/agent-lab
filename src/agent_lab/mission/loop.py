@@ -19,8 +19,8 @@ from agent_lab.core.mission_loop import (
     AUTONOMOUS_ENDS,
     DEFAULT_MAX_MISSION_ITERATIONS,
     DEFAULT_MAX_MOMUS_ROUNDS,
-    DEFAULT_MAX_REPAIR_PER_ACTION,
-    default_mission_loop,
+    DEFAULT_MAX_REPAIR_PER_ACTION,  # noqa: F401 — public re-export
+    default_mission_loop,  # noqa: F401 — public re-export
     get_mission_loop,
 )
 from agent_lab.mission.advance import (  # noqa: F401  public FSM handlers re-exported (defined in mission_advance)
@@ -46,6 +46,7 @@ MissionPhase = Literal[
     "REPAIR",
     "MISSION_DONE",
 ]
+
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()

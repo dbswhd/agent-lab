@@ -75,8 +75,7 @@ def mention_not_in_roster_message(out_of_roster: list[str], roster_pool: list[st
     missing = ", ".join(f"@{a}" for a in out_of_roster)
     roster = ", ".join(str(a) for a in roster_pool if str(a).strip()) or "(empty)"
     return (
-        f"{missing} is not in this session's agent roster ({roster}). "
-        "Add them with /model or mention an active agent."
+        f"{missing} is not in this session's agent roster ({roster}). Add them with /model or mention an active agent."
     )
 
 

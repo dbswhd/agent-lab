@@ -415,9 +415,7 @@ def _model_compose(args: list[str], *, session_folder: Path | None = None) -> di
     raw = list(args)
     if raw and raw[-1] in {"session", "default"}:
         scope = raw.pop()
-    composition = agent_roster.normalize_composition_order(
-        [tok for tok in ",".join(raw).split(",") if tok.strip()]
-    )
+    composition = agent_roster.normalize_composition_order([tok for tok in ",".join(raw).split(",") if tok.strip()])
     if not composition:
         return _err("model", "empty composition")
     if scope is None:
@@ -617,7 +615,7 @@ def _plan(args: list[str], *, session_folder: Path | None = None) -> dict[str, A
         return _err("plan", "no active session")
     result = _set_mission_phase(session_folder, "plan", "DISCUSS")
     from agent_lab.plan.workflow import get_plan_workflow, init_plan_workflow_on_plan_send
-    from agent_lab.run.meta import patch_run_meta, read_run_meta
+    from agent_lab.run.meta import read_run_meta
 
     run = read_run_meta(session_folder)
     if not get_plan_workflow(run).get("enabled"):

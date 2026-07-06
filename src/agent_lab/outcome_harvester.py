@@ -21,6 +21,7 @@ from typing import Any
 from weakref import WeakValueDictionary
 
 from agent_lab.run.meta import patch_run_meta, read_run_meta
+from agent_lab.run.state import RunStateLike
 from agent_lab.s1_flags import s1_flag_enabled
 from agent_lab.turn_metrics import build_turn_metrics
 from agent_lab.wisdom.index import _tokenize
@@ -96,7 +97,9 @@ def _topic_hash(topic: str) -> str:
     return "sha1:" + hashlib.sha1(topic.encode("utf-8")).hexdigest()[:16]
 
 
-def build_outcome_record(folder: Path, topic: str, metrics: dict[str, Any], *, run_meta: dict[str, Any] | None = None) -> dict[str, Any]:
+def build_outcome_record(
+    folder: Path, topic: str, metrics: dict[str, Any], *, run_meta: RunStateLike | None = None
+) -> dict[str, Any]:
     """Flatten turn_metrics into one cross-session ledger row."""
     from agent_lab.autonomy_ladder import infer_effective_autonomy_level
     from agent_lab.human_inbox import pending_inbox_items

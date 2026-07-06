@@ -150,8 +150,7 @@ def collect_graph() -> dict:
             for edge in sorted(edges, key=lambda e: (e.source, e.target))
         ],
         "external_importers": {
-            target: sorted(set(importers))
-            for target, importers in sorted(external_importers.items())
+            target: sorted(set(importers)) for target, importers in sorted(external_importers.items())
         },
         "leaf_modules": leaf_modules,
         "hub_modules": [{"module": name, "out_degree": out_degree[name]} for name in hub_modules],
@@ -194,9 +193,7 @@ def main() -> int:
 
     if args.strict:
         facade_cycles = [
-            edge
-            for edge in payload["internal_edges"]
-            if edge["source"] != FACADE and edge["target"] == FACADE
+            edge for edge in payload["internal_edges"] if edge["source"] != FACADE and edge["target"] == FACADE
         ]
         if facade_cycles:
             print("\nFacade import cycles detected:", file=sys.stderr)

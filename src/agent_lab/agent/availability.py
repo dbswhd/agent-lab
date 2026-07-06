@@ -55,11 +55,7 @@ def _prune_expired_pauses(run_meta: dict[str, Any] | None, *, now: float | None 
     pauses = _pause_map(run_meta)
     if not pauses:
         return
-    kept = {
-        aid: row
-        for aid, row in pauses.items()
-        if isinstance(row, dict) and float(row.get("until") or 0) > base
-    }
+    kept = {aid: row for aid, row in pauses.items() if isinstance(row, dict) and float(row.get("until") or 0) > base}
     if kept:
         from agent_lab.run.meta import stamp_run_meta
 

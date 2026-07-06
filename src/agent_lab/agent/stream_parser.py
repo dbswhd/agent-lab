@@ -134,7 +134,7 @@ def parse_conversation_step(step: Any) -> list[StreamEvent]:
         msg = getattr(step, "message", None) or {}
         if isinstance(msg, Mapping):
             tool, args = _tool_payload(msg)
-            label = format_conversation_step(step) or format_tool_activity_line(
+            format_conversation_step(step) or format_tool_activity_line(
                 tool=tool,
                 args=str(args.get("target") or ""),
             )

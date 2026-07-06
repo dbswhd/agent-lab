@@ -35,7 +35,9 @@ def test_score_pytest_junit_resolves_when_f2p_passes(tmp_path):
 
 
 def test_score_pytest_junit_aggregate():
-    path_content = """<?xml version="1.0"?><testsuite><testcase name="a"/><testcase name="b"><failure/></testcase></testsuite>"""
+    path_content = (
+        """<?xml version="1.0"?><testsuite><testcase name="a"/><testcase name="b"><failure/></testcase></testsuite>"""
+    )
     r1 = parse_junit_xml(path_content.replace("b", "a").replace("<failure/>", ""))
     scored_ok = __import__("agent_lab.eval_harness", fromlist=["score_instance"]).score_instance(
         r1, ["a"], [], status="ok"

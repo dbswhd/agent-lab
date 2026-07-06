@@ -14,9 +14,7 @@ IMPORT_REWRITES = ((re.compile(r"\bagent_lab\.agent_(\w+)"), r"agent_lab.agent.\
 
 SCAN_ROOTS = (SRC, ROOT / "app", ROOT / "tests", ROOT / "scripts")
 
-LEGACY_IMPORT_RE = re.compile(
-    r"from agent_lab import (agent_[a-z_]+(?:,\s*agent_[a-z_]+)*)"
-)
+LEGACY_IMPORT_RE = re.compile(r"from agent_lab import (agent_[a-z_]+(?:,\s*agent_[a-z_]+)*)")
 
 
 def _rewrite_imports(text: str) -> str:

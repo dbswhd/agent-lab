@@ -97,7 +97,8 @@ def test_fast_bucket_collection_budget():
     # 2026-07-05: raised 2220 -> 2460 for F9 Stage 3 (RoomChat hooks, room facade guard, plan panel support).
     # 2026-07-05: raised 2460 -> 2470 for F11 Stage 1 RunState boundary + F11 ratchet guard.
     # 2026-07-06: raised 2480 -> 2500 for N8 verify (quickstart + emergence reference unit tests).
-    assert count <= 2500, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-06: raised 2500 -> 2510 for N9 verify API audit headers (test_n9_verify_api.py).
+    assert count <= 2510, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

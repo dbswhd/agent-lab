@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -85,7 +84,11 @@ def _api_startup() -> None:
 
 def _api_shutdown() -> None:
     from agent_lab.background_tasks import get_manager
-    from agent_lab.kimi.daimon_supervisor import _keep_daimon_on_api_shutdown, detach_owned_daimon, shutdown_owned_daimon
+    from agent_lab.kimi.daimon_supervisor import (
+        _keep_daimon_on_api_shutdown,
+        detach_owned_daimon,
+        shutdown_owned_daimon,
+    )
 
     try:
         get_manager().shutdown()

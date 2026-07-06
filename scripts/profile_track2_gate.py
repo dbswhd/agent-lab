@@ -226,12 +226,8 @@ def profile_repo(
     if repo_root != REPO_ROOT:
         notes.append("tiny fixture root (tests only)")
     if repo_map_ms > repo_tree_ms * 10:
-        notes.append(
-            f"repo_map {repo_map_ms:.1f}ms vs repo_tree {repo_tree_ms:.1f}ms — flag-on context cost driver"
-        )
-    notes.append(
-        f"mock turn uses {DEFAULT_AGENT_STUB_MS:.0f}ms agent stub (no real LLM/subprocess)"
-    )
+        notes.append(f"repo_map {repo_map_ms:.1f}ms vs repo_tree {repo_tree_ms:.1f}ms — flag-on context cost driver")
+    notes.append(f"mock turn uses {DEFAULT_AGENT_STUB_MS:.0f}ms agent stub (no real LLM/subprocess)")
 
     if gate_passed:
         rec = (
@@ -313,8 +309,7 @@ def main(argv: list[str] | None = None) -> int:
     report = profile_repo(root, repeat=max(1, args.repeat))
     report.gate_threshold_pct = args.gate_pct
     report.gate_passed = (
-        report.share_of_context_build_pct >= args.gate_pct
-        or report.share_of_mock_turn_pct >= args.gate_pct
+        report.share_of_context_build_pct >= args.gate_pct or report.share_of_mock_turn_pct >= args.gate_pct
     )
     if report.gate_passed:
         report.recommendation = (

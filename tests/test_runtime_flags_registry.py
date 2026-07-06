@@ -59,8 +59,7 @@ def test_f10_flag_registry_symmetric_difference_zero_after_allowlist() -> None:
     unexpected_registry = sorted(registry_only - registry_allow)
 
     assert unexpected_code == [], (
-        "AGENT_LAB_* in src/agent_lab but not FLAG_REGISTRY (register or allowlist): "
-        + ", ".join(unexpected_code)
+        "AGENT_LAB_* in src/agent_lab but not FLAG_REGISTRY (register or allowlist): " + ", ".join(unexpected_code)
     )
     assert unexpected_registry == [], (
         "FLAG_REGISTRY entries absent from src/agent_lab scan (fix name or allowlist): "
@@ -70,12 +69,11 @@ def test_f10_flag_registry_symmetric_difference_zero_after_allowlist() -> None:
     stale_code_allow = sorted(code_allow - code_only)
     stale_registry_allow = sorted(registry_allow - registry_only)
 
-    assert stale_code_allow == [], (
-        "Remove from code_not_registry_allowlist (now registered): " + ", ".join(stale_code_allow)
+    assert stale_code_allow == [], "Remove from code_not_registry_allowlist (now registered): " + ", ".join(
+        stale_code_allow
     )
-    assert stale_registry_allow == [], (
-        "Remove from registry_not_code_allowlist (now referenced in code): "
-        + ", ".join(stale_registry_allow)
+    assert stale_registry_allow == [], "Remove from registry_not_code_allowlist (now referenced in code): " + ", ".join(
+        stale_registry_allow
     )
 
     assert code_only == code_allow

@@ -7,8 +7,6 @@ import os
 import pytest
 
 from agent_lab.role_plan import (
-    RoleSpec,
-    _ROLES,
     agent_subset_for_route,
     apply_preset_role_overrides,
     persona_for_agent,
@@ -22,6 +20,7 @@ from agent_lab.topic_router import CategoryRoute, resolve_topic_route
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
+
 def _route(category: str) -> CategoryRoute:
     """Build a minimal CategoryRoute for the given category."""
     from agent_lab.topic_router import _build_route
@@ -33,6 +32,7 @@ AGENTS = ["cursor", "codex", "claude"]
 
 
 # ── 1. resolve_role_plan ─────────────────────────────────────────────────────
+
 
 class TestResolveRolePlan:
     def test_quick_returns_empty(self):
@@ -75,9 +75,7 @@ class TestResolveRolePlan:
 
     def test_result_is_deterministic(self):
         r = _route("standard")
-        assert resolve_role_plan(route=r, agents=AGENTS) == resolve_role_plan(
-            route=r, agents=AGENTS
-        )
+        assert resolve_role_plan(route=r, agents=AGENTS) == resolve_role_plan(route=r, agents=AGENTS)
 
     def test_unknown_agent_skipped(self):
         roles = resolve_role_plan(route=_route("standard"), agents=["cursor", "unknownbot"])
@@ -122,6 +120,7 @@ class TestRolePolicy:
 
 # ── 2. agent_subset_for_route ─────────────────────────────────────────────────
 
+
 class TestAgentSubsetForRoute:
     def test_quick_returns_single_agent(self):
         subset = agent_subset_for_route(_route("quick"), AGENTS)
@@ -147,6 +146,7 @@ class TestAgentSubsetForRoute:
 
 
 # ── 3. persona text ──────────────────────────────────────────────────────────
+
 
 class TestPersonaText:
     def test_proposer_persona_non_empty(self):
@@ -185,6 +185,7 @@ class TestPersonaText:
 
 
 # ── 4. guidance seam ─────────────────────────────────────────────────────────
+
 
 class TestGuidanceSeam:
     """build_guidance_parts injects correct persona per agent."""
@@ -233,10 +234,10 @@ class TestGuidanceSeam:
 
 # ── 5. escalation resets roles ───────────────────────────────────────────────
 
+
 class TestEscalationRoleReset:
     def test_escalation_clears_turn_roles(self):
         """_maybe_escalate가 _turn_roles를 {} 로 리셋하는지 확인."""
-        from unittest.mock import MagicMock
 
         from agent_lab.room.consensus_rounds import run_consensus_agent_rounds
 
@@ -265,6 +266,7 @@ class TestEscalationRoleReset:
 
 
 # ── 6. role_catalog ───────────────────────────────────────────────────────────
+
 
 class TestRoleCatalog:
     def test_catalog_has_five_roles(self):
@@ -311,6 +313,7 @@ class TestSupervisorDelegator:
 
 
 # ── 8. CategoryRoute new fields ───────────────────────────────────────────────
+
 
 class TestCategoryRouteFields:
     def test_agent_subset_default_none(self):

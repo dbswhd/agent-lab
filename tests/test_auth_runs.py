@@ -356,7 +356,7 @@ def test_probe_claude_status_uses_claude_bin(monkeypatch: pytest.MonkeyPatch, tm
 
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "0")
     fake_bin = tmp_path / "claude"
-    fake_bin.write_text("#!/bin/sh\necho '{\"loggedIn\": false, \"authMethod\": \"none\"}'\n", encoding="utf-8")
+    fake_bin.write_text('#!/bin/sh\necho \'{"loggedIn": false, "authMethod": "none"}\'\n', encoding="utf-8")
     fake_bin.chmod(0o755)
     monkeypatch.setenv("CLAUDE_BIN", str(fake_bin))
 

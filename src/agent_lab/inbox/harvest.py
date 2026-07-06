@@ -536,9 +536,7 @@ def _now_iso_verified_supersede() -> str:
 # --- sync pause (M4) — pending Human-direction question pauses debate rounds ----
 
 DISCUSS_PAUSE_TRIGGERS = frozenset({"T-Q0", "T-Q2"})
-_HUMAN_QUESTION_SOURCES = frozenset(
-    {"manual", "mission_circuit_break", "mcp_ask_human", "gateway"}
-)
+_HUMAN_QUESTION_SOURCES = frozenset({"manual", "mission_circuit_break", "mcp_ask_human", "gateway"})
 
 
 def inbox_question_pauses_discuss(item: dict[str, Any]) -> bool:

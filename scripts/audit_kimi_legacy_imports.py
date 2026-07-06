@@ -11,9 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SCAN_ROOTS = (ROOT / "src" / "agent_lab", ROOT / "app", ROOT / "tests", ROOT / "scripts")
 
-LEGACY_RE = re.compile(
-    r"\b(?:from|import)\s+agent_lab\.kimi_[a-z_]+|\bagent_lab\.kimi_[a-z_]+\b"
-)
+LEGACY_RE = re.compile(r"\b(?:from|import)\s+agent_lab\.kimi_[a-z_]+|\bagent_lab\.kimi_[a-z_]+\b")
 
 
 def collect_violations() -> list[dict[str, str | int]]:

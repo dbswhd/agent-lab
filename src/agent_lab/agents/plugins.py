@@ -39,9 +39,7 @@ class AgentPlugin:
     def model_label(self) -> str:
         mod = self._mod()
         if self.id in ("codex", "claude"):
-            cli = importlib.import_module(
-                "agent_lab.codex.cli" if self.id == "codex" else "agent_lab.claude.cli"
-            )
+            cli = importlib.import_module("agent_lab.codex.cli" if self.id == "codex" else "agent_lab.claude.cli")
             return cli.model_label()
         return mod.model_label()
 

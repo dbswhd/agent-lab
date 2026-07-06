@@ -11,7 +11,6 @@ from __future__ import annotations
 import argparse
 import ast
 import json
-import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -143,8 +142,7 @@ def collect_graph() -> dict:
             for edge in sorted(edges, key=lambda e: (e.source, e.target))
         ],
         "external_importers": {
-            target: sorted(set(importers))
-            for target, importers in sorted(external_importers.items())
+            target: sorted(set(importers)) for target, importers in sorted(external_importers.items())
         },
         "leaf_modules": leaf_modules,
         "hub_modules": [{"module": name, "out_degree": out_degree[name]} for name in hub_modules],

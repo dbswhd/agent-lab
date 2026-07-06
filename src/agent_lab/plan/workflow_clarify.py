@@ -5,17 +5,15 @@ from pathlib import Path
 from typing import Any
 
 from agent_lab.plan.workflow_state import (
-    PLAN_CLARIFY_PHASES,
     _mirror_verified_loop_status,
     _now,
     get_plan_workflow,
-    is_plan_workflow_active,
-    plan_workflow_phase,
     plan_workflow_wants_inbox_mcp,
     plan_fsm_skill_first_enabled,
 )
 from agent_lab.run.meta import patch_run_meta, read_run_meta
 from agent_lab.run.state import RunStateLike
+
 
 def build_clarify_context_block(folder: Path) -> str:
     from agent_lab.human_inbox import inbox_items
@@ -154,8 +152,7 @@ def build_plan_clarify_agent_block(folder: Path, *, agent_id: str, run_meta: Run
     owner = inbox_gate_owner(run_meta)
     if str(agent_id or "").strip().lower() != owner:
         return (
-            "Plan CLARIFY: only the inbox gate owner posts `ask_human`. "
-            "Continue peer analysis; do not call ask_human."
+            "Plan CLARIFY: only the inbox gate owner posts `ask_human`. Continue peer analysis; do not call ask_human."
         )
     run = read_run_meta(folder)
     if has_pending_question(run):
@@ -166,7 +163,7 @@ def build_plan_clarify_agent_block(folder: Path, *, agent_id: str, run_meta: Run
         if pending:
             opts = pending.get("options") or []
             opt_lines = ", ".join(
-                f'{o.get("id")}:{o.get("label")}' for o in opts if isinstance(o, dict) and o.get("label")
+                f"{o.get('id')}:{o.get('label')}" for o in opts if isinstance(o, dict) and o.get("label")
             )
             return (
                 "## Plan CLARIFY — Human Inbox pending\n"

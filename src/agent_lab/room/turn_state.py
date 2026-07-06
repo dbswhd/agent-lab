@@ -167,7 +167,7 @@ def derive_turn_state(
         if ref:
             line += f" ({ref})"
         decisions.append(line)
-        for agent_id in (consensus.get("agents_consented") or [] if consensus else []):
+        for agent_id in consensus.get("agents_consented") or [] if consensus else []:
             decisions.append(f"{agent_label(str(agent_id))} ENDORSE")
         decisions = decisions[:_MAX_DECISIONS]
 
@@ -234,7 +234,8 @@ def render_turn_state_block(state: dict[str, Any] | TurnState | None) -> str:
         lines.append(f"consensus: {ts.consensus_status}")
     if ts.recent_acts:
         act_bits = [
-            f"{agent_label(str(x.get('agent', '')))} {x.get('act')} {x.get('ref', '')}".strip() for x in ts.recent_acts[-4:]
+            f"{agent_label(str(x.get('agent', '')))} {x.get('act')} {x.get('ref', '')}".strip()
+            for x in ts.recent_acts[-4:]
         ]
         lines.append("최근 act: " + " | ".join(act_bits))
     if len(lines) == 1:

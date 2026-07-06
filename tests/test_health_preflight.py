@@ -233,9 +233,7 @@ def test_health_payload_includes_model_readiness() -> None:
     assert rows["codex"]["loop_ready"] is True
 
 
-def test_health_payload_sessions_dir_uses_active_root(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_health_payload_sessions_dir_uses_active_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import agent_lab.session as session_mod
     from agent_lab.agent.health import build_health_payload
 
@@ -248,9 +246,7 @@ def test_health_payload_sessions_dir_uses_active_root(
     assert payload["sessions_dir"] == str(expected)
 
 
-def test_health_payload_filters_to_kimi_work_composition(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_health_payload_filters_to_kimi_work_composition(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import agent_lab.app_config as app_config
     from agent_lab.room import models_config as rmc
     from agent_lab.agent.health import build_health_payload

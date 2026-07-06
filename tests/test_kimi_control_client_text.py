@@ -96,16 +96,19 @@ def test_assistant_reasoning_text_from_parts_and_top_level() -> None:
         "message": {"parts": [{"kind": "reasoning", "text": "추가 근거 수집: Cursor가 주장한"}]},
     }
     assert assistant_reasoning_text(payload) == "추가 근거 수집: Cursor가 주장한"
-    assert assistant_reasoning_text(
-        {
-            "message": {
-                "parts": [
-                    {"kind": "reasoning", "text": "hidden"},
-                    {"kind": "text", "text": "visible"},
-                ],
+    assert (
+        assistant_reasoning_text(
+            {
+                "message": {
+                    "parts": [
+                        {"kind": "reasoning", "text": "hidden"},
+                        {"kind": "text", "text": "visible"},
+                    ],
+                },
             },
-        },
-    ) == ""
+        )
+        == ""
+    )
 
 
 def test_thinking_activity_line_truncates_tail() -> None:

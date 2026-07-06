@@ -117,9 +117,7 @@ def _check_against_baseline(metrics: LayerCycleMetrics) -> list[str]:
     baseline = _load_baseline()
     failures: list[str] = []
     if metrics.module_level_edges > int(baseline["module_level_edges"]):
-        failures.append(
-            f"module_level_edges: {metrics.module_level_edges} > baseline {baseline['module_level_edges']}"
-        )
+        failures.append(f"module_level_edges: {metrics.module_level_edges} > baseline {baseline['module_level_edges']}")
     baseline_cycles = {tuple(row) for row in baseline.get("two_cycles", [])}
     actual_cycles = {tuple(row) for row in metrics.two_cycles}
     new_cycles = actual_cycles - baseline_cycles
@@ -151,10 +149,7 @@ def main() -> int:
         for line in failures:
             print(f"layer cycle check FAILED: {line}")
         return 1
-    print(
-        f"layer cycle check OK — edges={metrics.module_level_edges}, "
-        f"2-cycles={len(metrics.two_cycles)}"
-    )
+    print(f"layer cycle check OK — edges={metrics.module_level_edges}, 2-cycles={len(metrics.two_cycles)}")
     return 0
 
 

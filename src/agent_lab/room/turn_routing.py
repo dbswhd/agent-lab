@@ -7,7 +7,12 @@ from typing import Any
 
 from agent_lab.run.state import RunStateLike
 
-from agent_lab.topic_router import CategoryRoute, enrich_route_with_role_plan, resolve_active_subset, resolve_topic_route
+from agent_lab.topic_router import (
+    CategoryRoute,
+    enrich_route_with_role_plan,
+    resolve_active_subset,
+    resolve_topic_route,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,7 +53,7 @@ def apply_turn_role_plan(
     hint: Any | None = None,
 ) -> CategoryRoute:
     """Persist _turn_category + _turn_roles from route (after active list is final)."""
-    from agent_lab.feedback_advisor import SetupHint, advise_setup
+    from agent_lab.feedback_advisor import advise_setup
     from agent_lab.role_plan import apply_preset_role_overrides, resolve_role_plan
     from agent_lab.room.preset import resolve_role_policy
 
@@ -100,7 +105,7 @@ def finalize_turn_routing(
     hint: Any | None = None,
 ) -> TurnRoutingResult:
     """Expert pool subset (optional) + role plan for the current active roster."""
-    from agent_lab.feedback_advisor import SetupHint, advise_setup
+    from agent_lab.feedback_advisor import advise_setup
 
     pool = [str(a).strip().lower() for a in active if str(a).strip()]
     if hint is None:
@@ -120,10 +125,7 @@ def finalize_turn_routing(
                         "active": pool,
                         "task_type": route.task_type,
                         "category": route.category,
-                        "message": (
-                            f"Expert Pool — {route.task_type} 작업으로 감지: "
-                            f"{', '.join(pool)} 우선 참여."
-                        ),
+                        "message": (f"Expert Pool — {route.task_type} 작업으로 감지: {', '.join(pool)} 우선 참여."),
                     },
                 )
 

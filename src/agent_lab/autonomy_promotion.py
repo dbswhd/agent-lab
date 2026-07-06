@@ -19,6 +19,7 @@ from agent_lab.autonomy_ladder import (
 )
 from agent_lab.diff_risk import assess_diff_risk
 from agent_lab.run.meta import patch_run_meta, read_run_meta
+from agent_lab.run.state import RunStateLike
 from agent_lab.trust_budget import get_trust_budget
 
 PromotionTransition = Literal["L0_to_L1", "L1_to_L2", "L2_to_L3"]
@@ -119,11 +120,7 @@ def evaluate_l1_to_l2(run_meta: Mapping[str, Any] | None) -> dict[str, Any]:
     budget_ok = total > 0 and remaining > 0
     ceiling = stored_autonomy_level(run_meta)  # type: ignore[arg-type]
     current = ceiling or infer_effective_autonomy_level(run_meta)  # type: ignore[arg-type]
-    eligible = (
-        missions >= L1_TO_L2_MISSIONS
-        and budget_ok
-        and _LEVEL_ORDER[current] < _LEVEL_ORDER["L2"]
-    )
+    eligible = missions >= L1_TO_L2_MISSIONS and budget_ok and _LEVEL_ORDER[current] < _LEVEL_ORDER["L2"]
     return {
         "transition": "L1_to_L2",
         "eligible": eligible,
@@ -173,7 +170,7 @@ def evaluate_promotions(run_meta: Mapping[str, Any] | None) -> dict[str, Any]:
 
 
 def _patch_promotion(folder: Path, mutator) -> dict[str, Any]:
-    def _apply(run: dict[str, Any]) -> dict[str, Any]:
+    def _apply(run: RunStateLike) -> RunStateLike:
         block = dict(_autonomy_block(run))
         promo = promotion_progress(run)
         mutator(promo)

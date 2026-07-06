@@ -17,9 +17,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, cast
 
-KIMI_WORK_BRIDGE_FALLBACK = (
-    "Kimi Work 제외 후 KIMI API / Local 로 대체하거나 Kimi 앱·daimon 재연결 후 재시도"
-)
+KIMI_WORK_BRIDGE_FALLBACK = "Kimi Work 제외 후 KIMI API / Local 로 대체하거나 Kimi 앱·daimon 재연결 후 재시도"
 KIMI_WORK_BRIDGE_REMEDIATION = (
     "Kimi 앱에서 Work 최초 로그인(또는 토큰 만료 시 재로그인)",
     "상태 패널에서 Kimi Work bridge 재연결",
@@ -428,7 +426,11 @@ def _mock_send_turn(
     if system and ("Structured envelope" in system or "Loop consensus envelope" in system):
         body = '{"act":"ENDORSE","refs":[],"confidence":0.9}\n' + body
     if system and system.strip():
-        body = f"{body}\n(system: {system.strip()[:60]}…)" if len(system.strip()) > 60 else f"{body}\n(system: {system.strip()})"
+        body = (
+            f"{body}\n(system: {system.strip()[:60]}…)"
+            if len(system.strip()) > 60
+            else f"{body}\n(system: {system.strip()})"
+        )
     if on_push:
         from agent_lab.room.sse_stream import chunk_text
 
@@ -475,7 +477,9 @@ def _mock_submit_tool_result(
     return {"status": "submitted", "toolCallId": tool_call_id}
 
 
-def _mock_rpc(method: str, params: dict[str, Any], *, on_push: Callable[[str, dict[str, Any]], None] | None = None) -> Any:
+def _mock_rpc(
+    method: str, params: dict[str, Any], *, on_push: Callable[[str, dict[str, Any]], None] | None = None
+) -> Any:
     if method == "capabilities.get":
         return _mock_capabilities_get()
     if method == "conversations.create":
@@ -564,7 +568,7 @@ def submit_conversation_tool_result(
     return cast(dict[str, Any], rpc("conversations.submitToolResult", params, on_push=on_push))
 
 
-from agent_lab.kimi.work_push_payload import assistant_reply_text, push_message_parts
+from agent_lab.kimi.work_push_payload import assistant_reply_text
 
 
 async def _ws_rpc_batch_loop(

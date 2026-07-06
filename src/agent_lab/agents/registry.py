@@ -4,7 +4,7 @@ import os
 import threading
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Literal
+from typing import Any, Callable
 
 from agent_lab.agents.plugins import (
     AGENT_IDS,

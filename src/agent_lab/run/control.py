@@ -196,9 +196,7 @@ def register_child_process(proc: subprocess.Popen[Any], session_id: str | None =
 
 def unregister_child_process(proc: subprocess.Popen[Any]) -> None:
     with _children_lock:
-        _active_children[:] = [
-            (ref, sid) for ref, sid in _active_children if ref() is not None and ref() is not proc
-        ]
+        _active_children[:] = [(ref, sid) for ref, sid in _active_children if ref() is not None and ref() is not proc]
 
 
 def register_cursor_run(run: Any) -> None:

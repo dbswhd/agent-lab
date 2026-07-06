@@ -25,16 +25,10 @@ def session_folder(tmp_path: Path) -> Path:
 
 
 def test_demotion_creates_autonomy_inbox(session_folder: Path) -> None:
-    set_trust_budget(
-        session_folder, {"auto_merge_remaining": 1, "auto_merge_total": 1}
-    )
+    set_trust_budget(session_folder, {"auto_merge_remaining": 1, "auto_merge_total": 1})
     consume_auto_merge_budget(session_folder)
     run = read_run_meta(session_folder)
-    pending = [
-        item
-        for item in inbox_items(run)
-        if item.get("kind") == "autonomy" and item.get("status") == "pending"
-    ]
+    pending = [item for item in inbox_items(run) if item.get("kind") == "autonomy" and item.get("status") == "pending"]
     assert len(pending) == 1
     assert pending[0].get("source") == "autonomy_demotion"
     assert pending[0].get("harvest_key") == "autonomy:demotion:L2:L0"
@@ -66,9 +60,7 @@ def test_restore_ceiling_from_inbox(session_folder: Path) -> None:
     )
     run = read_run_meta(session_folder)
     pending = next(
-        item
-        for item in inbox_items(run)
-        if item.get("kind") == "autonomy" and item.get("status") == "pending"
+        item for item in inbox_items(run) if item.get("kind") == "autonomy" and item.get("status") == "pending"
     )
     resolve_inbox_item(
         session_folder,

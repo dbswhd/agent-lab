@@ -209,9 +209,7 @@ def _plan_workflow_post_agent_turn(
     # persisted (_turn_category / _turn_roles set by run_consensus_agent_rounds).
     # Capture them now and carry forward so the turn snapshot still records the
     # route category + role plan (feeds turn_metrics → outcomes ledger).
-    _ephemeral_turn = {
-        k: run_meta.get(k) for k in ("_turn_category", "_turn_roles") if run_meta.get(k) is not None
-    }
+    _ephemeral_turn = {k: run_meta.get(k) for k in ("_turn_category", "_turn_roles") if run_meta.get(k) is not None}
 
     plan_md = plan_before
     pw_force_scribe = False

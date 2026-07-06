@@ -32,7 +32,7 @@ def test_f9_hot_path_py_caps_in_baseline() -> None:
     by_path = {row["path"]: row["lines"] for row in baseline["hot_path_py_files"]}
     assert by_path == {
         "src/agent_lab/plan/execute.py": 88,
-        "src/agent_lab/plan/workflow.py": 115,
+        "src/agent_lab/plan/workflow.py": 114,
         "src/agent_lab/room/turn_flow.py": 21,
     }
 
@@ -106,9 +106,7 @@ def test_room_facade_no_underscore_exports() -> None:
                     unders = [
                         elt.value
                         for elt in names
-                        if isinstance(elt, ast.Constant)
-                        and isinstance(elt.value, str)
-                        and elt.value.startswith("_")
+                        if isinstance(elt, ast.Constant) and isinstance(elt.value, str) and elt.value.startswith("_")
                     ]
                     assert unders == [], f"underscore exports remain: {unders}"
 

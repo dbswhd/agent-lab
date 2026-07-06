@@ -12,6 +12,7 @@ from agent_lab.room.session_persist import _write_session_files
 from agent_lab.room.turn_flow_support import _checkpoint_chat, emit_mention_roster_error
 from agent_lab.room.turn_meta import _delegate_run_meta_patch, _turn_snapshot
 
+
 def _abort_mention_roster_error(
     folder: Path | None,
     *,
@@ -28,7 +29,6 @@ def _abort_mention_roster_error(
     turn_profile: str | None,
 ) -> tuple[list[ChatMessage], str]:
     """Persist a failed turn when explicit @-mentions are outside the session roster."""
-    from agent_lab.room.turn_flow_support import emit_mention_roster_error
 
     emit_mention_roster_error(on_event, message)
     messages.append(

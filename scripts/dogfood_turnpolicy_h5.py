@@ -16,12 +16,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT / "src") not in sys.path:
     sys.path.insert(0, str(ROOT / "src"))
 
-DEFAULT_SOURCE = (
-    ROOT / "sessions" / "2026-06-28-name-turnpolicy-wave-f-overview-plan-onoffcompos"
-)
-H5_MESSAGE = (
-    "Dogfood H5 — C9 fix 이후 session_metrics · CLARIFY inbox · synthesis lead 검증"
-)
+DEFAULT_SOURCE = ROOT / "sessions" / "2026-06-28-name-turnpolicy-wave-f-overview-plan-onoffcompos"
+H5_MESSAGE = "Dogfood H5 — C9 fix 이후 session_metrics · CLARIFY inbox · synthesis lead 검증"
 
 
 def _seed_session(folder: Path) -> None:
@@ -103,10 +99,7 @@ def _verify_kpis(
         m
         for m in h5_msgs
         if m.role == "agent"
-        and (
-            "prepare_turn_policy" in (m.content or "")
-            or "I am ready to act" in (m.content or "")
-        )
+        and ("prepare_turn_policy" in (m.content or "") or "I am ready to act" in (m.content or ""))
     ]
     report["h5_monologue_leaks"] = len(leaks)
     if leaks:

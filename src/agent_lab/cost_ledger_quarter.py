@@ -195,10 +195,7 @@ def maybe_demote_autonomy_for_quarter_over(
     run = read_run_meta(folder)
     ceiling = stored_autonomy_level(run)
     # Already at floor.
-    if ceiling == "L0" or (
-        ceiling is None
-        and public_autonomy_payload(run).get("display_level") == "L0"
-    ):
+    if ceiling == "L0" or (ceiling is None and public_autonomy_payload(run).get("display_level") == "L0"):
         return public_autonomy_payload(run)
     return record_autonomy_transition(
         folder,

@@ -48,10 +48,7 @@ def test_run_meta_baseline_matches_repo() -> None:
     """Keep baseline in sync — remove entries when run_meta[ usage is eliminated."""
     offenders = _files_with_run_meta_subscript()
     stale = sorted(_KNOWN_BASELINE - offenders)
-    assert not stale, (
-        "Stale F4 baseline entries (no longer use run_meta[): "
-        f"{stale}. Remove from _KNOWN_BASELINE."
-    )
+    assert not stale, f"Stale F4 baseline entries (no longer use run_meta[): {stale}. Remove from _KNOWN_BASELINE."
 
 
 def test_f4_allowlist_is_empty() -> None:

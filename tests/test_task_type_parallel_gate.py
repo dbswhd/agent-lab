@@ -84,49 +84,25 @@ def test_sequential_task_types_constant() -> None:
     assert "discuss" not in _SEQUENTIAL_TASK_TYPES
 
 
-def test_peer_review_sequential_path(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Any
-) -> None:
+def test_peer_review_sequential_path(monkeypatch: pytest.MonkeyPatch, tmp_path: Any) -> None:
     """peer_review skips the parallel batch split — only the ordering call remains."""
-    n = _run_with_split_counter(
-        monkeypatch, tmp_path, task_type="peer_review", agents=["cursor", "claude"]
-    )
-    assert n == 1, (
-        f"peer_review: expected 1 team_r1_split call (ordering only), got {n}"
-    )
+    n = _run_with_split_counter(monkeypatch, tmp_path, task_type="peer_review", agents=["cursor", "claude"])
+    assert n == 1, f"peer_review: expected 1 team_r1_split call (ordering only), got {n}"
 
 
-def test_cold_critic_sequential_path(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Any
-) -> None:
+def test_cold_critic_sequential_path(monkeypatch: pytest.MonkeyPatch, tmp_path: Any) -> None:
     """cold_critic also skips the parallel batch split."""
-    n = _run_with_split_counter(
-        monkeypatch, tmp_path, task_type="cold_critic", agents=["claude"]
-    )
-    assert n == 1, (
-        f"cold_critic: expected 1 team_r1_split call (ordering only), got {n}"
-    )
+    n = _run_with_split_counter(monkeypatch, tmp_path, task_type="cold_critic", agents=["claude"])
+    assert n == 1, f"cold_critic: expected 1 team_r1_split call (ordering only), got {n}"
 
 
-def test_consensus_parallel_path(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Any
-) -> None:
+def test_consensus_parallel_path(monkeypatch: pytest.MonkeyPatch, tmp_path: Any) -> None:
     """consensus goes through the parallel batch split (ordering + lead-last split)."""
-    n = _run_with_split_counter(
-        monkeypatch, tmp_path, task_type="consensus", agents=["cursor", "claude"]
-    )
-    assert n == 2, (
-        f"consensus: expected 2 team_r1_split calls (ordering + batch split), got {n}"
-    )
+    n = _run_with_split_counter(monkeypatch, tmp_path, task_type="consensus", agents=["cursor", "claude"])
+    assert n == 2, f"consensus: expected 2 team_r1_split calls (ordering + batch split), got {n}"
 
 
-def test_no_task_type_parallel_path(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Any
-) -> None:
+def test_no_task_type_parallel_path(monkeypatch: pytest.MonkeyPatch, tmp_path: Any) -> None:
     """Omitting task_type preserves round-1 parallel behaviour."""
-    n = _run_with_split_counter(
-        monkeypatch, tmp_path, task_type=None, agents=["cursor", "claude"]
-    )
-    assert n == 2, (
-        f"no task_type: expected 2 team_r1_split calls (backward-compat parallel), got {n}"
-    )
+    n = _run_with_split_counter(monkeypatch, tmp_path, task_type=None, agents=["cursor", "claude"])
+    assert n == 2, f"no task_type: expected 2 team_r1_split calls (backward-compat parallel), got {n}"

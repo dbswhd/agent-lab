@@ -42,10 +42,7 @@ def _print_table(payload: dict) -> None:
         doc = "" if row.get("documented", True) else " (undocumented)"
         profiles = row.get("profiles") or []
         profile_col = ",".join(profiles) if profiles else "—"
-        print(
-            f"{mark} {name:<38} {category:<12} {profile_col:<28} "
-            f"{effective:<16} {value_col}{doc}"
-        )
+        print(f"{mark} {name:<38} {category:<12} {profile_col:<28} {effective:<16} {value_col}{doc}")
 
 
 def main() -> int:
@@ -69,10 +66,7 @@ def main() -> int:
     else:
         _print_table(payload)
         if payload.get("undocumented_count") and not args.profile:
-            print(
-                f"\n* = set in environment · "
-                f"{payload['undocumented_count']} undocumented AGENT_LAB_* var(s) in env"
-            )
+            print(f"\n* = set in environment · {payload['undocumented_count']} undocumented AGENT_LAB_* var(s) in env")
         else:
             print("\n* = set in environment · profiles column = N2 run-profile ownership")
     return 0

@@ -113,11 +113,7 @@ def _score_outcome(outcome: dict[str, Any]) -> float:
     accepted_challenges = int(challenge_res.get("accepted") or 0)
     score += accepted_challenges * 0.5
     pure_rate, pure_counts = pure_challenge_yield_from_resolution(outcome.get("objection_resolution") or {})
-    if (
-        pure_rate is not None
-        and pure_rate < _PURE_CHALLENGE_YIELD_LOW
-        and int(pure_counts.get("total") or 0) >= 1
-    ):
+    if pure_rate is not None and pure_rate < _PURE_CHALLENGE_YIELD_LOW and int(pure_counts.get("total") or 0) >= 1:
         roles = outcome.get("roles") or {}
         if any(str(r) == "critic" for r in roles.values()):
             score += _CRITIC_YIELD_BOOST

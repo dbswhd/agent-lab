@@ -102,11 +102,7 @@ def pure_challenge_yield_from_resolution(
 
 def pure_challenge_yield(run_meta: dict[str, Any]) -> tuple[float | None, dict[str, int]]:
     """CHALLENGE-only objections that were accepted — excludes BLOCK from denominator."""
-    rows = [
-        o
-        for o in list_objections(run_meta)
-        if str(o.get("act") or "").strip().upper() == "CHALLENGE"
-    ]
+    rows = [o for o in list_objections(run_meta) if str(o.get("act") or "").strip().upper() == "CHALLENGE"]
     counts = {
         "total": len(rows),
         "resolved_accepted": sum(1 for o in rows if o.get("status") == "resolved_accepted"),

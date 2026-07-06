@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "agent_lab_root_py_files": 116,
+  "agent_lab_root_py_files": 117,
   "agent_lab_subpackages": [
     "agent",
     "agents",
@@ -46,8 +46,8 @@
     "claude_": 0
   },
   "tracked_pycache_files": 0,
-  "makefile_lines": 391,
-  "makefile_targets": 84,
+  "makefile_lines": 400,
+  "makefile_targets": 87,
   "large_tsx_files": [
     {
       "path": "web/src/components/PlanExecutePanel.tsx",
@@ -81,7 +81,7 @@
     },
     {
       "path": "src/agent_lab/plan/workflow.py",
-      "lines": 115
+      "lines": 114
     },
     {
       "path": "src/agent_lab/room/turn_flow.py",

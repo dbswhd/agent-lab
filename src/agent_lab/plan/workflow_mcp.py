@@ -8,11 +8,11 @@ from typing import Any
 from agent_lab.plan.workflow_state import (
     MCP_ADVANCE_TARGETS,
     PLAN_FSM_ORDER,
-    get_plan_workflow,
     plan_workflow_phase,
     set_plan_workflow_phase,
 )
 from agent_lab.run.meta import read_run_meta
+
 
 def mcp_advance_plan_workflow_phase(
     folder: Path,
@@ -81,6 +81,7 @@ def mcp_run_clarity_interview(
         payload["notice"] = "clarity_threshold_met"
         return payload
     from agent_lab.plan.workflow_clarify import clarity_gate_questions
+
     hold = clarity_gate_questions(folder, read_run_meta(folder))
     payload["hold"] = hold
     if hold and hold.get("clarity_pending"):

@@ -307,7 +307,6 @@ def persist_clarifier_interview(
     cross-source pending replacement is blocked. Callers (room SSE) must render from the
     returned ``interview``, never from the candidate they passed in.
     """
-    from pathlib import Path
 
     path = folder
     outcome: dict[str, Any] = {"interview": interview, "persisted": True, "reason": "new"}

@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from agent_lab.run.state import RunState, RunStateLike
+from agent_lab.run.state import RunStateLike
 
 PLAN_PEER_REVIEW_GUIDANCE = (
     "Plan peer review: read plan.md only. Do not propose code changes. "
@@ -34,6 +34,8 @@ PLAN_FRESH_EYES_GUIDANCE = (
     "주장 1건을 골라 CHALLENGE 또는 AMEND envelope로 제시하세요. 정말 문제가 없으면 근거를 한 줄로 "
     "밝히고 ENDORSE 하세요. 코드 변경은 제안하지 마세요."
 )
+
+
 def run_plan_peer_review_round(
     folder: Path,
     *,

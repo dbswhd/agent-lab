@@ -363,12 +363,8 @@ def _multidir_workspace(tmp_path: Path) -> Path:
     (root / "src" / "pkg" / "entry.py").write_text(
         "from lib.util import compute\n\n\ndef start():\n    return compute(1)\n", encoding="utf-8"
     )
-    (root / "src" / "lib" / "util.py").write_text(
-        "def compute(x):\n    return x * 2\n", encoding="utf-8"
-    )
-    (root / "src" / "far" / "unrelated.py").write_text(
-        "def noise():\n    return 0\n", encoding="utf-8"
-    )
+    (root / "src" / "lib" / "util.py").write_text("def compute(x):\n    return x * 2\n", encoding="utf-8")
+    (root / "src" / "far" / "unrelated.py").write_text("def noise():\n    return 0\n", encoding="utf-8")
     return root
 
 

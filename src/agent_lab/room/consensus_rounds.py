@@ -114,8 +114,7 @@ def run_consensus_agent_rounds(
                         "budget_tier": _budget_tier,
                         "active": [str(a) for a in active],
                         "message": (
-                            f"Model Policy — 비용 상한 {_effective_tier}: "
-                            f"{', '.join(str(a) for a in active)} 참여."
+                            f"Model Policy — 비용 상한 {_effective_tier}: {', '.join(str(a) for a in active)} 참여."
                         ),
                     },
                 )
@@ -916,9 +915,7 @@ def run_consensus_agent_rounds(
                                 thread_all,
                                 [str(a) for a in active],
                             )
-                            tasks_ready, task_blockers = consensus_tasks_ready(
-                                run_meta, [str(a) for a in active]
-                            )
+                            tasks_ready, task_blockers = consensus_tasks_ready(run_meta, [str(a) for a in active])
                         max_r = max((m.parallel_round or 1) for m in all_replies)
 
                 if not tasks_ready:

@@ -793,20 +793,13 @@ def _run_claude_stream(
                 proc.kill()
                 proc.wait(timeout=5)
                 raise subprocess.TimeoutExpired(cmd, timeout)
-            if (
-                idle_timeout is not None
-                and not response_started
-                and now - last_activity_at >= idle_timeout
-            ):
+            if idle_timeout is not None and not response_started and now - last_activity_at >= idle_timeout:
                 combined = "".join(stderr_parts)
                 if _is_usage_limit_detail(combined):
                     proc.kill()
                     proc.wait(timeout=5)
                     detail = _format_exec_error(combined, result_text)
-                    raise RuntimeError(
-                        "claude -p failed (usage limit)"
-                        + (f": {detail}" if detail else "")
-                    )
+                    raise RuntimeError("claude -p failed (usage limit)" + (f": {detail}" if detail else ""))
             if on_activity and now - last_heartbeat_at >= heartbeat_interval:
                 idle_for = now - last_activity_at
                 if not response_started or idle_for >= heartbeat_interval:
@@ -826,10 +819,7 @@ def _run_claude_stream(
                         proc.kill()
                         proc.wait(timeout=5)
                         detail = _format_exec_error(combined, result_text)
-                        raise RuntimeError(
-                            "claude -p failed (usage limit)"
-                            + (f": {detail}" if detail else "")
-                        )
+                        raise RuntimeError("claude -p failed (usage limit)" + (f": {detail}" if detail else ""))
                     if _is_auth_failure(err_chunk):
                         proc.kill()
                         proc.wait(timeout=5)

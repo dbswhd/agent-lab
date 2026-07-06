@@ -24,8 +24,10 @@ def _row(
     repair: int = 0,
     blocks: int = 0,
     accepted_challenges: int = 0,
+    phase: str = "execute",
 ) -> dict:
     row = {
+        "phase": phase,
         "category": "standard",
         "final_verdict": verdict,
         "repair_attempts": repair,
@@ -54,7 +56,8 @@ def test_buckets_by_source_and_clean_pass(tmp_path: Path, monkeypatch: pytest.Mo
         [
             _row("default", verdict="fail"),  # baseline poor
             _row("default", verdict="pass", repair=2),
-            _row("history", verdict="pass", repair=0),  # exploit clean
+            _row("history", verdict="pass", repair=0),  # exploit clean, >= MIN_SAMPLE
+            _row("history", verdict="pass", repair=0),
             _row("history", verdict="pass", repair=0),
             _row("explore", verdict="pass", repair=0),
         ],
@@ -62,12 +65,14 @@ def test_buckets_by_source_and_clean_pass(tmp_path: Path, monkeypatch: pytest.Mo
     monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: ledger)
 
     rep = build_feedback_report(tmp_path)
-    assert rep["total"] == 5
+    assert rep["total"] == 6
     assert rep["by_source"]["default"]["n"] == 2
     assert rep["by_source"]["default"]["clean_pass_rate"] == 0.0
     assert rep["by_source"]["history"]["clean_pass_rate"] == 1.0
-    # history clean-pass beats default baseline
+    # history clean-pass beats default baseline (n=3 meets MIN_SAMPLE)
     assert rep["advisor_lift"]["history_vs_default"] == 1.0
+    # explore has only 1 sample — below MIN_SAMPLE, not a real signal yet
+    assert rep["advisor_lift"]["explore_vs_default"] is None
 
 
 def test_legacy_rows_without_source_fold_into_default(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -79,6 +84,29 @@ def test_legacy_rows_without_source_fold_into_default(tmp_path: Path, monkeypatc
     rep = build_feedback_report(tmp_path)
     assert rep["by_source"]["default"]["n"] == 2
     assert rep["by_source"]["history"]["n"] == 0
+
+
+def test_turn_and_legacy_rows_excluded_from_clean_pass(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """turn-phase and legacy (no phase field) rows never carry a real verdict —
+    they must count toward ``total`` but not dilute clean_pass_rate/by_source."""
+    ledger = tmp_path / ".agent-lab" / "outcomes.jsonl"
+    legacy_row = _row("history", verdict="")
+    del legacy_row["phase"]  # pre-phase-field ledger rows never have this key
+    _write_ledger(
+        ledger,
+        [
+            _row("history", verdict="pass"),  # the one real execute-phase sample
+            _row("history", verdict="", phase="turn"),
+            legacy_row,
+        ],
+    )
+    monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: ledger)
+
+    rep = build_feedback_report(tmp_path)
+    assert rep["total"] == 3
+    assert rep["verdict_eligible_total"] == 1
+    assert rep["by_source"]["history"]["n"] == 1
+    assert rep["by_source"]["history"]["clean_pass_rate"] == 1.0
 
 
 def test_escalation_rate_by_level(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

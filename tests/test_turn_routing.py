@@ -42,9 +42,7 @@ def run_meta() -> dict:
 def test_prepare_turn_routing_sets_roles_and_topology(monkeypatch, run_meta):
     monkeypatch.setenv("AGENT_LAB_TOPIC_ROUTER", "1")
     monkeypatch.setenv("AGENT_LAB_ROOM_ROLES", "1")
-    topic = (
-        "로그인 API 구현해줘 — FastAPI 엔드포인트와 JWT 토큰 검증 로직을 추가해야 합니다."
-    )
+    topic = "로그인 API 구현해줘 — FastAPI 엔드포인트와 JWT 토큰 검증 로직을 추가해야 합니다."
     result = prepare_turn_routing(
         topic,
         run_meta,
@@ -93,9 +91,7 @@ def test_parallel_discuss_persists_topology_and_roles(monkeypatch: pytest.Monkey
 
     patch_call_agent_reply(monkeypatch, fake_call_agent)
 
-    topic = (
-        "로그인 API 구현해줘 — FastAPI 엔드포인트와 JWT 토큰 검증 로직을 추가해야 합니다."
-    )
+    topic = "로그인 API 구현해줘 — FastAPI 엔드포인트와 JWT 토큰 검증 로직을 추가해야 합니다."
     folder, _messages, _plan = room.run_room(
         topic,
         agents=["cursor", "codex", "claude"],

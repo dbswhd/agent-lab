@@ -19,7 +19,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from agent_lab.feedback_advisor import _score_outcome
+from agent_lab.feedback_advisor import MIN_SAMPLE, _score_outcome
 
 # Rows written before S1.5 (no advisor_source) fold into this baseline bucket.
 _BASELINE_SOURCE = "default"
@@ -48,6 +48,18 @@ def _load_rows(root: Path | None) -> list[dict[str, Any]]:
         if isinstance(obj, dict):
             rows.append(obj)
     return rows
+
+
+def _is_verdict_eligible(row: dict[str, Any]) -> bool:
+    """Only ``phase == "execute"`` rows carry a real Oracle verdict.
+
+    ``turn``-phase and legacy (pre-phase-field) rows are written mid-discussion,
+    before execute/verify has run — ``final_verdict`` is structurally always
+    null on them (see ``outcome_harvester.record_execute_outcome`` docstring).
+    Mixing them into clean-pass buckets pins the rate near zero regardless of
+    real mission quality, so they're excluded from quality aggregation here.
+    """
+    return str(row.get("phase") or "") == "execute"
 
 
 def _is_clean_pass(row: dict[str, Any]) -> bool:
@@ -122,28 +134,36 @@ def build_feedback_report(root: Path | None = None) -> dict[str, Any]:
     default baseline). Empty ledger → ``{"total": 0, ...}`` with zeroed buckets.
     """
     rows = _load_rows(root)
+    verdict_rows = [row for row in rows if _is_verdict_eligible(row)]
     by_source: dict[str, list[dict[str, Any]]] = {s: [] for s in _SOURCES}
     by_source_category: dict[str, dict[str, list[dict[str, Any]]]] = {s: {} for s in _SOURCES}
 
-    for row in rows:
+    for row in verdict_rows:
         src = _source_of(row)
         by_source[src].append(row)
         cat = str(row.get("category") or "")
         by_source_category[src].setdefault(cat, []).append(row)
 
     source_stats = {s: _bucket_stats(by_source[s]) for s in _SOURCES}
-    source_category_stats = {
-        s: {cat: _bucket_stats(rs) for cat, rs in by_source_category[s].items()} for s in _SOURCES
-    }
+    source_category_stats = {s: {cat: _bucket_stats(rs) for cat, rs in by_source_category[s].items()} for s in _SOURCES}
 
     baseline_clean = source_stats[_BASELINE_SOURCE]["clean_pass_rate"]
+
+    def _lift(source: str) -> float | None:
+        """None below MIN_SAMPLE — an empty/near-empty bucket isn't a real signal
+        (see NORTH-STAR §1 S1 관측 절차: n < MIN_SAMPLE means not yet "표본 충족")."""
+        if source_stats[source]["n"] < MIN_SAMPLE:
+            return None
+        return round(source_stats[source]["clean_pass_rate"] - baseline_clean, 4)
+
     advisor_lift = {
-        "history_vs_default": round(source_stats["history"]["clean_pass_rate"] - baseline_clean, 4),
-        "explore_vs_default": round(source_stats["explore"]["clean_pass_rate"] - baseline_clean, 4),
+        "history_vs_default": _lift("history"),
+        "explore_vs_default": _lift("explore"),
     }
 
     return {
         "total": len(rows),
+        "verdict_eligible_total": len(verdict_rows),
         "by_source": source_stats,
         "by_source_category": source_category_stats,
         "advisor_lift": advisor_lift,
@@ -155,7 +175,8 @@ def render_feedback_report(report: dict[str, Any]) -> str:
     """Render a compact text table from ``build_feedback_report`` output."""
     lines: list[str] = []
     total = report.get("total", 0)
-    lines.append(f"S1.5 feedback effect report — {total} outcome rows")
+    eligible = report.get("verdict_eligible_total", total)
+    lines.append(f"S1.5 feedback effect report — {total} outcome rows ({eligible} execute-phase / verdict-eligible)")
     lines.append("")
     lines.append(f"{'source':<10}{'n':>6}{'clean_pass':>12}{'repair':>9}{'block':>8}{'avg_score':>11}")
     lines.append("-" * 56)
@@ -167,9 +188,13 @@ def render_feedback_report(report: dict[str, Any]) -> str:
         )
     lines.append("")
     lift = report.get("advisor_lift", {})
+
+    def _fmt_lift(value: float | None) -> str:
+        return f"{value:+.2%}" if isinstance(value, float) else "— (below MIN_SAMPLE)"
+
     lines.append("advisor lift (clean-pass vs default baseline):")
-    lines.append(f"  history : {lift.get('history_vs_default', 0.0):+.2%}")
-    lines.append(f"  explore : {lift.get('explore_vs_default', 0.0):+.2%}")
+    lines.append(f"  history : {_fmt_lift(lift.get('history_vs_default'))}")
+    lines.append(f"  explore : {_fmt_lift(lift.get('explore_vs_default'))}")
     by_level = report.get("escalation_rate_by_level") or {}
     if by_level:
         lines.append("")

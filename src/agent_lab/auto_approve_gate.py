@@ -132,9 +132,7 @@ def mark_auto_approve_eligible(
     decision: AutoApproveDecision,
 ) -> None:
     """Stamp auto-approve metadata onto the execution dict (in-place)."""
-    deadline = (
-        datetime.now(timezone.utc) + timedelta(seconds=decision.timeout_sec)
-    ).replace(microsecond=0).isoformat()
+    deadline = (datetime.now(timezone.utc) + timedelta(seconds=decision.timeout_sec)).replace(microsecond=0).isoformat()
     execution["auto_approve_eligible"] = True
     execution["auto_approve_threshold"] = decision.threshold
     execution["auto_approve_risk_level"] = decision.risk_level

@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from agent_lab.run.state import RunState, RunStateLike
+from agent_lab.run.state import RunStateLike
 
 TRADING_MISSION_PLAN_REL = "artifacts/plans/trading-mission.md"
 LEGACY_TRADING_SECTION_MARKERS = (

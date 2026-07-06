@@ -119,7 +119,6 @@ def reconnect_kimi_work_bridge() -> dict[str, Any]:
     )
     from agent_lab.kimi.control_client import (
         invalidate_endpoint_cache,
-        kimi_work_bridge_failure_payload,
         probe_endpoint_ws,
     )
 
@@ -395,9 +394,7 @@ def build_health_payload(
         probe_preflight=probe_preflight,
         run_meta=run_meta,
     )
-    by_id = {
-        str(row.get("id") or "").strip().lower(): row for row in agents_all
-    }
+    by_id = {str(row.get("id") or "").strip().lower(): row for row in agents_all}
     agents = [by_id[pid] for pid in composition if pid in by_id]
     ready_ids = [a["id"] for a in agents if a.get("ready")]
 

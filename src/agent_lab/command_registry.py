@@ -309,6 +309,7 @@ def find_command(catalog: dict[str, Any], slash_or_name: str) -> dict[str, Any] 
 def _record_command_history(folder: Path | None, entry: dict[str, Any]) -> None:
     if folder is None:
         return
+
     def _append(run: dict[str, Any]) -> dict[str, Any]:
         history = list(run.get("command_history") or [])
         history.append(entry)
@@ -465,9 +466,7 @@ def execute_command(
                 if state == "logged_in":
                     res["note"] = f"{res['provider']}는 이미 로그인되어 있습니다."
                 else:
-                    res["auth_run"] = start_auth_run(
-                        str(res["provider"]), "login", session_folder=session_folder
-                    )
+                    res["auth_run"] = start_auth_run(str(res["provider"]), "login", session_folder=session_folder)
                     res["note"] = "CLI 로그인을 시작했습니다."
             except RuntimeError as exc:
                 return {"ok": False, "detail": str(exc), "command": cmd}
@@ -475,9 +474,7 @@ def execute_command(
             from agent_lab.auth_runs import start_auth_run
 
             try:
-                res["auth_run"] = start_auth_run(
-                    str(res["provider"]), "logout", session_folder=session_folder
-                )
+                res["auth_run"] = start_auth_run(str(res["provider"]), "logout", session_folder=session_folder)
             except RuntimeError as exc:
                 return {"ok": False, "detail": str(exc), "command": cmd}
         summary = _format_dynamic_room(name, res)

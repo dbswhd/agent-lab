@@ -132,7 +132,10 @@ def test_stacked_text_parts_with_header_revision_do_not_concat() -> None:
         "message": {
             "parts": [
                 {"kind": "text", "text": f"act: AMEND — 이\n{body}"},
-                {"kind": "text", "text": f'act: AMEND — 이previous 턴 CHALLENGE "링크 괴리"\n{body}'.replace("previous", "")},
+                {
+                    "kind": "text",
+                    "text": f'act: AMEND — 이previous 턴 CHALLENGE "링크 괴리"\n{body}'.replace("previous", ""),
+                },
             ],
         },
     }

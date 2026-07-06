@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from agent_lab.run.state import RunState, RunStateLike
+from agent_lab.run.state import RunState
 
 from agent_lab.plan.actions import PlanAction
 from agent_lab.plan.execute_merge import MergeConflict, merge_exec_branch
@@ -233,6 +233,8 @@ def _commit_repair_worktree(
         f"agent-lab: repair {action_key} attempt {attempt}",
     )
     return _run_git(worktree_path, "rev-parse", "HEAD").stdout.strip()
+
+
 def _resolve_reject(
     folder: Path,
     target: dict[str, Any],

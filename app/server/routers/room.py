@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 from agent_lab.agents.registry import AGENT_IDS
 from agent_lab.context.limits import all_limits_for_api
 from agent_lab.invoke import ensure_ready
-from agent_lab.model_policy import loop_readiness_failure, partition_loop_capable_agents
+from agent_lab.model_policy import partition_loop_capable_agents
 from agent_lab.room import (
     DEFAULT_AGENT_PARALLEL_ROUNDS,
     MAX_AGENT_PARALLEL_ROUNDS,
@@ -234,7 +234,6 @@ def room_modes() -> dict[str, Any]:
 
 @router.get("/room/presets")
 def room_presets() -> dict[str, Any]:
-    from agent_lab.room.preset import preset_catalog
 
     return preset_catalog()
 
@@ -658,9 +657,7 @@ async def create_room_run(
             from agent_lab.agent.roster import normalize_composition_order
             from agent_lab.run.meta import patch_run_meta
 
-            pinned = normalize_composition_order(
-                [str(tok) for tok in parsed_models if str(tok).strip()]
-            )
+            pinned = normalize_composition_order([str(tok) for tok in parsed_models if str(tok).strip()])
             if pinned:
                 patch_run_meta(folder, lambda meta: {**meta, "room_models": pinned})
 
@@ -813,10 +810,7 @@ async def create_room_run(
                     "room_preset": preset_norm,
                     "room_preset_promoted_from": preset_promoted_from,
                     "discuss_light": bool(
-                        mode_norm == "discuss"
-                        and not synthesize
-                        and not consensus_mode
-                        and parallel_rounds <= 1
+                        mode_norm == "discuss" and not synthesize and not consensus_mode and parallel_rounds <= 1
                     ),
                     "workspace_id": workspace_norm,
                     "session_template": template_norm,

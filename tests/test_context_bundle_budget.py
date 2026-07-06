@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -69,9 +68,7 @@ def test_cap_preserves_l_ref_object_identity():
 
     full: list[_Msg] = [_Msg("user", None, "hello")]
     for i in range(5):
-        full.append(
-            _Msg("system", None, f"{_SYNTHESIS_MARKER}\n\ns{i}", visibility="human")
-        )
+        full.append(_Msg("system", None, f"{_SYNTHESIS_MARKER}\n\ns{i}", visibility="human"))
     capped = cap_ephemeral_system_messages(full, max_keep=2)
     text, start, end = format_thread_numbered_slice(full, capped)
     assert "L" in text

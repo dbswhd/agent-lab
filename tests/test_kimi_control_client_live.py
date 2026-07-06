@@ -15,7 +15,6 @@ from agent_lab.kimi.control_client import (
     _live_rpc,
     discover_endpoint,
     invalidate_endpoint_cache,
-    mark_probe_ok,
     probe_control,
     rpc_batch,
     send_turn,
@@ -158,7 +157,7 @@ def test_probe_control_ok(monkeypatch: pytest.MonkeyPatch, fake_ws_server: Contr
         "agent_lab.kimi.daimon_supervisor.ensure_daimon",
         lambda: fake_ws_server,
     )
-    share = Path("/tmp/unused")
+    Path("/tmp/unused")
     monkeypatch.setattr("agent_lab.kimi.control_client.is_share_configured", lambda: True)
     bridge, err = probe_control()
     assert bridge == "ok"
@@ -329,7 +328,9 @@ def test_rpc_batch_single_ws(
     assert results[1]["conversationKey"] == "main:conversation:batch-test"
 
 
-def test_send_turn_retries_after_transient_error(monkeypatch: pytest.MonkeyPatch, fake_ws_server: ControlEndpoint) -> None:
+def test_send_turn_retries_after_transient_error(
+    monkeypatch: pytest.MonkeyPatch, fake_ws_server: ControlEndpoint
+) -> None:
     monkeypatch.delenv("AGENT_LAB_MOCK_AGENTS", raising=False)
     calls = {"n": 0}
     shutdowns: list[str] = []
@@ -352,4 +353,3 @@ def test_send_turn_retries_after_transient_error(monkeypatch: pytest.MonkeyPatch
     assert out == "live:retry"
     assert calls["n"] == 2
     assert shutdowns == ["yes"]
-

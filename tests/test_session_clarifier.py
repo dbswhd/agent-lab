@@ -164,9 +164,7 @@ def test_clarifier_answers_api(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
 
 
 @pytest.mark.skipif(not _HAS_TEST_CLIENT, reason="FastAPI test client unavailable")
-def test_clarifier_answers_api_complete_auto_advances(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_clarifier_answers_api_complete_auto_advances(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Submitting all answers with mark_complete=True must auto-advance CLARIFY→DRAFT."""
     monkeypatch.setattr("agent_lab.session.SESSIONS_DIR", tmp_path)
     monkeypatch.setattr("app.server.deps.SESSIONS_DIR", tmp_path)

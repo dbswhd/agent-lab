@@ -53,14 +53,10 @@ def test_quarter_budget_status_over(tmp_path: Path, monkeypatch: pytest.MonkeyPa
 
 def test_session_spent_usd() -> None:
     assert session_spent_usd(None) == 0.0
-    assert (
-        session_spent_usd({"cost_ledger": {"cumulative": {"usd": 1.25}}}) == 1.25
-    )
+    assert session_spent_usd({"cost_ledger": {"cumulative": {"usd": 1.25}}}) == 1.25
 
 
-def test_demote_autonomy_on_quarter_over(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_demote_autonomy_on_quarter_over(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_QUARTER_BUDGET_USD", "1")
     monkeypatch.setenv("AGENT_LAB_QUARTER_BUDGET_DEMOTE", "1")
     folder = tmp_path / "sess-demo"
@@ -80,18 +76,12 @@ def test_demote_autonomy_on_quarter_over(
     )
     run = read_run_meta(folder)
     assert run["autonomy"]["level"] == "L0"
-    demotions = [
-        t
-        for t in (run["autonomy"].get("transitions") or [])
-        if t.get("trigger") == "demotion"
-    ]
+    demotions = [t for t in (run["autonomy"].get("transitions") or []) if t.get("trigger") == "demotion"]
     assert demotions
     assert "quarter_budget_over" in demotions[-1]["reason"]
 
 
-def test_no_demote_when_disabled(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_no_demote_when_disabled(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_QUARTER_BUDGET_USD", "1")
     monkeypatch.setenv("AGENT_LAB_QUARTER_BUDGET_DEMOTE", "0")
     folder = tmp_path / "sess-keep"

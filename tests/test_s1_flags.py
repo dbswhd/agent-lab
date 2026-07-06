@@ -47,6 +47,7 @@ def test_record_turn_outcome_supervisor_implicit_on(tmp_path: Path, monkeypatch:
         "executions": [],
     }
     (folder / "run.json").write_text(json.dumps(run), encoding="utf-8")
+    monkeypatch.setenv("AGENT_LAB_OUTCOMES_ROOT", str(tmp_path / "root"))
     monkeypatch.delenv("AGENT_LAB_TURN_METRICS", raising=False)
     monkeypatch.delenv("AGENT_LAB_OUTCOME_LEDGER", raising=False)
 

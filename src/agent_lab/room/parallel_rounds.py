@@ -144,22 +144,12 @@ def run_parallel_round(
     from agent_lab.room.team_orchestration import lead_last_r1_enabled, team_r1_split
 
     want_lead_last = (
-        not sequential
-        and parallel_round == 1
-        and not review_mode
-        and bool(run_meta)
-        and lead_last_r1_enabled(run_meta)
+        not sequential and parallel_round == 1 and not review_mode and bool(run_meta) and lead_last_r1_enabled(run_meta)
     )
     parallel_batch, lead_tail = (
-        team_r1_split([str(a) for a in ordered], run_meta)
-        if want_lead_last
-        else ([str(a) for a in ordered], [])
+        team_r1_split([str(a) for a in ordered], run_meta) if want_lead_last else ([str(a) for a in ordered], [])
     )
-    use_lead_last_r1 = (
-        want_lead_last
-        and bool(lead_tail)
-        and len(parallel_batch) < len(ordered)
-    )
+    use_lead_last_r1 = want_lead_last and bool(lead_tail) and len(parallel_batch) < len(ordered)
 
     if use_lead_last_r1:
         check_cancelled()

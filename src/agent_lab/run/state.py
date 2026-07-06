@@ -9,6 +9,7 @@ from typing import Any
 class RuntimeValidationError(Exception):
     """Raised when run.json state violates runtime invariants."""
 
+
 _VALID_MISSION_PHASES = frozenset(
     {
         "MISSION_DEFINE",

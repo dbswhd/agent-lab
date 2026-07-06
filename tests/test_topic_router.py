@@ -312,9 +312,7 @@ def test_detect_task_type_general(monkeypatch):
 def test_agent_subset_code_standard(monkeypatch):
     """standard code → producer_reviewer topology; full team (subset cleared)."""
     _clear_router_env(monkeypatch)
-    route = resolve_topic_route(
-        "로그인 API 구현해줘 — FastAPI 엔드포인트와 JWT 토큰 검증 로직을 추가해야 합니다."
-    )
+    route = resolve_topic_route("로그인 API 구현해줘 — FastAPI 엔드포인트와 JWT 토큰 검증 로직을 추가해야 합니다.")
     assert route.category == "standard"
     assert route.task_type == "code"
     assert route.topology == "producer_reviewer"
@@ -325,9 +323,7 @@ def test_agent_subset_code_standard(monkeypatch):
 def test_agent_subset_review_standard(monkeypatch):
     """standard 카테고리 review 작업 → claude+codex 서브셋."""
     _clear_router_env(monkeypatch)
-    route = resolve_topic_route(
-        "이 PR 코드 리뷰해줘 — 유저 프로필 업데이트 모듈 변경사항에 대해 피드백 부탁드립니다."
-    )
+    route = resolve_topic_route("이 PR 코드 리뷰해줘 — 유저 프로필 업데이트 모듈 변경사항에 대해 피드백 부탁드립니다.")
     assert route.category == "standard"
     assert route.task_type == "review"
     assert route.agent_subset == ("claude", "codex")
@@ -379,10 +375,7 @@ def test_agent_subset_applied_in_consensus_room(monkeypatch, tmp_path):
     patch_call_agent_reply(monkeypatch, fake_call_agent)
     monkeypatch.setattr(room, "model_label", lambda agent: f"{agent}-model")
 
-    topic = (
-        "이 PR 코드 리뷰해줘 — 유저 프로필 업데이트 모듈 변경사항에 대해 "
-        "피드백 부탁드립니다."
-    )
+    topic = "이 PR 코드 리뷰해줘 — 유저 프로필 업데이트 모듈 변경사항에 대해 피드백 부탁드립니다."
     room.run_room(
         topic,
         synthesize=False,
@@ -395,18 +388,14 @@ def test_agent_subset_applied_in_consensus_room(monkeypatch, tmp_path):
 
 def test_topology_code_standard_is_producer_reviewer(monkeypatch):
     _clear_router_env(monkeypatch)
-    route = resolve_topic_route(
-        "로그인 기능 구현해줘 — FastAPI 엔드포인트와 JWT 토큰 검증 로직을 추가해야 합니다."
-    )
+    route = resolve_topic_route("로그인 기능 구현해줘 — FastAPI 엔드포인트와 JWT 토큰 검증 로직을 추가해야 합니다.")
     assert route.task_type == "code"
     assert route.topology == "producer_reviewer"
 
 
 def test_topology_review_is_parallel(monkeypatch):
     _clear_router_env(monkeypatch)
-    route = resolve_topic_route(
-        "이 PR 코드 리뷰해줘 — 유저 프로필 업데이트 모듈 변경사항에 대해 피드백 부탁드립니다."
-    )
+    route = resolve_topic_route("이 PR 코드 리뷰해줘 — 유저 프로필 업데이트 모듈 변경사항에 대해 피드백 부탁드립니다.")
     assert route.task_type == "review"
     assert route.topology == "parallel"
 

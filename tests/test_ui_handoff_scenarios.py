@@ -24,7 +24,7 @@ def _composer_stack_surface() -> str:
 
 def test_scenario_a_discuss_only_contract():
     """A: discuss mode, receipt, human synthesis, peer channel, claimable."""
-    room = _read("web", "src", "components", "RoomChat.tsx")
+    _read("web", "src", "components", "RoomChat.tsx")
     execute_send = _read("web", "src", "hooks", "useRoomExecuteSend.ts")
     transcript_panel = _read("web", "src", "components", "RoomTranscriptPanel.tsx")
     _read("web", "src", "components", "ChatComposer.tsx")
@@ -33,10 +33,7 @@ def test_scenario_a_discuss_only_contract():
     transcript = _read("web", "src", "utils", "transcriptViewPrefs.ts")
 
     assert "composerModeVariant" in _orchestrator()
-    assert (
-        'composerModeVariant === "discuss"' in _orchestrator()
-        or "modeDiscuss" in _orchestrator()
-    )
+    assert 'composerModeVariant === "discuss"' in _orchestrator() or "modeDiscuss" in _orchestrator()
     assert "sendReceiptLabel" in execute_send
     assert "discuss_saved" in receipt
     assert "TranscriptViewOptions" in transcript_panel or "showHumanSynthesis" in transcript_panel
@@ -58,7 +55,7 @@ def test_turn_policy_workspace_binding_kept():
 
 def test_scenario_b_plan_synthesis_contract():
     """B: plan after send → composer event stack + execute surface."""
-    room = _read("web", "src", "components", "RoomChat.tsx")
+    _read("web", "src", "components", "RoomChat.tsx")
     inspector = _read("web", "src", "components", "RoomChatInspector.tsx")
     stack = _read("web", "src", "components", "ComposerEventStack.tsx")
     work = _read("web", "src", "components", "WorkToolPanel.tsx")
@@ -106,7 +103,7 @@ def test_scenario_b2_plan_workflow_ui_contract():
 
 def test_scenario_b_diff_tool_contract():
     """B2: workbench diff mode renders execution diffs."""
-    room = _read("web", "src", "components", "RoomChat.tsx")
+    _read("web", "src", "components", "RoomChat.tsx")
     inspector = _read("web", "src", "components", "RoomChatInspector.tsx")
     diff = _read("web", "src", "components", "DiffToolPanel.tsx")
 
@@ -133,7 +130,7 @@ def test_scenario_c_execute_task_contract():
 def test_scenario_d_lead_consensus_contract():
     """D: turn leads, consensus blocker, consensus_done receipt."""
     taskbar = _read("web", "src", "components", "RoomTaskBar.tsx")
-    room = _read("web", "src", "components", "RoomChat.tsx")
+    _read("web", "src", "components", "RoomChat.tsx")
     receipt = _read("web", "src", "utils", "sendReceipt.ts")
 
     assert "turnLeadEntries" in taskbar
@@ -202,9 +199,7 @@ def test_inbox_segments_contract():
     sse = _read("web", "src", "hooks", "useRoomSseHandler.ts")
     stack = _read("web", "src", "components", "ComposerEventStack.tsx")
     assert "TranscriptActivityDivider" in transcript
-    assert "appendTranscriptActivity" in _read(
-        "web", "src", "utils", "pushNotification.ts"
-    )
+    assert "appendTranscriptActivity" in _read("web", "src", "utils", "pushNotification.ts")
     assert 'inboxSegment === "inbox"' not in room
     assert 't === "inbox_pause"' in sse
     assert 'presentation="composer"' in stack
@@ -295,9 +290,7 @@ def test_remaining_gaps_slack_inbox_ref_recovery_contract():
     assert "ComposerDecisionSurface" in main_pane
     assert "RecoveryStrip" in recovery
     assert "postMissionDiscussRecovery" in recovery_handlers
-    assert "DiscussRecoveryBanner" in _read(
-        "web", "src", "components", "DiscussRecoveryBanner.tsx"
-    )
+    assert "DiscussRecoveryBanner" in _read("web", "src", "components", "DiscussRecoveryBanner.tsx")
     assert "run_discuss_recovery" in recovery
     assert "recovery-strip" in recovery
     assert "parseInboxRef" in ref_nav

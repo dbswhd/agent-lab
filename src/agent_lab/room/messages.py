@@ -239,7 +239,7 @@ def build_agent_context_bundle(
 ) -> ContextBundle:
     """ContextBundle for preview / debugging (payload + layer metadata)."""
     from agent_lab.agent.permissions import permission_preamble
-    from agent_lab.context.bundle import ContextBundle, build_context_bundle
+    from agent_lab.context.bundle import build_context_bundle
 
     return build_context_bundle(
         topic,

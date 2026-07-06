@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from agent_lab.run.state import RunState, RunStateLike
+from agent_lab.run.state import RunStateLike
 
 from agent_lab.plan.workflow_clarify import clarity_gate_questions, open_plan_objections
 from agent_lab.plan.workflow_state import (

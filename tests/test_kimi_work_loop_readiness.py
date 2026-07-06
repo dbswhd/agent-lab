@@ -23,9 +23,7 @@ def _clear_model_profile_registry(monkeypatch: pytest.MonkeyPatch) -> None:
     mp._LOOP_EVAL_LOADED = before_loaded
 
 
-def test_kimi_work_respond_honors_structured_envelope_mock(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_kimi_work_respond_honors_structured_envelope_mock(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from agent_lab.kimi import work_provider as kwp
 
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
@@ -91,9 +89,7 @@ def test_kimi_work_loop_ready_phase1_mock(monkeypatch: pytest.MonkeyPatch) -> No
     assert loop_readiness_failure(["kimi_work"]) is None
 
 
-def test_probe_kimi_work_cached_registers_loop_ready(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_probe_kimi_work_cached_registers_loop_ready(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     monkeypatch.setenv("AGENT_LAB_LOOP_PROBE", "1")
     monkeypatch.setenv("AGENT_LAB_LOOP_PROBE_CACHE", str(tmp_path / "probe.json"))
@@ -178,9 +174,7 @@ def test_is_usable_conversation_key_mock_only_in_mock_mode(monkeypatch: pytest.M
     assert is_usable_conversation_key("mock-conv-loop-probe") is True
 
 
-def test_ensure_kimi_work_session_drops_stale_mock_key(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_ensure_kimi_work_session_drops_stale_mock_key(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from agent_lab.kimi.work_session import ensure_kimi_work_session, write_state
 
     monkeypatch.delenv("AGENT_LAB_MOCK_AGENTS", raising=False)
@@ -211,18 +205,14 @@ def test_ensure_kimi_work_session_drops_stale_mock_key(
     assert created == ["main:conversation:probe-123"]
 
 
-def test_probe_kimi_work_envelope_validates_speech_act(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_probe_kimi_work_envelope_validates_speech_act(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from agent_lab.model_policy_probe import _probe_substitute_envelope
 
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
     assert _probe_substitute_envelope("kimi_work", "k2p6") is True
 
 
-def test_probe_kimi_work_envelope_rejects_invalid_act(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_probe_kimi_work_envelope_rejects_invalid_act(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from agent_lab.kimi import work_provider as kwp
     from agent_lab.model_policy_probe import _probe_substitute_envelope
 

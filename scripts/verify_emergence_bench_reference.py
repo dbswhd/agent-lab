@@ -18,9 +18,7 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_REFERENCE = (
-    ROOT / "sessions" / "_benchmark" / "reports" / "emergence-bench-reference-mock-20260706.json"
-)
+DEFAULT_REFERENCE = ROOT / "sessions" / "_benchmark" / "reports" / "emergence-bench-reference-mock-20260706.json"
 
 
 def _float_close(a: Any, b: Any, *, tol: float = 1e-9) -> bool:
@@ -44,13 +42,9 @@ def compare_by_category(got: dict[str, Any], ref: dict[str, Any]) -> list[str]:
         if gb.get("topics") != rb.get("topics"):
             errors.append(f"{cat}: topics got={gb.get('topics')} ref={rb.get('topics')}")
         if gb.get("delta_positive") != rb.get("delta_positive"):
-            errors.append(
-                f"{cat}: delta_positive got={gb.get('delta_positive')} ref={rb.get('delta_positive')}"
-            )
+            errors.append(f"{cat}: delta_positive got={gb.get('delta_positive')} ref={rb.get('delta_positive')}")
         if not _float_close(gb.get("delta_mean"), rb.get("delta_mean")):
-            errors.append(
-                f"{cat}: delta_mean got={gb.get('delta_mean')} ref={rb.get('delta_mean')}"
-            )
+            errors.append(f"{cat}: delta_mean got={gb.get('delta_mean')} ref={rb.get('delta_mean')}")
     return errors
 
 
@@ -96,7 +90,7 @@ def main() -> int:
     if got.get("judge") != reference.get("judge"):
         errors.append(f"judge got={got.get('judge')!r} ref={reference.get('judge')!r}")
     if got.get("mock") is not reference.get("mock"):
-        errors.append(f"mock flag mismatch")
+        errors.append("mock flag mismatch")
 
     if errors:
         for err in errors:

@@ -257,18 +257,14 @@ def test_flags_payload_includes_profile_membership() -> None:
     payload = build_flags_payload()
     assert payload["profiles"] == list(_ALL_PROFILES)
     assert payload["active_profile"] in {*_ALL_PROFILES, None}
-    room_preset = next(
-        row for row in payload["flags"] if row["name"] == "AGENT_LAB_ROOM_PRESET"
-    )
+    room_preset = next(row for row in payload["flags"] if row["name"] == "AGENT_LAB_ROOM_PRESET")
     assert set(room_preset["profiles"]) == {
         "fast",
         "balanced",
         "thorough",
         "autonomous",
     }
-    efficiency = next(
-        row for row in payload["flags"] if row["name"] == "AGENT_LAB_EFFICIENCY"
-    )
+    efficiency = next(row for row in payload["flags"] if row["name"] == "AGENT_LAB_EFFICIENCY")
     assert "fast" in efficiency["profiles"]
 
 

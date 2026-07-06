@@ -79,7 +79,12 @@ def _merge_reasoning_parts(parts: list[str]) -> str:
         elif piece in merged:
             continue
         else:
-            if merged and piece and not merged.endswith((" ", "\n")) and not piece.startswith((" ", "\n", "/", ".", ",", ":", ";", ")", "]", "}")):
+            if (
+                merged
+                and piece
+                and not merged.endswith((" ", "\n"))
+                and not piece.startswith((" ", "\n", "/", ".", ",", ":", ";", ")", "]", "}"))
+            ):
                 merged += " "
             merged += piece
     return merged

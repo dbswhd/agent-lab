@@ -68,16 +68,23 @@ def test_build_turn_metrics_empty_inputs() -> None:
 def test_append_and_record_outcome(tmp_path, monkeypatch) -> None:
     folder = tmp_path / "sess-x"
     folder.mkdir()
-    run = {"topic": "pipeline preset verify", "turns": [dict(_TURN)], "objections": _OBJECTIONS, "executions": _EXECUTIONS}
+    run = {
+        "topic": "pipeline preset verify",
+        "turns": [dict(_TURN)],
+        "objections": _OBJECTIONS,
+        "executions": _EXECUTIONS,
+    }
     (folder / "run.json").write_text(json.dumps(run), encoding="utf-8")
 
     root = tmp_path / "root"
     root.mkdir()
 
     # direct ledger write
-    rec = build_outcome_record(folder, "pipeline preset verify", build_turn_metrics(
-        _TURN, objections=_OBJECTIONS, executions=_EXECUTIONS, human_turn=1
-    ))
+    rec = build_outcome_record(
+        folder,
+        "pipeline preset verify",
+        build_turn_metrics(_TURN, objections=_OBJECTIONS, executions=_EXECUTIONS, human_turn=1),
+    )
     assert rec["v"] == 1
     assert "pipeline" in rec["topic_terms"]
     assert rec["topic_hash"].startswith("sha1:")

@@ -30,8 +30,10 @@ def test_core_has_no_agent_lab_imports() -> None:
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom):
-                if node.module and node.module.startswith("agent_lab.") and not node.module.startswith(
-                    "agent_lab.core."
+                if (
+                    node.module
+                    and node.module.startswith("agent_lab.")
+                    and not node.module.startswith("agent_lab.core.")
                 ):
                     offenders.append(f"{path.name}: from {node.module}")
             elif isinstance(node, ast.Import):

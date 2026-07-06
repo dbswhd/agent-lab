@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
 
 from agent_lab.run.state import RunStateLike
 
@@ -65,10 +64,7 @@ def build_active_roster_block(
     off = inactive_known_agents(active)
     if off:
         lines.append(f"- **Not in room (do not MESSAGE `to` these):** {', '.join(_label(a) for a in off)}")
-    lines.append(
-        "- Envelope `act: MESSAGE`, `to:` must name an **in-room** peer only. "
-        "Do not address absent agents."
-    )
+    lines.append("- Envelope `act: MESSAGE`, `to:` must name an **in-room** peer only. Do not address absent agents.")
     return "\n".join(lines)
 
 
@@ -109,7 +105,7 @@ def delegator_persona(active: list[str]) -> str:
             "Harness Supervisor seat: 턴 리드로 phase/GO를 제안하고, "
             "in-room peer에게 scoped review를 위임하세요. "
             "Human gate·fork·BLOCK은 Human에게만 올리세요. "
-            '동료 위임 시 envelope `act: MESSAGE`, `to: <in-room agent>`를 사용하세요.'
+            "동료 위임 시 envelope `act: MESSAGE`, `to: <in-room agent>`를 사용하세요."
         )
     peer_labels = ", ".join(_label(a) for a in active)
     off = inactive_known_agents(active)
@@ -146,7 +142,7 @@ def delegator_persona(active: list[str]) -> str:
         f"**Active peers:** {peer_labels}.{off_note}\n"
         f"- 위임 매핑(가능한 seat만): {delegate}.\n"
         "- Human gate·fork·BLOCK은 Human에게만 올리세요.\n"
-        '- 동료 위임: envelope `act: MESSAGE`, `to: <agent>` — **active roster에 있는 id만**.'
+        "- 동료 위임: envelope `act: MESSAGE`, `to: <agent>` — **active roster에 있는 id만**."
     )
 
 

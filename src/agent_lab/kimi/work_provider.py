@@ -9,7 +9,6 @@ from typing import Any, Callable
 from agent_lab.kimi.control_client import (
     KimiWorkBridgeUnavailable,
     is_share_configured,
-    probe_control,
     send_turn,
 )
 from agent_lab.kimi.work_push_mapper import KimiWorkPushMapper

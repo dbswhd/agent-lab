@@ -24,9 +24,7 @@ def test_composer_decision_surface_replaces_stacked_banners():
     assert "<RecoveryStrip" not in room
     assert "taskbar-dock" not in room
     assert "RoomTaskBar" not in room
-    assert "ComposerEventStack" in _read(
-        "web", "src", "components", "RoomChatComposerShell.tsx"
-    )
+    assert "ComposerEventStack" in _read("web", "src", "components", "RoomChatComposerShell.tsx")
     assert "InspectorTasksSummary" not in room
     assert "pickComposerDecisionTier" in priority
     assert '"human_gate"' in priority
@@ -47,9 +45,7 @@ def test_composer_event_stack_hosts_inbox_and_execute():
 
 def test_human_inbox_composer_only():
     room = _read("web", "src", "components", "RoomChat.tsx")
-    assert "presentation=\"composer\"" in _read(
-        "web", "src", "components", "ComposerEventStack.tsx"
-    )
+    assert 'presentation="composer"' in _read("web", "src", "components", "ComposerEventStack.tsx")
     assert "readOnly={inboxPendingCount > 0}" not in room
 
 
@@ -59,6 +55,4 @@ def test_decision_blocked_headline_ssot():
     assert "buildDecisionBlockedHeadline" in headline
     assert "decisionBlockedHeadline" in main_pane
     assert "blockedHeadline={decisionBlockedHeadline}" in main_pane
-    assert "blockedHeadline.headline" in _read(
-        "web", "src", "components", "ComposerDecisionSurface.tsx"
-    )
+    assert "blockedHeadline.headline" in _read("web", "src", "components", "ComposerDecisionSurface.tsx")

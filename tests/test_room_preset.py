@@ -16,9 +16,7 @@ from agent_lab.room.preset import (
     resolve_role_policy,
 )
 
-_VALID_TURN_PROFILES = frozenset(
-    {"quick", "team", "analyze", "discuss", "free", "verified", "specialist", "loop"}
-)
+_VALID_TURN_PROFILES = frozenset({"quick", "team", "analyze", "discuss", "free", "verified", "specialist", "loop"})
 
 
 def test_resolve_preset_fast() -> None:

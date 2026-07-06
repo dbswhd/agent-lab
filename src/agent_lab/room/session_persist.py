@@ -106,7 +106,6 @@ def _append_peer_turn_digest(messages: list[ChatMessage]) -> list[ChatMessage]:
         body = (m.content or "").strip()
         if not body:
             continue
-        from agent_lab.agents.registry import label
 
         agent_lines.append(f"**{agent_label(agent)}** (R{pr}):\n{body[:4000]}\n")
     if not agent_lines:
@@ -134,9 +133,7 @@ def _append_human_turn_synthesis(
         build_human_turn_synthesis,
         is_human_synthesis_message,
         should_emit_human_turn_synthesis,
-        turn_leads_map,
     )
-    from agent_lab.room.tasks import team_lead
 
     if turn_meta and turn_meta.get("synthesize_only"):
         return messages

@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from typing import Any, Callable, cast
 
-from agent_lab.run.state import RunState, RunStateLike
+from agent_lab.run.state import RunStateLike
 
 from agent_lab.core.context_bundle import ContextBundle, ContextBundleMeta
 from agent_lab.agent.thread_resume import build_agent_thread_resume_block
@@ -652,7 +652,9 @@ def build_context_bundle(
             if agent == review_advocate:
                 follow_up += "\n[쟁점 검토 — 반박] 1라운드 주장 중 가장 약한 가정 하나를 골라 반박하세요."
             else:
-                follow_up += f"\n[쟁점 검토 — 검토] {label(cast(AgentId, review_advocate))}의 반박에 답하세요(인정 또는 반론)."
+                follow_up += (
+                    f"\n[쟁점 검토 — 검토] {label(cast(AgentId, review_advocate))}의 반박에 답하세요(인정 또는 반론)."
+                )
         elif parallel_round >= 2:
             follow_up += (
                 "\n2라운드(순차 · 토론): 동료 의견을 **이어가거나 보완**하세요. "

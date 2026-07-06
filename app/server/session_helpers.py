@@ -17,7 +17,7 @@ from agent_lab.attachments import (
 )
 from agent_lab.plan.execute_worktree import gc_stale_worktrees
 from agent_lab.run.observability import observability_snapshot
-from agent_lab.session.paths import SESSIONS_DIR, sessions_dir
+from agent_lab.session.paths import SESSIONS_DIR  # noqa: F401 — test monkeypatch surface
 
 
 def room_session_context(folder: Path | None) -> tuple[str, dict[str, Any]]:
@@ -162,7 +162,9 @@ def session_detail(
     if chat_path.is_file():
         all_lines = [ln for ln in chat_path.read_text(encoding="utf-8").splitlines() if ln.strip()]
         chat_total = len(all_lines)
-        page_lines = all_lines[chat_offset : chat_offset + chat_limit] if chat_limit is not None else all_lines[chat_offset:]
+        page_lines = (
+            all_lines[chat_offset : chat_offset + chat_limit] if chat_limit is not None else all_lines[chat_offset:]
+        )
         chat = [json.loads(ln) for ln in page_lines]
 
     run_json: dict[str, Any] = {}

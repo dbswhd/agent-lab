@@ -184,7 +184,9 @@ def test_model_view_and_set(cfg: Path, tmp_path: Path, monkeypatch: pytest.Monke
     assert upd["scope"] == "session"
 
 
-def test_model_session_scope_does_not_set_process_env(cfg: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_model_session_scope_does_not_set_process_env(
+    cfg: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from agent_lab.slash_commands import dispatch
 
     folder = tmp_path / "sess"

@@ -99,6 +99,7 @@ def test_chunk_format() -> None:
     assert out.startswith("data: ")
     assert out.endswith("\n\n")
     import json
+
     payload = json.loads(out[6:])
     assert payload["object"] == "chat.completion.chunk"
     assert payload["choices"][0]["delta"]["content"] == "Hello"
@@ -108,6 +109,7 @@ def test_chunk_format() -> None:
 def test_chunk_finish() -> None:
     out = _chunk("cmpl-x", "m", "", finish=True)
     import json
+
     payload = json.loads(out[6:])
     assert payload["choices"][0]["finish_reason"] == "stop"
     assert payload["choices"][0]["delta"] == {}

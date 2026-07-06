@@ -8,7 +8,6 @@ import pytest
 
 from agent_lab.autonomy_ladder import (
     infer_effective_autonomy_level,
-    observe_autonomy_level_change,
     public_autonomy_payload,
     record_autonomy_transition,
     resolve_display_autonomy_level,
@@ -95,9 +94,7 @@ def test_auto_approve_env_implies_l1(session_folder: Path, monkeypatch: pytest.M
     assert payload["signals"]["auto_approve_enabled"] is True
 
 
-def test_stored_l1_ceiling_implies_l1_without_env(
-    session_folder: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_stored_l1_ceiling_implies_l1_without_env(session_folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("AGENT_LAB_AUTO_APPROVE_THRESHOLD", raising=False)
     record_autonomy_transition(
         session_folder,
@@ -143,9 +140,7 @@ def test_runtime_snapshot_includes_autonomy(session_folder: Path) -> None:
 
 
 def test_observe_autonomy_level_change_on_trust_budget(session_folder: Path) -> None:
-    payload = set_trust_budget(
-        session_folder, {"auto_merge_remaining": 2, "auto_merge_total": 5}
-    )
+    payload = set_trust_budget(session_folder, {"auto_merge_remaining": 2, "auto_merge_total": 5})
     assert payload["auto_merge_total"] == 5
     run = read_run_meta(session_folder)
     autonomy = public_autonomy_payload(run)
@@ -160,9 +155,7 @@ def test_observe_autonomy_level_change_on_trust_budget(session_folder: Path) -> 
 def test_consume_trust_budget_records_demotion(session_folder: Path) -> None:
     from agent_lab.trust_budget import consume_auto_merge_budget
 
-    set_trust_budget(
-        session_folder, {"auto_merge_remaining": 1, "auto_merge_total": 1}
-    )
+    set_trust_budget(session_folder, {"auto_merge_remaining": 1, "auto_merge_total": 1})
     consume_auto_merge_budget(session_folder)
     run = read_run_meta(session_folder)
     autonomy = public_autonomy_payload(run)
@@ -207,11 +200,7 @@ def test_patch_autonomy_api_human_level(autonomy_api_client) -> None:
     body = res.json()
     assert body["autonomy"]["level"] == "L2"
     assert body["autonomy"]["ceiling_set"] is True
-    human = [
-        row
-        for row in body["autonomy"]["transitions"]
-        if row.get("trigger") == "human"
-    ]
+    human = [row for row in body["autonomy"]["transitions"] if row.get("trigger") == "human"]
     assert human
     assert human[-1]["to"] == "L2"
 
@@ -220,22 +209,14 @@ def test_demotion_creates_inbox_and_restore(session_folder: Path) -> None:
     from agent_lab.human_inbox import inbox_items, resolve_inbox_item
     from agent_lab.trust_budget import consume_auto_merge_budget
 
-    set_trust_budget(
-        session_folder, {"auto_merge_remaining": 1, "auto_merge_total": 1}
-    )
+    set_trust_budget(session_folder, {"auto_merge_remaining": 1, "auto_merge_total": 1})
     consume_auto_merge_budget(session_folder)
     run = read_run_meta(session_folder)
-    pending = [
-        item
-        for item in inbox_items(run)
-        if item.get("kind") == "autonomy" and item.get("status") == "pending"
-    ]
+    pending = [item for item in inbox_items(run) if item.get("kind") == "autonomy" and item.get("status") == "pending"]
     assert pending
     item = pending[0]
     assert item.get("trigger") == "T-A0"
-    assert any(
-        opt.get("id", "").startswith("restore:") for opt in (item.get("options") or [])
-    )
+    assert any(opt.get("id", "").startswith("restore:") for opt in (item.get("options") or []))
 
     resolve_inbox_item(
         session_folder,

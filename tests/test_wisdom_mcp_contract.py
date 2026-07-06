@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 
-import pytest
 
 from agent_lab.mcp_tool_contract import (
     FORBIDDEN_TOOLS_GLOBAL,

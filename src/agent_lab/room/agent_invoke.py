@@ -522,7 +522,11 @@ def _call_one_agent(
     ):
         lead_block = lead_discuss_role_block(aid, run_meta)
     hook_prepend = pre_hook.feedback.strip()
-    from agent_lab.plan.workflow import PLAN_CLARIFY_GUIDANCE, build_plan_clarify_agent_block, plan_workflow_wants_inbox_mcp
+    from agent_lab.plan.workflow import (
+        PLAN_CLARIFY_GUIDANCE,
+        build_plan_clarify_agent_block,
+        plan_workflow_wants_inbox_mcp,
+    )
 
     plan_clarify = ""
     if run_meta and folder is not None and plan_workflow_wants_inbox_mcp(run_meta):
@@ -746,9 +750,7 @@ def _call_one_agent(
                         if isinstance(by_agent, dict):
                             agent_entry = by_agent.get(str(aid))
                             if isinstance(agent_entry, dict):
-                                context_meta["usage_cache_read"] = int(
-                                    agent_entry.get("cache_read") or 0
-                                )
+                                context_meta["usage_cache_read"] = int(agent_entry.get("cache_read") or 0)
                     from agent_lab.token_budget import record_run_token_budget
 
                     record_run_token_budget(run_meta, context_log, turn_meta=context_meta)

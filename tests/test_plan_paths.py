@@ -40,10 +40,7 @@ def test_plan_path_directive_and_slug(tmp_path: Path) -> None:
     folder = tmp_path / "sess"
     folder.mkdir()
     run: dict = {}
-    md = (
-        "<!-- plan-path: artifacts/plans/context-refactor.md -->\n"
-        "# Context refactor\n\nBody\n"
-    )
+    md = "<!-- plan-path: artifacts/plans/context-refactor.md -->\n# Context refactor\n\nBody\n"
     rel, body = extract_plan_path_directive(md)
     assert rel == "artifacts/plans/context-refactor.md"
     assert body.startswith("# Context refactor")

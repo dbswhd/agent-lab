@@ -811,10 +811,7 @@ SCENARIOS: dict[str, dict[str, Any]] = {
         "check": lambda run: any(
             t.get("synthesize_only") is True
             or t.get("plan_trigger") == "synthesize_only"
-            or (
-                isinstance(t.get("turn_policy"), dict)
-                and t["turn_policy"].get("scribe_trigger") == "synthesize_only"
-            )
+            or (isinstance(t.get("turn_policy"), dict) and t["turn_policy"].get("scribe_trigger") == "synthesize_only")
             or (t.get("mode") == "plan" and t.get("synthesize") is True)
             for t in run.get("turns") or []
         ),
@@ -1164,8 +1161,7 @@ def _check_example_mission_done(run: dict[str, Any]) -> bool:
     if not ml.get("enabled") or ml.get("phase") != "MISSION_DONE":
         return False
     return any(
-        row.get("status") == "merged"
-        and str((row.get("oracle") or {}).get("verdict") or "").lower() == "pass"
+        row.get("status") == "merged" and str((row.get("oracle") or {}).get("verdict") or "").lower() == "pass"
         for row in _execs(run)
     )
 

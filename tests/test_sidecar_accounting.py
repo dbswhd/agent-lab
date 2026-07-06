@@ -13,6 +13,7 @@ from agent_lab.sidecar_accounting import (
 )
 from agent_lab.run.meta import read_run_meta
 
+
 def test_sidecar_bridge_records_usage(tmp_path: Path) -> None:
     folder = tmp_path / "sess-1"
     folder.mkdir()

@@ -18,9 +18,7 @@ def _reset_bootstrap() -> None:
     reset_bootstrap_state_for_tests()
 
 
-def test_user_model_prefs_override_repo_dotenv(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_user_model_prefs_override_repo_dotenv(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
     (repo / ".env").write_text(

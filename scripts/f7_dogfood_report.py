@@ -89,15 +89,11 @@ def collect_sessions(
                 or (log[-1].get("repo_layer") if log and isinstance(log[-1], dict) else None),
                 "repo_map_enabled": bool(
                     bundle.get("repo_map_enabled")
-                    or any(
-                        isinstance(r, dict) and r.get("repo_layer") == "repo_map" for r in log
-                    )
+                    or any(isinstance(r, dict) and r.get("repo_layer") == "repo_map" for r in log)
                 ),
                 "compact_tool_output": bool(
                     bundle.get("compact_tool_output")
-                    or any(
-                        isinstance(r, dict) and r.get("compact_tool_output") for r in log
-                    )
+                    or any(isinstance(r, dict) and r.get("compact_tool_output") for r in log)
                 ),
                 "budget_pct_median": median(budget_vals) if budget_vals else None,
                 "trim_level": bundle.get("trim_level"),
@@ -111,11 +107,7 @@ def build_report(rows: list[dict[str, Any]]) -> dict[str, Any]:
     n = len(rows)
     repo_map_n = sum(1 for r in rows if r.get("repo_layer") == "repo_map" or r.get("repo_map_enabled"))
     compact_n = sum(1 for r in rows if r.get("compact_tool_output"))
-    budgets = [
-        float(r["budget_pct_median"])
-        for r in rows
-        if isinstance(r.get("budget_pct_median"), (int, float))
-    ]
+    budgets = [float(r["budget_pct_median"]) for r in rows if isinstance(r.get("budget_pct_median"), (int, float))]
     coverage = round(100.0 * repo_map_n / n, 1) if n else 0.0
     gates = {
         "min_sessions": n >= 10,
@@ -132,8 +124,7 @@ def build_report(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "ready_for_decision": all(gates.values()),
         "flags_now": {
             "AGENT_LAB_REPO_MAP": os.getenv("AGENT_LAB_REPO_MAP") or "(unset)",
-            "AGENT_LAB_COMPACT_TOOL_OUTPUT": os.getenv("AGENT_LAB_COMPACT_TOOL_OUTPUT")
-            or "(unset)",
+            "AGENT_LAB_COMPACT_TOOL_OUTPUT": os.getenv("AGENT_LAB_COMPACT_TOOL_OUTPUT") or "(unset)",
         },
         "rows": rows,
     }
@@ -143,8 +134,7 @@ def render_report(report: dict[str, Any]) -> str:
     lines = [
         "F7 repo_map / compaction dogfood report",
         f"sessions with context metrics: {report['sessions']}",
-        f"repo_map coverage: {report['repo_map_coverage_pct']}% "
-        f"({report['repo_map_sessions']}/{report['sessions']})",
+        f"repo_map coverage: {report['repo_map_coverage_pct']}% ({report['repo_map_sessions']}/{report['sessions']})",
         f"compact_tool_output seen: {report['compact_sessions']}",
         f"median budget_pct: {report['median_budget_pct']}",
         "",

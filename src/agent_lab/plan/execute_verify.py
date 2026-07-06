@@ -6,7 +6,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, cast
 
-from agent_lab.run.state import RunState, RunStateLike
+from agent_lab.run.state import RunState
 
 from agent_lab.run.meta import patch_run_meta
 from agent_lab.plan.execute_worktree import (

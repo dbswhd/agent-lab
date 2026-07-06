@@ -129,7 +129,7 @@ def _chunk(completion_id: str, model: str, delta_content: str, finish: bool = Fa
 
 def _latest_session_oracle(session_id: str) -> dict[str, str] | None:
     """Return the latest execution oracle snapshot for a session, if any."""
-    from agent_lab.run_meta import read_run_meta
+    from agent_lab.run.meta import read_run_meta
     from agent_lab.session.paths import active_sessions_dir
 
     folder = active_sessions_dir() / session_id
@@ -239,6 +239,7 @@ async def chat_completions(request: Request, body: ChatCompletionRequest) -> Any
     event_q: queue.Queue[dict[str, Any] | None] = queue.Queue()
 
     if body.stream:
+
         def generate():
             session_id: list[str | None] = [None]
 
@@ -249,9 +250,11 @@ async def chat_completions(request: Request, body: ChatCompletionRequest) -> Any
             t = threading.Thread(target=_worker, daemon=True)
             t.start()
 
-            yield _chunk(completion_id, model_id, "", finish=False).replace(
-                '"content": ""', '"role": "assistant", "content": ""'
-            ).replace('"role": "assistant", ', "")
+            yield (
+                _chunk(completion_id, model_id, "", finish=False)
+                .replace('"content": ""', '"role": "assistant", "content": ""')
+                .replace('"role": "assistant", ', "")
+            )
 
             while True:
                 ev = event_q.get()
@@ -327,11 +330,26 @@ async def list_models() -> dict[str, Any]:
     """List available Agent Lab models in OpenAI format."""
     now = _now_ts()
     models = [
-        {"id": "agent-lab-fast", "object": "model", "created": now, "owned_by": "agent-lab",
-         "description": "Single-agent fast response (fast preset)"},
-        {"id": "agent-lab-balanced", "object": "model", "created": now, "owned_by": "agent-lab",
-         "description": "Supervisor preset — multi-agent consensus + mission loop"},
-        {"id": "agent-lab-thorough", "object": "model", "created": now, "owned_by": "agent-lab",
-         "description": "Supervisor + adversarial + live judge (thorough run profile)"},
+        {
+            "id": "agent-lab-fast",
+            "object": "model",
+            "created": now,
+            "owned_by": "agent-lab",
+            "description": "Single-agent fast response (fast preset)",
+        },
+        {
+            "id": "agent-lab-balanced",
+            "object": "model",
+            "created": now,
+            "owned_by": "agent-lab",
+            "description": "Supervisor preset — multi-agent consensus + mission loop",
+        },
+        {
+            "id": "agent-lab-thorough",
+            "object": "model",
+            "created": now,
+            "owned_by": "agent-lab",
+            "description": "Supervisor + adversarial + live judge (thorough run profile)",
+        },
     ]
     return {"object": "list", "data": models}

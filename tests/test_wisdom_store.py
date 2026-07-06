@@ -7,7 +7,6 @@ from pathlib import Path
 import pytest
 
 from agent_lab.wisdom.store import (
-    WisdomEntry,
     wisdom_append,
     wisdom_cache_signature,
     wisdom_list_recent,
@@ -155,7 +154,10 @@ def test_load_empty_file(tmp_path: Path) -> None:
 
 def test_load_ignores_corrupt_lines(tmp_path: Path) -> None:
     p = tmp_path / "partial.jsonl"
-    p.write_text('{"id":"w-abc","timestamp":"2026-01-01T00:00:00+00:00","content":"Good","tags":[],"session_id":null,"source_ref":null}\nnot-json\n', encoding="utf-8")
+    p.write_text(
+        '{"id":"w-abc","timestamp":"2026-01-01T00:00:00+00:00","content":"Good","tags":[],"session_id":null,"source_ref":null}\nnot-json\n',
+        encoding="utf-8",
+    )
     entries = wisdom_load(p)
     assert len(entries) == 1
     assert entries[0].content == "Good"

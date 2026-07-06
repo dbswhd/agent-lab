@@ -34,9 +34,7 @@ def _objection_summary(objections: list[dict[str, Any]], *, human_turn: int) -> 
     return summary
 
 
-def _objection_resolution_summary(
-    objections: list[dict[str, Any]], *, human_turn: int
-) -> dict[str, dict[str, int]]:
+def _objection_resolution_summary(objections: list[dict[str, Any]], *, human_turn: int) -> dict[str, dict[str, int]]:
     """Per-act resolution counts for objections raised on this human turn."""
     summary: dict[str, dict[str, int]] = {}
     for obj in objections:

@@ -78,10 +78,7 @@ class CumulativeTextStreamer:
                 _longest_common_suffix(self._buffer, text),
                 max(shorter - prefix_overlap, 0),
             )
-            if (
-                suffix_overlap >= _RESYNC_SUFFIX_MIN_CHARS
-                and suffix_overlap >= prefix_overlap
-            ):
+            if suffix_overlap >= _RESYNC_SUFFIX_MIN_CHARS and suffix_overlap >= prefix_overlap:
                 # A stable trailing block (e.g. a finished reply body) is
                 # being re-sent behind a still-revising leading segment
                 # (e.g. an in-progress envelope header). Consumers only

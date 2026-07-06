@@ -232,9 +232,7 @@ class TurnPolicyEngine:
         is_supervisor = preset == "supervisor"
 
         init_pw = bool(
-            is_supervisor
-            and signals.supervisor_first_turn
-            and (not signals.plan_workflow_active or phase == "INTAKE")
+            is_supervisor and signals.supervisor_first_turn and (not signals.plan_workflow_active or phase == "INTAKE")
         )
 
         advance_pw = bool(
@@ -277,9 +275,7 @@ class TurnPolicyEngine:
             scribe_trigger = "none"
 
         assign = bool(
-            signals.consensus_mode
-            or run_scribe
-            or (signals.plan_workflow_active and phase in _TASK_ASSIGN_PHASES)
+            signals.consensus_mode or run_scribe or (signals.plan_workflow_active and phase in _TASK_ASSIGN_PHASES)
         )
 
         return TurnEffects(
@@ -595,9 +591,7 @@ def apply_turn_effects(
         meta = RunState.from_memory(run_meta)
     else:
         meta = RunState.empty()
-    _ephemeral_turn = {
-        k: meta.get(k) for k in ("_turn_category", "_turn_roles") if meta.get(k) is not None
-    }
+    _ephemeral_turn = {k: meta.get(k) for k in ("_turn_category", "_turn_roles") if meta.get(k) is not None}
 
     if not turn_policy_enabled():
         return ApplyTurnEffectsResult(
@@ -677,9 +671,7 @@ def apply_turn_effects(
     ):
         pw_advance = bool(effects.advance_plan_workflow)
         _auto_draft_advance = (
-            not pw_advance
-            and plan_md != plan_before
-            and plan_workflow_phase(read_run_meta(folder)) == "DRAFT"
+            not pw_advance and plan_md != plan_before and plan_workflow_phase(read_run_meta(folder)) == "DRAFT"
         )
         if pw_advance or _auto_draft_advance:
             plan_md, pw_replies, pw_meta = orchestrate_plan_workflow_pipeline(

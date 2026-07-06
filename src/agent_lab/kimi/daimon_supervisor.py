@@ -15,7 +15,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from agent_lab.kimi.control_client import ControlEndpoint, KimiWorkBridgeUnavailable, default_share_dir, daimon_config_path
+from agent_lab.kimi.control_client import (
+    ControlEndpoint,
+    KimiWorkBridgeUnavailable,
+    default_share_dir,
+    daimon_config_path,
+)
 
 _CONTROL_READY_RE = re.compile(
     r"control server ready\s+url=(\S+)(?:\s+auth=\S+)?\s+token=(\S+)",
@@ -223,7 +228,7 @@ def _owned_endpoint_live() -> ControlEndpoint | None:
     cached = owned_endpoint()
     if cached is None:
         return None
-    from agent_lab.kimi.control_client import probe_endpoint_ws, probe_recently_ok, mark_probe_ok
+    from agent_lab.kimi.control_client import probe_endpoint_ws, probe_recently_ok
 
     if probe_recently_ok():
         return cached

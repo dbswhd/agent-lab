@@ -53,18 +53,10 @@ _SMOKE_TEST_BYPASS_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"(?i)\bdogfood\b"),
     re.compile(r"응답\s*테스트"),
     re.compile(r"(?i)(response|reply)\s*test"),
-    re.compile(
-        r"(?i)(코덱스|커서|클로드|키미|codex|cursor|claude|kimi).{0,24}(테스트|test|응답)"
-    ),
-    re.compile(
-        r"(?i)(테스트|test|응답).{0,24}(코덱스|커서|클로드|키미|codex|cursor|claude|kimi)"
-    ),
-    re.compile(
-        r"(?i)(agent|room|sse|spinner|inbox|transcript).{0,32}(test|테스트|debug|디버)"
-    ),
-    re.compile(
-        r"(?i)(test|테스트|debug|디버).{0,32}(agent|room|sse|spinner|inbox|transcript)"
-    ),
+    re.compile(r"(?i)(코덱스|커서|클로드|키미|codex|cursor|claude|kimi).{0,24}(테스트|test|응답)"),
+    re.compile(r"(?i)(테스트|test|응답).{0,24}(코덱스|커서|클로드|키미|codex|cursor|claude|kimi)"),
+    re.compile(r"(?i)(agent|room|sse|spinner|inbox|transcript).{0,32}(test|테스트|debug|디버)"),
+    re.compile(r"(?i)(test|테스트|debug|디버).{0,32}(agent|room|sse|spinner|inbox|transcript)"),
 )
 
 _PANEL_SYSTEM = (

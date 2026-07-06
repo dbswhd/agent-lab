@@ -12,7 +12,7 @@ from agent_lab.autonomy_promotion import (
     L2_TO_L3_MIN_MISSIONS,
     maybe_create_promotion_inbox,
 )
-from agent_lab.human_inbox import inbox_items, resolve_inbox_item
+from agent_lab.human_inbox import resolve_inbox_item
 from agent_lab.run.meta import patch_run_meta, read_run_meta
 from agent_lab.trust_budget import set_trust_budget
 

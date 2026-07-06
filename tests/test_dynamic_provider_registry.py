@@ -179,9 +179,7 @@ def test_cursor_build_options_allows_oauth_no_key(monkeypatch: pytest.MonkeyPatc
     monkeypatch.delenv("CURSOR_API_KEY", raising=False)
     monkeypatch.setattr(cursor_provider, "_cursor_oauth_available", lambda: True)
     # no key + OAuth available -> must not raise (SDK falls back to OAuth session)
-    cwd, opts = cursor_provider._build_agent_options(
-        permissions=None, cwd="/tmp", session_folder=None, inbox_mcp=False
-    )
+    cwd, opts = cursor_provider._build_agent_options(permissions=None, cwd="/tmp", session_folder=None, inbox_mcp=False)
     assert getattr(opts, "api_key", "sentinel") in (None, "")
 
     monkeypatch.setattr(cursor_provider, "_cursor_oauth_available", lambda: False)

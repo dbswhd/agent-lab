@@ -23,6 +23,8 @@ def _casual_turn_mode(synthesize: bool) -> str:
     if turn_policy_enabled():
         return "discuss"
     return "plan" if synthesize else "discuss"
+
+
 def _post_agent_turn_plan(
     folder: Path,
     *,

@@ -8,6 +8,7 @@ from typing import Any, Literal
 from agent_lab.auto_approve_gate import auto_approve_threshold
 from agent_lab.diff_risk import RiskLevel
 from agent_lab.run.meta import patch_run_meta
+from agent_lab.run.state import RunStateLike
 from agent_lab.trust_budget import get_trust_budget
 
 AutonomyLevel = Literal["L0", "L1", "L2", "L3"]
@@ -32,7 +33,7 @@ def _autonomy_block(run_meta: dict[str, Any] | None) -> dict[str, Any]:
     return raw if isinstance(raw, dict) else {}
 
 
-def effective_auto_approve_threshold(run_meta: dict[str, Any] | None) -> RiskLevel | None:
+def effective_auto_approve_threshold(run_meta: RunStateLike | None) -> RiskLevel | None:
     """Max risk for auto-approve: env override, else L1+ Human ceiling defaults to low."""
     explicit = auto_approve_threshold()
     if explicit is not None:

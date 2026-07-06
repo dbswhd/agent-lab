@@ -199,10 +199,7 @@ def permission_preamble(
             mcp_allowed = mcp_allowed_for_agent("claude", run_meta)
         block = claude_runtime_block(perms, mcp_allowed=mcp_allowed)
         if discuss:
-            block += (
-                "\n- **Discuss 턴:** 읽기·검증만 — Read/Grep으로 확인; "
-                "Edit/write·패치 완료 주장 금지."
-            )
+            block += "\n- **Discuss 턴:** 읽기·검증만 — Read/Grep으로 확인; Edit/write·패치 완료 주장 금지."
         return block
     if agent == "cursor":
         return cursor_runtime_block(perms)

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import pytest
@@ -37,10 +37,21 @@ def test_format_peer_block_compact(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_COMMS_COMPACT", "1")
     long_body = "This is a very long peer reply that should be truncated to 140 characters for the compact digest. " * 3
     msgs = [
-        _Msg(role="agent", content=long_body, agent="claude", parallel_round=2,
-             envelope={"act": "ENDORSE", "refs": ["L12"]}),
-        _Msg(role="agent", content="I object because step 3 is risky and the retry policy lacks backoff; additionally the circuit breaker threshold seems too high for the expected failure rate." * 2, agent="cursor", parallel_round=2,
-             envelope={"act": "CHALLENGE"}),
+        _Msg(
+            role="agent",
+            content=long_body,
+            agent="claude",
+            parallel_round=2,
+            envelope={"act": "ENDORSE", "refs": ["L12"]},
+        ),
+        _Msg(
+            role="agent",
+            content="I object because step 3 is risky and the retry policy lacks backoff; additionally the circuit breaker threshold seems too high for the expected failure rate."
+            * 2,
+            agent="cursor",
+            parallel_round=2,
+            envelope={"act": "CHALLENGE"},
+        ),
     ]
     block = rc.format_peer_block(msgs)
     assert block.startswith("[이번 턴 · 동료 발화]")

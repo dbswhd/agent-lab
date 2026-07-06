@@ -137,9 +137,7 @@ def test_pure_challenge_yield_excludes_block() -> None:
 
 
 def test_pure_challenge_yield_from_resolution() -> None:
-    rate, counts = pure_challenge_yield_from_resolution(
-        {"CHALLENGE": {"accepted": 1, "wontfix": 0, "open": 2}}
-    )
+    rate, counts = pure_challenge_yield_from_resolution({"CHALLENGE": {"accepted": 1, "wontfix": 0, "open": 2}})
     assert counts["total"] == 3
     assert rate == 1 / 3
 

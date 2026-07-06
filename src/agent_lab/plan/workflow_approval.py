@@ -3,13 +3,11 @@ from __future__ import annotations
 """Plan workflow Human approval gate."""
 
 import uuid
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from agent_lab.run.state import RunState
 
-from agent_lab.plan.actions import parse_plan_actions
 from agent_lab.plan.pending import plan_content_hash
 from agent_lab.plan.workflow_state import (
     PlanWorkflowNotApproved,
@@ -23,6 +21,7 @@ from agent_lab.plan.workflow_state import (
 from agent_lab.run.meta import patch_run_meta, read_run_meta
 from agent_lab.turn_modes import approval_starts_execute_loop
 from agent_lab.verified_loop import DEFAULT_COMPLETION_PROMISE
+
 
 def ensure_plan_workflow_approved(folder: Path) -> None:
     run = read_run_meta(folder)

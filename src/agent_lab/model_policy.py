@@ -109,9 +109,7 @@ def loop_readiness_failure_detail(agent_ids: Sequence[str]) -> dict[str, object]
     hint_parts: list[str] = []
     blocked_ids = {str(d.get("id") or "") for d in details}
     if "kimi_work" in blocked_ids:
-        hint_parts.append(
-            "Kimi Work: rail 「연결」에서 재연결"
-        )
+        hint_parts.append("Kimi Work: rail 「연결」에서 재연결")
         hint_parts.append(
             "daimon inbox feature 미 advertise 시 AGENT_LAB_KIMI_WORK_LOOP_PHASE=1 로 inbox gate 완화 가능"
         )

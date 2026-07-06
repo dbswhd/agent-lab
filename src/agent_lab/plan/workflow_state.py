@@ -314,6 +314,8 @@ def set_plan_workflow_phase(folder: Path, phase: PlanWorkflowPhase) -> dict[str,
 
     patch_run_meta(folder, _set)
     return get_plan_workflow(read_run_meta(folder))
+
+
 def derive_loop_goal_from_plan(plan_md: str) -> dict[str, str]:
     text = (plan_md or "").strip()
     lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
@@ -332,6 +334,7 @@ def derive_loop_goal_from_plan(plan_md: str) -> dict[str, str]:
         "completion_promise": DEFAULT_COMPLETION_PROMISE,
         "criteria": criteria[:2000],
     }
+
 
 def plan_workflow_send_receipt(phase: str | None) -> str | None:
     if not phase:
@@ -401,4 +404,3 @@ def resolve_work_phase_from_plan_workflow(phase: str | None) -> str | None:
     if p in {"INTAKE", "CLARIFY", "DRAFT", "PEER_REVIEW", "REFINE"}:
         return "plan_draft"
     return None
-

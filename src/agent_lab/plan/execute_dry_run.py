@@ -6,7 +6,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from agent_lab.run.state import RunState, RunStateLike
+from agent_lab.run.state import RunState
 
 from agent_lab.adversarial_gate import adversarial_review
 from agent_lab.plan.actions import PlanAction, find_dry_run_action, parse_plan_action_sections
@@ -35,7 +35,6 @@ from agent_lab.plan.execute_snapshot import (
     compute_touched_paths,
     create_snapshot,
     delete_snapshot,
-    load_manifest,
     restore_snapshot,
 )
 from agent_lab.plan.execute_status import (
@@ -53,7 +52,6 @@ from agent_lab.plan.execute_worktree import (
     discard_exec_worktree,
 )
 from agent_lab.runtime.adapters import (
-    DEFAULT_EXECUTE_AGENT as EXECUTOR_ID,
     EXECUTE_AGENT_IDS,
     normalize_execute_agent as _normalize_execute_agent,
 )
@@ -270,6 +268,7 @@ def _finalize_dry_run(
                 return run
 
             patch_run_meta(folder, _stamp_auto)
+
 
 def run_dry_run(
     folder: Path,

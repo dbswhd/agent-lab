@@ -12,14 +12,14 @@ from typing import Any
 from agent_lab.context.layers import repo_tree_layer_enabled
 from agent_lab.repo_map_core import (
     DEFAULT_REPO_MAP_TOKENS,
-    EXCLUDE_DIRS,
-    MAX_FILES,
+    EXCLUDE_DIRS,  # noqa: F401 — public re-export
+    MAX_FILES,  # noqa: F401 — public re-export
     _CHARS_PER_TOKEN,
-    _FREQ_TIER,
-    _MIN_SEED_INCREMENT,
-    _SEED_HOP1,
-    _SEED_HOP2,
-    _SEED_SELF,
+    _FREQ_TIER,  # noqa: F401 — public re-export
+    _MIN_SEED_INCREMENT,  # noqa: F401 — public re-export
+    _SEED_HOP1,  # noqa: F401 — public re-export
+    _SEED_HOP2,  # noqa: F401 — public re-export
+    _SEED_SELF,  # noqa: F401 — public re-export
     build_repo_map_core,
     build_index,
     extract_file,

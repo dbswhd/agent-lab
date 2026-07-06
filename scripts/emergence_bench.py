@@ -35,6 +35,7 @@ def load_default_topics() -> list[dict[str, str]]:
         raise SystemExit(f"topics file must be a JSON list: {DEFAULT_TOPICS_PATH}")
     return rows
 
+
 # 합성 점수에 들어가는 (key, higher_is_better) — None은 제외.
 _COMPOSITE_KEYS: tuple[tuple[str, bool], ...] = (
     ("hybrid_action_rate", True),

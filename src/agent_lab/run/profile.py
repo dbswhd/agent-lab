@@ -323,11 +323,7 @@ def feature_flags_without_owner() -> list[str]:
     explicit: set[str] = set()
     for cfg in list_profiles():
         explicit |= set(cfg.owned_flags())
-    return sorted(
-        row.name
-        for row in FLAG_REGISTRY
-        if row.category == "feature" and row.name not in explicit
-    )
+    return sorted(row.name for row in FLAG_REGISTRY if row.category == "feature" and row.name not in explicit)
 
 
 def profile_catalog() -> dict[str, Any]:
@@ -350,8 +346,6 @@ def profile_catalog() -> dict[str, Any]:
         "active": active,
         "flag_membership": membership,
         "profile_count": len(_PROFILE_CONFIGS),
-        "feature_flags_owned": sum(
-            1 for owners in membership.values() if owners
-        ),
+        "feature_flags_owned": sum(1 for owners in membership.values() if owners),
         "feature_flags_fallback_balanced": fallback,
     }

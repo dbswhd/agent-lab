@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from agent_lab.plan.execute_worktree import WorktreeUnavailable

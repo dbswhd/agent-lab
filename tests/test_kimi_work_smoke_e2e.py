@@ -106,11 +106,7 @@ def test_mock_consensus_kimi_work_envelope(tmp_path: Path, monkeypatch: pytest.M
         parallel_rounds=2,
         run_meta=run_meta,
     )
-    kimi_msgs = [
-        m
-        for m in replies
-        if m.role == "agent" and m.agent == "kimi_work" and (m.content or "").strip()
-    ]
+    kimi_msgs = [m for m in replies if m.role == "agent" and m.agent == "kimi_work" and (m.content or "").strip()]
     assert kimi_msgs, "expected kimi_work consensus reply"
     assert any(envelope_flags), "expected structured envelope on kimi_work R2+ consensus turn"
     assert "Kimi Work" in kimi_msgs[-1].content

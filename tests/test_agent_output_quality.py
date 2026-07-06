@@ -6,11 +6,7 @@ from agent_lab.room.session_persist import _append_human_turn_synthesis
 
 
 def test_strip_sdk_internal_monologue() -> None:
-    raw = (
-        "prepare_turn_policy_before_agent_round...\n"
-        "I am ready to act on your request.\n"
-        "Actual answer for the human."
-    )
+    raw = "prepare_turn_policy_before_agent_round...\nI am ready to act on your request.\nActual answer for the human."
     assert "prepare_turn_policy" not in strip_sdk_internal_monologue(raw)
     assert "I am ready to act" not in strip_sdk_internal_monologue(raw)
     assert "Actual answer" in strip_sdk_internal_monologue(raw)

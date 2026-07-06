@@ -6,7 +6,6 @@ from agent_lab.room.roster_context import (
     active_agents_from_run_meta,
     build_active_roster_block,
     build_multi_agent_coordination,
-    build_peer_decision_guidance,
     delegator_persona,
     inactive_known_agents,
     review_round2_order,

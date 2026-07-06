@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Any
 
 import pytest
 
@@ -29,11 +28,13 @@ def _make_turn(agent_replies: list[tuple[str, str]]) -> list[_Msg]:
 
 class TestCompactCurrentTurnPins:
     def test_latest_per_agent_kept(self) -> None:
-        msgs = _make_turn([
-            ("claude", "first claude reply"),
-            ("claude", "latest claude reply"),
-            ("cursor", "cursor reply"),
-        ])
+        msgs = _make_turn(
+            [
+                ("claude", "first claude reply"),
+                ("claude", "latest claude reply"),
+                ("cursor", "cursor reply"),
+            ]
+        )
         kept, dropped = rc.compact_current_turn_pins(msgs, max_chars=100_000)
         assert len(kept) == 3  # human + 2 latest per agent
         assert kept[1].content == "latest claude reply"
@@ -41,11 +42,13 @@ class TestCompactCurrentTurnPins:
         assert dropped == 1
 
     def test_char_cap_drops_oldest(self) -> None:
-        msgs = _make_turn([
-            ("claude", "a" * 1000),
-            ("cursor", "b" * 1000),
-            ("codex", "c" * 1000),
-        ])
+        msgs = _make_turn(
+            [
+                ("claude", "a" * 1000),
+                ("cursor", "b" * 1000),
+                ("codex", "c" * 1000),
+            ]
+        )
         budget = 1500  # human + one 1000-char agent reply only
         kept, dropped = rc.compact_current_turn_pins(msgs, max_chars=budget)
         # Human always kept; at most one agent fits.
@@ -68,25 +71,27 @@ class TestCompactCurrentTurnPins:
 class TestPrepareRecentMessagesCompact:
     def test_off_parity_without_flag(self) -> None:
         """Without AGENT_LAB_COMMS_COMPACT, prepare_recent_messages is byte-stable."""
-        msgs = _make_turn([
-            ("claude", "first"),
-            ("claude", "second"),
-            ("cursor", "cursor reply"),
-        ])
-        os.environ.pop("AGENT_LAB_COMMS_COMPACT", None)
-        trimmed, turns_om, chars_om, pin_count = rc.prepare_recent_messages(
-            msgs, max_turns=2, max_chars=100_000
+        msgs = _make_turn(
+            [
+                ("claude", "first"),
+                ("claude", "second"),
+                ("cursor", "cursor reply"),
+            ]
         )
+        os.environ.pop("AGENT_LAB_COMMS_COMPACT", None)
+        trimmed, turns_om, chars_om, pin_count = rc.prepare_recent_messages(msgs, max_turns=2, max_chars=100_000)
         assert pin_count == 4  # human + 3 replies all pinned
         assert len(trimmed) == 4
 
     def test_compact_collapses_same_agent(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("AGENT_LAB_COMMS_COMPACT", "1")
-        msgs = _make_turn([
-            ("claude", "first claude reply"),
-            ("claude", "latest claude reply"),
-            ("cursor", "cursor reply"),
-        ])
+        msgs = _make_turn(
+            [
+                ("claude", "first claude reply"),
+                ("claude", "latest claude reply"),
+                ("cursor", "cursor reply"),
+            ]
+        )
         trimmed, turns_om, chars_om, pin_count = rc.prepare_recent_messages(
             msgs, max_turns=2, max_chars=100_000, efficiency_mode=False
         )
@@ -98,11 +103,13 @@ class TestPrepareRecentMessagesCompact:
     def test_efficiency_mode_unchanged(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Efficiency mode keeps its own cap logic; compact branch is bypassed."""
         monkeypatch.setenv("AGENT_LAB_COMMS_COMPACT", "1")
-        msgs = _make_turn([
-            ("claude", "first"),
-            ("claude", "second"),
-            ("cursor", "cursor reply"),
-        ])
+        msgs = _make_turn(
+            [
+                ("claude", "first"),
+                ("claude", "second"),
+                ("cursor", "cursor reply"),
+            ]
+        )
         trimmed, turns_om, chars_om, pin_count = rc.prepare_recent_messages(
             msgs, max_turns=2, max_chars=100_000, efficiency_mode=True
         )

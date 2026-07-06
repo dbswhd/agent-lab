@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 
 from agent_lab.diff_risk import (
     _count_changed_lines,

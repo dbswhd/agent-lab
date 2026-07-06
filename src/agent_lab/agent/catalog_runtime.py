@@ -259,9 +259,7 @@ def build_model_catalog_health() -> dict[str, Any]:
     if cache is not None:
         sources.append("runtime-cache")
     bundled_meta_raw = bundled.get("meta")
-    bundled_meta: dict[str, Any] = (
-        bundled_meta_raw if isinstance(bundled_meta_raw, dict) else {}
-    )
+    bundled_meta: dict[str, Any] = bundled_meta_raw if isinstance(bundled_meta_raw, dict) else {}
     cache_meta: dict[str, Any] = {}
     if isinstance(cache, dict):
         cache_meta_raw = cache.get("meta")

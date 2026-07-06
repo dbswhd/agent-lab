@@ -12,7 +12,6 @@ from agent_lab.plan.workflow_clarify import (
     PLAN_CLARIFY_GUIDANCE,
     build_clarify_context_block,
     build_plan_clarify_agent_block,
-    clarity_gate_questions,
     ensure_plan_clarify_inbox_question,
     ensure_plan_clarify_interview,
 )

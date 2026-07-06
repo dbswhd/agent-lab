@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import os
-from typing import Any
 
-from agent_lab.run.state import RunState, RunStateLike
+from agent_lab.run.state import RunStateLike
 
 from agent_lab.agents.registry import AGENT_IDS
 from agent_lab import provider_registry

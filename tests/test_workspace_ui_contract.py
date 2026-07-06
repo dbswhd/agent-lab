@@ -177,7 +177,7 @@ def test_workspace_tabs_do_not_render_inline_status_badges():
 
 
 def test_workspace_panels_have_distinct_document_wrappers():
-    room = _read("web", "src", "components", "RoomChat.tsx")
+    _read("web", "src", "components", "RoomChat.tsx")
     inspector = _read("web", "src", "components", "RoomChatInspector.tsx")
     surfaces = _read("web", "src", "styles", "surfaces.css")
     work_tool = _read("web", "src", "components", "WorkToolPanel.tsx")
@@ -196,9 +196,7 @@ def test_workspace_panels_have_distinct_document_wrappers():
 
     assert "transcript--console" in transcript
     assert "WorkbenchPanel" in inspector
-    assert "ComposerEventStack" in _read(
-        "web", "src", "components", "RoomChatComposerShell.tsx"
-    )
+    assert "ComposerEventStack" in _read("web", "src", "components", "RoomChatComposerShell.tsx")
     assert "plan-card" in plan_exec
     assert "exec-card" in plan_exec
     assert "plan-actions-bar" in plan_exec

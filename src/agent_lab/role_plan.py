@@ -87,8 +87,8 @@ _ROLES: dict[str, RoleSpec] = {
 # DEFAULT_CAPABILITIES cwd_role → 기본 역할 매핑
 _CWD_ROLE_TO_ROLE: dict[str, str] = {
     "primary": "proposer",  # cursor: sdk_edit, 코드 작성 주도
-    "repo": "executor",     # codex: codex_cli, 구현 실행
-    "review": "critic",     # claude: read_only, 리스크·검토
+    "repo": "executor",  # codex: codex_cli, 구현 실행
+    "review": "critic",  # claude: read_only, 리스크·검토
 }
 
 

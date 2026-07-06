@@ -6,7 +6,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from agent_lab.run.state import RunState, RunStateLike
+from agent_lab.run.state import RunState
 
 from agent_lab.plan.execute_merge import (
     MergeConflict,
@@ -14,7 +14,6 @@ from agent_lab.plan.execute_merge import (
     confirm_exec_merge,
     merge_exec_branch,
 )
-from agent_lab.plan.execute_paths import paths_relative_to_workspace
 from agent_lab.plan.execute_prompts import _extract_draft_summary, _selected_revision_diff
 from agent_lab.plan.execute_shared import (
     MAX_VERIFY_RETRIES,
@@ -23,19 +22,16 @@ from agent_lab.plan.execute_shared import (
     _do_worktree_merge,
     _exec_id,
     _exec_worktree_from_execution,
-    _merge_commit_message,
     _merge_conflict_execution,
     _now,
     _resolve_reject,
     _resolve_snapshot_paths,
-    _run_git,
     _worktree_hooks_verify_before_merge,
 )
 from agent_lab.plan.execute_snapshot import (
     compute_touched_paths,
     delete_snapshot,
     load_manifest,
-    restore_snapshot,
 )
 from agent_lab.plan.execute_status import (
     _append_execution_approval,
@@ -59,7 +55,7 @@ from agent_lab.plan.execute_verify import (
     _notify_merge_conflict_mission,
     _record_verify_after_merge,
 )
-from agent_lab.plan.execute_worktree import ExecWorktree, create_exec_worktree, discard_exec_worktree
+from agent_lab.plan.execute_worktree import create_exec_worktree, discard_exec_worktree
 from agent_lab.runtime.adapters import (
     DEFAULT_EXECUTE_AGENT as EXECUTOR_ID,
     pick_repair_agent as _repair_agent_id,
@@ -262,6 +258,8 @@ def cancel_open_execution(
         "execution_id": exec_id,
         "execution": result.get("execution"),
     }
+
+
 def resolve_execution(
     folder: Path,
     *,
@@ -463,6 +461,7 @@ def resolve_execution(
             patch_run_meta(folder, _mark_plan)
 
     return {"execution": target, "approval": approval, "plan_advance": plan_advance}
+
 
 def abort_merge_execution(
     folder: Path,

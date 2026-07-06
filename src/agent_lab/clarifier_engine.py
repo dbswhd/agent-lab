@@ -9,7 +9,7 @@ This module is intentionally a *thin, pure* adapter:
   (C never imports this module at top level either).
 
 The clarity engine is always active: vague topics hold CLARIFY; anchored topics pass immediately
-(regex short-circuit, no LLM call). ``AGENT_LAB_CLARIFIER_ENGINE`` is no longer read.
+(regex short-circuit, no LLM call). The legacy engine env toggle is no longer read.
 """
 
 from __future__ import annotations

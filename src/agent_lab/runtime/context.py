@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any
+from agent_lab.run.state import RunStateLike
 
 
-def enrich_execute_prompt(user: str, run_meta: dict[str, Any] | None) -> str:
+def enrich_execute_prompt(user: str, run_meta: RunStateLike | None) -> str:
     """Append mission wisdom block to execute/repair user prompts."""
     from agent_lab.mission.notepad import inject_wisdom_into_prompt
 
@@ -13,7 +13,7 @@ def enrich_execute_prompt(user: str, run_meta: dict[str, Any] | None) -> str:
 
 
 def build_mission_wisdom_block(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     *,
     max_chars: int = 1500,
 ) -> str:

@@ -8,7 +8,7 @@ providers are reactive-only and fail over on confirmed credential errors.
 
 from __future__ import annotations
 
-from typing import Any
+from agent_lab.run.state import RunStateLike
 
 from agent_lab import provider_registry
 from agent_lab.credential_store import (
@@ -46,7 +46,7 @@ def should_preempt(
     return False
 
 
-def provider_spent_usd(run_meta: dict[str, Any] | None, provider: str) -> float:
+def provider_spent_usd(run_meta: RunStateLike | None, provider: str) -> float:
     """Best-effort local spend for a provider from run_meta cost_ledger."""
     if not isinstance(run_meta, dict):
         return 0.0

@@ -34,6 +34,22 @@ def test_f9_hot_path_py_caps_in_baseline() -> None:
         "src/agent_lab/plan/execute.py": 88,
         "src/agent_lab/plan/workflow.py": 114,
         "src/agent_lab/room/turn_flow.py": 21,
+        "src/agent_lab/room/turn_flow_run.py": 169,
+        "src/agent_lab/room/turn_flow_continue.py": 215,
+    }
+
+
+def test_f9_hot_path_ts_caps_in_baseline() -> None:
+    """F9 ratchet: RoomChat shell LOC caps are pinned in structure-metrics baseline."""
+    baseline = json.loads((ROOT / "tests/fixtures/structure-metrics-baseline.json").read_text())
+    by_path = {row["path"]: row["lines"] for row in baseline["hot_path_ts_files"]}
+    assert by_path == {
+        "web/src/components/RoomChat.tsx": 9,
+        "web/src/components/RoomChatView.tsx": 222,
+        "web/src/hooks/useRoomChat.ts": 12,
+        "web/src/hooks/useRoomChatBootstrap.ts": 363,
+        "web/src/hooks/useRoomChatInteractions.ts": 692,
+        "web/src/hooks/useRoomChatPresentation.ts": 413,
     }
 
 
@@ -64,8 +80,12 @@ def test_f11_run_meta_dict_signature_baseline() -> None:
         text=True,
         check=False,
     )
-    assert proc.returncode == 0, proc.stderr or proc.stdout
-    total = sum(int(line.split(":")[-1]) for line in proc.stdout.splitlines() if ":" in line)
+    assert proc.returncode in (0, 1), proc.stderr or proc.stdout
+    total = (
+        sum(int(line.split(":")[-1]) for line in proc.stdout.splitlines() if ":" in line)
+        if proc.stdout.strip()
+        else 0
+    )
     baseline = json.loads((ROOT / "tests/fixtures/structure-metrics-baseline.json").read_text())
     assert total <= baseline["f11_run_meta_dict_signatures"]
 

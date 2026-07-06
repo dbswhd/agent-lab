@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 from typing import Any
 
 from agent_lab.reply_policy import legacy_endorse_enabled
 
 
-def communicate_counts(run_meta: dict[str, Any]) -> dict[str, Any]:
+def communicate_counts(run_meta: RunStateLike) -> dict[str, Any]:
     turns = run_meta.get("turns") or []
     agent_replies = 0
     parse_errors = 0

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 from typing import Any
 
 from agent_lab.context.limits import agent_context_limits
@@ -9,7 +10,7 @@ from agent_lab.context.meta import summarize_turn_context
 
 
 def _build_entry(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     context_log: list[dict[str, Any]],
     turn_meta: dict[str, Any] | None,
 ) -> dict[str, Any]:
@@ -55,7 +56,7 @@ def _build_entry(
 
 
 def record_run_token_budget(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     context_log: list[dict[str, Any]],
     turn_meta: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:

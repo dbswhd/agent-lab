@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 import os
 import re
 import uuid
@@ -258,7 +259,7 @@ def list_session_skill_files(folder: Path) -> list[Path]:
 
 
 def build_session_skills_block(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     *,
     folder: Path | None = None,
     max_chars: int = 2400,

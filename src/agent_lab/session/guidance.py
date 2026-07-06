@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 import hashlib
 import json
 import re
@@ -193,7 +194,7 @@ def resolve_session_workspace_binding(
     *,
     topic: str = "",
     plan_md: str = "",
-    run_meta: dict[str, Any] | None = None,
+    run_meta: RunStateLike | None = None,
 ) -> dict[str, Any] | None:
     """Detect or reuse workspace binding for book sessions."""
     if run_meta:
@@ -323,7 +324,7 @@ def infer_session_phase(
 
 
 def sync_session_meta(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     *,
     topic: str,
     messages: list[_MsgLike],
@@ -353,7 +354,7 @@ def sync_session_meta(
 
 
 def build_session_guidance_block(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     *,
     plan_md: str = "",
 ) -> str:
@@ -407,7 +408,7 @@ def build_session_guidance_block(
     return "\n\n".join(parts)
 
 
-def _read_project_md(run_meta: dict[str, Any]) -> str:
+def _read_project_md(run_meta: RunStateLike) -> str:
     binding = run_meta.get("workspace_binding")
     if not isinstance(binding, dict):
         return ""
@@ -515,7 +516,7 @@ def verify_execution_artifacts(
     }
 
 
-def preserve_session_meta_from_prev(run_meta: dict[str, Any], prev_run: dict[str, Any]) -> None:
+def preserve_session_meta_from_prev(run_meta: RunStateLike, prev_run: dict[str, Any]) -> None:
     from agent_lab.run.meta import stamp_run_meta
 
     fields: dict[str, Any] = {}

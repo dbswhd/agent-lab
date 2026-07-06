@@ -8,6 +8,7 @@ unchanged; consensus rounds are the source of truth, not a 1:1 agent->role mappi
 
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 from typing import Any
 
 
@@ -42,7 +43,7 @@ def latest_turn_consensus(run: dict[str, Any]) -> dict[str, Any] | None:
     return None
 
 
-def sync_consensus_snapshot(run_meta: dict[str, Any], *, consensus: dict[str, Any] | None) -> None:
+def sync_consensus_snapshot(run_meta: RunStateLike, *, consensus: dict[str, Any] | None) -> None:
     """Mirror Room turn consensus onto run-level fields consumed by pipeline gates."""
     snapshot = normalize_consensus_signal(consensus)
     if not snapshot:

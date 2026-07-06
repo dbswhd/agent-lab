@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from ui_surface_bundles import room_chat_orchestrator, room_chat_surface
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,8 +20,8 @@ def test_chat_composer_wires_slash_command_menu():
 
 
 def test_room_chat_fetches_commands_and_plugin_panel():
-    room = _read("web/src/components/RoomChat.tsx")
-    orchestrator = _read("web/src/hooks/useRoomChat.ts")
+    room = room_chat_surface()
+    orchestrator = room_chat_orchestrator()
     slash = _read("web/src/hooks/useRoomSlashCommands.ts")
     slash_exec = _read("web/src/hooks/useRoomSlashExecute.ts")
     settings = _read("web/src/components/SettingsPage.tsx")
@@ -51,7 +52,7 @@ def test_slash_picker_keyboard_contract():
 
 
 def test_login_secret_and_auth_panel_contract():
-    room = _read("web/src/components/RoomChat.tsx")
+    room = room_chat_surface()
     popovers = _read("web/src/hooks/useRoomComposerPopovers.tsx")
     auth = _read("web/src/components/ComposerAuthFlowPopover.tsx")
     secret = _read("web/src/components/ComposerAuthSecretPopover.tsx")

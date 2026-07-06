@@ -8,6 +8,7 @@ Kill switch: ``AGENT_LAB_DEBATE_CONVERGENCE_GATE=0`` (default off, OFF-parity).
 
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 import os
 from typing import Any
 
@@ -93,7 +94,7 @@ def _endorse_gap_divergence(
     return round(max(0.0, 1.0 - coverage), 4)
 
 
-def _objection_residue_divergence(run_meta: dict[str, Any] | None, *, human_turn: int) -> float:
+def _objection_residue_divergence(run_meta: RunStateLike | None, *, human_turn: int) -> float:
     if not run_meta:
         return 0.0
     from agent_lab.room.objections import open_objections
@@ -134,7 +135,7 @@ def score_debate_convergence(
     messages: list[Any],
     *,
     active_agents: list[str],
-    run_meta: dict[str, Any] | None = None,
+    run_meta: RunStateLike | None = None,
     human_turn: int = 0,
     phase: str = "debate",
     consented: list[str] | None = None,
@@ -169,7 +170,7 @@ def score_debate_convergence(
     }
 
 
-def _open_objections_block(run_meta: dict[str, Any] | None, *, human_turn: int) -> bool:
+def _open_objections_block(run_meta: RunStateLike | None, *, human_turn: int) -> bool:
     if not run_meta:
         return False
     from agent_lab.room.objections import open_objections
@@ -182,7 +183,7 @@ def _open_objections_block(run_meta: dict[str, Any] | None, *, human_turn: int) 
 
 def should_advance_debate(
     result: dict[str, Any],
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     *,
     human_turn: int,
     debate_round: int,
@@ -202,7 +203,7 @@ def should_advance_debate(
 
 def should_advance_endorse(
     result: dict[str, Any],
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     *,
     human_turn: int,
     endorse_count: int,
@@ -233,7 +234,7 @@ def public_convergence_snapshot(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def record_debate_convergence(run_meta: dict[str, Any] | None, result: dict[str, Any]) -> None:
+def record_debate_convergence(run_meta: RunStateLike | None, result: dict[str, Any]) -> None:
     if run_meta is None:
         return
     from agent_lab.run.meta import stamp_run_meta

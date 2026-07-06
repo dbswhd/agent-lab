@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -15,7 +16,7 @@ T = TypeVar("T")
 BridgeFn = Callable[[str, dict[str, Any]], None]
 
 
-def _human_turn_from_run(run_meta: dict[str, Any] | None) -> int | None:
+def _human_turn_from_run(run_meta: RunStateLike | None) -> int | None:
     if not isinstance(run_meta, dict):
         return None
     turns = run_meta.get("turns")
@@ -45,7 +46,7 @@ def sidecar_bridge_handler(
     return on_bridge, run_meta
 
 
-def persist_sidecar_ledger(folder: Path, run_meta: dict[str, Any]) -> None:
+def persist_sidecar_ledger(folder: Path, run_meta: RunStateLike) -> None:
     ledger = run_meta.get("cost_ledger")
     if not isinstance(ledger, dict):
         return
@@ -59,7 +60,7 @@ def persist_sidecar_ledger(folder: Path, run_meta: dict[str, Any]) -> None:
 
 def flush_sidecar_call(
     folder: Path,
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     *,
     kind: str,
     agent_id: str,

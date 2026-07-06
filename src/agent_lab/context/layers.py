@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 from pathlib import Path
 from typing import Any
 
@@ -33,7 +34,7 @@ def repo_tree_layer_enabled(run: dict[str, Any] | None) -> bool:
     return get_context_layers(run).get("repo_tree", True)
 
 
-def should_use_mission_slim_bundle(run_meta: dict[str, Any] | None) -> bool:
+def should_use_mission_slim_bundle(run_meta: RunStateLike | None) -> bool:
     """DISCUSS / PLAN_GATE phases use slimmer context when mission loop is on."""
     from agent_lab.mission.loop import get_mission_loop
 

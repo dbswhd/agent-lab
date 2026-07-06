@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from ui_surface_bundles import room_chat_orchestrator, room_chat_surface
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -13,7 +14,7 @@ def _read(*parts: str) -> str:
 
 
 def _orchestrator() -> str:
-    return _read("web", "src", "hooks", "useRoomChat.ts")
+    return room_chat_orchestrator()
 
 
 def _composer_stack_surface() -> str:
@@ -24,7 +25,6 @@ def _composer_stack_surface() -> str:
 
 def test_scenario_a_discuss_only_contract():
     """A: discuss mode, receipt, human synthesis, peer channel, claimable."""
-    _read("web", "src", "components", "RoomChat.tsx")
     execute_send = _read("web", "src", "hooks", "useRoomExecuteSend.ts")
     transcript_panel = _read("web", "src", "components", "RoomTranscriptPanel.tsx")
     _read("web", "src", "components", "ChatComposer.tsx")
@@ -53,13 +53,23 @@ def test_turn_policy_workspace_binding_kept():
     assert "apply_turn_effects" in turn_policy
 
 
+def _plan_execute_bundle() -> str:
+    return "\n".join(
+        [
+            _read("web", "src", "components", "PlanExecutePanel.tsx"),
+            _read("web", "src", "components", "PlanExecutePendingCard.tsx"),
+            _read("web", "src", "components", "PlanExecuteDryRunBody.tsx"),
+            _read("web", "src", "hooks", "usePlanExecutePanel.ts"),
+        ]
+    )
+
+
 def test_scenario_b_plan_synthesis_contract():
     """B: plan after send → composer event stack + execute surface."""
-    _read("web", "src", "components", "RoomChat.tsx")
     inspector = _read("web", "src", "components", "RoomChatInspector.tsx")
     stack = _read("web", "src", "components", "ComposerEventStack.tsx")
     work = _read("web", "src", "components", "WorkToolPanel.tsx")
-    plan = _read("web", "src", "components", "PlanExecutePanel.tsx")
+    plan = _plan_execute_bundle()
 
     assert "composerModeVariant" in _orchestrator()
     assert "plan_updated" in _read("web", "src", "utils", "sendReceipt.ts")
@@ -73,7 +83,7 @@ def test_scenario_b_plan_synthesis_contract():
 
 
 def test_scenario_b2_plan_workflow_ui_contract():
-    room = _read("web", "src", "components", "RoomChat.tsx")
+    room = room_chat_surface()
     sse = _read("web", "src", "hooks", "useRoomSseHandler.ts")
     approval = _read("web", "src", "components", "PlanApprovalPanel.tsx")
     receipt = _read("web", "src", "utils", "sendReceipt.ts")
@@ -103,7 +113,6 @@ def test_scenario_b2_plan_workflow_ui_contract():
 
 def test_scenario_b_diff_tool_contract():
     """B2: workbench diff mode renders execution diffs."""
-    _read("web", "src", "components", "RoomChat.tsx")
     inspector = _read("web", "src", "components", "RoomChatInspector.tsx")
     diff = _read("web", "src", "components", "DiffToolPanel.tsx")
 
@@ -130,7 +139,6 @@ def test_scenario_c_execute_task_contract():
 def test_scenario_d_lead_consensus_contract():
     """D: turn leads, consensus blocker, consensus_done receipt."""
     taskbar = _read("web", "src", "components", "RoomTaskBar.tsx")
-    _read("web", "src", "components", "RoomChat.tsx")
     receipt = _read("web", "src", "utils", "sendReceipt.ts")
 
     assert "turnLeadEntries" in taskbar
@@ -142,7 +150,7 @@ def test_scenario_d_lead_consensus_contract():
 
 def test_scenario_e_clarifier_contract():
     """E: clarifier banner when AGENT_LAB_CLARIFIER=1."""
-    room = _read("web", "src", "components", "RoomChat.tsx")
+    room = room_chat_surface()
 
     assert "clarifierQuestions" in room
     assert "clarifier" in room.lower()
@@ -167,7 +175,7 @@ def test_new_session_mission_template_apply_contract():
     apply path survives in RoomChat SSE handler (bootstrap id -> applySessionTemplate on session bind).
     (The standalone template picker was consolidated out of NewSessionDialog/App.)"""
     ns = _read("web", "src", "components", "NewSessionDialog.tsx")
-    room = _read("web", "src", "components", "RoomChat.tsx")
+    room = room_chat_surface()
     sse = _read("web", "src", "hooks", "useRoomSseHandler.ts")
     assert "fetchSessionSetupOptions" in ns
     assert "applySessionTemplate" in sse
@@ -182,7 +190,7 @@ def test_taskbar_human_inbox_integration_contract():
     """Human gate resolve: composer event stack. RoomTaskBar remains unmounted."""
     taskbar = _read("web", "src", "components", "RoomTaskBar.tsx")
     stack = _read("web", "src", "components", "ComposerEventStack.tsx")
-    room = _read("web", "src", "components", "RoomChat.tsx")
+    room = room_chat_surface()
     assert "taskbar--dock" in taskbar
     assert "HumanInboxPanel" in stack
     assert "taskbar-dock" not in room
@@ -194,7 +202,7 @@ def test_taskbar_human_inbox_integration_contract():
 
 def test_inbox_segments_contract():
     """Activity inline in transcript; Human Inbox in composer stack."""
-    room = _read("web", "src", "components", "RoomChat.tsx")
+    room = room_chat_surface()
     transcript = _read("web", "src", "components", "RoomTranscriptPanel.tsx")
     sse = _read("web", "src", "hooks", "useRoomSseHandler.ts")
     stack = _read("web", "src", "components", "ComposerEventStack.tsx")
@@ -209,7 +217,7 @@ def test_inbox_segments_contract():
 
 
 def test_composer_question_inbox_is_separate_from_generic_pending_hint():
-    room = _read("web", "src", "components", "RoomChat.tsx")
+    room = room_chat_surface()
     stack = _read("web", "src", "components", "ComposerEventStack.tsx")
     inbox = _read("web", "src", "components", "HumanInboxPanel.tsx")
     assert "inboxPendingCount" in room
@@ -222,7 +230,7 @@ def test_composer_question_inbox_is_separate_from_generic_pending_hint():
 def test_room_preset_picker_replaces_turn_strategy_ui():
     composer = _read("web", "src", "components", "ChatComposer.tsx")
     presets = _read("web", "src", "utils", "roomPresets.ts")
-    room = _read("web", "src", "components", "RoomChat.tsx")
+    room = room_chat_surface()
     composer_prefs = _read("web", "src", "hooks", "useRoomComposerPrefs.ts")
     assert "ComposerTurnPicker" not in composer
     assert "resolveRoomPresets" in presets
@@ -271,7 +279,7 @@ def test_plan_workflow_banner_hides_inbox_when_human_decision_visible():
 
 def test_remaining_gaps_slack_inbox_ref_recovery_contract():
     """Slack settings, inbox ref jump, discuss recovery banner."""
-    room = _read("web", "src", "components", "RoomChat.tsx")
+    room = room_chat_surface()
     gateway = _read("web", "src", "components", "GatewaySettingsPanel.tsx")
     recovery = _read("web", "src", "components", "RecoveryStrip.tsx")
     recovery_handlers = _read("web", "src", "hooks", "useRoomRecoveryHandlers.ts")

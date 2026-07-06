@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 import os
 from pathlib import Path
 from datetime import datetime, timezone
@@ -322,7 +323,7 @@ def record_agent_call(
     *,
     human_turn: int,
     agent: str,
-    run_meta: dict[str, Any] | None = None,
+    run_meta: RunStateLike | None = None,
 ) -> dict[str, Any]:
     path = folder
 

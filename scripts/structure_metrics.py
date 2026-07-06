@@ -28,6 +28,17 @@ HOT_PATH_PY_FILES: tuple[str, ...] = (
     "src/agent_lab/plan/execute.py",
     "src/agent_lab/plan/workflow.py",
     "src/agent_lab/room/turn_flow.py",
+    "src/agent_lab/room/turn_flow_run.py",
+    "src/agent_lab/room/turn_flow_continue.py",
+)
+
+HOT_PATH_TS_FILES: tuple[str, ...] = (
+    "web/src/components/RoomChat.tsx",
+    "web/src/components/RoomChatView.tsx",
+    "web/src/hooks/useRoomChat.ts",
+    "web/src/hooks/useRoomChatBootstrap.ts",
+    "web/src/hooks/useRoomChatInteractions.ts",
+    "web/src/hooks/useRoomChatPresentation.ts",
 )
 
 TRACK_PREFIXES = (
@@ -62,6 +73,7 @@ class StructureMetrics:
     makefile_targets: int
     large_tsx_files: list[dict[str, int | str]]
     hot_path_py_files: list[dict[str, int | str]]
+    hot_path_ts_files: list[dict[str, int | str]]
     notes: dict[str, str]
 
 
@@ -92,6 +104,19 @@ def _count_lines(path: Path) -> int:
 def _hot_path_py_files() -> list[dict[str, int | str]]:
     rows: list[dict[str, int | str]] = []
     for rel in HOT_PATH_PY_FILES:
+        path = ROOT / rel
+        rows.append(
+            {
+                "path": rel,
+                "lines": _count_lines(path) if path.is_file() else -1,
+            }
+        )
+    return rows
+
+
+def _hot_path_ts_files() -> list[dict[str, int | str]]:
+    rows: list[dict[str, int | str]] = []
+    for rel in HOT_PATH_TS_FILES:
         path = ROOT / rel
         rows.append(
             {
@@ -137,6 +162,7 @@ def collect_metrics() -> StructureMetrics:
         makefile_targets=makefile_targets,
         large_tsx_files=_large_tsx_files(),
         hot_path_py_files=_hot_path_py_files(),
+        hot_path_ts_files=_hot_path_ts_files(),
         notes={
             "pycache": (
                 "tracked_pycache_files counts git-tracked __pycache__/*.pyc only; "
@@ -144,8 +170,11 @@ def collect_metrics() -> StructureMetrics:
             ),
             "makefile_targets": "Counted as Makefile lines matching ^target:",
             "hot_path_py_files": (
-                "F9 ratchet: execute.py / workflow.py / turn_flow.py LOC caps; "
+                "F9 ratchet: execute/workflow/turn_flow* LOC caps; "
                 "--check fails on any drift from baseline (growth or shrink without update)."
+            ),
+            "hot_path_ts_files": (
+                "F9 ratchet: RoomChat shell LOC caps after view/orchestrator split."
             ),
             "f11_run_meta_dict_signatures": (
                 "F11 ratchet: grep count of run_meta: dict[str, Any] in src/agent_lab; "
@@ -170,6 +199,9 @@ def _print_human(metrics: StructureMetrics) -> None:
         print(f"    {row['lines']:>5}  {row['path']}")
     print("  F9 hot-path Python:")
     for row in metrics.hot_path_py_files:
+        print(f"    {row['lines']:>5}  {row['path']}")
+    print("  F9 hot-path TypeScript:")
+    for row in metrics.hot_path_ts_files:
         print(f"    {row['lines']:>5}  {row['path']}")
 
 
@@ -215,6 +247,17 @@ def _check_against_baseline(metrics: StructureMetrics) -> list[str]:
     for path in HOT_PATH_PY_FILES:
         if path not in baseline_hot:
             failures.append(f"hot_path_py_files missing F9 path {path!r}")
+
+    baseline_ts_hot = {row["path"]: row["lines"] for row in baseline.get("hot_path_ts_files", [])}
+    actual_ts_hot = {row["path"]: row["lines"] for row in metrics.hot_path_ts_files}
+    for path, expected_lines in baseline_ts_hot.items():
+        if path not in actual_ts_hot:
+            failures.append(f"hot_path_ts_files missing baseline path {path!r}")
+        elif actual_ts_hot[path] != expected_lines:
+            failures.append(f"hot_path_ts_files[{path!r}]: expected {expected_lines}, got {actual_ts_hot[path]}")
+    for path in HOT_PATH_TS_FILES:
+        if path not in baseline_ts_hot:
+            failures.append(f"hot_path_ts_files missing F9 path {path!r}")
 
     return failures
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 from pathlib import Path
 from typing import Any
 
@@ -161,7 +162,7 @@ def list_mission_notepad_summaries(folder: Path) -> list[dict[str, Any]]:
     return out
 
 
-def _notepad_base_from_run_meta(run_meta: dict[str, Any] | None) -> Path | None:
+def _notepad_base_from_run_meta(run_meta: RunStateLike | None) -> Path | None:
     from agent_lab.mission.loop import get_mission_loop
 
     session_id = str((run_meta or {}).get("_session_id") or "").strip()
@@ -178,7 +179,7 @@ def _notepad_base_from_run_meta(run_meta: dict[str, Any] | None) -> Path | None:
 
 
 def build_mission_wisdom_block(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     *,
     max_chars: int = MISSION_WISDOM_INJECT_CAP,
 ) -> str:
@@ -269,7 +270,7 @@ def append_wisdom_note(
 
 def inject_wisdom_into_prompt(
     user: str,
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
 ) -> str:
     """Append [Mission wisdom] block to an execute/repair user prompt."""
     wisdom = build_mission_wisdom_block(run_meta)

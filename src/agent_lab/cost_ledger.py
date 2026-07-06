@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from agent_lab.agent.models import estimate_cost_usd
+from agent_lab.run.state import RunState, RunStateLike
 
 
 @dataclass
@@ -124,7 +125,7 @@ def estimate_usage_from_text(
     )
 
 
-def persist_cost_ledger(folder: Path | None, run_meta: dict[str, Any] | None) -> None:
+def persist_cost_ledger(folder: Path | None, run_meta: RunStateLike | None) -> None:
     """Write in-memory ``cost_ledger`` to run.json without clobbering other fields."""
     if folder is None or not isinstance(run_meta, dict):
         return
@@ -133,7 +134,7 @@ def persist_cost_ledger(folder: Path | None, run_meta: dict[str, Any] | None) ->
         return
     from agent_lab.run.meta import patch_run_meta
 
-    def _patch(run: dict[str, Any]) -> dict[str, Any]:
+    def _patch(run: RunState) -> RunState:
         run["cost_ledger"] = ledger
         return run
 
@@ -177,7 +178,7 @@ def _recompute_cumulative(ledger: dict[str, Any]) -> None:
 
 
 def record_agent_usage(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     agent_id: str,
     usage: AgentUsage | None,
     *,
@@ -239,7 +240,7 @@ def _warn_pct() -> float:
     return pct if 0 < pct <= 100 else 80.0
 
 
-def budget_status(run_meta: dict[str, Any] | None) -> dict[str, Any]:
+def budget_status(run_meta: RunStateLike | None) -> dict[str, Any]:
     """Return mission budget status for the current cost_ledger.
 
     ``limit_usd`` is None when ``AGENT_LAB_MISSION_BUDGET_USD`` is unset (no cap).
@@ -276,7 +277,7 @@ def _session_token_budget() -> int | None:
     return value if value > 0 else None
 
 
-def _cumulative_tokens(run_meta: dict[str, Any] | None) -> tuple[int, int]:
+def _cumulative_tokens(run_meta: RunStateLike | None) -> tuple[int, int]:
     if isinstance(run_meta, dict):
         ledger = run_meta.get("cost_ledger")
         if isinstance(ledger, dict):
@@ -289,7 +290,7 @@ def _cumulative_tokens(run_meta: dict[str, Any] | None) -> tuple[int, int]:
     return 0, 0
 
 
-def session_budget_action(run_meta: dict[str, Any] | None) -> dict[str, Any]:
+def session_budget_action(run_meta: RunStateLike | None) -> dict[str, Any]:
     """Surface cumulative session cost and decide adaptive-efficiency action.
 
     Combines the existing USD ``budget_status`` with an optional cumulative-token

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 import os
 import json
 
@@ -583,7 +584,7 @@ def invoke_tool(
 
 def mcp_allowed_for_agent(
     agent: str,
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     *,
     workspace: Path | None = None,
 ) -> bool:

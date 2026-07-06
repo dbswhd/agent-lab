@@ -18,6 +18,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from agent_lab.diff_risk import RiskLevel, assess_diff_risk
+from agent_lab.run.state import RunStateLike
 
 _TIER_RANK: dict[str, int] = {"low": 0, "medium": 1, "high": 2}
 
@@ -54,7 +55,7 @@ class AutoApproveDecision:
 
 def evaluate_auto_approve(
     execution: dict[str, Any],
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
 ) -> AutoApproveDecision:
     """Return whether a pending execution can be auto-approved."""
     from agent_lab.autonomy_ladder import effective_auto_approve_threshold, resolve_display_autonomy_level

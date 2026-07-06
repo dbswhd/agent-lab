@@ -14,6 +14,7 @@ turn — every handler is wrapped so failures are swallowed.
 
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 import json
 import os
 import time
@@ -40,7 +41,7 @@ class TraceRecorder:
     def __init__(
         self,
         folder: Path | None,
-        run_meta: dict[str, Any] | None,
+        run_meta: RunStateLike | None,
         inner: OnEvent | None,
         *,
         human_turn: int = 0,
@@ -188,7 +189,7 @@ class TraceRecorder:
 
 def install_tracer(
     folder: Path | None,
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     on_event: OnEvent | None,
     *,
     human_turn: int = 0,

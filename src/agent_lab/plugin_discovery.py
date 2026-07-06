@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 import os
 import subprocess
 import threading
@@ -432,7 +433,7 @@ def _group_by_agent(plugins: list[dict[str, Any]]) -> dict[str, list[dict[str, A
     return grouped
 
 
-def read_agent_plugins(run_meta: dict[str, Any] | None) -> dict[str, Any]:
+def read_agent_plugins(run_meta: RunStateLike | None) -> dict[str, Any]:
     raw = (run_meta or {}).get("agent_plugins")
     return dict(raw) if isinstance(raw, dict) else {}
 
@@ -449,7 +450,7 @@ def default_allowlist(plugins: list[dict[str, Any]]) -> dict[str, list[str]]:
 
 
 def merge_session_allowlist(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     plugins: list[dict[str, Any]],
 ) -> dict[str, list[str]]:
     stored = read_agent_plugins(run_meta)
@@ -479,7 +480,7 @@ def is_plugin_enabled(
 
 
 def patch_agent_plugins(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     agent: str,
     enabled_ids: list[str],
 ) -> dict[str, Any]:
@@ -493,7 +494,7 @@ def patch_agent_plugins(
 
 def build_plugin_allowlist_block(
     agent: str,
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     plugins: list[dict[str, Any]] | None = None,
 ) -> str:
     if plugins is None:

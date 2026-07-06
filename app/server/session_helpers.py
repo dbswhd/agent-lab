@@ -22,9 +22,9 @@ from agent_lab.session.paths import SESSIONS_DIR  # noqa: F401 — test monkeypa
 
 def room_session_context(folder: Path | None) -> tuple[str, dict[str, Any]]:
     """Session plan/run snapshot — direct submodule import (F9 facade)."""
-    from agent_lab.room.session_persist import _session_context
+    from agent_lab.room.session_persist import session_context
 
-    return _session_context(folder)
+    return session_context(folder)
 
 
 def _sessions_root() -> Path:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 import json
 import os
 import sys
@@ -25,7 +26,7 @@ def plan_inbox_mcp_enabled() -> bool:
 
 
 def discuss_inbox_mcp_enabled(
-    run_meta: dict[str, Any] | None = None,
+    run_meta: RunStateLike | None = None,
     *,
     agent_id: str | None = None,
 ) -> bool:

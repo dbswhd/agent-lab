@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 from pathlib import Path
 from typing import Any
 
@@ -186,7 +187,7 @@ def apply_discuss_executor_policy(
 def permission_preamble(
     permissions: dict[str, Any] | None,
     agent: str,
-    run_meta: dict[str, Any] | None = None,
+    run_meta: RunStateLike | None = None,
 ) -> str:
     """Extra instructions appended when user granted capabilities."""
     perms = normalize_agent_permissions(permissions)

@@ -8,6 +8,7 @@ from typing import Any
 
 from agent_lab.plan.refs import REF_BLOCK_PATTERN, extract_ref_line_numbers
 from agent_lab.room.objections import list_objections
+from agent_lab.run.state import RunStateLike
 
 CONFLICT_ACTS = frozenset({"CHALLENGE", "BLOCK"})
 
@@ -66,7 +67,7 @@ def hybrid_action_rate(folder: Path) -> tuple[float | None, dict[str, int]]:
     return counts["hybrid_bullets"] / counts["ref_bullets"], counts
 
 
-def challenge_yield(run_meta: dict[str, Any]) -> tuple[float | None, dict[str, int]]:
+def challenge_yield(run_meta: RunStateLike) -> tuple[float | None, dict[str, int]]:
     """CHALLENGE/BLOCK objections that were accepted — conflict that changed the output."""
     rows = [o for o in list_objections(run_meta) if o.get("act") in CONFLICT_ACTS]
     counts = {
@@ -100,7 +101,7 @@ def pure_challenge_yield_from_resolution(
     return accepted / total, counts
 
 
-def pure_challenge_yield(run_meta: dict[str, Any]) -> tuple[float | None, dict[str, int]]:
+def pure_challenge_yield(run_meta: RunStateLike) -> tuple[float | None, dict[str, int]]:
     """CHALLENGE-only objections that were accepted — excludes BLOCK from denominator."""
     rows = [o for o in list_objections(run_meta) if str(o.get("act") or "").strip().upper() == "CHALLENGE"]
     counts = {
@@ -158,7 +159,7 @@ def act_distribution(messages: list[dict[str, Any]]) -> dict[str, int]:
     return dist
 
 
-def anchor_chain_depth(run_meta: dict[str, Any]) -> tuple[float | None, dict[str, int]]:
+def anchor_chain_depth(run_meta: RunStateLike) -> tuple[float | None, dict[str, int]]:
     """P4 anchor 계보 — 턴별 재앵커(parent_id 체인) 최대 깊이. lineage 없으면 None."""
     max_depth = 0
     turns_with_lineage = 0
@@ -180,7 +181,7 @@ def anchor_chain_depth(run_meta: dict[str, Any]) -> tuple[float | None, dict[str
 
 
 def recombination_kpis(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
 ) -> tuple[float | None, dict[str, int]]:
     """P4 재조합 텔레메트리 — 합성 응답 중 refs가 타 에이전트 2명 이상인 비율."""
     replies = 0
@@ -213,7 +214,7 @@ def recombination_kpis(
     return valid / replies, counts
 
 
-def routing_kpis(run_meta: dict[str, Any]) -> tuple[dict[str, float | None], dict[str, Any]]:
+def routing_kpis(run_meta: RunStateLike) -> tuple[dict[str, float | None], dict[str, Any]]:
     """Topic-router telemetry — escalation_rate가 높으면 분류기가 과소평가 중."""
     distribution: dict[str, int] = {}
     auto_routed = 0
@@ -255,7 +256,7 @@ def routing_kpis(run_meta: dict[str, Any]) -> tuple[dict[str, float | None], dic
     return {"escalation_rate": escalation_rate, "quick_call_savings": savings}, counts
 
 
-def dispatch_fanout_rate(run_meta: dict[str, Any]) -> tuple[float | None, dict[str, int]]:
+def dispatch_fanout_rate(run_meta: RunStateLike) -> tuple[float | None, dict[str, int]]:
     """Share of dispatch ledger rows that used parallel_delegate (CMD-RDP)."""
     ledger = [e for e in (run_meta.get("dispatch_ledger") or []) if isinstance(e, dict)]
     counts = {"total": len(ledger), "parallel": 0, "single": 0}
@@ -272,7 +273,7 @@ def dispatch_fanout_rate(run_meta: dict[str, Any]) -> tuple[float | None, dict[s
 
 def emergence_kpis(
     folder: Path,
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     messages: list[dict[str, Any]],
 ) -> tuple[dict[str, float | None], dict[str, Any]]:
     """Bundle emergence scores + counts for score_session."""

@@ -7,6 +7,7 @@ import time
 from typing import Any, Callable
 
 from agent_lab.agents.registry import AgentId, label
+from agent_lab.run.state import RunStateLike
 
 _USAGE_LIMIT_PATTERNS = (
     r"usage limit",
@@ -41,14 +42,14 @@ def agent_provider_id(agent_id: str) -> str:
     return _AGENT_PROVIDER.get(str(agent_id).strip().lower(), str(agent_id).strip().lower())
 
 
-def _pause_map(run_meta: dict[str, Any] | None) -> dict[str, Any]:
+def _pause_map(run_meta: RunStateLike | None) -> dict[str, Any]:
     if not isinstance(run_meta, dict):
         return {}
     raw = run_meta.get("_agent_pauses")
     return raw if isinstance(raw, dict) else {}
 
 
-def _prune_expired_pauses(run_meta: dict[str, Any] | None, *, now: float | None = None) -> None:
+def _prune_expired_pauses(run_meta: RunStateLike | None, *, now: float | None = None) -> None:
     if not isinstance(run_meta, dict):
         return
     base = now if now is not None else time.time()
@@ -64,7 +65,7 @@ def _prune_expired_pauses(run_meta: dict[str, Any] | None, *, now: float | None 
         run_meta.pop("_agent_pauses", None)
 
 
-def agent_pause_until(run_meta: dict[str, Any] | None, agent_id: str, *, now: float | None = None) -> float | None:
+def agent_pause_until(run_meta: RunStateLike | None, agent_id: str, *, now: float | None = None) -> float | None:
     """Return monotonic-unix pause expiry for an agent, or None when active."""
     if not isinstance(run_meta, dict):
         return None
@@ -82,7 +83,7 @@ def agent_pause_until(run_meta: dict[str, Any] | None, agent_id: str, *, now: fl
 def record_usage_limit_pause(
     agent_id: str,
     *,
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     error: object,
     pause_seconds: float = DEFAULT_USAGE_PAUSE_SEC,
     now: float | None = None,
@@ -119,7 +120,7 @@ def skip_note_for_paused_agent(agent_id: str, *, reason: str = "usage_limit") ->
 def filter_agents_for_turn(
     agents: list[AgentId],
     *,
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     available_fn: Callable[[], list[AgentId]] | None = None,
     now: float | None = None,
 ) -> list[AgentId]:

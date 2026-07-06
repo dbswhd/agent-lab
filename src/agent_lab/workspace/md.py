@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 from pathlib import Path
-from typing import Any
 
 AGENTS_MD_CAP = 800
 AGENTS_HIERARCHY_CAP = 900
@@ -32,7 +32,7 @@ def _read_workspace_md_cached(path: Path) -> str:
     return text
 
 
-def _workspace_root(run_meta: dict[str, Any]) -> Path | None:
+def _workspace_root(run_meta: RunStateLike) -> Path | None:
     binding = run_meta.get("workspace_binding")
     if not isinstance(binding, dict):
         return None
@@ -43,7 +43,7 @@ def _workspace_root(run_meta: dict[str, Any]) -> Path | None:
     return root if root.is_dir() else None
 
 
-def read_agents_md_for_injection(run_meta: dict[str, Any]) -> str:
+def read_agents_md_for_injection(run_meta: RunStateLike) -> str:
     root = _workspace_root(run_meta)
     if root is None:
         return ""
@@ -53,7 +53,7 @@ def read_agents_md_for_injection(run_meta: dict[str, Any]) -> str:
 
 
 def read_agents_md_hierarchy_for_injection(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     plan_md: str = "",
     *,
     max_chars: int = AGENTS_HIERARCHY_CAP,
@@ -71,7 +71,7 @@ def read_agents_md_hierarchy_for_injection(
 
 
 def resolve_agents_md_for_guidance(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     plan_md: str = "",
 ) -> tuple[str, str]:
     """Return (header_label, body) for session_guidance — hierarchy preferred when plan has paths."""
@@ -84,7 +84,7 @@ def resolve_agents_md_for_guidance(
     return "", ""
 
 
-def read_shared_context_for_injection(run_meta: dict[str, Any]) -> str:
+def read_shared_context_for_injection(run_meta: RunStateLike) -> str:
     root = _workspace_root(run_meta)
     if root is None:
         return ""

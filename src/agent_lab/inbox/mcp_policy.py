@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 import os
 from pathlib import Path
-from typing import Any
 
 _DISCUSS_LANE = "discuss"
 _EXECUTE_LANE = "execute"
@@ -17,7 +17,7 @@ def mcp_first_inbox_policy_active() -> bool:
     return not orchestrator_inbox_harvest_enabled()
 
 
-def inbox_gate_owner(run_meta: dict[str, Any] | None) -> str:
+def inbox_gate_owner(run_meta: RunStateLike | None) -> str:
     """Agent allowed to call ``ask_human`` on discuss lane under MCP-first."""
     from agent_lab.room.tasks import team_lead
 
@@ -34,7 +34,7 @@ def inbox_gate_owner(run_meta: dict[str, Any] | None) -> str:
     return lead
 
 
-def discuss_inbox_mcp_lane_enabled(run_meta: dict[str, Any] | None) -> bool:
+def discuss_inbox_mcp_lane_enabled(run_meta: RunStateLike | None) -> bool:
     """Lane-level discuss inbox MCP (before per-agent policy).
 
     Orchestrator harvest stays off on Fast; peer ``ask_human`` / ``propose_build`` MCP is allowed.
@@ -52,7 +52,7 @@ def discuss_inbox_mcp_lane_enabled(run_meta: dict[str, Any] | None) -> bool:
     return False
 
 
-def discuss_inbox_mcp_agent_allowed(run_meta: dict[str, Any] | None, agent_id: str) -> bool:
+def discuss_inbox_mcp_agent_allowed(run_meta: RunStateLike | None, agent_id: str) -> bool:
     """Per-agent discuss inbox MCP under MCP-first lead-only rules."""
     if not discuss_inbox_mcp_lane_enabled(run_meta):
         return False

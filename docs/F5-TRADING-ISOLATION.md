@@ -26,6 +26,18 @@ Optional paths stay in `~/.agent-lab/config.toml` (`paths.quant_pipeline`, `path
 - Trading work: dedicated PR labeled extension-lane
 - Docs: this file + NORTH-STAR §3.1 / §3.3
 
+## F10 — FLAG_REGISTRY extension lane (2026-07)
+
+All `AGENT_LAB_TRADING_*` plus `ALLOW_BACKTEST_RUN`, `BACKTEST_TIMEOUT_SEC`, `QUOTE_MODE` are registered in `runtime_flags.py` with **`category: internal`** (not core profile defaults).
+
+| SSOT | Location |
+|------|----------|
+| Registry rows | `src/agent_lab/runtime_flags.py` (internal block) |
+| Fixture index | `tests/fixtures/runtime-flags-registry-allowlist.json` → `trading_lane_internal` |
+| Drift guard | `tests/test_runtime_flags_registry.py` — `code_not_registry_allowlist` must stay **empty** |
+
+Core `make list-flags` still lists them for discoverability; `run/profile.py` **does not** apply trading defaults on `fast`/`balanced`/`supervisor`.
+
 ## Non-goals (this decision)
 
 - Moving packages on disk

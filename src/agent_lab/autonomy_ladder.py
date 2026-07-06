@@ -27,7 +27,7 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
-def _autonomy_block(run_meta: dict[str, Any] | None) -> dict[str, Any]:
+def _autonomy_block(run_meta: RunStateLike | None) -> dict[str, Any]:
     meta = run_meta or {}
     raw = meta.get("autonomy")
     return raw if isinstance(raw, dict) else {}
@@ -44,7 +44,7 @@ def effective_auto_approve_threshold(run_meta: RunStateLike | None) -> RiskLevel
     return None
 
 
-def stored_autonomy_level(run_meta: dict[str, Any] | None) -> AutonomyLevel | None:
+def stored_autonomy_level(run_meta: RunStateLike | None) -> AutonomyLevel | None:
     """Human-set ceiling, or None when no explicit ceiling is stored."""
     level = _autonomy_block(run_meta).get("level")
     if level in _LEVEL_ORDER:
@@ -52,7 +52,7 @@ def stored_autonomy_level(run_meta: dict[str, Any] | None) -> AutonomyLevel | No
     return None
 
 
-def infer_effective_autonomy_level(run_meta: dict[str, Any] | None) -> AutonomyLevel:
+def infer_effective_autonomy_level(run_meta: RunStateLike | None) -> AutonomyLevel:
     """Derive active ladder level from mission loop, trust budget, auto-approve."""
     meta = run_meta or {}
     ml = meta.get("mission_loop")
@@ -73,7 +73,7 @@ def infer_effective_autonomy_level(run_meta: dict[str, Any] | None) -> AutonomyL
     return "L0"
 
 
-def resolve_display_autonomy_level(run_meta: dict[str, Any] | None) -> AutonomyLevel:
+def resolve_display_autonomy_level(run_meta: RunStateLike | None) -> AutonomyLevel:
     """UI level: effective signals, capped by Human ceiling when explicitly set."""
     effective = infer_effective_autonomy_level(run_meta)
     stored = stored_autonomy_level(run_meta)
@@ -84,7 +84,7 @@ def resolve_display_autonomy_level(run_meta: dict[str, Any] | None) -> AutonomyL
     return stored
 
 
-def public_autonomy_payload(run_meta: dict[str, Any] | None) -> dict[str, Any]:
+def public_autonomy_payload(run_meta: RunStateLike | None) -> dict[str, Any]:
     meta = run_meta or {}
     block = _autonomy_block(meta)
     budget = get_trust_budget(meta)

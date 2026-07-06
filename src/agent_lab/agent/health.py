@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 from pathlib import Path
 from typing import Any
 
@@ -179,7 +180,7 @@ def reconnect_kimi_work_bridge() -> dict[str, Any]:
     }
 
 
-def _capability_fields(agent_id: str, run_meta: dict[str, Any] | None) -> dict[str, Any]:
+def _capability_fields(agent_id: str, run_meta: RunStateLike | None) -> dict[str, Any]:
     from agent_lab.room.agent_capabilities import get_agent_capabilities
 
     cap = get_agent_capabilities(run_meta).get(agent_id.strip().lower()) or {}
@@ -217,7 +218,7 @@ def agent_health_row(
     agent_id: str,
     *,
     probe_bridge: bool = False,
-    run_meta: dict[str, Any] | None = None,
+    run_meta: RunStateLike | None = None,
 ) -> dict[str, Any]:
     aid = agent_id.strip().lower()
     row: dict[str, Any] = {
@@ -352,7 +353,7 @@ def build_agent_health(
     *,
     probe_bridge: bool = False,
     probe_preflight: bool = False,
-    run_meta: dict[str, Any] | None = None,
+    run_meta: RunStateLike | None = None,
 ) -> list[dict[str, Any]]:
     if probe_preflight:
         from agent_lab.agent.preflight import build_agent_preflight
@@ -377,7 +378,7 @@ def build_health_payload(
     *,
     probe_bridge: bool = False,
     probe_preflight: bool = False,
-    run_meta: dict[str, Any] | None = None,
+    run_meta: RunStateLike | None = None,
     session_folder: Path | None = None,
 ) -> dict[str, Any]:
     from agent_lab.claude import cli as claude_cli

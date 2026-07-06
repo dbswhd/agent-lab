@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 from pathlib import Path
 from typing import Any
 
@@ -10,7 +11,7 @@ from agent_lab.session.chat_io import load_chat_dicts
 from agent_lab.run.meta import read_run_meta
 
 
-def build_turn_policy_snapshot(run_meta: dict[str, Any] | None) -> dict[str, Any]:
+def build_turn_policy_snapshot(run_meta: RunStateLike | None) -> dict[str, Any]:
     run = run_meta or {}
     tp = run.get("turn_policy")
     snapshot = dict(tp) if isinstance(tp, dict) else {}

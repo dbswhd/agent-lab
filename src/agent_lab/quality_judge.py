@@ -12,6 +12,7 @@ deterministic. Every entry point is defensive — judging must never break scori
 
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 import json
 import os
 import re
@@ -156,7 +157,7 @@ def invoke_judge(
     return "", "mock"
 
 
-def _goal_text(folder: Path, run_meta: dict[str, Any]) -> str:
+def _goal_text(folder: Path, run_meta: RunStateLike) -> str:
     loop = run_meta.get("verified_loop") if isinstance(run_meta.get("verified_loop"), dict) else {}
     goal = loop.get("goal")
     if isinstance(goal, dict):
@@ -185,7 +186,7 @@ def _build_transcript(messages: list[dict[str, Any]]) -> str:
     return f"{head}\n\n…(trimmed)…\n\n{tail}"
 
 
-def _cumulative_usd(run_meta: dict[str, Any]) -> float:
+def _cumulative_usd(run_meta: RunStateLike) -> float:
     ledger = run_meta.get("cost_ledger")
     if isinstance(ledger, dict):
         cumulative = ledger.get("cumulative")
@@ -197,7 +198,7 @@ def _cumulative_usd(run_meta: dict[str, Any]) -> float:
 def judge_session(
     folder: Path,
     *,
-    run_meta: dict[str, Any] | None = None,
+    run_meta: RunStateLike | None = None,
     messages: list[dict[str, Any]] | None = None,
     judge_call: Callable[[str], str] | None = None,
 ) -> dict[str, Any]:

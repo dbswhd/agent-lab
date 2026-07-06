@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from agent_lab.core.exceptions import PreExecuteBlocked
+from agent_lab.run.state import RunStateLike
 
 
 @dataclass(slots=True)
@@ -28,7 +29,7 @@ class PolicyEngine:
     """Single entry for orchestration policy before discuss/execute transitions."""
 
     @staticmethod
-    def gate_snapshot(run_meta: dict[str, Any] | None) -> dict[str, Any]:
+    def gate_snapshot(run_meta: RunStateLike | None) -> dict[str, Any]:
         from agent_lab.gate_snapshot import compute_gate_snapshot
 
         return compute_gate_snapshot(run_meta)
@@ -40,7 +41,7 @@ class PolicyEngine:
         return format_gate_snapshot_block(snapshot)
 
     @staticmethod
-    def execute_block_reason(run_meta: dict[str, Any] | None) -> str | None:
+    def execute_block_reason(run_meta: RunStateLike | None) -> str | None:
         snap = PolicyEngine.gate_snapshot(run_meta)
         if snap.get("block_source"):
             return str(snap.get("block_reason") or snap.get("block_source") or "")
@@ -48,7 +49,7 @@ class PolicyEngine:
 
     @staticmethod
     def check_execute_allowed(
-        run_meta: dict[str, Any] | None,
+        run_meta: RunStateLike | None,
         action_index: int,
         action_kind: Any = None,
     ) -> PolicyResult:
@@ -81,7 +82,7 @@ class PolicyEngine:
 
     @staticmethod
     def assert_execute_allowed(
-        run_meta: dict[str, Any] | None,
+        run_meta: RunStateLike | None,
         action_index: int,
         action_kind: Any = None,
     ) -> PolicyResult:
@@ -102,7 +103,7 @@ class PolicyEngine:
 
     @staticmethod
     def check_pre_execute(
-        run_meta: dict[str, Any],
+        run_meta: RunStateLike,
         action: dict[str, Any],
         *,
         session_folder: Path | None = None,
@@ -129,7 +130,7 @@ class PolicyEngine:
 
     @staticmethod
     def require_pre_execute(
-        run_meta: dict[str, Any],
+        run_meta: RunStateLike,
         action: dict[str, Any],
         *,
         session_folder: Path | None = None,
@@ -150,7 +151,7 @@ class PolicyEngine:
 
     @staticmethod
     def check_task_completed(
-        run_meta: dict[str, Any],
+        run_meta: RunStateLike,
         task: dict[str, Any],
         *,
         session_folder: Path | None = None,

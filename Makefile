@@ -151,7 +151,7 @@ structure-metrics-check:
 layer-cycles-check:
 	.venv/bin/python scripts/layer_cycle_check.py --check
 
-ci: lint format-check typecheck-ratchet layer-cycles-check test-fast smoke emergence-bench-check
+ci: lint format-check typecheck-ratchet layer-cycles-check structure-metrics-check test-c1 test-fast smoke emergence-bench-check
 
 ci-full: check-worktrees
 	.venv/bin/python scripts/run_verification_lane.py --lane ci_full -- sh -c 'make lint format-check typecheck-ratchet layer-cycles-check test-fast test-integration test-bridge smoke quickstart-verify dogfood-feedback-mock score-regression-fixtures'

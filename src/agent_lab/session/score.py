@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 import json
 import re
 from pathlib import Path
@@ -72,7 +73,7 @@ def _action_key(row: dict[str, Any]) -> str:
     return f"exec:{row.get('id', '?')}"
 
 
-def _objection_resolution_rate(run_meta: dict[str, Any]) -> tuple[float | None, dict[str, int]]:
+def _objection_resolution_rate(run_meta: RunStateLike) -> tuple[float | None, dict[str, int]]:
     rows = list_objections(run_meta)
     total = len(rows)
     if total == 0:
@@ -83,7 +84,7 @@ def _objection_resolution_rate(run_meta: dict[str, Any]) -> tuple[float | None, 
 
 
 def _execute_first_try_rate(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
 ) -> tuple[float | None, dict[str, int]]:
     executions = [e for e in (run_meta.get("executions") or []) if isinstance(e, dict)]
     prior_rejected: dict[str, bool] = {}
@@ -119,7 +120,7 @@ def _execute_retry_rate(exec_counts: dict[str, int]) -> float | None:
 
 
 def _execute_merge_kpis(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
 ) -> tuple[dict[str, float | None], dict[str, int]]:
     executions = [e for e in (run_meta.get("executions") or []) if isinstance(e, dict)]
     total = len(executions)
@@ -169,7 +170,7 @@ def _execute_merge_kpis(
     return scores, counts
 
 
-def _partial_turn_rate(run_meta: dict[str, Any]) -> tuple[float | None, dict[str, int]]:
+def _partial_turn_rate(run_meta: RunStateLike) -> tuple[float | None, dict[str, int]]:
     turns = [t for t in (run_meta.get("turns") or []) if isinstance(t, dict)]
     total = len(turns)
     if total == 0:
@@ -186,7 +187,7 @@ def _partial_turn_rate(run_meta: dict[str, Any]) -> tuple[float | None, dict[str
 
 
 def _capability_cwd_kpis(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
 ) -> tuple[dict[str, float | None], dict[str, int]]:
     last_turn = run_meta.get("last_turn") or {}
     if not isinstance(last_turn, dict):
@@ -282,7 +283,7 @@ def _duplicate_speech_rate(
     return rate, {"pairs": pairs, "near_duplicates": near, "agents": len(agents)}
 
 
-def _mission_notepad_chars(folder: Path, run_meta: dict[str, Any]) -> int:
+def _mission_notepad_chars(folder: Path, run_meta: RunStateLike) -> int:
     from agent_lab.mission.notepad import mission_notepad_dir
 
     ml = get_mission_loop(run_meta)
@@ -313,7 +314,7 @@ def _mission_notepad_chars(folder: Path, run_meta: dict[str, Any]) -> int:
 
 def _mission_loop_kpis(
     folder: Path,
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
 ) -> tuple[dict[str, float | None], dict[str, int]]:
     ml = get_mission_loop(run_meta)
     if not ml.get("enabled"):
@@ -358,7 +359,7 @@ def _parse_iso_ts(raw: str | None) -> float | None:
         return None
 
 
-def _plan_workflow_kpis(run_meta: dict[str, Any]) -> tuple[dict[str, float | None], dict[str, Any]]:
+def _plan_workflow_kpis(run_meta: RunStateLike) -> tuple[dict[str, float | None], dict[str, Any]]:
     from agent_lab.plan.workflow import get_plan_workflow, is_plan_workflow_active
 
     if not is_plan_workflow_active(run_meta):

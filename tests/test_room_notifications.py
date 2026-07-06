@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+from ui_surface_bundles import room_chat_orchestrator
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -23,7 +25,7 @@ def test_notification_store_module():
 
 def test_dispatch_notification_wires_mac_and_activity():
     push = _read("web", "src", "utils", "pushNotification.ts")
-    orchestrator = _read("web", "src", "hooks", "useRoomChat.ts")
+    orchestrator = room_chat_orchestrator()
     assert "dispatchNotification" in push
     assert "dispatchNotification" in orchestrator
     assert "NotificationCenter" in _read("web", "src", "components", "NotificationCenter.tsx")

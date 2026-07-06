@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -15,7 +16,7 @@ _TERMINAL_MISSION_PHASES = frozenset({"MISSION_DONE", "MISSION_PAUSED", "DISCUSS
 
 def _harvest_plan_questions(
     folder: Path,
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     *,
     plan_md: str,
 ) -> list[dict[str, Any]]:
@@ -42,7 +43,7 @@ def _notify_harvest_items(folder: Path, items: list[dict[str, Any]]) -> None:
             pass
 
 
-def _stamp_schedule_meta(run_meta: dict[str, Any], schedule_id: str) -> dict[str, Any]:
+def _stamp_schedule_meta(run_meta: RunStateLike, schedule_id: str) -> dict[str, Any]:
     from agent_lab.run.meta import stamp_run_meta
 
     stamp_run_meta(
@@ -154,7 +155,7 @@ def run_scheduled_mission_tick(
     plan_md = plan_path.read_text(encoding="utf-8") if plan_path.is_file() else ""
     created: list[dict[str, Any]] = []
 
-    def _tick(run_meta: dict[str, Any]) -> dict[str, Any]:
+    def _tick(run_meta: RunStateLike) -> dict[str, Any]:
         nonlocal created
         created = _harvest_plan_questions(folder, run_meta, plan_md=plan_md)
         return _stamp_schedule_meta(run_meta, schedule_id)

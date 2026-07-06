@@ -9,6 +9,7 @@ Tier = Literal["low", "medium", "high"]
 
 from agent_lab.gate_scope import GateProfile, get_gate_profile
 from agent_lab.run.meta import patch_run_meta
+from agent_lab.run.state import RunState, RunStateLike
 
 ClassifierAllow = Literal["docs_only", "test_only", "single_file"]
 
@@ -33,7 +34,7 @@ def default_trust_budget(profile: GateProfile) -> dict[str, Any]:
     return dict(_DEFAULT_ASSISTANT if profile == "assistant" else _DEFAULT_DEV)
 
 
-def get_trust_budget(run_meta: dict[str, Any] | None) -> dict[str, Any]:
+def get_trust_budget(run_meta: RunStateLike | None) -> dict[str, Any]:
     meta = run_meta or {}
     raw = meta.get("trust_budget")
     if not isinstance(raw, dict):
@@ -60,7 +61,7 @@ def get_trust_budget(run_meta: dict[str, Any] | None) -> dict[str, Any]:
 
 
 def set_trust_budget(folder, patch: dict[str, Any]) -> dict[str, Any]:
-    def _apply(run: dict[str, Any]) -> dict[str, Any]:
+    def _apply(run: RunState) -> RunState:
         current = get_trust_budget(run)
         for key, value in patch.items():
             if value is not None:
@@ -78,7 +79,7 @@ def set_trust_budget(folder, patch: dict[str, Any]) -> dict[str, Any]:
     return get_trust_budget(read_run_meta(folder))
 
 
-def budget_agent_tier_cap(run_meta: dict[str, Any] | None) -> Tier | None:
+def budget_agent_tier_cap(run_meta: RunStateLike | None) -> Tier | None:
     """신뢰 예산 소진 정도에 따른 에이전트 비용 상한.
 
     예산 미설정(total==0) → None (제약 없음).
@@ -103,7 +104,7 @@ def consume_auto_merge_budget(folder) -> tuple[int, int]:
 
     state = {"before": 0, "after": 0}
 
-    def _consume(run: dict[str, Any]) -> dict[str, Any]:
+    def _consume(run: RunState) -> RunState:
         budget = get_trust_budget(run)
         before = int(budget.get("auto_merge_remaining") or 0)
         if before <= 0:

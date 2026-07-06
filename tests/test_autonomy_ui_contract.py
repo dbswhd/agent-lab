@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from ui_surface_bundles import room_chat_orchestrator, room_chat_surface
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -12,8 +13,8 @@ def _read(*parts: str) -> str:
 
 
 def test_autonomy_dial_in_session_header() -> None:
-    room = _read("web", "src", "components", "RoomChat.tsx")
-    orchestrator = _read("web", "src", "hooks", "useRoomChat.ts")
+    room = room_chat_surface()
+    orchestrator = room_chat_orchestrator()
     chrome = _read("web", "src", "components", "WorkspaceChrome.tsx")
     dial = _read("web", "src", "components", "AutonomyDial.tsx")
     hook = _read("web", "src", "hooks", "useAutonomySession.ts")
@@ -60,7 +61,7 @@ def test_transition_audit_wired_in_trust_budget() -> None:
 
 
 def test_autonomy_v2_human_picker_and_patch() -> None:
-    room = _read("web", "src", "components", "RoomChat.tsx")
+    room = room_chat_surface()
     dial = _read("web", "src", "components", "AutonomyDial.tsx")
     hook = _read("web", "src", "hooks", "useAutonomySession.ts")
     client = _read("web", "src", "api", "client.ts")

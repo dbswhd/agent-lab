@@ -8,6 +8,7 @@ folder's ``attachments/`` so the worktree/Oracle safety loop is never bypassed
 
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 import hashlib
 import subprocess
 from dataclasses import dataclass
@@ -80,7 +81,7 @@ def _session_folder(session_id: str) -> Path:
     return folder
 
 
-def _session_permissions(run_meta: dict[str, Any]) -> dict[str, Any]:
+def _session_permissions(run_meta: RunStateLike) -> dict[str, Any]:
     """Permissions live at top-level or on the latest turn; prefer either."""
     perms = run_meta.get("permissions")
     if isinstance(perms, dict) and perms:
@@ -94,7 +95,7 @@ def _session_permissions(run_meta: dict[str, Any]) -> dict[str, Any]:
     return {}
 
 
-def _binding_path(run_meta: dict[str, Any]) -> Path | None:
+def _binding_path(run_meta: RunStateLike) -> Path | None:
     binding = run_meta.get("workspace_binding")
     if isinstance(binding, dict) and binding.get("path"):
         return Path(str(binding["path"])).expanduser()

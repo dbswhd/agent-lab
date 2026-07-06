@@ -5,6 +5,7 @@ One PR may close one or more rows when evidence shows the surface is gone.
 
 from __future__ import annotations
 
+from ui_surface_bundles import room_chat_surface
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -17,7 +18,7 @@ def _read(*parts: str) -> str:
 def test_legacy_turn_profile_segmented_picker_absent_from_ui() -> None:
     """Legacy discuss/analyze/review/free segmented picker removed (TURN-MODES §3)."""
     composer = _read("web", "src", "components", "ChatComposer.tsx")
-    room = _read("web", "src", "components", "RoomChat.tsx")
+    room = room_chat_surface()
     # Primary control is room preset (fast / supervisor), not legacy segments.
     assert "roomPresets" in composer or "roomPreset" in composer
     assert "onRoomPresetSelect" in composer or "roomPreset" in room

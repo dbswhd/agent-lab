@@ -257,7 +257,7 @@ def _sse_inbox_pending(folder: Path) -> bool:
     return compute_inbox_pending(_read_run_meta(folder))
 
 
-def _session_context(folder: Path | None) -> tuple[str, RunState]:
+def session_context(folder: Path | None) -> tuple[str, RunState]:
     """plan.md + run.json for trimmed agent payloads."""
     if not folder or not folder.is_dir():
         return "", RunState.empty()
@@ -266,6 +266,10 @@ def _session_context(folder: Path | None) -> tuple[str, RunState]:
     if plan_path.is_file():
         plan_md = plan_path.read_text(encoding="utf-8")
     return plan_md, _read_run_meta(folder)
+
+
+def _session_context(folder: Path | None) -> tuple[str, RunState]:
+    return session_context(folder)
 
 
 def _prepare_team_coordination_before_round(

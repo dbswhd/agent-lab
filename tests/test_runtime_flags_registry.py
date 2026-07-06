@@ -87,3 +87,6 @@ def test_f10_allowlist_covers_current_drift_exactly() -> None:
     registry = registry_flag_names()
     assert len(scanned - registry) == len(baseline["code_not_registry_allowlist"])
     assert len(registry - scanned) == len(baseline["registry_not_code_allowlist"])
+    trading = set(baseline.get("trading_lane_internal") or [])
+    internal_trading = {name for name in trading if name in registry}
+    assert internal_trading == trading, f"trading_lane_internal not in registry: {sorted(trading - internal_trading)}"

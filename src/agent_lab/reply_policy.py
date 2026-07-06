@@ -23,6 +23,7 @@ from agent_lab.room.roster_context import (
     build_multi_agent_coordination,
     build_peer_decision_guidance,
 )
+from agent_lab.run.state import RunStateLike
 
 DISPATCH_LEAD_GUIDANCE = (
     "[턴 리드 · dispatch]\n"
@@ -151,7 +152,7 @@ def resolve_reply_policy(
 def build_guidance_parts(
     policy: ReplyPolicy,
     *,
-    run_meta: dict[str, Any] | None = None,
+    run_meta: RunStateLike | None = None,
     agent: str = "",
     active_agents: list[str] | None = None,
 ) -> list[str]:
@@ -206,7 +207,7 @@ def build_guidance_parts(
 
 def apply_inbox_pause_grace_policy(
     policy: ReplyPolicy,
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
 ) -> ReplyPolicy:
     if inbox_pause_grace_pending(run_meta):
         return replace(policy, inject_decision_fork=False)

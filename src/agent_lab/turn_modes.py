@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -289,7 +290,7 @@ def loop_budget_dict() -> dict[str, int | str]:
 
 
 def apply_loop_budget_caps(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     cap_rounds: int,
     cap_calls: int,
 ) -> tuple[int, int]:
@@ -306,7 +307,7 @@ def apply_loop_budget_caps(
 
 
 def loop_token_budget_exceeded(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     context_log: list[dict[str, Any]],
 ) -> bool:
     if not run_meta or str(run_meta.get("plan_intent") or "") != "loop":

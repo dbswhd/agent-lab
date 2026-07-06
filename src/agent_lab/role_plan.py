@@ -11,6 +11,8 @@ import os
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal, Sequence
 
+from agent_lab.run.state import RunStateLike
+
 if TYPE_CHECKING:
     from agent_lab.topic_router import CategoryRoute
 
@@ -130,7 +132,7 @@ def _merge_role_plans(*plans: dict[str, str]) -> dict[str, str]:
 
 
 def stamp_review_advocate_role(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     agents: list[str],
     human_turn_index: int,
 ) -> str | None:
@@ -146,7 +148,7 @@ def stamp_review_advocate_role(
     return advocate
 
 
-def review_follow_up_uses_role_persona(run_meta: dict[str, Any] | None, advocate: str | None) -> bool:
+def review_follow_up_uses_role_persona(run_meta: RunStateLike | None, advocate: str | None) -> bool:
     """True when critic persona in reply_policy replaces legacy review_advocate follow-up."""
     if not advocate or not run_meta:
         return False
@@ -160,7 +162,7 @@ def resolve_review_advocate(
     agents: Sequence[str],
     human_turn_index: int,
     *,
-    run_meta: dict[str, Any] | None = None,
+    run_meta: RunStateLike | None = None,
     review_mode: bool = False,
 ) -> str | None:
     """Legacy review_advocate seam — critic from _turn_roles when roles enabled."""
@@ -258,7 +260,7 @@ def resolve_role_plan(
 def resolve_delegator_agent(
     agents: list[str],
     *,
-    run_meta: dict[str, Any] | None = None,
+    run_meta: RunStateLike | None = None,
 ) -> str:
     """Supervisor preset delegator seat (default codex)."""
     _ = run_meta
@@ -273,7 +275,7 @@ def resolve_delegator_agent(
 
 
 def apply_preset_role_overrides(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     roles: dict[str, str],
     agents: list[str],
 ) -> dict[str, str]:
@@ -312,7 +314,7 @@ def agent_subset_for_route(
     return filtered
 
 
-def persona_for_agent(turn_roles: dict | None, agent: str, *, run_meta: dict[str, Any] | None = None) -> str:
+def persona_for_agent(turn_roles: dict | None, agent: str, *, run_meta: RunStateLike | None = None) -> str:
     """turn_roles에서 에이전트 역할 페르소나 텍스트 반환. 역할 없으면 빈 문자열."""
     if not turn_roles or not agent:
         return ""

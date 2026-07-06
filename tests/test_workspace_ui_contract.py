@@ -8,12 +8,26 @@ from pathlib import Path
 
 import pytest
 
+from ui_surface_bundles import room_chat_surface
+
 ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web" / "src"
 
 
 def _read(*parts: str) -> str:
     return (ROOT.joinpath(*parts)).read_text(encoding="utf-8")
+
+
+def _plan_execute_bundle() -> str:
+    """F9 split surface — contract checks span panel + extracted children."""
+    return "\n".join(
+        [
+            _read("web", "src", "components", "PlanExecutePanel.tsx"),
+            _read("web", "src", "components", "PlanExecutePendingCard.tsx"),
+            _read("web", "src", "components", "PlanExecuteDryRunBody.tsx"),
+            _read("web", "src", "hooks", "usePlanExecutePanel.ts"),
+        ]
+    )
 
 
 def test_app_uses_workspace_shell_not_primary_messenger_label():
@@ -84,7 +98,7 @@ def test_workspace_tab_enum_in_utils():
 
 
 def test_plan_execute_routed_to_composer_event_stack():
-    room = _read("web", "src", "components", "RoomChat.tsx")
+    room = room_chat_surface()
     hook = _read("web", "src", "hooks", "useWorkspaceTabs.ts")
     stack = _read("web", "src", "components", "ComposerEventStack.tsx")
     work_tool = _read("web", "src", "components", "WorkToolPanel.tsx")
@@ -170,14 +184,13 @@ def test_developer_console_doc_is_source_of_truth():
 
 
 def test_workspace_tabs_do_not_render_inline_status_badges():
-    room = _read("web", "src", "components", "RoomChat.tsx")
+    room = room_chat_surface()
 
     assert "suggestedTab=" not in room
     assert "reviewPending=" not in room
 
 
 def test_workspace_panels_have_distinct_document_wrappers():
-    _read("web", "src", "components", "RoomChat.tsx")
     inspector = _read("web", "src", "components", "RoomChatInspector.tsx")
     surfaces = _read("web", "src", "styles", "surfaces.css")
     work_tool = _read("web", "src", "components", "WorkToolPanel.tsx")
@@ -190,7 +203,7 @@ def test_workspace_panels_have_distinct_document_wrappers():
     assert "work-mission-overview" in _read("web", "src", "components", "MissionOverviewSection.tsx")
     plugin = _read("web", "src", "components", "PluginPanel.tsx")
     assert "cursor-ide-mcp-hint" in plugin
-    plan_exec = _read("web", "src", "components", "PlanExecutePanel.tsx")
+    plan_exec = _plan_execute_bundle()
 
     transcript = _read("web", "src", "components", "RoomTranscriptPanel.tsx")
 
@@ -205,7 +218,7 @@ def test_workspace_panels_have_distinct_document_wrappers():
 
 
 def test_inspector_matches_prototype_context_sidebar_body():
-    room = _read("web", "src", "components", "RoomChat.tsx")
+    room = room_chat_surface()
     inspector = _read("web", "src", "components", "RoomChatInspector.tsx")
     overview = _read("web", "src", "components", "ContextOverviewPanel.tsx")
     layout = _read("web", "src", "styles", "layout.css")
@@ -219,7 +232,7 @@ def test_inspector_matches_prototype_context_sidebar_body():
 
 def test_phase0_composer_plan_toggle_removed():
     composer = _read("web", "src", "components", "ChatComposer.tsx")
-    room = _read("web", "src", "components", "RoomChat.tsx")
+    room = room_chat_surface()
     prefs = _read("web", "src", "hooks", "useRoomComposerPrefs.ts")
     assert "ComposerPlanToggle" not in composer
     assert "onPlanAfterSendChange" not in room
@@ -239,7 +252,7 @@ def test_phase0_session_rail_status_detail_is_distinct():
 
 def test_phase0_no_full_team_cost_confirm():
     composer = _read("web", "src", "components", "ChatComposer.tsx")
-    room = _read("web", "src", "components", "RoomChat.tsx")
+    room = room_chat_surface()
     assert "fullTeamConfirm" not in composer
     assert "fullTeamConfirm" not in room
     assert "cost-confirm" not in composer
@@ -294,7 +307,7 @@ def test_m3_files_monaco_editor_lazy():
 
 
 def test_m3_side_by_side_diff_in_execute_panel():
-    plan = _read("web", "src", "components", "PlanExecutePanel.tsx")
+    plan = _plan_execute_bundle()
     diff = _read("web", "src", "components", "SideBySideDiff.tsx")
     util = _read("web", "src", "utils", "sideBySideDiff.ts")
     css = _read("web", "src", "styles", "plan-execute.css")
@@ -362,7 +375,7 @@ def test_m6_taskbar_canonical_classes_only():
 
 
 def test_m6_plan_card_canonical_classes_only():
-    panel = _read("web", "src", "components", "PlanExecutePanel.tsx")
+    panel = _plan_execute_bundle()
     plan_css = _read("web", "src", "styles", "plan-execute.css")
     assert "plan-execute-panel__" not in panel
     assert "plan-execute-" not in panel
@@ -379,7 +392,7 @@ def test_m6_chat_turn_no_dual_class_root():
 
 
 def test_m6_room_chat_canonical_shell_only():
-    room = _read("web", "src", "components", "RoomChat.tsx")
+    room = room_chat_surface()
     main_pane = _read("web", "src", "components", "RoomChatMainPane.tsx")
     transcript = _read("web", "src", "components", "RoomTranscriptPanel.tsx")
     layout = _read("web", "src", "styles", "layout.css")

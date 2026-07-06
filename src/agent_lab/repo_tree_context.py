@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 import re
 from pathlib import Path
-from typing import Any
 
 from agent_lab.context.layers import repo_tree_layer_enabled
 
@@ -15,7 +15,7 @@ _PATH_HINT_RE = re.compile(
 )
 
 
-def _workspace_root(run_meta: dict[str, Any] | None) -> Path | None:
+def _workspace_root(run_meta: RunStateLike | None) -> Path | None:
     binding = (run_meta or {}).get("workspace_binding")
     if not isinstance(binding, dict):
         return None
@@ -27,7 +27,7 @@ def _workspace_root(run_meta: dict[str, Any] | None) -> Path | None:
 
 
 def build_repo_tree_block(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     *,
     max_entries: int = 36,
 ) -> str:
@@ -120,7 +120,7 @@ def _collect_per_dir_agents_files(root: Path, plan_md: str) -> list[Path]:
 
 
 def build_per_dir_agents_block(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     plan_md: str = "",
     *,
     max_chars: int = 900,

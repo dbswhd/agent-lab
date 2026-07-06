@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from ui_surface_bundles import room_chat_surface
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -13,7 +14,7 @@ def _read(path: str) -> str:
 
 def test_room_task_bar_and_banners_have_accessible_names():
     task_bar = _read("web/src/components/RoomTaskBar.tsx")
-    room_chat = _read("web/src/components/RoomChat.tsx")
+    room_chat = room_chat_surface()
     composer_shell = _read("web/src/components/RoomChatComposerShell.tsx")
     recovery = _read("web/src/components/RecoveryStrip.tsx")
     readiness = _read("web/src/components/ReadinessComposerBar.tsx")

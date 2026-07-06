@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
@@ -73,7 +74,7 @@ def normalize_response_contract_preset(value: str) -> ResponseContractPreset:
     raise ValueError(f"unknown response contract preset: {value}")
 
 
-def response_contract_guidance(run_meta: dict[str, Any] | None) -> str:
+def response_contract_guidance(run_meta: RunStateLike | None) -> str:
     contract = (run_meta or {}).get("response_contract")
     if not isinstance(contract, dict):
         return ""

@@ -348,7 +348,6 @@ def resolve_active_subset(
     if not subset:
         return active, None
 
-    {str(a).strip().lower() for a in active if str(a).strip()}
     subset_active = [a for a in active if str(a).strip().lower() in subset]
     if len(subset_active) < min_agents:
         return active, None

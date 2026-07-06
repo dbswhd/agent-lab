@@ -7,6 +7,7 @@ demote autonomy when the quarterly cap is exceeded.
 
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 import json
 import os
 from datetime import datetime, timezone
@@ -107,7 +108,7 @@ def _write_quarter_ledger(payload: dict[str, Any], root: Path | None = None) -> 
     return path
 
 
-def session_spent_usd(run_meta: dict[str, Any] | None) -> float:
+def session_spent_usd(run_meta: RunStateLike | None) -> float:
     if not isinstance(run_meta, dict):
         return 0.0
     ledger = run_meta.get("cost_ledger")
@@ -208,7 +209,7 @@ def maybe_demote_autonomy_for_quarter_over(
 
 def sync_session_to_quarter(
     folder: Path,
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     *,
     root: Path | None = None,
 ) -> dict[str, Any]:

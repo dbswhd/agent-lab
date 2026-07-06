@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 import json
 import os
 from pathlib import Path
-from typing import Any
 
 from agent_lab.agent.thread_catalog import AGENT_IDS, normalize_agent_thread_bindings
 from agent_lab.app_config import resolve_sessions_dir
@@ -58,7 +58,7 @@ def _agent_excerpt(folder: Path, agent: str, *, max_lines: int = 4) -> list[str]
     return clipped
 
 
-def build_agent_thread_resume_block(agent: str, run_meta: dict[str, Any] | None) -> str:
+def build_agent_thread_resume_block(agent: str, run_meta: RunStateLike | None) -> str:
     aid = agent.strip().lower()
     if aid not in AGENT_IDS:
         return ""

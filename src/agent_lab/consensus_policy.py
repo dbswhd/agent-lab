@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 from dataclasses import dataclass
 from typing import Any
 
@@ -23,7 +24,7 @@ class ConsensusPolicy:
         rounds: int,
         max_rounds: int,
         convergence_result: dict[str, Any] | None = None,
-        run_meta: dict[str, Any] | None = None,
+        run_meta: RunStateLike | None = None,
         human_turn: int = 0,
     ) -> tuple[bool, str | None]:
         if consensus_status == "reached":

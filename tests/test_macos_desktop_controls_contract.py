@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from ui_surface_bundles import room_chat_surface
 import json
 from pathlib import Path
 
@@ -41,7 +42,7 @@ def test_macos_shortcuts_cover_new_sidebar_and_content_tabs():
     app = _read("web/src/App.tsx")
     shortcut = _read("web/src/utils/desktopShortcuts.ts")
     workspace_tabs = _read("web/src/hooks/useWorkspaceTabs.ts")
-    room = _read("web/src/components/RoomChat.tsx")
+    room = room_chat_surface()
 
     assert 'key === "n"' in app
     assert 'event.ctrlKey && key === "s"' in app
@@ -65,7 +66,7 @@ def test_macos_shortcuts_cover_new_sidebar_and_content_tabs():
 
 def test_context_tools_and_workbench_width_preferences_are_separate():
     prefs = _read("web/src/utils/inspectorPanePrefs.ts")
-    room = _read("web/src/components/RoomChat.tsx")
+    room = room_chat_surface()
     workbench_layout = _read("web/src/hooks/useRoomWorkbenchLayout.ts")
 
     assert 'WIDTH_KEY = "agent-lab-inspector-width"' in prefs
@@ -88,7 +89,7 @@ def test_context_tools_and_workbench_width_preferences_are_separate():
 
 def test_workspace_chrome_replaces_web_traffic_lights_and_titlebar_logo():
     app = _read("web/src/App.tsx")
-    room = _read("web/src/components/RoomChat.tsx")
+    room = room_chat_surface()
     chrome = _read("web/src/components/WorkspaceChrome.tsx")
 
     assert "traffic-lights" not in app

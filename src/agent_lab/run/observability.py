@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 import json
 from pathlib import Path
 from typing import Any
@@ -31,7 +32,7 @@ def trace_tail(folder: Path | None, *, limit: int = 50) -> list[dict[str, Any]]:
     return spans[-max(1, limit) :]
 
 
-def hook_runs_tail(run_meta: dict[str, Any] | None, *, limit: int = 20) -> list[dict[str, Any]]:
+def hook_runs_tail(run_meta: RunStateLike | None, *, limit: int = 20) -> list[dict[str, Any]]:
     runs = (run_meta or {}).get("hook_runs") or []
     if not isinstance(runs, list):
         return []
@@ -39,7 +40,7 @@ def hook_runs_tail(run_meta: dict[str, Any] | None, *, limit: int = 20) -> list[
     return tail
 
 
-def last_communicate_meta(run_meta: dict[str, Any] | None) -> dict[str, Any] | None:
+def last_communicate_meta(run_meta: RunStateLike | None) -> dict[str, Any] | None:
     turns = (run_meta or {}).get("turns") or []
     if not isinstance(turns, list):
         return None
@@ -52,7 +53,7 @@ def last_communicate_meta(run_meta: dict[str, Any] | None) -> dict[str, Any] | N
     return None
 
 
-def dispatch_ledger_tail(run_meta: dict[str, Any] | None, *, limit: int = 10) -> list[dict[str, Any]]:
+def dispatch_ledger_tail(run_meta: RunStateLike | None, *, limit: int = 10) -> list[dict[str, Any]]:
     ledger = (run_meta or {}).get("dispatch_ledger") or []
     if not isinstance(ledger, list):
         return []
@@ -60,7 +61,7 @@ def dispatch_ledger_tail(run_meta: dict[str, Any] | None, *, limit: int = 10) ->
 
 
 def observability_snapshot(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     *,
     folder: Path | None = None,
 ) -> dict[str, Any]:

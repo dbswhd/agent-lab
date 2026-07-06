@@ -50,10 +50,6 @@
   "makefile_targets": 87,
   "large_tsx_files": [
     {
-      "path": "web/src/components/PlanExecutePanel.tsx",
-      "lines": 1168
-    },
-    {
       "path": "web/src/components/HumanInboxPanel.tsx",
       "lines": 1011
     },
@@ -86,9 +82,43 @@
     {
       "path": "src/agent_lab/room/turn_flow.py",
       "lines": 21
+    },
+    {
+      "path": "src/agent_lab/room/turn_flow_run.py",
+      "lines": 169
+    },
+    {
+      "path": "src/agent_lab/room/turn_flow_continue.py",
+      "lines": 215
     }
   ],
-  "f11_run_meta_dict_signatures": 131,
+  "hot_path_ts_files": [
+    {
+      "path": "web/src/components/RoomChat.tsx",
+      "lines": 9
+    },
+    {
+      "path": "web/src/components/RoomChatView.tsx",
+      "lines": 222
+    },
+    {
+      "path": "web/src/hooks/useRoomChat.ts",
+      "lines": 12
+    },
+    {
+      "path": "web/src/hooks/useRoomChatBootstrap.ts",
+      "lines": 363
+    },
+    {
+      "path": "web/src/hooks/useRoomChatInteractions.ts",
+      "lines": 692
+    },
+    {
+      "path": "web/src/hooks/useRoomChatPresentation.ts",
+      "lines": 413
+    }
+  ],
+  "f11_run_meta_dict_signatures": 0,
   "f11_run_dict_signatures": 145,
   "notes": {
     "pycache": "tracked_pycache_files counts git-tracked __pycache__/*.pyc only; local __pycache__ dirs are ignored by .gitignore and are not repo debt.",

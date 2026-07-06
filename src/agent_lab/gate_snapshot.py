@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 from typing import Any, Literal
 
 NextAction = Literal[
@@ -23,7 +24,7 @@ BlockSource = Literal[
 ]
 
 
-def compute_gate_snapshot(run_meta: dict[str, Any] | None) -> dict[str, Any]:
+def compute_gate_snapshot(run_meta: RunStateLike | None) -> dict[str, Any]:
     """Derive orchestration gates from run_meta (no side effects)."""
     meta = run_meta or {}
     gates: dict[str, Any] = {

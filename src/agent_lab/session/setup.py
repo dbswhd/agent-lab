@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -307,7 +308,7 @@ def seed_session_setup(
         agent_thread_bindings=agent_thread_bindings,
     )
     now = datetime.now(timezone.utc).isoformat()
-    run_meta: dict[str, Any] = {
+    run_meta: RunStateLike = {
         "workflow_id": "room.parallel",
         "run_schema_version": 1,
         "topic": topic,

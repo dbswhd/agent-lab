@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
+from agent_lab.run.state import RunState, RunStateLike
+
 GateProfile = Literal["dev", "assistant"]
 DiscussPolicy = Literal["allow", "pause"]
 PlanWorkflowPolicy = Literal["allow", "block_clarify"]
@@ -20,7 +22,7 @@ class GateScope:
     execute: ExecutePolicy
 
 
-def get_gate_profile(run_meta: dict[str, Any] | None) -> GateProfile:
+def get_gate_profile(run_meta: RunStateLike | None) -> GateProfile:
     """Read ``gate_profile`` from run.json (not Mission Board orchestration lane)."""
     meta = run_meta or {}
     raw = str(meta.get("gate_profile") or "").strip().lower()
@@ -30,7 +32,7 @@ def get_gate_profile(run_meta: dict[str, Any] | None) -> GateProfile:
     return "dev"
 
 
-def _pending_by_kind(run_meta: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
+def _pending_by_kind(run_meta: RunStateLike) -> dict[str, list[dict[str, Any]]]:
     from agent_lab.human_inbox import pending_inbox_items
 
     grouped: dict[str, list[dict[str, Any]]] = {
@@ -47,7 +49,7 @@ def _pending_by_kind(run_meta: dict[str, Any]) -> dict[str, list[dict[str, Any]]
     return grouped
 
 
-def compute_gate_scope(run_meta: dict[str, Any] | None) -> GateScope:
+def compute_gate_scope(run_meta: RunStateLike | None) -> GateScope:
     """Policy table: dev=discuss pause on Human-direction inbox; assistant=soft discuss."""
     from agent_lab.inbox.harvest import has_pending_discuss_pause_question
 
@@ -72,7 +74,7 @@ def compute_gate_scope(run_meta: dict[str, Any] | None) -> GateScope:
     )
 
 
-def should_pause_discuss_for_profile(run_meta: dict[str, Any]) -> bool:
+def should_pause_discuss_for_profile(run_meta: RunStateLike) -> bool:
     """Replace env-only pause when ``AGENT_LAB_GATE_SCOPE=1`` (default on)."""
     import os
 
@@ -84,15 +86,15 @@ def should_pause_discuss_for_profile(run_meta: dict[str, Any]) -> bool:
     return scope.discuss_rounds == "pause"
 
 
-def plan_clarify_blocked(run_meta: dict[str, Any]) -> bool:
+def plan_clarify_blocked(run_meta: RunStateLike) -> bool:
     return compute_gate_scope(run_meta).plan_workflow == "block_clarify"
 
 
-def execute_scope_blocked(run_meta: dict[str, Any]) -> bool:
+def execute_scope_blocked(run_meta: RunStateLike) -> bool:
     return compute_gate_scope(run_meta).execute == "block"
 
 
-def public_gate_scope_payload(run_meta: dict[str, Any] | None) -> dict[str, Any]:
+def public_gate_scope_payload(run_meta: RunStateLike | None) -> dict[str, Any]:
     scope = compute_gate_scope(run_meta)
     pending = _pending_by_kind(run_meta or {})
     return {
@@ -120,7 +122,7 @@ def public_gate_scope_payload(run_meta: dict[str, Any] | None) -> dict[str, Any]
 def set_gate_profile(folder: Path, profile: GateProfile) -> dict[str, Any]:
     from agent_lab.run.meta import patch_run_meta
 
-    def _patch(run: dict[str, Any]) -> dict[str, Any]:
+    def _patch(run: RunState) -> RunState:
         run["gate_profile"] = profile
         return run
 

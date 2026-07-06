@@ -5,9 +5,9 @@ Optional, additive, default-off. Core AST/rank/render: :mod:`repo_map_core` (Tra
 
 from __future__ import annotations
 
+from agent_lab.run.state import RunStateLike
 import os
 from pathlib import Path
-from typing import Any
 
 from agent_lab.context.layers import repo_tree_layer_enabled
 from agent_lab.repo_map_core import (
@@ -67,7 +67,7 @@ def _resolve_seed_files(root: Path, plan_md: str) -> set[Path]:
     return seeds
 
 
-def build_repo_map_block(run_meta: dict[str, Any] | None, plan_md: str = "") -> str:
+def build_repo_map_block(run_meta: RunStateLike | None, plan_md: str = "") -> str:
     """Symbol-graph repo-map block — flag-on replacement for build_repo_tree_block."""
     if not repo_tree_layer_enabled(run_meta):
         return ""

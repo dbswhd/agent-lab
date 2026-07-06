@@ -417,9 +417,14 @@ def resolve_inbox_item(
 
     if updated.get("kind") == "autonomy" and status == "resolved":
         try:
-            from agent_lab.autonomy_inbox import handle_autonomy_inbox_resolve
+            if updated.get("source") == "autonomy_promotion":
+                from agent_lab.autonomy_promotion import handle_autonomy_promotion_resolve
 
-            handle_autonomy_inbox_resolve(folder, updated, selected=selected)
+                handle_autonomy_promotion_resolve(folder, updated, selected=selected)
+            else:
+                from agent_lab.autonomy_inbox import handle_autonomy_inbox_resolve
+
+                handle_autonomy_inbox_resolve(folder, updated, selected=selected)
         except ValueError:
             pass
 

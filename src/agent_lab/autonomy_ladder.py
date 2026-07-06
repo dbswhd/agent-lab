@@ -84,6 +84,8 @@ def public_autonomy_payload(run_meta: dict[str, Any] | None) -> dict[str, Any]:
     transitions: list[dict[str, Any]] = []
     if isinstance(transitions_raw, list):
         transitions = [row for row in transitions_raw if isinstance(row, dict)][-5:]
+    from agent_lab.autonomy_promotion import evaluate_promotions, promotion_progress
+
     return {
         # Ceiling when Human-set; otherwise operating (effective) level.
         "level": ceiling if ceiling is not None else effective,
@@ -101,6 +103,8 @@ def public_autonomy_payload(run_meta: dict[str, Any] | None) -> dict[str, Any]:
             "autonomous_segment_active": bool(seg.get("active")),
         },
         "transitions": transitions,
+        "promotion": evaluate_promotions(meta),
+        "promotion_progress": promotion_progress(meta),
     }
 
 

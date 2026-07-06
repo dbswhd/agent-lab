@@ -206,6 +206,12 @@ def _record_verify_after_merge(
     from agent_lab.outcome_harvester import record_execute_outcome
 
     record_execute_outcome(folder, target)
+    try:
+        from agent_lab.autonomy_promotion import record_l0_to_l1_sample
+
+        record_l0_to_l1_sample(folder, target)
+    except Exception:
+        pass
     return evidence
 
 

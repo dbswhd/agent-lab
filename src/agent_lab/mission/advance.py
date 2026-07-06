@@ -523,6 +523,18 @@ def _on_verify_pass(
     clear_last_failure(folder)
     if out.get("phase") == "MISSION_DONE":
         clear_boulder(folder)
+        try:
+            from agent_lab.autonomy_promotion import record_mission_completion
+            from agent_lab.human_inbox import pending_inbox_items
+
+            run_after = read_run_meta(folder)
+            record_mission_completion(
+                folder,
+                completed=True,
+                inbox_escalated=bool(pending_inbox_items(run_after)),
+            )
+        except Exception:
+            pass
     verify_line = f"verify PASS action #{action_index}"
     if oracle and str(oracle.get("detail") or "").strip():
         verify_line += f" — {str(oracle.get('detail') or '')[:220]}"

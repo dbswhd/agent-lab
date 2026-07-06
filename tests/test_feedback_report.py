@@ -81,6 +81,26 @@ def test_legacy_rows_without_source_fold_into_default(tmp_path: Path, monkeypatc
     assert rep["by_source"]["history"]["n"] == 0
 
 
+def test_escalation_rate_by_level(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    ledger = tmp_path / ".agent-lab" / "outcomes.jsonl"
+    _write_ledger(
+        ledger,
+        [
+            {**_row("default"), "autonomy_level": "L0", "human_inbox_escalation": True},
+            {**_row("default"), "autonomy_level": "L0", "human_inbox_escalation": False},
+            {**_row("history"), "autonomy_level": "L2", "human_inbox_escalation": False},
+            {**_row("history"), "autonomy_level": "L2", "human_inbox_escalation": True},
+        ],
+    )
+    monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: ledger)
+
+    rep = build_feedback_report(tmp_path)
+    rates = rep["escalation_rate_by_level"]
+    assert rates["L0"] == 0.5
+    assert rates["L2"] == 0.5
+    assert rates["L1"] is None
+
+
 def test_accepted_challenge_rate_bucket(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     ledger = tmp_path / ".agent-lab" / "outcomes.jsonl"
     _write_ledger(

@@ -96,9 +96,15 @@ def _topic_hash(topic: str) -> str:
     return "sha1:" + hashlib.sha1(topic.encode("utf-8")).hexdigest()[:16]
 
 
-def build_outcome_record(folder: Path, topic: str, metrics: dict[str, Any]) -> dict[str, Any]:
+def build_outcome_record(folder: Path, topic: str, metrics: dict[str, Any], *, run_meta: dict[str, Any] | None = None) -> dict[str, Any]:
     """Flatten turn_metrics into one cross-session ledger row."""
+    from agent_lab.autonomy_ladder import infer_effective_autonomy_level
+    from agent_lab.human_inbox import pending_inbox_items
+
     rollup = metrics.get("oracle_rollup") or {}
+    run = run_meta or {}
+    level = infer_effective_autonomy_level(run)
+    inbox_hit = bool(metrics.get("escalated")) or bool(pending_inbox_items(run))
     return {
         "v": OUTCOME_LEDGER_SCHEMA_VERSION,
         "ts": _now_iso(),
@@ -123,6 +129,8 @@ def build_outcome_record(folder: Path, topic: str, metrics: dict[str, Any]) -> d
         # S1.5 — advisor attribution (absent/"default" = baseline bucket in reports)
         "advisor_source": metrics.get("advisor_source") or "default",
         "combo_id": metrics.get("advisor_combo_id") or "",
+        "autonomy_level": level,
+        "human_inbox_escalation": inbox_hit,
     }
 
 
@@ -170,7 +178,7 @@ def record_turn_outcome(folder: Path | None, human_turn: int) -> None:
 
             patch_run_meta(folder, _patch)
         if want_ledger:
-            append_outcome(build_outcome_record(folder, _topic_text(folder, run), metrics))
+            append_outcome(build_outcome_record(folder, _topic_text(folder, run), metrics, run_meta=run))
     except Exception:  # fail-open: feedback must never block a turn
         log.warning("record_turn_outcome failed for %s", folder, exc_info=True)
 
@@ -233,6 +241,11 @@ def record_execute_outcome(folder: Path | None, execution: dict[str, Any]) -> No
             "advisor_source": category.get("advisor_source") or "default",
             "combo_id": category.get("advisor_combo_id") or "",
         }
+        from agent_lab.autonomy_ladder import infer_effective_autonomy_level
+        from agent_lab.human_inbox import pending_inbox_items
+
+        record["autonomy_level"] = infer_effective_autonomy_level(run)
+        record["human_inbox_escalation"] = bool(pending_inbox_items(run))
         append_outcome(record)
     except Exception:  # fail-open: feedback must never block execute
         log.warning("record_execute_outcome failed for %s", folder, exc_info=True)

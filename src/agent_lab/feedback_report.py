@@ -95,6 +95,25 @@ def _source_of(row: dict[str, Any]) -> str:
     return src if src in _SOURCES else _BASELINE_SOURCE
 
 
+_LADDER_LEVELS = ("L0", "L1", "L2", "L3")
+
+
+def _escalation_rate_by_level(rows: list[dict[str, Any]]) -> dict[str, float | None]:
+    """Human Inbox reach rate per autonomy level (N4 KPI)."""
+    buckets: dict[str, list[int]] = {level: [] for level in _LADDER_LEVELS}
+    for row in rows:
+        level = str(row.get("autonomy_level") or "L0")
+        if level not in buckets:
+            level = "L0"
+        hit = 1 if row.get("human_inbox_escalation") else 0
+        buckets[level].append(hit)
+    out: dict[str, float | None] = {}
+    for level in _LADDER_LEVELS:
+        samples = buckets[level]
+        out[level] = round(sum(samples) / len(samples), 4) if samples else None
+    return out
+
+
 def build_feedback_report(root: Path | None = None) -> dict[str, Any]:
     """Bucket the outcome ledger by advisor_source and compute quality deltas.
 
@@ -128,6 +147,7 @@ def build_feedback_report(root: Path | None = None) -> dict[str, Any]:
         "by_source": source_stats,
         "by_source_category": source_category_stats,
         "advisor_lift": advisor_lift,
+        "escalation_rate_by_level": _escalation_rate_by_level(rows),
     }
 
 
@@ -150,4 +170,12 @@ def render_feedback_report(report: dict[str, Any]) -> str:
     lines.append("advisor lift (clean-pass vs default baseline):")
     lines.append(f"  history : {lift.get('history_vs_default', 0.0):+.2%}")
     lines.append(f"  explore : {lift.get('explore_vs_default', 0.0):+.2%}")
+    by_level = report.get("escalation_rate_by_level") or {}
+    if by_level:
+        lines.append("")
+        lines.append("escalation_rate_by_level (human inbox):")
+        for level in _LADDER_LEVELS:
+            rate = by_level.get(level)
+            label = f"{rate:.2%}" if isinstance(rate, float) else "—"
+            lines.append(f"  {level}: {label}")
     return "\n".join(lines)

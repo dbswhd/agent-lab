@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from agent_lab.run.state import RunStateLike
+
 from agent_lab.room.messages import ChatMessage, OnAgentEvent
 from agent_lab.room.session_persist import persist_chat_checkpoint
 
@@ -23,7 +25,7 @@ def checkpoint_chat(
 def apply_turn_agent_mentions(
     user_text: str,
     active_agents: list[Any],
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     *,
     roster_pool: list[Any] | None = None,
 ) -> tuple[str, list[Any], list[str], str | None]:
@@ -80,7 +82,7 @@ def direct_turn_for_mention_targets(targets: list[str]) -> bool:
 
 
 def emit_divergence_options(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     replies: list[ChatMessage],
     on_event: OnAgentEvent | None,
     cancelled: bool,
@@ -102,7 +104,7 @@ def session_hard_cap_enabled() -> bool:
     return (os.getenv("AGENT_LAB_SESSION_HARD_CAP") or "").strip().lower() in ("1", "true", "yes", "on")
 
 
-def emit_budget_status(run_meta: dict[str, Any] | None, on_event: OnAgentEvent | None) -> None:
+def emit_budget_status(run_meta: RunStateLike | None, on_event: OnAgentEvent | None) -> None:
     """Surface cumulative session cost; enable adaptive efficiency on first over-transition."""
     if not on_event or not isinstance(run_meta, dict):
         return
@@ -125,7 +127,7 @@ def emit_budget_status(run_meta: dict[str, Any] | None, on_event: OnAgentEvent |
 
 
 def _maybe_enable_adaptive_efficiency(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     on_event: OnAgentEvent,
     action: dict[str, Any],
 ) -> None:
@@ -169,7 +171,7 @@ def _maybe_enable_adaptive_efficiency(
 
 
 def ensure_adaptive_efficiency_for_turn(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     *,
     human_turn: int,
 ) -> None:
@@ -187,7 +189,7 @@ def ensure_adaptive_efficiency_for_turn(
 
 
 def resolve_stage_routing(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     *,
     turn_profile: str | None,
     consensus_mode: bool,
@@ -216,7 +218,7 @@ def after_agent_replies_checkpoint(
     messages: list[ChatMessage],
     *,
     topic: str,
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     replies: list[ChatMessage],
     on_event: OnAgentEvent | None,
     cancelled: bool,

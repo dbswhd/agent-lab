@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from agent_lab.run.state import RunStateLike
+
 from agent_lab.topic_router import CategoryRoute, enrich_route_with_role_plan, resolve_active_subset, resolve_topic_route
 
 
@@ -17,7 +19,7 @@ class TurnRoutingResult:
 
 def bootstrap_turn_route(
     topic: str,
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     *,
     efficiency_mode: bool = False,
 ) -> CategoryRoute:
@@ -39,7 +41,7 @@ def bootstrap_turn_route(
 
 def apply_turn_role_plan(
     route: CategoryRoute,
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     active: list[str],
     *,
     topic: str,
@@ -87,7 +89,7 @@ def apply_turn_role_plan(
 
 def finalize_turn_routing(
     route: CategoryRoute,
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     active: list[str],
     *,
     topic: str,
@@ -131,7 +133,7 @@ def finalize_turn_routing(
 
 def prepare_turn_routing(
     topic: str,
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     active: list[str],
     *,
     agents: list[str] | None = None,
@@ -156,7 +158,7 @@ def prepare_turn_routing(
 
 def refresh_routing_after_escalation(
     route: CategoryRoute,
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     active: list[str],
     *,
     topic: str,

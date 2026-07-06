@@ -8,6 +8,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Callable
 
+from agent_lab.run.state import RunStateLike
+
 from agent_lab.room.dispatch import parse_delegate_from_message, run_single_delegate
 
 __all__ = ["parse_delegate_from_message", "run_delegate_turn"]
@@ -17,7 +19,7 @@ def run_delegate_turn(
     *,
     topic: str,
     messages: list[Any],
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     folder: Path,
     agent: str,
     prompt: str,

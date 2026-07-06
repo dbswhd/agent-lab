@@ -6,6 +6,8 @@ from agent_lab.room._typing import agent_label
 from pathlib import Path
 from typing import Any
 
+from agent_lab.run.state import RunStateLike
+
 from agent_lab.agents.registry import AgentId
 from agent_lab.agent.envelope import (
     is_endorse_reply,
@@ -47,7 +49,7 @@ def _non_participation_reason(error: Exception) -> str | None:
     return None
 
 
-def _session_folder_from_run_meta(run_meta: dict[str, Any] | None) -> Path | None:
+def _session_folder_from_run_meta(run_meta: RunStateLike | None) -> Path | None:
     if not run_meta:
         return None
     folder_raw = run_meta.get("_session_folder")
@@ -62,7 +64,7 @@ def _try_replay_completed_agent(
     *,
     human_turn_index: int,
     parallel_round: int,
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     on_event: OnAgentEvent | None,
 ) -> ChatMessage | None:
     folder = _session_folder_from_run_meta(run_meta)
@@ -133,7 +135,7 @@ def _invoke_agent_for_round(
     review_mode: bool,
     review_advocate: AgentId | None,
     plan_md: str,
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     on_event: OnAgentEvent | None,
     context_log: list[dict[str, Any]] | None = None,
     extra_follow_up: str = "",
@@ -184,7 +186,7 @@ def _finalize_durable_turn(folder: Path, human_turn_num: int, turn_status: str) 
 
 
 def _bind_session_to_run_meta(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     folder: Path | None,
 ) -> None:
     if not run_meta or not folder or not folder.is_dir():
@@ -204,7 +206,7 @@ def _bind_session_to_run_meta(
 
 
 def _set_active_turn_flags(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     *,
     mode: str,
     synthesize: bool,
@@ -224,7 +226,7 @@ def _set_active_turn_flags(
 
 def _teammate_idle_peer_message(
     aid: AgentId,
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     *,
     parallel_round: int,
 ) -> ChatMessage | None:
@@ -265,7 +267,7 @@ def _call_one_agent(
     review_mode: bool,
     review_advocate: AgentId | None,
     plan_md: str,
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     on_event: OnAgentEvent | None,
     context_log: list[dict[str, Any]] | None = None,
     extra_follow_up: str = "",

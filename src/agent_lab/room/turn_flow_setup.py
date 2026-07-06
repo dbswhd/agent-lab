@@ -5,11 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from agent_lab.run.state import RunStateLike
+
 from agent_lab.room.messages import OnAgentEvent
 
 
 def apply_turn_profile_flags(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     turn_profile: str | None,
     *,
     synthesize: bool,

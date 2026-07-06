@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from agent_lab.run.state import RunState, RunStateLike
+
 from agent_lab.plan.execute_git import (
     default_branch,
     exec_branch_name,
@@ -194,7 +196,7 @@ def _remove_unknown_worktree(path: Path, *, prune_roots: set[Path]) -> None:
 
 def list_orphan_worktrees(
     session_folder: Path,
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
 ) -> list[Path]:
     """Return session worktree dirs no longer referenced by run.json executions."""
     root = session_folder / "worktrees"
@@ -204,7 +206,7 @@ def list_orphan_worktrees(
     return sorted(path for path in root.iterdir() if path.is_dir() and path.name not in known)
 
 
-def gc_stale_worktrees(session_folder: Path, run_meta: dict[str, Any]) -> list[str]:
+def gc_stale_worktrees(session_folder: Path, run_meta: RunStateLike) -> list[str]:
     """Remove terminal and orphan session worktrees; keep pending approval worktrees."""
     removed: list[str] = []
     prune_roots: set[Path] = set()

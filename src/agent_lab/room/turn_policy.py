@@ -11,6 +11,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
+from agent_lab.run.state import RunState, RunStateLike
+
 ScribeTrigger = Literal[
     "none",
     "synthesize_only",
@@ -65,7 +67,7 @@ def stamp_pending_skill_intent(folder: Path, intent: str) -> None:
         return
     from agent_lab.run.meta import patch_run_meta
 
-    def _patch(run: dict[str, Any]) -> dict[str, Any]:
+    def _patch(run: RunState) -> RunState:
         run["_pending_skill_intent"] = normalized
         return run
 
@@ -83,7 +85,7 @@ def skill_intent_opens_scribe(intent: str | None) -> bool:
     return normalize_skill_intent(intent) in _SKILL_SCRIBE_INTENTS
 
 
-def pop_pending_skill_intent(folder: Path | None, run_meta: dict[str, Any]) -> str | None:
+def pop_pending_skill_intent(folder: Path | None, run_meta: RunStateLike) -> str | None:
     """Consume slash/API pending intent; clear from memory and disk."""
     intent = normalize_skill_intent(run_meta.get("_pending_skill_intent"))
     if not intent:
@@ -94,7 +96,7 @@ def pop_pending_skill_intent(folder: Path | None, run_meta: dict[str, Any]) -> s
     stamp_run_meta(run_meta, _pending_skill_intent=None)
     if folder is not None and folder.is_dir():
 
-        def _clear(run: dict[str, Any]) -> dict[str, Any]:
+        def _clear(run: RunState) -> RunState:
             run.pop("_pending_skill_intent", None)
             return run
 
@@ -102,7 +104,7 @@ def pop_pending_skill_intent(folder: Path | None, run_meta: dict[str, Any]) -> s
     return intent
 
 
-def stamp_active_skill_intent(run_meta: dict[str, Any], intent: str | None) -> None:
+def stamp_active_skill_intent(run_meta: RunStateLike, intent: str | None) -> None:
     from agent_lab.run.meta import stamp_run_meta
 
     stamp_run_meta(run_meta, _active_skill_intent=normalize_skill_intent(intent))
@@ -132,7 +134,7 @@ class TurnSignals:
     @classmethod
     def from_run_meta(
         cls,
-        run_meta: dict[str, Any] | None,
+        run_meta: RunStateLike | None,
         *,
         room_preset: str | None = None,
         consensus_meta: dict[str, Any] | None = None,
@@ -201,7 +203,7 @@ class ApplyTurnEffectsResult:
     detail: str = ""
     plan_md: str = ""
     scribe_applied: bool = False
-    run_meta: dict[str, Any] = field(default_factory=dict)
+    run_meta: RunState = field(default_factory=RunState.empty)
     plan_trigger: str | None = None
 
 
@@ -293,10 +295,10 @@ class TurnPolicyEngine:
 
 def prepare_turn_policy_before_agent_round(
     folder: Path,
-    run_meta: dict[str, Any],
+    run_meta: RunState,
     *,
     human_turn: int,
-) -> tuple[dict[str, Any], TurnEffects | None]:
+) -> tuple[RunState, TurnEffects | None]:
     """Resolve and persist TurnEffects before agent round; bootstrap FSM when needed."""
     if not turn_policy_enabled():
         return run_meta, None
@@ -329,7 +331,7 @@ def prepare_turn_policy_before_agent_round(
     if folder.is_dir() and (isinstance(snap_tp, dict) or snap_tk or snap_rp):
         from agent_lab.run.meta import patch_run_meta
 
-        def _persist(run: dict[str, Any]) -> dict[str, Any]:
+        def _persist(run: RunState) -> RunState:
             if isinstance(snap_tp, dict):
                 run["turn_policy"] = snap_tp
             if snap_tk:
@@ -342,7 +344,7 @@ def prepare_turn_policy_before_agent_round(
     return run_meta, effects
 
 
-def should_assign_tasks_for_run_meta(run_meta: dict[str, Any] | None) -> bool:
+def should_assign_tasks_for_run_meta(run_meta: RunStateLike | None) -> bool:
     """Task assign gate — TurnPolicy snapshot or legacy mode/synthesize."""
     run = run_meta or {}
     tp = run.get("turn_policy")
@@ -357,7 +359,7 @@ def should_assign_tasks_for_run_meta(run_meta: dict[str, Any] | None) -> bool:
     )
 
 
-def is_discuss_only_for_run_meta(run_meta: dict[str, Any] | None) -> bool:
+def is_discuss_only_for_run_meta(run_meta: RunStateLike | None) -> bool:
     """Discuss-only task harvest — inverse of assign_task_owners when TurnPolicy ON."""
     if turn_policy_enabled() and run_meta:
         tp = run_meta.get("turn_policy")
@@ -373,7 +375,7 @@ def is_discuss_only_for_run_meta(run_meta: dict[str, Any] | None) -> bool:
     )
 
 
-def persist_turn_policy_on_run_meta(run_meta: dict[str, Any], effects: TurnEffects) -> None:
+def persist_turn_policy_on_run_meta(run_meta: RunStateLike, effects: TurnEffects) -> None:
     from agent_lab.run.meta import stamp_run_meta
 
     stamp_run_meta(
@@ -383,7 +385,7 @@ def persist_turn_policy_on_run_meta(run_meta: dict[str, Any], effects: TurnEffec
     )
 
 
-def assign_task_owners_from_run_meta(run_meta: dict[str, Any] | None) -> bool | None:
+def assign_task_owners_from_run_meta(run_meta: RunStateLike | None) -> bool | None:
     """Read persisted ``turn_policy.assign_task_owners`` snapshot; None if absent."""
     tp = (run_meta or {}).get("turn_policy")
     if isinstance(tp, dict) and "assign_task_owners" in tp:
@@ -395,14 +397,14 @@ def _scribe_idempotency_key(human_turn: int, trigger: ScribeTrigger) -> str:
     return f"{human_turn}:{trigger}"
 
 
-def _already_scribed(run_meta: dict[str, Any], key: str) -> bool:
+def _already_scribed(run_meta: RunStateLike, key: str) -> bool:
     applied = run_meta.get("_turn_policy_scribe_keys") or []
     if not isinstance(applied, list):
         return False
     return key in applied
 
 
-def _mark_scribed(run_meta: dict[str, Any], key: str) -> None:
+def _mark_scribed(run_meta: RunStateLike, key: str) -> None:
     applied = list(run_meta.get("_turn_policy_scribe_keys") or [])
     if key not in applied:
         applied.append(key)
@@ -424,13 +426,13 @@ def _plan_trigger_for_scribe(trigger: ScribeTrigger) -> str:
 def _run_fsm_tick(
     folder: Path,
     *,
-    run_meta: dict[str, Any],
+    run_meta: RunState,
     plan_md: str,
     plan_before: str,
     synthesize: bool,
     cancelled: bool,
     on_event: Any,
-) -> tuple[str, dict[str, Any], bool]:
+) -> tuple[str, RunState, bool]:
     """Tick plan FSM; return (plan_md, run_meta, pw_force_scribe)."""
     from agent_lab.human_inbox import has_pending_question
     from agent_lab.plan.workflow import (
@@ -471,7 +473,7 @@ def _run_turn_policy_scribe(
     folder: Path,
     topic: str,
     messages: list[Any],
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     plan_before: str,
     mode: str,
     effects: TurnEffects,
@@ -571,7 +573,7 @@ def apply_turn_effects(
     folder: Path | None = None,
     topic: str = "",
     messages: list[Any] | None = None,
-    run_meta: dict[str, Any] | None = None,
+    run_meta: RunStateLike | None = None,
     plan_before: str = "",
     mode: str = "discuss",
     cancelled: bool = False,
@@ -587,7 +589,12 @@ def apply_turn_effects(
 ) -> ApplyTurnEffectsResult:
     """Single choke for Scribe / FSM / tasks when ``AGENT_LAB_TURN_POLICY=1``."""
     effects = TurnPolicyEngine.resolve(signals)
-    meta = dict(run_meta or {})
+    if isinstance(run_meta, RunState):
+        meta = run_meta
+    elif run_meta:
+        meta = RunState.from_memory(run_meta)
+    else:
+        meta = RunState.empty()
     _ephemeral_turn = {
         k: meta.get(k) for k in ("_turn_category", "_turn_roles") if meta.get(k) is not None
     }

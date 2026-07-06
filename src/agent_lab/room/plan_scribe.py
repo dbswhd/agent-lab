@@ -7,6 +7,8 @@ import os
 from pathlib import Path
 from typing import Any, Callable, cast
 
+from agent_lab.run.state import RunStateLike
+
 from agent_lab.agents.prompts import room_scribe_prompt
 from agent_lab.agents.registry import AGENT_IDS, AgentId, AgentReply, available_agents
 from agent_lab.session import SESSIONS_DIR, session_dir
@@ -35,7 +37,7 @@ def synthesize_plan(
     messages: list[ChatMessage],
     backend_agent: AgentId | None = None,
     *,
-    run_meta: dict[str, Any] | None = None,
+    run_meta: RunStateLike | None = None,
 ) -> str:
     """Scribe pass using one agent backend."""
     from agent_lab.room.context import scribe_thread_block
@@ -118,7 +120,7 @@ def _should_scribe_plan_after_turn(
     *,
     synthesize: bool,
     cancelled: bool,
-    run_meta: dict[str, Any] | None = None,
+    run_meta: RunStateLike | None = None,
     user_plan_send: bool = False,
 ) -> bool:
     if cancelled:
@@ -181,7 +183,7 @@ def _plan_workflow_post_agent_turn(
     *,
     topic: str,
     messages: list[ChatMessage],
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     plan_before: str,
     mode: str,
     synthesize: bool,
@@ -314,7 +316,7 @@ def _apply_scribe_after_turn(
     *,
     topic: str,
     messages: list[ChatMessage],
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     plan_before: str,
     mode: str,
     scribe: bool,

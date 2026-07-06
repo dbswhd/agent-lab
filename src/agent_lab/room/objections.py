@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from typing import Any, Literal
 
 from agent_lab.plan.actions import PlanActionKind, parse_action_key
+from agent_lab.run.state import RunStateLike
 
 RUN_OBJECTIONS_KEY = "objections"
 HARVEST_ACTS = frozenset({"BLOCK", "CHALLENGE"})
@@ -89,7 +90,7 @@ def normalize_objection(raw: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
-def list_objections(run_meta: dict[str, Any] | None) -> list[dict[str, Any]]:
+def list_objections(run_meta: RunStateLike | None) -> list[dict[str, Any]]:
     if not run_meta:
         return []
     raw = run_meta.get(RUN_OBJECTIONS_KEY)
@@ -98,7 +99,7 @@ def list_objections(run_meta: dict[str, Any] | None) -> list[dict[str, Any]]:
     return [normalize_objection(o) for o in raw if isinstance(o, dict)]
 
 
-def write_objections(run_meta: dict[str, Any], rows: list[dict[str, Any]]) -> None:
+def write_objections(run_meta: RunStateLike, rows: list[dict[str, Any]]) -> None:
     from agent_lab.run.meta import stamp_run_meta
 
     stamp_run_meta(
@@ -107,7 +108,7 @@ def write_objections(run_meta: dict[str, Any], rows: list[dict[str, Any]]) -> No
     )
 
 
-def open_objections(run_meta: dict[str, Any] | None) -> list[dict[str, Any]]:
+def open_objections(run_meta: RunStateLike | None) -> list[dict[str, Any]]:
     return [o for o in list_objections(run_meta) if o.get("status") == "open"]
 
 
@@ -157,7 +158,7 @@ def _objection_fingerprint(
 
 
 def append_objection(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     *,
     from_agent: str,
     act: str,
@@ -231,7 +232,7 @@ def append_objection(
 
 
 def harvest_objections_from_turn(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     messages: list[Any],
     *,
     human_turn: int,
@@ -287,7 +288,7 @@ def harvest_objections_from_turn(
 
 
 def resolve_objections_on_endorse(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     agent: str,
     *,
     human_turn: int | None = None,
@@ -327,7 +328,7 @@ def resolve_objections_on_endorse(
     return resolved
 
 
-def apply_challenge_task_blocks(run_meta: dict[str, Any]) -> int:
+def apply_challenge_task_blocks(run_meta: RunStateLike) -> int:
     """Mark tasks blocked when an open CHALLENGE references them."""
     from agent_lab.room.tasks import list_tasks, write_tasks
 
@@ -352,7 +353,7 @@ def apply_challenge_task_blocks(run_meta: dict[str, Any]) -> int:
 
 
 def resolve_objection(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     objection_id: str,
     *,
     verdict: ResolveVerdict,
@@ -378,7 +379,7 @@ def resolve_objection(
     raise ValueError(f"objection not found: {oid}")
 
 
-def _unblock_task_if_no_open_challenge(run_meta: dict[str, Any], task_id: str) -> None:
+def _unblock_task_if_no_open_challenge(run_meta: RunStateLike, task_id: str) -> None:
     from agent_lab.room.tasks import list_tasks, write_tasks
 
     still = any(
@@ -420,7 +421,7 @@ def _action_matches_objection(
 
 
 def execute_block_reason_for_action(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     action_index: int,
     action_kind: PlanActionKind | None = None,
 ) -> str | None:
@@ -433,7 +434,7 @@ def execute_block_reason_for_action(
 
 
 def assert_execute_allowed(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     action_index: int,
     action_kind: PlanActionKind | None = None,
 ) -> None:
@@ -443,11 +444,11 @@ def assert_execute_allowed(
         raise ObjectionBlocksExecute(reason, objections=blocking)
 
 
-def consensus_open_objection_blockers(run_meta: dict[str, Any] | None) -> list[str]:
+def consensus_open_objection_blockers(run_meta: RunStateLike | None) -> list[str]:
     return [f"{o.get('from')}:{o.get('act')}:{o.get('id')}" for o in open_objections(run_meta)]
 
 
-def objections_public_payload(run_meta: dict[str, Any] | None) -> dict[str, Any]:
+def objections_public_payload(run_meta: RunStateLike | None) -> dict[str, Any]:
     rows = list_objections(run_meta)
     open_rows = [o for o in rows if o.get("status") == "open"]
     return {
@@ -457,7 +458,7 @@ def objections_public_payload(run_meta: dict[str, Any] | None) -> dict[str, Any]
     }
 
 
-def build_objection_block(run_meta: dict[str, Any] | None, agent: str) -> str:
+def build_objection_block(run_meta: RunStateLike | None, agent: str) -> str:
     agent_l = str(agent or "").strip().lower()
     relevant = [o for o in open_objections(run_meta) if str(o.get("from") or "").lower() != agent_l]
     if not relevant:
@@ -471,7 +472,7 @@ def build_objection_block(run_meta: dict[str, Any] | None, agent: str) -> str:
     return "\n".join(lines)
 
 
-def build_challenge_owner_block(run_meta: dict[str, Any] | None, agent: str) -> str:
+def build_challenge_owner_block(run_meta: RunStateLike | None, agent: str) -> str:
     """E3: task owner must AMEND or justify when CHALLENGE is open."""
     from agent_lab.room.tasks import list_tasks
 

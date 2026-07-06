@@ -17,6 +17,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from agent_lab.run.state import RunStateLike
+
 from agent_lab.room._typing import as_agent_ids
 from agent_lab.room.messages import (
     ChatMessage,
@@ -39,7 +41,7 @@ class RetryError(Exception):
         self.code = code
 
 
-def _is_consensus_turn(run_meta: dict[str, Any] | None) -> bool:
+def _is_consensus_turn(run_meta: RunStateLike | None) -> bool:
     rm = run_meta or {}
     if str(rm.get("turn_profile") or "").strip().lower() in _CONSENSUS_PROFILES:
         return True

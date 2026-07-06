@@ -8,6 +8,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.run.state import RunState, RunStateLike
+
 from agent_lab.plan.actions import PlanAction
 from agent_lab.plan.execute_merge import MergeConflict, merge_exec_branch
 from agent_lab.plan.execute_paths import paths_relative_to_workspace
@@ -250,7 +252,7 @@ def _resolve_reject(
     target["status"] = "rejected"
     target["completed_at"] = completed
 
-    def _revert_tasks(run: dict[str, Any]) -> dict[str, Any]:
+    def _revert_tasks(run: RunState) -> RunState:
         from agent_lab.room.tasks import revert_tasks_for_rejected_execution
 
         revert_tasks_for_rejected_execution(

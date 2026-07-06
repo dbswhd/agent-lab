@@ -5,6 +5,8 @@ from __future__ import annotations
 import os
 from typing import Any
 
+from agent_lab.run.state import RunState, RunStateLike
+
 from agent_lab.agents.registry import AGENT_IDS
 from agent_lab import provider_registry
 
@@ -30,13 +32,13 @@ def _env_true(key: str) -> bool:
     return os.getenv(key, "").strip().lower() in _TRUE
 
 
-def session_room_preset(run_meta: dict[str, Any] | None) -> str:
+def session_room_preset(run_meta: RunStateLike | None) -> str:
     return str((run_meta or {}).get("room_preset") or "").strip().lower()
 
 
 def plan_scribe_agent(
     *,
-    run_meta: dict[str, Any] | None = None,
+    run_meta: RunStateLike | None = None,
     active: list[str] | None = None,
 ) -> str:
     """Scribe seat for plan.md, resolved from the active roster.
@@ -70,7 +72,7 @@ def plan_scribe_agent(
 def plan_peer_review_seats(
     active: list[str],
     *,
-    run_meta: dict[str, Any] | None = None,
+    run_meta: RunStateLike | None = None,
 ) -> list[str]:
     """Ordered peer reviewer ids — non-scribe agents from the active roster, up to 2.
 
@@ -86,7 +88,7 @@ def plan_peer_review_seats(
     return reviewers if reviewers else pool[:2]
 
 
-def plan_cold_critic_enabled(*, run_meta: dict[str, Any] | None = None) -> bool:
+def plan_cold_critic_enabled(*, run_meta: RunStateLike | None = None) -> bool:
     """Fresh-eyes cold critic for PEER_REVIEW (supervisor preset default-on)."""
     if _env_true("AGENT_LAB_PLAN_COLD_CRITIC"):
         return True
@@ -97,6 +99,6 @@ def plan_cold_critic_enabled(*, run_meta: dict[str, Any] | None = None) -> bool:
     return antidrift_enabled()
 
 
-def plan_peer_review_uses_role_lanes(*, run_meta: dict[str, Any] | None = None) -> bool:
+def plan_peer_review_uses_role_lanes(*, run_meta: RunStateLike | None = None) -> bool:
     """Supervisor preset runs architect then critic as separate rounds."""
     return session_room_preset(run_meta) == "supervisor"

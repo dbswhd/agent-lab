@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from agent_lab.run.meta import patch_run_meta, read_run_meta
+from agent_lab.run.state import RunStateLike
 
 InboxKind = Literal["question", "build", "skill_draft", "autonomy"]
 InboxStatus = Literal["pending", "resolved", "deferred", "superseded", "rejected", "timeout"]
@@ -27,14 +28,14 @@ def _new_id(prefix: str = "inbox") -> str:
     return f"{prefix}-{uuid.uuid4().hex[:12]}"
 
 
-def inbox_items(run: dict[str, Any]) -> list[dict[str, Any]]:
+def inbox_items(run: RunStateLike) -> list[dict[str, Any]]:
     raw = run.get("human_inbox")
     if not isinstance(raw, list):
         return []
     return [item for item in raw if isinstance(item, dict)]
 
 
-def compute_inbox_pending(run: dict[str, Any]) -> bool:
+def compute_inbox_pending(run: RunStateLike) -> bool:
     return any(item.get("status") == "pending" for item in inbox_items(run))
 
 

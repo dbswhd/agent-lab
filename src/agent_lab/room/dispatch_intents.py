@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
+from agent_lab.run.state import RunStateLike
+
 
 def harvest_dispatch_intents_from_turn(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     messages: list[Any],
     *,
     human_turn: int,
@@ -49,14 +51,14 @@ def harvest_dispatch_intents_from_turn(
     return harvested
 
 
-def pending_dispatch_intents(run_meta: dict[str, Any] | None) -> list[dict[str, Any]]:
+def pending_dispatch_intents(run_meta: RunStateLike | None) -> list[dict[str, Any]]:
     if not run_meta:
         return []
     rows = run_meta.get("dispatch_intents") or []
     return [r for r in rows if isinstance(r, dict) and r.get("status") == "pending"]
 
 
-def build_dispatch_intent_block(run_meta: dict[str, Any] | None, agent: str) -> str:
+def build_dispatch_intent_block(run_meta: RunStateLike | None, agent: str) -> str:
     """Context for turn lead — pending intents targeting this agent or issued by lead."""
     pending = pending_dispatch_intents(run_meta)
     if not pending:

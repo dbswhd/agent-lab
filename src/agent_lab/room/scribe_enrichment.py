@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from agent_lab.run.state import RunStateLike
+
 from agent_lab.agent.envelope import envelope_act, parse_agent_response
 from agent_lab.room.objections import list_objections, open_objections
 
@@ -14,7 +16,7 @@ _SUMMARY_ACTS = frozenset({"BLOCK", "CHALLENGE", "ENDORSE", "PASS", "AMEND", "PR
 _MAX_AGENT_SUMMARY_CHARS = 400
 
 
-def format_unresolved_objections_section(run_meta: dict[str, Any] | None) -> str:
+def format_unresolved_objections_section(run_meta: RunStateLike | None) -> str:
     rows = open_objections(run_meta)
     if not rows:
         return ""
@@ -27,7 +29,7 @@ def format_unresolved_objections_section(run_meta: dict[str, Any] | None) -> str
     return "\n".join(lines)
 
 
-def blocked_plan_action_indices(run_meta: dict[str, Any] | None) -> list[int]:
+def blocked_plan_action_indices(run_meta: RunStateLike | None) -> list[int]:
     out: list[int] = []
     for o in open_objections(run_meta):
         if o.get("act") != "BLOCK":
@@ -100,7 +102,7 @@ def _first_chat_ref(body: str, envelope: dict[str, Any] | None) -> str | None:
 
 def extract_agent_turn_summaries(
     messages: list[Any],
-    run_meta: dict[str, Any] | None = None,
+    run_meta: RunStateLike | None = None,
 ) -> list[dict[str, Any]]:
     """Per-agent diff summaries for the latest human turn (H1 — not verbatim)."""
     del run_meta  # reserved for future run_meta hints
@@ -163,7 +165,7 @@ def extract_agent_turn_summaries(
 
 def format_scribe_agent_summaries_block(
     messages: list[Any],
-    run_meta: dict[str, Any] | None = None,
+    run_meta: RunStateLike | None = None,
 ) -> str:
     """Structured agent-input block for scribe (replaces full verbatim thread)."""
     summaries = extract_agent_turn_summaries(messages, run_meta)
@@ -223,7 +225,7 @@ def agent_contributions_section(messages: list[Any]) -> str:
 
 
 def build_scribe_enrichment(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     messages: list[Any],
 ) -> str:
     parts: list[str] = []
@@ -265,7 +267,7 @@ def build_scribe_enrichment(
 
 
 def should_skip_scribe_for_open_objections(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     *,
     mode: str,
     synthesize: bool,
@@ -280,7 +282,7 @@ def should_skip_scribe_for_open_objections(
 
 def patch_plan_objections_only(
     plan_md: str,
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
 ) -> str:
     """Append or replace ## 미해결 이의 when scribe skipped (E2b)."""
     section = format_unresolved_objections_section(run_meta)

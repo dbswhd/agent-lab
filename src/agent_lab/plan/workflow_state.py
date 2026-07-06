@@ -9,6 +9,7 @@ from typing import Any, Literal
 
 from agent_lab.plan.actions import parse_plan_actions
 from agent_lab.run.meta import patch_run_meta, read_run_meta
+from agent_lab.run.state import RunState, RunStateLike
 from agent_lab.verified_loop import DEFAULT_COMPLETION_PROMISE
 
 PlanWorkflowPhase = Literal[
@@ -81,7 +82,7 @@ def should_enable_plan_workflow(*, synthesize: bool) -> bool:
 
 
 def plan_workflow_should_advance_on_turn(
-    run: dict[str, Any] | None,
+    run: RunStateLike | None,
     *,
     synthesize: bool,
 ) -> bool:
@@ -93,7 +94,7 @@ def plan_workflow_should_advance_on_turn(
 
 def apply_legacy_verified_turn_profile(
     folder: Path | None,
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     *,
     synthesize: bool,
 ) -> None:
@@ -153,7 +154,7 @@ def default_plan_workflow() -> dict[str, Any]:
     }
 
 
-def get_plan_workflow(run: dict[str, Any] | None) -> dict[str, Any]:
+def get_plan_workflow(run: RunStateLike | None) -> dict[str, Any]:
     raw = (run or {}).get("plan_workflow")
     if not isinstance(raw, dict):
         return default_plan_workflow()
@@ -162,16 +163,16 @@ def get_plan_workflow(run: dict[str, Any] | None) -> dict[str, Any]:
     return base
 
 
-def is_plan_workflow_active(run: dict[str, Any] | None) -> bool:
+def is_plan_workflow_active(run: RunStateLike | None) -> bool:
     pw = get_plan_workflow(run)
     return bool(pw.get("enabled"))
 
 
-def plan_workflow_phase(run: dict[str, Any] | None) -> str:
+def plan_workflow_phase(run: RunStateLike | None) -> str:
     return str(get_plan_workflow(run).get("phase") or "INTAKE")
 
 
-def plan_workflow_wants_inbox_mcp(run: dict[str, Any] | None) -> bool:
+def plan_workflow_wants_inbox_mcp(run: RunStateLike | None) -> bool:
     from agent_lab.room.preset import is_fast_room_session
 
     if is_fast_room_session(run):
@@ -182,7 +183,7 @@ def plan_workflow_wants_inbox_mcp(run: dict[str, Any] | None) -> bool:
 
 
 def plan_workflow_allows_scribe(
-    run: dict[str, Any] | None,
+    run: RunStateLike | None,
     *,
     synthesize: bool,
     user_plan_send: bool,
@@ -205,7 +206,7 @@ def plan_workflow_allows_scribe(
     return False
 
 
-def plan_workflow_allows_auto_scribe(run: dict[str, Any] | None) -> bool:
+def plan_workflow_allows_auto_scribe(run: RunStateLike | None) -> bool:
     if is_plan_workflow_active(run):
         return False
     return _auto_plan_scribe_fallback()
@@ -216,15 +217,15 @@ def _auto_plan_scribe_fallback() -> bool:
     return raw not in ("0", "false", "no", "off")
 
 
-def plan_workflow_skips_goal_check(run: dict[str, Any] | None) -> bool:
+def plan_workflow_skips_goal_check(run: RunStateLike | None) -> bool:
     return is_plan_workflow_active(run)
 
 
-def plan_workflow_skips_server_clarifier(run: dict[str, Any] | None) -> bool:
+def plan_workflow_skips_server_clarifier(run: RunStateLike | None) -> bool:
     return is_plan_workflow_active(run)
 
 
-def plan_workflow_completed_clarify(run: dict[str, Any] | None) -> bool:
+def plan_workflow_completed_clarify(run: RunStateLike | None) -> bool:
     """True when plan_workflow already passed CLARIFY (single clarify owner)."""
     if not is_plan_workflow_active(run):
         return False
@@ -252,7 +253,7 @@ def _reset_plan_workflow_state(pw: dict[str, Any]) -> dict[str, Any]:
 def init_plan_workflow_on_plan_send(folder: Path) -> dict[str, Any]:
     from agent_lab.plan.paths import begin_session_plan_cycle
 
-    def _init(run: dict[str, Any]) -> dict[str, Any]:
+    def _init(run: RunState) -> RunState:
         pw = get_plan_workflow(run)
         phase = str(pw.get("phase") or "")
 
@@ -288,7 +289,7 @@ def init_plan_workflow_on_plan_send(folder: Path) -> dict[str, Any]:
     return get_plan_workflow(read_run_meta(folder))
 
 
-def _mirror_verified_loop_status(run: dict[str, Any], pw: dict[str, Any]) -> None:
+def _mirror_verified_loop_status(run: RunStateLike, pw: dict[str, Any]) -> None:
     loop = dict(run.get("verified_loop") or {})
     phase = str(pw.get("phase") or "INTAKE")
     if phase == "APPROVED":
@@ -303,7 +304,7 @@ def _mirror_verified_loop_status(run: dict[str, Any], pw: dict[str, Any]) -> Non
 
 
 def set_plan_workflow_phase(folder: Path, phase: PlanWorkflowPhase) -> dict[str, Any]:
-    def _set(run: dict[str, Any]) -> dict[str, Any]:
+    def _set(run: RunState) -> RunState:
         pw = get_plan_workflow(run)
         pw["enabled"] = True
         pw["phase"] = phase
@@ -381,7 +382,7 @@ def emit_plan_workflow_phase_if_changed(
     on_event("plan_workflow_phase", payload)
 
 
-def plan_workflow_public(run: dict[str, Any] | None) -> dict[str, Any]:
+def plan_workflow_public(run: RunStateLike | None) -> dict[str, Any]:
     pw = get_plan_workflow(run)
     return {
         "plan_workflow": pw,

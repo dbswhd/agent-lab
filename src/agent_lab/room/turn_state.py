@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 from collections.abc import Sequence
 from typing import Any, Protocol
 
+from agent_lab.run.state import RunStateLike
+
 from agent_lab.agent.envelope import envelope_act
 from agent_lab.room.consensus import pick_anchor
 from agent_lab.room.context import extract_open_bullets
@@ -273,7 +275,7 @@ def peer_turn_metrics(turn_messages: list[_MsgLike]) -> dict[str, Any]:
 
 
 def sync_run_meta_turn_state(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     all_messages: Sequence[_MsgLike],
     *,
     active_agents: Sequence[str] | None = None,

@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
+from agent_lab.run.state import RunStateLike
+
 from agent_lab.subprocess_env import subprocess_env
 
 HOOK_EXIT_BLOCK = 2
@@ -421,7 +423,7 @@ def _hook_run_record(
 
 
 def run_pre_agent_reply_hooks(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     agent: str,
     *,
     session_folder: Path | None = None,
@@ -489,7 +491,7 @@ def _builtin_post_agent_reply_envelope_check(
 
 
 def run_post_agent_reply_hooks(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     agent: str,
     *,
     content: str,
@@ -568,7 +570,7 @@ def run_post_agent_reply_hooks(
 
 
 def run_pre_dispatch_hooks(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     *,
     session_folder: Path | None = None,
     session_id: str = "",
@@ -598,7 +600,7 @@ def run_pre_dispatch_hooks(
 
 
 def run_post_dispatch_hooks(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     *,
     session_folder: Path | None = None,
     session_id: str = "",
@@ -626,7 +628,7 @@ def run_post_dispatch_hooks(
 
 
 def run_post_harvest_hooks(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     *,
     session_folder: Path | None = None,
     session_id: str = "",
@@ -648,7 +650,7 @@ def run_post_harvest_hooks(
 
 
 def run_pre_scribe_hooks(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     *,
     session_folder: Path | None = None,
     session_id: str = "",
@@ -669,7 +671,7 @@ def run_pre_scribe_hooks(
     return run_hook("pre_scribe", ctx)
 
 
-def _workspace_for_hooks(run_meta: dict[str, Any] | None, session_folder: Path | None) -> str:
+def _workspace_for_hooks(run_meta: RunStateLike | None, session_folder: Path | None) -> str:
     if session_folder and session_folder.is_dir():
         return str(session_folder.resolve())
     if run_meta:
@@ -693,7 +695,7 @@ class PreExecuteBlocked(Exception):
 
 
 def run_pre_execute_hooks(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     action: dict[str, Any],
     *,
     session_folder: Path | None = None,
@@ -719,7 +721,7 @@ def run_pre_execute_hooks(
 
 
 def run_task_completed_hooks(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     task: dict[str, Any],
     *,
     session_folder: Path | None = None,
@@ -740,7 +742,7 @@ def run_task_completed_hooks(
 
 
 def run_teammate_idle_hooks(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     agent: str,
     *,
     session_folder: Path | None = None,

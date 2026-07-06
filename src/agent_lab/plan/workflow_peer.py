@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from agent_lab.run.state import RunState, RunStateLike
+
 PLAN_PEER_REVIEW_GUIDANCE = (
     "Plan peer review: read plan.md only. Do not propose code changes. "
     "Use envelope CHALLENGE or ENDORSE on specific plan actions or sections. "
@@ -39,7 +41,7 @@ def run_plan_peer_review_round(
     messages: list[Any],
     agents: list[str] | None,
     permissions: dict[str, Any] | None,
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     plan_md: str,
     on_event: Any | None = None,
 ) -> list[Any]:

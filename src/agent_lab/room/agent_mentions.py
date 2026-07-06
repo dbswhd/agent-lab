@@ -7,6 +7,7 @@ import re
 from typing import Any
 
 from agent_lab.agents.plugins import AGENT_IDS
+from agent_lab.run.state import RunStateLike
 
 _MENTION_RE = re.compile(r"(?<![A-Za-z0-9_-])@([a-zA-Z][a-zA-Z0-9_-]*)\b")
 
@@ -124,7 +125,7 @@ def apply_agent_mention_filter(
 
 def effective_invoke_agents(
     agents: list[Any] | None,
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     *,
     fallback: list[Any] | None = None,
 ) -> list[str]:

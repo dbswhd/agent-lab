@@ -23,6 +23,8 @@ import re
 from datetime import datetime, timezone
 from typing import Any
 
+from agent_lab.run.state import RunStateLike
+
 # Default ambiguity threshold; override via AGENT_LAB_CLARITY_THRESHOLD.
 CLARITY_AMBIGUITY_THRESHOLD = 0.30
 
@@ -130,7 +132,7 @@ def clarity_short_circuit(text: str) -> bool:
     return detect_concrete_anchors(text) or detect_smoke_test_intent(text)
 
 
-def _mission_clarity_text(run: dict[str, Any]) -> str:
+def _mission_clarity_text(run: RunStateLike) -> str:
     """Clarity input = goal/topic/clarify_task PLUS any answered clarifier Q&A.
 
     Folding answers in means the real question loop reduces ambiguity: each concrete answer
@@ -487,7 +489,7 @@ def ensure_clarify_questions(folder: Any) -> dict[str, Any] | None:
     return public_clarifier_interview(read_run_meta(path))
 
 
-def clarity_threshold_met(run: dict[str, Any]) -> bool:
+def clarity_threshold_met(run: RunStateLike) -> bool:
     """CLARIFY may pass to DISCUSS when concrete anchors exist OR overall ambiguity <= threshold.
 
     Answered clarifier Q&A is folded into the scored text, so completing the question loop
@@ -499,7 +501,7 @@ def clarity_threshold_met(run: dict[str, Any]) -> bool:
     return score_ambiguity(text) <= _threshold()
 
 
-def established_facts(run: dict[str, Any]) -> list[dict[str, Any]]:
+def established_facts(run: RunStateLike) -> list[dict[str, Any]]:
     """Confirmed clarify facts from run.json mission_loop.clarity.facts."""
     ml = run.get("mission_loop") if isinstance(run, dict) else None
     clarity = ml.get("clarity") if isinstance(ml, dict) else None
@@ -569,7 +571,7 @@ def extract_established_facts(folder: Any) -> list[dict[str, Any]]:
     return established_facts(read_run_meta(path))
 
 
-def format_facts_block(run: dict[str, Any]) -> str:
+def format_facts_block(run: RunStateLike) -> str:
     """Render confirmed clarify facts for injection into the DISCUSS/plan constraints block."""
     facts = established_facts(run)
     if not facts:

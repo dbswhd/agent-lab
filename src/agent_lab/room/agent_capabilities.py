@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from agent_lab.run.state import RunStateLike
+
 RUN_AGENT_CAPABILITIES_KEY = "agent_capabilities"
 RUN_AGENT_CAPABILITIES_CUSTOM_KEY = "agent_capabilities_custom"
 
@@ -74,7 +76,7 @@ def normalize_capability(raw: dict[str, Any] | None) -> dict[str, Any]:
     return out
 
 
-def get_agent_capabilities(run_meta: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
+def get_agent_capabilities(run_meta: RunStateLike | None) -> dict[str, dict[str, Any]]:
     if not run_meta:
         return {k: normalize_capability(v) for k, v in DEFAULT_CAPABILITIES.items()}
     raw = run_meta.get(RUN_AGENT_CAPABILITIES_KEY)
@@ -91,7 +93,7 @@ def get_agent_capabilities(run_meta: dict[str, Any] | None) -> dict[str, dict[st
 
 
 def write_agent_capabilities(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     caps: dict[str, dict[str, Any]],
     *,
     mark_custom: bool = True,
@@ -110,7 +112,7 @@ def write_agent_capabilities(
 
 
 def capabilities_public_payload(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     permissions: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     caps = get_agent_capabilities(run_meta)
@@ -122,12 +124,12 @@ def capabilities_public_payload(
     }
 
 
-def ensure_specialist_capabilities(run_meta: dict[str, Any]) -> None:
+def ensure_specialist_capabilities(run_meta: RunStateLike) -> None:
     """Deprecated — use seed_capabilities_for_route(route, run_meta)."""
     write_agent_capabilities(run_meta, SPECIALIST_CAPABILITIES)
 
 
-def seed_capabilities_for_route(route: Any, run_meta: dict[str, Any]) -> None:
+def seed_capabilities_for_route(route: Any, run_meta: RunStateLike) -> None:
     """Route-driven asymmetric cwd/tools (replaces manual 분업 preset)."""
     if run_meta.get("agent_capabilities_custom"):
         return
@@ -141,7 +143,7 @@ def seed_capabilities_for_route(route: Any, run_meta: dict[str, Any]) -> None:
     write_agent_capabilities(run_meta, DEFAULT_CAPABILITIES, mark_custom=False)
 
 
-def _binding_path(run_meta: dict[str, Any] | None) -> Path | None:
+def _binding_path(run_meta: RunStateLike | None) -> Path | None:
     if not run_meta:
         return None
     binding = run_meta.get("workspace_binding")
@@ -159,7 +161,7 @@ def _resolve_role_root(
     agent: str,
     cwd_role: str,
     permissions: dict[str, Any] | None,
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
 ) -> Path:
     from agent_lab.workspace.roots import (
         discuss_primary_workspace,
@@ -198,7 +200,7 @@ def _resolve_role_root(
 def agent_capability_cwd(
     agent: str,
     permissions: dict[str, Any] | None,
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
 ) -> str:
     caps = get_agent_capabilities(run_meta)
     cap = caps.get(str(agent).strip().lower()) or normalize_capability({})
@@ -209,7 +211,7 @@ def agent_capability_cwd(
 def agent_workspace_lines(
     agent: str,
     permissions: dict[str, Any] | None,
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
 ) -> str:
     """Asymmetric workspace block for one agent (F1)."""
     caps = get_agent_capabilities(run_meta)
@@ -229,7 +231,7 @@ def agent_workspace_lines(
 
 def capability_preamble_block(
     agent: str,
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     *,
     parallel_round: int = 1,
 ) -> str:
@@ -266,7 +268,7 @@ def capability_preamble_block(
 def merge_agent_permissions(
     agent: str,
     permissions: dict[str, Any] | None,
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
 ) -> dict[str, Any]:
     """Overlay capability tool flags onto session permissions (F1)."""
     out: dict[str, Any] = dict(permissions or {})

@@ -6,6 +6,8 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from agent_lab.run.state import RunStateLike
+
 from agent_lab.room.messages import ChatMessage, OnAgentEvent
 from agent_lab.room.plan_scribe import (
     _plan_trigger_for_turn,
@@ -26,7 +28,7 @@ def _post_agent_turn_plan(
     *,
     topic: str,
     messages: list[ChatMessage],
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     plan_before: str,
     mode: str,
     synthesize: bool,
@@ -89,7 +91,7 @@ def _post_agent_turn_plan_with_fail_banner(
     *,
     topic: str,
     messages: list[ChatMessage],
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     plan_before: str,
     mode: str,
     synthesize: bool,

@@ -9,6 +9,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.run.state import RunState, RunStateLike
+
 from agent_lab.plan.actions import PlanAction
 from agent_lab.run.meta import patch_run_meta, read_run_meta
 
@@ -44,7 +46,7 @@ class PlanSnapshotRequired(Exception):
         super().__init__("plan_snapshot_approval_required")
 
 
-def list_pending_plans(run_meta: dict[str, Any] | None) -> list[dict[str, Any]]:
+def list_pending_plans(run_meta: RunStateLike | None) -> list[dict[str, Any]]:
     if not run_meta:
         return []
     raw = run_meta.get(RUN_PENDING_PLANS_KEY)
@@ -58,7 +60,7 @@ def _action_snapshot_text(action: PlanAction) -> str:
 
 
 def find_approved_snapshot(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     action_key: str,
     plan_md: str,
 ) -> dict[str, Any] | None:
@@ -95,7 +97,7 @@ def create_pending_plan_snapshot(
     }
 
 
-def _whole_plan_approval_matches(run: dict[str, Any], plan_md: str) -> bool:
+def _whole_plan_approval_matches(run: RunStateLike, plan_md: str) -> bool:
     workflow = run.get("plan_workflow")
     if not isinstance(workflow, dict):
         return False
@@ -135,7 +137,7 @@ def ensure_plan_snapshot_approved(
         patch_run_meta(folder, _record_whole_plan_approval)
         return pending
 
-    def _upsert(run: dict[str, Any]) -> dict[str, Any]:
+    def _upsert(run: RunState) -> RunState:
         plans = list_pending_plans(run)
         for row in plans:
             if row.get("action_key") == action_key and row.get("status") == "pending_approval":
@@ -164,7 +166,7 @@ def approve_pending_plan(folder: Path, pending_id: str) -> dict[str, Any]:
     target["updated_at"] = approved_at
     target["approved_by"] = "human"
 
-    def _write(run: dict[str, Any]) -> dict[str, Any]:
+    def _write(run: RunState) -> RunState:
         run[RUN_PENDING_PLANS_KEY] = plans
         return run
 
@@ -181,7 +183,7 @@ def reject_pending_plan(folder: Path, pending_id: str) -> dict[str, Any]:
     target["status"] = "rejected"
     target["updated_at"] = _now()
 
-    def _write(run: dict[str, Any]) -> dict[str, Any]:
+    def _write(run: RunState) -> RunState:
         run[RUN_PENDING_PLANS_KEY] = plans
         return run
 
@@ -189,7 +191,7 @@ def reject_pending_plan(folder: Path, pending_id: str) -> dict[str, Any]:
     return dict(target)
 
 
-def pending_plans_public_payload(run_meta: dict[str, Any] | None) -> dict[str, Any]:
+def pending_plans_public_payload(run_meta: RunStateLike | None) -> dict[str, Any]:
     plans = list_pending_plans(run_meta)
     awaiting = [p for p in plans if p.get("status") == "pending_approval"]
     return {

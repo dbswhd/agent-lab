@@ -6,6 +6,8 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from agent_lab.run.state import RunState, RunStateLike
+
 from agent_lab.adversarial_gate import adversarial_review
 from agent_lab.plan.actions import PlanAction, find_dry_run_action, parse_plan_action_sections
 from agent_lab.plan.execute_isolation import resolve_action_isolation
@@ -194,7 +196,7 @@ def _finalize_dry_run(
 ) -> None:
     """Append execution to run.json, mark tasks in-progress, emit events."""
 
-    def _append(run: dict[str, Any]) -> dict[str, Any]:
+    def _append(run: RunState) -> RunState:
         actions = list(run.get("actions") or [])
         if not any(a.get("action_id") == action.action_id for a in actions):
             actions.append(
@@ -223,7 +225,7 @@ def _finalize_dry_run(
 
     patch_run_meta(folder, _append)
 
-    def _mark_tasks(run: dict[str, Any]) -> dict[str, Any]:
+    def _mark_tasks(run: RunState) -> RunState:
         from agent_lab.room.tasks import mark_tasks_in_progress_for_execution
 
         mark_tasks_in_progress_for_execution(
@@ -258,7 +260,7 @@ def _finalize_dry_run(
             mark_auto_approve_eligible(execution, _gate)
             _exec_id = execution.get("id", "")
 
-            def _stamp_auto(run: dict[str, Any]) -> dict[str, Any]:
+            def _stamp_auto(run: RunState) -> RunState:
                 rows = list(run.get("executions") or [])
                 for _i, _row in enumerate(rows):
                     if _row.get("id") == _exec_id:
@@ -353,7 +355,7 @@ def run_dry_run(
         execution_id=exec_id,
     )
 
-    def _sync_board(run: dict[str, Any]) -> dict[str, Any]:
+    def _sync_board(run: RunState) -> RunState:
         sync_mission_board(run, plan_md=plan_md)
         return run
 
@@ -402,7 +404,7 @@ def run_dry_run(
             "completed_at": _now(),
         }
 
-        def _append_blocked(run: dict[str, Any]) -> dict[str, Any]:
+        def _append_blocked(run: RunState) -> RunState:
             executions = list(run.get("executions") or [])
             executions.append(blocked)
             run["executions"] = executions

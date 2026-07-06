@@ -8,6 +8,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
+from agent_lab.run.state import RunStateLike
+
 RUN_ARTIFACTS_KEY = "artifacts"
 ArtifactKind = Literal["log", "diff", "table", "file_ref", "delegate"]
 _AGENT_IDS = frozenset({"cursor", "codex", "claude"})
@@ -55,7 +57,7 @@ def normalize_artifact(raw: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
-def list_artifacts(run_meta: dict[str, Any] | None) -> list[dict[str, Any]]:
+def list_artifacts(run_meta: RunStateLike | None) -> list[dict[str, Any]]:
     if not run_meta:
         return []
     raw = run_meta.get(RUN_ARTIFACTS_KEY)
@@ -64,7 +66,7 @@ def list_artifacts(run_meta: dict[str, Any] | None) -> list[dict[str, Any]]:
     return [normalize_artifact(a) for a in raw if isinstance(a, dict)]
 
 
-def write_artifacts(run_meta: dict[str, Any], rows: list[dict[str, Any]]) -> None:
+def write_artifacts(run_meta: RunStateLike, rows: list[dict[str, Any]]) -> None:
     from agent_lab.run.meta import stamp_run_meta
 
     stamp_run_meta(
@@ -82,7 +84,7 @@ def _artifact_dir(session_folder: Path | None) -> Path | None:
 
 
 def append_artifact(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     *,
     producer: str,
     kind: ArtifactKind,
@@ -134,7 +136,7 @@ def _extract_body(content: str) -> tuple[str, str | None]:
 
 
 def harvest_artifacts_from_turn(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     messages: list[Any],
     *,
     human_turn: int,
@@ -185,7 +187,7 @@ def harvest_artifacts_from_turn(
 
 
 def recent_artifacts_for_agent(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     agent: str,
     *,
     turn_profile: str = "",
@@ -199,7 +201,7 @@ def recent_artifacts_for_agent(
     return rows[-8:]
 
 
-def _session_folder(run_meta: dict[str, Any] | None) -> Path | None:
+def _session_folder(run_meta: RunStateLike | None) -> Path | None:
     raw = (run_meta or {}).get("_session_folder")
     if not raw:
         return None
@@ -211,7 +213,7 @@ def _session_folder(run_meta: dict[str, Any] | None) -> Path | None:
 
 
 def _read_artifact_body(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     path_raw: Any,
     *,
     cap_chars: int,
@@ -238,7 +240,7 @@ def _read_artifact_body(
 
 
 def build_artifacts_block(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     agent: str,
     *,
     parallel_round: int = 1,
@@ -281,7 +283,7 @@ def build_artifacts_block(
     return "\n".join(lines)
 
 
-def artifacts_public_payload(run_meta: dict[str, Any] | None) -> dict[str, Any]:
+def artifacts_public_payload(run_meta: RunStateLike | None) -> dict[str, Any]:
     rows = list_artifacts(run_meta)
     return {
         "artifacts": rows[-30:],

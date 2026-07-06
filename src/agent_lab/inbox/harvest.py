@@ -15,6 +15,8 @@ from dataclasses import dataclass
 from hashlib import sha1
 from typing import Any
 
+from agent_lab.run.state import RunStateLike
+
 from agent_lab.human_inbox import (
     append_inbox_item,
     has_pending_question,
@@ -39,7 +41,7 @@ def orchestrator_inbox_harvest_enabled() -> bool:
     return raw in ("1", "true", "yes", "on")
 
 
-def orchestrator_inbox_harvest_allowed(run_meta: dict[str, Any] | None) -> bool:
+def orchestrator_inbox_harvest_allowed(run_meta: RunStateLike | None) -> bool:
     """True when orchestrator may run discuss/build harvest for this session.
 
     MCP-first: legacy question harvest is off by default. Plan-workflow CLARIFY no
@@ -54,7 +56,7 @@ def orchestrator_inbox_harvest_allowed(run_meta: dict[str, Any] | None) -> bool:
     return orchestrator_inbox_harvest_enabled()
 
 
-def discuss_fork_harvest_allowed(run_meta: dict[str, Any] | None) -> bool:
+def discuss_fork_harvest_allowed(run_meta: RunStateLike | None) -> bool:
     """Harvest ``decision-fork`` blocks from agent replies into Inbox (T-Q1).
 
     MCP-first still prefers ``ask_human`` from the gate owner, but R2+ reply_policy
@@ -141,7 +143,7 @@ def escalation_harvest_keys_from_batch(messages: list[Any], *, act: str) -> list
 
 
 def record_escalation_harvest_keys(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     batch_msgs: list[Any],
     *,
     act: str,
@@ -266,7 +268,7 @@ def harvest_question_candidates(
     return out[:_MAX_ITEMS]
 
 
-def _existing_harvest_keys(run: dict[str, Any]) -> set[str]:
+def _existing_harvest_keys(run: RunStateLike) -> set[str]:
     return {str(item.get("harvest_key")) for item in inbox_items(run) if item.get("harvest_key")}
 
 
@@ -275,7 +277,7 @@ def clarifier_harvest_key(question: str) -> str:
 
 
 def harvest_clarifier_questions(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     questions: list[str],
     *,
     human_turn: int | None = None,
@@ -320,7 +322,7 @@ def harvest_clarifier_questions(
     return created
 
 
-def _current_plan_revision(run_meta: dict[str, Any], plan_md: str) -> str:
+def _current_plan_revision(run_meta: RunStateLike, plan_md: str) -> str:
     lpu = run_meta.get("last_plan_update") or {}
     ts = lpu.get("completed_at") or lpu.get("ts")
     if ts:
@@ -330,7 +332,7 @@ def _current_plan_revision(run_meta: dict[str, Any], plan_md: str) -> str:
 
 
 def harvest_discuss_questions(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     messages: list[Any],
     *,
     human_turn: int | None = None,
@@ -396,7 +398,7 @@ def harvest_discuss_questions(
 _PENDING_EXEC_STATUS = "pending_approval"  # mirrors plan_execute.PENDING_STATUS
 
 
-def _has_pending_execution(run: dict[str, Any]) -> bool:
+def _has_pending_execution(run: RunStateLike) -> bool:
     for row in run.get("executions") or []:
         if isinstance(row, dict) and row.get("status") == _PENDING_EXEC_STATUS:
             return True
@@ -417,7 +419,7 @@ def _build_summary(action: dict[str, Any]) -> str:
 
 
 def harvest_build_proposal(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     *,
     plan_md: str = "",
     human_turn: int | None = None,
@@ -482,7 +484,7 @@ def harvest_build_proposal(
 
 
 def harvest_post_plan_inbox(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     messages: list[Any],
     *,
     plan_md: str,
@@ -508,7 +510,7 @@ def harvest_post_plan_inbox(
     }
 
 
-def _supersede_legacy_verified_build_items(run_meta: dict[str, Any]) -> None:
+def _supersede_legacy_verified_build_items(run_meta: RunStateLike) -> None:
     """Drop direct verified-loop build shortcuts superseded by plan pipeline."""
     items = inbox_items(run_meta)
     changed = False
@@ -553,7 +555,7 @@ def inbox_question_pauses_discuss(item: dict[str, Any]) -> bool:
     return source in _HUMAN_QUESTION_SOURCES
 
 
-def has_pending_discuss_pause_question(run_meta: dict[str, Any]) -> bool:
+def has_pending_discuss_pause_question(run_meta: RunStateLike) -> bool:
     return any(inbox_question_pauses_discuss(item) for item in inbox_items(run_meta))
 
 
@@ -563,7 +565,7 @@ def inbox_mode() -> str:
     return mode if mode in ("sync", "soft") else "sync"
 
 
-def inbox_mode_for_run(run_meta: dict[str, Any] | None) -> str:
+def inbox_mode_for_run(run_meta: RunStateLike | None) -> str:
     """Session ``inbox_mode`` overrides env when set to sync|soft."""
     if isinstance(run_meta, dict):
         raw = str(run_meta.get("inbox_mode") or "").strip().lower()
@@ -572,7 +574,7 @@ def inbox_mode_for_run(run_meta: dict[str, Any] | None) -> str:
     return inbox_mode()
 
 
-def should_pause_discuss(run_meta: dict[str, Any]) -> bool:
+def should_pause_discuss(run_meta: RunStateLike) -> bool:
     """Sync checkpoint: pause-eligible pending question halts further auto rounds."""
     import os
 
@@ -603,7 +605,7 @@ PAUSE_GRACE_KIND_FORK = "fork"
 PAUSE_GRACE_KIND_PLAN_OPEN = "plan_open"
 
 
-def clear_inbox_pause_grace(run_meta: dict[str, Any] | None) -> None:
+def clear_inbox_pause_grace(run_meta: RunStateLike | None) -> None:
     if isinstance(run_meta, dict):
         run_meta.pop("_inbox_pause_grace_pending", None)
         run_meta.pop("_inbox_pause_grace_kind", None)
@@ -613,7 +615,7 @@ def clear_inbox_pause_grace(run_meta: dict[str, Any] | None) -> None:
 clear_inbox_fork_grace = clear_inbox_pause_grace
 
 
-def inbox_pause_grace_pending(run_meta: dict[str, Any] | None) -> bool:
+def inbox_pause_grace_pending(run_meta: RunStateLike | None) -> bool:
     if not isinstance(run_meta, dict):
         return False
     return bool(run_meta.get("_inbox_pause_grace_pending") or run_meta.get("_inbox_fork_grace_pending"))
@@ -622,7 +624,7 @@ def inbox_pause_grace_pending(run_meta: dict[str, Any] | None) -> bool:
 inbox_fork_grace_pending = inbox_pause_grace_pending
 
 
-def inbox_pause_grace_kind(run_meta: dict[str, Any] | None) -> str | None:
+def inbox_pause_grace_kind(run_meta: RunStateLike | None) -> str | None:
     if not isinstance(run_meta, dict):
         return None
     kind = str(run_meta.get("_inbox_pause_grace_kind") or "").strip()
@@ -633,7 +635,7 @@ def inbox_pause_grace_kind(run_meta: dict[str, Any] | None) -> str | None:
     return None
 
 
-def inbox_pause_grace_guidance(run_meta: dict[str, Any] | None) -> str:
+def inbox_pause_grace_guidance(run_meta: RunStateLike | None) -> str:
     if inbox_pause_grace_kind(run_meta) == PAUSE_GRACE_KIND_PLAN_OPEN:
         return INBOX_TQ2_GRACE_GUIDANCE
     return INBOX_FORK_GRACE_GUIDANCE
@@ -657,7 +659,7 @@ def _pause_grace_kind_for_item(item: dict[str, Any]) -> str:
 
 
 def harvest_and_check_pause(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     messages: list[Any],
     *,
     human_turn: int | None = None,

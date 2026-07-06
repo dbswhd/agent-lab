@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from agent_lab.run.state import RunState, RunStateLike
+
 from agent_lab.plan.workflow_clarify import clarity_gate_questions, open_plan_objections
 from agent_lab.plan.workflow_state import (
     DEFAULT_MAX_CLARIFY_ROUNDS,
@@ -265,7 +267,7 @@ def orchestrate_plan_workflow_pipeline(
     cancelled: bool,
     agents: list[str] | None,
     permissions: dict[str, Any] | None,
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     on_event: Any | None = None,
 ) -> tuple[str, list[Any], dict[str, Any]]:
     """Run post-scribe plan pipeline: peer review, refine scribe, human pending."""

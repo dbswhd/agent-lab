@@ -8,6 +8,8 @@ import os
 from pathlib import Path
 from typing import Any, Sequence, cast
 
+from agent_lab.run.state import RunState, RunStateLike
+
 from agent_lab.agents.registry import AGENT_IDS, AgentId
 from agent_lab.consensus_agreements import (
     mark_agreements_plan_synced,
@@ -123,7 +125,7 @@ def _append_peer_turn_digest(messages: list[ChatMessage]) -> list[ChatMessage]:
 
 def _append_human_turn_synthesis(
     messages: list[ChatMessage],
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     *,
     turn_meta: dict[str, Any] | None = None,
 ) -> list[ChatMessage]:
@@ -197,7 +199,7 @@ def _append_human_turn_synthesis(
 
 
 def _synthesis_lead_for_turn(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     *,
     turn_meta: dict[str, Any] | None = None,
 ) -> str:
@@ -222,14 +224,14 @@ def _synthesis_lead_for_turn(
     return team_lead(run_meta)
 
 
-def _read_run_meta(folder: Path) -> dict[str, Any]:
+def _read_run_meta(folder: Path) -> RunState:
     from agent_lab.run.meta import read_run_meta
 
     return read_run_meta(folder)
 
 
 def _resolve_discuss_objections_from_consensus(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     *,
     consensus: dict[str, Any] | None,
     human_turn: int,
@@ -258,10 +260,10 @@ def _sse_inbox_pending(folder: Path) -> bool:
     return compute_inbox_pending(_read_run_meta(folder))
 
 
-def _session_context(folder: Path | None) -> tuple[str, dict[str, Any]]:
+def _session_context(folder: Path | None) -> tuple[str, RunState]:
     """plan.md + run.json for trimmed agent payloads."""
     if not folder or not folder.is_dir():
-        return "", {}
+        return "", RunState.empty()
     plan_md = ""
     plan_path = folder / "plan.md"
     if plan_path.is_file():
@@ -271,7 +273,7 @@ def _session_context(folder: Path | None) -> tuple[str, dict[str, Any]]:
 
 def _prepare_team_coordination_before_round(
     folder: Path | None,
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     active_agents: list[AgentId],
     *,
     mode: str = "discuss",
@@ -302,7 +304,7 @@ def _plan_content_normalized(plan_md: str) -> str:
     return plan_md.rstrip("\n") + "\n"
 
 
-def _write_plan_if_changed(folder: Path, plan_md: str, *, run_meta: dict[str, Any]) -> bool:
+def _write_plan_if_changed(folder: Path, plan_md: str, *, run_meta: RunStateLike) -> bool:
     """Write active session plan only when content changes."""
     from agent_lab.plan.paths import extract_plan_path_directive, read_session_plan_md, write_session_plan_md
 
@@ -385,7 +387,7 @@ def _write_session_files(
         )
     if turn_meta:
         turns.append({**turn_meta, "ts": turn_meta.get("ts") or _now()})
-    run_meta: dict[str, Any] = {
+    run_meta: RunStateLike = {
         "workflow_id": "room.parallel",
         "run_schema_version": RUN_SCHEMA_VERSION,
         "plan_format_version": PLAN_FORMAT_VERSION,
@@ -675,7 +677,7 @@ def persist_chat_checkpoint(
             f.write(json.dumps(m.to_dict(), ensure_ascii=False) + "\n")
     from agent_lab.run.meta import patch_run_meta
 
-    def _patch(run: dict[str, Any]) -> dict[str, Any]:
+    def _patch(run: RunState) -> RunState:
         run["message_count"] = len(rows)
         return run
 

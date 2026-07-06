@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from agent_lab.run.state import RunStateLike
+
 from agent_lab.context.limits import agent_context_limits
 from agent_lab.room.context._shared import MessageLike
 
@@ -139,7 +141,7 @@ REPLY_FORMAT_RULES = CONVERSATION_GUIDANCE
 
 def agent_tool_rules(
     agent: str,
-    run_meta: dict[str, Any] | None = None,
+    run_meta: RunStateLike | None = None,
     *,
     active_agents: list[str] | None = None,
 ) -> str:

@@ -7,6 +7,8 @@ import time
 from pathlib import Path
 from typing import Any, Sequence, cast
 
+from agent_lab.run.state import RunStateLike
+
 from agent_lab.agents.registry import available_agents
 from agent_lab.context.meta import summarize_turn_context
 from agent_lab.consensus_agreements import (
@@ -43,7 +45,7 @@ def _peer_metrics_for_messages(messages: list[ChatMessage]) -> dict[str, Any]:
 def _final_turn_state_dict(
     messages: list[ChatMessage],
     *,
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     active_agents: Sequence[str],
     consensus_meta: dict[str, Any] | None,
     plan_md: str,
@@ -205,7 +207,7 @@ def _post_plan_scribe_inbox_harvest(
     messages = load_session_messages(folder)
     human_turn = _human_turn_count(messages)
 
-    def _patch(run_meta: dict[str, Any]) -> dict[str, Any]:
+    def _patch(run_meta: RunStateLike) -> dict[str, Any]:
         if trigger == "verified_loop_done":
             _supersede_legacy_verified_build_items(run_meta)
         harvest_post_plan_inbox(
@@ -446,7 +448,7 @@ def maybe_auto_scribe_after_consensus(
 
     messages = load_session_messages(folder)
 
-    def _mark_agreements_synced(run_meta: dict[str, Any]) -> dict[str, Any]:
+    def _mark_agreements_synced(run_meta: RunStateLike) -> dict[str, Any]:
         run_meta["consensus_agreements"] = mark_agreements_plan_synced(
             run_meta.get("consensus_agreements"),
             message_count=len(messages),
@@ -611,7 +613,7 @@ def _try_dispatch_turn(
     body: str,
     topic: str,
     messages: list[ChatMessage],
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     folder: Path,
     permissions: dict | None,
     on_event: OnAgentEvent | None,
@@ -639,7 +641,7 @@ def _try_delegate_turn(
     body: str,
     topic: str,
     messages: list[ChatMessage],
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     folder: Path,
     permissions: dict | None,
     on_event: OnAgentEvent | None,
@@ -659,7 +661,7 @@ def _try_delegate_turn(
     )
 
 
-def _delegate_run_meta_patch(run_meta: dict[str, Any]) -> dict[str, Any] | None:
+def _delegate_run_meta_patch(run_meta: RunStateLike) -> dict[str, Any] | None:
     from agent_lab.room.dispatch import dispatch_run_meta_patch
 
     return dispatch_run_meta_patch(run_meta)
@@ -674,7 +676,7 @@ def _communicate_meta_for_turn(
     consensus_mode: bool,
     turn_profile: str | None,
     efficiency_mode: bool,
-    run_meta: dict[str, Any] | None = None,
+    run_meta: RunStateLike | None = None,
 ) -> dict[str, Any]:
     from agent_lab.reply_policy import resolve_reply_policy, summarize_turn_communicate_meta
 

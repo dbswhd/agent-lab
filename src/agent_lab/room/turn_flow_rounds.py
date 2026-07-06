@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from agent_lab.run.state import RunStateLike
+
 from agent_lab.agents.registry import AgentId
 from agent_lab.run.control import RoomRunCancelled, is_cancelled
 from agent_lab.room.messages import ChatMessage, OnAgentEvent
@@ -22,7 +24,7 @@ def run_turn_agent_rounds(
     permissions: dict | None,
     human_turn_index: int,
     plan_md: str,
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     context_log: list[dict[str, Any]],
     efficiency_mode: bool,
     review_mode: bool,

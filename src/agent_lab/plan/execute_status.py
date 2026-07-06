@@ -6,6 +6,8 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from agent_lab.run.state import RunState, RunStateLike
+
 from agent_lab.plan.execute_snapshot import (
     normalize_path,
 )
@@ -121,7 +123,7 @@ def _paths_outside_expected(
     return extras
 
 
-def _pending_execution(run: dict[str, Any]) -> dict[str, Any] | None:
+def _pending_execution(run: RunStateLike) -> dict[str, Any] | None:
     from agent_lab.plan.execute import PENDING_STATUS
 
     for row in reversed(run.get("executions") or []):
@@ -130,7 +132,7 @@ def _pending_execution(run: dict[str, Any]) -> dict[str, Any] | None:
     return None
 
 
-def _find_execution(run: dict[str, Any], execution_id: str) -> dict[str, Any] | None:
+def _find_execution(run: RunStateLike, execution_id: str) -> dict[str, Any] | None:
     return next(
         (row for row in run.get("executions") or [] if row.get("id") == execution_id),
         None,
@@ -143,7 +145,7 @@ def _update_execution_row(
     execution_id: str,
     target: dict[str, Any],
 ) -> None:
-    def _update(run: dict[str, Any]) -> dict[str, Any]:
+    def _update(run: RunState) -> RunState:
         rows = list(run.get("executions") or [])
         for i, row in enumerate(rows):
             if row.get("id") == execution_id:
@@ -161,7 +163,7 @@ def _mark_rejected_tasks(
     execution_id: str,
     target: dict[str, Any],
 ) -> None:
-    def _revert_tasks(run: dict[str, Any]) -> dict[str, Any]:
+    def _revert_tasks(run: RunState) -> RunState:
         from agent_lab.room.tasks import revert_tasks_for_rejected_execution
 
         revert_tasks_for_rejected_execution(
@@ -185,7 +187,7 @@ def _mark_approved_effects(
 
     if execution_allows_task_complete(target):
 
-        def _complete_linked_tasks(run: dict[str, Any]) -> dict[str, Any]:
+        def _complete_linked_tasks(run: RunState) -> RunState:
             from agent_lab.room.tasks import complete_tasks_for_execution
 
             complete_tasks_for_execution(
@@ -209,7 +211,7 @@ def _mark_approved_effects(
         if plan_advance.get("advanced"):
             completed_ts = target.get("completed_at") or _now()
 
-            def _mark_plan(run: dict[str, Any]) -> dict[str, Any]:
+            def _mark_plan(run: RunState) -> RunState:
                 run["last_plan_update"] = {
                     "trigger": "execute_advance",
                     "ts": completed_ts,
@@ -248,7 +250,7 @@ def _execution_approval_record(
     return approval
 
 
-def _append_execution_approval(run: dict[str, Any], approval: dict[str, Any]) -> dict[str, Any]:
+def _append_execution_approval(run: RunState, approval: dict[str, Any]) -> RunState:
     for key in ("approvals", "execution_approvals"):
         rows = list(run.get(key) or [])
         rows.append(approval)

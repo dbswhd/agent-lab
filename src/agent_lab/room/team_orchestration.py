@@ -6,6 +6,8 @@ from agent_lab.room._typing import agent_label
 import re
 from typing import Any
 
+from agent_lab.run.state import RunStateLike
+
 from agent_lab import provider_registry
 from agent_lab.room.tasks import RUN_TEAM_LEAD_KEY, ensure_team_lead, team_lead
 
@@ -25,7 +27,7 @@ def parse_go_lead_from_message(text: str) -> str | None:
     return m.group(1).strip().lower()
 
 
-def turn_leads_map(run_meta: dict[str, Any] | None) -> dict[str, str]:
+def turn_leads_map(run_meta: RunStateLike | None) -> dict[str, str]:
     if not run_meta:
         return {}
     raw = run_meta.get(RUN_TURN_LEADS_KEY)
@@ -35,7 +37,7 @@ def turn_leads_map(run_meta: dict[str, Any] | None) -> dict[str, str]:
 
 
 def record_turn_lead(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     human_turn: int,
     agent: str,
 ) -> str:
@@ -51,7 +53,7 @@ def record_turn_lead(
     return lead
 
 
-def reconcile_team_lead(run_meta: dict[str, Any], active_agents: list[str]) -> str:
+def reconcile_team_lead(run_meta: RunStateLike, active_agents: list[str]) -> str:
     """Ensure team_lead references an agent in the active roster (model-flexible)."""
     from agent_lab.run.meta import stamp_run_meta
 
@@ -66,7 +68,7 @@ def reconcile_team_lead(run_meta: dict[str, Any], active_agents: list[str]) -> s
 
 
 def resolve_turn_lead(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     human_turn: int,
     active_agents: list[str],
     *,
@@ -147,7 +149,7 @@ def resolve_send_receipt(
     return "discuss_saved"
 
 
-def lead_discuss_role_block(agent: str, run_meta: dict[str, Any] | None) -> str:
+def lead_discuss_role_block(agent: str, run_meta: RunStateLike | None) -> str:
     """Short prepend for team lead on pure discuss turns."""
     from agent_lab.room.tasks import team_lead
 
@@ -173,7 +175,7 @@ def should_assign_tasks_on_turn(
     return False
 
 
-def lead_last_r1_enabled(run_meta: dict[str, Any] | None) -> bool:
+def lead_last_r1_enabled(run_meta: RunStateLike | None) -> bool:
     """Whether R1 should run teammates first, then lead with peer context.
 
     §3.2.1: light discuss (``discuss_light``) disables lead-last so all agents
@@ -186,7 +188,7 @@ def lead_last_r1_enabled(run_meta: dict[str, Any] | None) -> bool:
 
 def team_r1_split(
     agents: list[str],
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
 ) -> tuple[list[str], list[str]]:
     """R1: teammates parallel first, lead runs last with full peer context."""
     lead = team_lead(run_meta)

@@ -15,6 +15,7 @@ from agent_lab.plan.workflow_state import (
     plan_fsm_skill_first_enabled,
 )
 from agent_lab.run.meta import patch_run_meta, read_run_meta
+from agent_lab.run.state import RunStateLike
 
 def build_clarify_context_block(folder: Path) -> str:
     from agent_lab.human_inbox import inbox_items
@@ -40,7 +41,7 @@ def build_clarify_context_block(folder: Path) -> str:
     return "## Clarifier answers (Human Inbox)\n\n" + "\n\n".join(rows)
 
 
-def clarifier_topic(run: dict[str, Any]) -> str:
+def clarifier_topic(run: RunStateLike) -> str:
     from agent_lab.clarity import _mission_clarity_text
 
     return _mission_clarity_text(run)
@@ -65,7 +66,7 @@ def pending_clarifier_questions(interview: dict[str, Any] | None) -> list[dict[s
     return pending
 
 
-def inbox_question_surfaces_prompt(run: dict[str, Any], prompt: str) -> bool:
+def inbox_question_surfaces_prompt(run: RunStateLike, prompt: str) -> bool:
     from agent_lab.human_inbox import inbox_items
 
     text = prompt.strip()
@@ -141,7 +142,7 @@ def ensure_plan_clarify_inbox_question(folder: Path) -> dict[str, Any] | None:
     )
 
 
-def build_plan_clarify_agent_block(folder: Path, *, agent_id: str, run_meta: dict[str, Any] | None) -> str:
+def build_plan_clarify_agent_block(folder: Path, *, agent_id: str, run_meta: RunStateLike | None) -> str:
     """Gate-owner instructions: ask_human with options, or wait on existing Inbox row."""
     if not run_meta or not plan_workflow_wants_inbox_mcp(run_meta):
         return ""
@@ -203,13 +204,13 @@ PLAN_CLARIFY_GUIDANCE = (
 )
 
 
-def open_plan_objections(run: dict[str, Any]) -> list[dict[str, Any]]:
+def open_plan_objections(run: RunStateLike) -> list[dict[str, Any]]:
     from agent_lab.room.objections import list_objections
 
     return [o for o in list_objections(run) if o.get("status") == "open" and o.get("act") in {"CHALLENGE", "BLOCK"}]
 
 
-def clarity_gate_questions(folder: Path, run: dict[str, Any]) -> dict[str, Any] | None:
+def clarity_gate_questions(folder: Path, run: RunStateLike) -> dict[str, Any] | None:
     """Engine+pipeline CLARIFY gate: surface clarity-engine questions via the Human Inbox.
 
     Returns a hold-result dict when CLARIFY must hold on unmet clarity, or ``None`` when clarity

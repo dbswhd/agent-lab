@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
+from agent_lab.run.state import RunState, RunStateLike
+
 from agent_lab.agents.registry import AgentId
 from agent_lab.role_plan import resolve_review_advocate
 from agent_lab.run.control import is_cancelled
@@ -47,7 +49,7 @@ from agent_lab.room.turn_meta import (
 
 @dataclass(frozen=True, slots=True)
 class TurnRoutingResult:
-    run_meta: dict[str, Any]
+    run_meta: RunState
     plan_md: str
     mode: str
     review_advocate: str | None
@@ -68,7 +70,7 @@ def build_turn_body(user_text: str, attachment_desc: str) -> str:
 def prepare_turn_routing_phase(
     *,
     folder: Path | None,
-    run_meta: dict[str, Any],
+    run_meta: RunState,
     plan_md: str,
     body: str,
     active_agents: list[AgentId],
@@ -172,7 +174,7 @@ def prepare_turn_routing_phase(
             _bind_session_to_run_meta(run_meta, folder)
 
     ensure_adaptive_efficiency_for_turn(run_meta, human_turn=human_turn_num)
-    efficiency_mode = efficiency_mode or bool((run_meta or {}).get("adaptive_efficiency"))
+    efficiency_mode = efficiency_mode or bool(run_meta.get("adaptive_efficiency"))
 
     parallel_rounds = apply_turn_profile_flags(
         run_meta,
@@ -229,7 +231,7 @@ def run_consensus_phase(
     messages: list[ChatMessage],
     folder: Path | None,
     body: str,
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     active_agents: list[AgentId],
     clarifier_questions: list[str] | None,
     consensus_mode: bool,
@@ -320,7 +322,7 @@ def compose_turn_meta(
     consensus_meta: dict[str, Any] | None,
     efficiency_mode: bool,
     messages: list[ChatMessage],
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     plan_md: str,
     turn_profile: str | None,
     send_receipt_val: str | None,
@@ -385,7 +387,7 @@ def harvest_existing_session_turn(
     *,
     topic: str,
     messages: list[ChatMessage],
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     plan_before: str,
     mode: str,
     synthesize: bool,

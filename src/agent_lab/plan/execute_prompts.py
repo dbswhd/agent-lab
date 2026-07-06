@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from agent_lab.run.state import RunState, RunStateLike
+
 from agent_lab.plan.actions import PlanAction
 from agent_lab.runtime.adapters import (
     invoke_execute,
@@ -211,7 +213,7 @@ def _call_execute_agent(
         req.inbox_gate = lambda: execute_inbox_build_go(session_folder)
 
     bridge = None
-    run_meta: dict[str, Any] | None = None
+    run_meta: RunStateLike | None = None
     started_at = 0.0
     status = "ok"
     if session_folder is not None:

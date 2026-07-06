@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from agent_lab.run.state import RunStateLike
+
 from agent_lab.provider_registry import get_provider
 
 _KNOWN_AGENTS = ("cursor", "codex", "claude", "kimi_work")
@@ -14,7 +16,7 @@ def _label(agent: str) -> str:
     return spec.label if spec else str(agent)
 
 
-def active_agents_from_run_meta(run_meta: dict[str, Any] | None) -> list[str]:
+def active_agents_from_run_meta(run_meta: RunStateLike | None) -> list[str]:
     """Return lowercase agent ids for the current session turn roster."""
     if not run_meta:
         return []

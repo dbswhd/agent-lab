@@ -6,6 +6,8 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, Callable, cast
 
+from agent_lab.run.state import RunState, RunStateLike
+
 from agent_lab.agent.thread_resume import build_agent_thread_resume_block
 from agent_lab.room.context import (
     AGENT_CONNECT_HINT,
@@ -58,7 +60,7 @@ def _env_bool(name: str, default: bool = False) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
-def _format_clarity_facts(run_meta: dict[str, Any] | None) -> str:
+def _format_clarity_facts(run_meta: RunStateLike | None) -> str:
     """Confirmed CLARIFY facts → constraints injection (deep-interview established_facts analog)."""
     if not isinstance(run_meta, dict):
         return ""
@@ -67,7 +69,7 @@ def _format_clarity_facts(run_meta: dict[str, Any] | None) -> str:
     return format_facts_block(run_meta)
 
 
-def _format_decision_ledger(run_meta: dict[str, Any] | None, *, max_entries: int = 6) -> str:
+def _format_decision_ledger(run_meta: RunStateLike | None, *, max_entries: int = 6) -> str:
     """Compact recent goal-ledger decisions for anti-drift re-grounding (run.json goal_ledger)."""
     if not isinstance(run_meta, dict):
         return ""
@@ -90,7 +92,7 @@ def _format_decision_ledger(run_meta: dict[str, Any] | None, *, max_entries: int
     return "\n".join(["[결정 로그]", *lines])
 
 
-def _format_grounding_block(run_meta: dict[str, Any] | None, *, consensus_mode: bool) -> str:
+def _format_grounding_block(run_meta: RunStateLike | None, *, consensus_mode: bool) -> str:
     """Confirmed-state injection for an agent turn.
 
     Default / solo / AGENT_LAB_ANTIDRIFT off: the plain confirmed-facts block (OFF-parity).
@@ -180,7 +182,7 @@ class ContextBundleMeta:
 def _workspace_lines_for_agent(
     agent: str,
     permissions: dict[str, Any] | None,
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
 ) -> str:
     if run_meta and isinstance(run_meta.get("agent_capabilities"), dict):
         return agent_workspace_lines(agent, permissions, run_meta)
@@ -247,7 +249,7 @@ def _build_human_only_recent_block(
 
 
 def _artifact_only_context(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     agent: str,
     parallel_round: int,
 ) -> bool:
@@ -266,7 +268,7 @@ def build_slim_consensus_bundle(
     *,
     permission_lines: str = "",
     plan_md: str = "",
-    run_meta: dict[str, Any] | None = None,
+    run_meta: RunStateLike | None = None,
     permissions: dict[str, Any] | None = None,
     consensus_mode: bool = True,
     efficiency_mode: bool = True,
@@ -418,7 +420,7 @@ def wisdom_in_context_mode() -> str:
     return raw if raw in ("auto", "0", "1") else "auto"
 
 
-def _wisdom_route_allows(run_meta: dict[str, Any] | None) -> bool:
+def _wisdom_route_allows(run_meta: RunStateLike | None) -> bool:
     mode = wisdom_in_context_mode()
     if mode == "0":
         return False
@@ -434,7 +436,7 @@ def _append_wisdom_search_block(
     constraints: str,
     *,
     topic: str,
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     parallel_round: int,
 ) -> str:
     """P5 stigmergy 읽기 경로 — wisdom index 상위 히트를 R1 컨텍스트에 주입.
@@ -483,7 +485,7 @@ def _append_wisdom_search_block(
 def _append_mission_track_c_blocks(
     constraints: str,
     *,
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     plan_md: str,
 ) -> str:
     from agent_lab.runtime.context import build_mission_wisdom_block
@@ -522,7 +524,7 @@ def build_context_bundle(
     review_mode: bool = False,
     review_advocate: str | None = None,
     plan_md: str = "",
-    run_meta: dict[str, Any] | None = None,
+    run_meta: RunStateLike | None = None,
     permissions: dict[str, Any] | None = None,
     format_thread: Callable[[str, list[_MessageLike]], str] | None = None,
     all_messages: list[_MessageLike] | None = None,
@@ -810,7 +812,7 @@ def build_context_bundle(
 
 
 def _record_context_bundle_metrics(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     meta: Any,
     *,
     agent: str,

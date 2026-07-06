@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from agent_lab.run.meta import patch_run_meta, read_run_meta
+from agent_lab.run.state import RunStateLike
 
 ClarifierCategory = Literal["goal", "scope", "verify", "constraints", "priority", "criteria", "context"]
 
@@ -327,12 +328,12 @@ def persist_clarifier_interview(
     return outcome
 
 
-def get_clarifier_interview(run: dict[str, Any] | None) -> dict[str, Any] | None:
+def get_clarifier_interview(run: RunStateLike | None) -> dict[str, Any] | None:
     raw = (run or {}).get("clarifier_interview")
     return raw if isinstance(raw, dict) else None
 
 
-def public_clarifier_interview(run: dict[str, Any] | None) -> dict[str, Any] | None:
+def public_clarifier_interview(run: RunStateLike | None) -> dict[str, Any] | None:
     interview = get_clarifier_interview(run)
     if not interview:
         return None

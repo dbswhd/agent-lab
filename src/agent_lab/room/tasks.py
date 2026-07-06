@@ -8,6 +8,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
+from agent_lab.run.state import RunStateLike
+
 TaskStatus = Literal["pending", "in_progress", "completed", "cancelled", "blocked"]
 
 _TASK_STATUSES: frozenset[str] = frozenset({"pending", "in_progress", "completed", "cancelled", "blocked"})
@@ -80,7 +82,7 @@ def normalize_task(raw: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
-def list_tasks(run_meta: dict[str, Any] | None) -> list[dict[str, Any]]:
+def list_tasks(run_meta: RunStateLike | None) -> list[dict[str, Any]]:
     if not run_meta:
         return []
     raw = run_meta.get(RUN_TASKS_KEY)
@@ -89,20 +91,20 @@ def list_tasks(run_meta: dict[str, Any] | None) -> list[dict[str, Any]]:
     return [normalize_task(t) for t in raw if isinstance(t, dict)]
 
 
-def write_tasks(run_meta: dict[str, Any], tasks: list[dict[str, Any]]) -> None:
+def write_tasks(run_meta: RunStateLike, tasks: list[dict[str, Any]]) -> None:
     from agent_lab.run.meta import stamp_run_meta
 
     stamp_run_meta(run_meta, **{RUN_TASKS_KEY: [normalize_task(t) for t in tasks]})
 
 
-def team_lead(run_meta: dict[str, Any] | None) -> str:
+def team_lead(run_meta: RunStateLike | None) -> str:
     if not run_meta:
         return DEFAULT_TEAM_LEAD
     lead = str(run_meta.get(RUN_TEAM_LEAD_KEY) or "").strip().lower()
     return lead or DEFAULT_TEAM_LEAD
 
 
-def ensure_team_lead(run_meta: dict[str, Any]) -> str:
+def ensure_team_lead(run_meta: RunStateLike) -> str:
     from agent_lab.run.meta import stamp_run_meta
 
     lead = team_lead(run_meta)
@@ -138,7 +140,7 @@ def claimable_tasks(tasks: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def claim_task(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     task_id: str,
     agent: str,
     *,
@@ -168,7 +170,7 @@ def claim_task(
 
 
 def _latest_execution_for_task(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     task: dict[str, Any],
 ) -> dict[str, Any] | None:
     """Most recent execution row linked to the task's plan action."""
@@ -193,7 +195,7 @@ def _latest_execution_for_task(
     return latest
 
 
-def _execution_by_id(run_meta: dict[str, Any], execution_id: str) -> dict[str, Any] | None:
+def _execution_by_id(run_meta: RunStateLike, execution_id: str) -> dict[str, Any] | None:
     for row in run_meta.get("executions") or []:
         if isinstance(row, dict) and str(row.get("id") or "") == execution_id:
             return row
@@ -201,7 +203,7 @@ def _execution_by_id(run_meta: dict[str, Any], execution_id: str) -> dict[str, A
 
 
 def task_complete_block_reason(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     task: dict[str, Any],
 ) -> str | None:
     """Block manual complete when plan execute is not verified for this action."""
@@ -234,7 +236,7 @@ def task_complete_block_reason(
 
 
 def complete_task(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     task_id: str,
     *,
     artifact_refs: list[str] | None = None,
@@ -274,7 +276,7 @@ def complete_task(
 
 
 def add_task(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     title: str,
     *,
     source: str = "manual",
@@ -323,7 +325,7 @@ def extract_proposed_titles(text: str) -> list[str]:
 
 
 def sync_tasks_from_messages(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     messages: list[Any],
     *,
     human_turn: int,
@@ -364,7 +366,7 @@ def sync_tasks_from_messages(
     return created
 
 
-def sync_tasks_from_turn_state(run_meta: dict[str, Any]) -> list[dict[str, Any]]:
+def sync_tasks_from_turn_state(run_meta: RunStateLike) -> list[dict[str, Any]]:
     """Mirror turn_state.open_issues into pending tasks when not duplicate."""
     from agent_lab.plan.pending import max_tasks_per_turn
 
@@ -389,7 +391,7 @@ def sync_tasks_from_turn_state(run_meta: dict[str, Any]) -> list[dict[str, Any]]
 
 
 def mark_tasks_in_progress_for_execution(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     *,
     action_index: int | None = None,
     action_id: str | None = None,
@@ -424,7 +426,7 @@ def mark_tasks_in_progress_for_execution(
 
 
 def revert_tasks_for_rejected_execution(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     *,
     action_index: int | None = None,
     action_id: str | None = None,
@@ -464,7 +466,7 @@ def _title_matches_plan_action(title: str, what: str) -> bool:
     return a[:48] == b[:48]
 
 
-def sync_tasks_plan_links(run_meta: dict[str, Any], plan_md: str) -> int:
+def sync_tasks_plan_links(run_meta: RunStateLike, plan_md: str) -> int:
     """Link open tasks to plan ## 지금 실행 actions by title similarity."""
     from agent_lab.plan.actions import parse_plan_actions
 
@@ -514,7 +516,7 @@ def record_task_endorsement(task: dict[str, Any], agent: str) -> None:
 
 
 def harvest_task_endorsements(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     messages: list[Any],
     active_agents: list[str],
 ) -> int:
@@ -559,12 +561,12 @@ def harvest_task_endorsements(
     return touched
 
 
-def open_tasks_for_consensus(run_meta: dict[str, Any] | None) -> list[dict[str, Any]]:
+def open_tasks_for_consensus(run_meta: RunStateLike | None) -> list[dict[str, Any]]:
     return [t for t in list_tasks(run_meta) if t.get("status") in ("pending", "in_progress")]
 
 
 def build_consensus_gate(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     agent_pool: list[str],
 ) -> dict[str, Any]:
     """Structured consensus gate for UI (Phase B task bar)."""
@@ -592,7 +594,7 @@ def build_consensus_gate(
 
 
 def agents_missing_task_endorse(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     active_agents: list[str],
 ) -> list[str]:
     """Active agents who still owe an ENDORSE on at least one under-endorsed open task.
@@ -622,7 +624,7 @@ def agents_missing_task_endorse(
 
 
 def consensus_tasks_ready(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     active_agents: list[str],
 ) -> tuple[bool, list[str]]:
     """Open tasks need endorsements from a majority of active agents."""
@@ -644,7 +646,7 @@ def consensus_tasks_ready(
 
 
 def complete_tasks_for_execution(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     *,
     action_index: int | None = None,
     action_id: str | None = None,
@@ -674,7 +676,7 @@ def complete_tasks_for_execution(
 
 
 def sync_tasks_after_turn(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     messages: list[Any],
     *,
     human_turn: int,
@@ -716,7 +718,7 @@ def sync_tasks_after_turn(
     }
 
 
-def tasks_public_payload(run_meta: dict[str, Any] | None) -> dict[str, Any]:
+def tasks_public_payload(run_meta: RunStateLike | None) -> dict[str, Any]:
     tasks = list_tasks(run_meta)
     open_tasks = open_tasks_for_consensus(run_meta)
     agent_pool = (
@@ -756,7 +758,7 @@ def tasks_public_payload(run_meta: dict[str, Any] | None) -> dict[str, Any]:
 
 
 def assign_tasks_to_agents(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     agents: list[str],
     *,
     max_per_agent: int = 2,
@@ -783,7 +785,7 @@ def assign_tasks_to_agents(
 
 
 def build_team_task_block(
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     agent_id: str,
 ) -> str:
     """Agent context: lead sees full board; teammates see owned + claimable."""
@@ -851,7 +853,7 @@ def _task_ref_matches(task: dict[str, Any], ref: str) -> bool:
 
 
 def auto_claim_tasks_from_turn(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     messages: list[Any],
     *,
     lead_agent: str | None = None,
@@ -898,7 +900,7 @@ def auto_claim_tasks_from_turn(
     return claimed
 
 
-def set_team_lead_agent(run_meta: dict[str, Any], agent: str) -> str:
+def set_team_lead_agent(run_meta: RunStateLike, agent: str) -> str:
     from agent_lab.run.meta import stamp_run_meta
 
     lead = str(agent or "").strip().lower() or DEFAULT_TEAM_LEAD

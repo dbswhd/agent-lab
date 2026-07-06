@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from agent_lab.run.state import RunStateLike
+
 from agent_lab.room.messages import ChatMessage, OnAgentEvent
 from agent_lab.room.session_persist import _write_session_files
 from agent_lab.room.turn_flow_support import _checkpoint_chat, emit_mention_roster_error
@@ -16,7 +18,7 @@ def _abort_mention_roster_error(
     topic: str,
     messages: list[ChatMessage],
     plan_md: str,
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     active_agents: list[Any],
     mode: str,
     synthesize: bool,

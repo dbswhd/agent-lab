@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from agent_lab.run.state import RunStateLike
+
 from agent_lab.consensus_agreements import (
     agreement_sync_failed_notice,
     pending_consensus_agreements,
@@ -106,7 +108,7 @@ def build_plan_open_block(
     return "\n".join(parts)
 
 
-def plan_stale_banner(run_meta: dict[str, Any] | None) -> str | None:
+def plan_stale_banner(run_meta: RunStateLike | None) -> str | None:
     """Prompt plan sync when a consensus topic is agreed but not yet in plan.md."""
     if not run_meta:
         return None

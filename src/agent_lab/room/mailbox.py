@@ -7,6 +7,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+from agent_lab.run.state import RunStateLike
+
 RUN_MAILBOX_KEY = "mailbox"
 _AGENT_IDS = frozenset({"cursor", "codex", "claude"})
 _AT_AGENT_RE = re.compile(r"^@?(cursor|codex|claude)$", re.I)
@@ -48,7 +50,7 @@ def normalize_mailbox_message(raw: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
-def list_mailbox(run_meta: dict[str, Any] | None) -> list[dict[str, Any]]:
+def list_mailbox(run_meta: RunStateLike | None) -> list[dict[str, Any]]:
     if not run_meta:
         return []
     raw = run_meta.get(RUN_MAILBOX_KEY)
@@ -57,7 +59,7 @@ def list_mailbox(run_meta: dict[str, Any] | None) -> list[dict[str, Any]]:
     return [normalize_mailbox_message(m) for m in raw if isinstance(m, dict)]
 
 
-def write_mailbox(run_meta: dict[str, Any], messages: list[dict[str, Any]]) -> None:
+def write_mailbox(run_meta: RunStateLike, messages: list[dict[str, Any]]) -> None:
     from agent_lab.run.meta import stamp_run_meta
 
     stamp_run_meta(
@@ -80,7 +82,7 @@ def _parse_to_agent(envelope: dict[str, Any], refs: list[str], body: str) -> str
 
 
 def append_mailbox_message(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     *,
     from_agent: str,
     to_agent: str,
@@ -120,7 +122,7 @@ def append_mailbox_message(
 
 
 def harvest_mailbox_from_turn(
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     messages: list[Any],
     *,
     human_turn: int,
@@ -178,12 +180,12 @@ def harvest_mailbox_from_turn(
     return created
 
 
-def unread_for_agent(run_meta: dict[str, Any] | None, agent: str) -> list[dict[str, Any]]:
+def unread_for_agent(run_meta: RunStateLike | None, agent: str) -> list[dict[str, Any]]:
     agent_l = str(agent or "").strip().lower()
     return [m for m in list_mailbox(run_meta) if m.get("to") == agent_l and not m.get("read")]
 
 
-def mark_delivered(run_meta: dict[str, Any], agent: str, mail_ids: list[str]) -> None:
+def mark_delivered(run_meta: RunStateLike, agent: str, mail_ids: list[str]) -> None:
     if not mail_ids:
         return
     want = set(mail_ids)
@@ -197,7 +199,7 @@ def mark_delivered(run_meta: dict[str, Any], agent: str, mail_ids: list[str]) ->
         write_mailbox(run_meta, msgs)
 
 
-def build_mailbox_block(run_meta: dict[str, Any] | None, agent: str) -> str:
+def build_mailbox_block(run_meta: RunStateLike | None, agent: str) -> str:
     """Unread direct messages for this agent (marks delivered when rendered)."""
     unread = unread_for_agent(run_meta, agent)
     if not unread:
@@ -219,7 +221,7 @@ def build_mailbox_block(run_meta: dict[str, Any] | None, agent: str) -> str:
     return "\n".join(lines)
 
 
-def mailbox_public_payload(run_meta: dict[str, Any] | None) -> dict[str, Any]:
+def mailbox_public_payload(run_meta: RunStateLike | None) -> dict[str, Any]:
     msgs = list_mailbox(run_meta)
     unread: dict[str, int] = {}
     for aid in _AGENT_IDS:

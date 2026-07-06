@@ -7,6 +7,8 @@ from concurrent.futures import Future, ThreadPoolExecutor, wait, FIRST_COMPLETED
 from pathlib import Path
 from typing import Any, Literal
 
+from agent_lab.run.state import RunStateLike
+
 # Tasks where agents should run sequentially even in round 1.
 # peer_review: architect → critic ordering is intentional (critic reads architect).
 # cold_critic: single fresh-eyes agent; parallelism is meaningless.
@@ -92,7 +94,7 @@ def run_parallel_round(
     review_mode: bool = False,
     human_turn_index: int = 0,
     plan_md: str = "",
-    run_meta: dict[str, Any] | None = None,
+    run_meta: RunStateLike | None = None,
     context_log: list[dict[str, Any]] | None = None,
     efficiency_mode: bool = False,
     extra_follow_up: str = "",
@@ -311,7 +313,7 @@ def run_agent_rounds(
     review_mode: bool = False,
     human_turn_index: int = 0,
     plan_md: str = "",
-    run_meta: dict[str, Any] | None = None,
+    run_meta: RunStateLike | None = None,
     context_log: list[dict[str, Any]] | None = None,
     efficiency_mode: bool = False,
 ) -> list[ChatMessage]:

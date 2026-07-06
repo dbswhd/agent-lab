@@ -10,6 +10,8 @@ from pathlib import Path
 from typing import Any, Callable
 from weakref import WeakValueDictionary
 
+from agent_lab.run.state import RunState, RunStateLike, RuntimeValidationError, validate_run_data
+
 _LOCK_GUARD = threading.Lock()
 _FOLDER_LOCKS: WeakValueDictionary[str, threading.Lock] = WeakValueDictionary()
 
@@ -24,7 +26,7 @@ def _folder_lock(folder: Path) -> threading.Lock:
         return lock
 
 
-def stamp_run_meta(run_meta: dict[str, Any], **fields: Any) -> dict[str, Any]:
+def stamp_run_meta(run_meta: RunStateLike, **fields: Any) -> RunStateLike:
     """In-memory field updates during a turn (F4-safe — avoids ``run_meta[``).
 
     Prefer this (or ``run_meta.update({...})``) over subscript assignment so
@@ -36,10 +38,10 @@ def stamp_run_meta(run_meta: dict[str, Any], **fields: Any) -> dict[str, Any]:
     return run_meta
 
 
-def read_run_meta(folder: Path) -> dict[str, Any]:
+def read_run_meta(folder: Path) -> RunState:
     run_path = folder / "run.json"
     if not run_path.is_file():
-        return {}
+        return RunState.empty()
     for attempt in range(4):
         try:
             raw = run_path.read_text(encoding="utf-8")
@@ -48,15 +50,17 @@ def read_run_meta(folder: Path) -> dict[str, Any]:
         try:
             parsed = json.loads(raw)
             if isinstance(parsed, dict):
-                return parsed
-            return {}
+                return RunState.from_raw(parsed)
+            return RunState.empty()
         except json.JSONDecodeError:
             if attempt >= 3:
-                return {}
+                return RunState.empty()
             from agent_lab.backoff_policy import wait as _backoff_wait
 
             _backoff_wait(attempt + 1, base_sec=0.01)
-    return {}
+        except RuntimeValidationError:
+            return RunState.empty()
+    return RunState.empty()
 
 
 _EPHEMERAL_RUN_KEYS = frozenset(
@@ -73,16 +77,21 @@ _EPHEMERAL_RUN_KEYS = frozenset(
 )
 
 
-def persist_run_meta(run: dict[str, Any]) -> dict[str, Any]:
+def persist_run_meta(run: dict[str, Any] | RunState) -> dict[str, Any]:
     """Drop in-memory-only keys before writing run.json."""
     return {k: v for k, v in run.items() if k not in _EPHEMERAL_RUN_KEYS}
 
 
-def write_run_meta(folder: Path, run: dict[str, Any]) -> None:
-    from agent_lab.run.schema import validate_run
+def _coerce_run_state(run: dict[str, Any] | RunState) -> RunState:
+    if isinstance(run, RunState):
+        validate_run_data(run)
+        return run
+    return RunState.from_raw(run)
 
-    validate_run(run)
-    payload = json.dumps(persist_run_meta(run), indent=2, ensure_ascii=False) + "\n"
+
+def write_run_meta(folder: Path, run: dict[str, Any] | RunState) -> None:
+    state = _coerce_run_state(run)
+    payload = json.dumps(persist_run_meta(state), indent=2, ensure_ascii=False) + "\n"
     path = folder / "run.json"
     tmp = path.with_suffix(".json.tmp")
     with _folder_lock(folder):
@@ -92,10 +101,8 @@ def write_run_meta(folder: Path, run: dict[str, Any]) -> None:
 
 def patch_run_meta(
     folder: Path,
-    updater: Callable[[dict[str, Any]], dict[str, Any]],
-) -> dict[str, Any]:
-    from agent_lab.run.schema import validate_run
-
+    updater: Callable[[RunState], dict[str, Any] | RunState],
+) -> RunState:
     with _folder_lock(folder):
         run = read_run_meta(folder)
         capture_checkpoint = False
@@ -106,8 +113,8 @@ def patch_run_meta(
             capture_checkpoint = True
             prior_signature = checkpoint_store._phase_signature(run)
         updated = updater(run)
-        validate_run(updated)
-        payload = json.dumps(persist_run_meta(updated), indent=2, ensure_ascii=False) + "\n"
+        state = _coerce_run_state(updated)
+        payload = json.dumps(persist_run_meta(state), indent=2, ensure_ascii=False) + "\n"
         path = folder / "run.json"
         tmp = path.with_suffix(".json.tmp")
         tmp.write_text(payload, encoding="utf-8")
@@ -115,8 +122,8 @@ def patch_run_meta(
         if capture_checkpoint:
             from agent_lab import checkpoint_store
 
-            checkpoint_store.append_checkpoint(folder, prior_signature=prior_signature, updated_run=updated)
-    return updated
+            checkpoint_store.append_checkpoint(folder, prior_signature=prior_signature, updated_run=state)
+    return state
 
 
 def completed_step_key(*, human_turn: int, parallel_round: int, agent: str) -> str:
@@ -124,7 +131,7 @@ def completed_step_key(*, human_turn: int, parallel_round: int, agent: str) -> s
 
 
 def get_completed_step(
-    run: dict[str, Any],
+    run: RunStateLike,
     *,
     human_turn: int,
     parallel_round: int,
@@ -152,7 +159,7 @@ def record_completed_step(
     content: str,
     envelope: dict[str, Any] | None = None,
     msg_idx: int | None = None,
-    run_meta: dict[str, Any] | None = None,
+    run_meta: RunStateLike | None = None,
 ) -> dict[str, Any]:
     key = completed_step_key(
         human_turn=human_turn,
@@ -172,7 +179,7 @@ def record_completed_step(
     if msg_idx is not None:
         entry["msg_idx"] = msg_idx
 
-    def _upsert(run: dict[str, Any]) -> dict[str, Any]:
+    def _upsert(run: RunState) -> RunState:
         steps = [s for s in (run.get("completed_steps") or []) if s.get("step") != key]
         steps.append(entry)
         run["completed_steps"] = steps
@@ -185,7 +192,7 @@ def record_completed_step(
 
 
 def clear_completed_steps_for_human_turn(folder: Path, human_turn: int) -> None:
-    def _clear(run: dict[str, Any]) -> dict[str, Any]:
+    def _clear(run: RunState) -> RunState:
         steps = [s for s in (run.get("completed_steps") or []) if int(s.get("human_turn") or 0) != human_turn]
         run["completed_steps"] = steps
         return run
@@ -197,7 +204,7 @@ def append_hook_run(
     folder: Path | None,
     record: dict[str, Any],
     *,
-    run_meta: dict[str, Any] | None = None,
+    run_meta: RunStateLike | None = None,
 ) -> None:
     """Append one hook run record to run.json (and optional in-memory run_meta)."""
     if folder is None:
@@ -207,7 +214,7 @@ def append_hook_run(
             run_meta["hook_runs"] = runs[-200:]
         return
 
-    def _append(run: dict[str, Any]) -> dict[str, Any]:
+    def _append(run: RunState) -> RunState:
         runs = list(run.get("hook_runs") or [])
         runs.append(record)
         run["hook_runs"] = runs[-200:]

@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.run.state import RunState
+
 from agent_lab.plan.actions import parse_plan_actions
 from agent_lab.plan.pending import plan_content_hash
 from agent_lab.plan.workflow_state import (
@@ -203,7 +205,7 @@ def reject_plan(
     allowed = {"CLARIFY", "REFINE", "DRAFT"}
     phase = target_phase if target_phase in allowed else "CLARIFY"
 
-    def _reject(run: dict[str, Any]) -> dict[str, Any]:
+    def _reject(run: RunState) -> RunState:
         pw = get_plan_workflow(run)
         pw["phase"] = phase
         pw.pop("notice", None)

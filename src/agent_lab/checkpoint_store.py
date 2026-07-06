@@ -26,6 +26,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.run.state import RunStateLike
+
 CHECKPOINTS_FILE = "checkpoints.jsonl"
 CHECKPOINT_CAP = 200
 _TRUE = frozenset({"1", "true", "yes", "on"})
@@ -56,7 +58,7 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _fsm_subset(run: dict[str, Any]) -> dict[str, Any]:
+def _fsm_subset(run: RunStateLike) -> dict[str, Any]:
     """Extract the FSM/ledger/budget subset present in ``run`` (deep-copied via json)."""
     subset: dict[str, Any] = {}
     for key in CHECKPOINT_FSM_KEYS:
@@ -65,7 +67,7 @@ def _fsm_subset(run: dict[str, Any]) -> dict[str, Any]:
     return subset
 
 
-def _phase_signature(run: dict[str, Any] | None) -> tuple[str | None, str | None]:
+def _phase_signature(run: RunStateLike | None) -> tuple[str | None, str | None]:
     """(mission_loop.phase, plan_workflow.phase) for transition detection."""
     if not isinstance(run, dict):
         return (None, None)

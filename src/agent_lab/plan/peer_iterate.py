@@ -7,6 +7,8 @@ import re
 from pathlib import Path
 from typing import Any, Literal
 
+from agent_lab.run.state import RunState, RunStateLike
+
 PlanPeerVerdict = Literal["iterate", "accept", "reject", "unknown"]
 
 _ITERATE_RE = re.compile(r"\b(?:ITERATE|REJECT|REVISION\s+NEEDED)\b", re.I)
@@ -43,7 +45,7 @@ def parse_plan_peer_verdict(replies: list[Any]) -> PlanPeerVerdict:
 def finalize_plan_peer_review_round(
     folder: Path,
     *,
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
     replies: list[Any],
     human_turn: int = 0,
 ) -> PlanPeerVerdict:
@@ -62,7 +64,7 @@ def finalize_plan_peer_review_round(
 
     verdict = parse_plan_peer_verdict(replies)
 
-    def _stamp(run: dict[str, Any]) -> dict[str, Any]:
+    def _stamp(run: RunState) -> RunState:
         from agent_lab.plan.workflow import get_plan_workflow
 
         pw = get_plan_workflow(run)

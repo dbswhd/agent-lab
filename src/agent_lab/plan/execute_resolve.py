@@ -6,6 +6,8 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from agent_lab.run.state import RunState, RunStateLike
+
 from agent_lab.plan.execute_merge import (
     MergeConflict,
     abort_exec_merge,
@@ -206,7 +208,7 @@ def revise_pending_execution(
     target["revision_history"] = replacement["revision_history"]
     target["last_revision"] = revision_entry
 
-    def _replace(run: dict[str, Any]) -> dict[str, Any]:
+    def _replace(run: RunState) -> RunState:
         rows = list(run.get("executions") or [])
         for index, row in enumerate(rows):
             if row.get("id") == execution_id:
@@ -337,7 +339,7 @@ def resolve_execution(
                 auto_merge_meta=retry_auto_meta,
             )
 
-            def _update_retry(run: dict[str, Any]) -> dict[str, Any]:
+            def _update_retry(run: RunState) -> RunState:
                 rows = list(run.get("executions") or [])
                 for i, row in enumerate(rows):
                     if row.get("id") == execution_id:
@@ -408,7 +410,7 @@ def resolve_execution(
         auto_merge_meta=auto_meta,
     )
 
-    def _update(run: dict[str, Any]) -> dict[str, Any]:
+    def _update(run: RunState) -> RunState:
         rows = list(run.get("executions") or [])
         for i, row in enumerate(rows):
             if row.get("id") == execution_id:
@@ -421,7 +423,7 @@ def resolve_execution(
 
     if vote_norm == "approve" and execution_allows_task_complete(target):
 
-        def _complete_linked_tasks(run: dict[str, Any]) -> dict[str, Any]:
+        def _complete_linked_tasks(run: RunState) -> RunState:
             from agent_lab.room.tasks import complete_tasks_for_execution
 
             complete_tasks_for_execution(
@@ -446,7 +448,7 @@ def resolve_execution(
         if plan_advance.get("advanced"):
             completed_ts = target.get("completed_at") or completed
 
-            def _mark_plan(run: dict[str, Any]) -> dict[str, Any]:
+            def _mark_plan(run: RunState) -> RunState:
                 run["last_plan_update"] = {
                     "trigger": "execute_advance",
                     "ts": completed_ts,

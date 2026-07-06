@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.run.state import RunState, RunStateLike
+
 TRADING_MISSION_PLAN_REL = "artifacts/plans/trading-mission.md"
 LEGACY_TRADING_SECTION_MARKERS = (
     "ingest_ready",
@@ -70,7 +72,7 @@ def slug_from_plan_h1(plan_md: str) -> str:
     return "plan"
 
 
-def resolve_new_plan_relpath(plan_md: str, run_meta: dict[str, Any]) -> str:
+def resolve_new_plan_relpath(plan_md: str, run_meta: RunStateLike) -> str:
     directive, _ = extract_plan_path_directive(plan_md)
     if directive:
         return directive
@@ -79,14 +81,14 @@ def resolve_new_plan_relpath(plan_md: str, run_meta: dict[str, Any]) -> str:
     return f"artifacts/plans/{seq:03d}-{slug}.md"
 
 
-def active_plan_relpath(run_meta: dict[str, Any] | None) -> str:
+def active_plan_relpath(run_meta: RunStateLike | None) -> str:
     if not isinstance(run_meta, dict):
         return "plan.md"
     rel = str(run_meta.get("active_plan_relpath") or "").strip()
     return rel or "plan.md"
 
 
-def read_session_plan_md(folder: Path, run_meta: dict[str, Any] | None = None) -> str:
+def read_session_plan_md(folder: Path, run_meta: RunStateLike | None = None) -> str:
     from agent_lab.run.meta import read_run_meta
 
     meta = run_meta if run_meta is not None else read_run_meta(folder)
@@ -103,7 +105,7 @@ def read_session_plan_md(folder: Path, run_meta: dict[str, Any] | None = None) -
 def write_session_plan_md(
     folder: Path,
     plan_md: str,
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
 ) -> tuple[Path, str]:
     """Write plan to artifacts/plans/{agent-chosen}.md; mirror plan.md for legacy readers."""
     _, body = extract_plan_path_directive(plan_md)
@@ -129,7 +131,7 @@ def write_session_plan_md(
 
 def _archive_plan_content(
     folder: Path,
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     *,
     source_rel: str,
     content: str,
@@ -162,7 +164,7 @@ def _archive_plan_content(
     return rel
 
 
-def begin_session_plan_cycle(folder: Path, run_meta: dict[str, Any]) -> str | None:
+def begin_session_plan_cycle(folder: Path, run_meta: RunStateLike) -> str | None:
     """Archive the active plan and clear path for the next scribe write."""
     rel = str(run_meta.get("active_plan_relpath") or "plan.md")
     path = folder / rel
@@ -195,7 +197,7 @@ def trading_mission_plan_path(folder: Path) -> Path:
     return folder / TRADING_MISSION_PLAN_REL
 
 
-def is_trading_mission_run(run_meta: dict[str, Any] | None) -> bool:
+def is_trading_mission_run(run_meta: RunStateLike | None) -> bool:
     if not isinstance(run_meta, dict):
         return False
     template = str(run_meta.get("session_template") or "").strip().lower()

@@ -6,6 +6,8 @@ import subprocess
 from pathlib import Path
 from typing import Any, cast
 
+from agent_lab.run.state import RunState, RunStateLike
+
 from agent_lab.run.meta import patch_run_meta
 from agent_lab.plan.execute_worktree import (
     ExecWorktree,
@@ -65,7 +67,7 @@ def _arm_merge_checkpoint(
     }
     target["checkpoint"] = checkpoint
 
-    def _patch(run: dict[str, Any]) -> dict[str, Any]:
+    def _patch(run: RunState) -> RunState:
         for row in run.get("executions") or []:
             if isinstance(row, dict) and row.get("id") == execution_id:
                 row["checkpoint"] = checkpoint

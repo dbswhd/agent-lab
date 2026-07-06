@@ -5,6 +5,8 @@ from __future__ import annotations
 from agent_lab.room._typing import agent_label, as_agent_id, as_agent_ids
 from typing import Any
 
+from agent_lab.run.state import RunStateLike
+
 from agent_lab.agents.registry import AgentId, available_agents
 from agent_lab.room.consensus import (
     consensus_follow_up,
@@ -44,7 +46,7 @@ def run_consensus_agent_rounds(
     permissions: dict | None = None,
     human_turn_index: int = 0,
     plan_md: str = "",
-    run_meta: dict[str, Any] | None = None,
+    run_meta: RunStateLike | None = None,
     context_log: list[dict[str, Any]] | None = None,
     efficiency_mode: bool = False,
     consensus_policy: ConsensusPolicy | None = None,

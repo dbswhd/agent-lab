@@ -82,7 +82,7 @@ def continue_room_round(
     human_turn_index = _human_turn_count(messages)
     human_turn_num = _human_turn_count(messages) + 1
     plan_md, run_meta = _session_context(folder)
-    efficiency_mode = efficiency_mode or bool((run_meta or {}).get("adaptive_efficiency"))
+    efficiency_mode = efficiency_mode or bool(run_meta.get("adaptive_efficiency"))
     from agent_lab.inbox.harvest import clear_inbox_fork_grace
 
     clear_inbox_fork_grace(run_meta)

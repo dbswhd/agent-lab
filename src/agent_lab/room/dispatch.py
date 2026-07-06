@@ -11,6 +11,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Literal
 
+from agent_lab.run.state import RunStateLike
+
 from agent_lab.agents.registry import AGENT_IDS
 from agent_lab.room.agent_invoke import _call_one_agent
 from agent_lab.room.messages import ChatMessage
@@ -98,13 +100,13 @@ def parse_dispatch_from_message(text: str) -> DispatchRequest | None:
     )
 
 
-def next_dispatch_id(run_meta: dict[str, Any]) -> str:
+def next_dispatch_id(run_meta: RunStateLike) -> str:
     ledger = run_meta.get("dispatch_ledger") or []
     n = len(ledger) if isinstance(ledger, list) else 0
     return f"disp-{n + 1:03d}"
 
 
-def append_dispatch_ledger(run_meta: dict[str, Any], entry: dict[str, Any]) -> dict[str, Any]:
+def append_dispatch_ledger(run_meta: RunStateLike, entry: dict[str, Any]) -> dict[str, Any]:
     rows = list(run_meta.get("dispatch_ledger") or [])
     rows.append(entry)
     from agent_lab.run.meta import stamp_run_meta
@@ -117,7 +119,7 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _topic_category_meta(run_meta: dict[str, Any]) -> str | None:
+def _topic_category_meta(run_meta: RunStateLike) -> str | None:
     cat = run_meta.get("_turn_category")
     if isinstance(cat, dict):
         return str(cat.get("value") or "") or None
@@ -143,7 +145,7 @@ def _emit_dispatch_events(
 def _run_pre_post_dispatch_hooks(
     *,
     event: str,
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     folder: Path,
     dispatch_id: str,
     dispatch_op: str,
@@ -209,7 +211,7 @@ def _call_one_delegate_worker(
     agent_id: str,
     topic: str,
     messages: list[Any],
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     folder: Path,
     prompt: str,
     permissions: dict | None,
@@ -271,7 +273,7 @@ def run_single_delegate(
     *,
     topic: str,
     messages: list[Any],
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     folder: Path,
     agent: str,
     prompt: str,
@@ -385,7 +387,7 @@ def run_parallel_delegate(
     *,
     topic: str,
     messages: list[Any],
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     folder: Path,
     agents: list[str],
     prompt: str,
@@ -539,7 +541,7 @@ def run_synthesize_dispatch(
     *,
     topic: str,
     messages: list[Any],
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     folder: Path,
     lead_agent: str,
     artifact_ids: list[str],
@@ -617,7 +619,7 @@ def try_dispatch_turn(
     body: str,
     topic: str,
     messages: list[Any],
-    run_meta: dict[str, Any],
+    run_meta: RunStateLike,
     folder: Path,
     permissions: dict | None,
     on_event: Callable[[str, dict[str, Any]], None] | None,
@@ -657,7 +659,7 @@ def try_dispatch_turn(
     return replies
 
 
-def dispatch_run_meta_patch(run_meta: dict[str, Any]) -> dict[str, Any] | None:
+def dispatch_run_meta_patch(run_meta: RunStateLike) -> dict[str, Any] | None:
     patch: dict[str, Any] = {}
     if run_meta.get("last_delegate"):
         patch["last_delegate"] = run_meta.get("last_delegate")

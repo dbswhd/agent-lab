@@ -9,6 +9,8 @@ import os
 from dataclasses import dataclass
 from typing import Any, Literal
 
+from agent_lab.run.state import RunStateLike
+
 RoomPreset = Literal["fast", "supervisor"]
 RolePolicy = Literal["auto", "force", "off"]
 
@@ -107,7 +109,7 @@ def preset_role_policy(preset: str | None) -> RolePolicy:
     return cfg.role_policy if cfg is not None else "auto"
 
 
-def resolve_role_policy(run_meta: dict[str, Any] | None) -> RolePolicy:
+def resolve_role_policy(run_meta: RunStateLike | None) -> RolePolicy:
     """Session role policy: explicit run_meta.role_policy wins, else room_preset default."""
     if isinstance(run_meta, dict):
         raw = str(run_meta.get("role_policy") or "").strip().lower()
@@ -119,7 +121,7 @@ def resolve_role_policy(run_meta: dict[str, Any] | None) -> RolePolicy:
     return "auto"
 
 
-def is_fast_room_session(run_meta: dict[str, Any] | None) -> bool:
+def is_fast_room_session(run_meta: RunStateLike | None) -> bool:
     """True for Fast preset / quick user_mode without loop plan intent.
 
     Orchestrator inbox harvest stays off on Fast; discuss-lane ``ask_human`` /

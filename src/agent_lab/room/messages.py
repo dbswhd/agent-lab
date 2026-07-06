@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Callable, cast
 
+from agent_lab.run.state import RunStateLike
+
 from agent_lab.context.bundle import ContextBundle
 from agent_lab.agents.registry import AgentId
 from agent_lab.agent.permissions import (
@@ -153,7 +155,7 @@ def _round_agent_order(
     *,
     review_mode: bool,
     parallel_round: int,
-    run_meta: dict[str, Any] | None = None,
+    run_meta: RunStateLike | None = None,
 ) -> list[AgentId]:
     if run_meta:
         from agent_lab.room.team_orchestration import normalize_turn_profile
@@ -199,7 +201,7 @@ def _agent_user_payload(
     review_mode: bool = False,
     review_advocate: AgentId | None = None,
     plan_md: str = "",
-    run_meta: dict[str, Any] | None = None,
+    run_meta: RunStateLike | None = None,
 ) -> str:
     from agent_lab.agent.permissions import permission_preamble
     from agent_lab.context.bundle import build_context_bundle
@@ -230,7 +232,7 @@ def build_agent_context_bundle(
     review_mode: bool = False,
     review_advocate: AgentId | None = None,
     plan_md: str = "",
-    run_meta: dict[str, Any] | None = None,
+    run_meta: RunStateLike | None = None,
     efficiency_mode: bool = False,
     slim_context: bool = False,
     consensus_mode: bool = False,
@@ -262,7 +264,7 @@ def _effective_room_permissions(
     *,
     topic: str,
     plan_md: str,
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
 ) -> dict:
     """Permissions SSOT for Room turns — workspace binding only (no discuss overlay)."""
     binding = resolve_session_workspace_binding(
@@ -280,7 +282,7 @@ def _effective_discuss_permissions(
     *,
     topic: str,
     plan_md: str,
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
 ) -> dict:
     binding = resolve_session_workspace_binding(
         permissions,
@@ -297,7 +299,7 @@ def effective_agent_permissions(
     *,
     topic: str,
     plan_md: str,
-    run_meta: dict[str, Any] | None,
+    run_meta: RunStateLike | None,
 ) -> dict:
     """Room invoke permissions — TurnPolicy ON uses SSOT; legacy uses discuss overlay."""
     from agent_lab.room.turn_policy import turn_policy_enabled

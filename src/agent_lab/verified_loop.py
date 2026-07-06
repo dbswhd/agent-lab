@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from agent_lab.run.meta import patch_run_meta, read_run_meta
+from agent_lab.run.state import RunStateLike
 
 MAX_VERIFICATION_ATTEMPTS = 3
 MAX_ITERATIONS = 100
@@ -53,7 +54,7 @@ def normalize_verified_profile(profile: str | None) -> bool:
     return normalize_turn_profile(profile) == "verified"
 
 
-def verified_loop_public(run: dict[str, Any] | None) -> dict[str, Any]:
+def verified_loop_public(run: RunStateLike | None) -> dict[str, Any]:
     loop = dict((run or {}).get("verified_loop") or {})
     return {
         "verified_loop": loop,

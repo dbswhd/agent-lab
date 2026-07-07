@@ -98,7 +98,17 @@ def test_fast_bucket_collection_budget():
     # 2026-07-05: raised 2460 -> 2470 for F11 Stage 1 RunState boundary + F11 ratchet guard.
     # 2026-07-06: raised 2480 -> 2500 for N8 verify (quickstart + emergence reference unit tests).
     # 2026-07-06: raised 2500 -> 2510 for N9 verify API audit headers (test_n9_verify_api.py).
-    assert count <= 2510, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-06: raised 2510 -> 2550 for eval-surface v1 §1/§2 (feedback_report coverage fields,
+    # feedback_advisor execute-preferred fallback, test_eval_surface_export/graders/run_local).
+    # 2026-07-06: raised 2550 -> 2570 for N10a correction harvester (test_correction_harvester.py:
+    # detection, RECORD, W2 rule-promotion, Human Inbox resolve — 19 fast unit tests).
+    # 2026-07-06: raised 2570 -> 2590 for C1 diagnose-before-retry (test_partial_retry.py:
+    # failure-signature guard, Inbox escalation/dedup, force + ack bypass — 9 fast unit tests).
+    # 2026-07-06: raised 2590 -> 2610 for C2 drift audit (test_drift_audit.py: baseline
+    # snapshot, uncovered-action diff, interval-gated escalation, reground resolve — 15 tests).
+    # 2026-07-06: raised 2610 -> 2630 for C3 risk-inverse profile pin (test_risk_pin.py:
+    # ceiling pin/no-op, demotion-inbox reuse, idempotent Human-override respect — 10 tests).
+    assert count <= 2630, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

@@ -84,10 +84,26 @@ function inboxSourceBadge(item: HumanInboxItem, ko: boolean): string | null {
   return src || null;
 }
 
+/** Kinds resolved via the generic click-an-option UI (options[] -> selected: [id]) —
+ * covers "question"/"autonomy" plus newer approve/reject-style kinds (N10a/C1) that
+ * don't need a dedicated button layout like skill_draft's Promote/Reject. */
+function usesGenericOptionsUi(kind: HumanInboxItem["kind"]): boolean {
+  return (
+    kind === "question" ||
+    kind === "autonomy" ||
+    kind === "correction_rule" ||
+    kind === "retry_diagnosis" ||
+    kind === "drift_audit"
+  );
+}
+
 function inboxKindLabel(item: HumanInboxItem, ko: boolean): string {
   if (item.kind === "build") return ko ? "실행" : "Build";
   if (item.kind === "skill_draft") return ko ? "스킬" : "Skill";
   if (item.kind === "autonomy") return ko ? "자율도" : "Autonomy";
+  if (item.kind === "correction_rule") return ko ? "교정 규칙" : "Correction rule";
+  if (item.kind === "retry_diagnosis") return ko ? "재시도 진단" : "Retry diagnosis";
+  if (item.kind === "drift_audit") return ko ? "드리프트 감사" : "Drift audit";
   return ko ? "질문" : "Question";
 }
 
@@ -184,9 +200,7 @@ function InboxRow({
     planRevision &&
     item.plan_revision !== planRevision;
   const busy = disabled || busyId === item.id;
-  const forkRow =
-    (item.kind === "question" || item.kind === "autonomy") &&
-    (item.options?.length ?? 0) >= 2;
+  const forkRow = usesGenericOptionsUi(item.kind) && (item.options?.length ?? 0) >= 2;
   const sourceBadge = inboxSourceBadge(item, ko);
   const kindLabel = inboxKindLabel(item, ko);
   const trigger = triggerBadge(item.trigger, ko);
@@ -314,7 +328,7 @@ function InboxRow({
         <p className="inbox-row__body inbox-row__meta inbox-row__readonly-hint">
           {ko ? "Composer에서 처리" : "Handle in composer"}
         </p>
-      ) : item.kind === "question" || item.kind === "autonomy" ? (
+      ) : usesGenericOptionsUi(item.kind) ? (
         <div
           className="inbox-row__answer"
           onKeyDown={(e) => {

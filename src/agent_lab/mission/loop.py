@@ -372,6 +372,20 @@ def enable_mission_loop(
         filename="decisions.md",
         auto_provenance=False,
     )
+
+    if start_autonomous:
+        # C2 drift audit baseline (docs/N10-USER-LOOP-WISDOM-DRAFT.md §4-C2) —
+        # freeze the plan action list this autonomous segment starts from.
+        from agent_lab.drift_audit import snapshot_drift_baseline
+        from agent_lab.room.messages import _human_turn_count
+        from agent_lab.room.session_persist import load_session_messages
+
+        try:
+            human_turn = _human_turn_count(load_session_messages(folder))
+        except Exception:
+            human_turn = 0
+        snapshot_drift_baseline(folder, plan_md or "", human_turn)
+
     return get_mission_loop(read_run_meta(folder))
 
 

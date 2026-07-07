@@ -105,8 +105,37 @@ def test_turn_and_legacy_rows_excluded_from_clean_pass(tmp_path: Path, monkeypat
     rep = build_feedback_report(tmp_path)
     assert rep["total"] == 3
     assert rep["verdict_eligible_total"] == 1
+    assert rep["turn_signal_total"] == 2
+    assert rep["oracle_verdict_coverage"] == pytest.approx(1 / 3, abs=1e-4)
     assert rep["by_source"]["history"]["n"] == 1
     assert rep["by_source"]["history"]["clean_pass_rate"] == 1.0
+
+
+def test_turn_source_counts_track_advisor_sources_outside_quality_denominator(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ledger = tmp_path / ".agent-lab" / "outcomes.jsonl"
+    _write_ledger(
+        ledger,
+        [
+            _row("history", verdict="", phase="turn"),
+            _row("history", verdict="", phase="turn"),
+            _row("explore", verdict="", phase="turn"),
+            _row("default", verdict="pass", phase="execute"),
+        ],
+    )
+    monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: ledger)
+
+    rep = build_feedback_report(tmp_path)
+    assert rep["by_source"]["history"]["n"] == 0
+    assert rep["turn_source_counts"] == {"default": 1, "history": 2, "explore": 1}
+
+
+def test_oracle_verdict_coverage_empty_ledger_is_zero(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: tmp_path / "missing.jsonl")
+    rep = build_feedback_report(tmp_path)
+    assert rep["turn_signal_total"] == 0
+    assert rep["oracle_verdict_coverage"] == 0.0
 
 
 def test_escalation_rate_by_level(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

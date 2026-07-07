@@ -82,6 +82,7 @@ _THOROUGH_OWNS: frozenset[str] = frozenset(
         "AGENT_LAB_FEEDBACK_EXPLORE_RATE",
         "AGENT_LAB_OUTCOMES_ROOT",
         "AGENT_LAB_PLAN_FSM_SKILL_FIRST",
+        "AGENT_LAB_CORRECTION_HARVESTER",
     }
 )
 
@@ -91,6 +92,8 @@ _AUTONOMOUS_OWNS: frozenset[str] = frozenset(
         "AGENT_LAB_MISSION_AUTORUN",
         "AGENT_LAB_MISSION_BUDGET_USD",
         "AGENT_LAB_BUDGET_WARN_PCT",
+        "AGENT_LAB_DRIFT_AUDIT",
+        "AGENT_LAB_DRIFT_AUDIT_INTERVAL",
         "AGENT_LAB_GOAL_LOOP",
         "AGENT_LAB_GOAL_ORACLE_LIVE",
         "AGENT_LAB_GOAL_AUTO_CONTINUE",
@@ -108,6 +111,7 @@ _AUTONOMOUS_OWNS: frozenset[str] = frozenset(
         "AGENT_LAB_FEEDBACK_EXPLORE_RATE",
         "AGENT_LAB_OUTCOMES_ROOT",
         "AGENT_LAB_PLAN_FSM_SKILL_FIRST",
+        "AGENT_LAB_CORRECTION_HARVESTER",
     }
 )
 _BALANCED_OWNS: frozenset[str] = frozenset(
@@ -190,6 +194,7 @@ _BALANCED_OWNS: frozenset[str] = frozenset(
         "AGENT_LAB_QUARTER_BUDGET_USD",
         "AGENT_LAB_QUARTER_BUDGET_WARN_PCT",
         "AGENT_LAB_QUARTER_BUDGET_DEMOTE",
+        "AGENT_LAB_RISK_PIN",
         "AGENT_LAB_MISSION_SCHEDULER",
         "AGENT_LAB_MISSION_SCHEDULER_INTERVAL_S",
         "AGENT_LAB_OFFLINE_ACTIVE_CAP",
@@ -237,6 +242,7 @@ _PROFILE_CONFIGS: dict[str, RunProfileConfig] = {
             "AGENT_LAB_OUTCOME_LEDGER": "1",
             "AGENT_LAB_FEEDBACK_ADVISOR": "1",
             "AGENT_LAB_PLAN_FSM_SKILL_FIRST": "1",
+            "AGENT_LAB_CORRECTION_HARVESTER": "1",
         },
         owns=_BALANCED_OWNS,
     ),

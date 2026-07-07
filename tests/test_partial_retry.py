@@ -17,7 +17,15 @@ import pytest
 
 os.environ.setdefault("AGENT_LAB_MOCK_AGENTS", "1")
 
-from agent_lab.room.retry import RetryError, _is_consensus_turn, retry_failed_agents
+from agent_lab.room.retry import (
+    RetryError,
+    _failure_signature,
+    _is_consensus_turn,
+    diagnosis_line,
+    handle_retry_diagnosis_inbox_resolve,
+    retry_failed_agents,
+)
+from agent_lab.run.meta import read_run_meta
 
 
 def _write_session(folder: Path, *, turn_profile: str = "team", lines: list[dict] | None = None) -> None:
@@ -192,3 +200,111 @@ def test_retry_agents_endpoint(tmp_path, monkeypatch):
         import shutil
 
         shutil.rmtree(folder, ignore_errors=True)
+
+
+# --- C1: diagnose-before-retry (docs/N10-USER-LOOP-WISDOM-DRAFT.md §4-C1) --
+
+
+def test_failure_signature_deterministic_and_order_independent():
+    a = _failure_signature(["codex", "cursor"], {"codex": "timeout", "cursor": "oom"})
+    b = _failure_signature(["cursor", "codex"], {"codex": "timeout", "cursor": "oom"})
+    assert a == b
+    c = _failure_signature(["codex", "cursor"], {"codex": "different error", "cursor": "oom"})
+    assert a != c
+
+
+def test_diagnosis_line_renders_one_line_per_agent():
+    line = diagnosis_line(["codex"], {"codex": "codex error: timeout\nstack trace..."})
+    assert line == "codex: codex error: timeout"
+
+
+def test_diagnosis_line_empty_for_no_agents():
+    assert diagnosis_line([], {}) == ""
+
+
+def _seed_prior_retry_signature(folder: Path, *, turn: int, agents: list[str], errors: dict[str, str]) -> str:
+    sig = _failure_signature(agents, errors)
+    run = json.loads((folder / "run.json").read_text(encoding="utf-8"))
+    run["retry_history"] = [{"turn": turn, "agents": agents, "succeeded": [], "ts": "prior", "signature": sig}]
+    (folder / "run.json").write_text(json.dumps(run), encoding="utf-8")
+    return sig
+
+
+def test_retry_blocks_same_signature_repeat_and_escalates_inbox(tmp_path):
+    _write_session(tmp_path)
+    sig = _seed_prior_retry_signature(tmp_path, turn=1, agents=["codex"], errors={"codex": "codex error: timeout"})
+
+    with pytest.raises(RetryError) as ei:
+        retry_failed_agents(tmp_path, agents=["codex"])
+    assert ei.value.code == 409
+    assert "codex" in ei.value.message
+
+    items = read_run_meta(tmp_path).get("human_inbox") or []
+    assert len(items) == 1
+    assert items[0]["kind"] == "retry_diagnosis"
+    assert items[0]["refs"][0] == "1"
+    assert items[0]["refs"][1] == sig
+    assert items[0]["status"] == "pending"
+
+
+def test_retry_block_does_not_duplicate_pending_inbox_item(tmp_path):
+    _write_session(tmp_path)
+    _seed_prior_retry_signature(tmp_path, turn=1, agents=["codex"], errors={"codex": "codex error: timeout"})
+
+    for _ in range(2):
+        with pytest.raises(RetryError):
+            retry_failed_agents(tmp_path, agents=["codex"])
+
+    items = read_run_meta(tmp_path).get("human_inbox") or []
+    assert len(items) == 1
+
+
+def test_retry_force_bypasses_same_signature_block(tmp_path):
+    _write_session(tmp_path)
+    _seed_prior_retry_signature(tmp_path, turn=1, agents=["codex"], errors={"codex": "codex error: timeout"})
+
+    res = retry_failed_agents(tmp_path, agents=["codex"], force=True)
+    assert res["status"] == "completed"
+    # force bypassed the guard entirely — no escalation needed
+    assert (read_run_meta(tmp_path).get("human_inbox") or []) == []
+
+
+def test_retry_diagnosis_inbox_approve_then_retry_bypasses_once(tmp_path):
+    _write_session(tmp_path)
+    _seed_prior_retry_signature(tmp_path, turn=1, agents=["codex"], errors={"codex": "codex error: timeout"})
+
+    with pytest.raises(RetryError):
+        retry_failed_agents(tmp_path, agents=["codex"])
+
+    items = read_run_meta(tmp_path).get("human_inbox") or []
+    handle_retry_diagnosis_inbox_resolve(tmp_path, items[0], selected=["approve"], status="resolved")
+
+    ack = read_run_meta(tmp_path).get("retry_force_ack")
+    assert ack and ack["turn"] == 1
+
+    res = retry_failed_agents(tmp_path, agents=["codex"])
+    assert res["status"] == "completed"
+    # one-time ack consumed regardless of outcome
+    assert read_run_meta(tmp_path).get("retry_force_ack") is None
+
+
+def test_retry_diagnosis_inbox_reject_does_not_ack(tmp_path):
+    _write_session(tmp_path)
+    _seed_prior_retry_signature(tmp_path, turn=1, agents=["codex"], errors={"codex": "codex error: timeout"})
+
+    with pytest.raises(RetryError):
+        retry_failed_agents(tmp_path, agents=["codex"])
+
+    items = read_run_meta(tmp_path).get("human_inbox") or []
+    handle_retry_diagnosis_inbox_resolve(tmp_path, items[0], selected=["reject"], status="resolved")
+
+    assert read_run_meta(tmp_path).get("retry_force_ack") is None
+    with pytest.raises(RetryError):
+        retry_failed_agents(tmp_path, agents=["codex"])
+
+
+def test_retry_history_records_signature(tmp_path):
+    _write_session(tmp_path)
+    retry_failed_agents(tmp_path, agents=["codex"])
+    hist = read_run_meta(tmp_path).get("retry_history")
+    assert hist and "signature" in hist[-1]

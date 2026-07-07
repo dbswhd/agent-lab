@@ -184,6 +184,24 @@ def _finalize_durable_turn(folder: Path, human_turn_num: int, turn_status: str) 
 
     record_turn_outcome(folder, human_turn_num)
 
+    # N10a: harvest user-side corrections into the same outcome ledger
+    # (flag-gated, fail-open — see docs/N10-USER-LOOP-WISDOM-DRAFT.md).
+    from agent_lab.correction_harvester import record_user_correction_outcome
+
+    record_user_correction_outcome(folder, human_turn_num)
+
+    # C2: periodic L3 autonomous-mission drift audit (flag-gated, fail-open,
+    # no-op unless an autonomous_segment is active — see drift_audit.py).
+    from agent_lab.drift_audit import maybe_run_drift_audit
+
+    maybe_run_drift_audit(folder, human_turn_num)
+
+    # C3: risk-inverse profile pin — external-risk topics pin the autonomy
+    # ceiling to L1 (flag-gated, fail-open — see risk_pin.py).
+    from agent_lab.risk_pin import maybe_apply_risk_pin
+
+    maybe_apply_risk_pin(folder, human_turn_num)
+
 
 def _bind_session_to_run_meta(
     run_meta: RunStateLike | None,

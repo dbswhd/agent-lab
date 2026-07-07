@@ -253,7 +253,7 @@ def _advise_inner(
     topic_tokens = _tokenize(topic)
 
     # Filter: same category + sufficient topic token overlap
-    relevant: list[dict[str, Any]] = []
+    relevant_all: list[dict[str, Any]] = []
     for row in rows:
         if str(row.get("category") or "") != category:
             continue
@@ -263,7 +263,19 @@ def _advise_inner(
         else:
             overlap = len(topic_tokens & row_terms)
         if overlap >= _TOKEN_OVERLAP_MIN:
-            relevant.append(row)
+            relevant_all.append(row)
+
+    # Prefer phase=execute rows (real Oracle verdicts) over turn-only rows —
+    # mirrors feedback_report._is_verdict_eligible. Fall back to the full pool
+    # (turn rows included) when execute evidence is too thin so cold-start
+    # behavior is unchanged (see NORTH-STAR §1 S1 관측 절차).
+    relevant_execute = [row for row in relevant_all if str(row.get("phase") or "") == "execute"]
+    if len(relevant_execute) >= MIN_SAMPLE:
+        relevant = relevant_execute
+        evidence = "execute"
+    else:
+        relevant = relevant_all
+        evidence = "turn_fallback"
 
     if len(relevant) < MIN_SAMPLE:
         return SetupHint(
@@ -315,7 +327,7 @@ def _advise_inner(
                 role_overrides=dict(explore_roles),
                 suggested_subset=(),
                 rationale=(
-                    f"explore(combo={explore_key}):"
+                    f"explore(combo={explore_key},evidence={evidence}):"
                     + ",".join(f"{a}→{r}" for a, r in sorted(explore_roles.items()))
                     + wisdom_suffix
                 ),
@@ -336,7 +348,7 @@ def _advise_inner(
         role_overrides=dict(best_roles),
         suggested_subset=subset_from_role_combo(best_roles, available_agents),
         rationale=(
-            f"best_combo(n={best_n},avg_score={best_avg:.2f}):"
+            f"best_combo(n={best_n},avg_score={best_avg:.2f},evidence={evidence}):"
             + ",".join(f"{a}→{r}" for a, r in sorted(best_roles.items()))
             + wisdom_suffix
         ),

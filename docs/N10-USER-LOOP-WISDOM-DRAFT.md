@@ -100,10 +100,10 @@ Agent Lab 사용자(운영자 본인)의 4개 하네스 사용 기록을 교차 
 
 | 항목 | 현 위치 | D2 닫힘 기준 | D3 도달 계획 | 착수 트리거 |
 |---|---|---|---|---|
-| N10a Harvester | D0 | mock: 교정 3회 → 규칙 후보 생성 → Inbox 카드 확인 | supervisor dogfood에서 `correction_recurrence_rate` 하강 관측 후 default ON | **지금** (S1 dogfood 병행) |
-| C1 retry UX | D0 | 동일-시그니처 재시도 차단 UI 계약 테스트 | dogfood 2주 후 기본 동선 확정 | ~1달 |
-| C2 Drift Audit | D0 | mock: 의도적 미커버 plan → Inbox 제안 발생 | L3 dogfood 편입 (N4 D3와 동행) | ~1달 |
-| C3 Risk Pinning | D0 | mock: trading 토픽 → thorough+L1 핀 확인 | F5 lane 실미션 1회 검증 | 분기 |
+| N10a Harvester | **D2** (2026-07-06 구현) | ✅ mock: 교정 3회(distinct sessions) → Inbox `correction_rule` 카드 → approve/reject → `.agent-lab/wisdom/correction_rules.md` 승격, 재중복 제안 차단 (`tests/test_correction_harvester.py` 19 cases) | supervisor dogfood에서 `correction_recurrence_rate` 하강 관측 후 default 유지 확정 (현재 이미 default ON — SKILL_DRAFTS 선례) | **완료** — `src/agent_lab/correction_harvester.py`, 플래그 `AGENT_LAB_CORRECTION_HARVESTER`(default 1), `feedback_report.py` `correction_patterns`/`correction_recurrence_rate` |
+| C1 retry UX | **D2** (2026-07-06 구현) | ✅ mock: 동일 실패 시그니처 재시도 차단 → Inbox `retry_diagnosis` 에스컬레이션 → force/ack 우회 1회성 소비 (`tests/test_partial_retry.py` 신규 9 cases) + 실브라우저 E2E 확인 | dogfood 2주 후 기본 동선 확정 (현재 로직 상시 ON — 별도 플래그 없음, Oracle repair loop 자체 속성) | **완료** — `src/agent_lab/room/retry.py` (`_failure_signature`/`diagnosis_line`/`_escalate_retry_diagnosis`), `human_inbox.py` kind 추가 |
+| C2 Drift Audit | **D2** (2026-07-06 구현) | ✅ mock: 의도적 미커버 plan → Inbox `drift_audit` 제안 발생 → reground 시 재스냅샷 (`tests/test_drift_audit.py` 15 cases) + 실브라우저 E2E 확인 | L3 dogfood 편입 (N4 D3와 동행) | **완료** — `src/agent_lab/drift_audit.py`, 플래그 `AGENT_LAB_DRIFT_AUDIT`(default 1)·`AGENT_LAB_DRIFT_AUDIT_INTERVAL`(default 10), `mission/loop.py`의 `enable_mission_loop(start_autonomous=True)`에서 베이스라인 스냅샷 |
+| C3 Risk Pinning | **D2** (2026-07-06 구현, 축소 스코프) | ✅ mock: trading 토픽 감지 → autonomy ceiling L1 핀 → 기존 N4 demotion inbox("Keep L1"/"Restore ceiling") 재사용 → Human override 후 재핀 안 함 확인 (`tests/test_risk_pin.py` 10 cases) | F5 lane 실미션 1회 검증 | **부분 완료** — `src/agent_lab/risk_pin.py`, 플래그 `AGENT_LAB_RISK_PIN`(default 1). **스코프 축소:** "프로필 하한 thorough"는 미구현 — `run/profile.py`의 프로필 적용이 `os.environ` 전역 변경(`apply_run_profile`)이라 세션 단위로 안전하게 못 핀다(다른 동시 세션 오염 위험). Autonomy ceiling L1 핀만으로 이미 실질 안전성 확보(L1은 human 승인 없이 자동실행 안 됨) — profile 하한은 별도 세션 스코프 오버라이드 메커니즘이 생기면 후속 검토 |
 | S3a-0 인벤토리 | D0~D1 (`plugin_discovery.py` 부품) | 로컬 스캔 → 도구 카드 ≥ 10 · RECALL 힌트 주입 mock | `tool_card_hit_rate` > 0 관측 | 분기 (N7 설계 문서에 포함) |
 | N10b Rule Sync | D0 | 규칙 1개 → 3포맷 export 왕복 테스트 | Human 승인 flow 포함 실사용 1회 | 분기 |
 

@@ -13,7 +13,7 @@ from typing import Any, Literal
 from agent_lab.run.meta import patch_run_meta, read_run_meta
 from agent_lab.run.state import RunStateLike
 
-InboxKind = Literal["question", "build", "skill_draft", "autonomy"]
+InboxKind = Literal["question", "build", "skill_draft", "autonomy", "correction_rule", "retry_diagnosis", "drift_audit"]
 InboxStatus = Literal["pending", "resolved", "deferred", "superseded", "rejected", "timeout"]
 
 DEFAULT_INBOX_TIMEOUT_SEC = int(os.getenv("AGENT_LAB_INBOX_TIMEOUT_SEC", "1800"))
@@ -414,6 +414,51 @@ def resolve_inbox_item(
             )
         except ValueError:
             pass
+
+    if updated.get("kind") == "correction_rule" and status in ("resolved", "rejected", "superseded"):
+        try:
+            from agent_lab.correction_harvester import handle_correction_rule_inbox_resolve
+
+            handle_correction_rule_inbox_resolve(
+                folder,
+                updated,
+                selected=selected,
+                status=status,
+            )
+        except Exception:  # fail-open: rule promotion must never block inbox resolve
+            import logging
+
+            logging.getLogger(__name__).warning("correction_rule inbox resolve failed", exc_info=True)
+
+    if updated.get("kind") == "retry_diagnosis" and status in ("resolved", "rejected", "superseded"):
+        try:
+            from agent_lab.room.retry import handle_retry_diagnosis_inbox_resolve
+
+            handle_retry_diagnosis_inbox_resolve(
+                folder,
+                updated,
+                selected=selected,
+                status=status,
+            )
+        except Exception:  # fail-open: force-ack bookkeeping must never block inbox resolve
+            import logging
+
+            logging.getLogger(__name__).warning("retry_diagnosis inbox resolve failed", exc_info=True)
+
+    if updated.get("kind") == "drift_audit" and status in ("resolved", "rejected", "superseded"):
+        try:
+            from agent_lab.drift_audit import handle_drift_audit_inbox_resolve
+
+            handle_drift_audit_inbox_resolve(
+                folder,
+                updated,
+                selected=selected,
+                status=status,
+            )
+        except Exception:  # fail-open: baseline re-snapshot must never block inbox resolve
+            import logging
+
+            logging.getLogger(__name__).warning("drift_audit inbox resolve failed", exc_info=True)
 
     if updated.get("kind") == "autonomy" and status == "resolved":
         try:

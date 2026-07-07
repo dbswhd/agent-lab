@@ -122,7 +122,7 @@ T2는 오픈소스 생태계 없이는 달성 불가 — N8 “슈퍼 샘플” 
 
 **불변:** 어떤 레벨에서도 BLOCK→409와 worktree 격리는 우회 불가. L3에서도 Human Inbox는 "질문 채널"로 항상 열려 있다.
 
-**L3 드리프트 감사 (N10 개정):** autonomous mission은 N턴(기본 10)마다 초기 `plan.md`+`goal_ledger` 대비 미커버 항목을 자동 대조하고, 미커버 발견 시 Inbox에 "재접지(re-ground) 또는 미션 분할"을 제안한다. 근거: 6일 단일 세션에서 초반 합의가 컨텍스트 요약으로 유실된 실사례(2026-07-06 사용 진단 G3) — L3에서는 인간이 이를 발견할 수 없으므로 시스템이 해야 한다. 재료: `completed_steps` + `goal_ledger` (신규 학습 없음, 대조 함수 1개).
+**L3 드리프트 감사 (N10 개정) ✅ (2026-07-06, D2):** `src/agent_lab/drift_audit.py` — autonomous mission 진입 시(`mission/loop.py::enable_mission_loop(start_autonomous=True)`) `plan.md` 액션 목록을 베이스라인으로 스냅샷하고, N턴(기본 10, `AGENT_LAB_DRIFT_AUDIT_INTERVAL`)마다 `executions[]`와 대조해 미커버 항목을 Inbox `drift_audit` 카드로 제안("재접지" 시 현재 plan.md+현재 턴으로 재스냅샷, "미션 분할 검토"는 정보 제공만). 근거: 6일 단일 세션에서 초반 합의가 컨텍스트 요약으로 유실된 실사례(2026-07-06 사용 진단 G3). 플래그 `AGENT_LAB_DRIFT_AUDIT`(default 1) — fail-open, 신규 학습 루프 아님, 순수 비교.
 
 **레벨 전환 — 코드화 현황 (2026-07-06):** ladder SSOT·헤더 dial·Human ceiling PATCH·demotion inbox (N4 v1/v2) · **승격 3종** (`autonomy_promotion.py`) · L1↔`auto_approve_gate` 결합 (`effective_auto_approve_threshold`) · L3 ceiling → `mission_loop.autonomous_segment` · `escalation_rate_by_level` KPI (`feedback_report.py`).
 
@@ -222,7 +222,7 @@ make feedback-report JSON=1 | jq '.escalation_rate_by_level, .total'
 | # | 이니셔티브 | 내용 | 층 | 시기 |
 |---|---|---|---|---|
 | **N1** | **S1 dogfood-active** | supervisor implicit ON, `dogfood-feedback-mock` CI, 실사용 중 `make feedback-report`로 lift·sample **관측** (§1.4). Formal D3 닫힘 의식 없음 | L1 | 지금 |
-| **N2** | **프로필 시스템** | 전체 플래그(`make list-flags`) → `fast`/`balanced`/`thorough`/`autonomous` 4개 프로필 매핑 (`run/profile.py`). 개별 override 유지. 신규 feature 플래그는 프로필 소속 권장 (`make list-flags --profile`). **위험역전 방지 핀 (N10 개정):** `topic_router`가 외부 위험 카테고리(trading/live-API/결제 — F5 lane 목록과 동일)를 감지하면 프로필 하한 `thorough` + autonomy ceiling **L1** 핀; 완화는 명시 override만, `run.json` 기록. 근거: 사용 진단 G4 — 위험이 클수록 검증이 느슨해지는 역전 관측 | L1 | ✅ v1 · 핀은 분기 |
+| **N2** | **프로필 시스템** | 전체 플래그(`make list-flags`) → `fast`/`balanced`/`thorough`/`autonomous` 4개 프로필 매핑 (`run/profile.py`). 개별 override 유지. 신규 feature 플래그는 프로필 소속 권장 (`make list-flags --profile`). **위험역전 방지 핀 (N10 개정) ✅ (2026-07-06, D2, 축소 스코프):** `src/agent_lab/risk_pin.py` — `topic_router`의 기존 `trading` 카테고리를 턴 종료 시점에 감지하면 autonomy ceiling을 **L1**로 핀(기존 N4 demotion 경로 `record_autonomy_transition`+`maybe_create_autonomy_demotion_inbox` 재사용 — 신규 Inbox kind 없음); 완화는 기존 "Restore ceiling" Inbox 옵션을 통한 명시 override만, 세션당 카테고리 1회만 핀(override 이후 재핀 안 함). **프로필 하한(`thorough`)은 미구현** — 프로필 적용이 `os.environ` 전역 변경(`apply_run_profile`)이라 세션 단위로 안전하게 낮출 방법이 없음(동시 세션 오염 위험); L1 핀만으로 human 승인 없는 자동실행은 이미 차단됨. 플래그 `AGENT_LAB_RISK_PIN`(default 1). 근거: 사용 진단 G4 — 위험이 클수록 검증이 느슨해지는 역전 관측 | L1 | 완료(축소 스코프) |
 | **N3** | **Harness topology 데이터화** | **room_preset** 2개(fast/supervisor) 유지. Topology hint **3종** — `topic_router._resolve_topology`: `parallel` · `producer_reviewer` · `pipeline` ([ROLE-ORCHESTRATION-PLAN.md](./ROLE-ORCHESTRATION-PLAN.md)). **consensus rounds·adversarial**는 LC-L4 `adversarial_gate`·debate — topology hint **아님** | L1 | **partial shipped** (topology 3/3) |
 | **N4** | **Autonomy Ladder 정식화** | v1/v2 ✅ + 승격 3종 + `escalation_rate_by_level` + L1 gate + L3 segment. **D3 닫힘:** §1.4.1 (`n≥10`/level). **F11 RunState:** ADR §3.5 Stage 1 별도 트랙 (N4 비선행) | L2 | **D2** → D3 dogfood |
 | **N5** | **S2 episode 힌트 (구 팀 bandit)** | [선행: S1 dogfood, S1.5 D2+] episode lift 관측 시 roster 힌트 — **전역 과제분류 bandit 없음**. **동결** until W2 sample 충분 | L1 | 분기 재평가 |
@@ -230,7 +230,7 @@ make feedback-report JSON=1 | jq '.escalation_rate_by_level, .total'
 | **N7** | **S3 외부 능력 자가 통합** | §1 Layer 1의 S3a~S3d. **지금 할 것 = 설계 문서 1개:** `docs/S3-TOOL-CARD-SPEC.md` — 도구 카드 스키마(JSON: id·source·capabilities·mount 방법) + `[NEED-TOOL:]` 시그널 문법 + Human Inbox 승인 flow. 구현은 S1/S2 닫힌 후 (부품: 코드 앵커 맵 S3 행) | L3 | 분기 |
 | **N8** | **슈퍼 샘플 트랙** | ✅ SSOT·QUICKSTART·예제 3종·mock 재현·FORK·`quickstart-verify`·`emergence-bench-check`·[PACKAGE-FORK-BOUNDARIES](./PACKAGE-FORK-BOUNDARIES.md). **잔여:** live emergence · T2(외부 fork/PR) | — | **D2** |
 | **N9** | **검증 서비스화** | `POST /v1/verify` + OpenAI-compat chat · [VERIFY-API.md](./VERIFY-API.md). ✅ 소비자(`scripts/n9_verify_consumer.py`) · Oracle 감사 헤더 · GJC handoff 경로. **잔여:** live 외부 에이전트 dogfood 증거 | — | **D2** |
-| **N10** | **User-Loop Wisdom** | 사용자 턴을 S1 입력 차원으로 편입 ([N10-USER-LOOP-WISDOM-DRAFT.md](./N10-USER-LOOP-WISDOM-DRAFT.md)). **N10a Correction Harvester:** 사용자 교정 발화를 `outcomes.jsonl`의 `user_correction` episode로 수확(`outcome_harvester.py` 확장) → 동일 교정 `MIN_SAMPLE`(3회) 이상 관측 시 규칙 후보 승격 → `skill_drafts.py`로 초안 생성 → **Human Inbox 승인** → 영속 규칙 확정. **N10b Rule Sync:** 승인된 규칙을 SSOT로 두고 하네스별 포맷(`.claude/rules/*.md` · `.cursor/rules/*.mdc` · Codex `config.toml`)으로 단방향 export — N6 화이트리스트 경계 안, 전역 config 자동 수정 금지. 측정: `correction_recurrence_rate` (§1.4) | L1 | N10a 지금 병행 · N10b 분기 |
+| **N10** | **User-Loop Wisdom** | 사용자 턴을 S1 입력 차원으로 편입 ([N10-USER-LOOP-WISDOM-DRAFT.md](./N10-USER-LOOP-WISDOM-DRAFT.md)). **N10a Correction Harvester ✅ (2026-07-06, D2):** `src/agent_lab/correction_harvester.py` — 사용자 교정 발화를 `outcomes.jsonl`의 `user_correction` episode로 수확 → 동일 패턴 `MIN_SAMPLE`(3회) 이상 distinct 세션 관측 시 **Human Inbox** `correction_rule` 카드 제안 → approve 시 `.agent-lab/wisdom/correction_rules.md`에 영속 (`AGENT_LAB_CORRECTION_HARVESTER` default 1; `feedback_report.py`에 `correction_patterns`/`correction_recurrence_rate` 집계 추가; 19 mock 테스트). **N10b Rule Sync (미착수):** 승인된 규칙을 SSOT로 두고 하네스별 포맷(`.claude/rules/*.md` · `.cursor/rules/*.mdc` · Codex `config.toml`)으로 단방향 export — N6 화이트리스트 경계 안, 전역 config 자동 수정 금지 | L1 | N10a 완료 · N10b 분기 |
 
 ### 2.2 Concepts — 공개 어휘 6개로 고정
 
@@ -288,7 +288,7 @@ Mission OS 3-pane IA 유지 위에서:
 3. **Evidence-first 읽기 경로** — "에이전트가 뭐라 말했나"보다 "무엇이 검증됐나"가 먼저 보이는 화면 (EvidenceTimeline 확장). 창발 KPI(challenge_yield 등)를 세션 요약 카드에 노출해 사용자가 창발을 체감하게.
 4. **프로필 우선 온보딩** — 새 세션 = 프로필 4개 중 선택이 전부. 개별 플래그(`make list-flags`)는 고급 설정 뒤로.
 5. **부채 상환 우선** — Phase D(훅 4개 추출 + client 분할) ✅ (F6) · **F9 상환 ✅ (2026-07-06):** RoomChat 3497 → 파사드 9줄 + View/hooks 분리 (`large_tsx_files` baseline에서 RoomChat 소멸). 다음 부채 후보는 baseline 잔여 상위(HumanInboxPanel 1011 · ChatComposer 799) — 새 UI 표면 추가 전 `make structure-metrics-check` baseline 확인.
-6. **재시도는 진단을 통과해야 한다 (N10 개정)** — 도구/턴 실패 시 UI의 재시도 동선을 "진단 요약 1줄 + 재시도"로 교체. 직전 실패와 동일 시그니처의 재시도는 차단하고 Inbox escalation. 새 기능이 아니라 Oracle repair loop(실패→진단→수리)의 UX 표면화 — 3번 Evidence-first의 실패 버전. 근거: 사용 진단 G2 — 원인 진단 없는 `retry` 반사가 사용자 메시지의 ~12%.
+6. **재시도는 진단을 통과해야 한다 (N10 개정) ✅ (2026-07-06, D2):** `src/agent_lab/room/retry.py` — 직전 재시도와 동일한 실패 시그니처(실패 에이전트+에러 텍스트 해시)면 재시도를 차단(409, 진단 한 줄 메시지 포함)하고 Inbox `retry_diagnosis` 카드로 escalation; 승인("강제로 재시도") 시 다음 재시도 1회만 우회. 새 기능이 아니라 Oracle repair loop(실패→진단→수리)의 UX 표면화 — 3번 Evidence-first의 실패 버전. 근거: 사용 진단 G2 — 원인 진단 없는 `retry` 반사가 사용자 메시지의 ~12%.
 
 ### 2.5 참고 샘플 흡수 매트릭스
 

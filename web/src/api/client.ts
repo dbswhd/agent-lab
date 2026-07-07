@@ -2541,7 +2541,14 @@ export type HumanInboxOption = {
 
 export type HumanInboxItem = {
   id: string;
-  kind: "question" | "build" | "skill_draft" | "autonomy";
+  kind:
+    | "question"
+    | "build"
+    | "skill_draft"
+    | "autonomy"
+    | "correction_rule"
+    | "retry_diagnosis"
+    | "drift_audit";
   source?: string;
   caller_agent?: string | null;
   status:

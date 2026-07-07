@@ -242,6 +242,59 @@ def test_advise_setup_returns_best_combo(tmp_path: Path, monkeypatch: pytest.Mon
     assert "best_combo" in hint.rationale
 
 
+def test_advise_setup_prefers_execute_evidence_over_turn_rows(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """When enough phase=execute rows exist, turn-only rows for a different
+    combo must not sway the pick — even though they'd win if mixed in raw."""
+    monkeypatch.setenv("AGENT_LAB_FEEDBACK_ADVISOR", "1")
+    monkeypatch.setenv("AGENT_LAB_FEEDBACK_MIN_SAMPLE", "3")
+    ledger = tmp_path / ".agent-lab" / "outcomes.jsonl"
+
+    combo_execute = {"cursor": "proposer", "codex": "executor", "claude": "critic"}
+    combo_turn_only = {"cursor": "critic", "codex": "executor", "claude": "proposer"}
+
+    rows = [
+        # turn-phase rows: no real verdict, but would look "clean" if counted
+        {**_row(roles=combo_turn_only, verdict="", repair=0), "phase": "turn"},
+        {**_row(roles=combo_turn_only, verdict="", repair=0), "phase": "turn"},
+        {**_row(roles=combo_turn_only, verdict="", repair=0), "phase": "turn"},
+        # execute-phase rows: meets MIN_SAMPLE on its own
+        {**_row(roles=combo_execute, verdict="pass", repair=0), "phase": "execute"},
+        {**_row(roles=combo_execute, verdict="pass", repair=0), "phase": "execute"},
+        {**_row(roles=combo_execute, verdict="pass", repair=0), "phase": "execute"},
+    ]
+    _write_ledger(ledger, rows)
+    monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: ledger)
+
+    hint = advise_setup("pipeline verify", "standard", ["cursor", "codex", "claude"])
+    assert hint.source == "history"
+    assert hint.sample_size == 3  # only the execute-phase rows counted
+    assert hint.role_overrides["cursor"] == "proposer"
+    assert "evidence=execute" in hint.rationale
+
+
+def test_advise_setup_falls_back_to_turn_rows_below_min_sample(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Cold-start: execute-phase rows alone are below MIN_SAMPLE, so the
+    advisor still falls back to the full pool (turn rows included)."""
+    monkeypatch.setenv("AGENT_LAB_FEEDBACK_ADVISOR", "1")
+    monkeypatch.setenv("AGENT_LAB_FEEDBACK_MIN_SAMPLE", "3")
+    ledger = tmp_path / ".agent-lab" / "outcomes.jsonl"
+
+    rows = [
+        {**_row(verdict="pass", repair=0), "phase": "execute"},  # only 1 execute row
+        {**_row(verdict="", repair=0), "phase": "turn"},
+        {**_row(verdict="", repair=0), "phase": "turn"},
+    ]
+    _write_ledger(ledger, rows)
+    monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: ledger)
+
+    hint = advise_setup("pipeline verify", "standard", ["cursor", "codex", "claude"])
+    assert hint.source == "history"
+    assert hint.sample_size == 3  # fell back to full pool
+    assert "evidence=turn_fallback" in hint.rationale
+
+
 def test_advise_setup_filters_unavailable_agents(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_FEEDBACK_ADVISOR", "1")
     monkeypatch.setenv("AGENT_LAB_FEEDBACK_MIN_SAMPLE", "1")

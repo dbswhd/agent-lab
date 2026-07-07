@@ -16,9 +16,11 @@ See docs/DESIGN-S1-FEEDBACK-LOOP.md and the S1.5 plan.
 from __future__ import annotations
 
 import json
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
+from agent_lab.correction_harvester import CORRECTION_PHASE
 from agent_lab.feedback_advisor import MIN_SAMPLE, _score_outcome
 
 # Rows written before S1.5 (no advisor_source) fold into this baseline bucket.
@@ -126,6 +128,37 @@ def _escalation_rate_by_level(rows: list[dict[str, Any]]) -> dict[str, float | N
     return out
 
 
+def _correction_pattern_stats(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """N10a — recurrence of user-correction patterns across distinct sessions.
+
+    ``correction_recurrence_rate`` is the share of correction rows whose pattern
+    has appeared in more than one distinct session (i.e. it recurred instead of
+    being fixed after the first observation) — a downward-trending KPI.
+    """
+    correction_rows = [r for r in rows if str(r.get("phase") or "") == "user_correction"]
+    by_pattern: dict[str, set[str]] = {}
+    for row in correction_rows:
+        key = str(row.get("pattern_key") or "")
+        if not key:
+            continue
+        by_pattern.setdefault(key, set()).add(str(row.get("session_id") or ""))
+
+    patterns = {
+        key: {"n": sum(1 for r in correction_rows if r.get("pattern_key") == key), "sessions": len(sessions)}
+        for key, sessions in by_pattern.items()
+    }
+
+    total = len(correction_rows)
+    recurring = sum(1 for r in correction_rows if len(by_pattern.get(str(r.get("pattern_key") or ""), ())) > 1)
+    rate = round(recurring / total, 4) if total else None
+
+    return {
+        "total": total,
+        "by_pattern": patterns,
+        "correction_recurrence_rate": rate,
+    }
+
+
 def build_feedback_report(root: Path | None = None) -> dict[str, Any]:
     """Bucket the outcome ledger by advisor_source and compute quality deltas.
 
@@ -133,7 +166,12 @@ def build_feedback_report(root: Path | None = None) -> dict[str, Any]:
     stats, and an ``advisor_lift`` summary (history/explore clean-pass minus the
     default baseline). Empty ledger → ``{"total": 0, ...}`` with zeroed buckets.
     """
-    rows = _load_rows(root)
+    all_rows = _load_rows(root)
+    correction_stats = _correction_pattern_stats(all_rows)
+    # N10a correction rows are a distinct Wisdom episode kind (user turn, not
+    # agent turn/execute) — excluded here so they don't dilute S1 turn/execute
+    # counts; they're reported separately via ``correction_patterns`` below.
+    rows = [row for row in all_rows if str(row.get("phase") or "") != CORRECTION_PHASE]
     verdict_rows = [row for row in rows if _is_verdict_eligible(row)]
     by_source: dict[str, list[dict[str, Any]]] = {s: [] for s in _SOURCES}
     by_source_category: dict[str, dict[str, list[dict[str, Any]]]] = {s: {} for s in _SOURCES}
@@ -161,13 +199,21 @@ def build_feedback_report(root: Path | None = None) -> dict[str, Any]:
         "explore_vs_default": _lift("explore"),
     }
 
+    total = len(rows)
+    eligible = len(verdict_rows)
+    turn_source_counts = Counter(_source_of(row) for row in rows)
+
     return {
-        "total": len(rows),
-        "verdict_eligible_total": len(verdict_rows),
+        "total": total,
+        "verdict_eligible_total": eligible,
+        "turn_signal_total": total - eligible,
+        "oracle_verdict_coverage": round(eligible / total, 4) if total else 0.0,
+        "turn_source_counts": {source: turn_source_counts.get(source, 0) for source in _SOURCES},
         "by_source": source_stats,
         "by_source_category": source_category_stats,
         "advisor_lift": advisor_lift,
         "escalation_rate_by_level": _escalation_rate_by_level(rows),
+        "correction_patterns": correction_stats,
     }
 
 
@@ -176,7 +222,12 @@ def render_feedback_report(report: dict[str, Any]) -> str:
     lines: list[str] = []
     total = report.get("total", 0)
     eligible = report.get("verdict_eligible_total", total)
+    turn_signal = report.get("turn_signal_total", total - eligible)
+    coverage = report.get("oracle_verdict_coverage", 0.0)
     lines.append(f"S1.5 feedback effect report — {total} outcome rows ({eligible} execute-phase / verdict-eligible)")
+    lines.append(f"  turn_signal_total: {turn_signal}  oracle_verdict_coverage: {coverage:.2%}")
+    if "turn_source_counts" in report:
+        lines.append(f"  turn_source_counts: {report['turn_source_counts']}")
     lines.append("")
     lines.append(f"{'source':<10}{'n':>6}{'clean_pass':>12}{'repair':>9}{'block':>8}{'avg_score':>11}")
     lines.append("-" * 56)
@@ -203,4 +254,12 @@ def render_feedback_report(report: dict[str, Any]) -> str:
             rate = by_level.get(level)
             label = f"{rate:.2%}" if isinstance(rate, float) else "—"
             lines.append(f"  {level}: {label}")
+    correction = report.get("correction_patterns") or {}
+    if correction.get("total"):
+        rate = correction.get("correction_recurrence_rate")
+        rate_label = f"{rate:.2%}" if isinstance(rate, float) else "—"
+        lines.append("")
+        lines.append(f"correction_patterns (N10a) — {correction['total']} rows, recurrence_rate: {rate_label}")
+        for key, stats in sorted(correction.get("by_pattern", {}).items()):
+            lines.append(f"  {key}: n={stats['n']} sessions={stats['sessions']}")
     return "\n".join(lines)

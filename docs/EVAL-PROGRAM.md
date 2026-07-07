@@ -152,6 +152,27 @@ make dogfood-suite-aggregate LOG=suite-log.json
 
 Mock에서 `skip:` 토픽은 live 전용 또는 smoke baseline이 커버하는 항목이다.
 
+### S1.5 explore 비교군
+
+기본은 순수 exploit(`AGENT_LAB_FEEDBACK_EXPLORE_RATE=0`, OFF-parity)이다. dogfood에서 비교군을 확보하려면:
+
+```bash
+# ε=0.1로 켜고 반복 축적 (default/history/explore 3-way 비교)
+AGENT_LAB_FEEDBACK_EXPLORE_RATE=0.1 make dogfood-feedback-mock
+
+# 초기 강제 검증(설계가 explore를 실제로 태깅하는지 확인)은 별도 smoke로만 — 상시 운영 설정 아님
+AGENT_LAB_FEEDBACK_EXPLORE_RATE=1.0 make dogfood-feedback-mock
+
+# 결과 확인
+make feedback-report JSON=1
+```
+
+해석 기준 ([EVAL-SURFACE-SUPER-SAMPLE-PLAN.md](./EVAL-SURFACE-SUPER-SAMPLE-PLAN.md) Canonical Definitions 참조):
+
+- `advisor_lift.explore_vs_default == null` → explore 표본이 `MIN_SAMPLE` 미만, 즉 **비교군 없음** (효과가 없다는 뜻이 아님).
+- explore row가 쌓이면 `turn_source_counts.explore`에서 loop closure 관측이 가능하다. execute-phase row가 충분히 쌓인 뒤에는 `by_source.explore`와 `advisor_lift.explore_vs_default`가 quality signal로 채워진다.
+- n≥30을 비교군 신뢰 기준으로, n≥10은 초기 dogfood의 "early signal"로 읽는다 (둘 다 사람 해석 기준이며 코드 게이트가 아니다).
+
 ---
 
 ## 5. Live 세션 진행 방법
@@ -330,4 +351,5 @@ Topic 실행 → score_session → M4/관찰 KPI → 실패 trace 리뷰
 
 - [STABILITY.md](./STABILITY.md) · [MISSION-DOGFOOD.md](./MISSION-DOGFOOD.md)
 - [sessions/_benchmark/README.md](../sessions/_benchmark/README.md)
+- [EVAL-SURFACE-SUPER-SAMPLE-PLAN.md](./EVAL-SURFACE-SUPER-SAMPLE-PLAN.md) — S1.5 신호 canonical 정의 + T0/T1/T2 판정
 - `/smoke-and-score` skill (Cursor/Claude Code)

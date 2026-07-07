@@ -29,6 +29,7 @@ make install
 
 `make install`은 venv + Python deps + web `npm ci`를 수행합니다.  
 첫 실행은 네트워크·머신에 따라 **3–8분**이 일반적입니다.
+Eval surface 개발 체크(`make eval-surface-check`)까지 실행하려면 `make install-dev`를 사용합니다.
 
 ---
 
@@ -95,6 +96,7 @@ make quickstart-verify
 |------|------|
 | 예제 미션 fixture 살펴보기 | [sessions/_examples/README.md](../sessions/_examples/README.md) |
 | 창발 벤치 재현 | `make emergence-bench` → [EMERGENCE-BENCH.md](./EMERGENCE-BENCH.md) |
+| Eval Surface 재현 (T0/T1) | `make eval-surface-check` → [REPRODUCTION-REPORT.md](./REPRODUCTION-REPORT.md) |
 | 공개 수치 비교 | [REPRODUCTION-REPORT.md](./REPRODUCTION-REPORT.md) |
 | Fork 후 커스터마이즈 | [FORK.md](./FORK.md) |
 | UI 개발 서버 | `make dev` → http://127.0.0.1:5173 |

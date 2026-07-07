@@ -1,8 +1,13 @@
-.PHONY: install dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build tauri-check-windows profile-track2-gate clean test test-fast test-c1 test-integration test-bridge test-duration-report lint typecheck typecheck-ratchet structure-metrics structure-metrics-check layer-cycles-check ci ci-full check-worktrees smoke smoke-e2e smoke-web-ui smoke-tauri-ui validate-quant verify-quant-workspace verify-trading-v1 verify-mcp-contract build-research-cards offline-lane thin-runtime-status verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate dogfood-feedback-mock feedback-report generate-model-catalog check-model-catalog
+.PHONY: install install-dev dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build tauri-check-windows profile-track2-gate clean test test-fast test-c1 test-integration test-bridge test-duration-report lint typecheck typecheck-ratchet structure-metrics structure-metrics-check layer-cycles-check ci ci-full check-worktrees smoke smoke-e2e smoke-web-ui smoke-tauri-ui validate-quant verify-quant-workspace verify-trading-v1 verify-mcp-contract build-research-cards offline-lane thin-runtime-status verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate dogfood-feedback-mock feedback-report eval-surface-local eval-surface-check generate-model-catalog check-model-catalog
 
 install:
 	python3 -m venv .venv
 	.venv/bin/pip install -e ".[cursor]"
+	cd web && npm install
+
+install-dev:
+	python3 -m venv .venv
+	.venv/bin/pip install -e ".[cursor,dev]"
 	cd web && npm install
 
 icons:
@@ -362,6 +367,17 @@ dogfood-feedback-mock:
 
 feedback-report:
 	.venv/bin/python scripts/feedback_report.py --root $(if $(ROOT),$(ROOT),.) $(if $(JSON),--json,)
+
+# Eval Surface v1 — case → trace → grader → report (docs/EVAL-SURFACE-V1-PLAN.md)
+eval-surface-local:
+	.venv/bin/python -m evals.run_local --cases evals/cases.jsonl --out evals/results/latest.json
+
+eval-surface-check:
+	@test -x .venv/bin/basedpyright || (echo "Run: make install-dev" && exit 1)
+	.venv/bin/pytest tests/test_eval_surface_export.py tests/test_eval_surface_graders.py tests/test_eval_surface_run_local.py -q
+	.venv/bin/ruff check evals tests/test_eval_surface_export.py tests/test_eval_surface_graders.py tests/test_eval_surface_run_local.py
+	.venv/bin/basedpyright --level error evals/cases.py evals/graders.py evals/mock_generation.py evals/report.py evals/run_local.py evals/schema.py evals/trace_export.py tests/test_eval_surface_export.py tests/test_eval_surface_graders.py tests/test_eval_surface_run_local.py
+	$(MAKE) eval-surface-local
 
 # F7 — repo_map / compaction 7-day dogfood (docs/F7-REPO-MAP-COMPACTION-DOGFOOD.md)
 f7-dogfood-env:

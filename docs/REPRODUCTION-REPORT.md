@@ -81,11 +81,48 @@ T2(외부 fork·PR)는 생태계 지표 — [FORK.md](./FORK.md).
 
 ---
 
+## Eval Surface 재현 (T0/T1)
+
+> **SSOT:** [EVAL-SURFACE-SUPER-SAMPLE-PLAN.md](./EVAL-SURFACE-SUPER-SAMPLE-PLAN.md) · [EVAL-SURFACE-V1-PLAN.md](./EVAL-SURFACE-V1-PLAN.md)
+
+```bash
+make eval-surface-local
+```
+
+출력 `evals/results/latest.json`의 `supersample` 섹션이 T0/T1/T2 판정이다:
+
+```jsonc
+{
+  "supersample": {
+    "t0": {
+      "routing_pass_rate": 1.0,
+      "human_gate_bypass_count": 0,
+      "trace_completeness_rate": 0.39,   // 기존 sessions/_regression fixture엔 trace.jsonl이 없어 낮게 나오는 게 정상
+      "objection_flow_pass_rate": 1.0
+    },
+    "t1": {
+      "fork_time_minutes": 12            // 위 표와 동일 — 수동 재측정 시 두 문서를 같이 갱신
+    },
+    "t2": { "gate": false }              // v1에서 release gate로 쓰지 않음
+  }
+}
+```
+
+**PASS 기준 (clean clone, mock-only):** `make eval-surface-local` 종료 코드 0, 즉 `summary.failed == []`이며 `summary.graded == 10`, `summary.skipped == 0`이다. S1/S2/S3은 committed fixture 대신 `evals/cases.jsonl`의 `mock_run` 설정으로 임시 sessions directory에 deterministic mock session을 생성해 `session_source: "generated_mock"`으로 채점한다. 이 generated case들은 quick/standard category, turn profile, workflow id, required spans, quick cursor subset, S3 role plan, generated mock quality(topic echo, 도메인 topic terms, completed status, full agent roster/success, message/reply count, parse-error-free profile route, category signals)까지 검증한다.
+
+```bash
+# 반복 작업용 narrow lane: tests + ruff + basedpyright + local report
+make eval-surface-check
+```
+
+---
+
 ## 변경 시 갱신 규칙
 
 1. `emergence-v1.json` 또는 `composite_score` KPI 변경 → reference JSON 재생성 + 본 문서 날짜·표 갱신
 2. PR에 `make emergence-bench` 로그 첨부
 3. live 실행 결과는 `sessions/_reports/` (로컬)에 보관; committed reference는 mock만 유지
+4. `evals/cases.jsonl` 또는 `sessions/_regression/*` fixture 변경 → `make eval-surface-check` 재실행 후 이 문서의 supersample 예시 갱신; `fork_time_minutes`를 재측정하면 [QUICKSTART.md](./QUICKSTART.md) §5 · 위 표 · `evals/report.py`의 `FORK_TIME_MINUTES_BASELINE`을 함께 갱신
 
 ```bash
 AGENT_LAB_MOCK_AGENTS=1 .venv/bin/python scripts/emergence_bench.py \

@@ -87,9 +87,20 @@ fork 후에도 재현 신뢰를 유지하려면:
 make emergence-bench
 # reference와 by_category 비교 — EMERGENCE-BENCH.md §6
 make feedback-report JSON=1
+make eval-surface-check
+# tests + ruff + basedpyright + evals/results/latest.json supersample.t0/t1
 ```
 
 커스텀 topic은 `sessions/_benchmark/topics/<your>.json` + `--topics`로 분리하고, **emergence-v1.json은 건드리지 않으면** upstream reference와 diff 가능.
+
+fork 후 upstream에 첨부할 신뢰 report(재현성 주장 시 함께 제출):
+
+| Report | 명령 | T-layer |
+|--------|------|---------|
+| Quickstart 완주 | `make quickstart-verify` | T1 |
+| Emergence bench mock | `make emergence-bench-check` | T0/T1 |
+| Eval surface | `make eval-surface-check` → `evals/results/latest.json` | T0/T1 |
+| S1.5 feedback | `make feedback-report JSON=1` | T0 (advisor_lift) |
 
 ---
 
@@ -112,5 +123,6 @@ upstream에 기여 시: mock-only 테스트, `sessions/*` 커밋 금지, `make c
 | [QUICKSTART.md](./QUICKSTART.md) | 15분 mock 미션 |
 | [EMERGENCE-BENCH.md](./EMERGENCE-BENCH.md) | bench 프로토콜 SSOT |
 | [REPRODUCTION-REPORT.md](./REPRODUCTION-REPORT.md) | 공개 reference 수치 |
+| [EVAL-SURFACE-SUPER-SAMPLE-PLAN.md](./EVAL-SURFACE-SUPER-SAMPLE-PLAN.md) | Eval surface + T0/T1/T2 판정 SSOT |
 | [PACKAGE-FORK-BOUNDARIES.md](./PACKAGE-FORK-BOUNDARIES.md) | 분리 fork 경계 (N8) |
 | [NORTH-STAR.md](./NORTH-STAR.md) | Layer 3 슈퍼 샘플 판정 |

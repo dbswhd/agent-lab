@@ -708,11 +708,12 @@ def run_feedback(rows: list[dict[str, Any]], sessions_base: Path | None, repeat:
     print("\n" + render_feedback_report(report))
     ledger = outcomes_root / ".agent-lab" / "outcomes.jsonl"
     print(f"\noutcomes ledger: {ledger} ({report['total']} rows)")
-    history_n = report["by_source"]["history"]["n"]
-    explore_n = report["by_source"]["explore"]["n"]
+    turn_source_counts = report.get("turn_source_counts") or {}
+    history_n = int(turn_source_counts.get("history") or 0)
+    explore_n = int(turn_source_counts.get("explore") or 0)
     print(f"loop closure: advisor used history on {history_n} turn(s), explored on {explore_n}.")
-    if history_n == 0:
-        print("  (no history-source turns yet — raise --repeat or lower AGENT_LAB_FEEDBACK_MIN_SAMPLE)")
+    if history_n == 0 and explore_n == 0:
+        print("  (no history/explore-source turns yet — raise --repeat or lower AGENT_LAB_FEEDBACK_MIN_SAMPLE)")
     return rc
 
 

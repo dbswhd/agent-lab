@@ -59,6 +59,23 @@ oracle_verify
 feedback_advisor
 ```
 
+### Case trace profiles (v1)
+
+`trace_completeness`는 모든 case를 동일한 9-span 분모로 채점하지 않는다.  
+`evals/cases.jsonl`의 `trace_profile`이 기대 span subset을 결정한다.
+
+| `trace_profile` | 기대 span subset |
+|-----------------|------------------|
+| `discuss_only` | `route`, `role_plan`, `room_round`, `objection` |
+| `plan_only` | discuss subset + `plan_update`, `human_gate` |
+| `execute_path` | plan subset + `execute`, `oracle_verify` |
+| `full_path` | 전체 9 spans (`feedback_advisor` 포함) |
+
+의도:
+
+- discuss-only regression (`M4`, `L1`)이 후속 execute/human/oracle 단계가 없다는 이유로 구조적으로 낮게 보이지 않게 한다.
+- generated S-case는 eval-only trace enrichment를 포함하므로 `full_path`로 유지한다.
+
 ### Report command
 
 ```bash
@@ -89,6 +106,7 @@ make eval-surface-local
 
 - 기존 `trace.jsonl` span을 그대로 버리지 않고, `run.json` / `chat.jsonl` / `outcomes.jsonl`와 결합해 **EvalTrace**로 변환한다.
 - `trace.jsonl`이 없거나 span이 부족해도 exporter는 **fail-open**으로 trace completeness 점수를 낮춘다.
+- 단, `trace_completeness`의 분모는 case별 `trace_profile`에 따라 달라진다.
 
 **Acceptance**
 

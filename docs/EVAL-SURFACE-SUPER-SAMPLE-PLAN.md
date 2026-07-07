@@ -149,8 +149,8 @@
       "routing_pass_rate": 1.0,
       "human_gate_bypass_count": 0,
       "oracle_verdict_coverage": 1.0,
-      "trace_completeness_rate": 0.7778,
-      "trace_completeness_interpretation": "partial_coverage_expected_for_legacy_regression_fixtures",
+      "trace_completeness_rate": 1.0,
+      "trace_completeness_interpretation": "strong_trace_coverage",
       "s_case_quality_pass_rate": 1.0,
       "s_case_quality_failed": [],
       "objection_flow_pass_rate": 1.0
@@ -177,8 +177,9 @@
 
 **Acceptance — 검증 완료**
 
-- `make eval-surface-local` 실행 후 `evals/results/latest.json`의 `supersample` 섹션만으로 T0/T1/T2 준비도가 판독된다 (2026-07-07 실측: `routing_pass_rate=1.0`, `human_gate_bypass_count=0`, `oracle_verdict_coverage=1.0`, `s_case_quality_pass_rate=1.0`, `trace_completeness_rate=0.7778`, `trace_completeness_interpretation=partial_coverage_expected_for_legacy_regression_fixtures`).
-- generated mock `S1/S2/S3`는 eval-only trace enrichment로 `trace_completeness=1.0`을 달성한다. 남은 completeness ceiling은 legacy regression fixture(`M4`, `L1` 등)의 discuss-only 구조에서 온다.
+- `make eval-surface-local` 실행 후 `evals/results/latest.json`의 `supersample` 섹션만으로 T0/T1/T2 준비도가 판독된다 (2026-07-07 실측: `routing_pass_rate=1.0`, `human_gate_bypass_count=0`, `oracle_verdict_coverage=1.0`, `s_case_quality_pass_rate=1.0`, `trace_completeness_rate=1.0`, `trace_completeness_interpretation=strong_trace_coverage`).
+- generated mock `S1/S2/S3`는 eval-only trace enrichment로 `trace_completeness=1.0`을 달성한다.
+- 2026-07-07 이후 `trace_completeness`는 case별 `trace_profile` 분모를 사용한다. 즉 `M4`/`L1` 같은 discuss-only fixture는 execute/human/oracle 부재 때문에 구조적으로 낮게 보지 않는다. 이어서 `M5` fixture에 최소 `plan_update` 신호를 보강해 v1 10개 케이스 전부 `trace_completeness=1.0`을 달성했다.
 - T2 지표가 null이어도 T0/T1 판정이 실패로 표시되지 않는다 (`tests/test_eval_surface_run_local.py::test_supersample_section_shape`).
 
 ---

@@ -96,6 +96,23 @@ def test_supersample_section_shape() -> None:
     assert supersample["t2"]["external_fork_count"] is None
 
 
+def test_discuss_only_and_execute_path_trace_profiles_score_as_expected() -> None:
+    cases = load_cases(_CASES_PATH)
+    report = build_report(cases, regression_dir=REGRESSION_DIR)
+    by_case = {c["case_id"]: c for c in report["cases"]}
+
+    def trace_score(case_id: str) -> float:
+        case = by_case[case_id]
+        for grader in case["graders"]:
+            if grader["grader"] == "trace_completeness":
+                return grader["score"]
+        raise AssertionError(f"trace_completeness missing for {case_id}")
+
+    assert trace_score("M4") == 1.0
+    assert trace_score("L1") == 1.0
+    assert trace_score("L2") == 1.0
+
+
 def test_cli_writes_json_report(tmp_path: Path) -> None:
     import subprocess
     import sys

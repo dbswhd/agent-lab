@@ -18,6 +18,21 @@ from typing import Any
 
 from evals.trace_export import FIXED_SPAN_NAMES
 
+TRACE_PROFILE_SPANS: dict[str, tuple[str, ...]] = {
+    "discuss_only": ("route", "role_plan", "room_round", "objection"),
+    "plan_only": ("route", "role_plan", "room_round", "objection", "plan_update", "human_gate"),
+    "execute_path": (
+        "route",
+        "role_plan",
+        "room_round",
+        "plan_update",
+        "human_gate",
+        "execute",
+        "oracle_verify",
+    ),
+    "full_path": FIXED_SPAN_NAMES,
+}
+
 
 def _result(
     name: str,
@@ -291,15 +306,24 @@ def oracle_coverage(trace: dict[str, Any], case: dict[str, Any]) -> dict[str, An
 
 def trace_completeness(trace: dict[str, Any], case: dict[str, Any]) -> dict[str, Any] | None:
     present = {s["name"] for s in trace.get("spans") or []}
-    total = len(FIXED_SPAN_NAMES)
-    score = (len(present & set(FIXED_SPAN_NAMES)) / total) if total else 0.0
+    trace_profile = str(case.get("trace_profile") or "full_path")
+    expected_span_names = TRACE_PROFILE_SPANS.get(trace_profile, FIXED_SPAN_NAMES)
+    expected_spans = set(expected_span_names)
+    total = len(expected_span_names)
+    score = (len(present & expected_spans) / total) if total else 0.0
     expected = case.get("expected") or {}
     min_completeness = expected.get("min_completeness", 0.0)
     ok = score >= min_completeness
-    missing = sorted(set(FIXED_SPAN_NAMES) - present)
+    missing = sorted(expected_spans - present)
     reason = "" if ok else f"completeness {score:.2f} < min {min_completeness:.2f}"
     return _result(
-        "trace_completeness", trace, case, passed=ok, score=score, reason=reason, evidence=[f"missing_spans={missing}"]
+        "trace_completeness",
+        trace,
+        case,
+        passed=ok,
+        score=score,
+        reason=reason,
+        evidence=[f"trace_profile={trace_profile}", f"expected_spans={sorted(expected_spans)}", f"missing_spans={missing}"],
     )
 
 

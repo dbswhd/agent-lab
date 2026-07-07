@@ -98,7 +98,7 @@ make eval-surface-local
       "routing_pass_rate": 1.0,
       "human_gate_bypass_count": 0,
       "oracle_verdict_coverage": 1.0,
-      "trace_completeness_rate": 0.7778, // current mock baseline: exporter fallback + generated S-case trace enrichment + key regression evidence
+      "trace_completeness_rate": 1.0, // current mock baseline: case-type-aware grading + generated S-case enrichment + M5 plan signal fix
       "objection_flow_pass_rate": 1.0
     },
     "t1": {
@@ -116,9 +116,10 @@ make eval-surface-local
 - `routing_pass_rate = 1.0`
 - `human_gate_bypass_count = 0`
 - `oracle_verdict_coverage = 1.0`
-- `trace_completeness_rate = 0.7778`
-- `trace_completeness_interpretation = partial_coverage_expected_for_legacy_regression_fixtures`
+- `trace_completeness_rate = 1.0`
+- `trace_completeness_interpretation = strong_trace_coverage`
 - generated mock `S1/S2/S3`의 `trace_completeness = 1.0`
+- fixture `M3/M4/M5/L1/L2/L3/X2`도 case-type-aware 분모와 최소 signal 보강 후 `trace_completeness = 1.0`
 
 ```bash
 # 반복 작업용 narrow lane: tests + ruff + basedpyright + local report

@@ -16,12 +16,23 @@
       "ts": "2026-06-09T00:00:01+00:00"
     }
   ],
-  "actions": [],
+  "actions": [
+    {
+      "action_id": "plan-action-repair-1",
+      "index": 1,
+      "kind": "now",
+      "what": "Repair PDF break report generation after oracle failure",
+      "where": "`src/reporting/pdf.py`",
+      "verify": "mock oracle pass with valid break-report.json"
+    }
+  ],
   "approvals": [],
   "executions": [
     {
       "id": "exec-repair-1",
+      "action_id": "plan-action-repair-1",
       "action_index": 1,
+      "action_kind": "now",
       "status": "merged",
       "isolation_effective": "worktree",
       "oracle": {
@@ -32,7 +43,9 @@
     },
     {
       "id": "exec-repair-2",
+      "action_id": "plan-action-repair-1",
       "action_index": 1,
+      "action_kind": "now",
       "status": "merged",
       "isolation_effective": "worktree",
       "oracle": {

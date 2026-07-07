@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal, Required, TypeAlias, TypeGuard, TypedDict
+from typing import Literal, Required, TypeAlias, TypeGuard, TypedDict, cast
 
 JsonValue: TypeAlias = None | bool | int | float | str | list["JsonValue"] | dict[str, "JsonValue"]
 JsonObject: TypeAlias = dict[str, JsonValue]
@@ -12,12 +12,16 @@ class MockRun(TypedDict, total=False):
     consensus_mode: bool
 
 
+TraceProfile: TypeAlias = Literal["discuss_only", "plan_only", "execute_path", "full_path"]
+
+
 class EvalCase(TypedDict, total=False):
     case_id: Required[str]
     tier: str
     summary: str
     fixture_session: str | None
     mock_run: MockRun
+    trace_profile: TraceProfile
     input: JsonObject
     expected: JsonObject
     forbidden: list[str]
@@ -195,5 +199,9 @@ def parse_eval_case(value: object) -> EvalCase | None:
         if isinstance(consensus_mode, bool):
             parsed_mock["consensus_mode"] = consensus_mode
         case["mock_run"] = parsed_mock
+
+    trace_profile = obj.get("trace_profile")
+    if trace_profile in {"discuss_only", "plan_only", "execute_path", "full_path"}:
+        case["trace_profile"] = cast(TraceProfile, trace_profile)
 
     return case

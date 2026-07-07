@@ -299,6 +299,7 @@ def test_trace_completeness_always_passes_without_declared_minimum() -> None:
     result = _result(trace_completeness(trace, {"case_id": "T", "expected": {}}))
     assert result["pass"] is True
     assert result["score"] == 0.0
+    assert "trace_profile=full_path" in result["evidence"][0]
 
 
 def test_trace_completeness_fails_below_declared_minimum() -> None:
@@ -309,12 +310,44 @@ def test_trace_completeness_fails_below_declared_minimum() -> None:
     assert result["pass"] is False
 
 
+def test_trace_completeness_uses_discuss_only_expected_span_subset() -> None:
+    trace = _trace()
+    trace["spans"] = [
+        {"name": "route", "data": {}},
+        {"name": "role_plan", "data": {}},
+        {"name": "room_round", "data": {}},
+        {"name": "objection", "data": {}},
+    ]
+    case = {"case_id": "M4", "trace_profile": "discuss_only", "expected": {"min_completeness": 1.0}}
+    result = _result(trace_completeness(trace, case))
+    assert result["pass"] is True
+    assert result["score"] == 1.0
+
+
+def test_trace_completeness_execute_path_excludes_feedback_advisor_from_required_subset() -> None:
+    trace = _trace()
+    trace["spans"] = [
+        {"name": "route", "data": {}},
+        {"name": "role_plan", "data": {}},
+        {"name": "room_round", "data": {}},
+        {"name": "objection", "data": {}},
+        {"name": "plan_update", "data": {}},
+        {"name": "human_gate", "data": {}},
+        {"name": "execute", "data": {}},
+        {"name": "oracle_verify", "data": {}},
+    ]
+    case = {"case_id": "L2", "trace_profile": "execute_path", "expected": {"min_completeness": 1.0}}
+    result = _result(trace_completeness(trace, case))
+    assert result["pass"] is True
+    assert result["score"] == 1.0
+
+
 # --- run_graders dispatcher ------------------------------------------------------
 
 
 def test_run_graders_includes_only_applicable_graders() -> None:
     trace = _trace(objections=[{"act": "BLOCK", "status": "open"}])
-    case = {"case_id": "M3", "expected": {"required_acts": ["BLOCK"]}}
+    case = {"case_id": "M3", "trace_profile": "plan_only", "expected": {"required_acts": ["BLOCK"]}}
     results = run_graders(trace, case)
     names = {r["grader"] for r in results}
     assert names == {"gate_integrity", "objection_flow", "trace_completeness"}

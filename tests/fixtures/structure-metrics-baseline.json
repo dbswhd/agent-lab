@@ -46,20 +46,20 @@
     "claude_": 0
   },
   "tracked_pycache_files": 0,
-  "makefile_lines": 406,
-  "makefile_targets": 88,
+  "makefile_lines": 476,
+  "makefile_targets": 97,
   "large_tsx_files": [
     {
       "path": "web/src/components/HumanInboxPanel.tsx",
-      "lines": 1027
-    },
-    {
-      "path": "web/src/components/ChatComposer.tsx",
-      "lines": 799
+      "lines": 1057
     },
     {
       "path": "web/src/App.tsx",
-      "lines": 764
+      "lines": 765
+    },
+    {
+      "path": "web/src/components/ChatComposer.tsx",
+      "lines": 757
     },
     {
       "path": "web/src/components/WorkspaceFilesPanel.tsx",
@@ -99,7 +99,7 @@
     },
     {
       "path": "web/src/components/RoomChatView.tsx",
-      "lines": 222
+      "lines": 220
     },
     {
       "path": "web/src/hooks/useRoomChat.ts",
@@ -107,15 +107,15 @@
     },
     {
       "path": "web/src/hooks/useRoomChatBootstrap.ts",
-      "lines": 363
+      "lines": 360
     },
     {
       "path": "web/src/hooks/useRoomChatInteractions.ts",
-      "lines": 692
+      "lines": 689
     },
     {
       "path": "web/src/hooks/useRoomChatPresentation.ts",
-      "lines": 413
+      "lines": 406
     }
   ],
   "f11_run_meta_dict_signatures": 0,
@@ -123,6 +123,8 @@
   "notes": {
     "pycache": "tracked_pycache_files counts git-tracked __pycache__/*.pyc only; local __pycache__ dirs are ignored by .gitignore and are not repo debt.",
     "makefile_targets": "Counted as Makefile lines matching ^target:",
-    "hot_path_py_files": "F9 ratchet: execute.py / workflow.py / turn_flow.py LOC caps; --check fails on any drift from baseline (growth or shrink without update)."
+    "hot_path_py_files": "F9 ratchet: execute/workflow/turn_flow* LOC caps; --check fails on any drift from baseline (growth or shrink without update).",
+    "hot_path_ts_files": "F9 ratchet: RoomChat shell LOC caps after view/orchestrator split.",
+    "f11_run_meta_dict_signatures": "F11 ratchet: grep count of run_meta: dict[str, Any] in src/agent_lab; must not grow without baseline update (Stage 1 migration lowers over time)."
   }
 }

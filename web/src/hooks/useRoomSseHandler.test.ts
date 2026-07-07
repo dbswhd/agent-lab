@@ -51,9 +51,8 @@ function makeDeps(): RoomRunSseDeps {
 
   return {
     sessionId: sid,
-    profile: "team",
+    profile: "loop",
     selected: ["codex"],
-    mode: "discuss",
     localeMsg: messages("ko"),
     activeSessionIdRef,
     navigatedToSessionRef,

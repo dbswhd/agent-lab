@@ -111,8 +111,8 @@ export function buildDecisionBlockedHeadline(
       source: "plan_approval",
       headline: ko ? "Plan 승인 대기" : "Plan approval pending",
       detail: ko
-        ? "승인·execute 판단은 Work에서만 처리합니다."
-        : "Review and approve in Work only.",
+        ? "승인·execute 판단은 composer stack에서만 처리합니다."
+        : "Review and approve in the composer stack only.",
     };
   }
 
@@ -153,11 +153,11 @@ export function buildDecisionBlockedHeadline(
       headline: ko ? `Plan workflow · ${phase}` : `Plan workflow · ${phase}`,
       detail: clarify
         ? ko
-          ? "Clarify 질문·답변은 Composer Human Inbox 또는 Work Clarify에서 확인하세요."
-          : "Track clarify Q&A in the composer Human Inbox or Work · Clarify."
+          ? "Clarify 질문·답변은 Composer Human Inbox 또는 stack · Clarify에서 확인하세요."
+          : "Track clarify Q&A in the composer Human Inbox or stack · Clarify."
         : ko
-          ? "진행 상태는 Composer 또는 Work에서 확인하세요."
-          : "Track progress in the composer or Work.",
+          ? "진행 상태는 Composer stack에서 확인하세요."
+          : "Track progress in the composer stack.",
     };
   }
 

@@ -61,7 +61,8 @@ def test_agent_health_panel_shows_model_readiness_lane():
     assert "fetchRoomModes" in room_modes
     assert "loopCostHintLine" in room_modes
     assert "resolveRoomPresets" in presets
-    assert "composer-preset-seg" in composer
+    assert "TOPIC_ONLY_COMPOSER" in _read("web", "src", "utils", "roomComposerPrefs.ts")
+    assert "composer-preset-seg" not in composer
     assert "model_provider?: string" in client
     assert "loop_ready" in panel
     assert "재연결" in panel
@@ -234,11 +235,13 @@ def test_phase0_composer_plan_toggle_removed():
     composer = _read("web", "src", "components", "ChatComposer.tsx")
     room = room_chat_surface()
     prefs = _read("web", "src", "hooks", "useRoomComposerPrefs.ts")
+    execute = _read("web", "src", "hooks", "useRoomExecuteSend.ts")
     assert "ComposerPlanToggle" not in composer
     assert "onPlanAfterSendChange" not in room
     assert "planComposeActive" not in prefs
     assert "planComposeActive" not in room
-    assert 'composeMode: ComposeMode = "discuss"' in prefs
+    assert "composeMode" not in prefs
+    assert "ComposeMode" not in execute
     assert "ComposerEfficiencyToggle" not in composer
     assert "efficiencyOn" not in room
 

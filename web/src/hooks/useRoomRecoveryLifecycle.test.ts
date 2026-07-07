@@ -3,7 +3,7 @@ import {
   discussRecoveryFromMissionLoop,
   type DiscussRecoveryState,
 } from "./useRoomRecoveryLifecycle";
-import { turnProfileForRoomPreset } from "../utils/roomComposerPrefs";
+import { turnProfileForRoomPreset } from "../utils/turnProfile";
 
 describe("discussRecoveryFromMissionLoop", () => {
   it("returns null when mission loop is missing", () => {
@@ -27,6 +27,6 @@ describe("turnProfileForRoomPreset", () => {
   it("maps fast and supervisor presets", () => {
     expect(turnProfileForRoomPreset("fast")).toBe("quick");
     expect(turnProfileForRoomPreset("supervisor")).toBe("loop");
-    expect(turnProfileForRoomPreset("other")).toBeNull();
+    expect(turnProfileForRoomPreset("other")).toBe("loop");
   });
 });

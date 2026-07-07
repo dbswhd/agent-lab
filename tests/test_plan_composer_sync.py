@@ -26,15 +26,19 @@ def test_room_chat_blocks_send_during_human_pending():
     assert "isPlanWorkflowAwaitingApproval" in shell
 
 
-def test_compose_mode_always_discuss_for_casual_send():
+def test_casual_send_has_no_compose_mode_plumbing():
     prefs = _read("web", "src", "hooks", "useRoomComposerPrefs.ts")
+    execute = _read("web", "src", "hooks", "useRoomExecuteSend.ts")
+    client = _read("web", "src", "api", "client.ts")
     room = room_chat_surface()
     orchestrator = room_chat_orchestrator()
-    assert 'composeMode: ComposeMode = "discuss"' in prefs
-    assert "planComposeActive" not in prefs
+    assert "composeMode" not in prefs
+    assert "ComposeMode" not in execute
+    assert "composeMode.ts" not in orchestrator
     assert "useRoomComposerPrefs" in orchestrator
     assert "planComposeActive" not in room
     assert "planComposeActive" not in orchestrator
+    assert 'form.append("mode", "discuss")' in client
 
 
 def test_side_discuss_hint_in_mode_chip():

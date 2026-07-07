@@ -230,14 +230,16 @@ def test_composer_question_inbox_is_separate_from_generic_pending_hint():
 def test_room_preset_picker_replaces_turn_strategy_ui():
     composer = _read("web", "src", "components", "ChatComposer.tsx")
     presets = _read("web", "src", "utils", "roomPresets.ts")
-    room = room_chat_surface()
     composer_prefs = _read("web", "src", "hooks", "useRoomComposerPrefs.ts")
+    prefs_ts = _read("web", "src", "utils", "roomComposerPrefs.ts")
     assert "ComposerTurnPicker" not in composer
     assert "resolveRoomPresets" in presets
     assert "presetDisplayLabel" in presets
-    assert "resolveRoomPresets" in composer_prefs
-    assert "onRoomPresetSelect" in room and "selectRoomPreset" in room
-    assert "ACTIVE_ROOM_PRESET_IDS" not in room
+    assert "TOPIC_ONLY_COMPOSER" in prefs_ts
+    assert "IMPLICIT_ROOM_PRESET" in composer_prefs
+    assert "composer-preset-seg" not in composer
+    assert "onRoomPresetSelect" not in composer
+    assert "visiblePresets" not in composer_prefs
 
 
 def test_m6_work_exec_classes_only_in_plan_execute_panel():
@@ -267,12 +269,11 @@ def test_human_decision_banner_contract():
 
 
 def test_plan_workflow_banner_hides_inbox_when_human_decision_visible():
-    """Plan workflow inbox CTA defers when human gate is active."""
-    banner = _read("web", "src", "components", "PlanWorkflowBanner.tsx")
+    """Composer decision tier defers to human gate; inbox handled outside decision card."""
     surface = _read("web", "src", "components", "ComposerDecisionSurface.tsx")
     priority = _read("web", "src", "utils", "composerDecisionPriority.ts")
-    assert "hideInboxButton" in banner
     assert "showHumanGate" in surface
+    assert "inboxPendingCount > 0" in priority
     assert '"human_gate"' in priority
     assert "pickComposerDecisionTier" in surface
 

@@ -136,12 +136,12 @@ export function RoomChatView({ chat }: Props) {
                 chat.setPendingFiles((f) => f.filter((x) => x.id !== id)),
               composerObjectionNotice: chat.composerObjectionNotice,
               onFocusObjection: chat.focusObjection,
-              turnHint: chat.composerEmergenceHint ?? chat.composerPresetHint,
+              turnHint:
+                chat.composerRoutingHint ??
+                chat.composerEmergenceHint ??
+                chat.composerPresetHint,
               costHint: chat.composerCostHint,
               locale: chat.locale,
-              roomPresets: chat.visiblePresets,
-              roomPreset: chat.roomPreset,
-              onRoomPresetSelect: chat.selectRoomPreset,
               agents: chat.agents,
               onOpenModelPicker: () => {
                 const command = chat.slashCommands.find(
@@ -186,8 +186,6 @@ export function RoomChatView({ chat }: Props) {
                   chat.pendingSend.text,
                   chat.pendingSend.files,
                   permissions,
-                  chat.composeMode,
-                  chat.pendingSend.turnProfile,
                 );
                 chat.setPendingSend(null);
                 chat.setText("");

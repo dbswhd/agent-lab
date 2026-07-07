@@ -9073,6 +9073,41 @@ button.plan-doc__ref--link:hover {
   padding: 0 0 var(--space-8) var(--space-12);
   border-left: 1px solid var(--border-hair);
 }
+/* Live window: while streaming the step list is clamped to a fixed height
+   and scroll-pinned to the newest step; older ones slide up under the fade */
+.turn-timeline__window {
+  position: relative;
+}
+.turn-timeline__steps--clamped {
+  max-height: 176px;
+  overflow: hidden;
+}
+.turn-timeline__steps-fade {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 28px;
+  background: var(--surface-fade-from-pane);
+  pointer-events: none;
+  z-index: 1;
+}
+.turn-timeline__steps--clamped > .turn-step {
+  animation: turn-step-enter 180ms ease-out;
+}
+@keyframes turn-step-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .turn-timeline__steps--clamped > .turn-step {
+    animation: none;
+  }
+}
 .turn-step {
   color: var(--label-secondary);
   font-size: var(--type-body-small-size);

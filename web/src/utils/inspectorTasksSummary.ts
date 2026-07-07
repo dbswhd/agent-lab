@@ -57,7 +57,7 @@ function primaryForSource(
     case "objection":
     case "plan_workflow":
       return {
-        label: ko ? "Work · 승인/확인" : "Open Work",
+        label: ko ? "Composer · 승인/확인" : "Open composer",
         target: "work",
       };
     case "human_gate":

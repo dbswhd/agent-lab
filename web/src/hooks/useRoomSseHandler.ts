@@ -26,7 +26,6 @@ import {
   agreementPlanSyncedLabel,
   agreementPlanSyncFailedLabel,
 } from "../utils/consensusAgreement";
-import type { ComposeMode } from "../utils/composeMode";
 import {
   formatDispatchActivityLine,
   formatEnvelopeActivityLine,
@@ -63,7 +62,6 @@ export type RoomRunSseDeps = {
   sessionId: string | null;
   profile: ComposerTurnProfile;
   selected: string[];
-  mode: ComposeMode;
   localeMsg: ReturnType<typeof useLocale>["msg"];
   activeSessionIdRef: MutableRefObject<string | null>;
   navigatedToSessionRef: MutableRefObject<boolean>;
@@ -738,7 +736,7 @@ export function createRoomRunEventHandler(
           body: localeMsg.planWorkflowPendingDetail,
           sessionId: scope.activeSessionId ?? sessionId ?? undefined,
           kind: "plan_workflow_pending",
-          toastAction: { type: "inspector", tab: "overview" },
+          toastAction: { type: "composer", focus: "plan" },
           toastActionLabel: localeMsg.planWorkflowPendingOpenTasks,
         },
         pushMacNotification,

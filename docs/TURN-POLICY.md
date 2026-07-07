@@ -47,8 +47,11 @@ Human gates unchanged: plan approve, execute 409, worktree, `ask_human` / `propo
 | `route_category` | `topic_router` category for this turn (P1 TurnContract) |
 | `discuss_light` | `run_meta.discuss_light` — supervisor casual discuss, 1 wave |
 | `clarity_short_circuit` | concrete anchor / smoke intent — skip CLARIFY |
+| `roster_size` | `len(run_meta.agents)` — multi-agent vs single-agent fast path (P2b) |
 
-**P1 snapshot:** `persist_turn_policy_on_run_meta` writes `turn_policy.routing_contract` on `run.json` (`route_category`, `discuss_light`, `clarity_short_circuit`, `skip_fsm_bootstrap`) for eval trace / `routing_contract` grader.
+**P2b:** `TurnPolicyEngine` derives `fast_turn` / `supervisor_turn` from routing signals + roster; `room_preset` is legacy fallback when set.
+
+**P1 snapshot:** `persist_turn_policy_on_run_meta` writes `turn_policy.routing_contract` on `run.json` (`route_category`, `discuss_light`, `clarity_short_circuit`, `skip_fsm_bootstrap`, `fast_turn`, `supervisor_turn`, `roster_size`) for eval trace / `routing_contract` grader.
 
 **Removed (P1):** ~~`legacy_synthesize_hint`~~ — API `mode=plan` / `synthesize=true` no longer opens Scribe.
 

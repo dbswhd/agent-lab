@@ -10,6 +10,27 @@ UserMode = Literal["quick", "team", "loop"]
 LoopTopology = Literal["route_auto", "specialist", "verified"]
 PlanIntent = Literal["none", "plan_only", "loop"]
 
+_RUNTIME_TURN_PROFILES = frozenset(
+    {"quick", "analyze", "free", "specialist", "verified", "divergence", "발산"},
+)
+
+# Legacy config / API aliases → runtime profile stamped on run_meta (agent context).
+_LEGACY_PROFILE_TO_RUNTIME: dict[str, str] = {
+    "quick": "quick",
+    "team": "analyze",
+    "analyze": "analyze",
+    "discuss": "analyze",
+    "loop": "free",
+    "free": "free",
+    "review": "free",
+    "verified": "verified",
+    "specialist": "specialist",
+    "divergence": "divergence",
+    "발산": "divergence",
+    "split": "free",
+    "infinity": "free",
+}
+
 
 # --- Stage-aware selective routing (AGENT_LAB_STAGE_ROUTING, default off) ---
 _STAGE_ROUTING_TRUE = frozenset({"1", "true", "yes", "on"})
@@ -97,6 +118,16 @@ class ModeContract:
     divergence: bool = False
 
 
+def normalize_runtime_turn_profile(profile: str | None, *, fallback: str = "free") -> str:
+    """SSOT: canonical ``run_meta.turn_profile`` / turn snapshot (agent context)."""
+    raw = (profile or "").strip().lower()
+    if not raw:
+        return fallback
+    if raw in _RUNTIME_TURN_PROFILES:
+        return raw
+    return _LEGACY_PROFILE_TO_RUNTIME.get(raw, fallback)
+
+
 def _clean_profile(turn_profile: str | None) -> str:
     return (turn_profile or "team").strip().lower()
 
@@ -178,6 +209,7 @@ def resolve_mode_contract(
     agent_rounds: int,
     review_mode: bool,
     consensus_mode: bool,
+    topic: str = "",
 ) -> ModeContract:
     if _is_divergence(turn_profile):
         return ModeContract(
@@ -223,6 +255,11 @@ def resolve_mode_contract(
             # multi-round (was forced on by topology==route_auto). Plan/synthesize
             # keeps full loop consensus behavior.
             discuss_only = (mode or "discuss").strip().lower() == "discuss" and not synthesize
+            if discuss_only:
+                from agent_lab.room.turn_policy import detect_plan_execute_intent
+
+                if detect_plan_execute_intent(topic):
+                    discuss_only = False
             if discuss_only:
                 return ModeContract(
                     user_mode=user_mode,
@@ -402,6 +439,7 @@ def patch_run_mode_contract(folder: Path, contract: ModeContract) -> None:
         run["plan_intent"] = contract.plan_intent
         run["loop_topology"] = contract.topology
         run["divergence_mode"] = contract.divergence
+        run["turn_profile"] = normalize_runtime_turn_profile(contract.runtime_turn_profile)
         if contract.plan_intent == "loop":
             run["loop_budget"] = loop_budget_dict()
         return run

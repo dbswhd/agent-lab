@@ -89,8 +89,6 @@ export function useRoomVerifiedHandlers({
             prompt,
             [],
             roomPermissions(selected),
-            "discuss",
-            "verified",
           );
         }
       } catch (e) {

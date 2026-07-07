@@ -11,7 +11,7 @@ from agent_lab.room.messages import OnAgentEvent
 
 def apply_turn_profile_flags(
     run_meta: RunStateLike,
-    turn_profile: str | None,
+    runtime_turn_profile: str | None,
     *,
     synthesize: bool,
     folder: Path | None,
@@ -19,10 +19,10 @@ def apply_turn_profile_flags(
     research_mode: bool,
 ) -> int:
     from agent_lab.run.meta import stamp_run_meta
+    from agent_lab.turn_modes import normalize_runtime_turn_profile
 
-    if turn_profile:
-        tp = (turn_profile or "analyze").strip().lower()
-        profile = "analyze" if tp == "discuss" else tp
+    if runtime_turn_profile:
+        profile = normalize_runtime_turn_profile(runtime_turn_profile)
         stamp_run_meta(run_meta, turn_profile=profile)
         if profile == "specialist":
             parallel_rounds = max(parallel_rounds, 2)

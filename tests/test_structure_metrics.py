@@ -45,11 +45,11 @@ def test_f9_hot_path_ts_caps_in_baseline() -> None:
     by_path = {row["path"]: row["lines"] for row in baseline["hot_path_ts_files"]}
     assert by_path == {
         "web/src/components/RoomChat.tsx": 9,
-        "web/src/components/RoomChatView.tsx": 222,
+        "web/src/components/RoomChatView.tsx": 220,
         "web/src/hooks/useRoomChat.ts": 12,
-        "web/src/hooks/useRoomChatBootstrap.ts": 363,
-        "web/src/hooks/useRoomChatInteractions.ts": 692,
-        "web/src/hooks/useRoomChatPresentation.ts": 413,
+        "web/src/hooks/useRoomChatBootstrap.ts": 360,
+        "web/src/hooks/useRoomChatInteractions.ts": 689,
+        "web/src/hooks/useRoomChatPresentation.ts": 406,
     }
 
 

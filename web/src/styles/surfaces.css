@@ -1684,38 +1684,15 @@
   margin-bottom: var(--space-6);
 }
 
-/* ---- Composer preset (fast / supervisor) + aligned control rows ---- */
+/* ---- Composer control rows ---- */
 .composer-control-row {
   width: 100%;
   box-sizing: border-box;
   padding-left: var(--space-2);
   padding-right: var(--space-2);
 }
-.composer-preset-row {
-  gap: var(--space-3);
-}
-.composer-preset-row__head {
-  width: 100%;
-}
-.composer-preset-seg button.is-active[data-preset="supervisor"] {
-  color: var(--agent-codex);
-}
-.composer-preset-seg button.is-active[data-preset="fast"] {
-  color: var(--accent);
-}
 
-/* ---- Turn picker ----------------------------------------- */
-.turn-row {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-.turn-picker__head {
-  display: flex;
-  align-items: center;
-  gap: var(--space-10);
-  flex-wrap: wrap;
-}
+/* Shared segmented control (Settings, PluginPanel, etc.) */
 .turn-seg {
   display: inline-flex;
   padding: 1px;
@@ -1747,18 +1724,6 @@
 }
 .turn-seg__infinity.is-active {
   color: var(--agent-codex);
-}
-.turn-picker__trailing {
-  display: flex;
-  align-items: center;
-  gap: var(--space-12);
-  margin-left: auto;
-}
-.turn-hint {
-  margin: 0;
-  font-size: var(--text-micro);
-  color: var(--label-tertiary);
-  padding-left: var(--space-2);
 }
 
 /* ---- Objection alert ------------------------------------- */
@@ -1919,10 +1884,6 @@
   flex-wrap: nowrap;
   width: 100%;
   min-height: 28px;
-}
-.composer-preset-seg--end {
-  margin-left: auto;
-  flex-shrink: 0;
 }
 .composer-agent-stack {
   display: flex;

@@ -103,6 +103,38 @@ def resolve_preset_for_roster(
     return cfg.preset, None
 
 
+def resolve_implicit_room_preset(
+    topic: str,
+    roster_size: int,
+    *,
+    run_meta: RunStateLike | None = None,
+) -> str:
+    """P2 TurnContract: derive room_preset when Composer sends no preset.
+
+    Multi-agent rosters always use supervisor. Single-agent quick / anchored
+    factual lookups map to fast; default dogfood path is supervisor.
+    """
+    if roster_size > 1:
+        return "supervisor"
+    text = (topic or "").strip()
+    if roster_size == 1 and text:
+        from agent_lab.clarity import clarity_short_circuit
+
+        if clarity_short_circuit(text):
+            return "fast"
+        from agent_lab.topic_router import resolve_topic_route
+
+        run = run_meta or {}
+        route = resolve_topic_route(
+            text,
+            turn_profile=str(run.get("turn_profile") or ""),
+            session_template=str(run.get("session_template") or ""),
+        )
+        if route.category == "quick":
+            return "fast"
+    return "supervisor"
+
+
 def preset_role_policy(preset: str | None) -> RolePolicy:
     """Return role_policy for a preset name, defaulting to auto when unknown."""
     cfg = resolve_preset(preset)

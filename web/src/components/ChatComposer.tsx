@@ -4,7 +4,6 @@ import {
   type MentionMenuOption,
 } from "./ComposerMentionMenu";
 import { ComposerAgentStack } from "./ComposerAgentStack";
-import { presetDisplayLabel, presetHintLine } from "../utils/roomPresets";
 import { formatAgentModelName } from "../utils/roomModels";
 import {
   mentionQueryAtCursor,
@@ -13,8 +12,7 @@ import {
 import { buildComposerHighlightNodes } from "../utils/composerInputHighlight";
 import { bestSlashHighlightIndex } from "../utils/slashCommandMenuGroups";
 import { SlashCommandMenu } from "./SlashCommandMenu";
-import type { SlashCommandRecord, RoomPreset } from "../api/client";
-import type { ComposerTurnProfile } from "../utils/turnProfile";
+import type { SlashCommandRecord } from "../api/client";
 import type { Locale } from "../i18n/locale";
 
 export type PendingFile = { id: string; file: File };
@@ -39,10 +37,6 @@ type Props = {
   showAttach?: boolean;
   toolbar?: ReactNode;
   className?: string;
-  /** @deprecated Runtime turn profile only — UI uses room presets (fast / supervisor). */
-  turnProfile?: ComposerTurnProfile;
-  /** @deprecated Use room presets instead of quick / team / loop picker. */
-  onTurnProfileChange?: (profile: ComposerTurnProfile) => void;
   executeDisabled?: boolean;
   pendingExecuteCount?: number;
   /** @deprecated Plan stale notices live on the Work tab. */
@@ -78,10 +72,6 @@ type Props = {
     ready?: boolean;
   }[];
   onOpenModelPicker?: () => void;
-  /** Room preset (fast / supervisor) — primary composer mode control. */
-  roomPresets?: RoomPreset[];
-  roomPreset?: string | null;
-  onRoomPresetSelect?: (id: string) => void;
   /** Floating slash-command choice popover (login / logout / scope). */
   choicePopover?: ReactNode;
   /** OAuth CLI progress or API-key entry — anchored in composer field. */
@@ -111,8 +101,6 @@ export function ChatComposer({
   showAttach = true,
   toolbar,
   className,
-  turnProfile: _turnProfile,
-  onTurnProfileChange: _onTurnProfileChange,
   executeDisabled: _executeDisabled,
   pendingExecuteCount: _pendingExecuteCount,
   objectionNotice,
@@ -133,9 +121,6 @@ export function ChatComposer({
   sessionId = null,
   activeModels = [],
   onOpenModelPicker,
-  roomPresets,
-  roomPreset = null,
-  onRoomPresetSelect,
   choicePopover,
   authPopover,
   authPickerPopover,
@@ -268,34 +253,7 @@ export function ChatComposer({
   }
 
   const presetControls =
-    roomPresets && roomPresets.length > 0 && onRoomPresetSelect ? (
-      <div
-        className="composer-prompt-head"
-        role="radiogroup"
-        aria-label={locale === "ko" ? "Room 프리셋" : "Room preset"}
-      >
-        <div className="composer-prompt-head__row">
-          <ComposerAgentStack agents={activeModels} max={4} size={32} />
-          <div className="turn-seg composer-preset-seg composer-preset-seg--end">
-            {roomPresets.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                role="radio"
-                aria-checked={roomPreset === p.id}
-                className={roomPreset === p.id ? "is-active" : ""}
-                data-preset={p.id}
-                disabled={inputLocked}
-                title={presetHintLine(p, locale) ?? p.description}
-                onClick={() => onRoomPresetSelect(p.id)}
-              >
-                {presetDisplayLabel(p, locale)}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    ) : activeModels.length > 0 ? (
+    activeModels.length > 0 ? (
       <div className="composer-prompt-head">
         <ComposerAgentStack agents={activeModels} max={4} size={32} />
       </div>

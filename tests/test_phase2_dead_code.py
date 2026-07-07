@@ -19,9 +19,11 @@ def test_legacy_turn_profile_segmented_picker_absent_from_ui() -> None:
     """Legacy discuss/analyze/review/free segmented picker removed (TURN-MODES §3)."""
     composer = _read("web", "src", "components", "ChatComposer.tsx")
     room = room_chat_surface()
-    # Primary control is room preset (fast / supervisor), not legacy segments.
-    assert "roomPresets" in composer or "roomPreset" in composer
-    assert "onRoomPresetSelect" in composer or "roomPreset" in room
+    composer_prefs = _read("web", "src", "utils", "roomComposerPrefs.ts")
+    # P2: topic-only composer — implicit supervisor; no fast/supervisor picker.
+    assert "TOPIC_ONLY_COMPOSER" in composer_prefs
+    assert "composer-preset-seg" not in composer
+    assert "roomPreset" not in composer
     for legacy in (
         'aria-label="discuss"',
         "TurnProfileSegmented",

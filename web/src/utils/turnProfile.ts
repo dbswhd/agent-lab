@@ -1,12 +1,9 @@
-export type ComposerTurnProfile =
-  | "quick"
-  | "team"
-  | "loop"
-  | "analyze"
-  | "review"
-  | "free"
-  | "specialist"
-  | "verified";
+/**
+ * Internal send config derived from room preset — not a user-facing picker.
+ * Server SSOT for agent behavior: `resolve_mode_contract().runtime_turn_profile`.
+ */
+
+export type ComposerTurnProfile = "quick" | "loop";
 
 export type TurnProfileConfig = {
   agentRounds: number;
@@ -15,165 +12,35 @@ export type TurnProfileConfig = {
   consensusMode: boolean;
 };
 
-const STORAGE_KEY = "agent-lab-turn-profile";
-
-export function turnStrategyOptions(locale: "en" | "ko" = "en") {
-  const ko = locale === "ko";
-  return [
-    {
-      id: "quick" as const,
-      label: ko ? "빠른" : "Quick",
-      description: ko
-        ? "에이전트 1명 · R1 · plan 선택"
-        : "1 agent · R1 · optional plan",
-    },
-    {
-      id: "team" as const,
-      label: ko ? "팀" : "Team",
-      description: ko
-        ? "선택한 에이전트 병렬 · R1 · plan 선택"
-        : "Selected agents · R1 · optional plan",
-    },
-    {
-      id: "loop" as const,
-      label: ko ? "루프" : "Loop",
-      description: ko
-        ? "선택한 에이전트 · plan 필수 · 실행/검증 게이트"
-        : "Selected agents · plan required · execute/verify gates",
-    },
-  ];
-}
-
-export const TURN_STRATEGY_OPTIONS = turnStrategyOptions("en");
-
-export function composerTurnHint(
-  profile: ComposerTurnProfile,
-  selectedAgents: string[],
-  locale: "en" | "ko" = "en",
-): string {
-  const normalized = normalizeTurnProfile(profile);
-  const resolved = resolveTurnSend(normalized, selectedAgents);
-  const n = resolved.agents.length;
-  const ko = locale === "ko";
-  if (normalized === "quick") {
-    const lead = selectedAgents[0] ?? "agent";
-    return ko
-      ? selectedAgents.length > 1
-        ? `빠른 · ${lead}만 · R1`
-        : "빠른 · R1"
-      : selectedAgents.length > 1
-        ? `Quick · ${lead} only · R1`
-        : "Quick · R1";
-  }
-  if (normalized === "team") {
-    return ko
-      ? `팀 · ${n}명 · R1 · plan 선택`
-      : `Team · ${n} agents · R1 · optional plan`;
-  }
-  return ko
-    ? `루프 · ${n}명 · plan 필수 · 검증 게이트`
-    : `Loop · ${n} agents · plan required · verify gates`;
-}
-
-export const TURN_PROFILE_OPTIONS: {
-  id: ComposerTurnProfile;
-  label: string;
-  description: string;
-}[] = [...TURN_STRATEGY_OPTIONS];
-
-export function normalizeTurnProfile(
-  profile: string | null | undefined,
-): ComposerTurnProfile {
-  if (profile === "quick") return "quick";
-  if (profile === "team") return "team";
-  if (profile === "loop") return "loop";
-  if (profile === "analyze") return "team";
-  if (profile === "discuss") return "team";
-  if (profile === "free") return "loop";
-  if (profile === "review") return "loop";
-  if (profile === "verified") return "loop";
-  if (profile === "specialist") return "loop";
-  if (profile === "split") return "loop";
-  if (profile === "infinity") return "loop";
-  return "team";
-}
-
-export function turnProfileDescription(profile: ComposerTurnProfile): string {
-  const normalized = normalizeTurnProfile(profile);
-  return (
-    turnStrategyOptions("en").find((o) => o.id === normalized)?.description ??
-    TURN_PROFILE_OPTIONS.find((o) => o.id === profile)?.description ??
-    ""
-  );
-}
-
-export const TURN_PROFILE_CONFIG: Record<
-  ComposerTurnProfile,
-  TurnProfileConfig
-> = {
+const PROFILE_CONFIG: Record<ComposerTurnProfile, TurnProfileConfig> = {
   quick: {
     agentRounds: 1,
     reviewMode: false,
     singleAgent: true,
     consensusMode: false,
   },
-  team: {
-    agentRounds: 1,
-    reviewMode: false,
-    singleAgent: false,
-    consensusMode: false,
-  },
   loop: {
-    // §3.2.1: supervisor discuss is light (1 wave, no consensus multi-round).
-    // Plan/synthesize still uses backend loop consensus when mode=plan.
     agentRounds: 1,
     reviewMode: false,
     singleAgent: false,
     consensusMode: false,
-  },
-  analyze: {
-    agentRounds: 1,
-    reviewMode: false,
-    singleAgent: false,
-    consensusMode: false,
-  },
-  specialist: {
-    agentRounds: 2,
-    reviewMode: false,
-    singleAgent: false,
-    consensusMode: false,
-  },
-  verified: {
-    agentRounds: 1,
-    reviewMode: false,
-    singleAgent: false,
-    consensusMode: false,
-  },
-  review: {
-    agentRounds: 1,
-    reviewMode: false,
-    singleAgent: false,
-    consensusMode: true,
-  },
-  free: {
-    agentRounds: 1,
-    reviewMode: false,
-    singleAgent: false,
-    consensusMode: true,
   },
 };
 
-export function getTurnProfile(): ComposerTurnProfile {
-  const stored = localStorage.getItem(STORAGE_KEY);
-  const normalized = normalizeTurnProfile(stored);
-  if (stored !== normalized) {
-    localStorage.setItem(STORAGE_KEY, normalized);
-  }
-  return normalized;
+/** Map room_preset → client send roster config (fast/supervisor only). */
+export function turnProfileForRoomPreset(
+  presetId: string | null | undefined,
+): ComposerTurnProfile {
+  if (presetId === "fast") return "quick";
+  return "loop";
 }
 
-export function setTurnProfile(profile: ComposerTurnProfile): void {
-  localStorage.setItem(STORAGE_KEY, normalizeTurnProfile(profile));
+/** Legacy API / SSE aliases → client send profile. */
+export function normalizeTurnProfile(
+  profile: string | null | undefined,
+): ComposerTurnProfile {
+  if (profile === "quick" || profile === "fast") return "quick";
+  return "loop";
 }
 
 export function resolveTurnSend(
@@ -185,8 +52,7 @@ export function resolveTurnSend(
   reviewMode: boolean;
   consensusMode: boolean;
 } {
-  const normalized = normalizeTurnProfile(profile);
-  const cfg = TURN_PROFILE_CONFIG[normalized];
+  const cfg = PROFILE_CONFIG[profile];
   const agents = cfg.singleAgent
     ? selectedAgents.slice(0, 1)
     : [...selectedAgents];
@@ -196,22 +62,4 @@ export function resolveTurnSend(
     reviewMode: cfg.reviewMode,
     consensusMode: cfg.consensusMode,
   };
-}
-
-export function turnProfileHint(
-  profile: ComposerTurnProfile,
-  selectedAgents: string[],
-): string | null {
-  const normalized = normalizeTurnProfile(profile);
-  if (normalized === "quick" && selectedAgents.length > 1) {
-    return `빠른 · ${selectedAgents[0]}만 · R1`;
-  }
-  if (normalized === "team") {
-    return selectedAgents.length > 1
-      ? `팀 · ${selectedAgents.length}명 · R1 · plan 선택`
-      : "팀 · R1 · plan 선택";
-  }
-  return selectedAgents.length > 1
-    ? `루프 · ${selectedAgents.length}명 · plan 필수 · 검증`
-    : "루프 · plan 필수 · 검증";
 }

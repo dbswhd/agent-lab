@@ -57,18 +57,60 @@ def _result(
 
 def routing_contract(trace: dict[str, Any], case: dict[str, Any]) -> dict[str, Any] | None:
     expected = case.get("expected") or {}
-    if "category" not in expected:
+    contract_expected = expected.get("routing_contract")
+    if "category" not in expected and not isinstance(contract_expected, dict):
         return None
+
     category = trace.get("artifacts", {}).get("category") or {}
-    observed = category.get("value")
-    ok = observed == expected["category"]
-    evidence = [f"observed_category={observed!r}"]
-    if ok and "escalated_from" in expected:
-        observed_from = category.get("escalated_from")
-        ok = observed_from == expected["escalated_from"]
-        evidence.append(f"observed_escalated_from={observed_from!r}")
-    reason = "" if ok else f"expected category={expected.get('category')!r}, escalated_from={expected.get('escalated_from')!r}"
-    return _result("routing_contract", trace, case, passed=ok, score=1.0 if ok else 0.0, reason=reason, evidence=evidence)
+    turn_policy = trace.get("artifacts", {}).get("turn_policy") or {}
+    routing = turn_policy.get("routing_contract") if isinstance(turn_policy.get("routing_contract"), dict) else {}
+    failures: list[str] = []
+    evidence: list[str] = []
+
+    if "category" in expected:
+        observed = category.get("value")
+        evidence.append(f"observed_category={observed!r}")
+        if observed != expected["category"]:
+            failures.append(f"category={observed!r} expected={expected['category']!r}")
+        elif "escalated_from" in expected:
+            observed_from = category.get("escalated_from")
+            evidence.append(f"observed_escalated_from={observed_from!r}")
+            if observed_from != expected["escalated_from"]:
+                failures.append(
+                    f"escalated_from={observed_from!r} expected={expected['escalated_from']!r}",
+                )
+
+    if isinstance(contract_expected, dict):
+        _TURN_POLICY_EFFECT_KEYS = frozenset(
+            {
+                "init_plan_workflow",
+                "advance_plan_workflow",
+                "assign_task_owners",
+                "run_scribe",
+                "run_agent_round",
+            }
+        )
+        evidence.append(f"routing_contract={routing!r}")
+        for key, wanted in contract_expected.items():
+            if key in _TURN_POLICY_EFFECT_KEYS:
+                observed = turn_policy.get(key)
+            else:
+                observed = routing.get(key)
+            evidence.append(f"{key}={observed!r}")
+            if observed != wanted:
+                failures.append(f"{key}={observed!r} expected={wanted!r}")
+
+    ok = not failures
+    reason = "" if ok else "; ".join(failures)
+    return _result(
+        "routing_contract",
+        trace,
+        case,
+        passed=ok,
+        score=1.0 if ok else 0.0,
+        reason=reason,
+        evidence=evidence,
+    )
 
 
 def session_contract(trace: dict[str, Any], case: dict[str, Any]) -> dict[str, Any] | None:

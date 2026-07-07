@@ -87,6 +87,7 @@ def export_session_trace(session_dir: Path, *, case_id: str = "") -> dict[str, A
     agents = _as_list(run.get("agents"))
     mission_loop = _as_dict(run.get("mission_loop"))
     plan_workflow = _as_dict(run.get("plan_workflow"))
+    turn_policy = _as_dict(run.get("turn_policy"))
     verified_loop = _as_dict(run.get("verified_loop"))
     goal_loop = _as_dict(run.get("goal_loop"))
     succeeded_agents = _as_list(last_turn.get("succeeded_agents"))
@@ -276,6 +277,7 @@ def export_session_trace(session_dir: Path, *, case_id: str = "") -> dict[str, A
             "chat_message_count": chat_message_count,
             "trace_message_count": len(trace_rows),
             "plan_workflow": plan_workflow,
+            "turn_policy": turn_policy,
             "verified_loop": verified_loop,
             "goal_loop": goal_loop,
             "evidence_ledger": _as_dict(run.get("evidence_ledger")),

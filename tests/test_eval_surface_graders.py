@@ -68,6 +68,38 @@ def test_routing_contract_fail_on_mismatch() -> None:
     assert result["pass"] is False
 
 
+def test_routing_contract_checks_turn_policy_snapshot() -> None:
+    trace = _trace(
+        turn_policy={
+            "init_plan_workflow": False,
+            "routing_contract": {
+                "route_category": "quick",
+                "clarity_short_circuit": True,
+                "skip_fsm_bootstrap": True,
+            },
+        },
+    )
+    case = {
+        "case_id": "T",
+        "expected": {
+            "routing_contract": {
+                "clarity_short_circuit": True,
+                "skip_fsm_bootstrap": True,
+                "init_plan_workflow": False,
+            },
+        },
+    }
+    result = _result(routing_contract(trace, case))
+    assert result["pass"] is True
+
+
+def test_routing_contract_turn_policy_only_without_category() -> None:
+    trace = _trace(turn_policy={"routing_contract": {"discuss_light": True}})
+    case = {"case_id": "T", "expected": {"routing_contract": {"discuss_light": True}}}
+    result = _result(routing_contract(trace, case))
+    assert result["pass"] is True
+
+
 # --- session_contract ---------------------------------------------------------
 
 

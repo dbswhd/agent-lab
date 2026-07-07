@@ -224,6 +224,16 @@ class TurnSignals:
         )
 
 
+    def routing_contract_snapshot(self) -> dict[str, Any]:
+        """TurnContract routing signals persisted for trace / eval (P1)."""
+        return {
+            "route_category": self.route_category,
+            "discuss_light": self.discuss_light,
+            "clarity_short_circuit": self.clarity_short_circuit,
+            "skip_fsm_bootstrap": skip_plan_fsm_bootstrap(self),
+        }
+
+
 @dataclass(frozen=True, slots=True)
 class TurnEffects:
     run_agent_round: bool = True
@@ -244,6 +254,17 @@ class TurnEffects:
             "assign_task_owners": self.assign_task_owners,
             "turn_kind": self.turn_kind,
         }
+
+
+def build_turn_policy_record(
+    effects: TurnEffects,
+    signals: TurnSignals | None = None,
+) -> dict[str, Any]:
+    """Merge TurnEffects with optional TurnContract routing snapshot."""
+    payload = effects.to_turn_policy_dict()
+    if signals is not None:
+        payload["routing_contract"] = signals.routing_contract_snapshot()
+    return payload
 
 
 @dataclass
@@ -367,7 +388,7 @@ def prepare_turn_policy_before_agent_round(
     )
     room_preset_hint = signals.room_preset
     effects = TurnPolicyEngine.resolve(signals)
-    persist_turn_policy_on_run_meta(run_meta, effects)
+    persist_turn_policy_on_run_meta(run_meta, effects, signals=signals)
     if folder.is_dir() and effects.init_plan_workflow and not is_plan_workflow_active(run_meta):
         init_plan_workflow_on_plan_send(folder)
         run_meta = read_run_meta(folder)
@@ -378,7 +399,7 @@ def prepare_turn_policy_before_agent_round(
             supervisor_first_turn=human_turn <= 1,
         )
         effects = TurnPolicyEngine.resolve(signals)
-        persist_turn_policy_on_run_meta(run_meta, effects)
+        persist_turn_policy_on_run_meta(run_meta, effects, signals=signals)
     snap_tp = run_meta.get("turn_policy")
     snap_tk = run_meta.get("turn_kind")
     snap_rp = run_meta.get("room_preset") or room_preset_hint
@@ -429,12 +450,17 @@ def is_discuss_only_for_run_meta(run_meta: RunStateLike | None) -> bool:
     )
 
 
-def persist_turn_policy_on_run_meta(run_meta: RunStateLike, effects: TurnEffects) -> None:
+def persist_turn_policy_on_run_meta(
+    run_meta: RunStateLike,
+    effects: TurnEffects,
+    *,
+    signals: TurnSignals | None = None,
+) -> None:
     from agent_lab.run.meta import stamp_run_meta
 
     stamp_run_meta(
         run_meta,
-        turn_policy=effects.to_turn_policy_dict(),
+        turn_policy=build_turn_policy_record(effects, signals),
         turn_kind=effects.turn_kind,
     )
 
@@ -660,7 +686,7 @@ def apply_turn_effects(
             run_meta=meta,
         )
 
-    persist_turn_policy_on_run_meta(meta, effects)
+    persist_turn_policy_on_run_meta(meta, effects, signals=signals)
 
     if folder is None or not folder.is_dir():
         return ApplyTurnEffectsResult(

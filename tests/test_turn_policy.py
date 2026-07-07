@@ -311,6 +311,58 @@ def test_turn_effects_to_turn_policy_dict() -> None:
     assert payload["turn_kind"] == "plan_side_effect"
 
 
+def test_build_turn_policy_record_includes_routing_contract() -> None:
+    from agent_lab.room.turn_policy import build_turn_policy_record
+
+    signals = TurnSignals(
+        room_preset="supervisor",
+        supervisor_first_turn=True,
+        route_category="standard",
+        discuss_light=True,
+        clarity_short_circuit=True,
+    )
+    effects = TurnPolicyEngine.resolve(signals)
+    payload = build_turn_policy_record(effects, signals)
+    assert payload["init_plan_workflow"] is False
+    assert payload["routing_contract"] == {
+        "route_category": "standard",
+        "discuss_light": True,
+        "clarity_short_circuit": True,
+        "skip_fsm_bootstrap": True,
+    }
+
+
+def test_prepare_turn_policy_persists_routing_contract(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from agent_lab.room.turn_policy import prepare_turn_policy_before_agent_round
+    from agent_lab.run.meta import read_run_meta
+
+    monkeypatch.setenv("AGENT_LAB_TURN_POLICY", "1")
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    (folder / "run.json").write_text("{}", encoding="utf-8")
+    run_meta = read_run_meta(folder)
+    run_meta["room_preset"] = "supervisor"
+    run_meta["discuss_light"] = True
+
+    topic = "room.py에서 consensus 라운드 cap 기본값이 뭐야?"
+    run_meta, _effects = prepare_turn_policy_before_agent_round(
+        folder,
+        run_meta,
+        human_turn=1,
+        topic=topic,
+    )
+    tp = read_run_meta(folder).get("turn_policy")
+    assert isinstance(tp, dict)
+    contract = tp.get("routing_contract")
+    assert isinstance(contract, dict)
+    assert contract.get("clarity_short_circuit") is True
+    assert contract.get("skip_fsm_bootstrap") is True
+    assert tp.get("init_plan_workflow") is False
+
+
 def test_turn_policy_default_on_without_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("AGENT_LAB_TURN_POLICY", raising=False)
     assert turn_policy_enabled() is True

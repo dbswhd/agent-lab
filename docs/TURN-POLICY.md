@@ -44,6 +44,11 @@ Human gates unchanged: plan approve, execute 409, worktree, `ask_human` / `propo
 | `cancelled` | run control |
 | `supervisor_first_turn` | bootstrap FSM INTAKE→CLARIFY |
 | `skill_intent` | slash `/plan` pending · API form · MCP `propose_build` stamp · `[PROPOSED:]` ≥ `AGENT_LAB_PROPOSED_SKILL_INTENT_THRESHOLD` (default 3) |
+| `route_category` | `topic_router` category for this turn (P1 TurnContract) |
+| `discuss_light` | `run_meta.discuss_light` — supervisor casual discuss, 1 wave |
+| `clarity_short_circuit` | concrete anchor / smoke intent — skip CLARIFY |
+
+**P1 snapshot:** `persist_turn_policy_on_run_meta` writes `turn_policy.routing_contract` on `run.json` (`route_category`, `discuss_light`, `clarity_short_circuit`, `skip_fsm_bootstrap`) for eval trace / `routing_contract` grader.
 
 **Removed (P1):** ~~`legacy_synthesize_hint`~~ — API `mode=plan` / `synthesize=true` no longer opens Scribe.
 

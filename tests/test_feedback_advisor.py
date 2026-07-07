@@ -366,6 +366,7 @@ def test_explore_decision_deterministic_and_bounds() -> None:
     a = _explore_decision("topic", 5, 0.5)
     b = _explore_decision("topic", 5, 0.5)
     assert a == b  # reproducible (no global RNG)
+    assert any(_explore_decision("topic", n, 0.1) for n in range(1, 21))
 
 
 def test_mutate_combo_changes_one_role_to_valid() -> None:

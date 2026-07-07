@@ -201,7 +201,7 @@ T2는 오픈소스 생태계 없이는 달성 불가 — N8 “슈퍼 샘플” 
 |---|-----------|------|
 | 1 | **레벨별 표본** — 집계에 쓰이는 ledger row 중, 각 `autonomy_level`(L0~L3)마다 **n ≥ 10** | `make feedback-report JSON=1` → 해당 level의 rate가 `null`이 아님 (또는 raw row count ≥ 10) |
 | 2 | **수집 경로** — supervisor preset 실세션 dogfood (mock 아님) | `sessions/` live outcome이 `.agent-lab/outcomes.jsonl`에 append |
-| 3 | **기록** — 분기 1회 이상 리포트 스냅샷 보관 | `make feedback-report JSON=1` 출력을 이슈·`sessions/_benchmark/reports/` 또는 팀 노트에 날짜·`git rev`와 함께 저장 |
+| 3 | **기록** — 분기 1회 이상 리포트 스냅샷 보관 | `make feedback-report-snapshot`으로 `sessions/_benchmark/reports/`에 JSON 저장 (또는 `make feedback-report JSON=1` 출력을 팀 노트에 날짜·`git rev`와 함께 보관) |
 | 4 | **해석** — L2→L3 승격용 in-session `escalation_rate ≤ 5%`와 **별개** | 본 KPI는 **관측·추세**만; D3 닫힘에 rate 목표치 강제 없음 (D4에서 목표 검토) |
 
 **판독 명령:**
@@ -209,6 +209,9 @@ T2는 오픈소스 생태계 없이는 달성 불가 — N8 “슈퍼 샘플” 
 ```bash
 make feedback-report JSON=1 | jq '.escalation_rate_by_level, .total'
 # 레벨별 null → 해당 level n < 10 (또는 tagged row 없음)
+
+make feedback-report-snapshot
+# sessions/_benchmark/reports/feedback-report-*.json 저장
 ```
 
 **F11과 분리:** D3 닫힘은 **`RunState` 타입화(F11 · ADR §3.5 Stage 1)를 기다리지 않는다.** F11은 N4와 **병행 별도 스테이지** — 승격·KPI는 `dict` `run_meta` 위에서 이미 D2 검증됨; RunState 전환은 타입 안전·리팩터용이며 N4 dogfood 증거의 선행조건이 **아님**.

@@ -167,6 +167,11 @@ AGENT_LAB_FEEDBACK_EXPLORE_RATE=1.0 make dogfood-feedback-mock
 make feedback-report JSON=1
 ```
 
+2026-07-07 로컬 mock 확인:
+
+- 반복 mock dogfood 4회 기준 `turn_source_counts.explore = 1` 관측
+- 아직 `advisor_lift.explore_vs_default`는 `null`이며, 이는 **표본 부족**을 뜻한다
+
 해석 기준 ([EVAL-SURFACE-SUPER-SAMPLE-PLAN.md](./EVAL-SURFACE-SUPER-SAMPLE-PLAN.md) Canonical Definitions 참조):
 
 - `advisor_lift.explore_vs_default == null` → explore 표본이 `MIN_SAMPLE` 미만, 즉 **비교군 없음** (효과가 없다는 뜻이 아님).

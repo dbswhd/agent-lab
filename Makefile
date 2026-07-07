@@ -368,6 +368,10 @@ dogfood-feedback-mock:
 feedback-report:
 	.venv/bin/python scripts/feedback_report.py --root $(if $(ROOT),$(ROOT),.) $(if $(JSON),--json,)
 
+feedback-report-snapshot:
+	.venv/bin/python scripts/feedback_report_snapshot.py --root $(if $(ROOT),$(ROOT),.) \
+	  --out-dir $(if $(OUT_DIR),$(OUT_DIR),sessions/_benchmark/reports) $(if $(JSON),--json,)
+
 # Eval Surface v1 — case → trace → grader → report (docs/EVAL-SURFACE-V1-PLAN.md)
 eval-surface-local:
 	.venv/bin/python -m evals.run_local --cases evals/cases.jsonl --out evals/results/latest.json

@@ -571,7 +571,7 @@ flowchart LR
 | P | 갭 | 참고 샘플 | Agent Lab 액션 | 닫힘 기준 |
 |---|-----|-----------|----------------|-----------|
 | **P0** | S1 lift live 증거 | — | supervisor dogfood + `make feedback-report JSON=1` | `by_source.history.n`≥3, lift 관측 기록 |
-| **P0** | explore 비교군 | EVAL-PROGRAM §S1.5 | `AGENT_LAB_FEEDBACK_EXPLORE_RATE=0.1` dogfood | `turn_source_counts.explore`>0 |
+| **P0** | explore 비교군 | EVAL-PROGRAM §S1.5 | `AGENT_LAB_FEEDBACK_EXPLORE_RATE=0.1` dogfood | `turn_source_counts.explore`>0 (**2026-07-07 mock 관측:** `1`) |
 | **P1** | trace completeness 해석/유지 | — | case-type-aware grader(`trace_profile`) 유지 + 신규 regression은 최소 plan/execute/oracle 신호 보존 | **2026-07-07 기준선:** `trace_completeness_rate=1.0`, 10개 eval case 전부 `trace_completeness=1.0`; `M4/L1`는 discuss-only semantics 유지 + `trace_profile`로 해석 — [M4-L1-DISCUSS-ONLY-TRACE-DECISION.md](./M4-L1-DISCUSS-ONLY-TRACE-DECISION.md) |
 | **P1** | L3 autonomy 미증명 | Codex approval | dogfood `escalation_rate_by_level` n≥10/level | [NORTH-STAR §1.4.1](./NORTH-STAR.md) |
 | **P2** | durable task queue 없음 | **Hermes Kanban** | spike: mission board ↔ SQLite task_events (F11 대체) | no `run_meta` god-object 경로 1개 |
@@ -638,6 +638,7 @@ make ci
 make eval-surface-local
 make eval-surface-check
 make feedback-report JSON=1
+make feedback-report-snapshot
 make dogfood-feedback-mock
 make emergence-bench-check
 make quickstart-verify

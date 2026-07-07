@@ -141,16 +141,18 @@ def _explore_rate() -> float:
 def _explore_decision(topic: str, n: int, epsilon: float) -> bool:
     """Deterministic ε-greedy gate — no global RNG (reproducible in tests).
 
-    Maps a stable hash of (topic, sample count) into [0,1); explores when that
-    value falls below ε. ε<=0 never explores (OFF-parity); ε>=1 always explores.
+    Uses a topic-stable offset plus a recurring stride so repeated runs over the
+    same benchmark set eventually produce explore rows. This preserves OFF-parity
+    at ε=0, force-explore at ε>=1, and keeps the schedule reproducible.
     """
     if epsilon <= 0.0:
         return False
     if epsilon >= 1.0:
         return True
-    digest = hashlib.sha1(f"{topic}:{n}".encode("utf-8")).hexdigest()
-    bucket = int(digest[:8], 16) / float(0x100000000)
-    return bucket < epsilon
+    stride = max(1, round(1.0 / epsilon))
+    digest = hashlib.sha1(topic.encode("utf-8")).hexdigest()
+    offset = int(digest[:8], 16) % stride
+    return n % stride == offset
 
 
 def _mutate_combo(roles: dict[str, str]) -> dict[str, str]:

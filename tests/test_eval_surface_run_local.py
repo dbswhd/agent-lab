@@ -51,6 +51,16 @@ def test_generated_cases_enforce_routing_session_and_quality_contracts() -> None
         assert "generated_mock_quality" in grader_names
 
 
+def test_generated_cases_have_richer_trace_completeness() -> None:
+    cases = load_cases(_CASES_PATH)
+    report = build_report(cases, regression_dir=REGRESSION_DIR)
+    generated = {c["case_id"]: c for c in report["cases"] if c["session_source"] == "generated_mock"}
+    for result in generated.values():
+        trace_scores = [g["score"] for g in result["graders"] if g["grader"] == "trace_completeness"]
+        assert trace_scores
+        assert trace_scores[0] >= 0.85
+
+
 def test_m3_block_gates_execute() -> None:
     cases = [c for c in load_cases(_CASES_PATH) if c["case_id"] == "M3"]
     report = build_report(cases, regression_dir=REGRESSION_DIR)

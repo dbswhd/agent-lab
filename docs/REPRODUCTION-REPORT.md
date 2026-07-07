@@ -97,7 +97,8 @@ make eval-surface-local
     "t0": {
       "routing_pass_rate": 1.0,
       "human_gate_bypass_count": 0,
-      "trace_completeness_rate": 0.39,   // 기존 sessions/_regression fixture엔 trace.jsonl이 없어 낮게 나오는 게 정상
+      "oracle_verdict_coverage": 1.0,
+      "trace_completeness_rate": 0.7778, // current mock baseline: exporter fallback + generated S-case trace enrichment + key regression evidence
       "objection_flow_pass_rate": 1.0
     },
     "t1": {
@@ -109,6 +110,15 @@ make eval-surface-local
 ```
 
 **PASS 기준 (clean clone, mock-only):** `make eval-surface-local` 종료 코드 0, 즉 `summary.failed == []`이며 `summary.graded == 10`, `summary.skipped == 0`이다. S1/S2/S3은 committed fixture 대신 `evals/cases.jsonl`의 `mock_run` 설정으로 임시 sessions directory에 deterministic mock session을 생성해 `session_source: "generated_mock"`으로 채점한다. 이 generated case들은 quick/standard category, turn profile, workflow id, required spans, quick cursor subset, S3 role plan, generated mock quality(topic echo, 도메인 topic terms, completed status, full agent roster/success, message/reply count, parse-error-free profile route, category signals)까지 검증한다.
+
+**현재 기준선 (2026-07-07):**
+
+- `routing_pass_rate = 1.0`
+- `human_gate_bypass_count = 0`
+- `oracle_verdict_coverage = 1.0`
+- `trace_completeness_rate = 0.7778`
+- `trace_completeness_interpretation = partial_coverage_expected_for_legacy_regression_fixtures`
+- generated mock `S1/S2/S3`의 `trace_completeness = 1.0`
 
 ```bash
 # 반복 작업용 narrow lane: tests + ruff + basedpyright + local report

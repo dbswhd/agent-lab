@@ -15,14 +15,64 @@
       "ts": "2026-06-10T00:00:01+00:00"
     }
   ],
-  "actions": [],
-  "approvals": [],
-  "executions": [],
+  "actions": [
+    {
+      "action_id": "plan-action-now-1",
+      "index": 1,
+      "kind": "now",
+      "what": "Record evidence ledger events",
+      "where": "`src/auth.py`",
+      "verify": "evidence ledger + oracle pass"
+    }
+  ],
+  "approvals": [
+    {
+      "id": "appr-evidence-ledger-1",
+      "kind": "merge_approve",
+      "status": "approved",
+      "by": "human",
+      "at": "2026-06-10T00:00:01+00:00"
+    }
+  ],
+  "executions": [
+    {
+      "id": "exec-evidence-ledger-1",
+      "action_id": "plan-action-now-1",
+      "action_index": 1,
+      "action_kind": "now",
+      "status": "merged",
+      "isolation_effective": "worktree",
+      "action_verify": "evidence ledger + oracle pass",
+      "oracle_verdict": "pass",
+      "verify_after_merge": {
+        "status": "passed",
+        "source": "mock_oracle",
+        "oracle": {
+          "verdict": "pass",
+          "detail": "evidence ledger stream verified"
+        }
+      },
+      "oracle": {
+        "verdict": "pass",
+        "detail": "evidence ledger stream verified",
+        "source": "mock"
+      },
+      "merge": {
+        "status": "merged",
+        "commit_sha": "evidenceledgerfixture"
+      }
+    }
+  ],
   "mission_loop": {
     "enabled": true,
-    "phase": "MERGE_REVIEW",
+    "phase": "VERIFY",
     "plan_gate": {"status": "ok"},
-    "circuit_breaker": false
+    "circuit_breaker": false,
+    "last_verify": {
+      "status": "pass",
+      "execution_id": "exec-evidence-ledger-1",
+      "at": "2026-06-10T00:00:02+00:00"
+    }
   },
   "evidence_ledger": {
     "path_suffix": "evidence.jsonl",

@@ -15,6 +15,23 @@
       "status": "completed"
     }
   ],
+  "plan_workflow": {
+    "enabled": true,
+    "phase": "APPROVED",
+    "approved_at": "2026-06-01T00:00:00+00:00",
+    "approved_by": "human",
+    "plan_hash_at_approval": "fixture-worktree-merge-ok"
+  },
+  "verified_loop": {
+    "status": "running",
+    "loop_goal": {
+      "text": "merge worktree fixture",
+      "completion_promise": "DONE",
+      "criteria": "pytest",
+      "approved_at": "2026-06-01T00:00:00+00:00",
+      "approved_by": "human"
+    }
+  },
   "actions": [
     {
       "action_id": "plan-action-now-1",
@@ -25,7 +42,15 @@
       "verify": "pytest"
     }
   ],
-  "approvals": [],
+  "approvals": [
+    {
+      "id": "appr-worktree-merge-ok",
+      "kind": "merge_approve",
+      "status": "approved",
+      "by": "human",
+      "at": "2026-06-01T00:00:01+00:00"
+    }
+  ],
   "executions": [
     {
       "id": "exec-merge-ok",
@@ -39,6 +64,20 @@
       "base_sha": "1111111111111111111111111111111111111111",
       "exec_branch": "agent-lab/fixture-now-1",
       "worktree_path": "/tmp/agent-lab-fixture/session/worktrees/exec-merge-ok",
+      "oracle_verdict": "pass",
+      "verify_after_merge": {
+        "status": "passed",
+        "source": "mock_oracle",
+        "oracle": {
+          "verdict": "pass",
+          "detail": "fixture merge verified"
+        }
+      },
+      "oracle": {
+        "verdict": "pass",
+        "detail": "fixture merge verified",
+        "source": "mock"
+      },
       "merge": {
         "status": "merged",
         "strategy": "merge",

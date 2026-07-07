@@ -11,6 +11,8 @@
 | 질문 | 문서 |
 |------|------|
 | **현재 구조 · 플로우 (첫 진입점)** | [FLOW.md](./FLOW.md) |
+| **4과정 workflow · 동적 적응 · 슈퍼샘플 비교 (작업 SSOT)** | [WORKFLOW-DYNAMIC-REFERENCE.md](./WORKFLOW-DYNAMIC-REFERENCE.md) |
+| **새 작업 시작용 착수 템플릿** | [WORK-TASK-KICKOFF-TEMPLATE.md](./WORK-TASK-KICKOFF-TEMPLATE.md) |
 | 시스템 전체 모듈·레이어 지도 | [ARCHITECTURE.md](./ARCHITECTURE.md) |
 | Desktop packaging baseline · hybrid 전 복귀점 | [PACKAGING-BASELINE.md](./PACKAGING-BASELINE.md) |
 | Hybrid Rust + Python ADR (Track 1 proceed / Track 2 conditional) | [HYBRID-RUST-PYTHON-ADR.md](./HYBRID-RUST-PYTHON-ADR.md) |
@@ -53,6 +55,8 @@
 | Doc | 용도 |
 |-----|------|
 | [FLOW.md](./FLOW.md) | **현재 구조·플로우** — Discuss→Plan→Execute→Verify 전체 흐름, 역할 오케스트레이션, Human gates |
+| [WORKFLOW-DYNAMIC-REFERENCE.md](./WORKFLOW-DYNAMIC-REFERENCE.md) | **작업 SSOT** — 4과정 상세·Eval·동적 적응·슈퍼샘플 비교·백로그·명령 |
+| [WORK-TASK-KICKOFF-TEMPLATE.md](./WORK-TASK-KICKOFF-TEMPLATE.md) | **작업 착수 템플릿** — NORTH-STAR / workflow / eval 기준으로 범위·검증·닫힘 정의 |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | **시스템 지도** — 백엔드 라우터, 코어 모듈, 프론트 컴포넌트, UX 플로우, 전략 포지션 §0 |
 | [USER-GUIDE.md](./USER-GUIDE.md) | 제품 동작, env 플래그, Room · execute · UI 상세 |
 | [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md) | **shipped 여부** — 증거 경로, partial/future 큐 |

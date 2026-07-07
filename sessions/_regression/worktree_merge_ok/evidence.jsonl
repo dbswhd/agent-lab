@@ -1,0 +1,3 @@
+{"phase": "DRY_RUN", "kind": "dry_run", "detail": "fixture dry-run complete", "session_id": "worktree_merge_ok", "at": "2026-06-01T00:00:00+00:00"}
+{"phase": "MERGE", "kind": "merge_approve", "detail": "human approved merge", "session_id": "worktree_merge_ok", "at": "2026-06-01T00:00:01+00:00"}
+{"phase": "VERIFY", "kind": "oracle_verify", "detail": "fixture merge verified", "session_id": "worktree_merge_ok", "at": "2026-06-01T00:00:02+00:00"}

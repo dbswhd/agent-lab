@@ -5,6 +5,7 @@ import type { PendingFile } from "./ChatComposer";
 import { ChatComposer } from "./ChatComposer";
 import { ComposerEventStack } from "./ComposerEventStack";
 import { ComposerPreflightBar } from "./ComposerPreflightBar";
+import { ComposerStrip } from "./ComposerStrip";
 import { ReadinessComposerBar } from "./ReadinessComposerBar";
 import { SlashCommandDivider } from "./SlashCommandDivider";
 import type { ReadinessResponse } from "../api/client";
@@ -134,49 +135,37 @@ export function RoomChatComposerShell({
           planWorkflowActive &&
           (planWorkflowPhase === "CLARIFY" || planWorkflowPhase === "INTAKE")
         ) ? (
-          <div
-            className="clarifier-banner"
+          <ComposerStrip
+            tone="accent"
             role="region"
-            aria-label="확인 질문"
-          >
-            <strong className="clarifier-banner__title">
-              {clarifierInterview?.plan_mode ? "계획 확인 질문" : "확인 질문"}
-            </strong>
-            <ul>
-              {(clarifierInterview?.questions?.length
-                ? clarifierInterview.questions
-                : clarifierQuestions.map((prompt) => ({
-                    id: prompt,
-                    prompt,
-                  }))
-              ).map((q) => (
-                <li key={q.id ?? q.prompt}>
-                  {"category" in q && q.category ? (
-                    <span className="clarifier-banner__category">
-                      {q.category}
-                    </span>
-                  ) : null}
-                  {q.prompt ?? ""}
-                </li>
-              ))}
-            </ul>
-            <p className="clarifier-banner__hint">
-              답을 메시지에 포함해 다시 내면 에이전트가 시작됩니다.
-            </p>
-          </div>
+            ariaLabel="확인 질문"
+            title={clarifierInterview?.plan_mode ? "계획 확인 질문" : "확인 질문"}
+            description="답을 메시지에 포함해 다시 내면 에이전트가 시작됩니다."
+            items={(clarifierInterview?.questions?.length
+              ? clarifierInterview.questions
+              : clarifierQuestions.map((prompt) => ({ id: prompt, prompt }))
+            ).map((q) => (
+              <>
+                {"category" in q && q.category ? (
+                  <span className="clarifier-category">{q.category}</span>
+                ) : null}
+                {q.prompt ?? ""}
+              </>
+            ))}
+          />
         ) : null}
 
         {longRunning && running ? (
-          <div className="room-run-status" role="status">
-            <span className="room-run-status__hint">장시간 실행 중...</span>
-            <button
-              type="button"
-              className="mac-btn-secondary mac-btn-secondary--compact"
-              onClick={onStop}
-            >
-              답변 중지
-            </button>
-          </div>
+          <ComposerStrip
+            tone="neutral"
+            compact
+            description="장시간 실행 중..."
+            actions={
+              <button type="button" className="btn btn--sm" onClick={onStop}>
+                답변 중지
+              </button>
+            }
+          />
         ) : null}
 
         {sessionId && eventStack ? (
@@ -185,9 +174,7 @@ export function RoomChatComposerShell({
 
         {sendReceipt &&
         shouldShowSendReceiptOnChatTab(sendReceipt, sendReceiptRaw) ? (
-          <div className="composer-send-receipt" role="status">
-            {sendReceipt}
-          </div>
+          <ComposerStrip tone="ghost" compact description={sendReceipt} />
         ) : null}
 
         <ChatComposer

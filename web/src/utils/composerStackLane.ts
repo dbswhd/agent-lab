@@ -20,13 +20,18 @@ export type ComposerStackLaneInput = {
   showWorkSurface: boolean;
 };
 
-/** Lower index = higher priority. Matches backend gates (inbox before build GO). */
+/** Lower index = higher priority.
+ *
+ * Decision surfaces that unblock the current workflow come first; broader inbox
+ * asks and informational surfaces follow after. This keeps the composer stack
+ * aligned with "one current decision at a time".
+ */
 export const COMPOSER_STACK_LANE_ORDER: readonly ComposerStackLane[] = [
-  "inbox",
   "plan_approval",
-  "clarify",
   "execute_queue",
   "consensus",
+  "inbox",
+  "clarify",
   "work",
 ] as const;
 

@@ -3931,11 +3931,25 @@
   color: var(--label-primary);
   flex: 1;
 }
+.inbox-row__lead {
+  font-size: var(--text-micro);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--label-tertiary);
+}
 /* "Why this gate fired" — quiet sub-label under the subject (trigger · FORK) */
 .inbox-row__why {
   font-size: var(--text-micro);
   color: var(--label-tertiary);
   letter-spacing: 0.02em;
+}
+.inbox-row__meta-inline {
+  font-size: var(--text-micro);
+  color: var(--label-quaternary);
+  line-height: 1.4;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .inbox-row__time {
   font-size: var(--text-micro);
@@ -3961,6 +3975,9 @@
   gap: var(--space-6);
   flex-wrap: wrap;
   align-items: flex-start;
+}
+.inbox-row__options--approval {
+  padding-top: var(--space-4);
 }
 .inbox-row__input {
   flex: 1 1 100%;
@@ -6387,22 +6404,6 @@
   flex-direction: column;
   gap: 2px;
 }
-.room-run-status {
-  display: flex;
-  align-items: center;
-  gap: var(--space-8);
-  padding: var(--space-8) var(--space-12);
-  font-size: var(--text-caption);
-  color: var(--label-secondary);
-}
-.room-run-status__hint {
-  font-size: var(--text-caption);
-  color: var(--label-tertiary);
-  margin-left: auto;
-}
-.room-run-status__unlock {
-  margin-left: auto;
-}
 .run-entry__type--agent {
   color: var(--label-secondary);
 }
@@ -7889,84 +7890,10 @@ button.plan-doc__ref--link:hover {
   display: block;
 }
 
-/* clarifier + error banners */
-.clarifier-banner {
-  padding: var(--space-12);
-  border-radius: var(--radius-md);
-  background: var(--accent-softer);
-  border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-}
-.clarifier-banner__title {
-  color: var(--accent);
-  font-size: var(--text-footnote);
-}
-.clarifier-banner__category {
-  display: inline-block;
-  margin-right: var(--space-6);
-  padding: 2px 6px;
-  border-radius: var(--radius-sm);
-  background: var(--surface-hover);
-  color: var(--label-secondary);
-  font-size: var(--text-micro);
-  font-weight: var(--weight-semibold);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-.clarifier-banner__hint {
-  margin: 0;
-  font-size: var(--text-caption);
-  color: var(--label-tertiary);
-}
-.plan-workflow-banner {
-  margin-bottom: var(--space-8);
-}
-.plan-workflow-banner__head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-6);
-}
-.plan-workflow-banner__badge {
-  font-size: var(--text-micro);
-  font-weight: var(--weight-semibold);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--label-secondary);
-  padding: 2px 6px;
-  border-radius: var(--radius-sm);
-  background: var(--surface-hover);
-}
-.plan-workflow-banner__badge--active {
-  color: var(--accent);
-}
-.plan-workflow-banner__meta {
-  margin: var(--space-4) 0 0;
-  font-size: var(--text-micro);
-  color: var(--label-tertiary);
-}
-.plan-workflow-banner__inbox {
-  margin-top: var(--space-8);
-}
-.plan-workflow-banner--compact {
-  margin-bottom: var(--space-6);
-  padding: var(--space-8) var(--space-10);
-}
-.plan-workflow-banner--pending {
-  border-left: 3px solid var(--accent);
-}
-.plan-workflow-banner--approved {
-  border-left: 3px solid var(--semantic-success, #2ecc71);
-}
 .plan-workflow-banner__warn {
   margin: var(--space-4) 0 0;
   font-size: var(--text-caption);
   color: var(--semantic-warning, #c97a00);
-}
-.plan-workflow-banner__tasks {
-  margin-top: var(--space-8);
 }
 .plan-approval-reject {
   display: flex;
@@ -8215,7 +8142,6 @@ button.plan-doc__ref--link:hover {
 }
 
 /* composer satellites */
-.composer-send-receipt,
 .composer-command-hint {
   margin: 0;
   font-size: var(--text-caption);

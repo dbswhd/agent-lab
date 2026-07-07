@@ -12,6 +12,7 @@ import { WorkToolPanel, type WorkFocusTarget } from "./WorkToolPanel";
 import { HumanInboxPanel } from "./HumanInboxPanel";
 import { ExecuteQueueBar } from "./ExecuteQueueBar";
 import { ConsensusDryRunGateBar } from "./ConsensusDryRunGateBar";
+import { ComposerStrip } from "./ComposerStrip";
 import { WorkPhaseChip } from "./WorkPhaseChip";
 import {
   WorkPlanApprovalSection,
@@ -228,6 +229,15 @@ export function ComposerEventStack({
   );
 
   const clarifyNoticeLabel = planWorkflowNoticeLabel(workflowNotice, msg);
+  const clarifyStripTitle = ko ? "명료화 필요" : "Clarification needed";
+  const clarifyStripDescription =
+    workflowPhase === "INTAKE"
+      ? ko
+        ? "계획을 이어가기 전에 입력을 더 분명히 해야 합니다."
+        : "The workflow needs clearer input before it can continue."
+      : ko
+        ? "계획을 진행하기 전에 누락된 정보를 정리하는 단계입니다."
+        : "The workflow is collecting missing context before continuing.";
 
   const workPhase = useMemo(() => {
     const executions =
@@ -318,7 +328,16 @@ export function ComposerEventStack({
 
         {activeLane === "clarify" && clarifyNoticeLabel ? (
           <div className="composer-event-stack__section workspace-event-strip">
-            <p className="plan-workflow-banner__notice">{clarifyNoticeLabel}</p>
+            <ComposerStrip
+              tone="warn"
+              role="status"
+              ariaLabel={ko ? "명료화 상태" : "Clarification status"}
+              badge={ko ? "Clarify" : "Clarify"}
+              title={clarifyStripTitle}
+              description={clarifyStripDescription}
+              items={[clarifyNoticeLabel]}
+              compact
+            />
           </div>
         ) : null}
 

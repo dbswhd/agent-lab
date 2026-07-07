@@ -23,6 +23,25 @@ describe("composerStackLane", () => {
     expect(pendingComposerStackLanes(input)).toEqual(["inbox", "work"]);
   });
 
+  it("prioritizes workflow approvals over generic inbox asks", () => {
+    const input = {
+      ...base,
+      inboxPendingCount: 2,
+      planApprovalEnabled: true,
+      showExecuteQueue: true,
+      execPending: true,
+      showConsensusGate: true,
+      consensusProposal: {},
+    };
+    expect(resolveActiveComposerStackLane(input)).toBe("plan_approval");
+    expect(pendingComposerStackLanes(input)).toEqual([
+      "plan_approval",
+      "execute_queue",
+      "consensus",
+      "inbox",
+    ]);
+  });
+
   it("shows plan approval before execute queue", () => {
     const input = {
       ...base,
@@ -41,6 +60,21 @@ describe("composerStackLane", () => {
       execPending: true,
     };
     expect(resolveActiveComposerStackLane(input)).toBe("execute_queue");
+  });
+
+  it("shows consensus before inbox and work when dry-run review is pending", () => {
+    const input = {
+      ...base,
+      inboxPendingCount: 1,
+      showConsensusGate: true,
+      consensusProposal: {},
+    };
+    expect(resolveActiveComposerStackLane(input)).toBe("consensus");
+    expect(pendingComposerStackLanes(input)).toEqual([
+      "consensus",
+      "inbox",
+      "work",
+    ]);
   });
 
   it("shows work after inbox clears", () => {

@@ -730,8 +730,7 @@
 .composer-wrap > .composer-activity-panel,
 .composer-wrap > .composer-question-surface,
 .composer-wrap > .composer-notice-card,
-.composer-wrap > .clarifier-banner,
-.composer-wrap > .composer-send-receipt,
+.composer-wrap > .composer-strip,
 .composer-wrap > .composer-command-hint {
   width: var(--composer-column, min(100%, var(--composer-max)));
   max-width: var(--composer-column, var(--composer-max));
@@ -816,9 +815,8 @@
   gap: var(--space-4);
 }
 
-.composer-wrap > .clarifier-banner,
+.composer-wrap > .composer-strip,
 .composer-wrap > .error-banner,
-.composer-wrap > .composer-send-receipt,
 .composer-wrap > .composer-inbox-pending,
 .composer-wrap > .composer-question-surface,
 .composer-wrap > .composer-command-hint,

@@ -206,8 +206,32 @@ function InboxRow({
   const sourceBadge = inboxSourceBadge(item, ko);
   const kindLabel = inboxKindLabel(item, ko);
   const trigger = triggerBadge(item.trigger, ko);
+  const questionLead = usesGenericOptionsUi(item.kind)
+    ? ko
+      ? "답변 필요"
+      : "Answer needed"
+    : null;
+  const approvalLead =
+    !usesGenericOptionsUi(item.kind) && item.kind === "skill_draft"
+      ? ko
+        ? "승격 검토"
+        : "Promotion review"
+      : !usesGenericOptionsUi(item.kind)
+        ? ko
+          ? "승인 필요"
+          : "Approval required"
+        : null;
   // "Why this gate fired" — demoted from competing badges to one quiet sub-label.
   const why = [trigger, forkRow ? "FORK" : null].filter(Boolean).join(" · ");
+  const createdAtLabel = formatInboxTime(item.created_at);
+  const compactMeta = [
+    questionLead ?? approvalLead,
+    item.kind !== "question" ? kindLabel : null,
+    sourceBadge,
+    createdAtLabel || null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   // Question answering — select an option, or type your own; submit confirms.
   const options = item.options ?? [];
@@ -258,40 +282,48 @@ function InboxRow({
         <div className="inbox-row__head">
           <Avatar role={inboxAgent(item)} size={20} />
           <div className="inbox-row__headline">
+            {flat && (questionLead ?? approvalLead) ? (
+              <span className="inbox-row__lead">{questionLead ?? approvalLead}</span>
+            ) : null}
             <span className="inbox-row__subject">{subject}</span>
             {why ? <span className="inbox-row__why">{why}</span> : null}
+            {flat && compactMeta ? (
+              <span className="inbox-row__meta-inline">{compactMeta}</span>
+            ) : null}
           </div>
-          <span className="inbox-row__badges">
-            {/* "Question" is implied by the answer affordance + panel header, so
-              the kind badge only earns its place for build / skill rows. */}
-            {item.kind !== "question" ? (
-              <span
-                className={`inbox-row__kind-badge inbox-row__kind-badge--${item.kind}`}
-              >
-                {kindLabel}
-              </span>
-            ) : null}
-            {/* Provenance + timestamp are noise while answering — kept only on
-              build / skill rows where the human is approving prior work. */}
-            {item.kind !== "question" && sourceBadge ? (
-              <span
-                className={[
-                  "inbox-row__source-badge",
-                  isMcpSource(item) ? "inbox-row__source-badge--mcp" : "",
-                  isDiscussHarvest(item)
-                    ? "inbox-row__source-badge--harvest"
-                    : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-              >
-                {sourceBadge}
-              </span>
-            ) : null}
-          </span>
-          {item.kind !== "question" ? (
+          {!flat ? (
+            <span className="inbox-row__badges">
+              {/* "Question" is implied by the answer affordance + panel header, so
+                the kind badge only earns its place for build / skill rows. */}
+              {item.kind !== "question" ? (
+                <span
+                  className={`inbox-row__kind-badge inbox-row__kind-badge--${item.kind}`}
+                >
+                  {kindLabel}
+                </span>
+              ) : null}
+              {/* Provenance + timestamp are noise while answering — kept only on
+                build / skill rows where the human is approving prior work. */}
+              {item.kind !== "question" && sourceBadge ? (
+                <span
+                  className={[
+                    "inbox-row__source-badge",
+                    isMcpSource(item) ? "inbox-row__source-badge--mcp" : "",
+                    isDiscussHarvest(item)
+                      ? "inbox-row__source-badge--harvest"
+                      : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
+                  {sourceBadge}
+                </span>
+              ) : null}
+            </span>
+          ) : null}
+          {!flat && item.kind !== "question" ? (
             <span className="inbox-row__time">
-              {formatInboxTime(item.created_at)}
+              {createdAtLabel}
             </span>
           ) : null}
         </div>
@@ -332,7 +364,7 @@ function InboxRow({
         </p>
       ) : usesGenericOptionsUi(item.kind) ? (
         <div
-          className="inbox-row__answer"
+          className="inbox-row__answer inbox-row__answer--question"
           onKeyDown={(e) => {
             if (e.key === "Escape" && !busy) {
               e.preventDefault();
@@ -443,7 +475,7 @@ function InboxRow({
           </div>
         </div>
       ) : item.kind === "skill_draft" ? (
-        <div className="inbox-row__options inbox-row__options--build">
+        <div className="inbox-row__options inbox-row__options--approval">
           <button
             type="button"
             className="btn btn--sm btn--ok"
@@ -462,7 +494,7 @@ function InboxRow({
           </button>
         </div>
       ) : (
-        <div className="inbox-row__options inbox-row__options--build">
+        <div className="inbox-row__options inbox-row__options--approval">
           <button
             type="button"
             className="btn btn--sm btn--ok"
@@ -769,10 +801,8 @@ export function HumanInboxPanel({
     return (
       <div
         className={[
-          "human-inbox human-inbox--composer human-inbox--composer-flat composer-dock-card composer-dock-card--composer",
-          composerExpanded
-            ? ""
-            : "human-inbox--composer-collapsed composer-dock-card--collapsed",
+          "human-inbox human-inbox--composer composer-dock-card composer-dock-card--composer",
+          composerExpanded ? "" : "composer-dock-card--collapsed",
         ]
           .filter(Boolean)
           .join(" ")}

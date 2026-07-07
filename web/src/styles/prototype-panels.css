@@ -295,19 +295,23 @@
 
 /* ---- Composer dock cards (Human Inbox · To-dos shared shell) ---- */
 .composer-dock-card--composer {
+  --composer-surface-pad-x: var(--space-20);
+  --composer-surface-pad-y: var(--space-16);
+  --composer-surface-pad-x-collapsed: var(--space-16);
+  --composer-surface-pad-y-collapsed: var(--space-10);
+  --composer-surface-radius: 16px;
   width: 100%;
   max-width: none;
   margin: 0;
   border: 0.5px solid var(--border-soft);
-  border-radius: 16px;
+  border-radius: var(--composer-surface-radius);
   background: var(--surface-card);
   box-shadow: var(--composer-dock-shadow);
   overflow: clip;
   overflow-clip-margin: var(--composer-dock-shadow-bleed, 8px);
 }
 
-.composer-dock-card--composer.composer-dock-card--collapsed,
-.composer-dock-card--composer.human-inbox--composer-collapsed {
+.composer-dock-card--composer.composer-dock-card--collapsed {
   border-radius: var(--radius-pill, 999px);
   box-shadow: none;
 }
@@ -353,21 +357,22 @@
 }
 
 .composer-dock-card__body {
-  padding: 0 var(--space-20) var(--space-20);
+  padding: 0 var(--composer-surface-pad-x) var(--composer-surface-pad-x);
 }
 
 .composer-dock-card--composer .composer-dock-card__toggle,
 .composer-dock-card--composer .plan-todo-surface__toggle,
 .composer-dock-card--composer .human-inbox__composer-toggle {
-  padding: var(--space-16) var(--space-20);
+  padding: var(--composer-surface-pad-y) var(--composer-surface-pad-x);
 }
 
 .composer-dock-card--collapsed .composer-dock-card__toggle,
 .composer-dock-card--composer.plan-todo-surface--collapsed
   .plan-todo-surface__toggle,
-.composer-dock-card--composer.human-inbox--composer-collapsed
+.composer-dock-card--composer.composer-dock-card--collapsed
   .human-inbox__composer-toggle {
-  padding: var(--space-10) var(--space-16);
+  padding: var(--composer-surface-pad-y-collapsed)
+    var(--composer-surface-pad-x-collapsed);
   align-items: center;
 }
 
@@ -414,7 +419,8 @@
 
 .plan-todo-surface--composer.plan-todo-surface--collapsed
   .plan-todo-surface__head {
-  padding: var(--space-10) var(--space-16);
+  padding: var(--composer-surface-pad-y-collapsed)
+    var(--composer-surface-pad-x-collapsed);
   border-bottom: none;
 }
 
@@ -445,7 +451,7 @@
 }
 
 .plan-todo-surface--composer .plan-todo-surface__head {
-  padding: var(--space-16) var(--space-20);
+  padding: var(--composer-surface-pad-y) var(--composer-surface-pad-x);
   border-bottom: none;
 }
 
@@ -455,7 +461,7 @@
 }
 
 .plan-todo-surface--composer .plan-todo-surface__body {
-  padding: 0 var(--space-20) var(--space-20);
+  padding: 0 var(--composer-surface-pad-x) var(--composer-surface-pad-x);
 }
 
 .plan-todo-surface--composer.plan-todo-surface--collapsed
@@ -517,12 +523,7 @@
   width: 100%;
 }
 
-.human-inbox--composer-collapsed .human-inbox__composer-toggle {
-  padding: var(--space-10) var(--space-16);
-  align-items: center;
-}
-
-.human-inbox--composer-flat .human-inbox__composer-toggle {
+.human-inbox--composer .human-inbox__composer-toggle {
   width: 100%;
   display: flex;
   align-items: flex-start;
@@ -536,13 +537,13 @@
   cursor: pointer;
 }
 
-.human-inbox--composer-flat .human-inbox__composer-toggle:focus-visible {
+.human-inbox--composer .human-inbox__composer-toggle:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
   border-radius: var(--radius-sm);
 }
 
-.human-inbox--composer-flat .human-inbox__composer-headline {
+.human-inbox--composer .human-inbox__composer-headline {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -550,7 +551,19 @@
   gap: var(--space-2);
 }
 
-.human-inbox--composer-flat .human-inbox__chevron {
+.human-inbox--composer .inbox-row__head {
+  align-items: flex-start;
+}
+
+.human-inbox--composer .inbox-row__headline {
+  gap: 2px;
+}
+
+.human-inbox--composer .inbox-row__lead {
+  color: var(--label-quaternary);
+}
+
+.human-inbox--composer .human-inbox__chevron {
   width: 8px;
   height: 8px;
   margin-top: 6px;
@@ -561,19 +574,19 @@
   flex-shrink: 0;
 }
 
-.human-inbox--composer-flat .human-inbox__chevron--open {
+.human-inbox--composer .human-inbox__chevron--open {
   transform: rotate(45deg);
   margin-top: 8px;
 }
 
-.human-inbox--composer-flat .human-inbox__items {
+.human-inbox--composer .human-inbox__items {
   padding: 0 var(--space-20) var(--space-20);
   display: flex;
   flex-direction: column;
   gap: var(--space-12);
 }
 
-.human-inbox--composer-flat .inbox-row--flat {
+.human-inbox--composer .inbox-row--flat {
   padding: 0;
   border: none;
   background: transparent;
@@ -581,37 +594,27 @@
   border-left: none;
 }
 
-.human-inbox--composer-flat .inbox-row--flat.inbox-row--fork {
+.human-inbox--composer .inbox-row__body {
+  font-size: var(--text-footnote);
+  line-height: 1.5;
+}
+
+.human-inbox--composer .inbox-row__answer--question {
+  margin-top: var(--space-4);
+  padding-top: var(--space-10);
+  border-top: 1px solid color-mix(in srgb, var(--border-soft) 72%, transparent);
+}
+
+.human-inbox--composer .inbox-row__options--approval {
+  margin-top: var(--space-2);
+}
+
+.human-inbox--composer .inbox-row--flat.inbox-row--fork {
   border-left: none;
 }
 
-.human-inbox--composer-flat .human-inbox__error {
+.human-inbox--composer .human-inbox__error {
   margin: 0 var(--space-20) var(--space-8);
-}
-
-.human-inbox--composer .human-inbox__header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-8);
-  padding: var(--space-16) var(--space-20) var(--space-8);
-  background: transparent;
-  border-bottom: none;
-}
-.human-inbox--composer .human-inbox__title {
-  font-size: 17px;
-  font-weight: var(--weight-semibold);
-  line-height: 21px;
-  color: var(--label-primary);
-}
-.human-inbox--composer .human-inbox__counts {
-  font-size: 14px;
-  color: var(--label-secondary);
-}
-.human-inbox--composer .human-inbox__items {
-  padding: 0 var(--space-20) var(--space-20);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-12);
 }
 
 .human-inbox--popup .human-inbox__option,
@@ -943,6 +946,10 @@
   font-size: var(--text-body);
   font-weight: var(--weight-semibold);
   line-height: 1.4;
+}
+
+.human-inbox--composer .inbox-row__meta-inline {
+  max-width: min(100%, 56ch);
 }
 
 @media (prefers-reduced-motion: reduce) {

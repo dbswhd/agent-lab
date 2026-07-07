@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "agent_lab_root_py_files": 123,
+  "agent_lab_root_py_files": 124,
   "agent_lab_subpackages": [
     "agent",
     "agents",

@@ -200,3 +200,28 @@ def test_tool_card_hit_rate_computed_over_suggested_rows(tmp_path: Path, monkeyp
     rep = build_feedback_report(tmp_path)
     # only the 2 suggested rows count toward n/hit_rate; the unsuggested pass is excluded
     assert rep["tool_cards"] == {"n": 2, "tool_card_hit_rate": 0.5}
+
+
+# ---------------------------------------------------------------------------
+# N6 — self_patch_eligible_rate
+# ---------------------------------------------------------------------------
+
+
+def test_self_patch_stats_absent_without_rows(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: tmp_path / "missing.jsonl")
+    rep = build_feedback_report(tmp_path)
+    assert rep["self_patch"] == {"n": 0, "eligible_n": 0, "self_patch_eligible_rate": None}
+
+
+def test_self_patch_stats_computed_over_verdict_rows(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    ledger = tmp_path / ".agent-lab" / "outcomes.jsonl"
+    eligible_row = {**_row("default", verdict="pass"), "self_patch": {"eligible": True, "core_paths": []}}
+    ineligible_row = {
+        **_row("default", verdict="pass"),
+        "self_patch": {"eligible": False, "core_paths": ["src/agent_lab/room/turn_flow_run.py"]},
+    }
+    _write_ledger(ledger, [eligible_row, ineligible_row])
+    monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: ledger)
+
+    rep = build_feedback_report(tmp_path)
+    assert rep["self_patch"] == {"n": 2, "eligible_n": 1, "self_patch_eligible_rate": 0.5}

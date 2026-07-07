@@ -64,6 +64,46 @@ def test_record_execute_outcome_writes_verdict_row(tmp_path, monkeypatch) -> Non
     assert row["agents"] == ["cursor", "codex", "claude"]
 
 
+def test_record_execute_outcome_tags_self_patch_eligible(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("AGENT_LAB_OUTCOME_LEDGER", "1")
+    monkeypatch.setenv("AGENT_LAB_OUTCOMES_ROOT", str(tmp_path / "root"))
+
+    folder = tmp_path / "sess-exec"
+    _write_run(folder)
+
+    execution = {
+        "id": "exec-2",
+        "oracle": {"verdict": "pass"},
+        "repair_history": [],
+        "source_touched_paths": [".claude/skills/foo/SKILL.md"],
+    }
+    record_execute_outcome(folder, execution)
+
+    rows = [json.loads(line) for line in outcomes_path().read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert rows[0]["self_patch"]["eligible"] is True
+    assert rows[0]["self_patch"]["core_paths"] == []
+
+
+def test_record_execute_outcome_tags_self_patch_ineligible_on_core_touch(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("AGENT_LAB_OUTCOME_LEDGER", "1")
+    monkeypatch.setenv("AGENT_LAB_OUTCOMES_ROOT", str(tmp_path / "root"))
+
+    folder = tmp_path / "sess-exec"
+    _write_run(folder)
+
+    execution = {
+        "id": "exec-3",
+        "oracle": {"verdict": "pass"},
+        "repair_history": [],
+        "source_touched_paths": [".claude/skills/foo/SKILL.md", "src/agent_lab/room/turn_flow_run.py"],
+    }
+    record_execute_outcome(folder, execution)
+
+    rows = [json.loads(line) for line in outcomes_path().read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert rows[0]["self_patch"]["eligible"] is False
+    assert rows[0]["self_patch"]["core_paths"] == ["src/agent_lab/room/turn_flow_run.py"]
+
+
 def test_record_execute_outcome_falls_back_to_verify_after_merge_status(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("AGENT_LAB_OUTCOME_LEDGER", "1")
     monkeypatch.setenv("AGENT_LAB_OUTCOMES_ROOT", str(tmp_path / "root"))

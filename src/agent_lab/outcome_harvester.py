@@ -252,6 +252,13 @@ def record_execute_outcome(folder: Path | None, execution: dict[str, Any]) -> No
 
         record["autonomy_level"] = infer_effective_autonomy_level(run)
         record["human_inbox_escalation"] = bool(pending_inbox_items(run))
+
+        # N6 — self-patch eligibility classification (audit-only; no gate change,
+        # see self_patch.py). Never affects whether Human approval was required.
+        from agent_lab.self_patch import classify_self_patch
+
+        touched = list(execution.get("source_touched_paths") or execution.get("touched_paths") or [])
+        record["self_patch"] = classify_self_patch(touched)
         append_outcome(record)
     except Exception:  # fail-open: feedback must never block execute
         log.warning("record_execute_outcome failed for %s", folder, exc_info=True)

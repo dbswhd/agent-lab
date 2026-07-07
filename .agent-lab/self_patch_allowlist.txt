@@ -1,0 +1,8 @@
+# N6 self-patch allowlist (NORTH-STAR §2.1) — one glob pattern per line.
+# Only paths matching a pattern here are ever eligible for self-patch
+# classification. Everything else (core src/agent_lab/** logic) always
+# requires the full Human gate — this file does not weaken that.
+# '**' matches any depth; '*' matches within one path segment.
+.claude/skills/**
+src/agent_lab/agents/prompts.py
+src/agent_lab/run/profile.py

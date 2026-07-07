@@ -99,6 +99,7 @@ export function WorkToolPanel({
   onDismissWorkHookAlert,
 }: Props) {
   const hasPlan = Boolean(planMd.trim());
+  const isComposer = variant === "composer";
   const disabled = running || synthesizing || runBusy;
   const showPlanStalePanel = Boolean(planStaleNotice);
   const showSyncFailedBar =
@@ -217,7 +218,7 @@ export function WorkToolPanel({
     });
 
   if (showClarifyWork && !hasPlan && !planApproval?.enabled) {
-    if (variant === "composer") return null;
+    if (isComposer) return null;
     return (
       <div className="work-surface tools-work-empty">
         <div className="empty-state">
@@ -235,7 +236,7 @@ export function WorkToolPanel({
   }
 
   if (!hasPlan) {
-    if (variant === "composer") return null;
+    if (isComposer) return null;
     return (
       <div className="work-surface tools-work-empty">
         <div className="empty-state">
@@ -251,7 +252,7 @@ export function WorkToolPanel({
   if (planApproval?.enabled) {
     return (
       <div className="work-stack work-stack--tool">
-        {variant === "tool" ? (
+        {!isComposer ? (
           <div className="work-surface work-surface--chrome work-chrome">
             <GjcPipelineBar
               phase={gjcPhase}
@@ -313,7 +314,7 @@ export function WorkToolPanel({
         </div>
       ) : null}
 
-      {showSyncFailedBar ? (
+      {showSyncFailedBar && !isComposer ? (
         <div className="work-surface work-surface--alert">
           <div className="plan-meta-bar plan-meta-bar--sync_failed">
             <p className="plan-meta-bar__line">{planMeta.freshnessLabel}</p>
@@ -333,10 +334,12 @@ export function WorkToolPanel({
         <div className="work-surface work-surface--alert" role="alert">
           <strong>실행을 시작하지 못했습니다.</strong>
           <p className="plan-card__error">{executeError}</p>
-          <p className="plan-card__muted">
-            Plan 승인은 유지되었습니다. 아래 Dry-run으로 다시 실행할 수
-            있습니다.
-          </p>
+          {!isComposer ? (
+            <p className="plan-card__muted">
+              Plan 승인은 유지되었습니다. 아래 Dry-run으로 다시 실행할 수
+              있습니다.
+            </p>
+          ) : null}
         </div>
       ) : null}
 

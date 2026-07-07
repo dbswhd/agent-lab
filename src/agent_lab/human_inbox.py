@@ -13,7 +13,9 @@ from typing import Any, Literal
 from agent_lab.run.meta import patch_run_meta, read_run_meta
 from agent_lab.run.state import RunStateLike
 
-InboxKind = Literal["question", "build", "skill_draft", "autonomy", "correction_rule", "retry_diagnosis", "drift_audit"]
+InboxKind = Literal[
+    "question", "build", "skill_draft", "autonomy", "correction_rule", "retry_diagnosis", "drift_audit", "rule_sync"
+]
 InboxStatus = Literal["pending", "resolved", "deferred", "superseded", "rejected", "timeout"]
 
 DEFAULT_INBOX_TIMEOUT_SEC = int(os.getenv("AGENT_LAB_INBOX_TIMEOUT_SEC", "1800"))
@@ -459,6 +461,21 @@ def resolve_inbox_item(
             import logging
 
             logging.getLogger(__name__).warning("drift_audit inbox resolve failed", exc_info=True)
+
+    if updated.get("kind") == "rule_sync" and status in ("resolved", "rejected", "superseded"):
+        try:
+            from agent_lab.rule_sync import handle_rule_sync_inbox_resolve
+
+            handle_rule_sync_inbox_resolve(
+                folder,
+                updated,
+                selected=selected,
+                status=status,
+            )
+        except Exception:  # fail-open: external file sync must never block inbox resolve
+            import logging
+
+            logging.getLogger(__name__).warning("rule_sync inbox resolve failed", exc_info=True)
 
     if updated.get("kind") == "autonomy" and status == "resolved":
         try:

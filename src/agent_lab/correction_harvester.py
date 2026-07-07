@@ -330,6 +330,10 @@ def handle_correction_rule_inbox_resolve(
         entry["promoted_at"] = _now_iso()
         state[pattern_key] = entry
         _save_state(root, state)
+
+        from agent_lab.rule_sync import maybe_propose_rule_sync
+
+        maybe_propose_rule_sync(folder, root=root)
     elif choice == "reject":
         entry["status"] = "rejected"
         state[pattern_key] = entry

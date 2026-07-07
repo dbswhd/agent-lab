@@ -24,6 +24,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
+from agent_lab.run.state import RunStateLike
 from agent_lab.wisdom.index import _tokenize
 
 log = logging.getLogger(__name__)
@@ -46,6 +47,7 @@ class SetupHint:
     suggested_subset: tuple[str, ...]  # empty = no change
     rationale: str  # human-readable reason (logged + stored in turn_metrics)
     combo_id: str = ""  # role-combo key "agent:role|..." (S1.5 attribution)
+    tool_card_suggestions: tuple[str, ...] = ()  # S3a-0: installed-but-unused tool card ids
 
 
 _DEFAULT_HINT = SetupHint(
@@ -195,6 +197,21 @@ def _advisor_enabled(*, room_preset: str = "") -> bool:
     return s1_flag_enabled("AGENT_LAB_FEEDBACK_ADVISOR", room_preset=room_preset)
 
 
+def _with_tool_card_note(hint: SetupHint, category: str, run_meta: RunStateLike | None) -> SetupHint:
+    """S3a-0 — append installed-but-unused tool card suggestions (RECALL input, not a new loop).
+
+    Context annotation only, same as ``_wisdom_note``: never changes role_overrides
+    or suggested_subset, applies regardless of which branch produced ``hint``.
+    """
+    from agent_lab.tool_cards import tool_card_note
+
+    note, ids = tool_card_note(category, run_meta)
+    if not note:
+        return hint
+    suffix = f" | tool_cards:{note}"
+    return replace(hint, rationale=hint.rationale + suffix, tool_card_suggestions=ids)
+
+
 def advise_setup(
     topic: str,
     category: str,
@@ -202,6 +219,7 @@ def advise_setup(
     *,
     root: Path | None = None,
     room_preset: str = "",
+    run_meta: RunStateLike | None = None,
 ) -> SetupHint:
     """Read outcomes.jsonl and return a SetupHint for the current turn.
 
@@ -211,12 +229,13 @@ def advise_setup(
         return _DEFAULT_HINT
 
     try:
-        return _advise_inner(topic, category, available_agents, root=root)
+        hint = _advise_inner(topic, category, available_agents, root=root)
     except Exception:
         # Distinct rationale from _DEFAULT_HINT's "no_history" so feedback_report
         # can tell a genuine cold-start apart from an advisor bug swallowed here.
         log.warning("advise_setup failed", exc_info=True)
-        return replace(_DEFAULT_HINT, rationale="advisor_error")
+        hint = replace(_DEFAULT_HINT, rationale="advisor_error")
+    return _with_tool_card_note(hint, category, run_meta)
 
 
 def _wisdom_note(topic: str, *, limit: int = 3) -> str:

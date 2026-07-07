@@ -210,6 +210,51 @@ def test_handle_correction_rule_inbox_resolve_approve_promotes(tmp_path, monkeyp
     assert second is None
 
 
+def test_approve_proposes_rule_sync_only_when_flag_on(tmp_path, monkeypatch) -> None:
+    from agent_lab.run.meta import read_run_meta
+
+    ledger_path = tmp_path / ".agent-lab" / "outcomes.jsonl"
+    monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: ledger_path)
+    session_ids = [f"s{i}" for i in range(MIN_SAMPLE)]
+    _append_correction_rows(ledger_path, "language_reminder", session_ids)
+
+    folder = tmp_path / session_ids[-1]
+    _write_run(folder)
+    pattern = detect_user_correction("한국어로")
+    item = maybe_propose_correction_rule(folder, pattern, root=tmp_path)
+    assert item is not None
+
+    # default OFF — approving a correction rule must not propose external sync
+    handle_correction_rule_inbox_resolve(folder, item, selected=["approve"], status="resolved", root=tmp_path)
+    inbox = [i for i in read_run_meta(folder).get("human_inbox") or [] if i.get("kind") == "rule_sync"]
+    assert inbox == []
+
+
+def test_approve_proposes_rule_sync_when_flag_enabled(tmp_path, monkeypatch) -> None:
+    from agent_lab.run.meta import read_run_meta
+
+    monkeypatch.setenv("AGENT_LAB_RULE_SYNC", "1")
+    ledger_path = tmp_path / ".agent-lab" / "outcomes.jsonl"
+    monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: ledger_path)
+    session_ids = [f"s{i}" for i in range(MIN_SAMPLE)]
+    _append_correction_rows(ledger_path, "language_reminder", session_ids)
+
+    folder = tmp_path / session_ids[-1]
+    _write_run(folder)
+    pattern = detect_user_correction("한국어로")
+    item = maybe_propose_correction_rule(folder, pattern, root=tmp_path)
+    assert item is not None
+
+    handle_correction_rule_inbox_resolve(folder, item, selected=["approve"], status="resolved", root=tmp_path)
+    pending = [
+        i
+        for i in read_run_meta(folder).get("human_inbox") or []
+        if i.get("kind") == "rule_sync" and i.get("status") == "pending"
+    ]
+    assert len(pending) == 1
+    assert "language_reminder" in pending[0]["refs"]
+
+
 def test_handle_correction_rule_inbox_resolve_reject_suppresses_future_proposals(tmp_path, monkeypatch) -> None:
     ledger_path = tmp_path / ".agent-lab" / "outcomes.jsonl"
     monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: ledger_path)

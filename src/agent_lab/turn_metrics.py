@@ -123,5 +123,6 @@ def build_turn_metrics(
         "advisor_rationale": category.get("advisor_rationale"),  # set by feedback_advisor (Phase B)
         "advisor_source": category.get("advisor_source"),  # "history"|"explore" (S1.5)
         "advisor_combo_id": category.get("advisor_combo_id"),  # role-combo key (S1.5)
+        "tool_card_suggestions": category.get("tool_card_suggestions") or [],  # S3a-0
     }
     return metrics

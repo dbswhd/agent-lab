@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "agent_lab_root_py_files": 121,
+  "agent_lab_root_py_files": 123,
   "agent_lab_subpackages": [
     "agent",
     "agents",
@@ -51,7 +51,7 @@
   "large_tsx_files": [
     {
       "path": "web/src/components/HumanInboxPanel.tsx",
-      "lines": 1025
+      "lines": 1027
     },
     {
       "path": "web/src/components/ChatComposer.tsx",

@@ -159,6 +159,22 @@ def _correction_pattern_stats(rows: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _tool_card_hit_stats(verdict_rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """S3a-0 — did RECALL's tool-card suggestions correlate with clean-pass?
+
+    ``tool_card_hit_rate`` is the clean-pass rate among execute-phase rows that
+    carried a tool-card suggestion (an MVP proxy for "the suggestion helped" —
+    it does not yet track whether the suggested tool was actually adopted,
+    only whether a suggestion was present when the outcome landed).
+    """
+    suggested = [r for r in verdict_rows if r.get("tool_card_suggestions")]
+    n = len(suggested)
+    if n == 0:
+        return {"n": 0, "tool_card_hit_rate": None}
+    clean = sum(1 for r in suggested if _is_clean_pass(r))
+    return {"n": n, "tool_card_hit_rate": round(clean / n, 4)}
+
+
 def build_feedback_report(root: Path | None = None) -> dict[str, Any]:
     """Bucket the outcome ledger by advisor_source and compute quality deltas.
 
@@ -214,6 +230,7 @@ def build_feedback_report(root: Path | None = None) -> dict[str, Any]:
         "advisor_lift": advisor_lift,
         "escalation_rate_by_level": _escalation_rate_by_level(rows),
         "correction_patterns": correction_stats,
+        "tool_cards": _tool_card_hit_stats(verdict_rows),
     }
 
 
@@ -262,4 +279,10 @@ def render_feedback_report(report: dict[str, Any]) -> str:
         lines.append(f"correction_patterns (N10a) — {correction['total']} rows, recurrence_rate: {rate_label}")
         for key, stats in sorted(correction.get("by_pattern", {}).items()):
             lines.append(f"  {key}: n={stats['n']} sessions={stats['sessions']}")
+    tool_cards = report.get("tool_cards") or {}
+    if tool_cards.get("n"):
+        hit_rate = tool_cards.get("tool_card_hit_rate")
+        hit_label = f"{hit_rate:.2%}" if isinstance(hit_rate, float) else "—"
+        lines.append("")
+        lines.append(f"tool_cards (S3a-0) — {tool_cards['n']} suggested rows, hit_rate: {hit_label}")
     return "\n".join(lines)

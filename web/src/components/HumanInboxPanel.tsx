@@ -93,7 +93,8 @@ function usesGenericOptionsUi(kind: HumanInboxItem["kind"]): boolean {
     kind === "autonomy" ||
     kind === "correction_rule" ||
     kind === "retry_diagnosis" ||
-    kind === "drift_audit"
+    kind === "drift_audit" ||
+    kind === "rule_sync"
   );
 }
 
@@ -104,6 +105,7 @@ function inboxKindLabel(item: HumanInboxItem, ko: boolean): string {
   if (item.kind === "correction_rule") return ko ? "교정 규칙" : "Correction rule";
   if (item.kind === "retry_diagnosis") return ko ? "재시도 진단" : "Retry diagnosis";
   if (item.kind === "drift_audit") return ko ? "드리프트 감사" : "Drift audit";
+  if (item.kind === "rule_sync") return ko ? "규칙 동기화" : "Rule sync";
   return ko ? "질문" : "Question";
 }
 

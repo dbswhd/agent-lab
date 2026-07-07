@@ -153,6 +153,11 @@ def test_supervisor_preset_enables_advisor_without_env(tmp_path: Path, monkeypat
         "agent_lab.outcome_harvester.outcomes_path",
         lambda root=None: tmp_path / "missing.jsonl",
     )
+    # Isolate from real .claude/skills/* on disk (S3a-0 tool-card suggestions
+    # are covered separately in the dedicated tests below).
+    monkeypatch.setattr(
+        "agent_lab.tool_cards.tool_card_note", lambda category, run_meta, workspace=None, **kw: ("", ())
+    )
     hint = advise_setup(
         "pipeline verify",
         "standard",
@@ -272,9 +277,7 @@ def test_advise_setup_prefers_execute_evidence_over_turn_rows(tmp_path: Path, mo
     assert "evidence=execute" in hint.rationale
 
 
-def test_advise_setup_falls_back_to_turn_rows_below_min_sample(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_advise_setup_falls_back_to_turn_rows_below_min_sample(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Cold-start: execute-phase rows alone are below MIN_SAMPLE, so the
     advisor still falls back to the full pool (turn rows included)."""
     monkeypatch.setenv("AGENT_LAB_FEEDBACK_ADVISOR", "1")
@@ -406,3 +409,50 @@ def test_explore_rate_one_forces_explore(tmp_path: Path, monkeypatch: pytest.Mon
     assert hint.role_overrides
     # least-sampled combo is combo_b (n=1)
     assert hint.combo_id == _combo_key(combo_b)
+
+
+# ---------------------------------------------------------------------------
+# S3a-0 — tool card suggestions (RECALL input, no new loop)
+# ---------------------------------------------------------------------------
+
+
+def test_tool_card_note_attached_on_cold_start(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AGENT_LAB_FEEDBACK_ADVISOR", "1")
+    monkeypatch.setattr(
+        "agent_lab.outcome_harvester.outcomes_path",
+        lambda root=None: tmp_path / "missing.jsonl",
+    )
+    monkeypatch.setattr(
+        "agent_lab.tool_cards.tool_card_note",
+        lambda category, run_meta, workspace=None, **kw: ("impeccable", ("claude:skill:impeccable",)),
+    )
+    hint = advise_setup("polish the UI", "deep", ["cursor", "codex", "claude"], run_meta={"topic": "x"})
+    assert hint.source == "default"  # role decision unaffected
+    assert hint.tool_card_suggestions == ("claude:skill:impeccable",)
+    assert "tool_cards:impeccable" in hint.rationale
+
+
+def test_tool_card_note_noop_when_nothing_suggested(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AGENT_LAB_FEEDBACK_ADVISOR", "1")
+    monkeypatch.setattr(
+        "agent_lab.outcome_harvester.outcomes_path",
+        lambda root=None: tmp_path / "missing.jsonl",
+    )
+    monkeypatch.setattr(
+        "agent_lab.tool_cards.tool_card_note", lambda category, run_meta, workspace=None, **kw: ("", ())
+    )
+    hint = advise_setup("pipeline verify", "standard", ["cursor", "codex", "claude"], run_meta={})
+    assert hint.tool_card_suggestions == ()
+    assert "tool_cards" not in hint.rationale
+
+
+def test_tool_card_note_skipped_when_advisor_flag_off(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("AGENT_LAB_FEEDBACK_ADVISOR", raising=False)
+    called = []
+    monkeypatch.setattr(
+        "agent_lab.tool_cards.tool_card_note",
+        lambda category, run_meta, workspace=None, **kw: called.append(1) or ("x", ("y",)),
+    )
+    hint = advise_setup("polish the UI", "deep", ["cursor", "codex", "claude"], room_preset="fast", run_meta={})
+    assert hint is _DEFAULT_HINT
+    assert not called  # advisor channel reused, not a separate always-on gate

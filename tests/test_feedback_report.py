@@ -173,3 +173,30 @@ def test_accepted_challenge_rate_bucket(tmp_path: Path, monkeypatch: pytest.Monk
     rep = build_feedback_report(tmp_path)
     assert rep["by_source"]["history"]["accepted_challenge_rate"] == 0.5
     assert rep["by_source"]["default"]["accepted_challenge_rate"] == 1.0
+
+
+# ---------------------------------------------------------------------------
+# S3a-0 — tool_card_hit_rate
+# ---------------------------------------------------------------------------
+
+
+def test_tool_card_hit_rate_absent_without_suggestions(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    ledger = tmp_path / ".agent-lab" / "outcomes.jsonl"
+    _write_ledger(ledger, [_row("default", verdict="pass")])
+    monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: ledger)
+
+    rep = build_feedback_report(tmp_path)
+    assert rep["tool_cards"] == {"n": 0, "tool_card_hit_rate": None}
+
+
+def test_tool_card_hit_rate_computed_over_suggested_rows(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    ledger = tmp_path / ".agent-lab" / "outcomes.jsonl"
+    suggested_pass = {**_row("default", verdict="pass"), "tool_card_suggestions": ["claude:skill:impeccable"]}
+    suggested_fail = {**_row("default", verdict="fail"), "tool_card_suggestions": ["claude:skill:impeccable"]}
+    unsuggested_pass = _row("default", verdict="pass")
+    _write_ledger(ledger, [suggested_pass, suggested_fail, unsuggested_pass])
+    monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: ledger)
+
+    rep = build_feedback_report(tmp_path)
+    # only the 2 suggested rows count toward n/hit_rate; the unsuggested pass is excluded
+    assert rep["tool_cards"] == {"n": 2, "tool_card_hit_rate": 0.5}

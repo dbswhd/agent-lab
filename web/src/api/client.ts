@@ -2548,7 +2548,8 @@ export type HumanInboxItem = {
     | "autonomy"
     | "correction_rule"
     | "retry_diagnosis"
-    | "drift_audit";
+    | "drift_audit"
+    | "rule_sync";
   source?: string;
   caller_agent?: string | null;
   status:

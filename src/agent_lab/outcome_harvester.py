@@ -134,6 +134,8 @@ def build_outcome_record(
         "combo_id": metrics.get("advisor_combo_id") or "",
         "autonomy_level": level,
         "human_inbox_escalation": inbox_hit,
+        # S3a-0 — tool cards suggested at RECALL time (installed-but-unused capabilities)
+        "tool_card_suggestions": list(metrics.get("tool_card_suggestions") or []),
     }
 
 
@@ -243,6 +245,7 @@ def record_execute_outcome(folder: Path | None, execution: dict[str, Any]) -> No
             "latency_ms": 0,
             "advisor_source": category.get("advisor_source") or "default",
             "combo_id": category.get("advisor_combo_id") or "",
+            "tool_card_suggestions": list(category.get("tool_card_suggestions") or []),
         }
         from agent_lab.autonomy_ladder import infer_effective_autonomy_level
         from agent_lab.human_inbox import pending_inbox_items

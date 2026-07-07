@@ -64,6 +64,7 @@ def apply_turn_role_plan(
             route.category,
             active,
             room_preset=_room_preset,
+            run_meta=run_meta,
         )
     _role_policy = resolve_role_policy(run_meta)
     route = enrich_route_with_role_plan(route, active, hint=hint, policy=_role_policy)
@@ -72,6 +73,9 @@ def apply_turn_role_plan(
         cat_dict["advisor_rationale"] = hint.rationale
         cat_dict["advisor_source"] = hint.source
         cat_dict["advisor_combo_id"] = getattr(hint, "combo_id", "") or ""
+    tool_card_ids = getattr(hint, "tool_card_suggestions", ()) or ()
+    if tool_card_ids:
+        cat_dict["tool_card_suggestions"] = list(tool_card_ids)
     from agent_lab.run.meta import stamp_run_meta
 
     stamp_run_meta(
@@ -110,7 +114,7 @@ def finalize_turn_routing(
     pool = [str(a).strip().lower() for a in active if str(a).strip()]
     if hint is None:
         _room_preset = str(run_meta.get("room_preset") or "").strip().lower()
-        hint = advise_setup(topic, route.category, pool, room_preset=_room_preset)
+        hint = advise_setup(topic, route.category, pool, room_preset=_room_preset, run_meta=run_meta)
 
     if apply_subset:
         user_selected_multi = agents is not None and len([a for a in agents if str(a).strip()]) >= 2

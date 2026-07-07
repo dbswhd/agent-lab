@@ -212,6 +212,18 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "C3: risk-category topics (trading — F5 lane) pin autonomy ceiling to L1 once per session, via existing N4 demotion inbox (default on)",
         default="1",
     ),
+    FlagDef(
+        "AGENT_LAB_RULE_SYNC",
+        "feature",
+        "N10b: propose exporting approved correction rules to .claude/rules, .cursor/rules, ~/.codex/AGENTS.md (default OFF — external blast radius)",
+        default="0",
+    ),
+    FlagDef(
+        "AGENT_LAB_CODEX_HOME",
+        "infra",
+        "Override for the Codex home dir N10b Rule Sync writes AGENTS.md into (default ~/.codex; tests must set this)",
+        default="",
+    ),
     FlagDef("AGENT_LAB_GOAL_LOOP", "feature", "Session goal Oracle after Room turns"),
     FlagDef("AGENT_LAB_GOAL_ORACLE_LIVE", "feature", "Live Claude oracle for session goal"),
     FlagDef("AGENT_LAB_GOAL_AUTO_CONTINUE", "feature", "One extra discuss round after goal FAIL"),

@@ -1,4 +1,4 @@
-.PHONY: install install-dev dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build tauri-check-windows profile-track2-gate clean test test-fast test-c1 test-integration test-bridge test-duration-report lint typecheck typecheck-ratchet structure-metrics structure-metrics-check layer-cycles-check ci ci-full check-worktrees smoke smoke-e2e smoke-web-ui smoke-tauri-ui validate-quant verify-quant-workspace verify-trading-v1 verify-mcp-contract build-research-cards offline-lane thin-runtime-status verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate dogfood-feedback-mock feedback-report eval-surface-local eval-surface-check generate-model-catalog check-model-catalog s1-dogfood-env s1-dogfood-check x2-lift-dogfood-env x2-lift-dogfood-run x2-lift-dogfood-live-repeat x2-lift-dogfood-check
+.PHONY: install install-dev dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build tauri-check-windows profile-track2-gate clean test test-fast test-c1 test-integration test-bridge test-duration-report lint typecheck typecheck-ratchet structure-metrics structure-metrics-check layer-cycles-check ci ci-full check-worktrees smoke smoke-e2e smoke-web-ui smoke-tauri-ui validate-quant verify-quant-workspace verify-trading-v1 verify-mcp-contract build-research-cards offline-lane thin-runtime-status verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate dogfood-feedback-mock feedback-report eval-surface-local eval-surface-check generate-model-catalog check-model-catalog s1-dogfood-env s1-dogfood-check x2-lift-dogfood-env x2-lift-dogfood-run x2-lift-dogfood-prepare x2-lift-dogfood-live-repeat x2-lift-dogfood-check
 
 install:
 	python3 -m venv .venv
@@ -408,8 +408,8 @@ s1-dogfood-check:
 
 x2-lift-dogfood-env:
 	@echo '# X2 execute lift dogfood (live). Usage: eval "$$(make x2-lift-dogfood-env)" then make dev'
-	@echo '# Topic: docs 오타 1건 수정 plan action을 만들어 dry-run → 승인 → merge → Oracle PASS까지 진행해 주세요.'
-	@echo '# Plan ON · repeat same topic 4-5x for history lift (MIN_SAMPLE=3)'
+	@echo '# Topic: docs/_dogfood/x2-lift.md roompy→room.py — repeat 4-5x for history lift (MIN_SAMPLE=3)'
+	@echo '# Plan ON · run make x2-lift-dogfood-prepare before each batch'
 	@echo 'export AGENT_LAB_TURN_METRICS=1'
 	@echo 'export AGENT_LAB_OUTCOME_LEDGER=1'
 	@echo 'export AGENT_LAB_FEEDBACK_ADVISOR=1'
@@ -421,12 +421,15 @@ x2-lift-dogfood-env:
 x2-lift-dogfood-run:
 	.venv/bin/python scripts/x2_lift_dogfood_run.py
 
+x2-lift-dogfood-prepare:
+	.venv/bin/python scripts/x2_lift_dogfood_live_repeat.py --prepare
+
 x2-lift-dogfood-live-repeat:
 	.venv/bin/python scripts/x2_lift_dogfood_live_repeat.py --count $(if $(COUNT),$(COUNT),5)
 
 x2-lift-dogfood-check:
 	@echo "=== X2 lift dogfood check — $$(date -u +%Y-%m-%dT%H:%MZ) ==="
-	@echo "Topic: docs 오타 1건 수정 plan action을 만들어 dry-run → 승인 → merge → Oracle PASS까지 진행해 주세요."
+	@echo "Topic: docs/_dogfood/x2-lift.md roompy→room.py (reversible dogfood fixture)"
 	@if [ ! -f .agent-lab/outcomes.jsonl ]; then \
 		echo "WARN: .agent-lab/outcomes.jsonl missing — complete Plan → execute → Oracle verify first"; \
 		exit 0; \

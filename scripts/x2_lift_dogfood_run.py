@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """X2 lift dogfood — mock Room + execute path after P1/P2 (no UI).
 
-Validates TurnPolicy routing (turn_profile=free, FSM not short-circuited) and
-emits execute-phase outcome ledger rows for ``make x2-lift-dogfood-check``.
+Uses ``docs/_dogfood/x2-lift.md`` reversible marker (not product docs).
 """
 
 from __future__ import annotations
@@ -17,24 +16,20 @@ from pathlib import Path
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
-for _p in (ROOT / "src", ROOT):
+SCRIPTS = ROOT / "scripts"
+for _p in (ROOT / "src", SCRIPTS, ROOT):
     if str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
 
-TOPIC = (
-    "docs 오타 1건 수정 plan action을 만들어 dry-run → 승인 → merge → "
-    "Oracle PASS까지 진행해 주세요."
+from x2_lift_dogfood_config import (  # noqa: E402
+    DOGFood_PATH,
+    DOGFood_REL,
+    MARKER_WRONG,
+    PLAN_MD,
+    TOPIC,
+    apply_typo,
+    has_typo,
 )
-
-DOC_PLAN = """# Docs typo (X2 dogfood)
-
-## 지금 실행
-
-1. Fix docs marker
-   - 무엇을: docs/README.md에 X2_DOGFOOD_OK 마커 추가
-   - 어디서: `docs/README.md`
-   - 검증: docs/README.md 파일에 마커 추가됨
-"""
 
 
 def _utc_slug() -> str:
@@ -64,6 +59,9 @@ def main() -> int:
     os.environ.setdefault("AGENT_LAB_CLARIFIER", "0")
     os.environ.setdefault("AGENT_LAB_PLAN_FSM_SKILL_FIRST", "0")
     os.environ.setdefault("AGENT_LAB_ROOM_PRESET", "supervisor")
+    os.environ.setdefault("AGENT_LAB_DOGFOOD_EXECUTE_OUTCOMES", "1")
+
+    apply_typo()
 
     tests_dir = ROOT / "tests"
     if str(tests_dir) not in sys.path:
@@ -90,9 +88,10 @@ def main() -> int:
         return []
 
     def _fake_synthesize_plan(*_args: object, **_kwargs: object) -> str:
-        return DOC_PLAN
+        return PLAN_MD
 
     checks: list[tuple[str, bool, object]] = []
+    checks.append(("dogfood typo seeded", has_typo(), str(DOGFood_PATH)))
 
     with (
         patch("agent_lab.plan.workflow.run_plan_peer_review_round", _fake_peer_review),
@@ -142,7 +141,7 @@ def main() -> int:
         set_plan_workflow_phase(folder, "HUMAN_PENDING")
     plan_path = folder / "plan.md"
     if not plan_path.is_file() or not plan_path.read_text(encoding="utf-8").strip():
-        plan_path.write_text(DOC_PLAN, encoding="utf-8")
+        plan_path.write_text(PLAN_MD, encoding="utf-8")
     if pw.get("phase") != "APPROVED":
         approve_plan(folder)
     checks.append(
@@ -150,14 +149,16 @@ def main() -> int:
     )
 
     workspace = Path(tempfile.mkdtemp(prefix="x2-dogfood-ws-"))
-    docs = workspace / "docs"
-    docs.mkdir()
-    shutil.copy(ROOT / "docs" / "README.md", docs / "README.md")
+    dogfood_dir = workspace / DOGFood_REL.parent
+    dogfood_dir.mkdir(parents=True)
+    shutil.copy(DOGFood_PATH, workspace / DOGFood_REL)
 
     def _mock_cursor(**_kwargs: object) -> str:
-        readme = docs / "README.md"
-        readme.write_text(readme.read_text(encoding="utf-8") + "\nX2_DOGFOOD_OK\n", encoding="utf-8")
-        return "added X2_DOGFOOD_OK marker"
+        target = workspace / DOGFood_REL
+        text = target.read_text(encoding="utf-8")
+        if MARKER_WRONG in text:
+            target.write_text(text.replace(MARKER_WRONG, "room.py에서", 1), encoding="utf-8")
+        return f"fixed {DOGFood_REL}"
 
     from agent_lab.plan.execute import resolve_execution, run_dry_run
 
@@ -169,7 +170,7 @@ def main() -> int:
             lambda _permissions=None, _expected=None: (workspace, {}),
         ),
     ):
-        _seed_approved_plan_snapshot(folder, DOC_PLAN)
+        _seed_approved_plan_snapshot(folder, PLAN_MD)
         execution = run_dry_run(folder, action_index=1, permissions={})
         resolve_execution(folder, execution_id=execution["id"], vote="approve", permissions={})
 
@@ -195,6 +196,7 @@ def main() -> int:
 
     report = {
         "session": str(folder),
+        "dogfood_file": str(DOGFood_REL),
         "peer_review_rounds": peer_calls["n"],
         "plan_md_chars": len(plan_md or ""),
         "checks": [{"name": n, "ok": ok, "got": got} for n, ok, got in checks],

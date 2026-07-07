@@ -165,6 +165,7 @@ def prepare_turn_routing_phase(
                 folder,
                 run_meta,
                 human_turn=human_turn_num,
+                topic=body,
             )
             plan_md, run_meta = _session_context(folder)
             _bind_session_to_run_meta(run_meta, folder)

@@ -34,8 +34,11 @@ CLARITY_DIMENSIONS: tuple[str, ...] = ("goal", "constraints", "criteria", "conte
 # Cap the lateral panel so live scoring stays one call per panelist, bounded.
 _MAX_PANEL = 3
 
+# Extension must not run into CJK letters (Python ``\w`` includes Hangul), e.g. ``room.py에서``.
+_FILE_EXT_TAIL = r"(?=$|[\s\W]|[\u3040-\u9fff\uac00-\ud7af\uf900-\ufaff])"
+
 _ANCHOR_PATTERNS: tuple[re.Pattern[str], ...] = (
-    re.compile(r"[\w./-]+\.[A-Za-z]{1,6}\b"),  # file path with extension
+    re.compile(r"[\w./-]+\.[A-Za-z]{1,6}" + _FILE_EXT_TAIL),  # file path with extension
     re.compile(r"#\d+"),  # issue / PR number
     re.compile(r"\b[a-z][a-z0-9]*[A-Z][A-Za-z0-9]*\b"),  # camelCase
     re.compile(r"\b[A-Z][a-z0-9]+[A-Z][A-Za-z0-9]*\b"),  # PascalCase

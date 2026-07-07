@@ -113,6 +113,100 @@ def test_supervisor_first_turn_inits_plan_workflow_no_scribe() -> None:
     assert effects.run_scribe is False
 
 
+def test_supervisor_quick_category_skips_fsm_bootstrap() -> None:
+    effects = TurnPolicyEngine.resolve(
+        TurnSignals(
+            room_preset="supervisor",
+            supervisor_first_turn=True,
+            plan_workflow_active=False,
+            plan_workflow_phase="INTAKE",
+            route_category="quick",
+        ),
+    )
+    assert effects.init_plan_workflow is False
+    assert effects.advance_plan_workflow is False
+
+
+def test_supervisor_discuss_light_skips_fsm_bootstrap() -> None:
+    effects = TurnPolicyEngine.resolve(
+        TurnSignals(
+            room_preset="supervisor",
+            supervisor_first_turn=True,
+            discuss_light=True,
+        ),
+    )
+    assert effects.init_plan_workflow is False
+    assert effects.advance_plan_workflow is False
+
+
+def test_supervisor_anchored_topic_skips_fsm_bootstrap() -> None:
+    effects = TurnPolicyEngine.resolve(
+        TurnSignals(
+            room_preset="supervisor",
+            supervisor_first_turn=True,
+            clarity_short_circuit=True,
+        ),
+    )
+    assert effects.init_plan_workflow is False
+    assert effects.advance_plan_workflow is False
+
+
+def test_skill_intent_overrides_fsm_skip() -> None:
+    effects = TurnPolicyEngine.resolve(
+        TurnSignals(
+            room_preset="supervisor",
+            supervisor_first_turn=True,
+            route_category="quick",
+            discuss_light=True,
+            clarity_short_circuit=True,
+            skill_intent="plan",
+        ),
+    )
+    assert effects.init_plan_workflow is True
+    assert effects.advance_plan_workflow is True
+
+
+def test_turn_signals_from_run_meta_reads_routing_and_clarity() -> None:
+    topic = "room.py에서 consensus 라운드 cap 기본값이 뭐야?"
+    signals = TurnSignals.from_run_meta(
+        {"room_preset": "supervisor", "discuss_light": True},
+        topic=topic,
+        supervisor_first_turn=True,
+    )
+    assert signals.route_category in {"quick", "standard"}
+    assert signals.discuss_light is True
+    assert signals.clarity_short_circuit is True
+
+
+def test_prepare_turn_policy_s1_topic_skips_fsm_init(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from agent_lab.plan.workflow import is_plan_workflow_active
+    from agent_lab.room.turn_policy import prepare_turn_policy_before_agent_round
+    from agent_lab.run.meta import read_run_meta
+
+    monkeypatch.setenv("AGENT_LAB_TURN_POLICY", "1")
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    (folder / "run.json").write_text("{}", encoding="utf-8")
+    run_meta = read_run_meta(folder)
+    run_meta["room_preset"] = "supervisor"
+    run_meta["discuss_light"] = True
+
+    topic = "room.py에서 consensus 라운드 cap 기본값이 뭐야?"
+    run_meta, effects = prepare_turn_policy_before_agent_round(
+        folder,
+        run_meta,
+        human_turn=1,
+        topic=topic,
+    )
+    assert effects is not None
+    assert effects.init_plan_workflow is False
+    assert effects.advance_plan_workflow is False
+    assert not is_plan_workflow_active(run_meta)
+
+
 def test_supervisor_draft_phase_scribes() -> None:
     effects = TurnPolicyEngine.resolve(
         TurnSignals(

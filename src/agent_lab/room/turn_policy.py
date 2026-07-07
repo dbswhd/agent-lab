@@ -116,6 +116,41 @@ def turn_policy_enabled() -> bool:
     return raw not in ("0", "false", "no", "off")
 
 
+def _route_category_for_topic(topic: str, run_meta: RunStateLike) -> str | None:
+    """Lightweight topic route — used before full turn_routing when TurnPolicy boots."""
+    text = (topic or "").strip()
+    if not text:
+        return None
+    from agent_lab.topic_router import resolve_topic_route
+
+    route = resolve_topic_route(
+        text,
+        turn_profile=str(run_meta.get("turn_profile") or ""),
+        session_template=str(run_meta.get("session_template") or ""),
+    )
+    return str(route.category or "") or None
+
+
+def _route_category_from_run_meta(run_meta: RunStateLike) -> str | None:
+    cat = run_meta.get("_turn_category")
+    if isinstance(cat, dict):
+        value = str(cat.get("value") or "").strip().lower()
+        if value:
+            return value
+    return None
+
+
+def skip_plan_fsm_bootstrap(signals: TurnSignals) -> bool:
+    """Casual discuss / anchored quick tasks must not boot plan FSM (P0-3)."""
+    if signals.skill_intent or signals.proposed_tags_count > 0:
+        return False
+    return bool(
+        signals.route_category == "quick"
+        or signals.discuss_light
+        or signals.clarity_short_circuit
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class TurnSignals:
     room_preset: str | None = None
@@ -130,6 +165,9 @@ class TurnSignals:
     supervisor_first_turn: bool = False
     skill_intent: str | None = None
     proposed_tags_count: int = 0
+    route_category: str | None = None
+    discuss_light: bool = False
+    clarity_short_circuit: bool = False
 
     @classmethod
     def from_run_meta(
@@ -137,6 +175,7 @@ class TurnSignals:
         run_meta: RunStateLike | None,
         *,
         room_preset: str | None = None,
+        topic: str | None = None,
         consensus_meta: dict[str, Any] | None = None,
         synthesize_only: bool = False,
         cancelled: bool = False,
@@ -158,6 +197,14 @@ class TurnSignals:
         resolved_skill = normalize_skill_intent(skill_intent) or normalize_skill_intent(
             run.get("_active_skill_intent"),
         )
+        route_category = _route_category_from_run_meta(run)
+        if topic and not route_category:
+            route_category = _route_category_for_topic(topic, run)
+        clarity_sc = False
+        if topic:
+            from agent_lab.clarity import clarity_short_circuit
+
+            clarity_sc = clarity_short_circuit(topic)
         return cls(
             room_preset=preset,
             plan_workflow_phase=phase,
@@ -171,6 +218,9 @@ class TurnSignals:
             supervisor_first_turn=supervisor_first_turn,
             skill_intent=resolved_skill,
             proposed_tags_count=max(0, int(proposed_tags_count or 0)),
+            route_category=route_category,
+            discuss_light=bool(run.get("discuss_light")),
+            clarity_short_circuit=clarity_sc,
         )
 
 
@@ -230,9 +280,13 @@ class TurnPolicyEngine:
         phase = (signals.plan_workflow_phase or "INTAKE").strip().upper()
         is_fast = preset == "fast"
         is_supervisor = preset == "supervisor"
+        skip_fsm = skip_plan_fsm_bootstrap(signals)
 
         init_pw = bool(
-            is_supervisor and signals.supervisor_first_turn and (not signals.plan_workflow_active or phase == "INTAKE")
+            is_supervisor
+            and signals.supervisor_first_turn
+            and (not signals.plan_workflow_active or phase == "INTAKE")
+            and not skip_fsm
         )
 
         advance_pw = bool(
@@ -240,6 +294,7 @@ class TurnPolicyEngine:
             and not is_fast
             and (signals.plan_workflow_active or init_pw)
             and phase in _PLAN_FSM_TICK_PHASES
+            and not skip_fsm
         )
 
         scribe_trigger: ScribeTrigger = "none"
@@ -294,6 +349,7 @@ def prepare_turn_policy_before_agent_round(
     run_meta: RunState,
     *,
     human_turn: int,
+    topic: str = "",
 ) -> tuple[RunState, TurnEffects | None]:
     """Resolve and persist TurnEffects before agent round; bootstrap FSM when needed."""
     if not turn_policy_enabled():
@@ -306,6 +362,7 @@ def prepare_turn_policy_before_agent_round(
 
     signals = TurnSignals.from_run_meta(
         run_meta,
+        topic=topic or None,
         supervisor_first_turn=human_turn <= 1,
     )
     room_preset_hint = signals.room_preset
@@ -316,6 +373,7 @@ def prepare_turn_policy_before_agent_round(
         run_meta = read_run_meta(folder)
         signals = TurnSignals.from_run_meta(
             run_meta,
+            topic=topic or None,
             room_preset=room_preset_hint,
             supervisor_first_turn=human_turn <= 1,
         )

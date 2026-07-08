@@ -14,13 +14,16 @@ export const FALLBACK_ROOM_PRESETS: RoomPreset[] = [
   {
     id: "supervisor",
     turn_profile: "loop",
-    description: "Multi-agent consensus, plan, verify, and mission loop execute",
+    description:
+      "Multi-agent consensus, plan, verify, and mission loop execute",
     role_policy: "auto",
     label: "Supervisor",
   },
 ];
 
-export function resolveRoomPresets(apiPresets?: RoomPreset[] | null): RoomPreset[] {
+export function resolveRoomPresets(
+  apiPresets?: RoomPreset[] | null,
+): RoomPreset[] {
   const fromApi = (apiPresets ?? []).filter((p) => String(p.id || "").trim());
   return fromApi.length > 0 ? fromApi : [...FALLBACK_ROOM_PRESETS];
 }
@@ -50,7 +53,11 @@ export function presetDisplayLabel(
 ): string {
   const id = typeof preset === "string" ? preset : preset.id;
   if (locale === "ko") {
-    return PRESET_LABEL_KO[id] ?? (typeof preset === "object" ? preset.label : undefined) ?? id;
+    return (
+      PRESET_LABEL_KO[id] ??
+      (typeof preset === "object" ? preset.label : undefined) ??
+      id
+    );
   }
   if (typeof preset === "object" && preset.label?.trim()) {
     return preset.label.trim();
@@ -72,7 +79,9 @@ export function presetHintLine(
   return preset.description?.trim() || null;
 }
 
-function readRecombinationSkip(run: Record<string, unknown> | null | undefined): string | null {
+function readRecombinationSkip(
+  run: Record<string, unknown> | null | undefined,
+): string | null {
   const consensus = run?.consensus;
   if (!consensus || typeof consensus !== "object") return null;
   const recomb = (consensus as Record<string, unknown>).recombination;
@@ -86,7 +95,9 @@ export function emergenceHintLine(
   run: Record<string, unknown> | null | undefined,
   locale: Locale = "en",
 ): string | null {
-  const preset = String(run?.room_preset ?? "").trim().toLowerCase();
+  const preset = String(run?.room_preset ?? "")
+    .trim()
+    .toLowerCase();
   if (preset !== "supervisor") return null;
   const skipped = readRecombinationSkip(run);
   if (skipped) {

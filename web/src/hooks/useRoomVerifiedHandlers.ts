@@ -6,7 +6,10 @@ import {
   rejectVerifiedLoop,
   runSynthesizeOnly,
 } from "../api/client";
-import type { PlanApprovalMode, PlanRejectPayload } from "../components/PlanApprovalPanel";
+import type {
+  PlanApprovalMode,
+  PlanRejectPayload,
+} from "../components/PlanApprovalPanel";
 import type { AgentPermissions } from "../utils/agentPermissions";
 import { roomPermissions } from "../utils/agentPermissions";
 import { updateSessionRun } from "../run/runSessionRegistry";
@@ -14,10 +17,7 @@ import type { ExecuteSendFn } from "./useRoomExecuteSend";
 import type { usePlanExecute } from "./usePlanExecute";
 import type { RecoveryFailure } from "../utils/recoveryItems";
 
-type PlanExecuteSlice = Pick<
-  ReturnType<typeof usePlanExecute>,
-  "dryRun"
->;
+type PlanExecuteSlice = Pick<ReturnType<typeof usePlanExecute>, "dryRun">;
 
 export type RoomVerifiedHandlersOptions = {
   sessionId: string | null;
@@ -85,11 +85,7 @@ export function useRoomVerifiedHandlers({
             ? (res.continue_prompt as string | undefined)?.trim()
             : undefined;
         if (prompt && !showPlanApproval) {
-          void executeSend(
-            prompt,
-            [],
-            roomPermissions(selected),
-          );
+          void executeSend(prompt, [], roomPermissions(selected));
         }
       } catch (e) {
         setVerifiedLoopError(String(e));
@@ -133,7 +129,13 @@ export function useRoomVerifiedHandlers({
         setVerifiedLoopBusy(false);
       }
     },
-    [sessionId, refreshSessionMeta, showPlanApproval, setVerifiedLoopBusy, setVerifiedLoopError],
+    [
+      sessionId,
+      refreshSessionMeta,
+      showPlanApproval,
+      setVerifiedLoopBusy,
+      setVerifiedLoopError,
+    ],
   );
 
   const executeSynthesizeOnly = useCallback(

@@ -45,7 +45,9 @@ function laneReady(
     case "plan_approval":
       return input.planApprovalEnabled;
     case "clarify":
-      return input.showClarifyNotice && !input.hasPlan && !input.planApprovalEnabled;
+      return (
+        input.showClarifyNotice && !input.hasPlan && !input.planApprovalEnabled
+      );
     case "execute_queue":
       return input.showExecuteQueue && input.execPending;
     case "consensus":

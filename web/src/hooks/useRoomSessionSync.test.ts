@@ -3,7 +3,9 @@ import { bindRoomSessionRefreshCommands } from "./useRoomSessionSync";
 
 describe("bindRoomSessionRefreshCommands", () => {
   it("wires refreshCommands into the session sync ref", () => {
-    const ref: { current: (sid?: string | null) => void } = { current: () => {} };
+    const ref: { current: (sid?: string | null) => void } = {
+      current: () => {},
+    };
     const calls: string[] = [];
     bindRoomSessionRefreshCommands(ref, (sid?: string | null) => {
       calls.push(String(sid ?? ""));

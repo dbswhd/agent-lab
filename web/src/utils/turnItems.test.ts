@@ -58,7 +58,10 @@ describe("turn item reducer", () => {
     });
     const thinking = items.filter((item) => item.kind === "reasoning_summary");
     expect(thinking).toHaveLength(1);
-    expect(thinking[0]).toMatchObject({ text: "alpha beta", status: "running" });
+    expect(thinking[0]).toMatchObject({
+      text: "alpha beta",
+      status: "running",
+    });
   });
 
   it("dedupes repeated tool_start for the same command", () => {

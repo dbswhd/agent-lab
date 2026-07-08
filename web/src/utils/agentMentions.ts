@@ -18,7 +18,10 @@ function canonicalMention(raw: string, active: Set<string>): string | null {
   return active.has(token) ? token : null;
 }
 
-export function parseAgentMentions(text: string, activePool: string[]): string[] {
+export function parseAgentMentions(
+  text: string,
+  activePool: string[],
+): string[] {
   const active = new Set(
     activePool.map((a) => a.trim().toLowerCase()).filter(Boolean),
   );
@@ -32,7 +35,10 @@ export function parseAgentMentions(text: string, activePool: string[]): string[]
 }
 
 /** Roster the server will invoke after @-mention filtering. */
-export function effectiveTurnAgents(body: string, rosterPool: string[]): string[] {
+export function effectiveTurnAgents(
+  body: string,
+  rosterPool: string[],
+): string[] {
   const pool = rosterPool.map((a) => a.trim().toLowerCase()).filter(Boolean);
   if (!pool.length) return rosterPool;
   const mentions = parseAgentMentions(body, pool);

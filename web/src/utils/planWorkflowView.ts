@@ -63,7 +63,9 @@ export const COMPOSER_PLAN_WORKFLOW_NOTICES = new Set([
   "plan_changed_after_approval",
 ]);
 
-export function isComposerPlanWorkflowNotice(notice: string | undefined): boolean {
+export function isComposerPlanWorkflowNotice(
+  notice: string | undefined,
+): boolean {
   const normalized = notice?.trim();
   return Boolean(normalized && COMPOSER_PLAN_WORKFLOW_NOTICES.has(normalized));
 }

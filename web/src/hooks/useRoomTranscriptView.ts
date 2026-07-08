@@ -1,10 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RoomTasksPayload, SessionDetail } from "../api/client";
 import type { WorkFocusTarget } from "../components/WorkToolPanel";
 import { useMessagesScroll } from "./useMessagesScroll";
@@ -23,7 +17,10 @@ import {
   TRANSCRIPT_VIEW_PREFS_EVENT,
 } from "../utils/transcriptViewPrefs";
 import { isReplyWaitRole } from "../utils/transcript";
-import { resolveTurnSend, type ComposerTurnProfile } from "../utils/turnProfile";
+import {
+  resolveTurnSend,
+  type ComposerTurnProfile,
+} from "../utils/turnProfile";
 
 export type UseRoomTranscriptViewOptions = {
   sessionId: string | null;

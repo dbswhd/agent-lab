@@ -1,5 +1,9 @@
 import type { LiveMsg } from "../run/runSessionRegistry";
-import { agentLabel, isReplyWaitRole, type AgentRole } from "../utils/transcript";
+import {
+  agentLabel,
+  isReplyWaitRole,
+  type AgentRole,
+} from "../utils/transcript";
 
 export type RunningAgentSlot = {
   agent: string;

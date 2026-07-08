@@ -102,8 +102,10 @@ function inboxKindLabel(item: HumanInboxItem, ko: boolean): string {
   if (item.kind === "build") return ko ? "실행" : "Build";
   if (item.kind === "skill_draft") return ko ? "스킬" : "Skill";
   if (item.kind === "autonomy") return ko ? "자율도" : "Autonomy";
-  if (item.kind === "correction_rule") return ko ? "교정 규칙" : "Correction rule";
-  if (item.kind === "retry_diagnosis") return ko ? "재시도 진단" : "Retry diagnosis";
+  if (item.kind === "correction_rule")
+    return ko ? "교정 규칙" : "Correction rule";
+  if (item.kind === "retry_diagnosis")
+    return ko ? "재시도 진단" : "Retry diagnosis";
   if (item.kind === "drift_audit") return ko ? "드리프트 감사" : "Drift audit";
   if (item.kind === "rule_sync") return ko ? "규칙 동기화" : "Rule sync";
   return ko ? "질문" : "Question";
@@ -202,7 +204,8 @@ function InboxRow({
     planRevision &&
     item.plan_revision !== planRevision;
   const busy = disabled || busyId === item.id;
-  const forkRow = usesGenericOptionsUi(item.kind) && (item.options?.length ?? 0) >= 2;
+  const forkRow =
+    usesGenericOptionsUi(item.kind) && (item.options?.length ?? 0) >= 2;
   const sourceBadge = inboxSourceBadge(item, ko);
   const kindLabel = inboxKindLabel(item, ko);
   const trigger = triggerBadge(item.trigger, ko);
@@ -283,7 +286,9 @@ function InboxRow({
           <Avatar role={inboxAgent(item)} size={20} />
           <div className="inbox-row__headline">
             {flat && (questionLead ?? approvalLead) ? (
-              <span className="inbox-row__lead">{questionLead ?? approvalLead}</span>
+              <span className="inbox-row__lead">
+                {questionLead ?? approvalLead}
+              </span>
             ) : null}
             <span className="inbox-row__subject">{subject}</span>
             {why ? <span className="inbox-row__why">{why}</span> : null}
@@ -322,9 +327,7 @@ function InboxRow({
             </span>
           ) : null}
           {!flat && item.kind !== "question" ? (
-            <span className="inbox-row__time">
-              {createdAtLabel}
-            </span>
+            <span className="inbox-row__time">{createdAtLabel}</span>
           ) : null}
         </div>
       )}

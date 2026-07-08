@@ -73,7 +73,9 @@ export function turnStrategyFromCatalog(
   };
   const byId = new Map(
     catalog.modes
-      .filter((m) => TURN_MODE_ORDER.includes(m.id as (typeof TURN_MODE_ORDER)[number]))
+      .filter((m) =>
+        TURN_MODE_ORDER.includes(m.id as (typeof TURN_MODE_ORDER)[number]),
+      )
       .map((mode) => [mode.id, mode] as const),
   );
   return TURN_MODE_ORDER.map((id) => byId.get(id))

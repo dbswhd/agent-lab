@@ -75,8 +75,8 @@ export function PlanExecuteDryRunBody({
       {!loadingActions && !hasNowSection && !hasDryRun && !recommended ? (
         <p className="plan-card__muted">
           plan.md에 실행 액션이 없습니다. 토론·분석만 있으면{" "}
-          <code>## 지금 실행</code> 섹션이 비어 있을 수 있습니다.
-          Transcript에서 구현 항목을 합의한 뒤 다음 턴 plan 갱신을 확인하세요.
+          <code>## 지금 실행</code> 섹션이 비어 있을 수 있습니다. Transcript에서
+          구현 항목을 합의한 뒤 다음 턴 plan 갱신을 확인하세요.
         </p>
       ) : null}
 
@@ -193,7 +193,9 @@ export function PlanExecuteDryRunBody({
       {!activePending && hasDryRun && !planSnapshot ? (
         <div className="plan-actions-bar">
           {executeWorkspace?.label ? (
-            <span className="plan-card__workspace">{executeWorkspace.label}</span>
+            <span className="plan-card__workspace">
+              {executeWorkspace.label}
+            </span>
           ) : null}
           <button
             type="button"

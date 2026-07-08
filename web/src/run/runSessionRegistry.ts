@@ -166,10 +166,7 @@ export function markBackgroundRun(
 }
 
 /** Clear client background run; optional kind avoids clobbering another path. */
-export function clearBackgroundRun(
-  sessionId: string,
-  runKind?: string,
-): void {
+export function clearBackgroundRun(sessionId: string, runKind?: string): void {
   updateSessionRun(sessionId, (snap) => {
     if (runKind && snap.backgroundRun?.runKind !== runKind) {
       return {};

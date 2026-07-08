@@ -605,6 +605,7 @@ class RunRoomStartResult:
     permissions: dict
     synthesize: bool
     sessions_base: Path | None
+    agents_explicit: bool = False
     abort: tuple[Path, list[ChatMessage], str] | None = None
 
 
@@ -648,6 +649,7 @@ def prepare_run_room_start(
 
     plan_md, run_meta = _session_context(folder)
     _bind_session_to_run_meta(run_meta, folder)
+    agents_explicit = bool(agents and any(str(a).strip() for a in agents))
     requested_agents = resolve_active_agents(agents, available_agents, session_folder=folder)
     active_agents = filter_agents_for_turn(
         requested_agents,
@@ -664,7 +666,13 @@ def prepare_run_room_start(
     messages: list[ChatMessage] = [ChatMessage(role="user", agent=None, content=body)]
     if folder is not None:
         messages = load_session_messages(folder) + messages
-    stamp_run_meta(run_meta, agents=[str(a) for a in active_agents])
+    # Expanded default roster is not an explicit multi-select — topic-router subsets
+    # must still apply. Only caller-provided agents (or session pin) set this.
+    stamp_run_meta(
+        run_meta,
+        agents=[str(a) for a in active_agents],
+        _roster_explicit=agents_explicit,
+    )
     human_turn_index = _human_turn_count(messages) - 1
     mode = _casual_turn_mode(synthesize)
     human_turn_num = max(1, _human_turn_count(messages))
@@ -714,6 +722,7 @@ def prepare_run_room_start(
             permissions=permissions_norm,
             synthesize=synthesize,
             sessions_base=sessions_base,
+            agents_explicit=agents_explicit,
             abort=(folder, abort_messages, abort_plan_md),
         )
     is_new = folder is None or not (folder / "chat.jsonl").is_file()
@@ -734,6 +743,7 @@ def prepare_run_room_start(
         permissions=permissions_norm,
         synthesize=synthesize,
         sessions_base=sessions_base,
+        agents_explicit=agents_explicit,
     )
 
 

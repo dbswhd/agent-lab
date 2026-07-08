@@ -10,7 +10,10 @@ export type TurnActivityStats = {
 };
 
 function normalizeToolName(tool: string): string {
-  return tool.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  return tool
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
 }
 
 type ToolBucket = "command" | "search" | "edit" | "explore" | "other";
@@ -24,7 +27,11 @@ function classifyTool(tool: string): ToolBucket {
   ) {
     return "command";
   }
-  if (/grep|search|glob|find|rg|ripgrep|codebase|web_search|query|scout/.test(name)) {
+  if (
+    /grep|search|glob|find|rg|ripgrep|codebase|web_search|query|scout/.test(
+      name,
+    )
+  ) {
     return "search";
   }
   if (
@@ -47,7 +54,10 @@ function pathFromArgs(args?: string): string | null {
   return first && first.includes("/") ? first : trimmed.slice(0, 120);
 }
 
-function bumpDiffStats(output: string | undefined, stats: TurnActivityStats): void {
+function bumpDiffStats(
+  output: string | undefined,
+  stats: TurnActivityStats,
+): void {
   if (!output) return;
   for (const line of output.split("\n")) {
     if (line.startsWith("+++") || line.startsWith("---")) continue;
@@ -129,7 +139,11 @@ export function summarizeTurnItems(
   return stats;
 }
 
-function plural(count: number, singular: string, pluralWord = `${singular}s`): string {
+function plural(
+  count: number,
+  singular: string,
+  pluralWord = `${singular}s`,
+): string {
   return count === 1 ? singular : pluralWord;
 }
 
@@ -196,7 +210,9 @@ export function truncateMiddle(text: string, max = 72): string {
   return `${t.slice(0, head)}…${t.slice(-tail)}`;
 }
 
-export function toolStepSummary(item: Extract<TurnItem, { kind: "tool" }>): string {
+export function toolStepSummary(
+  item: Extract<TurnItem, { kind: "tool" }>,
+): string {
   const name = item.tool.trim() || "tool";
   const detail = item.args?.trim() ?? "";
   if (detail) {
@@ -212,7 +228,9 @@ export function reasoningStepSummary(item: {
   status: "running" | "done";
 }): string {
   const preview = truncateMiddle(item.text, 56);
-  return item.status === "running" ? `Thought · ${preview}` : `Thought · ${preview}`;
+  return item.status === "running"
+    ? `Thought · ${preview}`
+    : `Thought · ${preview}`;
 }
 
 export function activityStepSummary(item: { text: string }): string {
@@ -226,9 +244,7 @@ export function stepDetailsOpen(item: TurnItem, running: boolean): boolean {
 }
 
 /** One-line description of the most recent step, for the collapsed timeline summary. */
-export function latestStepSummary(
-  steps: readonly TurnItem[],
-): string | null {
+export function latestStepSummary(steps: readonly TurnItem[]): string | null {
   const last = steps.at(-1);
   if (!last) return null;
   if (last.kind === "tool") return toolStepSummary(last);

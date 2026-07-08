@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  sortAgentIds,
-  sortAgentPickerOptions,
-} from "./agentOrder";
+import { sortAgentIds, sortAgentPickerOptions } from "./agentOrder";
 
 describe("agentOrder", () => {
   it("sorts agent ids in roster order", () => {

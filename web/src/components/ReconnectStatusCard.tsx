@@ -19,7 +19,8 @@ const DESC: Record<ReconnectStatus, string> = {
   reconnecting:
     "네트워크가 일시적으로 끊어졌을 수 있습니다. 자동으로 재연결을 시도합니다.",
   reconnected: "이어서 진행합니다.",
-  failed: "자동 재연결을 모두 시도했지만 연결하지 못했습니다. 진행 중이던 턴은 서버에서 계속 실행 중일 수 있습니다.",
+  failed:
+    "자동 재연결을 모두 시도했지만 연결하지 못했습니다. 진행 중이던 턴은 서버에서 계속 실행 중일 수 있습니다.",
 };
 
 export function ReconnectStatusCard({ status, sessionId }: Props) {

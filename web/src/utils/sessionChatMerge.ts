@@ -32,9 +32,7 @@ export function mergePersistedChatWithLiveLog(
     const key = agentTurnKey(String(m.role), m.parallelRound);
     if (known.has(key)) return [];
     const finalized =
-      m.typing && (m.body ?? "").trim()
-        ? { ...m, typing: false as const }
-        : m;
+      m.typing && (m.body ?? "").trim() ? { ...m, typing: false as const } : m;
     return [finalized];
   });
 

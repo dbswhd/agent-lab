@@ -662,9 +662,9 @@ def run_mission_discuss_recovery(
     from agent_lab.run.control import run_guard
 
     ready = set(available_agents())
-    agents = [a for a in ("codex", "claude") if a in ready]
+    agents = [str(a) for a in ("codex", "claude") if a in ready]
     if not agents:
-        agents = [a for a in ready if a in {"cursor", "codex", "claude"}][:2]
+        agents = [str(a) for a in ready if a in {"cursor", "codex", "claude"}][:2]
     if not agents:
         return {"skipped": True, "reason": "no_agents"}
 

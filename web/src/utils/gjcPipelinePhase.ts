@@ -11,11 +11,7 @@ export type GjcPipelinePhase =
   | "verify"
   | "done";
 
-const PLAN_PHASES = new Set([
-  "DRAFT",
-  "PEER_REVIEW",
-  "REFINE",
-]);
+const PLAN_PHASES = new Set(["DRAFT", "PEER_REVIEW", "REFINE"]);
 
 const INTERVIEW_PHASES = new Set(["INTAKE", "CLARIFY"]);
 

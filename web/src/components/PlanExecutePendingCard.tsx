@@ -134,10 +134,7 @@ export function PlanExecutePendingCard({
       <div className="exec-card__body">
         <ApplyIsolationBanner row={activePending} />
         <WorktreePendingBanner row={activePending} />
-        <PlanLinkedTaskLine
-          task={linkedForPending}
-          onFocusTask={onFocusTask}
-        />
+        <PlanLinkedTaskLine task={linkedForPending} onFocusTask={onFocusTask} />
         {activePending.pre_verify?.blocked ||
         (activePending.pre_verify?.feedback &&
           !activePending.pre_verify?.blocked) ? (
@@ -197,8 +194,7 @@ export function PlanExecutePendingCard({
         )}
         {activePending.artifact_touched_paths?.length ? (
           <p className="work-exec-pending__paths">
-            검증 산출물:{" "}
-            {formatPathList(activePending.artifact_touched_paths)}
+            검증 산출물: {formatPathList(activePending.artifact_touched_paths)}
           </p>
         ) : null}
         {activePending.needs_artifact_review ? (
@@ -257,8 +253,7 @@ export function PlanExecutePendingCard({
         ) : null}
         {activePending.paths_outside_expected?.length ? (
           <p className="work-exec-pending__warn">
-            예상 범위 밖:{" "}
-            {formatPathList(activePending.paths_outside_expected)}
+            예상 범위 밖: {formatPathList(activePending.paths_outside_expected)}
           </p>
         ) : null}
         {activePending.status === "merge_conflict" ? (
@@ -268,8 +263,8 @@ export function PlanExecutePendingCard({
             aria-label="merge 충돌"
           >
             <p className="work-exec-merge-conflict__lead">
-              main 병합 중 충돌이 발생했습니다. 저장소에서 충돌을 해결한 뒤
-              다시 시도하세요.
+              main 병합 중 충돌이 발생했습니다. 저장소에서 충돌을 해결한 뒤 다시
+              시도하세요.
             </p>
             {mergeConflictFiles(activePending).length ? (
               <ul className="work-exec-merge-conflict__files">
@@ -385,7 +380,10 @@ export function PlanExecutePendingCard({
                 type="button"
                 className="plan-btn"
                 disabled={
-                  disabled || busy || !reviseComment.trim() || !activePending.diff
+                  disabled ||
+                  busy ||
+                  !reviseComment.trim() ||
+                  !activePending.diff
                 }
                 onClick={() => onRevisePending()}
               >

@@ -22,9 +22,12 @@ def template_routing_hints(template_id: str | None) -> dict[str, Any]:
         from agent_lab.session.setup import resolve_session_template
 
         tpl = resolve_session_template(template_id)
-        hints = tpl.get("routing_hints")
-        if isinstance(hints, dict):
-            return dict(hints)
+        # Trading templates are omitted when quant pipeline is unavailable; resolve then
+        # silently falls back to ``general`` (empty hints). Only trust an exact id match.
+        if str(tpl.get("id") or "").strip().lower() == tid:
+            hints = tpl.get("routing_hints")
+            if isinstance(hints, dict):
+                return dict(hints)
     except Exception:
         pass
     return dict(_TEMPLATE_ROUTING_HINTS.get(tid, {}))

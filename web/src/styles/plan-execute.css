@@ -1144,7 +1144,11 @@
 .plan-todo-item__button--done .plan-todo-item__label {
   color: var(--label-tertiary);
   text-decoration: line-through;
-  text-decoration-color: color-mix(in srgb, var(--label-tertiary) 70%, transparent);
+  text-decoration-color: color-mix(
+    in srgb,
+    var(--label-tertiary) 70%,
+    transparent
+  );
 }
 
 .plan-todo-item__button--disabled {

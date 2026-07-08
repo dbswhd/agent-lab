@@ -4,8 +4,18 @@ import { inferRunStateFromLiveLog } from "./liveRoomLog";
 describe("inferRunStateFromLiveLog", () => {
   it("detects open agent turns before agent_done", () => {
     const state = inferRunStateFromLiveLog([
-      { type: "agent_start", agent: "codex", round: 1, ts: "2026-07-02T10:00:00.000Z" },
-      { type: "agent_activity", agent: "codex", round: 1, text: "Reading repo" },
+      {
+        type: "agent_start",
+        agent: "codex",
+        round: 1,
+        ts: "2026-07-02T10:00:00.000Z",
+      },
+      {
+        type: "agent_activity",
+        agent: "codex",
+        round: 1,
+        text: "Reading repo",
+      },
     ]);
     expect(state.inFlight).toBe(true);
     expect(state.runStartedAt).toBe(Date.parse("2026-07-02T10:00:00.000Z"));

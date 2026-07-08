@@ -172,9 +172,10 @@ export function replayLiveLogToMessages(
 const TERMINAL_AGENT_EVENTS = new Set(["agent_done", "agent_error"]);
 
 /** Detect an in-flight turn from persisted live.jsonl (refresh / session switch). */
-export function inferRunStateFromLiveLog(
-  events: LiveRoomEvent[],
-): { inFlight: boolean; runStartedAt: number | null } {
+export function inferRunStateFromLiveLog(events: LiveRoomEvent[]): {
+  inFlight: boolean;
+  runStartedAt: number | null;
+} {
   const open = new Set<string>();
   let runStartedAt: number | null = null;
   for (const ev of events) {

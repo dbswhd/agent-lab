@@ -28,7 +28,9 @@ describe("roomComposerPrefs", () => {
   it("detects plan execute intent topics", () => {
     expect(detectPlanExecuteIntent(EXECUTE_TOPIC)).toBe(true);
     expect(
-      detectPlanExecuteIntent("room.py에서 consensus 라운드 cap 기본값이 뭐야?"),
+      detectPlanExecuteIntent(
+        "room.py에서 consensus 라운드 cap 기본값이 뭐야?",
+      ),
     ).toBe(false);
   });
 

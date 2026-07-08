@@ -174,7 +174,8 @@ const EN = {
     "No ready executable action is available. Approval will lock the plan without starting work.",
   planApprovalCancel: "Cancel",
   planWorkflowPendingTitle: "Plan workflow · Approval",
-  planWorkflowPendingDetail: "Review and approve plan.md in the composer stack.",
+  planWorkflowPendingDetail:
+    "Review and approve plan.md in the composer stack.",
   planWorkflowPhasePending: "HUMAN PENDING",
   planWorkflowPendingOpenTasks: "Open composer · Approve",
   planWorkflowApprovedTitle: "Plan workflow · Approved",
@@ -464,7 +465,8 @@ const KO = {
     "실행 가능한 action이 없어 Plan만 확정하며 작업은 시작하지 않습니다.",
   planApprovalCancel: "취소",
   planWorkflowPendingTitle: "Plan workflow · 승인",
-  planWorkflowPendingDetail: "Composer stack에서 plan.md를 확인하고 승인하세요.",
+  planWorkflowPendingDetail:
+    "Composer stack에서 plan.md를 확인하고 승인하세요.",
   planWorkflowPhasePending: "HUMAN PENDING",
   planWorkflowPendingOpenTasks: "Composer · 승인하기",
   planWorkflowApprovedTitle: "Plan workflow · 승인됨",

@@ -107,7 +107,9 @@ export type RoomRecoveryActionsOptions = {
   setDiscussRecoveryBusy: (value: boolean) => void;
   setRecoveryBusyAction: (actionId: RecoveryActionId | null) => void;
   setText: (text: string) => void;
-  setWorkFocus: Dispatch<SetStateAction<import("../components/WorkToolPanel").WorkFocusTarget | null>>;
+  setWorkFocus: Dispatch<
+    SetStateAction<import("../components/WorkToolPanel").WorkFocusTarget | null>
+  >;
   beginRecoveryAttempt: (
     item: RecoveryItem,
     actionId: RecoveryActionId,
@@ -115,7 +117,10 @@ export type RoomRecoveryActionsOptions = {
   ) => string | null;
   finishRecoveryAction: (attemptId: string | null) => void;
   executeSlashCommand: (cmd: SlashCommandRecord, arg: string) => Promise<void>;
-  notifyRecoveryStarted: (item: RecoveryItem, actionId: RecoveryActionId) => void;
+  notifyRecoveryStarted: (
+    item: RecoveryItem,
+    actionId: RecoveryActionId,
+  ) => void;
   openWorkTab: () => void;
   openHumanInbox: () => void;
   openTranscriptTab: () => void;
@@ -310,7 +315,13 @@ export function useRoomRecoveryActions({
       }
       focusComposerInput();
     },
-    [lastPlainSendTextRef, openTranscriptTab, openWorkTab, setText, setWorkFocus],
+    [
+      lastPlainSendTextRef,
+      openTranscriptTab,
+      openWorkTab,
+      setText,
+      setWorkFocus,
+    ],
   );
 
   return {

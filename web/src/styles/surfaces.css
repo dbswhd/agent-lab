@@ -711,8 +711,14 @@
   position: relative;
   z-index: 2;
   flex: 0 0 auto;
-  width: var(--composer-dock-width, min(100%, calc(var(--composer-max) * 4 / 5)));
-  max-width: var(--composer-dock-width, min(100%, calc(var(--composer-max) * 4 / 5)));
+  width: var(
+    --composer-dock-width,
+    min(100%, calc(var(--composer-max) * 4 / 5))
+  );
+  max-width: var(
+    --composer-dock-width,
+    min(100%, calc(var(--composer-max) * 4 / 5))
+  );
   margin-inline: auto;
   /* Top bleed for uniform shadow; negative margin keeps flush with fade */
   padding: var(--composer-dock-shadow-bleed, 8px) var(--space-4) var(--space-4);
@@ -738,8 +744,14 @@
 }
 
 .composer-wrap > .composer-stack-scroll {
-  width: var(--composer-dock-width, min(100%, calc(var(--composer-max) * 4 / 5)));
-  max-width: var(--composer-dock-width, min(100%, calc(var(--composer-max) * 4 / 5)));
+  width: var(
+    --composer-dock-width,
+    min(100%, calc(var(--composer-max) * 4 / 5))
+  );
+  max-width: var(
+    --composer-dock-width,
+    min(100%, calc(var(--composer-max) * 4 / 5))
+  );
 }
 
 .composer-event-stack {

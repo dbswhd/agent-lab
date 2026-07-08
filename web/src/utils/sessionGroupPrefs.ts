@@ -22,7 +22,9 @@ function readStore(): Store {
     if (!parsed || typeof parsed !== "object") return emptyStore();
     const record = parsed as Record<string, unknown>;
     const groups = Array.isArray(record.groups)
-      ? record.groups.filter((value): value is string => typeof value === "string")
+      ? record.groups.filter(
+          (value): value is string => typeof value === "string",
+        )
       : [];
     const assignments: Record<string, string> = {};
     if (record.assignments && typeof record.assignments === "object") {
@@ -35,7 +37,9 @@ function readStore(): Store {
       }
     }
     const pinned = Array.isArray(record.pinned)
-      ? record.pinned.filter((value): value is string => typeof value === "string")
+      ? record.pinned.filter(
+          (value): value is string => typeof value === "string",
+        )
       : [];
     return { groups, assignments, pinned };
   } catch {
@@ -63,7 +67,11 @@ export function createSessionGroup(name: string): string | null {
   const trimmed = name.trim();
   if (!trimmed) return null;
   const store = readStore();
-  if (store.groups.some((group) => group.toLocaleLowerCase() === trimmed.toLocaleLowerCase())) {
+  if (
+    store.groups.some(
+      (group) => group.toLocaleLowerCase() === trimmed.toLocaleLowerCase(),
+    )
+  ) {
     return trimmed;
   }
   store.groups.push(trimmed);
@@ -106,10 +114,7 @@ export type SessionListGroup = {
   sessions: SessionSummary[];
 };
 
-function sessionSortRank(
-  session: SessionSummary,
-  pinned: string[],
-): number {
+function sessionSortRank(session: SessionSummary, pinned: string[]): number {
   const pinIndex = pinned.indexOf(session.id);
   if (pinIndex >= 0) return pinIndex;
   return pinned.length + 1;
@@ -169,7 +174,11 @@ export function groupSessionsForDrag(
   const existing = new Set(grouped.map((group) => group.key));
   const extras = listSessionGroups()
     .filter((name) => !existing.has(name))
-    .map((name) => ({ key: name, label: name, sessions: [] as SessionSummary[] }));
+    .map((name) => ({
+      key: name,
+      label: name,
+      sessions: [] as SessionSummary[],
+    }));
   if (!extras.length) return grouped;
 
   const ungroupedIndex = grouped.findIndex(

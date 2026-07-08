@@ -690,7 +690,9 @@ export default function App() {
                       selectedAgents={agents
                         .filter((a) => a.ready)
                         .map((a) => a.id)}
-                      turnProfile={turnProfileForRoomPreset(IMPLICIT_ROOM_PRESET)}
+                      turnProfile={turnProfileForRoomPreset(
+                        IMPLICIT_ROOM_PRESET,
+                      )}
                       apiOk={apiOk}
                       healthAgents={healthAgents}
                       healthLoading={healthLoading}

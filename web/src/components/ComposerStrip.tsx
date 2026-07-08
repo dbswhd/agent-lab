@@ -48,14 +48,15 @@ export function ComposerStrip({
       <div className="composer-strip__main">
         {badge ? <span className="composer-strip__badge">{badge}</span> : null}
         <div className="composer-strip__text">
-          {title ? <strong className="composer-strip__title">{title}</strong> : null}
+          {title ? (
+            <strong className="composer-strip__title">{title}</strong>
+          ) : null}
           {description ? (
             <span className="composer-strip__desc">{description}</span>
           ) : null}
           {items && items.length > 0 ? (
             <ul className="composer-strip__list">
               {items.map((item, index) => (
-                // eslint-disable-next-line react/no-array-index-key
                 <li key={index}>{item}</li>
               ))}
             </ul>
@@ -63,7 +64,9 @@ export function ComposerStrip({
           {children}
         </div>
       </div>
-      {actions ? <div className="composer-strip__actions">{actions}</div> : null}
+      {actions ? (
+        <div className="composer-strip__actions">{actions}</div>
+      ) : null}
     </div>
   );
 }

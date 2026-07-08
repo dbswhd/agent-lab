@@ -9,7 +9,8 @@ import { DEMO_PLAN_STALE_NOTICE } from "../utils/tweaksDemoFixtures";
 import type { useRoomChatBootstrap } from "./useRoomChatBootstrap";
 import type { useRoomChatInteractions } from "./useRoomChatInteractions";
 
-type Ctx = ReturnType<typeof useRoomChatBootstrap> & ReturnType<typeof useRoomChatInteractions>;
+type Ctx = ReturnType<typeof useRoomChatBootstrap> &
+  ReturnType<typeof useRoomChatInteractions>;
 
 export function useRoomChatPresentation(ctx: Ctx) {
   const { props } = ctx;
@@ -295,7 +296,6 @@ export function useRoomChatPresentation(ctx: Ctx) {
   });
 
   return {
-
     paletteActions,
     title,
     titleMeta,

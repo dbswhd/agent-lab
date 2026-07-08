@@ -93,19 +93,12 @@ export function autonomyFromSessionRun(
   const level = block.level;
   const effective = block.effective_level ?? block.level;
   const display = block.display_level ?? effective;
-  if (
-    level !== "L0" &&
-    level !== "L1" &&
-    level !== "L2" &&
-    level !== "L3"
-  ) {
+  if (level !== "L0" && level !== "L1" && level !== "L2" && level !== "L3") {
     return null;
   }
   const tb = block.trust_budget;
   const budget =
-    tb && typeof tb === "object"
-      ? (tb as Record<string, unknown>)
-      : {};
+    tb && typeof tb === "object" ? (tb as Record<string, unknown>) : {};
   const signals = block.signals;
   const sig =
     signals && typeof signals === "object"

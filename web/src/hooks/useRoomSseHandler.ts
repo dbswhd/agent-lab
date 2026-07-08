@@ -1,10 +1,6 @@
 import type { useLocale } from "../i18n/useLocale";
 import type { PlanActionItem } from "../api/client";
-import type {
-  Dispatch,
-  MutableRefObject,
-  SetStateAction,
-} from "react";
+import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { RecoveryFailure } from "../utils/recoveryItems";
 import {
   applySessionTemplate,
@@ -74,7 +70,10 @@ export type RoomRunSseDeps = {
   persistPendingSessionRoomModels: (sessionId: string) => void | Promise<void>;
   openPlanTab: () => void;
   setRecoveryFailure: (
-    value: RecoveryFailure | null | ((prev: RecoveryFailure | null) => RecoveryFailure | null),
+    value:
+      | RecoveryFailure
+      | null
+      | ((prev: RecoveryFailure | null) => RecoveryFailure | null),
   ) => void;
   setRunLockStuck: (value: boolean) => void;
   setClarifierQuestions: (value: string[] | null) => void;
@@ -82,7 +81,9 @@ export type RoomRunSseDeps = {
   setDiscussPaused: (value: boolean) => void;
   setInboxReloadKey: Dispatch<SetStateAction<number>>;
   setWorkHookAlert: (value: WorkHookAlert | null) => void;
-  setConsensusProposal: Dispatch<SetStateAction<ConsensusDryRunProposal | null>>;
+  setConsensusProposal: Dispatch<
+    SetStateAction<ConsensusDryRunProposal | null>
+  >;
   notifyConsensusSync: (proposal: ConsensusDryRunProposal) => void;
   notifyConsensusFailure: (excerpt?: string, message?: string) => void;
   pushMacNotification: (payload: MacNotificationPayload) => void;
@@ -328,7 +329,10 @@ export function createRoomRunEventHandler(
       patchTurnMessages(scope.runKey, (m) =>
         m.map((x) =>
           x.id === "reconnect-status-live"
-            ? { ...x, body: `[reconnect]:reconnected:${scope.activeSessionId ?? ""}` }
+            ? {
+                ...x,
+                body: `[reconnect]:reconnected:${scope.activeSessionId ?? ""}`,
+              }
             : x,
         ),
       );
@@ -631,10 +635,7 @@ export function createRoomRunEventHandler(
         ];
       });
     }
-    if (
-      (t === "dispatch_start" || t === "dispatch_done") &&
-      ev.dispatch_id
-    ) {
+    if ((t === "dispatch_start" || t === "dispatch_done") && ev.dispatch_id) {
       const dispatchLine = formatDispatchActivityLine(
         ev as Record<string, unknown>,
       );
@@ -655,8 +656,7 @@ export function createRoomRunEventHandler(
       const blocked = ev.blocked === true;
       const feedback =
         typeof ev.feedback === "string" ? ev.feedback.trim() : "";
-      const subReason =
-        typeof ev.sub_reason === "string" ? ev.sub_reason : "";
+      const subReason = typeof ev.sub_reason === "string" ? ev.sub_reason : "";
       const round = Number(ev.round ?? 1);
       const aid = ev.agent ? String(ev.agent) : "";
       if (aid) {

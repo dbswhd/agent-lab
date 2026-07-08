@@ -94,7 +94,12 @@ describe("hydrateSessionMessages", () => {
           body: "done",
           parallelRound: 1,
           turnItems: [
-            { id: "t1", kind: "activity", text: "Reading repo", status: "done" },
+            {
+              id: "t1",
+              kind: "activity",
+              text: "Reading repo",
+              status: "done",
+            },
           ],
         },
       ],
@@ -109,8 +114,12 @@ describe("hydrateSessionMessages", () => {
         parallelRound: 1,
       },
     ]);
-    const codex = getSessionRunSnapshot(sid).messages.find((m) => m.role === "codex");
-    expect(codex?.turnItems?.some((item) => item.kind === "activity")).toBe(true);
+    const codex = getSessionRunSnapshot(sid).messages.find(
+      (m) => m.role === "codex",
+    );
+    expect(codex?.turnItems?.some((item) => item.kind === "activity")).toBe(
+      true,
+    );
   });
 
   it("clears typing on finish without deleting activity-only rows", () => {
@@ -124,7 +133,12 @@ describe("hydrateSessionMessages", () => {
           typing: true,
           parallelRound: 1,
           turnItems: [
-            { id: "t1", kind: "activity", text: "Reading repo", status: "done" },
+            {
+              id: "t1",
+              kind: "activity",
+              text: "Reading repo",
+              status: "done",
+            },
           ],
         },
       ],
@@ -137,7 +151,12 @@ describe("hydrateSessionMessages", () => {
           typing: true,
           parallelRound: 1,
           turnItems: [
-            { id: "t1", kind: "activity", text: "Reading repo", status: "done" },
+            {
+              id: "t1",
+              kind: "activity",
+              text: "Reading repo",
+              status: "done",
+            },
           ],
         },
       ],
@@ -174,7 +193,12 @@ describe("syncRunStateFromLiveLog", () => {
 
   it("marks session running when live log has open agent turns", () => {
     syncRunStateFromLiveLog(sid, [
-      { type: "agent_start", agent: "codex", round: 1, ts: "2026-07-02T10:00:00.000Z" },
+      {
+        type: "agent_start",
+        agent: "codex",
+        round: 1,
+        ts: "2026-07-02T10:00:00.000Z",
+      },
     ]);
     const snap = getSessionRunSnapshot(sid);
     expect(snap.running).toBe(true);

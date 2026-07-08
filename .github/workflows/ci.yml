@@ -25,6 +25,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
+            ripgrep \
             libglib2.0-dev \
             libgtk-3-dev \
             libwebkit2gtk-4.1-dev \
@@ -67,16 +68,25 @@ jobs:
       - name: Pytest (PR fast path — mock-only, no secrets)
         env:
           AGENT_LAB_ROOT: ${{ github.workspace }}
+          AGENT_LAB_MOCK_AGENTS: "1"
+          AGENT_LAB_ORACLE_LIVE: ""
+          AGENT_LAB_GOAL_ORACLE_LIVE: ""
         run: pytest tests/ -q -m "not live and not integration and not bridge" -n auto
 
       - name: Pytest integration (mock-only)
         env:
           AGENT_LAB_ROOT: ${{ github.workspace }}
+          AGENT_LAB_MOCK_AGENTS: "1"
+          AGENT_LAB_ORACLE_LIVE: ""
+          AGENT_LAB_GOAL_ORACLE_LIVE: ""
         run: pytest tests/ -q -m "integration and not live and not bridge"
 
       - name: Pytest bridge (mock-only)
         env:
           AGENT_LAB_ROOT: ${{ github.workspace }}
+          AGENT_LAB_MOCK_AGENTS: "1"
+          AGENT_LAB_ORACLE_LIVE: ""
+          AGENT_LAB_GOAL_ORACLE_LIVE: ""
         run: pytest tests/ -q -m "bridge and not live"
 
       - name: Regression smoke and score fixtures

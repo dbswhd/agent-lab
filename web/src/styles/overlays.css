@@ -1093,7 +1093,9 @@
 .composer-field .slash-command-menu.composer-mention-menu {
   z-index: 30;
 }
-.composer-field .slash-command-menu.composer-mention-menu .slash-command-menu__main {
+.composer-field
+  .slash-command-menu.composer-mention-menu
+  .slash-command-menu__main {
   border-right: none;
 }
 
@@ -1103,9 +1105,15 @@
 .composer-field .slash-command-menu.composer-auth-secret-popover {
   z-index: 31;
 }
-.composer-field .slash-command-menu.composer-slash-choice-menu .slash-command-menu__main,
-.composer-field .slash-command-menu.composer-auth-flow-popover .slash-command-menu__main,
-.composer-field .slash-command-menu.composer-auth-secret-popover .slash-command-menu__main {
+.composer-field
+  .slash-command-menu.composer-slash-choice-menu
+  .slash-command-menu__main,
+.composer-field
+  .slash-command-menu.composer-auth-flow-popover
+  .slash-command-menu__main,
+.composer-field
+  .slash-command-menu.composer-auth-secret-popover
+  .slash-command-menu__main {
   border-right: none;
   width: min(300px, calc(100vw - 32px));
   min-width: 248px;

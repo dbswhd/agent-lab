@@ -30,6 +30,10 @@ def _clear_model_profile_registry(monkeypatch: pytest.MonkeyPatch) -> Iterator[N
     """
     import agent_lab.model_policy as mp
 
+    # xdist workers can inherit polluted model env from slash-command / prefs tests.
+    for key in ("CLAUDE_MODEL", "CODEX_MODEL", "CURSOR_MODEL", "KIMI_MODEL"):
+        monkeypatch.delenv(key, raising=False)
+
     before = dict(mp._MODEL_PROFILE_REGISTRY)
     before_loaded = mp._LOOP_EVAL_LOADED
     mp._MODEL_PROFILE_REGISTRY.clear()

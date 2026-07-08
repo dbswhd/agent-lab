@@ -33,9 +33,10 @@ export type TurnItemEvent = Record<string, unknown> & {
   readonly type?: string;
 };
 
-function normalizeActivity(
-  text: string,
-): { kind: "reasoning_summary" | "activity"; text: string } {
+function normalizeActivity(text: string): {
+  kind: "reasoning_summary" | "activity";
+  text: string;
+} {
   const trimmed = text.trim();
   if (trimmed.startsWith("[thinking]")) {
     const body = trimmed.slice("[thinking]".length).trim();

@@ -25,11 +25,11 @@ PLAN_MD = f"""# X2 lift dogfood
 1.
    - 무엇을: `{DOGFood_REL}` L17 Evidence row 세션 ID `{MARKER_WRONG}` → `{MARKER_RIGHT}` 수정
    - 어디서: `{DOGFood_REL}`
-   - 검증: `grep "room\\.py" {DOGFood_REL}` 에 L17이 출력되고, Evidence row에 `roompy` 패턴이 없다
+   - 검증: `grep -n "room\\.py" {DOGFood_REL}` 에 X2-lift 포함 행이 출력되고, 해당 행에 `{MARKER_WRONG}` 없음 (L5·L11 설명용 roompy는 별도 행)
    - isolation: apply
 """
 
-VERIFY_GREP = f'grep "room\\.py" {DOGFood_REL}'
+VERIFY_GREP = f'grep -n "room\\.py" {DOGFood_REL}'
 
 
 def dogfood_text() -> str:
@@ -78,11 +78,20 @@ def apply_typo(*, write: bool = True) -> tuple[bool, str]:
 
 
 def apply_fix(*, write: bool = True) -> tuple[bool, str]:
-    """Apply the fixed slug (for mock cursor / post-run cleanup checks)."""
+    """Apply the fixed slug on Evidence row only (for mock cursor / cleanup)."""
     text = dogfood_text()
-    if MARKER_WRONG not in text:
-        return False, "already_fixed"
-    updated = text.replace(MARKER_WRONG, MARKER_RIGHT, 1)
+    lines = text.splitlines(keepends=True)
+    out: list[str] = []
+    changed = False
+    for line in lines:
+        if MARKER_LINE_HINT in line and MARKER_WRONG in line:
+            line = line.replace(MARKER_WRONG, MARKER_RIGHT, 1)
+            changed = True
+        out.append(line)
+    if not changed:
+        if has_fix(text):
+            return False, "already_fixed"
+        return False, "marker_missing"
     if write:
-        DOGFood_PATH.write_text(updated, encoding="utf-8")
+        DOGFood_PATH.write_text("".join(out), encoding="utf-8")
     return True, "typo_fixed"

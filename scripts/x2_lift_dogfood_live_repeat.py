@@ -2,11 +2,19 @@
 """X2 lift live dogfood — repeat same topic N times for advisor history lift.
 
 Requires: API on :8765, live agents (MOCK off), x2-lift env flags on server or
-inherited from shell before ``make dev``.
+inherited from shell before ``make dev`` / ``make api``.
+
+``AGENT_LAB_EXECUTE_INBOX=0`` (from ``make x2-lift-dogfood-env``) must be in the
+**API process** env. Setting it only on the ``live_repeat`` CLI process does not
+reach ``execute_inbox_mcp_enabled()`` inside FastAPI — nested Cursor then hits
+plan-first ``propose_build`` and returns an empty source diff.
 
 Usage:
   eval "$(make -s x2-lift-dogfood-env)"
-  make dev   # separate terminal
+  make api   # or make dev — restart API after changing EXECUTE_INBOX
+  # confirm server inherited EXECUTE_INBOX=0 (CLI-only export is a no-op):
+  # curl -s http://127.0.0.1:8765/api/health/flags | python3 -c \
+  #   "import sys,json; d=json.load(sys.stdin); r=next(f for f in d['flags'] if f['name']=='AGENT_LAB_EXECUTE_INBOX'); assert r.get('effective') in ('0','off','false'), r"
   make x2-lift-dogfood-prepare   # reset reversible typo in docs/_dogfood/x2-lift.md
   .venv/bin/python scripts/x2_lift_dogfood_live_repeat.py --count 5
   .venv/bin/python scripts/x2_lift_dogfood_live_repeat.py --resolve-only SESSION_ID

@@ -133,7 +133,9 @@ export function RoomChatComposerShell({
             tone="accent"
             role="region"
             ariaLabel="확인 질문"
-            title={clarifierInterview?.plan_mode ? "계획 확인 질문" : "확인 질문"}
+            title={
+              clarifierInterview?.plan_mode ? "계획 확인 질문" : "확인 질문"
+            }
             description="답을 메시지에 포함해 다시 내면 에이전트가 시작됩니다."
             items={(clarifierInterview?.questions?.length
               ? clarifierInterview.questions

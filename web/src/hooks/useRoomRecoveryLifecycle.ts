@@ -141,10 +141,7 @@ export function useRoomRecoveryLifecycle({
         ),
         ...recoveryLifecycleView.resolvedEvents.map((event) => `r:${event.id}`),
       ].join("|"),
-    [
-      recoveryLifecycleView.activeItems,
-      recoveryLifecycleView.resolvedEvents,
-    ],
+    [recoveryLifecycleView.activeItems, recoveryLifecycleView.resolvedEvents],
   );
 
   const recoveryVisible =

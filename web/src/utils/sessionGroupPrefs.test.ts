@@ -12,7 +12,11 @@ import type { SessionSummary } from "../api/client";
 
 const STORAGE_KEY = "agent-lab-session-groups";
 
-function session(id: string, topic: string, created_at?: string): SessionSummary {
+function session(
+  id: string,
+  topic: string,
+  created_at?: string,
+): SessionSummary {
   return { id, topic, created_at };
 }
 

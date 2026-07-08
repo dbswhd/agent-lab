@@ -75,7 +75,10 @@ describe("slashCommandMenuGroups", () => {
       { ...plugin, slash: "/zebra", label: "Zebra", kind: "plugin" },
       { ...plugin, id: "b", slash: "/alpha", label: "Alpha", kind: "plugin" },
     ]);
-    expect(groups.commands.map((row) => row.slash)).toEqual(["/alpha", "/zebra"]);
+    expect(groups.commands.map((row) => row.slash)).toEqual([
+      "/alpha",
+      "/zebra",
+    ]);
   });
 
   it("defaults highlight to an exact name match even if it renders after a description-only hit", () => {

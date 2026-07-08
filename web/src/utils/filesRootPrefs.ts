@@ -13,7 +13,9 @@ function readAll(): Store {
     const out: Store = {};
     for (const [sessionId, value] of Object.entries(parsed)) {
       if (!Array.isArray(value)) continue;
-      out[sessionId] = value.filter((id): id is string => typeof id === "string");
+      out[sessionId] = value.filter(
+        (id): id is string => typeof id === "string",
+      );
     }
     return out;
   } catch {

@@ -31,14 +31,19 @@ describe("filesRootPrefs", () => {
   });
 
   it("filters and preserves order", () => {
-    expect(
-      resolveVisibleRoots(roots, ["workspace-quant", "session"]),
-    ).toEqual([roots[2], roots[0]]);
+    expect(resolveVisibleRoots(roots, ["workspace-quant", "session"])).toEqual([
+      roots[2],
+      roots[0],
+    ]);
   });
 
   it("keeps at least one root when toggling off the last visible root", () => {
     expect(
-      toggleVisibleRoot(["session"], ["session", "workspace-agent-lab"], "session"),
+      toggleVisibleRoot(
+        ["session"],
+        ["session", "workspace-agent-lab"],
+        "session",
+      ),
     ).toEqual(["session"]);
   });
 });

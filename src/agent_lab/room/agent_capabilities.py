@@ -304,9 +304,9 @@ def topology_round_agents(
     if topology == "producer_reviewer":
         pool = {str(a).strip().lower() for a in agents if str(a).strip()}
         if parallel_round == 1:
-            ordered = [a for a in ("codex", "claude", "kimi_work") if a in pool]
-            return ordered or [a for a in agents if str(a).strip()][:2]
+            ordered: list[str] = [a for a in ("codex", "claude", "kimi_work") if a in pool]
+            return ordered or [str(a).strip() for a in agents if str(a).strip()][:2]
         if parallel_round == 2:
             ordered = [a for a in ("cursor",) if a in pool]
-            return ordered or [str(agents[-1]).strip().lower()] if agents else []
+            return ordered or ([str(agents[-1]).strip().lower()] if agents else [])
     return [str(a).strip().lower() for a in agents if str(a).strip()]

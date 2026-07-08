@@ -29,9 +29,9 @@ export const WORKBENCH_WIDTH_CONTENT_RATIO: Record<
   number
 > = {
   overview: 0.39,
-  diff: 0.70,
-  files: 0.70,
-  preview: 0.70,
+  diff: 0.7,
+  files: 0.7,
+  preview: 0.7,
   terminal: 0.39,
   background: 0.39,
 };
@@ -130,9 +130,7 @@ export function maxWorkbenchPanelWidth(
   layout: ShellLayoutMetrics = measureShellLayout(),
 ): number {
   const bySpace =
-    layout.canvasWidth -
-    WORKBENCH_MAIN_COLUMN_MIN -
-    WORKBENCH_CANVAS_CHROME_PX;
+    layout.canvasWidth - WORKBENCH_MAIN_COLUMN_MIN - WORKBENCH_CANVAS_CHROME_PX;
   return Math.max(
     WORKBENCH_PANEL_MIN_WIDTH,
     Math.min(WORKBENCH_PANEL_MAX_WIDTH, Math.floor(bySpace)),

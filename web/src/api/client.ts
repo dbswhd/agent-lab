@@ -448,7 +448,6 @@ export function fetchCodexProxyHealth() {
   return json<CodexProxyHealth>("/api/health/codex-proxy");
 }
 
-
 export type CredentialProviderId = "cursor" | "claude" | "codex";
 
 export type AgentCredentialRow = {
@@ -853,14 +852,17 @@ export function submitClarifierInterviewAnswers(
     session_id: string;
     interview: ClarifierInterviewRecord | null;
     plan_workflow?: PlanWorkflowRecord;
-  }>(`/api/sessions/${encodeURIComponent(sessionId)}/clarifier-interview/answers`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      answers: body.answers,
-      mark_complete: body.mark_complete ?? true,
-    }),
-  });
+  }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/clarifier-interview/answers`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        answers: body.answers,
+        mark_complete: body.mark_complete ?? true,
+      }),
+    },
+  );
 }
 
 export function fetchSessionRuntime(sessionId: string) {
@@ -1690,7 +1692,6 @@ export async function runGraph(
   await consumeSse(res, onEvent);
 }
 
-
 export type RunRoomOptions = {
   sessionId?: string;
   files?: File[];
@@ -1981,12 +1982,17 @@ export async function resumeRoomRun(
   const trackingOnEvent = (data: Record<string, unknown>) => {
     const t = String(data.type ?? "");
     if (RESUMABLE_ROOM_EVENT_TYPES.has(t)) {
-      roomResumeCursors.set(sessionId, (roomResumeCursors.get(sessionId) ?? 0) + 1);
+      roomResumeCursors.set(
+        sessionId,
+        (roomResumeCursors.get(sessionId) ?? 0) + 1,
+      );
     }
     onEvent(data);
   };
   const res = await fetch(
-    apiUrl(`/api/room/runs/${encodeURIComponent(sessionId)}/resume?since=${since}`),
+    apiUrl(
+      `/api/room/runs/${encodeURIComponent(sessionId)}/resume?since=${since}`,
+    ),
     { signal: opts?.signal },
   );
   if (!res.ok) {
@@ -2632,7 +2638,6 @@ export async function resolveInboxItem(
     },
   );
 }
-
 
 // Phase 1c (F6): domain clients — re-exported for backward compatibility.
 export * from "./workspaceClient";

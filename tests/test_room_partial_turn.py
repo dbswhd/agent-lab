@@ -9,14 +9,12 @@ def test_room_turn_partial_preserves_success_and_runs_scribe(monkeypatch, tmp_pa
     from agent_lab import room
 
     monkeypatch.delenv("AGENT_LAB_CLARIFIER", raising=False)
-    scribe_calls: list[str] = []
     events: list[tuple[str, dict]] = []
 
     def fake_call_agent(agent, _system, user, **kwargs):
         if kwargs.get("scribe"):
-            scribe_calls.append(agent)
-            assert "Cursor" in user or "cursor ok" in user
-            return "## Plan\n\n- keep successful agent response\n"
+            # TurnPolicy: synthesize=True alone does not open Scribe (docs/TURN-POLICY.md).
+            return "## Plan\n\n- unexpected scribe\n"
         if agent == "cursor":
             return '```agent-envelope\n{"act":"PROPOSE","refs":[],"confidence":0.8}\n```\ncursor ok'
         if agent == "claude":
@@ -36,8 +34,8 @@ def test_room_turn_partial_preserves_success_and_runs_scribe(monkeypatch, tmp_pa
         turn_profile="analyze",
     )
 
-    assert "keep successful agent response" in plan_md
-    assert scribe_calls
+    # Casual/analyze: keep successful agent reply; Scribe is not authority from synthesize.
+    assert plan_md == "" or "unexpected scribe" not in plan_md
     assert any(m.role == "agent" and m.agent == "cursor" and "cursor ok" in m.content for m in messages)
     assert any(m.role == "system" and m.agent == "claude" for m in messages)
 

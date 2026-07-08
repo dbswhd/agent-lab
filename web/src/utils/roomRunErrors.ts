@@ -78,9 +78,7 @@ export function formatRoomRunErrorDetail(detail: RoomRunErrorDetail): string {
     lines.push("");
     for (const agent of detail.agents) {
       if (typeof agent === "string") {
-        lines.push(
-          sharedReason ? `• ${agent}: ${sharedReason}` : `• ${agent}`,
-        );
+        lines.push(sharedReason ? `• ${agent}: ${sharedReason}` : `• ${agent}`);
       }
     }
   } else if (detail.reason?.trim()) {

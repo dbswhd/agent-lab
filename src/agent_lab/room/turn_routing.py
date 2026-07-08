@@ -117,7 +117,10 @@ def finalize_turn_routing(
         hint = advise_setup(topic, route.category, pool, room_preset=_room_preset, run_meta=run_meta)
 
     if apply_subset:
-        user_selected_multi = agents is not None and len([a for a in agents if str(a).strip()]) >= 2
+        # Default/global roster expansion is not an explicit multi-select. Only skip
+        # topic-router expert pools when the caller (or session pin) chose the roster.
+        roster_explicit = bool(run_meta.get("_roster_explicit"))
+        user_selected_multi = roster_explicit and agents is not None and len([a for a in agents if str(a).strip()]) >= 2
         filtered, applied_subset = resolve_active_subset(route, pool, hint=hint, min_agents=min_agents)
         if applied_subset and not (user_selected_multi and len(filtered) < len(pool)):
             pool = [str(a).strip().lower() for a in filtered if str(a).strip()]

@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  autonomyLevelLabel,
-  buildAutonomySessionView,
-} from "./autonomyLadder";
+import { autonomyLevelLabel, buildAutonomySessionView } from "./autonomyLadder";
 
 describe("autonomyLadder", () => {
   it("labels levels in ko and en", () => {

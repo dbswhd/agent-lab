@@ -112,7 +112,9 @@ function formatTurnRoles(roles: Record<string, string>): string | null {
   const entries = Object.entries(roles).filter(([, role]) => role);
   if (entries.length === 0) return null;
   return entries
-    .map(([agent, role]) => `${agentLabel(agent)}: ${ROLE_LABELS[role] ?? role}`)
+    .map(
+      ([agent, role]) => `${agentLabel(agent)}: ${ROLE_LABELS[role] ?? role}`,
+    )
     .join(" · ");
 }
 

@@ -235,12 +235,23 @@ def test_health_payload_includes_model_readiness() -> None:
 
 def test_health_payload_sessions_dir_uses_active_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import agent_lab.session as session_mod
+    import agent_lab.session.paths as paths_mod
     from agent_lab.agent.health import build_health_payload
 
     expected = tmp_path / "sessions"
     expected.mkdir()
+    # Clear every module-level cache — CI sets AGENT_LAB_ROOT and may have
+    # bootstrapped app.server.deps.SESSIONS_DIR to the workspace sessions root.
     monkeypatch.setattr(session_mod, "SESSIONS_DIR", None)
+    monkeypatch.setattr(paths_mod, "SESSIONS_DIR", None)
+    try:
+        import app.server.deps as deps_mod
+
+        monkeypatch.setattr(deps_mod, "SESSIONS_DIR", None)
+    except Exception:
+        pass
     monkeypatch.setenv("AGENT_LAB_SESSIONS_DIR", str(expected))
+    monkeypatch.delenv("AGENT_LAB_ROOT", raising=False)
 
     payload = build_health_payload()
     assert payload["sessions_dir"] == str(expected)

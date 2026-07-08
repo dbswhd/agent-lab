@@ -14,9 +14,6 @@ import uuid
 from pathlib import Path
 
 import pytest
-
-os.environ.setdefault("AGENT_LAB_MOCK_AGENTS", "1")
-
 from agent_lab.room.retry import (
     RetryError,
     _failure_signature,
@@ -26,6 +23,14 @@ from agent_lab.room.retry import (
     retry_failed_agents,
 )
 from agent_lab.run.meta import read_run_meta
+
+os.environ.setdefault("AGENT_LAB_MOCK_AGENTS", "1")
+
+
+@pytest.fixture(autouse=True)
+def _force_mock_agents(monkeypatch: pytest.MonkeyPatch) -> None:
+    """xdist workers can lose MOCK_AGENTS via other tests that pop it."""
+    monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
 
 
 def _write_session(folder: Path, *, turn_profile: str = "team", lines: list[dict] | None = None) -> None:

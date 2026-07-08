@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -25,8 +26,11 @@ for _qat_src in (
 
 @pytest.fixture(autouse=True)
 def _mock_goal_oracle_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Keep goal Oracle mock-first even when .env sets AGENT_LAB_GOAL_ORACLE_LIVE=1."""
+    """Keep Oracle mock-first even when .env / run-profile defaults enable live."""
     monkeypatch.delenv("AGENT_LAB_GOAL_ORACLE_LIVE", raising=False)
+    monkeypatch.delenv("AGENT_LAB_ORACLE_LIVE", raising=False)
+    monkeypatch.delenv("AGENT_LAB_ADVERSARIAL_LIVE", raising=False)
+    monkeypatch.delenv("AGENT_LAB_JUDGE_LIVE", raising=False)
 
 
 @pytest.fixture(autouse=True)
@@ -43,10 +47,18 @@ def _isolate_room_model_env() -> object:
     ``AGENT_LAB_ROOM_MODELS`` / ``AGENT_LAB_ROOM_SUBSTITUTION`` directly to
     ``os.environ`` (production behavior). This fixture gives each test a clean
     baseline so roster assertions don't inherit state from earlier tests.
-    """
-    import os
 
-    keys = ("AGENT_LAB_ROOM_MODELS", "AGENT_LAB_ROOM_SUBSTITUTION")
+    Also clear provider model env (`CLAUDE_MODEL` etc.) so xdist workers do not
+    inherit non-default models from slash-command / prefs tests.
+    """
+    keys = (
+        "AGENT_LAB_ROOM_MODELS",
+        "AGENT_LAB_ROOM_SUBSTITUTION",
+        "CLAUDE_MODEL",
+        "CODEX_MODEL",
+        "CURSOR_MODEL",
+        "KIMI_MODEL",
+    )
     saved = {k: os.environ.get(k) for k in keys}
     for k in keys:
         os.environ.pop(k, None)
@@ -56,6 +68,19 @@ def _isolate_room_model_env() -> object:
             os.environ.pop(k, None)
         else:
             os.environ[k] = v
+
+
+@pytest.fixture(autouse=True)
+def _force_mock_agents_default(monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest) -> None:
+    """Keep mock agents on under xdist unless a live test.
+
+    Some modules call ``os.environ.pop("AGENT_LAB_MOCK_AGENTS")``; without this,
+    later tests on the same worker invoke live CLIs and flake as ``partial``.
+    Tests that need live CLIs can ``monkeypatch.setenv(..., "0")`` in the test body.
+    """
+    if request.node.get_closest_marker("live"):
+        return
+    monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
 
 
 @pytest.fixture(autouse=True)

@@ -19,7 +19,9 @@ export function chatFingerprint(session: SessionDetail): string {
   return `${session.id}:${chat.length}:${last.ts ?? ""}:${last.content.length}`;
 }
 
-export function attachmentSendTopic(fileNames: { file: { name: string } }[]): string {
+export function attachmentSendTopic(
+  fileNames: { file: { name: string } }[],
+): string {
   if (fileNames.length === 1) return `[첨부] ${fileNames[0]!.file.name}`;
   return `[첨부] ${fileNames.length}개 파일`;
 }

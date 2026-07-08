@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type MutableRefObject,
+  type SetStateAction,
+} from "react";
 import { fetchSessionAgentCapabilities } from "../api/client";
 import {
   cloneCapabilities,
@@ -7,7 +15,10 @@ import {
   type AgentCapabilitiesMap,
 } from "../utils/agentCapabilities";
 import { roomPermissions } from "../utils/agentPermissions";
-import { readPendingRoomModels, readSessionRoomModels } from "../utils/modelSlash";
+import {
+  readPendingRoomModels,
+  readSessionRoomModels,
+} from "../utils/modelSlash";
 import { sortAgentIds } from "../utils/agentOrder";
 
 export type RoomAgentCapabilitiesOptions = {
@@ -78,7 +89,13 @@ export function useRoomAgentCapabilities({
       return prev.join(",") === next.join(",") ? prev : next;
     });
     agentsPickerInitRef.current = true;
-  }, [agentsPickerInitRef, sessionId, sessionRoomModelsKey, sessionRun, setSelected]);
+  }, [
+    agentsPickerInitRef,
+    sessionId,
+    sessionRoomModelsKey,
+    sessionRun,
+    setSelected,
+  ]);
 
   useEffect(() => {
     if (!sessionId) {

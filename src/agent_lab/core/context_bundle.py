@@ -10,6 +10,10 @@ _TRUE = frozenset({"1", "true", "yes", "on"})
 
 
 def _env_on(name: str) -> bool:
+    """Deliberately NOT ``agent_lab.env_flags.env_bool`` — ``agent_lab.core``
+    is enforced dependency-zero/stdlib-only by
+    ``test_no_layer_cycles.py::test_core_has_no_agent_lab_imports``, so this
+    package must keep its own tiny copy rather than import the shared one."""
     return (os.getenv(name) or "").strip().lower() in _TRUE
 
 

@@ -131,7 +131,10 @@ def test_fast_bucket_collection_budget():
     # (derive_execution_failure_tags shared helper — closes the structurally-dead-signal gap).
     # 2026-07-09: raised 2853 -> 2858 for HS0-4 (harness_reproducibility_pp preset
     # A/B swap) + HS4-2 completion (X5/X6 held-in curation topics + _TAG_TOPIC_MAP).
-    assert count <= 2858, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-09: raised 2858 -> 2890 for env_flags.py (test_env_flags.py) — SSOT for the
+    # AGENT_LAB_*/CLAUDE_*/CODEX_* truthy-env-var + optional-int idiom deduped out of
+    # ~32 modules incl. claude/cli.py + codex/cli.py's byte-identical helpers.
+    assert count <= 2890, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

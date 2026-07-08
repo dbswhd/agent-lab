@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from agent_lab.env_flags import env_bool
 from agent_lab.run.state import RunStateLike
 import os
 from dataclasses import dataclass
@@ -33,20 +34,19 @@ _LEGACY_PROFILE_TO_RUNTIME: dict[str, str] = {
 
 
 # --- Stage-aware selective routing (AGENT_LAB_STAGE_ROUTING, default off) ---
-_STAGE_ROUTING_TRUE = frozenset({"1", "true", "yes", "on"})
 _PANEL_PHASES = frozenset({"DISCUSS", "PLAN_GATE", "PLAN_REJECT", "DRAFT", "PEER_REVIEW", "REFINE"})
 _SOLO_PHASES = frozenset({"EXECUTE_QUEUE", "DRY_RUN", "MERGE_REVIEW", "VERIFY", "REPAIR"})
 
 
 def stage_routing_enabled() -> bool:
     """AGENT_LAB_STAGE_ROUTING (default OFF): phase-aware single-vs-panel routing."""
-    return (os.getenv("AGENT_LAB_STAGE_ROUTING") or "").strip().lower() in _STAGE_ROUTING_TRUE
+    return env_bool("AGENT_LAB_STAGE_ROUTING")
 
 
 def antidrift_enabled() -> bool:
     """AGENT_LAB_ANTIDRIFT (default OFF): structural anti-drift defenses (panel state re-injection,
     unanimity red-team, fresh-eyes audit critic seat)."""
-    return (os.getenv("AGENT_LAB_ANTIDRIFT") or "").strip().lower() in {"1", "true", "yes", "on"}
+    return env_bool("AGENT_LAB_ANTIDRIFT")
 
 
 def phase_default_consensus(phase: str | None) -> bool | None:

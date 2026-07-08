@@ -12,10 +12,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from mcp.server.fastmcp import FastMCP
+from agent_lab.env_flags import env_bool
 from agent_lab.workspace.roots import project_root
 
 mcp = FastMCP("agent-lab-code-memory")
-_TRUE = {"1", "true", "yes", "on"}
 _MODES = {"mock", "index"}
 _TOKEN_RE = re.compile(r"[\w가-힣]+", re.UNICODE)
 _INDEX_REVISION = "code-memory-phase0-v1"
@@ -80,13 +80,8 @@ class _Index:
 _INDEX_CACHE: dict[Path, _Index] = {}
 
 
-def _env_bool(name: str, *, default: bool = False) -> bool:
-    raw = os.getenv(name)
-    return default if raw is None else raw.strip().lower() in _TRUE
-
-
 def code_memory_mcp_enabled() -> bool:
-    return _env_bool("AGENT_LAB_CODE_MEMORY_MCP", default=False)
+    return env_bool("AGENT_LAB_CODE_MEMORY_MCP", default=False)
 
 
 def code_memory_mode() -> str:

@@ -22,18 +22,17 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import threading
 from pathlib import Path
 from typing import Any
 from weakref import WeakValueDictionary
 
+from agent_lab.env_flags import env_bool
+
 log = logging.getLogger(__name__)
 
 MIN_PATTERN_SAMPLE = 3
 TRACE_SCHEMA_VERSION = 1
-
-_TRUE = frozenset({"1", "true", "yes", "on"})
 
 _LOCK_GUARD = threading.Lock()
 _PATH_LOCKS: WeakValueDictionary[str, threading.Lock] = WeakValueDictionary()
@@ -51,7 +50,7 @@ def _path_lock(path: Path) -> threading.Lock:
 
 def weakness_miner_enabled() -> bool:
     """AGENT_LAB_WEAKNESS_MINER (default off)."""
-    return (os.getenv("AGENT_LAB_WEAKNESS_MINER") or "").strip().lower() in _TRUE
+    return env_bool("AGENT_LAB_WEAKNESS_MINER")
 
 
 def traces_root(root: Path | None = None) -> Path:

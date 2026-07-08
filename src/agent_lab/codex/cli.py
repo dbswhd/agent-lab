@@ -25,6 +25,7 @@ from agent_lab.agent.models import (  # noqa: E402
     DEFAULT_CODEX_ROOM_TIMEOUT_SEC,
 )
 from agent_lab.cli_retry import retry_base_delay_sec, retry_call, retry_max_attempts
+from agent_lab.env_flags import env_bool, optional_env_int
 
 _ROOM_TURN_SUFFIX = """\
 [Room turn — latency + peer debate]
@@ -50,13 +51,6 @@ class CodexRunOutcome:
     # The wall-clock cap only guards time-to-first-output; once a turn is actively
     # responding it runs uncapped (idle timeout still guards mid-response stalls).
     response_started: bool = False
-
-
-def _env_bool(name: str, default: bool = False) -> bool:
-    raw = os.getenv(name)
-    if raw is None:
-        return default
-    return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def resolve_codex_bin() -> str | None:
@@ -153,21 +147,13 @@ def _reasoning_effort(*, room_turn: bool) -> str:
     return os.getenv("CODEX_REASONING_EFFORT", DEFAULT_CODEX_REASONING_EFFORT)
 
 
-def _optional_timeout_sec(*env_keys: str) -> int | None:
-    for key in env_keys:
-        raw = (os.getenv(key) or "").strip()
-        if raw:
-            return int(raw)
-    return None
-
-
 def _timeout_sec(*, room_turn: bool) -> int | None:
     if room_turn:
-        override = _optional_timeout_sec("CODEX_ROOM_TIMEOUT_SEC", "CODEX_TIMEOUT_SEC")
+        override = optional_env_int("CODEX_ROOM_TIMEOUT_SEC", "CODEX_TIMEOUT_SEC")
         if override is not None:
             return override if override > 0 else None
         return DEFAULT_CODEX_ROOM_TIMEOUT_SEC
-    return _optional_timeout_sec("CODEX_TIMEOUT_SEC")
+    return optional_env_int("CODEX_TIMEOUT_SEC")
 
 
 def _idle_timeout_sec(*, room_turn: bool) -> int | None:
@@ -269,7 +255,7 @@ def _room_limit_grace_sec() -> int:
 def _sandbox_mode(*, allow_tools: bool, room_turn: bool) -> str:
     if not allow_tools:
         return "read-only"
-    if room_turn and not _env_bool("CODEX_ROOM_WORKSPACE_WRITE", False):
+    if room_turn and not env_bool("CODEX_ROOM_WORKSPACE_WRITE", False):
         return "read-only"
     return "workspace-write"
 
@@ -800,7 +786,7 @@ def invoke(
 
     allow_tools = codex_cli_allowed(permissions) or use_inbox_mcp or execute_plugins
     discuss = room_turn or bool((permissions or {}).get("_discuss_mode"))
-    if discuss and not _env_bool("CODEX_ROOM_WORKSPACE_WRITE", False):
+    if discuss and not env_bool("CODEX_ROOM_WORKSPACE_WRITE", False):
         allow_tools = True  # read-only tools still allowed
     cwd = str(discuss_primary_workspace(permissions))
     out_path = tempfile.mktemp(prefix="agent-lab-codex-", suffix=".txt")

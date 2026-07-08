@@ -4,13 +4,11 @@ from __future__ import annotations
 
 import os
 
+from agent_lab.env_flags import env_bool
 from agent_lab.run.state import RunStateLike
 
 from agent_lab.agents.registry import AGENT_IDS
 from agent_lab import provider_registry
-
-_FALSE = frozenset({"0", "false", "no", "off"})
-_TRUE = frozenset({"1", "true", "yes", "on"})
 
 
 def _valid_agent_ids() -> frozenset[str]:
@@ -25,10 +23,6 @@ def _scribe_preference() -> tuple[str, ...]:
     scribe_priority automatically places it without touching this file.
     """
     return tuple(provider_registry.scribe_priority_order())
-
-
-def _env_true(key: str) -> bool:
-    return os.getenv(key, "").strip().lower() in _TRUE
 
 
 def session_room_preset(run_meta: RunStateLike | None) -> str:
@@ -89,7 +83,7 @@ def plan_peer_review_seats(
 
 def plan_cold_critic_enabled(*, run_meta: RunStateLike | None = None) -> bool:
     """Fresh-eyes cold critic for PEER_REVIEW (supervisor preset default-on)."""
-    if _env_true("AGENT_LAB_PLAN_COLD_CRITIC"):
+    if env_bool("AGENT_LAB_PLAN_COLD_CRITIC"):
         return True
     if session_room_preset(run_meta) == "supervisor":
         return True

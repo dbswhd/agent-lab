@@ -11,13 +11,11 @@ Scan logic lives in :mod:`syntax_gate_core` (Track 2.0b seam for optional PyO3).
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Any
 
+from agent_lab.env_flags import env_bool
 from agent_lab.syntax_gate_core import merge_result_for_syntax_scan, scan_python_syntax
-
-_TRUE = frozenset({"1", "true", "yes", "on"})
 
 _PATH_KEYS = (
     "source_touched_paths",
@@ -30,10 +28,7 @@ _PATH_KEYS = (
 
 def syntax_gate_enabled() -> bool:
     """AGENT_LAB_SYNTAX_GATE (default ON): hard-block merge on changed *.py SyntaxError. Opt-out via =0."""
-    raw = os.getenv("AGENT_LAB_SYNTAX_GATE")
-    if raw is None or raw.strip() == "":
-        return True
-    return raw.strip().lower() in _TRUE
+    return env_bool("AGENT_LAB_SYNTAX_GATE", default=True)
 
 
 def _worktree_root(execution: dict[str, Any] | None) -> Path | None:

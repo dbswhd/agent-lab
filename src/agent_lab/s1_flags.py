@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
+from agent_lab.env_flags import is_falsy, is_truthy
 from agent_lab.run.state import RunStateLike
 import os
-
-_TRUE = frozenset({"1", "true", "yes", "on"})
-_FALSE = frozenset({"0", "false", "no", "off"})
 
 _SUPERVISOR_S1_FLAGS = frozenset(
     {
@@ -33,10 +31,10 @@ def s1_flag_enabled(
     run_meta: RunStateLike | None = None,
 ) -> bool:
     """Env explicit OFF wins; explicit ON wins; supervisor preset defaults ON for S1 trio."""
-    raw = (os.getenv(name) or "").strip().lower()
-    if raw in _FALSE:
+    raw = os.getenv(name)
+    if is_falsy(raw):
         return False
-    if raw in _TRUE:
+    if is_truthy(raw):
         return True
     if name in _SUPERVISOR_S1_FLAGS and _room_preset(room_preset=room_preset, run_meta=run_meta) == "supervisor":
         return True

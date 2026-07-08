@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any
 from weakref import WeakValueDictionary
 
+from agent_lab.env_flags import env_bool
 from agent_lab.run.meta import patch_run_meta, read_run_meta
 from agent_lab.run.state import RunStateLike
 from agent_lab.s1_flags import s1_flag_enabled
@@ -328,12 +329,9 @@ def _build_execute_outcome_record(
     return record
 
 
-_DOGFOOD_EXECUTE_TRUE = frozenset({"1", "true", "yes", "on"})
-
-
 def dogfood_execute_outcomes_enabled() -> bool:
     """When set, mock dogfood emits synthetic execute-phase rows for S1 lift."""
-    return (os.getenv("AGENT_LAB_DOGFOOD_EXECUTE_OUTCOMES") or "").strip().lower() in _DOGFOOD_EXECUTE_TRUE
+    return env_bool("AGENT_LAB_DOGFOOD_EXECUTE_OUTCOMES")
 
 
 def _mock_verdict_for_advisor_source(source: str) -> str:

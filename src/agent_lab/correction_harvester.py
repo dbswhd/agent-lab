@@ -23,6 +23,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.env_flags import env_bool
 from agent_lab.run.meta import read_run_meta
 
 # NOTE: agent_lab.outcome_harvester / agent_lab.feedback_advisor / agent_lab.human_inbox
@@ -47,15 +48,8 @@ class CorrectionPattern:
     matcher: re.Pattern[str]
 
 
-def _flag_on(name: str, *, default: str = "1") -> bool:
-    import os
-
-    raw = (os.getenv(name) or default).strip().lower()
-    return raw not in ("0", "false", "no", "off")
-
-
 def correction_harvester_enabled() -> bool:
-    return _flag_on("AGENT_LAB_CORRECTION_HARVESTER")
+    return env_bool("AGENT_LAB_CORRECTION_HARVESTER", default=True)
 
 
 # Deterministic, keyword-based — no LLM call (same S1.5 discipline as

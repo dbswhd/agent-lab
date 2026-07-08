@@ -29,9 +29,6 @@ from agent_lab.wisdom.index import _tokenize
 
 log = logging.getLogger(__name__)
 
-_TRUE = frozenset({"1", "true", "yes", "on"})
-_FALSE = frozenset({"0", "false", "no", "off"})
-
 MIN_SAMPLE = int(os.getenv("AGENT_LAB_FEEDBACK_MIN_SAMPLE") or "3")
 _PURE_CHALLENGE_YIELD_LOW = 0.3
 _CRITIC_YIELD_BOOST = 0.25
@@ -57,10 +54,6 @@ _DEFAULT_HINT = SetupHint(
     suggested_subset=(),
     rationale="no_history",
 )
-
-
-def _flag_on(name: str) -> bool:
-    return (os.getenv(name) or "").strip().lower() in _TRUE
 
 
 def _outcomes_path(root: Path | None) -> Path:

@@ -17,6 +17,7 @@ import re
 from dataclasses import dataclass, field, replace
 from typing import Any, Literal
 
+from agent_lab.env_flags import is_falsy
 from agent_lab.room.consensus import (
     max_debate_round_count,
 )
@@ -30,9 +31,6 @@ TopologyHint = Literal["parallel", "producer_reviewer", "pipeline"]
 # skips "trading" (see its docstring); this tuple is not walked by index there.
 CATEGORY_ORDER: tuple[Category, ...] = ("quick", "standard", "trading", "deep", "critical")
 ESCALATION_ACTS = frozenset({"CHALLENGE", "BLOCK", "AMEND"})
-
-_TRUE = {"1", "true", "yes", "on"}
-_FALSE = {"0", "false", "no", "off"}
 
 _CAT_MARKER_RE = re.compile(
     r"(?:^|\n)\s*\[cat(?:egory)?\s*[:：]\s*(quick|standard|trading|deep|critical)\]",
@@ -258,10 +256,7 @@ class CategoryRoute:
 
 
 def topic_router_enabled() -> bool:
-    raw = (os.getenv("AGENT_LAB_TOPIC_ROUTER") or "").strip().lower()
-    if raw in _FALSE:
-        return False
-    return True
+    return not is_falsy(os.getenv("AGENT_LAB_TOPIC_ROUTER"))
 
 
 def _env_int(key: str) -> int | None:

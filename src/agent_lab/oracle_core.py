@@ -8,10 +8,11 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Literal
 
+from agent_lab.env_flags import env_bool
+
 OracleKind = Literal["execute", "goal"]
 
 PROMPT_VERSION = "2026-06-26"
-_TRUE = {"1", "true", "yes", "on"}
 _BACKTICK_LITERAL = re.compile(r"`([^`\n]+)`")
 _WORD = re.compile(r"[A-Za-z0-9_가-힣-]{2,}")
 _GOAL_STOPWORDS = {
@@ -32,10 +33,6 @@ _GOAL_STOPWORDS = {
     "한다",
     "하기",
 }
-
-
-def _env_true(key: str) -> bool:
-    return os.getenv(key, "").strip().lower() in _TRUE
 
 
 ORACLE_SYSTEM_EXECUTE = (
@@ -70,9 +67,9 @@ def resolved_oracle_model(kind: OracleKind) -> str | None:
 
 def oracle_live_enabled(*, goal: bool = False) -> bool:
     """Live Claude oracle opt-in. ``AGENT_LAB_ORACLE_LIVE=1`` enables both kinds."""
-    if _env_true("AGENT_LAB_ORACLE_LIVE"):
+    if env_bool("AGENT_LAB_ORACLE_LIVE"):
         return True
-    if goal and _env_true("AGENT_LAB_GOAL_ORACLE_LIVE"):
+    if goal and env_bool("AGENT_LAB_GOAL_ORACLE_LIVE"):
         return True
     return False
 

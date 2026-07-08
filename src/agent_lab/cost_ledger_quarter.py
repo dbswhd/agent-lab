@@ -7,14 +7,13 @@ demote autonomy when the quarterly cap is exceeded.
 
 from __future__ import annotations
 
+from agent_lab.env_flags import is_truthy
 from agent_lab.run.state import RunStateLike
 import json
 import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
-
-_TRUE = frozenset({"1", "true", "yes", "on"})
 
 
 def _now_iso() -> str:
@@ -49,10 +48,10 @@ def quarter_warn_pct() -> float:
 
 def demote_on_quarter_over_enabled() -> bool:
     """Default ON when a quarter budget is set; explicit 0 disables demotion."""
-    raw = (os.getenv("AGENT_LAB_QUARTER_BUDGET_DEMOTE") or "").strip().lower()
-    if not raw:
+    raw = os.getenv("AGENT_LAB_QUARTER_BUDGET_DEMOTE")
+    if not raw or not raw.strip():
         return quarter_budget_usd() is not None
-    return raw in _TRUE
+    return is_truthy(raw)
 
 
 def _outcomes_root() -> Path:

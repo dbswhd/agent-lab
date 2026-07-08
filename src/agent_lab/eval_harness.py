@@ -14,10 +14,9 @@ so environment breakage never lowers the model's score.
 
 from __future__ import annotations
 
-import os
 from typing import Any, Literal
 
-_TRUE = frozenset({"1", "true", "yes", "on"})
+from agent_lab.env_flags import env_bool
 
 # Harness/env statuses that attribute a non-resolution to the harness, not the model.
 HARNESS_STATUSES = frozenset({"setup_error", "collection_error", "timeout", "infra_error"})
@@ -32,10 +31,7 @@ AggregateReport = dict[str, Any]
 
 def eval_harness_enabled() -> bool:
     """AGENT_LAB_EVAL_HARNESS (default ON). Opt-out via =0."""
-    raw = os.getenv("AGENT_LAB_EVAL_HARNESS")
-    if raw is None or raw.strip() == "":
-        return True
-    return raw.strip().lower() in _TRUE
+    return env_bool("AGENT_LAB_EVAL_HARNESS", default=True)
 
 
 def _bucket_counts(ids: list[str], result_map: dict[str, str]) -> tuple[int, int, bool]:

@@ -16,13 +16,11 @@ log behavior change). Enforced by a test.
 
 from __future__ import annotations
 
-import os
 from datetime import datetime, timezone
 from typing import Any
 
+from agent_lab.env_flags import env_bool
 from agent_lab.room.live_log import LIVE_EVENT_TYPES
-
-_TRUE = frozenset({"1", "true", "yes", "on"})
 
 # Already-emitted-but-not-in-live-log event types (SSE/runner surfaces).
 _EXTRA_EVENT_TYPES = frozenset({"node_status", "run_patch"})
@@ -34,15 +32,12 @@ EVENT_TYPES: frozenset[str] = LIVE_EVENT_TYPES | _EXTRA_EVENT_TYPES
 
 def event_memory_enabled() -> bool:
     """AGENT_LAB_EVENT_MEMORY (default ON): gates the memory route. Opt-out via =0."""
-    raw = os.getenv("AGENT_LAB_EVENT_MEMORY")
-    if raw is None or raw.strip() == "":
-        return True
-    return raw.strip().lower() in _TRUE
+    return env_bool("AGENT_LAB_EVENT_MEMORY", default=True)
 
 
 def event_validation_enabled() -> bool:
     """AGENT_LAB_EVENT_VALIDATE (default OFF): validate+drop invalid live-log events in Room turns."""
-    return (os.getenv("AGENT_LAB_EVENT_VALIDATE") or "").strip().lower() in _TRUE
+    return env_bool("AGENT_LAB_EVENT_VALIDATE")
 
 
 def make_event(type: str, **fields: Any) -> dict[str, Any]:

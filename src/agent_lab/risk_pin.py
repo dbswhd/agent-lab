@@ -22,11 +22,11 @@ Design constraints (NORTH-STAR §6 mote check):
 
 from __future__ import annotations
 
-import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.env_flags import env_bool
 from agent_lab.run.state import RunStateLike
 
 # F5 lane scope (docs/F5-TRADING-ISOLATION.md) — topic_router already classifies
@@ -37,13 +37,8 @@ RISK_PIN_CEILING = "L1"
 _LEVEL_ORDER: dict[str, int] = {"L0": 0, "L1": 1, "L2": 2, "L3": 3}
 
 
-def _flag_on(name: str, *, default: str = "1") -> bool:
-    raw = (os.getenv(name) or default).strip().lower()
-    return raw not in ("0", "false", "no", "off")
-
-
 def risk_pin_enabled() -> bool:
-    return _flag_on("AGENT_LAB_RISK_PIN")
+    return env_bool("AGENT_LAB_RISK_PIN", default=True)
 
 
 def _now_iso() -> str:

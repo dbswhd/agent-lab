@@ -14,19 +14,15 @@ sorted output.
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from typing import Any
 
-_TRUE = frozenset({"1", "true", "yes", "on"})
+from agent_lab.env_flags import env_bool
 
 
 def event_memory_enabled() -> bool:
     """AGENT_LAB_EVENT_MEMORY (default ON): gates the memory route. Opt-out via =0."""
-    raw = os.getenv("AGENT_LAB_EVENT_MEMORY")
-    if raw is None or raw.strip() == "":
-        return True
-    return raw.strip().lower() in _TRUE
+    return env_bool("AGENT_LAB_EVENT_MEMORY", default=True)
 
 
 class MemoryStore:

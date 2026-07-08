@@ -27,21 +27,21 @@ Every disposition (merged, rejected, rolled back) is recorded in
 from __future__ import annotations
 
 import json
-import os
 import re
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-_TRUE = frozenset({"1", "true", "yes", "on"})
+from agent_lab.env_flags import env_bool
+
 MERGE_RECORD_SCHEMA_VERSION = 1
 PREDICTIONS_SCHEMA_VERSION = 1
 
 
 def harness_inbox_enabled() -> bool:
     """AGENT_LAB_HARNESS_INBOX (default off)."""
-    return (os.getenv("AGENT_LAB_HARNESS_INBOX") or "").strip().lower() in _TRUE
+    return env_bool("AGENT_LAB_HARNESS_INBOX")
 
 
 def _now_iso() -> str:

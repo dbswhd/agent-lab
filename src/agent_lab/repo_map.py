@@ -5,6 +5,7 @@ Optional, additive, default-off. Core AST/rank/render: :mod:`repo_map_core` (Tra
 
 from __future__ import annotations
 
+from agent_lab.env_flags import env_bool
 from agent_lab.run.state import RunStateLike
 import os
 from pathlib import Path
@@ -33,8 +34,6 @@ from agent_lab.repo_tree_context import (
     _workspace_root,
 )
 
-_TRUE = frozenset({"1", "true", "yes", "on"})
-
 # Test / bench backward-compat aliases
 _iter_python_files = iter_python_files
 _extract_file = extract_file
@@ -44,7 +43,7 @@ _render = render_repo_map
 
 
 def repo_map_enabled() -> bool:
-    return (os.getenv("AGENT_LAB_REPO_MAP") or "").strip().lower() in _TRUE
+    return env_bool("AGENT_LAB_REPO_MAP")
 
 
 def _map_token_budget() -> int:

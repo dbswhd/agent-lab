@@ -12,14 +12,13 @@ deterministic. Every entry point is defensive — judging must never break scori
 
 from __future__ import annotations
 
+from agent_lab.env_flags import env_bool
 from agent_lab.run.state import RunStateLike
 import json
 import os
 import re
 from pathlib import Path
 from typing import Any, Callable
-
-_TRUE = frozenset({"1", "true", "yes", "on"})
 
 # 1–5 rubric dimensions.
 DEFAULT_RUBRIC: tuple[str, ...] = (
@@ -34,7 +33,7 @@ _MAX_TRANSCRIPT_CHARS = 16_000
 
 def judge_live_enabled() -> bool:
     """Live judge opt-in via ``AGENT_LAB_JUDGE_LIVE``."""
-    return os.getenv("AGENT_LAB_JUDGE_LIVE", "").strip().lower() in _TRUE
+    return env_bool("AGENT_LAB_JUDGE_LIVE")
 
 
 def _judge_model() -> str | None:

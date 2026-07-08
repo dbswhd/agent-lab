@@ -29,7 +29,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-_TRUE = frozenset({"1", "true", "yes", "on"})
+from agent_lab.env_flags import env_bool
+
 REGRESSION_REPORT_SCHEMA_VERSION = 1
 
 # HS4-2 held-in — primary_tag -> dogfood topic ids known to exercise it.
@@ -48,7 +49,7 @@ _TAG_TOPIC_MAP: dict[str, list[str]] = {
 
 def regression_gate_enabled() -> bool:
     """AGENT_LAB_REGRESSION_GATE (default off)."""
-    return (os.getenv("AGENT_LAB_REGRESSION_GATE") or "").strip().lower() in _TRUE
+    return env_bool("AGENT_LAB_REGRESSION_GATE")
 
 
 def _now_iso() -> str:

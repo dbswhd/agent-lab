@@ -27,16 +27,17 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
+from agent_lab.env_flags import env_bool
+
 PLAYBOOK_SCHEMA_VERSION = 1
 HARNESS_REV_UNSET = "manifest@sha:none"  # HS5 (manifest.json SSOT) not shipped yet
 
-_TRUE = frozenset({"1", "true", "yes", "on"})
 _store_lock = threading.Lock()
 
 
 def playbook_enabled() -> bool:
     """AGENT_LAB_PLAYBOOK (default off)."""
-    return (os.getenv("AGENT_LAB_PLAYBOOK") or "").strip().lower() in _TRUE
+    return env_bool("AGENT_LAB_PLAYBOOK")
 
 
 @dataclass

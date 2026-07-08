@@ -19,6 +19,7 @@ from agent_lab.agent.models import (  # noqa: E402
 )
 from agent_lab.cost_ledger import chars_to_tokens
 from agent_lab.cli_retry import retry_base_delay_sec, retry_call, retry_max_attempts
+from agent_lab.env_flags import env_bool, optional_env_int
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -257,7 +258,7 @@ def claude_auth_logged_in(*, use_cache: bool = True) -> tuple[bool, str | None]:
 
 
 def _skip_headless_probe() -> bool:
-    return _env_bool("AGENT_LAB_CLAUDE_SKIP_HEADLESS_PROBE", default=False) or _env_bool(
+    return env_bool("AGENT_LAB_CLAUDE_SKIP_HEADLESS_PROBE", default=False) or env_bool(
         "CLAUDE_SKIP_AUTH_PROBE",
         default=False,
     )
@@ -363,16 +364,9 @@ def probe_auth(*, timeout_sec: float | None = None, use_cache: bool = True) -> t
     return True, None
 
 
-def _env_bool(name: str, default: bool) -> bool:
-    raw = os.getenv(name)
-    if raw is None:
-        return default
-    return raw.strip().lower() in ("1", "true", "yes", "on")
-
-
 def _permission_mode() -> str:
     """Headless room turns need bypassPermissions when skip-permissions is on."""
-    if _env_bool("CLAUDE_SKIP_PERMISSIONS", default=True):
+    if env_bool("CLAUDE_SKIP_PERMISSIONS", default=True):
         return "bypassPermissions"
     mode = (os.getenv("CLAUDE_PERMISSION_MODE") or "acceptEdits").strip()
     allowed = {
@@ -386,19 +380,11 @@ def _permission_mode() -> str:
     return mode if mode in allowed else "acceptEdits"
 
 
-def _optional_timeout_sec(*env_keys: str) -> int | None:
-    for key in env_keys:
-        raw = (os.getenv(key) or "").strip()
-        if raw:
-            return int(raw)
-    return None
-
-
 def _timeout_sec(*, room_turn: bool) -> int | None:
     if room_turn:
-        explicit = _optional_timeout_sec("CLAUDE_ROOM_TIMEOUT_SEC", "CLAUDE_TIMEOUT_SEC")
+        explicit = optional_env_int("CLAUDE_ROOM_TIMEOUT_SEC", "CLAUDE_TIMEOUT_SEC")
         return explicit if explicit is not None else _DEFAULT_ROOM_TIMEOUT_SEC
-    return _optional_timeout_sec("CLAUDE_TIMEOUT_SEC")
+    return optional_env_int("CLAUDE_TIMEOUT_SEC")
 
 
 def _resolve_claude_mcp_config(
@@ -485,7 +471,7 @@ def invoke(
 
     cwd = os.getenv("CLAUDE_CWD") or str(discuss_primary_workspace(perms))
     permission_mode = _permission_mode()
-    skip_permissions = _env_bool("CLAUDE_SKIP_PERMISSIONS", default=True)
+    skip_permissions = env_bool("CLAUDE_SKIP_PERMISSIONS", default=True)
 
     system_path = tempfile.mktemp(prefix="agent-lab-claude-sys-", suffix=".txt")
     system_text = system.strip()
@@ -519,10 +505,10 @@ def invoke(
         cmd.append("--dangerously-skip-permissions")
 
     # --bare skips OAuth/keychain (needs API key) — default off; set CLAUDE_BARE=1 only if you use API key auth.
-    if _env_bool("CLAUDE_BARE", default=False):
+    if env_bool("CLAUDE_BARE", default=False):
         cmd.append("--bare")
 
-    if _env_bool("CLAUDE_DISABLE_TOOLS", default=False):
+    if env_bool("CLAUDE_DISABLE_TOOLS", default=False):
         cmd.extend(["--tools", ""])
     else:
         cmd.extend(["--tools", "default"])

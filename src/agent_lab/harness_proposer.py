@@ -36,17 +36,16 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import re
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.env_flags import env_bool
 from agent_lab.run.state import RunStateLike
 
 MANIFEST_SCHEMA_VERSION = 1
-_TRUE = frozenset({"1", "true", "yes", "on"})
 
 DEFAULT_MANIFEST: dict[str, Any] = {
     "schema_version": MANIFEST_SCHEMA_VERSION,
@@ -109,7 +108,7 @@ class ProposalRejected(Exception):
 
 def harness_proposer_enabled() -> bool:
     """AGENT_LAB_HARNESS_PROPOSER (default off)."""
-    return (os.getenv("AGENT_LAB_HARNESS_PROPOSER") or "").strip().lower() in _TRUE
+    return env_bool("AGENT_LAB_HARNESS_PROPOSER")
 
 
 def _now_iso() -> str:
@@ -250,7 +249,7 @@ def stop_guard_reason(*, run_meta: RunStateLike | None = None) -> str | None:
     active session to check, and PROPOSE itself never merges, so a missing
     autonomy ceiling doesn't block drafting a candidate.
     """
-    if (os.getenv("AGENT_LAB_MOCK_AGENTS") or "").strip().lower() in _TRUE:
+    if env_bool("AGENT_LAB_MOCK_AGENTS"):
         return "AGENT_LAB_MOCK_AGENTS=1 (STOP: 약모델 재귀개선 금지)"
     from agent_lab.run.profile import default_run_profile
 

@@ -19,18 +19,14 @@ import os
 from pathlib import Path
 from typing import Any
 
+from agent_lab.env_flags import env_bool
 from agent_lab.run.state import RunStateLike
 
 DEFAULT_DRIFT_AUDIT_INTERVAL = 10
 
 
-def _flag_on(name: str, *, default: str = "1") -> bool:
-    raw = (os.getenv(name) or default).strip().lower()
-    return raw not in ("0", "false", "no", "off")
-
-
 def drift_audit_enabled() -> bool:
-    return _flag_on("AGENT_LAB_DRIFT_AUDIT")
+    return env_bool("AGENT_LAB_DRIFT_AUDIT", default=True)
 
 
 def drift_audit_interval() -> int:

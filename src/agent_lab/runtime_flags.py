@@ -7,10 +7,9 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 from agent_lab.api_diagnostics import mask_tool_path
+from agent_lab.env_flags import is_truthy
 
 FlagCategory = Literal["feature", "infra", "test", "internal"]
-
-_TRUE = frozenset({"1", "true", "yes", "on"})
 
 
 @dataclass(frozen=True)
@@ -800,7 +799,7 @@ _REGISTRY_BY_NAME = {row.name: row for row in FLAG_REGISTRY}
 def _effective_bool(raw: str | None, *, default_on: bool = False) -> str:
     if raw is None or not str(raw).strip():
         return "on" if default_on else "off"
-    return "on" if str(raw).strip().lower() in _TRUE else "off"
+    return "on" if is_truthy(str(raw)) else "off"
 
 
 def _resolve_row(

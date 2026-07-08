@@ -12,7 +12,7 @@ from __future__ import annotations
 import os
 from typing import Any
 
-_TRUE = frozenset({"1", "true", "yes", "on"})
+from agent_lab.env_flags import env_bool
 
 # Typed sandbox policy: a plain dict so it is trivially serializable and testable.
 # Shape: {"runtime": "worktree"|"docker", "image": str|None, "limits": dict|None}
@@ -23,10 +23,7 @@ _VALID_RUNTIMES = frozenset({"worktree", "docker"})
 
 def sandbox_policy_enabled() -> bool:
     """AGENT_LAB_SANDBOX_POLICY (default ON): resolve a sandbox policy at the verify seam. Opt-out via =0."""
-    raw = os.getenv("AGENT_LAB_SANDBOX_POLICY")
-    if raw is None or raw.strip() == "":
-        return True
-    return raw.strip().lower() in _TRUE
+    return env_bool("AGENT_LAB_SANDBOX_POLICY", default=True)
 
 
 def _configured_runtime() -> str:

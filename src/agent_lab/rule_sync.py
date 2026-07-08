@@ -30,6 +30,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from agent_lab.env_flags import env_bool
 from agent_lab.run.state import RunStateLike
 
 _RULE_BLOCK = re.compile(
@@ -47,13 +48,8 @@ _CLAUDE_RULES_RELPATH = Path(".claude/rules/correction-rules.md")
 _CURSOR_RULES_RELPATH = Path(".cursor/rules/correction-rules.mdc")
 
 
-def _flag_on(name: str, *, default: str = "0") -> bool:
-    raw = (os.getenv(name) or default).strip().lower()
-    return raw not in ("0", "false", "no", "off")
-
-
 def rule_sync_enabled() -> bool:
-    return _flag_on("AGENT_LAB_RULE_SYNC")
+    return env_bool("AGENT_LAB_RULE_SYNC")
 
 
 def _ssot_path(root: Path | None) -> Path:

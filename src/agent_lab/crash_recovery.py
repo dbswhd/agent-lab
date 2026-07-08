@@ -26,18 +26,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-_TRUE = frozenset({"1", "true", "yes", "on"})
+from agent_lab.env_flags import env_bool
+
 _MAX_RECOVERY_LOG = 50
 
 
 def crash_recovery_enabled() -> bool:
     """Opt-out via ``AGENT_LAB_CRASH_RECOVERY=0`` (default on)."""
-    import os
-
-    raw = os.getenv("AGENT_LAB_CRASH_RECOVERY")
-    if raw is None or raw.strip() == "":
-        return True
-    return raw.strip().lower() in _TRUE
+    return env_bool("AGENT_LAB_CRASH_RECOVERY", default=True)
 
 
 def _now() -> str:

@@ -14,9 +14,9 @@ turn — every handler is wrapped so failures are swallowed.
 
 from __future__ import annotations
 
+from agent_lab.env_flags import env_bool
 from agent_lab.run.state import RunStateLike
 import json
-import os
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -24,11 +24,9 @@ from typing import Any, Callable
 
 OnEvent = Callable[[str, dict[str, Any]], None]
 
-_TRUE = frozenset({"1", "true", "yes", "on"})
-
 
 def trace_enabled() -> bool:
-    return (os.getenv("AGENT_LAB_TRACE") or "1").strip().lower() in _TRUE
+    return env_bool("AGENT_LAB_TRACE", default=True)
 
 
 def _now() -> tuple[float, str]:

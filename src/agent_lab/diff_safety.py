@@ -17,11 +17,10 @@ Design notes:
 
 from __future__ import annotations
 
-import os
 import re
 from typing import Any
 
-_TRUE = frozenset({"1", "true", "yes", "on"})
+from agent_lab.env_flags import env_bool
 
 ALLOW_MARKER = "agent-lab: allow-secret"
 
@@ -55,7 +54,7 @@ _DANGER_RULES: tuple[tuple[str, re.Pattern[str]], ...] = (
 
 
 def diff_safety_enabled() -> bool:
-    return (os.getenv("AGENT_LAB_DIFF_SAFETY") or "1").strip().lower() in _TRUE
+    return env_bool("AGENT_LAB_DIFF_SAFETY", default=True)
 
 
 def _is_lenient_path(path: str) -> bool:

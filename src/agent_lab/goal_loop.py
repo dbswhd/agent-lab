@@ -3,26 +3,24 @@
 from __future__ import annotations
 
 import json
-import os
 from collections.abc import Callable, Iterable
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.env_flags import env_bool
 from agent_lab.run.meta import patch_run_meta, read_run_meta
 
 DEFAULT_MAX_CHECKS = 5
 MAX_MAX_CHECKS = 20
 
-_TRUE = {"1", "true", "yes", "on"}
-
 
 def goal_loop_enabled() -> bool:
-    return os.getenv("AGENT_LAB_GOAL_LOOP", "").strip().lower() in _TRUE
+    return env_bool("AGENT_LAB_GOAL_LOOP")
 
 
 def goal_auto_continue_enabled() -> bool:
-    return os.getenv("AGENT_LAB_GOAL_AUTO_CONTINUE", "").strip().lower() in _TRUE
+    return env_bool("AGENT_LAB_GOAL_AUTO_CONTINUE")
 
 
 def set_session_goal(

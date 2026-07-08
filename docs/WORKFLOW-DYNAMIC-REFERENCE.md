@@ -553,7 +553,7 @@ init_pw = is_supervisor and signals.supervisor_first_turn and not skip_fsm_boots
 |------|------|------|
 | **P0** | §8.2.1 **P0-1~P0-4** ✅ (clarity anchor → TurnSignals → TurnPolicy gate → live S1) | S1에 plan FSM tail 없음 |
 | **P0** | §8.2.1 **P0-5** S1 lift / explore (병행) | `feedback-report` history·explore |
-| **P1** | `TurnContract` 스냅샷을 `run.json` `turn_policy`에 기록 · eval grader `routing_contract` 확장 | trace에 “왜 이 경로” 근거 |
+| **P1** ✅ (커밋 `0f41dfe5`) | `TurnContract` 스냅샷을 `run.json` `turn_policy`에 기록 · eval grader `routing_contract` 확장 | trace에 “왜 이 경로” 근거 |
 | **P2** | Composer preset 제거 · `resolve_mode_contract()`가 preset 없이 `TurnContract`만 소비 | UI 1축(topic) |
 | **P3** | `feedback_advisor`가 인원·역할까지 주도 (S2 episode hint) | history/explore가 roster에 반영 |
 
@@ -562,6 +562,8 @@ init_pw = is_supervisor and signals.supervisor_first_turn and not skip_fsm_boots
 ---
 
 ## 9. 슈퍼샘플 비교 — 4과정 × 동적 등급
+
+> **SSOT 분리:** 이 절은 시스템 간 **등급 비교 뷰**(점수·상대 위치)만 제공한다. "무엇을 베끼고 무엇은 안 하는가"의 **흡수 판정**은 [NORTH-STAR.md §2.5](./NORTH-STAR.md#25-참고-샘플-흡수-매트릭스)가 SSOT — 두 절이 충돌하면 §2.5가 우선한다.
 
 점수: **0** 없음 · **1** 약 · **2** 보통 · **3** 강 · **4** 매우 강 (해당 제품 핵심)
 

@@ -1,5 +1,6 @@
 # Agent Lab Eval Surface + 슈퍼샘플 준비 계획 (v2)
 
+> **현행 가치:** 이 문서에서 지금도 참조할 canonical 정의는 **[Canonical Definitions](#canonical-definitions)** 절뿐이다(episode 정의·표본 임계값). 나머지(Summary·Current Status·Implementation Changes 등)는 **완료된 계획의 이력** — episode/lift 수치를 해석할 때만 Canonical Definitions를, 구현 배경이 궁금할 때만 나머지를 읽는다.  
 > **Status:** 완료 — §1(episode 보강)·§2(eval surface: `evals/` + 10 case + 8 grader)·§3(T0/T1/T2 `supersample` report)·§4(explore 운영 문서화)·§5(공개 재현 패키지 문서 정리) 전부 반영됨. 잔여: `fork_time_minutes` clean-clone 자동화(N8, 범위 밖)  
 > **SSOT:** local-first JSON/JSONL report (`evals/results/latest.json`, `feedback_report`)  
 > **Related:** [NORTH-STAR.md](./NORTH-STAR.md) §0.1 (T0–T2) · [EVAL-PROGRAM.md](./EVAL-PROGRAM.md) · [EVAL-SURFACE-V1-PLAN.md](./EVAL-SURFACE-V1-PLAN.md) (§2 구체 스펙) · [REPRODUCTION-REPORT.md](./REPRODUCTION-REPORT.md) · [QUICKSTART.md](./QUICKSTART.md)
@@ -61,12 +62,12 @@
 
 - **(§2 완료)** `evals/` 추가 완료: `cases.jsonl`(10 case) · `trace_export.py` · `graders.py`(8 grader) · `run_local.py` · `results/.gitignore`. `make eval-surface-local` 실행 시 10 graded / 0 skipped / 0 failed.
 - **(§3 완료)** `run_local.build_report()`가 `evals/results/latest.json`에 `supersample: {t0, t1, t2}` 섹션을 생성 — T0 지표는 실제 grader 결과에서 계산, T1은 quickstart 명령 목록 + `fork_time_minutes: 12` 기준선, T2는 정의만(`gate: false`).
+- **(§2 완료)** S1/S2/S3는 committed fixture 대신 `mock_run` contract로 임시 sessions directory에 deterministic mock run을 생성해 채점 — v1 local surface에서 skip 상태로 남는 case는 없다. 세 case는 `routing_contract`와 `session_contract`로 category, `turn_profile`, required spans, quick `agent_subset`, S3 role plan을 고정하고, `generated_mock_quality`로 topic echo, 도메인 topic terms, completed status, full agent roster/success, message/reply count, parse-error-free profile route, category signal을 검증한다. report에는 `supersample.t0.s_case_quality_pass_rate`와 `s_case_quality_failed`로 별도 노출한다.
+- **(§5 완료)** 공개 재현 문서(REPRODUCTION-REPORT/QUICKSTART/FORK)에 eval-surface 재현 절차가 반영됐다.
 
 ### 부족한 부분
 
-- S1/S2/S3는 committed fixture 대신 `mock_run` contract로 임시 sessions directory에 deterministic mock run을 생성해 채점한다. 따라서 v1 local surface에서 skip 상태로 남는 case는 없다. 세 case는 `routing_contract`와 `session_contract`로 category, `turn_profile`, required spans, quick `agent_subset`, S3 role plan을 고정하고, `generated_mock_quality`로 topic echo, 도메인 topic terms, completed status, full agent roster/success, message/reply count, parse-error-free profile route, category signal을 검증한다. report에는 `supersample.t0.s_case_quality_pass_rate`와 `s_case_quality_failed`로 별도 노출한다.
 - `fork_time_minutes`는 여전히 수동 측정값 — clean-clone 자동화는 N8 잔여 항목으로 이 계획의 범위 밖.
-- 공개 재현 문서(REPRODUCTION-REPORT/QUICKSTART/FORK)에 eval-surface 재현 절차가 반영됐다 (§5).
 
 ---
 

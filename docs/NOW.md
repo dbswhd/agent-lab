@@ -36,6 +36,14 @@ HS6/HS7은 design doc상 "동결 until HS-M5"(HS6) / "동결 until HS6 평가"(H
 Human 승인 1건(라이브 세션, mock 아님)을 요구하므로 **dogfood 보류 결정과 충돌**한다. 착수는 별도
 Human 확인 후.
 
+**2026-07-09 착수 검토 결과 (기각):** `.agent-lab/outcomes.jsonl` 실사용 236건 전수 확인 —
+`primary_tag` 태깅된 행 **0건**(recurrence 미달이 아니라 후보 자체가 없음). HS1-1 실패 태깅은
+Room 세션의 `harness_infra`(Oracle skipped)/`false_success`(근거 없는 pass)/`weak_taste`(미해결
+BLOCK 또는 턴당 CHALLENGE≥2) 3개 신호로만 발동하는데 지금까지 하나도 발생한 적이 없음. 인위적으로
+만들면 HS-M5의 취지(진짜 반복 약점을 harness가 스스로 고쳤는가) 훼손 — 기각. **재검토 트리거**:
+`make feedback-report JSON=1` 확인 시마다 `scripts/propose_harness.py --mode list`도 함께 확인 —
+addressable 패턴이 뜨면 그때 HS-M5 착수 재논의.
+
 | # | 항목 | 소스 ID | 할 일 | 닫힘 기준 |
 |---|------|---------|-------|-----------|
 | 1 | **문서 정비 백로그** (§4) | — | 별도 정비 PR (코드와 분리) | §4 표 소진 |
@@ -77,6 +85,7 @@ N5 전역 bandit · N7/S3 구현(설계만 ✅) · HS6/HS7 · HSIL Tier D 전체
 make test-fast && python scripts/smoke_room.py   # 회귀 (코드 트랙 큐 1~4 — 매 변경)
 make ci                       # HS0 닫힘 기준 (큐 1)
 make feedback-report JSON=1   # harness_attribution 확인 (큐 1) · S1 lift는 보류 트랙
+python scripts/propose_harness.py --mode list   # HS-M5 재검토 트리거 (§1 HS6 기각 사유) — addressable 뜨면 재논의
 make eval-surface-local       # T0/T1 supersample (evals/results/latest.json)
 make f7-dogfood-report        # 보류 — F7 재개 시
 ```

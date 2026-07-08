@@ -82,9 +82,7 @@ def test_f11_run_meta_dict_signature_baseline() -> None:
     )
     assert proc.returncode in (0, 1), proc.stderr or proc.stdout
     total = (
-        sum(int(line.split(":")[-1]) for line in proc.stdout.splitlines() if ":" in line)
-        if proc.stdout.strip()
-        else 0
+        sum(int(line.split(":")[-1]) for line in proc.stdout.splitlines() if ":" in line) if proc.stdout.strip() else 0
     )
     baseline = json.loads((ROOT / "tests/fixtures/structure-metrics-baseline.json").read_text())
     assert total <= baseline["f11_run_meta_dict_signatures"]

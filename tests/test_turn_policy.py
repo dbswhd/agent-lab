@@ -142,9 +142,7 @@ def test_supervisor_discuss_light_skips_fsm_bootstrap() -> None:
     assert effects.advance_plan_workflow is False
 
 
-EXECUTE_TOPIC = (
-    "docs 오타 1건 수정 plan action을 만들어 dry-run 승인 merge Oracle PASS까지"
-)
+EXECUTE_TOPIC = "docs 오타 1건 수정 plan action을 만들어 dry-run 승인 merge Oracle PASS까지"
 
 DOGFOOD_EXECUTE_TOPIC = (
     "Makefile x2-lift-dogfood-env echo 갱신 + tests/test_ui_handoff_scenarios.py 수정\n"
@@ -159,15 +157,18 @@ def test_detect_plan_execute_intent_docs_typo_topic() -> None:
 
 
 def test_resolve_discuss_light_s1_topic_stays_light() -> None:
-    assert resolve_discuss_light(
-        mode="discuss",
-        synthesize=False,
-        consensus_mode=False,
-        agent_rounds=1,
-        room_preset="supervisor",
-        turn_profile="loop",
-        topic="room.py에서 consensus 라운드 cap 기본값이 뭐야?",
-    ) is True
+    assert (
+        resolve_discuss_light(
+            mode="discuss",
+            synthesize=False,
+            consensus_mode=False,
+            agent_rounds=1,
+            room_preset="supervisor",
+            turn_profile="loop",
+            topic="room.py에서 consensus 라운드 cap 기본값이 뭐야?",
+        )
+        is True
+    )
 
 
 def test_resolve_discuss_light_execute_intent_off() -> None:

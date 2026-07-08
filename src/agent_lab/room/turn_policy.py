@@ -221,11 +221,7 @@ def skip_plan_fsm_bootstrap(signals: TurnSignals) -> bool:
     if signals.plan_execute_intent:
         return False
     clarity_skip = signals.clarity_short_circuit and not signals.plan_execute_intent
-    return bool(
-        signals.route_category == "quick"
-        or signals.discuss_light
-        or clarity_skip
-    )
+    return bool(signals.route_category == "quick" or signals.discuss_light or clarity_skip)
 
 
 def _preset_norm(signals: TurnSignals) -> str:
@@ -325,11 +321,7 @@ class TurnSignals:
         resolved_roster = (
             roster_size
             if roster_size is not None
-            else (
-                len([a for a in agents_raw if str(a).strip()])
-                if isinstance(agents_raw, list)
-                else 0
-            )
+            else (len([a for a in agents_raw if str(a).strip()]) if isinstance(agents_raw, list) else 0)
         )
         return cls(
             room_preset=preset,
@@ -350,7 +342,6 @@ class TurnSignals:
             plan_execute_intent=plan_execute_intent,
             roster_size=max(0, int(resolved_roster)),
         )
-
 
     def routing_contract_snapshot(self) -> dict[str, Any]:
         """TurnContract routing signals persisted for trace / eval (P1)."""

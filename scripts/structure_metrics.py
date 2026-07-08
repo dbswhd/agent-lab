@@ -173,9 +173,7 @@ def collect_metrics() -> StructureMetrics:
                 "F9 ratchet: execute/workflow/turn_flow* LOC caps; "
                 "--check fails on any drift from baseline (growth or shrink without update)."
             ),
-            "hot_path_ts_files": (
-                "F9 ratchet: RoomChat shell LOC caps after view/orchestrator split."
-            ),
+            "hot_path_ts_files": ("F9 ratchet: RoomChat shell LOC caps after view/orchestrator split."),
             "f11_run_meta_dict_signatures": (
                 "F11 ratchet: grep count of run_meta: dict[str, Any] in src/agent_lab; "
                 "must not grow without baseline update (Stage 1 migration lowers over time)."

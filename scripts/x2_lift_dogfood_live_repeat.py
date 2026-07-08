@@ -250,10 +250,7 @@ def _room_run(
     if session_id:
         fields.append(("session_id", session_id))
     body = (
-        "".join(
-            f'--{boundary}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n'
-            for k, v in fields
-        )
+        "".join(f'--{boundary}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n' for k, v in fields)
         + f"--{boundary}--\r\n"
     )
     req = urllib.request.Request(

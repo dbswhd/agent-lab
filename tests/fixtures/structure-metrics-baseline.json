@@ -51,11 +51,11 @@
   "large_tsx_files": [
     {
       "path": "web/src/components/HumanInboxPanel.tsx",
-      "lines": 1057
+      "lines": 1060
     },
     {
       "path": "web/src/App.tsx",
-      "lines": 765
+      "lines": 767
     },
     {
       "path": "web/src/components/ChatComposer.tsx",
@@ -107,7 +107,7 @@
     },
     {
       "path": "web/src/hooks/useRoomChatBootstrap.ts",
-      "lines": 360
+      "lines": 478
     },
     {
       "path": "web/src/hooks/useRoomChatInteractions.ts",
@@ -118,8 +118,6 @@
       "lines": 406
     }
   ],
-  "f11_run_meta_dict_signatures": 0,
-  "f11_run_dict_signatures": 145,
   "notes": {
     "pycache": "tracked_pycache_files counts git-tracked __pycache__/*.pyc only; local __pycache__ dirs are ignored by .gitignore and are not repo debt.",
     "makefile_targets": "Counted as Makefile lines matching ^target:",

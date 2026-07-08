@@ -26,6 +26,8 @@ Recombination = Literal["on", "auto", "off"]
 TaskType = Literal["code", "review", "general"]
 TopologyHint = Literal["parallel", "producer_reviewer", "pipeline"]
 
+# Display/reference ordering only — the auto-escalation ladder (next_category)
+# skips "trading" (see its docstring); this tuple is not walked by index there.
 CATEGORY_ORDER: tuple[Category, ...] = ("quick", "standard", "trading", "deep", "critical")
 ESCALATION_ACTS = frozenset({"CHALLENGE", "BLOCK", "AMEND"})
 
@@ -579,10 +581,17 @@ def resolve_topic_route(
 
 
 def next_category(category: Category) -> Category:
-    idx = CATEGORY_ORDER.index(category)
-    if idx >= len(CATEGORY_ORDER) - 2:  # deep/critical은 상한
-        return category if category == "critical" else "deep"
-    return CATEGORY_ORDER[idx + 1]
+    """다음 에스컬레이션 단계. ``trading``은 실제 거래 도메인 분류 전용 라벨이라
+    generic 에스컬레이션 사다리(quick/standard)는 이를 건너뛴다 — ``risk_pin.py``가
+    ``category == "trading"``을 신뢰 다운그레이드(autonomy ceiling L1) 트리거로
+    쓰므로, 무관한 세션이 CHALLENGE 2회만으로 우연히 이 라벨에 도달하면
+    실제 거래 리스크가 없는데도 autonomy가 강등된다. 이미 ``trading``으로
+    분류된 세션(키워드 매치)의 추가 에스컬레이션은 그대로 ``deep``으로 승격."""
+    if category == "quick":
+        return "standard"
+    if category in ("standard", "trading"):
+        return "deep"
+    return category if category == "critical" else "deep"
 
 
 def escalate_route(

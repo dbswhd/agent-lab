@@ -136,13 +136,24 @@ def test_escalation_one_step_no_demote(monkeypatch):
     assert up1.category == "standard"
     assert up1.escalated_from == "quick"
     assert up1.escalation_act == "CHALLENGE"
+    # generic escalation skips "trading" (reserved for genuine trading-domain
+    # classification — risk_pin.py keys autonomy downgrade off this exact
+    # label, so an unrelated session must never land there via CHALLENGE/AMEND alone).
     up2 = escalate_route(up1, act="AMEND")
-    assert up2.category == "trading"
+    assert up2.category == "deep"
     assert up2.escalated_from == "quick"  # 최초 카테고리 보존
     up3 = escalate_route(up2, act="BLOCK")
-    assert up3.category == "deep"
-    up4 = escalate_route(up3, act="BLOCK")
-    assert up4.category == "deep"  # deep에서 멈춤 (critical은 명시적만)
+    assert up3.category == "deep"  # deep에서 멈춤 (critical은 명시적만)
+
+
+def test_escalation_from_genuine_trading_still_reaches_deep(monkeypatch):
+    """A session actually classified as trading (keyword match) can still
+    escalate further to deep — only the generic quick/standard ladder skips it."""
+    _clear_router_env(monkeypatch)
+    trading = resolve_topic_route("오늘 장중 trading mission 진행 상황 공유")
+    assert trading.category == "trading"
+    escalated = escalate_route(trading, act="BLOCK")
+    assert escalated.category == "deep"
 
 
 def test_escalation_disabled_route_noop(monkeypatch):

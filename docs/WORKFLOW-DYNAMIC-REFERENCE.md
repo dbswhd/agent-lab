@@ -237,7 +237,7 @@ flowchart TB
 | **입력** | `topic`, `turn_profile`, `[cat: deep]` 마커 |
 | **판정 순서** | marker > session template > profile > keyword heuristic > default |
 | **출력 `CategoryRoute`** | `category`, `debate_rounds`, `recombination`, `quality_gate`, `max_rounds`, `max_calls`, `agent_subset`, `task_type`, `topology_hint` |
-| **category 순서** | quick → standard → trading → deep → critical |
+| **category 순서** | quick → standard → trading → deep → critical (분류/표시용 — `escalate_route()` 자동 에스컬레이션은 trading을 건너뛰고 standard→deep으로 감; `risk_pin.py`가 `category=="trading"`을 신뢰 다운그레이드 트리거로 쓰므로 무관한 세션이 CHALLENGE 2회만으로 도달하면 안 됨. 2026-07-09) |
 | **Expert Pool** | code → cursor+codex, review → claude+codex, deep/critical → subset 해제(전원) |
 | **자가 치유** | `CHALLENGE`/`BLOCK`/`AMEND` → `escalate_route()` — category 상향 + subset 해제 |
 | **kill switch** | `AGENT_LAB_TOPIC_ROUTER=0` |

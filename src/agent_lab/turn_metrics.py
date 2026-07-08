@@ -15,6 +15,48 @@ TURN_METRICS_SCHEMA_VERSION = 1
 
 _RESOLUTION_BUCKETS = ("accepted", "wontfix", "open")
 
+# HS1-1 failure taxonomy (docs/DESIGN-HARNESS-SELF-IMPROVE.md §8.1). Priority order
+# doubles as primary_tag precedence (first match wins, mirrors HS0's scorer's
+# harness-before-model ladder). Only tags with a reliable signal already available
+# to this function are derived here; `stale_defaults`/`implementation_drift`/
+# `context_loss`/`wrong_question` need instrumentation this increment doesn't add
+# (raw error text, plan/diff comparison, drift_audit wiring) and are left for a
+# follow-up HS1 pass rather than faked with unreliable heuristics.
+_TAG_PRIORITY = ("harness_infra", "weak_taste", "false_success")
+
+
+def _derive_failure_tags(
+    *,
+    objection_summary: dict[str, int],
+    objection_resolution: dict[str, dict[str, int]],
+    executions: list[dict[str, Any]],
+) -> tuple[list[str], str | None]:
+    """Best-effort HS1-1 failure tags from signals already computed this turn.
+
+    ``harness_infra``: an execution's Oracle verdict is "skipped" (no ``검증:``
+    criterion declared — see ``plan.execute_merge.oracle_verify``), same signal
+    ``score_outcome_verdict`` (HS0's model-vs-harness scorer) uses for attribution.
+    ``false_success``: an execution passed with no cited evidence (Oracle said
+    pass but pointed at nothing).
+    ``weak_taste``: an unresolved BLOCK, or CHALLENGE raised more than once this
+    turn (repeated pushback the agents didn't converge on).
+    """
+    tags: set[str] = set()
+    for execution in executions:
+        if not isinstance(execution, dict):
+            continue
+        oracle = execution.get("oracle") if isinstance(execution.get("oracle"), dict) else {}
+        verdict = str(oracle.get("verdict") or "").strip().lower()
+        if verdict == "skipped":
+            tags.add("harness_infra")
+        elif verdict == "pass" and not oracle.get("evidence"):
+            tags.add("false_success")
+    block = objection_resolution.get("BLOCK") or {}
+    if block.get("open", 0) > 0 or objection_summary.get("CHALLENGE", 0) >= 2:
+        tags.add("weak_taste")
+    ordered = [tag for tag in _TAG_PRIORITY if tag in tags]
+    return ordered, (ordered[0] if ordered else None)
+
 
 def _objection_summary(objections: list[dict[str, Any]], *, human_turn: int) -> dict[str, int]:
     """Count objection acts (CHALLENGE/BLOCK/AMEND/...) raised on this human turn."""
@@ -106,6 +148,14 @@ def build_turn_metrics(
     roles = turn.get("roles") if isinstance(turn.get("roles"), dict) else {}
     consensus = turn.get("consensus") if isinstance(turn.get("consensus"), dict) else {}
 
+    objection_summary = _objection_summary(objections, human_turn=human_turn)
+    objection_resolution = _objection_resolution_summary(objections, human_turn=human_turn)
+    failure_tags, primary_tag = _derive_failure_tags(
+        objection_summary=objection_summary,
+        objection_resolution=objection_resolution,
+        executions=executions,
+    )
+
     metrics: dict[str, Any] = {
         "schema_version": TURN_METRICS_SCHEMA_VERSION,
         "category": str(category.get("value") or ""),
@@ -114,8 +164,8 @@ def build_turn_metrics(
         "agents": list(turn.get("agents") or []),
         "rounds_used": int(turn.get("agent_parallel_rounds") or 0),
         "escalated": bool(category.get("escalated_from")),
-        "objection_summary": _objection_summary(objections, human_turn=human_turn),
-        "objection_resolution": _objection_resolution_summary(objections, human_turn=human_turn),
+        "objection_summary": objection_summary,
+        "objection_resolution": objection_resolution,
         "consensus_reached": str(consensus.get("status") or "") == "reached",
         "synthesized": bool(turn.get("synthesize")),
         "latency_ms": int(turn.get("latency_ms") or 0),
@@ -124,5 +174,7 @@ def build_turn_metrics(
         "advisor_source": category.get("advisor_source"),  # "history"|"explore" (S1.5)
         "advisor_combo_id": category.get("advisor_combo_id"),  # role-combo key (S1.5)
         "tool_card_suggestions": category.get("tool_card_suggestions") or [],  # S3a-0
+        "failure_tags": failure_tags,  # HS1-1
+        "primary_tag": primary_tag,  # HS1-1
     }
     return metrics

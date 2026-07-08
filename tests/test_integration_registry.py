@@ -111,7 +111,13 @@ def test_fast_bucket_collection_budget():
     # 2026-07-07: raised 2630 -> 2650 for N6 self-patch allowlist infra (test_self_patch.py:
     # allowlist load/glob matching/classify — 14 tests, + 2 outcome_harvester + 2 feedback_report).
     # 2026-07-08: raised 2700 -> 2705 for x2 dogfood fixture config tests.
-    assert count <= 2705, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-08: raised 2705 -> 2720 for HS0 ATTRIB (eval_harness score_dogfood_status/
+    # score_outcome_verdict adapters + harness_failure_rate + feedback_report/dogfood-suite wiring).
+    # 2026-07-08: raised 2720 -> 2740 for HS1 MINE (turn_metrics failure_tags taxonomy,
+    # weakness_miner.py traces/memory_store/pattern-recurrence tests, execute-outcome tags).
+    # 2026-07-08: raised 2740 -> 2760 for HS2 PLAYBOOK (wisdom/playbook.py curator/query tests,
+    # correction_harvester dual-write, context bundle playbook block injection).
+    assert count <= 2760, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

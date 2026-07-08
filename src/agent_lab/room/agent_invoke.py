@@ -190,6 +190,12 @@ def _finalize_durable_turn(folder: Path, human_turn_num: int, turn_status: str) 
 
     record_user_correction_outcome(folder, human_turn_num)
 
+    # HS1-3/HS1-4: per-turn trace + failure-memory preservation
+    # (flag-gated, fail-open — see weakness_miner.py).
+    from agent_lab.weakness_miner import write_turn_trace
+
+    write_turn_trace(folder, human_turn_num)
+
     # C2: periodic L3 autonomous-mission drift audit (flag-gated, fail-open,
     # no-op unless an autonomous_segment is active — see drift_audit.py).
     from agent_lab.drift_audit import maybe_run_drift_audit

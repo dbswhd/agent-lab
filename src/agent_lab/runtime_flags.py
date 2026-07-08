@@ -570,6 +570,23 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "Dogfood suite: record mock execute-phase outcome rows without live Oracle (default off)",
     ),
     FlagDef(
+        "AGENT_LAB_WEAKNESS_MINER",
+        "feature",
+        "HSIL HS1 MINE: per-turn traces (.agent-lab/traces/) + failure_tags memory_store preservation "
+        "+ weakness-pattern recurrence mining (default off)",
+    ),
+    FlagDef(
+        "AGENT_LAB_PLAYBOOK",
+        "feature",
+        "HSIL HS2 PLAYBOOK: incremental knowledge bullets from approved correction rules, "
+        "injected into R1 context (default off)",
+    ),
+    FlagDef(
+        "AGENT_LAB_PLAYBOOK_PATH",
+        "feature",
+        "Override path to playbook.jsonl (default .agent-lab/wisdom/playbook.jsonl)",
+    ),
+    FlagDef(
         "AGENT_LAB_FEEDBACK_ADVISOR",
         "feature",
         "S1 Phase B: feedback advisor reads outcomes.jsonl and adjusts role/agent setup via SetupHint (default off; requires TURN_METRICS+OUTCOME_LEDGER)",

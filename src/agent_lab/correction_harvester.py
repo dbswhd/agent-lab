@@ -270,7 +270,13 @@ def _pattern_by_key(key: str) -> CorrectionPattern | None:
 
 
 def promote_correction_rule(pattern_key: str, *, root: Path | None = None, session_count: int = 0) -> Path:
-    """Append the approved rule to the repo-local Wisdom rules file (N10b SSOT seed)."""
+    """Append the approved rule to the repo-local Wisdom rules file (N10b SSOT seed).
+
+    HS2-3/4 (fail-open): also writes/reinforces a playbook bullet — the ONLY
+    playbook source today is a Human-Inbox-approved correction rule, so this
+    call site doubles as both "correction_rules → playbook dual write" (HS2-3)
+    and "Inbox approval → bullet" (HS2-4).
+    """
     pattern = _pattern_by_key(pattern_key)
     rule_text = pattern.rule_text if pattern else pattern_key
     label = pattern.label if pattern else pattern_key
@@ -285,7 +291,24 @@ def promote_correction_rule(pattern_key: str, *, root: Path | None = None, sessi
         f"- 승인일: {_now_iso()}\n\n"
     )
     dest.write_text(existing + entry, encoding="utf-8")
+    _try_add_playbook_bullet(rule_text, pattern_key=pattern_key, root=root)
     return dest
+
+
+def _try_add_playbook_bullet(rule_text: str, *, pattern_key: str, root: Path | None) -> None:
+    try:
+        from agent_lab.wisdom.playbook import add_bullet, playbook_enabled
+
+        if not playbook_enabled():
+            return
+        path = None
+        if root is not None:
+            path = Path(root) / ".agent-lab" / "wisdom" / "playbook.jsonl"
+        add_bullet(rule_text, f"fp:user_correction:{pattern_key}", path=path)
+    except Exception:  # fail-open: playbook write must never block rule promotion
+        import logging
+
+        logging.getLogger(__name__).warning("playbook bullet write failed for %s", pattern_key, exc_info=True)
 
 
 def _rules_path(root: Path | None) -> Path:

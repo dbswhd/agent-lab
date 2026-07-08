@@ -106,7 +106,8 @@ def aggregate(results: list[ScoreResult]) -> AggregateReport:
 
     ``model_resolved_rate = resolved / (total - harness_failure_count)`` so harness
     failures are excluded from the denominator; the rate is 0.0 when the denominator
-    is 0 (empty list or all-harness list). Pure and deterministic.
+    is 0 (empty list or all-harness list). ``harness_failure_rate = harness_failure_count
+    / total`` (HS0-3), 0.0 when ``total`` is 0. Pure and deterministic.
     """
     total = len(results)
     resolved = sum(1 for r in results if r.get("resolved"))
@@ -115,11 +116,53 @@ def aggregate(results: list[ScoreResult]) -> AggregateReport:
     model_count = sum(1 for r in results if r.get("attribution") == "model")
     denom = total - harness_failure_count
     model_resolved_rate = (resolved / denom) if denom > 0 else 0.0
+    harness_failure_rate = (harness_failure_count / total) if total > 0 else 0.0
     return {
         "total": total,
         "resolved": resolved,
         "model_resolved_rate": model_resolved_rate,
         "harness_failure_count": harness_failure_count,
+        "harness_failure_rate": harness_failure_rate,
         "model_unresolved_count": model_unresolved_count,
         "by_attribution": {"model": model_count, "harness": harness_failure_count},
     }
+
+
+# ---------------------------------------------------------------------------
+# HS0 — non-SWE-bench adapters (agent-lab has no F2P/P2P test ids of its own;
+# these map agent-lab's existing pass/fail/skip vocabularies onto the same
+# model-vs-harness ScoreResult shape so ``aggregate`` stays the single SSOT).
+# ---------------------------------------------------------------------------
+
+
+def score_dogfood_status(status: str) -> ScoreResult:
+    """HS0-1 — map one dogfood-suite topic ``status`` to a ScoreResult.
+
+    ``"error"`` (an uncaught exception mid-topic — env/setup breakage) attributes
+    to harness. ``"pass"``/``"ran"`` (scenario assertion held, or KPIs produced on
+    a non-routed turn) resolve to the model. ``"fail"`` (topic ran cleanly but the
+    assertion/router check didn't hold) is an unresolved model result. Callers
+    must exclude ``"skip"`` (Human-gate topics never attempted carry no
+    model-vs-harness signal) before calling.
+    """
+    if status == "error":
+        return {"resolved": False, "attribution": "harness", "reason": "dogfood_error"}
+    if status in ("pass", "ran"):
+        return {"resolved": True, "attribution": "model", "reason": "resolved"}
+    return {"resolved": False, "attribution": "model", "reason": "dogfood_fail"}
+
+
+def score_outcome_verdict(verdict: str) -> ScoreResult:
+    """HS0-2 — map one execute-phase outcome-ledger ``final_verdict`` to a ScoreResult.
+
+    Oracle's own ``verdict == "skipped"`` (the plan action had no ``검증:``
+    criterion — see ``plan.execute_merge.oracle_verify``) is a harness-side gap,
+    analogous to score_instance's ``missing_test_ids`` case: the model was never
+    given a checkable criterion, so it can't be charged with a failure. Callers
+    must exclude falsy verdicts (rows that never reached Oracle) before calling.
+    """
+    if verdict == "skipped":
+        return {"resolved": False, "attribution": "harness", "reason": "missing_verify_criterion"}
+    if verdict == "pass":
+        return {"resolved": True, "attribution": "model", "reason": "resolved"}
+    return {"resolved": False, "attribution": "model", "reason": "unresolved"}

@@ -87,12 +87,18 @@ def _imported_modules(py: Path) -> set[str]:
 
 def test_ac15_directional_no_importer_contract():
     new_modules = {"event_schema", "memory_store"}
-    # (iii) no src module other than the new modules imports either new module
+    # HS1-4 (2026-07-08): weakness_miner.py is memory_store's first designated
+    # consumer (failures/{session_id} namespace) — a deliberate integration
+    # point, not an accidental import. event_schema stays untouched (0 consumers).
+    allowed_importers = {"memory_store": {"weakness_miner"}}
+    # (iii) no src module other than the new modules (or an allowed importer) imports either new module
     offenders = []
     for py in _SRC.glob("*.py"):
         if py.stem in new_modules:
             continue
-        if _imported_modules(py) & new_modules:
+        for mod in _imported_modules(py) & new_modules:
+            if py.stem in allowed_importers.get(mod, set()):
+                continue
             offenders.append(py.name)
     assert offenders == [], f"unexpected importers of new modules: {offenders}"
 

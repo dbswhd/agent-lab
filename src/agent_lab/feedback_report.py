@@ -175,6 +175,22 @@ def _tool_card_hit_stats(verdict_rows: list[dict[str, Any]]) -> dict[str, Any]:
     return {"n": n, "tool_card_hit_rate": round(clean / n, 4)}
 
 
+def _harness_attribution_stats(verdict_rows: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """HS0-2 — model-vs-harness attribution over execute-phase outcome rows.
+
+    Oracle's ``verdict == "skipped"`` (plan action had no ``검증:`` criterion) is
+    a harness-side gap, not a model failure — see
+    ``eval_harness.score_outcome_verdict``. Rows with no verdict at all never
+    reached Oracle and are excluded. ``None`` when AGENT_LAB_EVAL_HARNESS is off.
+    """
+    from agent_lab.eval_harness import aggregate, eval_harness_enabled, score_outcome_verdict
+
+    if not eval_harness_enabled():
+        return None
+    scored = [score_outcome_verdict(str(r.get("final_verdict") or "")) for r in verdict_rows if r.get("final_verdict")]
+    return aggregate(scored)
+
+
 def _self_patch_stats(verdict_rows: list[dict[str, Any]]) -> dict[str, Any]:
     """N6 — observation only: how often an execution stayed entirely inside the
     self-patch allowlist (see self_patch.py). No autonomy behavior reads this
@@ -243,6 +259,7 @@ def build_feedback_report(root: Path | None = None) -> dict[str, Any]:
         "correction_patterns": correction_stats,
         "tool_cards": _tool_card_hit_stats(verdict_rows),
         "self_patch": _self_patch_stats(verdict_rows),
+        "harness_attribution": _harness_attribution_stats(verdict_rows),
     }
 
 
@@ -304,5 +321,14 @@ def render_feedback_report(report: dict[str, Any]) -> str:
         lines.append("")
         lines.append(
             f"self_patch (N6) — {self_patch['eligible_n']}/{self_patch['n']} executions allowlist-eligible, rate: {rate_label}"
+        )
+    harness_attr = report.get("harness_attribution")
+    if harness_attr and harness_attr.get("total"):
+        lines.append("")
+        lines.append(
+            f"harness_attribution (HS0) — {harness_attr['total']} execute rows, "
+            f"model_resolved_rate={harness_attr['model_resolved_rate']:.2%}, "
+            f"harness_failure_rate={harness_attr['harness_failure_rate']:.2%} "
+            f"({harness_attr['harness_failure_count']} harness failures)"
         )
     return "\n".join(lines)

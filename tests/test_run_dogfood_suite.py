@@ -94,3 +94,38 @@ def test_aggregate_example_log(tmp_path):
     # Example sessions do not exist — aggregate should warn but exit 0
     rc = runner.run_aggregate(rows, _EXAMPLE_LOG)
     assert rc == 0
+
+
+def test_run_mock_reports_harness_attribution(tmp_path, monkeypatch):
+    """HS0-1: run_mock() calls eval_harness.aggregate() and writes the result
+    into the mock suite report JSON."""
+    monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
+    monkeypatch.setenv("AGENT_LAB_CLARIFIER", "0")
+    monkeypatch.delenv("AGENT_LAB_EVAL_HARNESS", raising=False)
+    runner = _load_runner()
+    monkeypatch.setattr(runner, "REPORTS", tmp_path)
+    rows = runner.filter_topics(runner.load_topics(_TOPICS), {"S"}, None)
+    runner.run_mock(rows, tmp_path / "sessions")
+
+    out_files = list(tmp_path.glob("dogfood-suite-mock-*.json"))
+    assert len(out_files) == 1
+    data = json.loads(out_files[0].read_text(encoding="utf-8"))
+    attr = data["harness_attribution"]
+    assert attr is not None
+    assert attr["total"] == len(rows)  # tier S has no "skip" topics
+    assert 0.0 <= attr["model_resolved_rate"] <= 1.0
+    assert 0.0 <= attr["harness_failure_rate"] <= 1.0
+
+
+def test_run_mock_harness_attribution_none_when_flag_off(tmp_path, monkeypatch):
+    monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
+    monkeypatch.setenv("AGENT_LAB_CLARIFIER", "0")
+    monkeypatch.setenv("AGENT_LAB_EVAL_HARNESS", "0")
+    runner = _load_runner()
+    monkeypatch.setattr(runner, "REPORTS", tmp_path)
+    rows = runner.filter_topics(runner.load_topics(_TOPICS), {"S"}, None)
+    runner.run_mock(rows, tmp_path / "sessions")
+
+    out_files = list(tmp_path.glob("dogfood-suite-mock-*.json"))
+    data = json.loads(out_files[0].read_text(encoding="utf-8"))
+    assert data["harness_attribution"] is None

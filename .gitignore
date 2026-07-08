@@ -17,6 +17,11 @@ web/src-tauri/bundled-runtime/
 .agent-lab/cost_ledger_quarter.json
 # Stray outcome ledgers written from the wrong CWD (see 24f2bd2a fix)
 src/.agent-lab/
+# HS1 MINE — per-turn traces + memory_store failure preservation (runtime data)
+.agent-lab/traces/
+.agent-lab/memory/
+# HS2 PLAYBOOK — append-only bullet ledger (runtime data, not source)
+.agent-lab/wisdom/playbook.jsonl
 node_modules/
 web/test-results/
 # Local design dry-run artifact (not session plan.md)

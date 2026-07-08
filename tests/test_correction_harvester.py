@@ -187,6 +187,68 @@ def test_promote_correction_rule_writes_markdown(tmp_path) -> None:
     assert "한국어로 응답할 것" in text
 
 
+# ---------------------------------------------------------------------------
+# HS2-3/4 — playbook dual write on Inbox approval
+# ---------------------------------------------------------------------------
+
+
+def test_promote_correction_rule_writes_playbook_bullet_when_flag_on(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("AGENT_LAB_PLAYBOOK", "1")
+    promote_correction_rule("language_reminder", root=tmp_path, session_count=3)
+
+    from agent_lab.wisdom.playbook import load_bullets
+
+    playbook_path = tmp_path / ".agent-lab" / "wisdom" / "playbook.jsonl"
+    bullets = load_bullets(path=playbook_path)
+    assert len(bullets) == 1
+    assert bullets[0].pattern_id == "fp:user_correction:language_reminder"
+    assert bullets[0].evidence_count == 1
+
+
+def test_promote_correction_rule_recurring_bumps_evidence(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("AGENT_LAB_PLAYBOOK", "1")
+    promote_correction_rule("language_reminder", root=tmp_path, session_count=3)
+    promote_correction_rule("language_reminder", root=tmp_path, session_count=5)
+
+    from agent_lab.wisdom.playbook import load_bullets
+
+    playbook_path = tmp_path / ".agent-lab" / "wisdom" / "playbook.jsonl"
+    bullets = load_bullets(path=playbook_path)
+    assert len(bullets) == 1
+    assert bullets[0].evidence_count == 2
+
+
+def test_promote_correction_rule_no_playbook_write_when_flag_off(tmp_path, monkeypatch) -> None:
+    monkeypatch.delenv("AGENT_LAB_PLAYBOOK", raising=False)
+    promote_correction_rule("language_reminder", root=tmp_path, session_count=3)
+
+    playbook_path = tmp_path / ".agent-lab" / "wisdom" / "playbook.jsonl"
+    assert not playbook_path.exists()
+
+
+def test_handle_correction_rule_inbox_resolve_approve_writes_playbook_bullet(tmp_path, monkeypatch) -> None:
+    """End-to-end HS2-4: Inbox approve -> promote_correction_rule -> playbook bullet."""
+    monkeypatch.setenv("AGENT_LAB_PLAYBOOK", "1")
+    ledger_path = tmp_path / ".agent-lab" / "outcomes.jsonl"
+    monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: ledger_path)
+    session_ids = [f"s{i}" for i in range(MIN_SAMPLE)]
+    _append_correction_rows(ledger_path, "language_reminder", session_ids)
+
+    folder = tmp_path / session_ids[-1]
+    _write_run(folder)
+    pattern = detect_user_correction("한국어로")
+    item = maybe_propose_correction_rule(folder, pattern, root=tmp_path)
+    assert item is not None
+
+    handle_correction_rule_inbox_resolve(folder, item, selected=["approve"], status="resolved", root=tmp_path)
+
+    from agent_lab.wisdom.playbook import load_bullets
+
+    bullets = load_bullets(path=tmp_path / ".agent-lab" / "wisdom" / "playbook.jsonl")
+    assert len(bullets) == 1
+    assert bullets[0].pattern_id == "fp:user_correction:language_reminder"
+
+
 def test_handle_correction_rule_inbox_resolve_approve_promotes(tmp_path, monkeypatch) -> None:
     ledger_path = tmp_path / ".agent-lab" / "outcomes.jsonl"
     monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: ledger_path)

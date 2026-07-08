@@ -1,12 +1,15 @@
-"""P4 SWE-bench-style eval harness (AGENT_LAB_EVAL_HARNESS, default off).
+"""P4 SWE-bench-style eval harness (AGENT_LAB_EVAL_HARNESS, default on).
 
-Covers AC1-AC18 + Critic N1 (reason determinism) + N2 (no-importer OFF-parity scan).
-The module is pure; the flag gates future wiring only (zero call sites this increment).
+Covers AC1-AC18 + Critic N1 (reason determinism) + N2 (allowlisted-importer scan).
+The module is pure; HS0 wires it through ``feedback_report.py`` (harness_attribution)
+and ``scripts/run_dogfood_suite.py`` (mock suite report) — see those modules.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
+
+import pytest
 
 from agent_lab import eval_harness as eh
 
@@ -130,6 +133,14 @@ def test_ac10_empty_list():
     assert agg["total"] == 0
     assert agg["resolved"] == 0
     assert agg["model_resolved_rate"] == 0.0
+    assert agg["harness_failure_rate"] == 0.0
+
+
+def test_harness_failure_rate_over_total():
+    # HS0-3: harness_failure_rate divides by total (unlike model_resolved_rate,
+    # which excludes harness failures from its denominator).
+    agg = eh.aggregate([_mk(True, "model"), _mk(False, "model"), _mk(False, "harness")])
+    assert agg["harness_failure_rate"] == pytest.approx(1 / 3)
 
 
 def test_ac11_all_harness():
@@ -159,6 +170,53 @@ def test_ac17_rate_in_unit_interval_and_resolved_implies_model():
     assert 0.0 <= agg["model_resolved_rate"] <= 1.0
 
 
+# --- HS0 adapters -----------------------------------------------------------
+
+
+def test_score_dogfood_status_error_is_harness():
+    r = eh.score_dogfood_status("error")
+    assert r == {"resolved": False, "attribution": "harness", "reason": "dogfood_error"}
+
+
+def test_score_dogfood_status_pass_and_ran_resolve_model():
+    for status in ("pass", "ran"):
+        r = eh.score_dogfood_status(status)
+        assert r["resolved"] is True
+        assert r["attribution"] == "model"
+
+
+def test_score_dogfood_status_fail_is_unresolved_model():
+    r = eh.score_dogfood_status("fail")
+    assert r["resolved"] is False
+    assert r["attribution"] == "model"
+    assert r["reason"] == "dogfood_fail"
+
+
+def test_score_dogfood_status_aggregate_end_to_end():
+    statuses = ["pass", "pass", "fail", "error"]
+    agg = eh.aggregate([eh.score_dogfood_status(s) for s in statuses])
+    assert agg["total"] == 4
+    assert agg["harness_failure_count"] == 1
+    assert agg["model_resolved_rate"] == pytest.approx(2 / 3)  # 2 resolved / (4-1) model rows
+
+
+def test_score_outcome_verdict_skipped_is_harness_missing_criterion():
+    r = eh.score_outcome_verdict("skipped")
+    assert r == {"resolved": False, "attribution": "harness", "reason": "missing_verify_criterion"}
+
+
+def test_score_outcome_verdict_pass_resolves_model():
+    r = eh.score_outcome_verdict("pass")
+    assert r["resolved"] is True
+    assert r["attribution"] == "model"
+
+
+def test_score_outcome_verdict_fail_is_unresolved_model():
+    r = eh.score_outcome_verdict("fail")
+    assert r["resolved"] is False
+    assert r["attribution"] == "model"
+
+
 # --- flag + OFF-parity -----------------------------------------------------
 
 
@@ -173,10 +231,14 @@ def test_ac13_flag_default_on(monkeypatch):
 
 
 def test_ac13_n2_wired_through_ingest_only():
+    # HS0-2 wires ``feedback_report.py`` to eval_harness (harness_attribution over
+    # the outcome ledger) — a designated integration point, not an accidental import.
+    # This guard now enforces "only these named modules", not "zero call sites".
     src = Path(__file__).resolve().parent.parent / "src" / "agent_lab"
+    allowed = {"eval_harness.py", "eval_harness_ingest.py", "feedback_report.py"}
     offenders = []
     for py in src.glob("*.py"):
-        if py.name in {"eval_harness.py", "eval_harness_ingest.py"}:
+        if py.name in allowed:
             continue
         text = py.read_text(encoding="utf-8")
         if "eval_harness" in text:

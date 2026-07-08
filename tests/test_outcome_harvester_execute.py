@@ -64,6 +64,38 @@ def test_record_execute_outcome_writes_verdict_row(tmp_path, monkeypatch) -> Non
     assert row["agents"] == ["cursor", "codex", "claude"]
 
 
+def test_record_execute_outcome_tags_harness_infra_on_skipped_verdict(tmp_path, monkeypatch) -> None:
+    """HS1-1: execute rows independently derive harness_infra from Oracle "skipped"
+    (missing 검증: criterion) — same signal eval_harness.score_outcome_verdict uses."""
+    monkeypatch.setenv("AGENT_LAB_OUTCOME_LEDGER", "1")
+    monkeypatch.setenv("AGENT_LAB_OUTCOMES_ROOT", str(tmp_path / "root"))
+
+    folder = tmp_path / "sess-skip"
+    _write_run(folder)
+
+    execution = {"id": "exec-1", "oracle": {"verdict": "skipped"}, "repair_history": []}
+    record_execute_outcome(folder, execution)
+
+    row = json.loads(outcomes_path().read_text(encoding="utf-8").splitlines()[0])
+    assert row["failure_tags"] == ["harness_infra"]
+    assert row["primary_tag"] == "harness_infra"
+
+
+def test_record_execute_outcome_no_failure_tags_on_pass(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("AGENT_LAB_OUTCOME_LEDGER", "1")
+    monkeypatch.setenv("AGENT_LAB_OUTCOMES_ROOT", str(tmp_path / "root"))
+
+    folder = tmp_path / "sess-pass"
+    _write_run(folder)
+
+    execution = {"id": "exec-1", "oracle": {"verdict": "pass"}, "repair_history": []}
+    record_execute_outcome(folder, execution)
+
+    row = json.loads(outcomes_path().read_text(encoding="utf-8").splitlines()[0])
+    assert row["failure_tags"] == []
+    assert row["primary_tag"] is None
+
+
 def test_record_execute_outcome_tags_self_patch_eligible(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("AGENT_LAB_OUTCOME_LEDGER", "1")
     monkeypatch.setenv("AGENT_LAB_OUTCOMES_ROOT", str(tmp_path / "root"))

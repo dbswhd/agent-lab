@@ -80,6 +80,42 @@ def outcomes_path(root: Path | None = None) -> Path:
     return Path(root) / _OUTCOMES_RELPATH
 
 
+def agent_lab_project_root(root: Path | None = None) -> Path:
+    """Resolve the repo root for ALL ``.agent-lab/`` runtime writes (ledger,
+    traces, memory — HS1). ``AGENT_LAB_OUTCOMES_ROOT`` isolates the whole
+    ``.agent-lab/`` tree, not just the outcomes ledger; the env var name
+    predates HS1's traces/memory consumers.
+    """
+    return Path(root) if root is not None else _default_outcomes_root()
+
+
+def load_outcome_rows(root: Path | None = None) -> list[dict[str, Any]]:
+    """Read + parse every JSON line in the outcome ledger (malformed lines skipped).
+
+    Shared reader for feedback_report and weakness_miner (HS1) — both bucket
+    the same ledger, just by different keys.
+    """
+    path = outcomes_path(root)
+    if not path.is_file():
+        return []
+    rows: list[dict[str, Any]] = []
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return []
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            obj = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(obj, dict):
+            rows.append(obj)
+    return rows
+
+
 def _topic_text(folder: Path, run: RunStateLike) -> str:
     topic = str(run.get("topic") or "").strip()
     if topic:
@@ -136,6 +172,9 @@ def build_outcome_record(
         "human_inbox_escalation": inbox_hit,
         # S3a-0 — tool cards suggested at RECALL time (installed-but-unused capabilities)
         "tool_card_suggestions": list(metrics.get("tool_card_suggestions") or []),
+        # HS1-1 — failure taxonomy tags (see turn_metrics._derive_failure_tags)
+        "failure_tags": list(metrics.get("failure_tags") or []),
+        "primary_tag": metrics.get("primary_tag"),
     }
 
 
@@ -246,6 +285,10 @@ def _build_execute_outcome_record(
     advisor = advisor or _advisor_fields_for_execute(run, last_turn)
     topic = _topic_text(folder, run)
     verdict = _execution_verdict(execution)
+    # HS1-1 — execute rows only carry the one signal available at this layer:
+    # Oracle "skipped" (no 검증: criterion) is the same harness-side gap HS0's
+    # model-vs-harness scorer (score_outcome_verdict) attributes to harness.
+    failure_tags = ["harness_infra"] if verdict == "skipped" else []
     record: dict[str, Any] = {
         "v": OUTCOME_LEDGER_SCHEMA_VERSION,
         "ts": _now_iso(),
@@ -268,6 +311,8 @@ def _build_execute_outcome_record(
         "advisor_source": advisor.get("advisor_source") or "default",
         "combo_id": advisor.get("combo_id") or "",
         "tool_card_suggestions": list(advisor.get("tool_card_suggestions") or []),
+        "failure_tags": failure_tags,
+        "primary_tag": failure_tags[0] if failure_tags else None,
     }
     from agent_lab.autonomy_ladder import infer_effective_autonomy_level
     from agent_lab.human_inbox import pending_inbox_items

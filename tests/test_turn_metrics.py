@@ -63,6 +63,69 @@ def test_build_turn_metrics_empty_inputs() -> None:
     assert metrics["objection_summary"] == {}
     assert metrics["objection_resolution"] == {}
     assert metrics["oracle_rollup"]["final_verdict"] is None
+    assert metrics["failure_tags"] == []
+    assert metrics["primary_tag"] is None
+
+
+# ---------------------------------------------------------------------------
+# HS1-1 — failure_tags taxonomy
+# ---------------------------------------------------------------------------
+
+
+def test_failure_tags_harness_infra_on_skipped_oracle() -> None:
+    executions = [{"oracle": {"verdict": "skipped"}, "repair_history": []}]
+    metrics = build_turn_metrics(_TURN, objections=[], executions=executions, human_turn=1)
+    assert metrics["failure_tags"] == ["harness_infra"]
+    assert metrics["primary_tag"] == "harness_infra"
+
+
+def test_failure_tags_false_success_on_pass_without_evidence() -> None:
+    executions = [{"oracle": {"verdict": "pass", "evidence": []}, "repair_history": []}]
+    metrics = build_turn_metrics(_TURN, objections=[], executions=executions, human_turn=1)
+    assert metrics["failure_tags"] == ["false_success"]
+
+
+def test_failure_tags_absent_when_pass_has_evidence() -> None:
+    executions = [{"oracle": {"verdict": "pass", "evidence": ["src/x.py:12"]}, "repair_history": []}]
+    metrics = build_turn_metrics(_TURN, objections=[], executions=executions, human_turn=1)
+    assert metrics["failure_tags"] == []
+
+
+def test_failure_tags_weak_taste_on_unresolved_block() -> None:
+    objections = [{"act": "BLOCK", "turn": 1, "status": "open"}]
+    metrics = build_turn_metrics(_TURN, objections=objections, executions=[], human_turn=1)
+    assert metrics["failure_tags"] == ["weak_taste"]
+
+
+def test_failure_tags_weak_taste_on_repeated_challenge() -> None:
+    objections = [
+        {"act": "CHALLENGE", "turn": 1, "status": "open"},
+        {"act": "CHALLENGE", "turn": 1, "status": "resolved_accepted"},
+    ]
+    metrics = build_turn_metrics(_TURN, objections=objections, executions=[], human_turn=1)
+    assert metrics["failure_tags"] == ["weak_taste"]
+
+
+def test_failure_tags_resolved_block_and_single_challenge_not_weak_taste() -> None:
+    objections = [
+        {"act": "BLOCK", "turn": 1, "status": "resolved_accepted"},
+        {"act": "CHALLENGE", "turn": 1, "status": "resolved_accepted"},
+    ]
+    metrics = build_turn_metrics(_TURN, objections=objections, executions=[], human_turn=1)
+    assert metrics["failure_tags"] == []
+
+
+def test_failure_tags_primary_tag_follows_priority_order() -> None:
+    # harness_infra > weak_taste > false_success — harness_infra wins even
+    # though weak_taste and false_success signals are also present.
+    executions = [
+        {"oracle": {"verdict": "skipped"}, "repair_history": []},
+        {"oracle": {"verdict": "pass", "evidence": []}, "repair_history": []},
+    ]
+    objections = [{"act": "BLOCK", "turn": 1, "status": "open"}]
+    metrics = build_turn_metrics(_TURN, objections=objections, executions=executions, human_turn=1)
+    assert set(metrics["failure_tags"]) == {"harness_infra", "weak_taste", "false_success"}
+    assert metrics["primary_tag"] == "harness_infra"
 
 
 def test_append_and_record_outcome(tmp_path, monkeypatch) -> None:

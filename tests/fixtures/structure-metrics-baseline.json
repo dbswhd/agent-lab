@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "agent_lab_root_py_files": 124,
+  "agent_lab_root_py_files": 125,
   "agent_lab_subpackages": [
     "agent",
     "agents",
@@ -46,7 +46,7 @@
     "claude_": 0
   },
   "tracked_pycache_files": 0,
-  "makefile_lines": 479,
+  "makefile_lines": 481,
   "makefile_targets": 98,
   "large_tsx_files": [
     {

@@ -225,3 +225,61 @@ def test_self_patch_stats_computed_over_verdict_rows(tmp_path: Path, monkeypatch
 
     rep = build_feedback_report(tmp_path)
     assert rep["self_patch"] == {"n": 2, "eligible_n": 1, "self_patch_eligible_rate": 0.5}
+
+
+# ---------------------------------------------------------------------------
+# HS0-2 — harness_attribution
+# ---------------------------------------------------------------------------
+
+
+def test_harness_attribution_absent_without_verdict_rows(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: tmp_path / "missing.jsonl")
+    rep = build_feedback_report(tmp_path)
+    assert rep["harness_attribution"]["total"] == 0
+    assert rep["harness_attribution"]["harness_failure_rate"] == 0.0
+
+
+def test_harness_attribution_skipped_verdict_counts_as_harness(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    ledger = tmp_path / ".agent-lab" / "outcomes.jsonl"
+    _write_ledger(
+        ledger,
+        [
+            _row("default", verdict="pass"),
+            _row("default", verdict="fail"),
+            _row("default", verdict="skipped"),
+        ],
+    )
+    monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: ledger)
+
+    rep = build_feedback_report(tmp_path)
+    attr = rep["harness_attribution"]
+    assert attr["total"] == 3
+    assert attr["harness_failure_count"] == 1
+    assert attr["harness_failure_rate"] == pytest.approx(1 / 3)
+    # model_resolved_rate excludes the harness row from its denominator: 1/(3-1)
+    assert attr["model_resolved_rate"] == pytest.approx(0.5)
+
+
+def test_harness_attribution_excludes_rows_without_verdict(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    ledger = tmp_path / ".agent-lab" / "outcomes.jsonl"
+    _write_ledger(
+        ledger,
+        [
+            _row("default", verdict="pass"),
+            _row("default", verdict=""),  # never reached Oracle — excluded
+        ],
+    )
+    monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: ledger)
+
+    rep = build_feedback_report(tmp_path)
+    assert rep["harness_attribution"]["total"] == 1
+
+
+def test_harness_attribution_none_when_flag_off(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    ledger = tmp_path / ".agent-lab" / "outcomes.jsonl"
+    _write_ledger(ledger, [_row("default", verdict="pass")])
+    monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: ledger)
+    monkeypatch.setenv("AGENT_LAB_EVAL_HARNESS", "0")
+
+    rep = build_feedback_report(tmp_path)
+    assert rep["harness_attribution"] is None

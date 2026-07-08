@@ -388,6 +388,40 @@ def _append_wisdom_search_block(
     return f"{constraints}\n\n" + "\n".join(lines)
 
 
+_PLAYBOOK_BLOCK_CAP = 600
+
+
+def _append_playbook_block(
+    constraints: str,
+    *,
+    topic: str,
+    parallel_round: int,
+) -> str:
+    """HS2-2 — active playbook bullets whose description matches the topic,
+    injected R1-only (same discipline as ``_append_wisdom_search_block``)."""
+    if parallel_round != 1 or not topic.strip():
+        return constraints
+    try:
+        from agent_lab.wisdom.playbook import playbook_bullets_for_topic
+
+        bullets = playbook_bullets_for_topic(topic, k=3)
+    except Exception:
+        return constraints
+    if not bullets:
+        return constraints
+    lines = ["[플레이북 — 반복 교정 패턴에서 도출된 지침]"]
+    used = len(lines[0])
+    for bullet in bullets:
+        line = f"- {bullet.description} (evidence={bullet.evidence_count})"
+        if used + len(line) > _PLAYBOOK_BLOCK_CAP:
+            break
+        lines.append(line)
+        used += len(line)
+    if len(lines) == 1:
+        return constraints
+    return f"{constraints}\n\n" + "\n".join(lines)
+
+
 def _append_mission_track_c_blocks(
     constraints: str,
     *,
@@ -529,6 +563,11 @@ def build_context_bundle(
         constraints,
         topic=topic,
         run_meta=run_meta,
+        parallel_round=parallel_round,
+    )
+    constraints = _append_playbook_block(
+        constraints,
+        topic=topic,
         parallel_round=parallel_round,
     )
     from agent_lab.skill_drafts import build_session_skills_block

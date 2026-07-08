@@ -55,8 +55,7 @@ export function ComposerStrip({
           {items && items.length > 0 ? (
             <ul className="composer-strip__list">
               {items.map((item, index) => (
-                // eslint-disable-next-line react/no-array-index-key
-                <li key={index}>{item}</li>
+                <li key={`${index}-${item.slice(0, 24)}`}>{item}</li>
               ))}
             </ul>
           ) : null}

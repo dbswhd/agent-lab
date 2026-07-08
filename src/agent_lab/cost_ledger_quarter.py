@@ -83,7 +83,7 @@ def read_quarter_ledger(root: Path | None = None) -> dict[str, Any]:
         return _empty_quarter(quarter)
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except (OSError, ValueError):  # ValueError covers JSONDecodeError + UnicodeDecodeError
         return _empty_quarter(quarter)
     if not isinstance(data, dict):
         return _empty_quarter(quarter)

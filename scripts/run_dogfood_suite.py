@@ -6,6 +6,8 @@
 모드:
 - ``--mode mock``       Tier S/M/L/D 토픽을 mock으로 자동 실행 + Tier A 시나리오 단언.
                         Human gate가 필요한 항목은 우회 없이 skip + 사유 출력.
+                        HS0-1: 리포트에 ``harness_attribution``(model vs harness,
+                        eval_harness.aggregate()) 포함 — AGENT_LAB_EVAL_HARNESS 게이트.
 - ``--mode checklist``  live 실행용 체크리스트 — 토픽별 flags·profile·프롬프트·pass 기준.
 - ``--mode aggregate``  suite-log.json(토픽↔세션 매핑)을 읽어 score_session 집계,
                         repeat은 median, 리포트를 sessions/_reports/에 저장.
@@ -671,18 +673,36 @@ def run_mock(rows: list[dict[str, Any]], sessions_base: Path | None) -> int:
             print(f"  ERROR {topic_id}: {exc}")
 
     failed = [r for r in results if r["status"] in {"fail", "error"}]
+
+    # HS0-1 — model-vs-harness attribution over this run's topic outcomes.
+    # "skip" (Human-gate topics never attempted) carries no signal and is excluded.
+    harness_attribution = None
+    from agent_lab.eval_harness import aggregate, eval_harness_enabled, score_dogfood_status
+
+    if eval_harness_enabled():
+        scored = [score_dogfood_status(r["status"]) for r in results if r["status"] != "skip"]
+        harness_attribution = aggregate(scored)
+
     report = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "mode": "mock",
         "topics_run": len(results),
         "failed": len(failed),
         "results": results,
+        "harness_attribution": harness_attribution,
     }
     REPORTS.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     out_path = REPORTS / f"dogfood-suite-mock-{stamp}.json"
     out_path.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"\nmock suite report: {out_path} ({len(failed)} failed/error)")
+    if harness_attribution:
+        print(
+            "harness attribution (HS0): "
+            f"model_resolved_rate={harness_attribution['model_resolved_rate']:.2%} "
+            f"harness_failure_rate={harness_attribution['harness_failure_rate']:.2%} "
+            f"({harness_attribution['harness_failure_count']}/{harness_attribution['total']} harness failures)"
+        )
     return 1 if failed else 0
 
 

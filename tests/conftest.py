@@ -26,8 +26,11 @@ for _qat_src in (
 
 @pytest.fixture(autouse=True)
 def _mock_goal_oracle_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Keep goal Oracle mock-first even when .env sets AGENT_LAB_GOAL_ORACLE_LIVE=1."""
+    """Keep Oracle mock-first even when .env / run-profile defaults enable live."""
     monkeypatch.delenv("AGENT_LAB_GOAL_ORACLE_LIVE", raising=False)
+    monkeypatch.delenv("AGENT_LAB_ORACLE_LIVE", raising=False)
+    monkeypatch.delenv("AGENT_LAB_ADVERSARIAL_LIVE", raising=False)
+    monkeypatch.delenv("AGENT_LAB_JUDGE_LIVE", raising=False)
 
 
 @pytest.fixture(autouse=True)

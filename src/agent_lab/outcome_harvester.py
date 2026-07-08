@@ -268,7 +268,7 @@ def _execution_verdict(execution: dict[str, Any]) -> str:
     if verdict:
         return verdict
     status = str((execution.get("verify_after_merge") or {}).get("status") or "").strip().lower()
-    return {"passed": "pass", "failed": "fail"}.get(status, "")
+    return {"passed": "pass", "failed": "fail", "skipped": "skipped"}.get(status, "")
 
 
 def _build_execute_outcome_record(
@@ -285,10 +285,12 @@ def _build_execute_outcome_record(
     advisor = advisor or _advisor_fields_for_execute(run, last_turn)
     topic = _topic_text(folder, run)
     verdict = _execution_verdict(execution)
-    # HS1-1 — execute rows only carry the one signal available at this layer:
-    # Oracle "skipped" (no 검증: criterion) is the same harness-side gap HS0's
-    # model-vs-harness scorer (score_outcome_verdict) attributes to harness.
-    failure_tags = ["harness_infra"] if verdict == "skipped" else []
+    # HS1-1 — execute rows are where Oracle-derived tags actually land:
+    # verdicts arrive after the plan turn closed, so the turn row rarely sees
+    # them (2026-07 ledger audit: 195/197 turn rows had final_verdict null).
+    from agent_lab.turn_metrics import derive_execution_failure_tags
+
+    failure_tags = derive_execution_failure_tags(execution)
     record: dict[str, Any] = {
         "v": OUTCOME_LEDGER_SCHEMA_VERSION,
         "ts": _now_iso(),
@@ -357,9 +359,15 @@ def record_mock_execute_outcome(folder: Path | None) -> None:
             return
         last_turn = turns[-1]
         advisor = _advisor_fields_for_execute(run, last_turn)
+        # Self-describing evidence: this row is a synthetic lift signal, not a
+        # real Oracle response — without it, HS1-1 would mis-tag every mock
+        # pass as false_success (pass with no cited evidence).
         execution = {
             "id": f"mock-exec-{folder.name}",
-            "oracle": {"verdict": _mock_verdict_for_advisor_source(str(advisor.get("advisor_source") or "default"))},
+            "oracle": {
+                "verdict": _mock_verdict_for_advisor_source(str(advisor.get("advisor_source") or "default")),
+                "evidence": ["synthetic dogfood execute row (AGENT_LAB_DOGFOOD_EXECUTE_OUTCOMES)"],
+            },
             "repair_history": [],
         }
         append_outcome(_build_execute_outcome_record(folder, run, last_turn, execution, advisor=advisor))

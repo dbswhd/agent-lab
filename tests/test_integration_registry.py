@@ -127,7 +127,9 @@ def test_fast_bucket_collection_budget():
     # tests, incl. real-git apply+commit+revert end-to-end coverage).
     # 2026-07-09: raised 2847 -> 2852 for HS5-3 (Tier A + L2 lightweight-approval gate:
     # autonomy_promotion.harness_patch_light_approval_eligible + merge_gate wiring tests).
-    assert count <= 2852, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-09: raised 2852 -> 2853 for HS1-1 false_success on execute rows
+    # (derive_execution_failure_tags shared helper — closes the structurally-dead-signal gap).
+    assert count <= 2853, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

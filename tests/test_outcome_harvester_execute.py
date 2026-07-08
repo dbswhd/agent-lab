@@ -81,19 +81,42 @@ def test_record_execute_outcome_tags_harness_infra_on_skipped_verdict(tmp_path, 
     assert row["primary_tag"] == "harness_infra"
 
 
-def test_record_execute_outcome_no_failure_tags_on_pass(tmp_path, monkeypatch) -> None:
+def test_record_execute_outcome_no_failure_tags_on_evidenced_pass(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("AGENT_LAB_OUTCOME_LEDGER", "1")
     monkeypatch.setenv("AGENT_LAB_OUTCOMES_ROOT", str(tmp_path / "root"))
 
     folder = tmp_path / "sess-pass"
     _write_run(folder)
 
-    execution = {"id": "exec-1", "oracle": {"verdict": "pass"}, "repair_history": []}
+    execution = {
+        "id": "exec-1",
+        "oracle": {"verdict": "pass", "evidence": ["found literal(s): retry_strategy"]},
+        "repair_history": [],
+    }
     record_execute_outcome(folder, execution)
 
     row = json.loads(outcomes_path().read_text(encoding="utf-8").splitlines()[0])
     assert row["failure_tags"] == []
     assert row["primary_tag"] is None
+
+
+def test_record_execute_outcome_tags_false_success_on_pass_without_evidence(tmp_path, monkeypatch) -> None:
+    """HS1-1: the execute row is where Oracle verdicts actually live (turn rows
+    close before verify runs), so pass-with-no-cited-evidence must be tagged
+    here — before this, false_success was structurally dead (2026-07-09 audit:
+    195/197 turn rows had final_verdict null, execute rows never derived it)."""
+    monkeypatch.setenv("AGENT_LAB_OUTCOME_LEDGER", "1")
+    monkeypatch.setenv("AGENT_LAB_OUTCOMES_ROOT", str(tmp_path / "root"))
+
+    folder = tmp_path / "sess-bare-pass"
+    _write_run(folder)
+
+    execution = {"id": "exec-1", "oracle": {"verdict": "pass", "evidence": []}, "repair_history": []}
+    record_execute_outcome(folder, execution)
+
+    row = json.loads(outcomes_path().read_text(encoding="utf-8").splitlines()[0])
+    assert row["failure_tags"] == ["false_success"]
+    assert row["primary_tag"] == "false_success"
 
 
 def test_record_execute_outcome_tags_self_patch_eligible(tmp_path, monkeypatch) -> None:

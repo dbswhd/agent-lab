@@ -25,6 +25,34 @@ _RESOLUTION_BUCKETS = ("accepted", "wontfix", "open")
 _TAG_PRIORITY = ("harness_infra", "weak_taste", "false_success")
 
 
+def derive_execution_failure_tags(execution: dict[str, Any]) -> list[str]:
+    """HS1-1 tags derivable from a single execution's Oracle result.
+
+    Shared by the turn-close rollup below and by execute-phase ledger rows
+    (``outcome_harvester._build_execute_outcome_record``) — the execute row is
+    where these signals actually land in practice, since Oracle verdicts are
+    normally decided *after* the turn that produced the plan has closed (see
+    ``record_execute_outcome``'s 2026-07 diagnosis).
+
+    ``harness_infra``: Oracle verdict "skipped" (no ``검증:`` criterion
+    declared — see ``plan.execute_merge.oracle_verify``), same signal
+    ``score_outcome_verdict`` (HS0's model-vs-harness scorer) attributes to
+    harness. ``false_success``: Oracle said pass but cited no evidence (the
+    mock oracle always emits an EVIDENCE section, so this only fires on live
+    responses that skipped it).
+    """
+    oracle = execution.get("oracle") if isinstance(execution.get("oracle"), dict) else {}
+    verdict = str(oracle.get("verdict") or "").strip().lower()
+    if not verdict:
+        status = str((execution.get("verify_after_merge") or {}).get("status") or "").strip().lower()
+        verdict = {"passed": "pass", "failed": "fail", "skipped": "skipped"}.get(status, "")
+    if verdict == "skipped":
+        return ["harness_infra"]
+    if verdict == "pass" and not oracle.get("evidence"):
+        return ["false_success"]
+    return []
+
+
 def _derive_failure_tags(
     *,
     objection_summary: dict[str, int],
@@ -33,11 +61,7 @@ def _derive_failure_tags(
 ) -> tuple[list[str], str | None]:
     """Best-effort HS1-1 failure tags from signals already computed this turn.
 
-    ``harness_infra``: an execution's Oracle verdict is "skipped" (no ``검증:``
-    criterion declared — see ``plan.execute_merge.oracle_verify``), same signal
-    ``score_outcome_verdict`` (HS0's model-vs-harness scorer) uses for attribution.
-    ``false_success``: an execution passed with no cited evidence (Oracle said
-    pass but pointed at nothing).
+    Execution-derived tags: see ``derive_execution_failure_tags``.
     ``weak_taste``: an unresolved BLOCK, or CHALLENGE raised more than once this
     turn (repeated pushback the agents didn't converge on).
     """
@@ -45,12 +69,7 @@ def _derive_failure_tags(
     for execution in executions:
         if not isinstance(execution, dict):
             continue
-        oracle = execution.get("oracle") if isinstance(execution.get("oracle"), dict) else {}
-        verdict = str(oracle.get("verdict") or "").strip().lower()
-        if verdict == "skipped":
-            tags.add("harness_infra")
-        elif verdict == "pass" and not oracle.get("evidence"):
-            tags.add("false_success")
+        tags.update(derive_execution_failure_tags(execution))
     block = objection_resolution.get("BLOCK") or {}
     if block.get("open", 0) > 0 or objection_summary.get("CHALLENGE", 0) >= 2:
         tags.add("weak_taste")

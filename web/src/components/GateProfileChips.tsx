@@ -37,20 +37,36 @@ export function GateProfileChips({
   const gates = runtime?.gates;
   if (!gates?.gate_profile) return null;
 
-  const chips: { label: string; cls: string }[] = [
+  const chips: { label: string; cls: string; title?: string }[] = [
     {
       label: gates.gate_profile,
       cls: gates.gate_profile === "assistant" ? "pass" : "progress",
     },
   ];
   if (gates.discuss?.open === false) {
-    chips.push({ label: t("gateDiscussPaused"), cls: "warn" });
+    chips.push({
+      label: t("gateDiscussPaused"),
+      cls: "warn",
+      title: gates.discuss.reason ?? undefined,
+    });
   }
   if (gates.plan_clarify?.open === false) {
-    chips.push({ label: t("gatePlanBlocked"), cls: "warn" });
+    chips.push({
+      label: t("gatePlanBlocked"),
+      cls: "warn",
+      title: gates.plan_clarify.reason ?? undefined,
+    });
   }
   if (gates.execute?.open === false || gates.execute_blocked) {
-    chips.push({ label: t("gateExecuteBlocked"), cls: "fail" });
+    // block_reason is the human-readable explanation (e.g. an open BLOCK
+    // objection's text); execute.reason is a terser fallback code — the
+    // chip used to show neither, just "Execute blocked" with no way to
+    // find out why short of digging through the composer stack.
+    chips.push({
+      label: t("gateExecuteBlocked"),
+      cls: "fail",
+      title: gates.block_reason ?? gates.execute?.reason ?? undefined,
+    });
   }
 
   return compact ? (
@@ -59,6 +75,7 @@ export function GateProfileChips({
         <span
           key={chip.label}
           className={`ctx-oracle-badge ctx-oracle-badge--${chip.cls}`}
+          title={chip.title}
         >
           {chip.label}
         </span>
@@ -72,6 +89,7 @@ export function GateProfileChips({
           <span
             key={chip.label}
             className={`ctx-oracle-badge ctx-oracle-badge--${chip.cls}`}
+            title={chip.title}
           >
             {chip.label}
           </span>

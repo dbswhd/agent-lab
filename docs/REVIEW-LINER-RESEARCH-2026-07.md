@@ -1,6 +1,6 @@
 # Liner 연구 6종 검토 및 agent-lab 개선 방향
 
-> **작성**: 2026-07-08 · **상태**: REVIEW (제안 — 채택 여부는 NOW.md 큐 6 「HSIL DRAFT→APPROVED 결정」에서 판정)
+> **작성**: 2026-07-08 · **상태**: ✅ 반영 완료 (2026-07-08, HSIL DRAFT→APPROVED 시 §4.1 P0 5건 전부 반영 — [DESIGN-HARNESS-SELF-IMPROVE.md](./DESIGN-HARNESS-SELF-IMPROVE.md) 상태: APPROVED). 이 문서는 리뷰 시점(2026-07-08) 스냅샷이므로 본문의 "HSIL DRAFT" 표기는 그대로 둔다 — 이후 HS3~HS5 코드 shipped 상태는 NORTH-STAR §2.1 N6·NOW.md 참고.
 > **검토 대상**: `.agent-lab/liner-exports/` — Liner Scholar 프로젝트 [665131](https://scholar.liner.com/ko/projects/665131) 산출물 6종 (문서 2 + 마인드맵 4)
 > **기준 문서**: [DESIGN-HARNESS-SELF-IMPROVE.md](./DESIGN-HARNESS-SELF-IMPROVE.md) (HSIL DRAFT) · [NOW.md](./NOW.md) · [NORTH-STAR.md](./NORTH-STAR.md)
 > **이 문서의 역할**: ① 자료 6종의 주장 요약·신뢰도 평가 ② 현재 코드/설계와의 사실 대조 ③ HSIL DRAFT에 반영할 수정·추가·기각 목록. 새 1급 개념·새 KPI를 만들지 않는다 — 기존 HS Phase·Tier 어휘에만 매핑한다.

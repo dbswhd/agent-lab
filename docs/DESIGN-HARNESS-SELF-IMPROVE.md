@@ -1,7 +1,7 @@
 # 설계: Harness Self-Improvement Loop (N6 Phase 2)
 
 > **상태**: **APPROVED** (2026-07-08, Human 승인 — REVIEW P0 5건 반영 후) · **작성**: 2026-07-07  
-> **북극성 근거**: [NORTH-STAR.md](./NORTH-STAR.md) §2.1 **N6** (Self-patch meta-loop — 1단계 관측 ✅, **2단계 HSIL 설계 승인·HS0 구현 완료, HS1~ 순차 진행**)  
+> **북극성 근거**: [NORTH-STAR.md](./NORTH-STAR.md) §2.1 **N6** (Self-patch meta-loop — 1단계 관측 ✅, **2단계 HSIL 설계 승인·HS0~HS5(HS5-3 포함) 코드+mock 검증 완료, HS6은 HS-M5 게이트 미충족으로 동결**)  
 > **외부 근거**: [Lilian Weng — Harness Engineering for Self-Improvement](https://lilianweng.github.io/posts/2026-07-04-harness/) · [choi.openai Threads 정리](https://www.threads.com/@choi.openai/post/DafZipXD6aG)  
 > **선행 shipped**: [DESIGN-S1-FEEDBACK-LOOP.md](./DESIGN-S1-FEEDBACK-LOOP.md) · [N10-USER-LOOP-WISDOM-DRAFT.md](./N10-USER-LOOP-WISDOM-DRAFT.md) · `self_patch.py`
 
@@ -259,7 +259,7 @@ outcome_harvester (RECORD)     ✅
   → playbook                   ✅ HS2 (2026-07-08)
   → harness_proposal           ✅ HS3 (2026-07-09)
   → regression_gate            ✅ HS4 (2026-07-09)
-  → inbox_merge (harness_patch)❌ HS5
+  → inbox_merge (harness_patch)✅ HS5 (2026-07-09)
 ```
 
 ### 5.2 Harness engineering 일반 갭
@@ -271,7 +271,7 @@ outcome_harvester (RECORD)     ✅
 | memory_store 소비 | ✅ HS1-4 (2026-07-08, `weakness_miner.py` 첫 consumer) | — |
 | eval_harness wiring | ✅ HS0 (2026-07-08) | — |
 | Subagent process manager | DELEGATE만 | HS7-2 (C2) |
-| Metrics→action | ~70% (NORTH-STAR) | HS3–HS5 |
+| Metrics→action | ✅ HS3–HS5 (2026-07-09, mine→propose→regress→merge 코드 완결 — dogfood 증거는 HS-M5 미충족, §1 큐 참고) | — |
 | MCE bi-level context | 단일 bundle | HS7-1 (C1) |
 | Trehan contract formalize | 휴리스틱만 | HS7-4 (C4) |
 
@@ -657,18 +657,24 @@ Self-Harness bounded context 4항목 (R11) 필수. eval 표면 동시 확장 검
 
 ### HS5 — MERGE (Impl B3, B6)
 
-| ID | 작업 | 파일 |
-|----|------|------|
-| HS5-1 | Inbox `harness_patch` | `human_inbox.py` |
-| HS5-2 | approve → execute path | `plan/execute_dry_run.py` |
-| HS5-3 ✅ | Tier A + L2: 경량 승인 (`autonomy_promotion.harness_patch_light_approval_eligible`, resolve_display_autonomy_level ≥ L2) | `autonomy_promotion.py`, `merge_gate.handle_harness_patch_resolve` |
-| HS5-4 | predictions verified | `outcome_harvester.py` |
-| HS5-5 | KPI: accept_rate, prediction_accuracy | `feedback_report.py` |
-| HS5-6 | playbook bullet · failure_pattern episode에 `harness_rev`(생성 당시 manifest/patch 버전) 필드 (REVIEW P0-3) | §8.2·8.3 스키마 필드 1개씩 |
-| HS5-7 | `harness_patch` 롤백 시 해당 `harness_rev`로 생성된 playbook bullet을 `status: quarantined`로 전환 (REVIEW P0-3) | `wisdom/playbook.py`, `feedback_advisor.py` RECALL 필터 |
-| HS5-B1–B4 | Tier B full gate | §7.2 |
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| HS5-1 | Inbox `harness_patch` 카드 (propose + resolve dispatch) | `merge_gate.py`(`propose_harness_patch`), `human_inbox.py`(dispatch) | ✅ 2026-07-09 |
+| HS5-2 | approve → 실제 git apply+commit | `merge_gate.merge_candidate` | ✅ 2026-07-09 |
+| HS5-3 | Tier A + L2: 경량 승인 (`autonomy_promotion.harness_patch_light_approval_eligible`, `resolve_display_autonomy_level` ≥ L2) | `autonomy_promotion.py`, `merge_gate.handle_harness_patch_resolve` | ✅ 2026-07-09 |
+| HS5-4 | predictions verified | `merge_gate.py`(`record_prediction`/`verify_prediction`, `predictions.jsonl`) | ✅ 2026-07-09 |
+| HS5-5 | KPI: accept_rate, prediction_accuracy | `merge_gate.harness_patch_stats`, `feedback_report.py` 연결 | ✅ 2026-07-09 |
+| HS5-6 | playbook bullet · failure_pattern episode에 `harness_rev`(생성 당시 manifest/patch 버전) 필드 (REVIEW P0-3) | `merge_gate.current_harness_rev`, `correction_harvester.py`/`feedback_report.py` stamping | ✅ 2026-07-09 |
+| HS5-7 | `harness_patch` 롤백 시 해당 `harness_rev`로 생성된 playbook bullet을 `status: quarantined`로 전환 (REVIEW P0-3) | `merge_gate.rollback_harness_patch`, `wisdom/playbook.quarantine_bullets_by_harness_rev` | ✅ 2026-07-09 |
+| HS5-B1–B4 | Tier B full gate (editable_tier 표시·L2 경량 승인 거부·eval case diff 감사·manifest tier 필드) | `merge_gate.py`(`propose_harness_patch`/`handle_harness_patch_resolve`/`audit_eval_case_diff`), `harness_proposer.py` manifest | ✅ 2026-07-09 |
 
 플래그: `AGENT_LAB_HARNESS_INBOX` (default `0`)
+
+**구현 노트 (2026-07-09):** `merge_gate.py`가 HSIL 파이프라인에서 실제 git 트리에 쓰는 유일한 지점 —
+merge 전 6단 게이트(회귀 통과 → STOP guard 재확인 → Tier B는 `used_light_approval` 무조건 거부·Tier
+A는 autonomy L2+ 확인 → working tree clean → diff freshness → Tier B eval-surface 삭제 감사)를 순서대로
+거친 뒤 `git apply` + `git commit`. CLI는 `scripts/merge_harness.py`(propose/merge/rollback 3모드, "명령
+실행이 곧 human 승인"). 커밋 `6325c845`(코어) + 후속 커밋(HS5-3).
 
 **롤백·메모리 드리프트 (REVIEW P0-3 — 회복을 1급 관심사로):** 하네스 파일은 git revert로 복원돼도 그 버전이 만든 outcomes.jsonl episode·playbook bullet은 잔존한다(래칫 문제). HS5-6/7로 provenance를 남기고 격리한다 — ledger episode는 **불변 유지**(삭제 금지, 부정 결과 보존 원칙), quarantined bullet만 RECALL에서 제외.
 
@@ -839,7 +845,7 @@ AGENT_LAB_OUTCOMES_ROOT=/tmp/hsil \
 
 ## 15. HS-마일스톤 사다리 (HS-M1~M7) · 착수 순서
 
-> **NORTH-STAR D0~D4와 별개 축.** NORTH-STAR §1 D0~D4는 "완성 증거"(코드→mock→dogfood→KPI) 사다리이고, 아래 HS-M1~M7은 "HSIL 파이프라인 착수 순서"(어떤 HS Phase를 언제 시작하는가) 사다리다. 각 HS Phase 자체의 완성도는 NORTH-STAR D-라벨로 별도 표기(예: HS0~HS2는 현재 D2 — NORTH-STAR §2.1 N6 참고).
+> **NORTH-STAR D0~D4와 별개 축.** NORTH-STAR §1 D0~D4는 "완성 증거"(코드→mock→dogfood→KPI) 사다리이고, 아래 HS-M1~M7은 "HSIL 파이프라인 착수 순서"(어떤 HS Phase를 언제 시작하는가) 사다리다. 각 HS Phase 자체의 완성도는 NORTH-STAR D-라벨로 별도 표기(예: HS0~HS5는 현재 D2 — NORTH-STAR §2.1 N6 참고).
 
 | 단계 | Impl | HS | 산출물 | 게이트 |
 |------|------|-----|--------|--------|

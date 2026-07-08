@@ -546,7 +546,7 @@ Curator: 전체 rewrite 금지; 동일 `pattern_id` → `evidence_count++`. `sta
 | HS0-1 | dogfood 종료 시 `eval_harness.aggregate()` | `scripts/run_dogfood_suite.py` | ✅ 2026-07-08 |
 | HS0-2 | `harness_attribution` in feedback_report | `feedback_report.py` | ✅ 2026-07-08 |
 | HS0-3 | `model_resolved_rate` / `harness_failure_rate` | dogfood report JSON | ✅ 2026-07-08 |
-| HS0-4 | `harness_reproducibility_pp` (preset A/B swap) | `feedback_report.py` | 보류 — 별도 작업 (아래 참고) |
+| HS0-4 | `harness_reproducibility_pp` (preset A/B swap) | `scripts/run_dogfood_suite.py`(`run_reproducibility`), `feedback_report.py` | ✅ 2026-07-09 |
 
 플래그: `AGENT_LAB_EVAL_HARNESS` (default ON)
 
@@ -559,10 +559,13 @@ Curator: 전체 rewrite 금지; 동일 `pattern_id` → `evidence_count++`. `sta
 분모에서 제외, 후자는 포함). `test_eval_harness.py`의 N2 가드(§AC13)를 "call site 0" 단언에서
 "allowlist된 모듈만"(`feedback_report.py` 추가) 단언으로 갱신 — 의도된 wiring이므로.
 
-**HS0-4 보류 사유:** preset A/B swap으로 동일 토픽을 두 번 돌려 pass rate 편차(pp)를 재는
-기능은 새 CLI 모드(또는 `--mode mock` 확장)가 필요한 별도 작업 단위다. NOW.md 큐 1의 닫힘
-기준(`feedback-report`에 `harness_attribution` · `make ci` green)은 HS0-1~3만으로 충족되므로
-범위를 분리했다 — 착수 시 이 표의 상태를 갱신.
+**HS0-4 구현 노트 (2026-07-09):** `scripts/run_dogfood_suite.py --mode reproducibility`
+(`make dogfood-suite-reproducibility`) — `mock` 필드가 `run`(scenario:/skip: 제외, 스크립트가
+특정 셋업에 종속이라 swap이 공정하지 않음)인 토픽만 골라 room preset(fast→`turn_profile=quick`,
+supervisor→`loop`) 양쪽으로 재생하고, pass rate(=`scores` 산출 여부) 편차를 percentage point로
+계산한다(Hy3식 재현성: 스캐폴딩만 바뀌어도 편차가 커지면 하네스 자체가 노이즈원이라는 신호).
+리포트는 `sessions/_reports/dogfood-suite-reproducibility-*.json`, `feedback_report.py`의
+`_harness_reproducibility_stats()`가 최신 리포트를 읽어 `harness_reproducibility` 키로 노출.
 
 ### HS1 — MINE (Impl A1, A4)
 
@@ -648,7 +651,7 @@ Self-Harness bounded context 4항목 (R11) 필수. eval 표면 동시 확장 검
 **구현 노트 (2026-07-09):**
 - **격리 함정 해결**: git worktree는 이 checkout의 `.venv`를 공유하므로, worktree 안에서 그냥 pytest를 돌리면 editable-install된 **메인 checkout의** `agent_lab`을 계속 import해 "격리 검증"이 거짓이 될 뻔했다. `PYTHONPATH=<worktree>/src` 우선 주입으로 실제 격리를 확인(수동 검증 + `test_regression_gate.py`의 real-git end-to-end 테스트 2건으로 고정).
 - **HS4-1 스키마**: `PatchCandidate.assertions`(pytest node id 목록) 필드를 HS3의 `PatchCandidate`에 추가 — propose 시점엔 선택([]기본), **HS4가 비어있으면 구조적으로 거부**(결정론적 게이트 요구사항의 실제 집행 지점).
-- **HS4-2 부분 구현**: `_TAG_TOPIC_MAP`(태그→dogfood topic id)은 `weak_taste`만 근거 있게 채움(M3/M4 시나리오가 정확히 BLOCK/CHALLENGE를 스크립트함 — `turn_metrics._derive_failure_tags`의 탐지 조건과 일치). `harness_infra`/`false_success`는 **아직 근거 있는 topic이 없어 빈 리스트로 남김**(허위 매핑보다 빈 목록이 정직함). `resolved_patterns.jsonl` 누적은 완전 구현(append-only, HS5가 merge 시 기록).
+- **HS4-2 완료 (2026-07-09)**: `_TAG_TOPIC_MAP`(태그→dogfood topic id) 3개 태그 전부 근거 있는 topic으로 채움 — `weak_taste`는 M3/M4(BLOCK/CHALLENGE 스크립트), `harness_infra`는 신규 X5(`oracle_verify({"verify": ""}, [])` → `skipped`), `false_success`는 신규 X6(`oracle_call`로 EVIDENCE 없는 pass 응답 재현) — 셋 다 `turn_metrics.derive_execution_failure_tags`의 탐지 조건과 정확히 일치하도록 `scripts/run_dogfood_suite.py`에 시나리오 함수로 검증됨(이전엔 이 두 태그 자체가 turn 종료 시점에서만 도출돼 구조적으로 발동 불가였음 — 같은 날 별도로 수정, `derive_execution_failure_tags` 참고). `resolved_patterns.jsonl` 누적은 완전 구현(append-only, HS5가 merge 시 기록).
 - **HS4-4 축소 스코프**: "Mission REPAIR 루프" 전체가 아니라 `smoke_room.py`(38 baseline 검증)를 worktree 안에서 1회 재사용 — HS7-3이 다루는 완전한 REPAIR verify 신호는 별개(동결).
 - **디펜스 인 뎁스**: HS4는 candidate의 `files` 선언을 그냥 믿지 않는다 — 실제 diff에서 `+++ b/...` 헤더로 터치 파일을 파싱해 선언과 다르면 거부. HS4-6도 HS3-6(제안자 자기 신고)와 별개로 diff 텍스트에서 신규 `AGENT_LAB_*` 토큰·manifest.json 터치를 직접 스캔해 재검증.
 - CLI: `scripts/regress_harness.py --candidate-id ... --diff-path ...` (offline, HS3-5와 동형).

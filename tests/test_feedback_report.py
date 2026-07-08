@@ -283,3 +283,50 @@ def test_harness_attribution_none_when_flag_off(tmp_path: Path, monkeypatch: pyt
 
     rep = build_feedback_report(tmp_path)
     assert rep["harness_attribution"] is None
+
+
+# ---------------------------------------------------------------------------
+# HS0-4 — harness_reproducibility (scaffold A/B swap pass-rate deviation)
+# ---------------------------------------------------------------------------
+
+
+def test_harness_reproducibility_none_when_reports_dir_empty(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: tmp_path / "missing.jsonl")
+    (tmp_path / "sessions" / "_reports").mkdir(parents=True)
+    rep = build_feedback_report(tmp_path)
+    assert rep["harness_reproducibility"] is None
+
+
+def test_harness_reproducibility_reads_latest_report(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: tmp_path / "missing.jsonl")
+    reports_dir = tmp_path / "sessions" / "_reports"
+    reports_dir.mkdir(parents=True)
+    (reports_dir / "dogfood-suite-reproducibility-20260101T000000Z.json").write_text(
+        json.dumps(
+            {
+                "generated_at": "2026-01-01T00:00:00+00:00",
+                "topics_compared": 3,
+                "pass_rate_by_preset": {"fast": 1.0, "supervisor": 0.6667},
+                "harness_reproducibility_pp": 33.33,
+            }
+        ),
+        encoding="utf-8",
+    )
+    # A later, distinct-named report must win ("latest" = lexicographic max of the stamp).
+    (reports_dir / "dogfood-suite-reproducibility-20260102T000000Z.json").write_text(
+        json.dumps({"topics_compared": 5, "harness_reproducibility_pp": 0.0, "pass_rate_by_preset": {}}),
+        encoding="utf-8",
+    )
+
+    rep = build_feedback_report(tmp_path)
+    repro = rep["harness_reproducibility"]
+    assert repro["topics_compared"] == 5
+    assert repro["harness_reproducibility_pp"] == 0.0
+
+
+def test_harness_reproducibility_none_when_reports_dir_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("agent_lab.outcome_harvester.outcomes_path", lambda root=None: tmp_path / "missing.jsonl")
+    rep = build_feedback_report(tmp_path)
+    assert rep["harness_reproducibility"] is None

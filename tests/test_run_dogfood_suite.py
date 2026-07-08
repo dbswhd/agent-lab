@@ -88,6 +88,28 @@ def test_mock_plan_workflow_scenarios(tmp_path, monkeypatch, topic_id: str, scen
     assert out["ok"] is True
 
 
+def test_mock_scenario_x5_harness_infra_missing_verify(tmp_path, monkeypatch):
+    """HS4-2 — X5 curates regression_gate._TAG_TOPIC_MAP['harness_infra']."""
+    monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
+    monkeypatch.setenv("AGENT_LAB_CLARIFIER", "0")
+    runner = _load_runner()
+    rows = runner.load_topics(_TOPICS)
+    entry = next(r for r in rows if r["id"] == "X5")
+    out = runner.scenario_harness_infra_missing_verify(entry, tmp_path)
+    assert out["ok"] is True
+
+
+def test_mock_scenario_x6_false_success_bare_pass(tmp_path, monkeypatch):
+    """HS4-2 — X6 curates regression_gate._TAG_TOPIC_MAP['false_success']."""
+    monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
+    monkeypatch.setenv("AGENT_LAB_CLARIFIER", "0")
+    runner = _load_runner()
+    rows = runner.load_topics(_TOPICS)
+    entry = next(r for r in rows if r["id"] == "X6")
+    out = runner.scenario_false_success_bare_pass(entry, tmp_path)
+    assert out["ok"] is True
+
+
 def test_aggregate_example_log(tmp_path):
     runner = _load_runner()
     rows = runner.load_topics(_TOPICS)
@@ -115,6 +137,41 @@ def test_run_mock_reports_harness_attribution(tmp_path, monkeypatch):
     assert attr["total"] == len(rows)  # tier S has no "skip" topics
     assert 0.0 <= attr["model_resolved_rate"] <= 1.0
     assert 0.0 <= attr["harness_failure_rate"] <= 1.0
+
+
+def test_run_reproducibility_writes_pp_deviation_report(tmp_path, monkeypatch):
+    """HS0-4: run_reproducibility() replays 'run'-mode topics under fast/supervisor
+    presets and writes harness_reproducibility_pp into the report JSON."""
+    monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
+    monkeypatch.setenv("AGENT_LAB_CLARIFIER", "0")
+    runner = _load_runner()
+    monkeypatch.setattr(runner, "REPORTS", tmp_path)
+    rows = runner.filter_topics(runner.load_topics(_TOPICS), {"S"}, None)
+    rc = runner.run_reproducibility(rows, tmp_path / "sessions")
+    assert rc == 0
+
+    out_files = list(tmp_path.glob("dogfood-suite-reproducibility-*.json"))
+    assert len(out_files) == 1
+    data = json.loads(out_files[0].read_text(encoding="utf-8"))
+    assert data["topics_compared"] == len(rows)  # tier S has no scenario:/skip: topics
+    assert set(data["pass_rate_by_preset"]) == {"fast", "supervisor"}
+    assert data["harness_reproducibility_pp"] is not None
+    assert data["harness_reproducibility_pp"] >= 0.0
+
+
+def test_run_reproducibility_excludes_scenario_and_skip_topics(tmp_path, monkeypatch):
+    monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "1")
+    monkeypatch.setenv("AGENT_LAB_CLARIFIER", "0")
+    runner = _load_runner()
+    monkeypatch.setattr(runner, "REPORTS", tmp_path)
+    rows = runner.filter_topics(runner.load_topics(_TOPICS), {"M"}, None)
+    runner.run_reproducibility(rows, tmp_path / "sessions")
+
+    out_files = list(tmp_path.glob("dogfood-suite-reproducibility-*.json"))
+    data = json.loads(out_files[0].read_text(encoding="utf-8"))
+    # M1/M2 are plain "run" topics; M3-M6 are scenario:/skip: — must be excluded.
+    compared_ids = {r["id"] for r in data["results_by_preset"]["fast"]}
+    assert compared_ids == {"M1", "M2"}
 
 
 def test_run_mock_harness_attribution_none_when_flag_off(tmp_path, monkeypatch):

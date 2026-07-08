@@ -300,6 +300,40 @@
     "mock": "skip:pre_execute_blocked smoke baseline 커버"
   },
   {
+    "id": "X5",
+    "tier": "X",
+    "category": "standard",
+    "topic": "(HS4-2 held-in 큐레이션 전용) 검증 기준(검증:)이 없는 plan action의 Oracle 판정 확인.",
+    "profile": "analyze",
+    "flags": {},
+    "workspace": "agent-lab",
+    "kpis": [],
+    "pass": [
+      "oracle_verify({'verify': ''}, []).verdict == 'skipped'"
+    ],
+    "live_only": false,
+    "repeat": 1,
+    "mock": "scenario:harness_infra_missing_verify",
+    "notes": "regression_gate._TAG_TOPIC_MAP['harness_infra'] held-in 큐레이션 토픽 (HS4-2)."
+  },
+  {
+    "id": "X6",
+    "tier": "X",
+    "category": "standard",
+    "topic": "(HS4-2 held-in 큐레이션 전용) 근거(EVIDENCE) 없이 pass를 선언하는 Oracle 응답 확인.",
+    "profile": "analyze",
+    "flags": {},
+    "workspace": "agent-lab",
+    "kpis": [],
+    "pass": [
+      "oracle_verify(..., oracle_call=<EVIDENCE 없는 pass 응답>).verdict == 'pass' and evidence == []"
+    ],
+    "live_only": false,
+    "repeat": 1,
+    "mock": "scenario:false_success_bare_pass",
+    "notes": "regression_gate._TAG_TOPIC_MAP['false_success'] held-in 큐레이션 토픽 (HS4-2)."
+  },
+  {
     "id": "A1",
     "tier": "A",
     "category": "standard",

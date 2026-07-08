@@ -33,17 +33,16 @@ _TRUE = frozenset({"1", "true", "yes", "on"})
 REGRESSION_REPORT_SCHEMA_VERSION = 1
 
 # HS4-2 held-in — primary_tag -> dogfood topic ids known to exercise it.
-# Only tags with a concretely-evidenced scenario are populated: M3/M4 script a
-# BLOCK/CHALLENGE respectively (scripts/run_dogfood_suite.py scenario_block_objection
-# / scenario_challenge_amend), matching weak_taste's exact detection trigger
-# (turn_metrics._derive_failure_tags: unresolved BLOCK or repeated CHALLENGE).
-# harness_infra/false_success have no topic curated yet — held-in for those
-# tags is an empty list until a scenario is verified to surface them; this is
-# a real gap, not a silent default, and callers can see it in the report.
+# Every tag maps to a concretely-evidenced scenario (scripts/run_dogfood_suite.py):
+# weak_taste -> M3/M4 script a BLOCK/CHALLENGE; harness_infra -> X5 asserts
+# oracle_verify() returns "skipped" for a bare (no 검증:) action; false_success
+# -> X6 asserts oracle_verify() returns pass with no evidence via a scripted
+# oracle_call. Each matches turn_metrics.derive_execution_failure_tags's exact
+# detection trigger (2026-07-09, HS4-2 completion — see docs/DESIGN-HARNESS-SELF-IMPROVE.md).
 _TAG_TOPIC_MAP: dict[str, list[str]] = {
     "weak_taste": ["M3", "M4"],
-    "harness_infra": [],
-    "false_success": [],
+    "harness_infra": ["X5"],
+    "false_success": ["X6"],
 }
 
 

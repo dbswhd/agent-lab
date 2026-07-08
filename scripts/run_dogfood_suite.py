@@ -11,6 +11,9 @@
 - ``--mode checklist``  live 실행용 체크리스트 — 토픽별 flags·profile·프롬프트·pass 기준.
 - ``--mode aggregate``  suite-log.json(토픽↔세션 매핑)을 읽어 score_session 집계,
                         repeat은 median, 리포트를 sessions/_reports/에 저장.
+- ``--mode reproducibility``  HS0-4: "run"-mode 토픽을 room preset(fast/supervisor)
+                        A/B로 재생해 pass rate 편차(pp)를 측정 (Hy3식 재현성).
+                        ``harness_reproducibility_pp`` — feedback_report.py 소비.
 
 suite-log.json 스키마(aggregate 입력, Human이 작성):
     [{"id": "M1", "session": "sessions/<id>", "repeat": 1,
@@ -98,12 +101,19 @@ def _reset_act_cursors() -> None:
     reset_mock_act_script_cursors()
 
 
-def _run_topic_session(entry: dict[str, Any], sessions_base: Path) -> tuple[Path, dict[str, Any]]:
-    """run_room + score_session — emergence_bench와 동일 패턴."""
+def _run_topic_session(
+    entry: dict[str, Any], sessions_base: Path, *, profile_override: str | None = None
+) -> tuple[Path, dict[str, Any]]:
+    """run_room + score_session — emergence_bench와 동일 패턴.
+
+    ``profile_override`` (HS0-4): force a specific ``turn_profile`` instead of
+    the topic's own ``profile`` field — used by ``run_reproducibility`` to
+    replay the same topic under a different room preset's scaffold.
+    """
     from agent_lab import room
     from agent_lab.session.score import score_session
 
-    profile = str(entry.get("profile") or "analyze")
+    profile = profile_override or str(entry.get("profile") or "analyze")
     folder, _messages, _plan = room.run_room(
         str(entry["topic"]),
         agents=["cursor", "codex", "claude"],
@@ -592,6 +602,54 @@ def scenario_plan_approve_latency(entry: dict[str, Any], base: Path) -> dict[str
     }
 
 
+def scenario_harness_infra_missing_verify(entry: dict[str, Any], base: Path) -> dict[str, Any]:
+    """HS4-2 — Oracle 'skipped' (no 검증: criterion) → harness_infra held-in topic (X5).
+
+    Curated the same way M3/M4 were curated for weak_taste: this topic's job
+    is only to prove ``oracle_verify`` still returns "skipped" for a bare
+    action, so ``regression_gate._TAG_TOPIC_MAP["harness_infra"]`` names a
+    topic that's actually verified to exercise the signal
+    ``turn_metrics.derive_execution_failure_tags`` detects.
+    """
+    from agent_lab.plan.execute_merge import oracle_verify
+
+    folder, report = _run_topic_session(entry, base)
+    result = oracle_verify({"verify": ""}, [])
+    ok = result.get("verdict") == "skipped"
+    return {
+        "ok": ok,
+        "detail": f"oracle verdict={result.get('verdict')!r} (expected 'skipped')",
+        "session_id": report.get("session_id"),
+        "kpis": _kpi_subset(report, entry.get("kpis") or []),
+    }
+
+
+def scenario_false_success_bare_pass(entry: dict[str, Any], base: Path) -> dict[str, Any]:
+    """HS4-2 — Oracle pass with no EVIDENCE section → false_success held-in topic (X6).
+
+    Uses ``oracle_verify``'s ``oracle_call`` seam (its documented live-routing
+    hook, same mechanism tests use to route to a real oracle) to reproduce a
+    real failure mode: a verifier that says PASS without citing what it
+    checked. Curates a topic for ``regression_gate._TAG_TOPIC_MAP["false_success"]``,
+    mirroring M3/M4's role for weak_taste.
+    """
+    from agent_lab.plan.execute_merge import oracle_verify
+
+    folder, report = _run_topic_session(entry, base)
+    result = oracle_verify(
+        {"verify": "`retry_strategy` documented"},
+        [],
+        oracle_call=lambda prompt: "VERDICT: pass\nREASON: looks fine",
+    )
+    ok = result.get("verdict") == "pass" and not result.get("evidence")
+    return {
+        "ok": ok,
+        "detail": f"oracle verdict={result.get('verdict')!r} evidence={result.get('evidence')!r}",
+        "session_id": report.get("session_id"),
+        "kpis": _kpi_subset(report, entry.get("kpis") or []),
+    }
+
+
 SCENARIOS = {
     "block_objection": scenario_block_objection,
     "challenge_amend": scenario_challenge_amend,
@@ -602,6 +660,8 @@ SCENARIOS = {
     "plan_fsm_human_pending": scenario_plan_fsm_human_pending,
     "plan_clarify_cap": scenario_plan_clarify_cap,
     "plan_peer_cap": scenario_plan_peer_cap,
+    "harness_infra_missing_verify": scenario_harness_infra_missing_verify,
+    "false_success_bare_pass": scenario_false_success_bare_pass,
     "plan_approve_latency": scenario_plan_approve_latency,
 }
 
@@ -704,6 +764,68 @@ def run_mock(rows: list[dict[str, Any]], sessions_base: Path | None) -> int:
             f"({harness_attribution['harness_failure_count']}/{harness_attribution['total']} harness failures)"
         )
     return 1 if failed else 0
+
+
+_REPRODUCIBILITY_PRESETS = ("fast", "supervisor")
+
+
+def run_reproducibility(rows: list[dict[str, Any]], sessions_base: Path | None) -> int:
+    """HS0-4 — Hy3-style scaffold reproducibility (Tencent Hy3: pass-rate should
+    hold within ~4pp when only the scaffold changes, not the task).
+
+    Replays every plain "run"-mode topic (scenario:/skip: topics excluded —
+    their assertions are tied to a specific scripted setup, not a fair swap)
+    once under each room preset's ``turn_profile`` (fast→quick, supervisor→loop),
+    and reports the pass-rate deviation in percentage points
+    (``harness_reproducibility_pp``, consumed by feedback_report.py).
+    """
+    os.environ["AGENT_LAB_MOCK_AGENTS"] = "1"
+    os.environ.setdefault("AGENT_LAB_CLARIFIER", "0")
+    os.environ.setdefault("AGENT_LAB_INBOX_MODE", "soft")
+
+    from agent_lab.room.preset import preset_turn_profile
+
+    base = sessions_base or Path(tempfile.mkdtemp(prefix="dogfood-suite-repro-"))
+    base.mkdir(parents=True, exist_ok=True)
+    plain_rows = [r for r in rows if str(r.get("mock") or "run") == "run"]
+
+    per_preset: dict[str, list[dict[str, Any]]] = {}
+    for preset in _REPRODUCIBILITY_PRESETS:
+        profile = preset_turn_profile(preset, fallback="analyze")
+        preset_results: list[dict[str, Any]] = []
+        for entry in plain_rows:
+            topic_id = str(entry.get("id"))
+            try:
+                _folder, report = _run_topic_session(entry, base, profile_override=profile)
+                ok = bool(report.get("scores"))
+                preset_results.append({"id": topic_id, "ok": ok, "session_id": report.get("session_id")})
+            except Exception as exc:  # noqa: BLE001 — one topic's failure doesn't abort the swap
+                preset_results.append({"id": topic_id, "ok": False, "reason": str(exc)[:300]})
+            print(f"  [{preset}] {topic_id}: {'PASS' if preset_results[-1]['ok'] else 'FAIL'}")
+        per_preset[preset] = preset_results
+
+    def _pass_rate(results: list[dict[str, Any]]) -> float:
+        return (sum(1 for r in results if r["ok"]) / len(results)) if results else 0.0
+
+    rate_by_preset = {preset: _pass_rate(per_preset[preset]) for preset in _REPRODUCIBILITY_PRESETS}
+    rates = list(rate_by_preset.values())
+    reproducibility_pp = round(abs(rates[0] - rates[1]) * 100, 2) if len(rates) == 2 else None
+
+    report = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "mode": "reproducibility",
+        "topics_compared": len(plain_rows),
+        "pass_rate_by_preset": rate_by_preset,
+        "harness_reproducibility_pp": reproducibility_pp,
+        "results_by_preset": per_preset,
+    }
+    REPORTS.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    out_path = REPORTS / f"dogfood-suite-reproducibility-{stamp}.json"
+    out_path.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(f"\nreproducibility report: {out_path}")
+    print(f"pass_rate_by_preset={rate_by_preset} harness_reproducibility_pp={reproducibility_pp}")
+    return 0
 
 
 def run_feedback(rows: list[dict[str, Any]], sessions_base: Path | None, repeat: int) -> int:
@@ -871,7 +993,7 @@ def run_aggregate(rows: list[dict[str, Any]], log_path: Path) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--mode", choices=["mock", "checklist", "aggregate"], default="checklist")
+    parser.add_argument("--mode", choices=["mock", "checklist", "aggregate", "reproducibility"], default="checklist")
     parser.add_argument("--topics", help=f"토픽 카탈로그 경로 (기본 {DEFAULT_TOPICS})")
     parser.add_argument("--tier", help="필터: 쉼표 구분 tier (예: S,M)")
     parser.add_argument("--only", help="필터: 쉼표 구분 topic id (예: M4,A3)")
@@ -905,6 +1027,9 @@ def main() -> int:
             print("--mode aggregate requires --log suite-log.json", file=sys.stderr)
             return 2
         return run_aggregate(rows, Path(args.log))
+    if args.mode == "reproducibility":
+        base = Path(args.sessions_base) if args.sessions_base else None
+        return run_reproducibility(rows, base)
     return run_checklist(rows)
 
 

@@ -46,8 +46,8 @@
     "claude_": 0
   },
   "tracked_pycache_files": 0,
-  "makefile_lines": 481,
-  "makefile_targets": 98,
+  "makefile_lines": 485,
+  "makefile_targets": 99,
   "large_tsx_files": [
     {
       "path": "web/src/components/HumanInboxPanel.tsx",

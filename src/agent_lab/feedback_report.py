@@ -213,6 +213,31 @@ def _harness_patch_kpi(root: Path | None) -> dict[str, Any] | None:
     return harness_patch_stats(root)
 
 
+def _harness_reproducibility_stats(root: Path | None) -> dict[str, Any] | None:
+    """HS0-4 — latest scaffold (room preset fast/supervisor) reproducibility
+    report from ``scripts/run_dogfood_suite.py --mode reproducibility``
+    (sessions/_reports/dogfood-suite-reproducibility-*.json, not the outcome
+    ledger). None when no such report has been generated yet."""
+    from agent_lab.outcome_harvester import agent_lab_project_root
+
+    reports_dir = agent_lab_project_root(root) / "sessions" / "_reports"
+    if not reports_dir.is_dir():
+        return None
+    candidates = sorted(reports_dir.glob("dogfood-suite-reproducibility-*.json"))
+    if not candidates:
+        return None
+    try:
+        data = json.loads(candidates[-1].read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return {
+        "harness_reproducibility_pp": data.get("harness_reproducibility_pp"),
+        "pass_rate_by_preset": data.get("pass_rate_by_preset"),
+        "topics_compared": data.get("topics_compared"),
+        "generated_at": data.get("generated_at"),
+    }
+
+
 def build_feedback_report(root: Path | None = None) -> dict[str, Any]:
     """Bucket the outcome ledger by advisor_source and compute quality deltas.
 
@@ -272,6 +297,7 @@ def build_feedback_report(root: Path | None = None) -> dict[str, Any]:
         "self_patch": _self_patch_stats(verdict_rows),
         "harness_attribution": _harness_attribution_stats(verdict_rows),
         "harness_patch": _harness_patch_kpi(root),
+        "harness_reproducibility": _harness_reproducibility_stats(root),
     }
 
 
@@ -353,5 +379,13 @@ def render_feedback_report(report: dict[str, Any]) -> str:
         lines.append(
             f"harness_patch (HS5) — {harness_patch['candidates_merged']}/{harness_patch['candidates_decided']} "
             f"accepted (rate={accept_label}), prediction_accuracy={acc_label}"
+        )
+    reproducibility = report.get("harness_reproducibility")
+    if reproducibility and reproducibility.get("harness_reproducibility_pp") is not None:
+        lines.append("")
+        lines.append(
+            f"harness_reproducibility (HS0-4) — {reproducibility['topics_compared']} topics, "
+            f"pp_deviation={reproducibility['harness_reproducibility_pp']} "
+            f"pass_rate_by_preset={reproducibility['pass_rate_by_preset']}"
         )
     return "\n".join(lines)

@@ -42,6 +42,16 @@ def test_held_in_topics_for_tag_weak_taste() -> None:
     assert held_in_topics_for_tag("weak_taste") == ["M3", "M4"]
 
 
+def test_held_in_topics_for_tag_harness_infra() -> None:
+    """HS4-2 completion (2026-07-09) — X5 curates oracle_verify() 'skipped'."""
+    assert held_in_topics_for_tag("harness_infra") == ["X5"]
+
+
+def test_held_in_topics_for_tag_false_success() -> None:
+    """HS4-2 completion (2026-07-09) — X6 curates oracle pass with no evidence."""
+    assert held_in_topics_for_tag("false_success") == ["X6"]
+
+
 def test_held_in_topics_for_tag_unknown_returns_empty() -> None:
     assert held_in_topics_for_tag("nonexistent_tag") == []
 
@@ -66,8 +76,9 @@ def test_held_in_scope_includes_resolved_patterns_cumulative(tmp_path) -> None:
     record_resolved_pattern("fp:weak_taste:quick", candidate_id="pc-1", root=tmp_path)
     candidate = {"pattern_id": "fp:harness_infra:standard"}
     scope = held_in_scope(candidate, root=tmp_path)
-    # own tag (harness_infra) has no curated topics, but the resolved weak_taste
-    # pattern's topics must still show up — the cumulative-set point of HS4-2.
+    # own tag (harness_infra -> X5) plus the resolved weak_taste pattern's
+    # topics must both show up — the cumulative-set point of HS4-2.
+    assert "X5" in scope["topics"]
     assert "M3" in scope["topics"]
     assert "fp:weak_taste:quick" in scope["source_patterns"]
 

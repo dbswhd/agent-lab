@@ -45,7 +45,11 @@ execute에서 나오는데 태그는 턴 행에서만 도출 — turn 행 197개
 생성은 기각, 실사용 누적 대기. **재검토 트리거**: `make feedback-report JSON=1` 확인 시마다
 `scripts/propose_harness.py --mode list`도 함께 확인 — addressable 패턴이 뜨면 HS-M5 착수 재논의.
 
-**큐 비어 있음** (2026-07-09) — 문서 정비 백로그(§4)는 2026-07-08자로 이미 표 소진 완료, HS0~HS5(+HS5-3)도 전부 shipped. HS6은 위 검토대로 보류. 다음 코드 트랙 항목은 §1 재검토 트리거(HS-M5 addressable 패턴, 또는 새 Human 지시) 발생 시 여기 추가.
+**2026-07-09 추가 shipped**: HS0-4 `harness_reproducibility_pp`(preset A/B swap — `make dogfood-suite-reproducibility`,
+`feedback_report.py` 소비) · HS4-2 완료(`_TAG_TOPIC_MAP` 3개 태그 전부 근거 topic 확보 — 신규 X5/X6
+dogfood 시나리오). 둘 다 mock-only, dogfood 무관.
+
+**큐 비어 있음** (2026-07-09) — 문서 정비 백로그(§4)는 2026-07-08자로 이미 표 소진 완료, HS0~HS5(+HS5-3, HS0-4, HS4-2)도 전부 shipped. HS6은 위 검토대로 보류. 다음 코드 트랙 항목은 §1 재검토 트리거(HS-M5 addressable 패턴, 또는 새 Human 지시) 발생 시 여기 추가.
 
 ### 보류 — dogfood 재개 시 (구 「지금」 큐 — 닫힘 기준 불변)
 

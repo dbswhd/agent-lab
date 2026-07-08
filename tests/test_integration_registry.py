@@ -129,7 +129,9 @@ def test_fast_bucket_collection_budget():
     # autonomy_promotion.harness_patch_light_approval_eligible + merge_gate wiring tests).
     # 2026-07-09: raised 2852 -> 2853 for HS1-1 false_success on execute rows
     # (derive_execution_failure_tags shared helper — closes the structurally-dead-signal gap).
-    assert count <= 2853, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-09: raised 2853 -> 2858 for HS0-4 (harness_reproducibility_pp preset
+    # A/B swap) + HS4-2 completion (X5/X6 held-in curation topics + _TAG_TOPIC_MAP).
+    assert count <= 2858, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

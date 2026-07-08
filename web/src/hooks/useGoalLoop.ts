@@ -38,7 +38,9 @@ export function useGoalLoop(
   const [verifiedEditCriteria, setVerifiedEditCriteria] = useState("");
   const [verifiedEditPromise, setVerifiedEditPromise] = useState("DONE");
   const [verifiedLoopBusy, setVerifiedLoopBusy] = useState(false);
-  const [verifiedLoopError, setVerifiedLoopError] = useState<string | null>(null);
+  const [verifiedLoopError, setVerifiedLoopError] = useState<string | null>(
+    null,
+  );
 
   const verifiedLoopView = useMemo(() => buildVerifiedLoopView(run), [run]);
 

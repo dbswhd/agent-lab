@@ -17,9 +17,9 @@ describe("discussRecoveryFromMissionLoop", () => {
       reason: "stalled",
       action_index: 2,
     };
-    expect(
-      discussRecoveryFromMissionLoop({ discuss_recovery: state }),
-    ).toEqual(state);
+    expect(discussRecoveryFromMissionLoop({ discuss_recovery: state })).toEqual(
+      state,
+    );
   });
 });
 

@@ -56,10 +56,7 @@ export function resolveComposerModeVariant(opts: {
   if (opts.planWorkflowActive) return "plan";
   const topic = (opts.topic || "").trim();
   const sessionTopic = (opts.sessionTopic || "").trim();
-  if (
-    detectPlanExecuteIntent(topic) ||
-    detectPlanExecuteIntent(sessionTopic)
-  ) {
+  if (detectPlanExecuteIntent(topic) || detectPlanExecuteIntent(sessionTopic)) {
     return "plan";
   }
   if (opts.discussLight === false && (topic || sessionTopic)) return "plan";
@@ -103,8 +100,7 @@ export function composerRoutingHintLine(
   }
 
   const executeIntent =
-    detectPlanExecuteIntent(draft) ||
-    detectPlanExecuteIntent(sessionTopic);
+    detectPlanExecuteIntent(draft) || detectPlanExecuteIntent(sessionTopic);
   if (executeIntent) {
     return locale === "ko"
       ? "Plan/execute 토픽 — discuss_light 없이 plan FSM · stack에서 dry-run"

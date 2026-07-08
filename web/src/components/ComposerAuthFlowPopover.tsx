@@ -224,7 +224,10 @@ export function ComposerAuthFlowPopover({ run, onClose, onComplete }: Props) {
                 : "브라우저에서 승인한 뒤, 코드가 표시되면 아래에 붙여넣으세요."}
           </p>
         ) : (
-          <pre className="composer-auth-flow-popover__output" aria-live="polite">
+          <pre
+            className="composer-auth-flow-popover__output"
+            aria-live="polite"
+          >
             {errorOutput}
           </pre>
         )}
@@ -265,7 +268,9 @@ export function ComposerAuthFlowPopover({ run, onClose, onComplete }: Props) {
             type="button"
             className={[
               "composer-slash-choice__action",
-              status === "running" ? "composer-slash-choice__action--danger" : "",
+              status === "running"
+                ? "composer-slash-choice__action--danger"
+                : "",
             ]
               .filter(Boolean)
               .join(" ")}

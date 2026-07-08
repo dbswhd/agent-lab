@@ -31,7 +31,11 @@ export async function restartTauriApi(): Promise<
     return { ok: true };
   } catch (err) {
     const message =
-      err instanceof Error ? err.message : typeof err === "string" ? err : String(err);
+      err instanceof Error
+        ? err.message
+        : typeof err === "string"
+          ? err
+          : String(err);
     return { ok: false, error: message };
   }
 }

@@ -46,8 +46,7 @@ function makeDeps(): RoomRunSseDeps {
     current: null,
   };
   const setInboxReloadKey: RoomRunSseDeps["setInboxReloadKey"] = () => {};
-  const setConsensusProposal: RoomRunSseDeps["setConsensusProposal"] =
-    () => {};
+  const setConsensusProposal: RoomRunSseDeps["setConsensusProposal"] = () => {};
 
   return {
     sessionId: sid,

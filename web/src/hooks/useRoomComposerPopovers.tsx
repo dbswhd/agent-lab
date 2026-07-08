@@ -1,5 +1,14 @@
-import { useMemo, type Dispatch, type ReactNode, type SetStateAction } from "react";
-import { runRoomSlash, type AuthRunRef, type SlashCommandRecord } from "../api/client";
+import {
+  useMemo,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from "react";
+import {
+  runRoomSlash,
+  type AuthRunRef,
+  type SlashCommandRecord,
+} from "../api/client";
 import { ComposerAuthFlowPopover } from "../components/ComposerAuthFlowPopover";
 import { ComposerAuthPickerPopover } from "../components/ComposerAuthPickerPopover";
 import { ComposerAuthSecretPopover } from "../components/ComposerAuthSecretPopover";
@@ -37,7 +46,9 @@ export type RoomComposerPopoversOptions = {
   multiSelected: Set<string>;
   setMultiSelected: Dispatch<SetStateAction<Set<string>>>;
   modelPopover: SlashCommandModelPopoverState | null;
-  setModelPopover: Dispatch<SetStateAction<SlashCommandModelPopoverState | null>>;
+  setModelPopover: Dispatch<
+    SetStateAction<SlashCommandModelPopoverState | null>
+  >;
   setCommandChoices: Dispatch<SetStateAction<SlashCommandChoicesState | null>>;
   setCommandHint: Dispatch<SetStateAction<string | null>>;
   executeSlashCommand: (

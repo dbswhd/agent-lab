@@ -26,7 +26,10 @@ import {
   resolveRunSessionKey,
 } from "../run/runSessionRegistry";
 import { sortAgentIds, sortAgentPickerOptions } from "../utils/agentOrder";
-import { parseModelSlashArgs, writePendingRoomModels } from "../utils/modelSlash";
+import {
+  parseModelSlashArgs,
+  writePendingRoomModels,
+} from "../utils/modelSlash";
 import { focusComposerInput } from "../utils/taskBarCopy";
 import type {
   SlashCommandChoicesState,
@@ -124,20 +127,23 @@ export function useRoomSlashExecute(
     handleStop,
   } = options;
 
-  const applySessionScopedModels = useCallback((composition: string[]) => {
-    const comp = sortAgentIds(composition);
-    if (comp.length === 0) return;
-    pendingSessionRoomModelsRef.current = comp;
-    writePendingRoomModels(comp);
-    setSelected(comp);
-    agentsPickerInitRef.current = true;
-    setCommandHint(`이 세션 동안 ${comp.join(", ")} 에이전트를 사용합니다.`);
-  }, [
-    agentsPickerInitRef,
-    pendingSessionRoomModelsRef,
-    setCommandHint,
-    setSelected,
-  ]);
+  const applySessionScopedModels = useCallback(
+    (composition: string[]) => {
+      const comp = sortAgentIds(composition);
+      if (comp.length === 0) return;
+      pendingSessionRoomModelsRef.current = comp;
+      writePendingRoomModels(comp);
+      setSelected(comp);
+      agentsPickerInitRef.current = true;
+      setCommandHint(`이 세션 동안 ${comp.join(", ")} 에이전트를 사용합니다.`);
+    },
+    [
+      agentsPickerInitRef,
+      pendingSessionRoomModelsRef,
+      setCommandHint,
+      setSelected,
+    ],
+  );
 
   const executeSlashCommand = useCallback<ExecuteSlashCommandFn>(
     async (command, args, confirm = false) => {

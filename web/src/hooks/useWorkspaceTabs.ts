@@ -204,8 +204,7 @@ export function useWorkspaceTabs({
   return {
     workspaceTab,
     inspectorTab,
-    toolPanelTab:
-      rightPanelMode === "overview" ? "diff" : rightPanelMode,
+    toolPanelTab: rightPanelMode === "overview" ? "diff" : rightPanelMode,
     rightPanelMode,
     suggestedWorkspaceTab,
     workspaceTabPinned,

@@ -13,7 +13,9 @@ export function filterAgentMentions(
   return agents.filter((agent) => {
     const id = agent.id.toLowerCase();
     const label = agent.label.toLowerCase();
-    return id.includes(q) || label.includes(q) || id.replace(/_/g, "-").includes(q);
+    return (
+      id.includes(q) || label.includes(q) || id.replace(/_/g, "-").includes(q)
+    );
   });
 }
 

@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MutableRefObject,
+} from "react";
 import type {
   PlanWorkflowRecord,
   RoomObjection,
@@ -63,10 +69,15 @@ export type UseRoomPlanShellStateOptions = {
   workspaceId: string;
   workspacePath: string | null;
   locale: Locale;
-  localeMsg: { planWorkflowComposerBlocked: string; composerPlaceholder: string };
+  localeMsg: {
+    planWorkflowComposerBlocked: string;
+    composerPlaceholder: string;
+  };
   pushMacNotification: (payload: { title: string; body?: string }) => void;
   /** Ref wired after workbench tabs — opens plan file on HUMAN_PENDING. */
-  openPlanApprovalWorkbenchRef?: MutableRefObject<((relpath: string) => void) | null>;
+  openPlanApprovalWorkbenchRef?: MutableRefObject<
+    ((relpath: string) => void) | null
+  >;
 };
 
 /** Plan workflow banners, execute queue strip, composer gate flags (F9 slice 4b). */
@@ -165,7 +176,9 @@ export function useRoomPlanShellState({
     (tweaks.consensusGateDemo ||
       (Boolean(sessionId) && consensusProposal != null));
 
-  const planWorkflow = sessionRun?.plan_workflow as PlanWorkflowRecord | undefined;
+  const planWorkflow = sessionRun?.plan_workflow as
+    | PlanWorkflowRecord
+    | undefined;
   const planWorkflowPlanIntent =
     typeof sessionRun?.plan_intent === "string" ? sessionRun.plan_intent : null;
   const planWorkflowActive = Boolean(planWorkflow?.enabled);

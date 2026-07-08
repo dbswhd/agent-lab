@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { autoSyncSessionPlan } from "../api/client";
 import type { ConsensusDryRunProposal } from "../components/ConsensusDryRunGateBar";
 import {

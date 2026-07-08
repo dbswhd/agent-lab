@@ -1,8 +1,10 @@
-import { useCallback, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 import {
-  cancelRoomRun,
-  runRoom,
-} from "../api/client";
+  useCallback,
+  type Dispatch,
+  type MutableRefObject,
+  type SetStateAction,
+} from "react";
+import { cancelRoomRun, runRoom } from "../api/client";
 import type { PendingFile } from "../components/ChatComposer";
 import type { useLocale } from "../i18n/useLocale";
 import { registerRoomEventHandler } from "../run/roomReconnectRegistry";
@@ -12,7 +14,10 @@ import {
   resetTurnRun,
   resolveRunSessionKey,
 } from "../run/runSessionRegistry";
-import { capabilitiesForApi, type AgentCapabilitiesMap } from "../utils/agentCapabilities";
+import {
+  capabilitiesForApi,
+  type AgentCapabilitiesMap,
+} from "../utils/agentCapabilities";
 import {
   clearStoredAgentThreadBindings,
   getStoredAgentThreadBindings,
@@ -27,7 +32,10 @@ import {
   turnProfileForRoomPreset,
   type ComposerTurnProfile,
 } from "../utils/turnProfile";
-import { IMPLICIT_ROOM_PRESET, TOPIC_ONLY_COMPOSER } from "../utils/roomComposerPrefs";
+import {
+  IMPLICIT_ROOM_PRESET,
+  TOPIC_ONLY_COMPOSER,
+} from "../utils/roomComposerPrefs";
 import { writePendingRoomModels } from "../utils/modelSlash";
 import { attachmentSendTopic } from "../utils/roomSessionMessages";
 import type { ConsensusDryRunProposal } from "../components/ConsensusDryRunGateBar";
@@ -120,14 +128,16 @@ export type RoomExecuteSendOptions = {
       blocked: boolean;
     } | null,
   ) => void;
-  setConsensusProposal: Dispatch<SetStateAction<ConsensusDryRunProposal | null>>;
+  setConsensusProposal: Dispatch<
+    SetStateAction<ConsensusDryRunProposal | null>
+  >;
   setSendReceipt: (value: string | null) => void;
   setSendReceiptRaw: (value: string | undefined) => void;
 };
 
-export function useRoomExecuteSend(
-  options: RoomExecuteSendOptions,
-): { executeSend: ExecuteSendFn } {
+export function useRoomExecuteSend(options: RoomExecuteSendOptions): {
+  executeSend: ExecuteSendFn;
+} {
   const {
     sessionId,
     selected,
@@ -221,7 +231,10 @@ export function useRoomExecuteSend(
         ? undefined
         : (bootstrapSessionTemplate ?? getStoredSessionTemplate());
 
-      const runKey = resolveRunSessionKey(sessionId, activeSessionIdRef.current);
+      const runKey = resolveRunSessionKey(
+        sessionId,
+        activeSessionIdRef.current,
+      );
       const userMsg = topicAsUserMessage(
         displayBody,
         attachmentNames.length ? attachmentNames : undefined,

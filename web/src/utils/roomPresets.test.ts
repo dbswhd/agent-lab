@@ -10,7 +10,10 @@ import {
 
 describe("roomPresets", () => {
   it("falls back to fast and supervisor when API list is empty", () => {
-    expect(resolveRoomPresets([]).map((p) => p.id)).toEqual(["fast", "supervisor"]);
+    expect(resolveRoomPresets([]).map((p) => p.id)).toEqual([
+      "fast",
+      "supervisor",
+    ]);
   });
 
   it("labels presets for ko locale", () => {
@@ -19,8 +22,12 @@ describe("roomPresets", () => {
   });
 
   it("returns localized hint lines", () => {
-    expect(presetHintLine(FALLBACK_ROOM_PRESETS[0], "ko")).toContain("에이전트 1명");
-    expect(presetHintLine(FALLBACK_ROOM_PRESETS[1], "en")).toContain("Emergence");
+    expect(presetHintLine(FALLBACK_ROOM_PRESETS[0], "ko")).toContain(
+      "에이전트 1명",
+    );
+    expect(presetHintLine(FALLBACK_ROOM_PRESETS[1], "en")).toContain(
+      "Emergence",
+    );
   });
 
   it("shows recombination skip in emergence hint", () => {
@@ -42,7 +49,10 @@ describe("roomPresets", () => {
 
   it("hints light discuss and fast promotion", () => {
     expect(
-      emergenceHintLine({ room_preset: "supervisor", discuss_light: true }, "en"),
+      emergenceHintLine(
+        { room_preset: "supervisor", discuss_light: true },
+        "en",
+      ),
     ).toContain("full-parallel");
     expect(
       emergenceHintLine(

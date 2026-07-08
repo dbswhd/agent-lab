@@ -48,7 +48,9 @@ export function ComposerStrip({
       <div className="composer-strip__main">
         {badge ? <span className="composer-strip__badge">{badge}</span> : null}
         <div className="composer-strip__text">
-          {title ? <strong className="composer-strip__title">{title}</strong> : null}
+          {title ? (
+            <strong className="composer-strip__title">{title}</strong>
+          ) : null}
           {description ? (
             <span className="composer-strip__desc">{description}</span>
           ) : null}
@@ -62,7 +64,9 @@ export function ComposerStrip({
           {children}
         </div>
       </div>
-      {actions ? <div className="composer-strip__actions">{actions}</div> : null}
+      {actions ? (
+        <div className="composer-strip__actions">{actions}</div>
+      ) : null}
     </div>
   );
 }

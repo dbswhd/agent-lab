@@ -32,7 +32,9 @@ describe("formatSlashDividerLabel", () => {
 
   it("passes through plain prose", () => {
     expect(
-      formatSlashDividerLabel("이 세션 동안 claude, kimi_work 에이전트를 사용합니다."),
+      formatSlashDividerLabel(
+        "이 세션 동안 claude, kimi_work 에이전트를 사용합니다.",
+      ),
     ).toBe("이 세션 동안 claude, kimi_work 에이전트를 사용합니다.");
   });
 });

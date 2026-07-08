@@ -8,48 +8,48 @@
 
 :root {
   /* ---- Surfaces — Oreo Bg hierarchy (light) -------------- */
-  --surface-app: #f9f9f9;   /* Oreo Bg/Elevated — app shell    */
-  --surface-rail: #ffffff;  /* Oreo Bg/Base — session rail      */
-  --surface-pane: #ffffff;  /* Oreo Bg/Base — main workspace   */
-  --surface-card: #ffffff;  /* Oreo Bg/Base — cards, composer  */
+  --surface-app: #f9f9f9; /* Oreo Bg/Elevated — app shell    */
+  --surface-rail: #ffffff; /* Oreo Bg/Base — session rail      */
+  --surface-pane: #ffffff; /* Oreo Bg/Base — main workspace   */
+  --surface-card: #ffffff; /* Oreo Bg/Base — cards, composer  */
   --surface-sunken: #f4f4f4; /* inset wells, code, inputs       */
   --surface-inset: var(--surface-sunken); /* legacy alias */
   --surface-canvas: var(--surface-pane); /* viewer / canvas wells */
-  --surface-hover: rgba(0, 0, 0, 0.02);   /* Oreo Interaction/Hover */
-  --surface-active: rgba(0, 0, 0, 0.05);  /* Oreo Interaction/Press */
-  --surface-scrim: rgba(0, 0, 0, 0.61);   /* Oreo Overlay/Strong    */
+  --surface-hover: rgba(0, 0, 0, 0.02); /* Oreo Interaction/Hover */
+  --surface-active: rgba(0, 0, 0, 0.05); /* Oreo Interaction/Press */
+  --surface-scrim: rgba(0, 0, 0, 0.61); /* Oreo Overlay/Strong    */
 
   /* ---- Hairlines & borders -------------------------------- */
-  --border-hair: rgba(0, 0, 0, 0.09);  /* Oreo Border/Subtle  */
-  --border-soft: rgba(0, 0, 0, 0.12);  /* Oreo Border/Default */
-  --border-strong: rgba(0, 0, 0, 0.20);
+  --border-hair: rgba(0, 0, 0, 0.09); /* Oreo Border/Subtle  */
+  --border-soft: rgba(0, 0, 0, 0.12); /* Oreo Border/Default */
+  --border-strong: rgba(0, 0, 0, 0.2);
 
   /* ---- Labels (3 steps + inverse) — Oreo Text tokens ------ */
-  --label-primary: #202020;    /* Oreo Bg/Inverse — send button bg  */
-  --label-secondary: #646464;  /* Oreo Text/Secondary               */
-  --label-tertiary: #838383;   /* Oreo Text/Tertiary                */
+  --label-primary: #202020; /* Oreo Bg/Inverse — send button bg  */
+  --label-secondary: #646464; /* Oreo Text/Secondary               */
+  --label-tertiary: #838383; /* Oreo Text/Tertiary                */
   --label-quaternary: #bbbbbb; /* Oreo Text/Disabled                */
-  --label-inverse: #ffffff;    /* Oreo Text/On Inverse              */
+  --label-inverse: #ffffff; /* Oreo Text/On Inverse              */
 
   /* ---- Accent (neutral graphite, Oreo Bg/Inverse base) ---- */
   --accent: #202020;
   --accent-hover: #171717;
   --accent-press: #0f0f0f;
-  --accent-soft: rgba(32, 32, 32, 0.10);
+  --accent-soft: rgba(32, 32, 32, 0.1);
   --accent-softer: rgba(32, 32, 32, 0.06);
   --accent-ring: rgba(32, 32, 32, 0.32);
   --on-accent: #ffffff;
 
   /* ---- System semantic colors (Oreo Status tokens) -------- */
-  --ok: #12a594;                        /* Oreo Status/Success       */
-  --success: var(--ok);                 /* legacy alias              */
-  --ok-soft: rgba(18, 165, 148, 0.12);  /* Oreo Status/Success @12% */
-  --warn: #ef5f00;                      /* Oreo Status/Warning       */
-  --warn-soft: rgba(239, 95, 0, 0.12);  /* Oreo Status/Warning @12% */
-  --danger: #dc3e42;                    /* Oreo Status/Error         */
+  --ok: #12a594; /* Oreo Status/Success       */
+  --success: var(--ok); /* legacy alias              */
+  --ok-soft: rgba(18, 165, 148, 0.12); /* Oreo Status/Success @12% */
+  --warn: #ef5f00; /* Oreo Status/Warning       */
+  --warn-soft: rgba(239, 95, 0, 0.12); /* Oreo Status/Warning @12% */
+  --danger: #dc3e42; /* Oreo Status/Error         */
   --danger-soft: rgba(220, 62, 66, 0.12); /* Oreo Status/Error @12% */
-  --info: #646464;                      /* Oreo Text/Secondary       */
-  --progress: #3e63dd;                  /* Oreo Status/Progress      */
+  --info: #646464; /* Oreo Text/Secondary       */
+  --progress: #3e63dd; /* Oreo Status/Progress      */
   --progress-soft: rgba(62, 99, 221, 0.12);
 
   /* ---- Agent identity (restrained, distinct) -------------- */
@@ -135,16 +135,27 @@
   --type-code-block-leading: 18px;
 
   /* Session rail — anchored to transcript body (14px); UI one step down */
-  --rail-type-session-size: var(--text-body); /* 13px — sidebar row, below transcript */
+  --rail-type-session-size: var(
+    --text-body
+  ); /* 13px — sidebar row, below transcript */
   --rail-type-session-leading: 18px;
-  --rail-type-ui-size: var(--type-label-small-size); /* 12px — search, tabs, chip */
+  --rail-type-ui-size: var(
+    --type-label-small-size
+  ); /* 12px — search, tabs, chip */
   --rail-type-ui-leading: var(--type-label-small-leading);
-  --rail-type-meta-size: var(--text-caption); /* 11px — group label, app title */
+  --rail-type-meta-size: var(
+    --text-caption
+  ); /* 11px — group label, app title */
   --rail-type-meta-leading: 14px;
 
   /* Session rail row fills — Oreo Interaction + Border/Subtle pill */
   --rail-item-hover: var(--surface-hover); /* Interaction/Hover 2% */
-  --rail-item-active: rgba(0, 0, 0, 0.09); /* Border/Subtle — neutral gray pill */
+  --rail-item-active: rgba(
+    0,
+    0,
+    0,
+    0.09
+  ); /* Border/Subtle — neutral gray pill */
   --rail-edge-shadow:
     1px 0 0 rgba(0, 0, 0, 0.04), 8px 0 24px -6px rgba(0, 0, 0, 0.08);
   --workbench-edge-shadow:
@@ -191,7 +202,9 @@
   --transcript-block-gap: var(--space-10);
 
   /* Transcript scroll well above composer / chrome fades */
-  --transcript-top-clearance: calc(var(--composer-fade-height) - var(--space-8));
+  --transcript-top-clearance: calc(
+    var(--composer-fade-height) - var(--space-8)
+  );
   --transcript-composer-clearance: 80px;
 
   /* ---- Effects -------------------------------------------- */
@@ -230,12 +243,12 @@
   --composer-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
   --composer-dock-shadow-bleed: 8px;
   --composer-dock-shadow: 0 0 8px rgba(28, 27, 22, 0.04);
-  --composer-border: rgba(0, 0, 0, 0.12);         /* Oreo Border/Default */
-  --composer-border-subtle: rgba(0, 0, 0, 0.09);  /* Oreo Border/Subtle  */
+  --composer-border: rgba(0, 0, 0, 0.12); /* Oreo Border/Default */
+  --composer-border-subtle: rgba(0, 0, 0, 0.09); /* Oreo Border/Subtle  */
   --composer-status-bg: #f9f9f9;
   --composer-send-disabled-bg: #f9f9f8;
-  --composer-send-disabled-icon: #bbbbbb;          /* Oreo Text/Disabled  */
-  --surface-sent: rgba(0, 0, 0, 0.05);            /* sent bubble — Oreo Bg/Subtle */
+  --composer-send-disabled-icon: #bbbbbb; /* Oreo Text/Disabled  */
+  --surface-sent: rgba(0, 0, 0, 0.05); /* sent bubble — Oreo Bg/Subtle */
   --transition: 160ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 
@@ -244,13 +257,13 @@
    Source: Oreo "Dark Oreo" column
    ============================================================ */
 [data-theme="dark"] {
-  --surface-app: #111111;    /* Oreo Dark Bg/Base — app shell     */
-  --surface-rail: #111111;   /* Oreo Dark Bg/Base — session rail  */
-  --surface-pane: #191919;   /* Oreo Dark Bg/Elevated — workspace */
-  --surface-card: #222222;   /* Oreo Dark Bg/Surface — cards      */
+  --surface-app: #111111; /* Oreo Dark Bg/Base — app shell     */
+  --surface-rail: #111111; /* Oreo Dark Bg/Base — session rail  */
+  --surface-pane: #191919; /* Oreo Dark Bg/Elevated — workspace */
+  --surface-card: #222222; /* Oreo Dark Bg/Surface — cards      */
   --surface-sunken: #191919; /* inset wells, same as pane level   */
-  --surface-hover: rgba(255, 255, 255, 0.06);   /* Oreo Dark Interaction/Hover  */
-  --surface-active: rgba(255, 255, 255, 0.10);  /* Oreo Dark Interaction/Press  */
+  --surface-hover: rgba(255, 255, 255, 0.06); /* Oreo Dark Interaction/Hover  */
+  --surface-active: rgba(255, 255, 255, 0.1); /* Oreo Dark Interaction/Press  */
   --rail-item-hover: var(--surface-hover);
   --rail-item-active: rgba(255, 255, 255, 0.11); /* Dark Border/Subtle pill */
   --rail-edge-shadow:
@@ -269,15 +282,15 @@
     0 1px 2px rgba(0, 0, 0, 0.24), 0 0 0 1px rgba(255, 255, 255, 0.06);
   --surface-scrim: rgba(0, 0, 0, 0.58);
 
-  --border-hair: rgba(255, 255, 255, 0.11);  /* Oreo Dark Border/Subtle  */
-  --border-soft: rgba(255, 255, 255, 0.15);  /* Oreo Dark Border/Default */
+  --border-hair: rgba(255, 255, 255, 0.11); /* Oreo Dark Border/Subtle  */
+  --border-soft: rgba(255, 255, 255, 0.15); /* Oreo Dark Border/Default */
   --border-strong: rgba(255, 255, 255, 0.25);
 
-  --label-primary: #ffffff;    /* Oreo Dark Text/Primary   */
-  --label-secondary: #b4b4b4;  /* Oreo Dark Text/Secondary */
-  --label-tertiary: #7b7b7b;   /* Oreo Dark Text/Tertiary  */
+  --label-primary: #ffffff; /* Oreo Dark Text/Primary   */
+  --label-secondary: #b4b4b4; /* Oreo Dark Text/Secondary */
+  --label-tertiary: #7b7b7b; /* Oreo Dark Text/Tertiary  */
   --label-quaternary: #606060; /* Oreo Dark Text/Disabled  */
-  --label-inverse: #fcfcfc;    /* Oreo Dark Bg/Inverse     */
+  --label-inverse: #fcfcfc; /* Oreo Dark Bg/Inverse     */
 
   --on-accent: #000000;
 
@@ -288,19 +301,19 @@
   --accent-softer: rgba(252, 252, 252, 0.09);
   --accent-ring: rgba(252, 252, 252, 0.32);
 
-  --ok: #12a594;                          /* Oreo Dark Status/Success (same)    */
+  --ok: #12a594; /* Oreo Dark Status/Success (same)    */
   --ok-soft: rgba(18, 165, 148, 0.12);
-  --warn: #ef5f00;                        /* Oreo Dark Status/Warning (same)    */
+  --warn: #ef5f00; /* Oreo Dark Status/Warning (same)    */
   --warn-soft: rgba(239, 95, 0, 0.12);
-  --danger: #dc3e42;                      /* Oreo Dark Status/Error (same)      */
+  --danger: #dc3e42; /* Oreo Dark Status/Error (same)      */
   --danger-soft: rgba(220, 62, 66, 0.12);
   --progress: #3e63dd;
-  --progress-soft: rgba(62, 99, 221, 0.20);
+  --progress-soft: rgba(62, 99, 221, 0.2);
 
   --agent-cursor: var(--progress);
   --agent-cursor-soft: var(--progress-soft);
   --agent-codex: #12a594;
-  --agent-codex-soft: rgba(18, 165, 148, 0.20);
+  --agent-codex-soft: rgba(18, 165, 148, 0.2);
   --agent-claude: #d2785a;
   --agent-claude-soft: rgba(210, 120, 90, 0.16);
   --agent-you: #9aa0a9;
@@ -308,10 +321,15 @@
 
   --composer-status-bg: #222222;
   --composer-send-disabled-bg: #222222;
-  --composer-send-disabled-icon: #606060;           /* Oreo Dark Text/Disabled   */
-  --surface-sent: #2c2c2c;                          /* sent bubble — dark elevated */
-  --composer-border: rgba(255, 255, 255, 0.15);     /* Oreo Dark Border/Default  */
-  --composer-border-subtle: rgba(255, 255, 255, 0.11); /* Oreo Dark Border/Subtle */
+  --composer-send-disabled-icon: #606060; /* Oreo Dark Text/Disabled   */
+  --surface-sent: #2c2c2c; /* sent bubble — dark elevated */
+  --composer-border: rgba(255, 255, 255, 0.15); /* Oreo Dark Border/Default  */
+  --composer-border-subtle: rgba(
+    255,
+    255,
+    255,
+    0.11
+  ); /* Oreo Dark Border/Subtle */
   --composer-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
   --composer-dock-shadow: 0 0 8px rgba(0, 0, 0, 0.16);
 

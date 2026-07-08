@@ -34,7 +34,10 @@ export function ComposerPreflightBar({ agents, selected }: Props) {
           {": "}
           {row.reason ?? row.hint ?? "not ready"}
           {row.fallback ? (
-            <span className="composer-strip__fallback"> fallback: {row.fallback}</span>
+            <span className="composer-strip__fallback">
+              {" "}
+              fallback: {row.fallback}
+            </span>
           ) : null}
         </>
       ))}

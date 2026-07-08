@@ -1269,7 +1269,10 @@
 .room-preset-bar__chip {
   cursor: pointer;
   border: 1px solid transparent;
-  transition: background 0.1s, color 0.1s, border-color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s,
+    border-color 0.1s;
 }
 .room-preset-bar__chip:hover {
   background: var(--surface-raised);
@@ -1628,7 +1631,10 @@
     right: var(--workbench-island-inset);
     bottom: var(--workbench-island-inset);
     z-index: 40;
-    width: min(var(--context-sidebar-width, 420px), calc(100vw - var(--space-32)));
+    width: min(
+      var(--context-sidebar-width, 420px),
+      calc(100vw - var(--space-32))
+    );
     max-width: calc(100vw - var(--space-32));
     flex-basis: auto;
     border-radius: var(--workbench-island-radius);
@@ -8784,7 +8790,8 @@ button.plan-doc__ref--link:hover {
 }
 .settings-page[data-settings-category="general"] .settings-panel--general,
 .settings-page[data-settings-category="agents"] .settings-panel--agents,
-.settings-page[data-settings-category="connections"] .settings-panel--connections,
+.settings-page[data-settings-category="connections"]
+  .settings-panel--connections,
 .settings-page[data-settings-category="workspace"] .settings-panel--workspace,
 .settings-page[data-settings-category="automation"] .settings-panel--automation,
 .settings-page[data-settings-category="advanced"] .settings-panel--advanced {

@@ -120,31 +120,29 @@ export function buildPlanTodoRows(input: {
       : undefined) ??
     input.recommended?.index;
 
-  return orderedPlanItems(
-    input.recommended,
-    input.nowItems,
-    input.roadmap,
-  ).map((item) => {
-    const key = planItemKey(item);
-    const isGate = item.executable === false;
-    const label = isGate
-      ? fieldBody(item.summary || item.what)
-      : fieldBody(item.what);
-    let status: PlanTodoItemStatus = "pending";
-    if (isGate) status = "gate";
-    else if (done.has(item.index)) status = "done";
-    else if (item.index === activeIndex) status = "active";
+  return orderedPlanItems(input.recommended, input.nowItems, input.roadmap).map(
+    (item) => {
+      const key = planItemKey(item);
+      const isGate = item.executable === false;
+      const label = isGate
+        ? fieldBody(item.summary || item.what)
+        : fieldBody(item.what);
+      let status: PlanTodoItemStatus = "pending";
+      if (isGate) status = "gate";
+      else if (done.has(item.index)) status = "done";
+      else if (item.index === activeIndex) status = "active";
 
-    return {
-      key,
-      item,
-      status,
-      label: label || fieldBody(item.what) || `#${item.index}`,
-      where: fieldBody(item.where) || undefined,
-      verify: fieldBody(item.verify) || undefined,
-      selectable: !isGate,
-    };
-  });
+      return {
+        key,
+        item,
+        status,
+        label: label || fieldBody(item.what) || `#${item.index}`,
+        where: fieldBody(item.where) || undefined,
+        verify: fieldBody(item.verify) || undefined,
+        selectable: !isGate,
+      };
+    },
+  );
 }
 
 export function planTodoProgress(

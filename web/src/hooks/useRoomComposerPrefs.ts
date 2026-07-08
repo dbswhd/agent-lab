@@ -170,7 +170,14 @@ export function useRoomComposerPrefs({
       locale,
       loopMaxCostTier ?? undefined,
     );
-  }, [effectivePreset, loopMaxCostTier, healthAgents, selectedAgents, turnProfile, locale]);
+  }, [
+    effectivePreset,
+    loopMaxCostTier,
+    healthAgents,
+    selectedAgents,
+    turnProfile,
+    locale,
+  ]);
 
   const forceRoomPreset = useCallback((id: string) => {
     setRoomPreset(id);
@@ -188,4 +195,4 @@ export function useRoomComposerPrefs({
     composerEmergenceHint,
     composerCostHint,
   };
-};
+}

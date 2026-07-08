@@ -83,7 +83,9 @@ describe("mergePersistedChatWithLiveLog", () => {
     ];
     const merged = mergePersistedChatWithLiveLog(chat, live, label);
     const kimi = merged.find((m) => m.role === "kimi_work");
-    expect(kimi?.turnItems?.some((item) => item.kind === "activity")).toBe(true);
+    expect(kimi?.turnItems?.some((item) => item.kind === "activity")).toBe(
+      true,
+    );
     expect(merged).toHaveLength(2);
   });
 
@@ -122,7 +124,9 @@ describe("preferRicherChatMessages", () => {
       { id: "1", role: "you", label: "You", body: "a" },
       { id: "2", role: "cursor", label: "Cursor", body: "b" },
     ];
-    const server: LiveMsg[] = [{ id: "1", role: "you", label: "You", body: "a" }];
+    const server: LiveMsg[] = [
+      { id: "1", role: "you", label: "You", body: "a" },
+    ];
     expect(preferRicherChatMessages(local, server)).toBe(local);
   });
 

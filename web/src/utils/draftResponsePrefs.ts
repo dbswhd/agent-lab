@@ -10,7 +10,12 @@ export function setDraftOpenPref(messageId: string, open: boolean): void {
 
 /** Last agent reply id per role (for default-open Draft response). */
 export function latestDraftMessageIdsByAgent(
-  messages: readonly { id: string; role: string; body?: string; typing?: boolean }[],
+  messages: readonly {
+    id: string;
+    role: string;
+    body?: string;
+    typing?: boolean;
+  }[],
   isAgentRole: (role: string) => boolean,
   hasDraftBody: (body: string | undefined) => boolean,
 ): Set<string> {

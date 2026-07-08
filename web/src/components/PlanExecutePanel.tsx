@@ -115,7 +115,6 @@ export function PlanExecutePanel({
         disabled={panel.actionDisabled}
         planFileLabel={planFileLabel}
         onSelect={panel.setSelectedKey}
-        onRefClick={onChatRefClick}
         onPlanFileClick={() => {
           if (onOpenFile) onOpenFile(planFileLabel);
           else onOpenFiles?.();

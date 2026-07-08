@@ -6,15 +6,15 @@ type Props = {
   compact?: boolean;
 };
 
-function phaseLabel(phase: string, ko: boolean): string {
-  const mapKo: Record<string, string> = {
-    DRY_RUN: "Dry-run",
-    MERGE: "Merge",
-    VERIFY: "Verify",
-    REPAIR: "Repair",
-  };
-  const mapEn: Record<string, string> = mapKo;
-  return (ko ? mapKo : mapEn)[phase] ?? phase;
+const PHASE_LABELS: Record<string, string> = {
+  DRY_RUN: "Dry-run",
+  MERGE: "Merge",
+  VERIFY: "Verify",
+  REPAIR: "Repair",
+};
+
+function phaseLabel(phase: string): string {
+  return PHASE_LABELS[phase] ?? phase;
 }
 
 /** MB-4 — append-only evidence.jsonl tail in Work / Run. */
@@ -45,7 +45,7 @@ export function EvidenceTimeline({
             className="evidence-timeline__item"
           >
             <span className="evidence-timeline__phase">
-              {phaseLabel(String(row.phase ?? ""), ko)}
+              {phaseLabel(String(row.phase ?? ""))}
             </span>
             <span className="evidence-timeline__kind">
               {row.kind ?? "event"}

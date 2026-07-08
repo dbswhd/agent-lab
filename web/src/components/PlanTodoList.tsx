@@ -18,7 +18,6 @@ type Props = {
   disabled?: boolean;
   planFileLabel?: string;
   onSelect: (key: string) => void;
-  onRefClick?: (line: number) => void;
   onPlanFileClick?: () => void;
   defaultExpanded?: boolean;
   children?: React.ReactNode;
@@ -36,7 +35,6 @@ export function PlanTodoList({
   disabled = false,
   planFileLabel = "plan.md",
   onSelect,
-  onRefClick: _onRefClick,
   onPlanFileClick,
   defaultExpanded = true,
   children,

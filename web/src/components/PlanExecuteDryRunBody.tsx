@@ -168,7 +168,7 @@ export function PlanExecuteDryRunBody({
                 onDryRun();
               }}
             >
-              修復 후 재시도
+              복구 후 재시도
             </button>
             <button
               type="button"

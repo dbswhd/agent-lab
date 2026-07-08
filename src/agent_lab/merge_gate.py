@@ -8,7 +8,9 @@ Layered before that write, in order:
 
 1. Regression must have passed (``regression_gate.load_report`` verdict).
 2. STOP guard re-checked (conditions may have changed since PROPOSE/REGRESS).
-3. Tier B never accepts ``used_light_approval`` (HS5-B2 — full Inbox only).
+3. Tier B never accepts ``used_light_approval`` (HS5-B2 — full Inbox only);
+   Tier A light approval additionally requires autonomy level L2+ (HS5-3,
+   ``autonomy_promotion.harness_patch_light_approval_eligible``).
 4. Working tree must be clean (``plan.execute_git.is_working_tree_clean``).
 5. The diff must still apply cleanly against current HEAD (freshness check —
    the codebase may have drifted since REGRESS ran against a worktree).
@@ -293,8 +295,18 @@ def handle_harness_patch_resolve(
     from agent_lab.plan.execute_git import detect_git_root
 
     candidate = load_candidate(candidate_id, root=root)
-    if str(candidate.get("tier") or "") == "B" and used_light_approval:
-        raise MergeRejected("HS5-B2: Tier B requires full Inbox approval, not L2 lightweight")
+    tier = str(candidate.get("tier") or "")
+    if used_light_approval:
+        if tier == "B":
+            raise MergeRejected("HS5-B2: Tier B requires full Inbox approval, not L2 lightweight")
+        from agent_lab.autonomy_promotion import harness_patch_light_approval_eligible
+        from agent_lab.run.meta import read_run_meta
+
+        if not harness_patch_light_approval_eligible(read_run_meta(folder)):
+            _write_merge_record(
+                candidate_id, status="rejected", reason="HS5-3: light approval requires autonomy L2+", root=root
+            )
+            raise MergeRejected("HS5-3: light approval requires autonomy level L2 or higher")
 
     resolved_git_root = git_root or detect_git_root(folder)
     if resolved_git_root is None:

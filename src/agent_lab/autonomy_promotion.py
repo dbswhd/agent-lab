@@ -164,6 +164,17 @@ def evaluate_promotions(run_meta: RunStateLike | None) -> dict[str, Any]:
     }
 
 
+def harness_patch_light_approval_eligible(run_meta: RunStateLike | None) -> bool:
+    """HS5-3 — Tier A ``harness_patch`` candidates may use the L2 lightweight
+    approval path once the session has earned (or been ceilinged to) autonomy
+    L2 ("Budgeted") or above; Tier B always requires full Inbox review
+    (HS5-B2), regardless of this level."""
+    from agent_lab.autonomy_ladder import resolve_display_autonomy_level
+
+    display = resolve_display_autonomy_level(run_meta)
+    return _LEVEL_ORDER[display] >= _LEVEL_ORDER["L2"]
+
+
 def _patch_promotion(folder: Path, mutator: Callable[[dict[str, Any]], None]) -> dict[str, Any]:
     def _apply(run: RunState) -> RunState:
         block = dict(_autonomy_block(run))

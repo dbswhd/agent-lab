@@ -13,6 +13,7 @@ from agent_lab.autonomy_promotion import (
     evaluate_l0_to_l1,
     evaluate_l1_to_l2,
     evaluate_l2_to_l3,
+    harness_patch_light_approval_eligible,
     oracle_confidence,
     record_l0_to_l1_sample,
     record_mission_completion,
@@ -33,6 +34,27 @@ def test_oracle_confidence_from_verdict() -> None:
     assert oracle_confidence({"verdict": "pass"}) == 1.0
     assert oracle_confidence({"verdict": "fail"}) == 0.0
     assert oracle_confidence({"confidence": 0.9}) == 0.9
+
+
+def test_harness_patch_light_approval_ineligible_at_l0(session_folder: Path) -> None:
+    """HS5-3 — a fresh session with no trust budget stays at L0/L1, below the gate."""
+    run = read_run_meta(session_folder)
+    assert harness_patch_light_approval_eligible(run) is False
+
+
+def test_harness_patch_light_approval_eligible_at_l2(session_folder: Path) -> None:
+    """HS5-3 — an open trust budget (auto_merge_remaining > 0) infers L2."""
+    set_trust_budget(session_folder, {"auto_merge_total": 5, "auto_merge_remaining": 3})
+    run = read_run_meta(session_folder)
+    assert harness_patch_light_approval_eligible(run) is True
+
+
+def test_harness_patch_light_approval_capped_by_human_ceiling(session_folder: Path) -> None:
+    """HS5-3 — a Human-set L1 ceiling caps the L2 trust-budget signal back down."""
+    set_trust_budget(session_folder, {"auto_merge_total": 5, "auto_merge_remaining": 3})
+    patch_run_meta(session_folder, lambda run: {**run, "autonomy": {"level": "L1"}})
+    run = read_run_meta(session_folder)
+    assert harness_patch_light_approval_eligible(run) is False
 
 
 def test_l0_to_l1_auto_promote_after_streak(session_folder: Path) -> None:

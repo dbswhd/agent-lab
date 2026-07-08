@@ -441,6 +441,54 @@ def test_handle_harness_patch_resolve_tier_b_rejects_light_approval(scratch_repo
         )
 
 
+def test_handle_harness_patch_resolve_tier_a_light_approval_rejected_below_l2(
+    scratch_repo, session_folder, monkeypatch
+) -> None:
+    """HS5-3 — Tier A light approval still needs autonomy L2+; a fresh
+    (L0) session must fall back to full Inbox review."""
+    monkeypatch.chdir(scratch_repo)
+    candidate_id, diff_path = _seed_candidate_with_passing_report(scratch_repo)
+    _write_marker_diff(diff_path, new_value="patched")
+    item = propose_harness_patch(candidate_id, session_folder, root=scratch_repo)
+
+    with pytest.raises(MergeRejected, match="HS5-3"):
+        handle_harness_patch_resolve(
+            session_folder,
+            item,
+            selected=["approve"],
+            status="resolved",
+            git_root=scratch_repo,
+            used_light_approval=True,
+            root=scratch_repo,
+        )
+    assert load_merge_record(candidate_id, root=scratch_repo)["status"] == "rejected"
+
+
+def test_handle_harness_patch_resolve_tier_a_light_approval_merges_at_l2(
+    scratch_repo, session_folder, monkeypatch
+) -> None:
+    """HS5-3 — Tier A + autonomy L2+ (trust budget open) merges via light approval."""
+    monkeypatch.chdir(scratch_repo)
+    session_folder.joinpath("run.json").write_text(
+        json.dumps({"trust_budget": {"auto_merge_total": 5, "auto_merge_remaining": 3}}),
+        encoding="utf-8",
+    )
+    candidate_id, diff_path = _seed_candidate_with_passing_report(scratch_repo)
+    _write_marker_diff(diff_path, new_value="patched")
+    item = propose_harness_patch(candidate_id, session_folder, root=scratch_repo)
+
+    result = handle_harness_patch_resolve(
+        session_folder,
+        item,
+        selected=["approve"],
+        status="resolved",
+        git_root=scratch_repo,
+        used_light_approval=True,
+        root=scratch_repo,
+    )
+    assert result["status"] == "merged"
+
+
 def test_handle_harness_patch_resolve_ignores_other_kinds(session_folder) -> None:
     item = {"kind": "question", "refs": []}
     assert handle_harness_patch_resolve(session_folder, item, selected=None, status="resolved") == {}

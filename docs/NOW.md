@@ -27,9 +27,14 @@
 
 ### 지금 — 코드 트랙 (전부 mock-only 검증 가능, dogfood 불필요)
 
-HS0~HS4 전부 ✅ 07-08~07-09 shipped (Impl **Tier B**, Human 명시 확인 후 착수).
-다음은 **HS5 MERGE**(Impl Tier B, `human_inbox.py` `harness_patch` 카드 + Tier A L2 경량승인/Tier B full gate) —
-착수는 별도 Human 확인 후.
+HS0~HS5 전부(HS5-1~7·B1-B4 포함) ✅ 07-08~07-09 shipped (Impl **Tier B**, Human 명시 확인 후 착수).
+커밋 `6325c845`(merge_gate.py 코어) + HS5-3 후속 커밋(Tier A + L2 경량 승인 —
+`autonomy_promotion.harness_patch_light_approval_eligible`, 오토노미 레벨 L2+일 때만 Tier A
+`used_light_approval` 허용, Tier B는 여전히 full Inbox만).
+
+HS6/HS7은 design doc상 "동결 until HS-M5"(HS6) / "동결 until HS6 평가"(HS7) — HS-M5 게이트가 실제
+Human 승인 1건(라이브 세션, mock 아님)을 요구하므로 **dogfood 보류 결정과 충돌**한다. 착수는 별도
+Human 확인 후.
 
 | # | 항목 | 소스 ID | 할 일 | 닫힘 기준 |
 |---|------|---------|-------|-----------|

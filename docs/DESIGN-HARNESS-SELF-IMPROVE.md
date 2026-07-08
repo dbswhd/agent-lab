@@ -661,7 +661,7 @@ Self-Harness bounded context 4항목 (R11) 필수. eval 표면 동시 확장 검
 |----|------|------|
 | HS5-1 | Inbox `harness_patch` | `human_inbox.py` |
 | HS5-2 | approve → execute path | `plan/execute_dry_run.py` |
-| HS5-3 | Tier A + L2: 경량 승인 | `autonomy_promotion.py` |
+| HS5-3 ✅ | Tier A + L2: 경량 승인 (`autonomy_promotion.harness_patch_light_approval_eligible`, resolve_display_autonomy_level ≥ L2) | `autonomy_promotion.py`, `merge_gate.handle_harness_patch_resolve` |
 | HS5-4 | predictions verified | `outcome_harvester.py` |
 | HS5-5 | KPI: accept_rate, prediction_accuracy | `feedback_report.py` |
 | HS5-6 | playbook bullet · failure_pattern episode에 `harness_rev`(생성 당시 manifest/patch 버전) 필드 (REVIEW P0-3) | §8.2·8.3 스키마 필드 1개씩 |

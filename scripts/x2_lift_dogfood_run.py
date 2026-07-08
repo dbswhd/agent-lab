@@ -24,6 +24,7 @@ for _p in (ROOT / "src", SCRIPTS, ROOT):
 from x2_lift_dogfood_config import (  # noqa: E402
     DOGFood_PATH,
     DOGFood_REL,
+    MARKER_LINE_HINT,
     MARKER_WRONG,
     PLAN_MD,
     TOPIC,
@@ -60,6 +61,8 @@ def main() -> int:
     os.environ.setdefault("AGENT_LAB_PLAN_FSM_SKILL_FIRST", "0")
     os.environ.setdefault("AGENT_LAB_ROOM_PRESET", "supervisor")
     os.environ.setdefault("AGENT_LAB_DOGFOOD_EXECUTE_OUTCOMES", "1")
+    # Force mock oracle: live oracle env may bleed in from server env
+    os.environ["AGENT_LAB_ORACLE_LIVE"] = "0"
 
     apply_typo()
 
@@ -157,7 +160,14 @@ def main() -> int:
         target = workspace / DOGFood_REL
         text = target.read_text(encoding="utf-8")
         if MARKER_WRONG in text:
-            target.write_text(text.replace(MARKER_WRONG, "room.py에서", 1), encoding="utf-8")
+            lines = text.splitlines(keepends=True)
+            fixed = [
+                line.replace(MARKER_WRONG, "room.py에서", 1)
+                if MARKER_WRONG in line and MARKER_LINE_HINT in line
+                else line
+                for line in lines
+            ]
+            target.write_text("".join(fixed), encoding="utf-8")
         return f"fixed {DOGFood_REL}"
 
     from agent_lab.plan.execute import resolve_execution, run_dry_run

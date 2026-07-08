@@ -15,6 +15,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import http.client
 import json
 import os
 import subprocess
@@ -41,6 +42,9 @@ from x2_lift_dogfood_config import (  # noqa: E402
 )
 
 API = os.environ.get("AGENT_LAB_API", "http://127.0.0.1:8765").rstrip("/")
+DEFAULT_ROOM_TIMEOUT = float(os.environ.get("AGENT_LAB_X2_ROOM_TIMEOUT", "5400"))
+DEFAULT_EXECUTE_TIMEOUT = float(os.environ.get("AGENT_LAB_X2_EXECUTE_TIMEOUT", "1200"))
+DEFAULT_PLAN_WAIT_TIMEOUT = float(os.environ.get("AGENT_LAB_X2_PLAN_WAIT_TIMEOUT", "300"))
 
 AGENTS = ["cursor", "codex", "claude"]
 PERMS = {
@@ -136,7 +140,7 @@ def _resolve_execution(session_id: str, exec_id: str) -> dict[str, Any]:
         "POST",
         _session_path(session_id, "/execute/resolve"),
         {"execution_id": exec_id, "vote": "approve", "permissions": PERMS},
-        timeout=900.0,
+        timeout=DEFAULT_EXECUTE_TIMEOUT,
     )
     return payload.get("execution") or {}
 
@@ -156,7 +160,77 @@ def _parse_sse(raw: bytes) -> list[dict[str, Any]]:
     return events
 
 
-def _room_run(*, session_id: str | None = None, timeout: float = 1800.0) -> tuple[str | None, list[dict[str, Any]], float]:
+def _session_id_from_events(events: list[dict[str, Any]], fallback: str | None = None) -> str | None:
+    sid = fallback
+    for ev in events:
+        if ev.get("session_id"):
+            sid = str(ev["session_id"])
+        if ev.get("type") == "complete" and ev.get("session_id"):
+            return str(ev["session_id"])
+    return sid
+
+
+def _find_recent_session(*, since: float) -> str | None:
+    """Recover session folder when SSE stream truncates before complete event."""
+    sessions_dir = ROOT / "sessions"
+    if not sessions_dir.is_dir():
+        return None
+    best_id: str | None = None
+    best_mtime = since
+    topic_needle = "x2-lift"
+    for folder in sessions_dir.iterdir():
+        if not folder.is_dir():
+            continue
+        run_path = folder / "run.json"
+        if not run_path.is_file():
+            continue
+        mtime = run_path.stat().st_mtime
+        if mtime < since - 5.0:
+            continue
+        try:
+            run = json.loads(run_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        topic = str(run.get("topic") or "")
+        if topic_needle not in topic and DOGFood_REL.as_posix() not in topic:
+            continue
+        if mtime >= best_mtime:
+            best_mtime = mtime
+            best_id = folder.name
+    return best_id
+
+
+def _room_turn_settled(session_id: str) -> bool:
+    run_path = ROOT / "sessions" / session_id / "run.json"
+    if not run_path.is_file():
+        return False
+    try:
+        run = json.loads(run_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    status = str(run.get("status") or "")
+    turns = run.get("turns") or []
+    if not turns:
+        return False
+    last = turns[-1]
+    turn_status = str(last.get("status") or "") if isinstance(last, dict) else ""
+    return status in {"completed", "failed"} or turn_status in {"completed", "failed"}
+
+
+def _wait_room_turn(session_id: str, *, timeout: float) -> bool:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if _room_turn_settled(session_id):
+            return True
+        time.sleep(5.0)
+    return _room_turn_settled(session_id)
+
+
+def _room_run(
+    *,
+    session_id: str | None = None,
+    timeout: float = DEFAULT_ROOM_TIMEOUT,
+) -> tuple[str | None, list[dict[str, Any]], float, str | None]:
     boundary = "----AgentLabX2Live"
     fields = [
         ("topic", TOPIC),
@@ -189,23 +263,42 @@ def _room_run(*, session_id: str | None = None, timeout: float = 1800.0) -> tupl
         headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
     )
     t0 = time.time()
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        raw = resp.read()
+    raw = b""
+    stream_note: str | None = None
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            raw = resp.read()
+    except http.client.IncompleteRead as exc:
+        raw = exc.partial
+        stream_note = f"IncompleteRead({len(raw)} bytes)"
+    except TimeoutError:
+        stream_note = "room_sse_timeout"
+    except urllib.error.URLError as exc:
+        if "timed out" in str(exc.reason).lower():
+            stream_note = "room_sse_timeout"
+        else:
+            raise
+
     events = _parse_sse(raw)
-    sid = session_id
-    for ev in events:
-        if ev.get("type") == "complete" and ev.get("session_id"):
-            sid = str(ev["session_id"])
-        if ev.get("type") == "start" and ev.get("session_id") and not sid:
-            sid = str(ev["session_id"])
-    return sid, events, time.time() - t0
+    sid = _session_id_from_events(events, session_id)
+    if not sid:
+        sid = _find_recent_session(since=t0)
+
+    if sid and stream_note and not any(ev.get("type") == "complete" for ev in events):
+        poll_budget = min(600.0, max(60.0, timeout - (time.time() - t0)))
+        if _wait_room_turn(sid, timeout=poll_budget):
+            stream_note = f"{stream_note};recovered_via_poll"
+        else:
+            stream_note = f"{stream_note};poll_timeout"
+
+    return sid, events, time.time() - t0, stream_note
 
 
 def _plan_workflow(session_id: str) -> dict[str, Any]:
     return _json_request("GET", _session_path(session_id, "/plan/workflow"))
 
 
-def _wait_human_pending(session_id: str, *, timeout: float = 60.0) -> str:
+def _wait_human_pending(session_id: str, *, timeout: float = DEFAULT_PLAN_WAIT_TIMEOUT) -> str:
     deadline = time.time() + timeout
     phase = ""
     while time.time() < deadline:
@@ -295,7 +388,7 @@ def _execute_pipeline(
         "POST",
         _session_path(session_id, "/execute/dry-run"),
         dry_body,
-        timeout=900.0,
+        timeout=DEFAULT_EXECUTE_TIMEOUT,
     )
     execution = dry.get("execution") or {}
     exec_id = str(execution.get("id") or "").strip()
@@ -308,6 +401,27 @@ def _execute_pipeline(
     if status in {"pending_approval", "merge_conflict", "review_required"}:
         execution = _resolve_execution(session_id, exec_id)
     return execution
+
+
+def _finish_pass(session_id: str, *, allow_dirty: bool) -> dict[str, Any]:
+    result: dict[str, Any] = {"session_id": session_id, "ok": False}
+    result["routing"] = _routing_snapshot(session_id)
+    phase = _wait_human_pending(session_id)
+    result["plan_phase_before_approve"] = phase
+    if phase == "HUMAN_PENDING":
+        _approve_plan(session_id)
+    elif phase != "APPROVED":
+        wf = _plan_workflow(session_id)
+        result["plan_workflow"] = wf.get("plan_workflow")
+        result["error"] = f"plan not ready (phase={phase})"
+        return result
+
+    execution = _execute_pipeline(session_id, allow_dirty=allow_dirty)
+    result["execution_status"] = execution.get("status")
+    oracle = execution.get("oracle") or (execution.get("verify_after_merge") or {}).get("oracle") or {}
+    result["oracle_verdict"] = oracle.get("verdict")
+    result["ok"] = _execution_ok(execution)
+    return result
 
 
 def _routing_snapshot(session_id: str) -> dict[str, Any]:
@@ -401,38 +515,32 @@ def _resolve_only(session_id: str, exec_id: str | None, *, allow_dirty: bool) ->
         return result
 
 
-def _run_iteration(index: int, total: int, *, allow_dirty: bool, prepare: bool) -> dict[str, Any]:
+def _run_iteration(
+    index: int,
+    total: int,
+    *,
+    allow_dirty: bool,
+    prepare: bool,
+    room_timeout: float,
+) -> dict[str, Any]:
     print(f"\n=== live pass {index}/{total} ===", flush=True)
     result: dict[str, Any] = {"pass": index, "ok": False}
     try:
         if prepare:
             result["dogfood_prepare"] = _prepare_dogfood()
 
-        session_id, events, elapsed = _room_run()
+        session_id, events, elapsed, stream_note = _room_run(timeout=room_timeout)
         result["room_seconds"] = round(elapsed, 1)
         result["session_id"] = session_id
         result["sse_events"] = len(events)
+        if stream_note:
+            result["room_stream"] = stream_note
         if not session_id:
             errs = [e for e in events if e.get("type") == "error"]
             result["error"] = errs or "no session_id"
             return result
 
-        result["routing"] = _routing_snapshot(session_id)
-        phase = _wait_human_pending(session_id)
-        result["plan_phase_before_approve"] = phase
-        if phase == "HUMAN_PENDING":
-            _approve_plan(session_id)
-        elif phase != "APPROVED":
-            wf = _plan_workflow(session_id)
-            result["plan_workflow"] = wf.get("plan_workflow")
-            result["error"] = f"plan not ready (phase={phase})"
-            return result
-
-        execution = _execute_pipeline(session_id, allow_dirty=allow_dirty)
-        result["execution_status"] = execution.get("status")
-        oracle = execution.get("oracle") or (execution.get("verify_after_merge") or {}).get("oracle") or {}
-        result["oracle_verdict"] = oracle.get("verdict")
-        result["ok"] = _execution_ok(execution)
+        result.update(_finish_pass(session_id, allow_dirty=allow_dirty))
         return result
     except urllib.error.HTTPError as exc:
         result["error"] = exc.read().decode("utf-8", errors="replace")[:500]
@@ -478,6 +586,12 @@ def main() -> int:
         action="store_true",
         help="skip git-clean guard for worktree isolation",
     )
+    parser.add_argument(
+        "--room-timeout",
+        type=float,
+        default=DEFAULT_ROOM_TIMEOUT,
+        help=f"room SSE timeout seconds (default {DEFAULT_ROOM_TIMEOUT:.0f})",
+    )
     args = parser.parse_args()
 
     API = args.api.rstrip("/")
@@ -514,7 +628,15 @@ def main() -> int:
 
     results: list[dict[str, Any]] = []
     for i in range(1, max(1, args.count) + 1):
-        results.append(_run_iteration(i, args.count, allow_dirty=args.allow_dirty, prepare=prepare_each))
+        results.append(
+            _run_iteration(
+                i,
+                args.count,
+                allow_dirty=args.allow_dirty,
+                prepare=prepare_each,
+                room_timeout=args.room_timeout,
+            )
+        )
 
     from agent_lab.feedback_report import build_feedback_report, render_feedback_report
 

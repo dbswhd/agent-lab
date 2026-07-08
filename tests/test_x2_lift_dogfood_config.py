@@ -12,7 +12,7 @@ if str(SCRIPTS) not in sys.path:
 
 from x2_lift_dogfood_config import (  # noqa: E402
     DOGFood_PATH,
-    MARKER_RIGHT,
+    MARKER_LINE_HINT,
     MARKER_WRONG,
     apply_fix,
     apply_typo,
@@ -29,7 +29,7 @@ def test_dogfood_fixture_has_typo_by_default() -> None:
 
 def test_prepare_typo_cycle(tmp_path: Path, monkeypatch) -> None:
     sample = tmp_path / "x2-lift.md"
-    sample.write_text(f"row `…-{MARKER_WRONG}-…`\n", encoding="utf-8")
+    sample.write_text(f"| **{MARKER_LINE_HINT}** | `…-{MARKER_WRONG}-…` |\n", encoding="utf-8")
     monkeypatch.setattr("x2_lift_dogfood_config.DOGFood_PATH", sample)
 
     changed, reason = apply_fix()

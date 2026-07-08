@@ -23,9 +23,9 @@ PLAN_MD = f"""# X2 lift dogfood
 ## 지금 실행
 
 1.
-   - 무엇을: `{DOGFood_REL}` L7 세션 ID 표기 `{MARKER_WRONG}` → `{MARKER_RIGHT}` 수정
+   - 무엇을: `{DOGFood_REL}` L17 Evidence row 세션 ID `{MARKER_WRONG}` → `{MARKER_RIGHT}` 수정
    - 어디서: `{DOGFood_REL}`
-   - 검증: `grep "room\\.py" {DOGFood_REL}` 에 L7가 출력되고 `roompy` 패턴이 사라진다
+   - 검증: `grep "room\\.py" {DOGFood_REL}` 에 L17이 출력되고, Evidence row에 `roompy` 패턴이 없다
    - isolation: apply
 """
 
@@ -38,26 +38,42 @@ def dogfood_text() -> str:
     return DOGFood_PATH.read_text(encoding="utf-8")
 
 
+def _evidence_line(body: str) -> str | None:
+    for line in body.splitlines():
+        if MARKER_LINE_HINT in line:
+            return line
+    return None
+
+
 def has_typo(text: str | None = None) -> bool:
     body = text if text is not None else dogfood_text()
-    return MARKER_WRONG in body
+    line = _evidence_line(body)
+    return bool(line and MARKER_WRONG in line)
 
 
 def has_fix(text: str | None = None) -> bool:
     body = text if text is not None else dogfood_text()
-    return MARKER_WRONG not in body and MARKER_RIGHT in body
+    line = _evidence_line(body)
+    return bool(line and MARKER_RIGHT in line and MARKER_WRONG not in line)
 
 
 def apply_typo(*, write: bool = True) -> tuple[bool, str]:
-    """Ensure fixture has the intentional typo. Returns (changed, reason)."""
+    """Ensure Evidence row has the intentional typo. Returns (changed, reason)."""
     text = dogfood_text()
-    if MARKER_WRONG in text:
-        return False, "already_has_typo"
-    if MARKER_RIGHT not in text:
+    lines = text.splitlines(keepends=True)
+    out: list[str] = []
+    changed = False
+    for line in lines:
+        if MARKER_LINE_HINT in line and MARKER_RIGHT in line:
+            line = line.replace(MARKER_RIGHT, MARKER_WRONG, 1)
+            changed = True
+        out.append(line)
+    if not changed:
+        if has_typo(text):
+            return False, "already_has_typo"
         return False, "marker_missing"
-    updated = text.replace(MARKER_RIGHT, MARKER_WRONG, 1)
     if write:
-        DOGFood_PATH.write_text(updated, encoding="utf-8")
+        DOGFood_PATH.write_text("".join(out), encoding="utf-8")
     return True, "reverted_to_typo"
 
 

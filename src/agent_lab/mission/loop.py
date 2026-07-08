@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
+from agent_lab.env_flags import env_bool
 from agent_lab.plan.actions import PlanAction, action_key, parse_plan_actions
 from agent_lab.run.meta import patch_run_meta, read_run_meta
 from agent_lab.mission.notepad import (
@@ -72,12 +72,7 @@ def _mission_dispatch(
 
 
 def mission_loop_env_enabled() -> bool:
-    return os.getenv("AGENT_LAB_MISSION_LOOP", "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
+    return env_bool("AGENT_LAB_MISSION_LOOP")
 
 
 def pipeline_enabled() -> bool:
@@ -560,12 +555,7 @@ def is_structural_verify_fail(reason: str = "") -> bool:
 
 
 def mission_autorun_enabled(ml: dict[str, Any] | None = None) -> bool:
-    if os.getenv("AGENT_LAB_MISSION_AUTORUN", "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }:
+    if env_bool("AGENT_LAB_MISSION_AUTORUN"):
         return True
     seg = (ml or {}).get("autonomous_segment") or {}
     return bool(seg.get("active"))

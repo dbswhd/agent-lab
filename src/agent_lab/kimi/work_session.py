@@ -49,9 +49,9 @@ def is_usable_conversation_key(conversation_key: str | None) -> bool:
     if is_live_conversation_key(key):
         return True
     if key.startswith("mock-conv-"):
-        import os
+        from agent_lab.env_flags import env_bool
 
-        return os.getenv("AGENT_LAB_MOCK_AGENTS", "").strip().lower() in {"1", "true", "yes", "on"}
+        return env_bool("AGENT_LAB_MOCK_AGENTS")
     return bool(key)
 
 

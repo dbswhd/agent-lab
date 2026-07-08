@@ -76,9 +76,9 @@ def compute_gate_scope(run_meta: RunStateLike | None) -> GateScope:
 
 def should_pause_discuss_for_profile(run_meta: RunStateLike) -> bool:
     """Replace env-only pause when ``AGENT_LAB_GATE_SCOPE=1`` (default on)."""
-    import os
+    from agent_lab.env_flags import env_bool
 
-    if os.getenv("AGENT_LAB_GATE_SCOPE", "1").strip().lower() in ("0", "false", "no"):
+    if not env_bool("AGENT_LAB_GATE_SCOPE", default=True):
         from agent_lab.inbox.harvest import should_pause_discuss
 
         return should_pause_discuss(run_meta)

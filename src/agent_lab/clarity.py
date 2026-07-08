@@ -23,6 +23,7 @@ import re
 from datetime import datetime, timezone
 from typing import Any
 
+from agent_lab.env_flags import env_bool
 from agent_lab.run.state import RunStateLike
 
 # Default ambiguity threshold; override via AGENT_LAB_CLARITY_THRESHOLD.
@@ -95,13 +96,6 @@ def _threshold() -> float:
     return CLARITY_AMBIGUITY_THRESHOLD
 
 
-def _env_bool(name: str, default: bool = False) -> bool:
-    raw = os.getenv(name)
-    if raw is None:
-        return default
-    return raw.strip().lower() in {"1", "true", "yes", "on"}
-
-
 def topology_enabled() -> bool:
     """AGENT_LAB_CLARITY_TOPOLOGY (default OFF): add component-level decomposition + scoring.
 
@@ -109,7 +103,7 @@ def topology_enabled() -> bool:
     agent call to decompose the task into components and score each, so questions can target the
     vaguest *part* — gjc deep-interview topology parity.
     """
-    return _env_bool("AGENT_LAB_CLARITY_TOPOLOGY")
+    return env_bool("AGENT_LAB_CLARITY_TOPOLOGY")
 
 
 def detect_concrete_anchors(text: str) -> bool:

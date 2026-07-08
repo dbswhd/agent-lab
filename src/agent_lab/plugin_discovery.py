@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from agent_lab.run.state import RunStateLike
-import os
 import subprocess
 import threading
 import time
@@ -14,6 +13,7 @@ from agent_lab.code_memory_mcp_server import (
     code_memory_cache_signature,
     code_memory_mcp_enabled,
 )
+from agent_lab.env_flags import env_bool
 from agent_lab.wisdom.store import wisdom_cache_signature, wisdom_mcp_enabled
 from agent_lab.subprocess_env import subprocess_env
 
@@ -59,12 +59,7 @@ _CODEX_MCP_HINT = "codex mcp add …"
 
 
 def mock_mode() -> bool:
-    return os.getenv("AGENT_LAB_MOCK_AGENTS", "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
+    return env_bool("AGENT_LAB_MOCK_AGENTS")
 
 
 def _run_cli(cmd: list[str], *, timeout: int = 45) -> tuple[int, str]:

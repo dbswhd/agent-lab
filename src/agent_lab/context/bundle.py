@@ -51,13 +51,7 @@ from agent_lab.reply_policy import (
     resolve_reply_policy,
 )
 from agent_lab.runtime.policy import PolicyEngine
-
-
-def _env_bool(name: str, default: bool = False) -> bool:
-    raw = os.getenv(name)
-    if raw is None:
-        return default
-    return raw.strip().lower() in {"1", "true", "yes", "on"}
+from agent_lab.env_flags import env_bool
 
 
 def _format_clarity_facts(run_meta: RunStateLike | None) -> str:
@@ -159,7 +153,7 @@ def _artifact_only_context(
     agent: str,
     parallel_round: int,
 ) -> bool:
-    if not _env_bool("AGENT_LAB_F2_ARTIFACT_ONLY", True):
+    if not env_bool("AGENT_LAB_F2_ARTIFACT_ONLY", True):
         return False
     if str(agent).strip().lower() != "cursor" or parallel_round < 2:
         return False
@@ -439,7 +433,7 @@ def _append_mission_track_c_blocks(
     mission_wisdom = build_mission_wisdom_block(run_meta)
     if mission_wisdom.strip():
         out = f"{out}\n\n{mission_wisdom.strip()}"
-    if _env_bool("AGENT_LAB_REPO_MAP"):
+    if env_bool("AGENT_LAB_REPO_MAP"):
         from agent_lab.repo_map import build_repo_map_block
 
         repo_block = build_repo_map_block(run_meta, plan_md)
@@ -475,7 +469,7 @@ def build_context_bundle(
     """Build layered context for one agent call (discuss / plan agent rounds)."""
     from agent_lab.context.layers import should_use_mission_slim_bundle
 
-    compact = _env_bool("AGENT_LAB_COMMS_COMPACT") and str(
+    compact = env_bool("AGENT_LAB_COMMS_COMPACT") and str(
         (run_meta or {}).get("turn_profile") or ""
     ).strip().lower() not in {"divergence", "발산"}
     if should_use_mission_slim_bundle(run_meta) and not (slim_context and efficiency_mode) and not compact:

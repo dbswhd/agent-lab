@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -11,6 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
+from agent_lab.env_flags import env_bool
 from agent_lab.plan.execute_git import is_working_tree_clean
 from agent_lab.plan.execute_worktree import ExecWorktree, remove_exec_worktree
 
@@ -99,7 +99,7 @@ def oracle_verify(
 
     if oracle_call is not None:
         raw, source = invoke_oracle("execute", prompt, oracle_call=oracle_call)
-    elif os.getenv("AGENT_LAB_ORACLE_LIVE", "").strip().lower() in {"1", "true", "yes"}:
+    elif env_bool("AGENT_LAB_ORACLE_LIVE"):
         raw, source = invoke_oracle("execute", prompt, session_folder=session_folder)
     else:
         raw = mock_execute_oracle_response(verify, snippets)

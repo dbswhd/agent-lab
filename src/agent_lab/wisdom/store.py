@@ -16,6 +16,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.env_flags import env_bool
+
 
 @dataclass
 class WisdomEntry:
@@ -140,7 +142,7 @@ def wisdom_list_recent(limit: int = 20, *, path: Path | None = None) -> list[Wis
 
 
 def wisdom_mcp_enabled() -> bool:
-    return os.getenv("AGENT_LAB_WISDOM_MCP", "").strip().lower() in ("1", "true", "yes", "on")
+    return env_bool("AGENT_LAB_WISDOM_MCP")
 
 
 def wisdom_cache_signature() -> tuple[bool]:

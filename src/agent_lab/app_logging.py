@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import logging
-import os
 import sys
 from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+
+from agent_lab.env_flags import env_bool
 
 _CONFIGURED = False
 
@@ -43,12 +44,7 @@ def setup_app_logging(*, log_dir: Path | None = None) -> Path:
     for name in ("httpx", "httpcore", "cursor_sdk"):
         logging.getLogger(name).setLevel(logging.WARNING)
 
-    if (os.getenv("AGENT_LAB_QUIET_ACCESS_LOG") or "1").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }:
+    if env_bool("AGENT_LAB_QUIET_ACCESS_LOG", default=True):
         logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
     _CONFIGURED = True

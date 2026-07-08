@@ -10,6 +10,8 @@ from __future__ import annotations
 import os
 from typing import Any, Callable
 
+from agent_lab.env_flags import env_bool
+
 DEFAULT_ENDPOINT = "https://api.moonshot.ai/v1"
 DEFAULT_MODEL = "kimi-k2"
 
@@ -27,7 +29,7 @@ def model_label() -> str:
 
 
 def _mock_enabled() -> bool:
-    return os.getenv("AGENT_LAB_MOCK_AGENTS", "").strip().lower() in {"1", "true", "yes", "on"}
+    return env_bool("AGENT_LAB_MOCK_AGENTS")
 
 
 def is_available() -> bool:

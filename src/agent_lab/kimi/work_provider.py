@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 from typing import Any, Callable
 
+from agent_lab.env_flags import env_bool
 from agent_lab.kimi.control_client import (
     KimiWorkBridgeUnavailable,
     is_share_configured,
@@ -26,7 +27,7 @@ def model_label() -> str:
 
 
 def _mock_enabled() -> bool:
-    return os.getenv("AGENT_LAB_MOCK_AGENTS", "").strip().lower() in {"1", "true", "yes", "on"}
+    return env_bool("AGENT_LAB_MOCK_AGENTS")
 
 
 def is_configured() -> bool:

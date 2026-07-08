@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import shutil
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Literal, TypeVar
+
+from agent_lab.env_flags import env_bool
 
 CodexOAuthSlot = Literal["primary", "fallback"]
 _OAUTH_SLOTS: tuple[CodexOAuthSlot, ...] = ("primary", "fallback")
@@ -209,12 +210,7 @@ def profile_exists(slot: CodexOAuthSlot) -> bool:
 
 
 def live_login_status() -> tuple[bool, str | None]:
-    if os.getenv("AGENT_LAB_MOCK_AGENTS", "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }:
+    if env_bool("AGENT_LAB_MOCK_AGENTS"):
         return True, "mock"
     revoked = codex_auth_revoked_detail()
     if revoked:

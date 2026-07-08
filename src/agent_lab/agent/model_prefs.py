@@ -9,6 +9,7 @@ from typing import Any
 from agent_lab.agent import model_catalog
 from agent_lab.agent import models as agent_models
 from agent_lab import provider_registry
+from agent_lab.env_flags import is_truthy
 
 ModelPreset = dict[str, str | None]
 
@@ -47,7 +48,7 @@ def load_auto_multi_model() -> bool:
     if not path.is_file():
         return False
     try:
-        return path.read_text(encoding="utf-8").strip().lower() in {"1", "true", "yes", "on"}
+        return is_truthy(path.read_text(encoding="utf-8"))
     except OSError:
         return False
 

@@ -2,22 +2,17 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Any
 
+from agent_lab.env_flags import env_bool
 from agent_lab.external_tools import load_external_tools, run_external_tool
 from agent_lab.run.meta import read_run_meta
 from agent_lab.runtime.boulder import clear_last_failure, record_last_failure
 
 
 def external_runner_enabled() -> bool:
-    return os.getenv("AGENT_LAB_EXTERNAL_TOOLS", "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
+    return env_bool("AGENT_LAB_EXTERNAL_TOOLS")
 
 
 def external_tools_allowlist(run: dict[str, Any] | None) -> list[str]:

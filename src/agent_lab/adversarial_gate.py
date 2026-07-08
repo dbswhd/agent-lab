@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-import os
 from collections.abc import Callable
 from typing import Any
+
+from agent_lab.env_flags import env_bool
 
 LGTM_TOKEN = "LGTM"
 _MAX_DIFF = 2000
@@ -58,11 +59,7 @@ def adversarial_review(
     if adversarial_call is not None:
         raw = adversarial_call(prompt)
         source = "injected"
-    elif os.getenv("AGENT_LAB_ADVERSARIAL_LIVE", "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-    }:
+    elif env_bool("AGENT_LAB_ADVERSARIAL_LIVE"):
         from agent_lab.claude import cli as claude_cli
 
         raw = claude_cli.invoke("adversarial-reviewer", prompt, scribe=True)

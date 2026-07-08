@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import json
-import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
 from agent_lab.agent.envelope import AgentEnvelope, parse_agent_response
+from agent_lab.env_flags import env_bool
 from agent_lab.model_policy import (
     AgentId,
     ModelProfile,
@@ -36,12 +36,7 @@ _LOOP_EVAL_USER = (
 
 
 def _mock_agents_enabled() -> bool:
-    return os.getenv("AGENT_LAB_MOCK_AGENTS", "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
+    return env_bool("AGENT_LAB_MOCK_AGENTS")
 
 
 def _eval_source() -> EvalSource:

@@ -99,9 +99,9 @@ def emit_divergence_options(
 
 
 def session_hard_cap_enabled() -> bool:
-    import os
+    from agent_lab.env_flags import env_bool
 
-    return (os.getenv("AGENT_LAB_SESSION_HARD_CAP") or "").strip().lower() in ("1", "true", "yes", "on")
+    return env_bool("AGENT_LAB_SESSION_HARD_CAP")
 
 
 def emit_budget_status(run_meta: RunStateLike | None, on_event: OnAgentEvent | None) -> None:

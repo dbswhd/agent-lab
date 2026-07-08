@@ -11,6 +11,7 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 from agent_lab.daemon_state import mark_scheduler_tick
+from agent_lab.env_flags import env_bool
 from agent_lab.run.meta import patch_run_meta, read_run_meta
 from agent_lab.session import SESSIONS_DIR
 
@@ -30,12 +31,7 @@ def scheduler_interval_s() -> int:
 
 
 def mission_scheduler_enabled() -> bool:
-    return (os.getenv("AGENT_LAB_MISSION_SCHEDULER") or "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
+    return env_bool("AGENT_LAB_MISSION_SCHEDULER")
 
 
 def _field_matches(field: str, value: int, *, min_v: int, max_v: int) -> bool:

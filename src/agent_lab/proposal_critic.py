@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 from typing import Any
 
+from agent_lab.env_flags import env_bool
 from agent_lab.pipeline_research_read import get_strategy_verdict
 
 _BLOCKED_THESIS = (
@@ -251,12 +251,7 @@ def review_proposal_thesis(
         )
         parsed = _parse_live_critic(str(raw or ""))
         source = "injected"
-    elif os.getenv("AGENT_LAB_RESEARCH_MCP_CRITIC_LIVE", "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }:
+    elif env_bool("AGENT_LAB_RESEARCH_MCP_CRITIC_LIVE"):
         from agent_lab.claude import cli as claude_cli
 
         raw = claude_cli.invoke(

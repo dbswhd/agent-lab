@@ -127,7 +127,7 @@ def test_ac5_off_parity_repo_map_not_used(tmp_path: Path, monkeypatch: pytest.Mo
     src = inspect.getsource(cb)
     # the import is inside the flag-on branch only (guarded), never at module top
     assert "from agent_lab.repo_map import build_repo_map_block" in src
-    assert 'if _env_bool("AGENT_LAB_REPO_MAP"):' in src
+    assert 'if env_bool("AGENT_LAB_REPO_MAP"):' in src
 
 
 # --- AC6: flag-on replaces (one block); layer-off => no map ---

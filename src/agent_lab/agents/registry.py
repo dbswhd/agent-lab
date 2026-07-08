@@ -14,6 +14,7 @@ from agent_lab.agents.plugins import (
     label,
     plugins,
 )
+from agent_lab.env_flags import env_bool
 from agent_lab.kimi import work_provider as kimi_work_provider
 from agent_lab.structured_envelope_adapter import merge_structured_reply
 
@@ -69,12 +70,7 @@ def _is_ready(agent: AgentId) -> bool:
 
 
 def _mock_agents_enabled() -> bool:
-    return os.getenv("AGENT_LAB_MOCK_AGENTS", "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
+    return env_bool("AGENT_LAB_MOCK_AGENTS")
 
 
 _MOCK_SCRIPT_LOCK = threading.Lock()
@@ -156,12 +152,7 @@ def _mock_agent_response(
     scripted = _scripted_mock_response(agent, snippet)
     if scripted is not None:
         return scripted
-    if os.getenv("AGENT_LAB_MOCK_STRUCTURED_ENVELOPE", "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }:
+    if env_bool("AGENT_LAB_MOCK_STRUCTURED_ENVELOPE"):
         import json
 
         env = json.dumps({"act": "ENDORSE", "refs": [], "confidence": 0.9})

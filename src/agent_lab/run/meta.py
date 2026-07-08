@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import json
-import os
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 from weakref import WeakValueDictionary
 
+from agent_lab.env_flags import env_bool
 from agent_lab.run.state import RunState, RunStateLike, RuntimeValidationError, validate_run_data
 
 _LOCK_GUARD = threading.Lock()
@@ -107,7 +107,7 @@ def patch_run_meta(
         run = read_run_meta(folder)
         capture_checkpoint = False
         prior_signature: tuple[str | None, str | None] = (None, None)
-        if (os.getenv("AGENT_LAB_CHECKPOINT") or "").strip().lower() in {"1", "true", "yes", "on"}:
+        if env_bool("AGENT_LAB_CHECKPOINT"):
             from agent_lab import checkpoint_store
 
             capture_checkpoint = True

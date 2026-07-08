@@ -13,13 +13,13 @@ Mirrors ``adversarial_gate`` (injection / live flag / mock default).
 
 from __future__ import annotations
 
-import os
 from collections.abc import Callable
 from dataclasses import dataclass
 from hashlib import sha1
 from typing import Any
 
 from agent_lab.agent.envelope import DecisionFork, parse_decision_forks
+from agent_lab.env_flags import env_bool
 
 _MAX_OPTIONS = 5
 _MIN_OPTIONS = 2
@@ -95,11 +95,7 @@ def merge_forks(forks: list[DecisionFork]) -> list[FacilitatedQuestion]:
 
 
 def _live_enabled() -> bool:
-    return os.getenv("AGENT_LAB_FACILITATOR_LIVE", "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-    }
+    return env_bool("AGENT_LAB_FACILITATOR_LIVE")
 
 
 def _synthesis_prompt(prose_context: str) -> str:

@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Callable, cast
 
 from agent_lab import provider_registry
+from agent_lab.env_flags import env_bool
 
 if TYPE_CHECKING:
     from agent_lab.agents.registry import AgentId
@@ -33,22 +34,12 @@ def dynamic_room_enabled() -> bool:
     and credential management via slash. Set AGENT_LAB_DYNAMIC_ROOM=0 to fall
     back to the static cursor/codex/claude room (OFF-parity escape hatch).
     """
-    return os.getenv("AGENT_LAB_DYNAMIC_ROOM", "1").strip().lower() not in {
-        "0",
-        "false",
-        "no",
-        "off",
-    }
+    return env_bool("AGENT_LAB_DYNAMIC_ROOM", default=True)
 
 
 def dynamic_room_explicitly_disabled() -> bool:
     """True only when the user explicitly opted out of the dynamic room."""
-    return os.getenv("AGENT_LAB_DYNAMIC_ROOM", "1").strip().lower() in {
-        "0",
-        "false",
-        "no",
-        "off",
-    }
+    return not dynamic_room_enabled()
 
 
 def _parse_csv_env(name: str) -> list[str] | None:

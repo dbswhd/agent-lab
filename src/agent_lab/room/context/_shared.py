@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
-import os
 from typing import Protocol
+
+from agent_lab.env_flags import env_bool
+
+__all__ = ["MessageLike", "_MessageLike", "env_bool", "message_chars"]
 
 
 class MessageLike(Protocol):
@@ -15,13 +18,6 @@ class MessageLike(Protocol):
 
 # Backward-compatible alias for imports/tests.
 _MessageLike = MessageLike
-
-
-def env_bool(name: str, default: bool = False) -> bool:
-    raw = os.getenv(name)
-    if raw is None:
-        return default
-    return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def message_chars(msgs: list[MessageLike]) -> int:

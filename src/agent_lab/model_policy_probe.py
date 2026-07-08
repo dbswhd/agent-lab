@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.env_flags import env_bool
 from agent_lab.model_policy import (
     AgentId,
     ModelProfile,
@@ -25,8 +26,7 @@ _PROBE_CACHE_LOADED = False
 
 
 def loop_probe_enabled() -> bool:
-    raw = (os.getenv("AGENT_LAB_LOOP_PROBE") or "1").strip().lower()
-    return raw not in ("0", "false", "no", "off")
+    return env_bool("AGENT_LAB_LOOP_PROBE", default=True)
 
 
 def _live_probe_enabled() -> bool:
@@ -74,7 +74,7 @@ def _probe_cache_read_paths() -> tuple[Path, ...]:
 
 
 def _mock_mode() -> bool:
-    return os.getenv("AGENT_LAB_MOCK_AGENTS", "").strip().lower() in {"1", "true", "yes", "on"}
+    return env_bool("AGENT_LAB_MOCK_AGENTS")
 
 
 def invalidate_loop_probe_cache(agent_id: str, *, model_id: str | None = None) -> None:

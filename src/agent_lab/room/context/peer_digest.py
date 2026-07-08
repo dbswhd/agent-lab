@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import os
-
 from agent_lab.room._typing import agent_label
 from agent_lab.room.context._shared import MessageLike, env_bool
 
@@ -115,12 +113,7 @@ def collect_r1_turn_replies(messages: list[MessageLike]) -> list[MessageLike]:
 
 
 def _r15_bridge_enabled() -> bool:
-    return os.getenv("AGENT_LAB_R15", "").strip().lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    )
+    return env_bool("AGENT_LAB_R15")
 
 
 def build_turn_bridge_block(

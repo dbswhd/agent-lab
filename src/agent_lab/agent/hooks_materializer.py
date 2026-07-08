@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import json
-import os
 import shutil
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator, cast
+
+from agent_lab.env_flags import env_bool
 
 
 def agent_hooks_root(session_folder: Path) -> Path:
@@ -15,12 +16,7 @@ def agent_hooks_root(session_folder: Path) -> Path:
 
 
 def _native_hooks_enabled() -> bool:
-    return os.getenv("AGENT_LAB_NATIVE_HOOKS", "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
+    return env_bool("AGENT_LAB_NATIVE_HOOKS")
 
 
 def write_codex_hooks(session_folder: Path, hooks: dict[str, Any]) -> Path:

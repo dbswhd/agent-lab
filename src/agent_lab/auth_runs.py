@@ -29,6 +29,7 @@ from agent_lab.credential_store import (
     mask_secret,
     public_credentials_payload,
 )
+from agent_lab.env_flags import env_bool
 from agent_lab.subprocess_env import subprocess_env
 
 AuthAction = Literal["login", "logout"]
@@ -99,7 +100,7 @@ def _provider_subprocess_env(spec: ProviderSpec) -> dict[str, str]:
 
 
 def _resolved_argv(spec: ProviderSpec, action: AuthAction) -> list[str]:
-    if os.getenv("AGENT_LAB_MOCK_AGENTS", "").strip().lower() in {"1", "true", "yes", "on"}:
+    if env_bool("AGENT_LAB_MOCK_AGENTS"):
         try:
             delay = min(max(float(os.getenv("AGENT_LAB_AUTH_MOCK_DELAY_S", "0")), 0.0), 10.0)
         except ValueError:
@@ -375,7 +376,7 @@ def _interpret_cli_status(spec: ProviderSpec, result: subprocess.CompletedProces
 
 
 def _probe_provider_status(spec: ProviderSpec) -> tuple[str, str | None]:
-    if os.getenv("AGENT_LAB_MOCK_AGENTS", "").strip().lower() in {"1", "true", "yes", "on"}:
+    if env_bool("AGENT_LAB_MOCK_AGENTS"):
         return "logged_in", "mock"
     if not spec.status_argv:
         return ("logged_in", "local") if spec.always_available else ("logged_out", None)
@@ -449,7 +450,7 @@ def revalidate_provider_status(provider_id: str) -> None:
 
 def provider_status_payload() -> dict[str, Any]:
     credential_rows = {row["id"]: row for row in public_credentials_payload().get("agents", [])}
-    is_mock = os.getenv("AGENT_LAB_MOCK_AGENTS", "").strip().lower() in {"1", "true", "yes", "on"}
+    is_mock = env_bool("AGENT_LAB_MOCK_AGENTS")
     rows: list[dict[str, Any]] = []
     for spec in all_providers():
         installed = is_mock or bool(spec.status_argv and shutil.which(spec.status_argv[0]))

@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from agent_lab.env_flags import env_bool
 from agent_lab.run.meta import patch_run_meta
 from agent_lab.trading_mission.topic import mission_id_from_date
 
@@ -106,12 +107,7 @@ def build_mission_telemetry(
     budget_stats = turn_budget_telemetry(run)
 
     input_tokens_est = estimate_tokens_from_chars(turn_stats["payload_chars_total"])
-    mock_agents = (os.getenv("AGENT_LAB_MOCK_AGENTS") or "").strip().lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    )
+    mock_agents = env_bool("AGENT_LAB_MOCK_AGENTS")
 
     payload: dict[str, Any] = {
         "recorded_at": datetime.now(UTC).isoformat(),

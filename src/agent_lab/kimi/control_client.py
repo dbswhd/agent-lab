@@ -17,6 +17,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, cast
 
+from agent_lab.env_flags import env_bool
+
 KIMI_WORK_BRIDGE_FALLBACK = "Kimi Work 제외 후 KIMI API / Local 로 대체하거나 Kimi 앱·daimon 재연결 후 재시도"
 KIMI_WORK_BRIDGE_REMEDIATION = (
     "Kimi 앱에서 Work 최초 로그인(또는 토큰 만료 시 재로그인)",
@@ -91,7 +93,7 @@ def probe_recently_ok() -> bool:
 
 
 def _mock_enabled() -> bool:
-    return os.getenv("AGENT_LAB_MOCK_AGENTS", "").strip().lower() in {"1", "true", "yes", "on"}
+    return env_bool("AGENT_LAB_MOCK_AGENTS")
 
 
 def default_share_dir() -> Path:
@@ -289,12 +291,7 @@ def warm_bridge(*, background: bool = False) -> None:
     """Pre-connect daimon on API startup so first turn avoids cold spawn/probe."""
     if _mock_enabled() or not is_share_configured():
         return
-    if (os.getenv("AGENT_LAB_KIMI_WORK_WARM_ON_STARTUP") or "1").strip().lower() in {
-        "0",
-        "false",
-        "off",
-        "no",
-    }:
+    if not env_bool("AGENT_LAB_KIMI_WORK_WARM_ON_STARTUP", default=True):
         return
 
     def _run() -> None:

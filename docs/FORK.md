@@ -61,7 +61,7 @@ python scripts/smoke_room.py
 | `src/agent_lab/room/` orchestration | 2-cycle·합의 계약 |
 | Trading extension | F5 — `extensions/quant_trading.py` 경계만 |
 
-N6 self-patch 화이트리스트: `.agent-lab/self_patch_allowlist.txt` (초기: skills·프롬프트·preset만).
+N6 self-patch 화이트리스트(HS3 이후): `.agent-lab/harness/manifest.json` Tier A (초기: skills·프롬프트·profile·preset만).
 
 ---
 

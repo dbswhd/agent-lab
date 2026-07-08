@@ -93,6 +93,7 @@ _THOROUGH_OWNS: frozenset[str] = frozenset(
 # Mission loop / auto-advance / budgets.
 _AUTONOMOUS_OWNS: frozenset[str] = frozenset(
     {
+        "AGENT_LAB_HARNESS_PROPOSER",
         "AGENT_LAB_MISSION_AUTORUN",
         "AGENT_LAB_MISSION_BUDGET_USD",
         "AGENT_LAB_BUDGET_WARN_PCT",

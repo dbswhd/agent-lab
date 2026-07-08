@@ -27,8 +27,9 @@
 
 ### 지금 — 코드 트랙 (전부 mock-only 검증 가능, dogfood 불필요)
 
-HS0~HS2(Impl Tier A, "thorough" 사정권) 전부 ✅ 07-08 shipped. 다음은 **HS3 PROPOSE**부터 Impl **Tier B**
-(게이트·회귀 설계 필요, 리스크 중간 — DESIGN §6.2) — 착수는 별도 Human 확인 후.
+HS0~HS3 전부 ✅ 07-08~07-09 shipped (HS3 PROPOSE는 Impl **Tier B** 첫 항목 — Human 명시 확인 후 착수).
+다음은 **HS4 REGRESS**(Impl Tier B, `regression_gate.py` — held-in/held-out + REVIEW P0-1/P0-2 원칙 구현) —
+착수는 별도 Human 확인 후.
 
 | # | 항목 | 소스 ID | 할 일 | 닫힘 기준 |
 |---|------|---------|-------|-----------|

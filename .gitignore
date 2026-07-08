@@ -22,6 +22,8 @@ src/.agent-lab/
 .agent-lab/memory/
 # HS2 PLAYBOOK — append-only bullet ledger (runtime data, not source)
 .agent-lab/wisdom/playbook.jsonl
+# HS3 PROPOSE — candidate drafts (runtime data; manifest.json itself IS tracked)
+.agent-lab/harness/candidates/
 node_modules/
 web/test-results/
 # Local design dry-run artifact (not session plan.md)

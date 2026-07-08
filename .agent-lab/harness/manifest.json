@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "tiers": {
+    "A": [
+      {
+        "glob": ".claude/skills/**",
+        "edit_unit": "file",
+        "axis": "skills"
+      },
+      {
+        "glob": "src/agent_lab/agents/prompts.py",
+        "edit_unit": "block",
+        "marker": "# --- BLOCK:",
+        "axis": "prompts"
+      },
+      {
+        "glob": "src/agent_lab/run/profile.py",
+        "edit_unit": "file",
+        "axis": "profile"
+      },
+      {
+        "glob": "src/agent_lab/room/preset.py",
+        "edit_unit": "file",
+        "axis": "preset"
+      }
+    ],
+    "B": [
+      {
+        "glob": ".agent-lab/hooks.toml",
+        "edit_unit": "file",
+        "axis": "hooks",
+        "requires": [
+          "inbox_full"
+        ]
+      },
+      {
+        "glob": "web/src/hooks/useRoomComposerPrefs.ts",
+        "edit_unit": "file",
+        "axis": "ui",
+        "requires": [
+          "inbox_full",
+          "web_build"
+        ]
+      },
+      {
+        "glob": "web/src/hooks/useRoomExecuteSend.ts",
+        "edit_unit": "file",
+        "axis": "ui",
+        "requires": [
+          "inbox_full",
+          "smoke"
+        ]
+      },
+      {
+        "glob": "evals/cases.jsonl",
+        "edit_unit": "file",
+        "axis": "eval_surface",
+        "requires": [
+          "inbox_full",
+          "held_out_audit"
+        ]
+      },
+      {
+        "glob": "sessions/_benchmark/topics/dogfood-v1.json",
+        "edit_unit": "file",
+        "axis": "eval_surface",
+        "requires": [
+          "inbox_full",
+          "held_out_audit"
+        ]
+      }
+    ]
+  },
+  "frozen_prefixes": [
+    "src/agent_lab/room/turn_flow",
+    "src/agent_lab/room/agent_invoke.py",
+    "src/agent_lab/plan/execute",
+    "src/agent_lab/human_inbox.py",
+    "src/agent_lab/runtime/",
+    "app/server/routers/room.py",
+    "src/agent_lab/outcome_harvester.py",
+    "src/agent_lab/feedback_advisor.py"
+  ]
+}

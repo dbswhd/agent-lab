@@ -2,9 +2,8 @@
 
 See NORTH-STAR §2.1 N6. Room can eventually propose improvements to agent-lab's
 own codebase (a dogfood loop); this module is the *first commit* of that
-initiative — the allowlist scoping the paths a self-patch is ever allowed to
-touch, and a pure classifier that tags whether a set of touched paths falls
-entirely inside it.
+initiative — a pure classifier that tags whether a set of touched paths falls
+entirely inside the editable-surface allowlist.
 
 Scope (deliberately conservative — "인프라의 정례화", not automation):
 - This module does not apply patches, does not create Inbox items, and does
@@ -15,82 +14,47 @@ Scope (deliberately conservative — "인프라의 정례화", not automation):
   stamps the classification onto the outcome ledger row so a future
   autonomy-ladder rule has something concrete to key off of — the same
   "measure first, automate later" discipline as S1's RECORD phase.
-- Core logic (`src/agent_lab/**` outside the allowlist) is never eligible —
-  this is enforced structurally by the allowlist not listing it, not by a
-  separate special case here.
+- Core logic (outside the allowlist) is never eligible — this is enforced
+  structurally by the allowlist not listing it, not by a separate special
+  case here.
+
+HS3-2 unification (2026-07-09): the allowlist is now Tier A of
+``harness_proposer.py``'s ``.agent-lab/harness/manifest.json`` — a single
+git-tracked SSOT shared with the PROPOSE pipeline, replacing the standalone
+``self_patch_allowlist.txt`` this module used to maintain independently
+(NORTH-STAR §16 risk R4: "allowlist/manifest 이중").
 """
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import Any
 
-_ALLOWLIST_RELPATH = Path(".agent-lab") / "self_patch_allowlist.txt"
-
-_DEFAULT_ALLOWLIST: tuple[str, ...] = (
-    ".claude/skills/**",
-    "src/agent_lab/agents/prompts.py",
-    "src/agent_lab/run/profile.py",
+from agent_lab.harness_proposer import (
+    classify_tier,
+    normalize_path as _normalize,  # noqa: F401 — re-exported for existing callers
+    tier_a_globs,
 )
 
 
-def self_patch_allowlist_path(root: Path | None = None) -> Path:
-    if root is None:
-        from agent_lab.outcome_harvester import outcomes_path
-
-        root = outcomes_path().parent.parent
-    return Path(root) / _ALLOWLIST_RELPATH
-
-
-def ensure_self_patch_allowlist(root: Path | None = None) -> Path:
-    """Create the allowlist file with the documented initial patterns if absent."""
-    path = self_patch_allowlist_path(root)
-    if not path.is_file():
-        path.parent.mkdir(parents=True, exist_ok=True)
-        header = (
-            "# N6 self-patch allowlist (NORTH-STAR §2.1) — one glob pattern per line.\n"
-            "# Only paths matching a pattern here are ever eligible for self-patch\n"
-            "# classification. Everything else (core src/agent_lab/** logic) always\n"
-            "# requires the full Human gate — this file does not weaken that.\n"
-            "# '**' matches any depth; '*' matches within one path segment.\n"
-        )
-        path.write_text(header + "\n".join(_DEFAULT_ALLOWLIST) + "\n", encoding="utf-8")
-    return path
-
-
 def load_self_patch_allowlist(root: Path | None = None) -> list[str]:
-    """Read allowlist patterns (blank lines and ``#`` comments skipped)."""
-    path = self_patch_allowlist_path(root)
-    if not path.is_file():
-        return list(_DEFAULT_ALLOWLIST)
-    patterns: list[str] = []
-    for line in path.read_text(encoding="utf-8").splitlines():
-        stripped = line.strip()
-        if not stripped or stripped.startswith("#"):
-            continue
-        patterns.append(stripped)
-    return patterns
-
-
-def _pattern_to_regex(pattern: str) -> re.Pattern[str]:
-    """Gitignore-style glob: '**' matches any depth, '*' stays within one segment."""
-    placeholder = "\x00DOUBLESTAR\x00"
-    escaped = re.escape(pattern.strip("/")).replace(re.escape("**"), placeholder)
-    escaped = escaped.replace(re.escape("*"), "[^/]*")
-    escaped = escaped.replace(placeholder, ".*")
-    return re.compile(f"^{escaped}$")
-
-
-def _normalize(path: str) -> str:
-    return str(path).strip().replace("\\", "/").lstrip("/")
+    """Tier A globs from the harness manifest (see module docstring)."""
+    return tier_a_globs(root=root)
 
 
 def matches_self_patch_allowlist(path: str, patterns: list[str] | None = None, *, root: Path | None = None) -> bool:
-    """True if ``path`` (repo-relative) matches at least one allowlist pattern."""
-    pats = patterns if patterns is not None else load_self_patch_allowlist(root)
-    norm = _normalize(path)
-    return any(_pattern_to_regex(p).match(norm) for p in pats)
+    """True if ``path`` (repo-relative) matches at least one allowlist pattern.
+
+    When ``patterns`` is omitted, resolves via the manifest (Tier A only) —
+    equivalent to ``classify_tier(path, root=root) == "A"`` but also usable
+    against an arbitrary explicit pattern list for testing.
+    """
+    if patterns is not None:
+        from agent_lab.harness_proposer import _pattern_to_regex
+
+        norm = _normalize(path)
+        return any(_pattern_to_regex(p).match(norm) for p in patterns)
+    return classify_tier(path, root=root) == "A"
 
 
 def classify_self_patch(touched_paths: list[str], *, root: Path | None = None) -> dict[str, Any]:
@@ -121,8 +85,6 @@ def classify_self_patch(touched_paths: list[str], *, root: Path | None = None) -
 
 
 __all__ = [
-    "self_patch_allowlist_path",
-    "ensure_self_patch_allowlist",
     "load_self_patch_allowlist",
     "matches_self_patch_allowlist",
     "classify_self_patch",

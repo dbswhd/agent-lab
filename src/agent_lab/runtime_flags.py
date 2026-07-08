@@ -587,6 +587,13 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "Override path to playbook.jsonl (default .agent-lab/wisdom/playbook.jsonl)",
     ),
     FlagDef(
+        "AGENT_LAB_HARNESS_PROPOSER",
+        "feature",
+        "HSIL HS3 PROPOSE: bounded PatchCandidate validation (STOP guard/tier/axis/eval-surface gates) "
+        "against .agent-lab/harness/manifest.json — offline CLI (scripts/propose_harness.py), no LLM call "
+        "(default off)",
+    ),
+    FlagDef(
         "AGENT_LAB_FEEDBACK_ADVISOR",
         "feature",
         "S1 Phase B: feedback advisor reads outcomes.jsonl and adjusts role/agent setup via SetupHint (default off; requires TURN_METRICS+OUTCOME_LEDGER)",

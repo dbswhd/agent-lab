@@ -117,7 +117,10 @@ def test_fast_bucket_collection_budget():
     # weakness_miner.py traces/memory_store/pattern-recurrence tests, execute-outcome tags).
     # 2026-07-08: raised 2740 -> 2760 for HS2 PLAYBOOK (wisdom/playbook.py curator/query tests,
     # correction_harvester dual-write, context bundle playbook block injection).
-    assert count <= 2760, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-09: raised 2760 -> 2795 for HS3 PROPOSE (harness_proposer.py manifest/tier/axis/
+    # STOP-guard/BLOCK-parser tests, propose_harness.py CLI subprocess tests, self_patch.py
+    # allowlist-migration test rewrite).
+    assert count <= 2795, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

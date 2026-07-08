@@ -26,6 +26,10 @@ registered ``PatchCandidate``:
 ``manifest.json`` is the single git-tracked SSOT for editable-surface tiers
 (HS3-2) — ``self_patch.py``'s allowlist now reads its Tier A globs from here
 instead of maintaining a second list.
+
+``PatchCandidate.assertions`` (pytest node ids) is optional here — HS4-1
+(regression_gate.py) is what actually *requires* it non-empty before running
+a candidate through the worktree gate; propose-time only carries it through.
 """
 
 from __future__ import annotations
@@ -290,6 +294,7 @@ class PatchCandidate:
     files: list[str]
     diff_ref: str
     eval_additions: list[str]
+    assertions: list[str]
     tier: str
     harness_rev: str
     status: str
@@ -311,6 +316,7 @@ def propose_candidate(
     files: list[str],
     diff_ref: str,
     eval_additions: list[str] | None = None,
+    assertions: list[str] | None = None,
     introduces_new_surface: bool = False,
     block: str | None = None,
     run_meta: RunStateLike | None = None,
@@ -364,6 +370,7 @@ def propose_candidate(
         files=list(files),
         diff_ref=diff_ref,
         eval_additions=list(eval_additions or []),
+        assertions=list(assertions or []),
         tier=tier,
         harness_rev=HARNESS_REV_UNSET,
         status="proposed",
@@ -387,6 +394,17 @@ def write_candidate(candidate: PatchCandidate, *, root: Path | None = None) -> P
     return path
 
 
+def load_candidate(candidate_id: str, *, root: Path | None = None) -> dict[str, Any]:
+    """Read a written candidate.json back (HS4 REGRESS consumer)."""
+    path = candidates_root(root) / candidate_id / "candidate.json"
+    if not path.is_file():
+        raise FileNotFoundError(f"candidate not found: {path}")
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError(f"malformed candidate file: {path}")
+    return data
+
+
 __all__ = [
     "DEFAULT_MANIFEST",
     "ProposalRejected",
@@ -407,4 +425,5 @@ __all__ = [
     "propose_candidate",
     "candidates_root",
     "write_candidate",
+    "load_candidate",
 ]

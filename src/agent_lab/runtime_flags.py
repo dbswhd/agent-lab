@@ -594,6 +594,13 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "(default off)",
     ),
     FlagDef(
+        "AGENT_LAB_REGRESSION_GATE",
+        "feature",
+        "HSIL HS4 REGRESS: worktree apply + declared assertions (HS4-1) + held-out test-fast (HS4-3) + "
+        "smoke signal (HS4-4) — offline CLI (scripts/regress_harness.py), verdict decided by assertions "
+        "not pass-rate (default off)",
+    ),
+    FlagDef(
         "AGENT_LAB_FEEDBACK_ADVISOR",
         "feature",
         "S1 Phase B: feedback advisor reads outcomes.jsonl and adjusts role/agent setup via SetupHint (default off; requires TURN_METRICS+OUTCOME_LEDGER)",

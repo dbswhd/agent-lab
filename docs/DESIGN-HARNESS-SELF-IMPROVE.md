@@ -258,7 +258,7 @@ outcome_harvester (RECORD)     ✅
   → weakness_mining            ✅ HS1 (2026-07-08)
   → playbook                   ✅ HS2 (2026-07-08)
   → harness_proposal           ✅ HS3 (2026-07-09)
-  → regression_gate            ❌ HS4
+  → regression_gate            ✅ HS4 (2026-07-09)
   → inbox_merge (harness_patch)❌ HS5
 ```
 
@@ -632,18 +632,26 @@ Self-Harness bounded context 4항목 (R11) 필수. eval 표면 동시 확장 검
 
 ### HS4 — REGRESS (Impl B3)
 
-| ID | 작업 | 파일 |
-|----|------|------|
-| HS4-1 | worktree apply → pytest — candidate가 건드린 표면에 대응하는 assertion 목록 명시 필수 (REVIEW P0-1) | `regression_gate.py` |
-| HS4-2 | held-in: 동일 `primary_tag` topics **+ `resolved_patterns.jsonl` 누적 셋 전체** (REVIEW P0-2) | `dogfood-v1.json` tag map, `.agent-lab/harness/resolved_patterns.jsonl` |
-| HS4-3 | held-out: test-fast + dogfood excl. held-in | `regression_gate.py` |
-| HS4-4 | Mission REPAIR smoke 1 case (R1 autoresearch) | `mission/loop.py` |
-| HS4-5 | fail candidate 보존 (negative results) | `candidates/{id}/` |
-| HS4-6 | eval 동시 확장 검사: 신규 glob/블록/플래그 도입 시 대응 dogfood topic·evals case 없으면 거부 (REVIEW P0-5, 레드 퀸 대응) | `regression_gate.py` |
+| ID | 작업 | 파일 | 상태 |
+|----|------|------|------|
+| HS4-1 | worktree apply → pytest — candidate가 건드린 표면에 대응하는 assertion 목록 명시 필수 (REVIEW P0-1) | `regression_gate.py` | ✅ 2026-07-09 |
+| HS4-2 | held-in: 동일 `primary_tag` topics **+ `resolved_patterns.jsonl` 누적 셋 전체** (REVIEW P0-2) | `regression_gate.py`(tag map), `.agent-lab/harness/resolved_patterns.jsonl` | ✅ 2026-07-09 (부분 — 아래 노트) |
+| HS4-3 | held-out: test-fast + dogfood excl. held-in | `regression_gate.py` | ✅ 2026-07-09 |
+| HS4-4 | Mission REPAIR smoke 1 case (R1 autoresearch) | `regression_gate.py`(smoke_room.py 재사용) | ✅ 2026-07-09 (축소 스코프 — 아래 노트) |
+| HS4-5 | fail candidate 보존 (negative results) | `regression_gate.write_report()` | ✅ 2026-07-09 |
+| HS4-6 | eval 동시 확장 검사: 신규 glob/블록/플래그 도입 시 대응 dogfood topic·evals case 없으면 거부 (REVIEW P0-5, 레드 퀸 대응) | `regression_gate.py` | ✅ 2026-07-09 |
 
-플래그: `AGENT_LAB_REGRESSION_GATE` (default `0`)
+플래그: `AGENT_LAB_REGRESSION_GATE` (default `0`, `autonomous.owns`)
 
 **REGRESS 게이트 원칙 (REVIEW P0-1):** 벤치마크/dogfood 통과율은 후보 랭킹 신호로만 쓴다. merge 게이트는 결정론적 assertion(pytest 개별 assert, smoke 38 baseline, Oracle verify)으로 판정 — 통과율 단독으로 merge 불가 (분류기는 신호, 검증기가 게이트).
+
+**구현 노트 (2026-07-09):**
+- **격리 함정 해결**: git worktree는 이 checkout의 `.venv`를 공유하므로, worktree 안에서 그냥 pytest를 돌리면 editable-install된 **메인 checkout의** `agent_lab`을 계속 import해 "격리 검증"이 거짓이 될 뻔했다. `PYTHONPATH=<worktree>/src` 우선 주입으로 실제 격리를 확인(수동 검증 + `test_regression_gate.py`의 real-git end-to-end 테스트 2건으로 고정).
+- **HS4-1 스키마**: `PatchCandidate.assertions`(pytest node id 목록) 필드를 HS3의 `PatchCandidate`에 추가 — propose 시점엔 선택([]기본), **HS4가 비어있으면 구조적으로 거부**(결정론적 게이트 요구사항의 실제 집행 지점).
+- **HS4-2 부분 구현**: `_TAG_TOPIC_MAP`(태그→dogfood topic id)은 `weak_taste`만 근거 있게 채움(M3/M4 시나리오가 정확히 BLOCK/CHALLENGE를 스크립트함 — `turn_metrics._derive_failure_tags`의 탐지 조건과 일치). `harness_infra`/`false_success`는 **아직 근거 있는 topic이 없어 빈 리스트로 남김**(허위 매핑보다 빈 목록이 정직함). `resolved_patterns.jsonl` 누적은 완전 구현(append-only, HS5가 merge 시 기록).
+- **HS4-4 축소 스코프**: "Mission REPAIR 루프" 전체가 아니라 `smoke_room.py`(38 baseline 검증)를 worktree 안에서 1회 재사용 — HS7-3이 다루는 완전한 REPAIR verify 신호는 별개(동결).
+- **디펜스 인 뎁스**: HS4는 candidate의 `files` 선언을 그냥 믿지 않는다 — 실제 diff에서 `+++ b/...` 헤더로 터치 파일을 파싱해 선언과 다르면 거부. HS4-6도 HS3-6(제안자 자기 신고)와 별개로 diff 텍스트에서 신규 `AGENT_LAB_*` 토큰·manifest.json 터치를 직접 스캔해 재검증.
+- CLI: `scripts/regress_harness.py --candidate-id ... --diff-path ...` (offline, HS3-5와 동형).
 
 **해결 패턴 누적 셋 (REVIEW P0-2):** merge된 모든 patch의 `pattern_id`를 `resolved_patterns.jsonl`에 누적한다. 이후 모든 candidate의 held-in은 자신의 태그 + 누적 셋 전체를 포함 — 순환 보정(과거 해결 패턴 재도입)을 방지. 재발 시 HS5-4 predictions verified가 해당 patch를 회귀 원인으로 자동 귀속(ATTRIB). dogfood 시간 증가는 held-in을 태그당 대표 1 topic으로 제한해 통제.
 

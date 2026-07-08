@@ -50,6 +50,7 @@ def run_propose(args: argparse.Namespace, root: Path | None) -> int:
 
     files = [f.strip() for f in args.files.split(",") if f.strip()]
     eval_additions = [e.strip() for e in (args.eval_additions or "").split(",") if e.strip()]
+    assertions = [a.strip() for a in (args.assertions or "").split(",") if a.strip()]
     try:
         candidate = propose_candidate(
             pattern_id=args.pattern_id,
@@ -57,6 +58,7 @@ def run_propose(args: argparse.Namespace, root: Path | None) -> int:
             files=files,
             diff_ref=args.diff_ref,
             eval_additions=eval_additions,
+            assertions=assertions,
             introduces_new_surface=args.introduces_new_surface,
             block=args.block,
             root=root,
@@ -68,7 +70,9 @@ def run_propose(args: argparse.Namespace, root: Path | None) -> int:
     path = write_candidate(candidate, root=root)
     print(f"proposed: {candidate.id} (tier={candidate.tier}, axis={candidate.axis})")
     print(f"written: {path}")
-    print("next: HS4 REGRESS (not yet implemented) — held-in/held-out + assertion checks before Inbox merge (HS5).")
+    if not candidate.assertions:
+        print("warning: no --assertions declared — HS4 REGRESS will reject this candidate (HS4-1).", file=sys.stderr)
+    print("next: scripts/regress_harness.py --candidate-id " + candidate.id + " --diff-path <diff> (HS4 REGRESS).")
     return 0
 
 
@@ -81,6 +85,9 @@ def main() -> int:
     parser.add_argument("--files", help="쉼표 구분 터치 파일 목록")
     parser.add_argument("--diff-ref", help="diff 파일 경로 또는 참조 문자열")
     parser.add_argument("--eval-additions", help="쉼표 구분 dogfood topic id 또는 evals case id")
+    parser.add_argument(
+        "--assertions", help="쉼표 구분 pytest node id (HS4-1 REGRESS의 결정론적 게이트 — 없으면 HS4에서 거부)"
+    )
     parser.add_argument("--introduces-new-surface", action="store_true", help="신규 glob/블록/플래그 도입 시 지정")
     parser.add_argument("--block", help="edit_unit=block 대상(prompts.py)일 때 agent 이름")
     args = parser.parse_args()

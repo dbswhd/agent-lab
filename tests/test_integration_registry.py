@@ -120,7 +120,10 @@ def test_fast_bucket_collection_budget():
     # 2026-07-09: raised 2760 -> 2795 for HS3 PROPOSE (harness_proposer.py manifest/tier/axis/
     # STOP-guard/BLOCK-parser tests, propose_harness.py CLI subprocess tests, self_patch.py
     # allowlist-migration test rewrite).
-    assert count <= 2795, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-09: raised 2795 -> 2825 for HS4 REGRESS (regression_gate.py held-in/diff-introspection/
+    # worktree/assertion tests incl. 2 real-git end-to-end pytest-isolation tests, regress_harness.py
+    # CLI subprocess tests).
+    assert count <= 2825, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

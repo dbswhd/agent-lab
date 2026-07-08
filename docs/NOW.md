@@ -27,8 +27,8 @@
 
 ### 지금 — 코드 트랙 (전부 mock-only 검증 가능, dogfood 불필요)
 
-HS0~HS3 전부 ✅ 07-08~07-09 shipped (HS3 PROPOSE는 Impl **Tier B** 첫 항목 — Human 명시 확인 후 착수).
-다음은 **HS4 REGRESS**(Impl Tier B, `regression_gate.py` — held-in/held-out + REVIEW P0-1/P0-2 원칙 구현) —
+HS0~HS4 전부 ✅ 07-08~07-09 shipped (Impl **Tier B**, Human 명시 확인 후 착수).
+다음은 **HS5 MERGE**(Impl Tier B, `human_inbox.py` `harness_patch` 카드 + Tier A L2 경량승인/Tier B full gate) —
 착수는 별도 Human 확인 후.
 
 | # | 항목 | 소스 ID | 할 일 | 닫힘 기준 |

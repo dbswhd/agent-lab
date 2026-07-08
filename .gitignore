@@ -24,6 +24,8 @@ src/.agent-lab/
 .agent-lab/wisdom/playbook.jsonl
 # HS3 PROPOSE — candidate drafts (runtime data; manifest.json itself IS tracked)
 .agent-lab/harness/candidates/
+# HS4 REGRESS — cumulative resolved-pattern ledger (runtime data, not source)
+.agent-lab/harness/resolved_patterns.jsonl
 node_modules/
 web/test-results/
 # Local design dry-run artifact (not session plan.md)

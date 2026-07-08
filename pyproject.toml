@@ -21,7 +21,7 @@ dependencies = [
 [project.optional-dependencies]
 cursor = ["cursor-sdk>=0.1.0"]
 test = ["pytest>=8", "pytest-xdist>=3.5"]
-dev = ["ruff>=0.15", "mypy>=1.13", "basedpyright>=1.39"]
+dev = ["ruff>=0.15", "mypy>=1.13,<2", "basedpyright>=1.39"]
 
 [project.scripts]
 agent-lab = "agent_lab.cli:main"

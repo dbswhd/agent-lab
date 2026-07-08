@@ -378,6 +378,12 @@ def test_provider_login_status_cursor_not_logged_in(monkeypatch: pytest.MonkeyPa
     import agent_lab.auth_runs as auth_runs
 
     monkeypatch.setenv("AGENT_LAB_MOCK_AGENTS", "0")
+    # CI runners often lack cursor-agent on PATH; stub resolve so status probes run.
+    monkeypatch.setattr(
+        auth_runs,
+        "_resolve_provider_executable",
+        lambda _spec: "/usr/bin/cursor-agent",
+    )
 
     def fake_run(argv, **kwargs):  # type: ignore[no-untyped-def]
         return subprocess.CompletedProcess(argv, 0, stdout="Not logged in\n", stderr="")

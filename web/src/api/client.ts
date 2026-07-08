@@ -1690,15 +1690,10 @@ export async function runGraph(
   await consumeSse(res, onEvent);
 }
 
-export type RoomMode = "discuss" | "plan";
 
 export type RunRoomOptions = {
   sessionId?: string;
   files?: File[];
-  /** @deprecated Prefer discuss sends; plan side effects use TurnPolicy. Ignored when synthesizeOnly. */
-  mode?: RoomMode;
-  /** @deprecated Prefer TurnPolicy / synthesizeOnly. Ignored when synthesizeOnly. */
-  synthesize?: boolean;
   /**
    * @deprecated Use {@link runSynthesizeOnly} — kept for callers that still pass
    * synthesizeOnly through runRoom.
@@ -1844,7 +1839,7 @@ export async function runRoom(
   const form = new FormData();
   form.append("topic", topic);
   form.append("agents", JSON.stringify(agents));
-  // Normal agent turns: discuss is SSOT; mode/synthesize are legacy hints only.
+  // TurnPolicy: casual sends are topic-only; server routes plan/execute side effects.
   form.append("mode", "discuss");
   form.append("synthesize", "false");
   form.append("synthesize_only", "false");
@@ -1855,7 +1850,9 @@ export async function runRoom(
   form.append("review_mode", String(opts?.reviewMode ?? false));
   form.append("consensus_mode", String(opts?.consensusMode ?? false));
   form.append("efficiency_mode", String(opts?.efficiencyMode ?? false));
-  form.append("turn_profile", opts?.turnProfile ?? "analyze");
+  if (opts?.turnProfile?.trim()) {
+    form.append("turn_profile", opts.turnProfile.trim());
+  }
   form.append("research_mode", String(opts?.researchMode ?? false));
   if (opts?.roomPreset?.trim()) {
     form.append("preset", opts.roomPreset.trim());

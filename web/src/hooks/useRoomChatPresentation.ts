@@ -138,11 +138,9 @@ export function useRoomChatPresentation(ctx: Ctx) {
     setPendingFiles,
     composerObjectionNotice,
     composerEmergenceHint,
+    composerRoutingHint,
     composerPresetHint,
     composerCostHint,
-    visiblePresets,
-    roomPreset,
-    selectRoomPreset,
     runSlashCommand,
     commandHint,
     externalCommandConfirm,
@@ -152,7 +150,6 @@ export function useRoomChatPresentation(ctx: Ctx) {
     pendingSend,
     setPendingSend,
     executeSend,
-    composeMode,
     goalView,
     planExecutions,
     filesFocusPath,
@@ -233,7 +230,6 @@ export function useRoomChatPresentation(ctx: Ctx) {
   const composerClassName = useMemo(
     () =>
       [
-        turnProfile === "review" ? "composer--review" : undefined,
         turnProfile === "loop" ? "composer--free" : undefined,
         composerModeVariant === "consensus"
           ? "composer--consensus-mode"
@@ -375,11 +371,9 @@ export function useRoomChatPresentation(ctx: Ctx) {
     composerObjectionNotice,
     focusObjection,
     composerEmergenceHint,
+    composerRoutingHint,
     composerPresetHint,
     composerCostHint,
-    visiblePresets,
-    roomPreset,
-    selectRoomPreset,
     agents,
     executeSlashCommand,
     commandHint,
@@ -394,7 +388,6 @@ export function useRoomChatPresentation(ctx: Ctx) {
     pendingSend,
     setPendingSend,
     executeSend,
-    composeMode,
     loading,
     recoveryItemsLength: recoveryItemsList.length,
     goalView,

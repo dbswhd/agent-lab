@@ -52,6 +52,7 @@ def _post_agent_turn_plan(
         result = apply_turn_effects(
             signals=TurnSignals.from_run_meta(
                 run_meta,
+                topic=topic,
                 consensus_meta=consensus_meta,
                 cancelled=cancelled,
                 proposed_tags_count=count_proposed_tags_in_turn(messages),

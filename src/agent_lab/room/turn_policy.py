@@ -116,6 +116,80 @@ def turn_policy_enabled() -> bool:
     return raw not in ("0", "false", "no", "off")
 
 
+_PLAN_EXECUTE_INTENT_MARKERS = (
+    "dry-run",
+    "dry run",
+    "dry_run",
+    "oracle pass",
+    "oracle verify",
+    "plan action",
+    "propose_build",
+    "execute lane",
+    "worktree",
+    "지금 실행",
+)
+
+
+def detect_plan_execute_intent(text: str) -> bool:
+    """Topic asks for plan → approve → execute → verify (not casual discuss)."""
+    lowered = (text or "").strip().lower()
+    if not lowered:
+        return False
+    if any(marker in lowered for marker in _PLAN_EXECUTE_INTENT_MARKERS):
+        return True
+    if "merge" in lowered and any(token in lowered for token in ("oracle", "승인", "approve", "verify")):
+        return True
+    if "plan" in lowered and any(token in lowered for token in ("dry", "execute", "승인", "approve", "merge")):
+        return True
+    return False
+
+
+def resolve_discuss_light(
+    *,
+    mode: str,
+    synthesize: bool,
+    consensus_mode: bool,
+    agent_rounds: int,
+    room_preset: str | None,
+    turn_profile: str | None,
+    topic: str,
+    run_meta: RunStateLike | None = None,
+) -> bool:
+    """§3.2.1 light discuss — off for plan/execute workflow topics and active plan FSM."""
+    from agent_lab.plan.workflow import is_plan_workflow_active
+
+    meta = run_meta or {}
+    if is_plan_workflow_active(meta):
+        return False
+    session_topic = str(meta.get("topic") or "").strip()
+    current_topic = (topic or "").strip()
+    if detect_plan_execute_intent(current_topic) or detect_plan_execute_intent(session_topic):
+        return False
+    preset = (room_preset or "").strip().lower()
+    profile = (turn_profile or "").strip().lower()
+    return bool(
+        (mode or "discuss").strip().lower() == "discuss"
+        and not synthesize
+        and not consensus_mode
+        and agent_rounds <= 1
+        and (preset == "supervisor" or profile == "loop")
+    )
+
+
+def maybe_stamp_plan_execute_skill_intent(run: RunState, *, topic: str) -> None:
+    """Auto plan authority for execute-lane dogfood topics (TurnPolicy era — no Plan toggle)."""
+    if not turn_policy_enabled():
+        return
+    session_topic = str(run.get("topic") or "").strip()
+    if not (detect_plan_execute_intent(topic) or detect_plan_execute_intent(session_topic)):
+        return
+    if normalize_skill_intent(run.get("_pending_skill_intent")) or normalize_skill_intent(
+        run.get("_active_skill_intent"),
+    ):
+        return
+    run["_pending_skill_intent"] = "plan"
+
+
 def _route_category_for_topic(topic: str, run_meta: RunStateLike) -> str | None:
     """Lightweight topic route — used before full turn_routing when TurnPolicy boots."""
     text = (topic or "").strip()
@@ -144,11 +218,42 @@ def skip_plan_fsm_bootstrap(signals: TurnSignals) -> bool:
     """Casual discuss / anchored quick tasks must not boot plan FSM (P0-3)."""
     if signals.skill_intent or signals.proposed_tags_count > 0:
         return False
-    return bool(
-        signals.route_category == "quick"
-        or signals.discuss_light
-        or signals.clarity_short_circuit
-    )
+    if signals.plan_execute_intent:
+        return False
+    clarity_skip = signals.clarity_short_circuit and not signals.plan_execute_intent
+    return bool(signals.route_category == "quick" or signals.discuss_light or clarity_skip)
+
+
+def _preset_norm(signals: TurnSignals) -> str:
+    return (signals.room_preset or "").strip().lower()
+
+
+def is_fast_turn(signals: TurnSignals) -> bool:
+    """Low-side-effect path — single-agent quick, no FSM/scribe (P2b TurnContract)."""
+    if signals.plan_execute_intent:
+        return False
+    preset = _preset_norm(signals)
+    if preset == "fast":
+        return True
+    if preset == "supervisor":
+        return False
+    if signals.roster_size > 1:
+        return False
+    if signals.clarity_short_circuit:
+        return True
+    return signals.route_category == "quick" and signals.roster_size <= 1
+
+
+def is_supervisor_turn(signals: TurnSignals) -> bool:
+    """Plan FSM / multi-agent dogfood path (P2b TurnContract)."""
+    if is_fast_turn(signals):
+        return False
+    preset = _preset_norm(signals)
+    if preset == "supervisor":
+        return True
+    if preset == "fast":
+        return False
+    return True
 
 
 @dataclass(frozen=True, slots=True)
@@ -168,6 +273,8 @@ class TurnSignals:
     route_category: str | None = None
     discuss_light: bool = False
     clarity_short_circuit: bool = False
+    plan_execute_intent: bool = False
+    roster_size: int = 0
 
     @classmethod
     def from_run_meta(
@@ -183,6 +290,7 @@ class TurnSignals:
         supervisor_first_turn: bool = False,
         skill_intent: str | None = None,
         proposed_tags_count: int = 0,
+        roster_size: int | None = None,
     ) -> TurnSignals:
         from agent_lab.consensus_agreements import pending_consensus_agreements
         from agent_lab.plan.workflow import is_plan_workflow_active, plan_workflow_phase
@@ -205,6 +313,16 @@ class TurnSignals:
             from agent_lab.clarity import clarity_short_circuit
 
             clarity_sc = clarity_short_circuit(topic)
+        session_topic = str(run.get("topic") or "").strip()
+        plan_execute_intent = detect_plan_execute_intent(topic or "") or (
+            bool(session_topic) and detect_plan_execute_intent(session_topic)
+        )
+        agents_raw = run.get("agents")
+        resolved_roster = (
+            roster_size
+            if roster_size is not None
+            else (len([a for a in agents_raw if str(a).strip()]) if isinstance(agents_raw, list) else 0)
+        )
         return cls(
             room_preset=preset,
             plan_workflow_phase=phase,
@@ -221,8 +339,9 @@ class TurnSignals:
             route_category=route_category,
             discuss_light=bool(run.get("discuss_light")),
             clarity_short_circuit=clarity_sc,
+            plan_execute_intent=plan_execute_intent,
+            roster_size=max(0, int(resolved_roster)),
         )
-
 
     def routing_contract_snapshot(self) -> dict[str, Any]:
         """TurnContract routing signals persisted for trace / eval (P1)."""
@@ -230,7 +349,11 @@ class TurnSignals:
             "route_category": self.route_category,
             "discuss_light": self.discuss_light,
             "clarity_short_circuit": self.clarity_short_circuit,
+            "plan_execute_intent": self.plan_execute_intent,
             "skip_fsm_bootstrap": skip_plan_fsm_bootstrap(self),
+            "fast_turn": is_fast_turn(self),
+            "supervisor_turn": is_supervisor_turn(self),
+            "roster_size": self.roster_size,
         }
 
 
@@ -297,10 +420,9 @@ class TurnPolicyEngine:
                 turn_kind="plan_side_effect",
             )
 
-        preset = (signals.room_preset or "").strip().lower()
         phase = (signals.plan_workflow_phase or "INTAKE").strip().upper()
-        is_fast = preset == "fast"
-        is_supervisor = preset == "supervisor"
+        is_fast = is_fast_turn(signals)
+        is_supervisor = is_supervisor_turn(signals)
         skip_fsm = skip_plan_fsm_bootstrap(signals)
 
         init_pw = bool(
@@ -312,7 +434,6 @@ class TurnPolicyEngine:
 
         advance_pw = bool(
             is_supervisor
-            and not is_fast
             and (signals.plan_workflow_active or init_pw)
             and phase in _PLAN_FSM_TICK_PHASES
             and not skip_fsm
@@ -381,10 +502,12 @@ def prepare_turn_policy_before_agent_round(
     )
     from agent_lab.run.meta import read_run_meta
 
+    skill_hint = normalize_skill_intent(run_meta.get("_active_skill_intent"))
     signals = TurnSignals.from_run_meta(
         run_meta,
         topic=topic or None,
         supervisor_first_turn=human_turn <= 1,
+        skill_intent=skill_hint,
     )
     room_preset_hint = signals.room_preset
     effects = TurnPolicyEngine.resolve(signals)
@@ -397,6 +520,7 @@ def prepare_turn_policy_before_agent_round(
             topic=topic or None,
             room_preset=room_preset_hint,
             supervisor_first_turn=human_turn <= 1,
+            skill_intent=skill_hint,
         )
         effects = TurnPolicyEngine.resolve(signals)
         persist_turn_policy_on_run_meta(run_meta, effects, signals=signals)

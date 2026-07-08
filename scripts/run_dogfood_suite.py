@@ -110,6 +110,10 @@ def _run_topic_session(entry: dict[str, Any], sessions_base: Path) -> tuple[Path
         consensus_mode=profile == "free",
         turn_profile=profile,
     )
+    if os.environ.get("AGENT_LAB_DOGFOOD_EXECUTE_OUTCOMES", "").strip().lower() in {"1", "true", "yes"}:
+        from agent_lab.outcome_harvester import record_mock_execute_outcome
+
+        record_mock_execute_outcome(folder)
     report = score_session(folder)
     return folder, report
 
@@ -695,6 +699,7 @@ def run_feedback(rows: list[dict[str, Any]], sessions_base: Path | None, repeat:
     os.environ["AGENT_LAB_TURN_METRICS"] = "1"
     os.environ["AGENT_LAB_OUTCOME_LEDGER"] = "1"
     os.environ["AGENT_LAB_FEEDBACK_ADVISOR"] = "1"
+    os.environ["AGENT_LAB_DOGFOOD_EXECUTE_OUTCOMES"] = "1"
 
     base = sessions_base or Path(tempfile.mkdtemp(prefix="dogfood-feedback-"))
     rc = 0
@@ -711,9 +716,18 @@ def run_feedback(rows: list[dict[str, Any]], sessions_base: Path | None, repeat:
     turn_source_counts = report.get("turn_source_counts") or {}
     history_n = int(turn_source_counts.get("history") or 0)
     explore_n = int(turn_source_counts.get("explore") or 0)
+    history_exec_n = int((report.get("by_source") or {}).get("history", {}).get("n") or 0)
+    lift = (report.get("advisor_lift") or {}).get("history_vs_default")
     print(f"loop closure: advisor used history on {history_n} turn(s), explored on {explore_n}.")
+    print(
+        f"lift signal: execute-phase history n={history_exec_n}, "
+        f"advisor_lift.history_vs_default={lift!r} "
+        f"(verdict_eligible={report.get('verdict_eligible_total', 0)}).",
+    )
     if history_n == 0 and explore_n == 0:
         print("  (no history/explore-source turns yet — raise --repeat or lower AGENT_LAB_FEEDBACK_MIN_SAMPLE)")
+    if history_exec_n == 0:
+        print("  (no execute-phase history rows — live lift needs Oracle verify or dogfood execute outcomes)")
     return rc
 
 

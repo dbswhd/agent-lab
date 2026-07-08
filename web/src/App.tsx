@@ -22,7 +22,8 @@ import { healthToAgentOptions } from "./utils/agentHealthOptions";
 import { sortByAgentId } from "./utils/agentOrder";
 import { RoomChat } from "./components/RoomChat";
 import { SettingsPage } from "./components/SettingsPage";
-import { getTurnStrategy } from "./utils/composeMode";
+import { IMPLICIT_ROOM_PRESET } from "./utils/roomComposerPrefs";
+import { turnProfileForRoomPreset } from "./utils/turnProfile";
 import { SessionRailStatusChip } from "./components/SessionRailStatusChip";
 import { SessionList } from "./components/SessionList";
 import { SessionRail } from "./components/SessionRail";
@@ -689,7 +690,7 @@ export default function App() {
                       selectedAgents={agents
                         .filter((a) => a.ready)
                         .map((a) => a.id)}
-                      turnProfile={getTurnStrategy()}
+                      turnProfile={turnProfileForRoomPreset(IMPLICIT_ROOM_PRESET)}
                       apiOk={apiOk}
                       healthAgents={healthAgents}
                       healthLoading={healthLoading}

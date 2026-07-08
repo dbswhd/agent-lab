@@ -46,10 +46,7 @@ export function resolveTaskBarMode(
   if (composerVariant === "consensus") return "consensus";
   if (composerVariant === "plan") return "plan";
   if (turnProfile === "quick") return "quick";
-  if (turnProfile === "specialist") return "specialist";
-  if (turnProfile === "loop") return "loop";
-  if (turnProfile === "team" || turnProfile === "analyze") return "team";
-  return "discuss";
+  return "loop";
 }
 
 export function lastTurnHadConsensusMode(

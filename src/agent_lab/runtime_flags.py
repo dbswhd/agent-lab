@@ -565,6 +565,11 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "S1 Phase A: append per-turn outcome rows to .agent-lab/outcomes.jsonl for session-to-session learning (default off)",
     ),
     FlagDef(
+        "AGENT_LAB_DOGFOOD_EXECUTE_OUTCOMES",
+        "feature",
+        "Dogfood suite: record mock execute-phase outcome rows without live Oracle (default off)",
+    ),
+    FlagDef(
         "AGENT_LAB_FEEDBACK_ADVISOR",
         "feature",
         "S1 Phase B: feedback advisor reads outcomes.jsonl and adjusts role/agent setup via SetupHint (default off; requires TURN_METRICS+OUTCOME_LEDGER)",

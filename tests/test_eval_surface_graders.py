@@ -116,7 +116,11 @@ def test_session_contract_passes_generated_mock_quality_signals() -> None:
         }
     )
     trace["turn_profile"] = "analyze"
-    trace["spans"] = [{"name": "route", "data": {}}, {"name": "role_plan", "data": {}}, {"name": "room_round", "data": {}}]
+    trace["spans"] = [
+        {"name": "route", "data": {}},
+        {"name": "role_plan", "data": {}},
+        {"name": "room_round", "data": {}},
+    ]
     case = {
         "case_id": "S3",
         "expected": {

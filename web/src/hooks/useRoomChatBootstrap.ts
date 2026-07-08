@@ -12,7 +12,6 @@ import { useHumanDecisionRuntime } from "./useHumanDecisionRuntime";
 import type { PendingFile } from "../components/ChatComposer";
 import { type WorkFocusTarget } from "../components/WorkToolPanel";
 import { useMacNotifications } from "./useMacNotifications";
-import { type ComposerTurnProfile } from "../utils/turnProfile";
 import { usePlanExecute } from "./usePlanExecute";
 import { useLocale } from "../i18n/useLocale";
 import { useRoomWorkspace } from "./useRoomWorkspace";
@@ -124,13 +123,11 @@ export function useRoomChatBootstrap(props: RoomChatProps) {
   const {
     turnProfile,
     roomPreset,
-    selectRoomPreset,
     forceRoomPreset,
     resolvedRoomPresets,
-    visiblePresets,
-    composeMode,
     composerModeVariant,
     composerPresetHint,
+    composerRoutingHint,
     composerEmergenceHint,
     composerCostHint,
   } = useRoomComposerPrefs({
@@ -142,6 +139,7 @@ export function useRoomChatBootstrap(props: RoomChatProps) {
     healthAgents,
     selectedAgents: selected,
     sessionRun: session?.run as Record<string, unknown> | undefined,
+    draftTopic: text,
   });
 
   // §3.2.1: fast is single-agent — promote to supervisor when roster > 1 (no silent truncate).
@@ -154,7 +152,6 @@ export function useRoomChatBootstrap(props: RoomChatProps) {
   const [pendingSend, setPendingSend] = useState<{
     text: string;
     files: PendingFile[];
-    turnProfile: ComposerTurnProfile;
   } | null>(null);
   const lastPlainSendTextRef = useRef<string | null>(null);
   const [sendReceipt, setSendReceipt] = useState<string | null>(null);
@@ -337,9 +334,9 @@ export function useRoomChatBootstrap(props: RoomChatProps) {
     clearRunWatchdog, clearLongRunHint, scheduleLongRunHint, armStopWatchdog,
     planActionFocusIndex, setPlanActionFocusIndex, workHookAlert, setWorkHookAlert,
     composerNoticeDismissed, setComposerNoticeDismissed, openInspectorRef, permOpen, setPermOpen,
-    researchMode, locale, localeMsg, turnProfile, roomPreset, selectRoomPreset,
-    forceRoomPreset, resolvedRoomPresets, visiblePresets, composeMode, composerModeVariant,
-    composerPresetHint, composerEmergenceHint, composerCostHint, pendingSend, setPendingSend,
+    researchMode, locale, localeMsg, turnProfile, roomPreset,
+    forceRoomPreset, resolvedRoomPresets, composerModeVariant,
+    composerPresetHint, composerRoutingHint, composerEmergenceHint, composerCostHint, pendingSend, setPendingSend,
     lastPlainSendTextRef, sendReceipt, setSendReceipt, sendReceiptRaw, setSendReceiptRaw,
     discussPaused, setDiscussPaused, workFocus, setWorkFocus, sendReceiptTimerRef,
     clarifierQuestions, setClarifierQuestions, clarifierInterview, setClarifierInterview,

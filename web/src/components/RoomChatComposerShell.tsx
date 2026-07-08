@@ -55,9 +55,6 @@ type Props = {
   turnHint?: string | null;
   costHint?: string | null;
   locale: ReturnType<typeof useLocale>["locale"];
-  roomPresets: ComponentProps<typeof ChatComposer>["roomPresets"];
-  roomPreset: string | null;
-  onRoomPresetSelect: (id: string) => void;
   agents: AgentOption[];
   onOpenModelPicker: () => void;
   choicePopover: ReactNode;
@@ -102,9 +99,6 @@ export function RoomChatComposerShell({
   turnHint,
   costHint,
   locale,
-  roomPresets,
-  roomPreset,
-  onRoomPresetSelect,
   agents,
   onOpenModelPicker,
   choicePopover,
@@ -199,9 +193,6 @@ export function RoomChatComposerShell({
           costHint={costHint}
           locale={locale}
           sessionId={sessionId}
-          roomPresets={roomPresets}
-          roomPreset={roomPreset}
-          onRoomPresetSelect={onRoomPresetSelect}
           activeModels={sortAgentIds(selected)
             .map((id) => agents.find((agent) => agent.id === id))
             .filter((agent): agent is AgentOption => Boolean(agent))}

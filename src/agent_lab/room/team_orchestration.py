@@ -200,14 +200,9 @@ def team_r1_split(
 
 
 def normalize_turn_profile(profile: str | None) -> str:
-    p = (profile or "analyze").strip().lower()
-    if p == "discuss":
-        return "analyze"
-    if p == "review":
-        return "free"
-    if p in ("quick", "analyze", "free", "specialist", "verified"):
-        return p
-    return "analyze"
+    from agent_lab.turn_modes import normalize_runtime_turn_profile
+
+    return normalize_runtime_turn_profile(profile, fallback="analyze")
 
 
 def count_parallel_r1_agents(turn_messages: list[Any]) -> int:

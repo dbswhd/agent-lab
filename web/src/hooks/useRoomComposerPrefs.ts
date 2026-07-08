@@ -1,11 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AgentHealthRow, RoomPreset } from "../api/client";
 import { fetchRoomPresets } from "../api/client";
-import {
-  getTurnStrategy,
-  setTurnStrategy,
-  type ComposeMode,
-} from "../utils/composeMode";
 import { fetchRoomModes, loopCostHintLine } from "../utils/roomModes";
 import {
   emergenceHintLine,
@@ -13,11 +8,14 @@ import {
   resolveRoomPresets,
 } from "../utils/roomPresets";
 import {
-  turnProfileForRoomPreset,
+  composerRoutingHintLine,
+  IMPLICIT_ROOM_PRESET,
+  resolveComposerModeVariant,
+  TOPIC_ONLY_COMPOSER,
 } from "../utils/roomComposerPrefs";
 import {
   resolveTurnSend,
-  setTurnProfile,
+  turnProfileForRoomPreset,
   type ComposerTurnProfile,
 } from "../utils/turnProfile";
 
@@ -27,18 +25,19 @@ export type UseRoomComposerPrefsArgs = {
   healthAgents: AgentHealthRow[];
   selectedAgents: string[];
   sessionRun?: Record<string, unknown>;
+  /** Live composer draft — pre-send routing hints. */
+  draftTopic?: string;
 };
 
-/** Phase 1c (F6): room preset + turn profile + composer hints — extracted from RoomChat. */
+/** Phase 1c (F6): implicit room preset + composer hints — topic-only era. */
 export function useRoomComposerPrefs({
   sessionRoomPreset,
   locale,
   healthAgents,
   selectedAgents,
   sessionRun,
+  draftTopic = "",
 }: UseRoomComposerPrefsArgs) {
-  const [turnProfile, setTurnProfileState] =
-    useState<ComposerTurnProfile>(getTurnStrategy);
   const [loopMaxCostTier, setLoopMaxCostTier] = useState<string | null>(null);
   const [roomPreset, setRoomPreset] = useState<string | null>(null);
   const [availablePresets, setAvailablePresets] = useState<RoomPreset[]>([]);
@@ -49,20 +48,11 @@ export function useRoomComposerPrefs({
     [availablePresets],
   );
 
-  const composeMode: ComposeMode = "discuss";
+  const effectivePreset = roomPreset ?? IMPLICIT_ROOM_PRESET;
 
-  const changeTurnProfile = useCallback((profile: ComposerTurnProfile) => {
-    setTurnProfileState(profile);
-    setTurnStrategy(profile);
-    setTurnProfile(profile);
-  }, []);
-
-  const applyPresetTurnProfile = useCallback(
-    (presetId: string) => {
-      const mapped = turnProfileForRoomPreset(presetId);
-      if (mapped) changeTurnProfile(mapped);
-    },
-    [changeTurnProfile],
+  const turnProfile = useMemo(
+    (): ComposerTurnProfile => turnProfileForRoomPreset(effectivePreset),
+    [effectivePreset],
   );
 
   useEffect(() => {
@@ -90,33 +80,40 @@ export function useRoomComposerPrefs({
       .then((catalog) => {
         if (cancelled) return;
         setAvailablePresets(catalog.presets);
-        const def = catalog.default?.trim().toLowerCase();
-        if (def && !presetBootRef.current) {
-          presetBootRef.current = true;
-          setRoomPreset(def);
-          applyPresetTurnProfile(def);
-        }
+        if (presetBootRef.current) return;
+        presetBootRef.current = true;
+        const boot = TOPIC_ONLY_COMPOSER
+          ? IMPLICIT_ROOM_PRESET
+          : (catalog.default?.trim().toLowerCase() ?? IMPLICIT_ROOM_PRESET);
+        setRoomPreset(boot);
       })
       .catch(() => {
-        if (!cancelled) setAvailablePresets([]);
+        if (cancelled) return;
+        if (presetBootRef.current) return;
+        presetBootRef.current = true;
+        if (TOPIC_ONLY_COMPOSER) {
+          setRoomPreset(IMPLICIT_ROOM_PRESET);
+        }
       });
     return () => {
       cancelled = true;
     };
-  }, [applyPresetTurnProfile]);
+  }, []);
 
   useEffect(() => {
-    if (presetBootRef.current || roomPreset !== null) return;
+    if (TOPIC_ONLY_COMPOSER || presetBootRef.current || roomPreset !== null) {
+      return;
+    }
     const fallback =
-      resolvedRoomPresets.find((p) => p.id === "supervisor") ??
+      resolvedRoomPresets.find((p) => p.id === IMPLICIT_ROOM_PRESET) ??
       resolvedRoomPresets[0];
     if (!fallback) return;
     presetBootRef.current = true;
     setRoomPreset(fallback.id);
-    applyPresetTurnProfile(fallback.id);
-  }, [resolvedRoomPresets, roomPreset, applyPresetTurnProfile]);
+  }, [resolvedRoomPresets, roomPreset]);
 
   useEffect(() => {
+    if (TOPIC_ONLY_COMPOSER) return;
     const raw = sessionRoomPreset;
     if (typeof raw !== "string" || !raw.trim()) return;
     const id = raw.trim().toLowerCase();
@@ -127,71 +124,68 @@ export function useRoomComposerPrefs({
 
   const composerModeVariant = useMemo((): "discuss" | "plan" | "consensus" => {
     const profile = resolveTurnSend(turnProfile, selectedAgents);
-    if (profile.consensusMode) return "consensus";
-    return "discuss";
-  }, [turnProfile, selectedAgents]);
+    const planWorkflow = sessionRun?.plan_workflow as
+      | { enabled?: boolean }
+      | undefined;
+    return resolveComposerModeVariant({
+      consensusMode: profile.consensusMode,
+      planWorkflowActive: Boolean(planWorkflow?.enabled),
+      topic: draftTopic,
+      sessionTopic:
+        typeof sessionRun?.topic === "string" ? sessionRun.topic : undefined,
+      discussLight:
+        typeof sessionRun?.discuss_light === "boolean"
+          ? sessionRun.discuss_light
+          : undefined,
+    });
+  }, [turnProfile, selectedAgents, sessionRun, draftTopic]);
+
+  const composerRoutingHint = useMemo(
+    () =>
+      composerRoutingHintLine({
+        run: sessionRun,
+        draftTopic,
+        locale,
+      }),
+    [sessionRun, draftTopic, locale],
+  );
 
   const composerPresetHint = useMemo(() => {
+    if (TOPIC_ONLY_COMPOSER) return null;
     const activePreset = resolvedRoomPresets.find((p) => p.id === roomPreset);
     return presetHintLine(activePreset, locale);
   }, [resolvedRoomPresets, roomPreset, locale]);
 
   const composerEmergenceHint = useMemo(() => {
-    if (roomPreset !== "supervisor" && turnProfile !== "loop") return null;
+    if (effectivePreset !== "supervisor") return null;
     return emergenceHintLine(sessionRun, locale);
-  }, [roomPreset, turnProfile, sessionRun, locale]);
+  }, [effectivePreset, sessionRun, locale]);
 
   const composerCostHint = useMemo(() => {
-    if (roomPreset !== "supervisor" && turnProfile !== "loop") return null;
+    if (effectivePreset !== "supervisor") return null;
     return loopCostHintLine(
       healthAgents,
       selectedAgents,
-      "loop",
+      turnProfile,
       locale,
       loopMaxCostTier ?? undefined,
     );
-  }, [
-    roomPreset,
-    turnProfile,
-    healthAgents,
-    selectedAgents,
-    locale,
-    loopMaxCostTier,
-  ]);
+  }, [effectivePreset, loopMaxCostTier, healthAgents, selectedAgents, turnProfile, locale]);
 
-  const selectRoomPreset = useCallback(
-    (id: string) => {
-      const next = roomPreset === id ? null : id;
-      setRoomPreset(next);
-      if (next) applyPresetTurnProfile(next);
-    },
-    [roomPreset, applyPresetTurnProfile],
-  );
-
-  /** §3.2.1: force a preset (no toggle) — e.g. fast→supervisor on roster>1. */
-  const forceRoomPreset = useCallback(
-    (id: string) => {
-      setRoomPreset(id);
-      applyPresetTurnProfile(id);
-    },
-    [applyPresetTurnProfile],
-  );
+  const forceRoomPreset = useCallback((id: string) => {
+    setRoomPreset(id);
+    presetBootRef.current = true;
+  }, []);
 
   return {
     turnProfile,
-    changeTurnProfile,
-    roomPreset,
-    setRoomPreset,
-    selectRoomPreset,
+    roomPreset: effectivePreset,
     forceRoomPreset,
-    availablePresets,
     resolvedRoomPresets,
-    visiblePresets: resolvedRoomPresets,
-    composeMode,
     composerModeVariant,
     composerPresetHint,
+    composerRoutingHint,
     composerEmergenceHint,
     composerCostHint,
-    loopMaxCostTier,
   };
-}
+};

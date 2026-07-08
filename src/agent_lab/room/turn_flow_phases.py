@@ -764,7 +764,11 @@ def harvest_new_session_turn(
 ) -> tuple[Path, list[ChatMessage], str]:
     """Post-consensus harvest when the session folder is created at turn end."""
     from agent_lab.plan.workflow import init_plan_workflow_on_plan_send, should_enable_plan_workflow
-    from agent_lab.room.plan_scribe import _apply_scribe_after_turn, _plan_trigger_for_turn, _should_scribe_plan_after_turn
+    from agent_lab.room.plan_scribe import (
+        _apply_scribe_after_turn,
+        _plan_trigger_for_turn,
+        _should_scribe_plan_after_turn,
+    )
     from agent_lab.room.session_persist import save_room_session
     from agent_lab.room.team_orchestration import resolve_send_receipt
     from agent_lab.room.turn_policy import turn_policy_enabled

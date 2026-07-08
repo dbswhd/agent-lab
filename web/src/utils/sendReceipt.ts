@@ -1,5 +1,3 @@
-import type { ComposeMode } from "./composeMode";
-
 /** Backend `send_receipt` on room turn complete (SSE `complete`). */
 export type SendReceiptKind =
   | "discuss_saved"
@@ -30,7 +28,7 @@ export function isPlanWorkflowSendReceipt(
 /** Maps SSE / run.json receipt + fallbacks to composer chip copy. */
 export function sendReceiptLabel(
   receipt: string | undefined,
-  fallbackMode: ComposeMode,
+  planLaneFallback: boolean,
   stopped: boolean,
   locale: "en" | "ko" = "ko",
 ): string {
@@ -61,7 +59,7 @@ export function sendReceiptLabel(
     return ko ? "합의 완료" : "Consensus reached";
   if (receipt === "discuss_saved")
     return ko ? "토론 저장됨" : "Discussion saved";
-  return fallbackMode === "plan"
+  return planLaneFallback
     ? ko
       ? "plan 갱신됨"
       : "Plan updated"

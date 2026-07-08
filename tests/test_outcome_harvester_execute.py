@@ -176,3 +176,68 @@ def test_execute_after_turn_close_no_longer_loses_the_verdict(tmp_path, monkeypa
     assert rows[0]["final_verdict"] is None  # the historically-broken row
     assert rows[1]["phase"] == "execute"
     assert rows[1]["final_verdict"] == "pass"  # the fix: verdict is now captured
+
+
+def test_record_execute_outcome_reads_advisor_from_turn_metrics(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("AGENT_LAB_OUTCOME_LEDGER", "1")
+    monkeypatch.setenv("AGENT_LAB_OUTCOMES_ROOT", str(tmp_path / "root"))
+
+    folder = tmp_path / "sess-metrics"
+    folder.mkdir()
+    run = {
+        "topic": "JWT path in src/auth.py — pick retry strategy.",
+        "turns": [
+            {
+                **_TURN,
+                "category": {"value": "standard", "source": "heuristic"},
+                "turn_metrics": {
+                    "advisor_source": "history",
+                    "advisor_combo_id": "combo-1",
+                },
+            },
+        ],
+        "objections": [],
+        "executions": [],
+    }
+    (folder / "run.json").write_text(json.dumps(run), encoding="utf-8")
+
+    record_execute_outcome(folder, {"id": "exec-metrics", "oracle": {"verdict": "pass"}})
+
+    rows = [json.loads(line) for line in outcomes_path().read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert rows[0]["phase"] == "execute"
+    assert rows[0]["advisor_source"] == "history"
+    assert rows[0]["combo_id"] == "combo-1"
+
+
+def test_record_mock_execute_outcome_emits_structural_lift_row(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("AGENT_LAB_OUTCOME_LEDGER", "1")
+    monkeypatch.setenv("AGENT_LAB_OUTCOMES_ROOT", str(tmp_path / "root"))
+    monkeypatch.setenv("AGENT_LAB_DOGFOOD_EXECUTE_OUTCOMES", "1")
+
+    folder = tmp_path / "sess-mock-lift"
+    _write_run(
+        folder,
+        executions=[],
+    )
+    run = json.loads((folder / "run.json").read_text(encoding="utf-8"))
+    run["turns"] = [
+        {
+            **_TURN,
+            "category": {
+                "value": "standard",
+                "source": "heuristic",
+                "advisor_source": "history",
+            },
+        },
+    ]
+    (folder / "run.json").write_text(json.dumps(run), encoding="utf-8")
+
+    from agent_lab.outcome_harvester import record_mock_execute_outcome
+
+    record_mock_execute_outcome(folder)
+
+    rows = [json.loads(line) for line in outcomes_path().read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert len(rows) == 1
+    assert rows[0]["phase"] == "execute"
+    assert rows[0]["advisor_source"] == "history"
+    assert rows[0]["final_verdict"] == "pass"

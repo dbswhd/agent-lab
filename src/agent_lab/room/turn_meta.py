@@ -142,16 +142,10 @@ def _turn_snapshot(
         snap["efficiency_mode"] = True
     if turn_state:
         snap["turn_state"] = turn_state
-    if turn_profile and turn_profile in (
-        "quick",
-        "analyze",
-        "discuss",
-        "review",
-        "free",
-        "specialist",
-        "verified",
-    ):
-        snap["turn_profile"] = "analyze" if turn_profile == "discuss" else turn_profile
+    if turn_profile:
+        from agent_lab.turn_modes import normalize_runtime_turn_profile
+
+        snap["turn_profile"] = normalize_runtime_turn_profile(turn_profile)
     if plan_sync_summary:
         snap["plan_sync_summary"] = plan_sync_summary
     if turn_lead:

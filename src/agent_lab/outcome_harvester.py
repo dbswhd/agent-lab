@@ -188,6 +188,140 @@ def record_turn_outcome(folder: Path | None, human_turn: int) -> None:
         log.warning("record_turn_outcome failed for %s", folder, exc_info=True)
 
 
+def _advisor_fields_for_execute(run: RunStateLike, last_turn: dict[str, Any]) -> dict[str, Any]:
+    """Resolve advisor attribution for execute rows (P0-5 lift).
+
+    Turn snapshot ``category`` is primary; fall back to ``turn_metrics`` and
+    in-flight ``_turn_category`` when execute runs after turn close.
+    """
+    layers: list[dict[str, Any]] = []
+    cat = last_turn.get("category")
+    if isinstance(cat, dict):
+        layers.append(cat)
+    metrics = last_turn.get("turn_metrics")
+    if isinstance(metrics, dict):
+        layers.append(metrics)
+    turn_cat = run.get("_turn_category")
+    if isinstance(turn_cat, dict):
+        layers.append(turn_cat)
+
+    advisor_source = "default"
+    combo_id = ""
+    tool_cards: list[Any] = []
+    for layer in layers:
+        src = str(layer.get("advisor_source") or "").strip().lower()
+        if src in ("default", "history", "explore"):
+            advisor_source = src
+        if layer.get("advisor_combo_id"):
+            combo_id = str(layer.get("advisor_combo_id") or "")
+        if layer.get("tool_card_suggestions"):
+            tool_cards = list(layer.get("tool_card_suggestions") or [])
+    return {
+        "advisor_source": advisor_source,
+        "combo_id": combo_id,
+        "tool_card_suggestions": tool_cards,
+    }
+
+
+def _execution_verdict(execution: dict[str, Any]) -> str:
+    oracle = execution.get("oracle") if isinstance(execution.get("oracle"), dict) else {}
+    verdict = str(oracle.get("verdict") or "").strip().lower()
+    if verdict:
+        return verdict
+    status = str((execution.get("verify_after_merge") or {}).get("status") or "").strip().lower()
+    return {"passed": "pass", "failed": "fail"}.get(status, "")
+
+
+def _build_execute_outcome_record(
+    folder: Path,
+    run: RunStateLike,
+    last_turn: dict[str, Any],
+    execution: dict[str, Any],
+    *,
+    advisor: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    category = last_turn.get("category") if isinstance(last_turn.get("category"), dict) else {}
+    roles = last_turn.get("roles") if isinstance(last_turn.get("roles"), dict) else {}
+    consensus = last_turn.get("consensus") if isinstance(last_turn.get("consensus"), dict) else {}
+    advisor = advisor or _advisor_fields_for_execute(run, last_turn)
+    topic = _topic_text(folder, run)
+    verdict = _execution_verdict(execution)
+    record: dict[str, Any] = {
+        "v": OUTCOME_LEDGER_SCHEMA_VERSION,
+        "ts": _now_iso(),
+        "phase": "execute",
+        "session_id": folder.name,
+        "topic_hash": _topic_hash(topic),
+        "topic_terms": sorted(_tokenize(topic))[:24],
+        "category": str(category.get("value") or ""),
+        "roles": {str(k): str(v) for k, v in roles.items()},
+        "agents": list(last_turn.get("agents") or []),
+        "rounds_used": int(last_turn.get("agent_parallel_rounds") or 0),
+        "escalated": bool(category.get("escalated_from")),
+        "execution_id": str(execution.get("id") or ""),
+        "final_verdict": verdict or None,
+        "repair_attempts": len(execution.get("repair_history") or []),
+        "objection_summary": {},
+        "objection_resolution": {},
+        "consensus_reached": str(consensus.get("status") or "") == "reached",
+        "latency_ms": 0,
+        "advisor_source": advisor.get("advisor_source") or "default",
+        "combo_id": advisor.get("combo_id") or "",
+        "tool_card_suggestions": list(advisor.get("tool_card_suggestions") or []),
+    }
+    from agent_lab.autonomy_ladder import infer_effective_autonomy_level
+    from agent_lab.human_inbox import pending_inbox_items
+
+    record["autonomy_level"] = infer_effective_autonomy_level(run)
+    record["human_inbox_escalation"] = bool(pending_inbox_items(run))
+    from agent_lab.self_patch import classify_self_patch
+
+    touched = list(execution.get("source_touched_paths") or execution.get("touched_paths") or [])
+    record["self_patch"] = classify_self_patch(touched)
+    return record
+
+
+_DOGFOOD_EXECUTE_TRUE = frozenset({"1", "true", "yes", "on"})
+
+
+def dogfood_execute_outcomes_enabled() -> bool:
+    """When set, mock dogfood emits synthetic execute-phase rows for S1 lift."""
+    return (os.getenv("AGENT_LAB_DOGFOOD_EXECUTE_OUTCOMES") or "").strip().lower() in _DOGFOOD_EXECUTE_TRUE
+
+
+def _mock_verdict_for_advisor_source(source: str) -> str:
+    """Mock-only structural lift signal — not live Oracle evidence."""
+    if source in ("history", "explore"):
+        return "pass"
+    return "fail"
+
+
+def record_mock_execute_outcome(folder: Path | None) -> None:
+    """Emit execute-phase row after mock Room session (P0-5 dogfood lift).
+
+    Live missions must use ``record_execute_outcome`` from Oracle verify instead.
+    """
+    if folder is None or not dogfood_execute_outcomes_enabled():
+        return
+    try:
+        run = read_run_meta(folder)
+        if not s1_flag_enabled("AGENT_LAB_OUTCOME_LEDGER", run_meta=run):
+            return
+        turns = run.get("turns") or []
+        if not turns or not isinstance(turns[-1], dict):
+            return
+        last_turn = turns[-1]
+        advisor = _advisor_fields_for_execute(run, last_turn)
+        execution = {
+            "id": f"mock-exec-{folder.name}",
+            "oracle": {"verdict": _mock_verdict_for_advisor_source(str(advisor.get("advisor_source") or "default"))},
+            "repair_history": [],
+        }
+        append_outcome(_build_execute_outcome_record(folder, run, last_turn, execution, advisor=advisor))
+    except Exception:
+        log.warning("record_mock_execute_outcome failed for %s", folder, exc_info=True)
+
+
 def record_execute_outcome(folder: Path | None, execution: dict[str, Any]) -> None:
     """Persist one execute-completion outcome row (flag-gated, fail-open).
 
@@ -213,52 +347,8 @@ def record_execute_outcome(folder: Path | None, execution: dict[str, Any]) -> No
             return
         turns = run.get("turns") or []
         last_turn = turns[-1] if turns and isinstance(turns[-1], dict) else {}
-        category = last_turn.get("category") if isinstance(last_turn.get("category"), dict) else {}
-        roles = last_turn.get("roles") if isinstance(last_turn.get("roles"), dict) else {}
-        consensus = last_turn.get("consensus") if isinstance(last_turn.get("consensus"), dict) else {}
-
-        oracle = execution.get("oracle") if isinstance(execution.get("oracle"), dict) else {}
-        verdict = str(oracle.get("verdict") or "").strip().lower()
-        if not verdict:
-            status = str((execution.get("verify_after_merge") or {}).get("status") or "").strip().lower()
-            verdict = {"passed": "pass", "failed": "fail"}.get(status, "")
-
-        topic = _topic_text(folder, run)
-        record = {
-            "v": OUTCOME_LEDGER_SCHEMA_VERSION,
-            "ts": _now_iso(),
-            "phase": "execute",
-            "session_id": folder.name,
-            "topic_hash": _topic_hash(topic),
-            "topic_terms": sorted(_tokenize(topic))[:24],
-            "category": str(category.get("value") or ""),
-            "roles": {str(k): str(v) for k, v in roles.items()},
-            "agents": list(last_turn.get("agents") or []),
-            "rounds_used": int(last_turn.get("agent_parallel_rounds") or 0),
-            "escalated": bool(category.get("escalated_from")),
-            "execution_id": str(execution.get("id") or ""),
-            "final_verdict": verdict or None,
-            "repair_attempts": len(execution.get("repair_history") or []),
-            "objection_summary": {},
-            "objection_resolution": {},
-            "consensus_reached": str(consensus.get("status") or "") == "reached",
-            "latency_ms": 0,
-            "advisor_source": category.get("advisor_source") or "default",
-            "combo_id": category.get("advisor_combo_id") or "",
-            "tool_card_suggestions": list(category.get("tool_card_suggestions") or []),
-        }
-        from agent_lab.autonomy_ladder import infer_effective_autonomy_level
-        from agent_lab.human_inbox import pending_inbox_items
-
-        record["autonomy_level"] = infer_effective_autonomy_level(run)
-        record["human_inbox_escalation"] = bool(pending_inbox_items(run))
-
-        # N6 — self-patch eligibility classification (audit-only; no gate change,
-        # see self_patch.py). Never affects whether Human approval was required.
-        from agent_lab.self_patch import classify_self_patch
-
-        touched = list(execution.get("source_touched_paths") or execution.get("touched_paths") or [])
-        record["self_patch"] = classify_self_patch(touched)
+        advisor = _advisor_fields_for_execute(run, last_turn)
+        record = _build_execute_outcome_record(folder, run, last_turn, execution, advisor=advisor)
         append_outcome(record)
     except Exception:  # fail-open: feedback must never block execute
         log.warning("record_execute_outcome failed for %s", folder, exc_info=True)

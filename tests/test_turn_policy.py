@@ -8,6 +8,9 @@ from agent_lab.room.turn_policy import (
     TurnPolicyEngine,
     TurnSignals,
     apply_turn_effects,
+    detect_plan_execute_intent,
+    maybe_stamp_plan_execute_skill_intent,
+    resolve_discuss_light,
     turn_policy_enabled,
 )
 
@@ -139,6 +142,93 @@ def test_supervisor_discuss_light_skips_fsm_bootstrap() -> None:
     assert effects.advance_plan_workflow is False
 
 
+EXECUTE_TOPIC = "docs 오타 1건 수정 plan action을 만들어 dry-run 승인 merge Oracle PASS까지"
+
+DOGFOOD_EXECUTE_TOPIC = (
+    "Makefile x2-lift-dogfood-env echo 갱신 + tests/test_ui_handoff_scenarios.py 수정\n"
+    "검증: pytest tests/test_ui_handoff_scenarios.py -q\n"
+    "dry-run 승인 후 merge, Oracle PASS까지."
+)
+
+
+def test_detect_plan_execute_intent_docs_typo_topic() -> None:
+    assert detect_plan_execute_intent(EXECUTE_TOPIC) is True
+    assert detect_plan_execute_intent("room.py에서 consensus 라운드 cap 기본값이 뭐야?") is False
+
+
+def test_resolve_discuss_light_s1_topic_stays_light() -> None:
+    assert (
+        resolve_discuss_light(
+            mode="discuss",
+            synthesize=False,
+            consensus_mode=False,
+            agent_rounds=1,
+            room_preset="supervisor",
+            turn_profile="loop",
+            topic="room.py에서 consensus 라운드 cap 기본값이 뭐야?",
+        )
+        is True
+    )
+
+
+def test_resolve_discuss_light_execute_intent_off() -> None:
+    assert not resolve_discuss_light(
+        mode="discuss",
+        synthesize=False,
+        consensus_mode=False,
+        agent_rounds=1,
+        room_preset="supervisor",
+        turn_profile="loop",
+        topic=EXECUTE_TOPIC,
+    )
+
+
+def test_resolve_discuss_light_followup_go_stays_off_when_session_execute() -> None:
+    assert not resolve_discuss_light(
+        mode="discuss",
+        synthesize=False,
+        consensus_mode=False,
+        agent_rounds=1,
+        room_preset="supervisor",
+        turn_profile="loop",
+        topic="GO",
+        run_meta={"topic": EXECUTE_TOPIC},
+    )
+
+
+def test_resolve_discuss_light_active_plan_workflow_off() -> None:
+    assert not resolve_discuss_light(
+        mode="discuss",
+        synthesize=False,
+        consensus_mode=False,
+        agent_rounds=1,
+        room_preset="supervisor",
+        turn_profile="loop",
+        topic="casual question",
+        run_meta={"plan_workflow": {"enabled": True, "phase": "DRAFT"}},
+    )
+
+
+def test_maybe_stamp_plan_execute_skill_intent(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AGENT_LAB_TURN_POLICY", "1")
+    run: dict[str, object] = {}
+    maybe_stamp_plan_execute_skill_intent(run, topic=EXECUTE_TOPIC)
+    assert run.get("_pending_skill_intent") == "plan"
+
+
+def test_execute_intent_discuss_light_allows_fsm_bootstrap() -> None:
+    effects = TurnPolicyEngine.resolve(
+        TurnSignals(
+            room_preset="supervisor",
+            supervisor_first_turn=True,
+            discuss_light=False,
+            skill_intent="plan",
+        ),
+    )
+    assert effects.init_plan_workflow is True
+    assert effects.advance_plan_workflow is True
+
+
 def test_supervisor_anchored_topic_skips_fsm_bootstrap() -> None:
     effects = TurnPolicyEngine.resolve(
         TurnSignals(
@@ -149,6 +239,45 @@ def test_supervisor_anchored_topic_skips_fsm_bootstrap() -> None:
     )
     assert effects.init_plan_workflow is False
     assert effects.advance_plan_workflow is False
+
+
+def test_execute_intent_clarity_short_circuit_allows_fsm_bootstrap() -> None:
+    """Anchored dogfood execute topics must not short-circuit plan FSM (P0-5)."""
+    effects = TurnPolicyEngine.resolve(
+        TurnSignals(
+            room_preset="supervisor",
+            supervisor_first_turn=True,
+            clarity_short_circuit=True,
+            plan_execute_intent=True,
+        ),
+    )
+    assert effects.init_plan_workflow is True
+    assert effects.advance_plan_workflow is True
+
+
+def test_from_run_meta_sets_plan_execute_intent_from_topic() -> None:
+    signals = TurnSignals.from_run_meta(
+        {"room_preset": "supervisor"},
+        topic=DOGFOOD_EXECUTE_TOPIC,
+    )
+    assert signals.plan_execute_intent is True
+    assert signals.clarity_short_circuit is True
+    assert signals.routing_contract_snapshot()["skip_fsm_bootstrap"] is False
+
+
+def test_quick_route_execute_intent_still_boots_fsm() -> None:
+    """Keyword quick route (e.g. 오타) must not skip FSM on execute-intent topics."""
+    signals = TurnSignals.from_run_meta(
+        {"room_preset": "supervisor", "agents": ["cursor", "codex", "claude"]},
+        topic=EXECUTE_TOPIC,
+        roster_size=3,
+        supervisor_first_turn=True,
+    )
+    assert signals.route_category == "quick"
+    assert signals.plan_execute_intent is True
+    assert signals.routing_contract_snapshot()["skip_fsm_bootstrap"] is False
+    effects = TurnPolicyEngine.resolve(signals)
+    assert effects.init_plan_workflow is True
 
 
 def test_skill_intent_overrides_fsm_skip() -> None:
@@ -328,7 +457,11 @@ def test_build_turn_policy_record_includes_routing_contract() -> None:
         "route_category": "standard",
         "discuss_light": True,
         "clarity_short_circuit": True,
+        "plan_execute_intent": False,
         "skip_fsm_bootstrap": True,
+        "fast_turn": False,
+        "supervisor_turn": True,
+        "roster_size": 0,
     }
 
 
@@ -450,3 +583,118 @@ def test_prepare_turn_policy_supervisor_first_turn_inits_fsm(
     persisted = read_run_meta(folder)
     assert isinstance(persisted.get("turn_policy"), dict)
     assert persisted.get("room_preset") == "supervisor"
+
+
+def test_prepare_turn_policy_preserves_skill_after_fsm_init(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """read_run_meta after FSM init must not drop pending/active skill intent."""
+    from agent_lab.plan.workflow import is_plan_workflow_active, plan_workflow_phase
+    from agent_lab.room.turn_policy import (
+        pop_pending_skill_intent,
+        prepare_turn_policy_before_agent_round,
+        stamp_active_skill_intent,
+    )
+    from agent_lab.run.meta import patch_run_meta, read_run_meta
+
+    monkeypatch.setenv("AGENT_LAB_TURN_POLICY", "1")
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    patch_run_meta(
+        folder,
+        lambda run: (
+            run.update(
+                {
+                    "room_preset": "supervisor",
+                    "topic": DOGFOOD_EXECUTE_TOPIC,
+                    "agents": ["cursor", "codex", "claude"],
+                    "_pending_skill_intent": "plan",
+                }
+            )
+            or run
+        ),
+    )
+    run_meta = read_run_meta(folder)
+    stamp_active_skill_intent(run_meta, pop_pending_skill_intent(folder, run_meta))
+
+    run_meta, effects = prepare_turn_policy_before_agent_round(
+        folder,
+        run_meta,
+        human_turn=1,
+        topic=DOGFOOD_EXECUTE_TOPIC,
+    )
+    assert effects is not None
+    assert is_plan_workflow_active(run_meta)
+    assert plan_workflow_phase(run_meta) == "CLARIFY"
+    assert effects.init_plan_workflow is False
+    assert effects.advance_plan_workflow is True
+    assert effects.run_scribe is True
+    tp = run_meta.get("turn_policy") or {}
+    assert tp.get("routing_contract", {}).get("skip_fsm_bootstrap") is False
+
+
+S1_TOPIC = "room.py에서 consensus 라운드 cap 기본값이 뭐야?"
+
+
+def test_p2b_topic_only_trio_clarity_is_supervisor_not_fast() -> None:
+    from agent_lab.room.turn_policy import is_fast_turn, is_supervisor_turn
+
+    signals = TurnSignals(
+        route_category="quick",
+        clarity_short_circuit=True,
+        roster_size=3,
+    )
+    assert is_fast_turn(signals) is False
+    assert is_supervisor_turn(signals) is True
+    effects = TurnPolicyEngine.resolve(
+        TurnSignals(
+            supervisor_first_turn=True,
+            route_category="quick",
+            clarity_short_circuit=True,
+            roster_size=3,
+        ),
+    )
+    assert effects.init_plan_workflow is False
+
+
+def test_p2b_topic_only_single_quick_is_fast() -> None:
+    from agent_lab.room.turn_policy import is_fast_turn, is_supervisor_turn
+
+    signals = TurnSignals(route_category="quick", roster_size=1)
+    assert is_fast_turn(signals) is True
+    assert is_supervisor_turn(signals) is False
+    effects = TurnPolicyEngine.resolve(signals)
+    assert effects.init_plan_workflow is False
+    assert effects.run_scribe is False
+
+
+def test_p2b_preset_supervisor_wins_over_quick_route() -> None:
+    from agent_lab.room.turn_policy import is_fast_turn
+
+    signals = TurnSignals(
+        room_preset="supervisor",
+        route_category="quick",
+        roster_size=1,
+    )
+    assert is_fast_turn(signals) is False
+
+
+def test_p2b_routing_contract_snapshot_includes_turn_mode() -> None:
+    signals = TurnSignals(
+        route_category="quick",
+        clarity_short_circuit=True,
+        roster_size=3,
+    )
+    snap = signals.routing_contract_snapshot()
+    assert snap["fast_turn"] is False
+    assert snap["supervisor_turn"] is True
+    assert snap["roster_size"] == 3
+
+
+def test_p2b_from_run_meta_reads_roster_size() -> None:
+    signals = TurnSignals.from_run_meta(
+        {"agents": ["cursor", "codex", "claude"]},
+        topic=S1_TOPIC,
+    )
+    assert signals.roster_size == 3

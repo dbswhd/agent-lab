@@ -174,9 +174,9 @@ const EN = {
     "No ready executable action is available. Approval will lock the plan without starting work.",
   planApprovalCancel: "Cancel",
   planWorkflowPendingTitle: "Plan workflow · Approval",
-  planWorkflowPendingDetail: "Review and approve plan.md in Work.",
+  planWorkflowPendingDetail: "Review and approve plan.md in the composer stack.",
   planWorkflowPhasePending: "HUMAN PENDING",
-  planWorkflowPendingOpenTasks: "Open Work · Approve",
+  planWorkflowPendingOpenTasks: "Open composer · Approve",
   planWorkflowApprovedTitle: "Plan workflow · Approved",
   planWorkflowApprovedDetail: "Plan approved — execute / dry-run is enabled.",
   planWorkflowApprovedTeamDetail:
@@ -199,7 +199,7 @@ const EN = {
   planWorkflowSideDiscussHint: (phase: string) =>
     `Plan workflow ${phase || "active"} · next send: Discuss (side thread, no plan advance)`,
   planWorkflowComposerBlocked:
-    "Plan awaiting approval — use Work to approve or reject before sending",
+    "Plan awaiting approval — approve or reject in the composer stack before sending",
   hooksPlanWorkflowHint:
     "Plan workflow is active: response contract presets shape agent replies during CLARIFY/PEER. They complement (not replace) the plan FSM — use evidence_first during clarify and plan_ready before peer review if helpful.",
   inboxInbox: "Inbox",
@@ -464,9 +464,9 @@ const KO = {
     "실행 가능한 action이 없어 Plan만 확정하며 작업은 시작하지 않습니다.",
   planApprovalCancel: "취소",
   planWorkflowPendingTitle: "Plan workflow · 승인",
-  planWorkflowPendingDetail: "Work에서 plan.md를 확인하고 승인하세요.",
+  planWorkflowPendingDetail: "Composer stack에서 plan.md를 확인하고 승인하세요.",
   planWorkflowPhasePending: "HUMAN PENDING",
-  planWorkflowPendingOpenTasks: "Work · 승인하기",
+  planWorkflowPendingOpenTasks: "Composer · 승인하기",
   planWorkflowApprovedTitle: "Plan workflow · 승인됨",
   planWorkflowApprovedDetail:
     "Plan이 승인되었습니다 — execute / dry-run을 사용할 수 있습니다.",
@@ -490,7 +490,7 @@ const KO = {
   planWorkflowSideDiscussHint: (phase: string) =>
     `Plan workflow ${phase || "진행 중"} · 다음 전송: Discuss (보조 토론, plan FSM 진행 없음)`,
   planWorkflowComposerBlocked:
-    "Plan 승인 대기 — 전송 전 Work에서 승인 또는 반려하세요",
+    "Plan 승인 대기 — composer stack에서 승인 또는 반려하세요",
   hooksPlanWorkflowHint:
     "Plan workflow 활성: response contract preset은 CLARIFY/PEER 단계 에이전트 답변 형식을 조정합니다. Plan FSM을 대체하지 않고 보조합니다 — clarify에는 evidence_first, peer 전 plan_ready를 고려하세요.",
   inboxInbox: "받은함",

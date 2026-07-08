@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import pytest
 
-from agent_lab.turn_modes import ModeContractError, approval_starts_execute_loop, resolve_mode_contract
+from agent_lab.turn_modes import (
+    ModeContractError,
+    approval_starts_execute_loop,
+    normalize_runtime_turn_profile,
+    resolve_mode_contract,
+)
 
 
 def test_quick_contract_slices_to_lead_and_r1() -> None:
@@ -89,6 +94,29 @@ def test_loop_discuss_is_light_no_consensus(monkeypatch: pytest.MonkeyPatch) -> 
     assert contract.runtime_turn_profile == "analyze"
 
 
+def test_loop_discuss_execute_intent_keeps_loop_profile(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Execute-lane dogfood topics must not downgrade to analyze (topic-only composer)."""
+    monkeypatch.setenv("AGENT_LAB_TURN_POLICY", "1")
+    topic = (
+        "Makefile x2-lift-dogfood-env echo 갱신 plan action 2개\n"
+        "검증: pytest tests/test_ui_handoff_scenarios.py -q\n"
+        "dry-run 승인 후 merge, Oracle PASS까지."
+    )
+    contract = resolve_mode_contract(
+        mode="discuss",
+        synthesize=False,
+        turn_profile="loop",
+        agents=["cursor", "codex", "claude"],
+        agent_rounds=3,
+        review_mode=True,
+        consensus_mode=True,
+        topic=topic,
+    )
+    assert contract.runtime_turn_profile == "free"
+    assert contract.runtime_turn_profile != "analyze"
+    assert contract.plan_intent == "loop"
+
+
 def test_loop_plan_keeps_consensus(monkeypatch: pytest.MonkeyPatch) -> None:
     contract = resolve_mode_contract(
         mode="plan",
@@ -147,3 +175,13 @@ def test_specialist_legacy_maps_to_loop_topology() -> None:
     assert contract.topology == "specialist"
     assert contract.runtime_turn_profile == "specialist"
     assert contract.agent_rounds == 2
+
+
+def test_normalize_runtime_turn_profile_ssot() -> None:
+    assert normalize_runtime_turn_profile("discuss") == "analyze"
+    assert normalize_runtime_turn_profile("loop") == "free"
+    assert normalize_runtime_turn_profile("team") == "analyze"
+    assert normalize_runtime_turn_profile("quick") == "quick"
+    assert normalize_runtime_turn_profile("specialist") == "specialist"
+    assert normalize_runtime_turn_profile(None, fallback="free") == "free"
+    assert normalize_runtime_turn_profile("unknown", fallback="analyze") == "analyze"

@@ -10,6 +10,7 @@
 
 | 질문 | 문서 |
 |------|------|
+| **지금 무엇을 해야 하나 (실행 큐 · 시한 · shipped 확인)** | [NOW.md](./NOW.md) |
 | **현재 구조 · 플로우 (첫 진입점)** | [FLOW.md](./FLOW.md) |
 | **4과정 workflow · 동적 적응 · 슈퍼샘플 비교 (작업 SSOT)** | [WORKFLOW-DYNAMIC-REFERENCE.md](./WORKFLOW-DYNAMIC-REFERENCE.md) |
 | **새 작업 시작용 착수 템플릿** | [WORK-TASK-KICKOFF-TEMPLATE.md](./WORK-TASK-KICKOFF-TEMPLATE.md) |
@@ -21,6 +22,7 @@
 | Track 2.2 native gate — CLOSED (native rejected, crate removed) | [TRACK2-NATIVE-GATE.md](./TRACK2-NATIVE-GATE.md) |
 | **중장기 북극성 · 완성도 게이지 (슈퍼 샘플 로드맵)** | [NORTH-STAR.md](./NORTH-STAR.md) |
 | **N10 User-Loop Wisdom 설계 상세 (개정 반영됨 — canonical은 NORTH-STAR §2.1 N10)** | [N10-USER-LOOP-WISDOM-DRAFT.md](./N10-USER-LOOP-WISDOM-DRAFT.md) |
+| **N6 Phase 2 — Harness Self-Improvement Loop (Weng / Self-Harness / DGM 변용)** | [DESIGN-HARNESS-SELF-IMPROVE.md](./DESIGN-HARNESS-SELF-IMPROVE.md) |
 | **N7 S3 도구 카드 · `[NEED-TOOL:]` · Inbox mount 설계 (구현은 S1/S2 닫힌 후)** | [S3-TOOL-CARD-SPEC.md](./S3-TOOL-CARD-SPEC.md) |
 | **15분 mock 미션 · fork_time_minutes (N8)** | [QUICKSTART.md](./QUICKSTART.md) |
 | **Emergence bench 프로토콜 SSOT (N8)** | [EMERGENCE-BENCH.md](./EMERGENCE-BENCH.md) · [REPRODUCTION-REPORT.md](./REPRODUCTION-REPORT.md) |

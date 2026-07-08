@@ -1,4 +1,4 @@
-.PHONY: install install-dev dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build tauri-check-windows profile-track2-gate clean test test-fast test-c1 test-integration test-bridge test-duration-report lint typecheck typecheck-ratchet structure-metrics structure-metrics-check layer-cycles-check ci ci-full check-worktrees smoke smoke-e2e smoke-web-ui smoke-tauri-ui validate-quant verify-quant-workspace verify-trading-v1 verify-mcp-contract build-research-cards offline-lane thin-runtime-status verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate dogfood-feedback-mock feedback-report eval-surface-local eval-surface-check generate-model-catalog check-model-catalog
+.PHONY: install install-dev dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build tauri-check-windows profile-track2-gate clean test test-fast test-c1 test-integration test-bridge test-duration-report lint typecheck typecheck-ratchet structure-metrics structure-metrics-check layer-cycles-check ci ci-full check-worktrees smoke smoke-e2e smoke-web-ui smoke-tauri-ui validate-quant verify-quant-workspace verify-trading-v1 verify-mcp-contract build-research-cards offline-lane thin-runtime-status verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate dogfood-feedback-mock feedback-report eval-surface-local eval-surface-check generate-model-catalog check-model-catalog s1-dogfood-env s1-dogfood-check x2-lift-dogfood-env x2-lift-dogfood-run x2-lift-dogfood-prepare x2-lift-dogfood-live-repeat x2-lift-dogfood-check
 
 install:
 	python3 -m venv .venv
@@ -382,6 +382,63 @@ eval-surface-check:
 	.venv/bin/ruff check evals tests/test_eval_surface_export.py tests/test_eval_surface_graders.py tests/test_eval_surface_run_local.py
 	.venv/bin/basedpyright --level error evals/cases.py evals/graders.py evals/mock_generation.py evals/report.py evals/run_local.py evals/schema.py evals/trace_export.py tests/test_eval_surface_export.py tests/test_eval_surface_graders.py tests/test_eval_surface_run_local.py
 	$(MAKE) eval-surface-local
+
+# S1 / X2 live dogfood — env + post-run checks (docs/NORTH-STAR.md §1.4, EVAL-PROGRAM.md)
+s1-dogfood-env:
+	@echo '# S1 discuss dogfood (live). Usage: eval "$$(make s1-dogfood-env)" then make dev'
+	@echo '# Topic: room.py에서 consensus 라운드 cap 기본값이 뭐야? · Plan OFF · trio implicit ON'
+	@echo 'export AGENT_LAB_TURN_METRICS=1'
+	@echo 'export AGENT_LAB_OUTCOME_LEDGER=1'
+	@echo 'export AGENT_LAB_FEEDBACK_ADVISOR=1'
+	@echo 'export AGENT_LAB_FEEDBACK_EXPLORE_RATE=0.1'
+	@echo 'unset AGENT_LAB_MOCK_AGENTS 2>/dev/null || true'
+	@echo 'unset AGENT_LAB_OUTCOMES_ROOT 2>/dev/null || true'
+	@echo 'unset AGENT_LAB_DOGFOOD_EXECUTE_OUTCOMES 2>/dev/null || true'
+
+s1-dogfood-check:
+	@echo "=== S1 dogfood check — $$(date -u +%Y-%m-%dT%H:%MZ) ==="
+	@echo "Topic: room.py에서 consensus 라운드 cap 기본값이 뭐야?"
+	@if [ ! -f .agent-lab/outcomes.jsonl ]; then \
+		echo "WARN: .agent-lab/outcomes.jsonl missing — run a live Room turn first"; \
+		exit 0; \
+	fi
+	@$(MAKE) -s feedback-report JSON=1 | .venv/bin/python -c 'import json,sys; r=json.load(sys.stdin); print("turn_source_counts:", r.get("turn_source_counts")); print("verdict_eligible_total:", r.get("verdict_eligible_total")); print("by_source.history:", r.get("by_source",{}).get("history")); print("advisor_lift:", r.get("advisor_lift")); print("(lift needs phase=execute rows — use x2-lift-dogfood for Oracle path)")'
+	@echo "--- last ledger row ---"
+	@tail -1 .agent-lab/outcomes.jsonl | .venv/bin/python -m json.tool 2>/dev/null || tail -1 .agent-lab/outcomes.jsonl
+
+x2-lift-dogfood-env:
+	@echo '# X2 execute lift dogfood (live). Usage: eval "$$(make x2-lift-dogfood-env)" then make dev'
+	@echo '# Topic: docs/_dogfood/x2-lift.md roompy→room.py — repeat 4-5x for history lift (MIN_SAMPLE=3)'
+	@echo '# Plan ON · run make x2-lift-dogfood-prepare before each batch'
+	@echo 'export AGENT_LAB_TURN_METRICS=1'
+	@echo 'export AGENT_LAB_OUTCOME_LEDGER=1'
+	@echo 'export AGENT_LAB_FEEDBACK_ADVISOR=1'
+	@echo 'export AGENT_LAB_FEEDBACK_EXPLORE_RATE=0'
+	@echo 'unset AGENT_LAB_MOCK_AGENTS 2>/dev/null || true'
+	@echo 'unset AGENT_LAB_OUTCOMES_ROOT 2>/dev/null || true'
+	@echo 'unset AGENT_LAB_DOGFOOD_EXECUTE_OUTCOMES 2>/dev/null || true'
+
+x2-lift-dogfood-run:
+	.venv/bin/python scripts/x2_lift_dogfood_run.py
+
+x2-lift-dogfood-prepare:
+	.venv/bin/python scripts/x2_lift_dogfood_live_repeat.py --prepare
+
+x2-lift-dogfood-live-repeat:
+	.venv/bin/python scripts/x2_lift_dogfood_live_repeat.py --count $(if $(COUNT),$(COUNT),5)
+
+x2-lift-dogfood-check:
+	@echo "=== X2 lift dogfood check — $$(date -u +%Y-%m-%dT%H:%MZ) ==="
+	@echo "Topic: docs/_dogfood/x2-lift.md roompy→room.py (reversible dogfood fixture)"
+	@if [ ! -f .agent-lab/outcomes.jsonl ]; then \
+		echo "WARN: .agent-lab/outcomes.jsonl missing — complete Plan → execute → Oracle verify first"; \
+		exit 0; \
+	fi
+	@echo "execute-phase rows: $$(grep -c '\"phase\": \"execute\"' .agent-lab/outcomes.jsonl 2>/dev/null || echo 0)"
+	@$(MAKE) -s feedback-report JSON=1 | .venv/bin/python -c 'import json,sys; r=json.load(sys.stdin); print("verdict_eligible_total:", r.get("verdict_eligible_total")); print("oracle_verdict_coverage:", r.get("oracle_verdict_coverage")); print("by_source:", r.get("by_source")); print("advisor_lift:", r.get("advisor_lift"))'
+	@echo "--- last execute row ---"
+	@grep '"phase": "execute"' .agent-lab/outcomes.jsonl | tail -1 | .venv/bin/python -m json.tool 2>/dev/null || echo "(no execute-phase rows yet)"
+	@echo "Snapshot: make feedback-report-snapshot"
 
 # F7 — repo_map / compaction 7-day dogfood (docs/F7-REPO-MAP-COMPACTION-DOGFOOD.md)
 f7-dogfood-env:

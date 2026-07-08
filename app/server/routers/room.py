@@ -47,10 +47,8 @@ from agent_lab.turn_modes import (
     resolve_mode_contract,
 )
 from agent_lab.room.preset import (
-    default_room_preset,
     preset_catalog,
     preset_role_policy,
-    preset_turn_profile,
     resolve_preset,
 )
 
@@ -529,14 +527,39 @@ async def create_room_run(
     requested_roster = list(agent_list) if agent_list else None
     # Resolve Room Preset → turn_profile. §3.2.1: roster > max_agents promotes
     # fast → supervisor (never silent truncate).
-    from agent_lab.room.preset import resolve_preset_for_roster
+    from agent_lab.room.preset import (
+        preset_turn_profile,
+        resolve_implicit_room_preset,
+        resolve_preset_for_roster,
+    )
 
-    preset_raw = (preset or "").strip().lower() or default_room_preset()
+    preset_from_client = (preset or "").strip().lower()
     roster_n = len(agent_list) if agent_list else 0
+    if preset_from_client:
+        preset_raw = preset_from_client
+    else:
+        preset_raw = resolve_implicit_room_preset(topic, roster_n)
     preset_norm, preset_promoted_from = resolve_preset_for_roster(preset_raw, roster_n)
-    is_default_profile = (turn_profile or "discuss").strip().lower() in ("discuss", "")
-    if preset_norm and (is_default_profile or preset_promoted_from):
-        turn_profile = preset_turn_profile(preset_norm, fallback=turn_profile)
+    profile_norm = (turn_profile or "discuss").strip().lower()
+    _legacy_client_turn_profile = profile_norm in (
+        "discuss",
+        "",
+        "analyze",
+        "loop",
+        "team",
+        "quick",
+        "free",
+    )
+    _form_default_turn_profile = profile_norm in ("discuss", "")
+    if preset_norm and resolve_preset(preset_norm) is not None:
+        # Topic-only / preset clients: ignore legacy Form default (discuss).
+        # Explicit API turn_profile=loop|team|… is preserved when preset was inferred.
+        if preset_from_client:
+            if _legacy_client_turn_profile or preset_promoted_from:
+                turn_profile = preset_turn_profile(preset_norm, fallback="loop")
+        elif _form_default_turn_profile or preset_promoted_from:
+            turn_profile = preset_turn_profile(preset_norm, fallback="loop")
+    topic_text = (topic or "").strip()
     try:
         mode_contract = resolve_mode_contract(
             mode=mode_norm,
@@ -546,12 +569,12 @@ async def create_room_run(
             agent_rounds=max(1, min(agent_rounds, MAX_AGENT_PARALLEL_ROUNDS)),
             review_mode=review_mode,
             consensus_mode=consensus_mode,
+            topic=topic_text,
         )
     except ModeContractError as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
     agent_list = mode_contract.agents
 
-    topic_text = (topic or "").strip()
     if agent_list and topic_text:
         from agent_lab.room.agent_mentions import apply_agent_mention_filter
 
@@ -685,14 +708,22 @@ async def create_room_run(
             elif "room_preset_promoted_from" in run:
                 run.pop("room_preset_promoted_from", None)
                 run.pop("room_preset_promote_reason", None)
-            # §3.2.1 light discuss under supervisor/loop when API mode is discuss.
-            run["discuss_light"] = bool(
-                mode_norm == "discuss"
-                and not synthesize
-                and not mode_contract.consensus_mode
-                and mode_contract.agent_rounds <= 1
-                and (preset_norm == "supervisor" or (turn_profile or "").lower() == "loop")
+            from agent_lab.room.turn_policy import (
+                maybe_stamp_plan_execute_skill_intent,
+                resolve_discuss_light,
             )
+
+            run["discuss_light"] = resolve_discuss_light(
+                mode=mode_norm,
+                synthesize=bool(synthesize),
+                consensus_mode=mode_contract.consensus_mode,
+                agent_rounds=mode_contract.agent_rounds,
+                room_preset=preset_norm,
+                turn_profile=turn_profile,
+                topic=topic,
+                run_meta=run,
+            )
+            maybe_stamp_plan_execute_skill_intent(run, topic=topic)
             explicit = (role_policy or "").strip().lower()
             if explicit in ("auto", "force", "off"):
                 run["role_policy"] = explicit
@@ -715,6 +746,21 @@ async def create_room_run(
     profile_norm = mode_contract.runtime_turn_profile
 
     run_session_id = folder.name if folder else None
+
+    from agent_lab.run.meta import read_run_meta
+    from agent_lab.room.turn_policy import resolve_discuss_light
+
+    sse_run_meta = read_run_meta(folder) if folder is not None else {}
+    discuss_light_sse = resolve_discuss_light(
+        mode=mode_norm,
+        synthesize=bool(synthesize),
+        consensus_mode=consensus_mode,
+        agent_rounds=parallel_rounds,
+        room_preset=preset_norm,
+        turn_profile=profile_norm,
+        topic=topic,
+        run_meta=sse_run_meta,
+    )
 
     def _cancel_on_client_disconnect() -> None:
         request_cancel(run_session_id)
@@ -809,9 +855,7 @@ async def create_room_run(
                     "turn_profile": profile_norm,
                     "room_preset": preset_norm,
                     "room_preset_promoted_from": preset_promoted_from,
-                    "discuss_light": bool(
-                        mode_norm == "discuss" and not synthesize and not consensus_mode and parallel_rounds <= 1
-                    ),
+                    "discuss_light": discuss_light_sse,
                     "workspace_id": workspace_norm,
                     "session_template": template_norm,
                     "attachments": saved_files,

@@ -133,8 +133,7 @@ export function useRoomChatInteractions(bootstrap: Bootstrap) {
     agentCapabilities,
     researchMode,
     roomPreset,
-    resolvedRoomPresets,
-    composeMode,
+    composerModeVariant,
     locale,
     localeMsg,
     clearRunWatchdog,
@@ -458,10 +457,9 @@ export function useRoomChatInteractions(bootstrap: Bootstrap) {
     runBusy,
     running,
     synthesizing,
-    composeMode,
+    composerModeVariant,
     turnProfile,
     roomPreset,
-    resolvedRoomPresets,
     researchMode,
     workspaceId,
     workspacePath,
@@ -593,7 +591,6 @@ export function useRoomChatInteractions(bootstrap: Bootstrap) {
       setPendingSend({
         text: msg,
         files: pendingFiles,
-        turnProfile,
       });
       setPermOpen(true);
       return;

@@ -110,7 +110,8 @@ def test_fast_bucket_collection_budget():
     # ceiling pin/no-op, demotion-inbox reuse, idempotent Human-override respect — 10 tests).
     # 2026-07-07: raised 2630 -> 2650 for N6 self-patch allowlist infra (test_self_patch.py:
     # allowlist load/glob matching/classify — 14 tests, + 2 outcome_harvester + 2 feedback_report).
-    assert count <= 2650, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-08: raised 2700 -> 2705 for x2 dogfood fixture config tests.
+    assert count <= 2705, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

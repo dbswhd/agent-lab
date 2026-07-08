@@ -24,11 +24,12 @@ import { sendReceiptLabel } from "../utils/sendReceipt";
 import { topicAsUserMessage } from "../utils/transcript";
 import {
   resolveTurnSend,
+  turnProfileForRoomPreset,
   type ComposerTurnProfile,
 } from "../utils/turnProfile";
+import { IMPLICIT_ROOM_PRESET, TOPIC_ONLY_COMPOSER } from "../utils/roomComposerPrefs";
 import { writePendingRoomModels } from "../utils/modelSlash";
 import { attachmentSendTopic } from "../utils/roomSessionMessages";
-import type { ComposeMode } from "../utils/composeMode";
 import type { ConsensusDryRunProposal } from "../components/ConsensusDryRunGateBar";
 import {
   classifySendFailure,
@@ -52,8 +53,6 @@ export type ExecuteSendFn = (
   msgText: string,
   filesToSend: PendingFile[],
   permissions: AgentPermissions,
-  mode?: ComposeMode,
-  profile?: ComposerTurnProfile,
 ) => Promise<void>;
 
 export type RoomExecuteSendOptions = {
@@ -62,13 +61,9 @@ export type RoomExecuteSendOptions = {
   runBusy: boolean;
   running: boolean;
   synthesizing: boolean;
-  composeMode: ComposeMode;
+  composerModeVariant: "discuss" | "plan" | "consensus";
   turnProfile: ComposerTurnProfile;
   roomPreset: string | null;
-  resolvedRoomPresets: ReadonlyArray<{
-    id: string;
-    turn_profile?: string;
-  }>;
   researchMode: boolean;
   workspaceId: string;
   workspacePath: string | null;
@@ -139,10 +134,9 @@ export function useRoomExecuteSend(
     runBusy,
     running,
     synthesizing,
-    composeMode,
+    composerModeVariant,
     turnProfile,
     roomPreset,
-    resolvedRoomPresets,
     researchMode,
     workspaceId,
     workspacePath,
@@ -189,20 +183,11 @@ export function useRoomExecuteSend(
   } = options;
 
   const executeSend = useCallback<ExecuteSendFn>(
-    async (
-      msgText,
-      filesToSend,
-      permissions,
-      mode = composeMode,
-      profile = turnProfile,
-    ) => {
-      if (mode === "execute") return;
+    async (msgText, filesToSend, permissions) => {
       if (runBusy || running || synthesizing) return;
-      const effectiveProfile: ComposerTurnProfile = roomPreset
-        ? ((resolvedRoomPresets.find((p) => p.id === roomPreset)
-            ?.turn_profile ?? profile) as ComposerTurnProfile)
-        : profile;
-      const roomMode = "discuss" as const;
+      const effectiveProfile: ComposerTurnProfile = turnProfileForRoomPreset(
+        roomPreset ?? IMPLICIT_ROOM_PRESET,
+      );
       const {
         agents,
         agentRounds,
@@ -262,7 +247,6 @@ export function useRoomExecuteSend(
         sessionId,
         profile: effectiveProfile,
         selected,
-        mode,
         localeMsg,
         activeSessionIdRef,
         navigatedToSessionRef,
@@ -306,13 +290,12 @@ export function useRoomExecuteSend(
         await runRoom(sendText, agents, onRoomEventWithRegistry, {
           sessionId: sessionId ?? undefined,
           files: filesToSend.map((p) => p.file),
-          mode: roomMode,
           agentRounds,
           permissions,
           reviewMode: useReviewMode,
           consensusMode: useConsensusMode,
-          turnProfile: effectiveProfile,
-          researchMode: researchMode || effectiveProfile === "specialist",
+          turnProfile: TOPIC_ONLY_COMPOSER ? undefined : effectiveProfile,
+          researchMode,
           workspaceId: sessionId ? undefined : workspaceId,
           workspacePath:
             sessionId || workspaceId !== CUSTOM_WORKSPACE_ID
@@ -321,7 +304,9 @@ export function useRoomExecuteSend(
           agentCapabilities: capabilitiesForApi(agentCapabilities),
           agentThreadBindings: threadBindings,
           sessionTemplate,
-          roomPreset: roomPreset ?? undefined,
+          roomPreset: TOPIC_ONLY_COMPOSER
+            ? IMPLICIT_ROOM_PRESET
+            : (roomPreset ?? undefined),
           roomModels: pinnedRoomModels,
           signal: runAbort.signal,
         });
@@ -353,7 +338,7 @@ export function useRoomExecuteSend(
         setSendReceipt(
           sendReceiptLabel(
             runScope.lastSendReceipt,
-            mode,
+            composerModeVariant === "plan",
             runScope.userStopped,
             locale,
           ),
@@ -420,7 +405,7 @@ export function useRoomExecuteSend(
       onSessionChange,
       onSessionBind,
       onSessionMetaRefresh,
-      composeMode,
+      composerModeVariant,
       turnProfile,
       researchMode,
       workspaceId,
@@ -434,7 +419,6 @@ export function useRoomExecuteSend(
       running,
       synthesizing,
       roomPreset,
-      resolvedRoomPresets,
       locale,
       localeMsg,
       clearRunWatchdog,

@@ -333,6 +333,18 @@ def write_report(report: RegressionGateReport, *, root: Path | None = None) -> P
     return path
 
 
+def load_report(candidate_id: str, *, root: Path | None = None) -> dict[str, Any] | None:
+    """HS5 MERGE consumer — None when no report has been written yet."""
+    path = _report_path(candidate_id, root=root)
+    if not path.is_file():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
 def run_regression_gate(
     candidate_id: str,
     *,
@@ -442,5 +454,6 @@ __all__ = [
     "run_held_out",
     "run_smoke_signal",
     "write_report",
+    "load_report",
     "run_regression_gate",
 ]

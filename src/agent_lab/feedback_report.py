@@ -202,6 +202,17 @@ def _self_patch_stats(verdict_rows: list[dict[str, Any]]) -> dict[str, Any]:
     return {"n": total, "eligible_n": eligible, "self_patch_eligible_rate": round(eligible / total, 4)}
 
 
+def _harness_patch_kpi(root: Path | None) -> dict[str, Any] | None:
+    """HS5-5 — accept_rate / prediction_accuracy over the harness_patch pipeline
+    (.agent-lab/harness/candidates + predictions.jsonl, not the outcome ledger).
+    None when AGENT_LAB_HARNESS_INBOX is off."""
+    from agent_lab.merge_gate import harness_inbox_enabled, harness_patch_stats
+
+    if not harness_inbox_enabled():
+        return None
+    return harness_patch_stats(root)
+
+
 def build_feedback_report(root: Path | None = None) -> dict[str, Any]:
     """Bucket the outcome ledger by advisor_source and compute quality deltas.
 
@@ -260,6 +271,7 @@ def build_feedback_report(root: Path | None = None) -> dict[str, Any]:
         "tool_cards": _tool_card_hit_stats(verdict_rows),
         "self_patch": _self_patch_stats(verdict_rows),
         "harness_attribution": _harness_attribution_stats(verdict_rows),
+        "harness_patch": _harness_patch_kpi(root),
     }
 
 
@@ -330,5 +342,16 @@ def render_feedback_report(report: dict[str, Any]) -> str:
             f"model_resolved_rate={harness_attr['model_resolved_rate']:.2%}, "
             f"harness_failure_rate={harness_attr['harness_failure_rate']:.2%} "
             f"({harness_attr['harness_failure_count']} harness failures)"
+        )
+    harness_patch = report.get("harness_patch")
+    if harness_patch and harness_patch.get("candidates_decided"):
+        accept = harness_patch.get("accept_rate")
+        accept_label = f"{accept:.2%}" if isinstance(accept, float) else "—"
+        acc = harness_patch.get("prediction_accuracy")
+        acc_label = f"{acc:.2%}" if isinstance(acc, float) else "— (no verified predictions yet)"
+        lines.append("")
+        lines.append(
+            f"harness_patch (HS5) — {harness_patch['candidates_merged']}/{harness_patch['candidates_decided']} "
+            f"accepted (rate={accept_label}), prediction_accuracy={acc_label}"
         )
     return "\n".join(lines)

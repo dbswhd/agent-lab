@@ -50,14 +50,14 @@ class PlaybookBullet:
     updated_at: str
 
 
-def playbook_path() -> Path:
+def playbook_path(root: Path | None = None) -> Path:
     """Path to the playbook JSONL. Override via AGENT_LAB_PLAYBOOK_PATH."""
     override = (os.getenv("AGENT_LAB_PLAYBOOK_PATH") or "").strip()
     if override:
         return Path(override).expanduser()
     from agent_lab.outcome_harvester import agent_lab_project_root
 
-    return agent_lab_project_root() / ".agent-lab" / "wisdom" / "playbook.jsonl"
+    return agent_lab_project_root(root) / ".agent-lab" / "wisdom" / "playbook.jsonl"
 
 
 def _now_iso() -> str:
@@ -110,6 +110,39 @@ def load_bullets(*, status: str | None = None, path: Path | None = None) -> list
         bullets = [b for b in bullets if b.status == status]
     bullets.sort(key=lambda b: b.updated_at, reverse=True)
     return bullets
+
+
+def quarantine_bullets_by_harness_rev(
+    harness_rev: str, *, path: Path | None = None, root: Path | None = None
+) -> list[str]:
+    """HS5-7 — flip every active bullet created at ``harness_rev`` to
+    ``quarantined`` (append-only revision row, not a delete — negative
+    results stay auditable). ``load_bullets(status="active", ...)`` (used by
+    ``playbook_bullets_for_topic``) already excludes quarantined bullets, so
+    no separate RECALL filter is needed beyond this write.
+
+    Called when a merged ``harness_patch`` is rolled back — bullets whose
+    provenance is the reverted revision can no longer be trusted.
+    """
+    target = path or playbook_path(root)
+    quarantined: list[str] = []
+    for bullet in load_bullets(status="active", path=target):
+        if bullet.harness_rev != harness_rev:
+            continue
+        revised = PlaybookBullet(
+            id=bullet.id,
+            description=bullet.description,
+            pattern_id=bullet.pattern_id,
+            evidence_count=bullet.evidence_count,
+            status="quarantined",
+            harness_rev=bullet.harness_rev,
+            updated_at=_now_iso(),
+        )
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with target.open("a", encoding="utf-8") as f:
+            f.write(json.dumps({"v": PLAYBOOK_SCHEMA_VERSION, **asdict(revised)}, ensure_ascii=False) + "\n")
+        quarantined.append(bullet.id)
+    return quarantined
 
 
 def add_bullet(
@@ -190,5 +223,6 @@ __all__ = [
     "playbook_path",
     "load_bullets",
     "add_bullet",
+    "quarantine_bullets_by_harness_rev",
     "playbook_bullets_for_topic",
 ]

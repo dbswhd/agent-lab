@@ -52,6 +52,8 @@ def main() -> int:
     for a in report.assertions:
         status = "PASS" if a["passed"] else "FAIL"
         print(f"  assertion [{status}] {a['node_id']}")
+    if report.verdict == "pass":
+        print(f"next: scripts/merge_harness.py --mode merge --candidate-id {args.candidate_id} (HS5 MERGE).")
     return 0 if report.verdict == "pass" else 1
 
 

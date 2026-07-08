@@ -297,6 +297,7 @@ def promote_correction_rule(pattern_key: str, *, root: Path | None = None, sessi
 
 def _try_add_playbook_bullet(rule_text: str, *, pattern_key: str, root: Path | None) -> None:
     try:
+        from agent_lab.merge_gate import current_harness_rev
         from agent_lab.wisdom.playbook import add_bullet, playbook_enabled
 
         if not playbook_enabled():
@@ -304,7 +305,15 @@ def _try_add_playbook_bullet(rule_text: str, *, pattern_key: str, root: Path | N
         path = None
         if root is not None:
             path = Path(root) / ".agent-lab" / "wisdom" / "playbook.jsonl"
-        add_bullet(rule_text, f"fp:user_correction:{pattern_key}", path=path)
+        # HS5-6: stamp the harness revision active right now — if a later
+        # harness_patch merge is rolled back, this bullet becomes quarantine-
+        # eligible (merge_gate.rollback_harness_patch).
+        add_bullet(
+            rule_text,
+            f"fp:user_correction:{pattern_key}",
+            harness_rev=current_harness_rev(root),
+            path=path,
+        )
     except Exception:  # fail-open: playbook write must never block rule promotion
         import logging
 

@@ -14,7 +14,15 @@ from agent_lab.run.meta import patch_run_meta, read_run_meta
 from agent_lab.run.state import RunStateLike
 
 InboxKind = Literal[
-    "question", "build", "skill_draft", "autonomy", "correction_rule", "retry_diagnosis", "drift_audit", "rule_sync"
+    "question",
+    "build",
+    "skill_draft",
+    "autonomy",
+    "correction_rule",
+    "retry_diagnosis",
+    "drift_audit",
+    "rule_sync",
+    "harness_patch",
 ]
 InboxStatus = Literal["pending", "resolved", "deferred", "superseded", "rejected", "timeout"]
 
@@ -476,6 +484,21 @@ def resolve_inbox_item(
             import logging
 
             logging.getLogger(__name__).warning("rule_sync inbox resolve failed", exc_info=True)
+
+    if updated.get("kind") == "harness_patch" and status in ("resolved", "rejected", "superseded"):
+        try:
+            from agent_lab.merge_gate import handle_harness_patch_resolve
+
+            handle_harness_patch_resolve(
+                folder,
+                updated,
+                selected=selected,
+                status=status,
+            )
+        except Exception:  # fail-open: merge failure must never corrupt inbox state
+            import logging
+
+            logging.getLogger(__name__).warning("harness_patch inbox resolve failed", exc_info=True)
 
     if updated.get("kind") == "autonomy" and status == "resolved":
         try:

@@ -123,7 +123,9 @@ def test_fast_bucket_collection_budget():
     # 2026-07-09: raised 2795 -> 2825 for HS4 REGRESS (regression_gate.py held-in/diff-introspection/
     # worktree/assertion tests incl. 2 real-git end-to-end pytest-isolation tests, regress_harness.py
     # CLI subprocess tests).
-    assert count <= 2825, f"test-fast bucket grew to {count}; mark slow modules integration"
+    # 2026-07-09: raised 2825 -> 2847 for HS5 MERGE (merge_gate.py Inbox gate/commit/rollback/KPI
+    # tests, incl. real-git apply+commit+revert end-to-end coverage).
+    assert count <= 2847, f"test-fast bucket grew to {count}; mark slow modules integration"
 
 
 def test_integration_registry_is_frozen_set():

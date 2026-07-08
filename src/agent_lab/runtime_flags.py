@@ -601,6 +601,13 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         "not pass-rate (default off)",
     ),
     FlagDef(
+        "AGENT_LAB_HARNESS_INBOX",
+        "feature",
+        "HSIL HS5 MERGE: harness_patch Human Inbox card -> real git apply+commit for a passing "
+        "regression candidate, with rollback+playbook-quarantine (HS5-7) — offline CLI "
+        "(scripts/merge_harness.py) (default off)",
+    ),
+    FlagDef(
         "AGENT_LAB_FEEDBACK_ADVISOR",
         "feature",
         "S1 Phase B: feedback advisor reads outcomes.jsonl and adjusts role/agent setup via SetupHint (default off; requires TURN_METRICS+OUTCOME_LEDGER)",

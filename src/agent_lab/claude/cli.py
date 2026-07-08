@@ -471,21 +471,21 @@ def invoke(
 ) -> str:
     from agent_lab.agent.permissions import normalize_claude_permissions
 
-    if os.getenv("AGENT_LAB_MOCK_AGENTS", "").strip().lower() in {
+    claude = resolve_claude_bin()
+    mock_on = os.getenv("AGENT_LAB_MOCK_AGENTS", "").strip().lower() in {
         "1",
         "true",
         "yes",
         "on",
-    }:
-        # Direct invoke (oracle/judge/commands) must honor mock — registry may be bypassed.
-        if on_activity:
-            on_activity("[tool · read] mock claude invoke")
-        if scribe:
-            return "## Plan\n\n- mock scribe plan\n"
-        return "mock claude response"
-
-    claude = resolve_claude_bin()
+    }
     if not claude:
+        if mock_on:
+            # Direct invoke (oracle/judge/commands) when CLI is absent — honor mock.
+            if on_activity:
+                on_activity("[tool · read] mock claude invoke")
+            if scribe:
+                return "## Plan\n\n- mock scribe plan\n"
+            return "mock claude response"
         raise RuntimeError(
             "Claude Code CLI not found. Install: npm i -g @anthropic-ai/claude-code "
             "&& claude login\n"

@@ -57,7 +57,7 @@ export function ComposerStrip({
           {items && items.length > 0 ? (
             <ul className="composer-strip__list">
               {items.map((item, index) => (
-                <li key={`${index}-${item.slice(0, 24)}`}>{item}</li>
+                <li key={index}>{item}</li>
               ))}
             </ul>
           ) : null}

@@ -28,6 +28,22 @@ type Props = {
   onDelete?: (id: string) => void;
 };
 
+/** Compact relative/absolute timestamp — disambiguates rows that share a topic
+ * (e.g. repeated dogfood runs), since the list otherwise renders title-only. */
+function formatSessionTimestamp(iso?: string): string {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const diffMin = Math.floor((Date.now() - date.getTime()) / 60000);
+  if (diffMin < 1) return "방금";
+  if (diffMin < 60) return `${diffMin}분 전`;
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `${diffHour}시간 전`;
+  const diffDay = Math.floor(diffHour / 24);
+  if (diffDay < 7) return `${diffDay}일 전`;
+  return date.toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" });
+}
+
 /**
  * Session rail list — title-only rows, optional group headers, context menu.
  */
@@ -238,6 +254,11 @@ export function SessionList({
                     <span className="session-item__topic">
                       {s.topic || s.id}
                     </span>
+                    {s.created_at ? (
+                      <span className="session-item__meta">
+                        {formatSessionTimestamp(s.created_at)}
+                      </span>
+                    ) : null}
                   </button>
                 );
               })}

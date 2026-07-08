@@ -393,6 +393,13 @@
   flex: 1;
   min-width: 0;
 }
+.session-item__meta {
+  font-size: var(--text-caption);
+  color: var(--label-tertiary);
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-left: var(--space-8);
+}
 .session-item--pinned .session-item__topic {
   font-weight: var(--weight-medium);
 }

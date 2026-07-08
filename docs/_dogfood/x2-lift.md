@@ -7,11 +7,11 @@ Dogfood runs fix the intentional `roompy` slug typo below, then `make x2-lift-do
 
 | Check | Criterion |
 |-------|-----------|
-| Target | L7 session ID fragment |
+| Target | L17 Evidence row |
 | Wrong | `…-roompy에서-consensus-…` |
 | Right | `…-room.py에서-consensus-…` |
-| Verify | `grep "room\.py" docs/_dogfood/x2-lift.md` matches L7; `grep roompy` is empty |
+| Verify | Evidence row에 `room.py에서` 있고 `roompy에서` 없음 (L5·L11 설명용 `roompy`는 유지) |
 
 ## Evidence row (editable)
 
-| **X2-lift** | 세션 `…-roompy에서-consensus-x2-lift-dogfood` (2026-07-08): reversible marker for history lift |
+| **X2-lift** | 세션 `…-room.py에서-consensus-x2-lift-dogfood` (2026-07-08): reversible marker for history lift |

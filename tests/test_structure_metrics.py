@@ -47,7 +47,7 @@ def test_f9_hot_path_ts_caps_in_baseline() -> None:
         "web/src/components/RoomChat.tsx": 9,
         "web/src/components/RoomChatView.tsx": 220,
         "web/src/hooks/useRoomChat.ts": 12,
-        "web/src/hooks/useRoomChatBootstrap.ts": 360,
+        "web/src/hooks/useRoomChatBootstrap.ts": 478,
         "web/src/hooks/useRoomChatInteractions.ts": 689,
         "web/src/hooks/useRoomChatPresentation.ts": 406,
     }

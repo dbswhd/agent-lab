@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseSideBySideDiff, wordDiffSegments } from "./sideBySideDiff";
+import { parseUnifiedDiff, wordDiffSegments } from "./unifiedDiff";
 
 describe("wordDiffSegments", () => {
   it("highlights only the token that changed, reconstructing the original text exactly", () => {
@@ -38,7 +38,7 @@ describe("wordDiffSegments", () => {
   });
 });
 
-describe("parseSideBySideDiff pair rows", () => {
+describe("parseUnifiedDiff pair rows", () => {
   it("attaches word segments to aligned del/add pairs", () => {
     const diff = [
       "@@ -1,4 +1,4 @@",
@@ -47,7 +47,7 @@ describe("parseSideBySideDiff pair rows", () => {
       "+  background: var(--agent-critic);",
       " }",
     ].join("\n");
-    const { rows } = parseSideBySideDiff(diff);
+    const { rows } = parseUnifiedDiff(diff);
     const pairRow = rows.find((row) => row.kind === "pair");
     expect(pairRow).toBeDefined();
     expect(pairRow?.leftSegments).toBeDefined();
@@ -62,7 +62,7 @@ describe("parseSideBySideDiff pair rows", () => {
 
   it("does not attach segments to pure add/del/ctx rows", () => {
     const diff = ["+only added", "-only removed", " context"].join("\n");
-    const { rows } = parseSideBySideDiff(diff);
+    const { rows } = parseUnifiedDiff(diff);
     for (const row of rows) {
       expect(row.leftSegments).toBeUndefined();
       expect(row.rightSegments).toBeUndefined();

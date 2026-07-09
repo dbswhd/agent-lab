@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import type { PlanExecutionRecord } from "../api/client";
 import { findActiveExecution } from "../utils/planExecuteWorktree";
 import { PlanDiffStat } from "./PlanDiffStat";
-import { SideBySideDiff } from "./SideBySideDiff";
+import { UnifiedDiff } from "./UnifiedDiff";
 
 type Props = {
   readonly executions: readonly PlanExecutionRecord[];
@@ -75,7 +75,7 @@ export function DiffToolPanel({ executions }: Props) {
       </section>
       {activeRow.diff_stat ? <PlanDiffStat text={activeRow.diff_stat} /> : null}
       {activeRow.diff ? (
-        <SideBySideDiff diff={activeRow.diff} />
+        <UnifiedDiff diff={activeRow.diff} />
       ) : (
         <div className="empty-state empty-state--compact">
           <span className="empty-state__title">소스 diff 없음</span>

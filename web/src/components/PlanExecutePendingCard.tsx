@@ -30,7 +30,7 @@ import {
 } from "../utils/planExecuteHistory";
 import type { ExecuteApprovalGate } from "../utils/executeApprovalGate";
 import { WorkPlanIcon } from "./WorkPlanIcon";
-import { SideBySideDiff } from "./SideBySideDiff";
+import { UnifiedDiff } from "./UnifiedDiff";
 import { MergeChecksPanel } from "./MergeChecksPanel";
 import { TrustAutoMergeBar } from "./TrustAutoMergeBar";
 import { EvidenceGatesPanel } from "./EvidenceGatesPanel";
@@ -304,7 +304,7 @@ export function PlanExecutePendingCard({
                 </button>
               ) : null}
             </div>
-            <SideBySideDiff
+            <UnifiedDiff
               diff={activePending.diff}
               activeHunkId={reviseHunkId || undefined}
             />

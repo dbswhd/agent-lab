@@ -818,18 +818,6 @@
   color: var(--label-primary);
 }
 
-.workspace-chrome__actions .workbench-mode-menu__trigger {
-  width: 28px;
-  min-width: 28px;
-  height: 28px;
-  padding: 0;
-  border-radius: var(--radius-sm);
-}
-
-.workspace-chrome__actions .workbench-mode-menu__caret {
-  display: none;
-}
-
 .workspace-chrome__run-badge {
   height: 20px;
   padding: 0 var(--space-8);
@@ -841,86 +829,48 @@
   font-weight: var(--weight-medium);
 }
 
-.workbench-mode-menu {
-  position: relative;
-  z-index: 2;
+/* Persistent segmented tab bar for the workbench panel mode switcher
+   (Apricot Glass, web/DESIGN.md) — every mode is one click away instead
+   of hidden behind a dropdown. */
+.workbench-mode-tabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-pill);
+  corner-shape: superellipse(1.5);
+  background: var(--surface-sunken);
 }
 
-.workbench-mode-menu__trigger {
-  position: relative;
+.workbench-mode-tabs__item {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  height: 32px;
-  min-width: 42px;
-  padding: 0 var(--space-8);
-  border-radius: var(--radius-sm);
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-pill);
+  corner-shape: superellipse(1.5);
   color: var(--label-secondary);
   background: transparent;
+  transition:
+    background var(--transition),
+    color var(--transition);
 }
 
-.workbench-mode-menu__trigger:hover,
-.workbench-mode-menu__trigger.is-open {
-  background: var(--surface-hover);
+.workbench-mode-tabs__item:hover {
   color: var(--label-primary);
-}
-
-.workbench-mode-menu__caret {
-  font-size: var(--text-caption);
-  line-height: 1;
-  color: var(--label-tertiary);
-}
-
-.workbench-mode-menu__popover {
-  position: absolute;
-  top: calc(100% + var(--space-8));
-  right: 0;
-  z-index: 60;
-  min-width: 220px;
-  padding: var(--space-8);
-  border: 1px solid var(--border-soft);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--surface-card) 96%, transparent);
-  box-shadow: var(--shadow-2);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.workbench-mode-menu__item {
-  width: 100%;
-  height: 30px;
-  display: grid;
-  grid-template-columns: 24px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--space-8);
-  padding: 0 var(--space-8);
-  border-radius: var(--radius-sm);
-  color: var(--label-primary);
-  text-align: left;
-}
-
-.workbench-mode-menu__item:hover,
-.workbench-mode-menu__item.is-active {
   background: var(--surface-hover);
 }
 
-.workbench-mode-menu__item.has-separator {
-  margin-top: var(--space-6);
-  border-top: 1px solid var(--border-hair);
-  padding-top: var(--space-6);
-  height: 36px;
+.workbench-mode-tabs__item.is-active {
+  color: var(--label-primary);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-1);
 }
 
-.workbench-mode-menu__item svg {
-  color: var(--label-secondary);
-}
-
-.workbench-mode-menu__item kbd {
-  color: var(--label-tertiary);
-  font-size: var(--text-caption);
-  font-family: var(--font-sans);
+.workbench-mode-tabs__item:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 /* ---- Workspace tab bar ----------------------------------- */
@@ -1567,10 +1517,41 @@
   flex: 1;
 }
 
+/* Apricot Glass (web/DESIGN.md): a warm blob sits behind the panel: the
+   glass bezel below blurs it through rather than using a hardcoded
+   cream fill — this is a pure-CSS trick, no native window vibrancy
+   needed. */
 .diff-tool-panel {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-12);
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+}
+.diff-tool-panel::before {
+  content: "";
+  position: absolute;
+  inset: -20% -10% 40% -10%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      circle at 25% 15%,
+      color-mix(in srgb, var(--workbench-accent) 45%, transparent) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      circle at 75% 5%,
+      color-mix(in srgb, var(--workbench-accent) 30%, transparent) 0%,
+      transparent 50%
+    );
+  filter: blur(6px);
+}
+.diff-tool-panel > * {
+  position: relative;
+  z-index: 1;
 }
 
 .diff-tool-panel__summary {

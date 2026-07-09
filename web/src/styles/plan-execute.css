@@ -1682,10 +1682,15 @@
 }
 
 /* diff preview */
+/* Apricot Glass (web/DESIGN.md): a translucent bezel over
+   .diff-tool-panel's warm blob, instead of a flat sunken fill. */
 .exec-diff {
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-hair);
-  background: var(--surface-sunken);
+  corner-shape: superellipse(1.5);
+  border: 1px solid color-mix(in srgb, var(--surface-card) 70%, transparent);
+  background: color-mix(in srgb, var(--surface-card) 55%, transparent);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
   overflow: hidden;
 }
 .exec-diff__head {
@@ -1734,66 +1739,63 @@
   border-bottom: 1px solid var(--border-hair);
   background: var(--surface-sunken);
 }
-.exec-diff--split {
+/* Unified diff (web/DESIGN.md "Workbench Panel — Apricot Glass") — one
+   column, read top-to-bottom like a real patch, matching how Claude Code
+   itself renders a diff instead of a Before/After grid. */
+.exec-diff--unified {
   border-radius: 0 0 var(--radius-md) var(--radius-md);
-  border: 1px solid var(--border-hair);
+  corner-shape: superellipse(1.5);
+  border: 1px solid color-mix(in srgb, var(--surface-card) 70%, transparent);
   border-top: none;
-  background: var(--surface-sunken);
+  background: color-mix(in srgb, var(--surface-card) 55%, transparent);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
   overflow: hidden;
 }
-.exec-diff__head--split {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-8);
-  padding: var(--space-6) var(--space-12);
-  font-family: var(--font-mono);
-  font-size: var(--text-micro);
-  color: var(--label-tertiary);
-  border-bottom: 1px solid var(--border-hair);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.exec-diff__body--split {
+.exec-diff__body--unified {
   max-height: 360px;
   overflow: auto;
+  padding: var(--space-6) 0;
 }
-.diff-split-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  border-bottom: 1px solid
-    color-mix(in srgb, var(--border-hair) 60%, transparent);
-}
-.diff-split-row--active-hunk {
-  outline: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
-  outline-offset: -1px;
-}
-.diff-split-cell {
+.diff-unified-line {
   margin: 0;
-  padding: 2px var(--space-10);
+  padding: 1px var(--space-10);
   font-family: var(--font-mono);
   font-size: var(--text-caption);
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
 }
-/* Pair rows (aligned del+add): a quiet full-line wash, with only the
-   word(s) that actually changed set in the saturated diff color —
-   see web/DESIGN.md "Workbench Panel — Apricot Glass". */
-.diff-split-row--pair .diff-split-cell--left {
-  background: color-mix(in srgb, var(--diff-remove-line) 45%, transparent);
-  color: var(--label-primary);
+.diff-unified-line--ctx {
+  color: var(--label-secondary);
 }
-.diff-split-row--pair .diff-split-cell--right {
-  background: color-mix(in srgb, var(--diff-add-line) 45%, transparent);
-  color: var(--label-primary);
+.diff-unified-line--meta {
+  color: var(--label-tertiary);
+  background: color-mix(in srgb, var(--surface-hover) 50%, transparent);
 }
-.diff-split-row--add .diff-split-cell--right {
+.diff-unified-line--add {
   background: var(--ok-soft);
   color: var(--ok);
 }
-.diff-split-row--del .diff-split-cell--left {
+.diff-unified-line--del {
   background: var(--danger-soft);
   color: var(--danger);
+}
+/* Pair rows (aligned del+add): two stacked lines with a quiet full-line
+   wash, only the word(s) that actually changed set in the saturated
+   diff color. */
+.diff-unified-pair .diff-unified-line--del {
+  background: color-mix(in srgb, var(--diff-remove-line) 45%, transparent);
+  color: var(--label-primary);
+}
+.diff-unified-pair .diff-unified-line--add {
+  background: color-mix(in srgb, var(--diff-add-line) 45%, transparent);
+  color: var(--label-primary);
+}
+.diff-unified-line--active-hunk,
+.diff-unified-pair--active-hunk {
+  outline: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: -1px;
 }
 .diff-gutter {
   display: inline-block;
@@ -1810,11 +1812,6 @@
 .diff-word--del {
   color: var(--diff-remove-word);
   font-weight: var(--weight-medium);
-}
-.diff-split-cell--full {
-  grid-column: 1 / -1;
-  color: var(--label-tertiary);
-  background: color-mix(in srgb, var(--surface-hover) 50%, transparent);
 }
 
 /* worktree / apply banner */

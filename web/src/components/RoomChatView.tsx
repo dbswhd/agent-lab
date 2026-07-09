@@ -35,10 +35,8 @@ export function RoomChatView({ chat }: Props) {
         rightPanelMode={chat.rightPanelMode}
         locale={chat.locale}
         onToggleSidebar={chat.onToggleSidebar}
-        onToggleRightPanel={chat.toggleInspector}
         onSelectRightPanelMode={chat.handleSelectRightPanelMode}
         onOpenSettings={chat.onOpenSettings}
-        onWorkbenchMenuOpenChange={chat.setWorkbenchMenuOpen}
       />
 
       <div className="pane-row">

@@ -3,7 +3,7 @@ import type { RightPanelMode } from "../utils/workspaceTabs";
 import type { Locale } from "../i18n/locale";
 import { openCommandPalette } from "../utils/desktopShortcuts";
 import { SidebarToggle } from "./SidebarToggle";
-import { WorkbenchModeMenu } from "./WorkbenchModeMenu";
+import { WorkbenchModeTabs } from "./WorkbenchModeTabs";
 
 type Props = {
   readonly title: string;
@@ -15,10 +15,8 @@ type Props = {
   readonly rightPanelMode: RightPanelMode;
   readonly locale: Locale;
   readonly onToggleSidebar: () => void;
-  readonly onToggleRightPanel: () => void;
   readonly onSelectRightPanelMode: (mode: RightPanelMode) => void;
   readonly onOpenSettings?: () => void;
-  readonly onWorkbenchMenuOpenChange?: (open: boolean) => void;
 };
 
 function isTauriApp(): boolean {
@@ -35,10 +33,8 @@ export function WorkspaceChrome({
   rightPanelMode,
   locale,
   onToggleSidebar,
-  onToggleRightPanel,
   onSelectRightPanelMode,
   onOpenSettings: _onOpenSettings,
-  onWorkbenchMenuOpenChange,
 }: Props) {
   const tauri = isTauriApp();
 
@@ -120,13 +116,11 @@ export function WorkspaceChrome({
               <path d="m21 21-4.3-4.3" />
             </svg>
           </button>
-          <WorkbenchModeMenu
+          <WorkbenchModeTabs
             active={rightPanelMode}
             open={rightPanelOpen}
             locale={locale}
             onSelect={onSelectRightPanelMode}
-            onToggleOpen={onToggleRightPanel}
-            onMenuOpenChange={onWorkbenchMenuOpenChange}
           />
         </div>
       </div>

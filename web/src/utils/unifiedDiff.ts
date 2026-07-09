@@ -2,7 +2,7 @@ export type DiffRowKind = "ctx" | "add" | "del" | "meta" | "header" | "pair";
 
 export type WordSegment = { text: string; changed: boolean };
 
-export type SideBySideRow = {
+export type DiffRow = {
   id: string;
   left: string;
   right: string;
@@ -135,12 +135,12 @@ function stripPrefix(line: string): string {
   return line;
 }
 
-export function parseSideBySideDiff(diff: string | undefined): {
-  rows: SideBySideRow[];
+export function parseUnifiedDiff(diff: string | undefined): {
+  rows: DiffRow[];
   hunks: DiffHunkRef[];
 } {
   const lines = (diff ?? "").split("\n");
-  const rows: SideBySideRow[] = [];
+  const rows: DiffRow[] = [];
   const hunks: DiffHunkRef[] = [];
   let hunkId: string | undefined;
   let rowIndex = 0;

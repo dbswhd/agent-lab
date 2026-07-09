@@ -59,6 +59,11 @@
   --diff-remove-line: #fdd2d8; /* diffRemovedDimmed */
   --diff-remove-word: #d1454b; /* diffRemovedWord  */
 
+  /* Lightened terracotta — informed by Anthropic's brand terracotta but
+     distinct from it (see web/DESIGN.md "Workbench Panel — Apricot Glass").
+     Scoped to the workbench surface, not the app-wide --accent. */
+  --workbench-accent: #e38e69;
+
   /* ---- Agent identity (restrained, distinct) -------------- */
   --agent-cursor: var(--progress);
   --agent-cursor-soft: var(--progress-soft);
@@ -330,6 +335,8 @@
   --diff-add-word: #4fbb63;
   --diff-remove-line: #7a2936;
   --diff-remove-word: #e0616b;
+
+  --workbench-accent: #e8996f;
 
   --agent-cursor: var(--progress);
   --agent-cursor-soft: var(--progress-soft);

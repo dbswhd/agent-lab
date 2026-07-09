@@ -14,4 +14,4 @@ Dogfood runs fix the intentional `roompy` slug typo below, then `make x2-lift-do
 
 ## Evidence row (editable)
 
-| **X2-lift** | 세션 `…-roompy에서-consensus-x2-lift-dogfood` (2026-07-08): reversible marker for history lift |
+| **X2-lift** | 세션 `…-room.py에서-consensus-x2-lift-dogfood` (2026-07-08): reversible marker for history lift |

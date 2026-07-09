@@ -459,8 +459,10 @@ def test_build_turn_policy_record_includes_routing_contract() -> None:
         "clarity_short_circuit": True,
         "plan_execute_intent": False,
         "skip_fsm_bootstrap": True,
-        "fast_turn": False,
-        "supervisor_turn": True,
+        # anchored topic -> fast turn regardless of room_preset (§8.2 P2: preset no
+        # longer overrides category/clarity signals, only explicit preset="fast" does)
+        "fast_turn": True,
+        "supervisor_turn": False,
         "roster_size": 0,
     }
 
@@ -669,7 +671,12 @@ def test_p2b_topic_only_single_quick_is_fast() -> None:
     assert effects.run_scribe is False
 
 
-def test_p2b_preset_supervisor_wins_over_quick_route() -> None:
+def test_p2b_quick_route_wins_over_supervisor_preset_when_roster_small() -> None:
+    """§8.2 P2: Composer sends an implicit constant "supervisor" preset on every
+    turn now, so preset can no longer be the fast/supervisor decider — otherwise
+    the quick-route fast path would be permanently dead. Only explicit
+    preset="fast" still short-circuits; supervisor falls through to the same
+    category/roster signals skip_plan_fsm_bootstrap already uses."""
     from agent_lab.room.turn_policy import is_fast_turn
 
     signals = TurnSignals(
@@ -677,7 +684,7 @@ def test_p2b_preset_supervisor_wins_over_quick_route() -> None:
         route_category="quick",
         roster_size=1,
     )
-    assert is_fast_turn(signals) is False
+    assert is_fast_turn(signals) is True
 
 
 def test_p2b_routing_contract_snapshot_includes_turn_mode() -> None:

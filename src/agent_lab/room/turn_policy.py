@@ -229,13 +229,21 @@ def _preset_norm(signals: TurnSignals) -> str:
 
 
 def is_fast_turn(signals: TurnSignals) -> bool:
-    """Low-side-effect path — single-agent quick, no FSM/scribe (P2b TurnContract)."""
+    """Low-side-effect path — single-agent quick, no FSM/scribe (TurnContract §8.2 P2).
+
+    ``room_preset`` no longer short-circuits this to False: the Composer sends an
+    implicit constant preset for every turn now (``IMPLICIT_ROOM_PRESET``), so an
+    unconditional "supervisor preset -> never fast" branch would permanently kill
+    the quick/anchored fast path for every real session. Only the explicit
+    ``preset == "fast"`` override is preset-driven; everything else routes on the
+    same category/clarity/roster signals ``skip_plan_fsm_bootstrap`` already uses.
+    """
     if signals.plan_execute_intent:
         return False
     preset = _preset_norm(signals)
     if preset == "fast":
         return True
-    if preset == "supervisor":
+    if signals.skill_intent or signals.proposed_tags_count > 0:
         return False
     if signals.roster_size > 1:
         return False
@@ -245,15 +253,10 @@ def is_fast_turn(signals: TurnSignals) -> bool:
 
 
 def is_supervisor_turn(signals: TurnSignals) -> bool:
-    """Plan FSM / multi-agent dogfood path (P2b TurnContract)."""
+    """Plan FSM / multi-agent dogfood path (TurnContract §8.2 P2)."""
     if is_fast_turn(signals):
         return False
-    preset = _preset_norm(signals)
-    if preset == "supervisor":
-        return True
-    if preset == "fast":
-        return False
-    return True
+    return _preset_norm(signals) != "fast"
 
 
 @dataclass(frozen=True, slots=True)

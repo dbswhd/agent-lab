@@ -42,6 +42,31 @@ export function SideBySideDiff({ diff, activeHunkId }: Props) {
               <pre className="diff-split-cell diff-split-cell--full">
                 {row.left}
               </pre>
+            ) : row.kind === "pair" && row.leftSegments && row.rightSegments ? (
+              <>
+                <pre className="diff-split-cell diff-split-cell--left">
+                  <span className="diff-gutter diff-gutter--del">&minus;</span>
+                  {row.leftSegments.map((segment, index) => (
+                    <span
+                      key={index}
+                      className={segment.changed ? "diff-word diff-word--del" : undefined}
+                    >
+                      {segment.text}
+                    </span>
+                  ))}
+                </pre>
+                <pre className="diff-split-cell diff-split-cell--right">
+                  <span className="diff-gutter diff-gutter--add">+</span>
+                  {row.rightSegments.map((segment, index) => (
+                    <span
+                      key={index}
+                      className={segment.changed ? "diff-word diff-word--add" : undefined}
+                    >
+                      {segment.text}
+                    </span>
+                  ))}
+                </pre>
+              </>
             ) : (
               <>
                 <pre className="diff-split-cell diff-split-cell--left">

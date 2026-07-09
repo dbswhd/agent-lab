@@ -15,18 +15,11 @@ type Props = {
   planRevision?: string | null;
   onResolved?: (detail?: { pendingCount: number }) => void;
   onBuildStarted?: () => void;
-  onDismiss?: () => void;
-  onOpenInbox?: () => void;
   disabled?: boolean;
-  presentation?: "inline" | "popup" | "inspector" | "taskbar" | "composer";
   kindFilter?: "question" | "build" | "skill_draft" | "autonomy";
   excludeKind?: "question" | "build" | "skill_draft";
   discussOnly?: boolean;
-  hideInspectorLabel?: boolean;
   onRefClick?: (ref: string) => void;
-  /** When true, pending rows are read-only (actions live in composer). */
-  readOnly?: boolean;
-  onFocusComposer?: () => void;
 };
 
 function pendingItems(items: HumanInboxItem[]): HumanInboxItem[] {
@@ -534,17 +527,11 @@ export function HumanInboxPanel({
   planRevision = null,
   onResolved,
   onBuildStarted,
-  onDismiss,
-  onOpenInbox,
   disabled,
-  presentation = "inline",
   kindFilter,
   excludeKind,
   discussOnly = false,
-  hideInspectorLabel = false,
   onRefClick,
-  readOnly = false,
-  onFocusComposer,
 }: Props) {
   const { locale } = useLocale();
   const ko = locale === "ko";
@@ -718,63 +705,9 @@ export function HumanInboxPanel({
     return null;
   }
 
-  if (presentation === "inspector") {
-    return (
-      <InspectorInboxView
-        items={visibleItems}
-        error={error}
-        disabled={disabled}
-        busyId={busyId}
-        planRevision={planRevision}
-        freeformDraft={freeformDraft}
-        setFreeformDraft={setFreeformDraft}
-        selectedDraft={selectedDraft}
-        setSelectedDraft={setSelectedDraft}
-        onQuestion={handleQuestion}
-        onFreeform={handleFreeform}
-        onBuild={handleBuild}
-        onSkillDraft={handleSkillDraft}
-        onDefer={handleDefer}
-        hideLabel={hideInspectorLabel}
-        onRefClick={onRefClick}
-        readOnly={readOnly}
-        onFocusComposer={onFocusComposer}
-      />
-    );
-  }
-
   if (visiblePending.length === 0) {
-    if (presentation === "taskbar") {
-      return (
-        <div className="taskbar__empty human-inbox--taskbar-empty">
-          {ko ? "Human gate 항목 없음" : "No human gate items"}
-        </div>
-      );
-    }
     return null;
   }
-
-  const questionCount = visiblePending.filter(
-    (item) => item.kind === "question",
-  ).length;
-  const buildCount = visiblePending.filter(
-    (item) => item.kind === "build",
-  ).length;
-
-  const title =
-    presentation === "composer"
-      ? ko
-        ? "지금 할 일"
-        : "Action needed"
-      : presentation === "popup"
-        ? visiblePending[0]?.kind === "build"
-          ? ko
-            ? "Build 승인 필요"
-            : "Build approval required"
-          : ko
-            ? "질문에 답해야 합니다"
-            : "Answer required"
-        : "Human Inbox";
 
   const rowProps = {
     planRevision,
@@ -792,16 +725,15 @@ export function HumanInboxPanel({
     locale,
   };
 
-  if (presentation === "composer") {
-    const lead = visiblePending[0];
-    const leadSubject = lead
-      ? lead.kind === "question"
-        ? cleanSubject(lead.prompt)
-        : (lead.summary ?? lead.prompt)
-      : "";
-    const multi = visiblePending.length > 1;
+  const lead = visiblePending[0];
+  const leadSubject = lead
+    ? lead.kind === "question"
+      ? cleanSubject(lead.prompt)
+      : (lead.summary ?? lead.prompt)
+    : "";
+  const multi = visiblePending.length > 1;
 
-    return (
+  return (
       <div
         className={[
           "human-inbox human-inbox--composer composer-dock-card composer-dock-card--composer",
@@ -860,201 +792,4 @@ export function HumanInboxPanel({
         ) : null}
       </div>
     );
-  }
-
-  return (
-    <div
-      className={["human-inbox", `human-inbox--${presentation}`].join(" ")}
-      role={presentation === "popup" ? "dialog" : "region"}
-      aria-label="Human Inbox"
-      aria-modal={presentation === "popup" ? true : undefined}
-    >
-      {presentation !== "taskbar" ? (
-        <div className="human-inbox__header">
-          <span className="human-inbox__title">{title}</span>
-          <span className="human-inbox__counts">
-            {questionCount > 0
-              ? ko
-                ? `방향 ${questionCount}`
-                : `${questionCount} question`
-              : null}
-            {questionCount > 0 && buildCount > 0 ? " · " : null}
-            {buildCount > 0
-              ? ko
-                ? `실행 ${buildCount}`
-                : `${buildCount} build`
-              : null}
-          </span>
-          {presentation === "popup" ? (
-            <span className="human-inbox__header-actions">
-              {onOpenInbox ? (
-                <button
-                  type="button"
-                  className="human-inbox__header-btn"
-                  onClick={onOpenInbox}
-                >
-                  Inbox
-                </button>
-              ) : null}
-              {onDismiss ? (
-                <button
-                  type="button"
-                  className="human-inbox__header-btn"
-                  onClick={onDismiss}
-                  aria-label={
-                    ko ? "Human Inbox popup 닫기" : "Dismiss Human Inbox popup"
-                  }
-                >
-                  {ko ? "닫기" : "Dismiss"}
-                </button>
-              ) : null}
-            </span>
-          ) : null}
-        </div>
-      ) : null}
-      {error ? <div className="human-inbox__error">{error}</div> : null}
-      <div className="human-inbox__items">
-        {visiblePending.map((item) => (
-          <InboxRow
-            key={item.id}
-            item={item}
-            {...rowProps}
-            onRefClick={onRefClick}
-          />
-        ))}
-      </div>
-      {presentation === "taskbar" && onOpenInbox ? (
-        <div className="human-inbox__taskbar-footer">
-          <button type="button" className="btn btn--sm" onClick={onOpenInbox}>
-            {ko ? "전체 Inbox" : "Full Inbox"}
-          </button>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-type InspectorInboxProps = {
-  items: HumanInboxItem[];
-  error: string | null;
-  disabled?: boolean;
-  busyId: string | null;
-  planRevision: string | null;
-  freeformDraft: Record<string, string>;
-  setFreeformDraft: React.Dispatch<
-    React.SetStateAction<Record<string, string>>
-  >;
-  selectedDraft: Record<string, string>;
-  setSelectedDraft: React.Dispatch<
-    React.SetStateAction<Record<string, string>>
-  >;
-  onQuestion: (item: HumanInboxItem, optionId: string) => void;
-  onFreeform: (item: HumanInboxItem) => void;
-  onBuild: (item: HumanInboxItem, decision: "go" | "defer" | "reject") => void;
-  onSkillDraft: (item: HumanInboxItem, decision: "approve" | "reject") => void;
-  onDefer: (item: HumanInboxItem) => void;
-  hideLabel?: boolean;
-  onRefClick?: (ref: string) => void;
-  readOnly?: boolean;
-  onFocusComposer?: () => void;
-};
-
-function InspectorInboxView({
-  items,
-  error,
-  disabled,
-  busyId,
-  planRevision,
-  freeformDraft,
-  setFreeformDraft,
-  selectedDraft,
-  setSelectedDraft,
-  onQuestion,
-  onFreeform,
-  onBuild,
-  onSkillDraft,
-  onDefer,
-  hideLabel = false,
-  onRefClick,
-  readOnly = false,
-  onFocusComposer,
-}: InspectorInboxProps) {
-  const { msg, locale } = useLocale();
-  const ko = locale === "ko";
-
-  return (
-    <section
-      className={
-        hideLabel ? "ctx-section ctx-section--embedded" : "ctx-section"
-      }
-    >
-      {hideLabel ? null : (
-        <div className="ctx-section__label">{msg.humanInbox}</div>
-      )}
-      {readOnly ? (
-        <div className="inbox-readonly-banner" role="status">
-          <p className="inbox-readonly-banner__text">
-            {ko
-              ? "대기 중인 항목은 Composer에서 처리합니다. 여기서는 기록만 확인합니다."
-              : "Pending items are handled in the composer. This view is history only."}
-          </p>
-          {onFocusComposer ? (
-            <button
-              type="button"
-              className="btn btn--sm btn--primary"
-              onClick={onFocusComposer}
-            >
-              {ko ? "Composer로 이동" : "Go to composer"}
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-      {error ? <div className="ctx-empty">{error}</div> : null}
-      {items.length === 0 ? (
-        <div className="ctx-empty">{msg.inboxEmpty}</div>
-      ) : (
-        items.map((item) => {
-          if (item.status !== "pending") {
-            const subject =
-              item.kind === "build"
-                ? (item.summary ?? item.prompt)
-                : item.prompt;
-            return (
-              <div key={item.id} className="inbox-row inbox-row--resolved">
-                <div className="inbox-row__head">
-                  <Avatar role={inboxAgent(item)} size={20} />
-                  <span className="inbox-row__subject">{subject}</span>
-                  <span className="inbox-row__time">
-                    {formatInboxTime(item.created_at)}
-                  </span>
-                </div>
-                <p className="inbox-row__body">{item.status}</p>
-              </div>
-            );
-          }
-          return (
-            <InboxRow
-              key={item.id}
-              item={item}
-              planRevision={planRevision}
-              disabled={disabled}
-              busyId={busyId}
-              freeformDraft={freeformDraft}
-              setFreeformDraft={setFreeformDraft}
-              selectedDraft={selectedDraft}
-              setSelectedDraft={setSelectedDraft}
-              onQuestion={onQuestion}
-              onFreeform={onFreeform}
-              onBuild={onBuild}
-              onSkillDraft={onSkillDraft}
-              onDefer={onDefer}
-              locale={locale}
-              onRefClick={onRefClick}
-              readOnly={readOnly}
-            />
-          );
-        })
-      )}
-    </section>
-  );
 }

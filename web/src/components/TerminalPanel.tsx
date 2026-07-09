@@ -44,7 +44,7 @@ export function TerminalPanel({ sessionId }: Props) {
       theme: {
         background: "#1a1b1e",
         foreground: "#e8e8ea",
-        cursor: "#7aa2ff",
+        cursor: "#c9c9cc",
       },
       scrollback: 5000,
     });

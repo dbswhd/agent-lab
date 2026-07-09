@@ -52,6 +52,13 @@
   --progress: #3e63dd; /* Oreo Status/Progress      */
   --progress-soft: rgba(62, 99, 221, 0.12);
 
+  /* ---- Diff line/word (Apricot Glass — extracted from the      */
+  /* installed Claude Code CLI binary's light theme object) ---- */
+  --diff-add-line: #c7e1cb; /* diffAddedDimmed  */
+  --diff-add-word: #2f9d44; /* diffAddedWord    */
+  --diff-remove-line: #fdd2d8; /* diffRemovedDimmed */
+  --diff-remove-word: #d1454b; /* diffRemovedWord  */
+
   /* ---- Agent identity (restrained, distinct) -------------- */
   --agent-cursor: var(--progress);
   --agent-cursor-soft: var(--progress-soft);
@@ -61,6 +68,12 @@
   --agent-claude-soft: rgba(182, 90, 60, 0.12);
   --agent-you: #6c727b; /* neutral slate */
   --agent-you-soft: rgba(108, 114, 123, 0.12);
+  --agent-planner: #a37a3a; /* muted bronze */
+  --agent-planner-soft: rgba(163, 122, 58, 0.12);
+  --agent-critic: #9c5875; /* muted plum */
+  --agent-critic-soft: rgba(156, 88, 117, 0.12);
+  --agent-scribe: #6b7a4f; /* muted olive */
+  --agent-scribe-soft: rgba(107, 122, 79, 0.12);
 
   /* ---- Spacing scale -------------------------------------- */
   /* Tiny gaps (2–8) unchanged; mid/large steps tightened ~15% so the layout
@@ -310,6 +323,14 @@
   --progress: #3e63dd;
   --progress-soft: rgba(62, 99, 221, 0.2);
 
+  /* Dark: diffAdded/diffRemoved extracted from Claude Code CLI binary;
+     diffAddedWord/diffRemovedWord not confirmed there — derived (brightened
+     for contrast on a dark surface), see web/DESIGN.md. */
+  --diff-add-line: #225c2b;
+  --diff-add-word: #4fbb63;
+  --diff-remove-line: #7a2936;
+  --diff-remove-word: #e0616b;
+
   --agent-cursor: var(--progress);
   --agent-cursor-soft: var(--progress-soft);
   --agent-codex: #12a594;
@@ -318,6 +339,12 @@
   --agent-claude-soft: rgba(210, 120, 90, 0.16);
   --agent-you: #9aa0a9;
   --agent-you-soft: rgba(154, 160, 169, 0.15);
+  --agent-planner: #c99f5e;
+  --agent-planner-soft: rgba(201, 159, 94, 0.16);
+  --agent-critic: #c17f9c;
+  --agent-critic-soft: rgba(193, 127, 156, 0.16);
+  --agent-scribe: #8fa06b;
+  --agent-scribe-soft: rgba(143, 160, 107, 0.16);
 
   --composer-status-bg: #222222;
   --composer-send-disabled-bg: #222222;

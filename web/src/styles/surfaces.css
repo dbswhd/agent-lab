@@ -56,59 +56,29 @@
 .avatar--orb img {
   display: none;
 }
-.avatar--orb.avatar--cursor {
-  background:
-    radial-gradient(circle at 35% 28%, #f5ffe9 0%, transparent 52%),
-    radial-gradient(circle at 50% 88%, #c7f0df 0%, transparent 58%),
-    linear-gradient(180deg, #8be8cb 0%, #57b565 100%);
-  box-shadow:
-    inset 0 0 2px 1px rgba(255, 255, 255, 0.95),
-    inset 0 0 8px 1px rgba(66, 203, 169, 0.45),
-    0 8px 18px rgba(0, 0, 0, 0.08);
-}
-.avatar--orb.avatar--codex {
-  background:
-    radial-gradient(circle at 50% 62%, #57b565 0%, transparent 48%),
-    radial-gradient(circle at 50% 38%, #4229ff 0%, transparent 55%),
-    linear-gradient(180deg, #030a1a 0%, #031a05 100%);
-  box-shadow:
-    inset 0 0 2px 1px rgba(255, 255, 255, 0.9),
-    inset 0 0 10px 1px rgba(113, 171, 255, 0.55),
-    0 8px 18px rgba(0, 0, 0, 0.1);
-}
-.avatar--orb.avatar--claude {
-  background:
-    radial-gradient(circle at 72% 72%, #fb4fbc 0%, transparent 52%),
-    radial-gradient(circle at 18% 22%, #ffaaaa 0%, transparent 50%),
-    linear-gradient(135deg, #ffdedf 0%, #ffd9b8 100%);
-  box-shadow:
-    inset 0 0 2px 1px rgba(255, 255, 255, 0.95),
-    inset 0 0 10px 1px rgba(254, 233, 245, 0.65),
-    0 8px 18px rgba(0, 0, 0, 0.08);
-}
-.avatar--orb.avatar--kimi,
-.avatar--orb.avatar--kimi_work {
-  background:
-    radial-gradient(circle at 50% 30%, #ff0084 0%, transparent 50%),
-    radial-gradient(circle at 50% 78%, #88b9ff 0%, transparent 55%),
-    linear-gradient(180deg, #6550b9 0%, #4229ff 100%);
-  box-shadow:
-    inset 0 0 2px 1px rgba(255, 255, 255, 0.95),
-    inset 0 0 8px 1px rgba(136, 185, 255, 0.5),
-    0 8px 18px rgba(0, 0, 0, 0.08);
-}
+/* cursor/codex/claude/kimi/kimi_work always render .avatar--logo (brand PNG)
+   when variant="orb" — see BRAND_LOGO_ROLES in Avatar.tsx — so those roles
+   never reach .avatar--orb; only planner/critic/scribe/you do. */
 .avatar--orb.avatar--planner {
-  background: linear-gradient(180deg, #ffd9b8 0%, #ff9a44 100%);
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.35) 0%, transparent 60%),
+    var(--agent-planner);
 }
 .avatar--orb.avatar--critic {
-  background: linear-gradient(180deg, #ffdedf 0%, #fb4fbc 100%);
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.35) 0%, transparent 60%),
+    var(--agent-critic);
 }
 .avatar--orb.avatar--scribe {
-  background: linear-gradient(180deg, #f4dec3 0%, #cc4e00 100%);
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.35) 0%, transparent 60%),
+    var(--agent-scribe);
 }
 .avatar--orb.avatar--you {
-  background: linear-gradient(180deg, #f9f9f9 0%, #e8e8e8 100%);
-  color: var(--label-primary);
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.5) 0%, transparent 60%),
+    var(--agent-you);
+  color: var(--label-inverse);
 }
 .avatar--cursor {
   background: var(--agent-cursor);
@@ -118,6 +88,15 @@
 }
 .avatar--claude {
   background: var(--agent-claude);
+}
+.avatar--planner {
+  background: var(--agent-planner);
+}
+.avatar--critic {
+  background: var(--agent-critic);
+}
+.avatar--scribe {
+  background: var(--agent-scribe);
 }
 .avatar--you {
   background: var(--agent-you);

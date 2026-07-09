@@ -1166,7 +1166,7 @@
 
 .taskbar-inline-error {
   margin: 0 0 var(--space-4);
-  font-size: var(--text-caption);
+  font-size: var(--text-footnote);
   color: var(--danger);
 }
 
@@ -1306,7 +1306,7 @@
 
 .task-row__error {
   flex: 1 1 100%;
-  font-size: var(--text-micro);
+  font-size: var(--text-footnote);
   color: var(--danger);
 }
 
@@ -2218,6 +2218,10 @@
 .ns-select:hover {
   border-color: var(--border-strong);
 }
+.ns-select:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
 .ns-select select {
   appearance: none;
   -webkit-appearance: none;
@@ -2691,7 +2695,7 @@
 }
 .codex-proxy-panel__error {
   margin: 0 0 var(--space-8);
-  font-size: var(--text-caption);
+  font-size: var(--text-footnote);
   color: var(--mac-system-orange, #ff9f0a);
 }
 .codex-proxy-panel__rows {
@@ -3766,9 +3770,6 @@
   flex-direction: column;
   gap: var(--space-6);
 }
-.inbox-row--resolved {
-  opacity: 0.5;
-}
 .inbox-row__head {
   display: flex;
   align-items: center;
@@ -4569,6 +4570,9 @@
   resize: none;
   outline: none;
 }
+.files-editor:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--accent-ring);
+}
 .files-monaco {
   flex: 1;
   min-height: 320px;
@@ -4754,7 +4758,7 @@
   border-color: var(--accent);
 }
 .bgtask-form__error {
-  font-size: var(--text-caption);
+  font-size: var(--text-footnote);
   color: var(--danger);
 }
 .bgtask-form__actions {
@@ -5532,6 +5536,9 @@
   font-size: var(--text-body);
   color: var(--label-primary);
   outline: none;
+}
+.cmd-palette__input:focus-visible {
+  box-shadow: inset 0 -2px 0 var(--accent);
 }
 .cmd-palette__input::placeholder {
   color: var(--label-quaternary);
@@ -6365,13 +6372,13 @@
   border-radius: var(--radius-sm);
   background: var(--danger-soft);
   border: 1px solid color-mix(in srgb, var(--danger) 20%, transparent);
-  font-size: var(--text-caption);
+  font-size: var(--text-footnote);
   color: var(--danger);
   line-height: 1.45;
 }
 .context-preview__error {
   padding: var(--space-8) var(--space-12);
-  font-size: var(--text-caption);
+  font-size: var(--text-footnote);
   color: var(--danger);
   background: var(--danger-soft);
   border-radius: var(--radius-sm);
@@ -7012,7 +7019,7 @@ button.plan-doc__ref--link:hover {
 .work-exec-revise__error {
   margin: 0;
   color: var(--danger);
-  font-size: var(--text-caption);
+  font-size: var(--text-footnote);
 }
 
 /* ---------- Execution history ---------- */
@@ -7107,7 +7114,7 @@ button.plan-doc__ref--link:hover {
   background: var(--accent);
   color: var(--on-accent);
   border-color: transparent;
-  box-shadow: 0 1px 3px rgba(47, 109, 246, 0.4);
+  box-shadow: var(--shadow-1);
 }
 .plan-card__btn--accent:hover:not(:disabled) {
   background: var(--accent-hover);
@@ -7680,7 +7687,7 @@ button.plan-doc__ref--link:hover {
 }
 .goal-loop-banner__error {
   margin: 0;
-  font-size: var(--text-caption);
+  font-size: var(--text-footnote);
   color: var(--danger);
 }
 .goal-oracle-badge {
@@ -8101,6 +8108,9 @@ button.plan-doc__ref--link:hover {
   color: var(--text-primary);
   caret-color: var(--text-primary);
   padding: 0;
+}
+.terminal-panel__input:focus-visible {
+  box-shadow: var(--focus-ring);
 }
 .terminal-panel__input::placeholder {
   color: var(--text-tertiary, var(--text-secondary));

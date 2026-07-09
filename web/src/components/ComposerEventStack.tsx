@@ -320,7 +320,6 @@ export function ComposerEventStack({
               onResolved={onInboxResolved}
               onBuildStarted={onInboxBuildStarted}
               disabled={false}
-              presentation="composer"
               onRefClick={onInboxRefClick}
             />
           </div>

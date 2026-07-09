@@ -18,13 +18,13 @@
 }
 .work-clarify__title {
   margin: 0;
-  font-size: 1rem;
+  font-size: var(--text-title3);
 }
 .work-clarify__detail,
 .work-clarify__stat {
   margin: 0 0 0.75rem;
-  color: var(--text-secondary, #666);
-  font-size: 0.875rem;
+  color: var(--label-secondary);
+  font-size: var(--text-callout);
   line-height: 1.45;
 }
 .work-clarify__stat--muted {
@@ -39,12 +39,12 @@
 }
 .work-clarify-questions__title {
   margin: 0 0 0.5rem;
-  font-size: 0.875rem;
+  font-size: var(--text-callout);
 }
 .work-clarify-questions__list {
   margin: 0;
   padding-left: 1.25rem;
-  font-size: 0.875rem;
+  font-size: var(--text-callout);
   line-height: 1.5;
 }
 .work-clarify-questions__list li + li {
@@ -159,12 +159,16 @@
 .work-decision__detail {
   margin: 0;
   color: var(--label-secondary);
-  font-size: var(--text-caption);
 }
 
 .work-decision__eyebrow {
+  font-size: var(--text-caption);
   font-weight: var(--weight-semibold);
   text-transform: uppercase;
+}
+
+.work-decision__detail {
+  font-size: var(--text-footnote);
 }
 
 .work-decision__title {
@@ -196,7 +200,7 @@
 
 .work-decision__facts dd {
   margin: 2px 0 0;
-  font-size: var(--text-caption);
+  font-size: var(--text-footnote);
   color: var(--label-primary);
   overflow-wrap: anywhere;
 }
@@ -1525,7 +1529,7 @@
   background: var(--accent);
   color: #fff;
   border-color: transparent;
-  box-shadow: 0 1px 3px rgba(47, 109, 246, 0.4);
+  box-shadow: var(--shadow-1);
 }
 .plan-btn--primary:hover:not(:disabled) {
   background: var(--accent-hover);
@@ -1772,22 +1776,40 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
+/* Pair rows (aligned del+add): a quiet full-line wash, with only the
+   word(s) that actually changed set in the saturated diff color —
+   see web/DESIGN.md "Workbench Panel — Apricot Glass". */
 .diff-split-row--pair .diff-split-cell--left {
-  background: var(--danger-soft);
-  color: var(--danger);
+  background: color-mix(in srgb, var(--diff-remove-line) 45%, transparent);
+  color: var(--label-primary);
 }
 .diff-split-row--pair .diff-split-cell--right {
-  background: var(--ok-soft);
-  color: var(--ok);
+  background: color-mix(in srgb, var(--diff-add-line) 45%, transparent);
+  color: var(--label-primary);
 }
-.diff-split-row--add .diff-split-cell--right,
-.diff-split-row--del .diff-split-cell--left {
+.diff-split-row--add .diff-split-cell--right {
   background: var(--ok-soft);
   color: var(--ok);
 }
 .diff-split-row--del .diff-split-cell--left {
   background: var(--danger-soft);
   color: var(--danger);
+}
+.diff-gutter {
+  display: inline-block;
+  width: 1.1em;
+  font-weight: var(--weight-semibold);
+  user-select: none;
+}
+.diff-gutter--add { color: var(--diff-add-word); }
+.diff-gutter--del { color: var(--diff-remove-word); }
+.diff-word--add {
+  color: var(--diff-add-word);
+  font-weight: var(--weight-medium);
+}
+.diff-word--del {
+  color: var(--diff-remove-word);
+  font-weight: var(--weight-medium);
 }
 .diff-split-cell--full {
   grid-column: 1 / -1;
@@ -2164,7 +2186,7 @@
 
 .wisdom-search__error {
   margin: 0;
-  font-size: var(--text-caption);
+  font-size: var(--text-footnote);
   color: var(--mac-system-orange, #ff9f0a);
 }
 

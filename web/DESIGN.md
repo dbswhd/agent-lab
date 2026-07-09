@@ -26,6 +26,8 @@ The source of truth is `src/styles/tokens.css`; components must consume these se
 | Success | `--ok` / `--ok-soft` | Verified and resolved state |
 | Warning | `--warn` / `--warn-soft` | Degraded but recoverable state |
 | Danger | `--danger` / `--danger-soft` | Blocking or destructive state |
+| Diff add (line / word) | `--diff-add-line` / `--diff-add-word` | Full-line wash vs. the exact changed token, added |
+| Diff remove (line / word) | `--diff-remove-line` / `--diff-remove-word` | Full-line wash vs. the exact changed token, removed |
 
 Status color supplements a text label and icon; it is never the only signal. Agent colors identify authors only and do not represent health.
 
@@ -78,6 +80,14 @@ The composer is a stable dock with this order: actionable status, mode/turn cont
 - **Structure:** category navigation and one focused content panel.
 - **Behavior:** desktop vertical navigation; mobile select. The selected category persists for the current app session.
 - **Depth:** sections use dividers and tonal shifts rather than nested card stacks.
+
+### Workbench Panel — Apricot Glass
+
+- **Structure:** neutral base (`--surface-pane`, white in light / near-black in dark — no hardcoded warm background). Tab switcher is one rounded segmented pill (`--radius-pill`), not separate bordered tabs. Content wells that float above other content (e.g. the diff bezel) use a translucent glass surface (`backdrop-filter: blur() saturate()` over `rgba(255,255,255,0.55)`-ish) instead of a flat card — warmth comes from whatever sits behind the blur, never from a hardcoded cream fill.
+- **Corners:** rounded elements set `corner-shape: superellipse(1.5)` (squircle) with `border-radius` kept as the fallback for renderers that don't support it yet.
+- **Diff rendering:** each line gets a gutter marker (`+`/`−`) plus a soft full-line wash (`--diff-add-line` / `--diff-remove-line`). Only the specific changed token — never the whole line — is set in the saturated word-level color (`--diff-add-word` / `--diff-remove-word`).
+- **Accent:** this surface's `--accent` is a lightened terracotta (`#e38e69`) — informed by, but distinct from, Anthropic's own brand terracotta, so the panel reads as Agent Lab rather than as a Claude Code skin.
+- **Provenance:** light-theme diff tokens and the terracotta reference point were extracted directly from the installed Claude Code CLI binary's embedded theme object (`diffAdded`/`diffRemoved`/`diffAddedWord`/`diffRemovedWord`/`claude`). Dark-theme line washes were extracted the same way; dark-theme word-level accents are derived (brightened for contrast), not directly confirmed in the binary.
 
 ### Oreo-Inspired Primitives
 

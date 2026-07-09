@@ -272,12 +272,14 @@ def orchestrate_plan_workflow_pipeline(
 ) -> tuple[str, list[Any], dict[str, Any]]:
     """Run post-scribe plan pipeline: peer review, refine scribe, human pending."""
     from agent_lab.human_inbox import has_pending_question
+    from agent_lab.room.turn_policy import turn_policy_enabled
 
     if cancelled or not is_plan_workflow_active(run_meta):
         return plan_md, [], {"handled": False}
 
     extra_messages: list[Any] = []
     plan_md_current = plan_md
+    turn_policy_advance = turn_policy_enabled()
     tick = tick_plan_workflow_after_turn(
         folder,
         synthesize=synthesize,
@@ -285,6 +287,7 @@ def orchestrate_plan_workflow_pipeline(
         plan_md=plan_md_current,
         plan_before=plan_before,
         has_pending_inbox_question=has_pending_question(read_run_meta(folder)),
+        turn_policy_advance=turn_policy_advance,
     )
 
     for _ in range(5):
@@ -312,6 +315,7 @@ def orchestrate_plan_workflow_pipeline(
                 plan_md=plan_md_current,
                 plan_before=plan_before,
                 has_pending_inbox_question=False,
+                turn_policy_advance=turn_policy_advance,
             )
             continue
         if phase == "REFINE":
@@ -340,6 +344,7 @@ def orchestrate_plan_workflow_pipeline(
                 plan_md=plan_md_current,
                 plan_before=prior,
                 has_pending_inbox_question=False,
+                turn_policy_advance=turn_policy_advance,
             )
             continue
         break

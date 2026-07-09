@@ -7,8 +7,11 @@ from pathlib import Path
 import pytest
 
 from agent_lab.plan.workflow import (
+    get_plan_workflow,
     init_plan_workflow_on_plan_send,
+    orchestrate_plan_workflow_pipeline,
     plan_workflow_phase,
+    set_plan_workflow_phase,
     tick_plan_workflow_after_turn,
 )
 from agent_lab.room.turn_policy import TurnPolicyEngine, TurnSignals, _run_fsm_tick, turn_policy_enabled
@@ -129,3 +132,63 @@ def test_apply_turn_effects_fsm_tick_on_supervisor_discuss(
     )
     assert result.applied is True
     assert plan_workflow_phase(read_run_meta(folder)) == "DRAFT"
+
+
+def test_orchestrate_pipeline_advances_draft_when_turn_policy_on_and_synthesize_false(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Regression: a live dogfood run found plan_workflow permanently stuck in DRAFT.
+
+    ``orchestrate_plan_workflow_pipeline`` is invoked with ``synthesize=False``
+    whenever the caller (``apply_turn_effects``) already decided
+    ``advance_plan_workflow=True`` via TurnPolicy — the common case. Its internal
+    ``tick_plan_workflow_after_turn`` calls didn't pass ``turn_policy_advance``,
+    so they hit the legacy ``discuss_only`` short-circuit and never advanced
+    past DRAFT, no matter how many turns ran.
+    """
+    monkeypatch.setenv("AGENT_LAB_TURN_POLICY", "1")
+    monkeypatch.setenv("AGENT_LAB_PLAN_FSM_SKILL_FIRST", "0")
+
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    (folder / "run.json").write_text("{}", encoding="utf-8")
+    init_plan_workflow_on_plan_send(folder)
+    set_plan_workflow_phase(folder, "DRAFT")
+    plan_before = ""
+    plan_md = (
+        "# plan\n\n## 지금 실행\n\n"
+        "1. fix typo\n"
+        "   - 무엇을: `roompy` typo\n"
+        "   - 어디서: `docs/_dogfood/x2-lift.md`\n"
+        "   - 검증: `grep room.py docs/_dogfood/x2-lift.md`\n"
+    )
+    (folder / "plan.md").write_text(plan_md, encoding="utf-8")
+
+    def _fake_peer_review(_folder, *_args, **_kwargs):
+        return []
+
+    monkeypatch.setattr(
+        "agent_lab.plan.workflow.run_plan_peer_review_round",
+        _fake_peer_review,
+    )
+
+    run_meta = read_run_meta(folder)
+    run_meta["_session_folder"] = str(folder)
+    result_plan_md, _replies, tick = orchestrate_plan_workflow_pipeline(
+        folder,
+        topic="fix typo",
+        messages=[],
+        plan_md=plan_md,
+        plan_before=plan_before,
+        synthesize=False,
+        cancelled=False,
+        agents=["claude", "codex", "cursor"],
+        permissions={},
+        run_meta=run_meta,
+    )
+
+    pw = get_plan_workflow(read_run_meta(folder))
+    assert pw["phase"] == "HUMAN_PENDING"
+    assert tick.get("pending_approval") is True
+    assert result_plan_md.strip() == plan_md.strip()

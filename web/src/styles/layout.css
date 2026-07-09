@@ -65,6 +65,11 @@
   );
 }
 /* Workbench — isolated card on the shared pane field */
+/* Apricot Glass (web/DESIGN.md): a warm blob sits behind the whole
+   workbench panel — every mode, not just Diff. Content wells inside
+   (e.g. the diff bezel) blur it through rather than using a hardcoded
+   cream fill; this is a pure-CSS trick, no native window vibrancy
+   needed. */
 .workbench-tile {
   flex: 0 0 var(--context-sidebar-width, 520px);
   width: var(--context-sidebar-width, 520px);
@@ -80,6 +85,25 @@
   border-radius: var(--workbench-island-radius);
   box-shadow: var(--workbench-island-shadow);
   overflow: hidden;
+}
+.workbench-tile::before {
+  content: "";
+  position: absolute;
+  inset: -15% -10% 60% -10%;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      circle at 25% 15%,
+      color-mix(in srgb, var(--workbench-accent) 45%, transparent) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      circle at 75% 5%,
+      color-mix(in srgb, var(--workbench-accent) 30%, transparent) 0%,
+      transparent 50%
+    );
+  filter: blur(6px);
 }
 
 /* ============================================================
@@ -1432,6 +1456,8 @@
 }
 
 .workbench-panel__card {
+  position: relative;
+  z-index: 1;
   flex: 1;
   min-height: 0;
   display: flex;
@@ -1447,7 +1473,10 @@
   align-items: center;
   min-height: 42px;
   padding: 0 var(--space-12) 0 var(--space-14);
-  border-bottom: 1px solid var(--border-hair);
+  background: color-mix(in srgb, var(--surface-pane) 55%, transparent);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border-bottom: 1px solid color-mix(in srgb, var(--border-hair) 70%, transparent);
 }
 
 .workbench-panel__title {
@@ -1517,41 +1546,13 @@
   flex: 1;
 }
 
-/* Apricot Glass (web/DESIGN.md): a warm blob sits behind the panel: the
-   glass bezel below blurs it through rather than using a hardcoded
-   cream fill — this is a pure-CSS trick, no native window vibrancy
-   needed. */
+/* Apricot Glass (web/DESIGN.md): the warm blob lives on .workbench-tile
+   now (applies to every mode, not just Diff) — this content well just
+   needs to stay transparent so that blob shows through. */
 .diff-tool-panel {
-  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-12);
-  overflow: hidden;
-  border-radius: var(--radius-lg);
-  corner-shape: superellipse(1.5);
-}
-.diff-tool-panel::before {
-  content: "";
-  position: absolute;
-  inset: -20% -10% 40% -10%;
-  z-index: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(
-      circle at 25% 15%,
-      color-mix(in srgb, var(--workbench-accent) 45%, transparent) 0%,
-      transparent 55%
-    ),
-    radial-gradient(
-      circle at 75% 5%,
-      color-mix(in srgb, var(--workbench-accent) 30%, transparent) 0%,
-      transparent 50%
-    );
-  filter: blur(6px);
-}
-.diff-tool-panel > * {
-  position: relative;
-  z-index: 1;
 }
 
 .diff-tool-panel__summary {

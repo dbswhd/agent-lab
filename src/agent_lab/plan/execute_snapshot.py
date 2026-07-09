@@ -228,7 +228,12 @@ def build_diff(
     lines = [f" {row[0].ljust(width)} | +{row[1]} -{row[2]}" for row in stat_rows]
     total_adds = sum(row[1] for row in stat_rows)
     total_dels = sum(row[2] for row in stat_rows)
-    summary = f" {len(stat_rows)} file(s) changed, {total_adds} insertion(s)(+), {total_dels} deletion(s)(-)"
+    n_files = len(stat_rows)
+    summary = (
+        f" {n_files} file{'' if n_files == 1 else 's'} changed, "
+        f"{total_adds} insertion{'' if total_adds == 1 else 's'}(+), "
+        f"{total_dels} deletion{'' if total_dels == 1 else 's'}(-)"
+    )
     return diff, "\n".join(lines) + "\n" + summary
 
 

@@ -1789,8 +1789,7 @@
   background: var(--danger-soft);
   color: var(--danger);
 }
-.diff-split-row--meta .diff-split-cell,
-.diff-split-row--header .diff-split-cell {
+.diff-split-cell--full {
   grid-column: 1 / -1;
   color: var(--label-tertiary);
   background: color-mix(in srgb, var(--surface-hover) 50%, transparent);

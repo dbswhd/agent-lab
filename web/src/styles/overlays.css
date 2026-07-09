@@ -344,6 +344,7 @@
   border: 1px solid var(--border-soft);
   box-shadow: var(--shadow-1);
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: var(--space-12);
 }
@@ -399,6 +400,7 @@
   display: flex;
   gap: var(--space-8);
   align-items: center;
+  flex-wrap: wrap;
   flex-shrink: 0;
 }
 .exec-queue-bar--compact {
@@ -469,6 +471,7 @@
   background: var(--surface-card);
   border: 1px solid var(--border-soft);
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: var(--space-12);
 }

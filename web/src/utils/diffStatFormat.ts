@@ -43,7 +43,7 @@ export function parseDiffStat(text: string): ParsedDiffStat | null {
 
   for (const line of lines) {
     if (!line.trim()) continue;
-    if (/file\(s\) changed/i.test(line)) {
+    if (/files?(\(s\))? changed/i.test(line)) {
       summary = line.trim();
       continue;
     }

@@ -43,9 +43,12 @@ def test_plugin_panel_contract():
 
 def test_slash_picker_keyboard_contract():
     composer = _read("web/src/components/ChatComposer.tsx")
+    keyboard = _read("web/src/utils/composerMenuKeyboard.ts")
     menu = _read("web/src/components/SlashCommandMenu.tsx")
+    wired = composer + keyboard
+    assert "resolveComposerMenuKeyDown" in composer
     for key in ("ArrowDown", "ArrowUp", "PageDown", "PageUp", "Enter", "Escape"):
-        assert key in composer
+        assert key in wired
     assert 'role="listbox"' in menu
     assert 'role="option"' in menu
     assert "onHighlightChange" in menu

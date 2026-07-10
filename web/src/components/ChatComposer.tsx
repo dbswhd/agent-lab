@@ -11,6 +11,14 @@ import {
 } from "../hooks/useComposerMentionPaths";
 import { buildComposerHighlightNodes } from "../utils/composerInputHighlight";
 import { bestSlashHighlightIndex } from "../utils/slashCommandMenuGroups";
+import {
+  SLASH_PAGE_SIZE,
+  cancelMentionAtCursor,
+  cancelSlashDraft,
+  cycleMenuIndex,
+  pageSlashHighlight,
+  resolveComposerMenuKeyDown,
+} from "../utils/composerMenuKeyboard";
 import { SlashCommandMenu } from "./SlashCommandMenu";
 import type { SlashCommandRecord } from "../api/client";
 import type { Locale } from "../i18n/locale";
@@ -421,94 +429,77 @@ export function ChatComposer({
                     disabled={inputLocked}
                     rows={1}
                     onKeyDown={(e) => {
-                      if (
-                        mentionQuery != null &&
-                        mentionVisibleOptions.length > 0
-                      ) {
-                        if (e.key === "ArrowDown") {
-                          e.preventDefault();
+                      const cursor =
+                        e.currentTarget.selectionStart ?? value.length;
+                      const resolution = resolveComposerMenuKeyDown({
+                        key: e.key,
+                        shiftKey: e.shiftKey,
+                        value,
+                        mentionQuery,
+                        mentionOptionCount: mentionVisibleOptions.length,
+                        slashOptionCount: slashVisibleCommands.length,
+                        cursor,
+                      });
+                      if (!resolution.handled) return;
+                      if (resolution.preventDefault) e.preventDefault();
+
+                      const { action } = resolution;
+                      switch (action.type) {
+                        case "cycleMentionHighlight":
                           setMentionHighlight((h) =>
-                            cycleMenuIndex(h, mentionVisibleOptions.length, 1),
+                            cycleMenuIndex(
+                              h,
+                              mentionVisibleOptions.length,
+                              action.delta,
+                            ),
                           );
-                          return;
-                        }
-                        if (e.key === "ArrowUp") {
-                          e.preventDefault();
-                          setMentionHighlight((h) =>
-                            cycleMenuIndex(h, mentionVisibleOptions.length, -1),
+                          break;
+                        case "cycleSlashHighlight":
+                          setSlashHighlight((h) =>
+                            cycleMenuIndex(
+                              h,
+                              slashVisibleCommands.length,
+                              action.delta,
+                            ),
                           );
-                          return;
-                        }
-                        if (e.key === "Tab" || e.key === "Enter") {
-                          e.preventDefault();
+                          break;
+                        case "pageSlashHighlight":
+                          setSlashHighlight((h) =>
+                            pageSlashHighlight(
+                              h,
+                              slashVisibleCommands.length,
+                              SLASH_PAGE_SIZE,
+                              action.direction,
+                            ),
+                          );
+                          break;
+                        case "pickMention": {
                           const option =
                             mentionVisibleOptions[mentionHighlight];
                           if (option) applyMention(option.token);
-                          return;
+                          break;
                         }
-                      }
-                      if (
-                        value.startsWith("/") &&
-                        slashVisibleCommands.length > 0
-                      ) {
-                        if (e.key === "ArrowDown") {
-                          e.preventDefault();
-                          setSlashHighlight((h) =>
-                            cycleMenuIndex(h, slashVisibleCommands.length, 1),
-                          );
-                          return;
-                        }
-                        if (e.key === "ArrowUp") {
-                          e.preventDefault();
-                          setSlashHighlight((h) =>
-                            cycleMenuIndex(h, slashVisibleCommands.length, -1),
-                          );
-                          return;
-                        }
-                        if (e.key === "PageDown") {
-                          e.preventDefault();
-                          setSlashHighlight((h) =>
-                            pageSlashHighlight(
-                              h,
-                              slashVisibleCommands.length,
-                              10,
-                              "down",
-                            ),
-                          );
-                          return;
-                        }
-                        if (e.key === "PageUp") {
-                          e.preventDefault();
-                          setSlashHighlight((h) =>
-                            pageSlashHighlight(
-                              h,
-                              slashVisibleCommands.length,
-                              10,
-                              "up",
-                            ),
-                          );
-                          return;
-                        }
-                        const slashTokenOnly = /^\/\S*$/.test(value);
-                        if (
-                          (e.key === "Tab" || e.key === "Enter") &&
-                          slashTokenOnly &&
-                          slashVisibleCommands[slashHighlight]
-                        ) {
-                          e.preventDefault();
+                        case "pickSlash": {
                           const command = slashVisibleCommands[slashHighlight];
-                          onChange(command.slash);
-                          return;
+                          if (command) onChange(command.slash);
+                          break;
                         }
-                      }
-                      if (e.key === "Escape" && value.startsWith("/")) {
-                        e.preventDefault();
-                        onChange("");
-                        return;
-                      }
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        onSend();
+                        case "cancelMention": {
+                          const next = cancelMentionAtCursor(value, cursor);
+                          onChange(next.value);
+                          focusInputAt(next.cursor);
+                          break;
+                        }
+                        case "cancelSlash": {
+                          const next = cancelSlashDraft(value);
+                          onChange(next);
+                          setSlashHighlight(0);
+                          focusInputAt(next.length);
+                          break;
+                        }
+                        case "send":
+                          onSend();
+                          break;
                       }
                     }}
                   />
@@ -654,27 +645,6 @@ export function ChatComposer({
       ) : null}
     </div>
   );
-}
-
-function cycleMenuIndex(
-  current: number,
-  length: number,
-  delta: number,
-): number {
-  return (current + delta + length) % length;
-}
-
-function pageSlashHighlight(
-  current: number,
-  length: number,
-  pageSize: number,
-  direction: "up" | "down",
-): number {
-  if (length <= 0) return 0;
-  if (direction === "down") {
-    return Math.min(current + pageSize, length - 1);
-  }
-  return Math.max(current - pageSize, 0);
 }
 
 const MODE_CHIP_ICONS = {

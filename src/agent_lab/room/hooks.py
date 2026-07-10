@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
+from agent_lab.time_utils import utc_now_iso
 from agent_lab.core.exceptions import PreExecuteBlocked  # noqa: F401 — public re-export
 from agent_lab.run.state import RunStateLike
 
@@ -399,10 +400,9 @@ def _hook_run_record(
     parallel_round: int | None = None,
     dispatch_id: str | None = None,
 ) -> dict[str, Any]:
-    from datetime import datetime, timezone
-
+    
     rec: dict[str, Any] = {
-        "ts": datetime.now(timezone.utc).isoformat(),
+        "ts": utc_now_iso(),
         "event": result.event,
         "agent": agent or None,
         "command": result.command,

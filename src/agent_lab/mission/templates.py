@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import json
 import shutil
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.time_utils import utc_now_iso_seconds
 from agent_lab.plan.pending import plan_content_hash
 from agent_lab.plan.workflow import (
     approve_plan_bypass,
@@ -159,7 +159,7 @@ def sign_template_pre_approval(
         raise ValueError("plan.md missing")
     plan_md = plan_path.read_text(encoding="utf-8")
     meta["hash"] = plan_content_hash(plan_md)
-    meta["pre_approved_at"] = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    meta["pre_approved_at"] = utc_now_iso_seconds()
     meta["pre_approved_by"] = approved_by
     path = template_dir / "template_meta.json"
     path.write_text(json.dumps(meta, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

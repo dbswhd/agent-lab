@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from agent_lab.time_utils import utc_now_iso as _now_iso
 import json
 import os
 import signal
@@ -15,9 +16,6 @@ from typing import Any
 _REGISTRY_FILE = "bridge_registry.json"
 _BRIDGE_NAME_MARKERS = ("cursor-sdk-bridge", "cursor_sdk_bridge")
 
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 def registry_path() -> Path:

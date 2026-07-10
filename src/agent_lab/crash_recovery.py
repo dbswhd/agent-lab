@@ -22,10 +22,10 @@ irreversible → human gate), is idempotent (safe every boot), and never raises.
 from __future__ import annotations
 
 import subprocess
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.time_utils import utc_now_iso as _now
 from agent_lab.env_flags import env_bool
 
 _MAX_RECOVERY_LOG = 50
@@ -35,9 +35,6 @@ def crash_recovery_enabled() -> bool:
     """Opt-out via ``AGENT_LAB_CRASH_RECOVERY=0`` (default on)."""
     return env_bool("AGENT_LAB_CRASH_RECOVERY", default=True)
 
-
-def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 def _git(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:

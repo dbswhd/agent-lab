@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from agent_lab.time_utils import utc_now_iso_seconds as _now_iso
 import json
 import os
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -15,9 +15,6 @@ def daemon_state_path() -> Path:
     raw = (os.getenv("AGENT_LAB_DAEMON_STATE") or "").strip()
     return Path(raw).expanduser() if raw else _DEFAULT_PATH
 
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
 def load_daemon_state() -> dict[str, Any]:

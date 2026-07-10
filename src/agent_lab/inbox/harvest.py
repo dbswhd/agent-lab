@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from hashlib import sha1
 from typing import Any
 
+from agent_lab.time_utils import utc_now_iso
 from agent_lab.run.state import RunStateLike
 
 from agent_lab.human_inbox import (
@@ -517,7 +518,7 @@ def _supersede_legacy_verified_build_items(run_meta: RunStateLike) -> None:
     for item in items:
         if item.get("kind") == "build" and item.get("source") == "verified_loop" and item.get("status") == "pending":
             item["status"] = "superseded"
-            item["resolved_at"] = _now_iso_verified_supersede()
+            item["resolved_at"] = utc_now_iso()
             changed = True
     if changed:
         from agent_lab.human_inbox import compute_inbox_pending
@@ -526,11 +527,6 @@ def _supersede_legacy_verified_build_items(run_meta: RunStateLike) -> None:
         stamp_run_meta(run_meta, human_inbox=items)
         stamp_run_meta(run_meta, inbox_pending=compute_inbox_pending(run_meta))
 
-
-def _now_iso_verified_supersede() -> str:
-    from datetime import datetime, timezone
-
-    return datetime.now(timezone.utc).isoformat()
 
 
 # --- sync pause (M4) — pending Human-direction question pauses debate rounds ----

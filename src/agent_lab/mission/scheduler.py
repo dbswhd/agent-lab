@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from agent_lab.time_utils import utc_now_iso_seconds, utc_now
 from agent_lab.daemon_state import mark_scheduler_tick
 from agent_lab.env_flags import env_bool
 from agent_lab.run.meta import patch_run_meta, read_run_meta
@@ -156,7 +157,7 @@ def _schedule_when(entry: dict[str, Any], *, now: datetime | None = None) -> dat
         tz: tzinfo = ZoneInfo(tz_name)
     except Exception:
         tz = timezone.utc
-    base = now or datetime.now(timezone.utc)
+    base = now or utc_now()
     return base.astimezone(tz)
 
 
@@ -218,7 +219,7 @@ def _record_schedule_run(
     status: str = "ok",
     error: str | None = None,
 ) -> None:
-    ts = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    ts = utc_now_iso_seconds()
 
     def _patch(run: dict[str, Any]) -> dict[str, Any]:
         schedules = list(run.get("schedules") or [])

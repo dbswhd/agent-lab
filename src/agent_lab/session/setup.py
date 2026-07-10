@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from agent_lab.time_utils import utc_now_iso
 from agent_lab.run.state import RunStateLike
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -274,7 +274,7 @@ def build_setup_run_meta(
         meta["session_phase"] = phase
     if tpl["id"] == "book-content":
         meta["layout_frozen"] = True
-        meta["layout_frozen_at"] = datetime.now(timezone.utc).isoformat()
+        meta["layout_frozen_at"] = utc_now_iso()
     if tpl["id"] == "trading-mission":
         meta["mission_kind"] = "trading_premarket"
         meta["response_contract"] = {"preset": "evidence_first"}
@@ -307,7 +307,7 @@ def seed_session_setup(
         workspace_path=workspace_path,
         agent_thread_bindings=agent_thread_bindings,
     )
-    now = datetime.now(timezone.utc).isoformat()
+    now = utc_now_iso()
     run_meta: RunStateLike = {
         "workflow_id": "room.parallel",
         "run_schema_version": 1,

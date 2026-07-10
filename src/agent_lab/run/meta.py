@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import json
 import threading
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 from weakref import WeakValueDictionary
 
+from agent_lab.time_utils import utc_now_iso
 from agent_lab.env_flags import env_bool
 from agent_lab.run.state import RunState, RunStateLike, RuntimeValidationError, validate_run_data
 
@@ -171,7 +171,7 @@ def record_completed_step(
         "human_turn": human_turn,
         "parallel_round": parallel_round,
         "agent": agent.strip().lower(),
-        "ts": datetime.now(timezone.utc).isoformat(),
+        "ts": utc_now_iso(),
         "content": content,
     }
     if envelope is not None:

@@ -7,10 +7,10 @@ trust_budget, mission_loop, inbox). Promotion audit events append to autonomy.tr
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
+from agent_lab.time_utils import utc_now_iso_seconds as _now_iso
 from agent_lab.autonomy_ladder import infer_effective_autonomy_level, record_autonomy_transition, stored_autonomy_level
 from agent_lab.diff_risk import assess_diff_risk
 from agent_lab.run.meta import patch_run_meta, read_run_meta
@@ -28,9 +28,6 @@ L2_TO_L3_ESCALATION_MAX = 0.05
 
 _LEVEL_ORDER: dict[str, int] = {"L0": 0, "L1": 1, "L2": 2, "L3": 3}
 
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
 def oracle_confidence(oracle: Mapping[str, Any] | None) -> float:

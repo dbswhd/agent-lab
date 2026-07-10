@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from agent_lab.time_utils import utc_now_iso_seconds
 from agent_lab.run.state import RunStateLike
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -50,7 +50,7 @@ def _stamp_schedule_meta(run_meta: RunStateLike, schedule_id: str) -> dict[str, 
         run_meta,
         mission_schedule={
             **dict(run_meta.get("mission_schedule") or {}),
-            "last_sandbox_tick_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+            "last_sandbox_tick_at": utc_now_iso_seconds(),
             "last_schedule_id": schedule_id,
         },
     )

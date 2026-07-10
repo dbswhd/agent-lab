@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from agent_lab.time_utils import utc_now_iso
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -89,7 +89,7 @@ def append_live_room_event(folder: Path, typ: str, payload: dict[str, Any]) -> N
     if typ not in LIVE_EVENT_TYPES:
         return
     row = {
-        "ts": datetime.now(timezone.utc).isoformat(),
+        "ts": utc_now_iso(),
         "type": typ,
         **payload,
     }

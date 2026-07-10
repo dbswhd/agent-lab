@@ -22,10 +22,10 @@ Design constraints (NORTH-STAR §6 mote check):
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.time_utils import utc_now_iso as _now_iso
 from agent_lab.env_flags import env_bool
 from agent_lab.run.state import RunStateLike
 
@@ -40,9 +40,6 @@ _LEVEL_ORDER: dict[str, int] = {"L0": 0, "L1": 1, "L2": 2, "L3": 3}
 def risk_pin_enabled() -> bool:
     return env_bool("AGENT_LAB_RISK_PIN", default=True)
 
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 def _turn_category(run_meta: RunStateLike) -> str:

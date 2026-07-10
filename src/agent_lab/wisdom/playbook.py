@@ -24,9 +24,9 @@ import json
 import os
 import threading
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 
+from agent_lab.time_utils import utc_now_iso_seconds as _now_iso
 from agent_lab.env_flags import env_bool
 
 PLAYBOOK_SCHEMA_VERSION = 1
@@ -60,9 +60,6 @@ def playbook_path(root: Path | None = None) -> Path:
 
     return agent_lab_project_root(root) / ".agent-lab" / "wisdom" / "playbook.jsonl"
 
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
 def _bullet_id(pattern_id: str) -> str:

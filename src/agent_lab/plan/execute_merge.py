@@ -6,10 +6,10 @@ import json
 import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
+from agent_lab.time_utils import utc_now_iso as _utc_now
 from agent_lab.env_flags import env_bool
 from agent_lab.plan.execute_git import _run_git, is_working_tree_clean
 from agent_lab.plan.execute_worktree import ExecWorktree, remove_exec_worktree
@@ -212,9 +212,6 @@ def archive_executed_diff(
     )
     return dest
 
-
-def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 def merge_exec_branch(

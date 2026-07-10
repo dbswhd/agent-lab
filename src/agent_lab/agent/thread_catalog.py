@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.time_utils import utc_now
 from agent_lab.app_config import resolve_sessions_dir
 
 AGENT_IDS = ("cursor", "codex", "claude")
@@ -33,7 +34,7 @@ def _parse_ts(raw: str | None) -> datetime | None:
 def relative_last_label(when: datetime | None) -> str:
     if when is None:
         return "—"
-    now = datetime.now(timezone.utc)
+    now = utc_now()
     delta = max(0, int((now - when.astimezone(timezone.utc)).total_seconds()))
     if delta < 60:
         return f"{delta}s"

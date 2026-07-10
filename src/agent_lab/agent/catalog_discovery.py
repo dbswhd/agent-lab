@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
+from agent_lab.time_utils import utc_now_iso_seconds as _utc_now_iso
 import base64
 import json
 import re
 import subprocess
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import urlencode
 
@@ -17,9 +17,6 @@ CODEX_MODEL_PATHS = ("/codex/models", "/models")
 JWT_CLAIM_PATH = "https://api.openai.com/auth"
 _EFFORT_ORDER = ("minimal", "low", "medium", "high", "xhigh", "max")
 
-
-def _utc_now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
 def extract_codex_account_id(access_token: str) -> str | None:

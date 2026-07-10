@@ -9,6 +9,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.time_utils import utc_now
 from agent_lab.app_config import resolve_sessions_dir
 from agent_lab.session.score import score_session
 
@@ -123,7 +124,7 @@ def discover_sessions(
 ) -> list[WeeklyDiscovery]:
     """List session folders with run.json in the last `days` (inclusive window)."""
     root = root.expanduser().resolve()
-    end = as_of or datetime.now(timezone.utc).date()
+    end = as_of or utc_now().date()
     start = end - timedelta(days=max(days - 1, 0))
     out: list[WeeklyDiscovery] = []
     for child in _iter_session_candidates(root, include_fixtures=include_fixtures):
@@ -644,7 +645,7 @@ def build_weekly_report(
     as_of: date | None = None,
     report_dir: Path | None = None,
 ) -> dict[str, Any]:
-    end = as_of or datetime.now(timezone.utc).date()
+    end = as_of or utc_now().date()
     start = end - timedelta(days=max(days - 1, 0))
     discovered = discover_sessions(
         root,

@@ -16,9 +16,9 @@ log behavior change). Enforced by a test.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from typing import Any
 
+from agent_lab.time_utils import utc_now_iso
 from agent_lab.env_flags import env_bool
 from agent_lab.room.live_log import LIVE_EVENT_TYPES
 
@@ -49,7 +49,7 @@ def make_event(type: str, **fields: Any) -> dict[str, Any]:
     """
     if type not in EVENT_TYPES:
         raise ValueError(f"unknown event type: {type!r}")
-    ts = fields.pop("ts", None) or datetime.now(timezone.utc).isoformat()
+    ts = fields.pop("ts", None) or utc_now_iso()
     return {"ts": ts, "type": type, **fields}
 
 

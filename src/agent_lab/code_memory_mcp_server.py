@@ -8,10 +8,10 @@ import os
 import re
 import subprocess
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from mcp.server.fastmcp import FastMCP
+from agent_lab.time_utils import utc_now_iso
 from agent_lab.env_flags import env_bool
 from agent_lab.workspace.roots import project_root
 
@@ -101,7 +101,7 @@ def _mode(mode: str | None) -> str:
 def _now_iso() -> str:
     if os.getenv("AGENT_LAB_MOCK_AGENTS"):
         return "2026-01-01T00:00:00+00:00"
-    return datetime.now(timezone.utc).isoformat()
+    return utc_now_iso()
 
 
 def _tokenize(text: str) -> set[str]:

@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from agent_lab.graph import GraphState
 
+from agent_lab.time_utils import utc_now_iso, utc_now
 from agent_lab.session.paths import SESSIONS_DIR, active_sessions_dir, sessions_dir  # noqa: F401
 
 
@@ -27,7 +27,7 @@ def _sessions_root(base: Path | None = None) -> Path:
 
 def session_dir(topic: str, base: Path | None = None) -> Path:
     root = _sessions_root(base)
-    day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    day = utc_now().strftime("%Y-%m-%d")
     name = f"{day}-{slugify(topic)}"
     path = root / name
     if path.exists():
@@ -54,7 +54,7 @@ def save_session(state: GraphState, base: Path | None = None) -> Path:
     from agent_lab.invoke import model_name
 
     folder = session_dir(state["topic"], base=base)
-    now = datetime.now(timezone.utc).isoformat()
+    now = utc_now_iso()
 
     (folder / "topic.txt").write_text(state["topic"].strip() + "\n", encoding="utf-8")
     (folder / "plan.md").write_text(state["plan_md"] + "\n", encoding="utf-8")

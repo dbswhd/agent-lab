@@ -20,9 +20,9 @@ from __future__ import annotations
 
 import os
 import re
-from datetime import datetime, timezone
 from typing import Any
 
+from agent_lab.time_utils import utc_now_iso as _now_iso
 from agent_lab.env_flags import env_bool
 from agent_lab.run.state import RunStateLike
 
@@ -81,9 +81,6 @@ _DIMENSION_QUESTIONS: dict[str, str] = {
     "context": "대상 경로/모듈과 의도적으로 제외할 범위는 어디인가요?",
 }
 
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 def _threshold() -> float:

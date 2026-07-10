@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from agent_lab.time_utils import utc_now
 from agent_lab.diff_risk import RiskLevel, assess_diff_risk
 from agent_lab.run.state import RunStateLike
 
@@ -38,9 +39,6 @@ def auto_approve_timeout_sec() -> int:
     except (TypeError, ValueError):
         return 30
 
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
 @dataclass
@@ -133,7 +131,7 @@ def mark_auto_approve_eligible(
     decision: AutoApproveDecision,
 ) -> None:
     """Stamp auto-approve metadata onto the execution dict (in-place)."""
-    deadline = (datetime.now(timezone.utc) + timedelta(seconds=decision.timeout_sec)).replace(microsecond=0).isoformat()
+    deadline = (utc_now() + timedelta(seconds=decision.timeout_sec)).replace(microsecond=0).isoformat()
     execution["auto_approve_eligible"] = True
     execution["auto_approve_threshold"] = decision.threshold
     execution["auto_approve_risk_level"] = decision.risk_level
@@ -153,7 +151,7 @@ def auto_approve_deadline_passed(execution: dict[str, Any]) -> bool:
         deadline = datetime.fromisoformat(raw)
         if deadline.tzinfo is None:
             deadline = deadline.replace(tzinfo=timezone.utc)
-        return datetime.now(timezone.utc) >= deadline
+        return utc_now() >= deadline
     except ValueError:
         return False
 

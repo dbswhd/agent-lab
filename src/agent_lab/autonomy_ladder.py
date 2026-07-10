@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from typing import Any, Literal
 
+from agent_lab.time_utils import utc_now_iso_seconds as _now_iso
 from agent_lab.auto_approve_gate import auto_approve_threshold
 from agent_lab.diff_risk import RiskLevel
 from agent_lab.run.meta import patch_run_meta
@@ -32,9 +32,6 @@ _LEVEL_NAMES: dict[str, str] = {
     "L3": "Autonomous",
 }
 
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
 def _autonomy_block(run_meta: RunStateLike | None) -> dict[str, Any]:

@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable, Iterable
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.time_utils import utc_now_iso as _now
 from agent_lab.env_flags import env_bool
 from agent_lab.run.meta import patch_run_meta, read_run_meta
 
@@ -238,6 +238,3 @@ def _read_chat(session_folder: Path) -> list[dict[str, Any]]:
             rows.append(row)
     return rows
 
-
-def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()

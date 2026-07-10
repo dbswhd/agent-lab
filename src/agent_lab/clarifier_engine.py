@@ -15,8 +15,9 @@ The clarity engine is always active: vague topics hold CLARIFY; anchored topics 
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
 from typing import Any
+
+from agent_lab.time_utils import utc_now_iso
 
 #: Marks interviews built by the clarity engine so identity-aware persistence can tell
 #: engine-sourced interviews apart from the static server-clarifier templates ("server").
@@ -24,10 +25,9 @@ ENGINE_SOURCE = "clarity_engine"
 
 
 def _now_iso() -> str:
-    # Deterministic under mock so engine-backed interviews are byte-reproducible in CI.
     if os.getenv("AGENT_LAB_MOCK_AGENTS"):
         return "1970-01-01T00:00:00+00:00"
-    return datetime.now(timezone.utc).isoformat()
+    return utc_now_iso()
 
 
 def engine_questions(

@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import re
 import uuid
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
+from agent_lab.time_utils import utc_now_iso as _now
 from agent_lab.run.state import RunStateLike
 
 RUN_ARTIFACTS_KEY = "artifacts"
@@ -18,9 +18,6 @@ _ARTIFACT_BODY_RE = re.compile(
     re.I,
 )
 
-
-def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 def _new_artifact_id() -> str:

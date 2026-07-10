@@ -9,13 +9,11 @@ import urllib.request
 from datetime import datetime, timezone
 from typing import Any
 
+from agent_lab.time_utils import utc_now_iso_seconds as _now_iso, utc_now
 from agent_lab.daemon_state import load_daemon_state
 from agent_lab.gateway.config import load_gateway_config
 from agent_lab.gateway.outbound import _sign_body
 
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
 _DEFAULT_WAKE_EVENTS = (
@@ -183,7 +181,7 @@ def daemon_online(*, stale_s: int | None = None) -> bool:
         last = _parse_iso(str(state.get("started_at") or ""))
     if last is None:
         return False
-    age = (datetime.now(timezone.utc) - last.astimezone(timezone.utc)).total_seconds()
+    age = (utc_now() - last.astimezone(timezone.utc)).total_seconds()
     return age <= max(30, max_stale)
 
 

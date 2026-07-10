@@ -5,10 +5,10 @@ from __future__ import annotations
 import hashlib
 import os
 import uuid
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.time_utils import utc_now_iso as _now
 from agent_lab.run.state import RunState, RunStateLike
 
 from agent_lab.plan.actions import PlanAction
@@ -17,9 +17,6 @@ from agent_lab.run.meta import patch_run_meta, read_run_meta
 RUN_PENDING_PLANS_KEY = "pending_plans"
 DEFAULT_MAX_TASKS_PER_TURN = 8
 
-
-def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 def _pending_id() -> str:

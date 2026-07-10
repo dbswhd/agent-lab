@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.time_utils import utc_now_iso_seconds as _utc_now_iso, utc_now
 from agent_lab.agent import catalog_discovery
 from agent_lab.agent.catalog_generate import merge_codex_models
 
@@ -52,9 +53,6 @@ def cache_path() -> Path:
 
     return config_dir() / _CACHE_BASENAME
 
-
-def _utc_now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -126,7 +124,7 @@ def cache_age_sec(cache: dict[str, Any] | None = None) -> float | None:
     fetched = cache_fetched_at(cache)
     if fetched is None:
         return None
-    return max(0.0, (datetime.now(timezone.utc) - fetched).total_seconds())
+    return max(0.0, (utc_now() - fetched).total_seconds())
 
 
 def cache_is_stale(cache: dict[str, Any] | None = None) -> bool:

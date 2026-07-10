@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from agent_lab.time_utils import utc_now_iso
 from agent_lab.run.state import RunStateLike
 import os
 import json
@@ -20,7 +21,7 @@ def _emit_slash_chat_line(folder: Path | None, summary: str) -> None:
                 "role": "system",
                 "agent": None,
                 "content": f"[slash] {summary}",
-                "ts": datetime.now(timezone.utc).isoformat(),
+                "ts": utc_now_iso(),
             },
             ensure_ascii=False,
         )
@@ -31,7 +32,6 @@ def _emit_slash_chat_line(folder: Path | None, summary: str) -> None:
 
 
 import re
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -404,7 +404,7 @@ def execute_command(
 
     handler = cmd.get("handler")
     kind = cmd.get("kind")
-    now = datetime.now(timezone.utc).isoformat()
+    now = utc_now_iso()
     history_args = "[redacted]" if command_id == "login" and args.startswith("api ") else args
     entry = {"at": now, "id": cmd["id"], "slash": cmd.get("slash"), "args": history_args}
 

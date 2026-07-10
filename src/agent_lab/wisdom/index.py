@@ -5,10 +5,10 @@ from __future__ import annotations
 import json
 import os
 import re
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.time_utils import utc_now_iso as _now_iso
 from agent_lab.evidence_ledger import evidence_path, read_evidence_tail
 from agent_lab.mission.notepad import MISSION_NOTEPAD_FILES, mission_notepad_dir
 
@@ -16,9 +16,6 @@ _TOKEN_RE = re.compile(r"[\w가-힣]+", re.UNICODE)
 _INDEX_FILENAME = "wisdom_index.json"
 _DEFAULT_LIMIT = 20
 
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 def wisdom_index_enabled(run: dict[str, Any] | None = None) -> bool:

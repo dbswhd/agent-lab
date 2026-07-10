@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.time_utils import utc_now_iso
 from agent_lab.run.state import RunStateLike
 
 TRADING_MISSION_PLAN_REL = "artifacts/plans/trading-mission.md"
@@ -154,7 +154,7 @@ def _archive_plan_content(
         {
             "seq": seq,
             "relpath": rel,
-            "archived_at": datetime.now(timezone.utc).isoformat(),
+            "archived_at": utc_now_iso(),
             "source": source_rel,
         }
     )

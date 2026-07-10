@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import json
 import shutil
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.time_utils import utc_now_iso_z as _now_iso
 from agent_lab.run.meta import read_run_meta, write_run_meta
 from agent_lab.session import session_dir
 from agent_lab.session.paths import active_sessions_dir
@@ -28,9 +28,6 @@ _COPY_RUN_KEYS = (
 
 _DEFAULT_CHAT_TAIL = 80
 
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def _read_topic(folder: Path) -> str:

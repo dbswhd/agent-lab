@@ -2,19 +2,16 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from agent_lab.time_utils import utc_now_iso_z as _now_iso
 from agent_lab.run.meta import patch_run_meta, read_run_meta
 
 _MAX_STEER_TEXT = 2000
 _MAX_QUEUE = 20
 
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def folder_from_run_meta(run_meta: dict[str, Any] | None) -> Path | None:

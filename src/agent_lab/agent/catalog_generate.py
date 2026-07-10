@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import copy
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.time_utils import utc_now_iso_seconds as _utc_now_iso
 from agent_lab.agent import catalog_discovery
 
 _AGENT_DIR = Path(__file__).resolve().parent
@@ -31,9 +31,6 @@ _MODEL_PATCH_KEYS = frozenset(
     }
 )
 
-
-def _utc_now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
 def _read_json(path: Path) -> dict[str, Any]:

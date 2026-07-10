@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import re
 import uuid
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
+from agent_lab.time_utils import utc_now_iso as _now
 from agent_lab.run.state import RunStateLike
 
 TaskStatus = Literal["pending", "in_progress", "completed", "cancelled", "blocked"]
@@ -22,9 +22,6 @@ RUN_PLAN_PROVENANCE_KEY = "plan_provenance"
 DEFAULT_TEAM_LEAD = "cursor"
 MAX_CLAIMS_PER_AGENT_PER_TURN = 1
 
-
-def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 def _new_task_id() -> str:

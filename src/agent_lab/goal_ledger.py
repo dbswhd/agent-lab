@@ -8,8 +8,9 @@ tolerates it without change.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from typing import Any
+
+from agent_lab.time_utils import utc_now_iso
 
 GOAL_LEDGER_CAP = 200
 
@@ -26,7 +27,7 @@ def append_goal_event(
     """Append a goal-progress entry to run.json goal_ledger (capped, optional dedup on mode)."""
     from agent_lab.run.meta import patch_run_meta
 
-    entry: dict[str, Any] = {"at": datetime.now(timezone.utc).isoformat(), "event": event}
+    entry: dict[str, Any] = {"at": utc_now_iso(), "event": event}
     if mode is not None:
         entry["mode"] = mode
     if phase is not None:

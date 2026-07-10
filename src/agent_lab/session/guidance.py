@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from agent_lab.time_utils import utc_now_iso
 from agent_lab.run.state import RunStateLike
 import hashlib
 import json
@@ -336,9 +337,8 @@ def sync_session_meta(
     prev_frozen = bool(meta.get("layout_frozen"))
     frozen = prev_frozen or detect_layout_freeze(messages, topic)
     if frozen and not prev_frozen:
-        from datetime import datetime, timezone
-
-        meta["layout_frozen_at"] = datetime.now(timezone.utc).isoformat()
+        
+        meta["layout_frozen_at"] = utc_now_iso()
     meta["layout_frozen"] = frozen
     meta["session_phase"] = infer_session_phase(
         layout_frozen=frozen,

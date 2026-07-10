@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.time_utils import utc_now_iso, utc_now
 from agent_lab.env_flags import env_bool
 from agent_lab.model_policy import (
     AgentId,
@@ -401,7 +402,7 @@ def _cache_fresh_enough(row: dict[str, Any], *, max_age_s: float = 86400.0) -> b
         dt = datetime.fromisoformat(str(probed_at))
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
-        age = (datetime.now(timezone.utc) - dt).total_seconds()
+        age = (utc_now() - dt).total_seconds()
         return age <= max_age_s
     except (TypeError, ValueError):
         return True
@@ -481,7 +482,7 @@ def _save_probe_cache(agent: AgentId, model_id: str, profile: ModelProfile) -> N
         "supports_long_context": profile.supports_long_context,
         "cost_tier": profile.cost_tier,
         "latency_tier": profile.latency_tier,
-        "probed_at": datetime.now(timezone.utc).isoformat(),
+        "probed_at": utc_now_iso(),
     }
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(cache, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

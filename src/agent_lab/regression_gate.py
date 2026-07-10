@@ -25,10 +25,10 @@ import os
 import re
 import subprocess
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.time_utils import utc_now_iso_seconds as _now_iso
 from agent_lab.env_flags import env_bool
 
 REGRESSION_REPORT_SCHEMA_VERSION = 1
@@ -51,9 +51,6 @@ def regression_gate_enabled() -> bool:
     """AGENT_LAB_REGRESSION_GATE (default off)."""
     return env_bool("AGENT_LAB_REGRESSION_GATE")
 
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
 class RegressionRejected(Exception):

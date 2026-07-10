@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.time_utils import utc_now_iso as _now
 from agent_lab.run.meta import patch_run_meta, read_run_meta
 from agent_lab.run.state import RunStateLike
 
@@ -660,6 +661,3 @@ def _messages_text(
             rows.append(text)
     return "\n".join(rows)
 
-
-def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()

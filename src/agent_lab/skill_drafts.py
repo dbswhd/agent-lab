@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+from agent_lab.time_utils import utc_now_iso_seconds as _now_iso
 from agent_lab.run.state import RunStateLike
 import os
 import re
 import uuid
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
@@ -23,9 +23,6 @@ def skill_drafts_enabled() -> bool:
         "no",
     )
 
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
 def _new_draft_id() -> str:

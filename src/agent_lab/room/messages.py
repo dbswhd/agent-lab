@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+from agent_lab.time_utils import utc_now_iso as _now
 from agent_lab.room._typing import agent_label
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from typing import Any, Callable, cast
 
 from agent_lab.run.state import RunStateLike
@@ -38,7 +38,7 @@ class ChatMessage:
     role: str  # user | agent | system
     agent: str | None
     content: str
-    ts: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    ts: str = field(default_factory=_now)
     parallel_round: int | None = None  # 1..N within one human turn
     envelope: dict[str, Any] | None = None
     visibility: str = "human"  # human | peer (peer = coordination channel)
@@ -67,9 +67,6 @@ class ChatMessage:
             d["visibility"] = vis
         return d
 
-
-def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 def format_thread(topic: str, messages: list[ChatMessage]) -> str:

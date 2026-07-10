@@ -38,10 +38,10 @@ import hashlib
 import json
 import re
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.time_utils import utc_now_iso_seconds as _now_iso
 from agent_lab.env_flags import env_bool
 from agent_lab.run.state import RunStateLike
 
@@ -110,9 +110,6 @@ def harness_proposer_enabled() -> bool:
     """AGENT_LAB_HARNESS_PROPOSER (default off)."""
     return env_bool("AGENT_LAB_HARNESS_PROPOSER")
 
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
 # ---------------------------------------------------------------------------

@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from typing import Any, Literal
 
 Tier = Literal["low", "medium", "high"]
 
+from agent_lab.time_utils import utc_now_iso_seconds as _now_iso
 from agent_lab.gate_scope import GateProfile, get_gate_profile
 from agent_lab.run.meta import patch_run_meta
 from agent_lab.run.state import RunState, RunStateLike
@@ -25,9 +25,6 @@ _DEFAULT_ASSISTANT: dict[str, Any] = {
     "classifier_allow": ["docs_only", "test_only", "single_file"],
 }
 
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
 def default_trust_budget(profile: GateProfile) -> dict[str, Any]:

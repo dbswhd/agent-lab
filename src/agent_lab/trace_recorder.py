@@ -14,11 +14,11 @@ turn — every handler is wrapped so failures are swallowed.
 
 from __future__ import annotations
 
+from agent_lab.time_utils import utc_now_iso
 from agent_lab.env_flags import env_bool
 from agent_lab.run.state import RunStateLike
 import json
 import time
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
@@ -30,7 +30,7 @@ def trace_enabled() -> bool:
 
 
 def _now() -> tuple[float, str]:
-    return time.monotonic(), datetime.now(timezone.utc).isoformat()
+    return time.monotonic(), utc_now_iso()
 
 
 class TraceRecorder:

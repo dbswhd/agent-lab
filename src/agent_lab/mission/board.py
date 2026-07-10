@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from agent_lab.time_utils import utc_now_iso as _now_iso, utc_now
 from agent_lab.run.state import RunStateLike
 import os
 from pathlib import Path
@@ -35,12 +36,9 @@ _DEFAULT_COUNTERS: dict[str, Any] = {
 }
 
 
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
-
 
 def _hour_bucket() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H")
+    return utc_now().strftime("%Y-%m-%dT%H")
 
 
 def default_lane_roles() -> dict[str, Any]:

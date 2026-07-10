@@ -22,10 +22,10 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.time_utils import utc_now_iso as _now_iso
 from agent_lab.run.state import RunStateLike
 
 CHECKPOINTS_FILE = "checkpoints.jsonl"
@@ -53,9 +53,6 @@ def checkpoint_enabled() -> bool:
         return True
     return raw.strip().lower() in _TRUE
 
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 def _fsm_subset(run: RunStateLike) -> dict[str, Any]:

@@ -7,10 +7,10 @@ import re
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Literal
 
+from agent_lab.time_utils import utc_now_iso as _utc_now
 from agent_lab.run.state import RunStateLike
 
 from agent_lab.agents.registry import AGENT_IDS
@@ -114,9 +114,6 @@ def append_dispatch_ledger(run_meta: RunStateLike, entry: dict[str, Any]) -> dic
     stamp_run_meta(run_meta, dispatch_ledger=rows[-100:])
     return entry
 
-
-def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 def _topic_category_meta(run_meta: RunStateLike) -> str | None:

@@ -29,10 +29,10 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.time_utils import utc_now_iso_seconds as _now_iso
 from agent_lab.env_flags import env_bool
 
 MERGE_RECORD_SCHEMA_VERSION = 1
@@ -43,9 +43,6 @@ def harness_inbox_enabled() -> bool:
     """AGENT_LAB_HARNESS_INBOX (default off)."""
     return env_bool("AGENT_LAB_HARNESS_INBOX")
 
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
 class MergeRejected(Exception):

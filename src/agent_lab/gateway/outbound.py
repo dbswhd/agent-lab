@@ -8,18 +8,15 @@ import json
 import logging
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
 from typing import Any
 
+from agent_lab.time_utils import utc_now_iso_seconds as _now_iso
 from agent_lab.gateway.config import load_gateway_config
 
 _log = logging.getLogger(__name__)
 
 OutboundEvent = str
 
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
 def _sign_body(secret: str, body: bytes) -> str:

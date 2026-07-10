@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import logging
 import sys
-from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
+from agent_lab.time_utils import utc_now_iso
 from agent_lab.env_flags import env_bool
 
 _CONFIGURED = False
@@ -62,6 +62,6 @@ def write_boot_line(message: str, *, log_dir: Path | None = None) -> None:
     directory = log_dir or resolve_log_dir()
     directory.mkdir(parents=True, exist_ok=True)
     boot = directory / "agent-lab-boot.log"
-    stamp = datetime.now(timezone.utc).isoformat()
+    stamp = utc_now_iso()
     with boot.open("a", encoding="utf-8") as f:
         f.write(f"{stamp} {message}\n")

@@ -12,10 +12,10 @@ import os
 import re
 import threading
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.time_utils import utc_now_iso_seconds as _now_iso
 from agent_lab.env_flags import env_bool
 
 
@@ -38,9 +38,6 @@ def wisdom_index_path() -> Path:
 
     return project_root() / ".agent-lab" / "wisdom.jsonl"
 
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
 def _entry_id(ts: str, content: str) -> str:

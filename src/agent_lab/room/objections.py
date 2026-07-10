@@ -5,9 +5,9 @@ from __future__ import annotations
 import os
 import re
 import uuid
-from datetime import datetime, timezone
 from typing import Any, Literal
 
+from agent_lab.time_utils import utc_now_iso as _now
 from agent_lab.plan.actions import PlanActionKind, parse_action_key
 from agent_lab.run.state import RunStateLike
 
@@ -35,9 +35,6 @@ def discuss_objections_enabled() -> bool:
     raw = (os.getenv("AGENT_LAB_DISCUSS_OBJECTIONS") or "").strip().lower()
     return raw not in ("0", "false", "no", "off")
 
-
-def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 def _new_objection_id() -> str:

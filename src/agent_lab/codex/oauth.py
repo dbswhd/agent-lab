@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Literal, TypeVar
 
+from agent_lab.time_utils import utc_now_iso
 from agent_lab.env_flags import env_bool
 
 CodexOAuthSlot = Literal["primary", "fallback"]
@@ -58,7 +59,7 @@ def mark_codex_auth_revoked(detail: str) -> None:
         json.dumps(
             {
                 "detail": detail[:500],
-                "marked_at": datetime.now(timezone.utc).isoformat(),
+                "marked_at": utc_now_iso(),
             },
             ensure_ascii=False,
         ),
@@ -257,7 +258,7 @@ def capture_profile(slot: CodexOAuthSlot, *, label: str | None = None) -> dict[s
     # Fresh capture = fresh login — drop any recorded revocation immediately.
     clear_codex_auth_revoked()
 
-    captured_at = datetime.now(timezone.utc).isoformat()
+    captured_at = utc_now_iso()
     label_key = f"{slot}_label"
     patch: dict[str, Any] = {f"{slot}_captured_at": captured_at}
     if label and label.strip():
@@ -312,7 +313,7 @@ def sync_profile_from_live(slot: CodexOAuthSlot) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(live, dest)
     dest.chmod(0o600)
-    save_meta({f"{slot}_captured_at": datetime.now(timezone.utc).isoformat()})
+    save_meta({f"{slot}_captured_at": utc_now_iso()})
 
 
 def apply_profile(slot: CodexOAuthSlot) -> None:

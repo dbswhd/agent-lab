@@ -7,6 +7,7 @@ demote autonomy when the quarterly cap is exceeded.
 
 from __future__ import annotations
 
+from agent_lab.time_utils import utc_now_iso_seconds as _now_iso, utc_now
 from agent_lab.env_flags import is_truthy
 from agent_lab.run.state import RunStateLike
 import json
@@ -16,12 +17,9 @@ from pathlib import Path
 from typing import Any
 
 
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-
 
 def current_quarter(now: datetime | None = None) -> str:
-    when = now or datetime.now(timezone.utc)
+    when = now or utc_now()
     q = (when.month - 1) // 3 + 1
     return f"{when.year}-Q{q}"
 

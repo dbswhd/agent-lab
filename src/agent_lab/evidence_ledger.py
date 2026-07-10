@@ -3,17 +3,14 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.time_utils import utc_now_iso as _now_iso
 from agent_lab.mission.notepad import mission_notepad_dir
 
 DEFAULT_TAIL_LIMIT = 50
 
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 def evidence_path(folder: Path) -> Path:

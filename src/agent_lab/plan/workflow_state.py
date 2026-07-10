@@ -3,10 +3,10 @@ from __future__ import annotations
 """Plan workflow FSM — state, phases, init, public snapshots."""
 
 import os
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
+from agent_lab.time_utils import utc_now_iso as _now
 from agent_lab.plan.actions import parse_plan_actions
 from agent_lab.run.meta import patch_run_meta, read_run_meta
 from agent_lab.run.state import RunState, RunStateLike
@@ -65,9 +65,6 @@ class PlanWorkflowNotApproved(Exception):
         self.phase = phase
         super().__init__(reason)
 
-
-def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 def plan_workflow_env_disabled() -> bool:

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
+from agent_lab.time_utils import utc_now_iso
 from agent_lab.agent.envelope import AgentEnvelope, parse_agent_response
 from agent_lab.env_flags import env_bool
 from agent_lab.model_policy import (
@@ -116,7 +116,7 @@ def eval_loop_profile_row(
         "cost_tier": static.cost_tier,
         "latency_tier": static.latency_tier,
         "eval_source": source,
-        "evaluated_at": datetime.now(timezone.utc).isoformat(),
+        "evaluated_at": utc_now_iso(),
         "eval_error": eval_error,
     }
 
@@ -149,7 +149,7 @@ def write_loop_eval_registry(
     target = path or _loop_eval_registry_path()
     payload = {
         "profiles": profiles,
-        "written_at": datetime.now(timezone.utc).isoformat(),
+        "written_at": utc_now_iso(),
     }
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

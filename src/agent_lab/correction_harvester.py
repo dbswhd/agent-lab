@@ -19,10 +19,10 @@ import json
 import re
 import threading
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from agent_lab.time_utils import utc_now_iso as _now_iso
 from agent_lab.env_flags import env_bool
 from agent_lab.run.meta import read_run_meta
 
@@ -92,9 +92,6 @@ def detect_user_correction(content: str) -> CorrectionPattern | None:
             return pattern
     return None
 
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 def _topic_hash(topic: str) -> str:

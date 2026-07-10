@@ -7,9 +7,10 @@ merge review) are never bypassed.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
+
+from agent_lab.time_utils import utc_now_iso
 
 Mode = Literal["CLARIFY", "CONSENSUS", "EXECUTE"]
 
@@ -56,7 +57,7 @@ def record_mode_route(folder: Any) -> dict[str, Any]:
         route = {
             "mode": mode,
             "phase": ml.get("phase"),
-            "at": datetime.now(timezone.utc).isoformat(),
+            "at": utc_now_iso(),
         }
         ml["mode_route"] = route
         run["mission_loop"] = ml
@@ -208,7 +209,7 @@ def record_routing_decision(folder: Any, decision: dict[str, Any]) -> None:
             "phase": decision.get("phase"),
             "consensus_mode": bool(decision.get("consensus_mode")),
             "applied": bool(decision.get("applied")),
-            "at": datetime.now(timezone.utc).isoformat(),
+            "at": utc_now_iso(),
         }
         run["mission_loop"] = ml
         return run

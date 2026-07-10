@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from agent_lab.time_utils import utc_now_iso
 from agent_lab.run.state import RunStateLike
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
@@ -100,7 +100,7 @@ def set_response_contract(
         "label": PRESET_LABELS[preset],
         "guidance": PRESET_GUIDANCE[preset],
         "set_by": set_by,
-        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": utc_now_iso(),
     }
 
     def _patch(run: dict[str, Any]) -> dict[str, Any]:

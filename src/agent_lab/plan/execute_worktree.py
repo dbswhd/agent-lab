@@ -132,6 +132,13 @@ def remove_exec_worktree(
     root = git_root.resolve()
     wt = worktree_path or worktree_dir(session_folder, exec_id)
     if wt.is_dir():
+        try:
+            from agent_lab.worktree_hooks import run_worktree_remove
+
+            # Best-effort: remove hooks must not block teardown.
+            run_worktree_remove(worktree_path=wt, git_root=root)
+        except Exception:
+            log.warning("worktree remove hooks failed for %s", wt, exc_info=True)
         _run_git(root, "worktree", "remove", "--force", str(wt.resolve()), check=False)
         if wt.exists():
             _rmtree_best_effort(wt)

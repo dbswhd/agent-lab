@@ -66,12 +66,12 @@
 
 ### Wave 3 — P2 (S1 이후)
 
-| ID | 내용 |
-|----|------|
-| P2-skills | tool_cards → mount (S3b) |
-| P2-hooks | SubagentStart/Stop 정렬 (3-layer 유지) |
-| P2-workflows | dynamic workflows → TurnContract 템플릿만 |
-| P2-worktree-yaml | baseRef · include · Create/Remove hooks |
+| ID | 내용 | 상태 |
+|----|------|------|
+| P2-skills | tool_cards → mount (S3b) | backlog (N7 동결에 가깝음) |
+| P2-hooks | SubagentStart/Stop 정렬 (3-layer 유지) | backlog |
+| P2-workflows | dynamic workflows → TurnContract 템플릿만 | backlog |
+| P2-worktree-yaml | baseRef · include · Create/Remove hooks | shipped (`worktree_hooks.py`, isolation baseRef, include copy, create→setup / remove teardown, WorkspaceCard) |
 
 ---
 
@@ -86,6 +86,7 @@
 - P1-notify: document hidden 시 Needs input → desktop/Activity (`needs_input` kind)
 - P1-monitor: MONITOR evidence (`POST …/evidence/monitor` · merge-checks fail dedupe)
 - P1-fork: 세션 포크 (plan/chat 복사, pending inbox/executions 미복사)
+- P2-worktree-yaml: `baseRef` · include/`.worktreeinclude` · create/remove hooks (setup/verify 유지, gate 우회 없음)
 - 전 웨이브: 5모트 회귀 · autofix/auto-merge 경로 없음
 
 ---

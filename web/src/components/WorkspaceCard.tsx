@@ -33,6 +33,7 @@ export function WorkspaceCard({
   const archivePath = `executed/${execution.id}.json`;
   const hasIdentity =
     Boolean(lines.worktree || lines.branch || lines.base || lines.commit) ||
+    Boolean(lines.include) ||
     Boolean(execution.diff_stat?.trim()) ||
     Boolean(mergeChecks?.checks?.length) ||
     Boolean(execution.external_handoff?.evidence_summary) ||
@@ -71,7 +72,16 @@ export function WorkspaceCard({
         {lines.base ? (
           <p className="work-exec-worktree-banner__line">
             <span className="work-exec-worktree-banner__label">base</span>
-            <code>{lines.base}</code>
+            <code>
+              {lines.base}
+              {lines.baseSha ? ` @ ${lines.baseSha.slice(0, 7)}` : ""}
+            </code>
+          </p>
+        ) : null}
+        {lines.include ? (
+          <p className="work-exec-worktree-banner__line">
+            <span className="work-exec-worktree-banner__label">include</span>
+            <code>{lines.include}</code>
           </p>
         ) : null}
         {lines.commit ? (

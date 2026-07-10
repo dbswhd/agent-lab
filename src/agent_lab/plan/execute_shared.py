@@ -109,14 +109,58 @@ def _worktree_hooks_setup(
     folder: Path,
     exec_id: str,
 ) -> dict[str, Any]:
-    from agent_lab.worktree_hooks import run_worktree_setup
+    """After worktree create: include copy → create hooks → setup hooks."""
+    from agent_lab.worktree_hooks import (
+        apply_worktree_include,
+        public_config_summary,
+        run_worktree_create,
+        run_worktree_setup,
+    )
+
+    block: dict[str, Any] = {}
+    include_report = apply_worktree_include(
+        git_root=exec_worktree.git_root,
+        worktree_path=exec_worktree.worktree_path,
+    )
+    if include_report.get("patterns"):
+        block["include"] = include_report
+
+    summary = public_config_summary(
+        exec_worktree.git_root,
+        include_report=include_report,
+    )
+    if summary:
+        block["config_summary"] = summary
+
+    create_report = run_worktree_create(
+        worktree_path=exec_worktree.worktree_path,
+        git_root=exec_worktree.git_root,
+    )
+    if create_report is not None:
+        if not create_report.get("ok"):
+            discard_exec_worktree(exec_worktree, folder, exec_id)
+            failed = next(
+                (row for row in create_report.get("results") or [] if not row.get("ok")),
+                None,
+            )
+            detail = (
+                str(failed.get("detail") or failed.get("cmd") or "create failed")
+                if isinstance(failed, dict)
+                else "create failed"
+            )
+            raise WorktreeUnavailable(
+                f"worktree create hooks failed: {detail}",
+                reason="worktree_create_failed",
+                execution_id=exec_id,
+            )
+        block["create"] = create_report
 
     setup_report = run_worktree_setup(
         worktree_path=exec_worktree.worktree_path,
         git_root=exec_worktree.git_root,
     )
     if setup_report is None:
-        return {}
+        return block
     if not setup_report.get("ok"):
         discard_exec_worktree(exec_worktree, folder, exec_id)
         failed = next(
@@ -133,7 +177,8 @@ def _worktree_hooks_setup(
             reason="worktree_setup_failed",
             execution_id=exec_id,
         )
-    return {"setup": setup_report}
+    block["setup"] = setup_report
+    return block
 
 
 def _worktree_hooks_verify_before_merge(

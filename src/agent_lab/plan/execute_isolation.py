@@ -18,6 +18,17 @@ IsolationKind = Literal["worktree", "apply", "block", "snapshot_override"]
 IsolationSource = Literal["auto", "plan", "override"]
 
 
+def _base_branch_for(root: Path | None) -> str:
+    if root is None:
+        return "main"
+    from agent_lab.worktree_hooks import resolve_worktree_base_ref
+
+    configured = resolve_worktree_base_ref(root)
+    if configured:
+        return configured
+    return default_branch(root)
+
+
 @dataclass(frozen=True)
 class IsolationDecision:
     action_key: str
@@ -86,7 +97,7 @@ def resolve_action_isolation(
             git_root=root,
             git_root_detected=root is not None,
             paths_under_root=under,
-            base_branch=default_branch(root) if root else "main",
+            base_branch=_base_branch_for(root),
             block_reason="isolation=block",
         )
 
@@ -109,7 +120,7 @@ def resolve_action_isolation(
             git_root=root,
             git_root_detected=root is not None,
             paths_under_root=under if root else True,
-            base_branch=default_branch(root) if root else "main",
+            base_branch=_base_branch_for(root),
         )
 
     if requested == "worktree" and root is None:
@@ -141,5 +152,5 @@ def resolve_action_isolation(
         git_root=root,
         git_root_detected=True,
         paths_under_root=under,
-        base_branch=default_branch(root),
+        base_branch=_base_branch_for(root),
     )

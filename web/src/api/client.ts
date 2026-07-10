@@ -2235,8 +2235,25 @@ export type PlanExecutionRecord = {
   completed_at?: string | null;
   pre_verify?: PreVerifyRecord;
   worktree_hooks?: {
-    setup?: { ok?: boolean; phase?: string };
-    verify?: { ok?: boolean; phase?: string };
+    setup?: { ok?: boolean; phase?: string; config?: Record<string, unknown> };
+    verify?: { ok?: boolean; phase?: string; config?: Record<string, unknown> };
+    create?: { ok?: boolean; phase?: string; config?: Record<string, unknown> };
+    remove?: { ok?: boolean; phase?: string; config?: Record<string, unknown> };
+    include?: {
+      ok?: boolean;
+      patterns?: string[];
+      copied?: string[];
+    };
+    config_summary?: {
+      baseRef?: string | null;
+      include?: string[];
+      include_copied?: string[];
+      has_create?: boolean;
+      has_remove?: boolean;
+      has_setup?: boolean;
+      has_verify?: boolean;
+      source_path?: string | null;
+    };
   };
   external_handoff?: {
     stopped_cleanly?: boolean;

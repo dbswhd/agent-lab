@@ -1,8 +1,10 @@
-"""Optional repo `.agent-lab/worktree.yaml` setup/verify hooks (MB-6)."""
+"""Optional repo `.agent-lab/worktree.yaml` lifecycle hooks (MB-6 + ABSORB P2)."""
 
 from __future__ import annotations
 
+import fnmatch
 import json
+import shutil
 import subprocess
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -12,6 +14,8 @@ from typing import Any
 from agent_lab.subprocess_env import subprocess_env
 
 _WORKTREE_HOOK_FILENAMES = ("worktree.yaml", "worktree.json")
+_LIST_KEYS = frozenset({"setup", "verify", "create", "remove", "include"})
+_MAX_INCLUDE_COPIES = 200
 
 
 def _now_iso() -> str:
@@ -20,16 +24,35 @@ def _now_iso() -> str:
 
 @dataclass(frozen=True)
 class WorktreeHooksConfig:
-    setup: tuple[str, ...]
-    verify: tuple[str, ...]
+    setup: tuple[str, ...] = ()
+    verify: tuple[str, ...] = ()
+    create: tuple[str, ...] = ()
+    remove: tuple[str, ...] = ()
+    include: tuple[str, ...] = ()
+    base_ref: str | None = None
     source_path: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "setup": list(self.setup),
             "verify": list(self.verify),
+            "create": list(self.create),
+            "remove": list(self.remove),
+            "include": list(self.include),
+            "baseRef": self.base_ref,
             "source_path": self.source_path,
         }
+
+    @property
+    def has_any(self) -> bool:
+        return bool(
+            self.setup
+            or self.verify
+            or self.create
+            or self.remove
+            or self.include
+            or self.base_ref
+        )
 
 
 def _parse_command_list(raw: Any) -> list[str]:
@@ -45,8 +68,9 @@ def _parse_yaml_hooks(text: str) -> dict[str, Any]:
         line = raw_line.strip()
         if not line or line.startswith("#"):
             continue
-        if line in {"setup:", "verify:"}:
-            current_list = line[:-1]
+        list_header = line[:-1] if line.endswith(":") and not line.startswith("-") else None
+        if list_header in _LIST_KEYS and " " not in list_header:
+            current_list = list_header
             data.setdefault(current_list, [])
             continue
         if line.startswith("- ") and current_list:
@@ -61,6 +85,14 @@ def _parse_yaml_hooks(text: str) -> dict[str, Any]:
     return data
 
 
+def _normalize_base_ref(raw: dict[str, Any]) -> str | None:
+    for key in ("baseRef", "base_ref", "baseref"):
+        val = raw.get(key)
+        if isinstance(val, str) and val.strip():
+            return val.strip()
+    return None
+
+
 def _load_hooks_file(path: Path) -> WorktreeHooksConfig | None:
     try:
         if path.suffix == ".json":
@@ -71,15 +103,18 @@ def _load_hooks_file(path: Path) -> WorktreeHooksConfig | None:
         return None
     if not isinstance(raw, dict):
         return None
-    setup = _parse_command_list(raw.get("setup"))
-    verify = _parse_command_list(raw.get("verify"))
-    if not setup and not verify:
-        return None
-    return WorktreeHooksConfig(
-        setup=tuple(setup),
-        verify=tuple(verify),
+    config = WorktreeHooksConfig(
+        setup=tuple(_parse_command_list(raw.get("setup"))),
+        verify=tuple(_parse_command_list(raw.get("verify"))),
+        create=tuple(_parse_command_list(raw.get("create"))),
+        remove=tuple(_parse_command_list(raw.get("remove"))),
+        include=tuple(_parse_command_list(raw.get("include"))),
+        base_ref=_normalize_base_ref(raw),
         source_path=str(path),
     )
+    if not config.has_any:
+        return None
+    return config
 
 
 def find_worktree_hooks(git_root: Path | None) -> WorktreeHooksConfig | None:
@@ -91,6 +126,172 @@ def find_worktree_hooks(git_root: Path | None) -> WorktreeHooksConfig | None:
         if repo_path.is_file():
             return _load_hooks_file(repo_path)
     return None
+
+
+def resolve_worktree_base_ref(git_root: Path | None) -> str | None:
+    """Return configured baseRef when the git ref resolves; else None."""
+    config = find_worktree_hooks(git_root)
+    if not config or not config.base_ref or git_root is None:
+        return None
+    root = git_root.resolve()
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "--verify", config.base_ref],
+            capture_output=True,
+            text=True,
+            check=False,
+            env=subprocess_env(),
+        )
+    except OSError:
+        return None
+    if result.returncode != 0:
+        return None
+    return config.base_ref
+
+
+def resolve_include_patterns(
+    git_root: Path | None,
+    config: WorktreeHooksConfig | None = None,
+) -> list[str]:
+    """Resolve include globs from yaml, or fall back to repo-root `.worktreeinclude`."""
+    cfg = config if config is not None else find_worktree_hooks(git_root)
+    patterns: list[str] = []
+    if cfg and cfg.include:
+        for item in cfg.include:
+            if item in {"@.worktreeinclude", ".worktreeinclude"}:
+                patterns.extend(_read_worktreeinclude(git_root))
+            else:
+                patterns.append(item)
+    elif git_root is not None:
+        patterns.extend(_read_worktreeinclude(git_root))
+    # de-dupe preserve order
+    seen: set[str] = set()
+    out: list[str] = []
+    for p in patterns:
+        if p not in seen:
+            seen.add(p)
+            out.append(p)
+    return out
+
+
+def _read_worktreeinclude(git_root: Path | None) -> list[str]:
+    if git_root is None:
+        return []
+    path = git_root.resolve() / ".worktreeinclude"
+    if not path.is_file():
+        return []
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return []
+    out: list[str] = []
+    for raw in lines:
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        out.append(line)
+    return out
+
+
+def apply_worktree_include(
+    *,
+    git_root: Path,
+    worktree_path: Path,
+    patterns: list[str] | None = None,
+) -> dict[str, Any]:
+    """Copy matching paths from git_root into the worktree (Codex .worktreeinclude).
+
+    Git worktree already has tracked files; this copies extra local paths
+    (env, secrets, build artifacts) listed by include patterns.
+    """
+    root = git_root.resolve()
+    dest_root = worktree_path.resolve()
+    pats = patterns if patterns is not None else resolve_include_patterns(root)
+    copied: list[str] = []
+    skipped: list[str] = []
+    if not pats:
+        return {
+            "ok": True,
+            "phase": "include",
+            "patterns": [],
+            "copied": [],
+            "skipped": [],
+            "ran_at": _now_iso(),
+        }
+
+    candidates: list[Path] = []
+    for pat in pats:
+        # Absolute-ish or rooted patterns relative to git root
+        if any(ch in pat for ch in "*?["):
+            for path in root.rglob("*"):
+                if not path.is_file():
+                    continue
+                try:
+                    rel = path.relative_to(root).as_posix()
+                except ValueError:
+                    continue
+                if fnmatch.fnmatch(rel, pat) or fnmatch.fnmatch(path.name, pat):
+                    candidates.append(path)
+        else:
+            candidate = (root / pat).resolve()
+            if candidate.is_file():
+                candidates.append(candidate)
+            elif candidate.is_dir():
+                for path in candidate.rglob("*"):
+                    if path.is_file():
+                        candidates.append(path)
+
+    for src in candidates:
+        if len(copied) >= _MAX_INCLUDE_COPIES:
+            skipped.append(str(src))
+            continue
+        try:
+            rel = src.resolve().relative_to(root)
+        except ValueError:
+            skipped.append(str(src))
+            continue
+        dest = dest_root / rel
+        if dest.exists():
+            skipped.append(rel.as_posix())
+            continue
+        try:
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dest)
+            copied.append(rel.as_posix())
+        except OSError:
+            skipped.append(rel.as_posix())
+
+    return {
+        "ok": True,
+        "phase": "include",
+        "patterns": pats,
+        "copied": copied,
+        "skipped": skipped[:50],
+        "ran_at": _now_iso(),
+    }
+
+
+def public_config_summary(
+    git_root: Path | None,
+    *,
+    include_report: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    config = find_worktree_hooks(git_root)
+    patterns = resolve_include_patterns(git_root, config)
+    if config is None and not patterns:
+        return None
+    return {
+        "baseRef": config.base_ref if config else None,
+        "include": patterns,
+        "include_copied": list(include_report.get("copied") or [])
+        if isinstance(include_report, dict)
+        else [],
+        "has_create": bool(config.create) if config else False,
+        "has_remove": bool(config.remove) if config else False,
+        "has_setup": bool(config.setup) if config else False,
+        "has_verify": bool(config.verify) if config else False,
+        "source_path": config.source_path if config else None,
+    }
 
 
 def _sandbox_intent() -> str | None:
@@ -180,6 +381,19 @@ def run_hook_commands(
     }
 
 
+def run_worktree_create(
+    *,
+    worktree_path: Path,
+    git_root: Path,
+) -> dict[str, Any] | None:
+    config = find_worktree_hooks(git_root)
+    if not config or not config.create:
+        return None
+    report = run_hook_commands(config.create, cwd=worktree_path, phase="create")
+    report["config"] = config.to_dict()
+    return report
+
+
 def run_worktree_setup(
     *,
     worktree_path: Path,
@@ -206,6 +420,29 @@ def run_worktree_verify(
     return report
 
 
+def run_worktree_remove(
+    *,
+    worktree_path: Path,
+    git_root: Path,
+) -> dict[str, Any] | None:
+    """Best-effort remove hooks before worktree teardown."""
+    config = find_worktree_hooks(git_root)
+    if not config or not config.remove:
+        return None
+    if not worktree_path.is_dir():
+        return {
+            "phase": "remove",
+            "ok": True,
+            "skipped": True,
+            "detail": "worktree path missing",
+            "ran_at": _now_iso(),
+            "config": config.to_dict(),
+        }
+    report = run_hook_commands(config.remove, cwd=worktree_path, phase="remove")
+    report["config"] = config.to_dict()
+    return report
+
+
 def public_worktree_hooks_status(execution: dict[str, Any] | None) -> dict[str, Any] | None:
     if not execution:
         return None
@@ -214,9 +451,16 @@ def public_worktree_hooks_status(execution: dict[str, Any] | None) -> dict[str, 
         return None
     setup = block.get("setup") if isinstance(block.get("setup"), dict) else None
     verify = block.get("verify") if isinstance(block.get("verify"), dict) else None
+    create = block.get("create") if isinstance(block.get("create"), dict) else None
+    remove = block.get("remove") if isinstance(block.get("remove"), dict) else None
     return {
         "setup_ok": None if setup is None else bool(setup.get("ok")),
         "verify_ok": None if verify is None else bool(verify.get("ok")),
+        "create_ok": None if create is None else bool(create.get("ok")),
+        "remove_ok": None if remove is None else bool(remove.get("ok")),
         "setup": setup,
         "verify": verify,
+        "create": create,
+        "remove": remove,
+        "config_summary": block.get("config_summary"),
     }

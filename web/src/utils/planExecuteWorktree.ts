@@ -42,13 +42,25 @@ export function worktreeBannerLines(row: PlanExecutionRecord): {
   branch?: string;
   worktree?: string;
   base?: string;
+  baseSha?: string;
   commit?: string;
+  include?: string;
 } {
+  const summary = row.worktree_hooks?.config_summary;
+  const includeList = summary?.include;
+  const includeLabel =
+    Array.isArray(includeList) && includeList.length > 0
+      ? includeList.length <= 2
+        ? includeList.join(", ")
+        : `${includeList.length} paths`
+      : undefined;
   return {
     branch: row.exec_branch?.trim() || undefined,
     worktree: row.worktree_path?.trim() || undefined,
     base: row.base_branch?.trim() || undefined,
+    baseSha: row.base_sha?.trim() || undefined,
     commit: row.exec_commit_sha?.trim() || undefined,
+    include: includeLabel,
   };
 }
 

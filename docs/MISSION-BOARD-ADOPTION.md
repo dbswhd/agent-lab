@@ -233,16 +233,28 @@ Work / PlanExecute **Checks** 블록 (Conductor Checks 탭):
 - room tasks todos
 - **merge_disabled** boolean
 
-### 7.3 Worktree setup (MB-6)
+### 7.3 Worktree setup (MB-6 + ABSORB P2)
 
 Repo optional `.agent-lab/worktree.yaml`:
 
 ```yaml
-setup: ["make install"]
-verify: ["make test"]
+baseRef: main                 # optional — override default branch for worktree add
+include:                      # optional — copy local paths into worktree (Codex .worktreeinclude)
+  - .env.local
+  - "@.worktreeinclude"       # or rely on repo-root .worktreeinclude when include omitted
+create:
+  - echo "WorktreeCreate"
+setup:
+  - make install
+verify:
+  - make test
+remove:
+  - echo "WorktreeRemove"
 ```
 
-action worktree 생성 후 setup; merge 전 verify (Conductor setup/run script 축소판).
+Lifecycle: resolve `baseRef` → `git worktree add` → include copy → **create** → **setup** → dry-run → pending → **verify** → Human approve → merge → **remove** → teardown.
+
+Create/setup failures discard the worktree (fail closed). Remove hooks are best-effort and never block teardown. Does **not** bypass execute gate, Inbox, or Oracle.
 
 ---
 

@@ -47,6 +47,7 @@ SHIPPED_ROWS: list[tuple[str, list[str]]] = [
     ("ABSORB-W1", ["web/src/components/WorkspaceCard.tsx", "docs/ABSORB-CC-CODEX-2026-07.md", "tests/test_plan_actions_validation.py"]),
     ("ABSORB-P1", ["web/src/components/NeedsInputBadge.tsx", "src/agent_lab/steer.py", "tests/test_steer.py"]),
     ("ABSORB-P1b", ["web/src/components/SessionStatusLine.tsx", "src/agent_lab/evidence_monitor.py", "src/agent_lab/session/fork.py", "tests/test_absorb_wave2_remaining.py"]),
+    ("ABSORB-P2-WT", ["src/agent_lab/worktree_hooks.py", "tests/test_worktree_hooks.py", "web/src/components/WorkspaceCard.tsx"]),
     ("PI-executed", ["src/agent_lab/plan_execute_merge.py", "tests/test_executed_archive.py"]),
     ("MD-P3", ["src/agent_lab/workspace_md.py", "tests/test_workspace_md.py"]),
     ("PI-ops", ["scripts/live_cursor_worktree_dry_run.py", "docs/OPS-RUNBOOK.md"]),

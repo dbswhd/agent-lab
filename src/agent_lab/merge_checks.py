@@ -27,16 +27,33 @@ def _worktree_hooks_check(execution: dict[str, Any] | None) -> dict[str, Any]:
                 "detail": "verify hooks not run",
             }
         return {"id": "worktree_hooks", "ok": True, "detail": "no hooks configured"}
+    create = hooks.get("create")
+    if isinstance(create, dict) and not create.get("ok"):
+        return {"id": "worktree_hooks", "ok": False, "detail": "create failed"}
     setup = hooks.get("setup")
     if isinstance(setup, dict) and not setup.get("ok"):
         return {"id": "worktree_hooks", "ok": False, "detail": "setup failed"}
     verify = hooks.get("verify")
     if verify is None:
         config_verify: list[str] = []
-        if isinstance(setup, dict):
-            raw_config = setup.get("config")
-            if isinstance(raw_config, dict):
+        for source in (setup, create, hooks.get("config_summary")):
+            if not isinstance(source, dict):
+                continue
+            raw_config = source.get("config") if "config" in source else None
+            if isinstance(raw_config, dict) and raw_config.get("verify"):
                 config_verify = list(raw_config.get("verify") or [])
+                break
+            if source.get("has_verify"):
+                config_verify = ["configured"]
+                break
+        # Also check create/setup config.verify lists
+        if not config_verify:
+            for key in ("setup", "create"):
+                row = hooks.get(key)
+                if isinstance(row, dict) and isinstance(row.get("config"), dict):
+                    config_verify = list(row["config"].get("verify") or [])
+                    if config_verify:
+                        break
         if config_verify:
             return {"id": "worktree_hooks", "ok": False, "detail": "verify pending"}
         return {"id": "worktree_hooks", "ok": True, "detail": "verify not configured"}

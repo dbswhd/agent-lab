@@ -6,6 +6,7 @@ import {
   archiveSession,
   deleteSession,
   fetchHealth,
+  fetchInboxSummary,
   reconnectClaudeAuth,
   reconnectCursorBridge,
   reconnectKimiWorkBridge,
@@ -85,6 +86,9 @@ export default function App() {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [sessionsError, setSessionsError] = useState<string | null>(null);
   const [sessionsDir, setSessionsDir] = useState<string | null>(null);
+  const [needsInputSessionIds, setNeedsInputSessionIds] = useState<string[]>(
+    [],
+  );
   const [bridgeProbeFailed, setBridgeProbeFailed] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(() =>
     getLastSessionId(),
@@ -327,6 +331,29 @@ export default function App() {
   useEffect(() => {
     reloadSessions().catch(() => {});
   }, [listTab, reloadSessions]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadNeedsInput = () => {
+      void fetchInboxSummary(listTab === "archived")
+        .then((payload) => {
+          if (cancelled) return;
+          const ids = (payload.sessions ?? [])
+            .filter((row) => row.inbox_pending || (row.pending_count ?? 0) > 0)
+            .map((row) => row.session_id);
+          setNeedsInputSessionIds(ids);
+        })
+        .catch(() => {
+          if (!cancelled) setNeedsInputSessionIds([]);
+        });
+    };
+    loadNeedsInput();
+    const timer = window.setInterval(loadNeedsInput, 30_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [listTab, sessions.length, selectedId]);
 
   useEffect(() => {
     if (sessions.length === 0) return;
@@ -631,6 +658,7 @@ export default function App() {
                 sessions={sessions}
                 selectedId={!composerNew ? selectedId : null}
                 runningSessionIds={runningSessionIds}
+                needsInputSessionIds={needsInputSessionIds}
                 archived={listTab === "archived"}
                 query={sessionQuery}
                 onSelect={selectSession}

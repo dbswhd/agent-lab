@@ -56,6 +56,10 @@ type Props = {
   modeChipHint?: string | null;
   running?: boolean;
   onStop?: () => void;
+  /** When busy, allow mid-run steer instead of a full Room send. */
+  steerEligible?: boolean;
+  onSteer?: () => void;
+  steerBusy?: boolean;
   /** Current room turn mode (토론 / 정리 / 합의). */
   modeChip?: string | null;
   modeChipVariant?: "discuss" | "plan" | "consensus";
@@ -113,6 +117,9 @@ export function ChatComposer({
   modeChipHint,
   running = false,
   onStop,
+  steerEligible = false,
+  onSteer,
+  steerBusy = false,
   modeChip,
   modeChipVariant,
   isNewSession = false,
@@ -599,15 +606,34 @@ export function ChatComposer({
                   </div>
                 ) : null}
                 {running && onStop ? (
-                  <button
-                    type="button"
-                    className="btn-stop"
-                    onClick={onStop}
-                    aria-label="답변 중지"
-                    title="답변 중지"
-                  >
-                    <span className="btn-stop__square" aria-hidden />
-                  </button>
+                  <>
+                    {steerEligible && onSteer ? (
+                      <button
+                        type="button"
+                        className="btn-send btn-send--steer"
+                        disabled={steerBusy || !value.trim()}
+                        onClick={onSteer}
+                        aria-label="Steer"
+                        title={
+                          locale === "ko"
+                            ? "실행 중 지시 (다음 에이전트 단계에 반영)"
+                            : "Steer while running (applied at next agent step)"
+                        }
+                        data-testid="composer-steer"
+                      >
+                        Steer
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      className="btn-stop"
+                      onClick={onStop}
+                      aria-label="답변 중지"
+                      title="답변 중지"
+                    >
+                      <span className="btn-stop__square" aria-hidden />
+                    </button>
+                  </>
                 ) : (
                   <button
                     type="button"

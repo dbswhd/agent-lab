@@ -53,16 +53,16 @@
 | **W1-A** | Workspace 카드: worktree path · branch · diff · merge checks · archive · handoff | `web/src/components/WorkspaceCard.tsx`, `PlanExecutePanel.tsx` | shipped |
 | **W1-B** | `plan.md` TL;DR · Must/Must-NOT · Parallel waves · Evidence paths (+ soft validation) | `agents/prompts.py` `ROOM_SCRIBE`, `plan/actions.py` | shipped |
 
-### Wave 2 — P1 backlog (dogfood 여유 시)
+### Wave 2 — P1 (Needs input / steer)
 
-| ID | 내용 | 공식 근거 |
-|----|------|-----------|
-| P1-needs-input | Needs input / blocked-on-you | Codex Jul · CC agents · W26 |
-| P1-steer | execute 중 mid-turn steer | Codex mid-turn steering |
-| P1-notify | Inbox OS/모바일 알림 | CC mobile push · Notification hooks |
-| P1-monitor | CI/로그 → Evidence | CC Monitor |
-| P1-status | Autonomy × sandbox 상태줄 | CC statusline · Codex policy |
-| P1-fork | session fork | Codex fork |
+| ID | 내용 | 공식 근거 | 상태 |
+|----|------|-----------|------|
+| P1-needs-input | Needs input / blocked-on-you — header badge + session rail dot | Codex Jul · CC agents · W26 | shipped (`NeedsInputBadge`, `needsInputStatus.ts`, SessionList) |
+| P1-steer | execute/room 중 mid-turn steer queue | Codex mid-turn steering | shipped (`POST /api/sessions/{id}/steer`, composer Steer, drain in parallel_rounds + enrich_execute_prompt) |
+| P1-notify | Inbox OS/모바일 알림 | CC mobile push · Notification hooks | backlog |
+| P1-monitor | CI/로그 → Evidence | CC Monitor | backlog |
+| P1-status | Autonomy × sandbox 상태줄 | CC statusline · Codex policy | backlog |
+| P1-fork | session fork | Codex fork | backlog |
 
 ### Wave 3 — P2 (S1 이후)
 
@@ -80,6 +80,8 @@
 - Wave 0: 이 문서 + NORTH-STAR가 로컬 버전 **및** 공식 URL을 인용
 - W1-A: Plan→Execute에서 workspace 메타가 **한 화면**
 - W1-B: 신규 plan에 waves·Must-NOT·evidence 섹션 + soft validation; X2 mock 통과
+- P1-needs-input: 헤더 Needs input 배지 + 세션 레일 점 (Inbox/plan/execute 승인 대기 집계)
+- P1-steer: busy 중 Steer → `steer_queue` → 다음 agent/execute 단계에만 주입 (gate 우회 없음)
 - 전 웨이브: 5모트 회귀 · autofix/auto-merge 경로 없음
 
 ---

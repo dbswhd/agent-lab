@@ -17,6 +17,7 @@ export interface InboxState {
   inboxPendingQuestions: number;
   inboxPendingBuilds: number;
   inboxPendingSkillDrafts: number;
+  inboxPendingAutonomy: number;
   globalInboxPending: number;
   setGlobalInboxPending: (n: number) => void;
   inboxReloadKey: number;
@@ -36,6 +37,7 @@ export function useInboxState(sessionId: string | null): InboxState {
   const [inboxPendingQuestions, setInboxPendingQuestions] = useState(0);
   const [inboxPendingBuilds, setInboxPendingBuilds] = useState(0);
   const [inboxPendingSkillDrafts, setInboxPendingSkillDrafts] = useState(0);
+  const [inboxPendingAutonomy, setInboxPendingAutonomy] = useState(0);
   const [globalInboxPending, setGlobalInboxPending] = useState(0);
   const [inboxReloadKey, setInboxReloadKey] = useState(0);
   const [inboxSegment, setInboxSegment] = useState<InboxSegment>("inbox");
@@ -47,6 +49,7 @@ export function useInboxState(sessionId: string | null): InboxState {
       setInboxPendingQuestions(0);
       setInboxPendingBuilds(0);
       setInboxPendingSkillDrafts(0);
+      setInboxPendingAutonomy(0);
       return;
     }
     try {
@@ -55,11 +58,13 @@ export function useInboxState(sessionId: string | null): InboxState {
       setInboxPendingQuestions(payload.pending_questions ?? 0);
       setInboxPendingBuilds(payload.pending_builds ?? 0);
       setInboxPendingSkillDrafts(payload.pending_skill_drafts ?? 0);
+      setInboxPendingAutonomy(payload.pending_autonomy ?? 0);
     } catch {
       setInboxPendingCount(0);
       setInboxPendingQuestions(0);
       setInboxPendingBuilds(0);
       setInboxPendingSkillDrafts(0);
+      setInboxPendingAutonomy(0);
     }
   }, [sessionId]);
 
@@ -116,6 +121,7 @@ export function useInboxState(sessionId: string | null): InboxState {
     inboxPendingQuestions,
     inboxPendingBuilds,
     inboxPendingSkillDrafts,
+    inboxPendingAutonomy,
     globalInboxPending,
     setGlobalInboxPending,
     inboxReloadKey,

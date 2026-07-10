@@ -1,9 +1,12 @@
 import { AutonomyDial } from "./AutonomyDial";
 import { CommandPalette } from "./CommandPalette";
+import { NeedsInputBadge } from "./NeedsInputBadge";
 import { RoomChatInspector } from "./RoomChatInspector";
 import { RoomChatMainPane } from "./RoomChatMainPane";
 import { WorkspaceChrome } from "./WorkspaceChrome";
 import type { useRoomChat } from "../hooks/useRoomChat";
+import { useMemo } from "react";
+import { buildNeedsInputStatus } from "../utils/needsInputStatus";
 
 type RoomChatViewModel = ReturnType<typeof useRoomChat>;
 
@@ -12,6 +15,38 @@ type Props = {
 };
 
 export function RoomChatView({ chat }: Props) {
+  const needsInput = useMemo(
+    () =>
+      buildNeedsInputStatus({
+        locale: chat.locale,
+        inboxPendingCount: chat.inboxPendingCount,
+        inboxPendingQuestions: chat.inboxPendingQuestions ?? 0,
+        inboxPendingBuilds: chat.inboxPendingBuilds ?? 0,
+        inboxPendingAutonomy: chat.inboxPendingAutonomy ?? 0,
+        showPlanApproval: chat.showPlanApproval,
+        verifiedLoopPendingApproval: chat.verifiedLoopPendingApproval,
+        execPendingApproval: Boolean(
+          chat.execPendingForBar?.status === "pending_approval",
+        ),
+        discussPaused: chat.discussPaused,
+        runtime: chat.decisionRuntime,
+        planWorkflow: chat.planWorkflow,
+      }),
+    [
+      chat.locale,
+      chat.inboxPendingCount,
+      chat.inboxPendingQuestions,
+      chat.inboxPendingBuilds,
+      chat.inboxPendingAutonomy,
+      chat.showPlanApproval,
+      chat.verifiedLoopPendingApproval,
+      chat.execPendingForBar,
+      chat.discussPaused,
+      chat.decisionRuntime,
+      chat.planWorkflow,
+    ],
+  );
+
   return (
     <>
       <CommandPalette actions={chat.paletteActions} />
@@ -21,13 +56,27 @@ export function RoomChatView({ chat }: Props) {
         meta={chat.titleMeta}
         headerExtra={
           chat.sessionId ? (
-            <AutonomyDial
-              view={chat.autonomyView}
-              loading={chat.autonomyLoading}
-              changing={chat.autonomyChanging}
-              disabled={chat.running || chat.runBusy}
-              onLevelChange={chat.setAutonomyLevel}
-            />
+            <>
+              <NeedsInputBadge
+                status={needsInput}
+                onOpen={() => {
+                  if (needsInput.focus === "plan_approval") {
+                    chat.openWorkApproval();
+                  } else if (needsInput.focus === "execute_queue") {
+                    chat.focusWorkStack?.("execute");
+                  } else {
+                    chat.openHumanInbox();
+                  }
+                }}
+              />
+              <AutonomyDial
+                view={chat.autonomyView}
+                loading={chat.autonomyLoading}
+                changing={chat.autonomyChanging}
+                disabled={chat.running || chat.runBusy}
+                onLevelChange={chat.setAutonomyLevel}
+              />
+            </>
           ) : null
         }
         sidebarOpen={chat.sidebarOpen}
@@ -114,6 +163,9 @@ export function RoomChatView({ chat }: Props) {
               longRunning: chat.longRunning,
               running: chat.running,
               onStop: chat.handleStop,
+              steerEligible: chat.steerEligible,
+              onSteer: chat.handleSteer,
+              steerBusy: chat.steerBusy,
               sessionId: chat.sessionId,
               eventStack: chat.composerEventStack,
               sendReceipt: chat.sendReceipt,

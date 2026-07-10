@@ -210,6 +210,9 @@ export function useRoomChatBootstrap(props: RoomChatProps) {
 
   const {
     inboxPendingCount,
+    inboxPendingQuestions,
+    inboxPendingBuilds,
+    inboxPendingAutonomy,
     inboxReloadKey,
     setInboxReloadKey,
     refreshInboxPending,
@@ -429,6 +432,9 @@ export function useRoomChatBootstrap(props: RoomChatProps) {
     workspacePath,
     agentCapabilities,
     inboxPendingCount,
+    inboxPendingQuestions,
+    inboxPendingBuilds,
+    inboxPendingAutonomy,
     inboxReloadKey,
     setInboxReloadKey,
     refreshInboxPending,

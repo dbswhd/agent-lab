@@ -257,7 +257,9 @@ def _call_repair_agent(
 
         permissions = enrich_execute_permissions(permissions, session_folder)
         prompt = execute_plugin_prompt_addon(prompt, session_folder, agent_id)
-        prompt = enrich_execute_prompt(prompt, read_run_meta(session_folder))
+        prompt = enrich_execute_prompt(
+            prompt, read_run_meta(session_folder), session_folder=session_folder
+        )
     from agent_lab.runtime.adapters import RepairInvokeRequest
 
     effective = dict(permissions or {})

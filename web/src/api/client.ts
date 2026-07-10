@@ -2584,6 +2584,7 @@ export type HumanInboxPayload = {
   pending_questions: number;
   pending_builds: number;
   pending_skill_drafts?: number;
+  pending_autonomy?: number;
 };
 
 export async function fetchSessionInbox(
@@ -2614,6 +2615,18 @@ export type InboxSummaryPayload = {
 export async function fetchInboxSummary(includeArchived = false) {
   const query = includeArchived ? "?include_archived=true" : "";
   return json<InboxSummaryPayload>(`/api/inbox/summary${query}`);
+}
+
+export async function steerSession(
+  sessionId: string,
+  text: string,
+  target: "any" | "room" | "execute" = "any",
+): Promise<{ ok: boolean; queued: number; entry?: { id: string; text: string } }> {
+  return json(`/api/sessions/${encodeURIComponent(sessionId)}/steer`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text, target }),
+  });
 }
 
 export async function resolveInboxItem(

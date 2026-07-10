@@ -1,9 +1,10 @@
 /** Workbench, send, recovery interactions (F9 P2). */
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   cancelRoomRun,
   matchSlashCommand,
   pauseMissionLoop,
+  steerSession,
 } from "../api/client";
 import { useWorkspaceTabs } from "./useWorkspaceTabs";
 import { useRoomTranscriptView } from "./useRoomTranscriptView";
@@ -161,6 +162,8 @@ export function useRoomChatInteractions(bootstrap: Bootstrap) {
     persistPendingSessionRoomModels,
     planWorkflow,
   } = bootstrap;
+
+  const [steerBusy, setSteerBusy] = useState(false);
 
   const openInspectorPane = useCallback(() => {
     openInspectorRef.current();
@@ -599,6 +602,26 @@ export function useRoomChatInteractions(bootstrap: Bootstrap) {
     setText("");
   }
 
+  const steerEligible = Boolean(
+    sessionId && (running || runBusy) && !planShell.planWorkflowAwaitingApproval,
+  );
+
+  const handleSteer = useCallback(() => {
+    const msg = text.trim();
+    if (!sessionId || !msg || steerBusy || !steerEligible) return;
+    setSteerBusy(true);
+    void steerSession(sessionId, msg)
+      .then(() => {
+        setText("");
+      })
+      .catch(() => {
+        /* keep text for retry */
+      })
+      .finally(() => {
+        setSteerBusy(false);
+      });
+  }, [sessionId, text, steerBusy, steerEligible, setText]);
+
   const focusObjection = useCallback(
     (_objectionId: string) => {
       focusWorkStack("plan_approval");
@@ -654,6 +677,9 @@ export function useRoomChatInteractions(bootstrap: Bootstrap) {
     handleSelectRightPanelMode,
     openHumanInbox,
     openWorkApproval,
+    handleSteer,
+    steerEligible,
+    steerBusy,
     handleInboxBuildStarted,
     handleInboxResolved,
     handleNotificationOpen,

@@ -32,6 +32,9 @@ type Props = {
   longRunning: boolean;
   running: boolean;
   onStop: () => void;
+  steerEligible?: boolean;
+  onSteer?: () => void;
+  steerBusy?: boolean;
   sessionId: string | null;
   eventStack: ComposerEventStackProps | null;
   sendReceipt: string | null;
@@ -78,6 +81,9 @@ export function RoomChatComposerShell({
   longRunning,
   running,
   onStop,
+  steerEligible = false,
+  onSteer,
+  steerBusy = false,
   sessionId,
   eventStack,
   sendReceipt,
@@ -186,6 +192,9 @@ export function RoomChatComposerShell({
           showModeChipHint={false}
           running={running}
           onStop={onStop}
+          steerEligible={steerEligible}
+          onSteer={onSteer}
+          steerBusy={steerBusy}
           files={pendingFiles}
           onFilesAdd={onFilesAdd}
           onFileRemove={onFileRemove}

@@ -2152,6 +2152,13 @@
   border: 1px solid var(--composer-border);
   color: var(--composer-send-disabled-icon);
 }
+.btn-send--steer {
+  min-width: auto;
+  width: auto;
+  padding: 0 var(--space-10);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
+}
 .btn-send svg {
   width: 20px;
   height: 20px;

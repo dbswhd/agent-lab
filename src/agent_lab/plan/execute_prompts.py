@@ -184,7 +184,7 @@ def _call_execute_agent(
 
         permissions = enrich_execute_permissions(permissions, session_folder)
         user = execute_plugin_prompt_addon(user, session_folder, agent_id)
-        user = enrich_execute_prompt(user, read_run_meta(session_folder))
+        user = enrich_execute_prompt(user, read_run_meta(session_folder), session_folder=session_folder)
 
     req = ExecuteInvokeRequest(
         system=system,

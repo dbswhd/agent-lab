@@ -430,6 +430,18 @@
 .session-item--running .session-item__topic {
   color: var(--label-primary);
 }
+.session-item--needs-input .session-item__topic {
+  font-weight: var(--weight-semibold);
+}
+.session-item__needs-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: var(--space-6);
+  border-radius: 50%;
+  background: var(--warning, #b45309);
+  vertical-align: middle;
+}
 .session-item--draggable {
   cursor: grab;
 }
@@ -701,6 +713,37 @@
   gap: var(--space-4);
   color: var(--label-primary);
   border: 1px solid var(--separator-subtle);
+}
+
+.workspace-chrome__pill--needs-input {
+  gap: var(--space-6);
+  color: var(--warning, #b45309);
+  border: 1px solid color-mix(in srgb, var(--warning, #b45309) 35%, transparent);
+  background: color-mix(in srgb, var(--warning, #b45309) 10%, transparent);
+  cursor: pointer;
+}
+
+.workspace-chrome__pill--needs-input:hover {
+  background: color-mix(in srgb, var(--warning, #b45309) 16%, transparent);
+}
+
+.needs-input-badge__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--warning, #b45309);
+  flex-shrink: 0;
+}
+
+.needs-input-badge__label {
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-caption);
+}
+
+.needs-input-badge__count {
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-caption);
+  opacity: 0.85;
 }
 
 .workspace-chrome__pill--autonomy .autonomy-dial__level {

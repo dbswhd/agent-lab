@@ -19,6 +19,8 @@ type Props = {
   sessions: SessionSummary[];
   selectedId: string | null;
   runningSessionIds?: string[];
+  /** Session ids with Human Inbox / gate pending (ABSORB P1 Needs input). */
+  needsInputSessionIds?: string[];
   archived?: boolean;
   query?: string;
   onSelect: (id: string) => void;
@@ -51,6 +53,7 @@ export function SessionList({
   sessions,
   selectedId,
   runningSessionIds = [],
+  needsInputSessionIds = [],
   archived = false,
   query = "",
   onSelect,
@@ -207,6 +210,7 @@ export function SessionList({
               ) : null}
               {group.sessions.map((s) => {
                 const running = runningSessionIds.includes(s.id);
+                const needsInput = needsInputSessionIds.includes(s.id);
                 const pinned = isSessionPinned(s.id);
                 const dragging = dragSessionId === s.id;
                 return (
@@ -218,6 +222,7 @@ export function SessionList({
                       "session-item",
                       selectedId === s.id ? "is-active" : "",
                       running ? "session-item--running" : "",
+                      needsInput ? "session-item--needs-input" : "",
                       pinned ? "session-item--pinned" : "",
                       dragging ? "session-item--dragging" : "",
                       dragEnabled ? "session-item--draggable" : "",
@@ -225,6 +230,7 @@ export function SessionList({
                       .filter(Boolean)
                       .join(" ")}
                     aria-current={selectedId === s.id ? "true" : undefined}
+                    title={needsInput ? "Needs input" : undefined}
                     onClick={() => {
                       if (suppressClickRef.current) {
                         suppressClickRef.current = false;
@@ -252,6 +258,12 @@ export function SessionList({
                     }}
                   >
                     <span className="session-item__topic">
+                      {needsInput ? (
+                        <span
+                          className="session-item__needs-dot"
+                          aria-label="Needs input"
+                        />
+                      ) : null}
                       {s.topic || s.id}
                     </span>
                     {s.created_at ? (

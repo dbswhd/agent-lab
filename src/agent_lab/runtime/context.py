@@ -2,14 +2,31 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from agent_lab.run.state import RunStateLike
 
 
-def enrich_execute_prompt(user: str, run_meta: RunStateLike | None) -> str:
-    """Append mission wisdom block to execute/repair user prompts."""
+def enrich_execute_prompt(
+    user: str,
+    run_meta: RunStateLike | None,
+    *,
+    session_folder: Path | None = None,
+) -> str:
+    """Append mission wisdom + drained Human steer notes to execute/repair prompts."""
     from agent_lab.mission.notepad import inject_wisdom_into_prompt
+    from agent_lab.steer import drain_steer_follow_up
 
-    return inject_wisdom_into_prompt(user, run_meta)
+    enriched = inject_wisdom_into_prompt(user, run_meta)
+    meta = run_meta if isinstance(run_meta, dict) else None
+    steer = drain_steer_follow_up(
+        session_folder,
+        meta,
+        target="execute",
+    )
+    if not steer.strip():
+        return enriched
+    return f"{enriched.rstrip()}\n\n{steer.strip()}"
 
 
 def build_mission_wisdom_block(

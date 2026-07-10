@@ -1,0 +1,181 @@
+#!/usr/bin/env python3
+"""L2 escalation live dogfood — N4-D3 escalation_rate_by_level sample gate.
+
+Reuses the X2-lift room/plan/execute cycle (reversible single-line docs typo,
+already the project's sanctioned low-risk repeat fixture) but promotes each
+session's autonomy ceiling to L2 right after the session is created, so the
+execute-phase outcome row gets tagged ``autonomy_level=L2`` for real instead
+of staying L0/L1. See autonomy_ladder.record_autonomy_transition — a promotion
+to L2 now auto-provisions a trust_budget (10/10, docs_only/test_only/
+single_file) when none is set yet, which is what makes the level *effective*
+and not just a ceiling label.
+
+Room composition is NOT pinned here — it inherits x2_lift_dogfood_live_repeat's
+AGENTS (empty by default), so the server falls back to the operator's own
+configured default composition.
+
+Usage:
+  eval "$(make -s dogfood-track-env)"
+  make api   # restart API after changing env
+  .venv/bin/python scripts/l2_escalation_dogfood_live_repeat.py --count 10
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+import urllib.error
+from datetime import datetime, timezone
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS = ROOT / "scripts"
+for _p in (ROOT / "src", SCRIPTS, ROOT):
+    if str(_p) not in sys.path:
+        sys.path.insert(0, str(_p))
+
+import x2_lift_dogfood_live_repeat as x2  # noqa: E402
+
+# A dynamically-composed room (no pinned roster) may settle a discuss round on a
+# conversational reply instead of the structured plan.md the execute pipeline
+# needs (## Must / ## Parallel waves). Blind-approving that stub 400s at
+# dry-run with an empty action list — so wait for real structure instead of a
+# fixed round count, and give the room a bounded number of continuation turns
+# to get there before giving up.
+PLAN_STRUCTURE_MARKERS = ("## Must", "## Parallel waves")
+MAX_PLAN_RETRIES = 2
+
+
+def _promote_l2(session_id: str) -> dict:
+    return x2._json_request(
+        "PATCH",
+        x2._session_path(session_id, "/autonomy"),
+        {"level": "L2", "reason": "l2_dogfood_live_repeat"},
+        timeout=60.0,
+    )
+
+
+def _plan_structured(session_id: str) -> bool:
+    plan_path = ROOT / "sessions" / session_id / "plan.md"
+    if not plan_path.is_file():
+        return False
+    try:
+        text = plan_path.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    return all(marker in text for marker in PLAN_STRUCTURE_MARKERS)
+
+
+def _ensure_structured_plan(session_id: str, *, room_timeout: float) -> dict:
+    """Poll for HUMAN_PENDING; if plan.md isn't structured yet, resubmit a
+    continuation turn on the same session (instead of blind-approving a
+    conversational stub) up to MAX_PLAN_RETRIES times."""
+    info: dict = {"retries": 0}
+    phase = x2._wait_human_pending(session_id, timeout=10.0)
+    while (
+        phase == "HUMAN_PENDING"
+        and not _plan_structured(session_id)
+        and info["retries"] < MAX_PLAN_RETRIES
+    ):
+        info["retries"] += 1
+        print(
+            f"    plan.md not structured yet (retry {info['retries']}/{MAX_PLAN_RETRIES}) — continuing session",
+            flush=True,
+        )
+        x2._room_run(session_id=session_id, timeout=room_timeout)
+        phase = x2._wait_human_pending(session_id, timeout=x2.DEFAULT_PLAN_WAIT_TIMEOUT)
+    info["phase"] = phase
+    info["structured"] = phase == "APPROVED" or _plan_structured(session_id)
+    return info
+
+
+def _run_iteration(index: int, total: int, *, allow_dirty: bool, room_timeout: float) -> dict:
+    print(f"\n=== L2 dogfood pass {index}/{total} ===", flush=True)
+    result: dict = {"pass": index, "ok": False}
+    try:
+        result["dogfood_prepare"] = x2._prepare_dogfood()
+
+        session_id, events, elapsed, stream_note = x2._room_run(timeout=room_timeout)
+        result["room_seconds"] = round(elapsed, 1)
+        result["session_id"] = session_id
+        result["sse_events"] = len(events)
+        if stream_note:
+            result["room_stream"] = stream_note
+        if not session_id:
+            errs = [e for e in events if e.get("type") == "error"]
+            result["error"] = errs or "no session_id"
+            return result
+
+        autonomy = _promote_l2(session_id)
+        result["autonomy"] = (autonomy.get("autonomy") or {}).get("effective_level")
+        result["trust_budget"] = (autonomy.get("autonomy") or {}).get("trust_budget")
+
+        plan_check = _ensure_structured_plan(session_id, room_timeout=room_timeout)
+        result["plan_check"] = plan_check
+        if not plan_check["structured"]:
+            result["error"] = (
+                f"plan never structured after {plan_check['retries']} continuation retries "
+                f"(phase={plan_check.get('phase')})"
+            )
+            return result
+
+        result.update(x2._finish_pass(session_id, allow_dirty=allow_dirty))
+        return result
+    except urllib.error.HTTPError as exc:
+        result["error"] = exc.read().decode("utf-8", errors="replace")[:500]
+        return result
+    except Exception as exc:  # noqa: BLE001
+        result["error"] = str(exc)[:500]
+        return result
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--count", type=int, default=10, help="repeat count (default 10 — N4-D3 needs n>=10)")
+    parser.add_argument("--allow-dirty", action="store_true")
+    parser.add_argument("--room-timeout", type=float, default=x2.DEFAULT_ROOM_TIMEOUT)
+    args = parser.parse_args()
+
+    try:
+        ready = x2._json_request("GET", "/api/health/readiness", timeout=30.0)
+    except Exception as exc:  # noqa: BLE001
+        print(f"API not ready at {x2.API}: {exc}", file=sys.stderr)
+        return 1
+    if ready.get("verdict") not in {"ready", "blocked"}:
+        print(f"API readiness: {ready.get('verdict')}", file=sys.stderr)
+        return 1
+
+    results = [
+        _run_iteration(i, args.count, allow_dirty=args.allow_dirty, room_timeout=args.room_timeout)
+        for i in range(1, max(1, args.count) + 1)
+    ]
+
+    from agent_lab.feedback_report import build_feedback_report, render_feedback_report
+
+    report = build_feedback_report(ROOT / ".agent-lab")
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    out_dir = ROOT / "sessions" / "_benchmark" / "reports"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / f"l2-dogfood-report-{stamp}.json"
+    out_path.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    summary = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "passes": results,
+        "ok_count": sum(1 for r in results if r.get("ok")),
+        "l2_count": sum(1 for r in results if r.get("autonomy") == "L2"),
+        "feedback_report": str(out_path),
+    }
+    print(json.dumps(summary, ensure_ascii=False, indent=2))
+    print("\n" + render_feedback_report(report))
+
+    failed = [r for r in results if not r.get("ok")]
+    if failed:
+        print(f"\n{len(failed)}/{len(results)} passes did not complete execute+oracle", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

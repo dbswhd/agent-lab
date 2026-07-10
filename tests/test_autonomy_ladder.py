@@ -44,6 +44,33 @@ def test_trust_budget_implies_l2(session_folder: Path) -> None:
     assert payload["trust_budget"]["auto_merge_remaining"] == 2
 
 
+def test_promoting_to_l2_provisions_trust_budget(session_folder: Path) -> None:
+    """A bare ceiling promotion used to be a no-op label — infer_effective stayed
+    L0/L1 because trust_budget was still 0/0. The promotion must make L2 real."""
+    payload = record_autonomy_transition(
+        session_folder,
+        to_level="L2",
+        reason="operator_promote",
+        trigger="human",
+    )
+    assert payload["trust_budget"]["auto_merge_total"] > 0
+    assert payload["trust_budget"]["auto_merge_remaining"] > 0
+    assert payload["effective_level"] == "L2"
+    assert payload["display_level"] == "L2"
+
+
+def test_promoting_to_l2_keeps_existing_custom_budget(session_folder: Path) -> None:
+    set_trust_budget(session_folder, {"auto_merge_remaining": 1, "auto_merge_total": 3})
+    payload = record_autonomy_transition(
+        session_folder,
+        to_level="L2",
+        reason="operator_promote",
+        trigger="human",
+    )
+    assert payload["trust_budget"]["auto_merge_total"] == 3
+    assert payload["trust_budget"]["auto_merge_remaining"] == 1
+
+
 def test_mission_autonomous_segment_implies_l3(session_folder: Path) -> None:
     patch_run_meta(
         session_folder,
@@ -203,6 +230,10 @@ def test_patch_autonomy_api_human_level(autonomy_api_client) -> None:
     human = [row for row in body["autonomy"]["transitions"] if row.get("trigger") == "human"]
     assert human
     assert human[-1]["to"] == "L2"
+    # The dial promoting to L2 must make the level effective (real trust_budget),
+    # not just set the ceiling label — otherwise outcome harvest never tags L2.
+    assert body["autonomy"]["effective_level"] == "L2"
+    assert body["autonomy"]["trust_budget"]["auto_merge_total"] > 0
 
 
 def test_demotion_creates_inbox_and_restore(session_folder: Path) -> None:

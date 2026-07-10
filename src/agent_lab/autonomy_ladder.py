@@ -15,6 +15,16 @@ AutonomyLevel = Literal["L0", "L1", "L2", "L3"]
 
 _LEVEL_ORDER: dict[str, int] = {"L0": 0, "L1": 1, "L2": 2, "L3": 3}
 
+# L1->L2 is "Budgeted" (NORTH-STAR N4): the ceiling alone is a label — the ladder
+# only reports L2 *effective* once trust_budget is non-zero. Neither the dial nor
+# the promotion inbox previously provisioned a budget, so a Human promoting to L2
+# never actually reached it (infer_effective_autonomy_level stayed L0/L1).
+_L2_DEFAULT_TRUST_BUDGET: dict[str, Any] = {
+    "auto_merge_total": 10,
+    "auto_merge_remaining": 10,
+    "classifier_allow": ["docs_only", "test_only", "single_file"],
+}
+
 _LEVEL_NAMES: dict[str, str] = {
     "L0": "Manual",
     "L1": "Assisted",
@@ -154,9 +164,28 @@ def record_autonomy_transition(
         return run
 
     updated = patch_run_meta(folder, _apply)
+    if to_level == "L2":
+        updated = _maybe_provision_l2_trust_budget(folder, updated)
     if to_level == "L3":
         apply_autonomy_level_capabilities(folder, "L3")
     return public_autonomy_payload(updated)
+
+
+def _maybe_provision_l2_trust_budget(folder, run_meta: RunStateLike) -> dict[str, Any]:
+    """Give a promotion to L2 a real trust_budget so the level is effective, not just labeled.
+
+    Only fires when no budget is set yet (total<=0) — never overwrites a Human's
+    or a prior session's custom allotment.
+    """
+    from agent_lab.trust_budget import set_trust_budget
+
+    budget = get_trust_budget(run_meta)
+    if int(budget.get("auto_merge_total") or 0) > 0:
+        return dict(run_meta)
+    set_trust_budget(folder, dict(_L2_DEFAULT_TRUST_BUDGET))
+    from agent_lab.run.meta import read_run_meta
+
+    return read_run_meta(folder)
 
 
 def apply_autonomy_level_capabilities(folder, level: AutonomyLevel) -> None:

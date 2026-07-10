@@ -4,6 +4,10 @@
 Requires: API on :8765, live agents (MOCK off), x2-lift env flags on server or
 inherited from shell before ``make dev`` / ``make api``.
 
+Room composition defaults to the operator's own configured preset
+(``~/.agent-lab/room_models`` / ``AGENT_LAB_ROOM_MODELS``) — set
+``AGENT_LAB_X2_AGENTS`` only to pin a specific fixed roster for this run.
+
 ``AGENT_LAB_EXECUTE_INBOX=0`` (from ``make x2-lift-dogfood-env``) must be in the
 **API process** env. Setting it only on the ``live_repeat`` CLI process does not
 reach ``execute_inbox_mcp_enabled()`` inside FastAPI — nested Cursor then hits
@@ -54,7 +58,11 @@ DEFAULT_ROOM_TIMEOUT = float(os.environ.get("AGENT_LAB_X2_ROOM_TIMEOUT", "5400")
 DEFAULT_EXECUTE_TIMEOUT = float(os.environ.get("AGENT_LAB_X2_EXECUTE_TIMEOUT", "1200"))
 DEFAULT_PLAN_WAIT_TIMEOUT = float(os.environ.get("AGENT_LAB_X2_PLAN_WAIT_TIMEOUT", "300"))
 
-AGENTS = ["cursor", "codex", "claude"]
+# Empty by default: omitting "agents" from the room-run request lets the server
+# fall back to the operator's own configured default composition
+# (agent_roster.global_composition_default()) instead of a hardcoded roster.
+# Set AGENT_LAB_X2_AGENTS only when a specific fixed roster is actually required.
+AGENTS = [a.strip() for a in os.environ.get("AGENT_LAB_X2_AGENTS", "").split(",") if a.strip()]
 PERMS = {
     "cursor": {"tools": True, "local_agent_lab": True, "local_pipeline": True},
     "codex": {"cli": True},
@@ -242,7 +250,6 @@ def _room_run(
     boundary = "----AgentLabX2Live"
     fields = [
         ("topic", TOPIC),
-        ("agents", json.dumps(AGENTS)),
         ("mode", "discuss"),
         ("synthesize", "false"),
         ("synthesize_only", "false"),
@@ -255,6 +262,8 @@ def _room_run(
         ("permissions", json.dumps(PERMS)),
         ("workspace_id", "agent-lab"),
     ]
+    if AGENTS:
+        fields.append(("agents", json.dumps(AGENTS)))
     if session_id:
         fields.append(("session_id", session_id))
     body = (

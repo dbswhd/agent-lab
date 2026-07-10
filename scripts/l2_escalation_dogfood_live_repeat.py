@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 import urllib.error
 from datetime import datetime, timezone
 from pathlib import Path
@@ -67,10 +68,28 @@ def _plan_structured(session_id: str) -> bool:
     return all(marker in text for marker in PLAN_STRUCTURE_MARKERS)
 
 
+def _wait_approved_grace(session_id: str, *, timeout: float = 30.0) -> str:
+    """auto_approve_gate can flip HUMAN_PENDING -> APPROVED a few seconds after
+    plan_workflow settles (observed: 3s lag on a real L2-promoted low-risk
+    plan) — a multi-agent room's plan.md doesn't always match the solo-agent
+    template (## Must / ## Parallel waves), so give the real approval signal a
+    short grace window instead of trusting a text-marker heuristic alone."""
+    deadline = time.time() + timeout
+    phase = "HUMAN_PENDING"
+    while time.time() < deadline:
+        wf = x2._plan_workflow(session_id)
+        phase = str((wf.get("plan_workflow") or {}).get("phase") or "").upper()
+        if phase == "APPROVED":
+            return phase
+        time.sleep(3.0)
+    return phase
+
+
 def _ensure_structured_plan(session_id: str, *, room_timeout: float) -> dict:
     """Poll for HUMAN_PENDING; if plan.md isn't structured yet, resubmit a
     continuation turn on the same session (instead of blind-approving a
-    conversational stub) up to MAX_PLAN_RETRIES times."""
+    conversational stub) up to MAX_PLAN_RETRIES times. phase == APPROVED
+    always short-circuits as ready, regardless of plan.md's shape."""
     info: dict = {"retries": 0}
     phase = x2._wait_human_pending(session_id, timeout=10.0)
     while (
@@ -85,6 +104,8 @@ def _ensure_structured_plan(session_id: str, *, room_timeout: float) -> dict:
         )
         x2._room_run(session_id=session_id, timeout=room_timeout)
         phase = x2._wait_human_pending(session_id, timeout=x2.DEFAULT_PLAN_WAIT_TIMEOUT)
+    if phase == "HUMAN_PENDING" and not _plan_structured(session_id):
+        phase = _wait_approved_grace(session_id)
     info["phase"] = phase
     info["structured"] = phase == "APPROVED" or _plan_structured(session_id)
     return info

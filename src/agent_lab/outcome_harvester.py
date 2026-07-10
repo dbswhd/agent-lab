@@ -15,7 +15,6 @@ import json
 import logging
 import os
 import threading
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from weakref import WeakValueDictionary
@@ -24,6 +23,7 @@ from agent_lab.env_flags import env_bool
 from agent_lab.run.meta import patch_run_meta, read_run_meta
 from agent_lab.run.state import RunStateLike
 from agent_lab.s1_flags import s1_flag_enabled
+from agent_lab.time_utils import utc_now_iso as _now_iso
 from agent_lab.turn_metrics import build_turn_metrics
 from agent_lab.wisdom.index import _tokenize
 
@@ -34,10 +34,6 @@ _OUTCOMES_RELPATH = Path(".agent-lab") / "outcomes.jsonl"
 
 _LOCK_GUARD = threading.Lock()
 _PATH_LOCKS: WeakValueDictionary[str, threading.Lock] = WeakValueDictionary()
-
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 def _path_lock(path: Path) -> threading.Lock:

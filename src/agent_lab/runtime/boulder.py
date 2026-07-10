@@ -2,17 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
 from agent_lab.run.meta import patch_run_meta, read_run_meta
+from agent_lab.time_utils import utc_now_iso as _now_iso
 
 RuntimeLane = Literal["execute", "mission", "discuss", "control"]
-
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 def runtime_bucket(run: dict[str, Any]) -> dict[str, Any]:

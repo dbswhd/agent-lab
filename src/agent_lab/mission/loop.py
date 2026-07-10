@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
@@ -14,6 +13,7 @@ from agent_lab.mission.notepad import (
     list_mission_notepad_summaries,
     append_wisdom_note,
 )
+from agent_lab.time_utils import utc_now_iso as _now_iso
 
 from agent_lab.core.mission_loop import (
     AUTONOMOUS_ENDS,
@@ -46,10 +46,6 @@ MissionPhase = Literal[
     "REPAIR",
     "MISSION_DONE",
 ]
-
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 def _mission_dispatch(

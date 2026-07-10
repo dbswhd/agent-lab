@@ -3,7 +3,6 @@ from __future__ import annotations
 """Shared execute helpers — worktree, git, merge prep (F9)."""
 
 import uuid
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +10,7 @@ from agent_lab.run.state import RunState
 
 from agent_lab.plan.actions import PlanAction
 from agent_lab.plan.execute_git import _run_git
+from agent_lab.time_utils import utc_now_iso as _now
 from agent_lab.plan.execute_merge import MergeConflict, merge_exec_branch
 from agent_lab.plan.execute_paths import paths_relative_to_workspace
 from agent_lab.plan.execute_snapshot import delete_snapshot, restore_snapshot
@@ -31,10 +31,6 @@ import agent_lab.plan.execute as plan_execute
 MAX_DIFF_CHARS = 120_000
 MAX_VERIFY_RETRIES = 2
 from agent_lab.plan.execution_status_scopes import PENDING_STATUS
-
-
-def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 def _exec_id() -> str:

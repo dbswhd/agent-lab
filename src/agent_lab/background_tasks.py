@@ -18,20 +18,16 @@ import threading
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
 from agent_lab.subprocess_env import subprocess_env
+from agent_lab.time_utils import utc_now_iso as _now_iso
 
 TaskStatus = Literal["queued", "running", "done", "failed", "cancelled"]
 
 _BG_DIR = "bg_tasks"
 _POOL_SIZE = 6
-
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 @dataclass

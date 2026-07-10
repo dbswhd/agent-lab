@@ -467,17 +467,26 @@ export function ChatComposer({
                         }
                         if (e.key === "PageDown") {
                           e.preventDefault();
-                          setSlashHighlight(
-                            Math.min(
-                              slashHighlight + 10,
-                              slashVisibleCommands.length - 1,
+                          setSlashHighlight((h) =>
+                            pageSlashHighlight(
+                              h,
+                              slashVisibleCommands.length,
+                              10,
+                              "down",
                             ),
                           );
                           return;
                         }
                         if (e.key === "PageUp") {
                           e.preventDefault();
-                          setSlashHighlight(Math.max(slashHighlight - 10, 0));
+                          setSlashHighlight((h) =>
+                            pageSlashHighlight(
+                              h,
+                              slashVisibleCommands.length,
+                              10,
+                              "up",
+                            ),
+                          );
                           return;
                         }
                         const slashTokenOnly = /^\/\S*$/.test(value);
@@ -653,6 +662,19 @@ function cycleMenuIndex(
   delta: number,
 ): number {
   return (current + delta + length) % length;
+}
+
+function pageSlashHighlight(
+  current: number,
+  length: number,
+  pageSize: number,
+  direction: "up" | "down",
+): number {
+  if (length <= 0) return 0;
+  if (direction === "down") {
+    return Math.min(current + pageSize, length - 1);
+  }
+  return Math.max(current - pageSize, 0);
 }
 
 const MODE_CHIP_ICONS = {

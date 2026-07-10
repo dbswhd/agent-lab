@@ -7,19 +7,15 @@ import json
 import shutil
 import subprocess
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
 from agent_lab.subprocess_env import subprocess_env
+from agent_lab.time_utils import utc_now_iso as _now_iso
 
 _WORKTREE_HOOK_FILENAMES = ("worktree.yaml", "worktree.json")
 _LIST_KEYS = frozenset({"setup", "verify", "create", "remove", "include"})
 _MAX_INCLUDE_COPIES = 200
-
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 @dataclass(frozen=True)

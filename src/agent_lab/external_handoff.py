@@ -4,17 +4,13 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from agent_lab.run.meta import patch_run_meta, read_run_meta
+from agent_lab.time_utils import utc_now_iso as _now_iso
 
 from agent_lab.plan.execution_status_scopes import find_open_merge_pending_execution
-
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 REQUIRED_HANDOFF_KEYS: tuple[str, ...] = (

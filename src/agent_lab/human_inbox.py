@@ -6,12 +6,12 @@ import json
 import os
 import time
 import uuid
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
 from agent_lab.run.meta import patch_run_meta, read_run_meta
 from agent_lab.run.state import RunStateLike
+from agent_lab.time_utils import utc_now_iso as _now_iso
 
 InboxKind = Literal[
     "question",
@@ -28,10 +28,6 @@ InboxStatus = Literal["pending", "resolved", "deferred", "superseded", "rejected
 
 DEFAULT_INBOX_TIMEOUT_SEC = int(os.getenv("AGENT_LAB_INBOX_TIMEOUT_SEC", "1800"))
 INBOX_POLL_SEC = float(os.getenv("AGENT_LAB_INBOX_POLL_SEC", "0.25"))
-
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
 
 
 def _new_id(prefix: str = "inbox") -> str:

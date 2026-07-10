@@ -1,6 +1,7 @@
 import type { WorkPhase } from "../utils/workStatusPhase";
 import { useLocale } from "../i18n/useLocale";
 import { WORK_PHASE_LABELS } from "../utils/workPhaseLabels";
+import { workStepStatusClass } from "../utils/workStepClass";
 
 type Props = {
   phase: WorkPhase;
@@ -11,12 +12,6 @@ type Props = {
   /** MB-2 — call budget usage (distinct from context token budget). */
   budgetPct?: number;
 };
-
-function workStatusStepClass(stepIndex: number, activeIndex: number): string {
-  if (stepIndex === activeIndex) return "is-active";
-  if (stepIndex < activeIndex) return "is-done";
-  return "";
-}
 
 export function WorkStatusBar({
   phase,
@@ -52,7 +47,7 @@ export function WorkStatusBar({
             key={step.id}
             className={[
               "work-status-bar__step",
-              workStatusStepClass(i, phaseIndex),
+              workStepStatusClass(i, phaseIndex),
             ]
               .filter(Boolean)
               .join(" ")}

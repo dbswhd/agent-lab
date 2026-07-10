@@ -1,4 +1,5 @@
 import type { GjcPipelinePhase } from "../utils/gjcPipelinePhase";
+import { workStepStatusClass } from "../utils/workStepClass";
 
 const STEPS: { id: GjcPipelinePhase; label: string }[] = [
   { id: "interview", label: "Interview" },
@@ -19,10 +20,10 @@ export function GjcPipelineBar({
   metaLine = null,
   externalRunnerEnabled = false,
 }: Props) {
-  const phaseIndex =
-    phase === "done"
-      ? STEPS.length
-      : STEPS.findIndex((step) => step.id === phase);
+  const allDone = phase === "done";
+  const phaseIndex = allDone
+    ? STEPS.length
+    : STEPS.findIndex((step) => step.id === phase);
 
   return (
     <div className="gjc-pipeline-bar" role="status" aria-label="GJC pipeline">
@@ -41,8 +42,7 @@ export function GjcPipelineBar({
             key={step.id}
             className={[
               "work-status-bar__step",
-              index === phaseIndex ? "is-active" : "",
-              index < phaseIndex || phase === "done" ? "is-done" : "",
+              workStepStatusClass(index, phaseIndex, { markAllDone: allDone }),
             ]
               .filter(Boolean)
               .join(" ")}

@@ -449,7 +449,7 @@ def record_f7_decision(decision: str, *, rationale: str = "") -> int:
     f7["end_date"] = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     _save_state(state)
     print(f"F7 decision recorded: {decision}")
-    print(f"Also update docs/F7-REPO-MAP-COMPACTION-DOGFOOD.md Decision table.")
+    print("Also update docs/F7-REPO-MAP-COMPACTION-DOGFOOD.md Decision table.")
     return 0
 
 

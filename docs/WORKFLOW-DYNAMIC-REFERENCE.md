@@ -260,7 +260,7 @@ pytest tests/test_turn_routing.py -q
 | **역할 ID** | proposer, critic, synthesizer, executor, delegator |
 | **상태** | `run_meta["_turn_roles"]` (ephemeral, 턴 종료 시 리셋 가능) |
 | **kill switch** | `AGENT_LAB_ROOM_ROLES=0` |
-| **supervisor** | delegator + team_lead 오버레이 — `apply_preset_role_overrides()` |
+| **supervisor** | delegator + team_lead 오버레이 — `apply_preset_role_overrides()` (§8.2.2: 커밋 `dfb96836`부터 raw preset이 아닌 `turn_policy.supervisor_turn_from_run_meta()` 신호 우선) |
 | **연결** | `enrich_route_with_role_plan()` → prompt constraints |
 
 **작업 시 수정 포인트:**
@@ -451,7 +451,7 @@ flowchart LR
 | consensus multi-round | supervisor `loop` → consensus ON | `category` (quick→`discuss_light` 1 wave) · execute/plan intent 시만 multi-round |
 | plan FSM bootstrap | supervisor **첫 턴** → `init_plan_workflow` | `skill_intent` · `proposed_tags` · synthesize_only · **아님** “preset==supervisor” |
 | CLARIFY 진입 | `AGENT_LAB_PLAN_FSM_SKILL_FIRST` + supervisor FSM | `clarity_threshold_met` / `clarity_short_circuit` · `category!=quick` |
-| S1 harvest / advisor | supervisor implicit ON (`s1_flags.py`) | 경로별 flag — preset이 아닌 “ledger 켜짐” 운영 프로필 (`AGENT_LAB_RUN_PROFILE`) |
+| S1 harvest / advisor | supervisor implicit ON (`s1_flags.py`) | **부분 완료 (§8.2.2, 커밋 `dfb96836`):** `AGENT_LAB_FEEDBACK_ADVISOR`(pre-turn, latency 경로)는 `supervisor_turn` 신호로 전환. `AGENT_LAB_TURN_METRICS`/`AGENT_LAB_OUTCOME_LEDGER`(post-turn write-only)는 raw preset 기본값 유지 — 의도적, `AGENT_LAB_RUN_PROFILE` 전환은 별도 백로그 |
 | 비용·지연 프로파일 | fast ~54s vs supervisor ~281s ([§3.2.1](./NORTH-STAR.md)) | quick path는 **의도적 저비용** — category로 자동, preset 불필요 |
 
 #### 목표: `TurnContract` (이름만 제안 — SSOT는 구현 시 `turn_policy` 확장)
@@ -554,10 +554,25 @@ init_pw = is_supervisor and signals.supervisor_first_turn and not skip_fsm_boots
 | **P0** | §8.2.1 **P0-1~P0-4** ✅ (clarity anchor → TurnSignals → TurnPolicy gate → live S1) | S1에 plan FSM tail 없음 |
 | **P0** | §8.2.1 **P0-5** S1 lift / explore (병행) | `feedback-report` history·explore |
 | **P1** ✅ (커밋 `0f41dfe5`) | `TurnContract` 스냅샷을 `run.json` `turn_policy`에 기록 · eval grader `routing_contract` 확장 | trace에 “왜 이 경로” 근거 |
-| **P2** | Composer preset 제거 · `resolve_mode_contract()`가 preset 없이 `TurnContract`만 소비 | UI 1축(topic) |
+| **P2** 진행 중 (§8.2.2 — 커밋 `990b4ee6`·`dfb96836`) | Composer preset 제거 · `resolve_mode_contract()`가 preset 없이 `TurnContract`만 소비. 다운스트림 파일별 strangler 이관 — `turn_policy.py`(자체) ✅ · `role_plan.py` ✅ · `s1_flags.py`(FEEDBACK_ADVISOR만) ✅ · `peer_seats.py`/`TURN_METRICS`/`OUTCOME_LEDGER`는 조사 후 유지 | UI 1축(topic) — §8.2.2 표가 파일별 SSOT |
 | **P3** | `feedback_advisor`가 인원·역할까지 주도 (S2 episode hint) | history/explore가 roster에 반영 |
 
 코드 앵커: `topic_router.py` · `turn_routing.py` · `turn_policy.py` · `turn_modes.py` · `clarity.py` · `feedback_advisor.py` · `web/src/utils/roomPresets.ts`.
+
+#### 8.2.2 P2 진행 로그 — preset 분기점별 strangler 상태
+
+> **배경:** Composer가 이제 모든 턴에 상수 implicit `"supervisor"` preset을 보낸다 (990b4ee6). `turn_policy.py` 내부는 990b4ee6에서 고쳤지만, `room_preset == "supervisor"` 문자열 비교로 분기하는 다운스트림 파일이 더 있어 파일 단위로 strangler 이관 중. **big-bang 금지** — 파일마다 실제로 신호 전환이 필요한지 검증 후 개별 판단 (아래 표의 "변경 안 함" 두 건이 그 근거).
+
+| 파일 / 함수 | 상태 | 커밋 | 근거 |
+|---|---|---|---|
+| `turn_policy.is_fast_turn` / `is_supervisor_turn` | ✅ 완료 | `990b4ee6` | `preset=="supervisor"` 무조건 분기 제거 → `route_category`/`clarity_short_circuit`/`roster_size` 신호. 유일한 preset-driven override는 명시적 `preset=="fast"` |
+| `role_plan.apply_preset_role_overrides` | ✅ 완료 | `dfb96836` | 매 턴(fast turn 포함) delegator role을 오염시키던 실버그. `turn_policy.supervisor_turn_from_run_meta()`(신규 공유 헬퍼)로 `run_meta["turn_policy"]["routing_contract"]["supervisor_turn"]` stamp 재사용, 없으면 레거시 preset 체크로 폴백 |
+| `s1_flags.AGENT_LAB_FEEDBACK_ADVISOR` | ✅ 완료 | `dfb96836` | 위와 동일 헬퍼. pre-turn 경로(`feedback_advisor.advise_setup` — outcomes.jsonl 읽기 + history 기반 role-combo 탐색)라 fast turn 지연시간에 직결 |
+| `s1_flags.AGENT_LAB_TURN_METRICS` / `AGENT_LAB_OUTCOME_LEDGER` | 변경 안 함 (의도적) | — | `outcome_harvester.record_turn_outcome` — `_finalize_durable_turn` 이후 post-turn write-only observability, fast-turn latency 경로 밖. "실트래픽 전체에 기본 on"은 회귀가 아니라 S1 관측 커버리지 확대라는 원래 취지와 일치 |
+| `plan.peer_seats.plan_cold_critic_enabled` / `plan_peer_review_uses_role_lanes` | 조사 후 변경 안 함 | — | `== "supervisor"` → `!= "fast"` 전환을 시도했으나 `test_antidrift.py::test_fresh_eyes_seat_added_on_antidrift` 파손 — `run_meta={}`(preset 정보 자체가 없는 호출)이 `AGENT_LAB_ANTIDRIFT` 단독으로만 켜지는 baseline을 전제하고 있었음. "supervisor가 상수라 tautology"라는 진단 자체는 맞지만 실제 회귀는 아니었음(아래 참고) |
+| `room.preset.is_fast_room_session` | 변경 불필요 (확인됨) | — | 이미 §8.2 패턴과 동일 — `preset=="fast"` 명시적 override + `user_mode`/`plan_intent` 신호 폴백. 990b4ee6가 고친 "constant supervisor" 버그 클래스가 아님 |
+
+**핵심 발견 (`dfb96836` 조사):** `apply_turn_role_plan()`(role plan 확정, `turn_routing.py`)은 `prepare_turn_policy_before_agent_round()`(turn_policy 신호 stamp, `turn_flow_phases.py`) **이후**에 실행된다 — `prepare_turn_routing_phase` → `run_consensus_phase` 순서라, role/advisor 단계에서 `routing_contract.supervisor_turn` stamp를 안전하게 재사용할 수 있다. 반면 `plan.peer_seats`의 PEER_REVIEW 게이트는 slash-command(`slash_commands.py`)·`mission/templates.py`·legacy(`turn_policy_enabled()==False`) 경로로 **TurnPolicy를 완전히 우회**해 plan workflow가 bootstrap될 수 있어, 같은 신호를 기계적으로 대입하면 PEER_REVIEW 도중 role-lane이 flip-flop하거나 stamp 자체가 없는 경로에서 예측 불가능해진다 — 파일마다 개별 검증이 전제.
 
 ---
 
@@ -890,3 +905,4 @@ python scripts/smoke_room.py
 | 2026-07-07 | §8.2 TurnContract·preset elimination 논지, §9.4 슈퍼샘플 모드-picker 축, P0 TurnPolicy⊥router 백로그 (S1 CLARIFY tail dogfood 관측) |
 | 2026-07-07 | §8.2.1 clarity 앵커 한글 경계 버그 · **P0-1~P0-5 패치 순서** · §11.0 실행 요약 |
 | 2026-07-08 | **P0-4** live S1 PASS — `…-room.py에서-consensus-라운드-cap-기본값이-뭐야-14` · §8.2.1·§11.0 ✅ |
+| 2026-07-10 | **P2** §8.2.2 신설 — preset 분기점별 strangler 진행 로그. `turn_policy.py`(`990b4ee6`) 이관 이후 다운스트림: `role_plan.apply_preset_role_overrides` + `s1_flags.AGENT_LAB_FEEDBACK_ADVISOR`를 `supervisor_turn_from_run_meta()` 신호로 전환(`dfb96836`); `TURN_METRICS`/`OUTCOME_LEDGER`(post-turn observability)와 `peer_seats.py`(PEER_REVIEW 게이트)는 조사 후 원상 유지 — 근거는 §8.2.2 표 |

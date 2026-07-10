@@ -176,6 +176,24 @@ def test_supervisor_preset_enables_advisor_without_env(tmp_path: Path, monkeypat
     assert hint_off is _DEFAULT_HINT
 
 
+def test_fast_turn_signal_disables_advisor_despite_supervisor_preset(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """§8.2 P2: Composer sends a constant "supervisor" preset on every turn now, so
+    advise_setup (a pre-turn outcomes.jsonl read + role-combo exploration) must defer
+    to the TurnPolicy-stamped per-turn signal — otherwise every fast/quick turn would
+    pay for the advisor's disk read too."""
+    monkeypatch.delenv("AGENT_LAB_FEEDBACK_ADVISOR", raising=False)
+    hint = advise_setup(
+        "pipeline verify",
+        "standard",
+        ["cursor", "codex", "claude"],
+        room_preset="supervisor",
+        run_meta={"turn_policy": {"routing_contract": {"supervisor_turn": False}}},
+    )
+    assert hint is _DEFAULT_HINT
+
+
 # ---------------------------------------------------------------------------
 # advise_setup — insufficient history → default hint
 # ---------------------------------------------------------------------------

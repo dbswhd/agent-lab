@@ -259,6 +259,30 @@ def is_supervisor_turn(signals: TurnSignals) -> bool:
     return _preset_norm(signals) != "fast"
 
 
+def supervisor_turn_from_run_meta(run_meta: RunStateLike | None) -> bool | None:
+    """Read the TurnPolicy-stamped per-turn ``routing_contract.supervisor_turn`` signal.
+
+    ``prepare_turn_policy_before_agent_round`` stamps this onto the run_meta ``turn_policy``
+    field before any per-turn routing/role logic runs (see ``turn_flow_phases.prepare_turn_routing_phase``
+    → ``run_consensus_phase``). Callers gating pre-turn, fast-turn-sensitive work (role
+    overrides, history-based advisors) should prefer this over a raw ``room_preset``
+    check — the Composer sends a constant implicit "supervisor" preset on every turn
+    now (TurnContract §8.2 P2), so the raw preset no longer distinguishes fast/quick
+    turns from genuine supervisor ones. Returns ``None`` when the stamp is absent
+    (turn_policy disabled, or run_meta built outside the normal turn pipeline, e.g. in
+    tests) so callers can fall back to their own legacy default.
+    """
+    if not isinstance(run_meta, dict):
+        return None
+    turn_policy = run_meta.get("turn_policy")
+    if not isinstance(turn_policy, dict):
+        return None
+    routing_contract = turn_policy.get("routing_contract")
+    if not isinstance(routing_contract, dict) or "supervisor_turn" not in routing_contract:
+        return None
+    return bool(routing_contract["supervisor_turn"])
+
+
 @dataclass(frozen=True, slots=True)
 class TurnSignals:
     room_preset: str | None = None

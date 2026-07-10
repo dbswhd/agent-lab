@@ -186,10 +186,10 @@ def _explore_combo(
     return mutated, _combo_key(mutated)
 
 
-def _advisor_enabled(*, room_preset: str = "") -> bool:
+def _advisor_enabled(*, room_preset: str = "", run_meta: RunStateLike | None = None) -> bool:
     from agent_lab.s1_flags import s1_flag_enabled
 
-    return s1_flag_enabled("AGENT_LAB_FEEDBACK_ADVISOR", room_preset=room_preset)
+    return s1_flag_enabled("AGENT_LAB_FEEDBACK_ADVISOR", room_preset=room_preset, run_meta=run_meta)
 
 
 def _with_tool_card_note(hint: SetupHint, category: str, run_meta: RunStateLike | None) -> SetupHint:
@@ -220,7 +220,7 @@ def advise_setup(
 
     Falls back to ``_DEFAULT_HINT`` on any error or insufficient history.
     """
-    if not _advisor_enabled(room_preset=room_preset):
+    if not _advisor_enabled(room_preset=room_preset, run_meta=run_meta):
         return _DEFAULT_HINT
 
     try:

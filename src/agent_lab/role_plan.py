@@ -274,14 +274,27 @@ def resolve_delegator_agent(
     return pool[0] if pool else "codex"
 
 
+def _is_supervisor_turn(run_meta: RunStateLike) -> bool:
+    """Prefer the TurnPolicy-stamped signal over raw ``room_preset`` (TurnContract §8.2 P2).
+
+    Delegator overrides must not leak onto turns TurnContract classified as fast — see
+    ``supervisor_turn_from_run_meta`` for why the raw preset can no longer tell them apart.
+    """
+    from agent_lab.room.turn_policy import supervisor_turn_from_run_meta
+
+    signal = supervisor_turn_from_run_meta(run_meta)
+    if signal is not None:
+        return signal
+    return str(run_meta.get("room_preset") or "").strip().lower() == "supervisor"
+
+
 def apply_preset_role_overrides(
     run_meta: RunStateLike,
     roles: dict[str, str],
     agents: list[str],
 ) -> dict[str, str]:
     """Stamp supervisor delegator + team_lead without adding a new agent id."""
-    preset = str(run_meta.get("room_preset") or "").strip().lower()
-    if preset != "supervisor":
+    if not _is_supervisor_turn(run_meta):
         return roles
     delegator = resolve_delegator_agent(agents, run_meta=run_meta)
     from agent_lab.run.meta import stamp_run_meta

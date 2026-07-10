@@ -311,6 +311,28 @@ class TestSupervisorDelegator:
         assert roles == {"cursor": "proposer"}
         assert run_meta.get("team_lead") is None
 
+    def test_apply_preset_role_overrides_skips_fast_turn_signal_despite_supervisor_preset(self):
+        """§8.2 P2: Composer sends a constant "supervisor" preset on every turn now, so
+        the delegator override must defer to the TurnPolicy-stamped per-turn signal
+        (routing_contract.supervisor_turn) instead of the always-true raw preset —
+        otherwise fast/quick turns would get a delegator role stamped onto them too."""
+        run_meta = {
+            "room_preset": "supervisor",
+            "turn_policy": {"routing_contract": {"supervisor_turn": False}},
+        }
+        roles = apply_preset_role_overrides(run_meta, {"cursor": "proposer"}, AGENTS)
+        assert roles == {"cursor": "proposer"}
+        assert run_meta.get("team_lead") is None
+
+    def test_apply_preset_role_overrides_uses_supervisor_turn_signal_when_stamped(self):
+        run_meta = {
+            "room_preset": "supervisor",
+            "turn_policy": {"routing_contract": {"supervisor_turn": True}},
+        }
+        roles = apply_preset_role_overrides(run_meta, {}, AGENTS)
+        assert roles.get("codex") == "delegator"
+        assert run_meta["team_lead"] == "codex"
+
 
 # ── 8. CategoryRoute new fields ───────────────────────────────────────────────
 

@@ -6,13 +6,22 @@ from agent_lab.env_flags import is_falsy, is_truthy
 from agent_lab.run.state import RunStateLike
 import os
 
+# Post-turn, write-only observability (outcome_harvester.record_turn_outcome, called
+# from _finalize_durable_turn after the round is done) — doesn't sit in the fast-turn
+# latency path, so the raw (now effectively always-"supervisor") preset default-on is
+# fine here; broader coverage across all real traffic is the point of S1 observability.
 _SUPERVISOR_S1_FLAGS = frozenset(
     {
         "AGENT_LAB_TURN_METRICS",
         "AGENT_LAB_OUTCOME_LEDGER",
-        "AGENT_LAB_FEEDBACK_ADVISOR",
     }
 )
+
+# Pre-turn, latency-sensitive work (feedback_advisor.advise_setup reads outcomes.jsonl
+# and runs history-based role-combo exploration before the agent round starts) — this
+# must respect the real per-turn fast/supervisor classification, not the constant
+# implicit preset, or every fast/quick turn pays for it too (TurnContract §8.2 P2).
+_TURN_SIGNAL_S1_FLAGS = frozenset({"AGENT_LAB_FEEDBACK_ADVISOR"})
 
 
 def _room_preset(*, room_preset: str = "", run_meta: RunStateLike | None = None) -> str:
@@ -24,18 +33,29 @@ def _room_preset(*, room_preset: str = "", run_meta: RunStateLike | None = None)
     return ""
 
 
+def _is_supervisor_turn(*, room_preset: str = "", run_meta: RunStateLike | None = None) -> bool:
+    from agent_lab.room.turn_policy import supervisor_turn_from_run_meta
+
+    signal = supervisor_turn_from_run_meta(run_meta)
+    if signal is not None:
+        return signal
+    return _room_preset(room_preset=room_preset, run_meta=run_meta) == "supervisor"
+
+
 def s1_flag_enabled(
     name: str,
     *,
     room_preset: str = "",
     run_meta: RunStateLike | None = None,
 ) -> bool:
-    """Env explicit OFF wins; explicit ON wins; supervisor preset defaults ON for S1 trio."""
+    """Env explicit OFF wins; explicit ON wins; supervisor preset/turn defaults ON for S1 trio."""
     raw = os.getenv(name)
     if is_falsy(raw):
         return False
     if is_truthy(raw):
         return True
     if name in _SUPERVISOR_S1_FLAGS and _room_preset(room_preset=room_preset, run_meta=run_meta) == "supervisor":
+        return True
+    if name in _TURN_SIGNAL_S1_FLAGS and _is_supervisor_turn(room_preset=room_preset, run_meta=run_meta):
         return True
     return False

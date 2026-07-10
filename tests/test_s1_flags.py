@@ -25,6 +25,23 @@ def test_s1_flags_fast_default_off(monkeypatch: pytest.MonkeyPatch) -> None:
     assert not s1_flag_enabled("AGENT_LAB_TURN_METRICS", room_preset="fast")
 
 
+def test_s1_flags_fast_turn_signal_splits_metrics_from_advisor(monkeypatch: pytest.MonkeyPatch) -> None:
+    """§8.2 P2: room_preset is a constant "supervisor" for real sessions now. Post-turn
+    metrics/ledger (outside the fast-turn latency path) stay default-on regardless;
+    only the pre-turn feedback advisor defers to the TurnPolicy-stamped per-turn
+    supervisor_turn signal so it doesn't run its outcomes.jsonl read on fast turns."""
+    monkeypatch.delenv("AGENT_LAB_TURN_METRICS", raising=False)
+    monkeypatch.delenv("AGENT_LAB_OUTCOME_LEDGER", raising=False)
+    monkeypatch.delenv("AGENT_LAB_FEEDBACK_ADVISOR", raising=False)
+    run_meta = {
+        "room_preset": "supervisor",
+        "turn_policy": {"routing_contract": {"supervisor_turn": False}},
+    }
+    assert s1_flag_enabled("AGENT_LAB_TURN_METRICS", run_meta=run_meta) is True
+    assert s1_flag_enabled("AGENT_LAB_OUTCOME_LEDGER", run_meta=run_meta) is True
+    assert s1_flag_enabled("AGENT_LAB_FEEDBACK_ADVISOR", run_meta=run_meta) is False
+
+
 def test_s1_flags_explicit_off_wins(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AGENT_LAB_TURN_METRICS", "0")
     assert not s1_flag_enabled("AGENT_LAB_TURN_METRICS", room_preset="supervisor")

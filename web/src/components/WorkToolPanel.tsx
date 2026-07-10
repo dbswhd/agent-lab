@@ -66,6 +66,8 @@ type Props = {
     readonly blocked: boolean;
   } | null;
   onDismissWorkHookAlert?: () => void;
+  /** Parent-provided runtime — skips local `/runtime` fetch when defined. */
+  runtimeSnapshot?: RuntimeSnapshot | null;
 };
 
 /** Tools > Work — execute-focused surface without Mission OS duplicates. */
@@ -97,6 +99,7 @@ export function WorkToolPanel({
   inboxPendingCount = 0,
   workHookAlert = null,
   onDismissWorkHookAlert,
+  runtimeSnapshot,
 }: Props) {
   const hasPlan = Boolean(planMd.trim());
   const isComposer = variant === "composer";
@@ -104,7 +107,11 @@ export function WorkToolPanel({
   const showPlanStalePanel = Boolean(planStaleNotice);
   const showSyncFailedBar =
     Boolean(planMeta.pendingAgreement) && !showPlanStalePanel;
-  const [runtime, setRuntime] = useState<RuntimeSnapshot | null>(null);
+  const ownsRuntimeFetch = runtimeSnapshot === undefined;
+  const [fetchedRuntime, setFetchedRuntime] = useState<RuntimeSnapshot | null>(
+    null,
+  );
+  const runtime = ownsRuntimeFetch ? fetchedRuntime : runtimeSnapshot;
   const executions = useMemo(
     () => (session?.run?.executions as PlanExecutionRecord[] | undefined) ?? [],
     [session?.run],
@@ -164,18 +171,19 @@ export function WorkToolPanel({
   );
 
   useEffect(() => {
+    if (!ownsRuntimeFetch) return;
     let cancelled = false;
     void fetchSessionRuntime(sessionId)
       .then((payload) => {
-        if (!cancelled) setRuntime(payload);
+        if (!cancelled) setFetchedRuntime(payload);
       })
       .catch(() => {
-        if (!cancelled) setRuntime(null);
+        if (!cancelled) setFetchedRuntime(null);
       });
     return () => {
       cancelled = true;
     };
-  }, [sessionId, session?.run]);
+  }, [ownsRuntimeFetch, sessionId, session?.run]);
 
   useEffect(() => {
     if (!workFocus) return;

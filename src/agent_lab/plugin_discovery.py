@@ -7,7 +7,7 @@ import subprocess
 import threading
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from agent_lab.code_memory_mcp_server import (
     code_memory_cache_signature,
@@ -259,54 +259,51 @@ _discovery_refreshing: set[tuple[str, bool, tuple[bool, str]]] = set()
 _discovery_lock = threading.Lock()
 
 
-def _code_memory_mcp_rows() -> list[dict[str, Any]]:
-    if not code_memory_mcp_enabled():
+def _builtin_mcp_rows(
+    *,
+    slug: str,
+    description: str,
+    enabled: Callable[[], bool],
+) -> list[dict[str, Any]]:
+    if not enabled():
         return []
+    name = f"agent-lab-{slug}"
     return [
         {
-            "id": "claude:mcp:agent-lab-code-memory",
-            "name": "agent-lab-code-memory",
+            "id": f"claude:mcp:{name}",
+            "name": name,
             "agent": "claude",
             "kind": "mcp",
-            "description": "Code-memory MCP (Phase 0 pilot)",
+            "description": description,
             "status": "enabled",
             "enabled_default": True,
         },
         {
-            "id": "codex:mcp:agent-lab-code-memory",
-            "name": "agent-lab-code-memory",
+            "id": f"codex:mcp:{name}",
+            "name": name,
             "agent": "codex",
             "kind": "mcp",
-            "description": "Code-memory MCP (Phase 0 pilot)",
+            "description": description,
             "status": "enabled",
             "enabled_default": True,
         },
     ]
+
+
+def _code_memory_mcp_rows() -> list[dict[str, Any]]:
+    return _builtin_mcp_rows(
+        slug="code-memory",
+        description="Code-memory MCP (Phase 0 pilot)",
+        enabled=code_memory_mcp_enabled,
+    )
 
 
 def _wisdom_mcp_rows() -> list[dict[str, Any]]:
-    if not wisdom_mcp_enabled():
-        return []
-    return [
-        {
-            "id": "claude:mcp:agent-lab-wisdom",
-            "name": "agent-lab-wisdom",
-            "agent": "claude",
-            "kind": "mcp",
-            "description": "Wisdom Index MCP (Phase 1 cross-session)",
-            "status": "enabled",
-            "enabled_default": True,
-        },
-        {
-            "id": "codex:mcp:agent-lab-wisdom",
-            "name": "agent-lab-wisdom",
-            "agent": "codex",
-            "kind": "mcp",
-            "description": "Wisdom Index MCP (Phase 1 cross-session)",
-            "status": "enabled",
-            "enabled_default": True,
-        },
-    ]
+    return _builtin_mcp_rows(
+        slug="wisdom",
+        description="Wisdom Index MCP (Phase 1 cross-session)",
+        enabled=wisdom_mcp_enabled,
+    )
 
 
 def reset_plugin_discovery_cache() -> None:

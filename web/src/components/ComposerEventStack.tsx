@@ -406,6 +406,7 @@ export function ComposerEventStack({
               onOpenFiles={onOpenFiles}
               onOpenFile={onOpenFile}
               variant="composer"
+              runtimeSnapshot={runtime}
             />
             {hasPlan &&
             (!planWorkflow?.enabled || workflowPhase === "APPROVED") ? (

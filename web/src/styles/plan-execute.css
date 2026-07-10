@@ -516,6 +516,63 @@
 }
 
 /* MB-5 Merge checks */
+.workspace-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+  padding: var(--space-12);
+  margin-bottom: var(--space-12);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-hair);
+  background: var(--surface-raised, var(--surface));
+}
+
+.workspace-card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-8);
+}
+
+.workspace-card__title {
+  margin: 0;
+  font-size: var(--text-footnote);
+  font-weight: var(--weight-semibold);
+}
+
+.workspace-card__mode {
+  font-size: var(--text-caption);
+  color: var(--label-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.workspace-card__diff {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.workspace-card__section-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--text-caption);
+  color: var(--label-secondary);
+}
+
+.workspace-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.workspace-card__handoff-hint {
+  font-size: var(--text-caption);
+  color: var(--label-tertiary);
+}
+
 .merge-checks {
   padding: var(--space-10) var(--space-12);
   border-radius: var(--radius-md);

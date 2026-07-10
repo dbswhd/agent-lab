@@ -16,12 +16,16 @@ _AGREED_HEADERS = (
     "합의된 점",
     "합의 (채택",
     "합의된 점 (채택",
+    "tl;dr",
+    "tldr",
 )
 _OPEN_HEADERS = (
     "쟁점 / 미결정",
     "쟁점/미결정",
     "미결정",
     "보류 리스크",
+    "must-not",
+    "must not",
 )
 
 

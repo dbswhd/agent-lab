@@ -13,22 +13,21 @@
 
 프롬프트: `src/agent_lab/agents/prompts.py` · 턴 모드 SSOT: [docs/TURN-MODES.md](./docs/TURN-MODES.md) · 역할: [docs/05-room-agent-roles.md](./docs/05-room-agent-roles.md)
 
-## 턴 제어 (현재 UI — 2026-06)
+## 턴 제어 (현재 UI — 2026-07)
 
-Composer는 **두 축**만 노출한다. 레거시 segmented picker (`discuss` / `analyze` / `review` / `free` / ♾️)는 **제거됨**.
+Composer는 **topic-only**다. 레거시 Plan 체크·빠른/감독 picker는 **제거됨** (`web/src/utils/roomComposerPrefs.ts`).
 
-| 축 | UI | 값 |
-|----|-----|-----|
-| **Room preset** | 빠른 / 감독 | `fast` → `quick` · `supervisor` → `loop` |
-| **Plan toggle** | Composer **Plan** 체크 | OFF → API `discuss` · ON → API `plan` |
+| 축 | 현재 | 값 |
+|----|------|-----|
+| **Room preset** | 설정/세션 기본 (composer 숨김) | dogfood 기본 `supervisor` → turn `loop` |
+| **Plan / Scribe** | **TurnPolicy** 신호 (FSM·consensus·skill_intent·MCP) | 사용자가 Plan 토글하지 않음 — [TURN-POLICY.md](./docs/TURN-POLICY.md) |
+| **결정 표면** | Composer event stack + Human Inbox | plan 승인 · execute · ask_human — [ABSORB-CC-CODEX-2026-07.md](./docs/ABSORB-CC-CODEX-2026-07.md) |
 
-**Plan OFF:** Scribe skip, Codex/Claude/Kimi read-only overlay, `[PROPOSED:]`만.  
-**Plan ON:** Scribe가 `plan.md` 갱신; execute는 Human gate 이후.  
 constraints에 정책이 이미 있음 — **「discuss/plan 모드입니다」 메타 선언 금지**.
 
 ## Room preset · Inbox
-- **fast** — 1 lead, Plan **잠금 OFF**, orchestrator harvest 스킵; **team lead MCP** 유지 — [05-room-agent-roles.md §Fast preset](./docs/05-room-agent-roles.md)
-- **supervisor** — team + consensus, Plan **잠금 ON** · **실작업(dogfood) preset** — S1 trio implicit ON ([DESIGN-S1-FEEDBACK-LOOP.md](./docs/DESIGN-S1-FEEDBACK-LOOP.md))
+- **fast** — 1 lead, Scribe 기본 억제, orchestrator harvest 스킵; **team lead MCP** 유지 — [05-room-agent-roles.md §Fast preset](./docs/05-room-agent-roles.md)
+- **supervisor** — team + consensus · **실작업(dogfood) preset** — S1 trio implicit ON ([DESIGN-S1-FEEDBACK-LOOP.md](./docs/DESIGN-S1-FEEDBACK-LOOP.md))
 - **MCP-first Inbox** — Human gate SSOT = agent MCP; harvest default **off** — [MCP-FIRST-INBOX.md](./docs/MCP-FIRST-INBOX.md)
 
 ## Dogfood · cleanup (2026-07)

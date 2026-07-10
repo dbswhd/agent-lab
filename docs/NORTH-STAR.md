@@ -300,9 +300,9 @@ Mission OS 3-pane IA 유지 위에서:
 
 | 샘플 | 흡수할 것 | Agent Lab식 대체/차별 |
 |---|---|---|
-| **Claude Code** | Skills·hooks·plan mode·메모리; [worktrees](https://code.claude.com/docs/en/worktrees): `--worktree`, `.worktreeinclude`, `WorktreeCreate`/`WorktreeRemove` hooks, subagent `isolation: worktree` | 스킬 = Room 공유 능력(S3); worktree lifecycle → `.agent-lab/worktree.yaml` + MB-6 hooks; **Oracle·execute gate는 유지** |
-| **Codex** | 백그라운드 태스크, PR-native, 샌드박스·approvals; [worktrees + Handoff](https://developers.openai.com/codex/app/worktrees) (Local ↔ worktree thread 이동) | 산출물 = verified PR; Handoff → Human IDE 마무리용 branch/thread export (N9/GJC) |
-| **Conductor** | [workspace = worktree + branch + diff + checks + PR + archive](https://www.conductor.build/docs/concepts/workspaces-and-branches); setup script, `.context` handoff, merge conflict resolve | execute core **shipped** (PI·CON-diff·MB-6); 남은 것 = **workspace 카드 UX** (`PlanExecutePanel`·Checks·archive 한 surface) |
+| **Claude Code** | Skills·hooks·plan mode·메모리; [worktrees](https://code.claude.com/docs/en/worktrees): `--worktree`, `.worktreeinclude`, `baseRef`, `WorktreeCreate`/`Remove`, subagent `isolation: worktree`; [What’s new](https://code.claude.com/docs/en/whats-new/index) Needs-input/`claude agents`·Ultraplan·Monitor (2026-04~06) | 스킬 = Room 공유 능력(S3); worktree lifecycle → `.agent-lab/worktree.yaml` + MB-6; Ultraplan → plan 승인 UX; **Oracle·execute gate 유지**; `/autofix-pr`·Auto mode gate 대체 **금지** — 상세 [ABSORB-CC-CODEX-2026-07.md](./ABSORB-CC-CODEX-2026-07.md) |
+| **Codex** | 백그라운드 태스크, PR-native, 샌드박스·approvals; [worktrees + Handoff](https://developers.openai.com/codex/app/worktrees) (Local↔Worktree, `.worktreeinclude`, setup); [changelog](https://developers.openai.com/codex/changelog) Needs input·steer·Remote GA (2026-06~07) | 산출물 = verified PR; Handoff → IDE export (N9/GJC); Needs input → Inbox; Auto-review = AutonomyDial 보조만 |
+| **Conductor** | [workspace = worktree + branch + diff + checks + PR + archive](https://www.conductor.build/docs/concepts/workspaces-and-branches); setup script, `.context` handoff, merge conflict resolve | execute core **shipped** (PI·CON-diff·MB-6); **workspace 카드** → `WorkspaceCard` + `PlanExecutePanel` ([ABSORB](./ABSORB-CC-CODEX-2026-07.md) W1-A) |
 | **Cursor** | Composer 인라인 결정, background agent 상태, multi-agent worktree (2.0+) | 결정 = Inbox 수렴(§2.4-2); 미션별 뷰 |
 | **Claude Squad** | [OSS](https://github.com/smtg-ai/claude-squad) tmux + worktree + TUI; parallel agent pause/review before push | web Mission OS 또는 dogfood ops TUI; AGPL — **패턴만**, 코드 복붙 금지 |
 | **Gajae code (GJC)** | 외부 파이프라인 수용 ([GJC-ENTRY.md](./GJC-ENTRY.md)) | N9 "외부 결과 검증" 입구 |
@@ -320,7 +320,9 @@ Mission OS 3-pane IA 유지 위에서:
 
 **흡수의 규칙:** 어떤 샘플 패턴도 5모트(BLOCK→409, worktree 격리, Oracle+Repair, run.json 감사, Human Inbox)를 약화시키는 형태로는 흡수하지 않는다.
 
-**흡수 금지 (명시):** Human gate 없이 PR auto-merge(Jules/Devin Auto-Fix 그대로), fire-and-forget multi-day mission(Factory식 inbox bypass), main checkout에서 무 gate sandbox(OpenHands default를 core에 그대로), 게이트 없는 MoA proposer-aggregator로 Room 합의(objection/BLOCK) 전체를 대체.
+**흡수 금지 (명시):** Human gate 없이 PR auto-merge(Jules/Devin Auto-Fix·Claude `/autofix-pr` 그대로), fire-and-forget multi-day mission(Factory식 inbox bypass), main checkout에서 무 gate sandbox(OpenHands default를 core에 그대로), 게이트 없는 MoA proposer-aggregator로 Room 합의(objection/BLOCK) 전체를 대체, CC Auto mode / Codex Auto-review로 Human Inbox·execute 409를 대체.
+
+**흡수 실행 SSOT (2026-07):** [ABSORB-CC-CODEX-2026-07.md](./ABSORB-CC-CODEX-2026-07.md) — 로컬(CC 2.1.202 · Codex 0.138.0) + 공식 changelog 교차.
 
 ---
 

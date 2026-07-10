@@ -322,7 +322,12 @@ def find_dry_run_action(
 
 
 def validate_plan_actions_format(plan_md: str) -> dict[str, Any]:
-    """Check plan.md execute sections after scribe; non-fatal warnings for room SSE."""
+    """Check plan.md execute sections after scribe; non-fatal warnings for room SSE.
+
+    Soft contract (ABSORB W1-B): when ## 지금 실행 is present, also warn if
+    TL;DR / Must-NOT / Parallel waves / Evidence paths are missing. Soft issues
+    never flip ``ok`` — execute gate stays 3-field only.
+    """
     text = plan_md or ""
     sections = parse_plan_action_sections(text)
     has_now = bool(NOW_HEADER.search(text))
@@ -346,9 +351,22 @@ def validate_plan_actions_format(plan_md: str) -> dict[str, Any]:
     if has_now and not has_roadmap and executable_count > 1:
         issues.append("missing_roadmap_section")
 
+    soft_issues: list[str] = []
+    if has_now and recommended:
+        lower = text.lower()
+        if "## tl;dr" not in lower and "## tldr" not in lower:
+            soft_issues.append("missing_tldr")
+        if "## must-not" not in lower and "## must not" not in lower:
+            soft_issues.append("missing_must_not")
+        if "## parallel waves" not in lower and "## parallel wave" not in lower:
+            soft_issues.append("missing_parallel_waves")
+        if "## evidence paths" not in lower and "## evidence path" not in lower:
+            soft_issues.append("missing_evidence_paths")
+
     return {
         "ok": len(issues) == 0,
         "issues": issues,
+        "soft_issues": soft_issues,
         "has_now_section": has_now,
         "has_roadmap_section": has_roadmap,
         "has_legacy_section": has_legacy,

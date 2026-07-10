@@ -168,6 +168,22 @@ When the thread includes concrete implementation or verification work, always in
 ## 지금 실행 (one executable 3-field action) and ## 실행 순서 (이후) for follow-ups.
 Skip those execute sections only when the conversation has no actionable work yet.
 
+When ## 지금 실행 is present, ALSO include these Codex/Ultraplan-aligned sections
+(before ## 지금 실행; keep them short — soft-validated, not an execute gate):
+## TL;DR
+> Summary: (1–2 sentences)
+> Deliverables: (short bullets)
+> Risk: Low|Medium|High — (one-line driver)
+## Must
+- (must-have outcomes)
+## Must-NOT
+- (guardrails / anti-scope — agents must not do these)
+## Parallel waves
+Wave 1 (no deps): task labels that can run in parallel
+Wave 2 (after Wave 1): … depends [Wave 1]
+## Evidence paths
+- backtick paths where verify evidence will land (e.g. `sessions/<id>/evidence/…` or dogfood docs)
+
 Required sections (skip if truly empty):
 ## 지금 논의 중인 것
 ## 합의된 점
@@ -216,7 +232,8 @@ TRADING_MISSION_SCRIBE_ADDENDUM = """
 Do NOT put trading-mission-only sections (ingest_ready, active_strategies, freshness, proposal_batch, kr_kospi_v1, etc.) in plan.md.
 Write those to `artifacts/plans/trading-mission.md` instead.
 
-plan.md must stay the core session execution contract (논의/합의/지금 실행/실행 순서 only).
+plan.md must stay the core session execution contract
+(논의/합의/TL;DR·Must·Must-NOT·waves·evidence/지금 실행/실행 순서).
 In plan.md you may add one bullet under ## 합의된 점 linking the extension plan:
 - Trading mission detail → `artifacts/plans/trading-mission.md`
 

@@ -5,6 +5,7 @@ import { PlanExecuteHistoryList } from "./PlanExecuteHistoryList";
 import { PlanExecutePendingCard } from "./PlanExecutePendingCard";
 import { PlanTodoList } from "./PlanTodoList";
 import { EvidenceTimeline } from "./EvidenceTimeline";
+import { WorkspaceCard } from "./WorkspaceCard";
 import { useLocale } from "../i18n/useLocale";
 import { usePlanExecutePanel } from "../hooks/usePlanExecutePanel";
 
@@ -102,6 +103,15 @@ export function PlanExecutePanel({
             </button>
           ) : null}
         </div>
+      ) : null}
+      {panel.activePending || panel.historyRows[0] ? (
+        <WorkspaceCard
+          execution={panel.activePending ?? panel.historyRows[0]!}
+          mergeChecks={mergeChecks}
+          onOpenDiff={onOpenDiff}
+          onOpenFiles={onOpenFiles}
+          onOpenFile={onOpenFile}
+        />
       ) : null}
       <PlanTodoList
         rows={panel.todoRows}

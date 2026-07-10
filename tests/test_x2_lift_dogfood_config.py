@@ -42,6 +42,10 @@ def test_plan_md_verify_is_evidence_row_scoped() -> None:
     assert "L5·L11 설명용 roompy는 별도 행" in PLAN_MD
     assert "Evidence row에 `roompy` 패턴이 없다" not in PLAN_MD
     assert VERIFY_GREP.startswith("grep -n")
+    assert "## TL;DR" in PLAN_MD
+    assert "## Must-NOT" in PLAN_MD
+    assert "## Parallel waves" in PLAN_MD
+    assert "## Evidence paths" in PLAN_MD
 
 
 def test_prepare_typo_cycle(tmp_path: Path, monkeypatch) -> None:

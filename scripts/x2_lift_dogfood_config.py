@@ -20,6 +20,24 @@ TOPIC = (
 
 PLAN_MD = f"""# X2 lift dogfood
 
+## TL;DR
+> Summary: Fix one typo in dogfood evidence row (`{MARKER_WRONG}` → `{MARKER_RIGHT}`).
+> Deliverables: updated `{DOGFood_REL}` · Oracle PASS
+> Risk: Low — single-line edit
+
+## Must
+- Evidence row uses `{MARKER_RIGHT}`
+
+## Must-NOT
+- Do not rewrite L5/L11 explanatory `roompy` mentions
+- Do not change other dogfood fixtures
+
+## Parallel waves
+Wave 1: edit `{DOGFood_REL}` (single task)
+
+## Evidence paths
+- `{DOGFood_REL}` (grep verify)
+
 ## 지금 실행
 
 1.

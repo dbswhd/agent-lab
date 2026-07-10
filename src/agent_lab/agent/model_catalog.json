@@ -2,8 +2,65 @@
   "providers": {
     "codex": {
       "picker": "latest_versions",
-      "visible_count": 2,
+      "visible_count": 4,
+      "expand_top_version": true,
       "models": [
+        {
+          "id": "gpt-5.6-sol",
+          "label": "GPT-5.6-Sol",
+          "version": [
+            5,
+            6,
+            0
+          ],
+          "source": "discovered",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+            "ultra"
+          ],
+          "discovered_at": "2026-07-10T11:47:41+00:00"
+        },
+        {
+          "id": "gpt-5.6-terra",
+          "label": "GPT-5.6-Terra",
+          "version": [
+            5,
+            6,
+            0
+          ],
+          "source": "discovered",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+            "ultra"
+          ],
+          "discovered_at": "2026-07-10T11:47:41+00:00"
+        },
+        {
+          "id": "gpt-5.6-luna",
+          "label": "GPT-5.6-Luna",
+          "version": [
+            5,
+            6,
+            0
+          ],
+          "source": "discovered",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ],
+          "discovered_at": "2026-07-10T11:47:41+00:00"
+        },
         {
           "id": "gpt-5.5",
           "label": "GPT-5.5",
@@ -11,7 +68,15 @@
             5,
             5,
             0
-          ]
+          ],
+          "source": "discovered",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ],
+          "discovered_at": "2026-07-10T11:47:41+00:00"
         },
         {
           "id": "gpt-5.4",
@@ -20,7 +85,32 @@
             5,
             4,
             0
-          ]
+          ],
+          "source": "discovered",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ],
+          "discovered_at": "2026-07-10T11:47:41+00:00"
+        },
+        {
+          "id": "gpt-5.4-mini",
+          "label": "GPT-5.4-Mini",
+          "version": [
+            5,
+            4,
+            0
+          ],
+          "source": "discovered",
+          "efforts": [
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ],
+          "discovered_at": "2026-07-10T11:47:41+00:00"
         },
         {
           "id": "gpt-5",
@@ -65,9 +155,7 @@
             5,
             0,
             0
-          ],
-          "available": false,
-          "coming_soon_note": "곧 사용 가능 예정"
+          ]
         },
         {
           "id": "opus",
@@ -153,10 +241,74 @@
       "models": [
         {
           "id": "default",
-          "label": "기본 (default)",
+          "label": "기본 (Auto)",
           "version": [
             0
           ]
+        },
+        {
+          "id": "composer-2.5",
+          "label": "Composer 2.5",
+          "version": [
+            2,
+            5,
+            0
+          ]
+        },
+        {
+          "id": "gpt-5.6-sol",
+          "label": "GPT-5.6 Sol",
+          "version": [
+            5,
+            6,
+            0
+          ],
+          "efforts": ["low", "medium", "high", "xhigh", "max"],
+          "default_effort": "high"
+        },
+        {
+          "id": "claude-opus-4-8",
+          "label": "Claude Opus 4.8",
+          "version": [
+            4,
+            8,
+            0
+          ],
+          "efforts": ["low", "medium", "high", "xhigh", "max"],
+          "default_effort": "high"
+        },
+        {
+          "id": "claude-sonnet-5",
+          "label": "Claude Sonnet 5",
+          "version": [
+            5,
+            0,
+            0
+          ],
+          "efforts": ["low", "medium", "high", "xhigh", "max"],
+          "default_effort": "high"
+        },
+        {
+          "id": "claude-fable-5",
+          "label": "Claude Fable 5",
+          "version": [
+            5,
+            0,
+            0
+          ],
+          "efforts": ["low", "medium", "high", "xhigh", "max"],
+          "default_effort": "high"
+        },
+        {
+          "id": "grok-4.5",
+          "label": "Grok 4.5",
+          "version": [
+            4,
+            5,
+            0
+          ],
+          "efforts": ["medium", "high", "xhigh"],
+          "default_effort": "xhigh"
         }
       ],
       "efforts": []
@@ -178,10 +330,15 @@
     }
   },
   "meta": {
-    "generated_at": "2026-07-01T12:05:59+00:00",
+    "generated_at": "2026-07-10T11:47:41+00:00",
     "generator": "generate_model_catalog.py",
     "sources": [
-      "bundled"
-    ]
+      "bundled",
+      "codex-oauth"
+    ],
+    "codex_discovery": {
+      "ok": true,
+      "count": 6
+    }
   }
 }

@@ -76,17 +76,44 @@ def _models_for_entry(entry: dict[str, Any]) -> list[dict[str, Any]]:
     return [m for m in raw if isinstance(m, dict) and str(m.get("id") or "").strip()]
 
 
-def _resolve_latest_versions(models: list[dict[str, Any]], *, count: int) -> list[dict[str, Any]]:
+def _resolve_latest_versions(
+    models: list[dict[str, Any]],
+    *,
+    count: int,
+    expand_top_version: bool = False,
+) -> list[dict[str, Any]]:
+    """Latest *N distinct version generations* — one representative row each.
+
+    A generation can ship several same-version sibling tiers (e.g.
+    ``gpt-5.6-sol``/``-terra``/``-luna``); without de-duping by version,
+    those siblings alone would fill the top-N slots and crowd out the
+    previous generation entirely. Input is pre-sorted by version desc with
+    ties in discovery-priority order, so the first row seen per version is
+    already the best pick.
+
+    With ``expand_top_version``, every sibling of the *newest* version is
+    kept (uncapped) and only older versions collapse to one row each —
+    e.g. all of gpt-5.6-sol/terra/luna plus one row of gpt-5.5.
+    """
     ranked = sorted(_models_for_entry({"models": models}), key=_version_key, reverse=True)
-    seen: set[str] = set()
+    seen_ids: set[str] = set()
+    seen_versions: set[tuple[int, ...]] = set()
+    top_version: tuple[int, ...] | None = None
     out: list[dict[str, Any]] = []
     for row in ranked:
         mid = str(row.get("id") or "").strip()
-        if not mid or mid in seen:
+        if not mid or mid in seen_ids:
             continue
-        seen.add(mid)
+        version = _version_key(row)
+        if top_version is None:
+            top_version = version
+        is_top_version = expand_top_version and version == top_version
+        if not is_top_version and version in seen_versions:
+            continue
+        seen_ids.add(mid)
+        seen_versions.add(version)
         out.append(row)
-        if len(out) >= max(1, count):
+        if not is_top_version and len(out) >= max(1, count):
             break
     return out
 
@@ -125,7 +152,8 @@ def visible_models(provider: str) -> list[dict[str, Any]]:
     picker = str(entry.get("picker") or "all").strip().lower()
     if picker == "latest_versions":
         count = int(entry.get("visible_count") or 2)
-        return _resolve_latest_versions(models, count=count)
+        expand_top_version = bool(entry.get("expand_top_version"))
+        return _resolve_latest_versions(models, count=count, expand_top_version=expand_top_version)
     if picker == "latest_per_family":
         order_raw = entry.get("family_order")
         order = [str(x).strip().lower() for x in order_raw] if isinstance(order_raw, list) else None

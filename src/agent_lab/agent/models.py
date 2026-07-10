@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 DEFAULT_CURSOR_MODEL = "default"
-DEFAULT_CODEX_MODEL = "gpt-5.5"
+# "sol" is the flagship tier of the 5.6 generation (vs "terra"/"luna", which
+# are lighter siblings) — requires @openai/codex CLI >= 0.144.0.
+DEFAULT_CODEX_MODEL = "gpt-5.6-sol"
 DEFAULT_CODEX_REASONING_EFFORT = "high"
 DEFAULT_CODEX_ROOM_REASONING_EFFORT = "high"
 DEFAULT_CODEX_ROOM_MAX_COMMANDS = 6

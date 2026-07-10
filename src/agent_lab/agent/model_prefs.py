@@ -37,6 +37,52 @@ _PROVIDER_DISPLAY: dict[str, str] = {
 _PROVIDER_PICKER_ORDER: tuple[str, ...] = ("codex", "claude", "cursor", "kimi")
 
 
+def _cursor_row(base_id: str) -> dict[str, Any] | None:
+    entry = model_catalog.provider_catalog("cursor") or {}
+    for row in entry.get("models") or []:
+        if str(row.get("id") or "") == base_id:
+            return row
+    return None
+
+
+def _cursor_default_effort(base_id: str) -> str | None:
+    row = _cursor_row(base_id)
+    if not row:
+        return None
+    efforts = [str(e) for e in (row.get("efforts") or [])]
+    if not efforts:
+        return None
+    default = row.get("default_effort")
+    return str(default) if default in efforts else efforts[-1]
+
+
+def _cursor_compose(base_id: str, effort: str | None) -> str:
+    return f"{base_id}-{effort}" if effort else base_id
+
+
+def _cursor_split(raw: str) -> tuple[str, str | None]:
+    """Split a stored ``CURSOR_MODEL`` value into ``(base_id, effort)``.
+
+    Cursor folds the reasoning-depth tier into the model id itself
+    (``claude-opus-4-8-high``) rather than exposing a separate env var like
+    Codex/Claude do, so the split must match against each catalog row's own
+    ``efforts`` list rather than a fixed suffix pattern.
+    """
+    raw = raw.strip()
+    if not raw:
+        return agent_models.DEFAULT_CURSOR_MODEL, None
+    entry = model_catalog.provider_catalog("cursor") or {}
+    for row in entry.get("models") or []:
+        base = str(row.get("id") or "")
+        efforts = [str(e) for e in (row.get("efforts") or [])]
+        if not base or not efforts:
+            continue
+        for effort in efforts:
+            if raw == f"{base}-{effort}":
+                return base, effort
+    return raw, None
+
+
 def _auto_pref_path() -> Path:
     from agent_lab.app_config import config_dir
 
@@ -86,13 +132,18 @@ def current_model_id(provider: str) -> str:
     if provider == "codex":
         return model or agent_models.DEFAULT_CODEX_MODEL
     if provider == "cursor":
-        return model or agent_models.DEFAULT_CURSOR_MODEL
+        base, _effort = _cursor_split(model or agent_models.DEFAULT_CURSOR_MODEL)
+        return base
     if provider == "kimi":
         return model or "kimi-k2"
     return model
 
 
 def current_effort(provider: str) -> str | None:
+    if provider == "cursor":
+        raw = os.getenv("CURSOR_MODEL", "").strip() or agent_models.DEFAULT_CURSOR_MODEL
+        _base, effort = _cursor_split(raw)
+        return effort
     keys = _PROVIDER_ENV.get(provider)
     if not keys or "effort" not in keys:
         return None
@@ -197,7 +248,21 @@ def apply_model_only(provider: str, model_id: str) -> str:
         if str(row.get("id")) == model and row.get("available") is False:
             note = row.get("coming_soon_note") or "not available yet"
             raise ValueError(f"model unavailable: {model} ({note})")
-    _write_env(keys["model"], model)
+    if provider == "cursor":
+        # Cursor has no separate effort env var — fold the tier into the
+        # stored id (``claude-opus-4-8-high``). Keep the currently active
+        # tier when the new family still offers it, else fall back to that
+        # family's own default tier (e.g. switching from a 5-tier Claude
+        # family to Grok's medium/high/xhigh-only range).
+        allowed = model_catalog.effort_levels("cursor", model)
+        effort = current_effort("cursor")
+        if allowed and effort not in allowed:
+            effort = _cursor_default_effort(model)
+        elif not allowed:
+            effort = None
+        _write_env(keys["model"], _cursor_compose(model, effort))
+    else:
+        _write_env(keys["model"], model)
     label = model
     for row in model_catalog.visible_models(provider):
         if str(row.get("id")) == model:
@@ -210,10 +275,19 @@ def apply_model_only(provider: str, model_id: str) -> str:
 
 
 def apply_effort_only(provider: str, effort: str) -> str:
+    level = str(effort or "").strip().lower()
+    if provider == "cursor":
+        base = current_model_id("cursor")
+        allowed = model_catalog.effort_levels("cursor", base)
+        if not allowed:
+            raise ValueError(f"provider cursor model {base} has no effort setting")
+        if level not in allowed:
+            raise ValueError(f"unknown effort: {effort}")
+        _write_env("CURSOR_MODEL", _cursor_compose(base, level))
+        return f"{base} · {level}"
     keys = _PROVIDER_ENV.get(provider)
     if not keys or "effort" not in keys:
         raise ValueError(f"provider {provider} has no effort setting")
-    level = str(effort or "").strip().lower()
     allowed = model_catalog.effort_levels(provider)
     if allowed and level not in allowed:
         raise ValueError(f"unknown effort: {effort}")

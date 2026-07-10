@@ -106,11 +106,13 @@ def test_generate_catalog_without_discovery_is_stable(tmp_path: Path) -> None:
 
 def test_generate_catalog_with_mock_codex_discovery() -> None:
     seed = cg._read_json(cg.CATALOG_PATH)
+    # A hypothetical future version, distinct from whatever's already in the
+    # committed seed, so this stays a pure test of merge/sort ordering.
     discovered = [
         {
-            "id": "gpt-5.6",
-            "label": "GPT-5.6",
-            "version": [5, 6, 0],
+            "id": "gpt-5.9",
+            "label": "GPT-5.9",
+            "version": [5, 9, 0],
             "efforts": ["minimal", "low", "medium", "high"],
             "source": "discovered",
         }
@@ -122,7 +124,7 @@ def test_generate_catalog_with_mock_codex_discovery() -> None:
     )
     assert "codex-oauth" in sources
     codex_models = catalog["providers"]["codex"]["models"]
-    assert codex_models[0]["id"] == "gpt-5.6"
+    assert codex_models[0]["id"] == "gpt-5.9"
 
 
 def test_fetch_codex_catalog_models_parses_payload(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -58,11 +58,29 @@ DEFAULT_ROOM_TIMEOUT = float(os.environ.get("AGENT_LAB_X2_ROOM_TIMEOUT", "5400")
 DEFAULT_EXECUTE_TIMEOUT = float(os.environ.get("AGENT_LAB_X2_EXECUTE_TIMEOUT", "1200"))
 DEFAULT_PLAN_WAIT_TIMEOUT = float(os.environ.get("AGENT_LAB_X2_PLAN_WAIT_TIMEOUT", "300"))
 
-# Empty by default: omitting "agents" from the room-run request lets the server
-# fall back to the operator's own configured default composition
-# (agent_roster.global_composition_default()) instead of a hardcoded roster.
-# Set AGENT_LAB_X2_AGENTS only when a specific fixed roster is actually required.
-AGENTS = [a.strip() for a in os.environ.get("AGENT_LAB_X2_AGENTS", "").split(",") if a.strip()]
+def _default_room_composition() -> list[str]:
+    """The operator's own saved roster (~/.agent-lab/room_models /
+    AGENT_LAB_ROOM_MODELS), read explicitly rather than omitted.
+
+    Omitting "agents" entirely also falls back to this same composition
+    server-side (agent_roster.global_composition_default()) — but an *implicit*
+    fallback is subject to the topic router's Expert Pool subsetting
+    (turn_routing.finalize_turn_routing: only an explicit multi-select sets
+    run_meta["_roster_explicit"], which is what protects a roster from being
+    silently narrowed to 1 agent for a task the router judges "simple"). For a
+    dogfood script whose whole point is producing genuine multi-agent
+    participation data, the composition must be sent explicitly so it survives
+    routing intact — reading it here isn't pinning a roster, it's carrying the
+    operator's own configured default through as an explicit pick.
+    """
+    from agent_lab.agent.roster import global_composition_default
+
+    return list(global_composition_default() or [])
+
+
+# Resolution order: explicit env override > operator's saved default composition
+# (sent explicitly so it isn't Expert-Pool-subsetted) > empty (server picks).
+AGENTS = [a.strip() for a in os.environ.get("AGENT_LAB_X2_AGENTS", "").split(",") if a.strip()] or _default_room_composition()
 PERMS = {
     "cursor": {"tools": True, "local_agent_lab": True, "local_pipeline": True},
     "codex": {"cli": True},

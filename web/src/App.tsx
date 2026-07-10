@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRunningSessionIds } from "./hooks/useRunningSessionIds";
 import { useRunLockSync } from "./hooks/useRunLockSync";
 import { useTauriFullscreen } from "./hooks/useTauriFullscreen";
@@ -67,8 +67,9 @@ import {
   getFirstRunOnboardingDismissed,
   setFirstRunOnboardingDismissed as persistFirstRunOnboardingDismissed,
 } from "./utils/onboardingPrefs";
+import { isDogfoodSession } from "./utils/dogfoodSessions";
 
-type ListTab = "active" | "archived";
+type ListTab = "active" | "dogfood" | "archived";
 type ShellView = "workspace" | "settings";
 
 const ONBOARDING_SAMPLE_TOPIC =
@@ -130,6 +131,13 @@ export default function App() {
 
   const runningSessionIds = useRunningSessionIds();
   useRunLockSync(true);
+
+  /** Rail 표시용 세션 — Sessions/Dogfood는 같은 (비보관) 목록을 분류로 가른다. */
+  const railSessions = useMemo(() => {
+    if (listTab === "archived") return sessions;
+    if (listTab === "dogfood") return sessions.filter(isDogfoodSession);
+    return sessions.filter((session) => !isDogfoodSession(session));
+  }, [listTab, sessions]);
 
   const toggleSidebar = useCallback(() => {
     setSidebarOpenState((current) => {
@@ -613,9 +621,23 @@ export default function App() {
                     onClick={() => setListTab("active")}
                   >
                     Sessions
-                    {listTab === "active" && sessions.length > 0 ? (
+                    {listTab === "active" && railSessions.length > 0 ? (
                       <span className="rail-scope-tab__count">
-                        {sessions.length}
+                        {railSessions.length}
+                      </span>
+                    ) : null}
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={listTab === "dogfood"}
+                    className={`rail-scope-tab${listTab === "dogfood" ? " is-active" : ""}`}
+                    onClick={() => setListTab("dogfood")}
+                  >
+                    Dogfood
+                    {listTab === "dogfood" && railSessions.length > 0 ? (
+                      <span className="rail-scope-tab__count rail-scope-tab__count--dim">
+                        {railSessions.length}
                       </span>
                     ) : null}
                   </button>
@@ -627,9 +649,9 @@ export default function App() {
                     onClick={() => setListTab("archived")}
                   >
                     Archive
-                    {listTab === "archived" && sessions.length > 0 ? (
+                    {listTab === "archived" && railSessions.length > 0 ? (
                       <span className="rail-scope-tab__count rail-scope-tab__count--dim">
-                        {sessions.length}
+                        {railSessions.length}
                       </span>
                     ) : null}
                   </button>
@@ -666,20 +688,20 @@ export default function App() {
                 </p>
               ) : null}
               <SessionList
-                sessions={sessions}
+                sessions={railSessions}
                 selectedId={!composerNew ? selectedId : null}
                 runningSessionIds={runningSessionIds}
                 needsInputSessionIds={needsInputSessionIds}
                 archived={listTab === "archived"}
                 query={sessionQuery}
                 onSelect={selectSession}
-                onArchive={listTab === "active" ? handleArchive : undefined}
+                onArchive={listTab !== "archived" ? handleArchive : undefined}
                 onUnarchive={
                   listTab === "archived" ? handleUnarchive : undefined
                 }
                 onRename={handleRename}
                 onDelete={handleDelete}
-                onFork={listTab === "active" ? handleFork : undefined}
+                onFork={listTab !== "archived" ? handleFork : undefined}
               />
               {listTab === "active" ? (
                 <div className="rail__footer">

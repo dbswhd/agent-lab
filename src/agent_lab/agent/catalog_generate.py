@@ -233,13 +233,39 @@ def write_catalog(catalog: dict[str, Any], path: Path | None = None) -> Path:
     return target
 
 
+def _strip_volatile_fields(catalog: dict[str, Any]) -> None:
+    meta = catalog.get("meta")
+    if isinstance(meta, dict):
+        meta.pop("generated_at", None)
+        meta.pop("codex_discovery", None)
+        meta.pop("sources", None)
+    providers = catalog.get("providers")
+    if not isinstance(providers, dict):
+        return
+    for entry in providers.values():
+        if not isinstance(entry, dict):
+            continue
+        models = entry.get("models")
+        if not isinstance(models, list):
+            continue
+        for row in models:
+            if isinstance(row, dict):
+                row.pop("discovered_at", None)
+
+
 def catalogs_equivalent(left: dict[str, Any], right: dict[str, Any]) -> bool:
-    """Compare catalogs ignoring volatile ``meta`` timestamps and discovery notes."""
+    """Compare catalogs ignoring volatile ``meta``/per-model discovery timestamps.
+
+    ``sources``/``codex_discovery`` record whether *this particular run* did
+    live discovery, not a property of the merged model data — a catalog
+    regenerated with ``discover_codex=False`` from an already-discovery-merged
+    seed has identical models but a shorter ``sources`` list. Likewise each
+    discovered model row's ``discovered_at`` is stamped fresh on every run
+    (see ``fetch_codex_catalog_models``) even when the model itself is
+    unchanged, so it must not affect equivalence either.
+    """
     a = copy.deepcopy(left)
     b = copy.deepcopy(right)
-    for payload in (a, b):
-        meta = payload.get("meta")
-        if isinstance(meta, dict):
-            meta.pop("generated_at", None)
-            meta.pop("codex_discovery", None)
+    _strip_volatile_fields(a)
+    _strip_volatile_fields(b)
     return a == b

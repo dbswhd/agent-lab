@@ -5,10 +5,12 @@ from __future__ import annotations
 import base64
 import json
 import re
+import subprocess
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import urlencode
 
 CODEX_BACKEND_BASE = "https://chatgpt.com/backend-api"
 CODEX_MODEL_PATHS = ("/codex/models", "/models")
@@ -120,6 +122,8 @@ def _normalize_codex_entry(entry: dict[str, Any]) -> dict[str, Any] | None:
     supported = entry.get("supported_in_api")
     if supported is False:
         return None
+    if entry.get("visibility") == "hide":
+        return None
     display = entry.get("display_name")
     display_name = display.strip() if isinstance(display, str) else None
     row: dict[str, Any] = {
@@ -152,12 +156,40 @@ def _parse_codex_models_payload(payload: Any) -> list[dict[str, Any]]:
     return out
 
 
+def resolve_codex_client_version(*, timeout_sec: float = 6.0) -> str | None:
+    """Probe the installed ``codex`` CLI version.
+
+    The ChatGPT backend rejects ``/codex/models`` without a ``client_version``
+    query param (``400 missing 'client_version'``), so discovery must report
+    the same version the room's Codex CLI actually runs.
+    """
+    from agent_lab.codex.cli import _codex_env, resolve_codex_bin
+
+    bin_path = resolve_codex_bin()
+    if not bin_path:
+        return None
+    try:
+        result = subprocess.run(
+            [bin_path, "--version"],
+            capture_output=True,
+            text=True,
+            timeout=timeout_sec,
+            env=_codex_env(),
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    output = (result.stdout or result.stderr or "").strip()
+    match = re.search(r"(\d+\.\d+\.\d+)", output)
+    return match.group(1) if match else None
+
+
 def fetch_codex_catalog_models(
     *,
     access_token: str,
     account_id: str | None = None,
     timeout_sec: float = 20.0,
     base_url: str = CODEX_BACKEND_BASE,
+    client_version: str | None = None,
 ) -> tuple[list[dict[str, Any]], str | None]:
     """Fetch Codex models from ChatGPT backend (GJC-compatible paths)."""
     headers = {
@@ -168,10 +200,12 @@ def fetch_codex_catalog_models(
     }
     if account_id:
         headers["chatgpt-account-id"] = account_id
+    version = client_version or resolve_codex_client_version()
+    query = f"?{urlencode({'client_version': version})}" if version else ""
 
     saw_ok = False
     for path in CODEX_MODEL_PATHS:
-        url = f"{base_url.rstrip('/')}{path}"
+        url = f"{base_url.rstrip('/')}{path}{query}"
         req = urllib.request.Request(url, method="GET", headers=headers)
         try:
             with urllib.request.urlopen(req, timeout=timeout_sec) as resp:

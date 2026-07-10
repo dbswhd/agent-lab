@@ -209,7 +209,7 @@ export function PlanExecutePanel({
         />
       ) : null}
 
-      <EvidenceTimeline entries={evidenceEntries} compact />
+      <EvidenceTimeline entries={evidenceEntries} compact busy={panel.busy} />
 
       {panel.error ? <p className="plan-card__error">{panel.error}</p> : null}
     </div>

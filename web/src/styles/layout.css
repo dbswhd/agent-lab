@@ -7062,9 +7062,55 @@ button.plan-doc__ref--link:hover {
 }
 .work-exec-history > summary {
   cursor: pointer;
+  list-style: none;
+}
+.work-exec-history > summary::-webkit-details-marker {
+  display: none;
+}
+.work-exec-history__toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  border-radius: var(--radius-sm);
+}
+.work-exec-history__toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.work-exec-history__toggle-title {
   font-size: var(--text-footnote);
   font-weight: var(--weight-semibold);
   color: var(--label-secondary);
+}
+.work-exec-history__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  color: var(--label-secondary);
+  font-size: 11px;
+  font-weight: var(--weight-medium);
+}
+.work-exec-history__toggle-hint {
+  font-size: var(--text-caption);
+  color: var(--label-tertiary);
+}
+.work-exec-history__chevron {
+  flex-shrink: 0;
+  margin-left: auto;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-right: 1.5px solid var(--label-tertiary);
+  border-bottom: 1.5px solid var(--label-tertiary);
+  transform: rotate(-45deg);
+  transition: transform 120ms ease;
+}
+.work-exec-history[open] .work-exec-history__chevron {
+  transform: rotate(45deg);
 }
 .work-exec-history__list {
   margin: var(--space-8) 0 0;

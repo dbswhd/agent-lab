@@ -43,9 +43,15 @@ export function PlanExecuteHistoryList({
 
   return (
     <details className="work-exec-history">
-      <summary>
-        실행 기록
-        {historyHiddenCount ? ` · 최근 ${EXECUTION_HISTORY_LIMIT}건` : null}
+      <summary className="work-exec-history__toggle">
+        <span className="work-exec-history__toggle-title">실행 기록</span>
+        <span className="work-exec-history__count">{historyRows.length}</span>
+        {historyHiddenCount ? (
+          <span className="work-exec-history__toggle-hint">
+            최근 {EXECUTION_HISTORY_LIMIT}건
+          </span>
+        ) : null}
+        <span className="work-exec-history__chevron" aria-hidden />
       </summary>
       <ul className="work-exec-history__list">
         {historyVisible.map((row) => {

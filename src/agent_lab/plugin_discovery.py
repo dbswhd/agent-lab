@@ -121,6 +121,46 @@ def scan_skills(*roots: Path) -> list[dict[str, Any]]:
     return rows
 
 
+def _parse_claude_plugins(output: str) -> list[dict[str, Any]]:
+    """Parse ``claude plugin list``.
+
+    Output is one ``❯ name@marketplace`` header line per plugin followed by
+    indented ``Version:``/``Scope:``/``Status:`` metadata lines — those
+    metadata lines are not separate plugins and must not become rows of
+    their own (they previously did, via a naive "every line is a plugin"
+    parse, which produced garbage ids like ``claude:plugin:Status:`` that
+    collided across every installed plugin).
+    """
+    rows: list[dict[str, Any]] = []
+    current: dict[str, Any] | None = None
+    for raw_line in output.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("No plugins") or line.startswith("Installed plugins"):
+            continue
+        if line.startswith("❯"):
+            name = line[1:].strip()
+            current = None
+            if not name:
+                continue
+            current = {
+                "id": f"claude:plugin:{name}",
+                "name": name,
+                "agent": "claude",
+                "kind": "plugin",
+                "description": f"Claude plugin {name}",
+                "status": "installed",
+                "enabled_default": True,
+                "native_add_hint": "claude plugin install …",
+            }
+            rows.append(current)
+            continue
+        if current is not None and line.startswith("Status:"):
+            enabled = "✔" in line or "enabled" in line.lower()
+            current["status"] = "enabled" if enabled else "disabled"
+            current["enabled_default"] = enabled
+    return rows
+
+
 def _parse_claude_mcp(output: str) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for line in output.splitlines():
@@ -383,22 +423,7 @@ def _discover_plugins_uncached(
         plugins.extend(_parse_claude_mcp(out))
     code, out = _run_cli(["claude", "plugin", "list"])
     if code == 0 and "No plugins installed" not in out:
-        for line in out.splitlines():
-            line = line.strip()
-            if not line or line.startswith("No plugins"):
-                continue
-            plugins.append(
-                {
-                    "id": f"claude:plugin:{line.split()[0]}",
-                    "name": line.split()[0],
-                    "agent": "claude",
-                    "kind": "plugin",
-                    "description": line,
-                    "status": "installed",
-                    "enabled_default": True,
-                    "native_add_hint": "claude plugin install …",
-                }
-            )
+        plugins.extend(_parse_claude_plugins(out))
 
     code, out = _run_cli(["codex", "plugin", "list"])
     if code == 0:

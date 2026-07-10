@@ -142,6 +142,19 @@ make dogfood-suite-aggregate LOG=suite-log.json   # live 기록 후
 make dogfood-suite-mock
 make dogfood-suite-mock TIER=S,M ONLY=M4
 
+# progress — suite-log 진행도 + 자동 실행(Room·plan approve·execute·Oracle mock)
+make dogfood-progress                 # status
+make dogfood-progress-auto            # auto-run remaining mock arms → suite-log.json
+make dogfood-progress-auto ONLY=X1,X2 # execute/Oracle path only
+make dogfood-progress-record ID=S1 SESSION=sessions/<id>  # live 수동 기록
+
+# unified track — LIVE-first (P0-5 · F7 · N4 · CATALOG · HS-M5 · N1-30)
+make dogfood-track                    # gate status
+eval "$(make -s dogfood-track-env)" && make dogfood-track-run && make dev
+make dogfood-live-gates-watch SESSION_ID=<id>   # auto Question / build / plan / execute
+make dogfood-track-check              # exit 1 until all gates met
+# optional offline only: make dogfood-track-run-mock
+
 # live — 프롬프트·flags·pass 기준 출력 (Human이 UI에서 실행)
 make dogfood-suite-checklist
 make dogfood-suite-checklist TIER=L
@@ -151,6 +164,7 @@ make dogfood-suite-aggregate LOG=suite-log.json
 ```
 
 Mock에서 `skip:` 토픽은 live 전용 또는 smoke baseline이 커버하는 항목이다.
+**X1/X2**는 `scenario:mission_dogfood` / `scenario:x2_execute_oracle`로 mock 자동화됨 (Human approve는 프로세스 내 명시 호출 — gate 우회 아님).
 
 ### S1.5 explore 비교군
 

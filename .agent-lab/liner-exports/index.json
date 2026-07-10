@@ -1,0 +1,54 @@
+{
+  "projectId": 665131,
+  "projectUrl": "https://scholar.liner.com/ko/projects/665131",
+  "maps": [
+    {
+      "mapId": 4332523,
+      "apiTitle": "Agent-lab 6계층 오케스트레이션 아키텍처 분석 및 7가지 개선 방안",
+      "extractedTitle": "agent-lab 오케스트레이션 분석 및 개선",
+      "nodes": 45,
+      "edges": 44,
+      "files": [
+        "/Users/yoonjong/Projects/agent-lab/.agent-lab/liner-exports/liner-mindmap-4332523.json",
+        "/Users/yoonjong/Projects/agent-lab/.agent-lab/liner-exports/liner-mindmap-4332523.md",
+        "/Users/yoonjong/Projects/agent-lab/.agent-lab/liner-exports/liner-mindmap-4332523.txt"
+      ]
+    },
+    {
+      "mapId": 4332439,
+      "apiTitle": "HSIL 안전 게이트 한계 극복을 위한 재설계 연구 방향",
+      "extractedTitle": "agent-lab HSIL 재설계 연구 방향",
+      "nodes": 23,
+      "edges": 22,
+      "files": [
+        "/Users/yoonjong/Projects/agent-lab/.agent-lab/liner-exports/liner-mindmap-4332439.json",
+        "/Users/yoonjong/Projects/agent-lab/.agent-lab/liner-exports/liner-mindmap-4332439.md",
+        "/Users/yoonjong/Projects/agent-lab/.agent-lab/liner-exports/liner-mindmap-4332439.txt"
+      ]
+    },
+    {
+      "mapId": 4332336,
+      "apiTitle": "agent-lab 기반 오픈소스 슈퍼샘플 및 HSIL 파이프라인 마인드맵",
+      "extractedTitle": "agent-lab 슈퍼샘플 오픈소스 생태계",
+      "nodes": 34,
+      "edges": 33,
+      "files": [
+        "/Users/yoonjong/Projects/agent-lab/.agent-lab/liner-exports/liner-mindmap-4332336.json",
+        "/Users/yoonjong/Projects/agent-lab/.agent-lab/liner-exports/liner-mindmap-4332336.md",
+        "/Users/yoonjong/Projects/agent-lab/.agent-lab/liner-exports/liner-mindmap-4332336.txt"
+      ]
+    },
+    {
+      "mapId": 4332218,
+      "apiTitle": "Agent-Lab: HSIL 파이프라인 기반의 에이전트 하네스 자가 개선 시스템",
+      "extractedTitle": "agent-lab: Structure, Workflow, References",
+      "nodes": 34,
+      "edges": 33,
+      "files": [
+        "/Users/yoonjong/Projects/agent-lab/.agent-lab/liner-exports/liner-mindmap-4332218.json",
+        "/Users/yoonjong/Projects/agent-lab/.agent-lab/liner-exports/liner-mindmap-4332218.md",
+        "/Users/yoonjong/Projects/agent-lab/.agent-lab/liner-exports/liner-mindmap-4332218.txt"
+      ]
+    }
+  ]
+}

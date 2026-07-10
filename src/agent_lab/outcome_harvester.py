@@ -141,10 +141,28 @@ def build_outcome_record(
     from agent_lab.autonomy_ladder import infer_effective_autonomy_level
     from agent_lab.human_inbox import pending_inbox_items
 
-    rollup = metrics.get("oracle_rollup") or {}
+    rollup_raw = metrics.get("oracle_rollup")
+    rollup = rollup_raw if isinstance(rollup_raw, dict) else {}
     run = run_meta or {}
+    contract_raw = run.get("turn_contract")
+    contract = contract_raw if isinstance(contract_raw, dict) else {}
     level = infer_effective_autonomy_level(run)
     inbox_hit = bool(metrics.get("escalated")) or bool(pending_inbox_items(run))
+    verdict = rollup.get("final_verdict")
+    from agent_lab.room.turn_contract import derive_route_regrets
+
+    contract_id = str(contract.get("contract_id") or "")
+    regrets = derive_route_regrets(
+        contract_id,
+        escalated=bool(metrics.get("escalated")),
+        final_verdict=str(verdict) if verdict else None,
+        repair_attempts=int(rollup.get("repair_attempts") or 0),
+        rounds_used=int(metrics.get("rounds_used") or 0),
+        execution_present=bool(run.get("executions")),
+        clarify_no_delta=bool(metrics.get("clarify_no_delta") or run.get("clarify_no_delta")),
+        fsm_no_action=bool(metrics.get("fsm_no_action") or run.get("fsm_no_action")),
+        subset_escalated=bool(metrics.get("subset_escalated") or run.get("subset_escalated")),
+    )
     return {
         "v": OUTCOME_LEDGER_SCHEMA_VERSION,
         "ts": _now_iso(),
@@ -176,6 +194,13 @@ def build_outcome_record(
         # HS1-1 — failure taxonomy tags (see turn_metrics._derive_failure_tags)
         "failure_tags": list(metrics.get("failure_tags") or []),
         "primary_tag": metrics.get("primary_tag"),
+        "contract_id": contract_id,
+        "contract_source": str(contract.get("source") or ""),
+        "safety_floor": str(contract.get("safety_floor") or ""),
+        "task_kind": str(contract.get("task_kind") or ""),
+        "risk": str(contract.get("risk") or ""),
+        "execute_intent": bool(contract.get("execute_intent")),
+        "route_regret_signals": list(regrets),
     }
 
 
@@ -286,6 +311,22 @@ def _build_execute_outcome_record(
     advisor = advisor or _advisor_fields_for_execute(run, last_turn)
     topic = _topic_text(folder, run)
     verdict = _execution_verdict(execution)
+    contract_raw = run.get("turn_contract")
+    contract = contract_raw if isinstance(contract_raw, dict) else {}
+    from agent_lab.room.turn_contract import derive_route_regrets
+
+    contract_id = str(contract.get("contract_id") or "")
+    regrets = derive_route_regrets(
+        contract_id,
+        escalated=bool(category.get("escalated_from")),
+        final_verdict=verdict or None,
+        repair_attempts=len(execution.get("repair_history") or []),
+        rounds_used=int(last_turn.get("agent_parallel_rounds") or 0),
+        execution_present=True,
+        clarify_no_delta=bool(run.get("clarify_no_delta")),
+        fsm_no_action=bool(run.get("fsm_no_action")),
+        subset_escalated=bool(run.get("subset_escalated")),
+    )
     # HS1-1 — execute rows are where Oracle-derived tags actually land:
     # verdicts arrive after the plan turn closed, so the turn row rarely sees
     # them (2026-07 ledger audit: 195/197 turn rows had final_verdict null).
@@ -316,6 +357,13 @@ def _build_execute_outcome_record(
         "tool_card_suggestions": list(advisor.get("tool_card_suggestions") or []),
         "failure_tags": failure_tags,
         "primary_tag": failure_tags[0] if failure_tags else None,
+        "contract_id": contract_id,
+        "contract_source": str(contract.get("source") or ""),
+        "safety_floor": str(contract.get("safety_floor") or ""),
+        "task_kind": str(contract.get("task_kind") or ""),
+        "risk": str(contract.get("risk") or ""),
+        "execute_intent": bool(contract.get("execute_intent")),
+        "route_regret_signals": list(regrets),
     }
     from agent_lab.autonomy_ladder import infer_effective_autonomy_level
     from agent_lab.human_inbox import pending_inbox_items

@@ -192,3 +192,43 @@ def test_orchestrate_pipeline_advances_draft_when_turn_policy_on_and_synthesize_
     assert pw["phase"] == "HUMAN_PENDING"
     assert tick.get("pending_approval") is True
     assert result_plan_md.strip() == plan_md.strip()
+
+
+def test_post_agent_turn_plan_threads_active_agents_into_routing_contract_roster_size(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Regression: a live F7 dogfood session found the persisted turn_policy.routing_contract
+    misclassified a 2-agent turn as fast_turn/roster_size=0. ``_post_agent_turn_plan``
+    (the last writer that actually persists to run.json) built TurnSignals without
+    passing roster_size, even though ``active_agents`` was right there as a parameter —
+    the classmethod's ``run_meta["agents"]`` fallback found nothing at this point in the
+    pipeline, so is_fast_turn's roster_size>1 guard never fired and the trace/eval-facing
+    routing_contract snapshot was corrupted (actual turn behavior was unaffected, since
+    role assignment reads the signal earlier, before this stamp)."""
+    from agent_lab.room.turn_flow_plan import _post_agent_turn_plan
+
+    monkeypatch.setenv("AGENT_LAB_TURN_POLICY", "1")
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    (folder / "run.json").write_text("{}", encoding="utf-8")
+    run_meta = read_run_meta(folder)
+
+    _plan_md, _scribe_applied, result_run_meta, _trigger = _post_agent_turn_plan(
+        folder,
+        topic="architecture standard 토픽 — roster 신호 확인용",
+        messages=[],
+        run_meta=run_meta,
+        plan_before="",
+        mode="discuss",
+        synthesize=False,
+        cancelled=False,
+        active_agents=["claude", "codex"],
+        permissions=None,
+        on_event=None,
+        consensus_meta=None,
+        human_turn_num=1,
+    )
+
+    routing_contract = (result_run_meta.get("turn_policy") or {}).get("routing_contract") or {}
+    assert routing_contract.get("roster_size") == 2

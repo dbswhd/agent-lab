@@ -1,6 +1,6 @@
 # NOW — 지금 무엇을 해야 하는가 (종합 상태 표면)
 
-> **작성:** 2026-07-08 · **갱신:** 2026-07-08 (코드 트랙 우선 결정) · **역할:** 핵심 5문서를 종합해 "오늘/이번 주/다음/동결"을 **한 곳**에서 판정한다.
+> **작성:** 2026-07-08 · **갱신:** 2026-07-09 (dogfood 보류 해제) · **역할:** 핵심 5문서를 종합해 "오늘/이번 주/다음/동결"을 **한 곳**에서 판정한다.
 > **이 문서가 아닌 것:** 방향·설계·참조의 SSOT가 아니다 — 그건 아래 4문서. 이 문서는 **상태 포인터**만 갖는다.
 > **ID 규칙:** 새 ID를 만들지 않는다. 소스 문서의 ID(P0-4, F7, N4, HS0 …)를 그대로 쓰고 출처를 병기한다.
 > **진실 순서:** 코드 > 이 문서 > 개별 문서의 상태 표기. 여기 상태는 커밋/명령 출력으로 검증된 것만 적는다.
@@ -23,18 +23,18 @@
 
 ## 1. 실행 큐 (정렬 = 실행 순서)
 
-> **Human 결정 (2026-07-08):** dogfood를 제대로 돌릴 만큼 개발이 성숙하지 않았다고 판단 — **지금 할 수 있는 코드 작업을 우선**한다. dogfood/운영 트랙(구 큐 1~3)은 §「보류 — dogfood 재개 시」로 이동. 재개 시점도 Human이 결정.
+> **Human 결정 (2026-07-08):** dogfood를 제대로 돌릴 만큼 개발이 성숙하지 않았다고 판단 — **지금 할 수 있는 코드 작업을 우선**한다. dogfood/운영 트랙(구 큐 1~3)은 §「보류 — dogfood 재개 시」로 이동.
+> **Human 결정 (2026-07-09):** 코드 트랙 큐 소진 확인(아래) 후 **보류 해제 — dogfood 재개**. F7 7일 시계 재시작(`make dogfood-track-f7-start` → start_date=2026-07-09, 마감 2026-07-16 — 경과한 07-12 시한은 이 재시작으로 대체). 아래 §「지금 — 라이브 dogfood 트랙」이 신규 실행 큐.
 
-### 지금 — 코드 트랙 (전부 mock-only 검증 가능, dogfood 불필요)
+### 완료 — 코드 트랙 (07-08~07-09, dogfood 보류 기간)
 
 HS0~HS5 전부(HS5-1~7·B1-B4 포함) ✅ 07-08~07-09 shipped (Impl **Tier B**, Human 명시 확인 후 착수).
 커밋 `6325c845`(merge_gate.py 코어) + HS5-3 후속 커밋(Tier A + L2 경량 승인 —
 `autonomy_promotion.harness_patch_light_approval_eligible`, 오토노미 레벨 L2+일 때만 Tier A
 `used_light_approval` 허용, Tier B는 여전히 full Inbox만).
 
-HS6/HS7은 design doc상 "동결 until HS-M5"(HS6) / "동결 until HS6 평가"(HS7) — HS-M5 게이트가 실제
-Human 승인 1건(라이브 세션, mock 아님)을 요구하므로 **dogfood 보류 결정과 충돌**한다. 착수는 별도
-Human 확인 후.
+HS6/HS7은 design doc상 "동결 until HS-M5"(HS6) / "동결 until HS6 평가"(HS7) — HS-M5 게이트(§1 표,
+실제 Human 승인 1건·라이브 세션·mock 아님)가 닫히기 전까지 그대로 대기. 착수는 별도 Human 확인 후.
 
 **2026-07-09 착수 검토 결과 (기각):** `.agent-lab/outcomes.jsonl` 실사용 236건 전수 확인 —
 `primary_tag` 태깅 행 **0건**. **후속 코드 리뷰(같은 날)로 원인 정정:** ① 236행 중 235행이 HS1-1
@@ -51,14 +51,26 @@ dogfood 시나리오). 둘 다 mock-only, dogfood 무관.
 
 **큐 비어 있음** (2026-07-09) — 문서 정비 백로그(§4)는 2026-07-08자로 이미 표 소진 완료, HS0~HS5(+HS5-3, HS0-4, HS4-2)도 전부 shipped. HS6은 위 검토대로 보류. 다음 코드 트랙 항목은 §1 재검토 트리거(HS-M5 addressable 패턴, 또는 새 Human 지시) 발생 시 여기 추가.
 
-### 보류 — dogfood 재개 시 (구 「지금」 큐 — 닫힘 기준 불변)
+**2026-07-09 dogfood 재개 인프라:** `scripts/dogfood_progress.py` + `make dogfood-progress` / `dogfood-progress-auto` — suite-log 진행도 + X1(mission)·X2(plan→execute→Oracle) mock 자동. Human gate는 우회하지 않음(approve 명시 호출).
 
-| 항목 | 소스 ID | 비고 |
-|------|---------|------|
-| **F7 ON/OFF 결정** — ⏰ ~~2026-07-12~~ | NORTH-STAR **F7** | **시한 충돌**: dogfood 보류로 07-12 결정 불가. 「방치 금지」 조항과 충돌하므로 **기본값 유지 or 시한 연장을 Human이 명시 결정해야 함** — 이 행이 닫히기 전까지 F7 플래그는 현 기본값 고정 |
-| S1 lift + explore dogfood | WORKFLOW **P0-5** · NORTH-STAR **N1** | `by_source.history.n` ≥ 3 · explore > 0 (live) — 기준 불변 |
-| N4 D3 증거 누적 | NORTH-STAR **§1.4.1** | dogfood 편승 항목 — 단독 재개 없음 |
-| Composer preset 제거 | WORKFLOW §8.2 **P2** | S1~S3 eval green 선행 = dogfood 의존 |
+**2026-07-09 통합 트랙 (live-first):** `scripts/dogfood_track.py` + `make dogfood-track-run` — NOW 보류 큐(P0-5 · F7 · N4-D3 · CATALOG · HS-M5 · N1-30)를 **live supervisor**로 채운다. mock은 `dogfood-track-run-mock` 선택만.
+
+### 지금 — 라이브 dogfood 트랙 (`scripts/dogfood_track.py`, `make dogfood-track` 재확인)
+
+2026-07-09 기준 1/6 닫힘:
+
+| 게이트 | 소스 ID | 상태 | 다음 |
+|--------|---------|------|------|
+| **P0-5** S1 lift + explore | WORKFLOW **P0-5** · NORTH-STAR **N1** | ✅ 닫힘 (live ledger `by_source.history.n=3`) | — |
+| **F7** repo_map/compaction ON/OFF | NORTH-STAR **F7** | 열림 — 시계 재시작(마감 2026-07-16) | 7일 사용 → `make f7-dogfood-report` → `make dogfood-track-f7-decision DECISION=ON\|OFF` |
+| **N4-D3** escalation_rate_by_level n≥10/level | NORTH-STAR **§1.4.1** | 열림 | supervisor dogfood로 L0~L3 전개 → `make feedback-report JSON=1` |
+| **CATALOG** dogfood-v1 suite coverage | — | 열림 | `make dogfood-suite-checklist` · live Room · `make dogfood-progress-record ID=… SESSION=…` |
+| **HS-M5** addressable + Human harness_patch merge 1건 | — | 열림 | `python scripts/propose_harness.py --mode list` → propose → Inbox approve → `make dogfood-track-hs-m5-merge` |
+| **N1-30** dogfood-first 만료 검토 (history.n≥30) | — | 열림 (현재 3) | 계속 supervisor dogfood |
+
+시작: `eval "$(make -s dogfood-track-env)" && make dev`(또는 `make api`) → 라이브 세션 진행 → 중간 gate는 `make dogfood-live-gates-watch SESSION_ID=<id>`(수집 아님, Question/MCP/execute 자동 처리). 세션 후 수집은 `feedback-report` / `dogfood-progress-record` / `dogfood-track` 별도 실행.
+
+Composer preset 제거(WORKFLOW §8.2 **P2**)는 S1~S3 eval green 선행 — 위 게이트와 별개로 계속 대기.
 
 ### 분기 리뷰 묶음 (한 세션에서 일괄 — NORTH-STAR §3.3 분기 행)
 
@@ -87,10 +99,17 @@ N5 전역 bandit · N7/S3 구현(설계만 ✅) · HS6/HS7 · HSIL Tier D 전체
 ```bash
 make test-fast && python scripts/smoke_room.py   # 회귀 (코드 트랙 큐 1~4 — 매 변경)
 make ci                       # HS0 닫힘 기준 (큐 1)
-make feedback-report JSON=1   # harness_attribution 확인 (큐 1) · S1 lift는 보류 트랙
+make feedback-report JSON=1   # harness_attribution 확인 (큐 1) · S1 lift(P0-5)는 닫힘, N4-D3/N1-30 진행용
 python scripts/propose_harness.py --mode list   # HS-M5 재검토 트리거 (§1 HS6 기각 사유) — addressable 뜨면 재논의
 make eval-surface-local       # T0/T1 supersample (evals/results/latest.json)
-make f7-dogfood-report        # 보류 — F7 재개 시
+make f7-dogfood-report        # F7 7일 시계(마감 2026-07-16) 경과 후
+make dogfood-progress         # suite-log 진행도
+make dogfood-progress-auto ONLY=X1,X2   # mission + execute→Oracle mock
+make dogfood-track            # 게이트 현황 (live ledger)
+make dogfood-track-run        # live bootstrap: F7 start + env + next actions
+make dogfood-track-env        # live supervisor exports (S1+F7+explore)
+make dogfood-live-gates-watch SESSION_ID=<id>  # mid-turn Question/MCP/execute
+# optional offline: make dogfood-track-run-mock
 ```
 
 ---

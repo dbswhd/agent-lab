@@ -64,6 +64,35 @@ def test_record_execute_outcome_writes_verdict_row(tmp_path, monkeypatch) -> Non
     assert row["agents"] == ["cursor", "codex", "claude"]
 
 
+def test_record_execute_outcome_persists_contract_and_regret(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("AGENT_LAB_OUTCOME_LEDGER", "1")
+    monkeypatch.setenv("AGENT_LAB_OUTCOMES_ROOT", str(tmp_path / "root"))
+
+    folder = tmp_path / "sess-contract"
+    _write_run(folder)
+    run = json.loads((folder / "run.json").read_text(encoding="utf-8"))
+    run["turn_contract"] = {
+        "contract_id": "quick_read",
+        "source": "shadow",
+        "safety_floor": "quick_read",
+    }
+    (folder / "run.json").write_text(json.dumps(run), encoding="utf-8")
+
+    record_execute_outcome(
+        folder,
+        {
+            "id": "exec-contract",
+            "oracle": {"verdict": "fail"},
+            "repair_history": [{"attempt": 1}],
+        },
+    )
+
+    row = json.loads(outcomes_path().read_text(encoding="utf-8").splitlines()[0])
+    assert row["contract_id"] == "quick_read"
+    assert row["contract_source"] == "shadow"
+    assert row["route_regret_signals"] == ["under_routed"]
+
+
 def test_record_execute_outcome_tags_harness_infra_on_skipped_verdict(tmp_path, monkeypatch) -> None:
     """HS1-1: execute rows independently derive harness_infra from Oracle "skipped"
     (missing 검증: criterion) — same signal eval_harness.score_outcome_verdict uses."""

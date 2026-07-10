@@ -624,6 +624,12 @@ FLAG_REGISTRY: tuple[FlagDef, ...] = (
         default="0",
     ),
     FlagDef(
+        "AGENT_LAB_TURN_CONTRACT_MODE",
+        "feature",
+        "TurnContract rollout: off | shadow | roles | adaptive (default shadow)",
+        default="shadow",
+    ),
+    FlagDef(
         "AGENT_LAB_OUTCOMES_ROOT",
         "feature",
         "S1.5: override project root for .agent-lab/outcomes.jsonl (used by dogfood accumulation to isolate the ledger; unset = project root)",

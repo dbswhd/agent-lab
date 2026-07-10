@@ -1,0 +1,420 @@
+agent-lab 오케스트레이션 분석 및 개선
+
+agent-lab의 6계층 레이어드 오케스트레이션 스택에서 식별된 7가지 구조적 한계를 분석하고, 7개 슈퍼샘플 대조를 통해 7가지 개선 방안을 도출한다.
+
+더 알아보기
+
+1 현재 오케스트레이션 아키텍처
+
+agent-lab은 단일 Harness.run()이 아닌 6계층 레이어드 스택(Room→Runtime→Plan/Execute→Mission→Session→API)으로 구성되며, 각 계층은 FSM과 SSE로 조율된다 
+api.liner.com
+.
+
+더 알아보기
+
+1.1 Room (discuss)
+
+멀티에이전트 턴·합의·scribe를 관장하는 상위 오케스트레이션 계층이다 
+api.liner.com
+. LLM 판단 기반 합의에 의존하여 False Consensus 취약성이 존재한다.
+
+더 알아보기
+
+1.2 Runtime (이벤트 라우터)
+
+discuss/execute/mission 세 모드를 단일 runtime.dispatch로 처리하는 모놀리식 이벤트 라우터이다 
+api.liner.com
+. 평가와 진단이 결합되어 evaluator-inside-loop 구조를 형성한다.
+
+더 알아보기
+
+1.3 Plan/Execute
+
+plan.md → worktree → merge → Oracle 흐름으로, 검증은 Oracle이 수행하나 하위 에이전트 추적은 상위 관측 공간에 노출되지 않는다 
+api.liner.com
+.
+
+더 알아보기
+
+1.4 Mission Loop
+
+Discuss↔Execute FSM 전환을 관장하며, 자연적 단계 전환점에서 비동기 Human 이슈를 소비하는 메커니즘이 부재한다 
+api.liner.com
+.
+
+더 알아보기
+
+1.5 TurnPolicyEngine
+
+사전 정의된 역할 셋에 기반한 정적 라우팅을 수행한다 
+api.liner.com
+. 교차 세션 지속 학습과 RL 기반 정책 최적화가 결여되어 있다.
+
+더 알아보기
+
+1.6 feedback_advisor
+
+outcome ledger에서 SetupHint를 반환하는 S1 RECORD/RECALL 컴포넌트로, 평가·진단을 겸수하여 evaluator-inside-loop 구조를 형성한다 
+api.liner.com
+. rule_sync는 단방향이며 하네스→SSOT 역류가 불가하다 
+api.liner.com
+.
+
+더 알아보기
+
+2 식별된 7가지 구조적 한계
+
+현재 아키텍처에서 학술 근거로 확인된 근본적 한계점들이다.
+
+더 알아보기
+
+2.1 이벤트 라우팅 모놀리식 결합
+
+feedback_advisor가 평가·진단을 겸하는 evaluator-inside-evolution-loop 구조로서 리워드 해킹의 구조적 전제 조건이다. agent-lab 스스로 Tier D에서 이를 보류 사유로 명시했다 
+api.liner.com
+. Harness Evolution Loop는 Worker·Evaluator·Evolution 3분리로 이를 해결한다 
+arxiv.org
+.
+
+더 알아보기
+
+2.2 정적 TurnPolicy
+
+사전 정의된 역할 셋에 기반한 정적 라우팅으로, 교차 세션 지속성과 RL 기반 정책 최적화가 결여되어 있다. s2_role_bandit은 세션 국소적 ε-greedy에 불과하다 
+api.liner.com
+. Evolving Orchestration은 REINFORCE 기반 다목적 보상으로 실시간 학습한다 
+ArXiv.org
+.
+
+더 알아보기
+
+2.3 False Consensus 취약성
+
+Room의 LLM 판단 기반 합의는 CAAF가 실증한 Stochastic Oscillation과 False Consensus에 취약하다 
+arxiv.org
+. LLM 기반 평가는 80회 시험에서 0% 역설 탐지율을 기록했다 
+arxiv.org
+.
+
+더 알아보기
+
+2.4 관측 단절
+
+하위 에이전트(DELEGATE/DISPATCH, Oracle) 실행 추적이 상위 관측 공간에 노출되지 않는다 
+api.liner.com
+. Evolution Agent는 전체 진화 이력을 읽어 실패 전략 반복을 방지하지만 
+arxiv.org
+, agent-lab은 HS1-3 traces 구현이 미완이다 
+api.liner.com
+.
+
+더 알아보기
+
+2.5 피드백 단방향성
+
+rule_sync는 SSOT→하네스별 export 단방향으로, 하네스 성능이 오케스트레이션 정책으로 역류하지 않는다 
+api.liner.com
+. Meta-Evolution Loop는 내부 루프 수렴 궤적이 외부 루프 최적화 신호로 사용되는 양방향 구조이다 
+arxiv.org
+.
+
+더 알아보기
+
+2.6 비동기 Human Oversight 부재
+
+Human Inbox 게이트는 동기적 승인/거부만 지원한다 
+api.liner.com
+. TheBotCompany는 이슈 파일링→매니저 에이전트 자연적 단계 전환점 소매의 비동기 패턴을 제안한다 
+ArXiv.org
+.
+
+더 알아보기
+
+2.7 Manager Agent 역할 미포착
+
+TurnPolicyEngine은 정적 라우팅 룰에 기반하며, 작업 분해·세분화·의존성 관리의 프로액티브 오케스트레이션 능력이 설계에 반영되지 않았다 
+doi.org
+. GPT-5의 'proactive orchestrator' 패턴(decompose→refine→assign)과 대비된다.
+
+더 알아보기
+
+3 슈퍼샘플 대조 분석
+
+동적 적응·평가 분리·비동기 Human·메타 루프 4차원에서 agent-lab과 7개 슈퍼샘플을 비교한다.
+
+더 알아보기
+
+3.1 Harness Evolution Loop
+
+Worker/Evaluator/Evolution 3-에이전트 엄격 분리, adversarial evaluator, Meta-Evolution Loop(2-level)가 특징이다 
+arxiv.org
+. agent-lab의 evaluator-inside-loop 문제를 구조적으로 해결하는 참조 모델이다.
+
+더 알아보기
+
+3.2 CAAF
+
+RAD/Executor/UAI(Reviewer) 3분리, 결정론적 UAI 기반 검증, 스칼라 구배 수렴 보장이 특징이다 
+arxiv.org
+. LLM 평가 0% 역설 탐지율 문제를 결정론적 assertion으로 우회한다.
+
+더 알아보기
+
+3.3 Mimosa
+
+5-layer(planning→tool→meta-orch→exec→judge) 구조로, 메타 오케스트레이션 반복 정제가 특징이다 
+arXiv (Cornell University)
+. 모델별 오케스트레이션 민감도가 상이하여 동일 전략이 증폭 또는 방해될 수 있다 
+arXiv (Cornell University)
+.
+
+더 알아보기
+
+3.4 Evolving Orchestration
+
+중앙 Puppeteer + REINFORCE 기반 RL 정책으로, 해결 품질·연산 비용 다목적 보상을 사용한다 
+ArXiv.org
+. 교차 세션 궤적 데이터로 에이전트 선택 정책을 학습한다.
+
+더 알아보기
+
+3.5 TheBotCompany
+
+Strategy/Execution/Verification 3-매니저 분리, 자가조직 팀(hire/retire), 비동기 Human 이슈 파일링이 특징이다 
+ArXiv.org
+. 블로킹 없이 방향 조정하는 비동기 Human oversight 채널을 제공한다.
+
+더 알아보기
+
+3.6 W4S Harnessing
+
+약한 메타에이전트가 강한 실행기의 성능 피드백으로 워크플로우를 반복 개선하는 MDP+RLAO 프레임워크이다 
+ArXiv.org
+. 양방향 피드백 루프의 참조 모델이다.
+
+더 알아보기
+
+3.7 RWL (Ralph Wiggum Loop)
+
+Design Agent + 수치 evaluator/validator 분리, 메타인지 Co-Regulation이 특징이다 
+ArXiv.org
+. 자기 평가 + 외부 검증의 이중 구조로 수렴을 보장한다.
+
+더 알아보기
+
+4 개선 방안 7가지
+
+슈퍼샘플 대조에서 도출한 7가지 구조적 개선 방안이다.
+
+더 알아보기
+
+4.1 3-에이전트 엄격 분리
+
+feedback_advisor에서 평가·진단을 독립 Evaluator 에이전트로 분리하여 evaluator-outside-loop를 보장한다 
+arxiv.org
+. Evaluator는 adversarial reviewer로서 상태 검증·기준 점검·성능 감사·점수 산출을 수행한다.
+
+더 알아보기
+
+4.2 RL 기반 동적 TurnPolicy
+
+정적 turn_routing을 Puppeteer 모델(REINFORCE, 다목적 보상)로 교체한다 
+ArXiv.org
+. 세션 국소적 ε-greedy를 교차 세션 지속 정책으로 격상하고, 모델 타입을 정책 상태에 포함한다 
+arXiv (Cornell University)
+.
+
+더 알아보기
+
+4.3 결정론적 UAI 도입
+
+Room 합의 검증에 CAAF의 Unambiguous Assertion Engine을 도입한다 
+arxiv.org
+. 의미적 구배를 기계적으로 UAI 결과에 매핑하여 LLM 평가 0% 역설 탐지 문제를 우회한다.
+
+더 알아보기
+
+4.4 하위 에이전트 추적 노출
+
+HS1-3 traces를 즉시 구현하고, Evolution Agent처럼 전체 진화 이력을 상위 관측 공간에 노출한다 
+arxiv.org
+api.liner.com
+. Forage V2의 append-only 버전 관리 원칙으로 추적 불변성을 보장한다 
+arxiv.org
+.
+
+더 알아보기
+
+4.5 양방향 피드백 + 메타 진화
+
+rule_sync 단방향성을 Meta-Evolution Loop 패턴으로 교체한다 
+arxiv.org
+. 내부 HSIL 수렴 궤적이 외부 메타-진화 에이전트의 최적화 신호로 사용되며, W4S처럼 약한 메타에이전트가 강한 실행기 피드백으로 워크플로우를 개선한다 
+ArXiv.org
+.
+
+더 알아보기
+
+4.6 비동기 Human Oversight
+
+TheBotCompany의 비동기 이슈 파일링 패턴을 Human Inbox에 통합한다 
+ArXiv.org
+. 사람이 이슈를 등록하면 매니저 에이전트가 자연적 단계 전환점에서 소비하는 블로킹 없는 방향 조정 채널이다.
+
+더 알아보기
+
+4.7 Manager Agent 도입
+
+TurnPolicyEngine을 compositional reasoning 능력을 갖춘 Manager Agent로 격상한다 
+doi.org
+. decompose→refine→assign 체인, 다목적 최적화, 임시 팀 조율, 설계에 의한 거버넌스를 지원한다.
+
+더 알아보기
+
+The Last Harness You'll Ever Build
+
+Haebin Seong, Li Yin, Haoran Zhang, Zhan Shi
+
+arxiv.org
+
+2026. 04. 22.
+
+관련 논문 찾기
+
+Multi-Agent Collaboration via Evolving Orchestration
+
+Yufan Dang, Qian Chen, X. L. Luo, Jin-Hu Fan, Zihao Xie, R. S. Shi, Weize Chen, Cheng Yang, Xiaoyin Che, Ye Tian, Xuantang Xiong, Lei Han, Zhiyuan Liu, Maosong Sun
+
+ArXiv.org
+
+2025. 05. 26.
+
+인용 38
+
+관련 논문 찾기
+
+Harness as an Asset: Enforcing Determinism via the Convergent AI Agent Framework (CAAF)
+
+Tianbao Zhang
+
+arxiv.org
+
+2026. 04. 18.
+
+관련 논문 찾기
+
+The Last Harness You'll Ever Build
+
+Haebin Seong, Li Yin, Haoran Zhang, Zhan Shi
+
+arxiv.org
+
+2026. 04. 22.
+
+관련 논문 찾기
+
+Self-Organizing Multi-Agent Systems for Continuous Software Development
+
+Wenhan Lyu, Yue Xiao, Yixuan Zhang, Yifan Sun
+
+ArXiv.org
+
+2026. 03. 26.
+
+관련 논문 찾기
+
+Orchestrating Human-AI Teams: The Manager Agent as aUnifying Research Challenge
+
+Charlie Masters, Advaith Vellanki, Jianhua Shangguan, Bart Kultys, Jonathan Gilmore, Alastair Moore, Stefano Albrecht
+
+doi.org
+
+2025. 10. 02.
+
+인용 4
+
+관련 논문 찾기
+
+The Last Harness You'll Ever Build
+
+Haebin Seong, Li Yin, Haoran Zhang, Zhan Shi
+
+arxiv.org
+
+2026. 04. 22.
+
+관련 논문 찾기
+
+Multi-Agent Collaboration via Evolving Orchestration
+
+Yufan Dang, Qian Chen, X. L. Luo, Jin-Hu Fan, Zihao Xie, R. S. Shi, Weize Chen, Cheng Yang, Xiaoyin Che, Ye Tian, Xuantang Xiong, Lei Han, Zhiyuan Liu, Maosong Sun
+
+ArXiv.org
+
+2025. 05. 26.
+
+인용 38
+
+관련 논문 찾기
+
+Harness as an Asset: Enforcing Determinism via the Convergent AI Agent Framework (CAAF)
+
+Tianbao Zhang
+
+arxiv.org
+
+2026. 04. 18.
+
+관련 논문 찾기
+
+DESIGN-HARNESS-SELF-IMPROVE.md
+
+관련 논문 찾기
+
+Weak-for-Strong: Training Weak Meta-Agent to Harness Strong Executors
+
+Fan Nie, Lan Feng, Haotian Ye, Weixin Liang, Pan Lu, Huaxiu Yao, Alexandre Alahi, James Zou
+
+ArXiv.org
+
+2025. 04. 07.
+
+인용 9
+
+관련 논문 찾기
+
+Self-Organizing Multi-Agent Systems for Continuous Software Development
+
+Wenhan Lyu, Yue Xiao, Yixuan Zhang, Yifan Sun
+
+ArXiv.org
+
+2026. 03. 26.
+
+관련 논문 찾기
+
+Orchestrating Human-AI Teams: The Manager Agent as aUnifying Research Challenge
+
+Charlie Masters, Advaith Vellanki, Jianhua Shangguan, Bart Kultys, Jonathan Gilmore, Alastair Moore, Stefano Albrecht
+
+doi.org
+
+2025. 10. 02.
+
+인용 4
+
+관련 논문 찾기
+
+Cmd
+0
+
+화면에 맞춤
+
+Tab
+
+하위 노드 추가
+
+⌘
+Enter
+
+같은 단계 노드 추가

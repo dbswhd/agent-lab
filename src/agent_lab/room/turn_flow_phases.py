@@ -51,6 +51,7 @@ from agent_lab.room.turn_meta import (
 class TurnRoutingResult:
     run_meta: RunState
     plan_md: str
+    active_agents: list[AgentId]
     mode: str
     review_advocate: str | None
     consensus_mode: bool
@@ -105,6 +106,7 @@ def prepare_turn_routing_phase(
         stamp_active_skill_intent,
         turn_policy_enabled,
     )
+    from agent_lab.room.turn_contract import turn_contract_mode
     from agent_lab.room.team_orchestration import resolve_turn_lead
     from agent_lab.session.clarifier import sync_clarifier_answers_from_inbox
 
@@ -151,6 +153,7 @@ def prepare_turn_routing_phase(
         consensus_mode=consensus_mode,
         folder=folder,
     )
+    contract_controls: tuple[int, int, bool] | None = None
 
     _set_active_turn_flags(
         run_meta,
@@ -169,6 +172,17 @@ def prepare_turn_routing_phase(
             )
             plan_md, run_meta = _session_context(folder)
             _bind_session_to_run_meta(run_meta, folder)
+            contract_mode = turn_contract_mode()
+            contract_snapshot = run_meta.get("turn_contract")
+            contract_source = str(contract_snapshot.get("source") or "") if isinstance(contract_snapshot, dict) else ""
+            contract_id = str(contract_snapshot.get("contract_id") or "") if isinstance(contract_snapshot, dict) else ""
+            apply_contract = contract_mode == "roles" or (
+                contract_mode == "adaptive" and contract_source in {"history", "explore"}
+            )
+            if apply_contract and contract_id:
+                from agent_lab.room.turn_contract import contract_runtime_controls
+
+                contract_controls = contract_runtime_controls(contract_id)
         elif should_enable_plan_workflow(synthesize=synthesize):
             init_plan_workflow_on_plan_send(folder)
             plan_md, run_meta = _session_context(folder)
@@ -185,6 +199,11 @@ def prepare_turn_routing_phase(
         parallel_rounds=parallel_rounds,
         research_mode=research_mode,
     )
+    if contract_controls is not None:
+        agent_limit, contract_rounds, contract_consensus = contract_controls
+        active_agents = active_agents[:agent_limit]
+        parallel_rounds = contract_rounds
+        consensus_mode = contract_consensus
 
     if folder is not None:
         sync_clarifier_answers_from_inbox(folder)
@@ -209,6 +228,7 @@ def prepare_turn_routing_phase(
     return TurnRoutingResult(
         run_meta=run_meta,
         plan_md=plan_md,
+        active_agents=active_agents,
         mode=mode,
         review_advocate=review_advocate,
         consensus_mode=consensus_mode,
@@ -379,6 +399,7 @@ def compose_turn_meta(
         category=run_meta.get("_turn_category"),
         roles=run_meta.get("_turn_roles") or None,
         turn_policy=run_meta.get("turn_policy") if isinstance(run_meta.get("turn_policy"), dict) else None,
+        turn_contract=run_meta.get("turn_contract") if isinstance(run_meta.get("turn_contract"), dict) else None,
         turn_kind=str(run_meta.get("turn_kind") or "") or None,
     )
 

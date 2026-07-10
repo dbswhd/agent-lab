@@ -56,6 +56,7 @@ def _post_agent_turn_plan(
                 consensus_meta=consensus_meta,
                 cancelled=cancelled,
                 proposed_tags_count=count_proposed_tags_in_turn(messages),
+                roster_size=len([a for a in active_agents if str(a).strip()]),
             ),
             folder=folder,
             topic=topic,

@@ -243,9 +243,10 @@
       "worktree isolation 사용 + merge 1회 성공",
       "Oracle verify PASS (증거 포함)"
     ],
-    "live_only": true,
+    "live_only": false,
     "repeat": 1,
-    "mock": "skip:make mission-dogfood-run이 mock 미션 golden path 커버"
+    "mock": "scenario:mission_dogfood",
+    "notes": "mock arm = mission_dogfood_run (approve_verified_loop explicit). Live still valid via make mission-dogfood-run."
   },
   {
     "id": "X2",
@@ -260,9 +261,10 @@
       "execute_retry_rate == 0 (first-try)",
       "Oracle verdict pass + evidence 인용"
     ],
-    "live_only": true,
+    "live_only": false,
     "repeat": 1,
-    "mock": "skip:execute_verify_loop smoke baseline이 mock 경로 고정"
+    "mock": "scenario:x2_execute_oracle",
+    "notes": "mock arm = x2_lift_dogfood_run (approve_plan + resolve_execution). Live: make x2-lift-dogfood-live-repeat."
   },
   {
     "id": "X3",
@@ -278,9 +280,10 @@
       "learnings.md에 실패 원인·다음 시도 기록 ≥ 200자, 중복 없음",
       "mission_circuit_breaker == 0"
     ],
-    "live_only": true,
+    "live_only": false,
     "repeat": 1,
-    "mock": "skip:mission_loop_verify_repair smoke baseline 커버"
+    "mock": "scenario:x3_verify_repair",
+    "notes": "mock arm = VERIFY fail→REPAIR→pass (mission_loop_verify_repair parity). Live still valid."
   },
   {
     "id": "X4",
@@ -295,9 +298,10 @@
       "hook_runs[]에 pre_execute block 기록 (block_on_exit_2 정책)",
       "훅 해제 후 동일 action retry 성공"
     ],
-    "live_only": true,
+    "live_only": false,
     "repeat": 1,
-    "mock": "skip:pre_execute_blocked smoke baseline 커버"
+    "mock": "scenario:x4_pre_execute_hook",
+    "notes": "mock arm = run_pre_execute_hooks exit-2 then clear. Live: hooks.toml dogfood."
   },
   {
     "id": "X5",

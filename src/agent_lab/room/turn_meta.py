@@ -99,6 +99,7 @@ def _turn_snapshot(
     category: dict[str, Any] | None = None,
     roles: dict[str, str] | None = None,
     turn_policy: dict[str, Any] | None = None,
+    turn_contract: dict[str, Any] | None = None,
     turn_kind: str | None = None,
 ) -> dict[str, Any]:
     from agent_lab.invoke import model_name
@@ -172,6 +173,8 @@ def _turn_snapshot(
         snap["roles"] = dict(roles)
     if turn_policy:
         snap["turn_policy"] = dict(turn_policy)
+    if turn_contract:
+        snap["turn_contract"] = dict(turn_contract)
     if turn_kind:
         snap["turn_kind"] = turn_kind
     return snap

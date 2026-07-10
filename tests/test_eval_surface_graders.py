@@ -100,6 +100,13 @@ def test_routing_contract_turn_policy_only_without_category() -> None:
     assert result["pass"] is True
 
 
+def test_routing_contract_checks_turn_contract_snapshot() -> None:
+    trace = _trace(turn_contract={"contract_id": "guarded_plan", "source": "bootstrap"})
+    case = {"case_id": "T", "expected": {"turn_contract": {"contract_id": "guarded_plan", "source": "bootstrap"}}}
+    result = _result(routing_contract(trace, case))
+    assert result["pass"] is True
+
+
 # --- session_contract ---------------------------------------------------------
 
 

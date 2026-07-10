@@ -1,0 +1,157 @@
+# agent-lab 슈퍼샘플 오픈소스 생태계
+
+- projectId: `665131`
+- mapId: `4332336`
+- sourceTitle: agent-lab 기반 오픈소스 슈퍼샘플 및 HSIL 파이프라인 마인드맵
+- nodes: 34
+- edges: 33
+
+## agent-lab 슈퍼샘플 오픈소스 생태계
+
+agent-lab의 HSIL 6단계 파이프라인과 공명하는 GitHub 오픈소스 슈퍼샘플들을 HSIL 단계별·기능별로 조직화한 마인드맵입니다.
+
+## 1 HSIL 전체 루프 구현
+
+MINE→PROPOSE→REGRESS를 포함한 폐루프 하네스 자가개선을 완전 또는 유사하게 구현한 핵심 슈퍼샘플들입니다. auto-harness는 Clojure 기반 반복 루프를, AutoAgent는 Python 기반 자율 하네스 엔지니어링을, Live-SWE-agent는 실시간 scaffold 자가 진화를 구현합니다.
+
+## 2 ATTRIB + MINE
+
+실패 원인 귀속과 재발 패턴 채굴에 특화된 관측 기반 하네스 진화 프로젝트들입니다. AHE는 3관측성(component·experience·decision) 기반 진화를, Meta-Harness는 외부 루프 하네스 코드 검색을, Harness Forge는 자동 하네스 생성과 강화학습 기반 판정을 제공합니다.
+
+## 3 PLAYBOOK
+
+에이전트 작업 흐름 구조화 및 점진적 지식 축적 메커니즘을 제공하는 하네스 오케스트레이션 프로젝트들입니다. OpenHands는 CodeAct 2.1로 SWE-Bench 53% 해결률을 달성했으며, SWE-agent 2.0은 LM을 자율 소프트웨어 엔지니어링 에이전트로 전환합니다.
+
+## 4 PROPOSE
+
+에이전트가 자신의 하네스를 수정·개선하는 메타 에이전트 및 자가개선 시스템들입니다. HyperAgents는 메타인지적 자가수정 계층을, EvoAgentX는 진화 기반 다중 에이전트 생태계를, AutoHarness는 자동화된 하네스 엔지니어링을 제공합니다.
+
+## 5 REGRESS
+
+회귀 검증, 평가, 벤치마크로 하네스 변경의 안전성을 보장하는 테스트 인프라들입니다. promptfoo는 CI/CD 통합 LLM 평가·레드팀을, DeepEval은 50+ 메트릭 LLM 단위 테스트를, AgentAssay는 토큰 효율적 통계 회귀 테스트를, AEGIS는 사전 실행 방화벽과 감사 추적을 제공합니다.
+
+## 6 MERGE
+
+권한·거버넌스·샌드박스로 안전한 제어 병합과 Editable Surface Tier를 뒷받침하는 프로젝트들입니다. Microsoft Agent Governance Toolkit은 정책 집행·제로 트러스트·실행 샌드박싱을, NVIDIA OpenShell은 커널 수준 격리 런타임을, AEGIS(Runtime)는 실시간 정책 집행·감사 추적을 제공합니다.
+
+## 7 참조 리스트 / 생태계 맵
+
+agent-lab의 슈퍼샘플 개념과 직결되는 큐레이션 프로젝트들로, 하네스 엔지니어링 생태계 전체를 조망합니다.
+
+## 8 agent-lab의 차별성
+
+개별 슈퍼샘플들이 부분적으로 구현한 메커니즘을 단일 폐루프로 통합하며, 검증 체크포인트와 권한 티어를 명시적으로 설계한 점이 핵심 차별성입니다.
+
+## kevinrgu/autoagent: autonomous harness engineering - GitHub
+
+github.com
+
+## Live-SWE-agent | The First Live AI Software Agent
+
+github.com
+
+## Agentic Harness Engineering: Observability-Driven ...
+
+github.com
+
+## Meta-Harness: End-to-End Optimization of Model Harnesses
+
+arxiv.org
+
+2026. 03. 30.
+
+## harness-forge - AI Agents on GitHub | SkillsLLM
+
+skillsllm.com
+
+2026. 06. 21.
+
+## GitHub - facebookresearch/HyperAgents
+
+github.com
+
+## EvoAgentX: Building a Self-Evolving Ecosystem of AI Agents
+
+github.com
+
+## AutoHarness: Automated Harness Engineering for AI Agents
+
+github.com
+
+2026. 04. 01.
+
+## Picrew/awesome-agent-harness - GitHub
+
+github.com
+
+## ai-boost/awesome-harness-engineering - GitHub
+
+github.com
+
+2026. 07. 06.
+
+## best-of-Agent-Harnesses - AI Agents on GitHub | SkillsLLM
+
+skillsllm.com
+
+2026. 06. 14.
+
+## YennNing/Awesome-Code-as-Agent-Harness-Papers - GitHub
+
+github.com
+
+### 8.1 기존 슈퍼샘플의 한계 vs agent-lab
+
+auto-harness/AutoAgent는 MINE→PROPOSE→REGRESS를 구현하지만 ATTRIB과 MERGE 권한 티어가 암시적입니다. HyperAgents는 메타인지적 자가수정을 구현하지만 거버넌스 티어(A/B/C)와 Oracle 검증(T0)이 없습니다. Live-SWE-agent는 scaffold 자가 진화를 실증하지만 회귀 검증이 SWE-bench 통과에만 의존합니다. agent-lab은 이들을 6단계 명시 파이프라인 + Editable Surface Tier + T0/T1/T2 신뢰 층으로 통합합니다.
+
+## OpenHands: AI-Driven Development
+
+github.com
+
+## SWE-agent takes a GitHub issue and tries ...
+
+github.com
+
+## anomalyco/opencode: The open source coding agent.
+
+github.com
+
+## GitHub - revfactory/harness: A meta-skill that designs domain ...
+
+github.com
+
+## Promptfoo: LLM evals & red teaming - GitHub
+
+github.com
+
+## confident-ai/deepeval: The LLM Evaluation Framework
+
+github.com
+
+## qualixar/agentassay: Token-efficient stochastic testing for AI agents ...
+
+github.com
+
+## AEGIS - A Pre-Execution Firewall and Audit Layer for AI Agents - arXiv
+
+arxiv.org
+
+2026. 03. 13.
+
+## GitHub - microsoft/agent-governance-toolkit
+
+github.com
+
+## NVIDIA/OpenShell: OpenShell is the safe, private runtime ...
+
+github.com
+
+## GitHub - Justin0504/Aegis: Runtime policy enforcement for AI agents ...
+
+github.com
+
+## ai-boost/awesome-harness-engineering - GitHub
+
+github.com
+
+2026. 07. 06.

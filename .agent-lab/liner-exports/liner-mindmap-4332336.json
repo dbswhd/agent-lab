@@ -1,0 +1,348 @@
+{
+  "projectId": 665131,
+  "mapId": 4332336,
+  "href": "https://scholar.liner.com/ko/projects/665131?node-id=4332336",
+  "title": "agent-lab 슈퍼샘플 오픈소스 생태계",
+  "nodeCount": 34,
+  "edgeCount": 33,
+  "nodes": [
+    {
+      "id": "1",
+      "type": "textNode",
+      "text": "agent-lab 슈퍼샘플 오픈소스 생태계\n\nagent-lab의 HSIL 6단계 파이프라인과 공명하는 GitHub 오픈소스 슈퍼샘플들을 HSIL 단계별·기능별로 조직화한 마인드맵입니다.\n\n더 알아보기"
+    },
+    {
+      "id": "2",
+      "type": "textNode",
+      "text": "1 HSIL 전체 루프 구현\n\nMINE→PROPOSE→REGRESS를 포함한 폐루프 하네스 자가개선을 완전 또는 유사하게 구현한 핵심 슈퍼샘플들입니다. auto-harness는 Clojure 기반 반복 루프를, AutoAgent는 Python 기반 자율 하네스 엔지니어링을, Live-SWE-agent는 실시간 scaffold 자가 진화를 구현합니다.\n\n더 알아보기"
+    },
+    {
+      "id": "3",
+      "type": "textNode",
+      "text": "2 ATTRIB + MINE\n\n실패 원인 귀속과 재발 패턴 채굴에 특화된 관측 기반 하네스 진화 프로젝트들입니다. AHE는 3관측성(component·experience·decision) 기반 진화를, Meta-Harness는 외부 루프 하네스 코드 검색을, Harness Forge는 자동 하네스 생성과 강화학습 기반 판정을 제공합니다.\n\n더 알아보기"
+    },
+    {
+      "id": "4",
+      "type": "textNode",
+      "text": "3 PLAYBOOK\n\n에이전트 작업 흐름 구조화 및 점진적 지식 축적 메커니즘을 제공하는 하네스 오케스트레이션 프로젝트들입니다. OpenHands는 CodeAct 2.1로 SWE-Bench 53% 해결률을 달성했으며, SWE-agent 2.0은 LM을 자율 소프트웨어 엔지니어링 에이전트로 전환합니다.\n\n더 알아보기"
+    },
+    {
+      "id": "5",
+      "type": "textNode",
+      "text": "4 PROPOSE\n\n에이전트가 자신의 하네스를 수정·개선하는 메타 에이전트 및 자가개선 시스템들입니다. HyperAgents는 메타인지적 자가수정 계층을, EvoAgentX는 진화 기반 다중 에이전트 생태계를, AutoHarness는 자동화된 하네스 엔지니어링을 제공합니다.\n\n더 알아보기"
+    },
+    {
+      "id": "6",
+      "type": "textNode",
+      "text": "5 REGRESS\n\n회귀 검증, 평가, 벤치마크로 하네스 변경의 안전성을 보장하는 테스트 인프라들입니다. promptfoo는 CI/CD 통합 LLM 평가·레드팀을, DeepEval은 50+ 메트릭 LLM 단위 테스트를, AgentAssay는 토큰 효율적 통계 회귀 테스트를, AEGIS는 사전 실행 방화벽과 감사 추적을 제공합니다.\n\n더 알아보기"
+    },
+    {
+      "id": "7",
+      "type": "textNode",
+      "text": "6 MERGE\n\n권한·거버넌스·샌드박스로 안전한 제어 병합과 Editable Surface Tier를 뒷받침하는 프로젝트들입니다. Microsoft Agent Governance Toolkit은 정책 집행·제로 트러스트·실행 샌드박싱을, NVIDIA OpenShell은 커널 수준 격리 런타임을, AEGIS(Runtime)는 실시간 정책 집행·감사 추적을 제공합니다.\n\n더 알아보기"
+    },
+    {
+      "id": "8",
+      "type": "textNode",
+      "text": "7 참조 리스트 / 생태계 맵\n\nagent-lab의 슈퍼샘플 개념과 직결되는 큐레이션 프로젝트들로, 하네스 엔지니어링 생태계 전체를 조망합니다.\n\n더 알아보기"
+    },
+    {
+      "id": "9",
+      "type": "textNode",
+      "text": "8 agent-lab의 차별성\n\n개별 슈퍼샘플들이 부분적으로 구현한 메커니즘을 단일 폐루프로 통합하며, 검증 체크포인트와 권한 티어를 명시적으로 설계한 점이 핵심 차별성입니다.\n\n더 알아보기"
+    },
+    {
+      "id": "11",
+      "type": "fileNode",
+      "text": "kevinrgu/autoagent: autonomous harness engineering - GitHub\n\ngithub.com\n\n관련 논문 찾기"
+    },
+    {
+      "id": "12",
+      "type": "fileNode",
+      "text": "Live-SWE-agent | The First Live AI Software Agent\n\ngithub.com\n\n관련 논문 찾기"
+    },
+    {
+      "id": "13",
+      "type": "fileNode",
+      "text": "Agentic Harness Engineering: Observability-Driven ...\n\ngithub.com\n\n관련 논문 찾기"
+    },
+    {
+      "id": "14",
+      "type": "fileNode",
+      "text": "Meta-Harness: End-to-End Optimization of Model Harnesses\n\narxiv.org\n\n2026. 03. 30.\n\n관련 논문 찾기"
+    },
+    {
+      "id": "15",
+      "type": "fileNode",
+      "text": "harness-forge - AI Agents on GitHub | SkillsLLM\n\nskillsllm.com\n\n2026. 06. 21.\n\n관련 논문 찾기"
+    },
+    {
+      "id": "20",
+      "type": "fileNode",
+      "text": "GitHub - facebookresearch/HyperAgents\n\ngithub.com\n\n관련 논문 찾기"
+    },
+    {
+      "id": "21",
+      "type": "fileNode",
+      "text": "EvoAgentX: Building a Self-Evolving Ecosystem of AI Agents\n\ngithub.com\n\n관련 논문 찾기"
+    },
+    {
+      "id": "22",
+      "type": "fileNode",
+      "text": "AutoHarness: Automated Harness Engineering for AI Agents\n\ngithub.com\n\n2026. 04. 01.\n\n관련 논문 찾기"
+    },
+    {
+      "id": "30",
+      "type": "fileNode",
+      "text": "Picrew/awesome-agent-harness - GitHub\n\ngithub.com\n\n관련 논문 찾기"
+    },
+    {
+      "id": "31",
+      "type": "fileNode",
+      "text": "ai-boost/awesome-harness-engineering - GitHub\n\ngithub.com\n\n2026. 07. 06.\n\n관련 논문 찾기"
+    },
+    {
+      "id": "32",
+      "type": "fileNode",
+      "text": "best-of-Agent-Harnesses - AI Agents on GitHub | SkillsLLM\n\nskillsllm.com\n\n2026. 06. 14.\n\n관련 논문 찾기"
+    },
+    {
+      "id": "33",
+      "type": "fileNode",
+      "text": "YennNing/Awesome-Code-as-Agent-Harness-Papers - GitHub\n\ngithub.com\n\n관련 논문 찾기"
+    },
+    {
+      "id": "34",
+      "type": "textNode",
+      "text": "8.1 기존 슈퍼샘플의 한계 vs agent-lab\n\nauto-harness/AutoAgent는 MINE→PROPOSE→REGRESS를 구현하지만 ATTRIB과 MERGE 권한 티어가 암시적입니다. HyperAgents는 메타인지적 자가수정을 구현하지만 거버넌스 티어(A/B/C)와 Oracle 검증(T0)이 없습니다. Live-SWE-agent는 scaffold 자가 진화를 실증하지만 회귀 검증이 SWE-bench 통과에만 의존합니다. agent-lab은 이들을 6단계 명시 파이프라인 + Editable Surface Tier + T0/T1/T2 신뢰 층으로 통합합니다.\n\n더 알아보기"
+    },
+    {
+      "id": "new_p1",
+      "type": "fileNode",
+      "text": "OpenHands: AI-Driven Development\n\ngithub.com\n\n관련 논문 찾기"
+    },
+    {
+      "id": "new_p2",
+      "type": "fileNode",
+      "text": "SWE-agent takes a GitHub issue and tries ...\n\ngithub.com\n\n관련 논문 찾기"
+    },
+    {
+      "id": "new_p3",
+      "type": "fileNode",
+      "text": "anomalyco/opencode: The open source coding agent.\n\ngithub.com\n\n관련 논문 찾기"
+    },
+    {
+      "id": "new_p4",
+      "type": "fileNode",
+      "text": "GitHub - revfactory/harness: A meta-skill that designs domain ...\n\ngithub.com\n\n관련 논문 찾기"
+    },
+    {
+      "id": "new_r1",
+      "type": "fileNode",
+      "text": "Promptfoo: LLM evals & red teaming - GitHub\n\ngithub.com\n\n관련 논문 찾기"
+    },
+    {
+      "id": "new_r2",
+      "type": "fileNode",
+      "text": "confident-ai/deepeval: The LLM Evaluation Framework\n\ngithub.com\n\n관련 논문 찾기"
+    },
+    {
+      "id": "new_r3",
+      "type": "fileNode",
+      "text": "qualixar/agentassay: Token-efficient stochastic testing for AI agents ...\n\ngithub.com\n\n관련 논문 찾기"
+    },
+    {
+      "id": "new_r4",
+      "type": "fileNode",
+      "text": "AEGIS - A Pre-Execution Firewall and Audit Layer for AI Agents - arXiv\n\narxiv.org\n\n2026. 03. 13.\n\n관련 논문 찾기"
+    },
+    {
+      "id": "new_m1",
+      "type": "fileNode",
+      "text": "GitHub - microsoft/agent-governance-toolkit\n\ngithub.com\n\n관련 논문 찾기"
+    },
+    {
+      "id": "new_m2",
+      "type": "fileNode",
+      "text": "NVIDIA/OpenShell: OpenShell is the safe, private runtime ...\n\ngithub.com\n\n관련 논문 찾기"
+    },
+    {
+      "id": "new_m3",
+      "type": "fileNode",
+      "text": "GitHub - Justin0504/Aegis: Runtime policy enforcement for AI agents ...\n\ngithub.com\n\n관련 논문 찾기"
+    },
+    {
+      "id": "new_full1",
+      "type": "fileNode",
+      "text": "ai-boost/awesome-harness-engineering - GitHub\n\ngithub.com\n\n2026. 07. 06.\n\n관련 논문 찾기"
+    }
+  ],
+  "edges": [
+    {
+      "id": "f3216498-b630-47d8-9e29-be0db81a6e5b",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "019f4157-9b2e-7199-b48e-e246635ae3ef",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "4bb57143-9ded-418d-8672-f9cf7b46e64b",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "b0a6e0e5-9e99-4cc3-8d6f-5f3df84796a6",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "c2263580-4074-4446-a3a3-de2531004fae",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "9644284c-d75f-4161-be64-bd53e3349583",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "fe027756-f8fe-43b5-a96f-2527422d356a",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "b781a3e2-0ecc-4097-a151-e35bf3a4693b",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "d91c505d-387c-49b2-b139-8b8c27492e8a",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "019f4157-0666-7148-9fa5-d55c1f3f38ac",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "019f4157-0666-7148-9fa5-db44ecfae91f",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "019f4157-0666-7148-9fa5-dcaebb8bfc18",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "019f4157-0666-7148-9fa5-e32d35d76fd2",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "ab0cf9f9-5264-4562-aa49-8302315d459a",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "e7373157-e09c-48b1-8f27-eed8e01fd841",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "1f7cad37-5a8f-4a18-ad72-8d6f6aea27bf",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "cf5c3c89-10d2-4d79-b24b-55ca0a31f818",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "954dae0e-d611-49fc-bc14-dd50b1d50790",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "019f4157-0666-7148-9fa5-e6cd671047a6",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "019f4157-0666-7148-9fa5-e9c1837e90c2",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "019f4157-0666-7148-9fa5-ef90f4dcbc9b",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "019f4157-0666-7148-9fa5-f0d0beb1c547",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "11040cc4-a2ff-45b4-8518-11420edde019",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "019f4157-0666-7148-9fa5-f7bbe8bc3e23",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "019f4157-0666-7148-9fa5-f907ff5dece4",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "019f4157-0666-7148-9fa5-fee05d841201",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "c50d2fd1-7df9-4d5f-8e1e-e5678027b8a4",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "d3f9a013-03e9-413c-9924-10f985833d1a",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "24047c75-6420-470b-b1a9-8f6a8bb9a441",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "289e0d40-391e-4f03-8a9a-74d4e0e1c108",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "57a7764f-0198-4f76-be3e-a239bfb33013",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "38cde248-1cda-41dd-8474-a7f4283fa31b",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "a52d33e5-004e-442d-b2e8-3689e8a45dbe",
+      "source": null,
+      "target": null
+    }
+  ],
+  "fullText": "agent-lab 슈퍼샘플 오픈소스 생태계\n\nagent-lab의 HSIL 6단계 파이프라인과 공명하는 GitHub 오픈소스 슈퍼샘플들을 HSIL 단계별·기능별로 조직화한 마인드맵입니다.\n\n더 알아보기\n\n1 HSIL 전체 루프 구현\n\nMINE→PROPOSE→REGRESS를 포함한 폐루프 하네스 자가개선을 완전 또는 유사하게 구현한 핵심 슈퍼샘플들입니다. auto-harness는 Clojure 기반 반복 루프를, AutoAgent는 Python 기반 자율 하네스 엔지니어링을, Live-SWE-agent는 실시간 scaffold 자가 진화를 구현합니다.\n\n더 알아보기\n\n2 ATTRIB + MINE\n\n실패 원인 귀속과 재발 패턴 채굴에 특화된 관측 기반 하네스 진화 프로젝트들입니다. AHE는 3관측성(component·experience·decision) 기반 진화를, Meta-Harness는 외부 루프 하네스 코드 검색을, Harness Forge는 자동 하네스 생성과 강화학습 기반 판정을 제공합니다.\n\n더 알아보기\n\n3 PLAYBOOK\n\n에이전트 작업 흐름 구조화 및 점진적 지식 축적 메커니즘을 제공하는 하네스 오케스트레이션 프로젝트들입니다. OpenHands는 CodeAct 2.1로 SWE-Bench 53% 해결률을 달성했으며, SWE-agent 2.0은 LM을 자율 소프트웨어 엔지니어링 에이전트로 전환합니다.\n\n더 알아보기\n\n4 PROPOSE\n\n에이전트가 자신의 하네스를 수정·개선하는 메타 에이전트 및 자가개선 시스템들입니다. HyperAgents는 메타인지적 자가수정 계층을, EvoAgentX는 진화 기반 다중 에이전트 생태계를, AutoHarness는 자동화된 하네스 엔지니어링을 제공합니다.\n\n더 알아보기\n\n5 REGRESS\n\n회귀 검증, 평가, 벤치마크로 하네스 변경의 안전성을 보장하는 테스트 인프라들입니다. promptfoo는 CI/CD 통합 LLM 평가·레드팀을, DeepEval은 50+ 메트릭 LLM 단위 테스트를, AgentAssay는 토큰 효율적 통계 회귀 테스트를, AEGIS는 사전 실행 방화벽과 감사 추적을 제공합니다.\n\n더 알아보기\n\n6 MERGE\n\n권한·거버넌스·샌드박스로 안전한 제어 병합과 Editable Surface Tier를 뒷받침하는 프로젝트들입니다. Microsoft Agent Governance Toolkit은 정책 집행·제로 트러스트·실행 샌드박싱을, NVIDIA OpenShell은 커널 수준 격리 런타임을, AEGIS(Runtime)는 실시간 정책 집행·감사 추적을 제공합니다.\n\n더 알아보기\n\n7 참조 리스트 / 생태계 맵\n\nagent-lab의 슈퍼샘플 개념과 직결되는 큐레이션 프로젝트들로, 하네스 엔지니어링 생태계 전체를 조망합니다.\n\n더 알아보기\n\n8 agent-lab의 차별성\n\n개별 슈퍼샘플들이 부분적으로 구현한 메커니즘을 단일 폐루프로 통합하며, 검증 체크포인트와 권한 티어를 명시적으로 설계한 점이 핵심 차별성입니다.\n\n더 알아보기\n\nkevinrgu/autoagent: autonomous harness engineering - GitHub\n\ngithub.com\n\n관련 논문 찾기\n\nLive-SWE-agent | The First Live AI Software Agent\n\ngithub.com\n\n관련 논문 찾기\n\nAgentic Harness Engineering: Observability-Driven ...\n\ngithub.com\n\n관련 논문 찾기\n\nMeta-Harness: End-to-End Optimization of Model Harnesses\n\narxiv.org\n\n2026. 03. 30.\n\n관련 논문 찾기\n\nharness-forge - AI Agents on GitHub | SkillsLLM\n\nskillsllm.com\n\n2026. 06. 21.\n\n관련 논문 찾기\n\nGitHub - facebookresearch/HyperAgents\n\ngithub.com\n\n관련 논문 찾기\n\nEvoAgentX: Building a Self-Evolving Ecosystem of AI Agents\n\ngithub.com\n\n관련 논문 찾기\n\nAutoHarness: Automated Harness Engineering for AI Agents\n\ngithub.com\n\n2026. 04. 01.\n\n관련 논문 찾기\n\nPicrew/awesome-agent-harness - GitHub\n\ngithub.com\n\n관련 논문 찾기\n\nai-boost/awesome-harness-engineering - GitHub\n\ngithub.com\n\n2026. 07. 06.\n\n관련 논문 찾기\n\nbest-of-Agent-Harnesses - AI Agents on GitHub | SkillsLLM\n\nskillsllm.com\n\n2026. 06. 14.\n\n관련 논문 찾기\n\nYennNing/Awesome-Code-as-Agent-Harness-Papers - GitHub\n\ngithub.com\n\n관련 논문 찾기\n\n8.1 기존 슈퍼샘플의 한계 vs agent-lab\n\nauto-harness/AutoAgent는 MINE→PROPOSE→REGRESS를 구현하지만 ATTRIB과 MERGE 권한 티어가 암시적입니다. HyperAgents는 메타인지적 자가수정을 구현하지만 거버넌스 티어(A/B/C)와 Oracle 검증(T0)이 없습니다. Live-SWE-agent는 scaffold 자가 진화를 실증하지만 회귀 검증이 SWE-bench 통과에만 의존합니다. agent-lab은 이들을 6단계 명시 파이프라인 + Editable Surface Tier + T0/T1/T2 신뢰 층으로 통합합니다.\n\n더 알아보기\n\nOpenHands: AI-Driven Development\n\ngithub.com\n\n관련 논문 찾기\n\nSWE-agent takes a GitHub issue and tries ...\n\ngithub.com\n\n관련 논문 찾기\n\nanomalyco/opencode: The open source coding agent.\n\ngithub.com\n\n관련 논문 찾기\n\nGitHub - revfactory/harness: A meta-skill that designs domain ...\n\ngithub.com\n\n관련 논문 찾기\n\nPromptfoo: LLM evals & red teaming - GitHub\n\ngithub.com\n\n관련 논문 찾기\n\nconfident-ai/deepeval: The LLM Evaluation Framework\n\ngithub.com\n\n관련 논문 찾기\n\nqualixar/agentassay: Token-efficient stochastic testing for AI agents ...\n\ngithub.com\n\n관련 논문 찾기\n\nAEGIS - A Pre-Execution Firewall and Audit Layer for AI Agents - arXiv\n\narxiv.org\n\n2026. 03. 13.\n\n관련 논문 찾기\n\nGitHub - microsoft/agent-governance-toolkit\n\ngithub.com\n\n관련 논문 찾기\n\nNVIDIA/OpenShell: OpenShell is the safe, private runtime ...\n\ngithub.com\n\n관련 논문 찾기\n\nGitHub - Justin0504/Aegis: Runtime policy enforcement for AI agents ...\n\ngithub.com\n\n관련 논문 찾기\n\nai-boost/awesome-harness-engineering - GitHub\n\ngithub.com\n\n2026. 07. 06.\n\n관련 논문 찾기\n\nCmd\n0\n\n화면에 맞춤\n\nTab\n\n하위 노드 추가\n\n⌘\nEnter\n\n같은 단계 노드 추가"
+}

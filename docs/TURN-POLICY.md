@@ -6,6 +6,19 @@
 
 **Naming:** use **TurnPolicy** — not "auto" (reserved for future model preset auto mode).
 
+## TurnContract rollout
+
+TurnContract adds a deterministic, evidence-backed candidate resolver around TurnPolicy. It classifies the current topic into task kind, risk, and execution intent, scores safe candidates from matching outcome history, and persists one immutable snapshot in `run.json` under `turn_contract`.
+
+`AGENT_LAB_TURN_CONTRACT_MODE` controls adoption:
+
+- `off`: do not apply contract routing.
+- `shadow` (default): persist and evaluate the contract without changing the Room roster or rounds.
+- `roles`: apply the contract's safe agent limit, round count, and consensus setting.
+- `adaptive`: apply those controls only when matching history or deterministic exploration has selected the route.
+
+Cold start uses the bootstrap resolver. History is eligible only after ten context-matching outcomes. Exploration is deterministic and bounded by `AGENT_LAB_FEEDBACK_EXPLORE_RATE`; it can never cross the risk safety floor. Outcome rows record route regret signals including under-routing, over-routing, clarification without delta, FSM without an action, and subset escalation.
+
 ---
 
 ## Goal

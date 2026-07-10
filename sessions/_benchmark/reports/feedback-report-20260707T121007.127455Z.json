@@ -1,0 +1,82 @@
+{
+  "captured_at": "2026-07-07T12:10:07.127455Z",
+  "git_rev": "22c1d7e00e724d0d1057a27503bcaad4a5b17a9f",
+  "git_branch": "main",
+  "git_dirty": true,
+  "root": "/Users/yoonjong/Projects/agent-lab",
+  "report": {
+    "total": 90,
+    "verdict_eligible_total": 1,
+    "turn_signal_total": 89,
+    "oracle_verdict_coverage": 0.0111,
+    "turn_source_counts": {
+      "default": 75,
+      "history": 14,
+      "explore": 1
+    },
+    "by_source": {
+      "default": {
+        "n": 1,
+        "clean_pass_rate": 1.0,
+        "repair_rate": 0.0,
+        "block_rate": 0.0,
+        "accepted_challenge_rate": 0.0,
+        "avg_score": 2.0
+      },
+      "history": {
+        "n": 0,
+        "clean_pass_rate": 0.0,
+        "repair_rate": 0.0,
+        "block_rate": 0.0,
+        "accepted_challenge_rate": 0.0,
+        "avg_score": 0.0
+      },
+      "explore": {
+        "n": 0,
+        "clean_pass_rate": 0.0,
+        "repair_rate": 0.0,
+        "block_rate": 0.0,
+        "accepted_challenge_rate": 0.0,
+        "avg_score": 0.0
+      }
+    },
+    "by_source_category": {
+      "default": {
+        "quick": {
+          "n": 1,
+          "clean_pass_rate": 1.0,
+          "repair_rate": 0.0,
+          "block_rate": 0.0,
+          "accepted_challenge_rate": 0.0,
+          "avg_score": 2.0
+        }
+      },
+      "history": {},
+      "explore": {}
+    },
+    "advisor_lift": {
+      "history_vs_default": null,
+      "explore_vs_default": null
+    },
+    "escalation_rate_by_level": {
+      "L0": 0.0,
+      "L1": 0.0,
+      "L2": null,
+      "L3": null
+    },
+    "correction_patterns": {
+      "total": 0,
+      "by_pattern": {},
+      "correction_recurrence_rate": null
+    },
+    "tool_cards": {
+      "n": 0,
+      "tool_card_hit_rate": null
+    },
+    "self_patch": {
+      "n": 1,
+      "eligible_n": 0,
+      "self_patch_eligible_rate": 0.0
+    }
+  }
+}

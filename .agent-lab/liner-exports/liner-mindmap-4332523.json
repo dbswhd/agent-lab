@@ -1,0 +1,458 @@
+{
+  "projectId": 665131,
+  "mapId": 4332523,
+  "href": "https://scholar.liner.com/ko/projects/665131?node-id=4332523",
+  "title": "agent-lab 오케스트레이션 분석 및 개선",
+  "nodeCount": 45,
+  "edgeCount": 44,
+  "nodes": [
+    {
+      "id": "1",
+      "type": "textNode",
+      "text": "agent-lab 오케스트레이션 분석 및 개선\n\nagent-lab의 6계층 레이어드 오케스트레이션 스택에서 식별된 7가지 구조적 한계를 분석하고, 7개 슈퍼샘플 대조를 통해 7가지 개선 방안을 도출한다.\n\n더 알아보기"
+    },
+    {
+      "id": "2",
+      "type": "textNode",
+      "text": "1 현재 오케스트레이션 아키텍처\n\nagent-lab은 단일 Harness.run()이 아닌 6계층 레이어드 스택(Room→Runtime→Plan/Execute→Mission→Session→API)으로 구성되며, 각 계층은 FSM과 SSE로 조율된다 \napi.liner.com\n.\n\n더 알아보기"
+    },
+    {
+      "id": "3",
+      "type": "textNode",
+      "text": "1.1 Room (discuss)\n\n멀티에이전트 턴·합의·scribe를 관장하는 상위 오케스트레이션 계층이다 \napi.liner.com\n. LLM 판단 기반 합의에 의존하여 False Consensus 취약성이 존재한다.\n\n더 알아보기"
+    },
+    {
+      "id": "4",
+      "type": "textNode",
+      "text": "1.2 Runtime (이벤트 라우터)\n\ndiscuss/execute/mission 세 모드를 단일 runtime.dispatch로 처리하는 모놀리식 이벤트 라우터이다 \napi.liner.com\n. 평가와 진단이 결합되어 evaluator-inside-loop 구조를 형성한다.\n\n더 알아보기"
+    },
+    {
+      "id": "5",
+      "type": "textNode",
+      "text": "1.3 Plan/Execute\n\nplan.md → worktree → merge → Oracle 흐름으로, 검증은 Oracle이 수행하나 하위 에이전트 추적은 상위 관측 공간에 노출되지 않는다 \napi.liner.com\n.\n\n더 알아보기"
+    },
+    {
+      "id": "6",
+      "type": "textNode",
+      "text": "1.4 Mission Loop\n\nDiscuss↔Execute FSM 전환을 관장하며, 자연적 단계 전환점에서 비동기 Human 이슈를 소비하는 메커니즘이 부재한다 \napi.liner.com\n.\n\n더 알아보기"
+    },
+    {
+      "id": "7",
+      "type": "textNode",
+      "text": "1.5 TurnPolicyEngine\n\n사전 정의된 역할 셋에 기반한 정적 라우팅을 수행한다 \napi.liner.com\n. 교차 세션 지속 학습과 RL 기반 정책 최적화가 결여되어 있다.\n\n더 알아보기"
+    },
+    {
+      "id": "8",
+      "type": "textNode",
+      "text": "1.6 feedback_advisor\n\noutcome ledger에서 SetupHint를 반환하는 S1 RECORD/RECALL 컴포넌트로, 평가·진단을 겸수하여 evaluator-inside-loop 구조를 형성한다 \napi.liner.com\n. rule_sync는 단방향이며 하네스→SSOT 역류가 불가하다 \napi.liner.com\n.\n\n더 알아보기"
+    },
+    {
+      "id": "9",
+      "type": "textNode",
+      "text": "2 식별된 7가지 구조적 한계\n\n현재 아키텍처에서 학술 근거로 확인된 근본적 한계점들이다.\n\n더 알아보기"
+    },
+    {
+      "id": "10",
+      "type": "textNode",
+      "text": "2.1 이벤트 라우팅 모놀리식 결합\n\nfeedback_advisor가 평가·진단을 겸하는 evaluator-inside-evolution-loop 구조로서 리워드 해킹의 구조적 전제 조건이다. agent-lab 스스로 Tier D에서 이를 보류 사유로 명시했다 \napi.liner.com\n. Harness Evolution Loop는 Worker·Evaluator·Evolution 3분리로 이를 해결한다 \narxiv.org\n.\n\n더 알아보기"
+    },
+    {
+      "id": "11",
+      "type": "textNode",
+      "text": "2.2 정적 TurnPolicy\n\n사전 정의된 역할 셋에 기반한 정적 라우팅으로, 교차 세션 지속성과 RL 기반 정책 최적화가 결여되어 있다. s2_role_bandit은 세션 국소적 ε-greedy에 불과하다 \napi.liner.com\n. Evolving Orchestration은 REINFORCE 기반 다목적 보상으로 실시간 학습한다 \nArXiv.org\n.\n\n더 알아보기"
+    },
+    {
+      "id": "12",
+      "type": "textNode",
+      "text": "2.3 False Consensus 취약성\n\nRoom의 LLM 판단 기반 합의는 CAAF가 실증한 Stochastic Oscillation과 False Consensus에 취약하다 \narxiv.org\n. LLM 기반 평가는 80회 시험에서 0% 역설 탐지율을 기록했다 \narxiv.org\n.\n\n더 알아보기"
+    },
+    {
+      "id": "13",
+      "type": "textNode",
+      "text": "2.4 관측 단절\n\n하위 에이전트(DELEGATE/DISPATCH, Oracle) 실행 추적이 상위 관측 공간에 노출되지 않는다 \napi.liner.com\n. Evolution Agent는 전체 진화 이력을 읽어 실패 전략 반복을 방지하지만 \narxiv.org\n, agent-lab은 HS1-3 traces 구현이 미완이다 \napi.liner.com\n.\n\n더 알아보기"
+    },
+    {
+      "id": "14",
+      "type": "textNode",
+      "text": "2.5 피드백 단방향성\n\nrule_sync는 SSOT→하네스별 export 단방향으로, 하네스 성능이 오케스트레이션 정책으로 역류하지 않는다 \napi.liner.com\n. Meta-Evolution Loop는 내부 루프 수렴 궤적이 외부 루프 최적화 신호로 사용되는 양방향 구조이다 \narxiv.org\n.\n\n더 알아보기"
+    },
+    {
+      "id": "15",
+      "type": "textNode",
+      "text": "2.6 비동기 Human Oversight 부재\n\nHuman Inbox 게이트는 동기적 승인/거부만 지원한다 \napi.liner.com\n. TheBotCompany는 이슈 파일링→매니저 에이전트 자연적 단계 전환점 소매의 비동기 패턴을 제안한다 \nArXiv.org\n.\n\n더 알아보기"
+    },
+    {
+      "id": "16",
+      "type": "textNode",
+      "text": "2.7 Manager Agent 역할 미포착\n\nTurnPolicyEngine은 정적 라우팅 룰에 기반하며, 작업 분해·세분화·의존성 관리의 프로액티브 오케스트레이션 능력이 설계에 반영되지 않았다 \ndoi.org\n. GPT-5의 'proactive orchestrator' 패턴(decompose→refine→assign)과 대비된다.\n\n더 알아보기"
+    },
+    {
+      "id": "17",
+      "type": "textNode",
+      "text": "3 슈퍼샘플 대조 분석\n\n동적 적응·평가 분리·비동기 Human·메타 루프 4차원에서 agent-lab과 7개 슈퍼샘플을 비교한다.\n\n더 알아보기"
+    },
+    {
+      "id": "18",
+      "type": "textNode",
+      "text": "3.1 Harness Evolution Loop\n\nWorker/Evaluator/Evolution 3-에이전트 엄격 분리, adversarial evaluator, Meta-Evolution Loop(2-level)가 특징이다 \narxiv.org\n. agent-lab의 evaluator-inside-loop 문제를 구조적으로 해결하는 참조 모델이다.\n\n더 알아보기"
+    },
+    {
+      "id": "19",
+      "type": "textNode",
+      "text": "3.2 CAAF\n\nRAD/Executor/UAI(Reviewer) 3분리, 결정론적 UAI 기반 검증, 스칼라 구배 수렴 보장이 특징이다 \narxiv.org\n. LLM 평가 0% 역설 탐지율 문제를 결정론적 assertion으로 우회한다.\n\n더 알아보기"
+    },
+    {
+      "id": "20",
+      "type": "textNode",
+      "text": "3.3 Mimosa\n\n5-layer(planning→tool→meta-orch→exec→judge) 구조로, 메타 오케스트레이션 반복 정제가 특징이다 \narXiv (Cornell University)\n. 모델별 오케스트레이션 민감도가 상이하여 동일 전략이 증폭 또는 방해될 수 있다 \narXiv (Cornell University)\n.\n\n더 알아보기"
+    },
+    {
+      "id": "21",
+      "type": "textNode",
+      "text": "3.4 Evolving Orchestration\n\n중앙 Puppeteer + REINFORCE 기반 RL 정책으로, 해결 품질·연산 비용 다목적 보상을 사용한다 \nArXiv.org\n. 교차 세션 궤적 데이터로 에이전트 선택 정책을 학습한다.\n\n더 알아보기"
+    },
+    {
+      "id": "22",
+      "type": "textNode",
+      "text": "3.5 TheBotCompany\n\nStrategy/Execution/Verification 3-매니저 분리, 자가조직 팀(hire/retire), 비동기 Human 이슈 파일링이 특징이다 \nArXiv.org\n. 블로킹 없이 방향 조정하는 비동기 Human oversight 채널을 제공한다.\n\n더 알아보기"
+    },
+    {
+      "id": "23",
+      "type": "textNode",
+      "text": "3.6 W4S Harnessing\n\n약한 메타에이전트가 강한 실행기의 성능 피드백으로 워크플로우를 반복 개선하는 MDP+RLAO 프레임워크이다 \nArXiv.org\n. 양방향 피드백 루프의 참조 모델이다.\n\n더 알아보기"
+    },
+    {
+      "id": "24",
+      "type": "textNode",
+      "text": "3.7 RWL (Ralph Wiggum Loop)\n\nDesign Agent + 수치 evaluator/validator 분리, 메타인지 Co-Regulation이 특징이다 \nArXiv.org\n. 자기 평가 + 외부 검증의 이중 구조로 수렴을 보장한다.\n\n더 알아보기"
+    },
+    {
+      "id": "25",
+      "type": "textNode",
+      "text": "4 개선 방안 7가지\n\n슈퍼샘플 대조에서 도출한 7가지 구조적 개선 방안이다.\n\n더 알아보기"
+    },
+    {
+      "id": "26",
+      "type": "textNode",
+      "text": "4.1 3-에이전트 엄격 분리\n\nfeedback_advisor에서 평가·진단을 독립 Evaluator 에이전트로 분리하여 evaluator-outside-loop를 보장한다 \narxiv.org\n. Evaluator는 adversarial reviewer로서 상태 검증·기준 점검·성능 감사·점수 산출을 수행한다.\n\n더 알아보기"
+    },
+    {
+      "id": "27",
+      "type": "textNode",
+      "text": "4.2 RL 기반 동적 TurnPolicy\n\n정적 turn_routing을 Puppeteer 모델(REINFORCE, 다목적 보상)로 교체한다 \nArXiv.org\n. 세션 국소적 ε-greedy를 교차 세션 지속 정책으로 격상하고, 모델 타입을 정책 상태에 포함한다 \narXiv (Cornell University)\n.\n\n더 알아보기"
+    },
+    {
+      "id": "28",
+      "type": "textNode",
+      "text": "4.3 결정론적 UAI 도입\n\nRoom 합의 검증에 CAAF의 Unambiguous Assertion Engine을 도입한다 \narxiv.org\n. 의미적 구배를 기계적으로 UAI 결과에 매핑하여 LLM 평가 0% 역설 탐지 문제를 우회한다.\n\n더 알아보기"
+    },
+    {
+      "id": "29",
+      "type": "textNode",
+      "text": "4.4 하위 에이전트 추적 노출\n\nHS1-3 traces를 즉시 구현하고, Evolution Agent처럼 전체 진화 이력을 상위 관측 공간에 노출한다 \narxiv.org\napi.liner.com\n. Forage V2의 append-only 버전 관리 원칙으로 추적 불변성을 보장한다 \narxiv.org\n.\n\n더 알아보기"
+    },
+    {
+      "id": "30",
+      "type": "textNode",
+      "text": "4.5 양방향 피드백 + 메타 진화\n\nrule_sync 단방향성을 Meta-Evolution Loop 패턴으로 교체한다 \narxiv.org\n. 내부 HSIL 수렴 궤적이 외부 메타-진화 에이전트의 최적화 신호로 사용되며, W4S처럼 약한 메타에이전트가 강한 실행기 피드백으로 워크플로우를 개선한다 \nArXiv.org\n.\n\n더 알아보기"
+    },
+    {
+      "id": "31",
+      "type": "textNode",
+      "text": "4.6 비동기 Human Oversight\n\nTheBotCompany의 비동기 이슈 파일링 패턴을 Human Inbox에 통합한다 \nArXiv.org\n. 사람이 이슈를 등록하면 매니저 에이전트가 자연적 단계 전환점에서 소비하는 블로킹 없는 방향 조정 채널이다.\n\n더 알아보기"
+    },
+    {
+      "id": "32",
+      "type": "textNode",
+      "text": "4.7 Manager Agent 도입\n\nTurnPolicyEngine을 compositional reasoning 능력을 갖춘 Manager Agent로 격상한다 \ndoi.org\n. decompose→refine→assign 체인, 다목적 최적화, 임시 팀 조율, 설계에 의한 거버넌스를 지원한다.\n\n더 알아보기"
+    },
+    {
+      "id": "33",
+      "type": "fileNode",
+      "text": "The Last Harness You'll Ever Build\n\nHaebin Seong, Li Yin, Haoran Zhang, Zhan Shi\n\narxiv.org\n\n2026. 04. 22.\n\n관련 논문 찾기"
+    },
+    {
+      "id": "34",
+      "type": "fileNode",
+      "text": "Multi-Agent Collaboration via Evolving Orchestration\n\nYufan Dang, Qian Chen, X. L. Luo, Jin-Hu Fan, Zihao Xie, R. S. Shi, Weize Chen, Cheng Yang, Xiaoyin Che, Ye Tian, Xuantang Xiong, Lei Han, Zhiyuan Liu, Maosong Sun\n\nArXiv.org\n\n2025. 05. 26.\n\n인용 38\n\n관련 논문 찾기"
+    },
+    {
+      "id": "35",
+      "type": "fileNode",
+      "text": "Harness as an Asset: Enforcing Determinism via the Convergent AI Agent Framework (CAAF)\n\nTianbao Zhang\n\narxiv.org\n\n2026. 04. 18.\n\n관련 논문 찾기"
+    },
+    {
+      "id": "36",
+      "type": "fileNode",
+      "text": "The Last Harness You'll Ever Build\n\nHaebin Seong, Li Yin, Haoran Zhang, Zhan Shi\n\narxiv.org\n\n2026. 04. 22.\n\n관련 논문 찾기"
+    },
+    {
+      "id": "37",
+      "type": "fileNode",
+      "text": "Self-Organizing Multi-Agent Systems for Continuous Software Development\n\nWenhan Lyu, Yue Xiao, Yixuan Zhang, Yifan Sun\n\nArXiv.org\n\n2026. 03. 26.\n\n관련 논문 찾기"
+    },
+    {
+      "id": "38",
+      "type": "fileNode",
+      "text": "Orchestrating Human-AI Teams: The Manager Agent as aUnifying Research Challenge\n\nCharlie Masters, Advaith Vellanki, Jianhua Shangguan, Bart Kultys, Jonathan Gilmore, Alastair Moore, Stefano Albrecht\n\ndoi.org\n\n2025. 10. 02.\n\n인용 4\n\n관련 논문 찾기"
+    },
+    {
+      "id": "39",
+      "type": "fileNode",
+      "text": "The Last Harness You'll Ever Build\n\nHaebin Seong, Li Yin, Haoran Zhang, Zhan Shi\n\narxiv.org\n\n2026. 04. 22.\n\n관련 논문 찾기"
+    },
+    {
+      "id": "40",
+      "type": "fileNode",
+      "text": "Multi-Agent Collaboration via Evolving Orchestration\n\nYufan Dang, Qian Chen, X. L. Luo, Jin-Hu Fan, Zihao Xie, R. S. Shi, Weize Chen, Cheng Yang, Xiaoyin Che, Ye Tian, Xuantang Xiong, Lei Han, Zhiyuan Liu, Maosong Sun\n\nArXiv.org\n\n2025. 05. 26.\n\n인용 38\n\n관련 논문 찾기"
+    },
+    {
+      "id": "41",
+      "type": "fileNode",
+      "text": "Harness as an Asset: Enforcing Determinism via the Convergent AI Agent Framework (CAAF)\n\nTianbao Zhang\n\narxiv.org\n\n2026. 04. 18.\n\n관련 논문 찾기"
+    },
+    {
+      "id": "42",
+      "type": "fileNode",
+      "text": "DESIGN-HARNESS-SELF-IMPROVE.md\n\n관련 논문 찾기"
+    },
+    {
+      "id": "43",
+      "type": "fileNode",
+      "text": "Weak-for-Strong: Training Weak Meta-Agent to Harness Strong Executors\n\nFan Nie, Lan Feng, Haotian Ye, Weixin Liang, Pan Lu, Huaxiu Yao, Alexandre Alahi, James Zou\n\nArXiv.org\n\n2025. 04. 07.\n\n인용 9\n\n관련 논문 찾기"
+    },
+    {
+      "id": "44",
+      "type": "fileNode",
+      "text": "Self-Organizing Multi-Agent Systems for Continuous Software Development\n\nWenhan Lyu, Yue Xiao, Yixuan Zhang, Yifan Sun\n\nArXiv.org\n\n2026. 03. 26.\n\n관련 논문 찾기"
+    },
+    {
+      "id": "45",
+      "type": "fileNode",
+      "text": "Orchestrating Human-AI Teams: The Manager Agent as aUnifying Research Challenge\n\nCharlie Masters, Advaith Vellanki, Jianhua Shangguan, Bart Kultys, Jonathan Gilmore, Alastair Moore, Stefano Albrecht\n\ndoi.org\n\n2025. 10. 02.\n\n인용 4\n\n관련 논문 찾기"
+    }
+  ],
+  "edges": [
+    {
+      "id": "1c3ddcd1-5ac1-4e4d-afb5-cc0ff27c8897",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "412cead9-90f3-4589-9437-f520a487023a",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "92d81aa8-29e2-47bd-836b-f6f776eca6e5",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "38e69299-4c9d-4332-a914-a56ab1f20313",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "a2e9a23e-8d4a-410f-85b3-ffac9e2bfe7b",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "e1704965-33e0-4003-8650-c5d08f09dba3",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "028c8158-af75-401c-b01c-660129020a43",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "8d35e95e-cea5-405a-aed7-62721273c305",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "e9441a99-74a9-4aff-af2a-df017a41a68e",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "cdfb932a-95fd-4126-a2fa-51aae2fa8d6a",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "8178db2a-d73a-41b8-b226-a41350de9fa2",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "75f35665-8a36-4972-bd37-87eefcbc3788",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "9783e39f-d852-47aa-ab01-cd4e0158cb4b",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "0cfa7643-d5e7-4fdc-a1d1-75d5bdfc46c6",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "c600e4c9-b23b-4646-a8a9-304f5bf4830c",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "b282d02d-72e7-4f3e-bc8a-67d2f8c87bf7",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "9b2c93bd-e244-4867-9b9c-4533f57dff32",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "9f501deb-89c9-454c-ab27-2363f4d53441",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "60e0ee6e-1860-490f-a794-55dcc8b17b6c",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "b89e815a-2737-475b-9c11-8ebc95299c26",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "77b90d1a-2cda-42a1-ba77-140cb5b6160d",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "9f0d15c3-bae1-4e51-8ee9-9800cf831560",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "a8beda10-97f9-4718-bea5-2eb48971dd15",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "ec1e9ac6-a36d-4259-be8b-03d0431ffc51",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "ff3103f1-0257-4622-91a1-8381d7c2de6b",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "e946dd39-da21-4244-84bb-4e0dc8dafced",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "0464d1b1-59a1-4189-8360-94508d4e3305",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "4a1324f1-9773-45f1-af56-642d023b7a4c",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "975d33d9-e891-4d72-ba19-24cda43a791a",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "509d44a4-a5cf-4868-a11e-4f7e31055ff0",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "8d9b8f9e-2c39-4991-8215-392075f0e0bf",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "d7677920-607b-4721-ada5-9101675c8998",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "a6e7b9d0-b7b8-4678-b3c8-84644d1614a5",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "f70f1e6d-e876-4ebf-a899-24f41f5bf620",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "637c28ce-aa68-4441-8133-66d50cd2db11",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "93ed41c1-ab3e-477a-aeff-2c6247f98024",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "796129dc-ac11-4565-b3f2-6c8cecca75ce",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "e0a4ba2a-254b-4795-a864-2e1897c95ceb",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "c091e308-4a7e-45f0-a52e-97e4bf8bfd6b",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "bdd7af37-d1dc-4a8d-b904-6c1f480505b8",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "55c2d2d8-7be2-4836-aa3a-4ced683e21d0",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "d786bd84-a317-4790-8c98-4e2ca5aaab1e",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "d9cf5334-10cf-4e82-a334-d82a56eee7ed",
+      "source": null,
+      "target": null
+    },
+    {
+      "id": "f298a233-bbc4-40c2-a976-7c2942a5c174",
+      "source": null,
+      "target": null
+    }
+  ],
+  "fullText": "agent-lab 오케스트레이션 분석 및 개선\n\nagent-lab의 6계층 레이어드 오케스트레이션 스택에서 식별된 7가지 구조적 한계를 분석하고, 7개 슈퍼샘플 대조를 통해 7가지 개선 방안을 도출한다.\n\n더 알아보기\n\n1 현재 오케스트레이션 아키텍처\n\nagent-lab은 단일 Harness.run()이 아닌 6계층 레이어드 스택(Room→Runtime→Plan/Execute→Mission→Session→API)으로 구성되며, 각 계층은 FSM과 SSE로 조율된다 \napi.liner.com\n.\n\n더 알아보기\n\n1.1 Room (discuss)\n\n멀티에이전트 턴·합의·scribe를 관장하는 상위 오케스트레이션 계층이다 \napi.liner.com\n. LLM 판단 기반 합의에 의존하여 False Consensus 취약성이 존재한다.\n\n더 알아보기\n\n1.2 Runtime (이벤트 라우터)\n\ndiscuss/execute/mission 세 모드를 단일 runtime.dispatch로 처리하는 모놀리식 이벤트 라우터이다 \napi.liner.com\n. 평가와 진단이 결합되어 evaluator-inside-loop 구조를 형성한다.\n\n더 알아보기\n\n1.3 Plan/Execute\n\nplan.md → worktree → merge → Oracle 흐름으로, 검증은 Oracle이 수행하나 하위 에이전트 추적은 상위 관측 공간에 노출되지 않는다 \napi.liner.com\n.\n\n더 알아보기\n\n1.4 Mission Loop\n\nDiscuss↔Execute FSM 전환을 관장하며, 자연적 단계 전환점에서 비동기 Human 이슈를 소비하는 메커니즘이 부재한다 \napi.liner.com\n.\n\n더 알아보기\n\n1.5 TurnPolicyEngine\n\n사전 정의된 역할 셋에 기반한 정적 라우팅을 수행한다 \napi.liner.com\n. 교차 세션 지속 학습과 RL 기반 정책 최적화가 결여되어 있다.\n\n더 알아보기\n\n1.6 feedback_advisor\n\noutcome ledger에서 SetupHint를 반환하는 S1 RECORD/RECALL 컴포넌트로, 평가·진단을 겸수하여 evaluator-inside-loop 구조를 형성한다 \napi.liner.com\n. rule_sync는 단방향이며 하네스→SSOT 역류가 불가하다 \napi.liner.com\n.\n\n더 알아보기\n\n2 식별된 7가지 구조적 한계\n\n현재 아키텍처에서 학술 근거로 확인된 근본적 한계점들이다.\n\n더 알아보기\n\n2.1 이벤트 라우팅 모놀리식 결합\n\nfeedback_advisor가 평가·진단을 겸하는 evaluator-inside-evolution-loop 구조로서 리워드 해킹의 구조적 전제 조건이다. agent-lab 스스로 Tier D에서 이를 보류 사유로 명시했다 \napi.liner.com\n. Harness Evolution Loop는 Worker·Evaluator·Evolution 3분리로 이를 해결한다 \narxiv.org\n.\n\n더 알아보기\n\n2.2 정적 TurnPolicy\n\n사전 정의된 역할 셋에 기반한 정적 라우팅으로, 교차 세션 지속성과 RL 기반 정책 최적화가 결여되어 있다. s2_role_bandit은 세션 국소적 ε-greedy에 불과하다 \napi.liner.com\n. Evolving Orchestration은 REINFORCE 기반 다목적 보상으로 실시간 학습한다 \nArXiv.org\n.\n\n더 알아보기\n\n2.3 False Consensus 취약성\n\nRoom의 LLM 판단 기반 합의는 CAAF가 실증한 Stochastic Oscillation과 False Consensus에 취약하다 \narxiv.org\n. LLM 기반 평가는 80회 시험에서 0% 역설 탐지율을 기록했다 \narxiv.org\n.\n\n더 알아보기\n\n2.4 관측 단절\n\n하위 에이전트(DELEGATE/DISPATCH, Oracle) 실행 추적이 상위 관측 공간에 노출되지 않는다 \napi.liner.com\n. Evolution Agent는 전체 진화 이력을 읽어 실패 전략 반복을 방지하지만 \narxiv.org\n, agent-lab은 HS1-3 traces 구현이 미완이다 \napi.liner.com\n.\n\n더 알아보기\n\n2.5 피드백 단방향성\n\nrule_sync는 SSOT→하네스별 export 단방향으로, 하네스 성능이 오케스트레이션 정책으로 역류하지 않는다 \napi.liner.com\n. Meta-Evolution Loop는 내부 루프 수렴 궤적이 외부 루프 최적화 신호로 사용되는 양방향 구조이다 \narxiv.org\n.\n\n더 알아보기\n\n2.6 비동기 Human Oversight 부재\n\nHuman Inbox 게이트는 동기적 승인/거부만 지원한다 \napi.liner.com\n. TheBotCompany는 이슈 파일링→매니저 에이전트 자연적 단계 전환점 소매의 비동기 패턴을 제안한다 \nArXiv.org\n.\n\n더 알아보기\n\n2.7 Manager Agent 역할 미포착\n\nTurnPolicyEngine은 정적 라우팅 룰에 기반하며, 작업 분해·세분화·의존성 관리의 프로액티브 오케스트레이션 능력이 설계에 반영되지 않았다 \ndoi.org\n. GPT-5의 'proactive orchestrator' 패턴(decompose→refine→assign)과 대비된다.\n\n더 알아보기\n\n3 슈퍼샘플 대조 분석\n\n동적 적응·평가 분리·비동기 Human·메타 루프 4차원에서 agent-lab과 7개 슈퍼샘플을 비교한다.\n\n더 알아보기\n\n3.1 Harness Evolution Loop\n\nWorker/Evaluator/Evolution 3-에이전트 엄격 분리, adversarial evaluator, Meta-Evolution Loop(2-level)가 특징이다 \narxiv.org\n. agent-lab의 evaluator-inside-loop 문제를 구조적으로 해결하는 참조 모델이다.\n\n더 알아보기\n\n3.2 CAAF\n\nRAD/Executor/UAI(Reviewer) 3분리, 결정론적 UAI 기반 검증, 스칼라 구배 수렴 보장이 특징이다 \narxiv.org\n. LLM 평가 0% 역설 탐지율 문제를 결정론적 assertion으로 우회한다.\n\n더 알아보기\n\n3.3 Mimosa\n\n5-layer(planning→tool→meta-orch→exec→judge) 구조로, 메타 오케스트레이션 반복 정제가 특징이다 \narXiv (Cornell University)\n. 모델별 오케스트레이션 민감도가 상이하여 동일 전략이 증폭 또는 방해될 수 있다 \narXiv (Cornell University)\n.\n\n더 알아보기\n\n3.4 Evolving Orchestration\n\n중앙 Puppeteer + REINFORCE 기반 RL 정책으로, 해결 품질·연산 비용 다목적 보상을 사용한다 \nArXiv.org\n. 교차 세션 궤적 데이터로 에이전트 선택 정책을 학습한다.\n\n더 알아보기\n\n3.5 TheBotCompany\n\nStrategy/Execution/Verification 3-매니저 분리, 자가조직 팀(hire/retire), 비동기 Human 이슈 파일링이 특징이다 \nArXiv.org\n. 블로킹 없이 방향 조정하는 비동기 Human oversight 채널을 제공한다.\n\n더 알아보기\n\n3.6 W4S Harnessing\n\n약한 메타에이전트가 강한 실행기의 성능 피드백으로 워크플로우를 반복 개선하는 MDP+RLAO 프레임워크이다 \nArXiv.org\n. 양방향 피드백 루프의 참조 모델이다.\n\n더 알아보기\n\n3.7 RWL (Ralph Wiggum Loop)\n\nDesign Agent + 수치 evaluator/validator 분리, 메타인지 Co-Regulation이 특징이다 \nArXiv.org\n. 자기 평가 + 외부 검증의 이중 구조로 수렴을 보장한다.\n\n더 알아보기\n\n4 개선 방안 7가지\n\n슈퍼샘플 대조에서 도출한 7가지 구조적 개선 방안이다.\n\n더 알아보기\n\n4.1 3-에이전트 엄격 분리\n\nfeedback_advisor에서 평가·진단을 독립 Evaluator 에이전트로 분리하여 evaluator-outside-loop를 보장한다 \narxiv.org\n. Evaluator는 adversarial reviewer로서 상태 검증·기준 점검·성능 감사·점수 산출을 수행한다.\n\n더 알아보기\n\n4.2 RL 기반 동적 TurnPolicy\n\n정적 turn_routing을 Puppeteer 모델(REINFORCE, 다목적 보상)로 교체한다 \nArXiv.org\n. 세션 국소적 ε-greedy를 교차 세션 지속 정책으로 격상하고, 모델 타입을 정책 상태에 포함한다 \narXiv (Cornell University)\n.\n\n더 알아보기\n\n4.3 결정론적 UAI 도입\n\nRoom 합의 검증에 CAAF의 Unambiguous Assertion Engine을 도입한다 \narxiv.org\n. 의미적 구배를 기계적으로 UAI 결과에 매핑하여 LLM 평가 0% 역설 탐지 문제를 우회한다.\n\n더 알아보기\n\n4.4 하위 에이전트 추적 노출\n\nHS1-3 traces를 즉시 구현하고, Evolution Agent처럼 전체 진화 이력을 상위 관측 공간에 노출한다 \narxiv.org\napi.liner.com\n. Forage V2의 append-only 버전 관리 원칙으로 추적 불변성을 보장한다 \narxiv.org\n.\n\n더 알아보기\n\n4.5 양방향 피드백 + 메타 진화\n\nrule_sync 단방향성을 Meta-Evolution Loop 패턴으로 교체한다 \narxiv.org\n. 내부 HSIL 수렴 궤적이 외부 메타-진화 에이전트의 최적화 신호로 사용되며, W4S처럼 약한 메타에이전트가 강한 실행기 피드백으로 워크플로우를 개선한다 \nArXiv.org\n.\n\n더 알아보기\n\n4.6 비동기 Human Oversight\n\nTheBotCompany의 비동기 이슈 파일링 패턴을 Human Inbox에 통합한다 \nArXiv.org\n. 사람이 이슈를 등록하면 매니저 에이전트가 자연적 단계 전환점에서 소비하는 블로킹 없는 방향 조정 채널이다.\n\n더 알아보기\n\n4.7 Manager Agent 도입\n\nTurnPolicyEngine을 compositional reasoning 능력을 갖춘 Manager Agent로 격상한다 \ndoi.org\n. decompose→refine→assign 체인, 다목적 최적화, 임시 팀 조율, 설계에 의한 거버넌스를 지원한다.\n\n더 알아보기\n\nThe Last Harness You'll Ever Build\n\nHaebin Seong, Li Yin, Haoran Zhang, Zhan Shi\n\narxiv.org\n\n2026. 04. 22.\n\n관련 논문 찾기\n\nMulti-Agent Collaboration via Evolving Orchestration\n\nYufan Dang, Qian Chen, X. L. Luo, Jin-Hu Fan, Zihao Xie, R. S. Shi, Weize Chen, Cheng Yang, Xiaoyin Che, Ye Tian, Xuantang Xiong, Lei Han, Zhiyuan Liu, Maosong Sun\n\nArXiv.org\n\n2025. 05. 26.\n\n인용 38\n\n관련 논문 찾기\n\nHarness as an Asset: Enforcing Determinism via the Convergent AI Agent Framework (CAAF)\n\nTianbao Zhang\n\narxiv.org\n\n2026. 04. 18.\n\n관련 논문 찾기\n\nThe Last Harness You'll Ever Build\n\nHaebin Seong, Li Yin, Haoran Zhang, Zhan Shi\n\narxiv.org\n\n2026. 04. 22.\n\n관련 논문 찾기\n\nSelf-Organizing Multi-Agent Systems for Continuous Software Development\n\nWenhan Lyu, Yue Xiao, Yixuan Zhang, Yifan Sun\n\nArXiv.org\n\n2026. 03. 26.\n\n관련 논문 찾기\n\nOrchestrating Human-AI Teams: The Manager Agent as aUnifying Research Challenge\n\nCharlie Masters, Advaith Vellanki, Jianhua Shangguan, Bart Kultys, Jonathan Gilmore, Alastair Moore, Stefano Albrecht\n\ndoi.org\n\n2025. 10. 02.\n\n인용 4\n\n관련 논문 찾기\n\nThe Last Harness You'll Ever Build\n\nHaebin Seong, Li Yin, Haoran Zhang, Zhan Shi\n\narxiv.org\n\n2026. 04. 22.\n\n관련 논문 찾기\n\nMulti-Agent Collaboration via Evolving Orchestration\n\nYufan Dang, Qian Chen, X. L. Luo, Jin-Hu Fan, Zihao Xie, R. S. Shi, Weize Chen, Cheng Yang, Xiaoyin Che, Ye Tian, Xuantang Xiong, Lei Han, Zhiyuan Liu, Maosong Sun\n\nArXiv.org\n\n2025. 05. 26.\n\n인용 38\n\n관련 논문 찾기\n\nHarness as an Asset: Enforcing Determinism via the Convergent AI Agent Framework (CAAF)\n\nTianbao Zhang\n\narxiv.org\n\n2026. 04. 18.\n\n관련 논문 찾기\n\nDESIGN-HARNESS-SELF-IMPROVE.md\n\n관련 논문 찾기\n\nWeak-for-Strong: Training Weak Meta-Agent to Harness Strong Executors\n\nFan Nie, Lan Feng, Haotian Ye, Weixin Liang, Pan Lu, Huaxiu Yao, Alexandre Alahi, James Zou\n\nArXiv.org\n\n2025. 04. 07.\n\n인용 9\n\n관련 논문 찾기\n\nSelf-Organizing Multi-Agent Systems for Continuous Software Development\n\nWenhan Lyu, Yue Xiao, Yixuan Zhang, Yifan Sun\n\nArXiv.org\n\n2026. 03. 26.\n\n관련 논문 찾기\n\nOrchestrating Human-AI Teams: The Manager Agent as aUnifying Research Challenge\n\nCharlie Masters, Advaith Vellanki, Jianhua Shangguan, Bart Kultys, Jonathan Gilmore, Alastair Moore, Stefano Albrecht\n\ndoi.org\n\n2025. 10. 02.\n\n인용 4\n\n관련 논문 찾기\n\nCmd\n0\n\n화면에 맞춤\n\nTab\n\n하위 노드 추가\n\n⌘\nEnter\n\n같은 단계 노드 추가"
+}

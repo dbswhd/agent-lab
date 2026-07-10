@@ -336,6 +336,36 @@ def test_prepare_turn_policy_s1_topic_skips_fsm_init(
     assert not is_plan_workflow_active(run_meta)
 
 
+def test_prepare_turn_policy_persists_shadow_turn_contract(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from agent_lab.room.turn_policy import prepare_turn_policy_before_agent_round
+    from agent_lab.run.meta import read_run_meta
+
+    monkeypatch.setenv("AGENT_LAB_TURN_POLICY", "1")
+    monkeypatch.setattr("agent_lab.outcome_harvester.load_outcome_rows", lambda: [])
+    folder = tmp_path / "sess"
+    folder.mkdir()
+    (folder / "run.json").write_text("{}", encoding="utf-8")
+    run_meta = read_run_meta(folder)
+    run_meta["room_preset"] = "supervisor"
+    run_meta["agents"] = ["cursor", "codex", "claude"]
+
+    run_meta, _effects = prepare_turn_policy_before_agent_round(
+        folder,
+        run_meta,
+        human_turn=1,
+        topic="금전 거래 코드에 위험이 없는지 봐줘",
+    )
+
+    contract = run_meta.get("turn_contract")
+    assert isinstance(contract, dict)
+    assert contract.get("contract_id") == "critical_review"
+    assert contract.get("source") == "bootstrap"
+    assert "candidates" in contract
+
+
 def test_supervisor_draft_phase_scribes() -> None:
     effects = TurnPolicyEngine.resolve(
         TurnSignals(

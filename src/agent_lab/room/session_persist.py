@@ -421,6 +421,8 @@ def _write_session_files(
             run_meta["team_lead"] = turn_meta["turn_lead"]
         if turn_meta.get("turn_leads"):
             run_meta["turn_leads"] = turn_meta["turn_leads"]
+        if turn_meta.get("turn_contract"):
+            run_meta["turn_contract"] = turn_meta["turn_contract"]
     from agent_lab.session.guidance import sync_session_meta
 
     sync_session_meta(

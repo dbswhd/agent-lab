@@ -1,4 +1,4 @@
-.PHONY: install install-dev dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build tauri-check-windows profile-track2-gate clean test test-fast test-c1 test-integration test-bridge test-duration-report lint typecheck typecheck-ratchet structure-metrics structure-metrics-check layer-cycles-check ci ci-full check-worktrees smoke smoke-e2e smoke-web-ui smoke-tauri-ui validate-quant verify-quant-workspace verify-trading-v1 verify-mcp-contract build-research-cards offline-lane thin-runtime-status verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate dogfood-suite-reproducibility dogfood-feedback-mock feedback-report eval-surface-local eval-surface-check generate-model-catalog check-model-catalog s1-dogfood-env s1-dogfood-check x2-lift-dogfood-env x2-lift-dogfood-run x2-lift-dogfood-prepare x2-lift-dogfood-live-repeat x2-lift-dogfood-check
+.PHONY: install install-dev dev prod api web cli tauri-dev prepare-bundled-runtime tauri-build tauri-check-windows profile-track2-gate clean test test-fast test-c1 test-integration test-bridge test-duration-report lint typecheck typecheck-ratchet structure-metrics structure-metrics-check layer-cycles-check ci ci-full check-worktrees smoke smoke-e2e smoke-web-ui smoke-tauri-ui validate-quant verify-quant-workspace verify-trading-v1 verify-mcp-contract build-research-cards offline-lane thin-runtime-status verify-release verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate verify-ops verify-ops-quick verify-ops-live verify-ops-live-merge score-session score-weekly score-regression-fixtures live-worktree-dry-run live-telegram-merge-soak init-project-memory verify-hooks measure-communicate-baseline mission-dogfood-report mission-dogfood-weekly list-flags emergence-bench dogfood-suite-mock dogfood-suite-checklist dogfood-suite-aggregate dogfood-suite-reproducibility dogfood-feedback-mock dogfood-progress dogfood-progress-auto dogfood-progress-record dogfood-track dogfood-track-check dogfood-track-env dogfood-track-run dogfood-track-run-mock dogfood-track-f7-start dogfood-track-f7-decision dogfood-track-hs-m5-merge dogfood-live-gates dogfood-live-gates-watch feedback-report eval-surface-local eval-surface-check generate-model-catalog check-model-catalog s1-dogfood-env s1-dogfood-check x2-lift-dogfood-env x2-lift-dogfood-run x2-lift-dogfood-prepare x2-lift-dogfood-live-repeat x2-lift-dogfood-check
 
 install:
 	python3 -m venv .venv
@@ -368,6 +368,63 @@ dogfood-feedback-mock:
 dogfood-suite-reproducibility:
 	AGENT_LAB_MOCK_AGENTS=1 .venv/bin/python scripts/run_dogfood_suite.py --mode reproducibility \
 	  $(if $(TIER),--tier $(TIER),) $(if $(ONLY),--only $(ONLY),)
+
+# Dogfood progress — suite-log tracking + auto Room/plan/execute/Oracle (mock)
+dogfood-progress:
+	.venv/bin/python scripts/dogfood_progress.py --mode status \
+	  $(if $(TIER),--tier $(TIER),) $(if $(ONLY),--only $(ONLY),) $(if $(JSON),--json,)
+
+dogfood-progress-auto:
+	AGENT_LAB_MOCK_AGENTS=1 .venv/bin/python scripts/dogfood_progress.py --mode auto \
+	  $(if $(TIER),--tier $(TIER),) $(if $(ONLY),--only $(ONLY),) \
+	  $(if $(DRY_RUN),--dry-run,) $(if $(NO_SKIP_DONE),--no-skip-done,)
+
+dogfood-progress-record:
+	@test -n "$(ID)" || (echo "Usage: make dogfood-progress-record ID=S1 SESSION=sessions/<id>" && exit 1)
+	@test -n "$(SESSION)" || (echo "Usage: make dogfood-progress-record ID=S1 SESSION=sessions/<id>" && exit 1)
+	.venv/bin/python scripts/dogfood_progress.py --mode record --id "$(ID)" --session "$(SESSION)" \
+	  $(if $(NOTES),--notes "$(NOTES)",) $(if $(MINUTES),--minutes $(MINUTES),)
+
+# Unified dogfood track — LIVE-first (P0-5 · F7 · N4 · CATALOG · HS-M5 · N1-30)
+dogfood-track:
+	.venv/bin/python scripts/dogfood_track.py --mode status $(if $(JSON),--json,)
+
+dogfood-track-check:
+	.venv/bin/python scripts/dogfood_track.py --mode check $(if $(JSON),--json,)
+
+dogfood-track-env:
+	@.venv/bin/python scripts/dogfood_track.py --mode env
+
+dogfood-track-run:
+	.venv/bin/python scripts/dogfood_track.py --mode run $(if $(SKIP_F7_START),--skip-f7-start,)
+
+dogfood-track-run-mock:
+	@echo "NOTE: mock is optional — prefer: make dogfood-track-run"
+	AGENT_LAB_MOCK_AGENTS=1 .venv/bin/python scripts/dogfood_track.py --mode run-mock \
+	  $(if $(ONLY),--only $(ONLY),)
+
+dogfood-track-f7-start:
+	.venv/bin/python scripts/dogfood_track.py --mode mark-f7-start
+
+dogfood-track-f7-decision:
+	@test -n "$(DECISION)" || (echo "Usage: make dogfood-track-f7-decision DECISION=ON|OFF" && exit 1)
+	.venv/bin/python scripts/dogfood_track.py --mode record-f7-decision --decision "$(DECISION)" \
+	  $(if $(RATIONALE),--rationale "$(RATIONALE)",)
+
+dogfood-track-hs-m5-merge:
+	.venv/bin/python scripts/dogfood_track.py --mode record-hs-m5-merge \
+	  $(if $(CANDIDATE),--candidate-id "$(CANDIDATE)",) $(if $(NOTES),--notes "$(NOTES)",)
+
+# Live mid-gate driver — Inbox Question / MCP build / plan / execute (API must be up)
+dogfood-live-gates:
+	@test -n "$(SESSION)$(SESSION_ID)" || (echo "Usage: make dogfood-live-gates SESSION=sessions/<id>  or SESSION_ID=<id>" && exit 1)
+	.venv/bin/python scripts/dogfood_live_gates.py \
+	  --session "$(if $(SESSION_ID),$(SESSION_ID),$(SESSION))" \
+	  $(if $(WATCH),--watch,) $(if $(TIMEOUT),--timeout $(TIMEOUT),) \
+	  $(if $(FREEFORM),--freeform-note "$(FREEFORM)",)
+
+dogfood-live-gates-watch:
+	$(MAKE) dogfood-live-gates WATCH=1 SESSION="$(SESSION)" SESSION_ID="$(SESSION_ID)" TIMEOUT="$(if $(TIMEOUT),$(TIMEOUT),3600)"
 
 feedback-report:
 	.venv/bin/python scripts/feedback_report.py --root $(if $(ROOT),$(ROOT),.) $(if $(JSON),--json,)

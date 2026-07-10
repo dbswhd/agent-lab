@@ -1,0 +1,317 @@
+# agent-lab: Structure, Workflow, References
+
+- projectId: `665131`
+- mapId: `4332218`
+- sourceTitle: Agent-Lab: HSIL 파이프라인 기반의 에이전트 하네스 자가 개선 시스템
+- nodes: 34
+- edges: 33
+
+## agent-lab: Structure, Workflow, References
+
+agent-lab는 슈퍼샘플(Super Sample)을 핵심 산물로, HSIL 6단계 파이프라인으로 하네스를 폐루프 개선하며, Editable Surface Tier로 수정 가변성을 거버넌스하는 시스템입니다. 각 단계는 최신 학술 연구와 정합합니다.
+
+## 1 Super Sample
+
+생태계에서 신뢰받는 원본(forkable original) 프로젝트를 지향합니다. T0(Oracle 검증)·T1(재현 신뢰)·T2(생태계 신뢰)의 3단계 신뢰 층과 case→trace→grader→report 평가 체계를 갖춥니다.
+
+### 1.1 Trust Tiers (T0 / T1 / T2)
+
+T0은 Oracle(결정론적 검증기) 통과, T1은 독립 재현 가능, T2는 생태계 차원 신뢰(포크·확장)입니다. 안전 게이트의 정보이론적 한계 연구도 Oracle 검증의 필수성을 뒷받침합니다
+
+Zenodo (CERN European Organization for Nuclear Research)
+
+.
+
+### 1.2 Evaluation Chain (case → trace → grader → report)
+
+case(작업 정의)→trace(실행 궤적)→grader(평가기)→report(결과 보고)의 4단계 체계입니다. Generation 3 하네스에서는 평가 기준 자체를 자율 발견·정제하며, 독립 Evaluator는 규정 준수가 아닌 완료 기준의 발견을 담당합니다
+
+arxiv.org
+
+.
+
+## 2 HSIL Pipeline (ATTRIB → MINE → PLAYBOOK → PROPOSE → REGRESS → MERGE)
+
+하네스 자기 개선 루프(HSIL)는 6단계 폐루프 파이프라인으로 하네스를 측정 가능하게 개선합니다. Harness Evolution Loop의 Worker→Evaluator→Evolution Agent 3자구조와 정합하며
+
+arxiv.org
+
+, 각 단계는 검증 체크포인트를 갖습니다.
+
+### 2.1 ATTRIB — 원인 귀속
+
+실패를 유발한 하네스 컴포넌트에 원인을 귀속합니다. spectrum analysis 기법으로 다중 에이전트 실패를 특정 컴포넌트에 추적하며
+
+ArXiv.org
+
+, 궤적 기반 분석은 즉각원인→근접원인→근원원인의 3단계 인과 귀속 체계를 제공합니다
+
+arXiv (Cornell University)
+
+.
+
+### 2.2 MINE — 실패 패턴 채굴
+
+재발하는 실패 패턴을 체계적으로 채굴·분류합니다. Agent-Testing Agent는 코드 검사와 도메인 지식으로 실패 가설을 구축→우선순위화→적대적 프로빙합니다
+
+ArXiv.org
+
+. 실패 분류 프레임워크는 오류를 체계적 범주로 정리해 재발 패턴을 식별합니다
+
+ArXiv.org
+
+.
+
+### 2.3 PLAYBOOK — 점진적 지식 축적
+
+채굴된 교훈을 점진적 지식(플레이북)으로 축적합니다. ACE는 Generator/Reflector/Curator 3역할 분업으로 컨텍스트를 진화시키며
+
+ArXiv.org
+
+, GUIDE는 상태조건부 bullet 구조의 플레이북을 에피소드 반성으로 개선합니다
+
+arXiv (Cornell University)
+
+. DDC는 에이전트 실패를 지식 큐레이션의 1차 신호로 활용합니다
+
+ArXiv.org
+
+.
+
+### 2.4 PROPOSE — 하네스 수정안 제안
+
+진단된 패턴에 기반해 하네스 수정안을 생성합니다. Harness Evolution Loop의 Evolution Agent가 실패 패턴 식별→하네스 수정을 수행하며
+
+arxiv.org
+
+, AutoHarness는 LLM의 코드 생성 능력으로 하네스를 트리 탐색으로 자동 합성합니다
+
+ArXiv.org
+
+.
+
+### 2.5 REGRESS — 회귀 게이트
+
+수정안이 기존 기능을 훼손하지 않는지 통계적으로 검증합니다. Two-Gate 정책(검증 마진 τ + 용량 상한 K[m])이 학습가능성 보존을 보장하고
+
+arXiv (Cornell University)
+
+, TDAD는 P→F flip 검출로 70% 회귀 감소를 실증합니다
+
+ArXiv.org
+
+. AgentAssay는 행동 지문으로 86% 회귀 검출력(이진 판정 0%)을 달성하며
+
+arXiv (Cornell University)
+
+, SGM은 통계적 인증서로 유해 변경 채택 확률을 상한 제어합니다
+
+ArXiv.org
+
+.
+
+### 2.6 MERGE — 제어 병합
+
+검증된 변경을 권한 티어에 따라 제어하에 병합합니다. Layered Mutability는 5계층 가변성 스택과 래칫 문제로 수정 권한의 관측 가능성이 거버넌스 핵심임을 보여주며
+
+arxiv.org
+
+, CAAF는 하네스를 버전관리·동결·RBAC 자산으로 취급합니다
+
+arxiv.org
+
+. Claude Code 권한 게이트의 Tier 2 커버리지 갭(81% FNR)도 권한 설계 시사점을 제공합니다
+
+arxiv.org
+
+.
+
+## 3 Editable Surface Tier
+
+수정 가변성을 Tier A(자동 적용 가능), Tier B(인간 게이트 필수), Tier C(동결/수정 불가)로 분리하여 거버넌스를 강화합니다. Jinx list 방식은 도구 카탈로그가 곧 권한 집합이 되는 구조적 권한 적용을 제안합니다
+
+arxiv.org
+
+.
+
+## 4 Theoretical Foundations
+
+HSIL 설계를 뒷받침하는 이론적 기반입니다. 안전 게이트의 정보이론적 한계, 자가개선의 학습가능성 경계, 하네스 최적화 자동화, 보상 해킹 평형이 핵심 연구들입니다.
+
+## Who is Introducing the Failure? Automatically Attributing Failures of Multi-Agent Systems via Spectrum Analysis
+
+Ge Yu, Linna Xie, Zhonghui Li, Yu Pei, Tian Zhang
+
+ArXiv.org
+
+2025. 09. 17.
+
+인용 8
+
+## Trajectory-Informed Memory Generation for Self-Improving Agent Systems
+
+Gaodan Fang, Vatche Isahagian, K. R. Jayaram, Ritesh Kumar, Vinod Muthusamy, Punleuk Oum, Gegi Thomas
+
+arXiv (Cornell University)
+
+2026. 03. 11.
+
+## Agent-Testing Agent: A Meta-Agent for Automated Testing and Evaluation of Conversational AI Agents
+
+Sameer Komoravolu, Khalil Mrini
+
+ArXiv.org
+
+2025. 08. 24.
+
+## Where LLM Agents Fail and How They can Learn From Failures
+
+Kunlun Zhu, Zijia Liu, Bingxuan Li, Muxin Tian, Yingxuan Yang, Jiaxun Zhang, Pengrui Han, Qipeng Xie, Fuyang Cui, Weijia Zhang, Xiaoteng Ma, Xiaodong Yu, Gowtham Ramesh, Jialian Wu, Zicheng Liu, Pan Lu, James Zou, Jiaxuan You
+
+ArXiv.org
+
+2025. 09. 29.
+
+인용 21
+
+## Agentic Context Engineering: Evolving Contexts for Self-Improving Language Models
+
+Qizheng Zhang, Changran Hu, Shubhangi Upasani, Boyuan Ma, Feng-Lei Hong, Vamsidhar Kamanuru, Jay Rainton, Wu Chen, Mengmeng Ji, Hanchen Li, Urmish Thakker, James Zou, Kunle Olukotun
+
+ArXiv.org
+
+2025. 10. 06.
+
+인용 64
+
+## GUIDE: Guided Updates for In-context Decision Evolution in LLM-Driven Spacecraft Operations
+
+Alejandro Carrasco, Mariko Storey-Matsutani, Víctor Rodríguez-Fernández, Richard Linares
+
+arXiv (Cornell University)
+
+2026. 03. 28.
+
+## Demand-Driven Context: A Methodology for Building Enterprise Knowledge Bases Through Agent Failure
+
+Raj Navakoti, Saideep Navakoti
+
+ArXiv.org
+
+2026. 03. 14.
+
+## The Last Harness You'll Ever Build
+
+Haebin Seong, Li Yin, Haoran Zhang, Zhan Shi
+
+arxiv.org
+
+2026. 04. 22.
+
+## AutoHarness: improving LLM agents by automatically synthesizing a code harness
+
+Xinghua Lou, Miguel Lázaro-Gredilla, Antoine Dedieu, Carter Wendelken, Wolfgang Lehrach, Kevin P. Murphy
+
+ArXiv.org
+
+2026. 02. 10.
+
+## On The Statistical Limits of Self-Improving Agents
+
+Chen Wang, Keir Dorchen, Peter Jin
+
+arXiv (Cornell University)
+
+2025. 10. 05.
+
+## TDAD: Test-Driven Agentic Development - Reducing Code Regressions in AI Coding Agents via Graph-Based Impact Analysis
+
+Pepe Alonso, Sergio Yovine, Victor Braberman
+
+ArXiv.org
+
+2026. 03. 18.
+
+## AgentAssay: Token-Efficient Regression Testing for Non-Deterministic AI Agent Workflows
+
+Varun Pratap Bhardwaj
+
+arXiv (Cornell University)
+
+2026. 03. 03.
+
+## SGM: A Statistical Godel Machine for Risk-Controlled Recursive Self-Modification
+
+Xuening Wu, S. Yin, Yanlan Kang, Xiong Zhang, Qinghong Xu, Zhiyuan Chen, Wenqiang Zhang
+
+ArXiv.org
+
+2025. 10. 11.
+
+인용 1
+
+## Layered Mutability: Continuity and Governance in Persistent Self-Modifying Agents
+
+Krti Tallam
+
+arxiv.org
+
+2026. 04. 16.
+
+## Harness as an Asset: Enforcing Determinism via the Convergent AI Agent Framework (CAAF)
+
+Tianbao Zhang
+
+arxiv.org
+
+2026. 04. 18.
+
+## Measuring the Permission Gate: A Stress-Test Evaluation of Claude Code's Auto Mode
+
+Zimo Ji, Zongjie Li, Wenyuan Jiang, Yudong Gao, Shuai Wang
+
+arxiv.org
+
+2026. 04. 04.
+
+## Information-Theoretic Limits of Safety Verification for Self-Improving Systems
+
+Arsenios Scrivens
+
+Zenodo (CERN European Organization for Nuclear Research)
+
+2026. 03. 26.
+
+## AgentDevel: Reframing Self-Evolving LLM Agents as Release Engineering
+
+Di Zhang
+
+ArXiv.org
+
+2026. 01. 08.
+
+인용 1
+
+## HARBOR: Automated Harness Optimization
+
+Biswa Sengupta, Jinhua Wang
+
+arxiv.org
+
+2026. 04. 22.
+
+## Reward Hacking as Equilibrium under Finite Evaluation
+
+Jiacheng Wang, Jinbin Huang
+
+arXiv (Cornell University)
+
+2026. 03. 30.
+
+## Herding CATs: ALARA for Agent Harness Engineering in Portable Composable Multi-Agent Teams
+
+Christopher J. Agostino, Nayan D'Souza
+
+arxiv.org
+
+2026. 03. 20.

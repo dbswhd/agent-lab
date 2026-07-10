@@ -378,7 +378,7 @@ Mission OS 3-pane IA 유지 위에서:
 | 시기 | [선행] | 할 일 (실행 수준) | 닫힘 / 관측 |
 |---|---|---|---|
 | **지금** | **2026-07 code wave ✅** (아래) | S1 dogfood — §1 **S1 관측 절차** 1~4를 supervisor 실미션마다 반복 | `by_source.history.n`·`advisor_lift.history_vs_default` 기록 축적 (formal closure 없음) |
-| **~1달** | F7 protocol ✅ · **dogfood 시작 2026-07-05** | 7일 경과(2026-07-12) 후 `make f7-dogfood-report` | Decision table 기준으로 두 플래그 ON/OFF 확정 커밋 |
+| **~1달** | F7 protocol ✅ · **dogfood 재시작 2026-07-09** (07-05 시작분은 보류로 중단, 시계 재시작 — `docs/NOW.md` §1) | 7일 경과(2026-07-16) 후 `make f7-dogfood-report` | Decision table 기준으로 두 플래그 ON/OFF 확정 커밋 |
 | **분기** | S1 data · F8 instrumented ✅ | ① env `AGENT_LAB_QUARTER_BUDGET_USD` 실값 설정 → `make f8-cost-report` 정례화 ② §2.5 매트릭스 재검토 ③ §1.4 KPI 리뷰 ④ N5/S2 재평가 ⑤ dogfood-first 만료 검토 (`by_source.history.n` ≥ 30) | §3.1 D 단계 갱신 (판정 근거 병기) |
 | **동결** | — | N5 전역 bandit · N6~N7 · Gateway · trading core | explicit Human OK 없이 착수 금지 |
 

@@ -58,12 +58,17 @@ def _result(
 def routing_contract(trace: dict[str, Any], case: dict[str, Any]) -> dict[str, Any] | None:
     expected = case.get("expected") or {}
     contract_expected = expected.get("routing_contract")
-    if "category" not in expected and not isinstance(contract_expected, dict):
+    turn_contract_expected = expected.get("turn_contract")
+    if "category" not in expected and not isinstance(contract_expected, dict) and not isinstance(turn_contract_expected, dict):
         return None
 
     category = trace.get("artifacts", {}).get("category") or {}
     turn_policy = trace.get("artifacts", {}).get("turn_policy") or {}
-    routing = turn_policy.get("routing_contract") if isinstance(turn_policy.get("routing_contract"), dict) else {}
+    turn_contract = trace.get("artifacts", {}).get("turn_contract") or {}
+    routing: dict[str, Any] = {}
+    routing_value = turn_policy.get("routing_contract")
+    if isinstance(routing_value, dict):
+        routing = routing_value
     failures: list[str] = []
     evidence: list[str] = []
 
@@ -99,6 +104,14 @@ def routing_contract(trace: dict[str, Any], case: dict[str, Any]) -> dict[str, A
             evidence.append(f"{key}={observed!r}")
             if observed != wanted:
                 failures.append(f"{key}={observed!r} expected={wanted!r}")
+
+    if isinstance(turn_contract_expected, dict):
+        evidence.append(f"turn_contract={turn_contract!r}")
+        for key, wanted in turn_contract_expected.items():
+            observed = turn_contract.get(key)
+            evidence.append(f"turn_contract.{key}={observed!r}")
+            if observed != wanted:
+                failures.append(f"turn_contract.{key}={observed!r} expected={wanted!r}")
 
     ok = not failures
     reason = "" if ok else "; ".join(failures)

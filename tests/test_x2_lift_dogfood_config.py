@@ -23,10 +23,15 @@ from x2_lift_dogfood_config import (  # noqa: E402
 )
 
 
-def test_dogfood_fixture_has_typo_by_default() -> None:
+def test_dogfood_fixture_can_seed_typo_for_prepare() -> None:
     assert DOGFood_PATH.is_file()
-    assert has_typo()
-    assert not has_fix()
+    original = DOGFood_PATH.read_text(encoding="utf-8")
+    try:
+        apply_typo()
+        assert has_typo()
+        assert not has_fix()
+    finally:
+        DOGFood_PATH.write_text(original, encoding="utf-8")
 
 
 def test_plan_md_verify_is_evidence_row_scoped() -> None:

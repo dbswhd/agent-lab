@@ -11,6 +11,7 @@ const PHASE_LABELS: Record<string, string> = {
   MERGE: "Merge",
   VERIFY: "Verify",
   REPAIR: "Repair",
+  MONITOR: "Monitor",
 };
 
 function phaseLabel(phase: string): string {

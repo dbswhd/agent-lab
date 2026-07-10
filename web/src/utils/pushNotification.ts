@@ -48,6 +48,7 @@ const TOAST_KINDS = new Set([
   "hook_blocked",
   "hook_warn",
   "envelope_warn",
+  "needs_input",
 ]);
 
 export function shouldToastNotification(input: PushInput): boolean {

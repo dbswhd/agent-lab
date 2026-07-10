@@ -231,6 +231,7 @@ def build_runtime_snapshot(
         "wisdom_index": _public_wisdom_index(folder),
         "codex_proxy": _public_codex_proxy(),
         "autonomy": _public_autonomy(folder),
+        "status_line": _public_status_line(run, pending_exec=pending_exec, latest_exec=latest_exec),
         "cost_quarter": _public_cost_quarter(),
     }
 
@@ -239,6 +240,33 @@ def _public_autonomy(folder: Path) -> dict[str, Any]:
     from agent_lab.autonomy_ladder import public_autonomy_payload
 
     return public_autonomy_payload(read_run_meta(folder))
+
+
+def _public_status_line(
+    run: dict[str, Any],
+    *,
+    pending_exec: dict[str, Any] | None,
+    latest_exec: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Compact Autonomy × sandbox chips for Room header (ABSORB P1-status)."""
+    from agent_lab.run.profile import default_run_profile
+
+    row = pending_exec or latest_exec
+    isolation = ""
+    sandbox_intent = None
+    if isinstance(row, dict):
+        isolation = str(row.get("isolation_effective") or "").strip()
+        raw_intent = row.get("sandbox_intent")
+        if isinstance(raw_intent, str) and raw_intent.strip():
+            sandbox_intent = raw_intent.strip()
+    profile = default_run_profile()
+    return {
+        "isolation": isolation or None,
+        "worktree": isolation == "worktree",
+        "schedule_sandbox": bool(run.get("schedule_sandbox")),
+        "sandbox_intent": sandbox_intent,
+        "run_profile": profile,
+    }
 
 
 def _public_cost_quarter() -> dict[str, Any]:

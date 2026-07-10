@@ -57,6 +57,9 @@ export function notificationActionForKind(
       ? { type: "composer", focus: "plan" }
       : { type: "composer", focus: "inbox" };
   }
+  if (kind === "needs_input") {
+    return { type: "composer", focus: "inbox" };
+  }
   if (kind === "verified_loop_pending") {
     return { type: "composer", focus: "plan" };
   }

@@ -896,6 +896,14 @@
   font-weight: var(--weight-medium);
 }
 
+.session-status-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 280px;
+  overflow: hidden;
+}
+
 /* Persistent segmented tab bar for the workbench panel mode switcher
    (Apricot Glass, web/DESIGN.md) — every mode is one click away instead
    of hidden behind a dropdown. */

@@ -7,6 +7,7 @@ import {
   deleteSession,
   fetchHealth,
   fetchInboxSummary,
+  forkSession,
   reconnectClaudeAuth,
   reconnectCursorBridge,
   reconnectKimiWorkBridge,
@@ -21,6 +22,7 @@ import {
 } from "./api/client";
 import { healthToAgentOptions } from "./utils/agentHealthOptions";
 import { sortByAgentId } from "./utils/agentOrder";
+import { notifyNeedsInputFromInboxPoll } from "./utils/notifyNeedsInput";
 import { RoomChat } from "./components/RoomChat";
 import { SettingsPage } from "./components/SettingsPage";
 import { IMPLICIT_ROOM_PRESET } from "./utils/roomComposerPrefs";
@@ -342,6 +344,7 @@ export default function App() {
             .filter((row) => row.inbox_pending || (row.pending_count ?? 0) > 0)
             .map((row) => row.session_id);
           setNeedsInputSessionIds(ids);
+          notifyNeedsInputFromInboxPoll({ sessionIds: ids });
         })
         .catch(() => {
           if (!cancelled) setNeedsInputSessionIds([]);
@@ -524,6 +527,14 @@ export default function App() {
     await reloadSessions();
   }
 
+  async function handleFork(id: string) {
+    const result = await forkSession(id);
+    await reloadSessions();
+    if (result.session_id) {
+      selectSession(result.session_id);
+    }
+  }
+
   const inTauri = isTauriApp();
   const fullscreen = useTauriFullscreen(inTauri);
   const roomSessionId = composerNew ? null : selectedId;
@@ -668,6 +679,7 @@ export default function App() {
                 }
                 onRename={handleRename}
                 onDelete={handleDelete}
+                onFork={listTab === "active" ? handleFork : undefined}
               />
               {listTab === "active" ? (
                 <div className="rail__footer">

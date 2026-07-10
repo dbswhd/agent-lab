@@ -32,5 +32,7 @@ pushNotification({ tier, title, body, sessionId, kind, entityId?, actions? })
 | turn_failed | P0 | turn_fail |
 | turn_partial | P1 | turn_partial |
 | complete | P2 | turn_complete |
+| Needs input (document hidden) | P1 | needs_input |
 
 Frontend routing uses `dispatchNotification()` and `pushAppNotification()`.
+Background Needs input also fires from `notifyNeedsInputIfBackground` / inbox poll (`notifyNeedsInput.ts`).

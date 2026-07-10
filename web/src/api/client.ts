@@ -827,6 +827,14 @@ export type RuntimeSnapshot = {
       at?: string;
     }>;
   };
+  /** ABSORB P1-status — Autonomy × sandbox chips. */
+  status_line?: {
+    isolation?: string | null;
+    worktree?: boolean;
+    schedule_sandbox?: boolean;
+    sandbox_intent?: string | null;
+    run_profile?: string | null;
+  };
   /** F8 quarterly cost rollup. */
   cost_quarter?: {
     quarter?: string;
@@ -1101,6 +1109,49 @@ export function unarchiveSession(id: string) {
   return json<{ ok: boolean }>(
     `/api/sessions/${encodeURIComponent(id)}/unarchive`,
     { method: "POST" },
+  );
+}
+
+export function forkSession(
+  id: string,
+  opts?: { copyPlan?: boolean; chatTail?: number },
+) {
+  return json<{
+    ok: boolean;
+    session_id: string;
+    forked_from: string;
+    topic: string;
+    plan_copied: boolean;
+    chat_lines: number;
+  }>(`/api/sessions/${encodeURIComponent(id)}/fork`, {
+    method: "POST",
+    body: JSON.stringify({
+      copy_plan: opts?.copyPlan ?? true,
+      chat_tail: opts?.chatTail ?? 80,
+    }),
+  });
+}
+
+export function postEvidenceMonitor(
+  sessionId: string,
+  body: {
+    kind?: string;
+    detail?: string;
+    refs?: string[];
+    ok?: boolean;
+  },
+) {
+  return json<{ ok: boolean; entry: EvidenceEntry }>(
+    `/api/sessions/${encodeURIComponent(sessionId)}/evidence/monitor`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        kind: body.kind ?? "manual",
+        detail: body.detail ?? "",
+        refs: body.refs,
+        ok: body.ok,
+      }),
+    },
   );
 }
 

@@ -59,10 +59,10 @@
 |----|------|-----------|------|
 | P1-needs-input | Needs input / blocked-on-you — header badge + session rail dot | Codex Jul · CC agents · W26 | shipped (`NeedsInputBadge`, `needsInputStatus.ts`, SessionList) |
 | P1-steer | execute/room 중 mid-turn steer queue | Codex mid-turn steering | shipped (`POST /api/sessions/{id}/steer`, composer Steer, drain in parallel_rounds + enrich_execute_prompt) |
-| P1-notify | Inbox OS/모바일 알림 | CC mobile push · Notification hooks | backlog |
-| P1-monitor | CI/로그 → Evidence | CC Monitor | backlog |
-| P1-status | Autonomy × sandbox 상태줄 | CC statusline · Codex policy | backlog |
-| P1-fork | session fork | Codex fork | backlog |
+| P1-notify | Inbox OS/모바일 알림 | CC mobile push · Notification hooks | shipped (`notifyNeedsInput.ts`, background desktop + Activity when Needs input / inbox poll) |
+| P1-monitor | CI/로그 → Evidence | CC Monitor | shipped (`evidence_monitor.py`, `POST …/evidence/monitor`, merge-checks → MONITOR dedupe, EvidenceTimeline) |
+| P1-status | Autonomy × sandbox 상태줄 | CC statusline · Codex policy | shipped (`runtime.status_line`, `SessionStatusLine`, profile/worktree/sandbox chips) |
+| P1-fork | session fork | Codex fork | shipped (`session/fork.py`, `POST /api/sessions/{id}/fork`, SessionList context menu) |
 
 ### Wave 3 — P2 (S1 이후)
 
@@ -82,6 +82,10 @@
 - W1-B: 신규 plan에 waves·Must-NOT·evidence 섹션 + soft validation; X2 mock 통과
 - P1-needs-input: 헤더 Needs input 배지 + 세션 레일 점 (Inbox/plan/execute 승인 대기 집계)
 - P1-steer: busy 중 Steer → `steer_queue` → 다음 agent/execute 단계에만 주입 (gate 우회 없음)
+- P1-status: 헤더 statusline chips (run profile · worktree/isolation · schedule sandbox)
+- P1-notify: document hidden 시 Needs input → desktop/Activity (`needs_input` kind)
+- P1-monitor: MONITOR evidence (`POST …/evidence/monitor` · merge-checks fail dedupe)
+- P1-fork: 세션 포크 (plan/chat 복사, pending inbox/executions 미복사)
 - 전 웨이브: 5모트 회귀 · autofix/auto-merge 경로 없음
 
 ---

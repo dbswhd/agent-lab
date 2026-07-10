@@ -65,6 +65,34 @@ def unarchive_session(session_id: str) -> dict[str, Any]:
     return {"ok": True, "id": session_id, "archived": False}
 
 
+class ForkSessionRequest(BaseModel):
+    copy_plan: bool = True
+    chat_tail: int = 80
+
+
+@router.post("/sessions/{session_id}/fork")
+def fork_session_endpoint(
+    session_id: str,
+    body: ForkSessionRequest | None = None,
+) -> dict[str, Any]:
+    """Fork session into a new id. Does not copy pending gates/executions."""
+    folder = session_folder_or_404(session_id)
+    from agent_lab.session.fork import fork_session
+
+    opts = body or ForkSessionRequest()
+    try:
+        result = fork_session(
+            folder,
+            copy_plan=opts.copy_plan,
+            chat_tail=opts.chat_tail,
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return result
+
+
 @router.get("/sessions/{session_id}")
 def session(
     session_id: str,

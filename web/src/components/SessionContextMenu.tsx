@@ -7,6 +7,7 @@ export type MenuAction =
   | "rename"
   | "archive"
   | "unarchive"
+  | "fork"
   | "delete"
   | { type: "move-to-group"; group: string | null }
   | { type: "new-group" };
@@ -116,6 +117,17 @@ export function SessionContextMenu({
             >
               <span>이름 변경</span>
               <kbd className="ctx-menu__kbd">R</kbd>
+            </button>
+
+            <button
+              type="button"
+              className="ctx-menu__item"
+              role="menuitem"
+              onClick={() => run("fork")}
+              data-testid="session-menu-fork"
+            >
+              <span>포크</span>
+              <kbd className="ctx-menu__kbd">F</kbd>
             </button>
           </div>
 

@@ -4,6 +4,7 @@ import json
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
 from agent_lab.plan.execute import (
     abort_merge_execution,
@@ -47,6 +48,32 @@ def session_evidence(
 
     payload = public_evidence_payload(folder, limit=min(max(limit, 1), 200))
     return {"ok": True, "session_id": session_id, **payload}
+
+
+class MonitorEvidenceRequest(BaseModel):
+    kind: str = "manual"
+    detail: str = ""
+    refs: list[str] | None = None
+    ok: bool | None = None
+
+
+@router.post("/sessions/{session_id}/evidence/monitor")
+def session_evidence_monitor(
+    session_id: str,
+    body: MonitorEvidenceRequest,
+) -> dict[str, Any]:
+    """Append a MONITOR evidence row (CI/log watch). Read-only — no gate bypass."""
+    folder = session_folder_or_404(session_id)
+    from agent_lab.evidence_monitor import record_monitor_event
+
+    row = record_monitor_event(
+        folder,
+        kind=body.kind,
+        detail=body.detail,
+        refs=body.refs,
+        ok=body.ok,
+    )
+    return {"ok": True, "session_id": session_id, "entry": row}
 
 
 @router.get("/sessions/{session_id}/wisdom-search")
@@ -140,13 +167,16 @@ def session_clarifier_interview(session_id: str) -> dict[str, Any]:
 @router.get("/sessions/{session_id}/merge-checks")
 def session_merge_checks(session_id: str) -> dict[str, Any]:
     folder = session_folder_or_404(session_id)
+    from agent_lab.evidence_monitor import maybe_record_merge_checks_monitor
     from agent_lab.merge_checks import public_merge_checks_payload
     from agent_lab.run.meta import read_run_meta
 
+    payload = public_merge_checks_payload(read_run_meta(folder), folder=folder)
+    maybe_record_merge_checks_monitor(folder, payload)
     return {
         "ok": True,
         "session_id": session_id,
-        **public_merge_checks_payload(read_run_meta(folder), folder=folder),
+        **payload,
     }
 
 

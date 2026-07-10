@@ -28,6 +28,7 @@ type Props = {
   onUnarchive?: (id: string) => void;
   onRename?: (id: string, topic: string) => void;
   onDelete?: (id: string) => void;
+  onFork?: (id: string) => void;
 };
 
 /** Compact relative/absolute timestamp — disambiguates rows that share a topic
@@ -61,6 +62,7 @@ export function SessionList({
   onUnarchive,
   onRename,
   onDelete,
+  onFork,
 }: Props) {
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(
     null,
@@ -149,6 +151,7 @@ export function SessionList({
       setRenameId(id);
       setRenameValue(s?.topic || id);
     }
+    if (action === "fork" && onFork) onFork(id);
     if (action === "delete") setDeleteId(id);
     if (typeof action === "object" && action.type === "move-to-group") {
       moveSessionToGroup(id, action.group);

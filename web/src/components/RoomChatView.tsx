@@ -3,10 +3,13 @@ import { CommandPalette } from "./CommandPalette";
 import { NeedsInputBadge } from "./NeedsInputBadge";
 import { RoomChatInspector } from "./RoomChatInspector";
 import { RoomChatMainPane } from "./RoomChatMainPane";
+import { SessionStatusLine } from "./SessionStatusLine";
 import { WorkspaceChrome } from "./WorkspaceChrome";
 import type { useRoomChat } from "../hooks/useRoomChat";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { buildNeedsInputStatus } from "../utils/needsInputStatus";
+import { notifyNeedsInputIfBackground } from "../utils/notifyNeedsInput";
+import { buildSessionStatusChips } from "../utils/sessionStatusLine";
 
 type RoomChatViewModel = ReturnType<typeof useRoomChat>;
 
@@ -47,6 +50,24 @@ export function RoomChatView({ chat }: Props) {
     ],
   );
 
+  const statusChips = useMemo(
+    () =>
+      buildSessionStatusChips({
+        runtime: chat.decisionRuntime,
+        locale: chat.locale,
+      }),
+    [chat.decisionRuntime, chat.locale],
+  );
+
+  useEffect(() => {
+    if (!chat.sessionId || !needsInput.active) return;
+    notifyNeedsInputIfBackground({
+      sessionId: chat.sessionId,
+      status: needsInput,
+      locale: chat.locale,
+    });
+  }, [chat.sessionId, chat.locale, needsInput]);
+
   return (
     <>
       <CommandPalette actions={chat.paletteActions} />
@@ -69,6 +90,7 @@ export function RoomChatView({ chat }: Props) {
                   }
                 }}
               />
+              <SessionStatusLine chips={statusChips} />
               <AutonomyDial
                 view={chat.autonomyView}
                 loading={chat.autonomyLoading}

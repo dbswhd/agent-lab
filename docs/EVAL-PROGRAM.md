@@ -186,7 +186,7 @@ make feedback-report JSON=1
 - 반복 mock dogfood 4회 기준 `turn_source_counts.explore = 1` 관측
 - 아직 `advisor_lift.explore_vs_default`는 `null`이며, 이는 **표본 부족**을 뜻한다
 
-해석 기준 ([EVAL-SURFACE-SUPER-SAMPLE-PLAN.md](./EVAL-SURFACE-SUPER-SAMPLE-PLAN.md) Canonical Definitions 참조):
+해석 기준 ([EVAL-CONTRACT.md](./EVAL-CONTRACT.md) §1~2 참조):
 
 - `advisor_lift.explore_vs_default == null` → explore 표본이 `MIN_SAMPLE` 미만, 즉 **비교군 없음** (효과가 없다는 뜻이 아님).
 - explore row가 쌓이면 `turn_source_counts.explore`에서 loop closure 관측이 가능하다. execute-phase row가 충분히 쌓인 뒤에는 `by_source.explore`와 `advisor_lift.explore_vs_default`가 quality signal로 채워진다.
@@ -370,5 +370,5 @@ Topic 실행 → score_session → M4/관찰 KPI → 실패 trace 리뷰
 
 - [STABILITY.md](./STABILITY.md) · [MISSION-DOGFOOD.md](./MISSION-DOGFOOD.md)
 - [sessions/_benchmark/README.md](../sessions/_benchmark/README.md)
-- [EVAL-SURFACE-SUPER-SAMPLE-PLAN.md](./EVAL-SURFACE-SUPER-SAMPLE-PLAN.md) — S1.5 신호 canonical 정의 + T0/T1/T2 판정
+- [EVAL-CONTRACT.md](./EVAL-CONTRACT.md) — S1.5 outcome 정의 + trace/grader + T0/T1/T2 판정
 - `/smoke-and-score` skill (Cursor/Claude Code)

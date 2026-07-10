@@ -1,23 +1,23 @@
 # NOW — 지금 무엇을 해야 하는가 (종합 상태 표면)
 
-> **작성:** 2026-07-08 · **갱신:** 2026-07-09 (dogfood 보류 해제) · **역할:** 핵심 5문서를 종합해 "오늘/이번 주/다음/동결"을 **한 곳**에서 판정한다.
-> **이 문서가 아닌 것:** 방향·설계·참조의 SSOT가 아니다 — 그건 아래 4문서. 이 문서는 **상태 포인터**만 갖는다.
-> **ID 규칙:** 새 ID를 만들지 않는다. 소스 문서의 ID(P0-4, F7, N4, HS0 …)를 그대로 쓰고 출처를 병기한다.
-> **진실 순서:** 코드 > 이 문서 > 개별 문서의 상태 표기. 여기 상태는 커밋/명령 출력으로 검증된 것만 적는다.
+> **작성:** 2026-07-08 · **갱신:** 2026-07-10 (문서 authority 정리) · **역할:** "오늘/이번 주/다음/동결"을 한 곳에서 판정한다.
+> **이 문서가 아닌 것:** 방향·구조·턴·평가 계약의 SSOT가 아니다. 이 문서는 **상태 포인터**만 갖는다.
+> **ID 규칙:** 소스 namespace를 보존한다 (`N*`, `F*`, `HS*`, `TC-*`, `ABS-P2-*`). bare `P1/P2` 신규 사용 금지.
+> **진실 순서:** runtime 동작은 code+tests, 현재 상태는 NOW, 방향·구조·턴·평가는 아래 담당 문서가 각각 소유한다.
 
 ---
 
-## 0. 핵심 5문서 지도 — 언제 무엇을 읽나
+## 0. 현재 핵심 5문서
 
 | 문서 | 역할 (한 줄) | 읽는 시점 |
 |------|--------------|-----------|
-| [NORTH-STAR.md](./NORTH-STAR.md) | 방향·완성도 게이지·D0~D4 판정 언어·흡수 매트릭스 SSOT | 방향/우선순위 논쟁이 생길 때, 분기 리뷰 |
-| [WORKFLOW-DYNAMIC-REFERENCE.md](./WORKFLOW-DYNAMIC-REFERENCE.md) | 4과정 구조·동적 적응 등급·파일 치트시트 — **작업 착수 참조** | 코드 수정 PR 시작 전 (§6 해당 절 + §12 체크리스트) |
-| [EVAL-SURFACE-SUPER-SAMPLE-PLAN.md](./EVAL-SURFACE-SUPER-SAMPLE-PLAN.md) | **§Canonical Definitions만 현행** (episode·MIN_SAMPLE·null lift) — 나머지는 완료 이력 | episode/lift 수치를 해석할 때 |
-| [DESIGN-HARNESS-SELF-IMPROVE.md](./DESIGN-HARNESS-SELF-IMPROVE.md) | N6 Phase 2 HSIL 설계 (DRAFT) — HS0~HS7 로드맵 | HS 작업 착수 시 |
-| [REVIEW-LINER-RESEARCH-2026-07.md](./REVIEW-LINER-RESEARCH-2026-07.md) | Liner 연구 6종 검토 — HSIL 수정 P0(5)·P1(5)·P2(3)·기각(6) 목록 | HSIL DRAFT→APPROVED 판정 시, HS3~HS5 착수 전 |
+| **[NOW.md](./NOW.md)** | 현재 실행 큐·시한·동결·Human 결정 | 작업을 시작하거나 재개할 때 |
+| [NORTH-STAR.md](./NORTH-STAR.md) | 장기 방향·5모트·D0~D4·N/F 로드맵·해제 조건 | 방향이나 우선순위를 결정할 때 |
+| [FLOW.md](./FLOW.md) | 현재 Discuss→Plan→Execute→Verify 구조와 Human gate | 시스템 경로를 파악할 때 |
+| [TURN-CONTRACT.md](./TURN-CONTRACT.md) | TurnPolicy·TurnContract·cold start·history·safety 권한 | Room 턴 제어를 변경할 때 |
+| [EVAL-CONTRACT.md](./EVAL-CONTRACT.md) | episode·표본·trace·grader·T0~T2 판정 | 결과와 lift를 해석할 때 |
 
-우선순위 ID가 문서마다 겹친다(P0~P2 vs P0-1~P0-5 vs P1~P3 vs HSIL D1~D7 vs **REVIEW P0-1~P0-5**). **충돌 시 이 문서 §1 큐의 정렬이 실행 순서다.**
+`WORKFLOW-DYNAMIC-REFERENCE`, `EVAL-SURFACE-SUPER-SAMPLE-PLAN`, `DESIGN-HARNESS-SELF-IMPROVE`, `REVIEW-LINER-RESEARCH-2026-07`은 각각 history/reference 또는 feature spec이다. 현재 상태의 권위로 사용하지 않는다.
 
 ---
 
@@ -74,7 +74,7 @@ Composer preset 제거(WORKFLOW §8.2 **P2**)는 S1~S3 eval green 선행 — 위
 
 ### 분기 리뷰 묶음 (한 세션에서 일괄 — NORTH-STAR §3.3 분기 행)
 
-① `AGENT_LAB_QUARTER_BUDGET_USD` 실값 + `make f8-cost-report` 정례화 ② §2.5 흡수 매트릭스 재검토 — SSOT [ABSORB-CC-CODEX-2026-07.md](./ABSORB-CC-CODEX-2026-07.md) (CC/Codex 로컬+공식, W1 workspace 카드·plan 계약) ③ §1.4 KPI 리뷰 ④ N5/S2 재평가 ⑤ dogfood-first 만료 검토 (`history.n` ≥ 30) ⑥ ADR rebuild 재평가 (§3.5).
+① `AGENT_LAB_QUARTER_BUDGET_USD` 실값 + `make f8-cost-report` 정례화 ② §2.5 흡수 매트릭스 재검토 — SSOT [ABSORB-CC-CODEX-2026-07.md](./ABSORB-CC-CODEX-2026-07.md) (CC/Codex 로컬+공식; Wave 0–2 + **ABS-P2-worktree-yaml** shipped; 잔여 **ABS-P2-skills** N7 동결 · **ABS-P2-hooks/workflows** 문서만) ③ §1.4 KPI 리뷰 ④ N5/S2 재평가 ⑤ dogfood-first 만료 검토 (`history.n` ≥ 30) ⑥ ADR rebuild 재평가 (§3.5).
 
 ### 동결 — explicit Human OK 없이 착수 금지
 

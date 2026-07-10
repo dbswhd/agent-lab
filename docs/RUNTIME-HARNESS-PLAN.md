@@ -16,7 +16,7 @@ Agent Lab already implements harness **behaviors** (Room, execute gates, Mission
 | `plan_execute.py` | Worktree dry-run / merge / verify |
 | `mission_loop.py` | Mission FSM conductor (closest to “Atlas”) |
 | `human_inbox.py` | Human decisions (execute MCP + partial discuss) |
-| `room_hooks.py` | Policy hooks |
+| `room/hooks.py` | Policy hooks |
 
 Cross-lane **direct imports** (especially `plan_execute` ↔ `mission_loop`) make a single runtime entry point hard to reason about and test.
 

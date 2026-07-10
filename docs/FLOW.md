@@ -1,8 +1,8 @@
 # Agent Lab — 현재 구조 및 플로우
 
-> **최종 업데이트:** 2026-06-29  
-> **Turn modes (preset · Plan toggle):** [TURN-MODES.md](./TURN-MODES.md)
-> **관련 문서:** [ARCHITECTURE.md](./ARCHITECTURE.md) (모듈·컴포넌트 맵) · [USER-GUIDE.md](./USER-GUIDE.md) (기능 상세) · [STRATEGIC-DIRECTION-2026.md](./STRATEGIC-DIRECTION-2026.md) (방향성)
+> **Status:** canonical current flow · **최종 업데이트:** 2026-07-10
+> **턴 제어:** [TURN-CONTRACT.md](./TURN-CONTRACT.md) · **평가:** [EVAL-CONTRACT.md](./EVAL-CONTRACT.md)
+> **관련 문서:** [ARCHITECTURE.md](./ARCHITECTURE.md) (모듈 지도) · [USER-GUIDE.md](./USER-GUIDE.md) (기능 상세) · [NORTH-STAR.md](./NORTH-STAR.md) (방향)
 
 ---
 
@@ -23,11 +23,11 @@
       │
       ▼
 ┌─────────────────────────────────────────────┐
-│  DISCUSS (Room — Plan toggle OFF or debate phase)           │
-│  topic_router → agent_subset + role_plan    │
-│  3-agent 합의 루프 (R1 → R2 → anchor)       │
+│  DISCUSS (Room)                             │
+│  Observation → TurnContract → roster/round  │
+│  role_plan · consensus · objection          │
 │  consensus / BLOCK / CHALLENGE / AMEND      │
-│  Scribe → plan.md                           │
+│  TurnPolicy trigger 시 Scribe → plan.md      │
 └────────────────┬────────────────────────────┘
                  │ plan.md (Human approved)
                  ▼
@@ -57,19 +57,17 @@
              DONE / Mission loop 재진입
 ```
 
-### 2.1 Fast vs Supervisor — 플로우 가정 (2026-06-26)
+### 2.1 Room preset과 TurnContract
 
-| | **supervisor** | **fast** |
-|---|----------------|----------|
-| Discuss | 합의·Scribe·Inbox harvest 가능 | 즉답 Q&A, harvest **OFF**, team lead MCP **ON** |
-| Plan FSM | clarify → peer → Human approve | **사용 안 함** (plan OFF) |
-| Execute | worktree · Inbox GO | worktree · Inbox GO **유지** |
+Composer preset은 현재 `fast`/`supervisor` 호환 축으로 남아 있다. TurnContract는 이를 한 번에 제거하지 않고 `shadow → roles → adaptive`로 topology 권한을 이관한다.
 
-Fast는 **오늘** discuss lane에서 `clarify → plan → execute` 오케스트레이션을 전제하지 않는다.  
-Discuss 종료 시 build/discuss harvest·plan CLARIFY inbox는 `is_fast_room_session()`으로 스킵한다.  
-Team lead의 discuss inbox MCP(`ask_human` / `propose_build`)는 Fast에서도 **유지**.
+- `fast`: 즉답 중심, harvest 제한, team lead MCP 유지
+- `supervisor`: team/consensus와 plan workflow 사용 가능
+- `TurnContract`: topic·risk·intent·matching outcomes로 agent 상한·round·consensus 선택
+- `TurnPolicy/FSM`: Scribe·clarify·task effect의 최종 권한 유지
+- execute lane: preset이나 contract와 무관하게 Human gate·worktree·Oracle 유지
 
-**향후:** Execute 단계에서 plan-workflow를 Fast에도 열 수 있다. 그때 discuss 스킵과 execute/plan inbox를 **분리**해 재설계할 것 — 상세·트리거별 표는 [05-room-agent-roles.md §Fast preset — orchestrator Inbox skip](./05-room-agent-roles.md).
+상세 효과와 cold start/history/safety 규칙은 [TURN-CONTRACT.md](./TURN-CONTRACT.md)를 따른다. legacy preset 표는 [TURN-MODES.md](./TURN-MODES.md)에 보존한다.
 
 **MCP-first 방향:** agent MCP SSOT · orchestrator harvest deprecate · Scribe/plan 분리 → [MCP-FIRST-INBOX.md](./MCP-FIRST-INBOX.md).
 

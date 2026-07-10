@@ -1,6 +1,8 @@
 # 설계: Harness Self-Improvement Loop (N6 Phase 2)
 
-> **상태**: **APPROVED** (2026-07-08, Human 승인 — REVIEW P0 5건 반영 후) · **작성**: 2026-07-07  
+> **Status:** approved **N6 feature spec**, core daily reading 아님 · **작성:** 2026-07-07 · **authority 정리:** 2026-07-10
+> **현재 상태/동결:** [NOW.md](./NOW.md) · [NORTH-STAR.md](./NORTH-STAR.md) §2.1 N6. 이 문서는 HS 설계·안전 결정·phase 계약만 소유하며 shipped 현황의 최종 권위가 아니다.
+> **승인:** 2026-07-08 Human 승인 — REVIEW P0 5건 반영 후. HS0~HS5 구현 완료, HS6은 HS-M5 미충족으로 동결.
 > **북극성 근거**: [NORTH-STAR.md](./NORTH-STAR.md) §2.1 **N6** (Self-patch meta-loop — 1단계 관측 ✅, **2단계 HSIL 설계 승인·HS0~HS5(HS5-3 포함) 코드+mock 검증 완료, HS6은 HS-M5 게이트 미충족으로 동결**)  
 > **외부 근거**: [Lilian Weng — Harness Engineering for Self-Improvement](https://lilianweng.github.io/posts/2026-07-04-harness/) · [choi.openai Threads 정리](https://www.threads.com/@choi.openai/post/DafZipXD6aG)  
 > **선행 shipped**: [DESIGN-S1-FEEDBACK-LOOP.md](./DESIGN-S1-FEEDBACK-LOOP.md) · [N10-USER-LOOP-WISDOM-DRAFT.md](./N10-USER-LOOP-WISDOM-DRAFT.md) · `self_patch.py`

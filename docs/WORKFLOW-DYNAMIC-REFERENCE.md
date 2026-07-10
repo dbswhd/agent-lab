@@ -1,9 +1,9 @@
-# Workflow · 동적 적응 · 슈퍼샘플 비교 — 작업 SSOT
+# Workflow · 동적 적응 · 슈퍼샘플 비교 — history/reference
 
-> **작성:** 2026-07-07  
-> **역할:** 이 문서 **하나만** 읽고 Room 4과정·Eval surface·슈퍼샘플 갭·다음 작업을 파악한다.  
-> **관계:** 구조 상세 → [FLOW.md](./FLOW.md) · 북극성 → [NORTH-STAR.md](./NORTH-STAR.md) · Eval → [EVAL-SURFACE-V1-PLAN.md](./EVAL-SURFACE-V1-PLAN.md) · 흡수 매트릭스 → [NORTH-STAR.md §2.5](./NORTH-STAR.md)  
-> **검증:** 문서 하단 [§12 작업 전 체크리스트](#12-작업-전-체크리스트) + [§13 명령 모음](#13-명령-모음)
+> **Status:** historical reference · **작성:** 2026-07-07 · **authority 종료:** 2026-07-10
+> **현재 구조:** [FLOW.md](./FLOW.md) · **턴 제어:** [TURN-CONTRACT.md](./TURN-CONTRACT.md) · **평가:** [EVAL-CONTRACT.md](./EVAL-CONTRACT.md) · **방향:** [NORTH-STAR.md](./NORTH-STAR.md)
+> **보존 이유:** 4과정 비교, Fugu/Hermes 대조, TurnContract 도입 배경과 P0~P3 strangler 이력. 현재 상태·계약·착수 순서를 이 문서에서 판정하지 않는다.
+> **검증 명령:** 현행 명령은 [EVAL-CONTRACT.md](./EVAL-CONTRACT.md)와 [NOW.md](./NOW.md)를 우선한다.
 
 ---
 
@@ -190,7 +190,7 @@ route → role_plan → room_round → objection → plan_update
 
 ### 4.3 Canonical episode (S1 feedback와 공유)
 
-> SSOT: [EVAL-SURFACE-SUPER-SAMPLE-PLAN.md §Canonical Definitions](./EVAL-SURFACE-SUPER-SAMPLE-PLAN.md)
+> 현재 SSOT: [EVAL-CONTRACT.md](./EVAL-CONTRACT.md). 아래 내용은 도입 당시 설명이다.
 
 - **completed episode** = `outcomes.jsonl`에서 `phase == "execute"` row
 - 구현: `feedback_report._is_verdict_eligible()`
@@ -885,10 +885,10 @@ python scripts/smoke_room.py
 | [FLOW.md](./FLOW.md) | Discuss→Plan→Execute→Verify 상세 |
 | [05-room-agent-roles.md](./05-room-agent-roles.md) | 에이전트 역할 · fast preset |
 | [MCP-FIRST-INBOX.md](./MCP-FIRST-INBOX.md) | Human gate SSOT |
-| [TURN-MODES.md](./TURN-MODES.md) | preset · Plan authority (→ §8.2 TurnContract로 대체 예정) |
-| [TURN-POLICY.md](./TURN-POLICY.md) | TurnSignals · TurnEffects SSOT |
-| [EVAL-SURFACE-V1-PLAN.md](./EVAL-SURFACE-V1-PLAN.md) | EvalTrace · graders |
-| [EVAL-SURFACE-SUPER-SAMPLE-PLAN.md](./EVAL-SURFACE-SUPER-SAMPLE-PLAN.md) | Canonical definitions · T0/T1/T2 |
+| [TURN-CONTRACT.md](./TURN-CONTRACT.md) | 현재 TurnPolicy · TurnContract · rollout · safety 권한 |
+| [TURN-MODES.md](./TURN-MODES.md) | legacy preset/Plan UI history |
+| [TURN-POLICY.md](./TURN-POLICY.md) | TurnSignals · TurnEffects 구현 이력 |
+| [EVAL-CONTRACT.md](./EVAL-CONTRACT.md) | 현재 episode · trace · graders · T0/T1/T2 |
 | [REPRODUCTION-REPORT.md](./REPRODUCTION-REPORT.md) | 공개 재현 수치 |
 | [GJC-ENTRY.md](./GJC-ENTRY.md) | Room vs GJC |
 | [VERIFY-API.md](./VERIFY-API.md) | N9 외부 검증 |

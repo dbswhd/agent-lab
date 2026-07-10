@@ -185,7 +185,7 @@ See **[SPRINT-D-CHECKLIST.md](./SPRINT-D-CHECKLIST.md)** for the full checkbox l
 | Piece | Behavior |
 |-------|----------|
 | **mailbox[]** | `run.json` → direct agent messages (`MESSAGE` envelope + `to`). **받은함** in **작업** bar; unread delivered in next agent payload. |
-| **Hooks** | `~/.agent-lab/hooks.toml` or `.agent-lab/hooks.toml` — `task_completed`, `teammate_idle`, `pre_execute` (JSON stdin). Event policy: `HookEventPolicy` in `room_hooks.py`; `teammate_idle` non-zero exit does **not** block (feedback only). Config cached per mtime. |
+| **Hooks** | `~/.agent-lab/hooks.toml` or `.agent-lab/hooks.toml` — `task_completed`, `teammate_idle`, `pre_execute` (JSON stdin). Event policy: `HookEventPolicy` in `room/hooks.py`; `teammate_idle` non-zero exit does **not** block (feedback only). Config cached per mtime. |
 | **Teammate idle** | After each agent in a round, optional peer `[idle gate · agent]` when in_progress tasks or hook feedback. |
 
 Example: `.agent-lab/hooks.example.toml`, `scripts/hooks/verify-task.sh`.

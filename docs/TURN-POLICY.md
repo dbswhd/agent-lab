@@ -1,12 +1,14 @@
-# TurnPolicy — signal-driven Room turn effects (Wave F)
+# TurnPolicy — signal-driven Room turn effects (implementation history)
 
-> **Status:** F0 **shipped** (types + doc + tests) — wiring in F1+  
+> **Status:** shipped implementation reference · current authority: [TURN-CONTRACT.md](./TURN-CONTRACT.md)
 > **Flag:** `AGENT_LAB_TURN_POLICY=1` (default **on** since F4; set `0` for legacy)  
 > **Related:** [TURN-MODES.md](./TURN-MODES.md) (Plan toggle → deprecated) · [STRUCTURE-REFACTOR-WAVE.md](./STRUCTURE-REFACTOR-WAVE.md)
 
 **Naming:** use **TurnPolicy** — not "auto" (reserved for future model preset auto mode).
 
 ## TurnContract rollout
+
+현재 contract, cold start, history, rollout, safety 경계는 [TURN-CONTRACT.md](./TURN-CONTRACT.md)가 소유한다. 아래는 도입 당시 TurnPolicy 문맥이다.
 
 TurnContract adds a deterministic, evidence-backed candidate resolver around TurnPolicy. It classifies the current topic into task kind, risk, and execution intent, scores safe candidates from matching outcome history, and persists one immutable snapshot in `run.json` under `turn_contract`.
 

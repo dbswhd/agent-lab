@@ -3,7 +3,8 @@
 > **역할:** OpenAI Codex / Anthropic Claude Code 패턴을 agent-lab에 흡수할 때의 SSOT (absorb / replace / reject + 웨이브).  
 > **근거:** 로컬 설치 코드 + 공식 docs/changelog (조사일 2026-07-10).  
 > **모트:** BLOCK→409 · worktree 격리 · Oracle+Repair · run.json 감사 · Human Inbox — 약화 금지.  
-> **관계:** [NORTH-STAR.md](./NORTH-STAR.md) §2.5 · [NOW.md](./NOW.md) 분기 리뷰 ② · [HUMAN-INBOX.md](./HUMAN-INBOX.md) §2
+> **관계:** [NORTH-STAR.md](./NORTH-STAR.md) §2.5 · [NOW.md](./NOW.md) 분기 리뷰 ② · [TURN-CONTRACT.md](./TURN-CONTRACT.md) §7 · [HUMAN-INBOX.md](./HUMAN-INBOX.md) §2
+> **ID 네임스페이스:** ABSORB Wave 3 항목은 **`ABS-P2-*`** (WORKFLOW Composer-preset **P2**와 구분).
 
 ---
 
@@ -30,10 +31,10 @@
 | Needs input / `claude agents` blocked-on-you · subagent perms→main | **absorb (P1)** | Inbox + session rail 상태 |
 | Mid-turn **steer** · Monitor/`/loop` | **absorb (P1)** | Composer + Evidence |
 | AskUserQuestion / ExitPlanMode / MCP Inbox | **replace** | 이미 Inbox MCP SSOT — UX만 정렬 |
-| Skills / plugins / tool_cards | **absorb (P2/S3)** | recall > install; Human gate mount |
+| Skills / plugins / tool_cards | **absorb (ABS-P2 / N7·S3)** | S3a-0 RECALL만 현행; **S3b mount 구현 동결** ([S3-TOOL-CARD-SPEC.md](./S3-TOOL-CARD-SPEC.md)) |
 | Auto mode / Auto-review / guardian | **replace** | AutonomyDial L1 보조만 — Inbox·409 **대체 금지** |
 | `/autofix-pr` · Jules auto-merge · fire-and-forget cloud | **reject** | Human gate 없는 CI/merge 루프 |
-| Dynamic workflows / MoA aggregator | **reject as Room replace** | TurnContract 템플릿 참고만 |
+| Dynamic workflows / MoA aggregator | **reject as Room replace** | [TURN-CONTRACT.md](./TURN-CONTRACT.md) §7의 문서 패턴만 — runtime 카탈로그/엔진 **금지** |
 | Plan/Agent 모드 피커 복원 | **reject** | TurnPolicy·TurnContract 암시 라우팅 |
 | Sites / Computer Use / Chronicle | **out of core** | extension / dogfood ops만 |
 
@@ -64,14 +65,17 @@
 | P1-status | Autonomy × sandbox 상태줄 | CC statusline · Codex policy | shipped (`runtime.status_line`, `SessionStatusLine`, profile/worktree/sandbox chips) |
 | P1-fork | session fork | Codex fork | shipped (`session/fork.py`, `POST /api/sessions/{id}/fork`, SessionList context menu) |
 
-### Wave 3 — P2 (S1 이후)
+### Wave 3 — ABS-P2 (코드 vs 문서 범위)
 
-| ID | 내용 | 상태 |
-|----|------|------|
-| P2-skills | tool_cards → mount (S3b) | backlog (N7 동결에 가깝음) |
-| P2-hooks | SubagentStart/Stop 정렬 (3-layer 유지) | backlog |
-| P2-workflows | dynamic workflows → TurnContract 템플릿만 | backlog |
-| P2-worktree-yaml | baseRef · include · Create/Remove hooks | shipped (`worktree_hooks.py`, isolation baseRef, include copy, create→setup / remove teardown, WorkspaceCard) |
+> **ID:** `ABS-P2-*` — WORKFLOW §8.2 Composer-preset **P2**(strangler)와 **다른 트랙**.
+> **훅 레이어 SSOT:** [HOOK-COMMUNICATE-REFORM.md](./HOOK-COMMUNICATE-REFORM.md) §1.1 — **3-layer + worktree lifecycle** (worktree hooks ≠ Layer C).
+
+| ID | 내용 | 지금 허용 | 상태 |
+|----|------|-----------|------|
+| **ABS-P2-skills** | tool_cards → mount (S3b) | **동결** — S3a-0 관측·RECALL만. S3a 외부 발견 / S3b mount / S3c 활용 학습 구현 금지 ([NOW.md](./NOW.md) 동결 · [NORTH-STAR.md](./NORTH-STAR.md) N7 · [S3-TOOL-CARD-SPEC.md](./S3-TOOL-CARD-SPEC.md)) | frozen |
+| **ABS-P2-hooks** | CC SubagentStart/Stop ↔ Room 관측점 | **문서 매핑만** — 이벤트 의미·소유 레이어 표. runtime alias / 새 event / 새 gate = Human OK 필요. SubagentStart≠`pre_agent_reply`, SubagentStop≠`post_agent_reply`/`task_completed` (정책 다름 — `room/hooks.py`) | docs-only backlog |
+| **ABS-P2-workflows** | dynamic workflows → TurnContract | **[TURN-CONTRACT.md](./TURN-CONTRACT.md) §7로 문서화 완료.** 기존 네 contract·topology·비용 힌트만. runtime YAML/JSON · DAG · side-effect/gate 제어 · picker · MoA BLOCK 생략은 금지 | docs-only complete |
+| **ABS-P2-worktree-yaml** | baseRef · include · Create/Remove | 코드 허용 (모트 중립 MB-6 연장) | shipped (`worktree_hooks.py`, isolation baseRef, include copy, create→setup / remove teardown, WorkspaceCard) |
 
 ---
 
@@ -86,11 +90,12 @@
 - P1-notify: document hidden 시 Needs input → desktop/Activity (`needs_input` kind)
 - P1-monitor: MONITOR evidence (`POST …/evidence/monitor` · merge-checks fail dedupe)
 - P1-fork: 세션 포크 (plan/chat 복사, pending inbox/executions 미복사)
-- P2-worktree-yaml: `baseRef` · include/`.worktreeinclude` · create/remove hooks (setup/verify 유지, gate 우회 없음)
+- ABS-P2-worktree-yaml: `baseRef` · include/`.worktreeinclude` · create/remove hooks (setup/verify 유지, gate 우회 없음)
+- ABS-P2-skills / hooks / workflows: 위 표의 **허용 범위**만 (코드 엔진·alias·mount 없음)
 - 전 웨이브: 5모트 회귀 · autofix/auto-merge 경로 없음
 
 ---
 
 ## 4. 의도적 비범위
 
-Claude/Codex 업스트림 패치 · Plan/Agent 피커 복원 · HS6/HS7 · N5/S2 동결 해제 · trading/quant
+Claude/Codex 업스트림 패치 · Plan/Agent 피커 복원 · HS6/HS7 · N5/S2 동결 해제 · N7/S3b+ 구현 · trading/quant · ABS-P2-hooks runtime alias · ABS-P2-workflows runtime 카탈로그/엔진

@@ -1,8 +1,8 @@
 # Agent Lab Work Task Kickoff Template
 
-> **목적:** 새 작업을 시작할 때 `NORTH-STAR.md` + `WORKFLOW-DYNAMIC-REFERENCE.md` + `EVAL-SURFACE-*` 기준으로 범위·의도·검증을 빠르게 고정한다.  
+> **목적:** 새 작업을 시작할 때 핵심 5문서 기준으로 범위·의도·검증을 빠르게 고정한다.
 > **사용법:** 이 파일을 복붙해 작업 메모/이슈/PR 초안으로 쓰거나, 필요한 섹션만 채운다.  
-> **권장 순서:** `NORTH-STAR.md` → `WORKFLOW-DYNAMIC-REFERENCE.md` → `EVAL-SURFACE-SUPER-SAMPLE-PLAN.md` → `EVAL-SURFACE-V1-PLAN.md`
+> **권장 순서:** `NOW.md` → `NORTH-STAR.md` → `FLOW.md` → `TURN-CONTRACT.md` → `EVAL-CONTRACT.md`
 
 ---
 
@@ -80,8 +80,9 @@
 
 ### 2.3 관련 문서 절
 
-- `WORKFLOW-DYNAMIC-REFERENCE.md` 참고 절:
-- `FLOW.md` 참고 절(필요 시):
+- `FLOW.md` 참고 절:
+- `TURN-CONTRACT.md` 참고 절(턴 제어 변경 시):
+- `EVAL-CONTRACT.md` 참고 절(평가 변경 시):
 - `TURN-MODES.md` / `MCP-FIRST-INBOX.md` / `05-room-agent-roles.md` 참고 여부:
 
 ---
@@ -100,7 +101,7 @@
 - **코드:** `src/agent_lab/autonomy_ladder.py`, `src/agent_lab/human_inbox.py`
 - **테스트:** `tests/test_autonomy_ladder.py`, `tests/test_human_inbox.py`
 - **fixture:** `sessions/_regression/...`
-- **문서:** `docs/WORKFLOW-DYNAMIC-REFERENCE.md` (필요 시)
+- **문서:** 담당 canonical 문서 (`FLOW` / `TURN-CONTRACT` / `EVAL-CONTRACT`, 필요 시)
 
 ### 3.2 관련 읽기 범위
 
@@ -291,9 +292,9 @@ make feedback-report JSON=1
 ### 9.2 문서 갱신 필요 여부
 
 - [ ] `NORTH-STAR.md`
-- [ ] `WORKFLOW-DYNAMIC-REFERENCE.md`
-- [ ] `EVAL-SURFACE-SUPER-SAMPLE-PLAN.md`
-- [ ] `EVAL-SURFACE-V1-PLAN.md`
+- [ ] `FLOW.md`
+- [ ] `TURN-CONTRACT.md`
+- [ ] `EVAL-CONTRACT.md`
 - [ ] `README.md`
 - [ ] 없음
 
@@ -329,9 +330,9 @@ make feedback-report JSON=1
 
 ## 11. 권장 사용 순서
 
-1. `NORTH-STAR.md` 보고 §1 작성
-2. `WORKFLOW-DYNAMIC-REFERENCE.md` 보고 §2~4 작성
-3. `EVAL-SURFACE-*` 보고 §5 작성
+1. `NOW.md`에서 현재 큐·동결 확인
+2. `NORTH-STAR.md`와 `FLOW.md` 보고 §1~3 작성
+3. 턴 변경은 `TURN-CONTRACT.md`, 평가 변경은 `EVAL-CONTRACT.md` 보고 §4~5 작성
 4. §6~7 구현/검증 계획 작성
 5. 코딩 시작
 
@@ -341,10 +342,9 @@ make feedback-report JSON=1
 
 | 문서 | 용도 |
 |------|------|
+| [NOW.md](./NOW.md) | 현재 실행 큐 · 동결 · Human 결정 |
 | [NORTH-STAR.md](./NORTH-STAR.md) | 북극성 · 흡수/금지 · D단계 |
-| [WORKFLOW-DYNAMIC-REFERENCE.md](./WORKFLOW-DYNAMIC-REFERENCE.md) | 4과정 상세 · 동적 적응 · 비교 · 백로그 |
-| [EVAL-SURFACE-SUPER-SAMPLE-PLAN.md](./EVAL-SURFACE-SUPER-SAMPLE-PLAN.md) | canonical definitions · T0/T1/T2 |
-| [EVAL-SURFACE-V1-PLAN.md](./EVAL-SURFACE-V1-PLAN.md) | EvalTrace · graders · cases |
 | [FLOW.md](./FLOW.md) | 구조 플로우 상세 |
+| [TURN-CONTRACT.md](./TURN-CONTRACT.md) | 턴 제어 · rollout · safety 권한 |
+| [EVAL-CONTRACT.md](./EVAL-CONTRACT.md) | episode · 표본 · EvalTrace · graders · T0~T2 |
 | [MCP-FIRST-INBOX.md](./MCP-FIRST-INBOX.md) | Human gate SSOT |
-

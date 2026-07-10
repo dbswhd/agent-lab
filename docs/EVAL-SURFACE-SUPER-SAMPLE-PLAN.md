@@ -1,9 +1,9 @@
-# Agent Lab Eval Surface + 슈퍼샘플 준비 계획 (v2)
+# Agent Lab Eval Surface + 슈퍼샘플 준비 계획 (v2) — completed history
 
-> **현행 가치:** 이 문서에서 지금도 참조할 canonical 정의는 **[Canonical Definitions](#canonical-definitions)** 절뿐이다(episode 정의·표본 임계값). 나머지(Summary·Current Status·Implementation Changes 등)는 **완료된 계획의 이력** — episode/lift 수치를 해석할 때만 Canonical Definitions를, 구현 배경이 궁금할 때만 나머지를 읽는다.  
-> **Status:** 완료 — §1(episode 보강)·§2(eval surface: `evals/` + 10 case + 8 grader)·§3(T0/T1/T2 `supersample` report)·§4(explore 운영 문서화)·§5(공개 재현 패키지 문서 정리) 전부 반영됨. 잔여: `fork_time_minutes` clean-clone 자동화(N8, 범위 밖)  
-> **SSOT:** local-first JSON/JSONL report (`evals/results/latest.json`, `feedback_report`)  
-> **Related:** [NORTH-STAR.md](./NORTH-STAR.md) §0.1 (T0–T2) · [EVAL-PROGRAM.md](./EVAL-PROGRAM.md) · [EVAL-SURFACE-V1-PLAN.md](./EVAL-SURFACE-V1-PLAN.md) (§2 구체 스펙) · [REPRODUCTION-REPORT.md](./REPRODUCTION-REPORT.md) · [QUICKSTART.md](./QUICKSTART.md)
+> **Status:** completed plan · superseded as authority on 2026-07-10
+> **Canonical definitions:** [EVAL-CONTRACT.md](./EVAL-CONTRACT.md)
+> **보존 이유:** eval surface와 supersample report를 만든 구현 배경·acceptance·완료 이력. 현재 episode·표본·trace·grader 정의를 이 문서에서 판정하지 않는다.
+> **Related:** [EVAL-PROGRAM.md](./EVAL-PROGRAM.md) · [REPRODUCTION-REPORT.md](./REPRODUCTION-REPORT.md) · [QUICKSTART.md](./QUICKSTART.md)
 
 ---
 
@@ -15,35 +15,9 @@
 
 ---
 
-## Canonical Definitions
+## Extracted definitions
 
-이 섹션이 아래 개념들의 **단일 SSOT**다. [EVAL-SURFACE-V1-PLAN.md](./EVAL-SURFACE-V1-PLAN.md)를 포함한 다른 문서는 이 섹션을 참조만 하고 재정의하지 않는다.
-
-### Completed episode
-
-> **completed episode = `outcomes.jsonl`에서 `phase == "execute"`인 row.**
-
-- 구현 SSOT: `feedback_report._is_verdict_eligible()` (`src/agent_lab/feedback_report.py`).
-- turn-phase / legacy(pre-phase) row는 `final_verdict`가 구조적으로 null이므로 clean-pass/lift **분모에서 제외**한다. 이 row들은 **turn signal**(routing, role, advisor, latency 관측)로만 사용한다.
-- Oracle verdict 유무는 completed episode 판정 조건이 **아니다** — verdict가 null인 execute row도 분모에 포함되며(clean-pass는 아님), verdict 존재율은 `oracle_verdict_coverage`로 별도 측정한다.
-- ~~"Oracle verdict가 있는 execute/verify 결과"~~, ~~"`phase=execute` 또는 verdict가 있는 row"~~ 같은 과거 문서 정의는 폐기한다.
-
-### 표본 임계값 — 두 임계값은 목적이 다르다
-
-| 임계값 | 값 | 성격 | 위치 |
-|--------|----|------|------|
-| `MIN_SAMPLE` | 3 (`AGENT_LAB_FEEDBACK_MIN_SAMPLE`) | **기계 게이트** — advisor override 억제 + report lift `null` 처리 | `feedback_advisor.MIN_SAMPLE` (코드) |
-| n≥30 | 30 | **사람 해석 기준** — source별 비교군을 신뢰할 최소 표본 | 문서·report 해석 가이드 (코드 아님) |
-| n≥10 | 10 | **사람 해석 기준** — 초기 dogfood "early signal" | 문서·report 해석 가이드 (코드 아님) |
-
-- `MIN_SAMPLE=3`은 cold-start에서 advisor가 아예 멈추지 않기 위한 하한이며, "통계적으로 유의하다"는 뜻이 아니다.
-- n≥30/10은 **코드 플래그로 추가하지 않는다** — report를 읽는 사람의 판독 기준일 뿐이다. 따라서 F2 run-profile 플래그 등록 대상도 아니다. 이후 코드 강제가 필요해지면 그 시점에 별도 플래그로 승격하고 F2 가드(`test_f2_every_feature_flag_has_owner`)를 따른다.
-
-### Insufficient sample
-
-> **`advisor_lift.<source>_vs_default: null` = below MIN_SAMPLE의 canonical machine-readable 표현.**
-
-별도 `insufficient_sample` field는 추가하지 않는다. text render는 기존 `— (below MIN_SAMPLE)`를 유지한다.
+Completed episode, `verdict_eligible_total`, `MIN_SAMPLE`, n≥10/30, null lift 정의는 [EVAL-CONTRACT.md](./EVAL-CONTRACT.md) §1~2로 이동했다. 이 계획의 이후 언급은 구현 당시의 historical wording이며 새 정의를 만들지 않는다.
 
 ---
 
@@ -80,7 +54,7 @@
   - `turn_source_counts = 전체 ledger의 advisor_source 분포`
 - `feedback_advisor`는 completed episode를 우선 사용하되, 표본 부족 시 기존 turn signal fallback을 유지한다 (§1에서 구현 완료).
 - eval surface report(§2)에는 표시용 이름으로 `completed_episode_count`를 써도 되지만, 값은 `feedback_report.verdict_eligible_total`에서 **파생**한다 (재계산 금지).
-- 문서 중복 제거: episode signal 정의·field는 이 문서 [Canonical Definitions](#canonical-definitions)가 SSOT이고, [EVAL-SURFACE-V1-PLAN.md](./EVAL-SURFACE-V1-PLAN.md)는 EvalTrace schema / case contract / grader 스펙만 담는다.
+- 문서 중복 제거: episode signal 정의·field는 [EVAL-CONTRACT.md](./EVAL-CONTRACT.md)가 SSOT이고, [EVAL-SURFACE-V1-PLAN.md](./EVAL-SURFACE-V1-PLAN.md)는 구현 당시 EvalTrace schema / case contract / grader 스펙을 보존한다.
 
 ---
 
@@ -195,7 +169,7 @@ AGENT_LAB_FEEDBACK_EXPLORE_RATE=0.1 make dogfood-feedback-mock
 AGENT_LAB_FEEDBACK_EXPLORE_RATE=1.0 make dogfood-feedback-mock
 ```
 
-- report 해석 기준 ([Canonical Definitions](#canonical-definitions)의 임계값 표 참조):
+- report 해석 기준 ([EVAL-CONTRACT.md](./EVAL-CONTRACT.md) §2 참조):
   - `advisor_lift.history_vs_default == null` → below MIN_SAMPLE.
   - `advisor_lift.explore_vs_default == null` → explore 비교군 부족.
   - n≥30 = 비교군 신뢰 기준, n≥10 = early signal (둘 다 사람 해석 기준, 코드 게이트 아님).
@@ -211,7 +185,7 @@ AGENT_LAB_FEEDBACK_EXPLORE_RATE=1.0 make dogfood-feedback-mock
 
 - **문서 drift 제거 — 완료:**
   - 이 문서(v2)가 현행 구현 상태의 SSOT.
-  - [EVAL-SURFACE-V1-PLAN.md](./EVAL-SURFACE-V1-PLAN.md)의 "Episode signal 정리" 섹션을 이 문서 참조로 대체하고, `completed_episode_count` 등 폐기된 field 이름을 정정 완료. V1-PLAN에는 EvalTrace schema / case contract / grader 스펙만 남았다.
+  - 구현 당시 [EVAL-SURFACE-V1-PLAN.md](./EVAL-SURFACE-V1-PLAN.md)의 episode 정의를 이 계획으로 모았다. 2026-07-10 이후 두 계획의 현행 정의는 [EVAL-CONTRACT.md](./EVAL-CONTRACT.md)로 추출됐다.
 - [REPRODUCTION-REPORT.md](./REPRODUCTION-REPORT.md)에 "Eval Surface 재현 (T0/T1)" 섹션 추가 완료 — `make eval-surface-check` 절차 + `fork_time_minutes=12` 기준선 연결(`evals/report.py`의 `FORK_TIME_MINUTES_BASELINE`과 동기화).
 - [QUICKSTART.md](./QUICKSTART.md)의 필수 1~6단계는 그대로 두고, "다음 단계" 표에 eval-surface 재현 링크만 추가 — **최소 경로** 원칙 유지.
 - [FORK.md](./FORK.md) §6에 `make eval-surface-check`를 벤치·KPI 유지 번들에 추가하고, 신뢰 report 표(Quickstart/Emergence/Eval surface/S1.5 feedback × T-layer)를 신설했다.

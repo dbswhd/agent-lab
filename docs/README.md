@@ -1,6 +1,6 @@
 # Agent Lab documentation index
 
-> **Updated:** 2026-06-28 · **Tests:** `pytest -m "not live"` · **Smoke:** `python scripts/smoke_room.py` · **Hook/communicate:** `make verify-hooks` · **Packaging baseline:** tag `baseline/pre-hybrid-rust-2026-06-28`
+> **Updated:** 2026-07-10 · **Authority:** code+tests → domain canonical doc → history/reference · **Smoke:** `python scripts/smoke_room.py`
 
 이 페이지에서 질문에 맞는 **하나의 canonical doc**을 찾는다. `archive/`로 이동된 문서는 shipped 상태 판단에 사용 금지.
 
@@ -12,7 +12,9 @@
 |------|------|
 | **지금 무엇을 해야 하나 (실행 큐 · 시한 · shipped 확인)** | [NOW.md](./NOW.md) |
 | **현재 구조 · 플로우 (첫 진입점)** | [FLOW.md](./FLOW.md) |
-| **4과정 workflow · 동적 적응 · 슈퍼샘플 비교 (작업 SSOT)** | [WORKFLOW-DYNAMIC-REFERENCE.md](./WORKFLOW-DYNAMIC-REFERENCE.md) |
+| **Room 턴 제어 · TurnPolicy · TurnContract · safety floor** | [TURN-CONTRACT.md](./TURN-CONTRACT.md) |
+| **episode · 표본 · trace · grader · T0~T2 판정** | [EVAL-CONTRACT.md](./EVAL-CONTRACT.md) |
+| **중장기 방향 · 완성도 · 동결 해제 조건** | [NORTH-STAR.md](./NORTH-STAR.md) |
 | **새 작업 시작용 착수 템플릿** | [WORK-TASK-KICKOFF-TEMPLATE.md](./WORK-TASK-KICKOFF-TEMPLATE.md) |
 | **M4/L1 discuss-only trace 기준선 결정** | [M4-L1-DISCUSS-ONLY-TRACE-DECISION.md](./M4-L1-DISCUSS-ONLY-TRACE-DECISION.md) |
 | 시스템 전체 모듈·레이어 지도 | [ARCHITECTURE.md](./ARCHITECTURE.md) |
@@ -20,7 +22,6 @@
 | Hybrid Rust + Python ADR (Track 1 proceed / Track 2 conditional) | [HYBRID-RUST-PYTHON-ADR.md](./HYBRID-RUST-PYTHON-ADR.md) |
 | Track 2.0 profile gate report | [TRACK2-PROFILE.md](./TRACK2-PROFILE.md) |
 | Track 2.2 native gate — CLOSED (native rejected, crate removed) | [TRACK2-NATIVE-GATE.md](./TRACK2-NATIVE-GATE.md) |
-| **중장기 북극성 · 완성도 게이지 (슈퍼 샘플 로드맵)** | [NORTH-STAR.md](./NORTH-STAR.md) |
 | **N10 User-Loop Wisdom 설계 상세 (개정 반영됨 — canonical은 NORTH-STAR §2.1 N10)** | [N10-USER-LOOP-WISDOM-DRAFT.md](./N10-USER-LOOP-WISDOM-DRAFT.md) |
 | **N6 Phase 2 — Harness Self-Improvement Loop (Weng / Self-Harness / DGM 변용)** | [DESIGN-HARNESS-SELF-IMPROVE.md](./DESIGN-HARNESS-SELF-IMPROVE.md) |
 | **N7 S3 도구 카드 · `[NEED-TOOL:]` · Inbox mount 설계 (구현은 S1/S2 닫힌 후)** | [S3-TOOL-CARD-SPEC.md](./S3-TOOL-CARD-SPEC.md) |
@@ -34,7 +35,8 @@
 | 역할 오케스트레이션 설계 (P1~P8) | [ROLE-ORCHESTRATION-PLAN.md](./ROLE-ORCHESTRATION-PLAN.md) |
 | 기능·동작·API·UI 상세 | [USER-GUIDE.md](./USER-GUIDE.md) |
 | **Turn preset · Plan toggle · legacy profile map** | [TURN-MODES.md](./TURN-MODES.md) |
-| **TurnPolicy (Wave F — signal-driven Scribe/FSM)** | [TURN-POLICY.md](./TURN-POLICY.md) |
+| TurnPolicy 구현 이력 | [TURN-POLICY.md](./TURN-POLICY.md) — 현재 계약은 [TURN-CONTRACT.md](./TURN-CONTRACT.md) |
+| 4과정·동적 적응 비교·구현 로그 | [WORKFLOW-DYNAMIC-REFERENCE.md](./WORKFLOW-DYNAMIC-REFERENCE.md) — history/reference |
 | **Structure refactor execute waves** | [STRUCTURE-REFACTOR-WAVE.md](./STRUCTURE-REFACTOR-WAVE.md) |
 | shipped / partial / future | [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md) |
 | Room 합의 / execute / mission 루프 | [FLOW.md](./FLOW.md) §3–7 · [MISSION-LOOP-C-OMO.md](./MISSION-LOOP-C-OMO.md) |
@@ -53,13 +55,23 @@
 
 ---
 
-## Tier 1 — Canonical (매일 참조, plan vs code)
+## Core 5 — domain canonical
 
 | Doc | 용도 |
 |-----|------|
+| [NOW.md](./NOW.md) | **현재 상태** — 실행 큐, 시한, 동결, Human 결정 |
+| [NORTH-STAR.md](./NORTH-STAR.md) | **장기 방향** — 5모트, D0~D4, N/F 로드맵, 해제 조건 |
 | [FLOW.md](./FLOW.md) | **현재 구조·플로우** — Discuss→Plan→Execute→Verify 전체 흐름, 역할 오케스트레이션, Human gates |
-| [WORKFLOW-DYNAMIC-REFERENCE.md](./WORKFLOW-DYNAMIC-REFERENCE.md) | **작업 SSOT** — 4과정 상세·Eval·동적 적응·슈퍼샘플 비교·백로그·명령 |
-| [WORK-TASK-KICKOFF-TEMPLATE.md](./WORK-TASK-KICKOFF-TEMPLATE.md) | **작업 착수 템플릿** — NORTH-STAR / workflow / eval 기준으로 범위·검증·닫힘 정의 |
+| [TURN-CONTRACT.md](./TURN-CONTRACT.md) | **턴 계약** — TurnPolicy, 후보 선택, rollout, safety 권한 |
+| [EVAL-CONTRACT.md](./EVAL-CONTRACT.md) | **평가 계약** — outcome 분모, 표본, trace, grader, T0~T2 |
+
+## Tier 1 — supporting operational docs
+
+이 문서들은 담당 기능의 상세 계약이다. 전역 상태나 다른 domain의 권위를 갖지 않는다.
+
+| Doc | 용도 |
+|-----|------|
+| [WORK-TASK-KICKOFF-TEMPLATE.md](./WORK-TASK-KICKOFF-TEMPLATE.md) | **작업 착수 템플릿** — Core 5 기준으로 범위·검증·닫힘 정의 |
 | [M4-L1-DISCUSS-ONLY-TRACE-DECISION.md](./M4-L1-DISCUSS-ONLY-TRACE-DECISION.md) | **설계 결정** — discuss-only fixture completeness를 올리지 않고 semantics를 유지하는 이유와 후속 옵션 |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | **시스템 지도** — 백엔드 라우터, 코어 모듈, 프론트 컴포넌트, UX 플로우, 전략 포지션 §0 |
 | [USER-GUIDE.md](./USER-GUIDE.md) | 제품 동작, env 플래그, Room · execute · UI 상세 |
@@ -76,7 +88,7 @@
 | [PACKAGE-FORK-BOUNDARIES.md](./PACKAGE-FORK-BOUNDARIES.md) | 분리 fork 패키지 경계 (N8) |
 | [CLAUDE.md](../CLAUDE.md) | 레포 개발 퀵스타트 (root) |
 
-**규칙:** 두 문서가 충돌하면 **TRACEABILITY + code + tests**가 우선.
+**규칙:** runtime 사실은 code+tests가 우선한다. `NOW`는 상태, `NORTH-STAR`는 방향, `FLOW`는 구조, `TURN-CONTRACT`는 턴, `EVAL-CONTRACT`는 평가만 소유한다.
 
 ---
 
@@ -99,6 +111,15 @@
 | [ROOM-DISPATCH-PROTOCOL.md](./ROOM-DISPATCH-PROTOCOL.md) | DELEGATE / parallel dispatch protocol **shipped** |
 | [MCP-TOOL-CONTRACT.md](./MCP-TOOL-CONTRACT.md) | Inbox / session plugin MCP 계약 |
 | [HYBRID-RELAY-WORKER.md](./HYBRID-RELAY-WORKER.md) | Cloudflare hybrid relay worker 배포 |
+| [DESIGN-HARNESS-SELF-IMPROVE.md](./DESIGN-HARNESS-SELF-IMPROVE.md) | N6 전용 approved feature spec; HS 작업 시만 참조 |
+
+### History / research (현재 상태 판단에 사용 금지)
+
+| Doc | 보존 이유 |
+|-----|-----------|
+| [WORKFLOW-DYNAMIC-REFERENCE.md](./WORKFLOW-DYNAMIC-REFERENCE.md) | 4과정·동적 적응 비교와 TurnContract 도입 이력 |
+| [EVAL-SURFACE-SUPER-SAMPLE-PLAN.md](./EVAL-SURFACE-SUPER-SAMPLE-PLAN.md) | eval surface 구현 완료 계획; 정의는 EVAL-CONTRACT로 이동 |
+| [REVIEW-LINER-RESEARCH-2026-07.md](./REVIEW-LINER-RESEARCH-2026-07.md) | HSIL 승인에 반영된 연구 검토 스냅샷 |
 
 ### Extensions & trading
 

@@ -96,7 +96,7 @@ SHIPPED_ROWS: list[tuple[str, list[str]]] = [
         "HOOK-COMM",
         [
             "src/agent_lab/reply_policy.py",
-            "src/agent_lab/room_hooks.py",
+            "src/agent_lab/room/hooks.py",
             "docs/HOOK-COMMUNICATE-REFORM.md",
             "Makefile",
         ],

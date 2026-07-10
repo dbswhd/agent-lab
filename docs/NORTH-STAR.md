@@ -1,8 +1,9 @@
 # Agent Lab North Star — 슈퍼 샘플 로드맵
 
-> **작성:** 2026-07-02 · **역할:** 중장기 방향성 + 완성도 추적의 canonical 문서
-> **관계 문서:** 전략 포지션 상세 → [STRATEGIC-DIRECTION-2026.md](./STRATEGIC-DIRECTION-2026.md) · shipped 여부 → [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md) · 현재 구조 → [FLOW.md](./FLOW.md)
-> **실행 SSOT:** [CLEANUP-SSOT-2026-07.md](./CLEANUP-SSOT-2026-07.md) · [CLEANUP-PHASE0-SCOPE-2026-07.md](./CLEANUP-PHASE0-SCOPE-2026-07.md)
+> **Status:** canonical direction · **작성:** 2026-07-02 · **갱신:** 2026-07-10
+> **소유 범위:** 중장기 방향 · 5모트 · D0~D4 · N/F 로드맵 · 동결 해제 조건. 현재 실행 큐와 runtime 세부 동작은 소유하지 않는다.
+> **현재 상태:** [NOW.md](./NOW.md) · **현재 구조:** [FLOW.md](./FLOW.md) · **턴 계약:** [TURN-CONTRACT.md](./TURN-CONTRACT.md) · **평가 계약:** [EVAL-CONTRACT.md](./EVAL-CONTRACT.md)
+> **이력/근거:** [STRATEGIC-DIRECTION-2026.md](./STRATEGIC-DIRECTION-2026.md) · [EXTERNAL-REFS-TRACEABILITY.md](./EXTERNAL-REFS-TRACEABILITY.md)
 > **Supersedes:** `artifacts/plans/agent-lab-agi-direction.md`, `agent-lab-long-term-direction.md`, `agent-lab-longterm-direction.md` (3개 초안을 이 문서로 통합)
 
 ### 코드네임 범례 (fork 진입용)

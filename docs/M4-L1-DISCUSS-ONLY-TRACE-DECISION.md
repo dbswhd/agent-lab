@@ -2,7 +2,7 @@
 
 > **작성:** 2026-07-07  
 > **역할:** `M4` / `L1` regression fixture의 `trace_completeness`를 더 올릴지, 아니면 discuss-only 의미를 유지한 채 현 점수를 기준선으로 둘지 결정하는 작업 문서  
-> **관계:** [WORKFLOW-DYNAMIC-REFERENCE.md](./WORKFLOW-DYNAMIC-REFERENCE.md) §11 · [EVAL-SURFACE-SUPER-SAMPLE-PLAN.md](./EVAL-SURFACE-SUPER-SAMPLE-PLAN.md) · [EVAL-SURFACE-V1-PLAN.md](./EVAL-SURFACE-V1-PLAN.md)
+> **현재 평가 계약:** [EVAL-CONTRACT.md](./EVAL-CONTRACT.md) · **이력:** [WORKFLOW-DYNAMIC-REFERENCE.md](./WORKFLOW-DYNAMIC-REFERENCE.md) §11
 
 ---
 
@@ -236,4 +236,3 @@ SSOT:
 - [x] `trace_profile` 기반 grader 분모 해석 개선 적용
 
 후속 reopen 조건은 [§5](#5-향후-revisit-조건).
-

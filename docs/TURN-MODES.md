@@ -1,10 +1,11 @@
-# Turn modes — current contract (2026-06)
+# Turn modes — legacy UI/preset contract (2026-06 history)
 
+> **Status:** historical reference · current turn authority: [TURN-CONTRACT.md](./TURN-CONTRACT.md)
 > **SSOT (code):** `src/agent_lab/turn_modes.py` · **UI:** `web/src/utils/roomPresets.ts` · `RoomChat.tsx` · `ChatComposer.tsx`  
 > **TurnPolicy (Wave F — Plan toggle deprecation):** [TURN-POLICY.md](./TURN-POLICY.md) — **shipped:** Composer Plan toggle removed; `AGENT_LAB_TURN_POLICY=1` default; API `mode`/`synthesize` deprecated hints only.  
 > **Related:** [05-room-agent-roles.md](./05-room-agent-roles.md) · [USER-GUIDE.md §6](./USER-GUIDE.md) · [FLOW.md](./FLOW.md)
 
-Agent Lab exposes **two independent controls** at send time. Do not confuse them with removed legacy UI labels (`discuss`, `analyze`, `review`, `free`, `♾️` segmented picker).
+아래 두 축은 2026-06 전환기의 계약을 보존한다. 현재 UI·runtime 판단에는 code와 [FLOW.md](./FLOW.md), [TURN-CONTRACT.md](./TURN-CONTRACT.md)를 사용한다.
 
 ---
 

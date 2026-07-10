@@ -83,7 +83,7 @@ T2(외부 fork·PR)는 생태계 지표 — [FORK.md](./FORK.md).
 
 ## Eval Surface 재현 (T0/T1)
 
-> **SSOT:** [EVAL-SURFACE-SUPER-SAMPLE-PLAN.md](./EVAL-SURFACE-SUPER-SAMPLE-PLAN.md) · [EVAL-SURFACE-V1-PLAN.md](./EVAL-SURFACE-V1-PLAN.md)
+> **SSOT:** [EVAL-CONTRACT.md](./EVAL-CONTRACT.md)
 
 ```bash
 make eval-surface-local

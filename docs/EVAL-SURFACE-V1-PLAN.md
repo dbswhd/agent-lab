@@ -1,6 +1,6 @@
 # Agent Lab OpenAI식 Eval Surface + 슈퍼샘플 정리 계획
 
-> **Status:** 구현 완료 — `evals/` local harness, 10 case, 8 deterministic graders, `make eval-surface-local` 반영. [EVAL-SURFACE-SUPER-SAMPLE-PLAN.md](./EVAL-SURFACE-SUPER-SAMPLE-PLAN.md) (v2) **§2**가 상태 SSOT이며, episode signal 정의는 그 문서의 Canonical Definitions가 SSOT  
+> **Status:** 구현 완료 history — `evals/` local harness, 10 case, 8 deterministic graders, `make eval-surface-local` 반영. 현재 정의는 [EVAL-CONTRACT.md](./EVAL-CONTRACT.md)가 소유한다.
 > **SSOT:** local-first JSON/JSONL (`evals/results/latest.json`, `evals/cases.jsonl`)  
 > **Related:** [EVAL-PROGRAM.md](./EVAL-PROGRAM.md) · [NORTH-STAR.md](./NORTH-STAR.md) §0.1 (T0–T2) · [`dogfood-v1.json`](../sessions/_benchmark/topics/dogfood-v1.json)
 
@@ -92,7 +92,7 @@ make eval-surface-local
 
 ### 1. Episode signal 정리
 
-> **이 문서는 episode signal을 재정의하지 않는다.** 정의·field·임계값의 SSOT는 [EVAL-SURFACE-SUPER-SAMPLE-PLAN.md](./EVAL-SURFACE-SUPER-SAMPLE-PLAN.md) **Canonical Definitions** 섹션이다.
+> **이 문서는 episode signal을 재정의하지 않는다.** 정의·field·임계값의 SSOT는 [EVAL-CONTRACT.md](./EVAL-CONTRACT.md)다.
 
 요약 (참조용):
 

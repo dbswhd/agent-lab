@@ -1,6 +1,7 @@
 # 설계: S3 도구 카드 · `[NEED-TOOL:]` · Human Inbox mount 승인
 
 > **상태**: 설계 문서만 (N7, NORTH-STAR §2.1) — **구현 착수 금지** (S1/S2 닫힌 후)
+> **ABSORB:** **ABS-P2-skills** = 이 문서의 S3b mount 트랙 — **동결** (S3a-0 관측만 현행). WORKFLOW Composer-preset P2와 무관.
 > **기준일**: 2026-07-07
 > **북극성 근거**: [`NORTH-STAR.md`](./NORTH-STAR.md) §1 Layer 1 S3a~S3d · §2.1 N7
 > **선행 완료**: S3a-0 로컬 인벤토리 (`src/agent_lab/tool_cards.py`, 2026-07-06) — 이 문서가 확장하는 기반

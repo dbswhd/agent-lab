@@ -123,6 +123,6 @@ upstream에 기여 시: mock-only 테스트, `sessions/*` 커밋 금지, `make c
 | [QUICKSTART.md](./QUICKSTART.md) | 15분 mock 미션 |
 | [EMERGENCE-BENCH.md](./EMERGENCE-BENCH.md) | bench 프로토콜 SSOT |
 | [REPRODUCTION-REPORT.md](./REPRODUCTION-REPORT.md) | 공개 reference 수치 |
-| [EVAL-SURFACE-SUPER-SAMPLE-PLAN.md](./EVAL-SURFACE-SUPER-SAMPLE-PLAN.md) | Eval surface + T0/T1/T2 판정 SSOT |
+| [EVAL-CONTRACT.md](./EVAL-CONTRACT.md) | Eval surface + T0/T1/T2 판정 SSOT |
 | [PACKAGE-FORK-BOUNDARIES.md](./PACKAGE-FORK-BOUNDARIES.md) | 분리 fork 경계 (N8) |
 | [NORTH-STAR.md](./NORTH-STAR.md) | Layer 3 슈퍼 샘플 판정 |

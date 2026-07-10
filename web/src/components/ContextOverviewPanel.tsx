@@ -35,6 +35,31 @@ type Props = {
   onFocusObjection?: (id: string, actionIndex?: number) => void;
 };
 
+type LayerToggles = {
+  mission_wisdom: boolean;
+  repo_tree: boolean;
+};
+
+function layerTogglesFromResponse(
+  layers: Record<string, boolean> | undefined,
+): LayerToggles {
+  return {
+    mission_wisdom: layers?.mission_wisdom ?? true,
+    repo_tree: layers?.repo_tree ?? true,
+  };
+}
+
+function mergeLayerToggles(
+  prev: LayerToggles,
+  layers: Record<string, boolean> | undefined,
+): LayerToggles {
+  if (!layers) return prev;
+  return {
+    mission_wisdom: layers.mission_wisdom ?? prev.mission_wisdom,
+    repo_tree: layers.repo_tree ?? prev.repo_tree,
+  };
+}
+
 /** Context sidebar — Overview tab (prototype `ContextSidebar`). */
 export function ContextOverviewPanel({
   session,
@@ -48,7 +73,7 @@ export function ContextOverviewPanel({
     run: session?.run,
     planMd: session?.plan_md,
   });
-  const [layerToggles, setLayerToggles] = useState({
+  const [layerToggles, setLayerToggles] = useState<LayerToggles>({
     mission_wisdom: true,
     repo_tree: true,
   });
@@ -59,20 +84,14 @@ export function ContextOverviewPanel({
       session?.run as { context_layers?: Record<string, boolean> } | undefined
     )?.context_layers;
     if (runLayers) {
-      setLayerToggles((prev) => ({
-        mission_wisdom: runLayers.mission_wisdom ?? prev.mission_wisdom,
-        repo_tree: runLayers.repo_tree ?? prev.repo_tree,
-      }));
+      setLayerToggles((prev) => mergeLayerToggles(prev, runLayers));
       return;
     }
     if (!sessionId) return;
     void fetchContextLayers(sessionId)
       .then((res) => {
         if (res.context_layers) {
-          setLayerToggles({
-            mission_wisdom: res.context_layers.mission_wisdom ?? true,
-            repo_tree: res.context_layers.repo_tree ?? true,
-          });
+          setLayerToggles(layerTogglesFromResponse(res.context_layers));
         }
       })
       .catch(() => {});
@@ -87,10 +106,7 @@ export function ContextOverviewPanel({
       try {
         const res = await patchContextLayers(sessionId, { [key]: next });
         if (res.context_layers) {
-          setLayerToggles({
-            mission_wisdom: res.context_layers.mission_wisdom ?? true,
-            repo_tree: res.context_layers.repo_tree ?? true,
-          });
+          setLayerToggles(layerTogglesFromResponse(res.context_layers));
         }
       } catch {
         setLayerToggles((prev) => ({ ...prev, [key]: !next }));

@@ -9,7 +9,7 @@ import subprocess
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from agent_lab.subprocess_env import subprocess_env
 
@@ -381,17 +381,33 @@ def run_hook_commands(
     }
 
 
+def _run_configured_phase(
+    *,
+    worktree_path: Path,
+    git_root: Path,
+    phase: Literal["create", "setup", "verify"],
+) -> dict[str, Any] | None:
+    config = find_worktree_hooks(git_root)
+    if not config:
+        return None
+    commands = getattr(config, phase)
+    if not commands:
+        return None
+    report = run_hook_commands(commands, cwd=worktree_path, phase=phase)
+    report["config"] = config.to_dict()
+    return report
+
+
 def run_worktree_create(
     *,
     worktree_path: Path,
     git_root: Path,
 ) -> dict[str, Any] | None:
-    config = find_worktree_hooks(git_root)
-    if not config or not config.create:
-        return None
-    report = run_hook_commands(config.create, cwd=worktree_path, phase="create")
-    report["config"] = config.to_dict()
-    return report
+    return _run_configured_phase(
+        worktree_path=worktree_path,
+        git_root=git_root,
+        phase="create",
+    )
 
 
 def run_worktree_setup(
@@ -399,12 +415,11 @@ def run_worktree_setup(
     worktree_path: Path,
     git_root: Path,
 ) -> dict[str, Any] | None:
-    config = find_worktree_hooks(git_root)
-    if not config or not config.setup:
-        return None
-    report = run_hook_commands(config.setup, cwd=worktree_path, phase="setup")
-    report["config"] = config.to_dict()
-    return report
+    return _run_configured_phase(
+        worktree_path=worktree_path,
+        git_root=git_root,
+        phase="setup",
+    )
 
 
 def run_worktree_verify(
@@ -412,12 +427,11 @@ def run_worktree_verify(
     worktree_path: Path,
     git_root: Path,
 ) -> dict[str, Any] | None:
-    config = find_worktree_hooks(git_root)
-    if not config or not config.verify:
-        return None
-    report = run_hook_commands(config.verify, cwd=worktree_path, phase="verify")
-    report["config"] = config.to_dict()
-    return report
+    return _run_configured_phase(
+        worktree_path=worktree_path,
+        git_root=git_root,
+        phase="verify",
+    )
 
 
 def run_worktree_remove(

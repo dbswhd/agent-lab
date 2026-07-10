@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   PlanExecutionRecord,
   PlanWorkflowRecord,
@@ -19,7 +19,6 @@ import {
   type PlanApprovalHost,
 } from "./WorkPlanApprovalSection";
 import { fetchSessionRuntime, type RuntimeSnapshot } from "../api/client";
-import { useState } from "react";
 import { resolveWorkPhase } from "../utils/workStatusPhase";
 import { workPlanMetaLine } from "../utils/planMeta";
 import {
@@ -32,13 +31,23 @@ import {
   type ComposerStackFocus,
 } from "../utils/composerStackFocus";
 import { workFocusElementId } from "../utils/workFocusTargets";
-import {
-  pendingComposerDecisionCount,
-  pendingComposerStackLanes,
-  resolveActiveComposerStackLane,
-} from "../utils/composerStackLane";
+import { resolveComposerStackSnapshot } from "../utils/composerStackLane";
 import { useLocale } from "../i18n/useLocale";
 import { DecisionQueueHeader } from "./DecisionQueueHeader";
+
+function clarifyStripDescriptionText(
+  ko: boolean,
+  workflowPhase: string,
+): string {
+  if (ko) {
+    return workflowPhase === "INTAKE"
+      ? "계획을 이어가기 전에 입력을 더 분명히 해야 합니다."
+      : "계획을 진행하기 전에 누락된 정보를 정리하는 단계입니다.";
+  }
+  return workflowPhase === "INTAKE"
+    ? "The workflow needs clearer input before it can continue."
+    : "The workflow is collecting missing context before continuing.";
+}
 
 type Props = {
   readonly sessionId: string;
@@ -142,6 +151,22 @@ export function ComposerEventStack({
   const hasPlan = Boolean(planMd.trim());
   const [runtime, setRuntime] = useState<RuntimeSnapshot | null>(null);
 
+  function scrollStackRoot() {
+    rootRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function scrollWorkFocusTarget(
+    target: ComposerStackFocus | WorkFocusTarget | null | undefined,
+  ) {
+    if (!target || target === "inbox" || target === "activity") return;
+    window.setTimeout(() => {
+      document
+        .getElementById(workFocusElementId(target))
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      onWorkFocusHandled?.();
+    }, 80);
+  }
+
   useEffect(() => {
     let cancelled = false;
     void fetchSessionRuntime(sessionId)
@@ -160,14 +185,8 @@ export function ComposerEventStack({
     function onFocus(event: Event) {
       const focus = (event as CustomEvent<ComposerStackFocus | undefined>)
         .detail;
-      rootRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      if (!focus || focus === "inbox" || focus === "activity") return;
-      window.setTimeout(() => {
-        document
-          .getElementById(workFocusElementId(focus))
-          ?.scrollIntoView({ behavior: "smooth", block: "start" });
-        onWorkFocusHandled?.();
-      }, 80);
+      scrollStackRoot();
+      scrollWorkFocusTarget(focus);
     }
     window.addEventListener(COMPOSER_STACK_FOCUS_EVENT, onFocus);
     return () =>
@@ -176,13 +195,8 @@ export function ComposerEventStack({
 
   useEffect(() => {
     if (!workFocus) return;
-    rootRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    window.setTimeout(() => {
-      document
-        .getElementById(workFocusElementId(workFocus))
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-      onWorkFocusHandled?.();
-    }, 80);
+    scrollStackRoot();
+    scrollWorkFocusTarget(workFocus);
   }, [workFocus, onWorkFocusHandled]);
 
   const workflowPhase = (
@@ -194,36 +208,25 @@ export function ComposerEventStack({
   const workflowNotice =
     planWorkflow?.notice ?? runtime?.plan_workflow?.notice ?? undefined;
 
-  const showClarifyWork = useMemo(
-    () =>
-      (workflowPhase === "CLARIFY" || workflowPhase === "INTAKE") &&
-      hasPlanWorkflowClarifySurface({
-        phase: workflowPhase,
-        inboxPendingCount,
-        notice: workflowNotice,
-      }),
-    [inboxPendingCount, workflowNotice, workflowPhase],
-  );
+  const showClarifyWork =
+    (workflowPhase === "CLARIFY" || workflowPhase === "INTAKE") &&
+    hasPlanWorkflowClarifySurface({
+      phase: workflowPhase,
+      inboxPendingCount,
+      notice: workflowNotice,
+    });
 
-  const showClarifyNotice = useMemo(
-    () =>
-      hasPlanWorkflowClarifyNotice({
-        phase: workflowPhase,
-        notice: workflowNotice,
-      }),
-    [workflowNotice, workflowPhase],
-  );
+  const showClarifyNotice = hasPlanWorkflowClarifyNotice({
+    phase: workflowPhase,
+    notice: workflowNotice,
+  });
 
   const clarifyNoticeLabel = planWorkflowNoticeLabel(workflowNotice, msg);
   const clarifyStripTitle = ko ? "명료화 필요" : "Clarification needed";
-  const clarifyStripDescription =
-    workflowPhase === "INTAKE"
-      ? ko
-        ? "계획을 이어가기 전에 입력을 더 분명히 해야 합니다."
-        : "The workflow needs clearer input before it can continue."
-      : ko
-        ? "계획을 진행하기 전에 누락된 정보를 정리하는 단계입니다."
-        : "The workflow is collecting missing context before continuing.";
+  const clarifyStripDescription = clarifyStripDescriptionText(
+    ko,
+    workflowPhase,
+  );
 
   const workPhase = useMemo(() => {
     const executions =
@@ -250,18 +253,19 @@ export function ComposerEventStack({
     showClarifyWork ||
     Boolean(execPending);
 
-  const laneInput = useMemo(
-    () => ({
-      inboxPendingCount,
-      planApprovalEnabled: Boolean(planApproval?.enabled),
-      showClarifyNotice,
-      hasPlan,
-      showExecuteQueue,
-      execPending: Boolean(execPending),
-      showConsensusGate,
-      consensusProposal,
-      showWorkSurface,
-    }),
+  const { activeLane, queuedLanes, pendingDecisionCount } = useMemo(
+    () =>
+      resolveComposerStackSnapshot({
+        inboxPendingCount,
+        planApprovalEnabled: Boolean(planApproval?.enabled),
+        showClarifyNotice,
+        hasPlan,
+        showExecuteQueue,
+        execPending: Boolean(execPending),
+        showConsensusGate,
+        consensusProposal,
+        showWorkSurface,
+      }),
     [
       consensusProposal,
       execPending,
@@ -274,17 +278,6 @@ export function ComposerEventStack({
       showWorkSurface,
     ],
   );
-
-  const pendingLanes = useMemo(
-    () => pendingComposerStackLanes(laneInput),
-    [laneInput],
-  );
-  const activeLane = useMemo(
-    () => resolveActiveComposerStackLane(laneInput),
-    [laneInput],
-  );
-  const queuedLanes = pendingLanes.slice(1);
-  const pendingDecisionCount = pendingComposerDecisionCount(laneInput);
 
   if (!activeLane) {
     return null;

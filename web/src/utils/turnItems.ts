@@ -129,6 +129,14 @@ function upsertStatusActivity(
   return null;
 }
 
+function markNonToolItemsDone(items: TurnItem[]): TurnItem[] {
+  return items.map((item) =>
+    item.kind !== "tool" && "status" in item
+      ? { ...item, status: "done" as const }
+      : item,
+  );
+}
+
 export function reduceTurnItems(
   current: readonly TurnItem[] | undefined,
   event: TurnItemEvent,
@@ -222,27 +230,15 @@ export function reduceTurnItems(
         break;
       }
     }
-    return items.map((item) =>
-      item.kind !== "tool" && "status" in item
-        ? { ...item, status: "done" as const }
-        : item,
-    );
+    return markNonToolItemsDone(items);
   }
   if (type === "agent_done") {
-    return items.map((item) =>
-      item.kind !== "tool" && "status" in item
-        ? { ...item, status: "done" as const }
-        : item,
-    );
+    return markNonToolItemsDone(items);
   }
   if (type === "agent_error") {
     const text = String(event.message ?? event.note ?? "Agent error");
     return [
-      ...items.map((item) =>
-        item.kind !== "tool" && "status" in item
-          ? { ...item, status: "done" as const }
-          : item,
-      ),
+      ...markNonToolItemsDone(items),
       {
         id: uniqueTurnItemId(`error-${now}`, items),
         kind: "error",

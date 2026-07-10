@@ -2,7 +2,6 @@ from __future__ import annotations
 
 """Shared execute helpers — worktree, git, merge prep (F9)."""
 
-import subprocess
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -11,6 +10,7 @@ from typing import Any
 from agent_lab.run.state import RunState
 
 from agent_lab.plan.actions import PlanAction
+from agent_lab.plan.execute_git import _run_git
 from agent_lab.plan.execute_merge import MergeConflict, merge_exec_branch
 from agent_lab.plan.execute_paths import paths_relative_to_workspace
 from agent_lab.plan.execute_snapshot import delete_snapshot, restore_snapshot
@@ -103,6 +103,16 @@ def _exec_worktree_from_execution(target: dict[str, Any]) -> ExecWorktree:
     )
 
 
+def _hook_failure_detail(report: dict[str, Any], *, fallback: str) -> str:
+    failed = next(
+        (row for row in report.get("results") or [] if not row.get("ok")),
+        None,
+    )
+    if isinstance(failed, dict):
+        return str(failed.get("detail") or failed.get("cmd") or fallback)
+    return fallback
+
+
 def _worktree_hooks_setup(
     exec_worktree: ExecWorktree,
     *,
@@ -139,17 +149,8 @@ def _worktree_hooks_setup(
     if create_report is not None:
         if not create_report.get("ok"):
             discard_exec_worktree(exec_worktree, folder, exec_id)
-            failed = next(
-                (row for row in create_report.get("results") or [] if not row.get("ok")),
-                None,
-            )
-            detail = (
-                str(failed.get("detail") or failed.get("cmd") or "create failed")
-                if isinstance(failed, dict)
-                else "create failed"
-            )
             raise WorktreeUnavailable(
-                f"worktree create hooks failed: {detail}",
+                f"worktree create hooks failed: {_hook_failure_detail(create_report, fallback='create failed')}",
                 reason="worktree_create_failed",
                 execution_id=exec_id,
             )
@@ -163,17 +164,8 @@ def _worktree_hooks_setup(
         return block
     if not setup_report.get("ok"):
         discard_exec_worktree(exec_worktree, folder, exec_id)
-        failed = next(
-            (row for row in setup_report.get("results") or [] if not row.get("ok")),
-            None,
-        )
-        detail = (
-            str(failed.get("detail") or failed.get("cmd") or "setup failed")
-            if isinstance(failed, dict)
-            else "setup failed"
-        )
         raise WorktreeUnavailable(
-            f"worktree setup hooks failed: {detail}",
+            f"worktree setup hooks failed: {_hook_failure_detail(setup_report, fallback='setup failed')}",
             reason="worktree_setup_failed",
             execution_id=exec_id,
         )
@@ -204,25 +196,9 @@ def _worktree_hooks_verify_before_merge(
     hooks["verify"] = verify_report
     target["worktree_hooks"] = hooks
     if not verify_report.get("ok"):
-        failed = next(
-            (row for row in verify_report.get("results") or [] if not row.get("ok")),
-            None,
+        raise ValueError(
+            f"worktree verify hooks failed: {_hook_failure_detail(verify_report, fallback='verify failed')}",
         )
-        detail = (
-            str(failed.get("detail") or failed.get("cmd") or "verify failed")
-            if isinstance(failed, dict)
-            else "verify failed"
-        )
-        raise ValueError(f"worktree verify hooks failed: {detail}")
-
-
-def _run_git(cwd: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        ["git", "-C", str(cwd), *args],
-        capture_output=True,
-        text=True,
-        check=check,
-    )
 
 
 def _commit_exec_worktree(

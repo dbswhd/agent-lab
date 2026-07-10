@@ -280,12 +280,10 @@ def _is_supervisor_turn(run_meta: RunStateLike) -> bool:
     Delegator overrides must not leak onto turns TurnContract classified as fast — see
     ``supervisor_turn_from_run_meta`` for why the raw preset can no longer tell them apart.
     """
-    from agent_lab.room.turn_policy import supervisor_turn_from_run_meta
+    from agent_lab.room.turn_policy import is_supervisor_turn_with_preset_fallback
 
-    signal = supervisor_turn_from_run_meta(run_meta)
-    if signal is not None:
-        return signal
-    return str(run_meta.get("room_preset") or "").strip().lower() == "supervisor"
+    preset = str(run_meta.get("room_preset") or "").strip().lower()
+    return is_supervisor_turn_with_preset_fallback(run_meta, room_preset=preset)
 
 
 def apply_preset_role_overrides(

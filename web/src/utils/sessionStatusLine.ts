@@ -23,7 +23,7 @@ export function buildSessionStatusChips(
   if (line.schedule_sandbox) {
     chips.push({
       id: "schedule_sandbox",
-      label: ko ? "Schedule RO" : "Schedule RO",
+      label: "Schedule RO",
       title: ko
         ? "스케줄 샌드박스 — execute 읽기 전용"
         : "Schedule sandbox — execute read-only",
@@ -48,9 +48,7 @@ export function buildSessionStatusChips(
     chips.push({
       id: "sandbox_intent",
       label: line.sandbox_intent,
-      title: ko
-        ? `Sandbox intent: ${line.sandbox_intent}`
-        : `Sandbox intent: ${line.sandbox_intent}`,
+      title: `Sandbox intent: ${line.sandbox_intent}`,
     });
   }
 

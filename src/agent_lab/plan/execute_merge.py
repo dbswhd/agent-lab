@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from agent_lab.env_flags import env_bool
-from agent_lab.plan.execute_git import is_working_tree_clean
+from agent_lab.plan.execute_git import _run_git, is_working_tree_clean
 from agent_lab.plan.execute_worktree import ExecWorktree, remove_exec_worktree
 
 
@@ -33,15 +33,6 @@ class MergeResult:
             "commit_sha": self.commit_sha,
             "conflict_files": self.conflict_files,
         }
-
-
-def _run_git(cwd: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        ["git", "-C", str(cwd), *args],
-        capture_output=True,
-        text=True,
-        check=check,
-    )
 
 
 def oracle_verify(

@@ -49,16 +49,11 @@ function humanizeReason(reason: string, ko: boolean): string {
   return normalized;
 }
 
-function laneLabel(id: HumanDecisionLaneId, ko: boolean): string {
-  switch (id) {
-    case "discuss":
-      return ko ? "Discuss" : "Discuss";
-    case "plan":
-      return ko ? "Plan clarify" : "Plan clarify";
-    case "execute":
-      return ko ? "Execute" : "Execute";
-  }
-}
+const LANE_LABEL: Record<HumanDecisionLaneId, string> = {
+  discuss: "Discuss",
+  plan: "Plan clarify",
+  execute: "Execute",
+};
 
 function humanGateHeadline(
   runtime: RuntimeSnapshot | null,
@@ -80,8 +75,8 @@ function humanGateHeadline(
   return {
     source: "human_gate",
     headline: ko
-      ? `${laneLabel(lane.id, ko)} 차단: ${reason}`
-      : `${laneLabel(lane.id, ko)} blocked: ${reason}`,
+      ? `${LANE_LABEL[lane.id]} 차단: ${reason}`
+      : `${LANE_LABEL[lane.id]} blocked: ${reason}`,
     detail: ko
       ? "Human Inbox에서 결정하면 다음 단계로 진행됩니다."
       : "Resolve the Human Inbox item to continue.",
@@ -150,7 +145,7 @@ export function buildDecisionBlockedHeadline(
     const clarify = phase === "CLARIFY";
     return {
       source: "plan_workflow",
-      headline: ko ? `Plan workflow · ${phase}` : `Plan workflow · ${phase}`,
+      headline: `Plan workflow · ${phase}`,
       detail: clarify
         ? ko
           ? "Clarify 질문·답변은 Composer Human Inbox 또는 stack · Clarify에서 확인하세요."

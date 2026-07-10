@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 PENDING_STATUS = "pending_approval"
-OPEN_PENDING_STATUSES = frozenset({PENDING_STATUS, "pending_approval", "review_required", "merge_conflict", "pending"})
+OPEN_PENDING_STATUSES = frozenset({PENDING_STATUS, "review_required", "merge_conflict", "pending"})
 
 
 def _worktree_hooks_check(execution: dict[str, Any] | None) -> dict[str, Any]:
@@ -46,14 +46,6 @@ def _worktree_hooks_check(execution: dict[str, Any] | None) -> dict[str, Any]:
             if source.get("has_verify"):
                 config_verify = ["configured"]
                 break
-        # Also check create/setup config.verify lists
-        if not config_verify:
-            for key in ("setup", "create"):
-                row = hooks.get(key)
-                if isinstance(row, dict) and isinstance(row.get("config"), dict):
-                    config_verify = list(row["config"].get("verify") or [])
-                    if config_verify:
-                        break
         if config_verify:
             return {"id": "worktree_hooks", "ok": False, "detail": "verify pending"}
         return {"id": "worktree_hooks", "ok": True, "detail": "verify not configured"}
@@ -231,8 +223,7 @@ def build_merge_checks(
         if (
             check.get("id") == "oracle_verdict"
             and pending
-            and str(pending.get("status") or "")
-            in {PENDING_STATUS, "pending_approval", "review_required", "merge_conflict"}
+            and str(pending.get("status") or "") in OPEN_PENDING_STATUSES
         ):
             continue
         if not check.get("ok"):

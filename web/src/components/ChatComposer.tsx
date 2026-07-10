@@ -204,6 +204,16 @@ export function ChatComposer({
     }
   }, [mentionHighlight, mentionVisibleOptions.length]);
 
+  function focusInputAt(pos: number) {
+    requestAnimationFrame(() => {
+      const next = inputRef.current;
+      if (!next) return;
+      next.focus();
+      next.setSelectionRange(pos, pos);
+      setMentionCursor(pos);
+    });
+  }
+
   function applyMention(token: string) {
     const el = inputRef.current;
     const cursor = el?.selectionStart ?? value.length;
@@ -213,14 +223,7 @@ export function ChatComposer({
       m.startsWith("@") ? `@${token} ` : ` @${token} `,
     );
     onChange(`${replaced}${tail}`);
-    requestAnimationFrame(() => {
-      const next = inputRef.current;
-      if (!next) return;
-      const pos = replaced.length;
-      next.focus();
-      next.setSelectionRange(pos, pos);
-      setMentionCursor(pos);
-    });
+    focusInputAt(replaced.length);
   }
 
   const rootClass = ["composer", className].filter(Boolean).join(" ");
@@ -228,6 +231,15 @@ export function ChatComposer({
   const sendLocked = sendDisabled ?? disabled;
   const primaryModel = activeModels[0] ?? null;
   const hiddenModelCount = Math.max(activeModels.length - 1, 0);
+  const resolvedModeChipHint = resolveModeChipHint({
+    modeChipHint,
+    showModeChipHint,
+    isNewSession,
+    modeChipVariant,
+  });
+  const ModeChipIcon = modeChipVariant
+    ? MODE_CHIP_ICONS[modeChipVariant]
+    : null;
 
   function openMentionStart() {
     if (inputLocked) return;
@@ -235,28 +247,14 @@ export function ChatComposer({
     const nextValue = `${value}${needsSpace ? " " : ""}@`;
     onChange(nextValue);
     if (sessionId) void ensureLoaded();
-    requestAnimationFrame(() => {
-      const next = inputRef.current;
-      if (!next) return;
-      next.focus();
-      const pos = nextValue.length;
-      next.setSelectionRange(pos, pos);
-      setMentionCursor(pos);
-    });
+    focusInputAt(nextValue.length);
   }
 
   function openSlashStart() {
     if (inputLocked) return;
     const nextValue = value.trim().length === 0 ? "/" : `${value} /`;
     onChange(nextValue);
-    requestAnimationFrame(() => {
-      const next = inputRef.current;
-      if (!next) return;
-      next.focus();
-      const pos = nextValue.length;
-      next.setSelectionRange(pos, pos);
-      setMentionCursor(pos);
-    });
+    focusInputAt(nextValue.length);
   }
 
   const presetControls =
@@ -298,21 +296,11 @@ export function ChatComposer({
           role="status"
         >
           <span className="mode-chip__label">
-            {modeChipVariant === "discuss" ? <UsersIcon /> : null}
-            {modeChipVariant === "plan" ? <ListIcon /> : null}
-            {modeChipVariant === "consensus" ? <SparkleIcon /> : null}
+            {ModeChipIcon ? <ModeChipIcon /> : null}
             {modeChip}
           </span>
-          {modeChipHint ? (
-            <span className="mode-chip__hint">{modeChipHint}</span>
-          ) : showModeChipHint && isNewSession ? (
-            <span className="mode-chip__hint">
-              모든 턴 후 plan.md 자동 갱신
-            </span>
-          ) : showModeChipHint && modeChipVariant === "plan" ? (
-            <span className="mode-chip__hint">
-              Supervisor — plan.md는 TurnPolicy로 갱신
-            </span>
+          {resolvedModeChipHint ? (
+            <span className="mode-chip__hint">{resolvedModeChipHint}</span>
           ) : null}
         </div>
       ) : null}
@@ -439,19 +427,15 @@ export function ChatComposer({
                       ) {
                         if (e.key === "ArrowDown") {
                           e.preventDefault();
-                          setMentionHighlight(
-                            (mentionHighlight + 1) %
-                              mentionVisibleOptions.length,
+                          setMentionHighlight((h) =>
+                            cycleMenuIndex(h, mentionVisibleOptions.length, 1),
                           );
                           return;
                         }
                         if (e.key === "ArrowUp") {
                           e.preventDefault();
-                          setMentionHighlight(
-                            (mentionHighlight -
-                              1 +
-                              mentionVisibleOptions.length) %
-                              mentionVisibleOptions.length,
+                          setMentionHighlight((h) =>
+                            cycleMenuIndex(h, mentionVisibleOptions.length, -1),
                           );
                           return;
                         }
@@ -469,16 +453,15 @@ export function ChatComposer({
                       ) {
                         if (e.key === "ArrowDown") {
                           e.preventDefault();
-                          setSlashHighlight(
-                            (slashHighlight + 1) % slashVisibleCommands.length,
+                          setSlashHighlight((h) =>
+                            cycleMenuIndex(h, slashVisibleCommands.length, 1),
                           );
                           return;
                         }
                         if (e.key === "ArrowUp") {
                           e.preventDefault();
-                          setSlashHighlight(
-                            (slashHighlight - 1 + slashVisibleCommands.length) %
-                              slashVisibleCommands.length,
+                          setSlashHighlight((h) =>
+                            cycleMenuIndex(h, slashVisibleCommands.length, -1),
                           );
                           return;
                         }
@@ -662,6 +645,35 @@ export function ChatComposer({
       ) : null}
     </div>
   );
+}
+
+function cycleMenuIndex(
+  current: number,
+  length: number,
+  delta: number,
+): number {
+  return (current + delta + length) % length;
+}
+
+const MODE_CHIP_ICONS = {
+  discuss: UsersIcon,
+  plan: ListIcon,
+  consensus: SparkleIcon,
+} as const;
+
+function resolveModeChipHint(opts: {
+  modeChipHint?: string | null;
+  showModeChipHint: boolean;
+  isNewSession: boolean;
+  modeChipVariant?: "discuss" | "plan" | "consensus";
+}): string | null {
+  if (opts.modeChipHint) return opts.modeChipHint;
+  if (!opts.showModeChipHint) return null;
+  if (opts.isNewSession) return "모든 턴 후 plan.md 자동 갱신";
+  if (opts.modeChipVariant === "plan") {
+    return "Supervisor — plan.md는 TurnPolicy로 갱신";
+  }
+  return null;
 }
 
 function UsersIcon() {

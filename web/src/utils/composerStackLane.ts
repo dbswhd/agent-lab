@@ -65,18 +65,38 @@ export function pendingComposerStackLanes(
   return COMPOSER_STACK_LANE_ORDER.filter((lane) => laneReady(lane, input));
 }
 
+export type ComposerStackSnapshot = {
+  pendingLanes: ComposerStackLane[];
+  activeLane: ComposerStackLane | null;
+  queuedLanes: ComposerStackLane[];
+  pendingDecisionCount: number;
+};
+
+/** Single pass over pending lanes — prefer this when callers need more than one field. */
+export function resolveComposerStackSnapshot(
+  input: ComposerStackLaneInput,
+): ComposerStackSnapshot {
+  const pendingLanes = pendingComposerStackLanes(input);
+  return {
+    pendingLanes,
+    activeLane: pendingLanes[0] ?? null,
+    queuedLanes: pendingLanes.slice(1),
+    pendingDecisionCount: pendingLanes.reduce((count, lane) => {
+      if (lane === "work") return count;
+      if (lane === "inbox") return count + input.inboxPendingCount;
+      return count + 1;
+    }, 0),
+  };
+}
+
 export function resolveActiveComposerStackLane(
   input: ComposerStackLaneInput,
 ): ComposerStackLane | null {
-  return pendingComposerStackLanes(input)[0] ?? null;
+  return resolveComposerStackSnapshot(input).activeLane;
 }
 
 export function pendingComposerDecisionCount(
   input: ComposerStackLaneInput,
 ): number {
-  return pendingComposerStackLanes(input).reduce((count, lane) => {
-    if (lane === "work") return count;
-    if (lane === "inbox") return count + input.inboxPendingCount;
-    return count + 1;
-  }, 0);
+  return resolveComposerStackSnapshot(input).pendingDecisionCount;
 }

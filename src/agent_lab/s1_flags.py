@@ -34,12 +34,10 @@ def _room_preset(*, room_preset: str = "", run_meta: RunStateLike | None = None)
 
 
 def _is_supervisor_turn(*, room_preset: str = "", run_meta: RunStateLike | None = None) -> bool:
-    from agent_lab.room.turn_policy import supervisor_turn_from_run_meta
+    from agent_lab.room.turn_policy import is_supervisor_turn_with_preset_fallback
 
-    signal = supervisor_turn_from_run_meta(run_meta)
-    if signal is not None:
-        return signal
-    return _room_preset(room_preset=room_preset, run_meta=run_meta) == "supervisor"
+    preset = _room_preset(room_preset=room_preset, run_meta=run_meta)
+    return is_supervisor_turn_with_preset_fallback(run_meta, room_preset=preset)
 
 
 def s1_flag_enabled(

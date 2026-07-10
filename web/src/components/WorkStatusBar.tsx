@@ -12,6 +12,12 @@ type Props = {
   budgetPct?: number;
 };
 
+function workStatusStepClass(stepIndex: number, activeIndex: number): string {
+  if (stepIndex === activeIndex) return "is-active";
+  if (stepIndex < activeIndex) return "is-done";
+  return "";
+}
+
 export function WorkStatusBar({
   phase,
   metaLine,
@@ -46,7 +52,7 @@ export function WorkStatusBar({
             key={step.id}
             className={[
               "work-status-bar__step",
-              i === phaseIndex ? "is-active" : i < phaseIndex ? "is-done" : "",
+              workStatusStepClass(i, phaseIndex),
             ]
               .filter(Boolean)
               .join(" ")}

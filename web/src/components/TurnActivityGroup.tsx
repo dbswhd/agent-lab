@@ -15,6 +15,15 @@ type Props = {
   readonly running: boolean;
 };
 
+function turnTimelineState(
+  running: boolean,
+  hasError: boolean,
+): "progress" | "error" | "done" {
+  if (running) return "progress";
+  if (hasError) return "error";
+  return "done";
+}
+
 function TurnStep({ item, running }: { item: TurnItem; running: boolean }) {
   if (item.kind === "error") {
     return (
@@ -112,7 +121,7 @@ export function TurnActivityGroup({ items = [], running }: Props) {
   const summary =
     (running && latestStepSummary(steps)) ||
     formatTurnActivitySummary(stats, running);
-  const state = running ? "progress" : hasError ? "error" : "done";
+  const state = turnTimelineState(running, hasError);
 
   const stepsClass = `turn-timeline__steps${
     running ? " turn-timeline__steps--clamped" : ""

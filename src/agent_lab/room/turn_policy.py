@@ -163,7 +163,7 @@ def resolve_discuss_light(
         return False
     session_topic = str(meta.get("topic") or "").strip()
     current_topic = (topic or "").strip()
-    if detect_plan_execute_intent(current_topic) or detect_plan_execute_intent(session_topic):
+    if _plan_execute_intent(current_topic, session_topic):
         return False
     preset = (room_preset or "").strip().lower()
     profile = (turn_profile or "").strip().lower()
@@ -181,7 +181,7 @@ def maybe_stamp_plan_execute_skill_intent(run: RunState, *, topic: str) -> None:
     if not turn_policy_enabled():
         return
     session_topic = str(run.get("topic") or "").strip()
-    if not (detect_plan_execute_intent(topic) or detect_plan_execute_intent(session_topic)):
+    if not _plan_execute_intent(topic, session_topic):
         return
     if normalize_skill_intent(run.get("_pending_skill_intent")) or normalize_skill_intent(
         run.get("_active_skill_intent"),
@@ -283,6 +283,25 @@ def supervisor_turn_from_run_meta(run_meta: RunStateLike | None) -> bool | None:
     return bool(routing_contract["supervisor_turn"])
 
 
+def is_supervisor_turn_with_preset_fallback(
+    run_meta: RunStateLike | None,
+    *,
+    room_preset: str = "",
+) -> bool:
+    """Prefer TurnPolicy-stamped signal; fall back to raw ``room_preset`` when absent."""
+    signal = supervisor_turn_from_run_meta(run_meta)
+    if signal is not None:
+        return signal
+    return room_preset.strip().lower() == "supervisor"
+
+
+def _plan_execute_intent(current_topic: str, session_topic: str) -> bool:
+    if detect_plan_execute_intent((current_topic or "").strip()):
+        return True
+    session = (session_topic or "").strip()
+    return bool(session) and detect_plan_execute_intent(session)
+
+
 @dataclass(frozen=True, slots=True)
 class TurnSignals:
     room_preset: str | None = None
@@ -341,9 +360,7 @@ class TurnSignals:
 
             clarity_sc = clarity_short_circuit(topic)
         session_topic = str(run.get("topic") or "").strip()
-        plan_execute_intent = detect_plan_execute_intent(topic or "") or (
-            bool(session_topic) and detect_plan_execute_intent(session_topic)
-        )
+        plan_execute_intent = _plan_execute_intent(topic or "", session_topic)
         agents_raw = run.get("agents")
         resolved_roster = (
             roster_size
@@ -479,7 +496,6 @@ class TurnPolicyEngine:
             not is_fast
             and signals.plan_workflow_active
             and phase in _PLAN_DRAFT_PHASES
-            and phase not in _PLAN_NO_SCRIBE_PHASES
         ):
             run_scribe = True
             scribe_trigger = "plan_workflow_draft"
@@ -489,10 +505,6 @@ class TurnPolicyEngine:
         ):
             run_scribe = True
             scribe_trigger = "skill_intent"
-
-        if is_fast and not signals.synthesize_only:
-            run_scribe = False
-            scribe_trigger = "none"
 
         if phase in _PLAN_NO_SCRIBE_PHASES:
             run_scribe = False

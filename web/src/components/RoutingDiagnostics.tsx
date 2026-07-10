@@ -9,6 +9,11 @@ type Props = {
   readonly run?: Record<string, unknown> | null;
 };
 
+function consensusLabel(enabled: boolean, ko: boolean): string {
+  if (enabled) return ko ? "사용" : "On";
+  return ko ? "미사용" : "Off";
+}
+
 export function RoutingDiagnostics({ sessionId, run }: Props) {
   const { locale } = useLocale();
   const ko = locale === "ko";
@@ -57,9 +62,7 @@ export function RoutingDiagnostics({ sessionId, run }: Props) {
         </div>
         <div>
           <dt>{ko ? "합의 검토" : "Consensus"}</dt>
-          <dd>
-            {view.consensus ? (ko ? "사용" : "On") : ko ? "미사용" : "Off"}
-          </dd>
+          <dd>{consensusLabel(view.consensus, ko)}</dd>
         </div>
         <div>
           <dt>{ko ? "실행 프로필" : "Run profile"}</dt>

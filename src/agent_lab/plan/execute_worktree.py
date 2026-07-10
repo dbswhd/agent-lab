@@ -12,6 +12,7 @@ from typing import Any
 from agent_lab.run.state import RunStateLike
 
 from agent_lab.plan.execute_git import (
+    _run_git,
     default_branch,
     exec_branch_name,
     is_working_tree_clean,
@@ -65,15 +66,6 @@ class ExecWorktree:
             "base_branch": self.base_branch,
             "base_sha": self.base_sha,
         }
-
-
-def _run_git(cwd: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        ["git", "-C", str(cwd), *args],
-        capture_output=True,
-        text=True,
-        check=check,
-    )
 
 
 def worktree_dir(session_folder: Path, exec_id: str) -> Path:

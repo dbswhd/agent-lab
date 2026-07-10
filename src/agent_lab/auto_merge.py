@@ -12,15 +12,11 @@ from agent_lab.run.meta import read_run_meta
 from agent_lab.trust_budget import get_trust_budget
 
 
-def _pending_execution(run: dict[str, Any]) -> dict[str, Any] | None:
-    from agent_lab.merge_checks import OPEN_PENDING_STATUSES
+from agent_lab.plan.execution_status_scopes import find_open_merge_pending_execution
 
-    for row in reversed(run.get("executions") or []):
-        if not isinstance(row, dict):
-            continue
-        if str(row.get("status") or "") in OPEN_PENDING_STATUSES:
-            return row
-    return None
+
+def _pending_execution(run: dict[str, Any]) -> dict[str, Any] | None:
+    return find_open_merge_pending_execution(run)
 
 
 def evaluate_auto_merge_eligibility(

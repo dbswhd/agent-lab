@@ -11,6 +11,7 @@ from agent_lab.run.state import RunState, RunStateLike
 from agent_lab.plan.execute_snapshot import (
     normalize_path,
 )
+from agent_lab.plan.execution_status_scopes import find_pending_approval_execution
 from agent_lab.run.meta import patch_run_meta
 
 
@@ -124,12 +125,7 @@ def _paths_outside_expected(
 
 
 def _pending_execution(run: RunStateLike) -> dict[str, Any] | None:
-    from agent_lab.plan.execute import PENDING_STATUS
-
-    for row in reversed(run.get("executions") or []):
-        if isinstance(row, dict) and row.get("status") == PENDING_STATUS:
-            return row
-    return None
+    return find_pending_approval_execution(run)
 
 
 def _find_execution(run: RunStateLike, execution_id: str) -> dict[str, Any] | None:

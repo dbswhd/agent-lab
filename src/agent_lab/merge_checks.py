@@ -5,8 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-PENDING_STATUS = "pending_approval"
-OPEN_PENDING_STATUSES = frozenset({PENDING_STATUS, "review_required", "merge_conflict", "pending"})
+from agent_lab.plan.execution_status_scopes import (
+    OPEN_MERGE_PENDING_STATUSES as OPEN_PENDING_STATUSES,
+    PENDING_STATUS,
+    find_open_merge_pending_execution,
+)
 
 
 def _worktree_hooks_check(execution: dict[str, Any] | None) -> dict[str, Any]:
@@ -188,12 +191,7 @@ def _diff_safety_check(execution: dict[str, Any] | None) -> dict[str, Any]:
 
 
 def _pending_execution(run: dict[str, Any]) -> dict[str, Any] | None:
-    for row in reversed(run.get("executions") or []):
-        if not isinstance(row, dict):
-            continue
-        if str(row.get("status") or "") in OPEN_PENDING_STATUSES:
-            return row
-    return None
+    return find_open_merge_pending_execution(run)
 
 
 def build_merge_checks(

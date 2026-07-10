@@ -17,7 +17,7 @@ GATE_IDS: tuple[str, ...] = (
     "cleanup",
 )
 
-PENDING_STATUSES = frozenset({"pending_approval", "review_required", "pending"})
+from agent_lab.plan.execution_status_scopes import EVIDENCE_PENDING_STATUSES
 
 
 def _now_iso() -> str:
@@ -77,7 +77,7 @@ def _manual_merge_gate(execution: dict[str, Any]) -> dict[str, Any]:
         return _gate("manual_merge", status="pass", ssot="merge approve event")
     if status in {"rejected", "merge_conflict"}:
         return _gate("manual_merge", status="fail", detail=status, ssot="merge approve event")
-    if status in PENDING_STATUSES:
+    if status in EVIDENCE_PENDING_STATUSES:
         return _gate("manual_merge", status="pending", ssot="merge approve event")
     return _gate("manual_merge", status="pending", detail=status or "unknown", ssot="merge approve event")
 
@@ -104,7 +104,7 @@ def _automated_gate(execution: dict[str, Any]) -> dict[str, Any]:
         if verdict == "skipped":
             return _gate("automated", status="skip", detail="verify skipped", ssot="action.verify")
     status = str(execution.get("status") or "")
-    if status in PENDING_STATUSES:
+    if status in EVIDENCE_PENDING_STATUSES:
         return _gate("automated", status="pending", ssot="action.verify")
     oracle_only = execution.get("oracle")
     if isinstance(oracle_only, dict):

@@ -17,7 +17,6 @@ from agent_lab.plan.execute_merge import (
 from agent_lab.plan.execute_prompts import _extract_draft_summary, _selected_revision_diff
 from agent_lab.plan.execute_shared import (
     MAX_VERIFY_RETRIES,
-    PENDING_STATUS,
     _commit_repair_worktree,
     _do_worktree_merge,
     _exec_id,
@@ -27,6 +26,10 @@ from agent_lab.plan.execute_shared import (
     _resolve_reject,
     _resolve_snapshot_paths,
     _worktree_hooks_verify_before_merge,
+)
+from agent_lab.plan.execution_status_scopes import (
+    CANCELLABLE_EXECUTION_STATUSES,
+    PENDING_STATUS,
 )
 from agent_lab.plan.execute_snapshot import (
     compute_touched_paths,
@@ -64,9 +67,6 @@ from agent_lab.run.meta import patch_run_meta, read_run_meta
 from agent_lab.workspace.roots import resolve_execute_workspace
 
 import agent_lab.plan.execute as plan_execute
-
-
-_CANCELLABLE_EXECUTION_STATUSES = frozenset({PENDING_STATUS, "merge_conflict", "review_required", "pending"})
 
 
 def run_isolation_override(
@@ -222,9 +222,6 @@ def revise_pending_execution(
     }
 
 
-_CANCELLABLE_EXECUTION_STATUSES = frozenset({PENDING_STATUS, "merge_conflict", "review_required", "pending"})
-
-
 def cancel_open_execution(
     folder: Path,
     *,
@@ -239,14 +236,14 @@ def cancel_open_execution(
         target = _find_execution(run, execution_id)
     else:
         for row in reversed(executions):
-            if str(row.get("status") or "") in _CANCELLABLE_EXECUTION_STATUSES:
+            if str(row.get("status") or "") in CANCELLABLE_EXECUTION_STATUSES:
                 target = row
                 break
     if target is None:
         return {"skipped": True, "reason": "no_open_execution"}
     exec_id = str(target.get("id") or "")
     status = str(target.get("status") or "")
-    if status not in _CANCELLABLE_EXECUTION_STATUSES:
+    if status not in CANCELLABLE_EXECUTION_STATUSES:
         return {"skipped": True, "reason": "not_cancellable", "status": status}
     try:
         result = resolve_execution(folder, execution_id=exec_id, vote="reject")

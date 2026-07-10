@@ -395,12 +395,12 @@ def harvest_discuss_questions(
 
 # --- Build proposal harvest (M5) — T-B gates → execute GO 예고 -----------------
 
-_PENDING_EXEC_STATUS = "pending_approval"  # mirrors plan_execute.PENDING_STATUS
+from agent_lab.plan.execution_status_scopes import PENDING_APPROVAL_STATUS
 
 
 def _has_pending_execution(run: RunStateLike) -> bool:
     for row in run.get("executions") or []:
-        if isinstance(row, dict) and row.get("status") == _PENDING_EXEC_STATUS:
+        if isinstance(row, dict) and row.get("status") == PENDING_APPROVAL_STATUS:
             return True
     return False
 

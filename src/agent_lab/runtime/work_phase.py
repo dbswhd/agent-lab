@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
+from agent_lab.plan.execution_status_scopes import WORK_PHASE_MERGE_VERIFY_STATUSES
+
 WorkPhase = Literal[
     "plan_draft",
     "review_needed",
@@ -64,7 +66,7 @@ def resolve_work_phase_standalone(
     if status == "completed" and oracle_pass:
         return "done"
     if exec_row and (
-        status in {"merged", "review_required", "pending_approval", "merge_conflict", "pending"} or oracle
+        status in WORK_PHASE_MERGE_VERIFY_STATUSES or oracle
     ):
         return "merge_verify"
     if has_pending_execution:

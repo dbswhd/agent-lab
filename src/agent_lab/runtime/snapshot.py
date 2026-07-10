@@ -11,7 +11,10 @@ from agent_lab.mission.loop import sync_mission_phase_from_run
 from agent_lab.runtime.policy import PolicyEngine
 from agent_lab.run.meta import read_run_meta
 
-_PENDING_EXECUTION_STATUS = "pending_approval"
+from agent_lab.plan.execution_status_scopes import (
+    execution_rows as _execution_rows,
+    find_pending_approval_execution,
+)
 from agent_lab.runtime.boulder import boulder_state, last_failure
 from agent_lab.runtime.external_runner import external_runner_enabled, external_tools_allowlist
 from agent_lab.external_tools import load_external_tools
@@ -25,15 +28,8 @@ from agent_lab.mission.board import (
 from agent_lab.runtime.work_phase import resolve_work_phase
 
 
-def _execution_rows(run: dict[str, Any]) -> list[dict[str, Any]]:
-    return [row for row in (run.get("executions") or []) if isinstance(row, dict)]
-
-
 def pending_execution(run: dict[str, Any]) -> dict[str, Any] | None:
-    for row in reversed(_execution_rows(run)):
-        if row.get("status") == _PENDING_EXECUTION_STATUS:
-            return row
-    return None
+    return find_pending_approval_execution(run)
 
 
 def latest_execution(run: dict[str, Any]) -> dict[str, Any] | None:

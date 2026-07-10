@@ -11,28 +11,7 @@ if TYPE_CHECKING:
     from agent_lab.mission.loop import MissionPhase
 
 
-_OPEN_EXECUTION_STATUSES = frozenset({"pending_approval", "review_required", "merge_conflict", "pending"})
-
-
-def _find_pending_merge_execution(
-    run: dict[str, Any],
-    *,
-    execution_id: str | None = None,
-) -> dict[str, Any] | None:
-    from agent_lab.merge_checks import OPEN_PENDING_STATUSES
-
-    rows = [row for row in (run.get("executions") or []) if isinstance(row, dict)]
-    if execution_id:
-        for row in reversed(rows):
-            if str(row.get("id") or "") != execution_id:
-                continue
-            if str(row.get("status") or "") in OPEN_PENDING_STATUSES:
-                return row
-            return None
-    for row in reversed(rows):
-        if str(row.get("status") or "") in OPEN_PENDING_STATUSES:
-            return row
-    return None
+from agent_lab.plan.execution_status_scopes import find_open_merge_pending_execution
 
 
 def _find_open_execution(
@@ -222,7 +201,7 @@ def _advance_merge_review(folder: Path) -> dict[str, Any]:
         }
 
     exec_id = str(ml.get("last_execution_id") or "").strip() or None
-    pending = _find_pending_merge_execution(run, execution_id=exec_id)
+    pending = find_open_merge_pending_execution(run, execution_id=exec_id)
     if pending is None:
         return {"skipped": True, "reason": "no_pending_execution", "phase": "MERGE_REVIEW"}
 

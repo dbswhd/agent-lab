@@ -10,7 +10,7 @@ from typing import Any
 
 from agent_lab.run.meta import patch_run_meta, read_run_meta
 
-_PENDING_EXECUTION_STATUSES = frozenset({"pending_approval", "pending", "review_required", "merge_conflict"})
+from agent_lab.plan.execution_status_scopes import find_open_merge_pending_execution
 
 
 def _now_iso() -> str:
@@ -155,12 +155,7 @@ def parse_handoff_payload(text: str) -> dict[str, Any] | None:
 
 
 def pending_execution_for_handoff(run: dict[str, Any]) -> dict[str, Any] | None:
-    for row in reversed(run.get("executions") or []):
-        if not isinstance(row, dict):
-            continue
-        if str(row.get("status") or "") in _PENDING_EXECUTION_STATUSES:
-            return row
-    return None
+    return find_open_merge_pending_execution(run)
 
 
 def discover_handoff_payload(

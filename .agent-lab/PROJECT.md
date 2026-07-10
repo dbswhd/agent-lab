@@ -7,9 +7,10 @@ AI 개발 작업을 계획·승인·격리 실행·검증하는 Human-in-the-loo
 
 **불변:** 합의=Room · 격리=worktree · 완료=Oracle verified · Human gate 유지
 
-## Room (2026-06)
-- **Preset:** fast (`quick`, Plan 잠금 OFF) · supervisor (`loop`, Plan 잠금 ON, consensus ON)
-- **Plan toggle:** Composer checkbox — OFF=Scribe skip/read-only overlay, ON=plan.md 갱신 — [TURN-MODES.md](../docs/TURN-MODES.md)
+## Room (2026-07)
+- **Composer:** topic-only — preset·Plan picker는 숨김; dogfood 기본 `supervisor`
+- **Turn control:** TurnContract가 roster·round·consensus, TurnPolicy가 Scribe·plan FSM·task effect를 결정 — [TURN-CONTRACT.md](../docs/TURN-CONTRACT.md)
+- **Human surface:** 결정은 Composer의 Decision Queue와 Work에서 한 번에 하나씩 처리
 - **에이전트:** cursor, codex, claude, kimi_work (+ kimi/local). `/model`로 composition
 - **Kimi Work:** daimon bridge, Loop envelope peer
 

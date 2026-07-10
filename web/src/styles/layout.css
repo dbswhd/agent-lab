@@ -1527,7 +1527,8 @@
   background: color-mix(in srgb, var(--surface-pane) 55%, transparent);
   backdrop-filter: blur(20px) saturate(1.4);
   -webkit-backdrop-filter: blur(20px) saturate(1.4);
-  border-bottom: 1px solid color-mix(in srgb, var(--border-hair) 70%, transparent);
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--border-hair) 70%, transparent);
 }
 
 .workbench-panel__title {
@@ -1770,6 +1771,31 @@
   flex-direction: column;
   gap: var(--space-16);
   margin-top: var(--space-12);
+}
+.ctx-diagnostic-list {
+  display: grid;
+  gap: var(--space-8);
+  margin: 0;
+}
+.ctx-diagnostic-list > div {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: var(--space-8);
+  align-items: baseline;
+}
+.ctx-diagnostic-list dt,
+.ctx-diagnostic-list dd {
+  margin: 0;
+  font-size: var(--text-caption);
+  line-height: var(--leading-snug);
+}
+.ctx-diagnostic-list dt {
+  color: var(--label-tertiary);
+}
+.ctx-diagnostic-list dd {
+  min-width: 0;
+  color: var(--label-secondary);
+  overflow-wrap: anywhere;
 }
 @media (prefers-reduced-motion: reduce) {
   .ctx-diagnostics__summary::before {

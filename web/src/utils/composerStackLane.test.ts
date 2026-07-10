@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  pendingComposerDecisionCount,
   pendingComposerStackLanes,
   resolveActiveComposerStackLane,
 } from "./composerStackLane";
@@ -86,5 +87,15 @@ describe("composerStackLane", () => {
     expect(
       resolveActiveComposerStackLane({ ...base, showWorkSurface: false }),
     ).toBeNull();
+  });
+
+  it("counts Human Inbox items rather than treating the inbox as one decision", () => {
+    expect(
+      pendingComposerDecisionCount({
+        ...base,
+        inboxPendingCount: 3,
+        planApprovalEnabled: true,
+      }),
+    ).toBe(4);
   });
 });

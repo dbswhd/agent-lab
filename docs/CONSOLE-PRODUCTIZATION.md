@@ -23,7 +23,7 @@
 | ComposerNoticeCard | Read-only alerts | recovery, connection errors, hook info | interactive resolve |
 | Diff / Files | Artifacts | SideBySideDiff, plan.md, touched paths | execute judgment |
 | Overview | Session state | mission, context layers, diagnostics | task board |
-| Composer input | Input only | message, preset, Plan toggle, attachments | Build approval UI |
+| Composer input | Topic-only input | message, routing reason, attachments | Decision Queue |
 
 **Removed (2026-06):** Inspector Work / Inbox / Tasks tabs — folded into composer stack + Overview + Activity panel.
 
@@ -130,20 +130,20 @@
 
 **P1e: Work Decision Surface** ✅
 
-**Goal:** users can decide in one Work surface what needs approval, why progress is blocked, and whether the result is verified.
+**Goal:** users can decide from one Decision Queue what needs approval, while Work explains the current stage, blocker, and verified result.
 
 **Scope:** frontend integration only. Do **not** add a backend Work endpoint or duplicate merge/reverify handlers outside their canonical owners.
 
 | Decision question | Source | Primary surface | Canonical action owner |
 |-------------------|--------|-----------------|------------------------|
-| What do I approve? | plan workflow, pending executions | Work decision panel + Work approval card | `PlanApprovalPanel`, `PlanExecutePanel` |
+| What do I approve? | plan workflow, pending executions | Composer Decision Queue + Work approval card | `PlanApprovalPanel`, `PlanExecutePanel` |
 | Why is it blocked? | plan stale notice, BLOCK objections, pre-execute hooks, merge checks, runtime gates | Work decision panel + Checks/Evidence anchors | Tasks, hook/runtime gates, merge checks |
 | Was it verified? | execution Oracle, `verify_after_merge`, evidence gates | Work decision panel + evidence/execute cards | `PlanExecutePanel` + evidence timeline |
 
 **UX contract:**
 
 - Visible tab/surface label is **Work**. Internal route id may remain `plan` for compatibility.
-- Work top chrome contains the stepper plus one decision summary with `Approve`, `Blocked`, `Verified` columns.
+- Composer exposes one current Decision Queue item; Work retains the outcome-oriented stepper and evidence.
 - Tasks may summarize approval/blocking work, but full plan approval lives in Work.
 - `PlanExecutePanel` remains the owner for merge approve/reject/revise/reverify.
 - RecoveryStrip remains operational recovery; WorkDecisionPanel is execution judgment.

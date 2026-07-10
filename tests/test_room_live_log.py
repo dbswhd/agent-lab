@@ -69,3 +69,33 @@ def test_session_detail_includes_live_log(tmp_path: Path, monkeypatch) -> None:
     detail = deps.session_detail(folder.name)
     assert detail["live_log"]
     assert detail["live_log"][0]["text"] == "x"
+
+
+def test_session_detail_pages_chat_without_bulk_read(tmp_path: Path, monkeypatch) -> None:
+    from app.server import deps
+    from app.server import session_helpers
+
+    folder = tmp_path / "2026-paged-chat"
+    folder.mkdir()
+    (folder / "topic.txt").write_text("t\n", encoding="utf-8")
+    (folder / "chat.jsonl").write_text(
+        '{"index": 0}\n\n{"index": 1}\n{"index": 2}\n',
+        encoding="utf-8",
+    )
+
+    original_read_text = Path.read_text
+
+    def reject_bulk_chat_read(path: Path, *args, **kwargs):
+        if path == folder / "chat.jsonl":
+            raise AssertionError("chat pagination must stream instead of bulk-reading")
+        return original_read_text(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", reject_bulk_chat_read)
+    monkeypatch.setattr(deps, "SESSIONS_DIR", tmp_path)
+    monkeypatch.setattr(session_helpers, "SESSIONS_DIR", tmp_path)
+    monkeypatch.setattr(session_helpers, "gc_stale_worktrees", lambda *_a, **_k: None)
+
+    detail = deps.session_detail(folder.name, chat_limit=1, chat_offset=1)
+
+    assert detail["chat_total"] == 3
+    assert detail["chat"] == [{"index": 1}]

@@ -70,3 +70,13 @@ export function resolveActiveComposerStackLane(
 ): ComposerStackLane | null {
   return pendingComposerStackLanes(input)[0] ?? null;
 }
+
+export function pendingComposerDecisionCount(
+  input: ComposerStackLaneInput,
+): number {
+  return pendingComposerStackLanes(input).reduce((count, lane) => {
+    if (lane === "work") return count;
+    if (lane === "inbox") return count + input.inboxPendingCount;
+    return count + 1;
+  }, 0);
+}

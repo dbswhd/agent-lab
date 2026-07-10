@@ -1,12 +1,6 @@
 import type { WorkPhase } from "../utils/workStatusPhase";
-
-const STEPS: { id: WorkPhase; label: string }[] = [
-  { id: "plan_draft", label: "Plan" },
-  { id: "review_needed", label: "Review" },
-  { id: "execute_pending", label: "Execute" },
-  { id: "merge_verify", label: "Verify" },
-  { id: "done", label: "Done" },
-];
+import { useLocale } from "../i18n/useLocale";
+import { WORK_PHASE_LABELS } from "../utils/workPhaseLabels";
 
 type Props = {
   phase: WorkPhase;
@@ -25,7 +19,8 @@ export function WorkStatusBar({
   missionPaused = false,
   budgetPct = 0,
 }: Props) {
-  const phaseIndex = STEPS.findIndex((s) => s.id === phase);
+  const { locale } = useLocale();
+  const phaseIndex = WORK_PHASE_LABELS.findIndex((step) => step.id === phase);
 
   return (
     <div
@@ -46,7 +41,7 @@ export function WorkStatusBar({
         </span>
       ) : null}
       <ol className="work-status-bar__steps" aria-label="Work progress">
-        {STEPS.map((step, i) => (
+        {WORK_PHASE_LABELS.map((step, i) => (
           <li
             key={step.id}
             className={[
@@ -56,7 +51,7 @@ export function WorkStatusBar({
               .filter(Boolean)
               .join(" ")}
           >
-            {step.label}
+            {locale === "ko" ? step.ko : step.en}
           </li>
         ))}
       </ol>

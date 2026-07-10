@@ -129,4 +129,29 @@ describe("turn item reducer", () => {
       expect(activity.text).toContain("daimon/conversations.send");
     }
   });
+
+  it("keeps item ids unique when replay events share a timestamp at the cap", () => {
+    let items: TurnItem[] = [];
+    for (let index = 0; index < 30; index += 1) {
+      items = reduceTurnItems(
+        items,
+        {
+          type: index % 2 === 0 ? "agent_activity" : "tool_start",
+          text: `activity ${index}`,
+          tool: `tool-${index}`,
+          args: { target: `target-${index}` },
+        },
+        1_000,
+      );
+      if (index % 2 === 1) {
+        items = reduceTurnItems(
+          items,
+          { type: "tool_done", tool: `tool-${index}` },
+          1_000,
+        );
+      }
+    }
+
+    expect(new Set(items.map((item) => item.id)).size).toBe(items.length);
+  });
 });

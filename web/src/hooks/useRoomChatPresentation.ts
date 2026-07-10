@@ -212,10 +212,7 @@ export function useRoomChatPresentation(ctx: Ctx) {
     sessionRun: session?.run as Record<string, unknown> | undefined,
     reloadKey: inboxReloadKey,
   });
-  const titleMeta =
-    !isNew || selected.length > 0
-      ? `${selected.length} ${selected.length === 1 ? "agent" : "agents"}`
-      : undefined;
+  const titleMeta = undefined;
 
   const planMeta = buildPlanMetaView(session?.run);
   const workPlanStaleNotice = tweaks.planStaleDemo

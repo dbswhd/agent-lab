@@ -22,6 +22,7 @@ import { MissionOverviewSection } from "./MissionOverviewSection";
 import { TurnBudgetSection } from "./TurnBudgetSection";
 import { MissionBoardStrip } from "./MissionBoardStrip";
 import { GateProfileChips } from "./GateProfileChips";
+import { RoutingDiagnostics } from "./RoutingDiagnostics";
 
 type Props = {
   session: SessionDetail | null;
@@ -152,8 +153,6 @@ export function ContextOverviewPanel({
         onFocusBlock={onFocusObjection}
       />
 
-      <GateProfileChips sessionId={sessionId} />
-
       <MissionBoardStrip
         board={
           (session?.run?.mission_board as MissionBoardPayload | undefined) ??
@@ -216,6 +215,13 @@ export function ContextOverviewPanel({
           {ko ? "진단" : "Diagnostics"}
         </summary>
         <div className="ctx-diagnostics__body">
+          <GateProfileChips sessionId={sessionId} />
+
+          <RoutingDiagnostics
+            sessionId={sessionId}
+            run={session?.run as Record<string, unknown> | undefined}
+          />
+
           <section className="ctx-section">
             <div className="ctx-section__label">
               {ko ? "포함된 컨텍스트" : "Included context"}

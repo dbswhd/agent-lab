@@ -312,6 +312,41 @@
   text-align: center;
 }
 
+.composer-decision-queue__header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--space-8);
+  padding: 0 var(--space-4);
+  color: var(--label-secondary);
+}
+
+.composer-decision-queue__eyebrow,
+.composer-decision-queue__count {
+  font-size: var(--text-caption);
+  color: var(--label-tertiary);
+}
+
+.composer-decision-queue__current {
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--text-footnote);
+  font-weight: var(--weight-semibold);
+  color: var(--label-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 520px) {
+  .composer-decision-queue__header {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .composer-decision-queue__eyebrow {
+    display: none;
+  }
+}
+
 .plan-todo-surface--composer .plan-todo-surface__eyebrow {
   font-size: var(--text-body);
   line-height: 1.45;

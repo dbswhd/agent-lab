@@ -142,6 +142,31 @@ def list_sessions(
     return items, total
 
 
+def _read_chat_page(
+    chat_path: Path,
+    *,
+    chat_limit: int | None,
+    chat_offset: int,
+) -> tuple[list[dict[str, Any]], int]:
+    if chat_offset < 0 or (chat_limit is not None and chat_limit < 0):
+        all_lines = [line for line in chat_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        page_lines = (
+            all_lines[chat_offset : chat_offset + chat_limit] if chat_limit is not None else all_lines[chat_offset:]
+        )
+        return [json.loads(line) for line in page_lines], len(all_lines)
+
+    chat: list[dict[str, Any]] = []
+    chat_total = 0
+    with chat_path.open(encoding="utf-8") as chat_file:
+        for line in chat_file:
+            if not line.strip():
+                continue
+            if chat_total >= chat_offset and (chat_limit is None or len(chat) < chat_limit):
+                chat.append(json.loads(line))
+            chat_total += 1
+    return chat, chat_total
+
+
 def session_detail(
     session_id: str,
     *,
@@ -160,12 +185,11 @@ def session_detail(
     chat_total = 0
     chat_path = folder / "chat.jsonl"
     if chat_path.is_file():
-        all_lines = [ln for ln in chat_path.read_text(encoding="utf-8").splitlines() if ln.strip()]
-        chat_total = len(all_lines)
-        page_lines = (
-            all_lines[chat_offset : chat_offset + chat_limit] if chat_limit is not None else all_lines[chat_offset:]
+        chat, chat_total = _read_chat_page(
+            chat_path,
+            chat_limit=chat_limit,
+            chat_offset=chat_offset,
         )
-        chat = [json.loads(ln) for ln in page_lines]
 
     run_json: dict[str, Any] = {}
     if (folder / "run.json").is_file():

@@ -1,3 +1,9 @@
+import {
+  normalizeActivity,
+  toolFingerprint,
+  uniqueTurnItemId,
+} from "./turnItemIdentity";
+
 export type TurnItem =
   | {
       readonly id: string;
@@ -32,22 +38,6 @@ export type TurnItem =
 export type TurnItemEvent = Record<string, unknown> & {
   readonly type?: string;
 };
-
-function normalizeActivity(text: string): {
-  kind: "reasoning_summary" | "activity";
-  text: string;
-} {
-  const trimmed = text.trim();
-  if (trimmed.startsWith("[thinking]")) {
-    const body = trimmed.slice("[thinking]".length).trim();
-    return { kind: "reasoning_summary", text: body || trimmed };
-  }
-  return { kind: "activity", text: trimmed };
-}
-
-function toolFingerprint(tool: string, args?: string): string {
-  return `${tool}|${(args ?? "").trim()}`;
-}
 
 /**
  * Reasoning providers stream either cumulative resends (each event is the
@@ -86,7 +76,7 @@ function upsertReasoning(
   return [
     ...items,
     {
-      id: `reasoning-${now}-${items.length}`,
+      id: uniqueTurnItemId(`reasoning-${now}-${items.length}`, items),
       kind: "reasoning_summary",
       text,
       status: "running",
@@ -173,7 +163,10 @@ export function reduceTurnItems(
     return [
       ...items,
       {
-        id: `${normalized.kind}-${now}-${items.length}`,
+        id: uniqueTurnItemId(
+          `${normalized.kind}-${now}-${items.length}`,
+          items,
+        ),
         kind: normalized.kind,
         text: normalized.text,
         status: "running",
@@ -196,7 +189,7 @@ export function reduceTurnItems(
     return [
       ...items,
       {
-        id: `tool-${tool}-${now}-${items.length}`,
+        id: uniqueTurnItemId(`tool-${tool}-${now}-${items.length}`, items),
         kind: "tool",
         tool,
         args: target,
@@ -250,7 +243,11 @@ export function reduceTurnItems(
           ? { ...item, status: "done" as const }
           : item,
       ),
-      { id: `error-${now}`, kind: "error", text },
+      {
+        id: uniqueTurnItemId(`error-${now}`, items),
+        kind: "error",
+        text,
+      },
     ];
   }
   return items;

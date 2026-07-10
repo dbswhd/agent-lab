@@ -33,10 +33,12 @@ import {
 } from "../utils/composerStackFocus";
 import { workFocusElementId } from "../utils/workFocusTargets";
 import {
+  pendingComposerDecisionCount,
   pendingComposerStackLanes,
   resolveActiveComposerStackLane,
 } from "../utils/composerStackLane";
 import { useLocale } from "../i18n/useLocale";
+import { DecisionQueueHeader } from "./DecisionQueueHeader";
 
 type Props = {
   readonly sessionId: string;
@@ -86,22 +88,6 @@ type Props = {
   readonly onOpenFiles: () => void;
   readonly onOpenFile: (path: string) => void;
   readonly disabled: boolean;
-};
-
-const LANE_LABEL_KO: Record<string, string> = {
-  plan_approval: "Plan 승인",
-  clarify: "명료화",
-  execute_queue: "실행 승인",
-  consensus: "합의 dry-run",
-  work: "할 일",
-};
-
-const LANE_LABEL_EN: Record<string, string> = {
-  plan_approval: "Plan approval",
-  clarify: "Clarify",
-  execute_queue: "Execute approval",
-  consensus: "Consensus dry-run",
-  work: "To-dos",
 };
 
 /** Human action SSOT above the composer — one lane at a time by precedence. */
@@ -298,6 +284,7 @@ export function ComposerEventStack({
     [laneInput],
   );
   const queuedLanes = pendingLanes.slice(1);
+  const pendingDecisionCount = pendingComposerDecisionCount(laneInput);
 
   if (!activeLane) {
     return null;
@@ -311,6 +298,14 @@ export function ComposerEventStack({
   return (
     <div className="composer-stack-scroll" ref={rootRef}>
       <div className="composer-event-stack" data-composer-lane={activeLane}>
+        {activeLane !== "work" ? (
+          <DecisionQueueHeader
+            activeLane={activeLane}
+            queuedLanes={queuedLanes}
+            pendingCount={pendingDecisionCount}
+            locale={locale}
+          />
+        ) : null}
         {activeLane === "inbox" ? (
           <div className="composer-event-stack__section composer-question-surface">
             <HumanInboxPanel
@@ -427,18 +422,6 @@ export function ComposerEventStack({
               />
             ) : null}
           </div>
-        ) : null}
-
-        {queuedLanes.length > 0 ? (
-          <p className="composer-stack-queue-hint" role="status">
-            {ko
-              ? `다음: ${queuedLanes
-                  .map((lane) => LANE_LABEL_KO[lane] ?? lane)
-                  .join(" → ")}`
-              : `Next: ${queuedLanes
-                  .map((lane) => LANE_LABEL_EN[lane] ?? lane)
-                  .join(" → ")}`}
-          </p>
         ) : null}
       </div>
     </div>

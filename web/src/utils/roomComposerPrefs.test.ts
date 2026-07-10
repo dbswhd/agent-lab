@@ -68,7 +68,7 @@ describe("roomComposerPrefs", () => {
       draftTopic: EXECUTE_TOPIC,
       locale: "ko",
     });
-    expect(hint).toMatch(/Plan\/execute/);
+    expect(hint).toContain("코드 변경과 검증 요청이 감지되어");
   });
 
   it("shows light discuss hint from run meta", () => {
@@ -76,6 +76,6 @@ describe("roomComposerPrefs", () => {
       run: { discuss_light: true },
       locale: "ko",
     });
-    expect(hint).toMatch(/경량 discuss/);
+    expect(hint).toContain("낮은 위험의 간단한 요청이라");
   });
 });

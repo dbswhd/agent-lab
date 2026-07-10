@@ -84,18 +84,18 @@ export function composerRoutingHintLine(
   if (planActive) {
     if (phase === "HUMAN_PENDING") {
       return locale === "ko"
-        ? "Plan 승인 대기 — composer stack에서 승인하세요"
-        : "Plan approval pending — approve in the composer stack";
+        ? "실행 계획 검토가 필요해 다음 작업을 기다리고 있습니다."
+        : "The build plan needs your review before work can continue.";
     }
     if (phase === "APPROVED") {
       return locale === "ko"
-        ? "Plan 승인됨 — stack에서 dry-run · merge"
-        : "Plan approved — dry-run and merge in the composer stack";
+        ? "계획이 승인되어 격리 실행과 변경 검토를 진행할 수 있습니다."
+        : "The approved plan can now move through isolated build and change review.";
     }
     if (phase && phase !== "INTAKE") {
       return locale === "ko"
-        ? `Plan workflow · ${phase} — stack에서 진행`
-        : `Plan workflow · ${phase} — continue in the composer stack`;
+        ? "작업 계획을 구체화하는 중이라 협업 검토를 유지합니다."
+        : "Collaborative review stays active while the build plan is refined.";
     }
   }
 
@@ -103,14 +103,14 @@ export function composerRoutingHintLine(
     detectPlanExecuteIntent(draft) || detectPlanExecuteIntent(sessionTopic);
   if (executeIntent) {
     return locale === "ko"
-      ? "Plan/execute 토픽 — discuss_light 없이 plan FSM · stack에서 dry-run"
-      : "Plan/execute topic — plan FSM (no light discuss); dry-run in stack";
+      ? "코드 변경과 검증 요청이 감지되어 계획 승인과 격리 실행을 적용합니다."
+      : "A code-change request was detected, so plan approval and isolated execution apply.";
   }
 
   if (run?.discuss_light) {
     return locale === "ko"
-      ? "경량 discuss — 전원 동시 1 wave"
-      : "Light discuss — full-parallel 1 wave";
+      ? "낮은 위험의 간단한 요청이라 한 번의 병렬 검토로 처리합니다."
+      : "This low-risk request uses one lightweight parallel review.";
   }
 
   return null;

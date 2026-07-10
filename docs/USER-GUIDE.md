@@ -79,8 +79,7 @@
 | **Claude** | **맹점·리스크·설명** — 두 번째 의견 | 설계 검토, 요약, Oracle(선택) |
 | **Kimi Work** | **Work quota daimon peer** — 레포 검증·대안 | Loop/supervisor에서 peer, envelope 합의 |
 
-**Discuss 턴 (Plan toggle OFF):** Codex·Claude·Kimi Work read-only — `[PROPOSED:]`만. 모드 메타 멘트 금지.  
-**Plan 턴 (Plan toggle ON):** Scribe가 `plan.md` 갱신.  
+**현재 Room 턴:** permissions SSOT로 agent를 실행하고, TurnPolicy signal이 Scribe·plan workflow effect를 결정한다. 모드 메타 멘트는 금지한다.
 턴 제어 SSOT: [TURN-MODES.md](./TURN-MODES.md).
 
 역할 프롬프트: `src/agent_lab/agents/prompts.py`  
@@ -236,8 +235,10 @@ AGENT_LAB_GOAL_LOOP=1
 `WorkStatusBar` — 5단계 stepper:
 
 ```text
-Plan → Review → Execute → Verify → Done
+실행 준비 → 실행 검토 → 변경 중 → 변경 검토 → 검증 완료
 ```
+
+내부 `work_phase` ID는 API 호환을 위해 유지하고, UI는 사용자가 다음 행동과 결과를 바로 이해할 수 있는 라벨을 사용한다.
 
 | Resolver | 우선순위 | 역할 |
 |----------|----------|------|
@@ -307,7 +308,7 @@ Work 탭이 아닐 때:
 2. **작업 폴더** (`SessionSetupBar`) — agent-lab / quant-pipeline 프리셋 또는 **다른 폴더…**
 3. (선택) Settings에서 에이전트 cwd·툴
 4. 에이전트 칩 (Cursor / Codex / Claude)
-5. Composer: 주제 + **Room preset** (빠른/감독) · **Plan** toggle
+5. Composer: 주제 입력 — routing 이유는 입력 상단 한 줄로 표시
 6. 전송 → `sessions/YYYY-MM-DD-slug/` 생성
 
 **게이트:** 「다른 폴더…」 선택 후 경로 없으면 전송 불가.
@@ -377,94 +378,52 @@ sessions/2026-06-02-my-topic/
 
 ## 6. Composer·메시지 전송
 
-> **Turn mode SSOT:** [TURN-MODES.md](./TURN-MODES.md)
+> **현재 turn SSOT:** [TURN-CONTRACT.md](./TURN-CONTRACT.md) · legacy 이력: [TURN-MODES.md](./TURN-MODES.md)
 
 ### 6.1 UI 요소 (현재)
 
 | 요소 | 동작 |
 |------|------|
-| **Room preset** | **빠른** (`fast`) · **감독** (`supervisor`) — 3-way quick/team/loop picker **없음** |
-| **Plan** 체크 | 전송 시 Scribe ON/OFF — preset에 따라 **잠금** (§6.4) |
-| **효율** 토글 | context·consensus cap 축소 |
+| **주제 입력** | 사용자가 조작하는 turn 제어의 유일한 기본 입력 |
 | **에이전트 스택** | 참여 agent pool (`ComposerAgentStack`) |
-| **모드 힌트** | preset 설명 + Plan 상태 한 줄 |
+| **라우팅 이유** | 낮은 위험·코드 변경·승인 대기 등 자동 선택 이유 한 줄 |
 | **📎 첨부** | FormData upload |
 | **↑ 전송** | Enter (Shift+Enter 줄바꿈) |
 | **■ 중지** | `cancelRoomRun` |
 | **`/`** | 슬래시 메뉴 |
 
-Work 탭 **「지금 정리」**는 Plan toggle과 별도 — `synthesize_only` Scribe run (§6.4.4).
+Work **「지금 정리」**는 명시적 `synthesize_only` Scribe run이다.
 
-### 6.2 Room preset (Composer UI)
+### 6.2 자동 라우팅
 
-Composer 모드는 **Room preset** 2개 (`GET /api/room/presets`, `roomPresets.ts`).
+Composer에는 preset·Plan picker를 노출하지 않는다. TurnContract는 topic·risk·intent·matching outcomes에서 agent 상한·round·consensus를 고르고, TurnPolicy와 Plan FSM이 Scribe·clarify·task effect를 결정한다.
 
-| Preset | UI 라벨 | 런타임 `turn_profile` | Plan toggle |
-|--------|---------|-------------------------|-------------|
-| **fast** | 빠른 | `quick` (1 lead) | **잠금 OFF** |
-| **supervisor** | 감독 | `loop` (합의·검증) | **잠금 ON** |
+- 간단한 낮은 위험 요청 → 한 번의 경량 검토
+- 코드 변경·검증 요청 → 계획 승인 + 격리 실행
+- Human 결정 대기 → Decision Queue에서 현재 결정 표시
+- 세부 contract·roster·consensus·run profile → Overview **Diagnostics**에서 확인
 
-- 세션 `run.json` `room_preset` · 전송 `preset` form 필드
-- `quick` / `team` / `loop`는 **런타임 내부 프로필** — UI segmented picker **제거됨** (2026-06)
+`fast` / `supervisor`, `quick` / `team` / `loop`는 호환·내부 축으로 남지만 기본 Composer 제어가 아니다.
 
-**Fast + Human Inbox:** discuss orchestrator harvest·plan CLARIFY inbox 스킵; team lead MCP 유지.  
-→ [05-room-agent-roles.md §Fast preset](./05-room-agent-roles.md) · [MCP-FIRST-INBOX.md](./MCP-FIRST-INBOX.md)
+### 6.3 Decision Queue
 
-### 6.3 Runtime turn profile (내부)
+plan 승인, build 질문, 격리 실행, merge 결정은 Composer 위 **Decision Queue**에서 우선순위에 따라 한 번에 하나만 확장한다. 이후 결정은 짧은 queue hint로 알리고, Work는 현재 단계·결과·evidence를 소유한다.
 
-| Profile | R1 | consensus | Preset |
-|---------|----|-----------|--------|
-| **quick** | 1 lead | off | fast |
-| **team** | 선택 전원 병렬 | off | API/legacy |
-| **loop** | 선택 전원 | on | supervisor |
+Human Inbox는 질문·build GO·skill/autonomy 결정을 제공하며, plan/execute 고유 action owner는 기존 `PlanApprovalPanel`·`PlanExecutePanel`을 유지한다. 단일 표면은 gate를 합쳐 보이는 것이며 gate를 우회하지 않는다.
 
-**레거시 별칭 (API/localStorage):** `discuss`/`analyze`→team, `review`/`free`/`verified`/`specialist`→loop.  
-상세: [TURN-MODES.md §3](./TURN-MODES.md).
+### 6.4 점진 공개
 
-### 6.4 Plan toggle (Scribe ON/OFF)
+기본 화면에는 현재 단계, 실행 활동, 필요한 Human 결정, 결과·evidence를 우선한다. 다음 정보는 Overview의 접힌 **Diagnostics**에서 확인한다.
 
-Composer **Plan** checkbox → client `planAfterSend` → API `mode` + `synthesize`.
-
-| Plan toggle | API `mode` | `synthesize` | 턴 후 Scribe |
-|-------------|------------|--------------|--------------|
-| **OFF** | `discuss` | `false` | **안 함** |
-| **ON** | `plan` | `true` | **`plan.md` 갱신** |
-
-#### 6.4.1 OFF vs ON — 동작 차이
-
-| | Plan OFF | Plan ON |
-|---|----------|---------|
-| Codex / Claude | read-only overlay | permissions대로 tools/write |
-| Kimi Work | read-only, `[PROPOSED:]` | 동일 |
-| Cursor | tools (execute 별 gate) | tools |
-| `[PROPOSED:]` harvest | O | O + plan linkage |
-| Inbox discuss harvest | off by default (MCP `ask_human` SSOT) | same — CLARIFY via MCP, not orchestrator scrape |
-| Turn receipt | `discuss_saved` | `plan_updated` |
-
-전체 표: [TURN-MODES.md §4](./TURN-MODES.md).
-
-#### 6.4.2 Toggle 잠금
-
-| 조건 | 동작 |
-|------|------|
-| preset **fast** | 항상 OFF |
-| preset **supervisor** | 항상 ON (UI disabled) |
-| `plan_workflow` Human approval 대기 | OFF until resolved |
-| `turn_profile=loop` without preset | ON 강제 |
-
-#### 6.4.3 Consensus / loop
-
-supervisor preset: `consensus_mode` ON, multi-round envelope. Plan ON과 **독립** — consensus는 preset·profile, Scribe는 Plan toggle.
-
-#### 6.4.4 「지금 정리」
-
-Work plan toolbar → `synthesize_only` SSE — Human 메시지 없이 Scribe only.
+- gate profile과 block code
+- routing contract/source
+- 실제 roster와 consensus 여부
+- run profile·turn/context budget
+- 포함된 context layer와 마지막 턴 trim 상세
 
 ### 6.5 전송 API body (요약)
 
-`POST /api/room/runs` → SSE
-
-주요 필드: `topic`, `agents[]`, `mode` (discuss|plan), `consensus_mode`, `turn_profile`, `efficiency_mode`, `permissions`, `workspace`, `agent_capabilities`, `files`, `synthesize_only`.
+`POST /api/room/runs` → SSE. 주요 필드는 `topic`, `agents[]`, `preset`(호환/내부), `consensus_mode`, `turn_profile`, `permissions`, `workspace`, `agent_capabilities`, `files`, `synthesize_only`다. 일반 send의 부수효과 권한은 API `mode`/`synthesize`가 아니라 TurnPolicy signal에 있다.
 
 ### 6.6 전송 게이트 (`composerSendLocked`)
 
@@ -488,7 +447,7 @@ Work plan toolbar → `synthesize_only` SSE — Human 메시지 없이 Scribe on
 | Claude | tools, write, local paths |
 | Kimi Work | daimon workspace tools · inbox bridge (turn-time) |
 
-**Plan OFF overlay:** Claude write off; Codex/Claude/Kimi Work read-only in `[고정 constraints]`. Kimi Work — discuss/plan 모두 execute·patch **주장 금지** (`[PROPOSED:]`만).
+**현재 permissions:** Room agent tools는 permissions SSOT를 따르고, execute·patch는 별도 Human gate와 worktree 경계를 유지한다. Kimi Work는 `[PROPOSED:]` 계약을 따른다.
 
 **현재:** `AgentPermissionAlert` UI 있으나 send path는 full defaults 사용 (모달 bypass).
 
@@ -578,9 +537,9 @@ supervisor preset (`turn_profile=loop`, `consensus_mode` ON):
 | **GO override** | Human 본문 regex | `(?i)(?:GO\|리드\|lead)\s*[:：]?\s*(cursor\|codex\|claude)` — active pool 내 |
 | **회전** | `(human_turn-1) % len(agents)` | GO 없을 때 |
 
-**Lead discuss block:** Plan OFF 턴·리드 agent에게만 prepended (Plan ON / consensus 제외).
+**Lead policy:** TurnPolicy의 task-owner·consensus signal과 현재 roster를 기준으로 lead 상세를 구성한다.
 
-Tasks UI: supervisor preset 또는 Plan ON에서만 리드 상세 표시 (`shouldShowTurnLeadDetails`).
+Tasks UI는 task owner 또는 consensus 근거가 있을 때만 lead 상세를 표시한다 (`shouldShowTurnLeadDetails`).
 
 ### 7.6 Human turn synthesis (턴 요약)
 
@@ -599,10 +558,10 @@ system 메시지: `[human synthesis — 턴 요약]` + Human 발췌 + R1 agent b
 
 | 턴 종류 | PROPOSED 생성 | owner 자동 배정 |
 |---------|---------------|-----------------|
-| Plan OFF (`discuss`), non-loop | O | **X** |
-| Plan ON / synthesize / loop consensus | O | O (round-robin) |
+| task owner 배정 없음 · non-consensus | O | **X** |
+| task owner 배정 또는 consensus | O | O (round-robin) |
 
-Plan OFF는 `sync_tasks_from_turn_state()` 도 skip.
+task-owner effect가 없으면 `sync_tasks_from_turn_state()`도 skip한다.
 
 ### 7.8 Resume / replay
 
@@ -1142,8 +1101,7 @@ Slash menu와 단계형 선택기는 ArrowUp/Down, PageUp/Down, Enter, Escape를
 | `agent-lab-session-rail-width` | rail width |
 | `agent-lab-inspector-open/width` | inspector |
 | `agent-lab-turn-profile` | runtime profile (legacy key; preset이 주로 결정) |
-| `agent-lab-plan-after-send` | Plan toggle (global default) |
-| `agent-lab-plan-after-send:{sessionId}` | Plan toggle per session |
+| `agent-lab-plan-after-send*` | legacy Plan toggle key — 현재 topic-only Composer에서는 authority 아님 |
 | `agent-lab-efficiency-mode` | 효율 |
 | `agent-lab-transcript-human-synthesis` | Human 요약 view |
 | `agent-lab-task-bar-collapsed` | task bar |
@@ -1421,12 +1379,12 @@ Live 품질 체크: [MISSION-DOGFOOD.md](./MISSION-DOGFOOD.md).
 ### A — 의견만 듣기
 
 1. preset **supervisor** (또는 fast로 단답) · 2~3 agents
-2. Composer **Plan OFF** · Transcript 2~3턴
+2. Composer에 주제 입력 · Transcript 2~3턴
 
 ### B — 기획서 만들기
 
-1. A로 토론 (Plan OFF)
-2. **Plan ON** 전송 또는 Work → **지금 정리** → 보완 질문 → 반복
+1. A로 토론
+2. Work → **지금 정리** 또는 routing signal에 따른 plan 정리 → 보완 질문 → 반복
 
 ### C — 합의
 

@@ -109,7 +109,7 @@ export function ChatComposer({
   pendingExecuteCount: _pendingExecuteCount,
   objectionNotice,
   onFocusObjection,
-  turnHint: _turnHint,
+  turnHint,
   costHint: _costHint,
   locale = "en",
   inputHidden = false,
@@ -315,6 +315,12 @@ export function ChatComposer({
             </span>
           ) : null}
         </div>
+      ) : null}
+
+      {turnHint ? (
+        <p className="composer-hint" role="status">
+          {turnHint}
+        </p>
       ) : null}
 
       {objectionNotice ? (

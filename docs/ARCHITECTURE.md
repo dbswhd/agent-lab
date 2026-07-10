@@ -369,7 +369,7 @@ Additive, flag-gated layers from the LangGraph/OpenHands/Aider/SWE-agent gap ana
 
 ### 6.3 Work stepper (`WorkStatusBar`)
 
-`Plan → Review → Execute → Verify → Done`
+`실행 준비 → 실행 검토 → 변경 중 → 변경 검토 → 검증 완료`
 
 SSOT: `work_phase` from runtime API — UI와 백엔드 동기화.
 

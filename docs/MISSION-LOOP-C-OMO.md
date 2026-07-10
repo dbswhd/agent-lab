@@ -100,7 +100,7 @@ stateDiagram-v2
 | 미션 시작 | goal / verified profile 승인 | — |
 | Plan gate REJECT 후 | (선택) 방향 한 줄 | auto DISCUSS 1–N 라운드 (상한) |
 | Merge | diff 검토 approve/reject | dry-run ~ verify까지 |
-| Inbox BLOCK / Build GO | 기존 Human Inbox | execute plan phase |
+| 질문 / Build GO | Decision Queue의 Human Inbox | execute plan phase |
 | MISSION_DONE | (선택) 최종 확인 | Oracle PASS 후 자동 종료 가능 |
 
 omo Atlas는 merge를 Human이 안 하지만, Agent Lab은 **provenance·감사**를 위해 merge gate **유지**.

@@ -1,12 +1,6 @@
 import type { WorkPhase } from "../utils/workStatusPhase";
-
-const STEPS: { id: WorkPhase; label: string }[] = [
-  { id: "plan_draft", label: "Plan" },
-  { id: "review_needed", label: "Review" },
-  { id: "execute_pending", label: "Execute" },
-  { id: "merge_verify", label: "Verify" },
-  { id: "done", label: "Done" },
-];
+import { useLocale } from "../i18n/useLocale";
+import { workPhaseLabel } from "../utils/workPhaseLabels";
 
 type Props = {
   readonly phase: WorkPhase;
@@ -15,8 +9,7 @@ type Props = {
 
 /** Compact work_phase indicator for the composer event stack. */
 export function WorkPhaseChip({ phase, metaLine }: Props) {
-  const active = STEPS.find((step) => step.id === phase);
-  if (!active) return null;
+  const { locale } = useLocale();
 
   return (
     <div
@@ -24,7 +17,9 @@ export function WorkPhaseChip({ phase, metaLine }: Props) {
       role="status"
       aria-label="Work progress"
     >
-      <span className="composer-phase-chip__label">{active.label}</span>
+      <span className="composer-phase-chip__label">
+        {workPhaseLabel(phase, locale)}
+      </span>
       {metaLine ? (
         <span className="composer-phase-chip__meta">{metaLine}</span>
       ) : null}

@@ -20,15 +20,6 @@ export function buildSessionStatusChips(
   if (!line) return [];
 
   const chips: StatusLineChip[] = [];
-  const profile = line.run_profile?.trim();
-  if (profile) {
-    chips.push({
-      id: "profile",
-      label: profile,
-      title: ko ? `Run profile: ${profile}` : `Run profile: ${profile}`,
-    });
-  }
-
   if (line.schedule_sandbox) {
     chips.push({
       id: "schedule_sandbox",
@@ -49,9 +40,7 @@ export function buildSessionStatusChips(
     chips.push({
       id: "isolation",
       label: line.isolation,
-      title: ko
-        ? `격리: ${line.isolation}`
-        : `Isolation: ${line.isolation}`,
+      title: ko ? `격리: ${line.isolation}` : `Isolation: ${line.isolation}`,
     });
   }
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from agent_lab.plan.execution_status_scopes import (
     CANCELLABLE_EXECUTION_STATUSES,
     EVIDENCE_PENDING_STATUSES,
@@ -57,3 +59,16 @@ def test_find_open_merge_pending_matches_broader_set():
 
 def test_cancellable_matches_open_merge_pending():
     assert CANCELLABLE_EXECUTION_STATUSES == OPEN_MERGE_PENDING_STATUSES
+
+
+def test_exec_worktree_from_execution_row_strict_raises():
+    from agent_lab.plan.execute_worktree import ExecWorktree
+
+    with pytest.raises(ValueError, match="missing worktree metadata"):
+        ExecWorktree.from_execution_row({"git_root": "/tmp"}, strict=True)
+
+
+def test_exec_worktree_from_execution_row_lenient_returns_none():
+    from agent_lab.plan.execute_worktree import ExecWorktree
+
+    assert ExecWorktree.from_execution_row({"git_root": "/tmp"}) is None

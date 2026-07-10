@@ -89,18 +89,9 @@ def _workspace_info_for(cwd: Path, raw_paths: list[str]) -> dict[str, Any]:
 
 
 def _exec_worktree_from_execution(target: dict[str, Any]) -> ExecWorktree:
-    missing = [
-        key for key in ("git_root", "worktree_path", "exec_branch", "base_branch", "base_sha") if not target.get(key)
-    ]
-    if missing:
-        raise ValueError(f"execution missing worktree metadata: {', '.join(missing)}")
-    return ExecWorktree(
-        git_root=Path(str(target["git_root"])),
-        worktree_path=Path(str(target["worktree_path"])),
-        branch=str(target["exec_branch"]),
-        base_branch=str(target["base_branch"]),
-        base_sha=str(target["base_sha"]),
-    )
+    parsed = ExecWorktree.from_execution_row(target, strict=True)
+    assert parsed is not None
+    return parsed
 
 
 def _hook_failure_detail(report: dict[str, Any], *, fallback: str) -> str:

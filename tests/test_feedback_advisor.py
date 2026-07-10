@@ -11,6 +11,7 @@ from agent_lab.feedback_advisor import (
     _DEFAULT_HINT,
     _combo_key,
     _explore_decision,
+    _load_tail,
     _mutate_combo,
     _score_outcome,
     advise_setup,
@@ -475,3 +476,11 @@ def test_tool_card_note_skipped_when_advisor_flag_off(tmp_path: Path, monkeypatc
     hint = advise_setup("polish the UI", "deep", ["cursor", "codex", "claude"], room_preset="fast", run_meta={})
     assert hint is _DEFAULT_HINT
     assert not called  # advisor channel reused, not a separate always-on gate
+
+
+def test_load_tail_reads_only_last_rows(tmp_path: Path) -> None:
+    path = tmp_path / "outcomes.jsonl"
+    rows = [{"i": i, "final_verdict": "pass"} for i in range(250)]
+    _write_ledger(path, rows)
+    tail = _load_tail(path, 3)
+    assert [row["i"] for row in tail] == [247, 248, 249]

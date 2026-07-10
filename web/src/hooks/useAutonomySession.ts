@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
-  fetchSessionRuntime,
   patchSessionAutonomy,
   type RuntimeSnapshot,
 } from "../api/client";
 import { useLocale } from "../i18n/useLocale";
+import { useSessionRuntime } from "./useSessionRuntime";
 import {
   autonomyFromSessionRun,
   buildAutonomySessionView,
@@ -32,34 +32,15 @@ export function useAutonomySession({
   setLevel: (level: AutonomyLevel) => Promise<void>;
 } {
   const { locale } = useLocale();
-  const [runtime, setRuntime] = useState<RuntimeSnapshot | null>(null);
-  const [loading, setLoading] = useState(false);
   const [changing, setChanging] = useState(false);
   const [tick, setTick] = useState(0);
 
   const refresh = useCallback(() => setTick((n) => n + 1), []);
 
-  useEffect(() => {
-    if (!sessionId) {
-      setRuntime(null);
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    void fetchSessionRuntime(sessionId)
-      .then((payload) => {
-        if (!cancelled) setRuntime(payload);
-      })
-      .catch(() => {
-        if (!cancelled) setRuntime(null);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [sessionId, reloadKey, tick]);
+  const { runtime, loading } = useSessionRuntime(sessionId, {
+    reloadKey: reloadKey + tick,
+    run: sessionRun,
+  });
 
   const view = useMemo(() => {
     const fromRuntime = buildAutonomySessionView(runtime?.autonomy, locale);
@@ -75,17 +56,13 @@ export function useAutonomySession({
       if (!sessionId) return;
       setChanging(true);
       try {
-        const res = await patchSessionAutonomy(sessionId, level);
-        setRuntime((prev) =>
-          prev
-            ? { ...prev, autonomy: res.autonomy }
-            : ({ autonomy: res.autonomy } as RuntimeSnapshot),
-        );
+        await patchSessionAutonomy(sessionId, level);
+        refresh();
       } finally {
         setChanging(false);
       }
     },
-    [sessionId],
+    [sessionId, refresh],
   );
 
   return { view, loading, changing, runtime, refresh, setLevel };

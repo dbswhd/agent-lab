@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import {
-  fetchSessionRuntime,
   type PlanExecutionRecord,
   type PlanWorkflowRecord,
   type RuntimeSnapshot,
@@ -18,6 +17,7 @@ import {
 } from "../utils/workFocusTargets";
 import { resolveWorkPhase } from "../utils/workStatusPhase";
 import { hasPlanWorkflowClarifySurface } from "../utils/planWorkflowView";
+import { useSessionRuntime } from "../hooks/useSessionRuntime";
 import { PlanExecutePanel } from "./PlanExecutePanel";
 import { WorkDecisionPanel } from "./WorkDecisionPanel";
 import {
@@ -108,9 +108,10 @@ export function WorkToolPanel({
   const showSyncFailedBar =
     Boolean(planMeta.pendingAgreement) && !showPlanStalePanel;
   const ownsRuntimeFetch = runtimeSnapshot === undefined;
-  const [fetchedRuntime, setFetchedRuntime] = useState<RuntimeSnapshot | null>(
-    null,
-  );
+  const { runtime: fetchedRuntime } = useSessionRuntime(sessionId, {
+    run: session?.run,
+    enabled: ownsRuntimeFetch,
+  });
   const runtime = ownsRuntimeFetch ? fetchedRuntime : runtimeSnapshot;
   const executions = useMemo(
     () => (session?.run?.executions as PlanExecutionRecord[] | undefined) ?? [],
@@ -169,21 +170,6 @@ export function WorkToolPanel({
       workHookAlert,
     ],
   );
-
-  useEffect(() => {
-    if (!ownsRuntimeFetch) return;
-    let cancelled = false;
-    void fetchSessionRuntime(sessionId)
-      .then((payload) => {
-        if (!cancelled) setFetchedRuntime(payload);
-      })
-      .catch(() => {
-        if (!cancelled) setFetchedRuntime(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [ownsRuntimeFetch, sessionId, session?.run]);
 
   useEffect(() => {
     if (!workFocus) return;

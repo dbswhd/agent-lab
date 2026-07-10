@@ -64,14 +64,28 @@ def _outcomes_path(root: Path | None) -> Path:
 
 def _load_tail(path: Path, n: int) -> list[dict[str, Any]]:
     """Read up to ``n`` most-recent lines from a JSONL file."""
-    if not path.is_file():
+    if not path.is_file() or n <= 0:
         return []
     try:
-        lines = path.read_text(encoding="utf-8").splitlines()
+        block = 8192
+        with path.open("rb") as fh:
+            fh.seek(0, 2)
+            pos = fh.tell()
+            if pos == 0:
+                return []
+            chunks: list[bytes] = []
+            lines_found = 0
+            while pos > 0 and lines_found <= n:
+                read_size = min(block, pos)
+                pos -= read_size
+                fh.seek(pos)
+                chunks.insert(0, fh.read(read_size))
+                lines_found = b"".join(chunks).count(b"\n")
+            text = b"".join(chunks).decode("utf-8", errors="replace")
     except OSError:
         return []
     rows: list[dict[str, Any]] = []
-    for line in lines[-n:]:
+    for line in text.splitlines()[-n:]:
         line = line.strip()
         if not line:
             continue

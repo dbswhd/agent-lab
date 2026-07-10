@@ -288,17 +288,8 @@ def subprocess_exec(args: list[str], *, check: bool = True) -> subprocess.Comple
 
 
 def _execution_worktree(execution: dict[str, Any]) -> Any | None:
-    required = ("git_root", "worktree_path", "exec_branch", "base_branch", "base_sha")
-    if not all(execution.get(key) for key in required):
-        return None
     try:
         from agent_lab.plan.execute_worktree import ExecWorktree
     except Exception:
         return None
-    return ExecWorktree(
-        git_root=Path(str(execution["git_root"])),
-        worktree_path=Path(str(execution["worktree_path"])),
-        branch=str(execution["exec_branch"]),
-        base_branch=str(execution["base_branch"]),
-        base_sha=str(execution["base_sha"]),
-    )
+    return ExecWorktree.from_execution_row(execution)

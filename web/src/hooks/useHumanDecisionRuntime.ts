@@ -1,35 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
-import { fetchSessionRuntime, type RuntimeSnapshot } from "../api/client";
+import { useMemo } from "react";
 import {
   buildHumanDecisionLanes,
   humanDecisionBlockedLanes,
   shouldShowHumanDecisionBanner,
 } from "../utils/humanDecisionView";
+import { useSessionRuntime } from "./useSessionRuntime";
 
 export function useHumanDecisionRuntime(
   sessionId: string | null,
   reloadKey: number,
   discussPaused: boolean,
 ) {
-  const [runtime, setRuntime] = useState<RuntimeSnapshot | null>(null);
-
-  useEffect(() => {
-    if (!sessionId) {
-      setRuntime(null);
-      return;
-    }
-    let cancelled = false;
-    void fetchSessionRuntime(sessionId)
-      .then((snap) => {
-        if (!cancelled) setRuntime(snap);
-      })
-      .catch(() => {
-        if (!cancelled) setRuntime(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [sessionId, reloadKey, discussPaused]);
+  const { runtime } = useSessionRuntime(sessionId, { reloadKey, enabled: true });
 
   const lanes = useMemo(
     () => buildHumanDecisionLanes(runtime, discussPaused),

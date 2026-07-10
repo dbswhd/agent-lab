@@ -1,12 +1,14 @@
-import { useEffect, useState } from "react";
-import { fetchSessionRuntime } from "../api/client";
+import type { RuntimeSnapshot } from "../api/client";
 import { useLocale } from "../i18n/useLocale";
+import { useSessionRuntime } from "../hooks/useSessionRuntime";
 import { buildRoutingDiagnostics } from "../utils/routingDiagnostics";
 import { agentLabel } from "../utils/transcript";
 
 type Props = {
   readonly sessionId: string | null;
   readonly run?: Record<string, unknown> | null;
+  /** Parent-provided runtime — skips local `/runtime` fetch when defined. */
+  runtimeSnapshot?: RuntimeSnapshot | null;
 };
 
 function consensusLabel(enabled: boolean, ko: boolean): string {
@@ -14,28 +16,16 @@ function consensusLabel(enabled: boolean, ko: boolean): string {
   return ko ? "미사용" : "Off";
 }
 
-export function RoutingDiagnostics({ sessionId, run }: Props) {
+export function RoutingDiagnostics({ sessionId, run, runtimeSnapshot }: Props) {
   const { locale } = useLocale();
   const ko = locale === "ko";
-  const [runProfile, setRunProfile] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!sessionId) {
-      setRunProfile(null);
-      return;
-    }
-    let cancelled = false;
-    void fetchSessionRuntime(sessionId)
-      .then((runtime) => {
-        if (!cancelled) setRunProfile(runtime.status_line?.run_profile ?? null);
-      })
-      .catch(() => {
-        if (!cancelled) setRunProfile(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [sessionId]);
+  const ownsRuntimeFetch = runtimeSnapshot === undefined;
+  const { runtime: fetchedRuntime } = useSessionRuntime(sessionId, {
+    run,
+    enabled: ownsRuntimeFetch,
+  });
+  const runtime = ownsRuntimeFetch ? fetchedRuntime : runtimeSnapshot;
+  const runProfile = runtime?.status_line?.run_profile ?? null;
 
   const view = buildRoutingDiagnostics(run, runProfile);
   const roster = view.agents.length

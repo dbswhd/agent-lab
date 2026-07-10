@@ -525,6 +525,43 @@ class TurnPolicyEngine:
         )
 
 
+def _contract_history_from_outcome_rows() -> list:
+    from agent_lab.outcome_harvester import load_outcome_rows
+    from agent_lab.room.turn_contract import ContractOutcome
+
+    history: list[ContractOutcome] = []
+    for row in load_outcome_rows():
+        contract_id = row.get("contract_id")
+        if not isinstance(contract_id, str) or not contract_id:
+            continue
+        verdict = row.get("final_verdict")
+        history.append(
+            {
+                "contract_id": contract_id,
+                "final_verdict": verdict if isinstance(verdict, str) else None,
+                "repair_attempts": int(row.get("repair_attempts") or 0),
+                "escalated": bool(row.get("escalated")),
+                "task_kind": str(row.get("task_kind") or "") or None,
+                "risk": str(row.get("risk") or "") or None,
+                "execute_intent": bool(row.get("execute_intent")),
+            },
+        )
+    return history
+
+
+def _stamp_turn_contract_on_run_meta(
+    run_meta: RunState,
+    *,
+    topic: str,
+    history: list,
+) -> None:
+    from agent_lab.room.turn_contract import build_turn_contract, observe_turn
+    from agent_lab.run.meta import stamp_run_meta
+
+    turn_contract = build_turn_contract(observe_turn(topic, run_meta), history=history).to_snapshot()
+    stamp_run_meta(run_meta, turn_contract=turn_contract)
+
+
 def prepare_turn_policy_before_agent_round(
     folder: Path,
     run_meta: RunState,
@@ -551,30 +588,8 @@ def prepare_turn_policy_before_agent_round(
     room_preset_hint = signals.room_preset
     effects = TurnPolicyEngine.resolve(signals)
     persist_turn_policy_on_run_meta(run_meta, effects, signals=signals)
-    from agent_lab.room.turn_contract import ContractOutcome, build_turn_contract, observe_turn
-    from agent_lab.outcome_harvester import load_outcome_rows
-
-    history: list[ContractOutcome] = []
-    for row in load_outcome_rows():
-        contract_id = row.get("contract_id")
-        if not isinstance(contract_id, str) or not contract_id:
-            continue
-        verdict = row.get("final_verdict")
-        history.append(
-            {
-                "contract_id": contract_id,
-                "final_verdict": verdict if isinstance(verdict, str) else None,
-                "repair_attempts": int(row.get("repair_attempts") or 0),
-                "escalated": bool(row.get("escalated")),
-                "task_kind": str(row.get("task_kind") or "") or None,
-                "risk": str(row.get("risk") or "") or None,
-                "execute_intent": bool(row.get("execute_intent")),
-            },
-        )
-    turn_contract = build_turn_contract(observe_turn(topic, run_meta), history=history).to_snapshot()
-    from agent_lab.run.meta import stamp_run_meta
-
-    stamp_run_meta(run_meta, turn_contract=turn_contract)
+    history = _contract_history_from_outcome_rows()
+    _stamp_turn_contract_on_run_meta(run_meta, topic=topic, history=history)
     if folder.is_dir() and effects.init_plan_workflow and not is_plan_workflow_active(run_meta):
         init_plan_workflow_on_plan_send(folder)
         run_meta = read_run_meta(folder)
@@ -587,8 +602,7 @@ def prepare_turn_policy_before_agent_round(
         )
         effects = TurnPolicyEngine.resolve(signals)
         persist_turn_policy_on_run_meta(run_meta, effects, signals=signals)
-        turn_contract = build_turn_contract(observe_turn(topic, run_meta), history=history).to_snapshot()
-        stamp_run_meta(run_meta, turn_contract=turn_contract)
+        _stamp_turn_contract_on_run_meta(run_meta, topic=topic, history=history)
     snap_tp = run_meta.get("turn_policy")
     snap_tk = run_meta.get("turn_kind")
     snap_tc = run_meta.get("turn_contract")

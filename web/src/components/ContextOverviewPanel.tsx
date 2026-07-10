@@ -23,6 +23,7 @@ import { TurnBudgetSection } from "./TurnBudgetSection";
 import { MissionBoardStrip } from "./MissionBoardStrip";
 import { GateProfileChips } from "./GateProfileChips";
 import { RoutingDiagnostics } from "./RoutingDiagnostics";
+import { useSessionRuntime } from "../hooks/useSessionRuntime";
 
 type Props = {
   session: SessionDetail | null;
@@ -78,6 +79,9 @@ export function ContextOverviewPanel({
     repo_tree: true,
   });
   const [layerBusy, setLayerBusy] = useState(false);
+  const { runtime: diagnosticsRuntime } = useSessionRuntime(sessionId, {
+    run: session?.run,
+  });
 
   useEffect(() => {
     const runLayers = (
@@ -231,11 +235,15 @@ export function ContextOverviewPanel({
           {ko ? "진단" : "Diagnostics"}
         </summary>
         <div className="ctx-diagnostics__body">
-          <GateProfileChips sessionId={sessionId} />
+          <GateProfileChips
+            sessionId={sessionId}
+            runtimeSnapshot={diagnosticsRuntime}
+          />
 
           <RoutingDiagnostics
             sessionId={sessionId}
             run={session?.run as Record<string, unknown> | undefined}
+            runtimeSnapshot={diagnosticsRuntime}
           />
 
           <section className="ctx-section">

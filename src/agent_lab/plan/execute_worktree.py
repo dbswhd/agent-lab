@@ -67,6 +67,27 @@ class ExecWorktree:
             "base_sha": self.base_sha,
         }
 
+    @classmethod
+    def from_execution_row(
+        cls,
+        row: dict[str, Any],
+        *,
+        strict: bool = False,
+    ) -> ExecWorktree | None:
+        required = ("git_root", "worktree_path", "exec_branch", "base_branch", "base_sha")
+        missing = [key for key in required if not row.get(key)]
+        if missing:
+            if strict:
+                raise ValueError(f"execution missing worktree metadata: {', '.join(missing)}")
+            return None
+        return cls(
+            git_root=Path(str(row["git_root"])),
+            worktree_path=Path(str(row["worktree_path"])),
+            branch=str(row["exec_branch"]),
+            base_branch=str(row["base_branch"]),
+            base_sha=str(row["base_sha"]),
+        )
+
 
 def worktree_dir(session_folder: Path, exec_id: str) -> Path:
     return session_folder / "worktrees" / exec_id
@@ -155,16 +176,7 @@ def discard_exec_worktree(ew: ExecWorktree, session_folder: Path, exec_id: str) 
 
 
 def _execution_worktree(row: dict[str, Any]) -> ExecWorktree | None:
-    required = ("git_root", "worktree_path", "exec_branch", "base_branch", "base_sha")
-    if not all(row.get(key) for key in required):
-        return None
-    return ExecWorktree(
-        git_root=Path(str(row["git_root"])),
-        worktree_path=Path(str(row["worktree_path"])),
-        branch=str(row["exec_branch"]),
-        base_branch=str(row["base_branch"]),
-        base_sha=str(row["base_sha"]),
-    )
+    return ExecWorktree.from_execution_row(row)
 
 
 def _git_root_from_worktree_path(path: Path) -> Path | None:

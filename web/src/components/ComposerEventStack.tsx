@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import type {
   PlanExecutionRecord,
   PlanWorkflowRecord,
@@ -18,7 +18,7 @@ import {
   WorkPlanApprovalSection,
   type PlanApprovalHost,
 } from "./WorkPlanApprovalSection";
-import { fetchSessionRuntime, type RuntimeSnapshot } from "../api/client";
+import { useSessionRuntime } from "../hooks/useSessionRuntime";
 import { resolveWorkPhase } from "../utils/workStatusPhase";
 import { workPlanMetaLine } from "../utils/planMeta";
 import {
@@ -149,7 +149,7 @@ export function ComposerEventStack({
   const ko = locale === "ko";
   const rootRef = useRef<HTMLDivElement>(null);
   const hasPlan = Boolean(planMd.trim());
-  const [runtime, setRuntime] = useState<RuntimeSnapshot | null>(null);
+  const { runtime } = useSessionRuntime(sessionId, { run: session?.run });
 
   function scrollStackRoot() {
     rootRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -166,20 +166,6 @@ export function ComposerEventStack({
       onWorkFocusHandled?.();
     }, 80);
   }
-
-  useEffect(() => {
-    let cancelled = false;
-    void fetchSessionRuntime(sessionId)
-      .then((payload) => {
-        if (!cancelled) setRuntime(payload);
-      })
-      .catch(() => {
-        if (!cancelled) setRuntime(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [sessionId, session?.run]);
 
   useEffect(() => {
     function onFocus(event: Event) {

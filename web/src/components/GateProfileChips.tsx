@@ -1,38 +1,31 @@
-import { useEffect, useState } from "react";
-import { fetchSessionRuntime, type RuntimeSnapshot } from "../api/client";
 import { useLocale } from "../i18n/useLocale";
+import type { RuntimeSnapshot } from "../api/client";
+import { useSessionRuntime } from "../hooks/useSessionRuntime";
 
 type Props = {
   readonly sessionId: string | null;
   compact?: boolean;
   reloadKey?: number;
+  /** Parent-provided runtime — skips local `/runtime` fetch when defined. */
+  runtimeSnapshot?: RuntimeSnapshot | null;
+  run?: unknown;
 };
 
 export function GateProfileChips({
   sessionId,
   compact = false,
   reloadKey = 0,
+  runtimeSnapshot,
+  run,
 }: Props) {
   const { t } = useLocale();
-  const [runtime, setRuntime] = useState<RuntimeSnapshot | null>(null);
-
-  useEffect(() => {
-    if (!sessionId) {
-      setRuntime(null);
-      return;
-    }
-    let cancelled = false;
-    void fetchSessionRuntime(sessionId)
-      .then((snap) => {
-        if (!cancelled) setRuntime(snap);
-      })
-      .catch(() => {
-        if (!cancelled) setRuntime(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [sessionId, reloadKey]);
+  const ownsRuntimeFetch = runtimeSnapshot === undefined;
+  const { runtime: fetchedRuntime } = useSessionRuntime(sessionId, {
+    reloadKey,
+    run,
+    enabled: ownsRuntimeFetch,
+  });
+  const runtime = ownsRuntimeFetch ? fetchedRuntime : runtimeSnapshot;
 
   const gates = runtime?.gates;
   if (!gates?.gate_profile) return null;

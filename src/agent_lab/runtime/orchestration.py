@@ -177,6 +177,17 @@ def stamp_orchestration_on_folder(folder: Path) -> OrchestrationState:
     orch = stamped if stamped else derive_orchestration_state(read_run_meta(folder))
     if orch.get("phase_drift"):
         try:
+            from agent_lab.runtime.orchestration_reconcile import maybe_reconcile_orchestration_drift
+
+            reconcile_out = maybe_reconcile_orchestration_drift(folder, orch=orch)
+            if reconcile_out and reconcile_out.get("applied"):
+                run_after = read_run_meta(folder)
+                orch = derive_orchestration_state(run_after)
+                stamped.update(orch)
+        except Exception:
+            pass
+    if orch.get("phase_drift"):
+        try:
             from agent_lab.trace_recorder import record_control_span
 
             record_control_span(

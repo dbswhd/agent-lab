@@ -183,3 +183,10 @@ class PolicyEngine:
                 gate_snapshot=PolicyEngine.gate_snapshot(run_meta),
             )
         return PolicyResult(allowed=True, gate_snapshot=PolicyEngine.gate_snapshot(run_meta))
+
+    @staticmethod
+    def reconcile_orchestration_drift(folder: Path) -> dict[str, Any] | None:
+        """Auto-align plan substate and mission phase when orchestration drift is detected."""
+        from agent_lab.runtime.orchestration_reconcile import maybe_reconcile_orchestration_drift
+
+        return maybe_reconcile_orchestration_drift(folder)

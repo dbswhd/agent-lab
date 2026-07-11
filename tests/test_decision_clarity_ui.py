@@ -46,7 +46,9 @@ def test_composer_event_stack_hosts_inbox_and_execute():
 
 def test_human_inbox_composer_only():
     room = room_chat_surface()
-    assert 'presentation="composer"' in _read("web", "src", "components", "ComposerEventStack.tsx")
+    # Unreachable inline/popup/inspector/taskbar presentation branches were pruned
+    # (c116d8bb) — HumanInboxPanel now always renders the composer variant.
+    assert "human-inbox--composer" in _read("web", "src", "components", "HumanInboxPanel.tsx")
     assert "readOnly={inboxPendingCount > 0}" not in room
 
 

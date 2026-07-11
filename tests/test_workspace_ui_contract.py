@@ -313,14 +313,16 @@ def test_m3_files_monaco_editor_lazy():
 
 
 def test_m3_side_by_side_diff_in_execute_panel():
+    # SideBySideDiff/sideBySideDiff.ts -> UnifiedDiff/unifiedDiff.ts (c116d8bb:
+    # word-level LCS diff redesign, exec-diff--split -> exec-diff--unified).
     plan = _plan_execute_bundle()
-    diff = _read("web", "src", "components", "SideBySideDiff.tsx")
-    util = _read("web", "src", "utils", "sideBySideDiff.ts")
+    diff = _read("web", "src", "components", "UnifiedDiff.tsx")
+    util = _read("web", "src", "utils", "unifiedDiff.ts")
     css = _read("web", "src", "styles", "plan-execute.css")
-    assert "SideBySideDiff" in plan
+    assert "UnifiedDiff" in plan
     assert "activeHunkId" in diff
-    assert "parseSideBySideDiff" in util
-    assert "exec-diff--split" in css
+    assert "parseUnifiedDiff" in util
+    assert "exec-diff--unified" in css
 
 
 def test_m4_diagnostics_show_bridge_audit():

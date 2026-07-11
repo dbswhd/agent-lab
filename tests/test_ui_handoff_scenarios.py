@@ -119,7 +119,8 @@ def test_scenario_b_diff_tool_contract():
     assert 'rightPanelMode === "diff"' in inspector
     assert "DiffToolPanel" in inspector
     assert "PlanDiffStat" in diff
-    assert "SideBySideDiff" in diff
+    # SideBySideDiff -> UnifiedDiff (c116d8bb: word-level LCS diff redesign).
+    assert "UnifiedDiff" in diff
     assert "출력할 diff 없음" in diff
 
 
@@ -210,8 +211,11 @@ def test_inbox_segments_contract():
     assert "appendTranscriptActivity" in _read("web", "src", "utils", "pushNotification.ts")
     assert 'inboxSegment === "inbox"' not in room
     assert 't === "inbox_pause"' in sse
-    assert 'presentation="composer"' in stack
+    assert "HumanInboxPanel" in stack
     inbox = _read("web", "src", "components", "HumanInboxPanel.tsx")
+    # Unreachable inline/popup/inspector/taskbar presentation branches were pruned
+    # (c116d8bb) — HumanInboxPanel now always renders the composer variant.
+    assert "human-inbox--composer" in inbox
     assert "inbox-row--fork" in inbox
     assert "inbox-row__kind-badge" in inbox
 
@@ -221,10 +225,14 @@ def test_composer_question_inbox_is_separate_from_generic_pending_hint():
     stack = _read("web", "src", "components", "ComposerEventStack.tsx")
     inbox = _read("web", "src", "components", "HumanInboxPanel.tsx")
     assert "inboxPendingCount" in room
-    assert 'presentation="composer"' in stack
+    assert "HumanInboxPanel" in stack
+    # Unreachable inline/popup/inspector/taskbar presentation branches were pruned
+    # (c116d8bb) — HumanInboxPanel now always renders the composer variant.
+    assert "human-inbox--composer" in inbox
     assert "ComposerEventStack" in _composer_stack_surface()
     assert "visiblePending.map" in inbox
-    assert "visiblePending[0]?.kind" in inbox
+    # visiblePending[0] was extracted into a named `lead` variable (c116d8bb).
+    assert "lead.kind" in inbox
 
 
 def test_room_preset_picker_replaces_turn_strategy_ui():

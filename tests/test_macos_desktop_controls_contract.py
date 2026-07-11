@@ -98,7 +98,8 @@ def test_workspace_chrome_replaces_web_traffic_lights_and_titlebar_logo():
     assert "app--tauri" in app
     assert "<WorkspaceChrome" in room
     assert "workspace-chrome--tauri" in chrome
-    assert "WorkbenchModeMenu" in chrome
+    # WorkbenchModeMenu -> WorkbenchModeTabs (c116d8bb: workbench tabs -> segmented pill).
+    assert "WorkbenchModeTabs" in chrome
 
 
 def test_workbench_diff_panel_reuses_execution_diff_records():
@@ -108,7 +109,8 @@ def test_workbench_diff_panel_reuses_execution_diff_records():
     assert "PlanExecutionRecord" in diff_panel
     assert "findActiveExecution" in diff_panel
     assert "PlanDiffStat" in diff_panel
-    assert "SideBySideDiff" in diff_panel
+    # SideBySideDiff -> UnifiedDiff (c116d8bb: word-level LCS diff redesign).
+    assert "UnifiedDiff" in diff_panel
     assert "<DiffToolPanel executions={planExecutions}" in inspector
 
 

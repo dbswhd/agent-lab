@@ -97,8 +97,6 @@ def test_plan_tick_blocked_when_approved() -> None:
 
 def test_mcp_advance_targets_covered_by_table() -> None:
     advance_targets = {
-        row.to_phase
-        for row in PLAN_SUBSTATE_TRANSITION_TABLE
-        if row.event == RuntimeEvent.PLAN_WORKFLOW_ADVANCE
+        row.to_phase for row in PLAN_SUBSTATE_TRANSITION_TABLE if row.event == RuntimeEvent.PLAN_WORKFLOW_ADVANCE
     }
     assert MCP_ADVANCE_TARGETS <= advance_targets

@@ -595,6 +595,7 @@ def _plan_substate_transition_entry_reason(
         return False, "forward advance only", pw_phase, ()
     return False, "invalid_plan_workflow_phase", pw_phase, ()
 
+
 _PHASE_FREE_EVENTS: frozenset[RuntimeEvent] = frozenset(
     {
         RuntimeEvent.TURN_START,
